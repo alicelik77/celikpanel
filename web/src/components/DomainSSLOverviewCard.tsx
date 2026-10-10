@@ -126,11 +126,18 @@ export function DomainSSLOverviewCard({
         } else if (cert && !cert.usable) {
             detail = t('domain.overview.ssl.notUsable');
         } else if (cert) {
-            detail = t('domain.overview.ssl.certificate', {
-                issuer: cert.issuer,
-                date: new Date(cert.expires_at).toLocaleDateString(),
-                days: t('ssl.days', { n: cert.days_until_expiry }),
-            });
+            // An expired certificate: "expired N days ago", never negative days.
+            detail = cert.days_until_expiry < 0
+                ? t('domain.overview.ssl.certificateExpired', {
+                    issuer: cert.issuer,
+                    date: new Date(cert.expires_at).toLocaleDateString(),
+                    n: -cert.days_until_expiry,
+                })
+                : t('domain.overview.ssl.certificate', {
+                    issuer: cert.issuer,
+                    date: new Date(cert.expires_at).toLocaleDateString(),
+                    days: t('ssl.days', { n: cert.days_until_expiry }),
+                });
         }
     }
 

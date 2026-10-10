@@ -539,6 +539,13 @@ func TestAnUnwritableFileIsKeptAndDoesNotStopTheOtherSites(t *testing.T) {
 		return os.Rename(from, to)
 	}
 	t.Cleanup(func() { siteFileRename = os.Rename })
+	siteFileProtectionOf = func(path string) (string, string) {
+		if path == locked {
+			return transport.SiteFileProtectionImmutable, "EPERM"
+		}
+		return transport.SiteFileProtectionNone, ""
+	}
+	t.Cleanup(func() { siteFileProtectionOf = measureSiteFileProtection })
 	for index := range items {
 		changed := managedTestData(items[index].Domain, managedVhostPlatforms[index].socket)
 		changed.RedirectWWW = true
@@ -550,8 +557,19 @@ func TestAnUnwritableFileIsKeptAndDoesNotStopTheOtherSites(t *testing.T) {
 		t.Fatalf("other sites: %+v", results)
 	}
 	if results[1].Outcome != transport.SiteFileOutcomeRefused || results[1].Reason != transport.SiteFileReasonWriteRefused ||
-		!strings.Contains(results[1].Detail, "operation not permitted") {
+		!strings.Contains(results[1].Detail, "operation not permitted") ||
+		results[1].SystemError != "EPERM" || results[1].Protection != transport.SiteFileProtectionImmutable {
 		t.Fatalf("locked site: %+v", results[1])
+	}
+	// Read fine, not replaced: the screen's word is "unwritable".
+	if stored := SiteFileStoredState(results[1]); SiteFilePresentedState(stored, results[1].Reason) != transport.SiteFileUnwritable {
+		t.Fatalf("presented state of a refused replacement: %s", stored)
+	}
+	// The read measures the same protection without writing.
+	inspected, diff, _ := h.ng.InspectManagedVhost(items[1])
+	if inspected.State != transport.SiteFileManagedUnchanged || inspected.Protection != transport.SiteFileProtectionImmutable ||
+		inspected.SystemError != "EPERM" || diff == "" || readTestFile(t, locked) != lockedBefore {
+		t.Fatalf("read of the locked site: %+v (diff %d bytes)", inspected, len(diff))
 	}
 	if readTestFile(t, locked) != lockedBefore {
 		t.Fatal("the locked file changed")
@@ -568,6 +586,53 @@ func TestAnUnwritableFileIsKeptAndDoesNotStopTheOtherSites(t *testing.T) {
 	if entries, _ := os.ReadDir(filepath.Dir(locked)); len(entries) != 3 {
 		t.Fatalf("a temporary file was left: %d entries", len(entries))
 	}
+}
+
+// set10 S0 and e: under the Agent's UMask=0027 a plain mkdir gave the include
+// directory 0750. The directories CelikPanel creates are 0755, a new vhost is
+// 0644, both with the Agent's own owner and group; a directory that is
+// already there keeps the owner's mode.
+func TestNewSiteFilesAndIncludeDirectoriesHaveTheirModesUnderTheAgentsUmask(t *testing.T) {
+	previous := syscall.Umask(0o027)
+	t.Cleanup(func() { syscall.Umask(previous) })
+	h := newManagedVhostHarness(t)
+	data := managedTestData("modes.example", managedVhostPlatforms[0].socket)
+	item := h.item(data, transport.SiteFileTriggerCreate)
+	item.ACMEChallengeRoot = testACMEChallengeRoot
+	if result := h.apply(item)[0]; result.Outcome != transport.SiteFileOutcomeWritten {
+		t.Fatalf("create: %+v", result)
+	}
+	// The owner made this site's directory before the site was created.
+	owned := managedTestData("owned.example", managedVhostPlatforms[1].socket)
+	if err := os.Mkdir(OwnerIncludeDir(owned.Domain), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(OwnerIncludeDir(owned.Domain), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if result := h.apply(h.item(owned, transport.SiteFileTriggerCreate))[0]; result.Outcome != transport.SiteFileOutcomeWritten {
+		t.Fatalf("create beside the owner's directory: %+v", result)
+	}
+	check := func(path string, want os.FileMode) {
+		t.Helper()
+		info, err := os.Lstat(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		stat := info.Sys().(*syscall.Stat_t)
+		if info.Mode().Perm() != want || int(stat.Uid) != os.Geteuid() || int(stat.Gid) != os.Getegid() {
+			t.Fatalf("%s: mode %v uid %d gid %d, want %v %d %d", path, info.Mode().Perm(), stat.Uid, stat.Gid, want, os.Geteuid(), os.Getegid())
+		}
+	}
+	for _, directory := range []string{
+		OwnerIncludeDir(data.Domain), filepath.Dir(OwnerIncludeDir(data.Domain)),
+		PanelManagedDir(data.Domain), filepath.Dir(PanelManagedDir(data.Domain)),
+	} {
+		check(directory, 0o755)
+	}
+	check(SiteVhostPath(data.Domain), 0o644)
+	check(ACMEChallengeFilePath(data.Domain), 0o644)
+	check(OwnerIncludeDir(owned.Domain), 0o700)
 }
 
 func TestNginxRefusalPutsBackEveryWrittenFileExactlyAndLeavesKeptFiles(t *testing.T) {

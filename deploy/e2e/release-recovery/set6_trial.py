@@ -465,6 +465,14 @@ def header_judgement(reading: dict, expected: str) -> list:
     return checks
 
 
+def expected_after_the_update(served_role: str, candidate_role: str) -> tuple[str, str]:
+    """The header and the build expected to answer after the update: the candidate's, or alpha.81's after an
+    automatic return (``served_role`` is ``baseline`` in the cells that return)."""
+    if served_role == "baseline":
+        return HSTS_ALPHA81, "baseline"
+    return HSTS_CANDIDATE, candidate_role
+
+
 def headers_text(reading: dict) -> str:
     """Every answer of a reading as a text: the request line, the status line, every header line."""
     lines = [f"# header reading on the guest, {reading.get('at_start')} to {reading.get('at_end')}; Panel unit "
@@ -773,9 +781,13 @@ class Set6UpdateTrial(Lab6, s5.Set5UpdateTrial):
         return self.headers_step(checks, "before-the-update", HSTS_ALPHA81, "baseline")
 
     def headers_after(self, checks: dict) -> str:
-        """Whatever Panel runs after the update ended; the expected one is the candidate."""
+        """Whatever Panel runs after the update ended: the candidate, or, in a cell whose candidate is returned from
+        automatically, the published alpha.81 it returned to (set10, 2026-10-10: that Panel answers with its own
+        includeSubDomains header, as this step measured for alpha.81 before the update)."""
         checks["terminal_verdict"] = self.verdict_of("terminal")
-        return self.headers_step(checks, "after-the-update", HSTS_CANDIDATE, self.role)
+        expected, role = expected_after_the_update(self.served_role(), self.role)
+        checks["expected_after_the_update"] = {"served_role": self.served_role(), "role": role, "header": expected}
+        return self.headers_step(checks, "after-the-update", expected, role)
 
 
 # ---------------------------------------------------------------------------

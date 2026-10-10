@@ -56,6 +56,8 @@ const SITE_CONFIG_BADGE: Record<string, TranslationKey> = {
     unknown_origin: 'siteConfig.list.badge.kept',
     missing: 'siteConfig.list.badge.missing',
     unreadable: 'siteConfig.list.badge.unreadable',
+    // Read fine, not replaced (a locked file, set10 scenario g).
+    unwritable: 'siteConfig.list.badge.unwritable',
 };
 
 // siteConfigBadge: the badge of a domain, or null. A kept file the owner chose

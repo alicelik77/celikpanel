@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { AlertTriangle, FileCode2, FolderPlus, Info } from 'lucide-react';
+import { AlertTriangle, FileCode2, FolderPlus, Info, RefreshCw } from 'lucide-react';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
 import { Button, ErrorBanner, RemoteGate, ResultUnknown } from './ui';
@@ -57,10 +57,14 @@ export interface SiteConfigView {
     resolved_reason?: string;
     validation_name?: string;
     validation_status?: number;
+    // set10 scenario g: what refuses replacing the file now, measured
+    // read-only, and the system's error name a replacement gets ("EPERM").
+    protection?: string;
+    system_error?: string;
 }
 
 const STATES = new Set([
-    'managed_unchanged', 'owner_edited', 'foreign', 'unknown_origin', 'absent', 'unreadable', 'unknown',
+    'managed_unchanged', 'owner_edited', 'foreign', 'unknown_origin', 'absent', 'unreadable', 'unwritable', 'unknown',
 ]);
 
 export function decodeSiteConfig(raw: unknown): SiteConfigView {
@@ -74,6 +78,7 @@ export function decodeSiteConfig(raw: unknown): SiteConfigView {
 
 const KEPT = new Set(['owner_edited', 'foreign', 'unknown_origin']);
 const UNREADABLE_REASONS = new Set(['symlink', 'not_regular', 'permission', 'too_large', 'read_failed', 'write_refused']);
+const PROTECTIONS = new Set(['immutable', 'append_only', 'directory_immutable', 'read_only_filesystem', 'none']);
 const VALIDATION_STATES = new Set(['include_missing', 'names_missing', 'challenge_kept', 'challenge_failed', 'ready', 'unknown']);
 // The suffix the API puts on an earlier release's creation-time text.
 const CREATION_SUFFIX = ' (creation)';
@@ -183,6 +188,8 @@ export function DomainSiteConfig({ domainId, onReasonEnded }: {
                             onCancel={() => setConfirming(false)}
                             onMerge={() => setMerging((open) => !open)}
                             onRecreate={() => void act('recreate', value)}
+                            onRecheck={() => void config.retry()}
+                            rechecking={config.reading}
                         />
                     );
                 }}
@@ -192,7 +199,7 @@ export function DomainSiteConfig({ domainId, onReasonEnded }: {
 }
 
 function SiteConfigState({
-    view, locked, busy, confirming, merging, onKeep, onTake, onCancel, onMerge, onRecreate,
+    view, locked, busy, confirming, merging, onKeep, onTake, onCancel, onMerge, onRecreate, onRecheck, rechecking,
 }: {
     view: SiteConfigView;
     locked: boolean;
@@ -204,6 +211,8 @@ function SiteConfigState({
     onCancel: () => void;
     onMerge: () => void;
     onRecreate: () => void;
+    onRecheck: () => void;
+    rechecking: boolean;
 }) {
     const { t, locale } = useI18n();
     const path = view.path ?? '';
@@ -240,6 +249,49 @@ function SiteConfigState({
             </Attention>
         );
     }
+    // "Check again" reads this page's answer again; it changes nothing.
+    const recheck = view.actions.includes('recheck') ? (
+        <div className="flex flex-wrap items-center gap-3">
+            <Button type="button" icon={RefreshCw} loading={rechecking} disabled={locked} onClick={onRecheck} data-site-config-recheck>
+                {t('siteConfig.recheck')}
+            </Button>
+        </div>
+    ) : null;
+    if (view.state === 'unwritable') {
+        // Read fine, not replaced (set10 scenario g): what refused it, who
+        // decides, the next step and how the work resumes; then the text
+        // CelikPanel wanted to write.
+        const protection = view.protection && PROTECTIONS.has(view.protection) ? view.protection : '';
+        const flag = protection === 'immutable' || protection === 'append_only' || protection === 'directory_immutable';
+        const command = protection === 'append_only' ? `sudo chattr -a ${path}`
+            : protection === 'directory_immutable' ? `sudo chattr -i ${path.slice(0, path.lastIndexOf('/')) || path}`
+                : `sudo chattr -i ${path}`;
+        return (
+            <div className="space-y-4">
+                <Attention title={t('siteConfig.unwritable.title')}>
+                    <p>{view.system_error
+                        ? t('siteConfig.unwritable.body', { error: view.system_error })
+                        : t('siteConfig.unwritable.bodyNoError')}</p>
+                    {protection && (
+                        <p className="mt-1" data-site-config-protection={protection}>
+                            {t(`siteConfig.unwritable.protection.${protection}` as TranslationKey)}
+                        </p>
+                    )}
+                    <p className="mt-1 break-words" data-site-config-next={protection || 'unknown'}>
+                        {flag ? t('siteConfig.unwritable.next.flag', { command })
+                            : protection === 'read_only_filesystem' ? t('siteConfig.unwritable.next.readOnly')
+                                : protection === 'none' ? t('siteConfig.unwritable.next.none')
+                                    : t('siteConfig.unwritable.next.unknown')}
+                    </p>
+                    {protection !== 'none' && <p className="mt-1">{t('siteConfig.unwritable.resume')}</p>}
+                </Attention>
+                <FileLine label={t('siteConfig.file')} value={path} />
+                {recheck}
+                <DiffBlock view={view} title={t('siteConfig.unwritable.diff')} />
+                {include}
+            </div>
+        );
+    }
     if (view.state === 'unreadable') {
         const reason = view.reason && UNREADABLE_REASONS.has(view.reason) ? view.reason : 'read_failed';
         return (
@@ -259,6 +311,7 @@ function SiteConfigState({
                     <p className="mt-1">{t('siteConfig.unreadable.meanwhile')}</p>
                 </Attention>
                 <FileLine label={t('siteConfig.file')} value={path} />
+                {recheck}
             </div>
         );
     }
@@ -347,38 +400,47 @@ function SiteConfigState({
                 </div>
             </section>
 
-            <section aria-labelledby="site-config-diff" className="space-y-2">
-                <h3 id="site-config-diff" className="text-sm font-semibold text-fg">{t('siteConfig.diff.title')}</h3>
-                {view.diff ? (
-                    <pre
-                        tabIndex={0}
-                        aria-labelledby="site-config-diff"
-                        className="max-h-96 overflow-auto rounded-lg border border-border bg-surface-2 p-3 font-mono text-xs leading-relaxed text-fg"
-                        data-site-config-diff
-                    >
-                        {/* One block as wide as the longest line, so a marked
-                            line stays marked when the frame scrolls sideways.
-                            En uzun satır kadar geniş tek blok. */}
-                        <span className="inline-block min-w-full">
-                            {localizeDiffCaptions(view.diff, t).split('\n').map((line, index) => (
-                                <span
-                                    key={index}
-                                    className={`block whitespace-pre ${line.startsWith('+') && !line.startsWith('+++')
-                                        ? 'bg-success/10'
-                                        : line.startsWith('-') && !line.startsWith('---') ? 'bg-warning-mark/20' : ''}`}
-                                >
-                                    {line || ' '}
-                                </span>
-                            ))}
-                        </span>
-                    </pre>
-                ) : (
-                    <p className="text-sm text-fg-muted">{t('siteConfig.diff.none')}</p>
-                )}
-                {view.diff_truncated && <p className="text-sm text-fg-muted">{t('siteConfig.diff.truncated')}</p>}
-            </section>
+            <DiffBlock view={view} title={t('siteConfig.diff.title')} />
             {include}
         </div>
+    );
+}
+
+// The difference between the file on disk and CelikPanel's text.
+// Diskteki dosya ile CelikPanel'in metni arasındaki fark.
+function DiffBlock({ view, title }: { view: SiteConfigView; title: string }) {
+    const { t } = useI18n();
+    return (
+        <section aria-labelledby="site-config-diff" className="space-y-2">
+            <h3 id="site-config-diff" className="text-sm font-semibold text-fg">{title}</h3>
+            {view.diff ? (
+                <pre
+                    tabIndex={0}
+                    aria-labelledby="site-config-diff"
+                    className="max-h-96 overflow-auto rounded-lg border border-border bg-surface-2 p-3 font-mono text-xs leading-relaxed text-fg"
+                    data-site-config-diff
+                >
+                    {/* One block as wide as the longest line, so a marked
+                        line stays marked when the frame scrolls sideways.
+                        En uzun satır kadar geniş tek blok. */}
+                    <span className="inline-block min-w-full">
+                        {localizeDiffCaptions(view.diff, t).split('\n').map((line, index) => (
+                            <span
+                                key={index}
+                                className={`block whitespace-pre ${line.startsWith('+') && !line.startsWith('+++')
+                                    ? 'bg-success/10'
+                                    : line.startsWith('-') && !line.startsWith('---') ? 'bg-warning-mark/20' : ''}`}
+                            >
+                                {line || ' '}
+                            </span>
+                        ))}
+                    </span>
+                </pre>
+            ) : (
+                <p className="text-sm text-fg-muted">{t('siteConfig.diff.none')}</p>
+            )}
+            {view.diff_truncated && <p className="text-sm text-fg-muted">{t('siteConfig.diff.truncated')}</p>}
+        </section>
     );
 }
 
@@ -539,7 +601,8 @@ export function SiteConfigNotice({ state, keptByChoice, pendingReason, onOpen }:
             : kept && keptByChoice ? 'siteConfig.notice.keptByChoice'
                 : kept ? 'siteConfig.notice.kept'
                     : state === 'missing' ? 'siteConfig.notice.missing'
-                        : state === 'unreadable' ? 'siteConfig.notice.unreadable' : null;
+                        : state === 'unreadable' ? 'siteConfig.notice.unreadable'
+                            : state === 'unwritable' ? 'siteConfig.notice.unwritable' : null;
     if (!key) return null;
     // Kept as chosen and nothing waiting on it: a plain line, not a warning.
     const plain = key === 'siteConfig.notice.keptByChoice';

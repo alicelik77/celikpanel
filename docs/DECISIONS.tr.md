@@ -77,7 +77,12 @@ Sahip 10 Ekim 2026'da düzeltmenin bir sonraki sürüme girmesine karar verdi:
    bayt eşit dosya benimsenir, diğer her dosya "kökeni bilinmiyor"dur ve asla
    üstüne yazılmaz. Güncellemeden sonraki dürüst ilk durum "N benimsendi, M
    bilinen hiçbir CelikPanel metniyle örtüşmediği için dokunulmadı"dır ve
-   Panel bunu gösterir.
+   Panel bunu gösterir. (Onuncu gerçek sistem kaydı, 2026-10-11, planlayıcı
+   kararı:) benimsenen dosya bu sürümün metni olarak yeniden üretilir ve
+   başlığı alır; eski baytlara eklenmiş bir başlık değildir. Sahibin eklemeleri
+   onda olamazdı, çünkü dosya CelikPanel'in kendi metniyle bayt bayt eşitti.
+   `adopted_from`, metni eşleşen en yeni sürümü adlandırır (ikisi de eşleşirse
+   alpha.82). Onuncu gerçek sistem kaydında ölçüldü.
 7. Eski bir sürüme otomatik dönüş korumayı kaldırır; sürüm notu bunu söyler.
 
 Debian 13, Ubuntu 24.04 ve Arch'ta gerçek sistemde ölçülmeden bitmiş
@@ -88,13 +93,25 @@ yüklemesi; benimkini-koru sonra sertifika alma; CelikPanel'inkini-al ve
 yedeği; sahibin include dizini yenileme ve geçişlerden sağ çıkıyor;
 kaldırılan dosya yeniden yaratılmıyor; havuz yönergeleri korunuyor). PHP
 havuzu ve uygulama birimi aynı kural altında ikinci adımda gelir.
+Onuncu gerçek sistem kaydı (set10, 2026-10-10, `cd46ca595`, Debian 13, Ubuntu
+24.04, Arch): iki hücre dışında hepsi tuttu. 2026-10-11 düzeltmesi (bileşen
+testli; ölçülmedi): sahibin ekleme dizini açıkça 0755 oluşturulur (Agent'ın
+`UMask=0027` ayarıyla `root:celikpanel 0750` ölçülmüştü), CelikPanel'in kendi
+dizini de öyle; kilitli bir dosya (`chattr +i`, EPERM) alan adının sayfasında,
+liste satırında ve rozetinde aynı biçimde `unwritable` (değiştirilemiyor)
+olarak yanıtlanır: sistem hatası, salt okunur ölçülen koruma, CelikPanel'in
+yazmak istediği metin ve "Yeniden denetle" ile (sayfa nedensiz
+`managed_unchanged` yanıtlıyordu). Defter göç 044'ün durum kümesini korur
+(`unreadable` + `write_refused`); şema değişmedi. Yeni ve yeniden oluşturulan
+sanal konaklar `root:celikpanel 0644`; korunan ve alınan dosyalar sahibin
+kipini, sahibini ve grubunu korur (ölçüldü).
 İkinci turun yoklamasında açık kalanlar (2026-10-10), hiçbiri giderilmedi: tek
 bir adrese bağlı 80 numaralı bağlantı noktası bloğuna geri döngüden
 ulaşılmaz; Yapılandırma dosyası sayfasının okumasında başarısız bir `nginx -t`
 ya da yeniden yükleme `challenge_failed` olarak bildirilir; eksik ya da
 okunamayan dosya neden yazmaz, bu yüzden durdurduğu yenileme bir sonraki
-tamamlanan yenilemeye dek bekler; SSL sekmesi süresi dolmuş sertifika için
-eksi gün yazar; gerçek bir barındırma müşterisi oturumu çizilmedi; hazır bir
+tamamlanan yenilemeye dek bekler; (2026-10-11'de giderildi: SSL sekmesi eksi
+gün yerine "süresi N gün önce doldu" yazar); gerçek bir barındırma müşterisi oturumu çizilmedi; hazır bir
 yoklama, DNS'in ya da güvenlik duvarının sertifika otoritesini içeri
 aldığını göstermez. Yoklama hiç gerçek bir nginx'e sormadı.
 

@@ -404,6 +404,109 @@ func TestSiteConfigRoutesAreGuardedAndAdministratorOnly(t *testing.T) {
 	}
 }
 
+// set10 scenario g: a locked (chattr +i) file. The render's replacement is
+// refused; the ledger records it; the domain screen's read and the domains
+// list both answer "unwritable" with the reason, the system error and the
+// protection the Agent measured, the difference and "check again". The read
+// writes nothing. When the file on disk is no longer the one the refusal was
+// recorded on, the read answers the file as it is.
+func TestALockedFileIsAnsweredUnwritableByTheReadAndTheList(t *testing.T) {
+	panel, subscriptionID := newStartupVhostBatchFixture(t)
+	domainID := addStartupHostedDomain(t, panel, subscriptionID, "locked.example", "static")
+	lockedSHA := strings.Repeat("c", 64)
+	inspectSHA, protection, systemError := lockedSHA, transport.SiteFileProtectionImmutable, "EPERM"
+	agent := &siteFileTestAgent{}
+	agent.single = func(request *transport.ApplyVhostRequest, response *transport.ApplyVhostResponse) {
+		file := fileResult(request.Domain, transport.SiteFileManagedUnchanged, transport.SiteFileOutcomeRefused)
+		file.Reason = transport.SiteFileReasonWriteRefused
+		file.Detail = "rename /etc/nginx/sites-available/.locked.example.conf.celikpanel-1 /etc/nginx/sites-available/locked.example.conf: operation not permitted"
+		file.SystemError, file.Protection = "EPERM", transport.SiteFileProtectionImmutable
+		response.File = &file
+	}
+	agent.inspect = func(request *transport.ApplyVhostRequest, response *transport.InspectSiteFileResponse) {
+		response.File = fileResult(request.Domain, transport.SiteFileManagedUnchanged, transport.SiteFileOutcomeInspected)
+		response.File.FileSHA256 = inspectSHA
+		response.File.Protection, response.File.SystemError = protection, systemError
+		response.Diff = "--- " + siteFilePath(request.Domain) + " (on this server)\n+++ CelikPanel's text\n@@ -1 +1 @@\n-old\n+new\n"
+	}
+	attachStartupVhostBatchAgent(t, panel, agent)
+	err := panel.applyVhostForDomain(context.Background(), domainID)
+	recorder := httptest.NewRecorder()
+	writeServerError(recorder, err)
+	if recorder.Code != http.StatusConflict || !strings.Contains(recorder.Body.String(), errCodeSiteConfigUnwritable) ||
+		!strings.Contains(recorder.Body.String(), "server administrator") {
+		t.Fatalf("save on a locked file: %d %s", recorder.Code, recorder.Body.String())
+	}
+	before := ledgerRow(t, panel, domainID)
+	if before.State != transport.SiteFileUnreadable || before.StateReason != transport.SiteFileReasonWriteRefused || before.FileSHA256 != lockedSHA {
+		t.Fatalf("ledger: %+v", before)
+	}
+
+	read := func() siteConfigView {
+		t.Helper()
+		recorder := httptest.NewRecorder()
+		panel.handleDomainSiteConfig(recorder, siteConfigRequest(http.MethodGet, "/x", nil, &Caller{ID: 1, Role: roleAdmin}), domainID, "")
+		var view siteConfigView
+		if err := json.Unmarshal(recorder.Body.Bytes(), &view); err != nil || recorder.Code != http.StatusOK {
+			t.Fatalf("read: %d %s", recorder.Code, recorder.Body.String())
+		}
+		var raw map[string]any
+		_ = json.Unmarshal(recorder.Body.Bytes(), &raw)
+		if _, ok := raw["actions"].([]any); !ok {
+			t.Fatalf("actions is not a list: %s", recorder.Body.String())
+		}
+		return view
+	}
+	listState := func() string {
+		t.Helper()
+		summaries, err := panel.domainSiteConfigSummaries(context.Background())
+		if err != nil {
+			t.Fatal(err)
+		}
+		return summaries[domainID].State
+	}
+
+	view := read()
+	if view.State != transport.SiteFileUnwritable || view.Reason != transport.SiteFileReasonWriteRefused ||
+		view.SystemError != "EPERM" || view.Protection != transport.SiteFileProtectionImmutable ||
+		strings.Join(view.Actions, ",") != siteConfigActionRecheck || view.Diff == "" ||
+		view.Ledger == nil || view.Ledger.ObservedAt == "" {
+		t.Fatalf("locked read: %+v", view)
+	}
+	if state := listState(); state != transport.SiteFileUnwritable {
+		t.Fatalf("domains list: %q", state)
+	}
+	if after := ledgerRow(t, panel, domainID); after != before {
+		t.Fatalf("the read changed the ledger:\n%+v\n%+v", before, after)
+	}
+
+	// The owner removed the protection; no render has run since. The page
+	// and the list still agree on the recorded refusal, and the read says
+	// that no protection is found now.
+	protection, systemError = transport.SiteFileProtectionNone, ""
+	if view = read(); view.State != transport.SiteFileUnwritable || view.Protection != transport.SiteFileProtectionNone || view.SystemError != "" {
+		t.Fatalf("unlocked, not yet rendered: %+v", view)
+	}
+
+	// The file changed on disk: the read answers the file as it is.
+	inspectSHA = strings.Repeat("d", 64)
+	if view = read(); view.State != transport.SiteFileManagedUnchanged || len(view.Actions) != 0 {
+		t.Fatalf("another file: %+v", view)
+	}
+}
+
+// An unreadable file (a link) offers "check again" and nothing else.
+func TestAnUnreadableFileOffersOnlyCheckAgain(t *testing.T) {
+	for _, state := range []string{transport.SiteFileUnreadable, transport.SiteFileUnwritable} {
+		if got := strings.Join(siteConfigActions(state), ","); got != siteConfigActionRecheck {
+			t.Fatalf("%s: %q", state, got)
+		}
+	}
+	if got := services.SiteFilePresentedState(transport.SiteFileUnreadable, transport.SiteFileReasonSymlink); got != transport.SiteFileUnreadable {
+		t.Fatalf("a link is %q", got)
+	}
+}
+
 func itoaForTest(value int) string {
 	raw, _ := json.Marshal(value)
 	return string(raw)

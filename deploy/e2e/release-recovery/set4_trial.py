@@ -985,9 +985,15 @@ class Set4UpdateTrial(Native4, base.Trial):
             failures.append("the vhost file is still the baseline's after the update and the save (nothing was rendered again)")
         written = any(untouched["vhost"].get(k) != after["vhost"].get(k) for k in ("inode", "mtime_ns", "ctime_ns"))
         reloaded = any("Reload" in line for line in (nginx_since.get("journal") or {}).get("nginx.service") or [])
-        checks["the_save_rendered_the_vhost_again"] = {"file_written_again": written, "nginx_reloaded_since_the_save": reloaded}
-        if not written and not reloaded:
-            failures.append("neither the vhost file nor nginx's journal shows that the save rendered the vhost again")
+        # D-031 (set10, 2026-10-10): a render whose bytes equal the file's is not written and nginx is not reloaded;
+        # the Panel's journal names the save's render "unchanged". The save is then seen in that line.
+        named_unchanged = any(f"site configuration {domain} (change): unchanged" in line
+                              for line in nginx_since.get("journal_product") or [])
+        checks["the_save_rendered_the_vhost_again"] = {"file_written_again": written, "nginx_reloaded_since_the_save": reloaded,
+                                                       "panel_journal_names_it_unchanged": named_unchanged}
+        if not written and not reloaded and not named_unchanged:
+            failures.append("neither the vhost file, nginx's journal nor the Panel's journal (D-031: \"(change): unchanged\") "
+                            "shows that the save rendered the vhost")
         if not page["executed"] or page["runs_as"] != seen["site_account"]:
             failures.append("the PHP page is not executed as the site's account after the save")
         different = [name for name, value in compare.items() if not value["equal"]]

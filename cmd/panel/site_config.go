@@ -59,7 +59,7 @@ const (
 	siteConfigMissingMessage = "The site's nginx configuration file is missing, so this change was not applied and the file was not recreated. " +
 		"If the file was removed on purpose, nothing needs doing; otherwise open the domain's Configuration file section and choose Recreate."
 	siteConfigUnwritableMessage = "CelikPanel could not read or replace the site's nginx configuration file (for example, it is a link or it is locked against changes), so it kept the file as it is and did not apply this change. " +
-		"The server owner checks the file on the server; the reason is shown in the domain's Configuration file section."
+		"The server administrator checks the file on the server; the reason is shown in the domain's Configuration file section."
 	siteConfigExistsMessage = "A configuration file for this name already exists on the server and was not written by CelikPanel, so CelikPanel kept it and did not create the site. " +
 		"Nothing was left behind. Move or rename that file on the server if it is no longer used, then create the site again."
 	siteConfigChangedMessage = "The configuration file or CelikPanel's text changed after the page showed them, so nothing was done. " +
@@ -270,6 +270,11 @@ type siteConfigView struct {
 	// serve the probe under, and the HTTP status it gave (probe reads only).
 	ValidationName   string `json:"validation_name,omitempty"`
 	ValidationStatus int    `json:"validation_status,omitempty"`
+	// set10 scenario g, additive. SystemError: the system's error name a
+	// replacement of the file gets now ("EPERM"), measured read-only by the
+	// Agent; Protection: what refuses it (transport.SiteFileProtection*).
+	SystemError string `json:"system_error,omitempty"`
+	Protection  string `json:"protection,omitempty"`
 
 	certificateReferenced bool
 }
@@ -295,14 +300,45 @@ func unixToAPI(value int64) string {
 	return time.Unix(value, 0).UTC().Format(time.RFC3339)
 }
 
+// siteConfigActionRecheck is the page's "check again": it reads this answer
+// again (GET; nothing is written). It is offered where only a change on the
+// server can resolve the state.
+const siteConfigActionRecheck = "recheck"
+
 func siteConfigActions(state string) []string {
 	switch state {
 	case transport.SiteFileOwnerEdited, transport.SiteFileForeign, transport.SiteFileUnknownOrigin:
 		return []string{"keep", "take", "merge"}
 	case transport.SiteFileAbsent:
 		return []string{"recreate"}
+	case transport.SiteFileUnreadable, transport.SiteFileUnwritable:
+		return []string{siteConfigActionRecheck}
 	}
 	return []string{}
+}
+
+// presentLedgerWriteRefusal answers the ledger's last observation when the
+// last render could not replace the file (set10 scenario g): the Agent's read
+// finds the file readable and CelikPanel's unchanged text, but the ledger and
+// the domains list say the replacement was refused. The read answers that
+// state ("unwritable", reason write_refused) so the page, the list row and
+// the badge agree, while the file on disk is still the one the refusal was
+// recorded on. The system error and the protection are the Agent's
+// read-only measurement of now; the difference is what CelikPanel wanted to
+// write.
+func presentLedgerWriteRefusal(view *siteConfigView, record services.SiteFileRecord) {
+	if view.Outcome != "" || view.State != transport.SiteFileManagedUnchanged {
+		return
+	}
+	if services.SiteFilePresentedState(record.State, record.StateReason) != transport.SiteFileUnwritable {
+		return
+	}
+	if record.FileSHA256 == "" || record.FileSHA256 != view.FileSHA256 {
+		return
+	}
+	view.State = transport.SiteFileUnwritable
+	view.Reason = transport.SiteFileReasonWriteRefused
+	view.Actions = siteConfigActions(view.State)
 }
 
 func (p *Panel) siteConfigViewFor(ctx context.Context, siteID int, view siteConfigView) siteConfigView {
@@ -310,6 +346,7 @@ func (p *Panel) siteConfigViewFor(ctx context.Context, siteID int, view siteConf
 	if err != nil || !found {
 		return view
 	}
+	presentLedgerWriteRefusal(&view, record)
 	view.Ledger = &siteConfigLedgerView{
 		WrittenRelease: record.WrittenRelease, WrittenAt: unixToAPI(record.WrittenAt),
 		ObservedAt: unixToAPI(record.ObservedAt), BackupPath: record.BackupPath,
@@ -370,6 +407,7 @@ func (p *Panel) inspectSiteConfig(ctx context.Context, domainID int, probe bool)
 	view.Validation, view.ChallengeFile = file.Validation, file.ChallengeFile
 	view.certificateReferenced = file.CertificateReferenced
 	view.ValidationName, view.ValidationStatus = file.ValidationName, file.ValidationStatus
+	view.SystemError, view.Protection = file.SystemError, file.Protection
 	view.Actions = siteConfigActions(file.State)
 	if req.ProbeValidation && file.Validation == transport.SiteFileValidationReady &&
 		p.endCertificateValidationReason(ctx, siteID, domainID, domain) {
@@ -613,7 +651,9 @@ func (p *Panel) domainSiteConfigSummaries(ctx context.Context) (map[int]domainSi
 			return nil, err
 		}
 		summary := domainSiteConfigSummary{
-			State: state, AdoptedFrom: adopted,
+			// A refused replacement is "unwritable", as the domain screen
+			// answers it (set10 scenario g).
+			State: services.SiteFilePresentedState(state, reason), AdoptedFrom: adopted,
 			KeptByChoice: decision == services.SiteFileDecisionKeepMine && decisionSHA != "" && decisionSHA == fileSHA,
 		}
 		if services.SiteFileCertificateReason(reason) {

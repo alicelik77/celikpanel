@@ -4,7 +4,7 @@
 //                classifier reports: edited by the owner (the notice above the
 //                domain, the page, "merge by hand", the confirmation of "take
 //                CelikPanel's" and its result), replaced by the owner, not
-//                recognised (unknown origin), missing, unreadable (locked),
+//                recognised (unknown origin), missing, unwritable (locked, set10 g),
 //                CelikPanel's text adopted from an earlier release, a read
 //                that failed; and the Domains list with the first state after
 //                an update (adopted / left alone, the row badge).
@@ -57,7 +57,8 @@ const view = (state, more = {}) => ({
     domain_id: 1, domain: 'example.com', kind: 'nginx_vhost', path: PATH, state, include_dir: INCLUDE,
     managed_dir: MANAGED, managed_include: `include ${MANAGED}/*.conf;`,
     file_sha256: 'c'.repeat(64), render_sha256: 'b'.repeat(64),
-    actions: ['owner_edited', 'foreign', 'unknown_origin'].includes(state) ? ['keep', 'take', 'merge'] : state === 'absent' ? ['recreate'] : [],
+    actions: ['owner_edited', 'foreign', 'unknown_origin'].includes(state) ? ['keep', 'take', 'merge'] : state === 'absent' ? ['recreate']
+        : ['unreadable', 'unwritable'].includes(state) ? ['recheck'] : [],
     ...more,
 });
 const EDITED = view('owner_edited', { pending_path: `${PATH}.celikpanel-pending`, diff: DIFF });
@@ -147,7 +148,12 @@ export default function batch10(scenarios, { base, ctl, reset, newPage, closePag
             '100b-foreign': [{ state: 'foreign' }, view('foreign', { diff: DIFF })],
             '100c-unknown-origin': [{ state: 'unknown_origin' }, view('unknown_origin', { diff: DIFF })],
             '100d-missing': [{ state: 'missing' }, view('absent', { file_sha256: undefined })],
-            '100e-unreadable-locked': [{ state: 'unreadable' }, view('unreadable', { reason: 'write_refused' })],
+            // set10 scenario g: a locked file is 'unwritable' (read fine, not
+            // replaced), with the system error and the protection measured now,
+            // the text CelikPanel wanted to write and Check again; then the same
+            // after the protection was removed, before the next render.
+            '100e-unwritable-locked': [{ state: 'unwritable' }, view('unwritable', { reason: 'write_refused', system_error: 'EPERM', protection: 'immutable', actions: ['recheck'], diff: DIFF, ledger: { observed_at: '2026-10-10T19:55:59Z' } })],
+            '100e2-unwritable-unlocked': [{ state: 'unwritable' }, view('unwritable', { reason: 'write_refused', protection: 'none', actions: ['recheck'], diff: DIFF })],
             '100f-managed-adopted': [{ state: 'managed_unchanged', adopted_from: 'v0.1.0-alpha.82' }, view('managed_unchanged', { adopted_from: 'v0.1.0-alpha.82' })],
             '100g-kept-by-choice': [{ state: 'owner_edited', kept_by_choice: true }, { ...EDITED, decision: KEPT_DECISION }],
             '100j-certificate-ready': [{ state: 'owner_edited', kept_by_choice: true, pending_reason: 'certificate' }, CERT_READY],
@@ -194,7 +200,8 @@ export default function batch10(scenarios, { base, ctl, reset, newPage, closePag
             row(3, 'owner-edited.example.org', { state: 'unknown_origin' }),
             row(4, 'kept.example.org', { state: 'unknown_origin', kept_by_choice: true }),
             row(5, 'removed.example.org', { state: 'missing' }),
-            row(6, 'locked.example.org', { state: 'unreadable' }),
+            row(6, 'locked.example.org', { state: 'unwritable' }),
+            row(7, 'link.example.org', { state: 'unreadable' }),
         ], capabilities: CAPABILITIES });
         const listFacts = page => page.evaluate(() => ({
             firstState: document.querySelector('[data-site-config-first-state]')?.innerText ?? null,

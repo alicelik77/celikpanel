@@ -121,6 +121,8 @@ func SiteFileStoredState(result transport.SiteFileResult) string {
 	}
 	if result.Reason == transport.SiteFileReasonWriteRefused {
 		// The file could not be replaced (an immutable file): it was kept.
+		// Migration 044's state set has no "unwritable"; the reason
+		// write_refused tells it apart and SiteFilePresentedState answers it.
 		return transport.SiteFileUnreadable
 	}
 	switch result.State {
@@ -129,6 +131,17 @@ func SiteFileStoredState(result transport.SiteFileResult) string {
 		return result.State
 	}
 	return transport.SiteFileStateUnknown
+}
+
+// SiteFilePresentedState is the state the domain screen and the domains list
+// answer for a stored state and reason: a file that was read but whose
+// replacement was refused is "unwritable", never "unreadable" (set10
+// scenario g). Every other stored state is answered as stored.
+func SiteFilePresentedState(state, reason string) string {
+	if state == transport.SiteFileUnreadable && reason == transport.SiteFileReasonWriteRefused {
+		return transport.SiteFileUnwritable
+	}
+	return state
 }
 
 // RecordSiteFileResult stores an Agent's typed answer for one file. now is a

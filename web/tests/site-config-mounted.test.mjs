@@ -22,6 +22,7 @@ const stub = dataModule(`
   export const FileCode2 = () => null;
   export const FolderPlus = () => null;
   export const Info = () => null;
+  export const RefreshCw = () => null;
   // A refusal's sentence is "translated" (marked) so the error banner shows
   // the catalogue's words for its code, as in the application.
   const i18n = { t: (key, vars) => (key.startsWith('err.') ? 'T:' + key : vars ? key + JSON.stringify(vars) : key), locale: 'en' };
@@ -41,7 +42,8 @@ const view = (state, more = {}) => ({
   path: '/etc/nginx/sites-available/example.com.conf', state,
   include_dir: '/etc/nginx/celikpanel-sites.d/example.com',
   file_sha256: FILE, render_sha256: RENDER,
-  actions: ['owner_edited', 'foreign', 'unknown_origin'].includes(state) ? ['keep', 'take', 'merge'] : state === 'absent' ? ['recreate'] : [],
+  actions: ['owner_edited', 'foreign', 'unknown_origin'].includes(state) ? ['keep', 'take', 'merge'] : state === 'absent' ? ['recreate']
+    : ['unreadable', 'unwritable'].includes(state) ? ['recheck'] : [],
   ...more,
 });
 const edited = view('owner_edited', {
@@ -333,6 +335,52 @@ test('an unreadable file names who acts and the next step for its reason', async
     assert.ok(text().includes('siteConfig.unreadable.meanwhile'));
     await unmount();
   }
+});
+
+// set10 scenario g: a locked file. The Panel answers "unwritable" with the
+// system error and the protection it measured; the page names them, who
+// decides and the next step with the command for that protection, shows what
+// CelikPanel wanted to write, and offers "check again", which only reads.
+test('a locked file is named unwritable, with the system error, the next step, the difference and check again', async () => {
+  const locked = view('unwritable', {
+    reason: 'write_refused', system_error: 'EPERM', protection: 'immutable',
+    diff: '--- a\n+++ b\n@@ -1 +1 @@\n-old\n+new\n',
+  });
+  let reads = 0;
+  serve({ [`GET ${URL_BASE}`]: () => { reads += 1; return answer(locked); } });
+  await mount(page());
+  assert.ok(text().includes('siteConfig.unwritable.title'), text());
+  assert.ok(text().includes('siteConfig.unwritable.body{"error":"EPERM"}'), text());
+  assert.ok(text().includes('siteConfig.unwritable.protection.immutable'));
+  assert.ok(text().includes('siteConfig.unwritable.next.flag{"command":"sudo chattr -i /etc/nginx/sites-available/example.com.conf"}'), text());
+  assert.ok(text().includes('siteConfig.unwritable.resume') && text().includes('siteConfig.unwritable.diff'));
+  assert.ok(text().includes('+new') && !text().includes('siteConfig.unreadable.title'));
+  for (const name of CHOICES) assert.equal(enabled(name), false, name);
+  await press('siteConfig.recheck');
+  assert.equal(posts().length, 0, 'check again changed something');
+  assert.equal(reads, 2, 'check again did not read the state again');
+  await unmount();
+  for (const [more, next] of [
+    [{ protection: 'append_only' }, 'siteConfig.unwritable.next.flag{"command":"sudo chattr -a /etc/nginx/sites-available/example.com.conf"}'],
+    [{ protection: 'directory_immutable' }, 'siteConfig.unwritable.next.flag{"command":"sudo chattr -i /etc/nginx/sites-available"}'],
+    [{ protection: 'read_only_filesystem', system_error: 'EROFS' }, 'siteConfig.unwritable.next.readOnly'],
+    [{ protection: 'none', system_error: undefined }, 'siteConfig.unwritable.next.none'],
+    [{ protection: undefined, system_error: undefined }, 'siteConfig.unwritable.next.unknown'],
+  ]) {
+    serve({ [`GET ${URL_BASE}`]: { ...locked, ...more } });
+    await mount(page());
+    assert.ok(text().includes(next), `${JSON.stringify(more)}\n${text()}`);
+    if ('system_error' in more && !more.system_error) assert.ok(text().includes('siteConfig.unwritable.bodyNoError'));
+    await unmount();
+  }
+});
+
+test('the notice above a domain names a file that cannot be replaced', async () => {
+  await mount(React.createElement(SiteConfigNotice, { state: 'unwritable', onOpen() {} }));
+  assert.ok(text().includes('siteConfig.notice.unwritable'));
+  assert.equal(tree.toJSON().props['data-site-config-notice'], 'unwritable');
+  await act(async () => tree.unmount());
+  tree = undefined;
 });
 
 test('the two captions of the difference are drawn in the page language', async () => {

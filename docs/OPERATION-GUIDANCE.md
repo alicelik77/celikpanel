@@ -5910,18 +5910,47 @@ EN; the Turkish edition carries the TR text):
   this site at its next restart or reload. Changes you make to this site in CelikPanel are not applied until
   the file is there again." Action: "Recreate" — "CelikPanel writes its text for
   this site and reloads nginx."
-- Unreadable or unwritable: `siteConfig.unreadable.title` "The configuration
+- Unreadable: `siteConfig.unreadable.title` "The configuration
   file cannot be read or replaced", with the reason (`symlink`, `not_regular`,
-  `permission`, `too_large`, `read_failed`, `write_refused`; for a locked file:
-  "It could not be replaced (for example, it is locked against changes with
-  chattr +i). CelikPanel kept the file and its link as they are.") and the next
-  step for that reason: a link — "The server owner replaces the link with an
-  ordinary file, or moves it away, then reloads this page."; permission — "The
-  server owner makes the file readable by root, then reloads this page."; any
-  other — "The server owner fixes what the server reported, then reloads this
-  page." with "What the server reported: {detail}" when the Agent sent a line;
-  then "Changes you make to this site in CelikPanel are not applied to it
-  meanwhile."
+  `permission`, `too_large`, `read_failed`) and the next step for that reason:
+  a link — "The server administrator replaces the link with an ordinary file,
+  or moves it away, then chooses Check again."; permission — "The server
+  administrator makes the file readable by root, then chooses Check again.";
+  any other — "The server administrator fixes what the server reported, then
+  chooses Check again." with "What the server reported: {detail}" when the
+  Agent sent a line; then "Changes you make to this site in CelikPanel are not
+  applied to it meanwhile." and the button "Check again" (`recheck`: it reads
+  this page's answer again and changes nothing).
+- Unwritable (tenth native record correction, 2026-10-11; component-tested; not
+  measured): a file CelikPanel read (its own unchanged text) but whose
+  replacement the server refused (set10 scenario g measured a `chattr +i` file
+  refused with EPERM on Debian 13, Ubuntu 24.04 and Arch, while the page
+  answered `managed_unchanged` with no reason and no action). The page, the
+  Domains row and the notice above the domain now agree: `unwritable`.
+  `siteConfig.unwritable.title` "CelikPanel cannot replace this file" — "The
+  last change for this site was not written: this server refused to replace the
+  file ({error}). CelikPanel kept the file and its link exactly as they are, and
+  nginx keeps serving the site with it." ({error} is the system error, for
+  example EPERM); then what refuses it, measured read-only now: "The file is
+  write-protected on this server (its immutable attribute is set)." /
+  append-only / "The directory that holds the file is write-protected on this
+  server." / "The file system that holds the file is mounted read-only." / "No
+  write protection is found on the file now."; then who decides and the next
+  step: "The server administrator decides: to let CelikPanel update the file,
+  remove the protection, for example with sudo chattr -i <path>; or keep it as
+  it is. CelikPanel does not change it." (`chattr -a` for append-only, the
+  directory for a protected directory; for a read-only file system "make that
+  file system writable again"; with no protection found: "CelikPanel writes its
+  text at the next panel start or the next change saved for this site; nothing
+  else is needed. If the file is protected again by then, this page says so.";
+  with nothing measured: the panel log line to read); then "Until then, changes
+  you make to this site in CelikPanel are not applied to the file. After
+  acting, choose Check again."; the button "Check again"; and "What CelikPanel
+  wanted to write: your file (−) and CelikPanel’s text (+)" with the
+  difference. Domains row badge `siteConfig.list.badge.unwritable`
+  "Configuration file cannot be replaced"; notice `siteConfig.notice.unwritable`
+  "This site’s nginx configuration file cannot be replaced on this server.
+  CelikPanel kept it as it is."
 
 **The three choices** (each a POST under the request identity of D-029; each
 bound to the digests the page showed):
@@ -5949,6 +5978,15 @@ own nginx directives for this site in a .conf file in {dir}. CelikPanel never
 writes there, and every change CelikPanel makes to this site keeps them." The
 directory is `/etc/nginx/celikpanel-sites.d/<domain>/` (created 0755 when the
 vhost is written; nothing in it is ever written, changed or removed). The
+tenth native record measured it created `root:celikpanel 0750` on all three
+platforms (the Agent's `UMask=0027`); since 2026-10-11 the mode is set to 0755
+explicitly after creation, for the directory and for a parent CelikPanel
+creates (component-tested; not measured). Owner root, group the Agent's
+(`celikpanel`); the group does not decide who reads it, because nginx's master
+process reads its configuration as root. A directory that is already there
+keeps the owner's mode. A new or recreated vhost is written `root:celikpanel
+0644` (measured in the tenth native record, cell e); a kept or taken file keeps
+the owner's mode, owner and group (measured, cells j and take). The
 vhost holds `include <dir>/*.conf;` in server context in every block except
 the validation-only block of mail names (`mail.<domain>`) and the plain-HTTP
 block that only redirects to HTTPS. A forwarding site's blocks, which redirect
@@ -6082,9 +6120,13 @@ alpha.81/82 texts is unchanged (those texts carry the location inline).
 carry no header. At the first start each is compared byte for byte with what
 those releases' frozen templates render from the same data, in both forms they
 wrote (the creation text, `server_name` the domain alone, and the start/save
-text with `www.` and aliases). An equal file is adopted (rewritten as
-CelikPanel's text with its header); any other is "unknown origin" and is never
-written. The Domains list says: `siteConfig.list.firstState` "Site configuration
+text with `www.` and aliases). An equal file is adopted: it is rendered again
+as this release's text and gets the header (measured in the tenth native
+record: new comment block, the include line, on PHP sites the snippet written
+out). The owner's additions could not have been in it, because it was byte-equal
+to CelikPanel's own text. `adopted_from` names the newest release whose text
+matches (alpha.82 when both releases' texts are equal, also measured). Any other
+file is "unknown origin" and is never written. The Domains list says: `siteConfig.list.firstState` "Site configuration
 files: {adopted} recognised as CelikPanel’s and taken over; {left} left alone
 because they differ from every known CelikPanel text. Open a domain to see its
 file. Nothing is needed unless you want CelikPanel to manage a left-alone file
@@ -6342,12 +6384,23 @@ Errors are `{"error": <English sentence>, "code": …, "reason"?: …, "detail"?
    "ledger":{"written_release":"…","written_at":"…","observed_at":"…","backup_path":"…"}}
   ```
   `state`: `absent`, `managed_unchanged`, `owner_edited`, `foreign`,
-  `unreadable`, `unknown_origin`, or `unknown` (`reason` `agent_does_not_report`;
-  no `path`, no digests). `reason` (unreadable): `symlink`, `not_regular`,
-  `permission`, `too_large`, `read_failed`; `detail` is one bounded line.
+  `unreadable`, `unwritable`, `unknown_origin`, or `unknown` (`reason`
+  `agent_does_not_report`; no `path`, no digests). `reason` (unreadable):
+  `symlink`, `not_regular`, `permission`, `too_large`, `read_failed`; `detail`
+  is one bounded line. `unwritable` (2026-10-11; component-tested, not
+  measured): the ledger's last observation is a refused replacement
+  (`unreadable` + `write_refused` in the ledger) of the file that is on disk
+  now (same digest), which the Agent reads as CelikPanel's unchanged text;
+  `reason` `write_refused`. Additive on every answer: `system_error` (the
+  system's error name a replacement gets now, `EPERM`, `EROFS`, …) and
+  `protection` (`immutable`, `append_only`, `directory_immutable`,
+  `read_only_filesystem`, `none`; absent when not measured), measured read-only
+  by the Agent (attribute flags and mount flags; nothing is written).
   `enabled`: `link`, `absent` or `other` (sites-enabled entry). `actions`
   (always an array): `["keep","take","merge"]` for owner_edited, foreign and
-  unknown_origin; `["recreate"]` for absent; `[]` otherwise. `merge` has no
+  unknown_origin; `["recreate"]` for absent; `["recheck"]` for unreadable and
+  unwritable (the page reads this answer again; no route, nothing is written);
+  `[]` otherwise. `merge` has no
   route: it is done on the server. `diff` is a unified diff of the file on disk
   against CelikPanel's text (header line left out), at most 4000 lines per side
   and 64 KiB; `diff_truncated` says it was cut; a line that mentions
@@ -6406,7 +6459,8 @@ Errors are `{"error": <English sentence>, "code": …, "reason"?: …, "detail"?
 - The domains list (`GET /api/v1/domains`) carries, for an administrator only,
   `site_config: {"state":…,"adopted_from"?:…,"kept_by_choice"?:true,"pending_reason"?:…}` from the
   Panel's last recorded observation (`missing` is a stored state; the GET above
-  never returns it, it returns `absent`).
+  never returns it, it returns `absent`; a stored `unreadable` with the reason
+  `write_refused` is answered `unwritable`, as on the page).
 - Certificate issuance, `POST /api/v1/domains/{id}/ssl/letsencrypt` (step 1b).
   Added answers for a site whose file CelikPanel keeps: `200
   {"status":"waiting_for_owner","expires_at":"…","pending_reason":"certificate"}`

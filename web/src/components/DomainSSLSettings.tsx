@@ -690,7 +690,9 @@ export function DomainSSLSettings({
                                             <span>
                                                 {new Date(cert.expires_at).toLocaleDateString()}{' '}
                                                 <span className={cert.days_until_expiry < 30 ? 'text-warning' : 'text-fg-subtle'}>
-                                                    ({t('ssl.days', { n: cert.days_until_expiry })})
+                                                    ({cert.days_until_expiry < 0
+                                                        ? t('ssl.daysAgo', { n: -cert.days_until_expiry })
+                                                        : t('ssl.days', { n: cert.days_until_expiry })})
                                                 </span>
                                             </span>
                                         }

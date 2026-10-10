@@ -4798,8 +4798,19 @@ native cells (audit §9) come after. 2026-10-10 is the clock date.
     temporary file and one rename, and re-check that the file still is the one
     classified (`changed_since_shown` otherwise). A rename that fails (EPERM on
     an immutable file) leaves the file and its enabled link untouched and is
-    that site's typed refusal (`write_refused`); the other sites are written,
-    tested once and reloaded once. An enabled entry is created only when absent
+    that site's typed refusal (`write_refused`, with the system error name,
+    `EPERM`); the other sites are written, tested once and reloaded once. Such a
+    file read fine and was not replaced: the domain's page, its list row and
+    badge answer it `unwritable` (not `unreadable`) while the file on disk is
+    the one the refusal was recorded on; the ledger keeps migration 044's state
+    set and stores `unreadable` + `write_refused`. The page names the system
+    error and what refuses the replacement now, measured read-only by the Agent
+    (immutable or append-only attribute of the file or its directory, a
+    read-only file system), shows the text CelikPanel wanted to write and offers
+    "check again", a read (tenth native record correction, 2026-10-11:
+    component-tested; not measured; the record measured the page answering
+    `managed_unchanged` with no reason). A new or recreated file is
+    `root:celikpanel 0644` (measured in the tenth native record). An enabled entry is created only when absent
     at creation/recreate and is never replaced. When `nginx -t` refuses or the
     reload fails, every file written in that call (and a link it made) is put
     back byte-exact with its mode and owner; the dated copy of "take" stays. A
@@ -4833,7 +4844,13 @@ native cells (audit §9) come after. 2026-10-10 is the clock date.
     the plain-HTTP block that only redirects to HTTPS (a forwarding site's
     redirect blocks carry it); the directory is
     created (0755) when the vhost is written and nothing in it is ever written,
-    changed or removed by the Panel (site deletion included). A deleted site's
+    changed or removed by the Panel (site deletion included). The tenth native
+    record measured `root:celikpanel 0750` (the Agent's `UMask=0027`); since
+    2026-10-11 the mode is set to 0755 explicitly after creation, for it, for
+    CelikPanel's own include directory and for a parent CelikPanel creates
+    (component-tested; not measured). The group does not decide who reads it:
+    nginx's master process reads its configuration as root. A directory that is
+    already there keeps its mode. A deleted site's
     vhost that is not CelikPanel's unchanged text is kept as a dated copy before
     removal.
   - *CelikPanel's own include point and certificates on a kept file (step 1b,
@@ -4956,8 +4973,12 @@ native cells (audit §9) come after. 2026-10-10 is the clock date.
   the Panel sends now: each release's start/save text and each release's
   creation text (domain alone as `server_name`, no alias, no validation name, no
   certificate, no redirection, same project type, document root and PHP
-  socket). Equal → adopted (rewritten with the header, `adopted_from` recorded,
-  `v0.1.0-alpha.8x` or `v0.1.0-alpha.8x (creation)`, kept in the ledger for good);
+  socket). Equal → adopted: rendered again as this release's text with the
+  header — not the old bytes plus a header; the owner's additions could not have
+  been in it, because it was byte-equal to CelikPanel's own text (measured in the
+  tenth native record) — `adopted_from` recorded, `v0.1.0-alpha.8x` or
+  `v0.1.0-alpha.8x (creation)`, the newest release whose text matches
+  (alpha.82 when both match; measured), kept in the ledger for good;
   otherwise → unknown origin, never written. No normalisation "modulo" inputs is
   done on purpose: a file whose certificate path, aliases, PHP version or
   validation names changed after the earlier release's last render, or that was

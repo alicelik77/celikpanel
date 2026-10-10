@@ -47,6 +47,26 @@ const (
 	// SiteFileMissingState is the Panel's stored state after an operation
 	// left an absent file absent (the owner removed it).
 	SiteFileMissingState = "missing"
+	// SiteFileUnwritable is the Panel's word for a file that was read
+	// (classified managed and unchanged) but whose replacement was refused
+	// (SiteFileReasonWriteRefused: an immutable file, a read-only file
+	// system). It is not "unreadable": the file reads fine. The ledger keeps
+	// migration 044's state set and stores it as SiteFileUnreadable with the
+	// reason write_refused; the domain screen and the domains list answer
+	// "unwritable" (set10 scenario g, 2026-10-10).
+	SiteFileUnwritable = "unwritable"
+)
+
+// What a read-only look at a file found that would refuse its replacement
+// (SiteFileResult.Protection). Measured by the Agent without writing: the
+// file's and its directory's attribute flags and the file system's mount
+// flags. "" means not measured (another platform, or the file is not there).
+const (
+	SiteFileProtectionNone               = "none"
+	SiteFileProtectionImmutable          = "immutable"
+	SiteFileProtectionAppendOnly         = "append_only"
+	SiteFileProtectionDirectoryImmutable = "directory_immutable"
+	SiteFileProtectionReadOnlyFilesystem = "read_only_filesystem"
 )
 
 // What the operation did with the file.
@@ -148,6 +168,13 @@ type SiteFileResult struct {
 	ValidationName   string
 	ValidationStatus int
 	ValidationDetail string
+
+	// Additive (set10 scenario g). SystemError is the system's error name for
+	// a refused replacement ("EPERM", "EROFS", "EACCES", …): the one the write
+	// got, or, on a read, the one a write would get given Protection. "" when
+	// none is known. Protection is SiteFileProtection*.
+	SystemError string
+	Protection  string
 }
 
 // What happened to the Panel's challenge file (D-031 step 1b).

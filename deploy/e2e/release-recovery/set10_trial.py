@@ -880,10 +880,15 @@ class Set10Trial(D031, s8.Set8Trial):
              any("2 written" in x and "1 unreadable or unwritable" in x for x in starts), starts),
             ("the ledger names A unreadable with the reason write_refused",
              row.get("state") == "unreadable" and row.get("state_reason") == "write_refused", row),
-            ("the Domains row names A unreadable", (rows.get(DOMAIN_A) or {}).get("state") == "unreadable", rows.get(DOMAIN_A)),
-            ("site-config for A names the reason (unreadable/write_refused or EPERM)",
-             shown["body"].get("state") == "unreadable" and shown["body"].get("reason") in ("write_refused", "permission"),
-             {k: shown["body"].get(k) for k in ("state", "reason", "detail", "actions", "ledger")})],
+            # Tenth-record correction (2026-10-11): a file read fine but not replaced is answered "unwritable" by the
+            # Domains row and the page alike; the page names the system error and the protection the Agent measured
+            # read-only, shows the text CelikPanel wanted to write and offers "check again" (a read).
+            ("the Domains row names A unwritable", (rows.get(DOMAIN_A) or {}).get("state") == "unwritable", rows.get(DOMAIN_A)),
+            ("site-config for A answers unwritable/write_refused with EPERM, the immutable protection, the difference and check again",
+             shown["body"].get("state") == "unwritable" and shown["body"].get("reason") == "write_refused"
+             and shown["body"].get("system_error") == "EPERM" and shown["body"].get("protection") == "immutable"
+             and bool(shown["body"].get("diff")) and shown["body"].get("actions") == ["recheck"],
+             {k: shown["body"].get(k) for k in ("state", "reason", "system_error", "protection", "detail", "actions", "ledger")})],
             {"journal": window["_file"]})
         self.owner10("g-chattr-minus-i", "owner-vhost10", domain=DOMAIN_A, action="chattr-minus-i", reload=False)
         since2 = self.guest_epoch()

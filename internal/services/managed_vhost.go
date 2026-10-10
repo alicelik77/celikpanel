@@ -75,6 +75,11 @@ var siteFileNow = time.Now
 // `chattr +i`, refuses the rename with EPERM; measured in set8, scenario g).
 var siteFileRename = os.Rename
 
+// siteFileProtectionOf measures, read-only, what would refuse replacing a
+// site file (a test seam: attribute flags need root and a file system that
+// has them).
+var siteFileProtectionOf = measureSiteFileProtection
+
 func nginxBase() string {
 	if nginxDevMode() {
 		return nginxDir
@@ -367,7 +372,10 @@ func atomicWriteSiteFile(path string, content []byte, mode os.FileMode, ownershi
 }
 
 // writeManagedSiteFile writes only if the file still is the one inspected:
-// same absence, or same bytes as a regular file. A symlink is refused.
+// same absence, or same bytes as a regular file. A symlink is refused. A file
+// that was there keeps its mode, owner and group (a kept or taken file, set10
+// j and take); a new or recreated file is 0644 (set explicitly, whatever the
+// umask) with the Agent's own owner and group, root:celikpanel (set10 e).
 func writeManagedSiteFile(path string, content []byte, inspected siteFileInspection) error {
 	info, err := os.Lstat(path)
 	switch {
@@ -490,43 +498,64 @@ func existingPending(path string) (string, string) {
 	return pending, sha256Hex(content)
 }
 
-// ensureOwnerIncludeDir creates the site's owner include directory when it is
-// absent. Nothing inside it is ever written, changed or removed.
-func ensureOwnerIncludeDir(domain string) error {
-	directory := OwnerIncludeDir(domain)
+// siteIncludeDirMode is the mode of a site include directory CelikPanel
+// creates, and of the parent it creates for it (D-031).
+const siteIncludeDirMode os.FileMode = 0o755
+
+// ensureSiteIncludeDir creates a site include directory, and its parent under
+// the nginx root, when absent, mode 0755. The mode is set explicitly after
+// creation: the Agent runs with UMask=0027, under which a plain mkdir 0755
+// gave 0750 (set10 S0, measured on Debian 13, Ubuntu 24.04 and Arch). The
+// owner is the Agent's (root) and the group the unit's (celikpanel); the
+// group does not decide who reads it, because nginx's master process reads
+// its configuration as root, and 0755 lets the owner's tools read it too. A
+// directory that is already there is left exactly as it is (the owner's
+// mode); a path there that is not a directory (a link included) is left
+// alone and reported.
+//
+// Site ekleme dizinini (ve gerekirse üst dizinini) 0755 ile oluşturur; kip,
+// Agent'ın UMask=0027 ayarına rağmen açıkça verilir. Var olan dizine dokunmaz.
+func ensureSiteIncludeDir(directory string) error {
 	if info, err := os.Lstat(directory); err == nil {
 		if !info.IsDir() {
 			return fmt.Errorf("%s exists and is not a directory; it was left alone", directory)
 		}
 		return nil
 	}
-	if err := os.MkdirAll(filepath.Dir(directory), 0o755); err != nil {
+	parent := filepath.Dir(directory)
+	if _, err := os.Lstat(parent); errors.Is(err, os.ErrNotExist) {
+		if err := os.MkdirAll(filepath.Dir(parent), 0o755); err != nil {
+			return err
+		}
+		if err := makeSiteIncludeDir(parent); err != nil {
+			return err
+		}
+	}
+	return makeSiteIncludeDir(directory)
+}
+
+// makeSiteIncludeDir makes one directory 0755 whatever the umask; another
+// process that made it first leaves it as that process made it.
+func makeSiteIncludeDir(directory string) error {
+	if err := os.Mkdir(directory, siteIncludeDirMode); err != nil {
+		if errors.Is(err, os.ErrExist) {
+			return nil
+		}
 		return err
 	}
-	if err := os.Mkdir(directory, 0o755); err != nil && !errors.Is(err, os.ErrExist) {
-		return err
-	}
-	return nil
+	return os.Chmod(directory, siteIncludeDirMode)
+}
+
+// ensureOwnerIncludeDir creates the site's owner include directory when it is
+// absent (0755). Nothing inside it is ever written, changed or removed.
+func ensureOwnerIncludeDir(domain string) error {
+	return ensureSiteIncludeDir(OwnerIncludeDir(domain))
 }
 
 // ensurePanelManagedDir creates the site's Panel-owned include directory
-// (0755) when it is absent. A path there that is not a directory (a link
-// included) is left alone and reported.
+// (0755) when it is absent.
 func ensurePanelManagedDir(domain string) error {
-	directory := PanelManagedDir(domain)
-	if info, err := os.Lstat(directory); err == nil {
-		if !info.IsDir() {
-			return fmt.Errorf("%s exists and is not a directory; it was left alone", directory)
-		}
-		return nil
-	}
-	if err := os.MkdirAll(filepath.Dir(directory), 0o755); err != nil {
-		return err
-	}
-	if err := os.Mkdir(directory, 0o755); err != nil && !errors.Is(err, os.ErrExist) {
-		return err
-	}
-	return nil
+	return ensureSiteIncludeDir(PanelManagedDir(domain))
 }
 
 // normalizedDirectiveLine is a configuration line without surrounding space
@@ -766,8 +795,16 @@ func (ng *NginxGenerator) ApplyManagedVhosts(items []ManagedVhostItem) ([]transp
 			if errors.Is(err, errSiteFileChanged) {
 				result.Reason = transport.SiteFileReasonChanged
 			} else {
+				// Read fine, not replaced: "unwritable", not "unreadable"
+				// (set10 scenario g). The system's error and what refused it.
 				result.Reason = transport.SiteFileReasonWriteRefused
 				result.Detail = boundedSiteFileDetail(err.Error())
+				result.SystemError = siteFileErrnoName(err)
+				var measuredError string
+				result.Protection, measuredError = siteFileProtectionOf(plan.available)
+				if result.SystemError == "" {
+					result.SystemError = measuredError
+				}
 			}
 			continue
 		}
@@ -1014,6 +1051,11 @@ func (ng *NginxGenerator) InspectManagedVhost(item ManagedVhostItem) (transport.
 		if declared, _, ok := splitManagedHeader(inspected.content); ok {
 			result.WrittenSHA256 = declared
 		}
+	}
+	if inspected.exists && inspected.state != transport.SiteFileUnreadable {
+		// Read-only: whether a replacement would be refused now, and with
+		// which system error (the domain screen's "check again").
+		result.Protection, result.SystemError = siteFileProtectionOf(available)
 	}
 	result.PendingPath, result.PendingSHA256 = existingPending(available)
 	if !inspected.exists || inspected.state == transport.SiteFileUnreadable || bytes.Equal(inspected.content, []byte(sealed)) {

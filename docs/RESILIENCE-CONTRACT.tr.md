@@ -4108,8 +4108,20 @@ hücreleri (denetim §9) sonra gelir. 2026-10-10 saat tarihidir.
     sahibini ve grubunu korur, geçici dosya ve tek yeniden adlandırmayla yapılır
     ve dosyanın hâlâ sınıflandırılan dosya olduğunu yeniden denetler. Başarısız
     yeniden adlandırma (değişmez dosyada EPERM) dosyaya ve etkin bağlantısına
-    dokunmaz; o sitenin tipli reddidir (`write_refused`), diğer siteler yazılır,
-    bir kez sınanır, bir kez yeniden yüklenir. `nginx -t` reddederse ya da
+    dokunmaz; o sitenin tipli reddidir (`write_refused`, sistem hatası adıyla,
+    `EPERM`), diğer siteler yazılır, bir kez sınanır, bir kez yeniden yüklenir.
+    Böyle bir dosya okunmuş ama değiştirilmemiştir: alan adının sayfası, liste
+    satırı ve rozeti, diskteki dosya reddin kaydedildiği dosya olduğu sürece onu
+    `unwritable` (`unreadable` değil) yanıtlar; defter göç 044'ün durum
+    kümesini korur ve `unreadable` + `write_refused` saklar. Sayfa sistem
+    hatasını ve değiştirmeyi şimdi neyin reddettiğini (dosyanın ya da dizininin
+    değiştirilemez ya da yalnızca eklenebilir özniteliği, salt okunur dosya
+    sistemi; Agent salt okunur ölçer) adlandırır, CelikPanel'in yazmak istediği
+    metni gösterir ve bir okuma olan "Yeniden denetle"yi sunar (onuncu gerçek
+    sistem kaydı düzeltmesi, 2026-10-11: bileşen testli; ölçülmedi; kayıt
+    sayfanın nedensiz `managed_unchanged` yanıtladığını ölçtü). Yeni ya da
+    yeniden oluşturulan dosya `root:celikpanel 0644`'tür (onuncu kayıtta
+    ölçüldü). `nginx -t` reddederse ya da
     yeniden yükleme başarısız olursa o çağrıda yazılan her dosya (ve yaptığı
     bağlantı) baytı, kipi ve sahibiyle geri konur; "al"ın tarihli kopyası kalır.
     Korunan dosyanın bekleyen metni, dosya yeniden CelikPanel'in metni olunca
@@ -4139,7 +4151,12 @@ hücreleri (denetim §9) sonra gelir. 2026-10-10 saat tarihidir.
     HTTP bloğu dışındaki her server bloğunda (yönlendirme sitesinin yönlendirme
     blokları taşır); dizin sanal konak yazılırken
     oluşturulur (0755), içindeki hiçbir şeye Panel yazmaz, dokunmaz, silmez (site
-    silme dahil). Silinen sitenin CelikPanel'in değişmemiş metni olmayan sanal
+    silme dahil). Onuncu gerçek sistem kaydı `root:celikpanel 0750` ölçtü
+    (Agent'ın `UMask=0027` ayarı); 2026-10-11'den beri kip oluşturmadan sonra
+    açıkça 0755 yapılır: bu dizin, CelikPanel'in kendi ekleme dizini ve
+    CelikPanel'in oluşturduğu üst dizin için (bileşen testli; ölçülmedi). Grup
+    kimin okuyacağını belirlemez: nginx'in ana süreci yapılandırmasını root
+    olarak okur. Zaten var olan dizin kipini korur. Silinen sitenin CelikPanel'in değişmemiş metni olmayan sanal
     konağı silinmeden önce tarihli bir kopya olarak bırakılır.
   - *CelikPanel'in kendi ekleme noktası ve korunan dosyada sertifikalar (adım
     1b, 2026-10-10; aynı gün ikinci tur).* Her server bloğu ayrıca `include
@@ -4251,8 +4268,12 @@ hücreleri (denetim §9) sonra gelir. 2026-10-10 saat tarihidir.
   üretilen dört metinle bayt bayt karşılaştırılır: her sürümün
   başlangıç/kaydetme metni ve oluşturma metni (yalnız alan adı, takma ad yok,
   doğrulama adı yok, sertifika yok, yönlendirme yok; aynı proje türü, belge kökü
-  ve PHP soketi). Eşit → devralınır (başlıkla yeniden yazılır, `adopted_from` kaydedilir:
-  `v0.1.0-alpha.8x` ya da `v0.1.0-alpha.8x (creation)`, defterde kalıcı);
+  ve PHP soketi). Eşit → devralınır: bu sürümün metni olarak başlıkla yeniden
+  üretilir, eski baytlara eklenmiş bir başlık değildir; sahibin eklemeleri onda
+  olamazdı, çünkü dosya CelikPanel'in kendi metniyle bayt bayt eşitti (onuncu
+  gerçek sistem kaydında ölçüldü); `adopted_from` kaydedilir:
+  `v0.1.0-alpha.8x` ya da `v0.1.0-alpha.8x (creation)`, metni eşleşen en yeni
+  sürüm (ikisi de eşleşirse alpha.82; ölçüldü), defterde kalıcı;
   değilse → kökeni bilinmiyor, asla yazılmaz.
   Girdilere göre "eşitleme" bilerek yapılmaz: sertifika yolu, takma adları, PHP
   sürümü ya da doğrulama adları eski sürümün son üretiminden sonra değişen ya da

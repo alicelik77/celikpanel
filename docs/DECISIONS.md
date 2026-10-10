@@ -76,7 +76,12 @@ The owner decided on 2026-10-10 that the correction enters the next release:
    and compares: a byte-equal file is adopted, any other file is "unknown
    origin" and is never overwritten. The honest first state after the update
    is "N adopted, M left alone because they differ from every known
-   CelikPanel text", and the Panel shows it.
+   CelikPanel text", and the Panel shows it. (Tenth native record, 2026-10-11,
+   planner's decision:) an adopted file is rendered again as this release's
+   text and gets the header — it is not the old bytes plus a header; the
+   owner's additions could not have been in it, because it was byte-equal to
+   CelikPanel's own text. `adopted_from` names the newest release whose text
+   matches (alpha.82 when both match). Measured in the tenth native record.
 7. An automatic return to an older release loses the protection; the release
    notes say so.
 
@@ -87,12 +92,24 @@ database restore from before the header; keep-mine then certificate issue;
 take-CelikPanel's with its backup; owner include directory survives renewals
 and switches; removed file not recreated; pool directives survive). The PHP
 pool and the application unit follow in a second step under the same rule.
+Tenth native record (set10, 2026-10-10, `cd46ca595`, Debian 13, Ubuntu 24.04,
+Arch): every cell held but two. Corrected 2026-10-11 (component-tested; not
+measured): the owner include directory is created 0755 explicitly (measured
+`root:celikpanel 0750` under the Agent's `UMask=0027`), and so is CelikPanel's
+own; a locked file (`chattr +i`, EPERM) is answered `unwritable` by the
+domain's page, its list row and badge alike, with the system error, the
+protection measured read-only, the text CelikPanel wanted to write and "check
+again" (the page answered `managed_unchanged` with no reason). The ledger keeps
+migration 044's state set (`unreadable` + `write_refused`); no schema change.
+New and recreated vhosts are `root:celikpanel 0644`; kept and taken files keep
+the owner's mode, owner and group (measured).
 Open in the probe of the second round (2026-10-10), none fixed: a port-80
 block bound to one address is not reached from the loopback; a failed
 `nginx -t` or reload at the Configuration file page's read is reported as
 `challenge_failed`; a missing or unreadable file writes no reason, so a
-renewal it stopped waits until the next completed renewal; the SSL tab prints
-negative days for an expired certificate; no real hosting-customer session was
+renewal it stopped waits until the next completed renewal; (fixed 2026-10-11:
+the SSL tab says "expired N days ago" instead of negative days); no real
+hosting-customer session was
 drawn; a ready probe does not show that DNS or the firewall lets the
 certificate authority in. The probe has never asked a real nginx.
 

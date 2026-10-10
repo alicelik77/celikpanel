@@ -5842,17 +5842,48 @@ dosyadan değil.
   Bu sitede CelikPanel’de yaptığınız değişiklikler, dosya yeniden yerinde olana
   dek uygulanmaz." Eylem: "Yeniden oluştur" — "CelikPanel bu site için kendi
   metnini yazar ve nginx’i yeniden yükler."
-- Okunamıyor ya da değiştirilemiyor: `siteConfig.unreadable.title` "Yapılandırma
-  dosyası okunamıyor ya da değiştirilemiyor", nedeniyle (kilitli dosyada:
-  "Değiştirilemedi (örneğin chattr +i ile değişikliğe kilitli). CelikPanel
-  dosyayı ve bağlantısını olduğu gibi korudu.") ve o nedenin sonraki adımı:
-  bağlantıda "Sunucu sahibi bağlantıyı sıradan bir dosyayla değiştirir ya da
-  başka yere taşır, sonra bu sayfayı yeniden yükler."; izinde "Sunucu sahibi
-  dosyayı root için okunur yapar, sonra bu sayfayı yeniden yükler."; diğerlerinde
-  "Sunucu sahibi sunucunun bildirdiği sorunu giderir, sonra bu sayfayı yeniden
-  yükler." ve Agent bir satır gönderdiyse "Sunucunun bildirdiği: {detail}";
-  ardından "Bu arada bu sitede CelikPanel’de yaptığınız değişiklikler ona
-  uygulanmaz."
+- Okunamıyor: `siteConfig.unreadable.title` "Yapılandırma dosyası okunamıyor
+  ya da değiştirilemiyor", nedeniyle (`symlink`, `not_regular`, `permission`,
+  `too_large`, `read_failed`) ve o nedenin sonraki adımı: bağlantıda "Sunucu
+  yöneticisi bağlantıyı sıradan bir dosyayla değiştirir ya da başka yere
+  taşır, sonra Yeniden denetle’yi seçer."; izinde "Sunucu yöneticisi dosyayı
+  root için okunur yapar, sonra Yeniden denetle’yi seçer."; diğerlerinde
+  "Sunucu yöneticisi sunucunun bildirdiği sorunu giderir, sonra Yeniden
+  denetle’yi seçer." ve Agent bir satır gönderdiyse "Sunucunun bildirdiği:
+  {detail}"; ardından "Bu arada bu sitede CelikPanel’de yaptığınız
+  değişiklikler ona uygulanmaz." ve "Yeniden denetle" düğmesi (`recheck`: bu
+  sayfanın yanıtını yeniden okur, hiçbir şeyi değiştirmez).
+- Değiştirilemiyor (onuncu gerçek sistem kaydı düzeltmesi, 2026-10-11; bileşen
+  testli; ölçülmedi): CelikPanel'in okuduğu (kendi değişmemiş metni) ama
+  sunucunun değiştirilmesini reddettiği dosya (set10 g senaryosu `chattr +i`
+  dosyanın Debian 13, Ubuntu 24.04 ve Arch'ta EPERM ile reddedildiğini, sayfanın
+  ise nedensiz ve eylemsiz `managed_unchanged` yanıtladığını ölçtü). Sayfa,
+  Alan Adları satırı ve alan adının üstündeki not artık aynı şeyi söyler:
+  `unwritable`. `siteConfig.unwritable.title` "CelikPanel bu dosyayı
+  değiştiremiyor" — "Bu site için son değişiklik yazılmadı: bu sunucu dosyanın
+  değiştirilmesini reddetti ({error}). CelikPanel dosyayı ve bağlantısını olduğu
+  gibi korudu; nginx siteyi bu dosyayla sunmayı sürdürüyor." ({error} sistem
+  hatasıdır, örneğin EPERM); ardından onu neyin reddettiği, şimdi salt okunur
+  ölçülmüş olarak: "Dosya bu sunucuda yazmaya karşı korumalı (değiştirilemez
+  özniteliği açık)." / yalnızca eklenebilir / "Dosyayı tutan dizin bu sunucuda
+  yazmaya karşı korumalı." / "Dosyayı tutan dosya sistemi salt okunur
+  bağlanmış." / "Dosyada şu an bir yazma koruması bulunmuyor."; ardından kimin
+  karar verdiği ve sonraki adım: "Karar sunucu yöneticisinindir: CelikPanel’in
+  dosyayı güncelleyebilmesi için korumayı kaldırın, örneğin sudo chattr -i
+  <yol> ile; ya da olduğu gibi bırakın. CelikPanel onu değiştirmez." (yalnızca
+  eklenebilirde `chattr -a`, korunan dizinde dizin; salt okunur dosya
+  sisteminde "o dosya sistemini yeniden yazılabilir yapın"; koruma
+  bulunmadığında "CelikPanel metnini panelin bir sonraki başlangıcında ya da bu
+  site için kaydedilen bir sonraki değişiklikte yazar; başka bir şey gerekmez.
+  Dosya o zamana kadar yeniden korunursa bu sayfa bunu söyler."; hiçbir şey
+  ölçülemediyse okunacak panel günlüğü satırı); sonra "O zamana kadar bu sitede
+  CelikPanel’de yaptığınız değişiklikler dosyaya uygulanmaz. Gerekeni yaptıktan
+  sonra Yeniden denetle’yi seçin."; "Yeniden denetle" düğmesi; ve farkla
+  birlikte "CelikPanel’in yazmak istediği: dosyanız (−) ve CelikPanel’in metni
+  (+)". Alan Adları satırının rozeti `siteConfig.list.badge.unwritable`
+  "Yapılandırma dosyası değiştirilemiyor"; not `siteConfig.notice.unwritable`
+  "Bu sitenin nginx yapılandırma dosyası bu sunucuda değiştirilemiyor.
+  CelikPanel onu olduğu gibi korudu."
 
 **Üç seçim** (her biri D-029 istek kimliğiyle bir POST; her biri sayfanın
 gösterdiği özetlere bağlıdır):
@@ -5881,7 +5912,16 @@ gösterdiği özetlere bağlıdır):
 kendi nginx yönergelerinizi {dir} içinde bir .conf dosyasına yazın. CelikPanel
 oraya hiç yazmaz ve bu sitede yaptığı her değişiklikte onları korur." Dizin
 `/etc/nginx/celikpanel-sites.d/<alan adı>/` (sanal konak yazılırken 0755 ile
-oluşturulur; içindeki hiçbir şey yazılmaz, değiştirilmez ya da silinmez). Sanal
+oluşturulur; içindeki hiçbir şey yazılmaz, değiştirilmez ya da silinmez).
+Onuncu gerçek sistem kaydı onu üç platformda da `root:celikpanel 0750`
+oluşturulmuş ölçtü (Agent'ın `UMask=0027` ayarı); 2026-10-11'den beri kip,
+dizin ve CelikPanel'in oluşturduğu üst dizin için oluşturmadan sonra açıkça
+0755 yapılır (bileşen testli; ölçülmedi). Sahip root, grup Agent'ınki
+(`celikpanel`); grup kimin okuyacağını belirlemez, çünkü nginx'in ana süreci
+yapılandırmasını root olarak okur. Zaten var olan dizin sahibinin kipini
+korur. Yeni ya da yeniden oluşturulan sanal konak `root:celikpanel 0644`
+yazılır (onuncu kayıtta ölçüldü, e hücresi); korunan ya da alınan dosya
+sahibinin kipini, sahibini ve grubunu korur (ölçüldü, j ve take hücreleri). Sanal
 konak server bağlamında `include <dizin>/*.conf;` satırını, posta adlarının
 yalnız doğrulama bloğu ile yalnızca HTTPS'e yönlendiren düz HTTP bloğu dışındaki
 her blokta taşır. Yönlendirme sitesinin hedef adrese yönlendiren blokları da
@@ -6018,8 +6058,12 @@ değişmedi (o metinler konumu satır içinde taşır).
 dosyalarda başlık yoktur. İlk başlangıçta her biri, bu sürümlerin dondurulmuş
 şablonlarının aynı veriyle ürettiği metinle, yazdıkları iki biçimde (oluşturma
 metni: `server_name` yalnız alan adı; başlangıç/kaydetme metni: `www.` ve takma
-adlarla) bayt bayt karşılaştırılır. Eşit dosya devralınır (başlığıyla
-CelikPanel'in metni olarak yeniden yazılır); başka her dosya "kökeni bilinmiyor"
+adlarla) bayt bayt karşılaştırılır. Eşit dosya devralınır: bu sürümün metni
+olarak yeniden üretilir ve başlığı alır (onuncu gerçek sistem kaydında ölçüldü:
+yeni açıklama bloğu, ekleme satırı, PHP sitelerinde açılmış snippet). Sahibin
+eklemeleri onda olamazdı, çünkü dosya CelikPanel'in kendi metniyle bayt bayt
+eşitti. `adopted_from` metni eşleşen en yeni sürümü adlandırır (iki sürümün
+metni de eşitse alpha.82; bu da ölçüldü). Başka her dosya "kökeni bilinmiyor"
 olur ve asla yazılmaz. Alan Adları listesi şunu söyler: `siteConfig.list.firstState`
 "Site yapılandırma dosyaları: {adopted} tanesi CelikPanel’inki olarak tanınıp
 devralındı; {left} tanesi bilinen her CelikPanel metninden farklı olduğu için
@@ -6279,13 +6323,22 @@ biçimindedir; ekranlar `code`'a göre çevirir.
    "ledger":{"written_release":"…","written_at":"…","observed_at":"…","backup_path":"…"}}
   ```
   `state`: `absent`, `managed_unchanged`, `owner_edited`, `foreign`,
-  `unreadable`, `unknown_origin` ya da `unknown` (`reason`
+  `unreadable`, `unwritable`, `unknown_origin` ya da `unknown` (`reason`
   `agent_does_not_report`; `path` ve özet yok). `reason` (unreadable):
   `symlink`, `not_regular`, `permission`, `too_large`, `read_failed`; `detail`
-  sınırlı tek satırdır. `enabled`: `link`, `absent` ya da `other`
-  (sites-enabled girdisi). `actions` (hep dizi): owner_edited, foreign ve
-  unknown_origin için `["keep","take","merge"]`; absent için `["recreate"]`;
-  diğerlerinde `[]`. `merge`'in rotası yoktur: sunucuda yapılır. `diff`,
+  sınırlı tek satırdır. `unwritable` (2026-10-11; bileşen testli, ölçülmedi):
+  defterin son gözlemi, şu an diskte olan dosyanın (aynı özet) reddedilmiş
+  değiştirilmesidir (defterde `unreadable` + `write_refused`) ve Agent dosyayı
+  CelikPanel'in değişmemiş metni olarak okur; `reason` `write_refused`. Her
+  yanıta eklemeli: `system_error` (değiştirmenin şimdi aldığı sistem hatası
+  adı, `EPERM`, `EROFS`, …) ve `protection` (`immutable`, `append_only`,
+  `directory_immutable`, `read_only_filesystem`, `none`; ölçülemediğinde yok);
+  ikisini Agent salt okunur ölçer (öznitelik ve bağlama bayrakları; hiçbir şey
+  yazılmaz). `enabled`: `link`, `absent` ya da `other` (sites-enabled
+  girdisi). `actions` (hep dizi): owner_edited, foreign ve unknown_origin için
+  `["keep","take","merge"]`; absent için `["recreate"]`; unreadable ve
+  unwritable için `["recheck"]` (sayfa bu yanıtı yeniden okur; rotası yok,
+  hiçbir şey yazılmaz); diğerlerinde `[]`. `merge`'in rotası yoktur: sunucuda yapılır. `diff`,
   diskteki dosya ile CelikPanel'in metninin (başlık satırı hariç) birleşik
   farkıdır; taraf başına en çok 4000 satır ve 64 KiB; `diff_truncated` kesildiğini
   söyler; authorization, password, passwd, secret, token, api key, private key ya
@@ -6342,7 +6395,8 @@ biçimindedir; ekranlar `code`'a göre çevirir.
 - Alan adları listesi (`GET /api/v1/domains`) yalnız yönetici için
   `site_config: {"state":…,"adopted_from"?:…,"kept_by_choice"?:true,"pending_reason"?:…}` taşır;
   Panel'in kaydettiği son gözlemden gelir (`missing` saklanan bir durumdur; yukarıdaki
-  GET onu hiç döndürmez, `absent` döndürür).
+  GET onu hiç döndürmez, `absent` döndürür; `write_refused` nedenli saklanan
+  `unreadable`, sayfadaki gibi `unwritable` yanıtlanır).
 - Sertifika alımı, `POST /api/v1/domains/{id}/ssl/letsencrypt` (adım 1b).
   CelikPanel'in dosyayı koruduğu site için eklenen yanıtlar: `200
   {"status":"waiting_for_owner","expires_at":"…","pending_reason":"certificate"}`
