@@ -25,7 +25,7 @@ func TestAnUnreadPoolReachesTheDomainsRowAndASuccessfulReadEndsIt(t *testing.T) 
 		response.File = otherFile(transport.SiteFileKindPHPPool, poolTestPath, transport.SiteFileManagedUnchanged, transport.SiteFileOutcomeInspected)
 		response.File.WrittenSHA256 = otherRenderSHA
 	}
-	f.agent.poolInspect = managed
+	f.agent.setPoolInspect(managed)
 	f.read(t)
 	before := f.row(t, transport.SiteFileKindPHPPool)
 	if before.State != transport.SiteFileManagedUnchanged {
@@ -41,10 +41,10 @@ func TestAnUnreadPoolReachesTheDomainsRowAndASuccessfulReadEndsIt(t *testing.T) 
 
 	// The Agent does not answer within the read's time.
 	release := make(chan struct{})
-	f.agent.poolInspect = func(request *transport.SitePoolRequest, response *transport.InspectSiteFileResponse) {
+	f.agent.setPoolInspect(func(request *transport.SitePoolRequest, response *transport.InspectSiteFileResponse) {
 		<-release
 		managed(request, response)
-	}
+	})
 	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
 	view := f.panel.withOtherSiteFiles(ctx, f.domainID, siteConfigView{DomainID: f.domainID, Kind: transport.SiteFileKindNginxVhost,
 		State: transport.SiteFileManagedUnchanged, Actions: []string{}})
@@ -66,7 +66,7 @@ func TestAnUnreadPoolReachesTheDomainsRowAndASuccessfulReadEndsIt(t *testing.T) 
 	}
 
 	// The next read answers: the row is back to what the file is.
-	f.agent.poolInspect = managed
+	f.agent.setPoolInspect(managed)
 	f.read(t)
 	if row := f.row(t, transport.SiteFileKindPHPPool); row.State != transport.SiteFileManagedUnchanged || row.StateReason != "" {
 		t.Fatalf("pool row after a successful read: %+v", row)
@@ -76,22 +76,22 @@ func TestAnUnreadPoolReachesTheDomainsRowAndASuccessfulReadEndsIt(t *testing.T) 
 	}
 
 	// An Agent that answers with an error: agent_error.
-	f.agent.poolInspect = func(_ *transport.SitePoolRequest, response *transport.InspectSiteFileResponse) {
+	f.agent.setPoolInspect(func(_ *transport.SitePoolRequest, response *transport.InspectSiteFileResponse) {
 		response.Error = "the pool could not be read just now"
-	}
+	})
 	f.read(t)
 	if row := f.row(t, transport.SiteFileKindPHPPool); row.State != transport.SiteFileStateUnknown || row.StateReason != siteConfigReasonNotRead+":agent_error" {
 		t.Fatalf("pool row after an Agent error: %+v", row)
 	}
 
 	// A known problem is not hidden by a read that failed.
-	f.agent.poolInspect = func(_ *transport.SitePoolRequest, response *transport.InspectSiteFileResponse) {
+	f.agent.setPoolInspect(func(_ *transport.SitePoolRequest, response *transport.InspectSiteFileResponse) {
 		response.File = otherFile(transport.SiteFileKindPHPPool, poolTestPath, transport.SiteFileOwnerEdited, transport.SiteFileOutcomeInspected)
-	}
+	})
 	f.read(t)
-	f.agent.poolInspect = func(_ *transport.SitePoolRequest, response *transport.InspectSiteFileResponse) {
+	f.agent.setPoolInspect(func(_ *transport.SitePoolRequest, response *transport.InspectSiteFileResponse) {
 		response.Error = "the pool could not be read just now"
-	}
+	})
 	f.read(t)
 	if row := f.row(t, transport.SiteFileKindPHPPool); row.State != transport.SiteFileOwnerEdited {
 		t.Fatalf("an owner's file was replaced by an unread observation: %+v", row)
@@ -128,7 +128,7 @@ func TestServiceRefusalSaysWhetherTheServiceWasReloaded(t *testing.T) {
 			"so the previous pool file was put back and PHP-FPM keeps running with it", "so the previous pool file was put back"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			f.agent.poolApply = func(_ *transport.SitePoolRequest, response *transport.ApplySiteFileResponse) {
+			f.agent.setPoolApply(func(_ *transport.SitePoolRequest, response *transport.ApplySiteFileResponse) {
 				file := otherFile(transport.SiteFileKindPHPPool, poolTestPath, transport.SiteFileOwnerEdited, transport.SiteFileOutcomeFailed)
 				file.Reason, file.Detail, file.Restore = transport.SiteFileReasonConfigRefused, "php-fpm8.3 -t: exit status 78", transport.SiteFileRestoreConfirmed
 				file.Service, file.ServiceReason, file.ServiceActive = c.service, c.reason, c.active
@@ -136,7 +136,7 @@ func TestServiceRefusalSaysWhetherTheServiceWasReloaded(t *testing.T) {
 					file.ServiceCheck = line
 				}
 				response.File = &file
-			}
+			})
 			request := f.panel.sitePoolRequest(ctx, site, transport.SitePoolOperationTake)
 			_, applyErr := f.panel.applySitePool(ctx, site, request)
 			for _, caller := range []*Caller{f.admin, customer} {

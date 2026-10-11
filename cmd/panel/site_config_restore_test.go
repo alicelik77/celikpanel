@@ -84,11 +84,11 @@ func TestPoolServiceRefusalSaysWhetherThePreviousFileIsBack(t *testing.T) {
 	customer := &Caller{ID: f.admin.ID + 1000, Role: "customer"}
 	for _, c := range restoreCases() {
 		t.Run(c.name, func(t *testing.T) {
-			f.agent.poolApply = func(_ *transport.SitePoolRequest, response *transport.ApplySiteFileResponse) {
+			f.agent.setPoolApply(func(_ *transport.SitePoolRequest, response *transport.ApplySiteFileResponse) {
 				file := otherFile(transport.SiteFileKindPHPPool, poolTestPath, transport.SiteFileManagedUnchanged, transport.SiteFileOutcomeFailed)
 				file.Reason, file.Detail, file.Restore = transport.SiteFileReasonReloadFailed, "php-fpm reload: exit status 1", c.restore
 				response.File, response.Error = &file, c.agentError
-			}
+			})
 			request := f.panel.sitePoolRequest(ctx, site, transport.SitePoolOperationSave)
 			request.Values = &transport.SitePoolValues{PM: "static", PMMaxChildren: 4}
 			_, applyErr := f.panel.applySitePool(ctx, site, request)
@@ -121,7 +121,7 @@ func TestUnitServiceRefusalSaysWhetherThePreviousFileIsBack(t *testing.T) {
 	ctx := context.Background()
 	for _, c := range restoreCases() {
 		t.Run(c.name, func(t *testing.T) {
-			f.agent.unitApply = func(_ *transport.AppApplyRequest, response *transport.AppApplyResponse) {
+			f.agent.setUnitApply(func(_ *transport.AppApplyRequest, response *transport.AppApplyResponse) {
 				file := otherFile(transport.SiteFileKindAppUnit, unitTestPath, transport.SiteFileManagedUnchanged, transport.SiteFileOutcomeFailed)
 				file.Reason, file.Restore = transport.SiteFileReasonReloadFailed, c.restore
 				response.File = &file
@@ -129,7 +129,7 @@ func TestUnitServiceRefusalSaysWhetherThePreviousFileIsBack(t *testing.T) {
 				if response.Error == "" && c.restore == transport.SiteFileRestoreConfirmed {
 					response.Error = "application unit not activated, the previous file was put back: systemctl daemon-reload: exit status 1"
 				}
-			}
+			})
 			_, err := f.panel.transitionHosting(ctx, f.domainID, hostingSettings{
 				ProjectType: "node", StartCommand: "node server.js", RuntimeVersion: "22.11.0", AppPort: 3101,
 			})
@@ -143,7 +143,7 @@ func TestUnitServiceRefusalSaysWhetherThePreviousFileIsBack(t *testing.T) {
 		})
 	}
 	// The unit's calls carry the Panel's build (the Agent's gate).
-	for _, request := range f.agent.unitRequests {
+	for _, request := range f.agent.unitRequestList() {
 		if request.ExpectedBuildCommit != strings.TrimSpace(buildCommit) {
 			t.Fatalf("unit request without the Panel's build: %+v", request)
 		}
@@ -178,9 +178,9 @@ func TestNginxRefusalSaysWhetherThePreviousFileIsBack(t *testing.T) {
 
 func TestAFileTheAgentDidNotReadOutranksUnchangedText(t *testing.T) {
 	f := newOtherSiteFileFixture(t, "notread.example", "php")
-	f.agent.poolInspect = func(_ *transport.SitePoolRequest, response *transport.InspectSiteFileResponse) {
+	f.agent.setPoolInspect(func(_ *transport.SitePoolRequest, response *transport.InspectSiteFileResponse) {
 		response.Error = "the pool could not be read just now"
-	}
+	})
 	view := f.read(t)
 	pool := fileByKind(view, transport.SiteFileKindPHPPool)
 	if pool == nil || pool.State != transport.SiteFileStateUnknown || pool.Reason != siteConfigReasonNotRead ||

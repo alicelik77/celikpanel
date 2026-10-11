@@ -30,35 +30,96 @@ type otherSiteFileAgent struct {
 	unitsRemoved int
 }
 
-func (a *otherSiteFileAgent) InspectSitePool(request *transport.SitePoolRequest, response *transport.InspectSiteFileResponse) error {
+// The handler fields are read and written under a.mu: a read the Panel gave
+// up on may still be inside its RPC goroutine when the test sets the next
+// handler. The handler runs outside the lock on a copy, so a setter never
+// waits for a handler.
+func (a *otherSiteFileAgent) setPoolInspect(h func(*transport.SitePoolRequest, *transport.InspectSiteFileResponse)) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
+	a.poolInspect = h
+}
+
+func (a *otherSiteFileAgent) setPoolApply(h func(*transport.SitePoolRequest, *transport.ApplySiteFileResponse)) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.poolApply = h
+}
+
+func (a *otherSiteFileAgent) setUnitInspect(h func(*transport.AppApplyRequest, *transport.InspectSiteFileResponse)) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.unitInspect = h
+}
+
+func (a *otherSiteFileAgent) setUnitApply(h func(*transport.AppApplyRequest, *transport.AppApplyResponse)) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.unitApply = h
+}
+
+// poolRequestList and unitRequestList return copies of the recorded requests.
+func (a *otherSiteFileAgent) poolRequestList() []transport.SitePoolRequest {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return append([]transport.SitePoolRequest(nil), a.poolRequests...)
+}
+
+func (a *otherSiteFileAgent) unitRequestList() []transport.AppApplyRequest {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return append([]transport.AppApplyRequest(nil), a.unitRequests...)
+}
+
+func lastPoolRequest(a *otherSiteFileAgent) transport.SitePoolRequest {
+	requests := a.poolRequestList()
+	return requests[len(requests)-1]
+}
+
+func lastUnitRequest(a *otherSiteFileAgent) transport.AppApplyRequest {
+	requests := a.unitRequestList()
+	return requests[len(requests)-1]
+}
+
+func (a *otherSiteFileAgent) compensationCounts() (vhostApplied, unitsRemoved int) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.vhostApplied, a.unitsRemoved
+}
+
+func (a *otherSiteFileAgent) InspectSitePool(request *transport.SitePoolRequest, response *transport.InspectSiteFileResponse) error {
+	a.mu.Lock()
 	a.poolRequests = append(a.poolRequests, *request)
-	a.poolInspect(request, response)
+	handler := a.poolInspect
+	a.mu.Unlock()
+	handler(request, response)
 	return nil
 }
 
 func (a *otherSiteFileAgent) ApplySitePool(request *transport.SitePoolRequest, response *transport.ApplySiteFileResponse) error {
 	a.mu.Lock()
-	defer a.mu.Unlock()
 	a.poolRequests = append(a.poolRequests, *request)
-	a.poolApply(request, response)
+	handler := a.poolApply
+	a.mu.Unlock()
+	handler(request, response)
 	return nil
 }
 
 func (a *otherSiteFileAgent) InspectAppUnit(request *transport.AppApplyRequest, response *transport.InspectSiteFileResponse) error {
 	a.mu.Lock()
-	defer a.mu.Unlock()
 	a.unitRequests = append(a.unitRequests, *request)
-	a.unitInspect(request, response)
+	handler := a.unitInspect
+	a.mu.Unlock()
+	handler(request, response)
 	return nil
 }
 
 func (a *otherSiteFileAgent) ApplyAppUnit(request *transport.AppApplyRequest, response *transport.AppApplyResponse) error {
 	a.mu.Lock()
-	defer a.mu.Unlock()
 	a.unitRequests = append(a.unitRequests, *request)
-	a.unitApply(request, response)
+	handler := a.unitApply
+	a.mu.Unlock()
+	handler(request, response)
 	return nil
 }
 
@@ -101,7 +162,7 @@ func newOtherSiteFileFixture(t *testing.T, domain, projectType string) *otherSit
 		response.File.WrittenSHA256 = response.File.RenderSHA256
 	}
 	agent.single = func(request *transport.ApplyVhostRequest, response *transport.ApplyVhostResponse) {
-		agent.vhostApplied++
+		agent.vhostApplied++ // ApplyVhost holds agent.mu around this handler
 		file := fileResult(request.Domain, transport.SiteFileManagedUnchanged, transport.SiteFileOutcomeUnchanged)
 		response.File = &file
 	}
@@ -157,12 +218,12 @@ const poolTestPath = "/etc/php/8.3/fpm/pool.d/site1.conf"
 
 func TestSiteConfigListsThePoolAndItsChoices(t *testing.T) {
 	f := newOtherSiteFileFixture(t, "pool.example", "php")
-	f.agent.poolInspect = func(request *transport.SitePoolRequest, response *transport.InspectSiteFileResponse) {
+	f.agent.setPoolInspect(func(request *transport.SitePoolRequest, response *transport.InspectSiteFileResponse) {
 		response.File = otherFile(transport.SiteFileKindPHPPool, poolTestPath, transport.SiteFileOwnerEdited, transport.SiteFileOutcomeInspected)
 		response.File.PendingPath = poolTestPath + ".celikpanel-pending"
 		response.Diff = "--- a\n+++ b\n@@ -1 +1 @@\n-php_admin_value[memory_limit] = 512M\n"
-	}
-	f.agent.poolApply = func(request *transport.SitePoolRequest, response *transport.ApplySiteFileResponse) {
+	})
+	f.agent.setPoolApply(func(request *transport.SitePoolRequest, response *transport.ApplySiteFileResponse) {
 		if request.Operation != transport.SitePoolOperationTake || request.ExpectedFileSHA256 != otherFileSHA ||
 			request.ExpectedRenderSHA256 != otherRenderSHA || request.Username != services.SiteUsername("pool.example") {
 			file := otherFile(transport.SiteFileKindPHPPool, poolTestPath, transport.SiteFileOwnerEdited, transport.SiteFileOutcomeRefused)
@@ -174,7 +235,7 @@ func TestSiteConfigListsThePoolAndItsChoices(t *testing.T) {
 		file.BackupPath = poolTestPath + ".celikpanel-backup-20261011T010000Z"
 		file.WrittenSHA256 = otherRenderSHA
 		response.File = &file
-	}
+	})
 
 	view := f.read(t)
 	if len(view.Files) != 2 || view.Files[0].Kind != transport.SiteFileKindNginxVhost || view.State != transport.SiteFileManagedUnchanged {
@@ -188,7 +249,7 @@ func TestSiteConfigListsThePoolAndItsChoices(t *testing.T) {
 	if view.OverallState != transport.SiteFileOwnerEdited || view.OverallKind != transport.SiteFileKindPHPPool {
 		t.Fatalf("overall = %q %q", view.OverallState, view.OverallKind)
 	}
-	if request := f.agent.poolRequests[0]; request.Operation != transport.SitePoolOperationInspect || request.PHPVersion != "8.3" ||
+	if request := f.agent.poolRequestList()[0]; request.Operation != transport.SitePoolOperationInspect || request.PHPVersion != "8.3" ||
 		request.ExpectedBuildCommit != strings.TrimSpace(buildCommit) {
 		t.Fatalf("pool inspect request: %+v", request)
 	}
@@ -250,11 +311,11 @@ func TestSiteConfigListsThePoolAndItsChoices(t *testing.T) {
 
 func TestAPoolSaveAndAPHPSwitchOnAKeptPoolAreTypedRefusals(t *testing.T) {
 	f := newOtherSiteFileFixture(t, "save.example", "php")
-	f.agent.poolApply = func(request *transport.SitePoolRequest, response *transport.ApplySiteFileResponse) {
+	f.agent.setPoolApply(func(request *transport.SitePoolRequest, response *transport.ApplySiteFileResponse) {
 		file := otherFile(transport.SiteFileKindPHPPool, poolTestPath, transport.SiteFileOwnerEdited, transport.SiteFileOutcomeKept)
 		file.PendingPath = poolTestPath + ".celikpanel-pending"
 		response.File = &file
-	}
+	})
 	site, err := f.panel.loadSiteFileSite(context.Background(), f.domainID)
 	if err != nil {
 		t.Fatal(err)
@@ -282,7 +343,7 @@ func TestAPoolSaveAndAPHPSwitchOnAKeptPoolAreTypedRefusals(t *testing.T) {
 	if !ok || classification.Code != errCodeSiteConfigOwnerEdited || classification.Reason != transport.SiteFileKindPHPPool {
 		t.Fatalf("switch refusal: %+v %v", classification, ok)
 	}
-	if last := f.agent.poolRequests[len(f.agent.poolRequests)-1]; last.Operation != transport.SitePoolOperationSwitch || last.NewPHPVersion != "8.4" {
+	if last := lastPoolRequest(f.agent); last.Operation != transport.SitePoolOperationSwitch || last.NewPHPVersion != "8.4" {
 		t.Fatalf("switch request: %+v", last)
 	}
 
@@ -325,22 +386,22 @@ const unitTestPath = "/etc/systemd/system/celikapp-1.service"
 
 func TestSiteConfigListsTheUnitAndAHostingChangeOnAKeptUnitIsRefused(t *testing.T) {
 	f := newOtherSiteFileFixture(t, "app.example", "node")
-	f.agent.unitInspect = func(request *transport.AppApplyRequest, response *transport.InspectSiteFileResponse) {
+	f.agent.setUnitInspect(func(request *transport.AppApplyRequest, response *transport.InspectSiteFileResponse) {
 		response.File = otherFile(transport.SiteFileKindAppUnit, unitTestPath, transport.SiteFileManagedUnchanged, transport.SiteFileOutcomeInspected)
 		response.File.AdoptedFrom = "v0.1.0-alpha.82"
 		response.File.IncludeDir = unitTestPath + ".d"
-	}
-	f.agent.unitApply = func(request *transport.AppApplyRequest, response *transport.AppApplyResponse) {
+	})
+	f.agent.setUnitApply(func(request *transport.AppApplyRequest, response *transport.AppApplyResponse) {
 		file := otherFile(transport.SiteFileKindAppUnit, unitTestPath, transport.SiteFileOwnerEdited, transport.SiteFileOutcomeKept)
 		response.File = &file
 		response.Error = "kept"
-	}
+	})
 	view := f.read(t)
 	unit := fileByKind(view, transport.SiteFileKindAppUnit)
 	if unit == nil || unit.State != transport.SiteFileManagedUnchanged || unit.AdoptedFrom != "v0.1.0-alpha.82" || unit.IncludeDir == "" {
 		t.Fatalf("unit view: %+v", view.Files)
 	}
-	if request := f.agent.unitRequests[0]; request.Port != 3101 || request.Command != "node app.js" || request.RunAsUser != "www-data" {
+	if request := f.agent.unitRequestList()[0]; request.Port != 3101 || request.Command != "node app.js" || request.RunAsUser != "www-data" {
 		t.Fatalf("unit inspect request: %+v", request)
 	}
 	if view.OverallState != transport.SiteFileManagedUnchanged || fileByKind(view, transport.SiteFileKindPHPPool) != nil {
@@ -356,12 +417,12 @@ func TestSiteConfigListsTheUnitAndAHostingChangeOnAKeptUnitIsRefused(t *testing.
 	if !ok || classification.Code != errCodeSiteConfigOwnerEdited || classification.Reason != transport.SiteFileKindAppUnit {
 		t.Fatalf("hosting change: %v %+v", err, classification)
 	}
-	last := f.agent.unitRequests[len(f.agent.unitRequests)-1]
+	last := lastUnitRequest(f.agent)
 	if last.Trigger != transport.SiteFileTriggerChange || last.Command != "node server.js" {
 		t.Fatalf("unit request: %+v", last)
 	}
-	if f.agent.vhostApplied != 0 || f.agent.unitsRemoved != 0 {
-		t.Fatalf("compensation ran: vhost %d removed %d", f.agent.vhostApplied, f.agent.unitsRemoved)
+	if vhostApplied, unitsRemoved := f.agent.compensationCounts(); vhostApplied != 0 || unitsRemoved != 0 {
+		t.Fatalf("compensation ran: vhost %d removed %d", vhostApplied, unitsRemoved)
 	}
 	var command string
 	_ = f.panel.db.GetDB().QueryRow(`SELECT start_command FROM sites WHERE domain_id = ?`, f.domainID).Scan(&command)
@@ -370,7 +431,7 @@ func TestSiteConfigListsTheUnitAndAHostingChangeOnAKeptUnitIsRefused(t *testing.
 	}
 
 	// Take CelikPanel's on the unit names the unit's trigger.
-	f.agent.unitApply = func(request *transport.AppApplyRequest, response *transport.AppApplyResponse) {
+	f.agent.setUnitApply(func(request *transport.AppApplyRequest, response *transport.AppApplyResponse) {
 		file := otherFile(transport.SiteFileKindAppUnit, unitTestPath, transport.SiteFileOwnerEdited, transport.SiteFileOutcomeTaken)
 		if request.Trigger != transport.SiteFileTriggerTake || request.ExpectedFileSHA256 != otherFileSHA {
 			file.Outcome, file.Reason = transport.SiteFileOutcomeRefused, transport.SiteFileReasonChanged
@@ -378,10 +439,10 @@ func TestSiteConfigListsTheUnitAndAHostingChangeOnAKeptUnitIsRefused(t *testing.
 		file.BackupPath = unitTestPath + ".celikpanel-backup-20261011T010000Z"
 		response.File = &file
 		response.Unit = "celikapp-1"
-	}
-	f.agent.unitInspect = func(request *transport.AppApplyRequest, response *transport.InspectSiteFileResponse) {
+	})
+	f.agent.setUnitInspect(func(request *transport.AppApplyRequest, response *transport.InspectSiteFileResponse) {
 		response.File = otherFile(transport.SiteFileKindAppUnit, unitTestPath, transport.SiteFileOwnerEdited, transport.SiteFileOutcomeInspected)
-	}
+	})
 	recorder := f.post("take", siteConfigActionRequest{Kind: transport.SiteFileKindAppUnit, FileSHA256: otherFileSHA, RenderSHA256: otherRenderSHA})
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("unit take: %d %s", recorder.Code, recorder.Body.String())
