@@ -5060,8 +5060,10 @@ native cells (audit §9) come after. 2026-10-10 is the clock date.
   immutable file, update/return/forward, database restore from before the
   header, keep-mine then certificate issuance, take with its backup, include
   directory through renewals and switches, removed file not recreated). The
-  second step (PHP-FPM pool, application unit) is not implemented: pools are
-  still rewritten by a pool save and a PHP switch. `nginx -t` still judges the
+  second step (PHP-FPM pool, application unit) was not implemented when this
+  paragraph was written; it is superseded by the second-step entry below
+  (2026-10-11: in source, component-tested, not measured), so a pool save and
+  a PHP switch no longer rewrite a pool the owner changed. `nginx -t` still judges the
   whole configuration: an owner's broken file elsewhere fails every render
   batch (its files are put back), as before. The Panel's own ACME vhost, the
   webmail and database-tools vhosts are not covered. A temporary name
@@ -5112,9 +5114,13 @@ native cells (audit §9) come after. 2026-10-10 is the clock date.
   (creation) and `DeletePoolByName` (a dated copy of a file that is not
   CelikPanel's unchanged text before removal); the unit in `ApplyAppUnit`
   (`cmd/agent/app_rpc.go`, through the same function) and `RemoveAppUnit`
-  (dated copy before removal). The older pool RPCs (`UpdatePHPPoolConfig`,
-  `MigratePHPPool`) go through the same rule and answer a kept file with an
-  error whose tokens the Panel reads back (`site_file_held kind=… state=…`).
+  (dated copy before removal). The Agent's older pool RPCs (`UpdatePHPPoolConfig`,
+  `MigratePHPPool`) still go through the same rule and answer a kept file with
+  an error whose tokens the Panel reads back (`site_file_held kind=…
+  state=…`); the Panel itself now routes pool saves and PHP switches through
+  `Agent.ApplySitePool`, and `Agent.MigratePHPPool` is removed from its call
+  policy (the generic PHP page's pool save by name still uses
+  `UpdatePHPPoolConfig`).
   *Render rule:* as the vhost's (identical bytes: no write, no reload; kept:
   the text beside it in `<file>.celikpanel-pending`, typed 409; take bound to
   the digests shown, with a dated copy; unreadable or a symlink: refused);
@@ -5146,9 +5152,27 @@ native cells (audit §9) come after. 2026-10-10 is the clock date.
   the worst presented state across the site's current files (vhost first on a
   tie) with `kind` when it is not the vhost. *Recovery:* the owner's file
   stays in service through every refused operation; take keeps a dated copy;
-  removing a site keeps a copy of an edited pool or unit. *Not done:* pools
+  removing a site keeps a copy of an edited pool or unit. *Version pairing:* `Agent.InspectSitePool` and `Agent.ApplySitePool` are
+  bound to the Panel's build commit (`cmd/agent/build_gate_contract_test.go`)
+  and the Panel never falls back to the older pool RPCs; `Agent.InspectAppUnit`
+  and `Agent.ApplyAppUnit` carry no build gate (an older Agent writes the unit
+  as before and reports no `file`, which the Panel records as nothing known).
+  *HTTP:* the refusals are `409 SITE_CONFIG_{OWNER_EDITED,MISSING,UNWRITABLE,
+  EXISTS}` with `reason` the kind and `detail` the state (reason for
+  UNWRITABLE), `502 SITE_CONFIG_SERVICE_REFUSED` with `detail`
+  `config_refused` or `reload_failed`; a kind is `400` when unknown and `409
+  SITE_CONFIG_NOT_APPLICABLE` when the site lacks it; "take" on a measured
+  protection is `409 SITE_CONFIG_UNWRITABLE` before any write, for every kind.
+  The worst state across files uses the one precedence of the vhost
+  (`services.SiteFileWorstState`; the vhost first on a tie); a file the Agent
+  did not report (`unknown`, `not_read`) ranks below `managed_unchanged`, so it
+  is listed but never decides the overall state. *Not done:* pools
   and units are not rendered or observed at the Panel's start, so the start
-  line does not count them; a pool's values are kept nowhere outside the pool
+  line does not count them; site creation writes no pool or unit ledger row
+  (a row begins at the page's first read or at the first save, switch or unit
+  change); when a service refusal's own rollback fails, the Panel's sentence
+  still says the previous file was put back (the Agent's rollback error is not
+  carried into it); a pool's values are kept nowhere outside the pool
   file and its pending text; the generic PHP page's pool save (by pool name)
   answers the typed refusal only through the error tokens. *Evidence:*
   services (`site_pool_file_test.go`), Agent (`app_unit_site_file_test.go`),

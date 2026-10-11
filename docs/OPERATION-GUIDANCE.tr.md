@@ -6299,7 +6299,8 @@ yoklamayla ölçülür:
 Adım 1b'den önce korunmuş bir dosyada (alpha.81/82 düzenlemesi, kökeni
 bilinmiyor) ekleme satırı yoktur: sahip CelikPanel'in metnini alana ya da
 dosyanın doğrulamayı sunmasını sağlayana dek sertifikası bekler. PHP-FPM havuzu
-ve uygulama birimi henüz kapsanmıyor (ikinci adım). Dar ekranda Alan adları
+ve uygulama birimi aşağıdaki ikinci adımla kapsanır (2026-10-11; bileşen
+testli, gerçek sistemde ölçülmedi). Dar ekranda Alan adları
 listesi rozetleri kesmek yerine alan adının altına sarar (`Domains.tsx`); koşum
 düzeneği her durum için `pageOverflowX` kaydeder ve bu koşunun telefon
 genişliğinde yapılıp yapılmadığı burada kayıtlı değildir. Farkın iki başlığı
@@ -6537,8 +6538,11 @@ eder." Kim yapar: sunucu sahibi (yönetici); hiçbir şey kendiliğinden sürmez
   CelikPanel o dizine hiç yazmaz, onu silmez ve bu birimde yaptığı her
   değişiklikte ayarlarınızı korur."). Birimin kendi yorumu da aynısını söyler.
 
-**Retler** (her biri dosyayı `reason` içinde adlandırır; durum `detail`
-içindedir):
+**Retler** (her biri dosyayı `reason` içinde adlandırır; `detail`,
+`OWNER_EDITED` ve `EXISTS` için dosyanın durumudur, `UNWRITABLE` için Agent'ın
+nedeni (örneğin `write_refused`), `502` için de neden (hizmetin kendi denetimi
+metni reddettiyse `config_refused`, yeniden yüklemesi reddettiyse
+`reload_failed`); `MISSING` hiçbirini taşımaz):
 - `409 SITE_CONFIG_OWNER_EDITED` `reason: php_pool` — havuz kaydetmede
   (`POST /api/v1/domains/{id}/php/pool`) ya da PHP sürümü değişikliğinde
   (`POST …/php`): `err.SITE_CONFIG_OWNER_EDITED.php_pool` "Bu sitenin PHP-FPM
@@ -6549,20 +6553,25 @@ içindedir):
   saklanır) ya da ikisini elle birleştirin." Hiçbir şey değişmedi: havuz,
   vhost ve sitenin PHP sürümü olduğu gibi kalır.
 - `409 SITE_CONFIG_OWNER_EDITED` `reason: app_unit` — birimi düzenlenmiş bir
-  Node sitesine ya da sitesinde barındırma değişikliğinde (`PUT …/hosting`);
+  Node sitesinde ya da Node sitesine geçişte barındırma değişikliğinde
+  (`PUT …/hosting`);
   uygulama sahibin birimiyle çalışmaya devam eder, veritabanı önceki ayarları
   tutar ve hiçbir telafi koşmaz (hiçbir şey değişmedi).
 - `409 SITE_CONFIG_MISSING` (`php_pool`, `app_unit`): dosya yok; kaydetme ya da
   değişiklik onu yeniden oluşturmaz; sayfadaki "Yeniden oluştur" yazar.
 - `409 SITE_CONFIG_UNWRITABLE` (`php_pool`, `app_unit`): bağlantı, sıradan
-  olmayan dosya, okunamayan ya da kilitli; sayfa korumayı adlandırır.
+  olmayan dosya, okunamayan ya da kilitli; sayfa korumayı adlandırır. Agent'ın
+  şimdi korumalı ölçtüğü bir havuz ya da birimde sayfanın “al”ı, vhost'taki
+  gibi, hiçbir şey yazılmadan (tarihli kopya yok) aynı biçimde yanıtlanır.
 - `409 SITE_CONFIG_EXISTS` `reason: php_pool`: hedef sürümde site için zaten
   bir havuz dosyası olan PHP sürümü değişikliği; hiçbir şey değişmedi.
 - `502 SITE_CONFIG_SERVICE_REFUSED` (`php_pool`, `app_unit`): `php-fpm -t`,
   PHP-FPM'in yeniden yüklenmesi ya da `systemctl daemon-reload` CelikPanel'in
   metnini reddetti; önceki dosya kip ve sahibiyle geri kondu ve hizmet yeniden
   yüklendi. Panel günlüğü hizmetin iletisini adlandırır (`sudo journalctl -u
-  celikpanel-panel | grep "site configuration"`).
+  celikpanel-panel | grep "site configuration"`). Bilinen açık: bu geri almanın
+  kendisi de başarısız olursa yanıt yine önceki dosyanın geri konduğunu söyler
+  (Agent'ın geri alma hatası yanıta taşınmaz); sahip dosyayı sunucuda denetler.
 
 **İş nasıl sürer.** Benimkini koru: sahibin dosyası kalır; dosya korundukça
 onun üzerindeki kaydetme ve sürüm değişiklikleri reddedilir (alan adının
@@ -6583,12 +6592,21 @@ metnin ta kendisi; bu yüzden CelikPanel onu kendi metni sayar. Bir sonraki
 kaydedilen PHP ayarı onu CelikPanel’in başlığıyla yeniden yazar." Başka her
 dosya "CelikPanel’in metni olarak tanınmadı" olur ve korunur. Havuz ve birim
 Panelin açılışında üretilmez; benimsenen dosya bir sonraki yazmaya kadar eski
-baytlarını korur.
+baytlarını korur. İki sürüm farklıdır: alpha.81'in havuzu
+`/var/run/php/php<s>-fpm-<havuz>.sock` soketini `www-data` sahibiyle dinler,
+alpha.82'ninki bu sunucunun soketini web sunucusu hesabı sahibiyle;
+alpha.81'in birimi `User=` satırını istendiği gibi yazar, alpha.82'ninki
+sunucuda var olan web sunucusu hesabını. Site oluşturma havuz ya da birim defter
+satırı yazmaz (satır sayfanın ilk okumasında ya da ilk kaydetme, sürüm veya
+birim değişikliğinde başlar); bu yüzden kimsenin okumadığı bir havuz Alan
+Adları listesinde henüz yoktur.
 
 **Alan Adları satırı ve bildirim.** Satırın rozeti ve alan adının üstündeki
 satır sitenin dosyalarının en kötü durumunu gösterir (okunamıyor >
 değiştirilemiyor > yok > düzenlendi / değiştirildi / tanınmadı > değişmemiş;
-eşitlikte vhost önce); karar veren havuz ya da birimse `kind` onu adlandırır ve
+eşitlikte vhost önce; Agent'ın bildirmediği dosya, “Durumu bilinmiyor”,
+değişmemişin altında sıralanır ve satırı asla belirlemez, sayfa onu yine de
+listeler); karar veren havuz ya da birimse `kind` onu adlandırır ve
 bildirim bunu söyler (`siteConfig.notice.php_pool.*`,
 `siteConfig.notice.app_unit.*`; örneğin "Bu sitenin PHP-FPM havuz dosyası
 CelikPanel dışında değiştirildi. CelikPanel onu korudu ve seçiminizi
@@ -6601,7 +6619,18 @@ düzey alanı vhost'unki olarak korur (tek dosya okuyan istemci değişmez) ve
 birimi; her biri aynı biçimde, `kind` ve kendi `actions` ile — ve
 `overall_state`, `overall_kind`. Agent'ın şu an yanıt vermediği dosya
 `{"kind": …, "state": "unknown", "reason": "not_read", "actions": ["recheck"]}`
-olur; diğerleri yine gösterilir. `POST …/site-config/{keep,take,recreate,apply}`
+olur; diğerleri yine gösterilir. Bir tür için okumaya sahip olmayan bir Agent
+`state: "unknown"`, `reason: "agent_does_not_report"` yanıtlar. `overall_state`,
+dosyaların gösterilen durumlarının en yükseğidir (okunamıyor > değiştirilemiyor
+> yok > korunan > managed_unchanged; `unknown` en alta sıralanır; eşitlikte ilk
+dosya), `overall_kind` kararı veren dosyadır. `POST …/site-config/{keep,take,recreate,apply}`
 aynı özetlerle `"kind": "php_pool" | "app_unit"` alır (yoksa vhost); başka bir
-tür `400`, sitede olmayan bir tür `409 SITE_CONFIG_NOT_APPLICABLE` verir. Alan
-Adları listesinin `site_config` alanı `kind` kazanır (vhost için yoktur).
+tür `400` (“kind is nginx_vhost, php_pool or app_unit”), sitede olmayan bir
+tür `409 SITE_CONFIG_NOT_APPLICABLE` verir. `apply` ve “koruma kaldırıldı”
+denetimi vhost'taki gibi dosya başına çalışır (`protection_removed` her türün
+defter nedenidir). Alan Adları listesinin `site_config` alanı `kind` kazanır
+(vhost için yoktur); yalnız defter satırlarından kurulur, satırı olmayan dosya
+içinde yoktur. Sürüm eşleşmesi: havuzun iki Agent çağrısı Panel'in derlemesine
+bağlıdır ve eski havuz çağrılarına geri dönüş yoktur (`Agent.MigratePHPPool`
+artık Panel'in çağrı politikasında değil); birimin iki çağrısında derleme
+kapısı yoktur.

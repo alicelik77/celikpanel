@@ -6355,7 +6355,8 @@ Whether it does is measured by the probe above, before anything is requested:
 A file kept from before step 1b (an alpha.81/82 edit, unknown origin) has no
 include line: its certificate waits until the owner takes CelikPanel's text or
 makes the file serve the validation. The
-PHP-FPM pool and the application unit are not covered yet (the second step). On
+PHP-FPM pool and the application unit are covered by the second step below
+(2026-10-11; component-tested, not measured on a real system). On
 a narrow screen the Domains list wraps the badges below the domain name instead
 of cutting them off (`Domains.tsx`); the harness records `pageOverflowX` for
 each state, and whether that run was made at phone width is not recorded
@@ -6597,8 +6598,11 @@ administrator); nothing continues by itself.
   writes or removes that directory, and every change CelikPanel makes to this
   unit keeps your settings."). The unit's own comment says the same.
 
-**The refusals** (each names the file in its `reason`; the state is in
-`detail`):
+**The refusals** (each names the file in its `reason`; `detail` is the file's
+state for `OWNER_EDITED` and `EXISTS`, the Agent's reason for `UNWRITABLE`
+(for example `write_refused`) and for `502` (`config_refused` when the
+service's own check refused the text, `reload_failed` when its reload did);
+`MISSING` carries none):
 - `409 SITE_CONFIG_OWNER_EDITED` `reason: php_pool` — on a pool save
   (`POST /api/v1/domains/{id}/php/pool`) or a PHP switch (`POST …/php`):
   `err.SITE_CONFIG_OWNER_EDITED.php_pool` "This site’s PHP-FPM pool file is not
@@ -6614,14 +6618,20 @@ administrator); nothing continues by itself.
 - `409 SITE_CONFIG_MISSING` (`php_pool`, `app_unit`): the file is gone; it is
   not recreated by a save or a change; "Recreate" on the page writes it.
 - `409 SITE_CONFIG_UNWRITABLE` (`php_pool`, `app_unit`): a link, not an
-  ordinary file, unreadable, or locked; the page names the protection.
+  ordinary file, unreadable, or locked; the page names the protection. The
+  page's "take" on a pool or unit whose protection the Agent measures now is
+  answered the same way before anything is written (no dated copy), as for the
+  vhost.
 - `409 SITE_CONFIG_EXISTS` `reason: php_pool`: a PHP switch whose target
   version already has a pool file for the site; nothing switched.
 - `502 SITE_CONFIG_SERVICE_REFUSED` (`php_pool`, `app_unit`): `php-fpm -t`, the
   PHP-FPM reload or `systemctl daemon-reload` refused CelikPanel's text; the
   previous file was put back with its mode and owner and the service reloaded
   again. The panel log names the service's message (`sudo journalctl -u
-  celikpanel-panel | grep "site configuration"`).
+  celikpanel-panel | grep "site configuration"`). Known gap: if that
+  rollback itself fails, the answer still says the previous file was put back
+  (the Agent's rollback error is not carried into it); the owner then checks
+  the file on the server.
 
 **How work resumes.** Keep mine: the owner's file stays; saves and switches on
 it stay refused while it is kept (the notice above the domain says so). Take
@@ -6638,13 +6648,20 @@ creation identity and the values the file carries; unit: the same request) is
 CelikPanel's: "It is exactly the text {release} wrote for this site’s pool, so
 CelikPanel recognises it as its own. The next saved PHP setting writes it again
 with CelikPanel’s header." Any other is "not recognised as CelikPanel’s" and
-kept. Pools and units are not rendered at the Panel's start, so an adopted file
-keeps its old bytes until its next write.
+kept. The two releases differ: alpha.81's pool listened on
+`/var/run/php/php<v>-fpm-<pool>.sock` owned by `www-data`, alpha.82's on this
+host's socket owned by the web server's account; alpha.81's unit wrote `User=`
+as asked, alpha.82's the web server's account that exists on the host. Pools
+and units are not rendered at the Panel's start, so an adopted file keeps its
+old bytes until its next write; site creation writes no pool or unit ledger
+row (a row begins at the page's first read or at the first save, switch or unit
+change), so a pool nobody has read is not yet in the Domains list.
 
 **The Domains row and the notice.** The row's badge and the line above the
 domain show the worst state of the site's files (unreadable > unwritable >
 missing > edited / replaced / not recognised > unchanged; the vhost first on a
-tie), with `kind` naming the pool or the unit when it decided; the notice then
+tie; a file the Agent did not report, "State not known", ranks below unchanged
+and never decides the row, though the page lists it), with `kind` naming the pool or the unit when it decided; the notice then
 says so (`siteConfig.notice.php_pool.*`, `siteConfig.notice.app_unit.*`, for
 example "This site’s PHP-FPM pool file was changed outside CelikPanel. CelikPanel
 kept it and is waiting for your choice."). The page's read records what it
@@ -6657,8 +6674,17 @@ adds `files[]` — the vhost, then the pool of a PHP site, then the unit of a No
 site, each in the same shape with `kind` and its own `actions` — and
 `overall_state`, `overall_kind`. A file the Agent did not answer for now is
 `{"kind": …, "state": "unknown", "reason": "not_read", "actions": ["recheck"]}`;
-the others are still shown. `POST …/site-config/{keep,take,recreate,apply}`
+the others are still shown. An Agent that does not have the read for a kind
+answers `state: "unknown"`, `reason: "agent_does_not_report"`. `overall_state`
+is the highest of the files' presented states (unreadable > unwritable >
+missing > kept > managed_unchanged; `unknown` ranks lowest; the first file on a
+tie), `overall_kind` the file that decided it. `POST …/site-config/{keep,take,recreate,apply}`
 take `"kind": "php_pool" | "app_unit"` (absent: the vhost) with the same
-digests; another kind is `400`; a kind the site does not have is `409
-SITE_CONFIG_NOT_APPLICABLE`. The Domains list's `site_config` gains `kind`
-(absent for the vhost).
+digests; another kind is `400` ("kind is nginx_vhost, php_pool or app_unit"); a kind the site does not have is `409
+SITE_CONFIG_NOT_APPLICABLE`. `apply` and the "protection removed" check work
+per file as for the vhost (`protection_removed` is a ledger reason of any
+kind). The Domains list's `site_config` gains `kind` (absent for the vhost); it
+is built from the ledger rows only, so a file with no row is not in it. Version
+pairing: the pool's two Agent calls are bound to the Panel's build commit and
+there is no fallback to the older pool calls (`Agent.MigratePHPPool` is no
+longer in the Panel's call policy); the unit's two calls carry no build gate.

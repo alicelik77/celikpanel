@@ -23,7 +23,7 @@ Code decisions live in git; this file is for strategy. Newest first.
 
 ## D-031 · A site configuration file the owner changed is kept and named, never overwritten by a render
 
-*October 10, 2026 (clock date) · Owner decision on a finding of the read-only audit [SITE-CONFIG-OWNER-EDITS-2026-10-10](audit/SITE-CONFIG-OWNER-EDITS-2026-10-10.md); design decided; first step in source (commit of 2026-10-10), native measurement pending; second step (pool, application unit) in source 2026-10-11, component-tested and mock browser, not measured on a real system*
+*October 10, 2026 (clock date) · Owner decision on a finding of the read-only audit [SITE-CONFIG-OWNER-EDITS-2026-10-10](audit/SITE-CONFIG-OWNER-EDITS-2026-10-10.md); design decided; first step measured in the tenth native record (two findings corrected 2026-10-11); the apply action and the one precedence (2026-10-11) and the second step (pool, application unit; 2026-10-11) component-tested and mock browser, native measurement pending*
 
 The audit read, from source only, that the Panel's start renders every hosted
 site's nginx configuration again and writes it with no comparison, no digest
@@ -115,6 +115,24 @@ The owner decided on 2026-10-10 that the correction enters the next release:
    `php_pool` and `app_unit`. The Configuration file page lists every file of
    the site with its own actions; the Domains row shows the worst state
    across the files (the vhost first on a tie).
+   Limits, stated plainly (2026-10-11): the Panel's two pool calls are bound
+   to the Panel's own build, and an Agent that does not have them gives an
+   error with nothing written (no fallback to the older pool calls;
+   `MigratePHPPool` is gone from the Panel's policy); the unit's two calls
+   carry no build gate, so an older Agent would write the unit as before and
+   report no file, which the Panel records as nothing known. Site creation
+   writes no pool or unit ledger row: a row begins at the page's first read or
+   at the first save, switch or unit change, so a pool nobody has read is not
+   in the Domains list. A file the Agent did not report (`unknown`) ranks below
+   CelikPanel's unchanged text in the worst-state rule, so it never decides
+   the Domains row; the page still lists it as "State not known". When a
+   service refusal's own rollback fails, the Panel's sentence still says the
+   previous file was put back (the Agent's rollback error is not carried into
+   the refusal). The two adoption bases differ: the pool of alpha.81 listened
+   on `/var/run/php/php<v>-fpm-<pool>.sock` owned by `www-data`, alpha.82 on
+   this host's socket owned by the web server's account; the unit of alpha.81
+   wrote `User=` as asked, alpha.82 the web server's account that exists on
+   the host.
 
 Not done until measured natively on Debian 13, Ubuntu 24.04 and Arch: the
 audit's §9 cells (owner edit kept and named at start and at every render path;
@@ -136,6 +154,22 @@ again" (the page answered `managed_unchanged` with no reason). The ledger keeps
 migration 044's state set (`unreadable` + `write_refused`); no schema change.
 New and recreated vhosts are `root:celikpanel 0644`; kept and taken files keep
 the owner's mode, owner and group (measured).
+Second correction (2026-10-11; component-tested and mock browser; not measured
+on a real system): the page's read is the "check again" and records what it
+found on a refused replacement's ledger row. The same bytes with no protection
+measured: CelikPanel's own text is `managed_unchanged` with the reason
+`protection_removed`, and the page offers "Write CelikPanel's text now"
+(`POST …/site-config/apply`, both digests, request identity, administrator
+only). It writes this one site's held text, keeps no dated copy (the file is
+CelikPanel's own earlier text; nothing of the owner's is in it), and an nginx
+refusal puts the previous bytes back. Still protected: `unwritable` stays; other
+bytes: the file is recorded as it is and never written. One order decides what
+the row, the badge and the page show when two facts hold for the same bytes:
+unreadable, unwritable, missing, kept (owner-edited, foreign, unknown origin),
+then CelikPanel's unchanged text (`services.SiteFileShownState`). An
+owner-edited file whose "take" was refused shows both facts, and "take" is
+answered `409 SITE_CONFIG_UNWRITABLE` before anything is written while the
+protection stands. No schema change.
 Open in the probe of the second round (2026-10-10), none fixed: a port-80
 block bound to one address is not reached from the loopback; a failed
 `nginx -t` or reload at the Configuration file page's read is reported as

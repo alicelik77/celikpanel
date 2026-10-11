@@ -4325,7 +4325,10 @@ hücreleri (denetim §9) sonra gelir. 2026-10-10 saat tarihidir.
   senaryosu, masaüstü ve telefon, İngilizce ve Türkçe, açık ve koyu; ekran
   görüntülerine bakıldı.
 - **Açık / ölçülmedi.** Denetimin §9 hücrelerinin tamamı Debian 13, Ubuntu
-  24.04 ve Arch'ta. İkinci adım (PHP-FPM havuzu, uygulama birimi) uygulanmadı.
+  24.04 ve Arch'ta. İkinci adım (PHP-FPM havuzu, uygulama birimi) bu paragraf yazılırken
+  uygulanmamıştı; aşağıdaki ikinci adım girdisiyle değiştirildi (2026-10-11:
+  kaynakta, bileşen testli, ölçülmedi); artık havuz kaydetme ve PHP sürümü
+  değişikliği sahibin değiştirdiği havuzu yeniden yazmaz.
   `nginx -t` hâlâ tüm yapılandırmayı yargılar: başka yerdeki bozuk bir sahip
   dosyası her üretim toplu işini düşürür (dosyaları geri konur), eskisi gibi.
   Panel'in kendi ACME sanal konağı, webmail ve veritabanı araçları sanal konakları
@@ -4378,10 +4381,13 @@ hücreleri (denetim §9) sonra gelir. 2026-10-10 saat tarihidir.
   yoksa yazar), `CreatePool` (oluşturma) ve `DeletePoolByName` (CelikPanel'in
   değişmemiş metni olmayan dosyanın kaldırmadan önce tarihli kopyası) çağırır;
   birim `ApplyAppUnit` (`cmd/agent/app_rpc.go`, aynı işlevle) ve
-  `RemoveAppUnit` (kaldırmadan önce tarihli kopya) içinde. Eski havuz RPC'leri
-  (`UpdatePHPPoolConfig`, `MigratePHPPool`) aynı kuraldan geçer ve korunan
+  `RemoveAppUnit` (kaldırmadan önce tarihli kopya) içinde. Agent'ın eski havuz RPC'leri
+  (`UpdatePHPPoolConfig`, `MigratePHPPool`) hâlâ aynı kuraldan geçer ve korunan
   dosyayı Panelin geri okuduğu belirteçli bir hatayla bildirir
-  (`site_file_held kind=… state=…`). *Üretim kuralı:* vhost'unki gibi (aynı
+  (`site_file_held kind=… state=…`); Panel artık havuz kaydetme ve PHP sürümü
+  değişikliğini `Agent.ApplySitePool` ile yapar ve `Agent.MigratePHPPool`
+  Panel'in çağrı politikasından çıkarıldı (genel PHP sayfasının havuz
+  kaydetmesi, havuz adıyla, hâlâ `UpdatePHPPoolConfig` kullanır). *Üretim kuralı:* vhost'unki gibi (aynı
   baytlar: yazma yok, yeniden yükleme yok; korunan: metin yanında
   `<dosya>.celikpanel-pending` içinde, tipli 409; alma gösterilen özetlere
   bağlı, tarihli kopyayla; okunamayan ya da sembolik bağlantı: reddedilir);
@@ -4416,8 +4422,26 @@ hücreleri (denetim §9) sonra gelir. 2026-10-10 saat tarihidir.
   gösterir (eşitlikte vhost önce), vhost değilse `kind` ile. *Kurtarma:*
   sahibin dosyası reddedilen her işlem boyunca hizmette kalır; alma tarihli
   kopya bırakır; siteyi silmek düzenlenmiş havuz ya da birimin kopyasını
-  bırakır. *Yapılmayan:* havuz ve birim Panelin açılışında üretilmez ve
-  gözlenmez, açılış satırı onları saymaz; havuzun değerleri havuz dosyası ve
+  bırakır. *Sürüm eşleşmesi:* `Agent.InspectSitePool` ve `Agent.ApplySitePool` Panel'in
+  derleme işlemine bağlıdır (`cmd/agent/build_gate_contract_test.go`) ve Panel
+  eski havuz RPC'lerine asla geri dönmez; `Agent.InspectAppUnit` ve
+  `Agent.ApplyAppUnit` derleme kapısı taşımaz (eski bir Agent birimi eskisi
+  gibi yazar ve `file` bildirmez, Panel bunu “hiçbir şey bilinmiyor” diye
+  kaydeder). *HTTP:* retler `409 SITE_CONFIG_{OWNER_EDITED,MISSING,UNWRITABLE,
+  EXISTS}` (`reason` tür, `detail` durum; UNWRITABLE için neden) ve
+  `502 SITE_CONFIG_SERVICE_REFUSED` (`detail` `config_refused` ya da
+  `reload_failed`); bilinmeyen tür `400`, sitede olmayan tür `409
+  SITE_CONFIG_NOT_APPLICABLE`; ölçülen korumada “al”, her tür için, hiçbir şey
+  yazılmadan `409 SITE_CONFIG_UNWRITABLE`. Dosyalar arası en kötü durum
+  vhost'un tek öncelik sırasını kullanır (`services.SiteFileWorstState`;
+  eşitlikte vhost önce); Agent'ın bildirmediği dosya (`unknown`, `not_read`)
+  `managed_unchanged`in altında sıralanır, yani listelenir ama genel durumu
+  asla belirlemez. *Yapılmayan:* havuz ve birim Panelin açılışında üretilmez ve
+  gözlenmez, açılış satırı onları saymaz; site oluşturma havuz ya da birim
+  defter satırı yazmaz (satır sayfanın ilk okumasında ya da ilk kaydetme,
+  sürüm değişikliği veya birim değişikliğinde başlar); bir hizmet reddinin kendi
+  geri alması da başarısız olursa Panel'in cümlesi yine önceki dosyanın geri
+  konduğunu söyler (Agent'ın geri alma hatası yanıta taşınmaz); havuzun değerleri havuz dosyası ve
   bekleyen metni dışında hiçbir yerde tutulmaz; genel PHP sayfasının havuz
   kaydetmesi (havuz adıyla) tipli reddi yalnız hata belirteçleri üzerinden
   verir. *Kanıt:* services (`site_pool_file_test.go`), Agent

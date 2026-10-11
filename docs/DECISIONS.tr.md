@@ -23,7 +23,7 @@ git'te yaşar; bu dosya strateji içindir. En yeni en üstte.
 
 ## D-031 · Sahibin değiştirdiği site yapılandırma dosyası korunur ve adlandırılır; üretim onun üstüne yazmaz
 
-*10 Ekim 2026 (saat tarihi) · Salt-okur denetimin bulgusu üzerine sahip kararı ([SITE-CONFIG-OWNER-EDITS-2026-10-10](audit/SITE-CONFIG-OWNER-EDITS-2026-10-10.md)); tasarım kararlaştırıldı; ilk adım kaynakta (10 Ekim 2026 kaydı), gerçek sistem ölçümü bekliyor; ikinci adım (havuz, uygulama birimi) 11 Ekim 2026'da kaynakta, bileşen testli ve sahte tarayıcıyla denendi, gerçek sistemde ölçülmedi*
+*10 Ekim 2026 (saat tarihi) · Salt-okur denetimin bulgusu üzerine sahip kararı ([SITE-CONFIG-OWNER-EDITS-2026-10-10](audit/SITE-CONFIG-OWNER-EDITS-2026-10-10.md)); tasarım kararlaştırıldı; ilk adım onuncu gerçek sistem kaydında ölçüldü (iki bulgu 11 Ekim 2026'da düzeltildi); “şimdi yaz” eylemi ile tek öncelik sırası (11 Ekim 2026) ve ikinci adım (havuz, uygulama birimi; 11 Ekim 2026) bileşen testli ve sahte tarayıcıyla denendi, gerçek sistem ölçümü bekliyor*
 
 Denetim, yalnız kaynaktan okuyarak şunu buldu: Panelin açılışı barındırılan
 her sitenin nginx yapılandırmasını yeniden üretir ve karşılaştırmasız,
@@ -115,6 +115,24 @@ Sahip 10 Ekim 2026'da düzeltmenin bir sonraki sürüme girmesine karar verdi:
    `php_pool` ve `app_unit` adlarını zaten taşır. Yapılandırma dosyası sayfası
    sitenin her dosyasını kendi seçimleriyle listeler; Alan Adları satırı
    dosyalar arasında en kötü durumu gösterir (eşitlikte vhost önce gelir).
+   Sınırlar, açıkça (2026-10-11): Panel'in iki havuz çağrısı Panel'in kendi
+   derlemesine bağlıdır; onlara sahip olmayan bir Agent hiçbir şey yazılmadan hata
+   verir (eski havuz çağrılarına geri dönüş yok; `MigratePHPPool` Panel'in
+   politikasından çıkarıldı). Birimin iki çağrısında derleme kapısı yoktur; eski
+   bir Agent birimi eskisi gibi yazar ve dosya bildirmez, Panel bunu “hiçbir şey
+   bilinmiyor” diye kaydeder. Site oluşturma havuz ya da birim defter satırı
+   yazmaz: satır sayfanın ilk okumasında ya da ilk kaydetme, sürüm değişikliği
+   veya birim değişikliğinde başlar; bu yüzden kimsenin okumadığı bir havuz
+   Alan Adları listesinde yoktur. Agent'ın bildirmediği dosya (`unknown`)
+   en-kötü-durum kuralında CelikPanel'in değişmemiş metninin altında sıralanır,
+   yani Alan Adları satırını asla belirlemez; sayfa onu yine de “Durumu
+   bilinmiyor” diye listeler. Bir hizmet reddinin kendi geri alması da
+   başarısız olursa Panel'in cümlesi yine de önceki dosyanın geri konduğunu
+   söyler (Agent'ın geri alma hatası ret cevabına taşınmaz). İki benimseme
+   tabanı farklıdır: alpha.81'in havuzu `/var/run/php/php<s>-fpm-<havuz>.sock`
+   soketini `www-data` sahibiyle dinler, alpha.82'nin havuzu bu sunucunun
+   soketini web sunucusu hesabı sahibiyle; alpha.81'in birimi `User=` satırını
+   istendiği gibi yazar, alpha.82'ninki sunucuda var olan web sunucusu hesabını.
 
 Debian 13, Ubuntu 24.04 ve Arch'ta gerçek sistemde ölçülmeden bitmiş
 sayılmaz: denetimin §9 hücreleri (sahip düzenlemesi açılışta ve her üretim
@@ -138,6 +156,22 @@ yazmak istediği metin ve "Yeniden denetle" ile (sayfa nedensiz
 (`unreadable` + `write_refused`); şema değişmedi. Yeni ve yeniden oluşturulan
 sanal konaklar `root:celikpanel 0644`; korunan ve alınan dosyalar sahibin
 kipini, sahibini ve grubunu korur (ölçüldü).
+İkinci düzeltme (2026-10-11; bileşen testli ve sahte tarayıcıyla denendi;
+gerçek sistemde ölçülmedi): sayfanın okuması “yeniden denetle”dir ve reddedilen
+bir değiştirmenin defter satırına bulduğunu yazar. Aynı baytlarda ölçülen
+koruma yoksa CelikPanel'in kendi metni `managed_unchanged` olur, nedeni
+`protection_removed`; sayfa “CelikPanel'in metnini şimdi yaz” önerir
+(`POST …/site-config/apply`, iki özet, istek kimliği, yalnız yönetici). Bu
+siteye ait bekleyen metni yazar, tarihli kopya tutmaz (dosya CelikPanel'in kendi
+önceki metnidir; sahibin hiçbir şeyi içinde yok) ve nginx reddederse önceki
+baytlar geri konur. Koruma sürüyorsa `unwritable` kalır; baytlar farklıysa dosya
+olduğu gibi kaydedilir ve asla yazılmaz. İki olgu aynı baytlar için geçerliyse
+satırın, rozetin ve sayfanın ne göstereceğini tek sıra belirler: okunamıyor,
+değiştirilemiyor, yok, korunan (sahip düzenlemesi, yabancı, bilinmeyen köken),
+sonra CelikPanel'in değişmemiş metni (`services.SiteFileShownState`). “Al”ı
+reddedilen sahip düzenlemesi iki olguyu birlikte gösterir ve koruma sürerken
+“al” hiçbir şey yazılmadan `409 SITE_CONFIG_UNWRITABLE` ile yanıtlanır. Şema
+değişmez.
 İkinci turun yoklamasında açık kalanlar (2026-10-10), hiçbiri giderilmedi: tek
 bir adrese bağlı 80 numaralı bağlantı noktası bloğuna geri döngüden
 ulaşılmaz; Yapılandırma dosyası sayfasının okumasında başarısız bir `nginx -t`
