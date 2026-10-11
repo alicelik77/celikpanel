@@ -272,9 +272,15 @@ jobs:
             skip: ''
           # Keep the existing status-check name while separating setup tests.
           # Kurulum testlerini ayirirken mevcut durum denetimi adini koru.
-          - shard: S, except the service tests
+          - shard: S, except the service, setup, site and startup tests
             pattern: '^TestS'
-            skip: '^Test(Service|ServerSetup)'
+            skip: '^Test(Service|ServerSetup|Site|Startup)'
+          - shard: Startup readiness
+            pattern: '^TestStartup'
+            skip: ''
+          - shard: Site configuration
+            pattern: '^TestSite'
+            skip: ''
           - shard: Server setup
             pattern: '^TestServerSetup'
             skip: ''
@@ -293,7 +299,7 @@ jobs:
       - name: Verify exact Go toolchain
         run: test "$(go env GOVERSION)" = go1.26.5
       # cmd/panel has hundreds of SQLite-backed tests that run serially under
-      # the race detector. These fifteen matrix entries run concurrently, are
+      # the race detector. These seventeen matrix entries run concurrently, are
       # disjoint and cover every valid Test* suffix, including a future exact
       # `Test` name or non-uppercase suffix. Four groups are split from
       # within: the complement shard keeps the broader pattern and -skips the
@@ -309,8 +315,12 @@ jobs:
       # that answered those put A-through-C at 258 s, because the tests
       # written that week landed there. The S complement reached 480 s
       # while an ordinary store test had run for only 2 s, so server setup
-      # now has its own shard. Each split is a measurement, not a guess,
-      # and the next run measures it again.
+      # now has its own shard; the D-031 site-configuration tests (TestSite*)
+      # pushed that complement to the ceiling again, so they have one too,
+      # and the startup-readiness tests (TestStartup*, about half of its
+      # non-race time) have another.
+      # Each split is a measurement, not a guess, and the next run measures
+      # it again.
       - name: Race-test panel boundaries
         run: >-
           go test -race -count=1 -timeout=8m ./cmd/panel
