@@ -90,9 +90,10 @@ not create a replacement architecture plan.
 
 ### Release state — October 10, 2026
 
-This subsection records where the releases stand. It changes no P0 status:
-P0.1–P0.5 are all still **partial**, and every open acceptance item above and
-below stays open.
+This subsection records where the releases stand (written on 2026-10-10; the
+entry for the v0.1.0-alpha.83 candidate was added on 2026-10-11). It changes no
+P0 status: P0.1–P0.5 are all still **partial**, and every open acceptance item
+above and below stays open.
 
 - **v0.1.0-alpha.81 is published.** The tag `v0.1.0-alpha.81` is at `a0beb726`
   (2026-10-04), which is the head of the published `main`. Reported by the
@@ -238,15 +239,15 @@ below stays open.
   - *Measured in a real Chrome against the published code, 2026-10-10, the
     seventh native record*
     ([seventh run](deploy/e2e/release-recovery/evidence/set7-20261010/README.md);
-    not yet committed and its intake check not finished when this was
-    written, so its verdicts are the record's own): disposable Debian 13
-    guests, Chrome 154 headless, the archive built at the tag with the
-    acceptance-test licence. (1) alpha.82 interface, update started from the
+    committed after its intake check, whose narrowings the record carries):
+    disposable Debian 13 guests, Chrome 154 headless, the tags' source
+    rebuilt with the acceptance-test licence, not the published archives. (1)
+    alpha.82 interface, update started from the
     card: **pass** — Settings stayed mounted and inert under the hold layer
-    for about 8 to 10 s of a 24 s outage and continued where it was. (2)
+    for about 9 to 11 s of a 25 s outage and continued where it was. (2)
     alpha.81 interface: the page was replaced by the full-screen "License
     status could not be checked" page for about 78 s of an 89 s outage,
-    reproducing the owner's screen (the two outages are not comparable). (3)
+    the screen the owner described (the two outages are not comparable). (3)
     tab hidden 631 s, Panel running: **pass**, zero requests while hidden,
     one quiet read on return. (4) hidden across a Panel restart: **pass**,
     with the limit that the restart lasted under 0.5 s, shorter than the
@@ -329,6 +330,94 @@ below stays open.
   - No P0 item is closed or advanced by this release. Publishing it did not
     update any installed panel; the owner updated the two installed panels
     from the panel's own update screen.
+- **v0.1.0-alpha.83 is the next release; it is not published yet.** Owner
+  decisions of 2026-10-11 (clock date), two: the number is v0.1.0-alpha.83;
+  and the owner-kept site configuration files
+  ([D-031](docs/DECISIONS.md)) enter this release. Recorded with them: the
+  narrower `Strict-Transport-Security` header of v0.1.0-alpha.82
+  ([D-030](docs/DECISIONS.md)) was read from the outside on both installed
+  servers before and after their update (owner-reported, in the publication
+  entry above); this candidate does not change it. The candidate is the branch
+  `fix/alpha83-known-state-gates`, draft pull request #206 into `main`: 44
+  commits after `2a0af8866` when this was written. The last commit that
+  changes a file under `cmd/`, `internal/` or `web/src` other than a test is
+  `40f02ecb6`; the commits after it add tests, evidence, documents and the
+  release preparation (sequence 83, the installer's bootstrap pins and the
+  README version lines, in `ab67d9fc4`, which changes no file under `cmd/`,
+  `internal/` or `web/`), and further commits of that kind raise the count
+  without changing this
+  ([draft release notes](docs/RELEASE-NOTES-v0.1.0-alpha.83.md)). It contains:
+  a site's nginx file, PHP-FPM pool and application unit that the owner
+  changed are kept and named, with three choices on the domain's page
+  (database schema 43 to 44, migration 044); certificate validation published
+  through a directory of CelikPanel's own, with a check before a certificate is
+  requested for a kept file; a refused change puts the previous file back and
+  reloads the service only when the service's own check accepts it; the first
+  page load draws nothing until there is something to say, the layer over the
+  page names the cause it read, the update notice and the card agree, and a
+  stopped setup says why above its steps.
+  - *Measured on disposable guests, 2026-10-10 and 2026-10-11 (UTC), the
+    seventh to the thirteenth native records* (test-licence builds; updates
+    from v0.1.0-alpha.81 and alpha.82 rebuilt from their tags' source, not the
+    published archives; QEMU user networking with outbound NAT, traffic not
+    recorded; names pinned to loopback; one host):
+    [seventh](deploy/e2e/release-recovery/evidence/set7-20261010/README.md)
+    (the alpha.81 and alpha.82 interfaces in a real Chrome, Debian 13),
+    [eighth](deploy/e2e/release-recovery/evidence/set8-20261010/README.md)
+    (what alpha.82 does with an owner's edit, three platforms),
+    [ninth](deploy/e2e/release-recovery/evidence/set9-20261010/README.md)
+    (first load, access wait and an update in a real Chrome, Debian 13),
+    [tenth](deploy/e2e/release-recovery/evidence/set10-20261010/README.md)
+    (the first part of D-031, three platforms),
+    [eleventh](deploy/e2e/release-recovery/evidence/set11-20261011/README.md)
+    (its corrections: Debian 13 and Ubuntu 24.04, Arch for the include
+    directories, the locked file and one validation case),
+    [twelfth](deploy/e2e/release-recovery/evidence/set12-20261011/README.md)
+    (the pool, the unit and the update from alpha.82, three platforms) and
+    [thirteenth](deploy/e2e/release-recovery/evidence/set13-20261011/README.md)
+    (the corrections after that, Debian 13 and Ubuntu 24.04 only; Arch not
+    run). Each record's intake corrections narrow its own text and win over
+    this summary. The measured code differs from the final code by the changes
+    named in the release notes; the changes after the thirteenth record
+    (the resume and "not running" sentences, a verify time-out, the page read
+    that records what it finds, the `service` field of a successful choice)
+    have component tests only.
+  - *Continuous integration on the pull request:* the runs on the heads of
+    10:20, 11:40, 11:44 and 11:49 UTC on 2026-10-11 each passed 23 of 23 checks
+    (the job that publishes assets runs only on a release tag); the head of
+    11:44 UTC carries the last change to product code. Six runs before them had
+    failed on a data race in a test's fake Agent, fixed in test code. Runs of
+    commits made after 12:09 UTC are not entered here.
+  - *Open before publication:* setting the repository variable
+    `CELIKPANEL_RELEASE_SEQUENCE` to 83; in the branch protection of `main`,
+    renaming the required check "Panel race — S, except the service tests" to
+    "Panel race — S, except the service, setup, site and startup tests" and
+    adding "Panel race — Startup readiness" and "Panel race — Site
+    configuration" as required checks; the owner's decision whether the vendor
+    publishing tools and two one-time recovery scripts stay in the archive;
+    merge, tag, verification of the six signed assets and the portal
+    publication. Each installed panel is then updated by its owner from the
+    panel's own update screen; no one else starts that.
+  - *Open for the next release, with the candidate's limits as the release
+    notes list them:* a PHP version switch never measured; Arch absent from the
+    thirteenth record; "Keep mine", "Recreate" and "Write CelikPanel's text now"
+    on a pool or unit, and the not-running case for nginx and an application,
+    run in no lab; the removal of CelikPanel's own include directory at a
+    site's deletion not looked at; no certificate issued in any lab, and the
+    success answer's fields for a check that did not run never seen; the first
+    start's writes not measured on an installed server's files; a second
+    update after a return not run; 30 interface source files (88 places) not
+    yet converted to the known-state rule; twelve routes with a request
+    identity, the rest without; installed mail renewal helpers not replaced by
+    an update; the mail certificate path behind a `postconf` warning never
+    measured on a server; the Postfix restriction list that a DNSBL save
+    rewrites to one line; no control for a database user's password. The open
+    item "what an owner's hand edit of a generated site configuration file
+    meets at a Panel start" is answered by this candidate and stays open until
+    it is published.
+  - No P0 item is closed or advanced by this candidate. Publishing it will
+    not update any installed panel; only the owner starts that, from the
+    panel's own update screen.
 
 ### Latest DNS results and their limits
 
@@ -362,7 +451,8 @@ below stays open.
 | 2 | P0.4/P0.5: complete missing source/peer fixtures and practical deletion verification without requiring a parent zone or a remote panel. Carried from item 1 (2026-09-29, named in the [register](docs/DNS-RECOVERY-ACCEPTANCE.md)): a panel-free native primary peer for fresh paired-secondary cells, adoption inverses with a running Agent, stopped-BIND takeover and BIND reinstall cells, V2 before-write and rolled-back cells, reboot cells. **Item 2 is closed as of 2026-10-01 with named limits** ([register section](docs/DNS-RECOVERY-ACCEPTANCE.md#item-2-status-closed-on-2026-10-01-with-named-limits)). The kill matrix ran batches 4 to 12 (panel-free BIND and PowerDNS primary peers; fresh BIND and PowerDNS secondaries cut before and after start with management-disabled reboots; stopped-BIND takeover; V2 before-write and rolled-back cells; the fresh paired PowerDNS primary through the public RPC with one zone and with zero zones, owner edits held, an Agent-released job finished by the owner command, a parentless deletion resumed after owner enrollment) and the product-flow pair driver ran seven times on two disposable CelikPanel servers; [pair 7](deploy/e2e/dns-pair-acceptance/evidence/pair7-20261001/README.md) passed every step on BIND/BIND, BIND/PowerDNS and PowerDNS/BIND: setup, zone add, record edit, zone delete with the product's proof after the owner enrollment (`dns-peer-enroll`, BIND and PowerDNS secondaries), re-add, a reboot with the panel and Agent disabled while DNS kept answering, and management return. Eleven product defects were found only by the native runs and closed in source on the way (zero-zone catalog check, wizard states and license refresh, evidence in the customer archive, rndc key on Arch, PowerDNS notify port, loopback catalog transfer and inspector reasons on the managed secondary, mail stage on a DNS-only domain, the owner's inspector on a managed PowerDNS secondary, the BIND primary plan's source state, the daemon re-stamp taken for an owner change, a positive proof discarded at the wave bound). On that evidence the fresh paired PowerDNS primary gate is open on the main line within the measured envelope ([D-028](docs/DECISIONS.md#d-028--the-fresh-paired-powerdns-primary-is-offered-within-the-measured-envelope)). Register rows 3, 5, 6, 12 and 17 are PASSED with limits; rows 8 and 14 stay GAP; the named limits (one run per cell, laptop host, test-only license, no SIGKILL inside zone-sync, the re-stamp admission and proof time-out not observed natively, a version-1 BIND secondary with no upgrade trigger, the e2e harness in the customer archive) are in the register. Closing item 2 does not close P0.4 or P0.5 and authorises no installed-panel update. | Real supported primary/secondary combinations prove add/edit/delete, native loaded-zone state and reboot; uncertainty gives an actionable same-operation recovery path. Do not reclassify fixture gaps as N/A. |
 | 3 | P0.1–P0.5: close the remaining end-to-end update, access, schema, TLS/enrollment and workload matrix. **Item 3 is closed as of 2026-10-01 with named limits** ([contract section](docs/RESILIENCE-CONTRACT.md#roadmap-item-3-status-closed-on-2026-10-01-with-named-limits-p01p02p03p05)). Owner-started update runs upd2 to upd6 on disposable Debian 13 and Arch guests (upd1 reached no update) measured: a good candidate installed through the Panel's update-start API as the logged-in owner; a candidate failing before completion returned to the previous release automatically, also after a second fault (VM reset on Debian, SIGKILL on Arch); a candidate failing after completion retried three times, paused with its cause kept, and finished after the owner's printed retry; cron never interrupted and the site interrupted only around the injected VM reset (about 22 s at most); with Panel and Agent disabled across a reboot, site, database, cron and firewall kept serving (SMTP on Debian) and the renewal timer kept its state. The product defects those runs found are closed in source. Closing item 3 closes no P0 item: fixture signing and loopback origin, few repetitions and no browser, no Ubuntu, no power loss, no rollback after completion, no live status at the Panel's address while it is stopped, and paths not triggered natively stay named in the contract section. | Owner UI update admission, failed candidate, automatic rollback, a second recovery fault, authenticated guidance and preserved native workloads agree on one operation. Each claimed platform/version combination has retained evidence. |
 | 4 | Release review of the exact candidate and a short owner test path. **Candidate review done; the candidate's exact code (`f6cdd5a0`) has one complete run of the update matrix on 2026-10-02/03 and publication waits for the owner** ([release notes](docs/RELEASE-NOTES-v0.1.0-alpha.81.md)). The customer archive no longer ships the harness, test scripts or evidence and the signing step refuses one that does. A read-only review of the update path found seven defects, all seven corrected in source (component tests; residuals are listed in the contract section); the most important was that a worker started by v0.1.0-alpha.80 wrote no status record, so the new guidance never appeared on the first upgrade. That first upgrade was then measured, one run per case, from the alpha.80 source rebuilt with a test license (not the signed archive) on Debian 13 and Ubuntu 24.04 (good candidate, owner continuation, defective candidate returning to alpha.80); Arch from alpha.80 was not measured. Ubuntu exposed that an idle package helper blocked setup and could refuse an update start; the first fix did not hold on a real system, the corrected one was measured. Open for the owner: the version number; the root-only packaging tests (18) on a disposable machine or CI; production signing and its compatibility check; whether the vendor publishing tools stay in the archive; the owner test; every installed-panel update. After the review corrections, the Panel's deferred retry of its mail startup steps was added and measured, and the whole matrix was run once more on the final code (upd13: 20 cells, no candidate defect). Named limits are in the release notes; no P0 item is closed. **State on 2026-10-09:** the release is published as `v0.1.0-alpha.81` (tag at `a0beb726`, 2026-10-04). Reported by the owner, and not recorded in a file here: the publication steps (merge of pull request #204, tag, portal publication), the verification of the six signed assets, and the update of the two installed panels (one Ubuntu 24.04, one Debian 13) from the panel's own update screen on 2026-10-08. | All required acceptance items are closed, or a deliberately scoped release states its still-open limits. Verify signed artifacts and recovery compatibility; only the user starts installed-panel updates. |
-| 5 | Release review of `v0.1.0-alpha.82` (see "Release state — October 10, 2026" above). **Published 2026-10-10 (tag on `2a0af8866`; 22 of 22 CI jobs; six assets; portal published by the owner; both installed servers updated by the owner from the panel's update screen); the number is v0.1.0-alpha.82 (owner decision of 2026-10-10).** A seventh native record, a real Chrome against the published code, passed the update-window and hidden-tab cells and failed the cold page load (the `RecoveryAccess` gate); it was not yet committed when this was written. Four native runs, one follow-up and one reading of `postconf` on 2026-10-08 and 2026-10-09 measured the settings writes, the service actions, the request identity, the update from the published v0.1.0-alpha.81 (at `cfa329676`) and the last corrections on fresh guests (at `557b554eb`, PHP sites on Arch included); the one failed check, the note after a Postfix stop on Ubuntu 24.04, was corrected and measured again. The `postconf` correction (`67b62cc0f`) rests on one reading of the real program and component tests. The update matrix was repeated at `67b62cc0f` on 2026-10-09 in a fifth run: all ten cells reached the end the third run measured, once each, with guest disks in memory. The final code (`72b879eea`, which adds the Panel's narrower `Strict-Transport-Security` header, [D-030](docs/DECISIONS.md)) was then installed fresh on three platforms, its header read on the guests and one update per platform verified, in a sixth run. Not repeated on the final code: the settings-write, request-identity and full service-action cells, and seven update cells. Not run on a real system: the corrected mail certificate path. Decided by the owner on 2026-10-10: the number; the fresh-install measurement before publication; the header change. The owner's own test is the update of the two installed servers, started by the owner from the panel's update screen, with no disposable server. Done by the owner on 2026-10-10: the release sequence variable, merge, tag and portal publication; production signing ran in CI on the tag and the assets were verified; both installed-panel updates (the owner started them). Carried to the next release: the audit of what an owner's edit of a generated site configuration file meets at a Panel start, and the open list under "Release state" ("Open for the next release (2026-10-10, after publication)"), which includes four owner observations from the installed updates and the first-load interstitial. No P0 item is closed or advanced. | The fifth and sixth runs are retained ([update matrix](deploy/e2e/release-recovery/evidence/set5-20261009/README.md), [fresh install and header](deploy/e2e/release-recovery/evidence/set6-20261009/README.md)) and the [release notes](docs/RELEASE-NOTES-v0.1.0-alpha.82.md) say which check rests on which code. The release states its still-open limits. Verify signed artifacts and recovery compatibility; only the user starts installed-panel updates. |
+| 5 | Release review of `v0.1.0-alpha.82` (see "Release state — October 10, 2026" above). **Published 2026-10-10 (tag on `2a0af8866`; 22 of 22 CI jobs; six assets; portal published by the owner; both installed servers updated by the owner from the panel's update screen); the number is v0.1.0-alpha.82 (owner decision of 2026-10-10).** A seventh native record, a real Chrome against the published code, passed the update-window and hidden-tab cells and failed the cold page load (the `RecoveryAccess` gate); it is retained with its intake corrections. Four native runs, one follow-up and one reading of `postconf` on 2026-10-08 and 2026-10-09 measured the settings writes, the service actions, the request identity, the update from the published v0.1.0-alpha.81 (at `cfa329676`) and the last corrections on fresh guests (at `557b554eb`, PHP sites on Arch included); the one failed check, the note after a Postfix stop on Ubuntu 24.04, was corrected and measured again. The `postconf` correction (`67b62cc0f`) rests on one reading of the real program and component tests. The update matrix was repeated at `67b62cc0f` on 2026-10-09 in a fifth run: all ten cells reached the end the third run measured, once each, with guest disks in memory. The final code (`72b879eea`, which adds the Panel's narrower `Strict-Transport-Security` header, [D-030](docs/DECISIONS.md)) was then installed fresh on three platforms, its header read on the guests and one update per platform verified, in a sixth run. Not repeated on the final code: the settings-write, request-identity and full service-action cells, and seven update cells. Not run on a real system: the corrected mail certificate path. Decided by the owner on 2026-10-10: the number; the fresh-install measurement before publication; the header change. The owner's own test is the update of the two installed servers, started by the owner from the panel's update screen, with no disposable server. Done by the owner on 2026-10-10: the release sequence variable, merge, tag and portal publication; production signing ran in CI on the tag and the assets were verified; both installed-panel updates (the owner started them). Carried to the next release: the audit of what an owner's edit of a generated site configuration file meets at a Panel start, and the open list under "Release state" ("Open for the next release (2026-10-10, after publication)"), which includes four owner observations from the installed updates and the first-load interstitial. No P0 item is closed or advanced. | The fifth and sixth runs are retained ([update matrix](deploy/e2e/release-recovery/evidence/set5-20261009/README.md), [fresh install and header](deploy/e2e/release-recovery/evidence/set6-20261009/README.md)) and the [release notes](docs/RELEASE-NOTES-v0.1.0-alpha.82.md) say which check rests on which code. The release states its still-open limits. Verify signed artifacts and recovery compatibility; only the user starts installed-panel updates. |
+| 6 | Release review of the `v0.1.0-alpha.83` candidate (see "Release state — October 10, 2026" above, the entry for the candidate). **Not published; the number is v0.1.0-alpha.83 (owner decision of 2026-10-11); D-031 enters it.** Seven native records (the seventh to the thirteenth, 2026-10-10 and 2026-10-11, disposable guests, test-licence builds, updates from the tags' source rebuilt) measured the interfaces of alpha.81 and alpha.82 in a real Chrome, the first load and the access wait of the candidate, what v0.1.0-alpha.82 does with an owner's edit, the first part of D-031, its corrections, its second step (pool, application unit) with the update from alpha.82, and the corrections after that, on Debian 13, Ubuntu 24.04 and Arch except where a record says otherwise; the thirteenth ran on Debian 13 and Ubuntu 24.04 only. The changes made after the thirteenth record have component tests only. Still for the owner: setting the release sequence variable to 83, renaming and adding the required checks in the branch protection, deciding whether the vendor publishing tools and two recovery scripts stay in the archive, merge, tag, the six signed assets, portal publication, and every installed-panel update. No P0 item is closed or advanced. | The [release notes](docs/RELEASE-NOTES-v0.1.0-alpha.83.md) say which check rests on which code and list the limits; the records are under `deploy/e2e/release-recovery/evidence/`. Verify signed artifacts and recovery compatibility; only the user starts installed-panel updates. |
 
 Each slice must identify the open acceptance it closes before more tests are added.
 Repeat a passing trial only after a relevant change or to resolve a named uncertainty.

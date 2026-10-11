@@ -13,12 +13,14 @@ installed servers after the update to v0.1.0-alpha.82 on 2026-10-10 (listed
 below under "The four observations after the last update").
 
 What the server does with site files rests on component tests and on four lab
-measurements: one of the first part of this work, one of the corrections that
-followed it (the certificate validation check against a real nginx, the locked
-file's page, the include directories), and one of the pool, the application
-unit and the update from v0.1.0-alpha.82, each on Debian 13, Ubuntu 24.04 and
-Arch; and a short round, on Debian 13 and Ubuntu 24.04 only, of the corrections
-the third one led to. The measured updates started from v0.1.0-alpha.81 and
+measurements: one of the first part of this work, on Debian 13, Ubuntu 24.04
+and Arch; one of the corrections that followed it (the certificate validation
+check against a real nginx, the locked file's page, the include directories),
+on Debian 13 and Ubuntu 24.04, with Arch for only the include directories, the
+locked file and one validation case; one of the pool, the application unit and
+the update from v0.1.0-alpha.82, on all three; and a short round, on Debian 13
+and Ubuntu 24.04 only, of the corrections the third one led to. The measured
+updates started from v0.1.0-alpha.81 and
 alpha.82 rebuilt from their tags' source as test-licence builds, not from the
 published archives. The last changes, made after the short round, have
 component tests only. What a screen shows rests on component tests and on a
@@ -36,18 +38,19 @@ changes nothing.
 
 **During the update you still see the previous release's page.** The page that
 is open while the update runs is v0.1.0-alpha.82's interface. Its layer over the
-page may name the licence while the Panel restarts (measured in the lab with
-that interface), and its corner notice may still say the update is being
-applied while the card already shows the new version. Both were reported by the
-owner after the last update. This release corrects them; the corrections show
+page may name the licence while the Panel restarts (seen in the lab with that
+interface), and its corner notice may still say the update is being applied
+while the card already shows the new version (reported by the owner after the
+last update). This release corrects both; the corrections show
 in an update started from a page of this release. After a successful update the
 page reloads itself into the new interface.
 
-**A site configuration file you changed is kept.** Until now every Panel start,
-restart and saved setting wrote each hosted site's nginx file again from
-CelikPanel's records, without looking at what was there: an added `location`, a
-changed directive, your own include or a whole replacement file was gone, and a
-file you had removed came back. This was measured on v0.1.0-alpha.82 on
+**A site configuration file you changed is kept.** Until now every Panel start
+and restart wrote every hosted site's nginx file again from CelikPanel's
+records, and a saved setting wrote that site's file again, without looking at
+what was there: an added `location`, a changed directive, your own include or a
+whole replacement file was gone, and a file you had removed came back. This was
+measured on v0.1.0-alpha.82 (its tag's source built as a test-licence build) on
 Debian 13, Ubuntu 24.04 and Arch. Now every file CelikPanel writes for a site
 starts with a line that carries the digest of the rest of the file:
 
@@ -198,10 +201,13 @@ service is not reloaded and keeps running with the configuration it loaded
 before; the answer says so and, for an administrator, names the line the check
 printed. Fix that file, reload the service yourself, then choose again if you
 still want CelikPanel's text. A service that was not running before is neither
-reloaded nor started, and the answer tells you to start it. The lab measured
-the earlier behaviour (PHP-FPM reloaded with a refused configuration ended
-`failed` while the answer said it kept running) and then the correction, on
-Debian 13 and Ubuntu 24.04: PHP-FPM and nginx kept their running process. A pool
+reloaded nor started, and the answer tells you to start it (run in the lab with
+PHP-FPM only; for nginx and an application it has component tests). The lab
+measured the earlier behaviour on all three platforms (PHP-FPM reloaded with a
+refused configuration ended `failed` while the answer said it kept running) and
+then the correction, on Debian 13 and Ubuntu 24.04: PHP-FPM and nginx kept
+their running process, and the application was left unrestarted by a refused or
+unavailable unit check (there the lab had to force the put-back). A pool
 or unit that CelikPanel could not read is shown on the Domains list as "A
 configuration file could not be read; state not known" until a later read
 answers (also measured).
@@ -220,10 +226,11 @@ never as a failure.
 **The layer over the page names what it read.** When the Panel cannot confirm
 access for a moment, the page stays under a layer, as in v0.1.0-alpha.82. The
 layer now says which of these it read: the Panel did not answer; the Panel is
-starting; or the licence result could not be read. When an update was started
-from the same browser within the last 30 minutes and its end has not been seen
-there, it says the Panel is not answering and an update may be restarting it,
-and that nothing about the licence has been decided.
+starting; the licence result could not be read; or your session could not be
+confirmed. When the Panel did not answer, an update was started from the same
+browser within the last 30 minutes and its end has not been seen there, it
+says the Panel is not answering and an update may be restarting it, and that
+nothing about the licence has been decided.
 
 **The update notice and the card agree.** While the new version already runs
 but the updater is still checking it, the notice and the card both say "Update
@@ -288,9 +295,10 @@ a change you made, the first line and the line that includes your own directory
 are gone from the file. Your files in `celikpanel-sites.d`, the dated copies and
 the pending files stay on disk, but nginx stops reading your directory until this
 release runs again. In the lab, after an automatic return, the older release's
-start rewrote every site file, an owner's edit included: v0.1.0-alpha.81 in two
-records, and v0.1.0-alpha.82 on three platforms in a third (each rebuilt from
-its tag's source as a test-licence build). The pools and the unit written by
+start rewrote every site file, an owner's edit included: v0.1.0-alpha.81 on
+three platforms in one record and on Debian 13 in another, and v0.1.0-alpha.82
+on three platforms in a third (each rebuilt from its tag's source as a
+test-licence build). The pools and the unit written by
 alpha.82 were left byte for byte as they were. In every case the failing
 candidate stopped before its own start, so no file carried the first line
 yet. An automatic return follows a candidate that failed its
@@ -299,7 +307,8 @@ line before it failed was not measured. What an older release does to a file
 that already carries the first line was not measured; it is read from that
 release's source. When this release runs again, it recognises the older
 release's text and takes it over; an edit you made while the older release ran,
-and before its next start, is kept.
+and before its next start, is kept. That second update after a return was not
+run in the lab; this sentence is the design and the component tests.
 
 ### What you may need to do
 
@@ -335,8 +344,9 @@ refuses its batch. An Agent that answers without a result per file is
 recorded and shown as "not known" (`unknown`, `agent_does_not_report`), never as
 unchanged.
 
-Errors keep the shape `{"error", "code", "reason"?, "detail"?, "vars"?,
-"details"?}` and gain an additive `restore`. Screens translate by `code`.
+Errors keep the shape `{"error", "code", "action"?, "reason"?, "detail"?,
+"vars"?, "details"?}` and gain the additive `restore`, `service`,
+`service_reason` and `service_active` (below). Screens translate by `code`.
 
 ### Site configuration files (new routes)
 
@@ -415,13 +425,18 @@ unit of a Node site, each in the same shape with its own `kind` and `actions`),
   is absent or out of date, writes it with one `nginx -t` and one reload; a
   check that finds every name served ends the reason and answers
   `resolved_reason: "certificate_validation"`.
+- The GET also records what it found in the Panel's own database, so that the
+  Domains list's row follows the file: a refused replacement that is gone, a
+  file put back by hand, a pool or unit the Agent did not answer for (it never
+  writes a site file otherwise).
 
-**The POST answers.** `keep`: `200`, the GET's object after the decision;
-nothing is written to the file. `take`: `200` with `outcome` `taken` (or
-`unchanged`) and `backup_path`. `recreate`: `200` with `outcome` `recreated`
-(or `unchanged`). `apply`: `200` with `outcome` `written` (or `unchanged`), no
-dated copy. `take` and `recreate` also carry `managed_dir`, `managed_include`
-and `challenge_file`.
+**The POST answers.** `keep`: `200`, the GET's object (without `files[]`) after
+the decision; nothing is written to the file. `take`: `200` with `outcome`
+`taken` (or `unchanged`) and `backup_path`. `recreate`: `200` with `outcome`
+`recreated` (or `unchanged`). `apply`: `200` with `outcome` `written` (or
+`unchanged`), no dated copy. `take`, `recreate` and `apply` also carry
+`managed_dir`, `managed_include` and `challenge_file` when the Agent reports
+them.
 
 | Refusal | Meaning |
 | --- | --- |
@@ -447,8 +462,8 @@ put-back: `service` (`reloaded`; `not_reloaded`, with `service_reason`
 `config_refused_elsewhere` when the service's own check refused the put-back
 configuration, or `check_unavailable`; `not_running` when the service was not
 running before and was neither reloaded nor started; `reload_failed`, which
-stays `unconfirmed`) and `service_active` (`true`, `false` or `unknown`, read
-from `systemctl is-active` after the operation). For an administrator the
+stays `unconfirmed`) and `service_active` (the strings `"true"`, `"false"` or
+`"unknown"`, read from `systemctl is-active` after the operation). For an administrator the
 check's line is in `vars.line` and `details`. A `systemd-analyze verify` that
 times out, cannot be started or ends without output counts as
 `check_unavailable`, not as a refusal. The Agent's own line is sent to
@@ -593,21 +608,23 @@ sections and in the limits.
 - A cold page load draws nothing for 1.5 seconds; "Check now" comes at
   15 seconds, "Reload CelikPanel" at 30 seconds.
 - The layer over the page names the cause it read.
-- The SSL tab and the dashboard say "expired N days ago" instead of a negative
-  number of days.
+- The SSL tab, and the dashboard for a certificate that waits for your choice,
+  say "expired N days ago" instead of a negative number of days.
 
 Measured on real services (next section): the unchanged start, the creation
 text, the refused save, the removed file, the locked file and its page, the
-deletion, the owner and mode of written files, the include directories' mode,
+deletion of a site (its edited nginx file or pool kept as a dated copy, your
+include directory left; the removal of CelikPanel's own directory was not
+looked at), the owner and mode of written files, the include directories' mode,
 the validation check on a kept file and the addresses it asks (without an
 issued certificate), "Write CelikPanel's text now", the refused take without a
 copy, the pool and the unit, the check before a reload after a put-back, the
 unread file on the Domains list, the unit's `PATH`, the first-load quiet time
 and the 15- and 30-second steps of the wait. The update notice's new words were
 seen on a real Panel in the lab as an observation. The page read that records
-what it finds, the `service` field of a successful choice, the setup page, the
-final wording of the layer and the SSL tab wording have component tests and a
-mock browser only.
+what it finds and the `service` field of a successful choice have component
+tests only; the setup page, the final wording of the layer and the SSL tab
+wording have component tests and a mock browser only.
 
 ## What was measured, and how
 
@@ -626,19 +643,20 @@ the distributions' packages are installed from their repositories during a run.
 Nothing here shows what a machine could or could not reach. The name of the
 release and licence host and four certificate-authority names were pinned to
 the machine's own loopback in its hosts file before any product path existed,
-and read back at the end (all labs of the eighth and ninth records; 11 of 12
-labs of the tenth and every lab of the eleventh that finished, where a stopped
-run has no read-back). In the eleventh record the certificate requests the
-Panel made went to the pinned name, that is to the guest itself, and certbot
-refused the certificate it found there, so no certificate authority took part. The licence step is
+and read back at the end (all labs of the seventh, eighth, ninth, twelfth and
+thirteenth records; 11 of 12 labs of the tenth and every lab of the eleventh
+that finished, where a stopped run has no read-back). In the eleventh and
+twelfth records the certificate requests the Panel made went to the pinned
+name, that is to the guest itself, and certbot refused the certificate it found
+there, so no certificate authority took part. The licence step is
 answered by the test build itself; that is what the build says about itself,
 not an observation of traffic. No driver was pointed at an installed server. The
 machines' traffic was not captured.
 
 **What v0.1.0-alpha.82 does with a site file the owner edited (eighth record,
 `set8-20261010`; Debian 13, Ubuntu 24.04, Arch).** The published tag's source,
-rebuilt with the test licence under the previous release's label, not the
-published archive; 48 runs.
+rebuilt with the test licence under an alpha.81 label, not the published
+archive; 48 runs (40 on the nginx file, 4 on the pool, 4 with a locked file).
 In all 40 runs on the nginx file the owner's added `location`, changed `index`,
 replacement file or own include was replaced by the Panel's own text at the next
 start, restart or General settings save (36), or a removed file and its link
@@ -744,16 +762,20 @@ final wording of the layer.
   own error page: the recovery service worker was not registered in the
   signed-in browser contexts, although it controlled the no-session loads of a
   new context. The product's offline page was not reached here; the eleventh
-  record narrowed the cause to the lab browser (below).
+  record narrowed the cause to the lab browser's profile (below).
 
 **The baseline for the first load and the update (seventh record,
-`set7-20261010`; Debian 13).** Described in the notes of v0.1.0-alpha.82. On the
-published tag's source, rebuilt as a test-licence build, a cold load drew the full-page "Checking panel access" in 18 of
-18 loads; during an update the alpha.81 interface replaced the page with the
-licence page for about 78 s (an update from alpha.81 rebuilt from its tag), the
-owner's screen, while the alpha.82 interface
-kept it mounted under a layer for about 9 to 11 s of a 25 s outage, the layer's
-first sentence naming the licence.
+`set7-20261010`; Debian 13).** Also described in the notes of v0.1.0-alpha.82
+(amended after its publication). On the alpha.82 tag's source, rebuilt as a
+test-licence build, a cold load drew the full-page "Checking panel access" in
+18 of 18 loads; during an update the alpha.81 interface (the tag's source,
+rebuilt) replaced the page with the licence page for about 78 s of an 89 s
+outage, the screen the owner described, while the alpha.82 interface kept the
+page mounted under a layer for about 9 to 11 s of a 25 s outage, the layer's
+first sentence naming the licence. The two outages differ (an update from
+alpha.81 to alpha.82 in the first case, from an alpha.82 build labelled alpha.81
+to alpha.82 in the second), so the figures compare the two interfaces, not the
+updates.
 
 **The corrections after the tenth record (eleventh record,
 `set11-20261011`; Debian 13 and Ubuntu 24.04; Arch for the include
@@ -774,16 +796,18 @@ browser cells.
   0.2 to 4.8 ms; nginx was asked once per name on `127.0.0.1:80` and answered
   `200` with the probe's body for every name; the request then went ahead (to
   the pinned name: certbot refused it, `502 CERTIFICATE_ISSUE_FAILED` /
-  `authority_unreachable`) and the owner's file was not touched. With nginx
-  stopped: `503 CERTIFICATE_VALIDATION_UNKNOWN`. A kept file without
+  `authority_unreachable`) and the owner's file was not touched (CelikPanel
+  wrote its pending text beside it). With nginx stopped: `503 CERTIFICATE_VALIDATION_UNKNOWN`. A kept file without
   CelikPanel's include line (also on Arch): `409 SITE_CONFIG_OWNER_EDITED` /
   `certificate_validation` / `include_missing`, with the line to add, the name
   and nginx's status. With the owner's own block for the `mail.` name: ready;
   with that block removed: `names_missing` for the `mail.` name, status `404`.
   The owner put the line back and reloaded nginx: the page's next read found
-  the file ready and ended the reason without writing or reloading anything.
-  Passed; the dashboard part of that cell was not measured (no certificate could
-  exist in this lab).
+  the file ready and ended the reason without writing or reloading anything
+  (CelikPanel's validation file was already in place; the case where it is
+  absent or out of date, which the GET repairs, was not run). Passed; the
+  dashboard part of that cell was not measured (no certificate could exist in
+  this lab).
 - Did not pass (Debian 13, Ubuntu 24.04): a site whose port-80 block the owner
   had bound to one address of the guest, while other blocks listen on the
   wildcard address. The check asked `127.0.0.1`, the default server answered
@@ -817,14 +841,15 @@ browser cells.
   Ubuntu both loads hit Chrome's own error page right after the restart (not
   measured).
 - The recovery service worker. In the Debian run the signed-in browser context
-  used Chrome's profile on disk, about 177 characters deep: the worker failed to
+  used Chrome's profile on disk, about 177 characters deep (computed from the
+  folder layout; the path itself was not recorded): the worker failed to
   install, with an error opening its cache storage, while a new in-memory
   context of the same browser registered it and was controlled by it. On the
   Ubuntu run, with the profile under a short path, the signed-in context
   registered it. With the Panel stopped, a context that had the worker showed the
   product's offline page ("The panel connection is unavailable"); the Debian
   signed-in context showed Chrome's own error page. So the missing worker of the
-  ninth record lies in the lab browser's profile, not in the product. That the
+  ninth record points at the lab browser's profile, not at the product. That the
   Windows path-length limit is the mechanism is inferred, not read from a Chrome
   line; the Ubuntu run was another guest and another browser process, not a
   controlled comparison; a certificate the browser trusts without a pin was not
@@ -840,7 +865,8 @@ browser cells.
 Chrome 154 on Debian).** The code with the pool and the unit, "Write
 CelikPanel's text now", the order of states across files, the restore fact, the
 addresses the check asks and the refused take without a copy. It differs from
-the final code in screen texts and in the corrections listed after this record.
+the final code by the corrections listed after this record, the changes listed
+after the thirteenth record and some screen texts.
 Installed fresh, and reached by updates from v0.1.0-alpha.82 (three platforms)
 and v0.1.0-alpha.81 (Debian 13), each rebuilt from its tag's source as a
 test-licence build, not the published archive. Apart from the pinned names
@@ -870,7 +896,9 @@ NAT; that traffic was not recorded.
   - The check's addresses: a port-80 block on the guest's own address was asked
     on that address, and a block on `[::]:80` only on `::1`; both ready, and the
     request went ahead (refused at the pinned name, `502
-    authority_unreachable`). An address the guest does not have: no probe, the
+    authority_unreachable`; on Arch the packet reader saw only the status line,
+    so those two cells were judged from nginx's access log). An address the
+    guest does not have: no probe, the
     request went ahead, the journal line `validation_probe=not_run
     validation_unknown_reason=address_not_local` with the address, and the page
     read `unknown` / `address_not_local`. With nginx stopped: `503`.
@@ -908,8 +936,8 @@ NAT; that traffic was not recorded.
   Domains badge, the Configuration file page with the nginx file and the pool,
   the pool's difference, and the "Write CelikPanel's text now" page; its result
   sentence was read from the page text. The recovery worker was registered with
-  a short browser profile path. The two restore banners were in the page text
-  but outside the viewport in the pictures. At phone width the Domains list cut
+  a short browser profile path. The two restore banners are in the page text,
+  but the pictures taken for them show neither. At phone width the Domains list cut
   off its status column, and the badge sat under the domain name.
 
 **Corrections after the twelfth record.** Made afterwards and measured in the
@@ -968,8 +996,9 @@ measured again in new labs.
   line), and not restarted when `systemd-analyze` could not be run
   (`check_unavailable`). (The lab forced the put-back by making one
   `daemon-reload` fail.)
-- In the real browser: the refused take's answer was in view, as a status box at
-  the top of the viewport, in English on a desktop and in Turkish on a phone; the
+- In the real browser (Debian 13 only): the refused take's answer was in view,
+  as a status box at the top of the viewport, in English on a desktop and in
+  Turkish on a phone; the
   Domains badge "A configuration file could not be read; state not known" /
   "Bir yapılandırma dosyası okunamadı; durumu bilinmiyor" was shown on desktop and
   phone and was gone after the page had been read.
@@ -983,7 +1012,8 @@ measured again in new labs.
 measured on a real system: the sentences after a refused put-back say how work
 resumes and, when the service is not running, tell the owner to start it; a
 `systemd-analyze verify` that times out is `check_unavailable`; the page read
-records what it finds on the row (above); a successful choice that reloaded the
+records what it finds on the row, also for a pool's or unit's row that still
+carries an earlier refusal (above); a successful choice that reloaded the
 service says so in its answer.
 
 **Which check rests on which code.** Each later state of the code contains the
@@ -991,15 +1021,16 @@ earlier corrections.
 
 | What was checked | The code it ran on |
 | --- | --- |
-| The nginx file kept, the three choices, adoption after an update from v0.1.0-alpha.81, a return after a failed migration, a database put back, the locked file's effect on other sites | the first part of this work (tenth record); not repeated on the final code |
+| The nginx file kept, the three choices, adoption after an update from v0.1.0-alpha.81, a return after a failed migration, a database put back, the locked file's effect on other sites | the first part of this work (tenth record); the adoption from alpha.81 and the database put back were repeated on Debian 13 in the twelfth record; none of it on the final code |
 | CelikPanel's own include directory, the 0755 mode, the validation check on `127.0.0.1`, the locked file's page and "Check again", the access wait's 15- and 30-second steps, the service worker, a return after a failed start check | the code after the locked-file and directory corrections (eleventh record) |
 | The pool and the unit, the multi-file page, the addresses the check asks, "Write CelikPanel's text now", a refused take without a copy, the restore fact, the update from v0.1.0-alpha.82 and its automatic return | the code before the last screen texts and the corrections after the twelfth record (twelfth record) |
-| The check before a reload after a put-back (pool, nginx file, unit), a stopped PHP-FPM, the unread file on the Domains list, the unit's `PATH`, the answer in view | the code after the twelfth record's corrections (thirteenth record; Debian 13 and Ubuntu 24.04 only) |
+| The check before a reload after a put-back (pool, nginx file, unit), a stopped PHP-FPM, the unread file on the Domains list, the unit's `PATH`, the answer in view | the code after the twelfth record's corrections (thirteenth record; Debian 13 and Ubuntu 24.04 only, the browser parts Debian 13 only) |
 | The resume and "not running" sentences, the verify time-out, the page read that records what it finds, the `service` field of a successful choice | component tests only; the final code differs from the thirteenth record's code by these |
 | The cold first load and the explained wait at 1.5 s | the interface after the first gate corrections (ninth record) |
 | The layer's final wording, the setup page, the mail identity reason | component tests and a mock browser |
 | The update notice "installed, being verified" | observed on a real Panel in the ninth record; component tests |
-| What v0.1.0-alpha.82 does with an owner's edit | the published tag's source, rebuilt (eighth record) |
+| What v0.1.0-alpha.82 does with an owner's edit | the published tag's source, rebuilt as a test-licence build (eighth record) |
+| What the alpha.81 and alpha.82 interfaces do during an update and on a cold load | the two tags' source, rebuilt as test-licence builds (seventh record) |
 | The whole code at the time of writing | component tests; CI on the head at the time named below |
 
 **Screens.** The interface changes have component tests and were looked at in a
@@ -1008,20 +1039,28 @@ Turkish; light and dark for the Configuration file page). No real Panel was
 behind that browser. The ninth record put a real Chrome in front of a real
 Panel for the first load, the access wait and an update (desktop size,
 headless; Turkish for the access wait only), the eleventh for the access wait
-and the service worker (English), and the twelfth for the Domains list and the
-Configuration file page (English and Turkish, desktop and phone).
+and the service worker (English), the twelfth for the Domains list and the
+Configuration file page (English and Turkish, desktop and phone), and the
+thirteenth for the refused take's answer and the Domains badge of an unread
+file (English and Turkish, desktop and phone; Debian 13 only).
 
 **Tests.** The change records of the last states of the code give: 1315
 interface tests passed; the Panel and shared Go packages passed; the Agent
 package had the same 19 failures as before these changes, which the change
 record attributes to the development machine's environment. These numbers come
-from the change records, not from a retained test log. The continuous
-integration run of the pull request on the head at that time (started 10:20,
-ended 10:41 UTC on 2026-10-11) passed 23 of 23 checks; the job that publishes
-assets runs only on a release tag and was skipped. Three runs earlier that
-morning had failed; the change that made the next one pass is in test code and
-names a data race in a test's fake Agent. The later heads, with the thirteenth
-record and the last change, get their own runs. A passing run is not the
+from the change records, not from a retained test log; the interface tests were
+run again on the head when these notes were checked (1315 passed, none failed),
+the Go packages were not. The continuous
+integration runs of the pull request on the heads of 10:20, 11:40, 11:44 and
+11:49 UTC on 2026-10-11 each passed 23 of 23 checks (24 jobs: the job that
+publishes assets runs only on a release tag and was skipped); they ended at
+10:41, 11:57, 11:59 and 12:09 UTC. The head of 11:44 UTC carries the last
+change to product code (the page read that records what it finds and the
+`service` field of a successful choice); the head of 10:20 UTC is before it.
+Six runs between 09:22 and 09:48 UTC had failed, all in the one job "Panel race
+— A and B, exact and non-uppercase", on a data race in a test's fake Agent; the
+change that made the next run pass is in test code. Commits made after 12:09 UTC
+get their own runs, which are not entered here. A passing run is not the
 owner's own test.
 
 ## Limits of this release
@@ -1034,9 +1073,11 @@ These are known. They are not hidden defects.
   time-out, the page read that records what it finds, the `service` field of a
   successful choice) have component tests only. The release preparation
   (release sequence 83, bootstrap pins, version lines) is in none of the
-  measured builds; apart from the continuous integration's reproducible-archive
-  check on the pull request, no archive labelled as this release had been built
-  when this was written.
+  measured builds (the update candidates of the twelfth record carried a
+  sequence-83 policy and an alpha.83 label made in the lab, as test-licence
+  builds); apart from the continuous integration's reproducible-archive check on
+  the pull request, no archive of this release had been built from the prepared
+  branch when this was written.
 - **Arch** was not in the thirteenth record: the check before a reload, the
   unread row and the unit's `PATH` were measured on Debian 13 and Ubuntu 24.04
   only.
@@ -1047,11 +1088,17 @@ These are known. They are not hidden defects.
   archives.** v0.1.0-alpha.81 and alpha.82 were rebuilt from their tags' source
   as test-licence builds; their digests differ from the published archives'.
   The update from alpha.82 ran on three platforms, the update from alpha.81 on
-  Debian 13 in the twelfth record and on three platforms in the tenth. An
-  installed server's own archive and data were not used.
+  Debian 13 in the twelfth record and on three platforms in the tenth, and a
+  failing update from alpha.81 on Debian 13 in the eleventh. An installed
+  server's own archive and data were not used. The machines had outbound NAT
+  (packages and Node.js came from outside; that traffic was not recorded).
 - **No site with a certificate was measured, and no certificate was issued.**
-  The validation check asked a real nginx only on `127.0.0.1`, before it learnt
-  to ask the addresses a site listens on.
+  The validation check was run against a real nginx on `127.0.0.1` (eleventh
+  record) and on a site's own address and `::1` (twelfth record), with a
+  certificate authority never taking part: the requests went to the machine's
+  own pinned name and certbot refused them. The success answer's fields for a
+  check that did not run (`validation_probe: "not_run"` and its companions) were
+  never seen on a real system, because no request could succeed.
 - **The validation check.** It reads only the `listen` lines of the kept file
   itself (an `include` is not followed). A name that listens on an address that
   is not this server's cannot be checked from here: the request goes ahead, and
@@ -1072,11 +1119,23 @@ These are known. They are not hidden defects.
   the schedule (every 12 hours and at start, for certificates within 30 days of
   expiry). The pages were not drawn in a real hosting customer's session.
 - **A return to an older release loses the protection** (see "Returning to an
-  older release"). Measured twice for files without the first line; for files
-  with it, read from the older release's source.
+  older release"). Measured for files without the first line (alpha.81 in two
+  records, alpha.82 in a third); for files with it, read from the older
+  release's source.
+- **The first start renders hosted sites.** At its first start this release
+  writes the nginx file of every hosted site that it recognises as an earlier
+  release's own text (adoption, with one nginx check and reload); only a file
+  that differs from every known text is left alone. That write was measured on
+  rebuilt baselines in the lab and never on an installed server's files.
+- **Deleting a site.** The removal of CelikPanel's own include directory
+  (`celikpanel-managed.d`) at deletion has component tests only: the deletion
+  measurements kept the dated copies and your directory, and did not look at it.
 - **The pool and the unit.** A PHP version switch was never measured (each lab
   machine has one PHP version), and the removal and clean-up steps of its own
-  put-back still reload without the check. They are not
+  put-back still reload without the check. In the lab only "Take CelikPanel's"
+  was run on a pool or a unit (with the refusals of a pool save or a hosting
+  change); "Keep mine", "Recreate" and "Write CelikPanel's text now" on those
+  two files have component tests only. They are not
   looked at when the Panel starts, and the start line counts nginx files
   only. Site creation records no row for them,
   so a pool or unit nobody has opened or changed is not on the Domains list. The
@@ -1088,8 +1147,9 @@ These are known. They are not hidden defects.
   Your include directory is read after the site's `location` blocks.
 - **Not covered:** the Panel's own nginx site for its certificate, and the nginx
   files of webmail and the database tools.
-- **Screens not yet converted.** 30 source files of the interface (31 in
-  v0.1.0-alpha.82) still read the server the old way in at least one place: the
+- **Screens not yet converted.** 30 source files of the interface (88 places;
+  31 files in v0.1.0-alpha.82) still read the server the old way in at least
+  one place: the
   application shell and its session read, the sign-in page, the setup wizard,
   the update card and the update and component operation overlays, the Services
   list and service pages, the sidebar, parts of the dashboard, add-ons, the
@@ -1109,7 +1169,7 @@ These are known. They are not hidden defects.
   this release the open page is still v0.1.0-alpha.82's.
 - **Setup.** The mail identity reason was never read from a real Agent. A failed
   forward lookup after a matching reverse DNS name is reported as the same
-  unknown; the two are not told apart. An Agent of an earlier release still
+  unknown ("could not be checked"); the two lookups are not told apart. An Agent of an earlier release still
   reports an empty reverse DNS name as a mismatch.
 - **Limits of v0.1.0-alpha.82 that still stand.**
   - Routes without a request identity: twelve routes now require it (the eight
@@ -1130,13 +1190,15 @@ These are known. They are not hidden defects.
   - The Panel has no control that sets a database user's password.
   - The other limits of [v0.1.0-alpha.82](RELEASE-NOTES-v0.1.0-alpha.82.md) that
     this release does not address still apply. Its limit "Your own edits of a
-    generated site configuration file" is addressed here, for the nginx file
-    measured in part and for the pool and the unit in source.
+    generated site configuration file" is addressed here, for the nginx file,
+    the pool and the unit, to the extent the measurements above and the limits
+    in this list say.
 - **Evidence scope.** One laptop host; builds with the acceptance-test licence,
   not the signed archive; machines with outbound NAT whose traffic was not
   captured; names pinned to loopback; each cell ran once, except where a record
-  names a repeated run. The host logged modern standby during the eighth to
-  eleventh records; their disk watchers show no gap longer than 31 s. Checks
+  names a repeated run. The host logged modern standby during parts of the
+  seventh to the thirteenth records; their disk watchers show no gap longer
+  than 31 s. Checks
   that did not pass are listed in each directory's `checks-not-passed.txt`.
 - **Open acceptance items.** All five foundation items of the
   [resilience contract](RESILIENCE-CONTRACT.md) remain partial; this release
@@ -1151,13 +1213,13 @@ Not published. Open before publication:
 2. The release preparation is committed in a separate commit that changes no
    file under `cmd/`, `internal/` or `web/`: release sequence 83 after 82, the
    installer's bootstrap pins, the README version lines and the contract tests
-   that pin them. (Its commit message dates the owner's decision 2026-10-12 by
-   mistake; a later commit records the correct date.) At publication the owner
-   sets the repository variable `CELIKPANEL_RELEASE_SEQUENCE` to 83. The real
-   archive is built and signed by CI on the tag.
-3. The results of the eleventh, twelfth and thirteenth records are entered.
-   The pull request's head gets its own CI run; the last passing one is named
-   under "Tests".
+   that pin them. (The owner's decision is dated 2026-10-11; that commit's
+   message says 2026-10-12 by mistake.) At publication the owner sets the
+   repository variable `CELIKPANEL_RELEASE_SEQUENCE` to 83, before the tag. The
+   real archive is built and signed by CI on the tag.
+3. Done: the results of the eleventh, twelfth and thirteenth records are
+   entered. The pull request's last head gets its own CI run; the runs up to
+   12:09 UTC on 2026-10-11 are named under "Tests".
 4. Before the merge, the owner renames the required checks in the branch
    protection of `main`: the continuous integration now splits one test group
    into three. "Panel race — S, except the service tests" becomes "Panel race —
@@ -1166,8 +1228,11 @@ Not published. Open before publication:
    required checks.
 5. Whether the vendor's publishing tools and the two one-time recovery scripts
    stay in the archive: the owner's decision, pending.
-6. The owner merges, tags the release, checks the signed assets as the signed
-   release contract describes, and publishes the download portal.
+6. The owner merges, tags the release, checks the six signed assets as the
+   signed release contract describes, and publishes the download portal.
+7. After the release is published, the owner of each installed server updates
+   that server from the panel's own update screen. This is a separate step
+   from every step above; no one else starts it.
 
 Install this release only through CelikPanel's update interface. Publishing it
 does not update installed servers; only the owner of a server starts its
