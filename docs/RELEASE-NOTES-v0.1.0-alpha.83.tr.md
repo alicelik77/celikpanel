@@ -1262,8 +1262,10 @@ Yayımlanmadı. Yayımlamadan önce açık olanlar:
    2026-10-11'de okunduğunda tek zorunlu denetim vardı: "Release —
    reproducible archive and checksum"; bu yüzden birleştirmeden önce ad
    değişikliği gerekmez. Bu maddenin önceki hali gerektiğini söylüyordu.
-5. Satıcının yayın araçları ile iki tek seferlik kurtarma betiğinin arşivde
-   kalıp kalmayacağı: sahibin kararı, bekliyor.
+5. Satıcının yayın araçları ile iki tek seferlik kurtarma betiği bu sürümün
+   arşivinde kalır (sahip kararı, 11 Ekim 2026). Müşterinin sunucusunda hiçbir
+   iş yapmazlar; çıkarılmaları, kendi arşiv derlemesini ve içerik denetimlerini
+   gerektirdiği için sonraki bir sürüme bırakıldı.
 6. Sahip birleştirir, sürümü etiketler, altı imzalı dosyayı imzalı sürüm
    sözleşmesinde anlatıldığı gibi doğrular ve indirme portalını yayımlar.
 7. Sürüm yayımlandıktan sonra, kurulu her sunucunun sahibi o sunucuyu panelin

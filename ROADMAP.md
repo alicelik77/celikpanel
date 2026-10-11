@@ -324,7 +324,9 @@ above and below stays open.
        request identity; the migration of installed renewal helpers; the
        mail certificate path behind a `postconf` warning, never measured on a
        server; the vendor publishing tools and two one-time recovery scripts
-       that the archive still carries (owner decision pending); the Postfix
+       that the archive still carries (owner decision of 2026-10-11: they stay
+       in v0.1.0-alpha.83; removing them is a later release's packaging
+       change); the Postfix
        restriction list that a DNSBL save rewrites to one line; and the
        missing control for a database user's password.
   - No P0 item is closed or advanced by this release. Publishing it did not
@@ -391,9 +393,7 @@ above and below stays open.
   - *Open before publication:* setting the repository variable
     `CELIKPANEL_RELEASE_SEQUENCE` to 83 (the branch protection of `main`
     requires only "Release — reproducible archive and checksum", read on
-    2026-10-11, so the split race shards need no rename); the owner's decision whether the vendor
-    publishing tools and two one-time recovery scripts stay in the archive;
-    merge, tag, verification of the six signed assets and the portal
+    2026-10-11, so the split race shards need no rename); merge, tag, verification of the six signed assets and the portal
     publication. Each installed panel is then updated by its owner from the
     panel's own update screen; no one else starts that.
   - *Open for the next release, with the candidate's limits as the release

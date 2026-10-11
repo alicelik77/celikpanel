@@ -1226,8 +1226,10 @@ Not published. Open before publication:
    branch protection of `main` on 2026-10-11 showed only one required check,
    "Release — reproducible archive and checksum", so no rename is needed
    before the merge; an earlier form of this item said one was.
-5. Whether the vendor's publishing tools and the two one-time recovery scripts
-   stay in the archive: the owner's decision, pending.
+5. The vendor's publishing tools and the two one-time recovery scripts stay in
+   this release's archive (owner decision, 2026-10-11). They do nothing on a
+   customer's server; removing them is left to a later release, where the
+   packaging change needs its own archive build and content checks.
 6. The owner merges, tags the release, checks the six signed assets as the
    signed release contract describes, and publishes the download portal.
 7. After the release is published, the owner of each installed server updates

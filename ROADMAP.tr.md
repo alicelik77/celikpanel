@@ -321,8 +321,9 @@ kabul işi açık kalır.
        kaynak dosyası; istek kimliği olmayan durum değiştiren rotalar; kurulu
        yenileme yardımcılarının taşınması; `postconf` uyarısının ardındaki posta
        sertifikası yolu, bir sunucuda hiç ölçülmedi; arşivin hâlâ taşıdığı
-       satıcı yayın araçları ve iki tek seferlik kurtarma betiği (sahip kararı
-       bekliyor); bir DNSBL kaydının tek satıra çevirdiği Postfix kısıtlama
+       satıcı yayın araçları ve iki tek seferlik kurtarma betiği (sahip kararı,
+       11 Ekim 2026: v0.1.0-alpha.83'te kalırlar; çıkarılmaları sonraki bir
+       sürümün paketleme değişikliğidir); bir DNSBL kaydının tek satıra çevirdiği Postfix kısıtlama
        listesi; ve bir veritabanı kullanıcısının parolası için denetimin
        bulunmaması.
   - Bu sürüm hiçbir P0 işini kapatmaz ve ilerletmez. Yayımlanması kurulu hiçbir
@@ -389,8 +390,7 @@ kabul işi açık kalır.
   - *Yayımlamadan önce açık:* `CELIKPANEL_RELEASE_SEQUENCE` depo değişkeninin 83
     yapılması (`main` dalının koruması 2026-10-11'de okunduğunda yalnız
     "Release — reproducible archive and checksum" zorunluydu; bölünen yarış
-    dilimleri için ad değişikliği gerekmez); satıcının yayın araçları ile iki tek seferlik kurtarma betiğinin
-    arşivde kalıp kalmayacağına sahibin kararı; birleştirme, etiket, altı imzalı
+    dilimleri için ad değişikliği gerekmez); birleştirme, etiket, altı imzalı
     dosyanın doğrulanması ve portalın yayımlanması. Kurulu her paneli sonra
     sahibi panelin kendi güncelleme ekranından günceller; bunu başka kimse
     başlatmaz.
