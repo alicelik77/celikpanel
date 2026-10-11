@@ -275,8 +275,16 @@ type siteConfigView struct {
 	// Agent; Protection: what refuses it (transport.SiteFileProtection*).
 	SystemError string `json:"system_error,omitempty"`
 	Protection  string `json:"protection,omitempty"`
+	// FileState, additive (2026-10-11): what the file's bytes are when State
+	// is a higher fact about the same bytes (services.SiteFileShownState):
+	// "owner_edited", "foreign" or "unknown_origin" under "unwritable" — the
+	// owner's file whose replacement ("take") the server refused.
+	FileState string `json:"file_state,omitempty"`
 
 	certificateReferenced bool
+	// heldRender: the file is CelikPanel's unchanged text, but not this
+	// render's (its declared digest differs, or it has no header).
+	heldRender bool
 }
 
 type siteConfigDecision struct {
@@ -305,6 +313,13 @@ func unixToAPI(value int64) string {
 // server can resolve the state.
 const siteConfigActionRecheck = "recheck"
 
+// siteConfigActionApply writes CelikPanel's held text for this one site now
+// (POST .../site-config/apply). It is offered only on CelikPanel's unchanged
+// text whose last replacement was refused and whose protection a later "check
+// again" found removed (ledger reason protection_removed), while a render is
+// held; the next start or saved change would write it as well.
+const siteConfigActionApply = "apply"
+
 func siteConfigActions(state string) []string {
 	switch state {
 	case transport.SiteFileOwnerEdited, transport.SiteFileForeign, transport.SiteFileUnknownOrigin:
@@ -318,27 +333,110 @@ func siteConfigActions(state string) []string {
 }
 
 // presentLedgerWriteRefusal answers the ledger's last observation when the
-// last render could not replace the file (set10 scenario g): the Agent's read
-// finds the file readable and CelikPanel's unchanged text, but the ledger and
-// the domains list say the replacement was refused. The read answers that
-// state ("unwritable", reason write_refused) so the page, the list row and
-// the badge agree, while the file on disk is still the one the refusal was
-// recorded on. The system error and the protection are the Agent's
-// read-only measurement of now; the difference is what CelikPanel wanted to
-// write.
+// last render or "take" could not replace the file (set10 scenario g): the
+// Agent's read finds the file readable, but the ledger and the domains list
+// say its replacement was refused. While the file on disk is still the one
+// the refusal was recorded on, both facts hold for the same bytes and the
+// read answers the higher one (services.SiteFileShownState), so the page, the
+// list row and the badge agree: CelikPanel's unchanged text is "unwritable";
+// the owner's file whose "take" was refused is "unwritable" with FileState
+// naming what the file is, and the owner's choices stay offered ("take" is
+// answered SITE_CONFIG_UNWRITABLE while the protection stands). The system
+// error and the protection are the Agent's read-only measurement of now; the
+// difference is what CelikPanel wanted to write.
 func presentLedgerWriteRefusal(view *siteConfigView, record services.SiteFileRecord) {
-	if view.Outcome != "" || view.State != transport.SiteFileManagedUnchanged {
-		return
-	}
-	if services.SiteFilePresentedState(record.State, record.StateReason) != transport.SiteFileUnwritable {
+	if view.Outcome != "" || !services.SiteFileWriteRefused(record) {
 		return
 	}
 	if record.FileSHA256 == "" || record.FileSHA256 != view.FileSHA256 {
 		return
 	}
-	view.State = transport.SiteFileUnwritable
+	shown := services.SiteFileShownState(view.State, transport.SiteFileUnwritable)
+	if shown == view.State {
+		return
+	}
+	actions := siteConfigActions(shown)
+	if siteFileKeptState(view.State) {
+		view.FileState = view.State
+		actions = append(siteConfigActions(view.State), siteConfigActionRecheck)
+	}
+	view.State = shown
 	view.Reason = transport.SiteFileReasonWriteRefused
-	view.Actions = siteConfigActions(view.State)
+	view.Actions = actions
+}
+
+// presentProtectionRemoved offers "apply" on CelikPanel's unchanged text
+// whose refusal a "check again" ended (reason protection_removed), while the
+// file is the one that read measured and a render is held.
+func presentProtectionRemoved(view *siteConfigView, record services.SiteFileRecord) {
+	if view.Outcome != "" || view.State != transport.SiteFileManagedUnchanged || !view.heldRender ||
+		record.StateReason != services.SiteFileReasonProtectionRemoved ||
+		record.FileSHA256 == "" || record.FileSHA256 != view.FileSHA256 {
+		return
+	}
+	view.Reason = services.SiteFileReasonProtectionRemoved
+	view.Actions = []string{siteConfigActionApply}
+}
+
+func siteFileKeptState(state string) bool {
+	switch state {
+	case transport.SiteFileOwnerEdited, transport.SiteFileForeign, transport.SiteFileUnknownOrigin:
+		return true
+	}
+	return false
+}
+
+// recheckWriteRefusal is the domain screen's read ("check again") on a site
+// whose ledger row is a refused replacement. It records what the read found,
+// so the domains list row agrees with the page:
+//   - the same bytes, measured unprotected ("none"): CelikPanel's unchanged
+//     text is stored managed_unchanged with the reason protection_removed (its
+//     held text is written at the next start or saved change, or by "apply");
+//     the owner's file is stored as what it is (owner-edited, …), its choices
+//     open again;
+//   - the same bytes, still protected or not measured: the refusal stands;
+//     only the observation time is stored;
+//   - other bytes: the file as it is read now (the refusal was about bytes
+//     that are gone). Never a write of the file.
+func (p *Panel) recheckWriteRefusal(ctx context.Context, siteID int, view siteConfigView) {
+	record, found, err := services.LoadSiteFileRecord(ctx, p.db.GetDB(), siteID, transport.SiteFileKindNginxVhost)
+	if err != nil || !found || !services.SiteFileWriteRefused(record) || view.Path == "" || view.Path != record.Path {
+		return
+	}
+	state, reason, fileSHA := record.State, record.StateReason, record.FileSHA256
+	switch {
+	case record.FileSHA256 != "" && view.FileSHA256 == record.FileSHA256:
+		if view.Protection == transport.SiteFileProtectionNone {
+			switch {
+			case view.State == transport.SiteFileManagedUnchanged:
+				state, reason = view.State, services.SiteFileReasonProtectionRemoved
+			case siteFileKeptState(view.State):
+				state, reason = view.State, ""
+			}
+		}
+	default:
+		switch {
+		case view.State == transport.SiteFileAbsent:
+			state, reason = transport.SiteFileMissingState, ""
+		case view.State == transport.SiteFileManagedUnchanged || siteFileKeptState(view.State):
+			state, reason = view.State, ""
+		case view.State == transport.SiteFileUnreadable:
+			state, reason = view.State, view.Reason
+		default:
+			return
+		}
+		fileSHA = view.FileSHA256
+	}
+	changed, err := services.RecordSiteFileRecheck(ctx, p.db.GetDB(), siteID, transport.SiteFileKindNginxVhost,
+		record.Path, state, reason, fileSHA, 0)
+	if err != nil {
+		log.Printf("site configuration %s: record the check: %v", view.Domain, err)
+		return
+	}
+	if changed && (state != record.State || reason != record.StateReason) {
+		log.Printf("site configuration %s: checked again: %s (%s), no longer a refused replacement (protection %q)",
+			view.Domain, strings.ReplaceAll(state, "_", "-"), reason, view.Protection)
+	}
 }
 
 func (p *Panel) siteConfigViewFor(ctx context.Context, siteID int, view siteConfigView) siteConfigView {
@@ -347,6 +445,7 @@ func (p *Panel) siteConfigViewFor(ctx context.Context, siteID int, view siteConf
 		return view
 	}
 	presentLedgerWriteRefusal(&view, record)
+	presentProtectionRemoved(&view, record)
 	view.Ledger = &siteConfigLedgerView{
 		WrittenRelease: record.WrittenRelease, WrittenAt: unixToAPI(record.WrittenAt),
 		ObservedAt: unixToAPI(record.ObservedAt), BackupPath: record.BackupPath,
@@ -366,6 +465,8 @@ func (p *Panel) siteConfigViewFor(ctx context.Context, siteID int, view siteConf
 
 // inspectSiteConfig asks the Agent for the file's state and the difference.
 // Without probe it writes nothing, on the server or in the Panel's database.
+// With probe (the domain screen's read), a ledger row whose last observation
+// is a refused replacement records what the read found (recheckWriteRefusal).
 // With probe, and only while the ledger says the file stopped a certificate
 // ("certificate_validation"), the Agent measures the validation (a probe file
 // in the challenge root, removed again; CelikPanel's challenge file published
@@ -408,10 +509,15 @@ func (p *Panel) inspectSiteConfig(ctx context.Context, domainID int, probe bool)
 	view.certificateReferenced = file.CertificateReferenced
 	view.ValidationName, view.ValidationStatus = file.ValidationName, file.ValidationStatus
 	view.SystemError, view.Protection = file.SystemError, file.Protection
+	view.heldRender = file.State == transport.SiteFileManagedUnchanged && file.WrittenSHA256 != file.RenderSHA256
 	view.Actions = siteConfigActions(file.State)
 	if req.ProbeValidation && file.Validation == transport.SiteFileValidationReady &&
 		p.endCertificateValidationReason(ctx, siteID, domainID, domain) {
 		view.ResolvedReason = services.SiteFileReasonCertificateValidation
+	}
+	if probe {
+		// The domain screen's read is its "check again".
+		p.recheckWriteRefusal(ctx, siteID, view)
 	}
 	return p.siteConfigViewFor(ctx, siteID, view), siteID, &file, nil
 }
@@ -439,10 +545,8 @@ func (p *Panel) handleDomainSiteConfig(w http.ResponseWriter, r *http.Request, d
 		p.handleSiteConfigRead(w, r, domainID)
 	case "keep":
 		p.handleSiteConfigKeep(w, r, domainID)
-	case "take":
-		p.handleSiteConfigRender(w, r, domainID, transport.SiteFileTriggerTake)
-	case "recreate":
-		p.handleSiteConfigRender(w, r, domainID, transport.SiteFileTriggerRecreate)
+	case "take", "recreate", siteConfigActionApply:
+		p.handleSiteConfigRender(w, r, domainID, action)
 	default:
 		http.NotFound(w, r)
 	}
@@ -534,15 +638,41 @@ func (p *Panel) handleSiteConfigKeep(w http.ResponseWriter, r *http.Request, dom
 	_ = json.NewEncoder(w).Encode(view)
 }
 
-// handleSiteConfigRender is "take CelikPanel's" and "recreate".
-func (p *Panel) handleSiteConfigRender(w http.ResponseWriter, r *http.Request, domainID int, trigger string) {
+// siteConfigProtected says whether a read-only measurement found something
+// that refuses replacing the file now ("none" and "not measured" do not).
+func siteConfigProtected(protection string) bool {
+	return protection != "" && protection != transport.SiteFileProtectionNone
+}
+
+// handleSiteConfigRender is "take CelikPanel's", "recreate" and "apply".
+//
+// "apply" writes CelikPanel's held text for this one site on CelikPanel's own
+// unchanged text, after a "check again" found the protection that refused it
+// removed. It is the render of a settings change (the Agent's "change"
+// trigger, managed_unchanged branch): no dated copy is made, because the file
+// is CelikPanel's own earlier text (its header's digest matches its body), so
+// nothing of the owner's is in it; if nginx refuses the text, the previous
+// bytes are put back exactly, as for every render. It records no owner
+// decision.
+//
+// "take" on a file a read-only measurement finds protected is answered
+// SITE_CONFIG_UNWRITABLE before anything is written (no dated copy is left
+// behind for a replacement the server would refuse); the refusal is recorded.
+func (p *Panel) handleSiteConfigRender(w http.ResponseWriter, r *http.Request, domainID int, action string) {
 	body, ok := decodeSiteConfigAction(w, r)
 	if !ok {
 		return
 	}
-	if trigger == transport.SiteFileTriggerTake && (body.FileSHA256 == "" || body.RenderSHA256 == "") {
+	if action != "recreate" && (body.FileSHA256 == "" || body.RenderSHA256 == "") {
 		writeClientError(w, http.StatusBadRequest, "file_sha256 and render_sha256 are required")
 		return
+	}
+	trigger := transport.SiteFileTriggerRecreate
+	switch action {
+	case "take":
+		trigger = transport.SiteFileTriggerTake
+	case siteConfigActionApply:
+		trigger = transport.SiteFileTriggerChange
 	}
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), siteConfigActionTimeout)
 	defer cancel()
@@ -554,6 +684,34 @@ func (p *Panel) handleSiteConfigRender(w http.ResponseWriter, r *http.Request, d
 	if err != nil {
 		writeServerError(w, err)
 		return
+	}
+	if action != "recreate" {
+		view, _, inspected, err := p.inspectSiteConfig(ctx, domainID, false)
+		if err != nil {
+			writeSiteConfigNotRead(w, domain, err)
+			return
+		}
+		if action == siteConfigActionApply {
+			if inspected != nil && (inspected.FileSHA256 != body.FileSHA256 || inspected.RenderSHA256 != body.RenderSHA256) {
+				writeCodedError(w, http.StatusConflict, errCodeSiteConfigChanged, siteConfigChangedMessage, "")
+				return
+			}
+			if inspected == nil || !containsString(view.Actions, siteConfigActionApply) {
+				writeCodedError(w, http.StatusConflict, errCodeSiteConfigNotApplicable, siteConfigNotApplicableMessage, "")
+				return
+			}
+		}
+		if action == "take" && inspected != nil && inspected.FileSHA256 == body.FileSHA256 &&
+			siteConfigProtected(inspected.Protection) {
+			refused := *inspected
+			refused.Outcome = transport.SiteFileOutcomeRefused
+			refused.Reason = transport.SiteFileReasonWriteRefused
+			refused.Detail = "not attempted: the file is protected (" + inspected.Protection + ")"
+			p.recordSiteFile(ctx, siteID, domainID, domain, trigger, &refused, "")
+			// The same answer as a replacement the Agent's write refused.
+			writeServerError(w, &siteFileHeldError{Domain: domain, File: refused})
+			return
+		}
 	}
 	req, err := p.buildVhostRequest(ctx, domainID, nil)
 	if err != nil {
@@ -586,24 +744,32 @@ func (p *Panel) handleSiteConfigRender(w http.ResponseWriter, r *http.Request, d
 		_ = json.NewEncoder(w).Encode(body)
 		return
 	case !siteFileApplied(file.Outcome):
-		if file.Outcome == transport.SiteFileOutcomeKept && trigger == transport.SiteFileTriggerRecreate {
+		if file.Outcome == transport.SiteFileOutcomeKept && action == siteConfigActionApply {
+			// The file changed after the read: kept, never written.
+			writeCodedError(w, http.StatusConflict, errCodeSiteConfigChanged, siteConfigChangedMessage, "")
+			return
+		}
+		if file.Outcome == transport.SiteFileOutcomeKept && action == "recreate" {
 			writeCodedError(w, http.StatusConflict, errCodeSiteConfigNotApplicable, siteConfigNotApplicableMessage, "")
 			return
 		}
 		writeServerError(w, err)
 		return
 	}
-	decision := services.SiteFileDecisionTake
-	audit := "domain.site_config.take"
-	if trigger == transport.SiteFileTriggerRecreate {
+	decision := ""
+	switch action {
+	case "take":
+		decision = services.SiteFileDecisionTake
+	case "recreate":
 		decision = services.SiteFileDecisionRecreate
-		audit = "domain.site_config.recreate"
 	}
-	if err := services.RecordSiteFileDecision(ctx, p.db.GetDB(), siteID, transport.SiteFileKindNginxVhost,
-		file.Path, decision, file.FileSHA256, currentCaller(r).ID, 0); err != nil {
-		log.Printf("site configuration %s: record the decision: %v", domain, err)
+	if decision != "" {
+		if err := services.RecordSiteFileDecision(ctx, p.db.GetDB(), siteID, transport.SiteFileKindNginxVhost,
+			file.Path, decision, file.FileSHA256, currentCaller(r).ID, 0); err != nil {
+			log.Printf("site configuration %s: record the decision: %v", domain, err)
+		}
 	}
-	p.audit(r, audit, "domain", domainID)
+	p.audit(r, "domain.site_config."+action, "domain", domainID)
 	view := siteConfigView{
 		DomainID: domainID, Domain: domain, Kind: transport.SiteFileKindNginxVhost,
 		Path: file.Path, State: transport.SiteFileManagedUnchanged, IncludeDir: file.IncludeDir,

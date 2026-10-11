@@ -5951,6 +5951,42 @@ EN; the Turkish edition carries the TR text):
   "Configuration file cannot be replaced"; notice `siteConfig.notice.unwritable`
   "This site’s nginx configuration file cannot be replaced on this server.
   CelikPanel kept it as it is."
+- After "Check again" (2026-10-11; component-tested and mock browser; not
+  measured on a real system). The domain screen's read is the check and
+  records what it found in the ledger, so the Domains row agrees with the page.
+  Still protected (or not measurable): `unwritable` stays; only the time of
+  the check is stored. No protection measured on the same bytes: the file is
+  CelikPanel's own text again (`managed_unchanged`, ledger reason
+  `protection_removed`), and while its last change is held the page says
+  `siteConfig.held.title` "The file can be replaced again" — "No write
+  protection is found on this file now, and it is still CelikPanel’s own
+  earlier text. The last change for this site is not in it yet." — "CelikPanel
+  writes its text at the next panel start or the next change saved for this
+  site; nothing else is needed.", the button "Write CelikPanel’s text now"
+  ("Only this site’s file is written, then nginx is reloaded. If nginx refuses
+  the text, the file is put back as it is now."), and "What CelikPanel will
+  write: the file now (−) and CelikPanel’s text (+)". Done: "CelikPanel’s text
+  is in place and nginx was reloaded." The row wears no badge. If the bytes
+  changed meanwhile, the file is named as it is now (owner-edited, foreign,
+  …) and nothing is written.
+- Edited outside CelikPanel and not replaceable (2026-10-11; component-tested
+  and mock browser; not measured on a real system): a "take" on the owner's
+  file that the server refused. One order decides what the page, the Domains
+  row and its badge say when two facts hold for the same bytes: unreadable >
+  unwritable > missing > owner-edited / foreign / unknown origin > CelikPanel's
+  unchanged text; so all three say `unwritable`. The page names both facts:
+  `siteConfig.editedUnwritable.title` "Edited outside CelikPanel, and this
+  server refuses to replace it" — "This file is not the text CelikPanel last
+  wrote, so CelikPanel kept it as it is; nginx keeps serving the site with
+  it." — "Taking CelikPanel’s text was refused: this server does not let the
+  file be replaced ({error})."; the protection measured now; "The server
+  administrator decides: to take CelikPanel’s text, first remove the
+  protection, for example with sudo chattr -i <path>, then choose Check again;
+  or keep your file with Keep mine."; the resume line; Check again; the three
+  choices; and the difference. "Take CelikPanel’s" stays offered and is
+  answered `409 SITE_CONFIG_UNWRITABLE` before anything is written (no dated
+  copy) while a protection is measured. Once Check again measures none, the
+  page is the owner-edited page again with its three choices.
 
 **The three choices** (each a POST under the request identity of D-029; each
 bound to the digests the page showed):
@@ -6399,8 +6435,15 @@ Errors are `{"error": <English sentence>, "code": …, "reason"?: …, "detail"?
   `enabled`: `link`, `absent` or `other` (sites-enabled entry). `actions`
   (always an array): `["keep","take","merge"]` for owner_edited, foreign and
   unknown_origin; `["recreate"]` for absent; `["recheck"]` for unreadable and
-  unwritable (the page reads this answer again; no route, nothing is written);
-  `[]` otherwise. `merge` has no
+  unwritable (the page reads this answer again; no route; the file is not
+  written, the ledger row of a refused replacement records what the read
+  found); `["keep","take","merge","recheck"]` for `unwritable` with
+  `file_state` (2026-10-11: the owner's file whose `take` was refused;
+  `file_state` is `owner_edited`, `foreign` or `unknown_origin`, chosen by the
+  precedence unreadable > unwritable > missing > owner-edited/foreign/unknown
+  origin > managed_unchanged, the same for the domains list); `["apply"]` for
+  `managed_unchanged` with `reason` `protection_removed` while CelikPanel's
+  text is held (2026-10-11); `[]` otherwise. `merge` has no
   route: it is done on the server. `diff` is a unified diff of the file on disk
   against CelikPanel's text (header line left out), at most 4000 lines per side
   and 64 KiB; `diff_truncated` says it was cut; a line that mentions
@@ -6456,6 +6499,20 @@ Errors are `{"error": <English sentence>, "code": …, "reason"?: …, "detail"?
   reports `unchanged`. Errors: `409 SITE_CONFIG_NOT_APPLICABLE` (the file exists
   and was kept), `409 SITE_CONFIG_UNWRITABLE`, `502 SITE_CONFIG_NGINX_REFUSED`,
   `502 SITE_CONFIG_NOT_READ`.
+- `take` on a file whose protection the Agent measures now (2026-10-11):
+  `409 SITE_CONFIG_UNWRITABLE` `reason` `write_refused` before anything is
+  written; no dated copy is made; the refusal is recorded.
+- `POST …/apply` (2026-10-11; component-tested; not measured on a real system)
+  body `{"file_sha256":"…","render_sha256":"…"}` (both required, both from the
+  GET), under the request identity of D-029 → 200 as `take` with `outcome`
+  `written` (or `unchanged`), no `backup_path`, no `decision`. It is the render
+  of a settings change for this one site: the file is CelikPanel's own earlier
+  text, so nothing of the owner's is in it and no dated copy is kept; if nginx
+  refuses the text, the previous bytes are put back exactly. Errors: `400`,
+  `409 SITE_CONFIG_CHANGED` (the digests differ, or the file was edited since
+  the read: kept, never written), `409 SITE_CONFIG_NOT_APPLICABLE` (`apply` is
+  not offered now), `409 SITE_CONFIG_UNWRITABLE` (protected again), `502
+  SITE_CONFIG_NGINX_REFUSED`, `502 SITE_CONFIG_NOT_READ`.
 - The domains list (`GET /api/v1/domains`) carries, for an administrator only,
   `site_config: {"state":…,"adopted_from"?:…,"kept_by_choice"?:true,"pending_reason"?:…}` from the
   Panel's last recorded observation (`missing` is a stored state; the GET above

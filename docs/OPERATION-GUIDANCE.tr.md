@@ -5884,6 +5884,45 @@ dosyadan değil.
   "Yapılandırma dosyası değiştirilemiyor"; not `siteConfig.notice.unwritable`
   "Bu sitenin nginx yapılandırma dosyası bu sunucuda değiştirilemiyor.
   CelikPanel onu olduğu gibi korudu."
+- "Yeniden denetle"den sonra (2026-10-11; bileşen testli ve sahte tarayıcıda
+  bakıldı; gerçek sistemde ölçülmedi). Alan adı ekranının okuması denetimin
+  kendisidir ve bulduğunu deftere yazar; böylece Alan Adları satırı sayfayla
+  aynı şeyi söyler. Koruma sürüyorsa (ya da ölçülemiyorsa) `unwritable` kalır;
+  yalnız denetimin zamanı saklanır. Aynı baytlarda koruma ölçülmezse dosya
+  yeniden CelikPanel'in kendi metnidir (`managed_unchanged`, defter nedeni
+  `protection_removed`) ve son değişikliği beklerken sayfa şunu söyler:
+  `siteConfig.held.title` "Dosya yeniden değiştirilebilir" — "Bu dosyada
+  artık yazma koruması bulunmuyor ve dosya hâlâ CelikPanel’in kendi önceki
+  metni. Bu site için yapılan son değişiklik henüz dosyada değil." —
+  "CelikPanel metnini panelin bir sonraki başlangıcında ya da bu site için
+  kaydedilen bir sonraki değişiklikte yazar; başka bir şey gerekmez.";
+  "CelikPanel’in metnini şimdi yaz" düğmesi ("Yalnız bu sitenin dosyası
+  yazılır, ardından nginx yeniden yüklenir. nginx metni kabul etmezse dosya
+  şimdiki hâline geri konur.") ve "CelikPanel’in yazacağı: şimdiki dosya (−)
+  ve CelikPanel’in metni (+)". Sonuç: "CelikPanel’in metni yerinde ve nginx
+  yeniden yüklendi." Satır rozet taşımaz. Baytlar bu arada değiştiyse dosya
+  şimdiki hâliyle adlandırılır (sahibin düzenlediği, yabancı, …) ve hiçbir şey
+  yazılmaz.
+- CelikPanel dışında düzenlenmiş ve değiştirilemeyen dosya (2026-10-11; bileşen
+  testli ve sahte tarayıcıda bakıldı; gerçek sistemde ölçülmedi): sahibin
+  dosyasında sunucunun reddettiği bir "al". Aynı baytlar için iki olgu
+  geçerliyken sayfanın, Alan Adları satırının ve rozetinin ne söyleyeceğini
+  tek bir sıra belirler: okunamıyor > değiştirilemiyor > eksik > sahibin
+  düzenlediği / yabancı / kökeni bilinmeyen > CelikPanel'in değişmemiş metni;
+  üçü de `unwritable` der. Sayfa iki olguyu da adlandırır:
+  `siteConfig.editedUnwritable.title` "CelikPanel dışında düzenlendi ve bu
+  sunucu dosyanın değiştirilmesini reddediyor" — "Bu dosya CelikPanel’in en
+  son yazdığı metin değil; bu yüzden CelikPanel onu olduğu gibi korudu. nginx
+  siteyi bu dosyayla sunmayı sürdürüyor." — "CelikPanel’in metnini alma
+  isteği reddedildi: bu sunucu dosyanın değiştirilmesine izin vermiyor
+  ({error})."; şimdi ölçülen koruma; "Karar sunucu yöneticisinindir:
+  CelikPanel’in metnini almak için önce korumayı kaldırın, örneğin sudo
+  chattr -i <yol> ile, sonra Yeniden denetle’yi seçin; ya da Benimkini koru
+  ile dosyanızı koruyun."; devam satırı; Yeniden denetle; üç seçim; ve fark.
+  "CelikPanel’in metnini al" sunulmayı sürdürür ve bir koruma ölçüldüğü sürece
+  hiçbir şey yazılmadan (tarihli kopya yapılmadan) `409
+  SITE_CONFIG_UNWRITABLE` ile yanıtlanır. Yeniden denetle koruma ölçmediğinde
+  sayfa üç seçimiyle yeniden sahibin düzenlediği dosyanın sayfasıdır.
 
 **Üç seçim** (her biri D-029 istek kimliğiyle bir POST; her biri sayfanın
 gösterdiği özetlere bağlıdır):
@@ -6337,8 +6376,15 @@ biçimindedir; ekranlar `code`'a göre çevirir.
   yazılmaz). `enabled`: `link`, `absent` ya da `other` (sites-enabled
   girdisi). `actions` (hep dizi): owner_edited, foreign ve unknown_origin için
   `["keep","take","merge"]`; absent için `["recreate"]`; unreadable ve
-  unwritable için `["recheck"]` (sayfa bu yanıtı yeniden okur; rotası yok,
-  hiçbir şey yazılmaz); diğerlerinde `[]`. `merge`'in rotası yoktur: sunucuda yapılır. `diff`,
+  unwritable için `["recheck"]` (sayfa bu yanıtı yeniden okur; rotası yok;
+  dosyaya yazılmaz, reddedilmiş bir değiştirmenin defter satırı okumanın
+  bulduğunu kaydeder); `file_state` taşıyan `unwritable` için
+  `["keep","take","merge","recheck"]` (2026-10-11: `take`'i reddedilen sahibin
+  dosyası; `file_state` `owner_edited`, `foreign` ya da `unknown_origin`dir ve
+  okunamıyor > değiştirilemiyor > eksik > sahibin düzenlediği/yabancı/kökeni
+  bilinmeyen > managed_unchanged sırasıyla seçilir, alan adları listesinde de
+  aynı sıra); CelikPanel'in metni beklerken `reason` `protection_removed`
+  taşıyan `managed_unchanged` için `["apply"]` (2026-10-11); diğerlerinde `[]`. `merge`'in rotası yoktur: sunucuda yapılır. `diff`,
   diskteki dosya ile CelikPanel'in metninin (başlık satırı hariç) birleşik
   farkıdır; taraf başına en çok 4000 satır ve 64 KiB; `diff_truncated` kesildiğini
   söyler; authorization, password, passwd, secret, token, api key, private key ya
@@ -6392,6 +6438,20 @@ biçimindedir; ekranlar `code`'a göre çevirir.
   `unchanged` bildirir. Hatalar: `409 SITE_CONFIG_NOT_APPLICABLE` (dosya var ve
   korunmuş), `409 SITE_CONFIG_UNWRITABLE`, `502 SITE_CONFIG_NGINX_REFUSED`,
   `502 SITE_CONFIG_NOT_READ`.
+- Agent'ın şu an koruma ölçtüğü dosyada `take` (2026-10-11): hiçbir şey
+  yazılmadan `409 SITE_CONFIG_UNWRITABLE`, `reason` `write_refused`; tarihli
+  kopya yapılmaz; ret kaydedilir.
+- `POST …/apply` (2026-10-11; bileşen testli; gerçek sistemde ölçülmedi) gövde
+  `{"file_sha256":"…","render_sha256":"…"}` (ikisi de zorunlu, ikisi de
+  GET'ten), D-029 istek kimliğiyle → 200, `take` gibi, `outcome` `written` (ya
+  da `unchanged`), `backup_path` ve `decision` yok. Bu tek site için bir ayar
+  değişikliğinin üretimidir: dosya CelikPanel'in kendi önceki metnidir, içinde
+  sahibe ait bir şey yoktur, bu yüzden tarihli kopya tutulmaz; nginx metni
+  reddederse önceki baytlar aynen geri konur. Hatalar: `400`, `409
+  SITE_CONFIG_CHANGED` (özetler farklı ya da dosya okumadan sonra düzenlendi:
+  korunur, asla yazılmaz), `409 SITE_CONFIG_NOT_APPLICABLE` (`apply` şu an
+  sunulmuyor), `409 SITE_CONFIG_UNWRITABLE` (yeniden korunmuş), `502
+  SITE_CONFIG_NGINX_REFUSED`, `502 SITE_CONFIG_NOT_READ`.
 - Alan adları listesi (`GET /api/v1/domains`) yalnız yönetici için
   `site_config: {"state":…,"adopted_from"?:…,"kept_by_choice"?:true,"pending_reason"?:…}` taşır;
   Panel'in kaydettiği son gözlemden gelir (`missing` saklanan bir durumdur; yukarıdaki

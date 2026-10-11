@@ -39,6 +39,39 @@ const (
 	SiteFileReasonCertificateValidation = "certificate_validation"
 )
 
+// SiteFileReasonProtectionRemoved is stored with managed_unchanged when the
+// last render's replacement was refused (write_refused) and a later read of
+// the domain screen ("check again") measured no protection on the same bytes.
+// CelikPanel's held text is then written at the next start, the next change
+// saved for the site, or the owner's "apply"; that write clears the reason.
+const SiteFileReasonProtectionRemoved = "protection_removed"
+
+// siteFileStatePrecedence is the one order in which the facts about a site's
+// file are shown when two of them hold for the same bytes (the live
+// classification and the ledger's refused replacement): the domain screen,
+// the domains list row and its badge show the higher one. unreadable >
+// unwritable > missing/absent > owner_edited/foreign/unknown_origin >
+// managed_unchanged; "unknown" (not reported) ranks below every observation.
+var siteFileStatePrecedence = map[string]int{
+	transport.SiteFileUnreadable:       5,
+	transport.SiteFileUnwritable:       4,
+	transport.SiteFileMissingState:     3,
+	transport.SiteFileAbsent:           3,
+	transport.SiteFileOwnerEdited:      2,
+	transport.SiteFileForeign:          2,
+	transport.SiteFileUnknownOrigin:    2,
+	transport.SiteFileManagedUnchanged: 1,
+}
+
+// SiteFileShownState answers the state shown for two facts about the same
+// file: the higher one in siteFileStatePrecedence (the first on a tie).
+func SiteFileShownState(first, second string) string {
+	if siteFileStatePrecedence[second] > siteFileStatePrecedence[first] {
+		return second
+	}
+	return first
+}
+
 // SiteFileCertificateReason says whether a stored reason is one of them.
 func SiteFileCertificateReason(reason string) bool {
 	return reason == SiteFileReasonCertificate || reason == SiteFileReasonCertificateValidation
@@ -241,6 +274,39 @@ func RecordSiteFileUnknown(ctx context.Context, db siteFileQuerier, siteID, doma
 			state = 'unknown', state_reason = excluded.state_reason, observed_at = excluded.observed_at`,
 		siteID, domainID, transport.SiteFileKindNginxVhost, path, reason, now)
 	return err
+}
+
+// SiteFileWriteRefused says whether a row's last observation is a refused
+// replacement (presented "unwritable").
+func SiteFileWriteRefused(record SiteFileRecord) bool {
+	return SiteFilePresentedState(record.State, record.StateReason) == transport.SiteFileUnwritable
+}
+
+// RecordSiteFileRecheck stores what the domain screen's "check again" read
+// on a row whose last observation is a refused replacement: the state and
+// reason to store (migration 044's state set), the file's digest and the
+// time. Nothing else in the row changes; a row that is not (or no longer) a
+// refused replacement is left alone. It returns whether the row changed.
+func RecordSiteFileRecheck(ctx context.Context, db siteFileQuerier, siteID int, kind, path, state, reason, fileSHA256 string, now int64) (bool, error) {
+	switch state {
+	case transport.SiteFileManagedUnchanged, transport.SiteFileOwnerEdited, transport.SiteFileForeign,
+		transport.SiteFileUnknownOrigin, transport.SiteFileUnreadable, transport.SiteFileMissingState:
+	default:
+		return false, fmt.Errorf("not a state a recheck stores: %q", state)
+	}
+	if now == 0 {
+		now = time.Now().Unix()
+	}
+	result, err := db.ExecContext(ctx, `
+		UPDATE managed_site_files SET state = ?, state_reason = ?, file_sha256 = ?, observed_at = ?
+		WHERE site_id = ? AND kind = ? AND path = ? AND state = ? AND state_reason = ?`,
+		state, reason, fileSHA256, now, siteID, kind, path,
+		transport.SiteFileUnreadable, transport.SiteFileReasonWriteRefused)
+	if err != nil {
+		return false, err
+	}
+	affected, err := result.RowsAffected()
+	return affected > 0, err
 }
 
 // RecordSiteFileDecision stores the owner's decision and the digest of the

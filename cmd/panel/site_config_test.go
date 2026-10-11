@@ -385,7 +385,7 @@ func TestSiteConfigReadFromAnOlderAgentIsUnknown(t *testing.T) {
 // The three choices are state-changing routes under the request identity
 // guard (D-029); the read is not. Team members are never admitted.
 func TestSiteConfigRoutesAreGuardedAndAdministratorOnly(t *testing.T) {
-	for _, action := range []string{"keep", "take", "recreate"} {
+	for _, action := range []string{"keep", "take", "recreate", "apply"} {
 		request := httptest.NewRequest(http.MethodPost, "/api/v1/domains/5/site-config/"+action, nil)
 		route, ok := requestIdentityRouteFor(request)
 		if !ok || route.pattern != "/api/v1/domains/{id}/site-config/"+action {
@@ -407,9 +407,11 @@ func TestSiteConfigRoutesAreGuardedAndAdministratorOnly(t *testing.T) {
 // set10 scenario g: a locked (chattr +i) file. The render's replacement is
 // refused; the ledger records it; the domain screen's read and the domains
 // list both answer "unwritable" with the reason, the system error and the
-// protection the Agent measured, the difference and "check again". The read
-// writes nothing. When the file on disk is no longer the one the refusal was
-// recorded on, the read answers the file as it is.
+// protection the Agent measured, the difference and "check again". A read
+// of a still protected file stores only when it looked; once no protection is
+// measured it stores the file's state (see site_config_recheck_test.go). When
+// the file on disk is no longer the one the refusal was recorded on, the read
+// answers the file as it is.
 func TestALockedFileIsAnsweredUnwritableByTheReadAndTheList(t *testing.T) {
 	panel, subscriptionID := newStartupVhostBatchFixture(t)
 	domainID := addStartupHostedDomain(t, panel, subscriptionID, "locked.example", "static")
@@ -476,16 +478,26 @@ func TestALockedFileIsAnsweredUnwritableByTheReadAndTheList(t *testing.T) {
 	if state := listState(); state != transport.SiteFileUnwritable {
 		t.Fatalf("domains list: %q", state)
 	}
-	if after := ledgerRow(t, panel, domainID); after != before {
-		t.Fatalf("the read changed the ledger:\n%+v\n%+v", before, after)
+	// Still protected: the read records only when it looked.
+	after := ledgerRow(t, panel, domainID)
+	if after.ObservedAt < before.ObservedAt {
+		t.Fatalf("observed_at went back: %+v", after)
+	}
+	after.ObservedAt = before.ObservedAt
+	if after != before {
+		t.Fatalf("a read of a still protected file changed the ledger:\n%+v\n%+v", before, after)
 	}
 
-	// The owner removed the protection; no render has run since. The page
-	// and the list still agree on the recorded refusal, and the read says
-	// that no protection is found now.
+	// The owner removed the protection; no render has run since. The read
+	// ("check again") records it: CelikPanel's unchanged text, its held text
+	// offered to be written now; the list row agrees.
 	protection, systemError = transport.SiteFileProtectionNone, ""
-	if view = read(); view.State != transport.SiteFileUnwritable || view.Protection != transport.SiteFileProtectionNone || view.SystemError != "" {
+	if view = read(); view.State != transport.SiteFileManagedUnchanged || view.Protection != transport.SiteFileProtectionNone ||
+		view.Reason != services.SiteFileReasonProtectionRemoved || strings.Join(view.Actions, ",") != siteConfigActionApply {
 		t.Fatalf("unlocked, not yet rendered: %+v", view)
+	}
+	if state := listState(); state != transport.SiteFileManagedUnchanged {
+		t.Fatalf("domains list after the protection was removed: %q", state)
 	}
 
 	// The file changed on disk: the read answers the file as it is.

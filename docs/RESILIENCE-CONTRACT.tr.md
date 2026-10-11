@@ -4119,7 +4119,24 @@ hücreleri (denetim §9) sonra gelir. 2026-10-10 saat tarihidir.
     sistemi; Agent salt okunur ölçer) adlandırır, CelikPanel'in yazmak istediği
     metni gösterir ve bir okuma olan "Yeniden denetle"yi sunar (onuncu gerçek
     sistem kaydı düzeltmesi, 2026-10-11: bileşen testli; ölçülmedi; kayıt
-    sayfanın nedensiz `managed_unchanged` yanıtladığını ölçtü). Yeni ya da
+    sayfanın nedensiz `managed_unchanged` yanıtladığını ölçtü). "Yeniden
+    denetle" (sayfanın okuması) reddedilmiş bir değiştirmenin satırına
+    bulduğunu yazar; böylece Alan Adları satırı aynı şeyi söyler: koruma
+    sürüyorsa yalnız zaman; aynı baytlarda koruma yoksa CelikPanel'in metni
+    `protection_removed` nedeniyle `managed_unchanged` saklanır ve sayfa
+    "CelikPanel’in metnini şimdi yaz"ı sunar (`POST …/site-config/apply`, istek
+    kimliğiyle, yalnız o site için bir ayar değişikliğinin üretimi; dosyada
+    sahibe ait bir şey olmadığından tarihli kopya yok; bir sonraki başlangıç ya
+    da kaydedilen değişiklik de onu yazar), sahibin dosyası ne ise öyle
+    saklanır; başka baytlarda dosya şimdiki hâliyle, asla yazılmaz. Sahibin
+    dosyasında reddedilen bir "al": sayfa, satır ve rozet için tek sıra
+    (okunamıyor > değiştirilemiyor > eksik > sahibin düzenlediği / yabancı /
+    kökeni bilinmeyen > managed_unchanged; `services.SiteFileShownState`) üçünü
+    de `unwritable` yapar; sayfa iki olguyu da adlandırır (`file_state`) ve üç
+    seçimi korur; Agent bir koruma ölçtüğü sürece "al" hiçbir yazmadan önce
+    `409 SITE_CONFIG_UNWRITABLE` ile yanıtlanır (2026-10-11 ikinci düzeltme:
+    bileşen testli ve sahte tarayıcıda bakıldı; gerçek sistemde ölçülmedi;
+    şema: yok, `protection_removed` bir `state_reason` değeridir). Yeni ya da
     yeniden oluşturulan dosya `root:celikpanel 0644`'tür (onuncu kayıtta
     ölçüldü). `nginx -t` reddederse ya da
     yeniden yükleme başarısız olursa o çağrıda yazılan her dosya (ve yaptığı

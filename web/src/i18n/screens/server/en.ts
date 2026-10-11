@@ -1207,6 +1207,22 @@ export const enServerScreens = {
     'siteConfig.recheck': 'Check again',
     'siteConfig.notice.unwritable': 'This site’s nginx configuration file cannot be replaced on this server. CelikPanel kept it as it is.',
     'siteConfig.list.badge.unwritable': 'Configuration file cannot be replaced',
+    // After the protection was removed (2026-10-11): CelikPanel's own text,
+    // its last change held, written now on request or at the next render.
+    'siteConfig.held.title': 'The file can be replaced again',
+    'siteConfig.held.body': 'No write protection is found on this file now, and it is still CelikPanel’s own earlier text. The last change for this site is not in it yet.',
+    'siteConfig.held.auto': 'CelikPanel writes its text at the next panel start or the next change saved for this site; nothing else is needed.',
+    'siteConfig.apply': 'Write CelikPanel’s text now',
+    'siteConfig.apply.hint': 'Only this site’s file is written, then nginx is reloaded. If nginx refuses the text, the file is put back as it is now.',
+    'siteConfig.held.diff': 'What CelikPanel will write: the file now (−) and CelikPanel’s text (+)',
+    'siteConfig.done.apply': 'CelikPanel’s text is in place and nginx was reloaded.',
+    // The owner's edited file whose replacement ("take") the server refused:
+    // both facts on one page.
+    'siteConfig.editedUnwritable.title': 'Edited outside CelikPanel, and this server refuses to replace it',
+    'siteConfig.editedUnwritable.body': 'This file is not the text CelikPanel last wrote, so CelikPanel kept it as it is; nginx keeps serving the site with it.',
+    'siteConfig.editedUnwritable.refused': 'Taking CelikPanel’s text was refused: this server does not let the file be replaced ({error}).',
+    'siteConfig.editedUnwritable.refusedNoError': 'Taking CelikPanel’s text was refused: this server does not let the file be replaced.',
+    'siteConfig.editedUnwritable.next.flag': 'The server administrator decides: to take CelikPanel’s text, first remove the protection, for example with {command}, then choose Check again; or keep your file with Keep mine.',
     // --- end of the site configuration file block ---
 } as const;
 

@@ -282,6 +282,8 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 		match.kind, match.methods = "site-config-take", []string{http.MethodPost}
 	case "site-config/recreate":
 		match.kind, match.methods = "site-config-recreate", []string{http.MethodPost}
+	case "site-config/apply":
+		match.kind, match.methods = "site-config-apply", []string{http.MethodPost}
 	case "dns/zone":
 		match.kind, match.methods = "dns", getPost
 	case "dns/records":
@@ -387,6 +389,8 @@ func (p *Panel) handleDomainSubroute(w http.ResponseWriter, r *http.Request) {
 		p.handleDomainSiteConfig(w, r, match.domainID, "take")
 	case "site-config-recreate":
 		p.handleDomainSiteConfig(w, r, match.domainID, "recreate")
+	case "site-config-apply":
+		p.handleDomainSiteConfig(w, r, match.domainID, siteConfigActionApply)
 	default:
 		http.NotFound(w, r)
 	}

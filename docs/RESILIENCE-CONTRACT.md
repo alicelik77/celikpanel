@@ -4809,7 +4809,24 @@ native cells (audit §9) come after. 2026-10-10 is the clock date.
     read-only file system), shows the text CelikPanel wanted to write and offers
     "check again", a read (tenth native record correction, 2026-10-11:
     component-tested; not measured; the record measured the page answering
-    `managed_unchanged` with no reason). A new or recreated file is
+    `managed_unchanged` with no reason). "Check again" (the page's read)
+    records what it found on a refused replacement's row, so the Domains row
+    agrees: still protected, only the time; no protection on the same bytes,
+    CelikPanel's text is stored `managed_unchanged` with the reason
+    `protection_removed` and the page offers "Write CelikPanel’s text now"
+    (`POST …/site-config/apply`, request identity, the render of a settings
+    change for that site only, no dated copy because nothing of the owner's is
+    in the file; the next start or saved change writes it too), the owner's
+    file is stored as what it is; other bytes, the file as it is now, never a
+    write. A refused "take" on the owner's file: one precedence for the page,
+    the row and the badge (unreadable > unwritable > missing > owner-edited /
+    foreign / unknown origin > managed_unchanged; `services.SiteFileShownState`)
+    makes all three `unwritable`, the page names both facts (`file_state`) and
+    keeps the three choices; "take" is answered `409 SITE_CONFIG_UNWRITABLE`
+    before any write while the Agent measures a protection (2026-10-11 second
+    correction: component-tested and mock browser; not measured on a real
+    system; schema: none, `protection_removed` is a `state_reason` value).
+    A new or recreated file is
     `root:celikpanel 0644` (measured in the tenth native record). An enabled entry is created only when absent
     at creation/recreate and is never replaced. When `nginx -t` refuses or the
     reload fails, every file written in that call (and a link it made) is put

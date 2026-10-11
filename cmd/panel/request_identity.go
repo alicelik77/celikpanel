@@ -148,6 +148,11 @@ var (
 	requestIdentityRouteSiteConfigRecreate = requestIdentityRoute{
 		pattern: "/api/v1/domains/{id}/site-config/recreate", timeout: siteConfigActionTimeout + time.Minute,
 	}
+	// "Write CelikPanel's text now" after a write protection was removed
+	// (2026-10-11): it writes the file and reloads nginx; once per identity.
+	requestIdentityRouteSiteConfigApply = requestIdentityRoute{
+		pattern: "/api/v1/domains/{id}/site-config/apply", timeout: siteConfigActionTimeout + time.Minute,
+	}
 )
 
 // requestIdentityRouteFor names the protected route a request would reach. It
@@ -184,6 +189,8 @@ func requestIdentityRouteFor(r *http.Request) (requestIdentityRoute, bool) {
 			return requestIdentityRouteSiteConfigTake, true
 		case "site-config-recreate":
 			return requestIdentityRouteSiteConfigRecreate, true
+		case "site-config-apply":
+			return requestIdentityRouteSiteConfigApply, true
 		}
 	case strings.HasPrefix(path, "/api/v1/database-servers/"):
 		match, ok := matchDatabaseSubroute(r, "/api/v1/database-servers/")

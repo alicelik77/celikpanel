@@ -20,6 +20,7 @@ const stub = dataModule(`
   import React from '${reactURL}';
   export const AlertTriangle = () => null;
   export const FileCode2 = () => null;
+  export const FilePen = () => null;
   export const FolderPlus = () => null;
   export const Info = () => null;
   export const RefreshCw = () => null;
@@ -373,6 +374,81 @@ test('a locked file is named unwritable, with the system error, the next step, t
     if ('system_error' in more && !more.system_error) assert.ok(text().includes('siteConfig.unwritable.bodyNoError'));
     await unmount();
   }
+});
+
+// The protection was removed and "check again" measured none on the same
+// bytes: CelikPanel's own text whose last change is held. The page says it is
+// written at the next render and offers to write it now, once, bound to the
+// digests it showed.
+test('a removed protection offers to write CelikPanel’s text now, once, and says it was written', async () => {
+  const held = view('managed_unchanged', {
+    reason: 'protection_removed', protection: 'none', actions: ['apply'],
+    diff: '--- a\n+++ b\n@@ -1 +1 @@\n-old\n+new\n',
+  });
+  let reads = 0;
+  serve({
+    [`GET ${URL_BASE}`]: () => { reads += 1; return answer(reads === 1 ? held : view('managed_unchanged')); },
+    [`POST ${URL_BASE}/apply`]: () => answer({ ...view('managed_unchanged'), outcome: 'written' }),
+  });
+  await mount(page());
+  assert.ok(text().includes('siteConfig.held.title') && text().includes('siteConfig.held.body'), text());
+  assert.ok(text().includes('siteConfig.held.auto') && text().includes('siteConfig.apply.hint'));
+  assert.ok(text().includes('siteConfig.held.diff') && text().includes('+new'));
+  assert.ok(!text().includes('siteConfig.unwritable.title'), 'still named unwritable');
+  for (const name of CHOICES) assert.equal(enabled(name), false, name);
+  await press('siteConfig.apply');
+  assert.equal(posts().length, 1);
+  assert.equal(posts()[0].path, `${URL_BASE}/apply`);
+  assert.deepEqual(posts()[0].body, { file_sha256: FILE, render_sha256: RENDER });
+  assert.ok(text().includes('siteConfig.done.apply'), text());
+  assert.ok(text().includes('siteConfig.managed.title') && !enabled('siteConfig.apply'));
+  await unmount();
+});
+
+test('writing the held text refused because the file is protected again names the refusal and reads again', async () => {
+  const held = view('managed_unchanged', { reason: 'protection_removed', protection: 'none', actions: ['apply'] });
+  serve({
+    [`GET ${URL_BASE}`]: held,
+    [`POST ${URL_BASE}/apply`]: () => answer({ error: 'x', code: 'SITE_CONFIG_UNWRITABLE', reason: 'write_refused' }, 409),
+  });
+  await mount(page());
+  await press('siteConfig.apply');
+  assert.equal(posts().length, 1);
+  assert.ok(text().includes('err.SITE_CONFIG_UNWRITABLE'), text());
+  assert.ok(!text().includes('siteConfig.done.apply'));
+  await unmount();
+});
+
+// A refused "take" on the owner's edited file: the page, the row and the
+// badge say unwritable (one precedence); the page names both facts, the next
+// step for the protection, check again, and the owner's three choices.
+test('an edited file whose take was refused names both facts and keeps the choices', async () => {
+  const both = view('unwritable', {
+    file_state: 'owner_edited', reason: 'write_refused', system_error: 'EPERM', protection: 'immutable',
+    actions: ['keep', 'take', 'merge', 'recheck'],
+    pending_path: '/etc/nginx/sites-available/example.com.conf.celikpanel-pending',
+    diff: '--- a\n+++ b\n@@ -1 +1 @@\n-    index owner.html;\n+    index index.php;\n',
+  });
+  serve({
+    [`GET ${URL_BASE}`]: both,
+    [`POST ${URL_BASE}/take`]: () => answer({ error: 'x', code: 'SITE_CONFIG_UNWRITABLE', reason: 'write_refused' }, 409),
+  });
+  await mount(page());
+  assert.ok(text().includes('siteConfig.editedUnwritable.title'), text());
+  assert.ok(text().includes('siteConfig.editedUnwritable.body'));
+  assert.ok(text().includes('siteConfig.editedUnwritable.refused{"error":"EPERM"}'), text());
+  assert.ok(text().includes('siteConfig.unwritable.protection.immutable'));
+  assert.ok(text().includes('siteConfig.editedUnwritable.next.flag{"command":"sudo chattr -i /etc/nginx/sites-available/example.com.conf"}'), text());
+  assert.ok(text().includes('siteConfig.unwritable.resume') && text().includes('siteConfig.diff.title'));
+  assert.ok(!text().includes('siteConfig.unwritable.title') && !text().includes('siteConfig.unwritable.diff'));
+  assert.equal(enabled('siteConfig.take'), true);
+  assert.equal(enabled('siteConfig.keep'), true);
+  assert.equal(enabled('siteConfig.recheck'), true);
+  await press('siteConfig.take');
+  await press('siteConfig.take.confirm');
+  assert.equal(posts().length, 1);
+  assert.ok(text().includes('err.SITE_CONFIG_UNWRITABLE'), text());
+  await unmount();
 });
 
 test('the notice above a domain names a file that cannot be replaced', async () => {

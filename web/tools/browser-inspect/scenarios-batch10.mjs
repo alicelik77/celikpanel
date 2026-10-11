@@ -150,10 +150,14 @@ export default function batch10(scenarios, { base, ctl, reset, newPage, closePag
             '100d-missing': [{ state: 'missing' }, view('absent', { file_sha256: undefined })],
             // set10 scenario g: a locked file is 'unwritable' (read fine, not
             // replaced), with the system error and the protection measured now,
-            // the text CelikPanel wanted to write and Check again; then the same
-            // after the protection was removed, before the next render.
+            // the text CelikPanel wanted to write and Check again. 2026-10-11:
+            // after the protection was removed, Check again records it: the
+            // file is CelikPanel's text again, its last change held, with
+            // "Write CelikPanel's text now"; and the owner's edited file whose
+            // take was refused names both facts and keeps the choices.
             '100e-unwritable-locked': [{ state: 'unwritable' }, view('unwritable', { reason: 'write_refused', system_error: 'EPERM', protection: 'immutable', actions: ['recheck'], diff: DIFF, ledger: { observed_at: '2026-10-10T19:55:59Z' } })],
-            '100e2-unwritable-unlocked': [{ state: 'unwritable' }, view('unwritable', { reason: 'write_refused', protection: 'none', actions: ['recheck'], diff: DIFF })],
+            '100e2-protection-removed': [{ state: 'managed_unchanged' }, view('managed_unchanged', { reason: 'protection_removed', protection: 'none', actions: ['apply'], diff: DIFF })],
+            '100e3-edited-take-refused': [{ state: 'unwritable' }, view('unwritable', { file_state: 'owner_edited', reason: 'write_refused', system_error: 'EPERM', protection: 'immutable', actions: ['keep', 'take', 'merge', 'recheck'], pending_path: `${PATH}.celikpanel-pending`, diff: DIFF })],
             '100f-managed-adopted': [{ state: 'managed_unchanged', adopted_from: 'v0.1.0-alpha.82' }, view('managed_unchanged', { adopted_from: 'v0.1.0-alpha.82' })],
             '100g-kept-by-choice': [{ state: 'owner_edited', kept_by_choice: true }, { ...EDITED, decision: KEPT_DECISION }],
             '100j-certificate-ready': [{ state: 'owner_edited', kept_by_choice: true, pending_reason: 'certificate' }, CERT_READY],

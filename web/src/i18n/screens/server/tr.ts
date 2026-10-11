@@ -1191,5 +1191,21 @@ export const trServerScreens: Record<ServerScreenKey, string> = {
     'siteConfig.recheck': 'Yeniden denetle',
     'siteConfig.notice.unwritable': 'Bu sitenin nginx yapılandırma dosyası bu sunucuda değiştirilemiyor. CelikPanel onu olduğu gibi korudu.',
     'siteConfig.list.badge.unwritable': 'Yapılandırma dosyası değiştirilemiyor',
+    // Koruma kaldırıldıktan sonra (2026-10-11): CelikPanel'in kendi metni,
+    // son değişikliği bekliyor; istenince şimdi ya da bir sonraki üretimde yazılır.
+    'siteConfig.held.title': 'Dosya yeniden değiştirilebilir',
+    'siteConfig.held.body': 'Bu dosyada artık yazma koruması bulunmuyor ve dosya hâlâ CelikPanel’in kendi önceki metni. Bu site için yapılan son değişiklik henüz dosyada değil.',
+    'siteConfig.held.auto': 'CelikPanel metnini panelin bir sonraki başlangıcında ya da bu site için kaydedilen bir sonraki değişiklikte yazar; başka bir şey gerekmez.',
+    'siteConfig.apply': 'CelikPanel’in metnini şimdi yaz',
+    'siteConfig.apply.hint': 'Yalnız bu sitenin dosyası yazılır, ardından nginx yeniden yüklenir. nginx metni kabul etmezse dosya şimdiki hâline geri konur.',
+    'siteConfig.held.diff': 'CelikPanel’in yazacağı: şimdiki dosya (−) ve CelikPanel’in metni (+)',
+    'siteConfig.done.apply': 'CelikPanel’in metni yerinde ve nginx yeniden yüklendi.',
+    // Sahibin düzenlediği ve sunucunun değiştirilmesini ("al") reddettiği
+    // dosya: iki olgu tek sayfada.
+    'siteConfig.editedUnwritable.title': 'CelikPanel dışında düzenlendi ve bu sunucu dosyanın değiştirilmesini reddediyor',
+    'siteConfig.editedUnwritable.body': 'Bu dosya CelikPanel’in en son yazdığı metin değil; bu yüzden CelikPanel onu olduğu gibi korudu. nginx siteyi bu dosyayla sunmayı sürdürüyor.',
+    'siteConfig.editedUnwritable.refused': 'CelikPanel’in metnini alma isteği reddedildi: bu sunucu dosyanın değiştirilmesine izin vermiyor ({error}).',
+    'siteConfig.editedUnwritable.refusedNoError': 'CelikPanel’in metnini alma isteği reddedildi: bu sunucu dosyanın değiştirilmesine izin vermiyor.',
+    'siteConfig.editedUnwritable.next.flag': 'Karar sunucu yöneticisinindir: CelikPanel’in metnini almak için önce korumayı kaldırın, örneğin {command} ile, sonra Yeniden denetle’yi seçin; ya da Benimkini koru ile dosyanızı koruyun.',
     // --- site yapılandırma dosyası bloğunun sonu ---
 };

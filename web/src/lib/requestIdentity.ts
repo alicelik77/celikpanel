@@ -33,8 +33,10 @@ const REASK_ROUTES = [
     /^\/api\/v1\/import\/cpanel\/apply$/,
     // D-031 (2026-10-10): the owner's three choices about a site's
     // configuration file; the server guards them the same way.
-    // Sahibin site yapılandırma dosyası hakkındaki üç seçimi.
-    /^\/api\/v1\/domains\/\d+\/site-config\/(?:keep|take|recreate)$/,
+    // Sahibin site yapılandırma dosyası hakkındaki üç seçimi. "apply"
+    // (2026-10-11): CelikPanel's held text written after a protection was
+    // removed. / Koruma kaldırıldıktan sonra bekleyen metnin yazılması.
+    /^\/api\/v1\/domains\/\d+\/site-config\/(?:keep|take|recreate|apply)$/,
 ];
 
 // An answer that says nothing about the change: a gateway between the browser

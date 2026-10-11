@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { AlertTriangle, FileCode2, FolderPlus, Info, RefreshCw } from 'lucide-react';
+import { AlertTriangle, FileCode2, FilePen, FolderPlus, Info, RefreshCw } from 'lucide-react';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
 import { Button, ErrorBanner, RemoteGate, ResultUnknown } from './ui';
@@ -61,6 +61,10 @@ export interface SiteConfigView {
     // read-only, and the system's error name a replacement gets ("EPERM").
     protection?: string;
     system_error?: string;
+    // What the file's bytes are when `state` is a higher fact about the same
+    // bytes: an owner-edited file whose replacement ("take") was refused is
+    // `unwritable` with `file_state` "owner_edited" (or foreign, unknown_origin).
+    file_state?: string;
 }
 
 const STATES = new Set([
@@ -83,7 +87,8 @@ const VALIDATION_STATES = new Set(['include_missing', 'names_missing', 'challeng
 // The suffix the API puts on an earlier release's creation-time text.
 const CREATION_SUFFIX = ' (creation)';
 
-type Done = { kind: 'keep' | 'take' | 'recreate'; backup?: string };
+type Action = 'keep' | 'take' | 'recreate' | 'apply';
+type Done = { kind: Action; backup?: string };
 
 export function DomainSiteConfig({ domainId, onReasonEnded }: {
     domainId: number;
@@ -103,13 +108,13 @@ export function DomainSiteConfig({ domainId, onReasonEnded }: {
         if (ended) onReasonEndedRef.current?.();
     }, [ended]);
     const answer = useLostAnswer(() => config.retry());
-    const [busy, setBusy] = useState<'keep' | 'take' | 'recreate' | null>(null);
+    const [busy, setBusy] = useState<Action | null>(null);
     const [confirming, setConfirming] = useState(false);
     const [merging, setMerging] = useState(false);
     const [refusal, setRefusal] = useState<ApiError | null>(null);
     const [done, setDone] = useState<Done | null>(null);
 
-    const act = async (kind: 'keep' | 'take' | 'recreate', view: SiteConfigView) => {
+    const act = async (kind: Action, view: SiteConfigView) => {
         if (busy || answer.holding) return;
         setBusy(kind);
         setRefusal(null);
@@ -121,6 +126,7 @@ export function DomainSiteConfig({ domainId, onReasonEnded }: {
                 shows: ([read]: { value: unknown }[]) => {
                     const after = read.value as SiteConfigView;
                     if (kind === 'keep') return after.decision?.kind === 'keep_mine' && after.decision.current;
+                    if (kind === 'apply') return after.state === 'managed_unchanged' && !after.actions.includes('apply');
                     return after.state === 'managed_unchanged';
                 },
             };
@@ -163,7 +169,8 @@ export function DomainSiteConfig({ domainId, onReasonEnded }: {
                 <p role="status" className="rounded-lg border border-border-strong bg-surface-2 p-3 text-sm text-fg" data-site-config-done={done.kind}>
                     {done.kind === 'take'
                         ? t('siteConfig.done.take', { backup: done.backup ?? '' })
-                        : t(done.kind === 'keep' ? 'siteConfig.done.keep' : 'siteConfig.done.recreate')}
+                        : t(done.kind === 'keep' ? 'siteConfig.done.keep'
+                            : done.kind === 'apply' ? 'siteConfig.done.apply' : 'siteConfig.done.recreate')}
                 </p>
             )}
             <ErrorBanner error={refusal} />
@@ -188,6 +195,7 @@ export function DomainSiteConfig({ domainId, onReasonEnded }: {
                             onCancel={() => setConfirming(false)}
                             onMerge={() => setMerging((open) => !open)}
                             onRecreate={() => void act('recreate', value)}
+                            onApply={() => void act('apply', value)}
                             onRecheck={() => void config.retry()}
                             rechecking={config.reading}
                         />
@@ -199,7 +207,7 @@ export function DomainSiteConfig({ domainId, onReasonEnded }: {
 }
 
 function SiteConfigState({
-    view, locked, busy, confirming, merging, onKeep, onTake, onCancel, onMerge, onRecreate, onRecheck, rechecking,
+    view, locked, busy, confirming, merging, onKeep, onTake, onCancel, onMerge, onRecreate, onApply, onRecheck, rechecking,
 }: {
     view: SiteConfigView;
     locked: boolean;
@@ -211,6 +219,7 @@ function SiteConfigState({
     onCancel: () => void;
     onMerge: () => void;
     onRecreate: () => void;
+    onApply: () => void;
     onRecheck: () => void;
     rechecking: boolean;
 }) {
@@ -230,6 +239,28 @@ function SiteConfigState({
         </p>
     ) : null;
 
+    if (view.state === 'managed_unchanged' && view.actions.includes('apply')) {
+        // The protection that refused the last change is gone (a "check
+        // again" measured none on the same bytes): CelikPanel's own text, its
+        // last change held. Written at the next render, or now on request.
+        return (
+            <div className="space-y-4" data-site-config-held>
+                <Plain icon={Info} title={t('siteConfig.held.title')}>
+                    <p>{t('siteConfig.held.body')}</p>
+                    <p className="mt-1">{t('siteConfig.held.auto')}</p>
+                </Plain>
+                <FileLine label={t('siteConfig.file')} value={path} />
+                <div className="flex flex-wrap items-center gap-3">
+                    <Button type="button" variant="primary" icon={FilePen} loading={busy === 'apply'} disabled={locked} onClick={onApply} data-site-config-apply>
+                        {t('siteConfig.apply')}
+                    </Button>
+                    <span className="min-w-0 flex-[1_1_16rem] text-sm text-fg-muted">{t('siteConfig.apply.hint')}</span>
+                </div>
+                <DiffBlock view={view} title={t('siteConfig.held.diff')} />
+                {include}
+            </div>
+        );
+    }
     if (view.state === 'managed_unchanged') {
         return (
             <div className="space-y-3">
@@ -257,6 +288,56 @@ function SiteConfigState({
             </Button>
         </div>
     ) : null;
+    // The owner's three choices on a kept file; also on an owner-edited file
+    // whose replacement was refused ("take" is then answered unwritable while
+    // the protection stands).
+    const keptByChoice = view.decision?.kind === 'keep_mine' && view.decision.current;
+    const choices = KEPT.has(view.state) || view.actions.includes('take') ? (
+        <section aria-labelledby="site-config-choose" className="space-y-3">
+            <h3 id="site-config-choose" className="text-sm font-semibold text-fg">{t('siteConfig.choose')}</h3>
+            <div className="grid gap-3 lg:grid-cols-3">
+                <Choice
+                    hint={t('siteConfig.take.hint')}
+                    action={(
+                        <Button type="button" variant="primary" loading={busy === 'take'} disabled={locked} onClick={onTake} data-site-config-take>
+                            {confirming ? t('siteConfig.take.confirm') : t('siteConfig.take')}
+                        </Button>
+                    )}
+                >
+                    {confirming && (
+                        <div className="mt-2 space-y-2" data-site-config-confirm>
+                            <p className="text-sm text-fg">{t('siteConfig.take.confirmText', { path })}</p>
+                            <Button type="button" onClick={onCancel} disabled={busy === 'take'}>{t('siteConfig.cancel')}</Button>
+                        </div>
+                    )}
+                </Choice>
+                <Choice
+                    hint={t('siteConfig.keep.hint')}
+                    action={(
+                        <Button type="button" loading={busy === 'keep'} disabled={locked || keptByChoice} onClick={onKeep} data-site-config-keep>
+                            {t('siteConfig.keep')}
+                        </Button>
+                    )}
+                />
+                <Choice
+                    hint={t('siteConfig.merge.short')}
+                    action={(
+                        <Button type="button" onClick={onMerge} aria-expanded={merging} data-site-config-merge>
+                            {t('siteConfig.merge')}
+                        </Button>
+                    )}
+                >
+                    {merging && (
+                        <p className="mt-2 break-words text-sm text-fg" data-site-config-merge-text>
+                            {view.pending_path
+                                ? t('siteConfig.merge.hint', { path, pending: view.pending_path })
+                                : t('siteConfig.merge.noPending', { path })}
+                        </p>
+                    )}
+                </Choice>
+            </div>
+        </section>
+    ) : null;
     if (view.state === 'unwritable') {
         // Read fine, not replaced (set10 scenario g): what refused it, who
         // decides, the next step and how the work resumes; then the text
@@ -266,19 +347,27 @@ function SiteConfigState({
         const command = protection === 'append_only' ? `sudo chattr -a ${path}`
             : protection === 'directory_immutable' ? `sudo chattr -i ${path.slice(0, path.lastIndexOf('/')) || path}`
                 : `sudo chattr -i ${path}`;
+        // The owner's file whose "take" was refused: both facts, the edit
+        // first, then the refusal; the owner's choices stay below.
+        const edited = !!view.file_state && KEPT.has(view.file_state);
         return (
-            <div className="space-y-4">
-                <Attention title={t('siteConfig.unwritable.title')}>
-                    <p>{view.system_error
-                        ? t('siteConfig.unwritable.body', { error: view.system_error })
-                        : t('siteConfig.unwritable.bodyNoError')}</p>
+            <div className="space-y-4" data-site-config-file-state={edited ? view.file_state : undefined}>
+                <Attention title={t(edited ? 'siteConfig.editedUnwritable.title' : 'siteConfig.unwritable.title')}>
+                    {edited && <p>{t('siteConfig.editedUnwritable.body')}</p>}
+                    <p className={edited ? 'mt-1' : undefined}>{edited
+                        ? view.system_error
+                            ? t('siteConfig.editedUnwritable.refused', { error: view.system_error })
+                            : t('siteConfig.editedUnwritable.refusedNoError')
+                        : view.system_error
+                            ? t('siteConfig.unwritable.body', { error: view.system_error })
+                            : t('siteConfig.unwritable.bodyNoError')}</p>
                     {protection && (
                         <p className="mt-1" data-site-config-protection={protection}>
                             {t(`siteConfig.unwritable.protection.${protection}` as TranslationKey)}
                         </p>
                     )}
                     <p className="mt-1 break-words" data-site-config-next={protection || 'unknown'}>
-                        {flag ? t('siteConfig.unwritable.next.flag', { command })
+                        {flag ? t(edited ? 'siteConfig.editedUnwritable.next.flag' : 'siteConfig.unwritable.next.flag', { command })
                             : protection === 'read_only_filesystem' ? t('siteConfig.unwritable.next.readOnly')
                                 : protection === 'none' ? t('siteConfig.unwritable.next.none')
                                     : t('siteConfig.unwritable.next.unknown')}
@@ -287,7 +376,8 @@ function SiteConfigState({
                 </Attention>
                 <FileLine label={t('siteConfig.file')} value={path} />
                 {recheck}
-                <DiffBlock view={view} title={t('siteConfig.unwritable.diff')} />
+                {choices}
+                <DiffBlock view={view} title={t(edited ? 'siteConfig.diff.title' : 'siteConfig.unwritable.diff')} />
                 {include}
             </div>
         );
@@ -334,7 +424,6 @@ function SiteConfigState({
     // Kept: owner-edited, foreign or unknown origin.
     const kept = KEPT.has(view.state);
     if (!kept) return null;
-    const keptByChoice = view.decision?.kind === 'keep_mine' && view.decision.current;
     const decidedAt = view.decision?.decided_at
         ? new Date(view.decision.decided_at).toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'short' })
         : '';
@@ -355,50 +444,7 @@ function SiteConfigState({
             <FileLine label={t('siteConfig.file')} value={path} />
             <CertificatePart view={view} />
 
-            <section aria-labelledby="site-config-choose" className="space-y-3">
-                <h3 id="site-config-choose" className="text-sm font-semibold text-fg">{t('siteConfig.choose')}</h3>
-                <div className="grid gap-3 lg:grid-cols-3">
-                    <Choice
-                        hint={t('siteConfig.take.hint')}
-                        action={(
-                            <Button type="button" variant="primary" loading={busy === 'take'} disabled={locked} onClick={onTake} data-site-config-take>
-                                {confirming ? t('siteConfig.take.confirm') : t('siteConfig.take')}
-                            </Button>
-                        )}
-                    >
-                        {confirming && (
-                            <div className="mt-2 space-y-2" data-site-config-confirm>
-                                <p className="text-sm text-fg">{t('siteConfig.take.confirmText', { path })}</p>
-                                <Button type="button" onClick={onCancel} disabled={busy === 'take'}>{t('siteConfig.cancel')}</Button>
-                            </div>
-                        )}
-                    </Choice>
-                    <Choice
-                        hint={t('siteConfig.keep.hint')}
-                        action={(
-                            <Button type="button" loading={busy === 'keep'} disabled={locked || keptByChoice} onClick={onKeep} data-site-config-keep>
-                                {t('siteConfig.keep')}
-                            </Button>
-                        )}
-                    />
-                    <Choice
-                        hint={t('siteConfig.merge.short')}
-                        action={(
-                            <Button type="button" onClick={onMerge} aria-expanded={merging} data-site-config-merge>
-                                {t('siteConfig.merge')}
-                            </Button>
-                        )}
-                    >
-                        {merging && (
-                            <p className="mt-2 break-words text-sm text-fg" data-site-config-merge-text>
-                                {view.pending_path
-                                    ? t('siteConfig.merge.hint', { path, pending: view.pending_path })
-                                    : t('siteConfig.merge.noPending', { path })}
-                            </p>
-                        )}
-                    </Choice>
-                </div>
-            </section>
+            {choices}
 
             <DiffBlock view={view} title={t('siteConfig.diff.title')} />
             {include}
