@@ -429,13 +429,23 @@ func (p *Panel) observeOtherSiteFile(ctx context.Context, site siteFileSite, vie
 			return
 		}
 		if record.FileSHA256 == file.FileSHA256 && (record.State == services.SiteFileStoredState(file) ||
-			record.StateReason == services.SiteFileReasonProtectionRemoved) && record.PendingPath == file.PendingPath {
+			record.StateReason == services.SiteFileReasonProtectionRemoved) && record.PendingPath == file.PendingPath &&
+			!staleRefusalReason(record, file) {
 			return
 		}
 	}
 	if err := services.RecordSiteFileResult(ctx, p.db.GetDB(), site.SiteID, site.DomainID, file, siteFileReleaseLabel(), 0); err != nil {
 		log.Printf("site configuration %s %s: record the read: %v", site.Domain, file.Kind, err)
 	}
+}
+
+// staleRefusalReason says whether a managed_unchanged read finds a row that is
+// managed_unchanged with a reason of a refused change (nginx_refused,
+// config_refused, reload_failed, …): the read ends it (set13 correction;
+// protection_removed is the one reason a read keeps).
+func staleRefusalReason(record services.SiteFileRecord, file transport.SiteFileResult) bool {
+	return file.State == transport.SiteFileManagedUnchanged && record.State == transport.SiteFileManagedUnchanged &&
+		record.StateReason != "" && record.StateReason != services.SiteFileReasonProtectionRemoved
 }
 
 // siteFileReadErrorClass names why a read of a site file got no answer:
@@ -670,7 +680,7 @@ func (p *Panel) handleOtherSiteFileAction(w http.ResponseWriter, r *http.Request
 		FileSHA256: file.FileSHA256, RenderSHA256: file.RenderSHA256,
 		Actions: []string{}, Outcome: file.Outcome, BackupPath: file.BackupPath,
 	}
-	writeSiteConfigView(w, p.siteConfigViewFor(ctx, site.SiteID, result))
+	writeSiteConfigView(w, withServiceReloaded(p.siteConfigViewFor(ctx, site.SiteID, result), *file))
 }
 
 // otherSiteConfigSummary is one file's row for the Domains list.

@@ -5329,3 +5329,32 @@ native cells (audit §9) come after. 2026-10-10 is the clock date.
   `internal/services/site_file_service.go:systemctl`, `systemctl is-active`,
   5 s; `cmd/agent/app_rpc.go:<computed>`, `systemd-analyze verify`, 15 s,
   read-only); this contract does not otherwise document the guard's inventory.
+
+- **Corrections from the thirteenth native record (set13, 2026-10-11).**
+  One observation of the thirteenth record
+  (`deploy/e2e/release-recovery/evidence/set13-20261011/`, Observations) and one
+  symmetry; component-tested; not measured on a real system. Affected:
+  invariants 2 and 4 (the Domains row must not ask for a choice the page no
+  longer offers; the answer of a write names the service's state). No schema
+  or version transition; the ledger columns are the existing ones. *(1)
+  Vhost row after a refused take:* the row stayed `foreign` / `nginx_refused`
+  after the owner restored CelikPanel's text by hand, until the next write.
+  `services.RecordSiteFileObservation` (called by `inspectSiteConfig`'s probe
+  read after `recheckWriteRefusal`) stores the state, reason, file digest and
+  time of a `managed_unchanged` or kept reading when the row differs; it never
+  changes the body digest, written release, pending text, backup or decision,
+  leaves a refused replacement to the recheck, keeps `protection_removed` on the same bytes, and
+  ends a refusal reason on `managed_unchanged`. Recovery behavior: the next
+  answered read repairs a row that disagrees; a failed or unreadable read
+  stores nothing here (set12's unread observation covers that). The pool and
+  unit rows (`observeOtherSiteFile`) also end a refusal reason carried by a
+  `managed_unchanged` row on the same bytes. *(2) `service` on a 200:* a write
+  that reloaded the service answers `service: reloaded` and `service_active`
+  (`true` when the Agent did not measure). Evidence: Panel
+  `site_config_observe_test.go` (refused take → restored by hand → edited
+  again, row and list; decision digest; `protection_removed` kept; pool
+  `config_refused` ended; the 200's fields for the vhost and the pool). Open:
+  not measured on a real system; absent, unreadable and unwritable readings of
+  a vhost are still stored only by the write paths and the recheck; the
+  acceptance items of native update/automatic-rollback resilience are
+  unchanged and stay open.

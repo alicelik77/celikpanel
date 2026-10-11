@@ -6959,3 +6959,44 @@ sistemde ölçülmedi.
   belirdiğinde kendini görünür alana kaydırır (`block: 'nearest'`) ve
   `role="status"` taşır (browser-inspect batch10 görüntüleri `100p8`, `100p9`;
   masaüstü EN, telefon TR).
+
+**On üçüncü yerel kayıttan düzeltmeler (set13, 2026-10-11).** On üçüncü
+kaydın bir gözlemi (`deploy/e2e/release-recovery/evidence/set13-20261011/`,
+Observations) ve bir simetri; bileşen testli; gerçek bir sistemde ölçülmedi.
+- *Sayfanın okuması vhost'ta gördüğünü kaydeder.* Ölçüldü: reddedilen bir
+  alma işleminden sonra vhost'un defter satırı `foreign` / `nginx_refused`
+  idi; sahip CelikPanel'in metnini elle geri koyunca sayfa `managed_unchanged`
+  yanıtladı, Alan adları satırı ise bir sonraki yazıma kadar "Yapılandırma
+  dosyası: seçiminiz gerekiyor" demeye devam etti (yeniden okuma yolu yalnız
+  yazımı reddedilmiş satırı değiştiriyordu). Artık Yapılandırma dosyası
+  sayfasının okuması (`GET …/site-config`, "yeniden denetle"si olarak), satır
+  başka bir şey söylüyorsa bulduğunu vhost satırına yazar
+  (`services.RecordSiteFileObservation`): durumu (`managed_unchanged`,
+  `owner_edited`, `foreign` ya da `unknown_origin`), nedenini, dosyanın özetini
+  ve zamanı; CelikPanel'in yazdığının özetini, bekleyen metni, yedeği ya da
+  sahibin kararını asla. `managed_unchanged` okuması satırın reddedilmiş
+  değişiklik nedenini (`nginx_refused`, `config_refused`, …) bitirir (yalnız
+  aynı baytlarda "uygula"yı sunan `protection_removed` kalır). Korunan bir okuma, dosya nedenin
+  kaydedildiği dosya olduğu sürece satırın nedenini (ret o baytlar hakkındadır)
+  ve korunan satırın sertifika nedenini tutar; başka baytlarda ret kalkmıştır.
+  Bir karar yalnız dosyanın özeti kararın verildiği özet olduğu sürece "güncel"
+  kalır; bunu okumanın yazdığı özet belirler. Reddedilen bir değiştirme yine
+  yeniden denetimce karara bağlanır; yok, okunamıyor, bilinmiyor ve yazılamıyor
+  okumaları bu okumayla yazılmaz. Havuz ve birim satırları okumalarını zaten
+  izliyordu (D-031 ikinci adım); orada kalan boşluk, aynı baytlarda hâlâ ret
+  nedeni taşıyan `managed_unchanged` satır, kapandı. Testlerin kapsadığı satır
+  geçişleri: reddedilen alma (`foreign` / `nginx_refused`) → sahip metni geri
+  koyar → `managed_unchanged`, neden yok, liste satırında rozet yok → sahip
+  yine düzenler → `owner_edited`; kararın özeti üstünde korunan okuma → karar
+  güncel, başka özette → güncel değil; sonraki bir okumayla korunan
+  `protection_removed`; havuzun `foreign` / `config_refused` →
+  `managed_unchanged`.
+- *Başarılı yazımda `service`.* Dosyanın hizmetini yeniden yükleyen
+  (Agent'ın `Reloaded`'ı) bir alma, uygulama ya da yeniden oluşturmanın 200
+  yanıtı artık `service: "reloaded"` ve `service_active` taşır (Agent
+  ölçtüyse `systemctl is-active` değeri, değilse `"true"`: başarılı bir
+  yeniden yükleme çalışan bir hizmettir); sözcükler 502 yanıtlarınınkiyle
+  aynıdır, üç tür için de. Yeniden yüklemeyen yazım (sonuç `unchanged`) ikisini
+  de taşımaz. Eklemeli; yeni cümle yok: biten seçimin bandı değişmedi.
+  Önceden ölçülen: başarılı bir almanın 200'ü `service` alanı taşımıyordu ve
+  yeniden yükleme yalnız günlükte görülüyordu.

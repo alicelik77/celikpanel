@@ -335,6 +335,69 @@ func RecordSiteFileRecheck(ctx context.Context, db siteFileQuerier, siteID int, 
 	return affected > 0, err
 }
 
+// RecordSiteFileObservation stores what the domain screen's read found on a
+// file whose newest ledger row says otherwise (set13 observation: after a
+// refused "take" the row stayed foreign / nginx_refused when the owner put
+// CelikPanel's text back by hand, so the Domains row asked for a choice the
+// page no longer offered). It is an observation, as RecordSiteFileRecheck's
+// and RecordSiteFileUnread's: the state, its reason, the file's digest and
+// the time; never the body digest, the written release, the pending text, the
+// backup or the owner's decision (a decision stays "current" only while the
+// file's digest is the one it was made on, which the digest stored here
+// decides). The states it stores are managed_unchanged and the three kept
+// ones; any other reading (absent, unreadable, unknown, unwritable) is not
+// stored here. It leaves alone:
+//   - a refused replacement (presented unwritable): RecordSiteFileRecheck
+//     decides it;
+//   - a reading that equals the row (state, reason and digest);
+//   - a managed_unchanged row with the reason protection_removed that is read
+//     as managed_unchanged on the same bytes (its "apply" would be lost); the
+//     reason was measured on those bytes, so other bytes end it.
+//
+// A managed_unchanged reading ends every reason of the row (nginx_refused,
+// config_refused and the certificate ones: the file is CelikPanel's text
+// again). A kept reading keeps the row's reason while the row is kept and the
+// file's digest is the one it was recorded on (the refusal is about those
+// bytes) and keeps a certificate reason of a kept row; otherwise it stores the
+// reading's own reason. It returns whether the row changed.
+func RecordSiteFileObservation(ctx context.Context, db siteFileQuerier, siteID int, kind, path, state, reason, fileSHA256 string, now int64) (bool, error) {
+	managed := state == transport.SiteFileManagedUnchanged
+	if !managed && !siteFileStoredKept(state) {
+		return false, fmt.Errorf("not a state a read stores: %q", state)
+	}
+	record, found, err := LoadSiteFileRecord(ctx, db, siteID, kind)
+	if err != nil || !found || record.Path != path || SiteFileWriteRefused(record) {
+		return false, err
+	}
+	stored := reason
+	switch {
+	case managed:
+		stored = ""
+		if record.State == transport.SiteFileManagedUnchanged && record.StateReason == SiteFileReasonProtectionRemoved &&
+			record.FileSHA256 == fileSHA256 {
+			stored = record.StateReason
+		}
+	case siteFileStoredKept(record.State) && reason == "" &&
+		(SiteFileCertificateReason(record.StateReason) || record.FileSHA256 == fileSHA256):
+		stored = record.StateReason
+	}
+	if record.State == state && record.StateReason == stored && record.FileSHA256 == fileSHA256 {
+		return false, nil
+	}
+	if now == 0 {
+		now = time.Now().Unix()
+	}
+	result, err := db.ExecContext(ctx, `
+		UPDATE managed_site_files SET state = ?, state_reason = ?, file_sha256 = ?, observed_at = ?
+		WHERE site_id = ? AND kind = ? AND path = ?`,
+		state, stored, fileSHA256, now, siteID, kind, path)
+	if err != nil {
+		return false, err
+	}
+	affected, err := result.RowsAffected()
+	return affected > 0, err
+}
+
 // RecordSiteFileUnread stores that the Panel asked the Agent for a site file's
 // state and got none (set12 cell U, 2026-10-11: the page answered the pool
 // "unknown / not_read" while the Domains row, built from ledger rows only,

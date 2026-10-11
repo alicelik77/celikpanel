@@ -347,6 +347,13 @@ type siteConfigView struct {
 	Files        []siteConfigView `json:"files,omitempty"`
 	OverallState string           `json:"overall_state,omitempty"`
 	OverallKind  string           `json:"overall_kind,omitempty"`
+	// Service and ServiceActive, additive (set13 correction, 2026-10-11): on
+	// the 200 answer of a write that reloaded the file's service (take, apply,
+	// recreate), the same words the 502 refusals use: "reloaded" and "true"
+	// (a reload that succeeded is a service that runs). Absent on reads and on
+	// a write that did not reload (unchanged).
+	Service       string `json:"service,omitempty"`
+	ServiceActive string `json:"service_active,omitempty"`
 
 	certificateReferenced bool
 	// heldRender: the file is CelikPanel's unchanged text, but not this
@@ -589,8 +596,39 @@ func (p *Panel) inspectSiteConfig(ctx context.Context, domainID int, probe bool)
 	if probe {
 		// The domain screen's read is its "check again".
 		p.recheckWriteRefusal(ctx, siteID, view)
+		p.observeSiteConfigRead(ctx, siteID, view)
 	}
 	return p.siteConfigViewFor(ctx, siteID, view), siteID, &file, nil
+}
+
+// observeSiteConfigRead records what the page's read found on the vhost when
+// the ledger row says otherwise (set13 observation: after a refused "take"
+// the row stayed foreign / nginx_refused when the owner restored CelikPanel's
+// text by hand, and the Domains row kept asking for a choice the page no
+// longer offered). The row's state, reason and observed digest follow the
+// read (services.RecordSiteFileObservation); digests of what was written, the
+// pending text and the owner's decision are never touched. A refused
+// replacement is recheckWriteRefusal's.
+func (p *Panel) observeSiteConfigRead(ctx context.Context, siteID int, view siteConfigView) {
+	if view.Path == "" || view.Outcome != "" {
+		return
+	}
+	switch {
+	case view.State == transport.SiteFileManagedUnchanged, siteFileKeptState(view.State):
+	default:
+		return
+	}
+	before, _, _ := services.LoadSiteFileRecord(ctx, p.db.GetDB(), siteID, transport.SiteFileKindNginxVhost)
+	changed, err := services.RecordSiteFileObservation(ctx, p.db.GetDB(), siteID, transport.SiteFileKindNginxVhost,
+		view.Path, view.State, view.Reason, view.FileSHA256, 0)
+	if err != nil {
+		log.Printf("site configuration %s: record the read: %v", view.Domain, err)
+		return
+	}
+	if changed {
+		log.Printf("site configuration %s: read again: %s (was %s %s)", view.Domain,
+			strings.ReplaceAll(view.State, "_", "-"), strings.ReplaceAll(before.State, "_", "-"), before.StateReason)
+	}
 }
 
 type siteConfigActionRequest struct {
@@ -895,9 +933,24 @@ func (p *Panel) handleSiteConfigRender(w http.ResponseWriter, r *http.Request, d
 		Actions: []string{}, Outcome: file.Outcome, BackupPath: file.BackupPath,
 		ManagedDir: file.ManagedDir, ManagedInclude: file.ManagedInclude, ChallengeFile: file.ChallengeFile,
 	}
-	view = p.siteConfigViewFor(ctx, siteID, view)
+	view = withServiceReloaded(p.siteConfigViewFor(ctx, siteID, view), *file)
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(view)
+}
+
+// withServiceReloaded adds the service sentence's words to the 200 answer of
+// a write that reloaded the service (SiteFileResult.Reloaded): service
+// "reloaded", service_active the Agent's measurement or, without one, "true".
+func withServiceReloaded(view siteConfigView, file transport.SiteFileResult) siteConfigView {
+	if !file.Reloaded {
+		return view
+	}
+	view.Service = transport.SiteFileServiceReloaded
+	view.ServiceActive = transport.SiteFileServiceActiveTrue
+	if active := siteFileServiceActive(file); active != transport.SiteFileServiceActiveUnknown {
+		view.ServiceActive = active
+	}
+	return view
 }
 
 func containsString(values []string, target string) bool {

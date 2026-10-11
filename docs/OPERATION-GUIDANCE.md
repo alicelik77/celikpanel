@@ -7010,3 +7010,43 @@ measured on a real system.
   click. The answer (a refusal or a finished choice) now scrolls itself into
   view when it appears (`block: 'nearest'`) and is a `role="status"`
   (browser-inspect batch10 shots `100p8`, `100p9`, desktop EN and phone TR).
+
+**Corrections from the thirteenth native record (set13, 2026-10-11).** One
+observation of the thirteenth record (`deploy/e2e/release-recovery/evidence/set13-20261011/`,
+Observations) and one symmetry; component-tested; not measured on a real system.
+- *A page read records what it sees on the vhost.* Measured: after a refused
+  take the vhost's ledger row was `foreign` / `nginx_refused`; when the owner
+  put CelikPanel's text back by hand, the page answered `managed_unchanged`
+  while the Domains row kept "Configuration file: your choice needed" until the
+  next write (the re-read path changed only a write-refused row). Now the
+  Configuration file page's read (`GET …/site-config`, as its "check again")
+  stores what it found on the vhost's row when the row says otherwise
+  (`services.RecordSiteFileObservation`): the state (`managed_unchanged`,
+  `owner_edited`, `foreign` or `unknown_origin`), its reason, the file's digest
+  and the time; never the digest of what CelikPanel wrote, the pending text, the
+  backup or the owner's decision. A `managed_unchanged` reading ends the row's
+  reason of a refused change (`nginx_refused`, `config_refused`, …; only
+  `protection_removed` on the same bytes, which offers "apply", stays). A kept reading keeps the
+  row's reason while the file is the one the reason was recorded on (the refusal
+  is about those bytes) and a certificate reason of a kept row; on other bytes
+  the refusal is gone. A decision stays "current" only while the file's digest
+  is the one it was made on, which the digest stored by the read decides. A
+  refused replacement is still decided by the recheck; absent, unreadable,
+  unknown and unwritable readings are not stored by this read. The pool's and
+  the unit's rows already followed their reads (D-031 second step); the one
+  gap left there, a `managed_unchanged` row that still carried a refusal reason
+  on the same bytes, is closed. Row transitions covered by tests: refused take
+  (`foreign` / `nginx_refused`) → owner restores the text → `managed_unchanged`,
+  no reason, list row without the badge → owner edits again → `owner_edited`;
+  a kept reading on the digest of the decision → decision current, on another
+  digest → not current; `protection_removed` kept by a further read; the
+  pool's `foreign` / `config_refused` → `managed_unchanged`.
+- *`service` on a successful write.* The 200 answer of a take, apply or
+  recreate whose write reloaded the file's service (the Agent's `Reloaded`)
+  now carries `service: "reloaded"` and `service_active` (the Agent's
+  `systemctl is-active` when it measured one, otherwise `"true"`: a reload that
+  succeeded is a service that runs), the same words as the 502 answers, for all
+  three kinds. A write that did not reload (outcome `unchanged`) carries
+  neither. Additive; no new sentence: the finished choice's banner is
+  unchanged. Measured before: the 200 of a successful take carried no
+  `service` field and the reload was seen only in the journal.

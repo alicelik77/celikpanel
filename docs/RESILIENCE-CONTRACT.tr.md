@@ -4599,3 +4599,33 @@ hücreleri (denetim §9) sonra gelir. 2026-10-10 saat tarihidir.
   `internal/services/site_file_service.go:systemctl`, `systemctl is-active`,
   5 sn; `cmd/agent/app_rpc.go:<computed>`, `systemd-analyze verify`, 15 sn,
   salt okunur); bu sözleşme bekçinin envanterini başka yerde belgelemez.
+
+- **On üçüncü yerel kayıttan düzeltmeler (set13, 2026-10-11).** On üçüncü
+  kaydın bir gözlemi
+  (`deploy/e2e/release-recovery/evidence/set13-20261011/`, Observations) ve bir
+  simetri; bileşen testli; gerçek bir sistemde ölçülmedi. Etkilenen: 2. ve 4.
+  ilke (Alan adları satırı sayfanın artık sunmadığı bir seçimi istememeli;
+  yazımın yanıtı hizmetin durumunu adlandırır). Şema ya da sürüm geçişi yok;
+  defter sütunları mevcut olanlardır. *(1) Reddedilen almadan sonra vhost
+  satırı:* sahip CelikPanel'in metnini elle geri koyduktan sonra satır bir
+  sonraki yazıma kadar `foreign` / `nginx_refused` kaldı.
+  `services.RecordSiteFileObservation` (`inspectSiteConfig`'in yoklama okuması
+  `recheckWriteRefusal`'dan sonra çağırır), satır farklıysa, `managed_unchanged`
+  ya da korunan bir okumanın durumunu, nedenini, dosya özetini ve zamanını
+  yazar; gövde özetini, yazılan sürümü, bekleyen metni, yedeği ya da kararı asla
+  değiştirmez, reddedilen değiştirmeyi yeniden denetime bırakır,
+  aynı baytlardaki `protection_removed`'ı korur ve `managed_unchanged` üzerinde ret nedenini
+  bitirir. Kurtarma davranışı: yanıtlanan bir sonraki okuma uyuşmayan satırı
+  düzeltir; başarısız ya da okunamayan okuma burada bir şey yazmaz (set12'nin
+  okunamadı gözlemi onu kapsar). Havuz ve birim satırları
+  (`observeOtherSiteFile`) aynı baytlarda ret nedeni taşıyan
+  `managed_unchanged` satırın nedenini de bitirir. *(2) 200'de `service`:*
+  hizmeti yeniden yükleyen bir yazım `service: reloaded` ve `service_active`
+  yanıtlar (Agent ölçmediyse `true`). Kanıt: Panel
+  `site_config_observe_test.go` (reddedilen alma → elle geri koyma → yine
+  düzenleme, satır ve liste; karar özeti; korunan `protection_removed`; biten
+  havuz `config_refused`; vhost ve havuz için 200'ün alanları). Açık: gerçek
+  bir sistemde ölçülmedi; vhost'un yok, okunamıyor ve yazılamıyor okumaları
+  hâlâ yalnız yazım yolları ve yeniden denetimce yazılır; yerel
+  güncelleme/otomatik geri alma dayanıklılığının kabul işleri değişmedi ve
+  açık.
