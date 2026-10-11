@@ -5803,7 +5803,23 @@ wait: The server answered with HTTP error 503…"; at 41 s the half-minute
 sentence and the reload. **The 15 s/30 s path, before and after an answer, is
 component-tested and mock browser; not measured on a real system.**
 
-*Observation, not changed here: the recovery service worker.* With the Panel
+*The recovery service worker: cause established in the eleventh record (set11,
+cell E, 2026-10-11).* The cause is the lab browser's profile path, not the
+product. In the signed-in context, whose Chrome profile sat 177 characters
+deep, the worker went `installing → redundant` with "Failed to execute 'open'
+on 'CacheStorage': Unexpected internal error"; a new context, and the same
+Chrome with its profile under a short path, registered it and were
+controlled. The product's offline page ("The panel connection is
+unavailable") is shown with the Panel stopped when the worker is registered.
+The limit measured: a profile path beyond Windows' 260-character limit (an
+entry under that profile's CacheStorage is about 316 characters) — the
+mechanism is inferred, not read from a Chrome line naming the path. The live
+browser tools now put the profile under a short path and refuse one longer
+than 120 characters (`web/tools/browser-inspect/profile-dir.mjs`). Not
+measured: a certificate the browser trusts without a pin. What follows is the
+earlier observation, kept as it was written.
+
+*Observation (2026-10-10), not changed here.* With the Panel
 stopped, the ninth record (cell 4c) saw Chrome's own error page, because
 `navigator.serviceWorker.getRegistration('/')` found no registration; the
 seventh record saw no page controlled by it either. The interface registers
@@ -5831,7 +5847,8 @@ explains nor excludes them): the three no-session loads of cell
 from the worker, `sw: true`), while no page of the signed-in contexts was. Why
 the worker registered in one context and not in the other was not determined,
 and cell 4c was not repeated in a context that has one: the stopped-Panel
-behaviour with a registered worker stays **not measured**.
+behaviour with a registered worker stayed **not measured** until the eleventh
+record (above).
 
 ### A site configuration file the owner changed is kept and named; the owner chooses (2026-10-10)
 
@@ -6060,7 +6077,9 @@ new file there needs no reload. The probe
 writes one file there (in the challenge root, not in the site's file or in
 `celikpanel-managed.d`) with a random name (`celikpanel-probe-<32 hex>`) and a
 random body, created exclusively (an existing name or link is refused), asks
-nginx on 127.0.0.1 port 80 for `/.well-known/acme-challenge/<name>` with each
+nginx on port 80, at the address the site's file listens on for that name
+(127.0.0.1 for a wildcard; see "the address asked" below), for
+`/.well-known/acme-challenge/<name>` with each
 validation name as the Host (the site's names, then validation-only names such
 as `mail.<domain>`), follows a redirect only to the same name (port 80 or 443;
 the certificate of that target is not checked, the body is the proof), and
@@ -6150,7 +6169,10 @@ alpha.81/82 texts is unchanged (those texts carry the location inline).
   no certificate was requested and nothing was changed. The server
   administrator checks that nginx is running; then request the certificate
   again." No ledger reason is written; a renewal in this case records nothing
-  and is asked again by the next scheduled run.
+  and is asked again by the next scheduled run. Since 2026-10-11 the address
+  that did not answer is `vars.address`. A site that listens on an address
+  that is not this server's is not this answer: the request goes ahead (see
+  "the address asked" below).
 
 **The first state after the update.** Files written by alpha.81 and alpha.82
 carry no header. At the first start each is compared byte for byte with what
@@ -6202,8 +6224,17 @@ migration; there is no down migration.
 **Limits.** A return to an older release (automatic rollback included) loses
 this protection. The alpha.81 and alpha.82 start sends every site to
 `Agent.ApplyVhosts`, which writes each vhost from the database without
-comparing it (read in the source of both releases; not measured after this
-change): an owner's edit is overwritten, the header line and the owner include
+comparing it (read in the source of both releases; the tenth native record's
+return cell measured alpha.81's start rewriting every vhost, and the eleventh
+record's start-check cell measured it again: a new inode for all four files,
+an owner's edit overwritten). The start-check cell's candidate fails its
+check before it starts, so in that path no file ever gets a header. An
+automatic return runs only on a failed candidate start or start check, never
+after a successful candidate start, so what the older release does with a
+headed file arises only through a manual downgrade, which is out of scope
+(whether a candidate start can fail after its vhost reconcile has written
+headers was not measured; the older start would rewrite those files as it
+rewrites every vhost). An owner's edit is overwritten, the header line and the owner include
 line are not in that text, so the files in
 `/etc/nginx/celikpanel-sites.d/<domain>/` stay on disk but nginx stops reading
 them until the update is applied again; the dated copies, pending files and
@@ -6371,12 +6402,48 @@ loopback HTTP request, `cmd/panel/site_config_probe_test.go`,
 at). Component-tested and mock browser; not measured on a real system (the
 probe has never asked a real nginx); the measurement cells are the audit's §9.
 
-*Open after the second round (none of these is fixed).* (1) The probe asks
-127.0.0.1 only: a site whose port-80 block is bound to one address
-(`listen <address>:80;`) is not reached there. With nothing else listening on
-port 80 on the loopback the answer is `unknown`; if another block listens on
-the wildcard address, nginx would give that block's answer, which could read
-as `include_missing` (read from nginx's rule, not measured). (2) At the
+*The address asked (set11 cell A6, 2026-10-11; component-tested; not measured
+on a real system).* The eleventh native record measured the gap this
+paragraph named as open item (1): a site whose port-80 block listened on
+`10.0.2.15:80` only, on a host where other blocks listen on the wildcard
+address, was asked on 127.0.0.1, answered 404 by the default server and
+refused as `include_missing`. The probe now asks the addresses the kept file
+listens on (`internal/services/managed_vhost_listen.go`): a small,
+conservative reader of the kept file only (an `include` is not followed)
+takes the port-80 `listen` directives (`listen 80`, `listen *:80`,
+`listen <address>:80`, `listen [<IPv6>]:80`, `listen <address>` with nginx's
+default port; `default_server` and the other parameters ignored; a block
+without `listen` is `*:80`) of the server blocks whose `server_name` carries
+the name exactly. An IPv4 wildcard is asked on 127.0.0.1, as before; an IPv6
+wildcard alone on `::1`; an explicit address that is an address of this
+server (its interfaces, `net.InterfaceAddrs`) is asked on that address, with
+the name as Host. A name no port-80 block of the file carries is asked on
+127.0.0.1 as before (so a file without a port-80 block is still
+`include_missing`/`names_missing`). Ready: every name served the probe on
+each of its addresses. The address that answered travels as `vars.address`
+of the refusal (and `validation_address` on the Configuration file page). An
+explicit address that is not this server's cannot be asked from here, which
+is unknown, not a refusal: nothing is written for the probe, and issuance,
+the alias certificate path and renewal go ahead as for a ready probe — the
+authority's own attempt is the test, and a failed validation already comes
+back typed (`CERTIFICATE_ISSUE_FAILED`, reason `validation`). The success
+answer carries `validation_probe` `not_run`, `validation_unknown_reason`
+`address_not_local`, `validation_address` and `validation_note`; the SSL tab
+and the alias change show it, and the Configuration file page says it under
+"Not known whether certificates can be validated with this file": "CelikPanel
+could not check beforehand whether nginx serves the certificate validation
+for this site: the site listens on {address}, which this server cannot reach
+from itself. The request was sent anyway; if the authority cannot reach
+{address}, the answer will say so." It ends no `certificate_validation`
+reason (nothing was measured). The site-file ledger has no column for it (a
+schema change was not made): the Panel's journal line `validation_probe=not_run
+validation_unknown_reason=address_not_local validation_address=…` records it.
+`503 CERTIFICATE_VALIDATION_UNKNOWN` stays for a probe that could not run for
+a local reason (nginx not answering on port 80, the challenge directory
+missing, the probe file not creatable, this server's addresses not listable).
+
+*Open after the second round (only (1) is answered, by "the address asked"
+above).* (1) Answered above. (2) At the
 Configuration file page's read, a failed `nginx -t` or reload while CelikPanel
 publishes its challenge file is reported as `challenge_failed`, although the
 cause may be an unrelated file; it is not drawn as unknown. (3) A missing or
@@ -6502,7 +6569,14 @@ Errors are `{"error": <English sentence>, "code": …, "reason"?: …, "detail"?
   `502 SITE_CONFIG_NOT_READ`.
 - `take` on a file whose protection the Agent measures now (2026-10-11):
   `409 SITE_CONFIG_UNWRITABLE` `reason` `write_refused` before anything is
-  written; no dated copy is made; the refusal is recorded.
+  written; no dated copy is made; the refusal is recorded. The Agent measures
+  the protection again before it makes the copy (vhost, PHP-FPM pool and
+  application unit alike), and a replacement refused after the copy (a
+  protection set between the measurement and the rename) removes the copy, so
+  a refused take leaves no dated copy beside the owner's file (set11 cell B4
+  had found one at ead69cdcc; component-tested,
+  `internal/services/site_file_take_refused_test.go`; not measured on a real
+  system).
 - `POST …/apply` (2026-10-11; component-tested; not measured on a real system)
   body `{"file_sha256":"…","render_sha256":"…"}` (both required, both from the
   GET), under the request identity of D-029 → 200 as `take` with `outcome`

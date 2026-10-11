@@ -20,7 +20,8 @@
 //                siteconfig the Domains list and the Configuration file page of each domain the handover names, with
 //                           screenshots and the page text; with handover click "recheck", "Check again" is pressed once
 //   cells (set9): flash, slow, negative, stopped, updatefocus, accesswatch; done writes done.json.
-//   LIVE_PROFILE_ROOT  the directory of the browser profile (default: the out-dir)
+//   LIVE_PROFILE_ROOT  a short directory for the browser profile (default: %TEMP%\cpb\<8 hex> on Windows,
+//                      /tmp/cpb-<8 hex> elsewhere; profile-dir.mjs; refused beyond 120 characters, cell E)
 //
 //   BROWSER_INSPECT_MODULES  directory whose node_modules holds puppeteer-core (required; outside the repository)
 //   CHROME_PATH              the installed Chrome (default: the usual Windows/Linux places)
@@ -44,6 +45,7 @@ import { join, resolve } from 'node:path';
 import { request as httpsRequest } from 'node:https';
 import { connect as tlsConnect } from 'node:tls';
 import { pathToFileURL } from 'node:url';
+import { shortProfileDir } from './profile-dir.mjs';
 
 if (!process.env.BROWSER_INSPECT_MODULES) { console.error('Set BROWSER_INSPECT_MODULES (see README.md).'); process.exit(2); }
 const requireFrom = createRequire(pathToFileURL(join(resolve(process.env.BROWSER_INSPECT_MODULES), 'package.json')));
@@ -112,8 +114,8 @@ await mkdir(outRoot, { recursive: true });
 await writeFile(join(outRoot, `leaf-${Date.now()}.json`), JSON.stringify({ at: iso(), ...leaf, handover_leaf_sha256: hand.tls_leaf_sha256 }, null, 2));
 if (leaf.leaf_sha256 !== hand.tls_leaf_sha256) console.error('note: the leaf differs from the one the driver pinned');
 secret = JSON.parse(readFileSync(secretPath, 'utf8'));
-// set11: LIVE_PROFILE_ROOT puts the browser profile elsewhere (cell E: a short path, against Windows' path limit).
-const profile = join(process.env.LIVE_PROFILE_ROOT || outRoot, `.chrome-profile-${Date.now()}`);
+// set11 cell E: a short profile path (profile-dir.mjs); a long Windows path keeps CacheStorage from opening.
+const profile = shortProfileDir(outRoot);
 const browser = await puppeteer.launch({
     executablePath: chrome, headless: true, userDataDir: profile,
     args: ['--no-first-run', '--no-default-browser-check', '--disable-background-networking', '--disable-component-update',

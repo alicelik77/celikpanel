@@ -171,6 +171,9 @@ func (p *Panel) renewLetsEncrypt(ctx context.Context, certID, domainID int, doma
 	// without the line, missing, unreadable) is the owner's to act on: the
 	// renewal waits for the owner and is not a failure; the normal schedule
 	// reads the file's state again at its next run.
+	// A probe that could not be sent from this server (the site listens on
+	// an address that is not this server's) goes ahead; the journal line of
+	// prepareCertificateValidationNoted names it.
 	keptSiteConfig, err := p.prepareCertificateValidation(ctx, domainID, challengeNames)
 	if err != nil {
 		var held *siteFileHeldError

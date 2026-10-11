@@ -61,6 +61,14 @@ const (
 	errCodeCertificateValidationUnknown        = "CERTIFICATE_VALIDATION_UNKNOWN"
 	siteConfigCertificateValidationUnknownText = "CelikPanel could not check whether this site’s nginx configuration file lets the certificate validation run, because nginx on this server did not answer, so no certificate was requested and nothing was changed. " +
 		"The server administrator checks that nginx is running; then request the certificate again."
+	// The probe could not be sent because the site's port-80 block listens on
+	// an address that is not this server's (set11 cell A6, 2026-10-11): the
+	// request goes ahead, and the success answer says so
+	// (validation_probe "not_run", validation_unknown_reason
+	// "address_not_local", validation_address, validation_note).
+	validationProbeNotRun                     = "not_run"
+	siteConfigCertificateValidationNotRunText = "CelikPanel could not check beforehand whether nginx serves the certificate validation for this site: the site listens on %s, which this server cannot reach from itself. " +
+		"The request was sent anyway; if the authority cannot reach %s, the answer will say so."
 )
 
 // certificateValidationHeldError is a certificate operation stopped before
@@ -106,13 +114,25 @@ func keptSiteFile(err error) (*transport.SiteFileResult, bool) {
 // vhost afterwards (nothing was changed in it) and must expect the final
 // render to be kept too.
 func (p *Panel) prepareCertificateValidation(ctx context.Context, domainID int, names []string) (bool, error) {
+	kept, _, err := p.prepareCertificateValidationNoted(ctx, domainID, names)
+	return kept, err
+}
+
+// prepareCertificateValidationNoted is prepareCertificateValidation that also
+// returns, when the kept file's probe could not be sent from this server
+// (the site listens on an address that is not this server's), what the
+// answer says about it. That case goes ahead as a ready probe does: the
+// authority's own attempt is the test, and a failed validation comes back
+// typed (CERTIFICATE_ISSUE_FAILED, reason validation). It does not end a
+// certificate_validation reason, because nothing was measured.
+func (p *Panel) prepareCertificateValidationNoted(ctx context.Context, domainID int, names []string) (bool, *certificateValidationNotRun, error) {
 	err := p.applyVhostForCertificateValidation(ctx, domainID, names)
 	if err == nil {
-		return false, nil
+		return false, nil, nil
 	}
 	file, kept := keptSiteFile(err)
 	if !kept {
-		return false, err
+		return false, nil, err
 	}
 	siteID, domain, idErr := p.siteIDForDomain(ctx, domainID)
 	switch file.Validation {
@@ -121,9 +141,15 @@ func (p *Panel) prepareCertificateValidation(ctx context.Context, domainID int, 
 		if idErr == nil {
 			p.endCertificateValidationReason(ctx, siteID, domainID, domain)
 		}
-		return true, nil
+		return true, nil, nil
 	case transport.SiteFileValidationUnknown:
-		return false, &certificateValidationUnknownError{Domain: domain, File: *file}
+		if file.ValidationUnknownReason == transport.SiteFileValidationUnknownAddressNotLocal && file.ValidationAddress != "" {
+			notRun := &certificateValidationNotRun{Reason: file.ValidationUnknownReason, Address: file.ValidationAddress}
+			log.Printf("site configuration %s: validation_probe=not_run validation_unknown_reason=%s validation_address=%s; the certificate request goes ahead",
+				domain, notRun.Reason, notRun.Address)
+			return true, notRun, nil
+		}
+		return false, nil, &certificateValidationUnknownError{Domain: domain, File: *file}
 	}
 	if idErr == nil {
 		if _, setErr := services.SetSiteFileCertificateReason(ctx, p.db.GetDB(), siteID,
@@ -135,7 +161,25 @@ func (p *Panel) prepareCertificateValidation(ctx context.Context, domainID int, 
 		// An Agent that does not say whether the validation can be published.
 		file.Validation = transport.SiteFileValidationIncludeMissing
 	}
-	return false, &certificateValidationHeldError{Domain: domain, File: *file}
+	return false, nil, &certificateValidationHeldError{Domain: domain, File: *file}
+}
+
+// certificateValidationNotRun is a certificate operation that went ahead
+// without the probe (set11 cell A6, 2026-10-11).
+type certificateValidationNotRun struct {
+	Reason  string
+	Address string
+}
+
+// addTo puts the typed fields and the sentence into a success answer.
+func (n *certificateValidationNotRun) addTo(answer map[string]any) {
+	if n == nil {
+		return
+	}
+	answer["validation_probe"] = validationProbeNotRun
+	answer["validation_unknown_reason"] = n.Reason
+	answer["validation_address"] = n.Address
+	answer["validation_note"] = fmt.Sprintf(siteConfigCertificateValidationNotRunText, n.Address, n.Address)
 }
 
 // writeCertificateSiteFileRefusal answers a certificate operation that the
@@ -160,13 +204,17 @@ func writeCertificateSiteFileRefusal(w http.ResponseWriter, err error) bool {
 	var unknown *certificateValidationUnknownError
 	if errors.As(err, &unknown) {
 		log.Printf("[503] %v", err)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusServiceUnavailable)
-		_ = json.NewEncoder(w).Encode(apiErrorBody{
+		body := apiErrorBody{
 			Error:  siteConfigCertificateValidationUnknownText,
 			Code:   errCodeCertificateValidationUnknown,
 			Detail: transport.SiteFileValidationUnknown,
-		})
+		}
+		if unknown.File.ValidationAddress != "" {
+			body.Vars = map[string]string{"address": unknown.File.ValidationAddress}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_ = json.NewEncoder(w).Encode(body)
 		return true
 	}
 	if classification, ok := classifySiteFileError(err); ok {
@@ -184,7 +232,7 @@ func writeCertificateSiteFileRefusal(w http.ResponseWriter, err error) bool {
 
 // certificateValidationVars are the refusal's variables: the include line and,
 // when the probe got an answer it did not expect, the first name that did not
-// serve it and nginx's HTTP status for it.
+// serve it, nginx's HTTP status for it and the address that answered.
 func certificateValidationVars(file transport.SiteFileResult) map[string]string {
 	vars := map[string]string{}
 	if file.ManagedInclude != "" {
@@ -195,6 +243,10 @@ func certificateValidationVars(file transport.SiteFileResult) map[string]string 
 	}
 	if file.ValidationStatus != 0 {
 		vars["status"] = strconv.Itoa(file.ValidationStatus)
+	}
+	if file.ValidationAddress != "" {
+		// The address that answered (set11 cell A6).
+		vars["address"] = file.ValidationAddress
 	}
 	if len(vars) == 0 {
 		return nil

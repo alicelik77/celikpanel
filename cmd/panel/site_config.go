@@ -318,6 +318,12 @@ type siteConfigView struct {
 	// serve the probe under, and the HTTP status it gave (probe reads only).
 	ValidationName   string `json:"validation_name,omitempty"`
 	ValidationStatus int    `json:"validation_status,omitempty"`
+	// ValidationAddress: the address the probe asked (the one that answered,
+	// or, with validation "unknown", the one it could not ask);
+	// ValidationUnknownReason "address_not_local": that address is not this
+	// server's (set11 cell A6, additive).
+	ValidationAddress       string `json:"validation_address,omitempty"`
+	ValidationUnknownReason string `json:"validation_unknown_reason,omitempty"`
 	// set10 scenario g, additive. SystemError: the system's error name a
 	// replacement of the file gets now ("EPERM"), measured read-only by the
 	// Agent; Protection: what refuses it (transport.SiteFileProtection*).
@@ -568,6 +574,7 @@ func (p *Panel) inspectSiteConfig(ctx context.Context, domainID int, probe bool)
 	view.Validation, view.ChallengeFile = file.Validation, file.ChallengeFile
 	view.certificateReferenced = file.CertificateReferenced
 	view.ValidationName, view.ValidationStatus = file.ValidationName, file.ValidationStatus
+	view.ValidationAddress, view.ValidationUnknownReason = file.ValidationAddress, file.ValidationUnknownReason
 	view.SystemError, view.Protection = file.SystemError, file.Protection
 	view.heldRender = file.State == transport.SiteFileManagedUnchanged && file.WrittenSHA256 != file.RenderSHA256
 	view.Actions = siteConfigActions(file.State)

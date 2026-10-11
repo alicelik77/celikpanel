@@ -57,6 +57,11 @@ export interface SiteConfigView {
     resolved_reason?: string;
     validation_name?: string;
     validation_status?: number;
+    // The address the probe asked; with validation 'unknown' and
+    // validation_unknown_reason 'address_not_local', the site's address
+    // this server cannot reach from itself (set11 cell A6).
+    validation_address?: string;
+    validation_unknown_reason?: string;
     // set10 scenario g: what refuses replacing the file now, measured
     // read-only, and the system's error name a replacement gets ("EPERM").
     protection?: string;
@@ -689,8 +694,10 @@ function CertificatePart({ view }: { view: SiteConfigView }) {
         <div data-site-config-certificate="certificate_validation" data-site-config-validation={validation}>
             {/* An unanswered probe is not "cannot be validated": its own title. */}
             <Attention title={t(validation === 'unknown' ? 'siteConfig.certificate.validation.unknownTitle' : 'siteConfig.certificate.validation.title')}>
-                <p>{t(`siteConfig.certificate.validation.${validation}` as TranslationKey, {
-                    domain: view.domain, dir: view.managed_dir ?? '',
+                <p>{t(validation === 'unknown' && view.validation_unknown_reason === 'address_not_local' && view.validation_address
+                    ? 'siteConfig.certificate.validation.unknownAddress'
+                    : `siteConfig.certificate.validation.${validation}` as TranslationKey, {
+                    domain: view.domain, dir: view.managed_dir ?? '', address: view.validation_address ?? '',
                 })}</p>
                 {validation === 'include_missing' && view.managed_include && (
                     <div className="mt-2">

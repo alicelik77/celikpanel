@@ -293,7 +293,7 @@ func (p *Panel) issueAliasCertificateSnapshot(
 	// kept is validated through CelikPanel's own directory without touching
 	// the file when nginx serves the probe under every name; otherwise the
 	// typed refusal is returned before anything is requested.
-	keptSiteConfig, err := p.prepareCertificateValidation(ctx, domainID, challengeNames)
+	keptSiteConfig, notRun, err := p.prepareCertificateValidationNoted(ctx, domainID, challengeNames)
 	if err != nil {
 		return install, fmt.Errorf("prepare alias certificate validation vhost: %w", err)
 	}
@@ -421,6 +421,8 @@ func (p *Panel) issueAliasCertificateSnapshot(
 		ExpiresAt:      expiresAt,
 		AutoRenew:      current.AutoRenew,
 		SecureMail:     current.SecureMail,
+
+		validationNotRun: notRun,
 	}
 	keepIssuedMaterial = true
 	return install, nil

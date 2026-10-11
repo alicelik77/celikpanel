@@ -26,11 +26,17 @@ type fakeNginx struct {
 	status map[string]int
 	down   bool
 	asked  []string
+	// addresses records the address each request was sent to; answerAt, when
+	// set, is the only address nginx serves the site's names on (others get
+	// the default server's 404).
+	addresses []string
+	answerAt  string
 	// seen records whether the probe file was on disk when it was asked for.
 	seen []bool
 }
 
-func (f *fakeNginx) get(_ context.Context, name, path string) ValidationProbeAnswer {
+func (f *fakeNginx) get(_ context.Context, address, name, path string) ValidationProbeAnswer {
+	f.addresses = append(f.addresses, address)
 	f.asked = append(f.asked, name)
 	if f.down {
 		return ValidationProbeAnswer{Err: errors.New("dial tcp 127.0.0.1:80: connect: connection refused")}
@@ -41,7 +47,7 @@ func (f *fakeNginx) get(_ context.Context, name, path string) ValidationProbeAns
 	if status, ok := f.status[name]; ok {
 		return ValidationProbeAnswer{Answered: true, Status: status}
 	}
-	if !f.serve[name] || err != nil {
+	if !f.serve[name] || err != nil || (f.answerAt != "" && address != f.answerAt) {
 		return ValidationProbeAnswer{Answered: true, Status: http.StatusNotFound, Body: []byte("not found")}
 	}
 	return ValidationProbeAnswer{Answered: true, Status: http.StatusOK, Body: body}
@@ -58,6 +64,9 @@ func probeHarness(t *testing.T) (*managedVhostHarness, *fakeNginx) {
 	}
 	nginx := &fakeNginx{root: root, serve: map[string]bool{}, status: map[string]int{}}
 	h.ng.probeGet = nginx.get
+	h.ng.hostAddresses = func() (map[string]bool, error) {
+		return map[string]bool{"127.0.0.1": true, "::1": true, "10.0.2.15": true, "2001:db8::15": true}, nil
+	}
 	return h, nginx
 }
 
@@ -271,24 +280,24 @@ func TestLocalProbeRequestAsksLoopbackWithTheNameAsHost(t *testing.T) {
 	name := "probe.example:" + port
 	ctx := context.Background()
 
-	if answer := localValidationProbeGet(ctx, name, acmeChallengeURLPath+"ok"); !answer.Answered ||
+	if answer := localValidationProbeGet(ctx, "127.0.0.1", name, acmeChallengeURLPath+"ok"); !answer.Answered ||
 		answer.Status != http.StatusOK || string(answer.Body) != "body" {
 		t.Fatalf("ok: %+v", answer)
 	}
 	if hosts[0] != name {
 		t.Fatalf("Host %q", hosts[0])
 	}
-	if answer := localValidationProbeGet(ctx, name, acmeChallengeURLPath+"same"); answer.Status != http.StatusOK {
+	if answer := localValidationProbeGet(ctx, "127.0.0.1", name, acmeChallengeURLPath+"same"); answer.Status != http.StatusOK {
 		t.Fatalf("same-name redirect: %+v", answer)
 	}
-	if answer := localValidationProbeGet(ctx, name, acmeChallengeURLPath+"other"); !answer.Answered || answer.Status != http.StatusFound {
+	if answer := localValidationProbeGet(ctx, "127.0.0.1", name, acmeChallengeURLPath+"other"); !answer.Answered || answer.Status != http.StatusFound {
 		t.Fatalf("redirect to another name: %+v", answer)
 	}
-	if answer := localValidationProbeGet(ctx, name, acmeChallengeURLPath+"missing"); answer.Status != http.StatusNotFound {
+	if answer := localValidationProbeGet(ctx, "127.0.0.1", name, acmeChallengeURLPath+"missing"); answer.Status != http.StatusNotFound {
 		t.Fatalf("missing: %+v", answer)
 	}
 	server.Close()
-	if answer := localValidationProbeGet(ctx, name, acmeChallengeURLPath+"ok"); answer.Answered || answer.Err == nil {
+	if answer := localValidationProbeGet(ctx, "127.0.0.1", name, acmeChallengeURLPath+"ok"); answer.Answered || answer.Err == nil {
 		t.Fatalf("closed: %+v", answer)
 	}
 }

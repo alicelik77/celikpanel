@@ -172,6 +172,14 @@ type SiteFileResult struct {
 	ValidationName   string
 	ValidationStatus int
 	ValidationDetail string
+	// Additive (set11 cell A6, 2026-10-11). ValidationAddress is the address
+	// the probe asked: for a name that did not serve the probe, the address
+	// that answered; for ready, every address asked (comma-separated); for
+	// SiteFileValidationUnknown, the address that did not answer or could not
+	// be asked. ValidationUnknownReason is SiteFileValidationUnknown*, ""
+	// when the reason is that nginx did not answer (or an older Agent).
+	ValidationAddress       string
+	ValidationUnknownReason string
 
 	// Additive (set10 scenario g). SystemError is the system's error name for
 	// a refused replacement ("EPERM", "EROFS", "EACCES", …): the one the write
@@ -233,6 +241,11 @@ const (
 	// answer on port 80, or the probe file could not be written), so whether
 	// the file lets the validation run is not known. Never "not ready".
 	SiteFileValidationUnknown = "unknown"
+	// SiteFileValidationUnknownAddressNotLocal (ValidationUnknownReason): the
+	// site's port-80 block listens on an address (ValidationAddress) that is
+	// not an address of this server, so the probe cannot be sent to it from
+	// this server.
+	SiteFileValidationUnknownAddressNotLocal = "address_not_local"
 )
 
 // SiteFileBatchItem is one item of a start-up batch.

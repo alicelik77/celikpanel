@@ -795,6 +795,11 @@ func (ng *NginxGenerator) ApplyManagedVhosts(items []ManagedVhostItem) ([]transp
 	for _, plan := range writes {
 		result := &results[plan.index]
 		if plan.backup {
+			// A protected file is refused before its dated copy is made
+			// (set11 cell B4).
+			if refuseProtectedTake(result, plan.available) {
+				continue
+			}
 			backup, err := writeSiteFileBackup(plan.available, plan.inspected)
 			if err != nil {
 				result.Outcome = transport.SiteFileOutcomeRefused
@@ -828,6 +833,7 @@ func (ng *NginxGenerator) ApplyManagedVhosts(items []ManagedVhostItem) ([]transp
 				if result.SystemError == "" {
 					result.SystemError = measuredError
 				}
+				dropRefusedTakeBackup(result)
 			}
 			continue
 		}

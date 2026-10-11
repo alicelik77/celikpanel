@@ -111,10 +111,14 @@ type validationRestoreAgent struct {
 	keptValidation string
 	// keptName and keptStatus: the probe's first name not served and its
 	// HTTP status, for a validation that is not ready.
-	keptName     string
-	keptStatus   int
-	renewCalls   int
-	inspectCalls []ValidationRestoreApplyRequest
+	keptName   string
+	keptStatus int
+	// keptAddress and keptUnknownReason: the probe's address and, for an
+	// unknown validation, why (set11 cell A6).
+	keptAddress       string
+	keptUnknownReason string
+	renewCalls        int
+	inspectCalls      []ValidationRestoreApplyRequest
 
 	applyCalls  []ValidationRestoreApplyRequest
 	deleteCalls []ValidationRestoreDeleteRequest
@@ -156,6 +160,7 @@ func (a *validationRestoreAgent) keptFile(probe bool, outcome string) transport.
 		file.Validation = a.keptValidation
 		if a.keptValidation != transport.SiteFileValidationReady {
 			file.ValidationName, file.ValidationStatus = a.keptName, a.keptStatus
+			file.ValidationAddress, file.ValidationUnknownReason = a.keptAddress, a.keptUnknownReason
 		}
 		if a.keptValidation == transport.SiteFileValidationUnknown {
 			file.ValidationDetail = "nginx did not answer on port 80: connection refused"

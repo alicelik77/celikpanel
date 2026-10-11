@@ -116,6 +116,26 @@ real certificate, a real restart or real timing. It is one Chrome on one machine
 no Safari, no Firefox, no screen reader, no touch device. Looking at the
 screenshots is the inspection; the script only makes them.
 
+## The browser profile of the live tools (2026-10-11)
+
+`live-restart.mjs` and `cold-load-set11.mjs` open Chrome with an on-disk profile.
+They put it under a short path (`profile-dir.mjs`): `%TEMP%\cpb\<8 hex>` on
+Windows, `/tmp/cpb-<8 hex>` elsewhere, or `<LIVE_PROFILE_ROOT>\cpb-<8 hex>` when
+that variable is set. Each run prints the path and its length and writes
+`browser-profile-<8 hex>.json` (the length and where the path came from, not the
+path) into its out-dir. A path longer than 120 characters is refused before
+Chrome starts: set `LIVE_PROFILE_ROOT` or `TEMP` to a shorter directory.
+
+The eleventh native record (set11, cell E) found that a profile 177 characters
+deep could not open CacheStorage ("Failed to execute 'open' on 'CacheStorage':
+Unexpected internal error"), so the recovery service worker never installed in
+that browser, while the same Chrome with a short profile path registered it and
+showed the product's offline page. That Windows' 260-character limit is the
+mechanism is inferred from the error, the empty CacheStorage directory and the
+path arithmetic, not read from a Chrome line naming the path. `run.mjs` passes
+no profile: puppeteer makes its own under the system's temporary directory.
+`cold-load-set9.mjs` is kept as set9 ran it.
+
 ## Not shipped
 
 The customer archive is assembled by `make dist`, which copies `web/dist` and

@@ -610,6 +610,7 @@ export const enScreens = {
     'ssl.issuing': 'Issuing…',
     'ssl.issued': 'Certificate issued',
     'ssl.issuedWaitingForOwner': 'The certificate was issued, but this site’s nginx configuration file was changed outside CelikPanel and still uses the previous one. The server administrator chooses on the domain’s Configuration file page (Hosting tab).',
+    'ssl.validationNotRun': 'CelikPanel could not check beforehand whether nginx serves the certificate validation for this site: the site listens on {address}, which this server cannot reach from itself. The request was sent anyway; if the authority cannot reach {address}, the answer will say so.',
     'ssl.waitingForOwner': 'This site’s nginx configuration file was changed outside CelikPanel and does not use this certificate yet; the site keeps the certificate it uses now. The server administrator chooses on the domain’s Configuration file page (Hosting tab).',
     'ssl.waitingForOwner.validation': 'This site’s nginx configuration file was changed outside CelikPanel and does not let the certificate validation run, so the last request or renewal was stopped. The server administrator chooses on the domain’s Configuration file page (Hosting tab); then request the certificate again.',
     'ssl.issueConfirm': 'Issue a certificate for {name} from {authority}?',

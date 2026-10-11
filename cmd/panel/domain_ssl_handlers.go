@@ -550,7 +550,7 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 	// validated through the Panel's own include directory, without touching
 	// the file, when the file still includes it; otherwise the request is
 	// refused here with the file's state, before anything is requested.
-	keptSiteConfig, err := p.prepareCertificateValidation(ctx, domainID, validationChallengeNames)
+	keptSiteConfig, validationNotRun, err := p.prepareCertificateValidationNoted(ctx, domainID, validationChallengeNames)
 	if err != nil {
 		log.Printf("SSL issue domain %d: prepare validation vhost: %v", domainID, err)
 		if writeCertificateSiteFileRefusal(w, err) {
@@ -802,17 +802,21 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 	if waitingForOwner {
 		// Issued and stored, not served yet: the answer says so, and the
 		// Configuration file page says what the owner can do.
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		answer := map[string]any{
 			"status":         sslWaitingForOwner,
 			"expires_at":     expiresAt,
 			"pending_reason": services.SiteFileReasonCertificate,
-		})
+		}
+		validationNotRun.addTo(answer)
+		json.NewEncoder(w).Encode(answer)
 		return
 	}
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	answer := map[string]any{
 		"status":     "success",
 		"expires_at": expiresAt,
-	})
+	}
+	validationNotRun.addTo(answer)
+	json.NewEncoder(w).Encode(answer)
 }
 
 // handleUploadCertificate handles POST /api/v1/domains/:id/ssl/upload

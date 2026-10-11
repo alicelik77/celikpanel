@@ -4630,9 +4630,15 @@ that replaced the page is not changed). 2026-10-10 is the clock date.
   the recovery service worker was not registered in the signed-in
   browser contexts of the record (cell 4c, and set7), so a stopped Panel showed
   Chrome's own error page; the three no-session loads of cell 4a (a new
-  context) were controlled by one (`sw_controlled: true`) and why was not
-  determined. The likely causes are not established; they and what must be
-  measured are in the operation guidance entry of the same date.
+  context) were controlled by one (`sw_controlled: true`). **Cause established
+  in the eleventh record (set11 cell E, 2026-10-11):** the lab browser's
+  profile path, not the product — in a profile 177 characters deep the
+  worker's install failed opening CacheStorage, while a new context and a
+  short profile path registered it; the product's offline page is shown with
+  the Panel stopped when the worker is registered. The limit measured: a
+  profile path beyond Windows' 260-character limit — the mechanism is
+  inferred. The live browser tools now use a short profile path and refuse
+  one beyond 120 characters (`web/tools/browser-inspect/profile-dir.mjs`).
 - **Unknown after an earlier answer stays unknown (invariant 2; second round,
   2026-10-10; was open).** Before, once any read had answered, a later read
   that reached its own 15 s limit was drawn as the known negative with the
@@ -4655,10 +4661,10 @@ that replaced the page is not changed). 2026-10-10 is the clock date.
 - **Open.** The real-system re-measurement of the 15 s/30 s path on a guest
   (the cold load itself was measured by the ninth record) and any installed
   server; a load with the HTTP cache enabled; the hold layer's words during a
-  real update; the two session reads per load (not changed here); why the
-  recovery service worker is not registered in the signed-in contexts of the lab
-  browser though the ninth record's no-session loads were controlled by one
-  (`sw_controlled: true`, cell 4a; cell 4c not repeated in such a context); the remaining
+  real update; the two session reads per load (not changed here); the
+  recovery service worker with a certificate the browser trusts without a pin
+  (why it was not registered in the signed-in lab contexts is established:
+  the lab browser's profile path, set11 cell E); the remaining
   30 files of the ratchet list.
 
 ### The setup page's final check and the update notice: a stopped run is not in progress, a running update on the installed target is "being verified" (P0.2 area; invariants 2 and 6; D-024; 2026-10-10)
@@ -4885,8 +4891,11 @@ native cells (audit §9) come after. 2026-10-10 is the clock date.
     file if absent (one `nginx -t` and reload, put back on refusal), writes a
     probe file with a random name and body into
     `<challenge root>/.well-known/acme-challenge/` (served per request, no
-    reload), asks nginx on 127.0.0.1 port 80 for it under every validation name
-    as the Host (a redirect followed only to the same name), and removes it
+    reload), asks nginx on port 80 for it under every validation name as the
+    Host, at the addresses the kept file's port-80 blocks of that name listen
+    on (127.0.0.1 for a wildcard or a name no such block carries; since
+    2026-10-11, `managed_vhost_listen.go`; a redirect followed only to the
+    same name), and removes it
     (`internal/services/managed_vhost_probe.go`). `validation`: `ready` (every
     name served the body), `include_missing` (a site name not served),
     `names_missing` (a validation-only name not served), `challenge_kept`,
@@ -5012,7 +5021,17 @@ native cells (audit §9) come after. 2026-10-10 is the clock date.
   decides; nothing retries by itself. **A return to an older release loses the
   protection** (it overwrites every vhost at its start, as before); after
   returning forward the older release's text is recognised and adopted. The
-  release notes must say so. What the old start does to a headed file (read in
+  release notes must say so. Measured since: the tenth native record's return
+  cell measured alpha.81's start rewriting every vhost, and the eleventh
+  record's start-check cell (set11 F) measured it again; that cell's
+  candidate fails its start check before it starts, so in that path no file
+  ever gets a header. An automatic return runs only on a failed candidate
+  start or start check, never after a successful candidate start, so what the
+  older release does with a headed file arises only through a manual
+  downgrade, which is out of scope (whether a candidate start can fail after
+  its vhost reconcile has written headers was not measured; the older start
+  would rewrite those files as it rewrites every vhost). What the old start
+  does to a headed file (read in
   `cmd/panel/cert_startup_reconcile.go` and `NginxGenerator.ApplyVhosts` of
   `2a0af8866`, the same path in `a0beb7263`; not run): it renders every hosted
   site from the database and writes it unconditionally, so the header line, an
@@ -5081,11 +5100,24 @@ native cells (audit §9) come after. 2026-10-10 is the clock date.
   not measured on a real system: no real certbot validation through the Panel's
   include directory, no real nginx with a kept file. A file kept from before
   step 1b has no include line and waits for the owner. **Open after the second
-  round of step 1b (none fixed):** (1) the probe asks 127.0.0.1 only, so a
-  port-80 block bound to one address is not reached there (`unknown` when
-  nothing else listens on port 80 on the loopback; another block on the
-  wildcard address would answer instead, possibly as `include_missing`: read
-  from nginx's rule, not measured); (2) at the site-config read a failed
+  round of step 1b (only (1) answered):** (1) answered on 2026-10-11 (set11
+  cell A6 measured a block bound to `10.0.2.15:80` refused as
+  `include_missing` because the probe asked 127.0.0.1): the probe now asks
+  the addresses the kept file's port-80 blocks of each name listen on — an
+  IPv4 wildcard on 127.0.0.1, an IPv6 wildcard alone on `::1`, an explicit
+  address of this server on that address, a name no port-80 block carries on
+  127.0.0.1 as before; ready = every name served on each of its addresses;
+  the address that answered is `vars.address`; an explicit address that is
+  not this server's is unknown, not a refusal: issuance, the alias path and
+  renewal go ahead as for a ready probe (the authority's attempt is the test;
+  a failed validation comes back as `CERTIFICATE_ISSUE_FAILED`, reason
+  `validation`), the success answer carries `validation_probe` `not_run`,
+  `validation_unknown_reason` `address_not_local`, the address and the
+  sentence, and the Panel's journal records it (no ledger column, no schema
+  change); `503 CERTIFICATE_VALIDATION_UNKNOWN` stays for a probe that could
+  not run for a local reason (`internal/services/managed_vhost_listen.go`,
+  `cmd/panel/site_config_certificate.go`; component-tested; not measured on a
+  real system); (2) at the site-config read a failed
   `nginx -t` or reload while CelikPanel publishes its challenge file is
   reported as `challenge_failed`, though the cause may be an unrelated file;
   (3) a missing or unreadable file writes no reason, so a renewal it stopped

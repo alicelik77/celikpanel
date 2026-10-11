@@ -200,6 +200,12 @@ func ApplyManagedSiteFile(f ManagedSiteFile, validate, activate func() error) (t
 	}
 
 	if backup {
+		if refuseProtectedTake(&result, f.Path) {
+			if _, _, pendingErr := writePendingSiteFile(f.Path, sealed); pendingErr == nil {
+				result.PendingPath, result.PendingSHA256 = existingPending(f.Path)
+			}
+			return result, nil
+		}
 		name, err := writeSiteFileBackup(f.Path, inspected)
 		if err != nil {
 			result.Outcome = transport.SiteFileOutcomeRefused
@@ -223,6 +229,7 @@ func ApplyManagedSiteFile(f ManagedSiteFile, validate, activate func() error) (t
 		if result.SystemError == "" {
 			result.SystemError = measuredError
 		}
+		dropRefusedTakeBackup(&result)
 		if _, _, pendingErr := writePendingSiteFile(f.Path, sealed); pendingErr == nil {
 			result.PendingPath, result.PendingSHA256 = existingPending(f.Path)
 		}
@@ -309,6 +316,38 @@ func InspectManagedSiteFile(f ManagedSiteFile) (transport.SiteFileResult, string
 		stripManagedHeaderWith(f.HeaderPrefix, inspected.content), stripManagedHeaderWith(f.HeaderPrefix, sealed),
 	)
 	return result, diff, truncated
+}
+
+// refuseProtectedTake measures, before "take CelikPanel's" makes the dated
+// copy of the owner's file, whether the replacement would be refused (an
+// immutable or append-only file or directory, a read-only file system;
+// set11 cell B4, 2026-10-11). When it would, the take is refused with
+// nothing written: no dated copy is left beside a file that stays the
+// owner's. A protection that cannot be measured does not refuse; the write
+// then decides, and dropRefusedTakeBackup removes the copy.
+func refuseProtectedTake(result *transport.SiteFileResult, path string) bool {
+	protection, systemError := siteFileProtectionOf(path)
+	if protection == "" || protection == transport.SiteFileProtectionNone {
+		return false
+	}
+	result.Outcome = transport.SiteFileOutcomeRefused
+	result.Reason = transport.SiteFileReasonWriteRefused
+	result.Detail = boundedSiteFileDetail("not attempted: the file is protected (" + protection + ")")
+	result.Protection, result.SystemError = protection, systemError
+	return true
+}
+
+// dropRefusedTakeBackup removes the dated copy a take made when the
+// replacement was then refused (a protection set after the measurement):
+// the owner's file was not replaced, so the copy only repeats it. A copy
+// that cannot be removed stays named in the result.
+func dropRefusedTakeBackup(result *transport.SiteFileResult) {
+	if result.BackupPath == "" {
+		return
+	}
+	if err := os.Remove(result.BackupPath); err == nil || errors.Is(err, os.ErrNotExist) {
+		result.BackupPath = ""
+	}
 }
 
 // BackupUnlessManaged keeps a dated copy of a file that is about to be removed

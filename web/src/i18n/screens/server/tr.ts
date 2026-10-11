@@ -1169,6 +1169,7 @@ export const trServerScreens: Record<ServerScreenKey, string> = {
     'siteConfig.certificate.validation.readyTitle': 'nginx artık bu sitenin sertifika doğrulamasını sunuyor',
     'siteConfig.certificate.validation.unknownTitle': 'Bu dosyayla sertifikanın doğrulanıp doğrulanamayacağı bilinmiyor',
     'siteConfig.certificate.validation.unknown': 'Bu sunucudaki nginx yanıt vermediği için dosyanızın doğrulamaya izin verip vermediği şu an kontrol edilemedi. Bu, dosyada bir sorun olduğu anlamına gelmez ve hiçbir şey değiştirilmedi. Sunucu yöneticisi nginx’in çalıştığını denetler, sonra bu sayfayı yeniden yükler.',
+    'siteConfig.certificate.validation.unknownAddress': 'CelikPanel, nginx’in bu sitenin sertifika doğrulamasını sunup sunmadığını önceden kontrol edemedi: site {address} adresini dinliyor ve bu sunucu o adrese kendi içinden ulaşamıyor. İstek yine de gönderildi; sertifika yetkilisi {address} adresine ulaşamazsa yanıt bunu söyler.',
     'siteConfig.certificate.validation.probe': 'Bu sunucudaki nginx’in yanıtı: {name} için HTTP {status}.',
     'siteConfig.certificate.schedule': 'Bu sitenin süresinin dolmasına 30 günden az kalmış bir sertifikası varsa yenileme kontrolü yaklaşık 12 saatte bir yeniden bakar. SSL sekmesinden yapılan bir istek yeniden denenmez; gerekeni yaptıktan sonra yeniden isteyin.',
     'siteConfig.certificate.includeLine': 'Eklenecek satır',

@@ -5731,7 +5731,22 @@ verdi…"; 41 sn'de yarım dakika cümlesi ve yeniden yükleme. **15 sn/30 sn yo
 yanıttan önce ve sonra, bileşen testli ve taklit tarayıcılı; gerçek bir
 sistemde ölçülmedi.**
 
-*Gözlem, burada değiştirilmedi: kurtarma hizmet çalışanı (service worker).*
+*Kurtarma hizmet çalışanı (service worker): neden on birinci kayıtta
+kesinleşti (set11, hücre E, 2026-10-11).* Neden ürün değil, laboratuvar
+tarayıcısının profil yoludur. Chrome profili 177 karakter derinde olan oturum
+açılmış bağlamda çalışan `installing → redundant` oldu: "Failed to execute
+'open' on 'CacheStorage': Unexpected internal error"; yeni bir bağlam ve profili
+kısa bir yolda olan aynı Chrome onu kaydetti ve denetlendi. Çalışan kayıtlıyken
+Panel durdurulduğunda ürünün çevrimdışı sayfası ("The panel connection is
+unavailable") gösterilir. Ölçülen sınır: Windows'un 260 karakter sınırını aşan
+bir profil yolu (o profilin CacheStorage'ı altındaki bir girdi yaklaşık 316
+karakter) — mekanizma çıkarımdır, yolu adlandıran bir Chrome satırından
+okunmadı. Canlı tarayıcı araçları artık profili kısa bir yola koyar ve 120
+karakterden uzun bir yolu reddeder (`web/tools/browser-inspect/profile-dir.mjs`).
+Ölçülmedi: tarayıcının sabitleme olmadan güvendiği bir sertifika. Aşağıdaki,
+yazıldığı gibi korunan önceki gözlemdir.
+
+*Gözlem (2026-10-10), burada değiştirilmedi.*
 Panel durdurulduğunda dokuzuncu kayıt (hücre 4c) Chrome'un kendi hata sayfasını
 gördü; çünkü `navigator.serviceWorker.getRegistration('/')` bir kayıt bulmadı;
 yedinci kayıt da onun denetlediği bir sayfa görmedi. Arayüz
@@ -5759,7 +5774,8 @@ bağlamıyor (ne açıklıyor ne dışlıyor): hücre 4a'nın oturumsuz üç yü
 geldi, `sw: true`), oturum açılmış bağlamların hiçbir sayfası ise
 denetlenmiyordu. Çalışanın neden birinde kaydolup ötekinde kaydolmadığı
 belirlenmedi ve hücre 4c böyle bir bağlamda tekrarlanmadı: kayıtlı çalışanla
-durmuş Panel davranışı **ölçülmedi** olarak kalır.
+durmuş Panel davranışı on birinci kayda (yukarıda) dek **ölçülmedi** olarak
+kaldı.
 
 ### Sahibin değiştirdiği site yapılandırma dosyası korunur ve adlandırılır; seçimi sahip yapar (2026-10-10)
 
@@ -5998,7 +6014,8 @@ konan yeni bir dosya yeniden yükleme gerektirmez. Yoklama
 rastgele adlı (`celikpanel-probe-<32 onaltılık>`) ve rastgele içerikli bir
 dosyayı (doğrulama kökünde; sitenin dosyasına ya da `celikpanel-managed.d`
 dizinine değil) dışlayıcı biçimde yazar (var olan ad ya da bağ reddedilir),
-127.0.0.1'in 80 numaralı bağlantı noktasındaki nginx'e
+80 numaralı bağlantı noktasındaki nginx'e, sitenin dosyasının o ad için
+dinlediği adreste (joker adres için 127.0.0.1; aşağıda "sorulan adres"),
 `/.well-known/acme-challenge/<ad>` yolunu her doğrulama adını Host olarak
 vererek sorar (önce sitenin adları, sonra `mail.<alan adı>` gibi yalnız
 doğrulama adları), bir yönlendirmeyi yalnız aynı ada (80 ya da 443) izler (o
@@ -6091,7 +6108,9 @@ değişmedi (o metinler konumu satır içinde taşır).
   istenmedi ve hiçbir şey değiştirilmedi. Sunucu yöneticisi nginx’in
   çalıştığını denetler; sonra sertifikayı yeniden isteyin." Defter nedeni
   yazılmaz; bu durumdaki bir yenileme hiçbir şey kaydetmez ve bir sonraki
-  zamanlanmış çalışmada yeniden sorulur.
+  zamanlanmış çalışmada yeniden sorulur. 2026-10-11'den beri yanıt vermeyen
+  adres `vars.address`'tir. Bu sunucunun olmayan bir adresi dinleyen site bu
+  yanıtı almaz: istek sürer (aşağıda "sorulan adres").
 
 **Güncellemeden sonraki ilk durum.** alpha.81 ve alpha.82'nin yazdığı
 dosyalarda başlık yoktur. İlk başlangıçta her biri, bu sürümlerin dondurulmuş
@@ -6143,8 +6162,18 @@ anlık görüntünün geri yüklenmesidir; aşağı göç yoktur.
 **Sınırlar.** Eski bir sürüme dönüş (otomatik geri alma dahil) bu korumayı
 kaldırır. alpha.81 ve alpha.82 başlangıcı her siteyi `Agent.ApplyVhosts`'a
 gönderir; o, her sanal konağı karşılaştırmadan veritabanından yazar (iki
-sürümün kaynağında okundu; bu değişiklikten sonra ölçülmedi): sahibin
-değişikliği ezilir, başlık satırı ve sahibin include satırı o metinde yoktur;
+sürümün kaynağında okundu; onuncu yerel kaydın dönüş hücresi alpha.81
+başlangıcının her sanal konağı yeniden yazdığını ölçtü, on birinci kaydın
+başlangıç denetimi hücresi bunu yeniden ölçtü: dört dosyanın hepsinde yeni
+inode, sahibin değişikliği ezilmiş). Başlangıç denetimi hücresinin adayı
+denetimini başlamadan önce geçemez; bu yolda hiçbir dosyaya hiç başlık
+yazılmaz. Otomatik dönüş yalnız adayın başlangıcı ya da başlangıç denetimi
+başarısız olduğunda çalışır, başarılı bir aday başlangıcından sonra hiçbir
+zaman; bu yüzden eski sürümün başlıklı bir dosyaya ne yaptığı yalnız elle
+yapılan bir sürüm düşürmede ortaya çıkar ve bu kapsam dışıdır (adayın
+başlangıcının, sanal konak uzlaştırması başlıkları yazdıktan sonra başarısız
+olup olamayacağı ölçülmedi; eski başlangıç o dosyaları da her sanal konak gibi
+yeniden yazar). Sahibin değişikliği ezilir, başlık satırı ve sahibin include satırı o metinde yoktur;
 böylece `/etc/nginx/celikpanel-sites.d/<alan adı>/` içindeki dosyalar diskte
 kalır ama güncelleme yeniden uygulanana dek nginx onları okumaz; tarihli
 kopyalar, bekleyen dosyalar ve include dizinleri yerinde kalır. Bu sürüm yeniden
@@ -6314,12 +6343,49 @@ Türkçe; ekran görüntülerine bakıldı). Bileşen testli ve taklit tarayıc�
 gerçek sistemde ölçülmedi (yoklama hiç gerçek bir nginx'e sormadı); ölçüm
 hücreleri denetimin §9'udur.
 
-*İkinci turdan sonra açık kalanlar (hiçbiri giderilmedi).* (1) Yoklama yalnız
-127.0.0.1'e sorar: 80 numaralı bağlantı noktası bloğu tek bir adrese
-(`listen <adres>:80;`) bağlı bir siteye orada ulaşılmaz. Geri döngüde 80'i
-dinleyen başka bir şey yoksa yanıt `unknown`dır; başka bir blok joker adreste
-dinliyorsa nginx o bloğun yanıtını verir, bu da `include_missing` gibi
-okunabilir (nginx'in kuralından okundu, ölçülmedi). (2) Yapılandırma dosyası
+*Sorulan adres (set11 hücre A6, 2026-10-11; bileşen testli; gerçek bir
+sistemde ölçülmedi).* On birinci yerel kayıt, bu paragrafın açık madde (1)
+olarak adlandırdığı boşluğu ölçtü: 80 numaralı bağlantı noktası bloğu yalnız
+`10.0.2.15:80`'i dinleyen bir siteye, başka blokların joker adreste dinlediği
+bir sunucuda 127.0.0.1'den soruldu, varsayılan sunucu 404 verdi ve istek
+`include_missing` olarak reddedildi. Yoklama artık korunan dosyanın dinlediği
+adreslere sorar (`internal/services/managed_vhost_listen.go`): yalnız korunan
+dosyayı okuyan (bir `include` izlenmez) küçük ve temkinli bir okuyucu,
+`server_name`'i adı tam olarak taşıyan server bloklarının 80 numaralı bağlantı
+noktası `listen` yönergelerini alır (`listen 80`, `listen *:80`,
+`listen <adres>:80`, `listen [<IPv6>]:80`, nginx'in varsayılan bağlantı
+noktasıyla `listen <adres>`; `default_server` ve öteki parametreler yok
+sayılır; `listen`'i olmayan blok `*:80`'dir). IPv4 joker adresi önceki gibi
+127.0.0.1'de sorulur; yalnız IPv6 joker adresi `::1`'de; bu sunucunun bir
+adresi olan (arayüzleri, `net.InterfaceAddrs`) açık bir adres o adreste, ad
+Host olarak verilerek sorulur. Dosyanın hiçbir 80 bloğunun taşımadığı bir ad
+önceki gibi 127.0.0.1'de sorulur (80 bloğu olmayan dosya yine
+`include_missing`/`names_missing`'dir). Hazır: her ad yoklamayı her adresinde
+sundu. Yanıt veren adres reddin `vars.address`'i olarak (Yapılandırma dosyası
+sayfasında `validation_address`) taşınır. Bu sunucunun olmayan açık bir adrese
+buradan sorulamaz; bu bir ret değil, bilinmeyendir: yoklama için hiçbir şey
+yazılmaz ve sertifika alımı, takma ad sertifikası yolu ve yenileme hazır bir
+yoklamadaki gibi sürer — asıl sınama yetkilinin kendi denemesidir ve başarısız
+bir doğrulama zaten türüyle döner (`CERTIFICATE_ISSUE_FAILED`, neden
+`validation`). Başarılı yanıt `validation_probe` `not_run`,
+`validation_unknown_reason` `address_not_local`, `validation_address` ve
+`validation_note` taşır; SSL sekmesi ve takma ad değişikliği bunu gösterir,
+Yapılandırma dosyası sayfası da "Bu dosyayla sertifikanın doğrulanıp
+doğrulanamayacağı bilinmiyor" altında söyler: "CelikPanel, nginx'in bu sitenin
+sertifika doğrulamasını sunup sunmadığını önceden kontrol edemedi: site
+{address} adresini dinliyor ve bu sunucu o adrese kendi içinden ulaşamıyor.
+İstek yine de gönderildi; sertifika yetkilisi {address} adresine ulaşamazsa
+yanıt bunu söyler." Hiçbir `certificate_validation` nedenini bitirmez (hiçbir
+şey ölçülmedi). Site dosyası defterinde bunun için sütun yoktur (şema
+değişikliği yapılmadı): Panel'in günlük satırı `validation_probe=not_run
+validation_unknown_reason=address_not_local validation_address=…` kaydeder.
+`503 CERTIFICATE_VALIDATION_UNKNOWN` yoklamanın yerel bir nedenle
+yapılamadığı durumlarda kalır (nginx'in 80'de yanıt vermemesi, doğrulama
+dizininin olmaması, yoklama dosyasının oluşturulamaması, bu sunucunun
+adreslerinin listelenememesi).
+
+*İkinci turdan sonra açık kalanlar (yalnız (1) yanıtlandı, yukarıdaki "sorulan
+adres" ile).* (1) Yukarıda yanıtlandı. (2) Yapılandırma dosyası
 sayfasının okumasında CelikPanel kendi doğrulama dosyasını yayımlarken başarısız
 olan bir `nginx -t` ya da yeniden yükleme, neden ilgisiz bir dosya olsa bile
 `challenge_failed` olarak bildirilir; bilinmiyor olarak çizilmez. (3) Eksik ya
@@ -6441,7 +6507,13 @@ biçimindedir; ekranlar `code`'a göre çevirir.
   `502 SITE_CONFIG_NOT_READ`.
 - Agent'ın şu an koruma ölçtüğü dosyada `take` (2026-10-11): hiçbir şey
   yazılmadan `409 SITE_CONFIG_UNWRITABLE`, `reason` `write_refused`; tarihli
-  kopya yapılmaz; ret kaydedilir.
+  kopya yapılmaz; ret kaydedilir. Agent korumayı kopyayı yapmadan önce yeniden
+  ölçer (sanal konak, PHP-FPM havuzu ve uygulama birimi için aynı) ve kopyadan
+  sonra reddedilen bir değiştirme (ölçüm ile yeniden adlandırma arasında konan
+  bir koruma) kopyayı kaldırır; böylece reddedilen bir alma sahibin dosyasının
+  yanında tarihli kopya bırakmaz (set11 hücre B4 ead69cdcc'de bir tane
+  bulmuştu; bileşen testli, `internal/services/site_file_take_refused_test.go`;
+  gerçek sistemde ölçülmedi).
 - `POST …/apply` (2026-10-11; bileşen testli; gerçek sistemde ölçülmedi) gövde
   `{"file_sha256":"…","render_sha256":"…"}` (ikisi de zorunlu, ikisi de
   GET'ten), D-029 istek kimliğiyle → 200, `take` gibi, `outcome` `written` (ya

@@ -31,7 +31,10 @@ type NginxGenerator struct {
 	writeVhostBatch func(domain, config string) error
 	// probeGet is the validation probe's request (a test seam: a fake
 	// nginx); nil asks nginx on 127.0.0.1 (managed_vhost_probe.go).
-	probeGet func(ctx context.Context, name, path string) ValidationProbeAnswer
+	probeGet func(ctx context.Context, address, name, path string) ValidationProbeAnswer
+	// hostAddresses lists this server's addresses for the probe (a test
+	// seam); nil reads the interfaces (managed_vhost_listen.go).
+	hostAddresses func() (map[string]bool, error)
 }
 
 // nginxMutationMu serializes the complete nginx mutation transaction across

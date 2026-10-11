@@ -314,6 +314,14 @@ test('the probe’s answer is named; unknown is not "not ready"; a read that end
   assert.ok(!text().includes('siteConfig.certificate.validation.title'), 'not "cannot be validated"');
   assert.ok(!text().includes('siteConfig.certificate.validation.include_missing') && !text().includes('siteConfig.certificate.validation.probe'));
   await unmount();
+  // set11 cell A6: the site listens on an address this server cannot reach
+  // from itself — its own sentence, with the address.
+  serve({ [`GET ${URL_BASE}`]: { ...waiting, validation: 'unknown', validation_unknown_reason: 'address_not_local', validation_address: '192.0.2.7' } });
+  await mount(page());
+  assert.ok(text().includes('siteConfig.certificate.validation.unknownTitle') && text().includes('siteConfig.certificate.validation.unknownAddress{') &&
+    text().includes('"address":"192.0.2.7"'), text());
+  assert.ok(!text().includes('siteConfig.certificate.validation.unknown{'), 'not "nginx did not answer"');
+  await unmount();
   let ended = 0;
   serve({ [`GET ${URL_BASE}`]: { ...view('unknown_origin', { diff: '--- a\n+++ b\n' }), ...managed, validation: 'ready', resolved_reason: 'certificate_validation' } });
   await mount(React.createElement(DomainSiteConfig, { domainId: 4, domainName: 'example.com', onReasonEnded: () => { ended += 1; } }));

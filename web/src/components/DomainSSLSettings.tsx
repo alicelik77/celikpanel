@@ -362,13 +362,18 @@ export function DomainSSLSettings({
             // Issued and stored, but the site's configuration file is the
             // owner's and does not use it yet (D-031 step 1b).
             let issuedStatus = '';
+            let notRunAddress = '';
             try {
-                issuedStatus = String(((await res.json()) as { status?: unknown } | null)?.status ?? '');
+                const issued = (await res.json()) as IssuedAnswer | null;
+                issuedStatus = String(issued?.status ?? '');
+                notRunAddress = validationNotRunAddress(issued);
             } catch {
                 issuedStatus = '';
             }
             if (issuedStatus === 'waiting_for_owner') showToast('warning', t('ssl.issuedWaitingForOwner'));
             else showToast('success', t(isReissue ? 'ssl.reissued' : 'ssl.issued'));
+            // The request went ahead without the probe (set11 cell A6).
+            if (notRunAddress) showToast('warning', t('ssl.validationNotRun', { address: notRunAddress }));
             setShowReissue(false);
             // The screen keeps what it showed, with its controls off, until
             // the server has said what the certificate is now.
@@ -1363,4 +1368,14 @@ export function certificateCoversName(dnsNames: string[], hostname: string): boo
         if (!normalisedHostname.endsWith(`.${suffix}`)) return false;
         return normalisedHostname.split('.').length === suffix.split('.').length + 1;
     });
+}
+
+// A certificate request that went ahead although the validation probe could
+// not be sent from this server: the site listens on an address that is not
+// this server's (set11 cell A6, 2026-10-11). The address, or ''.
+type IssuedAnswer = { status?: unknown; validation_probe?: unknown; validation_unknown_reason?: unknown; validation_address?: unknown };
+
+function validationNotRunAddress(answer: IssuedAnswer | null | undefined): string {
+    if (!answer || answer.validation_probe !== 'not_run' || answer.validation_unknown_reason !== 'address_not_local') return '';
+    return typeof answer.validation_address === 'string' ? answer.validation_address : '';
 }

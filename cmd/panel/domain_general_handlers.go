@@ -738,6 +738,7 @@ func (p *Panel) handleAddAlias(w http.ResponseWriter, r *http.Request, domainID 
 			answer["status"] = sslWaitingForOwner
 			answer["pending_reason"] = services.SiteFileReasonCertificate
 		}
+		install.validationNotRun.addTo(answer)
 		json.NewEncoder(w).Encode(answer)
 		return
 	}
@@ -938,6 +939,7 @@ func (p *Panel) handleDeleteAlias(w http.ResponseWriter, r *http.Request, domain
 			answer["status"] = sslWaitingForOwner
 			answer["pending_reason"] = services.SiteFileReasonCertificate
 		}
+		install.validationNotRun.addTo(answer)
 		json.NewEncoder(w).Encode(answer)
 		return
 	}

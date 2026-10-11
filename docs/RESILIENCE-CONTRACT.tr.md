@@ -3943,8 +3943,15 @@ arayüzü değişmedi). 2026-10-10 saat tarihidir.
   kaydın oturum açılmış tarayıcı bağlamlarında kayıtlı değildi (hücre 4c ve
   set7); bu yüzden durmuş Panel'de Chrome'un kendi hata sayfası göründü; hücre
   4a'nın oturumsuz üç yüklemesini (yeni bir bağlam) ise bir çalışan denetliyordu
-  (`sw_controlled: true`) ve nedeni belirlenmedi. Olası nedenler kanıtlanmadı;
-  onlar ve neyin ölçülmesi gerektiği aynı tarihli işlem rehberi girdisindedir.
+  (`sw_controlled: true`). **Neden on birinci kayıtta kesinleşti (set11 hücre
+  E, 2026-10-11):** ürün değil, laboratuvar tarayıcısının profil yolu — 177
+  karakter derindeki bir profilde çalışanın kurulumu CacheStorage'ı açamayıp
+  başarısız oldu, yeni bir bağlam ve kısa bir profil yolu ise onu kaydetti;
+  çalışan kayıtlıyken durmuş Panel'de ürünün çevrimdışı sayfası gösterilir.
+  Ölçülen sınır: Windows'un 260 karakter sınırını aşan bir profil yolu —
+  mekanizma çıkarımdır. Canlı tarayıcı araçları artık kısa bir profil yolu
+  kullanır ve 120 karakteri aşanı reddeder
+  (`web/tools/browser-inspect/profile-dir.mjs`).
 - **Önceki bir yanıttan sonra bilinmeyen bilinmeyen kalır (ilke 2; ikinci tur,
   2026-10-10; açıktı).** Önceden herhangi bir okuma yanıt verdikten sonra
   kendi 15 sn sınırına ulaşan sonraki okuma, son okunan nedenle bilinen olumsuz
@@ -3970,10 +3977,10 @@ arayüzü değişmedi). 2026-10-10 saat tarihidir.
   yüklemenin kendisini dokuzuncu kayıt ölçtü) ve her kurulu sunucu; HTTP
   önbelleği açıkken yükleme; gerçek bir güncelleme sırasında bekletme
   katmanının sözcükleri; yükleme başına iki oturum okuması (burada
-  değiştirilmedi); kurtarma hizmet çalışanının laboratuvar tarayıcısının oturum açılmış
-  bağlamlarında neden kaydolmadığı, oysa dokuzuncu kaydın oturumsuz yüklemelerini
-  bir çalışan denetliyordu (`sw_controlled: true`, hücre 4a; hücre 4c böyle bir
-  bağlamda tekrarlanmadı); mandal listesinin kalan 30 dosyası.
+  değiştirilmedi); tarayıcının sabitleme olmadan güvendiği bir sertifikayla
+  kurtarma hizmet çalışanı (oturum açılmış laboratuvar bağlamlarında neden
+  kaydolmadığı kesinleşti: laboratuvar tarayıcısının profil yolu, set11 hücre
+  E); mandal listesinin kalan 30 dosyası.
 
 ### Kurulum sayfasının son denetimi ve güncelleme bildirimi: durmuş çalışma sürmüyordur, kurulu hedefte süren güncelleme "doğrulanıyor"dur (P0.2 alanı; ilke 2 ve 6; D-024; 2026-10-10)
 
@@ -4190,8 +4197,11 @@ hücreleri (denetim §9) sonra gelir. 2026-10-10 saat tarihidir.
     `nginx -t` ve yeniden yükleme, retde geri konur), rastgele adlı ve
     içerikli bir yoklama dosyasını `<doğrulama kökü>/.well-known/acme-challenge/`
     içine yazar (istek başına sunulur, yeniden yükleme gerekmez),
-    127.0.0.1'in 80 numaralı bağlantı noktasındaki nginx'e onu her doğrulama
-    adını Host vererek sorar (yönlendirme yalnız aynı ada izlenir) ve kaldırır
+    80 numaralı bağlantı noktasındaki nginx'e onu her doğrulama adını Host
+    vererek, korunan dosyanın o adı taşıyan 80 bloklarının dinlediği adreslerde
+    sorar (joker adres ya da böyle bir bloğun taşımadığı ad için 127.0.0.1;
+    2026-10-11'den beri, `managed_vhost_listen.go`; yönlendirme yalnız aynı ada
+    izlenir) ve kaldırır
     (`internal/services/managed_vhost_probe.go`). `validation`: `ready` (her ad
     içeriği sundu), `include_missing` (bir site adı sunulmadı), `names_missing`
     (yalnız doğrulama adı sunulmadı), `challenge_kept`, `challenge_failed` ya da
@@ -4306,7 +4316,17 @@ hücreleri (denetim §9) sonra gelir. 2026-10-10 saat tarihidir.
   sahibindir; hiçbir şey kendiliğinden yeniden denenmez. **Eski bir sürüme dönüş
   korumayı kaldırır** (eski sürüm başlangıcında her sanal konağı eskisi gibi
   yazar); yeniden ileri gelindiğinde eski sürümün metni tanınıp devralınır. Sürüm
-  notları bunu söylemelidir. Eski başlangıcın başlıklı dosyaya yaptığı
+  notları bunu söylemelidir. Sonradan ölçülen: onuncu yerel kaydın dönüş
+  hücresi alpha.81 başlangıcının her sanal konağı yeniden yazdığını ölçtü, on
+  birinci kaydın başlangıç denetimi hücresi (set11 F) bunu yeniden ölçtü; o
+  hücrenin adayı başlangıç denetimini başlamadan önce geçemez, bu yüzden o yolda
+  hiçbir dosyaya hiç başlık yazılmaz. Otomatik dönüş yalnız adayın başlangıcı ya
+  da başlangıç denetimi başarısız olduğunda çalışır, başarılı bir aday
+  başlangıcından sonra hiçbir zaman; bu yüzden eski sürümün başlıklı bir dosyaya
+  ne yaptığı yalnız elle yapılan bir sürüm düşürmede ortaya çıkar ve bu kapsam
+  dışıdır (adayın başlangıcının, sanal konak uzlaştırması başlıkları yazdıktan
+  sonra başarısız olup olamayacağı ölçülmedi; eski başlangıç o dosyaları da her
+  sanal konak gibi yeniden yazar). Eski başlangıcın başlıklı dosyaya yaptığı
   (`2a0af8866`'daki `cmd/panel/cert_startup_reconcile.go` ve
   `NginxGenerator.ApplyVhosts` içinde okundu, `a0beb7263`'te aynı yol; koşulmadı):
   barındırılan her siteyi veritabanından üretir ve koşulsuz yazar; böylece başlık
@@ -4346,11 +4366,23 @@ hücreleri (denetim §9) sonra gelir. 2026-10-10 saat tarihidir.
   sunucuda tarayıcı); gerçek sistemde ölçülmedi: Panel'in ekleme dizini
   üzerinden gerçek certbot doğrulaması ve korunan dosyalı gerçek nginx yok. Adım
   1b'den önce korunmuş bir dosyada ekleme satırı yoktur ve sahibi bekler.
-  **Adım 1b'nin ikinci turundan sonra açık kalanlar (hiçbiri giderilmedi):**
-  (1) yoklama yalnız 127.0.0.1'e sorar; tek bir adrese bağlı 80 numaralı
-  bağlantı noktası bloğuna orada ulaşılmaz (geri döngüde 80'i dinleyen başka
-  bir şey yoksa `unknown`; joker adreste dinleyen başka bir blok onun yerine
-  yanıt verir, belki `include_missing` olarak: nginx'in kuralından okundu,
+  **Adım 1b'nin ikinci turundan sonra açık kalanlar (yalnız (1) yanıtlandı):**
+  (1) 2026-10-11'de yanıtlandı (set11 hücre A6, `10.0.2.15:80`'e bağlı bir
+  bloğun yoklama 127.0.0.1'e sorduğu için `include_missing` olarak
+  reddedildiğini ölçtü): yoklama artık korunan dosyanın her ad için 80
+  bloklarının dinlediği adreslere sorar — IPv4 joker adresi 127.0.0.1'de, yalnız
+  IPv6 joker adresi `::1`'de, bu sunucunun açık bir adresi o adreste, hiçbir 80
+  bloğunun taşımadığı ad önceki gibi 127.0.0.1'de; hazır = her ad her adresinde
+  sunuldu; yanıt veren adres `vars.address`'tir; bu sunucunun olmayan açık bir
+  adres ret değil bilinmeyendir: alım, takma ad yolu ve yenileme hazır bir
+  yoklamadaki gibi sürer (sınama yetkilinin denemesidir; başarısız doğrulama
+  `CERTIFICATE_ISSUE_FAILED`, neden `validation` olarak döner), başarılı yanıt
+  `validation_probe` `not_run`, `validation_unknown_reason`
+  `address_not_local`, adresi ve cümleyi taşır, Panel'in günlüğü kaydeder
+  (defter sütunu yok, şema değişikliği yok); `503
+  CERTIFICATE_VALIDATION_UNKNOWN` yoklamanın yerel bir nedenle yapılamadığı
+  durumlarda kalır (`internal/services/managed_vhost_listen.go`,
+  `cmd/panel/site_config_certificate.go`; bileşen testli; gerçek bir sistemde
   ölçülmedi); (2) site-config okumasında CelikPanel kendi doğrulama dosyasını
   yayımlarken başarısız olan `nginx -t` ya da yeniden yükleme, neden ilgisiz
   bir dosya olsa bile `challenge_failed` bildirilir; (3) eksik ya da okunamayan

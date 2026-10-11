@@ -28,6 +28,7 @@ import { join, resolve } from 'node:path';
 import { request as httpsRequest } from 'node:https';
 import { connect as tlsConnect } from 'node:tls';
 import { pathToFileURL } from 'node:url';
+import { shortProfileDir } from './profile-dir.mjs';
 
 if (!process.env.BROWSER_INSPECT_MODULES) { console.error('Set BROWSER_INSPECT_MODULES (see README.md).'); process.exit(2); }
 const requireFrom = createRequire(pathToFileURL(join(resolve(process.env.BROWSER_INSPECT_MODULES), 'package.json')));
@@ -95,7 +96,8 @@ await mkdir(outRoot, { recursive: true });
 await writeFile(join(outRoot, `leaf-${Date.now()}.json`), JSON.stringify({ at: iso(), ...leaf, handover_leaf_sha256: hand.tls_leaf_sha256 }, null, 2));
 if (leaf.leaf_sha256 !== hand.tls_leaf_sha256) console.error('note: the leaf differs from the one the driver pinned');
 secret = JSON.parse(readFileSync(secretPath, 'utf8'));
-const profile = join(outRoot, `.chrome-profile-${Date.now()}`);
+// set11 cell E: a short profile path (profile-dir.mjs); a long Windows path keeps CacheStorage from opening.
+const profile = shortProfileDir(outRoot);
 const browser = await puppeteer.launch({
     executablePath: chrome, headless: true, userDataDir: profile,
     args: ['--no-first-run', '--no-default-browser-check', '--disable-background-networking', '--disable-component-update',

@@ -28,8 +28,10 @@ import (
 // <challenge root>/.well-known/acme-challenge/ at the moment of the request:
 // nginx looks the file up per request, so a new file there needs no reload.
 // The probe puts one file with a random name and a random body there, asks
-// nginx on this server (127.0.0.1, port 80) for it under each validation name
-// as the Host, the way the certificate authority will, and removes it. A name
+// nginx on this server (port 80, on each address the site's port-80 block
+// listens on for the name, 127.0.0.1 for a wildcard: managed_vhost_listen.go)
+// for it under each validation name as the Host, the way the certificate
+// authority will, and removes it. A name
 // is ready when nginx answers 200 with exactly that body; a redirect is
 // followed as the certificate authority follows it, but only to the same name.
 // No answer at all on port 80 (nginx not running, connection refused, time
@@ -76,20 +78,22 @@ func ValidationProbeChallengeDir(challengeRoot string) string {
 }
 
 // localValidationProbeGet asks nginx on this server. Every connection goes to
-// 127.0.0.1 on the URL's port; the Host header and the TLS server name are the
-// name asked for. The certificate of a redirect target is not checked: the
-// body is a random value only this probe knows, and nothing secret is sent.
-func localValidationProbeGet(ctx context.Context, name, path string) ValidationProbeAnswer {
+// the given address (127.0.0.1 for a wildcard listen; see
+// managed_vhost_listen.go) on the URL's port; the Host header and the TLS
+// server name are the name asked for. The certificate of a redirect target is
+// not checked: the body is a random value only this probe knows, and nothing
+// secret is sent.
+func localValidationProbeGet(ctx context.Context, address, name, path string) ValidationProbeAnswer {
 	dialer := &net.Dialer{Timeout: validationProbeTimeout}
 	lastStatus := 0
 	transportImpl := &http.Transport{
 		Proxy: nil,
-		DialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
-			_, port, err := net.SplitHostPort(address)
+		DialContext: func(ctx context.Context, network, target string) (net.Conn, error) {
+			_, port, err := net.SplitHostPort(target)
 			if err != nil {
 				return nil, err
 			}
-			return dialer.DialContext(ctx, "tcp", net.JoinHostPort("127.0.0.1", port))
+			return dialer.DialContext(ctx, "tcp", net.JoinHostPort(address, port))
 		},
 		// #nosec G402 -- a local probe of a random body; see above.
 		TLSClientConfig:       &tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS12},
@@ -130,11 +134,11 @@ func localValidationProbeGet(ctx context.Context, name, path string) ValidationP
 	return ValidationProbeAnswer{Answered: true, Status: response.StatusCode, Body: body}
 }
 
-func (ng *NginxGenerator) validationProbeGet(ctx context.Context, name, path string) ValidationProbeAnswer {
+func (ng *NginxGenerator) validationProbeGet(ctx context.Context, address, name, path string) ValidationProbeAnswer {
 	if ng.probeGet != nil {
-		return ng.probeGet(ctx, name, path)
+		return ng.probeGet(ctx, address, name, path)
 	}
-	return localValidationProbeGet(ctx, name, path)
+	return localValidationProbeGet(ctx, address, name, path)
 }
 
 // validationProbeResult is the measured validation of one kept file.
@@ -143,22 +147,52 @@ type validationProbeResult struct {
 	name       string
 	status     int
 	detail     string
+	// address is the address asked (transport.SiteFileResult
+	// ValidationAddress); unknownReason is SiteFileValidationUnknown*.
+	address       string
+	unknownReason string
 }
 
 func (r validationProbeResult) apply(result *transport.SiteFileResult) {
 	result.Validation = r.validation
 	result.ValidationName = r.name
 	result.ValidationStatus = r.status
+	result.ValidationAddress = r.address
+	result.ValidationUnknownReason = r.unknownReason
 	if r.detail != "" {
 		result.ValidationDetail = boundedSiteFileDetail(r.detail)
 	}
 }
 
 // probeValidation writes the probe file, asks nginx for it under every name
-// and removes it. The caller holds nginxMutationMu.
-func (ng *NginxGenerator) probeValidation(challengeRoot string, probe *ValidationProbe) validationProbeResult {
+// on every address the domain's kept file listens on for that name
+// (managed_vhost_listen.go), and removes it. The caller holds
+// nginxMutationMu.
+func (ng *NginxGenerator) probeValidation(domain, challengeRoot string, probe *ValidationProbe) validationProbeResult {
 	if challengeRoot == "" || probe.empty() {
 		return validationProbeResult{validation: transport.SiteFileValidationUnknown, detail: "no challenge root or no names to probe"}
+	}
+	names := append(append([]string(nil), probe.SiteNames...), probe.ExtraNames...)
+	plan, planErr := ng.probePlan(domain, names)
+	// An address the site listens on that is not this server's cannot be
+	// asked from here: unknown, before anything is written.
+	for _, name := range names {
+		for _, target := range plan[name] {
+			if target.local {
+				continue
+			}
+			if planErr != nil {
+				return validationProbeResult{
+					validation: transport.SiteFileValidationUnknown, name: name, address: target.address,
+					detail: "this server's addresses could not be listed: " + planErr.Error(),
+				}
+			}
+			return validationProbeResult{
+				validation: transport.SiteFileValidationUnknown, name: name, address: target.address,
+				unknownReason: transport.SiteFileValidationUnknownAddressNotLocal,
+				detail:        "the site listens on " + target.address + ", which is not an address of this server",
+			}
+		}
 	}
 	directory := ValidationProbeChallengeDir(challengeRoot)
 	info, err := os.Lstat(directory)
@@ -197,19 +231,31 @@ func (ng *NginxGenerator) probeValidation(challengeRoot string, probe *Validatio
 
 	urlPath := acmeChallengeURLPath + fileName
 	var firstSite, firstExtra *validationProbeResult
+	var asked []string
+	seen := map[string]bool{}
+	// ask asks one name on each of its addresses: served when every address
+	// served the probe; not answered when one gave no HTTP answer at all.
 	ask := func(name string) (validationProbeResult, bool, bool) {
-		ctx, cancel := context.WithTimeout(context.Background(), validationProbeTimeout*2)
-		defer cancel()
-		answer := ng.validationProbeGet(ctx, name, urlPath)
-		if !answer.Answered {
-			detail := "nginx did not answer on port 80"
-			if answer.Err != nil {
-				detail += ": " + answer.Err.Error()
+		for _, target := range plan[name] {
+			if !seen[target.address] {
+				seen[target.address] = true
+				asked = append(asked, target.address)
 			}
-			return validationProbeResult{validation: transport.SiteFileValidationUnknown, name: name, detail: detail}, false, false
+			ctx, cancel := context.WithTimeout(context.Background(), validationProbeTimeout*2)
+			answer := ng.validationProbeGet(ctx, target.address, name, urlPath)
+			cancel()
+			if !answer.Answered {
+				detail := "nginx did not answer on port 80 at " + target.address
+				if answer.Err != nil {
+					detail += ": " + answer.Err.Error()
+				}
+				return validationProbeResult{validation: transport.SiteFileValidationUnknown, name: name, address: target.address, detail: detail}, false, false
+			}
+			if answer.Status != http.StatusOK || !bytes.Equal(answer.Body, body) {
+				return validationProbeResult{name: name, status: answer.Status, address: target.address}, false, true
+			}
 		}
-		served := answer.Status == http.StatusOK && bytes.Equal(answer.Body, body)
-		return validationProbeResult{name: name, status: answer.Status}, served, true
+		return validationProbeResult{name: name}, true, true
 	}
 	for _, name := range probe.SiteNames {
 		result, served, answered := ask(name)
@@ -237,7 +283,7 @@ func (ng *NginxGenerator) probeValidation(challengeRoot string, probe *Validatio
 	case firstExtra != nil:
 		return *firstExtra
 	}
-	return validationProbeResult{validation: transport.SiteFileValidationReady}
+	return validationProbeResult{validation: transport.SiteFileValidationReady, address: strings.Join(asked, ",")}
 }
 
 // measureKeptFileValidation is a kept file's validation for an operation that
@@ -250,7 +296,7 @@ func (ng *NginxGenerator) measureKeptFileValidation(item ManagedVhostItem, chall
 	case transport.SiteFileChallengeFailed:
 		return validationProbeResult{validation: transport.SiteFileValidationChallengeFailed}
 	}
-	return ng.probeValidation(item.ACMEChallengeRoot, item.Probe)
+	return ng.probeValidation(item.Domain, item.ACMEChallengeRoot, item.Probe)
 }
 
 // publishChallengeForProbe is the site-config read's part of the probe: when
