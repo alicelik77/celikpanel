@@ -2,10 +2,9 @@
 
 [English](RELEASE-NOTES-v0.1.0-alpha.83.md)
 
-Bu, v0.1.0-alpha.82'yi izleyen sürümün taslağıdır. Çalışma numarası olan
-v0.1.0-alpha.83 sahibin seçimidir ve kesin değildir. Sürümün hiçbir parçası
-yayımlanmadı; hiçbir kurulu sunucu onu çalıştırmıyor. Bu taslak 11 Ekim 2026'da
-yazıldı.
+Bu, v0.1.0-alpha.82'yi izleyen sürümün taslağıdır. Sahip numarasının
+v0.1.0-alpha.83 olmasına karar verdi. Sürümün hiçbir parçası yayımlanmadı;
+hiçbir kurulu sunucu onu çalıştırmıyor. Bu taslak 11 Ekim 2026'da yazıldı.
 
 Sürüm iki şey yapar. Birincisi, CelikPanel'in elle değiştirdiğiniz bir site
 yapılandırma dosyasının üzerine yazmasını durdurur: dosya korunur, site bunu
@@ -15,15 +14,20 @@ yanıt verir (aşağıda "Son güncellemeden sonraki dört gözlem" altında
 sıralıdır).
 
 Sunucunun site dosyalarıyla ne yaptığı, bileşen testlerine ve Debian 13, Ubuntu
-24.04 ve Arch'ta yapılan iki laboratuvar ölçümüne dayanır: biri bu çalışmanın
-ilk bölümünün, öteki onu izleyen düzeltmelerin (gerçek bir nginx'e karşı
-sertifika doğrulama denetimi, kilitli dosyanın sayfası, include dizinleri).
-İkinci ölçümden sonra eklenen bölümlerin, bu yazılırken yalnız bileşen testleri
-ve API'nin bir taklidine karşı çalışan bir tarayıcı denetimi vardı. Bir ekranın ne gösterdiği bileşen testlerine ve API taklidine karşı
-çalışan bir tarayıcıya dayanır; ilk sayfa yüklemesi, erişim beklemesi ve
-güncelleme bildirimi için laboratuvarda gerçek bir Panel'e karşı gerçek bir
-Chrome'a da. Havuzu ve uygulama birimini ölçen bir laboratuvar kaydı daha bu
-yazılırken bitmemişti; yeri "Ne ölçüldü" bölümünde işaretlidir. Hiç çalıştırılmayanları sınırlar bölümü söyler.
+24.04 ve Arch'ta yapılan üç laboratuvar ölçümüne dayanır: biri bu çalışmanın
+ilk bölümünün, biri onu izleyen düzeltmelerin (gerçek bir nginx'e karşı
+sertifika doğrulama denetimi, kilitli dosyanın sayfası, include dizinleri),
+biri de havuzun, uygulama biriminin ve v0.1.0-alpha.82'den güncellemenin.
+Ölçülen güncellemeler, yayımlanmış arşivlerden değil, etiketlerinin kaynağından
+test lisanslı derleme olarak yeniden derlenmiş v0.1.0-alpha.81 ve alpha.82'den
+başladı. Üçüncü ölçümden sonra yapılan iki düzeltmenin, bu yazılırken yalnız
+bileşen testleri ve API'nin bir taklidine karşı çalışan bir tarayıcı denetimi
+vardı; onlar için kısa bir laboratuvar turu bitmemişti, yeri "Ne ölçüldü"
+bölümünde işaretlidir. Bir ekranın ne gösterdiği bileşen testlerine ve API
+taklidine karşı çalışan bir tarayıcıya dayanır; ilk sayfa yüklemesi, erişim
+beklemesi, güncelleme bildirimi ve Yapılandırma dosyası sayfası için
+laboratuvarda gerçek bir Panel'e karşı gerçek bir Chrome'a da. Hiç
+çalıştırılmayanları sınırlar bölümü söyler.
 
 ## Sunucu sahibi için ne değişiyor
 
@@ -160,7 +164,13 @@ ya da birim tanınır ve bir sonraki yazımda bu sürümün metni olarak yazıl�
 dosyalara Panel başlarken bakılmaz; bir havuz ya da birim, Alan Adları
 listesinde ancak alan adının Yapılandırma dosyası sayfası açıldıktan ya da o
 dosya kaydedildikten, sürümü değiştirildikten veya birimi değiştirildikten sonra
-görünür. Bu bölümün yalnız bileşen testleri var.
+görünür; bu yüzden Alan Adları listesindeki olduğu gibi bırakılan dosya sayısı,
+alan adlarınızı açtıkça artabilir. Bu sürümün yazdığı bir birim, uygulamanın
+komutunu oturum açma kabuğuyla değil, `/bin/sh -c` ve Panel'in Node dizinini
+adıyla veren açık bir `PATH` ile başlatır; bu yüzden `/etc/profile` ona artık
+uygulanmaz, uygulamanızın ortamdan gereksindiği şeylerin yeri ek ayar
+dosyasıdır. Bu bölüm laboratuvarda üç platformda ölçüldü; iki bulgu sonradan
+düzeltildi (sonraki paragrafa ve "Ne ölçüldü" bölümüne bakın).
 
 **Kendi nginx satırlarınızın, CelikPanel'in hiç dokunmadığı bir yeri var.** Her
 sitenin dosyası `/etc/nginx/celikpanel-sites.d/<alan-adı>/*.conf` yolunu
@@ -191,6 +201,22 @@ bir denetim ve tek bir yeniden yüklemeyle yazılır, bağlantı da yerinde kal�
 Sayfa dosyayı, sistem hatası ve korumayla birlikte CelikPanel'in
 değiştiremediği bir dosya olarak adlandırır; "Yeniden kontrol et" yalnız okur
 (ikisi de laboratuvarda ölçüldü).
+
+**Reddedilen bir değişiklik bir hizmeti durdurmuyor.** nginx, PHP-FPM ya da
+systemd CelikPanel'in metnini reddettiğinde CelikPanel önceki dosyanızı geri
+koyar. Hizmeti o dosyayla yeniden yüklemeden önce artık hizmetin kendi
+denetimini (`nginx -t`, `php-fpm -t`, `systemd-analyze verify`) çalıştırır.
+Denetim yapılandırmayı başka bir dosya yüzünden reddederse hizmet yeniden
+yüklenmez ve daha önce yüklediği yapılandırmayla çalışmayı sürdürür; yanıt bunu
+söyler ve yöneticiye denetimin yazdığı satırı verir. O dosyayı düzeltin, sonra
+hizmeti kendiniz yeniden yükleyin. Önceden çalışmayan bir hizmet ne yeniden
+yüklenir ne başlatılır. Laboratuvar eski davranışı ölçtü: PHP-FPM reddedilmiş
+bir yapılandırmayla yeniden yüklendi ve yanıt onun çalışmayı sürdürdüğünü
+söylerken `failed` durumunda kaldı. CelikPanel'in okuyamadığı bir havuz ya da
+birim artık, sonraki bir okuma yanıt verene kadar, Alan Adları listesinde
+"Bir yapılandırma dosyası okunamadı; durumu bilinmiyor" olarak gösterilir. İki
+düzeltmenin de yalnız bileşen testleri ve taklit API'ye karşı tarayıcı denetimi
+var.
 
 **İlk sayfa yüklemesi, söyleyecek bir şey olana kadar hiçbir şey çizmiyor.** Bir
 CelikPanel sayfasının tam yüklemesi, henüz hiçbir şey yanıt vermeden kısa bir an
@@ -237,7 +263,8 @@ sonra kendi ekranlarından bildirdi. O sunuculara hiçbir asistan bakmadı.
 1. *Panel yeniden başlarken tam ekran "License status could not be checked"
    sayfası (Ubuntu sunucusu).* O güncelleme, erişim bilinmediğinde sayfanın
    yerine başka bir sayfa koyan v0.1.0-alpha.81 arayüzünden başlatılmıştı;
-   laboratuvardaki bir ölçüm bunu o arayüzle yeniden üretti ve alpha.82
+   laboratuvardaki bir ölçüm (sürümler etiketlerinin kaynağından yeniden
+   derlenmişti) bunu o arayüzle yeniden üretti ve alpha.82
    arayüzünün sayfayı bir katmanın altında tuttuğunu gördü. alpha.81'in
    arayüzünü hiçbir şey değiştiremez. Bu sürüm katmanın söylediğini değiştirir
    (yukarıda). Değişikliğin önceki ifadesi laboratuvarda gerçek bir Panel'de
@@ -275,10 +302,13 @@ her sitenin nginx dosyasını kendi kayıtlarından yeniden yazar; böylece yapt
 değişiklik, ilk satır ve kendi dizininizi içeren satır dosyadan gider.
 `celikpanel-sites.d` içindeki dosyalarınız, tarihli kopyalar ve bekleyen
 dosyalar diskte kalır; ama bu sürüm yeniden çalışana kadar nginx dizininizi
-okumayı bırakır. Laboratuvarda v0.1.0-alpha.81, otomatik bir dönüşten sonraki
-başlangıcında bir sahip düzenlemesi de dahil her site dosyasını iki kayıtta
-yeniden yazdı; ikisinde de başarısız aday kendi başlangıcından önce durdu, bu
-yüzden hiçbir dosya henüz ilk satırı taşımıyordu. Otomatik dönüş, başlangıcında
+okumayı bırakır. Laboratuvarda otomatik bir dönüşten sonra önceki sürümün
+başlangıcı, bir sahip düzenlemesi de dahil her site dosyasını yeniden yazdı:
+v0.1.0-alpha.81 iki kayıtta, v0.1.0-alpha.82 de üçüncü bir kayıtta üç platformda
+(her biri etiketinin kaynağından test lisanslı derleme olarak yeniden
+derlenmişti). alpha.82'nin yazdığı havuzlar ve birim bayt bayt olduğu gibi
+kaldı. Her durumda başarısız aday kendi başlangıcından önce durdu; bu yüzden
+hiçbir dosya henüz ilk satırı taşımıyordu. Otomatik dönüş, başlangıcında
 ya da başlangıç denetiminde başarısız olan bir adayı izler; böyle bir adayın
 başarısız olmadan önce ilk satırı yazmış olabileceği ölçülmedi. Önceki bir
 sürümün ilk satırı zaten taşıyan bir dosyaya ne yaptığı ölçülmedi; o sürümün
@@ -426,10 +456,17 @@ kopyadan önce ölçer, değiştirme yine de reddedilirse kopyayı siler. Havuz 
 birim için CelikPanel'in metni yine de dosyanın yanına bekleyen dosya olarak
 konur.
 
-`restore` yalnız Agent önceki dosyanın geri konduğunu ve ardından yapılan
-yeniden yüklemenin tuttuğunu bildirdiğinde `confirmed` olur; başka durumda
-`unconfirmed` olur ve cümle, dosyayı sunucuda sunucu yöneticisinin denetleyeceğini
-söyler. Agent'ın kendi satırı yalnız yöneticilere gönderilir.
+`restore`, Agent önceki baytların geri konduğunu (geri koymadan sonra yeniden
+okunarak) bildirdiğinde `confirmed` olur; başka durumda `unconfirmed` olur ve
+cümle, dosyayı sunucuda sunucu yöneticisinin denetleyeceğini söyler. İki 502
+yanıtı ek olarak, geri koymadan sonra hizmete ne olduğunu da taşır: `service`
+(`reloaded`; hizmetin kendi denetimi geri konan yapılandırmayı reddettiyse
+`service_reason` `config_refused_elsewhere` ile ya da `check_unavailable` ile
+`not_reloaded`; hizmet önceden çalışmıyorduysa ve ne yeniden yüklendi ne
+başlatıldıysa `not_running`; `unconfirmed` kalan `reload_failed`) ve
+`service_active` (işlemden sonra `systemctl is-active` ile okunan `true`,
+`false` ya da `unknown`). Yönetici için denetimin satırı `vars.line` ve
+`details` içindedir. Agent'ın kendi satırı yalnız yöneticilere gönderilir.
 
 ### Korunan bir dosyayı artık değiştirmeyen mevcut rotalar
 
@@ -499,7 +536,12 @@ bir dosyada şunları yanıtlarlar:
 
 `GET /api/v1/domains`, yalnız yönetici için: her alan adı `state` ile, ve
 geçerli olduklarında `kind` (nginx dosyası için yok), `adopted_from`,
-`kept_by_choice` ve `pending_reason` ile `site_config` taşıyabilir. Bu, taze bir
+`kept_by_choice`, `pending_reason`, `reason` ve `read_error` ile `site_config`
+taşıyabilir. Agent'ın yanıt vermediği bir havuz ya da birim, bir sonraki
+yanıtlanan okumaya kadar `read_error` (`timeout`, `agent_unreachable`,
+`agent_error`, `render_input_unavailable`; sayfadaki dosya da aynı alanı
+taşır) ile `unknown` olarak kaydedilir; bilinen bir sorunu olan satır onu
+korur. Bu, taze bir
 okuma değil, Panel'in kaydettiği son gözlemdir; kayıtlı satırı olmayan dosya
 burada yer almaz. `missing` burada görünür (yukarıdaki GET aynı dosya için
 `absent` yanıtlar); kayıtlı, reddedilmiş bir değiştirme de sayfadaki gibi
@@ -556,6 +598,10 @@ ve sınırlarda yazılıdır.
   dosya için sertifika isteği reddedilmez, bir uyarıyla gönderilir.
 - Düzenlediğiniz bir havuzda havuz kaydı ya da PHP sürümü değişikliği
   reddedilir; havuz satırlarınız artık silinmez.
+- Reddedilen bir değişiklikten sonra, kendi denetimi geri konan yapılandırmayı
+  reddeden hizmet yeniden yüklenmez; çalışmayan bir hizmet başlatılmaz.
+- Bir uygulama birimi komutunu oturum açma kabuğu olmadan, açık bir `PATH` ile
+  başlatır.
 - Kurulum sayfası bir çalışmanın neden durduğunu adımların üstünde söyler; posta
   kimliği denetimi koşulunu adıyla verir.
 - Güncelleme bildirimi ve kart aynı aralıkta "kuruldu, doğrulanıyor" der;
@@ -568,19 +614,24 @@ ve sınırlarda yazılıdır.
 Gerçek hizmetlerde ölçülenler (sonraki bölüm): değişmeyen başlangıç, oluşturma
 metni, reddedilen kayıt, silinen dosya, kilitli dosya ve sayfası, silme,
 yazılan dosyaların sahibi ve izinleri, include dizinlerinin izinleri, korunan
-dosyada doğrulama denetimi (sertifika alınmadan), ilk yüklemedeki sessiz süre ve
-beklemenin 15 ve 30 saniyelik adımları. Güncelleme bildiriminin yeni sözleri
-laboratuvarda gerçek bir Panel'de gözlem olarak görüldü. Denetimin adres seçimi,
-"CelikPanel'in metnini şimdi yaz", kopya bırakmayan reddedilmiş alma, havuz,
-birim, kurulum sayfası, katmanın son ifadesi ve SSL sekmesinin ifadesi için
-yalnız bileşen testleri ve taklit API'ye karşı tarayıcı denetimi var.
+dosyada doğrulama denetimi ve sorduğu adresler (sertifika alınmadan),
+"CelikPanel'in metnini şimdi yaz", kopya bırakmayan reddedilmiş alma, havuz ve
+birim, ilk yüklemedeki sessiz süre ve beklemenin 15 ve 30 saniyelik adımları.
+Güncelleme bildiriminin yeni sözleri laboratuvarda gerçek bir Panel'de gözlem
+olarak görüldü. Geri koymadan sonra yeniden yüklemeden önceki denetim, Alan
+Adları listesindeki okunamayan dosya, birimin `PATH`'i, kurulum sayfası,
+katmanın son ifadesi ve SSL sekmesinin ifadesi için yalnız bileşen testleri ve
+taklit API'ye karşı tarayıcı denetimi var.
 
 ## Ne ölçüldü, nasıl ölçüldü
 
 Tek bir dizüstü ana makinedeki geçici sanal makinelerde 10 ve 11 Ekim 2026'da
-(UTC; on birincisi 10 Ekim'i 11 Ekim'e bağlayan gece koştu) alınmış beş kayıt;
-bir de bu yazılırken bitmemiş bir kayıt. Ürün imzalı arşiv olarak değil, kabul testi
-lisansıyla derlenmiş hâliyle çalıştı. Dizinler
+(UTC; on birincisi 10 Ekim'i 11 Ekim'e bağlayan gece koştu) alınmış altı kayıt;
+bir de bu yazılırken bitmemiş kısa bir tur. Ürün imzalı arşiv olarak değil,
+kabul testi lisansıyla derlenmiş hâliyle çalıştı. Her güncelleme, yayımlanmış
+arşivden değil, etiketinin kaynağından test lisanslı derleme olarak yeniden
+derlenmiş önceki bir sürümden ölçüldü; bu derlemelerin özetleri yayımlanmış
+olanlarınkinden farklıdır. Dizinler
 `deploy/e2e/release-recovery/evidence/` altındadır. Her sonuç dosyası kendisini
 henüz kabul edilmemiş kanıt olarak işaretler; değerlendirmesi sahibindir.
 
@@ -602,7 +653,8 @@ sunucuya yöneltilmedi. Makinelerin trafiği yakalanmadı.
 
 **v0.1.0-alpha.82'nin sahibin düzenlediği site dosyasıyla yaptığı (sekizinci
 kayıt, `set8-20261010`; Debian 13, Ubuntu 24.04, Arch).** Yayımlanmış etiketin
-kaynağı, test lisansıyla ve önceki sürümün etiketiyle derlendi; 48 koşu. nginx
+kaynağı, yayımlanmış arşiv değil, test lisansıyla ve önceki sürümün etiketiyle
+yeniden derlendi; 48 koşu. nginx
 dosyasındaki 40 koşunun hepsinde sahibin eklediği `location`, değiştirdiği
 `index`, yerine koyduğu dosya ya da kendi include satırı, bir sonraki
 başlangıçta, yeniden başlatmada ya da Genel ayarların kaydında Panel'in kendi
@@ -626,8 +678,9 @@ Bu çalışmanın ilk bölümünün kodu: ilk satırıyla nginx dosyası, dosya 
 kayıt, üç seçenek ve sizin include dizininiz. CelikPanel'in kendi include
 dizini ve doğrulama denetimi, "değiştirilemiyor" yanıtı, "CelikPanel'in metnini
 şimdi yaz", dosyalar arasındaki durum sırası, geri koyma bilgisi, havuz ve birim
-henüz içinde değildi. Yeni kuruldu; ayrıca yayımlanmış v0.1.0-alpha.81'den
-(etiketinin kaynağı, test lisansı) güncellemeyle ulaşıldı. Platform başına 31
+henüz içinde değildi. Yeni kuruldu; ayrıca etiketinin kaynağından test
+lisanslı derleme olarak yeniden derlenmiş (yayımlanmış arşiv değil)
+v0.1.0-alpha.81'den güncellemeyle ulaşıldı. Platform başına 31
 olmak üzere 93 hücre: 84'ü geçti, 6'sı geçmedi (her platformda aynı iki
 bulgu), 3'ü ölçülmedi.
 
@@ -714,9 +767,11 @@ ifadesinden önceki arayüzü.
 
 **İlk yükleme ve güncelleme için başlangıç ölçümü (yedinci kayıt,
 `set7-20261010`; Debian 13).** v0.1.0-alpha.82 notlarında anlatılır.
-Yayımlanmış kodda soğuk yükleme 18 yüklemenin 18'inde tam sayfa "Checking panel
-access" çizdi; bir güncelleme sırasında alpha.81 arayüzü sayfanın yerine yaklaşık
-78 sn lisans sayfasını koydu (sahibin gördüğü ekran); alpha.82 arayüzü ise 25 sn'lik
+Yayımlanmış etiketin test lisanslı derleme olarak yeniden derlenmiş kaynağında
+soğuk yükleme 18 yüklemenin 18'inde tam sayfa "Checking panel access" çizdi;
+bir güncelleme sırasında (etiketinden yeniden derlenmiş alpha.81'den) alpha.81
+arayüzü sayfanın yerine yaklaşık 78 sn lisans sayfasını koydu (sahibin gördüğü
+ekran); alpha.82 arayüzü ise 25 sn'lik
 kesintinin yaklaşık 9–11 sn'si boyunca sayfayı bir katmanın altında bağlı tuttu,
 katmanın ilk cümlesi lisanstan söz ediyordu.
 
@@ -727,8 +782,9 @@ CelikPanel'in kendi include dizini, doğrulama denetimi (o zaman yalnız
 `127.0.0.1`'e soruyordu), kilitli dosyanın yanıtı ve 0755 izni. "CelikPanel'in
 metnini şimdi yaz", dosyalar arasındaki durum sırası, havuz ve birim, geri koyma
 bilgisi, denetimin sorduğu adresler ve kopya bırakmayan reddedilmiş alma henüz
-içinde değildi. Yeni kuruldu; Debian 13'te ayrıca yayımlanmış v0.1.0-alpha.81'den
-başlangıç denetiminden geçemeyen bir adaya güncelleme yapıldı. Tarayıcı
+içinde değildi. Yeni kuruldu; Debian 13'te ayrıca etiketinin kaynağından test lisanslı derleme olarak
+yeniden derlenmiş v0.1.0-alpha.81'den, başlangıç denetiminden geçemeyen bir
+adaya güncelleme yapıldı. Tarayıcı
 hücrelerinde dizüstü ana makinedeki başsız bir Chrome 154 kullanıldı.
 
 - Include dizinleri: ikisi de üç platformda `root:celikpanel 0755` olarak
@@ -804,12 +860,111 @@ hücrelerinde dizüstü ana makinedeki başsız bir Chrome 154 kullanıldı.
   hiç ilk satırı taşımadı; önceki bir sürümün böyle bir dosyayla ne yaptığı
   ölçülmedi.
 
-**On ikinci kayıt.** Bu yazılırken bitmemişti. Bu çalışmanın ikinci bölümünü,
-PHP-FPM havuzunu ve uygulama birimini, son koddan yalnız ekran metinlerinde
-ayrılan kodda ölçecek. Sonucu buraya girene kadar o bölüm gerçek bir sistemde
+**İkinci bölüm, denetimin adresleri ve v0.1.0-alpha.82'den güncelleme (on
+ikinci kayıt, `set12-20261011`; Debian 13, Ubuntu 24.04, Arch; Debian'da başsız
+bir Chrome 154).** Havuzu ve birimi, "CelikPanel'in metnini şimdi yaz"ı,
+dosyalar arasındaki durum sırasını, geri koyma bilgisini, denetimin sorduğu
+adresleri ve kopya bırakmayan reddedilmiş almayı içeren kod. Son koddan ekran
+metinlerinde ve bu kayıttan sonra sayılan düzeltmelerde ayrılır. Yeni kuruldu;
+ayrıca v0.1.0-alpha.82'den (üç platform) ve v0.1.0-alpha.81'den (Debian 13)
+güncellemeyle ulaşıldı; her biri yayımlanmış arşivden değil, etiketinin
+kaynağından test lisanslı derleme olarak yeniden derlenmişti. Sabitlenen adlar
+dışında hiçbir şey engellenmedi: kurulumun paketleri dağıtımların depolarından,
+Panel'in Node.js kurulumu da dışarıdan, dışarıya NAT üzerinden geldi; bu trafik
+kaydedilmedi.
+
+- Üç platformda da geçenler:
+  - Havuz: sahibin yorumu ve yönergesi havuz kaydında korundu
+    (`409 SITE_CONFIG_OWNER_EDITED` / `php_pool`; kaydedilen değeri taşıyan
+    CelikPanel metni dosyanın yanında bekletildi); sayfa nginx dosyasını ve
+    havuzu farkıyla listeledi; "CelikPanel'in metnini al" sahibin havuzunun
+    tarihli kopyasını bıraktı, izin ve sahibi koruyarak CelikPanel'in metnini
+    yazdı ve PHP-FPM'i yeniden yükledi. Bir site silinirken düzenlenmiş havuzun
+    tarihli kopyası bırakıldı.
+  - Birim (Panel üzerinden kurulan Node.js 22.20.0): sahibin ek ayar dosyası bir
+    barındırma değişikliğinden ve bir almadan bayt bayt sağ çıktı; birimdeki
+    bir sahip satırı, barındırma değişikliğini `409` / `app_unit` ile
+    reddettirdi; alma tarihli kopya bıraktı, systemd'yi yeniden yükledi ve
+    uygulamayı yeniden başlattı.
+  - nginx'in reddettiği alma: `502 SITE_CONFIG_NGINX_REFUSED`, `restore:
+    confirmed`, sahibin dosyası geri kondu ve sunuldu. Sahibin PHP-FPM'i
+    durdurduğu bir alma: kendi cümlesiyle `restore: unconfirmed`, dosya geri
+    kondu.
+  - "CelikPanel'in metnini şimdi yaz": başlangıçta kilitli olup sonra kilidi
+    kaldırılan dosyaya sunuldu; yazım tarihli kopya bırakmadı ve nginx'i
+    yeniden yükledi; sayfa ve Alan Adları satırı aynı şeyi söyledi. Sayfanın
+    okumasından sonra konan bir kilidin reddettiği alma:
+    `409 SITE_CONFIG_UNWRITABLE`, tarihli kopya yok, sayfa iki olguyu da
+    gösterdi, satır aynı şeyi söyledi.
+  - Denetimin adresleri: konuğun kendi adresindeki 80 numaralı bağlantı noktası
+    bloğuna o adreste, yalnız `[::]:80` üzerindeki bloğa da `::1`'de soruldu;
+    ikisi de hazırdı ve istek gönderildi (sabitlenmiş adda reddedildi,
+    `502 authority_unreachable`). Konuğun sahip olmadığı bir adres: deneme
+    yok, istek gönderildi, adresle birlikte günlük satırı
+    `validation_probe=not_run validation_unknown_reason=address_not_local`,
+    sayfa da `unknown` / `address_not_local` okudu. nginx durmuşken: `503`.
+  - v0.1.0-alpha.82'den güncelleme: veritabanı şeması 43'ten 44'e; Debian 13 ve
+    Ubuntu 24.04'te "5 adopted, 1 left alone", Arch'ta "4 adopted, 1 left
+    alone"; sahibin düzenlediği nginx dosyası olduğu gibi bırakıldı ve hiç
+    yazılmadı; alpha.82'nin havuzu ve birimi devralındı, sahibin düzenlediği
+    havuz olduğu gibi bırakıldı; dört yeni rota istek kimliği olmadan `428`
+    yanıtladı ve hiçbir şey değişmedi. Sayfalar okunduktan sonra Alan Adları
+    satırındaki sayılar değişti (5 ve 1, 4 ve 2 oldu; Arch'ta 4 ve 1, 3 ve 2),
+    çünkü havuzun satırı o zaman açıldı.
+  - v0.1.0-alpha.82'den kusurlu bir aday kendiliğinden geri döndü; veritabanı
+    43'teydi ve Panel yanıt veriyordu; havuzlar ve birim bayt bayt alpha.82'ninkiydi,
+    alpha.82'nin başlangıcı ise sahibin düzenlemesi dahil her nginx dosyasını
+    yeniden yazdı. Aday kendi başlangıcından önce başarısız oldu; bu yüzden
+    hiçbir dosya ilk satırı taşımıyordu.
+  - v0.1.0-alpha.81'den güncelleme (Debian 13): dosyalar önceki gibi devralındı;
+    geçişten önceki hâline geri konan veritabanı yeniden geçirildi.
+- Üç platformda da geçmeyenler:
+  - Agent'ın okuyamadığı bir havuz (kilidi 75 sn tutuldu): sayfa "okunmadı"
+    dedi ve onu değişmemiş nginx dosyasının üstünde sıraladı, ama Alan Adları
+    satırı "CelikPanel'in metni, değişmemiş" olarak kaldı, çünkü başarısız bir
+    okuma satır yazmıyordu.
+  - Havuz dizinindeki başka bir sahip dosyası yüzünden `php-fpm -t`'nin
+    reddettiği alma: sahibin havuzu geri kondu, ardından PHP-FPM, denetimin
+    hâlâ reddettiği yapılandırmayla yeniden yüklendi (günlükteki zamanlamadan
+    çıkarıldı) ve `failed` durumunda kaldı; yanıt ise `restore: confirmed`
+    diyor ve PHP-FPM'in çalışmayı sürdürdüğünü söylüyordu.
+- Ölçülmeyenler: PHP sürümü değişikliği (her konukta tek PHP sürümü), kendisi
+  başarısız olan bir geri koyma, çalışmayan bir denetimin başarı yanıtındaki
+  alanlar (hiçbir istek başarılı olamazdı).
+- Gözlem (Debian 13): birim `PATH` içinde Node dizinini adıyla verdiği hâlde,
+  çıplak bir `node` başlatma komutu birimin oturum açma kabuğu altında 127 ile
+  çıktı; olası neden, oturum açma profilinin `PATH`'i sıfırlamasıdır (çıkarım).
+- Gerçek tarayıcı (Debian 13; İngilizce ve Türkçe, masaüstü ve telefon): Alan
+  Adları işareti, nginx dosyası ve havuzla Yapılandırma dosyası sayfası,
+  havuzun farkı ve "CelikPanel'in metnini şimdi yaz" sayfası; sonuç cümlesi
+  sayfa metninden okundu. Kısa bir tarayıcı profil yolunda kurtarma hizmet
+  çalışanı kaydedildi. İki geri koyma bildirimi sayfa metnindeydi ama
+  resimlerde görünür alanın dışındaydı. Telefon genişliğinde Alan Adları
+  listesi durum sütununu kesti, işaret alan adının altında durdu.
+
+**On ikinci kayıttan sonraki düzeltmeler.** Sonradan yapıldı; bileşen testleri
+ve taklit API'ye karşı tarayıcı denetimi; gerçek bir sistemde ölçülmedi:
+
+- Agent'ın yanıt vermediği bir havuz ya da birim, hata sınıfıyla birlikte
+  okunmadı olarak kaydedilir; sonraki bir okuma yanıt verene kadar Alan Adları
+  satırı "Bir yapılandırma dosyası okunamadı; durumu bilinmiyor" der.
+- Geri koymadan sonra, önceden çalışmayan bir hizmet olduğu gibi bırakılır;
+  başka durumda önce kendi denetimi geri konan yapılandırmada çalışır ve yalnız
+  denetimin kabul ettiği yapılandırma yeniden yüklenir (bir birimin uygulaması
+  yalnız `systemd-analyze verify` kabul ederse yeniden başlatılır). Yanıt
+  hizmete ne olduğunu söyler. Kayıttaki, sahibin PHP-FPM'i durdurduğu durum
+  artık `not_running` ile `confirmed` yanıtlanır.
+- Birimin başlatma komutu `/bin/sh -c` ve Panel'in Node dizinini içeren açık
+  bir `PATH` kullanır; önceki sürümlerin birim metinleri tanınmak için olduğu
+  gibi kalır.
+- Sayfanın bir seçime verdiği yanıt kendiliğinden görünür alana kayar.
+
+Bunları kısa bir laboratuvar turu ölçecek: havuz reddi, durmuş bir PHP-FPM,
+bir nginx reddi, okunamayan satır, birimin `PATH`'i ve denetimi, gerçek bir
+tarayıcıda sayfa. Sonucu buraya girene kadar bunlar gerçek bir sistemde
 ölçülmemiş sayılır.
 
-[NATIVE RE-CHECK PENDING — set12]
+[NATIVE RE-CHECK PENDING — set13]
 
 **Hangi denetim hangi koda dayanıyor.** Kodun sonraki her hâli önceki
 düzeltmeleri içerir.
@@ -818,13 +973,13 @@ düzeltmeleri içerir.
 | --- | --- |
 | nginx dosyasının korunması, üç seçenek, v0.1.0-alpha.81'den güncellemeden sonra devralma, başarısız geçişten sonra dönüş, geri konan veritabanı, kilitli dosyanın öteki sitelere etkisi | bu çalışmanın ilk bölümü (onuncu kayıt); son kodda yinelenmedi |
 | CelikPanel'in kendi include dizini, 0755 izni, `127.0.0.1` üzerinde doğrulama denetimi, kilitli dosyanın sayfası ve "Yeniden kontrol et", erişim beklemesinin 15 ve 30 saniyelik adımları, hizmet çalışanı, başarısız başlangıç denetiminden sonra dönüş | kilitli dosya ve dizin düzeltmelerinden sonraki kod (on birinci kayıt) |
-| Denetimin sorduğu adresler, "CelikPanel'in metnini şimdi yaz", dosyalar arasındaki durum sırası, kopya bırakmayan reddedilmiş alma, geri koyma bilgisi | bileşen testleri ve taklit API'ye karşı tarayıcı |
-| PHP-FPM havuzu ve uygulama birimi | bileşen testleri ve taklit API'ye karşı tarayıcı; gerçek bir sistemde yalnız on ikinci kayıtla; o kayıt son koddan yalnız ekran metinlerinde ayrılan kodu ölçer |
+| Havuz ve birim, çok dosyalı sayfa, denetimin sorduğu adresler, "CelikPanel'in metnini şimdi yaz", kopya bırakmayan reddedilmiş alma, geri koyma bilgisi, v0.1.0-alpha.82'den güncelleme ve otomatik dönüşü | son ekran metinlerinden ve on ikinci kayıttan sonraki düzeltmelerden önceki kod (on ikinci kayıt) |
+| Geri koymadan sonra yeniden yüklemeden önceki denetim, Alan Adları listesinde okunamayan dosya, birimin `PATH`'i, görünür alana kayan yanıt | bileşen testleri ve taklit API'ye karşı tarayıcı; gerçek bir sistemde yalnız yukarıda işaretli kısa turla |
 | Soğuk ilk yükleme ve 1,5 saniyedeki açıklamalı bekleme | ilk kapı düzeltmelerinden sonraki arayüz (dokuzuncu kayıt) |
 | Katmanın son ifadesi, kurulum sayfası, posta kimliği nedeni | bileşen testleri ve taklit API'ye karşı tarayıcı |
 | "Kuruldu, doğrulanıyor" bildirimi | dokuzuncu kayıtta gerçek bir Panel'de gözlendi; bileşen testleri |
-| v0.1.0-alpha.82'nin sahip düzenlemesiyle yaptığı | yayımlanmış etiketin kaynağı (sekizinci kayıt) |
-| Bu yazılırkenki kodun tamamı | bileşen testleri ve CI (aşağıda) |
+| v0.1.0-alpha.82'nin sahip düzenlemesiyle yaptığı | yayımlanmış etiketin yeniden derlenmiş kaynağı (sekizinci kayıt) |
+| Bu yazılırkenki kodun tamamı | bileşen testleri; daha önceki bir uçta CI (aşağıda) |
 
 **Ekranlar.** Arayüz değişikliklerinin bileşen testleri var; ayrıca bir
 Chrome'da, API'nin loopback üzerindeki bir taklidine karşı incelendiler (masaüstü
@@ -832,35 +987,39 @@ ve telefon, İngilizce ve Türkçe; Yapılandırma dosyası sayfası için açı
 tema). O tarayıcının arkasında gerçek bir Panel yoktu. Dokuzuncu kayıt ilk
 yükleme, erişim beklemesi ve bir güncelleme için gerçek bir Chrome'u gerçek bir
 Panel'in önüne koydu (masaüstü boyutu, başsız; Türkçe yalnız erişim beklemesi
-için), on birinci kayıt da erişim beklemesi ve hizmet çalışanı için (İngilizce).
+için), on birinci kayıt erişim beklemesi ve hizmet çalışanı için (İngilizce),
+on ikinci kayıt da Alan Adları listesi ve Yapılandırma dosyası sayfası için
+(İngilizce ve Türkçe, masaüstü ve telefon).
 
-**Testler.** Kodun son hâllerinin değişiklik kayıtlarına göre: 1313 arayüz
+**Testler.** Kodun son hâllerinin değişiklik kayıtlarına göre: 1314 arayüz
 testi geçti; Panel ve ortak Go paketleri geçti; Agent paketinde bu
 değişikliklerden öncekiyle aynı 19 test düştü ve değişiklik kaydı bunların
 nedeni olarak geliştirme makinesinin ortamını gösterir. Bu sayılar saklanan bir
-test günlüğünden değil, değişiklik kayıtlarından gelir. Çekme isteğinin, bu
-yazılırkenki kod üzerindeki sürekli tümleştirme koşusu (11 Ekim 2026'da 04:22'de
-başladı, 04:43 UTC'de bitti) 23 denetimin 23'ünü geçti; yalnız bir sürüm
-etiketinde çalışan dosya yayımlama işi atlandı. Geçen bir koşu sahibin kendi
-denemesinin yerini tutmaz.
+test günlüğünden değil, değişiklik kayıtlarından gelir. Çekme isteğinin, 11 Ekim
+2026'da 04:43 UTC'de biten uçtaki sürekli tümleştirme koşusu 23 denetimin
+23'ünü geçti; yalnız bir sürüm etiketinde çalışan dosya yayımlama işi atlandı.
+On ikinci kayıttan sonraki düzeltmeleri ve sürüm hazırlığını taşıyan sonraki
+uçlar kendi koşularını alır. Geçen bir koşu sahibin kendi denemesinin yerini
+tutmaz.
 
 ## Bu sürümün sınırları
 
 Bunlar bilinen sınırlardır. Gizli kusur değildir.
 
-- **Son kod gerçek bir sistemde bütünüyle ölçülmedi.** Onuncu kayıt bu
-  çalışmanın ilk bölümünü, on birinci kayıt onu izleyen düzeltmeleri ölçtü.
-  Denetimin sorduğu adresler, "CelikPanel'in metnini şimdi yaz", dosyalar
-  arasındaki durum sırası, kopya bırakmayan reddedilmiş alma ve geri koyma
-  bilgisi için yalnız bileşen testleri ve taklit API'ye karşı tarayıcı denetimi
-  var; havuz ve birim gerçek bir sistemde yalnız on ikinci kayıtla ölçülür.
-  Sürüm hazırlığı (sürüm sırası, önyükleme sabitleri, sürüm satırları) ölçülen
-  ya da CI'da denetlenen hiçbir kodda yoktur; bu yazılırken bu sürümün adını
-  taşıyan hiçbir arşiv derlenmemişti.
-- **v0.1.0-alpha.82'den güncelleme ölçülmedi.** Her güncelleme hücresi
-  v0.1.0-alpha.81'in kaynağından başladı. v0.1.0-alpha.82'nin yazdığı dosyaların
-  tanınması, bu sürüme gömülü ve özetleriyle sabitlenmiş dondurulmuş metinlerine
-  ve bileşen testlerine dayanır.
+- **Son kod gerçek bir sistemde bütünüyle ölçülmedi.** Onuncu, on birinci ve
+  on ikinci kayıtlar kodu üç aşamada ölçtü. On ikinci kayıttan sonraki
+  düzeltmelerin (geri koymadan sonra yeniden yüklemeden önceki denetim, Alan
+  Adları listesinde okunamayan dosya, birimin `PATH`'i, görünür alana kayan
+  yanıt) yalnız bileşen testleri ve taklit API'ye karşı tarayıcı denetimi var;
+  onlar için kısa bir laboratuvar turu bitmemişti. Sürüm hazırlığı (sürüm sırası
+  83, önyükleme sabitleri, sürüm satırları) ölçülen hiçbir derlemede yoktur; bu
+  yazılırken bu sürümün adını taşıyan hiçbir arşiv derlenmemişti.
+- **Güncellemeler yayımlanmış arşivlerden değil, yeniden derlemelerden
+  ölçüldü.** v0.1.0-alpha.81 ve alpha.82, etiketlerinin kaynağından test
+  lisanslı derleme olarak yeniden derlendi; özetleri yayımlanmış arşivlerinkinden
+  farklıdır. alpha.82'den güncelleme üç platformda, alpha.81'den güncelleme on
+  ikinci kayıtta Debian 13'te, onuncuda üç platformda koştu. Kurulu bir
+  sunucunun kendi arşivi ve verisi kullanılmadı.
 - **Sertifikası olan hiçbir site ölçülmedi ve hiçbir sertifika alınmadı.**
   Doğrulama denetimi gerçek bir nginx'e yalnız `127.0.0.1` üzerinden, bir sitenin
   dinlediği adreslere sormayı öğrenmeden önce sordu.
@@ -887,8 +1046,9 @@ Bunlar bilinen sınırlardır. Gizli kusur değildir.
 - **Önceki bir sürüme dönüşte koruma kaybolur** ("Önceki bir sürüme dönüş"
   bölümüne bakın). İlk satırı olmayan dosyalar için iki kez ölçüldü; olanlar
   için önceki sürümün kaynağından okundu.
-- **Havuz ve birim.** Panel başlarken bunlara bakılmaz; başlangıç satırı yalnız
-  nginx dosyalarını sayar. Site oluşturma onlar için kayıt satırı açmaz; bu
+- **Havuz ve birim.** PHP sürümü değişikliği ölçülmedi; onun kendi geri koyması
+  iki PHP sürümünü de hâlâ denetimsiz yeniden yükler. Panel başlarken bunlara
+  bakılmaz; başlangıç satırı yalnız nginx dosyalarını sayar. Site oluşturma onlar için kayıt satırı açmaz; bu
   yüzden kimsenin açmadığı ya da değiştirmediği bir havuz ya da birim Alan
   Adları listesinde yer almaz. Çağrılar Panel'in derlemesine bağlıdır; başka
   derlemeden bir Agent için geri dönüş yolu yoktur. Genel PHP sayfasının havuz
@@ -962,19 +1122,24 @@ Bunlar bilinen sınırlardır. Gizli kusur değildir.
 
 Yayımlanmadı. Yayımlamadan önce açık olanlar:
 
-1. Numara: v0.1.0-alpha.83 çalışma numarasıdır (sahibin seçimi; kesin değil).
-2. On ikinci kaydın sonucu yukarıya girilir, ya da havuz ve birim adı belli
-   bir sınır olarak kalır. On birinci kaydın sonucu girildi.
-3. Birleştirmeden önce sahip, `main` dalının korumasındaki zorunlu denetimlerin
+1. Numara: v0.1.0-alpha.83 (sahibin kararı). Yapıldı.
+2. Sürüm hazırlığı, `cmd/`, `internal/` ya da `web/` altında hiçbir dosyayı
+   değiştirmeyen ayrı bir commit'te yapıldı: 82'den sonra sürüm sırası 83,
+   kurucunun önyükleme sabitleri, README'nin sürüm satırları ve bunları
+   sabitleyen sözleşme testleri. Yayımlamada sahip
+   `CELIKPANEL_RELEASE_SEQUENCE` depo değişkenini 83 yapar. Bununla hiçbir arşiv
+   derlenmedi; gerçek arşivi etikette CI derler ve imzalar.
+3. On birinci ve on ikinci kayıtların sonuçları girildi. On ikinciden sonraki
+   kısa laboratuvar turunun sonucu yukarıya girilir, ya da kapsadıkları adı
+   belli sınırlar olarak kalır.
+4. Birleştirmeden önce sahip, `main` dalının korumasındaki zorunlu denetimlerin
    adlarını değiştirir: sürekli tümleştirme artık bir test grubunu üçe böler.
    "Panel race — S, except the service tests" adı "Panel race — S, except the
    service, setup, site and startup tests" olur; "Panel race — Startup
    readiness" ve "Panel race — Site configuration" da zorunlu denetim olarak
    eklenir.
-4. Sürüm hazırlığı (sürüm sırası, önyükleme sabitleri, sürüm satırları) ayrı
-   bir commit'te yapılır; arşivi etikette CI derler ve imzalar.
 5. Satıcının yayın araçları ile iki tek seferlik kurtarma betiğinin arşivde
-   kalıp kalmayacağı (sahip kararı).
+   kalıp kalmayacağı: sahibin kararı, bekliyor.
 
 Bu sürümü yalnız CelikPanel'in güncelleme arayüzünden kurun. Yayımlamak kurulu
 sunucuları güncellemez; bir sunucunun güncellemesini yalnız o sunucunun sahibi,
