@@ -7,7 +7,7 @@
 | debian13/fresh-a | i | PASS | PASS |  | `debian13/fresh-a/driver/steps/10-h-i-unchanged-start/section.json` |
 | debian13/fresh-a | M | NOT-MEASURED | NOT-MEASURED | NM: a PHP switch on the edited pool is refused and writes nothing | `debian13/fresh-a/driver/steps/11-m-pool-owner-edit/section.json` |
 | debian13/fresh-a | U | FAIL | FAIL | FAIL: the Domains row says a configuration file could not be read (state unknown, kind php_pool) | `debian13/fresh-a/driver/steps/12-u-pool-not-read/section.json` |
-| debian13/fresh-a | RP1 | PASS | FAIL | FAIL (intake 2026-10-12): `restore: confirmed` answered while PHP-FPM ended `failed` after the reload (`detail.php_unit_after`, `native/049-rp1-journal.json`); the driver checked the answer field only | `debian13/fresh-a/driver/steps/14-rp1-take-php-fpm-test-refused/section.json` |
+| debian13/fresh-a | RP1 | PASS | FAIL | FAIL (intake 2026-10-11): `restore: confirmed` answered while PHP-FPM ended `failed` after the reload (`detail.php_unit_after`, `native/049-rp1-journal.json`); the driver checked the answer field only | `debian13/fresh-a/driver/steps/14-rp1-take-php-fpm-test-refused/section.json` |
 | debian13/fresh-a | RP2 | PASS | PASS |  | `debian13/fresh-a/driver/steps/15-rp2-take-php-fpm-stopped/section.json` |
 | debian13/fresh-a | B4 | PASS | PASS |  | `debian13/fresh-a/driver/steps/16-p-apply-and-b4/section.json` |
 | debian13/fresh-a | P-apply | PASS | PASS |  | `debian13/fresh-a/driver/steps/16-p-apply-and-b4/section.json` |
@@ -26,7 +26,7 @@
 | ubuntu/fresh-a | M | NOT-MEASURED | NOT-MEASURED | NM: a PHP switch on the edited pool is refused and writes nothing | `ubuntu/fresh-a/driver/steps/11-m-pool-owner-edit/section.json` |
 | ubuntu/fresh-a | U | FAIL | FAIL | FAIL: the Domains row says a configuration file could not be read (state unknown, kind php_pool) | `ubuntu/fresh-a/driver/steps/12-u-pool-not-read/section.json` |
 | ubuntu/fresh-a | RN | PASS | PASS |  | `ubuntu/fresh-a/driver/steps/13-rn-take-nginx-refused/section.json` |
-| ubuntu/fresh-a | RP1 | PASS | FAIL | FAIL (intake 2026-10-12): `restore: confirmed` answered while PHP-FPM ended `failed` after the reload (`detail.php_unit_after`, `native/049-rp1-journal.json`); the driver checked the answer field only | `ubuntu/fresh-a/driver/steps/14-rp1-take-php-fpm-test-refused/section.json` |
+| ubuntu/fresh-a | RP1 | PASS | FAIL | FAIL (intake 2026-10-11): `restore: confirmed` answered while PHP-FPM ended `failed` after the reload (`detail.php_unit_after`, `native/049-rp1-journal.json`); the driver checked the answer field only | `ubuntu/fresh-a/driver/steps/14-rp1-take-php-fpm-test-refused/section.json` |
 | ubuntu/fresh-a | RP2 | PASS | PASS |  | `ubuntu/fresh-a/driver/steps/15-rp2-take-php-fpm-stopped/section.json` |
 | ubuntu/fresh-a | B4 | PASS | PASS |  | `ubuntu/fresh-a/driver/steps/16-p-apply-and-b4/section.json` |
 | ubuntu/fresh-a | P-apply | PASS | PASS |  | `ubuntu/fresh-a/driver/steps/16-p-apply-and-b4/section.json` |
@@ -39,7 +39,7 @@
 | arch/fresh-a | M | NOT-MEASURED | NOT-MEASURED | NM: a PHP switch on the edited pool is refused and writes nothing | `arch/fresh-a/driver/steps/11-m-pool-owner-edit/section.json` |
 | arch/fresh-a | U | FAIL | FAIL | FAIL: the Domains row says a configuration file could not be read (state unknown, kind php_pool) | `arch/fresh-a/driver/steps/12-u-pool-not-read/section.json` |
 | arch/fresh-a | RN | PASS | PASS |  | `arch/fresh-a/driver/steps/13-rn-take-nginx-refused/section.json` |
-| arch/fresh-a | RP1 | PASS | FAIL | FAIL (intake 2026-10-12): `restore: confirmed` answered while PHP-FPM ended `failed` after the reload (`detail.php_unit_after`, `native/049-rp1-journal.json`); the driver checked the answer field only | `arch/fresh-a/driver/steps/14-rp1-take-php-fpm-test-refused/section.json` |
+| arch/fresh-a | RP1 | PASS | FAIL | FAIL (intake 2026-10-11): `restore: confirmed` answered while PHP-FPM ended `failed` after the reload (`detail.php_unit_after`, `native/049-rp1-journal.json`); the driver checked the answer field only | `arch/fresh-a/driver/steps/14-rp1-take-php-fpm-test-refused/section.json` |
 | arch/fresh-a | RP2 | PASS | PASS |  | `arch/fresh-a/driver/steps/15-rp2-take-php-fpm-stopped/section.json` |
 | arch/fresh-a | B4 | PASS | PASS |  | `arch/fresh-a/driver/steps/16-p-apply-and-b4/section.json` |
 | arch/fresh-a | P-apply | PASS | PASS |  | `arch/fresh-a/driver/steps/16-p-apply-and-b4/section.json` |
@@ -71,4 +71,4 @@ Re-judgements:
 - arch/fresh-a A: "own address: the probe asked 10.0.2.15 under each name and nginx served the probe's bytes " False -> True: nginx's answer carried the body in a second packet the packet reader does not join; the site's access log has `200 61` (the probe's size) for both names (native *-nginx-logs.json)
 - arch/fresh-a A: "[::]:80 only: the probe asked ::1 under each name and nginx served the probe (ready)" False -> True: nginx's answer carried the body in a second packet the packet reader does not join; the site's access log has `200 61` (the probe's size) for both names (native *-nginx-logs.json)
 - arch/fresh-a A: "not this server's address: the answer carries validation_probe not_run, validation_unknown" False -> None: documented on the SUCCESS answer only; the authority is pinned to the guest's loopback, so no request can succeed here
-- intake 2026-10-12, debian13/fresh-a, ubuntu/fresh-a, arch/fresh-a RP1: driver PASS -> FAIL (product): the expectation "detail config_refused; restore confirmed (the put-back and the reload after it held)" held on the answer field, but the same section records `php_unit_after.ActiveState` failed (Debian: NRestarts 6, "Start request repeated too quickly"; Ubuntu, Arch: NRestarts 0) and the journal shows the unit exiting 78/CONFIG after the reload. The driver had no expectation on PHP-FPM's state.
+- intake 2026-10-11, debian13/fresh-a, ubuntu/fresh-a, arch/fresh-a RP1: driver PASS -> FAIL (product): the expectation "detail config_refused; restore confirmed (the put-back and the reload after it held)" held on the answer field, but the same section records `php_unit_after.ActiveState` failed (Debian: NRestarts 6, "Start request repeated too quickly"; Ubuntu, Arch: NRestarts 0) and the journal shows the unit exiting 78/CONFIG after the reload. The driver had no expectation on PHP-FPM's state.
