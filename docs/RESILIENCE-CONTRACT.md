@@ -5127,8 +5127,10 @@ native cells (audit §9) come after. 2026-10-10 is the clock date.
   reported as `challenge_failed`, though the cause may be an unrelated file;
   (3) a missing or unreadable file writes no reason, so a renewal it stopped
   ends its waiting state only at the next completed renewal; (4) the SSL
-  tab's expiry detail prints negative days for an expired certificate
-  (`ssl.days`); (5) no browser run is recorded in a real hosting-customer
+  tab's expiry detail printed negative days for an expired certificate
+  (`ssl.days`) — fixed 2026-10-11 in `ead69cdcc` (`ssl.daysAgo`, "expired {n}
+  days ago"; the commit's suites passed but no test pins this wording; not
+  measured on a real system); (5) no browser run is recorded in a real hosting-customer
   session; (6) a ready probe shows that nginx serves the path on the addresses
   the file listens on, not that DNS or the firewall lets the certificate authority in;
   nothing was measured against a real nginx. The domains list line is

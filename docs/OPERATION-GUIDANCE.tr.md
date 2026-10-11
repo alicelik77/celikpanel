@@ -6426,9 +6426,13 @@ olan bir `nginx -t` ya da yeniden yükleme, neden ilgisiz bir dosya olsa bile
 `challenge_failed` olarak bildirilir; bilinmiyor olarak çizilmez. (3) Eksik ya
 da okunamayan dosya defter nedeni yazmaz; bu yüzden durdurduğu yenileme bekleme
 durumunu ancak bir sonraki tamamlanan yenilemede bitirir (yukarıda). (4) SSL
-sekmesinin süre ayrıntısı günü olduğu gibi yazar; süresi dolmuş bir sertifika
-"(-3 gün)" okunur (`DomainSSLSettings.tsx` ve `DomainSSLOverviewCard.tsx`,
-`ssl.days`); yalnız pano düzeltildi. (5) Bu sayfaları gerçek bir barındırma
+sekmesinin süre ayrıntısı günü olduğu gibi yazıyordu; süresi dolmuş bir sertifika
+"(-3 gün)" okunuyordu (`DomainSSLSettings.tsx` ve `DomainSSLOverviewCard.tsx`,
+`ssl.days`); yalnız pano düzeltilmişti. **11 Ekim 2026'da `ead69cdcc`
+işlemesinde giderildi** (işlemenin web ve Go test kümeleri geçti, ama bu ifadeyi
+sabitleyen bir test yok; gerçek sistemde ölçülmedi, tarayıcı koşusu yok): süresi dolmuş sertifika artık "süresi {n}
+gün önce doldu" okunur (`ssl.daysAgo`; genel bakış kartında
+`domain.overview.ssl.certificateExpired`), hiçbir zaman eksi sayı değil. (5) Bu sayfaları gerçek bir barındırma
 müşterisi oturumunda çizen bir tarayıcı koşusu kayıtlı değildir; müşterinin
 erişebildiği cümleler yalnız katalogdan okunur. (6) Hiçbir şey gerçek bir nginx
 ya da gerçek bir sertifika otoritesine karşı ölçülmedi.

@@ -4394,7 +4394,10 @@ hücreleri (denetim §9) sonra gelir. 2026-10-10 saat tarihidir.
   bir dosya olsa bile `challenge_failed` bildirilir; (3) eksik ya da okunamayan
   dosya neden yazmaz, bu yüzden durdurduğu yenileme bekleme durumunu ancak
   bir sonraki tamamlanan yenilemede bitirir; (4) SSL sekmesinin süre ayrıntısı
-  süresi dolmuş sertifika için eksi gün yazar (`ssl.days`); (5) gerçek bir
+  süresi dolmuş sertifika için eksi gün yazıyordu (`ssl.days`) — 11 Ekim
+  2026'da `ead69cdcc` işlemesinde giderildi (`ssl.daysAgo`, "süresi {n} gün
+  önce doldu"; işlemenin test kümeleri geçti ama bu ifadeyi sabitleyen test
+  yok; gerçek sistemde ölçülmedi); (5) gerçek bir
   barındırma müşterisi oturumunda çizen tarayıcı koşusu kayıtlı değildir; (6)
   hazır bir yoklama nginx'in yolu dosyanın dinlediği adreslerde sunduğunu gösterir, DNS'in ya
   da güvenlik duvarının sertifika otoritesini içeri aldığını göstermez; hiçbir

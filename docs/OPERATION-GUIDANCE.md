@@ -6485,9 +6485,13 @@ publishes its challenge file is reported as `challenge_failed`, although the
 cause may be an unrelated file; it is not drawn as unknown. (3) A missing or
 unreadable file writes no ledger reason, so a renewal it stopped ends its
 waiting state only at the next completed renewal (above). (4) The SSL tab's
-expiry detail still prints the days as they are, so an expired certificate
-reads "(-3 days)" (`DomainSSLSettings.tsx` and `DomainSSLOverviewCard.tsx`,
-`ssl.days`); only the dashboard was corrected. (5) No browser run is
+expiry detail printed the days as they were, so an expired certificate read
+"(-3 days)" (`DomainSSLSettings.tsx` and `DomainSSLOverviewCard.tsx`,
+`ssl.days`); only the dashboard was corrected. **Fixed 2026-10-11 in commit
+`ead69cdcc`** (the commit's web and Go suites passed, but no test pins this wording;
+not measured on a real system, no browser run): an expired certificate now reads "expired {n}
+days ago" (`ssl.daysAgo`; `domain.overview.ssl.certificateExpired` on the
+overview card), never a negative number. (5) No browser run is
 recorded as drawing these pages in a real hosting-customer session; the
 sentences a customer can reach are checked in the catalogue only. (6) Nothing
 here was measured against a real nginx or a real certificate authority.

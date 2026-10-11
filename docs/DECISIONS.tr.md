@@ -198,7 +198,7 @@ aldığını göstermez. Yoklama hiç gerçek bir nginx'e sormadı.
 
 ## D-030 · Panelin güvenli bağlantı kuralı yalnız Panelin kendi ana makine adını kapsar
 
-*10 Ekim 2026 (saat tarihi) · Sahip kararı; kaynakta ve bir bileşen testiyle, gerçek sistem okuması bekliyor*
+*10 Ekim 2026 (saat tarihi) · Sahip kararı; kaynakta ve bir bileşen testiyle; çalışan Panelde üç platformda ve bildirildiğine göre kurulu iki sunucuda okundu (aşağıdaki 11 Ekim 2026 notu); tarayıcının eski kuralı değiştirmesi ölçülmedi*
 
 Panel, HTTPS üzerinde `Strict-Transport-Security: max-age=31536000;
 includeSubDomains` gönderiyordu. Paneli bir adda açmış olan tarayıcı bu yüzden
@@ -222,6 +222,24 @@ tanımı böyledir (RFC 6797, bölüm 8.1).
 
 Değişmeyenler: başlığın süresi, Panelin diğer güvenlik başlıkları, barındırılan
 sitelerin başlıkları.
+
+*Not, 11 Ekim 2026 (o günden bu yana okunanlar).* (1) Altıncı gerçek sistem kaydı
+(`deploy/e2e/release-recovery/evidence/set6-20261009/README.md` ve
+`part-b-headers.md`) başlığı çalışan Panelden Debian 13, Ubuntu 24.04 ve Arch'ta
+okudu: aday, okunan her HTTPS yanıtında (sayfalar, varlıklar, herkese açık ve
+oturumlu API yanıtları, 401/403/404 yanıtları, ön kontrol isteği) tam olarak
+`max-age=31536000` yanıtladı; güncellemeden önce yayımlanmış v0.1.0-alpha.81 ise
+`max-age=31536000; includeSubDomains` yanıtladı; bunlar atılabilir deneme
+konuklarında konuğun içinden yapılan okumalardır. (2) Sahip kurulu iki sunucuyu
+10 Ekim 2026'da güncelledikten sonra her birinin dıştan okunması daraltılmış
+başlığı gösterdi; bu, planlayıcının kendi okumasıyla bildirilmiştir ve kurulu
+sunucularda gözlenmiştir, burada bir dosyada kayıtlı değildir
+(`docs/RESILIENCE-CONTRACT.tr.md` içindeki “v0.1.0-alpha.82'nin yayımlanması …”
+girdisine bakın). **Ölçülmedi:** bir tarayıcının elindeki kuralı bir sonraki
+girişte daraltılmışıyla değiştirmesi (yukarıdaki paragraf hâlâ başlığın tanımıdır,
+RFC 6797 bölüm 8.1, bir gözlem değildir); eski kuralı tutan bir tarayıcı; telefon
+ya da başka bir tarayıcı; Panelin üçüncü taraf bir istemcisi. Bu notla hiçbir
+karar, kod ya da şema değişmedi.
 
 ---
 

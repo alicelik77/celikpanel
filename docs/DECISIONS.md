@@ -196,7 +196,7 @@ certificate authority in. The probe has never asked a real nginx.
 
 ## D-030 · The Panel's secure-connection rule covers the Panel's own host name only
 
-*October 10, 2026 (clock date) · Owner decision; in source with a component test, native reading pending*
+*October 10, 2026 (clock date) · Owner decision; in source with a component test; read on the running Panel on three platforms and, as reported, on two installed servers (2026-10-11 note below); the browser's replacement of the old rule not measured*
 
 Over HTTPS the Panel sent `Strict-Transport-Security: max-age=31536000;
 includeSubDomains`. A browser that had opened the Panel at a name therefore
@@ -220,6 +220,23 @@ a browser; it is how the header is specified (RFC 6797, section 8.1).
 
 Not changed: the header's duration, the Panel's other security headers, hosted
 sites' headers.
+
+*Note, 2026-10-11 (what has been read since).* (1) The sixth native record
+(`deploy/e2e/release-recovery/evidence/set6-20261009/README.md` and
+`part-b-headers.md`) read the header from the running Panel on Debian 13,
+Ubuntu 24.04 and Arch: the candidate answered exactly `max-age=31536000` on
+every HTTPS answer read (pages, assets, public and signed-in API answers,
+401/403/404 answers, the preflight), and the published v0.1.0-alpha.81 before
+the update answered `max-age=31536000; includeSubDomains`; guest-local reads on
+disposable lab guests. (2) After the owner updated the two installed servers on
+2026-10-10, an external read of each showed the narrowed header; this is
+reported by the planner's own read and is observed on installed servers, not
+recorded in a file here (see the entry in `docs/RESILIENCE-CONTRACT.md`,
+"Publication of v0.1.0-alpha.82 …"). **Not measured:** a browser replacing the
+rule it holds with the narrowed one on its next visit (the paragraph above is
+still the header's specification, RFC 6797 section 8.1, not an observation);
+a browser that keeps the old rule; a phone or other browser; a third-party
+client of the Panel. No decision, code or schema changed with this note.
 
 ---
 
