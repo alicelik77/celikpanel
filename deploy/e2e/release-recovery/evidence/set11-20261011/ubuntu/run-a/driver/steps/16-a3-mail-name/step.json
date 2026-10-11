@@ -1,0 +1,22 @@
+{
+  "checks": {
+    "checks": 15,
+    "error": null,
+    "failed": [],
+    "finished_at": "2026-10-11T01:19:05Z",
+    "notes": [
+      "A3: PASS"
+    ],
+    "started_at": "2026-10-11T01:18:44Z",
+    "substeps": {
+      "A3": "passed"
+    },
+    "title": "a validation-only block for mail.<domain>: present, then removed by the owner",
+    "unknown": [],
+    "verdict": "passed"
+  },
+  "finished_at": "2026-10-11T01:19:05Z",
+  "name": "A3-mail-name",
+  "started_at": "2026-10-11T01:18:44Z",
+  "verdict": "passed"
+}

@@ -1,0 +1,27 @@
+{
+  "cell": "afterfail",
+  "lang": "en",
+  "tag": "",
+  "chrome": "Chrome/154.0.8037.98",
+  "handover": {
+    "at": "2026-10-11T00:35:59Z",
+    "base": "https://127.0.0.1:18871",
+    "cells": "D and E",
+    "local_port": 18871,
+    "password_file": "(root-only file, not copied)",
+    "schema": "celikpanel/set11-handover/v1",
+    "tls_leaf_sha256": "cca7260fdbaae90f0bd9e3f1a8b275763e87089fa7a80ea257d00893f6a57c4a",
+    "username": "labadmin",
+    "window": "d-e"
+  },
+  "leaf": {
+    "leaf_sha256": "cca7260fdbaae90f0bd9e3f1a8b275763e87089fa7a80ea257d00893f6a57c4a",
+    "spki_sha256_base64": "/4BSCjlvAKYfPD2lUJUagxGrEsX2uxKpzzPGim0tU0w=",
+    "subject": "O=CelikPanel\nCN=dns-debian13",
+    "valid_to": "Oct 11 00:24:56 2028 GMT"
+  },
+  "started": "2026-10-11T00:36:51.211Z",
+  "ended": "2026-10-11T00:37:52.441Z",
+  "ok": false,
+  "error": "TimeoutError: Waiting failed: 60000ms exceeded\n    at new WaitTask (<scratchpad>\\set7\\browser-modules\\node_modules\\puppeteer-core\\lib\\cjs\\puppeteer\\common\\WaitTask.js:48:34)\n    at IsolatedWorld.waitForFunction (<scratchpad>\\set7\\browser-modules\\node_modules\\puppeteer-core\\lib\\cjs\\puppeteer\\api\\Realm.js:25:26)\n    at CdpFrame.waitForFunction (<scratchpad>\\set7\\browser-modules\\node_modules\\puppeteer-core\\lib\\cjs\\puppeteer\\api\\Frame.js:587:43)\n    at CdpFrame.<anonymous> (<scratchpad>\\set7\\browser-modules\\node_modules\\puppeteer-core\\lib\\cjs\\puppeteer\\util\\decorators.js:109:27)\n    at CdpPage.waitForFunction (<scratchpad>\\set7\\browser-modules\\node_modules\\puppeteer-core\\lib\\cjs\\puppeteer\\api\\Page.js:1438:37)\n    at signIn (file:///<repo>/web/tools/browser-inspect/cold-load-set11.mjs:151:30)\n    at async signedIn (file:///<repo>/web/tools/browser-inspect/cold-load-set11.mjs:287:5)\n    at as"
+}

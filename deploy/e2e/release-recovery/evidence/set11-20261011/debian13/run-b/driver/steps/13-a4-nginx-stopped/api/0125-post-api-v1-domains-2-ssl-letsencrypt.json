@@ -1,0 +1,87 @@
+{
+  "outcome": "response",
+  "panel": "owner",
+  "purpose": "a4: POST ssl/letsencrypt (the owner requests a certificate)",
+  "request": {
+    "body": {
+      "auto_renew": false,
+      "email": "hostmaster@set11-a.test"
+    },
+    "headers": [
+      [
+        "Accept",
+        "application/json"
+      ],
+      [
+        "Host",
+        "127.0.0.1:18871"
+      ],
+      [
+        "Content-Type",
+        "application/json"
+      ],
+      [
+        "Origin",
+        "https://127.0.0.1:18871"
+      ],
+      [
+        "Cookie",
+        "[REDACTED]"
+      ],
+      [
+        "X-CelikPanel-Request-Id",
+        "3836941b21d68442cb5ab49e5125b538"
+      ]
+    ],
+    "method": "POST",
+    "path": "/api/v1/domains/2/ssl/letsencrypt"
+  },
+  "response": {
+    "elapsed_seconds": 0.077,
+    "headers": [
+      [
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+      ],
+      [
+        "Content-Type",
+        "application/json"
+      ],
+      [
+        "Referrer-Policy",
+        "no-referrer"
+      ],
+      [
+        "Strict-Transport-Security",
+        "max-age=31536000"
+      ],
+      [
+        "X-Celikpanel-Request-Id",
+        "3836941b21d68442cb5ab49e5125b538"
+      ],
+      [
+        "X-Content-Type-Options",
+        "nosniff"
+      ],
+      [
+        "X-Frame-Options",
+        "DENY"
+      ],
+      [
+        "Date",
+        "Sun, 11 Oct 2026 00:33:45 GMT"
+      ],
+      [
+        "Content-Length",
+        "375"
+      ]
+    ],
+    "json": {
+      "code": "CERTIFICATE_VALIDATION_UNKNOWN",
+      "detail": "unknown",
+      "error": "CelikPanel could not check whether this site’s nginx configuration file lets the certificate validation run, because nginx on this server did not answer, so no certificate was requested and nothing was changed. The server administrator checks that nginx is running; then request the certificate again."
+    },
+    "status": 503,
+    "text": null
+  }
+}

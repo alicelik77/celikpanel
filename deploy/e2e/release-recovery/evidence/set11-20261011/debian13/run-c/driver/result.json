@@ -1,0 +1,514 @@
+{
+  "artifacts": {
+    "baseline": {
+      "commit": "b2b43d0cd680a0bc569ea02178c83a06b01c4941",
+      "sha256": "fd0d63a0596ab76dd0de04a362bceeae5325476e5bd036fa311f7a481bfed573",
+      "version": "v0.1.0-alpha.81"
+    }
+  },
+  "cell": {
+    "components": [
+      "nginx",
+      "php-fpm",
+      "mariadb",
+      "postfix",
+      "dovecot",
+      "roundcube",
+      "rspamd",
+      "postgresql"
+    ],
+    "mail": true,
+    "name": "set11-debian13",
+    "node": "debian13",
+    "purpose": "web_mail"
+  },
+  "cell_kind": "set11-fresh-install",
+  "findings": [
+    "debian13: server setup waits at access_dns (server_setup_access_dns_required) on an isolated host; later wizard steps were not run: ['12-panel_certificate', '13-access_dns', '14-mail_certificate', '15-mail_enrollment', '16-verify']"
+  ],
+  "identity": {
+    "cell_id": "release-recovery__7009c7186effb90a",
+    "node": "debian13",
+    "vm_uuid": "f74d3100-4fab-5f2d-aa69-78ad23a76683"
+  },
+  "native_evidence": false,
+  "note": "set11: a measurement on the fresh install; no update is started and no P0 row is judged.",
+  "outcome": {
+    "classification": "set11-measured",
+    "final_status": null
+  },
+  "overall": "failed",
+  "provenance": {
+    "what": "set11: ead69cdcc installed fresh; no update"
+  },
+  "request_id": null,
+  "schema": "celikpanel/upd1-owner-update-result/v1",
+  "sections": {
+    "A1-probe-ready": {
+      "checks": 10,
+      "error": null,
+      "failed": [
+        "A1: the file was there for every GET (created before the first request was sent, removed after the last was sent; each watcher's own read time)"
+      ],
+      "finished_at": "2026-10-11T00:51:20Z",
+      "notes": [
+        "A1: FAIL"
+      ],
+      "started_at": "2026-10-11T00:51:13Z",
+      "substeps": {
+        "A1": "failed"
+      },
+      "title": "owner-edited file with CelikPanel's include lines: certificate issuance",
+      "unknown": [],
+      "verdict": "failed"
+    },
+    "A2-include-missing": {
+      "checks": 11,
+      "error": null,
+      "failed": [
+        "A2: the file was there for every GET (created before the first request was sent, removed after the last was sent; each watcher's own read time)"
+      ],
+      "finished_at": "2026-10-11T00:51:35Z",
+      "notes": [
+        "A2: FAIL"
+      ],
+      "started_at": "2026-10-11T00:51:29Z",
+      "substeps": {
+        "A2": "failed"
+      },
+      "title": "a kept file without the line including CelikPanel's directory: certificate issuance",
+      "unknown": [],
+      "verdict": "failed"
+    },
+    "A3-mail-name": {
+      "checks": 17,
+      "error": null,
+      "failed": [],
+      "finished_at": "2026-10-11T00:51:54Z",
+      "notes": [
+        "A3: PASS"
+      ],
+      "started_at": "2026-10-11T00:51:42Z",
+      "substeps": {
+        "A3": "passed"
+      },
+      "title": "a validation-only block for mail.<domain>: present, then removed by the owner",
+      "unknown": [],
+      "verdict": "passed"
+    },
+    "A4-nginx-stopped": {
+      "checks": 8,
+      "error": null,
+      "failed": [],
+      "finished_at": "2026-10-11T00:51:29Z",
+      "notes": [
+        "A4: PASS"
+      ],
+      "started_at": "2026-10-11T00:51:20Z",
+      "substeps": {
+        "A4": "passed"
+      },
+      "title": "the same file with nginx stopped: certificate issuance",
+      "unknown": [],
+      "verdict": "passed"
+    },
+    "A5-include-back": {
+      "checks": 13,
+      "error": null,
+      "failed": [],
+      "finished_at": "2026-10-11T00:51:41Z",
+      "notes": [
+        "A5: NOT-MEASURED"
+      ],
+      "started_at": "2026-10-11T00:51:35Z",
+      "substeps": {
+        "A5": "inconclusive"
+      },
+      "title": "the owner puts the line back: the Configuration file read probes again",
+      "unknown": [
+        "A5: the dashboard entry for the site clears"
+      ],
+      "verdict": "inconclusive"
+    },
+    "A6-bound-address": {
+      "checks": 4,
+      "error": null,
+      "failed": [],
+      "finished_at": "2026-10-11T00:52:01Z",
+      "notes": [
+        "A6: PASS"
+      ],
+      "started_at": "2026-10-11T00:51:54Z",
+      "substeps": {
+        "A6": "passed"
+      },
+      "title": "the port-80 block bound to one address only: certificate issuance",
+      "unknown": [],
+      "verdict": "passed"
+    },
+    "B1-locked-start": {
+      "checks": 9,
+      "error": null,
+      "failed": [],
+      "finished_at": "2026-10-11T00:53:00Z",
+      "notes": [
+        "B1: PASS"
+      ],
+      "started_at": "2026-10-11T00:52:01Z",
+      "substeps": {
+        "B1": "passed"
+      },
+      "title": "A locked while A, B and the static site need a render; the page; check again",
+      "unknown": [],
+      "verdict": "passed"
+    },
+    "B2-unlocked-recheck": {
+      "checks": 4,
+      "error": null,
+      "failed": [],
+      "finished_at": "2026-10-11T00:53:06Z",
+      "notes": [
+        "B2: PASS"
+      ],
+      "started_at": "2026-10-11T00:53:00Z",
+      "substeps": {
+        "B2": "passed"
+      },
+      "title": "the owner unlocks A; check again",
+      "unknown": [],
+      "verdict": "passed"
+    },
+    "B3-save-writes": {
+      "checks": 4,
+      "error": null,
+      "failed": [],
+      "finished_at": "2026-10-11T00:53:10Z",
+      "notes": [
+        "B3: PASS"
+      ],
+      "started_at": "2026-10-11T00:53:06Z",
+      "substeps": {
+        "B3": "passed"
+      },
+      "title": "a General save of A after the unlock",
+      "unknown": [],
+      "verdict": "passed"
+    },
+    "B4-take-refused": {
+      "checks": 4,
+      "error": null,
+      "failed": [
+        "B4: the page and the Domains row name the same state after the refusal"
+      ],
+      "finished_at": "2026-10-11T00:53:40Z",
+      "notes": [
+        "B4: FAIL"
+      ],
+      "started_at": "2026-10-11T00:53:10Z",
+      "substeps": {
+        "B4": "failed"
+      },
+      "title": "take on an owner-edited A whose replacement fails",
+      "unknown": [],
+      "verdict": "failed"
+    },
+    "C-directory-modes": {
+      "checks": 8,
+      "error": null,
+      "failed": [],
+      "finished_at": "2026-10-11T00:51:13Z",
+      "notes": [
+        "C: PASS"
+      ],
+      "started_at": "2026-10-11T00:51:13Z",
+      "substeps": {
+        "C": "passed"
+      },
+      "title": "the include directories as created: mode, owner, group",
+      "unknown": [],
+      "verdict": "passed"
+    },
+    "S0-sites": {
+      "checks": 16,
+      "error": null,
+      "failed": [],
+      "finished_at": "2026-10-11T00:50:55Z",
+      "notes": [
+        "S0: PASS"
+      ],
+      "started_at": "2026-10-11T00:50:50Z",
+      "substeps": {
+        "S0": "passed",
+        "section": "passed"
+      },
+      "title": "two PHP sites; header, digest, ledger row, include directory, nginx -T (set10's section)",
+      "unknown": [],
+      "verdict": "passed"
+    },
+    "h-i-unchanged-start": {
+      "checks": 7,
+      "error": null,
+      "failed": [],
+      "finished_at": "2026-10-11T00:51:13Z",
+      "notes": [
+        "h: PASS",
+        "i: PASS"
+      ],
+      "started_at": "2026-10-11T00:50:55Z",
+      "substeps": {
+        "h": "passed",
+        "i": "passed"
+      },
+      "title": "a restart with every site unchanged (set10's section; it records the Panel's text)",
+      "unknown": [],
+      "verdict": "passed"
+    }
+  },
+  "set11": {
+    "a2_dashboard": {
+      "expiring_certs": [],
+      "status": 200
+    },
+    "a2_rows_after": {
+      "pending_reason": "certificate_validation",
+      "state": "owner_edited"
+    },
+    "creation": {
+      "set1-owner.test": {
+        "inode": 135936,
+        "mtime_ns": 1791679849518216593,
+        "sha256": "c08284e5e585d211cacde933ce6fb0742bd3436c9753724ba89754efbae603ff"
+      },
+      "set11-a.test": {
+        "inode": 135942,
+        "mtime_ns": 1791679852634201091,
+        "sha256": "900b07bc0ced88704c25c22ad3219ae87c3da7e8a328adb46aeacf0a981e0c65"
+      },
+      "set11-b.test": {
+        "inode": 135948,
+        "mtime_ns": 1791679854278193198,
+        "sha256": "e9e0aa28fff503eb469b66f347f2b246de33e05337582ea9c069920200b15e22"
+      }
+    },
+    "ids": {
+      "set1-owner.test": 1,
+      "set11-a.test": 2,
+      "set11-b.test": 3
+    }
+  },
+  "setup": {
+    "components": [
+      "dovecot",
+      "mariadb",
+      "nginx",
+      "php-fpm",
+      "postfix",
+      "postgresql",
+      "roundcube",
+      "rspamd"
+    ],
+    "purpose": "web_mail",
+    "waiting": {
+      "code": "server_setup_access_dns_required",
+      "mail_steps_reached": true,
+      "not_run": [
+        "12-panel_certificate",
+        "13-access_dns",
+        "14-mail_certificate",
+        "15-mail_enrollment",
+        "16-verify"
+      ],
+      "phase": "access_dns",
+      "polls": 25,
+      "stable_wait_seconds": 122.4,
+      "steps": {
+        "01-dns": "succeeded",
+        "02-service": "succeeded",
+        "03-service": "succeeded",
+        "04-service": "succeeded",
+        "05-service": "succeeded",
+        "06-mail_profile": "succeeded",
+        "07-mail_profile": "succeeded",
+        "08-service": "succeeded",
+        "09-service": "succeeded",
+        "10-firewall": "succeeded",
+        "11-access_dns": "running",
+        "12-panel_certificate": "pending",
+        "13-access_dns": "pending",
+        "14-mail_certificate": "pending",
+        "15-mail_enrollment": "pending",
+        "16-verify": "pending"
+      }
+    }
+  },
+  "steps": [
+    {
+      "finished_at": "2026-10-11T00:42:26Z",
+      "name": "set6-name-pinning",
+      "reason": null,
+      "started_at": "2026-10-11T00:42:21Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T00:42:31Z",
+      "name": "preflight",
+      "reason": null,
+      "started_at": "2026-10-11T00:42:26Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T00:42:39Z",
+      "name": "origin",
+      "reason": null,
+      "started_at": "2026-10-11T00:42:31Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T00:43:28Z",
+      "name": "baseline-install",
+      "reason": null,
+      "started_at": "2026-10-11T00:42:39Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T00:43:29Z",
+      "name": "owner-login",
+      "reason": null,
+      "started_at": "2026-10-11T00:43:28Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T00:43:29Z",
+      "name": "license",
+      "reason": null,
+      "started_at": "2026-10-11T00:43:29Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T00:50:48Z",
+      "name": "setup",
+      "reason": null,
+      "started_at": "2026-10-11T00:43:29Z",
+      "verdict": "observed"
+    },
+    {
+      "finished_at": "2026-10-11T00:50:50Z",
+      "name": "site",
+      "reason": null,
+      "started_at": "2026-10-11T00:50:48Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T00:50:55Z",
+      "name": "S0-sites",
+      "reason": null,
+      "started_at": "2026-10-11T00:50:50Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T00:51:13Z",
+      "name": "h-i-unchanged-start",
+      "reason": null,
+      "started_at": "2026-10-11T00:50:55Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T00:51:13Z",
+      "name": "C-directory-modes",
+      "reason": null,
+      "started_at": "2026-10-11T00:51:13Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T00:51:20Z",
+      "name": "A1-probe-ready",
+      "reason": "A1: the file was there for every GET (created before the first request was sent, removed after the last was sent; each watcher's own read time)",
+      "started_at": "2026-10-11T00:51:13Z",
+      "verdict": "failed"
+    },
+    {
+      "finished_at": "2026-10-11T00:51:29Z",
+      "name": "A4-nginx-stopped",
+      "reason": null,
+      "started_at": "2026-10-11T00:51:20Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T00:51:35Z",
+      "name": "A2-include-missing",
+      "reason": "A2: the file was there for every GET (created before the first request was sent, removed after the last was sent; each watcher's own read time)",
+      "started_at": "2026-10-11T00:51:29Z",
+      "verdict": "failed"
+    },
+    {
+      "finished_at": "2026-10-11T00:51:41Z",
+      "name": "A5-include-back",
+      "reason": "not established: A5: the dashboard entry for the site clears",
+      "started_at": "2026-10-11T00:51:35Z",
+      "verdict": "inconclusive"
+    },
+    {
+      "finished_at": "2026-10-11T00:51:54Z",
+      "name": "A3-mail-name",
+      "reason": null,
+      "started_at": "2026-10-11T00:51:42Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T00:52:01Z",
+      "name": "A6-bound-address",
+      "reason": null,
+      "started_at": "2026-10-11T00:51:54Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T00:53:00Z",
+      "name": "B1-locked-start",
+      "reason": null,
+      "started_at": "2026-10-11T00:52:01Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T00:53:06Z",
+      "name": "B2-unlocked-recheck",
+      "reason": null,
+      "started_at": "2026-10-11T00:53:00Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T00:53:10Z",
+      "name": "B3-save-writes",
+      "reason": null,
+      "started_at": "2026-10-11T00:53:06Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T00:53:40Z",
+      "name": "B4-take-refused",
+      "reason": "B4: the page and the Domains row name the same state after the refusal",
+      "started_at": "2026-10-11T00:53:10Z",
+      "verdict": "failed"
+    },
+    {
+      "finished_at": "2026-10-11T00:57:11Z",
+      "name": "set11-browser-window",
+      "reason": null,
+      "started_at": "2026-10-11T00:53:40Z",
+      "verdict": "observed"
+    },
+    {
+      "finished_at": "2026-10-11T00:57:11Z",
+      "name": "set6-name-pinning-at-the-end",
+      "reason": null,
+      "started_at": "2026-10-11T00:57:11Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T00:57:13Z",
+      "name": "collect",
+      "reason": null,
+      "started_at": "2026-10-11T00:57:11Z",
+      "verdict": "passed"
+    }
+  ]
+}

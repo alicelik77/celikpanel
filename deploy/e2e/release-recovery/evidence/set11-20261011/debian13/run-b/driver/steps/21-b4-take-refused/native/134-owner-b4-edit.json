@@ -1,0 +1,128 @@
+{
+  "action": "owner-vhost10",
+  "added_lines": [
+    "",
+    "    # set10: added by the server owner by hand",
+    "    location /owner-extra/ {",
+    "        return 200 \"owner\";",
+    "    }"
+  ],
+  "after": {
+    "enabled": {
+      "ctime_ns": 1791678794135178742,
+      "exists": true,
+      "gid": 989,
+      "group": "celikpanel",
+      "inode": 135519,
+      "kind": "symlink",
+      "link_target": "/etc/nginx/sites-available/set11-a.test.conf",
+      "mode": "0777",
+      "mtime_ns": 1791678794135178742,
+      "nlink": 1,
+      "owner": "root",
+      "path": "/etc/nginx/sites-enabled/set11-a.test.conf",
+      "resolves_to": "/etc/nginx/sites-available/set11-a.test.conf",
+      "size": 44,
+      "uid": 0
+    },
+    "vhost": {
+      "ctime_ns": 1791678930431132110,
+      "exists": true,
+      "first_line": "# celikpanel-render v2 sha256=8d0ded895ef5095c98de162e7328057a266c835ca11cfdfc6ede51709ffe96c6",
+      "gid": 989,
+      "group": "celikpanel",
+      "header": {
+        "body_bytes": 2146,
+        "body_sha256": "dda33ca5beec703e6fc9631f0e88c57466da0ee5bb52dd490bf47dbe1692654c",
+        "declared": "8d0ded895ef5095c98de162e7328057a266c835ca11cfdfc6ede51709ffe96c6",
+        "present": true,
+        "valid": false
+      },
+      "immutable": false,
+      "inode": 131558,
+      "kind": "file",
+      "lsattr": "--------------e-------",
+      "mode": "0644",
+      "mtime_ns": 1791678930431132110,
+      "nlink": 1,
+      "owner": "root",
+      "path": "/etc/nginx/sites-available/set11-a.test.conf",
+      "sha256": "7d96d96e850053b0a762ce465e1b689ba0e65c92ff3c1cbc5bf136d5e64dfaa1",
+      "size": 2241,
+      "text": "# celikpanel-render v2 sha256=8d0ded895ef5095c98de162e7328057a266c835ca11cfdfc6ede51709ffe96c6\n# Nginx vhost for set11-a.test\n# Written by CelikPanel. Put your own additions in /etc/nginx/celikpanel-sites.d/set11-a.test/*.conf;\n# CelikPanel never writes there. If you change this file, CelikPanel keeps\n# your file and asks you before it replaces it. Keep the lines that include\n# /etc/nginx/celikpanel-managed.d/set11-a.test: that directory is CelikPanel's (certificate\n# validation) and CelikPanel writes there without touching this file.\n# CelikPanel yazdı. Kendi eklemeleriniz /etc/nginx/celikpanel-sites.d/set11-a.test/*.conf içine;\n# CelikPanel oraya hiç yazmaz. Bu dosyayı değiştirirseniz CelikPanel\n# dosyanızı korur ve değiştirmeden önce size sorar. /etc/nginx/celikpanel-managed.d/set11-a.test\n# satırlarını koruyun: o dizin CelikPanel'indir (sertifika doğrulaması).\n# Site ID: 2 · Project type: php\nserver {\n    listen 80;\n    listen [::]:80;\n    server_name set11-a.test www.set11-a.test;\n\n    access_log /var/log/nginx/set11-a.test-access.log;\n    error_log /var/log/nginx/set11-a.test-error.log;\n\n    # CelikPanel's own parts of this site (certificate validation) / CelikPanel'in parçaları\n    include /etc/nginx/celikpanel-managed.d/set11-a.test/*.conf;\n\n    root /var/www/celikpanel/subscriptions/2/sites/2/public_html;\n    index index.php index.html index.htm;\n\n    location / {\n\n        try_files $uri $uri/ /index.php?$query_string;\n    }\n    location ~ \\.php$ {\n        fastcgi_split_path_info ^(.+?\\.php)(/.*)$;\n        try_files $fastcgi_script_name =404;\n        set $path_info $fastcgi_path_info;\n        fastcgi_param PATH_INFO $path_info;\n        fastcgi_index index.php;\n        include fastcgi.conf;\n        fastcgi_pass unix:/var/run/php/php8.4-fpm-site2.sock;\n        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;\n        include fastcgi_params;\n    }\n    location ~ /\\.(?!well-known).* {\n        deny all;\n    }\n\n    # Your additions for this site (server context) / Bu site için eklemeleriniz\n    include /etc/nginx/celikpanel-sites.d/set11-a.test/*.conf;\n\n    # set10: added by the server owner by hand\n    location /owner-extra/ {\n        return 200 \"owner\";\n    }\n}\n",
+      "uid": 0
+    }
+  },
+  "at": "2026-10-11T00:35:30Z",
+  "before": {
+    "enabled": {
+      "ctime_ns": 1791678794135178742,
+      "exists": true,
+      "gid": 989,
+      "group": "celikpanel",
+      "inode": 135519,
+      "kind": "symlink",
+      "link_target": "/etc/nginx/sites-available/set11-a.test.conf",
+      "mode": "0777",
+      "mtime_ns": 1791678794135178742,
+      "nlink": 1,
+      "owner": "root",
+      "path": "/etc/nginx/sites-enabled/set11-a.test.conf",
+      "resolves_to": "/etc/nginx/sites-available/set11-a.test.conf",
+      "size": 44,
+      "uid": 0
+    },
+    "vhost": {
+      "ctime_ns": 1791678930139131277,
+      "exists": true,
+      "first_line": "# celikpanel-render v2 sha256=8d0ded895ef5095c98de162e7328057a266c835ca11cfdfc6ede51709ffe96c6",
+      "gid": 989,
+      "group": "celikpanel",
+      "header": {
+        "body_bytes": 2035,
+        "body_sha256": "8d0ded895ef5095c98de162e7328057a266c835ca11cfdfc6ede51709ffe96c6",
+        "declared": "8d0ded895ef5095c98de162e7328057a266c835ca11cfdfc6ede51709ffe96c6",
+        "present": true,
+        "valid": true
+      },
+      "immutable": false,
+      "inode": 131558,
+      "kind": "file",
+      "lsattr": "--------------e-------",
+      "mode": "0644",
+      "mtime_ns": 1791678930131131254,
+      "nlink": 1,
+      "owner": "root",
+      "path": "/etc/nginx/sites-available/set11-a.test.conf",
+      "sha256": "900b07bc0ced88704c25c22ad3219ae87c3da7e8a328adb46aeacf0a981e0c65",
+      "size": 2130,
+      "text": "# celikpanel-render v2 sha256=8d0ded895ef5095c98de162e7328057a266c835ca11cfdfc6ede51709ffe96c6\n# Nginx vhost for set11-a.test\n# Written by CelikPanel. Put your own additions in /etc/nginx/celikpanel-sites.d/set11-a.test/*.conf;\n# CelikPanel never writes there. If you change this file, CelikPanel keeps\n# your file and asks you before it replaces it. Keep the lines that include\n# /etc/nginx/celikpanel-managed.d/set11-a.test: that directory is CelikPanel's (certificate\n# validation) and CelikPanel writes there without touching this file.\n# CelikPanel yazdı. Kendi eklemeleriniz /etc/nginx/celikpanel-sites.d/set11-a.test/*.conf içine;\n# CelikPanel oraya hiç yazmaz. Bu dosyayı değiştirirseniz CelikPanel\n# dosyanızı korur ve değiştirmeden önce size sorar. /etc/nginx/celikpanel-managed.d/set11-a.test\n# satırlarını koruyun: o dizin CelikPanel'indir (sertifika doğrulaması).\n# Site ID: 2 · Project type: php\nserver {\n    listen 80;\n    listen [::]:80;\n    server_name set11-a.test www.set11-a.test;\n\n    access_log /var/log/nginx/set11-a.test-access.log;\n    error_log /var/log/nginx/set11-a.test-error.log;\n\n    # CelikPanel's own parts of this site (certificate validation) / CelikPanel'in parçaları\n    include /etc/nginx/celikpanel-managed.d/set11-a.test/*.conf;\n\n    root /var/www/celikpanel/subscriptions/2/sites/2/public_html;\n    index index.php index.html index.htm;\n\n    location / {\n\n        try_files $uri $uri/ /index.php?$query_string;\n    }\n    location ~ \\.php$ {\n        fastcgi_split_path_info ^(.+?\\.php)(/.*)$;\n        try_files $fastcgi_script_name =404;\n        set $path_info $fastcgi_path_info;\n        fastcgi_param PATH_INFO $path_info;\n        fastcgi_index index.php;\n        include fastcgi.conf;\n        fastcgi_pass unix:/var/run/php/php8.4-fpm-site2.sock;\n        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;\n        include fastcgi_params;\n    }\n    location ~ /\\.(?!well-known).* {\n        deny all;\n    }\n\n    # Your additions for this site (server context) / Bu site için eklemeleriniz\n    include /etc/nginx/celikpanel-sites.d/set11-a.test/*.conf;\n}\n",
+      "uid": 0
+    }
+  },
+  "domain": "set11-a.test",
+  "epoch": 1791678930.4899838,
+  "mode": "owner-vhost10",
+  "nginx_test": {
+    "at": "2026-10-11T00:35:30Z",
+    "output": "nginx: the configuration file /etc/nginx/nginx.conf syntax is ok\nnginx: configuration file /etc/nginx/nginx.conf test is successful\n",
+    "returncode": 0,
+    "status": "ok"
+  },
+  "owner_action": true,
+  "reload": {
+    "argv": [
+      "systemctl",
+      "reload",
+      "nginx.service"
+    ],
+    "at": "2026-10-11T00:35:30Z",
+    "returncode": 0,
+    "seconds": 0.04,
+    "status": "ok",
+    "stderr": "",
+    "stdout": ""
+  },
+  "schema": "celikpanel/set10-native/v1",
+  "what": "append-location"
+}

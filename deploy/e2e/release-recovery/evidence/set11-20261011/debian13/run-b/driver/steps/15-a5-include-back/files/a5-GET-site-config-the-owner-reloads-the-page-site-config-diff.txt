@@ -1,0 +1,27 @@
+--- /etc/nginx/sites-available/set11-a.test.conf (on this server)
++++ CelikPanel's text
+@@ -13,13 +13,12 @@
+     listen 80;
+     listen [::]:80;
+     server_name set11-a.test www.set11-a.test;
+-    # set11: put back by the server owner
+-    include /etc/nginx/celikpanel-managed.d/set11-a.test/*.conf;
+ 
+     access_log /var/log/nginx/set11-a.test-access.log;
+     error_log /var/log/nginx/set11-a.test-error.log;
+ 
+     # CelikPanel's own parts of this site (certificate validation) / CelikPanel'in parçaları
++    include /etc/nginx/celikpanel-managed.d/set11-a.test/*.conf;
+ 
+     root /var/www/celikpanel/subscriptions/2/sites/2/public_html;
+     index index.php index.html index.htm;
+@@ -45,9 +44,4 @@
+ 
+     # Your additions for this site (server context) / Bu site için eklemeleriniz
+     include /etc/nginx/celikpanel-sites.d/set11-a.test/*.conf;
+-
+-    # set10: added by the server owner by hand
+-    location /owner-extra/ {
+-        return 200 "owner";
+-    }
+ }

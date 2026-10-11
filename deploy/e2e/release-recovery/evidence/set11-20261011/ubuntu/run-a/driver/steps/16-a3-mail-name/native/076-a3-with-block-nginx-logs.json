@@ -1,0 +1,19 @@
+{
+  "at": "2026-10-11T01:18:55Z",
+  "epoch": 1791681535.8359396,
+  "logs": {
+    "/var/log/nginx/access.log": {
+      "from": 1176,
+      "text": "127.0.0.1 - - [11/Oct/2026:01:18:49 +0000] \"GET /.well-known/acme-challenge/celikpanel-probe-d5d1d1b064d9f0cff8820d08b8bc53ad HTTP/1.1\" 200 61 \"-\" \"Go-http-client/1.1\"\n",
+      "to": 1344
+    },
+    "/var/log/nginx/set11-a.test-access.log": {
+      "from": 1100,
+      "text": "127.0.0.1 - - [11/Oct/2026:01:18:49 +0000] \"GET /.well-known/acme-challenge/celikpanel-probe-d5d1d1b064d9f0cff8820d08b8bc53ad HTTP/1.1\" 200 61 \"-\" \"Go-http-client/1.1\"\n127.0.0.1 - - [11/Oct/2026:01:18:49 +0000] \"GET /.well-known/acme-challenge/celikpanel-probe-d5d1d1b064d9f0cff8820d08b8bc53ad HTTP/1.1\" 200 61 \"-\" \"Go-http-client/1.1\"\n",
+      "to": 1436
+    }
+  },
+  "mode": "read-logs",
+  "owner_action": false,
+  "schema": "celikpanel/set11-native/v1"
+}

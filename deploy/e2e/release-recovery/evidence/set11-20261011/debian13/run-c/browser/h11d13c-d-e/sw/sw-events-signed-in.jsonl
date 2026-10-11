@@ -1,0 +1,41 @@
+{"at":"2026-10-11T00:56:23.743Z","ev":"registration","registrations":[]}
+{"at":"2026-10-11T00:56:23.743Z","ev":"version","versions":[]}
+{"at":"2026-10-11T00:56:23.832Z","ev":"registration","registrations":[{"scope":"https://127.0.0.1:18871/","deleted":false}]}
+{"at":"2026-10-11T00:56:23.832Z","ev":"version","versions":[{"script":"/recovery-worker.js","runningStatus":"stopped","status":"new","controlledClients":0}]}
+{"at":"2026-10-11T00:56:23.841Z","ev":"version","versions":[{"script":"/recovery-worker.js","runningStatus":"stopped","status":"new","controlledClients":0}]}
+{"at":"2026-10-11T00:56:23.847Z","ev":"version","versions":[{"script":"/recovery-worker.js","runningStatus":"starting","status":"new","controlledClients":0}]}
+{"at":"2026-10-11T00:56:23.847Z","ev":"version","versions":[{"script":"/recovery-worker.js","runningStatus":"starting","status":"new","controlledClients":0}]}
+{"at":"2026-10-11T00:56:23.852Z","ev":"version","versions":[{"script":"/recovery-worker.js","runningStatus":"starting","status":"installing","controlledClients":0}]}
+{"at":"2026-10-11T00:56:23.852Z","ev":"registration","registrations":[{"scope":"https://127.0.0.1:18871/","deleted":false}]}
+{"at":"2026-10-11T00:56:23.853Z","ev":"version","versions":[{"script":"/recovery-worker.js","runningStatus":"running","status":"installing","controlledClients":0}]}
+{"at":"2026-10-11T00:56:23.867Z","ev":"error","error":{"errorMessage":"Failed to register a ServiceWorker for scope ('https://127.0.0.1:18871/') with script ('https://127.0.0.1:18871/recovery-worker.js'): ServiceWorker failed to install: ServiceWorker failed to handle event (event.waitUntil Promise rejected)","registrationId":"7","versionId":"7","sourceURL":"","lineNumber":-1,"columnNumber":-1}}
+{"at":"2026-10-11T00:56:23.867Z","ev":"version","versions":[{"script":"/recovery-worker.js","runningStatus":"running","status":"redundant","controlledClients":0}]}
+{"at":"2026-10-11T00:56:23.867Z","ev":"version","versions":[{"script":"/recovery-worker.js","runningStatus":"stopping","status":"redundant","controlledClients":0}]}
+{"at":"2026-10-11T00:56:23.868Z","ev":"error","error":{"errorMessage":"Uncaught (in promise) UnknownError: Failed to execute 'open' on 'CacheStorage': Unexpected internal error.","registrationId":"7","versionId":"7","sourceURL":"https://127.0.0.1:18871/recovery-worker.js","lineNumber":0,"columnNumber":-1}}
+{"at":"2026-10-11T00:56:23.868Z","ev":"version","versions":[{"script":"/recovery-worker.js","runningStatus":"stopped","status":"redundant","controlledClients":0}]}
+{"at":"2026-10-11T00:56:30.764Z","ev":"registration","registrations":[{"scope":"https://127.0.0.1:18871/","deleted":false}]}
+{"at":"2026-10-11T00:56:30.764Z","ev":"version","versions":[{"script":"/recovery-worker.js","runningStatus":"stopped","status":"new","controlledClients":0}]}
+{"at":"2026-10-11T00:56:30.770Z","ev":"version","versions":[{"script":"/recovery-worker.js","runningStatus":"stopped","status":"new","controlledClients":0}]}
+{"at":"2026-10-11T00:56:30.770Z","ev":"version","versions":[{"script":"/recovery-worker.js","runningStatus":"starting","status":"new","controlledClients":0}]}
+{"at":"2026-10-11T00:56:30.770Z","ev":"version","versions":[{"script":"/recovery-worker.js","runningStatus":"starting","status":"new","controlledClients":0}]}
+{"at":"2026-10-11T00:56:30.774Z","ev":"version","versions":[{"script":"/recovery-worker.js","runningStatus":"starting","status":"installing","controlledClients":0}]}
+{"at":"2026-10-11T00:56:30.774Z","ev":"registration","registrations":[{"scope":"https://127.0.0.1:18871/","deleted":false}]}
+{"at":"2026-10-11T00:56:30.774Z","ev":"version","versions":[{"script":"/recovery-worker.js","runningStatus":"running","status":"installing","controlledClients":0}]}
+{"at":"2026-10-11T00:56:30.783Z","ev":"error","error":{"errorMessage":"Failed to register a ServiceWorker for scope ('https://127.0.0.1:18871/') with script ('https://127.0.0.1:18871/recovery-worker.js'): ServiceWorker failed to install: ServiceWorker failed to handle event (event.waitUntil Promise rejected)","registrationId":"8","versionId":"8","sourceURL":"","lineNumber":-1,"columnNumber":-1}}
+{"at":"2026-10-11T00:56:30.784Z","ev":"version","versions":[{"script":"/recovery-worker.js","runningStatus":"running","status":"redundant","controlledClients":0}]}
+{"at":"2026-10-11T00:56:30.784Z","ev":"version","versions":[{"script":"/recovery-worker.js","runningStatus":"stopping","status":"redundant","controlledClients":0}]}
+{"at":"2026-10-11T00:56:30.784Z","ev":"error","error":{"errorMessage":"Uncaught (in promise) UnknownError: Failed to execute 'open' on 'CacheStorage': Unexpected internal error.","registrationId":"8","versionId":"8","sourceURL":"https://127.0.0.1:18871/recovery-worker.js","lineNumber":0,"columnNumber":-1}}
+{"at":"2026-10-11T00:56:30.785Z","ev":"version","versions":[{"script":"/recovery-worker.js","runningStatus":"stopped","status":"redundant","controlledClients":0}]}
+{"at":"2026-10-11T00:56:30.871Z","ev":"registration","registrations":[{"scope":"https://127.0.0.1:18871/","deleted":false}]}
+{"at":"2026-10-11T00:56:30.871Z","ev":"version","versions":[{"script":"/recovery-worker.js","runningStatus":"stopped","status":"new","controlledClients":0}]}
+{"at":"2026-10-11T00:56:30.879Z","ev":"version","versions":[{"script":"/recovery-worker.js","runningStatus":"stopped","status":"new","controlledClients":0}]}
+{"at":"2026-10-11T00:56:30.879Z","ev":"version","versions":[{"script":"/recovery-worker.js","runningStatus":"starting","status":"new","controlledClients":0}]}
+{"at":"2026-10-11T00:56:30.880Z","ev":"version","versions":[{"script":"/recovery-worker.js","runningStatus":"starting","status":"new","controlledClients":0}]}
+{"at":"2026-10-11T00:56:30.884Z","ev":"version","versions":[{"script":"/recovery-worker.js","runningStatus":"starting","status":"installing","controlledClients":0}]}
+{"at":"2026-10-11T00:56:30.884Z","ev":"registration","registrations":[{"scope":"https://127.0.0.1:18871/","deleted":false}]}
+{"at":"2026-10-11T00:56:30.884Z","ev":"version","versions":[{"script":"/recovery-worker.js","runningStatus":"running","status":"installing","controlledClients":0}]}
+{"at":"2026-10-11T00:56:30.896Z","ev":"error","error":{"errorMessage":"Failed to register a ServiceWorker for scope ('https://127.0.0.1:18871/') with script ('https://127.0.0.1:18871/recovery-worker.js'): ServiceWorker failed to install: ServiceWorker failed to handle event (event.waitUntil Promise rejected)","registrationId":"9","versionId":"9","sourceURL":"","lineNumber":-1,"columnNumber":-1}}
+{"at":"2026-10-11T00:56:30.896Z","ev":"version","versions":[{"script":"/recovery-worker.js","runningStatus":"running","status":"redundant","controlledClients":0}]}
+{"at":"2026-10-11T00:56:30.897Z","ev":"version","versions":[{"script":"/recovery-worker.js","runningStatus":"stopping","status":"redundant","controlledClients":0}]}
+{"at":"2026-10-11T00:56:30.897Z","ev":"error","error":{"errorMessage":"Uncaught (in promise) UnknownError: Failed to execute 'open' on 'CacheStorage': Unexpected internal error.","registrationId":"9","versionId":"9","sourceURL":"https://127.0.0.1:18871/recovery-worker.js","lineNumber":0,"columnNumber":-1}}
+{"at":"2026-10-11T00:56:30.898Z","ev":"version","versions":[{"script":"/recovery-worker.js","runningStatus":"stopped","status":"redundant","controlledClients":0}]}

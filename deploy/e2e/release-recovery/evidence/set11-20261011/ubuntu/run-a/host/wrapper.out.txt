@@ -1,0 +1,34 @@
+Formatting '/var/tmp/cp-release-drill-s11-ub-a/cells/064cf4f605575fe934d25e5e/ubuntu/overlay.qcow2', fmt=qcow2 cluster_size=65536 extended_l2=off compression_type=zlib size=25769803776 backing_file=/var/tmp/cp-release-drill-s11-ub-a/images/ubuntu-24.04-server-cloudimg-amd64-20260826.img backing_fmt=qcow2 lazy_refcounts=off refcount_bits=16
+{"action": "prepared", "root": "/var/tmp/cp-release-drill-s11-ub-a", "cell_id": "release-recovery__ec1c76c1b0f0f706", "ssh_ports": [4872, 4873]}
+{"action": "ready", "root": "/var/tmp/cp-release-drill-s11-ub-a", "nodes": {"ubuntu": "verified-disposable-systemd-guest"}}
+{"action": "ready", "root": "/var/tmp/cp-release-drill-s11-ub-a", "nodes": {"ubuntu": "verified-disposable-systemd-guest"}}
+{"step": "set6-name-pinning", "verdict": "passed", "reason": null}
+{"step": "preflight", "verdict": "passed", "reason": null}
+{"step": "origin", "verdict": "passed", "reason": null}
+{"step": "baseline-install", "verdict": "passed", "reason": null}
+{"step": "owner-login", "verdict": "passed", "reason": null}
+{"step": "license", "verdict": "passed", "reason": null}
+{"step": "setup", "verdict": "observed", "reason": null}
+{"step": "site", "verdict": "passed", "reason": null}
+{"step": "S0-sites", "verdict": "passed", "reason": null}
+{"step": "h-i-unchanged-start", "verdict": "passed", "reason": null}
+{"step": "C-directory-modes", "verdict": "passed", "reason": null}
+{"step": "A1-probe-ready", "verdict": "passed", "reason": null}
+{"step": "A4-nginx-stopped", "verdict": "passed", "reason": null}
+{"step": "A2-include-missing", "verdict": "passed", "reason": null}
+{"step": "A5-include-back", "verdict": "inconclusive", "reason": "not established: A5: the dashboard entry for the site clears"}
+{"step": "A3-mail-name", "verdict": "passed", "reason": null}
+{"step": "A6-bound-address", "verdict": "passed", "reason": null}
+{"set11": "ready", "window": "b-unwritable", "hand": "/var/tmp/cp-set11-run/hand/h11ub-b-unwritable", "port": 18872}
+{"step": "B1-locked-start", "verdict": "passed", "reason": null}
+{"step": "B2-unlocked-recheck", "verdict": "passed", "reason": null}
+{"step": "B3-save-writes", "verdict": "passed", "reason": null}
+{"set11": "ready", "window": "b-take-refused", "hand": "/var/tmp/cp-set11-run/hand/h11ub-b-take-refused", "port": 18872}
+{"step": "B4-take-refused", "verdict": "failed", "reason": "B4: the page and the Domains row name the same state after the refusal"}
+{"set11": "ready", "window": "d-e", "hand": "/var/tmp/cp-set11-run/hand/h11ub-d-e", "port": 18872}
+{"step": "set11-browser-window", "verdict": "observed", "reason": null}
+{"step": "set6-name-pinning-at-the-end", "verdict": "passed", "reason": null}
+{"step": "collect", "verdict": "passed", "reason": null}
+{"cell_kind": "set11-fresh-install", "overall": "failed", "sections": {"A1-probe-ready": "passed", "A2-include-missing": "passed", "A3-mail-name": "passed", "A4-nginx-stopped": "passed", "A5-include-back": "inconclusive", "A6-bound-address": "passed", "B1-locked-start": "passed", "B2-unlocked-recheck": "passed", "B3-save-writes": "passed", "B4-take-refused": "failed", "C-directory-modes": "passed", "S0-sites": "passed", "h-i-unchanged-start": "passed"}}
+{"action": "stopped", "root": "/var/tmp/cp-release-drill-s11-ub-a", "evidence_retained": true}
+SET11 cell=set11-ubuntu lab=/var/tmp/cp-release-drill-s11-ub-a driver_exit=1 evidence=/var/tmp/cp-release-drill-s11-ub-a/evidence/*/upd1

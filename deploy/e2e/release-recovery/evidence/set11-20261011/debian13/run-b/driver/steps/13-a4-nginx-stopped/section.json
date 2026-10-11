@@ -1,0 +1,477 @@
+{
+  "a4": {
+    "answer": {
+      "body": {
+        "code": "CERTIFICATE_VALIDATION_UNKNOWN",
+        "detail": "unknown",
+        "error": "CelikPanel could not check whether this site’s nginx configuration file lets the certificate validation run, because nginx on this server did not answer, so no certificate was requested and nothing was changed. The server administrator checks that nginx is running; then request the certificate again."
+      },
+      "seconds": 0.1,
+      "sent": {
+        "auto_renew": false,
+        "email": "hostmaster@set11-a.test"
+      },
+      "status": 503
+    },
+    "files": {
+      "journal": "steps/13-a4-nginx-stopped/native/037-a4-journal.json",
+      "logs": "steps/13-a4-nginx-stopped/native/036-a4-nginx-logs.json",
+      "watch": "steps/13-a4-nginx-stopped/native/035-a4-watch-stop.json"
+    },
+    "probe": {
+      "gets": [],
+      "probe_files": {
+        "celikpanel-probe-76c1da8afff018b44ac18bbd13b41e9d": {
+          "created_t": 1791678825.2785234,
+          "deleted_t": 1791678825.2791822,
+          "events": [
+            "create",
+            "modify",
+            "close_write",
+            "attrib",
+            "delete"
+          ],
+          "final_mode": "0o644",
+          "modes": [
+            "0o644",
+            "0o644",
+            "0o644",
+            "0o644"
+          ],
+          "owners": [
+            [
+              0,
+              989
+            ],
+            [
+              0,
+              989
+            ],
+            [
+              0,
+              989
+            ],
+            [
+              0,
+              989
+            ]
+          ],
+          "sizes": [
+            61,
+            61,
+            61,
+            61
+          ]
+        }
+      }
+    }
+  },
+  "calls": [
+    {
+      "answer": {
+        "code": "CERTIFICATE_VALIDATION_UNKNOWN",
+        "detail": "unknown",
+        "error": "CelikPanel could not check whether this site’s nginx configuration file lets the certificate validation run, because nginx on this server did not answer, so no certificate was requested and nothing was changed. The server administrator checks that nginx is running; then request the certificate again."
+      },
+      "at": "2026-10-11T00:33:45Z",
+      "catalogue_texts": {
+        "err.CERTIFICATE_VALIDATION_UNKNOWN": {
+          "en": "CelikPanel could not check whether this site’s nginx configuration file lets the certificate validation run, because nginx on this server did not answer, so no certificate was requested and nothing was changed. The server administrator checks that nginx is running; then request the certificate again.",
+          "tr": "Bu sunucudaki nginx yanıt vermediği için CelikPanel, bu sitenin nginx yapılandırma dosyasının sertifika doğrulamasına izin verip vermediğini kontrol edemedi; bu yüzden sertifika istenmedi ve hiçbir şey değiştirilmedi. Sunucu yöneticisi nginx’in çalıştığını denetler; sonra sertifikayı yeniden isteyin."
+        }
+      },
+      "json": {
+        "code": "CERTIFICATE_VALIDATION_UNKNOWN",
+        "detail": "unknown",
+        "error": "CelikPanel could not check whether this site’s nginx configuration file lets the certificate validation run, because nginx on this server did not answer, so no certificate was requested and nothing was changed. The server administrator checks that nginx is running; then request the certificate again."
+      },
+      "label": "a4: POST ssl/letsencrypt (the owner requests a certificate)",
+      "request": {
+        "body": {
+          "auto_renew": false,
+          "email": "hostmaster@set11-a.test"
+        },
+        "method": "POST",
+        "path": "/api/v1/domains/2/ssl/letsencrypt"
+      },
+      "status": 503,
+      "text": null
+    }
+  ],
+  "cells": {
+    "A4": {
+      "detail": {
+        "answer": {
+          "body": {
+            "code": "CERTIFICATE_VALIDATION_UNKNOWN",
+            "detail": "unknown",
+            "error": "CelikPanel could not check whether this site’s nginx configuration file lets the certificate validation run, because nginx on this server did not answer, so no certificate was requested and nothing was changed. The server administrator checks that nginx is running; then request the certificate again."
+          },
+          "seconds": 0.1,
+          "sent": {
+            "auto_renew": false,
+            "email": "hostmaster@set11-a.test"
+          },
+          "status": 503
+        },
+        "files": {
+          "journal": "steps/13-a4-nginx-stopped/native/037-a4-journal.json",
+          "logs": "steps/13-a4-nginx-stopped/native/036-a4-nginx-logs.json",
+          "watch": "steps/13-a4-nginx-stopped/native/035-a4-watch-stop.json"
+        },
+        "probe": {
+          "gets": [],
+          "probe_files": {
+            "celikpanel-probe-76c1da8afff018b44ac18bbd13b41e9d": {
+              "created_t": 1791678825.2785234,
+              "deleted_t": 1791678825.2791822,
+              "events": [
+                "create",
+                "modify",
+                "close_write",
+                "attrib",
+                "delete"
+              ],
+              "final_mode": "0o644",
+              "modes": [
+                "0o644",
+                "0o644",
+                "0o644",
+                "0o644"
+              ],
+              "owners": [
+                [
+                  0,
+                  989
+                ],
+                [
+                  0,
+                  989
+                ],
+                [
+                  0,
+                  989
+                ],
+                [
+                  0,
+                  989
+                ]
+              ],
+              "sizes": [
+                61,
+                61,
+                61,
+                61
+              ]
+            }
+          }
+        }
+      },
+      "expectations": [
+        {
+          "expectation": "nginx was stopped by the owner (inactive, nothing listening on port 80)",
+          "held": true,
+          "measured": {
+            "is_active": "inactive",
+            "listening_80": []
+          }
+        },
+        {
+          "expectation": "503 CERTIFICATE_VALIDATION_UNKNOWN with detail unknown",
+          "held": true,
+          "measured": {
+            "code": "CERTIFICATE_VALIDATION_UNKNOWN",
+            "detail": "unknown",
+            "error": "CelikPanel could not check whether this site’s nginx configuration file lets the certificate validation run, because nginx on this server did not answer, so no certificate was requested and nothing was changed. The server administrator checks that nginx is running; then request the certificate again.",
+            "status": 503
+          }
+        },
+        {
+          "expectation": "the probe file was written and removed",
+          "held": true,
+          "measured": {
+            "celikpanel-probe-76c1da8afff018b44ac18bbd13b41e9d": {
+              "events": [
+                "create",
+                "modify",
+                "close_write",
+                "attrib",
+                "delete"
+              ],
+              "modes": [
+                "0o644",
+                "0o644",
+                "0o644",
+                "0o644"
+              ]
+            }
+          }
+        },
+        {
+          "expectation": "the probe's connection to port 80 was refused (SYN answered by RST; no HTTP answer)",
+          "held": true,
+          "measured": {
+            "rst_from_80": [
+              {
+                "rst_from": 80,
+                "src": "127.0.0.1",
+                "t": 1791678825.2787905,
+                "to_port": 40474
+              }
+            ],
+            "syn_80": [
+              {
+                "dport": 80,
+                "dst": "127.0.0.1",
+                "sport": 40474,
+                "src": "127.0.0.1",
+                "syn": true,
+                "t": 1791678825.2786
+              }
+            ]
+          }
+        },
+        {
+          "expectation": "no connection to port 443 (nothing was requested)",
+          "held": true,
+          "measured": []
+        },
+        {
+          "expectation": "no ledger reason was written",
+          "held": true,
+          "measured": {
+            "after": "",
+            "before": ""
+          }
+        },
+        {
+          "expectation": "A's vhost is untouched (sha256, inode, mtime)",
+          "held": true,
+          "measured": {
+            "inode": [
+              135511,
+              135511
+            ],
+            "mtime_ns": [
+              1791678814355097861,
+              1791678814355097861
+            ],
+            "sha256": [
+              "7d96d96e850053b0a762ce465e1b689ba0e65c92ff3c1cbc5bf136d5e64dfaa1",
+              "7d96d96e850053b0a762ce465e1b689ba0e65c92ff3c1cbc5bf136d5e64dfaa1"
+            ]
+          }
+        },
+        {
+          "expectation": "nginx was started again by the owner",
+          "held": true,
+          "measured": "active"
+        }
+      ],
+      "verdict": "PASS"
+    }
+  },
+  "checks": [
+    {
+      "detail": {
+        "is_active": "inactive",
+        "listening_80": []
+      },
+      "name": "A4: nginx was stopped by the owner (inactive, nothing listening on port 80)",
+      "ok": true
+    },
+    {
+      "detail": {
+        "code": "CERTIFICATE_VALIDATION_UNKNOWN",
+        "detail": "unknown",
+        "error": "CelikPanel could not check whether this site’s nginx configuration file lets the certificate validation run, because nginx on this server did not answer, so no certificate was requested and nothing was changed. The server administrator checks that nginx is running; then request the certificate again.",
+        "status": 503
+      },
+      "name": "A4: 503 CERTIFICATE_VALIDATION_UNKNOWN with detail unknown",
+      "ok": true
+    },
+    {
+      "detail": {
+        "celikpanel-probe-76c1da8afff018b44ac18bbd13b41e9d": {
+          "events": [
+            "create",
+            "modify",
+            "close_write",
+            "attrib",
+            "delete"
+          ],
+          "modes": [
+            "0o644",
+            "0o644",
+            "0o644",
+            "0o644"
+          ]
+        }
+      },
+      "name": "A4: the probe file was written and removed",
+      "ok": true
+    },
+    {
+      "detail": {
+        "rst_from_80": [
+          {
+            "rst_from": 80,
+            "src": "127.0.0.1",
+            "t": 1791678825.2787905,
+            "to_port": 40474
+          }
+        ],
+        "syn_80": [
+          {
+            "dport": 80,
+            "dst": "127.0.0.1",
+            "sport": 40474,
+            "src": "127.0.0.1",
+            "syn": true,
+            "t": 1791678825.2786
+          }
+        ]
+      },
+      "name": "A4: the probe's connection to port 80 was refused (SYN answered by RST; no HTTP answer)",
+      "ok": true
+    },
+    {
+      "detail": [],
+      "name": "A4: no connection to port 443 (nothing was requested)",
+      "ok": true
+    },
+    {
+      "detail": {
+        "after": "",
+        "before": ""
+      },
+      "name": "A4: no ledger reason was written",
+      "ok": true
+    },
+    {
+      "detail": {
+        "inode": [
+          135511,
+          135511
+        ],
+        "mtime_ns": [
+          1791678814355097861,
+          1791678814355097861
+        ],
+        "sha256": [
+          "7d96d96e850053b0a762ce465e1b689ba0e65c92ff3c1cbc5bf136d5e64dfaa1",
+          "7d96d96e850053b0a762ce465e1b689ba0e65c92ff3c1cbc5bf136d5e64dfaa1"
+        ]
+      },
+      "name": "A4: A's vhost is untouched (sha256, inode, mtime)",
+      "ok": true
+    },
+    {
+      "detail": "active",
+      "name": "A4: nginx was started again by the owner",
+      "ok": true
+    }
+  ],
+  "finished_at": "2026-10-11T00:33:49Z",
+  "native_evidence": false,
+  "natives": [
+    {
+      "file": "native/029-a4-0-stat.json",
+      "label": "a4-0-stat",
+      "mode": "read-stat",
+      "owner_action": false
+    },
+    {
+      "file": "native/030-a4-0-ledger.json",
+      "label": "a4-0-ledger",
+      "mode": "read-ledger",
+      "owner_action": false
+    },
+    {
+      "file": "native/031-owner-a4-nginx-stop.json",
+      "label": "owner-a4-nginx-stop",
+      "mode": "owner-nginx",
+      "owner_action": true
+    },
+    {
+      "file": "native/032-a4-before-acme.json",
+      "label": "a4-before-acme",
+      "mode": "read-acme",
+      "owner_action": false
+    },
+    {
+      "file": "native/033-a4-log-offsets.json",
+      "label": "a4-log-offsets",
+      "mode": "log-offsets",
+      "owner_action": false
+    },
+    {
+      "file": "native/034-a4-watch-start.json",
+      "label": "a4-watch-start",
+      "mode": "watch-start",
+      "owner_action": false
+    },
+    {
+      "file": "native/035-a4-watch-stop.json",
+      "label": "a4-watch-stop",
+      "mode": "watch-stop",
+      "owner_action": false
+    },
+    {
+      "file": "native/036-a4-nginx-logs.json",
+      "label": "a4-nginx-logs",
+      "mode": "read-logs",
+      "owner_action": false
+    },
+    {
+      "file": "native/037-a4-journal.json",
+      "label": "a4-journal",
+      "mode": "read-window",
+      "owner_action": false
+    },
+    {
+      "file": "native/038-owner-a4-nginx-start.json",
+      "label": "owner-a4-nginx-start",
+      "mode": "owner-nginx",
+      "owner_action": true
+    },
+    {
+      "file": "native/039-a4-1-stat.json",
+      "label": "a4-1-stat",
+      "mode": "read-stat",
+      "owner_action": false
+    },
+    {
+      "file": "native/040-a4-1-ledger.json",
+      "label": "a4-1-ledger",
+      "mode": "read-ledger",
+      "owner_action": false
+    }
+  ],
+  "node": "debian13",
+  "notes": [
+    {
+      "detail": [],
+      "note": "A4: PASS"
+    }
+  ],
+  "owner_actions": [
+    {
+      "at": "2026-10-11T00:33:41Z",
+      "label": "a4-nginx-stop",
+      "mode": "owner-nginx"
+    },
+    {
+      "at": "2026-10-11T00:33:47Z",
+      "label": "a4-nginx-start",
+      "mode": "owner-nginx"
+    }
+  ],
+  "section": "A4-nginx-stopped",
+  "started_at": "2026-10-11T00:33:40Z",
+  "substeps": {
+    "A4": "passed"
+  },
+  "title": "the same file with nginx stopped: certificate issuance",
+  "verdict": "passed"
+}

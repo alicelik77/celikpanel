@@ -1,0 +1,92 @@
+{
+  "outcome": "response",
+  "panel": "owner",
+  "purpose": "a5 GET site-config (the owner reloads the page): GET site-config",
+  "request": {
+    "body": null,
+    "headers": [
+      [
+        "Accept",
+        "application/json"
+      ],
+      [
+        "Host",
+        "127.0.0.1:18871"
+      ],
+      [
+        "Cookie",
+        "[REDACTED]"
+      ]
+    ],
+    "method": "GET",
+    "path": "/api/v1/domains/2/site-config"
+  },
+  "response": {
+    "elapsed_seconds": 0.02,
+    "headers": [
+      [
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+      ],
+      [
+        "Content-Type",
+        "application/json"
+      ],
+      [
+        "Referrer-Policy",
+        "no-referrer"
+      ],
+      [
+        "Strict-Transport-Security",
+        "max-age=31536000"
+      ],
+      [
+        "X-Content-Type-Options",
+        "nosniff"
+      ],
+      [
+        "X-Frame-Options",
+        "DENY"
+      ],
+      [
+        "Date",
+        "Sun, 11 Oct 2026 00:51:39 GMT"
+      ],
+      [
+        "Content-Length",
+        "1896"
+      ]
+    ],
+    "json": {
+      "actions": [
+        "keep",
+        "take",
+        "merge"
+      ],
+      "challenge_file": "unchanged",
+      "diff": "--- /etc/nginx/sites-available/set11-a.test.conf (on this server)\n+++ CelikPanel's text\n@@ -13,13 +13,12 @@\n     listen 80;\n     listen [::]:80;\n     server_name set11-a.test www.set11-a.test;\n-    # set11: put back by the server owner\n-    include /etc/nginx/celikpanel-managed.d/set11-a.test/*.conf;\n \n     access_log /var/log/nginx/set11-a.test-access.log;\n     error_log /var/log/nginx/set11-a.test-error.log;\n \n     # CelikPanel's own parts of this site (certificate validation) / CelikPanel'in parçaları\n+    include /etc/nginx/celikpanel-managed.d/set11-a.test/*.conf;\n \n     root /var/www/celikpanel/subscriptions/2/sites/2/public_html;\n     index index.php index.html index.htm;\n@@ -45,9 +44,4 @@\n \n     # Your additions for this site (server context) / Bu site için eklemeleriniz\n     include /etc/nginx/celikpanel-sites.d/set11-a.test/*.conf;\n-\n-    # set10: added by the server owner by hand\n-    location /owner-extra/ {\n-        return 200 \"owner\";\n-    }\n }\n",
+      "domain": "set11-a.test",
+      "domain_id": 2,
+      "enabled": "link",
+      "file_sha256": "e8aae8ecb755d0777b90a0d87accad71c54400bb00331dd0b7532f9c807a55c7",
+      "include_dir": "/etc/nginx/celikpanel-sites.d/set11-a.test",
+      "kind": "nginx_vhost",
+      "ledger": {
+        "observed_at": "2026-10-11T00:51:33Z",
+        "written_at": "2026-10-11T00:50:52Z",
+        "written_release": "v0.1.0-alpha.81 b2b43d0cd680"
+      },
+      "managed_dir": "/etc/nginx/celikpanel-managed.d/set11-a.test",
+      "managed_include": "include /etc/nginx/celikpanel-managed.d/set11-a.test/*.conf;",
+      "path": "/etc/nginx/sites-available/set11-a.test.conf",
+      "pending_path": "/etc/nginx/sites-available/set11-a.test.conf.celikpanel-pending",
+      "protection": "none",
+      "render_sha256": "8d0ded895ef5095c98de162e7328057a266c835ca11cfdfc6ede51709ffe96c6",
+      "resolved_reason": "certificate_validation",
+      "state": "owner_edited",
+      "validation": "ready"
+    },
+    "status": 200,
+    "text": null
+  }
+}

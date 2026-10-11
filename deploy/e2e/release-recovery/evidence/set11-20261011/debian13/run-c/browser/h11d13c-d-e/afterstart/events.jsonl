@@ -1,0 +1,5 @@
+{"at":"2026-10-11T00:55:27.682Z","ev":"sign-in-page","shown":"signed-in"}
+{"at":"2026-10-11T00:55:27.805Z","ev":"restart-requested","number":"restart1791680127796"}
+{"at":"2026-10-11T00:55:29.831Z","ev":"restart-done","record":{"guest_output":"2026-10-11T00:55:29.208371803Z\nMainPID=33842\nActiveState=active\nrc=0\n2026-10-11T00:55:29.295780848Z\nMainPID=36053\nActiveState=active\nActiveEnterTimestamp=Sun 2026-10-11 00:55:29 UTC\nInactiveEnterTimestamp=Sun 2026-10-11 00:55:29 UTC","host_after":1791680129.024564,"host_before":1791680128.7364862,"request":"restart1791680127796","what":"systemctl restart celikpanel-panel.service on the disposable guest, by the harness"}}
+{"at":"2026-10-11T00:55:30.018Z","ev":"load","label":"afterstart-en-root-1","route":"/","lang":"en","context":"the signed-in browser","cache":"disabled","throttle":null,"watch_ms":50000,"note":"the Panel restarted by the harness just before; session reads within 3000 ms of the first went through unchanged; later ones held 40000 ms"}
+{"at":"2026-10-11T00:56:22.177Z","ev":"afterstart-attempt","n":1,"saw_starting_page":true}

@@ -1,0 +1,131 @@
+{
+  "calls": [
+    {
+      "at": "2026-10-11T00:21:13Z",
+      "json": [
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T00:20:43Z",
+          "disk_usage": 0,
+          "domain_name": "set11-b.test",
+          "id": 3,
+          "php_version": "8.4",
+          "project_type": "php",
+          "site_config": {
+            "state": "managed_unchanged"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        },
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T00:20:41Z",
+          "disk_usage": 0,
+          "domain_name": "set11-a.test",
+          "id": 2,
+          "php_version": "8.4",
+          "project_type": "php",
+          "site_config": {
+            "state": "managed_unchanged"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        },
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T00:20:37Z",
+          "disk_usage": 0,
+          "domain_name": "set1-owner.test",
+          "id": 1,
+          "php_version": "",
+          "project_type": "static",
+          "site_config": {
+            "state": "managed_unchanged"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        }
+      ],
+      "label": "a5 before: GET /api/v1/domains (Domains list)",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T00:21:13Z",
+      "json": {
+        "databases": 0,
+        "expiring_certs": [],
+        "mail_accounts": 1
+      },
+      "label": "a5 before: GET /api/v1/dashboard",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/dashboard"
+      },
+      "status": 200,
+      "text": null
+    }
+  ],
+  "checks": [],
+  "error": "TypeError: Set11Trial.snap11() got multiple values for argument 'label'",
+  "finished_at": "2026-10-11T00:21:15Z",
+  "native_evidence": false,
+  "natives": [
+    {
+      "file": "native/044-a5-0-ledger.json",
+      "label": "a5-0-ledger",
+      "mode": "read-ledger",
+      "owner_action": false
+    },
+    {
+      "file": "native/045-owner-a5-add-managed-include.json",
+      "label": "owner-a5-add-managed-include",
+      "mode": "owner-vhost11",
+      "owner_action": true
+    },
+    {
+      "file": "native/046-a5-0-challenge-file-acme.json",
+      "label": "a5-0-challenge-file-acme",
+      "mode": "read-acme",
+      "owner_action": false
+    },
+    {
+      "file": "native/047-a5-0-stat.json",
+      "label": "a5-0-stat",
+      "mode": "read-stat",
+      "owner_action": false
+    },
+    {
+      "file": "native/048-a5-before-acme.json",
+      "label": "a5-before-acme",
+      "mode": "read-acme",
+      "owner_action": false
+    },
+    {
+      "file": "native/049-a5-log-offsets.json",
+      "label": "a5-log-offsets",
+      "mode": "log-offsets",
+      "owner_action": false
+    }
+  ],
+  "node": "debian13",
+  "notes": [],
+  "owner_actions": [
+    {
+      "at": "2026-10-11T00:21:14Z",
+      "label": "a5-add-managed-include",
+      "mode": "owner-vhost11"
+    }
+  ],
+  "section": "A5-include-back",
+  "started_at": "2026-10-11T00:21:13Z",
+  "substeps": {},
+  "title": "the owner puts the line back: the Configuration file read probes again",
+  "verdict": "inconclusive"
+}

@@ -1,0 +1,25 @@
+{
+  "checks": {
+    "checks": 4,
+    "error": null,
+    "failed": [
+      "B4: the page and the Domains row name the same state after the refusal"
+    ],
+    "finished_at": "2026-10-11T00:35:59Z",
+    "notes": [
+      "B4: FAIL"
+    ],
+    "started_at": "2026-10-11T00:35:29Z",
+    "substeps": {
+      "B4": "failed"
+    },
+    "title": "take on an owner-edited A whose replacement fails",
+    "unknown": [],
+    "verdict": "failed"
+  },
+  "finished_at": "2026-10-11T00:35:59Z",
+  "name": "B4-take-refused",
+  "reason": "B4: the page and the Domains row name the same state after the refusal",
+  "started_at": "2026-10-11T00:35:29Z",
+  "verdict": "failed"
+}

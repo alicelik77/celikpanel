@@ -1,0 +1,62 @@
+{
+  "baseline": {
+    "archive": "/var/tmp/cp-pair-accept/dist/a0beb7263d1f4ca72258f6b306f9111ba4e2a334-acceptance-license/celikpanel-v0.1.0-alpha.81-acceptance-license.tar.gz",
+    "commit": "a0beb7263d1f4ca72258f6b306f9111ba4e2a334",
+    "dist_json": "/var/tmp/cp-pair-accept/dist/a0beb7263d1f4ca72258f6b306f9111ba4e2a334-acceptance-license/dist.json",
+    "license_mode": "acceptance-fixture",
+    "product_web_src": "/var/tmp/cp-pair-accept/dist/a0beb7263d1f4ca72258f6b306f9111ba4e2a334-acceptance-license/product-web-src",
+    "reused_dist": "built by an earlier run, used unchanged (UPD1_REUSE_DIST_OF_COMMIT)",
+    "sequence": 81,
+    "sha256": "3350ff44dad2bb699ab5ee0a112b58b7bfb7fa47aa0ebdd3dd3c2da73d080109",
+    "tree": "b1dffa78bcaca9e3514e5b2bc42f0e2cf47dca2f",
+    "version": "v0.1.0-alpha.81"
+  },
+  "baseline_ref": {
+    "patched_files": [],
+    "proof": "/var/tmp/cp-upd1-build/20261011t000145z/baseline-ref-proof.txt",
+    "ref": "v0.1.0-alpha.81",
+    "tag_commit": "a0beb7263d1f4ca72258f6b306f9111ba4e2a334"
+  },
+  "clone": "/var/tmp/cp-upd1-build/20261011t000145z/repo",
+  "defective": {
+    "archive": "/var/tmp/cp-pair-accept/dist/0bb8c302403901055e1a92a9914a02c467003cfb-acceptance-license/celikpanel-v0.1.0-alpha.82-acceptance-license.tar.gz",
+    "commit": "0bb8c302403901055e1a92a9914a02c467003cfb",
+    "defect": "cmd/panel --migrate-only exits 1 after migrating the isolated copy",
+    "dist_json": "/var/tmp/cp-pair-accept/dist/0bb8c302403901055e1a92a9914a02c467003cfb-acceptance-license/dist.json",
+    "license_mode": "acceptance-fixture",
+    "parent": "9e626fcabf5ebcffb96e07f230cfecb95065c9d8",
+    "product_web_src": "/var/tmp/cp-pair-accept/dist/0bb8c302403901055e1a92a9914a02c467003cfb-acceptance-license/product-web-src",
+    "sequence": 82,
+    "sha256": "1533ecfb86750ccd7145312d329803273e703da16e03d5755c35bf65c29b30e9",
+    "tree": "23fa3207b6790a92defea930a15f958caf5f8454",
+    "version": "v0.1.0-alpha.82"
+  },
+  "good": {
+    "archive": "/var/tmp/cp-pair-accept/dist/9e626fcabf5ebcffb96e07f230cfecb95065c9d8-acceptance-license/celikpanel-v0.1.0-alpha.82-acceptance-license.tar.gz",
+    "commit": "9e626fcabf5ebcffb96e07f230cfecb95065c9d8",
+    "dist_json": "/var/tmp/cp-pair-accept/dist/9e626fcabf5ebcffb96e07f230cfecb95065c9d8-acceptance-license/dist.json",
+    "license_mode": "acceptance-fixture",
+    "parent": "a0beb7263d1f4ca72258f6b306f9111ba4e2a334",
+    "product_web_src": "/var/tmp/cp-pair-accept/dist/9e626fcabf5ebcffb96e07f230cfecb95065c9d8-acceptance-license/product-web-src",
+    "sequence": 82,
+    "sha256": "953c84349b38324c96d1873afaa1b6e93a48b34c2cf33ab44e0a4dc0638b9dcb",
+    "tree": "d34f882e566ac22fa1a5a91b0c9944ebd87d7c0d",
+    "version": "v0.1.0-alpha.82"
+  },
+  "provenance": "baseline: the published v0.1.0-alpha.81 tree (a0beb7263d1f4ca72258f6b306f9111ba4e2a334) unchanged (the tag commit itself; it carries the acceptance-license seam); candidates: unpublished disposable fixture commits over the source labelled v0.1.0-alpha.82; acceptance-license panels; signed only by the per-lab fixture key at run time; not a release",
+  "schema": "celikpanel/upd1-artifacts/v1",
+  "source_head": "ead69cdcc5dc79a965380302d5d0257e92e1293c",
+  "startcheck": {
+    "archive": "/var/tmp/cp-pair-accept/dist/a9acedb45cf621e2a8524c2beadc8883b54a370b-acceptance-license/celikpanel-v0.1.0-alpha.82-acceptance-license.tar.gz",
+    "commit": "a9acedb45cf621e2a8524c2beadc8883b54a370b",
+    "defect": "cmd/panel configurePanelHTTPTLS (shared by --check-startup-readiness and the real start) always fails",
+    "dist_json": "/var/tmp/cp-pair-accept/dist/a9acedb45cf621e2a8524c2beadc8883b54a370b-acceptance-license/dist.json",
+    "license_mode": "acceptance-fixture",
+    "parent": "9e626fcabf5ebcffb96e07f230cfecb95065c9d8",
+    "product_web_src": "/var/tmp/cp-pair-accept/dist/a9acedb45cf621e2a8524c2beadc8883b54a370b-acceptance-license/product-web-src",
+    "sequence": 82,
+    "sha256": "653b6e8d71903016b11faebd0ce0a8dc29bf4dfc53a0ae09077576153f130ad3",
+    "tree": "ce8897718294665abc085e4e1edb7cc39f484edd",
+    "version": "v0.1.0-alpha.82"
+  }
+}

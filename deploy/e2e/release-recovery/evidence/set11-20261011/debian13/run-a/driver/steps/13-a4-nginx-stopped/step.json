@@ -1,0 +1,19 @@
+{
+  "checks": {
+    "checks": 0,
+    "error": "TypeError: Set11Trial.snap11() got multiple values for argument 'label'",
+    "failed": [],
+    "finished_at": "2026-10-11T00:21:09Z",
+    "notes": [],
+    "started_at": "2026-10-11T00:21:06Z",
+    "substeps": {},
+    "title": "the same file with nginx stopped: certificate issuance",
+    "unknown": [],
+    "verdict": "inconclusive"
+  },
+  "finished_at": "2026-10-11T00:21:09Z",
+  "name": "A4-nginx-stopped",
+  "reason": "TypeError: Set11Trial.snap11() got multiple values for argument 'label'",
+  "started_at": "2026-10-11T00:21:06Z",
+  "verdict": "inconclusive"
+}

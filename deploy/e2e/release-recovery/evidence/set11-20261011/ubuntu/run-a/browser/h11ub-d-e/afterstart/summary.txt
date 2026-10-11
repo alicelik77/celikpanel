@@ -1,0 +1,2 @@
+afterstart-en-root-1: first mount 220 ms, first read answered null ms, first sentence/button 220 ms other(Bu siteye ulaşılamıyor); rule-breaking runs 1; 220-51026:other(Bu siteye ulaşılamıyor)+text+btn
+afterstart-en-root-2: first mount 240 ms, first read answered null ms, first sentence/button 240 ms other(Bu siteye ulaşılamıyor); rule-breaking runs 1; 240-51023:other(Bu siteye ulaşılamıyor)+text+btn

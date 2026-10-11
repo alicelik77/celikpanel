@@ -1,0 +1,253 @@
+{
+  "at": "2026-10-11T01:18:47Z",
+  "bases": {
+    "include_base": {
+      "exists": true,
+      "gid": 988,
+      "group": "celikpanel",
+      "inode": 533288,
+      "kind": "directory",
+      "mode": "0755",
+      "mode_octal": "0o755",
+      "mtime_ns": 1791681463838102764,
+      "owner": "root",
+      "path": "/etc/nginx/celikpanel-sites.d",
+      "uid": 0
+    },
+    "managed_base": {
+      "exists": true,
+      "gid": 988,
+      "group": "celikpanel",
+      "inode": 533290,
+      "kind": "directory",
+      "mode": "0755",
+      "mode_octal": "0o755",
+      "mtime_ns": 1791681463859103554,
+      "owner": "root",
+      "path": "/etc/nginx/celikpanel-managed.d",
+      "uid": 0
+    }
+  },
+  "epoch": 1791681527.3063962,
+  "listening_80_443": [
+    "LISTEN 0 511 0.0.0.0:80 0.0.0.0:*",
+    "LISTEN 0 5 127.0.0.1:443 0.0.0.0:*",
+    "LISTEN 0 511 [::]:80 [::]:*"
+  ],
+  "mode": "read-acme",
+  "nginx_active": "active",
+  "nginx_processes": [
+    "root       47223 nginx: master process /usr/sbin/nginx -g daemon on; master_process on;",
+    "www-data   49199 nginx: worker process",
+    "www-data   49201 nginx: worker process"
+  ],
+  "owner_action": false,
+  "schema": "celikpanel/set11-native/v1",
+  "sites": {
+    "set11-a.test": {
+      "challenge_chain": [
+        {
+          "exists": true,
+          "gid": 0,
+          "group": "root",
+          "inode": 2,
+          "kind": "directory",
+          "mode": "0755",
+          "mode_octal": "0o755",
+          "mtime_ns": 1791680417445000000,
+          "owner": "root",
+          "path": "/",
+          "uid": 0
+        },
+        {
+          "exists": true,
+          "gid": 0,
+          "group": "root",
+          "inode": 81121,
+          "kind": "directory",
+          "mode": "0755",
+          "mode_octal": "0o755",
+          "mtime_ns": 1791680831068003165,
+          "owner": "root",
+          "path": "/var",
+          "uid": 0
+        },
+        {
+          "exists": true,
+          "gid": 0,
+          "group": "root",
+          "inode": 81122,
+          "kind": "directory",
+          "mode": "0755",
+          "mode_octal": "0o755",
+          "mtime_ns": 1791681454139732511,
+          "owner": "root",
+          "path": "/var/lib",
+          "uid": 0
+        },
+        {
+          "exists": true,
+          "gid": 0,
+          "group": "root",
+          "inode": 533274,
+          "kind": "directory",
+          "mode": "0755",
+          "mode_octal": "0o755",
+          "mtime_ns": 1791681454139732511,
+          "owner": "root",
+          "path": "/var/lib/celikpanel-agent",
+          "uid": 0
+        },
+        {
+          "exists": true,
+          "gid": 0,
+          "group": "root",
+          "inode": 533275,
+          "kind": "directory",
+          "mode": "0755",
+          "mode_octal": "0o755",
+          "mtime_ns": 1791681454139732511,
+          "owner": "root",
+          "path": "/var/lib/celikpanel-agent/acme-http-01",
+          "uid": 0
+        },
+        {
+          "exists": true,
+          "gid": 0,
+          "group": "root",
+          "inode": 533276,
+          "kind": "directory",
+          "mode": "0755",
+          "mode_octal": "0o755",
+          "mtime_ns": 1791681454139732511,
+          "owner": "root",
+          "path": "/var/lib/celikpanel-agent/acme-http-01/subscriptions",
+          "uid": 0
+        },
+        {
+          "exists": true,
+          "gid": 0,
+          "group": "root",
+          "inode": 533277,
+          "kind": "directory",
+          "mode": "0755",
+          "mode_octal": "0o755",
+          "mtime_ns": 1791681454139732511,
+          "owner": "root",
+          "path": "/var/lib/celikpanel-agent/acme-http-01/subscriptions/2",
+          "uid": 0
+        },
+        {
+          "exists": true,
+          "gid": 0,
+          "group": "root",
+          "inode": 533278,
+          "kind": "directory",
+          "mode": "0755",
+          "mode_octal": "0o755",
+          "mtime_ns": 1791681463503090169,
+          "owner": "root",
+          "path": "/var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains",
+          "uid": 0
+        },
+        {
+          "exists": true,
+          "gid": 0,
+          "group": "root",
+          "inode": 533295,
+          "kind": "directory",
+          "mode": "0755",
+          "mode_octal": "0o755",
+          "mtime_ns": 1791681460372971864,
+          "owner": "root",
+          "path": "/var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2",
+          "uid": 0
+        },
+        {
+          "exists": true,
+          "gid": 0,
+          "group": "root",
+          "inode": 533296,
+          "kind": "directory",
+          "mode": "0755",
+          "mode_octal": "0o755",
+          "mtime_ns": 1791681460372971864,
+          "owner": "root",
+          "path": "/var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known",
+          "uid": 0
+        },
+        {
+          "exists": true,
+          "gid": 0,
+          "group": "root",
+          "inode": 533297,
+          "kind": "directory",
+          "mode": "0755",
+          "mode_octal": "0o755",
+          "mtime_ns": 1791681519548011732,
+          "owner": "root",
+          "path": "/var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge",
+          "uid": 0
+        }
+      ],
+      "challenge_dir": "/var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge",
+      "challenge_entries": [],
+      "challenge_root": "/var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2",
+      "include_dir": {
+        "exists": true,
+        "gid": 988,
+        "group": "celikpanel",
+        "inode": 533302,
+        "kind": "directory",
+        "mode": "0755",
+        "mode_octal": "0o755",
+        "mtime_ns": 1791681460789987702,
+        "owner": "root",
+        "path": "/etc/nginx/celikpanel-sites.d/set11-a.test",
+        "uid": 0
+      },
+      "managed_dir": {
+        "exists": true,
+        "gid": 988,
+        "group": "celikpanel",
+        "inode": 533303,
+        "kind": "directory",
+        "mode": "0755",
+        "mode_octal": "0o755",
+        "mtime_ns": 1791681460825989070,
+        "owner": "root",
+        "path": "/etc/nginx/celikpanel-managed.d/set11-a.test",
+        "uid": 0
+      },
+      "managed_entries": [
+        {
+          "ctime_ns": 1791681460825989070,
+          "exists": true,
+          "first_line": "# celikpanel-render v2 sha256=b1c4feea5968555909896cfee44fe005e85fc105b336d423c0eebb307dfabb3a",
+          "gid": 988,
+          "group": "celikpanel",
+          "header": {
+            "body_bytes": 482,
+            "body_sha256": "b1c4feea5968555909896cfee44fe005e85fc105b336d423c0eebb307dfabb3a",
+            "declared": "b1c4feea5968555909896cfee44fe005e85fc105b336d423c0eebb307dfabb3a",
+            "present": true,
+            "valid": true
+          },
+          "immutable": false,
+          "inode": 533304,
+          "kind": "file",
+          "lsattr": "--------------e-------",
+          "mode": "0644",
+          "mtime_ns": 1791681460814988652,
+          "nlink": 1,
+          "owner": "root",
+          "path": "/etc/nginx/celikpanel-managed.d/set11-a.test/acme-http-01.conf",
+          "sha256": "08f9c3d79c273da88dc009087a04873dfd5b86ff3a4cbff8b8d9f49fefa59b03",
+          "size": 577,
+          "text": "# celikpanel-render v2 sha256=b1c4feea5968555909896cfee44fe005e85fc105b336d423c0eebb307dfabb3a\n# The ACME HTTP-01 challenge location of set11-a.test, written by CelikPanel.\n# This directory is CelikPanel's; put your own additions in /etc/nginx/celikpanel-sites.d/set11-a.test/*.conf.\n# Doğrulama konumu; bu dizin CelikPanel'indir, kendi eklemeleriniz /etc/nginx/celikpanel-sites.d/set11-a.test içine.\nlocation ^~ /.well-known/acme-challenge/ {\n    root /var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2;\n    default_type text/plain;\n    try_files $uri =404;\n}\n",
+          "uid": 0
+        }
+      ]
+    }
+  }
+}

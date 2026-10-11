@@ -1,0 +1,22 @@
+{
+  "checks": {
+    "checks": 4,
+    "error": null,
+    "failed": [],
+    "finished_at": "2026-10-11T01:20:40Z",
+    "notes": [
+      "B2: PASS"
+    ],
+    "started_at": "2026-10-11T01:20:31Z",
+    "substeps": {
+      "B2": "passed"
+    },
+    "title": "the owner unlocks A; check again",
+    "unknown": [],
+    "verdict": "passed"
+  },
+  "finished_at": "2026-10-11T01:20:40Z",
+  "name": "B2-unlocked-recheck",
+  "started_at": "2026-10-11T01:20:31Z",
+  "verdict": "passed"
+}

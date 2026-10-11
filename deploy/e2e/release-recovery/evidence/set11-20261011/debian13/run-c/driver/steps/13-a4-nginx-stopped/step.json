@@ -1,0 +1,22 @@
+{
+  "checks": {
+    "checks": 8,
+    "error": null,
+    "failed": [],
+    "finished_at": "2026-10-11T00:51:29Z",
+    "notes": [
+      "A4: PASS"
+    ],
+    "started_at": "2026-10-11T00:51:20Z",
+    "substeps": {
+      "A4": "passed"
+    },
+    "title": "the same file with nginx stopped: certificate issuance",
+    "unknown": [],
+    "verdict": "passed"
+  },
+  "finished_at": "2026-10-11T00:51:29Z",
+  "name": "A4-nginx-stopped",
+  "started_at": "2026-10-11T00:51:20Z",
+  "verdict": "passed"
+}

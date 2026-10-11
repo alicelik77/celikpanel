@@ -1,0 +1,217 @@
+{
+  "bound_seconds": 900.0,
+  "mail_file_facts": [
+    {
+      "at": "2026-10-11T01:50:57Z",
+      "label": "watch-start",
+      "lines": [
+        "/etc/postfix/main.cf|3369|2026-10-11 01:47:00.817631260 +0000|ff24ef31f8e663e7fde8d327e4780d91a2f6fe1aad3ed1ff8094a5e17ba6f840",
+        "/etc/postfix/master.cf|8351|2026-10-11 01:44:12.209455624 +0000|cfe125b8a778f45acdcaa044932b3b912dc59d955364d36a2f9b9830cc3e2671",
+        "/etc/postfix/celikpanel_sni|absent",
+        "/etc/postfix/celikpanel_sni.db|absent",
+        "/etc/postfix/celikpanel_sni.lmdb|absent",
+        "/etc/postfix/virtual|0|2026-10-11 01:41:48.276566410 +0000|e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "/etc/postfix/virtual.db|12288|2026-10-11 01:47:00.549634319 +0000|7fc8f8c895894a959591f9d22377188f7ac7dc27a1347b24c311d5b422e54cc1",
+        "/etc/postfix/vmailbox|45|2026-10-11 01:46:49.877762838 +0000|f6c71b2591448ed14d00271d2936b43dad94bf3451752800db32fc74d20eeaa7",
+        "/etc/postfix/vmailbox.db|12288|2026-10-11 01:47:00.521634639 +0000|96b4c495b18754aa0412ab70952c60d6253f6ce3878a5161120a607d80c9cdff",
+        "/etc/postfix/vmailbox_domains|19|2026-10-11 01:46:49.889762685 +0000|732ff498e7ae804a27c2f76cee4316f0d59e7ca60e9a8bcc667e704f8b7edb66",
+        "/etc/postfix/vmailbox_domains.db|12288|2026-10-11 01:47:00.601633724 +0000|100c3b8c1727c776f8c1fde405a91ea1b2e8e5dfc86dcd411a871a646041de2d",
+        "/etc/aliases.db|12288|2026-10-11 01:41:44.384540270 +0000|859bc859b585a109cce38001d5ff96024d874d6ca167c24c13a524ff6b6a01ea",
+        "/etc/dovecot/conf.d/98-celikpanel-tls.conf|226|2026-10-11 01:46:55.453693964 +0000|34401efb739a363ac335c8efff78af940a831683f19f407c7c3065d5e1c3312f",
+        "postconf|smtpd_milters|inet:localhost:11332",
+        "postconf|non_smtpd_milters|",
+        "postconf|tls_server_sni_maps|"
+      ]
+    },
+    {
+      "at": "2026-10-11T01:52:13Z",
+      "label": "watch-end",
+      "lines": [
+        "/etc/postfix/main.cf|3369|2026-10-11 01:51:19.926650403 +0000|ff24ef31f8e663e7fde8d327e4780d91a2f6fe1aad3ed1ff8094a5e17ba6f840",
+        "/etc/postfix/master.cf|8351|2026-10-11 01:44:12.209455624 +0000|cfe125b8a778f45acdcaa044932b3b912dc59d955364d36a2f9b9830cc3e2671",
+        "/etc/postfix/celikpanel_sni|absent",
+        "/etc/postfix/celikpanel_sni.db|absent",
+        "/etc/postfix/celikpanel_sni.lmdb|absent",
+        "/etc/postfix/virtual|0|2026-10-11 01:41:48.276566410 +0000|e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "/etc/postfix/virtual.db|12288|2026-10-11 01:51:19.642651262 +0000|21d8040a5c11dce207781a7c998983a591efb9ad33452f93795785c72da0625e",
+        "/etc/postfix/vmailbox|45|2026-10-11 01:46:49.877762838 +0000|f6c71b2591448ed14d00271d2936b43dad94bf3451752800db32fc74d20eeaa7",
+        "/etc/postfix/vmailbox.db|12288|2026-10-11 01:51:19.610651360 +0000|2daaa069e53536aba209a6b7277b1a1819e5dd5e41482e627f9b43cf76469342",
+        "/etc/postfix/vmailbox_domains|19|2026-10-11 01:46:49.889762685 +0000|732ff498e7ae804a27c2f76cee4316f0d59e7ca60e9a8bcc667e704f8b7edb66",
+        "/etc/postfix/vmailbox_domains.db|12288|2026-10-11 01:51:19.694651105 +0000|beb1f52c494ddb74e7593aed6898d59e27c55d12ac19be92e2c326badc989f1e",
+        "/etc/aliases.db|12288|2026-10-11 01:41:44.384540270 +0000|859bc859b585a109cce38001d5ff96024d874d6ca167c24c13a524ff6b6a01ea",
+        "/etc/dovecot/conf.d/98-celikpanel-tls.conf|226|2026-10-11 01:51:12.850676834 +0000|34401efb739a363ac335c8efff78af940a831683f19f407c7c3065d5e1c3312f",
+        "postconf|smtpd_milters|inet:localhost:11332",
+        "postconf|non_smtpd_milters|",
+        "postconf|tls_server_sni_maps|"
+      ]
+    }
+  ],
+  "polls": [
+    {
+      "at": "2026-10-11T01:50:57Z",
+      "attempts": 0,
+      "deferred": [
+        "mail certificate publication",
+        "mail filter wiring"
+      ],
+      "finished": false,
+      "pid": "4768"
+    },
+    {
+      "at": "2026-10-11T01:51:07Z",
+      "attempts": 0,
+      "deferred": [
+        "mail certificate publication",
+        "mail filter wiring"
+      ],
+      "finished": false,
+      "pid": "4768"
+    },
+    {
+      "at": "2026-10-11T01:51:18Z",
+      "attempts": 0,
+      "deferred": [
+        "mail certificate publication",
+        "mail filter wiring"
+      ],
+      "finished": false,
+      "pid": "4768"
+    },
+    {
+      "at": "2026-10-11T01:51:28Z",
+      "attempts": 1,
+      "deferred": [
+        "mail certificate publication",
+        "mail filter wiring"
+      ],
+      "finished": true,
+      "pid": "4768"
+    }
+  ],
+  "processes": [
+    {
+      "attempts": [],
+      "deferred": [],
+      "finished": true,
+      "gave_up": false,
+      "other_mail_lines": [
+        {
+          "at": "2026-10-11T01:39:37.332951+00:00",
+          "text": "milter chain: nothing to wire at startup: no mail server is installed on this server, so there is no Postfix milter chain to compose"
+        }
+      ],
+      "pid": "5277",
+      "ready_at": "2026-10-11T01:39:37.335809+00:00",
+      "repeated": [],
+      "resolved": {},
+      "started_at": "2026-10-11T01:39:37.262673+00:00",
+      "startup_lines": [
+        {
+          "at": "2026-10-11T01:39:37.328325+00:00",
+          "text": "certificate startup reconcile: certificate dependents: publish full mail SNI snapshot: mail server hostname is not a valid FQDN: invalid hostname \"dns-debian13\": a fully qualified DNS name is required; preserve pending outbox: <nil>"
+        }
+      ]
+    },
+    {
+      "attempts": [],
+      "deferred": [],
+      "finished": true,
+      "gave_up": false,
+      "other_mail_lines": [
+        {
+          "at": "2026-10-11T01:39:38.413993+00:00",
+          "text": "milter chain: nothing to wire at startup: no mail server is installed on this server, so there is no Postfix milter chain to compose"
+        }
+      ],
+      "pid": "5342",
+      "ready_at": "2026-10-11T01:39:38.420173+00:00",
+      "repeated": [],
+      "resolved": {},
+      "started_at": "2026-10-11T01:39:38.365095+00:00",
+      "startup_lines": [
+        {
+          "at": "2026-10-11T01:39:38.407732+00:00",
+          "text": "certificate startup reconcile: certificate dependents: publish full mail SNI snapshot: mail server hostname is not a valid FQDN: invalid hostname \"dns-debian13\": a fully qualified DNS name is required; preserve pending outbox: <nil>"
+        }
+      ]
+    },
+    {
+      "attempts": [],
+      "deferred": [],
+      "finished": true,
+      "gave_up": false,
+      "other_mail_lines": [
+        {
+          "at": "2026-10-11T01:46:58.664068+00:00",
+          "text": "certificate startup reconcile: mail SNI reconciled from 0 active secure-mail certificates; TLSA left unchanged: automatic DANE/TLSA updates are disabled: safe TTL-aware certificate rollover and explicit panel record ownership are not available in this release"
+        },
+        {
+          "at": "2026-10-11T01:47:02.504199+00:00",
+          "text": "milter chain: milters=\"inet:localhost:11332\" maps=hash"
+        }
+      ],
+      "pid": "26223",
+      "ready_at": "2026-10-11T01:47:02.507250+00:00",
+      "repeated": [],
+      "resolved": {},
+      "started_at": "2026-10-11T01:46:54.228350+00:00",
+      "startup_lines": []
+    },
+    {
+      "attempts": [
+        {
+          "at": "2026-10-11T01:51:21.623467+00:00",
+          "attempt": 1,
+          "of": 20,
+          "text": "startup mail work, attempt 1 of 20: mail certificate publication completed (mail SNI from 0 active secure-mail certificates); mail filter wiring completed (milters=\"inet:localhost:11332\" maps=hash)"
+        }
+      ],
+      "deferred": [
+        "mail certificate publication",
+        "mail filter wiring"
+      ],
+      "finished": true,
+      "gave_up": false,
+      "other_mail_lines": [],
+      "pid": "4768",
+      "ready_at": "2026-10-11T01:50:41.726801+00:00",
+      "repeated": [],
+      "resolved": {
+        "mail certificate publication": [
+          {
+            "at": "2026-10-11T01:51:21.623467+00:00",
+            "attempt": 1,
+            "outcome": "completed"
+          }
+        ],
+        "mail filter wiring": [
+          {
+            "at": "2026-10-11T01:51:21.623467+00:00",
+            "attempt": 1,
+            "outcome": "completed"
+          }
+        ]
+      },
+      "started_at": "2026-10-11T01:50:41.509775+00:00",
+      "startup_lines": [
+        {
+          "at": "2026-10-11T01:50:41.714813+00:00",
+          "text": "certificate startup reconcile: certificate dependents: publish full mail SNI snapshot: another server change or package-manager task is still running; preserve pending outbox: <nil>; the Panel retries this by itself every 30 seconds for up to 10 minutes once no other server change is running; nothing needs to be done now"
+        },
+        {
+          "at": "2026-10-11T01:50:41.719823+00:00",
+          "text": "milter wiring at startup: another server change or package-manager task is still running; the Panel retries this by itself every 30 seconds for up to 10 minutes once no other server change is running; nothing needs to be done now"
+        }
+      ]
+    }
+  ],
+  "settle": {
+    "at": "2026-10-11T01:52:13Z",
+    "attempt_lines_after": 1,
+    "attempt_lines_before": 1,
+    "repeated_after": [],
+    "same_process": true,
+    "seconds_after_resolution": 45.0
+  },
+  "watch_seconds": 76.9
+}

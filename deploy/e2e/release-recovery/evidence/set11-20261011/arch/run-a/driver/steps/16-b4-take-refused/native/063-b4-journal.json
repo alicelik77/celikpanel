@@ -1,0 +1,41 @@
+{
+  "at": "2026-10-11T01:37:05Z",
+  "by_unit": {
+    "celikpanel-agent.service": [],
+    "celikpanel-panel.service": [
+      "2026-10-11T01:37:00.133187+00:00 dns-arch panel[3463]: 2026/10/11 01:37:00 http: TLS handshake error from 127.0.0.1:41244: EOF",
+      "2026-10-11T01:37:00.154323+00:00 dns-arch panel[3463]: 2026/10/11 01:37:00 http: TLS handshake error from 127.0.0.1:41254: EOF",
+      "2026-10-11T01:37:01.044961+00:00 dns-arch panel[3463]: 2026/10/11 01:37:01 http: TLS handshake error from 127.0.0.1:41272: EOF",
+      "2026-10-11T01:37:01.766975+00:00 dns-arch panel[3463]: 2026/10/11 01:37:01 http: TLS handshake error from 127.0.0.1:41278: EOF",
+      "2026-10-11T01:37:01.826089+00:00 dns-arch panel[3463]: 2026/10/11 01:37:01 site configuration set11-a.test (take): kept, not replaced (owner_edited write_refused); owner's file kept as /etc/nginx/sites-available/set11-a.test.conf.celikpanel-backup-20261011T013701Z; rename /etc/nginx/sites-available/.set11-a.test.conf.celikpanel-2862119869 /etc/nginx/sites-available/set11-a.test.conf: operation not permitted",
+      "2026-10-11T01:37:01.842081+00:00 dns-arch panel[3463]: 2026/10/11 01:37:01 [409] site configuration of set11-a.test not applied: refused (owner_edited write_refused)"
+    ],
+    "nginx.service": [
+      "2026-10-11T01:37:00.547967+00:00 dns-arch systemd[1]: Reloading nginx web server...",
+      "2026-10-11T01:37:00.578187+00:00 dns-arch nginx[3894]: 2026/10/11 01:37:00 [warn] 3894#3894: could not build optimal types_hash, you should increase either types_hash_max_size: 1024 or types_hash_bucket_size: 64; ignoring types_hash_bucket_size",
+      "2026-10-11T01:37:00.582918+00:00 dns-arch nginx[3894]: 2026/10/11 01:37:00 [notice] 3894#3894: signal process started",
+      "2026-10-11T01:37:00.585266+00:00 dns-arch systemd[1]: Reloaded nginx web server.",
+      "2026-10-11T01:37:00.975885+00:00 dns-arch systemd[1]: Reloading nginx web server...",
+      "2026-10-11T01:37:01.000649+00:00 dns-arch nginx[3911]: 2026/10/11 01:37:00 [warn] 3911#3911: could not build optimal types_hash, you should increase either types_hash_max_size: 1024 or types_hash_bucket_size: 64; ignoring types_hash_bucket_size",
+      "2026-10-11T01:37:01.005295+00:00 dns-arch nginx[3911]: 2026/10/11 01:37:00 [notice] 3911#3911: signal process started",
+      "2026-10-11T01:37:01.007772+00:00 dns-arch systemd[1]: Reloaded nginx web server."
+    ],
+    "php-fpm.service": []
+  },
+  "mode": "read-window",
+  "owner_action": false,
+  "schema": "celikpanel/set10-native/v1",
+  "since_epoch": 1791682620,
+  "systemd_manager": [
+    "2026-10-11T01:37:00.547967+00:00 dns-arch systemd[1]: Reloading nginx web server...",
+    "2026-10-11T01:37:00.585266+00:00 dns-arch systemd[1]: Reloaded nginx web server.",
+    "2026-10-11T01:37:00.975885+00:00 dns-arch systemd[1]: Reloading nginx web server...",
+    "2026-10-11T01:37:01.007772+00:00 dns-arch systemd[1]: Reloaded nginx web server."
+  ],
+  "units": [
+    "celikpanel-panel.service",
+    "celikpanel-agent.service",
+    "nginx.service",
+    "php-fpm.service"
+  ]
+}

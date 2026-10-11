@@ -1,0 +1,25 @@
+{
+  "checks": {
+    "checks": 11,
+    "error": null,
+    "failed": [
+      "A2: the file was there for every GET (created before the first request was sent, removed after the last was sent; each watcher's own read time)"
+    ],
+    "finished_at": "2026-10-11T00:51:35Z",
+    "notes": [
+      "A2: FAIL"
+    ],
+    "started_at": "2026-10-11T00:51:29Z",
+    "substeps": {
+      "A2": "failed"
+    },
+    "title": "a kept file without the line including CelikPanel's directory: certificate issuance",
+    "unknown": [],
+    "verdict": "failed"
+  },
+  "finished_at": "2026-10-11T00:51:35Z",
+  "name": "A2-include-missing",
+  "reason": "A2: the file was there for every GET (created before the first request was sent, removed after the last was sent; each watcher's own read time)",
+  "started_at": "2026-10-11T00:51:29Z",
+  "verdict": "failed"
+}

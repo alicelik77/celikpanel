@@ -1,0 +1,90 @@
+{
+  "outcome": "response",
+  "panel": "owner",
+  "purpose": "b1 check again (GET site-config): GET site-config",
+  "request": {
+    "body": null,
+    "headers": [
+      [
+        "Accept",
+        "application/json"
+      ],
+      [
+        "Host",
+        "127.0.0.1:18873"
+      ],
+      [
+        "Cookie",
+        "[REDACTED]"
+      ]
+    ],
+    "method": "GET",
+    "path": "/api/v1/domains/2/site-config"
+  },
+  "response": {
+    "elapsed_seconds": 0.006,
+    "headers": [
+      [
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+      ],
+      [
+        "Content-Type",
+        "application/json"
+      ],
+      [
+        "Referrer-Policy",
+        "no-referrer"
+      ],
+      [
+        "Strict-Transport-Security",
+        "max-age=31536000"
+      ],
+      [
+        "X-Content-Type-Options",
+        "nosniff"
+      ],
+      [
+        "X-Frame-Options",
+        "DENY"
+      ],
+      [
+        "Date",
+        "Sun, 11 Oct 2026 01:36:45 GMT"
+      ],
+      [
+        "Content-Length",
+        "1294"
+      ]
+    ],
+    "json": {
+      "actions": [
+        "recheck"
+      ],
+      "challenge_file": "unchanged",
+      "diff": "--- /etc/nginx/sites-available/set11-a.test.conf (on this server)\n+++ CelikPanel's text\n@@ -1,4 +1,3 @@\n-# set10 lab preparation: an older CelikPanel text of this site (a line the current render does not have)\n # Nginx vhost for set11-a.test\n # Written by CelikPanel. Put your own additions in /etc/nginx/celikpanel-sites.d/set11-a.test/*.conf;\n # CelikPanel never writes there. If you change this file, CelikPanel keeps\n",
+      "domain": "set11-a.test",
+      "domain_id": 2,
+      "enabled": "link",
+      "file_sha256": "80be8487bc7f91485bfb8e8ec3f22735303d8d2e70cf65fd198ccf1d3cee30c4",
+      "include_dir": "/etc/nginx/celikpanel-sites.d/set11-a.test",
+      "kind": "nginx_vhost",
+      "ledger": {
+        "observed_at": "2026-10-11T01:36:36Z",
+        "written_at": "2026-10-11T01:36:13Z",
+        "written_release": "v0.1.0-alpha.81 b2b43d0cd680"
+      },
+      "managed_dir": "/etc/nginx/celikpanel-managed.d/set11-a.test",
+      "managed_include": "include /etc/nginx/celikpanel-managed.d/set11-a.test/*.conf;",
+      "path": "/etc/nginx/sites-available/set11-a.test.conf",
+      "pending_path": "/etc/nginx/sites-available/set11-a.test.conf.celikpanel-pending",
+      "protection": "immutable",
+      "reason": "write_refused",
+      "render_sha256": "4b1cb1b3a8497f9d7e4774134e2a827c4a3a620fec35043ba4acbf5914be0a6e",
+      "state": "unwritable",
+      "system_error": "EPERM"
+    },
+    "status": 200,
+    "text": null
+  }
+}

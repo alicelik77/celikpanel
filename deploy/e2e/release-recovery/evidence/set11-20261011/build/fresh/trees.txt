@@ -1,0 +1,14 @@
+baseline b2b43d0cd680a0bc569ea02178c83a06b01c4941 tree 563a4054c86b898b8dbac0a4426805a12c018bd0
+### files that differ between the source ead69cdcc and baseline
+M	deploy/release-sequence-policy
+good 601f3e466f83ca0d33652ed3e1b15c560fd0f758 tree 34c7b956b084e4ac0e9e67536d3895355d8920ab
+### files that differ between the source ead69cdcc and good
+M	deploy/release-sequence-policy
+defective f2fec87e740278cfee71eb2bd0a245451b982a9f tree eee2af45cd76f5a2fee106a1d5b4f02155ef3e1c
+### files that differ between the source ead69cdcc and defective
+M	cmd/panel/main.go
+M	deploy/release-sequence-policy
+startcheck b80e5d2d80c4a66b903a0f7b6926755c8075d856 tree 5f8bfde8e5afee3bb31f31ac9f343f9dc99f28a3
+### files that differ between the source ead69cdcc and startcheck
+M	cmd/panel/server_lifecycle.go
+M	deploy/release-sequence-policy

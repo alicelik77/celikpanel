@@ -1,0 +1,11 @@
+{
+  "addresses": [
+    "10.0.2.15",
+    "192.0.2.10"
+  ],
+  "at": "2026-10-11T00:34:15Z",
+  "ip": "2: mgmt0    inet 10.0.2.15/24 metric 100 brd 10.0.2.255 scope global dynamic mgmt0\\       valid_lft 85707sec preferred_lft 85707sec\n3: peer0    inet 192.0.2.10/24 brd 192.0.2.255 scope global peer0\\       valid_lft forever preferred_lft forever\n",
+  "mode": "read-addresses",
+  "owner_action": false,
+  "schema": "celikpanel/set11-native/v1"
+}

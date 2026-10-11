@@ -1,0 +1,252 @@
+{
+  "acme": "steps/11-c-directory-modes/native/015-c-acme.json",
+  "calls": [],
+  "cells": {
+    "C": {
+      "detail": {
+        "nginx_processes": [
+          "root        1234 nginx: master process /usr/bin/nginx",
+          "http        2990 nginx: worker process"
+        ]
+      },
+      "expectations": [
+        {
+          "expectation": "set11-a.test: include_dir is a directory, root-owned, mode 0755",
+          "held": true,
+          "measured": {
+            "gid": 969,
+            "group": "celikpanel",
+            "kind": "directory",
+            "mode_octal": "0o755",
+            "owner": "root",
+            "path": "/etc/nginx/celikpanel-sites.d/set11-a.test",
+            "uid": 0
+          }
+        },
+        {
+          "expectation": "set11-a.test: managed_dir is a directory, root-owned, mode 0755",
+          "held": true,
+          "measured": {
+            "gid": 969,
+            "group": "celikpanel",
+            "kind": "directory",
+            "mode_octal": "0o755",
+            "owner": "root",
+            "path": "/etc/nginx/celikpanel-managed.d/set11-a.test",
+            "uid": 0
+          }
+        },
+        {
+          "expectation": "set11-b.test: include_dir is a directory, root-owned, mode 0755",
+          "held": true,
+          "measured": {
+            "gid": 969,
+            "group": "celikpanel",
+            "kind": "directory",
+            "mode_octal": "0o755",
+            "owner": "root",
+            "path": "/etc/nginx/celikpanel-sites.d/set11-b.test",
+            "uid": 0
+          }
+        },
+        {
+          "expectation": "set11-b.test: managed_dir is a directory, root-owned, mode 0755",
+          "held": true,
+          "measured": {
+            "gid": 969,
+            "group": "celikpanel",
+            "kind": "directory",
+            "mode_octal": "0o755",
+            "owner": "root",
+            "path": "/etc/nginx/celikpanel-managed.d/set11-b.test",
+            "uid": 0
+          }
+        },
+        {
+          "expectation": "set1-owner.test: include_dir is a directory, root-owned, mode 0755",
+          "held": true,
+          "measured": {
+            "gid": 969,
+            "group": "celikpanel",
+            "kind": "directory",
+            "mode_octal": "0o755",
+            "owner": "root",
+            "path": "/etc/nginx/celikpanel-sites.d/set1-owner.test",
+            "uid": 0
+          }
+        },
+        {
+          "expectation": "set1-owner.test: managed_dir is a directory, root-owned, mode 0755",
+          "held": true,
+          "measured": {
+            "gid": 969,
+            "group": "celikpanel",
+            "kind": "directory",
+            "mode_octal": "0o755",
+            "owner": "root",
+            "path": "/etc/nginx/celikpanel-managed.d/set1-owner.test",
+            "uid": 0
+          }
+        },
+        {
+          "expectation": "include_base /etc/nginx/celikpanel-sites.d is a directory, root-owned, mode 0755",
+          "held": true,
+          "measured": {
+            "gid": 969,
+            "group": "celikpanel",
+            "kind": "directory",
+            "mode_octal": "0o755",
+            "owner": "root",
+            "path": "/etc/nginx/celikpanel-sites.d",
+            "uid": 0
+          }
+        },
+        {
+          "expectation": "managed_base /etc/nginx/celikpanel-managed.d is a directory, root-owned, mode 0755",
+          "held": true,
+          "measured": {
+            "gid": 969,
+            "group": "celikpanel",
+            "kind": "directory",
+            "mode_octal": "0o755",
+            "owner": "root",
+            "path": "/etc/nginx/celikpanel-managed.d",
+            "uid": 0
+          }
+        }
+      ],
+      "verdict": "PASS"
+    }
+  },
+  "checks": [
+    {
+      "detail": {
+        "gid": 969,
+        "group": "celikpanel",
+        "kind": "directory",
+        "mode_octal": "0o755",
+        "owner": "root",
+        "path": "/etc/nginx/celikpanel-sites.d/set11-a.test",
+        "uid": 0
+      },
+      "name": "C: set11-a.test: include_dir is a directory, root-owned, mode 0755",
+      "ok": true
+    },
+    {
+      "detail": {
+        "gid": 969,
+        "group": "celikpanel",
+        "kind": "directory",
+        "mode_octal": "0o755",
+        "owner": "root",
+        "path": "/etc/nginx/celikpanel-managed.d/set11-a.test",
+        "uid": 0
+      },
+      "name": "C: set11-a.test: managed_dir is a directory, root-owned, mode 0755",
+      "ok": true
+    },
+    {
+      "detail": {
+        "gid": 969,
+        "group": "celikpanel",
+        "kind": "directory",
+        "mode_octal": "0o755",
+        "owner": "root",
+        "path": "/etc/nginx/celikpanel-sites.d/set11-b.test",
+        "uid": 0
+      },
+      "name": "C: set11-b.test: include_dir is a directory, root-owned, mode 0755",
+      "ok": true
+    },
+    {
+      "detail": {
+        "gid": 969,
+        "group": "celikpanel",
+        "kind": "directory",
+        "mode_octal": "0o755",
+        "owner": "root",
+        "path": "/etc/nginx/celikpanel-managed.d/set11-b.test",
+        "uid": 0
+      },
+      "name": "C: set11-b.test: managed_dir is a directory, root-owned, mode 0755",
+      "ok": true
+    },
+    {
+      "detail": {
+        "gid": 969,
+        "group": "celikpanel",
+        "kind": "directory",
+        "mode_octal": "0o755",
+        "owner": "root",
+        "path": "/etc/nginx/celikpanel-sites.d/set1-owner.test",
+        "uid": 0
+      },
+      "name": "C: set1-owner.test: include_dir is a directory, root-owned, mode 0755",
+      "ok": true
+    },
+    {
+      "detail": {
+        "gid": 969,
+        "group": "celikpanel",
+        "kind": "directory",
+        "mode_octal": "0o755",
+        "owner": "root",
+        "path": "/etc/nginx/celikpanel-managed.d/set1-owner.test",
+        "uid": 0
+      },
+      "name": "C: set1-owner.test: managed_dir is a directory, root-owned, mode 0755",
+      "ok": true
+    },
+    {
+      "detail": {
+        "gid": 969,
+        "group": "celikpanel",
+        "kind": "directory",
+        "mode_octal": "0o755",
+        "owner": "root",
+        "path": "/etc/nginx/celikpanel-sites.d",
+        "uid": 0
+      },
+      "name": "C: include_base /etc/nginx/celikpanel-sites.d is a directory, root-owned, mode 0755",
+      "ok": true
+    },
+    {
+      "detail": {
+        "gid": 969,
+        "group": "celikpanel",
+        "kind": "directory",
+        "mode_octal": "0o755",
+        "owner": "root",
+        "path": "/etc/nginx/celikpanel-managed.d",
+        "uid": 0
+      },
+      "name": "C: managed_base /etc/nginx/celikpanel-managed.d is a directory, root-owned, mode 0755",
+      "ok": true
+    }
+  ],
+  "finished_at": "2026-10-11T01:36:24Z",
+  "native_evidence": false,
+  "natives": [
+    {
+      "file": "native/015-c-acme.json",
+      "label": "c-acme",
+      "mode": "read-acme",
+      "owner_action": false
+    }
+  ],
+  "node": "arch",
+  "notes": [
+    {
+      "detail": [],
+      "note": "C: PASS"
+    }
+  ],
+  "owner_actions": [],
+  "section": "C-directory-modes",
+  "started_at": "2026-10-11T01:36:23Z",
+  "substeps": {
+    "C": "passed"
+  },
+  "title": "the include directories as created: mode, owner, group",
+  "verdict": "passed"
+}

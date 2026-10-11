@@ -1,0 +1,24 @@
+{
+  "checks": {
+    "checks": 7,
+    "error": null,
+    "failed": [],
+    "finished_at": "2026-10-11T01:18:05Z",
+    "notes": [
+      "h: PASS",
+      "i: PASS"
+    ],
+    "started_at": "2026-10-11T01:17:45Z",
+    "substeps": {
+      "h": "passed",
+      "i": "passed"
+    },
+    "title": "a restart with every site unchanged (set10's section; it records the Panel's text)",
+    "unknown": [],
+    "verdict": "passed"
+  },
+  "finished_at": "2026-10-11T01:18:05Z",
+  "name": "h-i-unchanged-start",
+  "started_at": "2026-10-11T01:17:45Z",
+  "verdict": "passed"
+}

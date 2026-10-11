@@ -1,0 +1,546 @@
+{
+  "b4": {
+    "a_lines": [
+      "2026-10-11T00:35:31.068980+00:00 dns-debian13 panel[33946]: 2026/10/11 00:35:31 site configuration set11-a.test (take): kept, not replaced (owner_edited write_refused); owner's file kept as /etc/nginx/sites-available/set11-a.test.conf.celikpanel-backup-20261011T003531Z; rename /etc/nginx/sites-available/.set11-a.test.conf.celikpanel-609735446 /etc/nginx/sites-available/set11-a.test.conf: operation not permitted"
+    ],
+    "backups_after": [
+      "/etc/nginx/sites-available/set11-a.test.conf.celikpanel-backup-20261011T003531Z"
+    ],
+    "browser": {
+      "browser_done": {
+        "at": "2026-10-11T00:35:58.358Z",
+        "by": "cold-load-set11.mjs"
+      },
+      "ended_at": "2026-10-11T00:35:58Z",
+      "hand": "/var/tmp/cp-set11-run/hand/h11d13-b-take-refused",
+      "password_file_removed": true,
+      "requests": [],
+      "window": "b-take-refused"
+    },
+    "ledger": {
+      "backup_path": "/etc/nginx/sites-available/set11-a.test.conf.celikpanel-backup-20261011T003531Z",
+      "decision": "",
+      "state": "unreadable",
+      "state_reason": "write_refused"
+    },
+    "page": {
+      "actions": [
+        "keep",
+        "take",
+        "merge"
+      ],
+      "detail": null,
+      "protection": "immutable",
+      "reason": null,
+      "state": "owner_edited",
+      "system_error": "EPERM"
+    },
+    "row": {
+      "state": "unwritable"
+    },
+    "take": {
+      "at": "2026-10-11T00:35:30Z",
+      "json": {
+        "code": "SITE_CONFIG_UNWRITABLE",
+        "error": "CelikPanel could not read or replace the site's nginx configuration file (for example, it is a link or it is locked against changes), so it kept the file as it is and did not apply this change. The server administrator checks the file on the server; the reason is shown in the domain's Configuration file section.",
+        "reason": "write_refused"
+      },
+      "label": "b4 take while the file is locked",
+      "request": {
+        "body": {
+          "file_sha256": "7d96d96e850053b0a762ce465e1b689ba0e65c92ff3c1cbc5bf136d5e64dfaa1",
+          "render_sha256": "8d0ded895ef5095c98de162e7328057a266c835ca11cfdfc6ede51709ffe96c6"
+        },
+        "method": "POST",
+        "path": "/api/v1/domains/2/site-config/take",
+        "x_celikpanel_request_id": "40057dd32461638a5d82e1f864a5940d"
+      },
+      "seconds": 0.05,
+      "status": 409,
+      "text": null
+    },
+    "unlocked": "--------------e-------"
+  },
+  "calls": [
+    {
+      "at": "2026-10-11T00:35:30Z",
+      "json": {
+        "actions": [
+          "keep",
+          "take",
+          "merge"
+        ],
+        "challenge_file": "unchanged",
+        "diff": "--- /etc/nginx/sites-available/set11-a.test.conf (on this server)\n+++ CelikPanel's text\n@@ -44,9 +44,4 @@\n \n     # Your additions for this site (server context) / Bu site için eklemeleriniz\n     include /etc/nginx/celikpanel-sites.d/set11-a.test/*.conf;\n-\n-    # set10: added by the server owner by hand\n-    location /owner-extra/ {\n-        return 200 \"owner\";\n-    }\n }\n",
+        "domain": "set11-a.test",
+        "domain_id": 2,
+        "enabled": "link",
+        "file_sha256": "7d96d96e850053b0a762ce465e1b689ba0e65c92ff3c1cbc5bf136d5e64dfaa1",
+        "include_dir": "/etc/nginx/celikpanel-sites.d/set11-a.test",
+        "kind": "nginx_vhost",
+        "ledger": {
+          "observed_at": "2026-10-11T00:35:26Z",
+          "written_at": "2026-10-11T00:35:26Z",
+          "written_release": "v0.1.0-alpha.81 b2b43d0cd680"
+        },
+        "managed_dir": "/etc/nginx/celikpanel-managed.d/set11-a.test",
+        "managed_include": "include /etc/nginx/celikpanel-managed.d/set11-a.test/*.conf;",
+        "path": "/etc/nginx/sites-available/set11-a.test.conf",
+        "protection": "none",
+        "render_sha256": "8d0ded895ef5095c98de162e7328057a266c835ca11cfdfc6ede51709ffe96c6",
+        "state": "owner_edited"
+      },
+      "label": "b4 shown (owner_edited): GET site-config",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains/2/site-config"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T00:35:30Z",
+      "json": {
+        "code": "SITE_CONFIG_UNWRITABLE",
+        "error": "CelikPanel could not read or replace the site's nginx configuration file (for example, it is a link or it is locked against changes), so it kept the file as it is and did not apply this change. The server administrator checks the file on the server; the reason is shown in the domain's Configuration file section.",
+        "reason": "write_refused"
+      },
+      "label": "b4 take while the file is locked",
+      "request": {
+        "body": {
+          "file_sha256": "7d96d96e850053b0a762ce465e1b689ba0e65c92ff3c1cbc5bf136d5e64dfaa1",
+          "render_sha256": "8d0ded895ef5095c98de162e7328057a266c835ca11cfdfc6ede51709ffe96c6"
+        },
+        "method": "POST",
+        "path": "/api/v1/domains/2/site-config/take",
+        "x_celikpanel_request_id": "40057dd32461638a5d82e1f864a5940d"
+      },
+      "seconds": 0.05,
+      "status": 409,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T00:35:34Z",
+      "json": {
+        "actions": [
+          "keep",
+          "take",
+          "merge"
+        ],
+        "challenge_file": "unchanged",
+        "diff": "--- /etc/nginx/sites-available/set11-a.test.conf (on this server)\n+++ CelikPanel's text\n@@ -44,9 +44,4 @@\n \n     # Your additions for this site (server context) / Bu site için eklemeleriniz\n     include /etc/nginx/celikpanel-sites.d/set11-a.test/*.conf;\n-\n-    # set10: added by the server owner by hand\n-    location /owner-extra/ {\n-        return 200 \"owner\";\n-    }\n }\n",
+        "domain": "set11-a.test",
+        "domain_id": 2,
+        "enabled": "link",
+        "file_sha256": "7d96d96e850053b0a762ce465e1b689ba0e65c92ff3c1cbc5bf136d5e64dfaa1",
+        "include_dir": "/etc/nginx/celikpanel-sites.d/set11-a.test",
+        "kind": "nginx_vhost",
+        "ledger": {
+          "backup_path": "/etc/nginx/sites-available/set11-a.test.conf.celikpanel-backup-20261011T003531Z",
+          "observed_at": "2026-10-11T00:35:31Z",
+          "written_at": "2026-10-11T00:35:26Z",
+          "written_release": "v0.1.0-alpha.81 b2b43d0cd680"
+        },
+        "managed_dir": "/etc/nginx/celikpanel-managed.d/set11-a.test",
+        "managed_include": "include /etc/nginx/celikpanel-managed.d/set11-a.test/*.conf;",
+        "path": "/etc/nginx/sites-available/set11-a.test.conf",
+        "protection": "immutable",
+        "render_sha256": "8d0ded895ef5095c98de162e7328057a266c835ca11cfdfc6ede51709ffe96c6",
+        "state": "owner_edited",
+        "system_error": "EPERM"
+      },
+      "label": "b4 the page after the refused take: GET site-config",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains/2/site-config"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T00:35:34Z",
+      "json": [
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T00:33:15Z",
+          "disk_usage": 0,
+          "domain_name": "set11-b.test",
+          "id": 3,
+          "php_version": "8.4",
+          "project_type": "php",
+          "site_config": {
+            "state": "managed_unchanged"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        },
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T00:33:13Z",
+          "disk_usage": 0,
+          "domain_name": "set11-a.test",
+          "id": 2,
+          "php_version": "8.4",
+          "project_type": "php",
+          "site_config": {
+            "state": "unwritable"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        },
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T00:33:10Z",
+          "disk_usage": 0,
+          "domain_name": "set1-owner.test",
+          "id": 1,
+          "php_version": "",
+          "project_type": "static",
+          "site_config": {
+            "state": "managed_unchanged"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        }
+      ],
+      "label": "b4 after the refused take: GET /api/v1/domains (Domains list)",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains"
+      },
+      "status": 200,
+      "text": null
+    }
+  ],
+  "cells": {
+    "B4": {
+      "detail": {
+        "a_lines": [
+          "2026-10-11T00:35:31.068980+00:00 dns-debian13 panel[33946]: 2026/10/11 00:35:31 site configuration set11-a.test (take): kept, not replaced (owner_edited write_refused); owner's file kept as /etc/nginx/sites-available/set11-a.test.conf.celikpanel-backup-20261011T003531Z; rename /etc/nginx/sites-available/.set11-a.test.conf.celikpanel-609735446 /etc/nginx/sites-available/set11-a.test.conf: operation not permitted"
+        ],
+        "backups_after": [
+          "/etc/nginx/sites-available/set11-a.test.conf.celikpanel-backup-20261011T003531Z"
+        ],
+        "browser": {
+          "browser_done": {
+            "at": "2026-10-11T00:35:58.358Z",
+            "by": "cold-load-set11.mjs"
+          },
+          "ended_at": "2026-10-11T00:35:58Z",
+          "hand": "/var/tmp/cp-set11-run/hand/h11d13-b-take-refused",
+          "password_file_removed": true,
+          "requests": [],
+          "window": "b-take-refused"
+        },
+        "ledger": {
+          "backup_path": "/etc/nginx/sites-available/set11-a.test.conf.celikpanel-backup-20261011T003531Z",
+          "decision": "",
+          "state": "unreadable",
+          "state_reason": "write_refused"
+        },
+        "page": {
+          "actions": [
+            "keep",
+            "take",
+            "merge"
+          ],
+          "detail": null,
+          "protection": "immutable",
+          "reason": null,
+          "state": "owner_edited",
+          "system_error": "EPERM"
+        },
+        "row": {
+          "state": "unwritable"
+        },
+        "take": {
+          "at": "2026-10-11T00:35:30Z",
+          "json": {
+            "code": "SITE_CONFIG_UNWRITABLE",
+            "error": "CelikPanel could not read or replace the site's nginx configuration file (for example, it is a link or it is locked against changes), so it kept the file as it is and did not apply this change. The server administrator checks the file on the server; the reason is shown in the domain's Configuration file section.",
+            "reason": "write_refused"
+          },
+          "label": "b4 take while the file is locked",
+          "request": {
+            "body": {
+              "file_sha256": "7d96d96e850053b0a762ce465e1b689ba0e65c92ff3c1cbc5bf136d5e64dfaa1",
+              "render_sha256": "8d0ded895ef5095c98de162e7328057a266c835ca11cfdfc6ede51709ffe96c6"
+            },
+            "method": "POST",
+            "path": "/api/v1/domains/2/site-config/take",
+            "x_celikpanel_request_id": "40057dd32461638a5d82e1f864a5940d"
+          },
+          "seconds": 0.05,
+          "status": 409,
+          "text": null
+        },
+        "unlocked": "--------------e-------"
+      },
+      "expectations": [
+        {
+          "expectation": "the owner-edited file was shown as owner_edited with the three choices",
+          "held": true,
+          "measured": {
+            "actions": [
+              "keep",
+              "take",
+              "merge"
+            ],
+            "state": "owner_edited"
+          }
+        },
+        {
+          "expectation": "take answers 409 SITE_CONFIG_UNWRITABLE, reason write_refused",
+          "held": true,
+          "measured": {
+            "at": "2026-10-11T00:35:30Z",
+            "json": {
+              "code": "SITE_CONFIG_UNWRITABLE",
+              "error": "CelikPanel could not read or replace the site's nginx configuration file (for example, it is a link or it is locked against changes), so it kept the file as it is and did not apply this change. The server administrator checks the file on the server; the reason is shown in the domain's Configuration file section.",
+              "reason": "write_refused"
+            },
+            "label": "b4 take while the file is locked",
+            "request": {
+              "body": {
+                "file_sha256": "7d96d96e850053b0a762ce465e1b689ba0e65c92ff3c1cbc5bf136d5e64dfaa1",
+                "render_sha256": "8d0ded895ef5095c98de162e7328057a266c835ca11cfdfc6ede51709ffe96c6"
+              },
+              "method": "POST",
+              "path": "/api/v1/domains/2/site-config/take",
+              "x_celikpanel_request_id": "40057dd32461638a5d82e1f864a5940d"
+            },
+            "seconds": 0.05,
+            "status": 409,
+            "text": null
+          }
+        },
+        {
+          "expectation": "the owner's file is untouched (sha256, inode)",
+          "held": true,
+          "measured": {
+            "inode": [
+              131558,
+              131558
+            ],
+            "sha256": [
+              "7d96d96e850053b0a762ce465e1b689ba0e65c92ff3c1cbc5bf136d5e64dfaa1",
+              "7d96d96e850053b0a762ce465e1b689ba0e65c92ff3c1cbc5bf136d5e64dfaa1"
+            ]
+          }
+        },
+        {
+          "expectation": "the page and the Domains row name the same state after the refusal",
+          "held": false,
+          "measured": {
+            "ledger": {
+              "state": "unreadable",
+              "state_reason": "write_refused"
+            },
+            "page": {
+              "actions": [
+                "keep",
+                "take",
+                "merge"
+              ],
+              "detail": null,
+              "protection": "immutable",
+              "reason": null,
+              "state": "owner_edited",
+              "system_error": "EPERM"
+            },
+            "row": {
+              "state": "unwritable"
+            }
+          }
+        }
+      ],
+      "verdict": "FAIL"
+    }
+  },
+  "checks": [
+    {
+      "detail": {
+        "actions": [
+          "keep",
+          "take",
+          "merge"
+        ],
+        "state": "owner_edited"
+      },
+      "name": "B4: the owner-edited file was shown as owner_edited with the three choices",
+      "ok": true
+    },
+    {
+      "detail": {
+        "at": "2026-10-11T00:35:30Z",
+        "json": {
+          "code": "SITE_CONFIG_UNWRITABLE",
+          "error": "CelikPanel could not read or replace the site's nginx configuration file (for example, it is a link or it is locked against changes), so it kept the file as it is and did not apply this change. The server administrator checks the file on the server; the reason is shown in the domain's Configuration file section.",
+          "reason": "write_refused"
+        },
+        "label": "b4 take while the file is locked",
+        "request": {
+          "body": {
+            "file_sha256": "7d96d96e850053b0a762ce465e1b689ba0e65c92ff3c1cbc5bf136d5e64dfaa1",
+            "render_sha256": "8d0ded895ef5095c98de162e7328057a266c835ca11cfdfc6ede51709ffe96c6"
+          },
+          "method": "POST",
+          "path": "/api/v1/domains/2/site-config/take",
+          "x_celikpanel_request_id": "40057dd32461638a5d82e1f864a5940d"
+        },
+        "seconds": 0.05,
+        "status": 409,
+        "text": null
+      },
+      "name": "B4: take answers 409 SITE_CONFIG_UNWRITABLE, reason write_refused",
+      "ok": true
+    },
+    {
+      "detail": {
+        "inode": [
+          131558,
+          131558
+        ],
+        "sha256": [
+          "7d96d96e850053b0a762ce465e1b689ba0e65c92ff3c1cbc5bf136d5e64dfaa1",
+          "7d96d96e850053b0a762ce465e1b689ba0e65c92ff3c1cbc5bf136d5e64dfaa1"
+        ]
+      },
+      "name": "B4: the owner's file is untouched (sha256, inode)",
+      "ok": true
+    },
+    {
+      "detail": {
+        "ledger": {
+          "state": "unreadable",
+          "state_reason": "write_refused"
+        },
+        "page": {
+          "actions": [
+            "keep",
+            "take",
+            "merge"
+          ],
+          "detail": null,
+          "protection": "immutable",
+          "reason": null,
+          "state": "owner_edited",
+          "system_error": "EPERM"
+        },
+        "row": {
+          "state": "unwritable"
+        }
+      },
+      "name": "B4: the page and the Domains row name the same state after the refusal",
+      "ok": false
+    }
+  ],
+  "finished_at": "2026-10-11T00:35:59Z",
+  "lab_preparation": [
+    {
+      "domain": "set11-a.test",
+      "file": "steps/21-b4-take-refused/native/133-b4-lab-restore-set11-a.test.json",
+      "label": "b4",
+      "sha256_matches": true
+    },
+    {
+      "domain": "set11-a.test",
+      "file": "steps/21-b4-take-refused/native/141-b4-end-lab-restore-set11-a.test.json",
+      "label": "b4-end",
+      "sha256_matches": true
+    }
+  ],
+  "native_evidence": false,
+  "natives": [
+    {
+      "file": "native/133-b4-lab-restore-set11-a.test.json",
+      "label": "b4-lab-restore-set11-a.test",
+      "mode": "lab-restore",
+      "owner_action": false
+    },
+    {
+      "file": "native/134-owner-b4-edit.json",
+      "label": "owner-b4-edit",
+      "mode": "owner-vhost10",
+      "owner_action": true
+    },
+    {
+      "file": "native/135-owner-b4-chattr-plus-i.json",
+      "label": "owner-b4-chattr-plus-i",
+      "mode": "owner-chattr",
+      "owner_action": true
+    },
+    {
+      "file": "native/136-b4-0-stat.json",
+      "label": "b4-0-stat",
+      "mode": "read-stat",
+      "owner_action": false
+    },
+    {
+      "file": "native/137-b4-1-stat.json",
+      "label": "b4-1-stat",
+      "mode": "read-stat",
+      "owner_action": false
+    },
+    {
+      "file": "native/138-b4-journal.json",
+      "label": "b4-journal",
+      "mode": "read-window",
+      "owner_action": false
+    },
+    {
+      "file": "native/139-b4-1-ledger.json",
+      "label": "b4-1-ledger",
+      "mode": "read-ledger",
+      "owner_action": false
+    },
+    {
+      "file": "native/140-owner-b4-chattr-minus-i.json",
+      "label": "owner-b4-chattr-minus-i",
+      "mode": "owner-chattr",
+      "owner_action": true
+    },
+    {
+      "file": "native/141-b4-end-lab-restore-set11-a.test.json",
+      "label": "b4-end-lab-restore-set11-a.test",
+      "mode": "lab-restore",
+      "owner_action": false
+    }
+  ],
+  "node": "debian13",
+  "notes": [
+    {
+      "detail": [
+        "the page and the Domains row name the same state after the refusal"
+      ],
+      "note": "B4: FAIL"
+    }
+  ],
+  "owner_actions": [
+    {
+      "at": "2026-10-11T00:35:30Z",
+      "label": "b4-edit",
+      "mode": "owner-vhost10"
+    },
+    {
+      "at": "2026-10-11T00:35:30Z",
+      "label": "b4-chattr-plus-i",
+      "mode": "owner-chattr"
+    },
+    {
+      "at": "2026-10-11T00:35:59Z",
+      "label": "b4-chattr-minus-i",
+      "mode": "owner-chattr"
+    }
+  ],
+  "section": "B4-take-refused",
+  "started_at": "2026-10-11T00:35:29Z",
+  "substeps": {
+    "B4": "failed"
+  },
+  "title": "take on an owner-edited A whose replacement fails",
+  "verdict": "failed"
+}

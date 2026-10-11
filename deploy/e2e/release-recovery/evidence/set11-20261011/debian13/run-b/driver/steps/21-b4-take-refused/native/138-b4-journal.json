@@ -1,0 +1,37 @@
+{
+  "at": "2026-10-11T00:35:34Z",
+  "by_unit": {
+    "celikpanel-agent.service": [],
+    "celikpanel-panel.service": [
+      "2026-10-11T00:35:30.535564+00:00 dns-debian13 panel[33946]: 2026/10/11 00:35:30 http: TLS handshake error from 127.0.0.1:59282: EOF",
+      "2026-10-11T00:35:31.036271+00:00 dns-debian13 panel[33946]: 2026/10/11 00:35:31 http: TLS handshake error from 127.0.0.1:59300: EOF",
+      "2026-10-11T00:35:31.068980+00:00 dns-debian13 panel[33946]: 2026/10/11 00:35:31 site configuration set11-a.test (take): kept, not replaced (owner_edited write_refused); owner's file kept as /etc/nginx/sites-available/set11-a.test.conf.celikpanel-backup-20261011T003531Z; rename /etc/nginx/sites-available/.set11-a.test.conf.celikpanel-609735446 /etc/nginx/sites-available/set11-a.test.conf: operation not permitted",
+      "2026-10-11T00:35:31.077646+00:00 dns-debian13 panel[33946]: 2026/10/11 00:35:31 [409] site configuration of set11-a.test not applied: refused (owner_edited write_refused)"
+    ],
+    "nginx.service": [
+      "2026-10-11T00:35:30.158783+00:00 dns-debian13 systemd[1]: Reloading nginx.service - A high performance web server and a reverse proxy server...",
+      "2026-10-11T00:35:30.207378+00:00 dns-debian13 nginx[35596]: 2026/10/11 00:35:30 [notice] 35596#35596: signal process started",
+      "2026-10-11T00:35:30.211009+00:00 dns-debian13 systemd[1]: Reloaded nginx.service - A high performance web server and a reverse proxy server.",
+      "2026-10-11T00:35:30.457401+00:00 dns-debian13 systemd[1]: Reloading nginx.service - A high performance web server and a reverse proxy server...",
+      "2026-10-11T00:35:30.487886+00:00 dns-debian13 nginx[35619]: 2026/10/11 00:35:30 [notice] 35619#35619: signal process started",
+      "2026-10-11T00:35:30.488745+00:00 dns-debian13 systemd[1]: Reloaded nginx.service - A high performance web server and a reverse proxy server."
+    ],
+    "php8.4-fpm.service": []
+  },
+  "mode": "read-window",
+  "owner_action": false,
+  "schema": "celikpanel/set10-native/v1",
+  "since_epoch": 1791678930,
+  "systemd_manager": [
+    "2026-10-11T00:35:30.158783+00:00 dns-debian13 systemd[1]: Reloading nginx.service - A high performance web server and a reverse proxy server...",
+    "2026-10-11T00:35:30.211009+00:00 dns-debian13 systemd[1]: Reloaded nginx.service - A high performance web server and a reverse proxy server.",
+    "2026-10-11T00:35:30.457401+00:00 dns-debian13 systemd[1]: Reloading nginx.service - A high performance web server and a reverse proxy server...",
+    "2026-10-11T00:35:30.488745+00:00 dns-debian13 systemd[1]: Reloaded nginx.service - A high performance web server and a reverse proxy server."
+  ],
+  "units": [
+    "celikpanel-panel.service",
+    "celikpanel-agent.service",
+    "nginx.service",
+    "php8.4-fpm.service"
+  ]
+}

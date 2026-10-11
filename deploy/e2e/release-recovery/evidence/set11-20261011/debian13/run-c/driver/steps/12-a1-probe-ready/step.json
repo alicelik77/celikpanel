@@ -1,0 +1,25 @@
+{
+  "checks": {
+    "checks": 10,
+    "error": null,
+    "failed": [
+      "A1: the file was there for every GET (created before the first request was sent, removed after the last was sent; each watcher's own read time)"
+    ],
+    "finished_at": "2026-10-11T00:51:20Z",
+    "notes": [
+      "A1: FAIL"
+    ],
+    "started_at": "2026-10-11T00:51:13Z",
+    "substeps": {
+      "A1": "failed"
+    },
+    "title": "owner-edited file with CelikPanel's include lines: certificate issuance",
+    "unknown": [],
+    "verdict": "failed"
+  },
+  "finished_at": "2026-10-11T00:51:20Z",
+  "name": "A1-probe-ready",
+  "reason": "A1: the file was there for every GET (created before the first request was sent, removed after the last was sent; each watcher's own read time)",
+  "started_at": "2026-10-11T00:51:13Z",
+  "verdict": "failed"
+}

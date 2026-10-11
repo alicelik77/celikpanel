@@ -1,0 +1,33 @@
+{
+  "at": "2026-10-11T01:18:42Z",
+  "by_unit": {
+    "celikpanel-agent.service": [],
+    "celikpanel-panel.service": [
+      "2026-10-11T01:18:39.537612+00:00 dns-ubuntu panel[44198]: 2026/10/11 01:18:39 http: TLS handshake error from 127.0.0.1:42132: EOF",
+      "2026-10-11T01:18:39.558979+00:00 dns-ubuntu panel[44198]: 2026/10/11 01:18:39 site configuration set11-a.test: the kept file now lets the certificate validation run; the waiting reason ended"
+    ],
+    "nginx.service": [
+      "2026-10-11T01:18:36.156264+00:00 dns-ubuntu systemd[1]: Reloading nginx.service - A high performance web server and a reverse proxy server...",
+      "2026-10-11T01:18:36.163240+00:00 dns-ubuntu nginx[48236]: 2026/10/11 01:18:36 [notice] 48236#48236: signal process started",
+      "2026-10-11T01:18:36.165245+00:00 dns-ubuntu systemd[1]: Reloaded nginx.service - A high performance web server and a reverse proxy server."
+    ],
+    "php8.3-fpm.service": []
+  },
+  "mode": "read-window",
+  "owner_action": false,
+  "schema": "celikpanel/set10-native/v1",
+  "since_epoch": 1791681516,
+  "systemd_manager": [
+    "2026-10-11T01:18:36.156264+00:00 dns-ubuntu systemd[1]: Reloading nginx.service - A high performance web server and a reverse proxy server...",
+    "2026-10-11T01:18:36.165245+00:00 dns-ubuntu systemd[1]: Reloaded nginx.service - A high performance web server and a reverse proxy server.",
+    "2026-10-11T01:18:37.968547+00:00 dns-ubuntu systemd[1]: Started celikpanel-lab-set11-fswatch.service - /usr/bin/python3 -I /root/celikpanel-release-recovery-lab/set11-fswatch.py /root/celikpanel-release-recovery-lab/set11-fs-a5.jsonl /var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge /etc/nginx/celikpanel-managed.d/set11-a.test /etc/nginx/celikpanel-sites.d/set11-a.test /etc/nginx/sites-available.",
+    "2026-10-11T01:18:41.394647+00:00 dns-ubuntu systemd[1]: Stopping celikpanel-lab-set11-fswatch.service - /usr/bin/python3 -I /root/celikpanel-release-recovery-lab/set11-fswatch.py /root/celikpanel-release-recovery-lab/set11-fs-a5.jsonl /var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge /etc/nginx/celikpanel-managed.d/set11-a.test /etc/nginx/celikpanel-sites.d/set11-a.test /etc/nginx/sites-available...",
+    "2026-10-11T01:18:41.399838+00:00 dns-ubuntu systemd[1]: Stopped celikpanel-lab-set11-fswatch.service - /usr/bin/python3 -I /root/celikpanel-release-recovery-lab/set11-fswatch.py /root/celikpanel-release-recovery-lab/set11-fs-a5.jsonl /var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge /etc/nginx/celikpanel-managed.d/set11-a.test /etc/nginx/celikpanel-sites.d/set11-a.test /etc/nginx/sites-available."
+  ],
+  "units": [
+    "celikpanel-panel.service",
+    "celikpanel-agent.service",
+    "nginx.service",
+    "php8.3-fpm.service"
+  ]
+}

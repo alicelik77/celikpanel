@@ -1,0 +1,49 @@
+# celikpanel-render v2 sha256=606ebe65566d7744be423f91ea2f5b1fe7d3a05f2545eacda517c9fcc5640d4d
+# set10 lab preparation: an older CelikPanel text of this site (a line the current render does not have)
+# Nginx vhost for set11-b.test
+# Written by CelikPanel. Put your own additions in /etc/nginx/celikpanel-sites.d/set11-b.test/*.conf;
+# CelikPanel never writes there. If you change this file, CelikPanel keeps
+# your file and asks you before it replaces it. Keep the lines that include
+# /etc/nginx/celikpanel-managed.d/set11-b.test: that directory is CelikPanel's (certificate
+# validation) and CelikPanel writes there without touching this file.
+# CelikPanel yazdı. Kendi eklemeleriniz /etc/nginx/celikpanel-sites.d/set11-b.test/*.conf içine;
+# CelikPanel oraya hiç yazmaz. Bu dosyayı değiştirirseniz CelikPanel
+# dosyanızı korur ve değiştirmeden önce size sorar. /etc/nginx/celikpanel-managed.d/set11-b.test
+# satırlarını koruyun: o dizin CelikPanel'indir (sertifika doğrulaması).
+# Site ID: 3 · Project type: php
+server {
+    listen 80;
+    listen [::]:80;
+    server_name set11-b.test www.set11-b.test;
+
+    access_log /var/log/nginx/set11-b.test-access.log;
+    error_log /var/log/nginx/set11-b.test-error.log;
+
+    # CelikPanel's own parts of this site (certificate validation) / CelikPanel'in parçaları
+    include /etc/nginx/celikpanel-managed.d/set11-b.test/*.conf;
+
+    root /var/www/celikpanel/subscriptions/2/sites/3/public_html;
+    index index.php index.html index.htm;
+
+    location / {
+
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+    location ~ \.php$ {
+        fastcgi_split_path_info ^(.+?\.php)(/.*)$;
+        try_files $fastcgi_script_name =404;
+        set $path_info $fastcgi_path_info;
+        fastcgi_param PATH_INFO $path_info;
+        fastcgi_index index.php;
+        include fastcgi.conf;
+        fastcgi_pass unix:/var/run/php/php8.3-fpm-site3.sock;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        include fastcgi_params;
+    }
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+
+    # Your additions for this site (server context) / Bu site için eklemeleriniz
+    include /etc/nginx/celikpanel-sites.d/set11-b.test/*.conf;
+}

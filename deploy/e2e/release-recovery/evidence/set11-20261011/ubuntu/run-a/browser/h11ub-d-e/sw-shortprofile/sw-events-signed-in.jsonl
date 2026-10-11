@@ -1,0 +1,8 @@
+{"at":"2026-10-11T01:25:43.672Z","ev":"registration","registrations":[{"scope":"https://127.0.0.1:18872/","deleted":false}]}
+{"at":"2026-10-11T01:25:43.673Z","ev":"version","versions":[{"script":"/recovery-worker.js","runningStatus":"running","status":"activated","controlledClients":0}]}
+{"at":"2026-10-11T01:25:43.685Z","ev":"version","versions":[{"script":"/recovery-worker.js","runningStatus":"running","status":"activated","controlledClients":0}]}
+{"at":"2026-10-11T01:25:43.748Z","ev":"registration","registrations":[{"scope":"https://127.0.0.1:18872/","deleted":false}]}
+{"at":"2026-10-11T01:25:50.651Z","ev":"registration","registrations":[{"scope":"https://127.0.0.1:18872/","deleted":false}]}
+{"at":"2026-10-11T01:25:50.696Z","ev":"version","versions":[{"script":"/recovery-worker.js","runningStatus":"running","status":"activated","controlledClients":0}]}
+{"at":"2026-10-11T01:25:50.704Z","ev":"version","versions":[{"script":"/recovery-worker.js","runningStatus":"running","status":"activated","controlledClients":0}]}
+{"at":"2026-10-11T01:25:50.748Z","ev":"registration","registrations":[{"scope":"https://127.0.0.1:18872/","deleted":false}]}

@@ -1,0 +1,2 @@
+Pictures pruned at staging (set11 stage_browser.py): kept every picture up to 400 ms after the navigation call, the first picture at or after each change of the painted kind, the picture nearest each of 1000, 1600, 2000, 5000, 9000, 12000, 15200, 20000, 25200, 26500, 31000, 35000, 39000, 40500, 45000, 49000 ms, and the last. `loads.jsonl` still lists every picture the script kept; the ones removed here are named below.
+

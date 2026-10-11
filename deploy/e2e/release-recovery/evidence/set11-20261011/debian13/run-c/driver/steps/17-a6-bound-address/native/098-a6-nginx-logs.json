@@ -1,0 +1,14 @@
+{
+  "at": "2026-10-11T00:52:00Z",
+  "epoch": 1791679920.6443152,
+  "logs": {
+    "/var/log/nginx/access.log": {
+      "from": 1709,
+      "text": "127.0.0.1 - - [11/Oct/2026:00:51:58 +0000] \"GET /.well-known/acme-challenge/celikpanel-probe-943a95a36a86092650a28498c3290fda HTTP/1.1\" 404 118 \"-\" \"Go-http-client/1.1\"\n127.0.0.1 - - [11/Oct/2026:00:51:58 +0000] \"GET /.well-known/acme-challenge/celikpanel-probe-943a95a36a86092650a28498c3290fda HTTP/1.1\" 404 118 \"-\" \"Go-http-client/1.1\"\n",
+      "to": 2047
+    }
+  },
+  "mode": "read-logs",
+  "owner_action": false,
+  "schema": "celikpanel/set11-native/v1"
+}

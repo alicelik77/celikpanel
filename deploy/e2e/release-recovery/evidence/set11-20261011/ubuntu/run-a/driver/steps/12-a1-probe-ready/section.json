@@ -1,0 +1,836 @@
+{
+  "a1": {
+    "agent_lines": [],
+    "answer": {
+      "body": {
+        "code": "CERTIFICATE_ISSUE_FAILED",
+        "error": "No certificate was issued: this server could not reach the certificate authority, so no request was placed with it. The server owner checks that this server can open HTTPS connections to the internet (DNS resolution, outbound port 443, the system clock), then requests the certificate here again. The site has no certificate from this request and is served as before. Nothing asks again automatically.",
+        "reason": "authority_unreachable",
+        "vars": {
+          "detail": "An unexpected error occurred: requests.exceptions.SSLError: HTTPSConnectionPool(host='acme-v02.api.letsencrypt.org', port=443): Max retries exceeded with url: /directory (Caused by SSLError(SSLCertVerificationError(1, \"[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: Hostname mismatch, ce...",
+          "domain": "set11-a.test",
+          "kept": "none"
+        }
+      },
+      "seconds": 1.43,
+      "sent": {
+        "auto_renew": false,
+        "email": "hostmaster@set11-a.test"
+      },
+      "status": 502
+    },
+    "files": {
+      "journal": "steps/12-a1-probe-ready/native/026-a1-journal.json",
+      "logs": "steps/12-a1-probe-ready/native/025-a1-nginx-logs.json",
+      "watch": "steps/12-a1-probe-ready/native/024-a1-watch-stop.json"
+    },
+    "nginx_logs": {
+      "/var/log/nginx/set11-a.test-access.log": {
+        "from": 90,
+        "text": "127.0.0.1 - - [11/Oct/2026:01:18:11 +0000] \"GET /.well-known/acme-challenge/celikpanel-probe-ceb6c7124769b2c0eb1d579ace82a872 HTTP/1.1\" 200 61 \"-\" \"Go-http-client/1.1\"\n127.0.0.1 - - [11/Oct/2026:01:18:11 +0000] \"GET /.well-known/acme-challenge/celikpanel-probe-ceb6c7124769b2c0eb1d579ace82a872 HTTP/1.1\" 200 61 \"-\" \"Go-http-client/1.1\"\n",
+        "to": 426
+      }
+    },
+    "panel_lines": [
+      "2026-10-11T01:18:13.171718+00:00 dns-ubuntu panel[44198]: 2026/10/11 01:18:13 [502][certificate] set11-a.test: CERTIFICATE_ISSUE_FAILED authority_unreachable: certbot failed: exit status 1 Output: Saving debug log to /var/log/celikpanel/certbot/letsencrypt.log An unexpected error occurred: requests.exceptions.SSLError: HTTPSConnectionPool(host='acme-v02.api.letsencrypt.org', port=443): Max retries exceeded with url: /directory (Caused by SSLError(SSLCertVerificationError(1, \"[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: Hostname mismatch, certificate is not valid for 'acme-v02.api.letsencrypt.org'. (_ssl.c:1000)\"))) Ask for help or search for soluti…"
+    ],
+    "probe": {
+      "gets": [
+        {
+          "answer": "HTTP/1.1 200 OK",
+          "host": "set11-a.test",
+          "location": null,
+          "request": "GET /.well-known/acme-challenge/celikpanel-probe-ceb6c7124769b2c0eb1d579ace82a872 HTTP/1.1",
+          "status": 200
+        },
+        {
+          "answer": "HTTP/1.1 200 OK",
+          "host": "www.set11-a.test",
+          "location": null,
+          "request": "GET /.well-known/acme-challenge/celikpanel-probe-ceb6c7124769b2c0eb1d579ace82a872 HTTP/1.1",
+          "status": 200
+        }
+      ],
+      "probe_files": {
+        "celikpanel-probe-ceb6c7124769b2c0eb1d579ace82a872": {
+          "created_t": 1791681491.8087816,
+          "deleted_t": 1791681491.8110697,
+          "events": [
+            "create",
+            "modify",
+            "close_write",
+            "attrib",
+            "delete"
+          ],
+          "final_mode": "0o644",
+          "modes": [
+            "0o644",
+            "0o644",
+            "0o644",
+            "0o644"
+          ],
+          "owners": [
+            [
+              0,
+              988
+            ],
+            [
+              0,
+              988
+            ],
+            [
+              0,
+              988
+            ],
+            [
+              0,
+              988
+            ]
+          ],
+          "sizes": [
+            61,
+            61,
+            61,
+            61
+          ]
+        }
+      }
+    },
+    "ssl_after": {
+      "body": {
+        "domain_id": 2,
+        "domain_name": "set11-a.test",
+        "has_certificate": false,
+        "managed_names": [
+          "set11-a.test",
+          "www.set11-a.test"
+        ],
+        "settings": {
+          "force_https": false,
+          "hsts_enabled": false,
+          "hsts_max_age": 31536000
+        }
+      },
+      "status": 200
+    }
+  },
+  "calls": [
+    {
+      "answer": {
+        "code": "CERTIFICATE_ISSUE_FAILED",
+        "error": "No certificate was issued: this server could not reach the certificate authority, so no request was placed with it. The server owner checks that this server can open HTTPS connections to the internet (DNS resolution, outbound port 443, the system clock), then requests the certificate here again. The site has no certificate from this request and is served as before. Nothing asks again automatically.",
+        "reason": "authority_unreachable",
+        "vars": {
+          "detail": "An unexpected error occurred: requests.exceptions.SSLError: HTTPSConnectionPool(host='acme-v02.api.letsencrypt.org', port=443): Max retries exceeded with url: /directory (Caused by SSLError(SSLCertVerificationError(1, \"[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: Hostname mismatch, ce...",
+          "domain": "set11-a.test",
+          "kept": "none"
+        }
+      },
+      "at": "2026-10-11T01:18:12Z",
+      "json": {
+        "code": "CERTIFICATE_ISSUE_FAILED",
+        "error": "No certificate was issued: this server could not reach the certificate authority, so no request was placed with it. The server owner checks that this server can open HTTPS connections to the internet (DNS resolution, outbound port 443, the system clock), then requests the certificate here again. The site has no certificate from this request and is served as before. Nothing asks again automatically.",
+        "reason": "authority_unreachable",
+        "vars": {
+          "detail": "An unexpected error occurred: requests.exceptions.SSLError: HTTPSConnectionPool(host='acme-v02.api.letsencrypt.org', port=443): Max retries exceeded with url: /directory (Caused by SSLError(SSLCertVerificationError(1, \"[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: Hostname mismatch, ce...",
+          "domain": "set11-a.test",
+          "kept": "none"
+        }
+      },
+      "label": "a1: POST ssl/letsencrypt (the owner requests a certificate)",
+      "request": {
+        "body": {
+          "auto_renew": false,
+          "email": "hostmaster@set11-a.test"
+        },
+        "method": "POST",
+        "path": "/api/v1/domains/2/ssl/letsencrypt"
+      },
+      "status": 502,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T01:18:16Z",
+      "json": {
+        "domain_id": 2,
+        "domain_name": "set11-a.test",
+        "has_certificate": false,
+        "managed_names": [
+          "set11-a.test",
+          "www.set11-a.test"
+        ],
+        "settings": {
+          "force_https": false,
+          "hsts_enabled": false,
+          "hsts_max_age": 31536000
+        }
+      },
+      "label": "a1 after: GET ssl",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains/2/ssl"
+      },
+      "status": 200,
+      "text": null
+    }
+  ],
+  "cells": {
+    "A1": {
+      "detail": {
+        "agent_lines": [],
+        "answer": {
+          "body": {
+            "code": "CERTIFICATE_ISSUE_FAILED",
+            "error": "No certificate was issued: this server could not reach the certificate authority, so no request was placed with it. The server owner checks that this server can open HTTPS connections to the internet (DNS resolution, outbound port 443, the system clock), then requests the certificate here again. The site has no certificate from this request and is served as before. Nothing asks again automatically.",
+            "reason": "authority_unreachable",
+            "vars": {
+              "detail": "An unexpected error occurred: requests.exceptions.SSLError: HTTPSConnectionPool(host='acme-v02.api.letsencrypt.org', port=443): Max retries exceeded with url: /directory (Caused by SSLError(SSLCertVerificationError(1, \"[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: Hostname mismatch, ce...",
+              "domain": "set11-a.test",
+              "kept": "none"
+            }
+          },
+          "seconds": 1.43,
+          "sent": {
+            "auto_renew": false,
+            "email": "hostmaster@set11-a.test"
+          },
+          "status": 502
+        },
+        "files": {
+          "journal": "steps/12-a1-probe-ready/native/026-a1-journal.json",
+          "logs": "steps/12-a1-probe-ready/native/025-a1-nginx-logs.json",
+          "watch": "steps/12-a1-probe-ready/native/024-a1-watch-stop.json"
+        },
+        "nginx_logs": {
+          "/var/log/nginx/set11-a.test-access.log": {
+            "from": 90,
+            "text": "127.0.0.1 - - [11/Oct/2026:01:18:11 +0000] \"GET /.well-known/acme-challenge/celikpanel-probe-ceb6c7124769b2c0eb1d579ace82a872 HTTP/1.1\" 200 61 \"-\" \"Go-http-client/1.1\"\n127.0.0.1 - - [11/Oct/2026:01:18:11 +0000] \"GET /.well-known/acme-challenge/celikpanel-probe-ceb6c7124769b2c0eb1d579ace82a872 HTTP/1.1\" 200 61 \"-\" \"Go-http-client/1.1\"\n",
+            "to": 426
+          }
+        },
+        "panel_lines": [
+          "2026-10-11T01:18:13.171718+00:00 dns-ubuntu panel[44198]: 2026/10/11 01:18:13 [502][certificate] set11-a.test: CERTIFICATE_ISSUE_FAILED authority_unreachable: certbot failed: exit status 1 Output: Saving debug log to /var/log/celikpanel/certbot/letsencrypt.log An unexpected error occurred: requests.exceptions.SSLError: HTTPSConnectionPool(host='acme-v02.api.letsencrypt.org', port=443): Max retries exceeded with url: /directory (Caused by SSLError(SSLCertVerificationError(1, \"[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: Hostname mismatch, certificate is not valid for 'acme-v02.api.letsencrypt.org'. (_ssl.c:1000)\"))) Ask for help or search for soluti…"
+        ],
+        "probe": {
+          "gets": [
+            {
+              "answer": "HTTP/1.1 200 OK",
+              "host": "set11-a.test",
+              "location": null,
+              "request": "GET /.well-known/acme-challenge/celikpanel-probe-ceb6c7124769b2c0eb1d579ace82a872 HTTP/1.1",
+              "status": 200
+            },
+            {
+              "answer": "HTTP/1.1 200 OK",
+              "host": "www.set11-a.test",
+              "location": null,
+              "request": "GET /.well-known/acme-challenge/celikpanel-probe-ceb6c7124769b2c0eb1d579ace82a872 HTTP/1.1",
+              "status": 200
+            }
+          ],
+          "probe_files": {
+            "celikpanel-probe-ceb6c7124769b2c0eb1d579ace82a872": {
+              "created_t": 1791681491.8087816,
+              "deleted_t": 1791681491.8110697,
+              "events": [
+                "create",
+                "modify",
+                "close_write",
+                "attrib",
+                "delete"
+              ],
+              "final_mode": "0o644",
+              "modes": [
+                "0o644",
+                "0o644",
+                "0o644",
+                "0o644"
+              ],
+              "owners": [
+                [
+                  0,
+                  988
+                ],
+                [
+                  0,
+                  988
+                ],
+                [
+                  0,
+                  988
+                ],
+                [
+                  0,
+                  988
+                ]
+              ],
+              "sizes": [
+                61,
+                61,
+                61,
+                61
+              ]
+            }
+          }
+        },
+        "ssl_after": {
+          "body": {
+            "domain_id": 2,
+            "domain_name": "set11-a.test",
+            "has_certificate": false,
+            "managed_names": [
+              "set11-a.test",
+              "www.set11-a.test"
+            ],
+            "settings": {
+              "force_https": false,
+              "hsts_enabled": false,
+              "hsts_max_age": 31536000
+            }
+          },
+          "status": 200
+        }
+      },
+      "expectations": [
+        {
+          "expectation": "one probe file, named celikpanel-probe-<32 hex>, was created in the challenge directory and removed",
+          "held": true,
+          "measured": {
+            "challenge_dir": "/var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge",
+            "files": {
+              "celikpanel-probe-ceb6c7124769b2c0eb1d579ace82a872": {
+                "created_t": 1791681491.8087816,
+                "deleted_t": 1791681491.8110697,
+                "events": [
+                  "create",
+                  "modify",
+                  "close_write",
+                  "attrib",
+                  "delete"
+                ],
+                "modes": [
+                  "0o644",
+                  "0o644",
+                  "0o644",
+                  "0o644"
+                ],
+                "owners": [
+                  [
+                    0,
+                    988
+                  ],
+                  [
+                    0,
+                    988
+                  ],
+                  [
+                    0,
+                    988
+                  ],
+                  [
+                    0,
+                    988
+                  ]
+                ],
+                "sizes": [
+                  61,
+                  61,
+                  61,
+                  61
+                ]
+              }
+            },
+            "watch_times": {
+              "created_t": 1791681491.8087816,
+              "deleted_t": 1791681491.8110697,
+              "gets_t": [
+                [
+                  1791681491.8096223,
+                  1791681491.8099182
+                ],
+                [
+                  1791681491.8103104,
+                  1791681491.8104343
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "expectation": "its mode is 0644",
+          "held": true,
+          "measured": {
+            "modes": [
+              "0o644",
+              "0o644",
+              "0o644",
+              "0o644"
+            ],
+            "owners": [
+              [
+                0,
+                988
+              ],
+              [
+                0,
+                988
+              ],
+              [
+                0,
+                988
+              ],
+              [
+                0,
+                988
+              ]
+            ]
+          }
+        },
+        {
+          "expectation": "the loopback GETs asked for that file under each validation name, in order",
+          "held": true,
+          "measured": [
+            {
+              "answer": "HTTP/1.1 200 OK",
+              "host": "set11-a.test",
+              "request": "GET /.well-known/acme-challenge/celikpanel-probe-ceb6c7124769b2c0eb1d579ace82a872 HTTP/1.1",
+              "src": "127.0.0.1",
+              "status": 200
+            },
+            {
+              "answer": "HTTP/1.1 200 OK",
+              "host": "www.set11-a.test",
+              "request": "GET /.well-known/acme-challenge/celikpanel-probe-ceb6c7124769b2c0eb1d579ace82a872 HTTP/1.1",
+              "src": "127.0.0.1",
+              "status": 200
+            }
+          ]
+        },
+        {
+          "expectation": "each name's answer as expected (200 with the probe's bytes = served)",
+          "held": true,
+          "measured": [
+            {
+              "body_start": "celikpanel validation probe 6cd0be6f668a213a4c6192704bfc606a\n",
+              "host": "set11-a.test",
+              "location": null,
+              "served_the_probe": true,
+              "status": 200
+            },
+            {
+              "body_start": "celikpanel validation probe 6cd0be6f668a213a4c6192704bfc606a\n",
+              "host": "www.set11-a.test",
+              "location": null,
+              "served_the_probe": true,
+              "status": 200
+            }
+          ]
+        },
+        {
+          "expectation": "after the probe, a connection to port 443 on the loopback (certbot asking the pinned certificate authority name) was opened",
+          "held": true,
+          "measured": {
+            "syn_443_after_probe": [
+              {
+                "dport": 443,
+                "dst": "::1",
+                "sport": 50898,
+                "src": "::1",
+                "syn": true,
+                "t": 1791681493.0018191
+              },
+              {
+                "dport": 443,
+                "dst": "127.0.0.1",
+                "sport": 36836,
+                "src": "127.0.0.1",
+                "syn": true,
+                "t": 1791681493.0033605
+              }
+            ]
+          }
+        },
+        {
+          "expectation": "the answer is the certificate authority's failure, not a refusal by the file (502 CERTIFICATE_ISSUE_FAILED)",
+          "held": true,
+          "measured": {
+            "code": "CERTIFICATE_ISSUE_FAILED",
+            "error": "No certificate was issued: this server could not reach the certificate authority, so no request was placed with it. The server owner checks that this server can open HTTPS connections to the internet (DNS resolution, outbound port 443, the system clock), then requests the certificate here again. The site has no certificate from this request and is served as before. Nothing asks again automatically.",
+            "reason": "authority_unreachable",
+            "seconds": 1.43,
+            "status": 502,
+            "vars": {
+              "detail": "An unexpected error occurred: requests.exceptions.SSLError: HTTPSConnectionPool(host='acme-v02.api.letsencrypt.org', port=443): Max retries exceeded with url: /directory (Caused by SSLError(SSLCertVerificationError(1, \"[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: Hostname mismatch, ce...",
+              "domain": "set11-a.test",
+              "kept": "none"
+            }
+          }
+        },
+        {
+          "expectation": "its reason is authority_unreachable (the documented kind for an authority this server cannot reach)",
+          "held": true,
+          "measured": "authority_unreachable"
+        },
+        {
+          "expectation": "A's vhost is untouched (sha256, inode, mtime)",
+          "held": true,
+          "measured": {
+            "inode": [
+              263544,
+              263544
+            ],
+            "mtime_ns": [
+              1791681488046975944,
+              1791681488046975944
+            ],
+            "sha256": [
+              "c01f0a323c1adb37f5adbeaee904773d434e0f8ec0ad7d3bc2a29efe563f3ad2",
+              "c01f0a323c1adb37f5adbeaee904773d434e0f8ec0ad7d3bc2a29efe563f3ad2"
+            ]
+          }
+        },
+        {
+          "expectation": "no ledger reason was written (state_reason empty before and after)",
+          "held": true,
+          "measured": {
+            "after": {
+              "state": "owner_edited",
+              "state_reason": ""
+            },
+            "before": {
+              "state": "managed_unchanged",
+              "state_reason": ""
+            }
+          }
+        }
+      ],
+      "verdict": "PASS"
+    }
+  },
+  "checks": [
+    {
+      "detail": {
+        "challenge_dir": "/var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge",
+        "files": {
+          "celikpanel-probe-ceb6c7124769b2c0eb1d579ace82a872": {
+            "created_t": 1791681491.8087816,
+            "deleted_t": 1791681491.8110697,
+            "events": [
+              "create",
+              "modify",
+              "close_write",
+              "attrib",
+              "delete"
+            ],
+            "modes": [
+              "0o644",
+              "0o644",
+              "0o644",
+              "0o644"
+            ],
+            "owners": [
+              [
+                0,
+                988
+              ],
+              [
+                0,
+                988
+              ],
+              [
+                0,
+                988
+              ],
+              [
+                0,
+                988
+              ]
+            ],
+            "sizes": [
+              61,
+              61,
+              61,
+              61
+            ]
+          }
+        },
+        "watch_times": {
+          "created_t": 1791681491.8087816,
+          "deleted_t": 1791681491.8110697,
+          "gets_t": [
+            [
+              1791681491.8096223,
+              1791681491.8099182
+            ],
+            [
+              1791681491.8103104,
+              1791681491.8104343
+            ]
+          ]
+        }
+      },
+      "name": "A1: one probe file, named celikpanel-probe-<32 hex>, was created in the challenge directory and removed",
+      "ok": true
+    },
+    {
+      "detail": {
+        "modes": [
+          "0o644",
+          "0o644",
+          "0o644",
+          "0o644"
+        ],
+        "owners": [
+          [
+            0,
+            988
+          ],
+          [
+            0,
+            988
+          ],
+          [
+            0,
+            988
+          ],
+          [
+            0,
+            988
+          ]
+        ]
+      },
+      "name": "A1: its mode is 0644",
+      "ok": true
+    },
+    {
+      "detail": [
+        {
+          "answer": "HTTP/1.1 200 OK",
+          "host": "set11-a.test",
+          "request": "GET /.well-known/acme-challenge/celikpanel-probe-ceb6c7124769b2c0eb1d579ace82a872 HTTP/1.1",
+          "src": "127.0.0.1",
+          "status": 200
+        },
+        {
+          "answer": "HTTP/1.1 200 OK",
+          "host": "www.set11-a.test",
+          "request": "GET /.well-known/acme-challenge/celikpanel-probe-ceb6c7124769b2c0eb1d579ace82a872 HTTP/1.1",
+          "src": "127.0.0.1",
+          "status": 200
+        }
+      ],
+      "name": "A1: the loopback GETs asked for that file under each validation name, in order",
+      "ok": true
+    },
+    {
+      "detail": [
+        {
+          "body_start": "celikpanel validation probe 6cd0be6f668a213a4c6192704bfc606a\n",
+          "host": "set11-a.test",
+          "location": null,
+          "served_the_probe": true,
+          "status": 200
+        },
+        {
+          "body_start": "celikpanel validation probe 6cd0be6f668a213a4c6192704bfc606a\n",
+          "host": "www.set11-a.test",
+          "location": null,
+          "served_the_probe": true,
+          "status": 200
+        }
+      ],
+      "name": "A1: each name's answer as expected (200 with the probe's bytes = served)",
+      "ok": true
+    },
+    {
+      "detail": {
+        "syn_443_after_probe": [
+          {
+            "dport": 443,
+            "dst": "::1",
+            "sport": 50898,
+            "src": "::1",
+            "syn": true,
+            "t": 1791681493.0018191
+          },
+          {
+            "dport": 443,
+            "dst": "127.0.0.1",
+            "sport": 36836,
+            "src": "127.0.0.1",
+            "syn": true,
+            "t": 1791681493.0033605
+          }
+        ]
+      },
+      "name": "A1: after the probe, a connection to port 443 on the loopback (certbot asking the pinned certificate authority name) was opened",
+      "ok": true
+    },
+    {
+      "detail": {
+        "code": "CERTIFICATE_ISSUE_FAILED",
+        "error": "No certificate was issued: this server could not reach the certificate authority, so no request was placed with it. The server owner checks that this server can open HTTPS connections to the internet (DNS resolution, outbound port 443, the system clock), then requests the certificate here again. The site has no certificate from this request and is served as before. Nothing asks again automatically.",
+        "reason": "authority_unreachable",
+        "seconds": 1.43,
+        "status": 502,
+        "vars": {
+          "detail": "An unexpected error occurred: requests.exceptions.SSLError: HTTPSConnectionPool(host='acme-v02.api.letsencrypt.org', port=443): Max retries exceeded with url: /directory (Caused by SSLError(SSLCertVerificationError(1, \"[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: Hostname mismatch, ce...",
+          "domain": "set11-a.test",
+          "kept": "none"
+        }
+      },
+      "name": "A1: the answer is the certificate authority's failure, not a refusal by the file (502 CERTIFICATE_ISSUE_FAILED)",
+      "ok": true
+    },
+    {
+      "detail": "authority_unreachable",
+      "name": "A1: its reason is authority_unreachable (the documented kind for an authority this server cannot reach)",
+      "ok": true
+    },
+    {
+      "detail": {
+        "inode": [
+          263544,
+          263544
+        ],
+        "mtime_ns": [
+          1791681488046975944,
+          1791681488046975944
+        ],
+        "sha256": [
+          "c01f0a323c1adb37f5adbeaee904773d434e0f8ec0ad7d3bc2a29efe563f3ad2",
+          "c01f0a323c1adb37f5adbeaee904773d434e0f8ec0ad7d3bc2a29efe563f3ad2"
+        ]
+      },
+      "name": "A1: A's vhost is untouched (sha256, inode, mtime)",
+      "ok": true
+    },
+    {
+      "detail": {
+        "after": {
+          "state": "owner_edited",
+          "state_reason": ""
+        },
+        "before": {
+          "state": "managed_unchanged",
+          "state_reason": ""
+        }
+      },
+      "name": "A1: no ledger reason was written (state_reason empty before and after)",
+      "ok": true
+    }
+  ],
+  "finished_at": "2026-10-11T01:18:16Z",
+  "lab_preparation": [
+    {
+      "domain": "set11-a.test",
+      "file": "steps/12-a1-probe-ready/native/017-a1-lab-restore-set11-a.test.json",
+      "label": "a1",
+      "sha256_matches": true
+    }
+  ],
+  "native_evidence": false,
+  "natives": [
+    {
+      "file": "native/017-a1-lab-restore-set11-a.test.json",
+      "label": "a1-lab-restore-set11-a.test",
+      "mode": "lab-restore",
+      "owner_action": false
+    },
+    {
+      "file": "native/018-owner-a1-edit.json",
+      "label": "owner-a1-edit",
+      "mode": "owner-vhost10",
+      "owner_action": true
+    },
+    {
+      "file": "native/019-a1-0-stat.json",
+      "label": "a1-0-stat",
+      "mode": "read-stat",
+      "owner_action": false
+    },
+    {
+      "file": "native/020-a1-0-ledger.json",
+      "label": "a1-0-ledger",
+      "mode": "read-ledger",
+      "owner_action": false
+    },
+    {
+      "file": "native/021-a1-before-acme.json",
+      "label": "a1-before-acme",
+      "mode": "read-acme",
+      "owner_action": false
+    },
+    {
+      "file": "native/022-a1-log-offsets.json",
+      "label": "a1-log-offsets",
+      "mode": "log-offsets",
+      "owner_action": false
+    },
+    {
+      "file": "native/023-a1-watch-start.json",
+      "label": "a1-watch-start",
+      "mode": "watch-start",
+      "owner_action": false
+    },
+    {
+      "file": "native/024-a1-watch-stop.json",
+      "label": "a1-watch-stop",
+      "mode": "watch-stop",
+      "owner_action": false
+    },
+    {
+      "file": "native/025-a1-nginx-logs.json",
+      "label": "a1-nginx-logs",
+      "mode": "read-logs",
+      "owner_action": false
+    },
+    {
+      "file": "native/026-a1-journal.json",
+      "label": "a1-journal",
+      "mode": "read-window",
+      "owner_action": false
+    },
+    {
+      "file": "native/027-a1-1-stat.json",
+      "label": "a1-1-stat",
+      "mode": "read-stat",
+      "owner_action": false
+    },
+    {
+      "file": "native/028-a1-1-ledger.json",
+      "label": "a1-1-ledger",
+      "mode": "read-ledger",
+      "owner_action": false
+    }
+  ],
+  "node": "ubuntu",
+  "notes": [
+    {
+      "detail": [],
+      "note": "A1: PASS"
+    }
+  ],
+  "owner_actions": [
+    {
+      "at": "2026-10-11T01:18:08Z",
+      "label": "a1-edit",
+      "mode": "owner-vhost10"
+    }
+  ],
+  "owner_waited_for_idle": {
+    "at": "2026-10-11T01:18:07Z",
+    "busy_seen": [],
+    "idle": true,
+    "polls": 1,
+    "waited_s": 0.3
+  },
+  "section": "A1-probe-ready",
+  "started_at": "2026-10-11T01:18:06Z",
+  "substeps": {
+    "A1": "passed"
+  },
+  "title": "owner-edited file with CelikPanel's include lines: certificate issuance",
+  "verdict": "passed"
+}

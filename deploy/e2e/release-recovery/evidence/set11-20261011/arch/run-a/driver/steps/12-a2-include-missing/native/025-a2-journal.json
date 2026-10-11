@@ -1,0 +1,49 @@
+{
+  "at": "2026-10-11T01:36:31Z",
+  "by_unit": {
+    "celikpanel-agent.service": [],
+    "celikpanel-panel.service": [
+      "2026-10-11T01:36:26.586455+00:00 dns-arch panel[3092]: 2026/10/11 01:36:26 http: TLS handshake error from 127.0.0.1:34662: EOF",
+      "2026-10-11T01:36:29.276228+00:00 dns-arch panel[3092]: 2026/10/11 01:36:29 http: TLS handshake error from 127.0.0.1:37556: EOF",
+      "2026-10-11T01:36:29.328823+00:00 dns-arch panel[3092]: 2026/10/11 01:36:29 site configuration set11-a.test (change): kept (owner-edited); CelikPanel's text held in /etc/nginx/sites-available/set11-a.test.conf.celikpanel-pending",
+      "2026-10-11T01:36:29.354634+00:00 dns-arch panel[3092]: 2026/10/11 01:36:29 SSL issue domain 2: prepare validation vhost: certificate validation for set11-a.test not prepared: the configuration file was kept (owner_edited) and include_missing",
+      "2026-10-11T01:36:29.354634+00:00 dns-arch panel[3092]: 2026/10/11 01:36:29 [409] certificate validation for set11-a.test not prepared: the configuration file was kept (owner_edited) and include_missing"
+    ],
+    "nginx.service": [
+      "2026-10-11T01:36:25.047234+00:00 dns-arch systemd[1]: Reloading nginx web server...",
+      "2026-10-11T01:36:25.078908+00:00 dns-arch nginx[3181]: 2026/10/11 01:36:25 [warn] 3181#3181: could not build optimal types_hash, you should increase either types_hash_max_size: 1024 or types_hash_bucket_size: 64; ignoring types_hash_bucket_size",
+      "2026-10-11T01:36:25.083939+00:00 dns-arch nginx[3181]: 2026/10/11 01:36:25 [notice] 3181#3181: signal process started",
+      "2026-10-11T01:36:25.085679+00:00 dns-arch systemd[1]: Reloaded nginx web server.",
+      "2026-10-11T01:36:25.537240+00:00 dns-arch systemd[1]: Reloading nginx web server...",
+      "2026-10-11T01:36:25.563463+00:00 dns-arch nginx[3199]: 2026/10/11 01:36:25 [warn] 3199#3199: could not build optimal types_hash, you should increase either types_hash_max_size: 1024 or types_hash_bucket_size: 64; ignoring types_hash_bucket_size",
+      "2026-10-11T01:36:25.568532+00:00 dns-arch nginx[3199]: 2026/10/11 01:36:25 [notice] 3199#3199: signal process started",
+      "2026-10-11T01:36:25.570331+00:00 dns-arch systemd[1]: Reloaded nginx web server.",
+      "2026-10-11T01:36:26.156265+00:00 dns-arch systemd[1]: Reloading nginx web server...",
+      "2026-10-11T01:36:26.184727+00:00 dns-arch nginx[3216]: 2026/10/11 01:36:26 [warn] 3216#3216: could not build optimal types_hash, you should increase either types_hash_max_size: 1024 or types_hash_bucket_size: 64; ignoring types_hash_bucket_size",
+      "2026-10-11T01:36:26.189684+00:00 dns-arch nginx[3216]: 2026/10/11 01:36:26 [notice] 3216#3216: signal process started",
+      "2026-10-11T01:36:26.191502+00:00 dns-arch systemd[1]: Reloaded nginx web server."
+    ],
+    "php-fpm.service": []
+  },
+  "mode": "read-window",
+  "owner_action": false,
+  "schema": "celikpanel/set10-native/v1",
+  "since_epoch": 1791682585,
+  "systemd_manager": [
+    "2026-10-11T01:36:25.047234+00:00 dns-arch systemd[1]: Reloading nginx web server...",
+    "2026-10-11T01:36:25.085679+00:00 dns-arch systemd[1]: Reloaded nginx web server.",
+    "2026-10-11T01:36:25.537240+00:00 dns-arch systemd[1]: Reloading nginx web server...",
+    "2026-10-11T01:36:25.570331+00:00 dns-arch systemd[1]: Reloaded nginx web server.",
+    "2026-10-11T01:36:26.156265+00:00 dns-arch systemd[1]: Reloading nginx web server...",
+    "2026-10-11T01:36:26.191502+00:00 dns-arch systemd[1]: Reloaded nginx web server.",
+    "2026-10-11T01:36:27.718428+00:00 dns-arch systemd[1]: Started [systemd-run] /usr/bin/python3 -I /root/celikpanel-release-recovery-lab/set11-fswatch.py /root/celikpanel-release-recovery-lab/set11-fs-a2.jsonl /var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge /etc/nginx/celikpanel-managed.d/set11-a.test /etc/nginx/celikpanel-sites.d/set11-a.test /etc/nginx/sites-available.",
+    "2026-10-11T01:36:31.210112+00:00 dns-arch systemd[1]: Stopping [systemd-run] /usr/bin/python3 -I /root/celikpanel-release-recovery-lab/set11-fswatch.py /root/celikpanel-release-recovery-lab/set11-fs-a2.jsonl /var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge /etc/nginx/celikpanel-managed.d/set11-a.test /etc/nginx/celikpanel-sites.d/set11-a.test /etc/nginx/sites-available...",
+    "2026-10-11T01:36:31.213170+00:00 dns-arch systemd[1]: Stopped [systemd-run] /usr/bin/python3 -I /root/celikpanel-release-recovery-lab/set11-fswatch.py /root/celikpanel-release-recovery-lab/set11-fs-a2.jsonl /var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge /etc/nginx/celikpanel-managed.d/set11-a.test /etc/nginx/celikpanel-sites.d/set11-a.test /etc/nginx/sites-available."
+  ],
+  "units": [
+    "celikpanel-panel.service",
+    "celikpanel-agent.service",
+    "nginx.service",
+    "php-fpm.service"
+  ]
+}

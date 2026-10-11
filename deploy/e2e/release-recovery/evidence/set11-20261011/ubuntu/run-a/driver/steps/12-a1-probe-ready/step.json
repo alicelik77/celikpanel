@@ -1,0 +1,22 @@
+{
+  "checks": {
+    "checks": 9,
+    "error": null,
+    "failed": [],
+    "finished_at": "2026-10-11T01:18:16Z",
+    "notes": [
+      "A1: PASS"
+    ],
+    "started_at": "2026-10-11T01:18:06Z",
+    "substeps": {
+      "A1": "passed"
+    },
+    "title": "owner-edited file with CelikPanel's include lines: certificate issuance",
+    "unknown": [],
+    "verdict": "passed"
+  },
+  "finished_at": "2026-10-11T01:18:16Z",
+  "name": "A1-probe-ready",
+  "started_at": "2026-10-11T01:18:06Z",
+  "verdict": "passed"
+}

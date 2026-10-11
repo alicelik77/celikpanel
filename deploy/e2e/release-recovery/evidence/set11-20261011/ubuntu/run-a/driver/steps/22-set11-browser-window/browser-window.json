@@ -1,0 +1,40 @@
+{
+  "browser_done": {
+    "at": "2026-10-11T01:26:29.515Z",
+    "by": "cold-load-set11.mjs"
+  },
+  "ended_at": "2026-10-11T01:26:30Z",
+  "hand": "/var/tmp/cp-set11-run/hand/h11ub-d-e",
+  "password_file_removed": true,
+  "requests": [
+    {
+      "guest_output": "2026-10-11T01:23:12.867200234Z\nMainPID=51557\nActiveState=active\nrc=0\n2026-10-11T01:23:12.979774831Z\nMainPID=55738\nActiveState=active\nActiveEnterTimestamp=Sun 2026-10-11 01:23:12 UTC\nInactiveEnterTimestamp=Sun 2026-10-11 01:23:12 UTC",
+      "host_after": 1791681792.7095912,
+      "host_before": 1791681791.44408,
+      "request": "restart1791681790787",
+      "what": "systemctl restart celikpanel-panel.service on the disposable guest, by the harness"
+    },
+    {
+      "guest_output": "2026-10-11T01:24:25.949192764Z\nMainPID=55738\nActiveState=active\nrc=0\n2026-10-11T01:24:26.066187919Z\nMainPID=57269\nActiveState=active\nActiveEnterTimestamp=Sun 2026-10-11 01:24:26 UTC\nInactiveEnterTimestamp=Sun 2026-10-11 01:24:26 UTC",
+      "host_after": 1791681865.7846034,
+      "host_before": 1791681864.742604,
+      "request": "restart1791681864054",
+      "what": "systemctl restart celikpanel-panel.service on the disposable guest, by the harness"
+    },
+    {
+      "guest_output": "2026-10-11T01:26:08.900374184Z\nMainPID=57269\nActiveState=active\nrc=0\n2026-10-11T01:26:08.977414829Z\nMainPID=0\nActiveState=inactive\nActiveEnterTimestamp=Sun 2026-10-11 01:24:26 UTC\nInactiveEnterTimestamp=Sun 2026-10-11 01:26:08 UTC",
+      "host_after": 1791681968.691182,
+      "host_before": 1791681967.8364556,
+      "request": "stop1791681967745",
+      "what": "systemctl stop celikpanel-panel.service on the disposable guest, by the harness"
+    },
+    {
+      "guest_output": "2026-10-11T01:26:28.285061492Z\nMainPID=0\nActiveState=inactive\nrc=0\n2026-10-11T01:26:28.345466794Z\nMainPID=59037\nActiveState=active\nActiveEnterTimestamp=Sun 2026-10-11 01:26:28 UTC\nInactiveEnterTimestamp=Sun 2026-10-11 01:26:08 UTC",
+      "host_after": 1791681988.0673983,
+      "host_before": 1791681987.702203,
+      "request": "start1791681987433",
+      "what": "systemctl start celikpanel-panel.service on the disposable guest, by the harness"
+    }
+  ],
+  "window": "d-e"
+}

@@ -1,0 +1,12 @@
+2026-10-11T00:09:37Z neighbour gate for set11-debian13 s11-d13-a poll=1 qemu_processes=0 earlier_run_jobs=0
+2026-10-11T00:09:37Z neighbour gate for set11-debian13 s11-d13-a: clear
+2026-10-11T00:22:28Z neighbour gate for set11-debian13 s11-d13-b poll=1 qemu_processes=0 earlier_run_jobs=0
+2026-10-11T00:22:28Z neighbour gate for set11-debian13 s11-d13-b: clear
+2026-10-11T00:41:25Z neighbour gate for set11-debian13 s11-d13-c poll=1 qemu_processes=0 earlier_run_jobs=0
+2026-10-11T00:41:25Z neighbour gate for set11-debian13 s11-d13-c: clear
+2026-10-11T01:00:03Z neighbour gate for set11-ubuntu s11-ub-a poll=1 qemu_processes=0 earlier_run_jobs=0
+2026-10-11T01:00:03Z neighbour gate for set11-ubuntu s11-ub-a: clear
+2026-10-11T01:27:35Z neighbour gate for set11-arch s11-arch-a poll=1 qemu_processes=0 earlier_run_jobs=0
+2026-10-11T01:27:35Z neighbour gate for set11-arch s11-arch-a: clear
+2026-10-11T01:37:30Z neighbour gate for upd1-debian13-startcheck s11-sc-a poll=1 qemu_processes=0 earlier_run_jobs=0
+2026-10-11T01:37:30Z neighbour gate for upd1-debian13-startcheck s11-sc-a: clear

@@ -1,0 +1,25 @@
+{
+  "checks": {
+    "checks": 13,
+    "error": null,
+    "failed": [],
+    "finished_at": "2026-10-11T01:18:42Z",
+    "notes": [
+      "A5: NOT-MEASURED"
+    ],
+    "started_at": "2026-10-11T01:18:34Z",
+    "substeps": {
+      "A5": "inconclusive"
+    },
+    "title": "the owner puts the line back: the Configuration file read probes again",
+    "unknown": [
+      "A5: the dashboard entry for the site clears"
+    ],
+    "verdict": "inconclusive"
+  },
+  "finished_at": "2026-10-11T01:18:42Z",
+  "name": "A5-include-back",
+  "reason": "not established: A5: the dashboard entry for the site clears",
+  "started_at": "2026-10-11T01:18:34Z",
+  "verdict": "inconclusive"
+}

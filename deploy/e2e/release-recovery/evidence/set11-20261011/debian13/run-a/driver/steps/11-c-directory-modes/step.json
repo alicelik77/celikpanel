@@ -1,0 +1,22 @@
+{
+  "checks": {
+    "checks": 8,
+    "error": null,
+    "failed": [],
+    "finished_at": "2026-10-11T00:21:03Z",
+    "notes": [
+      "C: PASS"
+    ],
+    "started_at": "2026-10-11T00:21:03Z",
+    "substeps": {
+      "C": "passed"
+    },
+    "title": "the include directories as created: mode, owner, group",
+    "unknown": [],
+    "verdict": "passed"
+  },
+  "finished_at": "2026-10-11T00:21:03Z",
+  "name": "C-directory-modes",
+  "started_at": "2026-10-11T00:21:03Z",
+  "verdict": "passed"
+}

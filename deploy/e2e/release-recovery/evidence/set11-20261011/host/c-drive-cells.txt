@@ -1,0 +1,6 @@
+2026-10-11T00:09:37Z before set11-debian13 s11-d13-a (guest start) free_GiB=94.34 free_bytes=101294465024 (Get-PSDrive C reading of 2026-10-11T00:09:33Z, 4s old) allowed=yes
+2026-10-11T00:22:28Z before set11-debian13 s11-d13-b (guest start) free_GiB=91.73 free_bytes=98495836160 (Get-PSDrive C reading of 2026-10-11T00:22:06Z, 22s old) allowed=yes
+2026-10-11T00:41:25Z before set11-debian13 s11-d13-c (guest start) free_GiB=89.1 free_bytes=95672520704 (Get-PSDrive C reading of 2026-10-11T00:41:09Z, 16s old) allowed=yes
+2026-10-11T01:00:03Z before set11-ubuntu s11-ub-a (guest start) free_GiB=83.82 free_bytes=90004439040 (Get-PSDrive C reading of 2026-10-11T00:59:42Z, 21s old) allowed=yes
+2026-10-11T01:27:35Z before set11-arch s11-arch-a (guest start) free_GiB=80.23 free_bytes=86140076032 (Get-PSDrive C reading of 2026-10-11T01:27:17Z, 18s old) allowed=yes
+2026-10-11T01:37:30Z before upd1-debian13-startcheck s11-sc-a (guest start) free_GiB=78.35 free_bytes=84132732928 (Get-PSDrive C reading of 2026-10-11T01:37:19Z, 11s old) allowed=yes

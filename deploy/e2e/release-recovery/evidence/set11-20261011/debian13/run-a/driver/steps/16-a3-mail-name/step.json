@@ -1,0 +1,19 @@
+{
+  "checks": {
+    "checks": 0,
+    "error": "TypeError: Set11Trial.snap11() got multiple values for argument 'label'",
+    "failed": [],
+    "finished_at": "2026-10-11T00:21:17Z",
+    "notes": [],
+    "started_at": "2026-10-11T00:21:15Z",
+    "substeps": {},
+    "title": "a validation-only block for mail.<domain>: present, then removed by the owner",
+    "unknown": [],
+    "verdict": "inconclusive"
+  },
+  "finished_at": "2026-10-11T00:21:17Z",
+  "name": "A3-mail-name",
+  "reason": "TypeError: Set11Trial.snap11() got multiple values for argument 'label'",
+  "started_at": "2026-10-11T00:21:15Z",
+  "verdict": "inconclusive"
+}

@@ -1,0 +1,67 @@
+{
+  "calls": [],
+  "checks": [],
+  "error": "TypeError: Set11Trial.snap11() got multiple values for argument 'label'",
+  "finished_at": "2026-10-11T00:21:05Z",
+  "lab_preparation": [
+    {
+      "domain": "set11-a.test",
+      "file": "steps/12-a1-probe-ready/native/017-a1-lab-restore-set11-a.test.json",
+      "label": "a1",
+      "sha256_matches": true
+    }
+  ],
+  "native_evidence": false,
+  "natives": [
+    {
+      "file": "native/017-a1-lab-restore-set11-a.test.json",
+      "label": "a1-lab-restore-set11-a.test",
+      "mode": "lab-restore",
+      "owner_action": false
+    },
+    {
+      "file": "native/018-owner-a1-edit.json",
+      "label": "owner-a1-edit",
+      "mode": "owner-vhost10",
+      "owner_action": true
+    },
+    {
+      "file": "native/019-a1-0-stat.json",
+      "label": "a1-0-stat",
+      "mode": "read-stat",
+      "owner_action": false
+    },
+    {
+      "file": "native/020-a1-0-ledger.json",
+      "label": "a1-0-ledger",
+      "mode": "read-ledger",
+      "owner_action": false
+    },
+    {
+      "file": "native/021-a1-before-acme.json",
+      "label": "a1-before-acme",
+      "mode": "read-acme",
+      "owner_action": false
+    },
+    {
+      "file": "native/022-a1-log-offsets.json",
+      "label": "a1-log-offsets",
+      "mode": "log-offsets",
+      "owner_action": false
+    }
+  ],
+  "node": "debian13",
+  "notes": [],
+  "owner_actions": [
+    {
+      "at": "2026-10-11T00:21:04Z",
+      "label": "a1-edit",
+      "mode": "owner-vhost10"
+    }
+  ],
+  "section": "A1-probe-ready",
+  "started_at": "2026-10-11T00:21:03Z",
+  "substeps": {},
+  "title": "owner-edited file with CelikPanel's include lines: certificate issuance",
+  "verdict": "inconclusive"
+}
