@@ -387,11 +387,9 @@ kabul işi açık kalır.
     düzeltildi. 12:09 UTC'den sonra yapılan commit'lerin koşuları buraya
     girilmedi.
   - *Yayımlamadan önce açık:* `CELIKPANEL_RELEASE_SEQUENCE` depo değişkeninin 83
-    yapılması; `main` dalının korumasında "Panel race — S, except the service
-    tests" zorunlu denetiminin "Panel race — S, except the service, setup, site
-    and startup tests" olarak yeniden adlandırılması ve "Panel race — Startup
-    readiness" ile "Panel race — Site configuration"ın zorunlu denetim olarak
-    eklenmesi; satıcının yayın araçları ile iki tek seferlik kurtarma betiğinin
+    yapılması (`main` dalının koruması 2026-10-11'de okunduğunda yalnız
+    "Release — reproducible archive and checksum" zorunluydu; bölünen yarış
+    dilimleri için ad değişikliği gerekmez); satıcının yayın araçları ile iki tek seferlik kurtarma betiğinin
     arşivde kalıp kalmayacağına sahibin kararı; birleştirme, etiket, altı imzalı
     dosyanın doğrulanması ve portalın yayımlanması. Kurulu her paneli sonra
     sahibi panelin kendi güncelleme ekranından günceller; bunu başka kimse

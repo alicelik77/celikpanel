@@ -1220,12 +1220,12 @@ Not published. Open before publication:
 3. Done: the results of the eleventh, twelfth and thirteenth records are
    entered. The pull request's last head gets its own CI run; the runs up to
    12:09 UTC on 2026-10-11 are named under "Tests".
-4. Before the merge, the owner renames the required checks in the branch
-   protection of `main`: the continuous integration now splits one test group
-   into three. "Panel race — S, except the service tests" becomes "Panel race —
-   S, except the service, setup, site and startup tests", and "Panel race —
-   Startup readiness" and "Panel race — Site configuration" are added as
-   required checks.
+4. The continuous integration now splits one test group into three ("Panel
+   race — S, except the service, setup, site and startup tests", "Panel race —
+   Startup readiness", "Panel race — Site configuration"). A read of the
+   branch protection of `main` on 2026-10-11 showed only one required check,
+   "Release — reproducible archive and checksum", so no rename is needed
+   before the merge; an earlier form of this item said one was.
 5. Whether the vendor's publishing tools and the two one-time recovery scripts
    stay in the archive: the owner's decision, pending.
 6. The owner merges, tags the release, checks the six signed assets as the

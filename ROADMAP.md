@@ -389,11 +389,9 @@ above and below stays open.
     failed on a data race in a test's fake Agent, fixed in test code. Runs of
     commits made after 12:09 UTC are not entered here.
   - *Open before publication:* setting the repository variable
-    `CELIKPANEL_RELEASE_SEQUENCE` to 83; in the branch protection of `main`,
-    renaming the required check "Panel race — S, except the service tests" to
-    "Panel race — S, except the service, setup, site and startup tests" and
-    adding "Panel race — Startup readiness" and "Panel race — Site
-    configuration" as required checks; the owner's decision whether the vendor
+    `CELIKPANEL_RELEASE_SEQUENCE` to 83 (the branch protection of `main`
+    requires only "Release — reproducible archive and checksum", read on
+    2026-10-11, so the split race shards need no rename); the owner's decision whether the vendor
     publishing tools and two one-time recovery scripts stay in the archive;
     merge, tag, verification of the six signed assets and the portal
     publication. Each installed panel is then updated by its owner from the

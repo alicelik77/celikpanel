@@ -1256,12 +1256,12 @@ Yayımlanmadı. Yayımlamadan önce açık olanlar:
 3. Yapıldı: on birinci, on ikinci ve on üçüncü kayıtların sonuçları girildi.
    Çekme isteğinin son ucu kendi CI koşusunu alır; 11 Ekim 2026'da 12:09
    UTC'ye kadarki koşular "Testler" altında anılır.
-4. Birleştirmeden önce sahip, `main` dalının korumasındaki zorunlu denetimlerin
-   adlarını değiştirir: sürekli tümleştirme artık bir test grubunu üçe böler.
-   "Panel race — S, except the service tests" adı "Panel race — S, except the
-   service, setup, site and startup tests" olur; "Panel race — Startup
-   readiness" ve "Panel race — Site configuration" da zorunlu denetim olarak
-   eklenir.
+4. Sürekli tümleştirme artık bir test grubunu üçe böler ("Panel race — S,
+   except the service, setup, site and startup tests", "Panel race — Startup
+   readiness", "Panel race — Site configuration"). `main` dalının koruması
+   2026-10-11'de okunduğunda tek zorunlu denetim vardı: "Release —
+   reproducible archive and checksum"; bu yüzden birleştirmeden önce ad
+   değişikliği gerekmez. Bu maddenin önceki hali gerektiğini söylüyordu.
 5. Satıcının yayın araçları ile iki tek seferlik kurtarma betiğinin arşivde
    kalıp kalmayacağı: sahibin kararı, bekliyor.
 6. Sahip birleştirir, sürümü etiketler, altı imzalı dosyayı imzalı sürüm
