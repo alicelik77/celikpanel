@@ -190,17 +190,64 @@ type SiteFileResult struct {
 
 	// Restore, additive (2026-10-11), only with Outcome failed: whether the
 	// Agent put the previous bytes back and the service took them again
-	// (SiteFileRestoreConfirmed), or the restore, the service's check or its
-	// reload after it failed (SiteFileRestoreUnconfirmed; the Agent's error
+	// (SiteFileRestoreConfirmed; since set12 also when the service's check
+	// refused the put-back configuration and the service was deliberately not
+	// reloaded, or was not running before: Service says which), or the
+	// restore or the reload after it failed (SiteFileRestoreUnconfirmed; the Agent's error
 	// then says "rollback incomplete"). "" from an older Agent: the Panel
 	// treats it as unconfirmed.
 	Restore string
+
+	// Additive (set12 cell RP1, 2026-10-11), only with Outcome failed: what
+	// happened to the service after the previous file was put back
+	// (SiteFileService*). Before reloading the put-back configuration the
+	// service's own check runs on it (php-fpm -t, nginx -t, systemd-analyze
+	// verify); when the check refuses it, the service is NOT reloaded and keeps
+	// the configuration it loaded before (Service not_reloaded, ServiceReason
+	// config_refused_elsewhere, ServiceCheck the check's first line). "" from
+	// an older Agent.
+	Service       string
+	ServiceReason string
+	ServiceCheck  string
+	// ServiceActive is `systemctl is-active` of the service after the
+	// operation: "true", "false" or "unknown" (SiteFileServiceActive*).
+	ServiceActive string
 }
 
 // What the Agent knows of a failed operation's restore (SiteFileResult.Restore).
 const (
 	SiteFileRestoreConfirmed   = "confirmed"
 	SiteFileRestoreUnconfirmed = "unconfirmed"
+)
+
+// What happened to the service after a put-back (SiteFileResult.Service).
+const (
+	// SiteFileServiceReloaded: the check passed and the service was reloaded
+	// with the put-back configuration (for an application unit: restarted
+	// with try-restart).
+	SiteFileServiceReloaded = "reloaded"
+	// SiteFileServiceNotReloaded: the check refused the put-back
+	// configuration (ServiceReason config_refused_elsewhere) or could not be
+	// run (check_unavailable); the service was not reloaded.
+	SiteFileServiceNotReloaded = "not_reloaded"
+	// SiteFileServiceNotRunning: the service was not running before the
+	// operation; it was neither reloaded nor started.
+	SiteFileServiceNotRunning = "not_running"
+	// SiteFileServiceReloadFailed: the check passed and the reload failed.
+	SiteFileServiceReloadFailed = "reload_failed"
+)
+
+// Why a service was not reloaded after a put-back (SiteFileResult.ServiceReason).
+const (
+	SiteFileServiceReasonConfigRefusedElsewhere = "config_refused_elsewhere"
+	SiteFileServiceReasonCheckUnavailable       = "check_unavailable"
+)
+
+// `systemctl is-active` of a service (SiteFileResult.ServiceActive).
+const (
+	SiteFileServiceActiveTrue    = "true"
+	SiteFileServiceActiveFalse   = "false"
+	SiteFileServiceActiveUnknown = "unknown"
 )
 
 // What happened to the Panel's challenge file (D-031 step 1b).

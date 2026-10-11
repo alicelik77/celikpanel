@@ -538,7 +538,10 @@ func (a *Agent) CreateSite(req transport.CreateSiteRequest, reply *transport.Cre
 		// konak eski haline getirildi. Çıplak bir hata yerine bu söylenir.
 		var refused *services.NginxConfigRefusedError
 		var restored *services.VhostRestoredError
-		if errors.As(err, &refused) && errors.As(err, &restored) {
+		// Only when nginx was reloaded with the configuration it had before
+		// (set12: a put-back whose nginx -t refused it elsewhere is not
+		// reloaded, and the sentence of this code would not hold).
+		if errors.As(err, &refused) && errors.As(err, &restored) && restored.Reloaded() {
 			reply.ErrorCode = transport.WebServerRefusedConfig
 			line := []rune(refused.FirstLine())
 			if len(line) > 300 {

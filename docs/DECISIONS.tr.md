@@ -194,6 +194,24 @@ gün yerine "süresi N gün önce doldu" yazar); gerçek bir barındırma müşt
 yoklama, DNS'in ya da güvenlik duvarının sertifika otoritesini içeri
 aldığını göstermez. Yoklama hiç gerçek bir nginx'e sormadı.
 
+On ikinci yerel kayıttan düzeltmeler (set12, 2026-10-11; bulgular on ikinci
+kayıtta ölçüldü, yeni kod bileşen testli; gerçek sistemde ölçülmedi): Agent'ın
+yanıt vermediği havuz ya da birim, defter satırına bir gözlem olarak yazılır
+(`unknown`, `not_read` ya da `agent_does_not_report` ve hata sınıfı, hiçbir özet
+değişmez); böylece yanıt veren bir sonraki okumaya dek Alan Adları satırı
+okunamadığını söyler; bilinen bir sorunu olan satır onu korur. Geri koymadan
+sonra önceden çalışmayan hizmete dokunulmaz (`service: not_running`); aksi hâlde
+hizmetin kendi denetimi (`php-fpm -t`, `nginx -t`, birim için
+`systemd-analyze verify`) önce geri konan yapılandırmada çalışır: reddederse
+hizmet yeniden yüklenmez ve önceden yüklediği yapılandırmayla çalışır
+(`restore: confirmed`, `service: not_reloaded`, `config_refused_elsewhere`,
+yönetici için satır); geçerse yeniden yüklenir; bu yanıtların her biri
+`service_active` taşır. Uygulama biriminin başlatma komutu artık giriş kabuğuna
+bağlı değildir (Panel'in Node dizinini adlandıran açık bir
+`Environment=PATH=` ile `/bin/sh -c`; gözlenen: `/bin/sh -lc` altında çıplak
+`node` 127 ile çıktı); önceki sürümlerin birim metinleri benimseme için donmuş
+kalır. Sayfanın bir seçime yanıtı görünür alana kayar. Şema değişikliği yok.
+
 ---
 
 ## D-030 · Panelin güvenli bağlantı kuralı yalnız Panelin kendi ana makine adını kapsar

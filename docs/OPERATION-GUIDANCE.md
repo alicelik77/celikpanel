@@ -6753,7 +6753,9 @@ service's own check refused the text, `reload_failed` when its reload did);
 - `502 SITE_CONFIG_SERVICE_REFUSED` (`php_pool`, `app_unit`): `php-fpm -t`, the
   PHP-FPM reload or `systemctl daemon-reload` refused CelikPanel's text, and
   CelikPanel put the previous file back with its mode and owner and reloaded
-  the service again. The answer carries `restore` (2026-10-11 correction;
+  the service again (since set12 only when the service's own check accepts
+  the put-back configuration and the service ran before; see the twelfth
+  record's corrections below). The answer carries `restore` (2026-10-11 correction;
   component-tested and mock browser; not measured on a real system):
   `confirmed` only when the Agent reports the put-back and the reload after it
   held; `unconfirmed` when the Agent says "rollback incomplete" or gives no
@@ -6838,3 +6840,75 @@ longer in the Panel's call policy); the unit's two calls (`Agent.InspectAppUnit`
 `cmd/agent/build_gate_contract_test.go`; not measured on a real system): an
 Agent of another build answers "panel/agent build mismatch" and writes
 nothing.
+
+**Corrections from the twelfth native record (set12, 2026-10-11).** The
+findings were measured in the twelfth record (Debian 13, Ubuntu 24.04, Arch;
+`deploy/e2e/release-recovery/evidence/set12-20261011/`); the new code is
+component-tested and checked in a real Chrome against the loopback mock; not
+measured on a real system.
+- *A pool that was not read reaches the Domains row* (cell U). Measured: the
+  page answered the pool `unknown` / `not_read` after a 60 s read the Agent's
+  pool lock held, while the row stayed `managed_unchanged`, because the row is
+  built from ledger rows and a failed read wrote none. Now a failed read
+  records an observation on the pool's or unit's newest ledger row (state
+  `unknown`, the reason `not_read` or `agent_does_not_report` with the error
+  class `timeout`, `agent_unreachable`, `agent_error` or
+  `render_input_unavailable`, the time) and changes no digest, path or
+  decision. The row then wears "A configuration file could not be read; state
+  not known" with `kind`; its `site_config` adds `reason` and `read_error`, and
+  the page's file adds `read_error`. The next read that answers replaces it. A
+  row whose stored fact outranks "unknown" (edited, unwritable, missing,
+  unreadable) keeps that fact, and a `protection_removed` row keeps its reason;
+  a file with no ledger row is still not in the list.
+- *No reload after a put-back the service's own check refuses* (cell RP1).
+  Measured on all three: `php-fpm -t` refused a take on a pool because of an
+  owner's file elsewhere in the pool directory, the owner's pool was put back,
+  and CelikPanel then reloaded PHP-FPM with that refused configuration; PHP-FPM
+  ended `failed` (start limit) while the answer said "PHP-FPM keeps running
+  with it". Now the put-back file is read back; a service that was not running
+  before the operation is neither checked nor reloaded (`service:
+  not_running`); otherwise the service's own check runs on the put-back
+  configuration (`php-fpm -t`; `nginx -t` for the vhost; for a unit
+  `systemd-analyze verify` after the harmless `daemon-reload`). Refused: the
+  service is not reloaded and keeps the configuration it loaded before
+  (`restore: confirmed`, `service: not_reloaded`, `service_reason:
+  config_refused_elsewhere`, the check's line in `details` and `vars.line` for
+  an administrator). Passed: it is reloaded (a unit's application:
+  `try-restart`), `service: reloaded`. A reload that fails stays `restore:
+  unconfirmed` (`service: reload_failed`). Without `systemd-analyze` a unit's
+  application is not restarted (`service_reason: check_unavailable`). Every
+  such 502 carries `service_active` (`true`, `false`, `unknown`: `systemctl
+  is-active` after the operation). The sentences
+  (`siteConfig.service.<kind>.<service>[.<service_reason>]`, screen
+  catalogue): "The previous file is back. PHP-FPM was not reloaded, because its
+  configuration is refused by another file — PHP-FPM keeps running with the
+  configuration it loaded before. Fix what the check names ({line}), then
+  reload PHP-FPM yourself."; "The previous file is back. PHP-FPM was not
+  running before this change, so CelikPanel neither reloaded nor started it.
+  Start PHP-FPM yourself, then choose again."; the same for nginx; for the
+  unit "The previous unit file is back and systemd has read it again. The
+  application was not restarted, because systemd-analyze verify refuses the
+  unit — the application keeps running as it was started. Fix what the check
+  names ({line}), then restart the application yourself." A caller who is not
+  an administrator gets the sentence without the line ("The server
+  administrator fixes what PHP-FPM's check names, then reloads PHP-FPM.").
+  Who acts: the server administrator. The record's RP2 case (the owner stopped
+  PHP-FPM) is now answered `restore: confirmed`, `service: not_running`
+  instead of `unconfirmed`. The PHP version switch's own put-back is
+  unchanged.
+- *Application unit PATH* (observation, Debian 13 run a). A bare `node …`
+  start command exited 127: the unit ran `ExecStart=/bin/sh -lc '…'`, the
+  login shell read `/etc/profile`, which sets `PATH` again, and the unit's
+  `Environment=PATH=` with the Panel's Node directory did not reach the
+  command. The unit now writes `Environment=PATH=<Node directory>:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin`
+  (the Node directory is `/opt/celikpanel/runtimes/node/<version>/bin`; no
+  longer the Agent's own PATH) and starts the command with `/bin/sh -c`: a
+  shell stays because the start command is a shell command line, and no
+  feature needs a login shell. Units alpha.82 and alpha.81 wrote are still
+  compared exactly as they were written (`-lc`, the Agent's PATH); an adopted
+  unit gets the new text at its next write.
+- *The answer to a choice is in view.* The record's real Chrome showed both
+  restore banners drawn above the files list, outside the viewport after the
+  click. The answer (a refusal or a finished choice) now scrolls itself into
+  view when it appears (`block: 'nearest'`) and is a `role="status"`
+  (browser-inspect batch10 shots `100p8`, `100p9`, desktop EN and phone TR).

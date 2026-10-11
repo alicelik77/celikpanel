@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -12,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/alicelik/celikpanel/internal/services"
 	"github.com/alicelik/celikpanel/internal/transport"
@@ -127,26 +129,38 @@ type AppApplyResponse = transport.AppApplyResponse
 // ayarları birimin drop-in dizinine gider ve CelikPanel oraya hiç dokunmaz.
 func appUnitFile(req *AppApplyRequest, dir string) services.ManagedSiteFile {
 	name := appUnitName(req.SiteID)
-	pathEnv := os.Getenv("PATH")
+	// alpha.82 and alpha.81 wrote the Node directory before the Agent's own
+	// PATH; their texts are compared as they were written.
+	legacyPathEnv := os.Getenv("PATH")
+	// This release writes the PATH the start command runs with explicitly:
+	// the Panel-installed Node directory (runtime_rpc.go's nodeBinPath), then
+	// the system directories. It does not depend on the Agent's environment
+	// or on a login shell's profile (set12 observation: a bare `node` exited
+	// 127 under `/bin/sh -lc` on Debian 13).
+	pathEnv := appUnitSystemPath
 	if req.NodeVersion != "" {
-		pathEnv = filepath.Dir(nodeBinPath(req.NodeVersion)) + ":" + pathEnv
+		nodeDir := filepath.Dir(nodeBinPath(req.NodeVersion))
+		pathEnv = nodeDir + ":" + pathEnv
+		legacyPathEnv = nodeDir + ":" + legacyPathEnv
 	}
 	params := services.AppUnitParams{
 		Description:   req.Description,
 		WorkDir:       req.WorkDir,
 		Port:          req.Port,
 		PathEnv:       pathEnv,
+		LegacyPathEnv: legacyPathEnv,
 		Command:       req.Command,
 		InstallTarget: installTarget(),
 		DropInDir:     filepath.Join(dir, name+".service.d"),
 	}
+	unitPath := filepath.Join(dir, name+".service")
 	if !systemdUserMode && req.RunAsUser != "" {
 		params.User = appUnitAccount(req.RunAsUser)
 		params.RequestedUser = req.RunAsUser
 	}
 	return services.ManagedSiteFile{
 		Kind:                 transport.SiteFileKindAppUnit,
-		Path:                 filepath.Join(dir, name+".service"),
+		Path:                 unitPath,
 		HeaderPrefix:         services.ManagedHeaderPrefixHash,
 		Body:                 services.AppUnitBody(params),
 		Trigger:              req.Trigger,
@@ -155,7 +169,48 @@ func appUnitFile(req *AppApplyRequest, dir string) services.ManagedSiteFile {
 		ExpectedRenderSHA256: req.ExpectedRenderSHA256,
 		Legacy:               services.LegacyAppUnitRenders(params),
 		IncludeDir:           params.DropInDir,
+		// After a put-back (set12 cell RP1): daemon-reload runs (harmless),
+		// the running application is restarted (try-restart) only when
+		// systemd-analyze verify accepts the put-back unit; without
+		// systemd-analyze it is not restarted and the answer says so.
+		ServiceActive: func() string { return appUnitActive(name) },
+		RestoreCheck:  func() error { return appUnitVerify(unitPath) },
+		RestoreReload: func() error {
+			args := systemctlArgs("try-restart", name)
+			if out, err := appUnitSystemctl(args...); err != nil {
+				return fmt.Errorf("systemctl %s: %v: %s", strings.Join(args, " "), err, strings.TrimSpace(string(out)))
+			}
+			return nil
+		},
 	}
+}
+
+// appUnitSystemPath is the system part of an application unit's PATH.
+const appUnitSystemPath = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+// appUnitActive is `systemctl is-active` of an application unit (a test seam).
+var appUnitActive = func(name string) string {
+	return services.SystemdUnitActive(systemctlArgs(name)...)
+}
+
+// appUnitVerify runs `systemd-analyze verify` on a unit file (a test seam);
+// services.ErrServiceCheckUnavailable when systemd-analyze is absent.
+var appUnitVerify = func(path string) error {
+	binary, err := exec.LookPath("systemd-analyze")
+	if err != nil {
+		return services.ErrServiceCheckUnavailable
+	}
+	args := []string{"verify", path}
+	if systemdUserMode {
+		args = []string{"--user", "verify", path}
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, binary, args...).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("systemd-analyze verify: %s: %w", strings.TrimSpace(string(out)), err)
+	}
+	return nil
 }
 
 func validAppApplyRequest(req *AppApplyRequest) string {
@@ -236,6 +291,15 @@ func (a *Agent) ApplyAppUnit(req *AppApplyRequest, resp *AppApplyResponse) error
 	}
 	if result.Outcome == transport.SiteFileOutcomeFailed {
 		resp.Error = "application unit not activated, the previous file was put back: " + result.Detail
+		switch result.Service {
+		case transport.SiteFileServiceNotReloaded:
+			resp.Error += "; the application was not restarted (" + result.ServiceReason + ")"
+			if result.ServiceCheck != "" {
+				resp.Error += ": " + result.ServiceCheck
+			}
+		case transport.SiteFileServiceNotRunning:
+			resp.Error += "; the application was not running before and was not started"
+		}
 		return nil
 	}
 	if !services.SiteFileApplied(result.Outcome) {

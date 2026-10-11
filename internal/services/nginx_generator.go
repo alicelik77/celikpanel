@@ -16,6 +16,7 @@ import (
 
 	"github.com/alicelik/celikpanel/internal/core"
 	"github.com/alicelik/celikpanel/internal/hostingpath"
+	"github.com/alicelik/celikpanel/internal/transport"
 )
 
 //go:embed templates/nginx/vhost.conf.tmpl
@@ -35,6 +36,20 @@ type NginxGenerator struct {
 	// hostAddresses lists this server's addresses for the probe (a test
 	// seam); nil reads the interfaces (managed_vhost_listen.go).
 	hostAddresses func() (map[string]bool, error)
+	// nginxActive is `systemctl is-active nginx` (a test seam); nil asks
+	// systemd, except in development mode (nginxDir), which answers unknown.
+	nginxActive func() string
+}
+
+// nginxServiceActive is whether nginx runs: "true", "false" or "unknown".
+func (ng *NginxGenerator) nginxServiceActive() string {
+	if ng.nginxActive != nil {
+		return ng.nginxActive()
+	}
+	if nginxDevMode() {
+		return transport.SiteFileServiceActiveUnknown
+	}
+	return systemdUnitActive("nginx")
 }
 
 // nginxMutationMu serializes the complete nginx mutation transaction across
@@ -407,10 +422,32 @@ func (ng *NginxGenerator) rollbackVhostMutationWithRuntime(
 // VhostRestoredError, başarısız olan ve tersi sonuna kadar uygulanan bir sanal
 // konak değişikliğidir: dosya ve bağlantı önceki halindedir, nginx o
 // yapılandırmayı yeniden kabul etmiş ve onunla yeniden yüklenmiştir.
-type VhostRestoredError struct{ Cause error }
+//
+// Since set12 (cell RP1) a managed batch's put-back also ends in this error
+// when nginx was deliberately not reloaded: Service is
+// transport.SiteFileServiceNotReloaded (nginx -t refused the put-back
+// configuration, Check its line; nginx keeps the configuration it loaded
+// before) or SiteFileServiceNotRunning (nginx did not run before). "" and
+// SiteFileServiceReloaded are the reloaded case above.
+type VhostRestoredError struct {
+	Cause   error
+	Service string
+	Check   string
+}
 
 func (e *VhostRestoredError) Error() string {
+	switch e.Service {
+	case transport.SiteFileServiceNotReloaded:
+		return e.Cause.Error() + "; rollback restored the previous vhost; nginx was not reloaded, because nginx -t refuses the configuration elsewhere: " + e.Check
+	case transport.SiteFileServiceNotRunning:
+		return e.Cause.Error() + "; rollback restored the previous vhost; nginx was not running before and was neither reloaded nor started"
+	}
 	return e.Cause.Error() + "; rollback restored and reloaded the previous vhost"
+}
+
+// Reloaded says whether nginx was reloaded with the restored configuration.
+func (e *VhostRestoredError) Reloaded() bool {
+	return e.Service == "" || e.Service == transport.SiteFileServiceReloaded
 }
 
 func (e *VhostRestoredError) Unwrap() error { return e.Cause }

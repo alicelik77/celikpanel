@@ -16,6 +16,13 @@ import (
 type unitTestHost struct {
 	dir   string
 	calls []string
+	// active is the unit's `systemctl is-active`; verify the answer of
+	// systemd-analyze verify (counted in verified); failDaemonReload makes
+	// the first daemon-reload fail.
+	active           string
+	verify           error
+	verified         int
+	failDaemonReload bool
 }
 
 func newUnitTestHost(t *testing.T) *unitTestHost {
@@ -28,11 +35,20 @@ func newUnitTestHost(t *testing.T) *unitTestHost {
 		if len(args) > 0 && args[0] == "show" {
 			return []byte("LoadState=not-found\nActiveState=inactive\n"), nil
 		}
+		if len(args) > 0 && args[0] == "daemon-reload" && host.failDaemonReload {
+			host.failDaemonReload = false
+			return []byte("Failed to reload daemon"), errors.New("exit status 1")
+		}
 		return nil, nil
 	}
 	appUnitAccountExists = func(name string) bool { return name == "www-data" }
+	oldActive, oldVerify := appUnitActive, appUnitVerify
+	appUnitActive = func(string) string { return host.active }
+	appUnitVerify = func(string) error { host.verified++; return host.verify }
+	host.active = transport.SiteFileServiceActiveTrue
 	t.Cleanup(func() {
 		appUnitDirOverride, appUnitSystemctl, appUnitAccountExists = oldDir, oldSystemctl, oldExists
+		appUnitActive, appUnitVerify = oldActive, oldVerify
 	})
 	return host
 }
@@ -275,5 +291,90 @@ func TestAppUnitLegacyTextIsAdopted(t *testing.T) {
 	_ = (&Agent{}).InspectAppUnit(request, &inspected)
 	if inspected.File.State != transport.SiteFileUnknownOrigin {
 		t.Fatalf("headerless edited unit: %+v", inspected.File)
+	}
+}
+
+// The unit's start command does not depend on a login shell's PATH (set12
+// observation, Debian 13: a bare `node` exited 127 under `/bin/sh -lc`): the
+// PATH line names the Panel-installed Node directory and the system
+// directories, and the command runs under `/bin/sh -c`. The texts alpha.82 and
+// alpha.81 wrote stay as they were written.
+func TestAppUnitPathDoesNotDependOnALoginShell(t *testing.T) {
+	host := newUnitTestHost(t)
+	request := unitTestRequest(transport.SiteFileTriggerCreate)
+	request.NodeVersion = "22.20.0"
+	file := appUnitFile(request, host.dir)
+	nodeDir := filepath.Dir(nodeBinPath("22.20.0"))
+	wantPath := "Environment=PATH=" + nodeDir + ":/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\n"
+	if !strings.Contains(file.Body, wantPath) || !strings.Contains(file.Body, "ExecStart=/bin/sh -c 'node app.js'\n") ||
+		strings.Contains(file.Body, "-lc") {
+		t.Fatalf("unit body:\n%s", file.Body)
+	}
+	legacy, _ := file.Legacy()
+	for _, render := range legacy {
+		if !strings.Contains(render.Text, "ExecStart=/bin/sh -lc 'node app.js'\n") ||
+			!strings.Contains(render.Text, "Environment=PATH="+nodeDir+":"+os.Getenv("PATH")+"\n") {
+			t.Fatalf("%s legacy text changed:\n%s", render.Release, render.Text)
+		}
+	}
+}
+
+// After a take that systemd did not take (its daemon-reload failed), the
+// owner's unit is put back, systemd reads it again (daemon-reload is
+// harmless), and the running application is restarted only when
+// systemd-analyze verify accepts the put-back unit (set12 cell RP1's rule).
+func TestAppUnitRestoreRestartsOnlyAVerifiedUnit(t *testing.T) {
+	for _, c := range []struct {
+		name         string
+		active       string
+		verify       error
+		wantService  string
+		wantReason   string
+		wantCalls    string
+		wantVerified int
+	}{
+		{"verified", transport.SiteFileServiceActiveTrue, nil, transport.SiteFileServiceReloaded, "",
+			"daemon-reload|daemon-reload|try-restart celikapp-7", 1},
+		{"refused", transport.SiteFileServiceActiveTrue, errors.New("systemd-analyze verify: celikapp-7.service: Unknown key name 'Bogus' in section 'Service'"),
+			transport.SiteFileServiceNotReloaded, transport.SiteFileServiceReasonConfigRefusedElsewhere, "daemon-reload|daemon-reload", 1},
+		{"no systemd-analyze", transport.SiteFileServiceActiveTrue, services.ErrServiceCheckUnavailable,
+			transport.SiteFileServiceNotReloaded, transport.SiteFileServiceReasonCheckUnavailable, "daemon-reload|daemon-reload", 1},
+		{"not running before", transport.SiteFileServiceActiveFalse, nil, transport.SiteFileServiceNotRunning, "",
+			"daemon-reload|daemon-reload", 0},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			host := newUnitTestHost(t)
+			applyUnit(t, unitTestRequest(transport.SiteFileTriggerCreate))
+			edited := unitText(t, host.path()) + "Environment=FEATURE=1\n"
+			if err := os.WriteFile(host.path(), []byte(edited), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			var inspected transport.InspectSiteFileResponse
+			if err := (&Agent{}).InspectAppUnit(unitTestRequest(""), &inspected); err != nil {
+				t.Fatal(err)
+			}
+			host.active, host.verify, host.failDaemonReload, host.calls = c.active, c.verify, true, nil
+			take := unitTestRequest(transport.SiteFileTriggerTake)
+			take.ExpectedFileSHA256, take.ExpectedRenderSHA256 = inspected.File.FileSHA256, inspected.File.RenderSHA256
+			response := applyUnit(t, take)
+			file := response.File
+			if file.Outcome != transport.SiteFileOutcomeFailed || file.Restore != transport.SiteFileRestoreConfirmed ||
+				file.Service != c.wantService || file.ServiceReason != c.wantReason || file.ServiceActive != c.active {
+				t.Fatalf("result: %+v %q", file, response.Error)
+			}
+			if strings.Join(host.calls, "|") != c.wantCalls || host.verified != c.wantVerified {
+				t.Fatalf("systemctl calls = %v, verified %d", host.calls, host.verified)
+			}
+			if unitText(t, host.path()) != edited {
+				t.Fatal("the owner's unit is not back")
+			}
+			if c.wantReason == transport.SiteFileServiceReasonConfigRefusedElsewhere &&
+				(!strings.Contains(file.ServiceCheck, "Unknown key name") || !strings.Contains(response.Error, "not restarted")) {
+				t.Fatalf("check line / error: %q %q", file.ServiceCheck, response.Error)
+			}
+			if strings.Contains(response.Error, "rollback incomplete") {
+				t.Fatalf("error: %q", response.Error)
+			}
+		})
 	}
 }

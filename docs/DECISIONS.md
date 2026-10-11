@@ -192,6 +192,25 @@ hosting-customer session was
 drawn; a ready probe does not show that DNS or the firewall lets the
 certificate authority in. The probe has never asked a real nginx.
 
+Corrections from the twelfth native record (set12, 2026-10-11; the findings
+measured in the twelfth record, the new code component-tested; not measured on
+a real system): a pool or unit the Agent did not answer for is recorded on its
+ledger row as an observation (`unknown`, `not_read` or `agent_does_not_report`
+with the error class, no digest changed), so the Domains row says it could not
+be read, until the next answered read; a row with a known problem keeps it.
+After a put-back, a service that was not running before is left alone
+(`service: not_running`), and otherwise the service's own check (`php-fpm -t`,
+`nginx -t`, `systemd-analyze verify` for a unit) runs on the put-back
+configuration first: refused, the service is not reloaded and keeps the
+configuration it loaded before (`restore: confirmed`, `service: not_reloaded`,
+`config_refused_elsewhere`, the line for an administrator); passed, it is
+reloaded; every such answer carries `service_active`. The application unit's
+start command no longer depends on a login shell (`/bin/sh -c` with an explicit
+`Environment=PATH=` naming the Panel's Node directory; observed: a bare `node`
+exited 127 under `/bin/sh -lc`); the earlier releases' unit texts stay frozen
+for adoption. The page's answer to a choice scrolls into view. No schema
+change.
+
 ---
 
 ## D-030 · The Panel's secure-connection rule covers the Panel's own host name only

@@ -6692,7 +6692,9 @@ metni reddettiyse `config_refused`, yeniden yüklemesi reddettiyse
 - `502 SITE_CONFIG_SERVICE_REFUSED` (`php_pool`, `app_unit`): `php-fpm -t`,
   PHP-FPM'in yeniden yüklenmesi ya da `systemctl daemon-reload` CelikPanel'in
   metnini reddetti; CelikPanel önceki dosyayı kip ve sahibiyle geri koydu ve
-  hizmeti yeniden yükledi. Yanıt `restore` taşır (2026-10-11 düzeltmesi;
+  hizmeti yeniden yükledi (set12'den beri yalnız hizmetin kendi denetimi geri
+  konan yapılandırmayı kabul ederse ve hizmet önceden çalışıyorsa; aşağıdaki
+  on ikinci kayıt düzeltmelerine bakın). Yanıt `restore` taşır (2026-10-11 düzeltmesi;
   bileşen testli ve sahte tarayıcıda denendi; gerçek sistemde ölçülmedi):
   `confirmed` yalnız Agent geri koymanın ve ardından gelen yeniden yüklemenin
   tuttuğunu bildirdiğinde; Agent “rollback incomplete” dediğinde ya da hiç
@@ -6782,3 +6784,77 @@ kapısından geçer (2026-10-11; bileşen testli,
 `cmd/agent/build_gate_contract_test.go`; gerçek sistemde ölçülmedi): başka
 derlemeden bir Agent “panel/agent build mismatch” yanıtlar ve hiçbir şey
 yazmaz.
+
+**On ikinci yerel kayıttan düzeltmeler (set12, 2026-10-11).** Bulgular on
+ikinci kayıtta ölçüldü (Debian 13, Ubuntu 24.04, Arch;
+`deploy/e2e/release-recovery/evidence/set12-20261011/`); yeni kod bileşen
+testli ve gerçek bir Chrome'da geri döngü sahtesine karşı denendi; gerçek
+sistemde ölçülmedi.
+- *Okunmayan havuz Alan Adları satırına ulaşır* (U hücresi). Ölçülen: Agent'ın
+  havuz kilidinin tuttuğu 60 sn'lik okumadan sonra sayfa havuzu `unknown` /
+  `not_read` yanıtladı, satır ise `managed_unchanged` kaldı; çünkü satır defter
+  satırlarından kurulur ve başarısız okuma hiç satır yazmadı. Artık başarısız
+  okuma, havuzun ya da birimin en yeni defter satırına bir gözlem yazar (durum
+  `unknown`, `not_read` ya da `agent_does_not_report` nedeni ve hata sınıfı
+  `timeout`, `agent_unreachable`, `agent_error` ya da
+  `render_input_unavailable`, zaman); hiçbir özet, yol ya da karar değişmez.
+  Satır "Bir yapılandırma dosyası okunamadı; durumu bilinmiyor" rozetini `kind`
+  ile taşır; `site_config` alanına `reason` ve `read_error`, sayfadaki dosyaya
+  `read_error` eklenir. Yanıt veren bir sonraki okuma onu değiştirir. Kayıtlı
+  olgusu "bilinmiyor"dan üstün olan satır (düzenlenmiş, değiştirilemez, eksik,
+  okunamaz) o olguyu korur, `protection_removed` satırı nedenini korur; defter
+  satırı olmayan dosya hâlâ listede yoktur.
+- *Hizmetin kendi denetiminin reddettiği geri koymadan sonra yeniden yükleme
+  yok* (RP1 hücresi). Üçünde de ölçülen: havuz dizinindeki sahibe ait başka
+  bir dosya yüzünden `php-fpm -t` havuzdaki "al" işlemini reddetti, sahibin
+  havuzu geri kondu ve CelikPanel ardından PHP-FPM'i bu reddedilmiş
+  yapılandırmayla yeniden yükledi; yanıt "PHP-FPM onunla çalışmaya devam
+  ediyor" derken PHP-FPM `failed` (başlatma sınırı) oldu. Artık geri konan
+  dosya yeniden okunur; işlemden önce çalışmayan hizmet ne denetlenir ne
+  yeniden yüklenir (`service: not_running`); aksi hâlde hizmetin kendi
+  denetimi geri konan yapılandırmada çalışır (`php-fpm -t`; vhost için
+  `nginx -t`; birim için zararsız `daemon-reload` ardından `systemd-analyze
+  verify`). Reddedilirse hizmet yeniden yüklenmez ve önceden yüklediği
+  yapılandırmayla çalışır (`restore: confirmed`, `service: not_reloaded`,
+  `service_reason: config_refused_elsewhere`; denetimin satırı yönetici için
+  `details` ve `vars.line` içinde). Geçerse yeniden yüklenir (birimin
+  uygulaması: `try-restart`), `service: reloaded`. Başarısız yeniden yükleme
+  önceki gibi `restore: unconfirmed` kalır (`service: reload_failed`).
+  `systemd-analyze` yoksa birimin uygulaması yeniden başlatılmaz
+  (`service_reason: check_unavailable`). Bu 502 yanıtlarının her biri
+  `service_active` taşır (`true`, `false`, `unknown`: işlemden sonra
+  `systemctl is-active`). Cümleler
+  (`siteConfig.service.<tür>.<hizmet>[.<service_reason>]`, ekran kataloğu):
+  "Önceki dosya geri kondu. PHP-FPM yeniden yüklenmedi, çünkü yapılandırması
+  başka bir dosya yüzünden reddediliyor — PHP-FPM daha önce yüklediği
+  yapılandırmayla çalışmaya devam ediyor. Denetimin adını verdiği sorunu
+  giderin ({line}), sonra PHP-FPM’i kendiniz yeniden yükleyin."; "Önceki dosya
+  geri kondu. PHP-FPM bu değişiklikten önce çalışmıyordu; bu yüzden CelikPanel
+  onu ne yeniden yükledi ne de başlattı. PHP-FPM’i kendiniz başlatın, sonra
+  yeniden seçin."; nginx için aynısı; birim için "Önceki birim dosyası geri
+  kondu ve systemd onu yeniden okudu. Uygulama yeniden başlatılmadı, çünkü
+  systemd-analyze verify birimi reddediyor — uygulama başlatıldığı haliyle
+  çalışmaya devam ediyor. Denetimin adını verdiği sorunu giderin ({line}),
+  sonra uygulamayı kendiniz yeniden başlatın." Yönetici olmayan çağıran satırsız
+  cümleyi alır ("Sunucu yöneticisi PHP-FPM denetiminin adını verdiği sorunu
+  giderir, sonra PHP-FPM’i yeniden yükler."). Kim yapar: sunucu yöneticisi.
+  Kayıttaki RP2 durumu (sahip PHP-FPM'i durdurdu) artık `unconfirmed` yerine
+  `restore: confirmed`, `service: not_running` yanıtlanır. PHP sürümü
+  değiştirmenin kendi geri koyması değişmedi.
+- *Uygulama biriminin PATH'i* (gözlem, Debian 13 a koşusu). Çıplak bir
+  `node …` başlatma komutu 127 ile çıktı: birim `ExecStart=/bin/sh -lc '…'`
+  çalıştırıyordu, giriş kabuğu `/etc/profile` okudu, o da `PATH`'i yeniden
+  kurdu ve birimin Panel'in Node dizinini taşıyan `Environment=PATH=` satırı
+  komuta ulaşmadı. Birim artık `Environment=PATH=<Node dizini>:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin`
+  yazar (Node dizini `/opt/celikpanel/runtimes/node/<sürüm>/bin`; artık
+  Agent'ın kendi PATH'i değil) ve komutu `/bin/sh -c` ile başlatır: başlatma
+  komutu bir kabuk komut satırı olduğu için kabuk kalır, hiçbir özellik giriş
+  kabuğu gerektirmez. alpha.82 ve alpha.81'in yazdığı birimler yazıldıkları
+  gibi karşılaştırılmaya devam eder (`-lc`, Agent'ın PATH'i); benimsenen
+  birim bir sonraki yazımda yeni metni alır.
+- *Bir seçimin yanıtı görünür alandadır.* Kaydın gerçek Chrome'u iki geri
+  koyma bandının da dosya listesinin üstünde, tıklamadan sonra görünür alanın
+  dışında çizildiğini gösterdi. Yanıt (bir ret ya da biten seçim) artık
+  belirdiğinde kendini görünür alana kaydırır (`block: 'nearest'`) ve
+  `role="status"` taşır (browser-inspect batch10 görüntüleri `100p8`, `100p9`;
+  masaüstü EN, telefon TR).

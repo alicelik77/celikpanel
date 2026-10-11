@@ -169,6 +169,15 @@ export function DomainSiteConfig({ domainId, onReasonEnded }: {
     const [merging, setMerging] = useState<Set<string>>(() => new Set());
     const [refusal, setRefusal] = useState<ApiError | null>(null);
     const [done, setDone] = useState<Done | null>(null);
+    // The answer to a choice is drawn above the files list, and the button
+    // that was clicked is often far below it (set12 browser observation:
+    // after "Replace the file" the viewport showed the button and no
+    // banner). The answer is scrolled into view when it appears.
+    const noticeRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        if (!refusal && !done) return;
+        noticeRef.current?.scrollIntoView?.({ block: 'nearest' });
+    }, [refusal, done]);
     const fileCount = config.remote.state === 'known' ? Math.max(1, config.remote.value.files?.length ?? 1) : 1;
 
     const act = async (action: Action, view: SiteConfigView) => {
@@ -233,12 +242,18 @@ export function DomainSiteConfig({ domainId, onReasonEnded }: {
                 <h2 className="text-base font-semibold text-fg">{t(fileCount > 1 ? 'siteConfig.files.title' : 'siteConfig.title')}</h2>
             </div>
             <ResultUnknown answer={answer} />
-            {done && (
-                <p role="status" className="rounded-lg border border-border-strong bg-surface-2 p-3 text-sm text-fg" data-site-config-done={done.action} data-site-config-done-kind={done.kind}>
-                    {doneText(done)}
-                </p>
-            )}
-            <ErrorBanner error={refusal} />
+            <div ref={noticeRef} className="space-y-4 empty:hidden" data-site-config-notice>
+                {done && (
+                    <p role="status" className="rounded-lg border border-border-strong bg-surface-2 p-3 text-sm text-fg" data-site-config-done={done.action} data-site-config-done-kind={done.kind}>
+                        {doneText(done)}
+                    </p>
+                )}
+                {refusal && (
+                    <div role="status" data-site-config-refusal={refusal.restore ?? ''}>
+                        <ErrorBanner error={refusal} />
+                    </div>
+                )}
+            </div>
             <RemoteGate
                 remote={config.remote}
                 checking={t('siteConfig.checking')}

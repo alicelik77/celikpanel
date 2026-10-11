@@ -54,6 +54,16 @@ export interface ApiError {
     // sentence `err.<CODE>[.<reason>].unconfirmed`.
     // restore: önceki dosyanın geri konduğu doğrulandı mı. Eklemeli.
     restore?: string;
+    // service: after such a put-back, what happened to the service
+    // ('reloaded', 'not_reloaded', 'not_running', 'reload_failed');
+    // serviceReason refines not_reloaded ('config_refused_elsewhere',
+    // 'check_unavailable'); serviceActive is whether it runs now ('true',
+    // 'false', 'unknown'). Additive (set12 cell RP1); a confirmed restore
+    // whose service was not reloaded or not running selects the sentence
+    // `siteConfig.service.<file kind>.<service>[.<serviceReason>]` (screen half).
+    service?: string;
+    serviceReason?: string;
+    serviceActive?: string;
 }
 
 function stringVars(value: unknown): Record<string, string> | undefined {
@@ -91,6 +101,9 @@ export async function readApiError(res: Response): Promise<ApiError> {
                         : undefined,
                     vars: stringVars(d.vars),
                     restore: typeof d.restore === 'string' && d.restore ? d.restore : undefined,
+                    service: typeof d.service === 'string' && d.service ? d.service : undefined,
+                    serviceReason: typeof d.service_reason === 'string' && d.service_reason ? d.service_reason : undefined,
+                    serviceActive: typeof d.service_active === 'string' && d.service_active ? d.service_active : undefined,
                 };
             }
         } catch {
@@ -127,6 +140,25 @@ export function apiErrorText(e: ApiError, t: T, fallbackKey: TranslationKey = 'c
                 if (named !== candidate) return named;
             }
             // No sentence for it: the server's own words say it.
+            if (e.message) return e.message;
+        }
+        // The previous file is back and the service was deliberately not
+        // reloaded (its check refused the configuration elsewhere) or was
+        // not running: the sentence for the confirmed case would say it
+        // keeps running with the file. A sentence that names the check's
+        // line is used only when the answer carries it (administrators).
+        // These sentences belong to the site-file screens (the screen half
+        // of the catalogue, `siteConfig.service.<file kind>.<service>…`): such
+        // a refusal is only answered on a screen, and while the screen half
+        // is not loaded the server's own sentence stands.
+        const fileKind = e.code === 'SITE_CONFIG_NGINX_REFUSED' ? 'nginx_vhost' : e.code === 'SITE_CONFIG_SERVICE_REFUSED' ? e.reason : undefined;
+        if (fileKind && e.restore === 'confirmed' && (e.service === 'not_reloaded' || e.service === 'not_running')) {
+            const prefix = 'siteConfig.service.' + fileKind + '.' + e.service;
+            const keys = e.serviceReason ? [prefix + '.' + e.serviceReason, prefix] : [prefix];
+            for (const candidate of keys) {
+                const named = t(candidate as TranslationKey, e.vars);
+                if (named !== candidate && !named.includes('{line}')) return named;
+            }
             if (e.message) return e.message;
         }
         if (e.reason) {

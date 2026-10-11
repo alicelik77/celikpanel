@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/alicelik/celikpanel/internal/services"
 	"github.com/alicelik/celikpanel/internal/transport"
@@ -72,6 +73,79 @@ var otherSiteFileMessages = map[string]map[string]string{
 // whose restore was not confirmed (restore: unconfirmed).
 const siteConfigRestoreUnconfirmedSuffix = ".unconfirmed"
 
+// The sentences of a confirmed put-back after which the service was not
+// reloaded (set12 cell RP1), keyed "<service>[.<service_reason>]" per kind;
+// "%s" is the check's line (only an administrator's answer names it). The
+// screens' sentences are in the screen catalogue (web/src/i18n/screens/server,
+// siteConfig.service.<kind>.<service>[.<service_reason>]).
+var siteFileServiceMessages = map[string]map[string]string{
+	transport.SiteFileKindPHPPool: {
+		"not_reloaded.config_refused_elsewhere": "The previous file is back. PHP-FPM was not reloaded, because its configuration is refused by another file — " +
+			"PHP-FPM keeps running with the configuration it loaded before. Fix what the check names (%s), then reload PHP-FPM yourself.",
+		"not_reloaded": "The previous file is back. PHP-FPM was not reloaded, because its configuration is refused by another file — " +
+			"PHP-FPM keeps running with the configuration it loaded before. The server administrator fixes what PHP-FPM's check names, then reloads PHP-FPM.",
+		"not_running": "The previous file is back. PHP-FPM was not running before this change, so CelikPanel neither reloaded nor started it. " +
+			"Start PHP-FPM yourself, then choose again.",
+	},
+	transport.SiteFileKindAppUnit: {
+		"not_reloaded.config_refused_elsewhere": "The previous unit file is back and systemd has read it again. The application was not restarted, because systemd-analyze verify refuses the unit — " +
+			"the application keeps running as it was started. Fix what the check names (%s), then restart the application yourself.",
+		"not_reloaded.check_unavailable": "The previous unit file is back and systemd has read it again. The application was not restarted, because this server has no systemd-analyze to check the unit first — " +
+			"the application keeps running as it was started. Restart the application yourself once you have checked the unit.",
+		"not_reloaded": "The previous unit file is back and systemd has read it again. The application was not restarted, because the unit's check did not pass — " +
+			"the application keeps running as it was started. The server administrator fixes what the check names, then restarts the application.",
+		"not_running": "The previous unit file is back and systemd has read it again. The application was not running before this change, so CelikPanel did not start it. " +
+			"Start it yourself when it should run.",
+	},
+	transport.SiteFileKindNginxVhost: {
+		"not_reloaded.config_refused_elsewhere": "The previous file is back. nginx was not reloaded, because its configuration is refused by another file — " +
+			"nginx keeps running with the configuration it loaded before. Fix what the check names (%s), then reload nginx yourself.",
+		"not_reloaded": "The previous file is back. nginx was not reloaded, because its configuration is refused by another file — " +
+			"nginx keeps running with the configuration it loaded before. The server administrator fixes what nginx -t names, then reloads nginx.",
+		"not_running": "The previous file is back. nginx was not running before this change, so CelikPanel neither reloaded nor started it. " +
+			"Start nginx yourself, then choose again.",
+	},
+}
+
+// siteFileServiceActive is the answer's service_active: the Agent's
+// `systemctl is-active` after the operation, "unknown" when it gave none.
+func siteFileServiceActive(file transport.SiteFileResult) string {
+	switch file.ServiceActive {
+	case transport.SiteFileServiceActiveTrue, transport.SiteFileServiceActiveFalse:
+		return file.ServiceActive
+	}
+	return transport.SiteFileServiceActiveUnknown
+}
+
+// siteFileServiceSentence is the sentence of a confirmed put-back after which
+// the service was deliberately not reloaded, without and with the check's
+// line (the second only when there is a line); "" for any other answer.
+func siteFileServiceSentence(file transport.SiteFileResult, restore string) (string, string) {
+	if restore != transport.SiteFileRestoreConfirmed {
+		return "", ""
+	}
+	messages := siteFileServiceMessages[file.Kind]
+	if file.Kind == "" {
+		messages = siteFileServiceMessages[transport.SiteFileKindNginxVhost]
+	}
+	switch file.Service {
+	case transport.SiteFileServiceNotRunning:
+		return messages["not_running"], ""
+	case transport.SiteFileServiceNotReloaded:
+		plain := messages["not_reloaded"]
+		if specific, ok := messages["not_reloaded."+file.ServiceReason]; ok {
+			if !strings.Contains(specific, "%s") {
+				return specific, ""
+			}
+			if file.ServiceCheck != "" {
+				return plain, fmt.Sprintf(specific, boundedAgentDiagnostic(file.ServiceCheck))
+			}
+		}
+		return plain, ""
+	}
+	return "", ""
+}
+
 // classifyOtherSiteFileHeld is the typed refusal of a pool or unit the rule
 // did not write.
 func classifyOtherSiteFileHeld(file transport.SiteFileResult, agentError string) agentRPCPlatformErrorClassification {
@@ -98,6 +172,20 @@ func classifyOtherSiteFileHeld(file transport.SiteFileResult, agentError string)
 		// "unconfirmed", with the Agent's line for an administrator.
 		classification.Restore = siteFileRestore(file, agentError)
 		classification.AdminDetails = siteFileAgentDetails(agentError)
+		// What happened to the service after the put-back, and whether it
+		// runs now (set12 cell RP1).
+		classification.Service, classification.ServiceReason = file.Service, file.ServiceReason
+		classification.ServiceActive = siteFileServiceActive(file)
+		if plain, withLine := siteFileServiceSentence(file, classification.Restore); plain != "" {
+			classification.Message = plain
+			if withLine != "" {
+				line := boundedAgentDiagnostic(file.ServiceCheck)
+				classification.AdminMessage = withLine
+				classification.AdminVars = map[string]string{"line": line}
+				classification.AdminDetails = append([]string{line}, classification.AdminDetails...)
+			}
+			return classification
+		}
 		if classification.Restore != transport.SiteFileRestoreConfirmed {
 			classification.Message = otherSiteFileMessages[file.Kind][errCodeSiteConfigServiceRefused+siteConfigRestoreUnconfirmedSuffix]
 			return classification
@@ -306,6 +394,9 @@ func (p *Panel) inspectOtherSiteFile(ctx context.Context, site siteFileSite, kin
 		if agentRPCMethodUnavailable(err, method) {
 			view.State = transport.SiteFileStateUnknown
 			view.Reason = siteConfigReasonAgentDoesNotReport
+			if observe {
+				p.recordSiteFileUnread(ctx, site, kind, siteConfigReasonAgentDoesNotReport, "")
+			}
 			return view, nil, nil
 		}
 		return view, nil, err
@@ -347,6 +438,44 @@ func (p *Panel) observeOtherSiteFile(ctx context.Context, site siteFileSite, vie
 	}
 }
 
+// siteFileReadErrorClass names why a read of a site file got no answer:
+// "timeout" (the Agent did not answer in time), "render_input_unavailable"
+// (the Panel could not prepare the request), "agent_unreachable" (the Agent
+// could not be asked) or "agent_error" (it answered with an error).
+func siteFileReadErrorClass(err error) string {
+	if err == nil {
+		return ""
+	}
+	text := err.Error()
+	switch {
+	case errors.Is(err, context.DeadlineExceeded) || strings.Contains(text, "deadline exceeded") || strings.Contains(text, "timed out"):
+		return "timeout"
+	case strings.HasPrefix(text, siteConfigReasonRenderInput):
+		return siteConfigReasonRenderInput
+	case strings.Contains(text, "connection refused") || strings.Contains(text, "no such file or directory") ||
+		strings.Contains(text, "connection is shut down") || strings.Contains(text, "unexpected EOF"):
+		return "agent_unreachable"
+	}
+	return "agent_error"
+}
+
+// recordSiteFileUnread stores a read that got no answer in the ledger, so the
+// Domains row and its badge say what the page says (set12 cell U).
+func (p *Panel) recordSiteFileUnread(ctx context.Context, site siteFileSite, kind, reason, class string) {
+	// A read that timed out has used up the request's context; the record
+	// gets its own short one.
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+	defer cancel()
+	changed, err := services.RecordSiteFileUnread(ctx, p.db.GetDB(), site.SiteID, kind, reason, class, 0)
+	if err != nil {
+		log.Printf("site configuration %s %s: record the unread state: %v", site.Domain, kind, err)
+		return
+	}
+	if changed {
+		log.Printf("site configuration %s %s: recorded as not read (%s %s)", site.Domain, kind, reason, class)
+	}
+}
+
 // withOtherSiteFiles adds every file of the site to the vhost's answer, and
 // the worst of their states (services.SiteFileWorstState).
 func (p *Panel) withOtherSiteFiles(ctx context.Context, domainID int, view siteConfigView) siteConfigView {
@@ -358,11 +487,15 @@ func (p *Panel) withOtherSiteFiles(ctx context.Context, domainID int, view siteC
 			other, _, err := p.inspectOtherSiteFile(ctx, site, kind, true)
 			if err != nil {
 				log.Printf("site configuration %s %s: could not read its state: %v", site.Domain, kind, err)
+				class := siteFileReadErrorClass(err)
 				other = siteConfigView{
 					DomainID: site.DomainID, Domain: site.Domain, Kind: kind,
-					State: transport.SiteFileStateUnknown, Reason: siteConfigReasonNotRead,
+					State: transport.SiteFileStateUnknown, Reason: siteConfigReasonNotRead, ReadError: class,
 					Actions: []string{siteConfigActionRecheck},
 				}
+				// The Domains row and its badge read the ledger: the failed
+				// read is recorded there (set12 cell U).
+				p.recordSiteFileUnread(ctx, site, kind, siteConfigReasonNotRead, class)
 			}
 			files = append(files, other)
 		}

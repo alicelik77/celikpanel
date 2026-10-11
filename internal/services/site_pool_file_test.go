@@ -442,3 +442,74 @@ func TestSitePoolFailedSaveSaysWhetherTheRestoreHeld(t *testing.T) {
 		})
 	}
 }
+
+// After a refused take on a pool (set12 cell RP1: `php-fpm -t` refused the
+// configuration because of an owner's file elsewhere in the pool directory)
+// the owner's pool is put back and php-fpm -t runs on it before any reload:
+// a passed check reloads PHP-FPM; a refused one leaves it unreloaded (it keeps
+// the configuration it loaded before); a PHP-FPM that was not running before
+// is left alone. The service's state after the operation is in the answer.
+func TestSitePoolPutBackReloadsOnlyAConfigurationTheCheckAccepts(t *testing.T) {
+	refusal := errors.New("php-fpm8.3 -t: [11-Oct-2026 04:40:00] ERROR: [/etc/php/8.3/fpm/pool.d/zz-owner.conf:1] unknown entry 'set12_not_a_directive'\n" +
+		"[11-Oct-2026 04:40:00] ERROR: FPM initialization failed: exit status 78")
+	for _, c := range []struct {
+		name        string
+		before      string
+		checks      []error // php-fpm -t: on CelikPanel's text, then on the put-back
+		wantService string
+		wantReason  string
+		wantReloads int
+		wantChecks  int
+	}{
+		{"check passes", transport.SiteFileServiceActiveTrue, []error{refusal, nil},
+			transport.SiteFileServiceReloaded, "", 1, 2},
+		{"check fails", transport.SiteFileServiceActiveTrue, []error{refusal, refusal},
+			transport.SiteFileServiceNotReloaded, transport.SiteFileServiceReasonConfigRefusedElsewhere, 0, 2},
+		{"not running before", transport.SiteFileServiceActiveFalse, []error{refusal},
+			transport.SiteFileServiceNotRunning, "", 0, 1},
+		{"service state unknown", transport.SiteFileServiceActiveUnknown, []error{refusal, refusal},
+			transport.SiteFileServiceNotReloaded, transport.SiteFileServiceReasonConfigRefusedElsewhere, 0, 2},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			path, reloads := withSealedPool(t)
+			owner := readPoolTestFile(t, path) + "php_admin_value[memory_limit] = 256M\n"
+			if err := os.WriteFile(path, []byte(owner), 0o640); err != nil {
+				t.Fatal(err)
+			}
+			inspected, _, _, err := NewPHPPoolManager().InspectSitePool(sitePoolTestRequest(transport.SitePoolOperationInspect))
+			if err != nil || inspected.State != transport.SiteFileOwnerEdited {
+				t.Fatalf("inspect: %+v %v", inspected, err)
+			}
+			oldActive := phpFPMActive
+			t.Cleanup(func() { phpFPMActive = oldActive })
+			phpFPMActive = func(string) string { return c.before }
+			checks := 0
+			phpFPMConfigTest = func(string) error {
+				checks++
+				if checks <= len(c.checks) {
+					return c.checks[checks-1]
+				}
+				return nil
+			}
+			*reloads = 0
+			take := sitePoolTestRequest(transport.SitePoolOperationTake)
+			take.ExpectedFileSHA256, take.ExpectedRenderSHA256 = inspected.FileSHA256, inspected.RenderSHA256
+			result, err := NewPHPPoolManager().ApplySitePool(take)
+			if err != nil || result.Outcome != transport.SiteFileOutcomeFailed || result.Reason != transport.SiteFileReasonConfigRefused ||
+				result.Restore != transport.SiteFileRestoreConfirmed || result.Service != c.wantService ||
+				result.ServiceReason != c.wantReason || result.ServiceActive != c.before {
+				t.Fatalf("result: %+v %v", result, err)
+			}
+			if *reloads != c.wantReloads || checks != c.wantChecks {
+				t.Fatalf("reloads %d, checks %d", *reloads, checks)
+			}
+			if c.wantReason != "" && result.ServiceCheck !=
+				"php-fpm8.3 -t: [11-Oct-2026 04:40:00] ERROR: [/etc/php/8.3/fpm/pool.d/zz-owner.conf:1] unknown entry 'set12_not_a_directive'" {
+				t.Fatalf("check line: %q", result.ServiceCheck)
+			}
+			if readPoolTestFile(t, path) != owner {
+				t.Fatal("the owner's pool is not back")
+			}
+		})
+	}
+}

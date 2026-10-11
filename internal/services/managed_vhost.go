@@ -792,6 +792,12 @@ func (ng *NginxGenerator) ApplyManagedVhosts(items []ManagedVhostItem) ([]transp
 	}
 
 	var touched []plannedSiteFileWrite
+	// Whether nginx ran before these writes decides what follows a put-back
+	// (set12 cell RP1).
+	nginxBefore := transport.SiteFileServiceActiveUnknown
+	if len(writes) > 0 {
+		nginxBefore = ng.nginxServiceActive()
+	}
 	for _, plan := range writes {
 		result := &results[plan.index]
 		if plan.backup {
@@ -948,12 +954,12 @@ func (ng *NginxGenerator) ApplyManagedVhosts(items []ManagedVhostItem) ([]transp
 		}
 		rollbackErr := restorePlannedSiteFiles(everything)
 		failTouched(transport.SiteFileReasonNginxRefused, detail)
-		return results, markManagedRestore(results, touched, ng.finishManagedRollback(fmt.Errorf("nginx validation failed: %w", err), rollbackErr))
+		return results, ng.markManagedRestore(results, touched, ng.finishManagedRollbackFrom(fmt.Errorf("nginx validation failed: %w", err), rollbackErr, nginxBefore))
 	}
 	if err := ng.ReloadNginx(); err != nil {
 		rollbackErr := restorePlannedSiteFiles(everything)
 		failTouched(transport.SiteFileReasonReloadFailed, err.Error())
-		return results, markManagedRestore(results, touched, ng.finishManagedRollback(fmt.Errorf("nginx reload failed: %w", err), rollbackErr))
+		return results, ng.markManagedRestore(results, touched, ng.finishManagedRollbackFrom(fmt.Errorf("nginx reload failed: %w", err), rollbackErr, nginxBefore))
 	}
 	for _, plan := range touched {
 		result := &results[plan.index]
@@ -972,32 +978,64 @@ func (ng *NginxGenerator) ApplyManagedVhosts(items []ManagedVhostItem) ([]transp
 }
 
 // markManagedRestore records on each failed file whether the batch's rollback
-// was confirmed (every file put back, nginx -t and the reload after it held:
-// finishManagedRollback answered VhostRestoredError) or not ("rollback
-// incomplete"). It returns the rollback's error unchanged.
-func markManagedRestore(results []transport.SiteFileResult, touched []plannedSiteFileWrite, rollback error) error {
+// was confirmed (every file put back and finishManagedRollbackFrom answered
+// VhostRestoredError: reloaded, or deliberately not reloaded) or not
+// ("rollback incomplete"), what happened to nginx, and whether nginx runs
+// now. It returns the rollback's error unchanged.
+func (ng *NginxGenerator) markManagedRestore(results []transport.SiteFileResult, touched []plannedSiteFileWrite, rollback error) error {
 	restore := transport.SiteFileRestoreUnconfirmed
+	service, reason, check := "", "", ""
 	var restored *VhostRestoredError
 	if errors.As(rollback, &restored) {
 		restore = transport.SiteFileRestoreConfirmed
+		service, check = restored.Service, restored.Check
+		if service == "" {
+			service = transport.SiteFileServiceReloaded
+		}
+		if service == transport.SiteFileServiceNotReloaded {
+			reason = transport.SiteFileServiceReasonConfigRefusedElsewhere
+		}
+	} else if rollback != nil && strings.Contains(rollback.Error(), "rollback reload") {
+		service = transport.SiteFileServiceReloadFailed
 	}
+	active := ng.nginxServiceActive()
 	for _, plan := range touched {
-		results[plan.index].Restore = restore
+		result := &results[plan.index]
+		result.Restore = restore
+		result.Service, result.ServiceReason, result.ServiceCheck = service, reason, check
+		result.ServiceActive = active
 	}
 	return rollback
 }
 
 func (ng *NginxGenerator) finishManagedRollback(cause, rollbackErr error) error {
+	return ng.finishManagedRollbackFrom(cause, rollbackErr, transport.SiteFileServiceActiveUnknown)
+}
+
+// finishManagedRollbackFrom ends a put-back: nginx that did not run before
+// (before "false") is neither checked nor reloaded; otherwise nginx -t runs on
+// the put-back configuration and, when nginx refuses it (another file is the
+// cause), nginx is not reloaded and keeps the configuration it loaded before
+// (set12 cell RP1). A check that could not run, or a reload that failed, is a
+// rollback incomplete as before.
+func (ng *NginxGenerator) finishManagedRollbackFrom(cause, rollbackErr error, before string) error {
 	if rollbackErr != nil {
 		return fmt.Errorf("%w; rollback incomplete: %v", cause, rollbackErr)
 	}
+	if before == transport.SiteFileServiceActiveFalse {
+		return &VhostRestoredError{Cause: cause, Service: transport.SiteFileServiceNotRunning}
+	}
 	if err := ng.ValidateNginx(); err != nil {
+		var refused *NginxConfigRefusedError
+		if errors.As(err, &refused) {
+			return &VhostRestoredError{Cause: cause, Service: transport.SiteFileServiceNotReloaded, Check: SiteFileCheckLine(err)}
+		}
 		return fmt.Errorf("%w; rollback incomplete: rollback validation: %v", cause, err)
 	}
 	if err := ng.ReloadNginx(); err != nil {
 		return fmt.Errorf("%w; rollback incomplete: rollback reload: %v", cause, err)
 	}
-	return &VhostRestoredError{Cause: cause}
+	return &VhostRestoredError{Cause: cause, Service: transport.SiteFileServiceReloaded}
 }
 
 func restorePlannedSiteFiles(touched []plannedSiteFileWrite) error {

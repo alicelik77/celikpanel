@@ -66,6 +66,16 @@ type apiErrorBody struct {
 	// whether putting the previous file back was confirmed ("confirmed") or
 	// not ("unconfirmed": the server administrator checks the file). Additive.
 	Restore string `json:"restore,omitempty"`
+	// Service, after such a put-back (set12 cell RP1): "reloaded",
+	// "not_reloaded" (ServiceReason config_refused_elsewhere: the service's
+	// check refused the put-back configuration, so it was not reloaded and
+	// keeps the configuration it loaded before; check_unavailable),
+	// "not_running" (it did not run before; neither reloaded nor started) or
+	// "reload_failed". ServiceActive is `systemctl is-active` after the
+	// operation: "true", "false" or "unknown". Additive.
+	Service       string `json:"service,omitempty"`
+	ServiceReason string `json:"service_reason,omitempty"`
+	ServiceActive string `json:"service_active,omitempty"`
 }
 
 // Stable refusal codes. Renaming one is an API break — don't.
@@ -312,6 +322,16 @@ type agentRPCPlatformErrorClassification struct {
 	// AdminDetails: the Agent's own line, written only for an administrator
 	// (writeServerErrorFor). Additive.
 	AdminDetails []string
+	// Service, ServiceReason, ServiceActive: apiErrorBody's. AdminVars are
+	// the sentence's values written only for an administrator (the check's
+	// line, which names this server's files). Additive.
+	Service       string
+	ServiceReason string
+	ServiceActive string
+	AdminVars     map[string]string
+	// AdminMessage replaces Message for an administrator (it names the
+	// check's line). Additive.
+	AdminMessage string
 }
 
 type singleErrorUnwrapper interface {
@@ -572,9 +592,17 @@ func writeServerErrorAs(w http.ResponseWriter, caller *Caller, err error) {
 			Reason:  classification.Reason,
 			Detail:  classification.Detail,
 			Restore: classification.Restore,
+			Service: classification.Service, ServiceReason: classification.ServiceReason,
+			ServiceActive: classification.ServiceActive,
 		}
 		if caller.hasAccountRole(roleAdmin) {
 			body.Details = classification.AdminDetails
+			if len(classification.AdminVars) > 0 {
+				body.Vars = classification.AdminVars
+			}
+			if classification.AdminMessage != "" {
+				body.Error = classification.AdminMessage
+			}
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(classification.Status)

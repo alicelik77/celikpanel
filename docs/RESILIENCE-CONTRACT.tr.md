@@ -4508,3 +4508,66 @@ hücreleri (denetim §9) sonra gelir. 2026-10-10 saat tarihidir.
   `site_config_restore_test.go`; Agent derleme kapısı matrisi; web
   `api-error.test.mjs`, takılı sayfa testi; batch10 görüntüleri `100p6a`,
   `100p8`); gerçek sistemde ölçülmedi.
+- **On ikinci yerel kayıttan düzeltmeler (set12, 2026-10-11).** Bulgular on
+  ikinci kayıtta Debian 13, Ubuntu 24.04 ve Arch'ta ölçüldü
+  (`deploy/e2e/release-recovery/evidence/set12-20261011/`); yeni kod bileşen
+  testli ve gerçek bir Chrome'da geri döngü sahtesine karşı denendi; gerçek
+  sistemde ölçülmedi. Etkilenen: 2, 4 ve 6. ilkeler (okunmayan dosya sağlam
+  gösterilmez; geri koyma bir hizmeti düşürmemeli; CelikPanel başarısız olsa da
+  sahibin hizmeti çalışır). *(1) Okunmayan dosya (U hücresi):* satır yalnız
+  defter satırlarından kuruluyordu ve başarısız okuma satır yazmıyordu (sayfa
+  `unknown`/`not_read` derken satır `managed_unchanged`).
+  `services.RecordSiteFileUnread` artık gözlemi, `RecordSiteFileRecheck`'in
+  yeniden denetimi yazdığı gibi, türün en yeni satırına yazar: durum
+  `unknown`, `state_reason` `not_read` ya da `agent_does_not_report` ve ":"
+  ardından hata sınıfı (`timeout`, `agent_unreachable`, `agent_error`,
+  `render_input_unavailable`), `observed_at`; özet, yol ya da karar değişmez;
+  yalnız `managed_unchanged` (`protection_removed` olmayan) ya da `unknown`
+  kayıtlı satır değişir, böylece bilinen bir sorun gizlenmez; yanıt veren bir
+  sonraki okuma onu değiştirir (`observeOtherSiteFile`). Sayfanın okumasından
+  (`withOtherSiteFiles`, zaman aşımına uğrayan okuma isteğin bağlamını
+  tükettiği için kendi 5 sn'lik bağlamıyla) ve `agent_does_not_report` için
+  çağrılır. Eklemeli API: `site_config.reason`, `site_config.read_error`,
+  sayfadaki dosyanın `read_error` alanı. Şema: yok (44. göçün `state_reason`
+  alanı serbest metin). *(2) Geri koyma (RP1 hücresi):* Agent, `php-fpm -t`'nin
+  az önce reddettiği yapılandırmayla (havuz dizininde sahibe ait başka bir
+  dosya) PHP-FPM'i yeniden yükledi; yanıt `confirmed` derken PHP-FPM üçünde de
+  `failed` oldu. `ApplyManagedSiteFile` artık geri konan dosyayı yeniden okur,
+  yazmadan önce hizmetin durumunu okur (`ManagedSiteFile.ServiceActive`,
+  `systemctl is-active`) ve geri koymadan sonra `restoreService` çalıştırır:
+  önceden çalışmıyorsa denetim de yeniden yükleme de yok (`not_running`);
+  aksi hâlde denetim (`RestoreCheck`, varsayılan doğrulama adımı:
+  `php-fpm -t`; birimde koşulsuz `daemon-reload` ardından `systemd-analyze
+  verify`, araç yoksa `ErrServiceCheckUnavailable`) ve yalnız geçen denetim
+  yeniden yükler (`RestoreReload`: birimde `try-restart`); ret →
+  `not_reloaded`, `config_refused_elsewhere`, denetimin satırı. Vhost toplu
+  işlemi aynısını `finishManagedRollbackFrom` içinde yapar (geri koymadan sonra
+  nginx -t reddederse Service `not_reloaded` olan `VhostRestoredError`,
+  yeniden yükleme yok; site oluşturmanın `WEB_SERVER_REFUSED_CONFIG` yanıtı
+  yeniden yüklenmiş geri koymayla sınırlı kalır). Taşıma: eklemeli
+  `SiteFileResult.Service`, `ServiceReason`, `ServiceCheck`, `ServiceActive`;
+  HTTP: `SITE_CONFIG_SERVICE_REFUSED` ve `SITE_CONFIG_NGINX_REFUSED` üzerinde
+  eklemeli `service`, `service_reason`, `service_active`
+  (`true|false|unknown`); `vars.line` ve `details` içindeki satır yalnız
+  yönetici için. Kurtarma: hizmet önceden yüklediği yapılandırmayı korur;
+  yönetici adı verilen dosyayı düzeltip yeniden yükler; "confirmed" artık
+  önceki baytların geri geldiği (yeniden okunarak) anlamına gelir, hizmete ne
+  olduğunu `service` söyler. *(3) Birim PATH'i (gözlem, Debian a koşusu):*
+  `/bin/sh -lc` `/etc/profile`'ı yeniden okuduğu için çıplak `node` 127 ile
+  çıktı; bu sürümün birimi açık bir `Environment=PATH=` (Panel'in Node dizini,
+  ardından sistem dizinleri) ve `ExecStart=/bin/sh -c '…'` yazar; alpha.82/81
+  metinleri benimseme için donmuş kalır (`AppUnitParams.LegacyPathEnv`,
+  `-lc`). *(4) Görünür yanıt:* sayfanın yanıtı belirdiğinde görünür alana
+  kayar ve `role="status"` taşır. *Yapılmadı:* PHP sürümü değiştirmenin kendi
+  geri koyması iki sürümü de hâlâ denetimsiz yeniden yükler; defter satırı
+  olmayan dosya hâlâ Alan Adları listesinde yoktur; başarısız olan bir geri
+  koyma ölçülmedi. *Kanıt:* services
+  `TestSitePoolPutBackReloadsOnlyAConfigurationTheCheckAccepts`,
+  `TestNginxPutBackLeavesAStoppedNginxAlone`,
+  `TestNginxRefusalPutsBackEveryWrittenFileExactlyAndLeavesKeptFiles`
+  (güncellendi: doğrulandı, yeniden yüklenmedi); Agent
+  `TestAppUnitRestoreRestartsOnlyAVerifiedUnit`,
+  `TestAppUnitPathDoesNotDependOnALoginShell`; Panel
+  `site_config_set12_test.go`; web `site-config-mounted.test.mjs`; batch10
+  görüntüleri `100p6a`, `100p8`, `100p9`. Ayrıcalıklı başlatma bekçisi iki
+  yeni başlatmayı adlandırır (`systemctl is-active`, `systemd-analyze verify`).

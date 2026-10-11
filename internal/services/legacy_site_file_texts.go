@@ -102,7 +102,13 @@ type AppUnitParams struct {
 	RequestedUser string
 	WorkDir       string
 	Port          int
-	PathEnv       string
+	// PathEnv is this release's PATH line: the Panel-installed Node
+	// directory and the system directories, never the Agent's environment
+	// (set12 observation: a bare `node` exited 127).
+	PathEnv string
+	// LegacyPathEnv is the PATH alpha.82 and alpha.81 wrote: the Node
+	// directory and the Agent's own PATH ("" takes PathEnv).
+	LegacyPathEnv string
 	Command       string
 	InstallTarget string
 	// DropInDir is the unit's drop-in directory, the owner's place.
@@ -118,9 +124,25 @@ func unitValue(value string) string {
 	}, value)
 }
 
-// appUnitSections is the unit's text after its comment, as alpha.82 and this
-// release write it, for the given User= account.
-func appUnitSections(p AppUnitParams, user string) string {
+// appUnitSections is the unit's text after its comment, as this release
+// (legacy false) or alpha.82 and alpha.81 (legacy true) write it, for the
+// given User= account.
+//
+// This release's start command runs under `/bin/sh -c`, not `/bin/sh -lc`
+// (set12 observation, Debian 13: a login shell reads /etc/profile, which sets
+// PATH again, so the unit's Environment=PATH with the Panel's Node directory
+// did not reach the command and a bare `node` exited 127). A shell is still
+// needed because the start command is a shell command line (quoting, &&,
+// $PORT); no CelikPanel feature needs a login shell. The earlier releases'
+// texts are frozen as they were written (adoption compares them byte for byte).
+func appUnitSections(p AppUnitParams, user string, legacy bool) string {
+	pathEnv, shell := p.PathEnv, "/bin/sh -c"
+	if legacy {
+		shell = "/bin/sh -lc"
+		if p.LegacyPathEnv != "" {
+			pathEnv = p.LegacyPathEnv
+		}
+	}
 	var b strings.Builder
 	fmt.Fprintf(&b, "[Unit]\nDescription=CelikPanel app: %s\nAfter=network.target\n\n", unitValue(p.Description))
 	fmt.Fprintf(&b, "[Service]\n")
@@ -130,8 +152,8 @@ func appUnitSections(p AppUnitParams, user string) string {
 	fmt.Fprintf(&b, "WorkingDirectory=%s\n", p.WorkDir)
 	fmt.Fprintf(&b, "Environment=PORT=%d\n", p.Port)
 	fmt.Fprintf(&b, "Environment=NODE_ENV=production\n")
-	fmt.Fprintf(&b, "Environment=PATH=%s\n", p.PathEnv)
-	fmt.Fprintf(&b, "ExecStart=/bin/sh -lc '%s'\n", strings.ReplaceAll(p.Command, "'", `'\''`))
+	fmt.Fprintf(&b, "Environment=PATH=%s\n", pathEnv)
+	fmt.Fprintf(&b, "ExecStart=%s '%s'\n", shell, strings.ReplaceAll(p.Command, "'", `'\''`))
 	fmt.Fprintf(&b, "Restart=on-failure\nRestartSec=3\n\n")
 	fmt.Fprintf(&b, "[Install]\nWantedBy=%s\n", p.InstallTarget)
 	return b.String()
@@ -145,7 +167,7 @@ func AppUnitBody(p AppUnitParams) string {
 		"# Your own settings go in " + p.DropInDir + "/*.conf (systemd drop-ins); CelikPanel never writes or removes them.\n" +
 		"# An edit to this file is kept: CelikPanel then shows the difference and asks before writing it again.\n" +
 		"# Kendi ayarlarınız " + p.DropInDir + "/*.conf içine; CelikPanel onlara dokunmaz. Bu dosyadaki bir değişiklik korunur.\n" +
-		appUnitSections(p, p.User)
+		appUnitSections(p, p.User, false)
 }
 
 // LegacyAppUnitRenders returns the texts alpha.82 and alpha.81 wrote for the
@@ -157,8 +179,8 @@ func LegacyAppUnitRenders(p AppUnitParams) func() ([]LegacyVhostRender, error) {
 			requested = ""
 		}
 		return []LegacyVhostRender{
-			{Release: legacyReleaseAlpha82, Text: legacyUnitComment + appUnitSections(p, p.User)},
-			{Release: legacyReleaseAlpha81, Text: legacyUnitComment + appUnitSections(p, requested)},
+			{Release: legacyReleaseAlpha82, Text: legacyUnitComment + appUnitSections(p, p.User, true)},
+			{Release: legacyReleaseAlpha81, Text: legacyUnitComment + appUnitSections(p, requested, true)},
 		}, nil
 	}
 }

@@ -5239,3 +5239,64 @@ native cells (audit §9) come after. 2026-10-10 is the clock date.
   `site_config_restore_test.go`; Agent build-gate matrix; web
   `api-error.test.mjs`, the mounted page test; batch10 shots `100p6a`,
   `100p8`); not measured on a real system.
+- **Corrections from the twelfth native record (set12, 2026-10-11).**
+  Findings measured in the twelfth record on Debian 13, Ubuntu 24.04 and Arch
+  (`deploy/e2e/release-recovery/evidence/set12-20261011/`); the new code is
+  component-tested and checked in a real Chrome against the loopback mock; not
+  measured on a real system. Affected: invariants 2, 4 and 6 (an unread file
+  is not shown as known-good; a put-back must not take a service down; the
+  owner's service keeps running on CelikPanel's failure). *(1) Unread file
+  (cell U):* the row was built from ledger rows only and a failed read wrote
+  none (row `managed_unchanged` while the page said `unknown`/`not_read`).
+  `services.RecordSiteFileUnread` now records the observation on the newest
+  row of the kind the way `RecordSiteFileRecheck` records a recheck: state
+  `unknown`, `state_reason` `not_read` or `agent_does_not_report` with the
+  error class after a ":" (`timeout`, `agent_unreachable`, `agent_error`,
+  `render_input_unavailable`), `observed_at`; no digest, path or decision
+  changes; only a row stored `managed_unchanged` (not `protection_removed`) or
+  `unknown` changes, so a known problem is not hidden; the next answered read
+  replaces it (`observeOtherSiteFile`). Called from the page's read
+  (`withOtherSiteFiles`, with its own 5 s context because a timed-out read has
+  used up the request's) and for `agent_does_not_report`. Additive API:
+  `site_config.reason`, `site_config.read_error`, the page file's `read_error`.
+  Schema: none (migration 044's `state_reason` is free text). *(2) Put-back
+  (cell RP1):* the Agent reloaded PHP-FPM with a configuration `php-fpm -t`
+  had just refused (an owner's file elsewhere in the pool directory); PHP-FPM
+  ended `failed` on all three while the answer said `confirmed`.
+  `ApplyManagedSiteFile` now reads the put-back file back, reads the service's
+  state before the write (`ManagedSiteFile.ServiceActive`, `systemctl
+  is-active`), and after a put-back runs `restoreService`: not running before
+  → no check, no reload (`not_running`); else the check (`RestoreCheck`,
+  default the validate step: `php-fpm -t`; a unit's `systemd-analyze verify`
+  after an unconditional `daemon-reload`, `ErrServiceCheckUnavailable` without
+  the tool) and only a passed check reloads (`RestoreReload`: a unit's
+  `try-restart`); refused → `not_reloaded`, `config_refused_elsewhere`, the
+  check's line. The vhost batch does the same in `finishManagedRollbackFrom`
+  (nginx -t refused after the put-back → `VhostRestoredError` with Service
+  `not_reloaded`, no reload; site creation's `WEB_SERVER_REFUSED_CONFIG` stays
+  limited to a reloaded restore). Transport: additive `SiteFileResult.Service`,
+  `ServiceReason`, `ServiceCheck`, `ServiceActive`; HTTP: additive `service`,
+  `service_reason`, `service_active` (`true|false|unknown`) on
+  `SITE_CONFIG_SERVICE_REFUSED` and `SITE_CONFIG_NGINX_REFUSED`, `vars.line`
+  and the line in `details` for an administrator only. Recovery: the service
+  keeps the configuration it loaded before; the administrator fixes the named
+  file and reloads; "confirmed" now means the previous bytes are back (read
+  back), and `service` says what happened to the service. *(3) Unit PATH
+  (observation, Debian run a):* a bare `node` exited 127 because
+  `/bin/sh -lc` re-read `/etc/profile`; this release's unit writes an
+  explicit `Environment=PATH=` (the Panel's Node directory, then the system
+  directories) and `ExecStart=/bin/sh -c '…'`; alpha.82/81 texts stay frozen
+  for adoption (`AppUnitParams.LegacyPathEnv`, `-lc`). *(4) Answer in view:*
+  the page's answer scrolls into view on appearance and is a `role="status"`.
+  *Not done:* the PHP version switch's own put-back still reloads both
+  versions without the check; a file with no ledger row is still not in the
+  Domains list; restoring a failing put-back itself is not measured.
+  *Evidence:* services `TestSitePoolPutBackReloadsOnlyAConfigurationTheCheckAccepts`,
+  `TestNginxPutBackLeavesAStoppedNginxAlone`,
+  `TestNginxRefusalPutsBackEveryWrittenFileExactlyAndLeavesKeptFiles`
+  (updated: confirmed, not reloaded); Agent
+  `TestAppUnitRestoreRestartsOnlyAVerifiedUnit`,
+  `TestAppUnitPathDoesNotDependOnALoginShell`; Panel
+  `site_config_set12_test.go`; web `site-config-mounted.test.mjs`; batch10
+  shots `100p6a`, `100p8`, `100p9`. The privileged-launch guard names the two
+  new launches (`systemctl is-active`, `systemd-analyze verify`).

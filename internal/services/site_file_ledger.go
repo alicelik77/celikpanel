@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/transport"
@@ -332,6 +333,50 @@ func RecordSiteFileRecheck(ctx context.Context, db siteFileQuerier, siteID int, 
 	}
 	affected, err := result.RowsAffected()
 	return affected > 0, err
+}
+
+// RecordSiteFileUnread stores that the Panel asked the Agent for a site file's
+// state and got none (set12 cell U, 2026-10-11: the page answered the pool
+// "unknown / not_read" while the Domains row, built from ledger rows only,
+// kept "managed_unchanged"). It is an observation, as RecordSiteFileRecheck's:
+// the newest row of the kind gets state unknown, the reason (not_read,
+// agent_does_not_report) with the error class after a ":" (timeout,
+// agent_error, …; SplitSiteFileUnreadReason) and the time; no digest, path or
+// decision changes. The next successful read replaces it (the page's read
+// records what it found when it differs from the row). A row whose stored
+// fact outranks "unknown" (an owner's file, a refused replacement, a missing
+// or unreadable file) keeps it: a known problem is not hidden by a read that
+// failed. A managed_unchanged row with the reason protection_removed keeps it
+// too (its "apply" would be lost). It returns whether a row changed.
+func RecordSiteFileUnread(ctx context.Context, db siteFileQuerier, siteID int, kind, reason, errorClass string, now int64) (bool, error) {
+	if reason == "" {
+		return false, fmt.Errorf("an unread observation needs a reason")
+	}
+	if now == 0 {
+		now = time.Now().Unix()
+	}
+	stored := reason
+	if errorClass != "" {
+		stored += ":" + errorClass
+	}
+	result, err := db.ExecContext(ctx, `
+		UPDATE managed_site_files SET state = ?, state_reason = ?, observed_at = ?
+		WHERE id = (SELECT id FROM managed_site_files WHERE site_id = ? AND kind = ? ORDER BY id DESC LIMIT 1)
+		  AND (state = ? OR (state = ? AND state_reason <> ?))`,
+		transport.SiteFileStateUnknown, stored, now, siteID, kind,
+		transport.SiteFileStateUnknown, transport.SiteFileManagedUnchanged, SiteFileReasonProtectionRemoved)
+	if err != nil {
+		return false, err
+	}
+	affected, err := result.RowsAffected()
+	return affected > 0, err
+}
+
+// SplitSiteFileUnreadReason reads a stored reason back: the reason and, for
+// an unread observation, the error class ("" for none).
+func SplitSiteFileUnreadReason(stored string) (string, string) {
+	reason, class, _ := strings.Cut(stored, ":")
+	return reason, class
 }
 
 // RecordSiteFileDecision stores the owner's decision and the digest of the

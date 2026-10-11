@@ -55,6 +55,93 @@ type ManagedSiteFile struct {
 	// IncludeDir names the owner's supported extension point for the file
 	// (a systemd drop-in directory), "" when the format has none.
 	IncludeDir string
+
+	// After a put-back (set12 cell RP1). ServiceActive reads whether the
+	// file's service runs ("true", "false", "unknown"); it is read before the
+	// write and after the operation; nil: not known. RestoreCheck is the
+	// service's own check of the put-back configuration (nil: validate);
+	// ErrServiceCheckUnavailable when it cannot be run. RestoreReload, when
+	// set, is the service's reload after the put-back and activate then runs
+	// unconditionally first (a unit: daemon-reload is harmless, try-restart is
+	// the reload); when nil, activate is that reload.
+	ServiceActive func() string
+	RestoreCheck  func() error
+	RestoreReload func() error
+}
+
+// restoreService decides what happens to the service after the previous file
+// was put back: a service that was not running before is left alone; the
+// check runs on the put-back configuration and, when it refuses it, the
+// service is not reloaded (it keeps the configuration it loaded before); only
+// a passed check reloads it. It returns the reload's error (or activate's,
+// for a RestoreReload file), which leaves the restore unconfirmed.
+func (f ManagedSiteFile) restoreService(result *transport.SiteFileResult, before string, validate, activate func() error) error {
+	reload := activate
+	if f.RestoreReload != nil {
+		if activate != nil {
+			if err := activate(); err != nil {
+				result.Service = transport.SiteFileServiceReloadFailed
+				return err
+			}
+		}
+		reload = f.RestoreReload
+	}
+	if reload == nil {
+		return nil
+	}
+	if before == transport.SiteFileServiceActiveFalse {
+		result.Service = transport.SiteFileServiceNotRunning
+		return nil
+	}
+	check := f.RestoreCheck
+	if check == nil {
+		check = validate
+	}
+	if check != nil {
+		if err := check(); err != nil {
+			result.Service = transport.SiteFileServiceNotReloaded
+			if errors.Is(err, ErrServiceCheckUnavailable) {
+				result.ServiceReason = transport.SiteFileServiceReasonCheckUnavailable
+			} else {
+				result.ServiceReason = transport.SiteFileServiceReasonConfigRefusedElsewhere
+				result.ServiceCheck = SiteFileCheckLine(err)
+			}
+			return nil
+		}
+	}
+	if err := reload(); err != nil {
+		result.Service = transport.SiteFileServiceReloadFailed
+		return err
+	}
+	result.Service = transport.SiteFileServiceReloaded
+	return nil
+}
+
+// serviceActive reads ServiceActive, "unknown" without one.
+func (f ManagedSiteFile) serviceActive() string {
+	if f.ServiceActive == nil {
+		return transport.SiteFileServiceActiveUnknown
+	}
+	return f.ServiceActive()
+}
+
+// verifyRestoredSiteFile reads the put-back file again: it must be the
+// previous bytes (or absent, when there was none).
+func verifyRestoredSiteFile(path string, inspected siteFileInspection) error {
+	if !inspected.exists {
+		if _, err := os.Lstat(path); err == nil {
+			return fmt.Errorf("%s is present after the put-back", path)
+		}
+		return nil
+	}
+	current, err := readManagedConfig(path)
+	if err != nil {
+		return fmt.Errorf("read %s after the put-back: %w", path, err)
+	}
+	if !bytes.Equal(current, inspected.content) {
+		return fmt.Errorf("%s is not the previous bytes after the put-back", path)
+	}
+	return nil
 }
 
 func (f ManagedSiteFile) sealed() []byte {
@@ -147,7 +234,10 @@ func SiteFileApplied(outcome string) bool {
 //
 // After a write, validate (the service's own check) and activate (its reload)
 // run; when either fails, the previous bytes (or no file) are put back with
-// their mode and owner and activate runs again. A refused replacement (an
+// their mode and owner and read back; the service's check then runs on the
+// put-back configuration and only a passed check reloads it (restoreService;
+// set12 cell RP1: a reload after a refused check left PHP-FPM failed). A
+// service that was not running before is not reloaded. A refused replacement (an
 // immutable file) keeps the Panel's text in the pending file too.
 //
 // ApplyManagedSiteFile dosyayı sınıflandırır ve yalnız kuralın izin verdiğini
@@ -215,6 +305,9 @@ func ApplyManagedSiteFile(f ManagedSiteFile, validate, activate func() error) (t
 		}
 		result.BackupPath = name
 	}
+	// Whether the service ran before this write decides what follows a
+	// put-back (a service that was not running is not reloaded or started).
+	before := f.serviceActive()
 	if err := writeManagedSiteFile(f.Path, sealed, inspected); err != nil {
 		result.Outcome = transport.SiteFileOutcomeRefused
 		if errors.Is(err, errSiteFileChanged) {
@@ -237,13 +330,25 @@ func ApplyManagedSiteFile(f ManagedSiteFile, validate, activate func() error) (t
 	}
 	fail := func(reason string, cause error) (transport.SiteFileResult, error) {
 		restoreErr := restoreManagedSiteFile(f.Path, inspected)
-		var activateErr error
-		if activate != nil {
-			activateErr = activate()
+		if restoreErr == nil {
+			restoreErr = verifyRestoredSiteFile(f.Path, inspected)
 		}
 		result.Outcome = transport.SiteFileOutcomeFailed
 		result.Reason = reason
 		result.Detail = boundedSiteFileDetail(cause.Error())
+		var activateErr error
+		if restoreErr != nil {
+			// The previous file is not known to be back: the reload runs as
+			// it always did; the restore stays unconfirmed.
+			if activate != nil {
+				activateErr = activate()
+			}
+		} else {
+			activateErr = f.restoreService(&result, before, validate, activate)
+		}
+		if f.ServiceActive != nil {
+			result.ServiceActive = f.ServiceActive()
+		}
 		if restoreErr != nil || activateErr != nil {
 			result.Restore = transport.SiteFileRestoreUnconfirmed
 			return result, fmt.Errorf("%w; rollback incomplete: %v", cause, errors.Join(restoreErr, activateErr))

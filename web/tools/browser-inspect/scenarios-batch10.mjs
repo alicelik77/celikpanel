@@ -243,6 +243,15 @@ export default function batch10(scenarios, { base, ctl, reset, newPage, closePag
     // site on one page: the nginx file, the PHP-FPM pool of a PHP site, the
     // application unit of a Node site, each with its state and choices, and
     // the notice above the domain naming the file that decided it.
+    // Whether the answer to a choice is inside the viewport (set12 browser
+    // observation: it was drawn above the files list, out of view).
+    const bannerInView = page => page.evaluate(() => {
+        const node = document.querySelector('[data-site-config-refusal], [data-site-config-done]');
+        if (!node) return null;
+        const box = node.getBoundingClientRect();
+        return { role: node.getAttribute('role'), top: Math.round(box.top), bottom: Math.round(box.bottom), viewport: window.innerHeight,
+            inView: box.top >= 0 && box.bottom <= window.innerHeight, text: node.innerText.slice(0, 400) };
+    });
     scenarios.siteconfigfiles = async () => {
         const POOL = '/etc/php/8.3/fpm/pool.d/site1.conf';
         const UNIT = '/etc/systemd/system/celikapp-1.service';
@@ -295,7 +304,7 @@ export default function batch10(scenarios, { base, ctl, reset, newPage, closePag
         // 2026-10-11: a pool the server did not answer for outranks the
         // unchanged nginx file: the Domains row wears its badge, the page's
         // overall state is unknown with the pool.
-        await setup({ state: 'unknown', kind: 'php_pool' });
+        await setup({ state: 'unknown', kind: 'php_pool', reason: 'not_read', read_error: 'timeout' });
         await ctl({ override: { [SC]: { method: 'GET', status: 200, body: multi(vhost, { domain_id: 1, domain: 'example.com', kind: 'php_pool', state: 'unknown', reason: 'not_read', actions: ['recheck'] }) } } });
         page = await newPage();
         await page.goto(`${base}/domains`, { waitUntil: 'networkidle0' });
@@ -328,9 +337,32 @@ export default function batch10(scenarios, { base, ctl, reset, newPage, closePag
         await into(page, '[data-site-config-confirm]');
         await clickByText(page, ['Replace the file', 'Dosyayı değiştir']);
         await pause(800);
-        // The refusal is drawn under the page's title, above the files.
-        await into(page, '[data-site-config] h2');
-        await shot(page, '100p8-pool-restore-unconfirmed', await facts(page));
+        // The refusal is drawn under the page's title, above the files; set12
+        // (2026-10-11): it scrolls itself into view, so nothing scrolls here.
+        await shot(page, '100p8-pool-restore-unconfirmed', { ...(await facts(page)), banner: await bannerInView(page) });
+        await closePage(page);
+
+        // set12 cell RP1: the owner's pool is back and PHP-FPM was not
+        // reloaded, because its check refuses a file elsewhere; the sentence
+        // names the check's line (an administrator's answer).
+        await setup({ state: 'owner_edited', kind: 'php_pool' });
+        await ctl({ override: {
+            [SC]: { method: 'GET', status: 200, body: multi(vhost, keptPool) },
+            [`${SC}/take`]: { method: 'POST', status: 502, body: {
+                error: 'refused', code: 'SITE_CONFIG_SERVICE_REFUSED', reason: 'php_pool', detail: 'config_refused', restore: 'confirmed',
+                service: 'not_reloaded', service_reason: 'config_refused_elsewhere', service_active: 'true',
+                vars: { line: "php-fpm8.3 -t: ERROR: [/etc/php/8.3/fpm/pool.d/zz-owner.conf:1] unknown entry 'set12_not_a_directive'" },
+                details: ["php-fpm8.3 -t: ERROR: [/etc/php/8.3/fpm/pool.d/zz-owner.conf:1] unknown entry 'set12_not_a_directive'"],
+            } },
+        } });
+        page = await openDomain();
+        await openConfig(page);
+        await into(page, '[data-site-config-file="php_pool"]');
+        await clickByText(page, ['Take CelikPanel’s', 'CelikPanel’in metnini al']);
+        await into(page, '[data-site-config-confirm]');
+        await clickByText(page, ['Replace the file', 'Dosyayı değiştir']);
+        await pause(800);
+        await shot(page, '100p9-pool-restore-not-reloaded', { ...(await facts(page)), banner: await bannerInView(page) });
         await closePage(page);
 
         await setup({ state: 'missing', kind: 'app_unit' });

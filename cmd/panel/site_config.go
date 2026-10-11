@@ -334,6 +334,10 @@ type siteConfigView struct {
 	// "owner_edited", "foreign" or "unknown_origin" under "unwritable" — the
 	// owner's file whose replacement ("take") the server refused.
 	FileState string `json:"file_state,omitempty"`
+	// ReadError, additive (set12 cell U): for a file whose state was not
+	// read (state unknown, reason not_read), why: "timeout",
+	// "render_input_unavailable", "agent_unreachable" or "agent_error".
+	ReadError string `json:"read_error,omitempty"`
 	// Files, additive (D-031 second step, 2026-10-11): every file CelikPanel
 	// writes for the site, each in this same shape with its own kind and
 	// actions: the vhost (the top-level fields repeat it, for a client that
@@ -826,12 +830,27 @@ func (p *Panel) handleSiteConfigRender(w http.ResponseWriter, r *http.Request, d
 			agentError = err.Error()
 		}
 		restore := siteFileRestore(*file, agentError)
-		body := apiErrorBody{Error: siteConfigNginxRefusedMessage, Code: errCodeSiteConfigNginxRefused, Reason: file.Reason, Restore: restore}
+		body := apiErrorBody{Error: siteConfigNginxRefusedMessage, Code: errCodeSiteConfigNginxRefused, Reason: file.Reason, Restore: restore,
+			Service: file.Service, ServiceReason: file.ServiceReason, ServiceActive: siteFileServiceActive(*file)}
 		if restore != transport.SiteFileRestoreConfirmed {
 			body.Error = siteConfigNginxRefusedUnconfirmedMessage
 		}
 		if file.Detail != "" {
 			body.Details = []string{boundedAgentDiagnostic(file.Detail)}
+		}
+		// nginx was deliberately not reloaded after the put-back (set12 cell
+		// RP1's rule): its own sentence, with nginx -t's line (this route is
+		// an administrator's).
+		if plain, withLine := siteFileServiceSentence(*file, restore); plain != "" {
+			body.Error = plain
+			if withLine != "" {
+				line := boundedAgentDiagnostic(file.ServiceCheck)
+				body.Error = withLine
+				body.Vars = map[string]string{"line": line}
+				if !containsString(body.Details, line) {
+					body.Details = append(body.Details, line)
+				}
+			}
 		}
 		if restore != transport.SiteFileRestoreConfirmed && agentError != "" {
 			// The Agent's own line (this route is an administrator's).
@@ -901,6 +920,11 @@ type domainSiteConfigSummary struct {
 	// Kind names the file whose state is shown when it is not the vhost
 	// (D-031 second step: php_pool, app_unit). Additive.
 	Kind string `json:"kind,omitempty"`
+	// Reason and ReadError, for a file whose state was not read (state
+	// unknown): not_read or agent_does_not_report, and why the read got no
+	// answer (siteFileReadErrorClass). Additive (set12 cell U).
+	Reason    string `json:"reason,omitempty"`
+	ReadError string `json:"read_error,omitempty"`
 }
 
 // domainSiteConfigSummaries answers, per domain, the worst state of the
@@ -976,6 +1000,9 @@ func (p *Panel) domainSiteConfigSummaries(ctx context.Context) (map[int]domainSi
 			}
 		} else {
 			summary.Kind = row.kind
+		}
+		if shown == transport.SiteFileStateUnknown {
+			summary.Reason, summary.ReadError = services.SplitSiteFileUnreadReason(row.reason)
 		}
 		summaries[domainID] = summary
 	}

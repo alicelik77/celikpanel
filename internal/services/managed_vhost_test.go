@@ -645,6 +645,7 @@ func TestNginxRefusalPutsBackEveryWrittenFileExactlyAndLeavesKeptFiles(t *testin
 	writeTestFile(t, SiteVhostPath("two.example"), owner, 0o644)
 	h.refuse = &NginxConfigRefusedError{Output: "nginx: [emerg] owner include broken", Cause: errors.New("exit status 1")}
 	first.RedirectWWW = true
+	reloadsBefore := h.reloads
 	results, err := h.ng.ApplyManagedVhosts([]ManagedVhostItem{
 		h.item(first, transport.SiteFileTriggerChange), h.item(second, transport.SiteFileTriggerChange),
 	})
@@ -656,10 +657,23 @@ func TestNginxRefusalPutsBackEveryWrittenFileExactlyAndLeavesKeptFiles(t *testin
 		results[0].Detail != "nginx: [emerg] owner include broken" {
 		t.Fatalf("written then refused: %+v", results[0])
 	}
-	// nginx -t still refuses after the put-back (the owner's file elsewhere),
-	// so the restore is not confirmed and the error says so.
-	if results[0].Restore != transport.SiteFileRestoreUnconfirmed || !strings.Contains(err.Error(), "rollback incomplete") {
-		t.Fatalf("restore after a refusal that persists: %q %v", results[0].Restore, err)
+	// nginx -t still refuses after the put-back (the owner's file elsewhere):
+	// the files are back (confirmed), and nginx is NOT reloaded with a
+	// configuration its check refuses; it keeps the one it loaded before
+	// (set12 cell RP1's rule).
+	if h.reloads != reloadsBefore {
+		t.Fatalf("nginx was reloaded %d times after a refused check", h.reloads-reloadsBefore)
+	}
+	if results[0].Restore != transport.SiteFileRestoreConfirmed || strings.Contains(err.Error(), "rollback incomplete") ||
+		results[0].Service != transport.SiteFileServiceNotReloaded ||
+		results[0].ServiceReason != transport.SiteFileServiceReasonConfigRefusedElsewhere ||
+		results[0].ServiceCheck != "nginx: [emerg] owner include broken" ||
+		results[0].ServiceActive != transport.SiteFileServiceActiveUnknown {
+		t.Fatalf("restore after a refusal that persists: %+v %v", results[0], err)
+	}
+	var restored *VhostRestoredError
+	if !errors.As(err, &restored) || restored.Reloaded() || !strings.Contains(err.Error(), "nginx was not reloaded") {
+		t.Fatalf("error: %v", err)
 	}
 	if results[1].Outcome != transport.SiteFileOutcomeKept || results[1].Restore != "" {
 		t.Fatalf("kept file: %+v", results[1])
@@ -761,5 +775,34 @@ func TestUnifiedDiffHunks(t *testing.T) {
 	want := "--- old\n+++ new\n@@ -1,6 +1,6 @@\n a\n b\n-c\n+C\n d\n e\n f\n@@ -8,3 +8,4 @@\n h\n i\n j\n+k\n"
 	if diff != want || truncated {
 		t.Fatalf("diff:\n%s\nwant:\n%s", diff, want)
+	}
+}
+
+// nginx that did not run before the operation is neither checked nor reloaded
+// after the put-back (set12 cell RP1's rule); the answer says so.
+func TestNginxPutBackLeavesAStoppedNginxAlone(t *testing.T) {
+	h := newManagedVhostHarness(t)
+	data := managedTestData("one.example", managedVhostPlatforms[0].socket)
+	h.apply(h.item(data, transport.SiteFileTriggerCreate))
+	before := readTestFile(t, SiteVhostPath("one.example"))
+	h.ng.nginxActive = func() string { return transport.SiteFileServiceActiveFalse }
+	h.ng.reloadNginx = func() error { h.reloads++; return errors.New("nginx.service is not active, cannot reload") }
+	validates, reloads := h.validates, h.reloads
+	data.RedirectWWW = true
+	results, err := h.ng.ApplyManagedVhosts([]ManagedVhostItem{h.item(data, transport.SiteFileTriggerChange)})
+	var restored *VhostRestoredError
+	if !errors.As(err, &restored) || restored.Reloaded() || strings.Contains(err.Error(), "rollback incomplete") {
+		t.Fatalf("error: %v", err)
+	}
+	if results[0].Outcome != transport.SiteFileOutcomeFailed || results[0].Restore != transport.SiteFileRestoreConfirmed ||
+		results[0].Service != transport.SiteFileServiceNotRunning || results[0].ServiceActive != transport.SiteFileServiceActiveFalse {
+		t.Fatalf("result: %+v", results[0])
+	}
+	// One check and one reload of CelikPanel's text; nothing after the put-back.
+	if h.validates != validates+1 || h.reloads != reloads+1 {
+		t.Fatalf("validates %d, reloads %d after the put-back", h.validates-validates-1, h.reloads-reloads-1)
+	}
+	if readTestFile(t, SiteVhostPath("one.example")) != before {
+		t.Fatal("the file was not put back exactly")
 	}
 }

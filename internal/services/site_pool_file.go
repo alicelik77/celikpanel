@@ -205,6 +205,9 @@ func sitePoolFile(request transport.SitePoolRequest, version string, values *poo
 		ExpectedFileSHA256:   request.ExpectedFileSHA256,
 		ExpectedRenderSHA256: request.ExpectedRenderSHA256,
 		Legacy:               legacyPoolRenders(version, poolName, request.Username, content),
+		// After a put-back: php-fpm -t (validate) before any reload; the
+		// reload only when PHP-FPM ran before (set12 cell RP1).
+		ServiceActive: func() string { return phpFPMActive(version) },
 	}
 }
 
@@ -372,6 +375,13 @@ func siteFileHeld(result transport.SiteFileResult, err error) error {
 		return nil
 	}
 	if result.Outcome == transport.SiteFileOutcomeFailed {
+		switch result.Service {
+		case transport.SiteFileServiceNotReloaded:
+			return fmt.Errorf("%s: %s; previous configuration restored, PHP-FPM not reloaded (%s): %s",
+				result.Reason, result.Detail, result.ServiceReason, result.ServiceCheck)
+		case transport.SiteFileServiceNotRunning:
+			return fmt.Errorf("%s: %s; previous configuration restored, PHP-FPM was not running and was not started", result.Reason, result.Detail)
+		}
 		return fmt.Errorf("%s: %s; previous configuration restored and activated", result.Reason, result.Detail)
 	}
 	return &SiteFileHeldError{File: result}
