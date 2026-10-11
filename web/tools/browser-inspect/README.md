@@ -134,7 +134,11 @@ showed the product's offline page. That Windows' 260-character limit is the
 mechanism is inferred from the error, the empty CacheStorage directory and the
 path arithmetic, not read from a Chrome line naming the path. `run.mjs` passes
 no profile: puppeteer makes its own under the system's temporary directory.
-`cold-load-set9.mjs` is kept as set9 ran it.
+`cold-load-set9.mjs` is kept as set9 ran it: its profile is still under the
+out-dir, so a long out-dir path on Windows meets the same limit there, and it
+neither checks nor records the length. The tool refuses a long path but also
+prints it (it can hold the user's name); only the `browser-profile-<8 hex>.json`
+record leaves it out.
 
 ## Not shipped
 

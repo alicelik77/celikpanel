@@ -59,8 +59,9 @@ Sahip 10 Ekim 2026'da düzeltmenin bir sonraki sürüme girmesine karar verdi:
    konumu oraya yazılır, sanal konağa değil. Korunmuş bir dosyanın doğrulamaya
    izin verip vermediği metninden okunmaz, ölçülür (aynı gün, ikinci tur):
    Agent doğrulama köküne rastgele adlı ve içerikli bir yoklama dosyası koyar,
-   127.0.0.1'in 80 numaralı bağlantı noktasındaki nginx'e onu sertifikanın
-   doğruladığı her adla sorar ve dosyayı kaldırır; hazır, her adın onu
+   127.0.0.1'in 80 numaralı bağlantı noktasındaki nginx'e (2026-10-11'den beri:
+   adın korunan dosyadaki 80 bloklarının dinlediği her adreste) onu
+   sertifikanın doğruladığı her adla sorar ve dosyayı kaldırır; hazır, her adın onu
    sunması demektir. Hazır (ve doğrulama dosyası değişmemiş) korunmuş bir
    dosyada sertifika dosyaya dokunmadan alınır ya da yenilenir ve sahip
    CelikPanel'in metnini alana ya da sertifika satırlarını değiştirene dek
@@ -172,11 +173,20 @@ satırın, rozetin ve sayfanın ne göstereceğini tek sıra belirler: okunamıy
 değiştirilemiyor, yok, korunan (sahip düzenlemesi, yabancı, bilinmeyen köken),
 sonra CelikPanel'in değişmemiş metni (`services.SiteFileShownState`). “Al”ı
 reddedilen sahip düzenlemesi iki olguyu birlikte gösterir ve koruma sürerken
-“al” hiçbir şey yazılmadan `409 SITE_CONFIG_UNWRITABLE` ile yanıtlanır. Şema
-değişmez.
-İkinci turun yoklamasında açık kalanlar (2026-10-10), hiçbiri giderilmedi: tek
+“al” hiçbir şey yazılmadan `409 SITE_CONFIG_UNWRITABLE` ile yanıtlanır ve
+reddedilen bir “al” tarihli kopya bırakmaz (Agent korumayı kopyadan önce ölçer,
+değiştirme yine de reddedilirse kopyayı kaldırır; sanal konak ve havuz
+testli, birim havuzun koduyla aynı kodu kullanır, set11 hücre B4; bileşen
+testli; gerçek sistemde ölçülmedi). Şema değişmez.
+İkinci turun yoklamasında açık kalanlar (2026-10-10), ilki yanıtlandı: (1) tek
 bir adrese bağlı 80 numaralı bağlantı noktası bloğuna geri döngüden
-ulaşılmaz; Yapılandırma dosyası sayfasının okumasında başarısız bir `nginx -t`
+ulaşılmıyordu — 2026-10-11'de yanıtlandı (set11 hücre A6; bileşen testli;
+gerçek sistemde ölçülmedi): yoklama, her ad için korunan dosyanın 80 numaralı
+bloklarının dinlediği adreslere sorar
+(`internal/services/managed_vhost_listen.go`); bu sunucunun olmayan bir adres
+bilinmeyendir ve sertifika isteği sürer, `validation_probe` `not_run`, yalnız
+günlük, şema değişmez, 503 yerel nedenlerde kalır; geri kalanlar hâlâ açıktır ve
+hiçbiri giderilmedi: Yapılandırma dosyası sayfasının okumasında başarısız bir `nginx -t`
 ya da yeniden yükleme `challenge_failed` olarak bildirilir; eksik ya da
 okunamayan dosya neden yazmaz, bu yüzden durdurduğu yenileme bir sonraki
 tamamlanan yenilemeye dek bekler; (2026-10-11'de giderildi: SSL sekmesi eksi

@@ -6092,7 +6092,8 @@ directory, or a probe file that cannot be created (mode 0644, `O_EXCL`), is
 `unknown` with a bounded detail, never "not ready"; asking stops at the first
 name that gets no answer, so that is `unknown` even when an earlier name was
 not served. A ready probe shows that nginx on this server serves the path
-under each name from the loopback; it does not show that the name resolves to
+under each name on the addresses the kept file listens on for it (the loopback
+for a wildcard); it does not show that the name resolves to
 this server or that port 80 is open to the certificate authority. CelikPanel's changed or
 unwritable challenge file stays `challenge_kept` / `challenge_failed` before
 any probe. When it asks for the probe, CelikPanel first publishes its own
@@ -6413,34 +6414,62 @@ conservative reader of the kept file only (an `include` is not followed)
 takes the port-80 `listen` directives (`listen 80`, `listen *:80`,
 `listen <address>:80`, `listen [<IPv6>]:80`, `listen <address>` with nginx's
 default port; `default_server` and the other parameters ignored; a block
-without `listen` is `*:80`) of the server blocks whose `server_name` carries
-the name exactly. An IPv4 wildcard is asked on 127.0.0.1, as before; an IPv6
-wildcard alone on `::1`; an explicit address that is an address of this
-server (its interfaces, `net.InterfaceAddrs`) is asked on that address, with
-the name as Host. A name no port-80 block of the file carries is asked on
-127.0.0.1 as before (so a file without a port-80 block is still
-`include_missing`/`names_missing`). Ready: every name served the probe on
-each of its addresses. The address that answered travels as `vars.address`
-of the refusal (and `validation_address` on the Configuration file page). An
-explicit address that is not this server's cannot be asked from here, which
-is unknown, not a refusal: nothing is written for the probe, and issuance,
-the alias certificate path and renewal go ahead as for a ready probe — the
-authority's own attempt is the test, and a failed validation already comes
-back typed (`CERTIFICATE_ISSUE_FAILED`, reason `validation`). The success
-answer carries `validation_probe` `not_run`, `validation_unknown_reason`
+without `listen` is `*:80`; comments are dropped; a `listen` on another port or
+a `unix:` socket is not port 80; only a block's own directives are read, not
+those of a nested `location`, and an upstream's `server <address>;` line is
+not a server block) of the server blocks whose `server_name` carries the name
+exactly (case-insensitive; a regular expression or a wildcard name is not
+matched). An IPv4 wildcard (`80`, `*:80`, `0.0.0.0:80`) is asked on 127.0.0.1,
+as before; an IPv6 wildcard (`[::]:80`) is asked on `::1`, but only when none
+of the name's listens is an IPv4 wildcard; an explicit address that is an
+address of this server (equal to one of its interface addresses,
+`net.InterfaceAddrs`, loopback included; `127.0.0.2` is not) is asked on that
+address, with the name as Host. A host name in `listen` (`localhost:80`) is
+not an interface address and counts as not this server's. A name no port-80
+block of the file carries is asked on 127.0.0.1 as before (so a file without
+a port-80 block is still `include_missing`/`names_missing`); so is every name
+when the kept file cannot be read or is over 1 MiB. Ready: every name served
+the probe on each of its addresses (`validation_address` on the Configuration
+file page then lists the addresses asked, comma-separated). The address that
+answered travels as `vars.address` of the refusal (and `validation_address`
+on the Configuration file page). One explicit address among a name's listens
+that is not this server's cannot be asked from here, which is unknown, not a
+refusal, even when the same name also listens on a local address: nothing is
+written for the probe, and issuance, the alias certificate path and renewal
+go ahead as for a ready probe — the authority's own attempt is the test. Where
+a failed validation is then answered: the SSL tab's issuance answers
+`502 CERTIFICATE_ISSUE_FAILED` with `reason` `validation` when the Agent read
+certbot's own output as a refused validation (`cmd/agent/certbot_failure.go`;
+other certbot output is `tool`, a certbot run that outlasts its limit is
+`timeout`, an Agent that does not classify leaves the older `500`); the alias
+add/delete reissue path answers a plain `409` "the alias certificate could not
+be reissued: …", not that typed answer; a renewal records its failure in the
+certificate's renewal status without a typed reason. The success
+answer (SSL tab issuance, alias add and alias delete reissue) carries
+`validation_probe` `not_run`, `validation_unknown_reason`
 `address_not_local`, `validation_address` and `validation_note`; the SSL tab
-and the alias change show it, and the Configuration file page says it under
-"Not known whether certificates can be validated with this file": "CelikPanel
+and the alias change show it as a warning toast (`ssl.validationNotRun`, in
+the screens bundle), and the Configuration file page says it under
+"Not known whether certificates can be validated with this file"
+(`siteConfig.certificate.validation.unknownAddress`): "CelikPanel
 could not check beforehand whether nginx serves the certificate validation
 for this site: the site listens on {address}, which this server cannot reach
 from itself. The request was sent anyway; if the authority cannot reach
 {address}, the answer will say so." It ends no `certificate_validation`
 reason (nothing was measured). The site-file ledger has no column for it (a
-schema change was not made): the Panel's journal line `validation_probe=not_run
-validation_unknown_reason=address_not_local validation_address=…` records it.
+schema change was not made; no ledger field, journal only): the Panel's
+journal line `validation_probe=not_run
+validation_unknown_reason=address_not_local validation_address=…` records it,
+and is the only record of a renewal that went ahead this way. Known wording
+gap: the Configuration file page is a read, no request is sent from it, so
+"The request was sent anyway" is wrong there, and neither sentence says who
+acts if the authority then fails (the server administrator, on the answer's
+words) or that nothing asks again by itself; both strings are to be
+corrected, not corrected here.
 `503 CERTIFICATE_VALIDATION_UNKNOWN` stays for a probe that could not run for
-a local reason (nginx not answering on port 80, the challenge directory
-missing, the probe file not creatable, this server's addresses not listable).
+a local reason (nginx not answering on port 80 at an address asked, the challenge directory missing or not a directory, the probe file not
+creatable, this server's addresses not listable while the file names an
+explicit address).
 
 *Open after the second round (only (1) is answered, by "the address asked"
 above).* (1) Answered above. (2) At the
@@ -6576,7 +6605,15 @@ Errors are `{"error": <English sentence>, "code": …, "reason"?: …, "detail"?
   a refused take leaves no dated copy beside the owner's file (set11 cell B4
   had found one at ead69cdcc; component-tested,
   `internal/services/site_file_take_refused_test.go`; not measured on a real
-  system).
+  system). Covered by that test: the vhost and the PHP-FPM pool, each with the
+  protection measured before the copy and set after the measurement; the
+  application unit takes the same code path as the pool
+  (`ApplyManagedSiteFile`) but has no test of its own. A protection that
+  cannot be measured does not refuse before the copy (the write then decides),
+  and a copy that cannot be removed stays named in the result. The refusal
+  differs in one thing: the pool and the unit still put CelikPanel's text
+  beside the file (the pending file), while the vhost's refused take writes
+  nothing, the test compares the directory before and after.
 - `POST …/apply` (2026-10-11; component-tested; not measured on a real system)
   body `{"file_sha256":"…","render_sha256":"…"}` (both required, both from the
   GET), under the request identity of D-029 → 200 as `take` with `outcome`

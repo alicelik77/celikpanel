@@ -6028,8 +6028,8 @@ başına 5 sn sınır), doğrulama dizininin eksik ya da dizin olmaması veya yo
 dosyasının oluşturulamaması (kip 0644, `O_EXCL`), sınırlı bir ayrıntıyla
 `unknown` olur, asla "hazır değil" değil; sorma, yanıt vermeyen ilk adda durur,
 bu yüzden daha önceki bir ad sunulmamış olsa bile sonuç `unknown`dır. Hazır bir
-yoklama, bu sunucudaki nginx'in yolu her ad altında geri döngüden sunduğunu
-gösterir; adın bu sunucuya çözüldüğünü ya da 80 numaralı bağlantı noktasının
+yoklama, bu sunucudaki nginx'in yolu her ad altında, korunan dosyanın o ad için
+dinlediği adreslerde (joker adres için geri döngüde) sunduğunu gösterir; adın bu sunucuya çözüldüğünü ya da 80 numaralı bağlantı noktasının
 sertifika otoritesine açık olduğunu göstermez. CelikPanel'in değiştirilmiş ya da
 yazılamayan doğrulama dosyası, yoklamadan önce `challenge_kept` /
 `challenge_failed` olarak kalır. Yoklama istendiğinde CelikPanel önce korunmuş
@@ -6355,34 +6355,62 @@ dosyayı okuyan (bir `include` izlenmez) küçük ve temkinli bir okuyucu,
 noktası `listen` yönergelerini alır (`listen 80`, `listen *:80`,
 `listen <adres>:80`, `listen [<IPv6>]:80`, nginx'in varsayılan bağlantı
 noktasıyla `listen <adres>`; `default_server` ve öteki parametreler yok
-sayılır; `listen`'i olmayan blok `*:80`'dir). IPv4 joker adresi önceki gibi
-127.0.0.1'de sorulur; yalnız IPv6 joker adresi `::1`'de; bu sunucunun bir
-adresi olan (arayüzleri, `net.InterfaceAddrs`) açık bir adres o adreste, ad
-Host olarak verilerek sorulur. Dosyanın hiçbir 80 bloğunun taşımadığı bir ad
-önceki gibi 127.0.0.1'de sorulur (80 bloğu olmayan dosya yine
-`include_missing`/`names_missing`'dir). Hazır: her ad yoklamayı her adresinde
-sundu. Yanıt veren adres reddin `vars.address`'i olarak (Yapılandırma dosyası
-sayfasında `validation_address`) taşınır. Bu sunucunun olmayan açık bir adrese
-buradan sorulamaz; bu bir ret değil, bilinmeyendir: yoklama için hiçbir şey
-yazılmaz ve sertifika alımı, takma ad sertifikası yolu ve yenileme hazır bir
-yoklamadaki gibi sürer — asıl sınama yetkilinin kendi denemesidir ve başarısız
-bir doğrulama zaten türüyle döner (`CERTIFICATE_ISSUE_FAILED`, neden
-`validation`). Başarılı yanıt `validation_probe` `not_run`,
+sayılır; `listen`'i olmayan blok `*:80`'dir; yorumlar atılır; başka bir
+bağlantı noktasındaki `listen` ya da `unix:` soketi 80 değildir; yalnız bloğun
+kendi yönergeleri okunur, içteki `location`'ınkiler okunmaz ve bir upstream'in
+`server <adres>;` satırı server bloğu sayılmaz). Ad, `server_name`'i adı tam
+olarak taşıyan bloklardan alınır (büyük/küçük harf gözetmez; düzenli ifade ya
+da joker adlar eşleşmez). IPv4 joker adresi (`80`, `*:80`, `0.0.0.0:80`) önceki
+gibi 127.0.0.1'de sorulur; IPv6 joker adresi (`[::]:80`) `::1`'de sorulur, ama
+yalnız adın hiçbir `listen`'i IPv4 joker adresi değilse; bu sunucunun bir
+adresi olan (arayüz adreslerinden birine eşit, `net.InterfaceAddrs`, geri
+döngü dahil; `127.0.0.2` değildir) açık bir adres o adreste, ad Host olarak
+verilerek sorulur. `listen`'deki bir ana makine adı (`localhost:80`) arayüz
+adresi değildir ve bu sunucunun olmayan sayılır. Dosyanın hiçbir 80 bloğunun
+taşımadığı bir ad önceki gibi 127.0.0.1'de sorulur (80 bloğu olmayan dosya
+yine `include_missing`/`names_missing`'dir); korunan dosya okunamıyorsa ya da
+1 MiB'den büyükse her ad öyle sorulur. Hazır: her ad yoklamayı her adresinde
+sundu (Yapılandırma dosyası sayfasında `validation_address` o zaman sorulan
+adresleri virgülle ayırarak sıralar). Yanıt veren adres reddin
+`vars.address`'i olarak (Yapılandırma dosyası sayfasında `validation_address`)
+taşınır. Bir adın `listen`'leri arasındaki bu sunucunun olmayan tek bir açık
+adrese buradan sorulamaz; aynı ad yerel bir adreste de dinliyor olsa bile bu
+bir ret değil, bilinmeyendir: yoklama için hiçbir şey yazılmaz ve sertifika
+alımı, takma ad sertifikası yolu ve yenileme hazır bir yoklamadaki gibi sürer —
+asıl sınama yetkilinin kendi denemesidir. Başarısız bir doğrulamanın nerede
+yanıtlandığı: SSL sekmesindeki alım, Agent certbot'un kendi çıktısını reddedilen
+bir doğrulama olarak okuduğunda `502 CERTIFICATE_ISSUE_FAILED` ve `reason`
+`validation` ile yanıtlar (`cmd/agent/certbot_failure.go`; certbot'un öbür
+çıktısı `tool`, süresini aşan bir certbot çalışması `timeout`dır; sınıflamayan
+bir Agent eski `500`'ü bırakır); takma ad ekleme/silme yeniden alma yolu bu
+türlü yanıtı değil, düz bir `409` "the alias certificate could not be reissued: …"
+(İngilizce cümle) verir; yenileme hatasını sertifikanın yenileme durumuna türlü neden olmadan
+kaydeder. Başarılı yanıt `validation_probe` `not_run`,
 `validation_unknown_reason` `address_not_local`, `validation_address` ve
-`validation_note` taşır; SSL sekmesi ve takma ad değişikliği bunu gösterir,
-Yapılandırma dosyası sayfası da "Bu dosyayla sertifikanın doğrulanıp
-doğrulanamayacağı bilinmiyor" altında söyler: "CelikPanel, nginx'in bu sitenin
+`validation_note` taşır (SSL sekmesi alımı, takma ad ekleme ve silme yeniden
+alması); SSL sekmesi ve takma ad değişikliği bunu uyarı bildirimi olarak
+gösterir (`ssl.validationNotRun`, ekranlar paketinde), Yapılandırma dosyası
+sayfası da "Bu dosyayla sertifikanın doğrulanıp
+doğrulanamayacağı bilinmiyor" altında söyler
+(`siteConfig.certificate.validation.unknownAddress`): "CelikPanel, nginx'in bu sitenin
 sertifika doğrulamasını sunup sunmadığını önceden kontrol edemedi: site
 {address} adresini dinliyor ve bu sunucu o adrese kendi içinden ulaşamıyor.
 İstek yine de gönderildi; sertifika yetkilisi {address} adresine ulaşamazsa
 yanıt bunu söyler." Hiçbir `certificate_validation` nedenini bitirmez (hiçbir
 şey ölçülmedi). Site dosyası defterinde bunun için sütun yoktur (şema
-değişikliği yapılmadı): Panel'in günlük satırı `validation_probe=not_run
-validation_unknown_reason=address_not_local validation_address=…` kaydeder.
+değişikliği yapılmadı; defter alanı yok, yalnız günlük): Panel'in günlük satırı
+`validation_probe=not_run validation_unknown_reason=address_not_local
+validation_address=…` kaydeder ve bu yolla sürmüş bir yenilemenin tek kaydı
+odur. Bilinen ifade eksiği: Yapılandırma dosyası sayfası bir okumadır, ondan
+istek gönderilmez, bu yüzden orada "İstek yine de gönderildi" yanlıştır; iki
+cümle de yetkili sonra başarısız olursa kimin işlem yapacağını (sunucu
+yöneticisi, yanıtın sözlerine göre) ve hiçbir şeyin kendiliğinden yeniden
+denemediğini söylemez; iki metin düzeltilecektir, burada düzeltilmedi.
 `503 CERTIFICATE_VALIDATION_UNKNOWN` yoklamanın yerel bir nedenle
-yapılamadığı durumlarda kalır (nginx'in 80'de yanıt vermemesi, doğrulama
-dizininin olmaması, yoklama dosyasının oluşturulamaması, bu sunucunun
-adreslerinin listelenememesi).
+yapılamadığı durumlarda kalır (nginx'in sorulan adreste 80'de yanıt vermemesi,
+doğrulama dizininin eksik olması ya da dizin olmaması, yoklama dosyasının
+oluşturulamaması, dosya açık bir adres adlandırırken bu sunucunun adreslerinin
+listelenememesi).
 
 *İkinci turdan sonra açık kalanlar (yalnız (1) yanıtlandı, yukarıdaki "sorulan
 adres" ile).* (1) Yukarıda yanıtlandı. (2) Yapılandırma dosyası
@@ -6513,7 +6541,14 @@ biçimindedir; ekranlar `code`'a göre çevirir.
   bir koruma) kopyayı kaldırır; böylece reddedilen bir alma sahibin dosyasının
   yanında tarihli kopya bırakmaz (set11 hücre B4 ead69cdcc'de bir tane
   bulmuştu; bileşen testli, `internal/services/site_file_take_refused_test.go`;
-  gerçek sistemde ölçülmedi).
+  gerçek sistemde ölçülmedi). Bu testin kapsadığı: sanal konak ve PHP-FPM havuzu;
+  her biri, korumanın kopyadan önce ölçüldüğü ve ölçümden sonra konduğu
+  biçimiyle; uygulama birimi havuzla aynı kod yolunu (`ApplyManagedSiteFile`)
+  kullanır, ama kendi testi yoktur. Ölçülemeyen bir koruma kopyadan önce
+  reddetmez (yazma karar verir) ve kaldırılamayan bir kopya sonuçta adıyla
+  kalır. Ret bir noktada ayrışır: havuz ve birim yine de CelikPanel'in metnini
+  dosyanın yanına koyar (bekleyen dosya), sanal konağın reddedilen alması ise
+  hiçbir şey yazmaz; test dizini önce ve sonra karşılaştırır.
 - `POST …/apply` (2026-10-11; bileşen testli; gerçek sistemde ölçülmedi) gövde
   `{"file_sha256":"…","render_sha256":"…"}` (ikisi de zorunlu, ikisi de
   GET'ten), D-029 istek kimliğiyle → 200, `take` gibi, `outcome` `written` (ya

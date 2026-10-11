@@ -58,8 +58,9 @@ The owner decided on 2026-10-10 that the correction enters the next release:
    the ACME HTTP-01 location instead of the vhost. Whether a kept file lets
    the validation run is measured, not read from its text (second round, same
    day): the Agent puts a probe file with a random name and body in the
-   challenge root, asks nginx on 127.0.0.1 port 80 for it under every name the
-   certificate validates, and removes it; ready means every name served it.
+   challenge root, asks nginx on 127.0.0.1 port 80 (since 2026-10-11: on each address the
+   kept file's port-80 blocks of the name listen on) for it under every name
+   the certificate validates, and removes it; ready means every name served it.
    On a ready kept file (with an unchanged challenge file) a certificate is
    issued or renewed without touching the file, and the
    certificate the file names, if any, is served until the owner takes
@@ -170,9 +171,19 @@ unreadable, unwritable, missing, kept (owner-edited, foreign, unknown origin),
 then CelikPanel's unchanged text (`services.SiteFileShownState`). An
 owner-edited file whose "take" was refused shows both facts, and "take" is
 answered `409 SITE_CONFIG_UNWRITABLE` before anything is written while the
-protection stands. No schema change.
-Open in the probe of the second round (2026-10-10), none fixed: a port-80
-block bound to one address is not reached from the loopback; a failed
+protection stands, and a refused "take" leaves no dated copy (the Agent
+measures the protection before the copy and removes the copy if the
+replacement is refused anyway; vhost and pool tested, the unit shares the
+pool's code, set11 cell B4; component-tested; not measured on a real system).
+No schema change.
+Open in the probe of the second round (2026-10-10), the first answered: (1)
+a port-80 block bound to one address was not reached from the loopback —
+answered 2026-10-11 (set11 cell A6; component-tested; not measured on a real
+system): the probe asks the addresses the kept file's port-80 blocks of each
+name listen on (`internal/services/managed_vhost_listen.go`); an address that
+is not this server's is unknown and the certificate request goes ahead,
+`validation_probe` `not_run`, journal only, no schema change, the 503 stays
+for local causes; the rest are still open and none is fixed: a failed
 `nginx -t` or reload at the Configuration file page's read is reported as
 `challenge_failed`; a missing or unreadable file writes no reason, so a
 renewal it stopped waits until the next completed renewal; (fixed 2026-10-11:

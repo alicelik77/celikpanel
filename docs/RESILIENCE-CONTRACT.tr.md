@@ -4370,13 +4370,19 @@ hücreleri (denetim §9) sonra gelir. 2026-10-10 saat tarihidir.
   (1) 2026-10-11'de yanıtlandı (set11 hücre A6, `10.0.2.15:80`'e bağlı bir
   bloğun yoklama 127.0.0.1'e sorduğu için `include_missing` olarak
   reddedildiğini ölçtü): yoklama artık korunan dosyanın her ad için 80
-  bloklarının dinlediği adreslere sorar — IPv4 joker adresi 127.0.0.1'de, yalnız
-  IPv6 joker adresi `::1`'de, bu sunucunun açık bir adresi o adreste, hiçbir 80
-  bloğunun taşımadığı ad önceki gibi 127.0.0.1'de; hazır = her ad her adresinde
-  sunuldu; yanıt veren adres `vars.address`'tir; bu sunucunun olmayan açık bir
-  adres ret değil bilinmeyendir: alım, takma ad yolu ve yenileme hazır bir
-  yoklamadaki gibi sürer (sınama yetkilinin denemesidir; başarısız doğrulama
-  `CERTIFICATE_ISSUE_FAILED`, neden `validation` olarak döner), başarılı yanıt
+  bloklarının dinlediği adreslere sorar — IPv4 joker adresi 127.0.0.1'de, IPv6
+  joker adresi adın hiçbir `listen`'i IPv4 joker adresi değilse `::1`'de, bu
+  sunucunun açık bir adresi (arayüz adresine eşit) o adreste, hiçbir 80
+  bloğunun taşımadığı ad (ya da okunamayan veya 1 MiB'den büyük korunan dosya)
+  önceki gibi 127.0.0.1'de; hazır = her ad her adresinde sunuldu; yanıt veren
+  adres `vars.address`'tir; bir adın `listen`'leri arasındaki bu sunucunun
+  olmayan açık bir adres (`listen`'deki ana makine adı dahil) ret değil
+  bilinmeyendir: alım, takma ad yolu ve yenileme hazır bir yoklamadaki gibi
+  sürer (sınama yetkilinin denemesidir; reddedilen doğrulamayı türlü yanıtlayan
+  yalnız SSL sekmesindeki alımdır, `CERTIFICATE_ISSUE_FAILED` neden
+  `validation`, Agent certbot çıktısını öyle sınıflamışsa; takma ad yeniden alma
+  yolu düz bir `409` verir, yenileme hatasını türlü neden olmadan kaydeder),
+  başarılı yanıt
   `validation_probe` `not_run`, `validation_unknown_reason`
   `address_not_local`, adresi ve cümleyi taşır, Panel'in günlüğü kaydeder
   (defter sütunu yok, şema değişikliği yok); `503
@@ -4390,7 +4396,7 @@ hücreleri (denetim §9) sonra gelir. 2026-10-10 saat tarihidir.
   bir sonraki tamamlanan yenilemede bitirir; (4) SSL sekmesinin süre ayrıntısı
   süresi dolmuş sertifika için eksi gün yazar (`ssl.days`); (5) gerçek bir
   barındırma müşterisi oturumunda çizen tarayıcı koşusu kayıtlı değildir; (6)
-  hazır bir yoklama nginx'in yolu geri döngüden sunduğunu gösterir, DNS'in ya
+  hazır bir yoklama nginx'in yolu dosyanın dinlediği adreslerde sunduğunu gösterir, DNS'in ya
   da güvenlik duvarının sertifika otoritesini içeri aldığını göstermez; hiçbir
   şey gerçek bir nginx'e karşı ölçülmedi. Alan
   adları listesi satırı sahibin kararlarından hesaplanır: kökeni bilinmeyen bir

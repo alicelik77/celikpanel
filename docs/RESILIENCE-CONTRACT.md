@@ -5104,14 +5104,19 @@ native cells (audit §9) come after. 2026-10-10 is the clock date.
   cell A6 measured a block bound to `10.0.2.15:80` refused as
   `include_missing` because the probe asked 127.0.0.1): the probe now asks
   the addresses the kept file's port-80 blocks of each name listen on — an
-  IPv4 wildcard on 127.0.0.1, an IPv6 wildcard alone on `::1`, an explicit
-  address of this server on that address, a name no port-80 block carries on
-  127.0.0.1 as before; ready = every name served on each of its addresses;
-  the address that answered is `vars.address`; an explicit address that is
-  not this server's is unknown, not a refusal: issuance, the alias path and
-  renewal go ahead as for a ready probe (the authority's attempt is the test;
-  a failed validation comes back as `CERTIFICATE_ISSUE_FAILED`, reason
-  `validation`), the success answer carries `validation_probe` `not_run`,
+  IPv4 wildcard on 127.0.0.1, an IPv6 wildcard on `::1` when none of the
+  name's listens is an IPv4 wildcard, an explicit address of this server (equal
+  to an interface address) on that address, a name no port-80 block carries (or
+  a kept file that is unreadable or over 1 MiB) on 127.0.0.1 as before; ready =
+  every name served on each of its addresses; the address that answered is
+  `vars.address`; an explicit address among a name's listens that is not this
+  server's (a host name in `listen` included) is unknown, not a refusal:
+  issuance, the alias path and renewal go ahead as for a ready probe (the
+  authority's attempt is the test; only the SSL tab's issuance answers a
+  refused validation typed, `CERTIFICATE_ISSUE_FAILED` reason `validation`,
+  when the Agent classified certbot's output so; the alias reissue path answers
+  a plain `409` and a renewal records its failure without a typed reason),
+  the success answer carries `validation_probe` `not_run`,
   `validation_unknown_reason` `address_not_local`, the address and the
   sentence, and the Panel's journal records it (no ledger column, no schema
   change); `503 CERTIFICATE_VALIDATION_UNKNOWN` stays for a probe that could
@@ -5124,8 +5129,8 @@ native cells (audit §9) come after. 2026-10-10 is the clock date.
   ends its waiting state only at the next completed renewal; (4) the SSL
   tab's expiry detail prints negative days for an expired certificate
   (`ssl.days`); (5) no browser run is recorded in a real hosting-customer
-  session; (6) a ready probe shows that nginx serves the path from the
-  loopback, not that DNS or the firewall lets the certificate authority in;
+  session; (6) a ready probe shows that nginx serves the path on the addresses
+  the file listens on, not that DNS or the firewall lets the certificate authority in;
   nothing was measured against a real nginx. The domains list line is
   computed from the owner's decisions: drawn while an unknown-origin file has
   no current "keep mine" decision, gone once each has one; it is not drawn when
