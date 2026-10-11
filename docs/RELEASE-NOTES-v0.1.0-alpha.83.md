@@ -12,20 +12,19 @@ what happens to it. And it answers the four things the owner saw on the two
 installed servers after the update to v0.1.0-alpha.82 on 2026-10-10 (listed
 below under "The four observations after the last update").
 
-What the server does with site files rests on component tests and on three lab
-measurements on Debian 13, Ubuntu 24.04 and Arch: one of the first part of this
-work, one of the corrections that followed it (the certificate validation check
-against a real nginx, the locked file's page, the include directories), and one
-of the pool, the application unit and the update from v0.1.0-alpha.82. The
-measured updates started from v0.1.0-alpha.81 and alpha.82 rebuilt from their
-tags' source as test-licence builds, not from the published archives. Two
-corrections made after the third measurement had component tests and a browser
-against a mock of the API only when this was written; a short lab round for them
-was not finished, and its place is marked under "What was measured". What a
-screen shows rests on component tests and on a browser against a mock of the
-API, and, for the first page load, the access wait, the update notice and the
-Configuration file page, also on a real Chrome against a real Panel in the lab.
-The limits say what was never run.
+What the server does with site files rests on component tests and on four lab
+measurements: one of the first part of this work, one of the corrections that
+followed it (the certificate validation check against a real nginx, the locked
+file's page, the include directories), and one of the pool, the application
+unit and the update from v0.1.0-alpha.82, each on Debian 13, Ubuntu 24.04 and
+Arch; and a short round, on Debian 13 and Ubuntu 24.04 only, of the corrections
+the third one led to. The measured updates started from v0.1.0-alpha.81 and
+alpha.82 rebuilt from their tags' source as test-licence builds, not from the
+published archives. The last changes, made after the short round, have
+component tests only. What a screen shows rests on component tests and on a
+browser against a mock of the API, and, for the first page load, the access
+wait, the update notice and the Configuration file page, also on a real Chrome
+against a real Panel in the lab. The limits say what was never run.
 
 ## What changes for the server owner
 
@@ -162,8 +161,8 @@ when the Panel starts, and a pool or unit appears on the Domains list only after
 its domain's Configuration file page was opened or after it was saved, switched
 or changed; so the Domains list's count of files left alone can grow when you
 open your domains. This part was measured in the lab on three platforms; two
-findings were corrected afterwards (see the next paragraph and "What was
-measured").
+findings were corrected afterwards and measured again on Debian 13 and Ubuntu
+24.04 (see the next paragraph and "What was measured").
 
 **Your own nginx lines have a place that CelikPanel never touches.** Each site's
 file includes `/etc/nginx/celikpanel-sites.d/<domain>/*.conf`. Put your own
@@ -193,17 +192,19 @@ protection, and "Check again" only reads (both measured in the lab).
 **A refused change does not take a service down.** When nginx, PHP-FPM or
 systemd refuses CelikPanel's text, CelikPanel puts your previous file back.
 Before it reloads the service with that file, it now runs the service's own
-check (`nginx -t`, `php-fpm -t`, `systemd-analyze verify`). If the check
-refuses the configuration because of another file, the service is not
-reloaded and keeps running with the configuration it loaded before; the answer
-says so and, for an administrator, names the line the check printed. Fix that
-file, then reload the service yourself. A service that was not running before is
-neither reloaded nor started. The lab measured the earlier behaviour: PHP-FPM
-was reloaded with a refused configuration and ended `failed` while the answer
-said it kept running. A pool or unit that CelikPanel could not read is now
-shown on the Domains list as "A configuration file could not be read; state not
-known" until a later read answers. Both corrections have component tests and a
-mock browser only.
+check (`nginx -t`, `php-fpm -t`, or `systemd-analyze verify` for an application
+unit). If the check refuses the configuration because of another file, the
+service is not reloaded and keeps running with the configuration it loaded
+before; the answer says so and, for an administrator, names the line the check
+printed. Fix that file, reload the service yourself, then choose again if you
+still want CelikPanel's text. A service that was not running before is neither
+reloaded nor started, and the answer tells you to start it. The lab measured
+the earlier behaviour (PHP-FPM reloaded with a refused configuration ended
+`failed` while the answer said it kept running) and then the correction, on
+Debian 13 and Ubuntu 24.04: PHP-FPM and nginx kept their running process. A pool
+or unit that CelikPanel could not read is shown on the Domains list as "A
+configuration file could not be read; state not known" until a later read
+answers (also measured).
 
 **The first page load draws nothing until there is something to say.** A full
 load of a CelikPanel page showed for a moment a full-page "Checking panel
@@ -448,8 +449,12 @@ configuration, or `check_unavailable`; `not_running` when the service was not
 running before and was neither reloaded nor started; `reload_failed`, which
 stays `unconfirmed`) and `service_active` (`true`, `false` or `unknown`, read
 from `systemctl is-active` after the operation). For an administrator the
-check's line is in `vars.line` and `details`. The Agent's own line is sent to
-administrators only.
+check's line is in `vars.line` and `details`. A `systemd-analyze verify` that
+times out, cannot be started or ends without output counts as
+`check_unavailable`, not as a refusal. The Agent's own line is sent to
+administrators only. Since the last change of this release (component tests
+only), the `200` answer of a `take`, `apply` or `recreate` that reloaded the
+service also carries `service: "reloaded"` and `service_active`.
 
 ### Existing routes that now refuse to change a kept file
 
@@ -579,6 +584,8 @@ sections and in the limits.
   configuration is not reloaded; a service that was not running is not started.
 - An application unit starts its command without a login shell, with an
   explicit `PATH`.
+- The Configuration file page's read records what it finds, so the Domains row
+  follows a file you put back by hand.
 - The setup page names why a run stopped above its steps, and the mail identity
   check names its condition.
 - The update notice and the card say "installed, being verified" in the same
@@ -594,22 +601,22 @@ text, the refused save, the removed file, the locked file and its page, the
 deletion, the owner and mode of written files, the include directories' mode,
 the validation check on a kept file and the addresses it asks (without an
 issued certificate), "Write CelikPanel's text now", the refused take without a
-copy, the pool and the unit, the first-load quiet time and the 15- and
-30-second steps of the wait. The update notice's new words were seen on a real
-Panel in the lab as an observation. The check before a reload after a
-put-back, the unread file on the Domains list, the unit's `PATH`, the setup
-page, the final wording of the layer and the SSL tab wording have component
-tests and a mock browser only.
+copy, the pool and the unit, the check before a reload after a put-back, the
+unread file on the Domains list, the unit's `PATH`, the first-load quiet time
+and the 15- and 30-second steps of the wait. The update notice's new words were
+seen on a real Panel in the lab as an observation. The page read that records
+what it finds, the `service` field of a successful choice, the setup page, the
+final wording of the layer and the SSL tab wording have component tests and a
+mock browser only.
 
 ## What was measured, and how
 
-Six records made on 2026-10-10 and 2026-10-11 (UTC; the eleventh ran in the
+Seven records made on 2026-10-10 and 2026-10-11 (UTC; the eleventh ran in the
 night from 2026-10-10 to 2026-10-11), on disposable virtual machines on one
-laptop host, and a short round that was not finished when this was written. The
-product ran as builds with the acceptance-test licence, not as the signed
-archive. Every update was measured from an earlier release rebuilt from its
-tag's source as a test-licence build, not from the published archive; the
-digests of those rebuilds differ from the published ones. The directories are
+laptop host. The product ran as builds with the acceptance-test licence, not as
+the signed archive. Every update was measured from an earlier release rebuilt
+from its tag's source as a test-licence build, not from the published archive;
+the digests of those rebuilds differ from the published ones. The directories are
 under `deploy/e2e/release-recovery/evidence/`. Every result file marks itself as not
 yet accepted evidence; the owner judges it.
 
@@ -782,7 +789,7 @@ browser cells.
   wildcard address. The check asked `127.0.0.1`, the default server answered
   `404`, and the request was refused as `include_missing` although the file
   carried CelikPanel's line. Changed afterwards: the check asks the addresses
-  the site's file listens on (component tests; not measured on a real system).
+  the site's file listens on (measured in the twelfth record, below).
 - The locked file (all three platforms): at a start only that file was refused
   and the other sites were written; the page answered "cannot be replaced" with
   `EPERM` and the immutable attribute, the Domains row agreed, and "Check again"
@@ -795,8 +802,8 @@ browser cells.
   SITE_CONFIG_UNWRITABLE` and the owner's file was untouched, but a dated copy
   was left beside it, and the page showed "edited outside CelikPanel" while the
   Domains row showed "cannot be replaced". Changed afterwards: one order of
-  states for the page and the row, and no copy is left (component tests; not
-  measured on a real system).
+  states for the page and the row, and no copy is left (measured in the twelfth
+  record, below).
 - The access wait in a real Chrome (Debian 13, Ubuntu 24.04; English). Every
   session read held 35 s: the explained wait after the quiet time, "Check now"
   at 15.0 s, the half-minute sentence and "Reload CelikPanel" at 30.0 s, and no
@@ -905,8 +912,8 @@ NAT; that traffic was not recorded.
   but outside the viewport in the pictures. At phone width the Domains list cut
   off its status column, and the badge sat under the domain name.
 
-**Corrections after the twelfth record.** Made afterwards; component tests and
-a mock browser; not measured on a real system:
+**Corrections after the twelfth record.** Made afterwards and measured in the
+thirteenth record (next paragraph), on Debian 13 and Ubuntu 24.04:
 
 - A pool or unit the Agent did not answer for is recorded as not read, with its
   error class, and the Domains row says "A configuration file could not be read;
@@ -922,12 +929,62 @@ a mock browser; not measured on a real system:
   recognition.
 - The page's answer to a choice scrolls into view.
 
-A short lab round is to measure these: the pool refusal, a stopped PHP-FPM, an
-nginx refusal, the unread row, the unit's `PATH` and its check, and the page in
-a real browser. Until its result stands here, they count as not measured on a
-real system.
+**The corrections after the twelfth record (thirteenth record,
+`set13-20261011`; Debian 13 and Ubuntu 24.04; Arch not run; a headless Chrome
+154 on Debian).** The code with those corrections, built as a test-licence
+fixture that differs from it only in the release-sequence file; it does not
+contain the changes listed after this record. Installed fresh; no update and no
+certificate request in this round. The guests had outbound NAT as before (the
+setup's packages, the Panel's Node.js install); that traffic was not recorded.
+No product check failed; three cells of the first runs were not measured (two
+preconditions not met in the harness's order, one harness error) and were
+measured again in new labs.
 
-[NATIVE RE-CHECK PENDING — set13]
+- A pool take that `php-fpm -t` refused because of the owner's file elsewhere in
+  the pool directory: `502 SITE_CONFIG_SERVICE_REFUSED`, `restore: confirmed`,
+  `service: not_reloaded`, `service_reason: config_refused_elsewhere`,
+  `service_active: true`, and the check's line in `vars.line` and in the
+  sentence. 12 to 13 s later PHP-FPM was active with the same main process and
+  no restart, and no reload of it followed the take; the owner's pool was
+  byte-equal. With that file removed, the next take answered `200` and PHP-FPM
+  was reloaded (read from the journal; that `200` carried no `service` field).
+- PHP-FPM stopped by the owner: `restore: confirmed`, `service: not_running`,
+  `service_active: false`, and the sentence that tells the owner to start
+  PHP-FPM; nothing started it.
+- A take nginx refused: with a conflict only in the site's include directory,
+  the put-back passed `nginx -t` and nginx was reloaded (`service: reloaded`);
+  with the owner's broken file in `conf.d`, `service: not_reloaded` with nginx's
+  line, and nginx kept its main process. The owner's file was byte-equal and
+  served in both.
+- A pool the Agent could not read (its lock held for 75 s): the page answered it
+  `unknown` / `not_read` with `read_error: timeout`, and the Domains row now said
+  the same, also after the lock cleared and before the next read; the ledger row
+  changed no digest. The next answered read made the row "CelikPanel's text,
+  unchanged" again.
+- The Node application unit: a bare `node` start command ran under
+  `/bin/sh -c` with the explicit `PATH` and answered. After a put-back, the
+  application was restarted when `systemd-analyze verify` accepted the unit,
+  not restarted when it refused it (`service: not_reloaded` with the verify
+  line), and not restarted when `systemd-analyze` could not be run
+  (`check_unavailable`). (The lab forced the put-back by making one
+  `daemon-reload` fail.)
+- In the real browser: the refused take's answer was in view, as a status box at
+  the top of the viewport, in English on a desktop and in Turkish on a phone; the
+  Domains badge "A configuration file could not be read; state not known" /
+  "Bir yapılandırma dosyası okunamadı; durumu bilinmiyor" was shown on desktop and
+  phone and was gone after the page had been read.
+- Observation, not a cell: after a refused take of an nginx file, the owner put
+  CelikPanel's text back by hand; the page then said "CelikPanel's text,
+  unchanged", while the Domains row kept "Configuration file: your choice
+  needed" until the next write. Changed afterwards: the page read records what
+  it finds (component tests only).
+
+**After the thirteenth record.** Made afterwards; component tests only; not
+measured on a real system: the sentences after a refused put-back say how work
+resumes and, when the service is not running, tell the owner to start it; a
+`systemd-analyze verify` that times out is `check_unavailable`; the page read
+records what it finds on the row (above); a successful choice that reloaded the
+service says so in its answer.
 
 **Which check rests on which code.** Each later state of the code contains the
 earlier corrections.
@@ -937,12 +994,13 @@ earlier corrections.
 | The nginx file kept, the three choices, adoption after an update from v0.1.0-alpha.81, a return after a failed migration, a database put back, the locked file's effect on other sites | the first part of this work (tenth record); not repeated on the final code |
 | CelikPanel's own include directory, the 0755 mode, the validation check on `127.0.0.1`, the locked file's page and "Check again", the access wait's 15- and 30-second steps, the service worker, a return after a failed start check | the code after the locked-file and directory corrections (eleventh record) |
 | The pool and the unit, the multi-file page, the addresses the check asks, "Write CelikPanel's text now", a refused take without a copy, the restore fact, the update from v0.1.0-alpha.82 and its automatic return | the code before the last screen texts and the corrections after the twelfth record (twelfth record) |
-| The check before a reload after a put-back, the unread file on the Domains list, the unit's `PATH`, the answer scrolled into view | component tests and a mock browser; on a real system only through the short round marked above |
+| The check before a reload after a put-back (pool, nginx file, unit), a stopped PHP-FPM, the unread file on the Domains list, the unit's `PATH`, the answer in view | the code after the twelfth record's corrections (thirteenth record; Debian 13 and Ubuntu 24.04 only) |
+| The resume and "not running" sentences, the verify time-out, the page read that records what it finds, the `service` field of a successful choice | component tests only; the final code differs from the thirteenth record's code by these |
 | The cold first load and the explained wait at 1.5 s | the interface after the first gate corrections (ninth record) |
 | The layer's final wording, the setup page, the mail identity reason | component tests and a mock browser |
 | The update notice "installed, being verified" | observed on a real Panel in the ninth record; component tests |
 | What v0.1.0-alpha.82 does with an owner's edit | the published tag's source, rebuilt (eighth record) |
-| The whole code at the time of writing | component tests; CI on an earlier head (below) |
+| The whole code at the time of writing | component tests; CI on the head at the time named below |
 
 **Screens.** The interface changes have component tests and were looked at in a
 Chrome against a loopback mock of the API (desktop and phone, English and
@@ -953,29 +1011,38 @@ headless; Turkish for the access wait only), the eleventh for the access wait
 and the service worker (English), and the twelfth for the Domains list and the
 Configuration file page (English and Turkish, desktop and phone).
 
-**Tests.** The change records of the last states of the code give: 1314
+**Tests.** The change records of the last states of the code give: 1315
 interface tests passed; the Panel and shared Go packages passed; the Agent
 package had the same 19 failures as before these changes, which the change
 record attributes to the development machine's environment. These numbers come
 from the change records, not from a retained test log. The continuous
-integration run of the pull request on the head of 2026-10-11 that ended at
-04:43 UTC passed 23 of 23 checks; the job that publishes assets runs only on a
-release tag and was skipped. The later heads, with the corrections after the
-twelfth record and the release preparation, get their own runs. A passing run
-is not the owner's own test.
+integration run of the pull request on the head at that time (started 10:20,
+ended 10:41 UTC on 2026-10-11) passed 23 of 23 checks; the job that publishes
+assets runs only on a release tag and was skipped. Three runs earlier that
+morning had failed; the change that made the next one pass is in test code and
+names a data race in a test's fake Agent. The later heads, with the thirteenth
+record and the last change, get their own runs. A passing run is not the
+owner's own test.
 
 ## Limits of this release
 
 These are known. They are not hidden defects.
 
-- **The final code was not measured on a real system as a whole.** The tenth,
-  eleventh and twelfth records measured the code in three stages. The
-  corrections after the twelfth record (the check before a reload after a
-  put-back, the unread file on the Domains list, the unit's `PATH`, the answer
-  in view) have component tests and a mock browser only; a short lab round for
-  them was not finished. The release preparation (release sequence 83,
-  bootstrap pins, version lines) is in none of the measured builds, and no
-  archive labelled as this release had been built when this was written.
+- **The final code was not measured on a real system as a whole.** The tenth
+  to thirteenth records measured the code in four stages. The changes after the
+  thirteenth record (the resume and "not running" sentences, the verify
+  time-out, the page read that records what it finds, the `service` field of a
+  successful choice) have component tests only. The release preparation
+  (release sequence 83, bootstrap pins, version lines) is in none of the
+  measured builds; apart from the continuous integration's reproducible-archive
+  check on the pull request, no archive labelled as this release had been built
+  when this was written.
+- **Arch** was not in the thirteenth record: the check before a reload, the
+  unread row and the unit's `PATH` were measured on Debian 13 and Ubuntu 24.04
+  only.
+- **The text when the screen texts are not loaded.** If the browser has not
+  loaded the screen catalogue, the server's own fallback sentence for a stopped
+  service still says that the service keeps running.
 - **The updates were measured from rebuilds, not from the published
   archives.** v0.1.0-alpha.81 and alpha.82 were rebuilt from their tags' source
   as test-licence builds; their digests differ from the published archives'.
@@ -1007,8 +1074,9 @@ These are known. They are not hidden defects.
 - **A return to an older release loses the protection** (see "Returning to an
   older release"). Measured twice for files without the first line; for files
   with it, read from the older release's source.
-- **The pool and the unit.** A PHP version switch was not measured, and its own
-  put-back still reloads both PHP versions without the check. They are not
+- **The pool and the unit.** A PHP version switch was never measured (each lab
+  machine has one PHP version), and the removal and clean-up steps of its own
+  put-back still reload without the check. They are not
   looked at when the Panel starts, and the start line counts nginx files
   only. Site creation records no row for them,
   so a pool or unit nobody has opened or changed is not on the Domains list. The
@@ -1079,15 +1147,17 @@ These are known. They are not hidden defects.
 
 Not published. Open before publication:
 
-1. The number: v0.1.0-alpha.83 (owner's decision). Done.
+1. The number: v0.1.0-alpha.83, the owner's decision of 2026-10-11. Done.
 2. The release preparation is committed in a separate commit that changes no
    file under `cmd/`, `internal/` or `web/`: release sequence 83 after 82, the
    installer's bootstrap pins, the README version lines and the contract tests
-   that pin them. At publication the owner sets the repository variable
-   `CELIKPANEL_RELEASE_SEQUENCE` to 83. No archive was built with it; the real
+   that pin them. (Its commit message dates the owner's decision 2026-10-12 by
+   mistake; a later commit records the correct date.) At publication the owner
+   sets the repository variable `CELIKPANEL_RELEASE_SEQUENCE` to 83. The real
    archive is built and signed by CI on the tag.
-3. The results of the eleventh and twelfth records are entered. The short lab
-   round after the twelfth is entered above, or its parts stay named limits.
+3. The results of the eleventh, twelfth and thirteenth records are entered.
+   The pull request's head gets its own CI run; the last passing one is named
+   under "Tests".
 4. Before the merge, the owner renames the required checks in the branch
    protection of `main`: the continuous integration now splits one test group
    into three. "Panel race — S, except the service tests" becomes "Panel race —
@@ -1096,6 +1166,8 @@ Not published. Open before publication:
    required checks.
 5. Whether the vendor's publishing tools and the two one-time recovery scripts
    stay in the archive: the owner's decision, pending.
+6. The owner merges, tags the release, checks the signed assets as the signed
+   release contract describes, and publishes the download portal.
 
 Install this release only through CelikPanel's update interface. Publishing it
 does not update installed servers; only the owner of a server starts its
