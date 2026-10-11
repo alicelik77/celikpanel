@@ -250,7 +250,7 @@ No text file here holds a CR byte (checked at intake; the earlier "CRLF" in this
 `*.log` files, `host/browser-runner.log` and `host/keepawake.log`, match `.gitignore` (`*.log`): commit this folder with
 `git add -f`.
 
-## Corrections after intake (2026-10-12)
+## Corrections after intake (2026-10-11)
 
 Intake before this folder is committed to the public repository. Nothing in the driver's raw records (`*/*/driver/`,
 `*/browser/`, `build/`, `harness-run-copy/`) was changed; the changes are to this README, `cells.md` and
@@ -306,3 +306,5 @@ Intake before this folder is committed to the public repository. Nothing in the 
   are outside contact whose traffic is not recorded; the harness's inherited set4/set6 checks fail on the alpha.82 baseline
   (classed harness: that baseline sends HSTS without `includeSubDomains` and its vhost has no `fastcgi-php.conf` snippet),
   so every update run's `result.json` says `overall: failed`.
+
+Date correction (2026-10-11 12:30 +0300): the heading above first read "2026-10-12"; the intake and this run took place on 2026-10-11 (UTC-11/12 boundary not crossed for the intake). The clock date was not read when the heading was written.
