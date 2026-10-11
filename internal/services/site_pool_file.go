@@ -320,13 +320,17 @@ func switchSitePoolLocked(request transport.SitePoolRequest) (transport.SiteFile
 	}
 	result.AdoptedFrom = sourceInspected.adoptedFrom
 	removeErr := removeInspectedSiteFile(source.Path, sourceInspected)
+	// sourceRestoreErr: the source pool was removed, its version's PHP-FPM
+	// did not take that, and putting it back (or reloading after) failed.
+	var sourceRestoreErr error
 	if removeErr == nil {
 		removeErr = phpFPMConfigTest(oldVersion)
 		if removeErr == nil {
 			removeErr = reloadPHPFPM(oldVersion)
 		}
 		if removeErr != nil {
-			removeErr = errors.Join(removeErr, restoreManagedSiteFile(source.Path, sourceInspected), reloadPHPFPM(oldVersion))
+			sourceRestoreErr = errors.Join(restoreManagedSiteFile(source.Path, sourceInspected), reloadPHPFPM(oldVersion))
+			removeErr = errors.Join(removeErr, sourceRestoreErr)
 		}
 	}
 	if removeErr != nil {
@@ -334,9 +338,11 @@ func switchSitePoolLocked(request transport.SitePoolRequest) (transport.SiteFile
 		result.Outcome = transport.SiteFileOutcomeFailed
 		result.Reason = transport.SiteFileReasonReloadFailed
 		result.Detail = boundedSiteFileDetail("remove the PHP " + oldVersion + " pool: " + removeErr.Error())
-		if cleanup != nil {
-			return result, fmt.Errorf("remove source PHP %s pool: %w; rollback target pool: %v", oldVersion, removeErr, cleanup)
+		if cleanup != nil || sourceRestoreErr != nil {
+			result.Restore = transport.SiteFileRestoreUnconfirmed
+			return result, fmt.Errorf("remove source PHP %s pool: %w; rollback incomplete: rollback target pool: %v", oldVersion, removeErr, cleanup)
 		}
+		result.Restore = transport.SiteFileRestoreConfirmed
 		return result, nil
 	}
 	removeStalePending(source.Path)

@@ -51,15 +51,20 @@ const SiteFileReasonProtectionRemoved = "protection_removed"
 // classification and the ledger's refused replacement): the domain screen,
 // the domains list row and its badge show the higher one. unreadable >
 // unwritable > missing/absent > owner_edited/foreign/unknown_origin >
-// managed_unchanged; "unknown" (not reported) ranks below every observation.
+// unknown > managed_unchanged. A file the Agent did not read ("unknown",
+// reason not_read or agent_does_not_report) is not known to be CelikPanel's
+// unchanged text, so it outranks it (2026-10-11 correction: it used to rank
+// lowest and a site whose pool was not read showed "unchanged"); every
+// observed problem still outranks it.
 var siteFileStatePrecedence = map[string]int{
-	transport.SiteFileUnreadable:       5,
-	transport.SiteFileUnwritable:       4,
-	transport.SiteFileMissingState:     3,
-	transport.SiteFileAbsent:           3,
-	transport.SiteFileOwnerEdited:      2,
-	transport.SiteFileForeign:          2,
-	transport.SiteFileUnknownOrigin:    2,
+	transport.SiteFileUnreadable:       6,
+	transport.SiteFileUnwritable:       5,
+	transport.SiteFileMissingState:     4,
+	transport.SiteFileAbsent:           4,
+	transport.SiteFileOwnerEdited:      3,
+	transport.SiteFileForeign:          3,
+	transport.SiteFileUnknownOrigin:    3,
+	transport.SiteFileStateUnknown:     2,
 	transport.SiteFileManagedUnchanged: 1,
 }
 

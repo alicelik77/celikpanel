@@ -180,7 +180,7 @@ func (p *Panel) handleDomainPHPSettings(w http.ResponseWriter, r *http.Request) 
 			switchReq := p.sitePoolRequest(r.Context(), site, transport.SitePoolOperationSwitch)
 			switchReq.NewPHPVersion = req.PHPVersion
 			if _, err := p.applySitePool(r.Context(), site, switchReq); err != nil {
-				writeServerError(w, err)
+				writeServerErrorFor(w, r, err)
 				return
 			}
 
@@ -371,7 +371,7 @@ func (p *Panel) handleDomainPHPPool(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if _, err := p.applySitePool(r.Context(), site, saveReq); err != nil {
-			writeServerError(w, err)
+			writeServerErrorFor(w, r, err)
 			return
 		}
 

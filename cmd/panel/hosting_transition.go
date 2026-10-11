@@ -189,7 +189,7 @@ func (p *Panel) handleUpdateHosting(w http.ResponseWriter, r *http.Request, doma
 			"the hosting change could not be activated; the previous configuration was restored",
 		)
 	default:
-		writeServerError(w, err)
+		writeServerErrorFor(w, r, err)
 	}
 }
 

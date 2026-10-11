@@ -179,7 +179,21 @@ type SiteFileResult struct {
 	// none is known. Protection is SiteFileProtection*.
 	SystemError string
 	Protection  string
+
+	// Restore, additive (2026-10-11), only with Outcome failed: whether the
+	// Agent put the previous bytes back and the service took them again
+	// (SiteFileRestoreConfirmed), or the restore, the service's check or its
+	// reload after it failed (SiteFileRestoreUnconfirmed; the Agent's error
+	// then says "rollback incomplete"). "" from an older Agent: the Panel
+	// treats it as unconfirmed.
+	Restore string
 }
+
+// What the Agent knows of a failed operation's restore (SiteFileResult.Restore).
+const (
+	SiteFileRestoreConfirmed   = "confirmed"
+	SiteFileRestoreUnconfirmed = "unconfirmed"
+)
 
 // What happened to the Panel's challenge file (D-031 step 1b).
 const (

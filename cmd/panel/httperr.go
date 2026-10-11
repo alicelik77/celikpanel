@@ -62,6 +62,10 @@ type apiErrorBody struct {
 	// Optional and additive.
 	// Vars: Code için ekranın yerel cümlesinin ihtiyaç duyduğu adlı değerler.
 	Vars map[string]string `json:"vars,omitempty"`
+	// Restore: after a service refused CelikPanel's text for a site file,
+	// whether putting the previous file back was confirmed ("confirmed") or
+	// not ("unconfirmed": the server administrator checks the file). Additive.
+	Restore string `json:"restore,omitempty"`
 }
 
 // Stable refusal codes. Renaming one is an API break — don't.
@@ -302,6 +306,12 @@ type agentRPCPlatformErrorClassification struct {
 	// Detail refines Reason with one reviewed machine token (a kept pool's
 	// or unit's state, D-031 second step). Additive.
 	Detail string
+	// Restore, for a refusal after which CelikPanel put the previous file
+	// back: "confirmed" or "unconfirmed" (2026-10-11). Additive.
+	Restore string
+	// AdminDetails: the Agent's own line, written only for an administrator
+	// (writeServerErrorFor). Additive.
+	AdminDetails []string
 }
 
 type singleErrorUnwrapper interface {
@@ -544,16 +554,31 @@ func writeWebmailUninstallPartial(w http.ResponseWriter, mutationApplied bool) {
 // receive stable operator-facing codes; every other error remains a generic
 // INTERNAL response.
 func writeServerError(w http.ResponseWriter, err error) {
+	writeServerErrorAs(w, nil, err)
+}
+
+// writeServerErrorFor is writeServerError for a request whose caller may see
+// the Agent's own line (an administrator: AdminDetails become details).
+func writeServerErrorFor(w http.ResponseWriter, r *http.Request, err error) {
+	writeServerErrorAs(w, currentCaller(r), err)
+}
+
+func writeServerErrorAs(w http.ResponseWriter, caller *Caller, err error) {
 	if classification, ok := classifyStableAgentError(err); ok {
 		log.Printf("[%d] %v", classification.Status, err)
+		body := apiErrorBody{
+			Error:   classification.Message,
+			Code:    classification.Code,
+			Reason:  classification.Reason,
+			Detail:  classification.Detail,
+			Restore: classification.Restore,
+		}
+		if caller.hasAccountRole(roleAdmin) {
+			body.Details = classification.AdminDetails
+		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(classification.Status)
-		_ = json.NewEncoder(w).Encode(apiErrorBody{
-			Error:  classification.Message,
-			Code:   classification.Code,
-			Reason: classification.Reason,
-			Detail: classification.Detail,
-		})
+		_ = json.NewEncoder(w).Encode(body)
 		return
 	}
 	if err != nil {

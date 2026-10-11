@@ -167,3 +167,33 @@ test('firewall SSH refusals are three separate translated sentences', () => {
     seen.add(english);
   }
 });
+
+// A site file whose service refused CelikPanel's text says whether the previous
+// file is back (2026-10-11): `restore: unconfirmed` selects its own sentence;
+// confirmed (or absent, from an older panel) keeps the sentence that says the
+// file was put back.
+test('a service refusal whose restore is not confirmed never says the file was put back', async () => {
+  const body = (restore) => new Response(JSON.stringify({
+    error: 'server words', code: 'SITE_CONFIG_SERVICE_REFUSED', reason: 'php_pool', detail: 'reload_failed', restore,
+    details: ['php-fpm reload: exit status 1; rollback incomplete: restore: read-only file system'],
+  }), { status: 502, headers: { 'content-type': 'application/json' } });
+  for (const [catalogue, notConfirmed, putBack] of [
+    [en, 'whether it is in place is not confirmed', 'so the previous pool file was put back'],
+    [tr, 'yerinde olup olmadığı doğrulanmadı', 'bu yüzden önceki havuz dosyası geri kondu'],
+  ]) {
+    const t = (key) => catalogue[key] ?? key;
+    const unconfirmed = await readApiError(body('unconfirmed'));
+    assert.equal(unconfirmed.restore, 'unconfirmed');
+    const said = apiErrorText(unconfirmed, t);
+    assert.ok(said.includes(notConfirmed) && !said.includes(putBack), said);
+    const confirmed = apiErrorText(await readApiError(body('confirmed')), t);
+    assert.ok(confirmed.includes(putBack) && !confirmed.includes(notConfirmed), confirmed);
+    const older = apiErrorText(await readApiError(body(undefined)), t);
+    assert.ok(older.includes(putBack), older);
+  }
+  // nginx's refusal has no sentence per reason: the code's unconfirmed one.
+  const nginx = await readApiError(new Response(JSON.stringify({
+    error: 'x', code: 'SITE_CONFIG_NGINX_REFUSED', reason: 'nginx_refused', restore: 'unconfirmed',
+  }), { status: 502, headers: { 'content-type': 'application/json' } }));
+  assert.equal(apiErrorText(nginx, (key) => en[key] ?? key), en['err.SITE_CONFIG_NGINX_REFUSED.unconfirmed']);
+});

@@ -47,6 +47,9 @@ var otherSiteFileMessages = map[string]map[string]string{
 			"Nothing was changed. Move or rename that file on the server if it is no longer used, then switch again.",
 		errCodeSiteConfigServiceRefused: "PHP-FPM did not accept CelikPanel's pool text (its configuration check or reload failed), so the previous pool file was put back and PHP-FPM keeps running with it. " +
 			"Nothing else was changed. The server administrator reads PHP-FPM's message in the Panel's log, fixes the cause, then tries again.",
+		errCodeSiteConfigServiceRefused + siteConfigRestoreUnconfirmedSuffix: "PHP-FPM did not accept CelikPanel's pool text (its configuration check or reload failed). " +
+			"CelikPanel tried to put the previous file back; whether it is in place is not confirmed — the server administrator checks the file on the server. " +
+			"PHP-FPM's message and what failed while putting the file back are in the Panel's log; fix the cause, then try again.",
 	},
 	transport.SiteFileKindAppUnit: {
 		errCodeSiteConfigOwnerEdited: "The site's application unit file is not CelikPanel's unchanged text, so CelikPanel kept it and did not apply this change to it. " +
@@ -59,12 +62,19 @@ var otherSiteFileMessages = map[string]map[string]string{
 			"Nothing was changed. Open the domain's Configuration file section.",
 		errCodeSiteConfigServiceRefused: "systemd did not take CelikPanel's unit text (its reload failed), so the previous unit file was put back. " +
 			"Nothing else was changed. The server administrator reads systemd's message in the Panel's log, fixes the cause, then tries again.",
+		errCodeSiteConfigServiceRefused + siteConfigRestoreUnconfirmedSuffix: "systemd did not take CelikPanel's unit text (its reload failed). " +
+			"CelikPanel tried to put the previous file back; whether it is in place is not confirmed — the server administrator checks the file on the server. " +
+			"systemd's message and what failed while putting the file back are in the Panel's log; fix the cause, then try again.",
 	},
 }
 
+// siteConfigRestoreUnconfirmedSuffix keys the sentence of a service refusal
+// whose restore was not confirmed (restore: unconfirmed).
+const siteConfigRestoreUnconfirmedSuffix = ".unconfirmed"
+
 // classifyOtherSiteFileHeld is the typed refusal of a pool or unit the rule
 // did not write.
-func classifyOtherSiteFileHeld(file transport.SiteFileResult) agentRPCPlatformErrorClassification {
+func classifyOtherSiteFileHeld(file transport.SiteFileResult, agentError string) agentRPCPlatformErrorClassification {
 	classification := agentRPCPlatformErrorClassification{Status: http.StatusConflict, Reason: file.Kind}
 	switch {
 	case file.Outcome == transport.SiteFileOutcomeKept:
@@ -83,6 +93,15 @@ func classifyOtherSiteFileHeld(file transport.SiteFileResult) agentRPCPlatformEr
 		classification.Status = http.StatusBadGateway
 		classification.Code = errCodeSiteConfigServiceRefused
 		classification.Detail = file.Reason
+		// Whether the previous file is back is said, never assumed: the
+		// Agent's "rollback incomplete" (or no restore fact at all) is
+		// "unconfirmed", with the Agent's line for an administrator.
+		classification.Restore = siteFileRestore(file, agentError)
+		classification.AdminDetails = siteFileAgentDetails(agentError)
+		if classification.Restore != transport.SiteFileRestoreConfirmed {
+			classification.Message = otherSiteFileMessages[file.Kind][errCodeSiteConfigServiceRefused+siteConfigRestoreUnconfirmedSuffix]
+			return classification
+		}
 	default:
 		classification.Code = errCodeSiteConfigUnwritable
 		classification.Detail = file.Reason
@@ -149,13 +168,14 @@ func (p *Panel) sitePoolRequest(ctx context.Context, site siteFileSite, operatio
 // hostingAppRequest is the unit request of a Node site's hosting state.
 func hostingAppRequest(state hostingRuntimeState) *transport.AppApplyRequest {
 	return &transport.AppApplyRequest{
-		SiteID:      state.SiteID,
-		Description: state.DomainName,
-		WorkDir:     state.DocumentRoot,
-		Command:     state.StartCommand.String,
-		Port:        int(state.AppPort.Int64),
-		NodeVersion: state.RuntimeVersion.String,
-		RunAsUser:   "www-data",
+		ExpectedBuildCommit: strings.TrimSpace(buildCommit),
+		SiteID:              state.SiteID,
+		Description:         state.DomainName,
+		WorkDir:             state.DocumentRoot,
+		Command:             state.StartCommand.String,
+		Port:                int(state.AppPort.Int64),
+		NodeVersion:         state.RuntimeVersion.String,
+		RunAsUser:           "www-data",
 	}
 }
 
@@ -186,12 +206,14 @@ func (p *Panel) recordOtherSiteFile(ctx context.Context, site siteFileSite, kind
 }
 
 // siteFileOutcomeHeld turns a result the rule did not apply into the typed
-// refusal; an applied result with an Agent error is that error.
+// refusal, carrying the Agent's error line (a failed operation's "rollback
+// incomplete" decides restore: unconfirmed); an applied result with an Agent
+// error is that error.
 func siteFileOutcomeHeld(domain string, file transport.SiteFileResult, agentError string) error {
 	switch file.Outcome {
 	case transport.SiteFileOutcomeKept, transport.SiteFileOutcomeMissing, transport.SiteFileOutcomeRefused,
 		transport.SiteFileOutcomeFailed:
-		return &siteFileHeldError{Domain: domain, File: file}
+		return &siteFileHeldError{Domain: domain, File: file, AgentError: agentError}
 	}
 	if agentError != "" {
 		return errors.New(agentError)
@@ -233,7 +255,7 @@ func (p *Panel) applyAppUnit(ctx context.Context, site siteFileSite, request *tr
 		}
 		return nil, nil
 	}
-	if err := siteFileOutcomeHeld(site.Domain, *response.File, ""); err != nil {
+	if err := siteFileOutcomeHeld(site.Domain, *response.File, response.Error); err != nil {
 		return response.File, err
 	}
 	if response.Error != "" {
@@ -498,7 +520,7 @@ func (p *Panel) handleOtherSiteFileAction(w http.ResponseWriter, r *http.Request
 		writeCodedError(w, http.StatusConflict, errCodeSiteConfigNotApplicable, siteConfigNotApplicableMessage, "")
 		return
 	case !services.SiteFileApplied(file.Outcome) || err != nil:
-		writeServerError(w, err)
+		writeServerErrorFor(w, r, err)
 		return
 	}
 	decision := map[string]string{"take": services.SiteFileDecisionTake, "recreate": services.SiteFileDecisionRecreate}[action]

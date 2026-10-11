@@ -5155,27 +5155,45 @@ native cells (audit §9) come after. 2026-10-10 is the clock date.
   removing a site keeps a copy of an edited pool or unit. *Version pairing:* `Agent.InspectSitePool` and `Agent.ApplySitePool` are
   bound to the Panel's build commit (`cmd/agent/build_gate_contract_test.go`)
   and the Panel never falls back to the older pool RPCs; `Agent.InspectAppUnit`
-  and `Agent.ApplyAppUnit` carry no build gate (an older Agent writes the unit
-  as before and reports no `file`, which the Panel records as nothing known).
+  and `Agent.ApplyAppUnit` are gated the same way (2026-10-11; the request's
+  additive `ExpectedBuildCommit`, the build-gate matrix entries; an Agent of
+  another build answers "panel/agent build mismatch" and writes nothing).
   *HTTP:* the refusals are `409 SITE_CONFIG_{OWNER_EDITED,MISSING,UNWRITABLE,
   EXISTS}` with `reason` the kind and `detail` the state (reason for
   UNWRITABLE), `502 SITE_CONFIG_SERVICE_REFUSED` with `detail`
-  `config_refused` or `reload_failed`; a kind is `400` when unknown and `409
+  `config_refused` or `reload_failed` and `restore` `confirmed` |
+  `unconfirmed` (2026-10-11; also on the vhost's `SITE_CONFIG_NGINX_REFUSED`;
+  transport: the additive `SiteFileResult.Restore`, set by
+  `services.ApplyManagedSiteFile`, the PHP switch and the vhost batch's
+  rollback; the Panel says `confirmed` only when the Agent reports it and its
+  error does not say "rollback incomplete", so no restore fact is
+  `unconfirmed`; the Agent's line goes in `details` for an administrator only,
+  and the unconfirmed sentence says the server administrator checks the file
+  on the server); a kind is `400` when unknown and `409
   SITE_CONFIG_NOT_APPLICABLE` when the site lacks it; "take" on a measured
   protection is `409 SITE_CONFIG_UNWRITABLE` before any write, for every kind.
   The worst state across files uses the one precedence of the vhost
   (`services.SiteFileWorstState`; the vhost first on a tie); a file the Agent
-  did not report (`unknown`, `not_read`) ranks below `managed_unchanged`, so it
-  is listed but never decides the overall state. *Not done:* pools
+  did not read (`unknown`, `not_read` or `agent_does_not_report`) is not
+  known-good, so it outranks `managed_unchanged` and every observed problem
+  outranks it (2026-10-11: unreadable > unwritable > missing > kept > unknown >
+  managed_unchanged; the page's `overall_state` and the Domains row, whose
+  badge then says a configuration file could not be read, with `kind`).
+  *Not done:* pools
   and units are not rendered or observed at the Panel's start, so the start
   line does not count them; site creation writes no pool or unit ledger row
   (a row begins at the page's first read or at the first save, switch or unit
-  change); when a service refusal's own rollback fails, the Panel's sentence
-  still says the previous file was put back (the Agent's rollback error is not
-  carried into it); a pool's values are kept nowhere outside the pool
+  change); a pool's values are kept nowhere outside the pool
   file and its pending text; the generic PHP page's pool save (by pool name)
   answers the typed refusal only through the error tokens. *Evidence:*
   services (`site_pool_file_test.go`), Agent (`app_unit_site_file_test.go`),
   Panel (`site_config_files_test.go`), the mounted page test, browser-inspect
   batch10 `siteconfigfiles` (EN/TR, desktop/phone); set10's harness gains
-  sections m, n and o with offline tests. Not run on a guest.
+  sections m, n and o with offline tests. Not run on a guest. The 2026-10-11
+  corrections (unknown outranks unchanged; the restore fact; the unit's build
+  gate) are component-tested and mock browser (services
+  `TestSitePoolFailedSaveSaysWhetherTheRestoreHeld`,
+  `TestNginxRefusalWhoseRestoreHeldIsConfirmed`; Panel
+  `site_config_restore_test.go`; Agent build-gate matrix; web
+  `api-error.test.mjs`, the mounted page test; batch10 shots `100p6a`,
+  `100p8`); not measured on a real system.

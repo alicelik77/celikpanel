@@ -656,11 +656,45 @@ func TestNginxRefusalPutsBackEveryWrittenFileExactlyAndLeavesKeptFiles(t *testin
 		results[0].Detail != "nginx: [emerg] owner include broken" {
 		t.Fatalf("written then refused: %+v", results[0])
 	}
-	if results[1].Outcome != transport.SiteFileOutcomeKept {
+	// nginx -t still refuses after the put-back (the owner's file elsewhere),
+	// so the restore is not confirmed and the error says so.
+	if results[0].Restore != transport.SiteFileRestoreUnconfirmed || !strings.Contains(err.Error(), "rollback incomplete") {
+		t.Fatalf("restore after a refusal that persists: %q %v", results[0].Restore, err)
+	}
+	if results[1].Outcome != transport.SiteFileOutcomeKept || results[1].Restore != "" {
 		t.Fatalf("kept file: %+v", results[1])
 	}
 	if readTestFile(t, SiteVhostPath("one.example")) != before || readTestFile(t, SiteVhostPath("two.example")) != owner {
 		t.Fatal("files were not put back exactly")
+	}
+}
+
+// A refusal of CelikPanel's text alone: the put-back, nginx -t and the reload
+// after it hold, so the restore is confirmed (2026-10-11).
+func TestNginxRefusalWhoseRestoreHeldIsConfirmed(t *testing.T) {
+	h := newManagedVhostHarness(t)
+	data := managedTestData("one.example", managedVhostPlatforms[0].socket)
+	h.apply(h.item(data, transport.SiteFileTriggerCreate))
+	before := readTestFile(t, SiteVhostPath("one.example"))
+	validates := h.validates
+	h.ng.validateNginx = func() error {
+		h.validates++
+		if h.validates == validates+1 {
+			return &NginxConfigRefusedError{Output: "nginx: [emerg] refused", Cause: errors.New("exit status 1")}
+		}
+		return nil
+	}
+	data.RedirectWWW = true
+	results, err := h.ng.ApplyManagedVhosts([]ManagedVhostItem{h.item(data, transport.SiteFileTriggerChange)})
+	var restored *VhostRestoredError
+	if !errors.As(err, &restored) || strings.Contains(err.Error(), "rollback incomplete") {
+		t.Fatalf("error: %v", err)
+	}
+	if results[0].Outcome != transport.SiteFileOutcomeFailed || results[0].Restore != transport.SiteFileRestoreConfirmed {
+		t.Fatalf("result: %+v", results[0])
+	}
+	if readTestFile(t, SiteVhostPath("one.example")) != before {
+		t.Fatal("the file was not put back exactly")
 	}
 }
 

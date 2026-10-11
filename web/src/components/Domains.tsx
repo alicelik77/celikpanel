@@ -58,6 +58,9 @@ const SITE_CONFIG_BADGE: Record<string, TranslationKey> = {
     unreadable: 'siteConfig.list.badge.unreadable',
     // Read fine, not replaced (a locked file, set10 scenario g).
     unwritable: 'siteConfig.list.badge.unwritable',
+    // A file the server did not answer for (not read): not known to be
+    // CelikPanel's unchanged text; the page lists it with "Check again".
+    unknown: 'siteConfig.list.badge.unknown',
 };
 
 // siteConfigBadge: the badge of a domain, or null. A kept file the owner chose

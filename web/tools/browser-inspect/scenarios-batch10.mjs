@@ -15,7 +15,9 @@
 //   siteconfigfiles  (D-031 second step, 2026-10-11) a PHP site's nginx file
 //                and pool, a Node site's unit with its drop-in directory, a
 //                pool that could not be read now, the notices naming the pool
-//                and the unit.
+//                and the unit. Same day, corrections: the Domains row of a
+//                pool not read (it outranks unchanged text), and a take whose
+//                service refusal's restore was not confirmed.
 //
 // Like the batches before: the mock on 127.0.0.1 answers everything; nothing
 // else is contacted, nothing is started. Every answer here is an override of
@@ -290,11 +292,45 @@ export default function batch10(scenarios, { base, ctl, reset, newPage, closePag
         await shot(page, '100p5-node-site-unit-edited', await facts(page));
         await closePage(page);
 
-        await setup({ state: 'managed_unchanged' });
+        // 2026-10-11: a pool the server did not answer for outranks the
+        // unchanged nginx file: the Domains row wears its badge, the page's
+        // overall state is unknown with the pool.
+        await setup({ state: 'unknown', kind: 'php_pool' });
         await ctl({ override: { [SC]: { method: 'GET', status: 200, body: multi(vhost, { domain_id: 1, domain: 'example.com', kind: 'php_pool', state: 'unknown', reason: 'not_read', actions: ['recheck'] }) } } });
+        page = await newPage();
+        await page.goto(`${base}/domains`, { waitUntil: 'networkidle0' });
+        await waitFor(page, () => !!document.querySelector('[data-site-config-badge]'), 15000).catch(() => {});
+        await pause(400);
+        await shot(page, '100p6a-domains-pool-not-read', await page.evaluate(() => ({
+            badges: Array.from(document.querySelectorAll('[data-site-config-badge]')).map(node => `${node.getAttribute('data-site-config-badge-file')}: ${node.innerText}`),
+            pageOverflowX: document.documentElement.scrollWidth > window.innerWidth,
+        })));
+        await closePage(page);
         page = await openDomain();
         await openConfig(page);
         await shot(page, '100p6-pool-not-read', await facts(page));
+        await closePage(page);
+
+        // 2026-10-11: a take whose service refusal's restore was not
+        // confirmed says so, with the Agent's line for the administrator.
+        await setup({ state: 'owner_edited', kind: 'php_pool' });
+        await ctl({ override: {
+            [SC]: { method: 'GET', status: 200, body: multi(vhost, keptPool) },
+            [`${SC}/take`]: { method: 'POST', status: 502, body: {
+                error: 'refused', code: 'SITE_CONFIG_SERVICE_REFUSED', reason: 'php_pool', detail: 'config_refused', restore: 'unconfirmed',
+                details: ['php-fpm -t: ERROR: [pool site1] unknown entry \'pm.max_childs\'; rollback incomplete: rollback reload: php-fpm8.3 reload: exit status 1'],
+            } },
+        } });
+        page = await openDomain();
+        await openConfig(page);
+        await into(page, '[data-site-config-file="php_pool"]');
+        await clickByText(page, ['Take CelikPanel’s', 'CelikPanel’in metnini al']);
+        await into(page, '[data-site-config-confirm]');
+        await clickByText(page, ['Replace the file', 'Dosyayı değiştir']);
+        await pause(800);
+        // The refusal is drawn under the page's title, above the files.
+        await into(page, '[data-site-config] h2');
+        await shot(page, '100p8-pool-restore-unconfirmed', await facts(page));
         await closePage(page);
 
         await setup({ state: 'missing', kind: 'app_unit' });

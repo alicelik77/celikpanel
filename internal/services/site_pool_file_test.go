@@ -368,8 +368,16 @@ func TestSiteFileWorstStateAcrossFiles(t *testing.T) {
 		{[]string{transport.SiteFileManagedUnchanged, transport.SiteFileOwnerEdited}, transport.SiteFileOwnerEdited, 1},
 		{[]string{transport.SiteFileOwnerEdited, transport.SiteFileForeign}, transport.SiteFileOwnerEdited, 0},
 		{[]string{transport.SiteFileOwnerEdited, transport.SiteFileUnwritable, transport.SiteFileAbsent}, transport.SiteFileUnwritable, 1},
-		{[]string{transport.SiteFileStateUnknown, transport.SiteFileManagedUnchanged}, transport.SiteFileManagedUnchanged, 1},
-		{[]string{transport.SiteFileManagedUnchanged, transport.SiteFileStateUnknown}, transport.SiteFileManagedUnchanged, 0},
+		// A file the Agent did not read is not known-good: it outranks
+		// CelikPanel's unchanged text, and every observed problem outranks it.
+		{[]string{transport.SiteFileStateUnknown, transport.SiteFileManagedUnchanged}, transport.SiteFileStateUnknown, 0},
+		{[]string{transport.SiteFileManagedUnchanged, transport.SiteFileStateUnknown}, transport.SiteFileStateUnknown, 1},
+		{[]string{transport.SiteFileManagedUnchanged, transport.SiteFileStateUnknown, transport.SiteFileOwnerEdited}, transport.SiteFileOwnerEdited, 2},
+		{[]string{transport.SiteFileStateUnknown, transport.SiteFileUnknownOrigin}, transport.SiteFileUnknownOrigin, 1},
+		{[]string{transport.SiteFileStateUnknown, transport.SiteFileAbsent}, transport.SiteFileAbsent, 1},
+		{[]string{transport.SiteFileStateUnknown, transport.SiteFileUnwritable}, transport.SiteFileUnwritable, 1},
+		{[]string{transport.SiteFileUnreadable, transport.SiteFileStateUnknown}, transport.SiteFileUnreadable, 0},
+		{[]string{transport.SiteFileStateUnknown, transport.SiteFileStateUnknown}, transport.SiteFileStateUnknown, 0},
 		{nil, "", -1},
 	}
 	for _, c := range cases {
@@ -392,5 +400,45 @@ func TestAppUnitBodyNamesTheDropInDirectory(t *testing.T) {
 	sealed := SealManagedTextWith(ManagedHeaderPrefixHash, body)
 	if !bytes.HasPrefix([]byte(sealed), []byte("# celikpanel-render v2 sha256=")) {
 		t.Fatal("unit header form")
+	}
+}
+
+// A failed pool save says whether the previous file is back (2026-10-11): the
+// put-back and the reload after it held ("confirmed"), or the reload after it
+// failed too ("unconfirmed", with the Agent's "rollback incomplete").
+func TestSitePoolFailedSaveSaysWhetherTheRestoreHeld(t *testing.T) {
+	for _, c := range []struct {
+		name           string
+		secondReload   error
+		want           string
+		wantIncomplete bool
+	}{
+		{"restore confirmed", nil, transport.SiteFileRestoreConfirmed, false},
+		{"restore unconfirmed", errors.New("reload after restore failed"), transport.SiteFileRestoreUnconfirmed, true},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			path, _ := withSealedPool(t)
+			before := readPoolTestFile(t, path)
+			calls := 0
+			reloadPHPFPM = func(string) error {
+				calls++
+				if calls == 1 {
+					return errors.New("reload failed")
+				}
+				return c.secondReload
+			}
+			save := sitePoolTestRequest(transport.SitePoolOperationSave)
+			save.Values = &transport.SitePoolValues{PM: "ondemand", PMMaxChildren: 9}
+			result, err := NewPHPPoolManager().ApplySitePool(save)
+			if result.Outcome != transport.SiteFileOutcomeFailed || result.Restore != c.want {
+				t.Fatalf("result: %+v %v", result, err)
+			}
+			if incomplete := err != nil && strings.Contains(err.Error(), "rollback incomplete"); incomplete != c.wantIncomplete {
+				t.Fatalf("error: %v", err)
+			}
+			if readPoolTestFile(t, path) != before {
+				t.Fatal("the previous bytes were not put back")
+			}
+		})
 	}
 }

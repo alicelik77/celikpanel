@@ -65,6 +65,22 @@ func protectedBuildGateOperations() []buildGateOperation {
 			},
 		},
 		{
+			name: "InspectAppUnit",
+			run: func(expected string) string {
+				var response transport.InspectSiteFileResponse
+				_ = agent.InspectAppUnit(&AppApplyRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
+			name: "ApplyAppUnit",
+			run: func(expected string) string {
+				var response AppApplyResponse
+				_ = agent.ApplyAppUnit(&AppApplyRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
 			name: "ApplyVhosts",
 			run: func(expected string) string {
 				var response ApplyVhostsResponse

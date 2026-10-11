@@ -4425,27 +4425,43 @@ hücreleri (denetim §9) sonra gelir. 2026-10-10 saat tarihidir.
   bırakır. *Sürüm eşleşmesi:* `Agent.InspectSitePool` ve `Agent.ApplySitePool` Panel'in
   derleme işlemine bağlıdır (`cmd/agent/build_gate_contract_test.go`) ve Panel
   eski havuz RPC'lerine asla geri dönmez; `Agent.InspectAppUnit` ve
-  `Agent.ApplyAppUnit` derleme kapısı taşımaz (eski bir Agent birimi eskisi
-  gibi yazar ve `file` bildirmez, Panel bunu “hiçbir şey bilinmiyor” diye
-  kaydeder). *HTTP:* retler `409 SITE_CONFIG_{OWNER_EDITED,MISSING,UNWRITABLE,
+  `Agent.ApplyAppUnit` de aynı biçimde derleme kapısından geçer (2026-10-11;
+  isteğin eklemeli `ExpectedBuildCommit` alanı, derleme kapısı matrisindeki
+  girdiler; başka derlemeden bir Agent “panel/agent build mismatch” yanıtlar
+  ve hiçbir şey yazmaz). *HTTP:* retler `409 SITE_CONFIG_{OWNER_EDITED,MISSING,UNWRITABLE,
   EXISTS}` (`reason` tür, `detail` durum; UNWRITABLE için neden) ve
   `502 SITE_CONFIG_SERVICE_REFUSED` (`detail` `config_refused` ya da
-  `reload_failed`); bilinmeyen tür `400`, sitede olmayan tür `409
+  `reload_failed`; `restore` `confirmed` | `unconfirmed`, 2026-10-11; vhost'un
+  `SITE_CONFIG_NGINX_REFUSED` yanıtında da; taşıma: eklemeli
+  `SiteFileResult.Restore`, onu `services.ApplyManagedSiteFile`, PHP sürüm
+  değişikliği ve vhost toplu işinin geri alması doldurur; Panel yalnız Agent
+  bildirdiğinde ve hatası “rollback incomplete” demediğinde `confirmed` der,
+  geri koyma bilgisi yoksa `unconfirmed`; Agent'ın satırı yalnız yöneticiye
+  `details` içinde gider ve doğrulanmamış cümle sunucu yöneticisinin dosyayı
+  sunucuda kontrol edeceğini söyler); bilinmeyen tür `400`, sitede olmayan tür `409
   SITE_CONFIG_NOT_APPLICABLE`; ölçülen korumada “al”, her tür için, hiçbir şey
   yazılmadan `409 SITE_CONFIG_UNWRITABLE`. Dosyalar arası en kötü durum
   vhost'un tek öncelik sırasını kullanır (`services.SiteFileWorstState`;
-  eşitlikte vhost önce); Agent'ın bildirmediği dosya (`unknown`, `not_read`)
-  `managed_unchanged`in altında sıralanır, yani listelenir ama genel durumu
-  asla belirlemez. *Yapılmayan:* havuz ve birim Panelin açılışında üretilmez ve
+  eşitlikte vhost önce); Agent'ın okumadığı dosya (`unknown`, `not_read` ya da
+  `agent_does_not_report`) bilinen-iyi değildir, bu yüzden `managed_unchanged`in
+  üstünde sıralanır ve gözlenen her sorun onun üstündedir (2026-10-11:
+  okunamıyor > değiştirilemiyor > yok > korunan > unknown > managed_unchanged;
+  sayfanın `overall_state` alanı ve Alan Adları satırı, rozeti o zaman bir
+  yapılandırma dosyasının okunamadığını `kind` ile söyler). *Yapılmayan:* havuz ve birim Panelin açılışında üretilmez ve
   gözlenmez, açılış satırı onları saymaz; site oluşturma havuz ya da birim
   defter satırı yazmaz (satır sayfanın ilk okumasında ya da ilk kaydetme,
-  sürüm değişikliği veya birim değişikliğinde başlar); bir hizmet reddinin kendi
-  geri alması da başarısız olursa Panel'in cümlesi yine önceki dosyanın geri
-  konduğunu söyler (Agent'ın geri alma hatası yanıta taşınmaz); havuzun değerleri havuz dosyası ve
+  sürüm değişikliği veya birim değişikliğinde başlar); havuzun değerleri havuz dosyası ve
   bekleyen metni dışında hiçbir yerde tutulmaz; genel PHP sayfasının havuz
   kaydetmesi (havuz adıyla) tipli reddi yalnız hata belirteçleri üzerinden
   verir. *Kanıt:* services (`site_pool_file_test.go`), Agent
   (`app_unit_site_file_test.go`), Panel (`site_config_files_test.go`), takılı
   sayfa testi, browser-inspect batch10 `siteconfigfiles` (EN/TR,
   masaüstü/telefon); set10 düzeneği m, n ve o bölümlerini çevrimdışı
-  testleriyle kazanır. Konukta koşulmadı.
+  testleriyle kazanır. Konukta koşulmadı. 2026-10-11 düzeltmeleri (bilinmeyen
+  değişmemişin üstünde; geri koyma bilgisi; birimin derleme kapısı) bileşen
+  testli ve sahte tarayıcıda denendi (services
+  `TestSitePoolFailedSaveSaysWhetherTheRestoreHeld`,
+  `TestNginxRefusalWhoseRestoreHeldIsConfirmed`; Panel
+  `site_config_restore_test.go`; Agent derleme kapısı matrisi; web
+  `api-error.test.mjs`, takılı sayfa testi; batch10 görüntüleri `100p6a`,
+  `100p8`); gerçek sistemde ölçülmedi.

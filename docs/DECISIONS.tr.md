@@ -118,17 +118,19 @@ Sahip 10 Ekim 2026'da düzeltmenin bir sonraki sürüme girmesine karar verdi:
    Sınırlar, açıkça (2026-10-11): Panel'in iki havuz çağrısı Panel'in kendi
    derlemesine bağlıdır; onlara sahip olmayan bir Agent hiçbir şey yazılmadan hata
    verir (eski havuz çağrılarına geri dönüş yok; `MigratePHPPool` Panel'in
-   politikasından çıkarıldı). Birimin iki çağrısında derleme kapısı yoktur; eski
-   bir Agent birimi eskisi gibi yazar ve dosya bildirmez, Panel bunu “hiçbir şey
-   bilinmiyor” diye kaydeder. Site oluşturma havuz ya da birim defter satırı
-   yazmaz: satır sayfanın ilk okumasında ya da ilk kaydetme, sürüm değişikliği
-   veya birim değişikliğinde başlar; bu yüzden kimsenin okumadığı bir havuz
-   Alan Adları listesinde yoktur. Agent'ın bildirmediği dosya (`unknown`)
-   en-kötü-durum kuralında CelikPanel'in değişmemiş metninin altında sıralanır,
-   yani Alan Adları satırını asla belirlemez; sayfa onu yine de “Durumu
-   bilinmiyor” diye listeler. Bir hizmet reddinin kendi geri alması da
-   başarısız olursa Panel'in cümlesi yine de önceki dosyanın geri konduğunu
-   söyler (Agent'ın geri alma hatası ret cevabına taşınmaz). İki benimseme
+   politikasından çıkarıldı). Birimin iki çağrısı da Panel'in derlemesine aynı
+   biçimde bağlıdır (2026-10-11 düzeltmesi). Site oluşturma havuz ya da birim
+   defter satırı yazmaz: satır sayfanın ilk okumasında ya da ilk kaydetme,
+   sürüm değişikliği veya birim değişikliğinde başlar; bu yüzden kimsenin
+   okumadığı bir havuz Alan Adları listesinde yoktur. 2026-10-11 düzeltmesi
+   (bileşen testli ve sahte tarayıcıda denendi; gerçek sistemde ölçülmedi):
+   Agent'ın okumadığı dosya (`unknown`) en-kötü-durum kuralında CelikPanel'in
+   değişmemiş metninin üstünde sıralanır (gözlenen her sorun yine onun
+   üstündedir), yani Alan Adları satırı bir yapılandırma dosyasının
+   okunamadığını söyler; bir hizmet reddi `restore: confirmed | unconfirmed`
+   taşır ve doğrulanmamış geri koyma (Agent'ın “rollback incomplete” demesi ya
+   da hiç geri koyma bilgisi vermemesi) dosyanın geri konduğunu söylemez,
+   sunucu yöneticisinin dosyayı sunucuda kontrol edeceğini söyler. İki benimseme
    tabanı farklıdır: alpha.81'in havuzu `/var/run/php/php<s>-fpm-<havuz>.sock`
    soketini `www-data` sahibiyle dinler, alpha.82'nin havuzu bu sunucunun
    soketini web sunucusu hesabı sahibiyle; alpha.81'in birimi `User=` satırını

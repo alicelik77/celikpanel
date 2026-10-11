@@ -6509,11 +6509,14 @@ konukta koşu yok, kurulu sunucu yok. Burada hiçbir şey gerçek sistemde
 sitesinin uygulama birimi dosyası artık vhost'un kuralına uyar. Yapılandırma
 dosyası sayfası CelikPanel'in site için yazdığı her dosyayı listeler —
 `siteConfig.files.title` "Bu sitenin yapılandırma dosyaları", dosya başına bir
-satır ("nginx yapılandırması", "PHP-FPM havuzu", "Uygulama birimi"), durumu
-("CelikPanel’in metni, değişmemiş", "CelikPanel dışında düzenlendi",
-"CelikPanel dışında değiştirildi", "CelikPanel’in metni olarak tanınmadı",
-"Yok", "Okunamıyor ya da değiştirilemiyor", "Değiştirilemiyor", "Yeniden
-değiştirilebilir", "Durumu bilinmiyor") ve yolu — sonra her dosya için aynı
+satır ("nginx yapılandırması", "PHP-FPM havuzu (bu sitenin PHP süreç
+ayarları)", "Uygulama birimi (sitenin uygulamasını başlatan dosya)";
+açıklamalar 2026-10-11'den beri), durumu ("CelikPanel’in metni, değişmemiş",
+"CelikPanel dışında düzenlendi", "CelikPanel dışında değiştirildi",
+"CelikPanel’in metni olarak tanınmadı", "Yok", "Okunamıyor ya da
+değiştirilemiyor", "Değiştirilemiyor", "Yeniden değiştirilebilir", "Durumu
+bilinmiyor: sunucu yanıt vermedi. Hiçbir şey değişmedi; Yeniden denetle'yi
+seçin.") ve yolu — sonra her dosya için aynı
 durumları, farkı ve aynı seçimleri (benimkini koru, CelikPanel’in metnini al,
 elle birleştir; yeniden oluştur; yeniden denetle; CelikPanel’in metnini şimdi
 yaz) taşıyan bir bölüm. Havuzun ve birimin cümleleri kendi dosyalarını ve
@@ -6534,8 +6537,9 @@ eder." Kim yapar: sunucu sahibi (yönetici); hiçbir şey kendiliğinden sürmez
   değişikliği reddedilir; sahip sayfada seçer.
 - Birim: birimin systemd drop-in dizini (`siteConfig.app_unit.include` "Bu
   uygulama için kendi ayarlarınızı {dir} içinde bir .conf dosyasına yazın
-  (systemd drop-in), sonra sudo systemctl daemon-reload komutunu çalıştırın.
-  CelikPanel o dizine hiç yazmaz, onu silmez ve bu birimde yaptığı her
+  (systemd drop-in: systemd’nin okuduğu küçük ek ayar dosyası), sonra sudo
+  systemctl daemon-reload komutunu çalıştırın (systemd dosyalarını yeniden
+  okur). CelikPanel o dizine hiç yazmaz, onu silmez ve bu birimde yaptığı her
   değişiklikte ayarlarınızı korur."). Birimin kendi yorumu da aynısını söyler.
 
 **Retler** (her biri dosyayı `reason` içinde adlandırır; `detail`,
@@ -6567,11 +6571,20 @@ metni reddettiyse `config_refused`, yeniden yüklemesi reddettiyse
   bir havuz dosyası olan PHP sürümü değişikliği; hiçbir şey değişmedi.
 - `502 SITE_CONFIG_SERVICE_REFUSED` (`php_pool`, `app_unit`): `php-fpm -t`,
   PHP-FPM'in yeniden yüklenmesi ya da `systemctl daemon-reload` CelikPanel'in
-  metnini reddetti; önceki dosya kip ve sahibiyle geri kondu ve hizmet yeniden
-  yüklendi. Panel günlüğü hizmetin iletisini adlandırır (`sudo journalctl -u
-  celikpanel-panel | grep "site configuration"`). Bilinen açık: bu geri almanın
-  kendisi de başarısız olursa yanıt yine önceki dosyanın geri konduğunu söyler
-  (Agent'ın geri alma hatası yanıta taşınmaz); sahip dosyayı sunucuda denetler.
+  metnini reddetti; CelikPanel önceki dosyayı kip ve sahibiyle geri koydu ve
+  hizmeti yeniden yükledi. Yanıt `restore` taşır (2026-10-11 düzeltmesi;
+  bileşen testli ve sahte tarayıcıda denendi; gerçek sistemde ölçülmedi):
+  `confirmed` yalnız Agent geri koymanın ve ardından gelen yeniden yüklemenin
+  tuttuğunu bildirdiğinde; Agent “rollback incomplete” dediğinde ya da hiç
+  geri koyma bilgisi vermediğinde (eski bir Agent) `unconfirmed`. Doğrulanmamışsa
+  cümle `err.SITE_CONFIG_SERVICE_REFUSED.<tür>.unconfirmed` olur ("… CelikPanel
+  önceki dosyayı geri koymayı denedi; yerinde olup olmadığı doğrulanmadı —
+  sunucu yöneticisi dosyayı sunucuda kontrol eder. …") ve yönetici Agent'ın
+  kendi satırını `details` içinde de görür; doğrulanmışsa cümle önceki dosyanın
+  geri konduğunu söyler. vhost'un `502 SITE_CONFIG_NGINX_REFUSED` yanıtı için
+  de aynısı geçerlidir (`err.SITE_CONFIG_NGINX_REFUSED.unconfirmed`). Panel
+  günlüğü hizmetin iletisini ve geri koymayı adlandırır (`sudo journalctl -u
+  celikpanel-panel | grep "site configuration"`).
 
 **İş nasıl sürer.** Benimkini koru: sahibin dosyası kalır; dosya korundukça
 onun üzerindeki kaydetme ve sürüm değişiklikleri reddedilir (alan adının
@@ -6603,14 +6616,24 @@ Adları listesinde henüz yoktur.
 
 **Alan Adları satırı ve bildirim.** Satırın rozeti ve alan adının üstündeki
 satır sitenin dosyalarının en kötü durumunu gösterir (okunamıyor >
-değiştirilemiyor > yok > düzenlendi / değiştirildi / tanınmadı > değişmemiş;
-eşitlikte vhost önce; Agent'ın bildirmediği dosya, “Durumu bilinmiyor”,
-değişmemişin altında sıralanır ve satırı asla belirlemez, sayfa onu yine de
-listeler); karar veren havuz ya da birimse `kind` onu adlandırır ve
-bildirim bunu söyler (`siteConfig.notice.php_pool.*`,
-`siteConfig.notice.app_unit.*`; örneğin "Bu sitenin PHP-FPM havuz dosyası
-CelikPanel dışında değiştirildi. CelikPanel onu korudu ve seçiminizi
-bekliyor."). Sayfanın okuması havuz ve birim için gözlediğini kaydeder (yalnız
+değiştirilemiyor > yok > düzenlendi / değiştirildi / tanınmadı > bilinmiyor >
+değişmemiş; eşitlikte vhost önce). Agent'ın okumadığı dosya (`unknown`, neden
+`not_read` ya da `agent_does_not_report`) CelikPanel'in değişmemiş metni
+olduğu bilinmediği için onun üstünde sıralanır (2026-10-11 düzeltmesi;
+bileşen testli ve sahte tarayıcıda denendi; gerçek sistemde ölçülmedi):
+satırın rozeti `siteConfig.list.badge.unknown` "Bir yapılandırma dosyası
+okunamadı; durumu bilinmiyor" der, `kind` dosyayı adlandırır; sayfa onu
+"Durumu bilinmiyor: sunucu yanıt vermedi. Hiçbir şey değişmedi; Yeniden
+denetle'yi seçin." diye listeler (alan adının üstünde bunun için bildirim
+yoktur). Karar veren havuz ya da birimse `kind` onu adlandırır; korunan, eksik,
+okunamayan ya da değiştirilemeyen dosyada bildirim bunu söyler
+(`siteConfig.notice.php_pool.*`, `siteConfig.notice.app_unit.*`; örneğin "Bu
+sitenin PHP-FPM havuz dosyası CelikPanel dışında değiştirildi. CelikPanel onu
+korudu ve seçiminizi bekliyor."). 2026-10-11'den beri okunamayan ve
+değiştirilemeyen dosya bildirimleri "Sunucu yöneticisi dosyayı kontrol eder;
+nedeni alan adının Yapılandırma dosyası sayfasında." ile, eksik dosyanınkiler
+"Yeniden oluşturmak için alan adının Yapılandırma dosyası sayfasını açın." ile
+biter. Sayfanın okuması havuz ve birim için gözlediğini kaydeder (yalnız
 veritabanı); sayfa açıldıktan sonra satır sayfayla aynı şeyi söyler.
 
 **Tümleştiriciler için.** `GET /api/v1/domains/{id}/site-config` her üst
@@ -6622,8 +6645,9 @@ birimi; her biri aynı biçimde, `kind` ve kendi `actions` ile — ve
 olur; diğerleri yine gösterilir. Bir tür için okumaya sahip olmayan bir Agent
 `state: "unknown"`, `reason: "agent_does_not_report"` yanıtlar. `overall_state`,
 dosyaların gösterilen durumlarının en yükseğidir (okunamıyor > değiştirilemiyor
-> yok > korunan > managed_unchanged; `unknown` en alta sıralanır; eşitlikte ilk
-dosya), `overall_kind` kararı veren dosyadır. `POST …/site-config/{keep,take,recreate,apply}`
+> yok > korunan > unknown > managed_unchanged; eşitlikte ilk dosya;
+2026-10-11: `unknown`, `managed_unchanged`in üstündedir), `overall_kind`
+kararı veren dosyadır. `POST …/site-config/{keep,take,recreate,apply}`
 aynı özetlerle `"kind": "php_pool" | "app_unit"` alır (yoksa vhost); başka bir
 tür `400` (“kind is nginx_vhost, php_pool or app_unit”), sitede olmayan bir
 tür `409 SITE_CONFIG_NOT_APPLICABLE` verir. `apply` ve “koruma kaldırıldı”
@@ -6632,5 +6656,9 @@ defter nedenidir). Alan Adları listesinin `site_config` alanı `kind` kazanır
 (vhost için yoktur); yalnız defter satırlarından kurulur, satırı olmayan dosya
 içinde yoktur. Sürüm eşleşmesi: havuzun iki Agent çağrısı Panel'in derlemesine
 bağlıdır ve eski havuz çağrılarına geri dönüş yoktur (`Agent.MigratePHPPool`
-artık Panel'in çağrı politikasında değil); birimin iki çağrısında derleme
-kapısı yoktur.
+artık Panel'in çağrı politikasında değil); birimin iki çağrısı
+(`Agent.InspectAppUnit`, `Agent.ApplyAppUnit`) da aynı biçimde derleme
+kapısından geçer (2026-10-11; bileşen testli,
+`cmd/agent/build_gate_contract_test.go`; gerçek sistemde ölçülmedi): başka
+derlemeden bir Agent “panel/agent build mismatch” yanıtlar ve hiçbir şey
+yazmaz.

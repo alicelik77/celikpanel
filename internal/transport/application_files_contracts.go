@@ -21,6 +21,9 @@ type AppApplyRequest struct {
 	RecordedSHA256       string `json:"recorded_sha256,omitempty"`
 	ExpectedFileSHA256   string `json:"expected_file_sha256,omitempty"`
 	ExpectedRenderSHA256 string `json:"expected_render_sha256,omitempty"`
+	// ExpectedBuildCommit binds ApplyAppUnit and InspectAppUnit to the
+	// Panel's build, as the pool's RPCs are (2026-10-11).
+	ExpectedBuildCommit string `json:"expected_build_commit"`
 }
 
 type AppApplyResponse struct {

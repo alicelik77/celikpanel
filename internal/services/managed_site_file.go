@@ -238,8 +238,10 @@ func ApplyManagedSiteFile(f ManagedSiteFile, validate, activate func() error) (t
 		result.Reason = reason
 		result.Detail = boundedSiteFileDetail(cause.Error())
 		if restoreErr != nil || activateErr != nil {
+			result.Restore = transport.SiteFileRestoreUnconfirmed
 			return result, fmt.Errorf("%w; rollback incomplete: %v", cause, errors.Join(restoreErr, activateErr))
 		}
+		result.Restore = transport.SiteFileRestoreConfirmed
 		return result, nil
 	}
 	if validate != nil {

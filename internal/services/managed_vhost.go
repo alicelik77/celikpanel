@@ -942,12 +942,12 @@ func (ng *NginxGenerator) ApplyManagedVhosts(items []ManagedVhostItem) ([]transp
 		}
 		rollbackErr := restorePlannedSiteFiles(everything)
 		failTouched(transport.SiteFileReasonNginxRefused, detail)
-		return results, ng.finishManagedRollback(fmt.Errorf("nginx validation failed: %w", err), rollbackErr)
+		return results, markManagedRestore(results, touched, ng.finishManagedRollback(fmt.Errorf("nginx validation failed: %w", err), rollbackErr))
 	}
 	if err := ng.ReloadNginx(); err != nil {
 		rollbackErr := restorePlannedSiteFiles(everything)
 		failTouched(transport.SiteFileReasonReloadFailed, err.Error())
-		return results, ng.finishManagedRollback(fmt.Errorf("nginx reload failed: %w", err), rollbackErr)
+		return results, markManagedRestore(results, touched, ng.finishManagedRollback(fmt.Errorf("nginx reload failed: %w", err), rollbackErr))
 	}
 	for _, plan := range touched {
 		result := &results[plan.index]
@@ -963,6 +963,22 @@ func (ng *NginxGenerator) ApplyManagedVhosts(items []ManagedVhostItem) ([]transp
 	}
 	setValidation()
 	return results, nil
+}
+
+// markManagedRestore records on each failed file whether the batch's rollback
+// was confirmed (every file put back, nginx -t and the reload after it held:
+// finishManagedRollback answered VhostRestoredError) or not ("rollback
+// incomplete"). It returns the rollback's error unchanged.
+func markManagedRestore(results []transport.SiteFileResult, touched []plannedSiteFileWrite, rollback error) error {
+	restore := transport.SiteFileRestoreUnconfirmed
+	var restored *VhostRestoredError
+	if errors.As(rollback, &restored) {
+		restore = transport.SiteFileRestoreConfirmed
+	}
+	for _, plan := range touched {
+		results[plan.index].Restore = restore
+	}
+	return rollback
 }
 
 func (ng *NginxGenerator) finishManagedRollback(cause, rollbackErr error) error {

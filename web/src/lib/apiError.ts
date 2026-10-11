@@ -48,6 +48,12 @@ export interface ApiError {
     // string values are kept.
     // vars: kodun yerel cümlesinin ihtiyaç duyduğu adlı değerler. Eklemeli.
     vars?: Record<string, string>;
+    // restore: after a service refused CelikPanel's text for a site file,
+    // whether putting the previous file back was confirmed ('confirmed') or
+    // not ('unconfirmed'). Additive; an unconfirmed restore selects the
+    // sentence `err.<CODE>[.<reason>].unconfirmed`.
+    // restore: önceki dosyanın geri konduğu doğrulandı mı. Eklemeli.
+    restore?: string;
 }
 
 function stringVars(value: unknown): Record<string, string> | undefined {
@@ -84,6 +90,7 @@ export async function readApiError(res: Response): Promise<ApiError> {
                         ? d.details.filter((item: unknown): item is string => typeof item === 'string')
                         : undefined,
                     vars: stringVars(d.vars),
+                    restore: typeof d.restore === 'string' && d.restore ? d.restore : undefined,
                 };
             }
         } catch {
@@ -110,6 +117,18 @@ export function apiErrorText(e: ApiError, t: T, fallbackKey: TranslationKey = 'c
         // situations, one of which does not end by waiting.
         // Önce inceltilmiş cümle: hangi sebep olduğunu adlandıran bir ret, o
         // sebebin sözlerini hak eder; hepsini kapsayanları değil.
+        // A restore that was not confirmed has its own sentence: the one for
+        // the confirmed case would say the previous file is back.
+        if (e.restore === 'unconfirmed') {
+            const keys = [e.reason ? 'err.' + e.code + '.' + e.reason + '.unconfirmed' : '', 'err.' + e.code + '.unconfirmed'];
+            for (const candidate of keys) {
+                if (!candidate) continue;
+                const named = t(candidate as TranslationKey, e.vars);
+                if (named !== candidate) return named;
+            }
+            // No sentence for it: the server's own words say it.
+            if (e.message) return e.message;
+        }
         if (e.reason) {
             const refined = ('err.' + e.code + '.' + e.reason) as TranslationKey;
             const named = t(refined, e.vars);

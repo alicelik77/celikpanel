@@ -69,6 +69,11 @@ const (
 	siteConfigNotReadMessage       = "CelikPanel could not read the state of this site's configuration file just now. This does not mean anything is wrong with the file, and nothing was changed. Try again."
 	siteConfigNginxRefusedMessage  = "nginx did not accept CelikPanel's text (it refused the configuration or could not reload), so your file was put back and nginx keeps running with it. " +
 		"nginx checks every site together, so the cause may be another file; fix what nginx reported, then choose again."
+	// The same refusal when putting the previous file back was not confirmed
+	// (the Agent said "rollback incomplete", or gave no restore fact).
+	siteConfigNginxRefusedUnconfirmedMessage = "nginx did not accept CelikPanel's text (it refused the configuration or could not reload). " +
+		"CelikPanel tried to put the previous file back; whether it is in place is not confirmed — the server administrator checks the file on the server. " +
+		"nginx checks every site together, so the cause may be another file; fix what nginx reported, then choose again."
 )
 
 // siteFileHeldError is a render the Agent did not apply because of the file's
@@ -76,11 +81,40 @@ const (
 type siteFileHeldError struct {
 	Domain string
 	File   transport.SiteFileResult
+	// AgentError is the Agent's own error line with the result, if any (for a
+	// failed operation whose restore failed it says "rollback incomplete").
+	AgentError string
 }
 
 func (e *siteFileHeldError) Error() string {
-	return fmt.Sprintf("site configuration of %s not applied: %s (%s %s)",
+	text := fmt.Sprintf("site configuration of %s not applied: %s (%s %s)",
 		e.Domain, e.File.Outcome, e.File.State, e.File.Reason)
+	if e.File.Outcome == transport.SiteFileOutcomeFailed {
+		text += "; restore " + siteFileRestore(e.File, e.AgentError)
+	}
+	if e.AgentError != "" {
+		text += ": " + boundedAgentDiagnostic(e.AgentError)
+	}
+	return text
+}
+
+// siteFileRestore is what the Panel says of a failed operation's restore:
+// "confirmed" only when the Agent reports it confirmed and its error does not
+// say the rollback was incomplete; an Agent that gives no restore fact (an
+// older one) is "unconfirmed" (2026-10-11).
+func siteFileRestore(file transport.SiteFileResult, agentError string) string {
+	if file.Restore == transport.SiteFileRestoreConfirmed && !strings.Contains(agentError, "rollback incomplete") {
+		return transport.SiteFileRestoreConfirmed
+	}
+	return transport.SiteFileRestoreUnconfirmed
+}
+
+// siteFileAgentDetails is the Agent's own line for an administrator.
+func siteFileAgentDetails(agentError string) []string {
+	if line := boundedAgentDiagnostic(agentError); line != "" {
+		return []string{line}
+	}
+	return nil
 }
 
 func classifySiteFileError(err error) (agentRPCPlatformErrorClassification, bool) {
@@ -105,7 +139,7 @@ func classifySiteFileError(err error) (agentRPCPlatformErrorClassification, bool
 		held = &siteFileHeldError{File: file}
 	}
 	if kind := held.File.Kind; kind == transport.SiteFileKindPHPPool || kind == transport.SiteFileKindAppUnit {
-		return classifyOtherSiteFileHeld(held.File), true
+		return classifyOtherSiteFileHeld(held.File, held.AgentError), true
 	}
 	switch held.File.Outcome {
 	case transport.SiteFileOutcomeKept:
@@ -780,9 +814,21 @@ func (p *Panel) handleSiteConfigRender(w http.ResponseWriter, r *http.Request, d
 		return
 	case file.Outcome == transport.SiteFileOutcomeFailed &&
 		(file.Reason == transport.SiteFileReasonNginxRefused || file.Reason == transport.SiteFileReasonReloadFailed):
-		body := apiErrorBody{Error: siteConfigNginxRefusedMessage, Code: errCodeSiteConfigNginxRefused, Reason: file.Reason}
+		agentError := ""
+		if err != nil {
+			agentError = err.Error()
+		}
+		restore := siteFileRestore(*file, agentError)
+		body := apiErrorBody{Error: siteConfigNginxRefusedMessage, Code: errCodeSiteConfigNginxRefused, Reason: file.Reason, Restore: restore}
+		if restore != transport.SiteFileRestoreConfirmed {
+			body.Error = siteConfigNginxRefusedUnconfirmedMessage
+		}
 		if file.Detail != "" {
 			body.Details = []string{boundedAgentDiagnostic(file.Detail)}
+		}
+		if restore != transport.SiteFileRestoreConfirmed && agentError != "" {
+			// The Agent's own line (this route is an administrator's).
+			body.Details = append(body.Details, siteFileAgentDetails(agentError)...)
 		}
 		log.Printf("[502] site configuration %s: %s: %v", domain, trigger, err)
 		w.Header().Set("Content-Type", "application/json")

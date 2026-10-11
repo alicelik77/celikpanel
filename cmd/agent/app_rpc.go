@@ -188,6 +188,15 @@ func appUnitHeldMessage(result transport.SiteFileResult) string {
 // ApplyAppUnit, birim dosyasını D-031 kuralıyla yazar; yalnız yazdıysa
 // systemd'yi yeniden yükler ve uygulamayı etkinleştirip (yeniden) başlatır.
 func (a *Agent) ApplyAppUnit(req *AppApplyRequest, resp *AppApplyResponse) error {
+	if req == nil {
+		resp.Error = "application unit request is required"
+		return nil
+	}
+	// Bound to the Panel's build, as the pool's RPCs are (2026-10-11).
+	if err := requireExpectedBuildCommit(req.ExpectedBuildCommit, "changing an application unit"); err != nil {
+		resp.Error = err.Error()
+		return nil
+	}
 	if message := validAppApplyRequest(req); message != "" {
 		resp.Error = message
 		return nil
@@ -260,6 +269,14 @@ func (a *Agent) ApplyAppUnit(req *AppApplyRequest, resp *AppApplyResponse) error
 // from CelikPanel's text for the same inputs. It writes nothing (D-031).
 // InspectAppUnit, sitenin birim dosyasını sınıflandırır; yazmaz.
 func (a *Agent) InspectAppUnit(req *AppApplyRequest, resp *transport.InspectSiteFileResponse) error {
+	if req == nil {
+		resp.Error = "application unit request is required"
+		return nil
+	}
+	if err := requireExpectedBuildCommit(req.ExpectedBuildCommit, "inspecting an application unit"); err != nil {
+		resp.Error = err.Error()
+		return nil
+	}
 	if message := validAppApplyRequest(req); message != "" {
 		resp.Error = message
 		return nil

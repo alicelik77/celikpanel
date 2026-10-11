@@ -314,7 +314,7 @@ func TestAPoolSaveAndAPHPSwitchOnAKeptPoolAreTypedRefusals(t *testing.T) {
 			return file
 		}(), errCodeSiteConfigUnwritable},
 	} {
-		classification := classifyOtherSiteFileHeld(c.file)
+		classification := classifyOtherSiteFileHeld(c.file, "")
 		if classification.Code != c.code || classification.Reason != c.file.Kind || classification.Message == "" {
 			t.Errorf("%s/%s: %+v", c.file.Outcome, c.file.Reason, classification)
 		}

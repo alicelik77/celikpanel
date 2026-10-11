@@ -6571,10 +6571,12 @@ run, no installed server. Nothing here is measured on a real system.
 application unit file now follow the vhost's rule. The Configuration file page
 lists every file CelikPanel writes for the site — `siteConfig.files.title`
 "This site’s configuration files", one row per file ("nginx configuration",
-"PHP-FPM pool", "Application unit") with its state ("CelikPanel’s text,
-unchanged", "Edited outside CelikPanel", "Replaced outside CelikPanel", "Not
-recognised as CelikPanel’s", "Missing", "Cannot be read or replaced", "Cannot be
-replaced", "Can be replaced again", "State not known") and its path — then one
+"PHP-FPM pool (this site’s PHP process settings)", "Application unit (the file
+that starts this site’s application)", glossed since 2026-10-11) with its state
+("CelikPanel’s text, unchanged", "Edited outside CelikPanel", "Replaced outside
+CelikPanel", "Not recognised as CelikPanel’s", "Missing", "Cannot be read or
+replaced", "Cannot be replaced", "Can be replaced again", "State not known: the
+server did not answer. Nothing was changed; choose Check again.") and its path — then one
 section per file with the same states, the difference and the same choices
 (keep mine, take CelikPanel’s, merge by hand; recreate; check again; write
 CelikPanel’s text now). The pool's and the unit's sentences name their own
@@ -6594,7 +6596,8 @@ administrator); nothing continues by itself.
   a PHP version switch on such a file is refused; the owner chooses on the page.
 - Unit: the unit's systemd drop-in directory (`siteConfig.app_unit.include`
   "Put your own settings for this application in a .conf file in {dir} (a
-  systemd drop-in), then run sudo systemctl daemon-reload. CelikPanel never
+  systemd drop-in: a small extra settings file systemd reads), then run sudo
+  systemctl daemon-reload (systemd re-reads its files). CelikPanel never
   writes or removes that directory, and every change CelikPanel makes to this
   unit keeps your settings."). The unit's own comment says the same.
 
@@ -6625,13 +6628,21 @@ service's own check refused the text, `reload_failed` when its reload did);
 - `409 SITE_CONFIG_EXISTS` `reason: php_pool`: a PHP switch whose target
   version already has a pool file for the site; nothing switched.
 - `502 SITE_CONFIG_SERVICE_REFUSED` (`php_pool`, `app_unit`): `php-fpm -t`, the
-  PHP-FPM reload or `systemctl daemon-reload` refused CelikPanel's text; the
-  previous file was put back with its mode and owner and the service reloaded
-  again. The panel log names the service's message (`sudo journalctl -u
-  celikpanel-panel | grep "site configuration"`). Known gap: if that
-  rollback itself fails, the answer still says the previous file was put back
-  (the Agent's rollback error is not carried into it); the owner then checks
-  the file on the server.
+  PHP-FPM reload or `systemctl daemon-reload` refused CelikPanel's text, and
+  CelikPanel put the previous file back with its mode and owner and reloaded
+  the service again. The answer carries `restore` (2026-10-11 correction;
+  component-tested and mock browser; not measured on a real system):
+  `confirmed` only when the Agent reports the put-back and the reload after it
+  held; `unconfirmed` when the Agent says "rollback incomplete" or gives no
+  restore fact (an older Agent). Unconfirmed, the sentence is
+  `err.SITE_CONFIG_SERVICE_REFUSED.<kind>.unconfirmed` ("… CelikPanel tried to
+  put the previous file back; whether it is in place is not confirmed — the
+  server administrator checks the file on the server. …"), and an
+  administrator also gets the Agent's own line in `details`; confirmed, the
+  sentence says the previous file was put back. The same holds for the vhost's
+  `502 SITE_CONFIG_NGINX_REFUSED` (`err.SITE_CONFIG_NGINX_REFUSED.unconfirmed`).
+  The panel log names the service's message and the restore (`sudo journalctl
+  -u celikpanel-panel | grep "site configuration"`).
 
 **How work resumes.** Keep mine: the owner's file stays; saves and switches on
 it stay refused while it is kept (the notice above the domain says so). Take
@@ -6659,12 +6670,23 @@ change), so a pool nobody has read is not yet in the Domains list.
 
 **The Domains row and the notice.** The row's badge and the line above the
 domain show the worst state of the site's files (unreadable > unwritable >
-missing > edited / replaced / not recognised > unchanged; the vhost first on a
-tie; a file the Agent did not report, "State not known", ranks below unchanged
-and never decides the row, though the page lists it), with `kind` naming the pool or the unit when it decided; the notice then
+missing > edited / replaced / not recognised > not known > unchanged; the
+vhost first on a tie). A file the Agent did not read (`unknown`, reason
+`not_read` or `agent_does_not_report`) is not known to be CelikPanel's
+unchanged text, so it outranks it (2026-10-11 correction; component-tested and
+mock browser; not measured on a real system): the row's badge says
+`siteConfig.list.badge.unknown` "A configuration file could not be read; state
+not known" with `kind` naming the file, and the page lists it as "State not
+known: the server did not answer. Nothing was changed; choose Check again."
+(no notice above the domain for it). `kind` names the pool or the unit when
+it decided the row; for a kept, missing, unreadable or unwritable file the
+notice then
 says so (`siteConfig.notice.php_pool.*`, `siteConfig.notice.app_unit.*`, for
 example "This site’s PHP-FPM pool file was changed outside CelikPanel. CelikPanel
-kept it and is waiting for your choice."). The page's read records what it
+kept it and is waiting for your choice."). Since 2026-10-11 the unreadable and
+unwritable notices end "The server administrator checks it; the reason is on
+the domain’s Configuration file page." and the missing ones "Open the
+domain’s Configuration file page to recreate it." The page's read records what it
 observed for the pool and the unit (database only), so the row agrees with the
 page after the page has been opened.
 
@@ -6677,8 +6699,9 @@ site, each in the same shape with `kind` and its own `actions` — and
 the others are still shown. An Agent that does not have the read for a kind
 answers `state: "unknown"`, `reason: "agent_does_not_report"`. `overall_state`
 is the highest of the files' presented states (unreadable > unwritable >
-missing > kept > managed_unchanged; `unknown` ranks lowest; the first file on a
-tie), `overall_kind` the file that decided it. `POST …/site-config/{keep,take,recreate,apply}`
+missing > kept > unknown > managed_unchanged; the first file on a tie;
+2026-10-11: `unknown` outranks `managed_unchanged`), `overall_kind` the file
+that decided it. `POST …/site-config/{keep,take,recreate,apply}`
 take `"kind": "php_pool" | "app_unit"` (absent: the vhost) with the same
 digests; another kind is `400` ("kind is nginx_vhost, php_pool or app_unit"); a kind the site does not have is `409
 SITE_CONFIG_NOT_APPLICABLE`. `apply` and the "protection removed" check work
@@ -6687,4 +6710,8 @@ kind). The Domains list's `site_config` gains `kind` (absent for the vhost); it
 is built from the ledger rows only, so a file with no row is not in it. Version
 pairing: the pool's two Agent calls are bound to the Panel's build commit and
 there is no fallback to the older pool calls (`Agent.MigratePHPPool` is no
-longer in the Panel's call policy); the unit's two calls carry no build gate.
+longer in the Panel's call policy); the unit's two calls (`Agent.InspectAppUnit`,
+`Agent.ApplyAppUnit`) are gated the same way (2026-10-11; component-tested,
+`cmd/agent/build_gate_contract_test.go`; not measured on a real system): an
+Agent of another build answers "panel/agent build mismatch" and writes
+nothing.

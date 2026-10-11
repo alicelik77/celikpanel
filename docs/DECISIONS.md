@@ -119,16 +119,17 @@ The owner decided on 2026-10-10 that the correction enters the next release:
    to the Panel's own build, and an Agent that does not have them gives an
    error with nothing written (no fallback to the older pool calls;
    `MigratePHPPool` is gone from the Panel's policy); the unit's two calls
-   carry no build gate, so an older Agent would write the unit as before and
-   report no file, which the Panel records as nothing known. Site creation
-   writes no pool or unit ledger row: a row begins at the page's first read or
-   at the first save, switch or unit change, so a pool nobody has read is not
-   in the Domains list. A file the Agent did not report (`unknown`) ranks below
-   CelikPanel's unchanged text in the worst-state rule, so it never decides
-   the Domains row; the page still lists it as "State not known". When a
-   service refusal's own rollback fails, the Panel's sentence still says the
-   previous file was put back (the Agent's rollback error is not carried into
-   the refusal). The two adoption bases differ: the pool of alpha.81 listened
+   are bound to the Panel's build the same way (corrected 2026-10-11). Site
+   creation writes no pool or unit ledger row: a row begins at the page's
+   first read or at the first save, switch or unit change, so a pool nobody
+   has read is not in the Domains list. Corrected 2026-10-11 (component-tested
+   and mock browser; not measured on a real system): a file the Agent did not
+   read (`unknown`) outranks CelikPanel's unchanged text in the worst-state
+   rule (every observed problem still outranks it), so the Domains row says a
+   configuration file could not be read; a service refusal answers `restore:
+   confirmed | unconfirmed`, and unconfirmed (the Agent's "rollback
+   incomplete", or no restore fact) says the server administrator checks the
+   file on the server instead of saying it was put back. The two adoption bases differ: the pool of alpha.81 listened
    on `/var/run/php/php<v>-fpm-<pool>.sock` owned by `www-data`, alpha.82 on
    this host's socket owned by the web server's account; the unit of alpha.81
    wrote `User=` as asked, alpha.82 the web server's account that exists on

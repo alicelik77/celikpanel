@@ -293,6 +293,13 @@ func TestSiteFileStatePrecedence(t *testing.T) {
 		{transport.SiteFileForeign, transport.SiteFileMissingState, transport.SiteFileMissingState},
 		{transport.SiteFileUnknownOrigin, transport.SiteFileManagedUnchanged, transport.SiteFileUnknownOrigin},
 		{transport.SiteFileOwnerEdited, transport.SiteFileForeign, transport.SiteFileOwnerEdited},
+		// unknown (not read) outranks managed_unchanged and nothing else.
+		{transport.SiteFileManagedUnchanged, transport.SiteFileStateUnknown, transport.SiteFileStateUnknown},
+		{transport.SiteFileStateUnknown, transport.SiteFileManagedUnchanged, transport.SiteFileStateUnknown},
+		{transport.SiteFileStateUnknown, transport.SiteFileOwnerEdited, transport.SiteFileOwnerEdited},
+		{transport.SiteFileStateUnknown, transport.SiteFileMissingState, transport.SiteFileMissingState},
+		{transport.SiteFileStateUnknown, transport.SiteFileUnwritable, transport.SiteFileUnwritable},
+		{transport.SiteFileUnreadable, transport.SiteFileStateUnknown, transport.SiteFileUnreadable},
 	} {
 		if got := services.SiteFileShownState(tc.first, tc.second); got != tc.want {
 			t.Fatalf("%s + %s: %q, want %q", tc.first, tc.second, got, tc.want)

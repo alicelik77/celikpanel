@@ -175,6 +175,7 @@ func writeCertificateSiteFileRefusal(w http.ResponseWriter, err error) bool {
 		w.WriteHeader(classification.Status)
 		_ = json.NewEncoder(w).Encode(apiErrorBody{
 			Error: classification.Message, Code: classification.Code, Reason: classification.Reason,
+			Restore: classification.Restore,
 		})
 		return true
 	}

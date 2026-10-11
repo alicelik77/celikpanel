@@ -499,7 +499,11 @@ test('every siteConfig and SITE_CONFIG key is in both languages', () => {
   const errTR = keys(read('i18n/tr.ts'), 'err\\.SITE_CONFIG_');
   assert.deepEqual([...screenTR].sort(), [...screenEN].sort());
   assert.deepEqual([...errTR].sort(), [...errEN].sort());
-  assert.equal(errEN.size, 20);
+  assert.equal(errEN.size, 23);
+  // A restore that was not confirmed has its own sentence (2026-10-11).
+  for (const key of ['NGINX_REFUSED.unconfirmed', 'SERVICE_REFUSED.php_pool.unconfirmed', 'SERVICE_REFUSED.app_unit.unconfirmed']) {
+    assert.ok(errEN.has(`err.SITE_CONFIG_${key}`), key);
+  }
   // The pool's and the unit's own sentences (D-031 second step) exist for
   // every sentence the page lets them replace.
   const kindTexts = read('components/DomainSiteConfig.tsx').match(/const KIND_TEXTS = new Set\(\[([^\]]*)\]/)[1];
@@ -613,4 +617,53 @@ test('a files list that is not the contract is refused', () => {
   assert.throws(() => decodeSiteConfig({ ...vhostFile, files: [{ ...vhostFile, kind: 'crontab' }] }));
   assert.throws(() => decodeSiteConfig({ ...vhostFile, files: 'x' }));
   assert.equal(decodeSiteConfig(multi(vhostFile, poolFile('absent'))).files.length, 2);
+});
+
+// 2026-10-11: a file the server did not answer for is not known-good. It
+// decides the page's overall state over CelikPanel's unchanged text, its row
+// says so and offers Check again, and the Domains row wears its badge.
+test('a pool the server did not answer for decides the overall state over an unchanged nginx file', async () => {
+  const notRead = { domain_id: 4, domain: 'example.com', kind: 'php_pool', state: 'unknown', reason: 'not_read', actions: ['recheck'] };
+  serve({ [`GET ${URL_BASE}`]: { ...vhostFile, files: [vhostFile, notRead], overall_state: 'unknown', overall_kind: 'php_pool' } });
+  await mount(page());
+  const row = tree.root.findAll((node) => node.props?.['data-site-config-files-state'] === 'unknown' && typeof node.type === 'string');
+  assert.equal(row.length, 1, text());
+  assert.ok(label(row[0]).includes('siteConfig.files.state.unknown'));
+  assert.ok(text().includes('siteConfig.unknownRead'));
+  assert.ok(enabled('siteConfig.recheck'));
+  for (const choice of CHOICES) assert.ok(!enabled(choice), `${choice} offered on an unchanged file and an unread pool`);
+  await unmount();
+  const domains = readFileSync(new URL('../src/components/Domains.tsx', import.meta.url), 'utf8');
+  assert.match(domains, /unknown: 'siteConfig\.list\.badge\.unknown'/);
+});
+
+// 2026-10-11: a service refusal whose restore was not confirmed says so; the
+// administrator sees the Agent's line under it.
+test('a refused take whose restore was not confirmed says so, with the Agent’s line', async () => {
+  const keptPool = poolFile('owner_edited', { pending_path: POOL + '.celikpanel-pending', diff: '--- a\n+++ b\n' });
+  for (const [restore, key] of [
+    ['unconfirmed', 'T:err.SITE_CONFIG_SERVICE_REFUSED.php_pool.unconfirmed'],
+    ['confirmed', 'T:err.SITE_CONFIG_SERVICE_REFUSED.php_pool'],
+  ]) {
+    const line = 'php-fpm -t: ERROR; rollback incomplete: rollback reload: exit status 1';
+    serve({
+      [`GET ${URL_BASE}`]: multi(vhostFile, keptPool),
+      [`POST ${URL_BASE}/take`]: () => answer({
+        error: 'refused', code: 'SITE_CONFIG_SERVICE_REFUSED', reason: 'php_pool', detail: 'config_refused', restore,
+        details: restore === 'unconfirmed' ? [line] : undefined,
+      }, 502),
+    });
+    await mount(page());
+    await press('siteConfig.take');
+    await press('siteConfig.take.confirm');
+    assert.equal(posts().length, 1, 'the take was sent more than once');
+    const shown = text();
+    assert.ok(shown.includes(key), shown);
+    if (restore === 'unconfirmed') {
+      assert.ok(shown.includes(line), 'the Agent’s line was not shown');
+    } else {
+      assert.ok(!shown.includes('.unconfirmed'), shown);
+    }
+    await unmount();
+  }
 });
