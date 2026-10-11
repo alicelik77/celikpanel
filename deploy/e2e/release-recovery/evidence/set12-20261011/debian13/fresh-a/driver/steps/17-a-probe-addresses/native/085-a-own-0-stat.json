@@ -1,0 +1,41 @@
+{
+  "at": "2026-10-11T04:39:48Z",
+  "epoch": 1791693588.0943463,
+  "mode": "read-stat",
+  "owner_action": false,
+  "schema": "celikpanel/set11-native/v1",
+  "side": {
+    "backups": [],
+    "pending": {
+      "error": "FileNotFoundError",
+      "exists": false,
+      "path": "/etc/nginx/sites-available/set12-a.test.conf.celikpanel-pending"
+    }
+  },
+  "vhost": {
+    "ctime_ns": 1791693587729183549,
+    "exists": true,
+    "first_line": "# celikpanel-render v2 sha256=ddea12bd9d8013719d2250f2f6a8bd483eb52676a52e72f06ed93cb5ca8e9afc",
+    "gid": 989,
+    "group": "celikpanel",
+    "header": {
+      "body_bytes": 2136,
+      "body_sha256": "78327792f9433a4acb41a5420b65a0a1709ccbddcf4c9f1efd108711c04a1226",
+      "declared": "ddea12bd9d8013719d2250f2f6a8bd483eb52676a52e72f06ed93cb5ca8e9afc",
+      "present": true,
+      "valid": false
+    },
+    "immutable": false,
+    "inode": 131559,
+    "kind": "file",
+    "lsattr": "--------------e-------",
+    "mode": "0644",
+    "mtime_ns": 1791693587729183549,
+    "nlink": 1,
+    "owner": "root",
+    "path": "/etc/nginx/sites-available/set12-a.test.conf",
+    "sha256": "93cbab19ae5bd0cf77e0db10193577e1de2ffbf1773e1dbe6dc44d2a520fb54e",
+    "size": 2231,
+    "uid": 0
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "action": "owner-php12",
+  "after": {
+    "ActiveEnterTimestamp": "Sun 2026-10-11 04:32:48 UTC",
+    "ActiveState": "failed",
+    "ExecMainStartTimestamp": "Sun 2026-10-11 04:39:07 UTC",
+    "LoadState": "loaded",
+    "MainPID": "0",
+    "NRestarts": "6",
+    "SubState": "failed"
+  },
+  "at": "2026-10-11T04:39:11Z",
+  "before": {
+    "ActiveEnterTimestamp": "Sun 2026-10-11 04:32:48 UTC",
+    "ActiveState": "failed",
+    "ExecMainStartTimestamp": "Sun 2026-10-11 04:39:07 UTC",
+    "LoadState": "loaded",
+    "MainPID": "0",
+    "NRestarts": "6",
+    "SubState": "failed"
+  },
+  "epoch": 1791693551.5069766,
+  "mode": "owner-php12",
+  "owner_action": true,
+  "schema": "celikpanel/set12-native/v1",
+  "systemctl": {
+    "argv": [
+      "systemctl",
+      "restart",
+      "php8.4-fpm.service"
+    ],
+    "at": "2026-10-11T04:39:10Z",
+    "returncode": 1,
+    "seconds": 0.009,
+    "status": "ok",
+    "stderr": "Job for php8.4-fpm.service failed because the control process exited with error code.\nSee \"systemctl status php8.4-fpm.service\" and \"journalctl -xeu php8.4-fpm.service\" for details.\n",
+    "stdout": ""
+  },
+  "unit": "php8.4-fpm",
+  "what": "restart"
+}

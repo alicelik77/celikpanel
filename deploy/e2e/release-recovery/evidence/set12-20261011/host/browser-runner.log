@@ -1,0 +1,28 @@
+2026-10-11T04:27:17Z runner started pid=106047
+2026-10-11T04:40:41Z start h12d13a-ui ui,done
+browser profile: <user-temp>\cpb\d5ded5af (46 characters, limit 120)
+{"cell":"ui","started":"2026-10-11T04:40:42.602Z","ended":"2026-10-11T04:44:05.617Z","ok":true}
+{"cell":"done","started":"2026-10-11T04:44:05.627Z","ended":"2026-10-11T04:44:05.630Z","ok":true}
+2026-10-11T04:44:06Z rc=0 h12d13a-ui
+2026-10-11T05:31:25Z start h12d13b-ui ui,done
+file:///<repo>/web/tools/browser-inspect/cold-load-set12.mjs:64
+        socket.setTimeout(8000, () => { socket.destroy(); fail(new Error('timeout')); });
+                                                               ^
+
+Error: timeout
+    at TLSSocket.<anonymous> (file:///<repo>/web/tools/browser-inspect/cold-load-set12.mjs:64:64)
+    at Object.onceWrapper (node:events:630:28)
+    at TLSSocket.emit (node:events:509:28)
+    at Socket._onTimeout (node:net:611:8)
+    at listOnTimeout (node:internal/timers:605:17)
+    at process.processTimers (node:internal/timers:541:7)
+
+Node.js v24.18.0
+2026-10-11T05:31:33Z rc=0 h12d13b-ui
+2026-10-11T05:41:32Z note: the first attempt for h12d13b-ui ended at the TLS leaf read (timeout 8 s, no page opened); the forward answered 401 to curl at 05:41:32; the window is run again
+2026-10-11T05:41:35Z start h12d13b-ui ui,done
+browser profile: <user-temp>\cpb\dc72d587 (46 characters, limit 120)
+{"cell":"ui","started":"2026-10-11T05:41:40.413Z","ended":"2026-10-11T05:45:27.097Z","ok":true}
+{"cell":"done","started":"2026-10-11T05:45:27.105Z","ended":"2026-10-11T05:45:27.108Z","ok":true}
+2026-10-11T05:45:27Z rc=0 h12d13b-ui
+2026-10-11T08:14:01Z runner stopped

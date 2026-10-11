@@ -1,0 +1,26 @@
+{
+  "note": "RemoteDisconnected: Remote end closed connection without response",
+  "outcome": "unknown",
+  "panel": "owner",
+  "purpose": "SystemUpdateOperation status (read-only poll)",
+  "request": {
+    "body": null,
+    "headers": [
+      [
+        "Accept",
+        "application/json"
+      ],
+      [
+        "Host",
+        "127.0.0.1:18931"
+      ],
+      [
+        "Cookie",
+        "[REDACTED]"
+      ]
+    ],
+    "method": "GET",
+    "path": "/api/v1/panel/update/status?request_id=30e1f5e5ec7613c64d6db5c5584d7336"
+  },
+  "response": null
+}

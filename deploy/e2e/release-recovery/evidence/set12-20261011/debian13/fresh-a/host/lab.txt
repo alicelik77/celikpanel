@@ -1,0 +1,2 @@
+lab=/var/tmp/cp-release-drill-s12-d13-a
+set12-debian13-20261011t042828z

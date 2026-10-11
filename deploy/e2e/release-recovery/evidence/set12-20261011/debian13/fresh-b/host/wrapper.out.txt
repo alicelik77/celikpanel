@@ -1,0 +1,25 @@
+Formatting '/var/tmp/cp-release-drill-s12-d13-b/cells/cb21dc255e0fac2f7238bb10/debian13/overlay.qcow2', fmt=qcow2 cluster_size=65536 extended_l2=off compression_type=zlib size=25769803776 backing_file=/var/tmp/cp-release-drill-s12-d13-b/images/debian-13-genericcloud-amd64-20260826-2582.qcow2 backing_fmt=qcow2 lazy_refcounts=off refcount_bits=16
+Formatting '/var/tmp/cp-release-drill-s12-d13-b/cells/cb21dc255e0fac2f7238bb10/arch/overlay.qcow2', fmt=qcow2 cluster_size=65536 extended_l2=off compression_type=zlib size=25769803776 backing_file=/var/tmp/cp-release-drill-s12-d13-b/images/Arch-Linux-x86_64-cloudimg-20260815.573966.qcow2 backing_fmt=qcow2 lazy_refcounts=off refcount_bits=16
+{"action": "prepared", "root": "/var/tmp/cp-release-drill-s12-d13-b", "cell_id": "release-recovery__de76348509c6da57", "ssh_ports": [4981, 4982]}
+{"action": "ready", "root": "/var/tmp/cp-release-drill-s12-d13-b", "nodes": {"arch": "verified-disposable-systemd-guest", "debian13": "verified-disposable-systemd-guest"}}
+{"action": "ready", "root": "/var/tmp/cp-release-drill-s12-d13-b", "nodes": {"arch": "verified-disposable-systemd-guest", "debian13": "verified-disposable-systemd-guest"}}
+{"step": "set6-name-pinning", "verdict": "passed", "reason": null}
+{"step": "preflight", "verdict": "passed", "reason": null}
+{"step": "origin", "verdict": "passed", "reason": null}
+{"step": "baseline-install", "verdict": "passed", "reason": null}
+{"step": "owner-login", "verdict": "passed", "reason": null}
+{"step": "license", "verdict": "passed", "reason": null}
+{"step": "setup", "verdict": "observed", "reason": null}
+{"step": "site", "verdict": "passed", "reason": null}
+{"step": "S0-sites", "verdict": "passed", "reason": null}
+{"step": "h-i-unchanged-start", "verdict": "passed", "reason": null}
+{"step": "RN-take-nginx-refused", "verdict": "passed", "reason": null}
+{"step": "A-probe-addresses", "verdict": "failed", "reason": "A: not this server's address: the answer carries validation_probe not_run, validation_unknown_reason, the address and the sentence"}
+{"step": "N-app-unit", "verdict": "passed", "reason": null}
+{"set12": "ready", "window": "ui", "hand": "/var/tmp/cp-set12-run/hand/h12d13b-ui", "port": 18981}
+{"step": "set12-browser-window", "verdict": "observed", "reason": null}
+{"step": "set6-name-pinning-at-the-end", "verdict": "passed", "reason": null}
+{"step": "collect", "verdict": "passed", "reason": null}
+{"cell_kind": "set12-fresh-install", "overall": "failed", "sections": {"A-probe-addresses": "failed", "N-app-unit": "passed", "RN-take-nginx-refused": "passed", "S0-sites": "passed", "h-i-unchanged-start": "passed"}}
+{"action": "stopped", "root": "/var/tmp/cp-release-drill-s12-d13-b", "evidence_retained": true}
+SET12 cell=set12-debian13 lab=/var/tmp/cp-release-drill-s12-d13-b driver_exit=1 evidence=/var/tmp/cp-release-drill-s12-d13-b/evidence/*/upd1

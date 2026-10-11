@@ -1,0 +1,18 @@
+; celikpanel-render v2 sha256=8f3644c3c81f7322adb9d4eaf96182b134d479954bdddeebf02aea1282bffb84
+; The PHP-FPM pool of site2, written by CelikPanel. A line you add or change here is kept:
+; CelikPanel then shows the difference and asks before writing this file again.
+; Buraya eklediğiniz ya da değiştirdiğiniz satır korunur; CelikPanel yeniden yazmadan önce sorar.
+[site2]
+user = set12_a_test
+group = set12_a_test
+listen = /run/php-fpm/php8.5-fpm-site2.sock
+listen.owner = http
+listen.group = http
+listen.mode = 0660
+pm = dynamic
+pm.max_children = 5
+pm.start_servers = 2
+pm.min_spare_servers = 1
+pm.max_spare_servers = 3
+pm.max_requests = 500
+chdir = /

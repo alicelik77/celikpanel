@@ -1,0 +1,19 @@
+# set12 pruning at staging (2026-10-11T08:16:54Z): run a's window showed the server-setup page in every picture (the harness's leave-setup step did not reopen the plan; README). Kept: pool-en-desktop-1-domains.png, pool-tr-phone-2-config.png and every .txt (page text) and events.jsonl entry. Removed (same page, sha256 listed):
+a5c838e2e896a479f5af8f84801ad2c404d5fa4d813b4791af04e0ec586d01ae *apply-en-desktop-1-domains.png
+a5c838e2e896a479f5af8f84801ad2c404d5fa4d813b4791af04e0ec586d01ae *apply-en-desktop-2-config.png
+c76d582539016aea4c95d093f78196a85a0ef8a1179f05f8f0fc5dd3bc14eb01 *apply-en-phone-1-domains.png
+c76d582539016aea4c95d093f78196a85a0ef8a1179f05f8f0fc5dd3bc14eb01 *apply-en-phone-2-config.png
+82f7f57518ee69459b22b5c569b27f09fc1d1783055762adaac85064445e6022 *apply-tr-desktop-1-domains.png
+82f7f57518ee69459b22b5c569b27f09fc1d1783055762adaac85064445e6022 *apply-tr-desktop-2-config.png
+5ac30735fd506c53f8607598158c4ea9c2c364ce1ed685c49bfadeeb2e60ab3b *apply-tr-phone-1-domains.png
+5ac30735fd506c53f8607598158c4ea9c2c364ce1ed685c49bfadeeb2e60ab3b *apply-tr-phone-2-config.png
+a5c838e2e896a479f5af8f84801ad2c404d5fa4d813b4791af04e0ec586d01ae *pool-en-desktop-2-config.png
+c76d582539016aea4c95d093f78196a85a0ef8a1179f05f8f0fc5dd3bc14eb01 *pool-en-phone-1-domains.png
+c76d582539016aea4c95d093f78196a85a0ef8a1179f05f8f0fc5dd3bc14eb01 *pool-en-phone-2-config.png
+82f7f57518ee69459b22b5c569b27f09fc1d1783055762adaac85064445e6022 *pool-tr-desktop-1-domains.png
+82f7f57518ee69459b22b5c569b27f09fc1d1783055762adaac85064445e6022 *pool-tr-desktop-2-config.png
+5ac30735fd506c53f8607598158c4ea9c2c364ce1ed685c49bfadeeb2e60ab3b *pool-tr-phone-1-domains.png
+a5c838e2e896a479f5af8f84801ad2c404d5fa4d813b4791af04e0ec586d01ae *restore-1-before-take.png
+a5c838e2e896a479f5af8f84801ad2c404d5fa4d813b4791af04e0ec586d01ae *restore-2-unconfirmed.png
+a5c838e2e896a479f5af8f84801ad2c404d5fa4d813b4791af04e0ec586d01ae *restore-3-confirmed.png
+a5c838e2e896a479f5af8f84801ad2c404d5fa4d813b4791af04e0ec586d01ae *sw-after-reload.png

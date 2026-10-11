@@ -1,0 +1,1 @@
+2026-10-11T06:00:48Z before upd1-ubuntu-good s12-g82-ub (guest start) free_GiB=62.5 free_bytes=67112632320 (Get-PSDrive C reading of 2026-10-11T06:00:47Z, 1s old) allowed=yes

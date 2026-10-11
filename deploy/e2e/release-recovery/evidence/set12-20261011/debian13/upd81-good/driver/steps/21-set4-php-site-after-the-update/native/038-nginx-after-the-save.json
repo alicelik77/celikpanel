@@ -1,0 +1,87 @@
+{
+  "at": "2026-10-11T07:31:50Z",
+  "domain": "set4-upd-php.test",
+  "files": [
+    {
+      "bytes": 2185,
+      "ctime_ns": 1791703804989783773,
+      "fastcgi_pass": [
+        "unix:/var/run/php/php8.4-fpm-site5.sock"
+      ],
+      "includes": [
+        "/etc/nginx/celikpanel-managed.d/set4-upd-php.test/*.conf",
+        "fastcgi.conf",
+        "fastcgi_params",
+        "/etc/nginx/celikpanel-sites.d/set4-upd-php.test/*.conf"
+      ],
+      "inode": 141315,
+      "kind": "file",
+      "mtime_ns": 1791703804989783773,
+      "names_the_php_snippet": false,
+      "path": "/etc/nginx/sites-available/set4-upd-php.test.conf",
+      "php_location_lines": [
+        "fastcgi_split_path_info ^(.+?\\.php)(/.*)$;",
+        "try_files $fastcgi_script_name =404;",
+        "set $path_info $fastcgi_path_info;",
+        "fastcgi_param PATH_INFO $path_info;",
+        "fastcgi_index index.php;",
+        "include fastcgi.conf;",
+        "fastcgi_pass unix:/var/run/php/php8.4-fpm-site5.sock;",
+        "fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;",
+        "include fastcgi_params;"
+      ],
+      "sha256": "183669bb17f770a8fe0ae539c2771c88f50444b8e1e50bc5ab2990f31f3526f3",
+      "text": "# celikpanel-render v2 sha256=f2712a0849b4fe41ff8bb4b0c543242d597384ff7e254f47f2b148c9383bf22c\n# Nginx vhost for set4-upd-php.test\n# Written by CelikPanel. Put your own additions in /etc/nginx/celikpanel-sites.d/set4-upd-php.test/*.conf;\n# CelikPanel never writes there. If you change this file, CelikPanel keeps\n# your file and asks you before it replaces it. Keep the lines that include\n# /etc/nginx/celikpanel-managed.d/set4-upd-php.test: that directory is CelikPanel's (certificate\n# validation) and CelikPanel writes there without touching this file.\n# CelikPanel yazdı. Kendi eklemeleriniz /etc/nginx/celikpanel-sites.d/set4-upd-php.test/*.conf içine;\n# CelikPanel oraya hiç yazmaz. Bu dosyayı değiştirirseniz CelikPanel\n# dosyanızı korur ve değiştirmeden önce size sorar. /etc/nginx/celikpanel-managed.d/set4-upd-php.test\n# satırlarını koruyun: o dizin CelikPanel'indir (sertifika doğrulaması).\n# Site ID: 5 · Project type: php\nserver {\n    listen 80;\n    listen [::]:80;\n    server_name set4-upd-php.test www.set4-upd-php.test;\n\n    access_log /var/log/nginx/set4-upd-php.test-access.log;\n    error_log /var/log/nginx/set4-upd-php.test-error.log;\n\n    # CelikPanel's own parts of this site (certificate validation) / CelikPanel'in parçaları\n    include /etc/nginx/celikpanel-managed.d/set4-upd-php.test/*.conf;\n\n    root /var/www/celikpanel/subscriptions/2/sites/5/public_html;\n    index index.php index.html index.htm;\n\n    location / {\n\n        try_files $uri $uri/ /index.php?$query_string;\n    }\n    location ~ \\.php$ {\n        fastcgi_split_path_info ^(.+?\\.php)(/.*)$;\n        try_files $fastcgi_script_name =404;\n        set $path_info $fastcgi_path_info;\n        fastcgi_param PATH_INFO $path_info;\n        fastcgi_index index.php;\n        include fastcgi.conf;\n        fastcgi_pass unix:/var/run/php/php8.4-fpm-site5.sock;\n        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;\n        include fastcgi_params;\n    }\n    location ~ /\\.(?!well-known).* {\n        deny all;\n    }\n\n    # Your additions for this site (server context) / Bu site için eklemeleriniz\n    include /etc/nginx/celikpanel-sites.d/set4-upd-php.test/*.conf;\n}\n"
+    },
+    {
+      "bytes": 592,
+      "ctime_ns": 1791703805017783592,
+      "fastcgi_pass": [],
+      "includes": [],
+      "inode": 262898,
+      "kind": "file",
+      "mtime_ns": 1791703805013783618,
+      "names_the_php_snippet": false,
+      "path": "/etc/nginx/celikpanel-managed.d/set4-upd-php.test/acme-http-01.conf",
+      "php_location_lines": [],
+      "sha256": "a6b7d8493c6636eac2ef66de5fe5883db58a25914b8af9d350ba5ec500763cdb",
+      "text": "# celikpanel-render v2 sha256=e4578e007d4c7bb40b5c37718649541a6ddb4dc230eaaaac231c9b93ab01e102\n# The ACME HTTP-01 challenge location of set4-upd-php.test, written by CelikPanel.\n# This directory is CelikPanel's; put your own additions in /etc/nginx/celikpanel-sites.d/set4-upd-php.test/*.conf.\n# Doğrulama konumu; bu dizin CelikPanel'indir, kendi eklemeleriniz /etc/nginx/celikpanel-sites.d/set4-upd-php.test içine.\nlocation ^~ /.well-known/acme-challenge/ {\n    root /var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/5;\n    default_type text/plain;\n    try_files $uri =404;\n}\n"
+    },
+    {
+      "kind": "symlink",
+      "path": "/etc/nginx/sites-enabled/set4-upd-php.test.conf",
+      "target": "/etc/nginx/sites-available/set4-upd-php.test.conf",
+      "target_exists": true
+    }
+  ],
+  "mode": "read-nginx",
+  "nginx_test": {
+    "at": "2026-10-11T07:31:50Z",
+    "output": "nginx: the configuration file /etc/nginx/nginx.conf syntax is ok\nnginx: configuration file /etc/nginx/nginx.conf test is successful\n",
+    "returncode": 0,
+    "status": "ok"
+  },
+  "owner_action": false,
+  "schema": "celikpanel/set4-native/v1",
+  "unit": {
+    "ActiveEnterTimestamp": "Sun 2026-10-11 07:21:49 UTC",
+    "ActiveExitTimestamp": "",
+    "ActiveState": "active",
+    "ExecMainPID": "6057",
+    "ExecMainStartTimestamp": "Sun 2026-10-11 07:21:49 UTC",
+    "ExecMainStatus": "0",
+    "ExecReload": "{ path=/usr/sbin/nginx ; argv[]=/usr/sbin/nginx -g daemon on; master_process on; -s reload ; ignore_errors=no ; start_time=[n/a] ; stop_time=[n/a] ; pid=0 ; code=(null) ; status=0/0 }",
+    "FragmentPath": "/usr/lib/systemd/system/nginx.service",
+    "InactiveEnterTimestamp": "",
+    "InactiveExitTimestamp": "Sun 2026-10-11 07:21:49 UTC",
+    "InvocationID": "b58abfa75f01400f820c97544a1d5b03",
+    "LoadState": "loaded",
+    "MainPID": "6057",
+    "NRestarts": "0",
+    "ReloadResult": "success",
+    "Result": "success",
+    "StateChangeTimestamp": "Sun 2026-10-11 07:30:05 UTC",
+    "SubState": "running",
+    "Type": "forking"
+  }
+}

@@ -1,0 +1,209 @@
+{
+  "active_before_stop": {
+    "celikpanel-lab-set11-fswatch": "active",
+    "celikpanel-lab-set11-netwatch": "active"
+  },
+  "at": "2026-10-11T05:06:28Z",
+  "epoch": 1791695188.9097614,
+  "fs": [
+    {
+      "errno": 0,
+      "t": 1791695185.0599432,
+      "watch": "/var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge",
+      "wd": 1
+    },
+    {
+      "errno": 0,
+      "t": 1791695185.0599713,
+      "watch": "/etc/nginx/celikpanel-managed.d/set12-a.test",
+      "wd": 2
+    },
+    {
+      "errno": 0,
+      "t": 1791695185.059986,
+      "watch": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+      "wd": 3
+    },
+    {
+      "errno": 0,
+      "t": 1791695185.0600119,
+      "watch": "/etc/nginx/sites-available",
+      "wd": 4
+    },
+    {
+      "dir": "/var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge",
+      "events": [
+        "attrib"
+      ],
+      "gid": 0,
+      "inode": 533496,
+      "mode": "0o755",
+      "name": "",
+      "regular": false,
+      "size": 4096,
+      "t": 1791695186.5996196,
+      "uid": 0
+    },
+    {
+      "bytes": "celikpanel validation probe 6b924f07a735feaac3c2deb5b776e30e\n",
+      "dir": "/var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge",
+      "events": [
+        "create"
+      ],
+      "gid": 988,
+      "inode": 533533,
+      "mode": "0o644",
+      "name": "celikpanel-probe-3b6caf04003348d4120df6f2dc147da2",
+      "regular": true,
+      "size": 61,
+      "t": 1791695186.600608,
+      "uid": 0
+    },
+    {
+      "bytes": "celikpanel validation probe 6b924f07a735feaac3c2deb5b776e30e\n",
+      "dir": "/var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge",
+      "events": [
+        "modify"
+      ],
+      "gid": 988,
+      "inode": 533533,
+      "mode": "0o644",
+      "name": "celikpanel-probe-3b6caf04003348d4120df6f2dc147da2",
+      "regular": true,
+      "size": 61,
+      "t": 1791695186.600608,
+      "uid": 0
+    },
+    {
+      "bytes": "celikpanel validation probe 6b924f07a735feaac3c2deb5b776e30e\n",
+      "dir": "/var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge",
+      "events": [
+        "close_write"
+      ],
+      "gid": 988,
+      "inode": 533533,
+      "mode": "0o644",
+      "name": "celikpanel-probe-3b6caf04003348d4120df6f2dc147da2",
+      "regular": true,
+      "size": 61,
+      "t": 1791695186.600608,
+      "uid": 0
+    },
+    {
+      "bytes": "celikpanel validation probe 6b924f07a735feaac3c2deb5b776e30e\n",
+      "dir": "/var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge",
+      "events": [
+        "attrib"
+      ],
+      "gid": 988,
+      "inode": 533533,
+      "mode": "0o644",
+      "name": "celikpanel-probe-3b6caf04003348d4120df6f2dc147da2",
+      "regular": true,
+      "size": 61,
+      "t": 1791695186.600608,
+      "uid": 0
+    },
+    {
+      "dir": "/var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge",
+      "events": [
+        "delete"
+      ],
+      "lstat": "FileNotFoundError",
+      "name": "celikpanel-probe-3b6caf04003348d4120df6f2dc147da2",
+      "t": 1791695186.6036994
+    },
+    {
+      "dir": "/var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge",
+      "events": [
+        "attrib"
+      ],
+      "gid": 0,
+      "inode": 533496,
+      "mode": "0o755",
+      "name": "",
+      "regular": false,
+      "size": 4096,
+      "t": 1791695186.6144383,
+      "uid": 0
+    }
+  ],
+  "mode": "watch-stop",
+  "net": [
+    {
+      "started": "AF_PACKET on lo",
+      "t": 1791695185.081227
+    },
+    {
+      "dport": 80,
+      "dst": "::1",
+      "sport": 37618,
+      "src": "::1",
+      "syn": true,
+      "t": 1791695186.6012976
+    },
+    {
+      "host": "set12-a.test",
+      "request": "GET /.well-known/acme-challenge/celikpanel-probe-3b6caf04003348d4120df6f2dc147da2 HTTP/1.1",
+      "sport": 37618,
+      "src": "::1",
+      "t": 1791695186.6019297,
+      "user_agent": "Go-http-client/1.1"
+    },
+    {
+      "answer": "HTTP/1.1 200 OK",
+      "body_start": "celikpanel validation probe 6b924f07a735feaac3c2deb5b776e30e\n",
+      "location": null,
+      "t": 1791695186.602579,
+      "to_port": 37618
+    },
+    {
+      "dport": 80,
+      "dst": "::1",
+      "sport": 37620,
+      "src": "::1",
+      "syn": true,
+      "t": 1791695186.6030622
+    },
+    {
+      "host": "www.set12-a.test",
+      "request": "GET /.well-known/acme-challenge/celikpanel-probe-3b6caf04003348d4120df6f2dc147da2 HTTP/1.1",
+      "sport": 37620,
+      "src": "::1",
+      "t": 1791695186.6052516,
+      "user_agent": "Go-http-client/1.1"
+    },
+    {
+      "answer": "HTTP/1.1 200 OK",
+      "body_start": "celikpanel validation probe 6b924f07a735feaac3c2deb5b776e30e\n",
+      "location": null,
+      "t": 1791695186.60547,
+      "to_port": 37620
+    },
+    {
+      "dport": 443,
+      "dst": "::1",
+      "sport": 53276,
+      "src": "::1",
+      "syn": true,
+      "t": 1791695187.0360808
+    },
+    {
+      "rst_from": 443,
+      "src": "::1",
+      "t": 1791695187.0362792,
+      "to_port": 53276
+    },
+    {
+      "dport": 443,
+      "dst": "127.0.0.1",
+      "sport": 44522,
+      "src": "127.0.0.1",
+      "syn": true,
+      "t": 1791695187.036381
+    }
+  ],
+  "owner_action": false,
+  "schema": "celikpanel/set11-native/v1",
+  "tag": "a-v6"
+}

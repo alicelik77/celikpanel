@@ -1,0 +1,2 @@
+lab=/var/tmp/cp-release-drill-s12-d82-ub
+upd1-ubuntu-defective-20261011t064655z

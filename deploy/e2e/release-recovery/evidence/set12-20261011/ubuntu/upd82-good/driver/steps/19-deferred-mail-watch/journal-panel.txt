@@ -1,0 +1,309 @@
+2026-10-11T06:02:06.943064+00:00 dns-ubuntu systemd[1]: Starting celikpanel-panel.service - CelikPanel web panel...
+2026-10-11T06:02:06.961913+00:00 dns-ubuntu systemd[1]: Started celikpanel-panel.service - CelikPanel web panel.
+2026-10-11T06:02:07.197037+00:00 dns-ubuntu panel[7778]: 2026/10/11 06:02:07 Starting CelikPanel Backend...
+2026-10-11T06:02:07.204499+00:00 dns-ubuntu panel[7778]: 2026/10/11 06:02:07 ACCEPTANCE FIXTURE — NOT FOR PRODUCTION: this panel was built with the acceptance_license test tag; it never contacts the license service and accepts only the acceptance fixture license on a disposable acceptance guest (guest: verified)
+2026-10-11T06:02:07.206026+00:00 dns-ubuntu panel[7778]: 2026/10/11 06:02:07 Panel startup listener active on :2083 (HTTPS; application gated)
+2026-10-11T06:02:07.207570+00:00 dns-ubuntu panel[7778]: 2026/10/11 06:02:07 Connected to Agent RPC; preparing normal management access
+2026-10-11T06:02:07.235490+00:00 dns-ubuntu panel[7778]: 2026/10/11 06:02:07 certificate startup reconcile: certificate dependents: publish full mail SNI snapshot: mail server hostname is not a valid FQDN: invalid hostname "dns-ubuntu": a fully qualified DNS name is required; preserve pending outbox: <nil>
+2026-10-11T06:02:07.237753+00:00 dns-ubuntu panel[7778]: 2026/10/11 06:02:07 milter chain: nothing to wire at startup: no mail server is installed on this server, so there is no Postfix milter chain to compose
+2026-10-11T06:02:07.239474+00:00 dns-ubuntu panel[7778]: 2026/10/11 06:02:07 Panel ready on :2083 (HTTPS)
+2026-10-11T06:02:07.981153+00:00 dns-ubuntu systemd[1]: Stopping celikpanel-panel.service - CelikPanel web panel...
+2026-10-11T06:02:07.996933+00:00 dns-ubuntu systemd[1]: celikpanel-panel.service: Deactivated successfully.
+2026-10-11T06:02:07.997148+00:00 dns-ubuntu systemd[1]: Stopped celikpanel-panel.service - CelikPanel web panel.
+2026-10-11T06:02:08.101967+00:00 dns-ubuntu systemd[1]: Starting celikpanel-panel.service - CelikPanel web panel...
+2026-10-11T06:02:08.126986+00:00 dns-ubuntu systemd[1]: Started celikpanel-panel.service - CelikPanel web panel.
+2026-10-11T06:02:08.333495+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:02:08 Starting CelikPanel Backend...
+2026-10-11T06:02:08.342106+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:02:08 ACCEPTANCE FIXTURE — NOT FOR PRODUCTION: this panel was built with the acceptance_license test tag; it never contacts the license service and accepts only the acceptance fixture license on a disposable acceptance guest (guest: verified)
+2026-10-11T06:02:08.342872+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:02:08 Panel startup listener active on :2083 (HTTPS; application gated)
+2026-10-11T06:02:08.343583+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:02:08 Connected to Agent RPC; preparing normal management access
+2026-10-11T06:02:08.355319+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:02:08 certificate startup reconcile: certificate dependents: publish full mail SNI snapshot: mail server hostname is not a valid FQDN: invalid hostname "dns-ubuntu": a fully qualified DNS name is required; preserve pending outbox: <nil>
+2026-10-11T06:02:08.357731+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:02:08 milter chain: nothing to wire at startup: no mail server is installed on this server, so there is no Postfix milter chain to compose
+2026-10-11T06:02:08.360221+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:02:08 Panel ready on :2083 (HTTPS)
+2026-10-11T06:02:22.607445+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:02:22 http: TLS handshake error from 127.0.0.1:43490: EOF
+2026-10-11T06:02:22.916709+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:02:22 http: TLS handshake error from 127.0.0.1:43512: EOF
+2026-10-11T06:02:23.181090+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:02:23 http: TLS handshake error from 127.0.0.1:43546: EOF
+2026-10-11T06:02:23.198161+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:02:23 http: TLS handshake error from 127.0.0.1:43566: EOF
+2026-10-11T06:02:23.214194+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:02:23 http: TLS handshake error from 127.0.0.1:43588: EOF
+2026-10-11T06:02:23.229815+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:02:23 http: TLS handshake error from 127.0.0.1:43608: EOF
+2026-10-11T06:02:23.253889+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:02:23 http: TLS handshake error from 127.0.0.1:43620: EOF
+2026-10-11T06:02:23.267829+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:02:23 http: TLS handshake error from 127.0.0.1:43638: EOF
+2026-10-11T06:02:23.284907+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:02:23 http: TLS handshake error from 127.0.0.1:43652: EOF
+2026-10-11T06:02:23.300895+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:02:23 http: TLS handshake error from 127.0.0.1:43674: EOF
+2026-10-11T06:07:01.386125+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:07:01 http: TLS handshake error from 127.0.0.1:37972: EOF
+2026-10-11T06:07:01.654402+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:07:01 http: TLS handshake error from 127.0.0.1:37990: EOF
+2026-10-11T06:07:01.676183+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:07:01 http: TLS handshake error from 127.0.0.1:38000: EOF
+2026-10-11T06:07:02.824428+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:07:02 http: TLS handshake error from 127.0.0.1:38012: EOF
+2026-10-11T06:07:03.819822+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:07:03 http: TLS handshake error from 127.0.0.1:38040: EOF
+2026-10-11T06:07:06.957554+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:07:06 http: TLS handshake error from 127.0.0.1:52226: EOF
+2026-10-11T06:07:07.315958+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:07:07 http: TLS handshake error from 127.0.0.1:52230: EOF
+2026-10-11T06:07:12.339810+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:07:12 http: TLS handshake error from 127.0.0.1:52244: EOF
+2026-10-11T06:07:17.651399+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:07:17 http: TLS handshake error from 127.0.0.1:39288: EOF
+2026-10-11T06:07:17.936372+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:07:17 http: TLS handshake error from 127.0.0.1:39302: EOF
+2026-10-11T06:07:22.955035+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:07:22 http: TLS handshake error from 127.0.0.1:39312: EOF
+2026-10-11T06:07:28.255338+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:07:28 http: TLS handshake error from 127.0.0.1:55376: EOF
+2026-10-11T06:07:28.545123+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:07:28 http: TLS handshake error from 127.0.0.1:55386: EOF
+2026-10-11T06:07:33.561185+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:07:33 http: TLS handshake error from 127.0.0.1:55402: EOF
+2026-10-11T06:07:41.982134+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:07:41 http: TLS handshake error from 127.0.0.1:38966: EOF
+2026-10-11T06:07:42.267105+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:07:42 http: TLS handshake error from 127.0.0.1:38978: EOF
+2026-10-11T06:07:47.283784+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:07:47 http: TLS handshake error from 127.0.0.1:57538: EOF
+2026-10-11T06:07:52.602428+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:07:52 http: TLS handshake error from 127.0.0.1:57554: EOF
+2026-10-11T06:07:52.926976+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:07:52 http: TLS handshake error from 127.0.0.1:57574: EOF
+2026-10-11T06:07:57.944237+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:07:57 http: TLS handshake error from 127.0.0.1:50352: EOF
+2026-10-11T06:08:03.238979+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:08:03 http: TLS handshake error from 127.0.0.1:50378: EOF
+2026-10-11T06:08:03.532158+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:08:03 http: TLS handshake error from 127.0.0.1:50394: EOF
+2026-10-11T06:08:08.550113+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:08:08 http: TLS handshake error from 127.0.0.1:41854: EOF
+2026-10-11T06:08:14.173616+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:08:14 http: TLS handshake error from 127.0.0.1:41880: EOF
+2026-10-11T06:08:14.451356+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:08:14 http: TLS handshake error from 127.0.0.1:41898: EOF
+2026-10-11T06:08:19.476516+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:08:19 http: TLS handshake error from 127.0.0.1:59982: EOF
+2026-10-11T06:08:24.744914+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:08:24 http: TLS handshake error from 127.0.0.1:60002: EOF
+2026-10-11T06:08:25.010592+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:08:25 http: TLS handshake error from 127.0.0.1:60034: EOF
+2026-10-11T06:08:30.029973+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:08:30 http: TLS handshake error from 127.0.0.1:33862: EOF
+2026-10-11T06:08:35.320644+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:08:35 http: TLS handshake error from 127.0.0.1:33892: EOF
+2026-10-11T06:08:35.620829+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:08:35 http: TLS handshake error from 127.0.0.1:33922: EOF
+2026-10-11T06:08:40.640228+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:08:40 http: TLS handshake error from 127.0.0.1:36992: EOF
+2026-10-11T06:08:46.536852+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:08:46 http: TLS handshake error from 127.0.0.1:56790: EOF
+2026-10-11T06:08:46.806018+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:08:46 http: TLS handshake error from 127.0.0.1:56808: EOF
+2026-10-11T06:08:51.823060+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:08:51 http: TLS handshake error from 127.0.0.1:56816: EOF
+2026-10-11T06:08:57.367378+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:08:57 http: TLS handshake error from 127.0.0.1:50204: EOF
+2026-10-11T06:08:57.657836+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:08:57 http: TLS handshake error from 127.0.0.1:50224: EOF
+2026-10-11T06:09:02.678467+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:09:02 http: TLS handshake error from 127.0.0.1:50244: EOF
+2026-10-11T06:09:07.976513+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:09:07 http: TLS handshake error from 127.0.0.1:50212: EOF
+2026-10-11T06:09:08.260990+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:09:08 http: TLS handshake error from 127.0.0.1:50242: EOF
+2026-10-11T06:09:13.280715+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:09:13 http: TLS handshake error from 127.0.0.1:50260: EOF
+2026-10-11T06:09:22.428576+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:09:22 http: TLS handshake error from 127.0.0.1:53890: EOF
+2026-10-11T06:09:24.212235+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:09:24 http: TLS handshake error from 127.0.0.1:53914: EOF
+2026-10-11T06:09:29.229496+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:09:29 http: TLS handshake error from 127.0.0.1:49008: EOF
+2026-10-11T06:09:34.574515+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:09:34 http: TLS handshake error from 127.0.0.1:49030: EOF
+2026-10-11T06:09:34.886011+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:09:34 http: TLS handshake error from 127.0.0.1:49060: EOF
+2026-10-11T06:09:39.907333+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:09:39 http: TLS handshake error from 127.0.0.1:52524: EOF
+2026-10-11T06:09:45.215933+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:09:45 http: TLS handshake error from 127.0.0.1:52540: EOF
+2026-10-11T06:09:45.505493+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:09:45 http: TLS handshake error from 127.0.0.1:52552: EOF
+2026-10-11T06:09:51.108609+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:09:51 http: TLS handshake error from 127.0.0.1:54094: EOF
+2026-10-11T06:09:56.417984+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:09:56 http: TLS handshake error from 127.0.0.1:37728: EOF
+2026-10-11T06:09:56.698368+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:09:56 http: TLS handshake error from 127.0.0.1:37742: EOF
+2026-10-11T06:10:01.715326+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:10:01 http: TLS handshake error from 127.0.0.1:37766: EOF
+2026-10-11T06:10:09.140793+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:10:09 http: TLS handshake error from 127.0.0.1:41866: EOF
+2026-10-11T06:10:09.432354+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:10:09 http: TLS handshake error from 127.0.0.1:41882: EOF
+2026-10-11T06:10:14.448440+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:10:14 http: TLS handshake error from 127.0.0.1:41894: EOF
+2026-10-11T06:10:21.524722+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:10:21 http: TLS handshake error from 127.0.0.1:52892: EOF
+2026-10-11T06:10:23.093124+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:10:23 http: TLS handshake error from 127.0.0.1:52910: EOF
+2026-10-11T06:10:28.423406+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:10:28 http: TLS handshake error from 127.0.0.1:36888: EOF
+2026-10-11T06:10:35.802132+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:10:35 http: TLS handshake error from 127.0.0.1:38500: EOF
+2026-10-11T06:10:36.141802+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:10:36 http: TLS handshake error from 127.0.0.1:38524: EOF
+2026-10-11T06:10:41.161054+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:10:41 http: TLS handshake error from 127.0.0.1:38534: EOF
+2026-10-11T06:10:47.364156+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:10:47 http: TLS handshake error from 127.0.0.1:37952: EOF
+2026-10-11T06:10:47.728552+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:10:47 http: TLS handshake error from 127.0.0.1:37964: EOF
+2026-10-11T06:10:52.746995+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:10:52 http: TLS handshake error from 127.0.0.1:37972: EOF
+2026-10-11T06:10:58.314421+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:10:58 http: TLS handshake error from 127.0.0.1:39430: EOF
+2026-10-11T06:10:58.623597+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:10:58 http: TLS handshake error from 127.0.0.1:39442: EOF
+2026-10-11T06:11:03.957722+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:11:03 http: TLS handshake error from 127.0.0.1:39466: EOF
+2026-10-11T06:11:09.255485+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:11:09 http: TLS handshake error from 127.0.0.1:50038: EOF
+2026-10-11T06:11:09.556332+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:11:09 http: TLS handshake error from 127.0.0.1:50068: EOF
+2026-10-11T06:11:14.575693+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:11:14 http: TLS handshake error from 127.0.0.1:50080: EOF
+2026-10-11T06:11:19.876072+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:11:19 http: TLS handshake error from 127.0.0.1:37056: EOF
+2026-10-11T06:11:20.194872+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:11:20 http: TLS handshake error from 127.0.0.1:37068: EOF
+2026-10-11T06:11:25.212959+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:11:25 http: TLS handshake error from 127.0.0.1:37082: EOF
+2026-10-11T06:11:30.545413+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:11:30 http: TLS handshake error from 127.0.0.1:60480: EOF
+2026-10-11T06:11:30.844885+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:11:30 http: TLS handshake error from 127.0.0.1:60496: EOF
+2026-10-11T06:11:36.166422+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:11:36 http: TLS handshake error from 127.0.0.1:48422: EOF
+2026-10-11T06:11:41.432107+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:11:41 http: TLS handshake error from 127.0.0.1:48442: EOF
+2026-10-11T06:11:41.724379+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:11:41 http: TLS handshake error from 127.0.0.1:48466: EOF
+2026-10-11T06:11:46.743328+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:11:46 http: TLS handshake error from 127.0.0.1:58794: EOF
+2026-10-11T06:11:52.015590+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:11:52 http: TLS handshake error from 127.0.0.1:58812: EOF
+2026-10-11T06:11:52.311228+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:11:52 http: TLS handshake error from 127.0.0.1:58830: EOF
+2026-10-11T06:11:57.330179+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:11:57 http: TLS handshake error from 127.0.0.1:53440: EOF
+2026-10-11T06:12:02.867065+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:12:02 http: TLS handshake error from 127.0.0.1:53446: EOF
+2026-10-11T06:12:03.164464+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:12:03 http: TLS handshake error from 127.0.0.1:53466: EOF
+2026-10-11T06:12:08.503173+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:12:08 http: TLS handshake error from 127.0.0.1:47904: EOF
+2026-10-11T06:12:13.788221+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:12:13 http: TLS handshake error from 127.0.0.1:47912: EOF
+2026-10-11T06:12:14.074076+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:12:14 http: TLS handshake error from 127.0.0.1:47930: EOF
+2026-10-11T06:12:19.091130+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:12:19 http: TLS handshake error from 127.0.0.1:50964: EOF
+2026-10-11T06:12:24.360116+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:12:24 http: TLS handshake error from 127.0.0.1:50974: EOF
+2026-10-11T06:12:24.650893+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:12:24 http: TLS handshake error from 127.0.0.1:50978: EOF
+2026-10-11T06:12:29.667199+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:12:29 http: TLS handshake error from 127.0.0.1:50194: EOF
+2026-10-11T06:12:34.940070+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:12:34 http: TLS handshake error from 127.0.0.1:50216: EOF
+2026-10-11T06:12:35.234640+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:12:35 http: TLS handshake error from 127.0.0.1:50238: EOF
+2026-10-11T06:12:40.551621+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:12:40 http: TLS handshake error from 127.0.0.1:46780: EOF
+2026-10-11T06:12:45.826171+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:12:45 http: TLS handshake error from 127.0.0.1:38518: EOF
+2026-10-11T06:12:46.110267+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:12:46 http: TLS handshake error from 127.0.0.1:38536: EOF
+2026-10-11T06:12:51.127861+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:12:51 http: TLS handshake error from 127.0.0.1:38544: EOF
+2026-10-11T06:12:56.413545+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:12:56 http: TLS handshake error from 127.0.0.1:35826: EOF
+2026-10-11T06:12:56.701721+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:12:56 http: TLS handshake error from 127.0.0.1:35846: EOF
+2026-10-11T06:13:01.720646+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:13:01 http: TLS handshake error from 127.0.0.1:35856: EOF
+2026-10-11T06:13:07.258989+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:13:07 http: TLS handshake error from 127.0.0.1:49090: EOF
+2026-10-11T06:13:07.545648+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:13:07 http: TLS handshake error from 127.0.0.1:49102: EOF
+2026-10-11T06:13:12.863224+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:13:12 http: TLS handshake error from 127.0.0.1:49124: EOF
+2026-10-11T06:13:18.142967+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:13:18 http: TLS handshake error from 127.0.0.1:51506: EOF
+2026-10-11T06:13:18.433527+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:13:18 http: TLS handshake error from 127.0.0.1:51534: EOF
+2026-10-11T06:13:23.452396+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:13:23 http: TLS handshake error from 127.0.0.1:51554: EOF
+2026-10-11T06:13:28.743175+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:13:28 http: TLS handshake error from 127.0.0.1:55182: EOF
+2026-10-11T06:13:29.029029+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:13:29 http: TLS handshake error from 127.0.0.1:55196: EOF
+2026-10-11T06:13:34.047062+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:13:34 http: TLS handshake error from 127.0.0.1:55212: EOF
+2026-10-11T06:13:34.316852+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:13:34 http: TLS handshake error from 127.0.0.1:55232: EOF
+2026-10-11T06:16:31.119895+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:16:31 http: TLS handshake error from 127.0.0.1:59746: EOF
+2026-10-11T06:16:32.786272+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:16:32 http: TLS handshake error from 127.0.0.1:59760: EOF
+2026-10-11T06:16:32.805209+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:16:32 http: TLS handshake error from 127.0.0.1:59774: EOF
+2026-10-11T06:16:32.817282+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:16:32 http: TLS handshake error from 127.0.0.1:59792: EOF
+2026-10-11T06:16:32.829797+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:16:32 http: TLS handshake error from 127.0.0.1:59804: EOF
+2026-10-11T06:16:32.857871+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:16:32 http: TLS handshake error from 127.0.0.1:59836: EOF
+2026-10-11T06:16:32.938556+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:16:32 http: TLS handshake error from 127.0.0.1:59850: EOF
+2026-10-11T06:16:32.950032+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:16:32 http: TLS handshake error from 127.0.0.1:59866: EOF
+2026-10-11T06:16:32.966780+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:16:32 http: TLS handshake error from 127.0.0.1:59876: EOF
+2026-10-11T06:16:32.986853+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:16:32 http: TLS handshake error from 127.0.0.1:59898: EOF
+2026-10-11T06:16:33.001320+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:16:33 http: TLS handshake error from 127.0.0.1:59920: EOF
+2026-10-11T06:16:34.435004+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:16:34 http: TLS handshake error from 127.0.0.1:59930: EOF
+2026-10-11T06:16:36.241189+00:00 dns-ubuntu panel[7841]: 2026/10/11 06:16:36 http: TLS handshake error from 127.0.0.1:49902: EOF
+2026-10-11T06:16:38.275614+00:00 dns-ubuntu systemd[1]: Stopping celikpanel-panel.service - CelikPanel web panel...
+2026-10-11T06:16:38.284942+00:00 dns-ubuntu systemd[1]: celikpanel-panel.service: Deactivated successfully.
+2026-10-11T06:16:38.285187+00:00 dns-ubuntu systemd[1]: Stopped celikpanel-panel.service - CelikPanel web panel.
+2026-10-11T06:16:38.285247+00:00 dns-ubuntu systemd[1]: celikpanel-panel.service: Consumed 2.234s CPU time, 143.1M memory peak, 0B memory swap peak.
+2026-10-11T06:16:38.293086+00:00 dns-ubuntu systemd[1]: Starting celikpanel-panel.service - CelikPanel web panel...
+2026-10-11T06:16:38.321884+00:00 dns-ubuntu systemd[1]: Started celikpanel-panel.service - CelikPanel web panel.
+2026-10-11T06:16:38.541365+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:16:38 Starting CelikPanel Backend...
+2026-10-11T06:16:38.550170+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:16:38 ACCEPTANCE FIXTURE — NOT FOR PRODUCTION: this panel was built with the acceptance_license test tag; it never contacts the license service and accepts only the acceptance fixture license on a disposable acceptance guest (guest: verified)
+2026-10-11T06:16:38.550949+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:16:38 Panel startup listener active on :2083 (HTTPS; application gated)
+2026-10-11T06:16:38.551636+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:16:38 Connected to Agent RPC; preparing normal management access
+2026-10-11T06:16:38.642129+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:16:38 certificate startup reconcile: restored 3 hosted vhosts with one nginx validation and reload
+2026-10-11T06:16:40.373367+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:16:40 http: TLS handshake error from 127.0.0.1:49908: EOF
+2026-10-11T06:16:42.384896+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:16:42 http: TLS handshake error from 127.0.0.1:49936: EOF
+2026-10-11T06:16:44.397024+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:16:44 http: TLS handshake error from 127.0.0.1:49960: EOF
+2026-10-11T06:16:44.588328+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:16:44 certificate startup reconcile: mail SNI reconciled from 0 active secure-mail certificates; TLSA left unchanged: automatic DANE/TLSA updates are disabled: safe TTL-aware certificate rollover and explicit panel record ownership are not available in this release
+2026-10-11T06:16:46.408485+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:16:46 http: TLS handshake error from 127.0.0.1:56964: EOF
+2026-10-11T06:16:48.420953+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:16:48 http: TLS handshake error from 127.0.0.1:56974: EOF
+2026-10-11T06:16:49.338063+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:16:49 milter chain: milters="inet:localhost:11332" maps=hash
+2026-10-11T06:16:49.340447+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:16:49 Panel ready on :2083 (HTTPS)
+2026-10-11T06:16:50.431841+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:16:50 http: TLS handshake error from 127.0.0.1:56992: EOF
+2026-10-11T06:16:50.443769+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:16:50 http: TLS handshake error from 127.0.0.1:56996: EOF
+2026-10-11T06:16:50.454746+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:16:50 http: TLS handshake error from 127.0.0.1:57028: EOF
+2026-10-11T06:16:52.935862+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:16:52 http: TLS handshake error from 127.0.0.1:57040: EOF
+2026-10-11T06:16:52.947972+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:16:52 http: TLS handshake error from 127.0.0.1:57052: EOF
+2026-10-11T06:17:02.970133+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:17:02 http: TLS handshake error from 127.0.0.1:46082: EOF
+2026-10-11T06:17:12.982925+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:17:12 http: TLS handshake error from 127.0.0.1:43792: EOF
+2026-10-11T06:17:12.994926+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:17:12 http: TLS handshake error from 127.0.0.1:43808: EOF
+2026-10-11T06:17:13.007139+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:17:13 http: TLS handshake error from 127.0.0.1:43824: EOF
+2026-10-11T06:17:14.756701+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:17:14 http: TLS handshake error from 127.0.0.1:43830: EOF
+2026-10-11T06:17:16.127868+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:17:16 http: TLS handshake error from 127.0.0.1:38946: EOF
+2026-10-11T06:17:16.605632+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:17:16 http: TLS handshake error from 127.0.0.1:38968: EOF
+2026-10-11T06:17:22.509558+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:17:22 http: TLS handshake error from 127.0.0.1:38982: EOF
+2026-10-11T06:17:23.080911+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:17:23 http: TLS handshake error from 127.0.0.1:39084: client sent an HTTP request to an HTTPS server
+2026-10-11T06:17:23.081260+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:17:23 http: TLS handshake error from 127.0.0.1:39096: client sent an HTTP request to an HTTPS server
+2026-10-11T06:17:28.301771+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:17:28 http: TLS handshake error from 127.0.0.1:43998: EOF
+2026-10-11T06:17:29.574637+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:17:29 http: TLS handshake error from 127.0.0.1:44034: EOF
+2026-10-11T06:17:34.545972+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:17:34 http: TLS handshake error from 127.0.0.1:44068: EOF
+2026-10-11T06:17:39.541702+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:17:39 http: TLS handshake error from 127.0.0.1:56176: EOF
+2026-10-11T06:17:44.545331+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:17:44 http: TLS handshake error from 127.0.0.1:56194: EOF
+2026-10-11T06:17:49.545788+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:17:49 http: TLS handshake error from 127.0.0.1:48196: EOF
+2026-10-11T06:17:54.543023+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:17:54 http: TLS handshake error from 127.0.0.1:48216: EOF
+2026-10-11T06:17:59.559355+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:17:59 http: TLS handshake error from 127.0.0.1:49332: EOF
+2026-10-11T06:18:04.547754+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:18:04 http: TLS handshake error from 127.0.0.1:49350: EOF
+2026-10-11T06:18:09.547039+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:18:09 http: TLS handshake error from 127.0.0.1:40960: EOF
+2026-10-11T06:18:11.295937+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:18:11 http: TLS handshake error from 127.0.0.1:40970: EOF
+2026-10-11T06:18:13.018076+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:18:13 http: TLS handshake error from 127.0.0.1:40998: EOF
+2026-10-11T06:18:13.729412+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:18:13 http: TLS handshake error from 127.0.0.1:41020: EOF
+2026-10-11T06:18:14.020964+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:18:14 http: TLS handshake error from 127.0.0.1:41052: EOF
+2026-10-11T06:18:14.435932+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:18:14 http: TLS handshake error from 127.0.0.1:41074: EOF
+2026-10-11T06:18:14.435932+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:18:14 http: TLS handshake error from 127.0.0.1:41060: EOF
+2026-10-11T06:18:14.435932+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:18:14 http: TLS handshake error from 127.0.0.1:41068: EOF
+2026-10-11T06:18:14.467937+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:18:14 http: TLS handshake error from 127.0.0.1:41094: EOF
+2026-10-11T06:18:14.630734+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:18:14 http: TLS handshake error from 127.0.0.1:41106: EOF
+2026-10-11T06:18:16.478692+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:18:16 http: TLS handshake error from 127.0.0.1:41066: EOF
+2026-10-11T06:18:16.478692+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:18:16 http: TLS handshake error from 127.0.0.1:41056: EOF
+2026-10-11T06:18:16.478692+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:18:16 http: TLS handshake error from 127.0.0.1:41052: EOF
+2026-10-11T06:18:16.506551+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:18:16 http: TLS handshake error from 127.0.0.1:41078: EOF
+2026-10-11T06:18:19.274765+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:18:19 http: TLS handshake error from 127.0.0.1:41110: EOF
+2026-10-11T06:18:19.274765+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:18:19 http: TLS handshake error from 127.0.0.1:41118: EOF
+2026-10-11T06:18:19.274765+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:18:19 http: TLS handshake error from 127.0.0.1:41126: EOF
+2026-10-11T06:18:19.298203+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:18:19 http: TLS handshake error from 127.0.0.1:41150: EOF
+2026-10-11T06:18:19.655864+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:18:19 http: TLS handshake error from 127.0.0.1:41182: EOF
+2026-10-11T06:18:23.630714+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:18:23 http: TLS handshake error from 127.0.0.1:41232: EOF
+2026-10-11T06:18:23.630714+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:18:23 http: TLS handshake error from 127.0.0.1:41216: EOF
+2026-10-11T06:18:23.630714+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:18:23 http: TLS handshake error from 127.0.0.1:41226: EOF
+2026-10-11T06:18:23.654136+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:18:23 http: TLS handshake error from 127.0.0.1:41248: EOF
+2026-10-11T06:18:24.582794+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:18:24 http: TLS handshake error from 127.0.0.1:41260: EOF
+2026-10-11T06:18:29.605090+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:18:29 http: TLS handshake error from 127.0.0.1:37084: EOF
+2026-10-11T06:18:30.503703+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:18:30 http: TLS handshake error from 127.0.0.1:37110: EOF
+2026-10-11T06:18:30.503703+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:18:30 http: TLS handshake error from 127.0.0.1:37096: EOF
+2026-10-11T06:18:30.503703+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:18:30 http: TLS handshake error from 127.0.0.1:37100: EOF
+2026-10-11T06:18:30.532968+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:18:30 http: TLS handshake error from 127.0.0.1:37118: EOF
+2026-10-11T06:18:34.334114+00:00 dns-ubuntu systemd[1]: celikpanel-panel.service: Sent signal SIGSTOP to main process 44279 (panel) on client request.
+2026-10-11T06:18:35.120975+00:00 dns-ubuntu panel[44279]: 2026/10/11 06:18:35 http: TLS handshake error from 127.0.0.1:37146: EOF
+2026-10-11T06:18:35.121052+00:00 dns-ubuntu systemd[1]: Stopping celikpanel-panel.service - CelikPanel web panel...
+2026-10-11T06:18:35.130650+00:00 dns-ubuntu systemd[1]: celikpanel-panel.service: Sent signal SIGKILL to main process 44279 (panel) on client request.
+2026-10-11T06:18:35.130885+00:00 dns-ubuntu systemd[1]: celikpanel-panel.service: Failed to send signal SIGKILL to auxiliary processes on client request: Invalid argument
+2026-10-11T06:18:35.139928+00:00 dns-ubuntu systemd[1]: celikpanel-panel.service: Main process exited, code=killed, status=9/KILL
+2026-10-11T06:18:35.140239+00:00 dns-ubuntu systemd[1]: celikpanel-panel.service: Failed with result 'signal'.
+2026-10-11T06:18:35.140461+00:00 dns-ubuntu systemd[1]: Stopped celikpanel-panel.service - CelikPanel web panel.
+2026-10-11T06:19:01.524054+00:00 dns-ubuntu systemd[1]: Starting celikpanel-panel.service - CelikPanel web panel...
+2026-10-11T06:19:01.590913+00:00 dns-ubuntu systemd[1]: Started celikpanel-panel.service - CelikPanel web panel.
+2026-10-11T06:19:01.860212+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:01 Starting CelikPanel Backend...
+2026-10-11T06:19:01.887622+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:01 ACCEPTANCE FIXTURE — NOT FOR PRODUCTION: this panel was built with the acceptance_license test tag; it never contacts the license service and accepts only the acceptance fixture license on a disposable acceptance guest (guest: verified)
+2026-10-11T06:19:01.888021+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:01 Panel startup listener active on :2083 (HTTPS; application gated)
+2026-10-11T06:19:01.890323+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:01 Connected to Agent RPC; preparing normal management access
+2026-10-11T06:19:02.057794+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:02 site configuration upd1-owner.test (startup): written; adopted the text of v0.1.0-alpha.82
+2026-10-11T06:19:02.077376+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:02 site configuration set10-r2.test (startup): written; adopted the text of v0.1.0-alpha.82
+2026-10-11T06:19:02.084077+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:02 site configuration set10-r3.test (startup): kept (unknown-origin); CelikPanel's text held in /etc/nginx/sites-available/set10-r3.test.conf.celikpanel-pending
+2026-10-11T06:19:02.090471+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:02 site configuration set10-r1.test (startup): written; adopted the text of v0.1.0-alpha.82 (creation)
+2026-10-11T06:19:02.093981+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:02 site configuration set10-rn.test (startup): written; adopted the text of v0.1.0-alpha.82
+2026-10-11T06:19:02.098782+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:02 site configuration set4-upd-php.test (startup): written; adopted the text of v0.1.0-alpha.82 (creation)
+2026-10-11T06:19:02.106453+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:02 site configuration files at start: 5 written, 0 unchanged, 0 kept (owner-edited), 0 kept (foreign), 1 kept (unknown origin), 0 unreadable or unwritable, 0 missing (not recreated), 0 failed; 5 adopted from an earlier release
+2026-10-11T06:19:02.107943+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:02 site configuration files at start: 5 adopted, 1 left alone because they differ from every known CelikPanel text
+2026-10-11T06:19:02.112352+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:02 certificate startup reconcile: certificate dependents: publish full mail SNI snapshot: another server change or package-manager task is still running; preserve pending outbox: <nil>; the Panel retries this by itself every 30 seconds for up to 10 minutes once no other server change is running; nothing needs to be done now
+2026-10-11T06:19:02.122979+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:02 milter wiring at startup: another server change or package-manager task is still running; the Panel retries this by itself every 30 seconds for up to 10 minutes once no other server change is running; nothing needs to be done now
+2026-10-11T06:19:02.129783+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:02 Panel ready on :2083 (HTTPS)
+2026-10-11T06:19:04.569507+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:04 http: TLS handshake error from 127.0.0.1:58600: EOF
+2026-10-11T06:19:06.909720+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:06 http: TLS handshake error from 127.0.0.1:43342: EOF
+2026-10-11T06:19:06.909720+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:06 http: TLS handshake error from 127.0.0.1:43320: EOF
+2026-10-11T06:19:06.909720+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:06 http: TLS handshake error from 127.0.0.1:43332: EOF
+2026-10-11T06:19:06.932566+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:06 http: TLS handshake error from 127.0.0.1:43362: EOF
+2026-10-11T06:19:08.822881+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:08 http: TLS handshake error from 127.0.0.1:43416: EOF
+2026-10-11T06:19:08.822881+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:08 http: TLS handshake error from 127.0.0.1:43400: EOF
+2026-10-11T06:19:08.822881+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:08 http: TLS handshake error from 127.0.0.1:43386: EOF
+2026-10-11T06:19:08.842400+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:08 http: TLS handshake error from 127.0.0.1:43432: EOF
+2026-10-11T06:19:09.600358+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:09 http: TLS handshake error from 127.0.0.1:43454: EOF
+2026-10-11T06:19:11.661589+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:11 http: TLS handshake error from 127.0.0.1:43472: EOF
+2026-10-11T06:19:11.663012+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:11 http: TLS handshake error from 127.0.0.1:43478: EOF
+2026-10-11T06:19:11.663012+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:11 http: TLS handshake error from 127.0.0.1:43494: EOF
+2026-10-11T06:19:11.687533+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:11 http: TLS handshake error from 127.0.0.1:43508: EOF
+2026-10-11T06:19:14.552870+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:14 http: TLS handshake error from 127.0.0.1:43524: EOF
+2026-10-11T06:19:15.894254+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:15 http: TLS handshake error from 127.0.0.1:57966: EOF
+2026-10-11T06:19:15.894863+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:15 http: TLS handshake error from 127.0.0.1:57962: EOF
+2026-10-11T06:19:15.894863+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:15 http: TLS handshake error from 127.0.0.1:57970: EOF
+2026-10-11T06:19:16.513037+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:16 http: TLS handshake error from 127.0.0.1:57992: EOF
+2026-10-11T06:19:19.545840+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:19 http: TLS handshake error from 127.0.0.1:58022: EOF
+2026-10-11T06:19:23.074538+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:23 http: TLS handshake error from 127.0.0.1:58040: EOF
+2026-10-11T06:19:23.383612+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:23 http: TLS handshake error from 127.0.0.1:58060: EOF
+2026-10-11T06:19:23.621461+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:23 http: TLS handshake error from 127.0.0.1:58096: EOF
+2026-10-11T06:19:23.634440+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:23 http: TLS handshake error from 127.0.0.1:58114: EOF
+2026-10-11T06:19:23.647959+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:23 http: TLS handshake error from 127.0.0.1:58122: EOF
+2026-10-11T06:19:23.688848+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:23 http: TLS handshake error from 127.0.0.1:58154: EOF
+2026-10-11T06:19:24.316170+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:24 http: TLS handshake error from 127.0.0.1:58170: EOF
+2026-10-11T06:19:24.327802+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:24 http: TLS handshake error from 127.0.0.1:58192: EOF
+2026-10-11T06:19:24.339498+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:24 http: TLS handshake error from 127.0.0.1:58212: EOF
+2026-10-11T06:19:24.353951+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:24 http: TLS handshake error from 127.0.0.1:58226: EOF
+2026-10-11T06:19:24.370183+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:24 http: TLS handshake error from 127.0.0.1:58234: EOF
+2026-10-11T06:19:24.864001+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:24 http: TLS handshake error from 127.0.0.1:58254: EOF
+2026-10-11T06:19:26.125932+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:26 http: TLS handshake error from 127.0.0.1:47438: EOF
+2026-10-11T06:19:27.290463+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:27 http: TLS handshake error from 127.0.0.1:47470: EOF
+2026-10-11T06:19:27.305793+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:27 http: TLS handshake error from 127.0.0.1:47488: EOF
+2026-10-11T06:19:27.332480+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:27 http: TLS handshake error from 127.0.0.1:47512: EOF
+2026-10-11T06:19:27.360557+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:27 http: TLS handshake error from 127.0.0.1:47534: EOF
+2026-10-11T06:19:27.397805+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:27 http: TLS handshake error from 127.0.0.1:47550: EOF
+2026-10-11T06:19:27.423827+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:27 http: TLS handshake error from 127.0.0.1:47570: EOF
+2026-10-11T06:19:27.432930+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:27 http: TLS handshake error from 127.0.0.1:47584: EOF
+2026-10-11T06:19:27.441637+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:27 http: TLS handshake error from 127.0.0.1:47602: EOF
+2026-10-11T06:19:27.450533+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:27 http: TLS handshake error from 127.0.0.1:47618: EOF
+2026-10-11T06:19:27.882244+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:27 http: TLS handshake error from 127.0.0.1:47642: EOF
+2026-10-11T06:19:29.551178+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:29 http: TLS handshake error from 127.0.0.1:47662: EOF
+2026-10-11T06:19:34.549357+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:34 http: TLS handshake error from 127.0.0.1:47700: EOF
+2026-10-11T06:19:39.546911+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:39 http: TLS handshake error from 127.0.0.1:40710: EOF
+2026-10-11T06:19:43.302377+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:43 startup mail work, attempt 1 of 20: mail certificate publication completed (mail SNI from 0 active secure-mail certificates); mail filter wiring completed (milters="inet:localhost:11332" maps=hash)
+2026-10-11T06:19:44.548571+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:44 http: TLS handshake error from 127.0.0.1:40734: EOF
+2026-10-11T06:19:49.552880+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:49 http: TLS handshake error from 127.0.0.1:41814: EOF
+2026-10-11T06:19:54.555610+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:54 http: TLS handshake error from 127.0.0.1:41852: EOF
+2026-10-11T06:19:59.550531+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:19:59 http: TLS handshake error from 127.0.0.1:48232: EOF
+2026-10-11T06:20:04.552354+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:20:04 http: TLS handshake error from 127.0.0.1:48250: EOF
+2026-10-11T06:20:09.555881+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:20:09 http: TLS handshake error from 127.0.0.1:59044: EOF
+2026-10-11T06:20:14.542564+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:20:14 http: TLS handshake error from 127.0.0.1:59074: EOF
+2026-10-11T06:20:19.555616+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:20:19 http: TLS handshake error from 127.0.0.1:38572: EOF
+2026-10-11T06:20:24.552689+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:20:24 http: TLS handshake error from 127.0.0.1:38604: EOF
+2026-10-11T06:20:29.848818+00:00 dns-ubuntu panel[60731]: 2026/10/11 06:20:29 http: TLS handshake error from 127.0.0.1:57700: EOF

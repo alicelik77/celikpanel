@@ -1,0 +1,41 @@
+{
+  "checks": {
+    "clock_skew_seconds": 0.463,
+    "cron_advancing": true,
+    "database": "ok",
+    "dns": {
+      "mode": "external",
+      "note": "DNS is not provided by this run (the owner chose DNS hosted elsewhere on one isolated node); DNS continuity is covered by the DNS pair runs of roadmap item 2",
+      "verdict": "not-provided-external-dns"
+    },
+    "dns_ok": false,
+    "firewall_tables": [
+      "table inet celikpanel_fw"
+    ],
+    "sampler": {
+      "results": [
+        {
+          "returncode": 0,
+          "status": "ok"
+        },
+        {
+          "returncode": 0,
+          "status": "ok"
+        }
+      ],
+      "unit": "cp-lab-upd1-sampler.service",
+      "unit_sha256": "d28c605c7c5f0051deac69518c0cbcaa94ec93d11fd8c8aa9cf38d39fdd10f38"
+    },
+    "samples_before_start": 10,
+    "smtp_ok": true,
+    "timers": [
+      "celikpanel-release-recovery.timer",
+      "certbot.timer"
+    ],
+    "web_ok": true
+  },
+  "finished_at": "2026-10-11T05:56:05Z",
+  "name": "pre-state",
+  "started_at": "2026-10-11T05:55:08Z",
+  "verdict": "passed"
+}

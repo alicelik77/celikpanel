@@ -1,0 +1,23 @@
+{
+  "cell": "done",
+  "chrome": "Chrome/154.0.8037.98",
+  "handover": {
+    "at": "2026-10-11T04:40:38Z",
+    "base": "https://127.0.0.1:18881",
+    "domains": [
+      {
+        "id": 2,
+        "name": "set12-a.test"
+      }
+    ],
+    "local_port": 18881,
+    "password_file": "(root-only file, not copied)",
+    "schema": "celikpanel/set12-handover/v1",
+    "tls_leaf_sha256": "a8de3fce671e79e8a2b743e1e55bc3a1e851013dd1cec9daad7f6c5dfe5908c0",
+    "username": "labadmin",
+    "window": "ui"
+  },
+  "started": "2026-10-11T04:44:05.627Z",
+  "ended": "2026-10-11T04:44:05.630Z",
+  "ok": true
+}

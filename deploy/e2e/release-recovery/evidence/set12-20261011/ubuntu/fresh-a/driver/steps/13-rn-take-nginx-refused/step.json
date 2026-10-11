@@ -1,0 +1,22 @@
+{
+  "checks": {
+    "checks": 4,
+    "error": null,
+    "failed": [],
+    "finished_at": "2026-10-11T05:05:26Z",
+    "notes": [
+      "RN: PASS"
+    ],
+    "started_at": "2026-10-11T05:05:19Z",
+    "substeps": {
+      "RN": "passed"
+    },
+    "title": "take refused by nginx: restore",
+    "unknown": [],
+    "verdict": "passed"
+  },
+  "finished_at": "2026-10-11T05:05:26Z",
+  "name": "RN-take-nginx-refused",
+  "started_at": "2026-10-11T05:05:19Z",
+  "verdict": "passed"
+}

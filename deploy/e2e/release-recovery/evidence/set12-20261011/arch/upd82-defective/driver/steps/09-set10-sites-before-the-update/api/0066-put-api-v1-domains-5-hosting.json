@@ -1,0 +1,83 @@
+{
+  "outcome": "response",
+  "panel": "owner",
+  "purpose": "pre: RN becomes a Node site (alpha.82)",
+  "request": {
+    "body": {
+      "project_type": "node",
+      "runtime_version": "22.20.0",
+      "start_command": "node -e \"require('http').createServer((q,s)=>s.end('set12-rn')).listen(process.env.PORT)\""
+    },
+    "headers": [
+      [
+        "Accept",
+        "application/json"
+      ],
+      [
+        "Host",
+        "127.0.0.1:18961"
+      ],
+      [
+        "Content-Type",
+        "application/json"
+      ],
+      [
+        "Origin",
+        "https://127.0.0.1:18961"
+      ],
+      [
+        "Cookie",
+        "[REDACTED]"
+      ],
+      [
+        "X-CelikPanel-Request-Id",
+        "01595f3e64c56e9f86e0f94520e0a3a5"
+      ]
+    ],
+    "method": "PUT",
+    "path": "/api/v1/domains/5/hosting"
+  },
+  "response": {
+    "elapsed_seconds": 0.619,
+    "headers": [
+      [
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+      ],
+      [
+        "Content-Type",
+        "application/json"
+      ],
+      [
+        "Referrer-Policy",
+        "no-referrer"
+      ],
+      [
+        "Strict-Transport-Security",
+        "max-age=31536000"
+      ],
+      [
+        "X-Content-Type-Options",
+        "nosniff"
+      ],
+      [
+        "X-Frame-Options",
+        "DENY"
+      ],
+      [
+        "Date",
+        "Sun, 11 Oct 2026 07:16:15 GMT"
+      ],
+      [
+        "Content-Length",
+        "33"
+      ]
+    ],
+    "json": {
+      "app_port": 3001,
+      "success": true
+    },
+    "status": 200,
+    "text": null
+  }
+}

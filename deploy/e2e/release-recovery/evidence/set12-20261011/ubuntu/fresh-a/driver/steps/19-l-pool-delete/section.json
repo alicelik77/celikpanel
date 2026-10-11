@@ -1,0 +1,170 @@
+{
+  "calls": [
+    {
+      "at": "2026-10-11T05:07:21Z",
+      "json": {
+        "DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/5/public_html",
+        "Domain": "set12-c.test",
+        "DomainID": 5,
+        "FTPPassword": "[REDACTED]",
+        "FTPUser": "set12_c_test",
+        "PHPVersion": "8.3",
+        "ProjectType": "php",
+        "SiteID": 5,
+        "TempDomain": ""
+      },
+      "label": "create PHP site set12-c.test",
+      "request": {
+        "body": {
+          "domain": "set12-c.test",
+          "project_type": "php",
+          "ssl_type": "none"
+        },
+        "method": "POST",
+        "path": "/api/v1/domains/create"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T05:07:23Z",
+      "json": {
+        "domain": "set12-c.test",
+        "status": "deleted"
+      },
+      "label": "l: delete set12-c.test (Domains page)",
+      "request": {
+        "body": null,
+        "method": "DELETE",
+        "path": "/api/v1/domains/5"
+      },
+      "status": 200,
+      "text": null
+    }
+  ],
+  "cells": {
+    "L": {
+      "detail": null,
+      "expectations": [
+        {
+          "expectation": "the deletion answers 200",
+          "held": true,
+          "measured": 200
+        },
+        {
+          "expectation": "the pool is removed and a dated copy with the owner's bytes is kept beside it",
+          "held": true,
+          "measured": {
+            "backups": [
+              {
+                "path": "/etc/php/8.3/fpm/pool.d/site5.conf.celikpanel-backup-20261011T050723Z",
+                "sha256": "854b94127dbf961841a4bf429c852d66d025a3a81a4913395a719fb54401250b"
+              }
+            ],
+            "owner_sha256": "854b94127dbf961841a4bf429c852d66d025a3a81a4913395a719fb54401250b",
+            "pool_after": false
+          }
+        }
+      ],
+      "verdict": "PASS"
+    }
+  },
+  "checks": [
+    {
+      "detail": {
+        "DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/5/public_html",
+        "Domain": "set12-c.test",
+        "DomainID": 5,
+        "FTPPassword": "[REDACTED]",
+        "FTPUser": "set12_c_test",
+        "PHPVersion": "8.3",
+        "ProjectType": "php",
+        "SiteID": 5,
+        "TempDomain": ""
+      },
+      "name": "the PHP site set12-c.test is created through the Panel (200 with its id)",
+      "ok": true
+    },
+    {
+      "detail": 200,
+      "name": "L: the deletion answers 200",
+      "ok": true
+    },
+    {
+      "detail": {
+        "backups": [
+          {
+            "path": "/etc/php/8.3/fpm/pool.d/site5.conf.celikpanel-backup-20261011T050723Z",
+            "sha256": "854b94127dbf961841a4bf429c852d66d025a3a81a4913395a719fb54401250b"
+          }
+        ],
+        "owner_sha256": "854b94127dbf961841a4bf429c852d66d025a3a81a4913395a719fb54401250b",
+        "pool_after": false
+      },
+      "name": "L: the pool is removed and a dated copy with the owner's bytes is kept beside it",
+      "ok": true
+    }
+  ],
+  "finished_at": "2026-10-11T05:07:26Z",
+  "native_evidence": false,
+  "natives": [
+    {
+      "file": "native/148-owner-files-set12-c.test.json",
+      "label": "owner-files-set12-c.test",
+      "mode": "owner-files",
+      "owner_action": true
+    },
+    {
+      "file": "native/149-owner-l-pool-edit.json",
+      "label": "owner-l-pool-edit",
+      "mode": "owner-pool12",
+      "owner_action": true
+    },
+    {
+      "file": "native/150-l-0-pool-set12-c.test.json",
+      "label": "l-0-pool-set12-c.test",
+      "mode": "read-pool12",
+      "owner_action": false
+    },
+    {
+      "file": "native/151-l-1-paths.json",
+      "label": "l-1-paths",
+      "mode": "read-paths12",
+      "owner_action": false
+    }
+  ],
+  "node": "ubuntu",
+  "notes": [
+    {
+      "detail": [],
+      "note": "L: PASS"
+    }
+  ],
+  "owner_actions": [
+    {
+      "at": "2026-10-11T05:07:22Z",
+      "label": "files-set12-c.test",
+      "mode": "owner-files"
+    },
+    {
+      "at": "2026-10-11T05:07:23Z",
+      "label": "l-pool-edit",
+      "mode": "owner-pool12"
+    }
+  ],
+  "owner_waited_for_idle": {
+    "at": "2026-10-11T05:07:19Z",
+    "busy_seen": [],
+    "idle": true,
+    "polls": 1,
+    "waited_s": 0.3
+  },
+  "section": "L-pool-delete",
+  "started_at": "2026-10-11T05:07:19Z",
+  "substeps": {
+    "L": "passed",
+    "section": "passed"
+  },
+  "title": "deleting a site whose pool the owner edited",
+  "verdict": "passed"
+}

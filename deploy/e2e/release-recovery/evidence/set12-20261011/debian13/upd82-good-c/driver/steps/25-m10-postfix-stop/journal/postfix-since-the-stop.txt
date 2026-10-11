@@ -1,0 +1,15 @@
+##### postfix.service
+2026-10-11T07:44:54.075001+00:00 dns-debian13 systemd[1]: Stopping postfix.service - Postfix Mail Transport Agent (main/default instance)...
+2026-10-11T07:44:54.144827+00:00 dns-debian13 postfix[45911]: postfix: fatal: bad numerical configuration: default_process_limit = 200 # raised for the campaign
+2026-10-11T07:44:54.144771+00:00 dns-debian13 postfix[45911]: fatal: bad numerical configuration: default_process_limit = 200 # raised for the campaign
+2026-10-11T07:44:55.149252+00:00 dns-debian13 systemd[1]: postfix.service: Control process exited, code=exited, status=1/FAILURE
+2026-10-11T07:44:55.149440+00:00 dns-debian13 postfix/master[25791]: terminating on signal 15
+2026-10-11T07:44:55.153965+00:00 dns-debian13 systemd[1]: postfix.service: Failed with result 'exit-code'.
+2026-10-11T07:44:55.154512+00:00 dns-debian13 systemd[1]: Stopped postfix.service - Postfix Mail Transport Agent (main/default instance).
+##### postfix@-.service
+(no lines)
+##### celikpanel-agent.service and celikpanel-panel.service
+2026-10-11T07:44:53.967515+00:00 dns-debian13 panel[41269]: 2026/10/11 07:44:53 http: TLS handshake error from 127.0.0.1:56068: EOF
+2026-10-11T07:44:55.240168+00:00 dns-debian13 postfix[45930]: fatal: bad numerical configuration: default_process_limit = 200 # raised for the campaign
+2026-10-11T07:44:56.296425+00:00 dns-debian13 cron[45935]: (CRON) DEATH (can't lock /var/run/crond.pid, otherpid may be 26849: Resource temporarily unavailable)
+2026-10-11T07:44:58.057020+00:00 dns-debian13 panel[41269]: 2026/10/11 07:44:58 [200][service action] stop postfix: SERVICE_ACTION_NOTE unit_marked_failed_config: postfix.service

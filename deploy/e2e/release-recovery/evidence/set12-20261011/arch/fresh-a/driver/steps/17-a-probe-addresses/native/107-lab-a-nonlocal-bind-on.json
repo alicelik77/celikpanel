@@ -1,0 +1,9 @@
+{
+  "action": "lab-nonlocal-bind",
+  "after": "1",
+  "at": "2026-10-11T05:18:43Z",
+  "before": "0",
+  "mode": "lab-nonlocal-bind",
+  "owner_action": false,
+  "schema": "celikpanel/set12-native/v1"
+}

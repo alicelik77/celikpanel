@@ -1,0 +1,2 @@
+lab=/var/tmp/cp-release-drill-s12-arch-a
+set12-arch-20261011t051005z

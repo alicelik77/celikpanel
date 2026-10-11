@@ -1,0 +1,73 @@
+date_utc=2026-10-11T04:08:52Z user=root kernel=6.18.33.2-microsoft-standard-WSL2
+qemu-system procs: 0
+--- set10/set12 run dirs
+total 240
+drwxr-xr-x  19 root root  4096 Oct 11 01:49 .
+drwxrwxrwt 352 root root 73728 Oct 11 07:08 ..
+-rw-r--r--   1 root root    60 Oct 10 22:01 artifacts-a81.path
+-rw-r--r--   1 root root    60 Oct 10 21:58 artifacts-fresh.path
+total 96
+drwxr-xr-x   5 root root  4096 Oct 11 07:08 .
+drwxrwxrwt 352 root root 73728 Oct 11 07:08 ..
+drwxr-xr-x   2 root root  4096 Oct 11 07:08 build
+drwxr-xr-x   2 root root  4096 Oct 11 07:08 host
+drwxr-xr-x   2 root root  4096 Oct 11 07:08 logs
+-rw-r--r--   1 root root    49 Oct 11 07:08 progress.txt
+--- live jobs of earlier runs
+--- image cache
+total 1486060
+drwx------ 2 root root      4096 Oct  1 15:57 .
+drwx------ 5 root root      4096 Sep 28 21:06 ..
+-r--r--r-- 5 root root 556609024 Sep 27 02:09 Arch-Linux-x86_64-cloudimg-20260815.573966.qcow2
+-r--r--r-- 5 root root 340262912 Sep 27 02:09 debian-13-genericcloud-amd64-20260826-2582.qcow2
+-r--r--r-- 2 root root 624829952 Sep  8 20:39 ubuntu-24.04-server-cloudimg-amd64-20260826.img
+--- drills
+/var/tmp/cp-release-drill-s11-d13-c
+/var/tmp/cp-release-drill-s11-sc-a
+/var/tmp/cp-release-drill-s11-ub-a
+/var/tmp/cp-release-drill-s6-arch-fresh-a
+/var/tmp/cp-release-drill-s6-arch-fresh-b
+/var/tmp/cp-release-drill-s6-arch-good-a
+/var/tmp/cp-release-drill-s6-d13-fresh-a
+/var/tmp/cp-release-drill-s6-d13-good-a
+/var/tmp/cp-release-drill-s6-ub-fresh-a
+/var/tmp/cp-release-drill-s6-ub-good-a
+/var/tmp/cp-release-drill-s7-d13-a81
+/var/tmp/cp-release-drill-s7-d13-a82
+/var/tmp/cp-release-drill-s7-d13-a82b
+/var/tmp/cp-release-drill-s8-arch-a
+/var/tmp/cp-release-drill-s8-d13-a
+/var/tmp/cp-release-drill-s8-d13-b
+/var/tmp/cp-release-drill-s8-ub-a
+/var/tmp/cp-release-drill-s9-d13
+/var/tmp/cp-release-drill-s9-d13b
+/var/tmp/cp-release-drill-s9-d13c
+--- dist
+drwxr-xr-x  4 root root 4096 Oct 11 02:57 b2b43d0cd680a0bc569ea02178c83a06b01c4941-acceptance-license
+drwxr-xr-x  4 root root 4096 Oct 11 03:00 b80e5d2d80c4a66b903a0f7b6926755c8075d856-acceptance-license
+drwxr-xr-x  4 root root 4096 Oct 10 21:53 bbb686ceb4dbb44b927bb0c9d86b46958fbe921c-acceptance-license
+drwxr-xr-x  4 root root 4096 Oct 10 18:46 bc702ac209382481e242f662791dab5c218b50f2-acceptance-license
+drwxr-xr-x  4 root root 4096 Oct 10 15:54 c7b2d64f1a2e7d934f1f21b257f7f407352cb2af-acceptance-license
+drwxr-xr-x  4 root root 4096 Oct 10 21:59 d688d8ff85d704fd6e4fbc377d82b53971b9fc32-acceptance-license
+drwxr-xr-x  4 root root 4096 Oct 10 15:51 dc81296d06774217c2100830c8caca1ff604c4b7-acceptance-license
+drwxr-xr-x  4 root root 4096 Oct 10 21:58 e0c88113f717850a74a0b25baafd4a21f23e1069-acceptance-license
+drwxr-xr-x  3 root root 4096 Oct 10 02:22 ecfe39e5b6ab707ba5b7d1c025f225f3147f67a3-acceptance-license
+drwxr-xr-x  3 root root 4096 Oct 10 02:22 f21f5373edf66c7354f1ad5f6ab78b6a7d79940d-acceptance-license
+drwxr-xr-x  4 root root 4096 Oct 11 02:59 f2fec87e740278cfee71eb2bd0a245451b982a9f-acceptance-license
+drwxr-xr-x  4 root root 4096 Oct 10 15:53 f4c9b059802615f5b20f95b50362dd08f4d79a97-acceptance-license
+--- builds
+drwxr-xr-x   3 root root  4096 Oct 10 15:54 20261010t125013z
+drwxr-xr-x   5 root root  4096 Oct 10 15:58 20261010t125447z
+drwxr-xr-x   3 root root  4096 Oct 10 18:47 20261010t154207z
+drwxr-xr-x   3 root root  4096 Oct 10 20:37 20261010t172853z
+drwxr-xr-x   3 root root  4096 Oct 10 21:54 20261010t184746z
+drwxr-xr-x   5 root root  4096 Oct 10 22:00 20261010t185436z
+drwxr-xr-x   3 root root  4096 Oct 11 03:01 20261010t235526z
+drwxr-xr-x   5 root root  4096 Oct 11 03:05 20261011t000145z
+--- go
+go version go1.26.5 linux/amd64
+--- df
+/dev/sdd       1007G  147G  810G  16% /
+Mem:           15697        1046       13090          53        1854       14650
+QEMU emulator version 11.1.1
+Python 3.14.7

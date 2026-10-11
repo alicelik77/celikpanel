@@ -1,0 +1,58 @@
+{
+  "at": "2026-10-11T05:05:25Z",
+  "by_unit": {
+    "celikpanel-agent.service": [],
+    "celikpanel-panel.service": [
+      "2026-10-11T05:05:21.545229+00:00 dns-ubuntu panel[41985]: 2026/10/11 05:05:21 http: TLS handshake error from 127.0.0.1:56354: EOF",
+      "2026-10-11T05:05:21.904000+00:00 dns-ubuntu panel[41985]: 2026/10/11 05:05:21 http: TLS handshake error from 127.0.0.1:56386: EOF",
+      "2026-10-11T05:05:21.992979+00:00 dns-ubuntu panel[41985]: 2026/10/11 05:05:21 site configuration set12-a.test (take): failed; owner's file kept as /etc/nginx/sites-available/set12-a.test.conf.celikpanel-backup-20261011T050521Z; 2026/10/11 05:05:21 [emerg] 45451#45451: \"root\" directive is duplicate in /etc/nginx/celikpanel-sites.d/set12-a.test/set10-dup-root.conf:2",
+      "2026-10-11T05:05:22.004307+00:00 dns-ubuntu panel[41985]: 2026/10/11 05:05:22 [502] site configuration set12-a.test: take: nginx validation failed: nginx validation failed: 2026/10/11 05:05:21 [emerg] 45451#45451: \"root\" directive is duplicate in /etc/nginx/celikpanel-sites.d/set12-a.test/set10-dup-root.conf:2",
+      "2026-10-11T05:05:22.004307+00:00 dns-ubuntu panel[41985]: nginx: configuration file /etc/nginx/nginx.conf test failed: exit status 1; rollback restored and reloaded the previous vhost"
+    ],
+    "nginx.service": [
+      "2026-10-11T05:05:20.455579+00:00 dns-ubuntu systemd[1]: Reloading nginx.service - A high performance web server and a reverse proxy server...",
+      "2026-10-11T05:05:20.461692+00:00 dns-ubuntu nginx[45208]: 2026/10/11 05:05:20 [notice] 45208#45208: signal process started",
+      "2026-10-11T05:05:20.462904+00:00 dns-ubuntu systemd[1]: Reloaded nginx.service - A high performance web server and a reverse proxy server.",
+      "2026-10-11T05:05:20.783509+00:00 dns-ubuntu systemd[1]: Reloading nginx.service - A high performance web server and a reverse proxy server...",
+      "2026-10-11T05:05:20.790371+00:00 dns-ubuntu nginx[45268]: 2026/10/11 05:05:20 [notice] 45268#45268: signal process started",
+      "2026-10-11T05:05:20.792414+00:00 dns-ubuntu systemd[1]: Reloaded nginx.service - A high performance web server and a reverse proxy server.",
+      "2026-10-11T05:05:21.109476+00:00 dns-ubuntu systemd[1]: Reloading nginx.service - A high performance web server and a reverse proxy server...",
+      "2026-10-11T05:05:21.116761+00:00 dns-ubuntu nginx[45328]: 2026/10/11 05:05:21 [notice] 45328#45328: signal process started",
+      "2026-10-11T05:05:21.118033+00:00 dns-ubuntu systemd[1]: Reloaded nginx.service - A high performance web server and a reverse proxy server.",
+      "2026-10-11T05:05:21.979434+00:00 dns-ubuntu systemd[1]: Reloading nginx.service - A high performance web server and a reverse proxy server...",
+      "2026-10-11T05:05:21.987542+00:00 dns-ubuntu nginx[45454]: 2026/10/11 05:05:21 [notice] 45454#45454: signal process started",
+      "2026-10-11T05:05:21.988716+00:00 dns-ubuntu systemd[1]: Reloaded nginx.service - A high performance web server and a reverse proxy server."
+    ],
+    "php8.3-fpm.service": []
+  },
+  "mode": "read-window12",
+  "owner_action": false,
+  "schema": "celikpanel/set12-native/v1",
+  "since_epoch": 1791695120,
+  "systemd_all": [
+    "2026-10-11T05:05:20.455579+00:00 dns-ubuntu systemd[1]: Reloading nginx.service - A high performance web server and a reverse proxy server...",
+    "2026-10-11T05:05:20.462904+00:00 dns-ubuntu systemd[1]: Reloaded nginx.service - A high performance web server and a reverse proxy server.",
+    "2026-10-11T05:05:20.783509+00:00 dns-ubuntu systemd[1]: Reloading nginx.service - A high performance web server and a reverse proxy server...",
+    "2026-10-11T05:05:20.792414+00:00 dns-ubuntu systemd[1]: Reloaded nginx.service - A high performance web server and a reverse proxy server.",
+    "2026-10-11T05:05:21.109476+00:00 dns-ubuntu systemd[1]: Reloading nginx.service - A high performance web server and a reverse proxy server...",
+    "2026-10-11T05:05:21.118033+00:00 dns-ubuntu systemd[1]: Reloaded nginx.service - A high performance web server and a reverse proxy server.",
+    "2026-10-11T05:05:21.979434+00:00 dns-ubuntu systemd[1]: Reloading nginx.service - A high performance web server and a reverse proxy server...",
+    "2026-10-11T05:05:21.988716+00:00 dns-ubuntu systemd[1]: Reloaded nginx.service - A high performance web server and a reverse proxy server."
+  ],
+  "systemd_manager": [
+    "2026-10-11T05:05:20.455579+00:00 dns-ubuntu systemd[1]: Reloading nginx.service - A high performance web server and a reverse proxy server...",
+    "2026-10-11T05:05:20.462904+00:00 dns-ubuntu systemd[1]: Reloaded nginx.service - A high performance web server and a reverse proxy server.",
+    "2026-10-11T05:05:20.783509+00:00 dns-ubuntu systemd[1]: Reloading nginx.service - A high performance web server and a reverse proxy server...",
+    "2026-10-11T05:05:20.792414+00:00 dns-ubuntu systemd[1]: Reloaded nginx.service - A high performance web server and a reverse proxy server.",
+    "2026-10-11T05:05:21.109476+00:00 dns-ubuntu systemd[1]: Reloading nginx.service - A high performance web server and a reverse proxy server...",
+    "2026-10-11T05:05:21.118033+00:00 dns-ubuntu systemd[1]: Reloaded nginx.service - A high performance web server and a reverse proxy server.",
+    "2026-10-11T05:05:21.979434+00:00 dns-ubuntu systemd[1]: Reloading nginx.service - A high performance web server and a reverse proxy server...",
+    "2026-10-11T05:05:21.988716+00:00 dns-ubuntu systemd[1]: Reloaded nginx.service - A high performance web server and a reverse proxy server."
+  ],
+  "units": [
+    "celikpanel-panel.service",
+    "celikpanel-agent.service",
+    "nginx.service",
+    "php8.3-fpm.service"
+  ]
+}

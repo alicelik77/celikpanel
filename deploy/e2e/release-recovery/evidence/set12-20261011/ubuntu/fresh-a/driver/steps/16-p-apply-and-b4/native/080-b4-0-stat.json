@@ -1,0 +1,65 @@
+{
+  "at": "2026-10-11T05:06:09Z",
+  "epoch": 1791695169.8725295,
+  "mode": "read-stat",
+  "owner_action": false,
+  "schema": "celikpanel/set11-native/v1",
+  "side": {
+    "backups": [
+      {
+        "ctime_ns": 1791695121922587927,
+        "exists": true,
+        "first_line": "# set10: the server owner's own vhost for set12-a.test, written by hand",
+        "gid": 988,
+        "group": "celikpanel",
+        "header": {
+          "first_line": "# set10: the server owner's own vhost for set12-a.test, written by hand",
+          "present": false
+        },
+        "immutable": false,
+        "inode": 263350,
+        "kind": "file",
+        "lsattr": "--------------e-------",
+        "mode": "0644",
+        "mtime_ns": 1791695121922587927,
+        "nlink": 1,
+        "owner": "root",
+        "path": "/etc/nginx/sites-available/set12-a.test.conf.celikpanel-backup-20261011T050521Z",
+        "sha256": "b08051872068f847b5b4ed84a29aaa6711f402f6829c328f2de3772a4f48d3da",
+        "size": 210,
+        "uid": 0
+      }
+    ],
+    "pending": {
+      "error": "FileNotFoundError",
+      "exists": false,
+      "path": "/etc/nginx/sites-available/set12-a.test.conf.celikpanel-pending"
+    }
+  },
+  "vhost": {
+    "ctime_ns": 1791695169576062011,
+    "exists": true,
+    "first_line": "# celikpanel-render v2 sha256=945feefd3a47a0174e81f20e1ab3a29a8811940df2ff6913546b26ba967f0db5",
+    "gid": 988,
+    "group": "celikpanel",
+    "header": {
+      "body_bytes": 2146,
+      "body_sha256": "269fbf16d63f918510130cc1e933a912db88571b5bc71ac9238b748a45a692ea",
+      "declared": "945feefd3a47a0174e81f20e1ab3a29a8811940df2ff6913546b26ba967f0db5",
+      "present": true,
+      "valid": false
+    },
+    "immutable": true,
+    "inode": 262478,
+    "kind": "file",
+    "lsattr": "----i---------e-------",
+    "mode": "0644",
+    "mtime_ns": 1791695169201064833,
+    "nlink": 1,
+    "owner": "root",
+    "path": "/etc/nginx/sites-available/set12-a.test.conf",
+    "sha256": "a2064f7400138085940619666965f782c5116b0bfad3f737f10a745d236232f2",
+    "size": 2241,
+    "uid": 0
+  }
+}

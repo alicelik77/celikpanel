@@ -1,0 +1,26 @@
+{
+  "checks": {
+    "checks": 9,
+    "error": null,
+    "failed": [
+      "alpha.81's pools are adopted (managed_unchanged, adopted_from v0.1.0-alpha.81) or named"
+    ],
+    "finished_at": "2026-10-11T07:30:27Z",
+    "notes": [
+      "B-forward: PASS"
+    ],
+    "started_at": "2026-10-11T07:30:26Z",
+    "substeps": {
+      "B-forward": "passed",
+      "section": "failed"
+    },
+    "title": "the site files, the ledger, the start lines, the Domains list and the three new routes without a request identity",
+    "unknown": [],
+    "verdict": "failed"
+  },
+  "finished_at": "2026-10-11T07:30:27Z",
+  "name": "set10-site-files-after-the-update",
+  "reason": "alpha.81's pools are adopted (managed_unchanged, adopted_from v0.1.0-alpha.81) or named",
+  "started_at": "2026-10-11T07:30:26Z",
+  "verdict": "failed"
+}

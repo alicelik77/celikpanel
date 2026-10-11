@@ -1,0 +1,16 @@
+{
+  "calls": [],
+  "checks": [],
+  "error": "KeyError: 'set10-a.test'",
+  "finished_at": "2026-10-11T04:39:01Z",
+  "native_evidence": false,
+  "natives": [],
+  "node": "debian13",
+  "notes": [],
+  "owner_actions": [],
+  "section": "RN-take-nginx-refused",
+  "started_at": "2026-10-11T04:39:01Z",
+  "substeps": {},
+  "title": "take refused by nginx: restore",
+  "verdict": "inconclusive"
+}

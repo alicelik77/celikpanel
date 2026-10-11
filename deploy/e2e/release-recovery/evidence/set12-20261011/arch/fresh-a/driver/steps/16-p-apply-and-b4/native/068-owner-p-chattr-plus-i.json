@@ -1,0 +1,75 @@
+{
+  "action": "owner-chattr",
+  "after": {
+    "ctime_ns": 1791695890869028772,
+    "exists": true,
+    "first_line": "# celikpanel-render v2 sha256=55588e407e26847ff262d7bdda2746697c6bfad62fa9479c92612c9853a22334",
+    "gid": 969,
+    "group": "celikpanel",
+    "header": {
+      "body_bytes": 2140,
+      "body_sha256": "55588e407e26847ff262d7bdda2746697c6bfad62fa9479c92612c9853a22334",
+      "declared": "55588e407e26847ff262d7bdda2746697c6bfad62fa9479c92612c9853a22334",
+      "present": true,
+      "valid": true
+    },
+    "immutable": true,
+    "inode": 92116,
+    "kind": "file",
+    "lsattr": "----i-----------------",
+    "mode": "0644",
+    "mtime_ns": 1791695889744077694,
+    "nlink": 1,
+    "owner": "root",
+    "path": "/etc/nginx/sites-available/set12-a.test.conf",
+    "sha256": "e28c15138c1605f567e502e2a2a1a41893dd7aa39db41d69d667d7ebb9391ad3",
+    "size": 2235,
+    "uid": 0
+  },
+  "at": "2026-10-11T05:18:10Z",
+  "before": {
+    "ctime_ns": 1791695889753000517,
+    "exists": true,
+    "first_line": "# celikpanel-render v2 sha256=55588e407e26847ff262d7bdda2746697c6bfad62fa9479c92612c9853a22334",
+    "gid": 969,
+    "group": "celikpanel",
+    "header": {
+      "body_bytes": 2140,
+      "body_sha256": "55588e407e26847ff262d7bdda2746697c6bfad62fa9479c92612c9853a22334",
+      "declared": "55588e407e26847ff262d7bdda2746697c6bfad62fa9479c92612c9853a22334",
+      "present": true,
+      "valid": true
+    },
+    "immutable": false,
+    "inode": 92116,
+    "kind": "file",
+    "lsattr": "----------------------",
+    "mode": "0644",
+    "mtime_ns": 1791695889744077694,
+    "nlink": 1,
+    "owner": "root",
+    "path": "/etc/nginx/sites-available/set12-a.test.conf",
+    "sha256": "e28c15138c1605f567e502e2a2a1a41893dd7aa39db41d69d667d7ebb9391ad3",
+    "size": 2235,
+    "uid": 0
+  },
+  "chattr": {
+    "argv": [
+      "chattr",
+      "+i",
+      "/etc/nginx/sites-available/set12-a.test.conf"
+    ],
+    "at": "2026-10-11T05:18:10Z",
+    "returncode": 0,
+    "seconds": 0.001,
+    "status": "ok",
+    "stderr": "",
+    "stdout": ""
+  },
+  "domain": "set12-a.test",
+  "epoch": 1791695890.8738348,
+  "flag": "+i",
+  "mode": "owner-chattr",
+  "owner_action": true,
+  "schema": "celikpanel/set11-native/v1"
+}

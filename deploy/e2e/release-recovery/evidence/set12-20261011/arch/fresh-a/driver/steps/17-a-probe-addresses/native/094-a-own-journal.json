@@ -1,0 +1,41 @@
+{
+  "at": "2026-10-11T05:18:35Z",
+  "by_unit": {
+    "celikpanel-agent.service": [],
+    "celikpanel-panel.service": [
+      "2026-10-11T05:18:32.557990+00:00 dns-arch panel[4361]: 2026/10/11 05:18:32 http: TLS handshake error from 127.0.0.1:40338: EOF",
+      "2026-10-11T05:18:32.585542+00:00 dns-arch panel[4361]: 2026/10/11 05:18:32 site configuration set12-a.test (change): kept (owner-edited); CelikPanel's text held in /etc/nginx/sites-available/set12-a.test.conf.celikpanel-pending",
+      "2026-10-11T05:18:32.987374+00:00 dns-arch panel[4361]: 2026/10/11 05:18:32 [502][certificate] set12-a.test: CERTIFICATE_ISSUE_FAILED authority_unreachable: certbot failed: exit status 1 Output: Saving debug log to /var/log/celikpanel/certbot/letsencrypt.log An unexpected error occurred: requests.exceptions.SSLError: HTTPSConnectionPool(host='acme-v02.api.letsencrypt.org', port=443): Max retries exceeded with url: /directory (Caused by SSLError(SSLCertVerificationError(1, \"[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: Hostname mismatch, certificate is not valid for 'acme-v02.api.letsencrypt.org'. (_ssl.c:1082)\"))) Ask for help or search for soluti…"
+    ],
+    "nginx.service": [
+      "2026-10-11T05:18:29.185424+00:00 dns-arch systemd[1]: Reloading nginx web server...",
+      "2026-10-11T05:18:29.211138+00:00 dns-arch nginx[4661]: 2026/10/11 05:18:29 [warn] 4661#4661: could not build optimal types_hash, you should increase either types_hash_max_size: 1024 or types_hash_bucket_size: 64; ignoring types_hash_bucket_size",
+      "2026-10-11T05:18:29.215703+00:00 dns-arch nginx[4661]: 2026/10/11 05:18:29 [notice] 4661#4661: signal process started",
+      "2026-10-11T05:18:29.217577+00:00 dns-arch systemd[1]: Reloaded nginx web server.",
+      "2026-10-11T05:18:29.572193+00:00 dns-arch systemd[1]: Reloading nginx web server...",
+      "2026-10-11T05:18:29.600509+00:00 dns-arch nginx[4678]: 2026/10/11 05:18:29 [warn] 4678#4678: could not build optimal types_hash, you should increase either types_hash_max_size: 1024 or types_hash_bucket_size: 64; ignoring types_hash_bucket_size",
+      "2026-10-11T05:18:29.606279+00:00 dns-arch nginx[4678]: 2026/10/11 05:18:29 [notice] 4678#4678: signal process started",
+      "2026-10-11T05:18:29.607531+00:00 dns-arch systemd[1]: Reloaded nginx web server."
+    ],
+    "php-fpm.service": []
+  },
+  "mode": "read-window",
+  "owner_action": false,
+  "schema": "celikpanel/set10-native/v1",
+  "since_epoch": 1791695909,
+  "systemd_manager": [
+    "2026-10-11T05:18:29.185424+00:00 dns-arch systemd[1]: Reloading nginx web server...",
+    "2026-10-11T05:18:29.217577+00:00 dns-arch systemd[1]: Reloaded nginx web server.",
+    "2026-10-11T05:18:29.572193+00:00 dns-arch systemd[1]: Reloading nginx web server...",
+    "2026-10-11T05:18:29.607531+00:00 dns-arch systemd[1]: Reloaded nginx web server.",
+    "2026-10-11T05:18:31.005882+00:00 dns-arch systemd[1]: Started [systemd-run] /usr/bin/python3 -I /root/celikpanel-release-recovery-lab/set11-fswatch.py /root/celikpanel-release-recovery-lab/set11-fs-a-own.jsonl /var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge /etc/nginx/celikpanel-managed.d/set12-a.test /etc/nginx/celikpanel-sites.d/set12-a.test /etc/nginx/sites-available.",
+    "2026-10-11T05:18:34.798232+00:00 dns-arch systemd[1]: Stopping [systemd-run] /usr/bin/python3 -I /root/celikpanel-release-recovery-lab/set11-fswatch.py /root/celikpanel-release-recovery-lab/set11-fs-a-own.jsonl /var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge /etc/nginx/celikpanel-managed.d/set12-a.test /etc/nginx/celikpanel-sites.d/set12-a.test /etc/nginx/sites-available...",
+    "2026-10-11T05:18:34.805278+00:00 dns-arch systemd[1]: Stopped [systemd-run] /usr/bin/python3 -I /root/celikpanel-release-recovery-lab/set11-fswatch.py /root/celikpanel-release-recovery-lab/set11-fs-a-own.jsonl /var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge /etc/nginx/celikpanel-managed.d/set12-a.test /etc/nginx/celikpanel-sites.d/set12-a.test /etc/nginx/sites-available."
+  ],
+  "units": [
+    "celikpanel-panel.service",
+    "celikpanel-agent.service",
+    "nginx.service",
+    "php-fpm.service"
+  ]
+}

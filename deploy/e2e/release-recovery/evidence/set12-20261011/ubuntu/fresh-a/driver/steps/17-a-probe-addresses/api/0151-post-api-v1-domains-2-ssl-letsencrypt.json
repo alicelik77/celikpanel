@@ -1,0 +1,90 @@
+{
+  "outcome": "response",
+  "panel": "owner",
+  "purpose": "a-stop: nginx stopped: POST ssl/letsencrypt (the owner requests a certificate)",
+  "request": {
+    "body": {
+      "auto_renew": false,
+      "email": "hostmaster@set12-a.test"
+    },
+    "headers": [
+      [
+        "Accept",
+        "application/json"
+      ],
+      [
+        "Host",
+        "127.0.0.1:18891"
+      ],
+      [
+        "Content-Type",
+        "application/json"
+      ],
+      [
+        "Origin",
+        "https://127.0.0.1:18891"
+      ],
+      [
+        "Cookie",
+        "[REDACTED]"
+      ],
+      [
+        "X-CelikPanel-Request-Id",
+        "f707bc7ca24a1f3ed1f70a8121864a3e"
+      ]
+    ],
+    "method": "POST",
+    "path": "/api/v1/domains/2/ssl/letsencrypt"
+  },
+  "response": {
+    "elapsed_seconds": 0.032,
+    "headers": [
+      [
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+      ],
+      [
+        "Content-Type",
+        "application/json"
+      ],
+      [
+        "Referrer-Policy",
+        "no-referrer"
+      ],
+      [
+        "Strict-Transport-Security",
+        "max-age=31536000"
+      ],
+      [
+        "X-Celikpanel-Request-Id",
+        "f707bc7ca24a1f3ed1f70a8121864a3e"
+      ],
+      [
+        "X-Content-Type-Options",
+        "nosniff"
+      ],
+      [
+        "X-Frame-Options",
+        "DENY"
+      ],
+      [
+        "Date",
+        "Sun, 11 Oct 2026 05:06:46 GMT"
+      ],
+      [
+        "Content-Length",
+        "406"
+      ]
+    ],
+    "json": {
+      "code": "CERTIFICATE_VALIDATION_UNKNOWN",
+      "detail": "unknown",
+      "error": "CelikPanel could not check whether this site’s nginx configuration file lets the certificate validation run, because nginx on this server did not answer, so no certificate was requested and nothing was changed. The server administrator checks that nginx is running; then request the certificate again.",
+      "vars": {
+        "address": "127.0.0.1"
+      }
+    },
+    "status": 503,
+    "text": null
+  }
+}

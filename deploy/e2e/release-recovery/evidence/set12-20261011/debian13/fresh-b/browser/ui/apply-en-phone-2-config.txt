@@ -1,0 +1,70 @@
+Domains
+set12-a.test
+Active
+Open site
+Type
+php
+PHP version
+8.4
+SSL
+Off
+Disk usage
+1.2 KB
+Traffic
+1.4 KB/mo
+Overview
+Hosting
+DNS
+Mail
+Databases
+Applications
+Files
+Advanced
+General
+Hosting type
+Configuration file
+PHP
+SSL/TLS
+This site’s configuration files
+nginx configuration
+Can be replaced again
+/etc/nginx/sites-available/set12-a.test.conf
+PHP-FPM pool (this site’s PHP process settings)
+CelikPanel’s text, unchanged
+/etc/php/8.4/fpm/pool.d/site2.conf
+The site’s nginx configuration file
+
+The file can be replaced again
+
+No write protection is found on this file now, and it is still CelikPanel’s own earlier text. The last change for this site is not in it yet.
+
+CelikPanel writes its text at the next panel start or the next change saved for this site; nothing else is needed.
+
+File
+/etc/nginx/sites-available/set12-a.test.conf
+
+Write CelikPanel’s text now
+Only this site’s file is written, then nginx is reloaded. If nginx refuses the text, the file is put back as it is now.
+What CelikPanel will write: the file now (−) and CelikPanel’s text (+)
+--- /etc/nginx/sites-available/set12-a.test.conf (on this server)
++++ CelikPanel’s text
+@@ -1,4 +1,3 @@
+-# set10 lab preparation: an older CelikPanel text of this site (a line the current render does not have)
+ # Nginx vhost for set12-a.test
+ # Written by CelikPanel. Put your own additions in /etc/nginx/celikpanel-sites.d/set12-a.test/*.conf;
+ # CelikPanel never writes there. If you change this file, CelikPanel keeps
+
+Put your own nginx directives for this site in a .conf file in /etc/nginx/celikpanel-sites.d/set12-a.test. CelikPanel never writes there, and every change CelikPanel makes to this site keeps them.
+
+CelikPanel writes its own parts of this site (certificate validation) in /etc/nginx/celikpanel-managed.d/set12-a.test. Keep the lines of this file that include it.
+
+The site’s PHP-FPM pool file
+
+CelikPanel’s text, unchanged
+
+This file is exactly what CelikPanel last wrote, so CelikPanel keeps it up to date when you save this site’s PHP settings or switch its PHP version.
+
+File
+/etc/php/8.4/fpm/pool.d/site2.conf
+
+PHP-FPM has no separate place for your own pool settings, so they belong in this file. CelikPanel keeps a pool file that has your lines and asks before writing it again; the difference shows exactly which lines are yours.

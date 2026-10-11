@@ -1,0 +1,335 @@
+{
+  "at": "2026-10-11T05:55:03Z",
+  "epoch": 1791698103.5915344,
+  "ledger": {
+    "database": "/var/lib/celikpanel/celikpanel.db",
+    "domains": [
+      {
+        "id": 1,
+        "name": "upd1-owner.test"
+      },
+      {
+        "id": 2,
+        "name": "set10-r2.test"
+      },
+      {
+        "id": 3,
+        "name": "set10-r3.test"
+      },
+      {
+        "id": 4,
+        "name": "set10-r1.test"
+      },
+      {
+        "id": 5,
+        "name": "set10-rn.test"
+      }
+    ],
+    "ledger_last": [
+      41,
+      42,
+      43
+    ],
+    "ledger_rows": 43,
+    "managed_site_files_table": false,
+    "schema_version": 43,
+    "sites": [
+      {
+        "domain_id": 1,
+        "id": 1,
+        "project_type": "static"
+      },
+      {
+        "domain_id": 2,
+        "id": 2,
+        "project_type": "php"
+      },
+      {
+        "domain_id": 3,
+        "id": 3,
+        "project_type": "php"
+      },
+      {
+        "domain_id": 4,
+        "id": 4,
+        "project_type": "php"
+      },
+      {
+        "domain_id": 5,
+        "id": 5,
+        "project_type": "node"
+      }
+    ]
+  },
+  "mode": "read-files10",
+  "owner_action": false,
+  "schema": "celikpanel/set10-native/v1",
+  "sites": {
+    "set10-r1.test": {
+      "dropin_dir": {
+        "error": "FileNotFoundError",
+        "exists": false,
+        "path": "/etc/systemd/system/celikapp-4.service.d"
+      },
+      "pools": {
+        "/etc/php/8.4/fpm/pool.d/site4.conf": {
+          "ctime_ns": 1791698090332374501,
+          "exists": true,
+          "first_line": "[site4]",
+          "gid": 989,
+          "group": "celikpanel",
+          "header": {
+            "first_line": "[site4]",
+            "present": false
+          },
+          "immutable": false,
+          "inode": 139163,
+          "kind": "file",
+          "lsattr": "--------------e-------",
+          "mode": "0644",
+          "mtime_ns": 1791698090328374481,
+          "nlink": 1,
+          "owner": "root",
+          "path": "/etc/php/8.4/fpm/pool.d/site4.conf",
+          "sha256": "830734a225bfa629226b9df38a61eae8644d9b7ab52f900381e3ee8a7ae68f7e",
+          "side_files": {
+            "backups": [],
+            "pending": {
+              "error": "FileNotFoundError",
+              "exists": false,
+              "path": "/etc/php/8.4/fpm/pool.d/site4.conf.celikpanel-pending"
+            }
+          },
+          "size": 298,
+          "text": "[site4]\nuser = set10_r1_test\ngroup = set10_r1_test\nlisten = /var/run/php/php8.4-fpm-site4.sock\nlisten.owner = www-data\nlisten.group = www-data\nlisten.mode = 0660\npm = dynamic\npm.max_children = 5\npm.start_servers = 2\npm.min_spare_servers = 1\npm.max_spare_servers = 3\npm.max_requests = 500\nchdir = /\n",
+          "uid": 0
+        }
+      },
+      "site_id": 4,
+      "unit": {
+        "error": "FileNotFoundError",
+        "exists": false,
+        "path": "/etc/systemd/system/celikapp-4.service",
+        "side_files": {
+          "backups": [],
+          "pending": {
+            "error": "FileNotFoundError",
+            "exists": false,
+            "path": "/etc/systemd/system/celikapp-4.service.celikpanel-pending"
+          }
+        }
+      },
+      "unit_state": "LoadState=not-found\nActiveState=inactive"
+    },
+    "set10-r2.test": {
+      "dropin_dir": {
+        "error": "FileNotFoundError",
+        "exists": false,
+        "path": "/etc/systemd/system/celikapp-2.service.d"
+      },
+      "pools": {
+        "/etc/php/8.4/fpm/pool.d/site2.conf": {
+          "ctime_ns": 1791698091012377881,
+          "exists": true,
+          "first_line": "[site2]",
+          "gid": 989,
+          "group": "celikpanel",
+          "header": {
+            "first_line": "[site2]",
+            "present": false
+          },
+          "immutable": false,
+          "inode": 135304,
+          "kind": "file",
+          "lsattr": "--------------e-------",
+          "mode": "0644",
+          "mtime_ns": 1791698091012377881,
+          "nlink": 1,
+          "owner": "root",
+          "path": "/etc/php/8.4/fpm/pool.d/site2.conf",
+          "sha256": "34a5cd4fa972c2c889394c250cacc0812b9184eab866ff048ee51c581a466751",
+          "side_files": {
+            "backups": [],
+            "pending": {
+              "error": "FileNotFoundError",
+              "exists": false,
+              "path": "/etc/php/8.4/fpm/pool.d/site2.conf.celikpanel-pending"
+            }
+          },
+          "size": 419,
+          "text": "[site2]\nuser = set10_r2_test\ngroup = set10_r2_test\nlisten = /var/run/php/php8.4-fpm-site2.sock\nlisten.owner = www-data\nlisten.group = www-data\nlisten.mode = 0660\npm = dynamic\npm.max_children = 5\npm.start_servers = 2\npm.min_spare_servers = 1\npm.max_spare_servers = 3\npm.max_requests = 500\nchdir = /\n; set12: added by the server owner by hand (a comment and a directive of their own)\nphp_admin_value[memory_limit] = 256M\n",
+          "uid": 0
+        }
+      },
+      "site_id": 2,
+      "unit": {
+        "error": "FileNotFoundError",
+        "exists": false,
+        "path": "/etc/systemd/system/celikapp-2.service",
+        "side_files": {
+          "backups": [],
+          "pending": {
+            "error": "FileNotFoundError",
+            "exists": false,
+            "path": "/etc/systemd/system/celikapp-2.service.celikpanel-pending"
+          }
+        }
+      },
+      "unit_state": "LoadState=not-found\nActiveState=inactive"
+    },
+    "set10-r3.test": {
+      "dropin_dir": {
+        "error": "FileNotFoundError",
+        "exists": false,
+        "path": "/etc/systemd/system/celikapp-3.service.d"
+      },
+      "pools": {
+        "/etc/php/8.4/fpm/pool.d/site3.conf": {
+          "ctime_ns": 1791698076624306998,
+          "exists": true,
+          "first_line": "[site3]",
+          "gid": 989,
+          "group": "celikpanel",
+          "header": {
+            "first_line": "[site3]",
+            "present": false
+          },
+          "immutable": false,
+          "inode": 141339,
+          "kind": "file",
+          "lsattr": "--------------e-------",
+          "mode": "0644",
+          "mtime_ns": 1791698076620306978,
+          "nlink": 1,
+          "owner": "root",
+          "path": "/etc/php/8.4/fpm/pool.d/site3.conf",
+          "sha256": "739500b69375afd2d62ab7a2c31902c9d4538257bc8653f7d7b908ed3d2247c8",
+          "side_files": {
+            "backups": [],
+            "pending": {
+              "error": "FileNotFoundError",
+              "exists": false,
+              "path": "/etc/php/8.4/fpm/pool.d/site3.conf.celikpanel-pending"
+            }
+          },
+          "size": 298,
+          "text": "[site3]\nuser = set10_r3_test\ngroup = set10_r3_test\nlisten = /var/run/php/php8.4-fpm-site3.sock\nlisten.owner = www-data\nlisten.group = www-data\nlisten.mode = 0660\npm = dynamic\npm.max_children = 5\npm.start_servers = 2\npm.min_spare_servers = 1\npm.max_spare_servers = 3\npm.max_requests = 500\nchdir = /\n",
+          "uid": 0
+        }
+      },
+      "site_id": 3,
+      "unit": {
+        "error": "FileNotFoundError",
+        "exists": false,
+        "path": "/etc/systemd/system/celikapp-3.service",
+        "side_files": {
+          "backups": [],
+          "pending": {
+            "error": "FileNotFoundError",
+            "exists": false,
+            "path": "/etc/systemd/system/celikapp-3.service.celikpanel-pending"
+          }
+        }
+      },
+      "unit_state": "LoadState=not-found\nActiveState=inactive"
+    },
+    "set10-rn.test": {
+      "dropin_dir": {
+        "error": "FileNotFoundError",
+        "exists": false,
+        "path": "/etc/systemd/system/celikapp-5.service.d"
+      },
+      "pools": {
+        "/etc/php/8.4/fpm/pool.d/site5.conf": {
+          "ctime_ns": 1791698102292430646,
+          "exists": true,
+          "first_line": "[site5]",
+          "gid": 989,
+          "group": "celikpanel",
+          "header": {
+            "first_line": "[site5]",
+            "present": false
+          },
+          "immutable": false,
+          "inode": 139169,
+          "kind": "file",
+          "lsattr": "--------------e-------",
+          "mode": "0644",
+          "mtime_ns": 1791698102288430628,
+          "nlink": 1,
+          "owner": "root",
+          "path": "/etc/php/8.4/fpm/pool.d/site5.conf",
+          "sha256": "1e861c0d06c2a7c6e7e18271227c2d402fc6e93b4474576cb32e260ecc55646c",
+          "side_files": {
+            "backups": [],
+            "pending": {
+              "error": "FileNotFoundError",
+              "exists": false,
+              "path": "/etc/php/8.4/fpm/pool.d/site5.conf.celikpanel-pending"
+            }
+          },
+          "size": 298,
+          "text": "[site5]\nuser = set10_rn_test\ngroup = set10_rn_test\nlisten = /var/run/php/php8.4-fpm-site5.sock\nlisten.owner = www-data\nlisten.group = www-data\nlisten.mode = 0660\npm = dynamic\npm.max_children = 5\npm.start_servers = 2\npm.min_spare_servers = 1\npm.max_spare_servers = 3\npm.max_requests = 500\nchdir = /\n",
+          "uid": 0
+        }
+      },
+      "site_id": 5,
+      "unit": {
+        "ctime_ns": 1791698102464431396,
+        "exists": true,
+        "first_line": "# Managed by CelikPanel — do not edit by hand.",
+        "gid": 989,
+        "group": "celikpanel",
+        "header": {
+          "first_line": "# Managed by CelikPanel — do not edit by hand.",
+          "present": false
+        },
+        "immutable": false,
+        "inode": 26249,
+        "kind": "file",
+        "lsattr": "--------------e-------",
+        "mode": "0640",
+        "mtime_ns": 1791698102464431396,
+        "nlink": 1,
+        "owner": "root",
+        "path": "/etc/systemd/system/celikapp-5.service",
+        "sha256": "baa901ec0455b82eb47b252b4c984e45a715ee43c55fd576633d60037371be11",
+        "side_files": {
+          "backups": [],
+          "pending": {
+            "error": "FileNotFoundError",
+            "exists": false,
+            "path": "/etc/systemd/system/celikapp-5.service.celikpanel-pending"
+          }
+        },
+        "size": 636,
+        "text": "# Managed by CelikPanel — do not edit by hand.\n# CelikPanel tarafından yönetilir — elle düzenlemeyin.\n[Unit]\nDescription=CelikPanel app: set10-rn.test\nAfter=network.target\n\n[Service]\nUser=www-data\nWorkingDirectory=/var/www/celikpanel/subscriptions/2/sites/5/public_html\nEnvironment=PORT=3001\nEnvironment=NODE_ENV=production\nEnvironment=PATH=/opt/celikpanel/runtimes/node/22.20.0/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin\nExecStart=/bin/sh -lc 'node -e \"require('\\''http'\\'').createServer((q,s)=>s.end('\\''set12-rn'\\'')).listen(process.env.PORT)\"'\nRestart=on-failure\nRestartSec=3\n\n[Install]\nWantedBy=multi-user.target\n",
+        "uid": 0
+      },
+      "unit_state": "LoadState=loaded\nActiveState=activating"
+    },
+    "upd1-owner.test": {
+      "dropin_dir": {
+        "error": "FileNotFoundError",
+        "exists": false,
+        "path": "/etc/systemd/system/celikapp-1.service.d"
+      },
+      "pools": {},
+      "site_id": 1,
+      "unit": {
+        "error": "FileNotFoundError",
+        "exists": false,
+        "path": "/etc/systemd/system/celikapp-1.service",
+        "side_files": {
+          "backups": [],
+          "pending": {
+            "error": "FileNotFoundError",
+            "exists": false,
+            "path": "/etc/systemd/system/celikapp-1.service.celikpanel-pending"
+          }
+        }
+      },
+      "unit_state": "LoadState=not-found\nActiveState=inactive"
+    }
+  }
+}

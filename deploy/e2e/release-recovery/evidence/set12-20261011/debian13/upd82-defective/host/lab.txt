@@ -1,0 +1,2 @@
+lab=/var/tmp/cp-release-drill-s12-d82-d13
+upd1-debian13-defective-20261011t063249z

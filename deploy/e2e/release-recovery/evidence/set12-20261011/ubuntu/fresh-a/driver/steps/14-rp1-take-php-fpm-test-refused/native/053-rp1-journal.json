@@ -1,0 +1,59 @@
+{
+  "at": "2026-10-11T05:05:33Z",
+  "by_unit": {
+    "celikpanel-agent.service": [
+      "2026-10-11T05:05:29.377302+00:00 dns-ubuntu agent[7670]: 2026/10/11 05:05:29 ApplySitePool site 2 (take): failed owner_edited /etc/php/8.3/fpm/pool.d/site2.conf"
+    ],
+    "celikpanel-panel.service": [
+      "2026-10-11T05:05:28.141387+00:00 dns-ubuntu panel[41985]: 2026/10/11 05:05:28 http: TLS handshake error from 127.0.0.1:56426: EOF",
+      "2026-10-11T05:05:29.254493+00:00 dns-ubuntu panel[41985]: 2026/10/11 05:05:29 http: TLS handshake error from 127.0.0.1:43818: EOF",
+      "2026-10-11T05:05:29.377646+00:00 dns-ubuntu panel[41985]: 2026/10/11 05:05:29 site configuration set12-a.test php_pool (take): failed; owner's file kept as /etc/php/8.3/fpm/pool.d/site2.conf.celikpanel-backup-20261011T050529Z; php-fpm8.3 -t: [11-Oct-2026 05:05:29] ERROR: [/etc/php/8.3/fpm/pool.d/zz-set12-owner.conf:3] unknown entry 'set12_not_a_directive' [11-Oct-2026 05:05:29] ERROR: Unable to include /etc/php/8.3/fpm/pool.d/zz-set12-owner.conf from /etc/php/8.3/fpm/php-fpm.conf at line 3 [11-Oct-2026 05:05:29] ERROR: fa",
+      "2026-10-11T05:05:29.386989+00:00 dns-ubuntu panel[41985]: 2026/10/11 05:05:29 [502] site configuration of set12-a.test not applied: failed (owner_edited config_refused); restore confirmed"
+    ],
+    "nginx.service": [],
+    "php8.3-fpm.service": [
+      "2026-10-11T05:05:28.083499+00:00 dns-ubuntu systemd[1]: Reloading php8.3-fpm.service - The PHP 8.3 FastCGI Process Manager...",
+      "2026-10-11T05:05:28.089451+00:00 dns-ubuntu systemd[1]: Reloaded php8.3-fpm.service - The PHP 8.3 FastCGI Process Manager.",
+      "2026-10-11T05:05:28.153062+00:00 dns-ubuntu php-fpm8.3[31004]: [11-Oct-2026 05:05:28] NOTICE: using inherited socket fd=8, \"/run/php/php8.3-fpm.sock\"",
+      "2026-10-11T05:05:28.153062+00:00 dns-ubuntu php-fpm8.3[31004]: [11-Oct-2026 05:05:28] NOTICE: using inherited socket fd=9, \"/var/run/php/php8.3-fpm-site2.sock\"",
+      "2026-10-11T05:05:28.153062+00:00 dns-ubuntu php-fpm8.3[31004]: [11-Oct-2026 05:05:28] NOTICE: using inherited socket fd=10, \"/var/run/php/php8.3-fpm-site3.sock\"",
+      "2026-10-11T05:05:29.367487+00:00 dns-ubuntu systemd[1]: Reloading php8.3-fpm.service - The PHP 8.3 FastCGI Process Manager...",
+      "2026-10-11T05:05:29.372325+00:00 dns-ubuntu systemd[1]: Reloaded php8.3-fpm.service - The PHP 8.3 FastCGI Process Manager.",
+      "2026-10-11T05:05:29.424281+00:00 dns-ubuntu php-fpm8.3[31004]: [11-Oct-2026 05:05:29] ERROR: [/etc/php/8.3/fpm/pool.d/zz-set12-owner.conf:3] unknown entry 'set12_not_a_directive'",
+      "2026-10-11T05:05:29.424281+00:00 dns-ubuntu php-fpm8.3[31004]: [11-Oct-2026 05:05:29] ERROR: Unable to include /etc/php/8.3/fpm/pool.d/zz-set12-owner.conf from /etc/php/8.3/fpm/php-fpm.conf at line 3",
+      "2026-10-11T05:05:29.424281+00:00 dns-ubuntu php-fpm8.3[31004]: [11-Oct-2026 05:05:29] ERROR: failed to load configuration file '/etc/php/8.3/fpm/php-fpm.conf'",
+      "2026-10-11T05:05:29.424281+00:00 dns-ubuntu php-fpm8.3[31004]: [11-Oct-2026 05:05:29] ERROR: FPM initialization failed",
+      "2026-10-11T05:05:29.429320+00:00 dns-ubuntu systemd[1]: php8.3-fpm.service: Main process exited, code=exited, status=78/CONFIG",
+      "2026-10-11T05:05:29.439971+00:00 dns-ubuntu systemd[1]: php8.3-fpm.service: Failed with result 'exit-code'.",
+      "2026-10-11T05:05:29.440737+00:00 dns-ubuntu systemd[1]: php8.3-fpm.service: Consumed 1.099s CPU time, 15.8M memory peak, 0B memory swap peak."
+    ]
+  },
+  "mode": "read-window12",
+  "owner_action": false,
+  "schema": "celikpanel/set12-native/v1",
+  "since_epoch": 1791695128,
+  "systemd_all": [
+    "2026-10-11T05:05:28.083499+00:00 dns-ubuntu systemd[1]: Reloading php8.3-fpm.service - The PHP 8.3 FastCGI Process Manager...",
+    "2026-10-11T05:05:28.089451+00:00 dns-ubuntu systemd[1]: Reloaded php8.3-fpm.service - The PHP 8.3 FastCGI Process Manager.",
+    "2026-10-11T05:05:29.367487+00:00 dns-ubuntu systemd[1]: Reloading php8.3-fpm.service - The PHP 8.3 FastCGI Process Manager...",
+    "2026-10-11T05:05:29.372325+00:00 dns-ubuntu systemd[1]: Reloaded php8.3-fpm.service - The PHP 8.3 FastCGI Process Manager.",
+    "2026-10-11T05:05:29.429320+00:00 dns-ubuntu systemd[1]: php8.3-fpm.service: Main process exited, code=exited, status=78/CONFIG",
+    "2026-10-11T05:05:29.439971+00:00 dns-ubuntu systemd[1]: php8.3-fpm.service: Failed with result 'exit-code'.",
+    "2026-10-11T05:05:29.440737+00:00 dns-ubuntu systemd[1]: php8.3-fpm.service: Consumed 1.099s CPU time, 15.8M memory peak, 0B memory swap peak."
+  ],
+  "systemd_manager": [
+    "2026-10-11T05:05:28.083499+00:00 dns-ubuntu systemd[1]: Reloading php8.3-fpm.service - The PHP 8.3 FastCGI Process Manager...",
+    "2026-10-11T05:05:28.089451+00:00 dns-ubuntu systemd[1]: Reloaded php8.3-fpm.service - The PHP 8.3 FastCGI Process Manager.",
+    "2026-10-11T05:05:29.367487+00:00 dns-ubuntu systemd[1]: Reloading php8.3-fpm.service - The PHP 8.3 FastCGI Process Manager...",
+    "2026-10-11T05:05:29.372325+00:00 dns-ubuntu systemd[1]: Reloaded php8.3-fpm.service - The PHP 8.3 FastCGI Process Manager.",
+    "2026-10-11T05:05:29.429320+00:00 dns-ubuntu systemd[1]: php8.3-fpm.service: Main process exited, code=exited, status=78/CONFIG",
+    "2026-10-11T05:05:29.439971+00:00 dns-ubuntu systemd[1]: php8.3-fpm.service: Failed with result 'exit-code'.",
+    "2026-10-11T05:05:29.440737+00:00 dns-ubuntu systemd[1]: php8.3-fpm.service: Consumed 1.099s CPU time, 15.8M memory peak, 0B memory swap peak."
+  ],
+  "units": [
+    "celikpanel-panel.service",
+    "celikpanel-agent.service",
+    "nginx.service",
+    "php8.3-fpm.service"
+  ]
+}

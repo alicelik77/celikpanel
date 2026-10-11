@@ -1,0 +1,46 @@
+{
+  "checks": {
+    "check": {
+      "body": {
+        "available": true,
+        "current_commit": "2a0af88660773b43cbe1155c622483e2f0a2bbeb",
+        "current_version": "v0.1.0-alpha.82",
+        "supported": true,
+        "target": {
+          "arch": "amd64",
+          "archive_sha256": "9df1d5399d7cb044becb542baaff40fabc9b35379723d0a7bec91fcca214ca8b",
+          "archive_size": "66123282",
+          "commit": "80a2aed4be2c98e3afba83153027ed5597342258",
+          "os": "linux",
+          "published_at": "2026-10-11T05:47:20Z",
+          "sequence": "83",
+          "version": "v0.1.0-alpha.83"
+        }
+      },
+      "http": 200
+    },
+    "origin_check": {
+      "addresses": [
+        "127.0.0.1"
+      ],
+      "boot_id": "3fd8aeb0-7573-4c0b-89c2-60fc448797fc",
+      "getent_outcome": "found",
+      "getent_returncode": 0,
+      "getent_status": "ok",
+      "getent_stdout": "127.0.0.1       celikpanel.net\n",
+      "http": "200",
+      "loopback_only": true,
+      "ok": true,
+      "unit": {
+        "ActiveState": "active",
+        "NRestarts": "0",
+        "UnitFileState": "enabled"
+      }
+    }
+  },
+  "finished_at": "2026-10-11T05:56:27Z",
+  "name": "arm",
+  "reason": "observer did not report armed; the update is not started",
+  "started_at": "2026-10-11T05:56:05Z",
+  "verdict": "inconclusive"
+}

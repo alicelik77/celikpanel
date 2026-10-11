@@ -1,0 +1,125 @@
+{
+  "outcome": "response",
+  "panel": "owner",
+  "purpose": "after the update set10-r1.test: GET site-config",
+  "request": {
+    "body": null,
+    "headers": [
+      [
+        "Accept",
+        "application/json"
+      ],
+      [
+        "Host",
+        "127.0.0.1:19001"
+      ],
+      [
+        "Cookie",
+        "[REDACTED]"
+      ]
+    ],
+    "method": "GET",
+    "path": "/api/v1/domains/4/site-config"
+  },
+  "response": {
+    "elapsed_seconds": 0.013,
+    "headers": [
+      [
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+      ],
+      [
+        "Content-Type",
+        "application/json"
+      ],
+      [
+        "Referrer-Policy",
+        "no-referrer"
+      ],
+      [
+        "Strict-Transport-Security",
+        "max-age=31536000"
+      ],
+      [
+        "X-Content-Type-Options",
+        "nosniff"
+      ],
+      [
+        "X-Frame-Options",
+        "DENY"
+      ],
+      [
+        "Date",
+        "Sun, 11 Oct 2026 07:43:18 GMT"
+      ],
+      [
+        "Transfer-Encoding",
+        "chunked"
+      ]
+    ],
+    "json": {
+      "actions": [],
+      "challenge_file": "unchanged",
+      "domain": "set10-r1.test",
+      "domain_id": 4,
+      "enabled": "link",
+      "file_sha256": "e23cbe1148110a916fbbbd470679b798ae75fb900cdc17c70d9af31105fc98c3",
+      "files": [
+        {
+          "actions": [],
+          "challenge_file": "unchanged",
+          "domain": "set10-r1.test",
+          "domain_id": 4,
+          "enabled": "link",
+          "file_sha256": "e23cbe1148110a916fbbbd470679b798ae75fb900cdc17c70d9af31105fc98c3",
+          "include_dir": "/etc/nginx/celikpanel-sites.d/set10-r1.test",
+          "kind": "nginx_vhost",
+          "ledger": {
+            "observed_at": "2026-10-11T07:42:57Z",
+            "written_at": "2026-10-11T07:42:57Z",
+            "written_release": "v0.1.0-alpha.83 80a2aed4be2c"
+          },
+          "managed_dir": "/etc/nginx/celikpanel-managed.d/set10-r1.test",
+          "managed_include": "include /etc/nginx/celikpanel-managed.d/set10-r1.test/*.conf;",
+          "path": "/etc/nginx/sites-available/set10-r1.test.conf",
+          "protection": "none",
+          "render_sha256": "13c97efa94ec98ab89983455a2e34080728c6e9a123e2797fcaabfa90f885c60",
+          "state": "managed_unchanged"
+        },
+        {
+          "actions": [],
+          "adopted_from": "v0.1.0-alpha.82",
+          "diff": "--- /etc/php/8.4/fpm/pool.d/site4.conf (on this server)\n+++ CelikPanel's text\n@@ -1,3 +1,6 @@\n+; The PHP-FPM pool of site4, written by CelikPanel. A line you add or change here is kept:\n+; CelikPanel then shows the difference and asks before writing this file again.\n+; Buraya eklediğiniz ya da değiştirdiğiniz satır korunur; CelikPanel yeniden yazmadan önce sorar.\n [site4]\n user = set10_r1_test\n group = set10_r1_test\n",
+          "domain": "set10-r1.test",
+          "domain_id": 4,
+          "file_sha256": "830734a225bfa629226b9df38a61eae8644d9b7ab52f900381e3ee8a7ae68f7e",
+          "kind": "php_pool",
+          "ledger": {
+            "observed_at": "2026-10-11T07:43:18Z"
+          },
+          "path": "/etc/php/8.4/fpm/pool.d/site4.conf",
+          "protection": "none",
+          "render_sha256": "55ae7dfb8e95087184f2b11225fd5bc1bc11f29d20653e2a0637c530088a0887",
+          "state": "managed_unchanged"
+        }
+      ],
+      "include_dir": "/etc/nginx/celikpanel-sites.d/set10-r1.test",
+      "kind": "nginx_vhost",
+      "ledger": {
+        "observed_at": "2026-10-11T07:42:57Z",
+        "written_at": "2026-10-11T07:42:57Z",
+        "written_release": "v0.1.0-alpha.83 80a2aed4be2c"
+      },
+      "managed_dir": "/etc/nginx/celikpanel-managed.d/set10-r1.test",
+      "managed_include": "include /etc/nginx/celikpanel-managed.d/set10-r1.test/*.conf;",
+      "overall_kind": "nginx_vhost",
+      "overall_state": "managed_unchanged",
+      "path": "/etc/nginx/sites-available/set10-r1.test.conf",
+      "protection": "none",
+      "render_sha256": "13c97efa94ec98ab89983455a2e34080728c6e9a123e2797fcaabfa90f885c60",
+      "state": "managed_unchanged"
+    },
+    "status": 200,
+    "text": null
+  }
+}

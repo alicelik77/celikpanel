@@ -1,0 +1,71 @@
+{
+  "at": "2026-10-11T05:16:13Z",
+  "by_unit": {
+    "celikpanel-agent.service": [
+      "2026-10-11T05:16:05.319174+00:00 dns-arch useradd[2848]: new group: name=set12_b_test, GID=1004",
+      "2026-10-11T05:16:05.319280+00:00 dns-arch useradd[2848]: new user: name=set12_b_test, UID=1004, GID=1004, home=/var/www/celikpanel/subscriptions/2/sites/3, shell=/bin/bash, from=none",
+      "2026-10-11T05:16:05.424012+00:00 dns-arch chpasswd[2849]: pam_unix(chpasswd:chauthtok): password changed for set12_b_test",
+      "2026-10-11T05:16:05.492378+00:00 dns-arch php-fpm[2854]: [NOTICE] configuration file /etc/php/php-fpm.conf test is successful"
+    ],
+    "celikpanel-panel.service": [
+      "2026-10-11T05:16:07.870334+00:00 dns-arch systemd[1]: Stopping CelikPanel web panel...",
+      "2026-10-11T05:16:07.891574+00:00 dns-arch systemd[1]: celikpanel-panel.service: Deactivated successfully.",
+      "2026-10-11T05:16:07.891987+00:00 dns-arch systemd[1]: Stopped CelikPanel web panel.",
+      "2026-10-11T05:16:07.892050+00:00 dns-arch systemd[1]: celikpanel-panel.service: Consumed 887ms CPU time over 4min 3.453s wall clock time, 168.8M memory peak.",
+      "2026-10-11T05:16:07.897348+00:00 dns-arch systemd[1]: Starting CelikPanel web panel...",
+      "2026-10-11T05:16:07.923825+00:00 dns-arch systemd[1]: Started CelikPanel web panel.",
+      "2026-10-11T05:16:08.028685+00:00 dns-arch panel[2977]: 2026/10/11 05:16:08 Starting CelikPanel Backend...",
+      "2026-10-11T05:16:08.035760+00:00 dns-arch panel[2977]: 2026/10/11 05:16:08 ACCEPTANCE FIXTURE — NOT FOR PRODUCTION: this panel was built with the acceptance_license test tag; it never contacts the license service and accepts only the acceptance fixture license on a disposable acceptance guest (guest: verified)",
+      "2026-10-11T05:16:08.036617+00:00 dns-arch panel[2977]: 2026/10/11 05:16:08 Panel startup listener active on :2083 (HTTPS; application gated)",
+      "2026-10-11T05:16:08.036931+00:00 dns-arch panel[2977]: 2026/10/11 05:16:08 Connected to Agent RPC; preparing normal management access",
+      "2026-10-11T05:16:08.056317+00:00 dns-arch panel[2977]: 2026/10/11 05:16:08 site configuration set1-owner.test (startup): unchanged",
+      "2026-10-11T05:16:08.073303+00:00 dns-arch panel[2977]: 2026/10/11 05:16:08 site configuration set12-a.test (startup): unchanged",
+      "2026-10-11T05:16:08.078005+00:00 dns-arch panel[2977]: 2026/10/11 05:16:08 site configuration set12-b.test (startup): unchanged",
+      "2026-10-11T05:16:08.084051+00:00 dns-arch panel[2977]: 2026/10/11 05:16:08 site configuration files at start: 0 written, 3 unchanged, 0 kept (owner-edited), 0 kept (foreign), 0 kept (unknown origin), 0 unreadable or unwritable, 0 missing (not recreated), 0 failed; 0 adopted from an earlier release",
+      "2026-10-11T05:16:08.085236+00:00 dns-arch panel[2977]: 2026/10/11 05:16:08 certificate startup reconcile: certificate dependents: publish full mail SNI snapshot: mail server hostname is not a valid FQDN: invalid hostname \"dns-arch\": a fully qualified DNS name is required; preserve pending outbox: <nil>",
+      "2026-10-11T05:16:08.088609+00:00 dns-arch panel[2977]: 2026/10/11 05:16:08 milter chain: nothing to wire at startup: no mail server is installed on this server, so there is no Postfix milter chain to compose",
+      "2026-10-11T05:16:08.090329+00:00 dns-arch panel[2977]: 2026/10/11 05:16:08 Panel ready on :2083 (HTTPS)",
+      "2026-10-11T05:16:09.981639+00:00 dns-arch panel[2977]: 2026/10/11 05:16:09 http: TLS handshake error from 127.0.0.1:36706: EOF",
+      "2026-10-11T05:16:09.995117+00:00 dns-arch panel[2977]: 2026/10/11 05:16:09 http: TLS handshake error from 127.0.0.1:36732: EOF"
+    ],
+    "nginx.service": [
+      "2026-10-11T05:16:05.624072+00:00 dns-arch systemd[1]: Reloading nginx web server...",
+      "2026-10-11T05:16:05.650005+00:00 dns-arch nginx[2871]: 2026/10/11 05:16:05 [warn] 2871#2871: could not build optimal types_hash, you should increase either types_hash_max_size: 1024 or types_hash_bucket_size: 64; ignoring types_hash_bucket_size",
+      "2026-10-11T05:16:05.655764+00:00 dns-arch nginx[2871]: 2026/10/11 05:16:05 [notice] 2871#2871: signal process started",
+      "2026-10-11T05:16:05.658822+00:00 dns-arch systemd[1]: Reloaded nginx web server."
+    ],
+    "php-fpm.service": [
+      "2026-10-11T05:16:05.504416+00:00 dns-arch systemd[1]: Reloading The PHP FastCGI Process Manager...",
+      "2026-10-11T05:16:05.540459+00:00 dns-arch php-fpm[1489]: [NOTICE] Reloading in progress ...",
+      "2026-10-11T05:16:05.542435+00:00 dns-arch php-fpm[1489]: [NOTICE] reloading: execvp(\"/usr/bin/php-fpm\", {\"/usr/bin/php-fpm\", \"--nodaemonize\", \"--fpm-config\", \"/etc/php/php-fpm.conf\"})",
+      "2026-10-11T05:16:05.542856+00:00 dns-arch systemd[1]: php-fpm.service: Can't open PID file '/run/php-fpm/php-fpm.pid' (yet?) after reload: No such file or directory",
+      "2026-10-11T05:16:05.543000+00:00 dns-arch systemd[1]: Reloaded The PHP FastCGI Process Manager.",
+      "2026-10-11T05:16:05.593052+00:00 dns-arch php-fpm[1489]: [NOTICE] using inherited socket fd=7, \"/run/php-fpm/php-fpm.sock\"",
+      "2026-10-11T05:16:05.593242+00:00 dns-arch php-fpm[1489]: [NOTICE] using inherited socket fd=7, \"/run/php-fpm/php-fpm.sock\"",
+      "2026-10-11T05:16:05.593242+00:00 dns-arch php-fpm[1489]: [NOTICE] using inherited socket fd=9, \"/run/php-fpm/php8.5-fpm-site2.sock\"",
+      "2026-10-11T05:16:05.593072+00:00 dns-arch php-fpm[1489]: [NOTICE] using inherited socket fd=9, \"/run/php-fpm/php8.5-fpm-site2.sock\"",
+      "2026-10-11T05:16:05.600035+00:00 dns-arch php-fpm[1489]: [NOTICE] fpm is running, pid 1489",
+      "2026-10-11T05:16:05.608632+00:00 dns-arch php-fpm[1489]: [NOTICE] ready to handle connections",
+      "2026-10-11T05:16:05.611567+00:00 dns-arch php-fpm[1489]: [NOTICE] systemd monitor interval set to 10000ms"
+    ]
+  },
+  "mode": "read-window",
+  "owner_action": false,
+  "schema": "celikpanel/set10-native/v1",
+  "since_epoch": 1791695765,
+  "systemd_manager": [
+    "2026-10-11T05:16:05.542856+00:00 dns-arch systemd[1]: php-fpm.service: Can't open PID file '/run/php-fpm/php-fpm.pid' (yet?) after reload: No such file or directory",
+    "2026-10-11T05:16:05.624072+00:00 dns-arch systemd[1]: Reloading nginx web server...",
+    "2026-10-11T05:16:05.658822+00:00 dns-arch systemd[1]: Reloaded nginx web server.",
+    "2026-10-11T05:16:07.891574+00:00 dns-arch systemd[1]: celikpanel-panel.service: Deactivated successfully.",
+    "2026-10-11T05:16:07.892050+00:00 dns-arch systemd[1]: celikpanel-panel.service: Consumed 887ms CPU time over 4min 3.453s wall clock time, 168.8M memory peak.",
+    "2026-10-11T05:16:07.891000+00:00 dns-arch audit[1]: SERVICE_STOP pid=1 uid=0 auid=4294967295 ses=4294967295 msg='unit=celikpanel-panel comm=\"systemd\" exe=\"/usr/lib/systemd/systemd\" hostname=? addr=? terminal=? res=success'",
+    "2026-10-11T05:16:07.923000+00:00 dns-arch audit[1]: SERVICE_START pid=1 uid=0 auid=4294967295 ses=4294967295 msg='unit=celikpanel-panel comm=\"systemd\" exe=\"/usr/lib/systemd/systemd\" hostname=? addr=? terminal=? res=success'"
+  ],
+  "units": [
+    "celikpanel-panel.service",
+    "celikpanel-agent.service",
+    "nginx.service",
+    "php-fpm.service"
+  ]
+}

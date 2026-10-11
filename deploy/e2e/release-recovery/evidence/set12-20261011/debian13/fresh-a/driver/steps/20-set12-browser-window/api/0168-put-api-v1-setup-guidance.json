@@ -1,0 +1,87 @@
+{
+  "outcome": "response",
+  "panel": "owner",
+  "purpose": "ui: the owner chooses to set up by hand (PUT /api/v1/setup/guidance manual)",
+  "request": {
+    "body": {
+      "guidance": "manual",
+      "revision": 2
+    },
+    "headers": [
+      [
+        "Accept",
+        "application/json"
+      ],
+      [
+        "Host",
+        "127.0.0.1:18881"
+      ],
+      [
+        "Content-Type",
+        "application/json"
+      ],
+      [
+        "Origin",
+        "https://127.0.0.1:18881"
+      ],
+      [
+        "Cookie",
+        "[REDACTED]"
+      ],
+      [
+        "X-CelikPanel-Request-Id",
+        "55371ae69bbe4f8175b565509373c7eb"
+      ]
+    ],
+    "method": "PUT",
+    "path": "/api/v1/setup/guidance"
+  },
+  "response": {
+    "elapsed_seconds": 0.004,
+    "headers": [
+      [
+        "Cache-Control",
+        "no-store"
+      ],
+      [
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+      ],
+      [
+        "Content-Type",
+        "application/json"
+      ],
+      [
+        "Referrer-Policy",
+        "no-referrer"
+      ],
+      [
+        "Strict-Transport-Security",
+        "max-age=31536000"
+      ],
+      [
+        "X-Content-Type-Options",
+        "nosniff"
+      ],
+      [
+        "X-Frame-Options",
+        "DENY"
+      ],
+      [
+        "Date",
+        "Sun, 11 Oct 2026 04:40:38 GMT"
+      ],
+      [
+        "Content-Length",
+        "100"
+      ]
+    ],
+    "json": {
+      "action": "/setup",
+      "code": "setup_conflict",
+      "error": "server setup changed; reload the current plan"
+    },
+    "status": 409,
+    "text": null
+  }
+}

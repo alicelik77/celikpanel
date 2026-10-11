@@ -1,0 +1,27 @@
+{
+  "checks": {
+    "checks": 13,
+    "error": null,
+    "failed": [
+      "A: own address: the probe asked 10.0.2.15 under each name and nginx served the probe's bytes (ready)",
+      "A: [::]:80 only: the probe asked ::1 under each name and nginx served the probe (ready)",
+      "A: not this server's address: the answer carries validation_probe not_run, validation_unknown_reason, the address and the sentence"
+    ],
+    "finished_at": "2026-10-11T05:19:01Z",
+    "notes": [
+      "A: FAIL"
+    ],
+    "started_at": "2026-10-11T05:18:27Z",
+    "substeps": {
+      "A": "failed"
+    },
+    "title": "the addresses the probe asks: own address, [::]:80 only, not this server's, nginx stopped",
+    "unknown": [],
+    "verdict": "failed"
+  },
+  "finished_at": "2026-10-11T05:19:01Z",
+  "name": "A-probe-addresses",
+  "reason": "A: own address: the probe asked 10.0.2.15 under each name and nginx served the probe's bytes (ready); A: [::]:80 only: the probe asked ::1 under each name and nginx served the probe (ready); A: not this server's address: the answer carries validation_probe not_run, validation_unknown_reason, the address and the sentence",
+  "started_at": "2026-10-11T05:18:27Z",
+  "verdict": "failed"
+}

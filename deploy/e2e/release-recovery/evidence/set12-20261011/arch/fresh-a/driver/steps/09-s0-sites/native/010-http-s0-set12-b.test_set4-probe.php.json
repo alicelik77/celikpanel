@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-11T05:16:07Z",
+  "body": "set4-php-executed:42:8.5.11:fpm-fcgi:set12_b_test\nPATH_INFO=[]\nSCRIPT_NAME=[/set4-probe.php]\nSCRIPT_FILENAME=[/var/www/celikpanel/subscriptions/2/sites/3/public_html/set4-probe.php]\nDOCUMENT_ROOT=[/var/www/celikpanel/subscriptions/2/sites/3/public_html]\nREQUEST_URI=[/set4-probe.php]\nQUERY_STRING=[]\nDOCUMENT_URI=[/set4-probe.php]\nPATH_TRANSLATED=[(unset)]\n",
+  "body_sha256": "81aa61b9fd7ca22c6f89a18dea70a9922dd1d0d1f7eb443f2b3a9c8f0b0f7e54",
+  "bytes": 357,
+  "headers": {
+    "content-type": "text/plain;charset=UTF-8",
+    "server": "nginx/1.30.5",
+    "x-powered-by": "PHP/8.5.11"
+  },
+  "host": "set12-b.test",
+  "mode": "read-http",
+  "owner_action": false,
+  "path": "/set4-probe.php",
+  "schema": "celikpanel/set10-native/v1",
+  "status": 200,
+  "status_line": "HTTP/1.1 200 OK"
+}

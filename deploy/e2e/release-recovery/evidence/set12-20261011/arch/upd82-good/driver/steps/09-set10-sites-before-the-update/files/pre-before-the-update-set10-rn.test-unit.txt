@@ -1,0 +1,18 @@
+# Managed by CelikPanel — do not edit by hand.
+# CelikPanel tarafından yönetilir — elle düzenlemeyin.
+[Unit]
+Description=CelikPanel app: set10-rn.test
+After=network.target
+
+[Service]
+User=http
+WorkingDirectory=/var/www/celikpanel/subscriptions/2/sites/5/public_html
+Environment=PORT=3001
+Environment=NODE_ENV=production
+Environment=PATH=/opt/celikpanel/runtimes/node/22.20.0/bin:/usr/local/sbin:/usr/local/bin:/usr/bin
+ExecStart=/bin/sh -lc 'node -e "require('\''http'\'').createServer((q,s)=>s.end('\''set12-rn'\'')).listen(process.env.PORT)"'
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

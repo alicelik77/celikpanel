@@ -1,0 +1,117 @@
+{
+  "action": "owner-pool12",
+  "after": {
+    "ctime_ns": 1791702173914802907,
+    "exists": true,
+    "first_line": "[site2]",
+    "gid": 988,
+    "group": "celikpanel",
+    "header": {
+      "first_line": "[site2]",
+      "present": false
+    },
+    "immutable": false,
+    "inode": 263512,
+    "kind": "file",
+    "lsattr": "--------------e-------",
+    "mode": "0644",
+    "mtime_ns": 1791702173914802907,
+    "nlink": 1,
+    "owner": "root",
+    "path": "/etc/php/8.3/fpm/pool.d/site2.conf",
+    "sha256": "2628c10a719c4a95d42e20fbfee6ceb6847376d8ceaf092cfd96d0486edcfd8e",
+    "side_files": {
+      "backups": [],
+      "pending": {
+        "error": "FileNotFoundError",
+        "exists": false,
+        "path": "/etc/php/8.3/fpm/pool.d/site2.conf.celikpanel-pending"
+      }
+    },
+    "size": 419,
+    "text": "[site2]\nuser = set10_r2_test\ngroup = set10_r2_test\nlisten = /var/run/php/php8.3-fpm-site2.sock\nlisten.owner = www-data\nlisten.group = www-data\nlisten.mode = 0660\npm = dynamic\npm.max_children = 5\npm.start_servers = 2\npm.min_spare_servers = 1\npm.max_spare_servers = 3\npm.max_requests = 500\nchdir = /\n; set12: added by the server owner by hand (a comment and a directive of their own)\nphp_admin_value[memory_limit] = 256M\n",
+    "uid": 0
+  },
+  "at": "2026-10-11T07:02:53Z",
+  "before": {
+    "ctime_ns": 1791702157063813916,
+    "exists": true,
+    "first_line": "[site2]",
+    "gid": 988,
+    "group": "celikpanel",
+    "header": {
+      "first_line": "[site2]",
+      "present": false
+    },
+    "immutable": false,
+    "inode": 263512,
+    "kind": "file",
+    "lsattr": "--------------e-------",
+    "mode": "0644",
+    "mtime_ns": 1791702157059813919,
+    "nlink": 1,
+    "owner": "root",
+    "path": "/etc/php/8.3/fpm/pool.d/site2.conf",
+    "sha256": "149b9b676005717781f28cb8cf2ddd6522f84a29db09d6cab7ad59e9562095b8",
+    "side_files": {
+      "backups": [],
+      "pending": {
+        "error": "FileNotFoundError",
+        "exists": false,
+        "path": "/etc/php/8.3/fpm/pool.d/site2.conf.celikpanel-pending"
+      }
+    },
+    "size": 298,
+    "text": "[site2]\nuser = set10_r2_test\ngroup = set10_r2_test\nlisten = /var/run/php/php8.3-fpm-site2.sock\nlisten.owner = www-data\nlisten.group = www-data\nlisten.mode = 0660\npm = dynamic\npm.max_children = 5\npm.start_servers = 2\npm.min_spare_servers = 1\npm.max_spare_servers = 3\npm.max_requests = 500\nchdir = /\n",
+    "uid": 0
+  },
+  "epoch": 1791702173.9948819,
+  "mode": "owner-pool12",
+  "owner_action": true,
+  "path": "/etc/php/8.3/fpm/pool.d/site2.conf",
+  "php_fpm_test": {
+    "argv": [
+      "php-fpm8.3",
+      "-t"
+    ],
+    "at": "2026-10-11T07:02:53Z",
+    "returncode": 0,
+    "seconds": 0.046,
+    "status": "ok",
+    "stderr": "[11-Oct-2026 07:02:53] NOTICE: configuration file /etc/php/8.3/fpm/php-fpm.conf test is successful\n",
+    "stdout": ""
+  },
+  "php_unit_after": {
+    "ActiveEnterTimestamp": "Sun 2026-10-11 06:55:26 UTC",
+    "ActiveState": "active",
+    "ExecMainStartTimestamp": "Sun 2026-10-11 06:55:26 UTC",
+    "LoadState": "loaded",
+    "MainPID": "31158",
+    "NRestarts": "0",
+    "SubState": "running"
+  },
+  "php_unit_before": {
+    "ActiveEnterTimestamp": "Sun 2026-10-11 06:55:26 UTC",
+    "ActiveState": "active",
+    "ExecMainStartTimestamp": "Sun 2026-10-11 06:55:26 UTC",
+    "LoadState": "loaded",
+    "MainPID": "31158",
+    "NRestarts": "0",
+    "SubState": "running"
+  },
+  "reload": {
+    "argv": [
+      "systemctl",
+      "reload",
+      "php8.3-fpm.service"
+    ],
+    "at": "2026-10-11T07:02:53Z",
+    "returncode": 0,
+    "seconds": 0.018,
+    "status": "ok",
+    "stderr": "",
+    "stdout": ""
+  },
+  "schema": "celikpanel/set12-native/v1",
+  "what": "append"
+}

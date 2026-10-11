@@ -1,0 +1,46 @@
+{
+  "at": "2026-10-11T05:18:05Z",
+  "by_unit": {
+    "celikpanel-agent.service": [
+      "2026-10-11T05:18:01.753767+00:00 dns-arch php-fpm[4184]: [NOTICE] configuration file /etc/php/php-fpm.conf test is successful",
+      "2026-10-11T05:18:01.782349+00:00 dns-arch agent[411]: 2026/10/11 05:18:01 ApplySitePool site 2 (take): failed owner_edited /etc/php/php-fpm.d/site2.conf"
+    ],
+    "celikpanel-panel.service": [
+      "2026-10-11T05:18:01.667649+00:00 dns-arch panel[2977]: 2026/10/11 05:18:01 http: TLS handshake error from 127.0.0.1:48642: EOF",
+      "2026-10-11T05:18:01.782734+00:00 dns-arch panel[2977]: 2026/10/11 05:18:01 site configuration set12-a.test php_pool (take): failed; owner's file kept as /etc/php/php-fpm.d/site2.conf.celikpanel-backup-20261011T051801Z; exit status 1",
+      "2026-10-11T05:18:01.789837+00:00 dns-arch panel[2977]: 2026/10/11 05:18:01 [502] site configuration of set12-a.test not applied: failed (owner_edited reload_failed); restore unconfirmed: exit status 1; rollback incomplete: exit status 1"
+    ],
+    "nginx.service": [],
+    "php-fpm.service": [
+      "2026-10-11T05:18:00.303066+00:00 dns-arch php-fpm[4040]: [NOTICE] Terminating ...",
+      "2026-10-11T05:18:00.304132+00:00 dns-arch systemd[1]: Stopping The PHP FastCGI Process Manager...",
+      "2026-10-11T05:18:00.305353+00:00 dns-arch php-fpm[4040]: [NOTICE] exiting, bye-bye!",
+      "2026-10-11T05:18:00.310841+00:00 dns-arch systemd[1]: php-fpm.service: Deactivated successfully.",
+      "2026-10-11T05:18:00.311216+00:00 dns-arch systemd[1]: Stopped The PHP FastCGI Process Manager.",
+      "2026-10-11T05:18:01.762686+00:00 dns-arch systemd[1]: php-fpm.service: Unit cannot be reloaded because it is inactive.",
+      "2026-10-11T05:18:01.780712+00:00 dns-arch systemd[1]: php-fpm.service: Unit cannot be reloaded because it is inactive."
+    ]
+  },
+  "mode": "read-window12",
+  "owner_action": false,
+  "schema": "celikpanel/set12-native/v1",
+  "since_epoch": 1791695880,
+  "systemd_all": [
+    "2026-10-11T05:18:00.310841+00:00 dns-arch systemd[1]: php-fpm.service: Deactivated successfully.",
+    "2026-10-11T05:18:00.310000+00:00 dns-arch audit[1]: SERVICE_STOP pid=1 uid=0 auid=4294967295 ses=4294967295 msg='unit=php-fpm comm=\"systemd\" exe=\"/usr/lib/systemd/systemd\" hostname=? addr=? terminal=? res=success'",
+    "2026-10-11T05:18:01.762686+00:00 dns-arch systemd[1]: php-fpm.service: Unit cannot be reloaded because it is inactive.",
+    "2026-10-11T05:18:01.780712+00:00 dns-arch systemd[1]: php-fpm.service: Unit cannot be reloaded because it is inactive."
+  ],
+  "systemd_manager": [
+    "2026-10-11T05:18:00.310841+00:00 dns-arch systemd[1]: php-fpm.service: Deactivated successfully.",
+    "2026-10-11T05:18:00.310000+00:00 dns-arch audit[1]: SERVICE_STOP pid=1 uid=0 auid=4294967295 ses=4294967295 msg='unit=php-fpm comm=\"systemd\" exe=\"/usr/lib/systemd/systemd\" hostname=? addr=? terminal=? res=success'",
+    "2026-10-11T05:18:01.762686+00:00 dns-arch systemd[1]: php-fpm.service: Unit cannot be reloaded because it is inactive.",
+    "2026-10-11T05:18:01.780712+00:00 dns-arch systemd[1]: php-fpm.service: Unit cannot be reloaded because it is inactive."
+  ],
+  "units": [
+    "celikpanel-panel.service",
+    "celikpanel-agent.service",
+    "nginx.service",
+    "php-fpm.service"
+  ]
+}

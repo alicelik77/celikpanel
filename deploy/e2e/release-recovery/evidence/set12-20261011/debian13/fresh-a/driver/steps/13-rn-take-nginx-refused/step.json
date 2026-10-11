@@ -1,0 +1,19 @@
+{
+  "checks": {
+    "checks": 0,
+    "error": "KeyError: 'set10-a.test'",
+    "failed": [],
+    "finished_at": "2026-10-11T04:39:01Z",
+    "notes": [],
+    "started_at": "2026-10-11T04:39:01Z",
+    "substeps": {},
+    "title": "take refused by nginx: restore",
+    "unknown": [],
+    "verdict": "inconclusive"
+  },
+  "finished_at": "2026-10-11T04:39:01Z",
+  "name": "RN-take-nginx-refused",
+  "reason": "KeyError: 'set10-a.test'",
+  "started_at": "2026-10-11T04:39:01Z",
+  "verdict": "inconclusive"
+}

@@ -1,0 +1,48 @@
+# celikpanel-render v2 sha256=f2712a0849b4fe41ff8bb4b0c543242d597384ff7e254f47f2b148c9383bf22c
+# Nginx vhost for set4-upd-php.test
+# Written by CelikPanel. Put your own additions in /etc/nginx/celikpanel-sites.d/set4-upd-php.test/*.conf;
+# CelikPanel never writes there. If you change this file, CelikPanel keeps
+# your file and asks you before it replaces it. Keep the lines that include
+# /etc/nginx/celikpanel-managed.d/set4-upd-php.test: that directory is CelikPanel's (certificate
+# validation) and CelikPanel writes there without touching this file.
+# CelikPanel yazdı. Kendi eklemeleriniz /etc/nginx/celikpanel-sites.d/set4-upd-php.test/*.conf içine;
+# CelikPanel oraya hiç yazmaz. Bu dosyayı değiştirirseniz CelikPanel
+# dosyanızı korur ve değiştirmeden önce size sorar. /etc/nginx/celikpanel-managed.d/set4-upd-php.test
+# satırlarını koruyun: o dizin CelikPanel'indir (sertifika doğrulaması).
+# Site ID: 5 · Project type: php
+server {
+    listen 80;
+    listen [::]:80;
+    server_name set4-upd-php.test www.set4-upd-php.test;
+
+    access_log /var/log/nginx/set4-upd-php.test-access.log;
+    error_log /var/log/nginx/set4-upd-php.test-error.log;
+
+    # CelikPanel's own parts of this site (certificate validation) / CelikPanel'in parçaları
+    include /etc/nginx/celikpanel-managed.d/set4-upd-php.test/*.conf;
+
+    root /var/www/celikpanel/subscriptions/2/sites/5/public_html;
+    index index.php index.html index.htm;
+
+    location / {
+
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+    location ~ \.php$ {
+        fastcgi_split_path_info ^(.+?\.php)(/.*)$;
+        try_files $fastcgi_script_name =404;
+        set $path_info $fastcgi_path_info;
+        fastcgi_param PATH_INFO $path_info;
+        fastcgi_index index.php;
+        include fastcgi.conf;
+        fastcgi_pass unix:/var/run/php/php8.4-fpm-site5.sock;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        include fastcgi_params;
+    }
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+
+    # Your additions for this site (server context) / Bu site için eklemeleriniz
+    include /etc/nginx/celikpanel-sites.d/set4-upd-php.test/*.conf;
+}

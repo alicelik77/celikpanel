@@ -1,0 +1,41 @@
+{
+  "action": "owner-php12",
+  "after": {
+    "ActiveEnterTimestamp": "Sun 2026-10-11 04:39:18 UTC",
+    "ActiveState": "inactive",
+    "ExecMainStartTimestamp": "Sun 2026-10-11 04:39:18 UTC",
+    "LoadState": "loaded",
+    "MainPID": "0",
+    "NRestarts": "0",
+    "SubState": "dead"
+  },
+  "at": "2026-10-11T04:41:59Z",
+  "before": {
+    "ActiveEnterTimestamp": "Sun 2026-10-11 04:39:18 UTC",
+    "ActiveState": "active",
+    "ExecMainStartTimestamp": "Sun 2026-10-11 04:39:18 UTC",
+    "LoadState": "loaded",
+    "MainPID": "33296",
+    "NRestarts": "0",
+    "SubState": "running"
+  },
+  "epoch": 1791693719.5566444,
+  "mode": "owner-php12",
+  "owner_action": true,
+  "schema": "celikpanel/set12-native/v1",
+  "systemctl": {
+    "argv": [
+      "systemctl",
+      "stop",
+      "php8.4-fpm.service"
+    ],
+    "at": "2026-10-11T04:41:58Z",
+    "returncode": 0,
+    "seconds": 0.041,
+    "status": "ok",
+    "stderr": "",
+    "stdout": ""
+  },
+  "unit": "php8.4-fpm",
+  "what": "stop"
+}

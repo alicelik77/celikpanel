@@ -1,0 +1,86 @@
+{
+  "outcome": "response",
+  "panel": "owner",
+  "purpose": "n: install Node.js 22.20.0 through the Panel",
+  "request": {
+    "body": {
+      "request_id": "afcc8bb53ed7822e2783baef650215a9",
+      "version": "22.20.0"
+    },
+    "headers": [
+      [
+        "Accept",
+        "application/json"
+      ],
+      [
+        "Host",
+        "127.0.0.1:18881"
+      ],
+      [
+        "Content-Type",
+        "application/json"
+      ],
+      [
+        "Origin",
+        "https://127.0.0.1:18881"
+      ],
+      [
+        "Cookie",
+        "[REDACTED]"
+      ]
+    ],
+    "method": "POST",
+    "path": "/api/v1/runtimes/node"
+  },
+  "response": {
+    "elapsed_seconds": 0.013,
+    "headers": [
+      [
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+      ],
+      [
+        "Content-Type",
+        "application/json"
+      ],
+      [
+        "Referrer-Policy",
+        "no-referrer"
+      ],
+      [
+        "Strict-Transport-Security",
+        "max-age=31536000"
+      ],
+      [
+        "X-Content-Type-Options",
+        "nosniff"
+      ],
+      [
+        "X-Frame-Options",
+        "DENY"
+      ],
+      [
+        "Date",
+        "Sun, 11 Oct 2026 04:40:12 GMT"
+      ],
+      [
+        "Content-Length",
+        "255"
+      ]
+    ],
+    "json": {
+      "operation": {
+        "id": "0016c9e56b920a3d99c8d7cef5d6d730",
+        "kind": "runtime_install",
+        "package_name": "22.20.0",
+        "phase": "queued",
+        "request_id": "afcc8bb53ed7822e2783baef650215a9",
+        "service_id": "node",
+        "started_at": "2026-10-11T04:40:12.962131217Z",
+        "status": "queued"
+      }
+    },
+    "status": 202,
+    "text": null
+  }
+}

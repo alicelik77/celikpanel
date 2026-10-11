@@ -1,0 +1,1692 @@
+{
+  "calls": [
+    {
+      "answer": {
+        "code": "CERTIFICATE_ISSUE_FAILED",
+        "error": "No certificate was issued: this server could not reach the certificate authority, so no request was placed with it. The server owner checks that this server can open HTTPS connections to the internet (DNS resolution, outbound port 443, the system clock), then requests the certificate here again. The site has no certificate from this request and is served as before. Nothing asks again automatically.",
+        "reason": "authority_unreachable",
+        "vars": {
+          "detail": "An unexpected error occurred: requests.exceptions.SSLError: HTTPSConnectionPool(host='acme-v02.api.letsencrypt.org', port=443): Max retries exceeded with url: /directory (Caused by SSLError(SSLCertVerificationError(1, \"[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: Hostname mismatch, ce...",
+          "domain": "set12-a.test",
+          "kept": "none"
+        }
+      },
+      "at": "2026-10-11T05:18:32Z",
+      "json": {
+        "code": "CERTIFICATE_ISSUE_FAILED",
+        "error": "No certificate was issued: this server could not reach the certificate authority, so no request was placed with it. The server owner checks that this server can open HTTPS connections to the internet (DNS resolution, outbound port 443, the system clock), then requests the certificate here again. The site has no certificate from this request and is served as before. Nothing asks again automatically.",
+        "reason": "authority_unreachable",
+        "vars": {
+          "detail": "An unexpected error occurred: requests.exceptions.SSLError: HTTPSConnectionPool(host='acme-v02.api.letsencrypt.org', port=443): Max retries exceeded with url: /directory (Caused by SSLError(SSLCertVerificationError(1, \"[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: Hostname mismatch, ce...",
+          "domain": "set12-a.test",
+          "kept": "none"
+        }
+      },
+      "label": "a-own: POST ssl/letsencrypt (the owner requests a certificate)",
+      "request": {
+        "body": {
+          "auto_renew": false,
+          "email": "hostmaster@set12-a.test"
+        },
+        "method": "POST",
+        "path": "/api/v1/domains/2/ssl/letsencrypt"
+      },
+      "status": 502,
+      "text": null
+    },
+    {
+      "answer": {
+        "code": "CERTIFICATE_ISSUE_FAILED",
+        "error": "No certificate was issued: this server could not reach the certificate authority, so no request was placed with it. The server owner checks that this server can open HTTPS connections to the internet (DNS resolution, outbound port 443, the system clock), then requests the certificate here again. The site has no certificate from this request and is served as before. Nothing asks again automatically.",
+        "reason": "authority_unreachable",
+        "vars": {
+          "detail": "An unexpected error occurred: requests.exceptions.SSLError: HTTPSConnectionPool(host='acme-v02.api.letsencrypt.org', port=443): Max retries exceeded with url: /directory (Caused by SSLError(SSLCertVerificationError(1, \"[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: Hostname mismatch, ce...",
+          "domain": "set12-a.test",
+          "kept": "none"
+        }
+      },
+      "at": "2026-10-11T05:18:39Z",
+      "json": {
+        "code": "CERTIFICATE_ISSUE_FAILED",
+        "error": "No certificate was issued: this server could not reach the certificate authority, so no request was placed with it. The server owner checks that this server can open HTTPS connections to the internet (DNS resolution, outbound port 443, the system clock), then requests the certificate here again. The site has no certificate from this request and is served as before. Nothing asks again automatically.",
+        "reason": "authority_unreachable",
+        "vars": {
+          "detail": "An unexpected error occurred: requests.exceptions.SSLError: HTTPSConnectionPool(host='acme-v02.api.letsencrypt.org', port=443): Max retries exceeded with url: /directory (Caused by SSLError(SSLCertVerificationError(1, \"[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: Hostname mismatch, ce...",
+          "domain": "set12-a.test",
+          "kept": "none"
+        }
+      },
+      "label": "a-v6: POST ssl/letsencrypt (the owner requests a certificate)",
+      "request": {
+        "body": {
+          "auto_renew": false,
+          "email": "hostmaster@set12-a.test"
+        },
+        "method": "POST",
+        "path": "/api/v1/domains/2/ssl/letsencrypt"
+      },
+      "status": 502,
+      "text": null
+    },
+    {
+      "answer": {
+        "code": "CERTIFICATE_ISSUE_FAILED",
+        "error": "No certificate was issued: this server could not reach the certificate authority, so no request was placed with it. The server owner checks that this server can open HTTPS connections to the internet (DNS resolution, outbound port 443, the system clock), then requests the certificate here again. The site has no certificate from this request and is served as before. Nothing asks again automatically.",
+        "reason": "authority_unreachable",
+        "vars": {
+          "detail": "An unexpected error occurred: requests.exceptions.SSLError: HTTPSConnectionPool(host='acme-v02.api.letsencrypt.org', port=443): Max retries exceeded with url: /directory (Caused by SSLError(SSLCertVerificationError(1, \"[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: Hostname mismatch, ce...",
+          "domain": "set12-a.test",
+          "kept": "none"
+        }
+      },
+      "at": "2026-10-11T05:18:47Z",
+      "json": {
+        "code": "CERTIFICATE_ISSUE_FAILED",
+        "error": "No certificate was issued: this server could not reach the certificate authority, so no request was placed with it. The server owner checks that this server can open HTTPS connections to the internet (DNS resolution, outbound port 443, the system clock), then requests the certificate here again. The site has no certificate from this request and is served as before. Nothing asks again automatically.",
+        "reason": "authority_unreachable",
+        "vars": {
+          "detail": "An unexpected error occurred: requests.exceptions.SSLError: HTTPSConnectionPool(host='acme-v02.api.letsencrypt.org', port=443): Max retries exceeded with url: /directory (Caused by SSLError(SSLCertVerificationError(1, \"[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: Hostname mismatch, ce...",
+          "domain": "set12-a.test",
+          "kept": "none"
+        }
+      },
+      "label": "a-nonlocal: POST ssl/letsencrypt (the owner requests a certificate)",
+      "request": {
+        "body": {
+          "auto_renew": false,
+          "email": "hostmaster@set12-a.test"
+        },
+        "method": "POST",
+        "path": "/api/v1/domains/2/ssl/letsencrypt"
+      },
+      "status": 502,
+      "text": null
+    },
+    {
+      "answer": {
+        "code": "SITE_CONFIG_OWNER_EDITED",
+        "detail": "include_missing",
+        "error": "This site’s nginx configuration file was changed outside CelikPanel and does not let CelikPanel publish the certificate validation without changing the file, so no certificate was requested and nothing was changed. The server administrator chooses on the domain’s Configuration file page: take CelikPanel’s text, or add what that page shows to the file and reload nginx; then request the certificate again.",
+        "reason": "certificate_validation",
+        "vars": {
+          "address": "127.0.0.1",
+          "include": "include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;",
+          "name": "set12-a.test",
+          "status": "200"
+        }
+      },
+      "at": "2026-10-11T05:18:53Z",
+      "catalogue_texts": {
+        "err.SITE_CONFIG_OWNER_EDITED": {
+          "en": "This site’s nginx configuration file is not CelikPanel’s unchanged text, so CelikPanel kept it and did not apply this change to it. Nothing else was changed. On the domain’s Configuration file page, keep your file, take CelikPanel’s text (your file is kept as a dated copy), or merge the two by hand.",
+          "tr": "Bu sitenin nginx yapılandırma dosyası CelikPanel’in değişmemiş metni değil; bu yüzden CelikPanel onu korudu ve bu değişikliği ona uygulamadı. Başka hiçbir şey değiştirilmedi. Alan adının Yapılandırma dosyası sayfasında dosyanızı koruyun, CelikPanel’in metnini alın (dosyanız tarihli bir kopya olarak saklanır) ya da ikisini elle birleştirin."
+        },
+        "err.SITE_CONFIG_OWNER_EDITED.certificate_validation": {
+          "en": "This site’s nginx configuration file was changed outside CelikPanel and does not let CelikPanel publish the certificate validation without changing the file, so no certificate was requested and nothing was changed. The server administrator chooses on the domain’s Configuration file page: take CelikPanel’s text, or add what that page shows to the file and reload nginx; then request the certificate again.",
+          "tr": "Bu sitenin nginx yapılandırma dosyası CelikPanel dışında değiştirildi ve CelikPanel’in sertifika doğrulamasını dosyayı değiştirmeden yayımlamasına izin vermiyor; bu yüzden sertifika istenmedi ve hiçbir şey değiştirilmedi. Seçimi sunucu yöneticisi alan adının Yapılandırma dosyası sayfasında yapar: CelikPanel’in metnini alır ya da o sayfanın gösterdiğini dosyaya ekleyip nginx’i yeniden yükler; sonra sertifikayı yeniden isteyin."
+        }
+      },
+      "json": {
+        "code": "SITE_CONFIG_OWNER_EDITED",
+        "detail": "include_missing",
+        "error": "This site’s nginx configuration file was changed outside CelikPanel and does not let CelikPanel publish the certificate validation without changing the file, so no certificate was requested and nothing was changed. The server administrator chooses on the domain’s Configuration file page: take CelikPanel’s text, or add what that page shows to the file and reload nginx; then request the certificate again.",
+        "reason": "certificate_validation",
+        "vars": {
+          "address": "127.0.0.1",
+          "include": "include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;",
+          "name": "set12-a.test",
+          "status": "200"
+        }
+      },
+      "label": "a-page: a refused request sets the reason: POST ssl/letsencrypt (the owner requests a certificate)",
+      "request": {
+        "body": {
+          "auto_renew": false,
+          "email": "hostmaster@set12-a.test"
+        },
+        "method": "POST",
+        "path": "/api/v1/domains/2/ssl/letsencrypt"
+      },
+      "status": 409,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T05:18:56Z",
+      "json": {
+        "actions": [
+          "keep",
+          "take",
+          "merge"
+        ],
+        "certificate": {
+          "referenced": false
+        },
+        "challenge_file": "unchanged",
+        "diff": "--- /etc/nginx/sites-available/set12-a.test.conf (on this server)\n+++ CelikPanel's text\n@@ -10,15 +10,15 @@\n # satırlarını koruyun: o dizin CelikPanel'indir (sertifika doğrulaması).\n # Site ID: 2 · Project type: php\n server {\n-    listen 198.51.100.77:80;\n+    listen 80;\n+    listen [::]:80;\n     server_name set12-a.test www.set12-a.test;\n-    # set11: put back by the server owner\n-    include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;\n \n     access_log /var/log/nginx/set12-a.test-access.log;\n     error_log /var/log/nginx/set12-a.test-error.log;\n \n     # CelikPanel's own parts of this site (certificate validation) / CelikPanel'in parçaları\n+    include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;\n \n     root /var/www/celikpanel/subscriptions/2/sites/2/public_html;\n     index index.php index.html index.htm;\n",
+        "domain": "set12-a.test",
+        "domain_id": 2,
+        "enabled": "link",
+        "file_sha256": "10687609d494c0669cf0ee2acc645bac9c98cf1af804ad39464cd031065d93ef",
+        "files": [
+          {
+            "actions": [
+              "keep",
+              "take",
+              "merge"
+            ],
+            "certificate": {
+              "referenced": false
+            },
+            "challenge_file": "unchanged",
+            "diff": "--- /etc/nginx/sites-available/set12-a.test.conf (on this server)\n+++ CelikPanel's text\n@@ -10,15 +10,15 @@\n # satırlarını koruyun: o dizin CelikPanel'indir (sertifika doğrulaması).\n # Site ID: 2 · Project type: php\n server {\n-    listen 198.51.100.77:80;\n+    listen 80;\n+    listen [::]:80;\n     server_name set12-a.test www.set12-a.test;\n-    # set11: put back by the server owner\n-    include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;\n \n     access_log /var/log/nginx/set12-a.test-access.log;\n     error_log /var/log/nginx/set12-a.test-error.log;\n \n     # CelikPanel's own parts of this site (certificate validation) / CelikPanel'in parçaları\n+    include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;\n \n     root /var/www/celikpanel/subscriptions/2/sites/2/public_html;\n     index index.php index.html index.htm;\n",
+            "domain": "set12-a.test",
+            "domain_id": 2,
+            "enabled": "link",
+            "file_sha256": "10687609d494c0669cf0ee2acc645bac9c98cf1af804ad39464cd031065d93ef",
+            "include_dir": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+            "kind": "nginx_vhost",
+            "ledger": {
+              "backup_path": "/etc/nginx/sites-available/set12-a.test.conf.celikpanel-backup-20261011T051744Z",
+              "observed_at": "2026-10-11T05:18:53Z",
+              "written_at": "2026-10-11T05:18:18Z",
+              "written_release": "v0.1.0-alpha.81 9e223f175d96"
+            },
+            "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-a.test",
+            "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;",
+            "path": "/etc/nginx/sites-available/set12-a.test.conf",
+            "pending_path": "/etc/nginx/sites-available/set12-a.test.conf.celikpanel-pending",
+            "pending_reason": "certificate_validation",
+            "protection": "none",
+            "render_sha256": "872fe38bc22fdd3ed84e57310827eff28352e5af5f8f633178ca71aacb16b109",
+            "state": "owner_edited",
+            "validation": "unknown",
+            "validation_address": "198.51.100.77",
+            "validation_name": "set12-a.test",
+            "validation_unknown_reason": "address_not_local"
+          },
+          {
+            "actions": [],
+            "decision": {
+              "current": false,
+              "decided_at": "2026-10-11T05:16:16Z",
+              "kind": "take_celikpanel"
+            },
+            "domain": "set12-a.test",
+            "domain_id": 2,
+            "file_sha256": "6f8b1cbea6de1c30f89378b11fff05feef7ecb86fc93c43a1a57906ab5f78a67",
+            "kind": "php_pool",
+            "ledger": {
+              "backup_path": "/etc/php/php-fpm.d/site2.conf.celikpanel-backup-20261011T051801Z",
+              "observed_at": "2026-10-11T05:18:16Z",
+              "written_at": "2026-10-11T05:16:16Z",
+              "written_release": "v0.1.0-alpha.81 9e223f175d96"
+            },
+            "path": "/etc/php/php-fpm.d/site2.conf",
+            "protection": "none",
+            "render_sha256": "8f3644c3c81f7322adb9d4eaf96182b134d479954bdddeebf02aea1282bffb84",
+            "state": "managed_unchanged"
+          }
+        ],
+        "include_dir": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+        "kind": "nginx_vhost",
+        "ledger": {
+          "backup_path": "/etc/nginx/sites-available/set12-a.test.conf.celikpanel-backup-20261011T051744Z",
+          "observed_at": "2026-10-11T05:18:53Z",
+          "written_at": "2026-10-11T05:18:18Z",
+          "written_release": "v0.1.0-alpha.81 9e223f175d96"
+        },
+        "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-a.test",
+        "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;",
+        "overall_kind": "nginx_vhost",
+        "overall_state": "owner_edited",
+        "path": "/etc/nginx/sites-available/set12-a.test.conf",
+        "pending_path": "/etc/nginx/sites-available/set12-a.test.conf.celikpanel-pending",
+        "pending_reason": "certificate_validation",
+        "protection": "none",
+        "render_sha256": "872fe38bc22fdd3ed84e57310827eff28352e5af5f8f633178ca71aacb16b109",
+        "state": "owner_edited",
+        "validation": "unknown",
+        "validation_address": "198.51.100.77",
+        "validation_name": "set12-a.test",
+        "validation_unknown_reason": "address_not_local"
+      },
+      "label": "a-page: the Configuration file page reads: GET site-config",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains/2/site-config"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "answer": {
+        "code": "CERTIFICATE_VALIDATION_UNKNOWN",
+        "detail": "unknown",
+        "error": "CelikPanel could not check whether this site’s nginx configuration file lets the certificate validation run, because nginx on this server did not answer, so no certificate was requested and nothing was changed. The server administrator checks that nginx is running; then request the certificate again.",
+        "vars": {
+          "address": "127.0.0.1"
+        }
+      },
+      "at": "2026-10-11T05:18:59Z",
+      "catalogue_texts": {
+        "err.CERTIFICATE_VALIDATION_UNKNOWN": {
+          "en": "CelikPanel could not check whether this site’s nginx configuration file lets the certificate validation run, because nginx on this server did not answer, so no certificate was requested and nothing was changed. The server administrator checks that nginx is running; then request the certificate again.",
+          "tr": "Bu sunucudaki nginx yanıt vermediği için CelikPanel, bu sitenin nginx yapılandırma dosyasının sertifika doğrulamasına izin verip vermediğini kontrol edemedi; bu yüzden sertifika istenmedi ve hiçbir şey değiştirilmedi. Sunucu yöneticisi nginx’in çalıştığını denetler; sonra sertifikayı yeniden isteyin."
+        }
+      },
+      "json": {
+        "code": "CERTIFICATE_VALIDATION_UNKNOWN",
+        "detail": "unknown",
+        "error": "CelikPanel could not check whether this site’s nginx configuration file lets the certificate validation run, because nginx on this server did not answer, so no certificate was requested and nothing was changed. The server administrator checks that nginx is running; then request the certificate again.",
+        "vars": {
+          "address": "127.0.0.1"
+        }
+      },
+      "label": "a-stop: nginx stopped: POST ssl/letsencrypt (the owner requests a certificate)",
+      "request": {
+        "body": {
+          "auto_renew": false,
+          "email": "hostmaster@set12-a.test"
+        },
+        "method": "POST",
+        "path": "/api/v1/domains/2/ssl/letsencrypt"
+      },
+      "status": 503,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T05:19:01Z",
+      "json": {
+        "actions": [],
+        "certificate": {
+          "referenced": false
+        },
+        "challenge_file": "unchanged",
+        "domain": "set12-a.test",
+        "domain_id": 2,
+        "enabled": "link",
+        "file_sha256": "152664e685a190f13064589fbeac11aaa5d2f7f9690f41359f2da85a5a6ee2d2",
+        "files": [
+          {
+            "actions": [],
+            "certificate": {
+              "referenced": false
+            },
+            "challenge_file": "unchanged",
+            "domain": "set12-a.test",
+            "domain_id": 2,
+            "enabled": "link",
+            "file_sha256": "152664e685a190f13064589fbeac11aaa5d2f7f9690f41359f2da85a5a6ee2d2",
+            "include_dir": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+            "kind": "nginx_vhost",
+            "ledger": {
+              "backup_path": "/etc/nginx/sites-available/set12-a.test.conf.celikpanel-backup-20261011T051744Z",
+              "observed_at": "2026-10-11T05:19:00Z",
+              "written_at": "2026-10-11T05:18:18Z",
+              "written_release": "v0.1.0-alpha.81 9e223f175d96"
+            },
+            "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-a.test",
+            "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;",
+            "path": "/etc/nginx/sites-available/set12-a.test.conf",
+            "pending_path": "/etc/nginx/sites-available/set12-a.test.conf.celikpanel-pending",
+            "pending_reason": "certificate_validation",
+            "protection": "none",
+            "render_sha256": "872fe38bc22fdd3ed84e57310827eff28352e5af5f8f633178ca71aacb16b109",
+            "state": "managed_unchanged"
+          },
+          {
+            "actions": [],
+            "decision": {
+              "current": false,
+              "decided_at": "2026-10-11T05:16:16Z",
+              "kind": "take_celikpanel"
+            },
+            "domain": "set12-a.test",
+            "domain_id": 2,
+            "file_sha256": "6f8b1cbea6de1c30f89378b11fff05feef7ecb86fc93c43a1a57906ab5f78a67",
+            "kind": "php_pool",
+            "ledger": {
+              "backup_path": "/etc/php/php-fpm.d/site2.conf.celikpanel-backup-20261011T051801Z",
+              "observed_at": "2026-10-11T05:18:16Z",
+              "written_at": "2026-10-11T05:16:16Z",
+              "written_release": "v0.1.0-alpha.81 9e223f175d96"
+            },
+            "path": "/etc/php/php-fpm.d/site2.conf",
+            "protection": "none",
+            "render_sha256": "8f3644c3c81f7322adb9d4eaf96182b134d479954bdddeebf02aea1282bffb84",
+            "state": "managed_unchanged"
+          }
+        ],
+        "include_dir": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+        "kind": "nginx_vhost",
+        "ledger": {
+          "backup_path": "/etc/nginx/sites-available/set12-a.test.conf.celikpanel-backup-20261011T051744Z",
+          "observed_at": "2026-10-11T05:19:00Z",
+          "written_at": "2026-10-11T05:18:18Z",
+          "written_release": "v0.1.0-alpha.81 9e223f175d96"
+        },
+        "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-a.test",
+        "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;",
+        "overall_kind": "nginx_vhost",
+        "overall_state": "managed_unchanged",
+        "path": "/etc/nginx/sites-available/set12-a.test.conf",
+        "pending_path": "/etc/nginx/sites-available/set12-a.test.conf.celikpanel-pending",
+        "pending_reason": "certificate_validation",
+        "protection": "none",
+        "render_sha256": "872fe38bc22fdd3ed84e57310827eff28352e5af5f8f633178ca71aacb16b109",
+        "state": "managed_unchanged"
+      },
+      "label": "a cleanup read: GET site-config",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains/2/site-config"
+      },
+      "status": 200,
+      "text": null
+    }
+  ],
+  "cells": {
+    "A": {
+      "detail": {
+        "nonlocal": {
+          "answer": {
+            "body": {
+              "code": "CERTIFICATE_ISSUE_FAILED",
+              "error": "No certificate was issued: this server could not reach the certificate authority, so no request was placed with it. The server owner checks that this server can open HTTPS connections to the internet (DNS resolution, outbound port 443, the system clock), then requests the certificate here again. The site has no certificate from this request and is served as before. Nothing asks again automatically.",
+              "reason": "authority_unreachable",
+              "vars": {
+                "detail": "An unexpected error occurred: requests.exceptions.SSLError: HTTPSConnectionPool(host='acme-v02.api.letsencrypt.org', port=443): Max retries exceeded with url: /directory (Caused by SSLError(SSLCertVerificationError(1, \"[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: Hostname mismatch, ce...",
+                "domain": "set12-a.test",
+                "kept": "none"
+              }
+            },
+            "seconds": 0.37,
+            "sent": {
+              "auto_renew": false,
+              "email": "hostmaster@set12-a.test"
+            },
+            "status": 502
+          },
+          "files": {
+            "journal": "steps/17-a-probe-addresses/native/117-a-nonlocal-journal.json",
+            "logs": "steps/17-a-probe-addresses/native/116-a-nonlocal-nginx-logs.json",
+            "watch": "steps/17-a-probe-addresses/native/115-a-nonlocal-watch-stop.json"
+          },
+          "gets": [],
+          "journal_lines": [
+            "2026-10-11T05:18:47.343297+00:00 dns-arch panel[4361]: 2026/10/11 05:18:47 site configuration set12-a.test: validation_probe=not_run validation_unknown_reason=address_not_local validation_address=198.51.100.77; the certificate request goes ahead"
+          ],
+          "probe": {
+            "gets": [],
+            "probe_files": {}
+          }
+        },
+        "own": {
+          "answer": {
+            "body": {
+              "code": "CERTIFICATE_ISSUE_FAILED",
+              "error": "No certificate was issued: this server could not reach the certificate authority, so no request was placed with it. The server owner checks that this server can open HTTPS connections to the internet (DNS resolution, outbound port 443, the system clock), then requests the certificate here again. The site has no certificate from this request and is served as before. Nothing asks again automatically.",
+              "reason": "authority_unreachable",
+              "vars": {
+                "detail": "An unexpected error occurred: requests.exceptions.SSLError: HTTPSConnectionPool(host='acme-v02.api.letsencrypt.org', port=443): Max retries exceeded with url: /directory (Caused by SSLError(SSLCertVerificationError(1, \"[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: Hostname mismatch, ce...",
+                "domain": "set12-a.test",
+                "kept": "none"
+              }
+            },
+            "seconds": 0.44,
+            "sent": {
+              "auto_renew": false,
+              "email": "hostmaster@set12-a.test"
+            },
+            "status": 502
+          },
+          "files": {
+            "journal": "steps/17-a-probe-addresses/native/094-a-own-journal.json",
+            "logs": "steps/17-a-probe-addresses/native/093-a-own-nginx-logs.json",
+            "watch": "steps/17-a-probe-addresses/native/092-a-own-watch-stop.json"
+          },
+          "gets": [
+            {
+              "answer": "HTTP/1.1 200 OK",
+              "answer_t": 1791695912.5840163,
+              "body_start": "",
+              "dst": "10.0.2.15",
+              "host": "set12-a.test",
+              "location": null,
+              "request": "GET /.well-known/acme-challenge/celikpanel-probe-58448692a81efe3d877c3a76eb30356c HTTP/1.1",
+              "src": "10.0.2.15",
+              "status": 200,
+              "t": 1791695912.5838172,
+              "user_agent": "Go-http-client/1.1"
+            },
+            {
+              "answer": "HTTP/1.1 200 OK",
+              "answer_t": 1791695912.5846343,
+              "body_start": "",
+              "dst": "10.0.2.15",
+              "host": "www.set12-a.test",
+              "location": null,
+              "request": "GET /.well-known/acme-challenge/celikpanel-probe-58448692a81efe3d877c3a76eb30356c HTTP/1.1",
+              "src": "10.0.2.15",
+              "status": 200,
+              "t": 1791695912.5844316,
+              "user_agent": "Go-http-client/1.1"
+            }
+          ],
+          "probe": {
+            "gets": [
+              {
+                "answer": "HTTP/1.1 200 OK",
+                "host": "set12-a.test",
+                "location": null,
+                "request": "GET /.well-known/acme-challenge/celikpanel-probe-58448692a81efe3d877c3a76eb30356c HTTP/1.1",
+                "status": 200
+              },
+              {
+                "answer": "HTTP/1.1 200 OK",
+                "host": "www.set12-a.test",
+                "location": null,
+                "request": "GET /.well-known/acme-challenge/celikpanel-probe-58448692a81efe3d877c3a76eb30356c HTTP/1.1",
+                "status": 200
+              }
+            ],
+            "probe_files": {
+              "celikpanel-probe-58448692a81efe3d877c3a76eb30356c": {
+                "created_t": 1791695912.5830884,
+                "deleted_t": 1791695912.5849562,
+                "events": [
+                  "create",
+                  "modify",
+                  "close_write",
+                  "attrib",
+                  "delete"
+                ],
+                "final_mode": "0o644",
+                "modes": [
+                  "0o644",
+                  "0o644",
+                  "0o644",
+                  "0o644"
+                ],
+                "owners": [
+                  [
+                    0,
+                    969
+                  ],
+                  [
+                    0,
+                    969
+                  ],
+                  [
+                    0,
+                    969
+                  ],
+                  [
+                    0,
+                    969
+                  ]
+                ],
+                "sizes": [
+                  61,
+                  61,
+                  61,
+                  61
+                ]
+              }
+            }
+          }
+        },
+        "page": {
+          "pending_reason": "certificate_validation",
+          "state": "owner_edited",
+          "validation": "unknown",
+          "validation_address": "198.51.100.77",
+          "validation_unknown_reason": "address_not_local"
+        },
+        "page_first_request": {
+          "files": {
+            "journal": "steps/17-a-probe-addresses/native/126-a-page-journal.json",
+            "logs": "steps/17-a-probe-addresses/native/125-a-page-nginx-logs.json",
+            "watch": "steps/17-a-probe-addresses/native/124-a-page-watch-stop.json"
+          },
+          "probe": {
+            "gets": [
+              {
+                "answer": "HTTP/1.1 200 OK",
+                "host": "set12-a.test",
+                "location": null,
+                "request": "GET /.well-known/acme-challenge/celikpanel-probe-d45198b903a6d5bd8063822fbc1b346c HTTP/1.1",
+                "status": 200
+              },
+              {
+                "answer": "HTTP/1.1 200 OK",
+                "host": "www.set12-a.test",
+                "location": null,
+                "request": "GET /.well-known/acme-challenge/celikpanel-probe-d45198b903a6d5bd8063822fbc1b346c HTTP/1.1",
+                "status": 200
+              }
+            ],
+            "probe_files": {
+              "celikpanel-probe-d45198b903a6d5bd8063822fbc1b346c": {
+                "created_t": 1791695933.8581333,
+                "deleted_t": 1791695933.862622,
+                "events": [
+                  "create",
+                  "modify",
+                  "close_write",
+                  "attrib",
+                  "delete"
+                ],
+                "final_mode": "0o644",
+                "modes": [
+                  "0o644",
+                  "0o644",
+                  "0o644",
+                  "0o644"
+                ],
+                "owners": [
+                  [
+                    0,
+                    969
+                  ],
+                  [
+                    0,
+                    969
+                  ],
+                  [
+                    0,
+                    969
+                  ],
+                  [
+                    0,
+                    969
+                  ]
+                ],
+                "sizes": [
+                  61,
+                  61,
+                  61,
+                  61
+                ]
+              }
+            }
+          }
+        },
+        "v6": {
+          "answer": {
+            "body": {
+              "code": "CERTIFICATE_ISSUE_FAILED",
+              "error": "No certificate was issued: this server could not reach the certificate authority, so no request was placed with it. The server owner checks that this server can open HTTPS connections to the internet (DNS resolution, outbound port 443, the system clock), then requests the certificate here again. The site has no certificate from this request and is served as before. Nothing asks again automatically.",
+              "reason": "authority_unreachable",
+              "vars": {
+                "detail": "An unexpected error occurred: requests.exceptions.SSLError: HTTPSConnectionPool(host='acme-v02.api.letsencrypt.org', port=443): Max retries exceeded with url: /directory (Caused by SSLError(SSLCertVerificationError(1, \"[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: Hostname mismatch, ce...",
+                "domain": "set12-a.test",
+                "kept": "none"
+              }
+            },
+            "seconds": 0.38,
+            "sent": {
+              "auto_renew": false,
+              "email": "hostmaster@set12-a.test"
+            },
+            "status": 502
+          },
+          "files": {
+            "journal": "steps/17-a-probe-addresses/native/105-a-v6-journal.json",
+            "logs": "steps/17-a-probe-addresses/native/104-a-v6-nginx-logs.json",
+            "watch": "steps/17-a-probe-addresses/native/103-a-v6-watch-stop.json"
+          },
+          "gets": [
+            {
+              "answer": "HTTP/1.1 200 OK",
+              "answer_t": 1791695919.8175936,
+              "body_start": "",
+              "dst": "::1",
+              "host": "set12-a.test",
+              "location": null,
+              "request": "GET /.well-known/acme-challenge/celikpanel-probe-8627f03cfe63c72a3c17a8713fb00567 HTTP/1.1",
+              "src": "::1",
+              "status": 200,
+              "t": 1791695919.8165581,
+              "user_agent": "Go-http-client/1.1"
+            },
+            {
+              "answer": "HTTP/1.1 200 OK",
+              "answer_t": 1791695919.8183086,
+              "body_start": "",
+              "dst": "::1",
+              "host": "www.set12-a.test",
+              "location": null,
+              "request": "GET /.well-known/acme-challenge/celikpanel-probe-8627f03cfe63c72a3c17a8713fb00567 HTTP/1.1",
+              "src": "::1",
+              "status": 200,
+              "t": 1791695919.818186,
+              "user_agent": "Go-http-client/1.1"
+            }
+          ],
+          "probe": {
+            "gets": [
+              {
+                "answer": "HTTP/1.1 200 OK",
+                "host": "set12-a.test",
+                "location": null,
+                "request": "GET /.well-known/acme-challenge/celikpanel-probe-8627f03cfe63c72a3c17a8713fb00567 HTTP/1.1",
+                "status": 200
+              },
+              {
+                "answer": "HTTP/1.1 200 OK",
+                "host": "www.set12-a.test",
+                "location": null,
+                "request": "GET /.well-known/acme-challenge/celikpanel-probe-8627f03cfe63c72a3c17a8713fb00567 HTTP/1.1",
+                "status": 200
+              }
+            ],
+            "probe_files": {
+              "celikpanel-probe-8627f03cfe63c72a3c17a8713fb00567": {
+                "created_t": 1791695919.8160667,
+                "deleted_t": 1791695919.8174522,
+                "events": [
+                  "create",
+                  "modify",
+                  "close_write",
+                  "attrib",
+                  "delete"
+                ],
+                "final_mode": "0o644",
+                "modes": [
+                  "0o644",
+                  "0o644",
+                  "0o644",
+                  "0o644"
+                ],
+                "owners": [
+                  [
+                    0,
+                    969
+                  ],
+                  [
+                    0,
+                    969
+                  ],
+                  [
+                    0,
+                    969
+                  ],
+                  [
+                    0,
+                    969
+                  ]
+                ],
+                "sizes": [
+                  61,
+                  61,
+                  61,
+                  61
+                ]
+              }
+            }
+          }
+        }
+      },
+      "expectations": [
+        {
+          "expectation": "own address: the owner's block listens on 10.0.2.15:80 only, nginx -t passed",
+          "held": true,
+          "measured": {
+            "changed": [
+              {
+                "from": "listen 80;",
+                "to": "listen 10.0.2.15:80;"
+              },
+              {
+                "from": "listen [::]:80;",
+                "to": "(removed)"
+              }
+            ]
+          }
+        },
+        {
+          "expectation": "own address: the probe asked 10.0.2.15 under each name and nginx served the probe's bytes (ready)",
+          "held": false,
+          "measured": [
+            {
+              "answer": "HTTP/1.1 200 OK",
+              "dst": "10.0.2.15",
+              "host": "set12-a.test",
+              "status": 200
+            },
+            {
+              "answer": "HTTP/1.1 200 OK",
+              "dst": "10.0.2.15",
+              "host": "www.set12-a.test",
+              "status": 200
+            }
+          ]
+        },
+        {
+          "expectation": "own address: then the request went to the pinned authority (a SYN to 443) and the answer is 502 CERTIFICATE_ISSUE_FAILED authority_unreachable",
+          "held": true,
+          "measured": {
+            "answer": {
+              "code": "CERTIFICATE_ISSUE_FAILED",
+              "reason": "authority_unreachable",
+              "status": 502
+            },
+            "syn_443": [
+              {
+                "dport": 443,
+                "dst": "::1",
+                "sport": 43354,
+                "src": "::1",
+                "syn": true,
+                "t": 1791695912.9201605
+              },
+              {
+                "dport": 443,
+                "dst": "127.0.0.1",
+                "sport": 43508,
+                "src": "127.0.0.1",
+                "syn": true,
+                "t": 1791695912.920396
+              }
+            ]
+          }
+        },
+        {
+          "expectation": "A's vhost is untouched (sha256, inode, mtime)",
+          "held": true,
+          "measured": {
+            "inode": [
+              92143,
+              92143
+            ],
+            "mtime_ns": [
+              1791695909545531647,
+              1791695909545531647
+            ],
+            "sha256": [
+              "72e73ca4d254c4f110169aa21501fab2de04dc9beb240642507d41f026eedea3",
+              "72e73ca4d254c4f110169aa21501fab2de04dc9beb240642507d41f026eedea3"
+            ]
+          }
+        },
+        {
+          "expectation": "[::]:80 only: nginx -t passed and A's block no longer listens on IPv4",
+          "held": true,
+          "measured": {
+            "changed": {
+              "kept": "listen [::]:80;",
+              "removed_lines": [
+                "listen 80;"
+              ]
+            },
+            "listening_80": [
+              "LISTEN 0 511 0.0.0.0:80 0.0.0.0:*",
+              "LISTEN 0 511 [::]:80 [::]:*"
+            ]
+          }
+        },
+        {
+          "expectation": "[::]:80 only: the probe asked ::1 under each name and nginx served the probe (ready)",
+          "held": false,
+          "measured": [
+            {
+              "answer": "HTTP/1.1 200 OK",
+              "dst": "::1",
+              "host": "set12-a.test",
+              "status": 200
+            },
+            {
+              "answer": "HTTP/1.1 200 OK",
+              "dst": "::1",
+              "host": "www.set12-a.test",
+              "status": 200
+            }
+          ]
+        },
+        {
+          "expectation": "[::]:80 only: the request went ahead (SYN to 443); 502 authority_unreachable",
+          "held": true,
+          "measured": {
+            "answer": {
+              "code": "CERTIFICATE_ISSUE_FAILED",
+              "reason": "authority_unreachable",
+              "status": 502
+            },
+            "syn_443": [
+              {
+                "dport": 443,
+                "dst": "::1",
+                "sport": 43674,
+                "src": "::1",
+                "syn": true,
+                "t": 1791695920.0994847
+              },
+              {
+                "dport": 443,
+                "dst": "127.0.0.1",
+                "sport": 34032,
+                "src": "127.0.0.1",
+                "syn": true,
+                "t": 1791695920.0998366
+              }
+            ]
+          }
+        },
+        {
+          "expectation": "not this server's address: the owner's block listens on 198.51.100.77:80 (lab: ip_nonlocal_bind=1), nginx -t passed",
+          "held": true,
+          "measured": {
+            "changed": {
+              "changed": [
+                {
+                  "from": "listen 80;",
+                  "to": "listen 198.51.100.77:80;"
+                },
+                {
+                  "from": "listen [::]:80;",
+                  "to": "(removed)"
+                }
+              ]
+            },
+            "listening_80": [
+              "LISTEN 0 511 0.0.0.0:80 0.0.0.0:*",
+              "LISTEN 0 511 [::]:80 [::]:*"
+            ]
+          }
+        },
+        {
+          "expectation": "not this server's address: no probe request was sent; the request went ahead (SYN to 443)",
+          "held": true,
+          "measured": {
+            "gets": [],
+            "syn_443": [
+              {
+                "dport": 443,
+                "dst": "::1",
+                "sport": 40244,
+                "src": "::1",
+                "syn": true,
+                "t": 1791695927.604192
+              },
+              {
+                "dport": 443,
+                "dst": "127.0.0.1",
+                "sport": 44974,
+                "src": "127.0.0.1",
+                "syn": true,
+                "t": 1791695927.6045356
+              }
+            ]
+          }
+        },
+        {
+          "expectation": "not this server's address: the Panel's journal says validation_probe=not_run validation_unknown_reason=address_not_local validation_address=198.51.100.77",
+          "held": true,
+          "measured": [
+            "2026-10-11T05:18:47.343297+00:00 dns-arch panel[4361]: 2026/10/11 05:18:47 site configuration set12-a.test: validation_probe=not_run validation_unknown_reason=address_not_local validation_address=198.51.100.77; the certificate request goes ahead"
+          ]
+        },
+        {
+          "expectation": "not this server's address: the answer carries validation_probe not_run, validation_unknown_reason, the address and the sentence",
+          "held": false,
+          "measured": {
+            "body": {
+              "code": "CERTIFICATE_ISSUE_FAILED",
+              "reason": "authority_unreachable",
+              "status": null,
+              "validation_address": null,
+              "validation_note": null,
+              "validation_probe": null,
+              "validation_unknown_reason": null
+            },
+            "status": 502,
+            "why_this_may_not_hold": "the authority is pinned to the guest's loopback, so the request fails; the fields are documented on the success answer"
+          }
+        },
+        {
+          "expectation": "the page (reason certificate_validation) reads validation unknown, address_not_local, the address; the reason stays",
+          "held": true,
+          "measured": {
+            "ledger_reason": "certificate_validation",
+            "page": {
+              "pending_reason": "certificate_validation",
+              "resolved_reason": null,
+              "state": "owner_edited",
+              "validation": "unknown",
+              "validation_address": "198.51.100.77",
+              "validation_unknown_reason": "address_not_local"
+            },
+            "refused_first": {
+              "code": "SITE_CONFIG_OWNER_EDITED",
+              "detail": "include_missing",
+              "reason": "certificate_validation",
+              "status": 409
+            }
+          }
+        },
+        {
+          "expectation": "nginx stopped: 503 CERTIFICATE_VALIDATION_UNKNOWN, detail unknown (unchanged)",
+          "held": true,
+          "measured": {
+            "body": {
+              "code": "CERTIFICATE_VALIDATION_UNKNOWN",
+              "detail": "unknown"
+            },
+            "nginx_after": "active",
+            "status": 503
+          }
+        }
+      ],
+      "verdict": "FAIL"
+    }
+  },
+  "checks": [
+    {
+      "detail": {
+        "changed": [
+          {
+            "from": "listen 80;",
+            "to": "listen 10.0.2.15:80;"
+          },
+          {
+            "from": "listen [::]:80;",
+            "to": "(removed)"
+          }
+        ]
+      },
+      "name": "A: own address: the owner's block listens on 10.0.2.15:80 only, nginx -t passed",
+      "ok": true
+    },
+    {
+      "detail": [
+        {
+          "answer": "HTTP/1.1 200 OK",
+          "dst": "10.0.2.15",
+          "host": "set12-a.test",
+          "status": 200
+        },
+        {
+          "answer": "HTTP/1.1 200 OK",
+          "dst": "10.0.2.15",
+          "host": "www.set12-a.test",
+          "status": 200
+        }
+      ],
+      "name": "A: own address: the probe asked 10.0.2.15 under each name and nginx served the probe's bytes (ready)",
+      "ok": false
+    },
+    {
+      "detail": {
+        "answer": {
+          "code": "CERTIFICATE_ISSUE_FAILED",
+          "reason": "authority_unreachable",
+          "status": 502
+        },
+        "syn_443": [
+          {
+            "dport": 443,
+            "dst": "::1",
+            "sport": 43354,
+            "src": "::1",
+            "syn": true,
+            "t": 1791695912.9201605
+          },
+          {
+            "dport": 443,
+            "dst": "127.0.0.1",
+            "sport": 43508,
+            "src": "127.0.0.1",
+            "syn": true,
+            "t": 1791695912.920396
+          }
+        ]
+      },
+      "name": "A: own address: then the request went to the pinned authority (a SYN to 443) and the answer is 502 CERTIFICATE_ISSUE_FAILED authority_unreachable",
+      "ok": true
+    },
+    {
+      "detail": {
+        "inode": [
+          92143,
+          92143
+        ],
+        "mtime_ns": [
+          1791695909545531647,
+          1791695909545531647
+        ],
+        "sha256": [
+          "72e73ca4d254c4f110169aa21501fab2de04dc9beb240642507d41f026eedea3",
+          "72e73ca4d254c4f110169aa21501fab2de04dc9beb240642507d41f026eedea3"
+        ]
+      },
+      "name": "A: A's vhost is untouched (sha256, inode, mtime)",
+      "ok": true
+    },
+    {
+      "detail": {
+        "changed": {
+          "kept": "listen [::]:80;",
+          "removed_lines": [
+            "listen 80;"
+          ]
+        },
+        "listening_80": [
+          "LISTEN 0 511 0.0.0.0:80 0.0.0.0:*",
+          "LISTEN 0 511 [::]:80 [::]:*"
+        ]
+      },
+      "name": "A: [::]:80 only: nginx -t passed and A's block no longer listens on IPv4",
+      "ok": true
+    },
+    {
+      "detail": [
+        {
+          "answer": "HTTP/1.1 200 OK",
+          "dst": "::1",
+          "host": "set12-a.test",
+          "status": 200
+        },
+        {
+          "answer": "HTTP/1.1 200 OK",
+          "dst": "::1",
+          "host": "www.set12-a.test",
+          "status": 200
+        }
+      ],
+      "name": "A: [::]:80 only: the probe asked ::1 under each name and nginx served the probe (ready)",
+      "ok": false
+    },
+    {
+      "detail": {
+        "answer": {
+          "code": "CERTIFICATE_ISSUE_FAILED",
+          "reason": "authority_unreachable",
+          "status": 502
+        },
+        "syn_443": [
+          {
+            "dport": 443,
+            "dst": "::1",
+            "sport": 43674,
+            "src": "::1",
+            "syn": true,
+            "t": 1791695920.0994847
+          },
+          {
+            "dport": 443,
+            "dst": "127.0.0.1",
+            "sport": 34032,
+            "src": "127.0.0.1",
+            "syn": true,
+            "t": 1791695920.0998366
+          }
+        ]
+      },
+      "name": "A: [::]:80 only: the request went ahead (SYN to 443); 502 authority_unreachable",
+      "ok": true
+    },
+    {
+      "detail": {
+        "changed": {
+          "changed": [
+            {
+              "from": "listen 80;",
+              "to": "listen 198.51.100.77:80;"
+            },
+            {
+              "from": "listen [::]:80;",
+              "to": "(removed)"
+            }
+          ]
+        },
+        "listening_80": [
+          "LISTEN 0 511 0.0.0.0:80 0.0.0.0:*",
+          "LISTEN 0 511 [::]:80 [::]:*"
+        ]
+      },
+      "name": "A: not this server's address: the owner's block listens on 198.51.100.77:80 (lab: ip_nonlocal_bind=1), nginx -t passed",
+      "ok": true
+    },
+    {
+      "detail": {
+        "gets": [],
+        "syn_443": [
+          {
+            "dport": 443,
+            "dst": "::1",
+            "sport": 40244,
+            "src": "::1",
+            "syn": true,
+            "t": 1791695927.604192
+          },
+          {
+            "dport": 443,
+            "dst": "127.0.0.1",
+            "sport": 44974,
+            "src": "127.0.0.1",
+            "syn": true,
+            "t": 1791695927.6045356
+          }
+        ]
+      },
+      "name": "A: not this server's address: no probe request was sent; the request went ahead (SYN to 443)",
+      "ok": true
+    },
+    {
+      "detail": [
+        "2026-10-11T05:18:47.343297+00:00 dns-arch panel[4361]: 2026/10/11 05:18:47 site configuration set12-a.test: validation_probe=not_run validation_unknown_reason=address_not_local validation_address=198.51.100.77; the certificate request goes ahead"
+      ],
+      "name": "A: not this server's address: the Panel's journal says validation_probe=not_run validation_unknown_reason=address_not_local validation_address=198.51.100.77",
+      "ok": true
+    },
+    {
+      "detail": {
+        "body": {
+          "code": "CERTIFICATE_ISSUE_FAILED",
+          "reason": "authority_unreachable",
+          "status": null,
+          "validation_address": null,
+          "validation_note": null,
+          "validation_probe": null,
+          "validation_unknown_reason": null
+        },
+        "status": 502,
+        "why_this_may_not_hold": "the authority is pinned to the guest's loopback, so the request fails; the fields are documented on the success answer"
+      },
+      "name": "A: not this server's address: the answer carries validation_probe not_run, validation_unknown_reason, the address and the sentence",
+      "ok": false
+    },
+    {
+      "detail": {
+        "ledger_reason": "certificate_validation",
+        "page": {
+          "pending_reason": "certificate_validation",
+          "resolved_reason": null,
+          "state": "owner_edited",
+          "validation": "unknown",
+          "validation_address": "198.51.100.77",
+          "validation_unknown_reason": "address_not_local"
+        },
+        "refused_first": {
+          "code": "SITE_CONFIG_OWNER_EDITED",
+          "detail": "include_missing",
+          "reason": "certificate_validation",
+          "status": 409
+        }
+      },
+      "name": "A: the page (reason certificate_validation) reads validation unknown, address_not_local, the address; the reason stays",
+      "ok": true
+    },
+    {
+      "detail": {
+        "body": {
+          "code": "CERTIFICATE_VALIDATION_UNKNOWN",
+          "detail": "unknown"
+        },
+        "nginx_after": "active",
+        "status": 503
+      },
+      "name": "A: nginx stopped: 503 CERTIFICATE_VALIDATION_UNKNOWN, detail unknown (unchanged)",
+      "ok": true
+    }
+  ],
+  "finished_at": "2026-10-11T05:19:01Z",
+  "lab_preparation": [
+    {
+      "domain": "set12-a.test",
+      "file": "steps/17-a-probe-addresses/native/085-a-own-lab-restore-set12-a.test.json",
+      "label": "a-own",
+      "sha256_matches": true
+    },
+    {
+      "domain": "set12-a.test",
+      "file": "steps/17-a-probe-addresses/native/096-a-v6-lab-restore-set12-a.test.json",
+      "label": "a-v6",
+      "sha256_matches": true
+    },
+    {
+      "file": "steps/17-a-probe-addresses/native/107-lab-a-nonlocal-bind-on.json",
+      "label": "a-nonlocal-bind-on",
+      "mode": "lab-nonlocal-bind"
+    },
+    {
+      "domain": "set12-a.test",
+      "file": "steps/17-a-probe-addresses/native/108-a-nonlocal-lab-restore-set12-a.test.json",
+      "label": "a-nonlocal",
+      "sha256_matches": true
+    },
+    {
+      "domain": "set12-a.test",
+      "file": "steps/17-a-probe-addresses/native/119-a-page-lab-restore-set12-a.test.json",
+      "label": "a-page",
+      "sha256_matches": true
+    },
+    {
+      "domain": "set12-a.test",
+      "file": "steps/17-a-probe-addresses/native/130-a-page-end-lab-restore-set12-a.test.json",
+      "label": "a-page-end",
+      "sha256_matches": true
+    },
+    {
+      "file": "steps/17-a-probe-addresses/native/131-lab-a-nonlocal-bind-off.json",
+      "label": "a-nonlocal-bind-off",
+      "mode": "lab-nonlocal-bind"
+    },
+    {
+      "domain": "set12-a.test",
+      "file": "steps/17-a-probe-addresses/native/132-a-stop-lab-restore-set12-a.test.json",
+      "label": "a-stop",
+      "sha256_matches": true
+    },
+    {
+      "domain": "set12-a.test",
+      "file": "steps/17-a-probe-addresses/native/136-a-end-lab-restore-set12-a.test.json",
+      "label": "a-end",
+      "sha256_matches": true
+    }
+  ],
+  "native_evidence": false,
+  "natives": [
+    {
+      "file": "native/084-a-addresses.json",
+      "label": "a-addresses",
+      "mode": "read-addresses12",
+      "owner_action": false
+    },
+    {
+      "file": "native/085-a-own-lab-restore-set12-a.test.json",
+      "label": "a-own-lab-restore-set12-a.test",
+      "mode": "lab-restore",
+      "owner_action": false
+    },
+    {
+      "file": "native/086-owner-a-own-edit.json",
+      "label": "owner-a-own-edit",
+      "mode": "owner-vhost10",
+      "owner_action": true
+    },
+    {
+      "file": "native/087-owner-a-own-bind.json",
+      "label": "owner-a-own-bind",
+      "mode": "owner-vhost12",
+      "owner_action": true
+    },
+    {
+      "file": "native/088-a-own-0-stat.json",
+      "label": "a-own-0-stat",
+      "mode": "read-stat",
+      "owner_action": false
+    },
+    {
+      "file": "native/089-a-own-before-acme.json",
+      "label": "a-own-before-acme",
+      "mode": "read-acme",
+      "owner_action": false
+    },
+    {
+      "file": "native/090-a-own-log-offsets.json",
+      "label": "a-own-log-offsets",
+      "mode": "log-offsets",
+      "owner_action": false
+    },
+    {
+      "file": "native/091-a-own-watch-start.json",
+      "label": "a-own-watch-start",
+      "mode": "watch-start",
+      "owner_action": false
+    },
+    {
+      "file": "native/092-a-own-watch-stop.json",
+      "label": "a-own-watch-stop",
+      "mode": "watch-stop",
+      "owner_action": false
+    },
+    {
+      "file": "native/093-a-own-nginx-logs.json",
+      "label": "a-own-nginx-logs",
+      "mode": "read-logs",
+      "owner_action": false
+    },
+    {
+      "file": "native/094-a-own-journal.json",
+      "label": "a-own-journal",
+      "mode": "read-window",
+      "owner_action": false
+    },
+    {
+      "file": "native/095-a-own-1-stat.json",
+      "label": "a-own-1-stat",
+      "mode": "read-stat",
+      "owner_action": false
+    },
+    {
+      "file": "native/096-a-v6-lab-restore-set12-a.test.json",
+      "label": "a-v6-lab-restore-set12-a.test",
+      "mode": "lab-restore",
+      "owner_action": false
+    },
+    {
+      "file": "native/097-owner-a-v6-edit.json",
+      "label": "owner-a-v6-edit",
+      "mode": "owner-vhost10",
+      "owner_action": true
+    },
+    {
+      "file": "native/098-owner-a-v6-bind.json",
+      "label": "owner-a-v6-bind",
+      "mode": "owner-vhost12",
+      "owner_action": true
+    },
+    {
+      "file": "native/099-a-v6-0-stat.json",
+      "label": "a-v6-0-stat",
+      "mode": "read-stat",
+      "owner_action": false
+    },
+    {
+      "file": "native/100-a-v6-before-acme.json",
+      "label": "a-v6-before-acme",
+      "mode": "read-acme",
+      "owner_action": false
+    },
+    {
+      "file": "native/101-a-v6-log-offsets.json",
+      "label": "a-v6-log-offsets",
+      "mode": "log-offsets",
+      "owner_action": false
+    },
+    {
+      "file": "native/102-a-v6-watch-start.json",
+      "label": "a-v6-watch-start",
+      "mode": "watch-start",
+      "owner_action": false
+    },
+    {
+      "file": "native/103-a-v6-watch-stop.json",
+      "label": "a-v6-watch-stop",
+      "mode": "watch-stop",
+      "owner_action": false
+    },
+    {
+      "file": "native/104-a-v6-nginx-logs.json",
+      "label": "a-v6-nginx-logs",
+      "mode": "read-logs",
+      "owner_action": false
+    },
+    {
+      "file": "native/105-a-v6-journal.json",
+      "label": "a-v6-journal",
+      "mode": "read-window",
+      "owner_action": false
+    },
+    {
+      "file": "native/106-a-v6-1-stat.json",
+      "label": "a-v6-1-stat",
+      "mode": "read-stat",
+      "owner_action": false
+    },
+    {
+      "file": "native/107-lab-a-nonlocal-bind-on.json",
+      "label": "lab-a-nonlocal-bind-on",
+      "mode": "lab-nonlocal-bind",
+      "owner_action": false
+    },
+    {
+      "file": "native/108-a-nonlocal-lab-restore-set12-a.test.json",
+      "label": "a-nonlocal-lab-restore-set12-a.test",
+      "mode": "lab-restore",
+      "owner_action": false
+    },
+    {
+      "file": "native/109-owner-a-nonlocal-edit.json",
+      "label": "owner-a-nonlocal-edit",
+      "mode": "owner-vhost10",
+      "owner_action": true
+    },
+    {
+      "file": "native/110-owner-a-nonlocal-bind.json",
+      "label": "owner-a-nonlocal-bind",
+      "mode": "owner-vhost12",
+      "owner_action": true
+    },
+    {
+      "file": "native/111-a-nonlocal-0-stat.json",
+      "label": "a-nonlocal-0-stat",
+      "mode": "read-stat",
+      "owner_action": false
+    },
+    {
+      "file": "native/112-a-nonlocal-before-acme.json",
+      "label": "a-nonlocal-before-acme",
+      "mode": "read-acme",
+      "owner_action": false
+    },
+    {
+      "file": "native/113-a-nonlocal-log-offsets.json",
+      "label": "a-nonlocal-log-offsets",
+      "mode": "log-offsets",
+      "owner_action": false
+    },
+    {
+      "file": "native/114-a-nonlocal-watch-start.json",
+      "label": "a-nonlocal-watch-start",
+      "mode": "watch-start",
+      "owner_action": false
+    },
+    {
+      "file": "native/115-a-nonlocal-watch-stop.json",
+      "label": "a-nonlocal-watch-stop",
+      "mode": "watch-stop",
+      "owner_action": false
+    },
+    {
+      "file": "native/116-a-nonlocal-nginx-logs.json",
+      "label": "a-nonlocal-nginx-logs",
+      "mode": "read-logs",
+      "owner_action": false
+    },
+    {
+      "file": "native/117-a-nonlocal-journal.json",
+      "label": "a-nonlocal-journal",
+      "mode": "read-window",
+      "owner_action": false
+    },
+    {
+      "file": "native/118-a-nonlocal-1-stat.json",
+      "label": "a-nonlocal-1-stat",
+      "mode": "read-stat",
+      "owner_action": false
+    },
+    {
+      "file": "native/119-a-page-lab-restore-set12-a.test.json",
+      "label": "a-page-lab-restore-set12-a.test",
+      "mode": "lab-restore",
+      "owner_action": false
+    },
+    {
+      "file": "native/120-owner-a-page-remove-include.json",
+      "label": "owner-a-page-remove-include",
+      "mode": "owner-vhost11",
+      "owner_action": true
+    },
+    {
+      "file": "native/121-a-page-before-acme.json",
+      "label": "a-page-before-acme",
+      "mode": "read-acme",
+      "owner_action": false
+    },
+    {
+      "file": "native/122-a-page-log-offsets.json",
+      "label": "a-page-log-offsets",
+      "mode": "log-offsets",
+      "owner_action": false
+    },
+    {
+      "file": "native/123-a-page-watch-start.json",
+      "label": "a-page-watch-start",
+      "mode": "watch-start",
+      "owner_action": false
+    },
+    {
+      "file": "native/124-a-page-watch-stop.json",
+      "label": "a-page-watch-stop",
+      "mode": "watch-stop",
+      "owner_action": false
+    },
+    {
+      "file": "native/125-a-page-nginx-logs.json",
+      "label": "a-page-nginx-logs",
+      "mode": "read-logs",
+      "owner_action": false
+    },
+    {
+      "file": "native/126-a-page-journal.json",
+      "label": "a-page-journal",
+      "mode": "read-window",
+      "owner_action": false
+    },
+    {
+      "file": "native/127-owner-a-page-include-back.json",
+      "label": "owner-a-page-include-back",
+      "mode": "owner-vhost11",
+      "owner_action": true
+    },
+    {
+      "file": "native/128-owner-a-page-bind.json",
+      "label": "owner-a-page-bind",
+      "mode": "owner-vhost12",
+      "owner_action": true
+    },
+    {
+      "file": "native/129-a-page-ledger.json",
+      "label": "a-page-ledger",
+      "mode": "read-ledger",
+      "owner_action": false
+    },
+    {
+      "file": "native/130-a-page-end-lab-restore-set12-a.test.json",
+      "label": "a-page-end-lab-restore-set12-a.test",
+      "mode": "lab-restore",
+      "owner_action": false
+    },
+    {
+      "file": "native/131-lab-a-nonlocal-bind-off.json",
+      "label": "lab-a-nonlocal-bind-off",
+      "mode": "lab-nonlocal-bind",
+      "owner_action": false
+    },
+    {
+      "file": "native/132-a-stop-lab-restore-set12-a.test.json",
+      "label": "a-stop-lab-restore-set12-a.test",
+      "mode": "lab-restore",
+      "owner_action": false
+    },
+    {
+      "file": "native/133-owner-a-stop-edit.json",
+      "label": "owner-a-stop-edit",
+      "mode": "owner-vhost10",
+      "owner_action": true
+    },
+    {
+      "file": "native/134-owner-a-stop-nginx.json",
+      "label": "owner-a-stop-nginx",
+      "mode": "owner-nginx",
+      "owner_action": true
+    },
+    {
+      "file": "native/135-owner-a-stop-nginx-start.json",
+      "label": "owner-a-stop-nginx-start",
+      "mode": "owner-nginx",
+      "owner_action": true
+    },
+    {
+      "file": "native/136-a-end-lab-restore-set12-a.test.json",
+      "label": "a-end-lab-restore-set12-a.test",
+      "mode": "lab-restore",
+      "owner_action": false
+    }
+  ],
+  "node": "arch",
+  "notes": [
+    {
+      "detail": [
+        "own address: the probe asked 10.0.2.15 under each name and nginx served the probe's bytes (ready)",
+        "[::]:80 only: the probe asked ::1 under each name and nginx served the probe (ready)",
+        "not this server's address: the answer carries validation_probe not_run, validation_unknown_reason, the address and the sentence"
+      ],
+      "note": "A: FAIL"
+    }
+  ],
+  "owner_actions": [
+    {
+      "at": "2026-10-11T05:18:29Z",
+      "label": "a-own-edit",
+      "mode": "owner-vhost10"
+    },
+    {
+      "at": "2026-10-11T05:18:29Z",
+      "label": "a-own-bind",
+      "mode": "owner-vhost12"
+    },
+    {
+      "at": "2026-10-11T05:18:36Z",
+      "label": "a-v6-edit",
+      "mode": "owner-vhost10"
+    },
+    {
+      "at": "2026-10-11T05:18:36Z",
+      "label": "a-v6-bind",
+      "mode": "owner-vhost12"
+    },
+    {
+      "at": "2026-10-11T05:18:44Z",
+      "label": "a-nonlocal-edit",
+      "mode": "owner-vhost10"
+    },
+    {
+      "at": "2026-10-11T05:18:44Z",
+      "label": "a-nonlocal-bind",
+      "mode": "owner-vhost12"
+    },
+    {
+      "at": "2026-10-11T05:18:51Z",
+      "label": "a-page-remove-include",
+      "mode": "owner-vhost11"
+    },
+    {
+      "at": "2026-10-11T05:18:56Z",
+      "label": "a-page-include-back",
+      "mode": "owner-vhost11"
+    },
+    {
+      "at": "2026-10-11T05:18:57Z",
+      "label": "a-page-bind",
+      "mode": "owner-vhost12"
+    },
+    {
+      "at": "2026-10-11T05:18:58Z",
+      "label": "a-stop-edit",
+      "mode": "owner-vhost10"
+    },
+    {
+      "at": "2026-10-11T05:18:59Z",
+      "label": "a-stop-nginx",
+      "mode": "owner-nginx"
+    },
+    {
+      "at": "2026-10-11T05:19:00Z",
+      "label": "a-stop-nginx-start",
+      "mode": "owner-nginx"
+    }
+  ],
+  "section": "A-probe-addresses",
+  "started_at": "2026-10-11T05:18:27Z",
+  "substeps": {
+    "A": "failed"
+  },
+  "title": "the addresses the probe asks: own address, [::]:80 only, not this server's, nginx stopped",
+  "verdict": "failed"
+}

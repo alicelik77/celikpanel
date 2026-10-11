@@ -1,0 +1,55 @@
+{
+  "action": "owner-broken-pool",
+  "after": {
+    "error": "FileNotFoundError",
+    "exists": false,
+    "path": "/etc/php/php-fpm.d/zz-set12-owner.conf"
+  },
+  "at": "2026-10-11T05:17:56Z",
+  "before": {
+    "ctime_ns": 1791695872032319927,
+    "exists": true,
+    "gid": 0,
+    "group": "root",
+    "immutable": false,
+    "inode": 92083,
+    "kind": "file",
+    "lsattr": "----------------------",
+    "mode": "0644",
+    "mtime_ns": 1791695872032319927,
+    "nlink": 1,
+    "owner": "root",
+    "path": "/etc/php/php-fpm.d/zz-set12-owner.conf",
+    "sha256": "6c3af7a7f940009e945426f83f9ca5c69704b19aff0a869b66fc35fd824dc2fe",
+    "size": 115,
+    "text": "; set12: the server owner's own pool file, with a directive PHP-FPM refuses\n[set12owner]\nset12_not_a_directive = 1\n",
+    "uid": 0
+  },
+  "epoch": 1791695876.7220907,
+  "mode": "owner-broken-pool",
+  "owner_action": true,
+  "path": "/etc/php/php-fpm.d/zz-set12-owner.conf",
+  "php_fpm_test": {
+    "argv": [
+      "php-fpm",
+      "-t"
+    ],
+    "at": "2026-10-11T05:17:56Z",
+    "returncode": 0,
+    "seconds": 0.049,
+    "status": "ok",
+    "stderr": "[NOTICE] configuration file /etc/php/php-fpm.conf test is successful\n",
+    "stdout": ""
+  },
+  "php_unit": {
+    "ActiveEnterTimestamp": "Sun 2026-10-11 05:13:16 UTC",
+    "ActiveState": "failed",
+    "ExecMainStartTimestamp": "Sun 2026-10-11 05:13:16 UTC",
+    "LoadState": "loaded",
+    "MainPID": "0",
+    "NRestarts": "0",
+    "SubState": "failed"
+  },
+  "removed": true,
+  "schema": "celikpanel/set12-native/v1"
+}

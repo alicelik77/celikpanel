@@ -1,0 +1,25 @@
+{
+  "checks": {
+    "checks": 7,
+    "error": null,
+    "failed": [
+      "U: the Domains row says a configuration file could not be read (state unknown, kind php_pool)"
+    ],
+    "finished_at": "2026-10-11T04:39:00Z",
+    "notes": [
+      "U: FAIL"
+    ],
+    "started_at": "2026-10-11T04:37:43Z",
+    "substeps": {
+      "U": "failed"
+    },
+    "title": "the page while the Agent's pool lock is held: the pool not read",
+    "unknown": [],
+    "verdict": "failed"
+  },
+  "finished_at": "2026-10-11T04:39:00Z",
+  "name": "U-pool-not-read",
+  "reason": "U: the Domains row says a configuration file could not be read (state unknown, kind php_pool)",
+  "started_at": "2026-10-11T04:37:43Z",
+  "verdict": "failed"
+}

@@ -1,0 +1,55 @@
+{
+  "at": "2026-10-11T04:39:00Z",
+  "by_unit": {
+    "celikpanel-agent.service": [
+      "2026-10-11T04:37:45.195923+00:00 dns-debian13 agent[5157]: 2026/10/11 04:37:45 Getting pool config for site3 (PHP 8.4)",
+      "2026-10-11T04:39:00.562981+00:00 dns-debian13 agent[5157]: 2026/10/11 04:39:00 ApplySitePool site 3 (save): written managed_unchanged /etc/php/8.4/fpm/pool.d/site3.conf"
+    ],
+    "celikpanel-panel.service": [
+      "2026-10-11T04:37:44.685671+00:00 dns-debian13 panel[30924]: 2026/10/11 04:37:44 http: TLS handshake error from 127.0.0.1:59096: EOF",
+      "2026-10-11T04:37:45.445493+00:00 dns-debian13 panel[30924]: 2026/10/11 04:37:45 http: TLS handshake error from 127.0.0.1:59114: EOF",
+      "2026-10-11T04:37:51.446257+00:00 dns-debian13 panel[30924]: 2026/10/11 04:37:51 http: TLS handshake error from 127.0.0.1:53992: EOF",
+      "2026-10-11T04:38:51.454952+00:00 dns-debian13 panel[30924]: 2026/10/11 04:38:51 site configuration set12-a.test php_pool: could not read its state: context deadline exceeded",
+      "2026-10-11T04:38:51.471257+00:00 dns-debian13 panel[30924]: 2026/10/11 04:38:51 http: TLS handshake error from 127.0.0.1:42870: EOF",
+      "2026-10-11T04:39:00.563365+00:00 dns-debian13 panel[30924]: 2026/10/11 04:39:00 site configuration set12-b.test php_pool (save): written"
+    ],
+    "nginx.service": [],
+    "php8.4-fpm.service": [
+      "2026-10-11T04:37:44.100701+00:00 dns-debian13 systemd[1]: Reloading php8.4-fpm.service - The PHP 8.4 FastCGI Process Manager...",
+      "2026-10-11T04:37:44.138027+00:00 dns-debian13 systemd[1]: Reloaded php8.4-fpm.service - The PHP 8.4 FastCGI Process Manager.",
+      "2026-10-11T04:37:44.186859+00:00 dns-debian13 php-fpm8.4[23823]: [11-Oct-2026 04:37:44] NOTICE: using inherited socket fd=8, \"/run/php/php8.4-fpm.sock\"",
+      "2026-10-11T04:37:44.187648+00:00 dns-debian13 php-fpm8.4[23823]: [11-Oct-2026 04:37:44] NOTICE: using inherited socket fd=9, \"/var/run/php/php8.4-fpm-site2.sock\"",
+      "2026-10-11T04:37:44.187648+00:00 dns-debian13 php-fpm8.4[23823]: [11-Oct-2026 04:37:44] NOTICE: using inherited socket fd=10, \"/var/run/php/php8.4-fpm-site3.sock\"",
+      "2026-10-11T04:37:45.532139+00:00 dns-debian13 systemd[1]: Reloading php8.4-fpm.service - The PHP 8.4 FastCGI Process Manager...",
+      "2026-10-11T04:39:00.558992+00:00 dns-debian13 systemd[1]: Reloaded php8.4-fpm.service - The PHP 8.4 FastCGI Process Manager."
+    ]
+  },
+  "mode": "read-window12",
+  "owner_action": false,
+  "schema": "celikpanel/set12-native/v1",
+  "since_epoch": 1791693464,
+  "systemd_all": [
+    "2026-10-11T04:37:44.100701+00:00 dns-debian13 systemd[1]: Reloading php8.4-fpm.service - The PHP 8.4 FastCGI Process Manager...",
+    "2026-10-11T04:37:44.138027+00:00 dns-debian13 systemd[1]: Reloaded php8.4-fpm.service - The PHP 8.4 FastCGI Process Manager.",
+    "2026-10-11T04:37:44.402561+00:00 dns-debian13 systemd[1]: Reload requested from client PID 32383 ('systemctl') (unit session-109.scope)...",
+    "2026-10-11T04:37:44.402607+00:00 dns-debian13 systemd[1]: Reloading...",
+    "2026-10-11T04:37:44.622533+00:00 dns-debian13 systemd[1]: Reloading finished in 219 ms.",
+    "2026-10-11T04:37:45.532139+00:00 dns-debian13 systemd[1]: Reloading php8.4-fpm.service - The PHP 8.4 FastCGI Process Manager...",
+    "2026-10-11T04:39:00.082163+00:00 dns-debian13 systemd[1]: Starting phpsessionclean.service - Clean php session files...",
+    "2026-10-11T04:39:00.207890+00:00 dns-debian13 systemd[1]: phpsessionclean.service: Deactivated successfully.",
+    "2026-10-11T04:39:00.208177+00:00 dns-debian13 systemd[1]: Finished phpsessionclean.service - Clean php session files.",
+    "2026-10-11T04:39:00.558992+00:00 dns-debian13 systemd[1]: Reloaded php8.4-fpm.service - The PHP 8.4 FastCGI Process Manager."
+  ],
+  "systemd_manager": [
+    "2026-10-11T04:37:44.100701+00:00 dns-debian13 systemd[1]: Reloading php8.4-fpm.service - The PHP 8.4 FastCGI Process Manager...",
+    "2026-10-11T04:37:44.138027+00:00 dns-debian13 systemd[1]: Reloaded php8.4-fpm.service - The PHP 8.4 FastCGI Process Manager.",
+    "2026-10-11T04:37:45.532139+00:00 dns-debian13 systemd[1]: Reloading php8.4-fpm.service - The PHP 8.4 FastCGI Process Manager...",
+    "2026-10-11T04:39:00.558992+00:00 dns-debian13 systemd[1]: Reloaded php8.4-fpm.service - The PHP 8.4 FastCGI Process Manager."
+  ],
+  "units": [
+    "celikpanel-panel.service",
+    "celikpanel-agent.service",
+    "nginx.service",
+    "php8.4-fpm.service"
+  ]
+}

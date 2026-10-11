@@ -1,0 +1,1212 @@
+{
+  "calls": [
+    {
+      "at": "2026-10-11T05:16:14Z",
+      "json": {
+        "available_versions": [
+          "8.5"
+        ],
+        "domain_id": 2,
+        "domain_name": "set12-a.test",
+        "php_version": "8.5",
+        "pool_config": {
+          "group": "set12_a_test",
+          "listen": "/run/php-fpm/php8.5-fpm-site2.sock",
+          "listen_group": "http",
+          "listen_mode": "0660",
+          "listen_owner": "http",
+          "name": "site2",
+          "pm": "dynamic",
+          "pm_max_children": 5,
+          "pm_max_requests": 500,
+          "pm_max_spare_servers": 3,
+          "pm_min_spare_servers": 1,
+          "pm_start_servers": 2,
+          "user": "set12_a_test"
+        },
+        "pool_name": "site2"
+      },
+      "label": "m: PHP settings read (GET /php)",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains/2/php"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "answer": {
+        "code": "SITE_CONFIG_OWNER_EDITED",
+        "detail": "owner_edited",
+        "error": "The site's PHP-FPM pool file is not CelikPanel's unchanged text, so CelikPanel kept it and did not apply this change to it. Nothing else was changed. Open the domain's Configuration file section: keep your file, take CelikPanel's text (your file is kept as a dated copy), or merge the two by hand.",
+        "reason": "php_pool"
+      },
+      "at": "2026-10-11T05:16:14Z",
+      "catalogue_texts": {
+        "err.SITE_CONFIG_OWNER_EDITED": {
+          "en": "This site’s nginx configuration file is not CelikPanel’s unchanged text, so CelikPanel kept it and did not apply this change to it. Nothing else was changed. On the domain’s Configuration file page, keep your file, take CelikPanel’s text (your file is kept as a dated copy), or merge the two by hand.",
+          "tr": "Bu sitenin nginx yapılandırma dosyası CelikPanel’in değişmemiş metni değil; bu yüzden CelikPanel onu korudu ve bu değişikliği ona uygulamadı. Başka hiçbir şey değiştirilmedi. Alan adının Yapılandırma dosyası sayfasında dosyanızı koruyun, CelikPanel’in metnini alın (dosyanız tarihli bir kopya olarak saklanır) ya da ikisini elle birleştirin."
+        },
+        "err.SITE_CONFIG_OWNER_EDITED.php_pool": {
+          "en": "This site’s PHP-FPM pool file is not CelikPanel’s unchanged text, so CelikPanel kept it, with your lines, and did not apply this change. Nothing else was changed. On the domain’s Configuration file page, keep your file, take CelikPanel’s text (your file is kept as a dated copy), or merge the two by hand.",
+          "tr": "Bu sitenin PHP-FPM havuz dosyası CelikPanel’in değişmemiş metni değil; bu yüzden CelikPanel onu satırlarınızla birlikte korudu ve bu değişikliği uygulamadı. Başka hiçbir şey değiştirilmedi. Alan adının Yapılandırma dosyası sayfasında dosyanızı koruyun, CelikPanel’in metnini alın (dosyanız tarihli bir kopya olarak saklanır) ya da ikisini elle birleştirin."
+        }
+      },
+      "json": {
+        "code": "SITE_CONFIG_OWNER_EDITED",
+        "detail": "owner_edited",
+        "error": "The site's PHP-FPM pool file is not CelikPanel's unchanged text, so CelikPanel kept it and did not apply this change to it. Nothing else was changed. Open the domain's Configuration file section: keep your file, take CelikPanel's text (your file is kept as a dated copy), or merge the two by hand.",
+        "reason": "php_pool"
+      },
+      "label": "m: pool save on the edited pool (POST /php/pool, pm_max_children 6)",
+      "request": {
+        "body": {
+          "pool_config": {
+            "pm": "dynamic",
+            "pm_max_children": 6,
+            "pm_max_requests": 500,
+            "pm_max_spare_servers": 3,
+            "pm_min_spare_servers": 1,
+            "pm_start_servers": 2
+          },
+          "version": "8.5"
+        },
+        "method": "POST",
+        "path": "/api/v1/domains/2/php/pool"
+      },
+      "status": 409,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T05:16:15Z",
+      "json": {
+        "actions": [],
+        "challenge_file": "unchanged",
+        "domain": "set12-a.test",
+        "domain_id": 2,
+        "enabled": "link",
+        "file_sha256": "152664e685a190f13064589fbeac11aaa5d2f7f9690f41359f2da85a5a6ee2d2",
+        "files": [
+          {
+            "actions": [],
+            "challenge_file": "unchanged",
+            "domain": "set12-a.test",
+            "domain_id": 2,
+            "enabled": "link",
+            "file_sha256": "152664e685a190f13064589fbeac11aaa5d2f7f9690f41359f2da85a5a6ee2d2",
+            "include_dir": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+            "kind": "nginx_vhost",
+            "ledger": {
+              "observed_at": "2026-10-11T05:16:08Z",
+              "written_at": "2026-10-11T05:16:03Z",
+              "written_release": "v0.1.0-alpha.81 9e223f175d96"
+            },
+            "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-a.test",
+            "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;",
+            "path": "/etc/nginx/sites-available/set12-a.test.conf",
+            "protection": "none",
+            "render_sha256": "872fe38bc22fdd3ed84e57310827eff28352e5af5f8f633178ca71aacb16b109",
+            "state": "managed_unchanged"
+          },
+          {
+            "actions": [
+              "keep",
+              "take",
+              "merge"
+            ],
+            "diff": "--- /etc/php/php-fpm.d/site2.conf (on this server)\n+++ CelikPanel's text\n@@ -9,11 +9,9 @@\n listen.group = http\n listen.mode = 0660\n pm = dynamic\n-pm.max_children = 5\n+pm.max_children = 6\n pm.start_servers = 2\n pm.min_spare_servers = 1\n pm.max_spare_servers = 3\n pm.max_requests = 500\n chdir = /\n-; set12: added by the server owner by hand (a comment and a directive of their own)\n-php_admin_value[memory_limit] = 256M\n",
+            "domain": "set12-a.test",
+            "domain_id": 2,
+            "file_sha256": "4f6283bf5db840af7744bb7a432ed317372e006f62ee5c3771cabecb00aaf7b1",
+            "kind": "php_pool",
+            "ledger": {
+              "observed_at": "2026-10-11T05:16:15Z"
+            },
+            "path": "/etc/php/php-fpm.d/site2.conf",
+            "pending_path": "/etc/php/php-fpm.d/site2.conf.celikpanel-pending",
+            "protection": "none",
+            "render_sha256": "dc20a51a75b581c536cae3b53d9a61e96680431299e1b76b2926a3adb1c991f2",
+            "state": "owner_edited"
+          }
+        ],
+        "include_dir": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+        "kind": "nginx_vhost",
+        "ledger": {
+          "observed_at": "2026-10-11T05:16:08Z",
+          "written_at": "2026-10-11T05:16:03Z",
+          "written_release": "v0.1.0-alpha.81 9e223f175d96"
+        },
+        "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-a.test",
+        "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;",
+        "overall_kind": "php_pool",
+        "overall_state": "owner_edited",
+        "path": "/etc/nginx/sites-available/set12-a.test.conf",
+        "protection": "none",
+        "render_sha256": "872fe38bc22fdd3ed84e57310827eff28352e5af5f8f633178ca71aacb16b109",
+        "state": "managed_unchanged"
+      },
+      "label": "m page after the save: GET site-config",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains/2/site-config"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T05:16:15Z",
+      "json": [
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T05:16:05Z",
+          "disk_usage": 0,
+          "domain_name": "set12-b.test",
+          "id": 3,
+          "php_version": "8.5",
+          "project_type": "php",
+          "site_config": {
+            "state": "managed_unchanged"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        },
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T05:16:03Z",
+          "disk_usage": 0,
+          "domain_name": "set12-a.test",
+          "id": 2,
+          "php_version": "8.5",
+          "project_type": "php",
+          "site_config": {
+            "kind": "php_pool",
+            "state": "owner_edited"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        },
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T05:15:59Z",
+          "disk_usage": 0,
+          "domain_name": "set1-owner.test",
+          "id": 1,
+          "php_version": "",
+          "project_type": "static",
+          "site_config": {
+            "state": "managed_unchanged"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        }
+      ],
+      "label": "m after the save: GET /api/v1/domains (Domains list)",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T05:16:15Z",
+      "json": {
+        "actions": [],
+        "backup_path": "/etc/php/php-fpm.d/site2.conf.celikpanel-backup-20261011T051616Z",
+        "decision": {
+          "current": true,
+          "decided_at": "2026-10-11T05:16:16Z",
+          "kind": "take_celikpanel"
+        },
+        "domain": "set12-a.test",
+        "domain_id": 2,
+        "file_sha256": "4ccbb04c2f93ac212c5a700d7bf5704bd40ada57461ede6958445dd7a5e66a86",
+        "kind": "php_pool",
+        "ledger": {
+          "backup_path": "/etc/php/php-fpm.d/site2.conf.celikpanel-backup-20261011T051616Z",
+          "observed_at": "2026-10-11T05:16:16Z",
+          "written_at": "2026-10-11T05:16:16Z",
+          "written_release": "v0.1.0-alpha.81 9e223f175d96"
+        },
+        "outcome": "taken",
+        "path": "/etc/php/php-fpm.d/site2.conf",
+        "render_sha256": "dc20a51a75b581c536cae3b53d9a61e96680431299e1b76b2926a3adb1c991f2",
+        "state": "managed_unchanged"
+      },
+      "label": "m take CelikPanel's pool text (kind php_pool)",
+      "request": {
+        "body": {
+          "file_sha256": "4f6283bf5db840af7744bb7a432ed317372e006f62ee5c3771cabecb00aaf7b1",
+          "kind": "php_pool",
+          "render_sha256": "dc20a51a75b581c536cae3b53d9a61e96680431299e1b76b2926a3adb1c991f2"
+        },
+        "method": "POST",
+        "path": "/api/v1/domains/2/site-config/take",
+        "x_celikpanel_request_id": "72f83e93698088ff1a76037af781a923"
+      },
+      "seconds": 0.15,
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T05:16:20Z",
+      "json": [
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T05:16:05Z",
+          "disk_usage": 0,
+          "domain_name": "set12-b.test",
+          "id": 3,
+          "php_version": "8.5",
+          "project_type": "php",
+          "site_config": {
+            "state": "managed_unchanged"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        },
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T05:16:03Z",
+          "disk_usage": 0,
+          "domain_name": "set12-a.test",
+          "id": 2,
+          "php_version": "8.5",
+          "project_type": "php",
+          "site_config": {
+            "state": "managed_unchanged"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        },
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T05:15:59Z",
+          "disk_usage": 0,
+          "domain_name": "set1-owner.test",
+          "id": 1,
+          "php_version": "",
+          "project_type": "static",
+          "site_config": {
+            "state": "managed_unchanged"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        }
+      ],
+      "label": "m after take: GET /api/v1/domains (Domains list)",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains"
+      },
+      "status": 200,
+      "text": null
+    }
+  ],
+  "cells": {
+    "M": {
+      "detail": {
+        "journal": "steps/11-m-pool-owner-edit/native/020-m-take-journal.json",
+        "page": {
+          "files": [
+            {
+              "actions": [],
+              "adopted_from": null,
+              "detail": null,
+              "diff_lines": 0,
+              "file_state": null,
+              "kind": "nginx_vhost",
+              "path": "/etc/nginx/sites-available/set12-a.test.conf",
+              "pending_path": null,
+              "pending_reason": null,
+              "protection": "none",
+              "reason": null,
+              "state": "managed_unchanged",
+              "system_error": null,
+              "validation": null,
+              "validation_address": null,
+              "validation_unknown_reason": null
+            },
+            {
+              "actions": [
+                "keep",
+                "take",
+                "merge"
+              ],
+              "adopted_from": null,
+              "detail": null,
+              "diff_lines": 15,
+              "file_state": null,
+              "kind": "php_pool",
+              "path": "/etc/php/php-fpm.d/site2.conf",
+              "pending_path": "/etc/php/php-fpm.d/site2.conf.celikpanel-pending",
+              "pending_reason": null,
+              "protection": "none",
+              "reason": null,
+              "state": "owner_edited",
+              "system_error": null,
+              "validation": null,
+              "validation_address": null,
+              "validation_unknown_reason": null
+            }
+          ],
+          "overall_kind": "php_pool",
+          "overall_state": "owner_edited",
+          "top": {
+            "actions": [],
+            "adopted_from": null,
+            "detail": null,
+            "file_state": null,
+            "kind": "nginx_vhost",
+            "path": "/etc/nginx/sites-available/set12-a.test.conf",
+            "pending_path": null,
+            "pending_reason": null,
+            "protection": "none",
+            "reason": null,
+            "state": "managed_unchanged",
+            "system_error": null,
+            "validation": null,
+            "validation_address": null,
+            "validation_unknown_reason": null
+          }
+        },
+        "pool": "/etc/php/php-fpm.d/site2.conf"
+      },
+      "expectations": [
+        {
+          "expectation": "A's pool carries the INI render header (\"; celikpanel-render v2 sha256=\") and its digest holds",
+          "held": true,
+          "measured": {
+            "header": {
+              "body_bytes": 563,
+              "body_sha256": "8f3644c3c81f7322adb9d4eaf96182b134d479954bdddeebf02aea1282bffb84",
+              "declared": "8f3644c3c81f7322adb9d4eaf96182b134d479954bdddeebf02aea1282bffb84",
+              "present": true,
+              "valid": true
+            },
+            "path": "/etc/php/php-fpm.d/site2.conf"
+          }
+        },
+        {
+          "expectation": "the owner's comment and directive pass php-fpm -t and PHP-FPM reloads",
+          "held": true,
+          "measured": {
+            "reload": {
+              "argv": [
+                "systemctl",
+                "reload",
+                "php-fpm.service"
+              ],
+              "at": "2026-10-11T05:16:14Z",
+              "returncode": 0,
+              "seconds": 0.05,
+              "status": "ok",
+              "stderr": "",
+              "stdout": ""
+            },
+            "test": {
+              "argv": [
+                "php-fpm",
+                "-t"
+              ],
+              "at": "2026-10-11T05:16:14Z",
+              "returncode": 0,
+              "seconds": 0.047,
+              "status": "ok",
+              "stderr": "[NOTICE] configuration file /etc/php/php-fpm.conf test is successful\n",
+              "stdout": ""
+            }
+          }
+        },
+        {
+          "expectation": "the pool save answers 409 SITE_CONFIG_OWNER_EDITED, reason php_pool, detail owner_edited",
+          "held": true,
+          "measured": {
+            "code": "SITE_CONFIG_OWNER_EDITED",
+            "detail": "owner_edited",
+            "error": "The site's PHP-FPM pool file is not CelikPanel's unchanged text, so CelikPanel kept it and did not apply this change to it. Nothing else was changed. Open the domain's Configuration file section: keep your file, take CelikPanel's text (your file is kept as a dated copy), or merge the two by hand.",
+            "reason": "php_pool"
+          }
+        },
+        {
+          "expectation": "the owner's pool is kept byte for byte (sha256, inode, mtime)",
+          "held": true,
+          "measured": {
+            "gid": [
+              969,
+              969
+            ],
+            "inode": [
+              91962,
+              91962
+            ],
+            "mode": [
+              "0644",
+              "0644"
+            ],
+            "mtime_ns": [
+              1791695774527909481,
+              1791695774527909481
+            ],
+            "sha256": [
+              "4f6283bf5db840af7744bb7a432ed317372e006f62ee5c3771cabecb00aaf7b1",
+              "4f6283bf5db840af7744bb7a432ed317372e006f62ee5c3771cabecb00aaf7b1"
+            ],
+            "uid": [
+              0,
+              0
+            ]
+          }
+        },
+        {
+          "expectation": "<pool>.celikpanel-pending holds CelikPanel's text (INI header) with the save's pm.max_children = 6",
+          "held": true,
+          "measured": {
+            "exists": true,
+            "mode": "0644",
+            "path": "/etc/php/php-fpm.d/site2.conf.celikpanel-pending",
+            "sha256": "4ccbb04c2f93ac212c5a700d7bf5704bd40ada57461ede6958445dd7a5e66a86"
+          }
+        },
+        {
+          "expectation": "GET site-config lists files[] = the vhost then the pool",
+          "held": true,
+          "measured": [
+            "nginx_vhost",
+            "php_pool"
+          ]
+        },
+        {
+          "expectation": "the pool is owner_edited with keep/take/merge and its difference shows the owner's comment and directive",
+          "held": true,
+          "measured": {
+            "actions": [
+              "keep",
+              "take",
+              "merge"
+            ],
+            "diff_lines": 15,
+            "owner_lines_in_diff": [
+              "-; set12: added by the server owner by hand (a comment and a directive of their own)",
+              "-php_admin_value[memory_limit] = 256M"
+            ],
+            "state": "owner_edited"
+          }
+        },
+        {
+          "expectation": "overall_state owner_edited, overall_kind php_pool (the vhost is managed_unchanged)",
+          "held": true,
+          "measured": {
+            "files": [
+              {
+                "actions": [],
+                "adopted_from": null,
+                "detail": null,
+                "diff_lines": 0,
+                "file_state": null,
+                "kind": "nginx_vhost",
+                "path": "/etc/nginx/sites-available/set12-a.test.conf",
+                "pending_path": null,
+                "pending_reason": null,
+                "protection": "none",
+                "reason": null,
+                "state": "managed_unchanged",
+                "system_error": null,
+                "validation": null,
+                "validation_address": null,
+                "validation_unknown_reason": null
+              },
+              {
+                "actions": [
+                  "keep",
+                  "take",
+                  "merge"
+                ],
+                "adopted_from": null,
+                "detail": null,
+                "diff_lines": 15,
+                "file_state": null,
+                "kind": "php_pool",
+                "path": "/etc/php/php-fpm.d/site2.conf",
+                "pending_path": "/etc/php/php-fpm.d/site2.conf.celikpanel-pending",
+                "pending_reason": null,
+                "protection": "none",
+                "reason": null,
+                "state": "owner_edited",
+                "system_error": null,
+                "validation": null,
+                "validation_address": null,
+                "validation_unknown_reason": null
+              }
+            ],
+            "overall_kind": "php_pool",
+            "overall_state": "owner_edited",
+            "top": {
+              "actions": [],
+              "adopted_from": null,
+              "detail": null,
+              "file_state": null,
+              "kind": "nginx_vhost",
+              "path": "/etc/nginx/sites-available/set12-a.test.conf",
+              "pending_path": null,
+              "pending_reason": null,
+              "protection": "none",
+              "reason": null,
+              "state": "managed_unchanged",
+              "system_error": null,
+              "validation": null,
+              "validation_address": null,
+              "validation_unknown_reason": null
+            }
+          }
+        },
+        {
+          "expectation": "the Domains row shows the pool's state (owner_edited, kind php_pool)",
+          "held": true,
+          "measured": {
+            "kind": "php_pool",
+            "state": "owner_edited"
+          }
+        },
+        {
+          "expectation": "a PHP switch on the edited pool is refused and writes nothing",
+          "held": null,
+          "measured": {
+            "available_versions": [
+              "8.5"
+            ],
+            "not_measured": "one PHP version on this guest",
+            "php_version": "8.5",
+            "programs": [
+              "php-fpm"
+            ]
+          }
+        },
+        {
+          "expectation": "take answers 200, outcome taken, with the backup path",
+          "held": true,
+          "measured": {
+            "at": "2026-10-11T05:16:15Z",
+            "json": {
+              "actions": [],
+              "backup_path": "/etc/php/php-fpm.d/site2.conf.celikpanel-backup-20261011T051616Z",
+              "decision": {
+                "current": true,
+                "decided_at": "2026-10-11T05:16:16Z",
+                "kind": "take_celikpanel"
+              },
+              "domain": "set12-a.test",
+              "domain_id": 2,
+              "file_sha256": "4ccbb04c2f93ac212c5a700d7bf5704bd40ada57461ede6958445dd7a5e66a86",
+              "kind": "php_pool",
+              "ledger": {
+                "backup_path": "/etc/php/php-fpm.d/site2.conf.celikpanel-backup-20261011T051616Z",
+                "observed_at": "2026-10-11T05:16:16Z",
+                "written_at": "2026-10-11T05:16:16Z",
+                "written_release": "v0.1.0-alpha.81 9e223f175d96"
+              },
+              "outcome": "taken",
+              "path": "/etc/php/php-fpm.d/site2.conf",
+              "render_sha256": "dc20a51a75b581c536cae3b53d9a61e96680431299e1b76b2926a3adb1c991f2",
+              "state": "managed_unchanged"
+            },
+            "label": "m take CelikPanel's pool text (kind php_pool)",
+            "request": {
+              "body": {
+                "file_sha256": "4f6283bf5db840af7744bb7a432ed317372e006f62ee5c3771cabecb00aaf7b1",
+                "kind": "php_pool",
+                "render_sha256": "dc20a51a75b581c536cae3b53d9a61e96680431299e1b76b2926a3adb1c991f2"
+              },
+              "method": "POST",
+              "path": "/api/v1/domains/2/site-config/take",
+              "x_celikpanel_request_id": "72f83e93698088ff1a76037af781a923"
+            },
+            "seconds": 0.15,
+            "status": 200,
+            "text": null
+          }
+        },
+        {
+          "expectation": "a dated <pool>.celikpanel-backup-<UTC> holds the owner's bytes",
+          "held": true,
+          "measured": [
+            {
+              "gid": 969,
+              "mode": "0644",
+              "path": "/etc/php/php-fpm.d/site2.conf.celikpanel-backup-20261011T051616Z",
+              "sha256": "4f6283bf5db840af7744bb7a432ed317372e006f62ee5c3771cabecb00aaf7b1",
+              "uid": 0
+            }
+          ]
+        },
+        {
+          "expectation": "the pool is now CelikPanel's text: INI header valid, no owner line, the held save's pm.max_children = 6",
+          "held": true,
+          "measured": {
+            "header": {
+              "body_bytes": 563,
+              "body_sha256": "dc20a51a75b581c536cae3b53d9a61e96680431299e1b76b2926a3adb1c991f2",
+              "declared": "dc20a51a75b581c536cae3b53d9a61e96680431299e1b76b2926a3adb1c991f2",
+              "present": true,
+              "valid": true
+            },
+            "sha256": "4ccbb04c2f93ac212c5a700d7bf5704bd40ada57461ede6958445dd7a5e66a86"
+          }
+        },
+        {
+          "expectation": "mode, owner and group of the pool kept",
+          "held": true,
+          "measured": {
+            "gid": [
+              969,
+              969
+            ],
+            "inode": [
+              91962,
+              92037
+            ],
+            "mode": [
+              "0644",
+              "0644"
+            ],
+            "uid": [
+              0,
+              0
+            ]
+          }
+        },
+        {
+          "expectation": "PHP-FPM was reloaded after the take (a reload line in its journal; the unit active)",
+          "held": true,
+          "measured": {
+            "lines": [
+              "2026-10-11T05:16:16.190547+00:00 dns-arch systemd[1]: Reloading The PHP FastCGI Process Manager...",
+              "2026-10-11T05:16:16.221800+00:00 dns-arch php-fpm[1489]: [NOTICE] Reloading in progress ...",
+              "2026-10-11T05:16:16.223164+00:00 dns-arch systemd[1]: php-fpm.service: Can't open PID file '/run/php-fpm/php-fpm.pid' (yet?) after reload: No such file or directory",
+              "2026-10-11T05:16:16.223181+00:00 dns-arch systemd[1]: Reloaded The PHP FastCGI Process Manager.",
+              "2026-10-11T05:16:16.225110+00:00 dns-arch php-fpm[1489]: [NOTICE] reloading: execvp(\"/usr/bin/php-fpm\", {\"/usr/bin/php-fpm\", \"--nodaemonize\", \"--fpm-config\", \"/etc/php/php-fpm.conf\"})",
+              "2026-10-11T05:16:16.190547+00:00 dns-arch systemd[1]: Reloading The PHP FastCGI Process Manager...",
+              "2026-10-11T05:16:16.223164+00:00 dns-arch systemd[1]: php-fpm.service: Can't open PID file '/run/php-fpm/php-fpm.pid' (yet?) after reload: No such file or directory",
+              "2026-10-11T05:16:16.223181+00:00 dns-arch systemd[1]: Reloaded The PHP FastCGI Process Manager."
+            ],
+            "unit_after": {
+              "ActiveEnterTimestamp": "Sun 2026-10-11 05:13:16 UTC",
+              "ActiveState": "active",
+              "ExecMainStartTimestamp": "Sun 2026-10-11 05:13:16 UTC",
+              "LoadState": "loaded",
+              "MainPID": "1489",
+              "NRestarts": "0",
+              "SubState": "running"
+            },
+            "unit_before": {
+              "ActiveEnterTimestamp": "Sun 2026-10-11 05:13:16 UTC",
+              "ActiveState": "active",
+              "ExecMainStartTimestamp": "Sun 2026-10-11 05:13:16 UTC",
+              "LoadState": "loaded",
+              "MainPID": "1489",
+              "NRestarts": "0",
+              "SubState": "running"
+            }
+          }
+        },
+        {
+          "expectation": "the ledger row of the pool records take_celikpanel and managed_unchanged",
+          "held": true,
+          "measured": [
+            {
+              "adopted_from": "",
+              "backup_path": "/etc/php/php-fpm.d/site2.conf.celikpanel-backup-20261011T051616Z",
+              "body_sha256": "dc20a51a75b581c536cae3b53d9a61e96680431299e1b76b2926a3adb1c991f2",
+              "decided_at": 1791695776,
+              "decided_by": 2,
+              "decision": "take_celikpanel",
+              "decision_file_sha256": "4ccbb04c2f93ac212c5a700d7bf5704bd40ada57461ede6958445dd7a5e66a86",
+              "domain_id": 2,
+              "file_format": "celikpanel-render v2",
+              "file_sha256": "4ccbb04c2f93ac212c5a700d7bf5704bd40ada57461ede6958445dd7a5e66a86",
+              "id": 7,
+              "kind": "php_pool",
+              "observed_at": 1791695776,
+              "path": "/etc/php/php-fpm.d/site2.conf",
+              "pending_path": "",
+              "pending_sha256": "",
+              "site_id": 2,
+              "state": "managed_unchanged",
+              "state_reason": "",
+              "written_at": 1791695776,
+              "written_release": "v0.1.0-alpha.81 9e223f175d96"
+            }
+          ]
+        },
+        {
+          "expectation": "the Domains row no longer names the pool",
+          "held": true,
+          "measured": {
+            "state": "managed_unchanged"
+          }
+        }
+      ],
+      "verdict": "NOT-MEASURED"
+    }
+  },
+  "checks": [
+    {
+      "detail": {
+        "header": {
+          "body_bytes": 563,
+          "body_sha256": "8f3644c3c81f7322adb9d4eaf96182b134d479954bdddeebf02aea1282bffb84",
+          "declared": "8f3644c3c81f7322adb9d4eaf96182b134d479954bdddeebf02aea1282bffb84",
+          "present": true,
+          "valid": true
+        },
+        "path": "/etc/php/php-fpm.d/site2.conf"
+      },
+      "name": "M: A's pool carries the INI render header (\"; celikpanel-render v2 sha256=\") and its digest holds",
+      "ok": true
+    },
+    {
+      "detail": {
+        "reload": {
+          "argv": [
+            "systemctl",
+            "reload",
+            "php-fpm.service"
+          ],
+          "at": "2026-10-11T05:16:14Z",
+          "returncode": 0,
+          "seconds": 0.05,
+          "status": "ok",
+          "stderr": "",
+          "stdout": ""
+        },
+        "test": {
+          "argv": [
+            "php-fpm",
+            "-t"
+          ],
+          "at": "2026-10-11T05:16:14Z",
+          "returncode": 0,
+          "seconds": 0.047,
+          "status": "ok",
+          "stderr": "[NOTICE] configuration file /etc/php/php-fpm.conf test is successful\n",
+          "stdout": ""
+        }
+      },
+      "name": "M: the owner's comment and directive pass php-fpm -t and PHP-FPM reloads",
+      "ok": true
+    },
+    {
+      "detail": {
+        "code": "SITE_CONFIG_OWNER_EDITED",
+        "detail": "owner_edited",
+        "error": "The site's PHP-FPM pool file is not CelikPanel's unchanged text, so CelikPanel kept it and did not apply this change to it. Nothing else was changed. Open the domain's Configuration file section: keep your file, take CelikPanel's text (your file is kept as a dated copy), or merge the two by hand.",
+        "reason": "php_pool"
+      },
+      "name": "M: the pool save answers 409 SITE_CONFIG_OWNER_EDITED, reason php_pool, detail owner_edited",
+      "ok": true
+    },
+    {
+      "detail": {
+        "gid": [
+          969,
+          969
+        ],
+        "inode": [
+          91962,
+          91962
+        ],
+        "mode": [
+          "0644",
+          "0644"
+        ],
+        "mtime_ns": [
+          1791695774527909481,
+          1791695774527909481
+        ],
+        "sha256": [
+          "4f6283bf5db840af7744bb7a432ed317372e006f62ee5c3771cabecb00aaf7b1",
+          "4f6283bf5db840af7744bb7a432ed317372e006f62ee5c3771cabecb00aaf7b1"
+        ],
+        "uid": [
+          0,
+          0
+        ]
+      },
+      "name": "M: the owner's pool is kept byte for byte (sha256, inode, mtime)",
+      "ok": true
+    },
+    {
+      "detail": {
+        "exists": true,
+        "mode": "0644",
+        "path": "/etc/php/php-fpm.d/site2.conf.celikpanel-pending",
+        "sha256": "4ccbb04c2f93ac212c5a700d7bf5704bd40ada57461ede6958445dd7a5e66a86"
+      },
+      "name": "M: <pool>.celikpanel-pending holds CelikPanel's text (INI header) with the save's pm.max_children = 6",
+      "ok": true
+    },
+    {
+      "detail": [
+        "nginx_vhost",
+        "php_pool"
+      ],
+      "name": "M: GET site-config lists files[] = the vhost then the pool",
+      "ok": true
+    },
+    {
+      "detail": {
+        "actions": [
+          "keep",
+          "take",
+          "merge"
+        ],
+        "diff_lines": 15,
+        "owner_lines_in_diff": [
+          "-; set12: added by the server owner by hand (a comment and a directive of their own)",
+          "-php_admin_value[memory_limit] = 256M"
+        ],
+        "state": "owner_edited"
+      },
+      "name": "M: the pool is owner_edited with keep/take/merge and its difference shows the owner's comment and directive",
+      "ok": true
+    },
+    {
+      "detail": {
+        "files": [
+          {
+            "actions": [],
+            "adopted_from": null,
+            "detail": null,
+            "diff_lines": 0,
+            "file_state": null,
+            "kind": "nginx_vhost",
+            "path": "/etc/nginx/sites-available/set12-a.test.conf",
+            "pending_path": null,
+            "pending_reason": null,
+            "protection": "none",
+            "reason": null,
+            "state": "managed_unchanged",
+            "system_error": null,
+            "validation": null,
+            "validation_address": null,
+            "validation_unknown_reason": null
+          },
+          {
+            "actions": [
+              "keep",
+              "take",
+              "merge"
+            ],
+            "adopted_from": null,
+            "detail": null,
+            "diff_lines": 15,
+            "file_state": null,
+            "kind": "php_pool",
+            "path": "/etc/php/php-fpm.d/site2.conf",
+            "pending_path": "/etc/php/php-fpm.d/site2.conf.celikpanel-pending",
+            "pending_reason": null,
+            "protection": "none",
+            "reason": null,
+            "state": "owner_edited",
+            "system_error": null,
+            "validation": null,
+            "validation_address": null,
+            "validation_unknown_reason": null
+          }
+        ],
+        "overall_kind": "php_pool",
+        "overall_state": "owner_edited",
+        "top": {
+          "actions": [],
+          "adopted_from": null,
+          "detail": null,
+          "file_state": null,
+          "kind": "nginx_vhost",
+          "path": "/etc/nginx/sites-available/set12-a.test.conf",
+          "pending_path": null,
+          "pending_reason": null,
+          "protection": "none",
+          "reason": null,
+          "state": "managed_unchanged",
+          "system_error": null,
+          "validation": null,
+          "validation_address": null,
+          "validation_unknown_reason": null
+        }
+      },
+      "name": "M: overall_state owner_edited, overall_kind php_pool (the vhost is managed_unchanged)",
+      "ok": true
+    },
+    {
+      "detail": {
+        "kind": "php_pool",
+        "state": "owner_edited"
+      },
+      "name": "M: the Domains row shows the pool's state (owner_edited, kind php_pool)",
+      "ok": true
+    },
+    {
+      "detail": {
+        "available_versions": [
+          "8.5"
+        ],
+        "not_measured": "one PHP version on this guest",
+        "php_version": "8.5",
+        "programs": [
+          "php-fpm"
+        ]
+      },
+      "name": "M: a PHP switch on the edited pool is refused and writes nothing",
+      "ok": null
+    },
+    {
+      "detail": {
+        "at": "2026-10-11T05:16:15Z",
+        "json": {
+          "actions": [],
+          "backup_path": "/etc/php/php-fpm.d/site2.conf.celikpanel-backup-20261011T051616Z",
+          "decision": {
+            "current": true,
+            "decided_at": "2026-10-11T05:16:16Z",
+            "kind": "take_celikpanel"
+          },
+          "domain": "set12-a.test",
+          "domain_id": 2,
+          "file_sha256": "4ccbb04c2f93ac212c5a700d7bf5704bd40ada57461ede6958445dd7a5e66a86",
+          "kind": "php_pool",
+          "ledger": {
+            "backup_path": "/etc/php/php-fpm.d/site2.conf.celikpanel-backup-20261011T051616Z",
+            "observed_at": "2026-10-11T05:16:16Z",
+            "written_at": "2026-10-11T05:16:16Z",
+            "written_release": "v0.1.0-alpha.81 9e223f175d96"
+          },
+          "outcome": "taken",
+          "path": "/etc/php/php-fpm.d/site2.conf",
+          "render_sha256": "dc20a51a75b581c536cae3b53d9a61e96680431299e1b76b2926a3adb1c991f2",
+          "state": "managed_unchanged"
+        },
+        "label": "m take CelikPanel's pool text (kind php_pool)",
+        "request": {
+          "body": {
+            "file_sha256": "4f6283bf5db840af7744bb7a432ed317372e006f62ee5c3771cabecb00aaf7b1",
+            "kind": "php_pool",
+            "render_sha256": "dc20a51a75b581c536cae3b53d9a61e96680431299e1b76b2926a3adb1c991f2"
+          },
+          "method": "POST",
+          "path": "/api/v1/domains/2/site-config/take",
+          "x_celikpanel_request_id": "72f83e93698088ff1a76037af781a923"
+        },
+        "seconds": 0.15,
+        "status": 200,
+        "text": null
+      },
+      "name": "M: take answers 200, outcome taken, with the backup path",
+      "ok": true
+    },
+    {
+      "detail": [
+        {
+          "gid": 969,
+          "mode": "0644",
+          "path": "/etc/php/php-fpm.d/site2.conf.celikpanel-backup-20261011T051616Z",
+          "sha256": "4f6283bf5db840af7744bb7a432ed317372e006f62ee5c3771cabecb00aaf7b1",
+          "uid": 0
+        }
+      ],
+      "name": "M: a dated <pool>.celikpanel-backup-<UTC> holds the owner's bytes",
+      "ok": true
+    },
+    {
+      "detail": {
+        "header": {
+          "body_bytes": 563,
+          "body_sha256": "dc20a51a75b581c536cae3b53d9a61e96680431299e1b76b2926a3adb1c991f2",
+          "declared": "dc20a51a75b581c536cae3b53d9a61e96680431299e1b76b2926a3adb1c991f2",
+          "present": true,
+          "valid": true
+        },
+        "sha256": "4ccbb04c2f93ac212c5a700d7bf5704bd40ada57461ede6958445dd7a5e66a86"
+      },
+      "name": "M: the pool is now CelikPanel's text: INI header valid, no owner line, the held save's pm.max_children = 6",
+      "ok": true
+    },
+    {
+      "detail": {
+        "gid": [
+          969,
+          969
+        ],
+        "inode": [
+          91962,
+          92037
+        ],
+        "mode": [
+          "0644",
+          "0644"
+        ],
+        "uid": [
+          0,
+          0
+        ]
+      },
+      "name": "M: mode, owner and group of the pool kept",
+      "ok": true
+    },
+    {
+      "detail": {
+        "lines": [
+          "2026-10-11T05:16:16.190547+00:00 dns-arch systemd[1]: Reloading The PHP FastCGI Process Manager...",
+          "2026-10-11T05:16:16.221800+00:00 dns-arch php-fpm[1489]: [NOTICE] Reloading in progress ...",
+          "2026-10-11T05:16:16.223164+00:00 dns-arch systemd[1]: php-fpm.service: Can't open PID file '/run/php-fpm/php-fpm.pid' (yet?) after reload: No such file or directory",
+          "2026-10-11T05:16:16.223181+00:00 dns-arch systemd[1]: Reloaded The PHP FastCGI Process Manager.",
+          "2026-10-11T05:16:16.225110+00:00 dns-arch php-fpm[1489]: [NOTICE] reloading: execvp(\"/usr/bin/php-fpm\", {\"/usr/bin/php-fpm\", \"--nodaemonize\", \"--fpm-config\", \"/etc/php/php-fpm.conf\"})",
+          "2026-10-11T05:16:16.190547+00:00 dns-arch systemd[1]: Reloading The PHP FastCGI Process Manager...",
+          "2026-10-11T05:16:16.223164+00:00 dns-arch systemd[1]: php-fpm.service: Can't open PID file '/run/php-fpm/php-fpm.pid' (yet?) after reload: No such file or directory",
+          "2026-10-11T05:16:16.223181+00:00 dns-arch systemd[1]: Reloaded The PHP FastCGI Process Manager."
+        ],
+        "unit_after": {
+          "ActiveEnterTimestamp": "Sun 2026-10-11 05:13:16 UTC",
+          "ActiveState": "active",
+          "ExecMainStartTimestamp": "Sun 2026-10-11 05:13:16 UTC",
+          "LoadState": "loaded",
+          "MainPID": "1489",
+          "NRestarts": "0",
+          "SubState": "running"
+        },
+        "unit_before": {
+          "ActiveEnterTimestamp": "Sun 2026-10-11 05:13:16 UTC",
+          "ActiveState": "active",
+          "ExecMainStartTimestamp": "Sun 2026-10-11 05:13:16 UTC",
+          "LoadState": "loaded",
+          "MainPID": "1489",
+          "NRestarts": "0",
+          "SubState": "running"
+        }
+      },
+      "name": "M: PHP-FPM was reloaded after the take (a reload line in its journal; the unit active)",
+      "ok": true
+    },
+    {
+      "detail": [
+        {
+          "adopted_from": "",
+          "backup_path": "/etc/php/php-fpm.d/site2.conf.celikpanel-backup-20261011T051616Z",
+          "body_sha256": "dc20a51a75b581c536cae3b53d9a61e96680431299e1b76b2926a3adb1c991f2",
+          "decided_at": 1791695776,
+          "decided_by": 2,
+          "decision": "take_celikpanel",
+          "decision_file_sha256": "4ccbb04c2f93ac212c5a700d7bf5704bd40ada57461ede6958445dd7a5e66a86",
+          "domain_id": 2,
+          "file_format": "celikpanel-render v2",
+          "file_sha256": "4ccbb04c2f93ac212c5a700d7bf5704bd40ada57461ede6958445dd7a5e66a86",
+          "id": 7,
+          "kind": "php_pool",
+          "observed_at": 1791695776,
+          "path": "/etc/php/php-fpm.d/site2.conf",
+          "pending_path": "",
+          "pending_sha256": "",
+          "site_id": 2,
+          "state": "managed_unchanged",
+          "state_reason": "",
+          "written_at": 1791695776,
+          "written_release": "v0.1.0-alpha.81 9e223f175d96"
+        }
+      ],
+      "name": "M: the ledger row of the pool records take_celikpanel and managed_unchanged",
+      "ok": true
+    },
+    {
+      "detail": {
+        "state": "managed_unchanged"
+      },
+      "name": "M: the Domains row no longer names the pool",
+      "ok": true
+    }
+  ],
+  "finished_at": "2026-10-11T05:16:20Z",
+  "lab_preparation": [
+    {
+      "file": "steps/11-m-pool-owner-edit/native/022-lab-m-end-pool-restore.json",
+      "label": "m-end-pool-restore",
+      "mode": "lab-pool-restore"
+    }
+  ],
+  "native_evidence": false,
+  "natives": [
+    {
+      "file": "native/015-ref-pool-set12-a.test.json",
+      "label": "ref-pool-set12-a.test",
+      "mode": "read-pool12",
+      "owner_action": false
+    },
+    {
+      "file": "native/016-owner-m-pool-edit.json",
+      "label": "owner-m-pool-edit",
+      "mode": "owner-pool12",
+      "owner_action": true
+    },
+    {
+      "file": "native/017-m-1-after-the-save-pool-set12-a.test.json",
+      "label": "m-1-after-the-save-pool-set12-a.test",
+      "mode": "read-pool12",
+      "owner_action": false
+    },
+    {
+      "file": "native/018-guest-clock.json",
+      "label": "guest-clock",
+      "mode": "read-ledger",
+      "owner_action": false
+    },
+    {
+      "file": "native/019-m-3-after-take-pool-set12-a.test.json",
+      "label": "m-3-after-take-pool-set12-a.test",
+      "mode": "read-pool12",
+      "owner_action": false
+    },
+    {
+      "file": "native/020-m-take-journal.json",
+      "label": "m-take-journal",
+      "mode": "read-window12",
+      "owner_action": false
+    },
+    {
+      "file": "native/021-m-3-ledger.json",
+      "label": "m-3-ledger",
+      "mode": "read-ledger",
+      "owner_action": false
+    },
+    {
+      "file": "native/022-lab-m-end-pool-restore.json",
+      "label": "lab-m-end-pool-restore",
+      "mode": "lab-pool-restore",
+      "owner_action": false
+    }
+  ],
+  "node": "arch",
+  "notes": [
+    {
+      "detail": [
+        "a PHP switch on the edited pool is refused and writes nothing"
+      ],
+      "note": "M: NOT-MEASURED"
+    }
+  ],
+  "owner_actions": [
+    {
+      "at": "2026-10-11T05:16:14Z",
+      "label": "m-pool-edit",
+      "mode": "owner-pool12"
+    }
+  ],
+  "section": "M-pool-owner-edit",
+  "started_at": "2026-10-11T05:16:13Z",
+  "substeps": {
+    "M": "inconclusive"
+  },
+  "title": "the owner's comment and directive in A's pool: save, page, row, switch, take",
+  "verdict": "inconclusive"
+}

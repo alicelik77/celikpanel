@@ -1,0 +1,85 @@
+{
+  "checks": {
+    "before": {
+      "guidance": "undecided",
+      "required": true,
+      "revision": 0,
+      "status": "new"
+    },
+    "dns": {
+      "mode": "external",
+      "note": "DNS is not provided by this run (the owner chose DNS hosted elsewhere on one isolated node); DNS continuity is covered by the DNS pair runs of roadmap item 2",
+      "verdict": "not-provided-external-dns"
+    },
+    "draft_choices": {
+      "dns_mode": "external",
+      "peer_ip": "",
+      "peer_ns": ""
+    },
+    "execution": {
+      "error": {
+        "code": "HOST_MUTATION_BUSY",
+        "message": "This server's package manager is busy — a package task is still running on this server. Wait for it to finish, then try again.",
+        "reason": "package_manager_active"
+      },
+      "phase": "02-service",
+      "status": "failed"
+    },
+    "owner_attempts": [
+      {
+        "attempt": 1,
+        "error": {
+          "code": "HOST_MUTATION_BUSY",
+          "message": "This server's package manager is busy — a package task is still running on this server. Wait for it to finish, then try again.",
+          "reason": "package_manager_active"
+        },
+        "owner_texts": {
+          "api_message": "This server's package manager is busy — a package task is still running on this server. Wait for it to finish, then try again.",
+          "code": "HOST_MUTATION_BUSY",
+          "err.HOST_MUTATION_BUSY": {
+            "en": "Another server change or operating-system package task is still running. Wait for it to finish, then try again.",
+            "tr": "Başka bir sunucu değişikliği veya işletim sistemi paket işlemi hâlâ sürüyor. Tamamlanmasını bekleyip yeniden deneyin."
+          },
+          "err.HOST_MUTATION_BUSY.package_manager_active": {
+            "en": "This server's package manager is busy — a package task is still running on this server. Wait for it to finish, then try again.",
+            "tr": "Bu sunucunun paket yöneticisi meşgul — bu sunucuda bir paket işlemi hâlâ sürüyor. Tamamlanmasını bekleyip yeniden deneyin."
+          }
+        },
+        "phase": "02-service",
+        "purpose": "web_mail",
+        "request_id": "afb6d6c3a835ccff72743b7d7ad6b218",
+        "status": "failed",
+        "steps": {
+          "01-dns": "succeeded",
+          "02-service": "failed",
+          "03-service": "pending",
+          "04-service": "pending",
+          "05-mail_profile": "pending",
+          "06-mail_profile": "pending",
+          "07-service": "pending",
+          "08-service": "pending",
+          "09-firewall": "pending",
+          "10-access_dns": "pending",
+          "11-panel_certificate": "pending",
+          "12-access_dns": "pending",
+          "13-mail_certificate": "pending",
+          "14-mail_enrollment": "pending",
+          "15-verify": "pending"
+        }
+      }
+    ],
+    "owner_model": "ordinary owner: the reviewed setup plan is started once; no wait for the package manager and no newly reviewed plan after a stop (H19 off)",
+    "plan_web_mail": {
+      "blockers": [],
+      "can_start": true,
+      "http": 200,
+      "id": "956d60d5080fb8752391a3fe4880355d"
+    },
+    "start_http": 202
+  },
+  "finished_at": "2026-10-11T06:00:36Z",
+  "name": "setup",
+  "reason": "server setup did not succeed: {'status': 'failed', 'phase': '02-service', 'error': {'code': 'HOST_MUTATION_BUSY', 'message': \"This server's package manager is busy — a package task is still running on this server. Wait for it to finish, then try again.\", 'reason': 'package_manager_active'}}",
+  "started_at": "2026-10-11T06:00:28Z",
+  "verdict": "failed"
+}

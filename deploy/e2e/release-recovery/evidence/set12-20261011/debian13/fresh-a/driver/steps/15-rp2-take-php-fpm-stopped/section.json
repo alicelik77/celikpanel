@@ -1,0 +1,450 @@
+{
+  "calls": [
+    {
+      "at": "2026-10-11T04:39:12Z",
+      "json": {
+        "actions": [],
+        "challenge_file": "unchanged",
+        "domain": "set12-a.test",
+        "domain_id": 2,
+        "enabled": "link",
+        "file_sha256": "5a0e4f07968a00888168baa1275d402fa4ebcbba5092d4c2b6d5e49db79eb83b",
+        "files": [
+          {
+            "actions": [],
+            "challenge_file": "unchanged",
+            "domain": "set12-a.test",
+            "domain_id": 2,
+            "enabled": "link",
+            "file_sha256": "5a0e4f07968a00888168baa1275d402fa4ebcbba5092d4c2b6d5e49db79eb83b",
+            "include_dir": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+            "kind": "nginx_vhost",
+            "ledger": {
+              "observed_at": "2026-10-11T04:37:18Z",
+              "written_at": "2026-10-11T04:37:14Z",
+              "written_release": "v0.1.0-alpha.81 9e223f175d96"
+            },
+            "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-a.test",
+            "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;",
+            "path": "/etc/nginx/sites-available/set12-a.test.conf",
+            "protection": "none",
+            "render_sha256": "ddea12bd9d8013719d2250f2f6a8bd483eb52676a52e72f06ed93cb5ca8e9afc",
+            "state": "managed_unchanged"
+          },
+          {
+            "actions": [
+              "keep",
+              "take",
+              "merge"
+            ],
+            "decision": {
+              "current": false,
+              "decided_at": "2026-10-11T04:37:36Z",
+              "kind": "take_celikpanel"
+            },
+            "diff": "--- /etc/php/8.4/fpm/pool.d/site2.conf (on this server)\n+++ CelikPanel's text\n@@ -15,5 +15,3 @@\n pm.max_spare_servers = 3\n pm.max_requests = 500\n chdir = /\n-; set12: added by the server owner by hand (a comment and a directive of their own)\n-php_admin_value[memory_limit] = 256M\n",
+            "domain": "set12-a.test",
+            "domain_id": 2,
+            "file_sha256": "2a4538adc25b870d7f8baeba2949a4cf4b62b1e7dd0507be09eefe26ad9be3b2",
+            "kind": "php_pool",
+            "ledger": {
+              "backup_path": "/etc/php/8.4/fpm/pool.d/site2.conf.celikpanel-backup-20261011T043906Z",
+              "observed_at": "2026-10-11T04:39:06Z",
+              "written_at": "2026-10-11T04:37:36Z",
+              "written_release": "v0.1.0-alpha.81 9e223f175d96"
+            },
+            "path": "/etc/php/8.4/fpm/pool.d/site2.conf",
+            "protection": "none",
+            "render_sha256": "da1ca0fec8c515659394b4ad29017ce8272f19787ddeb104e8f6c744d91e2151",
+            "state": "owner_edited"
+          }
+        ],
+        "include_dir": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+        "kind": "nginx_vhost",
+        "ledger": {
+          "observed_at": "2026-10-11T04:37:18Z",
+          "written_at": "2026-10-11T04:37:14Z",
+          "written_release": "v0.1.0-alpha.81 9e223f175d96"
+        },
+        "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-a.test",
+        "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;",
+        "overall_kind": "php_pool",
+        "overall_state": "owner_edited",
+        "path": "/etc/nginx/sites-available/set12-a.test.conf",
+        "protection": "none",
+        "render_sha256": "ddea12bd9d8013719d2250f2f6a8bd483eb52676a52e72f06ed93cb5ca8e9afc",
+        "state": "managed_unchanged"
+      },
+      "label": "rp2 shown: GET site-config",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains/2/site-config"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T04:39:14Z",
+      "json": {
+        "code": "SITE_CONFIG_SERVICE_REFUSED",
+        "detail": "reload_failed",
+        "details": [
+          "exit status 1; rollback incomplete: exit status 1"
+        ],
+        "error": "PHP-FPM did not accept CelikPanel's pool text (its configuration check or reload failed). CelikPanel tried to put the previous file back; whether it is in place is not confirmed — the server administrator checks the file on the server. PHP-FPM's message and what failed while putting the file back are in the Panel's log; fix the cause, then try again.",
+        "reason": "php_pool",
+        "restore": "unconfirmed"
+      },
+      "label": "rp2 take on the owner's pool",
+      "request": {
+        "body": {
+          "file_sha256": "2a4538adc25b870d7f8baeba2949a4cf4b62b1e7dd0507be09eefe26ad9be3b2",
+          "kind": "php_pool",
+          "render_sha256": "da1ca0fec8c515659394b4ad29017ce8272f19787ddeb104e8f6c744d91e2151"
+        },
+        "method": "POST",
+        "path": "/api/v1/domains/2/site-config/take",
+        "x_celikpanel_request_id": "8b68c48c3d1b74106404358acacc6c1a"
+      },
+      "seconds": 0.14,
+      "status": 502,
+      "text": null
+    }
+  ],
+  "cells": {
+    "RP2": {
+      "detail": {
+        "backups_after": [
+          "/etc/php/8.4/fpm/pool.d/site2.conf.celikpanel-backup-20261011T043736Z",
+          "/etc/php/8.4/fpm/pool.d/site2.conf.celikpanel-backup-20261011T043906Z",
+          "/etc/php/8.4/fpm/pool.d/site2.conf.celikpanel-backup-20261011T043914Z"
+        ],
+        "journal": "steps/15-rp2-take-php-fpm-stopped/native/059-rp2-journal.json",
+        "php_lines": [
+          "2026-10-11T04:39:14.465130+00:00 dns-debian13 systemd[1]: php8.4-fpm.service: Unit cannot be reloaded because it is inactive.",
+          "2026-10-11T04:39:14.487531+00:00 dns-debian13 systemd[1]: php8.4-fpm.service: Unit cannot be reloaded because it is inactive."
+        ],
+        "php_unit_after": {
+          "ActiveEnterTimestamp": "Sun 2026-10-11 04:32:48 UTC",
+          "ActiveState": "failed",
+          "ExecMainStartTimestamp": "Sun 2026-10-11 04:39:07 UTC",
+          "LoadState": "loaded",
+          "MainPID": "0",
+          "NRestarts": "6",
+          "SubState": "failed"
+        },
+        "pool_dir_after": [
+          "/etc/php/8.4/fpm/pool.d/site2.conf",
+          "/etc/php/8.4/fpm/pool.d/site2.conf.celikpanel-backup-20261011T043736Z",
+          "/etc/php/8.4/fpm/pool.d/site2.conf.celikpanel-backup-20261011T043906Z",
+          "/etc/php/8.4/fpm/pool.d/site2.conf.celikpanel-backup-20261011T043914Z",
+          "/etc/php/8.4/fpm/pool.d/site3.conf",
+          "/etc/php/8.4/fpm/pool.d/www.conf"
+        ]
+      },
+      "expectations": [
+        {
+          "expectation": "the cause is in place (PHP-FPM stopped by the owner)",
+          "held": true,
+          "measured": {
+            "after": {
+              "ActiveEnterTimestamp": "Sun 2026-10-11 04:32:48 UTC",
+              "ActiveState": "failed",
+              "ExecMainStartTimestamp": "Sun 2026-10-11 04:39:07 UTC",
+              "LoadState": "loaded",
+              "MainPID": "0",
+              "NRestarts": "6",
+              "SubState": "failed"
+            },
+            "php_fpm_test": null,
+            "systemctl": {
+              "argv": [
+                "systemctl",
+                "stop",
+                "php8.4-fpm.service"
+              ],
+              "at": "2026-10-11T04:39:13Z",
+              "returncode": 0,
+              "seconds": 0.01,
+              "status": "ok",
+              "stderr": "",
+              "stdout": ""
+            }
+          }
+        },
+        {
+          "expectation": "take answers 502 SITE_CONFIG_SERVICE_REFUSED, reason php_pool, with a restore fact",
+          "held": true,
+          "measured": {
+            "at": "2026-10-11T04:39:14Z",
+            "json": {
+              "code": "SITE_CONFIG_SERVICE_REFUSED",
+              "detail": "reload_failed",
+              "details": [
+                "exit status 1; rollback incomplete: exit status 1"
+              ],
+              "error": "PHP-FPM did not accept CelikPanel's pool text (its configuration check or reload failed). CelikPanel tried to put the previous file back; whether it is in place is not confirmed — the server administrator checks the file on the server. PHP-FPM's message and what failed while putting the file back are in the Panel's log; fix the cause, then try again.",
+              "reason": "php_pool",
+              "restore": "unconfirmed"
+            },
+            "label": "rp2 take on the owner's pool",
+            "request": {
+              "body": {
+                "file_sha256": "2a4538adc25b870d7f8baeba2949a4cf4b62b1e7dd0507be09eefe26ad9be3b2",
+                "kind": "php_pool",
+                "render_sha256": "da1ca0fec8c515659394b4ad29017ce8272f19787ddeb104e8f6c744d91e2151"
+              },
+              "method": "POST",
+              "path": "/api/v1/domains/2/site-config/take",
+              "x_celikpanel_request_id": "8b68c48c3d1b74106404358acacc6c1a"
+            },
+            "seconds": 0.14,
+            "status": 502,
+            "text": null
+          }
+        },
+        {
+          "expectation": "the owner's pool is in place again (sha256, mode, owner, group)",
+          "held": true,
+          "measured": {
+            "gid": [
+              989,
+              989
+            ],
+            "inode": [
+              135948,
+              135948
+            ],
+            "mode": [
+              "0644",
+              "0644"
+            ],
+            "sha256": [
+              "2a4538adc25b870d7f8baeba2949a4cf4b62b1e7dd0507be09eefe26ad9be3b2",
+              "2a4538adc25b870d7f8baeba2949a4cf4b62b1e7dd0507be09eefe26ad9be3b2"
+            ],
+            "uid": [
+              0,
+              0
+            ]
+          }
+        },
+        {
+          "expectation": "detail reload_failed; restore unconfirmed and the sentence says the administrator checks the file",
+          "held": true,
+          "measured": {
+            "detail": "reload_failed",
+            "details": [
+              "exit status 1; rollback incomplete: exit status 1"
+            ],
+            "error": "PHP-FPM did not accept CelikPanel's pool text (its configuration check or reload failed). CelikPanel tried to put the previous file back; whether it is in place is not confirmed — the server administrator checks the file on the server. PHP-FPM's message and what failed while putting the file back are in the Panel's log; fix the cause, then try again.",
+            "restore": "unconfirmed"
+          }
+        }
+      ],
+      "verdict": "PASS"
+    }
+  },
+  "checks": [
+    {
+      "detail": {
+        "after": {
+          "ActiveEnterTimestamp": "Sun 2026-10-11 04:32:48 UTC",
+          "ActiveState": "failed",
+          "ExecMainStartTimestamp": "Sun 2026-10-11 04:39:07 UTC",
+          "LoadState": "loaded",
+          "MainPID": "0",
+          "NRestarts": "6",
+          "SubState": "failed"
+        },
+        "php_fpm_test": null,
+        "systemctl": {
+          "argv": [
+            "systemctl",
+            "stop",
+            "php8.4-fpm.service"
+          ],
+          "at": "2026-10-11T04:39:13Z",
+          "returncode": 0,
+          "seconds": 0.01,
+          "status": "ok",
+          "stderr": "",
+          "stdout": ""
+        }
+      },
+      "name": "RP2: the cause is in place (PHP-FPM stopped by the owner)",
+      "ok": true
+    },
+    {
+      "detail": {
+        "at": "2026-10-11T04:39:14Z",
+        "json": {
+          "code": "SITE_CONFIG_SERVICE_REFUSED",
+          "detail": "reload_failed",
+          "details": [
+            "exit status 1; rollback incomplete: exit status 1"
+          ],
+          "error": "PHP-FPM did not accept CelikPanel's pool text (its configuration check or reload failed). CelikPanel tried to put the previous file back; whether it is in place is not confirmed — the server administrator checks the file on the server. PHP-FPM's message and what failed while putting the file back are in the Panel's log; fix the cause, then try again.",
+          "reason": "php_pool",
+          "restore": "unconfirmed"
+        },
+        "label": "rp2 take on the owner's pool",
+        "request": {
+          "body": {
+            "file_sha256": "2a4538adc25b870d7f8baeba2949a4cf4b62b1e7dd0507be09eefe26ad9be3b2",
+            "kind": "php_pool",
+            "render_sha256": "da1ca0fec8c515659394b4ad29017ce8272f19787ddeb104e8f6c744d91e2151"
+          },
+          "method": "POST",
+          "path": "/api/v1/domains/2/site-config/take",
+          "x_celikpanel_request_id": "8b68c48c3d1b74106404358acacc6c1a"
+        },
+        "seconds": 0.14,
+        "status": 502,
+        "text": null
+      },
+      "name": "RP2: take answers 502 SITE_CONFIG_SERVICE_REFUSED, reason php_pool, with a restore fact",
+      "ok": true
+    },
+    {
+      "detail": {
+        "gid": [
+          989,
+          989
+        ],
+        "inode": [
+          135948,
+          135948
+        ],
+        "mode": [
+          "0644",
+          "0644"
+        ],
+        "sha256": [
+          "2a4538adc25b870d7f8baeba2949a4cf4b62b1e7dd0507be09eefe26ad9be3b2",
+          "2a4538adc25b870d7f8baeba2949a4cf4b62b1e7dd0507be09eefe26ad9be3b2"
+        ],
+        "uid": [
+          0,
+          0
+        ]
+      },
+      "name": "RP2: the owner's pool is in place again (sha256, mode, owner, group)",
+      "ok": true
+    },
+    {
+      "detail": {
+        "detail": "reload_failed",
+        "details": [
+          "exit status 1; rollback incomplete: exit status 1"
+        ],
+        "error": "PHP-FPM did not accept CelikPanel's pool text (its configuration check or reload failed). CelikPanel tried to put the previous file back; whether it is in place is not confirmed — the server administrator checks the file on the server. PHP-FPM's message and what failed while putting the file back are in the Panel's log; fix the cause, then try again.",
+        "restore": "unconfirmed"
+      },
+      "name": "RP2: detail reload_failed; restore unconfirmed and the sentence says the administrator checks the file",
+      "ok": true
+    }
+  ],
+  "finished_at": "2026-10-11T04:39:19Z",
+  "lab_preparation": [
+    {
+      "file": "steps/15-rp2-take-php-fpm-stopped/native/053-lab-rp2-pool-restore.json",
+      "label": "rp2-pool-restore",
+      "mode": "lab-pool-restore"
+    },
+    {
+      "file": "steps/15-rp2-take-php-fpm-stopped/native/061-lab-rp2-end-pool-restore.json",
+      "label": "rp2-end-pool-restore",
+      "mode": "lab-pool-restore"
+    }
+  ],
+  "native_evidence": false,
+  "natives": [
+    {
+      "file": "native/053-lab-rp2-pool-restore.json",
+      "label": "lab-rp2-pool-restore",
+      "mode": "lab-pool-restore",
+      "owner_action": false
+    },
+    {
+      "file": "native/054-owner-rp2-pool-edit.json",
+      "label": "owner-rp2-pool-edit",
+      "mode": "owner-pool12",
+      "owner_action": true
+    },
+    {
+      "file": "native/055-rp2-0-before-pool-set12-a.test.json",
+      "label": "rp2-0-before-pool-set12-a.test",
+      "mode": "read-pool12",
+      "owner_action": false
+    },
+    {
+      "file": "native/056-owner-rp2-php-stop.json",
+      "label": "owner-rp2-php-stop",
+      "mode": "owner-php12",
+      "owner_action": true
+    },
+    {
+      "file": "native/057-guest-clock.json",
+      "label": "guest-clock",
+      "mode": "read-ledger",
+      "owner_action": false
+    },
+    {
+      "file": "native/058-rp2-1-after-pool-set12-a.test.json",
+      "label": "rp2-1-after-pool-set12-a.test",
+      "mode": "read-pool12",
+      "owner_action": false
+    },
+    {
+      "file": "native/059-rp2-journal.json",
+      "label": "rp2-journal",
+      "mode": "read-window12",
+      "owner_action": false
+    },
+    {
+      "file": "native/060-owner-rp2-php-start.json",
+      "label": "owner-rp2-php-start",
+      "mode": "owner-php12",
+      "owner_action": true
+    },
+    {
+      "file": "native/061-lab-rp2-end-pool-restore.json",
+      "label": "lab-rp2-end-pool-restore",
+      "mode": "lab-pool-restore",
+      "owner_action": false
+    }
+  ],
+  "node": "debian13",
+  "notes": [
+    {
+      "detail": [],
+      "note": "RP2: PASS"
+    }
+  ],
+  "owner_actions": [
+    {
+      "at": "2026-10-11T04:39:12Z",
+      "label": "rp2-pool-edit",
+      "mode": "owner-pool12"
+    },
+    {
+      "at": "2026-10-11T04:39:14Z",
+      "label": "rp2-php-stop",
+      "mode": "owner-php12"
+    },
+    {
+      "at": "2026-10-11T04:39:19Z",
+      "label": "rp2-php-start",
+      "mode": "owner-php12"
+    }
+  ],
+  "section": "RP2-take-php-fpm-stopped",
+  "started_at": "2026-10-11T04:39:11Z",
+  "substeps": {
+    "RP2": "passed"
+  },
+  "title": "take on the pool while PHP-FPM is stopped: restore",
+  "verdict": "passed"
+}
