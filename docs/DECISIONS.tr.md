@@ -154,7 +154,7 @@ testli; ölçülmedi): sahibin ekleme dizini açıkça 0755 oluşturulur (Agent'
 dizini de öyle; kilitli bir dosya (`chattr +i`, EPERM) alan adının sayfasında,
 liste satırında ve rozetinde aynı biçimde `unwritable` (değiştirilemiyor)
 olarak yanıtlanır: sistem hatası, salt okunur ölçülen koruma, CelikPanel'in
-yazmak istediği metin ve "Yeniden denetle" ile (sayfa nedensiz
+yazmak istediği metin ve "Yeniden kontrol et" ile (sayfa nedensiz
 `managed_unchanged` yanıtlıyordu). Defter göç 044'ün durum kümesini korur
 (`unreadable` + `write_refused`); şema değişmedi. Yeni ve yeniden oluşturulan
 sanal konaklar `root:celikpanel 0644`; korunan ve alınan dosyalar sahibin

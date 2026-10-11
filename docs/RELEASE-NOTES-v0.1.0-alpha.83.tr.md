@@ -89,7 +89,7 @@ oluşturulur; sayfa "Yeniden oluştur" seçeneğini sunar. Değişikliğe karş�
 kilitlenmiş bir dosya (örneğin `chattr +i` ile) böyle adlandırılır; sistem
 hatası, Panel'in bulduğu koruma ve CelikPanel'in yazmak istediği metin de
 gösterilir. CelikPanel'in onu güncelleyebilmesi için korumayı kaldırın (örneğin
-`sudo chattr -i <yol>`) ve "Yeniden denetle"yi seçin; sayfa o zaman
+`sudo chattr -i <yol>`) ve "Yeniden kontrol et"yi seçin; sayfa o zaman
 "CelikPanel'in metnini şimdi yaz" seçeneğini sunar, bir sonraki başlangıç ya da
 kaydedilen değişiklik de onu yazar. Kilitli kalsın istiyorsanız bir şey
 yapmayın: CelikPanel onu değiştirmez.
@@ -692,7 +692,7 @@ kurulmuş konuklarında ölçecek biçimde kuruldu: iki include dizininin izinle
 korunan bir dosyada, doğrulama denetimi gerçek bir nginx'e karşı olmak üzere
 sertifika isteği (Arch'ta yalnız CelikPanel'in include satırı olmayan dosya),
 tek bir adrese bağlı 80 numaralı bağlantı noktası bloğu dahil; kilitli dosyanın
-yanıtı, "Yeniden denetle", bir Genel kayıt ve reddedilen bir alma; gerçek bir
+yanıtı, "Yeniden kontrol et", bir Genel kayıt ve reddedilen bir alma; gerçek bir
 Chrome'da erişim beklemesi ve kurtarma hizmet çalışanı; ve Debian 13'te,
 başlangıç denetiminden geçemeyen bir adaydan otomatik dönüşten sonra
 v0.1.0-alpha.81'in ilk satırı taşıyan site dosyalarıyla ne yaptığı. Sonucu
@@ -712,7 +712,7 @@ düzeltmeleri içerir.
 | Denetlenen | Üzerinde koştuğu kod |
 | --- | --- |
 | nginx dosyasının korunması, üç seçenek, v0.1.0-alpha.81'den güncellemeden sonra devralma, dönüş, geri konan veritabanı, kilitli dosyanın öteki sitelere etkisi | bu çalışmanın ilk bölümü (onuncu kayıt); son kodda yinelenmedi |
-| CelikPanel'in kendi include dizini, doğrulama denetimi, korunan dosyada sertifikalar, kilitli dosyanın yanıtı ve "Yeniden denetle", "CelikPanel'in metnini şimdi yaz", dosyalar arasındaki durum sırası, geri koyma bilgisi, 0755 izni | bileşen testleri ve taklit API'ye karşı tarayıcı; gerçek bir sistemde yalnız on birinci kayıtla |
+| CelikPanel'in kendi include dizini, doğrulama denetimi, korunan dosyada sertifikalar, kilitli dosyanın yanıtı ve "Yeniden kontrol et", "CelikPanel'in metnini şimdi yaz", dosyalar arasındaki durum sırası, geri koyma bilgisi, 0755 izni | bileşen testleri ve taklit API'ye karşı tarayıcı; gerçek bir sistemde yalnız on birinci kayıtla |
 | PHP-FPM havuzu ve uygulama birimi | bileşen testleri ve taklit API'ye karşı tarayıcı; gerçek bir sistemde yalnız on ikinci kayıtla |
 | Soğuk ilk yükleme ve 1,5 saniyedeki açıklamalı bekleme | ilk kapı düzeltmelerinden sonraki arayüz (dokuzuncu kayıt) |
 | 15 ve 30 saniyelik adımlar, önceki bir yanıttan sonra bilinmiyor | bileşen testleri ve taklit API'ye karşı tarayıcı; gerçek bir sistemde yalnız on birinci kayıtla |

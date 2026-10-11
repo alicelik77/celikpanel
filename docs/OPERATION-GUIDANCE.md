@@ -6452,20 +6452,27 @@ and the alias change show it as a warning toast (`ssl.validationNotRun`, in
 the screens bundle), and the Configuration file page says it under
 "Not known whether certificates can be validated with this file"
 (`siteConfig.certificate.validation.unknownAddress`): "CelikPanel
-could not check beforehand whether nginx serves the certificate validation
-for this site: the site listens on {address}, which this server cannot reach
-from itself. The request was sent anyway; if the authority cannot reach
-{address}, the answer will say so." It ends no `certificate_validation`
+could not check whether nginx serves the certificate validation for this
+site: the site listens on {address}, which this server cannot reach from
+itself. This does not mean anything is wrong, and nothing was changed. A
+certificate request is still sent; if the authority cannot reach {address},
+its answer will say so, then the server administrator corrects what it names
+and requests the certificate again." The toast (`ssl.validationNotRun`) keeps
+its "The request was sent anyway; if the authority cannot reach {address},
+the answer will say so." and adds "Nothing asks again by itself; the server
+administrator requests again after fixing what the answer names." It ends no `certificate_validation`
 reason (nothing was measured). The site-file ledger has no column for it (a
 schema change was not made; no ledger field, journal only): the Panel's
 journal line `validation_probe=not_run
 validation_unknown_reason=address_not_local validation_address=…` records it,
 and is the only record of a renewal that went ahead this way. Known wording
-gap: the Configuration file page is a read, no request is sent from it, so
-"The request was sent anyway" is wrong there, and neither sentence says who
-acts if the authority then fails (the server administrator, on the answer's
-words) or that nothing asks again by itself; both strings are to be
-corrected, not corrected here.
+gap, corrected in the strings above: the Configuration file page is a read, no
+request is sent from it, so it no longer says "The request was sent anyway",
+and both strings now say who acts if the authority then fails (the server
+administrator, on the answer's words) and that nothing asks again by itself.
+Limits that remain and are not changed: the alias-certificate reissue answers
+a plain `409` on an authority failure (no typed reason), and a renewal
+records no typed reason.
 `503 CERTIFICATE_VALIDATION_UNKNOWN` stays for a probe that could not run for
 a local reason (nginx not answering on port 80 at an address asked, the challenge directory missing or not a directory, the probe file not
 creatable, this server's addresses not listable while the file names an

@@ -4124,10 +4124,10 @@ hücreleri (denetim §9) sonra gelir. 2026-10-10 saat tarihidir.
     hatasını ve değiştirmeyi şimdi neyin reddettiğini (dosyanın ya da dizininin
     değiştirilemez ya da yalnızca eklenebilir özniteliği, salt okunur dosya
     sistemi; Agent salt okunur ölçer) adlandırır, CelikPanel'in yazmak istediği
-    metni gösterir ve bir okuma olan "Yeniden denetle"yi sunar (onuncu gerçek
+    metni gösterir ve bir okuma olan "Yeniden kontrol et"i sunar (onuncu gerçek
     sistem kaydı düzeltmesi, 2026-10-11: bileşen testli; ölçülmedi; kayıt
     sayfanın nedensiz `managed_unchanged` yanıtladığını ölçtü). "Yeniden
-    denetle" (sayfanın okuması) reddedilmiş bir değiştirmenin satırına
+    kontrol et" (sayfanın okuması) reddedilmiş bir değiştirmenin satırına
     bulduğunu yazar; böylece Alan Adları satırı aynı şeyi söyler: koruma
     sürüyorsa yalnız zaman; aynı baytlarda koruma yoksa CelikPanel'in metni
     `protection_removed` nedeniyle `managed_unchanged` saklanır ve sayfa

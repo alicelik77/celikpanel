@@ -5862,12 +5862,12 @@ dosyadan değil.
   ya da değiştirilemiyor", nedeniyle (`symlink`, `not_regular`, `permission`,
   `too_large`, `read_failed`) ve o nedenin sonraki adımı: bağlantıda "Sunucu
   yöneticisi bağlantıyı sıradan bir dosyayla değiştirir ya da başka yere
-  taşır, sonra Yeniden denetle’yi seçer."; izinde "Sunucu yöneticisi dosyayı
-  root için okunur yapar, sonra Yeniden denetle’yi seçer."; diğerlerinde
+  taşır, sonra Yeniden kontrol et’i seçer."; izinde "Sunucu yöneticisi dosyayı
+  root için okunur yapar, sonra Yeniden kontrol et’i seçer."; diğerlerinde
   "Sunucu yöneticisi sunucunun bildirdiği sorunu giderir, sonra Yeniden
-  denetle’yi seçer." ve Agent bir satır gönderdiyse "Sunucunun bildirdiği:
+  kontrol et’i seçer." ve Agent bir satır gönderdiyse "Sunucunun bildirdiği:
   {detail}"; ardından "Bu arada bu sitede CelikPanel’de yaptığınız
-  değişiklikler ona uygulanmaz." ve "Yeniden denetle" düğmesi (`recheck`: bu
+  değişiklikler ona uygulanmaz." ve "Yeniden kontrol et" düğmesi (`recheck`: bu
   sayfanın yanıtını yeniden okur, hiçbir şeyi değiştirmez).
 - Değiştirilemiyor (onuncu gerçek sistem kaydı düzeltmesi, 2026-10-11; bileşen
   testli; ölçülmedi): CelikPanel'in okuduğu (kendi değişmemiş metni) ama
@@ -5894,13 +5894,13 @@ dosyadan değil.
   Dosya o zamana kadar yeniden korunursa bu sayfa bunu söyler."; hiçbir şey
   ölçülemediyse okunacak panel günlüğü satırı); sonra "O zamana kadar bu sitede
   CelikPanel’de yaptığınız değişiklikler dosyaya uygulanmaz. Gerekeni yaptıktan
-  sonra Yeniden denetle’yi seçin."; "Yeniden denetle" düğmesi; ve farkla
+  sonra Yeniden kontrol et’i seçin."; "Yeniden kontrol et" düğmesi; ve farkla
   birlikte "CelikPanel’in yazmak istediği: dosyanız (−) ve CelikPanel’in metni
   (+)". Alan Adları satırının rozeti `siteConfig.list.badge.unwritable`
   "Yapılandırma dosyası değiştirilemiyor"; not `siteConfig.notice.unwritable`
   "Bu sitenin nginx yapılandırma dosyası bu sunucuda değiştirilemiyor.
   CelikPanel onu olduğu gibi korudu."
-- "Yeniden denetle"den sonra (2026-10-11; bileşen testli ve sahte tarayıcıda
+- "Yeniden kontrol et"ten sonra (2026-10-11; bileşen testli ve sahte tarayıcıda
   bakıldı; gerçek sistemde ölçülmedi). Alan adı ekranının okuması denetimin
   kendisidir ve bulduğunu deftere yazar; böylece Alan Adları satırı sayfayla
   aynı şeyi söyler. Koruma sürüyorsa (ya da ölçülemiyorsa) `unwritable` kalır;
@@ -5933,11 +5933,11 @@ dosyadan değil.
   isteği reddedildi: bu sunucu dosyanın değiştirilmesine izin vermiyor
   ({error})."; şimdi ölçülen koruma; "Karar sunucu yöneticisinindir:
   CelikPanel’in metnini almak için önce korumayı kaldırın, örneğin sudo
-  chattr -i <yol> ile, sonra Yeniden denetle’yi seçin; ya da Benimkini koru
-  ile dosyanızı koruyun."; devam satırı; Yeniden denetle; üç seçim; ve fark.
+  chattr -i <yol> ile, sonra Yeniden kontrol et’i seçin; ya da Benimkini koru
+  ile dosyanızı koruyun."; devam satırı; Yeniden kontrol et; üç seçim; ve fark.
   "CelikPanel’in metnini al" sunulmayı sürdürür ve bir koruma ölçüldüğü sürece
   hiçbir şey yazılmadan (tarihli kopya yapılmadan) `409
-  SITE_CONFIG_UNWRITABLE` ile yanıtlanır. Yeniden denetle koruma ölçmediğinde
+  SITE_CONFIG_UNWRITABLE` ile yanıtlanır. Yeniden kontrol et koruma ölçmediğinde
   sayfa üç seçimiyle yeniden sahibin düzenlediği dosyanın sayfasıdır.
 
 **Üç seçim** (her biri D-029 istek kimliğiyle bir POST; her biri sayfanın
@@ -6392,20 +6392,27 @@ alması); SSL sekmesi ve takma ad değişikliği bunu uyarı bildirimi olarak
 gösterir (`ssl.validationNotRun`, ekranlar paketinde), Yapılandırma dosyası
 sayfası da "Bu dosyayla sertifikanın doğrulanıp
 doğrulanamayacağı bilinmiyor" altında söyler
-(`siteConfig.certificate.validation.unknownAddress`): "CelikPanel, nginx'in bu sitenin
-sertifika doğrulamasını sunup sunmadığını önceden kontrol edemedi: site
-{address} adresini dinliyor ve bu sunucu o adrese kendi içinden ulaşamıyor.
-İstek yine de gönderildi; sertifika yetkilisi {address} adresine ulaşamazsa
-yanıt bunu söyler." Hiçbir `certificate_validation` nedenini bitirmez (hiçbir
+(`siteConfig.certificate.validation.unknownAddress`): "CelikPanel, nginx’in bu sitenin
+sertifika doğrulamasını sunup sunmadığını kontrol edemedi: site {address}
+adresini dinliyor ve bu sunucu o adrese kendi içinden ulaşamıyor. Bu bir sorun
+olduğu anlamına gelmez ve hiçbir şey değiştirilmedi. Sertifika isteği yine de
+gönderilir; yetkili {address} adresine ulaşamazsa yanıtı bunu söyler, sonra
+sunucu yöneticisi yanıtın adını verdiği şeyi düzeltir ve sertifikayı yeniden
+ister." Bildirim (`ssl.validationNotRun`) "İstek yine de gönderildi; sertifika
+yetkilisi {address} adresine ulaşamazsa yanıt bunu söyler." cümlesini korur ve
+"Hiçbir şey kendiliğinden yeniden denemez; sunucu yöneticisi yanıtın adını
+verdiği şeyi düzeltip sertifikayı yeniden ister." ekler. Hiçbir `certificate_validation` nedenini bitirmez (hiçbir
 şey ölçülmedi). Site dosyası defterinde bunun için sütun yoktur (şema
 değişikliği yapılmadı; defter alanı yok, yalnız günlük): Panel'in günlük satırı
 `validation_probe=not_run validation_unknown_reason=address_not_local
 validation_address=…` kaydeder ve bu yolla sürmüş bir yenilemenin tek kaydı
-odur. Bilinen ifade eksiği: Yapılandırma dosyası sayfası bir okumadır, ondan
-istek gönderilmez, bu yüzden orada "İstek yine de gönderildi" yanlıştır; iki
-cümle de yetkili sonra başarısız olursa kimin işlem yapacağını (sunucu
-yöneticisi, yanıtın sözlerine göre) ve hiçbir şeyin kendiliğinden yeniden
-denemediğini söylemez; iki metin düzeltilecektir, burada düzeltilmedi.
+odur. Bilinen ifade eksiği, yukarıdaki metinlerde düzeltildi: Yapılandırma dosyası
+sayfası bir okumadır, ondan istek gönderilmez, bu yüzden artık "İstek yine de
+gönderildi" demez; iki metin de yetkili sonra başarısız olursa kimin işlem
+yapacağını (sunucu yöneticisi, yanıtın sözlerine göre) ve hiçbir şeyin
+kendiliğinden yeniden denemediğini söyler. Kalan ve değiştirilmeyen sınırlar:
+takma ad sertifikasının yeniden alınması yetkili hatasında düz bir `409`
+verir (türlü neden yok) ve bir yenileme türlü neden kaydetmez.
 `503 CERTIFICATE_VALIDATION_UNKNOWN` yoklamanın yerel bir nedenle
 yapılamadığı durumlarda kalır (nginx'in sorulan adreste 80'de yanıt vermemesi,
 doğrulama dizininin eksik olması ya da dizin olmaması, yoklama dosyasının
@@ -6622,10 +6629,10 @@ açıklamalar 2026-10-11'den beri), durumu ("CelikPanel’in metni, değişmemi�
 "CelikPanel dışında düzenlendi", "CelikPanel dışında değiştirildi",
 "CelikPanel’in metni olarak tanınmadı", "Yok", "Okunamıyor ya da
 değiştirilemiyor", "Değiştirilemiyor", "Yeniden değiştirilebilir", "Durumu
-bilinmiyor: sunucu yanıt vermedi. Hiçbir şey değişmedi; Yeniden denetle'yi
+bilinmiyor: sunucu yanıt vermedi. Hiçbir şey değişmedi; Yeniden kontrol et'i
 seçin.") ve yolu — sonra her dosya için aynı
 durumları, farkı ve aynı seçimleri (benimkini koru, CelikPanel’in metnini al,
-elle birleştir; yeniden oluştur; yeniden denetle; CelikPanel’in metnini şimdi
+elle birleştir; yeniden oluştur; yeniden kontrol et; CelikPanel’in metnini şimdi
 yaz) taşıyan bir bölüm. Havuzun ve birimin cümleleri kendi dosyalarını ve
 hizmetlerini adlandırır (`siteConfig.php_pool.*`, `siteConfig.app_unit.*`):
 örneğin "Bu dosya CelikPanel’in en son yazdığı metin değil; bu yüzden
@@ -6731,7 +6738,7 @@ bileşen testli ve sahte tarayıcıda denendi; gerçek sistemde ölçülmedi):
 satırın rozeti `siteConfig.list.badge.unknown` "Bir yapılandırma dosyası
 okunamadı; durumu bilinmiyor" der, `kind` dosyayı adlandırır; sayfa onu
 "Durumu bilinmiyor: sunucu yanıt vermedi. Hiçbir şey değişmedi; Yeniden
-denetle'yi seçin." diye listeler (alan adının üstünde bunun için bildirim
+kontrol et'i seçin." diye listeler (alan adının üstünde bunun için bildirim
 yoktur). Karar veren havuz ya da birimse `kind` onu adlandırır; korunan, eksik,
 okunamayan ya da değiştirilemeyen dosyada bildirim bunu söyler
 (`siteConfig.notice.php_pool.*`, `siteConfig.notice.app_unit.*`; örneğin "Bu
