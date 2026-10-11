@@ -3943,15 +3943,17 @@ arayüzü değişmedi). 2026-10-10 saat tarihidir.
   kaydın oturum açılmış tarayıcı bağlamlarında kayıtlı değildi (hücre 4c ve
   set7); bu yüzden durmuş Panel'de Chrome'un kendi hata sayfası göründü; hücre
   4a'nın oturumsuz üç yüklemesini (yeni bir bağlam) ise bir çalışan denetliyordu
-  (`sw_controlled: true`). **Neden on birinci kayıtta kesinleşti (set11 hücre
-  E, 2026-10-11):** ürün değil, laboratuvar tarayıcısının profil yolu — 177
-  karakter derindeki bir profilde çalışanın kurulumu CacheStorage'ı açamayıp
-  başarısız oldu, yeni bir bağlam ve kısa bir profil yolu ise onu kaydetti;
-  çalışan kayıtlıyken durmuş Panel'de ürünün çevrimdışı sayfası gösterilir.
-  Ölçülen sınır: Windows'un 260 karakter sınırını aşan bir profil yolu —
-  mekanizma çıkarımdır. Canlı tarayıcı araçları artık kısa bir profil yolu
-  kullanır ve 120 karakteri aşanı reddeder
-  (`web/tools/browser-inspect/profile-dir.mjs`).
+  (`sw_controlled: true`). **Neden on birinci kayıtta daraltıldı (set11 hücre
+  E, 2026-10-11); mekanizma çıkarımdır:** ürün değil, laboratuvar
+  tarayıcısının uzun bir Windows yolundaki diskte duran Chrome profili —
+  çalışanın kaydı CacheStorage'ı açamayıp başarısız oldu (`installing →
+  redundant`); başka bir konukta kısa bir yoldaki profil ise onu kaydetti ve
+  Panel durdurulmuşken ürünün çevrimdışı sayfasını gösterdi. Bu, kontrollü bir
+  karşılaştırma değildir (farklı bir konuk ve tarayıcı süreci). Yol uzunluğunun
+  mekanizma olduğu çıkarımdır; yolu adlandıran bir Chrome satırından okunmadı
+  ve kayıt karakter sayısı vermez. 2026-10-11 tarihli kayıttan beri canlı
+  tarayıcı araçları kısa profiller oluşturur ve 120 karakteri aşan yolu
+  reddeder (`web/tools/browser-inspect/profile-dir.mjs`).
 - **Önceki bir yanıttan sonra bilinmeyen bilinmeyen kalır (ilke 2; ikinci tur,
   2026-10-10; açıktı).** Önceden herhangi bir okuma yanıt verdikten sonra
   kendi 15 sn sınırına ulaşan sonraki okuma, son okunan nedenle bilinen olumsuz
@@ -3979,8 +3981,8 @@ arayüzü değişmedi). 2026-10-10 saat tarihidir.
   katmanının sözcükleri; yükleme başına iki oturum okuması (burada
   değiştirilmedi); tarayıcının sabitleme olmadan güvendiği bir sertifikayla
   kurtarma hizmet çalışanı (oturum açılmış laboratuvar bağlamlarında neden
-  kaydolmadığı kesinleşti: laboratuvar tarayıcısının profil yolu, set11 hücre
-  E); mandal listesinin kalan 30 dosyası.
+  kaydolmadığı kesinleşmedi, daraltıldı: laboratuvar tarayıcısının uzun
+  yoldaki diskte duran profili, set11 hücre E; mekanizma çıkarımdır); mandal listesinin kalan 30 dosyası.
 
 ### Kurulum sayfasının son denetimi ve güncelleme bildirimi: durmuş çalışma sürmüyordur, kurulu hedefte süren güncelleme "doğrulanıyor"dur (P0.2 alanı; ilke 2 ve 6; D-024; 2026-10-10)
 

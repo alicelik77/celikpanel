@@ -4630,15 +4630,17 @@ that replaced the page is not changed). 2026-10-10 is the clock date.
   the recovery service worker was not registered in the signed-in
   browser contexts of the record (cell 4c, and set7), so a stopped Panel showed
   Chrome's own error page; the three no-session loads of cell 4a (a new
-  context) were controlled by one (`sw_controlled: true`). **Cause established
-  in the eleventh record (set11 cell E, 2026-10-11):** the lab browser's
-  profile path, not the product — in a profile 177 characters deep the
-  worker's install failed opening CacheStorage, while a new context and a
-  short profile path registered it; the product's offline page is shown with
-  the Panel stopped when the worker is registered. The limit measured: a
-  profile path beyond Windows' 260-character limit — the mechanism is
-  inferred. The live browser tools now use a short profile path and refuse
-  one beyond 120 characters (`web/tools/browser-inspect/profile-dir.mjs`).
+  context) were controlled by one (`sw_controlled: true`). **Cause narrowed
+  in the eleventh record (set11 cell E, 2026-10-11); the mechanism is
+  inferred:** the lab browser's on-disk Chrome profile at a long Windows path,
+  not the product — the worker's registration failed opening CacheStorage
+  (`installing → redundant`), while a profile at a short path, on a different
+  guest, registered it and showed the product's offline page with the Panel
+  stopped. That is not a controlled comparison (a different guest and browser
+  process). That the path length is the mechanism is inferred, not read from a
+  Chrome line naming the path, and the record gives no character counts. Since
+  the commit of 2026-10-11 the live browser tools create short profiles and
+  refuse a path over 120 characters (`web/tools/browser-inspect/profile-dir.mjs`).
 - **Unknown after an earlier answer stays unknown (invariant 2; second round,
   2026-10-10; was open).** Before, once any read had answered, a later read
   that reached its own 15 s limit was drawn as the known negative with the
@@ -4663,8 +4665,9 @@ that replaced the page is not changed). 2026-10-10 is the clock date.
   server; a load with the HTTP cache enabled; the hold layer's words during a
   real update; the two session reads per load (not changed here); the
   recovery service worker with a certificate the browser trusts without a pin
-  (why it was not registered in the signed-in lab contexts is established:
-  the lab browser's profile path, set11 cell E); the remaining
+  (why it was not registered in the signed-in lab contexts is narrowed, not
+  established: the lab browser's on-disk profile at a long path, set11 cell E;
+  the mechanism is inferred); the remaining
   30 files of the ratchet list.
 
 ### The setup page's final check and the update notice: a stopped run is not in progress, a running update on the installed target is "being verified" (P0.2 area; invariants 2 and 6; D-024; 2026-10-10)

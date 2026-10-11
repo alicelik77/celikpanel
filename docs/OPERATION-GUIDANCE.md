@@ -5803,21 +5803,22 @@ wait: The server answered with HTTP error 503…"; at 41 s the half-minute
 sentence and the reload. **The 15 s/30 s path, before and after an answer, is
 component-tested and mock browser; not measured on a real system.**
 
-*The recovery service worker: cause established in the eleventh record (set11,
-cell E, 2026-10-11).* The cause is the lab browser's profile path, not the
-product. In the signed-in context, whose Chrome profile sat 177 characters
-deep, the worker went `installing → redundant` with "Failed to execute 'open'
-on 'CacheStorage': Unexpected internal error"; a new context, and the same
-Chrome with its profile under a short path, registered it and were
-controlled. The product's offline page ("The panel connection is
-unavailable") is shown with the Panel stopped when the worker is registered.
-The limit measured: a profile path beyond Windows' 260-character limit (an
-entry under that profile's CacheStorage is about 316 characters) — the
-mechanism is inferred, not read from a Chrome line naming the path. The live
-browser tools now put the profile under a short path and refuse one longer
-than 120 characters (`web/tools/browser-inspect/profile-dir.mjs`). Not
-measured: a certificate the browser trusts without a pin. What follows is the
-earlier observation, kept as it was written.
+*The recovery service worker: cause narrowed in the eleventh record (set11,
+cell E, 2026-10-11); the mechanism is inferred.* The cause is narrowed to the
+lab browser's on-disk Chrome profile at a long Windows path, not the product.
+In the signed-in context the worker's registration failed with "Failed to
+execute 'open' on 'CacheStorage': Unexpected internal error" (`installing →
+redundant`); a profile at a short path, on a different guest, registered it
+and showed the product's offline page ("The panel connection is unavailable")
+with the Panel stopped. That is not a controlled comparison: it was a
+different guest and browser process. That the path length (Windows'
+260-character limit) is the mechanism is inferred from the error, the path
+arithmetic and the short-path result; it is not read from a Chrome line naming
+the path, and the record gives no character counts. Since the commit of
+2026-10-11 the live browser tools create short profiles and refuse a path over
+120 characters (`web/tools/browser-inspect/profile-dir.mjs`). Not measured: a
+certificate the browser trusts without a pin; the long path on the other guest.
+What follows is the earlier observation, kept as it was written.
 
 *Observation (2026-10-10), not changed here.* With the Panel
 stopped, the ninth record (cell 4c) saw Chrome's own error page, because

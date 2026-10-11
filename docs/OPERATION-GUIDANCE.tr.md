@@ -5732,18 +5732,20 @@ yanıttan önce ve sonra, bileşen testli ve taklit tarayıcılı; gerçek bir
 sistemde ölçülmedi.**
 
 *Kurtarma hizmet çalışanı (service worker): neden on birinci kayıtta
-kesinleşti (set11, hücre E, 2026-10-11).* Neden ürün değil, laboratuvar
-tarayıcısının profil yoludur. Chrome profili 177 karakter derinde olan oturum
-açılmış bağlamda çalışan `installing → redundant` oldu: "Failed to execute
-'open' on 'CacheStorage': Unexpected internal error"; yeni bir bağlam ve profili
-kısa bir yolda olan aynı Chrome onu kaydetti ve denetlendi. Çalışan kayıtlıyken
-Panel durdurulduğunda ürünün çevrimdışı sayfası ("The panel connection is
-unavailable") gösterilir. Ölçülen sınır: Windows'un 260 karakter sınırını aşan
-bir profil yolu (o profilin CacheStorage'ı altındaki bir girdi yaklaşık 316
-karakter) — mekanizma çıkarımdır, yolu adlandıran bir Chrome satırından
-okunmadı. Canlı tarayıcı araçları artık profili kısa bir yola koyar ve 120
-karakterden uzun bir yolu reddeder (`web/tools/browser-inspect/profile-dir.mjs`).
-Ölçülmedi: tarayıcının sabitleme olmadan güvendiği bir sertifika. Aşağıdaki,
+daraltıldı (set11, hücre E, 2026-10-11); mekanizma çıkarımdır.* Neden, ürün
+değil, laboratuvar tarayıcısının uzun bir Windows yolundaki diskte duran Chrome
+profiline daraltıldı. Oturum açılmış bağlamda çalışanın kaydı şu hatayla
+başarısız oldu: "Failed to execute 'open' on 'CacheStorage': Unexpected
+internal error" (`installing → redundant`); başka bir konukta, kısa bir yoldaki
+profil onu kaydetti ve Panel durdurulduğunda ürünün çevrimdışı sayfasını
+("The panel connection is unavailable") gösterdi. Bu, kontrollü bir
+karşılaştırma değildir: farklı bir konuk ve tarayıcı süreciydi. Yol uzunluğunun
+(Windows'un 260 karakter sınırı) mekanizma olduğu hatadan, yol hesabından ve
+kısa yol sonucundan çıkarılmıştır; yolu adlandıran bir Chrome satırından
+okunmadı ve kayıt karakter sayısı vermez. 2026-10-11 tarihli kayıttan beri canlı
+tarayıcı araçları kısa profiller oluşturur ve 120 karakterden uzun bir yolu
+reddeder (`web/tools/browser-inspect/profile-dir.mjs`). Ölçülmedi: tarayıcının
+sabitleme olmadan güvendiği bir sertifika; öteki konukta uzun yol. Aşağıdaki,
 yazıldığı gibi korunan önceki gözlemdir.
 
 *Gözlem (2026-10-10), burada değiştirilmedi.*
