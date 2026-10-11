@@ -267,7 +267,7 @@ func (p *Panel) serverSetupCompletionChecks(ctx context.Context, draft serverSet
 		if healthErr == nil && health.Error != "" {
 			healthErr = errors.New("mail host health could not be read")
 		}
-		checks = append(checks, setupCheck("mail_identity", setupMailHostIdentityReady(health, draft.MailHostname), healthErr))
+		checks = append(checks, setupMailIdentityCheck(health, healthErr, draft.MailHostname))
 		checks = append(checks, setupCheck("mail_delivery", health.Error == "" && health.OutboundPort25 == "open", healthErr))
 	}
 
@@ -329,6 +329,98 @@ func setupMailHostIdentityReady(health transport.MailHealthResponse, mailHostnam
 		return false
 	}
 	return health.HostnameFQDN && strings.EqualFold(strings.TrimSuffix(health.Myhostname, "."), mailHostname) && health.PTRAligned && health.FCrDNS && strings.EqualFold(strings.TrimSuffix(health.PTR, "."), mailHostname)
+}
+
+// setupMailIdentityCheck is the mail_identity check with the typed reason of a
+// check that needs an action: the first unmet condition, in the order the
+// readiness test reads them, and the observed values the owner acts on. The
+// state and code are those of setupCheck, except that a reverse DNS lookup that
+// got no answer makes the check unknown with reason reverse_dns_unknown; any
+// other unknown or ready check carries no reason. Reverse DNS is set at the
+// server provider, never by CelikPanel.
+// Eylem isteyen mail_identity kontrolu, karsilanmayan ilk kosulu tipli neden
+// olarak ve sahibin uzerinde islem yapacagi gozlenen degerlerle tasir.
+func setupMailIdentityCheck(health transport.MailHealthResponse, healthErr error, mailHostname string) serverSetupCheck {
+	check := setupCheck("mail_identity", setupMailHostIdentityReady(health, mailHostname), healthErr)
+	if check.State == "action_required" {
+		check.Reason, check.Vars = setupMailIdentityReason(health, mailHostname)
+		// The Agent's public DNS lookup got no answer: the reverse DNS is not
+		// known, so the check is unknown, not an action for the owner (D-025
+		// invariant 2, 2026-10-10).
+		// Ters DNS sorgusu yanit almadi: kontrol bilinmiyor, sahipten eylem istemez.
+		if check.Reason == "reverse_dns_unknown" {
+			check.State, check.Code = "unknown", "mail_identity_unavailable"
+		}
+	}
+	return check
+}
+
+// setupMailDNSLookupErrors are the error classes an Agent may report; any
+// other value is said as "other".
+var setupMailDNSLookupErrors = map[string]bool{
+	transport.MailDNSLookupErrorTimeout: true, transport.MailDNSLookupErrorNoResolver: true,
+	transport.MailDNSLookupErrorRefused: true, transport.MailDNSLookupErrorOther: true,
+}
+
+func setupMailIdentityReason(health transport.MailHealthResponse, mailHostname string) (string, map[string]string) {
+	canonical, err := hostname.CanonicalFQDN(mailHostname)
+	if err != nil || canonical != mailHostname {
+		// The plan's mail host name is not a full host name: the owner corrects
+		// the plan. The name is shown only when it is a plain DNS name.
+		if setupShownDNSName(mailHostname) {
+			return "mail_name_not_canonical", map[string]string{"name": mailHostname}
+		}
+		return "mail_name_not_canonical", nil
+	}
+	ip := net.ParseIP(health.ServerIP)
+	if ip == nil || !ip.IsGlobalUnicast() || ip.IsPrivate() || ip.IsLoopback() {
+		if ip != nil {
+			return "server_address_not_public", map[string]string{"ip": ip.String()}
+		}
+		return "server_address_not_public", nil
+	}
+	vars := map[string]string{"hostname": mailHostname, "ip": ip.String()}
+	myhostname := strings.TrimSuffix(health.Myhostname, ".")
+	if !health.HostnameFQDN || !strings.EqualFold(myhostname, mailHostname) {
+		if setupShownDNSName(myhostname) {
+			vars["current"] = strings.ToLower(myhostname)
+		}
+		return "mail_name_differs", vars
+	}
+	if health.ReverseDNSLookup == transport.MailDNSLookupFailed {
+		class := health.ReverseDNSLookupError
+		if !setupMailDNSLookupErrors[class] {
+			class = transport.MailDNSLookupErrorOther
+		}
+		return "reverse_dns_unknown", map[string]string{"ip": ip.String(), "error": class}
+	}
+	ptr := strings.TrimSuffix(health.PTR, ".")
+	if !health.PTRAligned || !strings.EqualFold(ptr, mailHostname) {
+		if setupShownDNSName(ptr) {
+			vars["ptr"] = strings.ToLower(ptr)
+		}
+		return "reverse_dns_mismatch", vars
+	}
+	if !health.FCrDNS {
+		return "forward_dns_mismatch", vars
+	}
+	return "", nil
+}
+
+// A name read from DNS or from the host is shown only when it is a plain DNS
+// name; anything else is left out rather than echoed to the page.
+// DNS'ten ya da makineden okunan ad yalniz duz bir DNS adiysa gosterilir.
+func setupShownDNSName(name string) bool {
+	if name == "" || len(name) > 253 {
+		return false
+	}
+	for index, r := range name {
+		alnum := (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9')
+		if !alnum && !(index > 0 && index < len(name)-1 && (r == '.' || r == '-')) {
+			return false
+		}
+	}
+	return true
 }
 
 // Probes only authenticate the already-running local listener. They never log

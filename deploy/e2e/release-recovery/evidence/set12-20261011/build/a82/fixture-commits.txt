@@ -1,0 +1,3 @@
+refs/upd1/baseline 2a0af88660773b43cbe1155c622483e2f0a2bbeb tree=988ea2eab0653ed442d20e1fc351cd9bb68a4c07 Release candidate v0.1.0-alpha.82 (#205)
+refs/upd1/defective 411e5bc71bb0b7f2175d70f073bf8c552fcd54a0 tree=1dc6046577e24265c5d4af61b0e4a64dd7d9fa2f test(fixture): set12 defective candidate - migrate-only fails (unpublished, disposable)
+refs/upd1/good 80a2aed4be2c98e3afba83153027ed5597342258 tree=6b7a84888b2b87938c8eaa77b89aae26ae88effd test(fixture): set12 good candidate labelled as the release after the published v0.1.0-alpha.82 (unpublished, disposable)

@@ -1,0 +1,93 @@
+{
+  "checks": {
+    "deferred_mail": {
+      "last": {
+        "deferred": [
+          "mail certificate publication",
+          "mail filter wiring"
+        ],
+        "finished": true,
+        "gave_up": false,
+        "pid": "60731",
+        "ready_at": "2026-10-11T06:19:02.129783+00:00",
+        "repeated": [],
+        "resolved": {
+          "mail certificate publication": [
+            {
+              "at": "2026-10-11T06:19:43.302377+00:00",
+              "attempt": 1,
+              "outcome": "completed"
+            }
+          ],
+          "mail filter wiring": [
+            {
+              "at": "2026-10-11T06:19:43.302377+00:00",
+              "attempt": 1,
+              "outcome": "completed"
+            }
+          ]
+        },
+        "started_at": "2026-10-11T06:19:01.860212+00:00"
+      },
+      "panel_processes": [
+        {
+          "attempt_lines": 0,
+          "deferred": [],
+          "finished": true,
+          "gave_up": false,
+          "pid": "7778",
+          "ready_at": "2026-10-11T06:02:07.239474+00:00",
+          "repeated": [],
+          "started_at": "2026-10-11T06:02:07.197037+00:00"
+        },
+        {
+          "attempt_lines": 0,
+          "deferred": [],
+          "finished": true,
+          "gave_up": false,
+          "pid": "7841",
+          "ready_at": "2026-10-11T06:02:08.360221+00:00",
+          "repeated": [],
+          "started_at": "2026-10-11T06:02:08.333495+00:00"
+        },
+        {
+          "attempt_lines": 0,
+          "deferred": [],
+          "finished": true,
+          "gave_up": false,
+          "pid": "44279",
+          "ready_at": "2026-10-11T06:16:49.340447+00:00",
+          "repeated": [],
+          "started_at": "2026-10-11T06:16:38.541365+00:00"
+        },
+        {
+          "attempt_lines": 1,
+          "deferred": [
+            "mail certificate publication",
+            "mail filter wiring"
+          ],
+          "finished": true,
+          "gave_up": false,
+          "pid": "60731",
+          "ready_at": "2026-10-11T06:19:02.129783+00:00",
+          "repeated": [],
+          "started_at": "2026-10-11T06:19:01.860212+00:00"
+        }
+      ],
+      "settle": {
+        "at": "2026-10-11T06:20:34Z",
+        "attempt_lines_after": 1,
+        "attempt_lines_before": 1,
+        "repeated_after": [],
+        "same_process": true,
+        "seconds_after_resolution": 45.0
+      },
+      "watch_seconds": 66.8
+    },
+    "polls": 3
+  },
+  "finished_at": "2026-10-11T06:20:34Z",
+  "name": "deferred-mail-watch",
+  "started_at": "2026-10-11T06:19:27Z",
+  "verdict": "observed"
+}

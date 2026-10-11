@@ -1,0 +1,70 @@
+{
+  "action": "lab-shims13",
+  "at": "2026-10-11T10:52:42Z",
+  "epoch": 1791715962.0914009,
+  "mode": "lab-shims13",
+  "owner_action": false,
+  "schema": "celikpanel/set13-native/v1",
+  "state": {
+    "agent_path": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin",
+    "agent_pid": 5174,
+    "at": "2026-10-11T10:52:42Z",
+    "epoch": 1791715962.081967,
+    "fail_flag": false,
+    "line_count": 0,
+    "lines": [],
+    "mounts": [],
+    "shims": {
+      "systemctl": {
+        "real": "/usr/bin/systemctl",
+        "shim": {
+          "ctime_ns": 1791715962063141113,
+          "exists": true,
+          "gid": 0,
+          "group": "root",
+          "immutable": false,
+          "inode": 27196,
+          "kind": "file",
+          "lsattr": "--------------e-------",
+          "mode": "0755",
+          "mtime_ns": 1791715962063141113,
+          "nlink": 1,
+          "owner": "root",
+          "path": "/usr/local/sbin/systemctl",
+          "sha256": "ed7764bcd45e49d00f5d112d27972012fcf2962bfaab91cfbb7cb8f880edbbf1",
+          "size": 865,
+          "text": "#!/bin/sh\n# set13 lab shim (disposable guest): every call is logged, then the real systemctl runs with the same arguments.\n# While /run/set13-lab/fail-daemon-reload names the caller's parent PID (the Agent), that process's next `daemon-reload` fails once.\nprintf '%s systemctl ppid=%s comm=%s args=%s\\n' \"$(date -u +%Y-%m-%dT%H:%M:%S.%NZ)\" \"$PPID\" \"$(cat /proc/$PPID/comm 2>/dev/null)\" \"$*\" >> /run/set13-lab/calls.log\nif [ \"$1\" = daemon-reload ] && [ -f /run/set13-lab/fail-daemon-reload ] && [ \"$(cat /run/set13-lab/fail-daemon-reload)\" = \"$PPID\" ]; then\n  rm -f /run/set13-lab/fail-daemon-reload\n  printf '%s systemctl ppid=%s injected-failure daemon-reload rc=1\\n' \"$(date -u +%Y-%m-%dT%H:%M:%S.%NZ)\" \"$PPID\" >> /run/set13-lab/calls.log\n  echo \"Failed to reload daemon: set13 lab preparation (one injected failure)\" >&2\n  exit 1\nfi\nexec /usr/bin/systemctl \"$@\"\n",
+          "uid": 0
+        }
+      },
+      "systemd-analyze": {
+        "real": "/usr/bin/systemd-analyze",
+        "shim": {
+          "ctime_ns": 1791715962063141113,
+          "exists": true,
+          "gid": 0,
+          "group": "root",
+          "immutable": false,
+          "inode": 27198,
+          "kind": "file",
+          "lsattr": "--------------e-------",
+          "mode": "0755",
+          "mtime_ns": 1791715962063141113,
+          "nlink": 1,
+          "owner": "root",
+          "path": "/usr/local/sbin/systemd-analyze",
+          "sha256": "d7e90af00d947b51903435167c7cf6ef7219a623778f43307d2f880b1fb3a694",
+          "size": 457,
+          "text": "#!/bin/sh\n# set13 lab shim (disposable guest): every call is logged with its exit status; the real systemd-analyze runs.\nprintf '%s systemd-analyze ppid=%s comm=%s args=%s\\n' \"$(date -u +%Y-%m-%dT%H:%M:%S.%NZ)\" \"$PPID\" \"$(cat /proc/$PPID/comm 2>/dev/null)\" \"$*\" >> /run/set13-lab/calls.log\n/usr/bin/systemd-analyze \"$@\"\nrc=$?\nprintf '%s systemd-analyze ppid=%s rc=%s\\n' \"$(date -u +%Y-%m-%dT%H:%M:%S.%NZ)\" \"$PPID\" \"$rc\" >> /run/set13-lab/calls.log\nexit $rc\n",
+          "uid": 0
+        }
+      }
+    },
+    "systemd_analyze_seen_by_agent": {
+      "executable": true,
+      "mode_octal": "0o755",
+      "size": 219944
+    }
+  },
+  "what": "install"
+}

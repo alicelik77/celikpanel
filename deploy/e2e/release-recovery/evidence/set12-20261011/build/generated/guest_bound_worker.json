@@ -1,0 +1,10 @@
+{
+  "added_pair": [
+    "v0.1.0-alpha.82",
+    "v0.1.0-alpha.83"
+  ],
+  "generated": "/var/tmp/cp-set12-run/generated/guest_bound_worker.py",
+  "generated_sha256": "2fda171468a4de07f82deb5eae5535f6f582dbff24573ae70648c68cf161eeb9",
+  "original": "/var/tmp/cp-set12-run/harness-f/deploy/e2e/release-recovery/guest_bound_worker.py",
+  "original_sha256": "1ebff5e14d87761e72dbb3ca30c6f1aaad5a2aa5df7971f23ab81ae305bc3ea1"
+}

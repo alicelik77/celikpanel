@@ -1,0 +1,31 @@
+Formatting '/var/tmp/cp-release-drill-s12-d13-a/cells/2480f8bc1b204b1f1223ea6b/debian13/overlay.qcow2', fmt=qcow2 cluster_size=65536 extended_l2=off compression_type=zlib size=25769803776 backing_file=/var/tmp/cp-release-drill-s12-d13-a/images/debian-13-genericcloud-amd64-20260826-2582.qcow2 backing_fmt=qcow2 lazy_refcounts=off refcount_bits=16
+Formatting '/var/tmp/cp-release-drill-s12-d13-a/cells/2480f8bc1b204b1f1223ea6b/arch/overlay.qcow2', fmt=qcow2 cluster_size=65536 extended_l2=off compression_type=zlib size=25769803776 backing_file=/var/tmp/cp-release-drill-s12-d13-a/images/Arch-Linux-x86_64-cloudimg-20260815.573966.qcow2 backing_fmt=qcow2 lazy_refcounts=off refcount_bits=16
+{"action": "prepared", "root": "/var/tmp/cp-release-drill-s12-d13-a", "cell_id": "release-recovery__2bc44c4385e0df12", "ssh_ports": [4881, 4882]}
+{"action": "ready", "root": "/var/tmp/cp-release-drill-s12-d13-a", "nodes": {"arch": "verified-disposable-systemd-guest", "debian13": "verified-disposable-systemd-guest"}}
+{"action": "ready", "root": "/var/tmp/cp-release-drill-s12-d13-a", "nodes": {"arch": "verified-disposable-systemd-guest", "debian13": "verified-disposable-systemd-guest"}}
+{"step": "set6-name-pinning", "verdict": "passed", "reason": null}
+{"step": "preflight", "verdict": "passed", "reason": null}
+{"step": "origin", "verdict": "passed", "reason": null}
+{"step": "baseline-install", "verdict": "passed", "reason": null}
+{"step": "owner-login", "verdict": "passed", "reason": null}
+{"step": "license", "verdict": "passed", "reason": null}
+{"step": "setup", "verdict": "observed", "reason": null}
+{"step": "site", "verdict": "passed", "reason": null}
+{"step": "S0-sites", "verdict": "passed", "reason": null}
+{"step": "h-i-unchanged-start", "verdict": "passed", "reason": null}
+{"step": "M-pool-owner-edit", "verdict": "inconclusive", "reason": "not established: M: a PHP switch on the edited pool is refused and writes nothing"}
+{"step": "U-pool-not-read", "verdict": "failed", "reason": "U: the Domains row says a configuration file could not be read (state unknown, kind php_pool)"}
+{"step": "RN-take-nginx-refused", "verdict": "inconclusive", "reason": "KeyError: 'set10-a.test'"}
+{"step": "RP1-take-php-fpm-test-refused", "verdict": "passed", "reason": null}
+{"step": "RP2-take-php-fpm-stopped", "verdict": "passed", "reason": null}
+{"step": "P-apply-and-b4", "verdict": "passed", "reason": null}
+{"step": "A-probe-addresses", "verdict": "failed", "reason": "A: not this server's address: no probe request was sent; the request went ahead (SYN to 443); A: not this server's address: the Panel's journal says validation_probe=not_run validation_unknown_reason=address_not_local validation_address=192.0.2.10; A: not this server's address: the answer carries validation_probe not_run, validation_unknown_reason, the address and the sentence; A: the page (reason certificate_validation) reads validation unknown, address_not_local, the address; the reason stays"}
+{"step": "N-app-unit", "verdict": "failed", "reason": "N: the unit is written with the \"# celikpanel-render v2\" header and its digest holds; the app runs; N: systemd was reloaded and the running app restarted (try-restart: MainPID changed, active)"}
+{"step": "L-pool-delete", "verdict": "passed", "reason": null}
+{"set12": "ready", "window": "ui", "hand": "/var/tmp/cp-set12-run/hand/h12d13a-ui", "port": 18881}
+{"step": "set12-browser-window", "verdict": "observed", "reason": null}
+{"step": "set6-name-pinning-at-the-end", "verdict": "passed", "reason": null}
+{"step": "collect", "verdict": "passed", "reason": null}
+{"cell_kind": "set12-fresh-install", "overall": "failed", "sections": {"A-probe-addresses": "failed", "L-pool-delete": "passed", "M-pool-owner-edit": "inconclusive", "N-app-unit": "failed", "P-apply-and-b4": "passed", "RN-take-nginx-refused": "inconclusive", "RP1-take-php-fpm-test-refused": "passed", "RP2-take-php-fpm-stopped": "passed", "S0-sites": "passed", "U-pool-not-read": "failed", "h-i-unchanged-start": "passed"}}
+{"action": "stopped", "root": "/var/tmp/cp-release-drill-s12-d13-a", "evidence_retained": true}
+SET12 cell=set12-debian13 lab=/var/tmp/cp-release-drill-s12-d13-a driver_exit=1 evidence=/var/tmp/cp-release-drill-s12-d13-a/evidence/*/upd1

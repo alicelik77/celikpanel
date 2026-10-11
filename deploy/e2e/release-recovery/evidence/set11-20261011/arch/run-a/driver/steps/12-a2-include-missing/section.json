@@ -1,0 +1,930 @@
+{
+  "a2": {
+    "answer": {
+      "body": {
+        "code": "SITE_CONFIG_OWNER_EDITED",
+        "detail": "include_missing",
+        "error": "This site’s nginx configuration file was changed outside CelikPanel and does not let CelikPanel publish the certificate validation without changing the file, so no certificate was requested and nothing was changed. The server administrator chooses on the domain’s Configuration file page: take CelikPanel’s text, or add what that page shows to the file and reload nginx; then request the certificate again.",
+        "reason": "certificate_validation",
+        "vars": {
+          "include": "include /etc/nginx/celikpanel-managed.d/set11-a.test/*.conf;",
+          "name": "set11-a.test",
+          "status": "200"
+        }
+      },
+      "seconds": 0.1,
+      "sent": {
+        "auto_renew": false,
+        "email": "hostmaster@set11-a.test"
+      },
+      "status": 409
+    },
+    "dashboard_after": {
+      "expiring_certs": [],
+      "status": 200
+    },
+    "domains_row": {
+      "after": {
+        "pending_reason": "certificate_validation",
+        "state": "owner_edited"
+      },
+      "before": {
+        "state": "managed_unchanged"
+      }
+    },
+    "files": {
+      "journal": "steps/12-a2-include-missing/native/025-a2-journal.json",
+      "logs": "steps/12-a2-include-missing/native/024-a2-nginx-logs.json",
+      "watch": "steps/12-a2-include-missing/native/023-a2-watch-stop.json"
+    },
+    "nginx_logs": {
+      "/var/log/nginx/set11-a.test-access.log": {
+        "from": 90,
+        "text": "127.0.0.1 - - [11/Oct/2026:01:36:29 +0000] \"GET /.well-known/acme-challenge/celikpanel-probe-d1ce2cec404531047844d66c04d5ae07 HTTP/1.1\" 200 577 \"-\" \"Go-http-client/1.1\"\n127.0.0.1 - - [11/Oct/2026:01:36:29 +0000] \"GET /.well-known/acme-challenge/celikpanel-probe-d1ce2cec404531047844d66c04d5ae07 HTTP/1.1\" 200 577 \"-\" \"Go-http-client/1.1\"\n",
+        "to": 428
+      }
+    },
+    "probe": {
+      "gets": [
+        {
+          "answer": "HTTP/1.1 200 OK",
+          "host": "set11-a.test",
+          "location": null,
+          "request": "GET /.well-known/acme-challenge/celikpanel-probe-d1ce2cec404531047844d66c04d5ae07 HTTP/1.1",
+          "status": 200
+        },
+        {
+          "answer": "HTTP/1.1 200 OK",
+          "host": "www.set11-a.test",
+          "location": null,
+          "request": "GET /.well-known/acme-challenge/celikpanel-probe-d1ce2cec404531047844d66c04d5ae07 HTTP/1.1",
+          "status": 200
+        }
+      ],
+      "probe_files": {
+        "celikpanel-probe-d1ce2cec404531047844d66c04d5ae07": {
+          "created_t": 1791682589.3248127,
+          "deleted_t": 1791682589.3284998,
+          "events": [
+            "create",
+            "modify",
+            "close_write",
+            "attrib",
+            "delete"
+          ],
+          "final_mode": "0o644",
+          "modes": [
+            "0o644",
+            "0o644",
+            "0o644",
+            "0o644"
+          ],
+          "owners": [
+            [
+              0,
+              969
+            ],
+            [
+              0,
+              969
+            ],
+            [
+              0,
+              969
+            ],
+            [
+              0,
+              969
+            ]
+          ],
+          "sizes": [
+            61,
+            61,
+            61,
+            61
+          ]
+        }
+      }
+    },
+    "removed_lines": {
+      "removed_lines": [
+        "    include /etc/nginx/celikpanel-managed.d/set11-a.test/*.conf;"
+      ]
+    }
+  },
+  "calls": [
+    {
+      "at": "2026-10-11T01:36:26Z",
+      "json": [
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T01:36:14Z",
+          "disk_usage": 0,
+          "domain_name": "set11-b.test",
+          "id": 3,
+          "php_version": "8.5",
+          "project_type": "php",
+          "site_config": {
+            "state": "managed_unchanged"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        },
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T01:36:12Z",
+          "disk_usage": 0,
+          "domain_name": "set11-a.test",
+          "id": 2,
+          "php_version": "8.5",
+          "project_type": "php",
+          "site_config": {
+            "state": "managed_unchanged"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        },
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T01:36:08Z",
+          "disk_usage": 0,
+          "domain_name": "set1-owner.test",
+          "id": 1,
+          "php_version": "",
+          "project_type": "static",
+          "site_config": {
+            "state": "managed_unchanged"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        }
+      ],
+      "label": "a2 before: GET /api/v1/domains (Domains list)",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "answer": {
+        "code": "SITE_CONFIG_OWNER_EDITED",
+        "detail": "include_missing",
+        "error": "This site’s nginx configuration file was changed outside CelikPanel and does not let CelikPanel publish the certificate validation without changing the file, so no certificate was requested and nothing was changed. The server administrator chooses on the domain’s Configuration file page: take CelikPanel’s text, or add what that page shows to the file and reload nginx; then request the certificate again.",
+        "reason": "certificate_validation",
+        "vars": {
+          "include": "include /etc/nginx/celikpanel-managed.d/set11-a.test/*.conf;",
+          "name": "set11-a.test",
+          "status": "200"
+        }
+      },
+      "at": "2026-10-11T01:36:29Z",
+      "catalogue_texts": {
+        "err.SITE_CONFIG_OWNER_EDITED": {
+          "en": "This site’s nginx configuration file is not CelikPanel’s unchanged text, so CelikPanel kept it and did not apply this change to it. Nothing else was changed. On the domain’s Configuration file page, keep your file, take CelikPanel’s text (your file is kept as a dated copy), or merge the two by hand.",
+          "tr": "Bu sitenin nginx yapılandırma dosyası CelikPanel’in değişmemiş metni değil; bu yüzden CelikPanel onu korudu ve bu değişikliği ona uygulamadı. Başka hiçbir şey değiştirilmedi. Alan adının Yapılandırma dosyası sayfasında dosyanızı koruyun, CelikPanel’in metnini alın (dosyanız tarihli bir kopya olarak saklanır) ya da ikisini elle birleştirin."
+        },
+        "err.SITE_CONFIG_OWNER_EDITED.certificate_validation": {
+          "en": "This site’s nginx configuration file was changed outside CelikPanel and does not let CelikPanel publish the certificate validation without changing the file, so no certificate was requested and nothing was changed. The server administrator chooses on the domain’s Configuration file page: take CelikPanel’s text, or add what that page shows to the file and reload nginx; then request the certificate again.",
+          "tr": "Bu sitenin nginx yapılandırma dosyası CelikPanel dışında değiştirildi ve CelikPanel’in sertifika doğrulamasını dosyayı değiştirmeden yayımlamasına izin vermiyor; bu yüzden sertifika istenmedi ve hiçbir şey değiştirilmedi. Seçimi sunucu yöneticisi alan adının Yapılandırma dosyası sayfasında yapar: CelikPanel’in metnini alır ya da o sayfanın gösterdiğini dosyaya ekleyip nginx’i yeniden yükler; sonra sertifikayı yeniden isteyin."
+        }
+      },
+      "json": {
+        "code": "SITE_CONFIG_OWNER_EDITED",
+        "detail": "include_missing",
+        "error": "This site’s nginx configuration file was changed outside CelikPanel and does not let CelikPanel publish the certificate validation without changing the file, so no certificate was requested and nothing was changed. The server administrator chooses on the domain’s Configuration file page: take CelikPanel’s text, or add what that page shows to the file and reload nginx; then request the certificate again.",
+        "reason": "certificate_validation",
+        "vars": {
+          "include": "include /etc/nginx/celikpanel-managed.d/set11-a.test/*.conf;",
+          "name": "set11-a.test",
+          "status": "200"
+        }
+      },
+      "label": "a2: POST ssl/letsencrypt (the owner requests a certificate)",
+      "request": {
+        "body": {
+          "auto_renew": false,
+          "email": "hostmaster@set11-a.test"
+        },
+        "method": "POST",
+        "path": "/api/v1/domains/2/ssl/letsencrypt"
+      },
+      "status": 409,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T01:36:32Z",
+      "json": [
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T01:36:14Z",
+          "disk_usage": 0,
+          "domain_name": "set11-b.test",
+          "id": 3,
+          "php_version": "8.5",
+          "project_type": "php",
+          "site_config": {
+            "state": "managed_unchanged"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        },
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T01:36:12Z",
+          "disk_usage": 0,
+          "domain_name": "set11-a.test",
+          "id": 2,
+          "php_version": "8.5",
+          "project_type": "php",
+          "site_config": {
+            "pending_reason": "certificate_validation",
+            "state": "owner_edited"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        },
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T01:36:08Z",
+          "disk_usage": 0,
+          "domain_name": "set1-owner.test",
+          "id": 1,
+          "php_version": "",
+          "project_type": "static",
+          "site_config": {
+            "state": "managed_unchanged"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        }
+      ],
+      "label": "a2 after: GET /api/v1/domains (Domains list)",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T01:36:32Z",
+      "json": {
+        "databases": 0,
+        "expiring_certs": [],
+        "mail_accounts": 0
+      },
+      "label": "a2 after: GET /api/v1/dashboard",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/dashboard"
+      },
+      "status": 200,
+      "text": null
+    }
+  ],
+  "cells": {
+    "A2": {
+      "detail": {
+        "answer": {
+          "body": {
+            "code": "SITE_CONFIG_OWNER_EDITED",
+            "detail": "include_missing",
+            "error": "This site’s nginx configuration file was changed outside CelikPanel and does not let CelikPanel publish the certificate validation without changing the file, so no certificate was requested and nothing was changed. The server administrator chooses on the domain’s Configuration file page: take CelikPanel’s text, or add what that page shows to the file and reload nginx; then request the certificate again.",
+            "reason": "certificate_validation",
+            "vars": {
+              "include": "include /etc/nginx/celikpanel-managed.d/set11-a.test/*.conf;",
+              "name": "set11-a.test",
+              "status": "200"
+            }
+          },
+          "seconds": 0.1,
+          "sent": {
+            "auto_renew": false,
+            "email": "hostmaster@set11-a.test"
+          },
+          "status": 409
+        },
+        "dashboard_after": {
+          "expiring_certs": [],
+          "status": 200
+        },
+        "domains_row": {
+          "after": {
+            "pending_reason": "certificate_validation",
+            "state": "owner_edited"
+          },
+          "before": {
+            "state": "managed_unchanged"
+          }
+        },
+        "files": {
+          "journal": "steps/12-a2-include-missing/native/025-a2-journal.json",
+          "logs": "steps/12-a2-include-missing/native/024-a2-nginx-logs.json",
+          "watch": "steps/12-a2-include-missing/native/023-a2-watch-stop.json"
+        },
+        "nginx_logs": {
+          "/var/log/nginx/set11-a.test-access.log": {
+            "from": 90,
+            "text": "127.0.0.1 - - [11/Oct/2026:01:36:29 +0000] \"GET /.well-known/acme-challenge/celikpanel-probe-d1ce2cec404531047844d66c04d5ae07 HTTP/1.1\" 200 577 \"-\" \"Go-http-client/1.1\"\n127.0.0.1 - - [11/Oct/2026:01:36:29 +0000] \"GET /.well-known/acme-challenge/celikpanel-probe-d1ce2cec404531047844d66c04d5ae07 HTTP/1.1\" 200 577 \"-\" \"Go-http-client/1.1\"\n",
+            "to": 428
+          }
+        },
+        "probe": {
+          "gets": [
+            {
+              "answer": "HTTP/1.1 200 OK",
+              "host": "set11-a.test",
+              "location": null,
+              "request": "GET /.well-known/acme-challenge/celikpanel-probe-d1ce2cec404531047844d66c04d5ae07 HTTP/1.1",
+              "status": 200
+            },
+            {
+              "answer": "HTTP/1.1 200 OK",
+              "host": "www.set11-a.test",
+              "location": null,
+              "request": "GET /.well-known/acme-challenge/celikpanel-probe-d1ce2cec404531047844d66c04d5ae07 HTTP/1.1",
+              "status": 200
+            }
+          ],
+          "probe_files": {
+            "celikpanel-probe-d1ce2cec404531047844d66c04d5ae07": {
+              "created_t": 1791682589.3248127,
+              "deleted_t": 1791682589.3284998,
+              "events": [
+                "create",
+                "modify",
+                "close_write",
+                "attrib",
+                "delete"
+              ],
+              "final_mode": "0o644",
+              "modes": [
+                "0o644",
+                "0o644",
+                "0o644",
+                "0o644"
+              ],
+              "owners": [
+                [
+                  0,
+                  969
+                ],
+                [
+                  0,
+                  969
+                ],
+                [
+                  0,
+                  969
+                ],
+                [
+                  0,
+                  969
+                ]
+              ],
+              "sizes": [
+                61,
+                61,
+                61,
+                61
+              ]
+            }
+          }
+        },
+        "removed_lines": {
+          "removed_lines": [
+            "    include /etc/nginx/celikpanel-managed.d/set11-a.test/*.conf;"
+          ]
+        }
+      },
+      "expectations": [
+        {
+          "expectation": "one probe file, named celikpanel-probe-<32 hex>, was created in the challenge directory and removed",
+          "held": true,
+          "measured": {
+            "challenge_dir": "/var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge",
+            "files": {
+              "celikpanel-probe-d1ce2cec404531047844d66c04d5ae07": {
+                "created_t": 1791682589.3248127,
+                "deleted_t": 1791682589.3284998,
+                "events": [
+                  "create",
+                  "modify",
+                  "close_write",
+                  "attrib",
+                  "delete"
+                ],
+                "modes": [
+                  "0o644",
+                  "0o644",
+                  "0o644",
+                  "0o644"
+                ],
+                "owners": [
+                  [
+                    0,
+                    969
+                  ],
+                  [
+                    0,
+                    969
+                  ],
+                  [
+                    0,
+                    969
+                  ],
+                  [
+                    0,
+                    969
+                  ]
+                ],
+                "sizes": [
+                  61,
+                  61,
+                  61,
+                  61
+                ]
+              }
+            },
+            "watch_times": {
+              "created_t": 1791682589.3248127,
+              "deleted_t": 1791682589.3284998,
+              "gets_t": [
+                [
+                  1791682589.3254128,
+                  1791682589.3267775
+                ],
+                [
+                  1791682589.3275638,
+                  1791682589.328201
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "expectation": "its mode is 0644",
+          "held": true,
+          "measured": {
+            "modes": [
+              "0o644",
+              "0o644",
+              "0o644",
+              "0o644"
+            ],
+            "owners": [
+              [
+                0,
+                969
+              ],
+              [
+                0,
+                969
+              ],
+              [
+                0,
+                969
+              ],
+              [
+                0,
+                969
+              ]
+            ]
+          }
+        },
+        {
+          "expectation": "the loopback GETs asked for that file under each validation name, in order",
+          "held": true,
+          "measured": [
+            {
+              "answer": "HTTP/1.1 200 OK",
+              "host": "set11-a.test",
+              "request": "GET /.well-known/acme-challenge/celikpanel-probe-d1ce2cec404531047844d66c04d5ae07 HTTP/1.1",
+              "src": "127.0.0.1",
+              "status": 200
+            },
+            {
+              "answer": "HTTP/1.1 200 OK",
+              "host": "www.set11-a.test",
+              "request": "GET /.well-known/acme-challenge/celikpanel-probe-d1ce2cec404531047844d66c04d5ae07 HTTP/1.1",
+              "src": "127.0.0.1",
+              "status": 200
+            }
+          ]
+        },
+        {
+          "expectation": "each name's answer as expected (200 with the probe's bytes = served)",
+          "held": true,
+          "measured": [
+            {
+              "body_start": "235\r\n<!doctype html>\n<html lang=\"tr\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"",
+              "host": "set11-a.test",
+              "location": null,
+              "served_the_probe": false,
+              "status": 200
+            },
+            {
+              "body_start": "235\r\n<!doctype html>\n<html lang=\"tr\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"",
+              "host": "www.set11-a.test",
+              "location": null,
+              "served_the_probe": false,
+              "status": 200
+            }
+          ]
+        },
+        {
+          "expectation": "nothing was requested: no connection to port 443 after the probe",
+          "held": true,
+          "measured": {
+            "syn_443_after_probe": []
+          }
+        },
+        {
+          "expectation": "409 SITE_CONFIG_OWNER_EDITED, reason certificate_validation, detail include_missing",
+          "held": true,
+          "measured": {
+            "code": "SITE_CONFIG_OWNER_EDITED",
+            "detail": "include_missing",
+            "error": "This site’s nginx configuration file was changed outside CelikPanel and does not let CelikPanel publish the certificate validation without changing the file, so no certificate was requested and nothing was changed. The server administrator chooses on the domain’s Configuration file page: take CelikPanel’s text, or add what that page shows to the file and reload nginx; then request the certificate again.",
+            "reason": "certificate_validation",
+            "status": 409,
+            "vars": {
+              "include": "include /etc/nginx/celikpanel-managed.d/set11-a.test/*.conf;",
+              "name": "set11-a.test",
+              "status": "200"
+            }
+          }
+        },
+        {
+          "expectation": "vars.name is the first site name and vars.status nginx's status for it (as the packet reader saw it)",
+          "held": true,
+          "measured": {
+            "first_get": {
+              "answer": "HTTP/1.1 200 OK",
+              "host": "set11-a.test",
+              "status": 200
+            },
+            "vars": {
+              "include": "include /etc/nginx/celikpanel-managed.d/set11-a.test/*.conf;",
+              "name": "set11-a.test",
+              "status": "200"
+            }
+          }
+        },
+        {
+          "expectation": "vars.include is the line to add",
+          "held": true,
+          "measured": "include /etc/nginx/celikpanel-managed.d/set11-a.test/*.conf;"
+        },
+        {
+          "expectation": "the ledger reason is certificate_validation",
+          "held": true,
+          "measured": {
+            "state": "owner_edited",
+            "state_reason": "certificate_validation"
+          }
+        },
+        {
+          "expectation": "A's vhost is untouched (sha256, inode, mtime)",
+          "held": true,
+          "measured": {
+            "inode": [
+              92037,
+              92037
+            ],
+            "mtime_ns": [
+              1791682586111328147,
+              1791682586111328147
+            ],
+            "sha256": [
+              "6a98d353668c86786b2a48c78178e9fb1215788c2a2ceb4441f66e6781584ee9",
+              "6a98d353668c86786b2a48c78178e9fb1215788c2a2ceb4441f66e6781584ee9"
+            ]
+          }
+        }
+      ],
+      "verdict": "PASS"
+    }
+  },
+  "checks": [
+    {
+      "detail": {
+        "challenge_dir": "/var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge",
+        "files": {
+          "celikpanel-probe-d1ce2cec404531047844d66c04d5ae07": {
+            "created_t": 1791682589.3248127,
+            "deleted_t": 1791682589.3284998,
+            "events": [
+              "create",
+              "modify",
+              "close_write",
+              "attrib",
+              "delete"
+            ],
+            "modes": [
+              "0o644",
+              "0o644",
+              "0o644",
+              "0o644"
+            ],
+            "owners": [
+              [
+                0,
+                969
+              ],
+              [
+                0,
+                969
+              ],
+              [
+                0,
+                969
+              ],
+              [
+                0,
+                969
+              ]
+            ],
+            "sizes": [
+              61,
+              61,
+              61,
+              61
+            ]
+          }
+        },
+        "watch_times": {
+          "created_t": 1791682589.3248127,
+          "deleted_t": 1791682589.3284998,
+          "gets_t": [
+            [
+              1791682589.3254128,
+              1791682589.3267775
+            ],
+            [
+              1791682589.3275638,
+              1791682589.328201
+            ]
+          ]
+        }
+      },
+      "name": "A2: one probe file, named celikpanel-probe-<32 hex>, was created in the challenge directory and removed",
+      "ok": true
+    },
+    {
+      "detail": {
+        "modes": [
+          "0o644",
+          "0o644",
+          "0o644",
+          "0o644"
+        ],
+        "owners": [
+          [
+            0,
+            969
+          ],
+          [
+            0,
+            969
+          ],
+          [
+            0,
+            969
+          ],
+          [
+            0,
+            969
+          ]
+        ]
+      },
+      "name": "A2: its mode is 0644",
+      "ok": true
+    },
+    {
+      "detail": [
+        {
+          "answer": "HTTP/1.1 200 OK",
+          "host": "set11-a.test",
+          "request": "GET /.well-known/acme-challenge/celikpanel-probe-d1ce2cec404531047844d66c04d5ae07 HTTP/1.1",
+          "src": "127.0.0.1",
+          "status": 200
+        },
+        {
+          "answer": "HTTP/1.1 200 OK",
+          "host": "www.set11-a.test",
+          "request": "GET /.well-known/acme-challenge/celikpanel-probe-d1ce2cec404531047844d66c04d5ae07 HTTP/1.1",
+          "src": "127.0.0.1",
+          "status": 200
+        }
+      ],
+      "name": "A2: the loopback GETs asked for that file under each validation name, in order",
+      "ok": true
+    },
+    {
+      "detail": [
+        {
+          "body_start": "235\r\n<!doctype html>\n<html lang=\"tr\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"",
+          "host": "set11-a.test",
+          "location": null,
+          "served_the_probe": false,
+          "status": 200
+        },
+        {
+          "body_start": "235\r\n<!doctype html>\n<html lang=\"tr\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"",
+          "host": "www.set11-a.test",
+          "location": null,
+          "served_the_probe": false,
+          "status": 200
+        }
+      ],
+      "name": "A2: each name's answer as expected (200 with the probe's bytes = served)",
+      "ok": true
+    },
+    {
+      "detail": {
+        "syn_443_after_probe": []
+      },
+      "name": "A2: nothing was requested: no connection to port 443 after the probe",
+      "ok": true
+    },
+    {
+      "detail": {
+        "code": "SITE_CONFIG_OWNER_EDITED",
+        "detail": "include_missing",
+        "error": "This site’s nginx configuration file was changed outside CelikPanel and does not let CelikPanel publish the certificate validation without changing the file, so no certificate was requested and nothing was changed. The server administrator chooses on the domain’s Configuration file page: take CelikPanel’s text, or add what that page shows to the file and reload nginx; then request the certificate again.",
+        "reason": "certificate_validation",
+        "status": 409,
+        "vars": {
+          "include": "include /etc/nginx/celikpanel-managed.d/set11-a.test/*.conf;",
+          "name": "set11-a.test",
+          "status": "200"
+        }
+      },
+      "name": "A2: 409 SITE_CONFIG_OWNER_EDITED, reason certificate_validation, detail include_missing",
+      "ok": true
+    },
+    {
+      "detail": {
+        "first_get": {
+          "answer": "HTTP/1.1 200 OK",
+          "host": "set11-a.test",
+          "status": 200
+        },
+        "vars": {
+          "include": "include /etc/nginx/celikpanel-managed.d/set11-a.test/*.conf;",
+          "name": "set11-a.test",
+          "status": "200"
+        }
+      },
+      "name": "A2: vars.name is the first site name and vars.status nginx's status for it (as the packet reader saw it)",
+      "ok": true
+    },
+    {
+      "detail": "include /etc/nginx/celikpanel-managed.d/set11-a.test/*.conf;",
+      "name": "A2: vars.include is the line to add",
+      "ok": true
+    },
+    {
+      "detail": {
+        "state": "owner_edited",
+        "state_reason": "certificate_validation"
+      },
+      "name": "A2: the ledger reason is certificate_validation",
+      "ok": true
+    },
+    {
+      "detail": {
+        "inode": [
+          92037,
+          92037
+        ],
+        "mtime_ns": [
+          1791682586111328147,
+          1791682586111328147
+        ],
+        "sha256": [
+          "6a98d353668c86786b2a48c78178e9fb1215788c2a2ceb4441f66e6781584ee9",
+          "6a98d353668c86786b2a48c78178e9fb1215788c2a2ceb4441f66e6781584ee9"
+        ]
+      },
+      "name": "A2: A's vhost is untouched (sha256, inode, mtime)",
+      "ok": true
+    }
+  ],
+  "finished_at": "2026-10-11T01:36:32Z",
+  "lab_preparation": [
+    {
+      "domain": "set11-a.test",
+      "file": "steps/12-a2-include-missing/native/016-a2-lab-restore-set11-a.test.json",
+      "label": "a2",
+      "sha256_matches": true
+    }
+  ],
+  "native_evidence": false,
+  "natives": [
+    {
+      "file": "native/016-a2-lab-restore-set11-a.test.json",
+      "label": "a2-lab-restore-set11-a.test",
+      "mode": "lab-restore",
+      "owner_action": false
+    },
+    {
+      "file": "native/017-owner-a2-edit.json",
+      "label": "owner-a2-edit",
+      "mode": "owner-vhost10",
+      "owner_action": true
+    },
+    {
+      "file": "native/018-owner-a2-remove-managed-include.json",
+      "label": "owner-a2-remove-managed-include",
+      "mode": "owner-vhost11",
+      "owner_action": true
+    },
+    {
+      "file": "native/019-a2-0-stat.json",
+      "label": "a2-0-stat",
+      "mode": "read-stat",
+      "owner_action": false
+    },
+    {
+      "file": "native/020-a2-before-acme.json",
+      "label": "a2-before-acme",
+      "mode": "read-acme",
+      "owner_action": false
+    },
+    {
+      "file": "native/021-a2-log-offsets.json",
+      "label": "a2-log-offsets",
+      "mode": "log-offsets",
+      "owner_action": false
+    },
+    {
+      "file": "native/022-a2-watch-start.json",
+      "label": "a2-watch-start",
+      "mode": "watch-start",
+      "owner_action": false
+    },
+    {
+      "file": "native/023-a2-watch-stop.json",
+      "label": "a2-watch-stop",
+      "mode": "watch-stop",
+      "owner_action": false
+    },
+    {
+      "file": "native/024-a2-nginx-logs.json",
+      "label": "a2-nginx-logs",
+      "mode": "read-logs",
+      "owner_action": false
+    },
+    {
+      "file": "native/025-a2-journal.json",
+      "label": "a2-journal",
+      "mode": "read-window",
+      "owner_action": false
+    },
+    {
+      "file": "native/026-a2-1-stat.json",
+      "label": "a2-1-stat",
+      "mode": "read-stat",
+      "owner_action": false
+    },
+    {
+      "file": "native/027-a2-1-ledger.json",
+      "label": "a2-1-ledger",
+      "mode": "read-ledger",
+      "owner_action": false
+    }
+  ],
+  "node": "arch",
+  "notes": [
+    {
+      "detail": [],
+      "note": "A2: PASS"
+    }
+  ],
+  "owner_actions": [
+    {
+      "at": "2026-10-11T01:36:25Z",
+      "label": "a2-edit",
+      "mode": "owner-vhost10"
+    },
+    {
+      "at": "2026-10-11T01:36:26Z",
+      "label": "a2-remove-managed-include",
+      "mode": "owner-vhost11"
+    }
+  ],
+  "section": "A2-include-missing",
+  "started_at": "2026-10-11T01:36:24Z",
+  "substeps": {
+    "A2": "passed"
+  },
+  "title": "a kept file without the line including CelikPanel's directory: certificate issuance",
+  "verdict": "passed"
+}

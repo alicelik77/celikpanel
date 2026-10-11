@@ -1,0 +1,29 @@
+Admin Subscription
+
+1.2 KB of 10.00 GB disk
+
+Domains 4/999
+Databases 0/999
+Mail 1/50
+Add domain
+
+4 items total
+
+	Domain name	Type	Disk usage	Traffic	Status
+
+set13-n.test
+	node	0 B	0 B/mo
+Active
+
+set12-b.test
+	php8.4	0 B	0 B/mo
+Active
+
+set12-a.test
+	php8.4	1.2 KB	357 B/mo
+Active
+
+set1-owner.test
+	static	0 B	0 B/mo
+Active
+4 items total

@@ -1,0 +1,535 @@
+{
+  "a6": {
+    "answer": {
+      "code": "SITE_CONFIG_OWNER_EDITED",
+      "detail": "include_missing",
+      "error": "This site’s nginx configuration file was changed outside CelikPanel and does not let CelikPanel publish the certificate validation without changing the file, so no certificate was requested and nothing was changed. The server administrator chooses on the domain’s Configuration file page: take CelikPanel’s text, or add what that page shows to the file and reload nginx; then request the certificate again.",
+      "reason": "certificate_validation",
+      "status": 409,
+      "vars": {
+        "include": "include /etc/nginx/celikpanel-managed.d/set11-a.test/*.conf;",
+        "name": "set11-a.test",
+        "status": "404"
+      }
+    },
+    "bound_to": "10.0.2.15",
+    "changed": {
+      "changed": [
+        {
+          "from": "listen 80;",
+          "to": "listen 10.0.2.15:80;"
+        },
+        {
+          "from": "listen [::]:80;",
+          "to": "(removed)"
+        }
+      ]
+    },
+    "files": {
+      "journal": "steps/17-a6-bound-address/native/099-a6-journal.json",
+      "logs": "steps/17-a6-bound-address/native/098-a6-nginx-logs.json",
+      "watch": "steps/17-a6-bound-address/native/097-a6-watch-stop.json"
+    },
+    "gets": [
+      {
+        "answer": "HTTP/1.1 404 Not Found",
+        "body_start": "6b\r\n\u001f�\b\u0000\u0000\u0000\u0000\u0000\u0004\u0003��(�ͱ���HML��)�,�I�310Q��/Qp�/�K�ч\b�胕\u0000�&�T��$�敤\u0016��d\u0018��\u0000���C�Af\u0003\u0015Ayy�y\u0015�r�0���.\u0001\u0000\u000b�a3�\u0000\u0000\u0000\r\n0\r\n\r\n",
+        "host": "set11-a.test",
+        "status": 404
+      },
+      {
+        "answer": "HTTP/1.1 404 Not Found",
+        "body_start": "6b\r\n\u001f�\b\u0000\u0000\u0000\u0000\u0000\u0004\u0003��(�ͱ���HML��)�,�I�310Q��/Qp�/�K�ч\b�胕\u0000�&�T��$�敤\u0016��d\u0018��\u0000���C�Af\u0003\u0015Ayy�y\u0015�r�0���.\u0001\u0000\u000b�a3�\u0000\u0000\u0000\r\n0\r\n\r\n",
+        "host": "www.set11-a.test",
+        "status": 404
+      }
+    ],
+    "ledger_reason": "certificate_validation",
+    "listening_80_443": [
+      "LISTEN 0 5 127.0.0.1:443 0.0.0.0:*",
+      "LISTEN 0 511 0.0.0.0:80 0.0.0.0:*",
+      "LISTEN 0 511 [::]:80 [::]:*"
+    ],
+    "nginx_logs": {
+      "/var/log/nginx/access.log": {
+        "from": 1709,
+        "text": "127.0.0.1 - - [11/Oct/2026:00:51:58 +0000] \"GET /.well-known/acme-challenge/celikpanel-probe-943a95a36a86092650a28498c3290fda HTTP/1.1\" 404 118 \"-\" \"Go-http-client/1.1\"\n127.0.0.1 - - [11/Oct/2026:00:51:58 +0000] \"GET /.well-known/acme-challenge/celikpanel-probe-943a95a36a86092650a28498c3290fda HTTP/1.1\" 404 118 \"-\" \"Go-http-client/1.1\"\n",
+        "to": 2047
+      }
+    }
+  },
+  "a6_cleanup_read": null,
+  "calls": [
+    {
+      "answer": {
+        "code": "SITE_CONFIG_OWNER_EDITED",
+        "detail": "include_missing",
+        "error": "This site’s nginx configuration file was changed outside CelikPanel and does not let CelikPanel publish the certificate validation without changing the file, so no certificate was requested and nothing was changed. The server administrator chooses on the domain’s Configuration file page: take CelikPanel’s text, or add what that page shows to the file and reload nginx; then request the certificate again.",
+        "reason": "certificate_validation",
+        "vars": {
+          "include": "include /etc/nginx/celikpanel-managed.d/set11-a.test/*.conf;",
+          "name": "set11-a.test",
+          "status": "404"
+        }
+      },
+      "at": "2026-10-11T00:51:58Z",
+      "catalogue_texts": {
+        "err.SITE_CONFIG_OWNER_EDITED": {
+          "en": "This site’s nginx configuration file is not CelikPanel’s unchanged text, so CelikPanel kept it and did not apply this change to it. Nothing else was changed. On the domain’s Configuration file page, keep your file, take CelikPanel’s text (your file is kept as a dated copy), or merge the two by hand.",
+          "tr": "Bu sitenin nginx yapılandırma dosyası CelikPanel’in değişmemiş metni değil; bu yüzden CelikPanel onu korudu ve bu değişikliği ona uygulamadı. Başka hiçbir şey değiştirilmedi. Alan adının Yapılandırma dosyası sayfasında dosyanızı koruyun, CelikPanel’in metnini alın (dosyanız tarihli bir kopya olarak saklanır) ya da ikisini elle birleştirin."
+        },
+        "err.SITE_CONFIG_OWNER_EDITED.certificate_validation": {
+          "en": "This site’s nginx configuration file was changed outside CelikPanel and does not let CelikPanel publish the certificate validation without changing the file, so no certificate was requested and nothing was changed. The server administrator chooses on the domain’s Configuration file page: take CelikPanel’s text, or add what that page shows to the file and reload nginx; then request the certificate again.",
+          "tr": "Bu sitenin nginx yapılandırma dosyası CelikPanel dışında değiştirildi ve CelikPanel’in sertifika doğrulamasını dosyayı değiştirmeden yayımlamasına izin vermiyor; bu yüzden sertifika istenmedi ve hiçbir şey değiştirilmedi. Seçimi sunucu yöneticisi alan adının Yapılandırma dosyası sayfasında yapar: CelikPanel’in metnini alır ya da o sayfanın gösterdiğini dosyaya ekleyip nginx’i yeniden yükler; sonra sertifikayı yeniden isteyin."
+        }
+      },
+      "json": {
+        "code": "SITE_CONFIG_OWNER_EDITED",
+        "detail": "include_missing",
+        "error": "This site’s nginx configuration file was changed outside CelikPanel and does not let CelikPanel publish the certificate validation without changing the file, so no certificate was requested and nothing was changed. The server administrator chooses on the domain’s Configuration file page: take CelikPanel’s text, or add what that page shows to the file and reload nginx; then request the certificate again.",
+        "reason": "certificate_validation",
+        "vars": {
+          "include": "include /etc/nginx/celikpanel-managed.d/set11-a.test/*.conf;",
+          "name": "set11-a.test",
+          "status": "404"
+        }
+      },
+      "label": "a6: POST ssl/letsencrypt (the owner requests a certificate)",
+      "request": {
+        "body": {
+          "auto_renew": false,
+          "email": "hostmaster@set11-a.test"
+        },
+        "method": "POST",
+        "path": "/api/v1/domains/2/ssl/letsencrypt"
+      },
+      "status": 409,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T00:52:01Z",
+      "json": {
+        "actions": [],
+        "certificate": {
+          "referenced": false
+        },
+        "challenge_file": "unchanged",
+        "domain": "set11-a.test",
+        "domain_id": 2,
+        "enabled": "link",
+        "file_sha256": "900b07bc0ced88704c25c22ad3219ae87c3da7e8a328adb46aeacf0a981e0c65",
+        "include_dir": "/etc/nginx/celikpanel-sites.d/set11-a.test",
+        "kind": "nginx_vhost",
+        "ledger": {
+          "observed_at": "2026-10-11T00:51:58Z",
+          "written_at": "2026-10-11T00:50:52Z",
+          "written_release": "v0.1.0-alpha.81 b2b43d0cd680"
+        },
+        "managed_dir": "/etc/nginx/celikpanel-managed.d/set11-a.test",
+        "managed_include": "include /etc/nginx/celikpanel-managed.d/set11-a.test/*.conf;",
+        "path": "/etc/nginx/sites-available/set11-a.test.conf",
+        "pending_path": "/etc/nginx/sites-available/set11-a.test.conf.celikpanel-pending",
+        "pending_reason": "certificate_validation",
+        "protection": "none",
+        "render_sha256": "8d0ded895ef5095c98de162e7328057a266c835ca11cfdfc6ede51709ffe96c6",
+        "state": "managed_unchanged"
+      },
+      "label": "a6 cleanup: GET site-config after the lab restore: GET site-config",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains/2/site-config"
+      },
+      "status": 200,
+      "text": null
+    }
+  ],
+  "cells": {
+    "A6": {
+      "detail": {
+        "answer": {
+          "code": "SITE_CONFIG_OWNER_EDITED",
+          "detail": "include_missing",
+          "error": "This site’s nginx configuration file was changed outside CelikPanel and does not let CelikPanel publish the certificate validation without changing the file, so no certificate was requested and nothing was changed. The server administrator chooses on the domain’s Configuration file page: take CelikPanel’s text, or add what that page shows to the file and reload nginx; then request the certificate again.",
+          "reason": "certificate_validation",
+          "status": 409,
+          "vars": {
+            "include": "include /etc/nginx/celikpanel-managed.d/set11-a.test/*.conf;",
+            "name": "set11-a.test",
+            "status": "404"
+          }
+        },
+        "bound_to": "10.0.2.15",
+        "changed": {
+          "changed": [
+            {
+              "from": "listen 80;",
+              "to": "listen 10.0.2.15:80;"
+            },
+            {
+              "from": "listen [::]:80;",
+              "to": "(removed)"
+            }
+          ]
+        },
+        "files": {
+          "journal": "steps/17-a6-bound-address/native/099-a6-journal.json",
+          "logs": "steps/17-a6-bound-address/native/098-a6-nginx-logs.json",
+          "watch": "steps/17-a6-bound-address/native/097-a6-watch-stop.json"
+        },
+        "gets": [
+          {
+            "answer": "HTTP/1.1 404 Not Found",
+            "body_start": "6b\r\n\u001f�\b\u0000\u0000\u0000\u0000\u0000\u0004\u0003��(�ͱ���HML��)�,�I�310Q��/Qp�/�K�ч\b�胕\u0000�&�T��$�敤\u0016��d\u0018��\u0000���C�Af\u0003\u0015Ayy�y\u0015�r�0���.\u0001\u0000\u000b�a3�\u0000\u0000\u0000\r\n0\r\n\r\n",
+            "host": "set11-a.test",
+            "status": 404
+          },
+          {
+            "answer": "HTTP/1.1 404 Not Found",
+            "body_start": "6b\r\n\u001f�\b\u0000\u0000\u0000\u0000\u0000\u0004\u0003��(�ͱ���HML��)�,�I�310Q��/Qp�/�K�ч\b�胕\u0000�&�T��$�敤\u0016��d\u0018��\u0000���C�Af\u0003\u0015Ayy�y\u0015�r�0���.\u0001\u0000\u000b�a3�\u0000\u0000\u0000\r\n0\r\n\r\n",
+            "host": "www.set11-a.test",
+            "status": 404
+          }
+        ],
+        "ledger_reason": "certificate_validation",
+        "listening_80_443": [
+          "LISTEN 0 5 127.0.0.1:443 0.0.0.0:*",
+          "LISTEN 0 511 0.0.0.0:80 0.0.0.0:*",
+          "LISTEN 0 511 [::]:80 [::]:*"
+        ],
+        "nginx_logs": {
+          "/var/log/nginx/access.log": {
+            "from": 1709,
+            "text": "127.0.0.1 - - [11/Oct/2026:00:51:58 +0000] \"GET /.well-known/acme-challenge/celikpanel-probe-943a95a36a86092650a28498c3290fda HTTP/1.1\" 404 118 \"-\" \"Go-http-client/1.1\"\n127.0.0.1 - - [11/Oct/2026:00:51:58 +0000] \"GET /.well-known/acme-challenge/celikpanel-probe-943a95a36a86092650a28498c3290fda HTTP/1.1\" 404 118 \"-\" \"Go-http-client/1.1\"\n",
+            "to": 2047
+          }
+        }
+      },
+      "expectations": [
+        {
+          "expectation": "the owner's block is bound to the guest's address only and nginx -t passed",
+          "held": true,
+          "measured": {
+            "changed": [
+              {
+                "from": "listen 80;",
+                "to": "listen 10.0.2.15:80;"
+              },
+              {
+                "from": "listen [::]:80;",
+                "to": "(removed)"
+              }
+            ]
+          }
+        },
+        {
+          "expectation": "the loopback probe asked each site name",
+          "held": true,
+          "measured": [
+            "set11-a.test",
+            "www.set11-a.test"
+          ]
+        },
+        {
+          "expectation": "the answer is one the documentation names for this case (unknown with nothing on the loopback's port 80, or include_missing when another block listens on the wildcard address)",
+          "held": true,
+          "measured": {
+            "answer": {
+              "code": "SITE_CONFIG_OWNER_EDITED",
+              "detail": "include_missing",
+              "error": "This site’s nginx configuration file was changed outside CelikPanel and does not let CelikPanel publish the certificate validation without changing the file, so no certificate was requested and nothing was changed. The server administrator chooses on the domain’s Configuration file page: take CelikPanel’s text, or add what that page shows to the file and reload nginx; then request the certificate again.",
+              "reason": "certificate_validation",
+              "status": 409,
+              "vars": {
+                "include": "include /etc/nginx/celikpanel-managed.d/set11-a.test/*.conf;",
+                "name": "set11-a.test",
+                "status": "404"
+              }
+            },
+            "bound_to": "10.0.2.15",
+            "changed": {
+              "changed": [
+                {
+                  "from": "listen 80;",
+                  "to": "listen 10.0.2.15:80;"
+                },
+                {
+                  "from": "listen [::]:80;",
+                  "to": "(removed)"
+                }
+              ]
+            },
+            "gets": [
+              {
+                "answer": "HTTP/1.1 404 Not Found",
+                "body_start": "6b\r\n\u001f�\b\u0000\u0000\u0000\u0000\u0000\u0004\u0003��(�ͱ���HML��)�,�I�310Q��/Qp�/�K�ч\b�胕\u0000�&�T��$�敤\u0016��d\u0018��\u0000���C�Af\u0003\u0015Ayy�y\u0015�r�0���.\u0001\u0000\u000b�a3�\u0000\u0000\u0000\r\n0\r\n\r\n",
+                "host": "set11-a.test",
+                "status": 404
+              },
+              {
+                "answer": "HTTP/1.1 404 Not Found",
+                "body_start": "6b\r\n\u001f�\b\u0000\u0000\u0000\u0000\u0000\u0004\u0003��(�ͱ���HML��)�,�I�310Q��/Qp�/�K�ч\b�胕\u0000�&�T��$�敤\u0016��d\u0018��\u0000���C�Af\u0003\u0015Ayy�y\u0015�r�0���.\u0001\u0000\u000b�a3�\u0000\u0000\u0000\r\n0\r\n\r\n",
+                "host": "www.set11-a.test",
+                "status": 404
+              }
+            ],
+            "ledger_reason": "certificate_validation",
+            "listening_80_443": [
+              "LISTEN 0 5 127.0.0.1:443 0.0.0.0:*",
+              "LISTEN 0 511 0.0.0.0:80 0.0.0.0:*",
+              "LISTEN 0 511 [::]:80 [::]:*"
+            ]
+          }
+        },
+        {
+          "expectation": "A's vhost is untouched (sha256, inode, mtime)",
+          "held": true,
+          "measured": {
+            "inode": [
+              135967,
+              135967
+            ],
+            "mtime_ns": [
+              1791679915718018728,
+              1791679915718018728
+            ],
+            "sha256": [
+              "5add7577ca242f68c5b9c5059657b08f2b911e7fe971288341d3efd99a5905d2",
+              "5add7577ca242f68c5b9c5059657b08f2b911e7fe971288341d3efd99a5905d2"
+            ]
+          }
+        }
+      ],
+      "verdict": "PASS"
+    }
+  },
+  "checks": [
+    {
+      "detail": {
+        "changed": [
+          {
+            "from": "listen 80;",
+            "to": "listen 10.0.2.15:80;"
+          },
+          {
+            "from": "listen [::]:80;",
+            "to": "(removed)"
+          }
+        ]
+      },
+      "name": "A6: the owner's block is bound to the guest's address only and nginx -t passed",
+      "ok": true
+    },
+    {
+      "detail": [
+        "set11-a.test",
+        "www.set11-a.test"
+      ],
+      "name": "A6: the loopback probe asked each site name",
+      "ok": true
+    },
+    {
+      "detail": {
+        "answer": {
+          "code": "SITE_CONFIG_OWNER_EDITED",
+          "detail": "include_missing",
+          "error": "This site’s nginx configuration file was changed outside CelikPanel and does not let CelikPanel publish the certificate validation without changing the file, so no certificate was requested and nothing was changed. The server administrator chooses on the domain’s Configuration file page: take CelikPanel’s text, or add what that page shows to the file and reload nginx; then request the certificate again.",
+          "reason": "certificate_validation",
+          "status": 409,
+          "vars": {
+            "include": "include /etc/nginx/celikpanel-managed.d/set11-a.test/*.conf;",
+            "name": "set11-a.test",
+            "status": "404"
+          }
+        },
+        "bound_to": "10.0.2.15",
+        "changed": {
+          "changed": [
+            {
+              "from": "listen 80;",
+              "to": "listen 10.0.2.15:80;"
+            },
+            {
+              "from": "listen [::]:80;",
+              "to": "(removed)"
+            }
+          ]
+        },
+        "gets": [
+          {
+            "answer": "HTTP/1.1 404 Not Found",
+            "body_start": "6b\r\n\u001f�\b\u0000\u0000\u0000\u0000\u0000\u0004\u0003��(�ͱ���HML��)�,�I�310Q��/Qp�/�K�ч\b�胕\u0000�&�T��$�敤\u0016��d\u0018��\u0000���C�Af\u0003\u0015Ayy�y\u0015�r�0���.\u0001\u0000\u000b�a3�\u0000\u0000\u0000\r\n0\r\n\r\n",
+            "host": "set11-a.test",
+            "status": 404
+          },
+          {
+            "answer": "HTTP/1.1 404 Not Found",
+            "body_start": "6b\r\n\u001f�\b\u0000\u0000\u0000\u0000\u0000\u0004\u0003��(�ͱ���HML��)�,�I�310Q��/Qp�/�K�ч\b�胕\u0000�&�T��$�敤\u0016��d\u0018��\u0000���C�Af\u0003\u0015Ayy�y\u0015�r�0���.\u0001\u0000\u000b�a3�\u0000\u0000\u0000\r\n0\r\n\r\n",
+            "host": "www.set11-a.test",
+            "status": 404
+          }
+        ],
+        "ledger_reason": "certificate_validation",
+        "listening_80_443": [
+          "LISTEN 0 5 127.0.0.1:443 0.0.0.0:*",
+          "LISTEN 0 511 0.0.0.0:80 0.0.0.0:*",
+          "LISTEN 0 511 [::]:80 [::]:*"
+        ]
+      },
+      "name": "A6: the answer is one the documentation names for this case (unknown with nothing on the loopback's port 80, or include_missing when another block listens on the wildcard address)",
+      "ok": true
+    },
+    {
+      "detail": {
+        "inode": [
+          135967,
+          135967
+        ],
+        "mtime_ns": [
+          1791679915718018728,
+          1791679915718018728
+        ],
+        "sha256": [
+          "5add7577ca242f68c5b9c5059657b08f2b911e7fe971288341d3efd99a5905d2",
+          "5add7577ca242f68c5b9c5059657b08f2b911e7fe971288341d3efd99a5905d2"
+        ]
+      },
+      "name": "A6: A's vhost is untouched (sha256, inode, mtime)",
+      "ok": true
+    }
+  ],
+  "finished_at": "2026-10-11T00:52:01Z",
+  "lab_preparation": [
+    {
+      "domain": "set11-a.test",
+      "file": "steps/17-a6-bound-address/native/089-a6-lab-restore-set11-a.test.json",
+      "label": "a6",
+      "sha256_matches": true
+    },
+    {
+      "domain": "set11-a.test",
+      "file": "steps/17-a6-bound-address/native/102-a6-end-lab-restore-set11-a.test.json",
+      "label": "a6-end",
+      "sha256_matches": true
+    }
+  ],
+  "native_evidence": false,
+  "natives": [
+    {
+      "file": "native/088-a6-addresses.json",
+      "label": "a6-addresses",
+      "mode": "read-addresses",
+      "owner_action": false
+    },
+    {
+      "file": "native/089-a6-lab-restore-set11-a.test.json",
+      "label": "a6-lab-restore-set11-a.test",
+      "mode": "lab-restore",
+      "owner_action": false
+    },
+    {
+      "file": "native/090-owner-a6-edit.json",
+      "label": "owner-a6-edit",
+      "mode": "owner-vhost10",
+      "owner_action": true
+    },
+    {
+      "file": "native/091-owner-a6-bind-address.json",
+      "label": "owner-a6-bind-address",
+      "mode": "owner-vhost11",
+      "owner_action": true
+    },
+    {
+      "file": "native/092-a6-0-stat.json",
+      "label": "a6-0-stat",
+      "mode": "read-stat",
+      "owner_action": false
+    },
+    {
+      "file": "native/093-a6-listening-acme.json",
+      "label": "a6-listening-acme",
+      "mode": "read-acme",
+      "owner_action": false
+    },
+    {
+      "file": "native/094-a6-before-acme.json",
+      "label": "a6-before-acme",
+      "mode": "read-acme",
+      "owner_action": false
+    },
+    {
+      "file": "native/095-a6-log-offsets.json",
+      "label": "a6-log-offsets",
+      "mode": "log-offsets",
+      "owner_action": false
+    },
+    {
+      "file": "native/096-a6-watch-start.json",
+      "label": "a6-watch-start",
+      "mode": "watch-start",
+      "owner_action": false
+    },
+    {
+      "file": "native/097-a6-watch-stop.json",
+      "label": "a6-watch-stop",
+      "mode": "watch-stop",
+      "owner_action": false
+    },
+    {
+      "file": "native/098-a6-nginx-logs.json",
+      "label": "a6-nginx-logs",
+      "mode": "read-logs",
+      "owner_action": false
+    },
+    {
+      "file": "native/099-a6-journal.json",
+      "label": "a6-journal",
+      "mode": "read-window",
+      "owner_action": false
+    },
+    {
+      "file": "native/100-a6-1-stat.json",
+      "label": "a6-1-stat",
+      "mode": "read-stat",
+      "owner_action": false
+    },
+    {
+      "file": "native/101-a6-1-ledger.json",
+      "label": "a6-1-ledger",
+      "mode": "read-ledger",
+      "owner_action": false
+    },
+    {
+      "file": "native/102-a6-end-lab-restore-set11-a.test.json",
+      "label": "a6-end-lab-restore-set11-a.test",
+      "mode": "lab-restore",
+      "owner_action": false
+    }
+  ],
+  "node": "debian13",
+  "notes": [
+    {
+      "detail": [],
+      "note": "A6: PASS"
+    }
+  ],
+  "owner_actions": [
+    {
+      "at": "2026-10-11T00:51:55Z",
+      "label": "a6-edit",
+      "mode": "owner-vhost10"
+    },
+    {
+      "at": "2026-10-11T00:51:55Z",
+      "label": "a6-bind-address",
+      "mode": "owner-vhost11"
+    }
+  ],
+  "section": "A6-bound-address",
+  "started_at": "2026-10-11T00:51:54Z",
+  "substeps": {
+    "A6": "passed"
+  },
+  "title": "the port-80 block bound to one address only: certificate issuance",
+  "verdict": "passed"
+}

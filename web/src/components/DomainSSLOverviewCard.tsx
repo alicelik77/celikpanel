@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
-import { sslTier, sslTierLabel, type SSLTier } from '../lib/sslTier';
+import { sslTier, sslTierLabelFor, type SSLTier } from '../lib/sslTier';
 import { Button } from './ui';
 import { lastKnown, useRemote } from '../lib/remote';
 import { decodeSSLData, type SSLRuntimeSummary } from './DomainSSLSettings';
@@ -22,6 +22,8 @@ interface OverviewCertificate {
     trust_status: 'trusted' | 'untrusted' | 'unknown' | 'invalid';
     activation_pending: boolean;
     dependents_pending: boolean;
+    waiting_for_owner?: boolean;
+    waiting_for_owner_reason?: string;
 }
 
 interface OverviewSSLData {
@@ -39,6 +41,7 @@ interface Tier {
 const sslTierPresentation: Record<SSLTier, Omit<Tier, 'label'>> = {
     none: { icon: AlertTriangle, color: 'text-warning', surface: 'border-border-strong bg-surface-2' },
     pending: { icon: Clock3, color: 'text-warning', surface: 'border-border-strong bg-surface-2' },
+    waitingForOwner: { icon: Clock3, color: 'text-warning', surface: 'border-border-strong bg-surface-2' },
     invalid: { icon: ShieldAlert, color: 'text-danger', surface: 'border-danger/30 bg-danger/5' },
     untrusted: { icon: ShieldAlert, color: 'text-danger', surface: 'border-danger/30 bg-danger/5' },
     trustUnknown: { icon: ShieldAlert, color: 'text-warning', surface: 'border-border-strong bg-surface-2' },
@@ -103,7 +106,7 @@ export function DomainSSLOverviewCard({
             }
           : {
                 ...sslTierPresentation[certificateTier],
-                label: sslTierLabel[certificateTier],
+                label: sslTierLabelFor(certificateTier, cert),
             };
     const TierIcon = tier.icon;
     const hasCertificate = Boolean(data?.has_certificate && cert);
@@ -123,11 +126,18 @@ export function DomainSSLOverviewCard({
         } else if (cert && !cert.usable) {
             detail = t('domain.overview.ssl.notUsable');
         } else if (cert) {
-            detail = t('domain.overview.ssl.certificate', {
-                issuer: cert.issuer,
-                date: new Date(cert.expires_at).toLocaleDateString(),
-                days: t('ssl.days', { n: cert.days_until_expiry }),
-            });
+            // An expired certificate: "expired N days ago", never negative days.
+            detail = cert.days_until_expiry < 0
+                ? t('domain.overview.ssl.certificateExpired', {
+                    issuer: cert.issuer,
+                    date: new Date(cert.expires_at).toLocaleDateString(),
+                    n: -cert.days_until_expiry,
+                })
+                : t('domain.overview.ssl.certificate', {
+                    issuer: cert.issuer,
+                    date: new Date(cert.expires_at).toLocaleDateString(),
+                    days: t('ssl.days', { n: cert.days_until_expiry }),
+                });
         }
     }
 

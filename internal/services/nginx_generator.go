@@ -16,6 +16,7 @@ import (
 
 	"github.com/alicelik/celikpanel/internal/core"
 	"github.com/alicelik/celikpanel/internal/hostingpath"
+	"github.com/alicelik/celikpanel/internal/transport"
 )
 
 //go:embed templates/nginx/vhost.conf.tmpl
@@ -29,6 +30,26 @@ type NginxGenerator struct {
 	// item has partially touched the filesystem. Restores deliberately bypass
 	// it so rollback can repair the injected forward-write failure.
 	writeVhostBatch func(domain, config string) error
+	// probeGet is the validation probe's request (a test seam: a fake
+	// nginx); nil asks nginx on 127.0.0.1 (managed_vhost_probe.go).
+	probeGet func(ctx context.Context, address, name, path string) ValidationProbeAnswer
+	// hostAddresses lists this server's addresses for the probe (a test
+	// seam); nil reads the interfaces (managed_vhost_listen.go).
+	hostAddresses func() (map[string]bool, error)
+	// nginxActive is `systemctl is-active nginx` (a test seam); nil asks
+	// systemd, except in development mode (nginxDir), which answers unknown.
+	nginxActive func() string
+}
+
+// nginxServiceActive is whether nginx runs: "true", "false" or "unknown".
+func (ng *NginxGenerator) nginxServiceActive() string {
+	if ng.nginxActive != nil {
+		return ng.nginxActive()
+	}
+	if nginxDevMode() {
+		return transport.SiteFileServiceActiveUnknown
+	}
+	return systemdUnitActive("nginx")
 }
 
 // nginxMutationMu serializes the complete nginx mutation transaction across
@@ -73,6 +94,13 @@ type VhostData struct {
 	ForwardTo   string
 	ForwardCode int
 	Upstream    string
+	// OwnerIncludeDir is the site's owner include directory (D-031),
+	// derived from Domain by Render; callers do not set it.
+	OwnerIncludeDir string
+	// PanelManagedDir is the Panel's own include directory of the site
+	// (D-031 step 1b: the ACME HTTP-01 location), derived from Domain by
+	// Render; callers do not set it.
+	PanelManagedDir string
 }
 
 // Render executes the vhost template over prepared data, deriving the
@@ -80,12 +108,30 @@ type VhostData struct {
 // Render, hazırlanmış veriyle vhost şablonunu çalıştırır; node/proxy
 // tiplerinde vekil upstream'ini türetir.
 func (ng *NginxGenerator) Render(data VhostData) (string, error) {
+	prepared, err := prepareVhostData(data)
+	if err != nil {
+		return "", err
+	}
+	var buf bytes.Buffer
+	if err := ng.tmpl.Execute(&buf, prepared); err != nil {
+		return "", fmt.Errorf("failed to execute template: %v", err)
+	}
+	return buf.String(), nil
+}
+
+// prepareVhostData is the data normalization every vhost template reads,
+// the current one and the frozen ones of earlier releases alike (D-031): the
+// comparison of a pre-header file with an earlier release's render is only
+// meaningful when both see the same prepared data.
+// prepareVhostData, güncel ve dondurulmuş eski şablonların okuduğu veri
+// düzenlemesidir; karşılaştırma ancak ikisi aynı veriyi görürse anlamlıdır.
+func prepareVhostData(data VhostData) (VhostData, error) {
 	data.ServerNames = normalizedServerNames(data.Domain, data.TempDomain, data.ServerNames)
 	data.ACMEChallengeNames = normalizedAdditionalServerNames(data.ACMEChallengeNames)
 	if err := validateACMEChallengeRootForTemplate(
 		data.ACMEChallengeRoot, data.DocumentRoot,
 	); err != nil {
-		return "", err
+		return VhostData{}, err
 	}
 	if !data.ForceHTTPS && data.SSLAutoRedirect {
 		data.ForceHTTPS = true
@@ -102,7 +148,7 @@ func (ng *NginxGenerator) Render(data VhostData) (string, error) {
 		// reddeder. Çalışamayacak bir yapılandırma yazmak yerine dürüstçe
 		// reddet.
 		if data.PHPSocket == "" {
-			return "", fmt.Errorf("php project has no PHP-FPM socket configured for this site")
+			return VhostData{}, fmt.Errorf("php project has no PHP-FPM socket configured for this site")
 		}
 	case "node":
 		data.Upstream = fmt.Sprintf("http://127.0.0.1:%d", data.AppPort)
@@ -112,12 +158,30 @@ func (ng *NginxGenerator) Render(data VhostData) (string, error) {
 	if data.ForwardCode == 0 {
 		data.ForwardCode = 301
 	}
+	data.OwnerIncludeDir = OwnerIncludeDir(data.Domain)
+	data.PanelManagedDir = PanelManagedDir(data.Domain)
+	return data, nil
+}
 
+// RenderACMENamesBlock is the validation-only server block of the data's
+// ACMEChallengeNames exactly as Render writes it, without surrounding blank
+// lines; "" when there are none. The Agent looks for this text in a file the
+// owner kept before it lets a certificate operation validate those names.
+// RenderACMENamesBlock, yalnız doğrulama sunucu bloğunu Render'ın yazdığı
+// biçimde verir; sahibin koruduğu dosyada bu metin aranır.
+func (ng *NginxGenerator) RenderACMENamesBlock(data VhostData) (string, error) {
+	prepared, err := prepareVhostData(data)
+	if err != nil {
+		return "", err
+	}
+	if len(prepared.ACMEChallengeNames) == 0 {
+		return "", nil
+	}
 	var buf bytes.Buffer
-	if err := ng.tmpl.Execute(&buf, data); err != nil {
+	if err := ng.tmpl.ExecuteTemplate(&buf, "acme-names-server", prepared); err != nil {
 		return "", fmt.Errorf("failed to execute template: %v", err)
 	}
-	return buf.String(), nil
+	return strings.TrimSpace(buf.String()), nil
 }
 
 func validateACMEChallengeRootForTemplate(challengeRoot, documentRoot string) error {
@@ -358,10 +422,32 @@ func (ng *NginxGenerator) rollbackVhostMutationWithRuntime(
 // VhostRestoredError, başarısız olan ve tersi sonuna kadar uygulanan bir sanal
 // konak değişikliğidir: dosya ve bağlantı önceki halindedir, nginx o
 // yapılandırmayı yeniden kabul etmiş ve onunla yeniden yüklenmiştir.
-type VhostRestoredError struct{ Cause error }
+//
+// Since set12 (cell RP1) a managed batch's put-back also ends in this error
+// when nginx was deliberately not reloaded: Service is
+// transport.SiteFileServiceNotReloaded (nginx -t refused the put-back
+// configuration, Check its line; nginx keeps the configuration it loaded
+// before) or SiteFileServiceNotRunning (nginx did not run before). "" and
+// SiteFileServiceReloaded are the reloaded case above.
+type VhostRestoredError struct {
+	Cause   error
+	Service string
+	Check   string
+}
 
 func (e *VhostRestoredError) Error() string {
+	switch e.Service {
+	case transport.SiteFileServiceNotReloaded:
+		return e.Cause.Error() + "; rollback restored the previous vhost; nginx was not reloaded, because nginx -t refuses the configuration elsewhere: " + e.Check
+	case transport.SiteFileServiceNotRunning:
+		return e.Cause.Error() + "; rollback restored the previous vhost; nginx was not running before and was neither reloaded nor started"
+	}
 	return e.Cause.Error() + "; rollback restored and reloaded the previous vhost"
+}
+
+// Reloaded says whether nginx was reloaded with the restored configuration.
+func (e *VhostRestoredError) Reloaded() bool {
+	return e.Service == "" || e.Service == transport.SiteFileServiceReloaded
 }
 
 func (e *VhostRestoredError) Unwrap() error { return e.Cause }

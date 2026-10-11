@@ -1,0 +1,27 @@
+{
+  "checks": {
+    "checks": 7,
+    "error": null,
+    "failed": [
+      "C4: the Domains row during the hold: state unknown, kind php_pool, reason not_read, read_error",
+      "C4: the ledger row of the pool records unknown with the reason (no digest change)",
+      "C4: the row stays unknown until a read answers (after B's save, before A is read again)"
+    ],
+    "finished_at": "2026-10-11T10:17:36Z",
+    "notes": [
+      "C4: FAIL"
+    ],
+    "started_at": "2026-10-11T10:16:16Z",
+    "substeps": {
+      "C4": "failed"
+    },
+    "title": "the pool not read: the page and the Domains row",
+    "unknown": [],
+    "verdict": "failed"
+  },
+  "finished_at": "2026-10-11T10:17:36Z",
+  "name": "C4-pool-not-read",
+  "reason": "C4: the Domains row during the hold: state unknown, kind php_pool, reason not_read, read_error; C4: the ledger row of the pool records unknown with the reason (no digest change); C4: the row stays unknown until a read answers (after B's save, before A is read again)",
+  "started_at": "2026-10-11T10:16:16Z",
+  "verdict": "failed"
+}

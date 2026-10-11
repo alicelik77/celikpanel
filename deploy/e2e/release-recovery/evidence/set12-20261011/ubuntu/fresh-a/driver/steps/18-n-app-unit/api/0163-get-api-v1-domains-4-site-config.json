@@ -1,0 +1,132 @@
+{
+  "outcome": "response",
+  "panel": "owner",
+  "purpose": "n page: GET site-config",
+  "request": {
+    "body": null,
+    "headers": [
+      [
+        "Accept",
+        "application/json"
+      ],
+      [
+        "Host",
+        "127.0.0.1:18891"
+      ],
+      [
+        "Cookie",
+        "[REDACTED]"
+      ]
+    ],
+    "method": "GET",
+    "path": "/api/v1/domains/4/site-config"
+  },
+  "response": {
+    "elapsed_seconds": 0.007,
+    "headers": [
+      [
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+      ],
+      [
+        "Content-Type",
+        "application/json"
+      ],
+      [
+        "Referrer-Policy",
+        "no-referrer"
+      ],
+      [
+        "Strict-Transport-Security",
+        "max-age=31536000"
+      ],
+      [
+        "X-Content-Type-Options",
+        "nosniff"
+      ],
+      [
+        "X-Frame-Options",
+        "DENY"
+      ],
+      [
+        "Date",
+        "Sun, 11 Oct 2026 05:07:15 GMT"
+      ],
+      [
+        "Transfer-Encoding",
+        "chunked"
+      ]
+    ],
+    "json": {
+      "actions": [],
+      "challenge_file": "unchanged",
+      "domain": "set12-n.test",
+      "domain_id": 4,
+      "enabled": "link",
+      "file_sha256": "aeed17772ad840c05d54e0267e6b8ff85fad150844ab34094cdc5648bfd0cfed",
+      "files": [
+        {
+          "actions": [],
+          "challenge_file": "unchanged",
+          "domain": "set12-n.test",
+          "domain_id": 4,
+          "enabled": "link",
+          "file_sha256": "aeed17772ad840c05d54e0267e6b8ff85fad150844ab34094cdc5648bfd0cfed",
+          "include_dir": "/etc/nginx/celikpanel-sites.d/set12-n.test",
+          "kind": "nginx_vhost",
+          "ledger": {
+            "observed_at": "2026-10-11T05:07:13Z",
+            "written_at": "2026-10-11T05:07:12Z",
+            "written_release": "v0.1.0-alpha.81 9e223f175d96"
+          },
+          "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-n.test",
+          "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-n.test/*.conf;",
+          "path": "/etc/nginx/sites-available/set12-n.test.conf",
+          "protection": "none",
+          "render_sha256": "d1fc81c164a28cf140f19219c7eb28323439ae90be2ad829da3e9c7983374743",
+          "state": "managed_unchanged"
+        },
+        {
+          "actions": [
+            "keep",
+            "take",
+            "merge"
+          ],
+          "diff": "--- /etc/systemd/system/celikapp-4.service (on this server)\n+++ CelikPanel's text\n@@ -16,8 +16,5 @@\n Restart=on-failure\n RestartSec=3\n \n-# set10: added by the server owner by hand\n-Environment=SET10_OWNER=unit\n-\n [Install]\n WantedBy=multi-user.target\n",
+          "domain": "set12-n.test",
+          "domain_id": 4,
+          "file_sha256": "a96718000cb8e4cb2f4d561697e65f2b91553ca74519439c918e1582ef878e92",
+          "include_dir": "/etc/systemd/system/celikapp-4.service.d",
+          "kind": "app_unit",
+          "ledger": {
+            "observed_at": "2026-10-11T05:07:14Z",
+            "written_at": "2026-10-11T05:07:13Z",
+            "written_release": "v0.1.0-alpha.81 9e223f175d96"
+          },
+          "path": "/etc/systemd/system/celikapp-4.service",
+          "pending_path": "/etc/systemd/system/celikapp-4.service.celikpanel-pending",
+          "protection": "none",
+          "render_sha256": "187fc07680b899a7d53b4eb589c3ba02e581e5c04a033a691db26f62b6d4c5cc",
+          "state": "owner_edited"
+        }
+      ],
+      "include_dir": "/etc/nginx/celikpanel-sites.d/set12-n.test",
+      "kind": "nginx_vhost",
+      "ledger": {
+        "observed_at": "2026-10-11T05:07:13Z",
+        "written_at": "2026-10-11T05:07:12Z",
+        "written_release": "v0.1.0-alpha.81 9e223f175d96"
+      },
+      "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-n.test",
+      "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-n.test/*.conf;",
+      "overall_kind": "app_unit",
+      "overall_state": "owner_edited",
+      "path": "/etc/nginx/sites-available/set12-n.test.conf",
+      "protection": "none",
+      "render_sha256": "d1fc81c164a28cf140f19219c7eb28323439ae90be2ad829da3e9c7983374743",
+      "state": "managed_unchanged"
+    },
+    "status": 200,
+    "text": null
+  }
+}

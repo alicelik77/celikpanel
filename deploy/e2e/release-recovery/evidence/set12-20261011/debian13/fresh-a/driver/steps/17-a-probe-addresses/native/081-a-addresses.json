@@ -1,0 +1,21 @@
+{
+  "at": "2026-10-11T04:39:46Z",
+  "ip_nonlocal_bind": "0",
+  "ipv4": [
+    "10.0.2.15",
+    "192.0.2.10"
+  ],
+  "ipv6": [
+    "::1",
+    "fec0::5054:ff:fe13:10",
+    "fe80::5054:ff:fe13:10",
+    "fe80::5054:ff:fe53:10"
+  ],
+  "listening_80": [
+    "LISTEN 0 511 0.0.0.0:80 0.0.0.0:*",
+    "LISTEN 0 511 [::]:80 [::]:*"
+  ],
+  "mode": "read-addresses12",
+  "owner_action": false,
+  "schema": "celikpanel/set12-native/v1"
+}

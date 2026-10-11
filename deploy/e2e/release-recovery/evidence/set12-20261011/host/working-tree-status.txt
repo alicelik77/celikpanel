@@ -1,0 +1,18 @@
+?? .agents/
+?? .attic/
+?? .claude/
+?? .codex/
+?? .github/agents/
+?? .github/hooks/
+?? .github/skills/
+?? .impeccable/review-final/
+?? .impeccable/review/
+?? deploy/e2e/release-recovery/build-set12-artifacts.sh
+?? deploy/e2e/release-recovery/evidence/set12-20261011/
+?? deploy/e2e/release-recovery/guest_set12_native.py
+?? deploy/e2e/release-recovery/run-set12.sh
+?? deploy/e2e/release-recovery/set12_fixture.py
+?? deploy/e2e/release-recovery/set12_trial.py
+?? deploy/e2e/release-recovery/test_set12_trial.py
+?? web/tools/browser-inspect/cold-load-set12.mjs
+(written by git on the Windows side at 2026-10-11T08:13:44Z; the WSL git status of /mnt/c was stopped after 4 minutes)

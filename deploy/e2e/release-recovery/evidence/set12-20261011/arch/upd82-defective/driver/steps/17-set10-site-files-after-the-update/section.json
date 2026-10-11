@@ -1,0 +1,762 @@
+{
+  "calls": [
+    {
+      "at": "2026-10-11T07:19:00Z",
+      "json": [
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T07:16:14Z",
+          "disk_usage": 0,
+          "domain_name": "set10-rn.test",
+          "id": 5,
+          "php_version": "8.5",
+          "project_type": "node",
+          "ssl_enabled": false,
+          "status": "active"
+        },
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T07:16:02Z",
+          "disk_usage": 0,
+          "domain_name": "set10-r1.test",
+          "id": 4,
+          "php_version": "8.5",
+          "project_type": "php",
+          "ssl_enabled": false,
+          "status": "active"
+        },
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T07:15:58Z",
+          "disk_usage": 0,
+          "domain_name": "set10-r3.test",
+          "id": 3,
+          "php_version": "8.5",
+          "project_type": "php",
+          "ssl_enabled": false,
+          "status": "active"
+        },
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T07:15:56Z",
+          "disk_usage": 0,
+          "domain_name": "set10-r2.test",
+          "id": 2,
+          "php_version": "8.5",
+          "project_type": "php",
+          "ssl_enabled": false,
+          "status": "active"
+        },
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T07:15:54Z",
+          "disk_usage": 0,
+          "domain_name": "upd1-owner.test",
+          "id": 1,
+          "php_version": "",
+          "project_type": "static",
+          "ssl_enabled": false,
+          "status": "active"
+        }
+      ],
+      "label": "after the return: GET /api/v1/domains (the Panel usable)",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains"
+      },
+      "status": 200,
+      "text": null
+    }
+  ],
+  "cells": {
+    "B-return": {
+      "detail": {
+        "start_lines": [
+          "2026-10-11T07:18:02.224158+00:00 dns-arch panel[16989]: 2026/10/11 07:18:02 certificate startup reconcile: restored 5 hosted vhosts with one nginx validation and reload",
+          "2026-10-11T07:18:44.400007+00:00 dns-arch panel[19856]: 2026/10/11 07:18:44 certificate startup reconcile: restored 5 hosted vhosts with one nginx validation and reload"
+        ]
+      },
+      "expectations": [
+        {
+          "expectation": "the ledger is back at 43 (no managed_site_files table)",
+          "held": true,
+          "measured": {
+            "ledger_last": [
+              41,
+              42,
+              43
+            ],
+            "managed_site_files_table": false,
+            "schema_version": 43
+          }
+        },
+        {
+          "expectation": "no vhost, pool or unit carries a render header",
+          "held": true,
+          "measured": {
+            "files": {
+              "set10-r1.test": {
+                "pools": {
+                  "/etc/php/php-fpm.d/site4.conf": {
+                    "first_line": "[site4]",
+                    "gid": 969,
+                    "header": {
+                      "first_line": "[site4]",
+                      "present": false
+                    },
+                    "inode": 87515,
+                    "mode": "0644",
+                    "sha256": "0beb5c937dc32462cb5e65ab999c05d6f73840e659e58c7311b5ed0599bb1c1a",
+                    "uid": 0
+                  }
+                },
+                "unit": {
+                  "exists": false,
+                  "first_line": null,
+                  "header": null,
+                  "inode": null,
+                  "sha256": null
+                }
+              },
+              "set10-r2.test": {
+                "pools": {
+                  "/etc/php/php-fpm.d/site2.conf": {
+                    "first_line": "[site2]",
+                    "gid": 969,
+                    "header": {
+                      "first_line": "[site2]",
+                      "present": false
+                    },
+                    "inode": 87435,
+                    "mode": "0644",
+                    "sha256": "8fa4c5f7e0e9b25e837add8e0fd686eb788a0917e7b1628b7e9bdd87a7772235",
+                    "uid": 0
+                  }
+                },
+                "unit": {
+                  "exists": false,
+                  "first_line": null,
+                  "header": null,
+                  "inode": null,
+                  "sha256": null
+                }
+              },
+              "set10-r3.test": {
+                "pools": {
+                  "/etc/php/php-fpm.d/site3.conf": {
+                    "first_line": "[site3]",
+                    "gid": 969,
+                    "header": {
+                      "first_line": "[site3]",
+                      "present": false
+                    },
+                    "inode": 87466,
+                    "mode": "0644",
+                    "sha256": "327a95696ea456be7d1fd4961fce1d3efbaa6f3f9f4b62341fbe83d3f8d1c3dd",
+                    "uid": 0
+                  }
+                },
+                "unit": {
+                  "exists": false,
+                  "first_line": null,
+                  "header": null,
+                  "inode": null,
+                  "sha256": null
+                }
+              },
+              "set10-rn.test": {
+                "pools": {
+                  "/etc/php/php-fpm.d/site5.conf": {
+                    "first_line": "[site5]",
+                    "gid": 969,
+                    "header": {
+                      "first_line": "[site5]",
+                      "present": false
+                    },
+                    "inode": 93756,
+                    "mode": "0644",
+                    "sha256": "b501ecf25ba499ccf99b50073841d7ba6514fb02aa07025f32c8313358901523",
+                    "uid": 0
+                  }
+                },
+                "unit": {
+                  "exists": true,
+                  "first_line": "# Managed by CelikPanel — do not edit by hand.",
+                  "header": {
+                    "first_line": "# Managed by CelikPanel — do not edit by hand.",
+                    "present": false
+                  },
+                  "inode": 93763,
+                  "sha256": "51354c8bbbdee2f62e0e716487bc98eeb0286fae05d6ff66d5eeec507bbbba70"
+                }
+              },
+              "upd1-owner.test": {
+                "pools": {},
+                "unit": {
+                  "exists": false,
+                  "first_line": null,
+                  "header": null,
+                  "inode": null,
+                  "sha256": null
+                }
+              }
+            },
+            "vhosts": {
+              "set10-r1.test": {
+                "header": {
+                  "first_line": "# Nginx vhost for set10-r1.test",
+                  "present": false
+                },
+                "inode": 94696,
+                "ledger_row": null,
+                "lines": [],
+                "same_bytes_as_before": false,
+                "same_inode_as_before": false,
+                "sha256": "b94e668dbfa9824c0ff8b8db4535e5940e389707b7677b27f45c61bebf2f774c"
+              },
+              "set10-r2.test": {
+                "header": {
+                  "first_line": "# Nginx vhost for set10-r2.test",
+                  "present": false
+                },
+                "inode": 94690,
+                "ledger_row": null,
+                "lines": [],
+                "same_bytes_as_before": true,
+                "same_inode_as_before": false,
+                "sha256": "c5045e14d4bffc8d5539b914393b0dd3734867180cab9b86aecb5a5b1e86964f"
+              },
+              "set10-r3.test": {
+                "header": {
+                  "first_line": "# Nginx vhost for set10-r3.test",
+                  "present": false
+                },
+                "inode": 94693,
+                "ledger_row": null,
+                "lines": [],
+                "same_bytes_as_before": false,
+                "same_inode_as_before": false,
+                "sha256": "e79b0d5a272b75e4ea52463c1527fe0cb07a9038a6890e4e1859f3c17c4f7c79"
+              },
+              "upd1-owner.test": {
+                "header": {
+                  "first_line": "# Nginx vhost for upd1-owner.test",
+                  "present": false
+                },
+                "inode": 94687,
+                "ledger_row": null,
+                "lines": [],
+                "same_bytes_as_before": true,
+                "same_inode_as_before": false,
+                "sha256": "aad048d54b437f902b33bfd27c22de681ac9329772a513334b1ffdd434ec8602"
+              }
+            }
+          }
+        },
+        {
+          "expectation": "pools and the unit are the bytes alpha.82 left (sha256)",
+          "held": true,
+          "measured": {
+            "set10-r1.test": {
+              "pools_same": {
+                "/etc/php/php-fpm.d/site4.conf": true
+              },
+              "unit_same": true
+            },
+            "set10-r2.test": {
+              "pools_same": {
+                "/etc/php/php-fpm.d/site2.conf": true
+              },
+              "unit_same": true
+            },
+            "set10-r3.test": {
+              "pools_same": {
+                "/etc/php/php-fpm.d/site3.conf": true
+              },
+              "unit_same": true
+            },
+            "set10-rn.test": {
+              "pools_same": {
+                "/etc/php/php-fpm.d/site5.conf": true
+              },
+              "unit_same": true
+            },
+            "upd1-owner.test": {
+              "pools_same": {},
+              "unit_same": true
+            }
+          }
+        },
+        {
+          "expectation": "the Panel is usable after the return (the Domains list answers 200)",
+          "held": true,
+          "measured": 200
+        },
+        {
+          "expectation": "the returned alpha.82 rendered the vhosts at its start (inodes recorded)",
+          "held": true,
+          "measured": {
+            "set10-r1.test": {
+              "same_bytes": false,
+              "same_inode": false
+            },
+            "set10-r2.test": {
+              "same_bytes": true,
+              "same_inode": false
+            },
+            "set10-r3.test": {
+              "same_bytes": false,
+              "same_inode": false
+            },
+            "upd1-owner.test": {
+              "same_bytes": true,
+              "same_inode": false
+            }
+          }
+        }
+      ],
+      "verdict": "PASS"
+    }
+  },
+  "checks": [
+    {
+      "detail": {
+        "ledger_last": [
+          41,
+          42,
+          43
+        ],
+        "managed_site_files_table": false,
+        "schema_version": 43
+      },
+      "name": "B-return: the ledger is back at 43 (no managed_site_files table)",
+      "ok": true
+    },
+    {
+      "detail": {
+        "files": {
+          "set10-r1.test": {
+            "pools": {
+              "/etc/php/php-fpm.d/site4.conf": {
+                "first_line": "[site4]",
+                "gid": 969,
+                "header": {
+                  "first_line": "[site4]",
+                  "present": false
+                },
+                "inode": 87515,
+                "mode": "0644",
+                "sha256": "0beb5c937dc32462cb5e65ab999c05d6f73840e659e58c7311b5ed0599bb1c1a",
+                "uid": 0
+              }
+            },
+            "unit": {
+              "exists": false,
+              "first_line": null,
+              "header": null,
+              "inode": null,
+              "sha256": null
+            }
+          },
+          "set10-r2.test": {
+            "pools": {
+              "/etc/php/php-fpm.d/site2.conf": {
+                "first_line": "[site2]",
+                "gid": 969,
+                "header": {
+                  "first_line": "[site2]",
+                  "present": false
+                },
+                "inode": 87435,
+                "mode": "0644",
+                "sha256": "8fa4c5f7e0e9b25e837add8e0fd686eb788a0917e7b1628b7e9bdd87a7772235",
+                "uid": 0
+              }
+            },
+            "unit": {
+              "exists": false,
+              "first_line": null,
+              "header": null,
+              "inode": null,
+              "sha256": null
+            }
+          },
+          "set10-r3.test": {
+            "pools": {
+              "/etc/php/php-fpm.d/site3.conf": {
+                "first_line": "[site3]",
+                "gid": 969,
+                "header": {
+                  "first_line": "[site3]",
+                  "present": false
+                },
+                "inode": 87466,
+                "mode": "0644",
+                "sha256": "327a95696ea456be7d1fd4961fce1d3efbaa6f3f9f4b62341fbe83d3f8d1c3dd",
+                "uid": 0
+              }
+            },
+            "unit": {
+              "exists": false,
+              "first_line": null,
+              "header": null,
+              "inode": null,
+              "sha256": null
+            }
+          },
+          "set10-rn.test": {
+            "pools": {
+              "/etc/php/php-fpm.d/site5.conf": {
+                "first_line": "[site5]",
+                "gid": 969,
+                "header": {
+                  "first_line": "[site5]",
+                  "present": false
+                },
+                "inode": 93756,
+                "mode": "0644",
+                "sha256": "b501ecf25ba499ccf99b50073841d7ba6514fb02aa07025f32c8313358901523",
+                "uid": 0
+              }
+            },
+            "unit": {
+              "exists": true,
+              "first_line": "# Managed by CelikPanel — do not edit by hand.",
+              "header": {
+                "first_line": "# Managed by CelikPanel — do not edit by hand.",
+                "present": false
+              },
+              "inode": 93763,
+              "sha256": "51354c8bbbdee2f62e0e716487bc98eeb0286fae05d6ff66d5eeec507bbbba70"
+            }
+          },
+          "upd1-owner.test": {
+            "pools": {},
+            "unit": {
+              "exists": false,
+              "first_line": null,
+              "header": null,
+              "inode": null,
+              "sha256": null
+            }
+          }
+        },
+        "vhosts": {
+          "set10-r1.test": {
+            "header": {
+              "first_line": "# Nginx vhost for set10-r1.test",
+              "present": false
+            },
+            "inode": 94696,
+            "ledger_row": null,
+            "lines": [],
+            "same_bytes_as_before": false,
+            "same_inode_as_before": false,
+            "sha256": "b94e668dbfa9824c0ff8b8db4535e5940e389707b7677b27f45c61bebf2f774c"
+          },
+          "set10-r2.test": {
+            "header": {
+              "first_line": "# Nginx vhost for set10-r2.test",
+              "present": false
+            },
+            "inode": 94690,
+            "ledger_row": null,
+            "lines": [],
+            "same_bytes_as_before": true,
+            "same_inode_as_before": false,
+            "sha256": "c5045e14d4bffc8d5539b914393b0dd3734867180cab9b86aecb5a5b1e86964f"
+          },
+          "set10-r3.test": {
+            "header": {
+              "first_line": "# Nginx vhost for set10-r3.test",
+              "present": false
+            },
+            "inode": 94693,
+            "ledger_row": null,
+            "lines": [],
+            "same_bytes_as_before": false,
+            "same_inode_as_before": false,
+            "sha256": "e79b0d5a272b75e4ea52463c1527fe0cb07a9038a6890e4e1859f3c17c4f7c79"
+          },
+          "upd1-owner.test": {
+            "header": {
+              "first_line": "# Nginx vhost for upd1-owner.test",
+              "present": false
+            },
+            "inode": 94687,
+            "ledger_row": null,
+            "lines": [],
+            "same_bytes_as_before": true,
+            "same_inode_as_before": false,
+            "sha256": "aad048d54b437f902b33bfd27c22de681ac9329772a513334b1ffdd434ec8602"
+          }
+        }
+      },
+      "name": "B-return: no vhost, pool or unit carries a render header",
+      "ok": true
+    },
+    {
+      "detail": {
+        "set10-r1.test": {
+          "pools_same": {
+            "/etc/php/php-fpm.d/site4.conf": true
+          },
+          "unit_same": true
+        },
+        "set10-r2.test": {
+          "pools_same": {
+            "/etc/php/php-fpm.d/site2.conf": true
+          },
+          "unit_same": true
+        },
+        "set10-r3.test": {
+          "pools_same": {
+            "/etc/php/php-fpm.d/site3.conf": true
+          },
+          "unit_same": true
+        },
+        "set10-rn.test": {
+          "pools_same": {
+            "/etc/php/php-fpm.d/site5.conf": true
+          },
+          "unit_same": true
+        },
+        "upd1-owner.test": {
+          "pools_same": {},
+          "unit_same": true
+        }
+      },
+      "name": "B-return: pools and the unit are the bytes alpha.82 left (sha256)",
+      "ok": true
+    },
+    {
+      "detail": 200,
+      "name": "B-return: the Panel is usable after the return (the Domains list answers 200)",
+      "ok": true
+    },
+    {
+      "detail": {
+        "set10-r1.test": {
+          "same_bytes": false,
+          "same_inode": false
+        },
+        "set10-r2.test": {
+          "same_bytes": true,
+          "same_inode": false
+        },
+        "set10-r3.test": {
+          "same_bytes": false,
+          "same_inode": false
+        },
+        "upd1-owner.test": {
+          "same_bytes": true,
+          "same_inode": false
+        }
+      },
+      "name": "B-return: the returned alpha.82 rendered the vhosts at its start (inodes recorded)",
+      "ok": true
+    }
+  ],
+  "finished_at": "2026-10-11T07:19:00Z",
+  "native_evidence": false,
+  "natives": [
+    {
+      "file": "native/006-after-the-update-read.json",
+      "label": "after-the-update-read",
+      "mode": "read-site10",
+      "owner_action": false
+    },
+    {
+      "file": "native/007-after-the-update-files.json",
+      "label": "after-the-update-files",
+      "mode": "read-files10",
+      "owner_action": false
+    },
+    {
+      "file": "native/008-after-the-update-journal.json",
+      "label": "after-the-update-journal",
+      "mode": "read-window",
+      "owner_action": false
+    }
+  ],
+  "node": "arch",
+  "notes": [
+    {
+      "detail": [],
+      "note": "B-return: PASS"
+    }
+  ],
+  "other_files": {
+    "set10-r1.test": {
+      "pools": {
+        "/etc/php/php-fpm.d/site4.conf": {
+          "first_line": "[site4]",
+          "gid": 969,
+          "header": {
+            "first_line": "[site4]",
+            "present": false
+          },
+          "inode": 87515,
+          "mode": "0644",
+          "sha256": "0beb5c937dc32462cb5e65ab999c05d6f73840e659e58c7311b5ed0599bb1c1a",
+          "uid": 0
+        }
+      },
+      "unit": {
+        "exists": false,
+        "first_line": null,
+        "header": null,
+        "inode": null,
+        "sha256": null
+      }
+    },
+    "set10-r2.test": {
+      "pools": {
+        "/etc/php/php-fpm.d/site2.conf": {
+          "first_line": "[site2]",
+          "gid": 969,
+          "header": {
+            "first_line": "[site2]",
+            "present": false
+          },
+          "inode": 87435,
+          "mode": "0644",
+          "sha256": "8fa4c5f7e0e9b25e837add8e0fd686eb788a0917e7b1628b7e9bdd87a7772235",
+          "uid": 0
+        }
+      },
+      "unit": {
+        "exists": false,
+        "first_line": null,
+        "header": null,
+        "inode": null,
+        "sha256": null
+      }
+    },
+    "set10-r3.test": {
+      "pools": {
+        "/etc/php/php-fpm.d/site3.conf": {
+          "first_line": "[site3]",
+          "gid": 969,
+          "header": {
+            "first_line": "[site3]",
+            "present": false
+          },
+          "inode": 87466,
+          "mode": "0644",
+          "sha256": "327a95696ea456be7d1fd4961fce1d3efbaa6f3f9f4b62341fbe83d3f8d1c3dd",
+          "uid": 0
+        }
+      },
+      "unit": {
+        "exists": false,
+        "first_line": null,
+        "header": null,
+        "inode": null,
+        "sha256": null
+      }
+    },
+    "set10-rn.test": {
+      "pools": {
+        "/etc/php/php-fpm.d/site5.conf": {
+          "first_line": "[site5]",
+          "gid": 969,
+          "header": {
+            "first_line": "[site5]",
+            "present": false
+          },
+          "inode": 93756,
+          "mode": "0644",
+          "sha256": "b501ecf25ba499ccf99b50073841d7ba6514fb02aa07025f32c8313358901523",
+          "uid": 0
+        }
+      },
+      "unit": {
+        "exists": true,
+        "first_line": "# Managed by CelikPanel — do not edit by hand.",
+        "header": {
+          "first_line": "# Managed by CelikPanel — do not edit by hand.",
+          "present": false
+        },
+        "inode": 93763,
+        "sha256": "51354c8bbbdee2f62e0e716487bc98eeb0286fae05d6ff66d5eeec507bbbba70"
+      }
+    },
+    "upd1-owner.test": {
+      "pools": {},
+      "unit": {
+        "exists": false,
+        "first_line": null,
+        "header": null,
+        "inode": null,
+        "sha256": null
+      }
+    }
+  },
+  "owner_actions": [],
+  "section": "set10-site-files-after-the-update",
+  "session": {
+    "status": 200
+  },
+  "start_lines": [
+    "2026-10-11T07:18:02.224158+00:00 dns-arch panel[16989]: 2026/10/11 07:18:02 certificate startup reconcile: restored 5 hosted vhosts with one nginx validation and reload",
+    "2026-10-11T07:18:44.400007+00:00 dns-arch panel[19856]: 2026/10/11 07:18:44 certificate startup reconcile: restored 5 hosted vhosts with one nginx validation and reload"
+  ],
+  "started_at": "2026-10-11T07:18:59Z",
+  "substeps": {
+    "B-return": "passed"
+  },
+  "title": "the site files, the ledger, the start lines, the Domains list and the three new routes without a request identity",
+  "verdict": "passed",
+  "vhosts": {
+    "set10-r1.test": {
+      "header": {
+        "first_line": "# Nginx vhost for set10-r1.test",
+        "present": false
+      },
+      "inode": 94696,
+      "ledger_row": null,
+      "lines": [],
+      "same_bytes_as_before": false,
+      "same_inode_as_before": false,
+      "sha256": "b94e668dbfa9824c0ff8b8db4535e5940e389707b7677b27f45c61bebf2f774c"
+    },
+    "set10-r2.test": {
+      "header": {
+        "first_line": "# Nginx vhost for set10-r2.test",
+        "present": false
+      },
+      "inode": 94690,
+      "ledger_row": null,
+      "lines": [],
+      "same_bytes_as_before": true,
+      "same_inode_as_before": false,
+      "sha256": "c5045e14d4bffc8d5539b914393b0dd3734867180cab9b86aecb5a5b1e86964f"
+    },
+    "set10-r3.test": {
+      "header": {
+        "first_line": "# Nginx vhost for set10-r3.test",
+        "present": false
+      },
+      "inode": 94693,
+      "ledger_row": null,
+      "lines": [],
+      "same_bytes_as_before": false,
+      "same_inode_as_before": false,
+      "sha256": "e79b0d5a272b75e4ea52463c1527fe0cb07a9038a6890e4e1859f3c17c4f7c79"
+    },
+    "upd1-owner.test": {
+      "header": {
+        "first_line": "# Nginx vhost for upd1-owner.test",
+        "present": false
+      },
+      "inode": 94687,
+      "ledger_row": null,
+      "lines": [],
+      "same_bytes_as_before": true,
+      "same_inode_as_before": false,
+      "sha256": "aad048d54b437f902b33bfd27c22de681ac9329772a513334b1ffdd434ec8602"
+    }
+  }
+}

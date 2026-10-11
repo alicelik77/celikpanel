@@ -1,0 +1,9 @@
+# commits on fix/alpha83-known-state-gates after ead69cdcc, read at staging (none entered a build or a cell of set11; every build is from ead69cdcc)
+700280b051640ce9075405f3feee12d9b724d969 2026-10-11T05:09:52+03:00 A file the Agent did not read outranks a managed one; a failed write says whether the previous file is back
+13e8370a71623392b1f0aae04cc5521a57b2c54f 2026-10-11T04:39:21+03:00 Second-step entries narrowed to the code; two gaps named
+224bbff0393ef59dac63859841cbe54d4b3b678c 2026-10-11T04:31:54+03:00 D-031 second step: the PHP-FPM pool and the application unit are kept and named like the vhost
+5f954699c3ffacd402d682278f77e20c6d4a0098 2026-10-11T03:24:55+03:00 A file whose protection was removed can be written again; one precedence for the row, the badge and the page
+
+# files of web/tools/browser-inspect/cold-load-set11.mjs: working tree against HEAD (empty = the committed file is the one the browser ran last)
+# sha256 of the working-tree file
+6c132f70c59a9415efc4956fe959dc899d5a2b3e45db539da1c6f72b2ad0f7d3

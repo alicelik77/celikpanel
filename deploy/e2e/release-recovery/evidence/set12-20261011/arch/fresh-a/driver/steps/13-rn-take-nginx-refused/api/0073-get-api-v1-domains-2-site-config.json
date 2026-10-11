@@ -1,0 +1,143 @@
+{
+  "outcome": "response",
+  "panel": "owner",
+  "purpose": "rn page after the refusal: GET site-config",
+  "request": {
+    "body": null,
+    "headers": [
+      [
+        "Accept",
+        "application/json"
+      ],
+      [
+        "Host",
+        "127.0.0.1:18901"
+      ],
+      [
+        "Cookie",
+        "[REDACTED]"
+      ]
+    ],
+    "method": "GET",
+    "path": "/api/v1/domains/2/site-config"
+  },
+  "response": {
+    "elapsed_seconds": 0.007,
+    "headers": [
+      [
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+      ],
+      [
+        "Content-Type",
+        "application/json"
+      ],
+      [
+        "Referrer-Policy",
+        "no-referrer"
+      ],
+      [
+        "Strict-Transport-Security",
+        "max-age=31536000"
+      ],
+      [
+        "X-Content-Type-Options",
+        "nosniff"
+      ],
+      [
+        "X-Frame-Options",
+        "DENY"
+      ],
+      [
+        "Date",
+        "Sun, 11 Oct 2026 05:17:49 GMT"
+      ],
+      [
+        "Transfer-Encoding",
+        "chunked"
+      ]
+    ],
+    "json": {
+      "actions": [
+        "keep",
+        "take",
+        "merge"
+      ],
+      "challenge_file": "unchanged",
+      "diff": "--- /etc/nginx/sites-available/set12-a.test.conf (on this server)\n+++ CelikPanel's text\n@@ -1,9 +1,47 @@\n-# set10: the server owner's own vhost for set12-a.test, written by hand\n+# Nginx vhost for set12-a.test\n+# Written by CelikPanel. Put your own additions in /etc/nginx/celikpanel-sites.d/set12-a.test/*.conf;\n+# CelikPanel never writes there. If you change this file, CelikPanel keeps\n+# your file and asks you before it replaces it. Keep the lines that include\n+# /etc/nginx/celikpanel-managed.d/set12-a.test: that directory is CelikPanel's (certificate\n+# validation) and CelikPanel writes there without touching this file.\n+# CelikPanel yazdı. Kendi eklemeleriniz /etc/nginx/celikpanel-sites.d/set12-a.test/*.conf içine;\n+# CelikPanel oraya hiç yazmaz. Bu dosyayı değiştirirseniz CelikPanel\n+# dosyanızı korur ve değiştirmeden önce size sorar. /etc/nginx/celikpanel-managed.d/set12-a.test\n+# satırlarını koruyun: o dizin CelikPanel'indir (sertifika doğrulaması).\n+# Site ID: 2 · Project type: php\n server {\n     listen 80;\n     listen [::]:80;\n-    server_name set12-a.test;\n+    server_name set12-a.test www.set12-a.test;\n+\n+    access_log /var/log/nginx/set12-a.test-access.log;\n+    error_log /var/log/nginx/set12-a.test-error.log;\n+\n+    # CelikPanel's own parts of this site (certificate validation) / CelikPanel'in parçaları\n+    include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;\n+\n+    root /var/www/celikpanel/subscriptions/2/sites/2/public_html;\n+    index index.php index.html index.htm;\n+\n     location / {\n-        return 200 \"owner-replaced\\n\";\n+\n+        try_files $uri $uri/ /index.php?$query_string;\n     }\n+    location ~ \\.php$ {\n+        fastcgi_split_path_info ^(.+?\\.php)(/.*)$;\n+        try_files $fastcgi_script_name =404;\n+        set $path_info $fastcgi_path_info;\n+        fastcgi_param PATH_INFO $path_info;\n+        fastcgi_index index.php;\n+        include fastcgi.conf;\n+        fastcgi_pass unix:/run/php-fpm/php8.5-fpm-site2.sock;\n+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;\n+        include fastcgi_params;\n+    }\n+    location ~ /\\.(?!well-known).* {\n+        deny all;\n+    }\n+\n+    # Your additions for this site (server context) / Bu site için eklemeleriniz\n+    include /etc/nginx/celikpanel-sites.d/set12-a.test/*.conf;\n }\n",
+      "domain": "set12-a.test",
+      "domain_id": 2,
+      "enabled": "link",
+      "file_sha256": "b08051872068f847b5b4ed84a29aaa6711f402f6829c328f2de3772a4f48d3da",
+      "files": [
+        {
+          "actions": [
+            "keep",
+            "take",
+            "merge"
+          ],
+          "challenge_file": "unchanged",
+          "diff": "--- /etc/nginx/sites-available/set12-a.test.conf (on this server)\n+++ CelikPanel's text\n@@ -1,9 +1,47 @@\n-# set10: the server owner's own vhost for set12-a.test, written by hand\n+# Nginx vhost for set12-a.test\n+# Written by CelikPanel. Put your own additions in /etc/nginx/celikpanel-sites.d/set12-a.test/*.conf;\n+# CelikPanel never writes there. If you change this file, CelikPanel keeps\n+# your file and asks you before it replaces it. Keep the lines that include\n+# /etc/nginx/celikpanel-managed.d/set12-a.test: that directory is CelikPanel's (certificate\n+# validation) and CelikPanel writes there without touching this file.\n+# CelikPanel yazdı. Kendi eklemeleriniz /etc/nginx/celikpanel-sites.d/set12-a.test/*.conf içine;\n+# CelikPanel oraya hiç yazmaz. Bu dosyayı değiştirirseniz CelikPanel\n+# dosyanızı korur ve değiştirmeden önce size sorar. /etc/nginx/celikpanel-managed.d/set12-a.test\n+# satırlarını koruyun: o dizin CelikPanel'indir (sertifika doğrulaması).\n+# Site ID: 2 · Project type: php\n server {\n     listen 80;\n     listen [::]:80;\n-    server_name set12-a.test;\n+    server_name set12-a.test www.set12-a.test;\n+\n+    access_log /var/log/nginx/set12-a.test-access.log;\n+    error_log /var/log/nginx/set12-a.test-error.log;\n+\n+    # CelikPanel's own parts of this site (certificate validation) / CelikPanel'in parçaları\n+    include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;\n+\n+    root /var/www/celikpanel/subscriptions/2/sites/2/public_html;\n+    index index.php index.html index.htm;\n+\n     location / {\n-        return 200 \"owner-replaced\\n\";\n+\n+        try_files $uri $uri/ /index.php?$query_string;\n     }\n+    location ~ \\.php$ {\n+        fastcgi_split_path_info ^(.+?\\.php)(/.*)$;\n+        try_files $fastcgi_script_name =404;\n+        set $path_info $fastcgi_path_info;\n+        fastcgi_param PATH_INFO $path_info;\n+        fastcgi_index index.php;\n+        include fastcgi.conf;\n+        fastcgi_pass unix:/run/php-fpm/php8.5-fpm-site2.sock;\n+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;\n+        include fastcgi_params;\n+    }\n+    location ~ /\\.(?!well-known).* {\n+        deny all;\n+    }\n+\n+    # Your additions for this site (server context) / Bu site için eklemeleriniz\n+    include /etc/nginx/celikpanel-sites.d/set12-a.test/*.conf;\n }\n",
+          "domain": "set12-a.test",
+          "domain_id": 2,
+          "enabled": "link",
+          "file_sha256": "b08051872068f847b5b4ed84a29aaa6711f402f6829c328f2de3772a4f48d3da",
+          "include_dir": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+          "kind": "nginx_vhost",
+          "ledger": {
+            "backup_path": "/etc/nginx/sites-available/set12-a.test.conf.celikpanel-backup-20261011T051744Z",
+            "observed_at": "2026-10-11T05:17:44Z",
+            "written_at": "2026-10-11T05:16:03Z",
+            "written_release": "v0.1.0-alpha.81 9e223f175d96"
+          },
+          "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-a.test",
+          "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;",
+          "path": "/etc/nginx/sites-available/set12-a.test.conf",
+          "protection": "none",
+          "render_sha256": "872fe38bc22fdd3ed84e57310827eff28352e5af5f8f633178ca71aacb16b109",
+          "state": "foreign"
+        },
+        {
+          "actions": [],
+          "decision": {
+            "current": false,
+            "decided_at": "2026-10-11T05:16:16Z",
+            "kind": "take_celikpanel"
+          },
+          "domain": "set12-a.test",
+          "domain_id": 2,
+          "file_sha256": "6f8b1cbea6de1c30f89378b11fff05feef7ecb86fc93c43a1a57906ab5f78a67",
+          "kind": "php_pool",
+          "ledger": {
+            "backup_path": "/etc/php/php-fpm.d/site2.conf.celikpanel-backup-20261011T051616Z",
+            "observed_at": "2026-10-11T05:17:42Z",
+            "written_at": "2026-10-11T05:16:16Z",
+            "written_release": "v0.1.0-alpha.81 9e223f175d96"
+          },
+          "path": "/etc/php/php-fpm.d/site2.conf",
+          "protection": "none",
+          "render_sha256": "8f3644c3c81f7322adb9d4eaf96182b134d479954bdddeebf02aea1282bffb84",
+          "state": "managed_unchanged"
+        }
+      ],
+      "include_dir": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+      "kind": "nginx_vhost",
+      "ledger": {
+        "backup_path": "/etc/nginx/sites-available/set12-a.test.conf.celikpanel-backup-20261011T051744Z",
+        "observed_at": "2026-10-11T05:17:44Z",
+        "written_at": "2026-10-11T05:16:03Z",
+        "written_release": "v0.1.0-alpha.81 9e223f175d96"
+      },
+      "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-a.test",
+      "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;",
+      "overall_kind": "nginx_vhost",
+      "overall_state": "foreign",
+      "path": "/etc/nginx/sites-available/set12-a.test.conf",
+      "protection": "none",
+      "render_sha256": "872fe38bc22fdd3ed84e57310827eff28352e5af5f8f633178ca71aacb16b109",
+      "state": "foreign"
+    },
+    "status": 200,
+    "text": null
+  }
+}

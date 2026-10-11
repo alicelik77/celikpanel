@@ -1,0 +1,22 @@
+{
+  "checks": {
+    "checks": 4,
+    "error": null,
+    "failed": [],
+    "finished_at": "2026-10-11T01:36:59Z",
+    "notes": [
+      "B3: PASS"
+    ],
+    "started_at": "2026-10-11T01:36:55Z",
+    "substeps": {
+      "B3": "passed"
+    },
+    "title": "a General save of A after the unlock",
+    "unknown": [],
+    "verdict": "passed"
+  },
+  "finished_at": "2026-10-11T01:36:59Z",
+  "name": "B3-save-writes",
+  "started_at": "2026-10-11T01:36:55Z",
+  "verdict": "passed"
+}

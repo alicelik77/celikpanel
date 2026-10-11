@@ -1,0 +1,20 @@
+; celikpanel-render v2 sha256=b7079d76755319f03f7f4343b1be6bc8dade25b1443c596b47517531471cef6a
+; The PHP-FPM pool of site5, written by CelikPanel. A line you add or change here is kept:
+; CelikPanel then shows the difference and asks before writing this file again.
+; Buraya eklediğiniz ya da değiştirdiğiniz satır korunur; CelikPanel yeniden yazmadan önce sorar.
+[site5]
+user = set12_c_test
+group = set12_c_test
+listen = /var/run/php/php8.3-fpm-site5.sock
+listen.owner = www-data
+listen.group = www-data
+listen.mode = 0660
+pm = dynamic
+pm.max_children = 5
+pm.start_servers = 2
+pm.min_spare_servers = 1
+pm.max_spare_servers = 3
+pm.max_requests = 500
+chdir = /
+; set12: added by the server owner by hand (a comment and a directive of their own)
+php_admin_value[memory_limit] = 256M

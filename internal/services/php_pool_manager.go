@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/alicelik/celikpanel/internal/core"
+	"github.com/alicelik/celikpanel/internal/transport"
 )
 
 var phpEtcDir = "/etc/php"
@@ -141,12 +142,19 @@ func clamp(v, min, max, def int) int {
 	return v
 }
 
+// UpdatePoolConfig saves a pool's process-manager values (the PHP page's
+// pool form, addressed by pool name). Since D-031's second step it is the
+// site pool save: the file is classified first and a file that is not
+// CelikPanel's unchanged text is kept (SiteFileHeldError), never rewritten.
 func (pm *PHPPoolManager) UpdatePoolConfig(phpVersion string, config *core.PHPPoolConfig) error {
 	if err := ValidatePHPVersion(phpVersion); err != nil {
 		return err
 	}
 	if config == nil || !validPoolName.MatchString(config.Name) {
 		return fmt.Errorf("invalid pool name")
+	}
+	if config.PM != "" && !validPMModes[config.PM] {
+		return fmt.Errorf("invalid process-manager mode %q", config.PM)
 	}
 	managedConfigMutationMu.Lock()
 	defer managedConfigMutationMu.Unlock()
@@ -155,24 +163,16 @@ func (pm *PHPPoolManager) UpdatePoolConfig(phpVersion string, config *core.PHPPo
 	if err != nil {
 		return fmt.Errorf("pool %s does not exist for PHP %s: %w", config.Name, phpVersion, err)
 	}
-	pmMode := config.PM
-	if pmMode == "" {
-		pmMode = current.PM
-	}
-	if !validPMModes[pmMode] {
-		return fmt.Errorf("invalid process-manager mode %q", config.PM)
-	}
-	maxChildren := clamp(config.PMMaxChildren, 1, 200, 5)
-	startServers := clamp(config.PMStartServers, 1, maxChildren, 2)
-	minSpare := clamp(config.PMMinSpareServers, 1, maxChildren, 1)
-	maxSpare := clamp(config.PMMaxSpareServers, minSpare, maxChildren, 3)
-	maxRequests := clamp(config.PMMaxRequests, 1, 100000, 500)
-	content := renderPool(config.Name, current.User, current.Group, current.Listen,
-		current.ListenOwner, current.ListenGroup, current.ListenMode,
-		pmMode, maxChildren, startServers, minSpare, maxSpare, maxRequests)
-	return applyManagedConfigLocked(poolFilePath(phpVersion, config.Name), []byte(content), 0o644,
-		func() error { return phpFPMConfigTest(phpVersion) },
-		func() error { return reloadPHPFPM(phpVersion) })
+	siteID, _ := strconv.Atoi(strings.TrimPrefix(config.Name, "site"))
+	return siteFileHeld(applySitePoolLocked(transport.SitePoolRequest{
+		SiteID: siteID, Username: current.User, PHPVersion: phpVersion,
+		Operation: transport.SitePoolOperationSave,
+		Values: &transport.SitePoolValues{
+			PM: config.PM, PMMaxChildren: config.PMMaxChildren, PMStartServers: config.PMStartServers,
+			PMMinSpareServers: config.PMMinSpareServers, PMMaxSpareServers: config.PMMaxSpareServers,
+			PMMaxRequests: config.PMMaxRequests,
+		},
+	}))
 }
 
 func renderPool(name, user, group, listen, listenOwner, listenGroup, listenMode, pmMode string,
@@ -195,6 +195,9 @@ chdir = /
 		pmMode, maxChildren, startServers, minSpare, maxSpare, maxRequests)
 }
 
+// DeletePoolByName removes a pool (the site is deleted). A file that is not
+// CelikPanel's unchanged text is copied beside it first (a dated copy no
+// include pattern reads); CelikPanel's pending text is removed with it.
 func (pm *PHPPoolManager) DeletePoolByName(phpVersion, poolName string) error {
 	if err := ValidatePHPVersion(phpVersion); err != nil {
 		return err
@@ -202,11 +205,26 @@ func (pm *PHPPoolManager) DeletePoolByName(phpVersion, poolName string) error {
 	if !validPoolName.MatchString(poolName) {
 		return fmt.Errorf("invalid pool name %q", poolName)
 	}
-	err := deleteManagedConfig(poolFilePath(phpVersion, poolName), 0o644,
+	managedConfigMutationMu.Lock()
+	defer managedConfigMutationMu.Unlock()
+	path := poolFilePath(phpVersion, poolName)
+	var legacy func() ([]LegacyVhostRender, error)
+	if current, err := pm.GetPoolConfig(phpVersion, poolName); err == nil {
+		if content, readErr := readManagedConfig(path); readErr == nil {
+			legacy = legacyPoolRenders(phpVersion, poolName, current.User, content)
+		}
+	}
+	if _, err := BackupUnlessManaged(path, ManagedHeaderPrefixINI, legacy); err != nil {
+		return fmt.Errorf("keep a copy of the edited pool before removing it: %w", err)
+	}
+	err := deleteManagedConfigLocked(path, 0o644,
 		func() error { return phpFPMConfigTest(phpVersion) },
 		func() error { return reloadPHPFPM(phpVersion) })
 	if errors.Is(err, os.ErrNotExist) {
-		return nil
+		err = nil
+	}
+	if err == nil {
+		removeStalePending(path)
 	}
 	return err
 }
@@ -233,6 +251,10 @@ func (pm *PHPPoolManager) ListPoolNames(phpVersion string) ([]string, error) {
 	return names, nil
 }
 
+// MigratePool moves a pool to another PHP version (addressed by pool name).
+// Since D-031's second step it is the site pool switch: a source file that is
+// not CelikPanel's unchanged text is kept (SiteFileHeldError) and nothing is
+// written.
 func (pm *PHPPoolManager) MigratePool(oldVersion, newVersion, poolName string) error {
 	if err := ValidatePHPVersion(oldVersion); err != nil {
 		return err
@@ -253,39 +275,9 @@ func (pm *PHPPoolManager) MigratePool(oldVersion, newVersion, poolName string) e
 	if err != nil {
 		return fmt.Errorf("get pool config from PHP %s: %w", oldVersion, err)
 	}
-	newPath := poolFilePath(newVersion, poolName)
-	pmMode := oldConfig.PM
-	if !validPMModes[pmMode] {
-		return fmt.Errorf("invalid source process-manager mode %q", pmMode)
-	}
-	maxChildren := clamp(oldConfig.PMMaxChildren, 1, 200, 5)
-	startServers := clamp(oldConfig.PMStartServers, 1, maxChildren, 2)
-	minSpare := clamp(oldConfig.PMMinSpareServers, 1, maxChildren, 1)
-	maxSpare := clamp(oldConfig.PMMaxSpareServers, minSpare, maxChildren, 3)
-	maxRequests := clamp(oldConfig.PMMaxRequests, 1, 100000, 500)
-	content := renderPool(poolName, oldConfig.User, oldConfig.Group,
-		PHPFPMSocketPath(newVersion, poolName),
-		oldConfig.ListenOwner, oldConfig.ListenGroup, oldConfig.ListenMode,
-		pmMode, maxChildren, startServers, minSpare, maxSpare, maxRequests)
-	if err := createManagedConfigLocked(newPath, []byte(content), 0o644,
-		func() error { return phpFPMConfigTest(newVersion) },
-		func() error { return reloadPHPFPM(newVersion) }); err != nil {
-		return fmt.Errorf("activate target PHP %s pool: %w", newVersion, err)
-	}
-	oldPath := poolFilePath(oldVersion, poolName)
-	if err := deleteManagedConfigLocked(oldPath, 0o644,
-		func() error { return phpFPMConfigTest(oldVersion) },
-		func() error { return reloadPHPFPM(oldVersion) }); err != nil {
-		cleanupErr := deleteManagedConfigLocked(newPath, 0o644,
-			func() error { return phpFPMConfigTest(newVersion) },
-			func() error { return reloadPHPFPM(newVersion) })
-		return errors.Join(fmt.Errorf("remove source PHP %s pool: %w", oldVersion, err),
-			func() error {
-				if cleanupErr != nil {
-					return fmt.Errorf("rollback target pool: %w", cleanupErr)
-				}
-				return nil
-			}())
-	}
-	return nil
+	siteID, _ := strconv.Atoi(strings.TrimPrefix(poolName, "site"))
+	return siteFileHeld(applySitePoolLocked(transport.SitePoolRequest{
+		SiteID: siteID, Username: oldConfig.User, PHPVersion: oldVersion,
+		NewPHPVersion: newVersion, Operation: transport.SitePoolOperationSwitch,
+	}))
 }

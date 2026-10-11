@@ -1,0 +1,115 @@
+{
+  "action": "lab-restore",
+  "after": {
+    "enabled": {
+      "ctime_ns": 1791682572995874985,
+      "exists": true,
+      "gid": 969,
+      "group": "celikpanel",
+      "inode": 91972,
+      "kind": "symlink",
+      "link_target": "/etc/nginx/sites-available/set11-a.test.conf",
+      "mode": "0777",
+      "mtime_ns": 1791682572995874985,
+      "nlink": 1,
+      "owner": "root",
+      "path": "/etc/nginx/sites-enabled/set11-a.test.conf",
+      "resolves_to": "/etc/nginx/sites-available/set11-a.test.conf",
+      "size": 44,
+      "uid": 0
+    },
+    "vhost": {
+      "ctime_ns": 1791682593295551396,
+      "exists": true,
+      "gid": 969,
+      "group": "celikpanel",
+      "immutable": false,
+      "inode": 92056,
+      "kind": "file",
+      "lsattr": "----------------------",
+      "mode": "0644",
+      "mtime_ns": 1791682593283590141,
+      "nlink": 1,
+      "owner": "root",
+      "path": "/etc/nginx/sites-available/set11-a.test.conf",
+      "sha256": "6825409ead119263472ce1aa452aedc13825b5a99da695bfc4e85f90a1faa34b",
+      "size": 2130,
+      "uid": 0
+    }
+  },
+  "at": "2026-10-11T01:36:33Z",
+  "before": {
+    "enabled": {
+      "ctime_ns": 1791682572995874985,
+      "exists": true,
+      "gid": 969,
+      "group": "celikpanel",
+      "inode": 91972,
+      "kind": "symlink",
+      "link_target": "/etc/nginx/sites-available/set11-a.test.conf",
+      "mode": "0777",
+      "mtime_ns": 1791682572995874985,
+      "nlink": 1,
+      "owner": "root",
+      "path": "/etc/nginx/sites-enabled/set11-a.test.conf",
+      "resolves_to": "/etc/nginx/sites-available/set11-a.test.conf",
+      "size": 44,
+      "uid": 0
+    },
+    "vhost": {
+      "ctime_ns": 1791682586111328147,
+      "exists": true,
+      "gid": 969,
+      "group": "celikpanel",
+      "immutable": false,
+      "inode": 92037,
+      "kind": "file",
+      "lsattr": "----------------------",
+      "mode": "0644",
+      "mtime_ns": 1791682586111328147,
+      "nlink": 1,
+      "owner": "root",
+      "path": "/etc/nginx/sites-available/set11-a.test.conf",
+      "sha256": "6a98d353668c86786b2a48c78178e9fb1215788c2a2ceb4441f66e6781584ee9",
+      "size": 2176,
+      "uid": 0
+    }
+  },
+  "chattr": {
+    "argv": [
+      "chattr",
+      "-i",
+      "/etc/nginx/sites-available/set11-a.test.conf"
+    ],
+    "at": "2026-10-11T01:36:33Z",
+    "returncode": 0,
+    "seconds": 0.001,
+    "status": "ok",
+    "stderr": "",
+    "stdout": ""
+  },
+  "domain": "set11-a.test",
+  "mode": "lab-restore",
+  "nginx_test": {
+    "at": "2026-10-11T01:36:33Z",
+    "output": "2026/10/11 01:36:33 [warn] 3355#3355: could not build optimal types_hash, you should increase either types_hash_max_size: 1024 or types_hash_bucket_size: 64; ignoring types_hash_bucket_size\nnginx: the configuration file /etc/nginx/nginx.conf syntax is ok\nnginx: configuration file /etc/nginx/nginx.conf test is successful\n",
+    "returncode": 0,
+    "status": "ok"
+  },
+  "owner_action": false,
+  "reload": {
+    "argv": [
+      "systemctl",
+      "reload",
+      "nginx.service"
+    ],
+    "at": "2026-10-11T01:36:33Z",
+    "returncode": 0,
+    "seconds": 0.044,
+    "status": "ok",
+    "stderr": "",
+    "stdout": ""
+  },
+  "schema": "celikpanel/set10-native/v1",
+  "sha256_matches": true
+}

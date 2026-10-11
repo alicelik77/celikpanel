@@ -1,0 +1,70 @@
+{
+  "action": "lab-pool-restore",
+  "after": {
+    "ctime_ns": 1791713767637640044,
+    "exists": true,
+    "gid": 988,
+    "group": "celikpanel",
+    "immutable": false,
+    "inode": 531958,
+    "kind": "file",
+    "lsattr": "--------------e-------",
+    "mode": "0644",
+    "mtime_ns": 1791713767628639682,
+    "nlink": 1,
+    "owner": "root",
+    "path": "/etc/php/8.3/fpm/pool.d/site2.conf",
+    "sha256": "31b012b8a0f776a72fd459306f4e80ddc41815219edafacde9654d5ed6e6882f",
+    "size": 666,
+    "uid": 0
+  },
+  "at": "2026-10-11T10:16:07Z",
+  "before": {
+    "ctime_ns": 1791713763314466582,
+    "exists": true,
+    "gid": 988,
+    "group": "celikpanel",
+    "immutable": false,
+    "inode": 533590,
+    "kind": "file",
+    "lsattr": "--------------e-------",
+    "mode": "0644",
+    "mtime_ns": 1791713763305466221,
+    "nlink": 1,
+    "owner": "root",
+    "path": "/etc/php/8.3/fpm/pool.d/site2.conf",
+    "sha256": "31b012b8a0f776a72fd459306f4e80ddc41815219edafacde9654d5ed6e6882f",
+    "size": 666,
+    "uid": 0
+  },
+  "mode": "lab-pool-restore",
+  "owner_action": false,
+  "path": "/etc/php/8.3/fpm/pool.d/site2.conf",
+  "php_fpm_test": {
+    "argv": [
+      "php-fpm8.3",
+      "-t"
+    ],
+    "at": "2026-10-11T10:16:07Z",
+    "returncode": 0,
+    "seconds": 0.052,
+    "status": "ok",
+    "stderr": "[11-Oct-2026 10:16:07] NOTICE: configuration file /etc/php/8.3/fpm/php-fpm.conf test is successful\n",
+    "stdout": ""
+  },
+  "reload": {
+    "argv": [
+      "systemctl",
+      "reload",
+      "php8.3-fpm.service"
+    ],
+    "at": "2026-10-11T10:16:07Z",
+    "returncode": 0,
+    "seconds": 0.02,
+    "status": "ok",
+    "stderr": "",
+    "stdout": ""
+  },
+  "schema": "celikpanel/set12-native/v1",
+  "sha256_matches": true
+}

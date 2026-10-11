@@ -1,0 +1,86 @@
+{
+  "at": "2026-10-11T05:18:50Z",
+  "epoch": 1791695930.4760938,
+  "mode": "read-stat",
+  "owner_action": false,
+  "schema": "celikpanel/set11-native/v1",
+  "side": {
+    "backups": [
+      {
+        "ctime_ns": 1791695864697432508,
+        "exists": true,
+        "first_line": "# set10: the server owner's own vhost for set12-a.test, written by hand",
+        "gid": 969,
+        "group": "celikpanel",
+        "header": {
+          "first_line": "# set10: the server owner's own vhost for set12-a.test, written by hand",
+          "present": false
+        },
+        "immutable": false,
+        "inode": 92068,
+        "kind": "file",
+        "lsattr": "----------------------",
+        "mode": "0644",
+        "mtime_ns": 1791695864697432508,
+        "nlink": 1,
+        "owner": "root",
+        "path": "/etc/nginx/sites-available/set12-a.test.conf.celikpanel-backup-20261011T051744Z",
+        "sha256": "b08051872068f847b5b4ed84a29aaa6711f402f6829c328f2de3772a4f48d3da",
+        "size": 210,
+        "uid": 0
+      }
+    ],
+    "pending": {
+      "ctime_ns": 1791695912578618044,
+      "exists": true,
+      "first_line": "# celikpanel-render v2 sha256=872fe38bc22fdd3ed84e57310827eff28352e5af5f8f633178ca71aacb16b109",
+      "gid": 969,
+      "group": "celikpanel",
+      "header": {
+        "body_bytes": 2035,
+        "body_sha256": "872fe38bc22fdd3ed84e57310827eff28352e5af5f8f633178ca71aacb16b109",
+        "declared": "872fe38bc22fdd3ed84e57310827eff28352e5af5f8f633178ca71aacb16b109",
+        "present": true,
+        "valid": true
+      },
+      "immutable": false,
+      "inode": 92154,
+      "kind": "file",
+      "lsattr": "----------------------",
+      "mode": "0644",
+      "mtime_ns": 1791695912572617872,
+      "nlink": 1,
+      "owner": "root",
+      "path": "/etc/nginx/sites-available/set12-a.test.conf.celikpanel-pending",
+      "sha256": "152664e685a190f13064589fbeac11aaa5d2f7f9690f41359f2da85a5a6ee2d2",
+      "size": 2130,
+      "uid": 0
+    }
+  },
+  "vhost": {
+    "ctime_ns": 1791695924400965365,
+    "exists": true,
+    "first_line": "# celikpanel-render v2 sha256=872fe38bc22fdd3ed84e57310827eff28352e5af5f8f633178ca71aacb16b109",
+    "gid": 969,
+    "group": "celikpanel",
+    "header": {
+      "body_bytes": 2140,
+      "body_sha256": "ff2ab77455f004ec45b18dc508f8b1142c19f69a86c5cff7ce47ec0377d1b45b",
+      "declared": "872fe38bc22fdd3ed84e57310827eff28352e5af5f8f633178ca71aacb16b109",
+      "present": true,
+      "valid": false
+    },
+    "immutable": false,
+    "inode": 92198,
+    "kind": "file",
+    "lsattr": "----------------------",
+    "mode": "0644",
+    "mtime_ns": 1791695924400965365,
+    "nlink": 1,
+    "owner": "root",
+    "path": "/etc/nginx/sites-available/set12-a.test.conf",
+    "sha256": "e5b566a52704ab5793a0446d33948786c566d49cfd098d354bdebc5d61bcfa46",
+    "size": 2235,
+    "uid": 0
+  }
+}

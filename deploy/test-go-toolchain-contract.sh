@@ -153,14 +153,14 @@ reject_literal "$CI" 'windows-portability:'
 reject_literal "$CI" 'freebsd-compile:'
 reject_literal "$CI" 'darwin-compile:'
 require_count "$CI" 'go test -race -count=1 -timeout=8m ./cmd/panel' 1
-# Fifteen disjoint, exhaustive shards (R-020). A letter group split from within
+# Seventeen disjoint, exhaustive shards (R-020). A letter group split from within
 # keeps its pattern on the complement shard and -skips the carved-out prefix,
 # so the pair covers exactly what the single shard covered before. The D group
 # is carved twice, because measurement put both of its halves within seconds
 # of the 240 s exit line: TestD minus every TestDNS, then TestDNS minus the
 # engine and zone tests, then those two on their own.
-require_count "$CI" 'pattern:' 15
-require_count "$CI" 'skip:' 15
+require_count "$CI" 'pattern:' 17
+require_count "$CI" 'skip:' 17
 require_literal "$CI" "pattern: '^Test($|[A-B]|[^A-Z])'"
 require_literal "$CI" "pattern: '^TestC'"
 require_literal "$CI" "skip: '^TestControlPlane'"
@@ -176,11 +176,16 @@ require_literal "$CI" "pattern: '^Test[L-M]'"
 require_literal "$CI" "pattern: '^Test[N-Q]'"
 require_literal "$CI" "pattern: '^TestR'"
 require_literal "$CI" "pattern: '^TestS'"
-require_literal "$CI" "skip: '^Test(Service|ServerSetup)'"
+require_literal "$CI" "skip: '^Test(Service|ServerSetup|Site|Startup)'"
+# The S group is carved twice more (2026-10-11): the D-031 site-configuration
+# tests and the startup-readiness tests, which the S shard could not hold within
+# its 8 minute limit once TestSite* joined it.
+require_literal "$CI" "pattern: '^TestSite'"
+require_literal "$CI" "pattern: '^TestStartup'"
 require_literal "$CI" "pattern: '^TestServerSetup'"
 require_literal "$CI" "pattern: '^TestService'"
 require_literal "$CI" "pattern: '^Test[T-Z]'"
-require_count "$CI" "skip: ''" 11
+require_count "$CI" "skip: ''" 13
 require_literal "$CI" "-run '\${{ matrix.pattern }}' -skip '\${{ matrix.skip }}'"
 reject_literal "$CI" "pattern: '^Test[E-G]'"
 reject_literal "$CI" "pattern: '^Test[N-R]'"
@@ -231,8 +236,8 @@ panel_shard_output=$(awk -F "'" '
     END { if (have_pattern) exit 1 }
 ' "$CI") || die "cannot read panel race pattern/skip pairs from ci.yml"
 mapfile -t panel_shard_rows <<< "$panel_shard_output"
-((${#panel_shard_rows[@]} == 15)) ||
-    die "panel race matrix must contain exactly 15 pattern/skip pairs"
+((${#panel_shard_rows[@]} == 17)) ||
+    die "panel race matrix must contain exactly 17 pattern/skip pairs"
 
 panel_shard_membership_count() {
     local test_name=$1 count=0 row pattern skip
@@ -250,7 +255,8 @@ panel_shard_membership_count() {
 for boundary_name in Test TestA TestC TestControlPlane TestD TestDNS \
     TestDNSEngine TestDNSZone TestE TestG TestH TestM TestN TestR TestS \
     TestService TestServerSetup TestServerSetupFuture TestServerFuture \
-    TestT TestZ Test_ Test9 Testa; do
+    TestSite TestSiteConfig TestSiteFuture TestStartup TestStartupFuture \
+    TestSt TestSi TestT TestZ Test_ Test9 Testa; do
     [[ "$(panel_shard_membership_count "$boundary_name")" == 1 ]] ||
         die "panel race shard boundary is not disjoint and exhaustive: $boundary_name"
 done

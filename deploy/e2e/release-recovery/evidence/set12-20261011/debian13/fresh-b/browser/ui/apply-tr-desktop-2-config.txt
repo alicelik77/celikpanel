@@ -1,0 +1,70 @@
+Alan Adları
+set12-a.test
+Aktif
+Siteyi aç
+Tür
+php
+PHP sürümü
+8.4
+SSL
+Kapalı
+Disk kullanımı
+1.2 KB
+Trafik
+1.4 KB/mo
+Genel Bakış
+Barındırma
+DNS
+E-posta
+Veritabanları
+Uygulamalar
+Dosyalar
+Gelişmiş
+Genel
+Barındırma tipi
+Yapılandırma dosyası
+PHP
+SSL/TLS
+Bu sitenin yapılandırma dosyaları
+nginx yapılandırması
+Yeniden değiştirilebilir
+/etc/nginx/sites-available/set12-a.test.conf
+PHP-FPM havuzu (bu sitenin PHP süreç ayarları)
+CelikPanel’in metni, değişmemiş
+/etc/php/8.4/fpm/pool.d/site2.conf
+Sitenin nginx yapılandırma dosyası
+
+Dosya yeniden değiştirilebilir
+
+Bu dosyada artık yazma koruması bulunmuyor ve dosya hâlâ CelikPanel’in kendi önceki metni. Bu site için yapılan son değişiklik henüz dosyada değil.
+
+CelikPanel metnini panelin bir sonraki başlangıcında ya da bu site için kaydedilen bir sonraki değişiklikte yazar; başka bir şey gerekmez.
+
+Dosya
+/etc/nginx/sites-available/set12-a.test.conf
+
+CelikPanel’in metnini şimdi yaz
+Yalnız bu sitenin dosyası yazılır, ardından nginx yeniden yüklenir. nginx metni kabul etmezse dosya şimdiki hâline geri konur.
+CelikPanel’in yazacağı: şimdiki dosya (−) ve CelikPanel’in metni (+)
+--- /etc/nginx/sites-available/set12-a.test.conf (bu sunucuda)
++++ CelikPanel’in metni
+@@ -1,4 +1,3 @@
+-# set10 lab preparation: an older CelikPanel text of this site (a line the current render does not have)
+ # Nginx vhost for set12-a.test
+ # Written by CelikPanel. Put your own additions in /etc/nginx/celikpanel-sites.d/set12-a.test/*.conf;
+ # CelikPanel never writes there. If you change this file, CelikPanel keeps
+
+Bu site için kendi nginx yönergelerinizi /etc/nginx/celikpanel-sites.d/set12-a.test içinde bir .conf dosyasına yazın. CelikPanel oraya hiç yazmaz ve bu sitede yaptığı her değişiklikte onları korur.
+
+CelikPanel bu sitenin kendi parçalarını (sertifika doğrulaması) /etc/nginx/celikpanel-managed.d/set12-a.test içine yazar. Bu dosyanın onu içeren satırlarını koruyun.
+
+Sitenin PHP-FPM havuz dosyası
+
+CelikPanel’in metni, değişmemiş
+
+Bu dosya CelikPanel’in en son yazdığının ta kendisi; bu yüzden bu sitenin PHP ayarlarını kaydettiğinizde ya da PHP sürümünü değiştirdiğinizde CelikPanel onu günceller.
+
+Dosya
+/etc/php/8.4/fpm/pool.d/site2.conf
+
+PHP-FPM’in kendi havuz ayarlarınız için ayrı bir yeri yok; bu yüzden onlar bu dosyada durur. CelikPanel sizin satırlarınızı taşıyan havuz dosyasını korur ve yeniden yazmadan önce sorar; fark, hangi satırların sizin olduğunu tam olarak gösterir.

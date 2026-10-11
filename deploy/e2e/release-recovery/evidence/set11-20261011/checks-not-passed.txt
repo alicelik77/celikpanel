@@ -1,0 +1,28 @@
+run	kind	name	verdict	class	detail
+arch/run-a	step	B4-take-refused	failed	product	B4: the page and the Domains row name the same state after the refusal
+arch/run-a	check	16-b4-take-refused	False	product	B4: the page and the Domains row name the same state after the refusal
+debian13/run-a	step	A1-probe-ready	inconclusive	aborted	TypeError: Set11Trial.snap11() got multiple values for argument 'label'
+debian13/run-a	step	A4-nginx-stopped	inconclusive	aborted	TypeError: Set11Trial.snap11() got multiple values for argument 'label'
+debian13/run-a	step	A2-include-missing	inconclusive	aborted	TypeError: Set11Trial.snap11() got multiple values for argument 'label'
+debian13/run-a	step	A5-include-back	inconclusive	aborted	TypeError: Set11Trial.snap11() got multiple values for argument 'label'
+debian13/run-a	step	A3-mail-name	inconclusive	aborted	TypeError: Set11Trial.snap11() got multiple values for argument 'label'
+debian13/run-b	step	A1-probe-ready	failed	harness	A1: the file was there for every GET (created before the first, removed after the last answer)
+debian13/run-b	step	A5-include-back	inconclusive	not-measured	not established: A5: the dashboard entry for the site clears
+debian13/run-b	step	A3-mail-name	failed	harness	A3: with the block: the file was there for every GET (created before the first, removed after the last answer)
+debian13/run-b	step	B4-take-refused	failed	product	B4: the page and the Domains row name the same state after the refusal
+debian13/run-b	check	12-a1-probe-ready	False	harness	A1: the file was there for every GET (created before the first, removed after the last answer)
+debian13/run-b	check	15-a5-include-back	None	not-measured	A5: the dashboard entry for the site clears
+debian13/run-b	check	16-a3-mail-name	False	harness	A3: with the block: the file was there for every GET (created before the first, removed after the last answer)
+debian13/run-b	check	21-b4-take-refused	False	product	B4: the page and the Domains row name the same state after the refusal
+debian13/run-c	step	A1-probe-ready	failed	harness	A1: the file was there for every GET (created before the first request was sent, removed after the last was sent; each watcher's own read time)
+debian13/run-c	step	A2-include-missing	failed	harness	A2: the file was there for every GET (created before the first request was sent, removed after the last was sent; each watcher's own read time)
+debian13/run-c	step	A5-include-back	inconclusive	not-measured	not established: A5: the dashboard entry for the site clears
+debian13/run-c	step	B4-take-refused	failed	product	B4: the page and the Domains row name the same state after the refusal
+debian13/run-c	check	12-a1-probe-ready	False	harness	A1: the file was there for every GET (created before the first request was sent, removed after the last was sent; each watcher's own read time)
+debian13/run-c	check	14-a2-include-missing	False	harness	A2: the file was there for every GET (created before the first request was sent, removed after the last was sent; each watcher's own read time)
+debian13/run-c	check	15-a5-include-back	None	not-measured	A5: the dashboard entry for the site clears
+debian13/run-c	check	21-b4-take-refused	False	product	B4: the page and the Domains row name the same state after the refusal
+ubuntu/run-a	step	A5-include-back	inconclusive	not-measured	not established: A5: the dashboard entry for the site clears
+ubuntu/run-a	step	B4-take-refused	failed	product	B4: the page and the Domains row name the same state after the refusal
+ubuntu/run-a	check	15-a5-include-back	None	not-measured	A5: the dashboard entry for the site clears
+ubuntu/run-a	check	21-b4-take-refused	False	product	B4: the page and the Domains row name the same state after the refusal

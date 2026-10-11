@@ -1,0 +1,1210 @@
+package services
+
+import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/alicelik/celikpanel/internal/transport"
+)
+
+// A site file the owner changed is kept and named, never overwritten by a
+// render (D-031, 10 Oct 2026; D-022; D-025 invariants 1, 2 and 4).
+//
+// Every vhost the Panel writes starts with one header line,
+//
+//	# celikpanel-render v2 sha256=<64 hex: SHA-256 of every byte after this line>
+//
+// so the file itself says whether it is still the Panel's text; it survives a
+// database restore and needs no Panel to read. Before every render the file on
+// disk is classified (absent, managed and unchanged, owner-edited, foreign,
+// unreadable, unknown origin). Only a managed-and-unchanged file is replaced,
+// and an absent one only when the site is created or the owner asks for it to
+// be recreated; identical bytes are not rewritten and cause no reload. Any
+// other file is kept as it is; the Panel's text is held beside it in
+// `<file>.celikpanel-pending`, which nginx never reads. "Take CelikPanel's"
+// keeps a dated copy of the owner's file beside it first.
+//
+// Panel'in yazdığı her vhost tek bir başlık satırıyla başlar; dosya Panel'in
+// metni olup olmadığını kendisi söyler. Her üretimden önce diskteki dosya
+// sınıflandırılır; yalnız yönetilen ve değişmemiş dosya değiştirilir, yok
+// olan dosya yalnız site oluşturulurken ya da sahip isteyince yeniden yazılır.
+// Başka her dosya olduğu gibi korunur; Panel'in metni yanına bekleyen dosya
+// olarak bırakılır.
+
+const (
+	// ManagedRenderFormat names the file format in the ledger.
+	ManagedRenderFormat       = "celikpanel-render v2"
+	managedRenderHeaderPrefix = "# celikpanel-render v2 sha256="
+	// SiteFilePendingSuffix: the Panel's text held beside a kept file. It
+	// does not end in .conf, so no include pattern reads it.
+	SiteFilePendingSuffix = ".celikpanel-pending"
+	// SiteFileBackupMarker: "take CelikPanel's" keeps the owner's file under
+	// <file>.celikpanel-backup-<UTC stamp>; never pruned by the Panel.
+	SiteFileBackupMarker = ".celikpanel-backup-"
+	// ownerIncludeDirName is the directory under the nginx root that holds
+	// one owner include directory per site. Nothing in nginx's own
+	// configuration includes it; only the site's vhost does.
+	ownerIncludeDirName = "celikpanel-sites.d"
+	// panelManagedDirName is the directory under the nginx root that holds
+	// one Panel-owned include directory per site (D-031 step 1b). The
+	// Panel writes there; the owner's additions go to ownerIncludeDirName.
+	panelManagedDirName = "celikpanel-managed.d"
+	// ACMEChallengeFileName is the Panel's ACME HTTP-01 location file in the
+	// site's Panel-owned include directory.
+	ACMEChallengeFileName = "acme-http-01.conf"
+	// maxManagedSiteFileBytes bounds what the classifier reads.
+	maxManagedSiteFileBytes = 4 << 20
+	// maxSiteFileDetail bounds Detail.
+	maxSiteFileDetail = 300
+)
+
+var errSiteFileChanged = errors.New("the file changed after it was read")
+
+// siteFileNow is the clock of backup names (a test seam).
+var siteFileNow = time.Now
+
+// siteFileRename publishes a written file (a test seam: an immutable file,
+// `chattr +i`, refuses the rename with EPERM; measured in set8, scenario g).
+var siteFileRename = os.Rename
+
+// siteFileProtectionOf measures, read-only, what would refuse replacing a
+// site file (a test seam: attribute flags need root and a file system that
+// has them).
+var siteFileProtectionOf = measureSiteFileProtection
+
+func nginxBase() string {
+	if nginxDevMode() {
+		return nginxDir
+	}
+	return "/etc/nginx"
+}
+
+// OwnerIncludeDir is the supported place for the owner's additions to one
+// site: /etc/nginx/celikpanel-sites.d/<domain>. The vhost includes
+// <dir>/*.conf in every server block that serves the site's content.
+func OwnerIncludeDir(domain string) string {
+	return nginxBase() + "/" + ownerIncludeDirName + "/" + domain
+}
+
+// PanelManagedDir is the Panel's own include directory of one site:
+// /etc/nginx/celikpanel-managed.d/<domain>. The vhost includes <dir>/*.conf in
+// every server block of the site. It holds the ACME HTTP-01 challenge location
+// (ACMEChallengeFileName), so a certificate can be issued or renewed for a site
+// whose vhost the owner kept, without touching that vhost.
+// PanelManagedDir, Panel'in sitedeki kendi ekleme dizinidir; doğrulama konumu
+// vhost'a değil buraya yazılır.
+func PanelManagedDir(domain string) string {
+	return nginxBase() + "/" + panelManagedDirName + "/" + domain
+}
+
+// PanelManagedIncludeLine is the line a vhost needs to read PanelManagedDir.
+func PanelManagedIncludeLine(domain string) string {
+	return "include " + PanelManagedDir(domain) + "/*.conf;"
+}
+
+// ACMEChallengeFilePath is the Panel's challenge location file of one site.
+func ACMEChallengeFilePath(domain string) string {
+	return PanelManagedDir(domain) + "/" + ACMEChallengeFileName
+}
+
+// RenderACMEChallengeFile is the body of ACMEChallengeFilePath: the HTTP-01
+// location, root-owned validation content only, never tenant public_html.
+func RenderACMEChallengeFile(domain, challengeRoot string) string {
+	return "# The ACME HTTP-01 challenge location of " + domain + ", written by CelikPanel.\n" +
+		"# This directory is CelikPanel's; put your own additions in " + OwnerIncludeDir(domain) + "/*.conf.\n" +
+		"# Doğrulama konumu; bu dizin CelikPanel'indir, kendi eklemeleriniz " + OwnerIncludeDir(domain) + " içine.\n" +
+		"location ^~ /.well-known/acme-challenge/ {\n" +
+		"    root " + challengeRoot + ";\n" +
+		"    default_type text/plain;\n" +
+		"    try_files $uri =404;\n" +
+		"}\n"
+}
+
+// SiteVhostPath is the vhost file of a domain (sites-available).
+func SiteVhostPath(domain string) string {
+	available, _ := vhostPaths(domain)
+	return available
+}
+
+func sha256Hex(content []byte) string {
+	sum := sha256.Sum256(content)
+	return hex.EncodeToString(sum[:])
+}
+
+// SealManagedText puts the render header in front of the Panel's text.
+func SealManagedText(body string) string {
+	return SealManagedTextWith(managedRenderHeaderPrefix, body)
+}
+
+// SealManagedTextWith puts the render header, in the comment form of the
+// file's format, in front of the Panel's text: "# " for nginx and systemd
+// units, "; " for PHP-FPM pools (INI). D-031 second step, 2026-10-11.
+func SealManagedTextWith(prefix, body string) string {
+	return prefix + sha256Hex([]byte(body)) + "\n" + body
+}
+
+// splitManagedHeader returns the digest the first line declares and the body
+// after it. A first line ending in CR (an editor that wrote CRLF) is still read
+// as the header, so the edit is "owner-edited", not "foreign".
+func splitManagedHeader(content []byte) (string, []byte, bool) {
+	return splitManagedHeaderWith(managedRenderHeaderPrefix, content)
+}
+
+// splitManagedHeaderWith is splitManagedHeader for a header in the given
+// comment form.
+func splitManagedHeaderWith(prefix string, content []byte) (string, []byte, bool) {
+	newline := bytes.IndexByte(content, '\n')
+	if newline < 0 {
+		return "", nil, false
+	}
+	line := bytes.TrimSuffix(content[:newline], []byte("\r"))
+	if !bytes.HasPrefix(line, []byte(prefix)) {
+		return "", nil, false
+	}
+	declared := string(line[len(prefix):])
+	if len(declared) != 64 || strings.Trim(declared, "0123456789abcdef") != "" {
+		return "", nil, false
+	}
+	return declared, content[newline+1:], true
+}
+
+// ManagedVhostItem is one site's render and the evidence that decides it.
+type ManagedVhostItem struct {
+	Domain string
+	// Body is the Panel's text without the header.
+	Body    string
+	Trigger string
+	// RecordedSHA256 is the body digest the Panel's ledger last recorded.
+	RecordedSHA256 string
+	// ExpectedFileSHA256 and ExpectedRenderSHA256 bind "take" to what the
+	// owner was shown.
+	ExpectedFileSHA256   string
+	ExpectedRenderSHA256 string
+	// Legacy renders the frozen earlier releases' texts for a headerless
+	// file; nil when no earlier text can apply (a new site).
+	Legacy func() ([]LegacyVhostRender, error)
+	// ACMEChallengeRoot, when set, is the site's challenge root: the Panel's
+	// challenge file (ACMEChallengeFilePath) is kept as CelikPanel's text for
+	// it whenever the vhost after this operation reads the Panel's directory.
+	ACMEChallengeRoot string
+	// ValidationBlock is RenderACMENamesBlock's text for this render, "" when
+	// it asks for no validation-only names.
+	ValidationBlock string
+	// SSLCert is the certificate path this render uses ("" without one).
+	SSLCert string
+	// Probe, when set, asks for a kept file's validation to be measured
+	// (managed_vhost_probe.go): certificate operations and the site-config
+	// read. Without it a kept file's Validation is not evaluated ("").
+	Probe *ValidationProbe
+}
+
+type siteFileInspection struct {
+	state       string
+	reason      string
+	detail      string
+	adoptedFrom string
+	exists      bool
+	content     []byte
+	fileSHA     string
+	mode        os.FileMode
+	ownership   managedFileOwnership
+}
+
+// inspectSiteFile is the classifier. It never follows a symlink, never writes
+// and reads at most maxManagedSiteFileBytes.
+// inspectSiteFile sınıflandırıcıdır; bağlantı izlemez, yazmaz.
+func inspectSiteFile(
+	path string,
+	legacy func() ([]LegacyVhostRender, error),
+	recordedSHA256 string,
+) siteFileInspection {
+	return inspectSiteFileWith(path, managedRenderHeaderPrefix, legacy, recordedSHA256)
+}
+
+// inspectSiteFileWith is the classifier for a file whose header is in the
+// given comment form (SealManagedTextWith).
+func inspectSiteFileWith(
+	path, headerPrefix string,
+	legacy func() ([]LegacyVhostRender, error),
+	recordedSHA256 string,
+) siteFileInspection {
+	info, err := os.Lstat(path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return siteFileInspection{state: transport.SiteFileAbsent}
+		}
+		return siteFileInspection{
+			state: transport.SiteFileUnreadable, reason: unreadableReason(err),
+			detail: boundedSiteFileDetail(err.Error()), exists: true,
+		}
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		return siteFileInspection{state: transport.SiteFileUnreadable, reason: transport.SiteFileReasonSymlink, exists: true}
+	}
+	if !info.Mode().IsRegular() {
+		return siteFileInspection{state: transport.SiteFileUnreadable, reason: transport.SiteFileReasonNotRegular, exists: true}
+	}
+	if info.Size() > maxManagedSiteFileBytes {
+		return siteFileInspection{state: transport.SiteFileUnreadable, reason: transport.SiteFileReasonTooLarge, exists: true}
+	}
+	content, err := readManagedConfig(path)
+	if err != nil {
+		return siteFileInspection{
+			state: transport.SiteFileUnreadable, reason: unreadableReason(err),
+			detail: boundedSiteFileDetail(err.Error()), exists: true,
+		}
+	}
+	if len(content) > maxManagedSiteFileBytes {
+		return siteFileInspection{state: transport.SiteFileUnreadable, reason: transport.SiteFileReasonTooLarge, exists: true}
+	}
+	ownership, err := managedOwnershipFromInfo(info)
+	if err != nil {
+		return siteFileInspection{
+			state: transport.SiteFileUnreadable, reason: transport.SiteFileReasonReadFailed,
+			detail: boundedSiteFileDetail(err.Error()), exists: true,
+		}
+	}
+	inspection := siteFileInspection{
+		exists: true, content: content, fileSHA: sha256Hex(content),
+		mode: info.Mode().Perm(), ownership: ownership,
+	}
+	if declared, body, ok := splitManagedHeaderWith(headerPrefix, content); ok {
+		if sha256Hex(body) == declared {
+			inspection.state = transport.SiteFileManagedUnchanged
+		} else {
+			inspection.state = transport.SiteFileOwnerEdited
+		}
+		return inspection
+	}
+	if legacy != nil {
+		if renders, err := legacy(); err == nil {
+			for _, render := range renders {
+				if bytes.Equal(content, []byte(render.Text)) {
+					inspection.state = transport.SiteFileManagedUnchanged
+					inspection.adoptedFrom = render.Release
+					return inspection
+				}
+			}
+		}
+	}
+	if recordedSHA256 != "" {
+		inspection.state = transport.SiteFileForeign
+	} else {
+		inspection.state = transport.SiteFileUnknownOrigin
+	}
+	return inspection
+}
+
+func unreadableReason(err error) string {
+	if errors.Is(err, os.ErrPermission) {
+		return transport.SiteFileReasonPermission
+	}
+	if strings.Contains(err.Error(), "not a regular file") {
+		return transport.SiteFileReasonNotRegular
+	}
+	return transport.SiteFileReasonReadFailed
+}
+
+func boundedSiteFileDetail(text string) string {
+	text = strings.Map(func(r rune) rune {
+		if r < 0x20 || r == 0x7f {
+			return ' '
+		}
+		return r
+	}, strings.TrimSpace(text))
+	runes := []rune(text)
+	if len(runes) > maxSiteFileDetail {
+		return string(runes[:maxSiteFileDetail])
+	}
+	return text
+}
+
+// enabledVhostState reads sites-enabled/<domain>.conf without changing it.
+func enabledVhostState(enabledPath, availablePath string) string {
+	info, err := os.Lstat(enabledPath)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return "absent"
+		}
+		return "other"
+	}
+	if info.Mode()&os.ModeSymlink == 0 {
+		return "other"
+	}
+	target, err := os.Readlink(enabledPath)
+	if err != nil {
+		return "other"
+	}
+	if !filepath.IsAbs(target) {
+		target = filepath.Join(filepath.Dir(enabledPath), target)
+	}
+	if filepath.Clean(target) == filepath.Clean(availablePath) {
+		return "link"
+	}
+	return "other"
+}
+
+// atomicWriteSiteFile replaces path through a temporary file in the same
+// directory with the given mode and ownership: the previous file's, or 0644
+// and the Agent's own for a new one.
+func atomicWriteSiteFile(path string, content []byte, mode os.FileMode, ownership managedFileOwnership) (returnErr error) {
+	directory := filepath.Dir(path)
+	temporary, err := os.CreateTemp(directory, "."+filepath.Base(path)+".celikpanel-")
+	if err != nil {
+		return err
+	}
+	temporaryName := temporary.Name()
+	published := false
+	defer func() {
+		if temporary != nil {
+			_ = temporary.Close()
+		}
+		if !published {
+			_ = os.Remove(temporaryName)
+		}
+	}()
+	if err := applyManagedOwnership(temporary, ownership); err != nil {
+		return fmt.Errorf("keep the file's owner: %w", err)
+	}
+	if err := temporary.Chmod(mode); err != nil {
+		return fmt.Errorf("keep the file's mode: %w", err)
+	}
+	if _, err := temporary.Write(content); err != nil {
+		return err
+	}
+	if err := temporary.Sync(); err != nil {
+		return err
+	}
+	if err := temporary.Close(); err != nil {
+		return err
+	}
+	temporary = nil
+	if err := siteFileRename(temporaryName, path); err != nil {
+		return err
+	}
+	published = true
+	return syncDirectory(directory)
+}
+
+// writeManagedSiteFile writes only if the file still is the one inspected:
+// same absence, or same bytes as a regular file. A symlink is refused. A file
+// that was there keeps its mode, owner and group (a kept or taken file, set10
+// j and take); a new or recreated file is 0644 (set explicitly, whatever the
+// umask) with the Agent's own owner and group, root:celikpanel (set10 e).
+func writeManagedSiteFile(path string, content []byte, inspected siteFileInspection) error {
+	info, err := os.Lstat(path)
+	switch {
+	case err == nil:
+		if !inspected.exists {
+			return errSiteFileChanged
+		}
+		if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
+			return errSiteFileChanged
+		}
+		current, readErr := readManagedConfig(path)
+		if readErr != nil {
+			return readErr
+		}
+		if sha256Hex(current) != inspected.fileSHA {
+			return errSiteFileChanged
+		}
+	case errors.Is(err, os.ErrNotExist):
+		if inspected.exists {
+			return errSiteFileChanged
+		}
+	default:
+		return err
+	}
+	mode := os.FileMode(0o644)
+	var ownership managedFileOwnership
+	if inspected.exists {
+		mode = inspected.mode
+		ownership = inspected.ownership
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	return atomicWriteSiteFile(path, content, mode, ownership)
+}
+
+// writeSiteFileBackup keeps the owner's bytes, mode and owner beside the file
+// under a name no include pattern reads.
+func writeSiteFileBackup(path string, inspected siteFileInspection) (string, error) {
+	stamp := siteFileNow().UTC().Format("20060102T150405Z")
+	for attempt := 0; attempt < 50; attempt++ {
+		name := path + SiteFileBackupMarker + stamp
+		if attempt > 0 {
+			name += "-" + strconv.Itoa(attempt+1)
+		}
+		file, err := os.OpenFile(name, os.O_WRONLY|os.O_CREATE|os.O_EXCL, inspected.mode)
+		if err != nil {
+			if errors.Is(err, os.ErrExist) {
+				continue
+			}
+			return "", err
+		}
+		writeErr := applyManagedOwnership(file, inspected.ownership)
+		if writeErr == nil {
+			writeErr = file.Chmod(inspected.mode)
+		}
+		if writeErr == nil {
+			_, writeErr = file.Write(inspected.content)
+		}
+		if writeErr == nil {
+			writeErr = file.Sync()
+		}
+		closeErr := file.Close()
+		if writeErr != nil || closeErr != nil {
+			_ = os.Remove(name)
+			return "", errors.Join(writeErr, closeErr)
+		}
+		if err := syncDirectory(filepath.Dir(name)); err != nil {
+			return "", err
+		}
+		return name, nil
+	}
+	return "", errors.New("no free backup name")
+}
+
+// writePendingSiteFile holds the Panel's text beside a kept file. Nothing is
+// written when the pending file already holds it; a pending path that is not
+// a regular file is left alone.
+func writePendingSiteFile(path string, sealed []byte) (string, string, error) {
+	pending := path + SiteFilePendingSuffix
+	info, err := os.Lstat(pending)
+	switch {
+	case err == nil:
+		if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
+			return "", "", fmt.Errorf("the pending path is not a regular file")
+		}
+		current, readErr := readManagedConfig(pending)
+		if readErr == nil && bytes.Equal(current, sealed) {
+			return pending, sha256Hex(sealed), nil
+		}
+	case !errors.Is(err, os.ErrNotExist):
+		return "", "", err
+	}
+	if err := atomicWriteSiteFile(pending, sealed, 0o644, managedFileOwnership{}); err != nil {
+		return "", "", err
+	}
+	return pending, sha256Hex(sealed), nil
+}
+
+// removeStalePending removes the Panel's own pending file once the file is
+// the Panel's text again. Only a regular file is removed.
+func removeStalePending(path string) {
+	pending := path + SiteFilePendingSuffix
+	if info, err := os.Lstat(pending); err == nil && info.Mode().IsRegular() {
+		_ = os.Remove(pending)
+	}
+}
+
+// existingPending names a pending file that is there now.
+func existingPending(path string) (string, string) {
+	pending := path + SiteFilePendingSuffix
+	info, err := os.Lstat(pending)
+	if err != nil || !info.Mode().IsRegular() {
+		return "", ""
+	}
+	content, err := readManagedConfig(pending)
+	if err != nil {
+		return pending, ""
+	}
+	return pending, sha256Hex(content)
+}
+
+// siteIncludeDirMode is the mode of a site include directory CelikPanel
+// creates, and of the parent it creates for it (D-031).
+const siteIncludeDirMode os.FileMode = 0o755
+
+// ensureSiteIncludeDir creates a site include directory, and its parent under
+// the nginx root, when absent, mode 0755. The mode is set explicitly after
+// creation: the Agent runs with UMask=0027, under which a plain mkdir 0755
+// gave 0750 (set10 S0, measured on Debian 13, Ubuntu 24.04 and Arch). The
+// owner is the Agent's (root) and the group the unit's (celikpanel); the
+// group does not decide who reads it, because nginx's master process reads
+// its configuration as root, and 0755 lets the owner's tools read it too. A
+// directory that is already there is left exactly as it is (the owner's
+// mode); a path there that is not a directory (a link included) is left
+// alone and reported.
+//
+// Site ekleme dizinini (ve gerekirse üst dizinini) 0755 ile oluşturur; kip,
+// Agent'ın UMask=0027 ayarına rağmen açıkça verilir. Var olan dizine dokunmaz.
+func ensureSiteIncludeDir(directory string) error {
+	if info, err := os.Lstat(directory); err == nil {
+		if !info.IsDir() {
+			return fmt.Errorf("%s exists and is not a directory; it was left alone", directory)
+		}
+		return nil
+	}
+	parent := filepath.Dir(directory)
+	if _, err := os.Lstat(parent); errors.Is(err, os.ErrNotExist) {
+		if err := os.MkdirAll(filepath.Dir(parent), 0o755); err != nil {
+			return err
+		}
+		if err := makeSiteIncludeDir(parent); err != nil {
+			return err
+		}
+	}
+	return makeSiteIncludeDir(directory)
+}
+
+// makeSiteIncludeDir makes one directory 0755 whatever the umask; another
+// process that made it first leaves it as that process made it.
+func makeSiteIncludeDir(directory string) error {
+	if err := os.Mkdir(directory, siteIncludeDirMode); err != nil {
+		if errors.Is(err, os.ErrExist) {
+			return nil
+		}
+		return err
+	}
+	return os.Chmod(directory, siteIncludeDirMode)
+}
+
+// ensureOwnerIncludeDir creates the site's owner include directory when it is
+// absent (0755). Nothing inside it is ever written, changed or removed.
+func ensureOwnerIncludeDir(domain string) error {
+	return ensureSiteIncludeDir(OwnerIncludeDir(domain))
+}
+
+// ensurePanelManagedDir creates the site's Panel-owned include directory
+// (0755) when it is absent.
+func ensurePanelManagedDir(domain string) error {
+	return ensureSiteIncludeDir(PanelManagedDir(domain))
+}
+
+// normalizedDirectiveLine is a configuration line without surrounding space
+// and with runs of space folded, so an editor's indentation does not hide a
+// directive; a comment line is "".
+func normalizedDirectiveLine(line string) string {
+	line = strings.TrimSpace(strings.TrimSuffix(line, "\r"))
+	if strings.HasPrefix(line, "#") {
+		return ""
+	}
+	return strings.Join(strings.Fields(line), " ")
+}
+
+// fileHasDirective says whether a non-comment line of content is exactly the
+// directive (spacing aside).
+func fileHasDirective(content []byte, directive string) bool {
+	want := strings.Join(strings.Fields(directive), " ")
+	for _, line := range strings.Split(string(content), "\n") {
+		if normalizedDirectiveLine(line) == want {
+			return true
+		}
+	}
+	return false
+}
+
+func siteFileKeptState(state string) bool {
+	switch state {
+	case transport.SiteFileOwnerEdited, transport.SiteFileForeign, transport.SiteFileUnknownOrigin:
+		return true
+	}
+	return false
+}
+
+// describeKeptFile fills the kept-file fields of a result that need only the
+// file's bytes.
+func describeKeptFile(result *transport.SiteFileResult, inspected siteFileInspection, item ManagedVhostItem) {
+	if !siteFileKeptState(inspected.state) {
+		return
+	}
+	if item.SSLCert != "" {
+		result.CertificateReferenced = fileHasDirective(inspected.content, "ssl_certificate "+item.SSLCert+";")
+	}
+}
+
+// plannedChallengeFile is the Panel's challenge file of one item.
+type plannedChallengeFile struct {
+	index     int
+	domain    string
+	path      string
+	sealed    []byte
+	inspected siteFileInspection
+}
+
+// challengeFileState classifies the Panel's challenge file without writing:
+// absent, the Panel's text (unchanged, or the Panel's text for other inputs:
+// differs), or kept (anything else, never replaced).
+func challengeFileState(item ManagedVhostItem) (plannedChallengeFile, string) {
+	path := ACMEChallengeFilePath(item.Domain)
+	plan := plannedChallengeFile{
+		domain: item.Domain, path: path,
+		sealed: []byte(SealManagedText(RenderACMEChallengeFile(item.Domain, item.ACMEChallengeRoot))),
+	}
+	plan.inspected = inspectSiteFile(path, nil, "")
+	switch plan.inspected.state {
+	case transport.SiteFileAbsent:
+		return plan, transport.SiteFileChallengeAbsent
+	case transport.SiteFileManagedUnchanged:
+		if bytes.Equal(plan.inspected.content, plan.sealed) {
+			return plan, transport.SiteFileChallengeUnchanged
+		}
+		return plan, transport.SiteFileChallengeDiffers
+	}
+	return plan, transport.SiteFileChallengeKept
+}
+
+func normalizedSiteFileTrigger(trigger string) string {
+	switch trigger {
+	case transport.SiteFileTriggerStartup, transport.SiteFileTriggerCreate,
+		transport.SiteFileTriggerRecreate, transport.SiteFileTriggerTake:
+		return trigger
+	default:
+		return transport.SiteFileTriggerChange
+	}
+}
+
+type plannedSiteFileWrite struct {
+	index      int
+	domain     string
+	available  string
+	enabled    string
+	sealed     []byte
+	inspected  siteFileInspection
+	backup     bool
+	createLink bool
+	outcome    string
+	linkMade   bool
+}
+
+// ApplyManagedVhosts classifies every item, writes only what the rule allows,
+// validates nginx once and reloads once, and only when something was written.
+// One item's write failure is that item's result; the others go on. nginx's
+// test covers the whole configuration: when it refuses, every file written in
+// this call is put back exactly (bytes, mode, owner), and the error says so.
+// Kept, missing, unchanged and refused items are results, never errors.
+//
+// ApplyManagedVhosts her öğeyi sınıflandırır, yalnız kuralın izin verdiğini
+// yazar, nginx'i bir kez doğrular ve yalnız bir şey yazıldıysa bir kez yeniden
+// yükler. Bir öğenin yazma hatası yalnız o öğenin sonucudur.
+func (ng *NginxGenerator) ApplyManagedVhosts(items []ManagedVhostItem) ([]transport.SiteFileResult, error) {
+	results := make([]transport.SiteFileResult, len(items))
+	if len(items) == 0 {
+		return results, nil
+	}
+
+	nginxMutationMu.Lock()
+	defer nginxMutationMu.Unlock()
+
+	seen := make(map[string]struct{}, len(items))
+	for _, item := range items {
+		if _, exists := seen[item.Domain]; exists {
+			return nil, fmt.Errorf("duplicate vhost domain %q", item.Domain)
+		}
+		seen[item.Domain] = struct{}{}
+	}
+
+	var writes []plannedSiteFileWrite
+	var unchanged []string
+	// keptContent holds a kept file's bytes as read; a kept file is not
+	// written by this call.
+	keptContent := make([][]byte, len(items))
+	for index, item := range items {
+		available, enabled := vhostPaths(item.Domain)
+		sealed := []byte(SealManagedText(item.Body))
+		trigger := normalizedSiteFileTrigger(item.Trigger)
+		inspected := inspectSiteFile(available, item.Legacy, item.RecordedSHA256)
+		result := &results[index]
+		*result = transport.SiteFileResult{
+			Kind:           transport.SiteFileKindNginxVhost,
+			Path:           available,
+			State:          inspected.state,
+			Reason:         inspected.reason,
+			Detail:         inspected.detail,
+			AdoptedFrom:    inspected.adoptedFrom,
+			RenderSHA256:   sha256Hex([]byte(item.Body)),
+			FileSHA256:     inspected.fileSHA,
+			IncludeDir:     OwnerIncludeDir(item.Domain),
+			Enabled:        enabledVhostState(enabled, available),
+			ManagedDir:     PanelManagedDir(item.Domain),
+			ManagedInclude: PanelManagedIncludeLine(item.Domain),
+		}
+		describeKeptFile(result, inspected, item)
+		plan := plannedSiteFileWrite{
+			index: index, domain: item.Domain, available: available,
+			enabled: enabled, sealed: sealed, inspected: inspected,
+		}
+		switch inspected.state {
+		case transport.SiteFileManagedUnchanged:
+			if bytes.Equal(inspected.content, sealed) {
+				result.Outcome = transport.SiteFileOutcomeUnchanged
+				result.WrittenSHA256 = result.RenderSHA256
+				unchanged = append(unchanged, available)
+				continue
+			}
+			plan.outcome = transport.SiteFileOutcomeWritten
+			if trigger == transport.SiteFileTriggerTake {
+				plan.outcome = transport.SiteFileOutcomeTaken
+			}
+			writes = append(writes, plan)
+		case transport.SiteFileAbsent:
+			switch trigger {
+			case transport.SiteFileTriggerCreate:
+				plan.outcome = transport.SiteFileOutcomeWritten
+			case transport.SiteFileTriggerRecreate:
+				plan.outcome = transport.SiteFileOutcomeRecreated
+			default:
+				result.Outcome = transport.SiteFileOutcomeMissing
+				continue
+			}
+			plan.createLink = result.Enabled == "absent"
+			writes = append(writes, plan)
+		case transport.SiteFileOwnerEdited, transport.SiteFileForeign, transport.SiteFileUnknownOrigin:
+			switch trigger {
+			case transport.SiteFileTriggerTake:
+				if item.ExpectedFileSHA256 == "" || item.ExpectedFileSHA256 != inspected.fileSHA ||
+					(item.ExpectedRenderSHA256 != "" && item.ExpectedRenderSHA256 != result.RenderSHA256) {
+					result.Outcome = transport.SiteFileOutcomeRefused
+					result.Reason = transport.SiteFileReasonChanged
+					continue
+				}
+				plan.outcome = transport.SiteFileOutcomeTaken
+				plan.backup = true
+				writes = append(writes, plan)
+			case transport.SiteFileTriggerCreate:
+				result.Outcome = transport.SiteFileOutcomeRefused
+				result.Reason = transport.SiteFileReasonNotApplicable
+			default:
+				result.Outcome = transport.SiteFileOutcomeKept
+				keptContent[index] = inspected.content
+				pendingPath, pendingSHA, err := writePendingSiteFile(available, sealed)
+				if err != nil {
+					result.Reason = transport.SiteFileReasonPendingNotSet
+					result.Detail = boundedSiteFileDetail(err.Error())
+					continue
+				}
+				result.PendingPath = pendingPath
+				result.PendingSHA256 = pendingSHA
+			}
+		default: // unreadable
+			result.Outcome = transport.SiteFileOutcomeRefused
+		}
+	}
+
+	var touched []plannedSiteFileWrite
+	// Whether nginx ran before these writes decides what follows a put-back
+	// (set12 cell RP1).
+	nginxBefore := transport.SiteFileServiceActiveUnknown
+	if len(writes) > 0 {
+		nginxBefore = ng.nginxServiceActive()
+	}
+	for _, plan := range writes {
+		result := &results[plan.index]
+		if plan.backup {
+			// A protected file is refused before its dated copy is made
+			// (set11 cell B4).
+			if refuseProtectedTake(result, plan.available) {
+				continue
+			}
+			backup, err := writeSiteFileBackup(plan.available, plan.inspected)
+			if err != nil {
+				result.Outcome = transport.SiteFileOutcomeRefused
+				result.Reason = transport.SiteFileReasonWriteRefused
+				result.Detail = boundedSiteFileDetail("keep a copy of the file: " + err.Error())
+				continue
+			}
+			result.BackupPath = backup
+		}
+		if err := ensureOwnerIncludeDir(plan.domain); err != nil {
+			// nginx accepts an include pattern that matches nothing; the
+			// directory is a convenience, its absence is only reported.
+			result.Detail = boundedSiteFileDetail("owner include directory: " + err.Error())
+		}
+		if err := writeManagedSiteFile(plan.available, plan.sealed, plan.inspected); err != nil {
+			// The file is published by one rename; when that (or anything
+			// before it) fails, the file on disk is the one that was read and
+			// its enabled link was not touched. Only this site is refused;
+			// the batch goes on (set8 scenario g: an immutable file).
+			result.Outcome = transport.SiteFileOutcomeRefused
+			if errors.Is(err, errSiteFileChanged) {
+				result.Reason = transport.SiteFileReasonChanged
+			} else {
+				// Read fine, not replaced: "unwritable", not "unreadable"
+				// (set10 scenario g). The system's error and what refused it.
+				result.Reason = transport.SiteFileReasonWriteRefused
+				result.Detail = boundedSiteFileDetail(err.Error())
+				result.SystemError = siteFileErrnoName(err)
+				var measuredError string
+				result.Protection, measuredError = siteFileProtectionOf(plan.available)
+				if result.SystemError == "" {
+					result.SystemError = measuredError
+				}
+				dropRefusedTakeBackup(result)
+			}
+			continue
+		}
+		if plan.createLink {
+			err := os.MkdirAll(filepath.Dir(plan.enabled), 0o755)
+			if err == nil {
+				err = atomicReplaceSymlink(plan.enabled, plan.available)
+			}
+			if err != nil {
+				restoreErr := restorePlannedSiteFile(plan)
+				result.Outcome = transport.SiteFileOutcomeFailed
+				result.Reason = transport.SiteFileReasonWriteRefused
+				result.Detail = boundedSiteFileDetail(errors.Join(fmt.Errorf("enable the vhost: %w", err), restoreErr).Error())
+				continue
+			}
+			plan.linkMade = true
+			result.Enabled = "link"
+		}
+		touched = append(touched, plan)
+	}
+
+	// D-031 step 1b: the Panel's challenge file, for every site whose vhost
+	// after this operation reads the Panel's directory: CelikPanel's text
+	// (written or unchanged), or a kept file that still has the include line.
+	// A challenge file that is not the Panel's unchanged text is kept too.
+	vhostTouched := make(map[int]bool, len(touched))
+	for _, plan := range touched {
+		vhostTouched[plan.index] = true
+	}
+	var challenges []plannedSiteFileWrite
+	for index, item := range items {
+		result := &results[index]
+		if item.ACMEChallengeRoot == "" {
+			continue
+		}
+		kept := result.Outcome == transport.SiteFileOutcomeKept
+		// A kept file whose validation is to be measured gets CelikPanel's
+		// challenge file whatever its text says: only nginx's answer tells
+		// whether the file reads the directory. Otherwise a kept file gets it
+		// when one of its lines is the include line (no verdict is drawn from
+		// that line; it only spares a write nothing would read).
+		readsDirectory := vhostTouched[index] || result.Outcome == transport.SiteFileOutcomeUnchanged ||
+			(kept && (!item.Probe.empty() || fileHasDirective(keptContent[index], result.ManagedInclude)))
+		if !readsDirectory {
+			continue
+		}
+		challenge, state := challengeFileState(item)
+		switch state {
+		case transport.SiteFileChallengeAbsent, transport.SiteFileChallengeDiffers:
+			err := ensurePanelManagedDir(item.Domain)
+			if err == nil {
+				err = writeManagedSiteFile(challenge.path, challenge.sealed, challenge.inspected)
+			}
+			if err != nil {
+				result.ChallengeFile = transport.SiteFileChallengeFailed
+				result.Detail = boundedSiteFileDetail(strings.TrimPrefix(result.Detail+"; ", "; ") + "challenge file: " + err.Error())
+				continue
+			}
+			result.ChallengeFile = transport.SiteFileChallengeWritten
+			challenges = append(challenges, plannedSiteFileWrite{
+				index: index, domain: item.Domain, available: challenge.path,
+				sealed: challenge.sealed, inspected: challenge.inspected,
+			})
+		default:
+			result.ChallengeFile = state
+		}
+	}
+	// A kept file's validation is measured only when the operation asked
+	// for it, after every write and the one reload of this call.
+	setValidation := func() {
+		for index, item := range items {
+			result := &results[index]
+			if result.Outcome != transport.SiteFileOutcomeKept || item.Probe.empty() {
+				continue
+			}
+			ng.measureKeptFileValidation(item, result.ChallengeFile).apply(result)
+		}
+	}
+
+	for _, path := range unchanged {
+		removeStalePending(path)
+	}
+	if len(touched) == 0 && len(challenges) == 0 {
+		setValidation()
+		return results, nil
+	}
+
+	failTouched := func(reason, detail string) {
+		for _, plan := range touched {
+			result := &results[plan.index]
+			result.Outcome = transport.SiteFileOutcomeFailed
+			result.Reason = reason
+			result.Detail = boundedSiteFileDetail(detail)
+			result.Enabled = enabledVhostState(plan.enabled, plan.available)
+			result.FileSHA256 = plan.inspected.fileSHA
+		}
+		for _, plan := range challenges {
+			result := &results[plan.index]
+			result.ChallengeFile = transport.SiteFileChallengeFailed
+			if !vhostTouched[plan.index] {
+				result.Detail = boundedSiteFileDetail(detail)
+			}
+		}
+		setValidation()
+	}
+	everything := append(append([]plannedSiteFileWrite(nil), challenges...), touched...)
+	if err := ng.ValidateNginx(); err != nil {
+		detail := err.Error()
+		var refused *NginxConfigRefusedError
+		if errors.As(err, &refused) {
+			detail = refused.FirstLine()
+		}
+		rollbackErr := restorePlannedSiteFiles(everything)
+		failTouched(transport.SiteFileReasonNginxRefused, detail)
+		return results, ng.markManagedRestore(results, touched, ng.finishManagedRollbackFrom(fmt.Errorf("nginx validation failed: %w", err), rollbackErr, nginxBefore))
+	}
+	if err := ng.ReloadNginx(); err != nil {
+		rollbackErr := restorePlannedSiteFiles(everything)
+		failTouched(transport.SiteFileReasonReloadFailed, err.Error())
+		return results, ng.markManagedRestore(results, touched, ng.finishManagedRollbackFrom(fmt.Errorf("nginx reload failed: %w", err), rollbackErr, nginxBefore))
+	}
+	for _, plan := range touched {
+		result := &results[plan.index]
+		result.Outcome = plan.outcome
+		result.WrittenSHA256 = result.RenderSHA256
+		result.FileSHA256 = sha256Hex(plan.sealed)
+		result.Reloaded = true
+		result.PendingPath, result.PendingSHA256 = "", ""
+		removeStalePending(plan.available)
+	}
+	for _, plan := range challenges {
+		results[plan.index].Reloaded = true
+	}
+	setValidation()
+	return results, nil
+}
+
+// markManagedRestore records on each failed file whether the batch's rollback
+// was confirmed (every file put back and finishManagedRollbackFrom answered
+// VhostRestoredError: reloaded, or deliberately not reloaded) or not
+// ("rollback incomplete"), what happened to nginx, and whether nginx runs
+// now. It returns the rollback's error unchanged.
+func (ng *NginxGenerator) markManagedRestore(results []transport.SiteFileResult, touched []plannedSiteFileWrite, rollback error) error {
+	restore := transport.SiteFileRestoreUnconfirmed
+	service, reason, check := "", "", ""
+	var restored *VhostRestoredError
+	if errors.As(rollback, &restored) {
+		restore = transport.SiteFileRestoreConfirmed
+		service, check = restored.Service, restored.Check
+		if service == "" {
+			service = transport.SiteFileServiceReloaded
+		}
+		if service == transport.SiteFileServiceNotReloaded {
+			reason = transport.SiteFileServiceReasonConfigRefusedElsewhere
+		}
+	} else if rollback != nil && strings.Contains(rollback.Error(), "rollback reload") {
+		service = transport.SiteFileServiceReloadFailed
+	}
+	active := ng.nginxServiceActive()
+	for _, plan := range touched {
+		result := &results[plan.index]
+		result.Restore = restore
+		result.Service, result.ServiceReason, result.ServiceCheck = service, reason, check
+		result.ServiceActive = active
+	}
+	return rollback
+}
+
+func (ng *NginxGenerator) finishManagedRollback(cause, rollbackErr error) error {
+	return ng.finishManagedRollbackFrom(cause, rollbackErr, transport.SiteFileServiceActiveUnknown)
+}
+
+// finishManagedRollbackFrom ends a put-back: nginx that did not run before
+// (before "false") is neither checked nor reloaded; otherwise nginx -t runs on
+// the put-back configuration and, when nginx refuses it (another file is the
+// cause), nginx is not reloaded and keeps the configuration it loaded before
+// (set12 cell RP1). A check that could not run, or a reload that failed, is a
+// rollback incomplete as before.
+func (ng *NginxGenerator) finishManagedRollbackFrom(cause, rollbackErr error, before string) error {
+	if rollbackErr != nil {
+		return fmt.Errorf("%w; rollback incomplete: %v", cause, rollbackErr)
+	}
+	if before == transport.SiteFileServiceActiveFalse {
+		return &VhostRestoredError{Cause: cause, Service: transport.SiteFileServiceNotRunning}
+	}
+	if err := ng.ValidateNginx(); err != nil {
+		var refused *NginxConfigRefusedError
+		if errors.As(err, &refused) {
+			return &VhostRestoredError{Cause: cause, Service: transport.SiteFileServiceNotReloaded, Check: SiteFileCheckLine(err)}
+		}
+		return fmt.Errorf("%w; rollback incomplete: rollback validation: %v", cause, err)
+	}
+	if err := ng.ReloadNginx(); err != nil {
+		return fmt.Errorf("%w; rollback incomplete: rollback reload: %v", cause, err)
+	}
+	return &VhostRestoredError{Cause: cause, Service: transport.SiteFileServiceReloaded}
+}
+
+func restorePlannedSiteFiles(touched []plannedSiteFileWrite) error {
+	var restoreErrors []error
+	for index := len(touched) - 1; index >= 0; index-- {
+		if err := restorePlannedSiteFile(touched[index]); err != nil {
+			restoreErrors = append(restoreErrors, fmt.Errorf("restore %s: %w", touched[index].domain, err))
+		}
+	}
+	return errors.Join(restoreErrors...)
+}
+
+// restorePlannedSiteFile puts back exactly what was there: the previous bytes
+// with their mode and owner, or no file; a link this call made is removed.
+func restorePlannedSiteFile(plan plannedSiteFileWrite) error {
+	var restoreErrors []error
+	if plan.linkMade {
+		if info, err := os.Lstat(plan.enabled); err == nil && info.Mode()&os.ModeSymlink != 0 {
+			if err := os.Remove(plan.enabled); err != nil {
+				restoreErrors = append(restoreErrors, err)
+			}
+		}
+	}
+	if plan.inspected.exists {
+		if err := atomicWriteSiteFile(plan.available, plan.inspected.content, plan.inspected.mode, plan.inspected.ownership); err != nil {
+			restoreErrors = append(restoreErrors, err)
+		}
+	} else if info, err := os.Lstat(plan.available); err == nil && info.Mode().IsRegular() {
+		if err := os.Remove(plan.available); err != nil {
+			restoreErrors = append(restoreErrors, err)
+		}
+	}
+	return errors.Join(restoreErrors...)
+}
+
+// ApplyManagedVhost is ApplyManagedVhosts for one site.
+func (ng *NginxGenerator) ApplyManagedVhost(item ManagedVhostItem) (transport.SiteFileResult, error) {
+	results, err := ng.ApplyManagedVhosts([]ManagedVhostItem{item})
+	if len(results) != 1 {
+		return transport.SiteFileResult{}, err
+	}
+	return results[0], err
+}
+
+// SiteFileDiffLimits bound the diff the domain screen shows.
+const (
+	maxSiteFileDiffBytes = 64 << 10
+	maxSiteFileDiffLines = 4000
+)
+
+// InspectManagedVhost classifies the file and computes the difference between
+// it and the Panel's text, writing nothing of the site's file. With
+// item.Probe on a kept file it also measures the validation: CelikPanel's
+// challenge file is published when absent or out of date (one check and
+// reload), and a probe file is written in the challenge root and removed.
+// InspectManagedVhost dosyayı sınıflandırır ve farkı hesaplar; hiçbir şey
+// yazmaz.
+func (ng *NginxGenerator) InspectManagedVhost(item ManagedVhostItem) (transport.SiteFileResult, string, bool) {
+	nginxMutationMu.Lock()
+	defer nginxMutationMu.Unlock()
+
+	available, enabled := vhostPaths(item.Domain)
+	sealed := SealManagedText(item.Body)
+	inspected := inspectSiteFile(available, item.Legacy, item.RecordedSHA256)
+	result := transport.SiteFileResult{
+		Kind:           transport.SiteFileKindNginxVhost,
+		Path:           available,
+		State:          inspected.state,
+		Outcome:        transport.SiteFileOutcomeInspected,
+		Reason:         inspected.reason,
+		Detail:         inspected.detail,
+		AdoptedFrom:    inspected.adoptedFrom,
+		RenderSHA256:   sha256Hex([]byte(item.Body)),
+		FileSHA256:     inspected.fileSHA,
+		IncludeDir:     OwnerIncludeDir(item.Domain),
+		Enabled:        enabledVhostState(enabled, available),
+		ManagedDir:     PanelManagedDir(item.Domain),
+		ManagedInclude: PanelManagedIncludeLine(item.Domain),
+	}
+	describeKeptFile(&result, inspected, item)
+	if item.ACMEChallengeRoot != "" {
+		_, result.ChallengeFile = challengeFileState(item)
+	}
+	if siteFileKeptState(inspected.state) && !item.Probe.empty() && item.ACMEChallengeRoot != "" {
+		// What a certificate operation would find now, measured. CelikPanel's
+		// challenge file is published first when it is absent or out of date,
+		// as that operation would; nothing of the owner's file is touched.
+		challenge, detail := ng.publishChallengeForProbe(item)
+		result.ChallengeFile = challenge
+		if detail != "" {
+			result.Detail = boundedSiteFileDetail(detail)
+		}
+		ng.measureKeptFileValidation(item, challenge).apply(&result)
+	}
+	if inspected.state == transport.SiteFileManagedUnchanged && inspected.adoptedFrom == "" {
+		if declared, _, ok := splitManagedHeader(inspected.content); ok {
+			result.WrittenSHA256 = declared
+		}
+	}
+	if inspected.exists && inspected.state != transport.SiteFileUnreadable {
+		// Read-only: whether a replacement would be refused now, and with
+		// which system error (the domain screen's "check again").
+		result.Protection, result.SystemError = siteFileProtectionOf(available)
+	}
+	result.PendingPath, result.PendingSHA256 = existingPending(available)
+	if !inspected.exists || inspected.state == transport.SiteFileUnreadable || bytes.Equal(inspected.content, []byte(sealed)) {
+		return result, "", false
+	}
+	diff, truncated := UnifiedSiteFileDiff(
+		available+" (on this server)", "CelikPanel's text",
+		stripManagedHeader(inspected.content), stripManagedHeader([]byte(sealed)),
+	)
+	return result, diff, truncated
+}
+
+func stripManagedHeader(content []byte) []byte {
+	return stripManagedHeaderWith(managedRenderHeaderPrefix, content)
+}
+
+func stripManagedHeaderWith(prefix string, content []byte) []byte {
+	if bytes.HasPrefix(content, []byte(prefix)) {
+		if newline := bytes.IndexByte(content, '\n'); newline >= 0 {
+			return content[newline+1:]
+		}
+	}
+	return content
+}
+
+// RemoveSiteVhost removes a deleted site's vhost the way RemoveVhost always
+// did, after keeping a copy of a file that is not the Panel's unchanged text
+// beside it. The owner include directory and everything in it are left; the
+// Panel's pending file is removed.
+// RemoveSiteVhost, silinen sitenin vhost'unu kaldırır; Panel'in değişmemiş
+// metni olmayan dosyanın bir kopyasını önce yanında bırakır.
+func (ng *NginxGenerator) RemoveSiteVhost(domain string) (string, error) {
+	available, _ := vhostPaths(domain)
+	backup := ""
+	nginxMutationMu.Lock()
+	inspected := inspectSiteFile(available, nil, "")
+	if inspected.exists && inspected.state != transport.SiteFileUnreadable &&
+		inspected.state != transport.SiteFileManagedUnchanged {
+		name, err := writeSiteFileBackup(available, inspected)
+		if err != nil {
+			nginxMutationMu.Unlock()
+			return "", fmt.Errorf("keep a copy of the edited vhost before removing it: %w", err)
+		}
+		backup = name
+	}
+	nginxMutationMu.Unlock()
+	if err := ng.RemoveVhost(domain); err != nil {
+		return backup, err
+	}
+	removeStalePending(available)
+	removePanelManagedDir(domain)
+	return backup, nil
+}
+
+// removePanelManagedDir removes a deleted site's challenge file when it is
+// still the Panel's unchanged text, then the Panel's directory when it is
+// empty. Anything else in it is left.
+func removePanelManagedDir(domain string) {
+	nginxMutationMu.Lock()
+	defer nginxMutationMu.Unlock()
+	path := ACMEChallengeFilePath(domain)
+	if inspected := inspectSiteFile(path, nil, ""); inspected.state == transport.SiteFileManagedUnchanged {
+		_ = os.Remove(path)
+	}
+	directory := PanelManagedDir(domain)
+	if info, err := os.Lstat(directory); err == nil && info.IsDir() {
+		_ = os.Remove(directory) // fails, and leaves it, when not empty
+	}
+}

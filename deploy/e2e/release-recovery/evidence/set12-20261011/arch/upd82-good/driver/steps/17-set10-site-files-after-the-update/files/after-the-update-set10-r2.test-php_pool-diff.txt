@@ -1,0 +1,15 @@
+--- /etc/php/php-fpm.d/site2.conf (on this server)
++++ CelikPanel's text
+@@ -1,3 +1,6 @@
++; The PHP-FPM pool of site2, written by CelikPanel. A line you add or change here is kept:
++; CelikPanel then shows the difference and asks before writing this file again.
++; Buraya eklediğiniz ya da değiştirdiğiniz satır korunur; CelikPanel yeniden yazmadan önce sorar.
+ [site2]
+ user = set10_r2_test
+ group = set10_r2_test
+@@ -12,5 +15,3 @@
+ pm.max_spare_servers = 3
+ pm.max_requests = 500
+ chdir = /
+-; set12: added by the server owner by hand (a comment and a directive of their own)
+-php_admin_value[memory_limit] = 256M

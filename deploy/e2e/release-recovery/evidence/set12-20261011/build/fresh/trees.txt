@@ -1,0 +1,20 @@
+baseline 9e223f175d96a8da7e3b029b79e45782a683937b tree 5f31e237d7b862c6a84a2cb7580964f7ebe887ee
+### files that differ between the source 8fabc03b3 and baseline
+M	deploy/release-sequence-policy
+good 2929e3e1b35daf0fa11206f98c1a105962be9a9b tree 1c48a86bece8fe4ac9c7a8a532c17c9a55e33f59
+### files that differ between the source 8fabc03b3 and good
+M	deploy/release-sequence-policy
+defective 5840b613ec0f632ccc91715d15081681c0b10b0b tree 86172916ad126f5c72c8c06bfb722cc7400d3543
+### files that differ between the source 8fabc03b3 and defective
+M	cmd/panel/main.go
+M	deploy/release-sequence-policy
+baseline 9e223f175d96a8da7e3b029b79e45782a683937b tree 5f31e237d7b862c6a84a2cb7580964f7ebe887ee
+### files that differ between the source 8fabc03b3 and baseline
+M	deploy/release-sequence-policy
+good 2929e3e1b35daf0fa11206f98c1a105962be9a9b tree 1c48a86bece8fe4ac9c7a8a532c17c9a55e33f59
+### files that differ between the source 8fabc03b3 and good
+M	deploy/release-sequence-policy
+defective 5840b613ec0f632ccc91715d15081681c0b10b0b tree 86172916ad126f5c72c8c06bfb722cc7400d3543
+### files that differ between the source 8fabc03b3 and defective
+M	cmd/panel/main.go
+M	deploy/release-sequence-policy

@@ -1,0 +1,2 @@
+differs:       1 > ./deploy/e2e/release-recovery/build-set12-artifacts.sh
+differs:       1 > ./deploy/e2e/release-recovery/set12_fixture.py

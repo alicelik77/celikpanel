@@ -51,6 +51,32 @@ export function savedRecoveryFinished(raw: string | null): boolean {
     } catch { return false; }
 }
 
+/** How long after its start this browser's own update record may name the update as the cause (2026-10-10). */
+export const UPDATE_CAUSE_WINDOW_MS = 30 * 60 * 1000;
+
+/**
+ * Presentation hint only: this browser started an update within the last 30
+ * minutes and has not recorded its end (the tracker's own record is still
+ * `active`). It never asserts a server outcome. It only lets a Panel that
+ * stopped answering be explained by the restart an update makes, instead of by
+ * the license. A record older than the window, or without a valid start time,
+ * names no update: a browser that never saw the end would otherwise name it
+ * forever (2026-10-10).
+ * Yalnizca sunum ipucu: bu tarayici son 30 dakikada bir guncelleme baslatti ve
+ * sonunu kaydetmedi. Daha eski kayit guncellemeyi neden olarak anmaz.
+ */
+export function savedUpdateUnfinished(raw: string | null, now: number = Date.now()): boolean {
+    if (!raw || raw.length > 8192) return false;
+    try {
+        const value = JSON.parse(raw);
+        if (value?.state_version !== 1 || value.phase !== 'active' || savedRecoveryRequestId(raw) === null) return false;
+        const started = value.marker?.created_at;
+        if (typeof started !== 'number' || !Number.isFinite(started) || started <= 0) return false;
+        const age = now - started;
+        return age >= 0 && age <= UPDATE_CAUSE_WINDOW_MS;
+    } catch { return false; }
+}
+
 export function parseRecoveryObservation(raw: unknown, requestId: string): RecoveryObservation {
     if (!/^[a-f0-9]{32}$/.test(requestId) || !raw || typeof raw !== 'object') throw new Error('invalid recovery observation');
     const value = raw as Record<string, unknown>;

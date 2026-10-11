@@ -7,7 +7,7 @@ import type { TranslationKey } from '../i18n/en';
 import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
 import { CertificateIssueNotice, isCertificateIssueFailure } from './CertificateIssueNotice';
 import { decodeListIn, lastKnown, useRemote } from '../lib/remote';
-import { sslTier, sslTierLabel } from '../lib/sslTier';
+import { sslTier, sslTierLabelFor } from '../lib/sslTier';
 import { useLostAnswer } from '../lib/lostAnswer';
 
 interface DomainSSLSettingsProps {
@@ -42,6 +42,9 @@ interface SSLCertificate {
     trust_error?: string;
     activation_pending: boolean;
     dependents_pending: boolean;
+    waiting_for_owner?: boolean;
+    // certificate | certificate_validation (additive; D-031 step 1b).
+    waiting_for_owner_reason?: string;
 }
 
 interface SSLSettings {
@@ -356,7 +359,21 @@ export function DomainSSLSettings({
                 showToast('error', apiErrorText(apiError, t, isReissue ? 'ssl.reissueFailed' : 'ssl.issueFailed'));
                 return;
             }
-            showToast('success', t(isReissue ? 'ssl.reissued' : 'ssl.issued'));
+            // Issued and stored, but the site's configuration file is the
+            // owner's and does not use it yet (D-031 step 1b).
+            let issuedStatus = '';
+            let notRunAddress = '';
+            try {
+                const issued = (await res.json()) as IssuedAnswer | null;
+                issuedStatus = String(issued?.status ?? '');
+                notRunAddress = validationNotRunAddress(issued);
+            } catch {
+                issuedStatus = '';
+            }
+            if (issuedStatus === 'waiting_for_owner') showToast('warning', t('ssl.issuedWaitingForOwner'));
+            else showToast('success', t(isReissue ? 'ssl.reissued' : 'ssl.issued'));
+            // The request went ahead without the probe (set11 cell A6).
+            if (notRunAddress) showToast('warning', t('ssl.validationNotRun', { address: notRunAddress }));
             setShowReissue(false);
             // The screen keeps what it showed, with its controls off, until
             // the server has said what the certificate is now.
@@ -615,6 +632,7 @@ export function DomainSSLSettings({
     const tier = {
         none: { icon: XCircle, color: 'text-fg-subtle' },
         pending: { icon: AlertTriangle, color: 'text-warning' },
+        waitingForOwner: { icon: AlertTriangle, color: 'text-warning' },
         invalid: { icon: XCircle, color: 'text-danger' },
         untrusted: { icon: Shield, color: 'text-danger' },
         trustUnknown: { icon: AlertTriangle, color: 'text-warning' },
@@ -654,7 +672,7 @@ export function DomainSSLSettings({
                 <div className="flex items-start gap-3">
                     <TierIcon className={`mt-0.5 h-6 w-6 shrink-0 ${tier.color}`} />
                     <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-fg">{t(sslTierLabel[status])}</p>
+                    <p className="font-semibold text-fg">{t(sslTierLabelFor(status, cert))}</p>
                         {data.has_certificate && cert ? (
                             <>
                                 <dl className="mt-2 grid grid-cols-1 gap-x-6 gap-y-1.5 text-sm sm:grid-cols-2">
@@ -677,7 +695,9 @@ export function DomainSSLSettings({
                                             <span>
                                                 {new Date(cert.expires_at).toLocaleDateString()}{' '}
                                                 <span className={cert.days_until_expiry < 30 ? 'text-warning' : 'text-fg-subtle'}>
-                                                    ({t('ssl.days', { n: cert.days_until_expiry })})
+                                                    ({cert.days_until_expiry < 0
+                                                        ? t('ssl.daysAgo', { n: -cert.days_until_expiry })
+                                                        : t('ssl.days', { n: cert.days_until_expiry })})
                                                 </span>
                                             </span>
                                         }
@@ -693,6 +713,21 @@ export function DomainSSLSettings({
                                         />
                                     )}
                                 </dl>
+                                {cert.waiting_for_owner && !cert.activation_pending && (
+                                    <p
+                                        role="status"
+                                        className="mt-4 flex items-start gap-2 rounded-lg border border-warning-mark/50 bg-warning-mark/20 px-3 py-3 text-sm text-fg"
+                                        data-ssl-waiting-for-owner={cert.waiting_for_owner_reason || 'unspecified'}
+                                    >
+                                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
+                                        {/* Who acts and where: the server administrator, on the
+                                            domain's Configuration file page, which only an
+                                            administrator can open. */}
+                                        <span>{t(cert.waiting_for_owner_reason === 'certificate_validation'
+                                            ? 'ssl.waitingForOwner.validation'
+                                            : 'ssl.waitingForOwner')}</span>
+                                    </p>
+                                )}
                                 {(cert.activation_pending || cert.dependents_pending) && (
                                     <div className="mt-4 flex flex-col gap-3 rounded-lg border border-warning-mark/50 bg-warning-mark/20 px-3 py-3 text-sm text-fg-muted sm:flex-row sm:items-center sm:justify-between">
                                         <span className="flex items-start gap-2">
@@ -1253,6 +1288,8 @@ function renewalStatusMeta(status: string): { label: TranslationKey; color: stri
             return { label: 'ssl.renewal.activationPending', color: 'text-warning' };
         case 'dependents_pending':
             return { label: 'ssl.renewal.dependentsPending', color: 'text-warning' };
+        case 'waiting_for_owner':
+            return { label: 'ssl.renewal.waitingForOwner', color: 'text-warning' };
         default:
             return null;
     }
@@ -1331,4 +1368,14 @@ export function certificateCoversName(dnsNames: string[], hostname: string): boo
         if (!normalisedHostname.endsWith(`.${suffix}`)) return false;
         return normalisedHostname.split('.').length === suffix.split('.').length + 1;
     });
+}
+
+// A certificate request that went ahead although the validation probe could
+// not be sent from this server: the site listens on an address that is not
+// this server's (set11 cell A6, 2026-10-11). The address, or ''.
+type IssuedAnswer = { status?: unknown; validation_probe?: unknown; validation_unknown_reason?: unknown; validation_address?: unknown };
+
+function validationNotRunAddress(answer: IssuedAnswer | null | undefined): string {
+    if (!answer || answer.validation_probe !== 'not_run' || answer.validation_unknown_reason !== 'address_not_local') return '';
+    return typeof answer.validation_address === 'string' ? answer.validation_address : '';
 }

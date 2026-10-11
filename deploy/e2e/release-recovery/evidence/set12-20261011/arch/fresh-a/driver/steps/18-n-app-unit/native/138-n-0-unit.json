@@ -1,0 +1,60 @@
+{
+  "at": "2026-10-11T05:19:15Z",
+  "domain": "set12-n.test",
+  "dropin_dir": {
+    "error": "FileNotFoundError",
+    "exists": false,
+    "path": "/etc/systemd/system/celikapp-4.service.d"
+  },
+  "dropin_paths": "DropInPaths=",
+  "environment": "Environment=PORT=3001 NODE_ENV=production PATH=/opt/celikpanel/runtimes/node/22.20.0/bin:/usr/local/sbin:/usr/local/bin:/usr/bin",
+  "epoch": 1791695955.39684,
+  "mode": "read-unit12",
+  "owner_action": false,
+  "schema": "celikpanel/set12-native/v1",
+  "site_id": 4,
+  "state": {
+    "ActiveEnterTimestamp": "Sun 2026-10-11 05:19:15 UTC",
+    "ActiveState": "active",
+    "ExecMainStartTimestamp": "Sun 2026-10-11 05:19:15 UTC",
+    "LoadState": "loaded",
+    "MainPID": "5731",
+    "NRestarts": "0",
+    "SubState": "running"
+  },
+  "unit": {
+    "ctime_ns": 1791695954492909830,
+    "exists": true,
+    "first_line": "# celikpanel-render v2 sha256=742519680b6addd61ec00dc35facb3741dafbb092e9ef8eb9605435f5be8c8e5",
+    "gid": 969,
+    "group": "celikpanel",
+    "header": {
+      "body_bytes": 997,
+      "body_sha256": "742519680b6addd61ec00dc35facb3741dafbb092e9ef8eb9605435f5be8c8e5",
+      "declared": "742519680b6addd61ec00dc35facb3741dafbb092e9ef8eb9605435f5be8c8e5",
+      "present": true,
+      "valid": true
+    },
+    "immutable": false,
+    "inode": 98488,
+    "kind": "file",
+    "lsattr": "----------------------",
+    "mode": "0644",
+    "mtime_ns": 1791695954486909635,
+    "nlink": 1,
+    "owner": "root",
+    "path": "/etc/systemd/system/celikapp-4.service",
+    "sha256": "fd20431d13733623ad461b51f62f30f97fa2da01faa7bde6d2bf142be3a627ed",
+    "side_files": {
+      "backups": [],
+      "pending": {
+        "error": "FileNotFoundError",
+        "exists": false,
+        "path": "/etc/systemd/system/celikapp-4.service.celikpanel-pending"
+      }
+    },
+    "size": 1092,
+    "text": "# celikpanel-render v2 sha256=742519680b6addd61ec00dc35facb3741dafbb092e9ef8eb9605435f5be8c8e5\n# The application unit of this site, written by CelikPanel.\n# Your own settings go in /etc/systemd/system/celikapp-4.service.d/*.conf (systemd drop-ins); CelikPanel never writes or removes them.\n# An edit to this file is kept: CelikPanel then shows the difference and asks before writing it again.\n# Kendi ayarlarınız /etc/systemd/system/celikapp-4.service.d/*.conf içine; CelikPanel onlara dokunmaz. Bu dosyadaki bir değişiklik korunur.\n[Unit]\nDescription=CelikPanel app: set12-n.test\nAfter=network.target\n\n[Service]\nUser=http\nWorkingDirectory=/var/www/celikpanel/subscriptions/2/sites/4/public_html\nEnvironment=PORT=3001\nEnvironment=NODE_ENV=production\nEnvironment=PATH=/opt/celikpanel/runtimes/node/22.20.0/bin:/usr/local/sbin:/usr/local/bin:/usr/bin\nExecStart=/bin/sh -lc '/opt/celikpanel/runtimes/node/22.20.0/bin/node -e \"require('\\''http'\\'').createServer((q,s)=>s.end('\\''set12-n1'\\'')).listen(process.env.PORT)\"'\nRestart=on-failure\nRestartSec=3\n\n[Install]\nWantedBy=multi-user.target\n",
+    "uid": 0
+  }
+}

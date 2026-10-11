@@ -21,9 +21,206 @@ git'te yaşar; bu dosya strateji içindir. En yeni en üstte.
 
 ---
 
+## D-031 · Sahibin değiştirdiği site yapılandırma dosyası korunur ve adlandırılır; üretim onun üstüne yazmaz
+
+*10 Ekim 2026 (saat tarihi) · Salt-okur denetimin bulgusu üzerine sahip kararı ([SITE-CONFIG-OWNER-EDITS-2026-10-10](audit/SITE-CONFIG-OWNER-EDITS-2026-10-10.md)); tasarım kararlaştırıldı; ilk adım onuncu gerçek sistem kaydında ölçüldü (iki bulgu 11 Ekim 2026'da düzeltildi); “şimdi yaz” eylemi ile tek öncelik sırası (11 Ekim 2026) ve ikinci adım (havuz, uygulama birimi; 11 Ekim 2026) bileşen testli ve sahte tarayıcıyla denendi, gerçek sistem ölçümü bekliyor*
+
+Denetim, yalnız kaynaktan okuyarak şunu buldu: Panelin açılışı barındırılan
+her sitenin nginx yapılandırmasını yeniden üretir ve karşılaştırmasız,
+özetsiz, yedeksiz yazar (`cmd/panel/cert_startup_reconcile.go`,
+`internal/services/nginx_generator.go`); diğer her üretim yolu (sertifika,
+ayar, barındırma türü, PHP sürümü, içe aktarma) aynısını yapar. Bu okumaya
+göre sahibin eklediği `location`, değiştirdiği yönerge, kendi include satırı
+ya da değiştirdiği dosya tek söz edilmeden ezilir; kaldırılan site dosyası bir
+sonraki açılışta yeniden yaratılır. Yayımlanmış v0.1.0-alpha.81 ve
+v0.1.0-alpha.82 bunu yapar. Bu, D-022'nin yasakladığı davranıştır: Panel
+sahibin değişikliğini algılar, üstüne yazmaz. Karar alındığında bunların
+hiçbiri gerçek sistemde ölçülmemişti; sekizinci gerçek sistem kaydı önce
+yayımlanmış davranışı ölçer.
+
+Sahip 10 Ekim 2026'da düzeltmenin bir sonraki sürüme girmesine karar verdi:
+
+1. Panelin bir site için yazdığı her dosya, gövdesinin özetini taşıyan bir
+   başlık alır; Panel dosya başına bir defter satırı tutar (şema geçişi
+   43 → 44, göç 044, tablo `managed_site_files`; D-025 bunu adlandırır).
+2. Her üretimden önce Agent diskteki dosyayı sınıflandırır: yok, yönetilen ve
+   değişmemiş, sahip düzenlemiş, yabancı, okunamaz, kökeni bilinmiyor. Yalnız
+   yok ya da yönetilen-ve-değişmemiş dosya yazılır; aynı baytlar yeniden
+   yazılmaz ve onlar için nginx yeniden yüklenmez.
+3. Diğer her dosya korunur. Site "yapılandırması sahibi tarafından
+   düzenlenmiş" diye gösterilir, fark gösterilir; Panelin bekleyen metni
+   dosyanın yanında tutulur; sahip "benimkini koru", "CelikPanel'inkini al"
+   (tarihli yedekle) ya da elle birleştirmeyi seçer. Sahibin kaldırdığı site
+   dosyası açılışta yeniden yaratılmaz; Panel yeniden yaratmayı önerir.
+4. Şablon, sahibin eklemeleri için site başına bir include dizini kazanır;
+   sonraki üretimlerin onlara dokunması gerekmez. (Adım 1b, 2026-10-10,
+   planlayıcı kararı:) Şablon ayrıca Panel'e ait ikinci bir include dizini
+   (`/etc/nginx/celikpanel-managed.d/<alan adı>/`) kazanır; ACME HTTP-01
+   konumu oraya yazılır, sanal konağa değil. Korunmuş bir dosyanın doğrulamaya
+   izin verip vermediği metninden okunmaz, ölçülür (aynı gün, ikinci tur):
+   Agent doğrulama köküne rastgele adlı ve içerikli bir yoklama dosyası koyar,
+   127.0.0.1'in 80 numaralı bağlantı noktasındaki nginx'e (2026-10-11'den beri:
+   adın korunan dosyadaki 80 bloklarının dinlediği her adreste) onu
+   sertifikanın doğruladığı her adla sorar ve dosyayı kaldırır; hazır, her adın onu
+   sunması demektir. Hazır (ve doğrulama dosyası değişmemiş) korunmuş bir
+   dosyada sertifika dosyaya dokunmadan alınır ya da yenilenir ve sahip
+   CelikPanel'in metnini alana ya da sertifika satırlarını değiştirene dek
+   dosyanın gösterdiği sertifika, varsa, sunulur (`waiting_for_owner`); hazır
+   olmayan korunmuş dosyada alım hiçbir şey istenmeden tipli bir retle
+   durur, yenileme başarısız değil "sahibi bekliyor" olur; nginx'in yanıt
+   vermediği yoklama bilinmiyordur, asla "hazır değil" değildir. Takma ad
+   sertifikası yolu da aynı iki yolu izler.
+5. Yazma kip ve sahibi korur, sembolik bağları reddeder; bir sitenin hatası
+   diğerlerini düşürmez; açılış satırı yazılan, değişmeyen, korunan, yabancı
+   ve okunamayanı ayrı ayrı sayar.
+6. alpha.81 ve alpha.82'nin yazdığı dosyalarda özet yoktur. Göç her siteyi o
+   sürümlerin dondurulmuş şablonlarıyla bellekte üretip karşılaştırır: bayt
+   bayt eşit dosya benimsenir, diğer her dosya "kökeni bilinmiyor"dur ve asla
+   üstüne yazılmaz. Güncellemeden sonraki dürüst ilk durum "N benimsendi, M
+   bilinen hiçbir CelikPanel metniyle örtüşmediği için dokunulmadı"dır ve
+   Panel bunu gösterir. (Onuncu gerçek sistem kaydı, 2026-10-11, planlayıcı
+   kararı:) benimsenen dosya bu sürümün metni olarak yeniden üretilir ve
+   başlığı alır; eski baytlara eklenmiş bir başlık değildir. Sahibin eklemeleri
+   onda olamazdı, çünkü dosya CelikPanel'in kendi metniyle bayt bayt eşitti.
+   `adopted_from`, metni eşleşen en yeni sürümü adlandırır (ikisi de eşleşirse
+   alpha.82). Onuncu gerçek sistem kaydında ölçüldü.
+7. Eski bir sürüme otomatik dönüş korumayı kaldırır; sürüm notu bunu söyler.
+8. (İkinci adım, 2026-10-11; kaynakta, bileşen testli ve sahte tarayıcıyla
+   denendi; gerçek sistemde ölçülmedi.) Sitenin PHP-FPM havuz dosyası (tür
+   `php_pool`) ve uygulama birimi (tür `app_unit`) 1-7. maddelere uyar. Havuz
+   INI'dir; başlığı `;` yorum satırıdır (`; celikpanel-render v2 sha256=…`);
+   birimin başlığı `# celikpanel-render v2 sha256=…`. Her biri her yazmadan
+   önce sınıflandırılır (havuz: kaydetme, PHP sürümü değişikliği, oluşturma,
+   silme; birim: barındırma değişikliği ve onun telafisi, kaldırma; ikisi de:
+   sayfanın seçimleri); aynı baytlar yeniden yazılmaz ve onlar için hiçbir
+   şey yeniden yüklenmez; korunan dosyanın yanına CelikPanel'in metni konur ve
+   işlem `409 SITE_CONFIG_OWNER_EDITED` verir (`reason` tür, `detail` durum).
+   Yazma geçici dosya ve tek yeniden adlandırmayla olur; kip, sahip ve grup
+   korunur; sembolik bağlantı reddedilir. PHP-FPM'in havuz için ekleme düzeni
+   yoktur; sahibin yönergeleri dosyanın içinde desteklenir: CelikPanel'in
+   başlığını ve CelikPanel'in üretmediği satırları taşıyan havuz sahibin
+   düzenlemesidir, korunur; hiçbir kaydetme ya da sürüm değişikliği onları
+   düşürmez. Birimin sahip için genişletme yeri systemd drop-in dizinidir
+   (`<birim>.service.d/*.conf`); CelikPanel oraya hiç yazmaz, onu silmez.
+   Havuzun süreç yöneticisi değerlerini tutan bir veritabanı sütunu yoktur:
+   CelikPanel'in havuz metni onları kaydetmeden, yoksa dosyanın yanındaki
+   kendi bekleyen metninden, yoksa dosyanın o anahtarlar için taşıdığı
+   değerlerden, yoksa varsayılanlardan alır; kimlik satırları her zaman
+   sitenindir. Benimseme: sitenin kimliği ve taşıdığı değerlerle dondurulmuş
+   alpha.81/82 biçimine bayt bayt eşit başlıksız havuz ya da aynı istekle
+   alpha.81/82 birimine bayt bayt eşit başlıksız birim benimsenir
+   (`adopted_from` eşleşen en yeni sürüm) ve bir sonraki yazmada bu sürümün
+   metni olarak yazılır; başka her dosya bilinmeyen kökenlidir. Havuz ve birim
+   Panelin açılışında üretilmez (açılışta yeni yazma yok); açılış satırı
+   yalnız vhost'ları sayar. Şema değişmez: 44. göçün `kind` sütunu
+   `php_pool` ve `app_unit` adlarını zaten taşır. Yapılandırma dosyası sayfası
+   sitenin her dosyasını kendi seçimleriyle listeler; Alan Adları satırı
+   dosyalar arasında en kötü durumu gösterir (eşitlikte vhost önce gelir).
+   Sınırlar, açıkça (2026-10-11): Panel'in iki havuz çağrısı Panel'in kendi
+   derlemesine bağlıdır; onlara sahip olmayan bir Agent hiçbir şey yazılmadan hata
+   verir (eski havuz çağrılarına geri dönüş yok; `MigratePHPPool` Panel'in
+   politikasından çıkarıldı). Birimin iki çağrısı da Panel'in derlemesine aynı
+   biçimde bağlıdır (2026-10-11 düzeltmesi). Site oluşturma havuz ya da birim
+   defter satırı yazmaz: satır sayfanın ilk okumasında ya da ilk kaydetme,
+   sürüm değişikliği veya birim değişikliğinde başlar; bu yüzden kimsenin
+   okumadığı bir havuz Alan Adları listesinde yoktur. 2026-10-11 düzeltmesi
+   (bileşen testli ve sahte tarayıcıda denendi; gerçek sistemde ölçülmedi):
+   Agent'ın okumadığı dosya (`unknown`) en-kötü-durum kuralında CelikPanel'in
+   değişmemiş metninin üstünde sıralanır (gözlenen her sorun yine onun
+   üstündedir), yani Alan Adları satırı bir yapılandırma dosyasının
+   okunamadığını söyler; bir hizmet reddi `restore: confirmed | unconfirmed`
+   taşır ve doğrulanmamış geri koyma (Agent'ın “rollback incomplete” demesi ya
+   da hiç geri koyma bilgisi vermemesi) dosyanın geri konduğunu söylemez,
+   sunucu yöneticisinin dosyayı sunucuda kontrol edeceğini söyler. İki benimseme
+   tabanı farklıdır: alpha.81'in havuzu `/var/run/php/php<s>-fpm-<havuz>.sock`
+   soketini `www-data` sahibiyle dinler, alpha.82'nin havuzu bu sunucunun
+   soketini web sunucusu hesabı sahibiyle; alpha.81'in birimi `User=` satırını
+   istendiği gibi yazar, alpha.82'ninki sunucuda var olan web sunucusu hesabını.
+
+Debian 13, Ubuntu 24.04 ve Arch'ta gerçek sistemde ölçülmeden bitmiş
+sayılmaz: denetimin §9 hücreleri (sahip düzenlemesi açılışta ve her üretim
+yolunda korunup adlandırılıyor; değişmez dosya diğer siteleri durdurmuyor;
+güncelleme, dönüş ve yeniden ileri; başlıktan önceki veritabanı geri
+yüklemesi; benimkini-koru sonra sertifika alma; CelikPanel'inkini-al ve
+yedeği; sahibin include dizini yenileme ve geçişlerden sağ çıkıyor;
+kaldırılan dosya yeniden yaratılmıyor; havuz yönergeleri korunuyor). PHP
+havuzu ve uygulama birimi aynı kural altında ikinci adımda gelir (8. madde,
+11 Ekim 2026'da kaynakta; hücreleri set10 düzeneğinde m, n ve o bölümleri
+olarak var, henüz bir konukta koşulmadı).
+Onuncu gerçek sistem kaydı (set10, 2026-10-10, `cd46ca595`, Debian 13, Ubuntu
+24.04, Arch): iki hücre dışında hepsi tuttu. 2026-10-11 düzeltmesi (bileşen
+testli; ölçülmedi): sahibin ekleme dizini açıkça 0755 oluşturulur (Agent'ın
+`UMask=0027` ayarıyla `root:celikpanel 0750` ölçülmüştü), CelikPanel'in kendi
+dizini de öyle; kilitli bir dosya (`chattr +i`, EPERM) alan adının sayfasında,
+liste satırında ve rozetinde aynı biçimde `unwritable` (değiştirilemiyor)
+olarak yanıtlanır: sistem hatası, salt okunur ölçülen koruma, CelikPanel'in
+yazmak istediği metin ve "Yeniden kontrol et" ile (sayfa nedensiz
+`managed_unchanged` yanıtlıyordu). Defter göç 044'ün durum kümesini korur
+(`unreadable` + `write_refused`); şema değişmedi. Yeni ve yeniden oluşturulan
+sanal konaklar `root:celikpanel 0644`; korunan ve alınan dosyalar sahibin
+kipini, sahibini ve grubunu korur (ölçüldü).
+İkinci düzeltme (2026-10-11; bileşen testli ve sahte tarayıcıyla denendi;
+gerçek sistemde ölçülmedi): sayfanın okuması “yeniden denetle”dir ve reddedilen
+bir değiştirmenin defter satırına bulduğunu yazar. Aynı baytlarda ölçülen
+koruma yoksa CelikPanel'in kendi metni `managed_unchanged` olur, nedeni
+`protection_removed`; sayfa “CelikPanel'in metnini şimdi yaz” önerir
+(`POST …/site-config/apply`, iki özet, istek kimliği, yalnız yönetici). Bu
+siteye ait bekleyen metni yazar, tarihli kopya tutmaz (dosya CelikPanel'in kendi
+önceki metnidir; sahibin hiçbir şeyi içinde yok) ve nginx reddederse önceki
+baytlar geri konur. Koruma sürüyorsa `unwritable` kalır; baytlar farklıysa dosya
+olduğu gibi kaydedilir ve asla yazılmaz. İki olgu aynı baytlar için geçerliyse
+satırın, rozetin ve sayfanın ne göstereceğini tek sıra belirler: okunamıyor,
+değiştirilemiyor, yok, korunan (sahip düzenlemesi, yabancı, bilinmeyen köken),
+sonra CelikPanel'in değişmemiş metni (`services.SiteFileShownState`). “Al”ı
+reddedilen sahip düzenlemesi iki olguyu birlikte gösterir ve koruma sürerken
+“al” hiçbir şey yazılmadan `409 SITE_CONFIG_UNWRITABLE` ile yanıtlanır ve
+reddedilen bir “al” tarihli kopya bırakmaz (Agent korumayı kopyadan önce ölçer,
+değiştirme yine de reddedilirse kopyayı kaldırır; sanal konak ve havuz
+testli, birim havuzun koduyla aynı kodu kullanır, set11 hücre B4; bileşen
+testli; gerçek sistemde ölçülmedi). Şema değişmez.
+İkinci turun yoklamasında açık kalanlar (2026-10-10), ilki yanıtlandı: (1) tek
+bir adrese bağlı 80 numaralı bağlantı noktası bloğuna geri döngüden
+ulaşılmıyordu — 2026-10-11'de yanıtlandı (set11 hücre A6; bileşen testli;
+gerçek sistemde ölçülmedi): yoklama, her ad için korunan dosyanın 80 numaralı
+bloklarının dinlediği adreslere sorar
+(`internal/services/managed_vhost_listen.go`); bu sunucunun olmayan bir adres
+bilinmeyendir ve sertifika isteği sürer, `validation_probe` `not_run`, yalnız
+günlük, şema değişmez, 503 yerel nedenlerde kalır; geri kalanlar hâlâ açıktır ve
+hiçbiri giderilmedi: Yapılandırma dosyası sayfasının okumasında başarısız bir `nginx -t`
+ya da yeniden yükleme `challenge_failed` olarak bildirilir; eksik ya da
+okunamayan dosya neden yazmaz, bu yüzden durdurduğu yenileme bir sonraki
+tamamlanan yenilemeye dek bekler; (2026-10-11'de giderildi: SSL sekmesi eksi
+gün yerine "süresi N gün önce doldu" yazar); gerçek bir barındırma müşterisi oturumu çizilmedi; hazır bir
+yoklama, DNS'in ya da güvenlik duvarının sertifika otoritesini içeri
+aldığını göstermez. Yoklama hiç gerçek bir nginx'e sormadı.
+
+On ikinci yerel kayıttan düzeltmeler (set12, 2026-10-11; iki bulgu on ikinci
+kayıtta ölçüldü, `816b8dd60` işlemesinde düzeltildi, yeni kod bileşen testli;
+gerçek sistemde ölçülmedi): Agent'ın
+yanıt vermediği havuz ya da birim, defter satırına bir gözlem olarak yazılır
+(`unknown`, `not_read` ya da `agent_does_not_report` ve hata sınıfı, hiçbir özet
+değişmez); böylece yanıt veren bir sonraki okumaya dek Alan Adları satırı
+okunamadığını söyler; bilinen bir sorunu olan satır onu korur. Geri koymadan
+sonra önceden çalışmayan hizmete dokunulmaz (`service: not_running`); aksi hâlde
+hizmetin kendi denetimi (`php-fpm -t`, `nginx -t`, birim için
+`systemd-analyze verify`) önce geri konan yapılandırmada çalışır: reddederse
+hizmet yeniden yüklenmez ve önceden yüklediği yapılandırmayla çalışır
+(`restore: confirmed`, `service: not_reloaded`, `config_refused_elsewhere`,
+yönetici için satır); geçerse yeniden yüklenir; bu yanıtların her biri
+`service_active` taşır. Uygulama biriminin başlatma komutu artık giriş kabuğuna
+bağlı değildir (Panel'in Node dizinini adlandıran açık bir
+`Environment=PATH=` ile `/bin/sh -c`; gözlenen: PATH satırı orada olduğu hâlde
+`/bin/sh -lc` altında çıplak `node` 127 ile çıktı; giriş profilinin onu
+sıfırlaması bir çıkarımdır ve yeni birim gerçek bir sistemde çalışmadı);
+önceki sürümlerin birim metinleri benimseme için donmuş kalır. PHP sürümü
+değiştirmenin kaynak havuzu silmesi ve temizliği hâlâ denetimsiz yeniden
+yükler. Sayfanın bir seçime yanıtı görünür alana kayar. Şema değişikliği yok.
+
+---
+
 ## D-030 · Panelin güvenli bağlantı kuralı yalnız Panelin kendi ana makine adını kapsar
 
-*10 Ekim 2026 (saat tarihi) · Sahip kararı; kaynakta ve bir bileşen testiyle, gerçek sistem okuması bekliyor*
+*10 Ekim 2026 (saat tarihi) · Sahip kararı; kaynakta ve bir bileşen testiyle; çalışan Panelde üç platformda ve bildirildiğine göre kurulu iki sunucuda okundu (aşağıdaki 11 Ekim 2026 notu); tarayıcının eski kuralı değiştirmesi ölçülmedi*
 
 Panel, HTTPS üzerinde `Strict-Transport-Security: max-age=31536000;
 includeSubDomains` gönderiyordu. Paneli bir adda açmış olan tarayıcı bu yüzden
@@ -47,6 +244,24 @@ tanımı böyledir (RFC 6797, bölüm 8.1).
 
 Değişmeyenler: başlığın süresi, Panelin diğer güvenlik başlıkları, barındırılan
 sitelerin başlıkları.
+
+*Not, 11 Ekim 2026 (o günden bu yana okunanlar).* (1) Altıncı gerçek sistem kaydı
+(`deploy/e2e/release-recovery/evidence/set6-20261009/README.md` ve
+`part-b-headers.md`) başlığı çalışan Panelden Debian 13, Ubuntu 24.04 ve Arch'ta
+okudu: aday, okunan her HTTPS yanıtında (sayfalar, varlıklar, herkese açık ve
+oturumlu API yanıtları, 401/403/404 yanıtları, ön kontrol isteği) tam olarak
+`max-age=31536000` yanıtladı; güncellemeden önce yayımlanmış v0.1.0-alpha.81 ise
+`max-age=31536000; includeSubDomains` yanıtladı; bunlar atılabilir deneme
+konuklarında konuğun içinden yapılan okumalardır. (2) Sahip kurulu iki sunucuyu
+10 Ekim 2026'da güncelledikten sonra her birinin dıştan okunması daraltılmış
+başlığı gösterdi; bu, planlayıcının kendi okumasıyla bildirilmiştir ve kurulu
+sunucularda gözlenmiştir, burada bir dosyada kayıtlı değildir
+(`docs/RESILIENCE-CONTRACT.tr.md` içindeki “v0.1.0-alpha.82'nin yayımlanması …”
+girdisine bakın). **Ölçülmedi:** bir tarayıcının elindeki kuralı bir sonraki
+girişte daraltılmışıyla değiştirmesi (yukarıdaki paragraf hâlâ başlığın tanımıdır,
+RFC 6797 bölüm 8.1, bir gözlem değildir); eski kuralı tutan bir tarayıcı; telefon
+ya da başka bir tarayıcı; Panelin üçüncü taraf bir istemcisi. Bu notla hiçbir
+karar, kod ya da şema değişmedi.
 
 ---
 

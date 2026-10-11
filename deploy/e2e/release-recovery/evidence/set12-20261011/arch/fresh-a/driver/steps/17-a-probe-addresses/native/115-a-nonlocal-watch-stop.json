@@ -1,0 +1,94 @@
+{
+  "active_before_stop": {
+    "celikpanel-lab-set11-fswatch": "active",
+    "celikpanel-lab-set11-netwatch": "active"
+  },
+  "at": "2026-10-11T05:18:49Z",
+  "epoch": 1791695929.4733222,
+  "fs": [
+    {
+      "errno": 0,
+      "t": 1791695925.813376,
+      "watch": "/var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge",
+      "wd": 1
+    },
+    {
+      "errno": 0,
+      "t": 1791695925.8134036,
+      "watch": "/etc/nginx/celikpanel-managed.d/set12-a.test",
+      "wd": 2
+    },
+    {
+      "errno": 0,
+      "t": 1791695925.8134189,
+      "watch": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+      "wd": 3
+    },
+    {
+      "errno": 0,
+      "t": 1791695925.8134296,
+      "watch": "/etc/nginx/sites-available",
+      "wd": 4
+    },
+    {
+      "dir": "/var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge",
+      "events": [
+        "attrib"
+      ],
+      "gid": 0,
+      "inode": 91940,
+      "mode": "0o755",
+      "name": "",
+      "regular": false,
+      "size": 0,
+      "t": 1791695927.3354867,
+      "uid": 0
+    },
+    {
+      "dir": "/var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge",
+      "events": [
+        "attrib"
+      ],
+      "gid": 0,
+      "inode": 91940,
+      "mode": "0o755",
+      "name": "",
+      "regular": false,
+      "size": 0,
+      "t": 1791695927.3439994,
+      "uid": 0
+    }
+  ],
+  "mode": "watch-stop",
+  "net": [
+    {
+      "started": "AF_PACKET on lo",
+      "t": 1791695925.822172
+    },
+    {
+      "dport": 443,
+      "dst": "::1",
+      "sport": 40244,
+      "src": "::1",
+      "syn": true,
+      "t": 1791695927.604192
+    },
+    {
+      "rst_from": 443,
+      "src": "::1",
+      "t": 1791695927.6044345,
+      "to_port": 40244
+    },
+    {
+      "dport": 443,
+      "dst": "127.0.0.1",
+      "sport": 44974,
+      "src": "127.0.0.1",
+      "syn": true,
+      "t": 1791695927.6045356
+    }
+  ],
+  "owner_action": false,
+  "schema": "celikpanel/set11-native/v1",
+  "tag": "a-nonlocal"
+}

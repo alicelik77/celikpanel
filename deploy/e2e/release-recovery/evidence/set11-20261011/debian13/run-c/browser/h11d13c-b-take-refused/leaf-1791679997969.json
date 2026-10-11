@@ -1,0 +1,8 @@
+{
+  "at": "2026-10-11T00:53:17.969Z",
+  "leaf_sha256": "a8c88318859357d0388b93aff17611ab0f833b2273e3503ad3f95d686cf09791",
+  "spki_sha256_base64": "0DxD45GDZOu42Mzvt5MYSTRzeBmtuYr8/GhcK0a7bHg=",
+  "subject": "O=CelikPanel\nCN=dns-debian13",
+  "valid_to": "Oct 11 00:43:12 2028 GMT",
+  "handover_leaf_sha256": "a8c88318859357d0388b93aff17611ab0f833b2273e3503ad3f95d686cf09791"
+}

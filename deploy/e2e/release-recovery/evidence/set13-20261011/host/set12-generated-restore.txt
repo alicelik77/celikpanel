@@ -1,0 +1,17 @@
+removed /.set13-restore (empty, created by set13 at 09:47:58Z)
+ls: cannot access '/.set13-restore': No such file or directory
+== at 2026-10-11T09:48:30Z
+ls: cannot access '/.set13-restore': No such file or directory
+ls: cannot access '/*.set13-restore': No such file or directory
+ls: cannot access '<repo>/*.set13-restore': No such file or directory
+8dcc0b19166bfea1a3d70e559b8837cefdc8351dc5c93f0081fb0218c3bd5cf5  /var/tmp/cp-set12-run/generated/worker_fixture_origin.py
+6648cd8562eaf7308e241f0194df34fe4beb23f756ec34d6e1125ccd0240a990  /var/tmp/cp-set12-run/generated/worker_fixture_origin.json
+6648cd8562eaf7308e241f0194df34fe4beb23f756ec34d6e1125ccd0240a990  -
+total 60
+drwxr-xr-x  3 root root  4096 2026-10-11 12:48:31.009083961 +0300 .
+drwxr-xr-x 20 root root  4096 2026-10-11 11:17:30.094995281 +0300 ..
+-rw-r--r--  1 root root   421 2026-10-11 10:34:03.239567716 +0300 guest_bound_worker.json
+-rw-r--r--  1 root root 13515 2026-10-11 08:59:44.514023748 +0300 guest_bound_worker.py
+drwxr-xr-x  2 root root  4096 2026-10-11 07:11:07.465310613 +0300 __pycache__
+-rw-r--r--  1 root root   499 2026-10-11 12:48:31.001774803 +0300 worker_fixture_origin.json
+-rw-r--r--  1 root root 22779 2026-10-11 12:48:30.981774809 +0300 worker_fixture_origin.py

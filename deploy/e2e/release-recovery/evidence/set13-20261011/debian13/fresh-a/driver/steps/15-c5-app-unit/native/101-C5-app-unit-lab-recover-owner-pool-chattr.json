@@ -1,0 +1,41 @@
+{
+  "action": "owner-pool-chattr",
+  "after": {
+    "ctime_ns": 1791712402646208112,
+    "exists": true,
+    "gid": 989,
+    "group": "celikpanel",
+    "immutable": false,
+    "inode": 135536,
+    "kind": "file",
+    "lsattr": "--------------e-------",
+    "mode": "0644",
+    "mtime_ns": 1791712248070877004,
+    "nlink": 1,
+    "owner": "root",
+    "path": "/etc/php/8.4/fpm/pool.d/site2.conf",
+    "sha256": "68b9a5837198a72dde8e055eb50e37764eed33e724251381f3988b7b379e14ae",
+    "size": 666,
+    "uid": 0
+  },
+  "at": "2026-10-11T09:53:22Z",
+  "chattr": {
+    "argv": [
+      "chattr",
+      "-i",
+      "/etc/php/8.4/fpm/pool.d/site2.conf"
+    ],
+    "at": "2026-10-11T09:53:22Z",
+    "returncode": 0,
+    "seconds": 0.003,
+    "status": "ok",
+    "stderr": "",
+    "stdout": ""
+  },
+  "epoch": 1791712402.6530032,
+  "flag": "-i",
+  "mode": "owner-pool-chattr",
+  "owner_action": true,
+  "path": "/etc/php/8.4/fpm/pool.d/site2.conf",
+  "schema": "celikpanel/set12-native/v1"
+}

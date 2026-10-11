@@ -1,0 +1,92 @@
+{
+  "outcome": "response",
+  "panel": "owner",
+  "purpose": "a1: POST ssl/letsencrypt (the owner requests a certificate)",
+  "request": {
+    "body": {
+      "auto_renew": false,
+      "email": "hostmaster@set11-a.test"
+    },
+    "headers": [
+      [
+        "Accept",
+        "application/json"
+      ],
+      [
+        "Host",
+        "127.0.0.1:18871"
+      ],
+      [
+        "Content-Type",
+        "application/json"
+      ],
+      [
+        "Origin",
+        "https://127.0.0.1:18871"
+      ],
+      [
+        "Cookie",
+        "[REDACTED]"
+      ],
+      [
+        "X-CelikPanel-Request-Id",
+        "83b04b8dd357d9c64c36f8eedf3b1c5c"
+      ]
+    ],
+    "method": "POST",
+    "path": "/api/v1/domains/2/ssl/letsencrypt"
+  },
+  "response": {
+    "elapsed_seconds": 0.815,
+    "headers": [
+      [
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+      ],
+      [
+        "Content-Type",
+        "application/json"
+      ],
+      [
+        "Referrer-Policy",
+        "no-referrer"
+      ],
+      [
+        "Strict-Transport-Security",
+        "max-age=31536000"
+      ],
+      [
+        "X-Celikpanel-Request-Id",
+        "83b04b8dd357d9c64c36f8eedf3b1c5c"
+      ],
+      [
+        "X-Content-Type-Options",
+        "nosniff"
+      ],
+      [
+        "X-Frame-Options",
+        "DENY"
+      ],
+      [
+        "Date",
+        "Sun, 11 Oct 2026 00:33:37 GMT"
+      ],
+      [
+        "Content-Length",
+        "844"
+      ]
+    ],
+    "json": {
+      "code": "CERTIFICATE_ISSUE_FAILED",
+      "error": "No certificate was issued: this server could not reach the certificate authority, so no request was placed with it. The server owner checks that this server can open HTTPS connections to the internet (DNS resolution, outbound port 443, the system clock), then requests the certificate here again. The site has no certificate from this request and is served as before. Nothing asks again automatically.",
+      "reason": "authority_unreachable",
+      "vars": {
+        "detail": "An unexpected error occurred: requests.exceptions.SSLError: HTTPSConnectionPool(host='acme-v02.api.letsencrypt.org', port=443): Max retries exceeded with url: /directory (Caused by SSLError(SSLCertVerificationError(1, \"[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: Hostname mismatch, ce...",
+        "domain": "set11-a.test",
+        "kept": "none"
+      }
+    },
+    "status": 502,
+    "text": null
+  }
+}

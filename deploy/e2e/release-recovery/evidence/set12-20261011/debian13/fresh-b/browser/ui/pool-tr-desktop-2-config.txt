@@ -1,0 +1,80 @@
+Alan Adları
+set12-a.test
+Aktif
+Siteyi aç
+Tür
+php
+PHP sürümü
+8.4
+SSL
+Kapalı
+Disk kullanımı
+1.2 KB
+Trafik
+1.4 KB/mo
+Genel Bakış
+Barındırma
+DNS
+E-posta
+Veritabanları
+Uygulamalar
+Dosyalar
+Gelişmiş
+Genel
+Barındırma tipi
+Yapılandırma dosyası
+PHP
+SSL/TLS
+Bu sitenin yapılandırma dosyaları
+nginx yapılandırması
+CelikPanel’in metni, değişmemiş
+/etc/nginx/sites-available/set12-a.test.conf
+PHP-FPM havuzu (bu sitenin PHP süreç ayarları)
+CelikPanel dışında düzenlendi
+/etc/php/8.4/fpm/pool.d/site2.conf
+Sitenin nginx yapılandırma dosyası
+
+CelikPanel’in metni, değişmemiş
+
+Bu dosya CelikPanel’in en son yazdığının ta kendisi; bu yüzden siz bu sitenin ayarlarını değiştirdikçe CelikPanel onu günceller.
+
+Dosya
+/etc/nginx/sites-available/set12-a.test.conf
+
+Bu site için kendi nginx yönergelerinizi /etc/nginx/celikpanel-sites.d/set12-a.test içinde bir .conf dosyasına yazın. CelikPanel oraya hiç yazmaz ve bu sitede yaptığı her değişiklikte onları korur.
+
+CelikPanel bu sitenin kendi parçalarını (sertifika doğrulaması) /etc/nginx/celikpanel-managed.d/set12-a.test içine yazar. Bu dosyanın onu içeren satırlarını koruyun.
+
+Sitenin PHP-FPM havuz dosyası
+
+Yapılandırma CelikPanel dışında düzenlendi
+
+Bu dosya CelikPanel’in en son yazdığı metin değil; bu yüzden CelikPanel onu eklediğiniz her satırla birlikte olduğu gibi korudu. Aşağıda seçim yapana kadar bu sitenin PHP ayarlarını kaydetmek ya da PHP sürümünü değiştirmek reddedilir; PHP-FPM siteyi sizin dosyanızla çalıştırmaya devam eder.
+
+Dosya
+/etc/php/8.4/fpm/pool.d/site2.conf
+
+Bu dosyaya ne olacağını seçin
+CelikPanel’in metnini al
+
+Dosyanız önce yanına tarihli bir kopya olarak bırakılır, sonra yerine CelikPanel’in metni yazılır ve PHP-FPM yeniden yüklenir. Eklediğiniz satırlar CelikPanel’in metninde yoktur. PHP-FPM onu reddederse dosyanız geri konur. Tarihli kopya yerinde kalır.
+
+Benimkini koru
+
+Dosyanız bayt bayt olduğu gibi kalır. CelikPanel seçiminizi kaydeder ve yalnız dosya değişirse yeniden sorar.
+
+Elle birleştir
+
+Dosyayı sunucuda kendiniz düzenlersiniz; burada hiçbir şey yapılmaz.
+
+Fark: sizin dosyanız (−) ve CelikPanel’in metni (+)
+--- /etc/php/8.4/fpm/pool.d/site2.conf (bu sunucuda)
++++ CelikPanel’in metni
+@@ -15,5 +15,3 @@
+ pm.max_spare_servers = 3
+ pm.max_requests = 500
+ chdir = /
+-; set12: added by the server owner by hand (a comment and a directive of their own)
+-php_admin_value[memory_limit] = 256M
+
+PHP-FPM’in kendi havuz ayarlarınız için ayrı bir yeri yok; bu yüzden onlar bu dosyada durur. CelikPanel sizin satırlarınızı taşıyan havuz dosyasını korur ve yeniden yazmadan önce sorar; fark, hangi satırların sizin olduğunu tam olarak gösterir.

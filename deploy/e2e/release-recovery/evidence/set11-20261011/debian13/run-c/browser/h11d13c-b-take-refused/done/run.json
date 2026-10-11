@@ -1,0 +1,32 @@
+{
+  "cell": "done",
+  "lang": "en",
+  "tag": "",
+  "chrome": "Chrome/154.0.8037.98",
+  "handover": {
+    "at": "2026-10-11T00:53:15Z",
+    "base": "https://127.0.0.1:18871",
+    "click": null,
+    "domains": [
+      {
+        "id": 2,
+        "name": "set11-a.test"
+      }
+    ],
+    "local_port": 18871,
+    "password_file": "(root-only file, not copied)",
+    "schema": "celikpanel/set11-handover/v1",
+    "tls_leaf_sha256": "a8c88318859357d0388b93aff17611ab0f833b2273e3503ad3f95d686cf09791",
+    "username": "labadmin",
+    "window": "b-take-refused"
+  },
+  "leaf": {
+    "leaf_sha256": "a8c88318859357d0388b93aff17611ab0f833b2273e3503ad3f95d686cf09791",
+    "spki_sha256_base64": "0DxD45GDZOu42Mzvt5MYSTRzeBmtuYr8/GhcK0a7bHg=",
+    "subject": "O=CelikPanel\nCN=dns-debian13",
+    "valid_to": "Oct 11 00:43:12 2028 GMT"
+  },
+  "started": "2026-10-11T00:53:39.251Z",
+  "ended": "2026-10-11T00:53:39.257Z",
+  "ok": true
+}

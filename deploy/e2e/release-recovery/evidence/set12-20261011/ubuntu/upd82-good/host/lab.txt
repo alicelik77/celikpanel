@@ -1,0 +1,2 @@
+lab=/var/tmp/cp-release-drill-s12-g82-ub
+upd1-ubuntu-good-20261011t060111z

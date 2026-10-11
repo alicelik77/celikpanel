@@ -1,0 +1,60 @@
+{
+  "at": "2026-10-11T05:17:41Z",
+  "by_unit": {
+    "celikpanel-agent.service": [
+      "2026-10-11T05:16:26.237522+00:00 dns-arch agent[411]: 2026/10/11 05:16:26 Getting pool config for site3 (PHP 8.5)",
+      "2026-10-11T05:16:26.624273+00:00 dns-arch php-fpm[3489]: [NOTICE] configuration file /etc/php/php-fpm.conf test is successful",
+      "2026-10-11T05:17:41.673819+00:00 dns-arch agent[411]: 2026/10/11 05:17:41 ApplySitePool site 3 (save): written managed_unchanged /etc/php/php-fpm.d/site3.conf"
+    ],
+    "celikpanel-panel.service": [
+      "2026-10-11T05:16:25.601864+00:00 dns-arch panel[2977]: 2026/10/11 05:16:25 http: TLS handshake error from 127.0.0.1:39858: EOF",
+      "2026-10-11T05:16:26.561771+00:00 dns-arch panel[2977]: 2026/10/11 05:16:26 http: TLS handshake error from 127.0.0.1:43954: EOF",
+      "2026-10-11T05:16:32.563762+00:00 dns-arch panel[2977]: 2026/10/11 05:16:32 http: TLS handshake error from 127.0.0.1:43966: EOF",
+      "2026-10-11T05:17:32.571791+00:00 dns-arch panel[2977]: 2026/10/11 05:17:32 site configuration set12-a.test php_pool: could not read its state: context deadline exceeded",
+      "2026-10-11T05:17:32.583588+00:00 dns-arch panel[2977]: 2026/10/11 05:17:32 http: TLS handshake error from 127.0.0.1:50328: EOF",
+      "2026-10-11T05:17:41.674733+00:00 dns-arch panel[2977]: 2026/10/11 05:17:41 site configuration set12-b.test php_pool (save): written"
+    ],
+    "nginx.service": [],
+    "php-fpm.service": [
+      "2026-10-11T05:16:25.002222+00:00 dns-arch systemd[1]: php-fpm.service: Can't open PID file '/run/php-fpm/php-fpm.pid' (yet?) after reload: No such file or directory",
+      "2026-10-11T05:16:25.002375+00:00 dns-arch systemd[1]: Reloaded The PHP FastCGI Process Manager.",
+      "2026-10-11T05:16:25.004786+00:00 dns-arch php-fpm[1489]: [NOTICE] reloading: execvp(\"/usr/bin/php-fpm\", {\"/usr/bin/php-fpm\", \"--nodaemonize\", \"--fpm-config\", \"/etc/php/php-fpm.conf\"})",
+      "2026-10-11T05:16:25.058340+00:00 dns-arch php-fpm[1489]: [NOTICE] using inherited socket fd=7, \"/run/php-fpm/php-fpm.sock\"",
+      "2026-10-11T05:16:25.058437+00:00 dns-arch php-fpm[1489]: [NOTICE] using inherited socket fd=7, \"/run/php-fpm/php-fpm.sock\"",
+      "2026-10-11T05:16:25.058473+00:00 dns-arch php-fpm[1489]: [NOTICE] using inherited socket fd=9, \"/run/php-fpm/php8.5-fpm-site2.sock\"",
+      "2026-10-11T05:16:25.058509+00:00 dns-arch php-fpm[1489]: [NOTICE] using inherited socket fd=9, \"/run/php-fpm/php8.5-fpm-site2.sock\"",
+      "2026-10-11T05:16:25.058534+00:00 dns-arch php-fpm[1489]: [NOTICE] using inherited socket fd=10, \"/run/php-fpm/php8.5-fpm-site3.sock\"",
+      "2026-10-11T05:16:25.058585+00:00 dns-arch php-fpm[1489]: [NOTICE] using inherited socket fd=10, \"/run/php-fpm/php8.5-fpm-site3.sock\"",
+      "2026-10-11T05:16:25.063209+00:00 dns-arch php-fpm[1489]: [NOTICE] fpm is running, pid 1489",
+      "2026-10-11T05:16:25.069235+00:00 dns-arch php-fpm[1489]: [NOTICE] ready to handle connections",
+      "2026-10-11T05:16:25.069345+00:00 dns-arch php-fpm[1489]: [NOTICE] systemd monitor interval set to 10000ms",
+      "2026-10-11T05:16:26.633491+00:00 dns-arch systemd[1]: Reloading The PHP FastCGI Process Manager...",
+      "2026-10-11T05:17:41.672092+00:00 dns-arch systemd[1]: php-fpm.service: Can't open PID file '/run/php-fpm/php-fpm.pid' (yet?) after reload: No such file or directory",
+      "2026-10-11T05:17:41.672170+00:00 dns-arch systemd[1]: Reloaded The PHP FastCGI Process Manager."
+    ]
+  },
+  "mode": "read-window12",
+  "owner_action": false,
+  "schema": "celikpanel/set12-native/v1",
+  "since_epoch": 1791695785,
+  "systemd_all": [
+    "2026-10-11T05:16:25.002222+00:00 dns-arch systemd[1]: php-fpm.service: Can't open PID file '/run/php-fpm/php-fpm.pid' (yet?) after reload: No such file or directory",
+    "2026-10-11T05:16:25.002375+00:00 dns-arch systemd[1]: Reloaded The PHP FastCGI Process Manager.",
+    "2026-10-11T05:16:25.339409+00:00 dns-arch systemd[1]: Reload requested from client PID 3417 ('systemctl') (unit session-48.scope)...",
+    "2026-10-11T05:16:25.339450+00:00 dns-arch systemd[1]: Reloading...",
+    "2026-10-11T05:16:25.521176+00:00 dns-arch systemd[1]: Reloading finished in 181 ms.",
+    "2026-10-11T05:16:26.633491+00:00 dns-arch systemd[1]: Reloading The PHP FastCGI Process Manager...",
+    "2026-10-11T05:17:41.672092+00:00 dns-arch systemd[1]: php-fpm.service: Can't open PID file '/run/php-fpm/php-fpm.pid' (yet?) after reload: No such file or directory",
+    "2026-10-11T05:17:41.672170+00:00 dns-arch systemd[1]: Reloaded The PHP FastCGI Process Manager."
+  ],
+  "systemd_manager": [
+    "2026-10-11T05:16:25.002222+00:00 dns-arch systemd[1]: php-fpm.service: Can't open PID file '/run/php-fpm/php-fpm.pid' (yet?) after reload: No such file or directory",
+    "2026-10-11T05:17:41.672092+00:00 dns-arch systemd[1]: php-fpm.service: Can't open PID file '/run/php-fpm/php-fpm.pid' (yet?) after reload: No such file or directory"
+  ],
+  "units": [
+    "celikpanel-panel.service",
+    "celikpanel-agent.service",
+    "nginx.service",
+    "php-fpm.service"
+  ]
+}

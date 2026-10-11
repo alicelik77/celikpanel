@@ -1,0 +1,644 @@
+{
+  "b1": {
+    "a_lines": [
+      "2026-10-11T01:19:22.003575+00:00 dns-ubuntu panel[51557]: 2026/10/11 01:19:22 site configuration set11-a.test (startup): kept, not replaced (managed_unchanged write_refused); rename /etc/nginx/sites-available/.set11-a.test.conf.celikpanel-1000361093 /etc/nginx/sites-available/set11-a.test.conf: operation not permitted"
+    ],
+    "browser": {
+      "browser_done": {
+        "at": "2026-10-11T01:20:26.254Z",
+        "by": "cold-load-set11.mjs"
+      },
+      "ended_at": "2026-10-11T01:20:27Z",
+      "hand": "/var/tmp/cp-set11-run/hand/h11ub-b-unwritable",
+      "password_file_removed": true,
+      "requests": [],
+      "window": "b-unwritable"
+    },
+    "files": {
+      "journal": "steps/18-b1-locked-start/native/118-b1-recheck-journal.json",
+      "logs": "steps/18-b1-locked-start/native/117-b1-recheck-nginx-logs.json",
+      "watch": "steps/18-b1-locked-start/native/116-b1-recheck-watch-stop.json"
+    },
+    "journal": "steps/18-b1-locked-start/native/111-b1-journal.json",
+    "page": {
+      "actions": [
+        "recheck"
+      ],
+      "detail": null,
+      "file_sha256": "5f4dffb2359aa4c5e7f1d0d8b69d3fca720a23f8344dbfc2d4408be3e5a103ed",
+      "protection": "immutable",
+      "reason": "write_refused",
+      "render_sha256": "5db5c3de4f7cfe78135979113bf0ef5ce62b30fe1af84087212358f182d6d7de",
+      "state": "unwritable",
+      "system_error": "EPERM"
+    },
+    "row": {
+      "state": "unwritable"
+    },
+    "start_lines": [
+      "2026-10-11T01:19:22.023834+00:00 dns-ubuntu panel[51557]: 2026/10/11 01:19:22 site configuration files at start: 2 written, 0 unchanged, 0 kept (owner-edited), 0 kept (foreign), 0 kept (unknown origin), 1 unreadable or unwritable, 0 missing (not recreated), 0 failed; 0 adopted from an earlier release"
+    ]
+  },
+  "calls": [
+    {
+      "at": "2026-10-11T01:19:51Z",
+      "json": {
+        "actions": [
+          "recheck"
+        ],
+        "challenge_file": "unchanged",
+        "diff": "--- /etc/nginx/sites-available/set11-a.test.conf (on this server)\n+++ CelikPanel's text\n@@ -1,4 +1,3 @@\n-# set10 lab preparation: an older CelikPanel text of this site (a line the current render does not have)\n # Nginx vhost for set11-a.test\n # Written by CelikPanel. Put your own additions in /etc/nginx/celikpanel-sites.d/set11-a.test/*.conf;\n # CelikPanel never writes there. If you change this file, CelikPanel keeps\n",
+        "domain": "set11-a.test",
+        "domain_id": 2,
+        "enabled": "link",
+        "file_sha256": "5f4dffb2359aa4c5e7f1d0d8b69d3fca720a23f8344dbfc2d4408be3e5a103ed",
+        "include_dir": "/etc/nginx/celikpanel-sites.d/set11-a.test",
+        "kind": "nginx_vhost",
+        "ledger": {
+          "observed_at": "2026-10-11T01:19:22Z",
+          "written_at": "2026-10-11T01:17:40Z",
+          "written_release": "v0.1.0-alpha.81 b2b43d0cd680"
+        },
+        "managed_dir": "/etc/nginx/celikpanel-managed.d/set11-a.test",
+        "managed_include": "include /etc/nginx/celikpanel-managed.d/set11-a.test/*.conf;",
+        "path": "/etc/nginx/sites-available/set11-a.test.conf",
+        "pending_path": "/etc/nginx/sites-available/set11-a.test.conf.celikpanel-pending",
+        "protection": "immutable",
+        "reason": "write_refused",
+        "render_sha256": "5db5c3de4f7cfe78135979113bf0ef5ce62b30fe1af84087212358f182d6d7de",
+        "state": "unwritable",
+        "system_error": "EPERM"
+      },
+      "label": "b1 after the start: GET site-config",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains/2/site-config"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T01:19:51Z",
+      "json": [
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T01:17:43Z",
+          "disk_usage": 0,
+          "domain_name": "set11-b.test",
+          "id": 3,
+          "php_version": "8.3",
+          "project_type": "php",
+          "site_config": {
+            "state": "managed_unchanged"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        },
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T01:17:40Z",
+          "disk_usage": 0,
+          "domain_name": "set11-a.test",
+          "id": 2,
+          "php_version": "8.3",
+          "project_type": "php",
+          "site_config": {
+            "state": "unwritable"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        },
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T01:17:34Z",
+          "disk_usage": 0,
+          "domain_name": "set1-owner.test",
+          "id": 1,
+          "php_version": "",
+          "project_type": "static",
+          "site_config": {
+            "state": "managed_unchanged"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        }
+      ],
+      "label": "b1 after the start: GET /api/v1/domains (Domains list)",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T01:20:27Z",
+      "json": {
+        "actions": [
+          "recheck"
+        ],
+        "challenge_file": "unchanged",
+        "diff": "--- /etc/nginx/sites-available/set11-a.test.conf (on this server)\n+++ CelikPanel's text\n@@ -1,4 +1,3 @@\n-# set10 lab preparation: an older CelikPanel text of this site (a line the current render does not have)\n # Nginx vhost for set11-a.test\n # Written by CelikPanel. Put your own additions in /etc/nginx/celikpanel-sites.d/set11-a.test/*.conf;\n # CelikPanel never writes there. If you change this file, CelikPanel keeps\n",
+        "domain": "set11-a.test",
+        "domain_id": 2,
+        "enabled": "link",
+        "file_sha256": "5f4dffb2359aa4c5e7f1d0d8b69d3fca720a23f8344dbfc2d4408be3e5a103ed",
+        "include_dir": "/etc/nginx/celikpanel-sites.d/set11-a.test",
+        "kind": "nginx_vhost",
+        "ledger": {
+          "observed_at": "2026-10-11T01:19:22Z",
+          "written_at": "2026-10-11T01:17:40Z",
+          "written_release": "v0.1.0-alpha.81 b2b43d0cd680"
+        },
+        "managed_dir": "/etc/nginx/celikpanel-managed.d/set11-a.test",
+        "managed_include": "include /etc/nginx/celikpanel-managed.d/set11-a.test/*.conf;",
+        "path": "/etc/nginx/sites-available/set11-a.test.conf",
+        "pending_path": "/etc/nginx/sites-available/set11-a.test.conf.celikpanel-pending",
+        "protection": "immutable",
+        "reason": "write_refused",
+        "render_sha256": "5db5c3de4f7cfe78135979113bf0ef5ce62b30fe1af84087212358f182d6d7de",
+        "state": "unwritable",
+        "system_error": "EPERM"
+      },
+      "label": "b1 check again (GET site-config): GET site-config",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains/2/site-config"
+      },
+      "status": 200,
+      "text": null
+    }
+  ],
+  "cells": {
+    "B1": {
+      "detail": {
+        "a_lines": [
+          "2026-10-11T01:19:22.003575+00:00 dns-ubuntu panel[51557]: 2026/10/11 01:19:22 site configuration set11-a.test (startup): kept, not replaced (managed_unchanged write_refused); rename /etc/nginx/sites-available/.set11-a.test.conf.celikpanel-1000361093 /etc/nginx/sites-available/set11-a.test.conf: operation not permitted"
+        ],
+        "browser": {
+          "browser_done": {
+            "at": "2026-10-11T01:20:26.254Z",
+            "by": "cold-load-set11.mjs"
+          },
+          "ended_at": "2026-10-11T01:20:27Z",
+          "hand": "/var/tmp/cp-set11-run/hand/h11ub-b-unwritable",
+          "password_file_removed": true,
+          "requests": [],
+          "window": "b-unwritable"
+        },
+        "files": {
+          "journal": "steps/18-b1-locked-start/native/118-b1-recheck-journal.json",
+          "logs": "steps/18-b1-locked-start/native/117-b1-recheck-nginx-logs.json",
+          "watch": "steps/18-b1-locked-start/native/116-b1-recheck-watch-stop.json"
+        },
+        "journal": "steps/18-b1-locked-start/native/111-b1-journal.json",
+        "page": {
+          "actions": [
+            "recheck"
+          ],
+          "detail": null,
+          "file_sha256": "5f4dffb2359aa4c5e7f1d0d8b69d3fca720a23f8344dbfc2d4408be3e5a103ed",
+          "protection": "immutable",
+          "reason": "write_refused",
+          "render_sha256": "5db5c3de4f7cfe78135979113bf0ef5ce62b30fe1af84087212358f182d6d7de",
+          "state": "unwritable",
+          "system_error": "EPERM"
+        },
+        "row": {
+          "state": "unwritable"
+        },
+        "start_lines": [
+          "2026-10-11T01:19:22.023834+00:00 dns-ubuntu panel[51557]: 2026/10/11 01:19:22 site configuration files at start: 2 written, 0 unchanged, 0 kept (owner-edited), 0 kept (foreign), 0 kept (unknown origin), 1 unreadable or unwritable, 0 missing (not recreated), 0 failed; 0 adopted from an earlier release"
+        ]
+      },
+      "expectations": [
+        {
+          "expectation": "A carried the immutable flag before the start",
+          "held": true,
+          "measured": "----i---------e-------"
+        },
+        {
+          "expectation": "the Panel started",
+          "held": true,
+          "measured": {
+            "is_active": "active",
+            "ok": true
+          }
+        },
+        {
+          "expectation": "A untouched and its link intact; B and the static site written",
+          "held": true,
+          "measured": {
+            "a": {
+              "ctime_ns": 1791681557344121858,
+              "exists": true,
+              "first_line": "# celikpanel-render v2 sha256=ab75905277061465dd4dd89a54b029fd923a711fd0facf27bcd7be10712a1da8",
+              "gid": 988,
+              "group": "celikpanel",
+              "header": {
+                "body_bytes": 2140,
+                "body_sha256": "ab75905277061465dd4dd89a54b029fd923a711fd0facf27bcd7be10712a1da8",
+                "declared": "ab75905277061465dd4dd89a54b029fd923a711fd0facf27bcd7be10712a1da8",
+                "present": true,
+                "valid": true
+              },
+              "immutable": true,
+              "inode": 262481,
+              "kind": "file",
+              "link_target": null,
+              "lsattr": "----i---------e-------",
+              "mode": "0644",
+              "mtime_ns": 1791681556855108344,
+              "owner": "root",
+              "sha256": "5f4dffb2359aa4c5e7f1d0d8b69d3fca720a23f8344dbfc2d4408be3e5a103ed",
+              "size": 2235,
+              "uid": 0
+            },
+            "others": {
+              "set1-owner.test": {
+                "inode": [
+                  263559,
+                  263576
+                ],
+                "panel_text": true
+              },
+              "set11-b.test": {
+                "inode": [
+                  262702,
+                  263559
+                ],
+                "panel_text": true
+              }
+            }
+          }
+        },
+        {
+          "expectation": "the ledger stores unreadable + write_refused",
+          "held": true,
+          "measured": {
+            "file_sha256": "5f4dffb2359aa4c5e7f1d0d8b69d3fca720a23f8344dbfc2d4408be3e5a103ed",
+            "state": "unreadable",
+            "state_reason": "write_refused"
+          }
+        },
+        {
+          "expectation": "GET site-config: unwritable, write_refused, EPERM, immutable, a difference, actions [recheck]",
+          "held": true,
+          "measured": {
+            "actions": [
+              "recheck"
+            ],
+            "detail": null,
+            "diff_lines": 7,
+            "file_sha256": "5f4dffb2359aa4c5e7f1d0d8b69d3fca720a23f8344dbfc2d4408be3e5a103ed",
+            "protection": "immutable",
+            "reason": "write_refused",
+            "render_sha256": "5db5c3de4f7cfe78135979113bf0ef5ce62b30fe1af84087212358f182d6d7de",
+            "state": "unwritable",
+            "system_error": "EPERM"
+          }
+        },
+        {
+          "expectation": "the Domains row says unwritable",
+          "held": true,
+          "measured": {
+            "state": "unwritable"
+          }
+        },
+        {
+          "expectation": "check again answers the same state",
+          "held": true,
+          "measured": {
+            "actions": [
+              "recheck"
+            ],
+            "detail": null,
+            "file_sha256": "5f4dffb2359aa4c5e7f1d0d8b69d3fca720a23f8344dbfc2d4408be3e5a103ed",
+            "protection": "immutable",
+            "reason": "write_refused",
+            "render_sha256": "5db5c3de4f7cfe78135979113bf0ef5ce62b30fe1af84087212358f182d6d7de",
+            "state": "unwritable",
+            "system_error": "EPERM"
+          }
+        },
+        {
+          "expectation": "check again wrote nothing: A's sha256, inode and mtime unchanged, no inotify event on A's files",
+          "held": true,
+          "measured": {
+            "after": {
+              "inode": 262481,
+              "mtime_ns": 1791681556855108344,
+              "sha256": "5f4dffb2359aa4c5e7f1d0d8b69d3fca720a23f8344dbfc2d4408be3e5a103ed"
+            },
+            "before": {
+              "inode": 262481,
+              "mtime_ns": 1791681556855108344,
+              "sha256": "5f4dffb2359aa4c5e7f1d0d8b69d3fca720a23f8344dbfc2d4408be3e5a103ed"
+            },
+            "events_on_a": []
+          }
+        },
+        {
+          "expectation": "check again logged no site-configuration write line and nginx was not reloaded",
+          "held": true,
+          "measured": {
+            "reloads": [],
+            "site_lines": []
+          }
+        }
+      ],
+      "verdict": "PASS"
+    }
+  },
+  "checks": [
+    {
+      "detail": "----i---------e-------",
+      "name": "B1: A carried the immutable flag before the start",
+      "ok": true
+    },
+    {
+      "detail": {
+        "is_active": "active",
+        "ok": true
+      },
+      "name": "B1: the Panel started",
+      "ok": true
+    },
+    {
+      "detail": {
+        "a": {
+          "ctime_ns": 1791681557344121858,
+          "exists": true,
+          "first_line": "# celikpanel-render v2 sha256=ab75905277061465dd4dd89a54b029fd923a711fd0facf27bcd7be10712a1da8",
+          "gid": 988,
+          "group": "celikpanel",
+          "header": {
+            "body_bytes": 2140,
+            "body_sha256": "ab75905277061465dd4dd89a54b029fd923a711fd0facf27bcd7be10712a1da8",
+            "declared": "ab75905277061465dd4dd89a54b029fd923a711fd0facf27bcd7be10712a1da8",
+            "present": true,
+            "valid": true
+          },
+          "immutable": true,
+          "inode": 262481,
+          "kind": "file",
+          "link_target": null,
+          "lsattr": "----i---------e-------",
+          "mode": "0644",
+          "mtime_ns": 1791681556855108344,
+          "owner": "root",
+          "sha256": "5f4dffb2359aa4c5e7f1d0d8b69d3fca720a23f8344dbfc2d4408be3e5a103ed",
+          "size": 2235,
+          "uid": 0
+        },
+        "others": {
+          "set1-owner.test": {
+            "inode": [
+              263559,
+              263576
+            ],
+            "panel_text": true
+          },
+          "set11-b.test": {
+            "inode": [
+              262702,
+              263559
+            ],
+            "panel_text": true
+          }
+        }
+      },
+      "name": "B1: A untouched and its link intact; B and the static site written",
+      "ok": true
+    },
+    {
+      "detail": {
+        "file_sha256": "5f4dffb2359aa4c5e7f1d0d8b69d3fca720a23f8344dbfc2d4408be3e5a103ed",
+        "state": "unreadable",
+        "state_reason": "write_refused"
+      },
+      "name": "B1: the ledger stores unreadable + write_refused",
+      "ok": true
+    },
+    {
+      "detail": {
+        "actions": [
+          "recheck"
+        ],
+        "detail": null,
+        "diff_lines": 7,
+        "file_sha256": "5f4dffb2359aa4c5e7f1d0d8b69d3fca720a23f8344dbfc2d4408be3e5a103ed",
+        "protection": "immutable",
+        "reason": "write_refused",
+        "render_sha256": "5db5c3de4f7cfe78135979113bf0ef5ce62b30fe1af84087212358f182d6d7de",
+        "state": "unwritable",
+        "system_error": "EPERM"
+      },
+      "name": "B1: GET site-config: unwritable, write_refused, EPERM, immutable, a difference, actions [recheck]",
+      "ok": true
+    },
+    {
+      "detail": {
+        "state": "unwritable"
+      },
+      "name": "B1: the Domains row says unwritable",
+      "ok": true
+    },
+    {
+      "detail": {
+        "actions": [
+          "recheck"
+        ],
+        "detail": null,
+        "file_sha256": "5f4dffb2359aa4c5e7f1d0d8b69d3fca720a23f8344dbfc2d4408be3e5a103ed",
+        "protection": "immutable",
+        "reason": "write_refused",
+        "render_sha256": "5db5c3de4f7cfe78135979113bf0ef5ce62b30fe1af84087212358f182d6d7de",
+        "state": "unwritable",
+        "system_error": "EPERM"
+      },
+      "name": "B1: check again answers the same state",
+      "ok": true
+    },
+    {
+      "detail": {
+        "after": {
+          "inode": 262481,
+          "mtime_ns": 1791681556855108344,
+          "sha256": "5f4dffb2359aa4c5e7f1d0d8b69d3fca720a23f8344dbfc2d4408be3e5a103ed"
+        },
+        "before": {
+          "inode": 262481,
+          "mtime_ns": 1791681556855108344,
+          "sha256": "5f4dffb2359aa4c5e7f1d0d8b69d3fca720a23f8344dbfc2d4408be3e5a103ed"
+        },
+        "events_on_a": []
+      },
+      "name": "B1: check again wrote nothing: A's sha256, inode and mtime unchanged, no inotify event on A's files",
+      "ok": true
+    },
+    {
+      "detail": {
+        "reloads": [],
+        "site_lines": []
+      },
+      "name": "B1: check again logged no site-configuration write line and nginx was not reloaded",
+      "ok": true
+    }
+  ],
+  "finished_at": "2026-10-11T01:20:31Z",
+  "lab_preparation": [
+    {
+      "domain": "set11-a.test",
+      "file": "steps/18-b1-locked-start/native/103-b1-lab-restore-set11-a.test.json",
+      "label": "b1",
+      "sha256_matches": true
+    }
+  ],
+  "native_evidence": false,
+  "natives": [
+    {
+      "file": "native/103-b1-lab-restore-set11-a.test.json",
+      "label": "b1-lab-restore-set11-a.test",
+      "mode": "lab-restore",
+      "owner_action": false
+    },
+    {
+      "file": "native/104-owner-b1-panel-stop.json",
+      "label": "owner-b1-panel-stop",
+      "mode": "owner-panel",
+      "owner_action": true
+    },
+    {
+      "file": "native/105-b1-lab-stale.json",
+      "label": "b1-lab-stale",
+      "mode": "lab-stale-managed",
+      "owner_action": false
+    },
+    {
+      "file": "native/106-owner-b1-chattr-plus-i.json",
+      "label": "owner-b1-chattr-plus-i",
+      "mode": "owner-chattr",
+      "owner_action": true
+    },
+    {
+      "file": "native/107-b1-1-locked-read.json",
+      "label": "b1-1-locked-read",
+      "mode": "read-site10",
+      "owner_action": false
+    },
+    {
+      "file": "native/108-guest-clock.json",
+      "label": "guest-clock",
+      "mode": "read-ledger",
+      "owner_action": false
+    },
+    {
+      "file": "native/109-owner-b1-panel-start.json",
+      "label": "owner-b1-panel-start",
+      "mode": "owner-panel",
+      "owner_action": true
+    },
+    {
+      "file": "native/110-b1-2-after-the-start-read.json",
+      "label": "b1-2-after-the-start-read",
+      "mode": "read-site10",
+      "owner_action": false
+    },
+    {
+      "file": "native/111-b1-journal.json",
+      "label": "b1-journal",
+      "mode": "read-window",
+      "owner_action": false
+    },
+    {
+      "file": "native/112-b1-recheck-0-stat.json",
+      "label": "b1-recheck-0-stat",
+      "mode": "read-stat",
+      "owner_action": false
+    },
+    {
+      "file": "native/113-b1-recheck-before-acme.json",
+      "label": "b1-recheck-before-acme",
+      "mode": "read-acme",
+      "owner_action": false
+    },
+    {
+      "file": "native/114-b1-recheck-log-offsets.json",
+      "label": "b1-recheck-log-offsets",
+      "mode": "log-offsets",
+      "owner_action": false
+    },
+    {
+      "file": "native/115-b1-recheck-watch-start.json",
+      "label": "b1-recheck-watch-start",
+      "mode": "watch-start",
+      "owner_action": false
+    },
+    {
+      "file": "native/116-b1-recheck-watch-stop.json",
+      "label": "b1-recheck-watch-stop",
+      "mode": "watch-stop",
+      "owner_action": false
+    },
+    {
+      "file": "native/117-b1-recheck-nginx-logs.json",
+      "label": "b1-recheck-nginx-logs",
+      "mode": "read-logs",
+      "owner_action": false
+    },
+    {
+      "file": "native/118-b1-recheck-journal.json",
+      "label": "b1-recheck-journal",
+      "mode": "read-window",
+      "owner_action": false
+    },
+    {
+      "file": "native/119-b1-recheck-1-stat.json",
+      "label": "b1-recheck-1-stat",
+      "mode": "read-stat",
+      "owner_action": false
+    }
+  ],
+  "node": "ubuntu",
+  "notes": [
+    {
+      "detail": [],
+      "note": "B1: PASS"
+    }
+  ],
+  "owner_actions": [
+    {
+      "at": "2026-10-11T01:19:16Z",
+      "label": "b1-panel-stop",
+      "mode": "owner-panel"
+    },
+    {
+      "at": "2026-10-11T01:19:17Z",
+      "label": "b1-chattr-plus-i",
+      "mode": "owner-chattr"
+    },
+    {
+      "at": "2026-10-11T01:19:21Z",
+      "label": "b1-panel-start",
+      "mode": "owner-panel"
+    }
+  ],
+  "owner_waited_for_idle": {
+    "at": "2026-10-11T01:19:15Z",
+    "busy_seen": [],
+    "idle": true,
+    "polls": 1,
+    "waited_s": 0.3
+  },
+  "section": "B1-locked-start",
+  "started_at": "2026-10-11T01:19:14Z",
+  "substeps": {
+    "B1": "passed"
+  },
+  "title": "A locked while A, B and the static site need a render; the page; check again",
+  "verdict": "passed"
+}

@@ -1,0 +1,62 @@
+{
+  "browser_done": {
+    "at": "2026-10-11T05:45:27.106Z",
+    "by": "cold-load-set12.mjs"
+  },
+  "ended_at": "2026-10-11T05:45:27Z",
+  "hand": "/var/tmp/cp-set12-run/hand/h12d13b-ui",
+  "password_file_removed": true,
+  "requests": [
+    {
+      "at": "2026-10-11T05:41:47Z",
+      "prep": "pool-edited",
+      "result": {
+        "overall": "owner_edited",
+        "pool": "owner_edited"
+      }
+    },
+    {
+      "at": "2026-10-11T05:42:49Z",
+      "prep": "php-stop",
+      "result": {
+        "php": "inactive"
+      }
+    },
+    {
+      "at": "2026-10-11T05:43:15Z",
+      "prep": "php-start",
+      "result": {
+        "php": "active"
+      }
+    },
+    {
+      "at": "2026-10-11T05:43:16Z",
+      "prep": "broken-add",
+      "result": {
+        "test": 78
+      }
+    },
+    {
+      "at": "2026-10-11T05:43:42Z",
+      "prep": "broken-remove",
+      "result": {
+        "php": "active"
+      }
+    },
+    {
+      "at": "2026-10-11T05:44:00Z",
+      "prep": "apply-state",
+      "result": {
+        "note": "the page's next read is the check again"
+      }
+    },
+    {
+      "at": "2026-10-11T05:45:13Z",
+      "prep": "end",
+      "result": {
+        "ok": true
+      }
+    }
+  ],
+  "window": "ui"
+}

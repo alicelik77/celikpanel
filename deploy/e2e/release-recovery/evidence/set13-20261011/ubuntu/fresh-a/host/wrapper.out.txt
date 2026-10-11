@@ -1,0 +1,25 @@
+Formatting '/var/tmp/cp-release-drill-s13-ub-a/cells/bd3457ab25689baf8f89317b/ubuntu/overlay.qcow2', fmt=qcow2 cluster_size=65536 extended_l2=off compression_type=zlib size=25769803776 backing_file=/var/tmp/cp-release-drill-s13-ub-a/images/ubuntu-24.04-server-cloudimg-amd64-20260826.img backing_fmt=qcow2 lazy_refcounts=off refcount_bits=16
+{"action": "prepared", "root": "/var/tmp/cp-release-drill-s13-ub-a", "cell_id": "release-recovery__0d6e7e59778dd8d4", "ssh_ports": [5091, 5092]}
+{"action": "ready", "root": "/var/tmp/cp-release-drill-s13-ub-a", "nodes": {"ubuntu": "verified-disposable-systemd-guest"}}
+{"action": "ready", "root": "/var/tmp/cp-release-drill-s13-ub-a", "nodes": {"ubuntu": "verified-disposable-systemd-guest"}}
+{"step": "set6-name-pinning", "verdict": "passed", "reason": null}
+{"step": "preflight", "verdict": "passed", "reason": null}
+{"step": "origin", "verdict": "passed", "reason": null}
+{"step": "baseline-install", "verdict": "passed", "reason": null}
+{"step": "owner-login", "verdict": "passed", "reason": null}
+{"step": "license", "verdict": "passed", "reason": null}
+{"step": "setup", "verdict": "observed", "reason": null}
+{"step": "site", "verdict": "passed", "reason": null}
+{"step": "S0-sites", "verdict": "passed", "reason": null}
+{"step": "h-i-unchanged-start", "verdict": "passed", "reason": null}
+{"step": "C1-pool-check-refused", "verdict": "passed", "reason": null}
+{"step": "C2-pool-php-stopped", "verdict": "passed", "reason": null}
+{"step": "C4-pool-not-read", "verdict": "failed", "reason": "C4: the Domains row during the hold: state unknown, kind php_pool, reason not_read, read_error; C4: the ledger row of the pool records unknown with the reason (no digest change); C4: the row stays unknown until a read answers (after B's save, before A is read again)"}
+{"step": "C5-app-unit", "verdict": "passed", "reason": null}
+{"step": "C3-vhost-nginx-refused", "verdict": "passed", "reason": null}
+{"step": "set13-browser-window", "verdict": "skipped", "reason": null}
+{"step": "set6-name-pinning-at-the-end", "verdict": "passed", "reason": null}
+{"step": "collect", "verdict": "passed", "reason": null}
+{"cell_kind": "set13-fresh-install", "overall": "failed", "sections": {"C1-pool-check-refused": "passed", "C2-pool-php-stopped": "passed", "C3-vhost-nginx-refused": "passed", "C4-pool-not-read": "failed", "C5-app-unit": "passed", "S0-sites": "passed", "h-i-unchanged-start": "passed"}}
+{"action": "stopped", "root": "/var/tmp/cp-release-drill-s13-ub-a", "evidence_retained": true}
+SET13 cell=set13-ubuntu lab=/var/tmp/cp-release-drill-s13-ub-a driver_exit=1 evidence=/var/tmp/cp-release-drill-s13-ub-a/evidence/*/upd1

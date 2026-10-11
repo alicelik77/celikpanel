@@ -44,6 +44,33 @@ interface Domain {
     bandwidth?: number;
     parent_id?: number | null;
     access?: DomainAccess;
+    // The vhost's last observed state (D-031), sent to an administrator.
+    site_config?: { state: string; adopted_from?: string; kept_by_choice?: boolean; pending_reason?: string; kind?: string };
+}
+
+// A site whose configuration file waits for the owner's choice, and the
+// badge each state wears.
+const SITE_CONFIG_BADGE: Record<string, TranslationKey> = {
+    owner_edited: 'siteConfig.list.badge.kept',
+    foreign: 'siteConfig.list.badge.kept',
+    unknown_origin: 'siteConfig.list.badge.kept',
+    missing: 'siteConfig.list.badge.missing',
+    unreadable: 'siteConfig.list.badge.unreadable',
+    // Read fine, not replaced (a locked file, set10 scenario g).
+    unwritable: 'siteConfig.list.badge.unwritable',
+    // A file the server did not answer for (not read): not known to be
+    // CelikPanel's unchanged text; the page lists it with "Check again".
+    unknown: 'siteConfig.list.badge.unknown',
+};
+
+// siteConfigBadge: the badge of a domain, or null. A kept file the owner chose
+// to keep wears none, unless a certificate waits on it.
+function siteConfigBadge(config: Domain['site_config']): TranslationKey | null {
+    if (!config) return null;
+    const key = SITE_CONFIG_BADGE[config.state];
+    if (!key) return null;
+    if (key === 'siteConfig.list.badge.kept' && config.kept_by_choice && !config.pending_reason) return null;
+    return key;
 }
 
 const API_BASE = '/api/v1';
@@ -332,6 +359,27 @@ export function Domains() {
                     <p className="px-4 pt-3 text-xs text-fg-subtle">
                         {t('common.itemsTotal', { n: filtered.length })}
                     </p>
+                    {(() => {
+                        // The first state after an update from a release that
+                        // wrote no header (D-031): how many files were taken
+                        // over and how many were left alone. Computed from the
+                        // owner's decisions, not stored: the line stays while a
+                        // left-alone file has no decision for its current bytes
+                        // ("keep mine"; "take" makes it CelikPanel's text) and
+                        // is gone once each has one. When nothing was left alone
+                        // nothing waits for the owner and the line is not drawn.
+                        // Başlıksız sürümden güncellemeden sonraki ilk durum;
+                        // olduğu gibi bırakılan her dosya için karar verilince
+                        // satır kalkar.
+                        const adopted = domains.filter((d) => d.site_config?.adopted_from).length;
+                        const left = domains.filter((d) => d.site_config?.state === 'unknown_origin').length;
+                        const undecided = domains.filter((d) => d.site_config?.state === 'unknown_origin' && !d.site_config.kept_by_choice).length;
+                        return undecided > 0 ? (
+                            <p role="status" className="mx-4 mt-2 rounded-lg border border-border-strong bg-surface-2 p-3 text-sm text-fg" data-site-config-first-state>
+                                {t('siteConfig.list.firstState', { adopted, left })}
+                            </p>
+                        ) : null;
+                    })()}
 
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm">
@@ -373,25 +421,37 @@ export function Domains() {
                                             />
                                         </td>}
                                         <td className="px-4 py-3">
-                                            <div className="flex items-center gap-2">
-                                                {canView(d, 'ssl') && d.ssl_enabled ? (
-                                                    <Lock className="h-4 w-4 shrink-0 text-success" />
-                                                ) : (
-                                                    <Globe className="h-4 w-4 shrink-0 text-fg-subtle" />
-                                                )}
-                                                <button
-                                                    onClick={() =>
-                                                        navigate(`/domains/${encodeURIComponent(d.domain_name)}`)
-                                                    }
-                                                    className="text-base font-medium text-primary hover:underline"
-                                                >
-                                                    {d.domain_name}
-                                                </button>
+                                            {/* The badges drop below the name on a narrow screen;
+                                                the icon stays with the name. */}
+                                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                                <span className="inline-flex min-w-0 items-center gap-2">
+                                                    {canView(d, 'ssl') && d.ssl_enabled ? (
+                                                        <Lock className="h-4 w-4 shrink-0 text-success" />
+                                                    ) : (
+                                                        <Globe className="h-4 w-4 shrink-0 text-fg-subtle" />
+                                                    )}
+                                                    <button
+                                                        onClick={() =>
+                                                            navigate(`/domains/${encodeURIComponent(d.domain_name)}`)
+                                                        }
+                                                        className="text-left text-base font-medium text-primary hover:underline"
+                                                    >
+                                                        {d.domain_name}
+                                                    </button>
+                                                </span>
                                                 {d.parent_id ? (
                                                     <span className="rounded-md bg-surface-2 px-1.5 py-0.5 text-xs font-medium text-fg-subtle">
                                                         {t('domains.subdomain')}
                                                     </span>
                                                 ) : null}
+                                                {(() => {
+                                                    const badge = siteConfigBadge(d.site_config);
+                                                    return badge ? (
+                                                        <span className="rounded-md border border-warning-mark/50 bg-warning-mark/20 px-1.5 py-0.5 text-xs font-medium text-fg" data-site-config-badge={d.site_config?.state} data-site-config-badge-file={d.site_config?.kind || 'nginx_vhost'}>
+                                                            {t(badge)}
+                                                        </span>
+                                                    ) : null;
+                                                })()}
                                             </div>
                                         </td>
                                         <td className="px-4 py-3">

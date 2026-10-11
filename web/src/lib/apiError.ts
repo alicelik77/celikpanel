@@ -48,6 +48,22 @@ export interface ApiError {
     // string values are kept.
     // vars: kodun yerel cümlesinin ihtiyaç duyduğu adlı değerler. Eklemeli.
     vars?: Record<string, string>;
+    // restore: after a service refused CelikPanel's text for a site file,
+    // whether putting the previous file back was confirmed ('confirmed') or
+    // not ('unconfirmed'). Additive; an unconfirmed restore selects the
+    // sentence `err.<CODE>[.<reason>].unconfirmed`.
+    // restore: önceki dosyanın geri konduğu doğrulandı mı. Eklemeli.
+    restore?: string;
+    // service: after such a put-back, what happened to the service
+    // ('reloaded', 'not_reloaded', 'not_running', 'reload_failed');
+    // serviceReason refines not_reloaded ('config_refused_elsewhere',
+    // 'check_unavailable'); serviceActive is whether it runs now ('true',
+    // 'false', 'unknown'). Additive (set12 cell RP1); a confirmed restore
+    // whose service was not reloaded or not running selects the sentence
+    // `siteConfig.service.<file kind>.<service>[.<serviceReason>]` (screen half).
+    service?: string;
+    serviceReason?: string;
+    serviceActive?: string;
 }
 
 function stringVars(value: unknown): Record<string, string> | undefined {
@@ -84,6 +100,10 @@ export async function readApiError(res: Response): Promise<ApiError> {
                         ? d.details.filter((item: unknown): item is string => typeof item === 'string')
                         : undefined,
                     vars: stringVars(d.vars),
+                    restore: typeof d.restore === 'string' && d.restore ? d.restore : undefined,
+                    service: typeof d.service === 'string' && d.service ? d.service : undefined,
+                    serviceReason: typeof d.service_reason === 'string' && d.service_reason ? d.service_reason : undefined,
+                    serviceActive: typeof d.service_active === 'string' && d.service_active ? d.service_active : undefined,
                 };
             }
         } catch {
@@ -110,6 +130,50 @@ export function apiErrorText(e: ApiError, t: T, fallbackKey: TranslationKey = 'c
         // situations, one of which does not end by waiting.
         // Önce inceltilmiş cümle: hangi sebep olduğunu adlandıran bir ret, o
         // sebebin sözlerini hak eder; hepsini kapsayanları değil.
+        // A restore that was not confirmed has its own sentence: the one for
+        // the confirmed case would say the previous file is back.
+        if (e.restore === 'unconfirmed') {
+            const keys = [e.reason ? 'err.' + e.code + '.' + e.reason + '.unconfirmed' : '', 'err.' + e.code + '.unconfirmed'];
+            for (const candidate of keys) {
+                if (!candidate) continue;
+                const named = t(candidate as TranslationKey, e.vars);
+                if (named !== candidate) return named;
+            }
+            // No sentence for it: the server's own words say it.
+            if (e.message) return e.message;
+        }
+        // The previous file is back and the service was deliberately not
+        // reloaded (its check refused the configuration elsewhere) or was
+        // not running: the sentence for the confirmed case would say it
+        // keeps running with the file. A sentence that names the check's
+        // line is used only when the answer carries it (administrators).
+        // These sentences belong to the site-file screens (the screen half
+        // of the catalogue, `siteConfig.service.<file kind>.<service>…`): such
+        // a refusal is only answered on a screen, and while the screen half
+        // is not loaded the server's own sentence stands.
+        const fileKind = e.code === 'SITE_CONFIG_NGINX_REFUSED' ? 'nginx_vhost' : e.code === 'SITE_CONFIG_SERVICE_REFUSED' ? e.reason : undefined;
+        if (fileKind && e.restore === 'confirmed' && (e.service === 'not_reloaded' || e.service === 'not_running')) {
+            const prefix = 'siteConfig.service.' + fileKind + '.' + e.service;
+            // A service that is not running now (service_active 'false') was
+            // not reloaded, but it does not "keep running": its own sentences
+            // come first, and never the ones that say it does. 'unknown' and
+            // 'true' keep the sentences above.
+            // Şu anda çalışmayan hizmet "çalışmaya devam etmiyor": önce onun
+            // cümleleri gelir; çalıştığını söyleyenler hiç seçilmez.
+            const stopped = e.service === 'not_reloaded' && e.serviceActive === 'false';
+            const keys = stopped
+                ? [
+                      ...(e.serviceReason === 'check_unavailable' ? [prefix + '.check_unavailable.stopped'] : []),
+                      prefix + '.stopped',
+                      prefix + '.stopped.plain',
+                  ]
+                : e.serviceReason ? [prefix + '.' + e.serviceReason, prefix] : [prefix];
+            for (const candidate of keys) {
+                const named = t(candidate as TranslationKey, e.vars);
+                if (named !== candidate && !named.includes('{line}')) return named;
+            }
+            if (e.message) return e.message;
+        }
         if (e.reason) {
             const refined = ('err.' + e.code + '.' + e.reason) as TranslationKey;
             const named = t(refined, e.vars);

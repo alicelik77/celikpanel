@@ -1,0 +1,27 @@
+2026-10-10T23:54:59Z set11 run directory created
+2026-10-10T23:55:13Z made run copy a
+2026-10-10T23:55:26Z start build
+2026-10-11T00:01:42Z build fresh rc=0
+2026-10-11T00:05:52Z build a81 rc=0
+2026-10-11T00:05:52Z end build rc=0
+2026-10-11T00:07:34Z made run copy b
+2026-10-11T00:08:38Z made run copy c
+2026-10-11T00:08:50Z prove fresh rc=0
+2026-10-11T00:08:54Z prove a81 rc=0
+2026-10-11T00:09:33Z start cell-d13
+2026-10-11T00:21:20Z end cell-d13 rc=143
+2026-10-11T00:22:12Z made run copy d
+2026-10-11T00:22:26Z start cell-d13b
+2026-10-11T00:39:58Z end cell-d13b rc=1
+2026-10-11T00:41:21Z made run copy e
+2026-10-11T00:41:22Z start cell-d13c
+2026-10-11T00:47:14Z start suites
+2026-10-11T00:47:54Z end suites rc=0
+2026-10-11T00:57:14Z end cell-d13c rc=1
+2026-10-11T00:59:52Z made run copy f
+2026-10-11T01:00:01Z start cell-ub
+2026-10-11T01:26:35Z end cell-ub rc=1
+2026-10-11T01:27:17Z start cell-arch
+2026-10-11T01:37:09Z end cell-arch rc=1
+2026-10-11T01:37:24Z start cell-sc
+2026-10-11T01:52:23Z end cell-sc rc=0

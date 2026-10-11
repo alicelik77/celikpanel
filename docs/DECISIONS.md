@@ -21,9 +21,204 @@ Code decisions live in git; this file is for strategy. Newest first.
 
 ---
 
+## D-031 · A site configuration file the owner changed is kept and named, never overwritten by a render
+
+*October 10, 2026 (clock date) · Owner decision on a finding of the read-only audit [SITE-CONFIG-OWNER-EDITS-2026-10-10](audit/SITE-CONFIG-OWNER-EDITS-2026-10-10.md); design decided; first step measured in the tenth native record (two findings corrected 2026-10-11); the apply action and the one precedence (2026-10-11) and the second step (pool, application unit; 2026-10-11) component-tested and mock browser, native measurement pending*
+
+The audit read, from source only, that the Panel's start renders every hosted
+site's nginx configuration again and writes it with no comparison, no digest
+and no backup (`cmd/panel/cert_startup_reconcile.go`, `internal/services/
+nginx_generator.go`); every other render path (certificate, settings, hosting
+type, PHP version, import) does the same. By that reading an owner's added
+`location`, changed directive, own include or replaced file is overwritten
+without a word, and a removed site file is recreated at the next start. The
+published v0.1.0-alpha.81 and v0.1.0-alpha.82 both do this. This is the
+behaviour D-022 forbids: the Panel must detect the owner's change, not
+overwrite it. Nothing of this was measured on a real system when the decision
+was taken; the eighth native record measures the published behaviour first.
+
+The owner decided on 2026-10-10 that the correction enters the next release:
+
+1. Every file the Panel writes for a site carries a header with the digest of
+   its body, and the Panel keeps a ledger row per file (schema transition 43 →
+   44, migration 044, table `managed_site_files`; D-025 names it).
+2. Before every render the Agent classifies the file on disk: absent, managed
+   and unchanged, owner-edited, foreign, unreadable, unknown origin. Only an
+   absent or managed-and-unchanged file is written; identical bytes are not
+   rewritten and nginx is not reloaded for them.
+3. Any other file is kept. The site is shown as "configuration edited by the
+   owner" with the difference; the Panel's pending text is held beside the
+   file; the owner chooses "keep mine", "take CelikPanel's" (with a dated
+   backup) or merges by hand. A site file the owner removed is not recreated
+   at start; the Panel offers to recreate it.
+4. The template gains a per-site include directory as the supported place for
+   the owner's additions, so a later render never has to touch them. (Step 1b,
+   2026-10-10, planner's decision:) it also gains a second, Panel-owned
+   include directory (`/etc/nginx/celikpanel-managed.d/<domain>/`) that holds
+   the ACME HTTP-01 location instead of the vhost. Whether a kept file lets
+   the validation run is measured, not read from its text (second round, same
+   day): the Agent puts a probe file with a random name and body in the
+   challenge root, asks nginx on 127.0.0.1 port 80 (since 2026-10-11: on each address the
+   kept file's port-80 blocks of the name listen on) for it under every name
+   the certificate validates, and removes it; ready means every name served it.
+   On a ready kept file (with an unchanged challenge file) a certificate is
+   issued or renewed without touching the file, and the
+   certificate the file names, if any, is served until the owner takes
+   CelikPanel's text or updates the certificate lines (`waiting_for_owner`);
+   on a kept file that is not ready, issuance stops with a typed refusal
+   before anything is requested, and renewal waits for the owner instead of
+   failing; a probe nginx does not answer is unknown, never "not ready". The
+   alias-certificate path follows the same two paths.
+5. Writes preserve mode and owner, refuse symlinks, and one site's failure
+   does not fail the others; the start line counts written, unchanged, kept,
+   foreign and unreadable separately.
+6. Files written by alpha.81 and alpha.82 carry no digest. The migration
+   renders each site in memory with the frozen templates of those releases
+   and compares: a byte-equal file is adopted, any other file is "unknown
+   origin" and is never overwritten. The honest first state after the update
+   is "N adopted, M left alone because they differ from every known
+   CelikPanel text", and the Panel shows it. (Tenth native record, 2026-10-11,
+   planner's decision:) an adopted file is rendered again as this release's
+   text and gets the header — it is not the old bytes plus a header; the
+   owner's additions could not have been in it, because it was byte-equal to
+   CelikPanel's own text. `adopted_from` names the newest release whose text
+   matches (alpha.82 when both match). Measured in the tenth native record.
+7. An automatic return to an older release loses the protection; the release
+   notes say so.
+8. (Second step, 2026-10-11; in source, component-tested and mock browser;
+   not measured on a real system.) The site's PHP-FPM pool file (kind
+   `php_pool`) and its application unit (kind `app_unit`) follow points 1-7.
+   The pool is INI, so its header is a `;` comment line
+   (`; celikpanel-render v2 sha256=…`); the unit's is
+   `# celikpanel-render v2 sha256=…`. Each is classified before every write
+   (pool: save, PHP version switch, creation, deletion; unit: hosting change
+   and its compensation, removal; both: the page's choices); identical bytes
+   are not rewritten and nothing is reloaded for them; a kept file gets
+   CelikPanel's text beside it and the operation answers
+   `409 SITE_CONFIG_OWNER_EDITED` with `reason` the kind and `detail` the
+   state. Writes go through a temporary file and one rename, keep mode, owner
+   and group, and refuse a symlink. PHP-FPM has no include for a pool, so the
+   owner's directives are supported in place: a pool with CelikPanel's header
+   and lines CelikPanel does not render is owner-edited and kept, and no save
+   or switch drops them. The unit's owner extension point is its systemd
+   drop-in directory (`<unit>.service.d/*.conf`), which CelikPanel never
+   writes or removes. No database column holds a pool's process-manager
+   values: CelikPanel's pool text takes them from the save, else from its own
+   held text beside the file, else from the file's values for those keys,
+   else the defaults; the identity lines are always the site's. Adoption: a
+   headerless pool byte-equal to the frozen alpha.81/82 form for the site's
+   identity and the values it carries, or a headerless unit byte-equal to
+   the alpha.81/82 unit for the same request, is adopted (`adopted_from` the
+   newest matching release) and written as this release's text at its next
+   write; any other is unknown origin. Pools and units are not rendered at
+   the Panel's start (no new start-time write); the start line counts vhosts
+   only. No schema change: migration 044's `kind` column already names
+   `php_pool` and `app_unit`. The Configuration file page lists every file of
+   the site with its own actions; the Domains row shows the worst state
+   across the files (the vhost first on a tie).
+   Limits, stated plainly (2026-10-11): the Panel's two pool calls are bound
+   to the Panel's own build, and an Agent that does not have them gives an
+   error with nothing written (no fallback to the older pool calls;
+   `MigratePHPPool` is gone from the Panel's policy); the unit's two calls
+   are bound to the Panel's build the same way (corrected 2026-10-11). Site
+   creation writes no pool or unit ledger row: a row begins at the page's
+   first read or at the first save, switch or unit change, so a pool nobody
+   has read is not in the Domains list. Corrected 2026-10-11 (component-tested
+   and mock browser; not measured on a real system): a file the Agent did not
+   read (`unknown`) outranks CelikPanel's unchanged text in the worst-state
+   rule (every observed problem still outranks it), so the Domains row says a
+   configuration file could not be read; a service refusal answers `restore:
+   confirmed | unconfirmed`, and unconfirmed (the Agent's "rollback
+   incomplete", or no restore fact) says the server administrator checks the
+   file on the server instead of saying it was put back. The two adoption bases differ: the pool of alpha.81 listened
+   on `/var/run/php/php<v>-fpm-<pool>.sock` owned by `www-data`, alpha.82 on
+   this host's socket owned by the web server's account; the unit of alpha.81
+   wrote `User=` as asked, alpha.82 the web server's account that exists on
+   the host.
+
+Not done until measured natively on Debian 13, Ubuntu 24.04 and Arch: the
+audit's §9 cells (owner edit kept and named at start and at every render path;
+immutable file does not stop other sites; update, return and forward again;
+database restore from before the header; keep-mine then certificate issue;
+take-CelikPanel's with its backup; owner include directory survives renewals
+and switches; removed file not recreated; pool directives survive). The PHP
+pool and the application unit follow in a second step under the same rule
+(point 8, in source 2026-10-11; its cells are in set10's harness as sections
+m, n and o, not yet run on a guest).
+Tenth native record (set10, 2026-10-10, `cd46ca595`, Debian 13, Ubuntu 24.04,
+Arch): every cell held but two. Corrected 2026-10-11 (component-tested; not
+measured): the owner include directory is created 0755 explicitly (measured
+`root:celikpanel 0750` under the Agent's `UMask=0027`), and so is CelikPanel's
+own; a locked file (`chattr +i`, EPERM) is answered `unwritable` by the
+domain's page, its list row and badge alike, with the system error, the
+protection measured read-only, the text CelikPanel wanted to write and "check
+again" (the page answered `managed_unchanged` with no reason). The ledger keeps
+migration 044's state set (`unreadable` + `write_refused`); no schema change.
+New and recreated vhosts are `root:celikpanel 0644`; kept and taken files keep
+the owner's mode, owner and group (measured).
+Second correction (2026-10-11; component-tested and mock browser; not measured
+on a real system): the page's read is the "check again" and records what it
+found on a refused replacement's ledger row. The same bytes with no protection
+measured: CelikPanel's own text is `managed_unchanged` with the reason
+`protection_removed`, and the page offers "Write CelikPanel's text now"
+(`POST …/site-config/apply`, both digests, request identity, administrator
+only). It writes this one site's held text, keeps no dated copy (the file is
+CelikPanel's own earlier text; nothing of the owner's is in it), and an nginx
+refusal puts the previous bytes back. Still protected: `unwritable` stays; other
+bytes: the file is recorded as it is and never written. One order decides what
+the row, the badge and the page show when two facts hold for the same bytes:
+unreadable, unwritable, missing, kept (owner-edited, foreign, unknown origin),
+then CelikPanel's unchanged text (`services.SiteFileShownState`). An
+owner-edited file whose "take" was refused shows both facts, and "take" is
+answered `409 SITE_CONFIG_UNWRITABLE` before anything is written while the
+protection stands, and a refused "take" leaves no dated copy (the Agent
+measures the protection before the copy and removes the copy if the
+replacement is refused anyway; vhost and pool tested, the unit shares the
+pool's code, set11 cell B4; component-tested; not measured on a real system).
+No schema change.
+Open in the probe of the second round (2026-10-10), the first answered: (1)
+a port-80 block bound to one address was not reached from the loopback —
+answered 2026-10-11 (set11 cell A6; component-tested; not measured on a real
+system): the probe asks the addresses the kept file's port-80 blocks of each
+name listen on (`internal/services/managed_vhost_listen.go`); an address that
+is not this server's is unknown and the certificate request goes ahead,
+`validation_probe` `not_run`, journal only, no schema change, the 503 stays
+for local causes; the rest are still open and none is fixed: a failed
+`nginx -t` or reload at the Configuration file page's read is reported as
+`challenge_failed`; a missing or unreadable file writes no reason, so a
+renewal it stopped waits until the next completed renewal; (fixed 2026-10-11:
+the SSL tab says "expired N days ago" instead of negative days); no real
+hosting-customer session was
+drawn; a ready probe does not show that DNS or the firewall lets the
+certificate authority in. The probe has never asked a real nginx.
+
+Corrections from the twelfth native record (set12, 2026-10-11; two findings
+measured in the twelfth record, corrected in commit `816b8dd60`, the new code
+component-tested; not measured on a real system): a pool or unit the Agent did not answer for is recorded on its
+ledger row as an observation (`unknown`, `not_read` or `agent_does_not_report`
+with the error class, no digest changed), so the Domains row says it could not
+be read, until the next answered read; a row with a known problem keeps it.
+After a put-back, a service that was not running before is left alone
+(`service: not_running`), and otherwise the service's own check (`php-fpm -t`,
+`nginx -t`, `systemd-analyze verify` for a unit) runs on the put-back
+configuration first: refused, the service is not reloaded and keeps the
+configuration it loaded before (`restore: confirmed`, `service: not_reloaded`,
+`config_refused_elsewhere`, the line for an administrator); passed, it is
+reloaded; every such answer carries `service_active`. The application unit's
+start command no longer depends on a login shell (`/bin/sh -c` with an explicit
+`Environment=PATH=` naming the Panel's Node directory; observed: a bare `node`
+exited 127 under `/bin/sh -lc` although the PATH line was there, the login
+profile resetting it is an inference, and the new unit has not run on a real
+system); the earlier releases' unit texts stay frozen for adoption. The PHP
+version switch's removal of the source pool and its clean-up still reload
+without the check. The page's answer to a choice scrolls into view. No schema
+change.
+
+---
+
 ## D-030 · The Panel's secure-connection rule covers the Panel's own host name only
 
-*October 10, 2026 (clock date) · Owner decision; in source with a component test, native reading pending*
+*October 10, 2026 (clock date) · Owner decision; in source with a component test; read on the running Panel on three platforms and, as reported, on two installed servers (2026-10-11 note below); the browser's replacement of the old rule not measured*
 
 Over HTTPS the Panel sent `Strict-Transport-Security: max-age=31536000;
 includeSubDomains`. A browser that had opened the Panel at a name therefore
@@ -47,6 +242,23 @@ a browser; it is how the header is specified (RFC 6797, section 8.1).
 
 Not changed: the header's duration, the Panel's other security headers, hosted
 sites' headers.
+
+*Note, 2026-10-11 (what has been read since).* (1) The sixth native record
+(`deploy/e2e/release-recovery/evidence/set6-20261009/README.md` and
+`part-b-headers.md`) read the header from the running Panel on Debian 13,
+Ubuntu 24.04 and Arch: the candidate answered exactly `max-age=31536000` on
+every HTTPS answer read (pages, assets, public and signed-in API answers,
+401/403/404 answers, the preflight), and the published v0.1.0-alpha.81 before
+the update answered `max-age=31536000; includeSubDomains`; guest-local reads on
+disposable lab guests. (2) After the owner updated the two installed servers on
+2026-10-10, an external read of each showed the narrowed header; this is
+reported by the planner's own read and is observed on installed servers, not
+recorded in a file here (see the entry in `docs/RESILIENCE-CONTRACT.md`,
+"Publication of v0.1.0-alpha.82 …"). **Not measured:** a browser replacing the
+rule it holds with the narrowed one on its next visit (the paragraph above is
+still the header's specification, RFC 6797 section 8.1, not an observation);
+a browser that keeps the old rule; a phone or other browser; a third-party
+client of the Panel. No decision, code or schema changed with this note.
 
 ---
 

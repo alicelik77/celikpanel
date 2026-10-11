@@ -1,0 +1,22 @@
+{
+  "checks": {
+    "checks": 4,
+    "error": null,
+    "failed": [],
+    "finished_at": "2026-10-11T01:19:14Z",
+    "notes": [
+      "A6: PASS"
+    ],
+    "started_at": "2026-10-11T01:19:05Z",
+    "substeps": {
+      "A6": "passed"
+    },
+    "title": "the port-80 block bound to one address only: certificate issuance",
+    "unknown": [],
+    "verdict": "passed"
+  },
+  "finished_at": "2026-10-11T01:19:14Z",
+  "name": "A6-bound-address",
+  "started_at": "2026-10-11T01:19:05Z",
+  "verdict": "passed"
+}

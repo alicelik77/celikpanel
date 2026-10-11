@@ -1,0 +1,55 @@
+{
+  "candidate": {
+    "commit": "8948352e39539cd647c742c154578dc2163d7b9b",
+    "sha256": "f7e5c60cd03c7186eb9e2d1ff92c6dbc5957b54792683039bd4234795a23cd52",
+    "version": "v0.1.0-alpha.81"
+  },
+  "cell": "set13-ubuntu",
+  "cell_kind": "set13-fresh-install",
+  "local_port": 18443,
+  "native_evidence": false,
+  "pinned_names": [
+    "celikpanel.net",
+    "acme-v02.api.letsencrypt.org",
+    "acme-staging-v02.api.letsencrypt.org",
+    "acme.zerossl.com",
+    "dv.acme-v02.api.pki.goog"
+  ],
+  "rule": "the driver calls only the Panel's HTTP API as the logged-in owner; every native fact is an SSH reading; owner actions and lab preparation on the guest are recorded as such; no certificate authority and no licence service is contacted by the driver",
+  "schema": "celikpanel/set13-plan/v1",
+  "setup": {
+    "components": [
+      "dovecot",
+      "mariadb",
+      "nginx",
+      "php-fpm",
+      "postfix",
+      "postgresql",
+      "roundcube",
+      "rspamd"
+    ],
+    "dns_mode": "external",
+    "purpose": "web_mail"
+  },
+  "steps": [
+    "set6-name-pinning",
+    "preflight",
+    "origin",
+    "baseline-install",
+    "owner-login",
+    "license",
+    "setup",
+    "site",
+    "S0-sites",
+    "h-i-unchanged-start",
+    "C1-pool-check-refused",
+    "C2-pool-php-stopped",
+    "C3-vhost-nginx-refused",
+    "C4-pool-not-read",
+    "C5-app-unit",
+    "set13-browser-window",
+    "set6-name-pinning-at-the-end",
+    "collect"
+  ],
+  "work_root": "/var/tmp/cp-release-drill-dry-set13-ubuntu"
+}

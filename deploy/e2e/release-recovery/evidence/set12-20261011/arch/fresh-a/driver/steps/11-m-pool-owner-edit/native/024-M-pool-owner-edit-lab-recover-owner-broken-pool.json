@@ -1,0 +1,40 @@
+{
+  "action": "owner-broken-pool",
+  "after": {
+    "error": "FileNotFoundError",
+    "exists": false,
+    "path": "/etc/php/php-fpm.d/zz-set12-owner.conf"
+  },
+  "at": "2026-10-11T05:16:21Z",
+  "before": {
+    "error": "FileNotFoundError",
+    "exists": false,
+    "path": "/etc/php/php-fpm.d/zz-set12-owner.conf"
+  },
+  "epoch": 1791695781.7985065,
+  "mode": "owner-broken-pool",
+  "owner_action": true,
+  "path": "/etc/php/php-fpm.d/zz-set12-owner.conf",
+  "php_fpm_test": {
+    "argv": [
+      "php-fpm",
+      "-t"
+    ],
+    "at": "2026-10-11T05:16:21Z",
+    "returncode": 0,
+    "seconds": 0.048,
+    "status": "ok",
+    "stderr": "[NOTICE] configuration file /etc/php/php-fpm.conf test is successful\n",
+    "stdout": ""
+  },
+  "php_unit": {
+    "ActiveEnterTimestamp": "Sun 2026-10-11 05:13:16 UTC",
+    "ActiveState": "active",
+    "ExecMainStartTimestamp": "Sun 2026-10-11 05:13:16 UTC",
+    "LoadState": "loaded",
+    "MainPID": "1489",
+    "NRestarts": "0",
+    "SubState": "running"
+  },
+  "schema": "celikpanel/set12-native/v1"
+}

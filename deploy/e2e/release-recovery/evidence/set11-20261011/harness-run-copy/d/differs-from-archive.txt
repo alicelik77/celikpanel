@@ -1,0 +1,4 @@
+differs:       1 > ./deploy/e2e/release-recovery/guest_set11_native.py
+differs:       1 > ./deploy/e2e/release-recovery/run-set11.sh
+differs:       1 > ./deploy/e2e/release-recovery/set11_trial.py
+differs:       1 > ./deploy/e2e/release-recovery/test_set11_trial.py

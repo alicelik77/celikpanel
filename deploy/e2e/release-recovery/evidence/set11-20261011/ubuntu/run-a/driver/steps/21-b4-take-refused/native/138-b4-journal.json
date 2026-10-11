@@ -1,0 +1,32 @@
+{
+  "at": "2026-10-11T01:20:53Z",
+  "by_unit": {
+    "celikpanel-agent.service": [],
+    "celikpanel-panel.service": [
+      "2026-10-11T01:20:48.404309+00:00 dns-ubuntu panel[51557]: 2026/10/11 01:20:48 http: TLS handshake error from 127.0.0.1:59336: EOF",
+      "2026-10-11T01:20:49.281212+00:00 dns-ubuntu panel[51557]: 2026/10/11 01:20:49 http: TLS handshake error from 127.0.0.1:59360: EOF",
+      "2026-10-11T01:20:49.330176+00:00 dns-ubuntu panel[51557]: 2026/10/11 01:20:49 site configuration set11-a.test (take): kept, not replaced (owner_edited write_refused); owner's file kept as /etc/nginx/sites-available/set11-a.test.conf.celikpanel-backup-20261011T012049Z; rename /etc/nginx/sites-available/.set11-a.test.conf.celikpanel-2201677765 /etc/nginx/sites-available/set11-a.test.conf: operation not permitted",
+      "2026-10-11T01:20:49.349448+00:00 dns-ubuntu panel[51557]: 2026/10/11 01:20:49 [409] site configuration of set11-a.test not applied: refused (owner_edited write_refused)"
+    ],
+    "nginx.service": [
+      "2026-10-11T01:20:48.316610+00:00 dns-ubuntu systemd[1]: Reloading nginx.service - A high performance web server and a reverse proxy server...",
+      "2026-10-11T01:20:48.330341+00:00 dns-ubuntu nginx[54827]: 2026/10/11 01:20:48 [notice] 54827#54827: signal process started",
+      "2026-10-11T01:20:48.332033+00:00 dns-ubuntu systemd[1]: Reloaded nginx.service - A high performance web server and a reverse proxy server."
+    ],
+    "php8.3-fpm.service": []
+  },
+  "mode": "read-window",
+  "owner_action": false,
+  "schema": "celikpanel/set10-native/v1",
+  "since_epoch": 1791681648,
+  "systemd_manager": [
+    "2026-10-11T01:20:48.316610+00:00 dns-ubuntu systemd[1]: Reloading nginx.service - A high performance web server and a reverse proxy server...",
+    "2026-10-11T01:20:48.332033+00:00 dns-ubuntu systemd[1]: Reloaded nginx.service - A high performance web server and a reverse proxy server."
+  ],
+  "units": [
+    "celikpanel-panel.service",
+    "celikpanel-agent.service",
+    "nginx.service",
+    "php8.3-fpm.service"
+  ]
+}

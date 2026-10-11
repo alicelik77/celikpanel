@@ -343,3 +343,12 @@ part 2 runs under `part2-alpha80/`. `summary-per-cell.txt`, `step-table.md`, `ou
 
 It closes no P0 row. Wall time: host check 22:10Z; cells 1-16 22:18Z-02:55Z; 15b 02:55Z-05:52Z (host asleep in
 between); part 2 11:28Z-13:05Z.
+
+## Corrections after intake (2026-10-10)
+
+After this directory was published (2026-10-10), the operator's machine name was replaced by `<operator-host>` in the SSH public-key comments (and in the text that named it) of this directory: 39 occurrences in 23 files; the key material itself, a lab public key, is unchanged.
+After this directory was published (2026-10-10), 100 digest values of the one-shot update-transaction token (88 in plain text in 54 files, as `transaction_token_sha256` values and as `.release-db-migrations/<digest>` directory names; 12 inside base64 `events_base64` text in 6 files) were replaced by `[REDACTED-SHA256]`.
+
+The affected `SHA256SUMS` lines (per-run lists and this directory's list) were recomputed afterwards; nothing else in this directory was changed.
+
+Checksum repair (2026-10-10): `sha256sum -c SHA256SUMS` failed for the files named here because the retained bytes were no longer the bytes the list was written from. The retained files had been normalised from CRLF to LF when they were first committed (git `autocrlf`); the list records the hashes of the collected CRLF form. The CRLF form was restored byte for byte (every line ends in CR LF, including the last); the recorded hashes were not changed, and the restored files hash to them. Files: `host/c-drive.txt`, `outage-windows.txt`, `owner-texts.txt`, `step-table.md`, `summary-per-cell.txt`. The `README.md` line of the list was regenerated because this paragraph was added to the README.

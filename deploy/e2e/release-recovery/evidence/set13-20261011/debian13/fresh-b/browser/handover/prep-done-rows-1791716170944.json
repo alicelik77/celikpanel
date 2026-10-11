@@ -1,0 +1,12 @@
+{
+  "at": "2026-10-11T10:56:11Z",
+  "prep": "rows",
+  "result": {
+    "row": {
+      "kind": "php_pool",
+      "read_error": "timeout",
+      "reason": "not_read",
+      "state": "unknown"
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "browser_done": {
+    "at": "2026-10-11T00:39:54.941Z",
+    "by": "cold-load-set11.mjs"
+  },
+  "ended_at": "2026-10-11T00:39:55Z",
+  "hand": "/var/tmp/cp-set11-run/hand/h11d13-d-e",
+  "password_file_removed": true,
+  "requests": [],
+  "window": "d-e"
+}

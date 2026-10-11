@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-11T10:55:48Z",
+  "prep": "u-unread",
+  "result": {
+    "page_pool": {
+      "read_error": "timeout",
+      "reason": "not_read",
+      "state": "unknown"
+    },
+    "row": {
+      "kind": "php_pool",
+      "read_error": "timeout",
+      "reason": "not_read",
+      "state": "unknown"
+    },
+    "save_status": 200
+  }
+}

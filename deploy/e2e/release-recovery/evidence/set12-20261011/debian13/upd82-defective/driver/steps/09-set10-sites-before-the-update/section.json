@@ -1,0 +1,665 @@
+{
+  "calls": [
+    {
+      "at": "2026-10-11T06:40:33Z",
+      "json": {
+        "DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/2/public_html",
+        "Domain": "set10-r2.test",
+        "DomainID": 2,
+        "FTPPassword": "[REDACTED]",
+        "FTPUser": "set10_r2_test",
+        "PHPVersion": "8.4",
+        "ProjectType": "php",
+        "SiteID": 2,
+        "TempDomain": ""
+      },
+      "label": "create php site set10-r2.test (alpha.82)",
+      "request": {
+        "body": {
+          "domain": "set10-r2.test",
+          "project_type": "php",
+          "ssl_type": "none"
+        },
+        "method": "POST",
+        "path": "/api/v1/domains/create"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T06:40:34Z",
+      "json": {
+        "DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/3/public_html",
+        "Domain": "set10-r3.test",
+        "DomainID": 3,
+        "FTPPassword": "[REDACTED]",
+        "FTPUser": "set10_r3_test",
+        "PHPVersion": "8.4",
+        "ProjectType": "php",
+        "SiteID": 3,
+        "TempDomain": ""
+      },
+      "label": "create php site set10-r3.test (alpha.82)",
+      "request": {
+        "body": {
+          "domain": "set10-r3.test",
+          "project_type": "php",
+          "ssl_type": "none"
+        },
+        "method": "POST",
+        "path": "/api/v1/domains/create"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T06:40:48Z",
+      "json": {
+        "DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/4/public_html",
+        "Domain": "set10-r1.test",
+        "DomainID": 4,
+        "FTPPassword": "[REDACTED]",
+        "FTPUser": "set10_r1_test",
+        "PHPVersion": "8.4",
+        "ProjectType": "php",
+        "SiteID": 4,
+        "TempDomain": ""
+      },
+      "label": "create php site set10-r1.test (alpha.82)",
+      "request": {
+        "body": {
+          "domain": "set10-r1.test",
+          "project_type": "php",
+          "ssl_type": "none"
+        },
+        "method": "POST",
+        "path": "/api/v1/domains/create"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T06:40:49Z",
+      "json": {
+        "installed": [],
+        "system_version": ""
+      },
+      "label": "pre: Node.js versions (alpha.82)",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/runtimes/node"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T06:40:49Z",
+      "json": {
+        "operation": {
+          "id": "682398c00d271011847ec969975abd05",
+          "kind": "runtime_install",
+          "package_name": "22.20.0",
+          "phase": "queued",
+          "request_id": "d70d17563c6dcffa7caccf5c605b2477",
+          "service_id": "node",
+          "started_at": "2026-10-11T06:40:49.719365136Z",
+          "status": "queued"
+        }
+      },
+      "label": "pre: install Node.js 22.20.0 through alpha.82",
+      "request": {
+        "body": {
+          "request_id": "d70d17563c6dcffa7caccf5c605b2477",
+          "version": "22.20.0"
+        },
+        "method": "POST",
+        "path": "/api/v1/runtimes/node"
+      },
+      "status": 202,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T06:40:59Z",
+      "json": {
+        "installed": [
+          "22.20.0"
+        ],
+        "system_version": ""
+      },
+      "label": "pre: Node.js versions after the install",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/runtimes/node"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T06:41:00Z",
+      "json": {
+        "DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/5/public_html",
+        "Domain": "set10-rn.test",
+        "DomainID": 5,
+        "FTPPassword": "[REDACTED]",
+        "FTPUser": "set10_rn_test",
+        "PHPVersion": "8.4",
+        "ProjectType": "php",
+        "SiteID": 5,
+        "TempDomain": ""
+      },
+      "label": "create php site set10-rn.test (alpha.82)",
+      "request": {
+        "body": {
+          "domain": "set10-rn.test",
+          "project_type": "php",
+          "ssl_type": "none"
+        },
+        "method": "POST",
+        "path": "/api/v1/domains/create"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T06:41:01Z",
+      "json": {
+        "app_port": 3001,
+        "success": true
+      },
+      "label": "pre: RN becomes a Node site (alpha.82)",
+      "request": {
+        "body": {
+          "project_type": "node",
+          "runtime_version": "22.20.0",
+          "start_command": "node -e \"require('http').createServer((q,s)=>s.end('set12-rn')).listen(process.env.PORT)\""
+        },
+        "method": "PUT",
+        "path": "/api/v1/domains/5/hosting"
+      },
+      "status": 200,
+      "text": null
+    }
+  ],
+  "cells": {
+    "B-before": {
+      "detail": {
+        "node": {
+          "hosting": 200,
+          "site": "set10-rn.test",
+          "version": "22.20.0"
+        }
+      },
+      "expectations": [
+        {
+          "expectation": "the Panel restarted between R2/R3 and R1",
+          "held": true,
+          "measured": {
+            "api": {
+              "answering": true,
+              "seconds": 10.1,
+              "status": 200
+            },
+            "epoch": 1791700835.624011,
+            "file": "steps/09-set10-sites-before-the-update/native/001-owner-pre-panel-restart.json",
+            "is_active": "active",
+            "kind": "owner: systemctl restart celikpanel-panel",
+            "ok": true,
+            "reconcile_lines_seen": [
+              "2026-10-11T06:40:36.019754+00:00 dns-debian13 panel[28118]: 2026/10/11 06:40:36 certificate startup reconcile: restored 3 hosted vhosts with one nginx validation and reload"
+            ],
+            "session": {
+              "status": 200
+            },
+            "waited_seconds": 2.1
+          }
+        },
+        {
+          "expectation": "the owner's edit of R3 is in service (nginx -t passed)",
+          "held": true,
+          "measured": {
+            "at": "2026-10-11T06:40:49Z",
+            "output": "nginx: the configuration file /etc/nginx/nginx.conf syntax is ok\nnginx: configuration file /etc/nginx/nginx.conf test is successful\n",
+            "returncode": 0,
+            "status": "ok"
+          }
+        },
+        {
+          "expectation": "the owner's line in R2's pool passed php-fpm -t",
+          "held": true,
+          "measured": {
+            "argv": [
+              "php-fpm8.4",
+              "-t"
+            ],
+            "at": "2026-10-11T06:40:49Z",
+            "returncode": 0,
+            "seconds": 0.045,
+            "status": "ok",
+            "stderr": "[11-Oct-2026 06:40:49] NOTICE: configuration file /etc/php/8.4/fpm/php-fpm.conf test is successful\n",
+            "stdout": ""
+          }
+        },
+        {
+          "expectation": "alpha.82's files (vhosts, pools, unit) carry no render header",
+          "held": true,
+          "measured": {
+            "set10-r1.test": {
+              "pools": {
+                "/etc/php/8.4/fpm/pool.d/site4.conf": {
+                  "first_line": "[site4]",
+                  "gid": 989,
+                  "header": {
+                    "first_line": "[site4]",
+                    "present": false
+                  },
+                  "inode": 139162,
+                  "mode": "0644",
+                  "sha256": "830734a225bfa629226b9df38a61eae8644d9b7ab52f900381e3ee8a7ae68f7e",
+                  "uid": 0
+                }
+              },
+              "unit": {
+                "exists": false,
+                "first_line": null,
+                "header": null,
+                "inode": null,
+                "sha256": null
+              }
+            },
+            "set10-r2.test": {
+              "pools": {
+                "/etc/php/8.4/fpm/pool.d/site2.conf": {
+                  "first_line": "[site2]",
+                  "gid": 989,
+                  "header": {
+                    "first_line": "[site2]",
+                    "present": false
+                  },
+                  "inode": 141418,
+                  "mode": "0644",
+                  "sha256": "34a5cd4fa972c2c889394c250cacc0812b9184eab866ff048ee51c581a466751",
+                  "uid": 0
+                }
+              },
+              "unit": {
+                "exists": false,
+                "first_line": null,
+                "header": null,
+                "inode": null,
+                "sha256": null
+              }
+            },
+            "set10-r3.test": {
+              "pools": {
+                "/etc/php/8.4/fpm/pool.d/site3.conf": {
+                  "first_line": "[site3]",
+                  "gid": 989,
+                  "header": {
+                    "first_line": "[site3]",
+                    "present": false
+                  },
+                  "inode": 141423,
+                  "mode": "0644",
+                  "sha256": "739500b69375afd2d62ab7a2c31902c9d4538257bc8653f7d7b908ed3d2247c8",
+                  "uid": 0
+                }
+              },
+              "unit": {
+                "exists": false,
+                "first_line": null,
+                "header": null,
+                "inode": null,
+                "sha256": null
+              }
+            },
+            "set10-rn.test": {
+              "pools": {
+                "/etc/php/8.4/fpm/pool.d/site5.conf": {
+                  "first_line": "[site5]",
+                  "gid": 989,
+                  "header": {
+                    "first_line": "[site5]",
+                    "present": false
+                  },
+                  "inode": 141412,
+                  "mode": "0644",
+                  "sha256": "1e861c0d06c2a7c6e7e18271227c2d402fc6e93b4474576cb32e260ecc55646c",
+                  "uid": 0
+                }
+              },
+              "unit": {
+                "exists": true,
+                "first_line": "# Managed by CelikPanel — do not edit by hand.",
+                "header": {
+                  "first_line": "# Managed by CelikPanel — do not edit by hand.",
+                  "present": false
+                },
+                "inode": 26249,
+                "sha256": "baa901ec0455b82eb47b252b4c984e45a715ee43c55fd576633d60037371be11"
+              }
+            },
+            "upd1-owner.test": {
+              "pools": {},
+              "unit": {
+                "exists": false,
+                "first_line": null,
+                "header": null,
+                "inode": null,
+                "sha256": null
+              }
+            }
+          }
+        },
+        {
+          "expectation": "the ledger is at 43 before the update",
+          "held": true,
+          "measured": [
+            41,
+            42,
+            43
+          ]
+        }
+      ],
+      "verdict": "PASS"
+    }
+  },
+  "checks": [
+    {
+      "detail": {
+        "DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/2/public_html",
+        "Domain": "set10-r2.test",
+        "DomainID": 2,
+        "FTPPassword": "[REDACTED]",
+        "FTPUser": "set10_r2_test",
+        "PHPVersion": "8.4",
+        "ProjectType": "php",
+        "SiteID": 2,
+        "TempDomain": ""
+      },
+      "name": "set10-r2.test is created by alpha.82 (200 with its id)",
+      "ok": true
+    },
+    {
+      "detail": {
+        "DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/3/public_html",
+        "Domain": "set10-r3.test",
+        "DomainID": 3,
+        "FTPPassword": "[REDACTED]",
+        "FTPUser": "set10_r3_test",
+        "PHPVersion": "8.4",
+        "ProjectType": "php",
+        "SiteID": 3,
+        "TempDomain": ""
+      },
+      "name": "set10-r3.test is created by alpha.82 (200 with its id)",
+      "ok": true
+    },
+    {
+      "detail": {
+        "DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/4/public_html",
+        "Domain": "set10-r1.test",
+        "DomainID": 4,
+        "FTPPassword": "[REDACTED]",
+        "FTPUser": "set10_r1_test",
+        "PHPVersion": "8.4",
+        "ProjectType": "php",
+        "SiteID": 4,
+        "TempDomain": ""
+      },
+      "name": "set10-r1.test is created by alpha.82 (200 with its id)",
+      "ok": true
+    },
+    {
+      "detail": {
+        "DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/5/public_html",
+        "Domain": "set10-rn.test",
+        "DomainID": 5,
+        "FTPPassword": "[REDACTED]",
+        "FTPUser": "set10_rn_test",
+        "PHPVersion": "8.4",
+        "ProjectType": "php",
+        "SiteID": 5,
+        "TempDomain": ""
+      },
+      "name": "set10-rn.test is created by alpha.82 (200 with its id)",
+      "ok": true
+    },
+    {
+      "detail": {
+        "api": {
+          "answering": true,
+          "seconds": 10.1,
+          "status": 200
+        },
+        "epoch": 1791700835.624011,
+        "file": "steps/09-set10-sites-before-the-update/native/001-owner-pre-panel-restart.json",
+        "is_active": "active",
+        "kind": "owner: systemctl restart celikpanel-panel",
+        "ok": true,
+        "reconcile_lines_seen": [
+          "2026-10-11T06:40:36.019754+00:00 dns-debian13 panel[28118]: 2026/10/11 06:40:36 certificate startup reconcile: restored 3 hosted vhosts with one nginx validation and reload"
+        ],
+        "session": {
+          "status": 200
+        },
+        "waited_seconds": 2.1
+      },
+      "name": "B-before: the Panel restarted between R2/R3 and R1",
+      "ok": true
+    },
+    {
+      "detail": {
+        "at": "2026-10-11T06:40:49Z",
+        "output": "nginx: the configuration file /etc/nginx/nginx.conf syntax is ok\nnginx: configuration file /etc/nginx/nginx.conf test is successful\n",
+        "returncode": 0,
+        "status": "ok"
+      },
+      "name": "B-before: the owner's edit of R3 is in service (nginx -t passed)",
+      "ok": true
+    },
+    {
+      "detail": {
+        "argv": [
+          "php-fpm8.4",
+          "-t"
+        ],
+        "at": "2026-10-11T06:40:49Z",
+        "returncode": 0,
+        "seconds": 0.045,
+        "status": "ok",
+        "stderr": "[11-Oct-2026 06:40:49] NOTICE: configuration file /etc/php/8.4/fpm/php-fpm.conf test is successful\n",
+        "stdout": ""
+      },
+      "name": "B-before: the owner's line in R2's pool passed php-fpm -t",
+      "ok": true
+    },
+    {
+      "detail": {
+        "set10-r1.test": {
+          "pools": {
+            "/etc/php/8.4/fpm/pool.d/site4.conf": {
+              "first_line": "[site4]",
+              "gid": 989,
+              "header": {
+                "first_line": "[site4]",
+                "present": false
+              },
+              "inode": 139162,
+              "mode": "0644",
+              "sha256": "830734a225bfa629226b9df38a61eae8644d9b7ab52f900381e3ee8a7ae68f7e",
+              "uid": 0
+            }
+          },
+          "unit": {
+            "exists": false,
+            "first_line": null,
+            "header": null,
+            "inode": null,
+            "sha256": null
+          }
+        },
+        "set10-r2.test": {
+          "pools": {
+            "/etc/php/8.4/fpm/pool.d/site2.conf": {
+              "first_line": "[site2]",
+              "gid": 989,
+              "header": {
+                "first_line": "[site2]",
+                "present": false
+              },
+              "inode": 141418,
+              "mode": "0644",
+              "sha256": "34a5cd4fa972c2c889394c250cacc0812b9184eab866ff048ee51c581a466751",
+              "uid": 0
+            }
+          },
+          "unit": {
+            "exists": false,
+            "first_line": null,
+            "header": null,
+            "inode": null,
+            "sha256": null
+          }
+        },
+        "set10-r3.test": {
+          "pools": {
+            "/etc/php/8.4/fpm/pool.d/site3.conf": {
+              "first_line": "[site3]",
+              "gid": 989,
+              "header": {
+                "first_line": "[site3]",
+                "present": false
+              },
+              "inode": 141423,
+              "mode": "0644",
+              "sha256": "739500b69375afd2d62ab7a2c31902c9d4538257bc8653f7d7b908ed3d2247c8",
+              "uid": 0
+            }
+          },
+          "unit": {
+            "exists": false,
+            "first_line": null,
+            "header": null,
+            "inode": null,
+            "sha256": null
+          }
+        },
+        "set10-rn.test": {
+          "pools": {
+            "/etc/php/8.4/fpm/pool.d/site5.conf": {
+              "first_line": "[site5]",
+              "gid": 989,
+              "header": {
+                "first_line": "[site5]",
+                "present": false
+              },
+              "inode": 141412,
+              "mode": "0644",
+              "sha256": "1e861c0d06c2a7c6e7e18271227c2d402fc6e93b4474576cb32e260ecc55646c",
+              "uid": 0
+            }
+          },
+          "unit": {
+            "exists": true,
+            "first_line": "# Managed by CelikPanel — do not edit by hand.",
+            "header": {
+              "first_line": "# Managed by CelikPanel — do not edit by hand.",
+              "present": false
+            },
+            "inode": 26249,
+            "sha256": "baa901ec0455b82eb47b252b4c984e45a715ee43c55fd576633d60037371be11"
+          }
+        },
+        "upd1-owner.test": {
+          "pools": {},
+          "unit": {
+            "exists": false,
+            "first_line": null,
+            "header": null,
+            "inode": null,
+            "sha256": null
+          }
+        }
+      },
+      "name": "B-before: alpha.82's files (vhosts, pools, unit) carry no render header",
+      "ok": true
+    },
+    {
+      "detail": [
+        41,
+        42,
+        43
+      ],
+      "name": "B-before: the ledger is at 43 before the update",
+      "ok": true
+    }
+  ],
+  "finished_at": "2026-10-11T06:41:01Z",
+  "native_evidence": false,
+  "natives": [
+    {
+      "file": "native/001-owner-pre-panel-restart.json",
+      "label": "owner-pre-panel-restart",
+      "mode": "owner-panel",
+      "owner_action": true
+    },
+    {
+      "file": "native/002-owner-pre-r3-edit.json",
+      "label": "owner-pre-r3-edit",
+      "mode": "owner-vhost10",
+      "owner_action": true
+    },
+    {
+      "file": "native/003-owner-pre-r2-pool-edit.json",
+      "label": "owner-pre-r2-pool-edit",
+      "mode": "owner-pool12",
+      "owner_action": true
+    },
+    {
+      "file": "native/004-pre-before-the-update-read.json",
+      "label": "pre-before-the-update-read",
+      "mode": "read-site10",
+      "owner_action": false
+    },
+    {
+      "file": "native/005-pre-before-the-update-files.json",
+      "label": "pre-before-the-update-files",
+      "mode": "read-files10",
+      "owner_action": false
+    }
+  ],
+  "node": "debian13",
+  "notes": [
+    {
+      "detail": [],
+      "note": "B-before: PASS"
+    }
+  ],
+  "owner_actions": [
+    {
+      "at": "2026-10-11T06:40:35Z",
+      "label": "pre-panel-restart",
+      "mode": "owner-panel"
+    },
+    {
+      "at": "2026-10-11T06:40:49Z",
+      "label": "pre-r3-edit",
+      "mode": "owner-vhost10"
+    },
+    {
+      "at": "2026-10-11T06:40:49Z",
+      "label": "pre-r2-pool-edit",
+      "mode": "owner-pool12"
+    }
+  ],
+  "section": "set10-sites-before-the-update",
+  "started_at": "2026-10-11T06:40:32Z",
+  "substeps": {
+    "B-before": "passed",
+    "section": "passed"
+  },
+  "title": "three sites on alpha.81 (creation text, start text, owner-edited) and, in the good cell, a backup of the Panel database",
+  "verdict": "passed"
+}

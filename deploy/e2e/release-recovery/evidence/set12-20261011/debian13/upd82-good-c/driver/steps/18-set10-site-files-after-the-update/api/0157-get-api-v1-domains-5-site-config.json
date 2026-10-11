@@ -1,0 +1,126 @@
+{
+  "outcome": "response",
+  "panel": "owner",
+  "purpose": "after the update set10-rn.test: GET site-config",
+  "request": {
+    "body": null,
+    "headers": [
+      [
+        "Accept",
+        "application/json"
+      ],
+      [
+        "Host",
+        "127.0.0.1:19001"
+      ],
+      [
+        "Cookie",
+        "[REDACTED]"
+      ]
+    ],
+    "method": "GET",
+    "path": "/api/v1/domains/5/site-config"
+  },
+  "response": {
+    "elapsed_seconds": 0.012,
+    "headers": [
+      [
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+      ],
+      [
+        "Content-Type",
+        "application/json"
+      ],
+      [
+        "Referrer-Policy",
+        "no-referrer"
+      ],
+      [
+        "Strict-Transport-Security",
+        "max-age=31536000"
+      ],
+      [
+        "X-Content-Type-Options",
+        "nosniff"
+      ],
+      [
+        "X-Frame-Options",
+        "DENY"
+      ],
+      [
+        "Date",
+        "Sun, 11 Oct 2026 07:43:18 GMT"
+      ],
+      [
+        "Transfer-Encoding",
+        "chunked"
+      ]
+    ],
+    "json": {
+      "actions": [],
+      "challenge_file": "unchanged",
+      "domain": "set10-rn.test",
+      "domain_id": 5,
+      "enabled": "link",
+      "file_sha256": "ad3fd40eced4bc23f1f649934eb4b02dcc1793f52e1d91699659216c55cee8e9",
+      "files": [
+        {
+          "actions": [],
+          "challenge_file": "unchanged",
+          "domain": "set10-rn.test",
+          "domain_id": 5,
+          "enabled": "link",
+          "file_sha256": "ad3fd40eced4bc23f1f649934eb4b02dcc1793f52e1d91699659216c55cee8e9",
+          "include_dir": "/etc/nginx/celikpanel-sites.d/set10-rn.test",
+          "kind": "nginx_vhost",
+          "ledger": {
+            "observed_at": "2026-10-11T07:42:57Z",
+            "written_at": "2026-10-11T07:42:57Z",
+            "written_release": "v0.1.0-alpha.83 80a2aed4be2c"
+          },
+          "managed_dir": "/etc/nginx/celikpanel-managed.d/set10-rn.test",
+          "managed_include": "include /etc/nginx/celikpanel-managed.d/set10-rn.test/*.conf;",
+          "path": "/etc/nginx/sites-available/set10-rn.test.conf",
+          "protection": "none",
+          "render_sha256": "437a80f3da0dccc1f52b584124599266402613f4d6afac2572e5ea806c3b1484",
+          "state": "managed_unchanged"
+        },
+        {
+          "actions": [],
+          "adopted_from": "v0.1.0-alpha.82",
+          "diff": "--- /etc/systemd/system/celikapp-5.service (on this server)\n+++ CelikPanel's text\n@@ -1,5 +1,7 @@\n-# Managed by CelikPanel — do not edit by hand.\n-# CelikPanel tarafından yönetilir — elle düzenlemeyin.\n+# The application unit of this site, written by CelikPanel.\n+# Your own settings go in /etc/systemd/system/celikapp-5.service.d/*.conf (systemd drop-ins); CelikPanel never writes or removes them.\n+# An edit to this file is kept: CelikPanel then shows the difference and asks before writing it again.\n+# Kendi ayarlarınız /etc/systemd/system/celikapp-5.service.d/*.conf içine; CelikPanel onlara dokunmaz. Bu dosyadaki bir değişiklik korunur.\n [Unit]\n Description=CelikPanel app: set10-rn.test\n After=network.target\n",
+          "domain": "set10-rn.test",
+          "domain_id": 5,
+          "file_sha256": "baa901ec0455b82eb47b252b4c984e45a715ee43c55fd576633d60037371be11",
+          "include_dir": "/etc/systemd/system/celikapp-5.service.d",
+          "kind": "app_unit",
+          "ledger": {
+            "observed_at": "2026-10-11T07:43:18Z"
+          },
+          "path": "/etc/systemd/system/celikapp-5.service",
+          "protection": "none",
+          "render_sha256": "923bd725c30bc306b63c3f2f1e15039c003c11440ad785e67e310598f28fac18",
+          "state": "managed_unchanged"
+        }
+      ],
+      "include_dir": "/etc/nginx/celikpanel-sites.d/set10-rn.test",
+      "kind": "nginx_vhost",
+      "ledger": {
+        "observed_at": "2026-10-11T07:42:57Z",
+        "written_at": "2026-10-11T07:42:57Z",
+        "written_release": "v0.1.0-alpha.83 80a2aed4be2c"
+      },
+      "managed_dir": "/etc/nginx/celikpanel-managed.d/set10-rn.test",
+      "managed_include": "include /etc/nginx/celikpanel-managed.d/set10-rn.test/*.conf;",
+      "overall_kind": "nginx_vhost",
+      "overall_state": "managed_unchanged",
+      "path": "/etc/nginx/sites-available/set10-rn.test.conf",
+      "protection": "none",
+      "render_sha256": "437a80f3da0dccc1f52b584124599266402613f4d6afac2572e5ea806c3b1484",
+      "state": "managed_unchanged"
+    },
+    "status": 200,
+    "text": null
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "at": "2026-10-11T10:53:07Z",
+  "by_unit": {
+    "celikapp-4.service": [],
+    "celikpanel-agent.service": [],
+    "celikpanel-panel.service": [
+      "2026-10-11T10:53:00.120467+00:00 dns-debian13 panel[31001]: 2026/10/11 10:53:00 http: TLS handshake error from 127.0.0.1:58122: EOF",
+      "2026-10-11T10:53:00.754810+00:00 dns-debian13 panel[31001]: 2026/10/11 10:53:00 http: TLS handshake error from 127.0.0.1:58134: EOF",
+      "2026-10-11T10:53:01.131230+00:00 dns-debian13 panel[31001]: 2026/10/11 10:53:01 site configuration set13-n.test app_unit (take): failed; owner's file kept as /etc/systemd/system/celikapp-4.service.celikpanel-backup-20261011T105300Z; systemctl daemon-reload: exit status 1: Failed to reload daemon: set13 lab preparation (one injected failure)",
+      "2026-10-11T10:53:01.140992+00:00 dns-debian13 panel[31001]: 2026/10/11 10:53:01 [502] site configuration of set13-n.test not applied: failed (owner_edited reload_failed); restore confirmed: application unit not activated, the previous file was put back: systemctl daemon-reload: exit status 1: Failed to reload daemon: set13 lab preparation (one injected failure); the application was not restarted (config_refused_elsewhere): systemd-analyze verify: celikapp-4.service: Command /opt/set13-owner/missing-prepare is not executable: No such file or directory: exit status 1"
+    ],
+    "nginx.service": [],
+    "php8.4-fpm.service": []
+  },
+  "mode": "read-window12",
+  "owner_action": false,
+  "schema": "celikpanel/set12-native/v1",
+  "since_epoch": 1791715979,
+  "systemd_all": [
+    "2026-10-11T10:52:59.544691+00:00 dns-debian13 systemd[1]: Reload requested from client PID 33198 ('systemctl') (unit session-120.scope)...",
+    "2026-10-11T10:52:59.544734+00:00 dns-debian13 systemd[1]: Reloading...",
+    "2026-10-11T10:52:59.725011+00:00 dns-debian13 systemd[1]: Reloading finished in 179 ms.",
+    "2026-10-11T10:53:00.837377+00:00 dns-debian13 systemd[1]: Reload requested from client PID 33316 ('systemctl') (unit celikpanel-agent.service)...",
+    "2026-10-11T10:53:00.837421+00:00 dns-debian13 systemd[1]: Reloading...",
+    "2026-10-11T10:53:01.028757+00:00 dns-debian13 systemd[1]: Reloading finished in 190 ms."
+  ],
+  "systemd_manager": [
+    "2026-10-11T10:53:00.837377+00:00 dns-debian13 systemd[1]: Reload requested from client PID 33316 ('systemctl') (unit celikpanel-agent.service)..."
+  ],
+  "units": [
+    "celikpanel-panel.service",
+    "celikpanel-agent.service",
+    "nginx.service",
+    "php8.4-fpm.service",
+    "celikapp-4.service"
+  ]
+}

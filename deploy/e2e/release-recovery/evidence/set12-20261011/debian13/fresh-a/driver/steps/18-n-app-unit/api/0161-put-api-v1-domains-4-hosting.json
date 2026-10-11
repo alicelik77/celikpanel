@@ -1,0 +1,83 @@
+{
+  "outcome": "response",
+  "panel": "owner",
+  "purpose": "n: a hosting change (another start command)",
+  "request": {
+    "body": {
+      "project_type": "node",
+      "runtime_version": "22.20.0",
+      "start_command": "node -e \"require('http').createServer((q,s)=>s.end('set12-n2')).listen(process.env.PORT)\""
+    },
+    "headers": [
+      [
+        "Accept",
+        "application/json"
+      ],
+      [
+        "Host",
+        "127.0.0.1:18881"
+      ],
+      [
+        "Content-Type",
+        "application/json"
+      ],
+      [
+        "Origin",
+        "https://127.0.0.1:18881"
+      ],
+      [
+        "Cookie",
+        "[REDACTED]"
+      ],
+      [
+        "X-CelikPanel-Request-Id",
+        "2419b27badb8f41da69bbe99d4917a44"
+      ]
+    ],
+    "method": "PUT",
+    "path": "/api/v1/domains/4/hosting"
+  },
+  "response": {
+    "elapsed_seconds": 0.623,
+    "headers": [
+      [
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+      ],
+      [
+        "Content-Type",
+        "application/json"
+      ],
+      [
+        "Referrer-Policy",
+        "no-referrer"
+      ],
+      [
+        "Strict-Transport-Security",
+        "max-age=31536000"
+      ],
+      [
+        "X-Content-Type-Options",
+        "nosniff"
+      ],
+      [
+        "X-Frame-Options",
+        "DENY"
+      ],
+      [
+        "Date",
+        "Sun, 11 Oct 2026 04:40:27 GMT"
+      ],
+      [
+        "Content-Length",
+        "33"
+      ]
+    ],
+    "json": {
+      "app_port": 3001,
+      "success": true
+    },
+    "status": 200,
+    "text": null
+  }
+}

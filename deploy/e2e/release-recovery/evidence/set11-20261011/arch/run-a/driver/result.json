@@ -1,0 +1,377 @@
+{
+  "artifacts": {
+    "baseline": {
+      "commit": "b2b43d0cd680a0bc569ea02178c83a06b01c4941",
+      "sha256": "fd0d63a0596ab76dd0de04a362bceeae5325476e5bd036fa311f7a481bfed573",
+      "version": "v0.1.0-alpha.81"
+    }
+  },
+  "cell": {
+    "components": [
+      "nginx",
+      "php-fpm",
+      "mariadb",
+      "postgresql"
+    ],
+    "mail": false,
+    "name": "set11-arch",
+    "node": "arch",
+    "purpose": "web"
+  },
+  "cell_kind": "set11-fresh-install",
+  "findings": [
+    "arch: server setup waits at access_dns (server_setup_access_dns_required) on an isolated host; later wizard steps were not run: ['10-panel_certificate', '11-verify']"
+  ],
+  "identity": {
+    "cell_id": "release-recovery__78c3ae3f0c526ca6",
+    "node": "arch",
+    "vm_uuid": "5cf38ad5-bbff-5b53-8144-159f705fedb8"
+  },
+  "native_evidence": false,
+  "note": "set11: a measurement on the fresh install; no update is started and no P0 row is judged.",
+  "outcome": {
+    "classification": "set11-measured",
+    "final_status": null
+  },
+  "overall": "failed",
+  "provenance": {
+    "what": "set11: ead69cdcc installed fresh; no update"
+  },
+  "request_id": null,
+  "schema": "celikpanel/upd1-owner-update-result/v1",
+  "sections": {
+    "A2-include-missing": {
+      "checks": 10,
+      "error": null,
+      "failed": [],
+      "finished_at": "2026-10-11T01:36:32Z",
+      "notes": [
+        "A2: PASS"
+      ],
+      "started_at": "2026-10-11T01:36:24Z",
+      "substeps": {
+        "A2": "passed"
+      },
+      "title": "a kept file without the line including CelikPanel's directory: certificate issuance",
+      "unknown": [],
+      "verdict": "passed"
+    },
+    "B1-locked-start": {
+      "checks": 9,
+      "error": null,
+      "failed": [],
+      "finished_at": "2026-10-11T01:36:48Z",
+      "notes": [
+        "B1: PASS"
+      ],
+      "started_at": "2026-10-11T01:36:32Z",
+      "substeps": {
+        "B1": "passed"
+      },
+      "title": "A locked while A, B and the static site need a render; the page; check again",
+      "unknown": [],
+      "verdict": "passed"
+    },
+    "B2-unlocked-recheck": {
+      "checks": 4,
+      "error": null,
+      "failed": [],
+      "finished_at": "2026-10-11T01:36:55Z",
+      "notes": [
+        "B2: PASS"
+      ],
+      "started_at": "2026-10-11T01:36:48Z",
+      "substeps": {
+        "B2": "passed"
+      },
+      "title": "the owner unlocks A; check again",
+      "unknown": [],
+      "verdict": "passed"
+    },
+    "B3-save-writes": {
+      "checks": 4,
+      "error": null,
+      "failed": [],
+      "finished_at": "2026-10-11T01:36:59Z",
+      "notes": [
+        "B3: PASS"
+      ],
+      "started_at": "2026-10-11T01:36:55Z",
+      "substeps": {
+        "B3": "passed"
+      },
+      "title": "a General save of A after the unlock",
+      "unknown": [],
+      "verdict": "passed"
+    },
+    "B4-take-refused": {
+      "checks": 4,
+      "error": null,
+      "failed": [
+        "B4: the page and the Domains row name the same state after the refusal"
+      ],
+      "finished_at": "2026-10-11T01:37:06Z",
+      "notes": [
+        "B4: FAIL"
+      ],
+      "started_at": "2026-10-11T01:36:59Z",
+      "substeps": {
+        "B4": "failed"
+      },
+      "title": "take on an owner-edited A whose replacement fails",
+      "unknown": [],
+      "verdict": "failed"
+    },
+    "C-directory-modes": {
+      "checks": 8,
+      "error": null,
+      "failed": [],
+      "finished_at": "2026-10-11T01:36:24Z",
+      "notes": [
+        "C: PASS"
+      ],
+      "started_at": "2026-10-11T01:36:23Z",
+      "substeps": {
+        "C": "passed"
+      },
+      "title": "the include directories as created: mode, owner, group",
+      "unknown": [],
+      "verdict": "passed"
+    },
+    "S0-sites": {
+      "checks": 16,
+      "error": null,
+      "failed": [],
+      "finished_at": "2026-10-11T01:36:16Z",
+      "notes": [
+        "S0: PASS"
+      ],
+      "started_at": "2026-10-11T01:36:10Z",
+      "substeps": {
+        "S0": "passed",
+        "section": "passed"
+      },
+      "title": "two PHP sites; header, digest, ledger row, include directory, nginx -T (set10's section)",
+      "unknown": [],
+      "verdict": "passed"
+    },
+    "h-i-unchanged-start": {
+      "checks": 7,
+      "error": null,
+      "failed": [],
+      "finished_at": "2026-10-11T01:36:23Z",
+      "notes": [
+        "h: PASS",
+        "i: PASS"
+      ],
+      "started_at": "2026-10-11T01:36:17Z",
+      "substeps": {
+        "h": "passed",
+        "i": "passed"
+      },
+      "title": "a restart with every site unchanged (set10's section; it records the Panel's text)",
+      "unknown": [],
+      "verdict": "passed"
+    }
+  },
+  "set11": {
+    "a2_dashboard": {
+      "expiring_certs": [],
+      "status": 200
+    },
+    "a2_rows_after": {
+      "pending_reason": "certificate_validation",
+      "state": "owner_edited"
+    },
+    "creation": {
+      "set1-owner.test": {
+        "inode": 91929,
+        "mtime_ns": 1791682568764714463,
+        "sha256": "c08284e5e585d211cacde933ce6fb0742bd3436c9753724ba89754efbae603ff"
+      },
+      "set11-a.test": {
+        "inode": 91970,
+        "mtime_ns": 1791682572964873830,
+        "sha256": "6825409ead119263472ce1aa452aedc13825b5a99da695bfc4e85f90a1faa34b"
+      },
+      "set11-b.test": {
+        "inode": 92010,
+        "mtime_ns": 1791682575380962161,
+        "sha256": "daeca0c0d66dc928caa4bf625be54b0a7f037b2fdd6f506a0f21436f88494c00"
+      }
+    },
+    "ids": {
+      "set1-owner.test": 1,
+      "set11-a.test": 2,
+      "set11-b.test": 3
+    }
+  },
+  "setup": {
+    "components": [
+      "mariadb",
+      "nginx",
+      "php-fpm",
+      "postgresql"
+    ],
+    "purpose": "web",
+    "waiting": {
+      "code": "server_setup_access_dns_required",
+      "mail_steps_reached": true,
+      "not_run": [
+        "10-panel_certificate",
+        "11-verify"
+      ],
+      "phase": "access_dns",
+      "polls": 25,
+      "stable_wait_seconds": 123.7,
+      "steps": {
+        "01-dns": "succeeded",
+        "02-service": "succeeded",
+        "03-service": "succeeded",
+        "04-service": "succeeded",
+        "05-service": "succeeded",
+        "06-service": "succeeded",
+        "07-service": "succeeded",
+        "08-firewall": "succeeded",
+        "09-access_dns": "running",
+        "10-panel_certificate": "pending",
+        "11-verify": "pending"
+      }
+    }
+  },
+  "steps": [
+    {
+      "finished_at": "2026-10-11T01:28:49Z",
+      "name": "set6-name-pinning",
+      "reason": null,
+      "started_at": "2026-10-11T01:28:44Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T01:28:57Z",
+      "name": "preflight",
+      "reason": null,
+      "started_at": "2026-10-11T01:28:49Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T01:29:10Z",
+      "name": "origin",
+      "reason": null,
+      "started_at": "2026-10-11T01:28:57Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T01:32:24Z",
+      "name": "baseline-install",
+      "reason": null,
+      "started_at": "2026-10-11T01:29:10Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T01:32:26Z",
+      "name": "owner-login",
+      "reason": null,
+      "started_at": "2026-10-11T01:32:24Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T01:32:26Z",
+      "name": "license",
+      "reason": null,
+      "started_at": "2026-10-11T01:32:26Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T01:36:06Z",
+      "name": "setup",
+      "reason": null,
+      "started_at": "2026-10-11T01:32:26Z",
+      "verdict": "observed"
+    },
+    {
+      "finished_at": "2026-10-11T01:36:10Z",
+      "name": "site",
+      "reason": null,
+      "started_at": "2026-10-11T01:36:06Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T01:36:16Z",
+      "name": "S0-sites",
+      "reason": null,
+      "started_at": "2026-10-11T01:36:10Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T01:36:23Z",
+      "name": "h-i-unchanged-start",
+      "reason": null,
+      "started_at": "2026-10-11T01:36:17Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T01:36:24Z",
+      "name": "C-directory-modes",
+      "reason": null,
+      "started_at": "2026-10-11T01:36:23Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T01:36:32Z",
+      "name": "A2-include-missing",
+      "reason": null,
+      "started_at": "2026-10-11T01:36:24Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T01:36:48Z",
+      "name": "B1-locked-start",
+      "reason": null,
+      "started_at": "2026-10-11T01:36:32Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T01:36:55Z",
+      "name": "B2-unlocked-recheck",
+      "reason": null,
+      "started_at": "2026-10-11T01:36:48Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T01:36:59Z",
+      "name": "B3-save-writes",
+      "reason": null,
+      "started_at": "2026-10-11T01:36:55Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T01:37:06Z",
+      "name": "B4-take-refused",
+      "reason": "B4: the page and the Domains row name the same state after the refusal",
+      "started_at": "2026-10-11T01:36:59Z",
+      "verdict": "failed"
+    },
+    {
+      "finished_at": "2026-10-11T01:37:06Z",
+      "name": "set11-browser-window",
+      "reason": null,
+      "started_at": "2026-10-11T01:37:06Z",
+      "verdict": "skipped"
+    },
+    {
+      "finished_at": "2026-10-11T01:37:07Z",
+      "name": "set6-name-pinning-at-the-end",
+      "reason": null,
+      "started_at": "2026-10-11T01:37:06Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T01:37:08Z",
+      "name": "collect",
+      "reason": null,
+      "started_at": "2026-10-11T01:37:07Z",
+      "verdict": "passed"
+    }
+  ]
+}

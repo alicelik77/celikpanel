@@ -1,0 +1,62 @@
+2026-10-11T04:08:52Z set12 run directory created
+2026-10-11T04:09:09Z made run copy a
+2026-10-11T04:09:22Z start build
+2026-10-11T04:11:07Z made run copy b
+2026-10-11T04:11:17Z start build82
+2026-10-11T04:17:43Z build a82 rc=0
+2026-10-11T04:17:43Z end build82 rc=0
+2026-10-11T04:18:30Z build fresh rc=0
+2026-10-11T04:23:10Z build a81 rc=0
+2026-10-11T04:23:10Z end build rc=0
+2026-10-11T04:26:03Z made run copy c
+2026-10-11T04:26:23Z prove fresh rc=0
+2026-10-11T04:26:27Z prove a81 rc=0
+2026-10-11T04:26:30Z prove a82 rc=0
+2026-10-11T04:27:17Z start d13a
+2026-10-11T04:44:08Z end d13a rc=1
+2026-10-11T04:46:26Z made run copy d
+2026-10-11T04:46:27Z start uba
+2026-10-11T05:07:29Z end uba rc=1
+2026-10-11T05:09:00Z made run copy e
+2026-10-11T05:09:01Z start archa
+2026-10-11T05:19:32Z end archa rc=1
+2026-10-11T05:20:42Z start q1
+2026-10-11T05:20:42Z start d13b (queue)
+2026-10-11T05:45:30Z end d13b rc=1
+2026-10-11T05:46:08Z staged d13b rc=0
+2026-10-11T05:46:08Z start g82d13 (queue)
+2026-10-11T05:56:30Z end g82d13 rc=1
+2026-10-11T05:56:55Z staged g82d13 rc=0
+2026-10-11T05:56:55Z end q1 rc=1
+2026-10-11T05:58:33Z made run copy f
+2026-10-11T05:58:34Z start q2
+2026-10-11T05:58:34Z start g82d13b (queue)
+2026-10-11T06:00:39Z end g82d13b rc=1
+2026-10-11T06:00:46Z staged g82d13b rc=0
+2026-10-11T06:00:46Z start g82ub (queue)
+2026-10-11T06:21:15Z end g82ub rc=1
+2026-10-11T06:21:58Z staged g82ub rc=0
+2026-10-11T06:21:58Z start g82arch (queue)
+2026-10-11T06:31:20Z end g82arch rc=1
+2026-10-11T06:31:48Z staged g82arch rc=0
+2026-10-11T06:31:48Z start d82d13 (queue)
+2026-10-11T06:45:55Z end d82d13 rc=1
+2026-10-11T06:46:32Z staged d82d13 rc=0
+2026-10-11T06:46:32Z start d82ub (queue)
+2026-10-11T07:08:03Z end d82ub rc=1
+2026-10-11T07:08:43Z staged d82ub rc=0
+2026-10-11T07:08:43Z start d82arch (queue)
+2026-10-11T07:19:05Z end d82arch rc=1
+2026-10-11T07:19:33Z staged d82arch rc=0
+2026-10-11T07:19:33Z start g81d13 (queue)
+2026-10-11T07:19:49Z start q3
+2026-10-11T07:19:49Z start g82d13c (queue)
+2026-10-11T07:32:39Z end g81d13 rc=1
+2026-10-11T07:33:26Z staged g81d13 rc=0
+2026-10-11T07:33:26Z end q2 rc=1
+2026-10-11T07:45:17Z end g82d13c rc=1
+2026-10-11T07:46:09Z staged g82d13c rc=0
+2026-10-11T07:46:09Z end q3 rc=1
+2026-10-11T07:46:44Z start suites
+2026-10-11T07:47:42Z end suites rc=0
+2026-10-11T07:53:10Z start stagecommon

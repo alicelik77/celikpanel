@@ -62,6 +62,20 @@ type apiErrorBody struct {
 	// Optional and additive.
 	// Vars: Code için ekranın yerel cümlesinin ihtiyaç duyduğu adlı değerler.
 	Vars map[string]string `json:"vars,omitempty"`
+	// Restore: after a service refused CelikPanel's text for a site file,
+	// whether putting the previous file back was confirmed ("confirmed") or
+	// not ("unconfirmed": the server administrator checks the file). Additive.
+	Restore string `json:"restore,omitempty"`
+	// Service, after such a put-back (set12 cell RP1): "reloaded",
+	// "not_reloaded" (ServiceReason config_refused_elsewhere: the service's
+	// check refused the put-back configuration, so it was not reloaded and
+	// keeps the configuration it loaded before; check_unavailable),
+	// "not_running" (it did not run before; neither reloaded nor started) or
+	// "reload_failed". ServiceActive is `systemctl is-active` after the
+	// operation: "true", "false" or "unknown". Additive.
+	Service       string `json:"service,omitempty"`
+	ServiceReason string `json:"service_reason,omitempty"`
+	ServiceActive string `json:"service_active,omitempty"`
 }
 
 // Stable refusal codes. Renaming one is an API break — don't.
@@ -299,6 +313,25 @@ type agentRPCPlatformErrorClassification struct {
 	// a sentence too, for anything that reads the API directly.
 	// Reason, kendi sozleri olan bir ekran icin Code'u inceltir.
 	Reason string
+	// Detail refines Reason with one reviewed machine token (a kept pool's
+	// or unit's state, D-031 second step). Additive.
+	Detail string
+	// Restore, for a refusal after which CelikPanel put the previous file
+	// back: "confirmed" or "unconfirmed" (2026-10-11). Additive.
+	Restore string
+	// AdminDetails: the Agent's own line, written only for an administrator
+	// (writeServerErrorFor). Additive.
+	AdminDetails []string
+	// Service, ServiceReason, ServiceActive: apiErrorBody's. AdminVars are
+	// the sentence's values written only for an administrator (the check's
+	// line, which names this server's files). Additive.
+	Service       string
+	ServiceReason string
+	ServiceActive string
+	AdminVars     map[string]string
+	// AdminMessage replaces Message for an administrator (it names the
+	// check's line). Additive.
+	AdminMessage string
 }
 
 type singleErrorUnwrapper interface {
@@ -416,6 +449,9 @@ func classifyHostMutationError(err error) (agentRPCPlatformErrorClassification, 
 
 func classifyStableAgentError(err error) (agentRPCPlatformErrorClassification, bool) {
 	if classification, ok := classifyHostMutationError(err); ok {
+		return classification, true
+	}
+	if classification, ok := classifySiteFileError(err); ok {
 		return classification, true
 	}
 	return classifyAgentRPCPlatformError(err)
@@ -538,15 +574,39 @@ func writeWebmailUninstallPartial(w http.ResponseWriter, mutationApplied bool) {
 // receive stable operator-facing codes; every other error remains a generic
 // INTERNAL response.
 func writeServerError(w http.ResponseWriter, err error) {
+	writeServerErrorAs(w, nil, err)
+}
+
+// writeServerErrorFor is writeServerError for a request whose caller may see
+// the Agent's own line (an administrator: AdminDetails become details).
+func writeServerErrorFor(w http.ResponseWriter, r *http.Request, err error) {
+	writeServerErrorAs(w, currentCaller(r), err)
+}
+
+func writeServerErrorAs(w http.ResponseWriter, caller *Caller, err error) {
 	if classification, ok := classifyStableAgentError(err); ok {
 		log.Printf("[%d] %v", classification.Status, err)
+		body := apiErrorBody{
+			Error:   classification.Message,
+			Code:    classification.Code,
+			Reason:  classification.Reason,
+			Detail:  classification.Detail,
+			Restore: classification.Restore,
+			Service: classification.Service, ServiceReason: classification.ServiceReason,
+			ServiceActive: classification.ServiceActive,
+		}
+		if caller.hasAccountRole(roleAdmin) {
+			body.Details = classification.AdminDetails
+			if len(classification.AdminVars) > 0 {
+				body.Vars = classification.AdminVars
+			}
+			if classification.AdminMessage != "" {
+				body.Error = classification.AdminMessage
+			}
+		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(classification.Status)
-		_ = json.NewEncoder(w).Encode(apiErrorBody{
-			Error:  classification.Message,
-			Code:   classification.Code,
-			Reason: classification.Reason,
-		})
+		_ = json.NewEncoder(w).Encode(body)
 		return
 	}
 	if err != nil {

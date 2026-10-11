@@ -41,6 +41,9 @@ func withConfigTestState(t *testing.T, phpBody, mysqlBody string) *configTestSta
 	oldReload := reloadPHPFPM
 	oldRestart := restartMariaDB
 	oldPHPTest := phpFPMConfigTest
+	oldPHPActive := phpFPMActive
+	phpFPMActive = func(string) string { return "true" }
+	t.Cleanup(func() { phpFPMActive = oldPHPActive })
 	oldMySQLTest := mysqlConfigTest
 	phpEtcDir = root
 	mysqlServerConfigPath = state.mysqlPath

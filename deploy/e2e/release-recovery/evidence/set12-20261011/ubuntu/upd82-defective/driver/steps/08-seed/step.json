@@ -1,0 +1,83 @@
+{
+  "checks": {
+    "cron_availability": {
+      "available": true,
+      "crontab": "/usr/bin/crontab",
+      "daemon_active": true,
+      "daemon_units": {
+        "cron.service": {
+          "ActiveState": "active",
+          "LoadState": "loaded",
+          "UnitFileState": "enabled"
+        }
+      },
+      "verdict": "available"
+    },
+    "owner_waited_for_idle": {
+      "at": "2026-10-11T07:02:31Z",
+      "busy_seen": [
+        {
+          "locks": [],
+          "processes": [
+            "packagekitd"
+          ]
+        }
+      ],
+      "idle": true,
+      "polls": 19,
+      "waited_s": 185.3
+    },
+    "seeded": {
+      "cron": {
+        "available": true,
+        "command": "/bin/date -u -Iseconds > \"$HOME/upd1-cron-stamp.txt\"",
+        "create_http": 200,
+        "crontab": "/usr/bin/crontab",
+        "daemon_active": true,
+        "daemon_units": {
+          "cron.service": {
+            "ActiveState": "active",
+            "LoadState": "loaded",
+            "UnitFileState": "enabled"
+          }
+        },
+        "list_sha256": "b47eed3e4ce74fecfd1974f25070960971de47f5cac8c00bd3a85e3ed0391567",
+        "listed": true,
+        "seeded": true,
+        "verdict": "available"
+      },
+      "database": {
+        "reason": "only the management-off cell seeds an owner database",
+        "seeded": false
+      },
+      "domain": "upd1-owner.test",
+      "domain_id": 1,
+      "firewall": {
+        "http": 200,
+        "sha256": "0da71220eee9b3b488535b16e3884c9b94b2bc452c845e9224b9e2f5722503f4"
+      },
+      "index_sha256": "fbad7220661ce8be6d217536f8eca95b961e285658d008bafaacc16320c85e9a",
+      "mail": {
+        "address": "owner@upd1-owner.test",
+        "attempted": true,
+        "create_http": 200,
+        "listed": true,
+        "setup_http": 200
+      },
+      "marker": "upd1-marker-b9f1ddfb271b355ffdb4a7110084f284",
+      "records_http": 200,
+      "records_sha256": "ca87e97c42c30d75fff1e03572121e19b62c85d02a23cb7ed35b9e3355ba3b5e",
+      "zone": {
+        "managed": false,
+        "management": "external",
+        "name": "upd1-owner.test",
+        "type": "EXTERNAL"
+      },
+      "zone_http": 200
+    }
+  },
+  "finished_at": "2026-10-11T07:02:34Z",
+  "name": "seed",
+  "started_at": "2026-10-11T06:59:26Z",
+  "verdict": "passed"
+}

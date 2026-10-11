@@ -1,0 +1,83 @@
+{
+  "outcome": "response",
+  "panel": "owner",
+  "purpose": "c5: N becomes a Node site with a bare `node` start command",
+  "request": {
+    "body": {
+      "project_type": "node",
+      "runtime_version": "22.20.0",
+      "start_command": "node -e \"require('http').createServer((q,s)=>s.end('set13-n1')).listen(process.env.PORT)\""
+    },
+    "headers": [
+      [
+        "Accept",
+        "application/json"
+      ],
+      [
+        "Host",
+        "127.0.0.1:19082"
+      ],
+      [
+        "Content-Type",
+        "application/json"
+      ],
+      [
+        "Origin",
+        "https://127.0.0.1:19082"
+      ],
+      [
+        "Cookie",
+        "[REDACTED]"
+      ],
+      [
+        "X-CelikPanel-Request-Id",
+        "87f39ec1854a82be21a082eaeb3feb8a"
+      ]
+    ],
+    "method": "PUT",
+    "path": "/api/v1/domains/4/hosting"
+  },
+  "response": {
+    "elapsed_seconds": 0.64,
+    "headers": [
+      [
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+      ],
+      [
+        "Content-Type",
+        "application/json"
+      ],
+      [
+        "Referrer-Policy",
+        "no-referrer"
+      ],
+      [
+        "Strict-Transport-Security",
+        "max-age=31536000"
+      ],
+      [
+        "X-Content-Type-Options",
+        "nosniff"
+      ],
+      [
+        "X-Frame-Options",
+        "DENY"
+      ],
+      [
+        "Date",
+        "Sun, 11 Oct 2026 10:52:33 GMT"
+      ],
+      [
+        "Content-Length",
+        "33"
+      ]
+    ],
+    "json": {
+      "app_port": 3001,
+      "success": true
+    },
+    "status": 200,
+    "text": null
+  }
+}

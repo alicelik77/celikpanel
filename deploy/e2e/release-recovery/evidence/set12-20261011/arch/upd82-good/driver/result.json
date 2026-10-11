@@ -1,0 +1,702 @@
+{
+  "artifacts": {
+    "baseline": {
+      "commit": "2a0af88660773b43cbe1155c622483e2f0a2bbeb",
+      "sha256": "093a29905dea497d01b6a748966f0b872e01dcd64716e4c65eb20c84c90f204e",
+      "version": "v0.1.0-alpha.82"
+    },
+    "defective": {
+      "commit": "411e5bc71bb0b7f2175d70f073bf8c552fcd54a0",
+      "sha256": "a4dc8401c4c44330691bf12ff1474d4903edd6281bb3aae7d7576f1265664aee",
+      "version": "v0.1.0-alpha.83"
+    },
+    "good": {
+      "commit": "80a2aed4be2c98e3afba83153027ed5597342258",
+      "sha256": "9df1d5399d7cb044becb542baaff40fabc9b35379723d0a7bec91fcca214ca8b",
+      "version": "v0.1.0-alpha.83"
+    }
+  },
+  "cell": {
+    "h19": true,
+    "mail_required": false,
+    "name": "upd1-arch-good",
+    "node": "arch",
+    "pk_observe": false,
+    "recovery_fault": null,
+    "scenario": null,
+    "variant": "good"
+  },
+  "findings": [
+    "arch: web_mail was not attempted on the published v0.1.0-alpha.82 baseline (it accepts the plan but fails at 05-mail_profile); mail is recorded as not provided on this platform",
+    "arch: server setup waits at access_dns (server_setup_access_dns_required) on an isolated host; later wizard steps were not run: ['09-panel_certificate', '10-verify']"
+  ],
+  "identity": {
+    "cell_id": "release-recovery__7c41dbcd4658eaba",
+    "node": "arch",
+    "vm_uuid": "1cd79102-b49d-526a-a3c2-af62adb8251b"
+  },
+  "native_evidence": false,
+  "note": "Observations for the owner's review; the P0 rows are judged separately.",
+  "outcome": {
+    "attempts": {
+      "automatic": [],
+      "automatic_count": 0,
+      "journal_admissions": [],
+      "owner": [],
+      "owner_count": 0
+    },
+    "classification": "update-verified",
+    "final_status": {
+      "observation": "known",
+      "observed_at": "2026-10-11T06:31:00Z",
+      "phase": "succeeded",
+      "reason": "update_verified",
+      "request_id": "30e1f5e5ec7613c64d6db5c5584d7336",
+      "schema": "celikpanel-recovery-status/v1",
+      "terminal_proof": "update_verified"
+    },
+    "owner_continuation": false,
+    "owner_reboot": null,
+    "pin_changes": [],
+    "port_hold": null,
+    "reboot": null,
+    "track_stop": null
+  },
+  "overall": "failed",
+  "provenance": {
+    "baseline": "published-tag-v0.1.0-alpha.82-commit-unchanged (the tag carries the D-027 acceptance-license seam; bin/panel is built from the tag's source with the acceptance_license build tag); its release policy, installer, update/rollback/recovery/bootstrap scripts, get.sh, web and Agent are the tag's; installed by the real installer; fixture trust root enrolled; not-production-release-admission; not the signed release archive",
+    "candidate": "unpublished-local-fixture-commit-over-the-source-labelled-v0.1.0-alpha.83; signed with the disposable fixture key; served by the guest-loopback celikpanel.net fixture origin; not a release",
+    "defect": "fixture source patch: cmd/panel --migrate-only exits 1 after migrating the isolated copy (genuine candidate failure after candidate-installed, simulated by a committed fixture change)"
+  },
+  "request_id": "30e1f5e5ec7613c64d6db5c5584d7336",
+  "schema": "celikpanel/upd1-owner-update-result/v1",
+  "scope": {
+    "cron": {
+      "crontab": "/usr/sbin/crontab",
+      "verdict": "available"
+    },
+    "dns": {
+      "mode": "external",
+      "note": "DNS is not provided by this run (the owner chose DNS hosted elsewhere on one isolated node); DNS continuity is covered by the DNS pair runs of roadmap item 2",
+      "verdict": "not-provided-external-dns"
+    },
+    "origin": {
+      "after-owner-restart": {
+        "addresses": [
+          "127.0.0.1"
+        ],
+        "http": "200",
+        "ok": true
+      },
+      "after-provision": {
+        "addresses": [
+          "127.0.0.1"
+        ],
+        "http": "200",
+        "ok": true
+      },
+      "before-arm": {
+        "addresses": [
+          "127.0.0.1"
+        ],
+        "http": "200",
+        "ok": true
+      }
+    },
+    "setup": {
+      "code": "server_setup_access_dns_required",
+      "not_run": [
+        "09-panel_certificate",
+        "10-verify"
+      ],
+      "phase": "access_dns",
+      "verdict": "observed isolated-host wait",
+      "volatile_tables_added": [
+        "server_setup_executions"
+      ]
+    }
+  },
+  "set10": {
+    "cell_kind": "set10-d031-update",
+    "sections": {
+      "set10-site-files-after-the-update": {
+        "checks": 10,
+        "error": null,
+        "failed": [],
+        "finished_at": "2026-10-11T06:31:12Z",
+        "notes": [
+          "B-forward: PASS"
+        ],
+        "started_at": "2026-10-11T06:31:10Z",
+        "substeps": {
+          "B-forward": "passed"
+        },
+        "title": "the site files, the ledger, the start lines, the Domains list and the three new routes without a request identity",
+        "unknown": [],
+        "verdict": "passed"
+      },
+      "set10-sites-before-the-update": {
+        "checks": 9,
+        "error": null,
+        "failed": [],
+        "finished_at": "2026-10-11T06:28:47Z",
+        "notes": [
+          "B-before: PASS"
+        ],
+        "started_at": "2026-10-11T06:28:26Z",
+        "substeps": {
+          "B-before": "passed",
+          "section": "passed"
+        },
+        "title": "three sites on alpha.81 (creation text, start text, owner-edited) and, in the good cell, a backup of the Panel database",
+        "unknown": [],
+        "verdict": "passed"
+      }
+    },
+    "state": {
+      "after": {
+        "set10-r1.test": {
+          "header": {
+            "body_bytes": 2046,
+            "body_sha256": "21bc4476b763521f255033576803f636ec5bbef224919f555a7c36aed2379837",
+            "declared": "21bc4476b763521f255033576803f636ec5bbef224919f555a7c36aed2379837",
+            "present": true,
+            "valid": true
+          },
+          "inode": 94496,
+          "ledger_row": {
+            "adopted_from": "v0.1.0-alpha.82 (creation)",
+            "backup_path": "",
+            "body_sha256": "21bc4476b763521f255033576803f636ec5bbef224919f555a7c36aed2379837",
+            "decided_at": 0,
+            "decided_by": null,
+            "decision": "",
+            "decision_file_sha256": "",
+            "domain_id": 4,
+            "file_format": "celikpanel-render v2",
+            "file_sha256": "731cadb9b5a67137c480e7122579ec8d02cec9cd0578bc5d2bf0418631c2beb8",
+            "id": 4,
+            "kind": "nginx_vhost",
+            "observed_at": 1791700250,
+            "path": "/etc/nginx/sites-available/set10-r1.test.conf",
+            "pending_path": "",
+            "pending_sha256": "",
+            "site_id": 4,
+            "state": "managed_unchanged",
+            "state_reason": "",
+            "written_at": 1791700250,
+            "written_release": "v0.1.0-alpha.83 80a2aed4be2c"
+          },
+          "lines": [
+            "2026-10-11T06:30:50.488111+00:00 dns-arch panel[14114]: 2026/10/11 06:30:50 site configuration set10-r1.test (startup): written; adopted the text of v0.1.0-alpha.82 (creation)"
+          ],
+          "same_bytes_as_before": false,
+          "same_inode_as_before": false,
+          "sha256": "731cadb9b5a67137c480e7122579ec8d02cec9cd0578bc5d2bf0418631c2beb8"
+        },
+        "set10-r2.test": {
+          "header": {
+            "body_bytes": 2046,
+            "body_sha256": "248e55ee3e9ab38dff89a67f77ff341d967e5245d0ccef6f13e84deb7cd5e5b3",
+            "declared": "248e55ee3e9ab38dff89a67f77ff341d967e5245d0ccef6f13e84deb7cd5e5b3",
+            "present": true,
+            "valid": true
+          },
+          "inode": 94494,
+          "ledger_row": {
+            "adopted_from": "v0.1.0-alpha.82",
+            "backup_path": "",
+            "body_sha256": "248e55ee3e9ab38dff89a67f77ff341d967e5245d0ccef6f13e84deb7cd5e5b3",
+            "decided_at": 0,
+            "decided_by": null,
+            "decision": "",
+            "decision_file_sha256": "",
+            "domain_id": 2,
+            "file_format": "celikpanel-render v2",
+            "file_sha256": "0f6e32c793efaf2abd23411995d15d916874b456237292e2a1f2383466e98aee",
+            "id": 2,
+            "kind": "nginx_vhost",
+            "observed_at": 1791700250,
+            "path": "/etc/nginx/sites-available/set10-r2.test.conf",
+            "pending_path": "",
+            "pending_sha256": "",
+            "site_id": 2,
+            "state": "managed_unchanged",
+            "state_reason": "",
+            "written_at": 1791700250,
+            "written_release": "v0.1.0-alpha.83 80a2aed4be2c"
+          },
+          "lines": [
+            "2026-10-11T06:30:50.473965+00:00 dns-arch panel[14114]: 2026/10/11 06:30:50 site configuration set10-r2.test (startup): written; adopted the text of v0.1.0-alpha.82"
+          ],
+          "same_bytes_as_before": false,
+          "same_inode_as_before": false,
+          "sha256": "0f6e32c793efaf2abd23411995d15d916874b456237292e2a1f2383466e98aee"
+        },
+        "set10-r3.test": {
+          "header": {
+            "first_line": "# Nginx vhost for set10-r3.test",
+            "present": false
+          },
+          "inode": 87489,
+          "ledger_row": {
+            "adopted_from": "",
+            "backup_path": "",
+            "body_sha256": "",
+            "decided_at": 0,
+            "decided_by": null,
+            "decision": "",
+            "decision_file_sha256": "",
+            "domain_id": 3,
+            "file_format": "",
+            "file_sha256": "643e5caa764c8ed01af7192273feb40371248beb7748148165925bb6eec2147b",
+            "id": 3,
+            "kind": "nginx_vhost",
+            "observed_at": 1791700250,
+            "path": "/etc/nginx/sites-available/set10-r3.test.conf",
+            "pending_path": "/etc/nginx/sites-available/set10-r3.test.conf.celikpanel-pending",
+            "pending_sha256": "ee27e6ac2b46ed117f20b560c84bd40257248ec8e7abf80862fbd327b0285027",
+            "site_id": 3,
+            "state": "unknown_origin",
+            "state_reason": "",
+            "written_at": 0,
+            "written_release": ""
+          },
+          "lines": [
+            "2026-10-11T06:30:50.480733+00:00 dns-arch panel[14114]: 2026/10/11 06:30:50 site configuration set10-r3.test (startup): kept (unknown-origin); CelikPanel's text held in /etc/nginx/sites-available/set10-r3.test.conf.celikpanel-pending"
+          ],
+          "same_bytes_as_before": true,
+          "same_inode_as_before": true,
+          "sha256": "643e5caa764c8ed01af7192273feb40371248beb7748148165925bb6eec2147b"
+        },
+        "upd1-owner.test": {
+          "header": {
+            "body_bytes": 1667,
+            "body_sha256": "ea4336727bbbfec27acadbb3ea8cd9c660cf0b666dadf7abd191409e38446443",
+            "declared": "ea4336727bbbfec27acadbb3ea8cd9c660cf0b666dadf7abd191409e38446443",
+            "present": true,
+            "valid": true
+          },
+          "inode": 94492,
+          "ledger_row": {
+            "adopted_from": "v0.1.0-alpha.82",
+            "backup_path": "",
+            "body_sha256": "ea4336727bbbfec27acadbb3ea8cd9c660cf0b666dadf7abd191409e38446443",
+            "decided_at": 0,
+            "decided_by": null,
+            "decision": "",
+            "decision_file_sha256": "",
+            "domain_id": 1,
+            "file_format": "celikpanel-render v2",
+            "file_sha256": "54232bd513e6fbf5b4b246581f6efc56bb5fd9146b4a281f73595d56d97f34f4",
+            "id": 1,
+            "kind": "nginx_vhost",
+            "observed_at": 1791700250,
+            "path": "/etc/nginx/sites-available/upd1-owner.test.conf",
+            "pending_path": "",
+            "pending_sha256": "",
+            "site_id": 1,
+            "state": "managed_unchanged",
+            "state_reason": "",
+            "written_at": 1791700250,
+            "written_release": "v0.1.0-alpha.83 80a2aed4be2c"
+          },
+          "lines": [
+            "2026-10-11T06:30:50.458718+00:00 dns-arch panel[14114]: 2026/10/11 06:30:50 site configuration upd1-owner.test (startup): written; adopted the text of v0.1.0-alpha.82"
+          ],
+          "same_bytes_as_before": false,
+          "same_inode_as_before": false,
+          "sha256": "54232bd513e6fbf5b4b246581f6efc56bb5fd9146b4a281f73595d56d97f34f4"
+        }
+      },
+      "baseline_ref": "v0.1.0-alpha.82",
+      "before": {
+        "set10-r1.test": {
+          "gid": 969,
+          "header": {
+            "first_line": "# Nginx vhost for set10-r1.test",
+            "present": false
+          },
+          "inode": 87518,
+          "mode": "0644",
+          "mtime_ns": 1791700114309781451,
+          "sha256": "7f82fefdf202d38b1bc3557aebf2ad80699fc900e844af73a48be1fa78ad36fb",
+          "uid": 0
+        },
+        "set10-r2.test": {
+          "gid": 969,
+          "header": {
+            "first_line": "# Nginx vhost for set10-r2.test",
+            "present": false
+          },
+          "inode": 87486,
+          "mode": "0644",
+          "mtime_ns": 1791700110931756691,
+          "sha256": "c5045e14d4bffc8d5539b914393b0dd3734867180cab9b86aecb5a5b1e86964f",
+          "uid": 0
+        },
+        "set10-r3.test": {
+          "gid": 969,
+          "header": {
+            "first_line": "# Nginx vhost for set10-r3.test",
+            "present": false
+          },
+          "inode": 87489,
+          "mode": "0644",
+          "mtime_ns": 1791700114714784359,
+          "sha256": "643e5caa764c8ed01af7192273feb40371248beb7748148165925bb6eec2147b",
+          "uid": 0
+        },
+        "upd1-owner.test": {
+          "gid": 969,
+          "header": {
+            "first_line": "# Nginx vhost for upd1-owner.test",
+            "present": false
+          },
+          "inode": 87483,
+          "mode": "0644",
+          "mtime_ns": 1791700110923978202,
+          "sha256": "aad048d54b437f902b33bfd27c22de681ac9329772a513334b1ffdd434ec8602",
+          "uid": 0
+        }
+      },
+      "files_before": {
+        "set10-r1.test": {
+          "pools": {
+            "/etc/php/php-fpm.d/site4.conf": {
+              "first_line": "[site4]",
+              "gid": 969,
+              "header": {
+                "first_line": "[site4]",
+                "present": false
+              },
+              "inode": 87516,
+              "mode": "0644",
+              "sha256": "0beb5c937dc32462cb5e65ab999c05d6f73840e659e58c7311b5ed0599bb1c1a",
+              "uid": 0
+            }
+          },
+          "unit": {
+            "exists": false,
+            "first_line": null,
+            "header": null,
+            "inode": null,
+            "sha256": null
+          }
+        },
+        "set10-r2.test": {
+          "pools": {
+            "/etc/php/php-fpm.d/site2.conf": {
+              "first_line": "[site2]",
+              "gid": 969,
+              "header": {
+                "first_line": "[site2]",
+                "present": false
+              },
+              "inode": 87437,
+              "mode": "0644",
+              "sha256": "8fa4c5f7e0e9b25e837add8e0fd686eb788a0917e7b1628b7e9bdd87a7772235",
+              "uid": 0
+            }
+          },
+          "unit": {
+            "exists": false,
+            "first_line": null,
+            "header": null,
+            "inode": null,
+            "sha256": null
+          }
+        },
+        "set10-r3.test": {
+          "pools": {
+            "/etc/php/php-fpm.d/site3.conf": {
+              "first_line": "[site3]",
+              "gid": 969,
+              "header": {
+                "first_line": "[site3]",
+                "present": false
+              },
+              "inode": 87468,
+              "mode": "0644",
+              "sha256": "327a95696ea456be7d1fd4961fce1d3efbaa6f3f9f4b62341fbe83d3f8d1c3dd",
+              "uid": 0
+            }
+          },
+          "unit": {
+            "exists": false,
+            "first_line": null,
+            "header": null,
+            "inode": null,
+            "sha256": null
+          }
+        },
+        "set10-rn.test": {
+          "pools": {
+            "/etc/php/php-fpm.d/site5.conf": {
+              "first_line": "[site5]",
+              "gid": 969,
+              "header": {
+                "first_line": "[site5]",
+                "present": false
+              },
+              "inode": 93757,
+              "mode": "0644",
+              "sha256": "b501ecf25ba499ccf99b50073841d7ba6514fb02aa07025f32c8313358901523",
+              "uid": 0
+            }
+          },
+          "unit": {
+            "exists": true,
+            "first_line": "# Managed by CelikPanel — do not edit by hand.",
+            "header": {
+              "first_line": "# Managed by CelikPanel — do not edit by hand.",
+              "present": false
+            },
+            "inode": 93764,
+            "sha256": "51354c8bbbdee2f62e0e716487bc98eeb0286fae05d6ff66d5eeec507bbbba70"
+          }
+        },
+        "upd1-owner.test": {
+          "pools": {},
+          "unit": {
+            "exists": false,
+            "first_line": null,
+            "header": null,
+            "inode": null,
+            "sha256": null
+          }
+        }
+      },
+      "ids": {
+        "set10-r1.test": 4,
+        "set10-r2.test": 2,
+        "set10-r3.test": 3,
+        "set10-rn.test": 5,
+        "upd1-owner.test": 1
+      },
+      "node": {
+        "hosting": 200,
+        "site": "set10-rn.test",
+        "version": "22.20.0"
+      }
+    }
+  },
+  "set5": {
+    "additions": {
+      "item9": false,
+      "m10": false
+    },
+    "cell_kind": "set5-closing-update",
+    "pinned_names": [
+      "acme-v02.api.letsencrypt.org",
+      "acme-staging-v02.api.letsencrypt.org",
+      "acme.zerossl.com",
+      "dv.acme-v02.api.pki.goog"
+    ],
+    "sections": {
+      "set10-site-files-after-the-update": {
+        "checks": 10,
+        "error": null,
+        "failed": [],
+        "finished_at": "2026-10-11T06:31:12Z",
+        "notes": [
+          "B-forward: PASS"
+        ],
+        "started_at": "2026-10-11T06:31:10Z",
+        "substeps": {
+          "B-forward": "passed"
+        },
+        "title": "the site files, the ledger, the start lines, the Domains list and the three new routes without a request identity",
+        "unknown": [],
+        "verdict": "passed"
+      },
+      "set10-sites-before-the-update": {
+        "checks": 9,
+        "error": null,
+        "failed": [],
+        "finished_at": "2026-10-11T06:28:47Z",
+        "notes": [
+          "B-before: PASS"
+        ],
+        "started_at": "2026-10-11T06:28:26Z",
+        "substeps": {
+          "B-before": "passed",
+          "section": "passed"
+        },
+        "title": "three sites on alpha.81 (creation text, start text, owner-edited) and, in the good cell, a backup of the Panel database",
+        "unknown": [],
+        "verdict": "passed"
+      }
+    }
+  },
+  "set6": {
+    "cell_kind": "set6-good-update",
+    "expected_strict_transport_security": {
+      "after_the_update": "max-age=31536000",
+      "before_the_update": "max-age=31536000; includeSubDomains"
+    },
+    "pinned_names": [
+      "celikpanel.net",
+      "acme-v02.api.letsencrypt.org",
+      "acme-staging-v02.api.letsencrypt.org",
+      "acme.zerossl.com",
+      "dv.acme-v02.api.pki.goog"
+    ]
+  },
+  "steps": [
+    {
+      "finished_at": "2026-10-11T06:23:03Z",
+      "name": "set6-name-pinning",
+      "reason": null,
+      "started_at": "2026-10-11T06:22:58Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T06:23:09Z",
+      "name": "preflight",
+      "reason": null,
+      "started_at": "2026-10-11T06:23:03Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T06:23:18Z",
+      "name": "origin",
+      "reason": null,
+      "started_at": "2026-10-11T06:23:09Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T06:25:31Z",
+      "name": "baseline-install",
+      "reason": null,
+      "started_at": "2026-10-11T06:23:18Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T06:25:32Z",
+      "name": "owner-login",
+      "reason": null,
+      "started_at": "2026-10-11T06:25:31Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T06:25:32Z",
+      "name": "license",
+      "reason": null,
+      "started_at": "2026-10-11T06:25:32Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T06:28:24Z",
+      "name": "setup",
+      "reason": null,
+      "started_at": "2026-10-11T06:25:32Z",
+      "verdict": "observed"
+    },
+    {
+      "finished_at": "2026-10-11T06:28:26Z",
+      "name": "seed",
+      "reason": null,
+      "started_at": "2026-10-11T06:28:24Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T06:28:48Z",
+      "name": "set10-sites-before-the-update",
+      "reason": null,
+      "started_at": "2026-10-11T06:28:26Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T06:28:48Z",
+      "name": "set6-headers-before-the-update",
+      "reason": "B: every HTTPS answer of the running Panel carries Strict-Transport-Security exactly `max-age=31536000; includeSubDomains` (one header line, that value)",
+      "started_at": "2026-10-11T06:28:48Z",
+      "verdict": "failed"
+    },
+    {
+      "finished_at": "2026-10-11T06:30:06Z",
+      "name": "pre-state",
+      "reason": null,
+      "started_at": "2026-10-11T06:28:48Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T06:30:08Z",
+      "name": "arm",
+      "reason": null,
+      "started_at": "2026-10-11T06:30:06Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T06:30:08Z",
+      "name": "owner-start",
+      "reason": null,
+      "started_at": "2026-10-11T06:30:08Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T06:31:03Z",
+      "name": "track",
+      "reason": null,
+      "started_at": "2026-10-11T06:30:08Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T06:31:03Z",
+      "name": "owner-continuation (required)",
+      "reason": null,
+      "started_at": "2026-10-11T06:31:03Z",
+      "verdict": "skipped"
+    },
+    {
+      "finished_at": "2026-10-11T06:31:10Z",
+      "name": "terminal",
+      "reason": null,
+      "started_at": "2026-10-11T06:31:03Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T06:31:12Z",
+      "name": "set10-site-files-after-the-update",
+      "reason": null,
+      "started_at": "2026-10-11T06:31:10Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T06:31:16Z",
+      "name": "post-update-facts",
+      "reason": null,
+      "started_at": "2026-10-11T06:31:12Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T06:31:16Z",
+      "name": "set6-headers-after-the-update",
+      "reason": null,
+      "started_at": "2026-10-11T06:31:16Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T06:31:19Z",
+      "name": "collect",
+      "reason": null,
+      "started_at": "2026-10-11T06:31:16Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T06:31:19Z",
+      "name": "verdicts",
+      "reason": null,
+      "started_at": "2026-10-11T06:31:19Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T06:31:19Z",
+      "name": "set6-name-pinning-at-the-end",
+      "reason": null,
+      "started_at": "2026-10-11T06:31:19Z",
+      "verdict": "passed"
+    }
+  ]
+}

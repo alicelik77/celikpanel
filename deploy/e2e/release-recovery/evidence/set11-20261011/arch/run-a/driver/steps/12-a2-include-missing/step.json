@@ -1,0 +1,22 @@
+{
+  "checks": {
+    "checks": 10,
+    "error": null,
+    "failed": [],
+    "finished_at": "2026-10-11T01:36:32Z",
+    "notes": [
+      "A2: PASS"
+    ],
+    "started_at": "2026-10-11T01:36:24Z",
+    "substeps": {
+      "A2": "passed"
+    },
+    "title": "a kept file without the line including CelikPanel's directory: certificate issuance",
+    "unknown": [],
+    "verdict": "passed"
+  },
+  "finished_at": "2026-10-11T01:36:32Z",
+  "name": "A2-include-missing",
+  "started_at": "2026-10-11T01:36:24Z",
+  "verdict": "passed"
+}

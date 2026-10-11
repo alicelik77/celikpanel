@@ -1,0 +1,161 @@
+{
+  "outcome": "response",
+  "panel": "owner",
+  "purpose": "a-page: the Configuration file page reads: GET site-config",
+  "request": {
+    "body": null,
+    "headers": [
+      [
+        "Accept",
+        "application/json"
+      ],
+      [
+        "Host",
+        "127.0.0.1:18901"
+      ],
+      [
+        "Cookie",
+        "[REDACTED]"
+      ]
+    ],
+    "method": "GET",
+    "path": "/api/v1/domains/2/site-config"
+  },
+  "response": {
+    "elapsed_seconds": 0.007,
+    "headers": [
+      [
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+      ],
+      [
+        "Content-Type",
+        "application/json"
+      ],
+      [
+        "Referrer-Policy",
+        "no-referrer"
+      ],
+      [
+        "Strict-Transport-Security",
+        "max-age=31536000"
+      ],
+      [
+        "X-Content-Type-Options",
+        "nosniff"
+      ],
+      [
+        "X-Frame-Options",
+        "DENY"
+      ],
+      [
+        "Date",
+        "Sun, 11 Oct 2026 05:18:57 GMT"
+      ],
+      [
+        "Transfer-Encoding",
+        "chunked"
+      ]
+    ],
+    "json": {
+      "actions": [
+        "keep",
+        "take",
+        "merge"
+      ],
+      "certificate": {
+        "referenced": false
+      },
+      "challenge_file": "unchanged",
+      "diff": "--- /etc/nginx/sites-available/set12-a.test.conf (on this server)\n+++ CelikPanel's text\n@@ -10,15 +10,15 @@\n # satırlarını koruyun: o dizin CelikPanel'indir (sertifika doğrulaması).\n # Site ID: 2 · Project type: php\n server {\n-    listen 198.51.100.77:80;\n+    listen 80;\n+    listen [::]:80;\n     server_name set12-a.test www.set12-a.test;\n-    # set11: put back by the server owner\n-    include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;\n \n     access_log /var/log/nginx/set12-a.test-access.log;\n     error_log /var/log/nginx/set12-a.test-error.log;\n \n     # CelikPanel's own parts of this site (certificate validation) / CelikPanel'in parçaları\n+    include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;\n \n     root /var/www/celikpanel/subscriptions/2/sites/2/public_html;\n     index index.php index.html index.htm;\n",
+      "domain": "set12-a.test",
+      "domain_id": 2,
+      "enabled": "link",
+      "file_sha256": "10687609d494c0669cf0ee2acc645bac9c98cf1af804ad39464cd031065d93ef",
+      "files": [
+        {
+          "actions": [
+            "keep",
+            "take",
+            "merge"
+          ],
+          "certificate": {
+            "referenced": false
+          },
+          "challenge_file": "unchanged",
+          "diff": "--- /etc/nginx/sites-available/set12-a.test.conf (on this server)\n+++ CelikPanel's text\n@@ -10,15 +10,15 @@\n # satırlarını koruyun: o dizin CelikPanel'indir (sertifika doğrulaması).\n # Site ID: 2 · Project type: php\n server {\n-    listen 198.51.100.77:80;\n+    listen 80;\n+    listen [::]:80;\n     server_name set12-a.test www.set12-a.test;\n-    # set11: put back by the server owner\n-    include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;\n \n     access_log /var/log/nginx/set12-a.test-access.log;\n     error_log /var/log/nginx/set12-a.test-error.log;\n \n     # CelikPanel's own parts of this site (certificate validation) / CelikPanel'in parçaları\n+    include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;\n \n     root /var/www/celikpanel/subscriptions/2/sites/2/public_html;\n     index index.php index.html index.htm;\n",
+          "domain": "set12-a.test",
+          "domain_id": 2,
+          "enabled": "link",
+          "file_sha256": "10687609d494c0669cf0ee2acc645bac9c98cf1af804ad39464cd031065d93ef",
+          "include_dir": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+          "kind": "nginx_vhost",
+          "ledger": {
+            "backup_path": "/etc/nginx/sites-available/set12-a.test.conf.celikpanel-backup-20261011T051744Z",
+            "observed_at": "2026-10-11T05:18:53Z",
+            "written_at": "2026-10-11T05:18:18Z",
+            "written_release": "v0.1.0-alpha.81 9e223f175d96"
+          },
+          "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-a.test",
+          "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;",
+          "path": "/etc/nginx/sites-available/set12-a.test.conf",
+          "pending_path": "/etc/nginx/sites-available/set12-a.test.conf.celikpanel-pending",
+          "pending_reason": "certificate_validation",
+          "protection": "none",
+          "render_sha256": "872fe38bc22fdd3ed84e57310827eff28352e5af5f8f633178ca71aacb16b109",
+          "state": "owner_edited",
+          "validation": "unknown",
+          "validation_address": "198.51.100.77",
+          "validation_name": "set12-a.test",
+          "validation_unknown_reason": "address_not_local"
+        },
+        {
+          "actions": [],
+          "decision": {
+            "current": false,
+            "decided_at": "2026-10-11T05:16:16Z",
+            "kind": "take_celikpanel"
+          },
+          "domain": "set12-a.test",
+          "domain_id": 2,
+          "file_sha256": "6f8b1cbea6de1c30f89378b11fff05feef7ecb86fc93c43a1a57906ab5f78a67",
+          "kind": "php_pool",
+          "ledger": {
+            "backup_path": "/etc/php/php-fpm.d/site2.conf.celikpanel-backup-20261011T051801Z",
+            "observed_at": "2026-10-11T05:18:16Z",
+            "written_at": "2026-10-11T05:16:16Z",
+            "written_release": "v0.1.0-alpha.81 9e223f175d96"
+          },
+          "path": "/etc/php/php-fpm.d/site2.conf",
+          "protection": "none",
+          "render_sha256": "8f3644c3c81f7322adb9d4eaf96182b134d479954bdddeebf02aea1282bffb84",
+          "state": "managed_unchanged"
+        }
+      ],
+      "include_dir": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+      "kind": "nginx_vhost",
+      "ledger": {
+        "backup_path": "/etc/nginx/sites-available/set12-a.test.conf.celikpanel-backup-20261011T051744Z",
+        "observed_at": "2026-10-11T05:18:53Z",
+        "written_at": "2026-10-11T05:18:18Z",
+        "written_release": "v0.1.0-alpha.81 9e223f175d96"
+      },
+      "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-a.test",
+      "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;",
+      "overall_kind": "nginx_vhost",
+      "overall_state": "owner_edited",
+      "path": "/etc/nginx/sites-available/set12-a.test.conf",
+      "pending_path": "/etc/nginx/sites-available/set12-a.test.conf.celikpanel-pending",
+      "pending_reason": "certificate_validation",
+      "protection": "none",
+      "render_sha256": "872fe38bc22fdd3ed84e57310827eff28352e5af5f8f633178ca71aacb16b109",
+      "state": "owner_edited",
+      "validation": "unknown",
+      "validation_address": "198.51.100.77",
+      "validation_name": "set12-a.test",
+      "validation_unknown_reason": "address_not_local"
+    },
+    "status": 200,
+    "text": null
+  }
+}

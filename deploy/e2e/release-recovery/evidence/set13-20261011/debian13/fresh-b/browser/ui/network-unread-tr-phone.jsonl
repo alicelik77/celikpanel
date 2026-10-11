@@ -1,0 +1,12 @@
+{"at":"2026-10-11T10:56:05.725Z","method":"GET","url":"/api/v1/auth/me","status":200}
+{"at":"2026-10-11T10:56:05.733Z","method":"GET","url":"/api/v1/auth/me","status":200}
+{"at":"2026-10-11T10:56:05.741Z","method":"GET","url":"/api/v1/panel/availability","status":200}
+{"at":"2026-10-11T10:56:05.754Z","method":"GET","url":"/api/v1/license/access","status":200}
+{"at":"2026-10-11T10:56:05.804Z","method":"GET","url":"/api/v1/panel/version","status":200}
+{"at":"2026-10-11T10:56:05.805Z","method":"GET","url":"/api/v1/service/operation?active=1","status":200}
+{"at":"2026-10-11T10:56:05.805Z","method":"GET","url":"/api/v1/setup","status":200}
+{"at":"2026-10-11T10:56:05.829Z","method":"GET","url":"/api/v1/panel/version","status":200}
+{"at":"2026-10-11T10:56:05.829Z","method":"GET","url":"/api/v1/domains","status":200}
+{"at":"2026-10-11T10:56:05.848Z","method":"GET","url":"/api/v1/managed-services","status":200}
+{"at":"2026-10-11T10:56:05.849Z","method":"GET","url":"/api/v1/subscriptions","status":200}
+{"at":"2026-10-11T10:56:06.893Z","method":"GET","url":"/api/v1/hosting/capabilities","status":200}

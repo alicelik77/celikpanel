@@ -1,0 +1,40 @@
+# celikpanel-render v2 sha256=ea4336727bbbfec27acadbb3ea8cd9c660cf0b666dadf7abd191409e38446443
+# Nginx vhost for upd1-owner.test
+# Written by CelikPanel. Put your own additions in /etc/nginx/celikpanel-sites.d/upd1-owner.test/*.conf;
+# CelikPanel never writes there. If you change this file, CelikPanel keeps
+# your file and asks you before it replaces it. Keep the lines that include
+# /etc/nginx/celikpanel-managed.d/upd1-owner.test: that directory is CelikPanel's (certificate
+# validation) and CelikPanel writes there without touching this file.
+# CelikPanel yazdı. Kendi eklemeleriniz /etc/nginx/celikpanel-sites.d/upd1-owner.test/*.conf içine;
+# CelikPanel oraya hiç yazmaz. Bu dosyayı değiştirirseniz CelikPanel
+# dosyanızı korur ve değiştirmeden önce size sorar. /etc/nginx/celikpanel-managed.d/upd1-owner.test
+# satırlarını koruyun: o dizin CelikPanel'indir (sertifika doğrulaması).
+# Site ID: 1 · Project type: static
+server {
+    listen 80;
+    listen [::]:80;
+    server_name upd1-owner.test www.upd1-owner.test;
+
+    access_log /var/log/nginx/upd1-owner.test-access.log;
+    error_log /var/log/nginx/upd1-owner.test-error.log;
+
+    # CelikPanel's own parts of this site (certificate validation) / CelikPanel'in parçaları
+    include /etc/nginx/celikpanel-managed.d/upd1-owner.test/*.conf;
+
+    root /var/www/celikpanel/subscriptions/2/sites/1/public_html;
+    index index.html index.htm;
+
+    location / {
+
+        try_files $uri $uri/ =404;
+    }
+    location ~ \.(php|phtml|phps|php[0-9])$ {
+        deny all;
+    }
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+
+    # Your additions for this site (server context) / Bu site için eklemeleriniz
+    include /etc/nginx/celikpanel-sites.d/upd1-owner.test/*.conf;
+}

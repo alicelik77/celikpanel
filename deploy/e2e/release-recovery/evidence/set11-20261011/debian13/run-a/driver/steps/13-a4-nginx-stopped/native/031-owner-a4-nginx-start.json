@@ -1,0 +1,27 @@
+{
+  "action": "owner-nginx",
+  "at": "2026-10-11T00:21:09Z",
+  "epoch": 1791678069.0155568,
+  "is_active": "active",
+  "listening_80": [
+    "LISTEN 0 511 0.0.0.0:80 0.0.0.0:*",
+    "LISTEN 0 511 [::]:80 [::]:*"
+  ],
+  "mode": "owner-nginx",
+  "owner_action": true,
+  "schema": "celikpanel/set11-native/v1",
+  "systemctl": {
+    "argv": [
+      "systemctl",
+      "start",
+      "nginx.service"
+    ],
+    "at": "2026-10-11T00:21:09Z",
+    "returncode": 0,
+    "seconds": 0.082,
+    "status": "ok",
+    "stderr": "",
+    "stdout": ""
+  },
+  "what": "start"
+}

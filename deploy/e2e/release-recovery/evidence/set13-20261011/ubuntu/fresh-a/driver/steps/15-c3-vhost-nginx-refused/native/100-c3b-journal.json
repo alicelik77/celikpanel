@@ -1,0 +1,29 @@
+{
+  "at": "2026-10-11T10:19:13Z",
+  "by_unit": {
+    "celikapp-4.service": [],
+    "celikpanel-agent.service": [],
+    "celikpanel-panel.service": [
+      "2026-10-11T10:19:08.113587+00:00 dns-ubuntu panel[44663]: 2026/10/11 10:19:08 http: TLS handshake error from 127.0.0.1:34750: EOF",
+      "2026-10-11T10:19:09.201626+00:00 dns-ubuntu panel[44663]: 2026/10/11 10:19:09 http: TLS handshake error from 127.0.0.1:32790: EOF",
+      "2026-10-11T10:19:09.302966+00:00 dns-ubuntu panel[44663]: 2026/10/11 10:19:09 site configuration set12-a.test (take): failed; owner's file kept as /etc/nginx/sites-available/set12-a.test.conf.celikpanel-backup-20261011T101909Z; 2026/10/11 10:19:09 [emerg] 52570#52570: unknown directive \"set13_not_a_directive\" in /etc/nginx/conf.d/zz-set13-owner.conf:2",
+      "2026-10-11T10:19:09.316473+00:00 dns-ubuntu panel[44663]: 2026/10/11 10:19:09 [502] site configuration set12-a.test: take: nginx validation failed: nginx validation failed: 2026/10/11 10:19:09 [emerg] 52570#52570: unknown directive \"set13_not_a_directive\" in /etc/nginx/conf.d/zz-set13-owner.conf:2",
+      "2026-10-11T10:19:09.316473+00:00 dns-ubuntu panel[44663]: nginx: configuration file /etc/nginx/nginx.conf test failed: exit status 1; rollback restored the previous vhost; nginx was not reloaded, because nginx -t refuses the configuration elsewhere: 2026/10/11 10:19:09 [emerg] 52571#52571: unknown directive \"set13_not_a_directive\" in /etc/nginx/conf.d/zz-set13-owner.conf:2"
+    ],
+    "nginx.service": [],
+    "php8.3-fpm.service": []
+  },
+  "mode": "read-window12",
+  "owner_action": false,
+  "schema": "celikpanel/set12-native/v1",
+  "since_epoch": 1791713948,
+  "systemd_all": [],
+  "systemd_manager": [],
+  "units": [
+    "celikpanel-panel.service",
+    "celikpanel-agent.service",
+    "nginx.service",
+    "php8.3-fpm.service",
+    "celikapp-4.service"
+  ]
+}

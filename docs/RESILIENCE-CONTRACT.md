@@ -4429,3 +4429,932 @@ well. 2026-10-09 is the calendar date.
     restoring every setting and the publication going through have not been
     measured.
   - Postfix 3.8.6 (Ubuntu 24.04) for these settings, and Arch's Postfix.
+
+### Publication of v0.1.0-alpha.82, the seventh native record and the header observed on real servers (P0.2 area; invariants 2 and 6; D-030; 2026-10-10)
+
+D-025 invariants 2 (unknown is not absent, empty or success) and 6 (a screen
+says what was verified); D-024; D-030. **No P0 item is closed or advanced.**
+P0.1 to P0.5 stay partial and every open acceptance item stays open. This entry
+records a publication and one measurement; it changes no code, schema or
+recovery behaviour. 2026-10-10 is the clock date.
+
+- **Publication.** v0.1.0-alpha.82 was published by the owner on 2026-10-10:
+  pull request #205 merged into `main` as `2a0af8866` (squash), the annotated
+  tag `v0.1.0-alpha.82` on that commit, the tag's CI run with 22 of 22 jobs
+  successful and exactly six assets (generic archive and checksum, linux/amd64
+  archive and checksum, signed manifest v2 and signature; platform archive
+  SHA-256 `a37671064f2ea0b08fd5e0e25c14218bb8b005067855bf9c13af2fc653ffe4bc`,
+  65,894,979 bytes, sequence 82), the portal published by the owner with
+  `deploy/publish-download-portal.ps1`. The merge, the tag, the CI run and the
+  asset sizes and digests were read from the repository host for this entry;
+  the local verification of the six assets, the portal build and its
+  rehearsal, the portal transaction (`committed`, one pass of 26 requests) and
+  the read of the public site are reported by the owner and the release
+  preparer and are not recorded in a file here. The "Publication record" of the
+  [release notes](RELEASE-NOTES-v0.1.0-alpha.82.md) lists them. No assistant
+  updated or touched an installed panel.
+- **Installed panels (owner-reported).** The owner updated both installed
+  servers (one Ubuntu 24.04, one Debian 13) from the panel's own update screen
+  on 2026-10-10; both report v0.1.0-alpha.82. This is the owner's test, not
+  acceptance evidence for any item here.
+- **D-030 observed on real servers.** The `Strict-Transport-Security` header
+  of each installed Panel, read from the outside before and after the update:
+  `max-age=31536000; includeSubDomains` before, `max-age=31536000` after. Not
+  read in a browser. It adds to the sixth run (lab guests) the observation on
+  two installed servers; it does not close an item.
+- **The seventh native record**
+  (`deploy/e2e/release-recovery/evidence/set7-20261010/`; not committed, and
+  its intake check not finished, when this was written; the verdicts are the
+  record's own): a real Chrome against disposable Debian 13 guests on the
+  published code. (1) alpha.82 interface, update started from the card:
+  PASS, the Settings page stayed mounted and inert under the hold layer for
+  about 8 to 10 s of a 24 s outage and continued where it was. (2) alpha.81
+  interface: the page replaced by the full-screen licence page for about 78 s,
+  reproducing the owner's screen of the earlier update. (3) tab hidden 631 s:
+  PASS, no request while hidden, one quiet read on return. (4) hidden across a
+  Panel restart: PASS, with the limit that the restart lasted under 0.5 s,
+  shorter than the probes' intervals. (5) cold full page load of `/setup`, `/`
+  and `/settings?section=updates`: **FAIL on all three**, the full-page
+  "Checking panel access" screen of `RecoveryAccess` (an unconverted gate in
+  the ratchet list) was painted before any session read answered, about 80 to
+  100 ms on a fast link and about 1.7 s throttled to 2 Mbit/s and 300 ms; the
+  rule that nothing is drawn until the quiet time (1.5 s) has passed or a read
+  answered without confirming access is not met by that gate. Not measured:
+  Ubuntu, a headful browser, a phone viewport, Turkish, the HTTP cache enabled,
+  any installed server.
+- **Open presentation items, P0.2-area work (access gates and truthful
+  status), none fixed in v0.1.0-alpha.82.** Four owner observations from the
+  installed servers after the update; the seventh record's `RecoveryAccess`
+  finding is the same gate as the third observation, not a fifth item, and the
+  fifth entry below is the standing list of unconverted files:
+  1. The full-screen "License status could not be checked" page during a
+     Panel restart after an update started from the alpha.81 interface
+     (owner-reported on the Ubuntu server, not on the Debian server; the lab
+     reproduced it with the alpha.81 interface only).
+  2. On the Debian server's updates page, the card showed v0.1.0-alpha.82
+     installed while a corner notice still said the update was being applied
+     and updates were locked, at T+02:03: the update notice and the card
+     disagree (owner-reported). This bears on invariant 6 and on the P0.2 rule
+     that terminal results agree.
+  3. The `RecoveryAccess` first-load screen: reported by the owner for
+     `/setup`, measured for three routes in the seventh record (cell 5).
+  4. The setup wizard page says "This operation stopped" and "A required check
+     needs attention" while its last step reads "In progress", the reason
+     being under collapsed sections: a stopped/in-progress contradiction, and
+     D-024's reason-and-actor-first rule not met (owner-reported; the same in
+     alpha.81).
+  5. The 31 interface source files that still read the server the old way,
+     among them the gates above, remain unconverted (the ratchet list).
+  The wording is in [operation guidance](OPERATION-GUIDANCE.md), same date.
+- **Schema or version transition.** None. **Recovery behaviour.** Unchanged.
+- **Evidence.** The records named above; the CI run and release assets as read
+  from the repository host. Nothing was observed on an installed server by an
+  assistant.
+- **Open.** All of the above. The cold page load is the only measured failure
+  of this entry; no exit is claimed.
+
+### First page load without an unanswered access page, and the hold layer names the cause it read (P0.2 area; invariants 2 and 6; 2026-10-10)
+
+D-025 invariants 2 (unknown is not absent, failed or a license verdict) and 6
+(readiness, progress and access stay independent; a screen says what was
+verified); D-024. **No P0 item is closed or advanced**; P0.2 stays partial and
+every open acceptance item stays open. Source state with component tests and
+one browser run against the loopback mock: component-tested and mock browser;
+not measured on a real system. It answers item 3 of the open presentation
+items in the entry above and, in words only, item 1 (the alpha.81 interface
+that replaced the page is not changed). 2026-10-10 is the clock date.
+
+- **Finding (seventh native record, cell 5).** On a cold full load of `/setup`,
+  `/` and `/settings?section=updates`, signed in and healthy, the full page
+  "Checking panel access" was painted before any session read had answered, on
+  18 of 18 loads. **Cause in the source** (at `a9c95d437`):
+  `web/src/components/RecoveryAccess.tsx:118` (`waiting` for cause `checking`)
+  drew `:121-128`, title, help, "Checking…" and "Reload CelikPanel", from its
+  first render, with no quiet time. Two parents render it during a load:
+  `web/src/App.tsx:510` (`<Suspense fallback={<StandaloneRecovery loading />}>`
+  while the lazily loaded update provider arrives; `:495-497` maps that wait to
+  `checking`, and to `checking` again once session and readiness were
+  confirmed) and `App.tsx:471` (`AuthGate`, `if (!shown)` while its own session
+  read is in flight). Each mounts its own session read, so each load reads
+  `auth/me` and `panel/availability` twice, as the record saw.
+- **Finding (cell 1).** During the update's planned restart the hold layer said
+  "could not read the license result". **Cause:**
+  `web/src/components/LicenseOnboarding.tsx:169` passed `cause="license"` to the
+  hold for every failed access read, and `:179` did the same for the full page;
+  `:57`/`:63` turned a dropped connection, a refusal from in front of the Panel
+  and an unreadable license result into the same `failed`.
+- **Change.** A new hook, `web/src/lib/quietRead.ts` (`QUIET_READ_MS = 1500`,
+  equal to `ACCESS_HOLD_QUIET_MS`), keeps a first wait off the screen until the
+  quiet time has passed; a component that starts waiting while another one's
+  explained wait is on screen continues it. `RecoveryAccess` draws only the page
+  background during a first wait (`checking`, and the new `loading` for a
+  confirmed session whose interface is still on its way), then the explained
+  wait with the reload after 30 s (**since the ninth record, 2026-10-10: "Check
+  now" at 15 s and the reload at 30 s, both counted from the page load; see the
+  entry of that date below**); every other cause renders as before, at once.
+  `LicenseOnboarding` does the same for its first access read, and records the
+  cause each read showed (`AccessReadCause`: no answer or a non-Panel refusal →
+  `availability`; `PANEL_STARTING` → `starting`; an answer whose license result
+  was unavailable, or a license refusal of a request → `license`; a success
+  status whose body cannot be parsed is also `license`, the cause being set
+  before the parse), passed to the hold and to the full page. `AccessHold`
+  names an unanswered Panel (cause `availability` only) as an update's restart
+  while this browser's update record is `active`
+  (`savedUpdateUnfinished` in `web/src/lib/recoveryObservation.ts`, a
+  presentation hint only). **Corrected at the second reading of this entry
+  (2026-10-10):** the record had no age limit, so a record this browser never
+  saw end kept the hint for any later outage; it now names the update only
+  within 30 minutes of the update's start (`UPDATE_CAUSE_WINDOW_MS`, read from
+  the record's `created_at`; no start time, an older or a future start leaves
+  the generic "The Panel did not answer just now"), and the words say a
+  possibility, not a verdict: "The Panel is not answering; an update may be
+  restarting it" and "Whether the license is valid is not known until the
+  Panel answers; nothing about it has been decided" (before: "... during an
+  update" and "This is not a license problem", which declared a license
+  verdict the read had not established, against invariant 2). The record's key
+  is declared once (`UPDATE_MARKER_KEY`) and imported by the update tracker.
+  The loading wait has its own half-minute sentence
+  (`recovery.waitingProlongedLoading`). `RecoveryAccess` reads its two addresses through
+  `readRemote`; it leaves the remote-state ratchet list (31 to 30 files;
+  `valueFromFailure` 1, `swallowedFailure` 1, `rawRead` 2 removed).
+- **Schema or version transition.** None: no API, stored record or access rule
+  changed. **Recovery behaviour.** Unchanged: the recovery page for a Panel
+  that is down or starting, during the interface load or after it failed, is
+  drawn as soon as its read answers; the quiet time applies only while no read
+  has answered.
+- **Evidence.** `web/tests/recovery-access-runtime.test.mjs`,
+  `web/tests/access-hold-runtime.test.mjs` (component level, see the operation
+  guidance entry of the same date). Browser run on the loopback mock
+  (`web/tools/browser-inspect`, `coldload`, `coldslow`; throttled Chrome): the
+  published code painted the gate for about 1.4 s on all three routes (the
+  console output of that run is not kept in the repository; the seventh record
+  measured about 1.7 s on a real Panel under the same throttle); the change
+  drew no sentence before the page on any of them in the mock. The second
+  reading: the same tests with the 30-minute window (a stale and an undated
+  record, the window's limits, the single key) and a mock browser run
+  (`waitcopy`: the hold with a 5-minute-old and a 31-minute-old record, the
+  loading wait after half a minute; English and Turkish; screenshots looked
+  at). Component-tested and mock browser; not measured on a real system.
+- **Ninth native record (2026-10-10) and the 15 s correction.** The record
+  (`deploy/e2e/release-recovery/evidence/set9-20261010/`, cell 2; real Chrome,
+  real Panel on a guest, interface from `7c3a05809`) measured the cold load on
+  a real system: it passes (quiet surface, then the explained wait at 1.57-1.62
+  s after it, on three routes, EN and TR). With every session read held 35 s
+  it found an older path: **cause in the source** (at `e1d14eb83`)
+  `web/src/auth/usePanelSession.ts:35` aborted the read after 15000 ms and
+  `:44`/`:51` set `auth_unavailable`, which `web/src/App.tsx:471-472` (and
+  `:498` for the recovery route) passed to `RecoveryAccess` as the known
+  negative `auth` (title "Your session could not be checked", "Reload
+  CelikPanel" at once); each automatic re-read then drew
+  `RecoveryAccess.tsx:174-175` (`checking && !user`: `recovery.checkingHelp`).
+  The read's own limit thus turned an unknown into a reported failure (against
+  invariant 2). **Change:** the hook records whether any read of the access
+  check has answered (`answered`, reset by a sign-in) and what an answered
+  failure said (`AccessReadFailure`: `network`, `status` with the HTTP status,
+  `invalid`; `api.me` now throws `ApiResponseError` so the status is kept).
+  Until a read has answered, a read that reaches its limit is `unanswered`, and
+  both parents keep the wait (`cause` `checking`); the hold over mounted pages
+  keeps its own cause. `RecoveryAccess` draws the wait in stages from
+  `useAccessWaitStage` (`web/src/lib/quietRead.ts`): "Check now" at 15 s, the
+  half-minute sentence and the reload at 30 s, counted from navigation start
+  for the page's first wait (from the first read after a sign-in otherwise),
+  never restarted by a re-read; only a check the owner asked for is drawn as
+  busy, and it joins a read in flight instead of starting a second one. An
+  answered failure is shown at once with its cause. **Schema or version
+  transition:** none. **Recovery behaviour:** unchanged reads, limits and
+  intervals. **Evidence:** `web/tests/recovery-access-runtime.test.mjs` (the
+  stages, the re-read, the answered failures), `web/tests/access-hold-runtime.test.mjs`;
+  mock browser `coldslow35` (35 s hold, EN and TR, screenshots at 1.6, 15.2,
+  25.2 and 31 s looked at). The 15 s/30 s path is component-tested and mock
+  browser; not re-measured on a real system. **Observation (not changed):**
+  the recovery service worker was not registered in the signed-in
+  browser contexts of the record (cell 4c, and set7), so a stopped Panel showed
+  Chrome's own error page; the three no-session loads of cell 4a (a new
+  context) were controlled by one (`sw_controlled: true`). **Cause narrowed
+  in the eleventh record (set11 cell E, 2026-10-11); the mechanism is
+  inferred:** the lab browser's on-disk Chrome profile at a long Windows path,
+  not the product — the worker's registration failed opening CacheStorage
+  (`installing → redundant`), while a profile at a short path, on a different
+  guest, registered it and showed the product's offline page with the Panel
+  stopped. That is not a controlled comparison (a different guest and browser
+  process). That the path length is the mechanism is inferred, not read from a
+  Chrome line naming the path, and the record gives no character counts. Since
+  the commit of 2026-10-11 the live browser tools create short profiles and
+  refuse a path over 120 characters (`web/tools/browser-inspect/profile-dir.mjs`).
+- **Unknown after an earlier answer stays unknown (invariant 2; second round,
+  2026-10-10; was open).** Before, once any read had answered, a later read
+  that reached its own 15 s limit was drawn as the known negative with the
+  cause last read. **Change:** a limit hit is always unknown. `usePanelSession`
+  records it (`limitHit`, only where the read's own timer aborted it with its
+  generation current; cleared by any answer and by a sign-in); `unanswered`
+  holds for it whether or not an earlier read answered, so both parents keep
+  `checking`; the wait is counted from when that read began
+  (`beginAccessWaitAt`), so "Check now" is offered at once and the reload 15 s
+  later, re-reads restart nothing, and a page that was showing an answer is not
+  blanked for the quiet time (`afterAnswer`). An earlier answered failure is
+  named only as "Last known, before this wait: …" (`recovery.lastKnown`), never
+  as the verdict. **Schema or version transition:** none. **Recovery
+  behaviour:** reads, limits and intervals unchanged; the hold over mounted
+  pages unchanged. **Evidence:** `web/tests/recovery-access-runtime.test.mjs`
+  (an answer, then a limit hit; a failure, then a limit hit; the next answer
+  drawn at once), mock browser `a83session` (desktop and phone, EN and TR,
+  samples at 4, 26.5 and 41 s, screenshots looked at). Component-tested and
+  mock browser; not measured on a real system.
+- **Open.** The real-system re-measurement of the 15 s/30 s path on a guest
+  (the cold load itself was measured by the ninth record) and any installed
+  server; a load with the HTTP cache enabled; the hold layer's words during a
+  real update; the two session reads per load (not changed here); the
+  recovery service worker with a certificate the browser trusts without a pin
+  (why it was not registered in the signed-in lab contexts is narrowed, not
+  established: the lab browser's on-disk profile at a long path, set11 cell E;
+  the mechanism is inferred); the remaining
+  30 files of the ratchet list.
+
+### The setup page's final check and the update notice: a stopped run is not in progress, a running update on the installed target is "being verified" (P0.2 area; invariants 2 and 6; D-024; 2026-10-10)
+
+D-025 invariants 2 (unknown is not absent, empty or success) and 6 (a screen
+says what was verified); D-024; P0.2 area (truthful status: the update notice
+and the update card agree). **No P0 item is closed or advanced**; every
+acceptance item stays open. Component-tested and mock browser; not measured on
+a real system. It answers items 2 and 4 of the open presentation items in the
+seventh-record entry two entries above; items 1, 3 and 5 are not touched by
+this entry (the entry directly above addresses 3, and the words of 1).
+2026-10-10 is the clock date.
+
+- **Causes, read from the code.** Item 4: a run whose plan is reopened while
+  its final check waits is recorded `failed`, code `server_setup_plan_revised`,
+  phase `verification` (`cmd/panel/server_setup_revise.go`); the page shows the
+  latest run when it holds no marker and drew it as a failure with the generic
+  sentence, while the step list called the final step in progress for that
+  phase. Item 2: the Agent's update record stays `running` after the new Panel
+  has started, until the updater exits and its final proof passes
+  (`cmd/agent/system_update_worker_linux.go`); the notice said "being applied"
+  for every running read and as its placeholder before any read, while the card
+  read the version the answering Panel runs. Neither cause was read on the
+  owner's servers.
+- **Changed.** Setup: the mail identity check carries an additive typed
+  `reason` and `vars` (`setupMailIdentityCheck`, `server_setup_readiness.go`);
+  the page says a reopened plan as such, puts the open checks and their help
+  above the step list unfolded, and names each step's state (waiting for you,
+  waiting for requirements, could not be checked, failed, stopped, not
+  started). Update: `GET /api/v1/panel/update/status` (and the abandon answer)
+  carries an additive `phase: "verifying"` when the record is running and the
+  Panel answering has the same version and commit as the update's target
+  (`panelUpdateStatusPhase`; the archive digest and sequence are not
+  compared; the abandon answer is covered by the test since the second
+  reading); the
+  notice and the card say "installed, being verified" then, "could not be read"
+  with the read's reason when a read fails, and "reading" before the first
+  read; a finished record leaves no notice (unchanged). The update dialog's
+  time line is local time with its zone, not labelled "UTC".
+- **Schema or version transition.** None stored: two additive JSON fields on a
+  setup check (persisted inside the execution record, absent in older records,
+  which keep their generic sentence) and one on the update status answer
+  (ignored by an older interface). **Recovery behaviour.** Unchanged; nothing
+  starts, retries or reverts differently. The setup flow, routing and
+  prerequisites (D-021) are unchanged.
+- **Evidence.** `cmd/panel/known_state_gates_test.go` (typed reasons; the phase
+  for an old and a target Panel, each status); `go test ./cmd/panel/...` ok,
+  `go vet` and `gofmt` clean, in the WSL Debian development guest.
+  `web/tests/setup-final-check-mounted.test.mjs` (stopped by reopening, waiting
+  for the owner, unmet prerequisite, unknown, failed; EN and TR; the reason
+  above the list and unfolded) and `web/tests/update-tracking-mounted.test.mjs`
+  (verifying, unknown, finished, reading; the time label). A real Chrome against
+  the loopback mock, scenarios `finalcheck` and `updatephase`, desktop and
+  phone, English and Turkish: screenshots looked at.
+- **Open.** Not measured on a real system: a server whose reverse DNS is wrong
+  (the typed reason was never read from a real Agent), the owner's own setup
+  record, the verifying window of a real update, an installed server. On a
+  phone the corner notice covers the card's status line in the mock
+  (unchanged). **Gap in the typed reason, closed in the code at the second
+  reading (2026-10-10):** a failed reverse-DNS lookup in the Agent was reported
+  as no name and no error (`cmd/agent/mail_health_rpc.go:42-46`,
+  `mail_health_dns.go:75-79` at `7c3a05809`), so the page said no reverse DNS
+  name was found where the result was unknown (invariant 2). Now the Agent's
+  health answer carries, additively, `reverse_dns_lookup` (`looked_up` or
+  `failed`) and `reverse_dns_lookup_error` (`timeout`, `no_resolver`,
+  `refused`, `other`); NXDOMAIN counts as an answer (a verified absence), not a
+  failure; a failed lookup makes the check `unknown`
+  (`mail_identity_unavailable`) with reason `reverse_dns_unknown` (`ip`,
+  `error`), shown as "The reverse DNS of {ip} could not be looked up just now;
+  this does not show whether it is set. Check requirements again." with the
+  step state "Could not be checked". A verified owner action earlier in the
+  order (canonical name, public address, mail name) still comes first. A plan
+  whose mail host name is not canonical now has the reason
+  `mail_name_not_canonical` (`name`). The sentence for an empty PTR from an
+  older Agent, which sends no lookup field, no longer claims "was found" but
+  "could be confirmed". A forward-lookup failure after a matching PTR is
+  reported as the same unknown; the two lookups are not told apart.
+  Schema: additive JSON fields on the Agent's health answer and on the setup
+  check; nothing stored changes. Evidence: `cmd/agent/mail_health_dns_test.go`
+  (NXDOMAIN for the PTR and for the address, REFUSED, SERVFAIL, a closed port, a
+  silent resolver, no resolver, a name that cannot be looked up),
+  `cmd/panel/known_state_gates_test.go` (the four reasons with and without a
+  lookup outcome, the unknown with each error class, the non-canonical name, the
+  abandon answer's phase), the mounted test and a mock browser run (`finalcheck`
+  90e-90g). Component-tested and mock browser; not measured on a real system:
+  no real Agent whose resolvers fail was read. The notice is drawn by the interface the tab loaded, so
+  an update started from a tab on the previous release ignores `phase`. Items
+  1 and 5 of the seventh-record entry stay open; item 3 is addressed in source
+  by the entry above, not measured.
+
+### A site configuration file the owner changed is kept and named, never overwritten by a render (invariants 1, 2, 4 and 6; D-031; 2026-10-10)
+
+D-025 invariants 1 (the agent detects owner changes and does not replace them
+with a cached preferred configuration), 2 (unknown, absent and failed are
+different; one durable record per artifact with its version rules), 4 (a
+mutation reads its pre-image, keeps it and restores it exactly; metadata is part
+of the pre-image) and 6 (the screen renders the state the server read); D-022,
+D-024, D-029 (the three choices are guarded routes). **No P0 item is closed or
+advanced**; P0.4/P0.5 stay open. Implemented in source with component tests; the
+native cells (audit §9) come after. 2026-10-10 is the clock date.
+
+- **Before (measured, set8, published alpha.82, Debian 13 / Ubuntu 24.04 /
+  Arch).** Every start, restart and General save rendered every hosted vhost
+  from the database and wrote it over the file on disk: owner edits,
+  replacements and includes silently gone; a removed vhost recreated; unchanged
+  files rewritten (new inode) and nginx reloaded at every start; a save wrote no
+  journal line; the creation render (`server_name X;`) differed from the start
+  render (`server_name X www.X;`); an immutable file failed the whole start
+  batch and its enabled link was deleted by the failed rollback; the Panel wrote
+  `root:celikpanel 0644` over an owner's `root:root` file.
+- **Changed.**
+  - *File format v2.* Every vhost the Panel writes starts with
+    `# celikpanel-render v2 sha256=<64 hex of every byte after this line>`
+    (`internal/services/managed_vhost.go`, `SealManagedText`). The header is the
+    authority for "is this still CelikPanel's text": it travels with the file,
+    survives a database restore, and needs no Panel to read. The template's
+    "do not edit" line is replaced by the owner include point and a sentence
+    saying that an edit is kept.
+  - *Classifier in the Agent* (`inspectSiteFile`): absent, managed and unchanged
+    (header digest equals body digest, or a headerless file byte-equal to a
+    frozen earlier render), owner-edited (header, digest differs), foreign (no
+    header, the ledger has a recorded digest), unreadable (symlink, not regular,
+    permission, larger than 4 MiB, read failed; never followed), unknown origin
+    (no header, no record, matches no frozen render). It runs under the global
+    nginx mutation lock before every render; the path is lstat'ed first, a link
+    or non-regular file is never followed, and the opened file must be the same
+    file. A headerless file byte-equal to a frozen render is reported as managed
+    and unchanged with `adopted_from`; it is rewritten with the header by the
+    first render that sees it. A first line that ends in CR (CRLF editors) is
+    still read as the header, so that edit is owner-edited, not foreign.
+  - *Render rule* (`ApplyManagedVhosts`): a managed-unchanged file is replaced
+    only when the text differs (identical bytes: no write, no `nginx -t`, no
+    reload); an absent file is written only at creation and on "recreate" (never
+    at start, never by a setting); every other file is kept and the Panel's text
+    is held in `<file>.celikpanel-pending` (not `.conf`, read by no include).
+    Writes keep the previous file's mode, owner and group, go through a
+    temporary file and one rename, and re-check that the file still is the one
+    classified (`changed_since_shown` otherwise). A rename that fails (EPERM on
+    an immutable file) leaves the file and its enabled link untouched and is
+    that site's typed refusal (`write_refused`, with the system error name,
+    `EPERM`); the other sites are written, tested once and reloaded once. Such a
+    file read fine and was not replaced: the domain's page, its list row and
+    badge answer it `unwritable` (not `unreadable`) while the file on disk is
+    the one the refusal was recorded on; the ledger keeps migration 044's state
+    set and stores `unreadable` + `write_refused`. The page names the system
+    error and what refuses the replacement now, measured read-only by the Agent
+    (immutable or append-only attribute of the file or its directory, a
+    read-only file system), shows the text CelikPanel wanted to write and offers
+    "check again", a read (tenth native record correction, 2026-10-11:
+    component-tested; not measured; the record measured the page answering
+    `managed_unchanged` with no reason). "Check again" (the page's read)
+    records what it found on a refused replacement's row, so the Domains row
+    agrees: still protected, only the time; no protection on the same bytes,
+    CelikPanel's text is stored `managed_unchanged` with the reason
+    `protection_removed` and the page offers "Write CelikPanel’s text now"
+    (`POST …/site-config/apply`, request identity, the render of a settings
+    change for that site only, no dated copy because nothing of the owner's is
+    in the file; the next start or saved change writes it too), the owner's
+    file is stored as what it is; other bytes, the file as it is now, never a
+    write. A refused "take" on the owner's file: one precedence for the page,
+    the row and the badge (unreadable > unwritable > missing > owner-edited /
+    foreign / unknown origin > managed_unchanged; `services.SiteFileShownState`)
+    makes all three `unwritable`, the page names both facts (`file_state`) and
+    keeps the three choices; "take" is answered `409 SITE_CONFIG_UNWRITABLE`
+    before any write while the Agent measures a protection (2026-10-11 second
+    correction: component-tested and mock browser; not measured on a real
+    system; schema: none, `protection_removed` is a `state_reason` value).
+    A new or recreated file is
+    `root:celikpanel 0644` (measured in the tenth native record). An enabled entry is created only when absent
+    at creation/recreate and is never replaced. When `nginx -t` refuses or the
+    reload fails, every file written in that call (and a link it made) is put
+    back byte-exact with its mode and owner; the dated copy of "take" stays. A
+    kept file's pending text is removed once the file is CelikPanel's text again.
+  - *Typed answers, additive.* `ApplyVhostRequest` gains `FileTrigger`,
+    `RecordedSHA256`, `ExpectedFileSHA256`, `ExpectedRenderSHA256`;
+    `ApplyVhostResponse.File`, `ApplyVhostsResponse.Items/Counts`,
+    `CreateSiteRequest.ServerNames`, `CreateSiteResponse.SiteFile`, the error
+    code `site_config_exists`, and the RPC `Agent.InspectSiteFile` (read-only
+    unless the request sets `probe_validation`, below)
+    (`internal/transport/site_files.go`). A Panel that receives no `File`/`Items`
+    (an Agent that predates them) records the state `unknown` with reason
+    `agent_does_not_report` and never reads it as unchanged; a missing
+    `InspectSiteFile` method is shown as "not known".
+  - *Per-site isolation at start* (`cmd/panel/cert_startup_reconcile.go`): a
+    site whose render input cannot be prepared is that site's failure, the
+    others are sent; a pending certificate activation whose file was not
+    written stays pending, the others complete. The start line counts written,
+    unchanged, kept (owner-edited, foreign, unknown origin), unreadable or
+    unwritable, missing, failed and adopted; every single-site render logs one
+    line naming the site and the outcome (the save path included) when the
+    Agent answered; a render the Agent never answered logs the error only.
+  - *Creation equals start.* The orchestrator sends the Panel's own managed host
+    names (`managedSiteHostnames`) with `CreateSite`; the creation vhost is the
+    start render byte for byte (`TestCreationRenderIsTheStartRender`). A file at
+    a new site's path that is not CelikPanel's unchanged text is kept and the
+    site is refused (`SITE_CONFIG_EXISTS`); the Panel removes only the records,
+    never asks the Agent to delete that file.
+  - *Owner include point.* `include /etc/nginx/celikpanel-sites.d/<domain>/*.conf;`
+    in every server block except the validation-only block of mail names and
+    the plain-HTTP block that only redirects to HTTPS (a forwarding site's
+    redirect blocks carry it); the directory is
+    created (0755) when the vhost is written and nothing in it is ever written,
+    changed or removed by the Panel (site deletion included). The tenth native
+    record measured `root:celikpanel 0750` (the Agent's `UMask=0027`); since
+    2026-10-11 the mode is set to 0755 explicitly after creation, for it, for
+    CelikPanel's own include directory and for a parent CelikPanel creates
+    (component-tested; not measured). The group does not decide who reads it:
+    nginx's master process reads its configuration as root. A directory that is
+    already there keeps its mode. A deleted site's
+    vhost that is not CelikPanel's unchanged text is kept as a dated copy before
+    removal.
+  - *CelikPanel's own include point and certificates on a kept file (step 1b,
+    2026-10-10; second round the same day).* Every server block also holds
+    `include /etc/nginx/celikpanel-managed.d/<domain>/*.conf;`; the ACME HTTP-01
+    location is written there (`acme-http-01.conf`, same header, classified
+    like the vhost: an owner's change to it is kept) instead of into the vhost,
+    written with the vhost and removed with the site
+    (`internal/services/managed_vhost.go`, `ApplyManagedVhosts`: put back
+    with the vhosts when nginx refuses). Whether a kept file lets the
+    validation run is **measured** (invariant 2): only when an operation asks
+    for it (`ApplyVhostRequest.ProbeValidation`: issuance, renewal, the
+    alias-certificate path, and the site-config read while the ledger reason
+    is `certificate_validation`), the Agent publishes CelikPanel's challenge
+    file if absent (one `nginx -t` and reload, put back on refusal), writes a
+    probe file with a random name and body into
+    `<challenge root>/.well-known/acme-challenge/` (served per request, no
+    reload), asks nginx on port 80 for it under every validation name as the
+    Host, at the addresses the kept file's port-80 blocks of that name listen
+    on (127.0.0.1 for a wildcard or a name no such block carries; since
+    2026-10-11, `managed_vhost_listen.go`; a redirect followed only to the
+    same name), and removes it
+    (`internal/services/managed_vhost_probe.go`). `validation`: `ready` (every
+    name served the body), `include_missing` (a site name not served),
+    `names_missing` (a validation-only name not served), `challenge_kept`,
+    `challenge_failed`, or `unknown` (no answer on port 80 for a name, even when
+    an earlier name was not served; the challenge directory missing; or the
+    probe file could not be created; never "not ready"), with the first name and
+    nginx's HTTP status. Issuance (`cmd/panel/domain_ssl_handlers.go`,
+    `prepareCertificateValidation`) on a ready kept file requests the
+    certificate without touching the file; the final render is kept, so the
+    certificate is activated in the ledger and held in CelikPanel's pending
+    text, the ledger reason is `certificate`, the renewal status
+    `waiting_for_owner` and the answer `200
+    {"status":"waiting_for_owner","expires_at":…,"pending_reason":"certificate"}`;
+    the site is not disabled and the file's certificate keeps being served (a
+    site that had none stays without TLS); mail TLS follows the new certificate
+    at once. A kept file that is not ready is refused before any request: `409
+    SITE_CONFIG_OWNER_EDITED`, `reason` `certificate_validation`, `detail` the
+    validation state, `vars.include`, `vars.name`, `vars.status`; ledger reason
+    `certificate_validation`. Unknown: `503 CERTIFICATE_VALIDATION_UNKNOWN`, no
+    ledger reason. Renewal (`cmd/panel/cert_renewal.go`) follows the same
+    paths; a renewal the file stops is `waiting_for_owner`, not `failed`, before
+    any request; one whose probe got no answer records nothing; only the
+    schedule tries again (`runDueCertRenewals`: every 12 hours and at start,
+    Let's Encrypt with automatic renewal, expiring within 30 days; a first
+    issuance and a certificate renewed on a ready kept file are not retried,
+    and the page's schedule sentence now says so). The certificate reasons live
+    in `state_reason` and survive later renders while the file stays kept
+    (`RecordSiteFileResult`). The `certificate` reason ends when CelikPanel's
+    text is in place or a kept file names the active certificate
+    (`observeSiteFileCertificate`), which also ends `waiting_for_owner`. The
+    `certificate_validation` reason ends with CelikPanel's text, at the next
+    certificate operation whose probe is ready, and at the site-config read
+    whose probe is ready (`endCertificateValidationReason`: one conditional
+    UPDATE, the renewal's `waiting_for_owner` released, `resolved_reason` in
+    the answer; the page says the certificate can be requested again and
+    re-reads the domains list, so the notice, the badge and the dashboard entry
+    go). A missing or unreadable file still writes no reason, so restoring it
+    does not end a `waiting_for_owner` set by a renewal until the next renewal
+    completes (open). The dashboard lists each waiting certificate first and
+    whatever its days, ordered by the certificate in use (expired first, then
+    fewest days), an expired one worded "expired {days} days ago". The
+    alias-certificate path (`cmd/panel/alias_certificates.go`,
+    `issueAliasCertificateSnapshot`, `activateAliasCertificateVhost`) takes the
+    same two paths (no restore render of a kept file; typed refusal; a ready
+    kept file waits for the owner). The SSL answer names the cause
+    (`waiting_for_owner_reason`: `certificate` or `certificate_validation`) and
+    the tab says it; every customer-reachable sentence (SSL tab, refusals)
+    names the server administrator as the actor, the Configuration file page
+    staying administrator-only. The certificate tier (`web/src/lib/sslTier.ts`)
+    puts `invalid`, `untrusted` and `expired` before `waitingForOwner`, which
+    comes before a trust that could not be checked. Component-tested and mock
+    browser; the probe has not asked a real nginx; not measured on a real
+    system.
+  - *The owner's choices* (`cmd/panel/site_config.go`): `GET
+    /api/v1/domains/{id}/site-config` (read-only, except that while the ledger
+    reason is `certificate_validation` it runs the probe: a probe file in the
+    challenge root, CelikPanel's challenge file and one nginx check and reload
+    when that file is absent or out of date, and a measured `ready` ends the
+    reason; it returns the Agent's classification and a
+    unified diff computed on the server, ≤ 4000 lines per side and 64 KiB;
+    a line matching `authorization|password|passwd|secret|token|api[_-]?key|
+    private[_-]?key|cookie` (case-insensitive) keeps its directive and its value
+    is hidden, a comment line is replaced; other credentials are not
+    recognised); `POST …/keep` (records `keep_mine` with the
+    file digest; the file's bytes, header included, are not touched — rewriting
+    the header would make the next render replace the owner's text); `POST
+    …/take` (bound to the file and text digests shown; a dated
+    `.celikpanel-backup-<UTC>` copy with the owner's bytes, mode and owner, then
+    the Panel's text, `nginx -t`, reload, put back on refusal); `POST
+    …/recreate` (absent only). Administrator only; the three POSTs are guarded
+    routes of D-029 (`X-CelikPanel-Request-Id`, replay answered, never re-run).
+- **Schema or version transition.** Migration 44 (`044_managed_site_files.sql`)
+  creates `managed_site_files` and its domain index through the ordinary ledger;
+  no existing table changes; the migration writes no row and touches no file.
+  Rows are created by the first start that classifies the files. An older Panel
+  (alpha.82, schema 43) refuses a ledger with entry 44
+  (`TestOlderReleaseRefusesALedgerWithTheManagedSiteFilesEntry`); rollback is the
+  pre-update snapshot restore, as for every migration (there is no down
+  migration). File format: vhosts move
+  from the unversioned "Generated by CelikPanel" header to `celikpanel-render
+  v2`; readers: this release reads both (an old file through the frozen
+  templates); an older release does not read the header at all, it overwrites
+  the file (below). Version skew: the build match (`ExpectedBuildCommit`) keeps
+  an Agent of another release from answering the Panel's renders; the start
+  refuses the batch; an Agent that answers without a per-file result, or lacks
+  `Agent.InspectSiteFile`, is recorded and shown as `unknown`
+  (`agent_does_not_report`). The harness
+  pins schema 44 beside 38, 42 and 43 (`deploy/e2e/release-recovery/
+  populated_database.py`: ledger `55efb384c7d1…`, schema `afcb7db4bf3b…`,
+  computed the way its offline tests build input, which reproduces the 38/42/43
+  pins; 67 tables; `guest_populated_baseline.py --expected-version` accepts 44;
+  `database_exchange_rows.py` requires `managed_site_files` empty after a
+  migration-only exchange).
+- **Migration first state (pre-D-031 files).** Not done by the SQL of migration
+  44 (it writes no row and touches no file) but by the first render that sees a
+  headerless file, normally the first start after the update. The frozen templates of
+  v0.1.0-alpha.81 (commit `a0beb7263`) and v0.1.0-alpha.82 (commit `2a0af8866`)
+  are embedded (`internal/services/templates/nginx/legacy/`, SHA-256 pinned by
+  `TestLegacyVhostTemplatesAreTheFrozenReleaseTexts`). A headerless file is
+  compared byte for byte with four texts rendered from the same validated data
+  the Panel sends now: each release's start/save text and each release's
+  creation text (domain alone as `server_name`, no alias, no validation name, no
+  certificate, no redirection, same project type, document root and PHP
+  socket). Equal → adopted: rendered again as this release's text with the
+  header — not the old bytes plus a header; the owner's additions could not have
+  been in it, because it was byte-equal to CelikPanel's own text (measured in the
+  tenth native record) — `adopted_from` recorded, `v0.1.0-alpha.8x` or
+  `v0.1.0-alpha.8x (creation)`, the newest release whose text matches
+  (alpha.82 when both match; measured), kept in the ledger for good;
+  otherwise → unknown origin, never written. No normalisation "modulo" inputs is
+  done on purpose: a file whose certificate path, aliases, PHP version or
+  validation names changed after the earlier release's last render, or that was
+  created with a temporary name, is unknown origin — a false positive on the safe
+  side that the owner resolves with "take CelikPanel's"; normalising those lines
+  could adopt an owner's edit of exactly them. The step is resumable (each start
+  re-classifies; adopted files are managed afterwards) and writes no file whose
+  verdict is not adopt. First state: the start line "N adopted, M left alone
+  because they differ from every known CelikPanel text" and the Domains list
+  line.
+- **Recovery behaviour.** Before: the Panel's start was a silent repair that
+  replaced the owner's files. After: the start repairs only CelikPanel's own
+  unchanged files; the owner's files are evidence and are kept; the owner
+  decides; nothing retries by itself. **A return to an older release loses the
+  protection** (it overwrites every vhost at its start, as before); after
+  returning forward the older release's text is recognised and adopted. The
+  release notes must say so. Measured since: the tenth native record's return
+  cell measured alpha.81's start rewriting every vhost, and the eleventh
+  record's start-check cell (set11 F) measured it again; that cell's
+  candidate fails its start check before it starts, so in that path no file
+  ever gets a header. An automatic return runs only on a failed candidate
+  start or start check, never after a successful candidate start, so what the
+  older release does with a headed file arises only through a manual
+  downgrade, which is out of scope (whether a candidate start can fail after
+  its vhost reconcile has written headers was not measured; the older start
+  would rewrite those files as it rewrites every vhost). What the old start
+  does to a headed file (read in
+  `cmd/panel/cert_startup_reconcile.go` and `NginxGenerator.ApplyVhosts` of
+  `2a0af8866`, the same path in `a0beb7263`; not run): it renders every hosted
+  site from the database and writes it unconditionally, so the header line, an
+  owner's edit and the `include …/celikpanel-sites.d/<domain>/*.conf` line are
+  gone from the file; the owner's `.conf` files, the dated copies, the pending
+  files and the include directories stay on disk but nginx stops reading the
+  owner's additions until the Panel of this release has run again (and its
+  ledger, if the snapshot restore lost it, is rebuilt from the files). Native
+  services keep running without the Panel: the header is an nginx comment and
+  the include directory is ordinary nginx. **Nothing in this entry was
+  measured on a real system.**
+- **Evidence (component tests, no native run).** Services (14):
+  `TestManagedHeaderSealsTheBodyDigest`, `TestClassifierStates`,
+  `TestLegacyVhostTemplatesAreTheFrozenReleaseTexts`,
+  `TestLegacyRendersOfferCreationAndStartTexts`,
+  `TestStartWithEveryFileUnchangedWritesNothingAndDoesNotReload`,
+  `TestRenderRulePerState`, `TestLegacyFileIsAdoptedAndUnknownOriginIsNeverWritten`,
+  `TestTakeCelikPanelsKeepsADatedCopyAndPreservesModeAndOwner` (group preserved,
+  as root), `TestRecreateWritesAMissingFileOnlyWhenAsked`,
+  `TestAnUnwritableFileIsKeptAndDoesNotStopTheOtherSites` (EPERM on rename),
+  `TestNginxRefusalPutsBackEveryWrittenFileExactlyAndLeavesKeptFiles`,
+  `TestRemovingASiteKeepsACopyOfAnEditedVhostAndTheOwnerDirectory`,
+  `TestInspectionDiffIsBoundedAndHidesCredentials`, `TestUnifiedDiffHunks`; each
+  table carries the Debian 13, Ubuntu 24.04 and Arch PHP-FPM socket layouts.
+  Agent (6 + the build-gate matrix): `TestApplyVhostsIsolatesOneSitesRefusedInput`,
+  `TestSiteFileCountsNameEveryOutcome`, `TestApplyVhostReturnsTheTypedKeptFile`,
+  `TestCreationRenderIsTheStartRender`, `TestCreateSiteKeepsAnExistingOwnerFileAndRefuses`,
+  `TestCreateSiteNginxRefusalKeepsItsTypedAnswer`. Panel (7):
+  `TestStartupRecordsEverySiteAndCountsThem`, `TestStartupWithAnOlderAgentRecordsUnknownState`,
+  `TestASettingsRenderOnAKeptFileIsATypedRefusal`,
+  `TestASingleRenderFromAnOlderAgentIsUnknownNotUnchanged`,
+  `TestSiteConfigReadAndTheOwnersChoices`, `TestSiteConfigReadFromAnOlderAgentIsUnknown`,
+  `TestSiteConfigRoutesAreGuardedAndAdministratorOnly`. Orchestrator (2):
+  `TestCreateSiteSendsThePanelsHostNamesAndRecordsTheLedgerRow`,
+  `TestCreateSiteWithAKeptOwnerFileRemovesOnlyTheRecords`. Migration (3):
+  `TestManagedSiteFilesMigrationContracts`,
+  `TestManagedSiteFilesMigrationAppliesToASchema43Database`,
+  `TestOlderReleaseRefusesALedgerWithTheManagedSiteFilesEntry`. Web:
+  `web/tests/site-config-mounted.test.mjs` (14). Harness:
+  `test_populated_database.py` and `test_database_exchange_rows.py` (schema 44).
+  Browser: real Chrome against the loopback mock, scenario `siteconfig`, desktop
+  and phone, English and Turkish, light and dark; screenshots looked at.
+- **Open / not measured.** Every native cell of the audit's §9 on Debian 13,
+  Ubuntu 24.04 and Arch (owner edit kept at start and at every render path,
+  immutable file, update/return/forward, database restore from before the
+  header, keep-mine then certificate issuance, take with its backup, include
+  directory through renewals and switches, removed file not recreated). The
+  second step (PHP-FPM pool, application unit) was not implemented when this
+  paragraph was written; it is superseded by the second-step entry below
+  (2026-10-11: in source, component-tested, not measured), so a pool save and
+  a PHP switch no longer rewrite a pool the owner changed. `nginx -t` still judges the
+  whole configuration: an owner's broken file elsewhere fails every render
+  batch (its files are put back), as before. The Panel's own ACME vhost, the
+  webmail and database-tools vhosts are not covered. A temporary name
+  (`<domain with dashes>.celik.panel`, from `CreateSiteRequest.UseTemporary`;
+  no Panel route or screen sets it) is no longer written into a new site's
+  vhost when the Panel sends its host names (`SetSiteServerNames`, always set
+  in `cmd/panel/main.go`): the Panel's derivation (`managedSiteHostnames`: the
+  domain, `www.` for a top-level domain, the aliases) has no temporary name, so
+  the next start or save had always removed it; creation now writes the text
+  the start writes. The audit's "keep mine, then certificate issuance" cell is
+  addressed in source by step 1b above (component tests
+  `TestIssuanceOnAKeptFile…`, `TestRenewalOnAKeptFile…`,
+  `TestCertificateReasonEnds…`, the services tests of
+  `managed_vhost_certificate_test.go`, the mounted test and the mock browser);
+  not measured on a real system: no real certbot validation through the Panel's
+  include directory, no real nginx with a kept file. A file kept from before
+  step 1b has no include line and waits for the owner. **Open after the second
+  round of step 1b (only (1) answered):** (1) answered on 2026-10-11 (set11
+  cell A6 measured a block bound to `10.0.2.15:80` refused as
+  `include_missing` because the probe asked 127.0.0.1): the probe now asks
+  the addresses the kept file's port-80 blocks of each name listen on — an
+  IPv4 wildcard on 127.0.0.1, an IPv6 wildcard on `::1` when none of the
+  name's listens is an IPv4 wildcard, an explicit address of this server (equal
+  to an interface address) on that address, a name no port-80 block carries (or
+  a kept file that is unreadable or over 1 MiB) on 127.0.0.1 as before; ready =
+  every name served on each of its addresses; the address that answered is
+  `vars.address`; an explicit address among a name's listens that is not this
+  server's (a host name in `listen` included) is unknown, not a refusal:
+  issuance, the alias path and renewal go ahead as for a ready probe (the
+  authority's attempt is the test; only the SSL tab's issuance answers a
+  refused validation typed, `CERTIFICATE_ISSUE_FAILED` reason `validation`,
+  when the Agent classified certbot's output so; the alias reissue path answers
+  a plain `409` and a renewal records its failure without a typed reason),
+  the success answer carries `validation_probe` `not_run`,
+  `validation_unknown_reason` `address_not_local`, the address and the
+  sentence, and the Panel's journal records it (no ledger column, no schema
+  change); `503 CERTIFICATE_VALIDATION_UNKNOWN` stays for a probe that could
+  not run for a local reason (`internal/services/managed_vhost_listen.go`,
+  `cmd/panel/site_config_certificate.go`; component-tested; not measured on a
+  real system); (2) at the site-config read a failed
+  `nginx -t` or reload while CelikPanel publishes its challenge file is
+  reported as `challenge_failed`, though the cause may be an unrelated file;
+  (3) a missing or unreadable file writes no reason, so a renewal it stopped
+  ends its waiting state only at the next completed renewal; (4) the SSL
+  tab's expiry detail printed negative days for an expired certificate
+  (`ssl.days`) — fixed 2026-10-11 in `ead69cdcc` (`ssl.daysAgo`, "expired {n}
+  days ago"; the commit's suites passed but no test pins this wording; not
+  measured on a real system); (5) no browser run is recorded in a real hosting-customer
+  session; (6) a ready probe shows that nginx serves the path on the addresses
+  the file listens on, not that DNS or the firewall lets the certificate authority in;
+  nothing was measured against a real nginx. The domains list line is
+  computed from the owner's decisions: drawn while an unknown-origin file has
+  no current "keep mine" decision, gone once each has one; it is not drawn when
+  nothing was left alone. Schema: none (the reasons use the existing
+  `state_reason`; `renewal_status` gains the value `waiting_for_owner`); the
+  additive Agent fields are in `internal/transport/site_files.go`.
+- **Second step: the PHP-FPM pool and the application unit (2026-10-11;
+  component-tested and mock browser; not measured on a real system).** Affected:
+  invariants 1, 2, 4 and 6 for the two other files CelikPanel writes for a
+  site. *Format:* the pool (`/etc/php/<v>/fpm/pool.d/site<N>.conf`, or the
+  host's single `php-fpm.d`) starts with an INI comment header
+  `; celikpanel-render v2 sha256=<digest of the body>`; the unit
+  (`/etc/systemd/system/celikapp-<N>.service`) with
+  `# celikpanel-render v2 sha256=…`. *Classification point:* the pool in
+  `services.ApplyManagedSiteFile`, called by `applySitePoolLocked` (save, take,
+  recreate, apply), `switchSitePoolLocked` (a PHP switch classifies the source
+  first and writes the target only where nothing is), `CreatePool`
+  (creation) and `DeletePoolByName` (a dated copy of a file that is not
+  CelikPanel's unchanged text before removal); the unit in `ApplyAppUnit`
+  (`cmd/agent/app_rpc.go`, through the same function) and `RemoveAppUnit`
+  (dated copy before removal). The Agent's older pool RPCs (`UpdatePHPPoolConfig`,
+  `MigratePHPPool`) still go through the same rule and answer a kept file with
+  an error whose tokens the Panel reads back (`site_file_held kind=…
+  state=…`); the Panel itself now routes pool saves and PHP switches through
+  `Agent.ApplySitePool`, and `Agent.MigratePHPPool` is removed from its call
+  policy (the generic PHP page's pool save by name still uses
+  `UpdatePHPPoolConfig`).
+  *Render rule:* as the vhost's (identical bytes: no write, no reload; kept:
+  the text beside it in `<file>.celikpanel-pending`, typed 409; take bound to
+  the digests shown, with a dated copy; unreadable or a symlink: refused);
+  after a write, `php-fpm -t` and the reload for a pool, `systemctl
+  daemon-reload` for a unit; when either fails, the previous bytes are put
+  back with their mode and owner and the service reloaded again
+  (`SITE_CONFIG_SERVICE_REFUSED`). A unit's change then enables and restarts
+  the app as before; a unit's take restarts it only if it runs
+  (`try-restart`). *Owner extension points:* a pool's directives in place
+  (kept and named, never dropped); a unit's drop-in directory
+  `<unit>.service.d/*.conf`, never written or removed (removing the unit
+  leaves it). *Values:* no database column holds a pool's process-manager
+  values; CelikPanel's text takes them from the save, else its own held text
+  (a pending file whose header verifies), else the file's values for those
+  keys, else defaults, clamped as a save clamps them. *Adoption:* a headerless
+  pool byte-equal to `legacyPoolFormat` (alpha.81/82's `renderPool`, frozen in
+  `internal/services/legacy_site_file_texts.go`) rendered with each release's
+  creation identity and the values it carries, or a headerless unit
+  byte-equal to alpha.81's or alpha.82's unit for the same request and the
+  Agent's own `PATH`, is adopted (newest release named) and written as this
+  release's text at its next write; any other is unknown origin. *Schema:*
+  none; migration 044's `kind` carries `php_pool` and `app_unit` (one row per
+  file path; a PHP switch starts a row for the new path). *API:* `GET
+  …/site-config` keeps the vhost's top-level fields and adds `files[]` (each
+  file in the same shape with `kind` and its `actions`), `overall_state` and
+  `overall_kind`; the POST routes take `kind` (default `nginx_vhost`); the
+  page's read records the pool's and the unit's observed state when the row
+  says otherwise (database only, nothing on the server). The Domains row shows
+  the worst presented state across the site's current files (vhost first on a
+  tie) with `kind` when it is not the vhost. *Recovery:* the owner's file
+  stays in service through every refused operation; take keeps a dated copy;
+  removing a site keeps a copy of an edited pool or unit. *Version pairing:* `Agent.InspectSitePool` and `Agent.ApplySitePool` are
+  bound to the Panel's build commit (`cmd/agent/build_gate_contract_test.go`)
+  and the Panel never falls back to the older pool RPCs; `Agent.InspectAppUnit`
+  and `Agent.ApplyAppUnit` are gated the same way (2026-10-11; the request's
+  additive `ExpectedBuildCommit`, the build-gate matrix entries; an Agent of
+  another build answers "panel/agent build mismatch" and writes nothing).
+  *HTTP:* the refusals are `409 SITE_CONFIG_{OWNER_EDITED,MISSING,UNWRITABLE,
+  EXISTS}` with `reason` the kind and `detail` the state (reason for
+  UNWRITABLE), `502 SITE_CONFIG_SERVICE_REFUSED` with `detail`
+  `config_refused` or `reload_failed` and `restore` `confirmed` |
+  `unconfirmed` (2026-10-11; also on the vhost's `SITE_CONFIG_NGINX_REFUSED`;
+  transport: the additive `SiteFileResult.Restore`, set by
+  `services.ApplyManagedSiteFile`, the PHP switch and the vhost batch's
+  rollback; the Panel says `confirmed` only when the Agent reports it and its
+  error does not say "rollback incomplete", so no restore fact is
+  `unconfirmed`; the Agent's line goes in `details` for an administrator only,
+  and the unconfirmed sentence says the server administrator checks the file
+  on the server); a kind is `400` when unknown and `409
+  SITE_CONFIG_NOT_APPLICABLE` when the site lacks it; "take" on a measured
+  protection is `409 SITE_CONFIG_UNWRITABLE` before any write, for every kind.
+  The worst state across files uses the one precedence of the vhost
+  (`services.SiteFileWorstState`; the vhost first on a tie); a file the Agent
+  did not read (`unknown`, `not_read` or `agent_does_not_report`) is not
+  known-good, so it outranks `managed_unchanged` and every observed problem
+  outranks it (2026-10-11: unreadable > unwritable > missing > kept > unknown >
+  managed_unchanged; the page's `overall_state` and the Domains row, whose
+  badge then says a configuration file could not be read, with `kind`).
+  *Not done:* pools
+  and units are not rendered or observed at the Panel's start, so the start
+  line does not count them; site creation writes no pool or unit ledger row
+  (a row begins at the page's first read or at the first save, switch or unit
+  change); a pool's values are kept nowhere outside the pool
+  file and its pending text; the generic PHP page's pool save (by pool name)
+  answers the typed refusal only through the error tokens. *Evidence:*
+  services (`site_pool_file_test.go`), Agent (`app_unit_site_file_test.go`),
+  Panel (`site_config_files_test.go`), the mounted page test, browser-inspect
+  batch10 `siteconfigfiles` (EN/TR, desktop/phone); set10's harness gains
+  sections m, n and o with offline tests. Not run on a guest. The 2026-10-11
+  corrections (unknown outranks unchanged; the restore fact; the unit's build
+  gate) are component-tested and mock browser (services
+  `TestSitePoolFailedSaveSaysWhetherTheRestoreHeld`,
+  `TestNginxRefusalWhoseRestoreHeldIsConfirmed`; Panel
+  `site_config_restore_test.go`; Agent build-gate matrix; web
+  `api-error.test.mjs`, the mounted page test; batch10 shots `100p6a`,
+  `100p8`); not measured on a real system.
+- **Corrections from the twelfth native record (set12, 2026-10-11).**
+  Findings measured in the twelfth record on Debian 13, Ubuntu 24.04 and Arch
+  (`deploy/e2e/release-recovery/evidence/set12-20261011/`); the new code is
+  component-tested and checked in a real Chrome against the loopback mock; not
+  measured on a real system. Affected: invariants 2, 4 and 6 (an unread file
+  is not shown as known-good; a put-back must not take a service down; the
+  owner's service keeps running on CelikPanel's failure). *(1) Unread file
+  (cell U):* the row was built from ledger rows only and a failed read wrote
+  none (row `managed_unchanged` while the page said `unknown`/`not_read`).
+  `services.RecordSiteFileUnread` now records the observation on the newest
+  row of the kind the way `RecordSiteFileRecheck` records a recheck: state
+  `unknown`, `state_reason` `not_read` with the error class after a ":"
+  (`timeout`, `agent_unreachable`, `agent_error`,
+  `render_input_unavailable`) or `agent_does_not_report` (no class),
+  `observed_at`; no digest, path or decision
+  changes; only a row stored `managed_unchanged` (not `protection_removed`) or
+  `unknown` changes, so a known problem is not hidden; the next answered read
+  replaces it (`observeOtherSiteFile`). Called from the page's read
+  (`withOtherSiteFiles`, with its own 5 s context because a timed-out read has
+  used up the request's) and for `agent_does_not_report`; the single-file
+  choices (keep, take, recreate, apply) do not record. Any other stored state
+  (owner-edited, foreign, unknown origin, unwritable, missing, unreadable)
+  is kept. Additive API:
+  `site_config.reason`, `site_config.read_error`, the page file's `read_error`.
+  Schema: none (migration 044's `state_reason` is free text). *(2) Put-back
+  (cell RP1):* the Agent reloaded PHP-FPM with a configuration `php-fpm -t`
+  had just refused (an owner's file elsewhere in the pool directory); PHP-FPM
+  ended `failed` on all three while the answer said `confirmed`.
+  `ApplyManagedSiteFile` now reads the put-back file back, reads the service's
+  state before the write (`ManagedSiteFile.ServiceActive`, `systemctl
+  is-active`, 5 s), and after a put-back runs `restoreService`: for a unit the
+  `daemon-reload` runs first, unconditionally; not running before → no check,
+  no reload (`not_running`); else the check (`RestoreCheck`,
+  default the validate step: `php-fpm -t`; a unit's `systemd-analyze verify`,
+  15 s, `ErrServiceCheckUnavailable` without the tool) and only a passed check
+  reloads (`RestoreReload`: a unit's `try-restart`); refused → `not_reloaded`,
+  `config_refused_elsewhere`, the check's line (without the tool,
+  `check_unavailable`, unit only); a failed reload or daemon-reload →
+  `reload_failed`, `restore: unconfirmed`; a put-back that cannot be read back
+  → `restore: unconfirmed`, the reload as it always was, no `service`. The vhost batch does the same in `finishManagedRollbackFrom`
+  (nginx -t refused after the put-back → `VhostRestoredError` with Service
+  `not_reloaded`, no reload; site creation's `WEB_SERVER_REFUSED_CONFIG` stays
+  limited to a reloaded restore). Transport: additive `SiteFileResult.Service`,
+  `ServiceReason`, `ServiceCheck`, `ServiceActive`; HTTP: additive `service`,
+  `service_reason`, `service_active` (`true|false|unknown`) on
+  `SITE_CONFIG_SERVICE_REFUSED` and `SITE_CONFIG_NGINX_REFUSED`, `vars.line`
+  and the line in `details` for an administrator only. Recovery: the service
+  keeps the configuration it loaded before; the administrator fixes the named
+  file and reloads; "confirmed" now means the previous bytes are back (read
+  back), and `service` says what happened to the service. *(3) Unit PATH
+  (observation, Debian run a):* measured: a bare `node` exited 127
+  (`node: not found`) under `/bin/sh -lc` although the unit's
+  `Environment=PATH=` named the Node directory; the cause (`/bin/sh -l`
+  re-reads `/etc/profile`) is an inference, no file of the record shows the
+  profile. This release's unit writes an explicit `Environment=PATH=` (the
+  Panel's Node directory when it has a Node version, then the system
+  directories) and `ExecStart=/bin/sh -c '…'`; alpha.82/81 texts stay frozen
+  for adoption (`AppUnitParams.LegacyPathEnv`, `-lc`). The new unit has not
+  run on a real system. *(4) Answer in view:*
+  the page's answer scrolls into view on appearance and is a `role="status"`.
+  *Not done:* the PHP version switch's second step (removing the source
+  version's pool) and the clean-up after a failure there still reload without
+  the check (its first step, writing the target pool, takes this rule); a file
+  with no ledger row is still not in the Domains list; restoring a failing
+  put-back itself is not measured. *Corrected in the alpha.83 candidate
+  (component-tested; not measured on a real system):* the `not_reloaded`
+  sentences end "After that, choose again if you still want CelikPanel’s
+  text."; with `service_active: false` the web selects a `…not_reloaded.stopped`
+  sentence ("… is not running now, so it was not reloaded; its configuration is
+  refused by another file. Fix what the check names ({line}), then start …
+  yourself.") instead of one that says the service keeps running; a
+  `systemd-analyze verify` that timed out, could not be launched or failed
+  without output is `check_unavailable` ("the unit’s check could not be run on
+  this server … the administrator checks the unit and restarts the application
+  by hand"), only a non-zero exit with output is a refusal
+  (`appUnitVerifyOutcome`). Still open: the server's own fallback sentence
+  (screen catalogue not loaded) does not know the stopped case.
+  *Evidence:* services `TestSitePoolPutBackReloadsOnlyAConfigurationTheCheckAccepts`,
+  `TestNginxPutBackLeavesAStoppedNginxAlone`,
+  `TestNginxRefusalPutsBackEveryWrittenFileExactlyAndLeavesKeptFiles`
+  (updated: confirmed, not reloaded); Agent
+  `TestAppUnitRestoreRestartsOnlyAVerifiedUnit`,
+  `TestAppUnitPathDoesNotDependOnALoginShell`,
+  `TestAppUnitVerifyOutcomeSortsRefusalFromAnUnknownResult`; Panel
+  `site_config_set12_test.go`; web `site-config-mounted.test.mjs`; batch10
+  shots `100p6a`, `100p8`, `100p9`. The privileged-launch guard names the two
+  new launches (`internal/hostcmd/privileged_command_guard_test.go`:
+  `internal/services/site_file_service.go:systemctl`, `systemctl is-active`,
+  5 s; `cmd/agent/app_rpc.go:<computed>`, `systemd-analyze verify`, 15 s,
+  read-only); this contract does not otherwise document the guard's inventory.
+
+- **Corrections from the thirteenth native record (set13, 2026-10-11).**
+  One observation of the thirteenth record
+  (`deploy/e2e/release-recovery/evidence/set13-20261011/`, Observations) and one
+  symmetry; component-tested; not measured on a real system. Affected:
+  invariants 2 and 4 (the Domains row must not ask for a choice the page no
+  longer offers; the answer of a write names the service's state). No schema
+  or version transition; the ledger columns are the existing ones. *(1)
+  Vhost row after a refused take:* the row stayed `foreign` / `nginx_refused`
+  after the owner restored CelikPanel's text by hand, until the next write.
+  `services.RecordSiteFileObservation` (called by `inspectSiteConfig`'s probe
+  read after `recheckWriteRefusal`) stores the state, reason, file digest and
+  time of a `managed_unchanged` or kept reading when the row differs; it never
+  changes the body digest, written release, pending text, backup or decision,
+  leaves a refused replacement to the recheck, keeps `protection_removed` on the same bytes, and
+  ends a refusal reason on `managed_unchanged`. Recovery behavior: the next
+  answered read repairs a row that disagrees; a failed or unreadable read
+  stores nothing here (set12's unread observation covers that). The pool and
+  unit rows (`observeOtherSiteFile`) also end a refusal reason carried by a
+  `managed_unchanged` row on the same bytes. *(2) `service` on a 200:* a write
+  that reloaded the service answers `service: reloaded` and `service_active`
+  (`true` when the Agent did not measure). Evidence: Panel
+  `site_config_observe_test.go` (refused take → restored by hand → edited
+  again, row and list; decision digest; `protection_removed` kept; pool
+  `config_refused` ended; the 200's fields for the vhost and the pool). Open:
+  not measured on a real system; absent, unreadable and unwritable readings of
+  a vhost are still stored only by the write paths and the recheck; the
+  acceptance items of native update/automatic-rollback resilience are
+  unchanged and stay open.

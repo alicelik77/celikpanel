@@ -1,0 +1,287 @@
+{
+  "calls": [
+    {
+      "at": "2026-10-11T01:36:55Z",
+      "json": {
+        "aliases": [],
+        "document_root": "/var/www/celikpanel/subscriptions/2/sites/2/public_html",
+        "domain_id": 2,
+        "domain_name": "set11-a.test",
+        "redirect_https": false,
+        "redirect_www": false,
+        "redirect_www_available": true,
+        "web_server": "nginx"
+      },
+      "label": "b3 save: General settings read",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains/2/general"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T01:36:55Z",
+      "json": {
+        "status": "success"
+      },
+      "label": "b3 save: General settings saved unchanged (renders the vhost)",
+      "request": {
+        "body": {
+          "document_root": "/var/www/celikpanel/subscriptions/2/sites/2/public_html",
+          "redirect_www": false,
+          "web_server": "nginx"
+        },
+        "method": "POST",
+        "path": "/api/v1/domains/2/general"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T01:36:59Z",
+      "json": {
+        "actions": [],
+        "challenge_file": "unchanged",
+        "domain": "set11-a.test",
+        "domain_id": 2,
+        "enabled": "link",
+        "file_sha256": "6825409ead119263472ce1aa452aedc13825b5a99da695bfc4e85f90a1faa34b",
+        "include_dir": "/etc/nginx/celikpanel-sites.d/set11-a.test",
+        "kind": "nginx_vhost",
+        "ledger": {
+          "observed_at": "2026-10-11T01:36:56Z",
+          "written_at": "2026-10-11T01:36:56Z",
+          "written_release": "v0.1.0-alpha.81 b2b43d0cd680"
+        },
+        "managed_dir": "/etc/nginx/celikpanel-managed.d/set11-a.test",
+        "managed_include": "include /etc/nginx/celikpanel-managed.d/set11-a.test/*.conf;",
+        "path": "/etc/nginx/sites-available/set11-a.test.conf",
+        "protection": "none",
+        "render_sha256": "4b1cb1b3a8497f9d7e4774134e2a827c4a3a620fec35043ba4acbf5914be0a6e",
+        "state": "managed_unchanged"
+      },
+      "label": "b3 after the save: GET site-config",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains/2/site-config"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T01:36:59Z",
+      "json": [
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T01:36:14Z",
+          "disk_usage": 0,
+          "domain_name": "set11-b.test",
+          "id": 3,
+          "php_version": "8.5",
+          "project_type": "php",
+          "site_config": {
+            "state": "managed_unchanged"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        },
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T01:36:12Z",
+          "disk_usage": 0,
+          "domain_name": "set11-a.test",
+          "id": 2,
+          "php_version": "8.5",
+          "project_type": "php",
+          "site_config": {
+            "state": "managed_unchanged"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        },
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T01:36:08Z",
+          "disk_usage": 0,
+          "domain_name": "set1-owner.test",
+          "id": 1,
+          "php_version": "",
+          "project_type": "static",
+          "site_config": {
+            "state": "managed_unchanged"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        }
+      ],
+      "label": "b3 after the save: GET /api/v1/domains (Domains list)",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains"
+      },
+      "status": 200,
+      "text": null
+    }
+  ],
+  "cells": {
+    "B3": {
+      "detail": {
+        "journal": "steps/15-b3-save-writes/native/057-b3-journal.json"
+      },
+      "expectations": [
+        {
+          "expectation": "the save answers 200",
+          "held": true,
+          "measured": {
+            "code": null,
+            "error": null,
+            "read_status": 200,
+            "reason": null,
+            "sent": {
+              "document_root": "/var/www/celikpanel/subscriptions/2/sites/2/public_html",
+              "redirect_www": false,
+              "web_server": "nginx"
+            },
+            "status": 200
+          }
+        },
+        {
+          "expectation": "A was written: new inode, CelikPanel's text with a valid header",
+          "held": true,
+          "measured": {
+            "inode": [
+              92059,
+              92100
+            ],
+            "sha256": [
+              "80be8487bc7f91485bfb8e8ec3f22735303d8d2e70cf65fd198ccf1d3cee30c4",
+              "6825409ead119263472ce1aa452aedc13825b5a99da695bfc4e85f90a1faa34b"
+            ]
+          }
+        },
+        {
+          "expectation": "the page and the Domains row say managed_unchanged; the ledger too",
+          "held": true,
+          "measured": {
+            "ledger": {
+              "state": "managed_unchanged",
+              "state_reason": ""
+            },
+            "page": "managed_unchanged",
+            "row": {
+              "state": "managed_unchanged"
+            }
+          }
+        },
+        {
+          "expectation": "a journal line names the write",
+          "held": true,
+          "measured": [
+            "2026-10-11T01:36:56.267510+00:00 dns-arch panel[3463]: 2026/10/11 01:36:56 site configuration set11-a.test (change): written"
+          ]
+        }
+      ],
+      "verdict": "PASS"
+    }
+  },
+  "checks": [
+    {
+      "detail": {
+        "code": null,
+        "error": null,
+        "read_status": 200,
+        "reason": null,
+        "sent": {
+          "document_root": "/var/www/celikpanel/subscriptions/2/sites/2/public_html",
+          "redirect_www": false,
+          "web_server": "nginx"
+        },
+        "status": 200
+      },
+      "name": "B3: the save answers 200",
+      "ok": true
+    },
+    {
+      "detail": {
+        "inode": [
+          92059,
+          92100
+        ],
+        "sha256": [
+          "80be8487bc7f91485bfb8e8ec3f22735303d8d2e70cf65fd198ccf1d3cee30c4",
+          "6825409ead119263472ce1aa452aedc13825b5a99da695bfc4e85f90a1faa34b"
+        ]
+      },
+      "name": "B3: A was written: new inode, CelikPanel's text with a valid header",
+      "ok": true
+    },
+    {
+      "detail": {
+        "ledger": {
+          "state": "managed_unchanged",
+          "state_reason": ""
+        },
+        "page": "managed_unchanged",
+        "row": {
+          "state": "managed_unchanged"
+        }
+      },
+      "name": "B3: the page and the Domains row say managed_unchanged; the ledger too",
+      "ok": true
+    },
+    {
+      "detail": [
+        "2026-10-11T01:36:56.267510+00:00 dns-arch panel[3463]: 2026/10/11 01:36:56 site configuration set11-a.test (change): written"
+      ],
+      "name": "B3: a journal line names the write",
+      "ok": true
+    }
+  ],
+  "finished_at": "2026-10-11T01:36:59Z",
+  "native_evidence": false,
+  "natives": [
+    {
+      "file": "native/054-b3-0-read.json",
+      "label": "b3-0-read",
+      "mode": "read-site10",
+      "owner_action": false
+    },
+    {
+      "file": "native/055-guest-clock.json",
+      "label": "guest-clock",
+      "mode": "read-ledger",
+      "owner_action": false
+    },
+    {
+      "file": "native/056-b3-1-read.json",
+      "label": "b3-1-read",
+      "mode": "read-site10",
+      "owner_action": false
+    },
+    {
+      "file": "native/057-b3-journal.json",
+      "label": "b3-journal",
+      "mode": "read-window",
+      "owner_action": false
+    }
+  ],
+  "node": "arch",
+  "notes": [
+    {
+      "detail": [],
+      "note": "B3: PASS"
+    }
+  ],
+  "owner_actions": [],
+  "section": "B3-save-writes",
+  "started_at": "2026-10-11T01:36:55Z",
+  "substeps": {
+    "B3": "passed"
+  },
+  "title": "a General save of A after the unlock",
+  "verdict": "passed"
+}

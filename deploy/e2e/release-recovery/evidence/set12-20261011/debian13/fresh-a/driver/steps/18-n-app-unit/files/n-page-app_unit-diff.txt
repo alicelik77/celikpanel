@@ -1,0 +1,11 @@
+--- /etc/systemd/system/celikapp-4.service (on this server)
++++ CelikPanel's text
+@@ -16,8 +16,5 @@
+ Restart=on-failure
+ RestartSec=3
+ 
+-# set10: added by the server owner by hand
+-Environment=SET10_OWNER=unit
+-
+ [Install]
+ WantedBy=multi-user.target

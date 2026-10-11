@@ -1,0 +1,466 @@
+{
+  "artifacts": {
+    "baseline": {
+      "commit": "9e223f175d96a8da7e3b029b79e45782a683937b",
+      "sha256": "fab97c7360e6c5682b3c513b748e5920b7e51742ad1ae0622ff62b103dbba220",
+      "version": "v0.1.0-alpha.81"
+    }
+  },
+  "cell": {
+    "components": [
+      "nginx",
+      "php-fpm",
+      "mariadb",
+      "postfix",
+      "dovecot",
+      "roundcube",
+      "rspamd",
+      "postgresql"
+    ],
+    "mail": true,
+    "name": "set12-ubuntu",
+    "node": "ubuntu",
+    "purpose": "web_mail"
+  },
+  "cell_kind": "set12-fresh-install",
+  "findings": [
+    "ubuntu: server setup waits at access_dns (server_setup_access_dns_required) on an isolated host; later wizard steps were not run: ['11-panel_certificate', '12-access_dns', '13-mail_certificate', '14-mail_enrollment', '15-verify']"
+  ],
+  "identity": {
+    "cell_id": "release-recovery__c63d6c0ef7a2b6d3",
+    "node": "ubuntu",
+    "vm_uuid": "2238ab06-5847-52ab-ab5b-2d70dfd9e76b"
+  },
+  "native_evidence": false,
+  "note": "set12: a measurement on the fresh install; no update is started and no P0 row is judged.",
+  "outcome": {
+    "classification": "set12-measured",
+    "final_status": null
+  },
+  "overall": "failed",
+  "provenance": {
+    "what": "set12: 8fabc03b3 installed fresh; no update"
+  },
+  "request_id": null,
+  "schema": "celikpanel/upd1-owner-update-result/v1",
+  "sections": {
+    "A-probe-addresses": {
+      "checks": 13,
+      "error": null,
+      "failed": [
+        "A: not this server's address: the answer carries validation_probe not_run, validation_unknown_reason, the address and the sentence"
+      ],
+      "finished_at": "2026-10-11T05:06:48Z",
+      "notes": [
+        "A: FAIL"
+      ],
+      "started_at": "2026-10-11T05:06:13Z",
+      "substeps": {
+        "A": "failed"
+      },
+      "title": "the addresses the probe asks: own address, [::]:80 only, not this server's, nginx stopped",
+      "unknown": [],
+      "verdict": "failed"
+    },
+    "L-pool-delete": {
+      "checks": 3,
+      "error": null,
+      "failed": [],
+      "finished_at": "2026-10-11T05:07:26Z",
+      "notes": [
+        "L: PASS"
+      ],
+      "started_at": "2026-10-11T05:07:19Z",
+      "substeps": {
+        "L": "passed",
+        "section": "passed"
+      },
+      "title": "deleting a site whose pool the owner edited",
+      "unknown": [],
+      "verdict": "passed"
+    },
+    "M-pool-owner-edit": {
+      "checks": 17,
+      "error": null,
+      "failed": [],
+      "finished_at": "2026-10-11T05:03:56Z",
+      "notes": [
+        "M: NOT-MEASURED"
+      ],
+      "started_at": "2026-10-11T05:03:49Z",
+      "substeps": {
+        "M": "inconclusive"
+      },
+      "title": "the owner's comment and directive in A's pool: save, page, row, switch, take",
+      "unknown": [
+        "M: a PHP switch on the edited pool is refused and writes nothing"
+      ],
+      "verdict": "inconclusive"
+    },
+    "N-app-unit": {
+      "checks": 8,
+      "error": null,
+      "failed": [],
+      "finished_at": "2026-10-11T05:07:19Z",
+      "notes": [
+        "N: PASS"
+      ],
+      "started_at": "2026-10-11T05:06:48Z",
+      "substeps": {
+        "N": "passed",
+        "section": "passed"
+      },
+      "title": "a Node site's unit: header, drop-in, owner edit, take",
+      "unknown": [],
+      "verdict": "passed"
+    },
+    "P-apply-and-b4": {
+      "checks": 12,
+      "error": null,
+      "failed": [],
+      "finished_at": "2026-10-11T05:06:13Z",
+      "notes": [
+        "P-apply: PASS",
+        "B4: PASS"
+      ],
+      "started_at": "2026-10-11T05:05:43Z",
+      "substeps": {
+        "B4": "passed",
+        "P-apply": "passed"
+      },
+      "title": "apply after a protection was removed; take refused on a file locked after the read",
+      "unknown": [],
+      "verdict": "passed"
+    },
+    "RN-take-nginx-refused": {
+      "checks": 4,
+      "error": null,
+      "failed": [],
+      "finished_at": "2026-10-11T05:05:26Z",
+      "notes": [
+        "RN: PASS"
+      ],
+      "started_at": "2026-10-11T05:05:19Z",
+      "substeps": {
+        "RN": "passed"
+      },
+      "title": "take refused by nginx: restore",
+      "unknown": [],
+      "verdict": "passed"
+    },
+    "RP1-take-php-fpm-test-refused": {
+      "checks": 4,
+      "error": null,
+      "failed": [],
+      "finished_at": "2026-10-11T05:05:34Z",
+      "notes": [
+        "RP1: PASS"
+      ],
+      "started_at": "2026-10-11T05:05:26Z",
+      "substeps": {
+        "RP1": "passed"
+      },
+      "title": "take on the pool refused by php-fpm -t: restore",
+      "unknown": [],
+      "verdict": "passed"
+    },
+    "RP2-take-php-fpm-stopped": {
+      "checks": 4,
+      "error": null,
+      "failed": [],
+      "finished_at": "2026-10-11T05:05:43Z",
+      "notes": [
+        "RP2: PASS"
+      ],
+      "started_at": "2026-10-11T05:05:35Z",
+      "substeps": {
+        "RP2": "passed"
+      },
+      "title": "take on the pool while PHP-FPM is stopped: restore",
+      "unknown": [],
+      "verdict": "passed"
+    },
+    "S0-sites": {
+      "checks": 16,
+      "error": null,
+      "failed": [],
+      "finished_at": "2026-10-11T05:03:30Z",
+      "notes": [
+        "S0: PASS"
+      ],
+      "started_at": "2026-10-11T05:03:24Z",
+      "substeps": {
+        "S0": "passed",
+        "section": "passed"
+      },
+      "title": "two PHP sites; header, digest, ledger row, include directory, nginx -T (set10's section)",
+      "unknown": [],
+      "verdict": "passed"
+    },
+    "U-pool-not-read": {
+      "checks": 7,
+      "error": null,
+      "failed": [
+        "U: the Domains row says a configuration file could not be read (state unknown, kind php_pool)"
+      ],
+      "finished_at": "2026-10-11T05:05:19Z",
+      "notes": [
+        "U: FAIL"
+      ],
+      "started_at": "2026-10-11T05:04:00Z",
+      "substeps": {
+        "U": "failed"
+      },
+      "title": "the page while the Agent's pool lock is held: the pool not read",
+      "unknown": [],
+      "verdict": "failed"
+    },
+    "h-i-unchanged-start": {
+      "checks": 7,
+      "error": null,
+      "failed": [],
+      "finished_at": "2026-10-11T05:03:49Z",
+      "notes": [
+        "h: PASS",
+        "i: PASS"
+      ],
+      "started_at": "2026-10-11T05:03:30Z",
+      "substeps": {
+        "h": "passed",
+        "i": "passed"
+      },
+      "title": "a restart with every site unchanged (set10's section; it records the Panel's text)",
+      "unknown": [],
+      "verdict": "passed"
+    }
+  },
+  "set12": {
+    "creation": {
+      "set1-owner.test": {
+        "inode": 263351,
+        "mtime_ns": 1791695000785556321,
+        "sha256": "c08284e5e585d211cacde933ce6fb0742bd3436c9753724ba89754efbae603ff"
+      },
+      "set12-a.test": {
+        "inode": 263356,
+        "mtime_ns": 1791695007091768406,
+        "sha256": "4f4ac76c9981ef9b077ca9705901033507f35828834f40b3071cb5e0ce4116ed"
+      },
+      "set12-b.test": {
+        "inode": 263361,
+        "mtime_ns": 1791695009431847246,
+        "sha256": "81633c21c60257e01844b50664a7acd355073b9aa837468e4c815e893dffde0b"
+      }
+    },
+    "ids": {
+      "set1-owner.test": 1,
+      "set12-a.test": 2,
+      "set12-b.test": 3,
+      "set12-c.test": 5,
+      "set12-n.test": 4
+    },
+    "s12": {
+      "m_pool_after_take": "5778fddb17b3a379141faba99638c559c7af3abb202dd96affb8ab71893f8729"
+    }
+  },
+  "setup": {
+    "components": [
+      "dovecot",
+      "mariadb",
+      "nginx",
+      "php-fpm",
+      "postfix",
+      "postgresql",
+      "roundcube",
+      "rspamd"
+    ],
+    "purpose": "web_mail",
+    "waiting": {
+      "code": "server_setup_access_dns_required",
+      "mail_steps_reached": true,
+      "not_run": [
+        "11-panel_certificate",
+        "12-access_dns",
+        "13-mail_certificate",
+        "14-mail_enrollment",
+        "15-verify"
+      ],
+      "phase": "access_dns",
+      "polls": 25,
+      "stable_wait_seconds": 123.7,
+      "steps": {
+        "01-dns": "succeeded",
+        "02-service": "succeeded",
+        "03-service": "succeeded",
+        "04-service": "succeeded",
+        "05-service": "succeeded",
+        "06-mail_profile": "succeeded",
+        "07-mail_profile": "succeeded",
+        "08-service": "succeeded",
+        "09-firewall": "succeeded",
+        "10-access_dns": "running",
+        "11-panel_certificate": "pending",
+        "12-access_dns": "pending",
+        "13-mail_certificate": "pending",
+        "14-mail_enrollment": "pending",
+        "15-verify": "pending"
+      }
+    }
+  },
+  "steps": [
+    {
+      "finished_at": "2026-10-11T04:47:04Z",
+      "name": "set6-name-pinning",
+      "reason": null,
+      "started_at": "2026-10-11T04:46:59Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T04:47:13Z",
+      "name": "preflight",
+      "reason": null,
+      "started_at": "2026-10-11T04:47:04Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T04:47:23Z",
+      "name": "origin",
+      "reason": null,
+      "started_at": "2026-10-11T04:47:13Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T04:48:16Z",
+      "name": "baseline-install",
+      "reason": null,
+      "started_at": "2026-10-11T04:47:23Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T04:48:17Z",
+      "name": "owner-login",
+      "reason": null,
+      "started_at": "2026-10-11T04:48:16Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T04:48:17Z",
+      "name": "license",
+      "reason": null,
+      "started_at": "2026-10-11T04:48:17Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T05:00:23Z",
+      "name": "setup",
+      "reason": null,
+      "started_at": "2026-10-11T04:48:17Z",
+      "verdict": "observed"
+    },
+    {
+      "finished_at": "2026-10-11T05:03:24Z",
+      "name": "site",
+      "reason": null,
+      "started_at": "2026-10-11T05:00:23Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T05:03:30Z",
+      "name": "S0-sites",
+      "reason": null,
+      "started_at": "2026-10-11T05:03:24Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T05:03:49Z",
+      "name": "h-i-unchanged-start",
+      "reason": null,
+      "started_at": "2026-10-11T05:03:30Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T05:03:56Z",
+      "name": "M-pool-owner-edit",
+      "reason": "not established: M: a PHP switch on the edited pool is refused and writes nothing",
+      "started_at": "2026-10-11T05:03:49Z",
+      "verdict": "inconclusive"
+    },
+    {
+      "finished_at": "2026-10-11T05:05:19Z",
+      "name": "U-pool-not-read",
+      "reason": "U: the Domains row says a configuration file could not be read (state unknown, kind php_pool)",
+      "started_at": "2026-10-11T05:04:00Z",
+      "verdict": "failed"
+    },
+    {
+      "finished_at": "2026-10-11T05:05:26Z",
+      "name": "RN-take-nginx-refused",
+      "reason": null,
+      "started_at": "2026-10-11T05:05:19Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T05:05:35Z",
+      "name": "RP1-take-php-fpm-test-refused",
+      "reason": null,
+      "started_at": "2026-10-11T05:05:26Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T05:05:43Z",
+      "name": "RP2-take-php-fpm-stopped",
+      "reason": null,
+      "started_at": "2026-10-11T05:05:35Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T05:06:13Z",
+      "name": "P-apply-and-b4",
+      "reason": null,
+      "started_at": "2026-10-11T05:05:43Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T05:06:48Z",
+      "name": "A-probe-addresses",
+      "reason": "A: not this server's address: the answer carries validation_probe not_run, validation_unknown_reason, the address and the sentence",
+      "started_at": "2026-10-11T05:06:13Z",
+      "verdict": "failed"
+    },
+    {
+      "finished_at": "2026-10-11T05:07:19Z",
+      "name": "N-app-unit",
+      "reason": null,
+      "started_at": "2026-10-11T05:06:48Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T05:07:26Z",
+      "name": "L-pool-delete",
+      "reason": null,
+      "started_at": "2026-10-11T05:07:19Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T05:07:26Z",
+      "name": "set12-browser-window",
+      "reason": null,
+      "started_at": "2026-10-11T05:07:26Z",
+      "verdict": "skipped"
+    },
+    {
+      "finished_at": "2026-10-11T05:07:27Z",
+      "name": "set6-name-pinning-at-the-end",
+      "reason": null,
+      "started_at": "2026-10-11T05:07:26Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T05:07:28Z",
+      "name": "collect",
+      "reason": null,
+      "started_at": "2026-10-11T05:07:27Z",
+      "verdict": "passed"
+    }
+  ]
+}

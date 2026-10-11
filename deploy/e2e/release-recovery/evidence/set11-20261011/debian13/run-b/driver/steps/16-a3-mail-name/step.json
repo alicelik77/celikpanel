@@ -1,0 +1,25 @@
+{
+  "checks": {
+    "checks": 17,
+    "error": null,
+    "failed": [
+      "A3: with the block: the file was there for every GET (created before the first, removed after the last answer)"
+    ],
+    "finished_at": "2026-10-11T00:34:14Z",
+    "notes": [
+      "A3: FAIL"
+    ],
+    "started_at": "2026-10-11T00:34:02Z",
+    "substeps": {
+      "A3": "failed"
+    },
+    "title": "a validation-only block for mail.<domain>: present, then removed by the owner",
+    "unknown": [],
+    "verdict": "failed"
+  },
+  "finished_at": "2026-10-11T00:34:14Z",
+  "name": "A3-mail-name",
+  "reason": "A3: with the block: the file was there for every GET (created before the first, removed after the last answer)",
+  "started_at": "2026-10-11T00:34:02Z",
+  "verdict": "failed"
+}

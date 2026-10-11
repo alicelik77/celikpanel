@@ -1,0 +1,72 @@
+{
+  "calls": [],
+  "checks": [],
+  "error": "TypeError: Set11Trial.snap11() got multiple values for argument 'label'",
+  "finished_at": "2026-10-11T00:21:17Z",
+  "lab_preparation": [
+    {
+      "domain": "set11-a.test",
+      "file": "steps/16-a3-mail-name/native/053-a3-lab-restore-set11-a.test.json",
+      "label": "a3",
+      "sha256_matches": true
+    }
+  ],
+  "native_evidence": false,
+  "natives": [
+    {
+      "file": "native/053-a3-lab-restore-set11-a.test.json",
+      "label": "a3-lab-restore-set11-a.test",
+      "mode": "lab-restore",
+      "owner_action": false
+    },
+    {
+      "file": "native/054-owner-a3-edit.json",
+      "label": "owner-a3-edit",
+      "mode": "owner-vhost10",
+      "owner_action": true
+    },
+    {
+      "file": "native/055-owner-a3-add-mail-block.json",
+      "label": "owner-a3-add-mail-block",
+      "mode": "owner-vhost11",
+      "owner_action": true
+    },
+    {
+      "file": "native/056-a3-0-stat.json",
+      "label": "a3-0-stat",
+      "mode": "read-stat",
+      "owner_action": false
+    },
+    {
+      "file": "native/057-a3-with-block-before-acme.json",
+      "label": "a3-with-block-before-acme",
+      "mode": "read-acme",
+      "owner_action": false
+    },
+    {
+      "file": "native/058-a3-with-block-log-offsets.json",
+      "label": "a3-with-block-log-offsets",
+      "mode": "log-offsets",
+      "owner_action": false
+    }
+  ],
+  "node": "debian13",
+  "notes": [],
+  "owner_actions": [
+    {
+      "at": "2026-10-11T00:21:16Z",
+      "label": "a3-edit",
+      "mode": "owner-vhost10"
+    },
+    {
+      "at": "2026-10-11T00:21:17Z",
+      "label": "a3-add-mail-block",
+      "mode": "owner-vhost11"
+    }
+  ],
+  "section": "A3-mail-name",
+  "started_at": "2026-10-11T00:21:15Z",
+  "substeps": {},
+  "title": "a validation-only block for mail.<domain>: present, then removed by the owner",
+  "verdict": "inconclusive"
+}

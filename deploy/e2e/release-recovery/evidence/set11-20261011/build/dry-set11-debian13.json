@@ -1,0 +1,61 @@
+{
+  "candidate": {
+    "commit": "b2b43d0cd680a0bc569ea02178c83a06b01c4941",
+    "sha256": "fd0d63a0596ab76dd0de04a362bceeae5325476e5bd036fa311f7a481bfed573",
+    "version": "v0.1.0-alpha.81"
+  },
+  "cell": "set11-debian13",
+  "cell_kind": "set11-fresh-install",
+  "local_port": 18443,
+  "native_evidence": false,
+  "pinned_names": [
+    "celikpanel.net",
+    "acme-v02.api.letsencrypt.org",
+    "acme-staging-v02.api.letsencrypt.org",
+    "acme.zerossl.com",
+    "dv.acme-v02.api.pki.goog"
+  ],
+  "rule": "the driver calls only the Panel's HTTP API as the logged-in owner; every native fact is an SSH reading; owner actions and lab preparation on the guest are recorded as such; no certificate authority and no licence service is contacted by the driver",
+  "schema": "celikpanel/set11-plan/v1",
+  "setup": {
+    "components": [
+      "dovecot",
+      "mariadb",
+      "nginx",
+      "php-fpm",
+      "postfix",
+      "postgresql",
+      "roundcube",
+      "rspamd"
+    ],
+    "dns_mode": "external",
+    "purpose": "web_mail"
+  },
+  "steps": [
+    "set6-name-pinning",
+    "preflight",
+    "origin",
+    "baseline-install",
+    "owner-login",
+    "license",
+    "setup",
+    "site",
+    "S0-sites",
+    "h-i-unchanged-start",
+    "C-directory-modes",
+    "A1-probe-ready",
+    "A4-nginx-stopped",
+    "A2-include-missing",
+    "A5-include-back",
+    "A3-mail-name",
+    "A6-bound-address",
+    "B1-locked-start",
+    "B2-unlocked-recheck",
+    "B3-save-writes",
+    "B4-take-refused",
+    "set11-browser-window",
+    "set6-name-pinning-at-the-end",
+    "collect"
+  ],
+  "work_root": "/var/tmp/cp-release-drill-dry-set11-debian13"
+}

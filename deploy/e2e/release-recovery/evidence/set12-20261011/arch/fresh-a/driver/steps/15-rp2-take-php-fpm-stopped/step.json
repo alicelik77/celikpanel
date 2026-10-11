@@ -1,0 +1,22 @@
+{
+  "checks": {
+    "checks": 4,
+    "error": null,
+    "failed": [],
+    "finished_at": "2026-10-11T05:18:07Z",
+    "notes": [
+      "RP2: PASS"
+    ],
+    "started_at": "2026-10-11T05:17:58Z",
+    "substeps": {
+      "RP2": "passed"
+    },
+    "title": "take on the pool while PHP-FPM is stopped: restore",
+    "unknown": [],
+    "verdict": "passed"
+  },
+  "finished_at": "2026-10-11T05:18:07Z",
+  "name": "RP2-take-php-fpm-stopped",
+  "started_at": "2026-10-11T05:17:58Z",
+  "verdict": "passed"
+}

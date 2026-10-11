@@ -1,0 +1,15 @@
+{
+  "at": "2026-10-11T10:54:26Z",
+  "prep": "php-state",
+  "result": {
+    "pool": {
+      "ActiveEnterTimestamp": "Sun 2026-10-11 10:46:14 UTC",
+      "ActiveState": "active",
+      "ExecMainStartTimestamp": "Sun 2026-10-11 10:46:14 UTC",
+      "LoadState": "loaded",
+      "MainPID": "23903",
+      "NRestarts": "0",
+      "SubState": "running"
+    }
+  }
+}

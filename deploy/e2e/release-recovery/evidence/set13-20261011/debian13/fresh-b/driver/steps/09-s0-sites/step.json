@@ -1,0 +1,23 @@
+{
+  "checks": {
+    "checks": 16,
+    "error": null,
+    "failed": [],
+    "finished_at": "2026-10-11T10:50:45Z",
+    "notes": [
+      "S0: PASS"
+    ],
+    "started_at": "2026-10-11T10:50:40Z",
+    "substeps": {
+      "S0": "passed",
+      "section": "passed"
+    },
+    "title": "two PHP sites; header, digest, ledger row, include directory, nginx -T (set10's section)",
+    "unknown": [],
+    "verdict": "passed"
+  },
+  "finished_at": "2026-10-11T10:50:45Z",
+  "name": "S0-sites",
+  "started_at": "2026-10-11T10:50:40Z",
+  "verdict": "passed"
+}

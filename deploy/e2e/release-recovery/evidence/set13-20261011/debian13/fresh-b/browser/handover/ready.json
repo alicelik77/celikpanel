@@ -1,0 +1,16 @@
+{
+  "at": "2026-10-11T10:53:24Z",
+  "base": "https://127.0.0.1:19082",
+  "domains": [
+    {
+      "id": 2,
+      "name": "set12-a.test"
+    }
+  ],
+  "local_port": 19082,
+  "password_file": "/var/tmp/cp-set13-run/secret/h13d13b-ui.json",
+  "schema": "celikpanel/set12-handover/v1",
+  "tls_leaf_sha256": "4e7360b372d1e19ca1c6b99fd9c58336323b7e47116d9162f2fdcb1b91333d39",
+  "username": "labadmin",
+  "window": "ui"
+}

@@ -1,0 +1,49 @@
+{
+  "at": "2026-10-11T10:52:50Z",
+  "by_unit": {
+    "celikapp-4.service": [
+      "2026-10-11T10:52:43.551795+00:00 dns-debian13 systemd[1]: Stopping celikapp-4.service - CelikPanel app: set13-n.test...",
+      "2026-10-11T10:52:43.552570+00:00 dns-debian13 systemd[1]: celikapp-4.service: Killing process 32646 (node) with signal SIGKILL.",
+      "2026-10-11T10:52:43.555984+00:00 dns-debian13 systemd[1]: celikapp-4.service: Deactivated successfully.",
+      "2026-10-11T10:52:43.556293+00:00 dns-debian13 systemd[1]: Stopped celikapp-4.service - CelikPanel app: set13-n.test.",
+      "2026-10-11T10:52:43.557991+00:00 dns-debian13 systemd[1]: Started celikapp-4.service - CelikPanel app: set13-n.test."
+    ],
+    "celikpanel-agent.service": [
+      "2026-10-11T10:52:43.542233+00:00 dns-debian13 agent[5174]: 2026/10/11 10:52:43 ApplyAppUnit site 4: taken (adopted \"\", owner's copy \"/etc/systemd/system/celikapp-4.service.celikpanel-backup-20261011T105243Z\")"
+    ],
+    "celikpanel-panel.service": [
+      "2026-10-11T10:52:42.637795+00:00 dns-debian13 panel[31001]: 2026/10/11 10:52:42 http: TLS handshake error from 127.0.0.1:46342: EOF",
+      "2026-10-11T10:52:43.264708+00:00 dns-debian13 panel[31001]: 2026/10/11 10:52:43 http: TLS handshake error from 127.0.0.1:46356: EOF",
+      "2026-10-11T10:52:43.560233+00:00 dns-debian13 panel[31001]: 2026/10/11 10:52:43 site configuration set13-n.test app_unit (take): taken; owner's file kept as /etc/systemd/system/celikapp-4.service.celikpanel-backup-20261011T105243Z"
+    ],
+    "nginx.service": [],
+    "php8.4-fpm.service": []
+  },
+  "mode": "read-window12",
+  "owner_action": false,
+  "schema": "celikpanel/set12-native/v1",
+  "since_epoch": 1791715962,
+  "systemd_all": [
+    "2026-10-11T10:52:42.355820+00:00 dns-debian13 systemd[1]: Reload requested from client PID 32712 ('systemctl') (unit session-107.scope)...",
+    "2026-10-11T10:52:42.355869+00:00 dns-debian13 systemd[1]: Reloading...",
+    "2026-10-11T10:52:42.587422+00:00 dns-debian13 systemd[1]: Reloading finished in 231 ms.",
+    "2026-10-11T10:52:43.327289+00:00 dns-debian13 systemd[1]: Reload requested from client PID 32798 ('systemctl') (unit celikpanel-agent.service)...",
+    "2026-10-11T10:52:43.327331+00:00 dns-debian13 systemd[1]: Reloading...",
+    "2026-10-11T10:52:43.519741+00:00 dns-debian13 systemd[1]: Reloading finished in 191 ms.",
+    "2026-10-11T10:52:43.551795+00:00 dns-debian13 systemd[1]: Stopping celikapp-4.service - CelikPanel app: set13-n.test...",
+    "2026-10-11T10:52:43.552570+00:00 dns-debian13 systemd[1]: celikapp-4.service: Killing process 32646 (node) with signal SIGKILL.",
+    "2026-10-11T10:52:43.555984+00:00 dns-debian13 systemd[1]: celikapp-4.service: Deactivated successfully.",
+    "2026-10-11T10:52:43.556293+00:00 dns-debian13 systemd[1]: Stopped celikapp-4.service - CelikPanel app: set13-n.test.",
+    "2026-10-11T10:52:43.557991+00:00 dns-debian13 systemd[1]: Started celikapp-4.service - CelikPanel app: set13-n.test."
+  ],
+  "systemd_manager": [
+    "2026-10-11T10:52:43.327289+00:00 dns-debian13 systemd[1]: Reload requested from client PID 32798 ('systemctl') (unit celikpanel-agent.service)..."
+  ],
+  "units": [
+    "celikpanel-panel.service",
+    "celikpanel-agent.service",
+    "nginx.service",
+    "php8.4-fpm.service",
+    "celikapp-4.service"
+  ]
+}

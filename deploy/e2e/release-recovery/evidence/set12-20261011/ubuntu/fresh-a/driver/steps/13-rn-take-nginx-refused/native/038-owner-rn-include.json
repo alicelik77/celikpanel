@@ -1,0 +1,105 @@
+{
+  "action": "owner-include",
+  "at": "2026-10-11T05:05:21Z",
+  "directory_after": {
+    "entries": [
+      {
+        "ctime_ns": 1791695121088600308,
+        "exists": true,
+        "first_line": "# set10: an owner's file that conflicts with CelikPanel's text (a second root in the same server block)",
+        "gid": 0,
+        "group": "root",
+        "header": {
+          "first_line": "# set10: an owner's file that conflicts with CelikPanel's text (a second root in the same server block)",
+          "present": false
+        },
+        "immutable": false,
+        "inode": 526855,
+        "kind": "file",
+        "lsattr": "--------------e-------",
+        "mode": "0644",
+        "mtime_ns": 1791695121088600308,
+        "nlink": 1,
+        "owner": "root",
+        "path": "/etc/nginx/celikpanel-sites.d/set12-a.test/set10-dup-root.conf",
+        "sha256": "9381e0c6b1b5d3e623ed4af4ab5e03ebefecb5fcef15479783ebbfb52a25d473",
+        "size": 132,
+        "text": "# set10: an owner's file that conflicts with CelikPanel's text (a second root in the same server block)\nroot /srv/set10-owner-root;\n",
+        "uid": 0
+      }
+    ],
+    "exists": true,
+    "gid": 988,
+    "group": "celikpanel",
+    "inode": 533501,
+    "kind": "directory",
+    "mode": "0755",
+    "mode_octal": "0o755",
+    "mtime_ns": 1791695121088600308,
+    "owner": "root",
+    "path": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+    "uid": 0
+  },
+  "directory_before": {
+    "entries": [],
+    "exists": true,
+    "gid": 988,
+    "group": "celikpanel",
+    "inode": 533501,
+    "kind": "directory",
+    "mode": "0755",
+    "mode_octal": "0o755",
+    "mtime_ns": 1791695007091768406,
+    "owner": "root",
+    "path": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+    "uid": 0
+  },
+  "domain": "set12-a.test",
+  "file": {
+    "ctime_ns": 1791695121088600308,
+    "exists": true,
+    "first_line": "# set10: an owner's file that conflicts with CelikPanel's text (a second root in the same server block)",
+    "gid": 0,
+    "group": "root",
+    "header": {
+      "first_line": "# set10: an owner's file that conflicts with CelikPanel's text (a second root in the same server block)",
+      "present": false
+    },
+    "immutable": false,
+    "inode": 526855,
+    "kind": "file",
+    "lsattr": "--------------e-------",
+    "mode": "0644",
+    "mtime_ns": 1791695121088600308,
+    "nlink": 1,
+    "owner": "root",
+    "path": "/etc/nginx/celikpanel-sites.d/set12-a.test/set10-dup-root.conf",
+    "sha256": "9381e0c6b1b5d3e623ed4af4ab5e03ebefecb5fcef15479783ebbfb52a25d473",
+    "size": 132,
+    "text": "# set10: an owner's file that conflicts with CelikPanel's text (a second root in the same server block)\nroot /srv/set10-owner-root;\n",
+    "uid": 0
+  },
+  "mode": "owner-include",
+  "nginx_test": {
+    "at": "2026-10-11T05:05:21Z",
+    "output": "nginx: the configuration file /etc/nginx/nginx.conf syntax is ok\nnginx: configuration file /etc/nginx/nginx.conf test is successful\n",
+    "returncode": 0,
+    "status": "ok"
+  },
+  "owner_action": true,
+  "path": "/etc/nginx/celikpanel-sites.d/set12-a.test/set10-dup-root.conf",
+  "reload": {
+    "argv": [
+      "systemctl",
+      "reload",
+      "nginx.service"
+    ],
+    "at": "2026-10-11T05:05:21Z",
+    "returncode": 0,
+    "seconds": 0.021,
+    "status": "ok",
+    "stderr": "",
+    "stdout": ""
+  },
+  "schema": "celikpanel/set10-native/v1"
+}

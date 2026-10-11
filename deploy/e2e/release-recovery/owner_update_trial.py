@@ -394,7 +394,10 @@ SCHEMA_LEDGER_HELPER = "guest_schema_ledger.py"
 BACKUP_READER_HELPER = "guest_request_identity_native.py"
 REQUEST_ID_HEADER = "X-CelikPanel-Request-Id"
 RELOAD_SENTENCE = "Reload the page"
-LEDGER_AFTER_UPDATE, LEDGER_AFTER_RETURN = 43, 42
+# set10 (2026-10-10): the candidate migrates to 44 (D-031, migration 044, managed_site_files); the return
+# restores the 42 of the published alpha.81. request_identities exists from 43 on (D-029).
+LEDGER_AFTER_UPDATE, LEDGER_AFTER_RETURN = 44, 42
+REQUEST_IDENTITIES_FROM = 43
 GUARDED_TABLE = "request_identities"
 GUEST_HELPERS = ("guest_probe.py", "guest_port_fault.py", "guest_update_kill.py", "guest_bound_worker.py",
                  "guest_recovery_fault.py", "guest_recovery_handoff.py", "guest_owner_update_observer.py",
@@ -541,7 +544,7 @@ def ledger_verdict(reading: dict | None, version: int, pins: dict) -> dict:
              and reading.get("ledger_contiguous") is True,
              "ledger_is_the_released_one": reading.get("ledger_sha256") == pins["migrations"].get(version),
              "schema_is_the_released_one": schema_equal,
-             "request_identities": bool(guarded.get("exists")) is (version >= LEDGER_AFTER_UPDATE),
+             "request_identities": bool(guarded.get("exists")) is (version >= REQUEST_IDENTITIES_FROM),
              "integrity": reading.get("integrity_check") == ["ok"] and reading.get("foreign_key_check_clean") is True}
     return {"verdict": "as-expected" if all(facts.values()) else "different", "expected_version": version, "facts": facts,
             "schema_version": reading["schema_version"], "ledger_rows": reading.get("ledger_rows"),

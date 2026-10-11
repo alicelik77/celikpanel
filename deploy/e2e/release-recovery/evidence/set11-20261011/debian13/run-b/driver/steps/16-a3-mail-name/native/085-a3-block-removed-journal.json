@@ -1,0 +1,37 @@
+{
+  "at": "2026-10-11T00:34:14Z",
+  "by_unit": {
+    "celikpanel-agent.service": [],
+    "celikpanel-panel.service": [
+      "2026-10-11T00:34:11.985273+00:00 dns-debian13 panel[31019]: 2026/10/11 00:34:11 http: TLS handshake error from 127.0.0.1:46414: EOF",
+      "2026-10-11T00:34:12.010418+00:00 dns-debian13 panel[31019]: 2026/10/11 00:34:12 site configuration set11-a.test (change): kept (owner-edited); CelikPanel's text held in /etc/nginx/sites-available/set11-a.test.conf.celikpanel-pending",
+      "2026-10-11T00:34:12.026741+00:00 dns-debian13 panel[31019]: 2026/10/11 00:34:12 SSL issue domain 2: prepare validation vhost: certificate validation for set11-a.test not prepared: the configuration file was kept (owner_edited) and names_missing",
+      "2026-10-11T00:34:12.027236+00:00 dns-debian13 panel[31019]: 2026/10/11 00:34:12 [409] certificate validation for set11-a.test not prepared: the configuration file was kept (owner_edited) and names_missing"
+    ],
+    "nginx.service": [
+      "2026-10-11T00:34:09.438014+00:00 dns-debian13 systemd[1]: Reloading nginx.service - A high performance web server and a reverse proxy server...",
+      "2026-10-11T00:34:09.459314+00:00 dns-debian13 nginx[33325]: 2026/10/11 00:34:09 [notice] 33325#33325: signal process started",
+      "2026-10-11T00:34:09.461236+00:00 dns-debian13 systemd[1]: Reloaded nginx.service - A high performance web server and a reverse proxy server."
+    ],
+    "php8.4-fpm.service": []
+  },
+  "mode": "read-window",
+  "owner_action": false,
+  "schema": "celikpanel/set10-native/v1",
+  "since_epoch": 1791678848,
+  "systemd_manager": [
+    "2026-10-11T00:34:08.402237+00:00 dns-debian13 systemd[1]: Stopping celikpanel-lab-set11-fswatch.service - [systemd-run] /usr/bin/python3 -I /root/celikpanel-release-recovery-lab/set11-fswatch.py /root/celikpanel-release-recovery-lab/set11-fs-a3-with-block.jsonl /var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge /etc/nginx/celikpanel-managed.d/set11-a.test /etc/nginx/celikpanel-sites.d/set11-a.test /etc/nginx/sites-available...",
+    "2026-10-11T00:34:08.408152+00:00 dns-debian13 systemd[1]: Stopped celikpanel-lab-set11-fswatch.service - [systemd-run] /usr/bin/python3 -I /root/celikpanel-release-recovery-lab/set11-fswatch.py /root/celikpanel-release-recovery-lab/set11-fs-a3-with-block.jsonl /var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge /etc/nginx/celikpanel-managed.d/set11-a.test /etc/nginx/celikpanel-sites.d/set11-a.test /etc/nginx/sites-available.",
+    "2026-10-11T00:34:09.438014+00:00 dns-debian13 systemd[1]: Reloading nginx.service - A high performance web server and a reverse proxy server...",
+    "2026-10-11T00:34:09.461236+00:00 dns-debian13 systemd[1]: Reloaded nginx.service - A high performance web server and a reverse proxy server.",
+    "2026-10-11T00:34:10.408099+00:00 dns-debian13 systemd[1]: Started celikpanel-lab-set11-fswatch.service - [systemd-run] /usr/bin/python3 -I /root/celikpanel-release-recovery-lab/set11-fswatch.py /root/celikpanel-release-recovery-lab/set11-fs-a3-block-removed.jsonl /var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge /etc/nginx/celikpanel-managed.d/set11-a.test /etc/nginx/celikpanel-sites.d/set11-a.test /etc/nginx/sites-available.",
+    "2026-10-11T00:34:13.780983+00:00 dns-debian13 systemd[1]: Stopping celikpanel-lab-set11-fswatch.service - [systemd-run] /usr/bin/python3 -I /root/celikpanel-release-recovery-lab/set11-fswatch.py /root/celikpanel-release-recovery-lab/set11-fs-a3-block-removed.jsonl /var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge /etc/nginx/celikpanel-managed.d/set11-a.test /etc/nginx/celikpanel-sites.d/set11-a.test /etc/nginx/sites-available...",
+    "2026-10-11T00:34:13.797499+00:00 dns-debian13 systemd[1]: Stopped celikpanel-lab-set11-fswatch.service - [systemd-run] /usr/bin/python3 -I /root/celikpanel-release-recovery-lab/set11-fswatch.py /root/celikpanel-release-recovery-lab/set11-fs-a3-block-removed.jsonl /var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge /etc/nginx/celikpanel-managed.d/set11-a.test /etc/nginx/celikpanel-sites.d/set11-a.test /etc/nginx/sites-available."
+  ],
+  "units": [
+    "celikpanel-panel.service",
+    "celikpanel-agent.service",
+    "nginx.service",
+    "php8.4-fpm.service"
+  ]
+}

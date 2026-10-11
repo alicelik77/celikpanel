@@ -1,0 +1,50 @@
+2026-10-11T00:09:33Z runner started pid=85463
+2026-10-11T00:34:48Z start h11d13-b-unwritable siteconfig,done
+{"cell":"siteconfig","started":"2026-10-11T00:34:49.245Z","ended":"2026-10-11T00:35:15.737Z","ok":true}
+{"cell":"done","started":"2026-10-11T00:35:15.746Z","ended":"2026-10-11T00:35:15.753Z","ok":true}
+2026-10-11T00:35:16Z rc=0 h11d13-b-unwritable
+2026-10-11T00:35:36Z start h11d13-b-take-refused siteconfig,done
+{"cell":"siteconfig","started":"2026-10-11T00:35:37.565Z","ended":"2026-10-11T00:35:58.348Z","ok":true}
+{"cell":"done","started":"2026-10-11T00:35:58.357Z","ended":"2026-10-11T00:35:58.365Z","ok":true}
+2026-10-11T00:35:59Z rc=0 h11d13-b-take-refused
+2026-10-11T00:36:04Z start h11d13-d-e slow35,afterfail,afterstart,sw,done
+{"cell":"slow35","started":"2026-10-11T00:36:05.288Z","ended":"2026-10-11T00:36:51.199Z","ok":true}
+{"cell":"afterfail","started":"2026-10-11T00:36:51.211Z","ended":"2026-10-11T00:37:52.441Z","ok":false,"error":"TimeoutError: Waiting failed: 60000ms exceeded\n    at new WaitTask (<scratchpad>\\set7\\browser-modules\\node_modules\\puppeteer-core\\lib\\cjs\\puppeteer\\common\\WaitTask.js:48:34)\n    at IsolatedWorld.waitForFunction (<scratchpad>\\set7\\browser-modules\\node_modules\\puppeteer-core\\lib\\cjs\\puppeteer\\api\\Realm.js:25:26)\n    at CdpFrame.waitForFunction (<scratchpad>\\set7\\browser-modules\\node_modules\\puppeteer-core\\lib\\cjs\\puppeteer\\api\\Frame.js:587:43)\n    at CdpFrame.<anonymous> (<scratchpad>\\set7\\browser-modules\\node_modules\\puppeteer-core\\lib\\cjs\\puppeteer\\util\\decorators.js:109:27)\n    at CdpPage.waitForFunction (<scratchpad>\\set7\\browser-modules\\node_modules\\puppeteer-core\\lib\\cjs\\puppeteer\\api\\Page.js:1438:37)\n    at signIn (file:///<repo>/web/tools/browser-inspect/cold-load-set11.mjs:151:30)\n    at async signedIn (file:///<repo>/web/tools/browser-inspect/cold-load-set11.mjs:287:5)\n    at as"}
+{"cell":"afterstart","started":"2026-10-11T00:37:52.448Z","ended":"2026-10-11T00:38:53.607Z","ok":false,"error":"TimeoutError: Waiting failed: 60000ms exceeded\n    at new WaitTask (<scratchpad>\\set7\\browser-modules\\node_modules\\puppeteer-core\\lib\\cjs\\puppeteer\\common\\WaitTask.js:48:34)\n    at IsolatedWorld.waitForFunction (<scratchpad>\\set7\\browser-modules\\node_modules\\puppeteer-core\\lib\\cjs\\puppeteer\\api\\Realm.js:25:26)\n    at CdpFrame.waitForFunction (<scratchpad>\\set7\\browser-modules\\node_modules\\puppeteer-core\\lib\\cjs\\puppeteer\\api\\Frame.js:587:43)\n    at CdpFrame.<anonymous> (<scratchpad>\\set7\\browser-modules\\node_modules\\puppeteer-core\\lib\\cjs\\puppeteer\\util\\decorators.js:109:27)\n    at CdpPage.waitForFunction (<scratchpad>\\set7\\browser-modules\\node_modules\\puppeteer-core\\lib\\cjs\\puppeteer\\api\\Page.js:1438:37)\n    at signIn (file:///<repo>/web/tools/browser-inspect/cold-load-set11.mjs:151:30)\n    at async signedIn (file:///<repo>/web/tools/browser-inspect/cold-load-set11.mjs:287:5)\n    at as"}
+{"cell":"sw","started":"2026-10-11T00:38:53.612Z","ended":"2026-10-11T00:39:54.935Z","ok":false,"error":"TimeoutError: Waiting failed: 60000ms exceeded\n    at new WaitTask (<scratchpad>\\set7\\browser-modules\\node_modules\\puppeteer-core\\lib\\cjs\\puppeteer\\common\\WaitTask.js:48:34)\n    at IsolatedWorld.waitForFunction (<scratchpad>\\set7\\browser-modules\\node_modules\\puppeteer-core\\lib\\cjs\\puppeteer\\api\\Realm.js:25:26)\n    at CdpFrame.waitForFunction (<scratchpad>\\set7\\browser-modules\\node_modules\\puppeteer-core\\lib\\cjs\\puppeteer\\api\\Frame.js:587:43)\n    at CdpFrame.<anonymous> (<scratchpad>\\set7\\browser-modules\\node_modules\\puppeteer-core\\lib\\cjs\\puppeteer\\util\\decorators.js:109:27)\n    at CdpPage.waitForFunction (<scratchpad>\\set7\\browser-modules\\node_modules\\puppeteer-core\\lib\\cjs\\puppeteer\\api\\Page.js:1438:37)\n    at signIn (file:///<repo>/web/tools/browser-inspect/cold-load-set11.mjs:151:30)\n    at async signedIn (file:///<repo>/web/tools/browser-inspect/cold-load-set11.mjs:287:5)\n    at as"}
+{"cell":"done","started":"2026-10-11T00:39:54.941Z","ended":"2026-10-11T00:39:54.945Z","ok":true}
+2026-10-11T00:39:55Z rc=0 h11d13-d-e
+2026-10-11T00:52:28Z start h11d13c-b-unwritable siteconfig,done
+{"cell":"siteconfig","started":"2026-10-11T00:52:30.278Z","ended":"2026-10-11T00:52:56.551Z","ok":true}
+{"cell":"done","started":"2026-10-11T00:52:56.561Z","ended":"2026-10-11T00:52:56.573Z","ok":true}
+2026-10-11T00:52:56Z rc=0 h11d13c-b-unwritable
+2026-10-11T00:53:17Z start h11d13c-b-take-refused siteconfig,done
+{"cell":"siteconfig","started":"2026-10-11T00:53:18.405Z","ended":"2026-10-11T00:53:39.240Z","ok":true}
+{"cell":"done","started":"2026-10-11T00:53:39.251Z","ended":"2026-10-11T00:53:39.257Z","ok":true}
+2026-10-11T00:53:40Z rc=0 h11d13c-b-take-refused
+2026-10-11T00:53:45Z start h11d13c-d-e slow35,afterfail,afterstart,sw,done
+{"cell":"slow35","started":"2026-10-11T00:53:46.767Z","ended":"2026-10-11T00:54:33.292Z","ok":true}
+{"cell":"afterfail","started":"2026-10-11T00:54:33.303Z","ended":"2026-10-11T00:55:26.525Z","ok":true}
+{"cell":"afterstart","started":"2026-10-11T00:55:26.536Z","ended":"2026-10-11T00:56:22.181Z","ok":true}
+{"cell":"sw","started":"2026-10-11T00:56:22.190Z","ended":"2026-10-11T00:57:10.831Z","ok":true}
+{"cell":"done","started":"2026-10-11T00:57:10.839Z","ended":"2026-10-11T00:57:10.841Z","ok":true}
+2026-10-11T00:57:22Z rc=0 h11d13c-d-e
+2026-10-11T00:59:10Z runner stopped
+2026-10-11T01:00:01Z runner started pid=89254
+2026-10-11T01:19:58Z start h11ub-b-unwritable siteconfig,done
+{"cell":"siteconfig","started":"2026-10-11T01:19:59.858Z","ended":"2026-10-11T01:20:26.240Z","ok":true}
+{"cell":"done","started":"2026-10-11T01:20:26.254Z","ended":"2026-10-11T01:20:26.262Z","ok":true}
+2026-10-11T01:20:26Z rc=0 h11ub-b-unwritable
+2026-10-11T01:20:57Z start h11ub-b-take-refused siteconfig,done
+{"cell":"siteconfig","started":"2026-10-11T01:20:59.233Z","ended":"2026-10-11T01:21:20.160Z","ok":true}
+{"cell":"done","started":"2026-10-11T01:21:20.175Z","ended":"2026-10-11T01:21:20.209Z","ok":true}
+2026-10-11T01:21:20Z rc=0 h11ub-b-take-refused
+2026-10-11T01:21:26Z start h11ub-d-e slow35,afterfail,afterstart
+{"cell":"slow35","started":"2026-10-11T01:21:29.247Z","ended":"2026-10-11T01:22:16.987Z","ok":true}
+{"cell":"afterfail","started":"2026-10-11T01:22:16.999Z","ended":"2026-10-11T01:23:09.642Z","ok":true}
+{"cell":"afterstart","started":"2026-10-11T01:23:09.655Z","ended":"2026-10-11T01:25:37.308Z","ok":true}
+2026-10-11T01:25:37Z rc=0 h11ub-d-e (first process)
+2026-10-11T01:25:37Z start h11ub-d-e sw,done profile_root=<user-temp>\cp11p
+{"cell":"sw","started":"2026-10-11T01:25:39.130Z","ended":"2026-10-11T01:26:29.499Z","ok":true}
+{"cell":"done","started":"2026-10-11T01:26:29.515Z","ended":"2026-10-11T01:26:29.518Z","ok":true}
+2026-10-11T01:26:41Z rc=0 h11ub-d-e

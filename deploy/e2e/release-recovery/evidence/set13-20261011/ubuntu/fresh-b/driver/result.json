@@ -1,0 +1,243 @@
+{
+  "artifacts": {
+    "baseline": {
+      "commit": "8948352e39539cd647c742c154578dc2163d7b9b",
+      "sha256": "f7e5c60cd03c7186eb9e2d1ff92c6dbc5957b54792683039bd4234795a23cd52",
+      "version": "v0.1.0-alpha.81"
+    }
+  },
+  "cell": {
+    "components": [
+      "nginx",
+      "php-fpm",
+      "mariadb",
+      "postfix",
+      "dovecot",
+      "roundcube",
+      "rspamd",
+      "postgresql"
+    ],
+    "mail": true,
+    "name": "set13-ubuntu",
+    "node": "ubuntu",
+    "purpose": "web_mail"
+  },
+  "cell_kind": "set13-fresh-install",
+  "findings": [
+    "ubuntu: server setup waits at access_dns (server_setup_access_dns_required) on an isolated host; later wizard steps were not run: ['11-panel_certificate', '12-access_dns', '13-mail_certificate', '14-mail_enrollment', '15-verify']"
+  ],
+  "identity": {
+    "cell_id": "release-recovery__98616083604351a1",
+    "node": "ubuntu",
+    "vm_uuid": "dfa41487-0d94-5a12-88ad-ca69dec6c6e5"
+  },
+  "native_evidence": false,
+  "note": "set13: a measurement on the fresh install; no update is started and no P0 row is judged.",
+  "outcome": {
+    "classification": "set13-measured",
+    "final_status": null
+  },
+  "overall": "complete-for-review",
+  "provenance": {
+    "what": "set13: 816b8dd60 installed fresh; no update"
+  },
+  "request_id": null,
+  "schema": "celikpanel/upd1-owner-update-result/v1",
+  "sections": {
+    "C4-pool-not-read": {
+      "checks": 8,
+      "error": null,
+      "failed": [],
+      "finished_at": "2026-10-11T10:39:45Z",
+      "notes": [
+        "C4: PASS"
+      ],
+      "started_at": "2026-10-11T10:38:26Z",
+      "substeps": {
+        "C4": "passed"
+      },
+      "title": "the pool not read: the page and the Domains row",
+      "unknown": [],
+      "verdict": "passed"
+    },
+    "S0-sites": {
+      "checks": 16,
+      "error": null,
+      "failed": [],
+      "finished_at": "2026-10-11T10:38:07Z",
+      "notes": [
+        "S0: PASS"
+      ],
+      "started_at": "2026-10-11T10:38:00Z",
+      "substeps": {
+        "S0": "passed",
+        "section": "passed"
+      },
+      "title": "two PHP sites; header, digest, ledger row, include directory, nginx -T (set10's section)",
+      "unknown": [],
+      "verdict": "passed"
+    },
+    "h-i-unchanged-start": {
+      "checks": 7,
+      "error": null,
+      "failed": [],
+      "finished_at": "2026-10-11T10:38:26Z",
+      "notes": [
+        "h: PASS",
+        "i: PASS"
+      ],
+      "started_at": "2026-10-11T10:38:07Z",
+      "substeps": {
+        "h": "passed",
+        "i": "passed"
+      },
+      "title": "a restart with every site unchanged (set10's section)",
+      "unknown": [],
+      "verdict": "passed"
+    }
+  },
+  "setup": {
+    "components": [
+      "dovecot",
+      "mariadb",
+      "nginx",
+      "php-fpm",
+      "postfix",
+      "postgresql",
+      "roundcube",
+      "rspamd"
+    ],
+    "purpose": "web_mail",
+    "waiting": {
+      "code": "server_setup_access_dns_required",
+      "mail_steps_reached": true,
+      "not_run": [
+        "11-panel_certificate",
+        "12-access_dns",
+        "13-mail_certificate",
+        "14-mail_enrollment",
+        "15-verify"
+      ],
+      "phase": "access_dns",
+      "polls": 25,
+      "stable_wait_seconds": 124.7,
+      "steps": {
+        "01-dns": "succeeded",
+        "02-service": "succeeded",
+        "03-service": "succeeded",
+        "04-service": "succeeded",
+        "05-service": "succeeded",
+        "06-mail_profile": "succeeded",
+        "07-mail_profile": "succeeded",
+        "08-service": "succeeded",
+        "09-firewall": "succeeded",
+        "10-access_dns": "running",
+        "11-panel_certificate": "pending",
+        "12-access_dns": "pending",
+        "13-mail_certificate": "pending",
+        "14-mail_enrollment": "pending",
+        "15-verify": "pending"
+      }
+    }
+  },
+  "steps": [
+    {
+      "finished_at": "2026-10-11T10:20:56Z",
+      "name": "set6-name-pinning",
+      "reason": null,
+      "started_at": "2026-10-11T10:20:52Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T10:21:04Z",
+      "name": "preflight",
+      "reason": null,
+      "started_at": "2026-10-11T10:20:57Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T10:21:14Z",
+      "name": "origin",
+      "reason": null,
+      "started_at": "2026-10-11T10:21:04Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T10:22:06Z",
+      "name": "baseline-install",
+      "reason": null,
+      "started_at": "2026-10-11T10:21:14Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T10:22:08Z",
+      "name": "owner-login",
+      "reason": null,
+      "started_at": "2026-10-11T10:22:06Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T10:22:08Z",
+      "name": "license",
+      "reason": null,
+      "started_at": "2026-10-11T10:22:08Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T10:34:59Z",
+      "name": "setup",
+      "reason": null,
+      "started_at": "2026-10-11T10:22:08Z",
+      "verdict": "observed"
+    },
+    {
+      "finished_at": "2026-10-11T10:38:00Z",
+      "name": "site",
+      "reason": null,
+      "started_at": "2026-10-11T10:34:59Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T10:38:07Z",
+      "name": "S0-sites",
+      "reason": null,
+      "started_at": "2026-10-11T10:38:00Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T10:38:26Z",
+      "name": "h-i-unchanged-start",
+      "reason": null,
+      "started_at": "2026-10-11T10:38:07Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T10:39:45Z",
+      "name": "C4-pool-not-read",
+      "reason": null,
+      "started_at": "2026-10-11T10:38:26Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T10:39:45Z",
+      "name": "set13-browser-window",
+      "reason": null,
+      "started_at": "2026-10-11T10:39:45Z",
+      "verdict": "skipped"
+    },
+    {
+      "finished_at": "2026-10-11T10:39:46Z",
+      "name": "set6-name-pinning-at-the-end",
+      "reason": null,
+      "started_at": "2026-10-11T10:39:45Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T10:39:47Z",
+      "name": "collect",
+      "reason": null,
+      "started_at": "2026-10-11T10:39:46Z",
+      "verdict": "passed"
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "at": "2026-10-11T01:18:15Z",
+  "by_unit": {
+    "celikpanel-agent.service": [],
+    "celikpanel-panel.service": [
+      "2026-10-11T01:18:11.770627+00:00 dns-ubuntu panel[44198]: 2026/10/11 01:18:11 http: TLS handshake error from 127.0.0.1:48614: EOF",
+      "2026-10-11T01:18:11.810912+00:00 dns-ubuntu panel[44198]: 2026/10/11 01:18:11 site configuration set11-a.test (change): kept (owner-edited); CelikPanel's text held in /etc/nginx/sites-available/set11-a.test.conf.celikpanel-pending",
+      "2026-10-11T01:18:13.171718+00:00 dns-ubuntu panel[44198]: 2026/10/11 01:18:13 [502][certificate] set11-a.test: CERTIFICATE_ISSUE_FAILED authority_unreachable: certbot failed: exit status 1 Output: Saving debug log to /var/log/celikpanel/certbot/letsencrypt.log An unexpected error occurred: requests.exceptions.SSLError: HTTPSConnectionPool(host='acme-v02.api.letsencrypt.org', port=443): Max retries exceeded with url: /directory (Caused by SSLError(SSLCertVerificationError(1, \"[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: Hostname mismatch, certificate is not valid for 'acme-v02.api.letsencrypt.org'. (_ssl.c:1000)\"))) Ask for help or search for soluti…"
+    ],
+    "nginx.service": [
+      "2026-10-11T01:18:08.070357+00:00 dns-ubuntu systemd[1]: Reloading nginx.service - A high performance web server and a reverse proxy server...",
+      "2026-10-11T01:18:08.078705+00:00 dns-ubuntu nginx[46024]: 2026/10/11 01:18:08 [notice] 46024#46024: signal process started",
+      "2026-10-11T01:18:08.080488+00:00 dns-ubuntu systemd[1]: Reloaded nginx.service - A high performance web server and a reverse proxy server."
+    ],
+    "php8.3-fpm.service": []
+  },
+  "mode": "read-window",
+  "owner_action": false,
+  "schema": "celikpanel/set10-native/v1",
+  "since_epoch": 1791681488,
+  "systemd_manager": [
+    "2026-10-11T01:18:08.070357+00:00 dns-ubuntu systemd[1]: Reloading nginx.service - A high performance web server and a reverse proxy server...",
+    "2026-10-11T01:18:08.080488+00:00 dns-ubuntu systemd[1]: Reloaded nginx.service - A high performance web server and a reverse proxy server.",
+    "2026-10-11T01:18:10.201016+00:00 dns-ubuntu systemd[1]: Started celikpanel-lab-set11-fswatch.service - /usr/bin/python3 -I /root/celikpanel-release-recovery-lab/set11-fswatch.py /root/celikpanel-release-recovery-lab/set11-fs-a1.jsonl /var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge /etc/nginx/celikpanel-managed.d/set11-a.test /etc/nginx/celikpanel-sites.d/set11-a.test /etc/nginx/sites-available.",
+    "2026-10-11T01:18:15.154861+00:00 dns-ubuntu systemd[1]: Stopping celikpanel-lab-set11-fswatch.service - /usr/bin/python3 -I /root/celikpanel-release-recovery-lab/set11-fswatch.py /root/celikpanel-release-recovery-lab/set11-fs-a1.jsonl /var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge /etc/nginx/celikpanel-managed.d/set11-a.test /etc/nginx/celikpanel-sites.d/set11-a.test /etc/nginx/sites-available...",
+    "2026-10-11T01:18:15.161031+00:00 dns-ubuntu systemd[1]: Stopped celikpanel-lab-set11-fswatch.service - /usr/bin/python3 -I /root/celikpanel-release-recovery-lab/set11-fswatch.py /root/celikpanel-release-recovery-lab/set11-fs-a1.jsonl /var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge /etc/nginx/celikpanel-managed.d/set11-a.test /etc/nginx/celikpanel-sites.d/set11-a.test /etc/nginx/sites-available."
+  ],
+  "units": [
+    "celikpanel-panel.service",
+    "celikpanel-agent.service",
+    "nginx.service",
+    "php8.3-fpm.service"
+  ]
+}

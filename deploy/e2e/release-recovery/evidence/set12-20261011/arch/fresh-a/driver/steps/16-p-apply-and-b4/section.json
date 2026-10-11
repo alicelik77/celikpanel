@@ -1,0 +1,1325 @@
+{
+  "calls": [
+    {
+      "at": "2026-10-11T05:18:16Z",
+      "json": {
+        "actions": [
+          "recheck"
+        ],
+        "challenge_file": "unchanged",
+        "diff": "--- /etc/nginx/sites-available/set12-a.test.conf (on this server)\n+++ CelikPanel's text\n@@ -1,4 +1,3 @@\n-# set10 lab preparation: an older CelikPanel text of this site (a line the current render does not have)\n # Nginx vhost for set12-a.test\n # Written by CelikPanel. Put your own additions in /etc/nginx/celikpanel-sites.d/set12-a.test/*.conf;\n # CelikPanel never writes there. If you change this file, CelikPanel keeps\n",
+        "domain": "set12-a.test",
+        "domain_id": 2,
+        "enabled": "link",
+        "file_sha256": "e28c15138c1605f567e502e2a2a1a41893dd7aa39db41d69d667d7ebb9391ad3",
+        "files": [
+          {
+            "actions": [
+              "recheck"
+            ],
+            "challenge_file": "unchanged",
+            "diff": "--- /etc/nginx/sites-available/set12-a.test.conf (on this server)\n+++ CelikPanel's text\n@@ -1,4 +1,3 @@\n-# set10 lab preparation: an older CelikPanel text of this site (a line the current render does not have)\n # Nginx vhost for set12-a.test\n # Written by CelikPanel. Put your own additions in /etc/nginx/celikpanel-sites.d/set12-a.test/*.conf;\n # CelikPanel never writes there. If you change this file, CelikPanel keeps\n",
+            "domain": "set12-a.test",
+            "domain_id": 2,
+            "enabled": "link",
+            "file_sha256": "e28c15138c1605f567e502e2a2a1a41893dd7aa39db41d69d667d7ebb9391ad3",
+            "include_dir": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+            "kind": "nginx_vhost",
+            "ledger": {
+              "backup_path": "/etc/nginx/sites-available/set12-a.test.conf.celikpanel-backup-20261011T051744Z",
+              "observed_at": "2026-10-11T05:18:16Z",
+              "written_at": "2026-10-11T05:16:03Z",
+              "written_release": "v0.1.0-alpha.81 9e223f175d96"
+            },
+            "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-a.test",
+            "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;",
+            "path": "/etc/nginx/sites-available/set12-a.test.conf",
+            "protection": "immutable",
+            "reason": "write_refused",
+            "render_sha256": "872fe38bc22fdd3ed84e57310827eff28352e5af5f8f633178ca71aacb16b109",
+            "state": "unwritable",
+            "system_error": "EPERM"
+          },
+          {
+            "actions": [],
+            "decision": {
+              "current": false,
+              "decided_at": "2026-10-11T05:16:16Z",
+              "kind": "take_celikpanel"
+            },
+            "domain": "set12-a.test",
+            "domain_id": 2,
+            "file_sha256": "6f8b1cbea6de1c30f89378b11fff05feef7ecb86fc93c43a1a57906ab5f78a67",
+            "kind": "php_pool",
+            "ledger": {
+              "backup_path": "/etc/php/php-fpm.d/site2.conf.celikpanel-backup-20261011T051801Z",
+              "observed_at": "2026-10-11T05:18:16Z",
+              "written_at": "2026-10-11T05:16:16Z",
+              "written_release": "v0.1.0-alpha.81 9e223f175d96"
+            },
+            "path": "/etc/php/php-fpm.d/site2.conf",
+            "protection": "none",
+            "render_sha256": "8f3644c3c81f7322adb9d4eaf96182b134d479954bdddeebf02aea1282bffb84",
+            "state": "managed_unchanged"
+          }
+        ],
+        "include_dir": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+        "kind": "nginx_vhost",
+        "ledger": {
+          "backup_path": "/etc/nginx/sites-available/set12-a.test.conf.celikpanel-backup-20261011T051744Z",
+          "observed_at": "2026-10-11T05:18:16Z",
+          "written_at": "2026-10-11T05:16:03Z",
+          "written_release": "v0.1.0-alpha.81 9e223f175d96"
+        },
+        "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-a.test",
+        "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;",
+        "overall_kind": "nginx_vhost",
+        "overall_state": "unwritable",
+        "path": "/etc/nginx/sites-available/set12-a.test.conf",
+        "protection": "immutable",
+        "reason": "write_refused",
+        "render_sha256": "872fe38bc22fdd3ed84e57310827eff28352e5af5f8f633178ca71aacb16b109",
+        "state": "unwritable",
+        "system_error": "EPERM"
+      },
+      "label": "p page after the start (locked): GET site-config",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains/2/site-config"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T05:18:16Z",
+      "json": {
+        "actions": [
+          "apply"
+        ],
+        "challenge_file": "unchanged",
+        "diff": "--- /etc/nginx/sites-available/set12-a.test.conf (on this server)\n+++ CelikPanel's text\n@@ -1,4 +1,3 @@\n-# set10 lab preparation: an older CelikPanel text of this site (a line the current render does not have)\n # Nginx vhost for set12-a.test\n # Written by CelikPanel. Put your own additions in /etc/nginx/celikpanel-sites.d/set12-a.test/*.conf;\n # CelikPanel never writes there. If you change this file, CelikPanel keeps\n",
+        "domain": "set12-a.test",
+        "domain_id": 2,
+        "enabled": "link",
+        "file_sha256": "e28c15138c1605f567e502e2a2a1a41893dd7aa39db41d69d667d7ebb9391ad3",
+        "files": [
+          {
+            "actions": [
+              "apply"
+            ],
+            "challenge_file": "unchanged",
+            "diff": "--- /etc/nginx/sites-available/set12-a.test.conf (on this server)\n+++ CelikPanel's text\n@@ -1,4 +1,3 @@\n-# set10 lab preparation: an older CelikPanel text of this site (a line the current render does not have)\n # Nginx vhost for set12-a.test\n # Written by CelikPanel. Put your own additions in /etc/nginx/celikpanel-sites.d/set12-a.test/*.conf;\n # CelikPanel never writes there. If you change this file, CelikPanel keeps\n",
+            "domain": "set12-a.test",
+            "domain_id": 2,
+            "enabled": "link",
+            "file_sha256": "e28c15138c1605f567e502e2a2a1a41893dd7aa39db41d69d667d7ebb9391ad3",
+            "include_dir": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+            "kind": "nginx_vhost",
+            "ledger": {
+              "backup_path": "/etc/nginx/sites-available/set12-a.test.conf.celikpanel-backup-20261011T051744Z",
+              "observed_at": "2026-10-11T05:18:17Z",
+              "written_at": "2026-10-11T05:16:03Z",
+              "written_release": "v0.1.0-alpha.81 9e223f175d96"
+            },
+            "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-a.test",
+            "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;",
+            "path": "/etc/nginx/sites-available/set12-a.test.conf",
+            "protection": "none",
+            "reason": "protection_removed",
+            "render_sha256": "872fe38bc22fdd3ed84e57310827eff28352e5af5f8f633178ca71aacb16b109",
+            "state": "managed_unchanged"
+          },
+          {
+            "actions": [],
+            "decision": {
+              "current": false,
+              "decided_at": "2026-10-11T05:16:16Z",
+              "kind": "take_celikpanel"
+            },
+            "domain": "set12-a.test",
+            "domain_id": 2,
+            "file_sha256": "6f8b1cbea6de1c30f89378b11fff05feef7ecb86fc93c43a1a57906ab5f78a67",
+            "kind": "php_pool",
+            "ledger": {
+              "backup_path": "/etc/php/php-fpm.d/site2.conf.celikpanel-backup-20261011T051801Z",
+              "observed_at": "2026-10-11T05:18:16Z",
+              "written_at": "2026-10-11T05:16:16Z",
+              "written_release": "v0.1.0-alpha.81 9e223f175d96"
+            },
+            "path": "/etc/php/php-fpm.d/site2.conf",
+            "protection": "none",
+            "render_sha256": "8f3644c3c81f7322adb9d4eaf96182b134d479954bdddeebf02aea1282bffb84",
+            "state": "managed_unchanged"
+          }
+        ],
+        "include_dir": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+        "kind": "nginx_vhost",
+        "ledger": {
+          "backup_path": "/etc/nginx/sites-available/set12-a.test.conf.celikpanel-backup-20261011T051744Z",
+          "observed_at": "2026-10-11T05:18:17Z",
+          "written_at": "2026-10-11T05:16:03Z",
+          "written_release": "v0.1.0-alpha.81 9e223f175d96"
+        },
+        "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-a.test",
+        "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;",
+        "overall_kind": "nginx_vhost",
+        "overall_state": "managed_unchanged",
+        "path": "/etc/nginx/sites-available/set12-a.test.conf",
+        "protection": "none",
+        "reason": "protection_removed",
+        "render_sha256": "872fe38bc22fdd3ed84e57310827eff28352e5af5f8f633178ca71aacb16b109",
+        "state": "managed_unchanged"
+      },
+      "label": "p check again after the unlock: GET site-config",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains/2/site-config"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T05:18:16Z",
+      "json": [
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T05:16:05Z",
+          "disk_usage": 0,
+          "domain_name": "set12-b.test",
+          "id": 3,
+          "php_version": "8.5",
+          "project_type": "php",
+          "site_config": {
+            "state": "managed_unchanged"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        },
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T05:16:03Z",
+          "disk_usage": 0,
+          "domain_name": "set12-a.test",
+          "id": 2,
+          "php_version": "8.5",
+          "project_type": "php",
+          "site_config": {
+            "state": "managed_unchanged"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        },
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T05:15:59Z",
+          "disk_usage": 0,
+          "domain_name": "set1-owner.test",
+          "id": 1,
+          "php_version": "",
+          "project_type": "static",
+          "site_config": {
+            "state": "managed_unchanged"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        }
+      ],
+      "label": "p after the unlock: GET /api/v1/domains (Domains list)",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T05:18:17Z",
+      "json": {
+        "actions": [],
+        "challenge_file": "unchanged",
+        "domain": "set12-a.test",
+        "domain_id": 2,
+        "enabled": "link",
+        "file_sha256": "152664e685a190f13064589fbeac11aaa5d2f7f9690f41359f2da85a5a6ee2d2",
+        "include_dir": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+        "kind": "nginx_vhost",
+        "ledger": {
+          "backup_path": "/etc/nginx/sites-available/set12-a.test.conf.celikpanel-backup-20261011T051744Z",
+          "observed_at": "2026-10-11T05:18:18Z",
+          "written_at": "2026-10-11T05:18:18Z",
+          "written_release": "v0.1.0-alpha.81 9e223f175d96"
+        },
+        "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-a.test",
+        "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;",
+        "outcome": "written",
+        "path": "/etc/nginx/sites-available/set12-a.test.conf",
+        "render_sha256": "872fe38bc22fdd3ed84e57310827eff28352e5af5f8f633178ca71aacb16b109",
+        "state": "managed_unchanged"
+      },
+      "label": "p apply (Write CelikPanel's text now)",
+      "request": {
+        "body": {
+          "file_sha256": "e28c15138c1605f567e502e2a2a1a41893dd7aa39db41d69d667d7ebb9391ad3",
+          "render_sha256": "872fe38bc22fdd3ed84e57310827eff28352e5af5f8f633178ca71aacb16b109"
+        },
+        "method": "POST",
+        "path": "/api/v1/domains/2/site-config/apply",
+        "x_celikpanel_request_id": "d80681afae9e3049618cab1add0f1c8b"
+      },
+      "seconds": 0.11,
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T05:18:21Z",
+      "json": {
+        "actions": [],
+        "challenge_file": "unchanged",
+        "domain": "set12-a.test",
+        "domain_id": 2,
+        "enabled": "link",
+        "file_sha256": "152664e685a190f13064589fbeac11aaa5d2f7f9690f41359f2da85a5a6ee2d2",
+        "files": [
+          {
+            "actions": [],
+            "challenge_file": "unchanged",
+            "domain": "set12-a.test",
+            "domain_id": 2,
+            "enabled": "link",
+            "file_sha256": "152664e685a190f13064589fbeac11aaa5d2f7f9690f41359f2da85a5a6ee2d2",
+            "include_dir": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+            "kind": "nginx_vhost",
+            "ledger": {
+              "backup_path": "/etc/nginx/sites-available/set12-a.test.conf.celikpanel-backup-20261011T051744Z",
+              "observed_at": "2026-10-11T05:18:18Z",
+              "written_at": "2026-10-11T05:18:18Z",
+              "written_release": "v0.1.0-alpha.81 9e223f175d96"
+            },
+            "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-a.test",
+            "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;",
+            "path": "/etc/nginx/sites-available/set12-a.test.conf",
+            "protection": "none",
+            "render_sha256": "872fe38bc22fdd3ed84e57310827eff28352e5af5f8f633178ca71aacb16b109",
+            "state": "managed_unchanged"
+          },
+          {
+            "actions": [],
+            "decision": {
+              "current": false,
+              "decided_at": "2026-10-11T05:16:16Z",
+              "kind": "take_celikpanel"
+            },
+            "domain": "set12-a.test",
+            "domain_id": 2,
+            "file_sha256": "6f8b1cbea6de1c30f89378b11fff05feef7ecb86fc93c43a1a57906ab5f78a67",
+            "kind": "php_pool",
+            "ledger": {
+              "backup_path": "/etc/php/php-fpm.d/site2.conf.celikpanel-backup-20261011T051801Z",
+              "observed_at": "2026-10-11T05:18:16Z",
+              "written_at": "2026-10-11T05:16:16Z",
+              "written_release": "v0.1.0-alpha.81 9e223f175d96"
+            },
+            "path": "/etc/php/php-fpm.d/site2.conf",
+            "protection": "none",
+            "render_sha256": "8f3644c3c81f7322adb9d4eaf96182b134d479954bdddeebf02aea1282bffb84",
+            "state": "managed_unchanged"
+          }
+        ],
+        "include_dir": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+        "kind": "nginx_vhost",
+        "ledger": {
+          "backup_path": "/etc/nginx/sites-available/set12-a.test.conf.celikpanel-backup-20261011T051744Z",
+          "observed_at": "2026-10-11T05:18:18Z",
+          "written_at": "2026-10-11T05:18:18Z",
+          "written_release": "v0.1.0-alpha.81 9e223f175d96"
+        },
+        "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-a.test",
+        "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;",
+        "overall_kind": "nginx_vhost",
+        "overall_state": "managed_unchanged",
+        "path": "/etc/nginx/sites-available/set12-a.test.conf",
+        "protection": "none",
+        "render_sha256": "872fe38bc22fdd3ed84e57310827eff28352e5af5f8f633178ca71aacb16b109",
+        "state": "managed_unchanged"
+      },
+      "label": "p page after apply: GET site-config",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains/2/site-config"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T05:18:21Z",
+      "json": [
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T05:16:05Z",
+          "disk_usage": 0,
+          "domain_name": "set12-b.test",
+          "id": 3,
+          "php_version": "8.5",
+          "project_type": "php",
+          "site_config": {
+            "state": "managed_unchanged"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        },
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T05:16:03Z",
+          "disk_usage": 0,
+          "domain_name": "set12-a.test",
+          "id": 2,
+          "php_version": "8.5",
+          "project_type": "php",
+          "site_config": {
+            "state": "managed_unchanged"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        },
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T05:15:59Z",
+          "disk_usage": 0,
+          "domain_name": "set1-owner.test",
+          "id": 1,
+          "php_version": "",
+          "project_type": "static",
+          "site_config": {
+            "state": "managed_unchanged"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        }
+      ],
+      "label": "p after apply: GET /api/v1/domains (Domains list)",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T05:18:22Z",
+      "json": {
+        "actions": [
+          "keep",
+          "take",
+          "merge"
+        ],
+        "challenge_file": "unchanged",
+        "diff": "--- /etc/nginx/sites-available/set12-a.test.conf (on this server)\n+++ CelikPanel's text\n@@ -44,9 +44,4 @@\n \n     # Your additions for this site (server context) / Bu site için eklemeleriniz\n     include /etc/nginx/celikpanel-sites.d/set12-a.test/*.conf;\n-\n-    # set10: added by the server owner by hand\n-    location /owner-extra/ {\n-        return 200 \"owner\";\n-    }\n }\n",
+        "domain": "set12-a.test",
+        "domain_id": 2,
+        "enabled": "link",
+        "file_sha256": "528fbe25a6815d7909f85b91b862a0ff2701666eeec6dcd777503ae70f353ba8",
+        "files": [
+          {
+            "actions": [
+              "keep",
+              "take",
+              "merge"
+            ],
+            "challenge_file": "unchanged",
+            "diff": "--- /etc/nginx/sites-available/set12-a.test.conf (on this server)\n+++ CelikPanel's text\n@@ -44,9 +44,4 @@\n \n     # Your additions for this site (server context) / Bu site için eklemeleriniz\n     include /etc/nginx/celikpanel-sites.d/set12-a.test/*.conf;\n-\n-    # set10: added by the server owner by hand\n-    location /owner-extra/ {\n-        return 200 \"owner\";\n-    }\n }\n",
+            "domain": "set12-a.test",
+            "domain_id": 2,
+            "enabled": "link",
+            "file_sha256": "528fbe25a6815d7909f85b91b862a0ff2701666eeec6dcd777503ae70f353ba8",
+            "include_dir": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+            "kind": "nginx_vhost",
+            "ledger": {
+              "backup_path": "/etc/nginx/sites-available/set12-a.test.conf.celikpanel-backup-20261011T051744Z",
+              "observed_at": "2026-10-11T05:18:18Z",
+              "written_at": "2026-10-11T05:18:18Z",
+              "written_release": "v0.1.0-alpha.81 9e223f175d96"
+            },
+            "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-a.test",
+            "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;",
+            "path": "/etc/nginx/sites-available/set12-a.test.conf",
+            "protection": "none",
+            "render_sha256": "872fe38bc22fdd3ed84e57310827eff28352e5af5f8f633178ca71aacb16b109",
+            "state": "owner_edited"
+          },
+          {
+            "actions": [],
+            "decision": {
+              "current": false,
+              "decided_at": "2026-10-11T05:16:16Z",
+              "kind": "take_celikpanel"
+            },
+            "domain": "set12-a.test",
+            "domain_id": 2,
+            "file_sha256": "6f8b1cbea6de1c30f89378b11fff05feef7ecb86fc93c43a1a57906ab5f78a67",
+            "kind": "php_pool",
+            "ledger": {
+              "backup_path": "/etc/php/php-fpm.d/site2.conf.celikpanel-backup-20261011T051801Z",
+              "observed_at": "2026-10-11T05:18:16Z",
+              "written_at": "2026-10-11T05:16:16Z",
+              "written_release": "v0.1.0-alpha.81 9e223f175d96"
+            },
+            "path": "/etc/php/php-fpm.d/site2.conf",
+            "protection": "none",
+            "render_sha256": "8f3644c3c81f7322adb9d4eaf96182b134d479954bdddeebf02aea1282bffb84",
+            "state": "managed_unchanged"
+          }
+        ],
+        "include_dir": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+        "kind": "nginx_vhost",
+        "ledger": {
+          "backup_path": "/etc/nginx/sites-available/set12-a.test.conf.celikpanel-backup-20261011T051744Z",
+          "observed_at": "2026-10-11T05:18:18Z",
+          "written_at": "2026-10-11T05:18:18Z",
+          "written_release": "v0.1.0-alpha.81 9e223f175d96"
+        },
+        "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-a.test",
+        "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;",
+        "overall_kind": "nginx_vhost",
+        "overall_state": "owner_edited",
+        "path": "/etc/nginx/sites-available/set12-a.test.conf",
+        "protection": "none",
+        "render_sha256": "872fe38bc22fdd3ed84e57310827eff28352e5af5f8f633178ca71aacb16b109",
+        "state": "owner_edited"
+      },
+      "label": "b4 shown (owner_edited): GET site-config",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains/2/site-config"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T05:18:23Z",
+      "json": {
+        "code": "SITE_CONFIG_UNWRITABLE",
+        "error": "CelikPanel could not read or replace the site's nginx configuration file (for example, it is a link or it is locked against changes), so it kept the file as it is and did not apply this change. The server administrator checks the file on the server; the reason is shown in the domain's Configuration file section.",
+        "reason": "write_refused"
+      },
+      "label": "b4 take while the file is locked",
+      "request": {
+        "body": {
+          "file_sha256": "528fbe25a6815d7909f85b91b862a0ff2701666eeec6dcd777503ae70f353ba8",
+          "render_sha256": "872fe38bc22fdd3ed84e57310827eff28352e5af5f8f633178ca71aacb16b109"
+        },
+        "method": "POST",
+        "path": "/api/v1/domains/2/site-config/take",
+        "x_celikpanel_request_id": "89a085a8c9ea02a8e5ae18aae849cf0a"
+      },
+      "seconds": 0.03,
+      "status": 409,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T05:18:26Z",
+      "json": {
+        "actions": [
+          "keep",
+          "take",
+          "merge",
+          "recheck"
+        ],
+        "challenge_file": "unchanged",
+        "diff": "--- /etc/nginx/sites-available/set12-a.test.conf (on this server)\n+++ CelikPanel's text\n@@ -44,9 +44,4 @@\n \n     # Your additions for this site (server context) / Bu site için eklemeleriniz\n     include /etc/nginx/celikpanel-sites.d/set12-a.test/*.conf;\n-\n-    # set10: added by the server owner by hand\n-    location /owner-extra/ {\n-        return 200 \"owner\";\n-    }\n }\n",
+        "domain": "set12-a.test",
+        "domain_id": 2,
+        "enabled": "link",
+        "file_sha256": "528fbe25a6815d7909f85b91b862a0ff2701666eeec6dcd777503ae70f353ba8",
+        "file_state": "owner_edited",
+        "files": [
+          {
+            "actions": [
+              "keep",
+              "take",
+              "merge",
+              "recheck"
+            ],
+            "challenge_file": "unchanged",
+            "diff": "--- /etc/nginx/sites-available/set12-a.test.conf (on this server)\n+++ CelikPanel's text\n@@ -44,9 +44,4 @@\n \n     # Your additions for this site (server context) / Bu site için eklemeleriniz\n     include /etc/nginx/celikpanel-sites.d/set12-a.test/*.conf;\n-\n-    # set10: added by the server owner by hand\n-    location /owner-extra/ {\n-        return 200 \"owner\";\n-    }\n }\n",
+            "domain": "set12-a.test",
+            "domain_id": 2,
+            "enabled": "link",
+            "file_sha256": "528fbe25a6815d7909f85b91b862a0ff2701666eeec6dcd777503ae70f353ba8",
+            "file_state": "owner_edited",
+            "include_dir": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+            "kind": "nginx_vhost",
+            "ledger": {
+              "backup_path": "/etc/nginx/sites-available/set12-a.test.conf.celikpanel-backup-20261011T051744Z",
+              "observed_at": "2026-10-11T05:18:26Z",
+              "written_at": "2026-10-11T05:18:18Z",
+              "written_release": "v0.1.0-alpha.81 9e223f175d96"
+            },
+            "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-a.test",
+            "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;",
+            "path": "/etc/nginx/sites-available/set12-a.test.conf",
+            "protection": "immutable",
+            "reason": "write_refused",
+            "render_sha256": "872fe38bc22fdd3ed84e57310827eff28352e5af5f8f633178ca71aacb16b109",
+            "state": "unwritable",
+            "system_error": "EPERM"
+          },
+          {
+            "actions": [],
+            "decision": {
+              "current": false,
+              "decided_at": "2026-10-11T05:16:16Z",
+              "kind": "take_celikpanel"
+            },
+            "domain": "set12-a.test",
+            "domain_id": 2,
+            "file_sha256": "6f8b1cbea6de1c30f89378b11fff05feef7ecb86fc93c43a1a57906ab5f78a67",
+            "kind": "php_pool",
+            "ledger": {
+              "backup_path": "/etc/php/php-fpm.d/site2.conf.celikpanel-backup-20261011T051801Z",
+              "observed_at": "2026-10-11T05:18:16Z",
+              "written_at": "2026-10-11T05:16:16Z",
+              "written_release": "v0.1.0-alpha.81 9e223f175d96"
+            },
+            "path": "/etc/php/php-fpm.d/site2.conf",
+            "protection": "none",
+            "render_sha256": "8f3644c3c81f7322adb9d4eaf96182b134d479954bdddeebf02aea1282bffb84",
+            "state": "managed_unchanged"
+          }
+        ],
+        "include_dir": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+        "kind": "nginx_vhost",
+        "ledger": {
+          "backup_path": "/etc/nginx/sites-available/set12-a.test.conf.celikpanel-backup-20261011T051744Z",
+          "observed_at": "2026-10-11T05:18:26Z",
+          "written_at": "2026-10-11T05:18:18Z",
+          "written_release": "v0.1.0-alpha.81 9e223f175d96"
+        },
+        "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-a.test",
+        "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;",
+        "overall_kind": "nginx_vhost",
+        "overall_state": "unwritable",
+        "path": "/etc/nginx/sites-available/set12-a.test.conf",
+        "protection": "immutable",
+        "reason": "write_refused",
+        "render_sha256": "872fe38bc22fdd3ed84e57310827eff28352e5af5f8f633178ca71aacb16b109",
+        "state": "unwritable",
+        "system_error": "EPERM"
+      },
+      "label": "b4 page after the refused take: GET site-config",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains/2/site-config"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T05:18:26Z",
+      "json": [
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T05:16:05Z",
+          "disk_usage": 0,
+          "domain_name": "set12-b.test",
+          "id": 3,
+          "php_version": "8.5",
+          "project_type": "php",
+          "site_config": {
+            "state": "managed_unchanged"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        },
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T05:16:03Z",
+          "disk_usage": 0,
+          "domain_name": "set12-a.test",
+          "id": 2,
+          "php_version": "8.5",
+          "project_type": "php",
+          "site_config": {
+            "state": "unwritable"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        },
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T05:15:59Z",
+          "disk_usage": 0,
+          "domain_name": "set1-owner.test",
+          "id": 1,
+          "php_version": "",
+          "project_type": "static",
+          "site_config": {
+            "state": "managed_unchanged"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        }
+      ],
+      "label": "b4 after the refused take: GET /api/v1/domains (Domains list)",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains"
+      },
+      "status": 200,
+      "text": null
+    }
+  ],
+  "cells": {
+    "B4": {
+      "detail": null,
+      "expectations": [
+        {
+          "expectation": "take answers 409 SITE_CONFIG_UNWRITABLE, reason write_refused",
+          "held": true,
+          "measured": {
+            "at": "2026-10-11T05:18:23Z",
+            "json": {
+              "code": "SITE_CONFIG_UNWRITABLE",
+              "error": "CelikPanel could not read or replace the site's nginx configuration file (for example, it is a link or it is locked against changes), so it kept the file as it is and did not apply this change. The server administrator checks the file on the server; the reason is shown in the domain's Configuration file section.",
+              "reason": "write_refused"
+            },
+            "label": "b4 take while the file is locked",
+            "request": {
+              "body": {
+                "file_sha256": "528fbe25a6815d7909f85b91b862a0ff2701666eeec6dcd777503ae70f353ba8",
+                "render_sha256": "872fe38bc22fdd3ed84e57310827eff28352e5af5f8f633178ca71aacb16b109"
+              },
+              "method": "POST",
+              "path": "/api/v1/domains/2/site-config/take",
+              "x_celikpanel_request_id": "89a085a8c9ea02a8e5ae18aae849cf0a"
+            },
+            "seconds": 0.03,
+            "status": 409,
+            "text": null
+          }
+        },
+        {
+          "expectation": "no dated copy was left and the owner's file is untouched (sha256, inode)",
+          "held": true,
+          "measured": {
+            "backups": [
+              [
+                "/etc/nginx/sites-available/set12-a.test.conf.celikpanel-backup-20261011T051744Z"
+              ],
+              [
+                "/etc/nginx/sites-available/set12-a.test.conf.celikpanel-backup-20261011T051744Z"
+              ]
+            ],
+            "inode": [
+              92132,
+              92132
+            ]
+          }
+        },
+        {
+          "expectation": "the page shows both facts: unwritable with file_state owner_edited, EPERM, immutable",
+          "held": true,
+          "measured": {
+            "actions": [
+              "keep",
+              "take",
+              "merge",
+              "recheck"
+            ],
+            "file_state": "owner_edited",
+            "protection": "immutable",
+            "reason": "write_refused",
+            "state": "unwritable",
+            "system_error": "EPERM"
+          }
+        },
+        {
+          "expectation": "the Domains row agrees with the page (unwritable)",
+          "held": true,
+          "measured": {
+            "ledger": [
+              {
+                "backup_path": "/etc/nginx/sites-available/set12-a.test.conf.celikpanel-backup-20261011T051744Z",
+                "state": "unreadable",
+                "state_reason": "write_refused"
+              }
+            ],
+            "row": {
+              "state": "unwritable"
+            }
+          }
+        }
+      ],
+      "verdict": "PASS"
+    },
+    "P-apply": {
+      "detail": {
+        "journal": "steps/16-p-apply-and-b4/native/075-p-apply-journal.json"
+      },
+      "expectations": [
+        {
+          "expectation": "the Panel started with A locked: A kept, page unwritable (write_refused, immutable)",
+          "held": true,
+          "measured": {
+            "actions": [
+              "recheck"
+            ],
+            "protection": "immutable",
+            "reason": "write_refused",
+            "state": "unwritable",
+            "system_error": "EPERM"
+          }
+        },
+        {
+          "expectation": "after the unlock the read answers managed_unchanged, reason protection_removed, action apply",
+          "held": true,
+          "measured": {
+            "actions": [
+              "apply"
+            ],
+            "file_state": null,
+            "protection": "none",
+            "reason": "protection_removed",
+            "state": "managed_unchanged",
+            "system_error": null
+          }
+        },
+        {
+          "expectation": "the ledger row keeps the reason protection_removed",
+          "held": true,
+          "measured": [
+            {
+              "adopted_from": "",
+              "backup_path": "/etc/nginx/sites-available/set12-a.test.conf.celikpanel-backup-20261011T051744Z",
+              "body_sha256": "872fe38bc22fdd3ed84e57310827eff28352e5af5f8f633178ca71aacb16b109",
+              "decided_at": 0,
+              "decided_by": null,
+              "decision": "",
+              "decision_file_sha256": "",
+              "domain_id": 2,
+              "file_format": "celikpanel-render v2",
+              "file_sha256": "e28c15138c1605f567e502e2a2a1a41893dd7aa39db41d69d667d7ebb9391ad3",
+              "id": 2,
+              "kind": "nginx_vhost",
+              "observed_at": 1791695897,
+              "path": "/etc/nginx/sites-available/set12-a.test.conf",
+              "pending_path": "",
+              "pending_sha256": "",
+              "site_id": 2,
+              "state": "managed_unchanged",
+              "state_reason": "protection_removed",
+              "written_at": 1791695763,
+              "written_release": "v0.1.0-alpha.81 9e223f175d96"
+            }
+          ]
+        },
+        {
+          "expectation": "the Domains row agrees (managed_unchanged)",
+          "held": true,
+          "measured": {
+            "state": "managed_unchanged"
+          }
+        },
+        {
+          "expectation": "POST apply answers 200 (outcome written)",
+          "held": true,
+          "measured": {
+            "at": "2026-10-11T05:18:17Z",
+            "json": {
+              "actions": [],
+              "challenge_file": "unchanged",
+              "domain": "set12-a.test",
+              "domain_id": 2,
+              "enabled": "link",
+              "file_sha256": "152664e685a190f13064589fbeac11aaa5d2f7f9690f41359f2da85a5a6ee2d2",
+              "include_dir": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+              "kind": "nginx_vhost",
+              "ledger": {
+                "backup_path": "/etc/nginx/sites-available/set12-a.test.conf.celikpanel-backup-20261011T051744Z",
+                "observed_at": "2026-10-11T05:18:18Z",
+                "written_at": "2026-10-11T05:18:18Z",
+                "written_release": "v0.1.0-alpha.81 9e223f175d96"
+              },
+              "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-a.test",
+              "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;",
+              "outcome": "written",
+              "path": "/etc/nginx/sites-available/set12-a.test.conf",
+              "render_sha256": "872fe38bc22fdd3ed84e57310827eff28352e5af5f8f633178ca71aacb16b109",
+              "state": "managed_unchanged"
+            },
+            "label": "p apply (Write CelikPanel's text now)",
+            "request": {
+              "body": {
+                "file_sha256": "e28c15138c1605f567e502e2a2a1a41893dd7aa39db41d69d667d7ebb9391ad3",
+                "render_sha256": "872fe38bc22fdd3ed84e57310827eff28352e5af5f8f633178ca71aacb16b109"
+              },
+              "method": "POST",
+              "path": "/api/v1/domains/2/site-config/apply",
+              "x_celikpanel_request_id": "d80681afae9e3049618cab1add0f1c8b"
+            },
+            "seconds": 0.11,
+            "status": 200,
+            "text": null
+          }
+        },
+        {
+          "expectation": "A is written: new inode, CelikPanel's text, valid header; no dated copy",
+          "held": true,
+          "measured": {
+            "backups": [
+              1,
+              1
+            ],
+            "inode": [
+              92116,
+              92128
+            ],
+            "sha256_is_panel_text": true
+          }
+        },
+        {
+          "expectation": "nginx was reloaded after apply",
+          "held": true,
+          "measured": [
+            "2026-10-11T05:18:17.999831+00:00 dns-arch systemd[1]: Reloaded nginx web server."
+          ]
+        },
+        {
+          "expectation": "the page and the row then say managed_unchanged with no apply action",
+          "held": true,
+          "measured": {
+            "page": {
+              "actions": [],
+              "reason": null,
+              "state": "managed_unchanged"
+            },
+            "row": {
+              "state": "managed_unchanged"
+            }
+          }
+        }
+      ],
+      "verdict": "PASS"
+    }
+  },
+  "checks": [
+    {
+      "detail": {
+        "actions": [
+          "recheck"
+        ],
+        "protection": "immutable",
+        "reason": "write_refused",
+        "state": "unwritable",
+        "system_error": "EPERM"
+      },
+      "name": "P-apply: the Panel started with A locked: A kept, page unwritable (write_refused, immutable)",
+      "ok": true
+    },
+    {
+      "detail": {
+        "actions": [
+          "apply"
+        ],
+        "file_state": null,
+        "protection": "none",
+        "reason": "protection_removed",
+        "state": "managed_unchanged",
+        "system_error": null
+      },
+      "name": "P-apply: after the unlock the read answers managed_unchanged, reason protection_removed, action apply",
+      "ok": true
+    },
+    {
+      "detail": [
+        {
+          "adopted_from": "",
+          "backup_path": "/etc/nginx/sites-available/set12-a.test.conf.celikpanel-backup-20261011T051744Z",
+          "body_sha256": "872fe38bc22fdd3ed84e57310827eff28352e5af5f8f633178ca71aacb16b109",
+          "decided_at": 0,
+          "decided_by": null,
+          "decision": "",
+          "decision_file_sha256": "",
+          "domain_id": 2,
+          "file_format": "celikpanel-render v2",
+          "file_sha256": "e28c15138c1605f567e502e2a2a1a41893dd7aa39db41d69d667d7ebb9391ad3",
+          "id": 2,
+          "kind": "nginx_vhost",
+          "observed_at": 1791695897,
+          "path": "/etc/nginx/sites-available/set12-a.test.conf",
+          "pending_path": "",
+          "pending_sha256": "",
+          "site_id": 2,
+          "state": "managed_unchanged",
+          "state_reason": "protection_removed",
+          "written_at": 1791695763,
+          "written_release": "v0.1.0-alpha.81 9e223f175d96"
+        }
+      ],
+      "name": "P-apply: the ledger row keeps the reason protection_removed",
+      "ok": true
+    },
+    {
+      "detail": {
+        "state": "managed_unchanged"
+      },
+      "name": "P-apply: the Domains row agrees (managed_unchanged)",
+      "ok": true
+    },
+    {
+      "detail": {
+        "at": "2026-10-11T05:18:17Z",
+        "json": {
+          "actions": [],
+          "challenge_file": "unchanged",
+          "domain": "set12-a.test",
+          "domain_id": 2,
+          "enabled": "link",
+          "file_sha256": "152664e685a190f13064589fbeac11aaa5d2f7f9690f41359f2da85a5a6ee2d2",
+          "include_dir": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+          "kind": "nginx_vhost",
+          "ledger": {
+            "backup_path": "/etc/nginx/sites-available/set12-a.test.conf.celikpanel-backup-20261011T051744Z",
+            "observed_at": "2026-10-11T05:18:18Z",
+            "written_at": "2026-10-11T05:18:18Z",
+            "written_release": "v0.1.0-alpha.81 9e223f175d96"
+          },
+          "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-a.test",
+          "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;",
+          "outcome": "written",
+          "path": "/etc/nginx/sites-available/set12-a.test.conf",
+          "render_sha256": "872fe38bc22fdd3ed84e57310827eff28352e5af5f8f633178ca71aacb16b109",
+          "state": "managed_unchanged"
+        },
+        "label": "p apply (Write CelikPanel's text now)",
+        "request": {
+          "body": {
+            "file_sha256": "e28c15138c1605f567e502e2a2a1a41893dd7aa39db41d69d667d7ebb9391ad3",
+            "render_sha256": "872fe38bc22fdd3ed84e57310827eff28352e5af5f8f633178ca71aacb16b109"
+          },
+          "method": "POST",
+          "path": "/api/v1/domains/2/site-config/apply",
+          "x_celikpanel_request_id": "d80681afae9e3049618cab1add0f1c8b"
+        },
+        "seconds": 0.11,
+        "status": 200,
+        "text": null
+      },
+      "name": "P-apply: POST apply answers 200 (outcome written)",
+      "ok": true
+    },
+    {
+      "detail": {
+        "backups": [
+          1,
+          1
+        ],
+        "inode": [
+          92116,
+          92128
+        ],
+        "sha256_is_panel_text": true
+      },
+      "name": "P-apply: A is written: new inode, CelikPanel's text, valid header; no dated copy",
+      "ok": true
+    },
+    {
+      "detail": [
+        "2026-10-11T05:18:17.999831+00:00 dns-arch systemd[1]: Reloaded nginx web server."
+      ],
+      "name": "P-apply: nginx was reloaded after apply",
+      "ok": true
+    },
+    {
+      "detail": {
+        "page": {
+          "actions": [],
+          "reason": null,
+          "state": "managed_unchanged"
+        },
+        "row": {
+          "state": "managed_unchanged"
+        }
+      },
+      "name": "P-apply: the page and the row then say managed_unchanged with no apply action",
+      "ok": true
+    },
+    {
+      "detail": {
+        "at": "2026-10-11T05:18:23Z",
+        "json": {
+          "code": "SITE_CONFIG_UNWRITABLE",
+          "error": "CelikPanel could not read or replace the site's nginx configuration file (for example, it is a link or it is locked against changes), so it kept the file as it is and did not apply this change. The server administrator checks the file on the server; the reason is shown in the domain's Configuration file section.",
+          "reason": "write_refused"
+        },
+        "label": "b4 take while the file is locked",
+        "request": {
+          "body": {
+            "file_sha256": "528fbe25a6815d7909f85b91b862a0ff2701666eeec6dcd777503ae70f353ba8",
+            "render_sha256": "872fe38bc22fdd3ed84e57310827eff28352e5af5f8f633178ca71aacb16b109"
+          },
+          "method": "POST",
+          "path": "/api/v1/domains/2/site-config/take",
+          "x_celikpanel_request_id": "89a085a8c9ea02a8e5ae18aae849cf0a"
+        },
+        "seconds": 0.03,
+        "status": 409,
+        "text": null
+      },
+      "name": "B4: take answers 409 SITE_CONFIG_UNWRITABLE, reason write_refused",
+      "ok": true
+    },
+    {
+      "detail": {
+        "backups": [
+          [
+            "/etc/nginx/sites-available/set12-a.test.conf.celikpanel-backup-20261011T051744Z"
+          ],
+          [
+            "/etc/nginx/sites-available/set12-a.test.conf.celikpanel-backup-20261011T051744Z"
+          ]
+        ],
+        "inode": [
+          92132,
+          92132
+        ]
+      },
+      "name": "B4: no dated copy was left and the owner's file is untouched (sha256, inode)",
+      "ok": true
+    },
+    {
+      "detail": {
+        "actions": [
+          "keep",
+          "take",
+          "merge",
+          "recheck"
+        ],
+        "file_state": "owner_edited",
+        "protection": "immutable",
+        "reason": "write_refused",
+        "state": "unwritable",
+        "system_error": "EPERM"
+      },
+      "name": "B4: the page shows both facts: unwritable with file_state owner_edited, EPERM, immutable",
+      "ok": true
+    },
+    {
+      "detail": {
+        "ledger": [
+          {
+            "backup_path": "/etc/nginx/sites-available/set12-a.test.conf.celikpanel-backup-20261011T051744Z",
+            "state": "unreadable",
+            "state_reason": "write_refused"
+          }
+        ],
+        "row": {
+          "state": "unwritable"
+        }
+      },
+      "name": "B4: the Domains row agrees with the page (unwritable)",
+      "ok": true
+    }
+  ],
+  "finished_at": "2026-10-11T05:18:27Z",
+  "lab_preparation": [
+    {
+      "domain": "set12-a.test",
+      "file": "steps/16-p-apply-and-b4/native/065-p-lab-restore-set12-a.test.json",
+      "label": "p",
+      "sha256_matches": true
+    },
+    {
+      "domain": "set12-a.test",
+      "file": "steps/16-p-apply-and-b4/native/076-b4-lab-restore-set12-a.test.json",
+      "label": "b4",
+      "sha256_matches": true
+    },
+    {
+      "domain": "set12-a.test",
+      "file": "steps/16-p-apply-and-b4/native/083-b4-end-lab-restore-set12-a.test.json",
+      "label": "b4-end",
+      "sha256_matches": true
+    }
+  ],
+  "native_evidence": false,
+  "natives": [
+    {
+      "file": "native/065-p-lab-restore-set12-a.test.json",
+      "label": "p-lab-restore-set12-a.test",
+      "mode": "lab-restore",
+      "owner_action": false
+    },
+    {
+      "file": "native/066-owner-p-panel-stop.json",
+      "label": "owner-p-panel-stop",
+      "mode": "owner-panel",
+      "owner_action": true
+    },
+    {
+      "file": "native/067-p-lab-stale.json",
+      "label": "p-lab-stale",
+      "mode": "lab-stale-managed",
+      "owner_action": false
+    },
+    {
+      "file": "native/068-owner-p-chattr-plus-i.json",
+      "label": "owner-p-chattr-plus-i",
+      "mode": "owner-chattr",
+      "owner_action": true
+    },
+    {
+      "file": "native/069-owner-p-panel-start.json",
+      "label": "owner-p-panel-start",
+      "mode": "owner-panel",
+      "owner_action": true
+    },
+    {
+      "file": "native/070-owner-p-chattr-minus-i.json",
+      "label": "owner-p-chattr-minus-i",
+      "mode": "owner-chattr",
+      "owner_action": true
+    },
+    {
+      "file": "native/071-p-1-unlocked-read.json",
+      "label": "p-1-unlocked-read",
+      "mode": "read-site10",
+      "owner_action": false
+    },
+    {
+      "file": "native/072-p-1-ledger.json",
+      "label": "p-1-ledger",
+      "mode": "read-ledger",
+      "owner_action": false
+    },
+    {
+      "file": "native/073-guest-clock.json",
+      "label": "guest-clock",
+      "mode": "read-ledger",
+      "owner_action": false
+    },
+    {
+      "file": "native/074-p-2-after-apply-read.json",
+      "label": "p-2-after-apply-read",
+      "mode": "read-site10",
+      "owner_action": false
+    },
+    {
+      "file": "native/075-p-apply-journal.json",
+      "label": "p-apply-journal",
+      "mode": "read-window12",
+      "owner_action": false
+    },
+    {
+      "file": "native/076-b4-lab-restore-set12-a.test.json",
+      "label": "b4-lab-restore-set12-a.test",
+      "mode": "lab-restore",
+      "owner_action": false
+    },
+    {
+      "file": "native/077-owner-b4-edit.json",
+      "label": "owner-b4-edit",
+      "mode": "owner-vhost10",
+      "owner_action": true
+    },
+    {
+      "file": "native/078-owner-b4-chattr-plus-i.json",
+      "label": "owner-b4-chattr-plus-i",
+      "mode": "owner-chattr",
+      "owner_action": true
+    },
+    {
+      "file": "native/079-b4-0-stat.json",
+      "label": "b4-0-stat",
+      "mode": "read-stat",
+      "owner_action": false
+    },
+    {
+      "file": "native/080-b4-1-stat.json",
+      "label": "b4-1-stat",
+      "mode": "read-stat",
+      "owner_action": false
+    },
+    {
+      "file": "native/081-b4-1-ledger.json",
+      "label": "b4-1-ledger",
+      "mode": "read-ledger",
+      "owner_action": false
+    },
+    {
+      "file": "native/082-owner-b4-chattr-minus-i.json",
+      "label": "owner-b4-chattr-minus-i",
+      "mode": "owner-chattr",
+      "owner_action": true
+    },
+    {
+      "file": "native/083-b4-end-lab-restore-set12-a.test.json",
+      "label": "b4-end-lab-restore-set12-a.test",
+      "mode": "lab-restore",
+      "owner_action": false
+    }
+  ],
+  "node": "arch",
+  "notes": [
+    {
+      "detail": [],
+      "note": "P-apply: PASS"
+    },
+    {
+      "detail": [],
+      "note": "B4: PASS"
+    }
+  ],
+  "owner_actions": [
+    {
+      "at": "2026-10-11T05:18:08Z",
+      "label": "p-panel-stop",
+      "mode": "owner-panel"
+    },
+    {
+      "at": "2026-10-11T05:18:10Z",
+      "label": "p-chattr-plus-i",
+      "mode": "owner-chattr"
+    },
+    {
+      "at": "2026-10-11T05:18:11Z",
+      "label": "p-panel-start",
+      "mode": "owner-panel"
+    },
+    {
+      "at": "2026-10-11T05:18:16Z",
+      "label": "p-chattr-minus-i",
+      "mode": "owner-chattr"
+    },
+    {
+      "at": "2026-10-11T05:18:22Z",
+      "label": "b4-edit",
+      "mode": "owner-vhost10"
+    },
+    {
+      "at": "2026-10-11T05:18:23Z",
+      "label": "b4-chattr-plus-i",
+      "mode": "owner-chattr"
+    },
+    {
+      "at": "2026-10-11T05:18:27Z",
+      "label": "b4-chattr-minus-i",
+      "mode": "owner-chattr"
+    }
+  ],
+  "section": "P-apply-and-b4",
+  "started_at": "2026-10-11T05:18:07Z",
+  "substeps": {
+    "B4": "passed",
+    "P-apply": "passed"
+  },
+  "title": "apply after a protection was removed; take refused on a file locked after the read",
+  "verdict": "passed"
+}

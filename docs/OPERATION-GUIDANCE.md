@@ -980,7 +980,10 @@ only over or after a mounted page.
   flight the page shows `recovery.checkingTitle` with `recovery.checkingHelp`
   (EN "Confirming your session and panel readiness. This check does not start a
   server operation." · TR "Oturumunuz ve panelin hazır olma durumu doğrulanıyor.
-  Bu kontrol sunucuda bir işlem başlatmaz."). `recovery.availabilityTitle`
+  Bu kontrol sunucuda bir işlem başlatmaz."; **since 2026-10-10 a first read
+  that has not answered shows the quiet surface and then `recovery.waitingHelp`
+  instead, and this sentence only while the page reads again without a verified
+  session, see the entries of that date below**). `recovery.availabilityTitle`
   ("Panel readiness could not be checked" / "Panelin hazır olma durumu kontrol
   edilemedi") needs a read that failed. These pages read again by themselves
   (session and readiness every 10 s, the license result every 5 s) and now say
@@ -5335,3 +5338,1715 @@ component tests. The path is always given as `/etc/postfix/main.cf`; a server
 whose Postfix reads another directory is told the right commands and the usual
 path. There is no Turkish sentence: it is the Agent's reason, not a screen's.
 No screen was changed.
+
+### Observed by the owner on installed servers after the alpha.82 update (2026-10-10)
+
+Observations, not changes. After the owner updated both installed servers
+(one Ubuntu 24.04, one Debian 13) to v0.1.0-alpha.82 from the panel's own
+update screen on 2026-10-10, the owner reported the four things below from the
+owner's own screens. No assistant looked at those servers; nothing here is
+fixed in v0.1.0-alpha.82, and no text or screen was changed for this entry.
+Each is set against the rule it bears on: D-024 (the current reason, who must
+act, the next action and how work resumes come before long lists; verified
+failure, unmet prerequisite and unknown result are kept apart) and the
+known-state rule (a screen says what was verified; an unknown state does not
+replace a mounted page and is not drawn before the quiet time has passed).
+They are listed for the next release in the roadmap and in the resilience
+contract entry of the same date.
+
+1. **The licence page during the Panel's restart (owner-reported, Ubuntu
+   server).** The update was started from the v0.1.0-alpha.81 interface. During
+   the Panel's restart the browser showed the full-screen "License status could
+   not be checked" page with the "Update and recovery status" box, and then
+   recovered by itself. On the Debian server, started the same way, it did not
+   appear (a matter of timing). Bears on the known-state rule: the alpha.81
+   interface replaces the page on an unknown access state. The seventh native
+   record reproduced this screen in the lab with the alpha.81 interface for
+   about 78 s and did not see it with the alpha.82 interface, where a hold
+   layer kept the page mounted. Not changed in this release.
+2. **The update notice against the card (owner-reported, Debian server).** On
+   Settings, updates, after the update, the card showed v0.1.0-alpha.82 as
+   installed while a notice in the corner still said "The update is being
+   applied; the panel may be unavailable briefly" and that updates were
+   locked, about two minutes after the start (T+02:03). The two did not agree.
+   Bears on D-024 and the known-state rule: a terminal result and an in-progress
+   notice disagree, so the screen does not tell the owner whether the update
+   finished. Not changed in this release.
+3. **The first-load screen (owner-reported; measured in the seventh record).**
+   A cold full load of `/setup` shows for a moment a full-page "Checking panel
+   access" screen with "Checking..." and "Reload CelikPanel" before the page
+   renders. Bears on the known-state rule: nothing should be drawn until the
+   quiet time has passed or a read answered without confirming access. The
+   seventh record, cell 5, measured it on `/setup`, `/` and
+   `/settings?section=updates` in a real Chrome against a real Panel on the
+   published code: the `RecoveryAccess` gate painted it on every one of 18
+   loads before any session read answered, for about 80 to 100 ms on a fast
+   link and about 1.7 s throttled to 2 Mbit/s and 300 ms. `RecoveryAccess` is a
+   gate not yet converted. Not measured: Ubuntu, a headful browser, a phone
+   viewport, Turkish, the HTTP cache enabled. Not changed in this release.
+4. **The setup page's stopped/in-progress contradiction (owner-reported,
+   Debian server).** The setup wizard page says "This operation stopped ... A
+   required check needs attention" at the top while the last step reads
+   "Verify the prepared server - In progress"; the reason is under the
+   collapsed "Checks and how to continue" and "Technical details". Bears on
+   D-024: the reason and who acts come before the list of steps, and a stopped
+   operation is not also shown as in progress. The same in v0.1.0-alpha.81.
+   Not changed in this release.
+
+### The setup page's final check and the update notice say what is known (2026-10-10)
+
+Source state with component tests and a real Chrome against the loopback mock
+(`web/tools/browser-inspect`, scenarios `finalcheck` and `updatephase`). Nothing
+was observed on an installed server for this entry. Component-tested and mock
+browser; not measured on a real system. It answers the second and fourth
+observations of the owner's entry above; the first and third are another change.
+The setup flow, its routing and its prerequisites (D-021,
+[server setup plan](SERVER-SETUP-PLAN.md)) are unchanged: only what the page
+says and the typed state it reads changed.
+
+**What the owner's setup page showed, read from the code.** A run whose plan is
+reopened with "Edit plan" while its final check waits
+(`POST /api/v1/setup/revise`, `cmd/panel/server_setup_revise.go`) is recorded
+as `failed` with the code `server_setup_plan_revised`, keeping its phase
+`verification` and its last checks. The page reads the latest run when it
+holds no marker of its own, so it showed that record as a failure: the failure
+heading, the generic "A required check needs attention" (the code had no
+sentence) and the final step "In progress" (the step list called the final
+step in progress whenever the phase was `verification` and the run was not
+waiting). The check the run waited for was the mail identity check
+(`server_setup_readiness.go`), whose general help was folded under "Checks and
+how to continue". Which of the identity's conditions failed on the owner's
+server was not read; the owner reports the reverse DNS.
+
+**The rule the texts follow.** The reason, who acts and the next action stand
+above the step list and are not folded. A run stopped by reopening its plan is
+neither a failure nor in progress. A final check says whether it waits for the
+owner (a typed reason), for another requirement, or could not be read. A step
+that failed is "Failed"; a step a stopped run never reached is "Not started".
+The update notice and the update card say what the last read of the followed
+update established: being applied, installed and being verified, or not known.
+
+**The mail identity check's typed reason (`GET /api/v1/setup`,
+`GET /api/v1/setup/operation`).** A check in the state `action_required` with
+the id `mail_identity` carries, additively, `reason` and `vars`: the first
+unmet condition in the order the check reads them, and the values it names.
+`server_address_not_public` (`ip` when one was detected),
+`mail_name_differs` (`hostname`, `ip`, `current` when Postfix's own name is a
+plain DNS name), `reverse_dns_mismatch` (`hostname`, `ip`, `ptr` when a plain
+DNS name was found), `forward_dns_mismatch` (`hostname`, `ip`), and, after a
+second reading of this change, `mail_name_not_canonical` (`name` when the
+plan's mail host name is a plain DNS name) for a plan whose mail host name is
+not a full host name. A ready check carries neither, and neither does a check
+the Agent could not answer; a record written before them keeps its generic
+sentence. State and code are unchanged, except for the lookup that got no
+answer below.
+
+**A reverse DNS lookup that got no answer is unknown, not missing (second
+reading of this change, 2026-10-10).** Before, when both public resolvers
+gave no answer the Agent dropped the error (`cmd/agent/mail_health_rpc.go`,
+`mail_health_dns.go`): the PTR stayed empty, the Panel reported
+`reverse_dns_mismatch` and the page said that no PTR existed. The Agent's health
+answer now carries, additively, `reverse_dns_lookup` (`looked_up` or `failed`)
+and, when it failed, `reverse_dns_lookup_error` (`timeout`, `no_resolver`,
+`refused` or `other`; the resolver's own text is not passed on). A name the
+resolver says does not exist (NXDOMAIN) is an answer, both for the PTR and for
+the host name's address, so a verified absence stays a verified absence. When
+the lookup failed and the earlier conditions (canonical name, public address,
+mail name) hold, the check is `unknown` with code `mail_identity_unavailable`
+and the reason `reverse_dns_unknown` (`ip`, `error`); the page says the sentence
+below and the final step reads "Could not be checked", not "Waiting for you". An
+Agent from before this change sends no lookup field, so its empty PTR is still
+reported as `reverse_dns_mismatch`; the sentence for that reason no longer
+claims a result ("could be confirmed"). A failure of the forward lookup after a
+matching PTR is reported the same way, as the reverse DNS not being looked up;
+the two lookups are not told apart. An undetected address is worded as
+undetected (`addressMissing`).
+
+- `setup.check.mailIdentity.reverseDNS`
+  EN: "The reverse DNS (PTR) name of this server’s address {ip} is {ptr}; mail
+  servers expect {hostname}. You set this at your server provider, not in
+  CelikPanel: in the provider’s control panel, or by asking its support to set
+  the reverse DNS of {ip} to {hostname}."
+- `setup.check.mailIdentity.reverseDNSMissing`
+  EN: "No reverse DNS (PTR) name could be confirmed for {ip}; mail servers
+  expect {hostname}. You set this at your server provider, ..." (before: "No
+  reverse DNS (PTR) name was found for this server’s address {ip}; ...").
+- `setup.check.mailIdentity.reverseDNSUnknown` (new) EN: "The reverse DNS of
+  {ip} could not be looked up just now; this does not show whether it is set.
+  Check requirements again."
+- `setup.check.mailIdentity.forwardDNS` EN: "The reverse DNS of {ip} names
+  {hostname}, but {hostname} does not lead back to {ip}. At the place where you
+  manage the DNS of {hostname}, set its A record to {ip}, then check
+  requirements again."
+- `setup.check.mailIdentity.mailName` / `.mailNameUnread` EN: "The mail service
+  on this server uses the name {current}, not {hostname}. Review the plan,
+  correct the mail host name there, and start setup again." (the configuration
+  key "Postfix myhostname" is no longer named).
+- `setup.check.mailIdentity.address` / `.addressMissing` EN: "... so its mail
+  identity cannot be confirmed. Ask your server provider for a public IPv4
+  address that reaches this server, then check requirements again."
+- `setup.check.mailIdentity.notCanonical` (new) EN: "The mail host name {name}
+  in the plan is not a full host name (like mail.example.com). Review the plan,
+  correct it, and start setup again." (`.notCanonicalUnread` without the name).
+- `setup.check.notRead`
+  EN: "{check}: could not be checked just now, so whether it is met is not
+  known. This does not mean the requirement is unmet." (before: "... does not
+  mean anything is missing or stopped.")
+
+**A run stopped by reopening its plan.**
+
+- `setup.guide.revisedTitle` EN: "Setup stopped: its plan was reopened"
+- `setup.guide.revised` EN: "This setup run stopped because its plan was
+  reopened for editing. That is not a failure: nothing was undone, and the
+  components already installed stay as they are. Nothing continues by itself."
+- `setup.guide.revisedChecks` EN: "When it stopped, its final check was still
+  waiting for this:" followed by one line per open check.
+- `setup.guide.revisedNext` EN: "Next: review the plan and start it again. Its
+  final check then runs again." The button beside it is the existing "Review a
+  revised plan". "Technical details" keeps the server's line only.
+
+**A final check that waits.** `setup.guide.verificationWaiting` EN: "Every
+installation step has finished. Setup is waiting at its final check for this:",
+the open checks, their general help (no longer folded), then
+`setup.guide.verificationResume` EN: "Setup checks again by itself and finishes
+when every check passes. To check now, use Check requirements again." The
+runner reads the checks again every 20 seconds while the run waits.
+
+**The step's state word.** `setup.stepState.waitingOwner` "Waiting for you",
+`setup.verifyWaiting` "Waiting for requirements" (unchanged),
+`setup.stepState.unknown` "Could not be checked", `setup.stepState.failed`
+"Failed", `setup.stepState.stopped` "Stopped", `setup.stepState.notStarted`
+"Not started". When several checks are open, "Waiting for you" is used if any
+of them has a typed reason that asks the owner to act (`action_required`);
+every open check is still listed above the steps. The Turkish texts are in the
+Turkish edition; since the second reading, the new Turkish texts of the final
+check say "kontrol", as its button "Gereksinimleri tekrar kontrol et" does
+(`setup.stepState.unknown` TR "Kontrol edilemedi").
+
+**The update notice and the card (`GET /api/v1/panel/update/status`).** The
+Agent's record stays `running` after the new Panel has started, until the
+updater has exited and its final proof has passed
+(`cmd/agent/system_update_worker_linux.go`). The notice said
+`panelUpdate.running` for every running read and as its placeholder before any
+read (`SystemUpdateOperation.tsx`), while the card read the version the
+answering Panel runs (`/api/v1/panel/version`): the two disagreed in that
+window. The status answer now carries, additively, `phase: "verifying"` when
+the record is running and the Panel answering has the same version and commit
+as the update's target (the archive digest and sequence are not compared).
+
+- `panelUpdate.tracking.verifyingTitle` EN: "Update installed, being verified"
+- `panelUpdate.tracking.verifying` EN: "{version} is installed and this panel is
+  running it. The update is being verified and is not finished yet; this notice
+  follows it by itself. You do not need to do anything." (the last sentence
+  added at the second reading; likewise at the end of
+  `panelUpdate.card.verifying`, and "Do not start another update." at the end
+  of `panelUpdate.card.unknown`)
+- `panelUpdate.tracking.unknown` EN: "The state of this update could not be read
+  just now, so whether it is still running or has finished is not known. This
+  notice reads it again by itself; do not start another update." The reason of
+  the failed read (connection, restart) is the line under it.
+- `panelUpdate.tracking.reading` EN: "Reading the state of this update from the
+  server…" (before the first read; it replaces "being applied" there).
+- The card: `panelUpdate.card.installedVerifying` "installed, being verified"
+  beside the current version, and `panelUpdate.card.verifying`,
+  `.applying`, `.reading`, `.unknown` as a status line. A finished record
+  leaves no notice and no line (unchanged: the page reloads once).
+- `panelUpdate.lastRead` EN: "Last read". The update dialog's time was the
+  browser's local time labelled "UTC"; it is now the local time with its zone
+  in the interface language (for example "6:52:56 PM GMT+3").
+
+**Limits.** Component tests (`web/tests/setup-final-check-mounted.test.mjs`,
+`web/tests/update-tracking-mounted.test.mjs`,
+`cmd/panel/known_state_gates_test.go`) and a real Chrome against the loopback
+mock, desktop and phone, English and Turkish. Not measured: a real server
+whose reverse DNS is wrong (the typed reason has not been read from a real
+Agent), the owner's own record, a real update's verifying window, a phone
+layout in which the corner notice covers the card's line (it did in the mock;
+unchanged). The notice is drawn by the interface the tab loaded: an update
+started from a tab that still runs the previous release ignores `phase` and
+keeps the old sentence, so the new text first applies to an update started from
+a page loaded after this change. The reverse-DNS gap recorded here first is
+closed in the code by the second reading (a lookup that got no answer is
+reported as unknown, with its class): component-tested
+(`cmd/agent/mail_health_dns_test.go`, `cmd/panel/known_state_gates_test.go`,
+the mounted test) and mock browser; not measured on a real system, and not
+read from a real Agent whose resolvers fail.
+
+### First page load without an unanswered access page, and the hold layer names the cause it read (2026-10-10)
+
+Source state with component tests and a browser run against the loopback mock;
+no guest, no installed server. Component-tested and mock browser; not measured
+on a real system. It answers two findings of the seventh native
+record (`deploy/e2e/release-recovery/evidence/set7-20261010/`): cell 5 (the
+owner's third observation in the entry above) and the observation of cell 1
+(its words only; the alpha.81 interface that replaced the page is not
+changed). The mechanism
+and the contract items are in the
+[resilience contract](RESILIENCE-CONTRACT.md) entry of the same date and title.
+
+**What changes on screen.**
+
+- *A cold full page load, while the session, readiness or first license read
+  has not answered:* only the empty page background for the first 1.5 s (the
+  same quiet time as the hold layer): no title, no sentence, no button, no
+  spinner of its own. A read that answers in that time leaves nothing behind;
+  a read that answers without confirming access (no session, the Panel
+  starting, a read that failed) replaces the background at once, with the
+  page it always had.
+- *The same reads still unanswered after 1.5 s* (nothing has failed):
+  `recovery.checkingTitle`, EN "Checking panel access" · TR "Panel erişimi
+  kontrol ediliyor"; new `recovery.waitingHelp`, EN "The Panel has not
+  answered yet. CelikPanel opens as soon as it does; you do not need to do
+  anything." · TR "Panel henüz yanıt vermedi. Yanıt verir vermez CelikPanel
+  açılır; bir şey yapmanız gerekmiyor."; the check button (busy,
+  `recovery.checking`, while a read is in flight). "Reload CelikPanel" is no
+  longer offered at once; after half a minute (this entry first counted it from
+  the end of the quiet time, by the page that shows the wait; **superseded on
+  2026-10-10, see "After the ninth native record" below: the half minute is
+  counted from the page load for the page's first wait, and the sentence was
+  reworded**): new `recovery.waitingProlonged`, first worded EN "This has taken
+  longer than half a minute. CelikPanel keeps checking by itself; you can also
+  reload it." · TR "Bu, yarım dakikadan uzun sürdü. CelikPanel kendiliğinden
+  kontrol etmeyi sürdürür; dilerseniz yeniden de yükleyebilirsiniz." with
+  `app.reload`. Before, the page said `recovery.checkingHelp` ("Confirming your
+  session and panel readiness…") with "Checking…" and "Reload CelikPanel" from
+  its first frame.
+- *Session and readiness confirmed, the interface itself still loading after
+  1.5 s:* new `recovery.loadingTitle`, EN "Opening CelikPanel" · TR
+  "CelikPanel açılıyor"; `recovery.loadingHelp`, EN "Your session is confirmed
+  and the Panel is ready. The interface is still loading and opens by itself."
+  · TR "Oturumunuz doğrulandı ve Panel hazır. Arayüz hâlâ yükleniyor ve
+  kendiliğinden açılır." No check button (nothing is to be read); the reload
+  after half a minute, with its own sentence since the second reading:
+  `recovery.waitingProlongedLoading`, EN "CelikPanel is still loading; it opens
+  by itself. If this page stays like this, reload it." · TR "CelikPanel hâlâ
+  yükleniyor; kendiliğinden açılır. Bu sayfa böyle kalırsa yeniden yükleyin."
+  (before, the loading wait used `recovery.waitingProlonged`, which says that
+  CelikPanel keeps checking). Before, this case said "Checking panel access".
+- *A wait that was already explained* is not hidden again when the next gate
+  of the same load takes over (the interface arriving under the recovery
+  page, the license read after the session read).
+- *The hold layer over a mounted page names the cause the read showed.*
+  The license wording (`accessHold.licenseTitle`/`licenseHelp`, unchanged) is
+  used only when the Panel answered and its license result was what could not
+  be read, or a request was refused for want of a license decision (a success
+  status whose body cannot be parsed is counted the same, as the Panel's
+  answer: `LicenseOnboarding.tsx` sets the cause before it parses). No answer
+  from the Panel: `accessHold.availabilityTitle`, EN "The Panel did not answer
+  just now" · TR "Panel az önce yanıt vermedi" (unchanged). The Panel answering
+  that it is starting: `recovery.startingTitle` (unchanged). No answer while an
+  update started from this browser within the last 30 minutes has not recorded
+  its end (new; wording as corrected at the second reading):
+  `accessHold.updateTitle`, EN "The Panel is not answering; an update may be
+  restarting it" · TR "Panel yanıt vermiyor; bir güncelleme onu yeniden
+  başlatıyor olabilir"; `accessHold.updateHelp`, EN "An update was started from
+  this browser, and its end has not been seen here yet. The Panel restarts
+  while an update is applied, so it may not answer for a short while. Whether
+  the license is valid is not known until the Panel answers; nothing about it
+  has been decided." · TR "Bu tarayıcıdan bir güncelleme başlatıldı ve bitişi
+  burada henüz görülmedi. Güncelleme uygulanırken Panel yeniden başlar; bu
+  yüzden kısa bir süre yanıt vermeyebilir. Lisansın geçerli olup olmadığı Panel
+  yanıt verene kadar bilinmiyor; bu konuda hiçbir karar verilmedi." (the first
+  form said "during an update" and "This is not a license problem", which
+  claimed a cause and a license verdict the read had not established). The
+  resume line and the check action are unchanged. The browser's own update
+  record only chooses these words; it is never shown as a server result. It
+  names the update only within 30 minutes of the update's start (the record's
+  `created_at`; `savedUpdateUnfinished`, `UPDATE_CAUSE_WINDOW_MS`); an older
+  record, one without a start time, or one whose start lies in the future
+  leaves the generic "The Panel did not answer just now". Before the second
+  reading the record had no age limit, so a browser that never saw an update
+  end could name it for any later outage. The record's key
+  (`celikpanel.system-update-operation.v1`) is declared once, in
+  `lib/recoveryObservation.ts`, and imported by the update tracker.
+- *The full page that replaces nothing* (the first license read failed before
+  anything was mounted) uses the same decision: "Panel readiness could not be
+  checked" for no answer, "The panel is starting" for a starting Panel, "License
+  status could not be checked" only for an unreadable license result.
+
+**What did not change.** The known negatives (no session: sign-in; a known
+license verdict: activation; the Panel starting; the interface that failed to
+load) replace the screen as before, at once. The recovery page for a Panel
+that is down or starting, reached while the interface is still loading or after
+it failed to load, is shown as soon as its read has answered. Access decisions,
+their validity, the reads and their intervals are unchanged; no request was
+added.
+
+**Evidence.** Component tests: `web/tests/recovery-access-runtime.test.mjs`
+(the cold load, the waiting state, the known negatives, the handover between
+gates, the recovery route with the real session reads),
+`web/tests/access-hold-runtime.test.mjs` (the first license read; the hold
+cause for nine read outcomes with and without an unfinished update record,
+including a record older than 30 minutes and one without a start time; the
+window's limits). The second reading's screens were looked at in the same mock
+browser (scenarios `finalcheck`, `updatephase`, `waitcopy`, desktop, English
+and Turkish).
+A browser run against the loopback mock (`web/tools/browser-inspect`, scenarios
+`coldload` and `coldslow`, Chrome throttled to 2 Mbit/s and 300 ms, reads slowed
+by 300 ms): with the published code the gate "Checking panel access" was
+painted on `/setup`, `/` and `/settings?section=updates` for about 1.4 s (the
+console output of that run is not kept in the repository; the seventh record
+measured about 1.7 s on a real Panel under the same throttle); with
+this change none of the three loads drew a sentence before the application
+(background, the boot spinner, background, then the page); with the session
+read held 2.5 s the explained wait appeared after the quiet time and the page
+opened by itself. **Not measured:** a real Panel on a guest (set7's method),
+an installed server, the HTTP cache enabled, the hold layer during a real
+update. The boot spinner of the language loader (text-free) is unchanged.
+
+**After the ninth native record (2026-10-10).** The ninth native record
+(`deploy/e2e/release-recovery/evidence/set9-20261010/`, cell 2; real Chrome
+against a real Panel on a guest, interface built from `7c3a05809`) measured
+this entry on a real system for the first time. The cold load passes: the
+background, then after the quiet time the explained wait above, on all three
+routes in English and Turkish (session read held 2.5 s). With every session
+read held 35 s it found an older path that this entry had not removed: the
+session read's own 15 s limit (`web/src/auth/usePanelSession.ts`, the
+`AbortController` after 15000 ms) set the session to "could not be read", so at
+15.18 s the page said "Your session could not be checked" with "Check panel
+access" and "Reload CelikPanel"; the automatic re-read at 25.2 s showed
+`recovery.checkingHelp` ("Confirming your session and panel readiness…") with
+the reload; `recovery.waitingProlonged` never appeared. Corrected in the source:
+
+- *One sequence for an access read that has not answered,* on the page reached
+  through the application and through the recovery route: the background to
+  1.5 s; the explained wait with the busy check; at 15 s, still unknown, never
+  a failure: new `recovery.waitingLong`, EN "The Panel has not answered for a
+  while. CelikPanel keeps checking by itself; you can also check now." · TR
+  "Panel bir süredir yanıt vermiyor. CelikPanel kendiliğinden kontrol etmeyi
+  sürdürür; dilerseniz şimdi de kontrol edebilirsiniz.", with an enabled new
+  `recovery.checkNow`, EN "Check now" · TR "Şimdi kontrol et" (one more read;
+  pressed while the automatic re-read is in flight it shows "Checking…" until
+  that read ends and starts no second one; the automatic re-read itself is not
+  drawn as busy); at 30 s `recovery.waitingProlonged` and "Reload CelikPanel"
+  beside "Check now". `recovery.waitingProlonged` now reads EN "This has taken
+  longer than half a minute. You can also reload CelikPanel; if the Panel still
+  does not answer, the server administrator checks that the CelikPanel service
+  is running." · TR "Bu, yarım dakikadan uzun sürdü. Dilerseniz CelikPanel’i
+  yeniden de yükleyebilirsiniz; Panel yine yanıt vermezse sunucu yöneticisi
+  CelikPanel hizmetinin çalıştığını denetler." (second round; the sentence
+  above it already says that CelikPanel keeps checking).
+- *The 15 s and the 30 s are counted from the page load* (navigation start) for
+  the page's first wait, and from the first read after a sign-in for a later
+  one. Re-reads and the next gate of the same load never restart them
+  (`useAccessWaitStage` in `web/src/lib/quietRead.ts`). This replaces "counted
+  from the end of the quiet time, by the page that shows the wait" above; the
+  interface-loading wait keeps that count.
+- *A read that answers with a failure,* at any time, is the known negative at
+  once, and the page names what was read: new `recovery.failure.network`, EN
+  "The connection to the Panel failed before it answered (refused, closed or
+  unreachable). If this continues, the server administrator checks that the
+  CelikPanel service is running." · TR "Panel’e bağlantı, yanıt gelmeden
+  kurulamadı (reddedildi, kapandı ya da ulaşılamadı). Bu sürerse sunucu
+  yöneticisi CelikPanel hizmetinin çalıştığını denetler.";
+  `recovery.failure.status`, EN "The server answered with HTTP error {status}.
+  If this continues, the server administrator checks the CelikPanel service and
+  its log." · TR "Sunucu HTTP {status} hatasıyla yanıt verdi. Bu sürerse sunucu
+  yöneticisi CelikPanel hizmetini ve günlüğünü denetler." (both second round:
+  the network sentence no longer names only two causes, and the status is the
+  server's, which may be a proxy in front of the Panel); `recovery.failure.invalid`,
+  EN "The Panel answered, but this page could not read the answer. Reloading
+  CelikPanel loads the interface that matches the Panel." · TR "Panel yanıt
+  verdi, ancak bu sayfa yanıtı okuyamadı. CelikPanel’i yeniden yüklemek,
+  Panel’e uyan arayüzü yükler." Which one: a request that itself failed (a
+  `TypeError` from `fetch`: refused, closed, unreachable, or a certificate the
+  browser rejects) is `network`; an HTTP error status is `status` (`api.me`
+  throws `ApiResponseError`; `usePanelSession.ts:14-18`, `:55-58`); anything
+  else, a body that is not the expected JSON included, is `invalid`. `network`
+  covers every request that failed before an answer (the sentence now says
+  "refused, closed or unreachable"; a rejected certificate is one more such
+  cause). "Your session could not be checked" and "Panel readiness could not
+  be checked" remain only for such an answered failure (since the second
+  round also after an earlier answer, next item); `recovery.checkingHelp`
+  remains only while that page reads again without a verified session
+  (`RecoveryAccess.tsx:188`, `waiting`), and as the hold layer's fallback when
+  its wording has not loaded yet (`AccessHold.tsx:147`).
+- *A read that reaches its limit after an earlier answer (D-025 invariant 2;
+  second round, 2026-10-10; the open item of the first round).* Until now,
+  once any read had answered, a later read that reached its own 15 s limit
+  was drawn as the known negative ("Your session could not be checked" or
+  "Panel readiness could not be checked") with the cause of the earlier read.
+  Now a limit hit is always unknown: `usePanelSession` records that the latest
+  read reached its limit (`limitHit`, set only where a read's own timer aborted
+  it with its generation still current, cleared by any answer and by a
+  sign-in), `unanswered` is true for it whether or not an earlier read
+  answered, and both parents pass `checking` as before. The same wait sequence
+  applies, counted from when that read began (`beginAccessWaitAt` in
+  `web/src/lib/quietRead.ts`): "Check now" at once (the read began 15 s
+  earlier), the half-minute sentence and the reload 15 s later; re-reads
+  restart nothing; there is no blank quiet time over a page that was showing
+  an answer (`afterAnswer`). An earlier answered failure is named only below the
+  wait as what was last known: new `recovery.lastKnown`, EN "Last known, before
+  this wait: {cause}" · TR "Bu beklemeden önce bilinen son durum: {cause}",
+  with the failure's own sentence; never as the current verdict. An earlier
+  positive answer ("starting") names nothing. The next answer ends the wait
+  and is drawn at once. The hold over mounted pages is unchanged.
+- *What did not change:* the hold layer over mounted pages, the reads, their
+  limits and intervals; no request was added.
+
+Evidence: `web/tests/recovery-access-runtime.test.mjs` (the 15 s and 30 s
+stages, a re-read that restarts nothing and starts no second read, the answered
+failures with their cause, the cold load and the known negatives as before);
+the mock browser (`coldslow35`, `/settings?section=updates`, every session read
+held 35 s, unthrottled, English and Turkish, screenshots looked at): 1.6 s the
+explained wait with "Checking…"; 15.2 s and 25.2 s "has not answered for a
+while" with "Check now"; 31.0 s the same with the half-minute sentence and
+"Reload CelikPanel". Second round: the same file's test of a read that
+reaches its limit after an answer (the Panel starting; the session read
+answered 503), and the mock browser (`a83session`, `/` with the later reads
+held, desktop and phone, English and Turkish, screenshots looked at): at about
+4 s the answer ("The panel is starting" / "Your session could not be checked"
+with "The server answered with HTTP error 503…"); at 26.5 s, after the re-read
+of 10 s reached its limit, "Checking panel access", "has not answered for a
+while", "Check now" enabled, and for the failure "Last known, before this
+wait: The server answered with HTTP error 503…"; at 41 s the half-minute
+sentence and the reload. **The 15 s/30 s path, before and after an answer, is
+component-tested and mock browser; not measured on a real system.**
+
+*The recovery service worker: cause narrowed in the eleventh record (set11,
+cell E, 2026-10-11); the mechanism is inferred.* The cause is narrowed to the
+lab browser's on-disk Chrome profile at a long Windows path, not the product.
+In the signed-in context the worker's registration failed with "Failed to
+execute 'open' on 'CacheStorage': Unexpected internal error" (`installing →
+redundant`); a profile at a short path, on a different guest, registered it
+and showed the product's offline page ("The panel connection is unavailable")
+with the Panel stopped. That is not a controlled comparison: it was a
+different guest and browser process. That the path length (Windows'
+260-character limit) is the mechanism is inferred from the error, the path
+arithmetic and the short-path result; it is not read from a Chrome line naming
+the path, and the record gives no character counts. Since the commit of
+2026-10-11 the live browser tools create short profiles and refuse a path over
+120 characters (`web/tools/browser-inspect/profile-dir.mjs`). Not measured: a
+certificate the browser trusts without a pin; the long path on the other guest.
+What follows is the earlier observation, kept as it was written.
+
+*Observation (2026-10-10), not changed here.* With the Panel
+stopped, the ninth record (cell 4c) saw Chrome's own error page, because
+`navigator.serviceWorker.getRegistration('/')` found no registration; the
+seventh record saw no page controlled by it either. The interface registers
+`/recovery-worker.js` with scope `/` (`web/src/lib/recoveryShell.ts`, called at
+start-up in production and before an update is started) only in a secure
+context; the Panel serves the file from its web root (`cmd/panel/frontend.go`,
+404 when it is missing), and no `Service-Worker-Allowed` header is needed for
+that scope. Likely causes, none established: (1) Chrome refuses to register a
+service worker whose script is fetched over a connection with a certificate
+error, and the lab's self-signed certificate is accepted only by an SPKI pin,
+which may still count as one; (2) the registration or the worker's install
+failed and the reason was discarded (`recoveryShell.ts` catches every
+rejection silently); (3) the harness reads the registration in a fresh browser
+context per load, before a registration started on that load has finished. To
+settle it: in the lab browser, after a full load, call the registration
+explicitly and record the rejection's name and message, the registrations with
+their installing/waiting/active state, and the status and type of
+`/recovery-worker.js`; repeat with a certificate the browser trusts without a
+pin (a lab authority in the trust store). The ninth record's intake adds one
+fact that the record does not tie to any of the three causes (it neither
+explains nor excludes them): the three no-session loads of cell
+4a (a new browser context) *were* controlled by a service worker
+(`negative/loads.jsonl`, `where.sw_controlled: true`; for `/` and
+`/settings?section=updates` the document and `recoveryObservation-*.js` came
+from the worker, `sw: true`), while no page of the signed-in contexts was. Why
+the worker registered in one context and not in the other was not determined,
+and cell 4c was not repeated in a context that has one: the stopped-Panel
+behaviour with a registered worker stayed **not measured** until the eleventh
+record (above).
+
+### A site configuration file the owner changed is kept and named; the owner chooses (2026-10-10)
+
+Source state with component tests and a real Chrome against the loopback mock;
+no guest run, no installed server (D-031; D-022; D-024). The eighth native
+record (`deploy/e2e/release-recovery/evidence/set8-20261010/`) measured the
+published alpha.82 on Debian 13, Ubuntu 24.04 and Arch: an owner's edit to a
+site's nginx vhost was overwritten silently at the next Panel start, restart or
+General save; a vhost the owner removed was recreated; a locked file
+(`chattr +i`) broke the whole start batch and lost its enabled link; a save
+wrote no journal line; every start rewrote unchanged files and reloaded nginx.
+
+**What the owner sees now.** Before every render (start, settings, certificate,
+hosting type, PHP version, creation, import) the Agent classifies the file. Only
+CelikPanel's own unchanged text is replaced; a file the owner changed, replaced,
+removed or locked is kept exactly as it is, and the operation that wanted to
+change it says so instead of reporting success. The domain's page shows the
+state and the difference, and the owner chooses. Who acts: the server owner
+(an administrator); nothing continues by itself.
+
+**Where.** Domain page → Hosting → Configuration file (administrators only;
+`GET /api/v1/domains/{id}/site-config`). A line above the domain's tabs
+(`siteConfig.notice.*`, with "Open configuration file") and a badge in the
+Domains list point to it. The badge names the state: "Configuration file:
+your choice needed" (`siteConfig.list.badge.kept`; owner-edited, foreign,
+unknown origin), "Configuration file missing" (`.missing`), "Configuration file
+cannot be read" (`.unreadable`); a kept file the owner chose to keep wears none,
+unless a certificate waits on it. The line above the tabs honours "keep mine":
+for a file kept by choice it is a plain line, "This site’s nginx configuration
+file is kept as you chose; CelikPanel’s text is held beside it."
+(`siteConfig.notice.keptByChoice`), with the same link; a certificate waiting on
+the file outranks it ("A new certificate for this site is ready, but its nginx
+configuration file still uses the previous one." /
+"This site’s certificate cannot be requested or renewed until you choose what
+happens to its nginx configuration file."). Both are read from the last state
+the Panel recorded (a ledger read for an administrator; no Agent call), not
+from the file at that moment.
+
+**The states and their sentences** (keys in `web/src/i18n/screens/server`,
+EN; the Turkish edition carries the TR text):
+
+- Checking: `siteConfig.checking` "Reading this site’s configuration file…".
+  Could not check: `siteConfig.unknownRead` "The state of this site’s
+  configuration file could not be read just now. This does not mean anything is
+  wrong with the file, and nothing was changed. Try again." (Retry only reads.)
+- Known unknown (an Agent that does not report it): `siteConfig.unknownState.title`
+  "The state of this file is not known" — "This server’s CelikPanel helper is
+  older than the panel and cannot say whether this file was changed. Nothing was
+  changed. After the update has finished on this server, reload this page; it
+  then shows the file’s state."
+- CelikPanel's text: `siteConfig.managed.title` "CelikPanel’s text, unchanged" —
+  "This file is exactly what CelikPanel last wrote, so CelikPanel keeps it up to
+  date when you change this site’s settings." Adopted from an earlier release, by the form
+  it was in (`adopted_from` ends in ` (creation)` or not; the suffix itself is
+  not shown): "It is exactly the text {release} wrote, as it was when the site
+  was created, so CelikPanel took it over." / "It is exactly the text {release}
+  wrote, as it was after a panel start or a saved setting, so CelikPanel took it
+  over."
+- Edited / replaced: `siteConfig.ownerEdited.title` "Configuration edited
+  outside CelikPanel", `siteConfig.foreign.title` "Configuration replaced outside
+  CelikPanel" (the state names stay `owner_edited` and `foreign`) —
+  `siteConfig.kept.body` "This file is not the text CelikPanel last wrote, so
+  CelikPanel kept it exactly as it is. Changes you make to this site in
+  CelikPanel (settings, certificates, hosting type, PHP version) are not applied
+  to it until you choose below. nginx keeps serving the site with this file."
+- Unknown origin (a file from before this version that matches no earlier
+  CelikPanel text): `siteConfig.unknownOrigin.title` "Configuration not
+  recognised as CelikPanel’s" — "This file was there before this version of
+  CelikPanel and differs from every text an earlier CelikPanel release wrote for
+  this site, so it may hold your changes. CelikPanel kept it exactly as it is.
+  Changes you make to this site in CelikPanel are not applied to it until you
+  choose below. nginx keeps serving the site with this file."
+- Missing: `siteConfig.missing.title` "Configuration file missing" — "This
+  site’s nginx configuration file is not there. CelikPanel did not recreate it,
+  because removing it may have been your choice; without it, nginx cannot load
+  this site at its next restart or reload. Changes you make to this site in CelikPanel are not applied until
+  the file is there again." Action: "Recreate" — "CelikPanel writes its text for
+  this site and reloads nginx."
+- Unreadable: `siteConfig.unreadable.title` "The configuration
+  file cannot be read or replaced", with the reason (`symlink`, `not_regular`,
+  `permission`, `too_large`, `read_failed`) and the next step for that reason:
+  a link — "The server administrator replaces the link with an ordinary file,
+  or moves it away, then chooses Check again."; permission — "The server
+  administrator makes the file readable by root, then chooses Check again.";
+  any other — "The server administrator fixes what the server reported, then
+  chooses Check again." with "What the server reported: {detail}" when the
+  Agent sent a line; then "Changes you make to this site in CelikPanel are not
+  applied to it meanwhile." and the button "Check again" (`recheck`: it reads
+  this page's answer again and changes nothing).
+- Unwritable (tenth native record correction, 2026-10-11; component-tested; not
+  measured): a file CelikPanel read (its own unchanged text) but whose
+  replacement the server refused (set10 scenario g measured a `chattr +i` file
+  refused with EPERM on Debian 13, Ubuntu 24.04 and Arch, while the page
+  answered `managed_unchanged` with no reason and no action). The page, the
+  Domains row and the notice above the domain now agree: `unwritable`.
+  `siteConfig.unwritable.title` "CelikPanel cannot replace this file" — "The
+  last change for this site was not written: this server refused to replace the
+  file ({error}). CelikPanel kept the file and its link exactly as they are, and
+  nginx keeps serving the site with it." ({error} is the system error, for
+  example EPERM); then what refuses it, measured read-only now: "The file is
+  write-protected on this server (its immutable attribute is set)." /
+  append-only / "The directory that holds the file is write-protected on this
+  server." / "The file system that holds the file is mounted read-only." / "No
+  write protection is found on the file now."; then who decides and the next
+  step: "The server administrator decides: to let CelikPanel update the file,
+  remove the protection, for example with sudo chattr -i <path>; or keep it as
+  it is. CelikPanel does not change it." (`chattr -a` for append-only, the
+  directory for a protected directory; for a read-only file system "make that
+  file system writable again"; with no protection found: "CelikPanel writes its
+  text at the next panel start or the next change saved for this site; nothing
+  else is needed. If the file is protected again by then, this page says so.";
+  with nothing measured: the panel log line to read); then "Until then, changes
+  you make to this site in CelikPanel are not applied to the file. After
+  acting, choose Check again."; the button "Check again"; and "What CelikPanel
+  wanted to write: your file (−) and CelikPanel’s text (+)" with the
+  difference. Domains row badge `siteConfig.list.badge.unwritable`
+  "Configuration file cannot be replaced"; notice `siteConfig.notice.unwritable`
+  "This site’s nginx configuration file cannot be replaced on this server.
+  CelikPanel kept it as it is."
+- After "Check again" (2026-10-11; component-tested and mock browser; not
+  measured on a real system). The domain screen's read is the check and
+  records what it found in the ledger, so the Domains row agrees with the page.
+  Still protected (or not measurable): `unwritable` stays; only the time of
+  the check is stored. No protection measured on the same bytes: the file is
+  CelikPanel's own text again (`managed_unchanged`, ledger reason
+  `protection_removed`), and while its last change is held the page says
+  `siteConfig.held.title` "The file can be replaced again" — "No write
+  protection is found on this file now, and it is still CelikPanel’s own
+  earlier text. The last change for this site is not in it yet." — "CelikPanel
+  writes its text at the next panel start or the next change saved for this
+  site; nothing else is needed.", the button "Write CelikPanel’s text now"
+  ("Only this site’s file is written, then nginx is reloaded. If nginx refuses
+  the text, the file is put back as it is now."), and "What CelikPanel will
+  write: the file now (−) and CelikPanel’s text (+)". Done: "CelikPanel’s text
+  is in place and nginx was reloaded." The row wears no badge. If the bytes
+  changed meanwhile, the file is named as it is now (owner-edited, foreign,
+  …) and nothing is written.
+- Edited outside CelikPanel and not replaceable (2026-10-11; component-tested
+  and mock browser; not measured on a real system): a "take" on the owner's
+  file that the server refused. One order decides what the page, the Domains
+  row and its badge say when two facts hold for the same bytes: unreadable >
+  unwritable > missing > owner-edited / foreign / unknown origin > CelikPanel's
+  unchanged text; so all three say `unwritable`. The page names both facts:
+  `siteConfig.editedUnwritable.title` "Edited outside CelikPanel, and this
+  server refuses to replace it" — "This file is not the text CelikPanel last
+  wrote, so CelikPanel kept it as it is; nginx keeps serving the site with
+  it." — "Taking CelikPanel’s text was refused: this server does not let the
+  file be replaced ({error})."; the protection measured now; "The server
+  administrator decides: to take CelikPanel’s text, first remove the
+  protection, for example with sudo chattr -i <path>, then choose Check again;
+  or keep your file with Keep mine."; the resume line; Check again; the three
+  choices; and the difference. "Take CelikPanel’s" stays offered and is
+  answered `409 SITE_CONFIG_UNWRITABLE` before anything is written (no dated
+  copy) while a protection is measured. Once Check again measures none, the
+  page is the owner-edited page again with its three choices.
+
+**The three choices** (each a POST under the request identity of D-029; each
+bound to the digests the page showed):
+
+- "Take CelikPanel’s" — "Your file is first kept as a dated copy beside it, then
+  CelikPanel’s text replaces it and nginx is reloaded. If nginx refuses it, your
+  file is put back. The dated copy stays." Asked once in place: "Your file will be kept as
+  {path}.celikpanel-backup-<date and time>, then replaced by CelikPanel’s text,
+  and nginx will be reloaded." [Replace the file] [Cancel]. Done: "CelikPanel’s
+  text is in place and nginx was reloaded. Your file is kept as {backup}."
+- "Keep mine" — "Your file stays as it is, byte for byte. CelikPanel records your
+  choice and asks again only when the file changes." Afterwards: "You chose to
+  keep this file on {date}. CelikPanel does not change it; changes you make to
+  this site in CelikPanel are not applied to it. You can take CelikPanel’s text
+  at any time." The file's bytes are not touched, not even its first line:
+  rewriting the header would make the owner's text look like CelikPanel's
+  unchanged text, and the next render would replace it.
+- "Merge by hand" — "You edit the file on the server yourself; nothing is done
+  here." Opened: "CelikPanel’s text is in {pending}. Edit {path} on the server and
+  bring in what you need. To hand the file back to CelikPanel, copy {pending} over
+  {path}. Then check and reload nginx yourself, and reload this page."
+
+**The supported place for the owner's additions:** `siteConfig.include` "Put your
+own nginx directives for this site in a .conf file in {dir}. CelikPanel never
+writes there, and every change CelikPanel makes to this site keeps them." The
+directory is `/etc/nginx/celikpanel-sites.d/<domain>/` (created 0755 when the
+vhost is written; nothing in it is ever written, changed or removed). The
+tenth native record measured it created `root:celikpanel 0750` on all three
+platforms (the Agent's `UMask=0027`); since 2026-10-11 the mode is set to 0755
+explicitly after creation, for the directory and for a parent CelikPanel
+creates (component-tested; not measured). Owner root, group the Agent's
+(`celikpanel`); the group does not decide who reads it, because nginx's master
+process reads its configuration as root. A directory that is already there
+keeps the owner's mode. A new or recreated vhost is written `root:celikpanel
+0644` (measured in the tenth native record, cell e); a kept or taken file keeps
+the owner's mode, owner and group (measured, cells j and take). The
+vhost holds `include <dir>/*.conf;` in server context in every block except
+the validation-only block of mail names (`mail.<domain>`) and the plain-HTTP
+block that only redirects to HTTPS. A forwarding site's blocks, which redirect
+to the target address, carry it too. It is placed after the site's
+`location` blocks, so an owner file that repeats one of them (for example
+`location /`) would, by nginx's own rule, make `nginx -t` refuse (not measured
+with CelikPanel) and with it every render that writes a file.
+
+**CelikPanel's own include point (step 1b, 2026-10-10).** Every server block
+of CelikPanel's text, the validation-only block of mail names and the plain-HTTP
+redirect block included, also holds `include
+/etc/nginx/celikpanel-managed.d/<domain>/*.conf;`. That directory is
+CelikPanel's (created 0755 with the vhost); the ACME HTTP-01 location
+(`location ^~ /.well-known/acme-challenge/` with the root-owned challenge root)
+is written there as `acme-http-01.conf`, under the same render header, and no
+longer into the vhost. Lifecycle: written in the same operation as the vhost
+whenever the vhost afterwards reads the directory (CelikPanel's text written or
+unchanged, or a kept file that has the include line), and for any kept file
+when a certificate operation or the Configuration file page measures it
+(below); put back together with the vhost when nginx refuses the
+configuration or cannot reload; removed with the site (the challenge file when
+it is still CelikPanel's unchanged text, then the directory if that leaves it
+empty; anything else in the directory stays). The file stays as long as the
+site exists, like the location did; certbot's own tokens in the challenge root
+still come and go with each validation. A changed challenge file is kept, not
+replaced (D-022).
+
+*Readiness is measured, not read (second round, 2026-10-10).* Whether a kept
+file lets the validation run is no longer decided by finding the include line
+in its text. The challenge location (`location ^~ /.well-known/acme-challenge/
+{ root <challenge root>; try_files $uri =404; }`) serves whatever file is in
+`<challenge root>/.well-known/acme-challenge/` at the time of a request, so a
+new file there needs no reload. The probe
+(`internal/services/managed_vhost_probe.go`, `probeValidation`): the Agent
+writes one file there (in the challenge root, not in the site's file or in
+`celikpanel-managed.d`) with a random name (`celikpanel-probe-<32 hex>`) and a
+random body, created exclusively (an existing name or link is refused), asks
+nginx on port 80, at the address the site's file listens on for that name
+(127.0.0.1 for a wildcard; see "the address asked" below), for
+`/.well-known/acme-challenge/<name>` with each
+validation name as the Host (the site's names, then validation-only names such
+as `mail.<domain>`), follows a redirect only to the same name (port 80 or 443;
+the certificate of that target is not checked, the body is the proof), and
+removes the file. Ready: every name answered 200 with exactly that body. A site
+name not served is `include_missing`, a validation-only name not served is
+`names_missing` (a site name outranks it); the first such name and nginx's HTTP
+status travel with it. No answer on port 80 at all (connection refused, time
+limit of 5 s per request), a challenge directory that is missing or not a
+directory, or a probe file that cannot be created (mode 0644, `O_EXCL`), is
+`unknown` with a bounded detail, never "not ready"; asking stops at the first
+name that gets no answer, so that is `unknown` even when an earlier name was
+not served. A ready probe shows that nginx on this server serves the path
+under each name on the addresses the kept file listens on for it (the loopback
+for a wildcard); it does not show that the name resolves to
+this server or that port 80 is open to the certificate authority. CelikPanel's changed or
+unwritable challenge file stays `challenge_kept` / `challenge_failed` before
+any probe. When it asks for the probe, CelikPanel first publishes its own
+challenge file for the kept file if it is absent or holds other inputs: one
+`nginx -t` and one reload, a refusal puts it back (a new `.conf` file in an
+include directory is read only at a reload; the probe file itself needs none).
+The probe runs only when asked for (`ApplyVhostRequest.ProbeValidation`): by
+certificate issuance, renewal and the alias-certificate path before anything
+is requested, and by the Configuration file page's read while the file's
+recorded reason is `certificate_validation`; a start, a saved setting or any
+other render evaluates no readiness. The page says: "CelikPanel writes its own parts of this site (certificate
+validation) in {dir}. Keep the lines of this file that include it."
+(`siteConfig.managedDir`). The owner's additions still go to
+`celikpanel-sites.d`. The comparison of a headerless file with the frozen
+alpha.81/82 texts is unchanged (those texts carry the location inline).
+
+**Refusals of the operations that wanted to render** (shell catalogue,
+`err.<CODE>`, EN):
+
+- `SITE_CONFIG_OWNER_EDITED` (409, reason = the state): "This site’s nginx
+  configuration file is not CelikPanel’s unchanged text, so CelikPanel kept it
+  and did not apply this change to it. Nothing else was changed. On the domain’s
+  Configuration file page, keep your file, take CelikPanel’s text (your file is
+  kept as a dated copy), or merge the two by hand."
+- `SITE_CONFIG_MISSING` (409): "This site’s nginx configuration file is missing,
+  so this change was not applied and the file was not recreated. If it was
+  removed on purpose, nothing needs doing; otherwise choose Recreate on the
+  domain’s Configuration file page."
+- `SITE_CONFIG_UNWRITABLE` (409): "CelikPanel could not read or replace this
+  site’s nginx configuration file (for example, it is a link or it is locked
+  against changes), so it kept the file as it is and did not apply this change.
+  The server owner checks the file on the server; the reason is on the domain’s
+  Configuration file page."
+- `SITE_CONFIG_EXISTS` (409, site creation and import): "A configuration file
+  for this name already exists on the server and was not written by CelikPanel,
+  so CelikPanel kept it and did not create the site. Nothing was left behind.
+  Move or rename that file on the server if it is no longer used, then create the
+  site again."
+- `SITE_CONFIG_CHANGED` (409): "The configuration file or CelikPanel’s text
+  changed after the page showed them, so nothing was done. The page reads the
+  file again; look at it, then choose again."
+- `SITE_CONFIG_NOT_APPLICABLE` (409; keep on a file that is not owner-edited,
+  foreign or unknown origin, or recreate on a file that exists and was kept):
+  "This choice does not apply to the file as it is now, so nothing was done. The
+  page reads the file again; choose again if you still want it."
+- `SITE_CONFIG_NOT_READ` (502; the Agent did not answer, answered with an
+  error, or the render input could not be prepared): "CelikPanel could not read
+  the state of this site’s configuration file just now. This does not mean
+  anything is wrong with the file, and nothing was changed. Try again."
+- `SITE_CONFIG_NGINX_REFUSED` (502, `reason` `nginx_refused` or `reload_failed`,
+  each its own value; `details[0]` is nginx's own first line, for
+  administrators): "nginx did not accept CelikPanel’s text (it refused the
+  configuration or could not reload), so your file was put back and nginx keeps
+  running with it. nginx checks every site together, so the cause may be another
+  file; fix what nginx reported, then choose again." (since set12 this
+  sentence holds only when nginx was reloaded with the put-back file; when nginx
+  was not reloaded or was not running, the answer carries `service` and the
+  sentences of the twelfth record's corrections below.) The file is put back in
+  both cases; the dated copy that "take" made before the write stays beside the
+  file.
+- `SITE_CONFIG_OWNER_EDITED` with `reason` `certificate_validation` (409;
+  certificate issuance; `detail` `include_missing`, `names_missing`,
+  `challenge_kept` or `challenge_failed`; `vars.include` the line to add,
+  `vars.name` and `vars.status` the probe's first name not served and nginx's
+  HTTP status for it): "This site’s nginx configuration file was changed
+  outside CelikPanel and does not let CelikPanel publish the certificate
+  validation without changing the file, so no certificate was requested and
+  nothing was changed. The server administrator chooses on the domain’s
+  Configuration file page: take CelikPanel’s text, or add what that page shows
+  to the file and reload nginx; then request the certificate again."
+  (`err.SITE_CONFIG_OWNER_EDITED.certificate_validation`; the actor named in
+  the second round, since a hosting customer can read it on the SSL tab).
+- `CERTIFICATE_VALIDATION_UNKNOWN` (503, `detail` `unknown`; certificate
+  issuance and the alias-certificate path; the probe got no answer): "CelikPanel
+  could not check whether this site’s nginx configuration file lets the
+  certificate validation run, because nginx on this server did not answer, so
+  no certificate was requested and nothing was changed. The server
+  administrator checks that nginx is running; then request the certificate
+  again." No ledger reason is written; a renewal in this case records nothing
+  and is asked again by the next scheduled run. Since 2026-10-11 the address
+  that did not answer is `vars.address`. A site that listens on an address
+  that is not this server's is not this answer: the request goes ahead (see
+  "the address asked" below).
+
+**The first state after the update.** Files written by alpha.81 and alpha.82
+carry no header. At the first start each is compared byte for byte with what
+those releases' frozen templates render from the same data, in both forms they
+wrote (the creation text, `server_name` the domain alone, and the start/save
+text with `www.` and aliases). An equal file is adopted: it is rendered again
+as this release's text and gets the header (measured in the tenth native
+record: new comment block, the include line, on PHP sites the snippet written
+out). The owner's additions could not have been in it, because it was byte-equal
+to CelikPanel's own text. `adopted_from` names the newest release whose text
+matches (alpha.82 when both releases' texts are equal, also measured). Any other
+file is "unknown origin" and is never written. The Domains list says: `siteConfig.list.firstState` "Site configuration
+files: {adopted} recognised as CelikPanel’s and taken over; {left} left alone
+because they differ from every known CelikPanel text. Open a domain to see its
+file. Nothing is needed unless you want CelikPanel to manage a left-alone file
+again." The journal line at start: `site configuration files at start: N
+written, N unchanged, N kept (owner-edited), N kept (foreign), N kept (unknown
+origin), N unreadable or unwritable, N missing (not recreated), N failed; N
+adopted from an earlier release` and, when any, `N adopted, M left alone
+because they differ from every known CelikPanel text`. Against an Agent that
+does not report per-site results the line is instead `restored N hosted vhosts;
+the Agent did not report what it found in each file, so their state is
+unknown`. Every render of one site that the Agent answered logs one line naming
+the site and what was done (`site configuration <domain> (<trigger>): …`); a
+render the Agent never answered logs the error only. The adoption itself is
+done by the first render that sees the headerless file (normally the first
+start), not by migration 044, whose SQL writes no row and touches no file.
+
+The Domains list line is computed from the owner's decisions, not stored: it
+is drawn while at least one unknown-origin file has no "keep mine" decision for
+its current bytes ("take" makes the file CelikPanel's text, so it leaves the
+count), and it is gone once every left-alone file has one. When nothing was left
+alone, nothing waits for the owner and the line is not drawn; the start line
+still counts the adopted files and each domain's page says so.
+
+**Schema and version (D-025).** Schema 43 to 44 (migration 044,
+`managed_site_files`, no existing table changes); site file format v2
+(`# celikpanel-render v2 sha256=<64 hex>` as the first line). The build match
+(`ExpectedBuildCommit`) is what normally keeps an Agent of another release
+from answering the Panel's renders at all (the start refuses the batch). Should
+an Agent answer without a per-file result (the component tests simulate an
+Agent that predates this change), the Panel records and shows the file as "not
+known" (`unknown`, `agent_does_not_report`), never as unchanged; an Agent
+without `Agent.InspectSiteFile` gives the same state on the page. A Panel of an earlier release
+(alpha.82, schema 43) refuses a database whose ledger holds entry 44, so a
+return to alpha.81 or alpha.82 is the pre-update snapshot restore, as for every
+migration; there is no down migration.
+
+**Limits.** A return to an older release (automatic rollback included) loses
+this protection. The alpha.81 and alpha.82 start sends every site to
+`Agent.ApplyVhosts`, which writes each vhost from the database without
+comparing it (read in the source of both releases; the tenth native record's
+return cell measured alpha.81's start rewriting every vhost, and the eleventh
+record's start-check cell measured it again: a new inode for all four files,
+an owner's edit overwritten). The start-check cell's candidate fails its
+check before it starts, so in that path no file ever gets a header. An
+automatic return runs only on a failed candidate start or start check, never
+after a successful candidate start, so what the older release does with a
+headed file arises only through a manual downgrade, which is out of scope
+(whether a candidate start can fail after its vhost reconcile has written
+headers was not measured; the older start would rewrite those files as it
+rewrites every vhost). An owner's edit is overwritten, the header line and the owner include
+line are not in that text, so the files in
+`/etc/nginx/celikpanel-sites.d/<domain>/` stay on disk but nginx stops reading
+them until the update is applied again; the dated copies, pending files and
+include directories are left in place. When this release runs again it
+recognises the older release's text byte for byte and adopts it; an owner's
+edit made while the older release ran and before its next start is kept and
+shown. The release notes say this.
+
+**Certificates on a kept file (step 1b, 2026-10-10; second round the same
+day).** Issuance and renewal publish the validation through CelikPanel's own
+include directory, so a kept file that lets nginx serve it is not touched.
+Whether it does is measured by the probe above, before anything is requested:
+
+- *Issuance, the probe is served under every name:* a `certificate_validation`
+  reason recorded earlier ends at once (ledger reason cleared, a renewal's
+  `waiting_for_owner` released); the certificate is requested, installed in
+  CelikPanel's certificate store and activated in the ledger; the site's TLS
+  block becomes CelikPanel's text held beside the file; the file keeps naming
+  the certificate it named, and that one is served until the owner acts (a site
+  that had none stays without TLS, and the page then has no "certificate in
+  use" line). Mail TLS, when the certificate secures mail, follows the new
+  certificate at once (read from the source); only the website waits. The
+  answer is `200 {"status":"waiting_for_owner","expires_at":…,
+  "pending_reason":"certificate"}`; the certificate's renewal status is
+  `waiting_for_owner`, the ledger reason `certificate`. The SSL tab shows the
+  issuance as a warning, not a success: "The certificate was issued, but this
+  site’s nginx configuration file was changed outside CelikPanel and still uses
+  the previous one. The server administrator chooses on the domain’s
+  Configuration file page (Hosting tab)." and, for as long as the wait lasts,
+  the certificate card's state, the renewal line (`ssl.renewal.waitingForOwner`,
+  "Waiting for a choice on the site’s configuration file") and a paragraph,
+  each by its cause (the SSL answer's `waiting_for_owner_reason`, additive):
+  for `certificate` the state `ssl.status.waitingForOwner.certificate` "A new
+  certificate is ready; the site’s file still points at the old one" and
+  `ssl.waitingForOwner` "This site’s nginx configuration file was changed
+  outside CelikPanel and does not use this certificate yet; the site keeps the
+  certificate it uses now. The server administrator chooses on the domain’s
+  Configuration file page (Hosting tab)."; for `certificate_validation`
+  `ssl.status.waitingForOwner.certificate_validation` "The certificate request
+  was stopped by the site’s file" and `ssl.waitingForOwner.validation` "This
+  site’s nginx configuration file was changed outside CelikPanel and does not
+  let the certificate validation run, so the last request or renewal was
+  stopped. The server administrator chooses on the domain’s Configuration file
+  page (Hosting tab); then request the certificate again."; an answer without
+  the field keeps `ssl.status.waitingForOwner` "Needs a choice on the site’s
+  configuration file". The tab can be drawn for a hosting customer; the
+  Configuration file page stays administrator-only, so every one of these
+  sentences names the server administrator as the actor (the dashboard is
+  administrator-only and keeps "your choice"). The page: "New certificate
+  ready, not in use yet" — "CelikPanel obtained a new certificate for this site,
+  but your configuration file still names the previous one, and nginx keeps
+  serving that one until you act. Either take CelikPanel’s text below
+  (CelikPanel replaces the file and reloads nginx), or change the two
+  certificate lines in your file to the ones shown here; then check and reload
+  nginx yourself and choose Keep mine.", the two lines (`ssl_certificate …;`,
+  `ssl_certificate_key …;`) and "The certificate in use expires on {date}
+  ({days} days left)." (of the previous certificate). The `certificate` reason
+  and the certificate's `waiting_for_owner` end together, when the file is
+  CelikPanel's text again or a render, a start or "keep mine" finds
+  `ssl_certificate <new path>;` in the kept file (`observeSiteFileCertificate`).
+- *Issuance, the probe is not served* (a site name: `include_missing`; a
+  validation-only name such as `mail.<domain>`: `names_missing`; or
+  CelikPanel's challenge file was changed): refused before anything is
+  requested (`SITE_CONFIG_OWNER_EDITED`, `certificate_validation`, with
+  `vars.name` and `vars.status`, above); ledger reason
+  `certificate_validation`. The page: "Certificates cannot be validated with
+  this file" — for a site name "nginx on this server did not serve CelikPanel’s
+  certificate validation under this site’s name, so CelikPanel cannot request
+  or renew the certificate without changing your file. Either take
+  CelikPanel’s text below (CelikPanel replaces the file and reloads nginx), or
+  add the line shown here to the server block of your file that listens on
+  port 80; then check and reload nginx yourself and choose Keep mine." with the
+  line; for a validation-only name "The certificate also covers a
+  validation-only name such as mail.{domain}, and nginx on this server did not
+  serve CelikPanel’s validation file under it. Either take CelikPanel’s text
+  below (CelikPanel replaces the file and reloads nginx), or copy that name’s
+  server block from the difference into your file; then check and reload nginx
+  yourself and choose Keep mine."; then what nginx answered,
+  `siteConfig.certificate.validation.probe` "What nginx on this server
+  answered: HTTP {status} for {name}.", and `siteConfig.certificate.schedule`
+  "If this site has a certificate within 30 days of expiry, the renewal check
+  looks again about every 12 hours. A request from the SSL tab is not retried;
+  request it again after you have acted." (no longer the sentence that implied
+  a first request was retried). `challenge_kept` now names its actor: "… The
+  server owner undoes that change or removes the file, then reloads this page."
+  A file that is missing or unreadable is not "kept": issuance then answers
+  `409` with that file’s own code (`SITE_CONFIG_MISSING`,
+  `SITE_CONFIG_UNWRITABLE`), where the earlier release gave an untyped
+  sentence. *Unknown* (no answer on port 80): `503
+  CERTIFICATE_VALIDATION_UNKNOWN` (above), no ledger reason; the page, when it
+  measured that, says "Not known whether certificates can be validated with
+  this file" — "Whether your file lets the validation run could not be checked
+  just now, because nginx on this server did not answer. This does not mean
+  anything is wrong with the file, and nothing was changed. The server owner
+  checks that nginx is running, then reloads this page."
+- *The `certificate_validation` reason ends when readiness is regained* (was
+  open). It ends with CelikPanel's text in place, at the next issuance or
+  renewal whose probe is served (above), and at the Configuration file page's
+  read: while the ledger says `certificate_validation`, that read asks for the
+  probe, and when every name is served the reason is cleared, a renewal's
+  `waiting_for_owner` is released (the dashboard entry goes; the next scheduled
+  renewal is due again if the certificate is within 30 days), and the answer
+  carries `resolved_reason: "certificate_validation"`. The page then shows, once,
+  "nginx now serves the certificate validation for this site" — "Request the
+  certificate again from the SSL tab; an existing certificate within 30 days of
+  expiry is also retried by the renewal check." and reads the domains list
+  again, so the line above the tabs ("The last certificate request or renewal
+  for this site was stopped by its nginx configuration file. Choose what
+  happens to the file; then request the certificate again.") and the Domains
+  badge go with the reason. A read without that reason asks for no probe.
+  A missing or unreadable file still writes no reason, so restoring it ends a
+  renewal's waiting state only at the next completed renewal (open).
+- *Renewal:* the same paths. A renewal the file stops (probe not served,
+  missing, unreadable) is recorded as `waiting_for_owner`, not `failed`, before
+  anything is requested; a renewal whose probe gets no answer records nothing
+  (neither waiting nor failed). Nothing retries a stopped renewal except the
+  schedule (every 12 hours and once at Panel start, for Let’s Encrypt
+  certificates with automatic renewal that expire within 30 days), which
+  measures the file again. A renewal that went ahead on a ready kept file
+  installs the renewed certificate and waits as for issuance; that certificate
+  is not near expiry, so no further renewal is due and only the owner’s action
+  ends the wait. The dashboard's attention list (administrators only) carries
+  each waiting certificate whatever its days, first in the list, ordered by the
+  certificate in use: an expired one first, then the fewest days left
+  (`sortDashboardCertificates`): "{domain}: a certificate is waiting for your
+  choice on the site’s configuration file; the one in use has {days} days left"
+  or, for an expired one, new `dashboard.certWaitingOwnerExpired` "{domain}: a
+  certificate is waiting for your choice on the site’s configuration file; the
+  one in use expired {days} days ago" (never a negative number of days;
+  `expiring_certs` carries `waiting_for_owner`, `served_days_left`, `domain_id`;
+  six entries at most).
+- *The alias-certificate path* (`cmd/panel/alias_certificates.go`,
+  `issueAliasCertificateSnapshot`; was open) takes the same two paths: it calls
+  the same preparation with the probe; on a kept file whose probe is served it
+  requests the certificate without touching the file and without a "restore"
+  render; the activation render then finds the file kept, records the
+  certificate as waiting for the owner (`activateAliasCertificateVhost`, as
+  issuance does), keeps mail TLS in step, and the alias answer carries
+  `status: "waiting_for_owner"`, `pending_reason: "certificate"`; the General
+  tab then shows "Alias added" and the issuance warning above. Not served:
+  the alias change answers the typed `409` of issuance; unknown: `503
+  CERTIFICATE_VALIDATION_UNKNOWN`. The renewal of such a certificate is the
+  renewal above.
+- *The certificate tier* (`web/src/lib/sslTier.ts`; was open): an expired,
+  invalid or untrusted certificate in use outranks the waiting state and is
+  shown as such; the waiting state comes before a trust that could not be
+  checked (not a verified failure).
+
+A file kept from before step 1b (an alpha.81/82 edit, unknown origin) has no
+include line: its certificate waits until the owner takes CelikPanel's text or
+makes the file serve the validation. The
+PHP-FPM pool and the application unit are covered by the second step below
+(2026-10-11; component-tested, not measured on a real system). On
+a narrow screen the Domains list wraps the badges below the domain name instead
+of cutting them off (`Domains.tsx`); the harness records `pageOverflowX` for
+each state, and whether that run was made at phone width is not recorded
+here. The difference's two captions are drawn in the page's
+language ("(on this server)" / "(bu sunucuda)", "CelikPanel’s text" /
+"CelikPanel’in metni"). Second round evidence: Go component tests
+(`internal/services/managed_vhost_probe_test.go` with a fake nginx and one real
+loopback HTTP request, `cmd/panel/site_config_probe_test.go`,
+`cmd/agent/vhost_probe_test.go`), web tests (`ssl-tier-order`,
+`site-config-mounted`) and the mock browser (`a83ssl`, `a83dash`,
+`a83siteconfig`; desktop and phone, English and Turkish; screenshots looked
+at). Component-tested and mock browser; not measured on a real system (the
+probe has never asked a real nginx); the measurement cells are the audit's §9.
+
+*The address asked (set11 cell A6, 2026-10-11; component-tested; not measured
+on a real system).* The eleventh native record measured the gap this
+paragraph named as open item (1): a site whose port-80 block listened on
+`10.0.2.15:80` only, on a host where other blocks listen on the wildcard
+address, was asked on 127.0.0.1, answered 404 by the default server and
+refused as `include_missing`. The probe now asks the addresses the kept file
+listens on (`internal/services/managed_vhost_listen.go`): a small,
+conservative reader of the kept file only (an `include` is not followed)
+takes the port-80 `listen` directives (`listen 80`, `listen *:80`,
+`listen <address>:80`, `listen [<IPv6>]:80`, `listen <address>` with nginx's
+default port; `default_server` and the other parameters ignored; a block
+without `listen` is `*:80`; comments are dropped; a `listen` on another port or
+a `unix:` socket is not port 80; only a block's own directives are read, not
+those of a nested `location`, and an upstream's `server <address>;` line is
+not a server block) of the server blocks whose `server_name` carries the name
+exactly (case-insensitive; a regular expression or a wildcard name is not
+matched). An IPv4 wildcard (`80`, `*:80`, `0.0.0.0:80`) is asked on 127.0.0.1,
+as before; an IPv6 wildcard (`[::]:80`) is asked on `::1`, but only when none
+of the name's listens is an IPv4 wildcard; an explicit address that is an
+address of this server (equal to one of its interface addresses,
+`net.InterfaceAddrs`, loopback included; `127.0.0.2` is not) is asked on that
+address, with the name as Host. A host name in `listen` (`localhost:80`) is
+not an interface address and counts as not this server's. A name no port-80
+block of the file carries is asked on 127.0.0.1 as before (so a file without
+a port-80 block is still `include_missing`/`names_missing`); so is every name
+when the kept file cannot be read or is over 1 MiB. Ready: every name served
+the probe on each of its addresses (`validation_address` on the Configuration
+file page then lists the addresses asked, comma-separated). The address that
+answered travels as `vars.address` of the refusal (and `validation_address`
+on the Configuration file page). One explicit address among a name's listens
+that is not this server's cannot be asked from here, which is unknown, not a
+refusal, even when the same name also listens on a local address: nothing is
+written for the probe, and issuance, the alias certificate path and renewal
+go ahead as for a ready probe — the authority's own attempt is the test. Where
+a failed validation is then answered: the SSL tab's issuance answers
+`502 CERTIFICATE_ISSUE_FAILED` with `reason` `validation` when the Agent read
+certbot's own output as a refused validation (`cmd/agent/certbot_failure.go`;
+other certbot output is `tool`, a certbot run that outlasts its limit is
+`timeout`, an Agent that does not classify leaves the older `500`); the alias
+add/delete reissue path answers a plain `409` "the alias certificate could not
+be reissued: …", not that typed answer; a renewal records its failure in the
+certificate's renewal status without a typed reason. The success
+answer (SSL tab issuance, alias add and alias delete reissue) carries
+`validation_probe` `not_run`, `validation_unknown_reason`
+`address_not_local`, `validation_address` and `validation_note`; the SSL tab
+and the alias change show it as a warning toast (`ssl.validationNotRun`, in
+the screens bundle), and the Configuration file page says it under
+"Not known whether certificates can be validated with this file"
+(`siteConfig.certificate.validation.unknownAddress`): "CelikPanel
+could not check whether nginx serves the certificate validation for this
+site: the site listens on {address}, which this server cannot reach from
+itself. This does not mean anything is wrong, and nothing was changed. A
+certificate request is still sent; if the authority cannot reach {address},
+its answer will say so, then the server administrator corrects what it names
+and requests the certificate again." The toast (`ssl.validationNotRun`) keeps
+its "The request was sent anyway; if the authority cannot reach {address},
+the answer will say so." and adds "Nothing asks again by itself; the server
+administrator requests again after fixing what the answer names." It ends no `certificate_validation`
+reason (nothing was measured). The site-file ledger has no column for it (a
+schema change was not made; no ledger field, journal only): the Panel's
+journal line `validation_probe=not_run
+validation_unknown_reason=address_not_local validation_address=…` records it,
+and is the only record of a renewal that went ahead this way. Known wording
+gap, corrected in the strings above: the Configuration file page is a read, no
+request is sent from it, so it no longer says "The request was sent anyway",
+and both strings now say who acts if the authority then fails (the server
+administrator, on the answer's words) and that nothing asks again by itself.
+Limits that remain and are not changed: the alias-certificate reissue answers
+a plain `409` on an authority failure (no typed reason), and a renewal
+records no typed reason.
+`503 CERTIFICATE_VALIDATION_UNKNOWN` stays for a probe that could not run for
+a local reason (nginx not answering on port 80 at an address asked, the challenge directory missing or not a directory, the probe file not
+creatable, this server's addresses not listable while the file names an
+explicit address).
+
+*Open after the second round (only (1) is answered, by "the address asked"
+above).* (1) Answered above. (2) At the
+Configuration file page's read, a failed `nginx -t` or reload while CelikPanel
+publishes its challenge file is reported as `challenge_failed`, although the
+cause may be an unrelated file; it is not drawn as unknown. (3) A missing or
+unreadable file writes no ledger reason, so a renewal it stopped ends its
+waiting state only at the next completed renewal (above). (4) The SSL tab's
+expiry detail printed the days as they were, so an expired certificate read
+"(-3 days)" (`DomainSSLSettings.tsx` and `DomainSSLOverviewCard.tsx`,
+`ssl.days`); only the dashboard was corrected. **Fixed 2026-10-11 in commit
+`ead69cdcc`** (the commit's web and Go suites passed, but no test pins this wording;
+not measured on a real system, no browser run): an expired certificate now reads "expired {n}
+days ago" (`ssl.daysAgo`; `domain.overview.ssl.certificateExpired` on the
+overview card), never a negative number. (5) No browser run is
+recorded as drawing these pages in a real hosting-customer session; the
+sentences a customer can reach are checked in the catalogue only. (6) Nothing
+here was measured against a real nginx or a real certificate authority.
+
+**For integrators: the API (reference until the release notes).** All routes
+are for an administrator (`403 {"error":"administrator access is required"}`
+otherwise); a domain without a hosted site is `404`. The three POST routes are
+guarded by the request identity of D-029: the header `X-CelikPanel-Request-Id`
+(32 lowercase hexadecimal characters, new for each action) is required (`428
+REQUEST_ID_REQUIRED` without it, `400` if malformed); the same identity with
+the same body is answered from the stored answer (`X-CelikPanel-Request-Replayed:
+1`), with a different body `409 REQUEST_ID_REUSED`, while running `409
+REQUEST_IN_PROGRESS`, after a Panel restart `409 REQUEST_OUTCOME_UNKNOWN`.
+Errors are `{"error": <English sentence>, "code": …, "reason"?: …, "detail"?:
+<one machine token>, "vars"?: {…}, "details"?: […]}`; screens translate by
+`code`.
+
+- `GET /api/v1/domains/{id}/site-config` (reads the Agent; writes nothing, except
+  that while the ledger's reason is `certificate_validation` it asks for the
+  probe: a probe file in the challenge root, removed again, CelikPanel's
+  challenge file published if absent or out of date (one `nginx -t` and one
+  reload), and a measured `ready` clears that reason; each such read repeats
+  the probe) → 200
+  ```json
+  {"domain_id":12,"domain":"example.test","kind":"nginx_vhost",
+   "path":"/etc/nginx/sites-available/example.test.conf",
+   "state":"owner_edited","reason":"","detail":"","adopted_from":"",
+   "include_dir":"/etc/nginx/celikpanel-sites.d/example.test",
+   "enabled":"link","file_sha256":"<64 hex>","render_sha256":"<64 hex>",
+   "pending_path":"…/example.test.conf.celikpanel-pending",
+   "diff":"--- …\n+++ …\n@@ … @@\n…","diff_truncated":false,
+   "actions":["keep","take","merge"],
+   "decision":{"kind":"keep_mine","decided_at":"2026-10-10T12:00:00Z","current":true},
+   "ledger":{"written_release":"…","written_at":"…","observed_at":"…","backup_path":"…"}}
+  ```
+  `state`: `absent`, `managed_unchanged`, `owner_edited`, `foreign`,
+  `unreadable`, `unwritable`, `unknown_origin`, or `unknown` (`reason`
+  `agent_does_not_report`; no `path`, no digests). `reason` (unreadable):
+  `symlink`, `not_regular`, `permission`, `too_large`, `read_failed`; `detail`
+  is one bounded line. `unwritable` (2026-10-11; component-tested, not
+  measured): the ledger's last observation is a refused replacement
+  (`unreadable` + `write_refused` in the ledger) of the file that is on disk
+  now (same digest), which the Agent reads as CelikPanel's unchanged text;
+  `reason` `write_refused`. Additive on every answer: `system_error` (the
+  system's error name a replacement gets now, `EPERM`, `EROFS`, …) and
+  `protection` (`immutable`, `append_only`, `directory_immutable`,
+  `read_only_filesystem`, `none`; absent when not measured), measured read-only
+  by the Agent (attribute flags and mount flags; nothing is written).
+  `enabled`: `link`, `absent` or `other` (sites-enabled entry). `actions`
+  (always an array): `["keep","take","merge"]` for owner_edited, foreign and
+  unknown_origin; `["recreate"]` for absent; `["recheck"]` for unreadable and
+  unwritable (the page reads this answer again; no route; the file is not
+  written, the ledger row of a refused replacement records what the read
+  found); `["keep","take","merge","recheck"]` for `unwritable` with
+  `file_state` (2026-10-11: the owner's file whose `take` was refused;
+  `file_state` is `owner_edited`, `foreign` or `unknown_origin`, chosen by the
+  precedence unreadable > unwritable > missing > owner-edited/foreign/unknown
+  origin > managed_unchanged, the same for the domains list); `["apply"]` for
+  `managed_unchanged` with `reason` `protection_removed` while CelikPanel's
+  text is held (2026-10-11); `[]` otherwise. `merge` has no
+  route: it is done on the server. `diff` is a unified diff of the file on disk
+  against CelikPanel's text (header line left out), at most 4000 lines per side
+  and 64 KiB; `diff_truncated` says it was cut; a line that mentions
+  authorization, password, passwd, secret, token, api key, private key or cookie
+  (case-insensitive) keeps its directive and shows
+  `[hidden by CelikPanel: this value may be a credential]` (paths of
+  `auth_basic_user_file`, `ssl_certificate_key`, `ssl_password_file` stay);
+  a comment line with such a word is replaced entirely. A credential that does
+  not use those words is not hidden; the field is for administrators only.
+  `decision.current` is true only while the file still has the digest the
+  decision was made on. Step 1b adds `managed_dir`, `managed_include` (the
+  exact line a vhost needs), `challenge_file` (`absent`, `unchanged`,
+  `differs`, `kept` in the GET; `written` and `failed` appear in the answer of
+  an operation that wrote), `validation` (kept files only, and only from a read
+  that measured it: `ready`, `include_missing`, `names_missing`,
+  `challenge_kept`, `challenge_failed`, `unknown`; with `validation_name` and
+  `validation_status`, the probe's first name not served and nginx's HTTP
+  status), `resolved_reason` (second round: `certificate_validation` when this
+  read's probe found the file ready and ended that reason), `pending_reason` (the ledger's
+  certificate reason: `certificate`, `certificate_validation`) and
+  `certificate` (only with a `pending_reason`: `{cert_path, key_path,
+  expires_at, served_expires_at, served_days_left, referenced}`; `cert_path`
+  and `key_path` are the active certificate in CelikPanel’s store, `expires_at`
+  is its expiry, `served_*` is the certificate the kept file most likely still
+  serves — the previous one for `certificate`, the active one for
+  `certificate_validation` — and may be absent, `served_days_left` is negative
+  once it has expired, `referenced` says the kept file names the active
+  certificate), each only when known. The `take` and `recreate` answers carry
+  `managed_dir`, `managed_include` and `challenge_file`. Failure: `502
+  SITE_CONFIG_NOT_READ`.
+- `POST …/keep` body `{"file_sha256":"<64 hex from the GET>"}` (required; any
+  `render_sha256` is ignored) → 200, the same object as the GET after the
+  decision. `400` (missing or malformed digest), `409 SITE_CONFIG_NOT_APPLICABLE`,
+  `409 SITE_CONFIG_CHANGED` (the file's digest differs), `502 SITE_CONFIG_NOT_READ`.
+  Nothing is written to the file.
+- `POST …/take` body `{"file_sha256":"…","render_sha256":"…"}` (both required,
+  both from the GET: the file and CelikPanel's text the owner was shown) → 200
+  ```json
+  {"domain_id":12,"domain":"example.test","kind":"nginx_vhost","path":"…",
+   "state":"managed_unchanged","include_dir":"…","enabled":"link",
+   "file_sha256":"<new file>","render_sha256":"…","actions":[],
+   "outcome":"taken","backup_path":"….celikpanel-backup-20261010T120000Z",
+   "decision":{…},"ledger":{…}}
+  ```
+  `outcome` is `taken`, or `unchanged` when the file already was CelikPanel's
+  text; `backup_path` is empty when no copy was needed. Errors: `400`, `409
+  SITE_CONFIG_CHANGED`, `409 SITE_CONFIG_MISSING` (the file is gone),
+  `409 SITE_CONFIG_UNWRITABLE` (`reason` `symlink`, `not_regular`, `permission`,
+  `too_large`, `read_failed`, `write_refused`), `502 SITE_CONFIG_NGINX_REFUSED`
+  (`reason` `nginx_refused` or `reload_failed`), `502 SITE_CONFIG_NOT_READ`.
+- `POST …/recreate` body `{}` (or none) → 200 as `take` with `outcome`
+  `recreated`; on a file that exists and is CelikPanel's own text it writes or
+  reports `unchanged`. Errors: `409 SITE_CONFIG_NOT_APPLICABLE` (the file exists
+  and was kept), `409 SITE_CONFIG_UNWRITABLE`, `502 SITE_CONFIG_NGINX_REFUSED`,
+  `502 SITE_CONFIG_NOT_READ`.
+- `take` on a file whose protection the Agent measures now (2026-10-11):
+  `409 SITE_CONFIG_UNWRITABLE` `reason` `write_refused` before anything is
+  written; no dated copy is made; the refusal is recorded. The Agent measures
+  the protection again before it makes the copy (vhost, PHP-FPM pool and
+  application unit alike), and a replacement refused after the copy (a
+  protection set between the measurement and the rename) removes the copy, so
+  a refused take leaves no dated copy beside the owner's file (set11 cell B4
+  had found one at ead69cdcc; component-tested,
+  `internal/services/site_file_take_refused_test.go`; not measured on a real
+  system). Covered by that test: the vhost and the PHP-FPM pool, each with the
+  protection measured before the copy and set after the measurement; the
+  application unit takes the same code path as the pool
+  (`ApplyManagedSiteFile`) but has no test of its own. A protection that
+  cannot be measured does not refuse before the copy (the write then decides),
+  and a copy that cannot be removed stays named in the result. The refusal
+  differs in one thing: the pool and the unit still put CelikPanel's text
+  beside the file (the pending file), while the vhost's refused take writes
+  nothing, the test compares the directory before and after.
+- `POST …/apply` (2026-10-11; component-tested; not measured on a real system)
+  body `{"file_sha256":"…","render_sha256":"…"}` (both required, both from the
+  GET), under the request identity of D-029 → 200 as `take` with `outcome`
+  `written` (or `unchanged`), no `backup_path`, no `decision`. It is the render
+  of a settings change for this one site: the file is CelikPanel's own earlier
+  text, so nothing of the owner's is in it and no dated copy is kept; if nginx
+  refuses the text, the previous bytes are put back exactly. Errors: `400`,
+  `409 SITE_CONFIG_CHANGED` (the digests differ, or the file was edited since
+  the read: kept, never written), `409 SITE_CONFIG_NOT_APPLICABLE` (`apply` is
+  not offered now), `409 SITE_CONFIG_UNWRITABLE` (protected again), `502
+  SITE_CONFIG_NGINX_REFUSED`, `502 SITE_CONFIG_NOT_READ`.
+- The domains list (`GET /api/v1/domains`) carries, for an administrator only,
+  `site_config: {"state":…,"adopted_from"?:…,"kept_by_choice"?:true,"pending_reason"?:…}` from the
+  Panel's last recorded observation (`missing` is a stored state; the GET above
+  never returns it, it returns `absent`; a stored `unreadable` with the reason
+  `write_refused` is answered `unwritable`, as on the page).
+- Certificate issuance, `POST /api/v1/domains/{id}/ssl/letsencrypt` (step 1b).
+  Added answers for a site whose file CelikPanel keeps: `200
+  {"status":"waiting_for_owner","expires_at":"…","pending_reason":"certificate"}`
+  (issued and stored, not served yet; an ordinary success is `{"status":"success",
+  "expires_at":"…"}`), and, before anything is requested, `409
+  {"code":"SITE_CONFIG_OWNER_EDITED","reason":"certificate_validation",
+  "detail":"include_missing"|"names_missing"|"challenge_kept"|"challenge_failed",
+  "vars":{"include":"include /etc/nginx/celikpanel-managed.d/<domain>/*.conf;",
+  "name":"www.<domain>","status":"301"}}` (each var only when known; `name` and
+  `status` from the probe, second round), and `503
+  {"code":"CERTIFICATE_VALIDATION_UNKNOWN","detail":"unknown"}` when the probe
+  got no answer. A missing or unreadable file
+  answers `409 SITE_CONFIG_MISSING` / `SITE_CONFIG_UNWRITABLE` (`reason` as
+  above) where the earlier release gave an untyped `409`. An Agent that does not
+  say whether the validation can be published is answered as `include_missing`.
+  The alias routes (`POST /api/v1/domains/{id}/aliases`, `DELETE …/aliases/{alias}`
+  with `confirm_certificate_reissue`) give the same refusals, and a reissue on
+  a ready kept file answers with `"status":"waiting_for_owner",
+  "pending_reason":"certificate"` instead of `"success"`.
+- `GET /api/v1/domains/{id}/ssl`: each certificate object carries
+  `waiting_for_owner` (bool) and `renewal_status`, one of `` (none), `expiring`,
+  `current`, `renewed`, `failed`, `activation_pending`, `dependents_pending`,
+  `waiting_for_owner`. The last is new in step 1b: the kept file does not use the
+  certificate yet, or stopped its renewal; it ends as described above and is
+  set by the issuance, renewal and ledger paths there; the only read that
+  changes it is the site-config read whose probe ends `certificate_validation`.
+  `waiting_for_owner_reason` (second round, additive, only with
+  `waiting_for_owner`): `certificate` (a new certificate the kept file does not
+  use yet) or `certificate_validation` (a request or renewal the file stopped;
+  also for a renewal stopped by a missing or unreadable file, which writes no
+  ledger reason).
+- `GET /api/v1/dashboard`: `expiring_certs[]` entries may carry
+  `waiting_for_owner: true`, `domain_id` and `served_days_left` (the days left
+  on the certificate in use; `days_left` is then the active certificate’s); such
+  entries are listed whatever their days, before the others, ordered by
+  `served_days_left` (an expired certificate in use first, negative), the
+  others by `days_left`.
+- Other operations that render the file answer `409` with
+  `SITE_CONFIG_OWNER_EDITED` (`reason` = the state), `SITE_CONFIG_MISSING` or
+  `SITE_CONFIG_UNWRITABLE` (`reason` as above); site creation and import answer
+  `409 SITE_CONFIG_EXISTS`.
+
+#### The PHP-FPM pool and the application unit (D-031 second step, 2026-10-11)
+
+Source state with component tests and a real Chrome against the loopback mock
+(browser-inspect batch10 `siteconfigfiles`, EN/TR, desktop and phone); no guest
+run, no installed server. Nothing here is measured on a real system.
+
+**What the owner sees.** A PHP site's PHP-FPM pool file and a Node site's
+application unit file now follow the vhost's rule. The Configuration file page
+lists every file CelikPanel writes for the site — `siteConfig.files.title`
+"This site’s configuration files", one row per file ("nginx configuration",
+"PHP-FPM pool (this site’s PHP process settings)", "Application unit (the file
+that starts this site’s application)", glossed since 2026-10-11) with its state
+("CelikPanel’s text, unchanged", "Edited outside CelikPanel", "Replaced outside
+CelikPanel", "Not recognised as CelikPanel’s", "Missing", "Cannot be read or
+replaced", "Cannot be replaced", "Can be replaced again", "State not known: the
+server did not answer. Nothing was changed; choose Check again.") and its path — then one
+section per file with the same states, the difference and the same choices
+(keep mine, take CelikPanel’s, merge by hand; recreate; check again; write
+CelikPanel’s text now). The pool's and the unit's sentences name their own
+file and service (`siteConfig.php_pool.*`, `siteConfig.app_unit.*`): for
+example "This file is not the text CelikPanel last wrote, so CelikPanel kept it
+exactly as it is, with every line you added. Saving this site’s PHP settings or
+switching its PHP version is refused until you choose below; PHP-FPM keeps
+running the site with your file." Who acts: the server owner (an
+administrator); nothing continues by itself.
+
+**Where the owner's own settings go.**
+- Pool: PHP-FPM has no separate place for a pool's own settings, so they are
+  supported in the file itself (`siteConfig.php_pool.owner` "PHP-FPM has no
+  separate place for your own pool settings, so they belong in this file.
+  CelikPanel keeps a pool file that has your lines and asks before writing it
+  again; the difference shows exactly which lines are yours."). A pool save or
+  a PHP version switch on such a file is refused; the owner chooses on the page.
+- Unit: the unit's systemd drop-in directory (`siteConfig.app_unit.include`
+  "Put your own settings for this application in a .conf file in {dir} (a
+  systemd drop-in: a small extra settings file systemd reads), then run sudo
+  systemctl daemon-reload (systemd re-reads its files). CelikPanel never
+  writes or removes that directory, and every change CelikPanel makes to this
+  unit keeps your settings."). The unit's own comment says the same.
+
+**The refusals** (each names the file in its `reason`; `detail` is the file's
+state for `OWNER_EDITED` and `EXISTS`, the Agent's reason for `UNWRITABLE`
+(for example `write_refused`) and for `502` (`config_refused` when the
+service's own check refused the text, `reload_failed` when its reload did);
+`MISSING` carries none):
+- `409 SITE_CONFIG_OWNER_EDITED` `reason: php_pool` — on a pool save
+  (`POST /api/v1/domains/{id}/php/pool`) or a PHP switch (`POST …/php`):
+  `err.SITE_CONFIG_OWNER_EDITED.php_pool` "This site’s PHP-FPM pool file is not
+  CelikPanel’s unchanged text, so CelikPanel kept it, with your lines, and did
+  not apply this change. Nothing else was changed. On the domain’s
+  Configuration file page, keep your file, take CelikPanel’s text (your file is
+  kept as a dated copy), or merge the two by hand." Nothing was switched: the
+  pool, the vhost and the site's PHP version stay as they were.
+- `409 SITE_CONFIG_OWNER_EDITED` `reason: app_unit` — on a hosting change
+  (`PUT …/hosting`) to or within a Node site whose unit was edited; the
+  application keeps running with the owner's unit, the database keeps the
+  previous settings and nothing is compensated (nothing was changed).
+- `409 SITE_CONFIG_MISSING` (`php_pool`, `app_unit`): the file is gone; it is
+  not recreated by a save or a change; "Recreate" on the page writes it.
+- `409 SITE_CONFIG_UNWRITABLE` (`php_pool`, `app_unit`): a link, not an
+  ordinary file, unreadable, or locked; the page names the protection. The
+  page's "take" on a pool or unit whose protection the Agent measures now is
+  answered the same way before anything is written (no dated copy), as for the
+  vhost.
+- `409 SITE_CONFIG_EXISTS` `reason: php_pool`: a PHP switch whose target
+  version already has a pool file for the site; nothing switched.
+- `502 SITE_CONFIG_SERVICE_REFUSED` (`php_pool`, `app_unit`): `php-fpm -t`, the
+  PHP-FPM reload or `systemctl daemon-reload` refused CelikPanel's text, and
+  CelikPanel put the previous file back with its mode and owner and reloaded
+  the service again (since set12 only when the service's own check accepts
+  the put-back configuration and the service ran before; see the twelfth
+  record's corrections below). The answer carries `restore` (2026-10-11 correction;
+  component-tested and mock browser; not measured on a real system):
+  `confirmed` only when the Agent reports the put-back (read back) and either
+  the reload after it held or the service was deliberately not reloaded (`service`
+  says which; the twelfth record's corrections below); `unconfirmed` when the Agent says "rollback incomplete" or gives no
+  restore fact (an older Agent). Unconfirmed, the sentence is
+  `err.SITE_CONFIG_SERVICE_REFUSED.<kind>.unconfirmed` ("… CelikPanel tried to
+  put the previous file back; whether it is in place is not confirmed — the
+  server administrator checks the file on the server. …"), and an
+  administrator also gets the Agent's own line in `details`; confirmed, the
+  sentence says the previous file was put back. The same holds for the vhost's
+  `502 SITE_CONFIG_NGINX_REFUSED` (`err.SITE_CONFIG_NGINX_REFUSED.unconfirmed`).
+  The panel log names the service's message and the restore (`sudo journalctl
+  -u celikpanel-panel | grep "site configuration"`).
+
+**How work resumes.** Keep mine: the owner's file stays; saves and switches on
+it stay refused while it is kept (the notice above the domain says so). Take
+CelikPanel’s: the owner's file is kept as `<file>.celikpanel-backup-<UTC>`,
+CelikPanel's text is written, PHP-FPM is reloaded (pool) or systemd reloaded
+and a running app restarted (unit); the next save or switch then works. Merge
+by hand: CelikPanel's text is in `<file>.celikpanel-pending`; copying it over
+the file hands the file back. A pool's held text also keeps the values of the
+refused save, so taking it applies them.
+
+**Earlier releases' files.** A pool or unit without the header that is byte
+for byte what v0.1.0-alpha.81 or alpha.82 wrote for the site (pool: the release's
+creation identity and the values the file carries; unit: the same request) is
+CelikPanel's: "It is exactly the text {release} wrote for this site’s pool, so
+CelikPanel recognises it as its own. The next saved PHP setting writes it again
+with CelikPanel’s header." Any other is "not recognised as CelikPanel’s" and
+kept. The two releases differ: alpha.81's pool listened on
+`/var/run/php/php<v>-fpm-<pool>.sock` owned by `www-data`, alpha.82's on this
+host's socket owned by the web server's account; alpha.81's unit wrote `User=`
+as asked, alpha.82's the web server's account that exists on the host. Pools
+and units are not rendered at the Panel's start, so an adopted file keeps its
+old bytes until its next write; site creation writes no pool or unit ledger
+row (a row begins at the page's first read or at the first save, switch or unit
+change), so a pool nobody has read is not yet in the Domains list.
+
+**The Domains row and the notice.** The row's badge and the line above the
+domain show the worst state of the site's files (unreadable > unwritable >
+missing > edited / replaced / not recognised > not known > unchanged; the
+vhost first on a tie). A file the Agent did not read (`unknown`, reason
+`not_read` or `agent_does_not_report`) is not known to be CelikPanel's
+unchanged text, so it outranks it (2026-10-11 correction; component-tested and
+mock browser; not measured on a real system): the row's badge says
+`siteConfig.list.badge.unknown` "A configuration file could not be read; state
+not known" with `kind` naming the file, and the page lists it as "State not
+known: the server did not answer. Nothing was changed; choose Check again."
+(no notice above the domain for it). `kind` names the pool or the unit when
+it decided the row; for a kept, missing, unreadable or unwritable file the
+notice then
+says so (`siteConfig.notice.php_pool.*`, `siteConfig.notice.app_unit.*`, for
+example "This site’s PHP-FPM pool file was changed outside CelikPanel. CelikPanel
+kept it and is waiting for your choice."). Since 2026-10-11 the unreadable and
+unwritable notices end "The server administrator checks it; the reason is on
+the domain’s Configuration file page." and the missing ones "Open the
+domain’s Configuration file page to recreate it." The page's read records what it
+observed for the pool and the unit (database only), so the row agrees with the
+page after the page has been opened.
+
+**For integrators.** `GET /api/v1/domains/{id}/site-config` keeps every
+top-level field as the vhost's (a client that reads one file is unchanged) and
+adds `files[]` — the vhost, then the pool of a PHP site, then the unit of a Node
+site, each in the same shape with `kind` and its own `actions` — and
+`overall_state`, `overall_kind`. A file the Agent did not answer for now is
+`{"kind": …, "state": "unknown", "reason": "not_read", "actions": ["recheck"]}`;
+the others are still shown. An Agent that does not have the read for a kind
+answers `state: "unknown"`, `reason: "agent_does_not_report"`. `overall_state`
+is the highest of the files' presented states (unreadable > unwritable >
+missing > kept > unknown > managed_unchanged; the first file on a tie;
+2026-10-11: `unknown` outranks `managed_unchanged`), `overall_kind` the file
+that decided it. `POST …/site-config/{keep,take,recreate,apply}`
+take `"kind": "php_pool" | "app_unit"` (absent: the vhost) with the same
+digests; another kind is `400` ("kind is nginx_vhost, php_pool or app_unit"); a kind the site does not have is `409
+SITE_CONFIG_NOT_APPLICABLE`. `apply` and the "protection removed" check work
+per file as for the vhost (`protection_removed` is a ledger reason of any
+kind). The Domains list's `site_config` gains `kind` (absent for the vhost); it
+is built from the ledger rows only, so a file with no row is not in it. Version
+pairing: the pool's two Agent calls are bound to the Panel's build commit and
+there is no fallback to the older pool calls (`Agent.MigratePHPPool` is no
+longer in the Panel's call policy); the unit's two calls (`Agent.InspectAppUnit`,
+`Agent.ApplyAppUnit`) are gated the same way (2026-10-11; component-tested,
+`cmd/agent/build_gate_contract_test.go`; not measured on a real system): an
+Agent of another build answers "panel/agent build mismatch" and writes
+nothing.
+
+**Corrections from the twelfth native record (set12, 2026-10-11).** The
+findings were measured in the twelfth record (Debian 13, Ubuntu 24.04, Arch;
+`deploy/e2e/release-recovery/evidence/set12-20261011/`); the new code is
+component-tested and checked in a real Chrome against the loopback mock; not
+measured on a real system.
+- *A pool that was not read reaches the Domains row* (cell U). Measured: the
+  page answered the pool `unknown` / `not_read` after a 60 s read the Agent's
+  pool lock held, while the row stayed `managed_unchanged`, because the row is
+  built from ledger rows and a failed read wrote none. Now a failed read
+  records an observation on the pool's or unit's newest ledger row (state
+  `unknown`, the reason `not_read` with the error class `timeout`,
+  `agent_unreachable`, `agent_error` or `render_input_unavailable`, or
+  `agent_does_not_report` (an Agent without the method; no class), the time)
+  and changes no digest, path or decision. The row then wears "A configuration
+  file could not be read; state not known" with `kind`; its `site_config` adds
+  `reason` and `read_error`, and the page's file adds `read_error`. The next
+  read that answers replaces it. Only the newest row of the kind, and only when
+  it is stored `managed_unchanged` (other than `protection_removed`) or
+  `unknown`, changes: a row in any other state (owner-edited, replaced
+  wholesale, unknown origin, unwritable, missing, unreadable) keeps that fact,
+  and a `protection_removed` row keeps its reason. The record is made by the
+  vhost page's read of the site's files (with its own 5 s context, because a
+  timed-out read has used up the request's); the single-file choices (keep, take,
+  recreate, apply) answer `SITE_CONFIG_NOT_READ` without recording. A file with
+  no ledger row yet is still not in the list.
+- *No reload after a put-back the service's own check refuses* (cell RP1).
+  Measured on all three: `php-fpm -t` refused a take on a pool because of an
+  owner's file elsewhere in the pool directory, the owner's pool was put back,
+  and CelikPanel then reloaded PHP-FPM with that refused configuration; PHP-FPM
+  ended `failed` (start limit) while the answer said "PHP-FPM keeps running
+  with it". Now the put-back file is read back; a service that was not running
+  before the operation is neither checked nor reloaded (`service:
+  not_running`; a unit still gets the harmless `daemon-reload`, which is why
+  its sentence says systemd has read the unit again); otherwise the service's
+  own check runs on the put-back
+  configuration (`php-fpm -t`; `nginx -t` for the vhost; for a unit
+  `systemd-analyze verify`, 15 s limit, after that `daemon-reload`). Refused: the
+  service is not reloaded and keeps the configuration it loaded before
+  (`restore: confirmed`, `service: not_reloaded`, `service_reason:
+  config_refused_elsewhere`, the check's line in `details` and `vars.line` for
+  an administrator). Passed: it is reloaded (a unit's application:
+  `try-restart`), `service: reloaded`. A reload that fails stays `restore:
+  unconfirmed` (`service: reload_failed`), as does a put-back that could not be
+  read back (no `service`). Without `systemd-analyze` a unit's
+  application is not restarted (`service_reason: check_unavailable`; only a
+  unit produces it). Every such 502 carries `service_active` (`true` for
+  `active`, `reloading`, `activating`, `refreshing`; `false` for `inactive`,
+  `failed`, `deactivating`; `unknown` for any other answer or none:
+  `systemctl is-active` after the operation, 5 s limit). The sentences
+  (`siteConfig.service.<kind>.<service>[.<service_reason>]`, screen
+  catalogue, chosen when `restore` is `confirmed` and `service` is
+  `not_reloaded` or `not_running`; the sentence naming `{line}` is used only
+  when the answer carries `vars.line`, which only an administrator's answer
+  does, otherwise the one without it; while the screen catalogue is not loaded
+  the server's own sentence stands, the same words with the line in
+  parentheses). Kinds `php_pool` and `nginx_vhost` produce three, `app_unit`
+  four; these ten are every combination the code produces:
+  - `php_pool.not_reloaded.config_refused_elsewhere`: "The previous file is
+    back. PHP-FPM was not reloaded, because its configuration is refused by
+    another file — PHP-FPM keeps running with the configuration it loaded
+    before. Fix what the check names ({line}), then reload PHP-FPM yourself."
+  - `php_pool.not_reloaded`: "The previous file is back. PHP-FPM was not
+    reloaded, because its configuration is refused by another file — PHP-FPM
+    keeps running with the configuration it loaded before. The server
+    administrator fixes what PHP-FPM’s check names, then reloads PHP-FPM."
+  - `php_pool.not_running`: "The previous file is back. PHP-FPM was not
+    running before this change, so CelikPanel neither reloaded nor started it.
+    Start PHP-FPM yourself, then choose again."
+  - `nginx_vhost.not_reloaded.config_refused_elsewhere`: "The previous file is
+    back. nginx was not reloaded, because its configuration is refused by
+    another file — nginx keeps running with the configuration it loaded
+    before. Fix what the check names ({line}), then reload nginx yourself."
+  - `nginx_vhost.not_reloaded`: "The previous file is back. nginx was not
+    reloaded, because its configuration is refused by another file — nginx
+    keeps running with the configuration it loaded before. The server
+    administrator fixes what nginx -t names, then reloads nginx."
+  - `nginx_vhost.not_running`: "The previous file is back. nginx was not
+    running before this change, so CelikPanel neither reloaded nor started it.
+    Start nginx yourself, then choose again."
+  - `app_unit.not_reloaded.config_refused_elsewhere`: "The previous unit file
+    is back and systemd has read it again. The application was not restarted,
+    because systemd-analyze verify refuses the unit — the application keeps
+    running as it was started. Fix what the check names ({line}), then restart
+    the application yourself."
+  - `app_unit.not_reloaded.check_unavailable`: "The previous unit file is back
+    and systemd has read it again. The application was not restarted, because
+    the unit’s check could not be run on this server (systemd-analyze is
+    missing or did not finish) — the application keeps running as it was
+    started. Restart the application yourself once you have checked the unit."
+  - `app_unit.not_reloaded`: "The previous unit file is back and systemd has
+    read it again. The application was not restarted, because the unit’s check
+    did not pass — the application keeps running as it was started. The server
+    administrator fixes what the check names, then restarts the application."
+  - `app_unit.not_running`: "The previous unit file is back and systemd has
+    read it again. The application was not running before this change, so
+    CelikPanel did not start it. Start it yourself when it should run."
+
+  Who acts: the server administrator. `service: reloaded` has no new sentence:
+  the earlier confirmed sentence is true then. The record's RP2 case (the owner
+  stopped PHP-FPM) is now answered `restore: confirmed`, `service:
+  not_running` instead of `unconfirmed`. The PHP version switch is only partly
+  unchanged: its first step writes the target version's pool through the same
+  write as any other and so gets this rule; its second step (removing the
+  source version's pool) and the clean-up after a failure there still reload
+  without the check, as before. Site creation's `WEB_SERVER_REFUSED_CONFIG` is
+  answered only when nginx was reloaded with the earlier configuration.
+  Three gaps of this block are closed in the alpha.83 candidate
+  (component-tested; not measured on a real system):
+  1. *How work resumes.* Every `not_reloaded` sentence above now ends with:
+     "After that, choose again if you still want CelikPanel’s text." (Turkish:
+     "Ardından CelikPanel’in metnini hâlâ istiyorsanız yeniden seçin.").
+  2. *A service that is not running now.* When the answer carries `service:
+     not_reloaded` and `service_active: false`, the sentence no longer says the
+     service keeps running. The web chooses, in order,
+     `<kind>.not_reloaded.check_unavailable.stopped` (only for
+     `check_unavailable`), `<kind>.not_reloaded.stopped` (names `{line}`; an
+     administrator's answer) and `<kind>.not_reloaded.stopped.plain`; `true`,
+     `unknown` and an absent value keep the sentences above.
+     `php_pool.not_reloaded.stopped`: "The previous file is back. PHP-FPM is
+     not running now, so it was not reloaded; its configuration is refused by
+     another file. Fix what the check names ({line}), then start PHP-FPM
+     yourself. After that, choose again if you still want CelikPanel’s text."
+     `nginx_vhost.not_reloaded.stopped` says the same of nginx.
+     `app_unit.not_reloaded.stopped`: "The previous unit file is back and
+     systemd has read it again. The application is not running now, so it was
+     not restarted; systemd-analyze verify refuses the unit. Fix what the check
+     names ({line}), then start the application yourself. After that, choose
+     again if you still want CelikPanel’s text."
+     `app_unit.not_reloaded.check_unavailable.stopped`: "… The application is
+     not running now and CelikPanel did not start it, because the unit’s check
+     could not be run on this server. Check the unit and start the application
+     yourself. After that, choose again …". The `.stopped.plain` sentences
+     (no line) say "The server administrator fixes what the check names, then
+     starts …". While the screen catalogue is not loaded the server’s own
+     sentence stands and still says the service keeps running (open).
+  3. *A check that could not be run is not a refusal.* The Agent’s
+     `systemd-analyze verify` (`cmd/agent/app_rpc.go`, `appUnitVerifyOutcome`)
+     answers `check_unavailable` when the tool is missing, cannot be launched,
+     is killed, does not finish in 15 s or exits non-zero without a word; only a
+     non-zero exit with output is `config_refused_elsewhere`. The unit is then
+     not restarted and the `check_unavailable` sentence (changed above) says
+     the check could not be run and that the administrator checks the unit and
+     restarts the application by hand.
+- *Application unit PATH* (observation, Debian 13 run a). Measured: a bare
+  `node …` start command exited 127 (`/bin/sh: 1: node: not found`) under the
+  unit's `ExecStart=/bin/sh -lc '…'`, although the unit's `Environment=PATH=`
+  already named the Panel's Node directory. The cause is an inference, not a
+  measurement: that Debian's login shell reads `/etc/profile` and sets `PATH`
+  again (`sh -l` reads it; no file of the record shows the profile). The unit
+  now writes `Environment=PATH=<Node directory>:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin`
+  (the Node directory is `/opt/celikpanel/runtimes/node/<version>/bin`, left
+  out when the unit has no Node version; no longer the Agent's own PATH) and
+  starts the command with `/bin/sh -c`: a shell stays because the start
+  command is a shell command line, and no CelikPanel feature needs a login
+  shell. Units alpha.82 and alpha.81 wrote are still compared exactly as they
+  were written (`-lc`, the Agent's PATH); an adopted unit gets the new text at
+  its next write. Not measured: the new unit has not run on a real system, so
+  that a bare `node` now starts is expected, not shown; and an application
+  that relied on directories the login profile added to `PATH` no longer
+  gets them.
+- *The answer to a choice is in view.* The record's real Chrome showed both
+  restore banners drawn above the files list, outside the viewport after the
+  click. The answer (a refusal or a finished choice) now scrolls itself into
+  view when it appears (`block: 'nearest'`) and is a `role="status"`
+  (browser-inspect batch10 shots `100p8`, `100p9`, desktop EN and phone TR).
+
+**Corrections from the thirteenth native record (set13, 2026-10-11).** One
+observation of the thirteenth record (`deploy/e2e/release-recovery/evidence/set13-20261011/`,
+Observations) and one symmetry; component-tested; not measured on a real system.
+- *A page read records what it sees on the vhost.* Measured: after a refused
+  take the vhost's ledger row was `foreign` / `nginx_refused`; when the owner
+  put CelikPanel's text back by hand, the page answered `managed_unchanged`
+  while the Domains row kept "Configuration file: your choice needed" until the
+  next write (the re-read path changed only a write-refused row). Now the
+  Configuration file page's read (`GET …/site-config`, as its "check again")
+  stores what it found on the vhost's row when the row says otherwise
+  (`services.RecordSiteFileObservation`): the state (`managed_unchanged`,
+  `owner_edited`, `foreign` or `unknown_origin`), its reason, the file's digest
+  and the time; never the digest of what CelikPanel wrote, the pending text, the
+  backup or the owner's decision. A `managed_unchanged` reading ends the row's
+  reason of a refused change (`nginx_refused`, `config_refused`, …; only
+  `protection_removed` on the same bytes, which offers "apply", stays). A kept reading keeps the
+  row's reason while the file is the one the reason was recorded on (the refusal
+  is about those bytes) and a certificate reason of a kept row; on other bytes
+  the refusal is gone. A decision stays "current" only while the file's digest
+  is the one it was made on, which the digest stored by the read decides. A
+  refused replacement is still decided by the recheck; absent, unreadable,
+  unknown and unwritable readings are not stored by this read. The pool's and
+  the unit's rows already followed their reads (D-031 second step); the one
+  gap left there, a `managed_unchanged` row that still carried a refusal reason
+  on the same bytes, is closed. Row transitions covered by tests: refused take
+  (`foreign` / `nginx_refused`) → owner restores the text → `managed_unchanged`,
+  no reason, list row without the badge → owner edits again → `owner_edited`;
+  a kept reading on the digest of the decision → decision current, on another
+  digest → not current; `protection_removed` kept by a further read; the
+  pool's `foreign` / `config_refused` → `managed_unchanged`.
+- *`service` on a successful write.* The 200 answer of a take, apply or
+  recreate whose write reloaded the file's service (the Agent's `Reloaded`)
+  now carries `service: "reloaded"` and `service_active` (the Agent's
+  `systemctl is-active` when it measured one, otherwise `"true"`: a reload that
+  succeeded is a service that runs), the same words as the 502 answers, for all
+  three kinds. A write that did not reload (outcome `unchanged`) carries
+  neither. Additive; no new sentence: the finished choice's banner is
+  unchanged. Measured before: the 200 of a successful take carried no
+  `service` field and the reload was seen only in the journal.

@@ -1,0 +1,143 @@
+{
+  "outcome": "response",
+  "panel": "owner",
+  "purpose": "a-page: the Configuration file page reads: GET site-config",
+  "request": {
+    "body": null,
+    "headers": [
+      [
+        "Accept",
+        "application/json"
+      ],
+      [
+        "Host",
+        "127.0.0.1:18881"
+      ],
+      [
+        "Cookie",
+        "[REDACTED]"
+      ]
+    ],
+    "method": "GET",
+    "path": "/api/v1/domains/2/site-config"
+  },
+  "response": {
+    "elapsed_seconds": 0.007,
+    "headers": [
+      [
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+      ],
+      [
+        "Content-Type",
+        "application/json"
+      ],
+      [
+        "Referrer-Policy",
+        "no-referrer"
+      ],
+      [
+        "Strict-Transport-Security",
+        "max-age=31536000"
+      ],
+      [
+        "X-Content-Type-Options",
+        "nosniff"
+      ],
+      [
+        "X-Frame-Options",
+        "DENY"
+      ],
+      [
+        "Date",
+        "Sun, 11 Oct 2026 04:40:08 GMT"
+      ],
+      [
+        "Transfer-Encoding",
+        "chunked"
+      ]
+    ],
+    "json": {
+      "actions": [
+        "keep",
+        "take",
+        "merge"
+      ],
+      "challenge_file": "unchanged",
+      "diff": "--- /etc/nginx/sites-available/set12-a.test.conf (on this server)\n+++ CelikPanel's text\n@@ -10,15 +10,15 @@\n # satırlarını koruyun: o dizin CelikPanel'indir (sertifika doğrulaması).\n # Site ID: 2 · Project type: php\n server {\n-    listen 192.0.2.10:80;\n+    listen 80;\n+    listen [::]:80;\n     server_name set12-a.test www.set12-a.test;\n-    # set11: put back by the server owner\n-    include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;\n \n     access_log /var/log/nginx/set12-a.test-access.log;\n     error_log /var/log/nginx/set12-a.test-error.log;\n \n     # CelikPanel's own parts of this site (certificate validation) / CelikPanel'in parçaları\n+    include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;\n \n     root /var/www/celikpanel/subscriptions/2/sites/2/public_html;\n     index index.php index.html index.htm;\n",
+      "domain": "set12-a.test",
+      "domain_id": 2,
+      "enabled": "link",
+      "file_sha256": "f6f6e2e8e9c54e6023dbe00f00180f75ff591ff277c0e3b615e5f3f4a5774abd",
+      "files": [
+        {
+          "actions": [
+            "keep",
+            "take",
+            "merge"
+          ],
+          "challenge_file": "unchanged",
+          "diff": "--- /etc/nginx/sites-available/set12-a.test.conf (on this server)\n+++ CelikPanel's text\n@@ -10,15 +10,15 @@\n # satırlarını koruyun: o dizin CelikPanel'indir (sertifika doğrulaması).\n # Site ID: 2 · Project type: php\n server {\n-    listen 192.0.2.10:80;\n+    listen 80;\n+    listen [::]:80;\n     server_name set12-a.test www.set12-a.test;\n-    # set11: put back by the server owner\n-    include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;\n \n     access_log /var/log/nginx/set12-a.test-access.log;\n     error_log /var/log/nginx/set12-a.test-error.log;\n \n     # CelikPanel's own parts of this site (certificate validation) / CelikPanel'in parçaları\n+    include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;\n \n     root /var/www/celikpanel/subscriptions/2/sites/2/public_html;\n     index index.php index.html index.htm;\n",
+          "domain": "set12-a.test",
+          "domain_id": 2,
+          "enabled": "link",
+          "file_sha256": "f6f6e2e8e9c54e6023dbe00f00180f75ff591ff277c0e3b615e5f3f4a5774abd",
+          "include_dir": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+          "kind": "nginx_vhost",
+          "ledger": {
+            "observed_at": "2026-10-11T04:40:07Z",
+            "written_at": "2026-10-11T04:39:37Z",
+            "written_release": "v0.1.0-alpha.81 9e223f175d96"
+          },
+          "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-a.test",
+          "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;",
+          "path": "/etc/nginx/sites-available/set12-a.test.conf",
+          "pending_path": "/etc/nginx/sites-available/set12-a.test.conf.celikpanel-pending",
+          "protection": "none",
+          "render_sha256": "ddea12bd9d8013719d2250f2f6a8bd483eb52676a52e72f06ed93cb5ca8e9afc",
+          "state": "owner_edited"
+        },
+        {
+          "actions": [],
+          "decision": {
+            "current": false,
+            "decided_at": "2026-10-11T04:37:36Z",
+            "kind": "take_celikpanel"
+          },
+          "domain": "set12-a.test",
+          "domain_id": 2,
+          "file_sha256": "68b9a5837198a72dde8e055eb50e37764eed33e724251381f3988b7b379e14ae",
+          "kind": "php_pool",
+          "ledger": {
+            "backup_path": "/etc/php/8.4/fpm/pool.d/site2.conf.celikpanel-backup-20261011T043914Z",
+            "observed_at": "2026-10-11T04:39:36Z",
+            "written_at": "2026-10-11T04:37:36Z",
+            "written_release": "v0.1.0-alpha.81 9e223f175d96"
+          },
+          "path": "/etc/php/8.4/fpm/pool.d/site2.conf",
+          "protection": "none",
+          "render_sha256": "da1ca0fec8c515659394b4ad29017ce8272f19787ddeb104e8f6c744d91e2151",
+          "state": "managed_unchanged"
+        }
+      ],
+      "include_dir": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+      "kind": "nginx_vhost",
+      "ledger": {
+        "observed_at": "2026-10-11T04:40:07Z",
+        "written_at": "2026-10-11T04:39:37Z",
+        "written_release": "v0.1.0-alpha.81 9e223f175d96"
+      },
+      "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-a.test",
+      "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;",
+      "overall_kind": "nginx_vhost",
+      "overall_state": "owner_edited",
+      "path": "/etc/nginx/sites-available/set12-a.test.conf",
+      "pending_path": "/etc/nginx/sites-available/set12-a.test.conf.celikpanel-pending",
+      "protection": "none",
+      "render_sha256": "ddea12bd9d8013719d2250f2f6a8bd483eb52676a52e72f06ed93cb5ca8e9afc",
+      "state": "owner_edited"
+    },
+    "status": 200,
+    "text": null
+  }
+}

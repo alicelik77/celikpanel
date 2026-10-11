@@ -78,6 +78,13 @@ export const tr: Record<ShellKey, string> = {
     'app.pageLoadFailed': 'Bu bölüm yüklenemedi. Bu sekme açıkken CelikPanel güncellenmiş olabilir.',
     'app.reload': 'CelikPanel’i yeniden yükle',
 
+    // İlk sayfa yüklemesi (2026-10-10, yedinci yerel kayıt, hücre 5).
+    'recovery.waitingHelp': "Panel henüz yanıt vermedi. Yanıt verir vermez CelikPanel açılır; bir şey yapmanız gerekmiyor.",
+    'recovery.waitingProlonged': "Bu, yarım dakikadan uzun sürdü. Dilerseniz CelikPanel’i yeniden de yükleyebilirsiniz; Panel yine yanıt vermezse sunucu yöneticisi CelikPanel hizmetinin çalıştığını denetler.",
+    'recovery.loadingTitle': "CelikPanel açılıyor",
+    'recovery.loadingHelp': "Oturumunuz doğrulandı ve Panel hazır. Arayüz hâlâ yükleniyor ve kendiliğinden açılır.",
+    // İlk sayfa yüklemesi bloğunun sonu.
+
     'nav.dashboard': 'Panel',
     'nav.domains': 'Alan Adları',
     'nav.databases': 'Veritabanları',
@@ -349,6 +356,13 @@ export const tr: Record<ShellKey, string> = {
     'panelUpdate.sending': 'Güncelleme isteği gönderiliyor…',
     'panelUpdate.accepted': 'İstek kabul edildi; güvenli durum takibi başladı.',
     'panelUpdate.watch': 'Gezinin; işlem kilitli.',
+    // --- güncelleme bildirimi: izlenen güncellemenin son okuması (2026-10-10) ---
+    'panelUpdate.tracking.reading': 'Bu güncellemenin durumu sunucudan okunuyor…',
+    'panelUpdate.tracking.verifyingTitle': 'Güncelleme kuruldu, doğrulanıyor',
+    'panelUpdate.tracking.verifying': '{version} kuruldu ve bu panel onu çalıştırıyor. Güncelleme doğrulanıyor ve henüz bitmedi; bu bildirim onu kendiliğinden izler. Bir şey yapmanız gerekmiyor.',
+    'panelUpdate.tracking.unknown': 'Bu güncellemenin durumu şu an okunamadı; bu yüzden hâlâ sürüp sürmediği ya da bitip bitmediği bilinmiyor. Bu bildirim kendiliğinden yeniden okur; başka bir güncelleme başlatmayın.',
+    'panelUpdate.lastRead': 'Son okuma',
+    // --- güncelleme bildirimi bloğunun sonu ---
     'panelUpdate.canonicalChecking': 'Tamamlanmamış güncelleme denetleniyor...',
     'panelUpdate.interactionLocked': 'Bu güncelleme denetlenirken gezinme geçici olarak kilitlidir. İki dakika sonra otomatik açılır; işlem arka planda izlenmeye devam eder.',
     'panelUpdate.ambiguous': 'Başlatma yanıtı belirsiz. İstek tekrarlanmayacak; aynı sunucu durumu izlenecek.',
@@ -424,4 +438,42 @@ export const tr: Record<ShellKey, string> = {
     'err.SERVICE_ACTION_FAILED.verify': "İşlem gönderildi ancak {unit} istenen durumda değil. Sunucuda {command} komutuyla durumunu görün, nedeni düzeltin, sonra işlemi burada yineleyin.",
     'err.SERVICE_ACTION_FAILED.command': "Sunucunun hizmet yöneticisi {unit} üzerindeki işlemi yapmadı. Sunucuda {command} komutunu çalıştırıp nedenini görün, düzeltin, sonra işlemi burada yineleyin.",
     'err.SERVICE_ACTION_UNKNOWN': "İşlem gönderildi ancak sonucu doğrulanamadı; bu yüzden yapıldı diye gösterilmiyor. Bu doğrulanmış bir hata değildir: {unit} istediğiniz duruma zaten gelmiş olabilir. Sunucuda {command} komutuyla durumunu görün; işlemi yalnız hâlâ gerekiyorsa burada yineleyin.",
+
+    // --- ilk sayfa yüklemesi: arayüz yarım dakika sonra hâlâ yükleniyor (2026-10-10) ---
+    'recovery.waitingProlongedLoading': "CelikPanel hâlâ yükleniyor; kendiliğinden açılır. Bu sayfa böyle kalırsa yeniden yükleyin.",
+    // --- ilk sayfa yüklemesi bloğunun sonu ---
+    // --- sahibin değiştirdiği site yapılandırma dosyası: retler (D-031, 2026-10-10) ---
+    'err.SITE_CONFIG_OWNER_EDITED': 'Bu sitenin nginx yapılandırma dosyası CelikPanel’in değişmemiş metni değil; bu yüzden CelikPanel onu korudu ve bu değişikliği ona uygulamadı. Başka hiçbir şey değiştirilmedi. Alan adının Yapılandırma dosyası sayfasında dosyanızı koruyun, CelikPanel’in metnini alın (dosyanız tarihli bir kopya olarak saklanır) ya da ikisini elle birleştirin.',
+    'err.SITE_CONFIG_MISSING': 'Bu sitenin nginx yapılandırma dosyası eksik; bu yüzden bu değişiklik uygulanmadı ve dosya yeniden oluşturulmadı. Bilerek kaldırıldıysa bir şey yapmanız gerekmez; değilse alan adının Yapılandırma dosyası sayfasında Yeniden oluştur’u seçin.',
+    'err.SITE_CONFIG_UNWRITABLE': 'CelikPanel bu sitenin nginx yapılandırma dosyasını okuyamadı ya da değiştiremedi (örneğin bir bağlantı ya da değişikliğe kilitli); bu yüzden dosyayı olduğu gibi korudu ve bu değişikliği uygulamadı. Sunucu yöneticisi dosyayı sunucuda kontrol eder; nedeni alan adının Yapılandırma dosyası sayfasında.',
+    'err.SITE_CONFIG_EXISTS': 'Bu ad için sunucuda CelikPanel’in yazmadığı bir yapılandırma dosyası zaten var; bu yüzden CelikPanel onu korudu ve siteyi oluşturmadı. Geride hiçbir şey kalmadı. O dosya artık kullanılmıyorsa sunucuda taşıyın ya da adını değiştirin, sonra siteyi yeniden oluşturun.',
+    'err.SITE_CONFIG_CHANGED': 'Yapılandırma dosyası ya da CelikPanel’in metni, sayfa onları gösterdikten sonra değişti; bu yüzden hiçbir şey yapılmadı. Sayfa dosyayı yeniden okur; ona bakıp yeniden seçin.',
+    'err.SITE_CONFIG_NOT_APPLICABLE': 'Bu seçim dosyanın şimdiki hâline uymuyor; bu yüzden hiçbir şey yapılmadı. Sayfa dosyayı yeniden okur; hâlâ istiyorsanız yeniden seçin.',
+    'err.SITE_CONFIG_NOT_READ': 'CelikPanel bu sitenin yapılandırma dosyasının durumunu şu an okuyamadı. Bu, dosyada bir sorun olduğu anlamına gelmez ve hiçbir şey değiştirilmedi. Tekrar deneyin.',
+    'err.SITE_CONFIG_NGINX_REFUSED': 'nginx, CelikPanel’in metnini kabul etmedi (yapılandırmayı reddetti ya da yeniden yükleyemedi); bu yüzden dosyanız geri kondu ve nginx onunla çalışmayı sürdürüyor. nginx bütün siteleri birlikte kontrol eder; neden başka bir dosya olabilir. nginx’in bildirdiğini düzeltin, sonra yeniden seçin.',
+    'err.SITE_CONFIG_NGINX_REFUSED.unconfirmed': 'nginx, CelikPanel’in metnini kabul etmedi (yapılandırmayı reddetti ya da yeniden yükleyemedi). CelikPanel önceki dosyayı geri koymayı denedi; yerinde olup olmadığı doğrulanmadı — sunucu yöneticisi dosyayı sunucuda kontrol eder. nginx bütün siteleri birlikte kontrol eder; neden başka bir dosya olabilir. nginx’in bildirdiğini düzeltin, sonra yeniden seçin.',
+    'err.SITE_CONFIG_OWNER_EDITED.certificate_validation': 'Bu sitenin nginx yapılandırma dosyası CelikPanel dışında değiştirildi ve CelikPanel’in sertifika doğrulamasını dosyayı değiştirmeden yayımlamasına izin vermiyor; bu yüzden sertifika istenmedi ve hiçbir şey değiştirilmedi. Seçimi sunucu yöneticisi alan adının Yapılandırma dosyası sayfasında yapar: CelikPanel’in metnini alır ya da o sayfanın gösterdiğini dosyaya ekleyip nginx’i yeniden yükler; sonra sertifikayı yeniden isteyin.',
+    'err.SITE_CONFIG_OWNER_EDITED.php_pool': 'Bu sitenin PHP-FPM havuz dosyası CelikPanel’in değişmemiş metni değil; bu yüzden CelikPanel onu satırlarınızla birlikte korudu ve bu değişikliği uygulamadı. Başka hiçbir şey değiştirilmedi. Alan adının Yapılandırma dosyası sayfasında dosyanızı koruyun, CelikPanel’in metnini alın (dosyanız tarihli bir kopya olarak saklanır) ya da ikisini elle birleştirin.',
+    'err.SITE_CONFIG_OWNER_EDITED.app_unit': 'Bu sitenin uygulama birimi dosyası CelikPanel’in değişmemiş metni değil; bu yüzden CelikPanel onu korudu ve bu değişikliği uygulamadı; uygulama onunla çalışmaya devam ediyor. Başka hiçbir şey değiştirilmedi. Alan adının Yapılandırma dosyası sayfasında dosyanızı koruyun, CelikPanel’in metnini alın (dosyanız tarihli bir kopya olarak saklanır) ya da ikisini elle birleştirin.',
+    'err.SITE_CONFIG_MISSING.php_pool': 'Bu sitenin PHP-FPM havuz dosyası yok; bu yüzden bu değişiklik uygulanmadı ve dosya yeniden oluşturulmadı. Bilerek kaldırıldıysa bir şey yapmak gerekmez; değilse alan adının Yapılandırma dosyası sayfasında Yeniden oluştur’u seçin.',
+    'err.SITE_CONFIG_MISSING.app_unit': 'Bu sitenin uygulama birimi dosyası yok; bu yüzden bu değişiklik uygulanmadı ve dosya yeniden oluşturulmadı. Bilerek kaldırıldıysa bir şey yapmak gerekmez; değilse alan adının Yapılandırma dosyası sayfasında Yeniden oluştur’u seçin.',
+    'err.SITE_CONFIG_UNWRITABLE.php_pool': 'CelikPanel bu sitenin PHP-FPM havuz dosyasını okuyamadı ya da değiştiremedi (örneğin bir bağlantı ya da değişikliğe karşı kilitli); bu yüzden dosyayı olduğu gibi bıraktı ve bu değişikliği uygulamadı. Sunucu yöneticisi dosyayı sunucuda denetler; neden alan adının Yapılandırma dosyası sayfasında.',
+    'err.SITE_CONFIG_UNWRITABLE.app_unit': 'CelikPanel bu sitenin uygulama birimi dosyasını okuyamadı ya da değiştiremedi (örneğin bir bağlantı ya da değişikliğe karşı kilitli); bu yüzden dosyayı olduğu gibi bıraktı ve bu değişikliği uygulamadı. Sunucu yöneticisi dosyayı sunucuda denetler; neden alan adının Yapılandırma dosyası sayfasında.',
+    'err.SITE_CONFIG_EXISTS.php_pool': 'Seçtiğiniz PHP sürümü için bu sitenin bir PHP-FPM havuz dosyası zaten var; bu yüzden CelikPanel onu korudu ve sürümü değiştirmedi. Hiçbir şey değiştirilmedi. Artık kullanılmıyorsa o dosyayı sunucuda taşıyın ya da adını değiştirin, sonra yeniden deneyin.',
+    'err.SITE_CONFIG_EXISTS.app_unit': 'Bu site için CelikPanel’in yazmadığı bir uygulama birimi dosyası zaten var; bu yüzden CelikPanel onu korudu ve bu değişikliği uygulamadı. Hiçbir şey değiştirilmedi. Alan adının Yapılandırma dosyası sayfasını açın.',
+    'err.SITE_CONFIG_SERVICE_REFUSED': 'Hizmet CelikPanel’in metnini kabul etmedi; bu yüzden önceki dosya geri kondu ve başka hiçbir şey değiştirilmedi. Sunucu yöneticisi hizmetin iletisini panel günlüğünde okur, nedeni giderir, sonra yeniden dener.',
+    'err.SITE_CONFIG_SERVICE_REFUSED.php_pool': 'PHP-FPM CelikPanel’in havuz metnini kabul etmedi (yapılandırma denetimi ya da yeniden yüklemesi başarısız oldu); bu yüzden önceki havuz dosyası geri kondu ve PHP-FPM onunla çalışmaya devam ediyor. Başka hiçbir şey değiştirilmedi. Sunucu yöneticisi PHP-FPM’in iletisini panel günlüğünde okur (sudo journalctl -u celikpanel-panel | grep "site configuration"), nedeni giderir, sonra yeniden dener.',
+    'err.SITE_CONFIG_SERVICE_REFUSED.app_unit': 'systemd CelikPanel’in birim metnini almadı (yeniden yükleme başarısız oldu); bu yüzden önceki birim dosyası geri kondu. Başka hiçbir şey değiştirilmedi. Sunucu yöneticisi systemd’nin iletisini panel günlüğünde okur (sudo journalctl -u celikpanel-panel | grep "site configuration"), nedeni giderir, sonra yeniden dener.',
+    'err.SITE_CONFIG_SERVICE_REFUSED.php_pool.unconfirmed': 'PHP-FPM CelikPanel’in havuz metnini kabul etmedi (yapılandırma denetimi ya da yeniden yüklemesi başarısız oldu). CelikPanel önceki dosyayı geri koymayı denedi; yerinde olup olmadığı doğrulanmadı — sunucu yöneticisi dosyayı sunucuda kontrol eder. PHP-FPM’in iletisi ve dosya geri konurken neyin başarısız olduğu panel günlüğünde (sudo journalctl -u celikpanel-panel | grep "site configuration"); nedeni giderin, sonra yeniden deneyin.',
+    'err.SITE_CONFIG_SERVICE_REFUSED.app_unit.unconfirmed': 'systemd CelikPanel’in birim metnini almadı (yeniden yükleme başarısız oldu). CelikPanel önceki dosyayı geri koymayı denedi; yerinde olup olmadığı doğrulanmadı — sunucu yöneticisi dosyayı sunucuda kontrol eder. systemd’nin iletisi ve dosya geri konurken neyin başarısız olduğu panel günlüğünde (sudo journalctl -u celikpanel-panel | grep "site configuration"); nedeni giderin, sonra yeniden deneyin.',
+    'err.CERTIFICATE_VALIDATION_UNKNOWN': 'Bu sunucudaki nginx yanıt vermediği için CelikPanel, bu sitenin nginx yapılandırma dosyasının sertifika doğrulamasına izin verip vermediğini kontrol edemedi; bu yüzden sertifika istenmedi ve hiçbir şey değiştirilmedi. Sunucu yöneticisi nginx’in çalıştığını denetler; sonra sertifikayı yeniden isteyin.',
+    // --- site yapılandırma retleri bloğunun sonu ---
+    // --- yanıt vermeyen erişim okuması ve hatayla yanıt veren okuma (dokuzuncu yerel kayıt, 2026-10-10) ---
+    'recovery.waitingLong': "Panel bir süredir yanıt vermiyor. CelikPanel kendiliğinden kontrol etmeyi sürdürür; dilerseniz şimdi de kontrol edebilirsiniz.",
+    'recovery.checkNow': "Şimdi kontrol et",
+    'recovery.failure.network': "Panel’e bağlantı, yanıt gelmeden kurulamadı (reddedildi, kapandı ya da ulaşılamadı). Bu sürerse sunucu yöneticisi CelikPanel hizmetinin çalıştığını denetler.",
+    'recovery.failure.status': "Sunucu HTTP {status} hatasıyla yanıt verdi. Bu sürerse sunucu yöneticisi CelikPanel hizmetini ve günlüğünü denetler.",
+    'recovery.lastKnown': "Bu beklemeden önce bilinen son durum: {cause}",
+    'recovery.failure.invalid': "Panel yanıt verdi, ancak bu sayfa yanıtı okuyamadı. CelikPanel’i yeniden yüklemek, Panel’e uyan arayüzü yükler.",
+    // --- yanıt vermeyen erişim okuması bloğunun sonu ---
 };

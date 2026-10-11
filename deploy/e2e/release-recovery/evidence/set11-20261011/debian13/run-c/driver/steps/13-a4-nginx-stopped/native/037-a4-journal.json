@@ -1,0 +1,29 @@
+{
+  "at": "2026-10-11T00:51:27Z",
+  "by_unit": {
+    "celikpanel-agent.service": [],
+    "celikpanel-panel.service": [
+      "2026-10-11T00:51:25.353384+00:00 dns-debian13 panel[30918]: 2026/10/11 00:51:25 http: TLS handshake error from 127.0.0.1:39736: EOF",
+      "2026-10-11T00:51:25.372160+00:00 dns-debian13 panel[30918]: 2026/10/11 00:51:25 site configuration set11-a.test (change): kept (owner-edited); CelikPanel's text held in /etc/nginx/sites-available/set11-a.test.conf.celikpanel-pending",
+      "2026-10-11T00:51:25.381242+00:00 dns-debian13 panel[30918]: 2026/10/11 00:51:25 SSL issue domain 2: prepare validation vhost: certificate validation for set11-a.test not prepared: whether the kept configuration file lets it run is unknown (nginx did not answer on port 80: Get \"http://set11-a.test/.well-known/acme-challenge/celikpanel-probe-0ed4945e3981b9e3236c7afcd0c089ea\": dial tcp 127.0.0.1:80: connect: connection refused)",
+      "2026-10-11T00:51:25.381242+00:00 dns-debian13 panel[30918]: 2026/10/11 00:51:25 [503] certificate validation for set11-a.test not prepared: whether the kept configuration file lets it run is unknown (nginx did not answer on port 80: Get \"http://set11-a.test/.well-known/acme-challenge/celikpanel-probe-0ed4945e3981b9e3236c7afcd0c089ea\": dial tcp 127.0.0.1:80: connect: connection refused)"
+    ],
+    "nginx.service": [],
+    "php8.4-fpm.service": []
+  },
+  "mode": "read-window",
+  "owner_action": false,
+  "schema": "celikpanel/set10-native/v1",
+  "since_epoch": 1791679882,
+  "systemd_manager": [
+    "2026-10-11T00:51:23.789854+00:00 dns-debian13 systemd[1]: Started celikpanel-lab-set11-fswatch.service - [systemd-run] /usr/bin/python3 -I /root/celikpanel-release-recovery-lab/set11-fswatch.py /root/celikpanel-release-recovery-lab/set11-fs-a4.jsonl /var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge /etc/nginx/celikpanel-managed.d/set11-a.test /etc/nginx/celikpanel-sites.d/set11-a.test /etc/nginx/sites-available.",
+    "2026-10-11T00:51:27.126772+00:00 dns-debian13 systemd[1]: Stopping celikpanel-lab-set11-fswatch.service - [systemd-run] /usr/bin/python3 -I /root/celikpanel-release-recovery-lab/set11-fswatch.py /root/celikpanel-release-recovery-lab/set11-fs-a4.jsonl /var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge /etc/nginx/celikpanel-managed.d/set11-a.test /etc/nginx/celikpanel-sites.d/set11-a.test /etc/nginx/sites-available...",
+    "2026-10-11T00:51:27.137528+00:00 dns-debian13 systemd[1]: Stopped celikpanel-lab-set11-fswatch.service - [systemd-run] /usr/bin/python3 -I /root/celikpanel-release-recovery-lab/set11-fswatch.py /root/celikpanel-release-recovery-lab/set11-fs-a4.jsonl /var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge /etc/nginx/celikpanel-managed.d/set11-a.test /etc/nginx/celikpanel-sites.d/set11-a.test /etc/nginx/sites-available."
+  ],
+  "units": [
+    "celikpanel-panel.service",
+    "celikpanel-agent.service",
+    "nginx.service",
+    "php8.4-fpm.service"
+  ]
+}

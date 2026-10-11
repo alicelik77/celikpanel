@@ -1,0 +1,49 @@
+{
+  "at": "2026-10-11T10:18:20Z",
+  "by_unit": {
+    "celikapp-4.service": [
+      "2026-10-11T10:18:13.096845+00:00 dns-ubuntu systemd[1]: Stopping celikapp-4.service - CelikPanel app: set13-n.test...",
+      "2026-10-11T10:18:13.099281+00:00 dns-ubuntu systemd[1]: celikapp-4.service: Failed to kill control group /system.slice/celikapp-4.service, ignoring: Invalid argument",
+      "2026-10-11T10:18:13.099329+00:00 dns-ubuntu systemd[1]: celikapp-4.service: Deactivated successfully.",
+      "2026-10-11T10:18:13.099461+00:00 dns-ubuntu systemd[1]: Stopped celikapp-4.service - CelikPanel app: set13-n.test.",
+      "2026-10-11T10:18:13.112281+00:00 dns-ubuntu systemd[1]: Started celikapp-4.service - CelikPanel app: set13-n.test."
+    ],
+    "celikpanel-agent.service": [
+      "2026-10-11T10:18:13.080021+00:00 dns-ubuntu agent[7749]: 2026/10/11 10:18:13 ApplyAppUnit site 4: taken (adopted \"\", owner's copy \"/etc/systemd/system/celikapp-4.service.celikpanel-backup-20261011T101812Z\")"
+    ],
+    "celikpanel-panel.service": [
+      "2026-10-11T10:18:11.727028+00:00 dns-ubuntu panel[44663]: 2026/10/11 10:18:11 http: TLS handshake error from 127.0.0.1:43506: EOF",
+      "2026-10-11T10:18:12.653899+00:00 dns-ubuntu panel[44663]: 2026/10/11 10:18:12 http: TLS handshake error from 127.0.0.1:43536: EOF",
+      "2026-10-11T10:18:13.117606+00:00 dns-ubuntu panel[44663]: 2026/10/11 10:18:13 site configuration set13-n.test app_unit (take): taken; owner's file kept as /etc/systemd/system/celikapp-4.service.celikpanel-backup-20261011T101812Z"
+    ],
+    "nginx.service": [],
+    "php8.3-fpm.service": []
+  },
+  "mode": "read-window12",
+  "owner_action": false,
+  "schema": "celikpanel/set12-native/v1",
+  "since_epoch": 1791713891,
+  "systemd_all": [
+    "2026-10-11T10:18:11.371190+00:00 dns-ubuntu systemd[1]: Reloading requested from client PID 49049 ('systemctl') (unit session-185.scope)...",
+    "2026-10-11T10:18:11.371236+00:00 dns-ubuntu systemd[1]: Reloading...",
+    "2026-10-11T10:18:11.653745+00:00 dns-ubuntu systemd[1]: Reloading finished in 281 ms.",
+    "2026-10-11T10:18:12.720678+00:00 dns-ubuntu systemd[1]: Reloading requested from client PID 49225 ('systemctl') (unit celikpanel-agent.service)...",
+    "2026-10-11T10:18:12.720750+00:00 dns-ubuntu systemd[1]: Reloading...",
+    "2026-10-11T10:18:13.029621+00:00 dns-ubuntu systemd[1]: Reloading finished in 308 ms.",
+    "2026-10-11T10:18:13.096845+00:00 dns-ubuntu systemd[1]: Stopping celikapp-4.service - CelikPanel app: set13-n.test...",
+    "2026-10-11T10:18:13.099281+00:00 dns-ubuntu systemd[1]: celikapp-4.service: Failed to kill control group /system.slice/celikapp-4.service, ignoring: Invalid argument",
+    "2026-10-11T10:18:13.099329+00:00 dns-ubuntu systemd[1]: celikapp-4.service: Deactivated successfully.",
+    "2026-10-11T10:18:13.099461+00:00 dns-ubuntu systemd[1]: Stopped celikapp-4.service - CelikPanel app: set13-n.test.",
+    "2026-10-11T10:18:13.112281+00:00 dns-ubuntu systemd[1]: Started celikapp-4.service - CelikPanel app: set13-n.test."
+  ],
+  "systemd_manager": [
+    "2026-10-11T10:18:12.720678+00:00 dns-ubuntu systemd[1]: Reloading requested from client PID 49225 ('systemctl') (unit celikpanel-agent.service)..."
+  ],
+  "units": [
+    "celikpanel-panel.service",
+    "celikpanel-agent.service",
+    "nginx.service",
+    "php8.3-fpm.service",
+    "celikapp-4.service"
+  ]
+}

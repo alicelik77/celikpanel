@@ -1,0 +1,60 @@
+{
+  "at": "2026-10-11T01:19:51Z",
+  "by_unit": {
+    "celikpanel-agent.service": [
+      "2026-10-11T01:19:28.030262+00:00 dns-ubuntu postfix/postfix-script[52246]: the Postfix mail system is running: PID: 39691",
+      "2026-10-11T01:19:28.776184+00:00 dns-ubuntu postfix/postfix-script[52285]: the Postfix mail system is running: PID: 39691",
+      "2026-10-11T01:19:43.042565+00:00 dns-ubuntu postfix/postfix-script[52953]: the Postfix mail system is running: PID: 39691",
+      "2026-10-11T01:19:43.834445+00:00 dns-ubuntu postfix/postfix-script[52989]: the Postfix mail system is running: PID: 39691"
+    ],
+    "celikpanel-panel.service": [
+      "2026-10-11T01:19:21.328674+00:00 dns-ubuntu systemd[1]: Starting celikpanel-panel.service - CelikPanel web panel...",
+      "2026-10-11T01:19:21.351523+00:00 dns-ubuntu systemd[1]: Started celikpanel-panel.service - CelikPanel web panel.",
+      "2026-10-11T01:19:21.821887+00:00 dns-ubuntu panel[51557]: 2026/10/11 01:19:21 Starting CelikPanel Backend...",
+      "2026-10-11T01:19:21.840734+00:00 dns-ubuntu panel[51557]: 2026/10/11 01:19:21 ACCEPTANCE FIXTURE — NOT FOR PRODUCTION: this panel was built with the acceptance_license test tag; it never contacts the license service and accepts only the acceptance fixture license on a disposable acceptance guest (guest: verified)",
+      "2026-10-11T01:19:21.842019+00:00 dns-ubuntu panel[51557]: 2026/10/11 01:19:21 Panel startup listener active on :2083 (HTTPS; application gated)",
+      "2026-10-11T01:19:21.843561+00:00 dns-ubuntu panel[51557]: 2026/10/11 01:19:21 Connected to Agent RPC; preparing normal management access",
+      "2026-10-11T01:19:21.977282+00:00 dns-ubuntu panel[51557]: 2026/10/11 01:19:21 site configuration set1-owner.test (startup): written",
+      "2026-10-11T01:19:22.003575+00:00 dns-ubuntu panel[51557]: 2026/10/11 01:19:22 site configuration set11-a.test (startup): kept, not replaced (managed_unchanged write_refused); rename /etc/nginx/sites-available/.set11-a.test.conf.celikpanel-1000361093 /etc/nginx/sites-available/set11-a.test.conf: operation not permitted",
+      "2026-10-11T01:19:22.014248+00:00 dns-ubuntu panel[51557]: 2026/10/11 01:19:22 site configuration set11-b.test (startup): written",
+      "2026-10-11T01:19:22.023834+00:00 dns-ubuntu panel[51557]: 2026/10/11 01:19:22 site configuration files at start: 2 written, 0 unchanged, 0 kept (owner-edited), 0 kept (foreign), 0 kept (unknown origin), 1 unreadable or unwritable, 0 missing (not recreated), 0 failed; 0 adopted from an earlier release",
+      "2026-10-11T01:19:23.685189+00:00 dns-ubuntu panel[51557]: 2026/10/11 01:19:23 http: TLS handshake error from 127.0.0.1:58794: EOF",
+      "2026-10-11T01:19:25.753252+00:00 dns-ubuntu panel[51557]: 2026/10/11 01:19:25 http: TLS handshake error from 127.0.0.1:58810: EOF",
+      "2026-10-11T01:19:27.781417+00:00 dns-ubuntu panel[51557]: 2026/10/11 01:19:27 http: TLS handshake error from 127.0.0.1:58816: EOF",
+      "2026-10-11T01:19:29.908940+00:00 dns-ubuntu panel[51557]: 2026/10/11 01:19:29 http: TLS handshake error from 127.0.0.1:58834: EOF",
+      "2026-10-11T01:19:32.106059+00:00 dns-ubuntu panel[51557]: 2026/10/11 01:19:32 http: TLS handshake error from 127.0.0.1:55266: EOF",
+      "2026-10-11T01:19:34.213063+00:00 dns-ubuntu panel[51557]: 2026/10/11 01:19:34 http: TLS handshake error from 127.0.0.1:55286: EOF",
+      "2026-10-11T01:19:34.875598+00:00 dns-ubuntu panel[51557]: 2026/10/11 01:19:34 certificate startup reconcile: mail SNI reconciled from 0 active secure-mail certificates; TLSA left unchanged: automatic DANE/TLSA updates are disabled: safe TTL-aware certificate rollover and explicit panel record ownership are not available in this release",
+      "2026-10-11T01:19:36.243760+00:00 dns-ubuntu panel[51557]: 2026/10/11 01:19:36 http: TLS handshake error from 127.0.0.1:55302: EOF",
+      "2026-10-11T01:19:38.266516+00:00 dns-ubuntu panel[51557]: 2026/10/11 01:19:38 http: TLS handshake error from 127.0.0.1:55310: EOF",
+      "2026-10-11T01:19:40.336512+00:00 dns-ubuntu panel[51557]: 2026/10/11 01:19:40 http: TLS handshake error from 127.0.0.1:43298: EOF",
+      "2026-10-11T01:19:42.588038+00:00 dns-ubuntu panel[51557]: 2026/10/11 01:19:42 http: TLS handshake error from 127.0.0.1:43316: EOF",
+      "2026-10-11T01:19:44.083806+00:00 dns-ubuntu panel[51557]: 2026/10/11 01:19:44 milter chain: milters=\"inet:localhost:11332\" maps=hash",
+      "2026-10-11T01:19:44.088317+00:00 dns-ubuntu panel[51557]: 2026/10/11 01:19:44 Panel ready on :2083 (HTTPS)",
+      "2026-10-11T01:19:44.638083+00:00 dns-ubuntu panel[51557]: 2026/10/11 01:19:44 http: TLS handshake error from 127.0.0.1:43328: EOF",
+      "2026-10-11T01:19:44.670477+00:00 dns-ubuntu panel[51557]: 2026/10/11 01:19:44 http: TLS handshake error from 127.0.0.1:43336: EOF"
+    ],
+    "nginx.service": [
+      "2026-10-11T01:19:21.943396+00:00 dns-ubuntu systemd[1]: Reloading nginx.service - A high performance web server and a reverse proxy server...",
+      "2026-10-11T01:19:21.967840+00:00 dns-ubuntu nginx[51570]: 2026/10/11 01:19:21 [notice] 51570#51570: signal process started",
+      "2026-10-11T01:19:21.969755+00:00 dns-ubuntu systemd[1]: Reloaded nginx.service - A high performance web server and a reverse proxy server."
+    ],
+    "php8.3-fpm.service": []
+  },
+  "mode": "read-window",
+  "owner_action": false,
+  "schema": "celikpanel/set10-native/v1",
+  "since_epoch": 1791681559,
+  "systemd_manager": [
+    "2026-10-11T01:19:21.328674+00:00 dns-ubuntu systemd[1]: Starting celikpanel-panel.service - CelikPanel web panel...",
+    "2026-10-11T01:19:21.351523+00:00 dns-ubuntu systemd[1]: Started celikpanel-panel.service - CelikPanel web panel.",
+    "2026-10-11T01:19:21.943396+00:00 dns-ubuntu systemd[1]: Reloading nginx.service - A high performance web server and a reverse proxy server...",
+    "2026-10-11T01:19:21.969755+00:00 dns-ubuntu systemd[1]: Reloaded nginx.service - A high performance web server and a reverse proxy server."
+  ],
+  "units": [
+    "celikpanel-panel.service",
+    "celikpanel-agent.service",
+    "nginx.service",
+    "php8.3-fpm.service"
+  ]
+}

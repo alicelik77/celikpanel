@@ -1,0 +1,268 @@
+{
+  "artifacts": {
+    "baseline": {
+      "commit": "8948352e39539cd647c742c154578dc2163d7b9b",
+      "sha256": "f7e5c60cd03c7186eb9e2d1ff92c6dbc5957b54792683039bd4234795a23cd52",
+      "version": "v0.1.0-alpha.81"
+    }
+  },
+  "cell": {
+    "components": [
+      "nginx",
+      "php-fpm",
+      "mariadb",
+      "postfix",
+      "dovecot",
+      "roundcube",
+      "rspamd",
+      "postgresql"
+    ],
+    "mail": true,
+    "name": "set13-debian13",
+    "node": "debian13",
+    "purpose": "web_mail"
+  },
+  "cell_kind": "set13-fresh-install",
+  "findings": [
+    "debian13: server setup waits at access_dns (server_setup_access_dns_required) on an isolated host; later wizard steps were not run: ['12-panel_certificate', '13-access_dns', '14-mail_certificate', '15-mail_enrollment', '16-verify']"
+  ],
+  "identity": {
+    "cell_id": "release-recovery__2f67a298439cec40",
+    "node": "debian13",
+    "vm_uuid": "558690eb-2ddd-5b95-ba00-2f7424390a77"
+  },
+  "native_evidence": false,
+  "note": "set13: a measurement on the fresh install; no update is started and no P0 row is judged.",
+  "outcome": {
+    "classification": "set13-measured",
+    "final_status": null
+  },
+  "overall": "complete-for-review",
+  "provenance": {
+    "what": "set13: 816b8dd60 installed fresh; no update"
+  },
+  "request_id": null,
+  "schema": "celikpanel/upd1-owner-update-result/v1",
+  "sections": {
+    "C4-pool-not-read": {
+      "checks": 8,
+      "error": null,
+      "failed": [],
+      "finished_at": "2026-10-11T10:52:19Z",
+      "notes": [
+        "C4: PASS"
+      ],
+      "started_at": "2026-10-11T10:51:01Z",
+      "substeps": {
+        "C4": "passed"
+      },
+      "title": "the pool not read: the page and the Domains row",
+      "unknown": [],
+      "verdict": "passed"
+    },
+    "C5-app-unit": {
+      "checks": 23,
+      "error": null,
+      "failed": [],
+      "finished_at": "2026-10-11T10:53:23Z",
+      "notes": [
+        "C5: PASS"
+      ],
+      "started_at": "2026-10-11T10:52:19Z",
+      "substeps": {
+        "C5": "passed",
+        "section": "passed"
+      },
+      "title": "the Node unit's PATH and /bin/sh -c; verify before try-restart after a put-back",
+      "unknown": [],
+      "verdict": "passed"
+    },
+    "S0-sites": {
+      "checks": 16,
+      "error": null,
+      "failed": [],
+      "finished_at": "2026-10-11T10:50:45Z",
+      "notes": [
+        "S0: PASS"
+      ],
+      "started_at": "2026-10-11T10:50:40Z",
+      "substeps": {
+        "S0": "passed",
+        "section": "passed"
+      },
+      "title": "two PHP sites; header, digest, ledger row, include directory, nginx -T (set10's section)",
+      "unknown": [],
+      "verdict": "passed"
+    },
+    "h-i-unchanged-start": {
+      "checks": 7,
+      "error": null,
+      "failed": [],
+      "finished_at": "2026-10-11T10:51:01Z",
+      "notes": [
+        "h: PASS",
+        "i: PASS"
+      ],
+      "started_at": "2026-10-11T10:50:45Z",
+      "substeps": {
+        "h": "passed",
+        "i": "passed"
+      },
+      "title": "a restart with every site unchanged (set10's section)",
+      "unknown": [],
+      "verdict": "passed"
+    }
+  },
+  "setup": {
+    "components": [
+      "dovecot",
+      "mariadb",
+      "nginx",
+      "php-fpm",
+      "postfix",
+      "postgresql",
+      "roundcube",
+      "rspamd"
+    ],
+    "purpose": "web_mail",
+    "waiting": {
+      "code": "server_setup_access_dns_required",
+      "mail_steps_reached": true,
+      "not_run": [
+        "12-panel_certificate",
+        "13-access_dns",
+        "14-mail_certificate",
+        "15-mail_enrollment",
+        "16-verify"
+      ],
+      "phase": "access_dns",
+      "polls": 25,
+      "stable_wait_seconds": 122.5,
+      "steps": {
+        "01-dns": "succeeded",
+        "02-service": "succeeded",
+        "03-service": "succeeded",
+        "04-service": "succeeded",
+        "05-service": "succeeded",
+        "06-mail_profile": "succeeded",
+        "07-mail_profile": "succeeded",
+        "08-service": "succeeded",
+        "09-service": "succeeded",
+        "10-firewall": "succeeded",
+        "11-access_dns": "running",
+        "12-panel_certificate": "pending",
+        "13-access_dns": "pending",
+        "14-mail_certificate": "pending",
+        "15-mail_enrollment": "pending",
+        "16-verify": "pending"
+      }
+    }
+  },
+  "steps": [
+    {
+      "finished_at": "2026-10-11T10:41:32Z",
+      "name": "set6-name-pinning",
+      "reason": null,
+      "started_at": "2026-10-11T10:41:27Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T10:41:38Z",
+      "name": "preflight",
+      "reason": null,
+      "started_at": "2026-10-11T10:41:32Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T10:41:46Z",
+      "name": "origin",
+      "reason": null,
+      "started_at": "2026-10-11T10:41:38Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T10:42:36Z",
+      "name": "baseline-install",
+      "reason": null,
+      "started_at": "2026-10-11T10:41:46Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T10:42:37Z",
+      "name": "owner-login",
+      "reason": null,
+      "started_at": "2026-10-11T10:42:36Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T10:42:37Z",
+      "name": "license",
+      "reason": null,
+      "started_at": "2026-10-11T10:42:37Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T10:50:37Z",
+      "name": "setup",
+      "reason": null,
+      "started_at": "2026-10-11T10:42:37Z",
+      "verdict": "observed"
+    },
+    {
+      "finished_at": "2026-10-11T10:50:40Z",
+      "name": "site",
+      "reason": null,
+      "started_at": "2026-10-11T10:50:37Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T10:50:45Z",
+      "name": "S0-sites",
+      "reason": null,
+      "started_at": "2026-10-11T10:50:40Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T10:51:01Z",
+      "name": "h-i-unchanged-start",
+      "reason": null,
+      "started_at": "2026-10-11T10:50:45Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T10:52:19Z",
+      "name": "C4-pool-not-read",
+      "reason": null,
+      "started_at": "2026-10-11T10:51:01Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T10:53:23Z",
+      "name": "C5-app-unit",
+      "reason": null,
+      "started_at": "2026-10-11T10:52:19Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T10:56:30Z",
+      "name": "set13-browser-window",
+      "reason": null,
+      "started_at": "2026-10-11T10:53:23Z",
+      "verdict": "observed"
+    },
+    {
+      "finished_at": "2026-10-11T10:56:30Z",
+      "name": "set6-name-pinning-at-the-end",
+      "reason": null,
+      "started_at": "2026-10-11T10:56:30Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T10:56:31Z",
+      "name": "collect",
+      "reason": null,
+      "started_at": "2026-10-11T10:56:30Z",
+      "verdict": "passed"
+    }
+  ]
+}

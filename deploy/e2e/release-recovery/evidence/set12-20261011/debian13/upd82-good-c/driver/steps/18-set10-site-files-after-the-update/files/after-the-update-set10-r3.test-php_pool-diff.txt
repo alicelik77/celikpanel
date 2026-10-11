@@ -1,0 +1,9 @@
+--- /etc/php/8.4/fpm/pool.d/site3.conf (on this server)
++++ CelikPanel's text
+@@ -1,3 +1,6 @@
++; The PHP-FPM pool of site3, written by CelikPanel. A line you add or change here is kept:
++; CelikPanel then shows the difference and asks before writing this file again.
++; Buraya eklediğiniz ya da değiştirdiğiniz satır korunur; CelikPanel yeniden yazmadan önce sorar.
+ [site3]
+ user = set10_r3_test
+ group = set10_r3_test

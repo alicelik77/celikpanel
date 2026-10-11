@@ -1,0 +1,2 @@
+readings=281 first=23:54:30Z last=02:14:56Z largest_gap=31s at 02:11:25-02:11:56 lowest_free_GiB=77.53 at 02:14:26Z first_GiB=107.4 last_GiB=77.53
+gaps over 45 s: []

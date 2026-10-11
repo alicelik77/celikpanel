@@ -1,0 +1,27 @@
+{
+  "checks": {
+    "checks": 8,
+    "error": null,
+    "failed": [
+      "N: the unit is written with the \"# celikpanel-render v2\" header and its digest holds; the app runs",
+      "N: systemd was reloaded and the running app restarted (try-restart: MainPID changed, active)"
+    ],
+    "finished_at": "2026-10-11T04:40:32Z",
+    "notes": [
+      "N: FAIL"
+    ],
+    "started_at": "2026-10-11T04:40:12Z",
+    "substeps": {
+      "N": "failed",
+      "section": "passed"
+    },
+    "title": "a Node site's unit: header, drop-in, owner edit, take",
+    "unknown": [],
+    "verdict": "failed"
+  },
+  "finished_at": "2026-10-11T04:40:32Z",
+  "name": "N-app-unit",
+  "reason": "N: the unit is written with the \"# celikpanel-render v2\" header and its digest holds; the app runs; N: systemd was reloaded and the running app restarted (try-restart: MainPID changed, active)",
+  "started_at": "2026-10-11T04:40:12Z",
+  "verdict": "failed"
+}

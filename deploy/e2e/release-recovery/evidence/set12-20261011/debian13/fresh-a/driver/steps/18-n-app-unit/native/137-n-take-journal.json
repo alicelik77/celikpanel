@@ -1,0 +1,72 @@
+{
+  "at": "2026-10-11T04:40:32Z",
+  "by_unit": {
+    "celikapp-4.service": [
+      "2026-10-11T04:40:27.161803+00:00 dns-debian13 systemd[1]: Stopped celikapp-4.service - CelikPanel app: set12-n.test.",
+      "2026-10-11T04:40:27.163215+00:00 dns-debian13 systemd[1]: Started celikapp-4.service - CelikPanel app: set12-n.test.",
+      "2026-10-11T04:40:27.200482+00:00 dns-debian13 sh[36162]: /bin/sh: 1: node: not found",
+      "2026-10-11T04:40:27.200682+00:00 dns-debian13 systemd[1]: celikapp-4.service: Main process exited, code=exited, status=127/n/a",
+      "2026-10-11T04:40:27.200874+00:00 dns-debian13 systemd[1]: celikapp-4.service: Failed with result 'exit-code'.",
+      "2026-10-11T04:40:28.842114+00:00 dns-debian13 systemd[1]: Stopped celikapp-4.service - CelikPanel app: set12-n.test.",
+      "2026-10-11T04:40:28.843510+00:00 dns-debian13 systemd[1]: Started celikapp-4.service - CelikPanel app: set12-n.test.",
+      "2026-10-11T04:40:28.875239+00:00 dns-debian13 sh[36334]: /bin/sh: 1: node: not found",
+      "2026-10-11T04:40:28.876321+00:00 dns-debian13 systemd[1]: celikapp-4.service: Main process exited, code=exited, status=127/n/a",
+      "2026-10-11T04:40:28.876585+00:00 dns-debian13 systemd[1]: celikapp-4.service: Failed with result 'exit-code'.",
+      "2026-10-11T04:40:32.037270+00:00 dns-debian13 systemd[1]: celikapp-4.service: Scheduled restart job, restart counter is at 1.",
+      "2026-10-11T04:40:32.039565+00:00 dns-debian13 systemd[1]: Started celikapp-4.service - CelikPanel app: set12-n.test.",
+      "2026-10-11T04:40:32.072011+00:00 dns-debian13 sh[36344]: /bin/sh: 1: node: not found",
+      "2026-10-11T04:40:32.072443+00:00 dns-debian13 systemd[1]: celikapp-4.service: Main process exited, code=exited, status=127/n/a",
+      "2026-10-11T04:40:32.072625+00:00 dns-debian13 systemd[1]: celikapp-4.service: Failed with result 'exit-code'."
+    ],
+    "celikpanel-agent.service": [
+      "2026-10-11T04:40:28.835357+00:00 dns-debian13 agent[5157]: 2026/10/11 04:40:28 ApplyAppUnit site 4: taken (adopted \"\", owner's copy \"/etc/systemd/system/celikapp-4.service.celikpanel-backup-20261011T044028Z\")"
+    ],
+    "celikpanel-panel.service": [
+      "2026-10-11T04:40:27.202679+00:00 dns-debian13 panel[33445]: 2026/10/11 04:40:27 site configuration set12-n.test app_unit (change): written",
+      "2026-10-11T04:40:27.224922+00:00 dns-debian13 panel[33445]: 2026/10/11 04:40:27 site configuration set12-n.test (change): unchanged",
+      "2026-10-11T04:40:27.996915+00:00 dns-debian13 panel[33445]: 2026/10/11 04:40:27 http: TLS handshake error from 127.0.0.1:39348: EOF",
+      "2026-10-11T04:40:28.018129+00:00 dns-debian13 panel[33445]: 2026/10/11 04:40:28 site configuration set12-n.test app_unit (change): kept (owner-edited); CelikPanel's text held in /etc/systemd/system/celikapp-4.service.celikpanel-pending",
+      "2026-10-11T04:40:28.026830+00:00 dns-debian13 panel[33445]: 2026/10/11 04:40:28 [409] site configuration of set12-n.test not applied: kept (owner_edited ): the application unit file /etc/systemd/system/celikapp-4.service is not CelikPanel's unchanged text (owner_edited); it was kept and not changed",
+      "2026-10-11T04:40:28.311163+00:00 dns-debian13 panel[33445]: 2026/10/11 04:40:28 http: TLS handshake error from 127.0.0.1:39366: EOF",
+      "2026-10-11T04:40:28.576887+00:00 dns-debian13 panel[33445]: 2026/10/11 04:40:28 http: TLS handshake error from 127.0.0.1:39386: EOF",
+      "2026-10-11T04:40:28.881343+00:00 dns-debian13 panel[33445]: 2026/10/11 04:40:28 site configuration set12-n.test app_unit (take): taken; owner's file kept as /etc/systemd/system/celikapp-4.service.celikpanel-backup-20261011T044028Z"
+    ],
+    "nginx.service": [],
+    "php8.4-fpm.service": []
+  },
+  "mode": "read-window12",
+  "owner_action": false,
+  "schema": "celikpanel/set12-native/v1",
+  "since_epoch": 1791693627,
+  "systemd_all": [
+    "2026-10-11T04:40:27.127352+00:00 dns-debian13 systemd[1]: Reloading finished in 210 ms.",
+    "2026-10-11T04:40:27.161803+00:00 dns-debian13 systemd[1]: Stopped celikapp-4.service - CelikPanel app: set12-n.test.",
+    "2026-10-11T04:40:27.163215+00:00 dns-debian13 systemd[1]: Started celikapp-4.service - CelikPanel app: set12-n.test.",
+    "2026-10-11T04:40:27.200682+00:00 dns-debian13 systemd[1]: celikapp-4.service: Main process exited, code=exited, status=127/n/a",
+    "2026-10-11T04:40:27.200874+00:00 dns-debian13 systemd[1]: celikapp-4.service: Failed with result 'exit-code'.",
+    "2026-10-11T04:40:27.745340+00:00 dns-debian13 systemd[1]: Reload requested from client PID 36205 ('systemctl') (unit session-211.scope)...",
+    "2026-10-11T04:40:27.745379+00:00 dns-debian13 systemd[1]: Reloading...",
+    "2026-10-11T04:40:27.948086+00:00 dns-debian13 systemd[1]: Reloading finished in 202 ms.",
+    "2026-10-11T04:40:28.624168+00:00 dns-debian13 systemd[1]: Reload requested from client PID 36289 ('systemctl') (unit celikpanel-agent.service)...",
+    "2026-10-11T04:40:28.624214+00:00 dns-debian13 systemd[1]: Reloading...",
+    "2026-10-11T04:40:28.814511+00:00 dns-debian13 systemd[1]: Reloading finished in 189 ms.",
+    "2026-10-11T04:40:28.842114+00:00 dns-debian13 systemd[1]: Stopped celikapp-4.service - CelikPanel app: set12-n.test.",
+    "2026-10-11T04:40:28.843510+00:00 dns-debian13 systemd[1]: Started celikapp-4.service - CelikPanel app: set12-n.test.",
+    "2026-10-11T04:40:28.876321+00:00 dns-debian13 systemd[1]: celikapp-4.service: Main process exited, code=exited, status=127/n/a",
+    "2026-10-11T04:40:28.876585+00:00 dns-debian13 systemd[1]: celikapp-4.service: Failed with result 'exit-code'.",
+    "2026-10-11T04:40:32.037270+00:00 dns-debian13 systemd[1]: celikapp-4.service: Scheduled restart job, restart counter is at 1.",
+    "2026-10-11T04:40:32.039565+00:00 dns-debian13 systemd[1]: Started celikapp-4.service - CelikPanel app: set12-n.test.",
+    "2026-10-11T04:40:32.072443+00:00 dns-debian13 systemd[1]: celikapp-4.service: Main process exited, code=exited, status=127/n/a",
+    "2026-10-11T04:40:32.072625+00:00 dns-debian13 systemd[1]: celikapp-4.service: Failed with result 'exit-code'."
+  ],
+  "systemd_manager": [
+    "2026-10-11T04:40:28.624168+00:00 dns-debian13 systemd[1]: Reload requested from client PID 36289 ('systemctl') (unit celikpanel-agent.service)..."
+  ],
+  "units": [
+    "celikpanel-panel.service",
+    "celikpanel-agent.service",
+    "nginx.service",
+    "php8.4-fpm.service",
+    "celikapp-4.service"
+  ]
+}

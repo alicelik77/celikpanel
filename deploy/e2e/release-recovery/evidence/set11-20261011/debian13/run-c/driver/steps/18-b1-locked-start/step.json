@@ -1,0 +1,22 @@
+{
+  "checks": {
+    "checks": 9,
+    "error": null,
+    "failed": [],
+    "finished_at": "2026-10-11T00:53:00Z",
+    "notes": [
+      "B1: PASS"
+    ],
+    "started_at": "2026-10-11T00:52:01Z",
+    "substeps": {
+      "B1": "passed"
+    },
+    "title": "A locked while A, B and the static site need a render; the page; check again",
+    "unknown": [],
+    "verdict": "passed"
+  },
+  "finished_at": "2026-10-11T00:53:00Z",
+  "name": "B1-locked-start",
+  "started_at": "2026-10-11T00:52:01Z",
+  "verdict": "passed"
+}

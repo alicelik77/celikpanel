@@ -1,0 +1,17 @@
+{
+  "at": "2026-10-11T05:06:16Z",
+  "epoch": 1791695176.8639872,
+  "mode": "log-offsets",
+  "offsets": {
+    "/var/log/nginx/access.log": 1349,
+    "/var/log/nginx/error.log": 78,
+    "/var/log/nginx/set1-owner.test-access.log": 0,
+    "/var/log/nginx/set1-owner.test-error.log": 0,
+    "/var/log/nginx/set12-a.test-access.log": 90,
+    "/var/log/nginx/set12-a.test-error.log": 0,
+    "/var/log/nginx/set12-b.test-access.log": 90,
+    "/var/log/nginx/set12-b.test-error.log": 0
+  },
+  "owner_action": false,
+  "schema": "celikpanel/set11-native/v1"
+}

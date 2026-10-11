@@ -1,0 +1,112 @@
+Sunucunuzu hazırlayın
+
+Kurulum adımlarını ve kaydedilen sonuçları buradan takip edin.
+
+Kurulum ve doğrulama
+5 / 5
+
+1
+Kullanım amacı
+2
+Bileşenler
+3
+Erişim ve DNS
+4
+İnceleme
+5
+Kurulum ve doğrulama
+Kurulum bir gereksinimin karşılanmasını bekliyor
+Sertifikadan önce genel DNS’i doğrula: panel-debian13.upd1-infra.test
+
+Sertifika için gereken genel A kaydı: panel-debian13.upd1-infra.test → 192.0.2.10.
+
+Genel kayıt henüz doğrulanmadı. Bu sonuç tek başına kaydın eksik olduğunu veya bir DNS sunucusuna ulaşılamadığını göstermez.
+
+Kaydı onu yöneten DNS sağlayıcısında veya birincil sunucuda oluşturun ya da düzeltin. Alan Adları bölümünde web sitesi oluşturmanız gerekmez.
+
+Bu gereksinim otomatik kontrol edilir. Doğrulanınca aynı kurulum devam eder. İncelenen adları veya adresleri değiştirmek için aşağıdaki Planı düzenle düğmesini kullanın.
+
+Planı düzenle
+Kontroller ve devam etme yolu
+
+Gerekli genel DNS kaydı henüz doğrulanmadı. Yukarıdaki kayıt ve DNS yönetimi yönlendirmesini izleyin; sertifika isteği bu kontrolü bekler.
+
+Teknik ayrıntılar
+Bu kurulum sırasında panel bir kez yeniden başlar
+
+“Panel erişimini güvenceye al: panel-debian13.upd1-infra.test” adımında panel sertifikasını alır ve onu kullanmaya başlamak için bir kez yeniden başlar. Bu sayfanın bağlantısı o sırada kısa süreliğine kesilir. Bu planlı bir durumdur: kurulum sunucuda devam eder ve bu sayfa kendiliğinden yeniden bağlanır. Sizin bir şey yapmanız gerekmez.
+
+O adım bittikten sonra panel güvenli adresinden de açılabilir: https://panel-debian13.upd1-infra.test:2083
+
+Orada yeniden giriş yapılır ve kurulum aynı ilerlemeyi gösterir. Tarayıcı o adreste sertifika uyarısı verirse adım henüz bitmemiştir; bu sayfa kurulumu kendiliğinden izlemeyi sürdürür.
+
+DNS’i yapılandır: Harici DNS sağlayıcısı kullan
+
+Tamamlandı
+
+Bileşeni hazırla: MariaDB
+
+Tamamlandı
+
+Bileşeni hazırla: Nginx
+
+Tamamlandı
+
+Bileşeni hazırla: PHP-FPM
+
+Tamamlandı
+
+Bileşeni hazırla: PostgreSQL
+
+Tamamlandı
+
+E-posta profilini hazırla: Webmail
+
+Tamamlandı
+
+E-posta profilini hazırla: Spam Korumalı Posta
+
+Tamamlandı
+
+Bileşeni hazırla: Zamanlanmış görevler (cron)
+
+Tamamlandı
+
+Bileşeni hazırla: Certbot
+
+Tamamlandı
+
+Güvenlik duvarı politikasını uygula ve kaydet
+
+Tamamlandı
+
+Sertifikadan önce genel DNS’i doğrula: panel-debian13.upd1-infra.test
+
+192.0.2.10
+
+Devam ediyor
+
+Panel erişimini güvenceye al: panel-debian13.upd1-infra.test
+
+Panel burada bir kez yeniden başlar.
+
+Bekliyor
+
+Sertifikadan önce genel DNS’i doğrula: mail-debian13.upd1-infra.test
+
+192.0.2.10
+
+Bekliyor
+
+Posta erişimini güvenli hâle getir: mail-debian13.upd1-infra.test
+
+Bekliyor
+
+Bağımsız e-posta sertifikası yenilemeyi hazırla
+
+Bekliyor
+
+Hazırlanan sunucuyu doğrula
+
+Bekliyor
+Erişim ve kurtarma

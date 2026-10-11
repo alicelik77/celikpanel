@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -34,6 +33,18 @@ func (p *Panel) applyVhostForDomainWithACMEChallengeNames(
 	domainID int,
 	explicitChallengeNames []string,
 ) error {
+	return p.applyVhostForDomainRender(ctx, domainID, explicitChallengeNames, false)
+}
+
+// applyVhostForCertificateValidation is the render of a certificate
+// operation: the same render, and for a site whose file the owner kept the
+// Agent measures whether nginx serves the validation under every name
+// (D-031 step 1b; ApplyVhostRequest.ProbeValidation).
+func (p *Panel) applyVhostForCertificateValidation(ctx context.Context, domainID int, names []string) error {
+	return p.applyVhostForDomainRender(ctx, domainID, names, true)
+}
+
+func (p *Panel) applyVhostForDomainRender(ctx context.Context, domainID int, explicitChallengeNames []string, probe bool) error {
 	req, err := p.buildVhostRequest(
 		ctx,
 		domainID,
@@ -42,15 +53,12 @@ func (p *Panel) applyVhostForDomainWithACMEChallengeNames(
 	if err != nil {
 		return err
 	}
-
-	var resp transport.ApplyVhostResponse
-	if err := p.callAgentContext(ctx, "Agent.ApplyVhost", &req, &resp); err != nil {
-		return err
-	}
-	if resp.Error != "" {
-		return errors.New(resp.Error)
-	}
-	return nil
+	req.ProbeValidation = probe
+	// D-031: the Agent classifies the file first. A file the owner changed,
+	// removed or locked is kept and this returns a typed refusal
+	// (siteFileHeldError), which every caller reports as such.
+	_, err = p.applySiteFileRender(ctx, req, transport.SiteFileTriggerChange)
+	return err
 }
 
 // buildVhostRequest derives the complete agent input from the durable panel

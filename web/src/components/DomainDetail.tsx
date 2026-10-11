@@ -51,6 +51,15 @@ const DomainCronManager = lazy(() => import('./DomainCronManager').then((module)
 const DomainLogsViewer = lazy(() => import('./DomainLogsViewer').then((module) => ({
     default: module.DomainLogsViewer,
 })));
+// The site's configuration file (D-031), for an administrator; fetched when
+// it is needed, like the panels above.
+// Sitenin yapılandırma dosyası; gerektiğinde getirilir.
+const DomainSiteConfig = lazy(() => import('./DomainSiteConfig').then((module) => ({
+    default: module.DomainSiteConfig,
+})));
+const SiteConfigNotice = lazy(() => import('./DomainSiteConfig').then((module) => ({
+    default: module.SiteConfigNotice,
+})));
 
 interface Domain {
     id: number;
@@ -63,6 +72,7 @@ interface Domain {
     disk_usage?: number;
     bandwidth?: number;
     access?: DomainAccess;
+    site_config?: { state: string; kept_by_choice?: boolean; pending_reason?: string; kind?: string };
 }
 
 // The measured usage of one domain. An answer without the numbers is not
@@ -197,6 +207,9 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
     const handleCertificateChange = useCallback((status: SSLRuntimeSummary) => {
         setChanged((current) => ({ ...current, ssl_enabled: status.activated }));
     }, []);
+    // The Configuration file page ended a certificate reason: the line above
+    // the tabs and the list's badge are read from the list, so read it again.
+    const rereadList = () => void list.retry();
 
     useEffect(() => {
         if (requestedTab === 'dns') setActiveTab('dns');
@@ -322,6 +335,9 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
         ...(!isTeamMember && canView('files') ? [
             { id: 'general', labelKey: 'domain.sub.general', capabilities: ['files'], render: () => <DomainGeneralSettings domainId={domain.id} domainName={domain.domain_name} /> } satisfies SubDef,
             { id: 'type', labelKey: 'domain.sub.hostingType', capabilities: ['files'], render: () => <HostingTypePanel domainId={domain.id} domainName={domain.domain_name} /> } satisfies SubDef,
+        ] : []),
+        ...(role === 'admin' ? [
+            { id: 'config', labelKey: 'siteConfig.tab', capabilities: ['files'], render: () => <DomainSiteConfig domainId={domain.id} domainName={domain.domain_name} onReasonEnded={rereadList} /> } satisfies SubDef,
         ] : []),
         ...(projectType === 'php' && canView('php') ? [
             { id: 'php', labelKey: 'domain.sub.php', capabilities: ['php'], render: (readOnly) => <DomainPHPSettings domainId={domain.id} domainName={domain.domain_name} currentVersion={domain.php_version ?? ''} onVersionChange={(v) => setChanged((current) => ({ ...current, php_version: v }))} readOnly={readOnly} isAdditionalUser={isTeamMember} /> } satisfies SubDef,
@@ -468,6 +484,20 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
                     onRetry={() => void list.retry()}
                     busy={list.reading}
                 />
+            )}
+            {role === 'admin' && !isDnsOnly && domain.site_config && !(current.id === 'hosting' && subId === 'config') && (
+                <Suspense fallback={null}>
+                    <SiteConfigNotice
+                        state={domain.site_config.state}
+                        keptByChoice={domain.site_config.kept_by_choice}
+                        pendingReason={domain.site_config.pending_reason}
+                        kind={domain.site_config.kind}
+                        onOpen={() => {
+                            setActiveSub((currentSubs) => ({ ...currentSubs, hosting: 'config' }));
+                            setActiveTab('hosting');
+                        }}
+                    />
+                </Suspense>
             )}
             {/* Header */}
             <div className="mb-5">

@@ -1,0 +1,70 @@
+{
+  "at": "2026-10-11T05:17:56Z",
+  "by_unit": {
+    "celikpanel-agent.service": [
+      "2026-10-11T05:17:52.542661+00:00 dns-arch agent[411]: 2026/10/11 05:17:52 ApplySitePool site 2 (take): failed owner_edited /etc/php/php-fpm.d/site2.conf"
+    ],
+    "celikpanel-panel.service": [
+      "2026-10-11T05:17:51.260199+00:00 dns-arch panel[2977]: 2026/10/11 05:17:51 http: TLS handshake error from 127.0.0.1:32916: EOF",
+      "2026-10-11T05:17:52.417042+00:00 dns-arch panel[2977]: 2026/10/11 05:17:52 http: TLS handshake error from 127.0.0.1:32932: EOF",
+      "2026-10-11T05:17:52.544028+00:00 dns-arch panel[2977]: 2026/10/11 05:17:52 site configuration set12-a.test php_pool (take): failed; owner's file kept as /etc/php/php-fpm.d/site2.conf.celikpanel-backup-20261011T051752Z; php-fpm -t: [11-Oct-2026 05:17:52] ERROR: [/etc/php/php-fpm.d/zz-set12-owner.conf:3] unknown entry 'set12_not_a_directive' [11-Oct-2026 05:17:52] ERROR: Unable to include /etc/php/php-fpm.d/zz-set12-owner.conf from /etc/php/php-fpm.conf at line 3 [11-Oct-2026 05:17:52] ERROR: failed to load configur",
+      "2026-10-11T05:17:52.548282+00:00 dns-arch panel[2977]: 2026/10/11 05:17:52 [502] site configuration of set12-a.test not applied: failed (owner_edited config_refused); restore confirmed"
+    ],
+    "nginx.service": [],
+    "php-fpm.service": [
+      "2026-10-11T05:17:51.153677+00:00 dns-arch systemd[1]: Reloading The PHP FastCGI Process Manager...",
+      "2026-10-11T05:17:51.193641+00:00 dns-arch php-fpm[1489]: [NOTICE] Reloading in progress ...",
+      "2026-10-11T05:17:51.194443+00:00 dns-arch systemd[1]: php-fpm.service: Can't open PID file '/run/php-fpm/php-fpm.pid' (yet?) after reload: No such file or directory",
+      "2026-10-11T05:17:51.194491+00:00 dns-arch systemd[1]: Reloaded The PHP FastCGI Process Manager.",
+      "2026-10-11T05:17:51.200057+00:00 dns-arch php-fpm[1489]: [NOTICE] reloading: execvp(\"/usr/bin/php-fpm\", {\"/usr/bin/php-fpm\", \"--nodaemonize\", \"--fpm-config\", \"/etc/php/php-fpm.conf\"})",
+      "2026-10-11T05:17:51.262005+00:00 dns-arch php-fpm[1489]: [NOTICE] using inherited socket fd=7, \"/run/php-fpm/php-fpm.sock\"",
+      "2026-10-11T05:17:51.262093+00:00 dns-arch php-fpm[1489]: [NOTICE] using inherited socket fd=7, \"/run/php-fpm/php-fpm.sock\"",
+      "2026-10-11T05:17:51.262093+00:00 dns-arch php-fpm[1489]: [NOTICE] using inherited socket fd=9, \"/run/php-fpm/php8.5-fpm-site2.sock\"",
+      "2026-10-11T05:17:51.262093+00:00 dns-arch php-fpm[1489]: [NOTICE] using inherited socket fd=10, \"/run/php-fpm/php8.5-fpm-site3.sock\"",
+      "2026-10-11T05:17:51.262024+00:00 dns-arch php-fpm[1489]: [NOTICE] using inherited socket fd=9, \"/run/php-fpm/php8.5-fpm-site2.sock\"",
+      "2026-10-11T05:17:51.262030+00:00 dns-arch php-fpm[1489]: [NOTICE] using inherited socket fd=10, \"/run/php-fpm/php8.5-fpm-site3.sock\"",
+      "2026-10-11T05:17:51.267462+00:00 dns-arch php-fpm[1489]: [NOTICE] fpm is running, pid 1489",
+      "2026-10-11T05:17:51.280760+00:00 dns-arch php-fpm[1489]: [NOTICE] ready to handle connections",
+      "2026-10-11T05:17:51.280863+00:00 dns-arch php-fpm[1489]: [NOTICE] systemd monitor interval set to 10000ms",
+      "2026-10-11T05:17:52.502850+00:00 dns-arch systemd[1]: Reloading The PHP FastCGI Process Manager...",
+      "2026-10-11T05:17:52.538408+00:00 dns-arch php-fpm[1489]: [NOTICE] Reloading in progress ...",
+      "2026-10-11T05:17:52.541511+00:00 dns-arch systemd[1]: php-fpm.service: Can't open PID file '/run/php-fpm/php-fpm.pid' (yet?) after reload: No such file or directory",
+      "2026-10-11T05:17:52.541556+00:00 dns-arch systemd[1]: Reloaded The PHP FastCGI Process Manager.",
+      "2026-10-11T05:17:52.543071+00:00 dns-arch php-fpm[1489]: [NOTICE] reloading: execvp(\"/usr/bin/php-fpm\", {\"/usr/bin/php-fpm\", \"--nodaemonize\", \"--fpm-config\", \"/etc/php/php-fpm.conf\"})",
+      "2026-10-11T05:17:52.584632+00:00 dns-arch php-fpm[1489]: [11-Oct-2026 05:17:52] ERROR: [/etc/php/php-fpm.d/zz-set12-owner.conf:3] unknown entry 'set12_not_a_directive'",
+      "2026-10-11T05:17:52.584632+00:00 dns-arch php-fpm[1489]: [11-Oct-2026 05:17:52] ERROR: Unable to include /etc/php/php-fpm.d/zz-set12-owner.conf from /etc/php/php-fpm.conf at line 3",
+      "2026-10-11T05:17:52.584632+00:00 dns-arch php-fpm[1489]: [11-Oct-2026 05:17:52] ERROR: failed to load configuration file '/etc/php/php-fpm.conf'",
+      "2026-10-11T05:17:52.584632+00:00 dns-arch php-fpm[1489]: [11-Oct-2026 05:17:52] ERROR: FPM initialization failed",
+      "2026-10-11T05:17:52.588843+00:00 dns-arch systemd[1]: php-fpm.service: Main process exited, code=exited, status=78/CONFIG",
+      "2026-10-11T05:17:52.589167+00:00 dns-arch systemd[1]: php-fpm.service: Failed with result 'exit-code'."
+    ]
+  },
+  "mode": "read-window12",
+  "owner_action": false,
+  "schema": "celikpanel/set12-native/v1",
+  "since_epoch": 1791695871,
+  "systemd_all": [
+    "2026-10-11T05:17:51.153677+00:00 dns-arch systemd[1]: Reloading The PHP FastCGI Process Manager...",
+    "2026-10-11T05:17:51.194443+00:00 dns-arch systemd[1]: php-fpm.service: Can't open PID file '/run/php-fpm/php-fpm.pid' (yet?) after reload: No such file or directory",
+    "2026-10-11T05:17:51.194491+00:00 dns-arch systemd[1]: Reloaded The PHP FastCGI Process Manager.",
+    "2026-10-11T05:17:52.502850+00:00 dns-arch systemd[1]: Reloading The PHP FastCGI Process Manager...",
+    "2026-10-11T05:17:52.541511+00:00 dns-arch systemd[1]: php-fpm.service: Can't open PID file '/run/php-fpm/php-fpm.pid' (yet?) after reload: No such file or directory",
+    "2026-10-11T05:17:52.541556+00:00 dns-arch systemd[1]: Reloaded The PHP FastCGI Process Manager.",
+    "2026-10-11T05:17:52.588843+00:00 dns-arch systemd[1]: php-fpm.service: Main process exited, code=exited, status=78/CONFIG",
+    "2026-10-11T05:17:52.589167+00:00 dns-arch systemd[1]: php-fpm.service: Failed with result 'exit-code'.",
+    "2026-10-11T05:17:52.588000+00:00 dns-arch audit[1]: SERVICE_STOP pid=1 uid=0 auid=4294967295 ses=4294967295 msg='unit=php-fpm comm=\"systemd\" exe=\"/usr/lib/systemd/systemd\" hostname=? addr=? terminal=? res=failed'"
+  ],
+  "systemd_manager": [
+    "2026-10-11T05:17:51.194443+00:00 dns-arch systemd[1]: php-fpm.service: Can't open PID file '/run/php-fpm/php-fpm.pid' (yet?) after reload: No such file or directory",
+    "2026-10-11T05:17:52.541511+00:00 dns-arch systemd[1]: php-fpm.service: Can't open PID file '/run/php-fpm/php-fpm.pid' (yet?) after reload: No such file or directory",
+    "2026-10-11T05:17:52.588843+00:00 dns-arch systemd[1]: php-fpm.service: Main process exited, code=exited, status=78/CONFIG",
+    "2026-10-11T05:17:52.589167+00:00 dns-arch systemd[1]: php-fpm.service: Failed with result 'exit-code'.",
+    "2026-10-11T05:17:52.588000+00:00 dns-arch audit[1]: SERVICE_STOP pid=1 uid=0 auid=4294967295 ses=4294967295 msg='unit=php-fpm comm=\"systemd\" exe=\"/usr/lib/systemd/systemd\" hostname=? addr=? terminal=? res=failed'"
+  ],
+  "units": [
+    "celikpanel-panel.service",
+    "celikpanel-agent.service",
+    "nginx.service",
+    "php-fpm.service"
+  ]
+}

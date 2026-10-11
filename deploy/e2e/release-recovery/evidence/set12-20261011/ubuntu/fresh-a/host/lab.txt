@@ -1,0 +1,2 @@
+lab=/var/tmp/cp-release-drill-s12-ub-a
+set12-ubuntu-20261011t044659z

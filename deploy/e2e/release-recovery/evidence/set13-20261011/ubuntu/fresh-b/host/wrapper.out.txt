@@ -1,0 +1,21 @@
+Formatting '/var/tmp/cp-release-drill-s13-ub-b/cells/138a9852c076a7b46e7baa18/ubuntu/overlay.qcow2', fmt=qcow2 cluster_size=65536 extended_l2=off compression_type=zlib size=25769803776 backing_file=/var/tmp/cp-release-drill-s13-ub-b/images/ubuntu-24.04-server-cloudimg-amd64-20260826.img backing_fmt=qcow2 lazy_refcounts=off refcount_bits=16
+{"action": "prepared", "root": "/var/tmp/cp-release-drill-s13-ub-b", "cell_id": "release-recovery__98616083604351a1", "ssh_ports": [5092, 5093]}
+{"action": "ready", "root": "/var/tmp/cp-release-drill-s13-ub-b", "nodes": {"ubuntu": "verified-disposable-systemd-guest"}}
+{"action": "ready", "root": "/var/tmp/cp-release-drill-s13-ub-b", "nodes": {"ubuntu": "verified-disposable-systemd-guest"}}
+{"step": "set6-name-pinning", "verdict": "passed", "reason": null}
+{"step": "preflight", "verdict": "passed", "reason": null}
+{"step": "origin", "verdict": "passed", "reason": null}
+{"step": "baseline-install", "verdict": "passed", "reason": null}
+{"step": "owner-login", "verdict": "passed", "reason": null}
+{"step": "license", "verdict": "passed", "reason": null}
+{"step": "setup", "verdict": "observed", "reason": null}
+{"step": "site", "verdict": "passed", "reason": null}
+{"step": "S0-sites", "verdict": "passed", "reason": null}
+{"step": "h-i-unchanged-start", "verdict": "passed", "reason": null}
+{"step": "C4-pool-not-read", "verdict": "passed", "reason": null}
+{"step": "set13-browser-window", "verdict": "skipped", "reason": null}
+{"step": "set6-name-pinning-at-the-end", "verdict": "passed", "reason": null}
+{"step": "collect", "verdict": "passed", "reason": null}
+{"cell_kind": "set13-fresh-install", "overall": "complete-for-review", "sections": {"C4-pool-not-read": "passed", "S0-sites": "passed", "h-i-unchanged-start": "passed"}}
+{"action": "stopped", "root": "/var/tmp/cp-release-drill-s13-ub-b", "evidence_retained": true}
+SET13 cell=set13-ubuntu lab=/var/tmp/cp-release-drill-s13-ub-b driver_exit=0 evidence=/var/tmp/cp-release-drill-s13-ub-b/evidence/*/upd1

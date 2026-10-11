@@ -1,0 +1,211 @@
+{
+  "at": "2026-10-11T05:05:36Z",
+  "domain": "set12-a.test",
+  "epoch": 1791695136.712601,
+  "mode": "read-pool12",
+  "owner_action": false,
+  "php_fpm_programs": [
+    "php-fpm8.3"
+  ],
+  "php_fpm_test": {
+    "argv": [
+      "php-fpm8.3",
+      "-t"
+    ],
+    "at": "2026-10-11T05:05:36Z",
+    "returncode": 0,
+    "seconds": 0.044,
+    "status": "ok",
+    "stderr": "[11-Oct-2026 05:05:36] NOTICE: configuration file /etc/php/8.3/fpm/php-fpm.conf test is successful\n",
+    "stdout": ""
+  },
+  "php_unit": "php8.3-fpm",
+  "php_unit_state": {
+    "ActiveEnterTimestamp": "Sun 2026-10-11 05:05:33 UTC",
+    "ActiveState": "active",
+    "ExecMainStartTimestamp": "Sun 2026-10-11 05:05:33 UTC",
+    "LoadState": "loaded",
+    "MainPID": "46405",
+    "NRestarts": "0",
+    "SubState": "running"
+  },
+  "pool_dir": {
+    "entries": [
+      {
+        "ctime_ns": 1791695136298392419,
+        "exists": true,
+        "gid": 988,
+        "group": "celikpanel",
+        "immutable": false,
+        "inode": 526855,
+        "kind": "file",
+        "lsattr": "--------------e-------",
+        "mode": "0644",
+        "mtime_ns": 1791695136298392419,
+        "nlink": 1,
+        "owner": "root",
+        "path": "/etc/php/8.3/fpm/pool.d/site2.conf",
+        "sha256": "ef5dcd26e59bf30d00fe4e203c97539c30a3b73d6f077f0c2623de433e6f215e",
+        "size": 787,
+        "uid": 0
+      },
+      {
+        "ctime_ns": 1791695032613631996,
+        "exists": true,
+        "gid": 988,
+        "group": "celikpanel",
+        "immutable": false,
+        "inode": 533527,
+        "kind": "file",
+        "lsattr": "--------------e-------",
+        "mode": "0644",
+        "mtime_ns": 1791695032613631996,
+        "nlink": 1,
+        "owner": "root",
+        "path": "/etc/php/8.3/fpm/pool.d/site2.conf.celikpanel-backup-20261011T050352Z",
+        "sha256": "ef5dcd26e59bf30d00fe4e203c97539c30a3b73d6f077f0c2623de433e6f215e",
+        "size": 787,
+        "uid": 0
+      },
+      {
+        "ctime_ns": 1791695129274483760,
+        "exists": true,
+        "gid": 988,
+        "group": "celikpanel",
+        "immutable": false,
+        "inode": 533499,
+        "kind": "file",
+        "lsattr": "--------------e-------",
+        "mode": "0644",
+        "mtime_ns": 1791695129274483760,
+        "nlink": 1,
+        "owner": "root",
+        "path": "/etc/php/8.3/fpm/pool.d/site2.conf.celikpanel-backup-20261011T050529Z",
+        "sha256": "ef5dcd26e59bf30d00fe4e203c97539c30a3b73d6f077f0c2623de433e6f215e",
+        "size": 787,
+        "uid": 0
+      },
+      {
+        "ctime_ns": 1791695043550316020,
+        "exists": true,
+        "gid": 988,
+        "group": "celikpanel",
+        "immutable": false,
+        "inode": 533529,
+        "kind": "file",
+        "lsattr": "--------------e-------",
+        "mode": "0644",
+        "mtime_ns": 1791695043542316261,
+        "nlink": 1,
+        "owner": "root",
+        "path": "/etc/php/8.3/fpm/pool.d/site3.conf",
+        "sha256": "9123c4b501d73b40a3174c0f6e2cfd89991184ac78566318488853f650907f45",
+        "size": 666,
+        "uid": 0
+      },
+      {
+        "ctime_ns": 1791694454461515220,
+        "exists": true,
+        "gid": 0,
+        "group": "root",
+        "immutable": false,
+        "inode": 524444,
+        "kind": "file",
+        "lsattr": "--------------e-------",
+        "mode": "0644",
+        "mtime_ns": 1788353762000000000,
+        "nlink": 1,
+        "owner": "root",
+        "path": "/etc/php/8.3/fpm/pool.d/www.conf",
+        "sha256": "5e30fbcbe0e9c9359202b565984efa2810be7133d009316e621d9a89146c7dfa",
+        "size": 22096,
+        "uid": 0
+      }
+    ],
+    "exists": true,
+    "group": "root",
+    "kind": "directory",
+    "mode": "0755",
+    "owner": "root",
+    "path": "/etc/php/8.3/fpm/pool.d"
+  },
+  "pool_dir_lsattr": "--------------e-------",
+  "pools": {
+    "/etc/php/8.3/fpm/pool.d/site2.conf": {
+      "ctime_ns": 1791695136298392419,
+      "exists": true,
+      "first_line": "; celikpanel-render v2 sha256=5ab9cb0cb10a561009dc429c3acfa86d4e91eb0d1fb3fab74d993882371a801f",
+      "gid": 988,
+      "group": "celikpanel",
+      "header": {
+        "body_bytes": 692,
+        "body_sha256": "c507780f0228794befaf3142aeb3a4df33f2c8abe10764e3e112efa6b2df21ed",
+        "declared": "5ab9cb0cb10a561009dc429c3acfa86d4e91eb0d1fb3fab74d993882371a801f",
+        "present": true,
+        "valid": false
+      },
+      "immutable": false,
+      "inode": 526855,
+      "kind": "file",
+      "lsattr": "--------------e-------",
+      "mode": "0644",
+      "mtime_ns": 1791695136298392419,
+      "nlink": 1,
+      "owner": "root",
+      "path": "/etc/php/8.3/fpm/pool.d/site2.conf",
+      "sha256": "ef5dcd26e59bf30d00fe4e203c97539c30a3b73d6f077f0c2623de433e6f215e",
+      "side_files": {
+        "backups": [
+          {
+            "ctime_ns": 1791695032613631996,
+            "exists": true,
+            "gid": 988,
+            "group": "celikpanel",
+            "immutable": false,
+            "inode": 533527,
+            "kind": "file",
+            "lsattr": "--------------e-------",
+            "mode": "0644",
+            "mtime_ns": 1791695032613631996,
+            "nlink": 1,
+            "owner": "root",
+            "path": "/etc/php/8.3/fpm/pool.d/site2.conf.celikpanel-backup-20261011T050352Z",
+            "sha256": "ef5dcd26e59bf30d00fe4e203c97539c30a3b73d6f077f0c2623de433e6f215e",
+            "size": 787,
+            "text": "; celikpanel-render v2 sha256=5ab9cb0cb10a561009dc429c3acfa86d4e91eb0d1fb3fab74d993882371a801f\n; The PHP-FPM pool of site2, written by CelikPanel. A line you add or change here is kept:\n; CelikPanel then shows the difference and asks before writing this file again.\n; Buraya eklediğiniz ya da değiştirdiğiniz satır korunur; CelikPanel yeniden yazmadan önce sorar.\n[site2]\nuser = set12_a_test\ngroup = set12_a_test\nlisten = /var/run/php/php8.3-fpm-site2.sock\nlisten.owner = www-data\nlisten.group = www-data\nlisten.mode = 0660\npm = dynamic\npm.max_children = 5\npm.start_servers = 2\npm.min_spare_servers = 1\npm.max_spare_servers = 3\npm.max_requests = 500\nchdir = /\n; set12: added by the server owner by hand (a comment and a directive of their own)\nphp_admin_value[memory_limit] = 256M\n",
+            "uid": 0
+          },
+          {
+            "ctime_ns": 1791695129274483760,
+            "exists": true,
+            "gid": 988,
+            "group": "celikpanel",
+            "immutable": false,
+            "inode": 533499,
+            "kind": "file",
+            "lsattr": "--------------e-------",
+            "mode": "0644",
+            "mtime_ns": 1791695129274483760,
+            "nlink": 1,
+            "owner": "root",
+            "path": "/etc/php/8.3/fpm/pool.d/site2.conf.celikpanel-backup-20261011T050529Z",
+            "sha256": "ef5dcd26e59bf30d00fe4e203c97539c30a3b73d6f077f0c2623de433e6f215e",
+            "size": 787,
+            "text": "; celikpanel-render v2 sha256=5ab9cb0cb10a561009dc429c3acfa86d4e91eb0d1fb3fab74d993882371a801f\n; The PHP-FPM pool of site2, written by CelikPanel. A line you add or change here is kept:\n; CelikPanel then shows the difference and asks before writing this file again.\n; Buraya eklediğiniz ya da değiştirdiğiniz satır korunur; CelikPanel yeniden yazmadan önce sorar.\n[site2]\nuser = set12_a_test\ngroup = set12_a_test\nlisten = /var/run/php/php8.3-fpm-site2.sock\nlisten.owner = www-data\nlisten.group = www-data\nlisten.mode = 0660\npm = dynamic\npm.max_children = 5\npm.start_servers = 2\npm.min_spare_servers = 1\npm.max_spare_servers = 3\npm.max_requests = 500\nchdir = /\n; set12: added by the server owner by hand (a comment and a directive of their own)\nphp_admin_value[memory_limit] = 256M\n",
+            "uid": 0
+          }
+        ],
+        "pending": {
+          "error": "FileNotFoundError",
+          "exists": false,
+          "path": "/etc/php/8.3/fpm/pool.d/site2.conf.celikpanel-pending"
+        }
+      },
+      "size": 787,
+      "text": "; celikpanel-render v2 sha256=5ab9cb0cb10a561009dc429c3acfa86d4e91eb0d1fb3fab74d993882371a801f\n; The PHP-FPM pool of site2, written by CelikPanel. A line you add or change here is kept:\n; CelikPanel then shows the difference and asks before writing this file again.\n; Buraya eklediğiniz ya da değiştirdiğiniz satır korunur; CelikPanel yeniden yazmadan önce sorar.\n[site2]\nuser = set12_a_test\ngroup = set12_a_test\nlisten = /var/run/php/php8.3-fpm-site2.sock\nlisten.owner = www-data\nlisten.group = www-data\nlisten.mode = 0660\npm = dynamic\npm.max_children = 5\npm.start_servers = 2\npm.min_spare_servers = 1\npm.max_spare_servers = 3\npm.max_requests = 500\nchdir = /\n; set12: added by the server owner by hand (a comment and a directive of their own)\nphp_admin_value[memory_limit] = 256M\n",
+      "uid": 0
+    }
+  },
+  "schema": "celikpanel/set12-native/v1",
+  "site_id": 2
+}

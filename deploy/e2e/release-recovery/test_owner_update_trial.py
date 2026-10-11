@@ -1467,7 +1467,8 @@ class Upd3CellTests(unittest.TestCase):
 class Set3PublishedBaselineTests(unittest.TestCase):
     def test_the_ledger_is_judged_against_the_pinned_released_digests(self):
         pins = t.ledger_pins()
-        self.assertEqual(sorted(pins["migrations"]), [38, 42, 43])
+        # Schema 44 (managed site files, D-031) is pinned beside the published ones.
+        self.assertEqual(sorted(pins["migrations"]), [38, 42, 43, 44])
 
         def reading(version, guarded):
             return {"schema_version": version, "ledger_rows": version, "ledger_contiguous": True,
@@ -1476,6 +1477,10 @@ class Set3PublishedBaselineTests(unittest.TestCase):
                     "request_identities": {"exists": guarded}, "integrity_check": ["ok"], "foreign_key_check_clean": True}
         self.assertEqual(t.ledger_verdict(reading(43, True), 43, pins)["verdict"], "as-expected")
         self.assertEqual(t.ledger_verdict(reading(42, False), 42, pins)["verdict"], "as-expected")
+        # set10: the candidate's ledger after the update is 44; the return is 42; request_identities from 43 on.
+        self.assertEqual((t.LEDGER_AFTER_UPDATE, t.LEDGER_AFTER_RETURN, t.REQUEST_IDENTITIES_FROM), (44, 42, 43))
+        self.assertEqual(t.ledger_verdict(reading(44, True), t.LEDGER_AFTER_UPDATE, pins)["verdict"], "as-expected")
+        self.assertEqual(t.ledger_verdict(reading(43, True), t.LEDGER_AFTER_UPDATE, pins)["verdict"], "different")
         for wrong in (reading(43, True), reading(42, True)):
             self.assertEqual(t.ledger_verdict(wrong, 42, pins)["verdict"], "different")
         self.assertEqual(t.ledger_verdict(reading(42, False), 43, pins)["verdict"], "different")

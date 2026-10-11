@@ -1,0 +1,112 @@
+Prepare your server
+
+Follow the setup steps and their recorded results here.
+
+Setup and verification
+5 / 5
+
+1
+Purpose
+2
+Components
+3
+Access and DNS
+4
+Review
+5
+Setup and verification
+Setup is waiting for a requirement
+Verify public DNS before certificate issuance: panel-debian13.upd1-infra.test
+
+Certificate issuance requires this public A record: panel-debian13.upd1-infra.test → 192.0.2.10.
+
+The public record has not been verified yet. This result alone does not establish whether the record is absent or a DNS server is unreachable.
+
+Create or correct this record at the DNS provider or primary that manages it. You do not need to create a website in Domains.
+
+This prerequisite is checked automatically. After it passes, the same setup continues. To change the reviewed names or addresses, use Edit plan below.
+
+Edit plan
+Checks and how to continue
+
+The required public DNS record has not been verified. Follow the record and DNS management instructions above; certificate requests wait for this check.
+
+Technical details
+The Panel restarts once during this setup
+
+At the step “Secure panel access: panel-debian13.upd1-infra.test”, the Panel gets its certificate and restarts once to start using it. This page then loses its connection for a short time. That is planned: setup continues on the server and this page reconnects by itself. You do not need to do anything.
+
+Once that step has finished, the Panel can also be opened at its secure address: https://panel-debian13.upd1-infra.test:2083
+
+You sign in again there, and setup shows the same progress. If the browser warns about the certificate at that address, the step has not finished yet, and this page keeps following setup by itself.
+
+Configure DNS: Use an external DNS provider
+
+Completed
+
+Prepare component: MariaDB
+
+Completed
+
+Prepare component: Nginx
+
+Completed
+
+Prepare component: PHP-FPM
+
+Completed
+
+Prepare component: PostgreSQL
+
+Completed
+
+Prepare mail profile: Webmail
+
+Completed
+
+Prepare mail profile: Spam-Protected Mail
+
+Completed
+
+Prepare component: Scheduled tasks (cron)
+
+Completed
+
+Prepare component: Certbot
+
+Completed
+
+Apply and save the firewall policy
+
+Completed
+
+Verify public DNS before certificate issuance: panel-debian13.upd1-infra.test
+
+192.0.2.10
+
+In progress
+
+Secure panel access: panel-debian13.upd1-infra.test
+
+The Panel restarts once here.
+
+Waiting
+
+Verify public DNS before certificate issuance: mail-debian13.upd1-infra.test
+
+192.0.2.10
+
+Waiting
+
+Secure mail access: mail-debian13.upd1-infra.test
+
+Waiting
+
+Prepare independent mail certificate renewal
+
+Waiting
+
+Verify the prepared server
+
+Waiting
+Access and recovery

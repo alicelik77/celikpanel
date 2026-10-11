@@ -1,0 +1,134 @@
+{
+  "checks": {
+    "check": {
+      "body": {
+        "available": true,
+        "current_commit": "2a0af88660773b43cbe1155c622483e2f0a2bbeb",
+        "current_version": "v0.1.0-alpha.82",
+        "supported": true,
+        "target": {
+          "arch": "amd64",
+          "archive_sha256": "9df1d5399d7cb044becb542baaff40fabc9b35379723d0a7bec91fcca214ca8b",
+          "archive_size": "66123282",
+          "commit": "80a2aed4be2c98e3afba83153027ed5597342258",
+          "os": "linux",
+          "published_at": "2026-10-11T06:01:23Z",
+          "sequence": "83",
+          "version": "v0.1.0-alpha.83"
+        }
+      },
+      "http": 200
+    },
+    "observer_intent": {
+      "baseline": {
+        "agent_sha256": "847c7e5f0457f4ec17c9d2bb00e8b501df021fd2a4e23ca5b8a6d38ffe330bb4",
+        "commit": "2a0af88660773b43cbe1155c622483e2f0a2bbeb",
+        "panel_sha256": "2ca0cfc92428ea447306209175745305deff6beb2d74df9f486f61b38ec214f8",
+        "version": "v0.1.0-alpha.82"
+      },
+      "identity": {
+        "cell_id": "release-recovery__43fcaf0a090f1734",
+        "node": "ubuntu",
+        "nonce": "43fcaf0a090f17349ce63dd86894549da79acaf7e9c1b53c5e00e6bfe2e6f26c",
+        "vm_uuid": "ec4ab5ea-8e25-5f95-a8d7-ed26b29b7452"
+      },
+      "mode": "watch",
+      "operation_id": "1dc5c118eb5a6d4e6968f4079da54668",
+      "recovery_fault": null,
+      "schema": "celikpanel/owner-update-observer-intent/v1",
+      "target": {
+        "agent_sha256": "82590fbfbeb502cfd7916dbb588890bfb25a6f851004fbc88861344e1a216c52",
+        "commit": "80a2aed4be2c98e3afba83153027ed5597342258",
+        "panel_sha256": "12db8cc80fd39f4b80f979438ea63556fd1b28ed9ab1f1defa5fe23eb2dfc0a4",
+        "version": "v0.1.0-alpha.83"
+      }
+    },
+    "observer_unit": "celikpanel-lab-owner-update-observer-1dc5c118eb5a6d4e6968f4079da54668.service",
+    "origin_check": {
+      "addresses": [
+        "127.0.0.1"
+      ],
+      "boot_id": "4a43f915-3400-4fee-a847-db6fc7ef62bc",
+      "getent_outcome": "found",
+      "getent_returncode": 0,
+      "getent_status": "ok",
+      "getent_stdout": "127.0.0.1       celikpanel.net\n",
+      "http": "200",
+      "loopback_only": true,
+      "ok": true,
+      "unit": {
+        "ActiveState": "active",
+        "NRestarts": "0",
+        "UnitFileState": "enabled"
+      }
+    },
+    "owner_waited_for_idle": {
+      "at": "2026-10-11T06:18:10Z",
+      "busy_seen": [],
+      "idle": true,
+      "polls": 1,
+      "waited_s": 0.2
+    },
+    "packagekit_at_arm": {
+      "after": {
+        "at": "2026-10-11T06:18:11.539165Z",
+        "context_processes": [
+          {
+            "cmdline": "/usr/bin/python3 /usr/share/unattended-upgrades/unattended-upgrade-shutdown --wait-for-signal",
+            "comm": "unattended-upgr",
+            "pid": 854,
+            "ppid": "1"
+          }
+        ],
+        "general_lock_lines": [],
+        "lock_lines": [],
+        "other_package_processes": [],
+        "packagekit_unit": [
+          "ExecMainStartTimestamp=",
+          "ActiveState=inactive",
+          "SubState=dead"
+        ],
+        "packagekitd": [],
+        "rule": "idle",
+        "unparsed_lock_lines": []
+      },
+      "before": {
+        "at": "2026-10-11T06:18:11.263877Z",
+        "context_processes": [
+          {
+            "cmdline": "/usr/bin/python3 /usr/share/unattended-upgrades/unattended-upgrade-shutdown --wait-for-signal",
+            "comm": "unattended-upgr",
+            "pid": 854,
+            "ppid": "1"
+          }
+        ],
+        "general_lock_lines": [],
+        "lock_lines": [],
+        "other_package_processes": [],
+        "packagekit_unit": [
+          "ExecMainStartTimestamp=",
+          "ActiveState=inactive",
+          "SubState=dead"
+        ],
+        "packagekitd": [],
+        "rule": "idle",
+        "unparsed_lock_lines": []
+      },
+      "host_utc": "2026-10-11T06:18:10Z",
+      "label": "arm-before-check",
+      "readiness": {
+        "answered_by": "agent",
+        "body": {
+          "ready": true
+        },
+        "http": 200,
+        "utc": "2026-10-11T06:18:10Z"
+      }
+    },
+    "request_id": "1dc5c118eb5a6d4e6968f4079da54668"
+  },
+  "finished_at": "2026-10-11T06:18:13Z",
+  "name": "arm",
+  "started_at": "2026-10-11T06:18:10Z",
+  "verdict": "passed"
+}

@@ -2,7 +2,6 @@ package services
 
 import (
 	"bufio"
-	"bytes"
 	"errors"
 	"fmt"
 	"net"
@@ -16,6 +15,7 @@ import (
 	"text/template"
 
 	"github.com/alicelik/celikpanel/internal/core"
+	"github.com/alicelik/celikpanel/internal/transport"
 )
 
 const phpPoolTemplate = `[site{{.SiteID}}]
@@ -76,15 +76,19 @@ func (pm *PHPFPMManager) CreatePool(siteID int, username, phpVersion string) (st
 	}
 
 	poolName := fmt.Sprintf("site%d", siteID)
-	path := poolFilePath(phpVersion, poolName)
 	socket := PHPFPMSocketPath(phpVersion, poolName)
-	var body bytes.Buffer
-	if err := pm.tmpl.Execute(&body, PoolData{SiteID: siteID, Username: username, Socket: socket, WebServer: phpWebServerAccount()}); err != nil {
-		return "", fmt.Errorf("render PHP pool %s: %w", poolName, err)
-	}
-	if err := createManagedConfig(path, body.Bytes(), 0o644,
+	// D-031 second step: the pool is CelikPanel's sealed text; a file at its
+	// path that is not CelikPanel's unchanged text is kept and the site is
+	// not created (SiteFileHeldError).
+	managedConfigMutationMu.Lock()
+	defer managedConfigMutationMu.Unlock()
+	values := defaultPoolValues()
+	result, err := ApplyManagedSiteFile(sitePoolFile(transport.SitePoolRequest{
+		SiteID: siteID, Username: username, PHPVersion: phpVersion,
+	}, phpVersion, &values, transport.SiteFileTriggerCreate),
 		func() error { return phpFPMConfigTest(phpVersion) },
-		func() error { return reloadPHPFPM(phpVersion) }); err != nil {
+		func() error { return reloadPHPFPM(phpVersion) })
+	if err := siteFileHeld(result, err); err != nil {
 		return "", fmt.Errorf("create PHP pool %s: %w", poolName, err)
 	}
 	return socket, nil

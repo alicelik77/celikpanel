@@ -1,0 +1,9 @@
+{
+  "checks": {
+    "reason": "not run: the update did not end verified, or the seeded mailbox is missing"
+  },
+  "finished_at": "2026-10-11T05:56:29Z",
+  "name": "M10-postfix-stop",
+  "started_at": "2026-10-11T05:56:29Z",
+  "verdict": "not-run"
+}

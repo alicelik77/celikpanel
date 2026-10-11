@@ -1,0 +1,2 @@
+{"at":"2026-10-11T00:36:06.198Z","ev":"sign-in-page","shown":"form"}
+{"at":"2026-10-11T00:36:09.419Z","ev":"load","label":"slow35-en-settings_section_updates","route":"/settings?section=updates","lang":"en","context":"the signed-in browser","cache":"disabled","throttle":null,"watch_ms":40000,"note":"every session read (GET /api/v1/auth/me) held 35 s in the browser (CDP Fetch), then continued unchanged"}

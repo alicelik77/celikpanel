@@ -1,0 +1,11 @@
+{"at":"2026-10-11T01:26:08.969Z","ev":"request","id":1,"method":"GET","url":"/","type":"document"}
+{"at":"2026-10-11T01:26:08.991Z","ev":"response","id":1,"method":"GET","url":"/","status":200,"sw":true}
+{"at":"2026-10-11T01:26:08.999Z","ev":"navigated","url":"/"}
+{"at":"2026-10-11T01:26:09.011Z","ev":"request","id":2,"method":"GET","url":"/assets/recovery-DbL91dcm.js","type":"script"}
+{"at":"2026-10-11T01:26:09.012Z","ev":"request","id":3,"method":"GET","url":"/assets/recoveryObservation-DFbwmX7_.js","type":"script"}
+{"at":"2026-10-11T01:26:09.012Z","ev":"request","id":4,"method":"GET","url":"/assets/recovery-DHYxdHJ0.css","type":"stylesheet"}
+{"at":"2026-10-11T01:26:09.013Z","ev":"response","id":4,"method":"GET","url":"/assets/recovery-DHYxdHJ0.css","status":200,"sw":true}
+{"at":"2026-10-11T01:26:09.014Z","ev":"response","id":3,"method":"GET","url":"/assets/recoveryObservation-DFbwmX7_.js","status":200,"sw":true}
+{"at":"2026-10-11T01:26:09.014Z","ev":"response","id":2,"method":"GET","url":"/assets/recovery-DbL91dcm.js","status":200,"sw":true}
+{"at":"2026-10-11T01:26:09.016Z","ev":"request","id":5,"method":"GET","url":"/api/v1/panel/availability","type":"fetch"}
+{"at":"2026-10-11T01:26:09.064Z","ev":"failed","id":5,"method":"GET","url":"/api/v1/panel/availability","error":"net::ERR_CONNECTION_CLOSED"}

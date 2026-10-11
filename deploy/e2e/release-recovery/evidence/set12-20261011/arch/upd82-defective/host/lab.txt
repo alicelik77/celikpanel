@@ -1,0 +1,2 @@
+lab=/var/tmp/cp-release-drill-s12-d82-arch
+upd1-arch-defective-20261011t070944z

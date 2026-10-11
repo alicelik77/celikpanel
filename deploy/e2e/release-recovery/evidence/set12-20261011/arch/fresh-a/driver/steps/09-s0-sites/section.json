@@ -1,0 +1,906 @@
+{
+  "calls": [
+    {
+      "at": "2026-10-11T05:16:03Z",
+      "json": {
+        "DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/2/public_html",
+        "Domain": "set12-a.test",
+        "DomainID": 2,
+        "FTPPassword": "[REDACTED]",
+        "FTPUser": "set12_a_test",
+        "PHPVersion": "8.5",
+        "ProjectType": "php",
+        "SiteID": 2,
+        "TempDomain": ""
+      },
+      "label": "create PHP site set12-a.test",
+      "request": {
+        "body": {
+          "domain": "set12-a.test",
+          "project_type": "php",
+          "ssl_type": "none"
+        },
+        "method": "POST",
+        "path": "/api/v1/domains/create"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T05:16:05Z",
+      "json": {
+        "DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/3/public_html",
+        "Domain": "set12-b.test",
+        "DomainID": 3,
+        "FTPPassword": "[REDACTED]",
+        "FTPUser": "set12_b_test",
+        "PHPVersion": "8.5",
+        "ProjectType": "php",
+        "SiteID": 3,
+        "TempDomain": ""
+      },
+      "label": "create PHP site set12-b.test",
+      "request": {
+        "body": {
+          "domain": "set12-b.test",
+          "project_type": "php",
+          "ssl_type": "none"
+        },
+        "method": "POST",
+        "path": "/api/v1/domains/create"
+      },
+      "status": 200,
+      "text": null
+    }
+  ],
+  "cells": {
+    "S0": {
+      "detail": null,
+      "expectations": [
+        {
+          "expectation": "set12-a.test: the first line is the render header and its digest is the body's digest",
+          "held": true,
+          "measured": {
+            "first_line": "# celikpanel-render v2 sha256=872fe38bc22fdd3ed84e57310827eff28352e5af5f8f633178ca71aacb16b109",
+            "header": {
+              "body_bytes": 2035,
+              "body_sha256": "872fe38bc22fdd3ed84e57310827eff28352e5af5f8f633178ca71aacb16b109",
+              "declared": "872fe38bc22fdd3ed84e57310827eff28352e5af5f8f633178ca71aacb16b109",
+              "present": true,
+              "valid": true
+            }
+          }
+        },
+        {
+          "expectation": "set12-a.test: one ledger row, state managed_unchanged, body digest = the header's, file digest = the file's",
+          "held": true,
+          "measured": {
+            "adopted_from": "",
+            "backup_path": "",
+            "body_sha256": "872fe38bc22fdd3ed84e57310827eff28352e5af5f8f633178ca71aacb16b109",
+            "decided_at": 0,
+            "decided_by": null,
+            "decision": "",
+            "decision_file_sha256": "",
+            "domain_id": 2,
+            "file_format": "celikpanel-render v2",
+            "file_sha256": "152664e685a190f13064589fbeac11aaa5d2f7f9690f41359f2da85a5a6ee2d2",
+            "id": 2,
+            "kind": "nginx_vhost",
+            "observed_at": 1791695763,
+            "path": "/etc/nginx/sites-available/set12-a.test.conf",
+            "pending_path": "",
+            "pending_sha256": "",
+            "site_id": 2,
+            "state": "managed_unchanged",
+            "state_reason": "",
+            "written_at": 1791695763,
+            "written_release": "v0.1.0-alpha.81 9e223f175d96"
+          }
+        },
+        {
+          "expectation": "set12-a.test: the include directory exists, is empty and 0755",
+          "held": true,
+          "measured": {
+            "entries": [],
+            "gid": 969,
+            "kind": "directory",
+            "mode_octal": "0o755",
+            "path": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+            "uid": 0
+          }
+        },
+        {
+          "expectation": "set12-a.test: the vhost includes the site's include directory and nginx -T shows it",
+          "held": true,
+          "measured": "include /etc/nginx/celikpanel-sites.d/set12-a.test/*.conf;"
+        },
+        {
+          "expectation": "set12-b.test: the first line is the render header and its digest is the body's digest",
+          "held": true,
+          "measured": {
+            "first_line": "# celikpanel-render v2 sha256=69543857b5ef66b9c60e0c43c3ca29324bcdb3d497a1420b4c5b1f218e3368f8",
+            "header": {
+              "body_bytes": 2035,
+              "body_sha256": "69543857b5ef66b9c60e0c43c3ca29324bcdb3d497a1420b4c5b1f218e3368f8",
+              "declared": "69543857b5ef66b9c60e0c43c3ca29324bcdb3d497a1420b4c5b1f218e3368f8",
+              "present": true,
+              "valid": true
+            }
+          }
+        },
+        {
+          "expectation": "set12-b.test: one ledger row, state managed_unchanged, body digest = the header's, file digest = the file's",
+          "held": true,
+          "measured": {
+            "adopted_from": "",
+            "backup_path": "",
+            "body_sha256": "69543857b5ef66b9c60e0c43c3ca29324bcdb3d497a1420b4c5b1f218e3368f8",
+            "decided_at": 0,
+            "decided_by": null,
+            "decision": "",
+            "decision_file_sha256": "",
+            "domain_id": 3,
+            "file_format": "celikpanel-render v2",
+            "file_sha256": "1a9416d19373754ea6585b9b7d07760d21b7a0d6f8d8b642c6e57823d960ef1e",
+            "id": 3,
+            "kind": "nginx_vhost",
+            "observed_at": 1791695765,
+            "path": "/etc/nginx/sites-available/set12-b.test.conf",
+            "pending_path": "",
+            "pending_sha256": "",
+            "site_id": 3,
+            "state": "managed_unchanged",
+            "state_reason": "",
+            "written_at": 1791695765,
+            "written_release": "v0.1.0-alpha.81 9e223f175d96"
+          }
+        },
+        {
+          "expectation": "set12-b.test: the include directory exists, is empty and 0755",
+          "held": true,
+          "measured": {
+            "entries": [],
+            "gid": 969,
+            "kind": "directory",
+            "mode_octal": "0o755",
+            "path": "/etc/nginx/celikpanel-sites.d/set12-b.test",
+            "uid": 0
+          }
+        },
+        {
+          "expectation": "set12-b.test: the vhost includes the site's include directory and nginx -T shows it",
+          "held": true,
+          "measured": "include /etc/nginx/celikpanel-sites.d/set12-b.test/*.conf;"
+        },
+        {
+          "expectation": "set1-owner.test: the first line is the render header and its digest is the body's digest",
+          "held": true,
+          "measured": {
+            "first_line": "# celikpanel-render v2 sha256=2a7a1e6e79ad332643e83e2074ba4df59c8fb366e0946aec67d3f782ce7237b7",
+            "header": {
+              "body_bytes": 1667,
+              "body_sha256": "2a7a1e6e79ad332643e83e2074ba4df59c8fb366e0946aec67d3f782ce7237b7",
+              "declared": "2a7a1e6e79ad332643e83e2074ba4df59c8fb366e0946aec67d3f782ce7237b7",
+              "present": true,
+              "valid": true
+            }
+          }
+        },
+        {
+          "expectation": "set1-owner.test: one ledger row, state managed_unchanged, body digest = the header's, file digest = the file's",
+          "held": true,
+          "measured": {
+            "adopted_from": "",
+            "backup_path": "",
+            "body_sha256": "2a7a1e6e79ad332643e83e2074ba4df59c8fb366e0946aec67d3f782ce7237b7",
+            "decided_at": 0,
+            "decided_by": null,
+            "decision": "",
+            "decision_file_sha256": "",
+            "domain_id": 1,
+            "file_format": "celikpanel-render v2",
+            "file_sha256": "c08284e5e585d211cacde933ce6fb0742bd3436c9753724ba89754efbae603ff",
+            "id": 1,
+            "kind": "nginx_vhost",
+            "observed_at": 1791695760,
+            "path": "/etc/nginx/sites-available/set1-owner.test.conf",
+            "pending_path": "",
+            "pending_sha256": "",
+            "site_id": 1,
+            "state": "managed_unchanged",
+            "state_reason": "",
+            "written_at": 1791695760,
+            "written_release": "v0.1.0-alpha.81 9e223f175d96"
+          }
+        },
+        {
+          "expectation": "set1-owner.test: the include directory exists, is empty and 0755",
+          "held": true,
+          "measured": {
+            "entries": [],
+            "gid": 969,
+            "kind": "directory",
+            "mode_octal": "0o755",
+            "path": "/etc/nginx/celikpanel-sites.d/set1-owner.test",
+            "uid": 0
+          }
+        },
+        {
+          "expectation": "set1-owner.test: the vhost includes the site's include directory and nginx -T shows it",
+          "held": true,
+          "measured": "include /etc/nginx/celikpanel-sites.d/set1-owner.test/*.conf;"
+        },
+        {
+          "expectation": "`nginx -t` passes",
+          "held": true,
+          "measured": {
+            "at": "2026-10-11T05:16:06Z",
+            "output": "2026/10/11 05:16:06 [warn] 2893#2893: could not build optimal types_hash, you should increase either types_hash_max_size: 1024 or types_hash_bucket_size: 64; ignoring types_hash_bucket_size\nnginx: the configuration file /etc/nginx/nginx.conf syntax is ok\nnginx: configuration file /etc/nginx/nginx.conf test is successful\n",
+            "returncode": 0,
+            "status": "ok"
+          }
+        },
+        {
+          "expectation": "both PHP sites execute their probe page",
+          "held": true,
+          "measured": {
+            "set12-a.test": {
+              "executed": true,
+              "php_version": "8.5.11",
+              "runs_as": "set12_a_test",
+              "server_api": "fpm-fcgi",
+              "values": {
+                "DOCUMENT_ROOT": "/var/www/celikpanel/subscriptions/2/sites/2/public_html",
+                "DOCUMENT_URI": "/set4-probe.php",
+                "PATH_INFO": "",
+                "PATH_TRANSLATED": "(unset)",
+                "QUERY_STRING": "",
+                "REQUEST_URI": "/set4-probe.php",
+                "SCRIPT_FILENAME": "/var/www/celikpanel/subscriptions/2/sites/2/public_html/set4-probe.php",
+                "SCRIPT_NAME": "/set4-probe.php"
+              }
+            },
+            "set12-b.test": {
+              "executed": true,
+              "php_version": "8.5.11",
+              "runs_as": "set12_b_test",
+              "server_api": "fpm-fcgi",
+              "values": {
+                "DOCUMENT_ROOT": "/var/www/celikpanel/subscriptions/2/sites/3/public_html",
+                "DOCUMENT_URI": "/set4-probe.php",
+                "PATH_INFO": "",
+                "PATH_TRANSLATED": "(unset)",
+                "QUERY_STRING": "",
+                "REQUEST_URI": "/set4-probe.php",
+                "SCRIPT_FILENAME": "/var/www/celikpanel/subscriptions/2/sites/3/public_html/set4-probe.php",
+                "SCRIPT_NAME": "/set4-probe.php"
+              }
+            }
+          }
+        }
+      ],
+      "verdict": "PASS"
+    }
+  },
+  "checks": [
+    {
+      "detail": {
+        "DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/2/public_html",
+        "Domain": "set12-a.test",
+        "DomainID": 2,
+        "FTPPassword": "[REDACTED]",
+        "FTPUser": "set12_a_test",
+        "PHPVersion": "8.5",
+        "ProjectType": "php",
+        "SiteID": 2,
+        "TempDomain": ""
+      },
+      "name": "the PHP site set12-a.test is created through the Panel (200 with its id)",
+      "ok": true
+    },
+    {
+      "detail": {
+        "DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/3/public_html",
+        "Domain": "set12-b.test",
+        "DomainID": 3,
+        "FTPPassword": "[REDACTED]",
+        "FTPUser": "set12_b_test",
+        "PHPVersion": "8.5",
+        "ProjectType": "php",
+        "SiteID": 3,
+        "TempDomain": ""
+      },
+      "name": "the PHP site set12-b.test is created through the Panel (200 with its id)",
+      "ok": true
+    },
+    {
+      "detail": {
+        "first_line": "# celikpanel-render v2 sha256=872fe38bc22fdd3ed84e57310827eff28352e5af5f8f633178ca71aacb16b109",
+        "header": {
+          "body_bytes": 2035,
+          "body_sha256": "872fe38bc22fdd3ed84e57310827eff28352e5af5f8f633178ca71aacb16b109",
+          "declared": "872fe38bc22fdd3ed84e57310827eff28352e5af5f8f633178ca71aacb16b109",
+          "present": true,
+          "valid": true
+        }
+      },
+      "name": "S0: set12-a.test: the first line is the render header and its digest is the body's digest",
+      "ok": true
+    },
+    {
+      "detail": {
+        "adopted_from": "",
+        "backup_path": "",
+        "body_sha256": "872fe38bc22fdd3ed84e57310827eff28352e5af5f8f633178ca71aacb16b109",
+        "decided_at": 0,
+        "decided_by": null,
+        "decision": "",
+        "decision_file_sha256": "",
+        "domain_id": 2,
+        "file_format": "celikpanel-render v2",
+        "file_sha256": "152664e685a190f13064589fbeac11aaa5d2f7f9690f41359f2da85a5a6ee2d2",
+        "id": 2,
+        "kind": "nginx_vhost",
+        "observed_at": 1791695763,
+        "path": "/etc/nginx/sites-available/set12-a.test.conf",
+        "pending_path": "",
+        "pending_sha256": "",
+        "site_id": 2,
+        "state": "managed_unchanged",
+        "state_reason": "",
+        "written_at": 1791695763,
+        "written_release": "v0.1.0-alpha.81 9e223f175d96"
+      },
+      "name": "S0: set12-a.test: one ledger row, state managed_unchanged, body digest = the header's, file digest = the file's",
+      "ok": true
+    },
+    {
+      "detail": {
+        "entries": [],
+        "gid": 969,
+        "kind": "directory",
+        "mode_octal": "0o755",
+        "path": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+        "uid": 0
+      },
+      "name": "S0: set12-a.test: the include directory exists, is empty and 0755",
+      "ok": true
+    },
+    {
+      "detail": "include /etc/nginx/celikpanel-sites.d/set12-a.test/*.conf;",
+      "name": "S0: set12-a.test: the vhost includes the site's include directory and nginx -T shows it",
+      "ok": true
+    },
+    {
+      "detail": {
+        "first_line": "# celikpanel-render v2 sha256=69543857b5ef66b9c60e0c43c3ca29324bcdb3d497a1420b4c5b1f218e3368f8",
+        "header": {
+          "body_bytes": 2035,
+          "body_sha256": "69543857b5ef66b9c60e0c43c3ca29324bcdb3d497a1420b4c5b1f218e3368f8",
+          "declared": "69543857b5ef66b9c60e0c43c3ca29324bcdb3d497a1420b4c5b1f218e3368f8",
+          "present": true,
+          "valid": true
+        }
+      },
+      "name": "S0: set12-b.test: the first line is the render header and its digest is the body's digest",
+      "ok": true
+    },
+    {
+      "detail": {
+        "adopted_from": "",
+        "backup_path": "",
+        "body_sha256": "69543857b5ef66b9c60e0c43c3ca29324bcdb3d497a1420b4c5b1f218e3368f8",
+        "decided_at": 0,
+        "decided_by": null,
+        "decision": "",
+        "decision_file_sha256": "",
+        "domain_id": 3,
+        "file_format": "celikpanel-render v2",
+        "file_sha256": "1a9416d19373754ea6585b9b7d07760d21b7a0d6f8d8b642c6e57823d960ef1e",
+        "id": 3,
+        "kind": "nginx_vhost",
+        "observed_at": 1791695765,
+        "path": "/etc/nginx/sites-available/set12-b.test.conf",
+        "pending_path": "",
+        "pending_sha256": "",
+        "site_id": 3,
+        "state": "managed_unchanged",
+        "state_reason": "",
+        "written_at": 1791695765,
+        "written_release": "v0.1.0-alpha.81 9e223f175d96"
+      },
+      "name": "S0: set12-b.test: one ledger row, state managed_unchanged, body digest = the header's, file digest = the file's",
+      "ok": true
+    },
+    {
+      "detail": {
+        "entries": [],
+        "gid": 969,
+        "kind": "directory",
+        "mode_octal": "0o755",
+        "path": "/etc/nginx/celikpanel-sites.d/set12-b.test",
+        "uid": 0
+      },
+      "name": "S0: set12-b.test: the include directory exists, is empty and 0755",
+      "ok": true
+    },
+    {
+      "detail": "include /etc/nginx/celikpanel-sites.d/set12-b.test/*.conf;",
+      "name": "S0: set12-b.test: the vhost includes the site's include directory and nginx -T shows it",
+      "ok": true
+    },
+    {
+      "detail": {
+        "first_line": "# celikpanel-render v2 sha256=2a7a1e6e79ad332643e83e2074ba4df59c8fb366e0946aec67d3f782ce7237b7",
+        "header": {
+          "body_bytes": 1667,
+          "body_sha256": "2a7a1e6e79ad332643e83e2074ba4df59c8fb366e0946aec67d3f782ce7237b7",
+          "declared": "2a7a1e6e79ad332643e83e2074ba4df59c8fb366e0946aec67d3f782ce7237b7",
+          "present": true,
+          "valid": true
+        }
+      },
+      "name": "S0: set1-owner.test: the first line is the render header and its digest is the body's digest",
+      "ok": true
+    },
+    {
+      "detail": {
+        "adopted_from": "",
+        "backup_path": "",
+        "body_sha256": "2a7a1e6e79ad332643e83e2074ba4df59c8fb366e0946aec67d3f782ce7237b7",
+        "decided_at": 0,
+        "decided_by": null,
+        "decision": "",
+        "decision_file_sha256": "",
+        "domain_id": 1,
+        "file_format": "celikpanel-render v2",
+        "file_sha256": "c08284e5e585d211cacde933ce6fb0742bd3436c9753724ba89754efbae603ff",
+        "id": 1,
+        "kind": "nginx_vhost",
+        "observed_at": 1791695760,
+        "path": "/etc/nginx/sites-available/set1-owner.test.conf",
+        "pending_path": "",
+        "pending_sha256": "",
+        "site_id": 1,
+        "state": "managed_unchanged",
+        "state_reason": "",
+        "written_at": 1791695760,
+        "written_release": "v0.1.0-alpha.81 9e223f175d96"
+      },
+      "name": "S0: set1-owner.test: one ledger row, state managed_unchanged, body digest = the header's, file digest = the file's",
+      "ok": true
+    },
+    {
+      "detail": {
+        "entries": [],
+        "gid": 969,
+        "kind": "directory",
+        "mode_octal": "0o755",
+        "path": "/etc/nginx/celikpanel-sites.d/set1-owner.test",
+        "uid": 0
+      },
+      "name": "S0: set1-owner.test: the include directory exists, is empty and 0755",
+      "ok": true
+    },
+    {
+      "detail": "include /etc/nginx/celikpanel-sites.d/set1-owner.test/*.conf;",
+      "name": "S0: set1-owner.test: the vhost includes the site's include directory and nginx -T shows it",
+      "ok": true
+    },
+    {
+      "detail": {
+        "at": "2026-10-11T05:16:06Z",
+        "output": "2026/10/11 05:16:06 [warn] 2893#2893: could not build optimal types_hash, you should increase either types_hash_max_size: 1024 or types_hash_bucket_size: 64; ignoring types_hash_bucket_size\nnginx: the configuration file /etc/nginx/nginx.conf syntax is ok\nnginx: configuration file /etc/nginx/nginx.conf test is successful\n",
+        "returncode": 0,
+        "status": "ok"
+      },
+      "name": "S0: `nginx -t` passes",
+      "ok": true
+    },
+    {
+      "detail": {
+        "set12-a.test": {
+          "executed": true,
+          "php_version": "8.5.11",
+          "runs_as": "set12_a_test",
+          "server_api": "fpm-fcgi",
+          "values": {
+            "DOCUMENT_ROOT": "/var/www/celikpanel/subscriptions/2/sites/2/public_html",
+            "DOCUMENT_URI": "/set4-probe.php",
+            "PATH_INFO": "",
+            "PATH_TRANSLATED": "(unset)",
+            "QUERY_STRING": "",
+            "REQUEST_URI": "/set4-probe.php",
+            "SCRIPT_FILENAME": "/var/www/celikpanel/subscriptions/2/sites/2/public_html/set4-probe.php",
+            "SCRIPT_NAME": "/set4-probe.php"
+          }
+        },
+        "set12-b.test": {
+          "executed": true,
+          "php_version": "8.5.11",
+          "runs_as": "set12_b_test",
+          "server_api": "fpm-fcgi",
+          "values": {
+            "DOCUMENT_ROOT": "/var/www/celikpanel/subscriptions/2/sites/3/public_html",
+            "DOCUMENT_URI": "/set4-probe.php",
+            "PATH_INFO": "",
+            "PATH_TRANSLATED": "(unset)",
+            "QUERY_STRING": "",
+            "REQUEST_URI": "/set4-probe.php",
+            "SCRIPT_FILENAME": "/var/www/celikpanel/subscriptions/2/sites/3/public_html/set4-probe.php",
+            "SCRIPT_NAME": "/set4-probe.php"
+          }
+        }
+      },
+      "name": "S0: both PHP sites execute their probe page",
+      "ok": true
+    }
+  ],
+  "files": {
+    "set1-owner.test": {
+      "pending": null,
+      "vhost": "steps/09-s0-sites/files/s0-after-creation-set1-owner.test.conf.txt"
+    },
+    "set12-a.test": {
+      "pending": null,
+      "vhost": "steps/09-s0-sites/files/s0-after-creation-set12-a.test.conf.txt"
+    },
+    "set12-b.test": {
+      "pending": null,
+      "vhost": "steps/09-s0-sites/files/s0-after-creation-set12-b.test.conf.txt"
+    }
+  },
+  "finished_at": "2026-10-11T05:16:06Z",
+  "ledger": {
+    "database": "/var/lib/celikpanel/celikpanel.db",
+    "domains": [
+      {
+        "id": 1,
+        "name": "set1-owner.test"
+      },
+      {
+        "id": 2,
+        "name": "set12-a.test"
+      },
+      {
+        "id": 3,
+        "name": "set12-b.test"
+      }
+    ],
+    "ledger_last": [
+      42,
+      43,
+      44
+    ],
+    "ledger_rows": 44,
+    "managed_site_files": [
+      {
+        "adopted_from": "",
+        "backup_path": "",
+        "body_sha256": "2a7a1e6e79ad332643e83e2074ba4df59c8fb366e0946aec67d3f782ce7237b7",
+        "decided_at": 0,
+        "decided_by": null,
+        "decision": "",
+        "decision_file_sha256": "",
+        "domain_id": 1,
+        "file_format": "celikpanel-render v2",
+        "file_sha256": "c08284e5e585d211cacde933ce6fb0742bd3436c9753724ba89754efbae603ff",
+        "id": 1,
+        "kind": "nginx_vhost",
+        "observed_at": 1791695760,
+        "path": "/etc/nginx/sites-available/set1-owner.test.conf",
+        "pending_path": "",
+        "pending_sha256": "",
+        "site_id": 1,
+        "state": "managed_unchanged",
+        "state_reason": "",
+        "written_at": 1791695760,
+        "written_release": "v0.1.0-alpha.81 9e223f175d96"
+      },
+      {
+        "adopted_from": "",
+        "backup_path": "",
+        "body_sha256": "872fe38bc22fdd3ed84e57310827eff28352e5af5f8f633178ca71aacb16b109",
+        "decided_at": 0,
+        "decided_by": null,
+        "decision": "",
+        "decision_file_sha256": "",
+        "domain_id": 2,
+        "file_format": "celikpanel-render v2",
+        "file_sha256": "152664e685a190f13064589fbeac11aaa5d2f7f9690f41359f2da85a5a6ee2d2",
+        "id": 2,
+        "kind": "nginx_vhost",
+        "observed_at": 1791695763,
+        "path": "/etc/nginx/sites-available/set12-a.test.conf",
+        "pending_path": "",
+        "pending_sha256": "",
+        "site_id": 2,
+        "state": "managed_unchanged",
+        "state_reason": "",
+        "written_at": 1791695763,
+        "written_release": "v0.1.0-alpha.81 9e223f175d96"
+      },
+      {
+        "adopted_from": "",
+        "backup_path": "",
+        "body_sha256": "69543857b5ef66b9c60e0c43c3ca29324bcdb3d497a1420b4c5b1f218e3368f8",
+        "decided_at": 0,
+        "decided_by": null,
+        "decision": "",
+        "decision_file_sha256": "",
+        "domain_id": 3,
+        "file_format": "celikpanel-render v2",
+        "file_sha256": "1a9416d19373754ea6585b9b7d07760d21b7a0d6f8d8b642c6e57823d960ef1e",
+        "id": 3,
+        "kind": "nginx_vhost",
+        "observed_at": 1791695765,
+        "path": "/etc/nginx/sites-available/set12-b.test.conf",
+        "pending_path": "",
+        "pending_sha256": "",
+        "site_id": 3,
+        "state": "managed_unchanged",
+        "state_reason": "",
+        "written_at": 1791695765,
+        "written_release": "v0.1.0-alpha.81 9e223f175d96"
+      }
+    ],
+    "managed_site_files_table": true,
+    "schema_version": 44,
+    "sites": [
+      {
+        "domain_id": 1,
+        "id": 1,
+        "project_type": "static"
+      },
+      {
+        "domain_id": 2,
+        "id": 2,
+        "project_type": "php"
+      },
+      {
+        "domain_id": 3,
+        "id": 3,
+        "project_type": "php"
+      }
+    ]
+  },
+  "native_evidence": false,
+  "natives": [
+    {
+      "file": "native/005-platform.json",
+      "label": "platform",
+      "mode": "read-platform",
+      "owner_action": false
+    },
+    {
+      "file": "native/006-owner-files-set12-a.test.json",
+      "label": "owner-files-set12-a.test",
+      "mode": "owner-files",
+      "owner_action": true
+    },
+    {
+      "file": "native/007-owner-files-set12-b.test.json",
+      "label": "owner-files-set12-b.test",
+      "mode": "owner-files",
+      "owner_action": true
+    },
+    {
+      "file": "native/008-s0-after-creation-read.json",
+      "label": "s0-after-creation-read",
+      "mode": "read-site10",
+      "owner_action": false
+    },
+    {
+      "file": "native/009-http-s0-set12-a.test_set4-probe.php.json",
+      "label": "http-s0-set12-a.test_set4-probe.php",
+      "mode": "read-http",
+      "owner_action": false
+    },
+    {
+      "file": "native/010-http-s0-set12-b.test_set4-probe.php.json",
+      "label": "http-s0-set12-b.test_set4-probe.php",
+      "mode": "read-http",
+      "owner_action": false
+    }
+  ],
+  "node": "arch",
+  "notes": [
+    {
+      "detail": [],
+      "note": "S0: PASS"
+    }
+  ],
+  "owner_actions": [
+    {
+      "at": "2026-10-11T05:16:03Z",
+      "label": "files-set12-a.test",
+      "mode": "owner-files"
+    },
+    {
+      "at": "2026-10-11T05:16:05Z",
+      "label": "files-set12-b.test",
+      "mode": "owner-files"
+    }
+  ],
+  "platform": {
+    "kernel": "7.2.9-arch1-1",
+    "nginx_version": "nginx version: nginx/1.30.5",
+    "os_release": {
+      "BUILD_ID": "rolling",
+      "ID": "arch",
+      "PRETTY_NAME": "Arch Linux"
+    },
+    "packages": {
+      "certbot": "5.8.0-1",
+      "mariadb": "13.0.2-2",
+      "nginx": "1.30.5-1",
+      "php": "8.5.11-1",
+      "php-fpm": "8.5.11-1",
+      "postgresql": "18.6-2",
+      "systemd": "262-1"
+    },
+    "php_fpm_programs": {
+      "php-fpm": [
+        "PHP 8.5.11 (fpm-fcgi) (built: Sep 23 2026 17:41:29) (NTS)"
+      ]
+    }
+  },
+  "section": "S0-sites",
+  "sites": {
+    "set1-owner.test": {
+      "backups": [],
+      "enabled": {
+        "exists": true,
+        "inode": 91926,
+        "kind": "symlink",
+        "link_target": "/etc/nginx/sites-available/set1-owner.test.conf"
+      },
+      "include_dir": {
+        "entries": [],
+        "exists": true,
+        "gid": 969,
+        "group": "celikpanel",
+        "kind": "directory",
+        "mode_octal": "0o755",
+        "owner": "root",
+        "uid": 0
+      },
+      "pending": {
+        "exists": false,
+        "mode": null,
+        "sha256": null
+      },
+      "vhost": {
+        "ctime_ns": 1791695760167324928,
+        "exists": true,
+        "first_line": "# celikpanel-render v2 sha256=2a7a1e6e79ad332643e83e2074ba4df59c8fb366e0946aec67d3f782ce7237b7",
+        "gid": 969,
+        "group": "celikpanel",
+        "header": {
+          "body_bytes": 1667,
+          "body_sha256": "2a7a1e6e79ad332643e83e2074ba4df59c8fb366e0946aec67d3f782ce7237b7",
+          "declared": "2a7a1e6e79ad332643e83e2074ba4df59c8fb366e0946aec67d3f782ce7237b7",
+          "present": true,
+          "valid": true
+        },
+        "immutable": false,
+        "inode": 91924,
+        "kind": "file",
+        "link_target": null,
+        "lsattr": "----------------------",
+        "mode": "0644",
+        "mtime_ns": 1791695760161324689,
+        "owner": "root",
+        "sha256": "c08284e5e585d211cacde933ce6fb0742bd3436c9753724ba89754efbae603ff",
+        "size": 1762,
+        "uid": 0
+      }
+    },
+    "set12-a.test": {
+      "backups": [],
+      "enabled": {
+        "exists": true,
+        "inode": 91967,
+        "kind": "symlink",
+        "link_target": "/etc/nginx/sites-available/set12-a.test.conf"
+      },
+      "include_dir": {
+        "entries": [],
+        "exists": true,
+        "gid": 969,
+        "group": "celikpanel",
+        "kind": "directory",
+        "mode_octal": "0o755",
+        "owner": "root",
+        "uid": 0
+      },
+      "pending": {
+        "exists": false,
+        "mode": null,
+        "sha256": null
+      },
+      "vhost": {
+        "ctime_ns": 1791695763560460766,
+        "exists": true,
+        "first_line": "# celikpanel-render v2 sha256=872fe38bc22fdd3ed84e57310827eff28352e5af5f8f633178ca71aacb16b109",
+        "gid": 969,
+        "group": "celikpanel",
+        "header": {
+          "body_bytes": 2035,
+          "body_sha256": "872fe38bc22fdd3ed84e57310827eff28352e5af5f8f633178ca71aacb16b109",
+          "declared": "872fe38bc22fdd3ed84e57310827eff28352e5af5f8f633178ca71aacb16b109",
+          "present": true,
+          "valid": true
+        },
+        "immutable": false,
+        "inode": 91965,
+        "kind": "file",
+        "link_target": null,
+        "lsattr": "----------------------",
+        "mode": "0644",
+        "mtime_ns": 1791695763555460564,
+        "owner": "root",
+        "sha256": "152664e685a190f13064589fbeac11aaa5d2f7f9690f41359f2da85a5a6ee2d2",
+        "size": 2130,
+        "uid": 0
+      }
+    },
+    "set12-b.test": {
+      "backups": [],
+      "enabled": {
+        "exists": true,
+        "inode": 92007,
+        "kind": "symlink",
+        "link_target": "/etc/nginx/sites-available/set12-b.test.conf"
+      },
+      "include_dir": {
+        "entries": [],
+        "exists": true,
+        "gid": 969,
+        "group": "celikpanel",
+        "kind": "directory",
+        "mode_octal": "0o755",
+        "owner": "root",
+        "uid": 0
+      },
+      "pending": {
+        "exists": false,
+        "mode": null,
+        "sha256": null
+      },
+      "vhost": {
+        "ctime_ns": 1791695765571542050,
+        "exists": true,
+        "first_line": "# celikpanel-render v2 sha256=69543857b5ef66b9c60e0c43c3ca29324bcdb3d497a1420b4c5b1f218e3368f8",
+        "gid": 969,
+        "group": "celikpanel",
+        "header": {
+          "body_bytes": 2035,
+          "body_sha256": "69543857b5ef66b9c60e0c43c3ca29324bcdb3d497a1420b4c5b1f218e3368f8",
+          "declared": "69543857b5ef66b9c60e0c43c3ca29324bcdb3d497a1420b4c5b1f218e3368f8",
+          "present": true,
+          "valid": true
+        },
+        "immutable": false,
+        "inode": 92005,
+        "kind": "file",
+        "link_target": null,
+        "lsattr": "----------------------",
+        "mode": "0644",
+        "mtime_ns": 1791695765566541847,
+        "owner": "root",
+        "sha256": "1a9416d19373754ea6585b9b7d07760d21b7a0d6f8d8b642c6e57823d960ef1e",
+        "size": 2130,
+        "uid": 0
+      }
+    }
+  },
+  "started_at": "2026-10-11T05:16:01Z",
+  "substeps": {
+    "S0": "passed",
+    "section": "passed"
+  },
+  "title": "two PHP sites; header, digest, ledger row, include directory, nginx -T (set10's section)",
+  "verdict": "passed"
+}

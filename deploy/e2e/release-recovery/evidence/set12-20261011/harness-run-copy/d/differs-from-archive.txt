@@ -1,0 +1,6 @@
+differs:       1 > ./deploy/e2e/release-recovery/build-set12-artifacts.sh
+differs:       1 > ./deploy/e2e/release-recovery/guest_set12_native.py
+differs:       1 > ./deploy/e2e/release-recovery/run-set12.sh
+differs:       1 > ./deploy/e2e/release-recovery/set12_fixture.py
+differs:       1 > ./deploy/e2e/release-recovery/set12_trial.py
+differs:       1 > ./deploy/e2e/release-recovery/test_set12_trial.py

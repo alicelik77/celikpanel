@@ -166,17 +166,21 @@ func (p *Panel) handleDomainPHPSettings(w http.ResponseWriter, r *http.Request) 
 
 		// Only migrate if version is actually changing
 		if req.PHPVersion != phpVersion {
-			// Migrate pool from old version to new version
-			migrateReq := transport.MigratePHPPoolRequest{
-				OldVersion: phpVersion,
-				NewVersion: req.PHPVersion,
-				PoolName:   poolName,
+			// Move the pool to the new version under D-031 (second step,
+			// 2026-10-11): a pool file the owner changed is kept, nothing is
+			// switched, and the answer is SITE_CONFIG_OWNER_EDITED (reason
+			// php_pool); the owner chooses on the Configuration file page.
+			// Havuz, sahibin değiştirdiği dosya korunarak taşınır.
+			site, siteErr := p.loadSiteFileSite(r.Context(), domainID)
+			if siteErr != nil {
+				writeServerError(w, siteErr)
+				return
 			}
-
-			var migrateResp transport.Empty
-			err = p.callAgent("Agent.MigratePHPPool", migrateReq, &migrateResp)
-			if err != nil {
-				writeServerError(w, err)
+			site.PHPVersion = phpVersion
+			switchReq := p.sitePoolRequest(r.Context(), site, transport.SitePoolOperationSwitch)
+			switchReq.NewPHPVersion = req.PHPVersion
+			if _, err := p.applySitePool(r.Context(), site, switchReq); err != nil {
+				writeServerErrorFor(w, r, err)
 				return
 			}
 
@@ -346,14 +350,28 @@ func (p *Panel) handleDomainPHPPool(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Ensure version and pool name match the domain's site
-		req.Version = phpVersion
-		req.PoolConfig.Name = poolName
-
-		var resp transport.Empty
-		err = p.callAgent("Agent.UpdatePHPPoolConfig", req, &resp)
-		if err != nil {
-			writeServerError(w, err)
+		// The site's pool, saved under D-031 (second step, 2026-10-11): a pool
+		// file the owner changed is kept, its directives are not dropped, and
+		// the answer is SITE_CONFIG_OWNER_EDITED (reason php_pool).
+		// Sahibin değiştirdiği havuz dosyası korunur; yönergeleri düşürülmez.
+		site, siteErr := p.loadSiteFileSite(r.Context(), domainID)
+		if siteErr != nil {
+			writeServerError(w, siteErr)
+			return
+		}
+		site.PHPVersion = phpVersion
+		saveReq := p.sitePoolRequest(r.Context(), site, transport.SitePoolOperationSave)
+		saveReq.Values = &transport.SitePoolValues{
+			PM: req.PoolConfig.PM, PMMaxChildren: req.PoolConfig.PMMaxChildren,
+			PMStartServers: req.PoolConfig.PMStartServers, PMMinSpareServers: req.PoolConfig.PMMinSpareServers,
+			PMMaxSpareServers: req.PoolConfig.PMMaxSpareServers, PMMaxRequests: req.PoolConfig.PMMaxRequests,
+		}
+		if req.PoolConfig.PM != "" && req.PoolConfig.PM != "dynamic" && req.PoolConfig.PM != "ondemand" && req.PoolConfig.PM != "static" {
+			writeClientError(w, http.StatusBadRequest, "pm must be dynamic, ondemand or static")
+			return
+		}
+		if _, err := p.applySitePool(r.Context(), site, saveReq); err != nil {
+			writeServerErrorFor(w, r, err)
 			return
 		}
 

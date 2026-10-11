@@ -1,0 +1,52 @@
+{
+  "at": "2026-10-11T05:07:19Z",
+  "by_unit": {
+    "celikapp-4.service": [
+      "2026-10-11T05:07:16.013866+00:00 dns-ubuntu systemd[1]: Stopping celikapp-4.service - CelikPanel app: set12-n.test...",
+      "2026-10-11T05:07:16.014631+00:00 dns-ubuntu systemd[1]: celikapp-4.service: Failed to kill control group /system.slice/celikapp-4.service, ignoring: Invalid argument",
+      "2026-10-11T05:07:16.014789+00:00 dns-ubuntu systemd[1]: celikapp-4.service: Deactivated successfully.",
+      "2026-10-11T05:07:16.014924+00:00 dns-ubuntu systemd[1]: Stopped celikapp-4.service - CelikPanel app: set12-n.test.",
+      "2026-10-11T05:07:16.023421+00:00 dns-ubuntu systemd[1]: Started celikapp-4.service - CelikPanel app: set12-n.test."
+    ],
+    "celikpanel-agent.service": [
+      "2026-10-11T05:07:15.993140+00:00 dns-ubuntu agent[7670]: 2026/10/11 05:07:15 ApplyAppUnit site 4: taken (adopted \"\", owner's copy \"/etc/systemd/system/celikapp-4.service.celikpanel-backup-20261011T050715Z\")"
+    ],
+    "celikpanel-panel.service": [
+      "2026-10-11T05:07:14.818062+00:00 dns-ubuntu panel[47480]: 2026/10/11 05:07:14 http: TLS handshake error from 127.0.0.1:54600: EOF",
+      "2026-10-11T05:07:14.833270+00:00 dns-ubuntu panel[47480]: 2026/10/11 05:07:14 site configuration set12-n.test app_unit (change): kept (owner-edited); CelikPanel's text held in /etc/systemd/system/celikapp-4.service.celikpanel-pending",
+      "2026-10-11T05:07:14.838976+00:00 dns-ubuntu panel[47480]: 2026/10/11 05:07:14 [409] site configuration of set12-n.test not applied: kept (owner_edited ): the application unit file /etc/systemd/system/celikapp-4.service is not CelikPanel's unchanged text (owner_edited); it was kept and not changed",
+      "2026-10-11T05:07:15.203849+00:00 dns-ubuntu panel[47480]: 2026/10/11 05:07:15 http: TLS handshake error from 127.0.0.1:54630: EOF",
+      "2026-10-11T05:07:15.569053+00:00 dns-ubuntu panel[47480]: 2026/10/11 05:07:15 http: TLS handshake error from 127.0.0.1:54654: EOF",
+      "2026-10-11T05:07:16.025719+00:00 dns-ubuntu panel[47480]: 2026/10/11 05:07:16 site configuration set12-n.test app_unit (take): taken; owner's file kept as /etc/systemd/system/celikapp-4.service.celikpanel-backup-20261011T050715Z"
+    ],
+    "nginx.service": [],
+    "php8.3-fpm.service": []
+  },
+  "mode": "read-window12",
+  "owner_action": false,
+  "schema": "celikpanel/set12-native/v1",
+  "since_epoch": 1791695234,
+  "systemd_all": [
+    "2026-10-11T05:07:14.524066+00:00 dns-ubuntu systemd[1]: Reloading requested from client PID 53718 ('systemctl') (unit session-278.scope)...",
+    "2026-10-11T05:07:14.524082+00:00 dns-ubuntu systemd[1]: Reloading...",
+    "2026-10-11T05:07:14.761576+00:00 dns-ubuntu systemd[1]: Reloading finished in 237 ms.",
+    "2026-10-11T05:07:15.603352+00:00 dns-ubuntu systemd[1]: Reloading requested from client PID 53896 ('systemctl') (unit celikpanel-agent.service)...",
+    "2026-10-11T05:07:15.603512+00:00 dns-ubuntu systemd[1]: Reloading...",
+    "2026-10-11T05:07:15.944614+00:00 dns-ubuntu systemd[1]: Reloading finished in 340 ms.",
+    "2026-10-11T05:07:16.013866+00:00 dns-ubuntu systemd[1]: Stopping celikapp-4.service - CelikPanel app: set12-n.test...",
+    "2026-10-11T05:07:16.014631+00:00 dns-ubuntu systemd[1]: celikapp-4.service: Failed to kill control group /system.slice/celikapp-4.service, ignoring: Invalid argument",
+    "2026-10-11T05:07:16.014789+00:00 dns-ubuntu systemd[1]: celikapp-4.service: Deactivated successfully.",
+    "2026-10-11T05:07:16.014924+00:00 dns-ubuntu systemd[1]: Stopped celikapp-4.service - CelikPanel app: set12-n.test.",
+    "2026-10-11T05:07:16.023421+00:00 dns-ubuntu systemd[1]: Started celikapp-4.service - CelikPanel app: set12-n.test."
+  ],
+  "systemd_manager": [
+    "2026-10-11T05:07:15.603352+00:00 dns-ubuntu systemd[1]: Reloading requested from client PID 53896 ('systemctl') (unit celikpanel-agent.service)..."
+  ],
+  "units": [
+    "celikpanel-panel.service",
+    "celikpanel-agent.service",
+    "nginx.service",
+    "php8.3-fpm.service",
+    "celikapp-4.service"
+  ]
+}

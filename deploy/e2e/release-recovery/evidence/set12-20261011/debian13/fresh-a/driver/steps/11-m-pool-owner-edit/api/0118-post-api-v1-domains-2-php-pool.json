@@ -1,0 +1,91 @@
+{
+  "outcome": "response",
+  "panel": "owner",
+  "purpose": "m: pool save on the edited pool (POST /php/pool, pm_max_children 6)",
+  "request": {
+    "body": {
+      "pool_config": {
+        "pm": "dynamic",
+        "pm_max_children": 6,
+        "pm_max_requests": 500,
+        "pm_max_spare_servers": 3,
+        "pm_min_spare_servers": 1,
+        "pm_start_servers": 2
+      },
+      "version": "8.4"
+    },
+    "headers": [
+      [
+        "Accept",
+        "application/json"
+      ],
+      [
+        "Host",
+        "127.0.0.1:18881"
+      ],
+      [
+        "Content-Type",
+        "application/json"
+      ],
+      [
+        "Origin",
+        "https://127.0.0.1:18881"
+      ],
+      [
+        "Cookie",
+        "[REDACTED]"
+      ],
+      [
+        "X-CelikPanel-Request-Id",
+        "baa1064172b363d15d8b88da2e337e00"
+      ]
+    ],
+    "method": "POST",
+    "path": "/api/v1/domains/2/php/pool"
+  },
+  "response": {
+    "elapsed_seconds": 0.028,
+    "headers": [
+      [
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+      ],
+      [
+        "Content-Type",
+        "application/json"
+      ],
+      [
+        "Referrer-Policy",
+        "no-referrer"
+      ],
+      [
+        "Strict-Transport-Security",
+        "max-age=31536000"
+      ],
+      [
+        "X-Content-Type-Options",
+        "nosniff"
+      ],
+      [
+        "X-Frame-Options",
+        "DENY"
+      ],
+      [
+        "Date",
+        "Sun, 11 Oct 2026 04:37:35 GMT"
+      ],
+      [
+        "Content-Length",
+        "388"
+      ]
+    ],
+    "json": {
+      "code": "SITE_CONFIG_OWNER_EDITED",
+      "detail": "owner_edited",
+      "error": "The site's PHP-FPM pool file is not CelikPanel's unchanged text, so CelikPanel kept it and did not apply this change to it. Nothing else was changed. Open the domain's Configuration file section: keep your file, take CelikPanel's text (your file is kept as a dated copy), or merge the two by hand.",
+      "reason": "php_pool"
+    },
+    "status": 409,
+    "text": null
+  }
+}

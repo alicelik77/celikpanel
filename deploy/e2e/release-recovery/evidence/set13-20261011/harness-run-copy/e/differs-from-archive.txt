@@ -1,0 +1,4 @@
+differs:       1 > ./deploy/e2e/release-recovery/guest_set13_native.py
+differs:       1 > ./deploy/e2e/release-recovery/run-set13.sh
+differs:       1 > ./deploy/e2e/release-recovery/set13_trial.py
+differs:       1 > ./deploy/e2e/release-recovery/test_set13_trial.py

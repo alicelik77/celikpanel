@@ -1,0 +1,115 @@
+{
+  "action": "lab-restore",
+  "after": {
+    "enabled": {
+      "ctime_ns": 1791696608753721269,
+      "exists": true,
+      "gid": 989,
+      "group": "celikpanel",
+      "inode": 135520,
+      "kind": "symlink",
+      "link_target": "/etc/nginx/sites-available/set12-a.test.conf",
+      "mode": "0777",
+      "mtime_ns": 1791696608753721269,
+      "nlink": 1,
+      "owner": "root",
+      "path": "/etc/nginx/sites-enabled/set12-a.test.conf",
+      "resolves_to": "/etc/nginx/sites-available/set12-a.test.conf",
+      "size": 44,
+      "uid": 0
+    },
+    "vhost": {
+      "ctime_ns": 1791696659669696137,
+      "exists": true,
+      "gid": 989,
+      "group": "celikpanel",
+      "immutable": false,
+      "inode": 135542,
+      "kind": "file",
+      "lsattr": "--------------e-------",
+      "mode": "0644",
+      "mtime_ns": 1791696659669696137,
+      "nlink": 1,
+      "owner": "root",
+      "path": "/etc/nginx/sites-available/set12-a.test.conf",
+      "sha256": "5a0e4f07968a00888168baa1275d402fa4ebcbba5092d4c2b6d5e49db79eb83b",
+      "size": 2130,
+      "uid": 0
+    }
+  },
+  "at": "2026-10-11T05:30:59Z",
+  "before": {
+    "enabled": {
+      "ctime_ns": 1791696608753721269,
+      "exists": true,
+      "gid": 989,
+      "group": "celikpanel",
+      "inode": 135520,
+      "kind": "symlink",
+      "link_target": "/etc/nginx/sites-available/set12-a.test.conf",
+      "mode": "0777",
+      "mtime_ns": 1791696608753721269,
+      "nlink": 1,
+      "owner": "root",
+      "path": "/etc/nginx/sites-enabled/set12-a.test.conf",
+      "resolves_to": "/etc/nginx/sites-available/set12-a.test.conf",
+      "size": 44,
+      "uid": 0
+    },
+    "vhost": {
+      "ctime_ns": 1791696659125696405,
+      "exists": true,
+      "gid": 989,
+      "group": "celikpanel",
+      "immutable": false,
+      "inode": 135540,
+      "kind": "file",
+      "lsattr": "--------------e-------",
+      "mode": "0644",
+      "mtime_ns": 1791696659125696405,
+      "nlink": 1,
+      "owner": "root",
+      "path": "/etc/nginx/sites-available/set12-a.test.conf",
+      "sha256": "104dee0e6aebf5ace1c8e7105d8aaf41bfa1376e8df8db3bb2d9b2ffe2eb54b4",
+      "size": 2166,
+      "uid": 0
+    }
+  },
+  "chattr": {
+    "argv": [
+      "chattr",
+      "-i",
+      "/etc/nginx/sites-available/set12-a.test.conf"
+    ],
+    "at": "2026-10-11T05:30:59Z",
+    "returncode": 0,
+    "seconds": 0.002,
+    "status": "ok",
+    "stderr": "",
+    "stdout": ""
+  },
+  "domain": "set12-a.test",
+  "mode": "lab-restore",
+  "nginx_test": {
+    "at": "2026-10-11T05:30:59Z",
+    "output": "nginx: the configuration file /etc/nginx/nginx.conf syntax is ok\nnginx: configuration file /etc/nginx/nginx.conf test is successful\n",
+    "returncode": 0,
+    "status": "ok"
+  },
+  "owner_action": false,
+  "reload": {
+    "argv": [
+      "systemctl",
+      "reload",
+      "nginx.service"
+    ],
+    "at": "2026-10-11T05:30:59Z",
+    "returncode": 0,
+    "seconds": 0.052,
+    "status": "ok",
+    "stderr": "",
+    "stdout": ""
+  },
+  "schema": "celikpanel/set10-native/v1",
+  "sha256_matches": true
+}

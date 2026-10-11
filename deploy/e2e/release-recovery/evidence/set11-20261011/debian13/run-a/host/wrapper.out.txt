@@ -1,0 +1,23 @@
+Formatting '/var/tmp/cp-release-drill-s11-d13-a/cells/9821fb757dc01137d9c9ba8b/debian13/overlay.qcow2', fmt=qcow2 cluster_size=65536 extended_l2=off compression_type=zlib size=25769803776 backing_file=/var/tmp/cp-release-drill-s11-d13-a/images/debian-13-genericcloud-amd64-20260826-2582.qcow2 backing_fmt=qcow2 lazy_refcounts=off refcount_bits=16
+Formatting '/var/tmp/cp-release-drill-s11-d13-a/cells/9821fb757dc01137d9c9ba8b/arch/overlay.qcow2', fmt=qcow2 cluster_size=65536 extended_l2=off compression_type=zlib size=25769803776 backing_file=/var/tmp/cp-release-drill-s11-d13-a/images/Arch-Linux-x86_64-cloudimg-20260815.573966.qcow2 backing_fmt=qcow2 lazy_refcounts=off refcount_bits=16
+{"action": "prepared", "root": "/var/tmp/cp-release-drill-s11-d13-a", "cell_id": "release-recovery__9b3720302586a6a4", "ssh_ports": [4871, 4872]}
+{"action": "ready", "root": "/var/tmp/cp-release-drill-s11-d13-a", "nodes": {"arch": "verified-disposable-systemd-guest", "debian13": "verified-disposable-systemd-guest"}}
+{"action": "ready", "root": "/var/tmp/cp-release-drill-s11-d13-a", "nodes": {"arch": "verified-disposable-systemd-guest", "debian13": "verified-disposable-systemd-guest"}}
+{"step": "set6-name-pinning", "verdict": "passed", "reason": null}
+{"step": "preflight", "verdict": "passed", "reason": null}
+{"step": "origin", "verdict": "passed", "reason": null}
+{"step": "baseline-install", "verdict": "passed", "reason": null}
+{"step": "owner-login", "verdict": "passed", "reason": null}
+{"step": "license", "verdict": "passed", "reason": null}
+{"step": "setup", "verdict": "observed", "reason": null}
+{"step": "site", "verdict": "passed", "reason": null}
+{"step": "S0-sites", "verdict": "passed", "reason": null}
+{"step": "h-i-unchanged-start", "verdict": "passed", "reason": null}
+{"step": "C-directory-modes", "verdict": "passed", "reason": null}
+{"step": "A1-probe-ready", "verdict": "inconclusive", "reason": "TypeError: Set11Trial.snap11() got multiple values for argument 'label'"}
+{"step": "A4-nginx-stopped", "verdict": "inconclusive", "reason": "TypeError: Set11Trial.snap11() got multiple values for argument 'label'"}
+{"step": "A2-include-missing", "verdict": "inconclusive", "reason": "TypeError: Set11Trial.snap11() got multiple values for argument 'label'"}
+{"step": "A5-include-back", "verdict": "inconclusive", "reason": "TypeError: Set11Trial.snap11() got multiple values for argument 'label'"}
+{"step": "A3-mail-name", "verdict": "inconclusive", "reason": "TypeError: Set11Trial.snap11() got multiple values for argument 'label'"}
+{"action": "stopped", "root": "/var/tmp/cp-release-drill-s11-d13-a", "evidence_retained": true}
+SET11 cell=set11-debian13 lab=/var/tmp/cp-release-drill-s11-d13-a driver_exit=143 evidence=/var/tmp/cp-release-drill-s11-d13-a/evidence/*/upd1

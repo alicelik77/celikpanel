@@ -1,0 +1,10 @@
+baseline 8948352e39539cd647c742c154578dc2163d7b9b tree 6c3c1d24109df71c9e260e662ff4aeda7b93ebd1
+### files that differ between the source 816b8dd60 and baseline
+M	deploy/release-sequence-policy
+good 1e797db8d609de246a8697844defbfd7ffa6626a tree 693d3256cf88d3d8669e75bce5e96de0e2703369
+### files that differ between the source 816b8dd60 and good
+M	deploy/release-sequence-policy
+defective 162126b6f400e718f173f00b02fae22067d87e81 tree a624197304225fc6bba494b7ef4a92b00857c3ac
+### files that differ between the source 816b8dd60 and defective
+M	cmd/panel/main.go
+M	deploy/release-sequence-policy

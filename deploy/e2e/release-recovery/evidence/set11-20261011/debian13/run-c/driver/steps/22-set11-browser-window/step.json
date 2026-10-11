@@ -1,0 +1,39 @@
+{
+  "checks": {
+    "browser_done": {
+      "at": "2026-10-11T00:57:10.839Z",
+      "by": "cold-load-set11.mjs"
+    },
+    "ended_at": "2026-10-11T00:57:11Z",
+    "hand": "/var/tmp/cp-set11-run/hand/h11d13c-d-e",
+    "password_file_removed": true,
+    "requests": [
+      {
+        "guest_output": "2026-10-11T00:55:29.208371803Z\nMainPID=33842\nActiveState=active\nrc=0\n2026-10-11T00:55:29.295780848Z\nMainPID=36053\nActiveState=active\nActiveEnterTimestamp=Sun 2026-10-11 00:55:29 UTC\nInactiveEnterTimestamp=Sun 2026-10-11 00:55:29 UTC",
+        "host_after": 1791680129.024564,
+        "host_before": 1791680128.7364862,
+        "request": "restart1791680127796",
+        "what": "systemctl restart celikpanel-panel.service on the disposable guest, by the harness"
+      },
+      {
+        "guest_output": "2026-10-11T00:56:48.519466434Z\nMainPID=36053\nActiveState=active\nrc=0\n2026-10-11T00:56:48.567040683Z\nMainPID=0\nActiveState=inactive\nActiveEnterTimestamp=Sun 2026-10-11 00:55:29 UTC\nInactiveEnterTimestamp=Sun 2026-10-11 00:56:48 UTC",
+        "host_after": 1791680208.2974756,
+        "host_before": 1791680208.0768466,
+        "request": "stop1791680208051",
+        "what": "systemctl stop celikpanel-panel.service on the disposable guest, by the harness"
+      },
+      {
+        "guest_output": "2026-10-11T00:57:09.758661808Z\nMainPID=0\nActiveState=inactive\nrc=0\n2026-10-11T00:57:09.813576415Z\nMainPID=37280\nActiveState=active\nActiveEnterTimestamp=Sun 2026-10-11 00:57:09 UTC\nInactiveEnterTimestamp=Sun 2026-10-11 00:56:48 UTC",
+        "host_after": 1791680229.5431669,
+        "host_before": 1791680229.3061125,
+        "request": "start1791680228769",
+        "what": "systemctl start celikpanel-panel.service on the disposable guest, by the harness"
+      }
+    ],
+    "window": "d-e"
+  },
+  "finished_at": "2026-10-11T00:57:11Z",
+  "name": "set11-browser-window",
+  "started_at": "2026-10-11T00:53:40Z",
+  "verdict": "observed"
+}

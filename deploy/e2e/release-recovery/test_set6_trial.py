@@ -111,6 +111,11 @@ class HeaderTest(unittest.TestCase):
         self.assertEqual(verdicts(checks), [False, True, False, True])
         self.assertEqual(verdicts(set6_trial.header_judgement(old, set6_trial.HSTS_ALPHA81)), [True, True, True])
 
+    def test_after_an_automatic_return_the_returned_release_is_expected(self):
+        # set10: after the automatic return the published alpha.81 answers, with its own header.
+        self.assertEqual(set6_trial.expected_after_the_update("baseline", "defective"), (set6_trial.HSTS_ALPHA81, "baseline"))
+        self.assertEqual(set6_trial.expected_after_the_update("good", "good"), (set6_trial.HSTS_CANDIDATE, "good"))
+
     def test_one_route_without_the_header_or_with_two_lines_fails(self):
         one = full_reading(set6_trial.HSTS_CANDIDATE)
         one["requests"][2]["strict_transport_security"] = []

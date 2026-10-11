@@ -1,0 +1,19 @@
+{
+  "checks": {
+    "checks": 0,
+    "error": "TypeError: Set11Trial.snap11() got multiple values for argument 'label'",
+    "failed": [],
+    "finished_at": "2026-10-11T00:21:15Z",
+    "notes": [],
+    "started_at": "2026-10-11T00:21:13Z",
+    "substeps": {},
+    "title": "the owner puts the line back: the Configuration file read probes again",
+    "unknown": [],
+    "verdict": "inconclusive"
+  },
+  "finished_at": "2026-10-11T00:21:15Z",
+  "name": "A5-include-back",
+  "reason": "TypeError: Set11Trial.snap11() got multiple values for argument 'label'",
+  "started_at": "2026-10-11T00:21:13Z",
+  "verdict": "inconclusive"
+}

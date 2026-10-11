@@ -1,0 +1,24 @@
+# celikpanel-render v2 sha256=ebd5266bb84fed0b370a385e3bebd8b8f1fac0773278ac5facb60b6164df8292
+# The application unit of this site, written by CelikPanel.
+# Your own settings go in /etc/systemd/system/celikapp-4.service.d/*.conf (systemd drop-ins); CelikPanel never writes or removes them.
+# An edit to this file is kept: CelikPanel then shows the difference and asks before writing it again.
+# Kendi ayarlarınız /etc/systemd/system/celikapp-4.service.d/*.conf içine; CelikPanel onlara dokunmaz. Bu dosyadaki bir değişiklik korunur.
+[Unit]
+Description=CelikPanel app: set13-n.test
+After=network.target
+
+[Service]
+User=www-data
+WorkingDirectory=/var/www/celikpanel/subscriptions/2/sites/4/public_html
+Environment=PORT=3001
+Environment=NODE_ENV=production
+Environment=PATH=/opt/celikpanel/runtimes/node/22.20.0/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStart=/bin/sh -c 'node -e "require('\''http'\'').createServer((q,s)=>s.end('\''set13-n1'\'')).listen(process.env.PORT)"'
+Restart=on-failure
+RestartSec=3
+
+# set10: added by the server owner by hand
+Environment=SET10_OWNER=unit
+
+[Install]
+WantedBy=multi-user.target

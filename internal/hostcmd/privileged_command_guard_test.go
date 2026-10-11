@@ -175,12 +175,15 @@ var privilegedCommandAllowlist = map[string]string{
 	"internal/services/config_validation.go:systemctl":  "restarts mariadb after a validated write - debt",
 	"internal/services/mariadb_driver.go:mysql":         "the MariaDB client; its failure IS read, by WrapDatabaseEngineFailure, but it writes its own defaults-extra-file and so keeps its own launcher",
 	"internal/services/php_utils.go:systemctl":          "reloads a PHP-FPM pool - debt",
-	"internal/services/user_manager.go:useradd":         "creates a system user - debt",
-	"internal/services/user_manager.go:userdel":         "deletes a system user - debt",
-	"internal/services/user_manager.go:chpasswd":        "sets a system password; its stdin carries the password - debt",
-	"internal/services/user_manager.go:chown":           "sets ownership of a user's tree - debt",
-	"internal/systemd/manager.go:systemctl":             "the systemd manager - debt",
-	"internal/systemd/state.go:systemctl":               "reads and sets unit state - debt",
+	// set12 cell RP1 (2026-10-11): what follows a put-back of a site file.
+	"internal/services/site_file_service.go:systemctl": "reads whether a site file's service runs (systemctl is-active, 5-second deadline) before a write and after a put-back; changes nothing; only its one-word state is read, mapped to true/false/unknown",
+	"cmd/agent/app_rpc.go:<computed>":                  "systemd-analyze verify on a put-back application unit before the application is restarted (15-second deadline, read-only); its first line is shown to the administrator; absent systemd-analyze means no restart, said as such",
+	"internal/services/user_manager.go:useradd":        "creates a system user - debt",
+	"internal/services/user_manager.go:userdel":        "deletes a system user - debt",
+	"internal/services/user_manager.go:chpasswd":       "sets a system password; its stdin carries the password - debt",
+	"internal/services/user_manager.go:chown":          "sets ownership of a user's tree - debt",
+	"internal/systemd/manager.go:systemctl":            "the systemd manager - debt",
+	"internal/systemd/state.go:systemctl":              "reads and sets unit state - debt",
 }
 
 // stderrReaderAllowlist names every file allowed to touch the stderr os/exec

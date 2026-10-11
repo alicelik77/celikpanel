@@ -1,0 +1,89 @@
+{
+  "outcome": "response",
+  "panel": "owner",
+  "purpose": "a6 cleanup: GET site-config after the lab restore: GET site-config",
+  "request": {
+    "body": null,
+    "headers": [
+      [
+        "Accept",
+        "application/json"
+      ],
+      [
+        "Host",
+        "127.0.0.1:18871"
+      ],
+      [
+        "Cookie",
+        "[REDACTED]"
+      ]
+    ],
+    "method": "GET",
+    "path": "/api/v1/domains/2/site-config"
+  },
+  "response": {
+    "elapsed_seconds": 0.006,
+    "headers": [
+      [
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+      ],
+      [
+        "Content-Type",
+        "application/json"
+      ],
+      [
+        "Referrer-Policy",
+        "no-referrer"
+      ],
+      [
+        "Strict-Transport-Security",
+        "max-age=31536000"
+      ],
+      [
+        "X-Content-Type-Options",
+        "nosniff"
+      ],
+      [
+        "X-Frame-Options",
+        "DENY"
+      ],
+      [
+        "Date",
+        "Sun, 11 Oct 2026 00:52:01 GMT"
+      ],
+      [
+        "Content-Length",
+        "878"
+      ]
+    ],
+    "json": {
+      "actions": [],
+      "certificate": {
+        "referenced": false
+      },
+      "challenge_file": "unchanged",
+      "domain": "set11-a.test",
+      "domain_id": 2,
+      "enabled": "link",
+      "file_sha256": "900b07bc0ced88704c25c22ad3219ae87c3da7e8a328adb46aeacf0a981e0c65",
+      "include_dir": "/etc/nginx/celikpanel-sites.d/set11-a.test",
+      "kind": "nginx_vhost",
+      "ledger": {
+        "observed_at": "2026-10-11T00:51:58Z",
+        "written_at": "2026-10-11T00:50:52Z",
+        "written_release": "v0.1.0-alpha.81 b2b43d0cd680"
+      },
+      "managed_dir": "/etc/nginx/celikpanel-managed.d/set11-a.test",
+      "managed_include": "include /etc/nginx/celikpanel-managed.d/set11-a.test/*.conf;",
+      "path": "/etc/nginx/sites-available/set11-a.test.conf",
+      "pending_path": "/etc/nginx/sites-available/set11-a.test.conf.celikpanel-pending",
+      "pending_reason": "certificate_validation",
+      "protection": "none",
+      "render_sha256": "8d0ded895ef5095c98de162e7328057a266c835ca11cfdfc6ede51709ffe96c6",
+      "state": "managed_unchanged"
+    },
+    "status": 200,
+    "text": null
+  }
+}

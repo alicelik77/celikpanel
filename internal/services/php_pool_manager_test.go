@@ -16,10 +16,14 @@ func withPoolTree(t *testing.T, version, pool, body string) string {
 	oldEtc := phpEtcDir
 	oldReload := reloadPHPFPM
 	oldTest := phpFPMConfigTest
+	oldActive := phpFPMActive
 	phpEtcDir = dir
 	reloadPHPFPM = func(string) error { return nil }
 	phpFPMConfigTest = func(string) error { return nil }
+	// PHP-FPM runs: a put-back is followed by its check and reload.
+	phpFPMActive = func(string) string { return "true" }
 	t.Cleanup(func() {
+		phpFPMActive = oldActive
 		phpEtcDir = oldEtc
 		reloadPHPFPM = oldReload
 		phpFPMConfigTest = oldTest

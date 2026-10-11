@@ -1,0 +1,36 @@
+{
+  "at": "2026-10-11T04:39:18Z",
+  "by_unit": {
+    "celikpanel-agent.service": [
+      "2026-10-11T04:39:14.489593+00:00 dns-debian13 agent[5157]: 2026/10/11 04:39:14 ApplySitePool site 2 (take): failed owner_edited /etc/php/8.4/fpm/pool.d/site2.conf"
+    ],
+    "celikpanel-panel.service": [
+      "2026-10-11T04:39:14.374496+00:00 dns-debian13 panel[30924]: 2026/10/11 04:39:14 http: TLS handshake error from 127.0.0.1:44632: EOF",
+      "2026-10-11T04:39:14.490810+00:00 dns-debian13 panel[30924]: 2026/10/11 04:39:14 site configuration set12-a.test php_pool (take): failed; owner's file kept as /etc/php/8.4/fpm/pool.d/site2.conf.celikpanel-backup-20261011T043914Z; exit status 1",
+      "2026-10-11T04:39:14.498960+00:00 dns-debian13 panel[30924]: 2026/10/11 04:39:14 [502] site configuration of set12-a.test not applied: failed (owner_edited reload_failed); restore unconfirmed: exit status 1; rollback incomplete: exit status 1"
+    ],
+    "nginx.service": [],
+    "php8.4-fpm.service": [
+      "2026-10-11T04:39:14.465130+00:00 dns-debian13 systemd[1]: php8.4-fpm.service: Unit cannot be reloaded because it is inactive.",
+      "2026-10-11T04:39:14.487531+00:00 dns-debian13 systemd[1]: php8.4-fpm.service: Unit cannot be reloaded because it is inactive."
+    ]
+  },
+  "mode": "read-window12",
+  "owner_action": false,
+  "schema": "celikpanel/set12-native/v1",
+  "since_epoch": 1791693553,
+  "systemd_all": [
+    "2026-10-11T04:39:14.465130+00:00 dns-debian13 systemd[1]: php8.4-fpm.service: Unit cannot be reloaded because it is inactive.",
+    "2026-10-11T04:39:14.487531+00:00 dns-debian13 systemd[1]: php8.4-fpm.service: Unit cannot be reloaded because it is inactive."
+  ],
+  "systemd_manager": [
+    "2026-10-11T04:39:14.465130+00:00 dns-debian13 systemd[1]: php8.4-fpm.service: Unit cannot be reloaded because it is inactive.",
+    "2026-10-11T04:39:14.487531+00:00 dns-debian13 systemd[1]: php8.4-fpm.service: Unit cannot be reloaded because it is inactive."
+  ],
+  "units": [
+    "celikpanel-panel.service",
+    "celikpanel-agent.service",
+    "nginx.service",
+    "php8.4-fpm.service"
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "at": "2026-10-11T05:19:22Z",
+  "by_unit": {
+    "celikapp-4.service": [
+      "2026-10-11T05:19:18.784092+00:00 dns-arch systemd[1]: Stopping CelikPanel app: set12-n.test...",
+      "2026-10-11T05:19:18.786723+00:00 dns-arch systemd[1]: celikapp-4.service: Deactivated successfully.",
+      "2026-10-11T05:19:18.787020+00:00 dns-arch systemd[1]: Stopped CelikPanel app: set12-n.test.",
+      "2026-10-11T05:19:18.789619+00:00 dns-arch systemd[1]: Started CelikPanel app: set12-n.test."
+    ],
+    "celikpanel-agent.service": [
+      "2026-10-11T05:19:18.779208+00:00 dns-arch agent[411]: 2026/10/11 05:19:18 ApplyAppUnit site 4: taken (adopted \"\", owner's copy \"/etc/systemd/system/celikapp-4.service.celikpanel-backup-20261011T051918Z\")"
+    ],
+    "celikpanel-panel.service": [
+      "2026-10-11T05:19:17.787012+00:00 dns-arch panel[4361]: 2026/10/11 05:19:17 http: TLS handshake error from 127.0.0.1:48258: EOF",
+      "2026-10-11T05:19:17.804646+00:00 dns-arch panel[4361]: 2026/10/11 05:19:17 site configuration set12-n.test app_unit (change): kept (owner-edited); CelikPanel's text held in /etc/systemd/system/celikapp-4.service.celikpanel-pending",
+      "2026-10-11T05:19:17.811083+00:00 dns-arch panel[4361]: 2026/10/11 05:19:17 [409] site configuration of set12-n.test not applied: kept (owner_edited ): the application unit file /etc/systemd/system/celikapp-4.service is not CelikPanel's unchanged text (owner_edited); it was kept and not changed",
+      "2026-10-11T05:19:18.164269+00:00 dns-arch panel[4361]: 2026/10/11 05:19:18 http: TLS handshake error from 127.0.0.1:48288: EOF",
+      "2026-10-11T05:19:18.491495+00:00 dns-arch panel[4361]: 2026/10/11 05:19:18 http: TLS handshake error from 127.0.0.1:48308: EOF",
+      "2026-10-11T05:19:18.791311+00:00 dns-arch panel[4361]: 2026/10/11 05:19:18 site configuration set12-n.test app_unit (take): taken; owner's file kept as /etc/systemd/system/celikapp-4.service.celikpanel-backup-20261011T051918Z"
+    ],
+    "nginx.service": [],
+    "php-fpm.service": []
+  },
+  "mode": "read-window12",
+  "owner_action": false,
+  "schema": "celikpanel/set12-native/v1",
+  "since_epoch": 1791695957,
+  "systemd_all": [
+    "2026-10-11T05:19:17.531700+00:00 dns-arch systemd[1]: Reload requested from client PID 6004 ('systemctl') (unit session-159.scope)...",
+    "2026-10-11T05:19:17.531740+00:00 dns-arch systemd[1]: Reloading...",
+    "2026-10-11T05:19:17.714174+00:00 dns-arch systemd[1]: Reloading finished in 182 ms.",
+    "2026-10-11T05:19:18.532348+00:00 dns-arch systemd[1]: Reload requested from client PID 6088 ('systemctl') (unit celikpanel-agent.service)...",
+    "2026-10-11T05:19:18.532388+00:00 dns-arch systemd[1]: Reloading...",
+    "2026-10-11T05:19:18.733166+00:00 dns-arch systemd[1]: Reloading finished in 200 ms.",
+    "2026-10-11T05:19:18.786723+00:00 dns-arch systemd[1]: celikapp-4.service: Deactivated successfully.",
+    "2026-10-11T05:19:18.786000+00:00 dns-arch audit[1]: SERVICE_STOP pid=1 uid=0 auid=4294967295 ses=4294967295 msg='unit=celikapp-4 comm=\"systemd\" exe=\"/usr/lib/systemd/systemd\" hostname=? addr=? terminal=? res=success'",
+    "2026-10-11T05:19:18.788000+00:00 dns-arch audit[1]: SERVICE_START pid=1 uid=0 auid=4294967295 ses=4294967295 msg='unit=celikapp-4 comm=\"systemd\" exe=\"/usr/lib/systemd/systemd\" hostname=? addr=? terminal=? res=success'"
+  ],
+  "systemd_manager": [
+    "2026-10-11T05:19:18.532348+00:00 dns-arch systemd[1]: Reload requested from client PID 6088 ('systemctl') (unit celikpanel-agent.service)..."
+  ],
+  "units": [
+    "celikpanel-panel.service",
+    "celikpanel-agent.service",
+    "nginx.service",
+    "php-fpm.service",
+    "celikapp-4.service"
+  ]
+}

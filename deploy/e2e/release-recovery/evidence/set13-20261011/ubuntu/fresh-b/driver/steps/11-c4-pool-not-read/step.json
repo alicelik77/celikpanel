@@ -1,0 +1,22 @@
+{
+  "checks": {
+    "checks": 8,
+    "error": null,
+    "failed": [],
+    "finished_at": "2026-10-11T10:39:45Z",
+    "notes": [
+      "C4: PASS"
+    ],
+    "started_at": "2026-10-11T10:38:26Z",
+    "substeps": {
+      "C4": "passed"
+    },
+    "title": "the pool not read: the page and the Domains row",
+    "unknown": [],
+    "verdict": "passed"
+  },
+  "finished_at": "2026-10-11T10:39:45Z",
+  "name": "C4-pool-not-read",
+  "started_at": "2026-10-11T10:38:26Z",
+  "verdict": "passed"
+}

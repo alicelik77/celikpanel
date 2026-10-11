@@ -1,0 +1,62 @@
+{
+  "at": "2026-10-11T01:36:32Z",
+  "epoch": 1791682592.3887374,
+  "mode": "read-stat",
+  "owner_action": false,
+  "schema": "celikpanel/set11-native/v1",
+  "side": {
+    "backups": [],
+    "pending": {
+      "ctime_ns": 1791682589312429611,
+      "exists": true,
+      "first_line": "# celikpanel-render v2 sha256=4b1cb1b3a8497f9d7e4774134e2a827c4a3a620fec35043ba4acbf5914be0a6e",
+      "gid": 969,
+      "group": "celikpanel",
+      "header": {
+        "body_bytes": 2035,
+        "body_sha256": "4b1cb1b3a8497f9d7e4774134e2a827c4a3a620fec35043ba4acbf5914be0a6e",
+        "declared": "4b1cb1b3a8497f9d7e4774134e2a827c4a3a620fec35043ba4acbf5914be0a6e",
+        "present": true,
+        "valid": true
+      },
+      "immutable": false,
+      "inode": 92048,
+      "kind": "file",
+      "lsattr": "----------------------",
+      "mode": "0644",
+      "mtime_ns": 1791682589299429206,
+      "nlink": 1,
+      "owner": "root",
+      "path": "/etc/nginx/sites-available/set11-a.test.conf.celikpanel-pending",
+      "sha256": "6825409ead119263472ce1aa452aedc13825b5a99da695bfc4e85f90a1faa34b",
+      "size": 2130,
+      "uid": 0
+    }
+  },
+  "vhost": {
+    "ctime_ns": 1791682586111328147,
+    "exists": true,
+    "first_line": "# celikpanel-render v2 sha256=4b1cb1b3a8497f9d7e4774134e2a827c4a3a620fec35043ba4acbf5914be0a6e",
+    "gid": 969,
+    "group": "celikpanel",
+    "header": {
+      "body_bytes": 2081,
+      "body_sha256": "43a0a0f0bef1b2bb214dbdb701264934d5df621b424f2e07f2f66371d28678ea",
+      "declared": "4b1cb1b3a8497f9d7e4774134e2a827c4a3a620fec35043ba4acbf5914be0a6e",
+      "present": true,
+      "valid": false
+    },
+    "immutable": false,
+    "inode": 92037,
+    "kind": "file",
+    "lsattr": "----------------------",
+    "mode": "0644",
+    "mtime_ns": 1791682586111328147,
+    "nlink": 1,
+    "owner": "root",
+    "path": "/etc/nginx/sites-available/set11-a.test.conf",
+    "sha256": "6a98d353668c86786b2a48c78178e9fb1215788c2a2ceb4441f66e6781584ee9",
+    "size": 2176,
+    "uid": 0
+  }
+}

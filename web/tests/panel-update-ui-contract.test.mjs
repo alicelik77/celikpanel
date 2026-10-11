@@ -72,7 +72,10 @@ test('root polling survives restart, focus and route changes while accepting onl
 });
 
 test('self-update owns its exact root tracker without joining the service-operation discovery channel', () => {
-    assert.match(tracker, /const SYSTEM_UPDATE_MARKER_KEY = 'celikpanel\.system-update-operation\.v1'/);
+    // The key is declared once, beside its readers, and imported by the tracker (2026-10-10).
+    assert.match(tracker, /export const SYSTEM_UPDATE_MARKER_KEY = UPDATE_MARKER_KEY;/);
+    assert.doesNotMatch(tracker, /'celikpanel\.system-update-operation\.v1'/);
+    assert.match(readFileSync(new URL('../src/lib/recoveryObservation.ts', import.meta.url), 'utf8'), /^export const UPDATE_MARKER_KEY = 'celikpanel\.system-update-operation\.v1';$/m);
     assert.match(tracker, /fetch\(systemUpdateExactStatusPath\(marker\.request_id\)/);
     assert.doesNotMatch(updateSources, /useComponentOperation|service\/operation\?active=1/);
 });
@@ -111,7 +114,9 @@ test('a saved marker resumes after reload and another tab can adopt it without r
     assert.match(lease, /if \(get\.result === undefined\)/);
     assert.match(lease, /options\.codec\.decode\(raw\)/);
     assert.match(lease, /record: legacyRecord/);
-    assert.match(tracker, /message: t\('panelUpdate\.running'\)/);
+    // A record adopted before any read is said as being read, not as being
+    // applied (owner report 2026-10-10).
+    assert.match(tracker, /message: message \?\? t\('panelUpdate\.tracking\.reading'\)/);
 });
 
 test('an exact successful update reloads once with a cache-busting identity', () => {

@@ -151,6 +151,9 @@ export function DomainGeneralSettings({ domainId, domainName }: DomainGeneralSet
                 }
             }
             showToast('success', t('general.aliasAdded', { name: alias }));
+            if (await issuedWaitingForOwner(res)) showToast('warning', t('ssl.issuedWaitingForOwner'));
+            const notRunAddress = await aliasValidationNotRunAddress(res);
+            if (notRunAddress) showToast('warning', t('ssl.validationNotRun', { address: notRunAddress }));
             answer.settle();
             setNewAlias('');
             await general.retry();
@@ -184,6 +187,9 @@ export function DomainGeneralSettings({ domainId, domainName }: DomainGeneralSet
                 }
             }
             showToast('success', t('general.aliasDeleted', { name: alias }));
+            if (await issuedWaitingForOwner(res)) showToast('warning', t('ssl.issuedWaitingForOwner'));
+            const notRunAddress = await aliasValidationNotRunAddress(res);
+            if (notRunAddress) showToast('warning', t('ssl.validationNotRun', { address: notRunAddress }));
             answer.settle();
             await general.retry();
         } finally {
@@ -306,4 +312,36 @@ export function DomainGeneralSettings({ domainId, domainName }: DomainGeneralSet
             }}
         </RemoteGate>
     );
+}
+
+// The alias change reissued the certificate, but the site's configuration file
+// is the owner's and does not use it yet (D-031 step 1b). An answer that
+// cannot be read says nothing more than the success it already is.
+async function issuedWaitingForOwner(res: Response): Promise<boolean> {
+    try {
+        const body = (await res.clone().json()) as { status?: unknown } | null;
+        return body?.status === 'waiting_for_owner';
+    } catch {
+        return false;
+    }
+}
+
+// The alias change's certificate request went ahead without the probe
+// (set11 cell A6): the address, or ''.
+async function aliasValidationNotRunAddress(res: Response): Promise<string> {
+    try {
+        return validationNotRunAddress((await res.clone().json()) as IssuedAnswer | null);
+    } catch {
+        return '';
+    }
+}
+
+// A certificate request that went ahead although the validation probe could
+// not be sent from this server: the site listens on an address that is not
+// this server's (set11 cell A6, 2026-10-11). The address, or ''.
+type IssuedAnswer = { status?: unknown; validation_probe?: unknown; validation_unknown_reason?: unknown; validation_address?: unknown };
+
+function validationNotRunAddress(answer: IssuedAnswer | null | undefined): string {
+    if (!answer || answer.validation_probe !== 'not_run' || answer.validation_unknown_reason !== 'address_not_local') return '';
+    return typeof answer.validation_address === 'string' ? answer.validation_address : '';
 }

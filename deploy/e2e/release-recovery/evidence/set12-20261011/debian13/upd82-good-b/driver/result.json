@@ -1,0 +1,305 @@
+{
+  "artifacts": {
+    "baseline": {
+      "commit": "2a0af88660773b43cbe1155c622483e2f0a2bbeb",
+      "sha256": "093a29905dea497d01b6a748966f0b872e01dcd64716e4c65eb20c84c90f204e",
+      "version": "v0.1.0-alpha.82"
+    },
+    "defective": {
+      "commit": "411e5bc71bb0b7f2175d70f073bf8c552fcd54a0",
+      "sha256": "a4dc8401c4c44330691bf12ff1474d4903edd6281bb3aae7d7576f1265664aee",
+      "version": "v0.1.0-alpha.83"
+    },
+    "good": {
+      "commit": "80a2aed4be2c98e3afba83153027ed5597342258",
+      "sha256": "9df1d5399d7cb044becb542baaff40fabc9b35379723d0a7bec91fcca214ca8b",
+      "version": "v0.1.0-alpha.83"
+    }
+  },
+  "cell": {
+    "h19": true,
+    "mail_required": true,
+    "name": "upd1-debian13-good",
+    "node": "debian13",
+    "pk_observe": false,
+    "recovery_fault": null,
+    "scenario": null,
+    "variant": "good"
+  },
+  "deferred_mail": null,
+  "findings": [],
+  "identity": {
+    "cell_id": "release-recovery__81ac0f1c8838e699",
+    "node": "debian13",
+    "vm_uuid": "0a10bda4-cdb4-5977-a0e4-c8a398b714d3"
+  },
+  "native_evidence": false,
+  "note": "Observations for the owner's review; the P0 rows are judged separately.",
+  "outcome": {
+    "attempts": {
+      "automatic": [],
+      "automatic_count": 0,
+      "journal_admissions": [],
+      "owner": [],
+      "owner_count": 0
+    },
+    "classification": "not-terminal",
+    "final_status": null,
+    "owner_continuation": false,
+    "owner_reboot": null,
+    "pin_changes": [],
+    "port_hold": null,
+    "reboot": null,
+    "track_stop": null
+  },
+  "overall": "failed",
+  "provenance": {
+    "baseline": "published-tag-v0.1.0-alpha.82-commit-unchanged (the tag carries the D-027 acceptance-license seam; bin/panel is built from the tag's source with the acceptance_license build tag); its release policy, installer, update/rollback/recovery/bootstrap scripts, get.sh, web and Agent are the tag's; installed by the real installer; fixture trust root enrolled; not-production-release-admission; not the signed release archive",
+    "candidate": "unpublished-local-fixture-commit-over-the-source-labelled-v0.1.0-alpha.83; signed with the disposable fixture key; served by the guest-loopback celikpanel.net fixture origin; not a release",
+    "defect": "fixture source patch: cmd/panel --migrate-only exits 1 after migrating the isolated copy (genuine candidate failure after candidate-installed, simulated by a committed fixture change)"
+  },
+  "request_id": null,
+  "schema": "celikpanel/upd1-owner-update-result/v1",
+  "scope": {
+    "cron": {
+      "verdict": "not checked (the cell stopped before seeding)"
+    },
+    "dns": {
+      "mode": "external",
+      "note": "DNS is not provided by this run (the owner chose DNS hosted elsewhere on one isolated node); DNS continuity is covered by the DNS pair runs of roadmap item 2",
+      "verdict": "not-provided-external-dns"
+    },
+    "origin": {
+      "after-provision": {
+        "addresses": [
+          "127.0.0.1"
+        ],
+        "http": "200",
+        "ok": true
+      }
+    },
+    "setup": {
+      "verdict": "not waiting"
+    }
+  },
+  "set10": {
+    "cell_kind": "set10-d031-update",
+    "sections": {},
+    "state": {
+      "baseline_ref": "v0.1.0-alpha.82",
+      "ids": {}
+    }
+  },
+  "set5": {
+    "additions": {
+      "item9": true,
+      "m10": true
+    },
+    "cell_kind": "set5-closing-update",
+    "pinned_names": [
+      "acme-v02.api.letsencrypt.org",
+      "acme-staging-v02.api.letsencrypt.org",
+      "acme.zerossl.com",
+      "dv.acme-v02.api.pki.goog"
+    ],
+    "sections": {}
+  },
+  "set6": {
+    "cell_kind": "set6-good-update",
+    "expected_strict_transport_security": {
+      "after_the_update": "max-age=31536000",
+      "before_the_update": "max-age=31536000; includeSubDomains"
+    },
+    "pinned_names": [
+      "celikpanel.net",
+      "acme-v02.api.letsencrypt.org",
+      "acme-staging-v02.api.letsencrypt.org",
+      "acme.zerossl.com",
+      "dv.acme-v02.api.pki.goog"
+    ]
+  },
+  "steps": [
+    {
+      "finished_at": "2026-10-11T05:59:39Z",
+      "name": "set6-name-pinning",
+      "reason": null,
+      "started_at": "2026-10-11T05:59:35Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T05:59:44Z",
+      "name": "preflight",
+      "reason": null,
+      "started_at": "2026-10-11T05:59:39Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T05:59:53Z",
+      "name": "origin",
+      "reason": null,
+      "started_at": "2026-10-11T05:59:44Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T06:00:27Z",
+      "name": "baseline-install",
+      "reason": null,
+      "started_at": "2026-10-11T05:59:53Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T06:00:28Z",
+      "name": "owner-login",
+      "reason": null,
+      "started_at": "2026-10-11T06:00:27Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T06:00:28Z",
+      "name": "license",
+      "reason": null,
+      "started_at": "2026-10-11T06:00:28Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T06:00:36Z",
+      "name": "setup",
+      "reason": "server setup did not succeed: {'status': 'failed', 'phase': '02-service', 'error': {'code': 'HOST_MUTATION_BUSY', 'message': \"This server's package manager is busy — a package task is still running on this server. Wait for it to finish, then try again.\", 'reason': 'package_manager_active'}}",
+      "started_at": "2026-10-11T06:00:28Z",
+      "verdict": "failed"
+    },
+    {
+      "finished_at": null,
+      "name": "seed",
+      "reason": "a required earlier step did not pass: setup",
+      "started_at": "2026-10-11T06:00:36Z",
+      "verdict": "not-run"
+    },
+    {
+      "finished_at": null,
+      "name": "set10-sites-before-the-update",
+      "reason": "a required earlier step did not pass: seed",
+      "started_at": "2026-10-11T06:00:36Z",
+      "verdict": "not-run"
+    },
+    {
+      "finished_at": null,
+      "name": "set4-php-site-before-the-update",
+      "reason": "a required earlier step did not pass: seed",
+      "started_at": "2026-10-11T06:00:36Z",
+      "verdict": "not-run"
+    },
+    {
+      "finished_at": null,
+      "name": "set6-headers-before-the-update",
+      "reason": "a required earlier step did not pass: seed",
+      "started_at": "2026-10-11T06:00:36Z",
+      "verdict": "not-run"
+    },
+    {
+      "finished_at": null,
+      "name": "pre-state",
+      "reason": "a required earlier step did not pass: seed",
+      "started_at": "2026-10-11T06:00:36Z",
+      "verdict": "not-run"
+    },
+    {
+      "finished_at": null,
+      "name": "arm",
+      "reason": "a required earlier step did not pass: pre-state",
+      "started_at": "2026-10-11T06:00:36Z",
+      "verdict": "not-run"
+    },
+    {
+      "finished_at": null,
+      "name": "owner-start",
+      "reason": "a required earlier step did not pass: arm",
+      "started_at": "2026-10-11T06:00:36Z",
+      "verdict": "not-run"
+    },
+    {
+      "finished_at": null,
+      "name": "track",
+      "reason": "a required earlier step did not pass: owner-start",
+      "started_at": "2026-10-11T06:00:36Z",
+      "verdict": "not-run"
+    },
+    {
+      "finished_at": null,
+      "name": "owner-continuation (required)",
+      "reason": "a required earlier step did not pass: track",
+      "started_at": "2026-10-11T06:00:36Z",
+      "verdict": "not-run"
+    },
+    {
+      "finished_at": null,
+      "name": "terminal",
+      "reason": "a required earlier step did not pass: owner-start",
+      "started_at": "2026-10-11T06:00:36Z",
+      "verdict": "not-run"
+    },
+    {
+      "finished_at": null,
+      "name": "set10-site-files-after-the-update",
+      "reason": "a required earlier step did not pass: owner-start",
+      "started_at": "2026-10-11T06:00:36Z",
+      "verdict": "not-run"
+    },
+    {
+      "finished_at": null,
+      "name": "deferred-mail-watch",
+      "reason": "a required earlier step did not pass: owner-start",
+      "started_at": "2026-10-11T06:00:36Z",
+      "verdict": "not-run"
+    },
+    {
+      "finished_at": null,
+      "name": "post-update-facts",
+      "reason": "a required earlier step did not pass: terminal",
+      "started_at": "2026-10-11T06:00:36Z",
+      "verdict": "not-run"
+    },
+    {
+      "finished_at": null,
+      "name": "set4-php-site-after-the-update",
+      "reason": "a required earlier step did not pass: terminal, set4-php-site-before-the-update",
+      "started_at": "2026-10-11T06:00:36Z",
+      "verdict": "not-run"
+    },
+    {
+      "finished_at": "2026-10-11T06:00:37Z",
+      "name": "set6-headers-after-the-update",
+      "reason": "B: the Panel that answered is the build this reading is about (the commit its own version route names)",
+      "started_at": "2026-10-11T06:00:36Z",
+      "verdict": "failed"
+    },
+    {
+      "finished_at": "2026-10-11T06:00:38Z",
+      "name": "collect",
+      "reason": null,
+      "started_at": "2026-10-11T06:00:37Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": null,
+      "name": "verdicts",
+      "reason": "a required earlier step did not pass: owner-start",
+      "started_at": "2026-10-11T06:00:38Z",
+      "verdict": "not-run"
+    },
+    {
+      "finished_at": "2026-10-11T06:00:38Z",
+      "name": "M10-postfix-stop",
+      "reason": null,
+      "started_at": "2026-10-11T06:00:38Z",
+      "verdict": "not-run"
+    },
+    {
+      "finished_at": "2026-10-11T06:00:39Z",
+      "name": "set6-name-pinning-at-the-end",
+      "reason": null,
+      "started_at": "2026-10-11T06:00:38Z",
+      "verdict": "passed"
+    }
+  ]
+}

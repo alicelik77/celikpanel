@@ -1,0 +1,221 @@
+{
+  "at": "2026-10-11T10:18:43Z",
+  "epoch": 1791713923.488562,
+  "ledger": {
+    "database": "/var/lib/celikpanel/celikpanel.db",
+    "domains": [
+      {
+        "id": 1,
+        "name": "set1-owner.test"
+      },
+      {
+        "id": 2,
+        "name": "set12-a.test"
+      },
+      {
+        "id": 3,
+        "name": "set12-b.test"
+      },
+      {
+        "id": 4,
+        "name": "set13-n.test"
+      }
+    ],
+    "ledger_last": [
+      42,
+      43,
+      44
+    ],
+    "ledger_rows": 44,
+    "managed_site_files": [
+      {
+        "adopted_from": "",
+        "backup_path": "",
+        "body_sha256": "2a7a1e6e79ad332643e83e2074ba4df59c8fb366e0946aec67d3f782ce7237b7",
+        "decided_at": 0,
+        "decided_by": null,
+        "decision": "",
+        "decision_file_sha256": "",
+        "domain_id": 1,
+        "file_format": "celikpanel-render v2",
+        "file_sha256": "c08284e5e585d211cacde933ce6fb0742bd3436c9753724ba89754efbae603ff",
+        "id": 1,
+        "kind": "nginx_vhost",
+        "observed_at": 1791713727,
+        "path": "/etc/nginx/sites-available/set1-owner.test.conf",
+        "pending_path": "",
+        "pending_sha256": "",
+        "site_id": 1,
+        "state": "managed_unchanged",
+        "state_reason": "",
+        "written_at": 1791713713,
+        "written_release": "v0.1.0-alpha.81 8948352e3953"
+      },
+      {
+        "adopted_from": "",
+        "backup_path": "",
+        "body_sha256": "945feefd3a47a0174e81f20e1ab3a29a8811940df2ff6913546b26ba967f0db5",
+        "decided_at": 0,
+        "decided_by": null,
+        "decision": "",
+        "decision_file_sha256": "",
+        "domain_id": 2,
+        "file_format": "celikpanel-render v2",
+        "file_sha256": "4f4ac76c9981ef9b077ca9705901033507f35828834f40b3071cb5e0ce4116ed",
+        "id": 2,
+        "kind": "nginx_vhost",
+        "observed_at": 1791713727,
+        "path": "/etc/nginx/sites-available/set12-a.test.conf",
+        "pending_path": "",
+        "pending_sha256": "",
+        "site_id": 2,
+        "state": "managed_unchanged",
+        "state_reason": "",
+        "written_at": 1791713721,
+        "written_release": "v0.1.0-alpha.81 8948352e3953"
+      },
+      {
+        "adopted_from": "",
+        "backup_path": "",
+        "body_sha256": "d307e5b6b4077841f054f899e53e5a07f40468e9fecaf9601fdfdede1cedf438",
+        "decided_at": 0,
+        "decided_by": null,
+        "decision": "",
+        "decision_file_sha256": "",
+        "domain_id": 3,
+        "file_format": "celikpanel-render v2",
+        "file_sha256": "81633c21c60257e01844b50664a7acd355073b9aa837468e4c815e893dffde0b",
+        "id": 3,
+        "kind": "nginx_vhost",
+        "observed_at": 1791713727,
+        "path": "/etc/nginx/sites-available/set12-b.test.conf",
+        "pending_path": "",
+        "pending_sha256": "",
+        "site_id": 3,
+        "state": "managed_unchanged",
+        "state_reason": "",
+        "written_at": 1791713724,
+        "written_release": "v0.1.0-alpha.81 8948352e3953"
+      },
+      {
+        "adopted_from": "",
+        "backup_path": "/etc/php/8.3/fpm/pool.d/site2.conf.celikpanel-backup-20261011T101611Z",
+        "body_sha256": "5ab9cb0cb10a561009dc429c3acfa86d4e91eb0d1fb3fab74d993882371a801f",
+        "decided_at": 1791713763,
+        "decided_by": 2,
+        "decision": "take_celikpanel",
+        "decision_file_sha256": "31b012b8a0f776a72fd459306f4e80ddc41815219edafacde9654d5ed6e6882f",
+        "domain_id": 2,
+        "file_format": "celikpanel-render v2",
+        "file_sha256": "31b012b8a0f776a72fd459306f4e80ddc41815219edafacde9654d5ed6e6882f",
+        "id": 7,
+        "kind": "php_pool",
+        "observed_at": 1791713856,
+        "path": "/etc/php/8.3/fpm/pool.d/site2.conf",
+        "pending_path": "",
+        "pending_sha256": "",
+        "site_id": 2,
+        "state": "managed_unchanged",
+        "state_reason": "",
+        "written_at": 1791713763,
+        "written_release": "v0.1.0-alpha.81 8948352e3953"
+      },
+      {
+        "adopted_from": "",
+        "backup_path": "",
+        "body_sha256": "f098192377a4213a920d6d89384e76abda2e5b5e3a22c1fde51eef3cef63480f",
+        "decided_at": 0,
+        "decided_by": null,
+        "decision": "",
+        "decision_file_sha256": "",
+        "domain_id": 3,
+        "file_format": "celikpanel-render v2",
+        "file_sha256": "9123c4b501d73b40a3174c0f6e2cfd89991184ac78566318488853f650907f45",
+        "id": 12,
+        "kind": "php_pool",
+        "observed_at": 1791713855,
+        "path": "/etc/php/8.3/fpm/pool.d/site3.conf",
+        "pending_path": "",
+        "pending_sha256": "",
+        "site_id": 3,
+        "state": "managed_unchanged",
+        "state_reason": "",
+        "written_at": 1791713855,
+        "written_release": "v0.1.0-alpha.81 8948352e3953"
+      },
+      {
+        "adopted_from": "",
+        "backup_path": "",
+        "body_sha256": "53a30f995ebc5278496fb3db85a8b0b86196c28482a280f51b3f840dd3486a5b",
+        "decided_at": 0,
+        "decided_by": null,
+        "decision": "",
+        "decision_file_sha256": "",
+        "domain_id": 4,
+        "file_format": "celikpanel-render v2",
+        "file_sha256": "e20f58d8223f09ff68bcb69ed94c2b9fe555dec380c326637308ce28288730a0",
+        "id": 14,
+        "kind": "nginx_vhost",
+        "observed_at": 1791713882,
+        "path": "/etc/nginx/sites-available/set13-n.test.conf",
+        "pending_path": "",
+        "pending_sha256": "",
+        "site_id": 4,
+        "state": "managed_unchanged",
+        "state_reason": "",
+        "written_at": 1791713882,
+        "written_release": "v0.1.0-alpha.81 8948352e3953"
+      },
+      {
+        "adopted_from": "",
+        "backup_path": "/etc/systemd/system/celikapp-4.service.celikpanel-backup-20261011T101833Z",
+        "body_sha256": "ebd5266bb84fed0b370a385e3bebd8b8f1fac0773278ac5facb60b6164df8292",
+        "decided_at": 1791713893,
+        "decided_by": 2,
+        "decision": "take_celikpanel",
+        "decision_file_sha256": "484d63c5873af1c829e92d13d39280f608e28b12cae5d12d9dd7295c76c2beca",
+        "domain_id": 4,
+        "file_format": "celikpanel-render v2",
+        "file_sha256": "c3701c92078381be5250967aa12558a65c6dcd0bdaa2deb75fadee4d3fb5a4e9",
+        "id": 15,
+        "kind": "app_unit",
+        "observed_at": 1791713922,
+        "path": "/etc/systemd/system/celikapp-4.service",
+        "pending_path": "",
+        "pending_sha256": "",
+        "site_id": 4,
+        "state": "owner_edited",
+        "state_reason": "",
+        "written_at": 1791713893,
+        "written_release": "v0.1.0-alpha.81 8948352e3953"
+      }
+    ],
+    "managed_site_files_table": true,
+    "schema_version": 44,
+    "sites": [
+      {
+        "domain_id": 1,
+        "id": 1,
+        "project_type": "static"
+      },
+      {
+        "domain_id": 2,
+        "id": 2,
+        "project_type": "php"
+      },
+      {
+        "domain_id": 3,
+        "id": 3,
+        "project_type": "php"
+      },
+      {
+        "domain_id": 4,
+        "id": 4,
+        "project_type": "node"
+      }
+    ]
+  },
+  "mode": "read-ledger",
+  "owner_action": false,
+  "schema": "celikpanel/set10-native/v1"
+}

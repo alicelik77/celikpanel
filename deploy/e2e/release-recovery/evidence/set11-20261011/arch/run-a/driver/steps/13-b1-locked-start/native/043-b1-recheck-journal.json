@@ -1,0 +1,28 @@
+{
+  "at": "2026-10-11T01:36:47Z",
+  "by_unit": {
+    "celikpanel-agent.service": [],
+    "celikpanel-panel.service": [
+      "2026-10-11T01:36:41.979171+00:00 dns-arch panel[3463]: 2026/10/11 01:36:41 http: TLS handshake error from 127.0.0.1:44056: EOF",
+      "2026-10-11T01:36:42.002200+00:00 dns-arch panel[3463]: 2026/10/11 01:36:42 http: TLS handshake error from 127.0.0.1:44072: EOF",
+      "2026-10-11T01:36:45.184567+00:00 dns-arch panel[3463]: 2026/10/11 01:36:45 http: TLS handshake error from 127.0.0.1:44096: EOF"
+    ],
+    "nginx.service": [],
+    "php-fpm.service": []
+  },
+  "mode": "read-window",
+  "owner_action": false,
+  "schema": "celikpanel/set10-native/v1",
+  "since_epoch": 1791682601,
+  "systemd_manager": [
+    "2026-10-11T01:36:43.628365+00:00 dns-arch systemd[1]: Started [systemd-run] /usr/bin/python3 -I /root/celikpanel-release-recovery-lab/set11-fswatch.py /root/celikpanel-release-recovery-lab/set11-fs-b1-recheck.jsonl /var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge /etc/nginx/celikpanel-managed.d/set11-a.test /etc/nginx/celikpanel-sites.d/set11-a.test /etc/nginx/sites-available.",
+    "2026-10-11T01:36:47.084246+00:00 dns-arch systemd[1]: Stopping [systemd-run] /usr/bin/python3 -I /root/celikpanel-release-recovery-lab/set11-fswatch.py /root/celikpanel-release-recovery-lab/set11-fs-b1-recheck.jsonl /var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge /etc/nginx/celikpanel-managed.d/set11-a.test /etc/nginx/celikpanel-sites.d/set11-a.test /etc/nginx/sites-available...",
+    "2026-10-11T01:36:47.090372+00:00 dns-arch systemd[1]: Stopped [systemd-run] /usr/bin/python3 -I /root/celikpanel-release-recovery-lab/set11-fswatch.py /root/celikpanel-release-recovery-lab/set11-fs-b1-recheck.jsonl /var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge /etc/nginx/celikpanel-managed.d/set11-a.test /etc/nginx/celikpanel-sites.d/set11-a.test /etc/nginx/sites-available."
+  ],
+  "units": [
+    "celikpanel-panel.service",
+    "celikpanel-agent.service",
+    "nginx.service",
+    "php-fpm.service"
+  ]
+}

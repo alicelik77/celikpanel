@@ -1,0 +1,26 @@
+{
+  "at": "2026-10-11T01:20:39Z",
+  "by_unit": {
+    "celikpanel-agent.service": [],
+    "celikpanel-panel.service": [
+      "2026-10-11T01:20:37.035034+00:00 dns-ubuntu panel[51557]: 2026/10/11 01:20:37 http: TLS handshake error from 127.0.0.1:34796: EOF"
+    ],
+    "nginx.service": [],
+    "php8.3-fpm.service": []
+  },
+  "mode": "read-window",
+  "owner_action": false,
+  "schema": "celikpanel/set10-native/v1",
+  "since_epoch": 1791681633,
+  "systemd_manager": [
+    "2026-10-11T01:20:35.444647+00:00 dns-ubuntu systemd[1]: Started celikpanel-lab-set11-fswatch.service - /usr/bin/python3 -I /root/celikpanel-release-recovery-lab/set11-fswatch.py /root/celikpanel-release-recovery-lab/set11-fs-b2-recheck.jsonl /var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge /etc/nginx/celikpanel-managed.d/set11-a.test /etc/nginx/celikpanel-sites.d/set11-a.test /etc/nginx/sites-available.",
+    "2026-10-11T01:20:38.985721+00:00 dns-ubuntu systemd[1]: Stopping celikpanel-lab-set11-fswatch.service - /usr/bin/python3 -I /root/celikpanel-release-recovery-lab/set11-fswatch.py /root/celikpanel-release-recovery-lab/set11-fs-b2-recheck.jsonl /var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge /etc/nginx/celikpanel-managed.d/set11-a.test /etc/nginx/celikpanel-sites.d/set11-a.test /etc/nginx/sites-available...",
+    "2026-10-11T01:20:38.995858+00:00 dns-ubuntu systemd[1]: Stopped celikpanel-lab-set11-fswatch.service - /usr/bin/python3 -I /root/celikpanel-release-recovery-lab/set11-fswatch.py /root/celikpanel-release-recovery-lab/set11-fs-b2-recheck.jsonl /var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge /etc/nginx/celikpanel-managed.d/set11-a.test /etc/nginx/celikpanel-sites.d/set11-a.test /etc/nginx/sites-available."
+  ],
+  "units": [
+    "celikpanel-panel.service",
+    "celikpanel-agent.service",
+    "nginx.service",
+    "php8.3-fpm.service"
+  ]
+}

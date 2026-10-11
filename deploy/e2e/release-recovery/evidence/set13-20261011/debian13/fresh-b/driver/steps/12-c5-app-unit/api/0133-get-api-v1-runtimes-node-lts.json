@@ -1,0 +1,83 @@
+{
+  "outcome": "response",
+  "panel": "owner",
+  "purpose": "n: the LTS list (GET /api/v1/runtimes/node/lts)",
+  "request": {
+    "body": null,
+    "headers": [
+      [
+        "Accept",
+        "application/json"
+      ],
+      [
+        "Host",
+        "127.0.0.1:19082"
+      ],
+      [
+        "Cookie",
+        "[REDACTED]"
+      ]
+    ],
+    "method": "GET",
+    "path": "/api/v1/runtimes/node/lts"
+  },
+  "response": {
+    "elapsed_seconds": 0.177,
+    "headers": [
+      [
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+      ],
+      [
+        "Content-Type",
+        "application/json"
+      ],
+      [
+        "Referrer-Policy",
+        "no-referrer"
+      ],
+      [
+        "Strict-Transport-Security",
+        "max-age=31536000"
+      ],
+      [
+        "X-Content-Type-Options",
+        "nosniff"
+      ],
+      [
+        "X-Frame-Options",
+        "DENY"
+      ],
+      [
+        "Date",
+        "Sun, 11 Oct 2026 10:52:20 GMT"
+      ],
+      [
+        "Content-Length",
+        "165"
+      ]
+    ],
+    "json": {
+      "releases": [
+        {
+          "name": "Krypton",
+          "version": "24.21.0"
+        },
+        {
+          "name": "Jod",
+          "version": "22.23.3"
+        },
+        {
+          "name": "Iron",
+          "version": "20.20.2"
+        },
+        {
+          "name": "Hydrogen",
+          "version": "18.20.8"
+        }
+      ]
+    },
+    "status": 200,
+    "text": null
+  }
+}

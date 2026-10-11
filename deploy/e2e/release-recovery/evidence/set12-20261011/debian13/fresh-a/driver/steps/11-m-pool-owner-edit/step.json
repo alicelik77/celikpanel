@@ -1,0 +1,25 @@
+{
+  "checks": {
+    "checks": 17,
+    "error": null,
+    "failed": [],
+    "finished_at": "2026-10-11T04:37:40Z",
+    "notes": [
+      "M: NOT-MEASURED"
+    ],
+    "started_at": "2026-10-11T04:37:33Z",
+    "substeps": {
+      "M": "inconclusive"
+    },
+    "title": "the owner's comment and directive in A's pool: save, page, row, switch, take",
+    "unknown": [
+      "M: a PHP switch on the edited pool is refused and writes nothing"
+    ],
+    "verdict": "inconclusive"
+  },
+  "finished_at": "2026-10-11T04:37:40Z",
+  "name": "M-pool-owner-edit",
+  "reason": "not established: M: a PHP switch on the edited pool is refused and writes nothing",
+  "started_at": "2026-10-11T04:37:33Z",
+  "verdict": "inconclusive"
+}

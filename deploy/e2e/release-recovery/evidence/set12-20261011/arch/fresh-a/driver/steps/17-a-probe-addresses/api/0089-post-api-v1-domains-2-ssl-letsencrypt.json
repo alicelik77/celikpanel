@@ -1,0 +1,94 @@
+{
+  "outcome": "response",
+  "panel": "owner",
+  "purpose": "a-page: a refused request sets the reason: POST ssl/letsencrypt (the owner requests a certificate)",
+  "request": {
+    "body": {
+      "auto_renew": false,
+      "email": "hostmaster@set12-a.test"
+    },
+    "headers": [
+      [
+        "Accept",
+        "application/json"
+      ],
+      [
+        "Host",
+        "127.0.0.1:18901"
+      ],
+      [
+        "Content-Type",
+        "application/json"
+      ],
+      [
+        "Origin",
+        "https://127.0.0.1:18901"
+      ],
+      [
+        "Cookie",
+        "[REDACTED]"
+      ],
+      [
+        "X-CelikPanel-Request-Id",
+        "8f9aa76b0b6f193ea9a8735c9ec2083b"
+      ]
+    ],
+    "method": "POST",
+    "path": "/api/v1/domains/2/ssl/letsencrypt"
+  },
+  "response": {
+    "elapsed_seconds": 0.034,
+    "headers": [
+      [
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+      ],
+      [
+        "Content-Type",
+        "application/json"
+      ],
+      [
+        "Referrer-Policy",
+        "no-referrer"
+      ],
+      [
+        "Strict-Transport-Security",
+        "max-age=31536000"
+      ],
+      [
+        "X-Celikpanel-Request-Id",
+        "8f9aa76b0b6f193ea9a8735c9ec2083b"
+      ],
+      [
+        "X-Content-Type-Options",
+        "nosniff"
+      ],
+      [
+        "X-Frame-Options",
+        "DENY"
+      ],
+      [
+        "Date",
+        "Sun, 11 Oct 2026 05:18:53 GMT"
+      ],
+      [
+        "Content-Length",
+        "661"
+      ]
+    ],
+    "json": {
+      "code": "SITE_CONFIG_OWNER_EDITED",
+      "detail": "include_missing",
+      "error": "This site’s nginx configuration file was changed outside CelikPanel and does not let CelikPanel publish the certificate validation without changing the file, so no certificate was requested and nothing was changed. The server administrator chooses on the domain’s Configuration file page: take CelikPanel’s text, or add what that page shows to the file and reload nginx; then request the certificate again.",
+      "reason": "certificate_validation",
+      "vars": {
+        "address": "127.0.0.1",
+        "include": "include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;",
+        "name": "set12-a.test",
+        "status": "200"
+      }
+    },
+    "status": 409,
+    "text": null
+  }
+}

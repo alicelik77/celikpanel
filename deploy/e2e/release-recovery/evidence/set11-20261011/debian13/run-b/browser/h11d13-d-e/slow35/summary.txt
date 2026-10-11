@@ -1,0 +1,1 @@
+slow35-en-settings_section_updates: first mount 233 ms, first read answered null ms, first sentence/button 1681 ms recovery-access(Checking panel access); rule-breaking runs 1; 233-1647:quiet > 1681-15012:recovery-access(Checking panel access)+text+btn > 15021-30009:recovery-access(Checking panel access)+text+btn > 30018-41025:recovery-access(Checking panel access)+text+btn

@@ -1,0 +1,1308 @@
+{
+  "calls": [
+    {
+      "at": "2026-10-11T07:30:26Z",
+      "json": [
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T07:28:14Z",
+          "disk_usage": 0,
+          "domain_name": "set4-upd-php.test",
+          "id": 5,
+          "php_version": "8.4",
+          "project_type": "php",
+          "site_config": {
+            "adopted_from": "v0.1.0-alpha.81 (creation)",
+            "state": "managed_unchanged"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        },
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T07:28:11Z",
+          "disk_usage": 0,
+          "domain_name": "set10-r1.test",
+          "id": 4,
+          "php_version": "8.4",
+          "project_type": "php",
+          "site_config": {
+            "adopted_from": "v0.1.0-alpha.81 (creation)",
+            "state": "managed_unchanged"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        },
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T07:28:01Z",
+          "disk_usage": 0,
+          "domain_name": "set10-r3.test",
+          "id": 3,
+          "php_version": "8.4",
+          "project_type": "php",
+          "site_config": {
+            "state": "unknown_origin"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        },
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T07:28:00Z",
+          "disk_usage": 0,
+          "domain_name": "set10-r2.test",
+          "id": 2,
+          "php_version": "8.4",
+          "project_type": "php",
+          "site_config": {
+            "adopted_from": "v0.1.0-alpha.81",
+            "state": "managed_unchanged"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        },
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T07:27:58Z",
+          "disk_usage": 0,
+          "domain_name": "upd1-owner.test",
+          "id": 1,
+          "php_version": "",
+          "project_type": "static",
+          "site_config": {
+            "adopted_from": "v0.1.0-alpha.82",
+            "state": "managed_unchanged"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        }
+      ],
+      "label": "after the update: GET /api/v1/domains (Domains list)",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T07:30:27Z",
+      "json": {
+        "actions": [],
+        "challenge_file": "unchanged",
+        "domain": "set10-r1.test",
+        "domain_id": 4,
+        "enabled": "link",
+        "file_sha256": "e23cbe1148110a916fbbbd470679b798ae75fb900cdc17c70d9af31105fc98c3",
+        "files": [
+          {
+            "actions": [],
+            "challenge_file": "unchanged",
+            "domain": "set10-r1.test",
+            "domain_id": 4,
+            "enabled": "link",
+            "file_sha256": "e23cbe1148110a916fbbbd470679b798ae75fb900cdc17c70d9af31105fc98c3",
+            "include_dir": "/etc/nginx/celikpanel-sites.d/set10-r1.test",
+            "kind": "nginx_vhost",
+            "ledger": {
+              "observed_at": "2026-10-11T07:30:05Z",
+              "written_at": "2026-10-11T07:30:05Z",
+              "written_release": "v0.1.0-alpha.82 ded0ae085745"
+            },
+            "managed_dir": "/etc/nginx/celikpanel-managed.d/set10-r1.test",
+            "managed_include": "include /etc/nginx/celikpanel-managed.d/set10-r1.test/*.conf;",
+            "path": "/etc/nginx/sites-available/set10-r1.test.conf",
+            "protection": "none",
+            "render_sha256": "13c97efa94ec98ab89983455a2e34080728c6e9a123e2797fcaabfa90f885c60",
+            "state": "managed_unchanged"
+          },
+          {
+            "actions": [],
+            "adopted_from": "v0.1.0-alpha.82",
+            "diff": "--- /etc/php/8.4/fpm/pool.d/site4.conf (on this server)\n+++ CelikPanel's text\n@@ -1,3 +1,6 @@\n+; The PHP-FPM pool of site4, written by CelikPanel. A line you add or change here is kept:\n+; CelikPanel then shows the difference and asks before writing this file again.\n+; Buraya eklediğiniz ya da değiştirdiğiniz satır korunur; CelikPanel yeniden yazmadan önce sorar.\n [site4]\n user = set10_r1_test\n group = set10_r1_test\n",
+            "domain": "set10-r1.test",
+            "domain_id": 4,
+            "file_sha256": "830734a225bfa629226b9df38a61eae8644d9b7ab52f900381e3ee8a7ae68f7e",
+            "kind": "php_pool",
+            "ledger": {
+              "observed_at": "2026-10-11T07:30:27Z"
+            },
+            "path": "/etc/php/8.4/fpm/pool.d/site4.conf",
+            "protection": "none",
+            "render_sha256": "55ae7dfb8e95087184f2b11225fd5bc1bc11f29d20653e2a0637c530088a0887",
+            "state": "managed_unchanged"
+          }
+        ],
+        "include_dir": "/etc/nginx/celikpanel-sites.d/set10-r1.test",
+        "kind": "nginx_vhost",
+        "ledger": {
+          "observed_at": "2026-10-11T07:30:05Z",
+          "written_at": "2026-10-11T07:30:05Z",
+          "written_release": "v0.1.0-alpha.82 ded0ae085745"
+        },
+        "managed_dir": "/etc/nginx/celikpanel-managed.d/set10-r1.test",
+        "managed_include": "include /etc/nginx/celikpanel-managed.d/set10-r1.test/*.conf;",
+        "overall_kind": "nginx_vhost",
+        "overall_state": "managed_unchanged",
+        "path": "/etc/nginx/sites-available/set10-r1.test.conf",
+        "protection": "none",
+        "render_sha256": "13c97efa94ec98ab89983455a2e34080728c6e9a123e2797fcaabfa90f885c60",
+        "state": "managed_unchanged"
+      },
+      "label": "after the update set10-r1.test: GET site-config",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains/4/site-config"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T07:30:27Z",
+      "json": {
+        "actions": [],
+        "challenge_file": "unchanged",
+        "domain": "set10-r2.test",
+        "domain_id": 2,
+        "enabled": "link",
+        "file_sha256": "0eba5192e0f3a0b958f4d973dd961b657edba04c2a4b1c0438051614d59b33e8",
+        "files": [
+          {
+            "actions": [],
+            "challenge_file": "unchanged",
+            "domain": "set10-r2.test",
+            "domain_id": 2,
+            "enabled": "link",
+            "file_sha256": "0eba5192e0f3a0b958f4d973dd961b657edba04c2a4b1c0438051614d59b33e8",
+            "include_dir": "/etc/nginx/celikpanel-sites.d/set10-r2.test",
+            "kind": "nginx_vhost",
+            "ledger": {
+              "observed_at": "2026-10-11T07:30:05Z",
+              "written_at": "2026-10-11T07:30:05Z",
+              "written_release": "v0.1.0-alpha.82 ded0ae085745"
+            },
+            "managed_dir": "/etc/nginx/celikpanel-managed.d/set10-r2.test",
+            "managed_include": "include /etc/nginx/celikpanel-managed.d/set10-r2.test/*.conf;",
+            "path": "/etc/nginx/sites-available/set10-r2.test.conf",
+            "protection": "none",
+            "render_sha256": "366c448ec5d60c0ec858028212588782a5cca3e2ff3a1a215080b9a193529a8a",
+            "state": "managed_unchanged"
+          },
+          {
+            "actions": [],
+            "adopted_from": "v0.1.0-alpha.82",
+            "diff": "--- /etc/php/8.4/fpm/pool.d/site2.conf (on this server)\n+++ CelikPanel's text\n@@ -1,3 +1,6 @@\n+; The PHP-FPM pool of site2, written by CelikPanel. A line you add or change here is kept:\n+; CelikPanel then shows the difference and asks before writing this file again.\n+; Buraya eklediğiniz ya da değiştirdiğiniz satır korunur; CelikPanel yeniden yazmadan önce sorar.\n [site2]\n user = set10_r2_test\n group = set10_r2_test\n",
+            "domain": "set10-r2.test",
+            "domain_id": 2,
+            "file_sha256": "2651ec0539b6421b00c6b80dba4a63e22da5a2cd07a505bafe7e447892eca74b",
+            "kind": "php_pool",
+            "ledger": {
+              "observed_at": "2026-10-11T07:30:27Z"
+            },
+            "path": "/etc/php/8.4/fpm/pool.d/site2.conf",
+            "protection": "none",
+            "render_sha256": "fb4c2c445dd45e8224b31eebe0e12a9776375b7a06427a1bda883ba1d4bd7f41",
+            "state": "managed_unchanged"
+          }
+        ],
+        "include_dir": "/etc/nginx/celikpanel-sites.d/set10-r2.test",
+        "kind": "nginx_vhost",
+        "ledger": {
+          "observed_at": "2026-10-11T07:30:05Z",
+          "written_at": "2026-10-11T07:30:05Z",
+          "written_release": "v0.1.0-alpha.82 ded0ae085745"
+        },
+        "managed_dir": "/etc/nginx/celikpanel-managed.d/set10-r2.test",
+        "managed_include": "include /etc/nginx/celikpanel-managed.d/set10-r2.test/*.conf;",
+        "overall_kind": "nginx_vhost",
+        "overall_state": "managed_unchanged",
+        "path": "/etc/nginx/sites-available/set10-r2.test.conf",
+        "protection": "none",
+        "render_sha256": "366c448ec5d60c0ec858028212588782a5cca3e2ff3a1a215080b9a193529a8a",
+        "state": "managed_unchanged"
+      },
+      "label": "after the update set10-r2.test: GET site-config",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains/2/site-config"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T07:30:27Z",
+      "json": {
+        "actions": [
+          "keep",
+          "take",
+          "merge"
+        ],
+        "challenge_file": "absent",
+        "diff": "--- /etc/nginx/sites-available/set10-r3.test.conf (on this server)\n+++ CelikPanel's text\n@@ -1,5 +1,13 @@\n # Nginx vhost for set10-r3.test\n-# Generated by CelikPanel — do not edit by hand / elle düzenlemeyin\n+# Written by CelikPanel. Put your own additions in /etc/nginx/celikpanel-sites.d/set10-r3.test/*.conf;\n+# CelikPanel never writes there. If you change this file, CelikPanel keeps\n+# your file and asks you before it replaces it. Keep the lines that include\n+# /etc/nginx/celikpanel-managed.d/set10-r3.test: that directory is CelikPanel's (certificate\n+# validation) and CelikPanel writes there without touching this file.\n+# CelikPanel yazdı. Kendi eklemeleriniz /etc/nginx/celikpanel-sites.d/set10-r3.test/*.conf içine;\n+# CelikPanel oraya hiç yazmaz. Bu dosyayı değiştirirseniz CelikPanel\n+# dosyanızı korur ve değiştirmeden önce size sorar. /etc/nginx/celikpanel-managed.d/set10-r3.test\n+# satırlarını koruyun: o dizin CelikPanel'indir (sertifika doğrulaması).\n # Site ID: 3 · Project type: php\n server {\n     listen 80;\n@@ -9,11 +17,8 @@\n     access_log /var/log/nginx/set10-r3.test-access.log;\n     error_log /var/log/nginx/set10-r3.test-error.log;\n \n-    # Root-owned validation content only; never tenant public_html.\n-    location ^~ /.well-known/acme-challenge/ {\n-        root /var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/3;\n-        try_files $uri =404;\n-    }\n+    # CelikPanel's own parts of this site (certificate validation) / CelikPanel'in parçaları\n+    include /etc/nginx/celikpanel-managed.d/set10-r3.test/*.conf;\n \n     root /var/www/celikpanel/subscriptions/2/sites/3/public_html;\n     index index.php index.html index.htm;\n@@ -22,9 +27,13 @@\n \n         try_files $uri $uri/ /index.php?$query_string;\n     }\n-\n     location ~ \\.php$ {\n-        include snippets/fastcgi-php.conf;\n+        fastcgi_split_path_info ^(.+?\\.php)(/.*)$;\n+        try_files $fastcgi_script_name =404;\n+        set $path_info $fastcgi_path_info;\n+        fastcgi_param PATH_INFO $path_info;\n+        fastcgi_index index.php;\n+        include fastcgi.conf;\n         fastcgi_pass unix:/var/run/php/php8.4-fpm-site3.sock;\n         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;\n         include fastcgi_params;\n@@ -33,8 +42,6 @@\n         deny all;\n     }\n \n-    # set10: added by the server owner by hand\n-    location /owner-extra/ {\n-        return 200 \"owner\";\n-    }\n+    # Your additions for this site (server context) / Bu site için eklemeleriniz\n+    include /etc/nginx/celikpanel-sites.d/set10-r3.test/*.conf;\n }\n",
+        "domain": "set10-r3.test",
+        "domain_id": 3,
+        "enabled": "link",
+        "file_sha256": "d433aaf9196b12f14b391e7ee8791208f9b79ff1c6a1c96dbedb6f5bc8ef283d",
+        "files": [
+          {
+            "actions": [
+              "keep",
+              "take",
+              "merge"
+            ],
+            "challenge_file": "absent",
+            "diff": "--- /etc/nginx/sites-available/set10-r3.test.conf (on this server)\n+++ CelikPanel's text\n@@ -1,5 +1,13 @@\n # Nginx vhost for set10-r3.test\n-# Generated by CelikPanel — do not edit by hand / elle düzenlemeyin\n+# Written by CelikPanel. Put your own additions in /etc/nginx/celikpanel-sites.d/set10-r3.test/*.conf;\n+# CelikPanel never writes there. If you change this file, CelikPanel keeps\n+# your file and asks you before it replaces it. Keep the lines that include\n+# /etc/nginx/celikpanel-managed.d/set10-r3.test: that directory is CelikPanel's (certificate\n+# validation) and CelikPanel writes there without touching this file.\n+# CelikPanel yazdı. Kendi eklemeleriniz /etc/nginx/celikpanel-sites.d/set10-r3.test/*.conf içine;\n+# CelikPanel oraya hiç yazmaz. Bu dosyayı değiştirirseniz CelikPanel\n+# dosyanızı korur ve değiştirmeden önce size sorar. /etc/nginx/celikpanel-managed.d/set10-r3.test\n+# satırlarını koruyun: o dizin CelikPanel'indir (sertifika doğrulaması).\n # Site ID: 3 · Project type: php\n server {\n     listen 80;\n@@ -9,11 +17,8 @@\n     access_log /var/log/nginx/set10-r3.test-access.log;\n     error_log /var/log/nginx/set10-r3.test-error.log;\n \n-    # Root-owned validation content only; never tenant public_html.\n-    location ^~ /.well-known/acme-challenge/ {\n-        root /var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/3;\n-        try_files $uri =404;\n-    }\n+    # CelikPanel's own parts of this site (certificate validation) / CelikPanel'in parçaları\n+    include /etc/nginx/celikpanel-managed.d/set10-r3.test/*.conf;\n \n     root /var/www/celikpanel/subscriptions/2/sites/3/public_html;\n     index index.php index.html index.htm;\n@@ -22,9 +27,13 @@\n \n         try_files $uri $uri/ /index.php?$query_string;\n     }\n-\n     location ~ \\.php$ {\n-        include snippets/fastcgi-php.conf;\n+        fastcgi_split_path_info ^(.+?\\.php)(/.*)$;\n+        try_files $fastcgi_script_name =404;\n+        set $path_info $fastcgi_path_info;\n+        fastcgi_param PATH_INFO $path_info;\n+        fastcgi_index index.php;\n+        include fastcgi.conf;\n         fastcgi_pass unix:/var/run/php/php8.4-fpm-site3.sock;\n         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;\n         include fastcgi_params;\n@@ -33,8 +42,6 @@\n         deny all;\n     }\n \n-    # set10: added by the server owner by hand\n-    location /owner-extra/ {\n-        return 200 \"owner\";\n-    }\n+    # Your additions for this site (server context) / Bu site için eklemeleriniz\n+    include /etc/nginx/celikpanel-sites.d/set10-r3.test/*.conf;\n }\n",
+            "domain": "set10-r3.test",
+            "domain_id": 3,
+            "enabled": "link",
+            "file_sha256": "d433aaf9196b12f14b391e7ee8791208f9b79ff1c6a1c96dbedb6f5bc8ef283d",
+            "include_dir": "/etc/nginx/celikpanel-sites.d/set10-r3.test",
+            "kind": "nginx_vhost",
+            "ledger": {
+              "observed_at": "2026-10-11T07:30:05Z"
+            },
+            "managed_dir": "/etc/nginx/celikpanel-managed.d/set10-r3.test",
+            "managed_include": "include /etc/nginx/celikpanel-managed.d/set10-r3.test/*.conf;",
+            "path": "/etc/nginx/sites-available/set10-r3.test.conf",
+            "pending_path": "/etc/nginx/sites-available/set10-r3.test.conf.celikpanel-pending",
+            "protection": "none",
+            "render_sha256": "c74396ff4ceeb4ffed18949e70304d7b992be0576ddd63edbefc84828ef33716",
+            "state": "unknown_origin"
+          },
+          {
+            "actions": [],
+            "adopted_from": "v0.1.0-alpha.82",
+            "diff": "--- /etc/php/8.4/fpm/pool.d/site3.conf (on this server)\n+++ CelikPanel's text\n@@ -1,3 +1,6 @@\n+; The PHP-FPM pool of site3, written by CelikPanel. A line you add or change here is kept:\n+; CelikPanel then shows the difference and asks before writing this file again.\n+; Buraya eklediğiniz ya da değiştirdiğiniz satır korunur; CelikPanel yeniden yazmadan önce sorar.\n [site3]\n user = set10_r3_test\n group = set10_r3_test\n",
+            "domain": "set10-r3.test",
+            "domain_id": 3,
+            "file_sha256": "739500b69375afd2d62ab7a2c31902c9d4538257bc8653f7d7b908ed3d2247c8",
+            "kind": "php_pool",
+            "ledger": {
+              "observed_at": "2026-10-11T07:30:27Z"
+            },
+            "path": "/etc/php/8.4/fpm/pool.d/site3.conf",
+            "protection": "none",
+            "render_sha256": "1cad5a83373e776f2c18d1318faef5b4c195603135e618cae1706b00d2e4da0e",
+            "state": "managed_unchanged"
+          }
+        ],
+        "include_dir": "/etc/nginx/celikpanel-sites.d/set10-r3.test",
+        "kind": "nginx_vhost",
+        "ledger": {
+          "observed_at": "2026-10-11T07:30:05Z"
+        },
+        "managed_dir": "/etc/nginx/celikpanel-managed.d/set10-r3.test",
+        "managed_include": "include /etc/nginx/celikpanel-managed.d/set10-r3.test/*.conf;",
+        "overall_kind": "nginx_vhost",
+        "overall_state": "unknown_origin",
+        "path": "/etc/nginx/sites-available/set10-r3.test.conf",
+        "pending_path": "/etc/nginx/sites-available/set10-r3.test.conf.celikpanel-pending",
+        "protection": "none",
+        "render_sha256": "c74396ff4ceeb4ffed18949e70304d7b992be0576ddd63edbefc84828ef33716",
+        "state": "unknown_origin"
+      },
+      "label": "after the update set10-r3.test: GET site-config",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains/3/site-config"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T07:30:27Z",
+      "json": {
+        "code": "REQUEST_ID_REQUIRED",
+        "error": "This page was opened before CelikPanel was updated, so the server did not accept the change and nothing was changed. Reload the page, then make the change again. (A client that is not the CelikPanel page sends the header X-CelikPanel-Request-Id: 32 lowercase hexadecimal characters, a new value for each action.)"
+      },
+      "label": "keep without X-CelikPanel-Request-Id (a page loaded before the update)",
+      "request": {
+        "body": {
+          "file_sha256": "d433aaf9196b12f14b391e7ee8791208f9b79ff1c6a1c96dbedb6f5bc8ef283d",
+          "render_sha256": "c74396ff4ceeb4ffed18949e70304d7b992be0576ddd63edbefc84828ef33716"
+        },
+        "method": "POST",
+        "path": "/api/v1/domains/3/site-config/keep",
+        "x_celikpanel_request_id": null
+      },
+      "seconds": 0.01,
+      "status": 428,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T07:30:27Z",
+      "json": {
+        "code": "REQUEST_ID_REQUIRED",
+        "error": "This page was opened before CelikPanel was updated, so the server did not accept the change and nothing was changed. Reload the page, then make the change again. (A client that is not the CelikPanel page sends the header X-CelikPanel-Request-Id: 32 lowercase hexadecimal characters, a new value for each action.)"
+      },
+      "label": "take without X-CelikPanel-Request-Id (a page loaded before the update)",
+      "request": {
+        "body": {
+          "file_sha256": "d433aaf9196b12f14b391e7ee8791208f9b79ff1c6a1c96dbedb6f5bc8ef283d",
+          "render_sha256": "c74396ff4ceeb4ffed18949e70304d7b992be0576ddd63edbefc84828ef33716"
+        },
+        "method": "POST",
+        "path": "/api/v1/domains/3/site-config/take",
+        "x_celikpanel_request_id": null
+      },
+      "seconds": 0.01,
+      "status": 428,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T07:30:27Z",
+      "json": {
+        "code": "REQUEST_ID_REQUIRED",
+        "error": "This page was opened before CelikPanel was updated, so the server did not accept the change and nothing was changed. Reload the page, then make the change again. (A client that is not the CelikPanel page sends the header X-CelikPanel-Request-Id: 32 lowercase hexadecimal characters, a new value for each action.)"
+      },
+      "label": "recreate without X-CelikPanel-Request-Id (a page loaded before the update)",
+      "request": {
+        "body": {
+          "file_sha256": "d433aaf9196b12f14b391e7ee8791208f9b79ff1c6a1c96dbedb6f5bc8ef283d",
+          "render_sha256": "c74396ff4ceeb4ffed18949e70304d7b992be0576ddd63edbefc84828ef33716"
+        },
+        "method": "POST",
+        "path": "/api/v1/domains/3/site-config/recreate",
+        "x_celikpanel_request_id": null
+      },
+      "seconds": 0.01,
+      "status": 428,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T07:30:27Z",
+      "json": {
+        "actions": [],
+        "challenge_file": "unchanged",
+        "domain": "set10-r1.test",
+        "domain_id": 4,
+        "enabled": "link",
+        "file_sha256": "e23cbe1148110a916fbbbd470679b798ae75fb900cdc17c70d9af31105fc98c3",
+        "files": [
+          {
+            "actions": [],
+            "challenge_file": "unchanged",
+            "domain": "set10-r1.test",
+            "domain_id": 4,
+            "enabled": "link",
+            "file_sha256": "e23cbe1148110a916fbbbd470679b798ae75fb900cdc17c70d9af31105fc98c3",
+            "include_dir": "/etc/nginx/celikpanel-sites.d/set10-r1.test",
+            "kind": "nginx_vhost",
+            "ledger": {
+              "observed_at": "2026-10-11T07:30:05Z",
+              "written_at": "2026-10-11T07:30:05Z",
+              "written_release": "v0.1.0-alpha.82 ded0ae085745"
+            },
+            "managed_dir": "/etc/nginx/celikpanel-managed.d/set10-r1.test",
+            "managed_include": "include /etc/nginx/celikpanel-managed.d/set10-r1.test/*.conf;",
+            "path": "/etc/nginx/sites-available/set10-r1.test.conf",
+            "protection": "none",
+            "render_sha256": "13c97efa94ec98ab89983455a2e34080728c6e9a123e2797fcaabfa90f885c60",
+            "state": "managed_unchanged"
+          },
+          {
+            "actions": [],
+            "adopted_from": "v0.1.0-alpha.82",
+            "diff": "--- /etc/php/8.4/fpm/pool.d/site4.conf (on this server)\n+++ CelikPanel's text\n@@ -1,3 +1,6 @@\n+; The PHP-FPM pool of site4, written by CelikPanel. A line you add or change here is kept:\n+; CelikPanel then shows the difference and asks before writing this file again.\n+; Buraya eklediğiniz ya da değiştirdiğiniz satır korunur; CelikPanel yeniden yazmadan önce sorar.\n [site4]\n user = set10_r1_test\n group = set10_r1_test\n",
+            "domain": "set10-r1.test",
+            "domain_id": 4,
+            "file_sha256": "830734a225bfa629226b9df38a61eae8644d9b7ab52f900381e3ee8a7ae68f7e",
+            "kind": "php_pool",
+            "ledger": {
+              "observed_at": "2026-10-11T07:30:27Z"
+            },
+            "path": "/etc/php/8.4/fpm/pool.d/site4.conf",
+            "protection": "none",
+            "render_sha256": "55ae7dfb8e95087184f2b11225fd5bc1bc11f29d20653e2a0637c530088a0887",
+            "state": "managed_unchanged"
+          }
+        ],
+        "include_dir": "/etc/nginx/celikpanel-sites.d/set10-r1.test",
+        "kind": "nginx_vhost",
+        "ledger": {
+          "observed_at": "2026-10-11T07:30:05Z",
+          "written_at": "2026-10-11T07:30:05Z",
+          "written_release": "v0.1.0-alpha.82 ded0ae085745"
+        },
+        "managed_dir": "/etc/nginx/celikpanel-managed.d/set10-r1.test",
+        "managed_include": "include /etc/nginx/celikpanel-managed.d/set10-r1.test/*.conf;",
+        "overall_kind": "nginx_vhost",
+        "overall_state": "managed_unchanged",
+        "path": "/etc/nginx/sites-available/set10-r1.test.conf",
+        "protection": "none",
+        "render_sha256": "13c97efa94ec98ab89983455a2e34080728c6e9a123e2797fcaabfa90f885c60",
+        "state": "managed_unchanged"
+      },
+      "label": "after the update set10-r1.test (pool): GET site-config",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains/4/site-config"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T07:30:27Z",
+      "json": {
+        "actions": [],
+        "challenge_file": "unchanged",
+        "domain": "set10-r2.test",
+        "domain_id": 2,
+        "enabled": "link",
+        "file_sha256": "0eba5192e0f3a0b958f4d973dd961b657edba04c2a4b1c0438051614d59b33e8",
+        "files": [
+          {
+            "actions": [],
+            "challenge_file": "unchanged",
+            "domain": "set10-r2.test",
+            "domain_id": 2,
+            "enabled": "link",
+            "file_sha256": "0eba5192e0f3a0b958f4d973dd961b657edba04c2a4b1c0438051614d59b33e8",
+            "include_dir": "/etc/nginx/celikpanel-sites.d/set10-r2.test",
+            "kind": "nginx_vhost",
+            "ledger": {
+              "observed_at": "2026-10-11T07:30:05Z",
+              "written_at": "2026-10-11T07:30:05Z",
+              "written_release": "v0.1.0-alpha.82 ded0ae085745"
+            },
+            "managed_dir": "/etc/nginx/celikpanel-managed.d/set10-r2.test",
+            "managed_include": "include /etc/nginx/celikpanel-managed.d/set10-r2.test/*.conf;",
+            "path": "/etc/nginx/sites-available/set10-r2.test.conf",
+            "protection": "none",
+            "render_sha256": "366c448ec5d60c0ec858028212588782a5cca3e2ff3a1a215080b9a193529a8a",
+            "state": "managed_unchanged"
+          },
+          {
+            "actions": [],
+            "adopted_from": "v0.1.0-alpha.82",
+            "diff": "--- /etc/php/8.4/fpm/pool.d/site2.conf (on this server)\n+++ CelikPanel's text\n@@ -1,3 +1,6 @@\n+; The PHP-FPM pool of site2, written by CelikPanel. A line you add or change here is kept:\n+; CelikPanel then shows the difference and asks before writing this file again.\n+; Buraya eklediğiniz ya da değiştirdiğiniz satır korunur; CelikPanel yeniden yazmadan önce sorar.\n [site2]\n user = set10_r2_test\n group = set10_r2_test\n",
+            "domain": "set10-r2.test",
+            "domain_id": 2,
+            "file_sha256": "2651ec0539b6421b00c6b80dba4a63e22da5a2cd07a505bafe7e447892eca74b",
+            "kind": "php_pool",
+            "ledger": {
+              "observed_at": "2026-10-11T07:30:27Z"
+            },
+            "path": "/etc/php/8.4/fpm/pool.d/site2.conf",
+            "protection": "none",
+            "render_sha256": "fb4c2c445dd45e8224b31eebe0e12a9776375b7a06427a1bda883ba1d4bd7f41",
+            "state": "managed_unchanged"
+          }
+        ],
+        "include_dir": "/etc/nginx/celikpanel-sites.d/set10-r2.test",
+        "kind": "nginx_vhost",
+        "ledger": {
+          "observed_at": "2026-10-11T07:30:05Z",
+          "written_at": "2026-10-11T07:30:05Z",
+          "written_release": "v0.1.0-alpha.82 ded0ae085745"
+        },
+        "managed_dir": "/etc/nginx/celikpanel-managed.d/set10-r2.test",
+        "managed_include": "include /etc/nginx/celikpanel-managed.d/set10-r2.test/*.conf;",
+        "overall_kind": "nginx_vhost",
+        "overall_state": "managed_unchanged",
+        "path": "/etc/nginx/sites-available/set10-r2.test.conf",
+        "protection": "none",
+        "render_sha256": "366c448ec5d60c0ec858028212588782a5cca3e2ff3a1a215080b9a193529a8a",
+        "state": "managed_unchanged"
+      },
+      "label": "after the update set10-r2.test (pool): GET site-config",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains/2/site-config"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T07:30:27Z",
+      "json": {
+        "actions": [
+          "keep",
+          "take",
+          "merge"
+        ],
+        "challenge_file": "absent",
+        "diff": "--- /etc/nginx/sites-available/set10-r3.test.conf (on this server)\n+++ CelikPanel's text\n@@ -1,5 +1,13 @@\n # Nginx vhost for set10-r3.test\n-# Generated by CelikPanel — do not edit by hand / elle düzenlemeyin\n+# Written by CelikPanel. Put your own additions in /etc/nginx/celikpanel-sites.d/set10-r3.test/*.conf;\n+# CelikPanel never writes there. If you change this file, CelikPanel keeps\n+# your file and asks you before it replaces it. Keep the lines that include\n+# /etc/nginx/celikpanel-managed.d/set10-r3.test: that directory is CelikPanel's (certificate\n+# validation) and CelikPanel writes there without touching this file.\n+# CelikPanel yazdı. Kendi eklemeleriniz /etc/nginx/celikpanel-sites.d/set10-r3.test/*.conf içine;\n+# CelikPanel oraya hiç yazmaz. Bu dosyayı değiştirirseniz CelikPanel\n+# dosyanızı korur ve değiştirmeden önce size sorar. /etc/nginx/celikpanel-managed.d/set10-r3.test\n+# satırlarını koruyun: o dizin CelikPanel'indir (sertifika doğrulaması).\n # Site ID: 3 · Project type: php\n server {\n     listen 80;\n@@ -9,11 +17,8 @@\n     access_log /var/log/nginx/set10-r3.test-access.log;\n     error_log /var/log/nginx/set10-r3.test-error.log;\n \n-    # Root-owned validation content only; never tenant public_html.\n-    location ^~ /.well-known/acme-challenge/ {\n-        root /var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/3;\n-        try_files $uri =404;\n-    }\n+    # CelikPanel's own parts of this site (certificate validation) / CelikPanel'in parçaları\n+    include /etc/nginx/celikpanel-managed.d/set10-r3.test/*.conf;\n \n     root /var/www/celikpanel/subscriptions/2/sites/3/public_html;\n     index index.php index.html index.htm;\n@@ -22,9 +27,13 @@\n \n         try_files $uri $uri/ /index.php?$query_string;\n     }\n-\n     location ~ \\.php$ {\n-        include snippets/fastcgi-php.conf;\n+        fastcgi_split_path_info ^(.+?\\.php)(/.*)$;\n+        try_files $fastcgi_script_name =404;\n+        set $path_info $fastcgi_path_info;\n+        fastcgi_param PATH_INFO $path_info;\n+        fastcgi_index index.php;\n+        include fastcgi.conf;\n         fastcgi_pass unix:/var/run/php/php8.4-fpm-site3.sock;\n         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;\n         include fastcgi_params;\n@@ -33,8 +42,6 @@\n         deny all;\n     }\n \n-    # set10: added by the server owner by hand\n-    location /owner-extra/ {\n-        return 200 \"owner\";\n-    }\n+    # Your additions for this site (server context) / Bu site için eklemeleriniz\n+    include /etc/nginx/celikpanel-sites.d/set10-r3.test/*.conf;\n }\n",
+        "domain": "set10-r3.test",
+        "domain_id": 3,
+        "enabled": "link",
+        "file_sha256": "d433aaf9196b12f14b391e7ee8791208f9b79ff1c6a1c96dbedb6f5bc8ef283d",
+        "files": [
+          {
+            "actions": [
+              "keep",
+              "take",
+              "merge"
+            ],
+            "challenge_file": "absent",
+            "diff": "--- /etc/nginx/sites-available/set10-r3.test.conf (on this server)\n+++ CelikPanel's text\n@@ -1,5 +1,13 @@\n # Nginx vhost for set10-r3.test\n-# Generated by CelikPanel — do not edit by hand / elle düzenlemeyin\n+# Written by CelikPanel. Put your own additions in /etc/nginx/celikpanel-sites.d/set10-r3.test/*.conf;\n+# CelikPanel never writes there. If you change this file, CelikPanel keeps\n+# your file and asks you before it replaces it. Keep the lines that include\n+# /etc/nginx/celikpanel-managed.d/set10-r3.test: that directory is CelikPanel's (certificate\n+# validation) and CelikPanel writes there without touching this file.\n+# CelikPanel yazdı. Kendi eklemeleriniz /etc/nginx/celikpanel-sites.d/set10-r3.test/*.conf içine;\n+# CelikPanel oraya hiç yazmaz. Bu dosyayı değiştirirseniz CelikPanel\n+# dosyanızı korur ve değiştirmeden önce size sorar. /etc/nginx/celikpanel-managed.d/set10-r3.test\n+# satırlarını koruyun: o dizin CelikPanel'indir (sertifika doğrulaması).\n # Site ID: 3 · Project type: php\n server {\n     listen 80;\n@@ -9,11 +17,8 @@\n     access_log /var/log/nginx/set10-r3.test-access.log;\n     error_log /var/log/nginx/set10-r3.test-error.log;\n \n-    # Root-owned validation content only; never tenant public_html.\n-    location ^~ /.well-known/acme-challenge/ {\n-        root /var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/3;\n-        try_files $uri =404;\n-    }\n+    # CelikPanel's own parts of this site (certificate validation) / CelikPanel'in parçaları\n+    include /etc/nginx/celikpanel-managed.d/set10-r3.test/*.conf;\n \n     root /var/www/celikpanel/subscriptions/2/sites/3/public_html;\n     index index.php index.html index.htm;\n@@ -22,9 +27,13 @@\n \n         try_files $uri $uri/ /index.php?$query_string;\n     }\n-\n     location ~ \\.php$ {\n-        include snippets/fastcgi-php.conf;\n+        fastcgi_split_path_info ^(.+?\\.php)(/.*)$;\n+        try_files $fastcgi_script_name =404;\n+        set $path_info $fastcgi_path_info;\n+        fastcgi_param PATH_INFO $path_info;\n+        fastcgi_index index.php;\n+        include fastcgi.conf;\n         fastcgi_pass unix:/var/run/php/php8.4-fpm-site3.sock;\n         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;\n         include fastcgi_params;\n@@ -33,8 +42,6 @@\n         deny all;\n     }\n \n-    # set10: added by the server owner by hand\n-    location /owner-extra/ {\n-        return 200 \"owner\";\n-    }\n+    # Your additions for this site (server context) / Bu site için eklemeleriniz\n+    include /etc/nginx/celikpanel-sites.d/set10-r3.test/*.conf;\n }\n",
+            "domain": "set10-r3.test",
+            "domain_id": 3,
+            "enabled": "link",
+            "file_sha256": "d433aaf9196b12f14b391e7ee8791208f9b79ff1c6a1c96dbedb6f5bc8ef283d",
+            "include_dir": "/etc/nginx/celikpanel-sites.d/set10-r3.test",
+            "kind": "nginx_vhost",
+            "ledger": {
+              "observed_at": "2026-10-11T07:30:05Z"
+            },
+            "managed_dir": "/etc/nginx/celikpanel-managed.d/set10-r3.test",
+            "managed_include": "include /etc/nginx/celikpanel-managed.d/set10-r3.test/*.conf;",
+            "path": "/etc/nginx/sites-available/set10-r3.test.conf",
+            "pending_path": "/etc/nginx/sites-available/set10-r3.test.conf.celikpanel-pending",
+            "protection": "none",
+            "render_sha256": "c74396ff4ceeb4ffed18949e70304d7b992be0576ddd63edbefc84828ef33716",
+            "state": "unknown_origin"
+          },
+          {
+            "actions": [],
+            "adopted_from": "v0.1.0-alpha.82",
+            "diff": "--- /etc/php/8.4/fpm/pool.d/site3.conf (on this server)\n+++ CelikPanel's text\n@@ -1,3 +1,6 @@\n+; The PHP-FPM pool of site3, written by CelikPanel. A line you add or change here is kept:\n+; CelikPanel then shows the difference and asks before writing this file again.\n+; Buraya eklediğiniz ya da değiştirdiğiniz satır korunur; CelikPanel yeniden yazmadan önce sorar.\n [site3]\n user = set10_r3_test\n group = set10_r3_test\n",
+            "domain": "set10-r3.test",
+            "domain_id": 3,
+            "file_sha256": "739500b69375afd2d62ab7a2c31902c9d4538257bc8653f7d7b908ed3d2247c8",
+            "kind": "php_pool",
+            "ledger": {
+              "observed_at": "2026-10-11T07:30:27Z"
+            },
+            "path": "/etc/php/8.4/fpm/pool.d/site3.conf",
+            "protection": "none",
+            "render_sha256": "1cad5a83373e776f2c18d1318faef5b4c195603135e618cae1706b00d2e4da0e",
+            "state": "managed_unchanged"
+          }
+        ],
+        "include_dir": "/etc/nginx/celikpanel-sites.d/set10-r3.test",
+        "kind": "nginx_vhost",
+        "ledger": {
+          "observed_at": "2026-10-11T07:30:05Z"
+        },
+        "managed_dir": "/etc/nginx/celikpanel-managed.d/set10-r3.test",
+        "managed_include": "include /etc/nginx/celikpanel-managed.d/set10-r3.test/*.conf;",
+        "overall_kind": "nginx_vhost",
+        "overall_state": "unknown_origin",
+        "path": "/etc/nginx/sites-available/set10-r3.test.conf",
+        "pending_path": "/etc/nginx/sites-available/set10-r3.test.conf.celikpanel-pending",
+        "protection": "none",
+        "render_sha256": "c74396ff4ceeb4ffed18949e70304d7b992be0576ddd63edbefc84828ef33716",
+        "state": "unknown_origin"
+      },
+      "label": "after the update set10-r3.test (pool): GET site-config",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains/3/site-config"
+      },
+      "status": 200,
+      "text": null
+    }
+  ],
+  "cells": {
+    "B-forward": {
+      "detail": {
+        "bytes_after_the_header_equal_alpha81_bytes": {
+          "set10-r1.test": false,
+          "set10-r2.test": false,
+          "set10-r3.test": true,
+          "upd1-owner.test": false
+        },
+        "site_config": {
+          "set10-r1.test": {
+            "actions": [],
+            "adopted_from": null,
+            "state": "managed_unchanged"
+          },
+          "set10-r2.test": {
+            "actions": [],
+            "adopted_from": null,
+            "state": "managed_unchanged"
+          },
+          "set10-r3.test": {
+            "actions": [
+              "keep",
+              "take",
+              "merge"
+            ],
+            "adopted_from": null,
+            "state": "unknown_origin"
+          }
+        }
+      },
+      "expectations": [
+        {
+          "expectation": "migration 044 applied (ledger 44, managed_site_files present)",
+          "held": true,
+          "measured": {
+            "ledger_last": [
+              42,
+              43,
+              44
+            ],
+            "managed_site_files_table": true,
+            "schema_version": 44
+          }
+        },
+        {
+          "expectation": "R1 (alpha.81's creation text) adopted: header written, ledger row adopted_from the creation text",
+          "held": true,
+          "measured": {
+            "header": {
+              "body_bytes": 2046,
+              "body_sha256": "13c97efa94ec98ab89983455a2e34080728c6e9a123e2797fcaabfa90f885c60",
+              "declared": "13c97efa94ec98ab89983455a2e34080728c6e9a123e2797fcaabfa90f885c60",
+              "present": true,
+              "valid": true
+            },
+            "ledger_row": {
+              "adopted_from": "v0.1.0-alpha.81 (creation)",
+              "backup_path": "",
+              "body_sha256": "13c97efa94ec98ab89983455a2e34080728c6e9a123e2797fcaabfa90f885c60",
+              "decided_at": 0,
+              "decided_by": null,
+              "decision": "",
+              "decision_file_sha256": "",
+              "domain_id": 4,
+              "file_format": "celikpanel-render v2",
+              "file_sha256": "e23cbe1148110a916fbbbd470679b798ae75fb900cdc17c70d9af31105fc98c3",
+              "id": 4,
+              "kind": "nginx_vhost",
+              "observed_at": 1791703805,
+              "path": "/etc/nginx/sites-available/set10-r1.test.conf",
+              "pending_path": "",
+              "pending_sha256": "",
+              "site_id": 4,
+              "state": "managed_unchanged",
+              "state_reason": "",
+              "written_at": 1791703805,
+              "written_release": "v0.1.0-alpha.82 ded0ae085745"
+            },
+            "lines": [
+              "2026-10-11T07:30:05.101407+00:00 dns-debian13 panel[38672]: 2026/10/11 07:30:05 site configuration set10-r1.test (startup): written; adopted the text of v0.1.0-alpha.81 (creation)"
+            ]
+          }
+        },
+        {
+          "expectation": "R2 (alpha.81's start text) adopted: header written, ledger row adopted_from an earlier release's start text (the frozen templates are tried newest first; alpha.82's may render the same bytes)",
+          "held": true,
+          "measured": {
+            "header": {
+              "body_bytes": 2046,
+              "body_sha256": "366c448ec5d60c0ec858028212588782a5cca3e2ff3a1a215080b9a193529a8a",
+              "declared": "366c448ec5d60c0ec858028212588782a5cca3e2ff3a1a215080b9a193529a8a",
+              "present": true,
+              "valid": true
+            },
+            "ledger_row": {
+              "adopted_from": "v0.1.0-alpha.81",
+              "backup_path": "",
+              "body_sha256": "366c448ec5d60c0ec858028212588782a5cca3e2ff3a1a215080b9a193529a8a",
+              "decided_at": 0,
+              "decided_by": null,
+              "decision": "",
+              "decision_file_sha256": "",
+              "domain_id": 2,
+              "file_format": "celikpanel-render v2",
+              "file_sha256": "0eba5192e0f3a0b958f4d973dd961b657edba04c2a4b1c0438051614d59b33e8",
+              "id": 2,
+              "kind": "nginx_vhost",
+              "observed_at": 1791703805,
+              "path": "/etc/nginx/sites-available/set10-r2.test.conf",
+              "pending_path": "",
+              "pending_sha256": "",
+              "site_id": 2,
+              "state": "managed_unchanged",
+              "state_reason": "",
+              "written_at": 1791703805,
+              "written_release": "v0.1.0-alpha.82 ded0ae085745"
+            },
+            "lines": [
+              "2026-10-11T07:30:05.089830+00:00 dns-debian13 panel[38672]: 2026/10/11 07:30:05 site configuration set10-r2.test (startup): written; adopted the text of v0.1.0-alpha.81"
+            ]
+          }
+        },
+        {
+          "expectation": "R3 (owner-edited on alpha.81) is unknown_origin and was never written (sha256, inode)",
+          "held": true,
+          "measured": {
+            "ledger_row": {
+              "adopted_from": "",
+              "backup_path": "",
+              "body_sha256": "",
+              "decided_at": 0,
+              "decided_by": null,
+              "decision": "",
+              "decision_file_sha256": "",
+              "domain_id": 3,
+              "file_format": "",
+              "file_sha256": "d433aaf9196b12f14b391e7ee8791208f9b79ff1c6a1c96dbedb6f5bc8ef283d",
+              "id": 3,
+              "kind": "nginx_vhost",
+              "observed_at": 1791703805,
+              "path": "/etc/nginx/sites-available/set10-r3.test.conf",
+              "pending_path": "/etc/nginx/sites-available/set10-r3.test.conf.celikpanel-pending",
+              "pending_sha256": "11c269a1bdc201d1d0da0734bb9bff46480bb6758abfad0e243a0d097433ab42",
+              "site_id": 3,
+              "state": "unknown_origin",
+              "state_reason": "",
+              "written_at": 0,
+              "written_release": ""
+            },
+            "lines": [
+              "2026-10-11T07:30:05.094307+00:00 dns-debian13 panel[38672]: 2026/10/11 07:30:05 site configuration set10-r3.test (startup): kept (unknown-origin); CelikPanel's text held in /etc/nginx/sites-available/set10-r3.test.conf.celikpanel-pending"
+            ],
+            "sha256": "d433aaf9196b12f14b391e7ee8791208f9b79ff1c6a1c96dbedb6f5bc8ef283d"
+          }
+        },
+        {
+          "expectation": "the start line says N adopted, M left alone",
+          "held": true,
+          "measured": [
+            "2026-10-11T07:30:05.110590+00:00 dns-debian13 panel[38672]: 2026/10/11 07:30:05 site configuration files at start: 4 written, 0 unchanged, 0 kept (owner-edited), 0 kept (foreign), 1 kept (unknown origin), 0 unreadable or unwritable, 0 missing (not recreated), 0 failed; 4 adopted from an earlier release",
+            "2026-10-11T07:30:05.110590+00:00 dns-debian13 panel[38672]: 2026/10/11 07:30:05 site configuration files at start: 4 adopted, 1 left alone because they differ from every known CelikPanel text"
+          ]
+        },
+        {
+          "expectation": "the Domains list carries each site's state (R1, R2 adopted; R3 unknown_origin)",
+          "held": true,
+          "measured": {
+            "set10-r1.test": {
+              "adopted_from": "v0.1.0-alpha.81 (creation)",
+              "state": "managed_unchanged"
+            },
+            "set10-r2.test": {
+              "adopted_from": "v0.1.0-alpha.81",
+              "state": "managed_unchanged"
+            },
+            "set10-r3.test": {
+              "state": "unknown_origin"
+            },
+            "upd1-owner.test": {
+              "adopted_from": "v0.1.0-alpha.82",
+              "state": "managed_unchanged"
+            }
+          }
+        },
+        {
+          "expectation": "site-config of R3 answers unknown_origin with a difference",
+          "held": true,
+          "measured": {
+            "actions": [
+              "keep",
+              "take",
+              "merge"
+            ],
+            "adopted_from": null,
+            "state": "unknown_origin"
+          }
+        },
+        {
+          "expectation": "the three new POST routes without an identity answer 428 REQUEST_ID_REQUIRED and change nothing",
+          "held": true,
+          "measured": {
+            "keep": {
+              "code": "REQUEST_ID_REQUIRED",
+              "status": 428
+            },
+            "recreate": {
+              "code": "REQUEST_ID_REQUIRED",
+              "status": 428
+            },
+            "take": {
+              "code": "REQUEST_ID_REQUIRED",
+              "status": 428
+            }
+          }
+        }
+      ],
+      "verdict": "PASS"
+    }
+  },
+  "checks": [
+    {
+      "detail": {
+        "ledger_last": [
+          42,
+          43,
+          44
+        ],
+        "managed_site_files_table": true,
+        "schema_version": 44
+      },
+      "name": "B-forward: migration 044 applied (ledger 44, managed_site_files present)",
+      "ok": true
+    },
+    {
+      "detail": {
+        "header": {
+          "body_bytes": 2046,
+          "body_sha256": "13c97efa94ec98ab89983455a2e34080728c6e9a123e2797fcaabfa90f885c60",
+          "declared": "13c97efa94ec98ab89983455a2e34080728c6e9a123e2797fcaabfa90f885c60",
+          "present": true,
+          "valid": true
+        },
+        "ledger_row": {
+          "adopted_from": "v0.1.0-alpha.81 (creation)",
+          "backup_path": "",
+          "body_sha256": "13c97efa94ec98ab89983455a2e34080728c6e9a123e2797fcaabfa90f885c60",
+          "decided_at": 0,
+          "decided_by": null,
+          "decision": "",
+          "decision_file_sha256": "",
+          "domain_id": 4,
+          "file_format": "celikpanel-render v2",
+          "file_sha256": "e23cbe1148110a916fbbbd470679b798ae75fb900cdc17c70d9af31105fc98c3",
+          "id": 4,
+          "kind": "nginx_vhost",
+          "observed_at": 1791703805,
+          "path": "/etc/nginx/sites-available/set10-r1.test.conf",
+          "pending_path": "",
+          "pending_sha256": "",
+          "site_id": 4,
+          "state": "managed_unchanged",
+          "state_reason": "",
+          "written_at": 1791703805,
+          "written_release": "v0.1.0-alpha.82 ded0ae085745"
+        },
+        "lines": [
+          "2026-10-11T07:30:05.101407+00:00 dns-debian13 panel[38672]: 2026/10/11 07:30:05 site configuration set10-r1.test (startup): written; adopted the text of v0.1.0-alpha.81 (creation)"
+        ]
+      },
+      "name": "B-forward: R1 (alpha.81's creation text) adopted: header written, ledger row adopted_from the creation text",
+      "ok": true
+    },
+    {
+      "detail": {
+        "header": {
+          "body_bytes": 2046,
+          "body_sha256": "366c448ec5d60c0ec858028212588782a5cca3e2ff3a1a215080b9a193529a8a",
+          "declared": "366c448ec5d60c0ec858028212588782a5cca3e2ff3a1a215080b9a193529a8a",
+          "present": true,
+          "valid": true
+        },
+        "ledger_row": {
+          "adopted_from": "v0.1.0-alpha.81",
+          "backup_path": "",
+          "body_sha256": "366c448ec5d60c0ec858028212588782a5cca3e2ff3a1a215080b9a193529a8a",
+          "decided_at": 0,
+          "decided_by": null,
+          "decision": "",
+          "decision_file_sha256": "",
+          "domain_id": 2,
+          "file_format": "celikpanel-render v2",
+          "file_sha256": "0eba5192e0f3a0b958f4d973dd961b657edba04c2a4b1c0438051614d59b33e8",
+          "id": 2,
+          "kind": "nginx_vhost",
+          "observed_at": 1791703805,
+          "path": "/etc/nginx/sites-available/set10-r2.test.conf",
+          "pending_path": "",
+          "pending_sha256": "",
+          "site_id": 2,
+          "state": "managed_unchanged",
+          "state_reason": "",
+          "written_at": 1791703805,
+          "written_release": "v0.1.0-alpha.82 ded0ae085745"
+        },
+        "lines": [
+          "2026-10-11T07:30:05.089830+00:00 dns-debian13 panel[38672]: 2026/10/11 07:30:05 site configuration set10-r2.test (startup): written; adopted the text of v0.1.0-alpha.81"
+        ]
+      },
+      "name": "B-forward: R2 (alpha.81's start text) adopted: header written, ledger row adopted_from an earlier release's start text (the frozen templates are tried newest first; alpha.82's may render the same bytes)",
+      "ok": true
+    },
+    {
+      "detail": {
+        "ledger_row": {
+          "adopted_from": "",
+          "backup_path": "",
+          "body_sha256": "",
+          "decided_at": 0,
+          "decided_by": null,
+          "decision": "",
+          "decision_file_sha256": "",
+          "domain_id": 3,
+          "file_format": "",
+          "file_sha256": "d433aaf9196b12f14b391e7ee8791208f9b79ff1c6a1c96dbedb6f5bc8ef283d",
+          "id": 3,
+          "kind": "nginx_vhost",
+          "observed_at": 1791703805,
+          "path": "/etc/nginx/sites-available/set10-r3.test.conf",
+          "pending_path": "/etc/nginx/sites-available/set10-r3.test.conf.celikpanel-pending",
+          "pending_sha256": "11c269a1bdc201d1d0da0734bb9bff46480bb6758abfad0e243a0d097433ab42",
+          "site_id": 3,
+          "state": "unknown_origin",
+          "state_reason": "",
+          "written_at": 0,
+          "written_release": ""
+        },
+        "lines": [
+          "2026-10-11T07:30:05.094307+00:00 dns-debian13 panel[38672]: 2026/10/11 07:30:05 site configuration set10-r3.test (startup): kept (unknown-origin); CelikPanel's text held in /etc/nginx/sites-available/set10-r3.test.conf.celikpanel-pending"
+        ],
+        "sha256": "d433aaf9196b12f14b391e7ee8791208f9b79ff1c6a1c96dbedb6f5bc8ef283d"
+      },
+      "name": "B-forward: R3 (owner-edited on alpha.81) is unknown_origin and was never written (sha256, inode)",
+      "ok": true
+    },
+    {
+      "detail": [
+        "2026-10-11T07:30:05.110590+00:00 dns-debian13 panel[38672]: 2026/10/11 07:30:05 site configuration files at start: 4 written, 0 unchanged, 0 kept (owner-edited), 0 kept (foreign), 1 kept (unknown origin), 0 unreadable or unwritable, 0 missing (not recreated), 0 failed; 4 adopted from an earlier release",
+        "2026-10-11T07:30:05.110590+00:00 dns-debian13 panel[38672]: 2026/10/11 07:30:05 site configuration files at start: 4 adopted, 1 left alone because they differ from every known CelikPanel text"
+      ],
+      "name": "B-forward: the start line says N adopted, M left alone",
+      "ok": true
+    },
+    {
+      "detail": {
+        "set10-r1.test": {
+          "adopted_from": "v0.1.0-alpha.81 (creation)",
+          "state": "managed_unchanged"
+        },
+        "set10-r2.test": {
+          "adopted_from": "v0.1.0-alpha.81",
+          "state": "managed_unchanged"
+        },
+        "set10-r3.test": {
+          "state": "unknown_origin"
+        },
+        "upd1-owner.test": {
+          "adopted_from": "v0.1.0-alpha.82",
+          "state": "managed_unchanged"
+        }
+      },
+      "name": "B-forward: the Domains list carries each site's state (R1, R2 adopted; R3 unknown_origin)",
+      "ok": true
+    },
+    {
+      "detail": {
+        "actions": [
+          "keep",
+          "take",
+          "merge"
+        ],
+        "adopted_from": null,
+        "state": "unknown_origin"
+      },
+      "name": "B-forward: site-config of R3 answers unknown_origin with a difference",
+      "ok": true
+    },
+    {
+      "detail": {
+        "keep": {
+          "code": "REQUEST_ID_REQUIRED",
+          "status": 428
+        },
+        "recreate": {
+          "code": "REQUEST_ID_REQUIRED",
+          "status": 428
+        },
+        "take": {
+          "code": "REQUEST_ID_REQUIRED",
+          "status": 428
+        }
+      },
+      "name": "B-forward: the three new POST routes without an identity answer 428 REQUEST_ID_REQUIRED and change nothing",
+      "ok": true
+    },
+    {
+      "detail": {
+        "set10-r1.test": {
+          "overall": "managed_unchanged",
+          "pool": {
+            "adopted_from": "v0.1.0-alpha.82",
+            "path": "/etc/php/8.4/fpm/pool.d/site4.conf",
+            "state": "managed_unchanged"
+          }
+        },
+        "set10-r2.test": {
+          "overall": "managed_unchanged",
+          "pool": {
+            "adopted_from": "v0.1.0-alpha.82",
+            "path": "/etc/php/8.4/fpm/pool.d/site2.conf",
+            "state": "managed_unchanged"
+          }
+        },
+        "set10-r3.test": {
+          "overall": "unknown_origin",
+          "pool": {
+            "adopted_from": "v0.1.0-alpha.82",
+            "path": "/etc/php/8.4/fpm/pool.d/site3.conf",
+            "state": "managed_unchanged"
+          }
+        }
+      },
+      "name": "alpha.81's pools are adopted (managed_unchanged, adopted_from v0.1.0-alpha.81) or named",
+      "ok": false
+    }
+  ],
+  "extra_sites": {
+    "set4-upd-php.test": {
+      "ledger_row": {
+        "adopted_from": "v0.1.0-alpha.81 (creation)",
+        "backup_path": "",
+        "body_sha256": "f2712a0849b4fe41ff8bb4b0c543242d597384ff7e254f47f2b148c9383bf22c",
+        "decided_at": 0,
+        "decided_by": null,
+        "decision": "",
+        "decision_file_sha256": "",
+        "domain_id": 5,
+        "file_format": "celikpanel-render v2",
+        "file_sha256": "183669bb17f770a8fe0ae539c2771c88f50444b8e1e50bc5ab2990f31f3526f3",
+        "id": 5,
+        "kind": "nginx_vhost",
+        "observed_at": 1791703805,
+        "path": "/etc/nginx/sites-available/set4-upd-php.test.conf",
+        "pending_path": "",
+        "pending_sha256": "",
+        "site_id": 5,
+        "state": "managed_unchanged",
+        "state_reason": "",
+        "written_at": 1791703805,
+        "written_release": "v0.1.0-alpha.82 ded0ae085745"
+      },
+      "lines": [
+        "2026-10-11T07:30:05.105696+00:00 dns-debian13 panel[38672]: 2026/10/11 07:30:05 site configuration set4-upd-php.test (startup): written; adopted the text of v0.1.0-alpha.81 (creation)"
+      ],
+      "vhost": {
+        "ctime_ns": 1791703804989783773,
+        "exists": true,
+        "first_line": "# celikpanel-render v2 sha256=f2712a0849b4fe41ff8bb4b0c543242d597384ff7e254f47f2b148c9383bf22c",
+        "gid": 989,
+        "group": "celikpanel",
+        "header": {
+          "body_bytes": 2090,
+          "body_sha256": "f2712a0849b4fe41ff8bb4b0c543242d597384ff7e254f47f2b148c9383bf22c",
+          "declared": "f2712a0849b4fe41ff8bb4b0c543242d597384ff7e254f47f2b148c9383bf22c",
+          "present": true,
+          "valid": true
+        },
+        "immutable": false,
+        "inode": 141315,
+        "kind": "file",
+        "link_target": null,
+        "lsattr": "--------------e-------",
+        "mode": "0644",
+        "mtime_ns": 1791703804989783773,
+        "owner": "root",
+        "sha256": "183669bb17f770a8fe0ae539c2771c88f50444b8e1e50bc5ab2990f31f3526f3",
+        "size": 2185,
+        "uid": 0
+      }
+    }
+  },
+  "files": {
+    "set10-r1.test": {
+      "header": {
+        "body_bytes": 2046,
+        "body_sha256": "13c97efa94ec98ab89983455a2e34080728c6e9a123e2797fcaabfa90f885c60",
+        "declared": "13c97efa94ec98ab89983455a2e34080728c6e9a123e2797fcaabfa90f885c60",
+        "present": true,
+        "valid": true
+      },
+      "inode": 141304,
+      "ledger_row": {
+        "adopted_from": "v0.1.0-alpha.81 (creation)",
+        "backup_path": "",
+        "body_sha256": "13c97efa94ec98ab89983455a2e34080728c6e9a123e2797fcaabfa90f885c60",
+        "decided_at": 0,
+        "decided_by": null,
+        "decision": "",
+        "decision_file_sha256": "",
+        "domain_id": 4,
+        "file_format": "celikpanel-render v2",
+        "file_sha256": "e23cbe1148110a916fbbbd470679b798ae75fb900cdc17c70d9af31105fc98c3",
+        "id": 4,
+        "kind": "nginx_vhost",
+        "observed_at": 1791703805,
+        "path": "/etc/nginx/sites-available/set10-r1.test.conf",
+        "pending_path": "",
+        "pending_sha256": "",
+        "site_id": 4,
+        "state": "managed_unchanged",
+        "state_reason": "",
+        "written_at": 1791703805,
+        "written_release": "v0.1.0-alpha.82 ded0ae085745"
+      },
+      "lines": [
+        "2026-10-11T07:30:05.101407+00:00 dns-debian13 panel[38672]: 2026/10/11 07:30:05 site configuration set10-r1.test (startup): written; adopted the text of v0.1.0-alpha.81 (creation)"
+      ],
+      "same_bytes_as_before": false,
+      "same_inode_as_before": false,
+      "server_name": [
+        "server_name set10-r1.test www.set10-r1.test;"
+      ],
+      "sha256": "e23cbe1148110a916fbbbd470679b798ae75fb900cdc17c70d9af31105fc98c3"
+    },
+    "set10-r2.test": {
+      "header": {
+        "body_bytes": 2046,
+        "body_sha256": "366c448ec5d60c0ec858028212588782a5cca3e2ff3a1a215080b9a193529a8a",
+        "declared": "366c448ec5d60c0ec858028212588782a5cca3e2ff3a1a215080b9a193529a8a",
+        "present": true,
+        "valid": true
+      },
+      "inode": 131816,
+      "ledger_row": {
+        "adopted_from": "v0.1.0-alpha.81",
+        "backup_path": "",
+        "body_sha256": "366c448ec5d60c0ec858028212588782a5cca3e2ff3a1a215080b9a193529a8a",
+        "decided_at": 0,
+        "decided_by": null,
+        "decision": "",
+        "decision_file_sha256": "",
+        "domain_id": 2,
+        "file_format": "celikpanel-render v2",
+        "file_sha256": "0eba5192e0f3a0b958f4d973dd961b657edba04c2a4b1c0438051614d59b33e8",
+        "id": 2,
+        "kind": "nginx_vhost",
+        "observed_at": 1791703805,
+        "path": "/etc/nginx/sites-available/set10-r2.test.conf",
+        "pending_path": "",
+        "pending_sha256": "",
+        "site_id": 2,
+        "state": "managed_unchanged",
+        "state_reason": "",
+        "written_at": 1791703805,
+        "written_release": "v0.1.0-alpha.82 ded0ae085745"
+      },
+      "lines": [
+        "2026-10-11T07:30:05.089830+00:00 dns-debian13 panel[38672]: 2026/10/11 07:30:05 site configuration set10-r2.test (startup): written; adopted the text of v0.1.0-alpha.81"
+      ],
+      "same_bytes_as_before": false,
+      "same_inode_as_before": false,
+      "server_name": [
+        "server_name set10-r2.test www.set10-r2.test;"
+      ],
+      "sha256": "0eba5192e0f3a0b958f4d973dd961b657edba04c2a4b1c0438051614d59b33e8"
+    },
+    "set10-r3.test": {
+      "header": {
+        "first_line": "# Nginx vhost for set10-r3.test",
+        "present": false
+      },
+      "inode": 141309,
+      "ledger_row": {
+        "adopted_from": "",
+        "backup_path": "",
+        "body_sha256": "",
+        "decided_at": 0,
+        "decided_by": null,
+        "decision": "",
+        "decision_file_sha256": "",
+        "domain_id": 3,
+        "file_format": "",
+        "file_sha256": "d433aaf9196b12f14b391e7ee8791208f9b79ff1c6a1c96dbedb6f5bc8ef283d",
+        "id": 3,
+        "kind": "nginx_vhost",
+        "observed_at": 1791703805,
+        "path": "/etc/nginx/sites-available/set10-r3.test.conf",
+        "pending_path": "/etc/nginx/sites-available/set10-r3.test.conf.celikpanel-pending",
+        "pending_sha256": "11c269a1bdc201d1d0da0734bb9bff46480bb6758abfad0e243a0d097433ab42",
+        "site_id": 3,
+        "state": "unknown_origin",
+        "state_reason": "",
+        "written_at": 0,
+        "written_release": ""
+      },
+      "lines": [
+        "2026-10-11T07:30:05.094307+00:00 dns-debian13 panel[38672]: 2026/10/11 07:30:05 site configuration set10-r3.test (startup): kept (unknown-origin); CelikPanel's text held in /etc/nginx/sites-available/set10-r3.test.conf.celikpanel-pending"
+      ],
+      "same_bytes_as_before": true,
+      "same_inode_as_before": true,
+      "server_name": [
+        "server_name set10-r3.test www.set10-r3.test;"
+      ],
+      "sha256": "d433aaf9196b12f14b391e7ee8791208f9b79ff1c6a1c96dbedb6f5bc8ef283d"
+    },
+    "upd1-owner.test": {
+      "header": {
+        "body_bytes": 1667,
+        "body_sha256": "ea4336727bbbfec27acadbb3ea8cd9c660cf0b666dadf7abd191409e38446443",
+        "declared": "ea4336727bbbfec27acadbb3ea8cd9c660cf0b666dadf7abd191409e38446443",
+        "present": true,
+        "valid": true
+      },
+      "inode": 141341,
+      "ledger_row": {
+        "adopted_from": "v0.1.0-alpha.82",
+        "backup_path": "",
+        "body_sha256": "ea4336727bbbfec27acadbb3ea8cd9c660cf0b666dadf7abd191409e38446443",
+        "decided_at": 0,
+        "decided_by": null,
+        "decision": "",
+        "decision_file_sha256": "",
+        "domain_id": 1,
+        "file_format": "celikpanel-render v2",
+        "file_sha256": "54232bd513e6fbf5b4b246581f6efc56bb5fd9146b4a281f73595d56d97f34f4",
+        "id": 1,
+        "kind": "nginx_vhost",
+        "observed_at": 1791703805,
+        "path": "/etc/nginx/sites-available/upd1-owner.test.conf",
+        "pending_path": "",
+        "pending_sha256": "",
+        "site_id": 1,
+        "state": "managed_unchanged",
+        "state_reason": "",
+        "written_at": 1791703805,
+        "written_release": "v0.1.0-alpha.82 ded0ae085745"
+      },
+      "lines": [
+        "2026-10-11T07:30:05.082249+00:00 dns-debian13 panel[38672]: 2026/10/11 07:30:05 site configuration upd1-owner.test (startup): written; adopted the text of v0.1.0-alpha.82"
+      ],
+      "same_bytes_as_before": false,
+      "same_inode_as_before": false,
+      "server_name": [
+        "server_name upd1-owner.test www.upd1-owner.test;"
+      ],
+      "sha256": "54232bd513e6fbf5b4b246581f6efc56bb5fd9146b4a281f73595d56d97f34f4"
+    }
+  },
+  "finished_at": "2026-10-11T07:30:27Z",
+  "native_evidence": false,
+  "natives": [
+    {
+      "file": "native/005-after-the-update-read.json",
+      "label": "after-the-update-read",
+      "mode": "read-site10",
+      "owner_action": false
+    },
+    {
+      "file": "native/006-after-the-update-journal.json",
+      "label": "after-the-update-journal",
+      "mode": "read-window",
+      "owner_action": false
+    },
+    {
+      "file": "native/007-after-the-428-probes-read.json",
+      "label": "after-the-428-probes-read",
+      "mode": "read-site10",
+      "owner_action": false
+    }
+  ],
+  "node": "debian13",
+  "notes": [
+    {
+      "detail": [],
+      "note": "B-forward: PASS"
+    }
+  ],
+  "owner_actions": [],
+  "section": "set10-site-files-after-the-update",
+  "session": {
+    "status": 200
+  },
+  "start_lines": [
+    "2026-10-11T07:30:05.110590+00:00 dns-debian13 panel[38672]: 2026/10/11 07:30:05 site configuration files at start: 4 written, 0 unchanged, 0 kept (owner-edited), 0 kept (foreign), 1 kept (unknown origin), 0 unreadable or unwritable, 0 missing (not recreated), 0 failed; 4 adopted from an earlier release",
+    "2026-10-11T07:30:05.110590+00:00 dns-debian13 panel[38672]: 2026/10/11 07:30:05 site configuration files at start: 4 adopted, 1 left alone because they differ from every known CelikPanel text"
+  ],
+  "started_at": "2026-10-11T07:30:26Z",
+  "substeps": {
+    "B-forward": "passed",
+    "section": "failed"
+  },
+  "title": "the site files, the ledger, the start lines, the Domains list and the three new routes without a request identity",
+  "verdict": "failed"
+}

@@ -1,0 +1,35 @@
+{
+  "at": "2026-10-11T00:53:00Z",
+  "by_unit": {
+    "celikpanel-agent.service": [
+      "2026-10-11T00:52:32.525673+00:00 dns-debian13 cron[35008]: (CRON) DEATH (can't lock /var/run/crond.pid, otherpid may be 29550: Resource temporarily unavailable)",
+      "2026-10-11T00:52:35.320662+00:00 dns-debian13 cron[35044]: (CRON) DEATH (can't lock /var/run/crond.pid, otherpid may be 29550: Resource temporarily unavailable)",
+      "2026-10-11T00:52:40.657926+00:00 dns-debian13 cron[35080]: (CRON) DEATH (can't lock /var/run/crond.pid, otherpid may be 29550: Resource temporarily unavailable)"
+    ],
+    "celikpanel-panel.service": [
+      "2026-10-11T00:52:21.738901+00:00 dns-debian13 panel[33842]: 2026/10/11 00:52:21 http: TLS handshake error from 127.0.0.1:47960: EOF",
+      "2026-10-11T00:52:21.762308+00:00 dns-debian13 panel[33842]: 2026/10/11 00:52:21 http: TLS handshake error from 127.0.0.1:47982: EOF",
+      "2026-10-11T00:52:34.772998+00:00 dns-debian13 panel[33842]: 2026/10/11 00:52:34 http: TLS handshake error from 127.0.0.1:33604: EOF",
+      "2026-10-11T00:52:44.776900+00:00 dns-debian13 panel[33842]: 2026/10/11 00:52:44 http: TLS handshake error from 127.0.0.1:44824: EOF",
+      "2026-10-11T00:52:54.779047+00:00 dns-debian13 panel[33842]: 2026/10/11 00:52:54 http: TLS handshake error from 127.0.0.1:40756: EOF",
+      "2026-10-11T00:52:57.911545+00:00 dns-debian13 panel[33842]: 2026/10/11 00:52:57 http: TLS handshake error from 127.0.0.1:40772: EOF"
+    ],
+    "nginx.service": [],
+    "php8.4-fpm.service": []
+  },
+  "mode": "read-window",
+  "owner_action": false,
+  "schema": "celikpanel/set10-native/v1",
+  "since_epoch": 1791679941,
+  "systemd_manager": [
+    "2026-10-11T00:52:22.937122+00:00 dns-debian13 systemd[1]: Started celikpanel-lab-set11-fswatch.service - [systemd-run] /usr/bin/python3 -I /root/celikpanel-release-recovery-lab/set11-fswatch.py /root/celikpanel-release-recovery-lab/set11-fs-b1-recheck.jsonl /var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge /etc/nginx/celikpanel-managed.d/set11-a.test /etc/nginx/celikpanel-sites.d/set11-a.test /etc/nginx/sites-available.",
+    "2026-10-11T00:52:59.706393+00:00 dns-debian13 systemd[1]: Stopping celikpanel-lab-set11-fswatch.service - [systemd-run] /usr/bin/python3 -I /root/celikpanel-release-recovery-lab/set11-fswatch.py /root/celikpanel-release-recovery-lab/set11-fs-b1-recheck.jsonl /var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge /etc/nginx/celikpanel-managed.d/set11-a.test /etc/nginx/celikpanel-sites.d/set11-a.test /etc/nginx/sites-available...",
+    "2026-10-11T00:52:59.721021+00:00 dns-debian13 systemd[1]: Stopped celikpanel-lab-set11-fswatch.service - [systemd-run] /usr/bin/python3 -I /root/celikpanel-release-recovery-lab/set11-fswatch.py /root/celikpanel-release-recovery-lab/set11-fs-b1-recheck.jsonl /var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge /etc/nginx/celikpanel-managed.d/set11-a.test /etc/nginx/celikpanel-sites.d/set11-a.test /etc/nginx/sites-available."
+  ],
+  "units": [
+    "celikpanel-panel.service",
+    "celikpanel-agent.service",
+    "nginx.service",
+    "php8.4-fpm.service"
+  ]
+}

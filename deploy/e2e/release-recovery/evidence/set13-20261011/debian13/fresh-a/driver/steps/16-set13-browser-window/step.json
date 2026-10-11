@@ -1,0 +1,130 @@
+{
+  "checks": {
+    "browser_done": {
+      "at": "2026-10-11T09:56:38.253Z",
+      "by": "cold-load-set13.mjs"
+    },
+    "ended_at": "2026-10-11T09:56:39Z",
+    "hand": "/var/tmp/cp-set13-run/hand/h13d13-ui",
+    "leave_setup": {
+      "execution_status": "waiting",
+      "guidance": 200,
+      "guidance_after": "manual",
+      "guidance_before": "guided",
+      "phase": "access_dns",
+      "revise": 200,
+      "status_after": "draft",
+      "status_before": "running"
+    },
+    "password_file_removed": true,
+    "requests": [
+      {
+        "at": "2026-10-11T09:53:38Z",
+        "prep": "pool-edited",
+        "result": {
+          "overall": "owner_edited",
+          "pool": "owner_edited"
+        }
+      },
+      {
+        "at": "2026-10-11T09:53:40Z",
+        "prep": "broken-add",
+        "result": {
+          "php": {
+            "ActiveEnterTimestamp": "Sun 2026-10-11 09:50:31 UTC",
+            "ActiveState": "active",
+            "ExecMainStartTimestamp": "Sun 2026-10-11 09:50:31 UTC",
+            "LoadState": "loaded",
+            "MainPID": "32865",
+            "NRestarts": "0",
+            "SubState": "running"
+          },
+          "test": 78
+        }
+      },
+      {
+        "at": "2026-10-11T09:54:05Z",
+        "prep": "php-state",
+        "result": {
+          "pool": {
+            "ActiveEnterTimestamp": "Sun 2026-10-11 09:50:31 UTC",
+            "ActiveState": "active",
+            "ExecMainStartTimestamp": "Sun 2026-10-11 09:50:31 UTC",
+            "LoadState": "loaded",
+            "MainPID": "32865",
+            "NRestarts": "0",
+            "SubState": "running"
+          }
+        }
+      },
+      {
+        "at": "2026-10-11T09:54:31Z",
+        "prep": "php-state",
+        "result": {
+          "error": "FileExistsError: [Errno 17] File exists: '/var/tmp/cp-release-drill-s13-d13-a/evidence/debian13/upd1/set13-debian13-20261011t093731z/steps/16-set13-browser-window/files/prep-php-state-set12-a.test-site2.conf.txt'"
+        }
+      },
+      {
+        "at": "2026-10-11T09:54:33Z",
+        "prep": "broken-remove",
+        "result": {
+          "php": {
+            "ActiveEnterTimestamp": "Sun 2026-10-11 09:50:31 UTC",
+            "ActiveState": "active",
+            "ExecMainStartTimestamp": "Sun 2026-10-11 09:50:31 UTC",
+            "LoadState": "loaded",
+            "MainPID": "32865",
+            "NRestarts": "0",
+            "SubState": "running"
+          },
+          "test": 0
+        }
+      },
+      {
+        "at": "2026-10-11T09:54:36Z",
+        "prep": "end",
+        "result": {
+          "ok": true
+        }
+      },
+      {
+        "at": "2026-10-11T09:55:56Z",
+        "prep": "u-unread",
+        "result": {
+          "page_pool": {
+            "read_error": "timeout",
+            "reason": "not_read",
+            "state": "unknown"
+          },
+          "row": {
+            "state": "foreign"
+          },
+          "save_status": 200
+        }
+      },
+      {
+        "at": "2026-10-11T09:56:20Z",
+        "prep": "rows",
+        "result": {
+          "row": {
+            "state": "foreign"
+          }
+        }
+      },
+      {
+        "at": "2026-10-11T09:56:38Z",
+        "prep": "rows",
+        "result": {
+          "row": {
+            "state": "foreign"
+          }
+        }
+      }
+    ],
+    "window": "ui"
+  },
+  "finished_at": "2026-10-11T09:56:39Z",
+  "name": "set13-browser-window",
+  "started_at": "2026-10-11T09:53:23Z",
+  "verdict": "observed"
+}

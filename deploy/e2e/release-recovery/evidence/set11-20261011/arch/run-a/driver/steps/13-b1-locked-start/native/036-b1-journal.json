@@ -1,0 +1,51 @@
+{
+  "at": "2026-10-11T01:36:41Z",
+  "by_unit": {
+    "celikpanel-agent.service": [],
+    "celikpanel-panel.service": [
+      "2026-10-11T01:36:35.972700+00:00 dns-arch systemd[1]: Starting CelikPanel web panel...",
+      "2026-10-11T01:36:36.006345+00:00 dns-arch systemd[1]: Started CelikPanel web panel.",
+      "2026-10-11T01:36:36.113124+00:00 dns-arch panel[3463]: 2026/10/11 01:36:36 Starting CelikPanel Backend...",
+      "2026-10-11T01:36:36.119854+00:00 dns-arch panel[3463]: 2026/10/11 01:36:36 ACCEPTANCE FIXTURE — NOT FOR PRODUCTION: this panel was built with the acceptance_license test tag; it never contacts the license service and accepts only the acceptance fixture license on a disposable acceptance guest (guest: verified)",
+      "2026-10-11T01:36:36.120478+00:00 dns-arch panel[3463]: 2026/10/11 01:36:36 Panel startup listener active on :2083 (HTTPS; application gated)",
+      "2026-10-11T01:36:36.121403+00:00 dns-arch panel[3463]: 2026/10/11 01:36:36 Connected to Agent RPC; preparing normal management access",
+      "2026-10-11T01:36:36.261806+00:00 dns-arch panel[3463]: 2026/10/11 01:36:36 site configuration set1-owner.test (startup): written",
+      "2026-10-11T01:36:36.310926+00:00 dns-arch panel[3463]: 2026/10/11 01:36:36 site configuration set11-a.test (startup): kept, not replaced (managed_unchanged write_refused); rename /etc/nginx/sites-available/.set11-a.test.conf.celikpanel-1794589056 /etc/nginx/sites-available/set11-a.test.conf: operation not permitted",
+      "2026-10-11T01:36:36.325423+00:00 dns-arch panel[3463]: 2026/10/11 01:36:36 site configuration set11-b.test (startup): written",
+      "2026-10-11T01:36:36.338688+00:00 dns-arch panel[3463]: 2026/10/11 01:36:36 site configuration files at start: 2 written, 0 unchanged, 0 kept (owner-edited), 0 kept (foreign), 0 kept (unknown origin), 1 unreadable or unwritable, 0 missing (not recreated), 0 failed; 0 adopted from an earlier release",
+      "2026-10-11T01:36:36.340329+00:00 dns-arch panel[3463]: 2026/10/11 01:36:36 certificate startup reconcile: certificate dependents: publish full mail SNI snapshot: mail server hostname is not a valid FQDN: invalid hostname \"dns-arch\": a fully qualified DNS name is required; preserve pending outbox: <nil>",
+      "2026-10-11T01:36:36.343739+00:00 dns-arch panel[3463]: 2026/10/11 01:36:36 milter chain: nothing to wire at startup: no mail server is installed on this server, so there is no Postfix milter chain to compose",
+      "2026-10-11T01:36:36.346889+00:00 dns-arch panel[3463]: 2026/10/11 01:36:36 Panel ready on :2083 (HTTPS)",
+      "2026-10-11T01:36:38.084416+00:00 dns-arch panel[3463]: 2026/10/11 01:36:38 http: TLS handshake error from 127.0.0.1:44018: EOF",
+      "2026-10-11T01:36:38.104029+00:00 dns-arch panel[3463]: 2026/10/11 01:36:38 http: TLS handshake error from 127.0.0.1:44046: EOF"
+    ],
+    "nginx.service": [
+      "2026-10-11T01:36:34.218935+00:00 dns-arch systemd[1]: Reloading nginx web server...",
+      "2026-10-11T01:36:34.242809+00:00 dns-arch nginx[3392]: 2026/10/11 01:36:34 [warn] 3392#3392: could not build optimal types_hash, you should increase either types_hash_max_size: 1024 or types_hash_bucket_size: 64; ignoring types_hash_bucket_size",
+      "2026-10-11T01:36:34.247235+00:00 dns-arch nginx[3392]: 2026/10/11 01:36:34 [notice] 3392#3392: signal process started",
+      "2026-10-11T01:36:34.250178+00:00 dns-arch systemd[1]: Reloaded nginx web server.",
+      "2026-10-11T01:36:36.221531+00:00 dns-arch systemd[1]: Reloading nginx web server...",
+      "2026-10-11T01:36:36.251485+00:00 dns-arch nginx[3476]: 2026/10/11 01:36:36 [warn] 3476#3476: could not build optimal types_hash, you should increase either types_hash_max_size: 1024 or types_hash_bucket_size: 64; ignoring types_hash_bucket_size",
+      "2026-10-11T01:36:36.257194+00:00 dns-arch nginx[3476]: 2026/10/11 01:36:36 [notice] 3476#3476: signal process started",
+      "2026-10-11T01:36:36.260310+00:00 dns-arch systemd[1]: Reloaded nginx web server."
+    ],
+    "php-fpm.service": []
+  },
+  "mode": "read-window",
+  "owner_action": false,
+  "schema": "celikpanel/set10-native/v1",
+  "since_epoch": 1791682594,
+  "systemd_manager": [
+    "2026-10-11T01:36:34.218935+00:00 dns-arch systemd[1]: Reloading nginx web server...",
+    "2026-10-11T01:36:34.250178+00:00 dns-arch systemd[1]: Reloaded nginx web server.",
+    "2026-10-11T01:36:36.005000+00:00 dns-arch audit[1]: SERVICE_START pid=1 uid=0 auid=4294967295 ses=4294967295 msg='unit=celikpanel-panel comm=\"systemd\" exe=\"/usr/lib/systemd/systemd\" hostname=? addr=? terminal=? res=success'",
+    "2026-10-11T01:36:36.221531+00:00 dns-arch systemd[1]: Reloading nginx web server...",
+    "2026-10-11T01:36:36.260310+00:00 dns-arch systemd[1]: Reloaded nginx web server."
+  ],
+  "units": [
+    "celikpanel-panel.service",
+    "celikpanel-agent.service",
+    "nginx.service",
+    "php-fpm.service"
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "action": "lab-shims13",
+  "at": "2026-10-11T10:18:42Z",
+  "epoch": 1791713922.302592,
+  "mode": "lab-shims13",
+  "mount": {
+    "argv": [
+      "mount",
+      "--bind",
+      "/run/set13-lab/no-systemd-analyze",
+      "/usr/bin/systemd-analyze"
+    ],
+    "at": "2026-10-11T10:18:42Z",
+    "returncode": 0,
+    "seconds": 0.004,
+    "status": "ok",
+    "stderr": "",
+    "stdout": ""
+  },
+  "owner_action": false,
+  "real": "/usr/bin/systemd-analyze",
+  "schema": "celikpanel/set13-native/v1",
+  "state": {
+    "agent_path": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/snap/bin",
+    "agent_pid": 7749,
+    "at": "2026-10-11T10:18:42Z",
+    "epoch": 1791713922.294585,
+    "fail_flag": false,
+    "line_count": 18,
+    "lines": [],
+    "mounts": [
+      "63 29 0:25 /set13-lab/no-systemd-analyze /usr/bin/systemd-analyze rw,nosuid,nodev,noexec,relatime shared:5 - tmpfs tmpfs rw,size=304400k,mode=755,inode64"
+    ],
+    "shims": {
+      "systemctl": {
+        "real": "/usr/bin/systemctl",
+        "shim": {
+          "ctime_ns": 1791713890924631343,
+          "exists": true,
+          "gid": 0,
+          "group": "root",
+          "immutable": false,
+          "inode": 86665,
+          "kind": "file",
+          "lsattr": "--------------e-------",
+          "mode": "0755",
+          "mtime_ns": 1791713890924631343,
+          "nlink": 1,
+          "owner": "root",
+          "path": "/usr/local/sbin/systemctl",
+          "sha256": "ed7764bcd45e49d00f5d112d27972012fcf2962bfaab91cfbb7cb8f880edbbf1",
+          "size": 865,
+          "text": "#!/bin/sh\n# set13 lab shim (disposable guest): every call is logged, then the real systemctl runs with the same arguments.\n# While /run/set13-lab/fail-daemon-reload names the caller's parent PID (the Agent), that process's next `daemon-reload` fails once.\nprintf '%s systemctl ppid=%s comm=%s args=%s\\n' \"$(date -u +%Y-%m-%dT%H:%M:%S.%NZ)\" \"$PPID\" \"$(cat /proc/$PPID/comm 2>/dev/null)\" \"$*\" >> /run/set13-lab/calls.log\nif [ \"$1\" = daemon-reload ] && [ -f /run/set13-lab/fail-daemon-reload ] && [ \"$(cat /run/set13-lab/fail-daemon-reload)\" = \"$PPID\" ]; then\n  rm -f /run/set13-lab/fail-daemon-reload\n  printf '%s systemctl ppid=%s injected-failure daemon-reload rc=1\\n' \"$(date -u +%Y-%m-%dT%H:%M:%S.%NZ)\" \"$PPID\" >> /run/set13-lab/calls.log\n  echo \"Failed to reload daemon: set13 lab preparation (one injected failure)\" >&2\n  exit 1\nfi\nexec /usr/bin/systemctl \"$@\"\n",
+          "uid": 0
+        }
+      },
+      "systemd-analyze": {
+        "real": null,
+        "shim": {
+          "error": "FileNotFoundError",
+          "exists": false,
+          "path": "/usr/local/sbin/systemd-analyze"
+        }
+      }
+    },
+    "systemd_analyze_seen_by_agent": {
+      "executable": false,
+      "mode_octal": "0o644",
+      "size": 0
+    }
+  },
+  "what": "hide"
+}

@@ -1,0 +1,57 @@
+run	kind	name	verdict	class	detail
+arch/fresh-a	step	M-pool-owner-edit	inconclusive	not-measured	not established: M: a PHP switch on the edited pool is refused and writes nothing
+arch/fresh-a	step	U-pool-not-read	failed	product	U: the Domains row says a configuration file could not be read (state unknown, kind php_pool)
+arch/fresh-a	step	A-probe-addresses	failed	not-measured	A: own address: the probe asked 10.0.2.15 under each name and nginx served the probe's bytes (ready); A: [::]:80 only: the probe asked ::1 under each name and nginx served the probe (ready); A: not this server's address: the answer carries validation_probe not_run, validation_unknown_reason, the add
+arch/fresh-a	check	11-m-pool-owner-edit	None	not-measured	M: a PHP switch on the edited pool is refused and writes nothing
+arch/fresh-a	check	12-u-pool-not-read	False	product	U: the Domains row says a configuration file could not be read (state unknown, kind php_pool)
+arch/fresh-a	check	17-a-probe-addresses	False	re-judged PASS (access log 200 61)	A: own address: the probe asked 10.0.2.15 under each name and nginx served the probe's bytes (ready)
+arch/fresh-a	check	17-a-probe-addresses	False	re-judged PASS (access log 200 61)	A: [::]:80 only: the probe asked ::1 under each name and nginx served the probe (ready)
+arch/fresh-a	check	17-a-probe-addresses	False	not-measured (documented on the success answer only; the authority is pinned)	A: not this server's address: the answer carries validation_probe not_run, validation_unknown_reason, the address and the sentence
+arch/upd82-defective	step	set6-headers-before-the-update	failed	harness	B: every HTTPS answer of the running Panel carries Strict-Transport-Security exactly `max-age=31536000; includeSubDomains` (one header line, that value)
+arch/upd82-defective	step	set6-headers-after-the-update	failed	harness	B: every HTTPS answer of the running Panel carries Strict-Transport-Security exactly `max-age=31536000; includeSubDomains` (one header line, that value)
+arch/upd82-good	step	set6-headers-before-the-update	failed	harness	B: every HTTPS answer of the running Panel carries Strict-Transport-Security exactly `max-age=31536000; includeSubDomains` (one header line, that value)
+debian13/fresh-a	step	M-pool-owner-edit	inconclusive	not-measured	not established: M: a PHP switch on the edited pool is refused and writes nothing
+debian13/fresh-a	step	U-pool-not-read	failed	product	U: the Domains row says a configuration file could not be read (state unknown, kind php_pool)
+debian13/fresh-a	step	RN-take-nginx-refused	inconclusive	harness	KeyError: 'set10-a.test'
+debian13/fresh-a	step	A-probe-addresses	failed	harness	A: not this server's address: no probe request was sent; the request went ahead (SYN to 443); A: not this server's address: the Panel's journal says validation_probe=not_run validation_unknown_reason=address_not_local validation_address=192.0.2.10; A: not this server's address: the answer carries va
+debian13/fresh-a	step	N-app-unit	failed	harness	N: the unit is written with the "# celikpanel-render v2" header and its digest holds; the app runs; N: systemd was reloaded and the running app restarted (try-restart: MainPID changed, active)
+debian13/fresh-a	check	11-m-pool-owner-edit	None	not-measured	M: a PHP switch on the edited pool is refused and writes nothing
+debian13/fresh-a	check	12-u-pool-not-read	False	product	U: the Domains row says a configuration file could not be read (state unknown, kind php_pool)
+debian13/fresh-a	check	17-a-probe-addresses	False	harness	A: not this server's address: no probe request was sent; the request went ahead (SYN to 443)
+debian13/fresh-a	check	17-a-probe-addresses	False	harness	A: not this server's address: the Panel's journal says validation_probe=not_run validation_unknown_reason=address_not_local validation_address=192.0.2.10
+debian13/fresh-a	check	17-a-probe-addresses	False	not-measured (documented on the success answer only; the authority is pinned)	A: not this server's address: the answer carries validation_probe not_run, validation_unknown_reason, the address and the sentence
+debian13/fresh-a	check	17-a-probe-addresses	False	harness	A: the page (reason certificate_validation) reads validation unknown, address_not_local, the address; the reason stays
+debian13/fresh-a	check	18-n-app-unit	False	harness	N: the unit is written with the "# celikpanel-render v2" header and its digest holds; the app runs
+debian13/fresh-a	check	18-n-app-unit	False	harness	N: systemd was reloaded and the running app restarted (try-restart: MainPID changed, active)
+debian13/fresh-b	step	A-probe-addresses	failed	not-measured	A: not this server's address: the answer carries validation_probe not_run, validation_unknown_reason, the address and the sentence
+debian13/fresh-b	check	12-a-probe-addresses	False	not-measured (documented on the success answer only; the authority is pinned)	A: not this server's address: the answer carries validation_probe not_run, validation_unknown_reason, the address and the sentence
+debian13/upd81-good	step	set10-site-files-after-the-update	failed	re-judged PASS (its one failed check: alpha.82 named, byte-equal texts on this host)	alpha.81's pools are adopted (managed_unchanged, adopted_from v0.1.0-alpha.81) or named
+debian13/upd81-good	check	18-set10-site-files-after-the-update	False	re-judged PASS (alpha.82 named: byte-equal texts on this host)	alpha.81's pools are adopted (managed_unchanged, adopted_from v0.1.0-alpha.81) or named
+debian13/upd82-defective	step	set6-headers-before-the-update	failed	harness	B: every HTTPS answer of the running Panel carries Strict-Transport-Security exactly `max-age=31536000; includeSubDomains` (one header line, that value)
+debian13/upd82-defective	step	set6-headers-after-the-update	failed	harness	B: every HTTPS answer of the running Panel carries Strict-Transport-Security exactly `max-age=31536000; includeSubDomains` (one header line, that value)
+debian13/upd82-good-b	step	setup	failed	environment	server setup did not succeed: {'status': 'failed', 'phase': '02-service', 'error': {'code': 'HOST_MUTATION_BUSY', 'message': "This server's package manager is busy — a package task is still running on this server. Wait for it to finish, then try again.", 'reason': 'package_manager_active'}}
+debian13/upd82-good-b	step	set6-headers-after-the-update	failed	environment	B: the Panel that answered is the build this reading is about (the commit its own version route names)
+debian13/upd82-good-b	step	M10-postfix-stop	not-run	environment	
+debian13/upd82-good-c	step	set4-php-site-before-the-update	failed	harness	the baseline's vhost does not name snippets/fastcgi-php.conf (the precondition of item 9)
+debian13/upd82-good-c	step	set6-headers-before-the-update	failed	harness	B: every HTTPS answer of the running Panel carries Strict-Transport-Security exactly `max-age=31536000; includeSubDomains` (one header line, that value)
+debian13/upd82-good	step	set4-php-site-before-the-update	failed	harness	the baseline's vhost does not name snippets/fastcgi-php.conf (the precondition of item 9)
+debian13/upd82-good	step	set6-headers-before-the-update	failed	harness	B: every HTTPS answer of the running Panel carries Strict-Transport-Security exactly `max-age=31536000; includeSubDomains` (one header line, that value)
+debian13/upd82-good	step	arm	inconclusive	harness	observer did not report armed; the update is not started
+debian13/upd82-good	step	set6-headers-after-the-update	failed	harness	B: the Panel that answered is the build this reading is about (the commit its own version route names)
+debian13/upd82-good	step	M10-postfix-stop	not-run	not-measured	
+ubuntu/fresh-a	step	M-pool-owner-edit	inconclusive	not-measured	not established: M: a PHP switch on the edited pool is refused and writes nothing
+ubuntu/fresh-a	step	U-pool-not-read	failed	product	U: the Domains row says a configuration file could not be read (state unknown, kind php_pool)
+ubuntu/fresh-a	step	A-probe-addresses	failed	not-measured	A: not this server's address: the answer carries validation_probe not_run, validation_unknown_reason, the address and the sentence
+ubuntu/fresh-a	check	11-m-pool-owner-edit	None	not-measured	M: a PHP switch on the edited pool is refused and writes nothing
+ubuntu/fresh-a	check	12-u-pool-not-read	False	product	U: the Domains row says a configuration file could not be read (state unknown, kind php_pool)
+ubuntu/fresh-a	check	17-a-probe-addresses	False	not-measured (documented on the success answer only; the authority is pinned)	A: not this server's address: the answer carries validation_probe not_run, validation_unknown_reason, the address and the sentence
+ubuntu/upd82-defective	step	set6-headers-before-the-update	failed	harness	B: every HTTPS answer of the running Panel carries Strict-Transport-Security exactly `max-age=31536000; includeSubDomains` (one header line, that value)
+ubuntu/upd82-defective	step	set6-headers-after-the-update	failed	harness	B: every HTTPS answer of the running Panel carries Strict-Transport-Security exactly `max-age=31536000; includeSubDomains` (one header line, that value)
+ubuntu/upd82-good	step	set4-php-site-before-the-update	failed	harness	the baseline's vhost does not name snippets/fastcgi-php.conf (the precondition of item 9)
+ubuntu/upd82-good	step	set6-headers-before-the-update	failed	harness	B: every HTTPS answer of the running Panel carries Strict-Transport-Security exactly `max-age=31536000; includeSubDomains` (one header line, that value)
+arch/fresh-a	step	RP1-take-php-fpm-test-refused	failed	product	RP1: PHP-FPM `failed` after a take answered `restore: confirmed` (php_unit_after.ActiveState failed; intake 2026-10-11, driver verdict was PASS: it checked the answer field, not the unit)
+arch/fresh-a	check	14-rp1-take-php-fpm-test-refused	False	product (intake re-judgement of a driver PASS)	RP1: PHP-FPM `failed` after a take answered `restore: confirmed` (php_unit_after.ActiveState failed; intake 2026-10-11, driver verdict was PASS: it checked the answer field, not the unit)
+debian13/fresh-a	step	RP1-take-php-fpm-test-refused	failed	product	RP1: PHP-FPM `failed` after a take answered `restore: confirmed` (php_unit_after.ActiveState failed; intake 2026-10-11, driver verdict was PASS: it checked the answer field, not the unit)
+debian13/fresh-a	check	14-rp1-take-php-fpm-test-refused	False	product (intake re-judgement of a driver PASS)	RP1: PHP-FPM `failed` after a take answered `restore: confirmed` (php_unit_after.ActiveState failed; intake 2026-10-11, driver verdict was PASS: it checked the answer field, not the unit)
+ubuntu/fresh-a	step	RP1-take-php-fpm-test-refused	failed	product	RP1: PHP-FPM `failed` after a take answered `restore: confirmed` (php_unit_after.ActiveState failed; intake 2026-10-11, driver verdict was PASS: it checked the answer field, not the unit)
+ubuntu/fresh-a	check	14-rp1-take-php-fpm-test-refused	False	product (intake re-judgement of a driver PASS)	RP1: PHP-FPM `failed` after a take answered `restore: confirmed` (php_unit_after.ActiveState failed; intake 2026-10-11, driver verdict was PASS: it checked the answer field, not the unit)

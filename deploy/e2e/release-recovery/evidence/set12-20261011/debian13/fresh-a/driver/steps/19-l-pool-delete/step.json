@@ -1,0 +1,23 @@
+{
+  "checks": {
+    "checks": 3,
+    "error": null,
+    "failed": [],
+    "finished_at": "2026-10-11T04:40:38Z",
+    "notes": [
+      "L: PASS"
+    ],
+    "started_at": "2026-10-11T04:40:32Z",
+    "substeps": {
+      "L": "passed",
+      "section": "passed"
+    },
+    "title": "deleting a site whose pool the owner edited",
+    "unknown": [],
+    "verdict": "passed"
+  },
+  "finished_at": "2026-10-11T04:40:38Z",
+  "name": "L-pool-delete",
+  "started_at": "2026-10-11T04:40:32Z",
+  "verdict": "passed"
+}

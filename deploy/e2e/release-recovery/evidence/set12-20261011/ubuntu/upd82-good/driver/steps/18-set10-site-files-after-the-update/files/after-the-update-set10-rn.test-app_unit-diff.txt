@@ -1,0 +1,12 @@
+--- /etc/systemd/system/celikapp-5.service (on this server)
++++ CelikPanel's text
+@@ -1,5 +1,7 @@
+-# Managed by CelikPanel — do not edit by hand.
+-# CelikPanel tarafından yönetilir — elle düzenlemeyin.
++# The application unit of this site, written by CelikPanel.
++# Your own settings go in /etc/systemd/system/celikapp-5.service.d/*.conf (systemd drop-ins); CelikPanel never writes or removes them.
++# An edit to this file is kept: CelikPanel then shows the difference and asks before writing it again.
++# Kendi ayarlarınız /etc/systemd/system/celikapp-5.service.d/*.conf içine; CelikPanel onlara dokunmaz. Bu dosyadaki bir değişiklik korunur.
+ [Unit]
+ Description=CelikPanel app: set10-rn.test
+ After=network.target

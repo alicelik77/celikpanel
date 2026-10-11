@@ -1,0 +1,22 @@
+{
+  "checks": {
+    "checks": 4,
+    "error": null,
+    "failed": [],
+    "finished_at": "2026-10-11T05:17:58Z",
+    "notes": [
+      "RP1: PASS"
+    ],
+    "started_at": "2026-10-11T05:17:49Z",
+    "substeps": {
+      "RP1": "passed"
+    },
+    "title": "take on the pool refused by php-fpm -t: restore",
+    "unknown": [],
+    "verdict": "passed"
+  },
+  "finished_at": "2026-10-11T05:17:58Z",
+  "name": "RP1-take-php-fpm-test-refused",
+  "started_at": "2026-10-11T05:17:49Z",
+  "verdict": "passed"
+}

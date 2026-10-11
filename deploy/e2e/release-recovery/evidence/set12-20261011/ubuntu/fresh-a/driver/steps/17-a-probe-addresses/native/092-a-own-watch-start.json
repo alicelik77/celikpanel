@@ -1,0 +1,56 @@
+{
+  "active": {
+    "celikpanel-lab-set11-fswatch": "active",
+    "celikpanel-lab-set11-netwatch": "active"
+  },
+  "at": "2026-10-11T05:06:17Z",
+  "dirs": [
+    "/var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge",
+    "/etc/nginx/celikpanel-managed.d/set12-a.test",
+    "/etc/nginx/celikpanel-sites.d/set12-a.test",
+    "/etc/nginx/sites-available"
+  ],
+  "epoch": 1791695177.161296,
+  "fs": {
+    "argv": [
+      "systemd-run",
+      "--unit=celikpanel-lab-set11-fswatch",
+      "--property=RuntimeMaxSec=3600",
+      "/usr/bin/python3",
+      "-I",
+      "/root/celikpanel-release-recovery-lab/set11-fswatch.py",
+      "/root/celikpanel-release-recovery-lab/set11-fs-a-own.jsonl",
+      "/var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge",
+      "/etc/nginx/celikpanel-managed.d/set12-a.test",
+      "/etc/nginx/celikpanel-sites.d/set12-a.test",
+      "/etc/nginx/sites-available"
+    ],
+    "at": "2026-10-11T05:06:17Z",
+    "returncode": 0,
+    "seconds": 0.014,
+    "status": "ok",
+    "stderr": "Running as unit: celikpanel-lab-set11-fswatch.service; invocation ID: 215f06fdf6534d13b0d4c644dff6bb37\n",
+    "stdout": ""
+  },
+  "mode": "watch-start",
+  "net": {
+    "argv": [
+      "systemd-run",
+      "--unit=celikpanel-lab-set11-netwatch",
+      "--property=RuntimeMaxSec=3600",
+      "/usr/bin/python3",
+      "-I",
+      "/root/celikpanel-release-recovery-lab/set11-netwatch.py",
+      "/root/celikpanel-release-recovery-lab/set11-net-a-own.jsonl"
+    ],
+    "at": "2026-10-11T05:06:17Z",
+    "returncode": 0,
+    "seconds": 0.021,
+    "status": "ok",
+    "stderr": "Running as unit: celikpanel-lab-set11-netwatch.service; invocation ID: eedcd7d785494b6791563b94dc1708ae\n",
+    "stdout": ""
+  },
+  "owner_action": false,
+  "schema": "celikpanel/set11-native/v1",
+  "tag": "a-own"
+}

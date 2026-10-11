@@ -1,0 +1,23 @@
+{
+  "checks": {
+    "checks": 23,
+    "error": null,
+    "failed": [],
+    "finished_at": "2026-10-11T10:53:23Z",
+    "notes": [
+      "C5: PASS"
+    ],
+    "started_at": "2026-10-11T10:52:19Z",
+    "substeps": {
+      "C5": "passed",
+      "section": "passed"
+    },
+    "title": "the Node unit's PATH and /bin/sh -c; verify before try-restart after a put-back",
+    "unknown": [],
+    "verdict": "passed"
+  },
+  "finished_at": "2026-10-11T10:53:23Z",
+  "name": "C5-app-unit",
+  "started_at": "2026-10-11T10:52:19Z",
+  "verdict": "passed"
+}

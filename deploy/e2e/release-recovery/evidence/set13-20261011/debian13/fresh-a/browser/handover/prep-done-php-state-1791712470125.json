@@ -1,0 +1,7 @@
+{
+  "at": "2026-10-11T09:54:31Z",
+  "prep": "php-state",
+  "result": {
+    "error": "FileExistsError: [Errno 17] File exists: '/var/tmp/cp-release-drill-s13-d13-a/evidence/debian13/upd1/set13-debian13-20261011t093731z/steps/16-set13-browser-window/files/prep-php-state-set12-a.test-site2.conf.txt'"
+  }
+}

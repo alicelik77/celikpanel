@@ -1,0 +1,19 @@
+{
+  "checks": {
+    "checks": 0,
+    "error": "TypeError: Set11Trial.snap11() got multiple values for argument 'label'",
+    "failed": [],
+    "finished_at": "2026-10-11T00:21:12Z",
+    "notes": [],
+    "started_at": "2026-10-11T00:21:10Z",
+    "substeps": {},
+    "title": "a kept file without the line including CelikPanel's directory: certificate issuance",
+    "unknown": [],
+    "verdict": "inconclusive"
+  },
+  "finished_at": "2026-10-11T00:21:12Z",
+  "name": "A2-include-missing",
+  "reason": "TypeError: Set11Trial.snap11() got multiple values for argument 'label'",
+  "started_at": "2026-10-11T00:21:10Z",
+  "verdict": "inconclusive"
+}

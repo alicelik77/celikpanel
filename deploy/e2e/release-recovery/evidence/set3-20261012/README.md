@@ -826,3 +826,12 @@ the note below.
    FAIL is the harness defect H40, quotes the recorded fields (`same_bytes: true`, `replayed: "1"`,
    `sent_value_occurs_in_the_raw_answer: 0`, `replay_sent_value_occurs: 0`, `new_on_engine: ["s2_srvsent"]` in
    `rid3-ubuntu/run-a/steps/11-c3-server-databases/section.json`) and that Ubuntu was not re-run after the fix.
+
+## Corrections after intake (2026-10-10)
+
+After this directory was published (2026-10-10), the operator's machine name was replaced by `<operator-host>` in the SSH public-key comments (and in the text that named it) of this directory: 29 occurrences in 17 files; the key material itself, a lab public key, is unchanged.
+After this directory was published (2026-10-10), 42 digest values of the one-shot update-transaction token (36 in plain text in 22 files, as `transaction_token_sha256` values and as `.release-db-migrations/<digest>` directory names; 6 inside base64 `events_base64` text in 3 files) were replaced by `[REDACTED-SHA256]`.
+
+The affected `SHA256SUMS` lines (per-run lists and this directory's list) were recomputed afterwards; nothing else in this directory was changed.
+
+Checksum repair (2026-10-10): `sha256sum -c SHA256SUMS` failed for `tools/readme_values.json`, and no form of the file matches the recorded hash (not as it is, nor CRLF-to-LF, LF-to-CRLF, with a UTF-8 byte order mark or as UTF-16LE, nor the version at any commit that touched it: it has had the same bytes since its first commit). The file on disk differs from the bytes the list was written from; which bytes those were cannot be recovered from the repository. The file was kept as it is and only its line in `SHA256SUMS` was regenerated: old recorded hash `7f400399bc6ab0937d9e518e9303a70c6bab56572955bfc8534a223e9d8271e3`, new hash `7a1b9233758653e6b262208e68e49e5cc306e49ed4a7f520491219c91d33e178`. The line was wrong from the first commit of this directory (not introduced by the redaction above); the README values this file fed should be read with that in mind. The `README.md` line of the list was regenerated because this paragraph was added to the README.

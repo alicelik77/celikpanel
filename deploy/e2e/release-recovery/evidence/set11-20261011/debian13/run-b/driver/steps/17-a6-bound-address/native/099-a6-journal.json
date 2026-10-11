@@ -1,0 +1,45 @@
+{
+  "at": "2026-10-11T00:34:21Z",
+  "by_unit": {
+    "celikpanel-agent.service": [],
+    "celikpanel-panel.service": [
+      "2026-10-11T00:34:18.828827+00:00 dns-debian13 panel[31019]: 2026/10/11 00:34:18 http: TLS handshake error from 127.0.0.1:51296: EOF",
+      "2026-10-11T00:34:18.870914+00:00 dns-debian13 panel[31019]: 2026/10/11 00:34:18 site configuration set11-a.test (change): kept (owner-edited); CelikPanel's text held in /etc/nginx/sites-available/set11-a.test.conf.celikpanel-pending",
+      "2026-10-11T00:34:18.879378+00:00 dns-debian13 panel[31019]: 2026/10/11 00:34:18 SSL issue domain 2: prepare validation vhost: certificate validation for set11-a.test not prepared: the configuration file was kept (owner_edited) and include_missing",
+      "2026-10-11T00:34:18.879378+00:00 dns-debian13 panel[31019]: 2026/10/11 00:34:18 [409] certificate validation for set11-a.test not prepared: the configuration file was kept (owner_edited) and include_missing"
+    ],
+    "nginx.service": [
+      "2026-10-11T00:34:15.315869+00:00 dns-debian13 systemd[1]: Reloading nginx.service - A high performance web server and a reverse proxy server...",
+      "2026-10-11T00:34:15.348188+00:00 dns-debian13 nginx[33531]: 2026/10/11 00:34:15 [notice] 33531#33531: signal process started",
+      "2026-10-11T00:34:15.351515+00:00 dns-debian13 systemd[1]: Reloaded nginx.service - A high performance web server and a reverse proxy server.",
+      "2026-10-11T00:34:15.596587+00:00 dns-debian13 systemd[1]: Reloading nginx.service - A high performance web server and a reverse proxy server...",
+      "2026-10-11T00:34:15.628116+00:00 dns-debian13 nginx[33554]: 2026/10/11 00:34:15 [notice] 33554#33554: signal process started",
+      "2026-10-11T00:34:15.629080+00:00 dns-debian13 systemd[1]: Reloaded nginx.service - A high performance web server and a reverse proxy server.",
+      "2026-10-11T00:34:16.020844+00:00 dns-debian13 systemd[1]: Reloading nginx.service - A high performance web server and a reverse proxy server...",
+      "2026-10-11T00:34:16.044015+00:00 dns-debian13 nginx[33577]: 2026/10/11 00:34:16 [notice] 33577#33577: signal process started",
+      "2026-10-11T00:34:16.044972+00:00 dns-debian13 systemd[1]: Reloaded nginx.service - A high performance web server and a reverse proxy server."
+    ],
+    "php8.4-fpm.service": []
+  },
+  "mode": "read-window",
+  "owner_action": false,
+  "schema": "celikpanel/set10-native/v1",
+  "since_epoch": 1791678855,
+  "systemd_manager": [
+    "2026-10-11T00:34:15.315869+00:00 dns-debian13 systemd[1]: Reloading nginx.service - A high performance web server and a reverse proxy server...",
+    "2026-10-11T00:34:15.351515+00:00 dns-debian13 systemd[1]: Reloaded nginx.service - A high performance web server and a reverse proxy server.",
+    "2026-10-11T00:34:15.596587+00:00 dns-debian13 systemd[1]: Reloading nginx.service - A high performance web server and a reverse proxy server...",
+    "2026-10-11T00:34:15.629080+00:00 dns-debian13 systemd[1]: Reloaded nginx.service - A high performance web server and a reverse proxy server.",
+    "2026-10-11T00:34:16.020844+00:00 dns-debian13 systemd[1]: Reloading nginx.service - A high performance web server and a reverse proxy server...",
+    "2026-10-11T00:34:16.044972+00:00 dns-debian13 systemd[1]: Reloaded nginx.service - A high performance web server and a reverse proxy server.",
+    "2026-10-11T00:34:17.272181+00:00 dns-debian13 systemd[1]: Started celikpanel-lab-set11-fswatch.service - [systemd-run] /usr/bin/python3 -I /root/celikpanel-release-recovery-lab/set11-fswatch.py /root/celikpanel-release-recovery-lab/set11-fs-a6.jsonl /var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge /etc/nginx/celikpanel-managed.d/set11-a.test /etc/nginx/celikpanel-sites.d/set11-a.test /etc/nginx/sites-available.",
+    "2026-10-11T00:34:20.619899+00:00 dns-debian13 systemd[1]: Stopping celikpanel-lab-set11-fswatch.service - [systemd-run] /usr/bin/python3 -I /root/celikpanel-release-recovery-lab/set11-fswatch.py /root/celikpanel-release-recovery-lab/set11-fs-a6.jsonl /var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge /etc/nginx/celikpanel-managed.d/set11-a.test /etc/nginx/celikpanel-sites.d/set11-a.test /etc/nginx/sites-available...",
+    "2026-10-11T00:34:20.640819+00:00 dns-debian13 systemd[1]: Stopped celikpanel-lab-set11-fswatch.service - [systemd-run] /usr/bin/python3 -I /root/celikpanel-release-recovery-lab/set11-fswatch.py /root/celikpanel-release-recovery-lab/set11-fs-a6.jsonl /var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2/.well-known/acme-challenge /etc/nginx/celikpanel-managed.d/set11-a.test /etc/nginx/celikpanel-sites.d/set11-a.test /etc/nginx/sites-available."
+  ],
+  "units": [
+    "celikpanel-panel.service",
+    "celikpanel-agent.service",
+    "nginx.service",
+    "php8.4-fpm.service"
+  ]
+}

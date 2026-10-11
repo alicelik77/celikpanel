@@ -1,0 +1,128 @@
+{
+  "browser_done": {
+    "at": "2026-10-11T10:56:29.791Z",
+    "by": "cold-load-set13.mjs"
+  },
+  "ended_at": "2026-10-11T10:56:30Z",
+  "hand": "/var/tmp/cp-set13-run/hand/h13d13b-ui",
+  "password_file_removed": true,
+  "requests": [
+    {
+      "at": "2026-10-11T10:53:35Z",
+      "prep": "pool-edited",
+      "result": {
+        "overall": "owner_edited",
+        "pool": "owner_edited"
+      }
+    },
+    {
+      "at": "2026-10-11T10:53:36Z",
+      "prep": "broken-add",
+      "result": {
+        "php": {
+          "ActiveEnterTimestamp": "Sun 2026-10-11 10:46:14 UTC",
+          "ActiveState": "active",
+          "ExecMainStartTimestamp": "Sun 2026-10-11 10:46:14 UTC",
+          "LoadState": "loaded",
+          "MainPID": "23903",
+          "NRestarts": "0",
+          "SubState": "running"
+        },
+        "test": 78
+      }
+    },
+    {
+      "at": "2026-10-11T10:54:01Z",
+      "prep": "php-state",
+      "result": {
+        "pool": {
+          "ActiveEnterTimestamp": "Sun 2026-10-11 10:46:14 UTC",
+          "ActiveState": "active",
+          "ExecMainStartTimestamp": "Sun 2026-10-11 10:46:14 UTC",
+          "LoadState": "loaded",
+          "MainPID": "23903",
+          "NRestarts": "0",
+          "SubState": "running"
+        }
+      }
+    },
+    {
+      "at": "2026-10-11T10:54:26Z",
+      "prep": "php-state",
+      "result": {
+        "pool": {
+          "ActiveEnterTimestamp": "Sun 2026-10-11 10:46:14 UTC",
+          "ActiveState": "active",
+          "ExecMainStartTimestamp": "Sun 2026-10-11 10:46:14 UTC",
+          "LoadState": "loaded",
+          "MainPID": "23903",
+          "NRestarts": "0",
+          "SubState": "running"
+        }
+      }
+    },
+    {
+      "at": "2026-10-11T10:54:27Z",
+      "prep": "broken-remove",
+      "result": {
+        "php": {
+          "ActiveEnterTimestamp": "Sun 2026-10-11 10:46:14 UTC",
+          "ActiveState": "active",
+          "ExecMainStartTimestamp": "Sun 2026-10-11 10:46:14 UTC",
+          "LoadState": "loaded",
+          "MainPID": "23903",
+          "NRestarts": "0",
+          "SubState": "running"
+        },
+        "test": 0
+      }
+    },
+    {
+      "at": "2026-10-11T10:54:29Z",
+      "prep": "end",
+      "result": {
+        "ok": true
+      }
+    },
+    {
+      "at": "2026-10-11T10:55:48Z",
+      "prep": "u-unread",
+      "result": {
+        "page_pool": {
+          "read_error": "timeout",
+          "reason": "not_read",
+          "state": "unknown"
+        },
+        "row": {
+          "kind": "php_pool",
+          "read_error": "timeout",
+          "reason": "not_read",
+          "state": "unknown"
+        },
+        "save_status": 200
+      }
+    },
+    {
+      "at": "2026-10-11T10:56:11Z",
+      "prep": "rows",
+      "result": {
+        "row": {
+          "kind": "php_pool",
+          "read_error": "timeout",
+          "reason": "not_read",
+          "state": "unknown"
+        }
+      }
+    },
+    {
+      "at": "2026-10-11T10:56:29Z",
+      "prep": "rows",
+      "result": {
+        "row": {
+          "state": "managed_unchanged"
+        }
+      }
+    }
+  ],
+  "window": "ui"
+}

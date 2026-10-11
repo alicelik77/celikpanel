@@ -1,0 +1,68 @@
+{
+  "at": "2026-10-11T01:37:05Z",
+  "epoch": 1791682625.178559,
+  "mode": "read-stat",
+  "owner_action": false,
+  "schema": "celikpanel/set11-native/v1",
+  "side": {
+    "backups": [
+      {
+        "ctime_ns": 1791682621786301408,
+        "exists": true,
+        "first_line": "# celikpanel-render v2 sha256=4b1cb1b3a8497f9d7e4774134e2a827c4a3a620fec35043ba4acbf5914be0a6e",
+        "gid": 969,
+        "group": "celikpanel",
+        "header": {
+          "body_bytes": 2146,
+          "body_sha256": "debf2262d0ce4de87f8a5342a61811da343a8c3935e08bc270d6fe2c569eb9f2",
+          "declared": "4b1cb1b3a8497f9d7e4774134e2a827c4a3a620fec35043ba4acbf5914be0a6e",
+          "present": true,
+          "valid": false
+        },
+        "immutable": false,
+        "inode": 92108,
+        "kind": "file",
+        "lsattr": "----------------------",
+        "mode": "0644",
+        "mtime_ns": 1791682621786301408,
+        "nlink": 1,
+        "owner": "root",
+        "path": "/etc/nginx/sites-available/set11-a.test.conf.celikpanel-backup-20261011T013701Z",
+        "sha256": "c760868d15d236ff3a3793bfbf9c6f0617a066df6e80f1b43d5c906544121189",
+        "size": 2241,
+        "uid": 0
+      }
+    ],
+    "pending": {
+      "error": "FileNotFoundError",
+      "exists": false,
+      "path": "/etc/nginx/sites-available/set11-a.test.conf.celikpanel-pending"
+    }
+  },
+  "vhost": {
+    "ctime_ns": 1791682621378291928,
+    "exists": true,
+    "first_line": "# celikpanel-render v2 sha256=4b1cb1b3a8497f9d7e4774134e2a827c4a3a620fec35043ba4acbf5914be0a6e",
+    "gid": 969,
+    "group": "celikpanel",
+    "header": {
+      "body_bytes": 2146,
+      "body_sha256": "debf2262d0ce4de87f8a5342a61811da343a8c3935e08bc270d6fe2c569eb9f2",
+      "declared": "4b1cb1b3a8497f9d7e4774134e2a827c4a3a620fec35043ba4acbf5914be0a6e",
+      "present": true,
+      "valid": false
+    },
+    "immutable": true,
+    "inode": 92104,
+    "kind": "file",
+    "lsattr": "----i-----------------",
+    "mode": "0644",
+    "mtime_ns": 1791682620943281810,
+    "nlink": 1,
+    "owner": "root",
+    "path": "/etc/nginx/sites-available/set11-a.test.conf",
+    "sha256": "c760868d15d236ff3a3793bfbf9c6f0617a066df6e80f1b43d5c906544121189",
+    "size": 2241,
+    "uid": 0
+  }
+}

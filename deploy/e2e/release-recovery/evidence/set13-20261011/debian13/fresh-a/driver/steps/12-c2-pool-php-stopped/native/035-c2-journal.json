@@ -1,0 +1,45 @@
+{
+  "at": "2026-10-11T09:50:30Z",
+  "by_unit": {
+    "celikpanel-agent.service": [
+      "2026-10-11T09:50:26.995790+00:00 dns-debian13 agent[5244]: 2026/10/11 09:50:26 ApplySitePool site 2 (take): failed owner_edited /etc/php/8.4/fpm/pool.d/site2.conf"
+    ],
+    "celikpanel-panel.service": [
+      "2026-10-11T09:50:26.839227+00:00 dns-debian13 panel[31285]: 2026/10/11 09:50:26 http: TLS handshake error from 127.0.0.1:36368: EOF",
+      "2026-10-11T09:50:26.996246+00:00 dns-debian13 panel[31285]: 2026/10/11 09:50:26 site configuration set12-a.test php_pool (take): failed; owner's file kept as /etc/php/8.4/fpm/pool.d/site2.conf.celikpanel-backup-20261011T095026Z; exit status 1",
+      "2026-10-11T09:50:27.006372+00:00 dns-debian13 panel[31285]: 2026/10/11 09:50:27 [502] site configuration of set12-a.test not applied: failed (owner_edited reload_failed); restore confirmed"
+    ],
+    "nginx.service": [],
+    "php8.4-fpm.service": [
+      "2026-10-11T09:50:25.457386+00:00 dns-debian13 systemd[1]: Stopping php8.4-fpm.service - The PHP 8.4 FastCGI Process Manager...",
+      "2026-10-11T09:50:25.487584+00:00 dns-debian13 systemd[1]: php8.4-fpm.service: Deactivated successfully.",
+      "2026-10-11T09:50:25.487987+00:00 dns-debian13 systemd[1]: Stopped php8.4-fpm.service - The PHP 8.4 FastCGI Process Manager.",
+      "2026-10-11T09:50:25.488709+00:00 dns-debian13 systemd[1]: php8.4-fpm.service: Consumed 1.632s CPU time, 19.5M memory peak.",
+      "2026-10-11T09:50:26.969190+00:00 dns-debian13 systemd[1]: php8.4-fpm.service: Unit cannot be reloaded because it is inactive."
+    ]
+  },
+  "mode": "read-window12",
+  "owner_action": false,
+  "schema": "celikpanel/set12-native/v1",
+  "since_epoch": 1791712225,
+  "systemd_all": [
+    "2026-10-11T09:50:25.457386+00:00 dns-debian13 systemd[1]: Stopping php8.4-fpm.service - The PHP 8.4 FastCGI Process Manager...",
+    "2026-10-11T09:50:25.487584+00:00 dns-debian13 systemd[1]: php8.4-fpm.service: Deactivated successfully.",
+    "2026-10-11T09:50:25.487987+00:00 dns-debian13 systemd[1]: Stopped php8.4-fpm.service - The PHP 8.4 FastCGI Process Manager.",
+    "2026-10-11T09:50:25.488709+00:00 dns-debian13 systemd[1]: php8.4-fpm.service: Consumed 1.632s CPU time, 19.5M memory peak.",
+    "2026-10-11T09:50:26.969190+00:00 dns-debian13 systemd[1]: php8.4-fpm.service: Unit cannot be reloaded because it is inactive."
+  ],
+  "systemd_manager": [
+    "2026-10-11T09:50:25.457386+00:00 dns-debian13 systemd[1]: Stopping php8.4-fpm.service - The PHP 8.4 FastCGI Process Manager...",
+    "2026-10-11T09:50:25.487584+00:00 dns-debian13 systemd[1]: php8.4-fpm.service: Deactivated successfully.",
+    "2026-10-11T09:50:25.487987+00:00 dns-debian13 systemd[1]: Stopped php8.4-fpm.service - The PHP 8.4 FastCGI Process Manager.",
+    "2026-10-11T09:50:25.488709+00:00 dns-debian13 systemd[1]: php8.4-fpm.service: Consumed 1.632s CPU time, 19.5M memory peak.",
+    "2026-10-11T09:50:26.969190+00:00 dns-debian13 systemd[1]: php8.4-fpm.service: Unit cannot be reloaded because it is inactive."
+  ],
+  "units": [
+    "celikpanel-panel.service",
+    "celikpanel-agent.service",
+    "nginx.service",
+    "php8.4-fpm.service"
+  ]
+}

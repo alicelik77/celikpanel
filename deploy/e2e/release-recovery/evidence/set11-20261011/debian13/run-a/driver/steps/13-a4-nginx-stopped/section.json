@@ -1,0 +1,64 @@
+{
+  "calls": [],
+  "checks": [],
+  "error": "TypeError: Set11Trial.snap11() got multiple values for argument 'label'",
+  "finished_at": "2026-10-11T00:21:09Z",
+  "native_evidence": false,
+  "natives": [
+    {
+      "file": "native/026-a4-0-stat.json",
+      "label": "a4-0-stat",
+      "mode": "read-stat",
+      "owner_action": false
+    },
+    {
+      "file": "native/027-a4-0-ledger.json",
+      "label": "a4-0-ledger",
+      "mode": "read-ledger",
+      "owner_action": false
+    },
+    {
+      "file": "native/028-owner-a4-nginx-stop.json",
+      "label": "owner-a4-nginx-stop",
+      "mode": "owner-nginx",
+      "owner_action": true
+    },
+    {
+      "file": "native/029-a4-before-acme.json",
+      "label": "a4-before-acme",
+      "mode": "read-acme",
+      "owner_action": false
+    },
+    {
+      "file": "native/030-a4-log-offsets.json",
+      "label": "a4-log-offsets",
+      "mode": "log-offsets",
+      "owner_action": false
+    },
+    {
+      "file": "native/031-owner-a4-nginx-start.json",
+      "label": "owner-a4-nginx-start",
+      "mode": "owner-nginx",
+      "owner_action": true
+    }
+  ],
+  "node": "debian13",
+  "notes": [],
+  "owner_actions": [
+    {
+      "at": "2026-10-11T00:21:07Z",
+      "label": "a4-nginx-stop",
+      "mode": "owner-nginx"
+    },
+    {
+      "at": "2026-10-11T00:21:09Z",
+      "label": "a4-nginx-start",
+      "mode": "owner-nginx"
+    }
+  ],
+  "section": "A4-nginx-stopped",
+  "started_at": "2026-10-11T00:21:06Z",
+  "substeps": {},
+  "title": "the same file with nginx stopped: certificate issuance",
+  "verdict": "inconclusive"
+}

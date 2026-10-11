@@ -1,0 +1,773 @@
+{
+  "calls": [
+    {
+      "at": "2026-10-11T04:40:12Z",
+      "json": {
+        "installed": [],
+        "system_version": ""
+      },
+      "label": "n: Node.js versions (GET /api/v1/runtimes/node)",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/runtimes/node"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T04:40:12Z",
+      "json": {
+        "releases": [
+          {
+            "name": "Krypton",
+            "version": "24.21.0"
+          },
+          {
+            "name": "Jod",
+            "version": "22.23.3"
+          },
+          {
+            "name": "Iron",
+            "version": "20.20.2"
+          },
+          {
+            "name": "Hydrogen",
+            "version": "18.20.8"
+          }
+        ]
+      },
+      "label": "n: the LTS list (GET /api/v1/runtimes/node/lts)",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/runtimes/node/lts"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T04:40:12Z",
+      "json": {
+        "operation": {
+          "id": "0016c9e56b920a3d99c8d7cef5d6d730",
+          "kind": "runtime_install",
+          "package_name": "22.20.0",
+          "phase": "queued",
+          "request_id": "afcc8bb53ed7822e2783baef650215a9",
+          "service_id": "node",
+          "started_at": "2026-10-11T04:40:12.962131217Z",
+          "status": "queued"
+        }
+      },
+      "label": "n: install Node.js 22.20.0 through the Panel",
+      "request": {
+        "body": {
+          "request_id": "afcc8bb53ed7822e2783baef650215a9",
+          "version": "22.20.0"
+        },
+        "method": "POST",
+        "path": "/api/v1/runtimes/node"
+      },
+      "status": 202,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T04:40:22Z",
+      "json": {
+        "installed": [
+          "22.20.0"
+        ],
+        "system_version": ""
+      },
+      "label": "n: Node.js versions after the install",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/runtimes/node"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T04:40:24Z",
+      "json": {
+        "DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/4/public_html",
+        "Domain": "set12-n.test",
+        "DomainID": 4,
+        "FTPPassword": "[REDACTED]",
+        "FTPUser": "set12_n_test",
+        "PHPVersion": "8.4",
+        "ProjectType": "php",
+        "SiteID": 4,
+        "TempDomain": ""
+      },
+      "label": "create PHP site set12-n.test",
+      "request": {
+        "body": {
+          "domain": "set12-n.test",
+          "project_type": "php",
+          "ssl_type": "none"
+        },
+        "method": "POST",
+        "path": "/api/v1/domains/create"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T04:40:25Z",
+      "json": {
+        "app_port": 3001,
+        "success": true
+      },
+      "label": "n: N becomes a Node site",
+      "request": {
+        "body": {
+          "project_type": "node",
+          "runtime_version": "22.20.0",
+          "start_command": "node -e \"require('http').createServer((q,s)=>s.end('set12-n1')).listen(process.env.PORT)\""
+        },
+        "method": "PUT",
+        "path": "/api/v1/domains/4/hosting"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T04:40:26Z",
+      "json": {
+        "app_port": 3001,
+        "success": true
+      },
+      "label": "n: a hosting change (another start command)",
+      "request": {
+        "body": {
+          "project_type": "node",
+          "runtime_version": "22.20.0",
+          "start_command": "node -e \"require('http').createServer((q,s)=>s.end('set12-n2')).listen(process.env.PORT)\""
+        },
+        "method": "PUT",
+        "path": "/api/v1/domains/4/hosting"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "answer": {
+        "code": "SITE_CONFIG_OWNER_EDITED",
+        "detail": "owner_edited",
+        "error": "The site's application unit file is not CelikPanel's unchanged text, so CelikPanel kept it and did not apply this change to it. Nothing else was changed. Open the domain's Configuration file section: keep your file, take CelikPanel's text (your file is kept as a dated copy), or merge the two by hand.",
+        "reason": "app_unit"
+      },
+      "at": "2026-10-11T04:40:27Z",
+      "catalogue_texts": {
+        "err.SITE_CONFIG_OWNER_EDITED": {
+          "en": "This site’s nginx configuration file is not CelikPanel’s unchanged text, so CelikPanel kept it and did not apply this change to it. Nothing else was changed. On the domain’s Configuration file page, keep your file, take CelikPanel’s text (your file is kept as a dated copy), or merge the two by hand.",
+          "tr": "Bu sitenin nginx yapılandırma dosyası CelikPanel’in değişmemiş metni değil; bu yüzden CelikPanel onu korudu ve bu değişikliği ona uygulamadı. Başka hiçbir şey değiştirilmedi. Alan adının Yapılandırma dosyası sayfasında dosyanızı koruyun, CelikPanel’in metnini alın (dosyanız tarihli bir kopya olarak saklanır) ya da ikisini elle birleştirin."
+        },
+        "err.SITE_CONFIG_OWNER_EDITED.app_unit": {
+          "en": "This site’s application unit file is not CelikPanel’s unchanged text, so CelikPanel kept it and did not apply this change; the application keeps running with it. Nothing else was changed. On the domain’s Configuration file page, keep your file, take CelikPanel’s text (your file is kept as a dated copy), or merge the two by hand.",
+          "tr": "Bu sitenin uygulama birimi dosyası CelikPanel’in değişmemiş metni değil; bu yüzden CelikPanel onu korudu ve bu değişikliği uygulamadı; uygulama onunla çalışmaya devam ediyor. Başka hiçbir şey değiştirilmedi. Alan adının Yapılandırma dosyası sayfasında dosyanızı koruyun, CelikPanel’in metnini alın (dosyanız tarihli bir kopya olarak saklanır) ya da ikisini elle birleştirin."
+        }
+      },
+      "json": {
+        "code": "SITE_CONFIG_OWNER_EDITED",
+        "detail": "owner_edited",
+        "error": "The site's application unit file is not CelikPanel's unchanged text, so CelikPanel kept it and did not apply this change to it. Nothing else was changed. Open the domain's Configuration file section: keep your file, take CelikPanel's text (your file is kept as a dated copy), or merge the two by hand.",
+        "reason": "app_unit"
+      },
+      "label": "n: a hosting change on the owner-edited unit",
+      "request": {
+        "body": {
+          "project_type": "node",
+          "runtime_version": "22.20.0",
+          "start_command": "node -e \"require('http').createServer((q,s)=>s.end('set12-n3')).listen(process.env.PORT)\""
+        },
+        "method": "PUT",
+        "path": "/api/v1/domains/4/hosting"
+      },
+      "status": 409,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T04:40:27Z",
+      "json": {
+        "actions": [],
+        "challenge_file": "unchanged",
+        "domain": "set12-n.test",
+        "domain_id": 4,
+        "enabled": "link",
+        "file_sha256": "aeed17772ad840c05d54e0267e6b8ff85fad150844ab34094cdc5648bfd0cfed",
+        "files": [
+          {
+            "actions": [],
+            "challenge_file": "unchanged",
+            "domain": "set12-n.test",
+            "domain_id": 4,
+            "enabled": "link",
+            "file_sha256": "aeed17772ad840c05d54e0267e6b8ff85fad150844ab34094cdc5648bfd0cfed",
+            "include_dir": "/etc/nginx/celikpanel-sites.d/set12-n.test",
+            "kind": "nginx_vhost",
+            "ledger": {
+              "observed_at": "2026-10-11T04:40:27Z",
+              "written_at": "2026-10-11T04:40:25Z",
+              "written_release": "v0.1.0-alpha.81 9e223f175d96"
+            },
+            "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-n.test",
+            "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-n.test/*.conf;",
+            "path": "/etc/nginx/sites-available/set12-n.test.conf",
+            "protection": "none",
+            "render_sha256": "d1fc81c164a28cf140f19219c7eb28323439ae90be2ad829da3e9c7983374743",
+            "state": "managed_unchanged"
+          },
+          {
+            "actions": [
+              "keep",
+              "take",
+              "merge"
+            ],
+            "diff": "--- /etc/systemd/system/celikapp-4.service (on this server)\n+++ CelikPanel's text\n@@ -16,8 +16,5 @@\n Restart=on-failure\n RestartSec=3\n \n-# set10: added by the server owner by hand\n-Environment=SET10_OWNER=unit\n-\n [Install]\n WantedBy=multi-user.target\n",
+            "domain": "set12-n.test",
+            "domain_id": 4,
+            "file_sha256": "314ba8963d82741e6c3809e0ce0952dc2daa89f4a8eedd4ae3ff2507d9d7cbc7",
+            "include_dir": "/etc/systemd/system/celikapp-4.service.d",
+            "kind": "app_unit",
+            "ledger": {
+              "observed_at": "2026-10-11T04:40:28Z",
+              "written_at": "2026-10-11T04:40:27Z",
+              "written_release": "v0.1.0-alpha.81 9e223f175d96"
+            },
+            "path": "/etc/systemd/system/celikapp-4.service",
+            "pending_path": "/etc/systemd/system/celikapp-4.service.celikpanel-pending",
+            "protection": "none",
+            "render_sha256": "19901790a33cc76a42c46ab0ab4136f0f8713dc9242f2b66253914a1b7e9f5d9",
+            "state": "owner_edited"
+          }
+        ],
+        "include_dir": "/etc/nginx/celikpanel-sites.d/set12-n.test",
+        "kind": "nginx_vhost",
+        "ledger": {
+          "observed_at": "2026-10-11T04:40:27Z",
+          "written_at": "2026-10-11T04:40:25Z",
+          "written_release": "v0.1.0-alpha.81 9e223f175d96"
+        },
+        "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-n.test",
+        "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-n.test/*.conf;",
+        "overall_kind": "app_unit",
+        "overall_state": "owner_edited",
+        "path": "/etc/nginx/sites-available/set12-n.test.conf",
+        "protection": "none",
+        "render_sha256": "d1fc81c164a28cf140f19219c7eb28323439ae90be2ad829da3e9c7983374743",
+        "state": "managed_unchanged"
+      },
+      "label": "n page: GET site-config",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains/4/site-config"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T04:40:28Z",
+      "json": {
+        "actions": [],
+        "backup_path": "/etc/systemd/system/celikapp-4.service.celikpanel-backup-20261011T044028Z",
+        "decision": {
+          "current": true,
+          "decided_at": "2026-10-11T04:40:28Z",
+          "kind": "take_celikpanel"
+        },
+        "domain": "set12-n.test",
+        "domain_id": 4,
+        "file_sha256": "cdd8d27994c7e2242857d59e8a80bf6bd393eb22b565eebefdf40b2de80381cc",
+        "include_dir": "/etc/systemd/system/celikapp-4.service.d",
+        "kind": "app_unit",
+        "ledger": {
+          "backup_path": "/etc/systemd/system/celikapp-4.service.celikpanel-backup-20261011T044028Z",
+          "observed_at": "2026-10-11T04:40:28Z",
+          "written_at": "2026-10-11T04:40:28Z",
+          "written_release": "v0.1.0-alpha.81 9e223f175d96"
+        },
+        "outcome": "taken",
+        "path": "/etc/systemd/system/celikapp-4.service",
+        "render_sha256": "19901790a33cc76a42c46ab0ab4136f0f8713dc9242f2b66253914a1b7e9f5d9",
+        "state": "managed_unchanged"
+      },
+      "label": "n take CelikPanel's unit (kind app_unit)",
+      "request": {
+        "body": {
+          "file_sha256": "314ba8963d82741e6c3809e0ce0952dc2daa89f4a8eedd4ae3ff2507d9d7cbc7",
+          "kind": "app_unit",
+          "render_sha256": "19901790a33cc76a42c46ab0ab4136f0f8713dc9242f2b66253914a1b7e9f5d9"
+        },
+        "method": "POST",
+        "path": "/api/v1/domains/4/site-config/take",
+        "x_celikpanel_request_id": "b4d4d650b49f6e9d17de790dd002efa0"
+      },
+      "seconds": 0.34,
+      "status": 200,
+      "text": null
+    }
+  ],
+  "cells": {
+    "N": {
+      "detail": {
+        "journal": "steps/18-n-app-unit/native/137-n-take-journal.json",
+        "node": {
+          "how": "installed through the Panel",
+          "installed": [
+            "22.20.0"
+          ],
+          "status": "succeeded",
+          "version": "22.20.0"
+        }
+      },
+      "expectations": [
+        {
+          "expectation": "the unit is written with the \"# celikpanel-render v2\" header and its digest holds; the app runs",
+          "held": false,
+          "measured": {
+            "header": {
+              "body_bytes": 969,
+              "body_sha256": "5e81d145341e3078c5f591189958876fa58e373326a5d7b4ad401e553e451521",
+              "declared": "5e81d145341e3078c5f591189958876fa58e373326a5d7b4ad401e553e451521",
+              "present": true,
+              "valid": true
+            },
+            "state": {
+              "ActiveEnterTimestamp": "Sun 2026-10-11 04:40:25 UTC",
+              "ActiveState": "activating",
+              "ExecMainStartTimestamp": "Sun 2026-10-11 04:40:25 UTC",
+              "LoadState": "loaded",
+              "MainPID": "0",
+              "NRestarts": "0",
+              "SubState": "auto-restart"
+            },
+            "status": 200
+          }
+        },
+        {
+          "expectation": "a hosting change rewrites CelikPanel's unit (sealed) and leaves the owner's drop-in untouched; systemd applies it",
+          "held": true,
+          "measured": {
+            "dropin": [
+              [
+                "5b3a9580b8fb1cd8fa0440419f4df18ee2fe1daa90220259913eeda95f2d8b79",
+                276881
+              ],
+              [
+                "5b3a9580b8fb1cd8fa0440419f4df18ee2fe1daa90220259913eeda95f2d8b79",
+                276881
+              ]
+            ],
+            "environment": "Environment=PORT=3001 NODE_ENV=production PATH=/opt/celikpanel/runtimes/node/22.20.0/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin SET10_OWNER=dropin",
+            "status": 200
+          }
+        },
+        {
+          "expectation": "the change is refused 409 SITE_CONFIG_OWNER_EDITED (reason app_unit); the unit's bytes and inode stay",
+          "held": true,
+          "measured": {
+            "answer": {
+              "code": "SITE_CONFIG_OWNER_EDITED",
+              "detail": "owner_edited",
+              "reason": "app_unit",
+              "status": 409
+            },
+            "sha256": [
+              "314ba8963d82741e6c3809e0ce0952dc2daa89f4a8eedd4ae3ff2507d9d7cbc7",
+              "314ba8963d82741e6c3809e0ce0952dc2daa89f4a8eedd4ae3ff2507d9d7cbc7"
+            ]
+          }
+        },
+        {
+          "expectation": "the page lists the unit owner_edited with the drop-in directory as its include_dir",
+          "held": true,
+          "measured": {
+            "actions": [
+              "keep",
+              "take",
+              "merge"
+            ],
+            "include_dir": "/etc/systemd/system/celikapp-4.service.d",
+            "path": "/etc/systemd/system/celikapp-4.service",
+            "state": "owner_edited"
+          }
+        },
+        {
+          "expectation": "take answers 200 outcome taken; a dated copy holds the owner's unit; the unit is CelikPanel's sealed text",
+          "held": true,
+          "measured": {
+            "answer": {
+              "at": "2026-10-11T04:40:28Z",
+              "json": {
+                "actions": [],
+                "backup_path": "/etc/systemd/system/celikapp-4.service.celikpanel-backup-20261011T044028Z",
+                "decision": {
+                  "current": true,
+                  "decided_at": "2026-10-11T04:40:28Z",
+                  "kind": "take_celikpanel"
+                },
+                "domain": "set12-n.test",
+                "domain_id": 4,
+                "file_sha256": "cdd8d27994c7e2242857d59e8a80bf6bd393eb22b565eebefdf40b2de80381cc",
+                "include_dir": "/etc/systemd/system/celikapp-4.service.d",
+                "kind": "app_unit",
+                "ledger": {
+                  "backup_path": "/etc/systemd/system/celikapp-4.service.celikpanel-backup-20261011T044028Z",
+                  "observed_at": "2026-10-11T04:40:28Z",
+                  "written_at": "2026-10-11T04:40:28Z",
+                  "written_release": "v0.1.0-alpha.81 9e223f175d96"
+                },
+                "outcome": "taken",
+                "path": "/etc/systemd/system/celikapp-4.service",
+                "render_sha256": "19901790a33cc76a42c46ab0ab4136f0f8713dc9242f2b66253914a1b7e9f5d9",
+                "state": "managed_unchanged"
+              },
+              "label": "n take CelikPanel's unit (kind app_unit)",
+              "request": {
+                "body": {
+                  "file_sha256": "314ba8963d82741e6c3809e0ce0952dc2daa89f4a8eedd4ae3ff2507d9d7cbc7",
+                  "kind": "app_unit",
+                  "render_sha256": "19901790a33cc76a42c46ab0ab4136f0f8713dc9242f2b66253914a1b7e9f5d9"
+                },
+                "method": "POST",
+                "path": "/api/v1/domains/4/site-config/take",
+                "x_celikpanel_request_id": "b4d4d650b49f6e9d17de790dd002efa0"
+              },
+              "seconds": 0.34,
+              "status": 200,
+              "text": null
+            },
+            "backups": [
+              "/etc/systemd/system/celikapp-4.service.celikpanel-backup-20261011T044028Z"
+            ]
+          }
+        },
+        {
+          "expectation": "the owner's drop-in is untouched after the take",
+          "held": true,
+          "measured": [
+            "5b3a9580b8fb1cd8fa0440419f4df18ee2fe1daa90220259913eeda95f2d8b79",
+            "5b3a9580b8fb1cd8fa0440419f4df18ee2fe1daa90220259913eeda95f2d8b79"
+          ]
+        },
+        {
+          "expectation": "systemd was reloaded and the running app restarted (try-restart: MainPID changed, active)",
+          "held": false,
+          "measured": {
+            "main_pid": [
+              "0",
+              "0"
+            ],
+            "systemd": [
+              "2026-10-11T04:40:28.624168+00:00 dns-debian13 systemd[1]: Reload requested from client PID 36289 ('systemctl') (unit celikpanel-agent.service)...",
+              "2026-10-11T04:40:28.624214+00:00 dns-debian13 systemd[1]: Reloading...",
+              "2026-10-11T04:40:28.814511+00:00 dns-debian13 systemd[1]: Reloading finished in 189 ms.",
+              "2026-10-11T04:40:28.842114+00:00 dns-debian13 systemd[1]: Stopped celikapp-4.service - CelikPanel app: set12-n.test.",
+              "2026-10-11T04:40:28.843510+00:00 dns-debian13 systemd[1]: Started celikapp-4.service - CelikPanel app: set12-n.test.",
+              "2026-10-11T04:40:28.876321+00:00 dns-debian13 systemd[1]: celikapp-4.service: Main process exited, code=exited, status=127/n/a",
+              "2026-10-11T04:40:28.876585+00:00 dns-debian13 systemd[1]: celikapp-4.service: Failed with result 'exit-code'.",
+              "2026-10-11T04:40:32.037270+00:00 dns-debian13 systemd[1]: celikapp-4.service: Scheduled restart job, restart counter is at 1.",
+              "2026-10-11T04:40:32.039565+00:00 dns-debian13 systemd[1]: Started celikapp-4.service - CelikPanel app: set12-n.test.",
+              "2026-10-11T04:40:32.072443+00:00 dns-debian13 systemd[1]: celikapp-4.service: Main process exited, code=exited, status=127/n/a",
+              "2026-10-11T04:40:32.072625+00:00 dns-debian13 systemd[1]: celikapp-4.service: Failed with result 'exit-code'."
+            ]
+          }
+        }
+      ],
+      "verdict": "FAIL"
+    }
+  },
+  "checks": [
+    {
+      "detail": {
+        "DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/4/public_html",
+        "Domain": "set12-n.test",
+        "DomainID": 4,
+        "FTPPassword": "[REDACTED]",
+        "FTPUser": "set12_n_test",
+        "PHPVersion": "8.4",
+        "ProjectType": "php",
+        "SiteID": 4,
+        "TempDomain": ""
+      },
+      "name": "the PHP site set12-n.test is created through the Panel (200 with its id)",
+      "ok": true
+    },
+    {
+      "detail": {
+        "header": {
+          "body_bytes": 969,
+          "body_sha256": "5e81d145341e3078c5f591189958876fa58e373326a5d7b4ad401e553e451521",
+          "declared": "5e81d145341e3078c5f591189958876fa58e373326a5d7b4ad401e553e451521",
+          "present": true,
+          "valid": true
+        },
+        "state": {
+          "ActiveEnterTimestamp": "Sun 2026-10-11 04:40:25 UTC",
+          "ActiveState": "activating",
+          "ExecMainStartTimestamp": "Sun 2026-10-11 04:40:25 UTC",
+          "LoadState": "loaded",
+          "MainPID": "0",
+          "NRestarts": "0",
+          "SubState": "auto-restart"
+        },
+        "status": 200
+      },
+      "name": "N: the unit is written with the \"# celikpanel-render v2\" header and its digest holds; the app runs",
+      "ok": false
+    },
+    {
+      "detail": {
+        "dropin": [
+          [
+            "5b3a9580b8fb1cd8fa0440419f4df18ee2fe1daa90220259913eeda95f2d8b79",
+            276881
+          ],
+          [
+            "5b3a9580b8fb1cd8fa0440419f4df18ee2fe1daa90220259913eeda95f2d8b79",
+            276881
+          ]
+        ],
+        "environment": "Environment=PORT=3001 NODE_ENV=production PATH=/opt/celikpanel/runtimes/node/22.20.0/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin SET10_OWNER=dropin",
+        "status": 200
+      },
+      "name": "N: a hosting change rewrites CelikPanel's unit (sealed) and leaves the owner's drop-in untouched; systemd applies it",
+      "ok": true
+    },
+    {
+      "detail": {
+        "answer": {
+          "code": "SITE_CONFIG_OWNER_EDITED",
+          "detail": "owner_edited",
+          "reason": "app_unit",
+          "status": 409
+        },
+        "sha256": [
+          "314ba8963d82741e6c3809e0ce0952dc2daa89f4a8eedd4ae3ff2507d9d7cbc7",
+          "314ba8963d82741e6c3809e0ce0952dc2daa89f4a8eedd4ae3ff2507d9d7cbc7"
+        ]
+      },
+      "name": "N: the change is refused 409 SITE_CONFIG_OWNER_EDITED (reason app_unit); the unit's bytes and inode stay",
+      "ok": true
+    },
+    {
+      "detail": {
+        "actions": [
+          "keep",
+          "take",
+          "merge"
+        ],
+        "include_dir": "/etc/systemd/system/celikapp-4.service.d",
+        "path": "/etc/systemd/system/celikapp-4.service",
+        "state": "owner_edited"
+      },
+      "name": "N: the page lists the unit owner_edited with the drop-in directory as its include_dir",
+      "ok": true
+    },
+    {
+      "detail": {
+        "answer": {
+          "at": "2026-10-11T04:40:28Z",
+          "json": {
+            "actions": [],
+            "backup_path": "/etc/systemd/system/celikapp-4.service.celikpanel-backup-20261011T044028Z",
+            "decision": {
+              "current": true,
+              "decided_at": "2026-10-11T04:40:28Z",
+              "kind": "take_celikpanel"
+            },
+            "domain": "set12-n.test",
+            "domain_id": 4,
+            "file_sha256": "cdd8d27994c7e2242857d59e8a80bf6bd393eb22b565eebefdf40b2de80381cc",
+            "include_dir": "/etc/systemd/system/celikapp-4.service.d",
+            "kind": "app_unit",
+            "ledger": {
+              "backup_path": "/etc/systemd/system/celikapp-4.service.celikpanel-backup-20261011T044028Z",
+              "observed_at": "2026-10-11T04:40:28Z",
+              "written_at": "2026-10-11T04:40:28Z",
+              "written_release": "v0.1.0-alpha.81 9e223f175d96"
+            },
+            "outcome": "taken",
+            "path": "/etc/systemd/system/celikapp-4.service",
+            "render_sha256": "19901790a33cc76a42c46ab0ab4136f0f8713dc9242f2b66253914a1b7e9f5d9",
+            "state": "managed_unchanged"
+          },
+          "label": "n take CelikPanel's unit (kind app_unit)",
+          "request": {
+            "body": {
+              "file_sha256": "314ba8963d82741e6c3809e0ce0952dc2daa89f4a8eedd4ae3ff2507d9d7cbc7",
+              "kind": "app_unit",
+              "render_sha256": "19901790a33cc76a42c46ab0ab4136f0f8713dc9242f2b66253914a1b7e9f5d9"
+            },
+            "method": "POST",
+            "path": "/api/v1/domains/4/site-config/take",
+            "x_celikpanel_request_id": "b4d4d650b49f6e9d17de790dd002efa0"
+          },
+          "seconds": 0.34,
+          "status": 200,
+          "text": null
+        },
+        "backups": [
+          "/etc/systemd/system/celikapp-4.service.celikpanel-backup-20261011T044028Z"
+        ]
+      },
+      "name": "N: take answers 200 outcome taken; a dated copy holds the owner's unit; the unit is CelikPanel's sealed text",
+      "ok": true
+    },
+    {
+      "detail": [
+        "5b3a9580b8fb1cd8fa0440419f4df18ee2fe1daa90220259913eeda95f2d8b79",
+        "5b3a9580b8fb1cd8fa0440419f4df18ee2fe1daa90220259913eeda95f2d8b79"
+      ],
+      "name": "N: the owner's drop-in is untouched after the take",
+      "ok": true
+    },
+    {
+      "detail": {
+        "main_pid": [
+          "0",
+          "0"
+        ],
+        "systemd": [
+          "2026-10-11T04:40:28.624168+00:00 dns-debian13 systemd[1]: Reload requested from client PID 36289 ('systemctl') (unit celikpanel-agent.service)...",
+          "2026-10-11T04:40:28.624214+00:00 dns-debian13 systemd[1]: Reloading...",
+          "2026-10-11T04:40:28.814511+00:00 dns-debian13 systemd[1]: Reloading finished in 189 ms.",
+          "2026-10-11T04:40:28.842114+00:00 dns-debian13 systemd[1]: Stopped celikapp-4.service - CelikPanel app: set12-n.test.",
+          "2026-10-11T04:40:28.843510+00:00 dns-debian13 systemd[1]: Started celikapp-4.service - CelikPanel app: set12-n.test.",
+          "2026-10-11T04:40:28.876321+00:00 dns-debian13 systemd[1]: celikapp-4.service: Main process exited, code=exited, status=127/n/a",
+          "2026-10-11T04:40:28.876585+00:00 dns-debian13 systemd[1]: celikapp-4.service: Failed with result 'exit-code'.",
+          "2026-10-11T04:40:32.037270+00:00 dns-debian13 systemd[1]: celikapp-4.service: Scheduled restart job, restart counter is at 1.",
+          "2026-10-11T04:40:32.039565+00:00 dns-debian13 systemd[1]: Started celikapp-4.service - CelikPanel app: set12-n.test.",
+          "2026-10-11T04:40:32.072443+00:00 dns-debian13 systemd[1]: celikapp-4.service: Main process exited, code=exited, status=127/n/a",
+          "2026-10-11T04:40:32.072625+00:00 dns-debian13 systemd[1]: celikapp-4.service: Failed with result 'exit-code'."
+        ]
+      },
+      "name": "N: systemd was reloaded and the running app restarted (try-restart: MainPID changed, active)",
+      "ok": false
+    }
+  ],
+  "finished_at": "2026-10-11T04:40:32Z",
+  "native_evidence": false,
+  "natives": [
+    {
+      "file": "native/128-owner-files-set12-n.test.json",
+      "label": "owner-files-set12-n.test",
+      "mode": "owner-files",
+      "owner_action": true
+    },
+    {
+      "file": "native/129-n-0-unit.json",
+      "label": "n-0-unit",
+      "mode": "read-unit12",
+      "owner_action": false
+    },
+    {
+      "file": "native/130-owner-n-dropin.json",
+      "label": "owner-n-dropin",
+      "mode": "owner-unit10",
+      "owner_action": true
+    },
+    {
+      "file": "native/131-n-1-dropin.json",
+      "label": "n-1-dropin",
+      "mode": "read-unit12",
+      "owner_action": false
+    },
+    {
+      "file": "native/132-n-2-after-a-change.json",
+      "label": "n-2-after-a-change",
+      "mode": "read-unit12",
+      "owner_action": false
+    },
+    {
+      "file": "native/133-owner-n-unit-line.json",
+      "label": "owner-n-unit-line",
+      "mode": "owner-unit10",
+      "owner_action": true
+    },
+    {
+      "file": "native/134-n-3-after-the-refused-change.json",
+      "label": "n-3-after-the-refused-change",
+      "mode": "read-unit12",
+      "owner_action": false
+    },
+    {
+      "file": "native/135-guest-clock.json",
+      "label": "guest-clock",
+      "mode": "read-ledger",
+      "owner_action": false
+    },
+    {
+      "file": "native/136-n-4-after-take.json",
+      "label": "n-4-after-take",
+      "mode": "read-unit12",
+      "owner_action": false
+    },
+    {
+      "file": "native/137-n-take-journal.json",
+      "label": "n-take-journal",
+      "mode": "read-window12",
+      "owner_action": false
+    }
+  ],
+  "node": "debian13",
+  "node_install": {
+    "final": {
+      "finished_at": "2026-10-11T04:40:21.529006189Z",
+      "id": "0016c9e56b920a3d99c8d7cef5d6d730",
+      "kind": "runtime_install",
+      "package_name": "22.20.0",
+      "phase": "completed",
+      "request_id": "afcc8bb53ed7822e2783baef650215a9",
+      "result": {
+        "installed": true,
+        "success": true,
+        "version": "22.20.0"
+      },
+      "service_id": "node",
+      "started_at": "2026-10-11T04:40:12.962131217Z",
+      "status": "succeeded"
+    },
+    "post_status": 202,
+    "version": "22.20.0"
+  },
+  "notes": [
+    {
+      "detail": [
+        "the unit is written with the \"# celikpanel-render v2\" header and its digest holds; the app runs",
+        "systemd was reloaded and the running app restarted (try-restart: MainPID changed, active)"
+      ],
+      "note": "N: FAIL"
+    }
+  ],
+  "owner_actions": [
+    {
+      "at": "2026-10-11T04:40:24Z",
+      "label": "files-set12-n.test",
+      "mode": "owner-files"
+    },
+    {
+      "at": "2026-10-11T04:40:26Z",
+      "label": "n-dropin",
+      "mode": "owner-unit10"
+    },
+    {
+      "at": "2026-10-11T04:40:27Z",
+      "label": "n-unit-line",
+      "mode": "owner-unit10"
+    }
+  ],
+  "section": "N-app-unit",
+  "started_at": "2026-10-11T04:40:12Z",
+  "substeps": {
+    "N": "failed",
+    "section": "passed"
+  },
+  "title": "a Node site's unit: header, drop-in, owner edit, take",
+  "verdict": "failed"
+}

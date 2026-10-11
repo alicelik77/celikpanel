@@ -1,0 +1,128 @@
+{
+  "outcome": "response",
+  "panel": "owner",
+  "purpose": "after the update set10-r2.test: GET site-config",
+  "request": {
+    "body": null,
+    "headers": [
+      [
+        "Accept",
+        "application/json"
+      ],
+      [
+        "Host",
+        "127.0.0.1:19001"
+      ],
+      [
+        "Cookie",
+        "[REDACTED]"
+      ]
+    ],
+    "method": "GET",
+    "path": "/api/v1/domains/2/site-config"
+  },
+  "response": {
+    "elapsed_seconds": 0.013,
+    "headers": [
+      [
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+      ],
+      [
+        "Content-Type",
+        "application/json"
+      ],
+      [
+        "Referrer-Policy",
+        "no-referrer"
+      ],
+      [
+        "Strict-Transport-Security",
+        "max-age=31536000"
+      ],
+      [
+        "X-Content-Type-Options",
+        "nosniff"
+      ],
+      [
+        "X-Frame-Options",
+        "DENY"
+      ],
+      [
+        "Date",
+        "Sun, 11 Oct 2026 07:43:18 GMT"
+      ],
+      [
+        "Transfer-Encoding",
+        "chunked"
+      ]
+    ],
+    "json": {
+      "actions": [],
+      "challenge_file": "unchanged",
+      "domain": "set10-r2.test",
+      "domain_id": 2,
+      "enabled": "link",
+      "file_sha256": "0eba5192e0f3a0b958f4d973dd961b657edba04c2a4b1c0438051614d59b33e8",
+      "files": [
+        {
+          "actions": [],
+          "challenge_file": "unchanged",
+          "domain": "set10-r2.test",
+          "domain_id": 2,
+          "enabled": "link",
+          "file_sha256": "0eba5192e0f3a0b958f4d973dd961b657edba04c2a4b1c0438051614d59b33e8",
+          "include_dir": "/etc/nginx/celikpanel-sites.d/set10-r2.test",
+          "kind": "nginx_vhost",
+          "ledger": {
+            "observed_at": "2026-10-11T07:42:57Z",
+            "written_at": "2026-10-11T07:42:57Z",
+            "written_release": "v0.1.0-alpha.83 80a2aed4be2c"
+          },
+          "managed_dir": "/etc/nginx/celikpanel-managed.d/set10-r2.test",
+          "managed_include": "include /etc/nginx/celikpanel-managed.d/set10-r2.test/*.conf;",
+          "path": "/etc/nginx/sites-available/set10-r2.test.conf",
+          "protection": "none",
+          "render_sha256": "366c448ec5d60c0ec858028212588782a5cca3e2ff3a1a215080b9a193529a8a",
+          "state": "managed_unchanged"
+        },
+        {
+          "actions": [
+            "keep",
+            "take",
+            "merge"
+          ],
+          "diff": "--- /etc/php/8.4/fpm/pool.d/site2.conf (on this server)\n+++ CelikPanel's text\n@@ -1,3 +1,6 @@\n+; The PHP-FPM pool of site2, written by CelikPanel. A line you add or change here is kept:\n+; CelikPanel then shows the difference and asks before writing this file again.\n+; Buraya eklediğiniz ya da değiştirdiğiniz satır korunur; CelikPanel yeniden yazmadan önce sorar.\n [site2]\n user = set10_r2_test\n group = set10_r2_test\n@@ -12,5 +15,3 @@\n pm.max_spare_servers = 3\n pm.max_requests = 500\n chdir = /\n-; set12: added by the server owner by hand (a comment and a directive of their own)\n-php_admin_value[memory_limit] = 256M\n",
+          "domain": "set10-r2.test",
+          "domain_id": 2,
+          "file_sha256": "34a5cd4fa972c2c889394c250cacc0812b9184eab866ff048ee51c581a466751",
+          "kind": "php_pool",
+          "ledger": {
+            "observed_at": "2026-10-11T07:43:18Z"
+          },
+          "path": "/etc/php/8.4/fpm/pool.d/site2.conf",
+          "protection": "none",
+          "render_sha256": "fb4c2c445dd45e8224b31eebe0e12a9776375b7a06427a1bda883ba1d4bd7f41",
+          "state": "unknown_origin"
+        }
+      ],
+      "include_dir": "/etc/nginx/celikpanel-sites.d/set10-r2.test",
+      "kind": "nginx_vhost",
+      "ledger": {
+        "observed_at": "2026-10-11T07:42:57Z",
+        "written_at": "2026-10-11T07:42:57Z",
+        "written_release": "v0.1.0-alpha.83 80a2aed4be2c"
+      },
+      "managed_dir": "/etc/nginx/celikpanel-managed.d/set10-r2.test",
+      "managed_include": "include /etc/nginx/celikpanel-managed.d/set10-r2.test/*.conf;",
+      "overall_kind": "php_pool",
+      "overall_state": "unknown_origin",
+      "path": "/etc/nginx/sites-available/set10-r2.test.conf",
+      "protection": "none",
+      "render_sha256": "366c448ec5d60c0ec858028212588782a5cca3e2ff3a1a215080b9a193529a8a",
+      "state": "managed_unchanged"
+    },
+    "status": 200,
+    "text": null
+  }
+}

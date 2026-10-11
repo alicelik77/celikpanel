@@ -1,0 +1,62 @@
+== commits
+ead69cdcc5dc79a965380302d5d0257e92e1293c
+d34f882e566ac22fa1a5a91b0c9944ebd87d7c0d
+cd46ca59584b8da8f54ba41c919c45302caec56b
+ead69cdcc5dc79a965380302d5d0257e92e1293c
+== git diff --stat cd46ca595 ead69cdcc -- cmd internal web/src
+ cmd/agent/site_file_rpc_test.go                    |  31 ++
+ cmd/agent/site_rpc.go                              |  11 +-
+ cmd/agent/vhost_probe_test.go                      |  29 ++
+ cmd/agent/vhost_rpc.go                             |  69 +++-
+ cmd/panel/alias_certificates.go                    |  43 ++-
+ cmd/panel/cert_renewal.go                          |  48 ++-
+ cmd/panel/dashboard_handler.go                     |  68 +++-
+ cmd/panel/domain_general_handlers.go               |  36 +-
+ cmd/panel/domain_ssl_handlers.go                   |  84 +++--
+ cmd/panel/site_config.go                           | 127 ++++++-
+ cmd/panel/site_config_certificate.go               | 370 ++++++++++++++++++++
+ cmd/panel/site_config_certificate_test.go          | 254 ++++++++++++++
+ cmd/panel/site_config_probe_test.go                | 243 ++++++++++++++
+ cmd/panel/site_config_test.go                      | 103 ++++++
+ cmd/panel/ssl_runtime_status.go                    |  10 +-
+ cmd/panel/ssl_validation_vhost_restore_test.go     |  53 ++-
+ cmd/panel/vhost_apply.go                           |  13 +
+ internal/services/managed_vhost.go                 | 373 +++++++++++++++++++--
+ .../services/managed_vhost_certificate_test.go     | 267 +++++++++++++++
+ internal/services/managed_vhost_probe.go           | 290 ++++++++++++++++
+ internal/services/managed_vhost_probe_test.go      | 294 ++++++++++++++++
+ internal/services/managed_vhost_test.go            |  67 +++-
+ internal/services/nginx_acme_mail_test.go          |  11 +-
+ internal/services/nginx_generator.go               |  29 ++
+ internal/services/nginx_generator_test.go          |   9 +
+ internal/services/nginx_php_handoff_test.go        |   5 +
+ internal/services/nginx_ssl_runtime_test.go        |  11 +-
+ internal/services/site_file_ledger.go              |  79 +++++
+ internal/services/site_file_protection_linux.go    |  92 +++++
+ .../services/site_file_protection_linux_test.go    |  51 +++
+ internal/services/site_file_protection_other.go    |  10 +
+ internal/services/templates/nginx/vhost.conf.tmpl  |  69 ++--
+ internal/transport/rpc.go                          |   5 +
+ internal/transport/site_files.go                   |  91 +++++
+ web/src/App.tsx                                    |  16 +-
+ web/src/auth/usePanelSession.ts                    |  91 ++++-
+ web/src/components/Dashboard.tsx                   |  21 +-
+ web/src/components/DomainDetail.tsx                |   9 +-
+ web/src/components/DomainGeneralSettings.tsx       |  14 +
+ web/src/components/DomainSSLOverviewCard.tsx       |  24 +-
+ web/src/components/DomainSSLSettings.tsx           |  40 ++-
+ web/src/components/DomainSiteConfig.tsx            | 333 +++++++++++++++---
+ web/src/components/Domains.tsx                     |  84 +++--
+ web/src/components/RecoveryAccess.tsx              |  45 ++-
+ web/src/i18n/en.ts                                 |  18 +-
+ web/src/i18n/screens/en.ts                         |  13 +
+ web/src/i18n/screens/server/en.ts                  |  69 +++-
+ web/src/i18n/screens/server/tr.ts                  |  73 +++-
+ web/src/i18n/screens/tr.ts                         |  13 +
+ web/src/i18n/tr.ts                                 |  18 +-
+ web/src/lib/api.ts                                 |   3 +-
+ web/src/lib/quietRead.ts                           |  57 ++++
+ web/src/lib/sslTier.ts                             |  26 +-
+ 53 files changed, 4012 insertions(+), 300 deletions(-)
+== git diff --stat ead69cdcc HEAD -- cmd internal web/src (empty = no later product change)
+== end

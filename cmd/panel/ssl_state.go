@@ -67,6 +67,9 @@ type certificateInstall struct {
 	ExpiresAt      time.Time
 	AutoRenew      bool
 	SecureMail     bool
+	// validationNotRun: the kept file's probe could not be sent from this
+	// server and the request went ahead (set11 cell A6); not stored.
+	validationNotRun *certificateValidationNotRun
 }
 
 type siteSSLState struct {

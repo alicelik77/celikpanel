@@ -1,0 +1,746 @@
+{
+  "calls": [
+    {
+      "at": "2026-10-11T04:37:44Z",
+      "json": {
+        "available_versions": [
+          "8.4"
+        ],
+        "domain_id": 3,
+        "domain_name": "set12-b.test",
+        "php_version": "8.4",
+        "pool_config": {
+          "group": "set12_b_test",
+          "listen": "/var/run/php/php8.4-fpm-site3.sock",
+          "listen_group": "www-data",
+          "listen_mode": "0660",
+          "listen_owner": "www-data",
+          "name": "site3",
+          "pm": "dynamic",
+          "pm_max_children": 5,
+          "pm_max_requests": 500,
+          "pm_max_spare_servers": 3,
+          "pm_min_spare_servers": 1,
+          "pm_start_servers": 2,
+          "user": "set12_b_test"
+        },
+        "pool_name": "site3"
+      },
+      "label": "u: B's PHP settings read",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains/3/php"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T04:38:51Z",
+      "json": {
+        "actions": [],
+        "challenge_file": "unchanged",
+        "domain": "set12-a.test",
+        "domain_id": 2,
+        "enabled": "link",
+        "file_sha256": "5a0e4f07968a00888168baa1275d402fa4ebcbba5092d4c2b6d5e49db79eb83b",
+        "files": [
+          {
+            "actions": [],
+            "challenge_file": "unchanged",
+            "domain": "set12-a.test",
+            "domain_id": 2,
+            "enabled": "link",
+            "file_sha256": "5a0e4f07968a00888168baa1275d402fa4ebcbba5092d4c2b6d5e49db79eb83b",
+            "include_dir": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+            "kind": "nginx_vhost",
+            "ledger": {
+              "observed_at": "2026-10-11T04:37:18Z",
+              "written_at": "2026-10-11T04:37:14Z",
+              "written_release": "v0.1.0-alpha.81 9e223f175d96"
+            },
+            "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-a.test",
+            "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;",
+            "path": "/etc/nginx/sites-available/set12-a.test.conf",
+            "protection": "none",
+            "render_sha256": "ddea12bd9d8013719d2250f2f6a8bd483eb52676a52e72f06ed93cb5ca8e9afc",
+            "state": "managed_unchanged"
+          },
+          {
+            "actions": [
+              "recheck"
+            ],
+            "domain": "set12-a.test",
+            "domain_id": 2,
+            "kind": "php_pool",
+            "reason": "not_read",
+            "state": "unknown"
+          }
+        ],
+        "include_dir": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+        "kind": "nginx_vhost",
+        "ledger": {
+          "observed_at": "2026-10-11T04:37:18Z",
+          "written_at": "2026-10-11T04:37:14Z",
+          "written_release": "v0.1.0-alpha.81 9e223f175d96"
+        },
+        "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-a.test",
+        "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;",
+        "overall_kind": "php_pool",
+        "overall_state": "unknown",
+        "path": "/etc/nginx/sites-available/set12-a.test.conf",
+        "protection": "none",
+        "render_sha256": "ddea12bd9d8013719d2250f2f6a8bd483eb52676a52e72f06ed93cb5ca8e9afc",
+        "state": "managed_unchanged"
+      },
+      "label": "u page of A while B's pool save holds the lock: GET site-config",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains/2/site-config"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T04:38:51Z",
+      "json": [
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T04:37:16Z",
+          "disk_usage": 0,
+          "domain_name": "set12-b.test",
+          "id": 3,
+          "php_version": "8.4",
+          "project_type": "php",
+          "site_config": {
+            "state": "managed_unchanged"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        },
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T04:37:14Z",
+          "disk_usage": 0,
+          "domain_name": "set12-a.test",
+          "id": 2,
+          "php_version": "8.4",
+          "project_type": "php",
+          "site_config": {
+            "state": "managed_unchanged"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        },
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T04:37:11Z",
+          "disk_usage": 0,
+          "domain_name": "set1-owner.test",
+          "id": 1,
+          "php_version": "",
+          "project_type": "static",
+          "site_config": {
+            "state": "managed_unchanged"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        }
+      ],
+      "label": "u while the lock is held: GET /api/v1/domains (Domains list)",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T04:39:00Z",
+      "json": {
+        "message": "Pool configuration updated",
+        "status": "success"
+      },
+      "label": "u: B's pool save (holds the Agent's pool lock during the slow reload)",
+      "request": {
+        "body": {
+          "pool_config": {
+            "pm": "dynamic",
+            "pm_max_children": 7,
+            "pm_max_requests": 500,
+            "pm_max_spare_servers": 3,
+            "pm_min_spare_servers": 1,
+            "pm_start_servers": 2
+          },
+          "version": "8.4"
+        },
+        "method": "POST",
+        "path": "/api/v1/domains/3/php/pool"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T04:39:00Z",
+      "json": {
+        "actions": [],
+        "challenge_file": "unchanged",
+        "domain": "set12-a.test",
+        "domain_id": 2,
+        "enabled": "link",
+        "file_sha256": "5a0e4f07968a00888168baa1275d402fa4ebcbba5092d4c2b6d5e49db79eb83b",
+        "files": [
+          {
+            "actions": [],
+            "challenge_file": "unchanged",
+            "domain": "set12-a.test",
+            "domain_id": 2,
+            "enabled": "link",
+            "file_sha256": "5a0e4f07968a00888168baa1275d402fa4ebcbba5092d4c2b6d5e49db79eb83b",
+            "include_dir": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+            "kind": "nginx_vhost",
+            "ledger": {
+              "observed_at": "2026-10-11T04:37:18Z",
+              "written_at": "2026-10-11T04:37:14Z",
+              "written_release": "v0.1.0-alpha.81 9e223f175d96"
+            },
+            "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-a.test",
+            "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;",
+            "path": "/etc/nginx/sites-available/set12-a.test.conf",
+            "protection": "none",
+            "render_sha256": "ddea12bd9d8013719d2250f2f6a8bd483eb52676a52e72f06ed93cb5ca8e9afc",
+            "state": "managed_unchanged"
+          },
+          {
+            "actions": [],
+            "decision": {
+              "current": false,
+              "decided_at": "2026-10-11T04:37:36Z",
+              "kind": "take_celikpanel"
+            },
+            "domain": "set12-a.test",
+            "domain_id": 2,
+            "file_sha256": "68b9a5837198a72dde8e055eb50e37764eed33e724251381f3988b7b379e14ae",
+            "kind": "php_pool",
+            "ledger": {
+              "backup_path": "/etc/php/8.4/fpm/pool.d/site2.conf.celikpanel-backup-20261011T043736Z",
+              "observed_at": "2026-10-11T04:39:01Z",
+              "written_at": "2026-10-11T04:37:36Z",
+              "written_release": "v0.1.0-alpha.81 9e223f175d96"
+            },
+            "path": "/etc/php/8.4/fpm/pool.d/site2.conf",
+            "protection": "none",
+            "render_sha256": "da1ca0fec8c515659394b4ad29017ce8272f19787ddeb104e8f6c744d91e2151",
+            "state": "managed_unchanged"
+          }
+        ],
+        "include_dir": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+        "kind": "nginx_vhost",
+        "ledger": {
+          "observed_at": "2026-10-11T04:37:18Z",
+          "written_at": "2026-10-11T04:37:14Z",
+          "written_release": "v0.1.0-alpha.81 9e223f175d96"
+        },
+        "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-a.test",
+        "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;",
+        "overall_kind": "nginx_vhost",
+        "overall_state": "managed_unchanged",
+        "path": "/etc/nginx/sites-available/set12-a.test.conf",
+        "protection": "none",
+        "render_sha256": "ddea12bd9d8013719d2250f2f6a8bd483eb52676a52e72f06ed93cb5ca8e9afc",
+        "state": "managed_unchanged"
+      },
+      "label": "u page of A after the lock was released: GET site-config",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains/2/site-config"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T04:39:00Z",
+      "json": [
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T04:37:16Z",
+          "disk_usage": 0,
+          "domain_name": "set12-b.test",
+          "id": 3,
+          "php_version": "8.4",
+          "project_type": "php",
+          "site_config": {
+            "state": "managed_unchanged"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        },
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T04:37:14Z",
+          "disk_usage": 0,
+          "domain_name": "set12-a.test",
+          "id": 2,
+          "php_version": "8.4",
+          "project_type": "php",
+          "site_config": {
+            "state": "managed_unchanged"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        },
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T04:37:11Z",
+          "disk_usage": 0,
+          "domain_name": "set1-owner.test",
+          "id": 1,
+          "php_version": "",
+          "project_type": "static",
+          "site_config": {
+            "state": "managed_unchanged"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        }
+      ],
+      "label": "u after: GET /api/v1/domains (Domains list)",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains"
+      },
+      "status": 200,
+      "text": null
+    }
+  ],
+  "cells": {
+    "U": {
+      "detail": {
+        "journal": "steps/12-u-pool-not-read/native/034-u-journal.json"
+      },
+      "expectations": [
+        {
+          "expectation": "lab: PHP-FPM's reload waits 75 s (drop-in active)",
+          "held": true,
+          "measured": "ExecReload={ path=/bin/sleep ; argv[]=/bin/sleep 75 ; ignore_errors=no ; start_time=[n/a] ; stop_time=[n/a] ; pid=0 ; code=(null) ; status=0/0 }\n"
+        },
+        {
+          "expectation": "B's pool save was in progress across the read (answered after it)",
+          "held": true,
+          "measured": {
+            "error": null,
+            "read_seconds": 60.0,
+            "save_seconds": 75.1,
+            "save_status": 200
+          }
+        },
+        {
+          "expectation": "GET site-config answers 200 with the vhost read and the pool unknown, reason not_read, action recheck",
+          "held": true,
+          "measured": {
+            "files": [
+              {
+                "actions": [],
+                "adopted_from": null,
+                "detail": null,
+                "diff_lines": 0,
+                "file_state": null,
+                "kind": "nginx_vhost",
+                "path": "/etc/nginx/sites-available/set12-a.test.conf",
+                "pending_path": null,
+                "pending_reason": null,
+                "protection": "none",
+                "reason": null,
+                "state": "managed_unchanged",
+                "system_error": null,
+                "validation": null,
+                "validation_address": null,
+                "validation_unknown_reason": null
+              },
+              {
+                "actions": [
+                  "recheck"
+                ],
+                "adopted_from": null,
+                "detail": null,
+                "diff_lines": 0,
+                "file_state": null,
+                "kind": "php_pool",
+                "path": null,
+                "pending_path": null,
+                "pending_reason": null,
+                "protection": null,
+                "reason": "not_read",
+                "state": "unknown",
+                "system_error": null,
+                "validation": null,
+                "validation_address": null,
+                "validation_unknown_reason": null
+              }
+            ],
+            "overall_kind": "php_pool",
+            "overall_state": "unknown",
+            "read_seconds": 60.0,
+            "status": 200,
+            "top": {
+              "actions": [],
+              "adopted_from": null,
+              "detail": null,
+              "file_state": null,
+              "kind": "nginx_vhost",
+              "path": "/etc/nginx/sites-available/set12-a.test.conf",
+              "pending_path": null,
+              "pending_reason": null,
+              "protection": "none",
+              "reason": null,
+              "state": "managed_unchanged",
+              "system_error": null,
+              "validation": null,
+              "validation_address": null,
+              "validation_unknown_reason": null
+            }
+          }
+        },
+        {
+          "expectation": "overall_state unknown and overall_kind php_pool (the unread file outranks CelikPanel's unchanged text)",
+          "held": true,
+          "measured": {
+            "overall_kind": "php_pool",
+            "overall_state": "unknown"
+          }
+        },
+        {
+          "expectation": "the Panel's journal names the pool it could not read",
+          "held": true,
+          "measured": [
+            "2026-10-11T04:38:51.454952+00:00 dns-debian13 panel[30924]: 2026/10/11 04:38:51 site configuration set12-a.test php_pool: could not read its state: context deadline exceeded"
+          ]
+        },
+        {
+          "expectation": "the Domains row says a configuration file could not be read (state unknown, kind php_pool)",
+          "held": false,
+          "measured": {
+            "documented_limit": "docs: the Domains list's site_config is built from the ledger rows only; a not_read leaves no row",
+            "row_after": {
+              "state": "managed_unchanged"
+            },
+            "row_during": {
+              "state": "managed_unchanged"
+            }
+          }
+        },
+        {
+          "expectation": "after the lock is released the page reads the pool again (managed_unchanged)",
+          "held": true,
+          "measured": {
+            "files": [
+              {
+                "actions": [],
+                "adopted_from": null,
+                "detail": null,
+                "diff_lines": 0,
+                "file_state": null,
+                "kind": "nginx_vhost",
+                "path": "/etc/nginx/sites-available/set12-a.test.conf",
+                "pending_path": null,
+                "pending_reason": null,
+                "protection": "none",
+                "reason": null,
+                "state": "managed_unchanged",
+                "system_error": null,
+                "validation": null,
+                "validation_address": null,
+                "validation_unknown_reason": null
+              },
+              {
+                "actions": [],
+                "adopted_from": null,
+                "detail": null,
+                "diff_lines": 0,
+                "file_state": null,
+                "kind": "php_pool",
+                "path": "/etc/php/8.4/fpm/pool.d/site2.conf",
+                "pending_path": null,
+                "pending_reason": null,
+                "protection": "none",
+                "reason": null,
+                "state": "managed_unchanged",
+                "system_error": null,
+                "validation": null,
+                "validation_address": null,
+                "validation_unknown_reason": null
+              }
+            ],
+            "overall_kind": "nginx_vhost",
+            "overall_state": "managed_unchanged",
+            "top": {
+              "actions": [],
+              "adopted_from": null,
+              "detail": null,
+              "file_state": null,
+              "kind": "nginx_vhost",
+              "path": "/etc/nginx/sites-available/set12-a.test.conf",
+              "pending_path": null,
+              "pending_reason": null,
+              "protection": "none",
+              "reason": null,
+              "state": "managed_unchanged",
+              "system_error": null,
+              "validation": null,
+              "validation_address": null,
+              "validation_unknown_reason": null
+            }
+          }
+        }
+      ],
+      "verdict": "FAIL"
+    }
+  },
+  "checks": [
+    {
+      "detail": "ExecReload={ path=/bin/sleep ; argv[]=/bin/sleep 75 ; ignore_errors=no ; start_time=[n/a] ; stop_time=[n/a] ; pid=0 ; code=(null) ; status=0/0 }\n",
+      "name": "U: lab: PHP-FPM's reload waits 75 s (drop-in active)",
+      "ok": true
+    },
+    {
+      "detail": {
+        "error": null,
+        "read_seconds": 60.0,
+        "save_seconds": 75.1,
+        "save_status": 200
+      },
+      "name": "U: B's pool save was in progress across the read (answered after it)",
+      "ok": true
+    },
+    {
+      "detail": {
+        "files": [
+          {
+            "actions": [],
+            "adopted_from": null,
+            "detail": null,
+            "diff_lines": 0,
+            "file_state": null,
+            "kind": "nginx_vhost",
+            "path": "/etc/nginx/sites-available/set12-a.test.conf",
+            "pending_path": null,
+            "pending_reason": null,
+            "protection": "none",
+            "reason": null,
+            "state": "managed_unchanged",
+            "system_error": null,
+            "validation": null,
+            "validation_address": null,
+            "validation_unknown_reason": null
+          },
+          {
+            "actions": [
+              "recheck"
+            ],
+            "adopted_from": null,
+            "detail": null,
+            "diff_lines": 0,
+            "file_state": null,
+            "kind": "php_pool",
+            "path": null,
+            "pending_path": null,
+            "pending_reason": null,
+            "protection": null,
+            "reason": "not_read",
+            "state": "unknown",
+            "system_error": null,
+            "validation": null,
+            "validation_address": null,
+            "validation_unknown_reason": null
+          }
+        ],
+        "overall_kind": "php_pool",
+        "overall_state": "unknown",
+        "read_seconds": 60.0,
+        "status": 200,
+        "top": {
+          "actions": [],
+          "adopted_from": null,
+          "detail": null,
+          "file_state": null,
+          "kind": "nginx_vhost",
+          "path": "/etc/nginx/sites-available/set12-a.test.conf",
+          "pending_path": null,
+          "pending_reason": null,
+          "protection": "none",
+          "reason": null,
+          "state": "managed_unchanged",
+          "system_error": null,
+          "validation": null,
+          "validation_address": null,
+          "validation_unknown_reason": null
+        }
+      },
+      "name": "U: GET site-config answers 200 with the vhost read and the pool unknown, reason not_read, action recheck",
+      "ok": true
+    },
+    {
+      "detail": {
+        "overall_kind": "php_pool",
+        "overall_state": "unknown"
+      },
+      "name": "U: overall_state unknown and overall_kind php_pool (the unread file outranks CelikPanel's unchanged text)",
+      "ok": true
+    },
+    {
+      "detail": [
+        "2026-10-11T04:38:51.454952+00:00 dns-debian13 panel[30924]: 2026/10/11 04:38:51 site configuration set12-a.test php_pool: could not read its state: context deadline exceeded"
+      ],
+      "name": "U: the Panel's journal names the pool it could not read",
+      "ok": true
+    },
+    {
+      "detail": {
+        "documented_limit": "docs: the Domains list's site_config is built from the ledger rows only; a not_read leaves no row",
+        "row_after": {
+          "state": "managed_unchanged"
+        },
+        "row_during": {
+          "state": "managed_unchanged"
+        }
+      },
+      "name": "U: the Domains row says a configuration file could not be read (state unknown, kind php_pool)",
+      "ok": false
+    },
+    {
+      "detail": {
+        "files": [
+          {
+            "actions": [],
+            "adopted_from": null,
+            "detail": null,
+            "diff_lines": 0,
+            "file_state": null,
+            "kind": "nginx_vhost",
+            "path": "/etc/nginx/sites-available/set12-a.test.conf",
+            "pending_path": null,
+            "pending_reason": null,
+            "protection": "none",
+            "reason": null,
+            "state": "managed_unchanged",
+            "system_error": null,
+            "validation": null,
+            "validation_address": null,
+            "validation_unknown_reason": null
+          },
+          {
+            "actions": [],
+            "adopted_from": null,
+            "detail": null,
+            "diff_lines": 0,
+            "file_state": null,
+            "kind": "php_pool",
+            "path": "/etc/php/8.4/fpm/pool.d/site2.conf",
+            "pending_path": null,
+            "pending_reason": null,
+            "protection": "none",
+            "reason": null,
+            "state": "managed_unchanged",
+            "system_error": null,
+            "validation": null,
+            "validation_address": null,
+            "validation_unknown_reason": null
+          }
+        ],
+        "overall_kind": "nginx_vhost",
+        "overall_state": "managed_unchanged",
+        "top": {
+          "actions": [],
+          "adopted_from": null,
+          "detail": null,
+          "file_state": null,
+          "kind": "nginx_vhost",
+          "path": "/etc/nginx/sites-available/set12-a.test.conf",
+          "pending_path": null,
+          "pending_reason": null,
+          "protection": "none",
+          "reason": null,
+          "state": "managed_unchanged",
+          "system_error": null,
+          "validation": null,
+          "validation_address": null,
+          "validation_unknown_reason": null
+        }
+      },
+      "name": "U: after the lock is released the page reads the pool again (managed_unchanged)",
+      "ok": true
+    }
+  ],
+  "finished_at": "2026-10-11T04:39:00Z",
+  "lab_preparation": [
+    {
+      "file": "steps/12-u-pool-not-read/native/031-lab-u-pool-restore.json",
+      "label": "u-pool-restore",
+      "mode": "lab-pool-restore"
+    },
+    {
+      "file": "steps/12-u-pool-not-read/native/032-lab-u-slow-reload.json",
+      "label": "u-slow-reload",
+      "mode": "lab-slow-reload"
+    },
+    {
+      "file": "steps/12-u-pool-not-read/native/035-lab-u-slow-reload-removed.json",
+      "label": "u-slow-reload-removed",
+      "mode": "lab-slow-reload"
+    }
+  ],
+  "native_evidence": false,
+  "natives": [
+    {
+      "file": "native/031-lab-u-pool-restore.json",
+      "label": "lab-u-pool-restore",
+      "mode": "lab-pool-restore",
+      "owner_action": false
+    },
+    {
+      "file": "native/032-lab-u-slow-reload.json",
+      "label": "lab-u-slow-reload",
+      "mode": "lab-slow-reload",
+      "owner_action": false
+    },
+    {
+      "file": "native/033-guest-clock.json",
+      "label": "guest-clock",
+      "mode": "read-ledger",
+      "owner_action": false
+    },
+    {
+      "file": "native/034-u-journal.json",
+      "label": "u-journal",
+      "mode": "read-window12",
+      "owner_action": false
+    },
+    {
+      "file": "native/035-lab-u-slow-reload-removed.json",
+      "label": "lab-u-slow-reload-removed",
+      "mode": "lab-slow-reload",
+      "owner_action": false
+    }
+  ],
+  "node": "debian13",
+  "notes": [
+    {
+      "detail": [
+        "the Domains row says a configuration file could not be read (state unknown, kind php_pool)"
+      ],
+      "note": "U: FAIL"
+    }
+  ],
+  "owner_actions": [],
+  "section": "U-pool-not-read",
+  "started_at": "2026-10-11T04:37:43Z",
+  "substeps": {
+    "U": "failed"
+  },
+  "title": "the page while the Agent's pool lock is held: the pool not read",
+  "verdict": "failed"
+}

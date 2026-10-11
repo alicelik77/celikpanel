@@ -1,0 +1,89 @@
+{
+  "outcome": "response",
+  "panel": "owner",
+  "purpose": "u: B's pool save (holds the Agent's pool lock during the slow reload)",
+  "request": {
+    "body": {
+      "pool_config": {
+        "pm": "dynamic",
+        "pm_max_children": 7,
+        "pm_max_requests": 500,
+        "pm_max_spare_servers": 3,
+        "pm_min_spare_servers": 1,
+        "pm_start_servers": 2
+      },
+      "version": "8.3"
+    },
+    "headers": [
+      [
+        "Accept",
+        "application/json"
+      ],
+      [
+        "Host",
+        "127.0.0.1:18891"
+      ],
+      [
+        "Content-Type",
+        "application/json"
+      ],
+      [
+        "Origin",
+        "https://127.0.0.1:18891"
+      ],
+      [
+        "Cookie",
+        "[REDACTED]"
+      ],
+      [
+        "X-CelikPanel-Request-Id",
+        "39499d67c153133e58c8a31ccc7c5496"
+      ]
+    ],
+    "method": "POST",
+    "path": "/api/v1/domains/3/php/pool"
+  },
+  "response": {
+    "elapsed_seconds": 75.096,
+    "headers": [
+      [
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+      ],
+      [
+        "Content-Type",
+        "application/json"
+      ],
+      [
+        "Referrer-Policy",
+        "no-referrer"
+      ],
+      [
+        "Strict-Transport-Security",
+        "max-age=31536000"
+      ],
+      [
+        "X-Content-Type-Options",
+        "nosniff"
+      ],
+      [
+        "X-Frame-Options",
+        "DENY"
+      ],
+      [
+        "Date",
+        "Sun, 11 Oct 2026 05:05:18 GMT"
+      ],
+      [
+        "Content-Length",
+        "60"
+      ]
+    ],
+    "json": {
+      "message": "Pool configuration updated",
+      "status": "success"
+    },
+    "status": 200,
+    "text": null
+  }
+}

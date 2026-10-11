@@ -1,0 +1,2 @@
+lab=/var/tmp/cp-release-drill-s12-g82-arch
+upd1-arch-good-20261011t062258z

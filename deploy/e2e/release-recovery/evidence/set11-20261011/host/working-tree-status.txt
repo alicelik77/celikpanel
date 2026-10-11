@@ -1,0 +1,15 @@
+# git status --short of the working tree at staging (Windows git; the WSL run of the same command was stopped after ~20 min over the 9p mount)
+?? .agents/
+?? .attic/
+?? .claude/
+?? .codex/
+?? .github/agents/
+?? .github/hooks/
+?? .github/skills/
+?? .impeccable/review-final/
+?? .impeccable/review/
+?? deploy/e2e/release-recovery/evidence/set11-20261011/
+?? deploy/e2e/release-recovery/guest_set11_native.py
+?? deploy/e2e/release-recovery/run-set11.sh
+?? deploy/e2e/release-recovery/set11_trial.py
+?? deploy/e2e/release-recovery/test_set11_trial.py

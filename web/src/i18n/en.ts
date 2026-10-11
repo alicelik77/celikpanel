@@ -96,6 +96,15 @@ export const en = {
     'app.pageLoadFailed': 'This section could not be loaded. CelikPanel may have been updated while this tab was open.',
     'app.reload': 'Reload CelikPanel',
 
+    // First page load (2026-10-10, seventh native record, cell 5): drawn only
+    // after the 1.5 s quiet time, while the first read has still not answered.
+    // Ilk sayfa yuklemesi: yalnizca 1,5 sn sessiz sureden sonra cizilir.
+    'recovery.waitingHelp': "The Panel has not answered yet. CelikPanel opens as soon as it does; you do not need to do anything.",
+    'recovery.waitingProlonged': "This has taken longer than half a minute. You can also reload CelikPanel; if the Panel still does not answer, the server administrator checks that the CelikPanel service is running.",
+    'recovery.loadingTitle': "Opening CelikPanel",
+    'recovery.loadingHelp': "Your session is confirmed and the Panel is ready. The interface is still loading and opens by itself.",
+    // End of the first page load block.
+
     'nav.dashboard': 'Dashboard',
     'nav.domains': 'Domains',
     'nav.databases': 'Databases',
@@ -144,6 +153,13 @@ export const en = {
     'panelUpdate.sending': 'Sending the update request…',
     'panelUpdate.accepted': 'The request was accepted; secure status tracking started.',
     'panelUpdate.watch': 'Navigate; updates locked.',
+    // --- update notice: what the last read of the followed update established (2026-10-10) ---
+    'panelUpdate.tracking.reading': 'Reading the state of this update from the server…',
+    'panelUpdate.tracking.verifyingTitle': 'Update installed, being verified',
+    'panelUpdate.tracking.verifying': '{version} is installed and this panel is running it. The update is being verified and is not finished yet; this notice follows it by itself. You do not need to do anything.',
+    'panelUpdate.tracking.unknown': 'The state of this update could not be read just now, so whether it is still running or has finished is not known. This notice reads it again by itself; do not start another update.',
+    'panelUpdate.lastRead': 'Last read',
+    // --- end of the update notice block ---
     'panelUpdate.canonicalChecking': 'Checking unfinished updates...',
     'panelUpdate.interactionLocked': 'Navigation is temporarily locked while this update is checked. It unlocks automatically after two minutes; tracking continues.',
     'panelUpdate.ambiguous': 'The start response is uncertain. This request will not be repeated; its exact server status will be tracked.',
@@ -455,6 +471,44 @@ export const en = {
     'err.SERVICE_ACTION_FAILED.verify': "The action was sent, but {unit} is not in the state that was asked for. On the server, run {command} to see its state, correct the cause, then repeat the action here.",
     'err.SERVICE_ACTION_FAILED.command': "The server's service manager did not carry out the action on {unit}. On the server, run {command} to see why, correct it, then repeat the action here.",
     'err.SERVICE_ACTION_UNKNOWN': "The action was sent, but what came of it could not be verified, so it is not shown as done. This is not a verified failure: {unit} may already be in the state you asked for. On the server, run {command} to see its state, and repeat the action here only if it is still needed.",
+
+    // --- first page load: the interface is still loading after half a minute (2026-10-10) ---
+    'recovery.waitingProlongedLoading': "CelikPanel is still loading; it opens by itself. If this page stays like this, reload it.",
+    // --- end of the first page load block ---
+    // --- a site configuration file the owner changed: refusals (D-031, 2026-10-10) ---
+    'err.SITE_CONFIG_OWNER_EDITED': 'This site’s nginx configuration file is not CelikPanel’s unchanged text, so CelikPanel kept it and did not apply this change to it. Nothing else was changed. On the domain’s Configuration file page, keep your file, take CelikPanel’s text (your file is kept as a dated copy), or merge the two by hand.',
+    'err.SITE_CONFIG_MISSING': 'This site’s nginx configuration file is missing, so this change was not applied and the file was not recreated. If it was removed on purpose, nothing needs doing; otherwise choose Recreate on the domain’s Configuration file page.',
+    'err.SITE_CONFIG_UNWRITABLE': 'CelikPanel could not read or replace this site’s nginx configuration file (for example, it is a link or it is locked against changes), so it kept the file as it is and did not apply this change. The server administrator checks the file on the server; the reason is on the domain’s Configuration file page.',
+    'err.SITE_CONFIG_EXISTS': 'A configuration file for this name already exists on the server and was not written by CelikPanel, so CelikPanel kept it and did not create the site. Nothing was left behind. Move or rename that file on the server if it is no longer used, then create the site again.',
+    'err.SITE_CONFIG_CHANGED': 'The configuration file or CelikPanel’s text changed after the page showed them, so nothing was done. The page reads the file again; look at it, then choose again.',
+    'err.SITE_CONFIG_NOT_APPLICABLE': 'This choice does not apply to the file as it is now, so nothing was done. The page reads the file again; choose again if you still want it.',
+    'err.SITE_CONFIG_NOT_READ': 'CelikPanel could not read the state of this site’s configuration file just now. This does not mean anything is wrong with the file, and nothing was changed. Try again.',
+    'err.SITE_CONFIG_NGINX_REFUSED': 'nginx did not accept CelikPanel’s text (it refused the configuration or could not reload), so your file was put back and nginx keeps running with it. nginx checks every site together, so the cause may be another file; fix what nginx reported, then choose again.',
+    'err.SITE_CONFIG_NGINX_REFUSED.unconfirmed': 'nginx did not accept CelikPanel’s text (it refused the configuration or could not reload). CelikPanel tried to put the previous file back; whether it is in place is not confirmed — the server administrator checks the file on the server. nginx checks every site together, so the cause may be another file; fix what nginx reported, then choose again.',
+    'err.SITE_CONFIG_OWNER_EDITED.certificate_validation': 'This site’s nginx configuration file was changed outside CelikPanel and does not let CelikPanel publish the certificate validation without changing the file, so no certificate was requested and nothing was changed. The server administrator chooses on the domain’s Configuration file page: take CelikPanel’s text, or add what that page shows to the file and reload nginx; then request the certificate again.',
+    'err.SITE_CONFIG_OWNER_EDITED.php_pool': 'This site’s PHP-FPM pool file is not CelikPanel’s unchanged text, so CelikPanel kept it, with your lines, and did not apply this change. Nothing else was changed. On the domain’s Configuration file page, keep your file, take CelikPanel’s text (your file is kept as a dated copy), or merge the two by hand.',
+    'err.SITE_CONFIG_OWNER_EDITED.app_unit': 'This site’s application unit file is not CelikPanel’s unchanged text, so CelikPanel kept it and did not apply this change; the application keeps running with it. Nothing else was changed. On the domain’s Configuration file page, keep your file, take CelikPanel’s text (your file is kept as a dated copy), or merge the two by hand.',
+    'err.SITE_CONFIG_MISSING.php_pool': 'This site’s PHP-FPM pool file is missing, so this change was not applied and the file was not recreated. If it was removed on purpose, nothing needs doing; otherwise choose Recreate on the domain’s Configuration file page.',
+    'err.SITE_CONFIG_MISSING.app_unit': 'This site’s application unit file is missing, so this change was not applied and the file was not recreated. If it was removed on purpose, nothing needs doing; otherwise choose Recreate on the domain’s Configuration file page.',
+    'err.SITE_CONFIG_UNWRITABLE.php_pool': 'CelikPanel could not read or replace this site’s PHP-FPM pool file (for example, it is a link or it is locked against changes), so it kept the file as it is and did not apply this change. The server administrator checks the file on the server; the reason is on the domain’s Configuration file page.',
+    'err.SITE_CONFIG_UNWRITABLE.app_unit': 'CelikPanel could not read or replace this site’s application unit file (for example, it is a link or it is locked against changes), so it kept the file as it is and did not apply this change. The server administrator checks the file on the server; the reason is on the domain’s Configuration file page.',
+    'err.SITE_CONFIG_EXISTS.php_pool': 'A PHP-FPM pool file for this site already exists for the PHP version you chose, so CelikPanel kept it and did not switch. Nothing was changed. Move or rename that file on the server if it is no longer used, then switch again.',
+    'err.SITE_CONFIG_EXISTS.app_unit': 'An application unit file for this site already exists and was not written by CelikPanel, so CelikPanel kept it and did not apply this change. Nothing was changed. Open the domain’s Configuration file page.',
+    'err.SITE_CONFIG_SERVICE_REFUSED': 'The service did not accept CelikPanel’s text, so the previous file was put back and nothing else was changed. The server administrator reads the service’s message in the panel log, fixes the cause, then tries again.',
+    'err.SITE_CONFIG_SERVICE_REFUSED.php_pool': 'PHP-FPM did not accept CelikPanel’s pool text (its configuration check or reload failed), so the previous pool file was put back and PHP-FPM keeps running with it. Nothing else was changed. The server administrator reads PHP-FPM’s message in the panel log (sudo journalctl -u celikpanel-panel | grep "site configuration"), fixes the cause, then tries again.',
+    'err.SITE_CONFIG_SERVICE_REFUSED.app_unit': 'systemd did not take CelikPanel’s unit text (its reload failed), so the previous unit file was put back. Nothing else was changed. The server administrator reads systemd’s message in the panel log (sudo journalctl -u celikpanel-panel | grep "site configuration"), fixes the cause, then tries again.',
+    'err.SITE_CONFIG_SERVICE_REFUSED.php_pool.unconfirmed': 'PHP-FPM did not accept CelikPanel’s pool text (its configuration check or reload failed). CelikPanel tried to put the previous file back; whether it is in place is not confirmed — the server administrator checks the file on the server. PHP-FPM’s message and what failed while putting the file back are in the panel log (sudo journalctl -u celikpanel-panel | grep "site configuration"); fix the cause, then try again.',
+    'err.SITE_CONFIG_SERVICE_REFUSED.app_unit.unconfirmed': 'systemd did not take CelikPanel’s unit text (its reload failed). CelikPanel tried to put the previous file back; whether it is in place is not confirmed — the server administrator checks the file on the server. systemd’s message and what failed while putting the file back are in the panel log (sudo journalctl -u celikpanel-panel | grep "site configuration"); fix the cause, then try again.',
+    'err.CERTIFICATE_VALIDATION_UNKNOWN': 'CelikPanel could not check whether this site’s nginx configuration file lets the certificate validation run, because nginx on this server did not answer, so no certificate was requested and nothing was changed. The server administrator checks that nginx is running; then request the certificate again.',
+    // --- end of the site configuration refusals block ---
+    // --- an access read that has not answered, and one that answered with a failure (ninth native record, 2026-10-10) ---
+    'recovery.waitingLong': "The Panel has not answered for a while. CelikPanel keeps checking by itself; you can also check now.",
+    'recovery.checkNow': "Check now",
+    'recovery.failure.network': "The connection to the Panel failed before it answered (refused, closed or unreachable). If this continues, the server administrator checks that the CelikPanel service is running.",
+    'recovery.failure.status': "The server answered with HTTP error {status}. If this continues, the server administrator checks the CelikPanel service and its log.",
+    'recovery.lastKnown': "Last known, before this wait: {cause}",
+    'recovery.failure.invalid': "The Panel answered, but this page could not read the answer. Reloading CelikPanel loads the interface that matches the Panel.",
+    // --- end of the unanswered access read block ---
 } as const;
 
 export type ShellKey = keyof typeof en;
