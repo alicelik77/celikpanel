@@ -4519,28 +4519,36 @@ hücreleri (denetim §9) sonra gelir. 2026-10-10 saat tarihidir.
   `unknown`/`not_read` derken satır `managed_unchanged`).
   `services.RecordSiteFileUnread` artık gözlemi, `RecordSiteFileRecheck`'in
   yeniden denetimi yazdığı gibi, türün en yeni satırına yazar: durum
-  `unknown`, `state_reason` `not_read` ya da `agent_does_not_report` ve ":"
-  ardından hata sınıfı (`timeout`, `agent_unreachable`, `agent_error`,
-  `render_input_unavailable`), `observed_at`; özet, yol ya da karar değişmez;
+  `unknown`, `state_reason` `not_read` ve ":" ardından hata sınıfı
+  (`timeout`, `agent_unreachable`, `agent_error`,
+  `render_input_unavailable`) ya da `agent_does_not_report` (sınıf yok),
+  `observed_at`; özet, yol ya da karar değişmez;
   yalnız `managed_unchanged` (`protection_removed` olmayan) ya da `unknown`
   kayıtlı satır değişir, böylece bilinen bir sorun gizlenmez; yanıt veren bir
   sonraki okuma onu değiştirir (`observeOtherSiteFile`). Sayfanın okumasından
   (`withOtherSiteFiles`, zaman aşımına uğrayan okuma isteğin bağlamını
   tükettiği için kendi 5 sn'lik bağlamıyla) ve `agent_does_not_report` için
-  çağrılır. Eklemeli API: `site_config.reason`, `site_config.read_error`,
+  çağrılır; tek dosyalık seçimler (koru, al, yeniden oluştur, uygula) kayıt
+  yazmaz. Başka her kayıtlı durum (sahibince düzenlenmiş, `foreign`, kaynağı
+  bilinmeyen, değiştirilemez, eksik, okunamaz) korunur. Eklemeli API: `site_config.reason`, `site_config.read_error`,
   sayfadaki dosyanın `read_error` alanı. Şema: yok (44. göçün `state_reason`
   alanı serbest metin). *(2) Geri koyma (RP1 hücresi):* Agent, `php-fpm -t`'nin
   az önce reddettiği yapılandırmayla (havuz dizininde sahibe ait başka bir
   dosya) PHP-FPM'i yeniden yükledi; yanıt `confirmed` derken PHP-FPM üçünde de
   `failed` oldu. `ApplyManagedSiteFile` artık geri konan dosyayı yeniden okur,
   yazmadan önce hizmetin durumunu okur (`ManagedSiteFile.ServiceActive`,
-  `systemctl is-active`) ve geri koymadan sonra `restoreService` çalıştırır:
-  önceden çalışmıyorsa denetim de yeniden yükleme de yok (`not_running`);
+  `systemctl is-active`, 5 sn) ve geri koymadan sonra `restoreService`
+  çalıştırır: birimde önce koşulsuz `daemon-reload` çalışır; önceden
+  çalışmıyorsa denetim de yeniden yükleme de yok (`not_running`);
   aksi hâlde denetim (`RestoreCheck`, varsayılan doğrulama adımı:
-  `php-fpm -t`; birimde koşulsuz `daemon-reload` ardından `systemd-analyze
-  verify`, araç yoksa `ErrServiceCheckUnavailable`) ve yalnız geçen denetim
+  `php-fpm -t`; birimde `systemd-analyze verify`, 15 sn, araç yoksa
+  `ErrServiceCheckUnavailable`) ve yalnız geçen denetim
   yeniden yükler (`RestoreReload`: birimde `try-restart`); ret →
-  `not_reloaded`, `config_refused_elsewhere`, denetimin satırı. Vhost toplu
+  `not_reloaded`, `config_refused_elsewhere`, denetimin satırı (araç yoksa
+  `check_unavailable`, yalnız birim); başarısız yeniden yükleme ya da
+  `daemon-reload` → `reload_failed`, `restore: unconfirmed`; yeniden
+  okunamayan bir geri koyma → `restore: unconfirmed`, yeniden yükleme eskisi
+  gibi, `service` yok. Vhost toplu
   işlemi aynısını `finishManagedRollbackFrom` içinde yapar (geri koymadan sonra
   nginx -t reddederse Service `not_reloaded` olan `VhostRestoredError`,
   yeniden yükleme yok; site oluşturmanın `WEB_SERVER_REFUSED_CONFIG` yanıtı
@@ -4553,15 +4561,22 @@ hücreleri (denetim §9) sonra gelir. 2026-10-10 saat tarihidir.
   yönetici adı verilen dosyayı düzeltip yeniden yükler; "confirmed" artık
   önceki baytların geri geldiği (yeniden okunarak) anlamına gelir, hizmete ne
   olduğunu `service` söyler. *(3) Birim PATH'i (gözlem, Debian a koşusu):*
-  `/bin/sh -lc` `/etc/profile`'ı yeniden okuduğu için çıplak `node` 127 ile
-  çıktı; bu sürümün birimi açık bir `Environment=PATH=` (Panel'in Node dizini,
+  ölçülen: birimin `Environment=PATH=` satırı Node dizinini adlandırdığı hâlde
+  çıplak `node` `/bin/sh -lc` altında 127 ile çıktı (`node: not found`); neden
+  (`/bin/sh -l`'in `/etc/profile`'ı yeniden okuması) bir çıkarımdır, kaydın
+  hiçbir dosyası profili göstermez. Bu sürümün birimi açık bir
+  `Environment=PATH=` (birimin Node sürümü varsa Panel'in Node dizini,
   ardından sistem dizinleri) ve `ExecStart=/bin/sh -c '…'` yazar; alpha.82/81
   metinleri benimseme için donmuş kalır (`AppUnitParams.LegacyPathEnv`,
-  `-lc`). *(4) Görünür yanıt:* sayfanın yanıtı belirdiğinde görünür alana
-  kayar ve `role="status"` taşır. *Yapılmadı:* PHP sürümü değiştirmenin kendi
-  geri koyması iki sürümü de hâlâ denetimsiz yeniden yükler; defter satırı
-  olmayan dosya hâlâ Alan Adları listesinde yoktur; başarısız olan bir geri
-  koyma ölçülmedi. *Kanıt:* services
+  `-lc`). Yeni birim gerçek bir sistemde çalışmadı. *(4) Görünür yanıt:* sayfanın yanıtı belirdiğinde görünür alana
+  kayar ve `role="status"` taşır. *Yapılmadı:* PHP sürümü değiştirmenin ikinci
+  adımı (kaynak sürümün havuzunu silmek) ve oradaki hatadan sonraki temizlik
+  hâlâ denetimsiz yeniden yükler (ilk adımı, hedef havuzu yazmak, bu kuralı
+  alır); defter satırı olmayan dosya hâlâ Alan Adları listesinde yoktur;
+  başarısız olan bir geri koyma ölçülmedi; yanıtın cümleleri `service_active`
+  alanını kullanmaz ve `not_reloaded` cümleleri reddedilen seçimin yeniden
+  yapılması gerektiğini söylemez; zaman aşımına uğrayan ya da başlatılamayan
+  bir `systemd-analyze verify` ret gibi yanıtlanır. *Kanıt:* services
   `TestSitePoolPutBackReloadsOnlyAConfigurationTheCheckAccepts`,
   `TestNginxPutBackLeavesAStoppedNginxAlone`,
   `TestNginxRefusalPutsBackEveryWrittenFileExactlyAndLeavesKeptFiles`
@@ -4570,4 +4585,7 @@ hücreleri (denetim §9) sonra gelir. 2026-10-10 saat tarihidir.
   `TestAppUnitPathDoesNotDependOnALoginShell`; Panel
   `site_config_set12_test.go`; web `site-config-mounted.test.mjs`; batch10
   görüntüleri `100p6a`, `100p8`, `100p9`. Ayrıcalıklı başlatma bekçisi iki
-  yeni başlatmayı adlandırır (`systemctl is-active`, `systemd-analyze verify`).
+  yeni başlatmayı adlandırır (`internal/hostcmd/privileged_command_guard_test.go`:
+  `internal/services/site_file_service.go:systemctl`, `systemctl is-active`,
+  5 sn; `cmd/agent/app_rpc.go:<computed>`, `systemd-analyze verify`, 15 sn,
+  salt okunur); bu sözleşme bekçinin envanterini başka yerde belgelemez.

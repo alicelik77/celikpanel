@@ -192,9 +192,9 @@ hosting-customer session was
 drawn; a ready probe does not show that DNS or the firewall lets the
 certificate authority in. The probe has never asked a real nginx.
 
-Corrections from the twelfth native record (set12, 2026-10-11; the findings
-measured in the twelfth record, the new code component-tested; not measured on
-a real system): a pool or unit the Agent did not answer for is recorded on its
+Corrections from the twelfth native record (set12, 2026-10-11; two findings
+measured in the twelfth record, corrected in commit `816b8dd60`, the new code
+component-tested; not measured on a real system): a pool or unit the Agent did not answer for is recorded on its
 ledger row as an observation (`unknown`, `not_read` or `agent_does_not_report`
 with the error class, no digest changed), so the Domains row says it could not
 be read, until the next answered read; a row with a known problem keeps it.
@@ -207,8 +207,11 @@ configuration it loaded before (`restore: confirmed`, `service: not_reloaded`,
 reloaded; every such answer carries `service_active`. The application unit's
 start command no longer depends on a login shell (`/bin/sh -c` with an explicit
 `Environment=PATH=` naming the Panel's Node directory; observed: a bare `node`
-exited 127 under `/bin/sh -lc`); the earlier releases' unit texts stay frozen
-for adoption. The page's answer to a choice scrolls into view. No schema
+exited 127 under `/bin/sh -lc` although the PATH line was there, the login
+profile resetting it is an inference, and the new unit has not run on a real
+system); the earlier releases' unit texts stay frozen for adoption. The PHP
+version switch's removal of the source pool and its clean-up still reload
+without the check. The page's answer to a choice scrolls into view. No schema
 change.
 
 ---

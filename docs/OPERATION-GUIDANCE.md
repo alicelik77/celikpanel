@@ -6149,7 +6149,10 @@ alpha.81/82 texts is unchanged (those texts carry the location inline).
   administrators): "nginx did not accept CelikPanel’s text (it refused the
   configuration or could not reload), so your file was put back and nginx keeps
   running with it. nginx checks every site together, so the cause may be another
-  file; fix what nginx reported, then choose again." The file is put back in
+  file; fix what nginx reported, then choose again." (since set12 this
+  sentence holds only when nginx was reloaded with the put-back file; when nginx
+  was not reloaded or was not running, the answer carries `service` and the
+  sentences of the twelfth record's corrections below.) The file is put back in
   both cases; the dated copy that "take" made before the write stays beside the
   file.
 - `SITE_CONFIG_OWNER_EDITED` with `reason` `certificate_validation` (409;
@@ -6757,8 +6760,9 @@ service's own check refused the text, `reload_failed` when its reload did);
   the put-back configuration and the service ran before; see the twelfth
   record's corrections below). The answer carries `restore` (2026-10-11 correction;
   component-tested and mock browser; not measured on a real system):
-  `confirmed` only when the Agent reports the put-back and the reload after it
-  held; `unconfirmed` when the Agent says "rollback incomplete" or gives no
+  `confirmed` only when the Agent reports the put-back (read back) and either
+  the reload after it held or the service was deliberately not reloaded (`service`
+  says which; the twelfth record's corrections below); `unconfirmed` when the Agent says "rollback incomplete" or gives no
   restore fact (an older Agent). Unconfirmed, the sentence is
   `err.SITE_CONFIG_SERVICE_REFUSED.<kind>.unconfirmed` ("… CelikPanel tried to
   put the previous file back; whether it is in place is not confirmed — the
@@ -6851,15 +6855,21 @@ measured on a real system.
   pool lock held, while the row stayed `managed_unchanged`, because the row is
   built from ledger rows and a failed read wrote none. Now a failed read
   records an observation on the pool's or unit's newest ledger row (state
-  `unknown`, the reason `not_read` or `agent_does_not_report` with the error
-  class `timeout`, `agent_unreachable`, `agent_error` or
-  `render_input_unavailable`, the time) and changes no digest, path or
-  decision. The row then wears "A configuration file could not be read; state
-  not known" with `kind`; its `site_config` adds `reason` and `read_error`, and
-  the page's file adds `read_error`. The next read that answers replaces it. A
-  row whose stored fact outranks "unknown" (edited, unwritable, missing,
-  unreadable) keeps that fact, and a `protection_removed` row keeps its reason;
-  a file with no ledger row is still not in the list.
+  `unknown`, the reason `not_read` with the error class `timeout`,
+  `agent_unreachable`, `agent_error` or `render_input_unavailable`, or
+  `agent_does_not_report` (an Agent without the method; no class), the time)
+  and changes no digest, path or decision. The row then wears "A configuration
+  file could not be read; state not known" with `kind`; its `site_config` adds
+  `reason` and `read_error`, and the page's file adds `read_error`. The next
+  read that answers replaces it. Only the newest row of the kind, and only when
+  it is stored `managed_unchanged` (other than `protection_removed`) or
+  `unknown`, changes: a row in any other state (owner-edited, replaced
+  wholesale, unknown origin, unwritable, missing, unreadable) keeps that fact,
+  and a `protection_removed` row keeps its reason. The record is made by the
+  vhost page's read of the site's files (with its own 5 s context, because a
+  timed-out read has used up the request's); the single-file choices (keep, take,
+  recreate, apply) answer `SITE_CONFIG_NOT_READ` without recording. A file with
+  no ledger row yet is still not in the list.
 - *No reload after a put-back the service's own check refuses* (cell RP1).
   Measured on all three: `php-fpm -t` refused a take on a pool because of an
   owner's file elsewhere in the pool directory, the owner's pool was put back,
@@ -6867,46 +6877,105 @@ measured on a real system.
   ended `failed` (start limit) while the answer said "PHP-FPM keeps running
   with it". Now the put-back file is read back; a service that was not running
   before the operation is neither checked nor reloaded (`service:
-  not_running`); otherwise the service's own check runs on the put-back
+  not_running`; a unit still gets the harmless `daemon-reload`, which is why
+  its sentence says systemd has read the unit again); otherwise the service's
+  own check runs on the put-back
   configuration (`php-fpm -t`; `nginx -t` for the vhost; for a unit
-  `systemd-analyze verify` after the harmless `daemon-reload`). Refused: the
+  `systemd-analyze verify`, 15 s limit, after that `daemon-reload`). Refused: the
   service is not reloaded and keeps the configuration it loaded before
   (`restore: confirmed`, `service: not_reloaded`, `service_reason:
   config_refused_elsewhere`, the check's line in `details` and `vars.line` for
   an administrator). Passed: it is reloaded (a unit's application:
   `try-restart`), `service: reloaded`. A reload that fails stays `restore:
-  unconfirmed` (`service: reload_failed`). Without `systemd-analyze` a unit's
-  application is not restarted (`service_reason: check_unavailable`). Every
-  such 502 carries `service_active` (`true`, `false`, `unknown`: `systemctl
-  is-active` after the operation). The sentences
+  unconfirmed` (`service: reload_failed`), as does a put-back that could not be
+  read back (no `service`). Without `systemd-analyze` a unit's
+  application is not restarted (`service_reason: check_unavailable`; only a
+  unit produces it). Every such 502 carries `service_active` (`true` for
+  `active`, `reloading`, `activating`, `refreshing`; `false` for `inactive`,
+  `failed`, `deactivating`; `unknown` for any other answer or none:
+  `systemctl is-active` after the operation, 5 s limit). The sentences
   (`siteConfig.service.<kind>.<service>[.<service_reason>]`, screen
-  catalogue): "The previous file is back. PHP-FPM was not reloaded, because its
-  configuration is refused by another file — PHP-FPM keeps running with the
-  configuration it loaded before. Fix what the check names ({line}), then
-  reload PHP-FPM yourself."; "The previous file is back. PHP-FPM was not
-  running before this change, so CelikPanel neither reloaded nor started it.
-  Start PHP-FPM yourself, then choose again."; the same for nginx; for the
-  unit "The previous unit file is back and systemd has read it again. The
-  application was not restarted, because systemd-analyze verify refuses the
-  unit — the application keeps running as it was started. Fix what the check
-  names ({line}), then restart the application yourself." A caller who is not
-  an administrator gets the sentence without the line ("The server
-  administrator fixes what PHP-FPM's check names, then reloads PHP-FPM.").
-  Who acts: the server administrator. The record's RP2 case (the owner stopped
-  PHP-FPM) is now answered `restore: confirmed`, `service: not_running`
-  instead of `unconfirmed`. The PHP version switch's own put-back is
-  unchanged.
-- *Application unit PATH* (observation, Debian 13 run a). A bare `node …`
-  start command exited 127: the unit ran `ExecStart=/bin/sh -lc '…'`, the
-  login shell read `/etc/profile`, which sets `PATH` again, and the unit's
-  `Environment=PATH=` with the Panel's Node directory did not reach the
-  command. The unit now writes `Environment=PATH=<Node directory>:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin`
-  (the Node directory is `/opt/celikpanel/runtimes/node/<version>/bin`; no
-  longer the Agent's own PATH) and starts the command with `/bin/sh -c`: a
-  shell stays because the start command is a shell command line, and no
-  feature needs a login shell. Units alpha.82 and alpha.81 wrote are still
-  compared exactly as they were written (`-lc`, the Agent's PATH); an adopted
-  unit gets the new text at its next write.
+  catalogue, chosen when `restore` is `confirmed` and `service` is
+  `not_reloaded` or `not_running`; the sentence naming `{line}` is used only
+  when the answer carries `vars.line`, which only an administrator's answer
+  does, otherwise the one without it; while the screen catalogue is not loaded
+  the server's own sentence stands, the same words with the line in
+  parentheses). Kinds `php_pool` and `nginx_vhost` produce three, `app_unit`
+  four; these ten are every combination the code produces:
+  - `php_pool.not_reloaded.config_refused_elsewhere`: "The previous file is
+    back. PHP-FPM was not reloaded, because its configuration is refused by
+    another file — PHP-FPM keeps running with the configuration it loaded
+    before. Fix what the check names ({line}), then reload PHP-FPM yourself."
+  - `php_pool.not_reloaded`: "The previous file is back. PHP-FPM was not
+    reloaded, because its configuration is refused by another file — PHP-FPM
+    keeps running with the configuration it loaded before. The server
+    administrator fixes what PHP-FPM’s check names, then reloads PHP-FPM."
+  - `php_pool.not_running`: "The previous file is back. PHP-FPM was not
+    running before this change, so CelikPanel neither reloaded nor started it.
+    Start PHP-FPM yourself, then choose again."
+  - `nginx_vhost.not_reloaded.config_refused_elsewhere`: "The previous file is
+    back. nginx was not reloaded, because its configuration is refused by
+    another file — nginx keeps running with the configuration it loaded
+    before. Fix what the check names ({line}), then reload nginx yourself."
+  - `nginx_vhost.not_reloaded`: "The previous file is back. nginx was not
+    reloaded, because its configuration is refused by another file — nginx
+    keeps running with the configuration it loaded before. The server
+    administrator fixes what nginx -t names, then reloads nginx."
+  - `nginx_vhost.not_running`: "The previous file is back. nginx was not
+    running before this change, so CelikPanel neither reloaded nor started it.
+    Start nginx yourself, then choose again."
+  - `app_unit.not_reloaded.config_refused_elsewhere`: "The previous unit file
+    is back and systemd has read it again. The application was not restarted,
+    because systemd-analyze verify refuses the unit — the application keeps
+    running as it was started. Fix what the check names ({line}), then restart
+    the application yourself."
+  - `app_unit.not_reloaded.check_unavailable`: "The previous unit file is back
+    and systemd has read it again. The application was not restarted, because
+    this server has no systemd-analyze to check the unit first — the
+    application keeps running as it was started. Restart the application
+    yourself once you have checked the unit."
+  - `app_unit.not_reloaded`: "The previous unit file is back and systemd has
+    read it again. The application was not restarted, because the unit’s check
+    did not pass — the application keeps running as it was started. The server
+    administrator fixes what the check names, then restarts the application."
+  - `app_unit.not_running`: "The previous unit file is back and systemd has
+    read it again. The application was not running before this change, so
+    CelikPanel did not start it. Start it yourself when it should run."
+
+  Who acts: the server administrator. `service: reloaded` has no new sentence:
+  the earlier confirmed sentence is true then. The record's RP2 case (the owner
+  stopped PHP-FPM) is now answered `restore: confirmed`, `service:
+  not_running` instead of `unconfirmed`. The PHP version switch is only partly
+  unchanged: its first step writes the target version's pool through the same
+  write as any other and so gets this rule; its second step (removing the
+  source version's pool) and the clean-up after a failure there still reload
+  without the check, as before. Site creation's `WEB_SERVER_REFUSED_CONFIG` is
+  answered only when nginx was reloaded with the earlier configuration.
+  Known gaps (component-tested only; none measured on a real system): the
+  sentences ignore `service_active` (when `systemctl` could not say whether
+  the service ran before, one that was in fact stopped is still told "keeps
+  running"); only `not_running` says
+  "choose again" — the `not_reloaded` sentences end at the administrator's
+  reload and do not say that the refused choice must be made again; a
+  `systemd-analyze verify` that timed out or could not be started is currently
+  answered like a refusal (`config_refused_elsewhere`).
+- *Application unit PATH* (observation, Debian 13 run a). Measured: a bare
+  `node …` start command exited 127 (`/bin/sh: 1: node: not found`) under the
+  unit's `ExecStart=/bin/sh -lc '…'`, although the unit's `Environment=PATH=`
+  already named the Panel's Node directory. The cause is an inference, not a
+  measurement: that Debian's login shell reads `/etc/profile` and sets `PATH`
+  again (`sh -l` reads it; no file of the record shows the profile). The unit
+  now writes `Environment=PATH=<Node directory>:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin`
+  (the Node directory is `/opt/celikpanel/runtimes/node/<version>/bin`, left
+  out when the unit has no Node version; no longer the Agent's own PATH) and
+  starts the command with `/bin/sh -c`: a shell stays because the start
+  command is a shell command line, and no CelikPanel feature needs a login
+  shell. Units alpha.82 and alpha.81 wrote are still compared exactly as they
+  were written (`-lc`, the Agent's PATH); an adopted unit gets the new text at
+  its next write. Not measured: the new unit has not run on a real system, so
+  that a bare `node` now starts is expected, not shown; and an application
+  that relied on directories the login profile added to `PATH` no longer
+  gets them.
 - *The answer to a choice is in view.* The record's real Chrome showed both
   restore banners drawn above the files list, outside the viewport after the
   click. The answer (a refusal or a finished choice) now scrolls itself into

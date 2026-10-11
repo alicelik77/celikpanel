@@ -6088,7 +6088,10 @@ değişmedi (o metinler konumu satır içinde taşır).
   (yapılandırmayı reddetti ya da yeniden yükleyemedi); bu yüzden dosyanız geri
   kondu ve nginx onunla çalışmayı sürdürüyor. nginx bütün siteleri birlikte
   kontrol eder; neden başka bir dosya olabilir. nginx’in bildirdiğini düzeltin,
-  sonra yeniden seçin." İki durumda da dosya geri konur; "al"ın yazmadan önce
+  sonra yeniden seçin." (set12'den beri bu cümle yalnız nginx geri konan
+  dosyayla yeniden yüklendiğinde geçerlidir; nginx yeniden yüklenmediğinde ya
+  da çalışmıyorken yanıt `service` taşır ve aşağıdaki on ikinci kayıt
+  düzeltmelerinin cümleleri kullanılır.) İki durumda da dosya geri konur; "al"ın yazmadan önce
   yaptığı tarihli kopya dosyanın yanında kalır.
 - `SITE_CONFIG_OWNER_EDITED`, `reason` `certificate_validation` (409; sertifika
   alımı; `detail` `include_missing`, `names_missing`, `challenge_kept` ya da
@@ -6696,8 +6699,10 @@ metni reddettiyse `config_refused`, yeniden yüklemesi reddettiyse
   konan yapılandırmayı kabul ederse ve hizmet önceden çalışıyorsa; aşağıdaki
   on ikinci kayıt düzeltmelerine bakın). Yanıt `restore` taşır (2026-10-11 düzeltmesi;
   bileşen testli ve sahte tarayıcıda denendi; gerçek sistemde ölçülmedi):
-  `confirmed` yalnız Agent geri koymanın ve ardından gelen yeniden yüklemenin
-  tuttuğunu bildirdiğinde; Agent “rollback incomplete” dediğinde ya da hiç
+  `confirmed` yalnız Agent geri koymayı (yeniden okunarak) bildirdiğinde ve
+  ardından gelen yeniden yükleme tuttuğunda ya da hizmet bilerek yeniden
+  yüklenmediğinde (hangisi olduğunu `service` söyler; aşağıdaki on ikinci kayıt
+  düzeltmeleri); Agent “rollback incomplete” dediğinde ya da hiç
   geri koyma bilgisi vermediğinde (eski bir Agent) `unconfirmed`. Doğrulanmamışsa
   cümle `err.SITE_CONFIG_SERVICE_REFUSED.<tür>.unconfirmed` olur ("… CelikPanel
   önceki dosyayı geri koymayı denedi; yerinde olup olmadığı doğrulanmadı —
@@ -6795,15 +6800,21 @@ sistemde ölçülmedi.
   `not_read` yanıtladı, satır ise `managed_unchanged` kaldı; çünkü satır defter
   satırlarından kurulur ve başarısız okuma hiç satır yazmadı. Artık başarısız
   okuma, havuzun ya da birimin en yeni defter satırına bir gözlem yazar (durum
-  `unknown`, `not_read` ya da `agent_does_not_report` nedeni ve hata sınıfı
-  `timeout`, `agent_unreachable`, `agent_error` ya da
-  `render_input_unavailable`, zaman); hiçbir özet, yol ya da karar değişmez.
-  Satır "Bir yapılandırma dosyası okunamadı; durumu bilinmiyor" rozetini `kind`
-  ile taşır; `site_config` alanına `reason` ve `read_error`, sayfadaki dosyaya
-  `read_error` eklenir. Yanıt veren bir sonraki okuma onu değiştirir. Kayıtlı
-  olgusu "bilinmiyor"dan üstün olan satır (düzenlenmiş, değiştirilemez, eksik,
-  okunamaz) o olguyu korur, `protection_removed` satırı nedenini korur; defter
-  satırı olmayan dosya hâlâ listede yoktur.
+  `unknown`, `not_read` nedeni ve hata sınıfı `timeout`, `agent_unreachable`,
+  `agent_error` ya da `render_input_unavailable`; ya da `agent_does_not_report`
+  (yöntemi olmayan bir Agent; sınıf yok); zaman); hiçbir özet, yol ya da karar
+  değişmez. Satır "Bir yapılandırma dosyası okunamadı; durumu bilinmiyor"
+  rozetini `kind` ile taşır; `site_config` alanına `reason` ve `read_error`,
+  sayfadaki dosyaya `read_error` eklenir. Yanıt veren bir sonraki okuma onu
+  değiştirir. Yalnız türün en yeni satırı ve yalnız `managed_unchanged`
+  (`protection_removed` olmayan) ya da `unknown` kayıtlıysa değişir: başka
+  durumdaki satır (sahibince düzenlenmiş, bütünüyle değiştirilmiş, kaynağı
+  bilinmeyen, değiştirilemez, eksik, okunamaz) o olguyu korur,
+  `protection_removed` satırı nedenini korur. Kaydı sitenin dosyalarını okuyan
+  vhost sayfası yazar (kendi 5 sn'lik bağlamıyla; zaman aşımına uğrayan okuma
+  isteğin bağlamını tükettiği için); tek dosyalık seçimler (koru, al, yeniden
+  oluştur, uygula) kayıt yazmadan `SITE_CONFIG_NOT_READ` yanıtlar. Defter satırı
+  henüz olmayan dosya hâlâ listede yoktur.
 - *Hizmetin kendi denetiminin reddettiği geri koymadan sonra yeniden yükleme
   yok* (RP1 hücresi). Üçünde de ölçülen: havuz dizinindeki sahibe ait başka
   bir dosya yüzünden `php-fpm -t` havuzdaki "al" işlemini reddetti, sahibin
@@ -6811,47 +6822,108 @@ sistemde ölçülmedi.
   yapılandırmayla yeniden yükledi; yanıt "PHP-FPM onunla çalışmaya devam
   ediyor" derken PHP-FPM `failed` (başlatma sınırı) oldu. Artık geri konan
   dosya yeniden okunur; işlemden önce çalışmayan hizmet ne denetlenir ne
-  yeniden yüklenir (`service: not_running`); aksi hâlde hizmetin kendi
+  yeniden yüklenir (`service: not_running`; birim yine de zararsız
+  `daemon-reload` alır, bu yüzden cümlesi systemd'in birimi yeniden okuduğunu
+  söyler); aksi hâlde hizmetin kendi
   denetimi geri konan yapılandırmada çalışır (`php-fpm -t`; vhost için
-  `nginx -t`; birim için zararsız `daemon-reload` ardından `systemd-analyze
-  verify`). Reddedilirse hizmet yeniden yüklenmez ve önceden yüklediği
+  `nginx -t`; birim için `daemon-reload` ardından `systemd-analyze verify`,
+  15 sn sınırı). Reddedilirse hizmet yeniden yüklenmez ve önceden yüklediği
   yapılandırmayla çalışır (`restore: confirmed`, `service: not_reloaded`,
   `service_reason: config_refused_elsewhere`; denetimin satırı yönetici için
   `details` ve `vars.line` içinde). Geçerse yeniden yüklenir (birimin
   uygulaması: `try-restart`), `service: reloaded`. Başarısız yeniden yükleme
-  önceki gibi `restore: unconfirmed` kalır (`service: reload_failed`).
+  önceki gibi `restore: unconfirmed` kalır (`service: reload_failed`); geri
+  konan dosya yeniden okunamıyorsa da öyle (`service` yok).
   `systemd-analyze` yoksa birimin uygulaması yeniden başlatılmaz
-  (`service_reason: check_unavailable`). Bu 502 yanıtlarının her biri
-  `service_active` taşır (`true`, `false`, `unknown`: işlemden sonra
-  `systemctl is-active`). Cümleler
-  (`siteConfig.service.<tür>.<hizmet>[.<service_reason>]`, ekran kataloğu):
-  "Önceki dosya geri kondu. PHP-FPM yeniden yüklenmedi, çünkü yapılandırması
-  başka bir dosya yüzünden reddediliyor — PHP-FPM daha önce yüklediği
-  yapılandırmayla çalışmaya devam ediyor. Denetimin adını verdiği sorunu
-  giderin ({line}), sonra PHP-FPM’i kendiniz yeniden yükleyin."; "Önceki dosya
-  geri kondu. PHP-FPM bu değişiklikten önce çalışmıyordu; bu yüzden CelikPanel
-  onu ne yeniden yükledi ne de başlattı. PHP-FPM’i kendiniz başlatın, sonra
-  yeniden seçin."; nginx için aynısı; birim için "Önceki birim dosyası geri
-  kondu ve systemd onu yeniden okudu. Uygulama yeniden başlatılmadı, çünkü
-  systemd-analyze verify birimi reddediyor — uygulama başlatıldığı haliyle
-  çalışmaya devam ediyor. Denetimin adını verdiği sorunu giderin ({line}),
-  sonra uygulamayı kendiniz yeniden başlatın." Yönetici olmayan çağıran satırsız
-  cümleyi alır ("Sunucu yöneticisi PHP-FPM denetiminin adını verdiği sorunu
-  giderir, sonra PHP-FPM’i yeniden yükler."). Kim yapar: sunucu yöneticisi.
-  Kayıttaki RP2 durumu (sahip PHP-FPM'i durdurdu) artık `unconfirmed` yerine
-  `restore: confirmed`, `service: not_running` yanıtlanır. PHP sürümü
-  değiştirmenin kendi geri koyması değişmedi.
-- *Uygulama biriminin PATH'i* (gözlem, Debian 13 a koşusu). Çıplak bir
-  `node …` başlatma komutu 127 ile çıktı: birim `ExecStart=/bin/sh -lc '…'`
-  çalıştırıyordu, giriş kabuğu `/etc/profile` okudu, o da `PATH`'i yeniden
-  kurdu ve birimin Panel'in Node dizinini taşıyan `Environment=PATH=` satırı
-  komuta ulaşmadı. Birim artık `Environment=PATH=<Node dizini>:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin`
-  yazar (Node dizini `/opt/celikpanel/runtimes/node/<sürüm>/bin`; artık
-  Agent'ın kendi PATH'i değil) ve komutu `/bin/sh -c` ile başlatır: başlatma
-  komutu bir kabuk komut satırı olduğu için kabuk kalır, hiçbir özellik giriş
-  kabuğu gerektirmez. alpha.82 ve alpha.81'in yazdığı birimler yazıldıkları
-  gibi karşılaştırılmaya devam eder (`-lc`, Agent'ın PATH'i); benimsenen
-  birim bir sonraki yazımda yeni metni alır.
+  (`service_reason: check_unavailable`; yalnız birim üretir). Bu 502
+  yanıtlarının her biri `service_active` taşır (`true`: `active`,
+  `reloading`, `activating`, `refreshing`; `false`: `inactive`, `failed`,
+  `deactivating`; `unknown`: başka bir yanıt ya da yanıt yok: işlemden sonra
+  `systemctl is-active`, 5 sn sınırı). Cümleler
+  (`siteConfig.service.<tür>.<hizmet>[.<service_reason>]`, ekran kataloğu;
+  `restore` `confirmed` ve `service` `not_reloaded` ya da `not_running` iken
+  seçilir; `{line}` içeren cümle yalnız yanıt `vars.line` taşıyorsa kullanılır,
+  bunu yalnız yöneticinin yanıtı taşır, aksi hâlde satırsız olan; ekran
+  kataloğu yüklü değilken sunucunun kendi cümlesi geçerlidir, aynı sözcükler,
+  satır parantez içinde). `php_pool` ve `nginx_vhost` üç, `app_unit` dört
+  cümle üretir; kodun ürettiği bileşimlerin tamamı bu ondur:
+  - `php_pool.not_reloaded.config_refused_elsewhere`: "Önceki dosya geri kondu.
+    PHP-FPM yeniden yüklenmedi, çünkü yapılandırması başka bir dosya yüzünden
+    reddediliyor — PHP-FPM daha önce yüklediği yapılandırmayla çalışmaya devam
+    ediyor. Denetimin adını verdiği sorunu giderin ({line}), sonra PHP-FPM’i
+    kendiniz yeniden yükleyin."
+  - `php_pool.not_reloaded`: "Önceki dosya geri kondu. PHP-FPM yeniden
+    yüklenmedi, çünkü yapılandırması başka bir dosya yüzünden reddediliyor —
+    PHP-FPM daha önce yüklediği yapılandırmayla çalışmaya devam ediyor. Sunucu
+    yöneticisi PHP-FPM denetiminin adını verdiği sorunu giderir, sonra
+    PHP-FPM’i yeniden yükler."
+  - `php_pool.not_running`: "Önceki dosya geri kondu. PHP-FPM bu değişiklikten
+    önce çalışmıyordu; bu yüzden CelikPanel onu ne yeniden yükledi ne de
+    başlattı. PHP-FPM’i kendiniz başlatın, sonra yeniden seçin."
+  - `nginx_vhost.not_reloaded.config_refused_elsewhere`: "Önceki dosya geri
+    kondu. nginx yeniden yüklenmedi, çünkü yapılandırması başka bir dosya
+    yüzünden reddediliyor — nginx daha önce yüklediği yapılandırmayla çalışmaya
+    devam ediyor. Denetimin adını verdiği sorunu giderin ({line}), sonra
+    nginx’i kendiniz yeniden yükleyin."
+  - `nginx_vhost.not_reloaded`: "Önceki dosya geri kondu. nginx yeniden
+    yüklenmedi, çünkü yapılandırması başka bir dosya yüzünden reddediliyor —
+    nginx daha önce yüklediği yapılandırmayla çalışmaya devam ediyor. Sunucu
+    yöneticisi nginx -t’nin adını verdiği sorunu giderir, sonra nginx’i yeniden
+    yükler."
+  - `nginx_vhost.not_running`: "Önceki dosya geri kondu. nginx bu değişiklikten
+    önce çalışmıyordu; bu yüzden CelikPanel onu ne yeniden yükledi ne de
+    başlattı. nginx’i kendiniz başlatın, sonra yeniden seçin."
+  - `app_unit.not_reloaded.config_refused_elsewhere`: "Önceki birim dosyası geri
+    kondu ve systemd onu yeniden okudu. Uygulama yeniden başlatılmadı, çünkü
+    systemd-analyze verify birimi reddediyor — uygulama başlatıldığı haliyle
+    çalışmaya devam ediyor. Denetimin adını verdiği sorunu giderin ({line}),
+    sonra uygulamayı kendiniz yeniden başlatın."
+  - `app_unit.not_reloaded.check_unavailable`: "Önceki birim dosyası geri kondu
+    ve systemd onu yeniden okudu. Uygulama yeniden başlatılmadı, çünkü bu
+    sunucuda birimi önce denetleyecek systemd-analyze yok — uygulama
+    başlatıldığı haliyle çalışmaya devam ediyor. Birimi denetledikten sonra
+    uygulamayı kendiniz yeniden başlatın."
+  - `app_unit.not_reloaded`: "Önceki birim dosyası geri kondu ve systemd onu
+    yeniden okudu. Uygulama yeniden başlatılmadı, çünkü birimin denetimi geçmedi
+    — uygulama başlatıldığı haliyle çalışmaya devam ediyor. Sunucu yöneticisi
+    denetimin adını verdiği sorunu giderir, sonra uygulamayı yeniden başlatır."
+  - `app_unit.not_running`: "Önceki birim dosyası geri kondu ve systemd onu
+    yeniden okudu. Uygulama bu değişiklikten önce çalışmıyordu; bu yüzden
+    CelikPanel onu başlatmadı. Çalışması gerektiğinde kendiniz başlatın."
+
+  Kim yapar: sunucu yöneticisi. `service: reloaded` için yeni cümle yok: önceki
+  doğrulanmış cümle o zaman doğrudur. Kayıttaki RP2 durumu (sahip PHP-FPM'i
+  durdurdu) artık `unconfirmed` yerine `restore: confirmed`, `service:
+  not_running` yanıtlanır. PHP sürümü değiştirme yalnız kısmen değişmedi: ilk
+  adımı hedef sürümün havuzunu başka her yazımla aynı yazımla yazar, dolayısıyla
+  bu kuralı alır; ikinci adımı (kaynak sürümün havuzunu silmek) ve oradaki
+  hatadan sonraki temizlik eskisi gibi denetimsiz yeniden yükler. Site
+  oluşturmanın `WEB_SERVER_REFUSED_CONFIG` yanıtı yalnız nginx önceki
+  yapılandırmayla yeniden yüklendiğinde verilir. Bilinen açıklar (yalnız
+  bileşen testli; hiçbiri gerçek sistemde ölçülmedi): cümleler `service_active`
+  alanını kullanmaz (`systemctl` hizmetin önceden çalışıp çalışmadığını
+  söyleyemediğinde gerçekte durmuş bir hizmete de "çalışmaya devam ediyor"
+  denir); yalnız `not_running` "yeniden seçin" der — `not_reloaded` cümleleri
+  yöneticinin yeniden yüklemesinde biter ve reddedilen seçimin yeniden
+  yapılması gerektiğini söylemez; zaman aşımına uğrayan ya da başlatılamayan bir
+  `systemd-analyze verify` şimdilik ret gibi (`config_refused_elsewhere`)
+  yanıtlanır.
+- *Uygulama biriminin PATH'i* (gözlem, Debian 13 a koşusu). Ölçülen: birimin
+  `Environment=PATH=` satırı Panel'in Node dizinini zaten adlandırdığı hâlde,
+  çıplak bir `node …` başlatma komutu birimin `ExecStart=/bin/sh -lc '…'`
+  satırı altında 127 ile çıktı (`/bin/sh: 1: node: not found`). Neden çıkarımdır,
+  ölçüm değil: o Debian'ın giriş kabuğunun `/etc/profile` okuyup `PATH`'i yeniden
+  kurması (`sh -l` onu okur; kaydın hiçbir dosyası profili göstermez). Birim
+  artık `Environment=PATH=<Node dizini>:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin`
+  yazar (Node dizini `/opt/celikpanel/runtimes/node/<sürüm>/bin`; birimin Node
+  sürümü yoksa yazılmaz; artık Agent'ın kendi PATH'i değil) ve komutu
+  `/bin/sh -c` ile başlatır: başlatma komutu bir kabuk komut satırı olduğu için
+  kabuk kalır, hiçbir CelikPanel özelliği giriş kabuğu gerektirmez. alpha.82 ve
+  alpha.81'in yazdığı birimler yazıldıkları gibi karşılaştırılmaya devam eder
+  (`-lc`, Agent'ın PATH'i); benimsenen birim bir sonraki yazımda yeni metni
+  alır. Ölçülmedi: yeni birim gerçek bir sistemde çalışmadı; çıplak `node`'un
+  artık başladığı beklenen bir şeydir, gösterilmiş değil; giriş profilinin
+  `PATH`'e eklediği dizinlere güvenen bir uygulama onları artık almaz.
 - *Bir seçimin yanıtı görünür alandadır.* Kaydın gerçek Chrome'u iki geri
   koyma bandının da dosya listesinin üstünde, tıklamadan sonra görünür alanın
   dışında çizildiğini gösterdi. Yanıt (bir ret ya da biten seçim) artık

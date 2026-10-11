@@ -194,8 +194,9 @@ gün yerine "süresi N gün önce doldu" yazar); gerçek bir barındırma müşt
 yoklama, DNS'in ya da güvenlik duvarının sertifika otoritesini içeri
 aldığını göstermez. Yoklama hiç gerçek bir nginx'e sormadı.
 
-On ikinci yerel kayıttan düzeltmeler (set12, 2026-10-11; bulgular on ikinci
-kayıtta ölçüldü, yeni kod bileşen testli; gerçek sistemde ölçülmedi): Agent'ın
+On ikinci yerel kayıttan düzeltmeler (set12, 2026-10-11; iki bulgu on ikinci
+kayıtta ölçüldü, `816b8dd60` işlemesinde düzeltildi, yeni kod bileşen testli;
+gerçek sistemde ölçülmedi): Agent'ın
 yanıt vermediği havuz ya da birim, defter satırına bir gözlem olarak yazılır
 (`unknown`, `not_read` ya da `agent_does_not_report` ve hata sınıfı, hiçbir özet
 değişmez); böylece yanıt veren bir sonraki okumaya dek Alan Adları satırı
@@ -208,9 +209,12 @@ hizmet yeniden yüklenmez ve önceden yüklediği yapılandırmayla çalışır
 yönetici için satır); geçerse yeniden yüklenir; bu yanıtların her biri
 `service_active` taşır. Uygulama biriminin başlatma komutu artık giriş kabuğuna
 bağlı değildir (Panel'in Node dizinini adlandıran açık bir
-`Environment=PATH=` ile `/bin/sh -c`; gözlenen: `/bin/sh -lc` altında çıplak
-`node` 127 ile çıktı); önceki sürümlerin birim metinleri benimseme için donmuş
-kalır. Sayfanın bir seçime yanıtı görünür alana kayar. Şema değişikliği yok.
+`Environment=PATH=` ile `/bin/sh -c`; gözlenen: PATH satırı orada olduğu hâlde
+`/bin/sh -lc` altında çıplak `node` 127 ile çıktı; giriş profilinin onu
+sıfırlaması bir çıkarımdır ve yeni birim gerçek bir sistemde çalışmadı);
+önceki sürümlerin birim metinleri benimseme için donmuş kalır. PHP sürümü
+değiştirmenin kaynak havuzu silmesi ve temizliği hâlâ denetimsiz yeniden
+yükler. Sayfanın bir seçime yanıtı görünür alana kayar. Şema değişikliği yok.
 
 ---
 

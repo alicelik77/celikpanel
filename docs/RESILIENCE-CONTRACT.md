@@ -5250,14 +5250,18 @@ native cells (audit §9) come after. 2026-10-10 is the clock date.
   none (row `managed_unchanged` while the page said `unknown`/`not_read`).
   `services.RecordSiteFileUnread` now records the observation on the newest
   row of the kind the way `RecordSiteFileRecheck` records a recheck: state
-  `unknown`, `state_reason` `not_read` or `agent_does_not_report` with the
-  error class after a ":" (`timeout`, `agent_unreachable`, `agent_error`,
-  `render_input_unavailable`), `observed_at`; no digest, path or decision
+  `unknown`, `state_reason` `not_read` with the error class after a ":"
+  (`timeout`, `agent_unreachable`, `agent_error`,
+  `render_input_unavailable`) or `agent_does_not_report` (no class),
+  `observed_at`; no digest, path or decision
   changes; only a row stored `managed_unchanged` (not `protection_removed`) or
   `unknown` changes, so a known problem is not hidden; the next answered read
   replaces it (`observeOtherSiteFile`). Called from the page's read
   (`withOtherSiteFiles`, with its own 5 s context because a timed-out read has
-  used up the request's) and for `agent_does_not_report`. Additive API:
+  used up the request's) and for `agent_does_not_report`; the single-file
+  choices (keep, take, recreate, apply) do not record. Any other stored state
+  (owner-edited, foreign, unknown origin, unwritable, missing, unreadable)
+  is kept. Additive API:
   `site_config.reason`, `site_config.read_error`, the page file's `read_error`.
   Schema: none (migration 044's `state_reason` is free text). *(2) Put-back
   (cell RP1):* the Agent reloaded PHP-FPM with a configuration `php-fpm -t`
@@ -5265,13 +5269,16 @@ native cells (audit §9) come after. 2026-10-10 is the clock date.
   ended `failed` on all three while the answer said `confirmed`.
   `ApplyManagedSiteFile` now reads the put-back file back, reads the service's
   state before the write (`ManagedSiteFile.ServiceActive`, `systemctl
-  is-active`), and after a put-back runs `restoreService`: not running before
-  → no check, no reload (`not_running`); else the check (`RestoreCheck`,
-  default the validate step: `php-fpm -t`; a unit's `systemd-analyze verify`
-  after an unconditional `daemon-reload`, `ErrServiceCheckUnavailable` without
-  the tool) and only a passed check reloads (`RestoreReload`: a unit's
-  `try-restart`); refused → `not_reloaded`, `config_refused_elsewhere`, the
-  check's line. The vhost batch does the same in `finishManagedRollbackFrom`
+  is-active`, 5 s), and after a put-back runs `restoreService`: for a unit the
+  `daemon-reload` runs first, unconditionally; not running before → no check,
+  no reload (`not_running`); else the check (`RestoreCheck`,
+  default the validate step: `php-fpm -t`; a unit's `systemd-analyze verify`,
+  15 s, `ErrServiceCheckUnavailable` without the tool) and only a passed check
+  reloads (`RestoreReload`: a unit's `try-restart`); refused → `not_reloaded`,
+  `config_refused_elsewhere`, the check's line (without the tool,
+  `check_unavailable`, unit only); a failed reload or daemon-reload →
+  `reload_failed`, `restore: unconfirmed`; a put-back that cannot be read back
+  → `restore: unconfirmed`, the reload as it always was, no `service`. The vhost batch does the same in `finishManagedRollbackFrom`
   (nginx -t refused after the put-back → `VhostRestoredError` with Service
   `not_reloaded`, no reload; site creation's `WEB_SERVER_REFUSED_CONFIG` stays
   limited to a reloaded restore). Transport: additive `SiteFileResult.Service`,
@@ -5282,15 +5289,24 @@ native cells (audit §9) come after. 2026-10-10 is the clock date.
   keeps the configuration it loaded before; the administrator fixes the named
   file and reloads; "confirmed" now means the previous bytes are back (read
   back), and `service` says what happened to the service. *(3) Unit PATH
-  (observation, Debian run a):* a bare `node` exited 127 because
-  `/bin/sh -lc` re-read `/etc/profile`; this release's unit writes an
-  explicit `Environment=PATH=` (the Panel's Node directory, then the system
+  (observation, Debian run a):* measured: a bare `node` exited 127
+  (`node: not found`) under `/bin/sh -lc` although the unit's
+  `Environment=PATH=` named the Node directory; the cause (`/bin/sh -l`
+  re-reads `/etc/profile`) is an inference, no file of the record shows the
+  profile. This release's unit writes an explicit `Environment=PATH=` (the
+  Panel's Node directory when it has a Node version, then the system
   directories) and `ExecStart=/bin/sh -c '…'`; alpha.82/81 texts stay frozen
-  for adoption (`AppUnitParams.LegacyPathEnv`, `-lc`). *(4) Answer in view:*
+  for adoption (`AppUnitParams.LegacyPathEnv`, `-lc`). The new unit has not
+  run on a real system. *(4) Answer in view:*
   the page's answer scrolls into view on appearance and is a `role="status"`.
-  *Not done:* the PHP version switch's own put-back still reloads both
-  versions without the check; a file with no ledger row is still not in the
-  Domains list; restoring a failing put-back itself is not measured.
+  *Not done:* the PHP version switch's second step (removing the source
+  version's pool) and the clean-up after a failure there still reload without
+  the check (its first step, writing the target pool, takes this rule); a file
+  with no ledger row is still not in the Domains list; restoring a failing
+  put-back itself is not measured; the answer's sentences do not use
+  `service_active`, and the `not_reloaded` sentences do not say that the
+  refused choice must be made again; a `systemd-analyze verify` that timed out
+  or could not be started is answered like a refusal.
   *Evidence:* services `TestSitePoolPutBackReloadsOnlyAConfigurationTheCheckAccepts`,
   `TestNginxPutBackLeavesAStoppedNginxAlone`,
   `TestNginxRefusalPutsBackEveryWrittenFileExactlyAndLeavesKeptFiles`
@@ -5299,4 +5315,7 @@ native cells (audit §9) come after. 2026-10-10 is the clock date.
   `TestAppUnitPathDoesNotDependOnALoginShell`; Panel
   `site_config_set12_test.go`; web `site-config-mounted.test.mjs`; batch10
   shots `100p6a`, `100p8`, `100p9`. The privileged-launch guard names the two
-  new launches (`systemctl is-active`, `systemd-analyze verify`).
+  new launches (`internal/hostcmd/privileged_command_guard_test.go`:
+  `internal/services/site_file_service.go:systemctl`, `systemctl is-active`,
+  5 s; `cmd/agent/app_rpc.go:<computed>`, `systemd-analyze verify`, 15 s,
+  read-only); this contract does not otherwise document the guard's inventory.
