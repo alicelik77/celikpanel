@@ -1,0 +1,820 @@
+# v0.1.0-alpha.83 (draft, not published)
+
+[Türkçe](RELEASE-NOTES-v0.1.0-alpha.83.tr.md)
+
+This is the draft of the release that follows v0.1.0-alpha.82. Its working
+number, v0.1.0-alpha.83, is the owner's choice and is not final. Nothing of it
+is published, and no installed server runs it. This draft was written on
+2026-10-11.
+
+It does two things. It stops CelikPanel from overwriting a site configuration
+file you changed by hand: the file is kept, the site says so, and you choose
+what happens to it. And it answers the four things the owner saw on the two
+installed servers after the update to v0.1.0-alpha.82 on 2026-10-10 (listed
+below under "The four observations after the last update").
+
+What the server does with site files rests on component tests and on one lab
+measurement, on Debian 13, Ubuntu 24.04 and Arch, of the first part of this
+work. The parts added after that measurement had component tests and a browser
+against a mock of the API only when this was written. What a screen shows rests
+on component tests and on a browser against a mock of the API, and, for the
+first page load, the access wait and the update notice, also on a real Chrome
+against a real Panel in the lab. Two further lab records were not finished when
+this was written; their places are marked under "What was measured". The limits
+say what was never run.
+
+## What changes for the server owner
+
+**After the update, reload every CelikPanel page that was open.** A page loaded
+before the update does not have the new Configuration file page, ignores the
+new update phase and draws the old waits. The new routes of this release
+refuse a request without a request identity with `428`, and a refused request
+changes nothing.
+
+**During the update you still see the previous release's page.** The page that
+is open while the update runs is v0.1.0-alpha.82's interface. Its layer over the
+page may name the licence while the Panel restarts (measured in the lab with
+that interface), and its corner notice may still say the update is being
+applied while the card already shows the new version. Both were reported by the
+owner after the last update. This release corrects them; the corrections show
+in an update started from a page of this release. After a successful update the
+page reloads itself into the new interface.
+
+**A site configuration file you changed is kept.** Until now every Panel start,
+restart and saved setting wrote each hosted site's nginx file again from
+CelikPanel's records, without looking at what was there: an added `location`, a
+changed directive, your own include or a whole replacement file was gone, and a
+file you had removed came back. This was measured on v0.1.0-alpha.82 on
+Debian 13, Ubuntu 24.04 and Arch. Now every file CelikPanel writes for a site
+starts with a line that carries the digest of the rest of the file:
+
+```
+# celikpanel-render v2 sha256=<64 hexadecimal characters>
+```
+
+Before it writes, CelikPanel compares the file with that line. Only its own
+unchanged text is replaced, and only when the new text differs; an identical
+file is not written and nginx is not reloaded for it. A file that was changed,
+replaced, removed, locked or cannot be read is left exactly as it is, and the
+operation that wanted to change it says so instead of reporting success.
+CelikPanel's own text is held beside the file as `<file>.celikpanel-pending`,
+which nginx does not read.
+
+**The domain's page says what it found, and you choose.** Domain → Hosting →
+Configuration file (administrators only). The Domains list marks the domain
+("Configuration file: your choice needed", "Configuration file missing",
+"Configuration file cannot be read", "Configuration file cannot be replaced"),
+and a line above the domain's tabs points to the page. The page shows the
+difference between your file and CelikPanel's text, with values that look like
+credentials hidden, and offers three choices:
+
+- *Keep mine.* Your file stays byte for byte, its first line included.
+  CelikPanel records the choice and asks again only when the file changes.
+  Changes you make to the site in CelikPanel (settings, certificates, hosting
+  type, PHP version) are not applied to that file.
+- *Take CelikPanel's.* Your file is first kept as a dated copy beside it
+  (`<file>.celikpanel-backup-<date and time>`), then CelikPanel's text replaces
+  it and nginx is reloaded. If nginx refuses the text, your file is put back;
+  the dated copy stays.
+- *Merge by hand.* The Panel does nothing. CelikPanel's text is in the
+  `.celikpanel-pending` file; you edit your file on the server, check and reload
+  nginx yourself, and reload the page. Copying the pending file over yours hands
+  the file back to CelikPanel.
+
+A file you removed is not recreated by a start or a saved setting; the page
+offers "Recreate". A file locked against changes (for example with
+`chattr +i`) is named as such, with the system error and the protection the
+Panel found, and the text CelikPanel wanted to write. To let CelikPanel update
+it, remove the protection (for example `sudo chattr -i <path>`) and choose
+"Check again"; the page then offers "Write CelikPanel's text now", and the next
+start or saved change would write it as well. To keep it locked, do nothing:
+CelikPanel does not change it.
+
+**What you see after the first start of this release.** Files written by
+v0.1.0-alpha.81 or alpha.82 have no such first line. At the first start
+CelikPanel compares each of them byte for byte with the texts those two releases
+wrote for the same site (the text written when the site was created, and the
+text written at a later start or save). A file equal to one of them is
+CelikPanel's own earlier text, so nothing of yours can be in it: it is written
+again as this release's text, with the first line. Any other file is left
+exactly as it is, shown as "not recognised as CelikPanel's", and never written.
+As an administrator you see on the Domains list:
+
+> Site configuration files: N recognised as CelikPanel’s and taken over; M left
+> alone because they differ from every known CelikPanel text. Open a domain to
+> see its file. Nothing is needed unless you want CelikPanel to manage a
+> left-alone file again.
+
+A file that was left alone need not be one you edited. A site whose certificate
+path, aliases, PHP version or names changed after the earlier release last wrote
+its file can also differ from every known text; that errs on the safe side, and
+"Take CelikPanel's" resolves it. The line goes away once you have chosen "Keep
+mine" for, or taken CelikPanel's text into, every file that was left alone.
+
+**Certificates of a site whose file is kept.** CelikPanel now publishes the
+certificate validation through a directory of its own,
+`/etc/nginx/celikpanel-managed.d/<domain>/`, which its text includes; it no
+longer writes the validation into the site's file. Before it requests or renews
+a certificate for a kept file, CelikPanel checks whether nginx on this server
+serves its validation under every name of the certificate (a request from the
+server itself to its own port 80). If it does, the certificate is obtained
+without touching your file, but the site keeps serving the certificate your file
+names until you take CelikPanel's text or change the two certificate lines
+yourself; the SSL tab and the dashboard say so, with the days left on the
+certificate in use. If it does not, nothing is requested: a request from the SSL
+tab is refused with the line to add, and a renewal waits for you instead of
+failing. If nginx does not answer that check, the result is "not known", never
+"not ready". A file kept from v0.1.0-alpha.81 or alpha.82 has no line that
+includes the new directory; whether it still lets the validation run is decided
+by that check. None of this had run against a real nginx or a certificate
+authority when this was written (see the limits). Watch the dashboard: a
+certificate that waits for your choice is listed first.
+
+**The PHP-FPM pool and the application unit follow the same rule.** A PHP
+site's pool file and a Node site's application unit get the same kind of first
+line (`; celikpanel-render v2 sha256=…` in the pool, `# celikpanel-render v2
+sha256=…` in the unit). A pool save, a PHP version switch or a hosting change
+on a file you edited is refused, and your file stays in service. v0.1.0-alpha.82
+dropped pool lines it had not written itself when the pool was saved through the
+Panel (measured); now a pool with your lines is kept and shown. PHP-FPM has no
+separate place for a pool's own settings, so your lines belong in the pool file
+itself. An application's own settings belong in its systemd drop-in directory,
+`/etc/systemd/system/celikapp-<N>.service.d/*.conf`, followed by
+`sudo systemctl daemon-reload`; CelikPanel never writes or removes that
+directory. A pool or unit that is byte for byte what alpha.81 or alpha.82 wrote
+is recognised and written as this release's text at its next write. These files
+are not looked at when the Panel starts, and a pool or unit appears on the
+Domains list only after its domain's Configuration file page was opened or after
+it was saved, switched or changed. This part has component tests only.
+
+**Your own nginx lines have a place that CelikPanel never touches.** Each site's
+file includes `/etc/nginx/celikpanel-sites.d/<domain>/*.conf`. Put your own
+directives for that site in a `.conf` file there. CelikPanel never writes,
+changes or removes anything in that directory, also not when the site is
+deleted. The include line comes after the site's `location` blocks, so a file
+there that repeats one of them (for example `location /`) makes `nginx -t`
+refuse the whole configuration (nginx's own rule; not measured with
+CelikPanel). The other directory, `/etc/nginx/celikpanel-managed.d/<domain>/`,
+is CelikPanel's: if you edit a site's file, keep the line that includes it.
+
+**Starts are quieter.** A Panel start that finds every site file unchanged
+writes nothing and does not reload nginx. A new site's file is now the same text
+a later start writes (the `www.` name is there from creation). Each write logs
+one line naming the site and what was done, and the start line counts written,
+unchanged, kept, missing, unreadable and failed files; you can read them with
+`sudo journalctl -u celikpanel-panel | grep "site configuration"`.
+
+**A locked file no longer stops the other sites.** In v0.1.0-alpha.82 a site
+file locked with `chattr +i` made the whole start fail, the site's enabled link
+was gone afterwards, and the next nginx reload took that site out of service,
+with nothing shown (measured). Now only that file is refused; the other sites
+are written with one check and one reload, and the link stays (measured on the
+first part of this work).
+
+**The first page load draws nothing until there is something to say.** A full
+load of a CelikPanel page showed for a moment a full-page "Checking panel
+access" with "Reload CelikPanel" before anything had answered. Now the page
+stays empty for the first 1.5 seconds. If access is still being checked after
+that, it says the Panel has not answered yet and that you need not do anything;
+after 15 seconds it offers "Check now"; after 30 seconds also "Reload
+CelikPanel". An answer that does not confirm access (no session, an error
+status, the Panel starting), or a connection that failed, is shown at once, with
+its cause. A check that reaches its own time limit is shown as still unknown,
+never as a failure.
+
+**The layer over the page names what it read.** When the Panel cannot confirm
+access for a moment, the page stays under a layer, as in v0.1.0-alpha.82. The
+layer now says which of these it read: the Panel did not answer; the Panel is
+starting; or the licence result could not be read. When an update was started
+from the same browser within the last 30 minutes and its end has not been seen
+there, it says the Panel is not answering and an update may be restarting it,
+and that nothing about the licence has been decided.
+
+**The update notice and the card agree.** While the new version already runs
+but the updater is still checking it, the notice and the card both say "Update
+installed, being verified" and that you do not need to do anything. A state that
+could not be read is said to be not known, with "do not start another update".
+The time in the update window is your local time with its zone, no longer
+labelled "UTC".
+
+**A stopped setup says why, above its steps.** A setup run that stopped because
+its plan was reopened for editing is no longer shown as a failure whose last
+step is "In progress". The reason, who acts and the next step stand above the
+list of steps, unfolded. The mail identity check names the condition that is
+not met: the server's address is not public, the mail service uses another name,
+the reverse DNS (PTR) of the address names something else, that name does not
+lead back to the address, or the mail host name is not a full host name. A
+reverse DNS lookup that got no answer is "could not be checked", no longer "no
+reverse DNS". Setup's order and requirements are unchanged.
+
+### The four observations after the last update
+
+The owner reported these from the owner's own screens after updating the two
+installed servers (one Ubuntu 24.04, one Debian 13) to v0.1.0-alpha.82 from the
+panel's own update screen on 2026-10-10. No assistant looked at those servers.
+
+1. *The full-screen "License status could not be checked" page during the
+   Panel's restart (Ubuntu server).* That update was started from the
+   v0.1.0-alpha.81 interface, which replaces the page when access is unknown; a
+   lab measurement reproduced this with that interface and saw the alpha.82
+   interface keep the page under a layer. Nothing can change alpha.81's
+   interface. This release changes what the layer says (above). The earlier
+   wording of the change was seen on a real Panel in the lab; its final wording
+   has component tests and a mock browser only.
+2. *The corner notice still said the update was being applied while the card
+   showed the new version (Debian server, about two minutes after the start).*
+   Changed: both now say "installed, being verified" in that window. Seen on a
+   real Panel in the lab (Debian 13) during an update between two builds of the
+   same code of this work, as an observation and not as a judged check. It takes effect for an update
+   started from a page of this release (see above).
+3. *A cold load of `/setup` showed a full-page "Checking panel access" for a
+   moment.* Changed: nothing is drawn for the first 1.5 seconds. Measured in the
+   lab on a real Panel (Debian 13): 18 of 18 loads passed. The 15- and 30-second steps that
+   follow were changed after that measurement; they have component tests and a
+   mock browser, and the next lab record measures them.
+4. *The setup page said "This operation stopped" while its last step read "In
+   progress", with the reason folded away (Debian server).* Changed: a run
+   stopped by reopening its plan says so, and the reason stands above the steps.
+   Component tests and a mock browser only; the owner's own setup record was not
+   read.
+
+### Returning to an older release
+
+This release moves the Panel's database from schema 43 to 44: migration 044
+adds one table, `managed_site_files`, and changes no existing table. There is no
+step back. v0.1.0-alpha.82 refuses a database at 44, so a return, automatic or
+not, restores the database snapshot taken before the update, as for every
+migration.
+
+A return loses this protection. The older release does not know the new first
+line: at its start it writes every site's nginx file again from its records, so
+a change you made, the first line and the line that includes your own directory
+are gone from the file. Your files in `celikpanel-sites.d`, the dated copies and
+the pending files stay on disk, but nginx stops reading your directory until this
+release runs again. In the lab, v0.1.0-alpha.81 rewrote every site file at its
+start after an automatic return, an owner's edit included; those files had no
+first line yet. What an older release does to a file that already carries the
+first line is read from its source; the lab measurement of it is listed under
+"What was measured". When this release runs again, it recognises the older
+release's text and takes it over; an edit you made while the older release ran,
+and before its next start, is kept.
+
+### What you may need to do
+
+- Reload open CelikPanel pages after the update.
+- If scripts of yours call the API, read "API changes" before updating: several
+  existing routes can now answer `409` for a site whose file is kept, and
+  certificate issuance can answer `200` with `waiting_for_owner`.
+- After the first start, open the Domains list as an administrator. If it shows
+  the line about files left alone, open each marked domain's Configuration file
+  page and choose. You do not have to: a file that was left alone keeps serving
+  its site, but changes you make in CelikPanel are not applied to it, and a
+  certificate for that site may wait for your choice.
+- Put your own nginx lines for a site in `/etc/nginx/celikpanel-sites.d/<domain>/`.
+  In a site file you edit, keep the line that includes
+  `/etc/nginx/celikpanel-managed.d/<domain>/*.conf`.
+- Put an application's own settings in
+  `/etc/systemd/system/celikapp-<N>.service.d/`, then run
+  `sudo systemctl daemon-reload`.
+- The advice of v0.1.0-alpha.82 about Postfix still applies: on a server with
+  mail, run `postconf -n >/dev/null`; if it prints a warning, correct the line of
+  `main.cf` it names.
+- Know before you update that a return to an older release removes this
+  protection (above).
+
+## API changes
+
+Panel and Agent are installed together by one release. The new calls for the
+pool and the unit are bound to the Panel's own build: an Agent of another build
+answers "panel/agent build mismatch" and writes nothing, and there is no
+fallback to the older pool calls. For the nginx files, the build match keeps an
+Agent of another release from answering the Panel's writes, and the start
+refuses its batch. An Agent that answers without a result per file is
+recorded and shown as "not known" (`unknown`, `agent_does_not_report`), never as
+unchanged.
+
+Errors keep the shape `{"error", "code", "reason"?, "detail"?, "vars"?,
+"details"?}` and gain an additive `restore`. Screens translate by `code`.
+
+### Site configuration files (new routes)
+
+All are for an administrator (`403 {"error":"administrator access is
+required"}` otherwise); a domain without a hosted site is `404`.
+
+| Route | Body |
+| --- | --- |
+| `GET /api/v1/domains/{id}/site-config` | none |
+| `POST /api/v1/domains/{id}/site-config/keep` | `{"file_sha256"}` |
+| `POST /api/v1/domains/{id}/site-config/take` | `{"file_sha256", "render_sha256"}` |
+| `POST /api/v1/domains/{id}/site-config/recreate` | `{}` or none |
+| `POST /api/v1/domains/{id}/site-config/apply` | `{"file_sha256", "render_sha256"}` |
+
+Each POST body may carry `"kind"`: `nginx_vhost` (the default), `php_pool` or
+`app_unit`; another value is `400` ("kind is nginx_vhost, php_pool or
+app_unit"); a kind the site does not have is `409 SITE_CONFIG_NOT_APPLICABLE`.
+The digests are the ones the GET returned. The four POST routes require the
+header `X-CelikPanel-Request-Id` of v0.1.0-alpha.82, with the same answers
+(`428` without it, `400` if malformed, a replay answered from the stored answer
+with `X-CelikPanel-Request-Replayed: 1`, `409 REQUEST_ID_REUSED`,
+`409 REQUEST_IN_PROGRESS`, `409 REQUEST_OUTCOME_UNKNOWN`). With them, twelve
+routes require the header.
+
+**The GET answer.** The top-level fields describe the nginx file, as a client
+that reads one file expects: `domain_id`, `domain`, `kind`, `path`, `state`,
+`reason`, `detail`, `adopted_from`, `include_dir`, `enabled` (`link`, `absent`
+or `other`), `file_sha256`, `render_sha256`, `pending_path`, `diff`,
+`diff_truncated`, `actions`, `decision` (`kind`, `decided_at`, `current`) and
+`ledger` (`written_release`, `written_at`, `observed_at`, `backup_path`). Added
+beside them: `files[]` (the nginx file, then the pool of a PHP site, then the
+unit of a Node site, each in the same shape with its own `kind` and `actions`),
+`overall_state` and `overall_kind`.
+
+- `state`: `absent`, `managed_unchanged`, `owner_edited`, `foreign`,
+  `unreadable`, `unwritable`, `unknown_origin`, or `unknown` (`reason`
+  `agent_does_not_report`, or `not_read` for a file in `files[]` the Agent did
+  not answer for now).
+- `reason` of `unreadable`: `symlink`, `not_regular`, `permission`,
+  `too_large`, `read_failed`; of `unwritable`: `write_refused`. Additive on
+  every answer, measured read-only by the Agent: `system_error` (for example
+  `EPERM`, `EROFS`) and `protection` (`immutable`, `append_only`,
+  `directory_immutable`, `read_only_filesystem`, `none`; absent when not
+  measured). For `unwritable` on a file the owner changed, `file_state` names
+  that file's own state.
+- `actions` (always an array): `["keep","take","merge"]` for `owner_edited`,
+  `foreign`, `unknown_origin`; `["recreate"]` for `absent`; `["recheck"]` for
+  `unreadable` and `unwritable`; `["keep","take","merge","recheck"]` for
+  `unwritable` with `file_state`; `["apply"]` for `managed_unchanged` with
+  `reason` `protection_removed` while CelikPanel's text is held; `[]`
+  otherwise. `merge` and `recheck` have no route: merge is done on the server,
+  recheck is the GET again.
+- `diff`: a unified diff of the file on disk against CelikPanel's text (first
+  line left out), at most 4000 lines per side and 64 KiB. A line that mentions
+  authorization, password, passwd, secret, token, api key, private key or
+  cookie keeps its directive and shows its value as hidden; a comment line with
+  such a word is replaced whole. A credential written without those words is
+  not hidden.
+- Certificate fields (nginx file): `managed_dir`, `managed_include` (the exact
+  line a file needs), `challenge_file` (`absent`, `unchanged`, `differs`,
+  `kept`; `written` and `failed` in the answer of an operation that wrote),
+  `validation` (`ready`, `include_missing`, `names_missing`, `challenge_kept`,
+  `challenge_failed`, `unknown`; with `validation_name` and
+  `validation_status`), `resolved_reason`, `pending_reason` (`certificate`,
+  `certificate_validation`) and `certificate` (`cert_path`, `key_path`,
+  `expires_at`, `served_expires_at`, `served_days_left`, `referenced`), each
+  only when known.
+- `overall_state`: the highest presented state of the site's files, in the
+  order unreadable, unwritable, missing, kept (owner-edited, replaced, not
+  recognised), unknown, CelikPanel's unchanged text; the first file on a tie.
+- The GET is not read-only while the file's recorded reason is
+  `certificate_validation`: it repeats the validation check (a probe file in the
+  challenge directory, removed again) and, when CelikPanel's own validation file
+  is absent or out of date, writes it with one `nginx -t` and one reload; a
+  check that finds every name served ends the reason and answers
+  `resolved_reason: "certificate_validation"`.
+
+**The POST answers.** `keep`: `200`, the GET's object after the decision;
+nothing is written to the file. `take`: `200` with `outcome` `taken` (or
+`unchanged`) and `backup_path`. `recreate`: `200` with `outcome` `recreated`
+(or `unchanged`). `apply`: `200` with `outcome` `written` (or `unchanged`), no
+dated copy. `take` and `recreate` also carry `managed_dir`, `managed_include`
+and `challenge_file`.
+
+| Refusal | Meaning |
+| --- | --- |
+| `400` | a digest missing or not 64 lowercase hexadecimal characters; an unknown `kind` |
+| `409 SITE_CONFIG_CHANGED` | the file or CelikPanel's text changed after the GET; nothing was done |
+| `409 SITE_CONFIG_NOT_APPLICABLE` | the choice is not offered for the file as it is now, or the site has no such file |
+| `409 SITE_CONFIG_MISSING` | `take`: the file is gone |
+| `409 SITE_CONFIG_UNWRITABLE` | `reason` `symlink`, `not_regular`, `permission`, `too_large`, `read_failed` or `write_refused`; also before anything is written when the Agent measures a protection now (no dated copy) |
+| `502 SITE_CONFIG_NGINX_REFUSED` | `reason` `nginx_refused` or `reload_failed`; `restore` `confirmed` or `unconfirmed`; nginx's line in `details` |
+| `502 SITE_CONFIG_SERVICE_REFUSED` | pool or unit: `detail` `config_refused` (the service's own check) or `reload_failed`; `restore` as above |
+| `502 SITE_CONFIG_NOT_READ` | the Agent did not answer, answered with an error, or the input could not be prepared |
+
+`restore` is `confirmed` only when the Agent reports that the previous file is
+back and the reload after it held; otherwise it is `unconfirmed`, and the
+sentence says that the server administrator checks the file on the server. The
+Agent's own line is sent to administrators only.
+
+### Existing routes that now refuse to change a kept file
+
+Every operation that writes a site file classifies it first. Among them: the
+general settings save (`POST /api/v1/domains/{id}/general`), the alias routes
+(`POST /api/v1/domains/{id}/aliases`, `DELETE /api/v1/domains/{id}/aliases/{alias}`),
+certificate issuance, the hosting change (`PUT /api/v1/domains/{id}/hosting`),
+the PHP version switch (`POST /api/v1/domains/{id}/php`), the pool save
+(`POST /api/v1/domains/{id}/php/pool`), site creation
+(`POST /api/v1/domains/create`) and the cPanel import. On a file CelikPanel
+keeps they answer:
+
+- `409 SITE_CONFIG_OWNER_EDITED`: for the nginx file `reason` is the state
+  (`owner_edited`, `foreign`, `unknown_origin`); for a pool or unit `reason` is
+  the kind (`php_pool`, `app_unit`) and `detail` the state. Nothing was
+  changed; a refused PHP switch switched nothing (pool, nginx file and the
+  site's PHP version stay), and a refused hosting change keeps the previous
+  settings.
+- `409 SITE_CONFIG_MISSING` (for a pool or unit `reason` is the kind).
+- `409 SITE_CONFIG_UNWRITABLE`: for the nginx file `reason` is the Agent's
+  reason; for a pool or unit `reason` is the kind and `detail` the reason.
+- `409 SITE_CONFIG_EXISTS`: site creation and import, when a file at the new
+  site's path is not CelikPanel's unchanged text (the file is kept, only the
+  records are removed); a PHP switch whose target version already has a pool
+  file for the site (`reason` `php_pool`).
+- `502 SITE_CONFIG_SERVICE_REFUSED` and `502 SITE_CONFIG_NGINX_REFUSED` as in
+  the table above, with `restore`.
+
+### Certificates
+
+- `POST /api/v1/domains/{id}/ssl/letsencrypt` on a site whose file is kept:
+  `200 {"status":"waiting_for_owner","expires_at":…,"pending_reason":"certificate"}`
+  when the certificate was issued and stored but the kept file does not serve
+  it yet (an ordinary success stays `{"status":"success","expires_at":…}`);
+  before anything is requested, `409` with `code` `SITE_CONFIG_OWNER_EDITED`,
+  `reason` `certificate_validation`, `detail` `include_missing`,
+  `names_missing`, `challenge_kept` or `challenge_failed`, and `vars.include`
+  (the line to add), `vars.name` and `vars.status` (the first name not served
+  and nginx's HTTP status for it), each when known; `503
+  CERTIFICATE_VALIDATION_UNKNOWN` with `detail` `unknown` when nginx did not
+  answer the check. A missing or unreadable file answers `409
+  SITE_CONFIG_MISSING` or `SITE_CONFIG_UNWRITABLE` where v0.1.0-alpha.82 gave an
+  untyped `409`. An Agent that does not say whether the validation can be
+  published is answered as `include_missing`.
+- The alias routes give the same refusals; a certificate reissue on a ready kept
+  file answers `"status":"waiting_for_owner","pending_reason":"certificate"`
+  instead of `"success"`.
+- `GET /api/v1/domains/{id}/ssl`: each certificate carries `waiting_for_owner`
+  (boolean); `renewal_status` gains the value `waiting_for_owner`; additive
+  `waiting_for_owner_reason`: `certificate` or `certificate_validation`.
+- `GET /api/v1/dashboard`: an entry of `expiring_certs` may carry
+  `waiting_for_owner: true`, `domain_id` and `served_days_left` (the days left
+  on the certificate in use, negative once it has expired). Such entries come
+  first, whatever their days, ordered by `served_days_left`.
+
+### Domains list
+
+`GET /api/v1/domains`, for an administrator only: each domain may carry
+`site_config` with `state`, and `kind` (absent for the nginx file),
+`adopted_from`, `kept_by_choice` and `pending_reason` when they apply. It is
+the Panel's last recorded observation, not a fresh read; a file with no
+recorded row is not in it. `missing` appears here (the GET above answers
+`absent` for the same file), and a recorded refused replacement is answered
+`unwritable`, as on the page.
+
+### Server setup
+
+`GET /api/v1/setup` and `GET /api/v1/setup/operation`: the check `mail_identity`
+in the state `action_required` carries, additively, `reason` and `vars`:
+`server_address_not_public` (`ip`), `mail_name_differs` (`hostname`, `ip`,
+`current`), `reverse_dns_mismatch` (`hostname`, `ip`, `ptr`),
+`forward_dns_mismatch` (`hostname`, `ip`) or `mail_name_not_canonical`
+(`name`), each var only when known. A reverse DNS lookup that got no answer
+makes the check `state: "unknown"`, `code: "mail_identity_unavailable"`,
+`reason: "reverse_dns_unknown"` with `vars.ip` and `vars.error` (`timeout`,
+`no_resolver`, `refused`, `other`). A record written before this release keeps
+its generic form.
+
+### Update status
+
+`GET /api/v1/panel/update/status` and `POST /api/v1/panel/update/abandon`
+carry, additively, `phase: "verifying"` while the record is running and the
+Panel that answers has the target's version and commit (the archive digest and
+the release sequence are not compared). It never changes `status`.
+
+Which of these answers were produced on a real system is said in the next two
+sections and in the limits.
+
+## Behaviour changes you will notice
+
+- A Panel start that finds every site file unchanged writes nothing and does
+  not reload nginx.
+- A new site's nginx file is the text a later start writes.
+- A saved setting, certificate, hosting change or PHP change on a site whose
+  file is kept is refused and changes nothing.
+- A removed site file is not recreated; the page offers "Recreate".
+- A locked site file is refused alone; the other sites are written.
+- Creating a site where a file that is not CelikPanel's already stands at its
+  path is refused, and that file is kept.
+- Deleting a site keeps a dated copy of an edited nginx file and leaves your
+  include directory in place; CelikPanel's own directory is removed only when
+  it holds nothing but CelikPanel's unchanged validation file.
+- A new or recreated nginx file is `root:celikpanel 0644`; a kept or taken file
+  keeps your mode, owner and group.
+- The two include directories are created `0755`; a directory that already
+  exists keeps its mode.
+- A certificate for a kept file is obtained only when the server's own check
+  finds the validation served; until you act, the site serves the certificate
+  its file names.
+- A pool save or PHP switch on a pool you edited is refused; your pool lines are
+  no longer dropped.
+- The setup page names why a run stopped above its steps, and the mail identity
+  check names its condition.
+- The update notice and the card say "installed, being verified" in the same
+  window; the update window shows local time with its zone.
+- A cold page load draws nothing for 1.5 seconds; "Check now" comes at
+  15 seconds, "Reload CelikPanel" at 30 seconds.
+- The layer over the page names the cause it read.
+- The SSL tab and the dashboard say "expired N days ago" instead of a negative
+  number of days.
+
+Measured on real services (next section): the unchanged start, the creation
+text, the refused save, the removed file, the locked file (apart from its page),
+the deletion, the owner and mode of written files, and the first-load quiet
+time. The include directories' mode, the certificate path, the pool, the unit,
+the setup page, the final wording of the layer and of the wait, and the SSL tab
+wording have component tests and a mock browser; the update notice's new words
+were seen in the lab as an observation (next section).
+
+## What was measured, and how
+
+Four records made on 2026-10-10 (UTC; the tenth was checked on 2026-10-11), on
+disposable virtual machines on one laptop host, and two that were not finished
+when this was written. The product ran as builds with the acceptance-test
+licence, not as the signed archive. The directories are under
+`deploy/e2e/release-recovery/evidence/`. Every result file marks itself as not
+yet accepted evidence; the owner judges it.
+
+**What the lab does and does not establish.** The virtual machines are not cut
+off from the network: they run on QEMU user networking with outbound NAT, and
+the distributions' packages are installed from their repositories during a run.
+Nothing here shows what a machine could or could not reach. The name of the
+release and licence host and four certificate-authority names were pinned to
+the machine's own loopback in its hosts file before any product path existed,
+and read back at the end (all labs of the eighth and ninth records; 11 of 12
+labs of the tenth, where one stopped run has no read-back). The licence step is
+answered by the test build itself; that is what the build says about itself,
+not an observation of traffic. No driver was pointed at an installed server. The
+machines' traffic was not captured.
+
+**What v0.1.0-alpha.82 does with a site file the owner edited (eighth record,
+`set8-20261010`; Debian 13, Ubuntu 24.04, Arch).** The source of the published
+tag, built with the test licence under the previous release's label; 48 runs.
+In all 40 runs on the nginx file the owner's added `location`, changed `index`,
+replacement file or own include was replaced by the Panel's own text at the next
+start, restart or General settings save (36), or a removed file and its link
+were recreated and served again (4); none of the Panel's API answers that were
+read said so, and after a save no Panel or Agent journal line named the site. A
+pool edit survived a start (4), and the pool save through the Panel then dropped
+the owner's directive and comment (4). With `chattr +i` on one site file (4) the
+file was kept, the start batch failed, the site's enabled link was absent
+afterwards, and the next nginx reload, run by the lab as a log rotation would,
+took that site out of service while the Panel still showed it active. Also
+measured: the text written at creation differed from the text of the next start
+(`www.` added); every start rewrote unchanged files; the Panel wrote
+`root:celikpanel` over an owner's `root:root` file (owner and group varied in
+one Debian run only).
+
+**The first part of the site-file protection (tenth record, `set10-20261010`;
+Debian 13 with nginx 1.26.3, Ubuntu 24.04 with nginx 1.24.0, Arch with nginx
+1.30.5).** The code of the first part of this work: the nginx file with its
+first line, the record per file, the three choices and your own include
+directory. It did not yet contain CelikPanel's own include directory and the
+validation check, the "cannot be replaced" answer, "Write CelikPanel's text
+now", the order of states across files, the restore fact, the pool and the unit.
+Installed fresh, and reached by an update from the published v0.1.0-alpha.81
+(its tag's source, test licence). 93 cells, 31 per platform: 84 passed, 6 did
+not pass (the same two findings on each platform), 3 not measured.
+
+- Passed on all three platforms: every owner edit (added location, changed
+  directive, replaced file, own include) was kept byte for byte, with the same
+  inode, at a start, a restart and a General save; CelikPanel's text was held
+  beside it; the journal named the site; the page answered the state with the
+  difference and the three choices; the Domains row carried the state; the save
+  answered `409 SITE_CONFIG_OWNER_EDITED`; nginx was not reloaded; the owner's
+  content stayed served. *Keep*: `428` without the request identity, then
+  `200`, the file and its first line untouched, a repeat answered without
+  running again, kept at the next start. An owner's `root:root 0640` file kept
+  its mode and owner. *Take*: the dated copy with the owner's bytes, mode and
+  owner, CelikPanel's text with the owner's mode and owner, a reload, the site
+  served, a repeat answered without running again. A take with an out-of-date
+  digest: `409 SITE_CONFIG_CHANGED`, nothing done. A take nginx refused: `502
+  SITE_CONFIG_NGINX_REFUSED`, the owner's file back. A removed file and link:
+  not recreated, the save `409 SITE_CONFIG_MISSING`, "Recreate" served the site
+  again. A symlink: refused and not followed. Deletion: the edited file kept as a
+  dated copy, the unchanged one removed, the include directories left. A start
+  with every file unchanged: no write, no reload. Creation and start wrote the
+  same text. A locked file: only it refused, its link intact, the other sites
+  written, one reload; unlocked, the next start wrote it.
+- An owner's `.conf` file in the include directory was served and survived a
+  start and a save; the PHP version switch in that cell was not measured (each
+  machine has one PHP version).
+- The update from v0.1.0-alpha.81: the migration ran; the untouched files were
+  taken over and rewritten as this release's text with the first line; the
+  owner-edited file was left alone, byte for byte and without a first line:
+  "4 adopted, 1 left alone" on Debian 13 and Ubuntu 24.04, "3 adopted, 1 left
+  alone" on Arch. The three routes of that time (keep, take, recreate)
+  answered `428` without a request identity. A database put back from before
+  the migration was migrated again, and the start wrote nothing.
+- The automatic return: a candidate whose migration fails returned to
+  v0.1.0-alpha.81; the database was back at 42, and alpha.81's start rewrote
+  every site file, the owner's edit included. The candidate never started in
+  these cells, so no file carried the first line at the return.
+- Did not pass, on each platform: the owner's include directory was created
+  `root:celikpanel 0750`, not the documented 0755; and for a locked file the
+  journal, the record and the Domains row named the lock while the page's own
+  read answered "CelikPanel's text, unchanged" with no reason and no action.
+  Both were corrected in the source afterwards (component tests).
+- Not measured: a PHP version switch, a site with a certificate, a second
+  update after a return, the screens in a browser.
+
+**The first page load, the access wait and an update in a real Chrome (ninth
+record, `set9-20261010`; Debian 13).** A headless Chrome on the laptop host
+against the real Panel of each guest; the interface of this work after its
+first gate corrections, before the 15- and 30-second steps and before the
+final wording of the layer.
+
+- Cold full load of `/setup`, `/` and `/settings?section=updates`, plain and
+  throttled to 2 Mbit/s and 300 ms: passed, 18 of 18 loads. No sentence and no
+  button appeared before a read answered; the first read answered 71 to 97 ms
+  (plain) and 0.92 to 0.98 s (throttled) after the first mount, inside the
+  1.5 s.
+- Every session read held 2.5 s: the explained wait appeared 1.57 to 1.62 s
+  after the quiet surface began, in English and in Turkish. Passed.
+- Every session read held 35 s: did not pass. An older 15-second limit showed
+  "Your session could not be checked" with "Reload CelikPanel" at 15.18 s, and
+  the older sentence again at the re-read. The 15- and 30-second steps
+  described above were made afterwards; they have component tests and a mock
+  browser.
+- An update started from Settings: on one of three guests the layer appeared,
+  with the wording of that time ("The Panel is not answering during an update
+  … This is not a license problem."), and the Settings page stayed mounted and
+  inert under it for at least 14.1 s and at most 18.1 s of a 29.3 s outage, then
+  continued where it was. On the other two guests no layer was drawn (the page's
+  access decision is taken not to have run out during the restart; its end time
+  was not recorded there). The wording was changed afterwards; the final wording
+  has component tests and a mock browser.
+- Observation, not a judged check: on two guests the corner notice and the card
+  said "Update installed, being verified" while the updater finished, and the
+  update window showed local time with its zone. In the same window the card's
+  "Current version" line and the sidebar still named the previous version until
+  the product's own reload.
+- No session, a session read failing as a closed connection, and a Panel
+  starting were shown at once (passed). With the Panel stopped, Chrome showed its
+  own error page: the recovery service worker was not registered in the
+  signed-in browser contexts, although it controlled the no-session loads of a
+  new context. Why was not determined, and the product's offline page was not
+  reached (not measured).
+
+**The baseline for the first load and the update (seventh record,
+`set7-20261010`; Debian 13).** Described in the notes of v0.1.0-alpha.82. On the
+published code a cold load drew the full-page "Checking panel access" in 18 of
+18 loads; during an update the alpha.81 interface replaced the page with the
+licence page for about 78 s, the owner's screen, while the alpha.82 interface
+kept it mounted under a layer for about 9 to 11 s of a 25 s outage, the layer's
+first sentence naming the licence.
+
+**The eleventh record (`set11-20261011`).** It was running when this was
+written. It is set up to measure, on fresh guests of Debian 13, Ubuntu 24.04 and
+Arch, the corrections made after the tenth record: the mode of both include
+directories; certificate issuance on a kept file, with the validation check
+against a real nginx (on Arch only the file without CelikPanel's include line),
+including a port-80 block bound to one address; the locked file's answer, "Check
+again", a General save and a refused take; in a real Chrome, the access wait and
+the recovery service worker; and, on Debian 13, what v0.1.0-alpha.81 does with
+site files that carry the first line after an automatic return from a candidate
+that fails its start check. Until its result stands here, each of these counts
+as not measured on a real system.
+
+[NATIVE RE-CHECK PENDING — set11]
+
+**The twelfth record.** It had not run when this was written. It is to measure
+the second part of this work, the PHP-FPM pool and the application unit. Until
+its result stands here, that part counts as not measured on a real system.
+
+[NATIVE RE-CHECK PENDING — set12]
+
+**Which check rests on which code.** Each later state of the code contains the
+earlier corrections.
+
+| What was checked | The code it ran on |
+| --- | --- |
+| The nginx file kept, the three choices, adoption after an update from v0.1.0-alpha.81, the return, a database put back, the locked file's effect on other sites | the first part of this work (tenth record); not repeated on the final code |
+| CelikPanel's own include directory, the validation check, certificates on a kept file, the locked file's answer and "Check again", "Write CelikPanel's text now", the order of states across files, the restore fact, the 0755 mode | component tests and a mock browser; on a real system only through the eleventh record |
+| The PHP-FPM pool and the application unit | component tests and a mock browser; on a real system only through the twelfth record |
+| The cold first load and the explained wait at 1.5 s | the interface after the first gate corrections (ninth record) |
+| The 15- and 30-second steps, an unknown after an earlier answer | component tests and a mock browser; on a real system only through the eleventh record |
+| The layer's final wording, the setup page, the mail identity reason | component tests and a mock browser |
+| The update notice "installed, being verified" | seen as an observation in the ninth record; component tests |
+| What v0.1.0-alpha.82 does with an owner's edit | the published tag's source (eighth record) |
+
+**Screens.** The interface changes have component tests and were looked at in a
+Chrome against a loopback mock of the API (desktop and phone, English and
+Turkish; light and dark for the Configuration file page). No real Panel was
+behind that browser. The ninth record put a real Chrome in front of a real
+Panel for the first load, the access wait and an update (desktop size,
+headless; Turkish for the access wait only).
+
+**Tests.** The change record of the last state of the code gives: 1313 interface
+tests passed; the Go packages passed apart from the Agent package, which had the
+same 19 failures as before these changes and which the change record attributes
+to the development machine's environment. These numbers come from the change
+record, not from a retained test log.
+
+## Limits of this release
+
+These are known. They are not hidden defects.
+
+- **The final code was not measured on a real system.** The tenth record
+  measured the first part of this work. Everything added after it (see the
+  table above) has component tests and a mock browser, and is measured on a real
+  system only by the eleventh and twelfth records. The release preparation has
+  not been made, and no archive labelled as this release has been built.
+- **An update from v0.1.0-alpha.82 was not measured.** Every update cell started
+  from the source of v0.1.0-alpha.81. That files written by v0.1.0-alpha.82 are
+  recognised rests on its frozen texts, embedded in this release and pinned by
+  their digests, and on component tests.
+- **No site with a certificate was measured, and no certificate was issued.**
+  The validation check had never asked a real nginx when this was written.
+- **The validation check.** It asks nginx on `127.0.0.1` only, so a site whose
+  port-80 block is bound to one address is not reached there: the answer is
+  "not known" when nothing else listens on port 80 on the loopback, and another
+  block on the wildcard address could answer instead and read as "not served"
+  (read from nginx's rule, not measured). At the page's read, a failed
+  `nginx -t` or reload while CelikPanel publishes its validation file is
+  reported as `challenge_failed`, although the cause may be another file. A
+  missing or unreadable file records no reason, so a renewal it stopped waits
+  until the next completed renewal. A ready check shows that nginx serves the
+  path from the server itself, not that DNS or a firewall lets the certificate
+  authority in. A first issuance is never retried; a renewal is retried only by
+  the schedule (every 12 hours and at start, for certificates within 30 days of
+  expiry). The pages were not drawn in a real hosting customer's session.
+- **A return to an older release loses the protection** (see "Returning to an
+  older release"). Measured for files without the first line; for files with it,
+  read from the older release's source.
+- **The pool and the unit.** They are not looked at when the Panel starts, and
+  the start line counts nginx files only. Site creation records no row for them,
+  so a pool or unit nobody has opened or changed is not on the Domains list. The
+  calls are bound to the Panel's build with no fallback for an Agent of another
+  build. The generic PHP page's pool save by pool name gets the typed refusal
+  only through the Agent's error text.
+- **nginx judges every site together.** An owner's broken file elsewhere still
+  fails every write of a site file (the written files are put back), as before.
+  Your include directory is read after the site's `location` blocks.
+- **Not covered:** the Panel's own nginx site for its certificate, and the nginx
+  files of webmail and the database tools.
+- **Screens not yet converted.** 30 source files of the interface (31 in
+  v0.1.0-alpha.82) still read the server the old way in at least one place: the
+  application shell and its session read, the sign-in page, the setup wizard,
+  the update card and the update and component operation overlays, the Services
+  list and service pages, the sidebar, parts of the dashboard, add-ons, the
+  audit log, VPN, team members, the licence page and a few smaller parts. On
+  these a failed read can still look like an empty or negative state.
+- **The access wait.** Each page load still reads the session twice. A load
+  with the HTTP cache enabled was not measured. Why the recovery service worker
+  was not registered in the signed-in browser contexts of the lab is not
+  determined, so the offline page with a stopped Panel was not measured.
+- **The update notice.** The card's "Current version" line stays on the
+  previous version until the page reloads itself (observed in the lab). On a
+  phone the corner notice covered the card's status line in the mock browser.
+  The verifying window was not seen on an installed server. During the update to
+  this release the open page is still v0.1.0-alpha.82's.
+- **Setup.** The mail identity reason was never read from a real Agent. A failed
+  forward lookup after a matching reverse DNS name is reported as the same
+  unknown; the two are not told apart. An Agent of an earlier release still
+  reports an empty reverse DNS name as a mismatch.
+- **Limits of v0.1.0-alpha.82 that still stand.**
+  - Routes without a request identity: twelve routes now require it (the eight
+    of v0.1.0-alpha.82 and the four POST routes above). Service and application
+    restart, plans, enrollment codes, about 38 other routes, DNS records,
+    hosting type, PHP settings, aliases, application install, mail
+    authentication, accounts and files are not protected.
+  - A mail renewal helper already installed on a server is not replaced by a
+    panel update.
+  - The mail certificate path behind a `postconf` warning was not measured on a
+    server.
+  - The packaging is unchanged since v0.1.0-alpha.82, whose archive carries the
+    vendor's publishing tools and two one-time recovery scripts of an earlier
+    incident; whether they leave the archive is an owner decision that is still
+    open.
+  - A Postfix restriction list written one restriction per line becomes one line
+    after a DNSBL save.
+  - The Panel has no control that sets a database user's password.
+  - The other limits of [v0.1.0-alpha.82](RELEASE-NOTES-v0.1.0-alpha.82.md) that
+    this release does not address still apply. Its limit "Your own edits of a
+    generated site configuration file" is addressed here, for the nginx file
+    measured in part and for the pool and the unit in source.
+- **Evidence scope.** One laptop host; builds with the acceptance-test licence,
+  not the signed archive; machines with outbound NAT whose traffic was not
+  captured; names pinned to loopback; each cell ran once, except where a record
+  names a repeated run. The host logged modern standby during the eighth, ninth
+  and tenth records; their disk watchers show no gap longer than 31 s. Checks that did not pass are listed in each
+  directory's `checks-not-passed.txt`.
+- **Open acceptance items.** All five foundation items of the
+  [resilience contract](RESILIENCE-CONTRACT.md) remain partial; this release
+  closes none. Decisions: D-021 (unchanged), D-022, D-024, D-025, D-029, D-031
+  in [DECISIONS](DECISIONS.md).
+
+## Publication record
+
+Not published. Open before publication:
+
+1. The number: v0.1.0-alpha.83 is the working number (owner's choice; not
+   final).
+2. The results of the eleventh and twelfth records are entered above, or their
+   parts stay named limits.
+3. The release preparation (release sequence, bootstrap pins, version lines)
+   in a separate commit; the archive built and signed by CI on the tag.
+4. Whether the vendor's publishing tools and the two one-time recovery scripts
+   stay in the archive (owner decision).
+
+Install this release only through CelikPanel's update interface. Publishing it
+does not update installed servers; only the owner of a server starts its
+update, from the panel's own update screen.
