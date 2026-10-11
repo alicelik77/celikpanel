@@ -25,6 +25,13 @@ static site). Then, as the logged-in owner and as the owner on the server's shel
           with one reload; then unlocked and started again.
   k       A's vhost replaced by a symlink to the owner's file: classified, refused, not followed.
   l       deletion of an owner-edited site (a dated copy first) and of an unchanged one; the include directories.
+  m       (D-031 second step, 2026-10-11) an owner directive appended to A's PHP-FPM pool: a pool save and a PHP switch
+          refused SITE_CONFIG_OWNER_EDITED (reason php_pool), the pool's bytes kept, the page's difference, take.
+  n       B made a Node site (needs a Node.js version installed by the Panel; otherwise not measured): the unit sealed,
+          an owner drop-in across a hosting change, an owner line in the unit refused (reason app_unit), take, the
+          alpha.82 unit adopted and with an owner's line unknown origin, B back to PHP with the drop-in left.
+  o       A's pool rewritten (lab) in the alpha.82 form: adopted, sealed at the next save; with an owner's line unknown
+          origin and the save refused.
 
 ``upd1-<platform>-good`` | ``upd1-<platform>-defective`` (``Set10UpdateTrial`` over ``set6_trial.Set6UpdateTrial``):
 set6's update cells (set5's, with set6's pinning) from the published v0.1.0-alpha.81. Added: before the update, as the
@@ -49,6 +56,7 @@ import dataclasses
 from datetime import datetime
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import secrets
@@ -108,6 +116,10 @@ SECTIONS = (
     ("g-immutable", "A locked while A, B and the static site need a render"),
     ("k-symlink", "A's vhost replaced by a symlink to the owner's file"),
     ("l-delete", "deleting an owner-edited site and an unchanged one"),
+    # D-031 second step (2026-10-11); component-tested, not yet run on a guest.
+    ("m-pool-directive", "an owner directive in A's PHP-FPM pool across a pool save and a PHP switch; take with its copy"),
+    ("n-unit-dropin", "B as a Node site: an owner drop-in across a hosting change; an edited unit refused; take; adoption"),
+    ("o-legacy-pool", "A's pool in the alpha.82 form is adopted; with an owner's line it is unknown origin"),
 )
 
 
@@ -974,6 +986,207 @@ class Set10Trial(D031, s8.Set8Trial):
 
     # -- the cell -----------------------------------------------------------------------------------------------
 
+    # -- m, n, o: D-031 second step (2026-10-11) ----------------------------------------------------------------
+
+    def files10(self, label: str, domains: list | None = None) -> dict:
+        """The pool, the unit and the unit's drop-in directory of each site, read on the guest."""
+        value = self.snap10(f"{label}-files", "read-files10", domains=domains or [DOMAIN_A, DOMAIN_B])
+        for domain, site in (value.get("sites") or {}).items():
+            for path, pool in (site.get("pools") or {}).items():
+                self.keep10(f"{label}-{domain}-{os.path.basename(path)}", pool)
+            self.keep10(f"{label}-{domain}-unit", site.get("unit"))
+        return value
+
+    def other_file(self, label: str, domain_id: int, kind: str) -> dict:
+        read = self.site_config(f"{label} ({kind})", domain_id)
+        files = read["body"].get("files") or []
+        found = next((f for f in files if isinstance(f, dict) and f.get("kind") == kind), {})
+        if found.get("diff"):
+            self.keep_text(f"files/{safe_name(label)}-{kind}-diff.txt", found["diff"])
+        return {"status": read["status"], "file": found, "overall_state": read["body"].get("overall_state"),
+                "overall_kind": read["body"].get("overall_kind")}
+
+    def m_pool(self) -> None:
+        """An owner directive in A's PHP-FPM pool: kept on a pool save and on a PHP switch (typed refusal, file
+        bytes untouched, nothing at the target version), shown on the page, then CelikPanel's text taken back with
+        a dated copy of the owner's pool."""
+        a_id = self.ids()[DOMAIN_A]
+        r0 = self.files10("m-0")
+        pools0 = (r0["sites"][DOMAIN_A].get("pools") or {})
+        if len(pools0) != 1:
+            self.judge("m", [("A has one PHP-FPM pool file", None, {"pools": sorted(pools0)})])
+            return
+        path, p0 = next(iter(pools0.items()))
+        checks = [("A's pool carries the INI render header and its digest holds",
+                   bool((p0.get("header") or {}).get("valid")), p0.get("header"))]
+        edit = self.owner10("m-pool-directive", "owner-pool10", domain=DOMAIN_A, action="append-directive", reload=True)
+        edited = edit.get("after") or {}
+        checks.append(("PHP-FPM accepts the owner's directive (php-fpm -t)",
+                       (edit.get("php_fpm_test") or {}).get("returncode") == 0, edit.get("php_fpm_test")))
+        saved = self.call("m: pool save on the edited pool", "POST", f"/api/v1/domains/{a_id}/php/pool",
+                          {"pm": "dynamic", "pm_max_children": 6}, timeout=300)
+        body = saved["_parsed"] if isinstance(saved["_parsed"], dict) else {}
+        r1 = self.files10("m-1-after-the-save")
+        p1 = (r1["sites"][DOMAIN_A].get("pools") or {}).get(path) or {}
+        checks.append(("the pool save is refused SITE_CONFIG_OWNER_EDITED (reason php_pool, detail owner_edited)",
+                       saved["status"] == 409 and body.get("code") == "SITE_CONFIG_OWNER_EDITED"
+                       and body.get("reason") == "php_pool" and body.get("detail") == "owner_edited",
+                       {"status": saved["status"], "code": body.get("code"), "reason": body.get("reason"), "detail": body.get("detail")}))
+        checks.append(("the owner's pool is byte for byte the same (sha256, inode) and CelikPanel's text is beside it",
+                       p1.get("sha256") == edited.get("sha256") and p1.get("inode") == edited.get("inode")
+                       and ((p1.get("side_files") or {}).get("pending") or {}).get("exists") is True,
+                       {"sha256": [edited.get("sha256"), p1.get("sha256")], "inode": [edited.get("inode"), p1.get("inode")]}))
+        shown = self.other_file("m page", a_id, "php_pool")
+        checks.append(("the page names the pool owner-edited, with the owner's line in the difference",
+                       shown["file"].get("state") == "owner_edited" and "php_admin_value[memory_limit] = 256M" in str(shown["file"].get("diff") or ""),
+                       {"state": shown["file"].get("state"), "overall": [shown["overall_state"], shown["overall_kind"]]}))
+        php = self.call("m: PHP settings read (GET /php)", "GET", f"/api/v1/domains/{a_id}/php")
+        pbody = php["_parsed"] if isinstance(php["_parsed"], dict) else {}
+        others = [v for v in pbody.get("available_versions") or [] if v != pbody.get("php_version")]
+        if others:
+            moved = self.call(f"m: PHP switch to {others[0]} on the edited pool", "POST", f"/api/v1/domains/{a_id}/php",
+                              {"php_version": others[0]}, timeout=300)
+            mbody = moved["_parsed"] if isinstance(moved["_parsed"], dict) else {}
+            r2 = self.files10("m-2-after-the-switch")
+            pools2 = r2["sites"][DOMAIN_A].get("pools") or {}
+            checks.append(("the PHP switch is refused the same way; the pool stays where it was, nothing at the target",
+                           moved["status"] == 409 and mbody.get("reason") == "php_pool" and sorted(pools2) == [path]
+                           and (pools2.get(path) or {}).get("sha256") == edited.get("sha256"),
+                           {"status": moved["status"], "reason": mbody.get("reason"), "pools": sorted(pools2)}))
+        else:
+            checks.append(("a PHP switch on the edited pool is refused and writes nothing", None,
+                           {"not measured": "one PHP version installed", "available": pbody.get("available_versions")}))
+        take = self.call("m: take CelikPanel's pool text", "POST", f"/api/v1/domains/{a_id}/site-config/take",
+                         {"kind": "php_pool", "file_sha256": shown["file"].get("file_sha256"),
+                          "render_sha256": shown["file"].get("render_sha256")}, timeout=300)
+        tbody = take["_parsed"] if isinstance(take["_parsed"], dict) else {}
+        r3 = self.files10("m-3-after-take")
+        p3 = (r3["sites"][DOMAIN_A].get("pools") or {}).get(path) or {}
+        backups = (p3.get("side_files") or {}).get("backups") or []
+        checks.append(("take writes CelikPanel's text (header valid, no owner line) and keeps the owner's pool as a dated copy",
+                       take["status"] == 200 and bool((p3.get("header") or {}).get("valid"))
+                       and "memory_limit" not in str(p3.get("text") or "")
+                       and any(b.get("sha256") == edited.get("sha256") for b in backups)
+                       and p3.get("mode") == edited.get("mode") and p3.get("uid") == edited.get("uid"),
+                       {"status": take["status"], "outcome": tbody.get("outcome"), "backups": [b.get("path") for b in backups]}))
+        self.judge("m", checks, {"pool": path})
+
+    def node_version(self) -> str | None:
+        listed = self.call("n: Node.js versions installed by the Panel", "GET", "/api/v1/runtimes/node")
+        parsed = listed["_parsed"]
+        rows = parsed if isinstance(parsed, list) else (parsed or {}).get("versions") if isinstance(parsed, dict) else []
+        for row in rows or []:
+            version = row.get("version") if isinstance(row, dict) else row
+            if isinstance(version, str) and version:
+                return version
+        return None
+
+    def hosting_node(self, label: str, domain_id: int, version: str, marker: str) -> dict:
+        command = "node -e \"require('http').createServer((q,s)=>s.end('%s')).listen(process.env.PORT)\"" % marker
+        entry = self.call(label, "PUT", f"/api/v1/domains/{domain_id}/hosting",
+                          {"project_type": "node", "start_command": command, "runtime_version": version}, timeout=600)
+        return {"status": entry["status"], "body": entry["_parsed"] if isinstance(entry["_parsed"], dict) else {}}
+
+    def n_unit(self) -> None:
+        """B made a Node site: its unit is sealed; an owner drop-in survives a hosting change; an owner line in the
+        unit is kept and the change refused; take keeps a dated copy; the alpha.82 form is adopted; B goes back to
+        PHP and the drop-in directory stays."""
+        b_id = self.ids()[DOMAIN_B]
+        version = self.node_version()
+        if not version:
+            self.judge("n", [("the unit cells need a Node.js version installed by the Panel", None,
+                              {"not measured": "no Node.js version is installed on this guest"})])
+            return
+        checks = []
+        first = self.hosting_node("n: B becomes a Node site", b_id, version, "set10-n1")
+        r0 = self.files10("n-0", [DOMAIN_B])
+        u0 = r0["sites"][DOMAIN_B].get("unit") or {}
+        checks.append(("the unit is written sealed (\"# \" header, digest holds)",
+                       first["status"] == 200 and bool((u0.get("header") or {}).get("valid")),
+                       {"status": first["status"], "header": u0.get("header")}))
+        self.owner10("n-dropin", "owner-unit10", domain=DOMAIN_B, action="add-dropin")
+        d0 = self.files10("n-1-with-the-drop-in", [DOMAIN_B])["sites"][DOMAIN_B]["dropin_dir"]
+        own0 = next((e for e in d0.get("entries") or [] if str(e.get("path", "")).endswith("set10-owner.conf")), {})
+        second = self.hosting_node("n: hosting change (another start command)", b_id, version, "set10-n2")
+        r2 = self.files10("n-2-after-a-change", [DOMAIN_B])
+        u2, d2 = r2["sites"][DOMAIN_B].get("unit") or {}, r2["sites"][DOMAIN_B]["dropin_dir"]
+        own2 = next((e for e in d2.get("entries") or [] if str(e.get("path", "")).endswith("set10-owner.conf")), {})
+        checks.append(("a hosting change rewrites CelikPanel's unit and leaves the owner's drop-in untouched",
+                       second["status"] == 200 and u2.get("sha256") != u0.get("sha256") and "set10-n2" in str(u2.get("text") or "")
+                       and own2.get("sha256") == own0.get("sha256") and own2.get("inode") == own0.get("inode"),
+                       {"status": second["status"], "dropin": [own0.get("sha256"), own2.get("sha256")]}))
+        edit = self.owner10("n-unit-line", "owner-unit10", domain=DOMAIN_B, action="append-directive")
+        edited = edit.get("after") or {}
+        third = self.hosting_node("n: hosting change on the edited unit", b_id, version, "set10-n3")
+        r3 = self.files10("n-3-after-the-refused-change", [DOMAIN_B])
+        u3 = r3["sites"][DOMAIN_B].get("unit") or {}
+        checks.append(("the change is refused SITE_CONFIG_OWNER_EDITED (reason app_unit); the unit's bytes and inode stay",
+                       third["status"] == 409 and third["body"].get("reason") == "app_unit"
+                       and u3.get("sha256") == edited.get("sha256") and u3.get("inode") == edited.get("inode"),
+                       {"status": third["status"], "code": third["body"].get("code"), "reason": third["body"].get("reason")}))
+        shown = self.other_file("n page", b_id, "app_unit")
+        take = self.call("n: take CelikPanel's unit text", "POST", f"/api/v1/domains/{b_id}/site-config/take",
+                         {"kind": "app_unit", "file_sha256": shown["file"].get("file_sha256"),
+                          "render_sha256": shown["file"].get("render_sha256")}, timeout=300)
+        r4 = self.files10("n-4-after-take", [DOMAIN_B])
+        u4, d4 = r4["sites"][DOMAIN_B].get("unit") or {}, r4["sites"][DOMAIN_B]["dropin_dir"]
+        own4 = next((e for e in d4.get("entries") or [] if str(e.get("path", "")).endswith("set10-owner.conf")), {})
+        checks.append(("take: CelikPanel's unit, the owner's as a dated copy, the drop-in untouched",
+                       take["status"] == 200 and bool((u4.get("header") or {}).get("valid"))
+                       and any(b.get("sha256") == edited.get("sha256") for b in (u4.get("side_files") or {}).get("backups") or [])
+                       and own4.get("sha256") == own0.get("sha256"),
+                       {"status": take["status"], "state": shown["file"].get("state")}))
+        self.snap10("n-lab-legacy-unit", "lab-legacy10", domain=DOMAIN_B, kind="unit")
+        adopted = self.other_file("n legacy unit", b_id, "app_unit")
+        self.snap10("n-lab-legacy-unit-edited", "lab-legacy10", domain=DOMAIN_B, kind="unit", owner_line=True)
+        unknown = self.other_file("n legacy unit with an owner line", b_id, "app_unit")
+        checks.append(("the alpha.82 unit is adopted; with a line of the owner's it is unknown origin",
+                       adopted["file"].get("state") == "managed_unchanged" and adopted["file"].get("adopted_from") == "v0.1.0-alpha.82"
+                       and unknown["file"].get("state") == "unknown_origin",
+                       {"adopted": [adopted["file"].get("state"), adopted["file"].get("adopted_from")], "edited": unknown["file"].get("state")}))
+        back = self.call("n: B back to a PHP site", "PUT", f"/api/v1/domains/{b_id}/hosting", {"project_type": "php"}, timeout=600)
+        r5 = self.files10("n-5-back-to-php", [DOMAIN_B])
+        u5, d5 = r5["sites"][DOMAIN_B].get("unit") or {}, r5["sites"][DOMAIN_B]["dropin_dir"]
+        checks.append(("back to PHP: the unit is removed (a copy of the unknown-origin unit kept), the drop-in directory stays",
+                       back["status"] == 200 and not u5.get("exists") and bool((u5.get("side_files") or {}).get("backups"))
+                       and any(str(e.get("path", "")).endswith("set10-owner.conf") for e in d5.get("entries") or []),
+                       {"status": back["status"], "unit": u5.get("exists")}))
+        self.judge("n", checks, {"node": version})
+        self.owner10("n-dropin-back", "owner-unit10", domain=DOMAIN_B, action="remove-dropin")
+
+    def o_legacy_pool(self) -> None:
+        """A's pool in the headerless form alpha.81/82 wrote is adopted (alpha.82 named); with a line of the owner's it
+        is unknown origin and a pool save is refused."""
+        a_id = self.ids()[DOMAIN_A]
+        self.snap10("o-lab-legacy-pool", "lab-legacy10", domain=DOMAIN_A, kind="pool")
+        adopted = self.other_file("o legacy pool", a_id, "php_pool")
+        saved = self.call("o: pool save on the adopted pool", "POST", f"/api/v1/domains/{a_id}/php/pool",
+                          {"pm": "dynamic", "pm_max_children": 5}, timeout=300)
+        sealed = self.files10("o-1-after-the-save", [DOMAIN_A])
+        pools = sealed["sites"][DOMAIN_A].get("pools") or {}
+        header_ok = all(bool((p.get("header") or {}).get("valid")) for p in pools.values()) and bool(pools)
+        self.snap10("o-lab-legacy-pool-edited", "lab-legacy10", domain=DOMAIN_A, kind="pool", owner_line=True)
+        unknown = self.other_file("o legacy pool with an owner line", a_id, "php_pool")
+        refused = self.call("o: pool save on the unknown-origin pool", "POST", f"/api/v1/domains/{a_id}/php/pool",
+                            {"pm": "dynamic", "pm_max_children": 5}, timeout=300)
+        rbody = refused["_parsed"] if isinstance(refused["_parsed"], dict) else {}
+        checks = [
+            ("the alpha.82 pool is adopted (managed_unchanged, adopted_from v0.1.0-alpha.82)",
+             adopted["file"].get("state") == "managed_unchanged" and adopted["file"].get("adopted_from") == "v0.1.0-alpha.82",
+             {"state": adopted["file"].get("state"), "adopted_from": adopted["file"].get("adopted_from")}),
+            ("the next pool save writes it with CelikPanel's header", saved["status"] == 200 and header_ok,
+             {"status": saved["status"], "pools": sorted(pools)}),
+            ("with a line of the owner's: unknown origin, and the save is refused (detail unknown_origin)",
+             unknown["file"].get("state") == "unknown_origin" and refused["status"] == 409 and rbody.get("detail") == "unknown_origin",
+             {"state": unknown["file"].get("state"), "status": refused["status"], "detail": rbody.get("detail")}),
+        ]
+        self.judge("o", checks)
+        # Lab: CelikPanel's text back for the next runs (take with the digests the page shows).
+        shown = self.other_file("o page before take", a_id, "php_pool")
+        self.call("o: take CelikPanel's pool text (clean-up)", "POST", f"/api/v1/domains/{a_id}/site-config/take",
+                  {"kind": "php_pool", "file_sha256": shown["file"].get("file_sha256"),
+                   "render_sha256": shown["file"].get("render_sha256")}, timeout=300)
+
     def execute(self) -> dict:
         self.step("preflight", self.preflight)
         self.step("origin", self.origin, needs=("preflight",))
@@ -987,7 +1200,8 @@ class Set10Trial(D031, s8.Set8Trial):
                      "c-owner-edit": lambda: self.scenario10("c"), "d-owner-edit": lambda: self.scenario10("d"),
                      "keep": self.keep_section, "take-j": self.take_section, "take-stale": self.take_stale,
                      "take-refused": self.take_refused, "e-removed": self.e_removed, "f-include-dir": self.f_include_dir,
-                     "g-immutable": self.g_immutable, "k-symlink": self.k_symlink, "l-delete": self.l_delete}
+                     "g-immutable": self.g_immutable, "k-symlink": self.k_symlink, "l-delete": self.l_delete,
+                     "m-pool-directive": self.m_pool, "n-unit-dropin": self.n_unit, "o-legacy-pool": self.o_legacy_pool}
         for key, title in SECTIONS:
             # Every section needs the guest and S0's records, not S0's verdict: a product expectation S0 finds not
             # held (a FAIL) must not hide the other cells.

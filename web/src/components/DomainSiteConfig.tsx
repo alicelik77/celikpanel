@@ -65,6 +65,12 @@ export interface SiteConfigView {
     // bytes: an owner-edited file whose replacement ("take") was refused is
     // `unwritable` with `file_state` "owner_edited" (or foreign, unknown_origin).
     file_state?: string;
+    // D-031 second step (2026-10-11): every file of the site in this same
+    // shape (the vhost repeats the top level), the worst of their states and
+    // the file that decided it.
+    files?: SiteConfigView[];
+    overall_state?: string;
+    overall_kind?: string;
 }
 
 const STATES = new Set([
@@ -77,6 +83,15 @@ export function decodeSiteConfig(raw: unknown): SiteConfigView {
         || !Array.isArray(body.actions)) {
         throw new Error('shape');
     }
+    if (body.files !== undefined) {
+        if (!Array.isArray(body.files)) throw new Error('shape');
+        for (const file of body.files) {
+            if (!file || typeof file !== 'object' || typeof file.state !== 'string' || !STATES.has(file.state)
+                || !Array.isArray(file.actions) || !FILE_KINDS.has(file.kind)) {
+                throw new Error('shape');
+            }
+        }
+    }
     return body as SiteConfigView;
 }
 
@@ -87,8 +102,42 @@ const VALIDATION_STATES = new Set(['include_missing', 'names_missing', 'challeng
 // The suffix the API puts on an earlier release's creation-time text.
 const CREATION_SUFFIX = ' (creation)';
 
+// The files CelikPanel writes for a site (D-031 second step, 2026-10-11): the
+// nginx vhost, the PHP-FPM pool of a PHP site, the application unit of a Node
+// site. The vhost's sentences are the page's own; the pool and the unit
+// replace the ones that name nginx or the owner's place with their own.
+// CelikPanel'in bir site için yazdığı dosyalar; havuz ve birim, nginx'i ya da
+// sahibin yerini anan cümleleri kendi cümleleriyle değiştirir.
+const FILE_KINDS = new Set(['nginx_vhost', 'php_pool', 'app_unit']);
+const KIND_TEXTS = new Set([
+    'title', 'managed.body', 'kept.body', 'unknownOrigin.body', 'keptByChoice', 'take.hint', 'take.confirmText',
+    'merge.hint', 'missing.body', 'recreate.hint', 'done.take', 'done.recreate', 'done.apply', 'unwritable.body',
+    'unwritable.bodyNoError', 'unwritable.next.none', 'held.auto', 'apply.hint', 'editedUnwritable.body', 'include',
+    'adopted.start', 'owner',
+]);
+
+type Translate = ReturnType<typeof useI18n>['t'];
+
+// kindText answers a sentence of the page for one file: the pool's or the
+// unit's own where it has one, the page's otherwise.
+export function kindText(t: Translate, kind: string | undefined) {
+    return (key: string, vars?: Record<string, string | number>) => t(
+        (kind && kind !== 'nginx_vhost' && FILE_KINDS.has(kind) && KIND_TEXTS.has(key)
+            ? `siteConfig.${kind}.${key}`
+            : `siteConfig.${key}`) as TranslationKey,
+        vars,
+    );
+}
+
 type Action = 'keep' | 'take' | 'recreate' | 'apply';
-type Done = { kind: Action; backup?: string };
+type Done = { action: Action; kind: string; backup?: string };
+type Busy = { action: Action; kind: string };
+
+// The file of `kind` in an answer: the vhost is also the answer's top level.
+function fileOf(view: SiteConfigView, kind: string): SiteConfigView | undefined {
+    if (view.files && view.files.length > 0) return view.files.find((file) => file.kind === kind);
+    return kind === 'nginx_vhost' || !kind ? view : undefined;
+}
 
 export function DomainSiteConfig({ domainId, onReasonEnded }: {
     domainId: number;
@@ -108,29 +157,36 @@ export function DomainSiteConfig({ domainId, onReasonEnded }: {
         if (ended) onReasonEndedRef.current?.();
     }, [ended]);
     const answer = useLostAnswer(() => config.retry());
-    const [busy, setBusy] = useState<Action | null>(null);
-    const [confirming, setConfirming] = useState(false);
-    const [merging, setMerging] = useState(false);
+    const [busy, setBusy] = useState<Busy | null>(null);
+    // The file whose "take" waits for its confirmation, and the files whose
+    // merge help is open.
+    const [confirming, setConfirming] = useState<string | null>(null);
+    const [merging, setMerging] = useState<Set<string>>(() => new Set());
     const [refusal, setRefusal] = useState<ApiError | null>(null);
     const [done, setDone] = useState<Done | null>(null);
+    const fileCount = config.remote.state === 'known' ? Math.max(1, config.remote.value.files?.length ?? 1) : 1;
 
-    const act = async (kind: Action, view: SiteConfigView) => {
+    const act = async (action: Action, view: SiteConfigView) => {
         if (busy || answer.holding) return;
-        setBusy(kind);
+        const kind = view.kind || 'nginx_vhost';
+        setBusy({ action, kind });
         setRefusal(null);
         setDone(null);
         try {
-            const body = kind === 'recreate' ? {} : { file_sha256: view.file_sha256, render_sha256: view.render_sha256 };
+            const digests = action === 'recreate' ? {} : { file_sha256: view.file_sha256, render_sha256: view.render_sha256 };
+            // The vhost's request is as it always was; another file names itself.
+            const body = kind === 'nginx_vhost' ? digests : { ...digests, kind };
             const question = {
                 // What the state read again shows about the choice.
                 shows: ([read]: { value: unknown }[]) => {
-                    const after = read.value as SiteConfigView;
-                    if (kind === 'keep') return after.decision?.kind === 'keep_mine' && after.decision.current;
-                    if (kind === 'apply') return after.state === 'managed_unchanged' && !after.actions.includes('apply');
+                    const after = fileOf(read.value as SiteConfigView, kind);
+                    if (!after) return false;
+                    if (action === 'keep') return after.decision?.kind === 'keep_mine' && after.decision.current;
+                    if (action === 'apply') return after.state === 'managed_unchanged' && !after.actions.includes('apply');
                     return after.state === 'managed_unchanged';
                 },
             };
-            const res = await answer.send(`${url}/${kind}`, {
+            const res = await answer.send(`${url}/${action}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body),
@@ -150,27 +206,31 @@ export function DomainSiteConfig({ domainId, onReasonEnded }: {
                 return;
             }
             answer.settle();
-            setConfirming(false);
-            setDone({ kind, backup: result.backup_path });
+            setConfirming(null);
+            setDone({ action, kind, backup: result.backup_path });
             void config.retry();
         } finally {
             setBusy(null);
         }
     };
 
+    const doneText = (finished: Done) => {
+        const tk = kindText(t, finished.kind);
+        return finished.action === 'take'
+            ? tk('done.take', { backup: finished.backup ?? '' })
+            : tk(finished.action === 'keep' ? 'done.keep' : finished.action === 'apply' ? 'done.apply' : 'done.recreate');
+    };
+
     return (
         <div className="space-y-4" data-site-config>
             <div className="flex items-center gap-2">
                 <FileCode2 className="h-5 w-5 text-fg-muted" aria-hidden="true" />
-                <h2 className="text-base font-semibold text-fg">{t('siteConfig.title')}</h2>
+                <h2 className="text-base font-semibold text-fg">{t(fileCount > 1 ? 'siteConfig.files.title' : 'siteConfig.title')}</h2>
             </div>
             <ResultUnknown answer={answer} />
             {done && (
-                <p role="status" className="rounded-lg border border-border-strong bg-surface-2 p-3 text-sm text-fg" data-site-config-done={done.kind}>
-                    {done.kind === 'take'
-                        ? t('siteConfig.done.take', { backup: done.backup ?? '' })
-                        : t(done.kind === 'keep' ? 'siteConfig.done.keep'
-                            : done.kind === 'apply' ? 'siteConfig.done.apply' : 'siteConfig.done.recreate')}
+                <p role="status" className="rounded-lg border border-border-strong bg-surface-2 p-3 text-sm text-fg" data-site-config-done={done.action} data-site-config-done-kind={done.kind}>
+                    {doneText(done)}
                 </p>
             )}
             <ErrorBanner error={refusal} />
@@ -183,26 +243,86 @@ export function DomainSiteConfig({ domainId, onReasonEnded }: {
             >
                 {({ value, stale }) => {
                     const locked = stale || answer.holding || config.reading || busy !== null;
+                    const files = value.files && value.files.length > 0 ? value.files : [value];
+                    const many = files.length > 1;
                     return (
-                        <SiteConfigState
-                            view={value}
-                            locked={locked}
-                            busy={busy}
-                            confirming={confirming}
-                            merging={merging}
-                            onKeep={() => void act('keep', value)}
-                            onTake={() => (confirming ? void act('take', value) : setConfirming(true))}
-                            onCancel={() => setConfirming(false)}
-                            onMerge={() => setMerging((open) => !open)}
-                            onRecreate={() => void act('recreate', value)}
-                            onApply={() => void act('apply', value)}
-                            onRecheck={() => void config.retry()}
-                            rechecking={config.reading}
-                        />
+                        <div className="space-y-8">
+                            {many && <FileList files={files} />}
+                            {files.map((file) => {
+                                const kind = file.kind || 'nginx_vhost';
+                                const state = (
+                                    <SiteConfigState
+                                        view={file}
+                                        locked={locked}
+                                        busy={busy?.kind === kind ? busy.action : null}
+                                        confirming={confirming === kind}
+                                        merging={merging.has(kind)}
+                                        onKeep={() => void act('keep', file)}
+                                        onTake={() => (confirming === kind ? void act('take', file) : setConfirming(kind))}
+                                        onCancel={() => setConfirming(null)}
+                                        onMerge={() => setMerging((open) => {
+                                            const next = new Set(open);
+                                            if (next.has(kind)) next.delete(kind);
+                                            else next.add(kind);
+                                            return next;
+                                        })}
+                                        onRecreate={() => void act('recreate', file)}
+                                        onApply={() => void act('apply', file)}
+                                        onRecheck={() => void config.retry()}
+                                        rechecking={config.reading}
+                                    />
+                                );
+                                if (!many) return <div key={kind}>{state}</div>;
+                                return (
+                                    <section
+                                        key={kind}
+                                        id={`site-config-file-${kind}`}
+                                        aria-labelledby={`site-config-title-${kind}`}
+                                        className="space-y-3 border-t border-border pt-6 first:border-t-0 first:pt-0"
+                                        data-site-config-file={kind}
+                                    >
+                                        <h3 id={`site-config-title-${kind}`} className="text-base font-semibold text-fg">
+                                            {kindText(t, kind)('title')}
+                                        </h3>
+                                        {state}
+                                    </section>
+                                );
+                            })}
+                        </div>
                     );
                 }}
             </RemoteGate>
         </div>
+    );
+}
+
+// The site's files at a glance: what each is, its state, where it is. A
+// state that needs the owner is marked; each row leads to its section.
+// Sitenin dosyaları bir bakışta: her biri nedir, durumu ve yeri.
+function FileList({ files }: { files: SiteConfigView[] }) {
+    const { t } = useI18n();
+    return (
+        <ul className="divide-y divide-border rounded-lg border border-border bg-surface" data-site-config-files>
+            {files.map((file) => {
+                const kind = file.kind || 'nginx_vhost';
+                const shown = file.state === 'managed_unchanged' && file.actions.includes('apply') ? 'held' : file.state;
+                const calm = shown === 'managed_unchanged' || (KEPT.has(file.state) && file.decision?.kind === 'keep_mine' && file.decision.current);
+                return (
+                    <li key={kind} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-3 py-2 text-sm" data-site-config-files-row={kind}>
+                        <a href={`#site-config-file-${kind}`} className="font-medium text-fg underline-offset-2 hover:underline">
+                            {t(`siteConfig.files.kind.${kind}` as TranslationKey)}
+                        </a>
+                        <span
+                            className={calm ? 'text-fg-muted' : 'rounded-md border border-warning-mark/50 bg-warning-mark/20 px-1.5 py-0.5 text-xs font-medium text-fg'}
+                            data-site-config-files-state={file.state}
+                        >
+                            {t(`siteConfig.files.state.${shown}` as TranslationKey)}
+                        </span>
+                        {file.path && <code className="min-w-0 basis-full break-all font-mono text-xs text-fg-subtle sm:basis-auto">{file.path}</code>}
+                    </li>
+                );
+            })}
+        </ul>
     );
 }
 
@@ -224,18 +344,22 @@ function SiteConfigState({
     rechecking: boolean;
 }) {
     const { t, locale } = useI18n();
+    const tk = kindText(t, view.kind);
+    const suffix = view.kind || 'nginx_vhost';
     const path = view.path ?? '';
-    const include = view.include_dir || view.managed_dir ? (
+    const include = view.kind === 'php_pool' ? (
+        <p className="text-sm text-fg-muted" data-site-config-include="php_pool">{tk('owner')}</p>
+    ) : view.include_dir || view.managed_dir ? (
         <div className="space-y-1 text-sm text-fg-muted" data-site-config-include>
-            {view.include_dir && <p>{t('siteConfig.include', { dir: view.include_dir })}</p>}
-            {view.managed_dir && <p data-site-config-managed-dir>{t('siteConfig.managedDir', { dir: view.managed_dir })}</p>}
+            {view.include_dir && <p>{tk('include', { dir: view.include_dir })}</p>}
+            {view.managed_dir && <p data-site-config-managed-dir>{tk('managedDir', { dir: view.managed_dir })}</p>}
         </div>
     ) : null;
     const adopted = view.adopted_from ? (
         <p className="mt-1">
             {view.adopted_from.endsWith(CREATION_SUFFIX)
-                ? t('siteConfig.adopted.creation', { release: view.adopted_from.slice(0, -CREATION_SUFFIX.length) })
-                : t('siteConfig.adopted.start', { release: view.adopted_from })}
+                ? tk('adopted.creation', { release: view.adopted_from.slice(0, -CREATION_SUFFIX.length) })
+                : tk('adopted.start', { release: view.adopted_from })}
         </p>
     ) : null;
 
@@ -245,18 +369,18 @@ function SiteConfigState({
         // last change held. Written at the next render, or now on request.
         return (
             <div className="space-y-4" data-site-config-held>
-                <Plain icon={Info} title={t('siteConfig.held.title')}>
-                    <p>{t('siteConfig.held.body')}</p>
-                    <p className="mt-1">{t('siteConfig.held.auto')}</p>
+                <Plain icon={Info} title={tk('held.title')}>
+                    <p>{tk('held.body')}</p>
+                    <p className="mt-1">{tk('held.auto')}</p>
                 </Plain>
-                <FileLine label={t('siteConfig.file')} value={path} />
+                <FileLine label={tk('file')} value={path} />
                 <div className="flex flex-wrap items-center gap-3">
                     <Button type="button" variant="primary" icon={FilePen} loading={busy === 'apply'} disabled={locked} onClick={onApply} data-site-config-apply>
-                        {t('siteConfig.apply')}
+                        {tk('apply')}
                     </Button>
-                    <span className="min-w-0 flex-[1_1_16rem] text-sm text-fg-muted">{t('siteConfig.apply.hint')}</span>
+                    <span className="min-w-0 flex-[1_1_16rem] text-sm text-fg-muted">{tk('apply.hint')}</span>
                 </div>
-                <DiffBlock view={view} title={t('siteConfig.held.diff')} />
+                <DiffBlock suffix={suffix} view={view} title={tk('held.diff')} />
                 {include}
             </div>
         );
@@ -264,27 +388,34 @@ function SiteConfigState({
     if (view.state === 'managed_unchanged') {
         return (
             <div className="space-y-3">
-                <Plain icon={Info} title={t('siteConfig.managed.title')}>
-                    <p>{t('siteConfig.managed.body')}</p>
+                <Plain icon={Info} title={tk('managed.title')}>
+                    <p>{tk('managed.body')}</p>
                     {adopted}
                 </Plain>
-                <FileLine label={t('siteConfig.file')} value={path} />
+                <FileLine label={tk('file')} value={path} />
                 {include}
             </div>
         );
     }
     if (view.state === 'unknown') {
         return (
-            <Attention title={t('siteConfig.unknownState.title')}>
-                <p>{t('siteConfig.unknownState.body')}</p>
-            </Attention>
+            <div className="space-y-3">
+                <Attention title={tk('unknownState.title')}>
+                    <p>{tk(view.reason === 'not_read' ? 'unknownRead' : 'unknownState.body')}</p>
+                </Attention>
+                {view.actions.includes('recheck') && (
+                    <Button type="button" icon={RefreshCw} loading={rechecking} disabled={locked} onClick={onRecheck} data-site-config-recheck>
+                        {tk('recheck')}
+                    </Button>
+                )}
+            </div>
         );
     }
     // "Check again" reads this page's answer again; it changes nothing.
     const recheck = view.actions.includes('recheck') ? (
         <div className="flex flex-wrap items-center gap-3">
             <Button type="button" icon={RefreshCw} loading={rechecking} disabled={locked} onClick={onRecheck} data-site-config-recheck>
-                {t('siteConfig.recheck')}
+                {tk('recheck')}
             </Button>
         </div>
     ) : null;
@@ -293,45 +424,45 @@ function SiteConfigState({
     // the protection stands).
     const keptByChoice = view.decision?.kind === 'keep_mine' && view.decision.current;
     const choices = KEPT.has(view.state) || view.actions.includes('take') ? (
-        <section aria-labelledby="site-config-choose" className="space-y-3">
-            <h3 id="site-config-choose" className="text-sm font-semibold text-fg">{t('siteConfig.choose')}</h3>
+        <section aria-labelledby={`site-config-choose-${suffix}`} className="space-y-3">
+            <h3 id={`site-config-choose-${suffix}`} className="text-sm font-semibold text-fg">{tk('choose')}</h3>
             <div className="grid gap-3 lg:grid-cols-3">
                 <Choice
-                    hint={t('siteConfig.take.hint')}
+                    hint={tk('take.hint')}
                     action={(
                         <Button type="button" variant="primary" loading={busy === 'take'} disabled={locked} onClick={onTake} data-site-config-take>
-                            {confirming ? t('siteConfig.take.confirm') : t('siteConfig.take')}
+                            {confirming ? tk('take.confirm') : tk('take')}
                         </Button>
                     )}
                 >
                     {confirming && (
                         <div className="mt-2 space-y-2" data-site-config-confirm>
-                            <p className="text-sm text-fg">{t('siteConfig.take.confirmText', { path })}</p>
-                            <Button type="button" onClick={onCancel} disabled={busy === 'take'}>{t('siteConfig.cancel')}</Button>
+                            <p className="text-sm text-fg">{tk('take.confirmText', { path })}</p>
+                            <Button type="button" onClick={onCancel} disabled={busy === 'take'}>{tk('cancel')}</Button>
                         </div>
                     )}
                 </Choice>
                 <Choice
-                    hint={t('siteConfig.keep.hint')}
+                    hint={tk('keep.hint')}
                     action={(
                         <Button type="button" loading={busy === 'keep'} disabled={locked || keptByChoice} onClick={onKeep} data-site-config-keep>
-                            {t('siteConfig.keep')}
+                            {tk('keep')}
                         </Button>
                     )}
                 />
                 <Choice
-                    hint={t('siteConfig.merge.short')}
+                    hint={tk('merge.short')}
                     action={(
                         <Button type="button" onClick={onMerge} aria-expanded={merging} data-site-config-merge>
-                            {t('siteConfig.merge')}
+                            {tk('merge')}
                         </Button>
                     )}
                 >
                     {merging && (
                         <p className="mt-2 break-words text-sm text-fg" data-site-config-merge-text>
                             {view.pending_path
-                                ? t('siteConfig.merge.hint', { path, pending: view.pending_path })
-                                : t('siteConfig.merge.noPending', { path })}
+                                ? tk('merge.hint', { path, pending: view.pending_path })
+                                : tk('merge.noPending', { path })}
                         </p>
                     )}
                 </Choice>
@@ -352,32 +483,32 @@ function SiteConfigState({
         const edited = !!view.file_state && KEPT.has(view.file_state);
         return (
             <div className="space-y-4" data-site-config-file-state={edited ? view.file_state : undefined}>
-                <Attention title={t(edited ? 'siteConfig.editedUnwritable.title' : 'siteConfig.unwritable.title')}>
-                    {edited && <p>{t('siteConfig.editedUnwritable.body')}</p>}
+                <Attention title={tk(edited ? 'editedUnwritable.title' : 'unwritable.title')}>
+                    {edited && <p>{tk('editedUnwritable.body')}</p>}
                     <p className={edited ? 'mt-1' : undefined}>{edited
                         ? view.system_error
-                            ? t('siteConfig.editedUnwritable.refused', { error: view.system_error })
-                            : t('siteConfig.editedUnwritable.refusedNoError')
+                            ? tk('editedUnwritable.refused', { error: view.system_error })
+                            : tk('editedUnwritable.refusedNoError')
                         : view.system_error
-                            ? t('siteConfig.unwritable.body', { error: view.system_error })
-                            : t('siteConfig.unwritable.bodyNoError')}</p>
+                            ? tk('unwritable.body', { error: view.system_error })
+                            : tk('unwritable.bodyNoError')}</p>
                     {protection && (
                         <p className="mt-1" data-site-config-protection={protection}>
-                            {t(`siteConfig.unwritable.protection.${protection}` as TranslationKey)}
+                            {tk(`unwritable.protection.${protection}`)}
                         </p>
                     )}
                     <p className="mt-1 break-words" data-site-config-next={protection || 'unknown'}>
-                        {flag ? t(edited ? 'siteConfig.editedUnwritable.next.flag' : 'siteConfig.unwritable.next.flag', { command })
-                            : protection === 'read_only_filesystem' ? t('siteConfig.unwritable.next.readOnly')
-                                : protection === 'none' ? t('siteConfig.unwritable.next.none')
-                                    : t('siteConfig.unwritable.next.unknown')}
+                        {flag ? tk(edited ? 'editedUnwritable.next.flag' : 'unwritable.next.flag', { command })
+                            : protection === 'read_only_filesystem' ? tk('unwritable.next.readOnly')
+                                : protection === 'none' ? tk('unwritable.next.none')
+                                    : tk('unwritable.next.unknown')}
                     </p>
-                    {protection !== 'none' && <p className="mt-1">{t('siteConfig.unwritable.resume')}</p>}
+                    {protection !== 'none' && <p className="mt-1">{tk('unwritable.resume')}</p>}
                 </Attention>
-                <FileLine label={t('siteConfig.file')} value={path} />
+                <FileLine label={tk('file')} value={path} />
                 {recheck}
                 {choices}
-                <DiffBlock view={view} title={t(edited ? 'siteConfig.diff.title' : 'siteConfig.unwritable.diff')} />
+                <DiffBlock suffix={suffix} view={view} title={tk(edited ? 'diff.title' : 'unwritable.diff')} />
                 {include}
             </div>
         );
@@ -386,21 +517,21 @@ function SiteConfigState({
         const reason = view.reason && UNREADABLE_REASONS.has(view.reason) ? view.reason : 'read_failed';
         return (
             <div className="space-y-3">
-                <Attention title={t('siteConfig.unreadable.title')}>
-                    <p>{t(`siteConfig.unreadable.${reason}` as TranslationKey)}</p>
+                <Attention title={tk('unreadable.title')}>
+                    <p>{tk(`unreadable.${reason}`)}</p>
                     {/* Who acts and the next step for this reason; the server's
                         own line for any other reason. */}
                     <p className="mt-1" data-site-config-next={reason}>
-                        {t(reason === 'symlink' ? 'siteConfig.unreadable.next.symlink'
-                            : reason === 'permission' ? 'siteConfig.unreadable.next.permission'
-                                : 'siteConfig.unreadable.next.other')}
+                        {tk(reason === 'symlink' ? 'unreadable.next.symlink'
+                            : reason === 'permission' ? 'unreadable.next.permission'
+                                : 'unreadable.next.other')}
                     </p>
                     {view.detail && reason !== 'symlink' && reason !== 'permission' && (
-                        <p className="mt-1 break-words">{t('siteConfig.unreadable.next.detail', { detail: view.detail })}</p>
+                        <p className="mt-1 break-words">{tk('unreadable.next.detail', { detail: view.detail })}</p>
                     )}
-                    <p className="mt-1">{t('siteConfig.unreadable.meanwhile')}</p>
+                    <p className="mt-1">{tk('unreadable.meanwhile')}</p>
                 </Attention>
-                <FileLine label={t('siteConfig.file')} value={path} />
+                <FileLine label={tk('file')} value={path} />
                 {recheck}
             </div>
         );
@@ -408,15 +539,15 @@ function SiteConfigState({
     if (view.state === 'absent') {
         return (
             <div className="space-y-3">
-                <Attention title={t('siteConfig.missing.title')}>
-                    <p>{t('siteConfig.missing.body')}</p>
+                <Attention title={tk('missing.title')}>
+                    <p>{tk('missing.body')}</p>
                 </Attention>
-                <FileLine label={t('siteConfig.file')} value={path} />
+                <FileLine label={tk('file')} value={path} />
                 <div className="flex flex-wrap items-center gap-3">
                     <Button type="button" variant="primary" icon={FolderPlus} loading={busy === 'recreate'} disabled={locked} onClick={onRecreate}>
-                        {t('siteConfig.recreate')}
+                        {tk('recreate')}
                     </Button>
-                    <span className="text-sm text-fg-muted">{t('siteConfig.recreate.hint')}</span>
+                    <span className="text-sm text-fg-muted">{tk('recreate.hint')}</span>
                 </div>
             </div>
         );
@@ -427,26 +558,26 @@ function SiteConfigState({
     const decidedAt = view.decision?.decided_at
         ? new Date(view.decision.decided_at).toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'short' })
         : '';
-    const title = t(view.state === 'foreign' ? 'siteConfig.foreign.title'
-        : view.state === 'unknown_origin' ? 'siteConfig.unknownOrigin.title' : 'siteConfig.ownerEdited.title');
-    const body = t(view.state === 'unknown_origin' ? 'siteConfig.unknownOrigin.body' : 'siteConfig.kept.body');
+    const title = tk(view.state === 'foreign' ? 'foreign.title'
+        : view.state === 'unknown_origin' ? 'unknownOrigin.title' : 'ownerEdited.title');
+    const body = tk(view.state === 'unknown_origin' ? 'unknownOrigin.body' : 'kept.body');
     return (
         <div className="space-y-4">
             {keptByChoice ? (
                 <Plain icon={Info} title={title}>
-                    <p>{t('siteConfig.keptByChoice', { date: decidedAt })}</p>
+                    <p>{tk('keptByChoice', { date: decidedAt })}</p>
                 </Plain>
             ) : (
                 <Attention title={title}>
                     <p>{body}</p>
                 </Attention>
             )}
-            <FileLine label={t('siteConfig.file')} value={path} />
+            <FileLine label={tk('file')} value={path} />
             <CertificatePart view={view} />
 
             {choices}
 
-            <DiffBlock view={view} title={t('siteConfig.diff.title')} />
+            <DiffBlock suffix={suffix} view={view} title={tk('diff.title')} />
             {include}
         </div>
     );
@@ -454,15 +585,16 @@ function SiteConfigState({
 
 // The difference between the file on disk and CelikPanel's text.
 // Diskteki dosya ile CelikPanel'in metni arasındaki fark.
-function DiffBlock({ view, title }: { view: SiteConfigView; title: string }) {
+function DiffBlock({ view, title, suffix }: { view: SiteConfigView; title: string; suffix: string }) {
     const { t } = useI18n();
+    const id = `site-config-diff-${suffix}`;
     return (
-        <section aria-labelledby="site-config-diff" className="space-y-2">
-            <h3 id="site-config-diff" className="text-sm font-semibold text-fg">{title}</h3>
+        <section aria-labelledby={id} className="space-y-2">
+            <h3 id={id} className="text-sm font-semibold text-fg">{title}</h3>
             {view.diff ? (
                 <pre
                     tabIndex={0}
-                    aria-labelledby="site-config-diff"
+                    aria-labelledby={id}
                     className="max-h-96 overflow-auto rounded-lg border border-border bg-surface-2 p-3 font-mono text-xs leading-relaxed text-fg"
                     data-site-config-diff
                 >
@@ -634,24 +766,30 @@ function Choice({ hint, action, children }: { hint: string; action: ReactNode; c
 // administrator). A certificate waiting on the file outranks the choice.
 // Dosya sahibin kararını beklediğinde ya da seçimiyle korunduğunda alan adının
 // sekmelerinin üstündeki satır.
-export function SiteConfigNotice({ state, keptByChoice, pendingReason, onOpen }: {
+export function SiteConfigNotice({ state, keptByChoice, pendingReason, kind, onOpen }: {
     state: string;
     keptByChoice?: boolean;
     pendingReason?: string;
+    // The file whose state this is, when it is not the vhost (php_pool,
+    // app_unit; D-031 second step).
+    kind?: string;
     onOpen: () => void;
 }) {
     const { t } = useI18n();
     const kept = KEPT.has(state);
-    const key: TranslationKey | null = kept && pendingReason === 'certificate' ? 'siteConfig.notice.certificate'
+    const base: TranslationKey | null = kept && pendingReason === 'certificate' ? 'siteConfig.notice.certificate'
         : kept && pendingReason === 'certificate_validation' ? 'siteConfig.notice.certificateValidation'
             : kept && keptByChoice ? 'siteConfig.notice.keptByChoice'
                 : kept ? 'siteConfig.notice.kept'
                     : state === 'missing' ? 'siteConfig.notice.missing'
                         : state === 'unreadable' ? 'siteConfig.notice.unreadable'
                             : state === 'unwritable' ? 'siteConfig.notice.unwritable' : null;
-    if (!key) return null;
+    if (!base) return null;
+    // The pool's and the unit's own sentence names their file.
+    const other = (kind === 'php_pool' || kind === 'app_unit') && !pendingReason;
+    const key = (other ? `siteConfig.notice.${kind}.${base.split('.').pop()}` : base) as TranslationKey;
     // Kept as chosen and nothing waiting on it: a plain line, not a warning.
-    const plain = key === 'siteConfig.notice.keptByChoice';
+    const plain = base === 'siteConfig.notice.keptByChoice';
     return (
         <div
             role="status"
@@ -659,6 +797,7 @@ export function SiteConfigNotice({ state, keptByChoice, pendingReason, onOpen }:
                 ? 'border-border-strong bg-surface-2'
                 : 'border-warning-mark/50 bg-warning-mark/20'}`}
             data-site-config-notice={state}
+            data-site-config-notice-file={kind || 'nginx_vhost'}
             data-site-config-notice-kind={plain ? 'kept_by_choice' : pendingReason || 'attention'}
         >
             {plain

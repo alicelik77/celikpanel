@@ -105,5 +105,68 @@ class Set10Driver(unittest.TestCase):
         self.assertIsNone(s10.body_of(None))
 
 
+POOL_BODY = (b"; The PHP-FPM pool of site1, written by CelikPanel. A line you add or change here is kept:\n"
+             b"; CelikPanel then shows the difference and asks before writing this file again.\n"
+             b"; Buraya ekledi\xc4\x9finiz ya da de\xc4\x9fi\xc5\x9ftirdi\xc4\x9finiz sat\xc4\xb1r korunur.\n"
+             b"[site1]\nuser = celik_set10_a_test\ngroup = celik_set10_a_test\nlisten = /var/run/php/php8.4-fpm-site1.sock\n"
+             b"listen.owner = www-data\nlisten.group = www-data\nlisten.mode = 0660\npm = dynamic\npm.max_children = 5\n"
+             b"pm.start_servers = 2\npm.min_spare_servers = 1\npm.max_spare_servers = 3\npm.max_requests = 500\nchdir = /\n")
+UNIT_BODY = (b"# The application unit of this site, written by CelikPanel.\n"
+             b"# Your own settings go in /etc/systemd/system/celikapp-2.service.d/*.conf (systemd drop-ins); CelikPanel never writes or removes them.\n"
+             b"# An edit to this file is kept: CelikPanel then shows the difference and asks before writing it again.\n"
+             b"# Kendi ayarlar\xc4\xb1n\xc4\xb1z ... korunur.\n"
+             b"[Unit]\nDescription=CelikPanel app: set10-b.test\nAfter=network.target\n\n[Service]\nUser=www-data\n"
+             b"WorkingDirectory=/srv/b\nEnvironment=PORT=3001\nEnvironment=NODE_ENV=production\nEnvironment=PATH=/usr/bin\n"
+             b"ExecStart=/bin/sh -lc 'node app.js'\nRestart=on-failure\nRestartSec=3\n\n[Install]\nWantedBy=multi-user.target\n")
+
+
+class Set10SecondStep(unittest.TestCase):
+    """D-031 second step (2026-10-11): the pool's INI header, the alpha.82 forms the lab writes, the new sections."""
+
+    def setUp(self):
+        self.g = guest_module()
+
+    def test_the_pool_header_is_an_ini_comment_and_not_the_hash_form(self):
+        sealed = self.g.seal(POOL_BODY, self.g.INI_HEADER_PREFIX)
+        self.assertTrue(sealed.startswith(b"; celikpanel-render v2 sha256="))
+        head = self.g.header_of(sealed, self.g.INI_HEADER_PREFIX)
+        self.assertTrue(head["present"] and head["valid"])
+        self.assertFalse(self.g.header_of(sealed)["present"])
+        edited = sealed + self.g.OWNER_POOL_LINES
+        self.assertFalse(self.g.header_of(edited, self.g.INI_HEADER_PREFIX)["valid"])
+
+    def test_the_legacy_pool_is_the_alpha82_form(self):
+        legacy = self.g.legacy_pool_text(self.g.seal(POOL_BODY, self.g.INI_HEADER_PREFIX))
+        self.assertTrue(legacy.startswith(b"[site1]\nuser = "))
+        self.assertTrue(legacy.endswith(b"chdir = /\n"))
+        self.assertEqual(legacy.count(b"\n"), 14)
+        self.assertNotIn(b";", legacy)
+        with self.assertRaises(self.g.Refused):
+            self.g.legacy_pool_text(POOL_BODY)
+
+    def test_the_legacy_unit_is_the_alpha82_form(self):
+        legacy = self.g.legacy_unit_text(self.g.seal(UNIT_BODY))
+        self.assertTrue(legacy.startswith("# Managed by CelikPanel — do not edit by hand.\n".encode()))
+        self.assertEqual(legacy.split(b"\n")[2], b"[Unit]")
+        self.assertNotIn(b"drop-ins", legacy)
+        with self.assertRaises(self.g.Refused):
+            self.g.legacy_unit_text(self.g.seal(UNIT_BODY, self.g.INI_HEADER_PREFIX))
+
+    def test_owner_texts_and_units(self):
+        self.assertIn(b"php_admin_value[memory_limit]", self.g.OWNER_POOL_LINES)
+        self.assertIn(b"[Service]", self.g.OWNER_DROPIN_TEXT)
+        self.assertEqual(self.g.php_unit_of("/etc/php/8.4/fpm/pool.d/site1.conf"), "php8.4-fpm")
+        self.assertEqual(self.g.php_unit_of("/etc/php/php-fpm.d/site1.conf"), "php-fpm")
+        self.assertEqual(self.g.unit_path(7), "/etc/systemd/system/celikapp-7.service")
+        for mode in ("read-files10", "owner-pool10", "owner-unit10", "lab-legacy10"):
+            self.assertIn(mode, self.g.MODES)
+
+    def test_the_new_sections_are_planned_last(self):
+        keys = [k for k, _ in s10.SECTIONS]
+        self.assertEqual(keys[-3:], ["m-pool-directive", "n-unit-dropin", "o-legacy-pool"])
+        for name in ("m_pool", "n_unit", "o_legacy_pool", "files10", "other_file", "node_version", "hosting_node"):
+            self.assertTrue(callable(getattr(s10.Set10Trial, name)), name)
+
+
 if __name__ == "__main__":
     unittest.main()

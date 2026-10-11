@@ -263,7 +263,14 @@ func (p *Panel) transitionHosting(
 	// cannot cancel an already dispatched agent method, so every failure takes
 	// the same compensation path.
 	if target.ProjectType == "node" {
-		if err := p.applyHostingApp(ctx, target); err != nil {
+		trigger := transport.SiteFileTriggerChange
+		if previous.ProjectType != "node" {
+			trigger = transport.SiteFileTriggerCreate
+		}
+		if err := p.applyHostingApp(ctx, target, trigger); err != nil {
+			if hostingAppHeld(err) {
+				return 0, err
+			}
 			return 0, p.compensateHostingFailure(err, previous, target, false)
 		}
 	}
@@ -379,30 +386,32 @@ func (p *Panel) compareAndSwapHostingState(
 	return nil
 }
 
-func (p *Panel) applyHostingApp(ctx context.Context, state hostingRuntimeState) error {
+// applyHostingApp writes the Node site's application unit under D-031
+// (second step): trigger "create" when the site becomes a Node site (an absent
+// unit is written), "change" when a Node site's settings change (an absent
+// unit the owner removed is not recreated). A unit the owner changed is kept
+// and the answer is the typed refusal (siteFileHeldError): nothing was
+// changed, so the caller does not compensate it.
+func (p *Panel) applyHostingApp(ctx context.Context, state hostingRuntimeState, trigger string) error {
 	if state.ProjectType != "node" ||
 		!state.AppPort.Valid ||
 		!state.StartCommand.Valid ||
 		!state.RuntimeVersion.Valid {
 		return errors.New("incomplete node runtime state")
 	}
-	var response transport.AppApplyResponse
-	err := p.callAgentContext(ctx, "Agent.ApplyAppUnit", &transport.AppApplyRequest{
-		SiteID:      state.SiteID,
-		Description: state.DomainName,
-		WorkDir:     state.DocumentRoot,
-		Command:     state.StartCommand.String,
-		Port:        int(state.AppPort.Int64),
-		NodeVersion: state.RuntimeVersion.String,
-		RunAsUser:   "www-data",
-	}, &response)
-	if err != nil {
-		return fmt.Errorf("apply application unit: %w", err)
-	}
-	if response.Error != "" {
-		return fmt.Errorf("apply application unit rejected: %s", response.Error)
-	}
-	return nil
+	request := hostingAppRequest(state)
+	request.Trigger = trigger
+	request.RecordedSHA256 = p.recordedSiteFileSHA256(ctx, state.SiteID, transport.SiteFileKindAppUnit)
+	site := siteFileSite{SiteID: state.SiteID, DomainID: state.DomainID, Domain: state.DomainName, ProjectType: state.ProjectType}
+	_, err := p.applyAppUnit(ctx, site, request)
+	return err
+}
+
+// hostingAppHeld says whether an application unit was not applied because of
+// the file's state: nothing was changed.
+func hostingAppHeld(err error) bool {
+	var held *siteFileHeldError
+	return errors.As(err, &held)
 }
 
 func (p *Panel) removeHostingApp(ctx context.Context, siteID int) error {
@@ -427,7 +436,7 @@ func (p *Panel) reconcileHostingApp(
 	state hostingRuntimeState,
 ) error {
 	if state.ProjectType == "node" {
-		return p.applyHostingApp(ctx, state)
+		return p.applyHostingApp(ctx, state, transport.SiteFileTriggerCreate)
 	}
 	return p.removeHostingApp(ctx, state.SiteID)
 }

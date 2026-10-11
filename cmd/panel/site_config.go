@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/rpc"
 	"strings"
 	"time"
 
@@ -91,7 +92,20 @@ func classifySiteFileError(err error) (agentRPCPlatformErrorClassification, bool
 	}
 	var held *siteFileHeldError
 	if !errors.As(err, &held) {
-		return agentRPCPlatformErrorClassification{}, false
+		// An older pool RPC answers only with an error's text; its tokens
+		// name the kept file (services.SiteFileHeldError).
+		var serverErr rpc.ServerError
+		if !errors.As(err, &serverErr) {
+			return agentRPCPlatformErrorClassification{}, false
+		}
+		file, ok := services.ParseSiteFileHeldError(string(serverErr))
+		if !ok {
+			return agentRPCPlatformErrorClassification{}, false
+		}
+		held = &siteFileHeldError{File: file}
+	}
+	if kind := held.File.Kind; kind == transport.SiteFileKindPHPPool || kind == transport.SiteFileKindAppUnit {
+		return classifyOtherSiteFileHeld(held.File), true
 	}
 	switch held.File.Outcome {
 	case transport.SiteFileOutcomeKept:
@@ -280,6 +294,15 @@ type siteConfigView struct {
 	// "owner_edited", "foreign" or "unknown_origin" under "unwritable" — the
 	// owner's file whose replacement ("take") the server refused.
 	FileState string `json:"file_state,omitempty"`
+	// Files, additive (D-031 second step, 2026-10-11): every file CelikPanel
+	// writes for the site, each in this same shape with its own kind and
+	// actions: the vhost (the top-level fields repeat it, for a client that
+	// reads one file), the PHP-FPM pool of a PHP site, the application unit
+	// of a Node site. OverallState is the worst of their states
+	// (services.SiteFileWorstState); OverallKind names the file that decided it.
+	Files        []siteConfigView `json:"files,omitempty"`
+	OverallState string           `json:"overall_state,omitempty"`
+	OverallKind  string           `json:"overall_kind,omitempty"`
 
 	certificateReferenced bool
 	// heldRender: the file is CelikPanel's unchanged text, but not this
@@ -399,7 +422,8 @@ func siteFileKeptState(state string) bool {
 //   - other bytes: the file as it is read now (the refusal was about bytes
 //     that are gone). Never a write of the file.
 func (p *Panel) recheckWriteRefusal(ctx context.Context, siteID int, view siteConfigView) {
-	record, found, err := services.LoadSiteFileRecord(ctx, p.db.GetDB(), siteID, transport.SiteFileKindNginxVhost)
+	kind := siteConfigViewKind(view)
+	record, found, err := services.LoadSiteFileRecord(ctx, p.db.GetDB(), siteID, kind)
 	if err != nil || !found || !services.SiteFileWriteRefused(record) || view.Path == "" || view.Path != record.Path {
 		return
 	}
@@ -427,7 +451,7 @@ func (p *Panel) recheckWriteRefusal(ctx context.Context, siteID int, view siteCo
 		}
 		fileSHA = view.FileSHA256
 	}
-	changed, err := services.RecordSiteFileRecheck(ctx, p.db.GetDB(), siteID, transport.SiteFileKindNginxVhost,
+	changed, err := services.RecordSiteFileRecheck(ctx, p.db.GetDB(), siteID, kind,
 		record.Path, state, reason, fileSHA, 0)
 	if err != nil {
 		log.Printf("site configuration %s: record the check: %v", view.Domain, err)
@@ -440,8 +464,10 @@ func (p *Panel) recheckWriteRefusal(ctx context.Context, siteID int, view siteCo
 }
 
 func (p *Panel) siteConfigViewFor(ctx context.Context, siteID int, view siteConfigView) siteConfigView {
-	record, found, err := services.LoadSiteFileRecord(ctx, p.db.GetDB(), siteID, transport.SiteFileKindNginxVhost)
-	if err != nil || !found {
+	kind := siteConfigViewKind(view)
+	record, found, err := services.LoadSiteFileRecord(ctx, p.db.GetDB(), siteID, kind)
+	// A pool row of another PHP version's path is not this file's.
+	if err != nil || !found || (kind != transport.SiteFileKindNginxVhost && view.Path != "" && record.Path != view.Path) {
 		return view
 	}
 	presentLedgerWriteRefusal(&view, record)
@@ -456,7 +482,7 @@ func (p *Panel) siteConfigViewFor(ctx context.Context, siteID int, view siteConf
 			Current: record.DecisionFileSHA256 != "" && record.DecisionFileSHA256 == view.FileSHA256,
 		}
 	}
-	if services.SiteFileCertificateReason(record.StateReason) {
+	if kind == transport.SiteFileKindNginxVhost && services.SiteFileCertificateReason(record.StateReason) {
 		view.PendingReason = record.StateReason
 		view.Certificate = p.siteConfigCertificateFor(ctx, view.DomainID, record.StateReason, view.certificateReferenced)
 	}
@@ -525,6 +551,9 @@ func (p *Panel) inspectSiteConfig(ctx context.Context, domainID int, probe bool)
 type siteConfigActionRequest struct {
 	FileSHA256   string `json:"file_sha256"`
 	RenderSHA256 string `json:"render_sha256"`
+	// Kind names the file (D-031 second step): nginx_vhost (the default when
+	// absent), php_pool or app_unit.
+	Kind string `json:"kind,omitempty"`
 }
 
 func validSiteConfigDigest(value string) bool {
@@ -569,6 +598,7 @@ func (p *Panel) handleSiteConfigRead(w http.ResponseWriter, r *http.Request, dom
 		writeSiteConfigNotRead(w, view.Domain, err)
 		return
 	}
+	view = p.withOtherSiteFiles(ctx, domainID, view)
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(view)
 }
@@ -580,6 +610,14 @@ func decodeSiteConfigAction(w http.ResponseWriter, r *http.Request) (siteConfigA
 			writeClientError(w, http.StatusBadRequest, "invalid request body")
 			return body, false
 		}
+	}
+	switch body.Kind {
+	case "":
+		body.Kind = transport.SiteFileKindNginxVhost
+	case transport.SiteFileKindNginxVhost, transport.SiteFileKindPHPPool, transport.SiteFileKindAppUnit:
+	default:
+		writeClientError(w, http.StatusBadRequest, "kind is nginx_vhost, php_pool or app_unit")
+		return body, false
 	}
 	if (body.FileSHA256 != "" && !validSiteConfigDigest(body.FileSHA256)) ||
 		(body.RenderSHA256 != "" && !validSiteConfigDigest(body.RenderSHA256)) {
@@ -595,6 +633,10 @@ func decodeSiteConfigAction(w http.ResponseWriter, r *http.Request) (siteConfigA
 func (p *Panel) handleSiteConfigKeep(w http.ResponseWriter, r *http.Request, domainID int) {
 	body, ok := decodeSiteConfigAction(w, r)
 	if !ok {
+		return
+	}
+	if body.Kind != transport.SiteFileKindNginxVhost {
+		p.handleOtherSiteFileAction(w, r, domainID, "keep", body)
 		return
 	}
 	if body.FileSHA256 == "" {
@@ -661,6 +703,10 @@ func siteConfigProtected(protection string) bool {
 func (p *Panel) handleSiteConfigRender(w http.ResponseWriter, r *http.Request, domainID int, action string) {
 	body, ok := decodeSiteConfigAction(w, r)
 	if !ok {
+		return
+	}
+	if body.Kind != transport.SiteFileKindNginxVhost {
+		p.handleOtherSiteFileAction(w, r, domainID, action, body)
 		return
 	}
 	if action != "recreate" && (body.FileSHA256 == "" || body.RenderSHA256 == "") {
@@ -799,35 +845,88 @@ type domainSiteConfigSummary struct {
 	KeptByChoice bool `json:"kept_by_choice,omitempty"`
 	// PendingReason is a certificate reason (D-031 step 1b), when there is one.
 	PendingReason string `json:"pending_reason,omitempty"`
+	// Kind names the file whose state is shown when it is not the vhost
+	// (D-031 second step: php_pool, app_unit). Additive.
+	Kind string `json:"kind,omitempty"`
 }
 
+// domainSiteConfigSummaries answers, per domain, the worst state of the
+// site's files (services.SiteFileWorstState, applied to each file's presented
+// state and then across the files, the vhost first on a tie): the vhost
+// always, the pool of a PHP site, the unit of a Node site, each from its
+// newest ledger row.
 func (p *Panel) domainSiteConfigSummaries(ctx context.Context) (map[int]domainSiteConfigSummary, error) {
 	rows, err := p.db.GetDB().QueryContext(ctx, `
-		SELECT domain_id, state, adopted_from, decision, decision_file_sha256, file_sha256, state_reason
-		FROM managed_site_files WHERE kind = ? ORDER BY id`, transport.SiteFileKindNginxVhost)
+		SELECT m.domain_id, m.kind, m.state, m.adopted_from, m.decision, m.decision_file_sha256,
+		       m.file_sha256, m.state_reason, COALESCE(s.project_type, 'php')
+		FROM managed_site_files m LEFT JOIN sites s ON s.id = m.site_id
+		WHERE m.kind IN (?, ?, ?) ORDER BY m.id`,
+		transport.SiteFileKindNginxVhost, transport.SiteFileKindPHPPool, transport.SiteFileKindAppUnit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	summaries := make(map[int]domainSiteConfigSummary)
+	newest := make(map[int]map[string]siteConfigSummaryRow)
+	projectTypes := make(map[int]string)
+	var order []int
 	for rows.Next() {
 		var domainID int
-		var state, adopted, decision, decisionSHA, fileSHA, reason string
-		if err := rows.Scan(&domainID, &state, &adopted, &decision, &decisionSHA, &fileSHA, &reason); err != nil {
+		var row siteConfigSummaryRow
+		var projectType string
+		if err := rows.Scan(&domainID, &row.kind, &row.state, &row.adopted, &row.decision, &row.decisionSHA,
+			&row.fileSHA, &row.reason, &projectType); err != nil {
 			return nil, err
 		}
-		summary := domainSiteConfigSummary{
+		if newest[domainID] == nil {
+			newest[domainID] = make(map[string]siteConfigSummaryRow)
+			order = append(order, domainID)
+		}
+		newest[domainID][row.kind] = row
+		projectTypes[domainID] = projectType
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	summaries := make(map[int]domainSiteConfigSummary, len(order))
+	for _, domainID := range order {
+		kinds := []string{transport.SiteFileKindNginxVhost}
+		switch projectTypes[domainID] {
+		case "php":
+			kinds = append(kinds, transport.SiteFileKindPHPPool)
+		case "node":
+			kinds = append(kinds, transport.SiteFileKindAppUnit)
+		}
+		var present []siteConfigSummaryRow
+		var states []string
+		for _, kind := range kinds {
+			row, ok := newest[domainID][kind]
+			if !ok {
+				continue
+			}
+			present = append(present, row)
 			// A refused replacement is "unwritable", as the domain screen
 			// answers it (set10 scenario g).
-			State: services.SiteFilePresentedState(state, reason), AdoptedFrom: adopted,
-			KeptByChoice: decision == services.SiteFileDecisionKeepMine && decisionSHA != "" && decisionSHA == fileSHA,
+			states = append(states, services.SiteFilePresentedState(row.state, row.reason))
 		}
-		if services.SiteFileCertificateReason(reason) {
-			summary.PendingReason = reason
+		shown, index := services.SiteFileWorstState(states...)
+		if index < 0 {
+			continue
+		}
+		row := present[index]
+		summary := domainSiteConfigSummary{
+			State: shown, AdoptedFrom: row.adopted,
+			KeptByChoice: row.decision == services.SiteFileDecisionKeepMine && row.decisionSHA != "" && row.decisionSHA == row.fileSHA,
+		}
+		if row.kind == transport.SiteFileKindNginxVhost {
+			if services.SiteFileCertificateReason(row.reason) {
+				summary.PendingReason = row.reason
+			}
+		} else {
+			summary.Kind = row.kind
 		}
 		summaries[domainID] = summary
 	}
-	return summaries, rows.Err()
+	return summaries, nil
 }
 
 func siteConfigFor(summaries map[int]domainSiteConfigSummary, domainID int) *domainSiteConfigSummary {

@@ -11,11 +11,24 @@ type AppApplyRequest struct {
 	Port        int    `json:"port"`
 	NodeVersion string `json:"node_version"`
 	RunAsUser   string `json:"run_as_user,omitempty"`
+
+	// D-031 second step, additive (an older Panel leaves them empty: the
+	// "change" rule). Trigger is SiteFileTrigger*; take, apply and recreate
+	// are the site configuration page's choices. RecordedSHA256 is the body
+	// digest the Panel's ledger last recorded for the unit; the Expected
+	// digests bind "take" to what the owner was shown.
+	Trigger              string `json:"trigger,omitempty"`
+	RecordedSHA256       string `json:"recorded_sha256,omitempty"`
+	ExpectedFileSHA256   string `json:"expected_file_sha256,omitempty"`
+	ExpectedRenderSHA256 string `json:"expected_render_sha256,omitempty"`
 }
 
 type AppApplyResponse struct {
 	Unit  string `json:"unit"`
 	Error string `json:"error,omitempty"`
+	// File is the unit file's classification and what the operation did with
+	// it (D-031 second step). Additive: nil from an older Agent.
+	File *SiteFileResult `json:"file,omitempty"`
 }
 
 type AppControlRequest struct {

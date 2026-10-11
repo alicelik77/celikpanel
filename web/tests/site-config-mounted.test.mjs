@@ -499,13 +499,118 @@ test('every siteConfig and SITE_CONFIG key is in both languages', () => {
   const errTR = keys(read('i18n/tr.ts'), 'err\\.SITE_CONFIG_');
   assert.deepEqual([...screenTR].sort(), [...screenEN].sort());
   assert.deepEqual([...errTR].sort(), [...errEN].sort());
-  assert.equal(errEN.size, 9);
+  assert.equal(errEN.size, 20);
+  // The pool's and the unit's own sentences (D-031 second step) exist for
+  // every sentence the page lets them replace.
+  const kindTexts = read('components/DomainSiteConfig.tsx').match(/const KIND_TEXTS = new Set\(\[([^\]]*)\]/)[1];
+  for (const match of kindTexts.matchAll(/'([a-zA-Z.]+)'/g)) {
+    const own = match[1];
+    if (own !== 'owner' && own !== 'include') {
+      for (const kind of ['php_pool', 'app_unit']) assert.ok(screenEN.has(`siteConfig.${kind}.${own}`), `${kind}.${own}`);
+    }
+  }
+  assert.ok(screenEN.has('siteConfig.php_pool.owner') && screenEN.has('siteConfig.app_unit.include'));
+  for (const kind of ['php_pool', 'app_unit']) {
+    for (const notice of ['kept', 'keptByChoice', 'missing', 'unreadable', 'unwritable']) {
+      assert.ok(screenEN.has(`siteConfig.notice.${kind}.${notice}`), `${kind} notice ${notice}`);
+    }
+    for (const code of ['OWNER_EDITED', 'MISSING', 'UNWRITABLE', 'EXISTS', 'SERVICE_REFUSED']) {
+      assert.ok(errEN.has(`err.SITE_CONFIG_${code}.${kind}`), `${code}.${kind}`);
+    }
+  }
   const component = read('components/DomainSiteConfig.tsx') + read('components/Domains.tsx') + read('components/DomainDetail.tsx');
   for (const match of component.matchAll(/'(siteConfig\.[a-zA-Z_.]+)'/g)) assert.ok(screenEN.has(match[1]), match[1]);
   for (const reason of ['symlink', 'not_regular', 'permission', 'too_large', 'read_failed', 'write_refused']) {
     assert.ok(screenEN.has(`siteConfig.unreadable.${reason}`), reason);
   }
   // The Go refusal codes are the ones the catalogue carries.
-  const go = readFileSync(new URL('../../cmd/panel/site_config.go', import.meta.url), 'utf8');
+  const go = readFileSync(new URL('../../cmd/panel/site_config.go', import.meta.url), 'utf8')
+    + readFileSync(new URL('../../cmd/panel/site_config_files.go', import.meta.url), 'utf8');
   for (const match of go.matchAll(/= "(SITE_CONFIG_[A-Z_]+)"/g)) assert.ok(errEN.has(`err.${match[1]}`), match[1]);
+});
+
+// D-031 second step (2026-10-11): every file CelikPanel writes for the site.
+const POOL = '/etc/php/8.3/fpm/pool.d/site4.conf';
+const UNIT = '/etc/systemd/system/celikapp-4.service';
+const vhostFile = view('managed_unchanged');
+const poolFile = (state, more = {}) => view(state, {
+  kind: 'php_pool', path: POOL, include_dir: undefined, file_sha256: 'd'.repeat(64), render_sha256: 'e'.repeat(64), ...more,
+});
+const unitFile = (state, more = {}) => view(state, {
+  kind: 'app_unit', path: UNIT, include_dir: UNIT + '.d', file_sha256: 'f'.repeat(64), render_sha256: 'a'.repeat(64), ...more,
+});
+const multi = (...files) => ({ ...files[0], files, overall_state: files[1].state, overall_kind: files[1].kind });
+
+test('a PHP site lists its nginx file and its pool, each with its own state and choices', async () => {
+  const keptPool = poolFile('owner_edited', {
+    pending_path: POOL + '.celikpanel-pending',
+    diff: '--- a\n+++ b\n@@ -15,2 +15,1 @@\n chdir = /\n-php_admin_value[memory_limit] = 512M\n',
+  });
+  serve({
+    [`GET ${URL_BASE}`]: multi(vhostFile, keptPool),
+    [`POST ${URL_BASE}/take`]: { ...keptPool, state: 'managed_unchanged', outcome: 'taken', actions: [], backup_path: POOL + '.celikpanel-backup-20261011T010000Z' },
+  });
+  await mount(page());
+  const shown = text();
+  for (const key of ['siteConfig.files.title', 'siteConfig.files.kind.nginx_vhost', 'siteConfig.files.kind.php_pool',
+    'siteConfig.files.state.managed_unchanged', 'siteConfig.files.state.owner_edited', 'siteConfig.php_pool.title',
+    'siteConfig.php_pool.kept.body', 'siteConfig.php_pool.owner', 'siteConfig.managed.title']) {
+    assert.ok(shown.includes(key), key);
+  }
+  assert.ok(!shown.includes('siteConfig.kept.body'), 'the pool said the nginx file\'s sentence');
+  assert.equal(tree.root.findAll((node) => node.props?.['data-site-config-file'] !== undefined && typeof node.type === 'string').length, 2);
+  // Ids are unique per file.
+  const ids = tree.root.findAll((node) => typeof node.type === 'string' && node.props.id).map((node) => node.props.id);
+  assert.equal(new Set(ids).size, ids.length, ids.join(','));
+  await press('siteConfig.take');
+  assert.equal(posts().length, 0, 'take did not ask first');
+  await press('siteConfig.take.confirm');
+  assert.deepEqual(posts().map((request) => request.body), [{ file_sha256: 'd'.repeat(64), render_sha256: 'e'.repeat(64), kind: 'php_pool' }]);
+  assert.ok(text().includes(`siteConfig.php_pool.done.take{"backup":"${POOL}.celikpanel-backup-20261011T010000Z"}`), text());
+  await unmount();
+});
+
+test('a Node site names its unit, the drop-in directory, and keep mine on the unit', async () => {
+  const keptUnit = unitFile('owner_edited', { pending_path: UNIT + '.celikpanel-pending', diff: '--- a\n+++ b\n' });
+  serve({
+    [`GET ${URL_BASE}`]: multi(vhostFile, keptUnit),
+    [`POST ${URL_BASE}/keep`]: { ...keptUnit, decision: { kind: 'keep_mine', decided_at: '2026-10-11T01:00:00Z', current: true } },
+  });
+  await mount(page());
+  assert.ok(text().includes(`siteConfig.app_unit.include{"dir":"${UNIT}.d"}`), text());
+  assert.ok(text().includes('siteConfig.app_unit.kept.body'));
+  await press('siteConfig.keep');
+  assert.deepEqual(posts().map((request) => request.body), [{ file_sha256: 'f'.repeat(64), render_sha256: 'a'.repeat(64), kind: 'app_unit' }]);
+  assert.ok(text().includes('siteConfig.done.keep'));
+  await unmount();
+});
+
+test('a file of the site that could not be read now is unknown for that file only, with check again', async () => {
+  const notRead = { domain_id: 4, domain: 'example.com', kind: 'php_pool', state: 'unknown', reason: 'not_read', actions: ['recheck'] };
+  serve({ [`GET ${URL_BASE}`]: multi(view('owner_edited', edited), notRead) });
+  await mount(page());
+  assert.ok(text().includes('siteConfig.unknownRead') && text().includes('siteConfig.files.state.unknown'), text());
+  assert.ok(enabled('siteConfig.take'), 'the nginx file\'s choices were taken away');
+  const before = requests.length;
+  await press('siteConfig.recheck');
+  assert.ok(requests.length > before && posts().length === 0);
+  await unmount();
+});
+
+test('the notice above a domain names the pool or the unit when it decided the row', async () => {
+  for (const [kind, state, key] of [
+    ['php_pool', 'owner_edited', 'siteConfig.notice.php_pool.kept'], ['app_unit', 'missing', 'siteConfig.notice.app_unit.missing'],
+    ['php_pool', 'unwritable', 'siteConfig.notice.php_pool.unwritable'],
+  ]) {
+    await mount(React.createElement(SiteConfigNotice, { state, kind, onOpen() {} }));
+    assert.ok(text().includes(key), key);
+    await act(async () => tree.unmount());
+  }
+  tree = undefined;
+});
+
+test('a files list that is not the contract is refused', () => {
+  assert.throws(() => decodeSiteConfig({ ...vhostFile, files: [{ ...vhostFile, kind: 'crontab' }] }));
+  assert.throws(() => decodeSiteConfig({ ...vhostFile, files: 'x' }));
+  assert.equal(decodeSiteConfig(multi(vhostFile, poolFile('absent'))).files.length, 2);
 });

@@ -12,6 +12,10 @@
 //                use yet, a certificate the kept file does not let validate,
 //                the notice of a file kept by choice, an unreadable link, and
 //                the list once every left-alone file has a decision.
+//   siteconfigfiles  (D-031 second step, 2026-10-11) a PHP site's nginx file
+//                and pool, a Node site's unit with its drop-in directory, a
+//                pool that could not be read now, the notices naming the pool
+//                and the unit.
 //
 // Like the batches before: the mock on 127.0.0.1 answers everything; nothing
 // else is contacted, nothing is started. Every answer here is an override of
@@ -229,6 +233,74 @@ export default function batch10(scenarios, { base, ctl, reset, newPage, closePag
         await waitFor(page, () => document.querySelectorAll('tbody tr').length > 0, 15000).catch(() => {});
         await pause(400);
         await shot(page, '100i2-domains-all-decided', await listFacts(page));
+        await closePage(page);
+        await ctl({ clearAll: true });
+    };
+
+    // D-031 second step (2026-10-11): every file CelikPanel writes for the
+    // site on one page: the nginx file, the PHP-FPM pool of a PHP site, the
+    // application unit of a Node site, each with its state and choices, and
+    // the notice above the domain naming the file that decided it.
+    scenarios.siteconfigfiles = async () => {
+        const POOL = '/etc/php/8.3/fpm/pool.d/site1.conf';
+        const UNIT = '/etc/systemd/system/celikapp-1.service';
+        const POOL_DIFF = [
+            `--- ${POOL} (on this server)`, '+++ CelikPanel\'s text', '@@ -14,4 +14,3 @@',
+            ' pm.max_spare_servers = 3', ' pm.max_requests = 500', ' chdir = /',
+            '-php_admin_value[memory_limit] = 512M', '-php_admin_flag[log_errors] = on', '',
+        ].join('\n');
+        const UNIT_DIFF = [
+            `--- ${UNIT} (on this server)`, '+++ CelikPanel\'s text', '@@ -9,6 +9,5 @@',
+            ' WorkingDirectory=/var/www/celikpanel/subscriptions/1/sites/1/public_html', ' Environment=PORT=3101',
+            '-Environment=FEATURE_FLAGS=beta', ' Environment=NODE_ENV=production', '',
+        ].join('\n');
+        const vhost = view('managed_unchanged');
+        const pool = (state, more = {}) => view(state, { kind: 'php_pool', path: POOL, include_dir: undefined, managed_dir: undefined, managed_include: undefined, file_sha256: 'd'.repeat(64), render_sha256: 'e'.repeat(64), ...more });
+        const unit = (state, more = {}) => view(state, { kind: 'app_unit', path: UNIT, include_dir: `${UNIT}.d`, managed_dir: undefined, managed_include: undefined, file_sha256: 'f'.repeat(64), render_sha256: 'a'.repeat(64), ...more });
+        const multi = (...files) => ({ ...files[0], files, overall_state: files[1].state, overall_kind: files[1].kind });
+        const keptPool = pool('owner_edited', { pending_path: `${POOL}.celikpanel-pending`, diff: POOL_DIFF });
+
+        await setup({ state: 'owner_edited', kind: 'php_pool' });
+        await ctl({ override: { [SC]: { method: 'GET', status: 200, body: multi(vhost, keptPool) } } });
+        let page = await openDomain();
+        await shot(page, '100p0-notice-pool', await facts(page));
+        await openConfig(page);
+        await shot(page, '100p1-php-site-files', await facts(page));
+        await into(page, '[data-site-config-file="php_pool"]');
+        await shot(page, '100p2-pool-owner-edited', await facts(page));
+        await clickByText(page, ['Take CelikPanel’s', 'CelikPanel’in metnini al']);
+        await into(page, '[data-site-config-confirm]');
+        await shot(page, '100p3-pool-take-confirm', await facts(page));
+        await ctl({ override: {
+            [`${SC}/take`]: { method: 'POST', status: 200, body: { ...pool('managed_unchanged'), outcome: 'taken', backup_path: `${POOL}.celikpanel-backup-20261011T010000Z` } },
+            [SC]: { method: 'GET', status: 200, body: multi(vhost, pool('managed_unchanged')) },
+        } });
+        await clickByText(page, ['Replace the file', 'Dosyayı değiştir']);
+        await waitFor(page, () => !!document.querySelector('[data-site-config-done]'), 15000).catch(() => {});
+        await pause(500);
+        await into(page, '[data-site-config]');
+        await shot(page, '100p4-pool-taken', await facts(page));
+        await closePage(page);
+
+        await setup({ state: 'owner_edited', kind: 'app_unit' });
+        await ctl({ override: { [SC]: { method: 'GET', status: 200, body: multi(vhost, unit('owner_edited', { pending_path: `${UNIT}.celikpanel-pending`, diff: UNIT_DIFF })) } } });
+        page = await openDomain();
+        await openConfig(page);
+        await into(page, '[data-site-config-file="app_unit"]');
+        await shot(page, '100p5-node-site-unit-edited', await facts(page));
+        await closePage(page);
+
+        await setup({ state: 'managed_unchanged' });
+        await ctl({ override: { [SC]: { method: 'GET', status: 200, body: multi(vhost, { domain_id: 1, domain: 'example.com', kind: 'php_pool', state: 'unknown', reason: 'not_read', actions: ['recheck'] }) } } });
+        page = await openDomain();
+        await openConfig(page);
+        await shot(page, '100p6-pool-not-read', await facts(page));
+        await closePage(page);
+
+        await setup({ state: 'missing', kind: 'app_unit' });
+        await ctl({ override: { [SC]: { method: 'GET', status: 200, body: multi(vhost, unit('absent', { file_sha256: undefined })) } } });
+        page = await openDomain();
+        await shot(page, '100p7-notice-unit-missing', await facts(page));
         await closePage(page);
         await ctl({ clearAll: true });
     };

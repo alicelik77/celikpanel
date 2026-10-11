@@ -45,7 +45,7 @@ interface Domain {
     parent_id?: number | null;
     access?: DomainAccess;
     // The vhost's last observed state (D-031), sent to an administrator.
-    site_config?: { state: string; adopted_from?: string; kept_by_choice?: boolean; pending_reason?: string };
+    site_config?: { state: string; adopted_from?: string; kept_by_choice?: boolean; pending_reason?: string; kind?: string };
 }
 
 // A site whose configuration file waits for the owner's choice, and the
@@ -444,7 +444,7 @@ export function Domains() {
                                                 {(() => {
                                                     const badge = siteConfigBadge(d.site_config);
                                                     return badge ? (
-                                                        <span className="rounded-md border border-warning-mark/50 bg-warning-mark/20 px-1.5 py-0.5 text-xs font-medium text-fg" data-site-config-badge={d.site_config?.state}>
+                                                        <span className="rounded-md border border-warning-mark/50 bg-warning-mark/20 px-1.5 py-0.5 text-xs font-medium text-fg" data-site-config-badge={d.site_config?.state} data-site-config-badge-file={d.site_config?.kind || 'nginx_vhost'}>
                                                             {t(badge)}
                                                         </span>
                                                     ) : null;

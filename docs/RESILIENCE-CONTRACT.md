@@ -5098,3 +5098,60 @@ native cells (audit §9) come after. 2026-10-10 is the clock date.
   nothing was left alone. Schema: none (the reasons use the existing
   `state_reason`; `renewal_status` gains the value `waiting_for_owner`); the
   additive Agent fields are in `internal/transport/site_files.go`.
+- **Second step: the PHP-FPM pool and the application unit (2026-10-11;
+  component-tested and mock browser; not measured on a real system).** Affected:
+  invariants 1, 2, 4 and 6 for the two other files CelikPanel writes for a
+  site. *Format:* the pool (`/etc/php/<v>/fpm/pool.d/site<N>.conf`, or the
+  host's single `php-fpm.d`) starts with an INI comment header
+  `; celikpanel-render v2 sha256=<digest of the body>`; the unit
+  (`/etc/systemd/system/celikapp-<N>.service`) with
+  `# celikpanel-render v2 sha256=…`. *Classification point:* the pool in
+  `services.ApplyManagedSiteFile`, called by `applySitePoolLocked` (save, take,
+  recreate, apply), `switchSitePoolLocked` (a PHP switch classifies the source
+  first and writes the target only where nothing is), `CreatePool`
+  (creation) and `DeletePoolByName` (a dated copy of a file that is not
+  CelikPanel's unchanged text before removal); the unit in `ApplyAppUnit`
+  (`cmd/agent/app_rpc.go`, through the same function) and `RemoveAppUnit`
+  (dated copy before removal). The older pool RPCs (`UpdatePHPPoolConfig`,
+  `MigratePHPPool`) go through the same rule and answer a kept file with an
+  error whose tokens the Panel reads back (`site_file_held kind=… state=…`).
+  *Render rule:* as the vhost's (identical bytes: no write, no reload; kept:
+  the text beside it in `<file>.celikpanel-pending`, typed 409; take bound to
+  the digests shown, with a dated copy; unreadable or a symlink: refused);
+  after a write, `php-fpm -t` and the reload for a pool, `systemctl
+  daemon-reload` for a unit; when either fails, the previous bytes are put
+  back with their mode and owner and the service reloaded again
+  (`SITE_CONFIG_SERVICE_REFUSED`). A unit's change then enables and restarts
+  the app as before; a unit's take restarts it only if it runs
+  (`try-restart`). *Owner extension points:* a pool's directives in place
+  (kept and named, never dropped); a unit's drop-in directory
+  `<unit>.service.d/*.conf`, never written or removed (removing the unit
+  leaves it). *Values:* no database column holds a pool's process-manager
+  values; CelikPanel's text takes them from the save, else its own held text
+  (a pending file whose header verifies), else the file's values for those
+  keys, else defaults, clamped as a save clamps them. *Adoption:* a headerless
+  pool byte-equal to `legacyPoolFormat` (alpha.81/82's `renderPool`, frozen in
+  `internal/services/legacy_site_file_texts.go`) rendered with each release's
+  creation identity and the values it carries, or a headerless unit
+  byte-equal to alpha.81's or alpha.82's unit for the same request and the
+  Agent's own `PATH`, is adopted (newest release named) and written as this
+  release's text at its next write; any other is unknown origin. *Schema:*
+  none; migration 044's `kind` carries `php_pool` and `app_unit` (one row per
+  file path; a PHP switch starts a row for the new path). *API:* `GET
+  …/site-config` keeps the vhost's top-level fields and adds `files[]` (each
+  file in the same shape with `kind` and its `actions`), `overall_state` and
+  `overall_kind`; the POST routes take `kind` (default `nginx_vhost`); the
+  page's read records the pool's and the unit's observed state when the row
+  says otherwise (database only, nothing on the server). The Domains row shows
+  the worst presented state across the site's current files (vhost first on a
+  tie) with `kind` when it is not the vhost. *Recovery:* the owner's file
+  stays in service through every refused operation; take keeps a dated copy;
+  removing a site keeps a copy of an edited pool or unit. *Not done:* pools
+  and units are not rendered or observed at the Panel's start, so the start
+  line does not count them; a pool's values are kept nowhere outside the pool
+  file and its pending text; the generic PHP page's pool save (by pool name)
+  answers the typed refusal only through the error tokens. *Evidence:*
+  services (`site_pool_file_test.go`), Agent (`app_unit_site_file_test.go`),
+  Panel (`site_config_files_test.go`), the mounted page test, browser-inspect
+  batch10 `siteconfigfiles` (EN/TR, desktop/phone); set10's harness gains
+  sections m, n and o with offline tests. Not run on a guest.

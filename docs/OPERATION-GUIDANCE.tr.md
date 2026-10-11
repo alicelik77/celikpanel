@@ -6496,3 +6496,112 @@ biçimindedir; ekranlar `code`'a göre çevirir.
 - Dosyayı üreten diğer işlemler `409` verir: `SITE_CONFIG_OWNER_EDITED` (`reason`
   = durum), `SITE_CONFIG_MISSING` ya da `SITE_CONFIG_UNWRITABLE` (`reason` yukarıdaki
   gibi); site oluşturma ve içe aktarma `409 SITE_CONFIG_EXISTS` verir.
+
+#### PHP-FPM havuzu ve uygulama birimi (D-031 ikinci adım, 2026-10-11)
+
+Bileşen testli kaynak durumu ve geri döngü sahtesine karşı gerçek bir Chrome
+(browser-inspect batch10 `siteconfigfiles`, EN/TR, masaüstü ve telefon);
+konukta koşu yok, kurulu sunucu yok. Burada hiçbir şey gerçek sistemde
+ölçülmedi.
+
+**Sahibin gördüğü.** Bir PHP sitesinin PHP-FPM havuz dosyası ve bir Node
+sitesinin uygulama birimi dosyası artık vhost'un kuralına uyar. Yapılandırma
+dosyası sayfası CelikPanel'in site için yazdığı her dosyayı listeler —
+`siteConfig.files.title` "Bu sitenin yapılandırma dosyaları", dosya başına bir
+satır ("nginx yapılandırması", "PHP-FPM havuzu", "Uygulama birimi"), durumu
+("CelikPanel’in metni, değişmemiş", "CelikPanel dışında düzenlendi",
+"CelikPanel dışında değiştirildi", "CelikPanel’in metni olarak tanınmadı",
+"Yok", "Okunamıyor ya da değiştirilemiyor", "Değiştirilemiyor", "Yeniden
+değiştirilebilir", "Durumu bilinmiyor") ve yolu — sonra her dosya için aynı
+durumları, farkı ve aynı seçimleri (benimkini koru, CelikPanel’in metnini al,
+elle birleştir; yeniden oluştur; yeniden denetle; CelikPanel’in metnini şimdi
+yaz) taşıyan bir bölüm. Havuzun ve birimin cümleleri kendi dosyalarını ve
+hizmetlerini adlandırır (`siteConfig.php_pool.*`, `siteConfig.app_unit.*`):
+örneğin "Bu dosya CelikPanel’in en son yazdığı metin değil; bu yüzden
+CelikPanel onu eklediğiniz her satırla birlikte olduğu gibi korudu. Aşağıda
+seçim yapana kadar bu sitenin PHP ayarlarını kaydetmek ya da PHP sürümünü
+değiştirmek reddedilir; PHP-FPM siteyi sizin dosyanızla çalıştırmaya devam
+eder." Kim yapar: sunucu sahibi (yönetici); hiçbir şey kendiliğinden sürmez.
+
+**Sahibin kendi ayarlarının yeri.**
+- Havuz: PHP-FPM'in bir havuzun kendi ayarları için ayrı bir yeri yoktur; bu
+  yüzden ayarlar dosyanın içinde desteklenir (`siteConfig.php_pool.owner`
+  "PHP-FPM’in kendi havuz ayarlarınız için ayrı bir yeri yok; bu yüzden onlar
+  bu dosyada durur. CelikPanel sizin satırlarınızı taşıyan havuz dosyasını
+  korur ve yeniden yazmadan önce sorar; fark, hangi satırların sizin olduğunu
+  tam olarak gösterir."). Böyle bir dosyada havuz kaydetme ya da PHP sürümü
+  değişikliği reddedilir; sahip sayfada seçer.
+- Birim: birimin systemd drop-in dizini (`siteConfig.app_unit.include` "Bu
+  uygulama için kendi ayarlarınızı {dir} içinde bir .conf dosyasına yazın
+  (systemd drop-in), sonra sudo systemctl daemon-reload komutunu çalıştırın.
+  CelikPanel o dizine hiç yazmaz, onu silmez ve bu birimde yaptığı her
+  değişiklikte ayarlarınızı korur."). Birimin kendi yorumu da aynısını söyler.
+
+**Retler** (her biri dosyayı `reason` içinde adlandırır; durum `detail`
+içindedir):
+- `409 SITE_CONFIG_OWNER_EDITED` `reason: php_pool` — havuz kaydetmede
+  (`POST /api/v1/domains/{id}/php/pool`) ya da PHP sürümü değişikliğinde
+  (`POST …/php`): `err.SITE_CONFIG_OWNER_EDITED.php_pool` "Bu sitenin PHP-FPM
+  havuz dosyası CelikPanel’in değişmemiş metni değil; bu yüzden CelikPanel onu
+  satırlarınızla birlikte korudu ve bu değişikliği uygulamadı. Başka hiçbir şey
+  değiştirilmedi. Alan adının Yapılandırma dosyası sayfasında dosyanızı
+  koruyun, CelikPanel’in metnini alın (dosyanız tarihli bir kopya olarak
+  saklanır) ya da ikisini elle birleştirin." Hiçbir şey değişmedi: havuz,
+  vhost ve sitenin PHP sürümü olduğu gibi kalır.
+- `409 SITE_CONFIG_OWNER_EDITED` `reason: app_unit` — birimi düzenlenmiş bir
+  Node sitesine ya da sitesinde barındırma değişikliğinde (`PUT …/hosting`);
+  uygulama sahibin birimiyle çalışmaya devam eder, veritabanı önceki ayarları
+  tutar ve hiçbir telafi koşmaz (hiçbir şey değişmedi).
+- `409 SITE_CONFIG_MISSING` (`php_pool`, `app_unit`): dosya yok; kaydetme ya da
+  değişiklik onu yeniden oluşturmaz; sayfadaki "Yeniden oluştur" yazar.
+- `409 SITE_CONFIG_UNWRITABLE` (`php_pool`, `app_unit`): bağlantı, sıradan
+  olmayan dosya, okunamayan ya da kilitli; sayfa korumayı adlandırır.
+- `409 SITE_CONFIG_EXISTS` `reason: php_pool`: hedef sürümde site için zaten
+  bir havuz dosyası olan PHP sürümü değişikliği; hiçbir şey değişmedi.
+- `502 SITE_CONFIG_SERVICE_REFUSED` (`php_pool`, `app_unit`): `php-fpm -t`,
+  PHP-FPM'in yeniden yüklenmesi ya da `systemctl daemon-reload` CelikPanel'in
+  metnini reddetti; önceki dosya kip ve sahibiyle geri kondu ve hizmet yeniden
+  yüklendi. Panel günlüğü hizmetin iletisini adlandırır (`sudo journalctl -u
+  celikpanel-panel | grep "site configuration"`).
+
+**İş nasıl sürer.** Benimkini koru: sahibin dosyası kalır; dosya korundukça
+onun üzerindeki kaydetme ve sürüm değişiklikleri reddedilir (alan adının
+üstündeki satır bunu söyler). CelikPanel’in metnini al: sahibin dosyası
+`<dosya>.celikpanel-backup-<UTC>` olarak saklanır, CelikPanel'in metni yazılır,
+PHP-FPM yeniden yüklenir (havuz) ya da systemd yeniden yüklenir ve çalışan
+uygulama yeniden başlatılır (birim); sonraki kaydetme ya da değişiklik o zaman
+çalışır. Elle birleştir: CelikPanel'in metni `<dosya>.celikpanel-pending`
+içindedir; onu dosyanın üzerine kopyalamak dosyayı geri verir. Havuzun
+bekleyen metni reddedilen kaydetmenin değerlerini de tutar; almak onları
+uygular.
+
+**Önceki sürümlerin dosyaları.** v0.1.0-alpha.81 ya da alpha.82'nin site için
+yazdığına bayt bayt eşit başlıksız havuz ya da birim (havuz: sürümün
+oluşturma kimliği ve dosyanın taşıdığı değerler; birim: aynı istek)
+CelikPanel'indir: "Bu, {release} sürümünün bu sitenin havuzu için yazdığı
+metnin ta kendisi; bu yüzden CelikPanel onu kendi metni sayar. Bir sonraki
+kaydedilen PHP ayarı onu CelikPanel’in başlığıyla yeniden yazar." Başka her
+dosya "CelikPanel’in metni olarak tanınmadı" olur ve korunur. Havuz ve birim
+Panelin açılışında üretilmez; benimsenen dosya bir sonraki yazmaya kadar eski
+baytlarını korur.
+
+**Alan Adları satırı ve bildirim.** Satırın rozeti ve alan adının üstündeki
+satır sitenin dosyalarının en kötü durumunu gösterir (okunamıyor >
+değiştirilemiyor > yok > düzenlendi / değiştirildi / tanınmadı > değişmemiş;
+eşitlikte vhost önce); karar veren havuz ya da birimse `kind` onu adlandırır ve
+bildirim bunu söyler (`siteConfig.notice.php_pool.*`,
+`siteConfig.notice.app_unit.*`; örneğin "Bu sitenin PHP-FPM havuz dosyası
+CelikPanel dışında değiştirildi. CelikPanel onu korudu ve seçiminizi
+bekliyor."). Sayfanın okuması havuz ve birim için gözlediğini kaydeder (yalnız
+veritabanı); sayfa açıldıktan sonra satır sayfayla aynı şeyi söyler.
+
+**Tümleştiriciler için.** `GET /api/v1/domains/{id}/site-config` her üst
+düzey alanı vhost'unki olarak korur (tek dosya okuyan istemci değişmez) ve
+`files[]` ekler — vhost, sonra PHP sitesinin havuzu, sonra Node sitesinin
+birimi; her biri aynı biçimde, `kind` ve kendi `actions` ile — ve
+`overall_state`, `overall_kind`. Agent'ın şu an yanıt vermediği dosya
+`{"kind": …, "state": "unknown", "reason": "not_read", "actions": ["recheck"]}`
+olur; diğerleri yine gösterilir. `POST …/site-config/{keep,take,recreate,apply}`
+aynı özetlerle `"kind": "php_pool" | "app_unit"` alır (yoksa vhost); başka bir
+tür `400`, sitede olmayan bir tür `409 SITE_CONFIG_NOT_APPLICABLE` verir. Alan
+Adları listesinin `site_config` alanı `kind` kazanır (vhost için yoktur).

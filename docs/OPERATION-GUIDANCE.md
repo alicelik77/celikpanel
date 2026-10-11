@@ -6559,3 +6559,106 @@ Errors are `{"error": <English sentence>, "code": …, "reason"?: …, "detail"?
   `SITE_CONFIG_OWNER_EDITED` (`reason` = the state), `SITE_CONFIG_MISSING` or
   `SITE_CONFIG_UNWRITABLE` (`reason` as above); site creation and import answer
   `409 SITE_CONFIG_EXISTS`.
+
+#### The PHP-FPM pool and the application unit (D-031 second step, 2026-10-11)
+
+Source state with component tests and a real Chrome against the loopback mock
+(browser-inspect batch10 `siteconfigfiles`, EN/TR, desktop and phone); no guest
+run, no installed server. Nothing here is measured on a real system.
+
+**What the owner sees.** A PHP site's PHP-FPM pool file and a Node site's
+application unit file now follow the vhost's rule. The Configuration file page
+lists every file CelikPanel writes for the site — `siteConfig.files.title`
+"This site’s configuration files", one row per file ("nginx configuration",
+"PHP-FPM pool", "Application unit") with its state ("CelikPanel’s text,
+unchanged", "Edited outside CelikPanel", "Replaced outside CelikPanel", "Not
+recognised as CelikPanel’s", "Missing", "Cannot be read or replaced", "Cannot be
+replaced", "Can be replaced again", "State not known") and its path — then one
+section per file with the same states, the difference and the same choices
+(keep mine, take CelikPanel’s, merge by hand; recreate; check again; write
+CelikPanel’s text now). The pool's and the unit's sentences name their own
+file and service (`siteConfig.php_pool.*`, `siteConfig.app_unit.*`): for
+example "This file is not the text CelikPanel last wrote, so CelikPanel kept it
+exactly as it is, with every line you added. Saving this site’s PHP settings or
+switching its PHP version is refused until you choose below; PHP-FPM keeps
+running the site with your file." Who acts: the server owner (an
+administrator); nothing continues by itself.
+
+**Where the owner's own settings go.**
+- Pool: PHP-FPM has no separate place for a pool's own settings, so they are
+  supported in the file itself (`siteConfig.php_pool.owner` "PHP-FPM has no
+  separate place for your own pool settings, so they belong in this file.
+  CelikPanel keeps a pool file that has your lines and asks before writing it
+  again; the difference shows exactly which lines are yours."). A pool save or
+  a PHP version switch on such a file is refused; the owner chooses on the page.
+- Unit: the unit's systemd drop-in directory (`siteConfig.app_unit.include`
+  "Put your own settings for this application in a .conf file in {dir} (a
+  systemd drop-in), then run sudo systemctl daemon-reload. CelikPanel never
+  writes or removes that directory, and every change CelikPanel makes to this
+  unit keeps your settings."). The unit's own comment says the same.
+
+**The refusals** (each names the file in its `reason`; the state is in
+`detail`):
+- `409 SITE_CONFIG_OWNER_EDITED` `reason: php_pool` — on a pool save
+  (`POST /api/v1/domains/{id}/php/pool`) or a PHP switch (`POST …/php`):
+  `err.SITE_CONFIG_OWNER_EDITED.php_pool` "This site’s PHP-FPM pool file is not
+  CelikPanel’s unchanged text, so CelikPanel kept it, with your lines, and did
+  not apply this change. Nothing else was changed. On the domain’s
+  Configuration file page, keep your file, take CelikPanel’s text (your file is
+  kept as a dated copy), or merge the two by hand." Nothing was switched: the
+  pool, the vhost and the site's PHP version stay as they were.
+- `409 SITE_CONFIG_OWNER_EDITED` `reason: app_unit` — on a hosting change
+  (`PUT …/hosting`) to or within a Node site whose unit was edited; the
+  application keeps running with the owner's unit, the database keeps the
+  previous settings and nothing is compensated (nothing was changed).
+- `409 SITE_CONFIG_MISSING` (`php_pool`, `app_unit`): the file is gone; it is
+  not recreated by a save or a change; "Recreate" on the page writes it.
+- `409 SITE_CONFIG_UNWRITABLE` (`php_pool`, `app_unit`): a link, not an
+  ordinary file, unreadable, or locked; the page names the protection.
+- `409 SITE_CONFIG_EXISTS` `reason: php_pool`: a PHP switch whose target
+  version already has a pool file for the site; nothing switched.
+- `502 SITE_CONFIG_SERVICE_REFUSED` (`php_pool`, `app_unit`): `php-fpm -t`, the
+  PHP-FPM reload or `systemctl daemon-reload` refused CelikPanel's text; the
+  previous file was put back with its mode and owner and the service reloaded
+  again. The panel log names the service's message (`sudo journalctl -u
+  celikpanel-panel | grep "site configuration"`).
+
+**How work resumes.** Keep mine: the owner's file stays; saves and switches on
+it stay refused while it is kept (the notice above the domain says so). Take
+CelikPanel’s: the owner's file is kept as `<file>.celikpanel-backup-<UTC>`,
+CelikPanel's text is written, PHP-FPM is reloaded (pool) or systemd reloaded
+and a running app restarted (unit); the next save or switch then works. Merge
+by hand: CelikPanel's text is in `<file>.celikpanel-pending`; copying it over
+the file hands the file back. A pool's held text also keeps the values of the
+refused save, so taking it applies them.
+
+**Earlier releases' files.** A pool or unit without the header that is byte
+for byte what v0.1.0-alpha.81 or alpha.82 wrote for the site (pool: the release's
+creation identity and the values the file carries; unit: the same request) is
+CelikPanel's: "It is exactly the text {release} wrote for this site’s pool, so
+CelikPanel recognises it as its own. The next saved PHP setting writes it again
+with CelikPanel’s header." Any other is "not recognised as CelikPanel’s" and
+kept. Pools and units are not rendered at the Panel's start, so an adopted file
+keeps its old bytes until its next write.
+
+**The Domains row and the notice.** The row's badge and the line above the
+domain show the worst state of the site's files (unreadable > unwritable >
+missing > edited / replaced / not recognised > unchanged; the vhost first on a
+tie), with `kind` naming the pool or the unit when it decided; the notice then
+says so (`siteConfig.notice.php_pool.*`, `siteConfig.notice.app_unit.*`, for
+example "This site’s PHP-FPM pool file was changed outside CelikPanel. CelikPanel
+kept it and is waiting for your choice."). The page's read records what it
+observed for the pool and the unit (database only), so the row agrees with the
+page after the page has been opened.
+
+**For integrators.** `GET /api/v1/domains/{id}/site-config` keeps every
+top-level field as the vhost's (a client that reads one file is unchanged) and
+adds `files[]` — the vhost, then the pool of a PHP site, then the unit of a Node
+site, each in the same shape with `kind` and its own `actions` — and
+`overall_state`, `overall_kind`. A file the Agent did not answer for now is
+`{"kind": …, "state": "unknown", "reason": "not_read", "actions": ["recheck"]}`;
+the others are still shown. `POST …/site-config/{keep,take,recreate,apply}`
+take `"kind": "php_pool" | "app_unit"` (absent: the vhost) with the same
+digests; another kind is `400`; a kind the site does not have is `409
+SITE_CONFIG_NOT_APPLICABLE`. The Domains list's `site_config` gains `kind`
+(absent for the vhost).

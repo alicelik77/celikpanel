@@ -4364,3 +4364,64 @@ hücreleri (denetim §9) sonra gelir. 2026-10-10 saat tarihidir.
   (nedenler var olan `state_reason`'ı kullanır; `renewal_status`
   `waiting_for_owner` değerini kazanır); eklemeli Agent alanları
   `internal/transport/site_files.go` içindedir.
+- **İkinci adım: PHP-FPM havuzu ve uygulama birimi (2026-10-11; bileşen
+  testli ve sahte tarayıcıyla denendi; gerçek sistemde ölçülmedi).**
+  Etkilenen: CelikPanel'in bir site için yazdığı iki diğer dosya için ilke 1,
+  2, 4 ve 6. *Biçim:* havuz (`/etc/php/<s>/fpm/pool.d/site<N>.conf` ya da
+  sunucunun tek `php-fpm.d` dizini) INI yorum başlığıyla başlar
+  (`; celikpanel-render v2 sha256=<gövdenin özeti>`); birim
+  (`/etc/systemd/system/celikapp-<N>.service`)
+  `# celikpanel-render v2 sha256=…` ile. *Sınıflandırma noktası:* havuz
+  `services.ApplyManagedSiteFile` içinde; onu `applySitePoolLocked`
+  (kaydetme, alma, yeniden oluşturma, uygulama), `switchSitePoolLocked` (PHP
+  sürümü değişikliği önce kaynağı sınıflandırır, hedefi yalnız orada dosya
+  yoksa yazar), `CreatePool` (oluşturma) ve `DeletePoolByName` (CelikPanel'in
+  değişmemiş metni olmayan dosyanın kaldırmadan önce tarihli kopyası) çağırır;
+  birim `ApplyAppUnit` (`cmd/agent/app_rpc.go`, aynı işlevle) ve
+  `RemoveAppUnit` (kaldırmadan önce tarihli kopya) içinde. Eski havuz RPC'leri
+  (`UpdatePHPPoolConfig`, `MigratePHPPool`) aynı kuraldan geçer ve korunan
+  dosyayı Panelin geri okuduğu belirteçli bir hatayla bildirir
+  (`site_file_held kind=… state=…`). *Üretim kuralı:* vhost'unki gibi (aynı
+  baytlar: yazma yok, yeniden yükleme yok; korunan: metin yanında
+  `<dosya>.celikpanel-pending` içinde, tipli 409; alma gösterilen özetlere
+  bağlı, tarihli kopyayla; okunamayan ya da sembolik bağlantı: reddedilir);
+  yazmadan sonra havuz için `php-fpm -t` ve yeniden yükleme, birim için
+  `systemctl daemon-reload`; biri başarısız olursa önceki baytlar kip ve
+  sahipleriyle geri konur ve hizmet yeniden yüklenir
+  (`SITE_CONFIG_SERVICE_REFUSED`). Birim değişikliği uygulamayı eskisi gibi
+  etkinleştirir ve yeniden başlatır; birimde alma onu yalnız çalışıyorsa
+  yeniden başlatır (`try-restart`). *Sahibin genişletme yerleri:* havuzun
+  yönergeleri dosyanın içinde (korunur ve adlandırılır, asla düşürülmez);
+  birimin drop-in dizini `<birim>.service.d/*.conf`, hiç yazılmaz, silinmez
+  (birim kaldırılınca da kalır). *Değerler:* havuzun süreç yöneticisi
+  değerlerini tutan veritabanı sütunu yoktur; CelikPanel'in metni onları
+  kaydetmeden, yoksa kendi bekleyen metninden (başlığı doğrulanan bekleyen
+  dosya), yoksa dosyanın o anahtarlardaki değerlerinden, yoksa
+  varsayılanlardan alır ve kaydetmedeki gibi sınırlar. *Benimseme:* her
+  sürümün oluşturma kimliği ve taşıdığı değerlerle üretilen
+  `legacyPoolFormat`'a (alpha.81/82'nin `renderPool`'u,
+  `internal/services/legacy_site_file_texts.go` içinde dondurulmuş) bayt bayt
+  eşit başlıksız havuz ya da aynı istek ve Agent'ın kendi `PATH`'iyle
+  alpha.81 ya da alpha.82 birimine bayt bayt eşit başlıksız birim benimsenir
+  (en yeni sürüm adlandırılır) ve bir sonraki yazmada bu sürümün metni olarak
+  yazılır; başka her dosya bilinmeyen kökenlidir. *Şema:* yok; 44. göçün
+  `kind` sütunu `php_pool` ve `app_unit` taşır (dosya yolu başına bir satır;
+  PHP sürümü değişikliği yeni yol için satır başlatır). *API:* `GET
+  …/site-config` vhost'un üst düzey alanlarını korur ve `files[]` (her dosya
+  aynı biçimde, `kind` ve kendi `actions` ile), `overall_state` ve
+  `overall_kind` ekler; POST yolları `kind` alır (varsayılan `nginx_vhost`);
+  sayfanın okuması, satır başka bir şey söylüyorsa havuzun ve birimin
+  gözlenen durumunu kaydeder (yalnız veritabanı, sunucuda hiçbir şey). Alan
+  Adları satırı sitenin geçerli dosyaları arasında en kötü sunulan durumu
+  gösterir (eşitlikte vhost önce), vhost değilse `kind` ile. *Kurtarma:*
+  sahibin dosyası reddedilen her işlem boyunca hizmette kalır; alma tarihli
+  kopya bırakır; siteyi silmek düzenlenmiş havuz ya da birimin kopyasını
+  bırakır. *Yapılmayan:* havuz ve birim Panelin açılışında üretilmez ve
+  gözlenmez, açılış satırı onları saymaz; havuzun değerleri havuz dosyası ve
+  bekleyen metni dışında hiçbir yerde tutulmaz; genel PHP sayfasının havuz
+  kaydetmesi (havuz adıyla) tipli reddi yalnız hata belirteçleri üzerinden
+  verir. *Kanıt:* services (`site_pool_file_test.go`), Agent
+  (`app_unit_site_file_test.go`), Panel (`site_config_files_test.go`), takılı
+  sayfa testi, browser-inspect batch10 `siteconfigfiles` (EN/TR,
+  masaüstü/telefon); set10 düzeneği m, n ve o bölümlerini çevrimdışı
+  testleriyle kazanır. Konukta koşulmadı.

@@ -12,8 +12,8 @@ package transport
 // durumunu "bilinmiyor" diye söyler; "yanıt yok"u asla "değişmedi" okumaz.
 
 // SiteFileKindNginxVhost is the site's nginx vhost in sites-available. The
-// PHP-FPM pool and the application unit are the second step of D-031 and use
-// the same states under their own kinds.
+// PHP-FPM pool (php_pool) and the application unit (app_unit) are the second
+// step of D-031 (2026-10-11) and use the same states under their own kinds.
 const (
 	SiteFileKindNginxVhost = "nginx_vhost"
 	SiteFileKindPHPPool    = "php_pool"
@@ -106,6 +106,10 @@ const (
 	SiteFileReasonRenderFailed  = "render_failed"
 	SiteFileReasonNotApplicable = "not_applicable"
 	SiteFileReasonPendingNotSet = "pending_not_written"
+	// SiteFileReasonConfigRefused: the service's own check refused the text
+	// (php-fpm -t for a pool; D-031 second step), or the service manager did
+	// not take it; the previous file was put back.
+	SiteFileReasonConfigRefused = "config_refused"
 )
 
 // SiteConfigExists: site creation found a vhost file at the site's path that
@@ -248,4 +252,53 @@ type InspectSiteFileResponse struct {
 	Diff          string
 	DiffTruncated bool
 	Error         string
+}
+
+// The operations of the site's PHP-FPM pool file (D-031 second step,
+// 2026-10-11). Inspect reads; every other one classifies the file first and
+// writes only what the render rule allows.
+const (
+	SitePoolOperationInspect  = "inspect"
+	SitePoolOperationSave     = "save"
+	SitePoolOperationSwitch   = "switch"
+	SitePoolOperationTake     = "take"
+	SitePoolOperationRecreate = "recreate"
+	SitePoolOperationApply    = "apply"
+)
+
+// SitePoolValues are the process-manager settings CelikPanel renders into a
+// site's pool (the pool page's form). The pool's identity (user, group,
+// socket, socket owner and mode) is the site's and never the caller's.
+type SitePoolValues struct {
+	PM                string
+	PMMaxChildren     int
+	PMStartServers    int
+	PMMinSpareServers int
+	PMMaxSpareServers int
+	PMMaxRequests     int
+}
+
+// SitePoolRequest names one hosted site's PHP-FPM pool. Username is the
+// site's system user (services.SiteUsername of the domain); the Agent renders
+// the identity lines from it and this host's layout.
+type SitePoolRequest struct {
+	ExpectedBuildCommit string
+	SiteID              int
+	Username            string
+	PHPVersion          string
+	Operation           string
+	// NewPHPVersion is the target of SitePoolOperationSwitch.
+	NewPHPVersion string
+	// Values are the pool page's settings (SitePoolOperationSave).
+	Values               *SitePoolValues
+	RecordedSHA256       string
+	ExpectedFileSHA256   string
+	ExpectedRenderSHA256 string
+}
+
+// ApplySiteFileResponse is a pool operation's answer. File is nil only when
+// Error says why nothing was classified.
+type ApplySiteFileResponse struct {
+	File  *SiteFileResult
+	Error string
 }

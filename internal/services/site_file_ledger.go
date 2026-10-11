@@ -72,6 +72,20 @@ func SiteFileShownState(first, second string) string {
 	return first
 }
 
+// SiteFileWorstState is the state shown for a site whose files have the given
+// (presented) states: the highest in siteFileStatePrecedence, the first on a
+// tie (D-031 second step: the vhost, then the pool, then the unit). It
+// returns the index of the file that decided it, -1 for none.
+func SiteFileWorstState(states ...string) (string, int) {
+	shown, index := "", -1
+	for position, state := range states {
+		if index < 0 || SiteFileShownState(shown, state) != shown {
+			shown, index = state, position
+		}
+	}
+	return shown, index
+}
+
 // SiteFileCertificateReason says whether a stored reason is one of them.
 func SiteFileCertificateReason(reason string) bool {
 	return reason == SiteFileReasonCertificate || reason == SiteFileReasonCertificateValidation
@@ -264,6 +278,12 @@ func RecordSiteFileResult(
 // an older Agent, an Agent that could not be asked, or a render input the
 // Panel could not prepare. Nothing else in the row changes.
 func RecordSiteFileUnknown(ctx context.Context, db siteFileQuerier, siteID, domainID int, path, reason string, now int64) error {
+	return RecordSiteFileUnknownKind(ctx, db, siteID, domainID, transport.SiteFileKindNginxVhost, path, reason, now)
+}
+
+// RecordSiteFileUnknownKind is RecordSiteFileUnknown for a file of any kind
+// (D-031 second step: the pool and the application unit).
+func RecordSiteFileUnknownKind(ctx context.Context, db siteFileQuerier, siteID, domainID int, kind, path, reason string, now int64) error {
 	if now == 0 {
 		now = time.Now().Unix()
 	}
@@ -272,7 +292,7 @@ func RecordSiteFileUnknown(ctx context.Context, db siteFileQuerier, siteID, doma
 		VALUES (?, ?, ?, ?, 'unknown', ?, ?)
 		ON CONFLICT(site_id, kind, path) DO UPDATE SET
 			state = 'unknown', state_reason = excluded.state_reason, observed_at = excluded.observed_at`,
-		siteID, domainID, transport.SiteFileKindNginxVhost, path, reason, now)
+		siteID, domainID, kind, path, reason, now)
 	return err
 }
 

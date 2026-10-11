@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/alicelik/celikpanel/internal/services"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -54,7 +55,18 @@ func systemctlArgs(args ...string) []string {
 	return args
 }
 
+// appUnitDirOverride replaces the unit directory in tests.
+var appUnitDirOverride string
+
+// appUnitSystemctl runs systemctl (a test seam).
+var appUnitSystemctl = func(args ...string) ([]byte, error) {
+	return exec.Command("systemctl", args...).CombinedOutput()
+}
+
 func unitDir() (string, error) {
+	if appUnitDirOverride != "" {
+		return appUnitDirOverride, nil
+	}
 	if systemdUserMode {
 		home, err := os.UserHomeDir()
 		if err != nil {
@@ -104,17 +116,80 @@ func appUnitName(siteID int) string { return fmt.Sprintf("celikapp-%d", siteID) 
 type AppApplyRequest = transport.AppApplyRequest
 type AppApplyResponse = transport.AppApplyResponse
 
-// ApplyAppUnit writes (or rewrites) the unit file, reloads systemd and
-// enables + (re)starts the app.
-// ApplyAppUnit, unit dosyasını yazar (ya da yeniden yazar), systemd'yi
-// yeniden yükler ve uygulamayı etkinleştirip (yeniden) başlatır.
-func (a *Agent) ApplyAppUnit(req *AppApplyRequest, resp *AppApplyResponse) error {
+// appUnitFile is the unit of a request as a D-031 site file (second step,
+// 2026-10-11): sealed with the render header ("# " comment), classified
+// before every write, written through a temporary file and one rename that
+// keeps the file's mode and owner, never through a symlink. The owner's own
+// settings go in the unit's drop-in directory (<unit>.service.d/*.conf),
+// which CelikPanel never writes or removes.
+//
+// appUnitFile, isteğin birimini D-031 site dosyası olarak verir; sahibin kendi
+// ayarları birimin drop-in dizinine gider ve CelikPanel oraya hiç dokunmaz.
+func appUnitFile(req *AppApplyRequest, dir string) services.ManagedSiteFile {
+	name := appUnitName(req.SiteID)
+	pathEnv := os.Getenv("PATH")
+	if req.NodeVersion != "" {
+		pathEnv = filepath.Dir(nodeBinPath(req.NodeVersion)) + ":" + pathEnv
+	}
+	params := services.AppUnitParams{
+		Description:   req.Description,
+		WorkDir:       req.WorkDir,
+		Port:          req.Port,
+		PathEnv:       pathEnv,
+		Command:       req.Command,
+		InstallTarget: installTarget(),
+		DropInDir:     filepath.Join(dir, name+".service.d"),
+	}
+	if !systemdUserMode && req.RunAsUser != "" {
+		params.User = appUnitAccount(req.RunAsUser)
+		params.RequestedUser = req.RunAsUser
+	}
+	return services.ManagedSiteFile{
+		Kind:                 transport.SiteFileKindAppUnit,
+		Path:                 filepath.Join(dir, name+".service"),
+		HeaderPrefix:         services.ManagedHeaderPrefixHash,
+		Body:                 services.AppUnitBody(params),
+		Trigger:              req.Trigger,
+		RecordedSHA256:       req.RecordedSHA256,
+		ExpectedFileSHA256:   req.ExpectedFileSHA256,
+		ExpectedRenderSHA256: req.ExpectedRenderSHA256,
+		Legacy:               services.LegacyAppUnitRenders(params),
+		IncludeDir:           params.DropInDir,
+	}
+}
+
+func validAppApplyRequest(req *AppApplyRequest) string {
 	if req == nil || req.SiteID <= 0 || strings.TrimSpace(req.Command) == "" || req.Port <= 0 {
-		resp.Error = "site id, command and port are required"
-		return nil
+		return "site id, command and port are required"
 	}
 	if strings.ContainsAny(req.Command, "\n") || strings.ContainsAny(req.WorkDir, "\n") {
-		resp.Error = "invalid characters in command or workdir"
+		return "invalid characters in command or workdir"
+	}
+	return ""
+}
+
+// appUnitHeldMessage is the error an older Panel reads for a unit the rule
+// did not write (a newer Panel reads File).
+func appUnitHeldMessage(result transport.SiteFileResult) string {
+	switch result.Outcome {
+	case transport.SiteFileOutcomeKept:
+		return "the application unit file " + result.Path + " is not CelikPanel's unchanged text (" +
+			result.State + "); it was kept and not changed"
+	case transport.SiteFileOutcomeMissing:
+		return "the application unit file " + result.Path + " is missing; it was not recreated"
+	}
+	return "the application unit file " + result.Path + " was not replaced (" + result.State + " " + result.Reason + ")"
+}
+
+// ApplyAppUnit writes the unit file under the D-031 rule, reloads systemd
+// only when it wrote, and enables + (re)starts the app. "take" (the site
+// configuration page's choice) reloads systemd and restarts the app only if
+// it is running.
+// ApplyAppUnit, birim dosyasını D-031 kuralıyla yazar; yalnız yazdıysa
+// systemd'yi yeniden yükler ve uygulamayı etkinleştirip (yeniden) başlatır.
+func (a *Agent) ApplyAppUnit(req *AppApplyRequest, resp *AppApplyResponse) error {
+	if message := validAppApplyRequest(req); message != "" {
+		resp.Error = message
 		return nil
 	}
 	unlock := lockAppUnitMutation(req.SiteID)
@@ -130,52 +205,73 @@ func (a *Agent) ApplyAppUnit(req *AppApplyRequest, resp *AppApplyResponse) error
 		resp.Error = err.Error()
 		return nil
 	}
-
-	pathEnv := os.Getenv("PATH")
 	if req.NodeVersion != "" {
-		bin := nodeBinPath(req.NodeVersion)
-		if _, err := os.Stat(bin); err != nil {
+		if _, err := os.Stat(nodeBinPath(req.NodeVersion)); err != nil {
 			// Honest: refuse to write a unit that cannot start.
 			// Dürüstlük: başlayamayacak bir unit yazmayı reddet.
 			resp.Error = fmt.Sprintf("node %s is not installed on this server", req.NodeVersion)
 			return nil
 		}
-		pathEnv = filepath.Dir(bin) + ":" + pathEnv
 	}
 
-	var b strings.Builder
-	fmt.Fprintf(&b, "# Managed by CelikPanel — do not edit by hand.\n")
-	fmt.Fprintf(&b, "# CelikPanel tarafından yönetilir — elle düzenlemeyin.\n")
-	fmt.Fprintf(&b, "[Unit]\nDescription=CelikPanel app: %s\nAfter=network.target\n\n", sanitizeUnitValue(req.Description))
-	fmt.Fprintf(&b, "[Service]\n")
-	if !systemdUserMode && req.RunAsUser != "" {
-		fmt.Fprintf(&b, "User=%s\n", sanitizeUnitValue(appUnitAccount(req.RunAsUser)))
-	}
-	fmt.Fprintf(&b, "WorkingDirectory=%s\n", req.WorkDir)
-	fmt.Fprintf(&b, "Environment=PORT=%d\n", req.Port)
-	fmt.Fprintf(&b, "Environment=NODE_ENV=production\n")
-	fmt.Fprintf(&b, "Environment=PATH=%s\n", pathEnv)
-	fmt.Fprintf(&b, "ExecStart=/bin/sh -lc '%s'\n", strings.ReplaceAll(req.Command, "'", `'\''`))
-	fmt.Fprintf(&b, "Restart=on-failure\nRestartSec=3\n\n")
-	fmt.Fprintf(&b, "[Install]\nWantedBy=%s\n", installTarget())
-
-	if err := os.WriteFile(filepath.Join(dir, name+".service"), []byte(b.String()), 0o644); err != nil {
+	result, err := services.ApplyManagedSiteFile(appUnitFile(req, dir), nil, func() error {
+		if out, err := appUnitSystemctl(systemctlArgs("daemon-reload")...); err != nil {
+			return fmt.Errorf("systemctl daemon-reload: %v: %s", err, strings.TrimSpace(string(out)))
+		}
+		return nil
+	})
+	resp.File = &result
+	if err != nil {
 		resp.Error = err.Error()
 		return nil
 	}
+	if result.Outcome == transport.SiteFileOutcomeFailed {
+		resp.Error = "application unit not activated, the previous file was put back: " + result.Detail
+		return nil
+	}
+	if !services.SiteFileApplied(result.Outcome) {
+		resp.Error = appUnitHeldMessage(result)
+		return nil
+	}
+	if result.AdoptedFrom != "" || result.BackupPath != "" {
+		log.Printf("ApplyAppUnit site %d: %s (adopted %q, owner's copy %q)",
+			req.SiteID, result.Outcome, result.AdoptedFrom, result.BackupPath)
+	}
 
 	steps := [][]string{
-		systemctlArgs("daemon-reload"),
 		systemctlArgs("enable", name),
 		systemctlArgs("restart", name),
 	}
+	if result.Outcome == transport.SiteFileOutcomeTaken {
+		// The owner's choice changes the file, not whether the app runs.
+		steps = [][]string{systemctlArgs("try-restart", name)}
+	}
 	for _, args := range steps {
-		if out, err := exec.Command("systemctl", args...).CombinedOutput(); err != nil {
+		if out, err := appUnitSystemctl(args...); err != nil {
 			resp.Error = fmt.Sprintf("systemctl %s: %v: %s", strings.Join(args, " "), err, strings.TrimSpace(string(out)))
 			return nil
 		}
 	}
 	resp.Unit = name
+	return nil
+}
+
+// InspectAppUnit classifies a site's unit file and returns the difference
+// from CelikPanel's text for the same inputs. It writes nothing (D-031).
+// InspectAppUnit, sitenin birim dosyasını sınıflandırır; yazmaz.
+func (a *Agent) InspectAppUnit(req *AppApplyRequest, resp *transport.InspectSiteFileResponse) error {
+	if message := validAppApplyRequest(req); message != "" {
+		resp.Error = message
+		return nil
+	}
+	unlock := lockAppUnitMutation(req.SiteID)
+	defer unlock()
+	dir, err := unitDir()
+	if err != nil {
+		resp.Error = err.Error()
+		return nil
+	}
+	resp.File, resp.Diff, resp.DiffTruncated = services.InspectManagedSiteFile(appUnitFile(req, dir))
 	return nil
 }
 
@@ -224,14 +320,7 @@ func (a *Agent) ControlAppUnit(req *AppControlRequest, resp *AppApplyResponse) e
 }
 
 func appUnitSystemdState(name string) (loadState, activeState string, err error) {
-	out, commandErr := exec.Command(
-		"systemctl",
-		systemctlArgs(
-			"show",
-			name,
-			"--property=LoadState,ActiveState",
-		)...,
-	).CombinedOutput()
+	out, commandErr := appUnitSystemctl(systemctlArgs("show", name, "--property=LoadState,ActiveState")...)
 	if commandErr != nil {
 		return "", "", fmt.Errorf(
 			"systemctl show: %v: %s",
@@ -304,16 +393,30 @@ func (a *Agent) RemoveAppUnit(req *AppControlRequest, resp *AppApplyResponse) er
 	if stateErr != nil {
 		intermediateFailures = append(intermediateFailures, stateErr)
 	}
-	if output, err := exec.Command("systemctl", systemctlArgs("stop", name)...).CombinedOutput(); err != nil {
+	if output, err := appUnitSystemctl(systemctlArgs("stop", name)...); err != nil {
 		intermediateFailures = append(intermediateFailures, fmt.Errorf("stop: %v: %s", err, strings.TrimSpace(string(output))))
 	}
-	if output, err := exec.Command("systemctl", systemctlArgs("disable", name)...).CombinedOutput(); err != nil {
+	if output, err := appUnitSystemctl(systemctlArgs("disable", name)...); err != nil {
 		intermediateFailures = append(intermediateFailures, fmt.Errorf("disable: %v: %s", err, strings.TrimSpace(string(output))))
+	}
+	// D-031: a unit that is not CelikPanel's unchanged text is copied beside
+	// it first; the drop-in directory (<unit>.service.d) is never touched.
+	if unitFileExists {
+		backup, err := services.BackupUnlessManaged(unitPath, services.ManagedHeaderPrefixHash, nil)
+		if err != nil {
+			log.Printf("RemoveAppUnit site %d: keep a copy of the edited unit: %v", req.SiteID, err)
+			resp.Error = "application unit cleanup refused: a copy of the edited unit could not be kept"
+			return nil
+		}
+		if backup != "" {
+			log.Printf("RemoveAppUnit site %d: the unit was not CelikPanel's unchanged text; a copy is kept as %s", req.SiteID, backup)
+		}
 	}
 	if err := os.Remove(unitPath); err != nil && !os.IsNotExist(err) {
 		intermediateFailures = append(intermediateFailures, fmt.Errorf("remove unit file: %w", err))
 	}
-	if output, err := exec.Command("systemctl", systemctlArgs("daemon-reload")...).CombinedOutput(); err != nil {
+	services.RemoveSiteFilePending(unitPath)
+	if output, err := appUnitSystemctl(systemctlArgs("daemon-reload")...); err != nil {
 		intermediateFailures = append(intermediateFailures, fmt.Errorf("daemon-reload: %v: %s", err, strings.TrimSpace(string(output))))
 	}
 

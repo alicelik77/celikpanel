@@ -23,7 +23,7 @@ git'te yaşar; bu dosya strateji içindir. En yeni en üstte.
 
 ## D-031 · Sahibin değiştirdiği site yapılandırma dosyası korunur ve adlandırılır; üretim onun üstüne yazmaz
 
-*10 Ekim 2026 (saat tarihi) · Salt-okur denetimin bulgusu üzerine sahip kararı ([SITE-CONFIG-OWNER-EDITS-2026-10-10](audit/SITE-CONFIG-OWNER-EDITS-2026-10-10.md)); tasarım kararlaştırıldı; ilk adım kaynakta (10 Ekim 2026 kaydı), gerçek sistem ölçümü bekliyor; ikinci adım (havuz, uygulama birimi) bekliyor*
+*10 Ekim 2026 (saat tarihi) · Salt-okur denetimin bulgusu üzerine sahip kararı ([SITE-CONFIG-OWNER-EDITS-2026-10-10](audit/SITE-CONFIG-OWNER-EDITS-2026-10-10.md)); tasarım kararlaştırıldı; ilk adım kaynakta (10 Ekim 2026 kaydı), gerçek sistem ölçümü bekliyor; ikinci adım (havuz, uygulama birimi) 11 Ekim 2026'da kaynakta, bileşen testli ve sahte tarayıcıyla denendi, gerçek sistemde ölçülmedi*
 
 Denetim, yalnız kaynaktan okuyarak şunu buldu: Panelin açılışı barındırılan
 her sitenin nginx yapılandırmasını yeniden üretir ve karşılaştırmasız,
@@ -84,6 +84,37 @@ Sahip 10 Ekim 2026'da düzeltmenin bir sonraki sürüme girmesine karar verdi:
    `adopted_from`, metni eşleşen en yeni sürümü adlandırır (ikisi de eşleşirse
    alpha.82). Onuncu gerçek sistem kaydında ölçüldü.
 7. Eski bir sürüme otomatik dönüş korumayı kaldırır; sürüm notu bunu söyler.
+8. (İkinci adım, 2026-10-11; kaynakta, bileşen testli ve sahte tarayıcıyla
+   denendi; gerçek sistemde ölçülmedi.) Sitenin PHP-FPM havuz dosyası (tür
+   `php_pool`) ve uygulama birimi (tür `app_unit`) 1-7. maddelere uyar. Havuz
+   INI'dir; başlığı `;` yorum satırıdır (`; celikpanel-render v2 sha256=…`);
+   birimin başlığı `# celikpanel-render v2 sha256=…`. Her biri her yazmadan
+   önce sınıflandırılır (havuz: kaydetme, PHP sürümü değişikliği, oluşturma,
+   silme; birim: barındırma değişikliği ve onun telafisi, kaldırma; ikisi de:
+   sayfanın seçimleri); aynı baytlar yeniden yazılmaz ve onlar için hiçbir
+   şey yeniden yüklenmez; korunan dosyanın yanına CelikPanel'in metni konur ve
+   işlem `409 SITE_CONFIG_OWNER_EDITED` verir (`reason` tür, `detail` durum).
+   Yazma geçici dosya ve tek yeniden adlandırmayla olur; kip, sahip ve grup
+   korunur; sembolik bağlantı reddedilir. PHP-FPM'in havuz için ekleme düzeni
+   yoktur; sahibin yönergeleri dosyanın içinde desteklenir: CelikPanel'in
+   başlığını ve CelikPanel'in üretmediği satırları taşıyan havuz sahibin
+   düzenlemesidir, korunur; hiçbir kaydetme ya da sürüm değişikliği onları
+   düşürmez. Birimin sahip için genişletme yeri systemd drop-in dizinidir
+   (`<birim>.service.d/*.conf`); CelikPanel oraya hiç yazmaz, onu silmez.
+   Havuzun süreç yöneticisi değerlerini tutan bir veritabanı sütunu yoktur:
+   CelikPanel'in havuz metni onları kaydetmeden, yoksa dosyanın yanındaki
+   kendi bekleyen metninden, yoksa dosyanın o anahtarlar için taşıdığı
+   değerlerden, yoksa varsayılanlardan alır; kimlik satırları her zaman
+   sitenindir. Benimseme: sitenin kimliği ve taşıdığı değerlerle dondurulmuş
+   alpha.81/82 biçimine bayt bayt eşit başlıksız havuz ya da aynı istekle
+   alpha.81/82 birimine bayt bayt eşit başlıksız birim benimsenir
+   (`adopted_from` eşleşen en yeni sürüm) ve bir sonraki yazmada bu sürümün
+   metni olarak yazılır; başka her dosya bilinmeyen kökenlidir. Havuz ve birim
+   Panelin açılışında üretilmez (açılışta yeni yazma yok); açılış satırı
+   yalnız vhost'ları sayar. Şema değişmez: 44. göçün `kind` sütunu
+   `php_pool` ve `app_unit` adlarını zaten taşır. Yapılandırma dosyası sayfası
+   sitenin her dosyasını kendi seçimleriyle listeler; Alan Adları satırı
+   dosyalar arasında en kötü durumu gösterir (eşitlikte vhost önce gelir).
 
 Debian 13, Ubuntu 24.04 ve Arch'ta gerçek sistemde ölçülmeden bitmiş
 sayılmaz: denetimin §9 hücreleri (sahip düzenlemesi açılışta ve her üretim
@@ -92,7 +123,9 @@ güncelleme, dönüş ve yeniden ileri; başlıktan önceki veritabanı geri
 yüklemesi; benimkini-koru sonra sertifika alma; CelikPanel'inkini-al ve
 yedeği; sahibin include dizini yenileme ve geçişlerden sağ çıkıyor;
 kaldırılan dosya yeniden yaratılmıyor; havuz yönergeleri korunuyor). PHP
-havuzu ve uygulama birimi aynı kural altında ikinci adımda gelir.
+havuzu ve uygulama birimi aynı kural altında ikinci adımda gelir (8. madde,
+11 Ekim 2026'da kaynakta; hücreleri set10 düzeneğinde m, n ve o bölümleri
+olarak var, henüz bir konukta koşulmadı).
 Onuncu gerçek sistem kaydı (set10, 2026-10-10, `cd46ca595`, Debian 13, Ubuntu
 24.04, Arch): iki hücre dışında hepsi tuttu. 2026-10-11 düzeltmesi (bileşen
 testli; ölçülmedi): sahibin ekleme dizini açıkça 0755 oluşturulur (Agent'ın

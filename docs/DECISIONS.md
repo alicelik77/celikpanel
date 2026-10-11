@@ -23,7 +23,7 @@ Code decisions live in git; this file is for strategy. Newest first.
 
 ## D-031 · A site configuration file the owner changed is kept and named, never overwritten by a render
 
-*October 10, 2026 (clock date) · Owner decision on a finding of the read-only audit [SITE-CONFIG-OWNER-EDITS-2026-10-10](audit/SITE-CONFIG-OWNER-EDITS-2026-10-10.md); design decided; first step in source (commit of 2026-10-10), native measurement pending; second step (pool, application unit) pending*
+*October 10, 2026 (clock date) · Owner decision on a finding of the read-only audit [SITE-CONFIG-OWNER-EDITS-2026-10-10](audit/SITE-CONFIG-OWNER-EDITS-2026-10-10.md); design decided; first step in source (commit of 2026-10-10), native measurement pending; second step (pool, application unit) in source 2026-10-11, component-tested and mock browser, not measured on a real system*
 
 The audit read, from source only, that the Panel's start renders every hosted
 site's nginx configuration again and writes it with no comparison, no digest
@@ -84,6 +84,37 @@ The owner decided on 2026-10-10 that the correction enters the next release:
    matches (alpha.82 when both match). Measured in the tenth native record.
 7. An automatic return to an older release loses the protection; the release
    notes say so.
+8. (Second step, 2026-10-11; in source, component-tested and mock browser;
+   not measured on a real system.) The site's PHP-FPM pool file (kind
+   `php_pool`) and its application unit (kind `app_unit`) follow points 1-7.
+   The pool is INI, so its header is a `;` comment line
+   (`; celikpanel-render v2 sha256=…`); the unit's is
+   `# celikpanel-render v2 sha256=…`. Each is classified before every write
+   (pool: save, PHP version switch, creation, deletion; unit: hosting change
+   and its compensation, removal; both: the page's choices); identical bytes
+   are not rewritten and nothing is reloaded for them; a kept file gets
+   CelikPanel's text beside it and the operation answers
+   `409 SITE_CONFIG_OWNER_EDITED` with `reason` the kind and `detail` the
+   state. Writes go through a temporary file and one rename, keep mode, owner
+   and group, and refuse a symlink. PHP-FPM has no include for a pool, so the
+   owner's directives are supported in place: a pool with CelikPanel's header
+   and lines CelikPanel does not render is owner-edited and kept, and no save
+   or switch drops them. The unit's owner extension point is its systemd
+   drop-in directory (`<unit>.service.d/*.conf`), which CelikPanel never
+   writes or removes. No database column holds a pool's process-manager
+   values: CelikPanel's pool text takes them from the save, else from its own
+   held text beside the file, else from the file's values for those keys,
+   else the defaults; the identity lines are always the site's. Adoption: a
+   headerless pool byte-equal to the frozen alpha.81/82 form for the site's
+   identity and the values it carries, or a headerless unit byte-equal to
+   the alpha.81/82 unit for the same request, is adopted (`adopted_from` the
+   newest matching release) and written as this release's text at its next
+   write; any other is unknown origin. Pools and units are not rendered at
+   the Panel's start (no new start-time write); the start line counts vhosts
+   only. No schema change: migration 044's `kind` column already names
+   `php_pool` and `app_unit`. The Configuration file page lists every file of
+   the site with its own actions; the Domains row shows the worst state
+   across the files (the vhost first on a tie).
 
 Not done until measured natively on Debian 13, Ubuntu 24.04 and Arch: the
 audit's §9 cells (owner edit kept and named at start and at every render path;
@@ -91,7 +122,9 @@ immutable file does not stop other sites; update, return and forward again;
 database restore from before the header; keep-mine then certificate issue;
 take-CelikPanel's with its backup; owner include directory survives renewals
 and switches; removed file not recreated; pool directives survive). The PHP
-pool and the application unit follow in a second step under the same rule.
+pool and the application unit follow in a second step under the same rule
+(point 8, in source 2026-10-11; its cells are in set10's harness as sections
+m, n and o, not yet run on a guest).
 Tenth native record (set10, 2026-10-10, `cd46ca595`, Debian 13, Ubuntu 24.04,
 Arch): every cell held but two. Corrected 2026-10-11 (component-tested; not
 measured): the owner include directory is created 0755 explicitly (measured

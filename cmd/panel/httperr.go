@@ -299,6 +299,9 @@ type agentRPCPlatformErrorClassification struct {
 	// a sentence too, for anything that reads the API directly.
 	// Reason, kendi sozleri olan bir ekran icin Code'u inceltir.
 	Reason string
+	// Detail refines Reason with one reviewed machine token (a kept pool's
+	// or unit's state, D-031 second step). Additive.
+	Detail string
 }
 
 type singleErrorUnwrapper interface {
@@ -549,6 +552,7 @@ func writeServerError(w http.ResponseWriter, err error) {
 			Error:  classification.Message,
 			Code:   classification.Code,
 			Reason: classification.Reason,
+			Detail: classification.Detail,
 		})
 		return
 	}

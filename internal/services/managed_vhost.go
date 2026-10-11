@@ -141,22 +141,35 @@ func sha256Hex(content []byte) string {
 
 // SealManagedText puts the render header in front of the Panel's text.
 func SealManagedText(body string) string {
-	return managedRenderHeaderPrefix + sha256Hex([]byte(body)) + "\n" + body
+	return SealManagedTextWith(managedRenderHeaderPrefix, body)
+}
+
+// SealManagedTextWith puts the render header, in the comment form of the
+// file's format, in front of the Panel's text: "# " for nginx and systemd
+// units, "; " for PHP-FPM pools (INI). D-031 second step, 2026-10-11.
+func SealManagedTextWith(prefix, body string) string {
+	return prefix + sha256Hex([]byte(body)) + "\n" + body
 }
 
 // splitManagedHeader returns the digest the first line declares and the body
 // after it. A first line ending in CR (an editor that wrote CRLF) is still read
 // as the header, so the edit is "owner-edited", not "foreign".
 func splitManagedHeader(content []byte) (string, []byte, bool) {
+	return splitManagedHeaderWith(managedRenderHeaderPrefix, content)
+}
+
+// splitManagedHeaderWith is splitManagedHeader for a header in the given
+// comment form.
+func splitManagedHeaderWith(prefix string, content []byte) (string, []byte, bool) {
 	newline := bytes.IndexByte(content, '\n')
 	if newline < 0 {
 		return "", nil, false
 	}
 	line := bytes.TrimSuffix(content[:newline], []byte("\r"))
-	if !bytes.HasPrefix(line, []byte(managedRenderHeaderPrefix)) {
+	if !bytes.HasPrefix(line, []byte(prefix)) {
 		return "", nil, false
 	}
-	declared := string(line[len(managedRenderHeaderPrefix):])
+	declared := string(line[len(prefix):])
 	if len(declared) != 64 || strings.Trim(declared, "0123456789abcdef") != "" {
 		return "", nil, false
 	}
@@ -213,6 +226,16 @@ func inspectSiteFile(
 	legacy func() ([]LegacyVhostRender, error),
 	recordedSHA256 string,
 ) siteFileInspection {
+	return inspectSiteFileWith(path, managedRenderHeaderPrefix, legacy, recordedSHA256)
+}
+
+// inspectSiteFileWith is the classifier for a file whose header is in the
+// given comment form (SealManagedTextWith).
+func inspectSiteFileWith(
+	path, headerPrefix string,
+	legacy func() ([]LegacyVhostRender, error),
+	recordedSHA256 string,
+) siteFileInspection {
 	info, err := os.Lstat(path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -253,7 +276,7 @@ func inspectSiteFile(
 		exists: true, content: content, fileSHA: sha256Hex(content),
 		mode: info.Mode().Perm(), ownership: ownership,
 	}
-	if declared, body, ok := splitManagedHeader(content); ok {
+	if declared, body, ok := splitManagedHeaderWith(headerPrefix, content); ok {
 		if sha256Hex(body) == declared {
 			inspection.state = transport.SiteFileManagedUnchanged
 		} else {
@@ -1069,7 +1092,11 @@ func (ng *NginxGenerator) InspectManagedVhost(item ManagedVhostItem) (transport.
 }
 
 func stripManagedHeader(content []byte) []byte {
-	if bytes.HasPrefix(content, []byte(managedRenderHeaderPrefix)) {
+	return stripManagedHeaderWith(managedRenderHeaderPrefix, content)
+}
+
+func stripManagedHeaderWith(prefix string, content []byte) []byte {
+	if bytes.HasPrefix(content, []byte(prefix)) {
 		if newline := bytes.IndexByte(content, '\n'); newline >= 0 {
 			return content[newline+1:]
 		}

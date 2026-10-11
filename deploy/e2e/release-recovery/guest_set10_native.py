@@ -70,9 +70,10 @@ STALE_LINE = b"# set10 lab preparation: an older CelikPanel text of this site (a
 
 # -- pure rules (covered offline by test_set10_trial) ---------------------------------------------------------------
 
-def header_of(data: bytes | None) -> dict:
+def header_of(data: bytes | None, prefix: bytes = HEADER_PREFIX) -> dict:
     """The render header as cmd/panel's classifier reads it: the first line (a trailing CR tolerated) must be the
-    prefix and 64 lowercase hex; the body is every byte after that line."""
+    prefix and 64 lowercase hex; the body is every byte after that line. ``prefix`` is the comment form: "# " for the
+    vhost and the unit, "; " for the PHP-FPM pool (D-031 second step)."""
     if data is None:
         return {"present": False}
     newline = data.find(b"\n")
@@ -81,9 +82,9 @@ def header_of(data: bytes | None) -> dict:
     line = data[:newline]
     if line.endswith(b"\r"):
         line = line[:-1]
-    if not line.startswith(HEADER_PREFIX):
+    if not line.startswith(prefix):
         return {"present": False, "first_line": line[:120].decode("utf-8", "replace")}
-    declared = line[len(HEADER_PREFIX):].decode("ascii", "replace")
+    declared = line[len(prefix):].decode("ascii", "replace")
     if len(declared) != 64 or declared.strip("0123456789abcdef"):
         return {"present": False, "first_line": line[:120].decode("utf-8", "replace"), "malformed": True}
     body = data[newline + 1:]
@@ -92,8 +93,8 @@ def header_of(data: bytes | None) -> dict:
             "body_bytes": len(body)}
 
 
-def seal(body: bytes) -> bytes:
-    return HEADER_PREFIX + hashlib.sha256(body).hexdigest().encode() + b"\n" + body
+def seal(body: bytes, prefix: bytes = HEADER_PREFIX) -> bytes:
+    return prefix + hashlib.sha256(body).hexdigest().encode() + b"\n" + body
 
 
 def stale_body(data: bytes) -> bytes:
@@ -387,10 +388,215 @@ def owner_db_restore(args: dict) -> dict:
     return value
 
 
+# -- D-031 second step (2026-10-11): the PHP-FPM pool and the application unit ----------------------------------
+#
+# The pool is INI: its render header is a ";" comment line. The unit's is "#", as the vhost's. Readers record both
+# with their side files; owner actions add a directive to the pool, a drop-in or a line to the unit; lab preparation
+# writes the headerless alpha.82 form of either (derived from CelikPanel's current text, so the adoption can be
+# measured) with or without a line of the owner's.
+
+INI_HEADER_PREFIX = b"; celikpanel-render v2 sha256="
+UNIT_DIR = "/etc/systemd/system"
+POOL_GLOBS = ("/etc/php/*/fpm/pool.d/site{id}.conf", "/etc/php/php-fpm.d/site{id}.conf")
+OWNER_POOL_LINES = b"; set10: added by the server owner by hand\nphp_admin_value[memory_limit] = 256M\n"
+OWNER_UNIT_LINE = b"# set10: added by the server owner by hand\nEnvironment=SET10_OWNER=unit\n"
+OWNER_DROPIN_NAME = "set10-owner.conf"
+OWNER_DROPIN_TEXT = b"# set10: the server owner's own drop-in\n[Service]\nEnvironment=SET10_OWNER=dropin\n"
+LEGACY_UNIT_COMMENT = ("# Managed by CelikPanel — do not edit by hand.\n"
+                       "# CelikPanel tarafından yönetilir — elle düzenlemeyin.\n").encode()
+LEGACY_OWNER_LINE = {"pool": b"php_value[upload_max_filesize] = 64M\n", "unit": b"Nice=5\n"}
+
+
+def body_after_header(data: bytes, prefix: bytes) -> bytes:
+    head = header_of(data, prefix)
+    if not head.get("present") or not head.get("valid"):
+        raise Refused("the file does not carry a valid render header")
+    return data[data.find(b"\n") + 1:]
+
+
+def legacy_pool_text(sealed: bytes) -> bytes:
+    """The headerless text alpha.81/82 wrote for the same pool: CelikPanel's body without its comment lines."""
+    lines = body_after_header(sealed, INI_HEADER_PREFIX).split(b"\n")
+    while lines and lines[0].startswith(b";"):
+        lines.pop(0)
+    return b"\n".join(lines)
+
+
+def legacy_unit_text(sealed: bytes) -> bytes:
+    """The headerless text alpha.82 wrote for the same unit: its two comment lines over CelikPanel's sections."""
+    lines = body_after_header(sealed, HEADER_PREFIX).split(b"\n")
+    while lines and lines[0].startswith(b"#"):
+        lines.pop(0)
+    return LEGACY_UNIT_COMMENT + b"\n".join(lines)
+
+
+def site_ids() -> dict:
+    """domain name -> site id, read-only from the Panel's database."""
+    reading = ledger()
+    names = {d["id"]: d["name"] for d in reading.get("domains") or []}
+    return {names.get(s["domain_id"]): s["id"] for s in reading.get("sites") or [] if names.get(s["domain_id"])}
+
+
+def pool_paths(site_id: int) -> list:
+    found = []
+    for pattern in POOL_GLOBS:
+        found.extend(glob.glob(pattern.format(id=int(site_id))))
+    return sorted(found)
+
+
+def unit_path(site_id: int) -> str:
+    return f"{UNIT_DIR}/celikapp-{int(site_id)}.service"
+
+
+def record_with(path: str, prefix: bytes) -> dict:
+    value = g8.file_record(path, text=True)
+    data = raw(path)
+    if data is not None:
+        value["header"] = header_of(data, prefix)
+        value["first_line"] = data.split(b"\n", 1)[0][:160].decode("utf-8", "replace")
+    value["side_files"] = {"pending": g8.file_record(path + PENDING_SUFFIX, text=True),
+                           "backups": [g8.file_record(p, text=True) for p in
+                                       sorted(glob.glob(glob.escape(path) + BACKUP_MARKER + "*"))]}
+    return value
+
+
+def dropin_dir(site_id: int) -> dict:
+    directory = unit_path(site_id) + ".d"
+    value = dict(rid._stat(directory))
+    if os.path.isdir(directory) and not os.path.islink(directory):
+        value["entries"] = [g8.file_record(os.path.join(directory, n), text=True) for n in sorted(os.listdir(directory))]
+    return value
+
+
+def read_files10(args: dict) -> dict:
+    ids = site_ids()
+    out = {"at": utc(), "epoch": time.time(), "sites": {}}
+    for domain in [rid.domain_name(d) for d in args.get("domains", [])]:
+        site_id = ids.get(domain)
+        if site_id is None:
+            out["sites"][domain] = {"site_id": None}
+            continue
+        out["sites"][domain] = {
+            "site_id": site_id,
+            "pools": {p: record_with(p, INI_HEADER_PREFIX) for p in pool_paths(site_id)},
+            "unit": record_with(unit_path(site_id), HEADER_PREFIX),
+            "dropin_dir": dropin_dir(site_id),
+            "unit_state": (run(["systemctl", "show", f"celikapp-{site_id}", "--property=LoadState,ActiveState"],
+                               timeout=30).get("stdout") or "").strip(),
+        }
+    out["ledger"] = ledger()
+    return out
+
+
+def php_unit_of(pool: str) -> str:
+    parts = pool.split("/")
+    return "php-fpm" if "php-fpm.d" in parts else f"php{parts[3]}-fpm"
+
+
+def owner_pool10(args: dict) -> dict:
+    """The owner adds a directive of their own to the site's pool (in place, as an editor saves), or takes back only
+    the lines this harness added; then PHP-FPM is tested and reloaded."""
+    domain = rid.domain_name(args["domain"])
+    site_id = site_ids().get(domain)
+    pools = pool_paths(site_id) if site_id is not None else []
+    if len(pools) != 1:
+        raise Refused("the site has no single pool file")
+    path = pools[0]
+    value = {"action": "owner-pool10", "what": args["action"], "domain": domain, "path": path,
+             "before": record_with(path, INI_HEADER_PREFIX)}
+    data = Path(path).read_bytes()
+    if args["action"] == "append-directive":
+        g8.write_in_place(path, data.rstrip(b"\n") + b"\n" + OWNER_POOL_LINES)
+    elif args["action"] == "remove-directive":
+        g8.write_in_place(path, data.replace(OWNER_POOL_LINES, b""))
+    else:
+        raise Refused("unknown pool action")
+    unit = php_unit_of(path)
+    program = "php-fpm" if unit == "php-fpm" else "php-fpm" + unit[3:-4]
+    value["php_fpm_test"] = run([program, "-t"], timeout=60)
+    if args.get("reload") and value["php_fpm_test"].get("returncode") == 0:
+        value["reload"] = run(["systemctl", "reload", unit + ".service"], timeout=90)
+    value["after"] = record_with(path, INI_HEADER_PREFIX)
+    value["at"] = utc()
+    return value
+
+
+def owner_unit10(args: dict) -> dict:
+    """The owner adds a drop-in of their own for the site's unit (the supported place), takes it back, or adds a line
+    to the unit itself; then systemd is reloaded."""
+    domain = rid.domain_name(args["domain"])
+    site_id = site_ids().get(domain)
+    if site_id is None:
+        raise Refused("unknown site")
+    path = unit_path(site_id)
+    directory = path + ".d"
+    dropin = os.path.join(directory, OWNER_DROPIN_NAME)
+    value = {"action": "owner-unit10", "what": args["action"], "domain": domain, "path": path,
+             "before": record_with(path, HEADER_PREFIX), "dropin_before": dropin_dir(site_id)}
+    if args["action"] == "add-dropin":
+        os.makedirs(directory, exist_ok=True)
+        with open(dropin, "wb") as stream:
+            stream.write(OWNER_DROPIN_TEXT)
+        os.chmod(dropin, 0o644)
+    elif args["action"] == "remove-dropin":
+        if os.path.isfile(dropin) and not os.path.islink(dropin):
+            os.unlink(dropin)
+    elif args["action"] == "append-directive":
+        data = Path(path).read_bytes()
+        marker = b"[Install]"
+        if marker not in data:
+            raise Refused("the unit has no [Install] section")
+        g8.write_in_place(path, data.replace(marker, OWNER_UNIT_LINE + b"\n" + marker, 1))
+    else:
+        raise Refused("unknown unit action")
+    value["daemon_reload"] = run(["systemctl", "daemon-reload"], timeout=90)
+    value["after"] = record_with(path, HEADER_PREFIX)
+    value["dropin_after"] = dropin_dir(site_id)
+    value["at"] = utc()
+    return value
+
+
+def lab_legacy10(args: dict) -> dict:
+    """Lab preparation (not an owner action): the site's pool or unit rewritten as the headerless text alpha.82
+    wrote for it (derived from CelikPanel's current sealed text), optionally with one line of the owner's added, so
+    that the adoption rule can be read: byte-equal is adopted, anything else is unknown origin."""
+    domain = rid.domain_name(args["domain"])
+    kind = args["kind"]
+    site_id = site_ids().get(domain)
+    if site_id is None:
+        raise Refused("unknown site")
+    if kind == "pool":
+        pools = pool_paths(site_id)
+        if len(pools) != 1:
+            raise Refused("the site has no single pool file")
+        path, text = pools[0], legacy_pool_text(Path(pools[0]).read_bytes())
+    elif kind == "unit":
+        path = unit_path(site_id)
+        text = legacy_unit_text(Path(path).read_bytes())
+    else:
+        raise Refused("unknown kind")
+    if args.get("owner_line"):
+        text = text + LEGACY_OWNER_LINE[kind]
+    info = os.lstat(path)
+    before = hashlib.sha256(Path(path).read_bytes()).hexdigest()
+    temporary = path + ".set10-legacy"
+    with open(temporary, "wb") as stream:
+        stream.write(text)
+        stream.flush()
+        os.fsync(stream.fileno())
+    os.chown(temporary, info.st_uid, info.st_gid)
+    os.chmod(temporary, info.st_mode & 0o7777)
+    os.rename(temporary, path)
+    return {"action": "lab-legacy10", "kind": kind, "domain": domain, "path": path, "before_sha256": before,
+            "after": record_with(path, INI_HEADER_PREFIX if kind == "pool" else HEADER_PREFIX), "at": utc()}
+
+
 MODES = dict(g8.MODES)
 MODES.update({"read-site10": read_site10, "read-ledger": read_ledger, "owner-vhost10": owner_vhost10,
               "owner-include": owner_include, "lab-stale-managed": lab_stale_managed,
-              "owner-db-backup": owner_db_backup, "owner-db-restore": owner_db_restore})
+              "owner-db-backup": owner_db_backup, "owner-db-restore": owner_db_restore,
+              "read-files10": read_files10, "owner-pool10": owner_pool10, "owner-unit10": owner_unit10,
+              "lab-legacy10": lab_legacy10})
 
 
 def main(argv=None) -> int:

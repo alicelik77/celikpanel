@@ -49,6 +49,22 @@ func protectedBuildGateOperations() []buildGateOperation {
 			},
 		},
 		{
+			name: "InspectSitePool",
+			run: func(expected string) string {
+				var response transport.InspectSiteFileResponse
+				_ = agent.InspectSitePool(&transport.SitePoolRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
+			name: "ApplySitePool",
+			run: func(expected string) string {
+				var response transport.ApplySiteFileResponse
+				_ = agent.ApplySitePool(&transport.SitePoolRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
 			name: "ApplyVhosts",
 			run: func(expected string) string {
 				var response ApplyVhostsResponse
