@@ -1,0 +1,22 @@
+{
+  "checks": {
+    "checks": 11,
+    "error": null,
+    "failed": [],
+    "finished_at": "2026-10-11T09:50:47Z",
+    "notes": [
+      "C3: PASS"
+    ],
+    "started_at": "2026-10-11T09:50:32Z",
+    "substeps": {
+      "C3": "passed"
+    },
+    "title": "vhost take refused by nginx: put back; reloaded or not by nginx -t's answer",
+    "unknown": [],
+    "verdict": "passed"
+  },
+  "finished_at": "2026-10-11T09:50:47Z",
+  "name": "C3-vhost-nginx-refused",
+  "started_at": "2026-10-11T09:50:32Z",
+  "verdict": "passed"
+}

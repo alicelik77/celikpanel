@@ -1,0 +1,446 @@
+{
+  "calls": [
+    {
+      "at": "2026-10-11T10:16:08Z",
+      "json": {
+        "actions": [],
+        "challenge_file": "unchanged",
+        "domain": "set12-a.test",
+        "domain_id": 2,
+        "enabled": "link",
+        "file_sha256": "4f4ac76c9981ef9b077ca9705901033507f35828834f40b3071cb5e0ce4116ed",
+        "files": [
+          {
+            "actions": [],
+            "challenge_file": "unchanged",
+            "domain": "set12-a.test",
+            "domain_id": 2,
+            "enabled": "link",
+            "file_sha256": "4f4ac76c9981ef9b077ca9705901033507f35828834f40b3071cb5e0ce4116ed",
+            "include_dir": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+            "kind": "nginx_vhost",
+            "ledger": {
+              "observed_at": "2026-10-11T10:15:27Z",
+              "written_at": "2026-10-11T10:15:21Z",
+              "written_release": "v0.1.0-alpha.81 8948352e3953"
+            },
+            "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-a.test",
+            "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;",
+            "path": "/etc/nginx/sites-available/set12-a.test.conf",
+            "protection": "none",
+            "render_sha256": "945feefd3a47a0174e81f20e1ab3a29a8811940df2ff6913546b26ba967f0db5",
+            "state": "managed_unchanged"
+          },
+          {
+            "actions": [
+              "keep",
+              "take",
+              "merge"
+            ],
+            "decision": {
+              "current": false,
+              "decided_at": "2026-10-11T10:16:03Z",
+              "kind": "take_celikpanel"
+            },
+            "diff": "--- /etc/php/8.3/fpm/pool.d/site2.conf (on this server)\n+++ CelikPanel's text\n@@ -15,5 +15,3 @@\n pm.max_spare_servers = 3\n pm.max_requests = 500\n chdir = /\n-; set12: added by the server owner by hand (a comment and a directive of their own)\n-php_admin_value[memory_limit] = 256M\n",
+            "domain": "set12-a.test",
+            "domain_id": 2,
+            "file_sha256": "ef5dcd26e59bf30d00fe4e203c97539c30a3b73d6f077f0c2623de433e6f215e",
+            "kind": "php_pool",
+            "ledger": {
+              "backup_path": "/etc/php/8.3/fpm/pool.d/site2.conf.celikpanel-backup-20261011T101603Z",
+              "observed_at": "2026-10-11T10:16:09Z",
+              "written_at": "2026-10-11T10:16:03Z",
+              "written_release": "v0.1.0-alpha.81 8948352e3953"
+            },
+            "path": "/etc/php/8.3/fpm/pool.d/site2.conf",
+            "protection": "none",
+            "render_sha256": "5ab9cb0cb10a561009dc429c3acfa86d4e91eb0d1fb3fab74d993882371a801f",
+            "state": "owner_edited"
+          }
+        ],
+        "include_dir": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+        "kind": "nginx_vhost",
+        "ledger": {
+          "observed_at": "2026-10-11T10:15:27Z",
+          "written_at": "2026-10-11T10:15:21Z",
+          "written_release": "v0.1.0-alpha.81 8948352e3953"
+        },
+        "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-a.test",
+        "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;",
+        "overall_kind": "php_pool",
+        "overall_state": "owner_edited",
+        "path": "/etc/nginx/sites-available/set12-a.test.conf",
+        "protection": "none",
+        "render_sha256": "945feefd3a47a0174e81f20e1ab3a29a8811940df2ff6913546b26ba967f0db5",
+        "state": "managed_unchanged"
+      },
+      "label": "c2 page (owner-edited pool): GET site-config",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains/2/site-config"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T10:16:10Z",
+      "json": {
+        "code": "SITE_CONFIG_SERVICE_REFUSED",
+        "detail": "reload_failed",
+        "error": "The previous file is back. PHP-FPM was not running before this change, so CelikPanel neither reloaded nor started it. Start PHP-FPM yourself, then choose again.",
+        "reason": "php_pool",
+        "restore": "confirmed",
+        "service": "not_running",
+        "service_active": "false"
+      },
+      "label": "c2 take on the owner's pool while PHP-FPM is stopped",
+      "request": {
+        "body": {
+          "file_sha256": "ef5dcd26e59bf30d00fe4e203c97539c30a3b73d6f077f0c2623de433e6f215e",
+          "kind": "php_pool",
+          "render_sha256": "5ab9cb0cb10a561009dc429c3acfa86d4e91eb0d1fb3fab74d993882371a801f"
+        },
+        "method": "POST",
+        "path": "/api/v1/domains/2/site-config/take",
+        "x_celikpanel_request_id": "734c7684b3ad85e04f669fc8ce98784b"
+      },
+      "seconds": 0.17,
+      "status": 502,
+      "text": null
+    }
+  ],
+  "cells": {
+    "C2": {
+      "detail": {
+        "journal": "steps/12-c2-pool-php-stopped/native/035-c2-journal.json"
+      },
+      "expectations": [
+        {
+          "expectation": "the cause: PHP-FPM stopped by the owner",
+          "held": true,
+          "measured": {
+            "ActiveEnterTimestamp": "Sun 2026-10-11 10:07:49 UTC",
+            "ActiveState": "inactive",
+            "ExecMainStartTimestamp": "Sun 2026-10-11 10:07:49 UTC",
+            "LoadState": "loaded",
+            "MainPID": "0",
+            "NRestarts": "0",
+            "SubState": "dead"
+          }
+        },
+        {
+          "expectation": "502 SITE_CONFIG_SERVICE_REFUSED, reason php_pool, restore confirmed",
+          "held": true,
+          "measured": {
+            "at": "2026-10-11T10:16:10Z",
+            "json": {
+              "code": "SITE_CONFIG_SERVICE_REFUSED",
+              "detail": "reload_failed",
+              "error": "The previous file is back. PHP-FPM was not running before this change, so CelikPanel neither reloaded nor started it. Start PHP-FPM yourself, then choose again.",
+              "reason": "php_pool",
+              "restore": "confirmed",
+              "service": "not_running",
+              "service_active": "false"
+            },
+            "label": "c2 take on the owner's pool while PHP-FPM is stopped",
+            "request": {
+              "body": {
+                "file_sha256": "ef5dcd26e59bf30d00fe4e203c97539c30a3b73d6f077f0c2623de433e6f215e",
+                "kind": "php_pool",
+                "render_sha256": "5ab9cb0cb10a561009dc429c3acfa86d4e91eb0d1fb3fab74d993882371a801f"
+              },
+              "method": "POST",
+              "path": "/api/v1/domains/2/site-config/take",
+              "x_celikpanel_request_id": "734c7684b3ad85e04f669fc8ce98784b"
+            },
+            "seconds": 0.17,
+            "status": 502,
+            "text": null
+          }
+        },
+        {
+          "expectation": "service not_running, service_active false",
+          "held": true,
+          "measured": {
+            "code": "SITE_CONFIG_SERVICE_REFUSED",
+            "detail": "reload_failed",
+            "error": "The previous file is back. PHP-FPM was not running before this change, so CelikPanel neither reloaded nor started it. Start PHP-FPM yourself, then choose again.",
+            "reason": "php_pool",
+            "restore": "confirmed",
+            "service": "not_running",
+            "service_active": "false"
+          }
+        },
+        {
+          "expectation": "the sentence says PHP-FPM was not running and was neither reloaded nor started",
+          "held": true,
+          "measured": "The previous file is back. PHP-FPM was not running before this change, so CelikPanel neither reloaded nor started it. Start PHP-FPM yourself, then choose again."
+        },
+        {
+          "expectation": "nothing reloaded or started: PHP-FPM still inactive, no Reloading/Starting line after the take",
+          "held": true,
+          "measured": {
+            "lines": [
+              "2026-10-11T10:16:11.411033+00:00 dns-ubuntu systemd[1]: php8.3-fpm.service: Unit cannot be reloaded because it is inactive.",
+              "2026-10-11T10:16:11.411033+00:00 dns-ubuntu systemd[1]: php8.3-fpm.service: Unit cannot be reloaded because it is inactive."
+            ],
+            "unit_after": {
+              "ActiveEnterTimestamp": "Sun 2026-10-11 10:07:49 UTC",
+              "ActiveState": "inactive",
+              "ExecMainStartTimestamp": "Sun 2026-10-11 10:07:49 UTC",
+              "LoadState": "loaded",
+              "MainPID": "0",
+              "NRestarts": "0",
+              "SubState": "dead"
+            }
+          }
+        },
+        {
+          "expectation": "the owner's pool is byte-equal (sha256, mode, uid, gid)",
+          "held": true,
+          "measured": {
+            "gid": [
+              988,
+              988
+            ],
+            "inode": [
+              533590,
+              533590
+            ],
+            "mode": [
+              "0644",
+              "0644"
+            ],
+            "sha256": [
+              "ef5dcd26e59bf30d00fe4e203c97539c30a3b73d6f077f0c2623de433e6f215e",
+              "ef5dcd26e59bf30d00fe4e203c97539c30a3b73d6f077f0c2623de433e6f215e"
+            ],
+            "uid": [
+              0,
+              0
+            ]
+          }
+        }
+      ],
+      "verdict": "PASS"
+    }
+  },
+  "checks": [
+    {
+      "detail": {
+        "ActiveEnterTimestamp": "Sun 2026-10-11 10:07:49 UTC",
+        "ActiveState": "inactive",
+        "ExecMainStartTimestamp": "Sun 2026-10-11 10:07:49 UTC",
+        "LoadState": "loaded",
+        "MainPID": "0",
+        "NRestarts": "0",
+        "SubState": "dead"
+      },
+      "name": "C2: the cause: PHP-FPM stopped by the owner",
+      "ok": true
+    },
+    {
+      "detail": {
+        "at": "2026-10-11T10:16:10Z",
+        "json": {
+          "code": "SITE_CONFIG_SERVICE_REFUSED",
+          "detail": "reload_failed",
+          "error": "The previous file is back. PHP-FPM was not running before this change, so CelikPanel neither reloaded nor started it. Start PHP-FPM yourself, then choose again.",
+          "reason": "php_pool",
+          "restore": "confirmed",
+          "service": "not_running",
+          "service_active": "false"
+        },
+        "label": "c2 take on the owner's pool while PHP-FPM is stopped",
+        "request": {
+          "body": {
+            "file_sha256": "ef5dcd26e59bf30d00fe4e203c97539c30a3b73d6f077f0c2623de433e6f215e",
+            "kind": "php_pool",
+            "render_sha256": "5ab9cb0cb10a561009dc429c3acfa86d4e91eb0d1fb3fab74d993882371a801f"
+          },
+          "method": "POST",
+          "path": "/api/v1/domains/2/site-config/take",
+          "x_celikpanel_request_id": "734c7684b3ad85e04f669fc8ce98784b"
+        },
+        "seconds": 0.17,
+        "status": 502,
+        "text": null
+      },
+      "name": "C2: 502 SITE_CONFIG_SERVICE_REFUSED, reason php_pool, restore confirmed",
+      "ok": true
+    },
+    {
+      "detail": {
+        "code": "SITE_CONFIG_SERVICE_REFUSED",
+        "detail": "reload_failed",
+        "error": "The previous file is back. PHP-FPM was not running before this change, so CelikPanel neither reloaded nor started it. Start PHP-FPM yourself, then choose again.",
+        "reason": "php_pool",
+        "restore": "confirmed",
+        "service": "not_running",
+        "service_active": "false"
+      },
+      "name": "C2: service not_running, service_active false",
+      "ok": true
+    },
+    {
+      "detail": "The previous file is back. PHP-FPM was not running before this change, so CelikPanel neither reloaded nor started it. Start PHP-FPM yourself, then choose again.",
+      "name": "C2: the sentence says PHP-FPM was not running and was neither reloaded nor started",
+      "ok": true
+    },
+    {
+      "detail": {
+        "lines": [
+          "2026-10-11T10:16:11.411033+00:00 dns-ubuntu systemd[1]: php8.3-fpm.service: Unit cannot be reloaded because it is inactive.",
+          "2026-10-11T10:16:11.411033+00:00 dns-ubuntu systemd[1]: php8.3-fpm.service: Unit cannot be reloaded because it is inactive."
+        ],
+        "unit_after": {
+          "ActiveEnterTimestamp": "Sun 2026-10-11 10:07:49 UTC",
+          "ActiveState": "inactive",
+          "ExecMainStartTimestamp": "Sun 2026-10-11 10:07:49 UTC",
+          "LoadState": "loaded",
+          "MainPID": "0",
+          "NRestarts": "0",
+          "SubState": "dead"
+        }
+      },
+      "name": "C2: nothing reloaded or started: PHP-FPM still inactive, no Reloading/Starting line after the take",
+      "ok": true
+    },
+    {
+      "detail": {
+        "gid": [
+          988,
+          988
+        ],
+        "inode": [
+          533590,
+          533590
+        ],
+        "mode": [
+          "0644",
+          "0644"
+        ],
+        "sha256": [
+          "ef5dcd26e59bf30d00fe4e203c97539c30a3b73d6f077f0c2623de433e6f215e",
+          "ef5dcd26e59bf30d00fe4e203c97539c30a3b73d6f077f0c2623de433e6f215e"
+        ],
+        "uid": [
+          0,
+          0
+        ]
+      },
+      "name": "C2: the owner's pool is byte-equal (sha256, mode, uid, gid)",
+      "ok": true
+    }
+  ],
+  "finished_at": "2026-10-11T10:16:16Z",
+  "lab_preparation": [
+    {
+      "file": "steps/12-c2-pool-php-stopped/native/029-lab-c2-pool-restore.json",
+      "label": "c2-pool-restore",
+      "mode": "lab-pool-restore"
+    },
+    {
+      "file": "steps/12-c2-pool-php-stopped/native/037-lab-c2-end-pool-restore.json",
+      "label": "c2-end-pool-restore",
+      "mode": "lab-pool-restore"
+    }
+  ],
+  "native_evidence": false,
+  "natives": [
+    {
+      "file": "native/029-lab-c2-pool-restore.json",
+      "label": "lab-c2-pool-restore",
+      "mode": "lab-pool-restore",
+      "owner_action": false
+    },
+    {
+      "file": "native/030-owner-c2-pool-edit.json",
+      "label": "owner-c2-pool-edit",
+      "mode": "owner-pool12",
+      "owner_action": true
+    },
+    {
+      "file": "native/031-c2-0-before-pool-set12-a.test.json",
+      "label": "c2-0-before-pool-set12-a.test",
+      "mode": "read-pool12",
+      "owner_action": false
+    },
+    {
+      "file": "native/032-owner-c2-php-stop.json",
+      "label": "owner-c2-php-stop",
+      "mode": "owner-php12",
+      "owner_action": true
+    },
+    {
+      "file": "native/033-guest-clock.json",
+      "label": "guest-clock",
+      "mode": "read-ledger",
+      "owner_action": false
+    },
+    {
+      "file": "native/034-c2-1-after-pool-set12-a.test.json",
+      "label": "c2-1-after-pool-set12-a.test",
+      "mode": "read-pool12",
+      "owner_action": false
+    },
+    {
+      "file": "native/035-c2-journal.json",
+      "label": "c2-journal",
+      "mode": "read-window12",
+      "owner_action": false
+    },
+    {
+      "file": "native/036-owner-c2-php-start.json",
+      "label": "owner-c2-php-start",
+      "mode": "owner-php12",
+      "owner_action": true
+    },
+    {
+      "file": "native/037-lab-c2-end-pool-restore.json",
+      "label": "lab-c2-end-pool-restore",
+      "mode": "lab-pool-restore",
+      "owner_action": false
+    }
+  ],
+  "node": "ubuntu",
+  "notes": [
+    {
+      "detail": [],
+      "note": "C2: PASS"
+    }
+  ],
+  "owner_actions": [
+    {
+      "at": "2026-10-11T10:16:09Z",
+      "label": "c2-pool-edit",
+      "mode": "owner-pool12"
+    },
+    {
+      "at": "2026-10-11T10:16:10Z",
+      "label": "c2-php-stop",
+      "mode": "owner-php12"
+    },
+    {
+      "at": "2026-10-11T10:16:16Z",
+      "label": "c2-php-start",
+      "mode": "owner-php12"
+    }
+  ],
+  "owner_waited_for_idle": {
+    "at": "2026-10-11T10:16:07Z",
+    "busy_seen": [],
+    "idle": true,
+    "polls": 1,
+    "waited_s": 0.3
+  },
+  "section": "C2-pool-php-stopped",
+  "started_at": "2026-10-11T10:16:07Z",
+  "substeps": {
+    "C2": "passed"
+  },
+  "title": "pool take while the owner stopped PHP-FPM: put back, not running, nothing reloaded",
+  "verdict": "passed"
+}

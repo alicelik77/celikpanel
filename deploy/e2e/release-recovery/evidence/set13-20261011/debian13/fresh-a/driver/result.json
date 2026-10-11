@@ -1,0 +1,338 @@
+{
+  "artifacts": {
+    "baseline": {
+      "commit": "8948352e39539cd647c742c154578dc2163d7b9b",
+      "sha256": "f7e5c60cd03c7186eb9e2d1ff92c6dbc5957b54792683039bd4234795a23cd52",
+      "version": "v0.1.0-alpha.81"
+    }
+  },
+  "cell": {
+    "components": [
+      "nginx",
+      "php-fpm",
+      "mariadb",
+      "postfix",
+      "dovecot",
+      "roundcube",
+      "rspamd",
+      "postgresql"
+    ],
+    "mail": true,
+    "name": "set13-debian13",
+    "node": "debian13",
+    "purpose": "web_mail"
+  },
+  "cell_kind": "set13-fresh-install",
+  "findings": [
+    "debian13: server setup waits at access_dns (server_setup_access_dns_required) on an isolated host; later wizard steps were not run: ['12-panel_certificate', '13-access_dns', '14-mail_certificate', '15-mail_enrollment', '16-verify']"
+  ],
+  "identity": {
+    "cell_id": "release-recovery__5aa5646c30a8353d",
+    "node": "debian13",
+    "vm_uuid": "360ecaf2-1f90-5824-8ed8-07c7fcf3d388"
+  },
+  "native_evidence": false,
+  "note": "set13: a measurement on the fresh install; no update is started and no P0 row is judged.",
+  "outcome": {
+    "classification": "set13-measured",
+    "final_status": null
+  },
+  "overall": "failed",
+  "provenance": {
+    "what": "set13: 816b8dd60 installed fresh; no update"
+  },
+  "request_id": null,
+  "schema": "celikpanel/upd1-owner-update-result/v1",
+  "sections": {
+    "C1-pool-check-refused": {
+      "checks": 12,
+      "error": null,
+      "failed": [],
+      "finished_at": "2026-10-11T09:50:23Z",
+      "notes": [
+        "C1: PASS"
+      ],
+      "started_at": "2026-10-11T09:50:03Z",
+      "substeps": {
+        "C1": "passed"
+      },
+      "title": "pool take refused by php-fpm -t: put back, not reloaded; then the owner's fix and a take",
+      "unknown": [],
+      "verdict": "passed"
+    },
+    "C2-pool-php-stopped": {
+      "checks": 6,
+      "error": null,
+      "failed": [],
+      "finished_at": "2026-10-11T09:50:32Z",
+      "notes": [
+        "C2: PASS"
+      ],
+      "started_at": "2026-10-11T09:50:23Z",
+      "substeps": {
+        "C2": "passed"
+      },
+      "title": "pool take while the owner stopped PHP-FPM: put back, not running, nothing reloaded",
+      "unknown": [],
+      "verdict": "passed"
+    },
+    "C3-vhost-nginx-refused": {
+      "checks": 11,
+      "error": null,
+      "failed": [],
+      "finished_at": "2026-10-11T09:50:47Z",
+      "notes": [
+        "C3: PASS"
+      ],
+      "started_at": "2026-10-11T09:50:32Z",
+      "substeps": {
+        "C3": "passed"
+      },
+      "title": "vhost take refused by nginx: put back; reloaded or not by nginx -t's answer",
+      "unknown": [],
+      "verdict": "passed"
+    },
+    "C4-pool-not-read": {
+      "checks": 7,
+      "error": null,
+      "failed": [
+        "C4: the Domains row during the hold: state unknown, kind php_pool, reason not_read, read_error",
+        "C4: the row stays unknown until a read answers (after B's save, before A is read again)",
+        "C4: after the lock clears a read answers the pool managed_unchanged and the row is back"
+      ],
+      "finished_at": "2026-10-11T09:52:06Z",
+      "notes": [
+        "C4: FAIL"
+      ],
+      "started_at": "2026-10-11T09:50:47Z",
+      "substeps": {
+        "C4": "failed"
+      },
+      "title": "the pool not read: the page and the Domains row",
+      "unknown": [],
+      "verdict": "failed"
+    },
+    "C5-app-unit": {
+      "checks": 1,
+      "error": "CalledProcessError: Command '['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=5', '-o', 'StrictHostKeyChecking=yes', '-o', 'HashKnownHosts=no', '-o', 'UserKnownHostsFile=/var/tmp/cp-release-drill-s13-d13-a/cells/d6cb1e93a26558a88b692e81/ssh-known-hosts', '-i', '/var/tmp/cp-release-drill-s13-d13-a/key', '-p', '5081', 'celik@127.0.0.1', 'sudo /bin/bash -s']' returned non-zero exit status 2. | guest stderr: {\"refused\": \"PermissionError\", \"reason\": \"[Errno 13] Permission denied: '/usr/bin/systemd-analyze'\"}\n",
+      "failed": [],
+      "finished_at": "2026-10-11T09:53:17Z",
+      "notes": [],
+      "started_at": "2026-10-11T09:52:06Z",
+      "substeps": {
+        "section": "passed"
+      },
+      "title": "the Node unit's PATH and /bin/sh -c; verify before try-restart after a put-back",
+      "unknown": [],
+      "verdict": "inconclusive"
+    },
+    "S0-sites": {
+      "checks": 16,
+      "error": null,
+      "failed": [],
+      "finished_at": "2026-10-11T09:49:41Z",
+      "notes": [
+        "S0: PASS"
+      ],
+      "started_at": "2026-10-11T09:49:30Z",
+      "substeps": {
+        "S0": "passed",
+        "section": "passed"
+      },
+      "title": "two PHP sites; header, digest, ledger row, include directory, nginx -T (set10's section)",
+      "unknown": [],
+      "verdict": "passed"
+    },
+    "h-i-unchanged-start": {
+      "checks": 7,
+      "error": null,
+      "failed": [],
+      "finished_at": "2026-10-11T09:50:03Z",
+      "notes": [
+        "h: PASS",
+        "i: PASS"
+      ],
+      "started_at": "2026-10-11T09:49:41Z",
+      "substeps": {
+        "h": "passed",
+        "i": "passed"
+      },
+      "title": "a restart with every site unchanged (set10's section)",
+      "unknown": [],
+      "verdict": "passed"
+    }
+  },
+  "setup": {
+    "components": [
+      "dovecot",
+      "mariadb",
+      "nginx",
+      "php-fpm",
+      "postfix",
+      "postgresql",
+      "roundcube",
+      "rspamd"
+    ],
+    "purpose": "web_mail",
+    "waiting": {
+      "code": "server_setup_access_dns_required",
+      "mail_steps_reached": true,
+      "not_run": [
+        "12-panel_certificate",
+        "13-access_dns",
+        "14-mail_certificate",
+        "15-mail_enrollment",
+        "16-verify"
+      ],
+      "phase": "access_dns",
+      "polls": 25,
+      "stable_wait_seconds": 125.7,
+      "steps": {
+        "01-dns": "succeeded",
+        "02-service": "succeeded",
+        "03-service": "succeeded",
+        "04-service": "succeeded",
+        "05-service": "succeeded",
+        "06-mail_profile": "succeeded",
+        "07-mail_profile": "succeeded",
+        "08-service": "succeeded",
+        "09-service": "succeeded",
+        "10-firewall": "succeeded",
+        "11-access_dns": "running",
+        "12-panel_certificate": "pending",
+        "13-access_dns": "pending",
+        "14-mail_certificate": "pending",
+        "15-mail_enrollment": "pending",
+        "16-verify": "pending"
+      }
+    }
+  },
+  "steps": [
+    {
+      "finished_at": "2026-10-11T09:37:36Z",
+      "name": "set6-name-pinning",
+      "reason": null,
+      "started_at": "2026-10-11T09:37:31Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T09:37:44Z",
+      "name": "preflight",
+      "reason": null,
+      "started_at": "2026-10-11T09:37:36Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T09:37:59Z",
+      "name": "origin",
+      "reason": null,
+      "started_at": "2026-10-11T09:37:44Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T09:39:28Z",
+      "name": "baseline-install",
+      "reason": null,
+      "started_at": "2026-10-11T09:37:59Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T09:39:29Z",
+      "name": "owner-login",
+      "reason": null,
+      "started_at": "2026-10-11T09:39:28Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T09:39:29Z",
+      "name": "license",
+      "reason": null,
+      "started_at": "2026-10-11T09:39:29Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T09:49:25Z",
+      "name": "setup",
+      "reason": null,
+      "started_at": "2026-10-11T09:39:29Z",
+      "verdict": "observed"
+    },
+    {
+      "finished_at": "2026-10-11T09:49:30Z",
+      "name": "site",
+      "reason": null,
+      "started_at": "2026-10-11T09:49:25Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T09:49:41Z",
+      "name": "S0-sites",
+      "reason": null,
+      "started_at": "2026-10-11T09:49:30Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T09:50:03Z",
+      "name": "h-i-unchanged-start",
+      "reason": null,
+      "started_at": "2026-10-11T09:49:41Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T09:50:23Z",
+      "name": "C1-pool-check-refused",
+      "reason": null,
+      "started_at": "2026-10-11T09:50:03Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T09:50:32Z",
+      "name": "C2-pool-php-stopped",
+      "reason": null,
+      "started_at": "2026-10-11T09:50:23Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T09:50:47Z",
+      "name": "C3-vhost-nginx-refused",
+      "reason": null,
+      "started_at": "2026-10-11T09:50:32Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T09:52:06Z",
+      "name": "C4-pool-not-read",
+      "reason": "C4: the Domains row during the hold: state unknown, kind php_pool, reason not_read, read_error; C4: the row stays unknown until a read answers (after B's save, before A is read again); C4: after the lock clears a read answers the pool managed_unchanged and the row is back",
+      "started_at": "2026-10-11T09:50:47Z",
+      "verdict": "failed"
+    },
+    {
+      "finished_at": "2026-10-11T09:53:17Z",
+      "name": "C5-app-unit",
+      "reason": "CalledProcessError: Command '['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=5', '-o', 'StrictHostKeyChecking=yes', '-o', 'HashKnownHosts=no', '-o', 'UserKnownHostsFile=/var/tmp/cp-release-drill-s13-d13-a/cells/d6cb1e93a26558a88b692e81/ssh-known-hosts', '-i', '/var/tmp/cp-release-drill-s13-d13-a/key', '-p', '5081', 'celik@127.0.0.1', 'sudo /bin/bash -s']' returned non-zero exit status 2. | guest stderr: {\"refused\": \"PermissionError\", \"reason\": \"[Errno 13] Permission denied: '/usr/bin/systemd-analyze'\"}\n",
+      "started_at": "2026-10-11T09:52:06Z",
+      "verdict": "inconclusive"
+    },
+    {
+      "finished_at": "2026-10-11T09:56:39Z",
+      "name": "set13-browser-window",
+      "reason": null,
+      "started_at": "2026-10-11T09:53:23Z",
+      "verdict": "observed"
+    },
+    {
+      "finished_at": "2026-10-11T09:56:39Z",
+      "name": "set6-name-pinning-at-the-end",
+      "reason": null,
+      "started_at": "2026-10-11T09:56:39Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-11T09:56:42Z",
+      "name": "collect",
+      "reason": null,
+      "started_at": "2026-10-11T09:56:39Z",
+      "verdict": "passed"
+    }
+  ]
+}

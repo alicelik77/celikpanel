@@ -1,0 +1,22 @@
+{
+  "checks": {
+    "checks": 12,
+    "error": null,
+    "failed": [],
+    "finished_at": "2026-10-11T09:50:23Z",
+    "notes": [
+      "C1: PASS"
+    ],
+    "started_at": "2026-10-11T09:50:03Z",
+    "substeps": {
+      "C1": "passed"
+    },
+    "title": "pool take refused by php-fpm -t: put back, not reloaded; then the owner's fix and a take",
+    "unknown": [],
+    "verdict": "passed"
+  },
+  "finished_at": "2026-10-11T09:50:23Z",
+  "name": "C1-pool-check-refused",
+  "started_at": "2026-10-11T09:50:03Z",
+  "verdict": "passed"
+}

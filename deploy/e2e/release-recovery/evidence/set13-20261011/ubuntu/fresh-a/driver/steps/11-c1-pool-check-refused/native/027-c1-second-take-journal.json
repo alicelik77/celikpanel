@@ -1,0 +1,39 @@
+{
+  "at": "2026-10-11T10:16:07Z",
+  "by_unit": {
+    "celikpanel-agent.service": [
+      "2026-10-11T10:16:03.415907+00:00 dns-ubuntu agent[7749]: 2026/10/11 10:16:03 ApplySitePool site 2 (take): taken owner_edited /etc/php/8.3/fpm/pool.d/site2.conf"
+    ],
+    "celikpanel-panel.service": [
+      "2026-10-11T10:16:02.790821+00:00 dns-ubuntu panel[44663]: 2026/10/11 10:16:02 http: TLS handshake error from 127.0.0.1:41230: EOF",
+      "2026-10-11T10:16:03.261505+00:00 dns-ubuntu panel[44663]: 2026/10/11 10:16:03 http: TLS handshake error from 127.0.0.1:41238: EOF",
+      "2026-10-11T10:16:03.416425+00:00 dns-ubuntu panel[44663]: 2026/10/11 10:16:03 site configuration set12-a.test php_pool (take): taken; owner's file kept as /etc/php/8.3/fpm/pool.d/site2.conf.celikpanel-backup-20261011T101603Z"
+    ],
+    "nginx.service": [],
+    "php8.3-fpm.service": [
+      "2026-10-11T10:16:03.403332+00:00 dns-ubuntu systemd[1]: Reloading php8.3-fpm.service - The PHP 8.3 FastCGI Process Manager...",
+      "2026-10-11T10:16:03.411360+00:00 dns-ubuntu systemd[1]: Reloaded php8.3-fpm.service - The PHP 8.3 FastCGI Process Manager.",
+      "2026-10-11T10:16:03.485418+00:00 dns-ubuntu php-fpm8.3[33016]: [11-Oct-2026 10:16:03] NOTICE: using inherited socket fd=8, \"/run/php/php8.3-fpm.sock\"",
+      "2026-10-11T10:16:03.485418+00:00 dns-ubuntu php-fpm8.3[33016]: [11-Oct-2026 10:16:03] NOTICE: using inherited socket fd=9, \"/var/run/php/php8.3-fpm-site2.sock\"",
+      "2026-10-11T10:16:03.485418+00:00 dns-ubuntu php-fpm8.3[33016]: [11-Oct-2026 10:16:03] NOTICE: using inherited socket fd=10, \"/var/run/php/php8.3-fpm-site3.sock\""
+    ]
+  },
+  "mode": "read-window12",
+  "owner_action": false,
+  "schema": "celikpanel/set12-native/v1",
+  "since_epoch": 1791713762,
+  "systemd_all": [
+    "2026-10-11T10:16:03.403332+00:00 dns-ubuntu systemd[1]: Reloading php8.3-fpm.service - The PHP 8.3 FastCGI Process Manager...",
+    "2026-10-11T10:16:03.411360+00:00 dns-ubuntu systemd[1]: Reloaded php8.3-fpm.service - The PHP 8.3 FastCGI Process Manager."
+  ],
+  "systemd_manager": [
+    "2026-10-11T10:16:03.403332+00:00 dns-ubuntu systemd[1]: Reloading php8.3-fpm.service - The PHP 8.3 FastCGI Process Manager...",
+    "2026-10-11T10:16:03.411360+00:00 dns-ubuntu systemd[1]: Reloaded php8.3-fpm.service - The PHP 8.3 FastCGI Process Manager."
+  ],
+  "units": [
+    "celikpanel-panel.service",
+    "celikpanel-agent.service",
+    "nginx.service",
+    "php8.3-fpm.service"
+  ]
+}

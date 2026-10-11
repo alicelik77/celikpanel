@@ -1,0 +1,24 @@
+# set13: files whose local paths and names became <scratchpad>, <repo>, <user-temp>, <windows-user>, <session-scratch-dir>, <repo-parent-dir> (tools/scrub.py); no driver file is among them
+debian13/fresh-a/host/job.sh
+debian13/fresh-b/host/job.sh
+host/browser-runner.log
+host/set12-generated-restore.txt
+tools/browser-runner.sh
+tools/fix-generated.sh
+tools/gate.sh
+tools/init.sh
+tools/job-d13.sh
+tools/job-d13b.sh
+tools/job-stage1.sh
+tools/job-stage2.sh
+tools/job-suite-c.sh
+tools/job-suites.sh
+tools/job-ub.sh
+tools/job-ubb.sh
+tools/mkov.sh
+tools/scan.sh
+tools/show.sh
+tools/stage-common.sh
+tools/stage-lab.sh
+ubuntu/fresh-a/host/job.sh
+ubuntu/fresh-b/host/job.sh

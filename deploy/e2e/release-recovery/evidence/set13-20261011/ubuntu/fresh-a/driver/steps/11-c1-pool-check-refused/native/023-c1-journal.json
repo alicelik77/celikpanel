@@ -1,0 +1,32 @@
+{
+  "at": "2026-10-11T10:16:02Z",
+  "by_unit": {
+    "celikpanel-agent.service": [
+      "2026-10-11T10:15:49.546873+00:00 dns-ubuntu agent[7749]: 2026/10/11 10:15:49 ApplySitePool site 2 (take): failed owner_edited /etc/php/8.3/fpm/pool.d/site2.conf"
+    ],
+    "celikpanel-panel.service": [
+      "2026-10-11T10:15:48.049388+00:00 dns-ubuntu panel[44663]: 2026/10/11 10:15:48 http: TLS handshake error from 127.0.0.1:32872: EOF",
+      "2026-10-11T10:15:49.348924+00:00 dns-ubuntu panel[44663]: 2026/10/11 10:15:49 http: TLS handshake error from 127.0.0.1:34962: EOF",
+      "2026-10-11T10:15:49.547212+00:00 dns-ubuntu panel[44663]: 2026/10/11 10:15:49 site configuration set12-a.test php_pool (take): failed; owner's file kept as /etc/php/8.3/fpm/pool.d/site2.conf.celikpanel-backup-20261011T101549Z; php-fpm8.3 -t: [11-Oct-2026 10:15:49] ERROR: [/etc/php/8.3/fpm/pool.d/zz-set12-owner.conf:3] unknown entry 'set12_not_a_directive' [11-Oct-2026 10:15:49] ERROR: Unable to include /etc/php/8.3/fpm/pool.d/zz-set12-owner.conf from /etc/php/8.3/fpm/php-fpm.conf at line 3 [11-Oct-2026 10:15:49] ERROR: fa",
+      "2026-10-11T10:15:49.556737+00:00 dns-ubuntu panel[44663]: 2026/10/11 10:15:49 [502] site configuration of set12-a.test not applied: failed (owner_edited config_refused); restore confirmed"
+    ],
+    "nginx.service": [],
+    "php8.3-fpm.service": [
+      "2026-10-11T10:15:48.075842+00:00 dns-ubuntu php-fpm8.3[33016]: [11-Oct-2026 10:15:48] NOTICE: using inherited socket fd=8, \"/run/php/php8.3-fpm.sock\"",
+      "2026-10-11T10:15:48.075842+00:00 dns-ubuntu php-fpm8.3[33016]: [11-Oct-2026 10:15:48] NOTICE: using inherited socket fd=9, \"/var/run/php/php8.3-fpm-site2.sock\"",
+      "2026-10-11T10:15:48.075842+00:00 dns-ubuntu php-fpm8.3[33016]: [11-Oct-2026 10:15:48] NOTICE: using inherited socket fd=10, \"/var/run/php/php8.3-fpm-site3.sock\""
+    ]
+  },
+  "mode": "read-window12",
+  "owner_action": false,
+  "schema": "celikpanel/set12-native/v1",
+  "since_epoch": 1791713748,
+  "systemd_all": [],
+  "systemd_manager": [],
+  "units": [
+    "celikpanel-panel.service",
+    "celikpanel-agent.service",
+    "nginx.service",
+    "php8.3-fpm.service"
+  ]
+}

@@ -1,0 +1,12 @@
+2026-10-11T09:36:47Z runner started pid=130290
+2026-10-11T09:53:29Z start h13d13-ui ui,done
+browser profile: <user-temp>\cpb\b5238dc6 (46 characters, limit 120)
+{"cell":"ui","started":"2026-10-11T09:53:31.163Z","ended":"2026-10-11T09:56:38.246Z","ok":true}
+{"cell":"done","started":"2026-10-11T09:56:38.252Z","ended":"2026-10-11T09:56:38.256Z","ok":true}
+2026-10-11T09:56:38Z rc=0 h13d13-ui
+2026-10-11T10:53:28Z start h13d13b-ui ui,done
+browser profile: <user-temp>\cpb\ead0d739 (46 characters, limit 120)
+{"cell":"ui","started":"2026-10-11T10:53:29.794Z","ended":"2026-10-11T10:56:29.785Z","ok":true}
+{"cell":"done","started":"2026-10-11T10:56:29.791Z","ended":"2026-10-11T10:56:29.793Z","ok":true}
+2026-10-11T10:56:30Z rc=0 h13d13b-ui
+2026-10-11T10:57:01Z runner stopped

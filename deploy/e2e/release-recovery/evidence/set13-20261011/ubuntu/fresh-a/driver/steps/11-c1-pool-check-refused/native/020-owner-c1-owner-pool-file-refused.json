@@ -1,0 +1,54 @@
+{
+  "action": "owner-broken-pool",
+  "after": {
+    "ctime_ns": 1791713748882888617,
+    "exists": true,
+    "gid": 0,
+    "group": "root",
+    "immutable": false,
+    "inode": 533553,
+    "kind": "file",
+    "lsattr": "--------------e-------",
+    "mode": "0644",
+    "mtime_ns": 1791713748882888617,
+    "nlink": 1,
+    "owner": "root",
+    "path": "/etc/php/8.3/fpm/pool.d/zz-set12-owner.conf",
+    "sha256": "6c3af7a7f940009e945426f83f9ca5c69704b19aff0a869b66fc35fd824dc2fe",
+    "size": 115,
+    "text": "; set12: the server owner's own pool file, with a directive PHP-FPM refuses\n[set12owner]\nset12_not_a_directive = 1\n",
+    "uid": 0
+  },
+  "at": "2026-10-11T10:15:48Z",
+  "before": {
+    "error": "FileNotFoundError",
+    "exists": false,
+    "path": "/etc/php/8.3/fpm/pool.d/zz-set12-owner.conf"
+  },
+  "epoch": 1791713748.9605746,
+  "mode": "owner-broken-pool",
+  "owner_action": true,
+  "path": "/etc/php/8.3/fpm/pool.d/zz-set12-owner.conf",
+  "php_fpm_test": {
+    "argv": [
+      "php-fpm8.3",
+      "-t"
+    ],
+    "at": "2026-10-11T10:15:48Z",
+    "returncode": 78,
+    "seconds": 0.064,
+    "status": "ok",
+    "stderr": "[11-Oct-2026 10:15:48] ERROR: [/etc/php/8.3/fpm/pool.d/zz-set12-owner.conf:3] unknown entry 'set12_not_a_directive'\n[11-Oct-2026 10:15:48] ERROR: Unable to include /etc/php/8.3/fpm/pool.d/zz-set12-owner.conf from /etc/php/8.3/fpm/php-fpm.conf at line 3\n[11-Oct-2026 10:15:48] ERROR: failed to load configuration file '/etc/php/8.3/fpm/php-fpm.conf'\n[11-Oct-2026 10:15:48] ERROR: FPM initialization failed\n",
+    "stdout": ""
+  },
+  "php_unit": {
+    "ActiveEnterTimestamp": "Sun 2026-10-11 10:07:49 UTC",
+    "ActiveState": "active",
+    "ExecMainStartTimestamp": "Sun 2026-10-11 10:07:49 UTC",
+    "LoadState": "loaded",
+    "MainPID": "33016",
+    "NRestarts": "0",
+    "SubState": "running"
+  },
+  "schema": "celikpanel/set12-native/v1"
+}

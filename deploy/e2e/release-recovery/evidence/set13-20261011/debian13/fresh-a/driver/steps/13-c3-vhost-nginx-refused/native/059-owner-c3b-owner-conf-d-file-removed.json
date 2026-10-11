@@ -1,0 +1,55 @@
+{
+  "action": "owner-nginx13",
+  "after": {
+    "error": "FileNotFoundError",
+    "exists": false,
+    "path": "/etc/nginx/conf.d/zz-set13-owner.conf"
+  },
+  "at": "2026-10-11T09:50:47Z",
+  "before": {
+    "ctime_ns": 1791712241838741108,
+    "exists": true,
+    "gid": 0,
+    "group": "root",
+    "immutable": false,
+    "inode": 135533,
+    "kind": "file",
+    "lsattr": "--------------e-------",
+    "mode": "0644",
+    "mtime_ns": 1791712241838741108,
+    "nlink": 1,
+    "owner": "root",
+    "path": "/etc/nginx/conf.d/zz-set13-owner.conf",
+    "sha256": "42dc71f661f5ef3fd4add86dfcf9d06d794c9b1cca805bda2afd03c303636daf",
+    "size": 95,
+    "text": "# set13: the server owner's own file, with a directive nginx refuses\nset13_not_a_directive on;\n",
+    "uid": 0
+  },
+  "epoch": 1791712247.3955038,
+  "mode": "owner-nginx13",
+  "nginx_test": {
+    "argv": [
+      "nginx",
+      "-t"
+    ],
+    "at": "2026-10-11T09:50:47Z",
+    "returncode": 0,
+    "seconds": 0.011,
+    "status": "ok",
+    "stderr": "nginx: the configuration file /etc/nginx/nginx.conf syntax is ok\nnginx: configuration file /etc/nginx/nginx.conf test is successful\n",
+    "stdout": ""
+  },
+  "owner_action": true,
+  "path": "/etc/nginx/conf.d/zz-set13-owner.conf",
+  "removed": true,
+  "schema": "celikpanel/set13-native/v1",
+  "unit": {
+    "ActiveEnterTimestamp": "Sun 2026-10-11 09:40:53 UTC",
+    "ActiveState": "active",
+    "ExecMainStartTimestamp": "Sun 2026-10-11 09:40:53 UTC",
+    "LoadState": "loaded",
+    "MainPID": "7351",
+    "NRestarts": "0",
+    "SubState": "running"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "checks": {
+    "checks": 6,
+    "error": null,
+    "failed": [],
+    "finished_at": "2026-10-11T09:50:32Z",
+    "notes": [
+      "C2: PASS"
+    ],
+    "started_at": "2026-10-11T09:50:23Z",
+    "substeps": {
+      "C2": "passed"
+    },
+    "title": "pool take while the owner stopped PHP-FPM: put back, not running, nothing reloaded",
+    "unknown": [],
+    "verdict": "passed"
+  },
+  "finished_at": "2026-10-11T09:50:32Z",
+  "name": "C2-pool-php-stopped",
+  "started_at": "2026-10-11T09:50:23Z",
+  "verdict": "passed"
+}

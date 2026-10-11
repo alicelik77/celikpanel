@@ -1,0 +1,44 @@
+{
+  "at": "2026-10-11T09:50:39Z",
+  "by_unit": {
+    "celikpanel-agent.service": [],
+    "celikpanel-panel.service": [
+      "2026-10-11T09:50:34.904291+00:00 dns-debian13 panel[31285]: 2026/10/11 09:50:34 http: TLS handshake error from 127.0.0.1:38434: EOF",
+      "2026-10-11T09:50:35.253327+00:00 dns-debian13 panel[31285]: 2026/10/11 09:50:35 http: TLS handshake error from 127.0.0.1:38454: EOF",
+      "2026-10-11T09:50:35.407535+00:00 dns-debian13 panel[31285]: 2026/10/11 09:50:35 site configuration set12-a.test (take): failed; owner's file kept as /etc/nginx/sites-available/set12-a.test.conf.celikpanel-backup-20261011T095035Z; 2026/10/11 09:50:35 [emerg] 33037#33037: \"root\" directive is duplicate in /etc/nginx/celikpanel-sites.d/set12-a.test/set10-dup-root.conf:2",
+      "2026-10-11T09:50:35.423590+00:00 dns-debian13 panel[31285]: 2026/10/11 09:50:35 [502] site configuration set12-a.test: take: nginx validation failed: nginx validation failed: 2026/10/11 09:50:35 [emerg] 33037#33037: \"root\" directive is duplicate in /etc/nginx/celikpanel-sites.d/set12-a.test/set10-dup-root.conf:2",
+      "2026-10-11T09:50:35.423590+00:00 dns-debian13 panel[31285]: nginx: configuration file /etc/nginx/nginx.conf test failed: exit status 1; rollback restored and reloaded the previous vhost"
+    ],
+    "nginx.service": [
+      "2026-10-11T09:50:34.117232+00:00 dns-debian13 systemd[1]: Reloading nginx.service - A high performance web server and a reverse proxy server...",
+      "2026-10-11T09:50:34.153879+00:00 dns-debian13 nginx[32971]: 2026/10/11 09:50:34 [notice] 32971#32971: signal process started",
+      "2026-10-11T09:50:34.162473+00:00 dns-debian13 systemd[1]: Reloaded nginx.service - A high performance web server and a reverse proxy server.",
+      "2026-10-11T09:50:35.359232+00:00 dns-debian13 systemd[1]: Reloading nginx.service - A high performance web server and a reverse proxy server...",
+      "2026-10-11T09:50:35.390209+00:00 dns-debian13 nginx[33040]: 2026/10/11 09:50:35 [notice] 33040#33040: signal process started",
+      "2026-10-11T09:50:35.391938+00:00 dns-debian13 systemd[1]: Reloaded nginx.service - A high performance web server and a reverse proxy server."
+    ],
+    "php8.4-fpm.service": []
+  },
+  "mode": "read-window12",
+  "owner_action": false,
+  "schema": "celikpanel/set12-native/v1",
+  "since_epoch": 1791712234,
+  "systemd_all": [
+    "2026-10-11T09:50:34.117232+00:00 dns-debian13 systemd[1]: Reloading nginx.service - A high performance web server and a reverse proxy server...",
+    "2026-10-11T09:50:34.162473+00:00 dns-debian13 systemd[1]: Reloaded nginx.service - A high performance web server and a reverse proxy server.",
+    "2026-10-11T09:50:35.359232+00:00 dns-debian13 systemd[1]: Reloading nginx.service - A high performance web server and a reverse proxy server...",
+    "2026-10-11T09:50:35.391938+00:00 dns-debian13 systemd[1]: Reloaded nginx.service - A high performance web server and a reverse proxy server."
+  ],
+  "systemd_manager": [
+    "2026-10-11T09:50:34.117232+00:00 dns-debian13 systemd[1]: Reloading nginx.service - A high performance web server and a reverse proxy server...",
+    "2026-10-11T09:50:34.162473+00:00 dns-debian13 systemd[1]: Reloaded nginx.service - A high performance web server and a reverse proxy server.",
+    "2026-10-11T09:50:35.359232+00:00 dns-debian13 systemd[1]: Reloading nginx.service - A high performance web server and a reverse proxy server...",
+    "2026-10-11T09:50:35.391938+00:00 dns-debian13 systemd[1]: Reloaded nginx.service - A high performance web server and a reverse proxy server."
+  ],
+  "units": [
+    "celikpanel-panel.service",
+    "celikpanel-agent.service",
+    "nginx.service",
+    "php8.4-fpm.service"
+  ]
+}

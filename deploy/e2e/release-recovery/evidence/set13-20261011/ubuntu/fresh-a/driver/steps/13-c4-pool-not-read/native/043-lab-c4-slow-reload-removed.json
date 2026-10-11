@@ -1,0 +1,24 @@
+{
+  "action": "lab-slow-reload",
+  "at": "2026-10-11T10:17:36Z",
+  "daemon_reload": {
+    "argv": [
+      "systemctl",
+      "daemon-reload"
+    ],
+    "at": "2026-10-11T10:17:36Z",
+    "returncode": 0,
+    "seconds": 0.405,
+    "status": "ok",
+    "stderr": "",
+    "stdout": ""
+  },
+  "directory_removed": true,
+  "epoch": 1791713856.3366055,
+  "exec_reload": "ExecReload={ path=/bin/kill ; argv[]=/bin/kill -USR2 $MAINPID ; ignore_errors=no ; start_time=[n/a] ; stop_time=[n/a] ; pid=0 ; code=(null) ; status=0/0 }\n",
+  "mode": "lab-slow-reload",
+  "owner_action": false,
+  "path": "/etc/systemd/system/php8.3-fpm.service.d/zz-set12-lab-slow-reload.conf",
+  "removed": true,
+  "schema": "celikpanel/set12-native/v1"
+}

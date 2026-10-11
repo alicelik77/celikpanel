@@ -1,0 +1,14 @@
+--- /etc/systemd/system/celikapp-4.service (on this server)
++++ CelikPanel's text
+@@ -16,11 +16,5 @@
+ Restart=on-failure
+ RestartSec=3
+ 
+-# set10: added by the server owner by hand
+-Environment=SET10_OWNER=unit
+-
+-# set13: added by the server owner by hand (a start-up program that does not exist)
+-ExecStartPre=/opt/set13-owner/missing-prepare
+-
+ [Install]
+ WantedBy=multi-user.target

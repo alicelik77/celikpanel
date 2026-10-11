@@ -1,0 +1,1276 @@
+{
+  "calls": [
+    {
+      "at": "2026-10-11T10:19:00Z",
+      "json": {
+        "actions": [
+          "keep",
+          "take",
+          "merge"
+        ],
+        "challenge_file": "unchanged",
+        "diff": "--- /etc/nginx/sites-available/set12-a.test.conf (on this server)\n+++ CelikPanel's text\n@@ -1,9 +1,47 @@\n-# set10: the server owner's own vhost for set12-a.test, written by hand\n+# Nginx vhost for set12-a.test\n+# Written by CelikPanel. Put your own additions in /etc/nginx/celikpanel-sites.d/set12-a.test/*.conf;\n+# CelikPanel never writes there. If you change this file, CelikPanel keeps\n+# your file and asks you before it replaces it. Keep the lines that include\n+# /etc/nginx/celikpanel-managed.d/set12-a.test: that directory is CelikPanel's (certificate\n+# validation) and CelikPanel writes there without touching this file.\n+# CelikPanel yazdı. Kendi eklemeleriniz /etc/nginx/celikpanel-sites.d/set12-a.test/*.conf içine;\n+# CelikPanel oraya hiç yazmaz. Bu dosyayı değiştirirseniz CelikPanel\n+# dosyanızı korur ve değiştirmeden önce size sorar. /etc/nginx/celikpanel-managed.d/set12-a.test\n+# satırlarını koruyun: o dizin CelikPanel'indir (sertifika doğrulaması).\n+# Site ID: 2 · Project type: php\n server {\n     listen 80;\n     listen [::]:80;\n-    server_name set12-a.test;\n+    server_name set12-a.test www.set12-a.test;\n+\n+    access_log /var/log/nginx/set12-a.test-access.log;\n+    error_log /var/log/nginx/set12-a.test-error.log;\n+\n+    # CelikPanel's own parts of this site (certificate validation) / CelikPanel'in parçaları\n+    include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;\n+\n+    root /var/www/celikpanel/subscriptions/2/sites/2/public_html;\n+    index index.php index.html index.htm;\n+\n     location / {\n-        return 200 \"owner-replaced\\n\";\n+\n+        try_files $uri $uri/ /index.php?$query_string;\n     }\n+    location ~ \\.php$ {\n+        fastcgi_split_path_info ^(.+?\\.php)(/.*)$;\n+        try_files $fastcgi_script_name =404;\n+        set $path_info $fastcgi_path_info;\n+        fastcgi_param PATH_INFO $path_info;\n+        fastcgi_index index.php;\n+        include fastcgi.conf;\n+        fastcgi_pass unix:/var/run/php/php8.3-fpm-site2.sock;\n+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;\n+        include fastcgi_params;\n+    }\n+    location ~ /\\.(?!well-known).* {\n+        deny all;\n+    }\n+\n+    # Your additions for this site (server context) / Bu site için eklemeleriniz\n+    include /etc/nginx/celikpanel-sites.d/set12-a.test/*.conf;\n }\n",
+        "domain": "set12-a.test",
+        "domain_id": 2,
+        "enabled": "link",
+        "file_sha256": "b08051872068f847b5b4ed84a29aaa6711f402f6829c328f2de3772a4f48d3da",
+        "files": [
+          {
+            "actions": [
+              "keep",
+              "take",
+              "merge"
+            ],
+            "challenge_file": "unchanged",
+            "diff": "--- /etc/nginx/sites-available/set12-a.test.conf (on this server)\n+++ CelikPanel's text\n@@ -1,9 +1,47 @@\n-# set10: the server owner's own vhost for set12-a.test, written by hand\n+# Nginx vhost for set12-a.test\n+# Written by CelikPanel. Put your own additions in /etc/nginx/celikpanel-sites.d/set12-a.test/*.conf;\n+# CelikPanel never writes there. If you change this file, CelikPanel keeps\n+# your file and asks you before it replaces it. Keep the lines that include\n+# /etc/nginx/celikpanel-managed.d/set12-a.test: that directory is CelikPanel's (certificate\n+# validation) and CelikPanel writes there without touching this file.\n+# CelikPanel yazdı. Kendi eklemeleriniz /etc/nginx/celikpanel-sites.d/set12-a.test/*.conf içine;\n+# CelikPanel oraya hiç yazmaz. Bu dosyayı değiştirirseniz CelikPanel\n+# dosyanızı korur ve değiştirmeden önce size sorar. /etc/nginx/celikpanel-managed.d/set12-a.test\n+# satırlarını koruyun: o dizin CelikPanel'indir (sertifika doğrulaması).\n+# Site ID: 2 · Project type: php\n server {\n     listen 80;\n     listen [::]:80;\n-    server_name set12-a.test;\n+    server_name set12-a.test www.set12-a.test;\n+\n+    access_log /var/log/nginx/set12-a.test-access.log;\n+    error_log /var/log/nginx/set12-a.test-error.log;\n+\n+    # CelikPanel's own parts of this site (certificate validation) / CelikPanel'in parçaları\n+    include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;\n+\n+    root /var/www/celikpanel/subscriptions/2/sites/2/public_html;\n+    index index.php index.html index.htm;\n+\n     location / {\n-        return 200 \"owner-replaced\\n\";\n+\n+        try_files $uri $uri/ /index.php?$query_string;\n     }\n+    location ~ \\.php$ {\n+        fastcgi_split_path_info ^(.+?\\.php)(/.*)$;\n+        try_files $fastcgi_script_name =404;\n+        set $path_info $fastcgi_path_info;\n+        fastcgi_param PATH_INFO $path_info;\n+        fastcgi_index index.php;\n+        include fastcgi.conf;\n+        fastcgi_pass unix:/var/run/php/php8.3-fpm-site2.sock;\n+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;\n+        include fastcgi_params;\n+    }\n+    location ~ /\\.(?!well-known).* {\n+        deny all;\n+    }\n+\n+    # Your additions for this site (server context) / Bu site için eklemeleriniz\n+    include /etc/nginx/celikpanel-sites.d/set12-a.test/*.conf;\n }\n",
+            "domain": "set12-a.test",
+            "domain_id": 2,
+            "enabled": "link",
+            "file_sha256": "b08051872068f847b5b4ed84a29aaa6711f402f6829c328f2de3772a4f48d3da",
+            "include_dir": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+            "kind": "nginx_vhost",
+            "ledger": {
+              "observed_at": "2026-10-11T10:15:27Z",
+              "written_at": "2026-10-11T10:15:21Z",
+              "written_release": "v0.1.0-alpha.81 8948352e3953"
+            },
+            "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-a.test",
+            "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;",
+            "path": "/etc/nginx/sites-available/set12-a.test.conf",
+            "protection": "none",
+            "render_sha256": "945feefd3a47a0174e81f20e1ab3a29a8811940df2ff6913546b26ba967f0db5",
+            "state": "foreign"
+          },
+          {
+            "actions": [],
+            "decision": {
+              "current": true,
+              "decided_at": "2026-10-11T10:16:03Z",
+              "kind": "take_celikpanel"
+            },
+            "domain": "set12-a.test",
+            "domain_id": 2,
+            "file_sha256": "31b012b8a0f776a72fd459306f4e80ddc41815219edafacde9654d5ed6e6882f",
+            "kind": "php_pool",
+            "ledger": {
+              "backup_path": "/etc/php/8.3/fpm/pool.d/site2.conf.celikpanel-backup-20261011T101611Z",
+              "observed_at": "2026-10-11T10:17:36Z",
+              "written_at": "2026-10-11T10:16:03Z",
+              "written_release": "v0.1.0-alpha.81 8948352e3953"
+            },
+            "path": "/etc/php/8.3/fpm/pool.d/site2.conf",
+            "protection": "none",
+            "render_sha256": "5ab9cb0cb10a561009dc429c3acfa86d4e91eb0d1fb3fab74d993882371a801f",
+            "state": "managed_unchanged"
+          }
+        ],
+        "include_dir": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+        "kind": "nginx_vhost",
+        "ledger": {
+          "observed_at": "2026-10-11T10:15:27Z",
+          "written_at": "2026-10-11T10:15:21Z",
+          "written_release": "v0.1.0-alpha.81 8948352e3953"
+        },
+        "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-a.test",
+        "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;",
+        "overall_kind": "nginx_vhost",
+        "overall_state": "foreign",
+        "path": "/etc/nginx/sites-available/set12-a.test.conf",
+        "protection": "none",
+        "render_sha256": "945feefd3a47a0174e81f20e1ab3a29a8811940df2ff6913546b26ba967f0db5",
+        "state": "foreign"
+      },
+      "label": "c3a page: GET site-config",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains/2/site-config"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T10:19:01Z",
+      "json": {
+        "code": "SITE_CONFIG_NGINX_REFUSED",
+        "details": [
+          "2026/10/11 10:19:01 [emerg] 51884#51884: \"root\" directive is duplicate in /etc/nginx/celikpanel-sites.d/set12-a.test/set10-dup-root.conf:2"
+        ],
+        "error": "nginx did not accept CelikPanel's text (it refused the configuration or could not reload), so your file was put back and nginx keeps running with it. nginx checks every site together, so the cause may be another file; fix what nginx reported, then choose again.",
+        "reason": "nginx_refused",
+        "restore": "confirmed",
+        "service": "reloaded",
+        "service_active": "true"
+      },
+      "label": "c3a take while an owner's include-directory file conflicts with CelikPanel's text",
+      "request": {
+        "body": {
+          "file_sha256": "b08051872068f847b5b4ed84a29aaa6711f402f6829c328f2de3772a4f48d3da",
+          "render_sha256": "945feefd3a47a0174e81f20e1ab3a29a8811940df2ff6913546b26ba967f0db5"
+        },
+        "method": "POST",
+        "path": "/api/v1/domains/2/site-config/take",
+        "x_celikpanel_request_id": "8f8c7659bb5b1aafcb6ee722bab17f89"
+      },
+      "seconds": 0.15,
+      "status": 502,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T10:19:07Z",
+      "json": {
+        "actions": [
+          "keep",
+          "take",
+          "merge"
+        ],
+        "challenge_file": "unchanged",
+        "diff": "--- /etc/nginx/sites-available/set12-a.test.conf (on this server)\n+++ CelikPanel's text\n@@ -1,9 +1,47 @@\n-# set10: the server owner's own vhost for set12-a.test, written by hand\n+# Nginx vhost for set12-a.test\n+# Written by CelikPanel. Put your own additions in /etc/nginx/celikpanel-sites.d/set12-a.test/*.conf;\n+# CelikPanel never writes there. If you change this file, CelikPanel keeps\n+# your file and asks you before it replaces it. Keep the lines that include\n+# /etc/nginx/celikpanel-managed.d/set12-a.test: that directory is CelikPanel's (certificate\n+# validation) and CelikPanel writes there without touching this file.\n+# CelikPanel yazdı. Kendi eklemeleriniz /etc/nginx/celikpanel-sites.d/set12-a.test/*.conf içine;\n+# CelikPanel oraya hiç yazmaz. Bu dosyayı değiştirirseniz CelikPanel\n+# dosyanızı korur ve değiştirmeden önce size sorar. /etc/nginx/celikpanel-managed.d/set12-a.test\n+# satırlarını koruyun: o dizin CelikPanel'indir (sertifika doğrulaması).\n+# Site ID: 2 · Project type: php\n server {\n     listen 80;\n     listen [::]:80;\n-    server_name set12-a.test;\n+    server_name set12-a.test www.set12-a.test;\n+\n+    access_log /var/log/nginx/set12-a.test-access.log;\n+    error_log /var/log/nginx/set12-a.test-error.log;\n+\n+    # CelikPanel's own parts of this site (certificate validation) / CelikPanel'in parçaları\n+    include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;\n+\n+    root /var/www/celikpanel/subscriptions/2/sites/2/public_html;\n+    index index.php index.html index.htm;\n+\n     location / {\n-        return 200 \"owner-replaced\\n\";\n+\n+        try_files $uri $uri/ /index.php?$query_string;\n     }\n+    location ~ \\.php$ {\n+        fastcgi_split_path_info ^(.+?\\.php)(/.*)$;\n+        try_files $fastcgi_script_name =404;\n+        set $path_info $fastcgi_path_info;\n+        fastcgi_param PATH_INFO $path_info;\n+        fastcgi_index index.php;\n+        include fastcgi.conf;\n+        fastcgi_pass unix:/var/run/php/php8.3-fpm-site2.sock;\n+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;\n+        include fastcgi_params;\n+    }\n+    location ~ /\\.(?!well-known).* {\n+        deny all;\n+    }\n+\n+    # Your additions for this site (server context) / Bu site için eklemeleriniz\n+    include /etc/nginx/celikpanel-sites.d/set12-a.test/*.conf;\n }\n",
+        "domain": "set12-a.test",
+        "domain_id": 2,
+        "enabled": "link",
+        "file_sha256": "b08051872068f847b5b4ed84a29aaa6711f402f6829c328f2de3772a4f48d3da",
+        "files": [
+          {
+            "actions": [
+              "keep",
+              "take",
+              "merge"
+            ],
+            "challenge_file": "unchanged",
+            "diff": "--- /etc/nginx/sites-available/set12-a.test.conf (on this server)\n+++ CelikPanel's text\n@@ -1,9 +1,47 @@\n-# set10: the server owner's own vhost for set12-a.test, written by hand\n+# Nginx vhost for set12-a.test\n+# Written by CelikPanel. Put your own additions in /etc/nginx/celikpanel-sites.d/set12-a.test/*.conf;\n+# CelikPanel never writes there. If you change this file, CelikPanel keeps\n+# your file and asks you before it replaces it. Keep the lines that include\n+# /etc/nginx/celikpanel-managed.d/set12-a.test: that directory is CelikPanel's (certificate\n+# validation) and CelikPanel writes there without touching this file.\n+# CelikPanel yazdı. Kendi eklemeleriniz /etc/nginx/celikpanel-sites.d/set12-a.test/*.conf içine;\n+# CelikPanel oraya hiç yazmaz. Bu dosyayı değiştirirseniz CelikPanel\n+# dosyanızı korur ve değiştirmeden önce size sorar. /etc/nginx/celikpanel-managed.d/set12-a.test\n+# satırlarını koruyun: o dizin CelikPanel'indir (sertifika doğrulaması).\n+# Site ID: 2 · Project type: php\n server {\n     listen 80;\n     listen [::]:80;\n-    server_name set12-a.test;\n+    server_name set12-a.test www.set12-a.test;\n+\n+    access_log /var/log/nginx/set12-a.test-access.log;\n+    error_log /var/log/nginx/set12-a.test-error.log;\n+\n+    # CelikPanel's own parts of this site (certificate validation) / CelikPanel'in parçaları\n+    include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;\n+\n+    root /var/www/celikpanel/subscriptions/2/sites/2/public_html;\n+    index index.php index.html index.htm;\n+\n     location / {\n-        return 200 \"owner-replaced\\n\";\n+\n+        try_files $uri $uri/ /index.php?$query_string;\n     }\n+    location ~ \\.php$ {\n+        fastcgi_split_path_info ^(.+?\\.php)(/.*)$;\n+        try_files $fastcgi_script_name =404;\n+        set $path_info $fastcgi_path_info;\n+        fastcgi_param PATH_INFO $path_info;\n+        fastcgi_index index.php;\n+        include fastcgi.conf;\n+        fastcgi_pass unix:/var/run/php/php8.3-fpm-site2.sock;\n+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;\n+        include fastcgi_params;\n+    }\n+    location ~ /\\.(?!well-known).* {\n+        deny all;\n+    }\n+\n+    # Your additions for this site (server context) / Bu site için eklemeleriniz\n+    include /etc/nginx/celikpanel-sites.d/set12-a.test/*.conf;\n }\n",
+            "domain": "set12-a.test",
+            "domain_id": 2,
+            "enabled": "link",
+            "file_sha256": "b08051872068f847b5b4ed84a29aaa6711f402f6829c328f2de3772a4f48d3da",
+            "include_dir": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+            "kind": "nginx_vhost",
+            "ledger": {
+              "backup_path": "/etc/nginx/sites-available/set12-a.test.conf.celikpanel-backup-20261011T101901Z",
+              "observed_at": "2026-10-11T10:19:01Z",
+              "written_at": "2026-10-11T10:15:21Z",
+              "written_release": "v0.1.0-alpha.81 8948352e3953"
+            },
+            "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-a.test",
+            "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;",
+            "path": "/etc/nginx/sites-available/set12-a.test.conf",
+            "protection": "none",
+            "render_sha256": "945feefd3a47a0174e81f20e1ab3a29a8811940df2ff6913546b26ba967f0db5",
+            "state": "foreign"
+          },
+          {
+            "actions": [],
+            "decision": {
+              "current": true,
+              "decided_at": "2026-10-11T10:16:03Z",
+              "kind": "take_celikpanel"
+            },
+            "domain": "set12-a.test",
+            "domain_id": 2,
+            "file_sha256": "31b012b8a0f776a72fd459306f4e80ddc41815219edafacde9654d5ed6e6882f",
+            "kind": "php_pool",
+            "ledger": {
+              "backup_path": "/etc/php/8.3/fpm/pool.d/site2.conf.celikpanel-backup-20261011T101611Z",
+              "observed_at": "2026-10-11T10:17:36Z",
+              "written_at": "2026-10-11T10:16:03Z",
+              "written_release": "v0.1.0-alpha.81 8948352e3953"
+            },
+            "path": "/etc/php/8.3/fpm/pool.d/site2.conf",
+            "protection": "none",
+            "render_sha256": "5ab9cb0cb10a561009dc429c3acfa86d4e91eb0d1fb3fab74d993882371a801f",
+            "state": "managed_unchanged"
+          }
+        ],
+        "include_dir": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+        "kind": "nginx_vhost",
+        "ledger": {
+          "backup_path": "/etc/nginx/sites-available/set12-a.test.conf.celikpanel-backup-20261011T101901Z",
+          "observed_at": "2026-10-11T10:19:01Z",
+          "written_at": "2026-10-11T10:15:21Z",
+          "written_release": "v0.1.0-alpha.81 8948352e3953"
+        },
+        "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-a.test",
+        "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;",
+        "overall_kind": "nginx_vhost",
+        "overall_state": "foreign",
+        "path": "/etc/nginx/sites-available/set12-a.test.conf",
+        "protection": "none",
+        "render_sha256": "945feefd3a47a0174e81f20e1ab3a29a8811940df2ff6913546b26ba967f0db5",
+        "state": "foreign"
+      },
+      "label": "c3b page: GET site-config",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains/2/site-config"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T10:19:08Z",
+      "json": {
+        "code": "SITE_CONFIG_NGINX_REFUSED",
+        "details": [
+          "2026/10/11 10:19:09 [emerg] 52570#52570: unknown directive \"set13_not_a_directive\" in /etc/nginx/conf.d/zz-set13-owner.conf:2",
+          "2026/10/11 10:19:09 [emerg] 52571#52571: unknown directive \"set13_not_a_directive\" in /etc/nginx/conf.d/zz-set13-owner.conf:2"
+        ],
+        "error": "The previous file is back. nginx was not reloaded, because its configuration is refused by another file — nginx keeps running with the configuration it loaded before. Fix what the check names (2026/10/11 10:19:09 [emerg] 52571#52571: unknown directive \"set13_not_a_directive\" in /etc/nginx/conf.d/zz-set13-owner.conf:2), then reload nginx yourself.",
+        "reason": "nginx_refused",
+        "restore": "confirmed",
+        "service": "not_reloaded",
+        "service_active": "true",
+        "service_reason": "config_refused_elsewhere",
+        "vars": {
+          "line": "2026/10/11 10:19:09 [emerg] 52571#52571: unknown directive \"set13_not_a_directive\" in /etc/nginx/conf.d/zz-set13-owner.conf:2"
+        }
+      },
+      "label": "c3b take while an owner's conf.d file makes nginx -t fail",
+      "request": {
+        "body": {
+          "file_sha256": "b08051872068f847b5b4ed84a29aaa6711f402f6829c328f2de3772a4f48d3da",
+          "render_sha256": "945feefd3a47a0174e81f20e1ab3a29a8811940df2ff6913546b26ba967f0db5"
+        },
+        "method": "POST",
+        "path": "/api/v1/domains/2/site-config/take",
+        "x_celikpanel_request_id": "f7b600966b8b81132b6e4ae7a5fabb05"
+      },
+      "seconds": 0.13,
+      "status": 502,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T10:19:14Z",
+      "json": {
+        "actions": [],
+        "challenge_file": "unchanged",
+        "domain": "set12-a.test",
+        "domain_id": 2,
+        "enabled": "link",
+        "file_sha256": "4f4ac76c9981ef9b077ca9705901033507f35828834f40b3071cb5e0ce4116ed",
+        "files": [
+          {
+            "actions": [],
+            "challenge_file": "unchanged",
+            "domain": "set12-a.test",
+            "domain_id": 2,
+            "enabled": "link",
+            "file_sha256": "4f4ac76c9981ef9b077ca9705901033507f35828834f40b3071cb5e0ce4116ed",
+            "include_dir": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+            "kind": "nginx_vhost",
+            "ledger": {
+              "backup_path": "/etc/nginx/sites-available/set12-a.test.conf.celikpanel-backup-20261011T101909Z",
+              "observed_at": "2026-10-11T10:19:09Z",
+              "written_at": "2026-10-11T10:15:21Z",
+              "written_release": "v0.1.0-alpha.81 8948352e3953"
+            },
+            "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-a.test",
+            "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;",
+            "path": "/etc/nginx/sites-available/set12-a.test.conf",
+            "protection": "none",
+            "render_sha256": "945feefd3a47a0174e81f20e1ab3a29a8811940df2ff6913546b26ba967f0db5",
+            "state": "managed_unchanged"
+          },
+          {
+            "actions": [],
+            "decision": {
+              "current": true,
+              "decided_at": "2026-10-11T10:16:03Z",
+              "kind": "take_celikpanel"
+            },
+            "domain": "set12-a.test",
+            "domain_id": 2,
+            "file_sha256": "31b012b8a0f776a72fd459306f4e80ddc41815219edafacde9654d5ed6e6882f",
+            "kind": "php_pool",
+            "ledger": {
+              "backup_path": "/etc/php/8.3/fpm/pool.d/site2.conf.celikpanel-backup-20261011T101611Z",
+              "observed_at": "2026-10-11T10:17:36Z",
+              "written_at": "2026-10-11T10:16:03Z",
+              "written_release": "v0.1.0-alpha.81 8948352e3953"
+            },
+            "path": "/etc/php/8.3/fpm/pool.d/site2.conf",
+            "protection": "none",
+            "render_sha256": "5ab9cb0cb10a561009dc429c3acfa86d4e91eb0d1fb3fab74d993882371a801f",
+            "state": "managed_unchanged"
+          }
+        ],
+        "include_dir": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+        "kind": "nginx_vhost",
+        "ledger": {
+          "backup_path": "/etc/nginx/sites-available/set12-a.test.conf.celikpanel-backup-20261011T101909Z",
+          "observed_at": "2026-10-11T10:19:09Z",
+          "written_at": "2026-10-11T10:15:21Z",
+          "written_release": "v0.1.0-alpha.81 8948352e3953"
+        },
+        "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-a.test",
+        "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;",
+        "overall_kind": "nginx_vhost",
+        "overall_state": "managed_unchanged",
+        "path": "/etc/nginx/sites-available/set12-a.test.conf",
+        "protection": "none",
+        "render_sha256": "945feefd3a47a0174e81f20e1ab3a29a8811940df2ff6913546b26ba967f0db5",
+        "state": "managed_unchanged"
+      },
+      "label": "c3 end: page with CelikPanel's text back (lab): GET site-config",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains/2/site-config"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T10:19:14Z",
+      "json": [
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T10:18:00Z",
+          "disk_usage": 0,
+          "domain_name": "set13-n.test",
+          "id": 4,
+          "php_version": "8.3",
+          "project_type": "node",
+          "site_config": {
+            "state": "managed_unchanged"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        },
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T10:15:24Z",
+          "disk_usage": 0,
+          "domain_name": "set12-b.test",
+          "id": 3,
+          "php_version": "8.3",
+          "project_type": "php",
+          "site_config": {
+            "state": "managed_unchanged"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        },
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T10:15:21Z",
+          "disk_usage": 0,
+          "domain_name": "set12-a.test",
+          "id": 2,
+          "php_version": "8.3",
+          "project_type": "php",
+          "site_config": {
+            "state": "foreign"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        },
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T10:15:13Z",
+          "disk_usage": 0,
+          "domain_name": "set1-owner.test",
+          "id": 1,
+          "php_version": "",
+          "project_type": "static",
+          "site_config": {
+            "state": "managed_unchanged"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        }
+      ],
+      "label": "c3 end: Domains list before a write: GET /api/v1/domains (Domains list)",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T10:19:14Z",
+      "json": {
+        "aliases": [],
+        "document_root": "/var/www/celikpanel/subscriptions/2/sites/2/public_html",
+        "domain_id": 2,
+        "domain_name": "set12-a.test",
+        "redirect_https": false,
+        "redirect_www": false,
+        "redirect_www_available": true,
+        "web_server": "nginx"
+      },
+      "label": "c3 end: General settings saved unchanged: General settings read",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains/2/general"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T10:19:14Z",
+      "json": {
+        "status": "success"
+      },
+      "label": "c3 end: General settings saved unchanged: General settings saved unchanged (renders the vhost)",
+      "request": {
+        "body": {
+          "document_root": "/var/www/celikpanel/subscriptions/2/sites/2/public_html",
+          "redirect_www": false,
+          "web_server": "nginx"
+        },
+        "method": "POST",
+        "path": "/api/v1/domains/2/general"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T10:19:14Z",
+      "json": [
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T10:18:00Z",
+          "disk_usage": 0,
+          "domain_name": "set13-n.test",
+          "id": 4,
+          "php_version": "8.3",
+          "project_type": "node",
+          "site_config": {
+            "state": "managed_unchanged"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        },
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T10:15:24Z",
+          "disk_usage": 0,
+          "domain_name": "set12-b.test",
+          "id": 3,
+          "php_version": "8.3",
+          "project_type": "php",
+          "site_config": {
+            "state": "managed_unchanged"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        },
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T10:15:21Z",
+          "disk_usage": 0,
+          "domain_name": "set12-a.test",
+          "id": 2,
+          "php_version": "8.3",
+          "project_type": "php",
+          "site_config": {
+            "state": "managed_unchanged"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        },
+        {
+          "bandwidth": 0,
+          "created_at": "2026-10-11T10:15:13Z",
+          "disk_usage": 0,
+          "domain_name": "set1-owner.test",
+          "id": 1,
+          "php_version": "",
+          "project_type": "static",
+          "site_config": {
+            "state": "managed_unchanged"
+          },
+          "ssl_enabled": false,
+          "status": "active"
+        }
+      ],
+      "label": "c3 end: Domains list after the save: GET /api/v1/domains (Domains list)",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains"
+      },
+      "status": 200,
+      "text": null
+    }
+  ],
+  "cells": {
+    "C3": {
+      "detail": {
+        "journal": "steps/15-c3-vhost-nginx-refused/native/100-c3b-journal.json",
+        "observation": {
+          "general_save": {
+            "code": null,
+            "error": null,
+            "read_status": 200,
+            "reason": null,
+            "sent": {
+              "document_root": "/var/www/celikpanel/subscriptions/2/sites/2/public_html",
+              "redirect_www": false,
+              "web_server": "nginx"
+            },
+            "status": 200
+          },
+          "ledger_after_save": [
+            {
+              "file_sha256": "4f4ac76c9981ef9b077ca9705901033507f35828834f40b3071cb5e0ce4116ed",
+              "observed_at": 1791713955,
+              "state": "managed_unchanged",
+              "state_reason": ""
+            }
+          ],
+          "ledger_before_write": [
+            {
+              "file_sha256": "b08051872068f847b5b4ed84a29aaa6711f402f6829c328f2de3772a4f48d3da",
+              "observed_at": 1791713949,
+              "state": "foreign",
+              "state_reason": "nginx_refused"
+            }
+          ],
+          "page_state": "managed_unchanged",
+          "row_after_save": {
+            "state": "managed_unchanged"
+          },
+          "row_before_write": {
+            "state": "foreign"
+          }
+        }
+      },
+      "expectations": [
+        {
+          "expectation": "(a) the owner's conflicting include file passed nginx -t with the owner's vhost",
+          "held": true,
+          "measured": {
+            "at": "2026-10-11T10:19:00Z",
+            "output": "nginx: the configuration file /etc/nginx/nginx.conf syntax is ok\nnginx: configuration file /etc/nginx/nginx.conf test is successful\n",
+            "returncode": 0,
+            "status": "ok"
+          }
+        },
+        {
+          "expectation": "(a) 502 SITE_CONFIG_NGINX_REFUSED, restore confirmed",
+          "held": true,
+          "measured": {
+            "at": "2026-10-11T10:19:01Z",
+            "json": {
+              "code": "SITE_CONFIG_NGINX_REFUSED",
+              "details": [
+                "2026/10/11 10:19:01 [emerg] 51884#51884: \"root\" directive is duplicate in /etc/nginx/celikpanel-sites.d/set12-a.test/set10-dup-root.conf:2"
+              ],
+              "error": "nginx did not accept CelikPanel's text (it refused the configuration or could not reload), so your file was put back and nginx keeps running with it. nginx checks every site together, so the cause may be another file; fix what nginx reported, then choose again.",
+              "reason": "nginx_refused",
+              "restore": "confirmed",
+              "service": "reloaded",
+              "service_active": "true"
+            },
+            "label": "c3a take while an owner's include-directory file conflicts with CelikPanel's text",
+            "request": {
+              "body": {
+                "file_sha256": "b08051872068f847b5b4ed84a29aaa6711f402f6829c328f2de3772a4f48d3da",
+                "render_sha256": "945feefd3a47a0174e81f20e1ab3a29a8811940df2ff6913546b26ba967f0db5"
+              },
+              "method": "POST",
+              "path": "/api/v1/domains/2/site-config/take",
+              "x_celikpanel_request_id": "8f8c7659bb5b1aafcb6ee722bab17f89"
+            },
+            "seconds": 0.15,
+            "status": 502,
+            "text": null
+          }
+        },
+        {
+          "expectation": "(a) the put-back passes nginx -t: service reloaded, service_active true",
+          "held": true,
+          "measured": {
+            "code": "SITE_CONFIG_NGINX_REFUSED",
+            "details": [
+              "2026/10/11 10:19:01 [emerg] 51884#51884: \"root\" directive is duplicate in /etc/nginx/celikpanel-sites.d/set12-a.test/set10-dup-root.conf:2"
+            ],
+            "error": "nginx did not accept CelikPanel's text (it refused the configuration or could not reload), so your file was put back and nginx keeps running with it. nginx checks every site together, so the cause may be another file; fix what nginx reported, then choose again.",
+            "reason": "nginx_refused",
+            "restore": "confirmed",
+            "service": "reloaded",
+            "service_active": "true"
+          }
+        },
+        {
+          "expectation": "(a) nginx reloaded after the take (journal) and active; nginx -t passes",
+          "held": true,
+          "measured": {
+            "lines": [
+              "2026-10-11T10:19:01.783118+00:00 dns-ubuntu systemd[1]: Reloading nginx.service - A high performance web server and a reverse proxy server...",
+              "2026-10-11T10:19:01.790867+00:00 dns-ubuntu nginx[51887]: 2026/10/11 10:19:01 [notice] 51887#51887: signal process started",
+              "2026-10-11T10:19:01.792135+00:00 dns-ubuntu systemd[1]: Reloaded nginx.service - A high performance web server and a reverse proxy server.",
+              "2026-10-11T10:19:01.783118+00:00 dns-ubuntu systemd[1]: Reloading nginx.service - A high performance web server and a reverse proxy server...",
+              "2026-10-11T10:19:01.792135+00:00 dns-ubuntu systemd[1]: Reloaded nginx.service - A high performance web server and a reverse proxy server."
+            ],
+            "unit": [
+              {
+                "ActiveEnterTimestamp": "Sun 2026-10-11 10:04:55 UTC",
+                "ActiveState": "active",
+                "ExecMainStartTimestamp": "Sun 2026-10-11 10:04:56 UTC",
+                "LoadState": "loaded",
+                "MainPID": "12580",
+                "NRestarts": "0",
+                "SubState": "running"
+              },
+              {
+                "ActiveEnterTimestamp": "Sun 2026-10-11 10:04:55 UTC",
+                "ActiveState": "active",
+                "ExecMainStartTimestamp": "Sun 2026-10-11 10:04:56 UTC",
+                "LoadState": "loaded",
+                "MainPID": "12580",
+                "NRestarts": "0",
+                "SubState": "running"
+              }
+            ]
+          }
+        },
+        {
+          "expectation": "(a) the owner's vhost is byte-equal and served",
+          "held": true,
+          "measured": {
+            "body": "owner-replaced\n",
+            "inode": [
+              533566,
+              533566
+            ],
+            "mode": [
+              "0644",
+              "0644"
+            ],
+            "sha256": [
+              "b08051872068f847b5b4ed84a29aaa6711f402f6829c328f2de3772a4f48d3da",
+              "b08051872068f847b5b4ed84a29aaa6711f402f6829c328f2de3772a4f48d3da"
+            ]
+          }
+        },
+        {
+          "expectation": "(b) the cause: nginx -t fails because of the owner's conf.d file",
+          "held": true,
+          "measured": {
+            "returncode": 1,
+            "stderr": "2026/10/11 10:19:08 [emerg] 52457#52457: unknown directive \"set13_not_a_directive\" in /etc/nginx/conf.d/zz-set13-owner.conf:2\nnginx: configuration file /etc/nginx/nginx.conf test failed\n"
+          }
+        },
+        {
+          "expectation": "(b) 502 SITE_CONFIG_NGINX_REFUSED, restore confirmed",
+          "held": true,
+          "measured": {
+            "at": "2026-10-11T10:19:08Z",
+            "json": {
+              "code": "SITE_CONFIG_NGINX_REFUSED",
+              "details": [
+                "2026/10/11 10:19:09 [emerg] 52570#52570: unknown directive \"set13_not_a_directive\" in /etc/nginx/conf.d/zz-set13-owner.conf:2",
+                "2026/10/11 10:19:09 [emerg] 52571#52571: unknown directive \"set13_not_a_directive\" in /etc/nginx/conf.d/zz-set13-owner.conf:2"
+              ],
+              "error": "The previous file is back. nginx was not reloaded, because its configuration is refused by another file — nginx keeps running with the configuration it loaded before. Fix what the check names (2026/10/11 10:19:09 [emerg] 52571#52571: unknown directive \"set13_not_a_directive\" in /etc/nginx/conf.d/zz-set13-owner.conf:2), then reload nginx yourself.",
+              "reason": "nginx_refused",
+              "restore": "confirmed",
+              "service": "not_reloaded",
+              "service_active": "true",
+              "service_reason": "config_refused_elsewhere",
+              "vars": {
+                "line": "2026/10/11 10:19:09 [emerg] 52571#52571: unknown directive \"set13_not_a_directive\" in /etc/nginx/conf.d/zz-set13-owner.conf:2"
+              }
+            },
+            "label": "c3b take while an owner's conf.d file makes nginx -t fail",
+            "request": {
+              "body": {
+                "file_sha256": "b08051872068f847b5b4ed84a29aaa6711f402f6829c328f2de3772a4f48d3da",
+                "render_sha256": "945feefd3a47a0174e81f20e1ab3a29a8811940df2ff6913546b26ba967f0db5"
+              },
+              "method": "POST",
+              "path": "/api/v1/domains/2/site-config/take",
+              "x_celikpanel_request_id": "f7b600966b8b81132b6e4ae7a5fabb05"
+            },
+            "seconds": 0.13,
+            "status": 502,
+            "text": null
+          }
+        },
+        {
+          "expectation": "(b) service not_reloaded, service_reason config_refused_elsewhere, service_active true",
+          "held": true,
+          "measured": {
+            "code": "SITE_CONFIG_NGINX_REFUSED",
+            "details": [
+              "2026/10/11 10:19:09 [emerg] 52570#52570: unknown directive \"set13_not_a_directive\" in /etc/nginx/conf.d/zz-set13-owner.conf:2",
+              "2026/10/11 10:19:09 [emerg] 52571#52571: unknown directive \"set13_not_a_directive\" in /etc/nginx/conf.d/zz-set13-owner.conf:2"
+            ],
+            "error": "The previous file is back. nginx was not reloaded, because its configuration is refused by another file — nginx keeps running with the configuration it loaded before. Fix what the check names (2026/10/11 10:19:09 [emerg] 52571#52571: unknown directive \"set13_not_a_directive\" in /etc/nginx/conf.d/zz-set13-owner.conf:2), then reload nginx yourself.",
+            "reason": "nginx_refused",
+            "restore": "confirmed",
+            "service": "not_reloaded",
+            "service_active": "true",
+            "service_reason": "config_refused_elsewhere",
+            "vars": {
+              "line": "2026/10/11 10:19:09 [emerg] 52571#52571: unknown directive \"set13_not_a_directive\" in /etc/nginx/conf.d/zz-set13-owner.conf:2"
+            }
+          }
+        },
+        {
+          "expectation": "(b) the check's line (vars.line) names the owner's file, also in details",
+          "held": true,
+          "measured": {
+            "details": [
+              "2026/10/11 10:19:09 [emerg] 52570#52570: unknown directive \"set13_not_a_directive\" in /etc/nginx/conf.d/zz-set13-owner.conf:2",
+              "2026/10/11 10:19:09 [emerg] 52571#52571: unknown directive \"set13_not_a_directive\" in /etc/nginx/conf.d/zz-set13-owner.conf:2"
+            ],
+            "vars": {
+              "line": "2026/10/11 10:19:09 [emerg] 52571#52571: unknown directive \"set13_not_a_directive\" in /etc/nginx/conf.d/zz-set13-owner.conf:2"
+            }
+          }
+        },
+        {
+          "expectation": "(b) nginx not reloaded (no Reload line), still active with the same MainPID",
+          "held": true,
+          "measured": {
+            "lines": [],
+            "unit": [
+              {
+                "ActiveEnterTimestamp": "Sun 2026-10-11 10:04:55 UTC",
+                "ActiveState": "active",
+                "ExecMainStartTimestamp": "Sun 2026-10-11 10:04:56 UTC",
+                "LoadState": "loaded",
+                "MainPID": "12580",
+                "NRestarts": "0",
+                "SubState": "running"
+              },
+              {
+                "ActiveEnterTimestamp": "Sun 2026-10-11 10:04:55 UTC",
+                "ActiveState": "active",
+                "ExecMainStartTimestamp": "Sun 2026-10-11 10:04:56 UTC",
+                "LoadState": "loaded",
+                "MainPID": "12580",
+                "NRestarts": "0",
+                "SubState": "running"
+              }
+            ]
+          }
+        },
+        {
+          "expectation": "(b) the owner's vhost is byte-equal and still served",
+          "held": true,
+          "measured": {
+            "body": "owner-replaced\n",
+            "inode": [
+              533556,
+              533556
+            ],
+            "mode": [
+              "0644",
+              "0644"
+            ],
+            "sha256": [
+              "b08051872068f847b5b4ed84a29aaa6711f402f6829c328f2de3772a4f48d3da",
+              "b08051872068f847b5b4ed84a29aaa6711f402f6829c328f2de3772a4f48d3da"
+            ]
+          }
+        }
+      ],
+      "verdict": "PASS"
+    }
+  },
+  "checks": [
+    {
+      "detail": {
+        "at": "2026-10-11T10:19:00Z",
+        "output": "nginx: the configuration file /etc/nginx/nginx.conf syntax is ok\nnginx: configuration file /etc/nginx/nginx.conf test is successful\n",
+        "returncode": 0,
+        "status": "ok"
+      },
+      "name": "C3: (a) the owner's conflicting include file passed nginx -t with the owner's vhost",
+      "ok": true
+    },
+    {
+      "detail": {
+        "at": "2026-10-11T10:19:01Z",
+        "json": {
+          "code": "SITE_CONFIG_NGINX_REFUSED",
+          "details": [
+            "2026/10/11 10:19:01 [emerg] 51884#51884: \"root\" directive is duplicate in /etc/nginx/celikpanel-sites.d/set12-a.test/set10-dup-root.conf:2"
+          ],
+          "error": "nginx did not accept CelikPanel's text (it refused the configuration or could not reload), so your file was put back and nginx keeps running with it. nginx checks every site together, so the cause may be another file; fix what nginx reported, then choose again.",
+          "reason": "nginx_refused",
+          "restore": "confirmed",
+          "service": "reloaded",
+          "service_active": "true"
+        },
+        "label": "c3a take while an owner's include-directory file conflicts with CelikPanel's text",
+        "request": {
+          "body": {
+            "file_sha256": "b08051872068f847b5b4ed84a29aaa6711f402f6829c328f2de3772a4f48d3da",
+            "render_sha256": "945feefd3a47a0174e81f20e1ab3a29a8811940df2ff6913546b26ba967f0db5"
+          },
+          "method": "POST",
+          "path": "/api/v1/domains/2/site-config/take",
+          "x_celikpanel_request_id": "8f8c7659bb5b1aafcb6ee722bab17f89"
+        },
+        "seconds": 0.15,
+        "status": 502,
+        "text": null
+      },
+      "name": "C3: (a) 502 SITE_CONFIG_NGINX_REFUSED, restore confirmed",
+      "ok": true
+    },
+    {
+      "detail": {
+        "code": "SITE_CONFIG_NGINX_REFUSED",
+        "details": [
+          "2026/10/11 10:19:01 [emerg] 51884#51884: \"root\" directive is duplicate in /etc/nginx/celikpanel-sites.d/set12-a.test/set10-dup-root.conf:2"
+        ],
+        "error": "nginx did not accept CelikPanel's text (it refused the configuration or could not reload), so your file was put back and nginx keeps running with it. nginx checks every site together, so the cause may be another file; fix what nginx reported, then choose again.",
+        "reason": "nginx_refused",
+        "restore": "confirmed",
+        "service": "reloaded",
+        "service_active": "true"
+      },
+      "name": "C3: (a) the put-back passes nginx -t: service reloaded, service_active true",
+      "ok": true
+    },
+    {
+      "detail": {
+        "lines": [
+          "2026-10-11T10:19:01.783118+00:00 dns-ubuntu systemd[1]: Reloading nginx.service - A high performance web server and a reverse proxy server...",
+          "2026-10-11T10:19:01.790867+00:00 dns-ubuntu nginx[51887]: 2026/10/11 10:19:01 [notice] 51887#51887: signal process started",
+          "2026-10-11T10:19:01.792135+00:00 dns-ubuntu systemd[1]: Reloaded nginx.service - A high performance web server and a reverse proxy server.",
+          "2026-10-11T10:19:01.783118+00:00 dns-ubuntu systemd[1]: Reloading nginx.service - A high performance web server and a reverse proxy server...",
+          "2026-10-11T10:19:01.792135+00:00 dns-ubuntu systemd[1]: Reloaded nginx.service - A high performance web server and a reverse proxy server."
+        ],
+        "unit": [
+          {
+            "ActiveEnterTimestamp": "Sun 2026-10-11 10:04:55 UTC",
+            "ActiveState": "active",
+            "ExecMainStartTimestamp": "Sun 2026-10-11 10:04:56 UTC",
+            "LoadState": "loaded",
+            "MainPID": "12580",
+            "NRestarts": "0",
+            "SubState": "running"
+          },
+          {
+            "ActiveEnterTimestamp": "Sun 2026-10-11 10:04:55 UTC",
+            "ActiveState": "active",
+            "ExecMainStartTimestamp": "Sun 2026-10-11 10:04:56 UTC",
+            "LoadState": "loaded",
+            "MainPID": "12580",
+            "NRestarts": "0",
+            "SubState": "running"
+          }
+        ]
+      },
+      "name": "C3: (a) nginx reloaded after the take (journal) and active; nginx -t passes",
+      "ok": true
+    },
+    {
+      "detail": {
+        "body": "owner-replaced\n",
+        "inode": [
+          533566,
+          533566
+        ],
+        "mode": [
+          "0644",
+          "0644"
+        ],
+        "sha256": [
+          "b08051872068f847b5b4ed84a29aaa6711f402f6829c328f2de3772a4f48d3da",
+          "b08051872068f847b5b4ed84a29aaa6711f402f6829c328f2de3772a4f48d3da"
+        ]
+      },
+      "name": "C3: (a) the owner's vhost is byte-equal and served",
+      "ok": true
+    },
+    {
+      "detail": {
+        "returncode": 1,
+        "stderr": "2026/10/11 10:19:08 [emerg] 52457#52457: unknown directive \"set13_not_a_directive\" in /etc/nginx/conf.d/zz-set13-owner.conf:2\nnginx: configuration file /etc/nginx/nginx.conf test failed\n"
+      },
+      "name": "C3: (b) the cause: nginx -t fails because of the owner's conf.d file",
+      "ok": true
+    },
+    {
+      "detail": {
+        "at": "2026-10-11T10:19:08Z",
+        "json": {
+          "code": "SITE_CONFIG_NGINX_REFUSED",
+          "details": [
+            "2026/10/11 10:19:09 [emerg] 52570#52570: unknown directive \"set13_not_a_directive\" in /etc/nginx/conf.d/zz-set13-owner.conf:2",
+            "2026/10/11 10:19:09 [emerg] 52571#52571: unknown directive \"set13_not_a_directive\" in /etc/nginx/conf.d/zz-set13-owner.conf:2"
+          ],
+          "error": "The previous file is back. nginx was not reloaded, because its configuration is refused by another file — nginx keeps running with the configuration it loaded before. Fix what the check names (2026/10/11 10:19:09 [emerg] 52571#52571: unknown directive \"set13_not_a_directive\" in /etc/nginx/conf.d/zz-set13-owner.conf:2), then reload nginx yourself.",
+          "reason": "nginx_refused",
+          "restore": "confirmed",
+          "service": "not_reloaded",
+          "service_active": "true",
+          "service_reason": "config_refused_elsewhere",
+          "vars": {
+            "line": "2026/10/11 10:19:09 [emerg] 52571#52571: unknown directive \"set13_not_a_directive\" in /etc/nginx/conf.d/zz-set13-owner.conf:2"
+          }
+        },
+        "label": "c3b take while an owner's conf.d file makes nginx -t fail",
+        "request": {
+          "body": {
+            "file_sha256": "b08051872068f847b5b4ed84a29aaa6711f402f6829c328f2de3772a4f48d3da",
+            "render_sha256": "945feefd3a47a0174e81f20e1ab3a29a8811940df2ff6913546b26ba967f0db5"
+          },
+          "method": "POST",
+          "path": "/api/v1/domains/2/site-config/take",
+          "x_celikpanel_request_id": "f7b600966b8b81132b6e4ae7a5fabb05"
+        },
+        "seconds": 0.13,
+        "status": 502,
+        "text": null
+      },
+      "name": "C3: (b) 502 SITE_CONFIG_NGINX_REFUSED, restore confirmed",
+      "ok": true
+    },
+    {
+      "detail": {
+        "code": "SITE_CONFIG_NGINX_REFUSED",
+        "details": [
+          "2026/10/11 10:19:09 [emerg] 52570#52570: unknown directive \"set13_not_a_directive\" in /etc/nginx/conf.d/zz-set13-owner.conf:2",
+          "2026/10/11 10:19:09 [emerg] 52571#52571: unknown directive \"set13_not_a_directive\" in /etc/nginx/conf.d/zz-set13-owner.conf:2"
+        ],
+        "error": "The previous file is back. nginx was not reloaded, because its configuration is refused by another file — nginx keeps running with the configuration it loaded before. Fix what the check names (2026/10/11 10:19:09 [emerg] 52571#52571: unknown directive \"set13_not_a_directive\" in /etc/nginx/conf.d/zz-set13-owner.conf:2), then reload nginx yourself.",
+        "reason": "nginx_refused",
+        "restore": "confirmed",
+        "service": "not_reloaded",
+        "service_active": "true",
+        "service_reason": "config_refused_elsewhere",
+        "vars": {
+          "line": "2026/10/11 10:19:09 [emerg] 52571#52571: unknown directive \"set13_not_a_directive\" in /etc/nginx/conf.d/zz-set13-owner.conf:2"
+        }
+      },
+      "name": "C3: (b) service not_reloaded, service_reason config_refused_elsewhere, service_active true",
+      "ok": true
+    },
+    {
+      "detail": {
+        "details": [
+          "2026/10/11 10:19:09 [emerg] 52570#52570: unknown directive \"set13_not_a_directive\" in /etc/nginx/conf.d/zz-set13-owner.conf:2",
+          "2026/10/11 10:19:09 [emerg] 52571#52571: unknown directive \"set13_not_a_directive\" in /etc/nginx/conf.d/zz-set13-owner.conf:2"
+        ],
+        "vars": {
+          "line": "2026/10/11 10:19:09 [emerg] 52571#52571: unknown directive \"set13_not_a_directive\" in /etc/nginx/conf.d/zz-set13-owner.conf:2"
+        }
+      },
+      "name": "C3: (b) the check's line (vars.line) names the owner's file, also in details",
+      "ok": true
+    },
+    {
+      "detail": {
+        "lines": [],
+        "unit": [
+          {
+            "ActiveEnterTimestamp": "Sun 2026-10-11 10:04:55 UTC",
+            "ActiveState": "active",
+            "ExecMainStartTimestamp": "Sun 2026-10-11 10:04:56 UTC",
+            "LoadState": "loaded",
+            "MainPID": "12580",
+            "NRestarts": "0",
+            "SubState": "running"
+          },
+          {
+            "ActiveEnterTimestamp": "Sun 2026-10-11 10:04:55 UTC",
+            "ActiveState": "active",
+            "ExecMainStartTimestamp": "Sun 2026-10-11 10:04:56 UTC",
+            "LoadState": "loaded",
+            "MainPID": "12580",
+            "NRestarts": "0",
+            "SubState": "running"
+          }
+        ]
+      },
+      "name": "C3: (b) nginx not reloaded (no Reload line), still active with the same MainPID",
+      "ok": true
+    },
+    {
+      "detail": {
+        "body": "owner-replaced\n",
+        "inode": [
+          533556,
+          533556
+        ],
+        "mode": [
+          "0644",
+          "0644"
+        ],
+        "sha256": [
+          "b08051872068f847b5b4ed84a29aaa6711f402f6829c328f2de3772a4f48d3da",
+          "b08051872068f847b5b4ed84a29aaa6711f402f6829c328f2de3772a4f48d3da"
+        ]
+      },
+      "name": "C3: (b) the owner's vhost is byte-equal and still served",
+      "ok": true
+    }
+  ],
+  "finished_at": "2026-10-11T10:19:15Z",
+  "lab_preparation": [
+    {
+      "domain": "set12-a.test",
+      "file": "steps/15-c3-vhost-nginx-refused/native/080-c3a-lab-restore-set12-a.test.json",
+      "label": "c3a",
+      "sha256_matches": true
+    },
+    {
+      "domain": "set12-a.test",
+      "file": "steps/15-c3-vhost-nginx-refused/native/091-c3a-end-lab-restore-set12-a.test.json",
+      "label": "c3a-end",
+      "sha256_matches": true
+    },
+    {
+      "domain": "set12-a.test",
+      "file": "steps/15-c3-vhost-nginx-refused/native/102-c3b-end-lab-restore-set12-a.test.json",
+      "label": "c3b-end",
+      "sha256_matches": true
+    }
+  ],
+  "native_evidence": false,
+  "natives": [
+    {
+      "file": "native/080-c3a-lab-restore-set12-a.test.json",
+      "label": "c3a-lab-restore-set12-a.test",
+      "mode": "lab-restore",
+      "owner_action": false
+    },
+    {
+      "file": "native/081-owner-c3a-replace.json",
+      "label": "owner-c3a-replace",
+      "mode": "owner-vhost10",
+      "owner_action": true
+    },
+    {
+      "file": "native/082-owner-c3a-include.json",
+      "label": "owner-c3a-include",
+      "mode": "owner-include",
+      "owner_action": true
+    },
+    {
+      "file": "native/083-c3a-0-before-read.json",
+      "label": "c3a-0-before-read",
+      "mode": "read-site10",
+      "owner_action": false
+    },
+    {
+      "file": "native/084-c3a-nginx-before.json",
+      "label": "c3a-nginx-before",
+      "mode": "read-nginx13",
+      "owner_action": false
+    },
+    {
+      "file": "native/085-guest-clock.json",
+      "label": "guest-clock",
+      "mode": "read-ledger",
+      "owner_action": false
+    },
+    {
+      "file": "native/086-c3a-1-after-read.json",
+      "label": "c3a-1-after-read",
+      "mode": "read-site10",
+      "owner_action": false
+    },
+    {
+      "file": "native/087-c3a-nginx-after.json",
+      "label": "c3a-nginx-after",
+      "mode": "read-nginx13",
+      "owner_action": false
+    },
+    {
+      "file": "native/088-http-c3a-after-set12-a.test_.json",
+      "label": "http-c3a-after-set12-a.test_",
+      "mode": "read-http",
+      "owner_action": false
+    },
+    {
+      "file": "native/089-c3a-journal.json",
+      "label": "c3a-journal",
+      "mode": "read-window12",
+      "owner_action": false
+    },
+    {
+      "file": "native/090-owner-c3a-include-back.json",
+      "label": "owner-c3a-include-back",
+      "mode": "owner-include",
+      "owner_action": true
+    },
+    {
+      "file": "native/091-c3a-end-lab-restore-set12-a.test.json",
+      "label": "c3a-end-lab-restore-set12-a.test",
+      "mode": "lab-restore",
+      "owner_action": false
+    },
+    {
+      "file": "native/092-owner-c3b-replace.json",
+      "label": "owner-c3b-replace",
+      "mode": "owner-vhost10",
+      "owner_action": true
+    },
+    {
+      "file": "native/093-c3b-0-before-read.json",
+      "label": "c3b-0-before-read",
+      "mode": "read-site10",
+      "owner_action": false
+    },
+    {
+      "file": "native/094-owner-c3b-owner-conf-d-file.json",
+      "label": "owner-c3b-owner-conf-d-file",
+      "mode": "owner-nginx13",
+      "owner_action": true
+    },
+    {
+      "file": "native/095-c3b-nginx-before.json",
+      "label": "c3b-nginx-before",
+      "mode": "read-nginx13",
+      "owner_action": false
+    },
+    {
+      "file": "native/096-guest-clock.json",
+      "label": "guest-clock",
+      "mode": "read-ledger",
+      "owner_action": false
+    },
+    {
+      "file": "native/097-c3b-1-after-read.json",
+      "label": "c3b-1-after-read",
+      "mode": "read-site10",
+      "owner_action": false
+    },
+    {
+      "file": "native/098-c3b-nginx-after.json",
+      "label": "c3b-nginx-after",
+      "mode": "read-nginx13",
+      "owner_action": false
+    },
+    {
+      "file": "native/099-http-c3b-after-set12-a.test_.json",
+      "label": "http-c3b-after-set12-a.test_",
+      "mode": "read-http",
+      "owner_action": false
+    },
+    {
+      "file": "native/100-c3b-journal.json",
+      "label": "c3b-journal",
+      "mode": "read-window12",
+      "owner_action": false
+    },
+    {
+      "file": "native/101-owner-c3b-owner-conf-d-file-removed.json",
+      "label": "owner-c3b-owner-conf-d-file-removed",
+      "mode": "owner-nginx13",
+      "owner_action": true
+    },
+    {
+      "file": "native/102-c3b-end-lab-restore-set12-a.test.json",
+      "label": "c3b-end-lab-restore-set12-a.test",
+      "mode": "lab-restore",
+      "owner_action": false
+    },
+    {
+      "file": "native/103-c3-end-ledger.json",
+      "label": "c3-end-ledger",
+      "mode": "read-ledger",
+      "owner_action": false
+    },
+    {
+      "file": "native/104-c3-end-after-save-ledger.json",
+      "label": "c3-end-after-save-ledger",
+      "mode": "read-ledger",
+      "owner_action": false
+    }
+  ],
+  "node": "ubuntu",
+  "notes": [
+    {
+      "detail": [],
+      "note": "C3: PASS"
+    }
+  ],
+  "observation_vhost_row_after_refused_take": {
+    "general_save": {
+      "code": null,
+      "error": null,
+      "read_status": 200,
+      "reason": null,
+      "sent": {
+        "document_root": "/var/www/celikpanel/subscriptions/2/sites/2/public_html",
+        "redirect_www": false,
+        "web_server": "nginx"
+      },
+      "status": 200
+    },
+    "ledger_after_save": [
+      {
+        "file_sha256": "4f4ac76c9981ef9b077ca9705901033507f35828834f40b3071cb5e0ce4116ed",
+        "observed_at": 1791713955,
+        "state": "managed_unchanged",
+        "state_reason": ""
+      }
+    ],
+    "ledger_before_write": [
+      {
+        "file_sha256": "b08051872068f847b5b4ed84a29aaa6711f402f6829c328f2de3772a4f48d3da",
+        "observed_at": 1791713949,
+        "state": "foreign",
+        "state_reason": "nginx_refused"
+      }
+    ],
+    "page_state": "managed_unchanged",
+    "row_after_save": {
+      "state": "managed_unchanged"
+    },
+    "row_before_write": {
+      "state": "foreign"
+    }
+  },
+  "owner_actions": [
+    {
+      "at": "2026-10-11T10:19:00Z",
+      "label": "c3a-replace",
+      "mode": "owner-vhost10"
+    },
+    {
+      "at": "2026-10-11T10:19:00Z",
+      "label": "c3a-include",
+      "mode": "owner-include"
+    },
+    {
+      "at": "2026-10-11T10:19:06Z",
+      "label": "c3a-include-back",
+      "mode": "owner-include"
+    },
+    {
+      "at": "2026-10-11T10:19:07Z",
+      "label": "c3b-replace",
+      "mode": "owner-vhost10"
+    },
+    {
+      "at": "2026-10-11T10:19:08Z",
+      "label": "c3b-owner-conf-d-file",
+      "mode": "owner-nginx13"
+    },
+    {
+      "at": "2026-10-11T10:19:14Z",
+      "label": "c3b-owner-conf-d-file-removed",
+      "mode": "owner-nginx13"
+    }
+  ],
+  "owner_waited_for_idle": {
+    "at": "2026-10-11T10:18:58Z",
+    "busy_seen": [],
+    "idle": true,
+    "polls": 1,
+    "waited_s": 0.3
+  },
+  "section": "C3-vhost-nginx-refused",
+  "started_at": "2026-10-11T10:18:58Z",
+  "substeps": {
+    "C3": "passed"
+  },
+  "title": "vhost take refused by nginx: put back; reloaded or not by nginx -t's answer",
+  "verdict": "passed"
+}

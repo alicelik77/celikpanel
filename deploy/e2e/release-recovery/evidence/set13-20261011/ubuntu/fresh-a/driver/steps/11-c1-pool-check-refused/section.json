@@ -1,0 +1,885 @@
+{
+  "calls": [
+    {
+      "at": "2026-10-11T10:15:47Z",
+      "json": {
+        "actions": [],
+        "challenge_file": "unchanged",
+        "domain": "set12-a.test",
+        "domain_id": 2,
+        "enabled": "link",
+        "file_sha256": "4f4ac76c9981ef9b077ca9705901033507f35828834f40b3071cb5e0ce4116ed",
+        "files": [
+          {
+            "actions": [],
+            "challenge_file": "unchanged",
+            "domain": "set12-a.test",
+            "domain_id": 2,
+            "enabled": "link",
+            "file_sha256": "4f4ac76c9981ef9b077ca9705901033507f35828834f40b3071cb5e0ce4116ed",
+            "include_dir": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+            "kind": "nginx_vhost",
+            "ledger": {
+              "observed_at": "2026-10-11T10:15:27Z",
+              "written_at": "2026-10-11T10:15:21Z",
+              "written_release": "v0.1.0-alpha.81 8948352e3953"
+            },
+            "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-a.test",
+            "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;",
+            "path": "/etc/nginx/sites-available/set12-a.test.conf",
+            "protection": "none",
+            "render_sha256": "945feefd3a47a0174e81f20e1ab3a29a8811940df2ff6913546b26ba967f0db5",
+            "state": "managed_unchanged"
+          },
+          {
+            "actions": [
+              "keep",
+              "take",
+              "merge"
+            ],
+            "diff": "--- /etc/php/8.3/fpm/pool.d/site2.conf (on this server)\n+++ CelikPanel's text\n@@ -15,5 +15,3 @@\n pm.max_spare_servers = 3\n pm.max_requests = 500\n chdir = /\n-; set12: added by the server owner by hand (a comment and a directive of their own)\n-php_admin_value[memory_limit] = 256M\n",
+            "domain": "set12-a.test",
+            "domain_id": 2,
+            "file_sha256": "ef5dcd26e59bf30d00fe4e203c97539c30a3b73d6f077f0c2623de433e6f215e",
+            "kind": "php_pool",
+            "ledger": {
+              "observed_at": "2026-10-11T10:15:48Z"
+            },
+            "path": "/etc/php/8.3/fpm/pool.d/site2.conf",
+            "protection": "none",
+            "render_sha256": "5ab9cb0cb10a561009dc429c3acfa86d4e91eb0d1fb3fab74d993882371a801f",
+            "state": "owner_edited"
+          }
+        ],
+        "include_dir": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+        "kind": "nginx_vhost",
+        "ledger": {
+          "observed_at": "2026-10-11T10:15:27Z",
+          "written_at": "2026-10-11T10:15:21Z",
+          "written_release": "v0.1.0-alpha.81 8948352e3953"
+        },
+        "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-a.test",
+        "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;",
+        "overall_kind": "php_pool",
+        "overall_state": "owner_edited",
+        "path": "/etc/nginx/sites-available/set12-a.test.conf",
+        "protection": "none",
+        "render_sha256": "945feefd3a47a0174e81f20e1ab3a29a8811940df2ff6913546b26ba967f0db5",
+        "state": "managed_unchanged"
+      },
+      "label": "c1 page (owner-edited pool): GET site-config",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains/2/site-config"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T10:15:49Z",
+      "json": {
+        "code": "SITE_CONFIG_SERVICE_REFUSED",
+        "detail": "config_refused",
+        "details": [
+          "php-fpm8.3 -t: [11-Oct-2026 10:15:49] ERROR: [/etc/php/8.3/fpm/pool.d/zz-set12-owner.conf:3] unknown entry 'set12_not_a_directive'"
+        ],
+        "error": "The previous file is back. PHP-FPM was not reloaded, because its configuration is refused by another file — PHP-FPM keeps running with the configuration it loaded before. Fix what the check names (php-fpm8.3 -t: [11-Oct-2026 10:15:49] ERROR: [/etc/php/8.3/fpm/pool.d/zz-set12-owner.conf:3] unknown entry 'set12_not_a_directive'), then reload PHP-FPM yourself.",
+        "reason": "php_pool",
+        "restore": "confirmed",
+        "service": "not_reloaded",
+        "service_active": "true",
+        "service_reason": "config_refused_elsewhere",
+        "vars": {
+          "line": "php-fpm8.3 -t: [11-Oct-2026 10:15:49] ERROR: [/etc/php/8.3/fpm/pool.d/zz-set12-owner.conf:3] unknown entry 'set12_not_a_directive'"
+        }
+      },
+      "label": "c1 take on the owner's pool (php-fpm -t refuses another file)",
+      "request": {
+        "body": {
+          "file_sha256": "ef5dcd26e59bf30d00fe4e203c97539c30a3b73d6f077f0c2623de433e6f215e",
+          "kind": "php_pool",
+          "render_sha256": "5ab9cb0cb10a561009dc429c3acfa86d4e91eb0d1fb3fab74d993882371a801f"
+        },
+        "method": "POST",
+        "path": "/api/v1/domains/2/site-config/take",
+        "x_celikpanel_request_id": "07ba4696daa320bcd1755a245af988ec"
+      },
+      "seconds": 0.22,
+      "status": 502,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T10:16:02Z",
+      "json": {
+        "actions": [],
+        "challenge_file": "unchanged",
+        "domain": "set12-a.test",
+        "domain_id": 2,
+        "enabled": "link",
+        "file_sha256": "4f4ac76c9981ef9b077ca9705901033507f35828834f40b3071cb5e0ce4116ed",
+        "files": [
+          {
+            "actions": [],
+            "challenge_file": "unchanged",
+            "domain": "set12-a.test",
+            "domain_id": 2,
+            "enabled": "link",
+            "file_sha256": "4f4ac76c9981ef9b077ca9705901033507f35828834f40b3071cb5e0ce4116ed",
+            "include_dir": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+            "kind": "nginx_vhost",
+            "ledger": {
+              "observed_at": "2026-10-11T10:15:27Z",
+              "written_at": "2026-10-11T10:15:21Z",
+              "written_release": "v0.1.0-alpha.81 8948352e3953"
+            },
+            "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-a.test",
+            "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;",
+            "path": "/etc/nginx/sites-available/set12-a.test.conf",
+            "protection": "none",
+            "render_sha256": "945feefd3a47a0174e81f20e1ab3a29a8811940df2ff6913546b26ba967f0db5",
+            "state": "managed_unchanged"
+          },
+          {
+            "actions": [
+              "keep",
+              "take",
+              "merge"
+            ],
+            "diff": "--- /etc/php/8.3/fpm/pool.d/site2.conf (on this server)\n+++ CelikPanel's text\n@@ -15,5 +15,3 @@\n pm.max_spare_servers = 3\n pm.max_requests = 500\n chdir = /\n-; set12: added by the server owner by hand (a comment and a directive of their own)\n-php_admin_value[memory_limit] = 256M\n",
+            "domain": "set12-a.test",
+            "domain_id": 2,
+            "file_sha256": "ef5dcd26e59bf30d00fe4e203c97539c30a3b73d6f077f0c2623de433e6f215e",
+            "kind": "php_pool",
+            "ledger": {
+              "backup_path": "/etc/php/8.3/fpm/pool.d/site2.conf.celikpanel-backup-20261011T101549Z",
+              "observed_at": "2026-10-11T10:15:49Z"
+            },
+            "path": "/etc/php/8.3/fpm/pool.d/site2.conf",
+            "protection": "none",
+            "render_sha256": "5ab9cb0cb10a561009dc429c3acfa86d4e91eb0d1fb3fab74d993882371a801f",
+            "state": "owner_edited"
+          }
+        ],
+        "include_dir": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+        "kind": "nginx_vhost",
+        "ledger": {
+          "observed_at": "2026-10-11T10:15:27Z",
+          "written_at": "2026-10-11T10:15:21Z",
+          "written_release": "v0.1.0-alpha.81 8948352e3953"
+        },
+        "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-a.test",
+        "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;",
+        "overall_kind": "php_pool",
+        "overall_state": "owner_edited",
+        "path": "/etc/nginx/sites-available/set12-a.test.conf",
+        "protection": "none",
+        "render_sha256": "945feefd3a47a0174e81f20e1ab3a29a8811940df2ff6913546b26ba967f0db5",
+        "state": "managed_unchanged"
+      },
+      "label": "c1 page after the owner's fix: GET site-config",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains/2/site-config"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T10:16:02Z",
+      "json": {
+        "actions": [],
+        "backup_path": "/etc/php/8.3/fpm/pool.d/site2.conf.celikpanel-backup-20261011T101603Z",
+        "decision": {
+          "current": true,
+          "decided_at": "2026-10-11T10:16:03Z",
+          "kind": "take_celikpanel"
+        },
+        "domain": "set12-a.test",
+        "domain_id": 2,
+        "file_sha256": "31b012b8a0f776a72fd459306f4e80ddc41815219edafacde9654d5ed6e6882f",
+        "kind": "php_pool",
+        "ledger": {
+          "backup_path": "/etc/php/8.3/fpm/pool.d/site2.conf.celikpanel-backup-20261011T101603Z",
+          "observed_at": "2026-10-11T10:16:03Z",
+          "written_at": "2026-10-11T10:16:03Z",
+          "written_release": "v0.1.0-alpha.81 8948352e3953"
+        },
+        "outcome": "taken",
+        "path": "/etc/php/8.3/fpm/pool.d/site2.conf",
+        "render_sha256": "5ab9cb0cb10a561009dc429c3acfa86d4e91eb0d1fb3fab74d993882371a801f",
+        "state": "managed_unchanged"
+      },
+      "label": "c1 take after the owner removed their file",
+      "request": {
+        "body": {
+          "file_sha256": "ef5dcd26e59bf30d00fe4e203c97539c30a3b73d6f077f0c2623de433e6f215e",
+          "kind": "php_pool",
+          "render_sha256": "5ab9cb0cb10a561009dc429c3acfa86d4e91eb0d1fb3fab74d993882371a801f"
+        },
+        "method": "POST",
+        "path": "/api/v1/domains/2/site-config/take",
+        "x_celikpanel_request_id": "76507172ed7ff99d7b35ccc2077f5899"
+      },
+      "seconds": 0.2,
+      "status": 200,
+      "text": null
+    }
+  ],
+  "cells": {
+    "C1": {
+      "detail": {
+        "backups_after": [
+          "/etc/php/8.3/fpm/pool.d/site2.conf.celikpanel-backup-20261011T101549Z"
+        ],
+        "journal": "steps/11-c1-pool-check-refused/native/023-c1-journal.json",
+        "journal_second": "steps/11-c1-pool-check-refused/native/027-c1-second-take-journal.json"
+      },
+      "expectations": [
+        {
+          "expectation": "the cause: the owner's pool file makes php-fpm -t fail (exit status recorded)",
+          "held": true,
+          "measured": {
+            "returncode": 78,
+            "stderr": "ct-2026 10:15:48] ERROR: [/etc/php/8.3/fpm/pool.d/zz-set12-owner.conf:3] unknown entry 'set12_not_a_directive'\n[11-Oct-2026 10:15:48] ERROR: Unable to include /etc/php/8.3/fpm/pool.d/zz-set12-owner.conf from /etc/php/8.3/fpm/php-fpm.conf at line 3\n[11-Oct-2026 10:15:48] ERROR: failed to load configuration file '/etc/php/8.3/fpm/php-fpm.conf'\n[11-Oct-2026 10:15:48] ERROR: FPM initialization failed\n"
+          }
+        },
+        {
+          "expectation": "502 SITE_CONFIG_SERVICE_REFUSED, reason php_pool",
+          "held": true,
+          "measured": {
+            "at": "2026-10-11T10:15:49Z",
+            "json": {
+              "code": "SITE_CONFIG_SERVICE_REFUSED",
+              "detail": "config_refused",
+              "details": [
+                "php-fpm8.3 -t: [11-Oct-2026 10:15:49] ERROR: [/etc/php/8.3/fpm/pool.d/zz-set12-owner.conf:3] unknown entry 'set12_not_a_directive'"
+              ],
+              "error": "The previous file is back. PHP-FPM was not reloaded, because its configuration is refused by another file — PHP-FPM keeps running with the configuration it loaded before. Fix what the check names (php-fpm8.3 -t: [11-Oct-2026 10:15:49] ERROR: [/etc/php/8.3/fpm/pool.d/zz-set12-owner.conf:3] unknown entry 'set12_not_a_directive'), then reload PHP-FPM yourself.",
+              "reason": "php_pool",
+              "restore": "confirmed",
+              "service": "not_reloaded",
+              "service_active": "true",
+              "service_reason": "config_refused_elsewhere",
+              "vars": {
+                "line": "php-fpm8.3 -t: [11-Oct-2026 10:15:49] ERROR: [/etc/php/8.3/fpm/pool.d/zz-set12-owner.conf:3] unknown entry 'set12_not_a_directive'"
+              }
+            },
+            "label": "c1 take on the owner's pool (php-fpm -t refuses another file)",
+            "request": {
+              "body": {
+                "file_sha256": "ef5dcd26e59bf30d00fe4e203c97539c30a3b73d6f077f0c2623de433e6f215e",
+                "kind": "php_pool",
+                "render_sha256": "5ab9cb0cb10a561009dc429c3acfa86d4e91eb0d1fb3fab74d993882371a801f"
+              },
+              "method": "POST",
+              "path": "/api/v1/domains/2/site-config/take",
+              "x_celikpanel_request_id": "07ba4696daa320bcd1755a245af988ec"
+            },
+            "seconds": 0.22,
+            "status": 502,
+            "text": null
+          }
+        },
+        {
+          "expectation": "restore confirmed",
+          "held": true,
+          "measured": {
+            "code": "SITE_CONFIG_SERVICE_REFUSED",
+            "detail": "config_refused",
+            "details": [
+              "php-fpm8.3 -t: [11-Oct-2026 10:15:49] ERROR: [/etc/php/8.3/fpm/pool.d/zz-set12-owner.conf:3] unknown entry 'set12_not_a_directive'"
+            ],
+            "error": "The previous file is back. PHP-FPM was not reloaded, because its configuration is refused by another file — PHP-FPM keeps running with the configuration it loaded before. Fix what the check names (php-fpm8.3 -t: [11-Oct-2026 10:15:49] ERROR: [/etc/php/8.3/fpm/pool.d/zz-set12-owner.conf:3] unknown entry 'set12_not_a_directive'), then reload PHP-FPM yourself.",
+            "reason": "php_pool",
+            "restore": "confirmed",
+            "service": "not_reloaded",
+            "service_active": "true",
+            "service_reason": "config_refused_elsewhere",
+            "vars": {
+              "line": "php-fpm8.3 -t: [11-Oct-2026 10:15:49] ERROR: [/etc/php/8.3/fpm/pool.d/zz-set12-owner.conf:3] unknown entry 'set12_not_a_directive'"
+            }
+          }
+        },
+        {
+          "expectation": "service not_reloaded, service_reason config_refused_elsewhere",
+          "held": true,
+          "measured": {
+            "code": "SITE_CONFIG_SERVICE_REFUSED",
+            "detail": "config_refused",
+            "details": [
+              "php-fpm8.3 -t: [11-Oct-2026 10:15:49] ERROR: [/etc/php/8.3/fpm/pool.d/zz-set12-owner.conf:3] unknown entry 'set12_not_a_directive'"
+            ],
+            "error": "The previous file is back. PHP-FPM was not reloaded, because its configuration is refused by another file — PHP-FPM keeps running with the configuration it loaded before. Fix what the check names (php-fpm8.3 -t: [11-Oct-2026 10:15:49] ERROR: [/etc/php/8.3/fpm/pool.d/zz-set12-owner.conf:3] unknown entry 'set12_not_a_directive'), then reload PHP-FPM yourself.",
+            "reason": "php_pool",
+            "restore": "confirmed",
+            "service": "not_reloaded",
+            "service_active": "true",
+            "service_reason": "config_refused_elsewhere",
+            "vars": {
+              "line": "php-fpm8.3 -t: [11-Oct-2026 10:15:49] ERROR: [/etc/php/8.3/fpm/pool.d/zz-set12-owner.conf:3] unknown entry 'set12_not_a_directive'"
+            }
+          }
+        },
+        {
+          "expectation": "service_active true",
+          "held": true,
+          "measured": "true"
+        },
+        {
+          "expectation": "for an administrator: the check's line in vars.line and in details, and in the sentence",
+          "held": true,
+          "measured": {
+            "details": [
+              "php-fpm8.3 -t: [11-Oct-2026 10:15:49] ERROR: [/etc/php/8.3/fpm/pool.d/zz-set12-owner.conf:3] unknown entry 'set12_not_a_directive'"
+            ],
+            "error": "The previous file is back. PHP-FPM was not reloaded, because its configuration is refused by another file — PHP-FPM keeps running with the configuration it loaded before. Fix what the check names (php-fpm8.3 -t: [11-Oct-2026 10:15:49] ERROR: [/etc/php/8.3/fpm/pool.d/zz-set12-owner.conf:3] unknown entry 'set12_not_a_directive'), then reload PHP-FPM yourself.",
+            "vars": {
+              "line": "php-fpm8.3 -t: [11-Oct-2026 10:15:49] ERROR: [/etc/php/8.3/fpm/pool.d/zz-set12-owner.conf:3] unknown entry 'set12_not_a_directive'"
+            }
+          }
+        },
+        {
+          "expectation": "PHP-FPM still active afterwards: MainPID and NRestarts unchanged",
+          "held": true,
+          "measured": {
+            "after": {
+              "ActiveEnterTimestamp": "Sun 2026-10-11 10:07:49 UTC",
+              "ActiveState": "active",
+              "ExecMainStartTimestamp": "Sun 2026-10-11 10:07:49 UTC",
+              "LoadState": "loaded",
+              "MainPID": "33016",
+              "NRestarts": "0",
+              "SubState": "running"
+            },
+            "before": {
+              "ActiveEnterTimestamp": "Sun 2026-10-11 10:07:49 UTC",
+              "ActiveState": "active",
+              "ExecMainStartTimestamp": "Sun 2026-10-11 10:07:49 UTC",
+              "LoadState": "loaded",
+              "MainPID": "33016",
+              "NRestarts": "0",
+              "SubState": "running"
+            }
+          }
+        },
+        {
+          "expectation": "no reload of PHP-FPM after the take and no start-limit / exit line in its journal",
+          "held": true,
+          "measured": []
+        },
+        {
+          "expectation": "the owner's pool is byte-equal (sha256, mode, uid, gid)",
+          "held": true,
+          "measured": {
+            "gid": [
+              988,
+              988
+            ],
+            "inode": [
+              531958,
+              531958
+            ],
+            "mode": [
+              "0644",
+              "0644"
+            ],
+            "sha256": [
+              "ef5dcd26e59bf30d00fe4e203c97539c30a3b73d6f077f0c2623de433e6f215e",
+              "ef5dcd26e59bf30d00fe4e203c97539c30a3b73d6f077f0c2623de433e6f215e"
+            ],
+            "uid": [
+              0,
+              0
+            ]
+          }
+        },
+        {
+          "expectation": "after the owner's fix php-fpm -t passes",
+          "held": true,
+          "measured": {
+            "argv": [
+              "php-fpm8.3",
+              "-t"
+            ],
+            "at": "2026-10-11T10:16:02Z",
+            "returncode": 0,
+            "seconds": 0.057,
+            "status": "ok",
+            "stderr": "[11-Oct-2026 10:16:02] NOTICE: configuration file /etc/php/8.3/fpm/php-fpm.conf test is successful\n",
+            "stdout": ""
+          }
+        },
+        {
+          "expectation": "the second take answers 200 taken; CelikPanel's pool text with a valid header",
+          "held": true,
+          "measured": {
+            "at": "2026-10-11T10:16:02Z",
+            "json": {
+              "actions": [],
+              "backup_path": "/etc/php/8.3/fpm/pool.d/site2.conf.celikpanel-backup-20261011T101603Z",
+              "decision": {
+                "current": true,
+                "decided_at": "2026-10-11T10:16:03Z",
+                "kind": "take_celikpanel"
+              },
+              "domain": "set12-a.test",
+              "domain_id": 2,
+              "file_sha256": "31b012b8a0f776a72fd459306f4e80ddc41815219edafacde9654d5ed6e6882f",
+              "kind": "php_pool",
+              "ledger": {
+                "backup_path": "/etc/php/8.3/fpm/pool.d/site2.conf.celikpanel-backup-20261011T101603Z",
+                "observed_at": "2026-10-11T10:16:03Z",
+                "written_at": "2026-10-11T10:16:03Z",
+                "written_release": "v0.1.0-alpha.81 8948352e3953"
+              },
+              "outcome": "taken",
+              "path": "/etc/php/8.3/fpm/pool.d/site2.conf",
+              "render_sha256": "5ab9cb0cb10a561009dc429c3acfa86d4e91eb0d1fb3fab74d993882371a801f",
+              "state": "managed_unchanged"
+            },
+            "label": "c1 take after the owner removed their file",
+            "request": {
+              "body": {
+                "file_sha256": "ef5dcd26e59bf30d00fe4e203c97539c30a3b73d6f077f0c2623de433e6f215e",
+                "kind": "php_pool",
+                "render_sha256": "5ab9cb0cb10a561009dc429c3acfa86d4e91eb0d1fb3fab74d993882371a801f"
+              },
+              "method": "POST",
+              "path": "/api/v1/domains/2/site-config/take",
+              "x_celikpanel_request_id": "76507172ed7ff99d7b35ccc2077f5899"
+            },
+            "seconds": 0.2,
+            "status": 200,
+            "text": null
+          }
+        },
+        {
+          "expectation": "PHP-FPM was reloaded after the second take (journal) and is active",
+          "held": true,
+          "measured": {
+            "lines": [
+              "2026-10-11T10:16:03.403332+00:00 dns-ubuntu systemd[1]: Reloading php8.3-fpm.service - The PHP 8.3 FastCGI Process Manager...",
+              "2026-10-11T10:16:03.411360+00:00 dns-ubuntu systemd[1]: Reloaded php8.3-fpm.service - The PHP 8.3 FastCGI Process Manager.",
+              "2026-10-11T10:16:03.485418+00:00 dns-ubuntu php-fpm8.3[33016]: [11-Oct-2026 10:16:03] NOTICE: using inherited socket fd=8, \"/run/php/php8.3-fpm.sock\"",
+              "2026-10-11T10:16:03.485418+00:00 dns-ubuntu php-fpm8.3[33016]: [11-Oct-2026 10:16:03] NOTICE: using inherited socket fd=9, \"/var/run/php/php8.3-fpm-site2.sock\"",
+              "2026-10-11T10:16:03.485418+00:00 dns-ubuntu php-fpm8.3[33016]: [11-Oct-2026 10:16:03] NOTICE: using inherited socket fd=10, \"/var/run/php/php8.3-fpm-site3.sock\"",
+              "2026-10-11T10:16:03.403332+00:00 dns-ubuntu systemd[1]: Reloading php8.3-fpm.service - The PHP 8.3 FastCGI Process Manager...",
+              "2026-10-11T10:16:03.411360+00:00 dns-ubuntu systemd[1]: Reloaded php8.3-fpm.service - The PHP 8.3 FastCGI Process Manager."
+            ],
+            "unit": {
+              "ActiveEnterTimestamp": "Sun 2026-10-11 10:07:49 UTC",
+              "ActiveState": "active",
+              "ExecMainStartTimestamp": "Sun 2026-10-11 10:07:49 UTC",
+              "LoadState": "loaded",
+              "MainPID": "33016",
+              "NRestarts": "0",
+              "SubState": "running"
+            }
+          }
+        }
+      ],
+      "verdict": "PASS"
+    }
+  },
+  "checks": [
+    {
+      "detail": {
+        "returncode": 78,
+        "stderr": "ct-2026 10:15:48] ERROR: [/etc/php/8.3/fpm/pool.d/zz-set12-owner.conf:3] unknown entry 'set12_not_a_directive'\n[11-Oct-2026 10:15:48] ERROR: Unable to include /etc/php/8.3/fpm/pool.d/zz-set12-owner.conf from /etc/php/8.3/fpm/php-fpm.conf at line 3\n[11-Oct-2026 10:15:48] ERROR: failed to load configuration file '/etc/php/8.3/fpm/php-fpm.conf'\n[11-Oct-2026 10:15:48] ERROR: FPM initialization failed\n"
+      },
+      "name": "C1: the cause: the owner's pool file makes php-fpm -t fail (exit status recorded)",
+      "ok": true
+    },
+    {
+      "detail": {
+        "at": "2026-10-11T10:15:49Z",
+        "json": {
+          "code": "SITE_CONFIG_SERVICE_REFUSED",
+          "detail": "config_refused",
+          "details": [
+            "php-fpm8.3 -t: [11-Oct-2026 10:15:49] ERROR: [/etc/php/8.3/fpm/pool.d/zz-set12-owner.conf:3] unknown entry 'set12_not_a_directive'"
+          ],
+          "error": "The previous file is back. PHP-FPM was not reloaded, because its configuration is refused by another file — PHP-FPM keeps running with the configuration it loaded before. Fix what the check names (php-fpm8.3 -t: [11-Oct-2026 10:15:49] ERROR: [/etc/php/8.3/fpm/pool.d/zz-set12-owner.conf:3] unknown entry 'set12_not_a_directive'), then reload PHP-FPM yourself.",
+          "reason": "php_pool",
+          "restore": "confirmed",
+          "service": "not_reloaded",
+          "service_active": "true",
+          "service_reason": "config_refused_elsewhere",
+          "vars": {
+            "line": "php-fpm8.3 -t: [11-Oct-2026 10:15:49] ERROR: [/etc/php/8.3/fpm/pool.d/zz-set12-owner.conf:3] unknown entry 'set12_not_a_directive'"
+          }
+        },
+        "label": "c1 take on the owner's pool (php-fpm -t refuses another file)",
+        "request": {
+          "body": {
+            "file_sha256": "ef5dcd26e59bf30d00fe4e203c97539c30a3b73d6f077f0c2623de433e6f215e",
+            "kind": "php_pool",
+            "render_sha256": "5ab9cb0cb10a561009dc429c3acfa86d4e91eb0d1fb3fab74d993882371a801f"
+          },
+          "method": "POST",
+          "path": "/api/v1/domains/2/site-config/take",
+          "x_celikpanel_request_id": "07ba4696daa320bcd1755a245af988ec"
+        },
+        "seconds": 0.22,
+        "status": 502,
+        "text": null
+      },
+      "name": "C1: 502 SITE_CONFIG_SERVICE_REFUSED, reason php_pool",
+      "ok": true
+    },
+    {
+      "detail": {
+        "code": "SITE_CONFIG_SERVICE_REFUSED",
+        "detail": "config_refused",
+        "details": [
+          "php-fpm8.3 -t: [11-Oct-2026 10:15:49] ERROR: [/etc/php/8.3/fpm/pool.d/zz-set12-owner.conf:3] unknown entry 'set12_not_a_directive'"
+        ],
+        "error": "The previous file is back. PHP-FPM was not reloaded, because its configuration is refused by another file — PHP-FPM keeps running with the configuration it loaded before. Fix what the check names (php-fpm8.3 -t: [11-Oct-2026 10:15:49] ERROR: [/etc/php/8.3/fpm/pool.d/zz-set12-owner.conf:3] unknown entry 'set12_not_a_directive'), then reload PHP-FPM yourself.",
+        "reason": "php_pool",
+        "restore": "confirmed",
+        "service": "not_reloaded",
+        "service_active": "true",
+        "service_reason": "config_refused_elsewhere",
+        "vars": {
+          "line": "php-fpm8.3 -t: [11-Oct-2026 10:15:49] ERROR: [/etc/php/8.3/fpm/pool.d/zz-set12-owner.conf:3] unknown entry 'set12_not_a_directive'"
+        }
+      },
+      "name": "C1: restore confirmed",
+      "ok": true
+    },
+    {
+      "detail": {
+        "code": "SITE_CONFIG_SERVICE_REFUSED",
+        "detail": "config_refused",
+        "details": [
+          "php-fpm8.3 -t: [11-Oct-2026 10:15:49] ERROR: [/etc/php/8.3/fpm/pool.d/zz-set12-owner.conf:3] unknown entry 'set12_not_a_directive'"
+        ],
+        "error": "The previous file is back. PHP-FPM was not reloaded, because its configuration is refused by another file — PHP-FPM keeps running with the configuration it loaded before. Fix what the check names (php-fpm8.3 -t: [11-Oct-2026 10:15:49] ERROR: [/etc/php/8.3/fpm/pool.d/zz-set12-owner.conf:3] unknown entry 'set12_not_a_directive'), then reload PHP-FPM yourself.",
+        "reason": "php_pool",
+        "restore": "confirmed",
+        "service": "not_reloaded",
+        "service_active": "true",
+        "service_reason": "config_refused_elsewhere",
+        "vars": {
+          "line": "php-fpm8.3 -t: [11-Oct-2026 10:15:49] ERROR: [/etc/php/8.3/fpm/pool.d/zz-set12-owner.conf:3] unknown entry 'set12_not_a_directive'"
+        }
+      },
+      "name": "C1: service not_reloaded, service_reason config_refused_elsewhere",
+      "ok": true
+    },
+    {
+      "detail": "true",
+      "name": "C1: service_active true",
+      "ok": true
+    },
+    {
+      "detail": {
+        "details": [
+          "php-fpm8.3 -t: [11-Oct-2026 10:15:49] ERROR: [/etc/php/8.3/fpm/pool.d/zz-set12-owner.conf:3] unknown entry 'set12_not_a_directive'"
+        ],
+        "error": "The previous file is back. PHP-FPM was not reloaded, because its configuration is refused by another file — PHP-FPM keeps running with the configuration it loaded before. Fix what the check names (php-fpm8.3 -t: [11-Oct-2026 10:15:49] ERROR: [/etc/php/8.3/fpm/pool.d/zz-set12-owner.conf:3] unknown entry 'set12_not_a_directive'), then reload PHP-FPM yourself.",
+        "vars": {
+          "line": "php-fpm8.3 -t: [11-Oct-2026 10:15:49] ERROR: [/etc/php/8.3/fpm/pool.d/zz-set12-owner.conf:3] unknown entry 'set12_not_a_directive'"
+        }
+      },
+      "name": "C1: for an administrator: the check's line in vars.line and in details, and in the sentence",
+      "ok": true
+    },
+    {
+      "detail": {
+        "after": {
+          "ActiveEnterTimestamp": "Sun 2026-10-11 10:07:49 UTC",
+          "ActiveState": "active",
+          "ExecMainStartTimestamp": "Sun 2026-10-11 10:07:49 UTC",
+          "LoadState": "loaded",
+          "MainPID": "33016",
+          "NRestarts": "0",
+          "SubState": "running"
+        },
+        "before": {
+          "ActiveEnterTimestamp": "Sun 2026-10-11 10:07:49 UTC",
+          "ActiveState": "active",
+          "ExecMainStartTimestamp": "Sun 2026-10-11 10:07:49 UTC",
+          "LoadState": "loaded",
+          "MainPID": "33016",
+          "NRestarts": "0",
+          "SubState": "running"
+        }
+      },
+      "name": "C1: PHP-FPM still active afterwards: MainPID and NRestarts unchanged",
+      "ok": true
+    },
+    {
+      "detail": [],
+      "name": "C1: no reload of PHP-FPM after the take and no start-limit / exit line in its journal",
+      "ok": true
+    },
+    {
+      "detail": {
+        "gid": [
+          988,
+          988
+        ],
+        "inode": [
+          531958,
+          531958
+        ],
+        "mode": [
+          "0644",
+          "0644"
+        ],
+        "sha256": [
+          "ef5dcd26e59bf30d00fe4e203c97539c30a3b73d6f077f0c2623de433e6f215e",
+          "ef5dcd26e59bf30d00fe4e203c97539c30a3b73d6f077f0c2623de433e6f215e"
+        ],
+        "uid": [
+          0,
+          0
+        ]
+      },
+      "name": "C1: the owner's pool is byte-equal (sha256, mode, uid, gid)",
+      "ok": true
+    },
+    {
+      "detail": {
+        "argv": [
+          "php-fpm8.3",
+          "-t"
+        ],
+        "at": "2026-10-11T10:16:02Z",
+        "returncode": 0,
+        "seconds": 0.057,
+        "status": "ok",
+        "stderr": "[11-Oct-2026 10:16:02] NOTICE: configuration file /etc/php/8.3/fpm/php-fpm.conf test is successful\n",
+        "stdout": ""
+      },
+      "name": "C1: after the owner's fix php-fpm -t passes",
+      "ok": true
+    },
+    {
+      "detail": {
+        "at": "2026-10-11T10:16:02Z",
+        "json": {
+          "actions": [],
+          "backup_path": "/etc/php/8.3/fpm/pool.d/site2.conf.celikpanel-backup-20261011T101603Z",
+          "decision": {
+            "current": true,
+            "decided_at": "2026-10-11T10:16:03Z",
+            "kind": "take_celikpanel"
+          },
+          "domain": "set12-a.test",
+          "domain_id": 2,
+          "file_sha256": "31b012b8a0f776a72fd459306f4e80ddc41815219edafacde9654d5ed6e6882f",
+          "kind": "php_pool",
+          "ledger": {
+            "backup_path": "/etc/php/8.3/fpm/pool.d/site2.conf.celikpanel-backup-20261011T101603Z",
+            "observed_at": "2026-10-11T10:16:03Z",
+            "written_at": "2026-10-11T10:16:03Z",
+            "written_release": "v0.1.0-alpha.81 8948352e3953"
+          },
+          "outcome": "taken",
+          "path": "/etc/php/8.3/fpm/pool.d/site2.conf",
+          "render_sha256": "5ab9cb0cb10a561009dc429c3acfa86d4e91eb0d1fb3fab74d993882371a801f",
+          "state": "managed_unchanged"
+        },
+        "label": "c1 take after the owner removed their file",
+        "request": {
+          "body": {
+            "file_sha256": "ef5dcd26e59bf30d00fe4e203c97539c30a3b73d6f077f0c2623de433e6f215e",
+            "kind": "php_pool",
+            "render_sha256": "5ab9cb0cb10a561009dc429c3acfa86d4e91eb0d1fb3fab74d993882371a801f"
+          },
+          "method": "POST",
+          "path": "/api/v1/domains/2/site-config/take",
+          "x_celikpanel_request_id": "76507172ed7ff99d7b35ccc2077f5899"
+        },
+        "seconds": 0.2,
+        "status": 200,
+        "text": null
+      },
+      "name": "C1: the second take answers 200 taken; CelikPanel's pool text with a valid header",
+      "ok": true
+    },
+    {
+      "detail": {
+        "lines": [
+          "2026-10-11T10:16:03.403332+00:00 dns-ubuntu systemd[1]: Reloading php8.3-fpm.service - The PHP 8.3 FastCGI Process Manager...",
+          "2026-10-11T10:16:03.411360+00:00 dns-ubuntu systemd[1]: Reloaded php8.3-fpm.service - The PHP 8.3 FastCGI Process Manager.",
+          "2026-10-11T10:16:03.485418+00:00 dns-ubuntu php-fpm8.3[33016]: [11-Oct-2026 10:16:03] NOTICE: using inherited socket fd=8, \"/run/php/php8.3-fpm.sock\"",
+          "2026-10-11T10:16:03.485418+00:00 dns-ubuntu php-fpm8.3[33016]: [11-Oct-2026 10:16:03] NOTICE: using inherited socket fd=9, \"/var/run/php/php8.3-fpm-site2.sock\"",
+          "2026-10-11T10:16:03.485418+00:00 dns-ubuntu php-fpm8.3[33016]: [11-Oct-2026 10:16:03] NOTICE: using inherited socket fd=10, \"/var/run/php/php8.3-fpm-site3.sock\"",
+          "2026-10-11T10:16:03.403332+00:00 dns-ubuntu systemd[1]: Reloading php8.3-fpm.service - The PHP 8.3 FastCGI Process Manager...",
+          "2026-10-11T10:16:03.411360+00:00 dns-ubuntu systemd[1]: Reloaded php8.3-fpm.service - The PHP 8.3 FastCGI Process Manager."
+        ],
+        "unit": {
+          "ActiveEnterTimestamp": "Sun 2026-10-11 10:07:49 UTC",
+          "ActiveState": "active",
+          "ExecMainStartTimestamp": "Sun 2026-10-11 10:07:49 UTC",
+          "LoadState": "loaded",
+          "MainPID": "33016",
+          "NRestarts": "0",
+          "SubState": "running"
+        }
+      },
+      "name": "C1: PHP-FPM was reloaded after the second take (journal) and is active",
+      "ok": true
+    }
+  ],
+  "finished_at": "2026-10-11T10:16:07Z",
+  "lab_preparation": [
+    {
+      "file": "steps/11-c1-pool-check-refused/native/017-lab-c1-pool-restore.json",
+      "label": "c1-pool-restore",
+      "mode": "lab-pool-restore"
+    },
+    {
+      "file": "steps/11-c1-pool-check-refused/native/028-lab-c1-end-pool-restore.json",
+      "label": "c1-end-pool-restore",
+      "mode": "lab-pool-restore"
+    }
+  ],
+  "native_evidence": false,
+  "natives": [
+    {
+      "file": "native/016-ref-pool-set12-a.test.json",
+      "label": "ref-pool-set12-a.test",
+      "mode": "read-pool12",
+      "owner_action": false
+    },
+    {
+      "file": "native/017-lab-c1-pool-restore.json",
+      "label": "lab-c1-pool-restore",
+      "mode": "lab-pool-restore",
+      "owner_action": false
+    },
+    {
+      "file": "native/018-owner-c1-pool-edit.json",
+      "label": "owner-c1-pool-edit",
+      "mode": "owner-pool12",
+      "owner_action": true
+    },
+    {
+      "file": "native/019-c1-0-before-pool-set12-a.test.json",
+      "label": "c1-0-before-pool-set12-a.test",
+      "mode": "read-pool12",
+      "owner_action": false
+    },
+    {
+      "file": "native/020-owner-c1-owner-pool-file-refused.json",
+      "label": "owner-c1-owner-pool-file-refused",
+      "mode": "owner-broken-pool",
+      "owner_action": true
+    },
+    {
+      "file": "native/021-guest-clock.json",
+      "label": "guest-clock",
+      "mode": "read-ledger",
+      "owner_action": false
+    },
+    {
+      "file": "native/022-c1-1-after-pool-set12-a.test.json",
+      "label": "c1-1-after-pool-set12-a.test",
+      "mode": "read-pool12",
+      "owner_action": false
+    },
+    {
+      "file": "native/023-c1-journal.json",
+      "label": "c1-journal",
+      "mode": "read-window12",
+      "owner_action": false
+    },
+    {
+      "file": "native/024-owner-c1-owner-pool-file-removed.json",
+      "label": "owner-c1-owner-pool-file-removed",
+      "mode": "owner-broken-pool",
+      "owner_action": true
+    },
+    {
+      "file": "native/025-guest-clock.json",
+      "label": "guest-clock",
+      "mode": "read-ledger",
+      "owner_action": false
+    },
+    {
+      "file": "native/026-c1-2-after-the-second-take-pool-set12-a.test.json",
+      "label": "c1-2-after-the-second-take-pool-set12-a.test",
+      "mode": "read-pool12",
+      "owner_action": false
+    },
+    {
+      "file": "native/027-c1-second-take-journal.json",
+      "label": "c1-second-take-journal",
+      "mode": "read-window12",
+      "owner_action": false
+    },
+    {
+      "file": "native/028-lab-c1-end-pool-restore.json",
+      "label": "lab-c1-end-pool-restore",
+      "mode": "lab-pool-restore",
+      "owner_action": false
+    }
+  ],
+  "node": "ubuntu",
+  "notes": [
+    {
+      "detail": [],
+      "note": "C1: PASS"
+    }
+  ],
+  "owner_actions": [
+    {
+      "at": "2026-10-11T10:15:48Z",
+      "label": "c1-pool-edit",
+      "mode": "owner-pool12"
+    },
+    {
+      "at": "2026-10-11T10:15:48Z",
+      "label": "c1-owner-pool-file-refused",
+      "mode": "owner-broken-pool"
+    },
+    {
+      "at": "2026-10-11T10:16:02Z",
+      "label": "c1-owner-pool-file-removed",
+      "mode": "owner-broken-pool"
+    }
+  ],
+  "owner_waited_for_idle": {
+    "at": "2026-10-11T10:15:45Z",
+    "busy_seen": [],
+    "idle": true,
+    "polls": 1,
+    "waited_s": 0.3
+  },
+  "second_take_fields": {
+    "actions": [],
+    "backup_path": "/etc/php/8.3/fpm/pool.d/site2.conf.celikpanel-backup-20261011T101603Z",
+    "decision": {
+      "current": true,
+      "decided_at": "2026-10-11T10:16:03Z",
+      "kind": "take_celikpanel"
+    },
+    "domain": "set12-a.test",
+    "domain_id": 2,
+    "file_sha256": "31b012b8a0f776a72fd459306f4e80ddc41815219edafacde9654d5ed6e6882f",
+    "kind": "php_pool",
+    "ledger": {
+      "backup_path": "/etc/php/8.3/fpm/pool.d/site2.conf.celikpanel-backup-20261011T101603Z",
+      "observed_at": "2026-10-11T10:16:03Z",
+      "written_at": "2026-10-11T10:16:03Z",
+      "written_release": "v0.1.0-alpha.81 8948352e3953"
+    },
+    "outcome": "taken",
+    "path": "/etc/php/8.3/fpm/pool.d/site2.conf",
+    "render_sha256": "5ab9cb0cb10a561009dc429c3acfa86d4e91eb0d1fb3fab74d993882371a801f",
+    "state": "managed_unchanged"
+  },
+  "section": "C1-pool-check-refused",
+  "started_at": "2026-10-11T10:15:45Z",
+  "substeps": {
+    "C1": "passed"
+  },
+  "title": "pool take refused by php-fpm -t: put back, not reloaded; then the owner's fix and a take",
+  "verdict": "passed"
+}

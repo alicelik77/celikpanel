@@ -1,0 +1,81 @@
+{
+  "outcome": "response",
+  "panel": "owner",
+  "purpose": "n: the install's state",
+  "request": {
+    "body": null,
+    "headers": [
+      [
+        "Accept",
+        "application/json"
+      ],
+      [
+        "Host",
+        "127.0.0.1:19091"
+      ],
+      [
+        "Cookie",
+        "[REDACTED]"
+      ]
+    ],
+    "method": "GET",
+    "path": "/api/v1/service/operation?id=a6e1b62bb8c6b0bc38484fb6470517bb"
+  },
+  "response": {
+    "elapsed_seconds": 0.007,
+    "headers": [
+      [
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+      ],
+      [
+        "Content-Type",
+        "application/json"
+      ],
+      [
+        "Referrer-Policy",
+        "no-referrer"
+      ],
+      [
+        "Strict-Transport-Security",
+        "max-age=31536000"
+      ],
+      [
+        "X-Content-Type-Options",
+        "nosniff"
+      ],
+      [
+        "X-Frame-Options",
+        "DENY"
+      ],
+      [
+        "Date",
+        "Sun, 11 Oct 2026 10:17:57 GMT"
+      ],
+      [
+        "Content-Length",
+        "371"
+      ]
+    ],
+    "json": {
+      "operation": {
+        "finished_at": "2026-10-11T10:17:49.827380108Z",
+        "id": "a6e1b62bb8c6b0bc38484fb6470517bb",
+        "kind": "runtime_install",
+        "package_name": "22.20.0",
+        "phase": "completed",
+        "request_id": "222486b345d0a5d52eef43319b73fae5",
+        "result": {
+          "installed": true,
+          "success": true,
+          "version": "22.20.0"
+        },
+        "service_id": "node",
+        "started_at": "2026-10-11T10:17:37.462619321Z",
+        "status": "succeeded"
+      }
+    },
+    "status": 200,
+    "text": null
+  }
+}

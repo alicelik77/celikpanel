@@ -1,0 +1,120 @@
+{
+  "outcome": "response",
+  "panel": "owner",
+  "purpose": "c4 page of A while B's pool save holds the lock: GET site-config",
+  "request": {
+    "body": null,
+    "headers": [
+      [
+        "Accept",
+        "application/json"
+      ],
+      [
+        "Host",
+        "127.0.0.1:19082"
+      ],
+      [
+        "Cookie",
+        "[REDACTED]"
+      ]
+    ],
+    "method": "GET",
+    "path": "/api/v1/domains/2/site-config"
+  },
+  "response": {
+    "elapsed_seconds": 60.032,
+    "headers": [
+      [
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+      ],
+      [
+        "Content-Type",
+        "application/json"
+      ],
+      [
+        "Referrer-Policy",
+        "no-referrer"
+      ],
+      [
+        "Strict-Transport-Security",
+        "max-age=31536000"
+      ],
+      [
+        "X-Content-Type-Options",
+        "nosniff"
+      ],
+      [
+        "X-Frame-Options",
+        "DENY"
+      ],
+      [
+        "Date",
+        "Sun, 11 Oct 2026 10:52:10 GMT"
+      ],
+      [
+        "Content-Length",
+        "1643"
+      ]
+    ],
+    "json": {
+      "actions": [],
+      "challenge_file": "unchanged",
+      "domain": "set12-a.test",
+      "domain_id": 2,
+      "enabled": "link",
+      "file_sha256": "5a0e4f07968a00888168baa1275d402fa4ebcbba5092d4c2b6d5e49db79eb83b",
+      "files": [
+        {
+          "actions": [],
+          "challenge_file": "unchanged",
+          "domain": "set12-a.test",
+          "domain_id": 2,
+          "enabled": "link",
+          "file_sha256": "5a0e4f07968a00888168baa1275d402fa4ebcbba5092d4c2b6d5e49db79eb83b",
+          "include_dir": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+          "kind": "nginx_vhost",
+          "ledger": {
+            "observed_at": "2026-10-11T10:50:46Z",
+            "written_at": "2026-10-11T10:50:42Z",
+            "written_release": "v0.1.0-alpha.81 8948352e3953"
+          },
+          "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-a.test",
+          "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;",
+          "path": "/etc/nginx/sites-available/set12-a.test.conf",
+          "protection": "none",
+          "render_sha256": "ddea12bd9d8013719d2250f2f6a8bd483eb52676a52e72f06ed93cb5ca8e9afc",
+          "state": "managed_unchanged"
+        },
+        {
+          "actions": [
+            "recheck"
+          ],
+          "domain": "set12-a.test",
+          "domain_id": 2,
+          "kind": "php_pool",
+          "read_error": "timeout",
+          "reason": "not_read",
+          "state": "unknown"
+        }
+      ],
+      "include_dir": "/etc/nginx/celikpanel-sites.d/set12-a.test",
+      "kind": "nginx_vhost",
+      "ledger": {
+        "observed_at": "2026-10-11T10:50:46Z",
+        "written_at": "2026-10-11T10:50:42Z",
+        "written_release": "v0.1.0-alpha.81 8948352e3953"
+      },
+      "managed_dir": "/etc/nginx/celikpanel-managed.d/set12-a.test",
+      "managed_include": "include /etc/nginx/celikpanel-managed.d/set12-a.test/*.conf;",
+      "overall_kind": "php_pool",
+      "overall_state": "unknown",
+      "path": "/etc/nginx/sites-available/set12-a.test.conf",
+      "protection": "none",
+      "render_sha256": "ddea12bd9d8013719d2250f2f6a8bd483eb52676a52e72f06ed93cb5ca8e9afc",
+      "state": "managed_unchanged"
+    },
+    "status": 200,
+    "text": null
+  }
+}

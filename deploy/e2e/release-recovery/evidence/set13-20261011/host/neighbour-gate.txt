@@ -1,0 +1,29 @@
+2026-10-11T09:36:42Z neighbour gate for set13-debian13 s13-d13-a poll=1 qemu_processes=0 earlier_run_jobs=0
+2026-10-11T09:36:42Z neighbour gate for set13-debian13 s13-d13-a: clear
+2026-10-11T09:56:09Z neighbour gate for set13-ubuntu s13-ub-a poll=1 qemu_processes=2 earlier_run_jobs=0
+2026-10-11T09:57:09Z neighbour gate for set13-ubuntu s13-ub-a poll=2 qemu_processes=0 earlier_run_jobs=0
+2026-10-11T09:57:09Z neighbour gate for set13-ubuntu s13-ub-a: clear
+2026-10-11T10:20:23Z neighbour gate for set13-ubuntu s13-ub-b poll=1 qemu_processes=0 earlier_run_jobs=0
+2026-10-11T10:20:23Z neighbour gate for set13-ubuntu s13-ub-b: clear
+2026-10-11T10:20:26Z neighbour gate for set13-debian13 s13-d13-b poll=1 qemu_processes=1 earlier_run_jobs=0
+2026-10-11T10:21:26Z neighbour gate for set13-debian13 s13-d13-b poll=2 qemu_processes=1 earlier_run_jobs=0
+2026-10-11T10:22:26Z neighbour gate for set13-debian13 s13-d13-b poll=3 qemu_processes=1 earlier_run_jobs=0
+2026-10-11T10:23:26Z neighbour gate for set13-debian13 s13-d13-b poll=4 qemu_processes=1 earlier_run_jobs=0
+2026-10-11T10:24:26Z neighbour gate for set13-debian13 s13-d13-b poll=5 qemu_processes=1 earlier_run_jobs=0
+2026-10-11T10:25:26Z neighbour gate for set13-debian13 s13-d13-b poll=6 qemu_processes=1 earlier_run_jobs=0
+2026-10-11T10:26:26Z neighbour gate for set13-debian13 s13-d13-b poll=7 qemu_processes=1 earlier_run_jobs=0
+2026-10-11T10:27:26Z neighbour gate for set13-debian13 s13-d13-b poll=8 qemu_processes=1 earlier_run_jobs=0
+2026-10-11T10:28:26Z neighbour gate for set13-debian13 s13-d13-b poll=9 qemu_processes=1 earlier_run_jobs=0
+2026-10-11T10:29:26Z neighbour gate for set13-debian13 s13-d13-b poll=10 qemu_processes=1 earlier_run_jobs=0
+2026-10-11T10:30:26Z neighbour gate for set13-debian13 s13-d13-b poll=11 qemu_processes=1 earlier_run_jobs=0
+2026-10-11T10:31:26Z neighbour gate for set13-debian13 s13-d13-b poll=12 qemu_processes=1 earlier_run_jobs=0
+2026-10-11T10:32:26Z neighbour gate for set13-debian13 s13-d13-b poll=13 qemu_processes=1 earlier_run_jobs=0
+2026-10-11T10:33:26Z neighbour gate for set13-debian13 s13-d13-b poll=14 qemu_processes=1 earlier_run_jobs=0
+2026-10-11T10:34:27Z neighbour gate for set13-debian13 s13-d13-b poll=15 qemu_processes=1 earlier_run_jobs=0
+2026-10-11T10:35:27Z neighbour gate for set13-debian13 s13-d13-b poll=16 qemu_processes=1 earlier_run_jobs=0
+2026-10-11T10:36:27Z neighbour gate for set13-debian13 s13-d13-b poll=17 qemu_processes=1 earlier_run_jobs=0
+2026-10-11T10:37:27Z neighbour gate for set13-debian13 s13-d13-b poll=18 qemu_processes=1 earlier_run_jobs=0
+2026-10-11T10:38:27Z neighbour gate for set13-debian13 s13-d13-b poll=19 qemu_processes=1 earlier_run_jobs=0
+2026-10-11T10:39:27Z neighbour gate for set13-debian13 s13-d13-b poll=20 qemu_processes=1 earlier_run_jobs=0
+2026-10-11T10:40:27Z neighbour gate for set13-debian13 s13-d13-b poll=21 qemu_processes=0 earlier_run_jobs=0
+2026-10-11T10:40:27Z neighbour gate for set13-debian13 s13-d13-b: clear

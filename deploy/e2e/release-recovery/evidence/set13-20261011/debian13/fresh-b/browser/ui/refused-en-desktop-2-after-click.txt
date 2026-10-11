@@ -1,0 +1,85 @@
+Domains
+set12-a.test
+Active
+Open site
+Type
+php
+PHP version
+8.4
+SSL
+Off
+Disk usage
+1.2 KB
+Traffic
+357 B/mo
+Overview
+Hosting
+DNS
+Mail
+Databases
+Applications
+Files
+Advanced
+General
+Hosting type
+Configuration file
+PHP
+SSL/TLS
+This site’s configuration files
+The previous file is back. PHP-FPM was not reloaded, because its configuration is refused by another file — PHP-FPM keeps running with the configuration it loaded before. Fix what the check names (php-fpm8.4 -t: [11-Oct-2026 10:53:48] ERROR: [/etc/php/8.4/fpm/pool.d/zz-set12-owner.conf:3] unknown entry 'set12_not_a_directive'), then reload PHP-FPM yourself.
+php-fpm8.4 -t: [11-Oct-2026 10:53:48] ERROR: [/etc/php/8.4/fpm/pool.d/zz-set12-owner.conf:3] unknown entry 'set12_not_a_directive'
+nginx configuration
+CelikPanel’s text, unchanged
+/etc/nginx/sites-available/set12-a.test.conf
+PHP-FPM pool (this site’s PHP process settings)
+Edited outside CelikPanel
+/etc/php/8.4/fpm/pool.d/site2.conf
+The site’s nginx configuration file
+
+CelikPanel’s text, unchanged
+
+This file is exactly what CelikPanel last wrote, so CelikPanel keeps it up to date when you change this site’s settings.
+
+File
+/etc/nginx/sites-available/set12-a.test.conf
+
+Put your own nginx directives for this site in a .conf file in /etc/nginx/celikpanel-sites.d/set12-a.test. CelikPanel never writes there, and every change CelikPanel makes to this site keeps them.
+
+CelikPanel writes its own parts of this site (certificate validation) in /etc/nginx/celikpanel-managed.d/set12-a.test. Keep the lines of this file that include it.
+
+The site’s PHP-FPM pool file
+
+Configuration edited outside CelikPanel
+
+This file is not the text CelikPanel last wrote, so CelikPanel kept it exactly as it is, with every line you added. Saving this site’s PHP settings or switching its PHP version is refused until you choose below; PHP-FPM keeps running the site with your file.
+
+File
+/etc/php/8.4/fpm/pool.d/site2.conf
+
+Choose what happens to this file
+Replace the file
+
+Your file is first kept as a dated copy beside it, then CelikPanel’s text replaces it and PHP-FPM is reloaded. Lines you added are not in CelikPanel’s text. If PHP-FPM refuses it, your file is put back. The dated copy stays.
+
+Your file will be kept as /etc/php/8.4/fpm/pool.d/site2.conf.celikpanel-backup-<date and time>, then replaced by CelikPanel’s text, and PHP-FPM will be reloaded.
+
+Cancel
+Keep mine
+
+Your file stays as it is, byte for byte. CelikPanel records your choice and asks again only when the file changes.
+
+Merge by hand
+
+You edit the file on the server yourself; nothing is done here.
+
+Difference: your file (−) and CelikPanel’s text (+)
+--- /etc/php/8.4/fpm/pool.d/site2.conf (on this server)
++++ CelikPanel’s text
+@@ -15,5 +15,3 @@
+ pm.max_spare_servers = 3
+ pm.max_requests = 500
+ chdir = /
+-; set12: added by the server owner by hand (a comment and a directive of their own)
+-php_admin_value[memory_limit] = 256M
+
+PHP-FPM has no separate place for your own pool settings, so they belong in this file. CelikPanel keeps a pool file that has your lines and asks before writing it again; the difference shows exactly which lines are yours.

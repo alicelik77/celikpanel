@@ -1,0 +1,23 @@
+{
+  "action": "lab-slow-reload",
+  "at": "2026-10-11T10:38:28Z",
+  "daemon_reload": {
+    "argv": [
+      "systemctl",
+      "daemon-reload"
+    ],
+    "at": "2026-10-11T10:38:28Z",
+    "returncode": 0,
+    "seconds": 0.299,
+    "status": "ok",
+    "stderr": "",
+    "stdout": ""
+  },
+  "epoch": 1791715108.5213573,
+  "exec_reload": "ExecReload={ path=/bin/sleep ; argv[]=/bin/sleep 75 ; ignore_errors=no ; start_time=[n/a] ; stop_time=[n/a] ; pid=0 ; code=(null) ; status=0/0 }\n",
+  "mode": "lab-slow-reload",
+  "owner_action": false,
+  "path": "/etc/systemd/system/php8.3-fpm.service.d/zz-set12-lab-slow-reload.conf",
+  "schema": "celikpanel/set12-native/v1",
+  "text": "# set12 lab preparation: PHP-FPM's reload waits 75 s and does nothing else\n[Service]\nExecReload=\nExecReload=/bin/sleep 75\n"
+}

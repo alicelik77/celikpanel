@@ -1,0 +1,8 @@
+--- /etc/php/8.3/fpm/pool.d/site2.conf (on this server)
++++ CelikPanel's text
+@@ -15,5 +15,3 @@
+ pm.max_spare_servers = 3
+ pm.max_requests = 500
+ chdir = /
+-; set12: added by the server owner by hand (a comment and a directive of their own)
+-php_admin_value[memory_limit] = 256M

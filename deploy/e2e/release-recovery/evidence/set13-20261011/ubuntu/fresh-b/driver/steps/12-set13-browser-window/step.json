@@ -1,0 +1,10 @@
+{
+  "checks": {
+    "skipped": "no browser in this lab (SET12_HAND is not set)",
+    "window": "ui"
+  },
+  "finished_at": "2026-10-11T10:39:45Z",
+  "name": "set13-browser-window",
+  "started_at": "2026-10-11T10:39:45Z",
+  "verdict": "skipped"
+}

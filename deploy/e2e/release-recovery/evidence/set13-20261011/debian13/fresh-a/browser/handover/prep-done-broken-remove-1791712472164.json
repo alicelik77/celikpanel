@@ -1,0 +1,16 @@
+{
+  "at": "2026-10-11T09:54:33Z",
+  "prep": "broken-remove",
+  "result": {
+    "php": {
+      "ActiveEnterTimestamp": "Sun 2026-10-11 09:50:31 UTC",
+      "ActiveState": "active",
+      "ExecMainStartTimestamp": "Sun 2026-10-11 09:50:31 UTC",
+      "LoadState": "loaded",
+      "MainPID": "32865",
+      "NRestarts": "0",
+      "SubState": "running"
+    },
+    "test": 0
+  }
+}

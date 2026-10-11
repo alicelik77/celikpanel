@@ -1,0 +1,48 @@
+{
+  "at": "2026-10-11T10:39:45Z",
+  "by_unit": {
+    "celikpanel-agent.service": [
+      "2026-10-11T10:38:29.349742+00:00 dns-ubuntu agent[7717]: 2026/10/11 10:38:29 Getting pool config for site3 (PHP 8.3)",
+      "2026-10-11T10:39:44.783449+00:00 dns-ubuntu agent[7717]: 2026/10/11 10:39:44 ApplySitePool site 3 (save): written managed_unchanged /etc/php/8.3/fpm/pool.d/site3.conf"
+    ],
+    "celikpanel-panel.service": [
+      "2026-10-11T10:38:28.543654+00:00 dns-ubuntu panel[44268]: 2026/10/11 10:38:28 http: TLS handshake error from 127.0.0.1:43846: EOF",
+      "2026-10-11T10:38:29.677227+00:00 dns-ubuntu panel[44268]: 2026/10/11 10:38:29 http: TLS handshake error from 127.0.0.1:43860: EOF",
+      "2026-10-11T10:38:35.680119+00:00 dns-ubuntu panel[44268]: 2026/10/11 10:38:35 http: TLS handshake error from 127.0.0.1:50408: EOF",
+      "2026-10-11T10:39:35.696358+00:00 dns-ubuntu panel[44268]: 2026/10/11 10:39:35 site configuration set12-a.test php_pool: could not read its state: context deadline exceeded",
+      "2026-10-11T10:39:35.710408+00:00 dns-ubuntu panel[44268]: 2026/10/11 10:39:35 site configuration set12-a.test php_pool: recorded as not read (not_read timeout)",
+      "2026-10-11T10:39:35.722027+00:00 dns-ubuntu panel[44268]: 2026/10/11 10:39:35 http: TLS handshake error from 127.0.0.1:37034: EOF",
+      "2026-10-11T10:39:44.784844+00:00 dns-ubuntu panel[44268]: 2026/10/11 10:39:44 site configuration set12-b.test php_pool (save): written",
+      "2026-10-11T10:39:44.799116+00:00 dns-ubuntu panel[44268]: 2026/10/11 10:39:44 http: TLS handshake error from 127.0.0.1:39072: EOF"
+    ],
+    "nginx.service": [],
+    "php8.3-fpm.service": [
+      "2026-10-11T10:38:29.770827+00:00 dns-ubuntu systemd[1]: Reloading php8.3-fpm.service - The PHP 8.3 FastCGI Process Manager...",
+      "2026-10-11T10:39:44.776445+00:00 dns-ubuntu systemd[1]: Reloaded php8.3-fpm.service - The PHP 8.3 FastCGI Process Manager."
+    ]
+  },
+  "mode": "read-window12",
+  "owner_action": false,
+  "schema": "celikpanel/set12-native/v1",
+  "since_epoch": 1791715108,
+  "systemd_all": [
+    "2026-10-11T10:38:28.216765+00:00 dns-ubuntu systemd[1]: Reloading requested from client PID 46044 ('systemctl') (unit session-148.scope)...",
+    "2026-10-11T10:38:28.216781+00:00 dns-ubuntu systemd[1]: Reloading...",
+    "2026-10-11T10:38:28.483341+00:00 dns-ubuntu systemd[1]: Reloading finished in 266 ms.",
+    "2026-10-11T10:38:29.770827+00:00 dns-ubuntu systemd[1]: Reloading php8.3-fpm.service - The PHP 8.3 FastCGI Process Manager...",
+    "2026-10-11T10:39:00.300980+00:00 dns-ubuntu systemd[1]: Starting phpsessionclean.service - Clean php session files...",
+    "2026-10-11T10:39:00.423944+00:00 dns-ubuntu systemd[1]: phpsessionclean.service: Deactivated successfully.",
+    "2026-10-11T10:39:00.424178+00:00 dns-ubuntu systemd[1]: Finished phpsessionclean.service - Clean php session files.",
+    "2026-10-11T10:39:44.776445+00:00 dns-ubuntu systemd[1]: Reloaded php8.3-fpm.service - The PHP 8.3 FastCGI Process Manager."
+  ],
+  "systemd_manager": [
+    "2026-10-11T10:38:29.770827+00:00 dns-ubuntu systemd[1]: Reloading php8.3-fpm.service - The PHP 8.3 FastCGI Process Manager...",
+    "2026-10-11T10:39:44.776445+00:00 dns-ubuntu systemd[1]: Reloaded php8.3-fpm.service - The PHP 8.3 FastCGI Process Manager."
+  ],
+  "units": [
+    "celikpanel-panel.service",
+    "celikpanel-agent.service",
+    "nginx.service",
+    "php8.3-fpm.service"
+  ]
+}

@@ -1,0 +1,30 @@
+Admin Subscription
+
+10.00 GB diskin 1.2 KB kadarı
+
+Alan adı 4/999
+Veritabanı 0/999
+E-posta 1/50
+Alan adı ekle
+
+Toplam 4 öğe
+
+	Alan adı	Tür	Disk kullanımı	Trafik	Durum
+
+set13-n.test
+	node	0 B	0 B/mo
+Aktif
+
+set12-b.test
+	php8.4	0 B	0 B/mo
+Aktif
+
+set12-a.test
+Bir yapılandırma dosyası okunamadı; durumu bilinmiyor
+	php8.4	1.2 KB	357 B/mo
+Aktif
+
+set1-owner.test
+	static	0 B	0 B/mo
+Aktif
+Toplam 4 öğe

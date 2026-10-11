@@ -1,0 +1,46 @@
+{
+  "action": "lab-shims13",
+  "at": "2026-10-11T10:53:17Z",
+  "epoch": 1791715997.631179,
+  "mode": "lab-shims13",
+  "owner_action": false,
+  "removed": [
+    "/usr/local/sbin/systemctl",
+    "/usr/local/sbin/systemd-analyze"
+  ],
+  "schema": "celikpanel/set13-native/v1",
+  "state": {
+    "agent_path": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin",
+    "agent_pid": 5174,
+    "at": "2026-10-11T10:53:17Z",
+    "epoch": 1791715997.621016,
+    "fail_flag": false,
+    "line_count": 23,
+    "lines": [],
+    "mounts": [],
+    "shims": {
+      "systemctl": {
+        "real": "/usr/bin/systemctl",
+        "shim": {
+          "error": "FileNotFoundError",
+          "exists": false,
+          "path": "/usr/local/sbin/systemctl"
+        }
+      },
+      "systemd-analyze": {
+        "real": "/usr/bin/systemd-analyze",
+        "shim": {
+          "error": "FileNotFoundError",
+          "exists": false,
+          "path": "/usr/local/sbin/systemd-analyze"
+        }
+      }
+    },
+    "systemd_analyze_seen_by_agent": {
+      "executable": true,
+      "mode_octal": "0o755",
+      "size": 219944
+    }
+  },
+  "what": "remove"
+}

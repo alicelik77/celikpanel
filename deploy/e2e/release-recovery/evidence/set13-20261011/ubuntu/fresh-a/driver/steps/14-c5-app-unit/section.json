@@ -1,0 +1,1883 @@
+{
+  "c5b_agent_calls": [
+    "2026-10-11T10:18:12.686051205Z systemctl ppid=7749 comm=agent args=is-active celikapp-4",
+    "2026-10-11T10:18:12.713178000Z systemctl ppid=7749 comm=agent args=daemon-reload",
+    "2026-10-11T10:18:13.086200278Z systemctl ppid=7749 comm=agent args=try-restart celikapp-4"
+  ],
+  "calls": [
+    {
+      "at": "2026-10-11T10:17:36Z",
+      "json": {
+        "installed": [],
+        "system_version": ""
+      },
+      "label": "n: Node.js versions (GET /api/v1/runtimes/node)",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/runtimes/node"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T10:17:36Z",
+      "json": {
+        "releases": [
+          {
+            "name": "Krypton",
+            "version": "24.21.0"
+          },
+          {
+            "name": "Jod",
+            "version": "22.23.3"
+          },
+          {
+            "name": "Iron",
+            "version": "20.20.2"
+          },
+          {
+            "name": "Hydrogen",
+            "version": "18.20.8"
+          }
+        ]
+      },
+      "label": "n: the LTS list (GET /api/v1/runtimes/node/lts)",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/runtimes/node/lts"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T10:17:36Z",
+      "json": {
+        "operation": {
+          "id": "a6e1b62bb8c6b0bc38484fb6470517bb",
+          "kind": "runtime_install",
+          "package_name": "22.20.0",
+          "phase": "queued",
+          "request_id": "222486b345d0a5d52eef43319b73fae5",
+          "service_id": "node",
+          "started_at": "2026-10-11T10:17:37.462619321Z",
+          "status": "queued"
+        }
+      },
+      "label": "n: install Node.js 22.20.0 through the Panel",
+      "request": {
+        "body": {
+          "request_id": "222486b345d0a5d52eef43319b73fae5",
+          "version": "22.20.0"
+        },
+        "method": "POST",
+        "path": "/api/v1/runtimes/node"
+      },
+      "status": 202,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T10:17:57Z",
+      "json": {
+        "installed": [
+          "22.20.0"
+        ],
+        "system_version": ""
+      },
+      "label": "n: Node.js versions after the install",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/runtimes/node"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T10:18:00Z",
+      "json": {
+        "DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/4/public_html",
+        "Domain": "set13-n.test",
+        "DomainID": 4,
+        "FTPPassword": "[REDACTED]",
+        "FTPUser": "set13_n_test",
+        "PHPVersion": "8.3",
+        "ProjectType": "php",
+        "SiteID": 4,
+        "TempDomain": ""
+      },
+      "label": "create PHP site set13-n.test",
+      "request": {
+        "body": {
+          "domain": "set13-n.test",
+          "project_type": "php",
+          "ssl_type": "none"
+        },
+        "method": "POST",
+        "path": "/api/v1/domains/create"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T10:18:01Z",
+      "json": {
+        "app_port": 3001,
+        "success": true
+      },
+      "label": "c5: N becomes a Node site with a bare `node` start command",
+      "request": {
+        "body": {
+          "project_type": "node",
+          "runtime_version": "22.20.0",
+          "start_command": "node -e \"require('http').createServer((q,s)=>s.end('set13-n1')).listen(process.env.PORT)\""
+        },
+        "method": "PUT",
+        "path": "/api/v1/domains/4/hosting"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T10:18:11Z",
+      "json": {
+        "actions": [],
+        "challenge_file": "unchanged",
+        "domain": "set13-n.test",
+        "domain_id": 4,
+        "enabled": "link",
+        "file_sha256": "e20f58d8223f09ff68bcb69ed94c2b9fe555dec380c326637308ce28288730a0",
+        "files": [
+          {
+            "actions": [],
+            "challenge_file": "unchanged",
+            "domain": "set13-n.test",
+            "domain_id": 4,
+            "enabled": "link",
+            "file_sha256": "e20f58d8223f09ff68bcb69ed94c2b9fe555dec380c326637308ce28288730a0",
+            "include_dir": "/etc/nginx/celikpanel-sites.d/set13-n.test",
+            "kind": "nginx_vhost",
+            "ledger": {
+              "observed_at": "2026-10-11T10:18:02Z",
+              "written_at": "2026-10-11T10:18:02Z",
+              "written_release": "v0.1.0-alpha.81 8948352e3953"
+            },
+            "managed_dir": "/etc/nginx/celikpanel-managed.d/set13-n.test",
+            "managed_include": "include /etc/nginx/celikpanel-managed.d/set13-n.test/*.conf;",
+            "path": "/etc/nginx/sites-available/set13-n.test.conf",
+            "protection": "none",
+            "render_sha256": "53a30f995ebc5278496fb3db85a8b0b86196c28482a280f51b3f840dd3486a5b",
+            "state": "managed_unchanged"
+          },
+          {
+            "actions": [
+              "keep",
+              "take",
+              "merge"
+            ],
+            "diff": "--- /etc/systemd/system/celikapp-4.service (on this server)\n+++ CelikPanel's text\n@@ -16,8 +16,5 @@\n Restart=on-failure\n RestartSec=3\n \n-# set10: added by the server owner by hand\n-Environment=SET10_OWNER=unit\n-\n [Install]\n WantedBy=multi-user.target\n",
+            "domain": "set13-n.test",
+            "domain_id": 4,
+            "file_sha256": "c3701c92078381be5250967aa12558a65c6dcd0bdaa2deb75fadee4d3fb5a4e9",
+            "include_dir": "/etc/systemd/system/celikapp-4.service.d",
+            "kind": "app_unit",
+            "ledger": {
+              "observed_at": "2026-10-11T10:18:11Z",
+              "written_at": "2026-10-11T10:18:01Z",
+              "written_release": "v0.1.0-alpha.81 8948352e3953"
+            },
+            "path": "/etc/systemd/system/celikapp-4.service",
+            "protection": "none",
+            "render_sha256": "ebd5266bb84fed0b370a385e3bebd8b8f1fac0773278ac5facb60b6164df8292",
+            "state": "owner_edited"
+          }
+        ],
+        "include_dir": "/etc/nginx/celikpanel-sites.d/set13-n.test",
+        "kind": "nginx_vhost",
+        "ledger": {
+          "observed_at": "2026-10-11T10:18:02Z",
+          "written_at": "2026-10-11T10:18:02Z",
+          "written_release": "v0.1.0-alpha.81 8948352e3953"
+        },
+        "managed_dir": "/etc/nginx/celikpanel-managed.d/set13-n.test",
+        "managed_include": "include /etc/nginx/celikpanel-managed.d/set13-n.test/*.conf;",
+        "overall_kind": "app_unit",
+        "overall_state": "owner_edited",
+        "path": "/etc/nginx/sites-available/set13-n.test.conf",
+        "protection": "none",
+        "render_sha256": "53a30f995ebc5278496fb3db85a8b0b86196c28482a280f51b3f840dd3486a5b",
+        "state": "managed_unchanged"
+      },
+      "label": "c5b page: GET site-config",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains/4/site-config"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T10:18:12Z",
+      "json": {
+        "actions": [],
+        "backup_path": "/etc/systemd/system/celikapp-4.service.celikpanel-backup-20261011T101812Z",
+        "decision": {
+          "current": true,
+          "decided_at": "2026-10-11T10:18:13Z",
+          "kind": "take_celikpanel"
+        },
+        "domain": "set13-n.test",
+        "domain_id": 4,
+        "file_sha256": "484d63c5873af1c829e92d13d39280f608e28b12cae5d12d9dd7295c76c2beca",
+        "include_dir": "/etc/systemd/system/celikapp-4.service.d",
+        "kind": "app_unit",
+        "ledger": {
+          "backup_path": "/etc/systemd/system/celikapp-4.service.celikpanel-backup-20261011T101812Z",
+          "observed_at": "2026-10-11T10:18:13Z",
+          "written_at": "2026-10-11T10:18:13Z",
+          "written_release": "v0.1.0-alpha.81 8948352e3953"
+        },
+        "outcome": "taken",
+        "path": "/etc/systemd/system/celikapp-4.service",
+        "render_sha256": "ebd5266bb84fed0b370a385e3bebd8b8f1fac0773278ac5facb60b6164df8292",
+        "state": "managed_unchanged"
+      },
+      "label": "c5b take on the owner's unit (kind app_unit)",
+      "request": {
+        "body": {
+          "file_sha256": "c3701c92078381be5250967aa12558a65c6dcd0bdaa2deb75fadee4d3fb5a4e9",
+          "kind": "app_unit",
+          "render_sha256": "ebd5266bb84fed0b370a385e3bebd8b8f1fac0773278ac5facb60b6164df8292"
+        },
+        "method": "POST",
+        "path": "/api/v1/domains/4/site-config/take",
+        "x_celikpanel_request_id": "50bed7bd4cb7b3b4713ff492a1f53ba7"
+      },
+      "seconds": 0.52,
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T10:18:21Z",
+      "json": {
+        "actions": [],
+        "challenge_file": "unchanged",
+        "domain": "set13-n.test",
+        "domain_id": 4,
+        "enabled": "link",
+        "file_sha256": "e20f58d8223f09ff68bcb69ed94c2b9fe555dec380c326637308ce28288730a0",
+        "files": [
+          {
+            "actions": [],
+            "challenge_file": "unchanged",
+            "domain": "set13-n.test",
+            "domain_id": 4,
+            "enabled": "link",
+            "file_sha256": "e20f58d8223f09ff68bcb69ed94c2b9fe555dec380c326637308ce28288730a0",
+            "include_dir": "/etc/nginx/celikpanel-sites.d/set13-n.test",
+            "kind": "nginx_vhost",
+            "ledger": {
+              "observed_at": "2026-10-11T10:18:02Z",
+              "written_at": "2026-10-11T10:18:02Z",
+              "written_release": "v0.1.0-alpha.81 8948352e3953"
+            },
+            "managed_dir": "/etc/nginx/celikpanel-managed.d/set13-n.test",
+            "managed_include": "include /etc/nginx/celikpanel-managed.d/set13-n.test/*.conf;",
+            "path": "/etc/nginx/sites-available/set13-n.test.conf",
+            "protection": "none",
+            "render_sha256": "53a30f995ebc5278496fb3db85a8b0b86196c28482a280f51b3f840dd3486a5b",
+            "state": "managed_unchanged"
+          },
+          {
+            "actions": [
+              "keep",
+              "take",
+              "merge"
+            ],
+            "decision": {
+              "current": false,
+              "decided_at": "2026-10-11T10:18:13Z",
+              "kind": "take_celikpanel"
+            },
+            "diff": "--- /etc/systemd/system/celikapp-4.service (on this server)\n+++ CelikPanel's text\n@@ -16,8 +16,5 @@\n Restart=on-failure\n RestartSec=3\n \n-# set10: added by the server owner by hand\n-Environment=SET10_OWNER=unit\n-\n [Install]\n WantedBy=multi-user.target\n",
+            "domain": "set13-n.test",
+            "domain_id": 4,
+            "file_sha256": "c3701c92078381be5250967aa12558a65c6dcd0bdaa2deb75fadee4d3fb5a4e9",
+            "include_dir": "/etc/systemd/system/celikapp-4.service.d",
+            "kind": "app_unit",
+            "ledger": {
+              "backup_path": "/etc/systemd/system/celikapp-4.service.celikpanel-backup-20261011T101812Z",
+              "observed_at": "2026-10-11T10:18:21Z",
+              "written_at": "2026-10-11T10:18:13Z",
+              "written_release": "v0.1.0-alpha.81 8948352e3953"
+            },
+            "path": "/etc/systemd/system/celikapp-4.service",
+            "protection": "none",
+            "render_sha256": "ebd5266bb84fed0b370a385e3bebd8b8f1fac0773278ac5facb60b6164df8292",
+            "state": "owner_edited"
+          }
+        ],
+        "include_dir": "/etc/nginx/celikpanel-sites.d/set13-n.test",
+        "kind": "nginx_vhost",
+        "ledger": {
+          "observed_at": "2026-10-11T10:18:02Z",
+          "written_at": "2026-10-11T10:18:02Z",
+          "written_release": "v0.1.0-alpha.81 8948352e3953"
+        },
+        "managed_dir": "/etc/nginx/celikpanel-managed.d/set13-n.test",
+        "managed_include": "include /etc/nginx/celikpanel-managed.d/set13-n.test/*.conf;",
+        "overall_kind": "app_unit",
+        "overall_state": "owner_edited",
+        "path": "/etc/nginx/sites-available/set13-n.test.conf",
+        "protection": "none",
+        "render_sha256": "53a30f995ebc5278496fb3db85a8b0b86196c28482a280f51b3f840dd3486a5b",
+        "state": "managed_unchanged"
+      },
+      "label": "c5c page: GET site-config",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains/4/site-config"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T10:18:22Z",
+      "json": {
+        "code": "SITE_CONFIG_SERVICE_REFUSED",
+        "detail": "reload_failed",
+        "details": [
+          "application unit not activated, the previous file was put back: systemctl daemon-reload: exit status 1: Failed to reload daemon: set13 lab preparation (one injected failure)"
+        ],
+        "error": "systemd did not take CelikPanel's unit text (its reload failed), so the previous unit file was put back. Nothing else was changed. The server administrator reads systemd's message in the Panel's log, fixes the cause, then tries again.",
+        "reason": "app_unit",
+        "restore": "confirmed",
+        "service": "reloaded",
+        "service_active": "true"
+      },
+      "label": "c5c take on the owner's unit (kind app_unit)",
+      "request": {
+        "body": {
+          "file_sha256": "c3701c92078381be5250967aa12558a65c6dcd0bdaa2deb75fadee4d3fb5a4e9",
+          "kind": "app_unit",
+          "render_sha256": "ebd5266bb84fed0b370a385e3bebd8b8f1fac0773278ac5facb60b6164df8292"
+        },
+        "method": "POST",
+        "path": "/api/v1/domains/4/site-config/take",
+        "x_celikpanel_request_id": "767359637b2c673fd0c30650adce7ffe"
+      },
+      "seconds": 0.71,
+      "status": 502,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T10:18:31Z",
+      "json": {
+        "actions": [],
+        "challenge_file": "unchanged",
+        "domain": "set13-n.test",
+        "domain_id": 4,
+        "enabled": "link",
+        "file_sha256": "e20f58d8223f09ff68bcb69ed94c2b9fe555dec380c326637308ce28288730a0",
+        "files": [
+          {
+            "actions": [],
+            "challenge_file": "unchanged",
+            "domain": "set13-n.test",
+            "domain_id": 4,
+            "enabled": "link",
+            "file_sha256": "e20f58d8223f09ff68bcb69ed94c2b9fe555dec380c326637308ce28288730a0",
+            "include_dir": "/etc/nginx/celikpanel-sites.d/set13-n.test",
+            "kind": "nginx_vhost",
+            "ledger": {
+              "observed_at": "2026-10-11T10:18:02Z",
+              "written_at": "2026-10-11T10:18:02Z",
+              "written_release": "v0.1.0-alpha.81 8948352e3953"
+            },
+            "managed_dir": "/etc/nginx/celikpanel-managed.d/set13-n.test",
+            "managed_include": "include /etc/nginx/celikpanel-managed.d/set13-n.test/*.conf;",
+            "path": "/etc/nginx/sites-available/set13-n.test.conf",
+            "protection": "none",
+            "render_sha256": "53a30f995ebc5278496fb3db85a8b0b86196c28482a280f51b3f840dd3486a5b",
+            "state": "managed_unchanged"
+          },
+          {
+            "actions": [
+              "keep",
+              "take",
+              "merge"
+            ],
+            "decision": {
+              "current": false,
+              "decided_at": "2026-10-11T10:18:13Z",
+              "kind": "take_celikpanel"
+            },
+            "diff": "--- /etc/systemd/system/celikapp-4.service (on this server)\n+++ CelikPanel's text\n@@ -16,11 +16,5 @@\n Restart=on-failure\n RestartSec=3\n \n-# set10: added by the server owner by hand\n-Environment=SET10_OWNER=unit\n-\n-# set13: added by the server owner by hand (a start-up program that does not exist)\n-ExecStartPre=/opt/set13-owner/missing-prepare\n-\n [Install]\n WantedBy=multi-user.target\n",
+            "domain": "set13-n.test",
+            "domain_id": 4,
+            "file_sha256": "9c2f8140c43a27ad45cb5022d736a3cbf964aa0cdfe2d7008106201604e644ea",
+            "include_dir": "/etc/systemd/system/celikapp-4.service.d",
+            "kind": "app_unit",
+            "ledger": {
+              "backup_path": "/etc/systemd/system/celikapp-4.service.celikpanel-backup-20261011T101822Z",
+              "observed_at": "2026-10-11T10:18:32Z",
+              "written_at": "2026-10-11T10:18:13Z",
+              "written_release": "v0.1.0-alpha.81 8948352e3953"
+            },
+            "path": "/etc/systemd/system/celikapp-4.service",
+            "protection": "none",
+            "render_sha256": "ebd5266bb84fed0b370a385e3bebd8b8f1fac0773278ac5facb60b6164df8292",
+            "state": "owner_edited"
+          }
+        ],
+        "include_dir": "/etc/nginx/celikpanel-sites.d/set13-n.test",
+        "kind": "nginx_vhost",
+        "ledger": {
+          "observed_at": "2026-10-11T10:18:02Z",
+          "written_at": "2026-10-11T10:18:02Z",
+          "written_release": "v0.1.0-alpha.81 8948352e3953"
+        },
+        "managed_dir": "/etc/nginx/celikpanel-managed.d/set13-n.test",
+        "managed_include": "include /etc/nginx/celikpanel-managed.d/set13-n.test/*.conf;",
+        "overall_kind": "app_unit",
+        "overall_state": "owner_edited",
+        "path": "/etc/nginx/sites-available/set13-n.test.conf",
+        "protection": "none",
+        "render_sha256": "53a30f995ebc5278496fb3db85a8b0b86196c28482a280f51b3f840dd3486a5b",
+        "state": "managed_unchanged"
+      },
+      "label": "c5d page: GET site-config",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains/4/site-config"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T10:18:33Z",
+      "json": {
+        "code": "SITE_CONFIG_SERVICE_REFUSED",
+        "detail": "reload_failed",
+        "details": [
+          "systemd-analyze verify: celikapp-4.service: Command /opt/set13-owner/missing-prepare is not executable: No such file or directory: exit status 1",
+          "application unit not activated, the previous file was put back: systemctl daemon-reload: exit status 1: Failed to reload daemon: set13 lab preparation (one injected failure); the application was not restarted (config_refused_elsewhere): systemd-analyze verify: celikapp-4.service: Command /opt/set13-owner/missing-prepare is not executable: No such file or directory: exit status 1"
+        ],
+        "error": "The previous unit file is back and systemd has read it again. The application was not restarted, because systemd-analyze verify refuses the unit — the application keeps running as it was started. Fix what the check names (systemd-analyze verify: celikapp-4.service: Command /opt/set13-owner/missing-prepare is not executable: No such file or directory: exit status 1), then restart the application yourself.",
+        "reason": "app_unit",
+        "restore": "confirmed",
+        "service": "not_reloaded",
+        "service_active": "true",
+        "service_reason": "config_refused_elsewhere",
+        "vars": {
+          "line": "systemd-analyze verify: celikapp-4.service: Command /opt/set13-owner/missing-prepare is not executable: No such file or directory: exit status 1"
+        }
+      },
+      "label": "c5d take on the owner's unit (kind app_unit)",
+      "request": {
+        "body": {
+          "file_sha256": "9c2f8140c43a27ad45cb5022d736a3cbf964aa0cdfe2d7008106201604e644ea",
+          "kind": "app_unit",
+          "render_sha256": "ebd5266bb84fed0b370a385e3bebd8b8f1fac0773278ac5facb60b6164df8292"
+        },
+        "method": "POST",
+        "path": "/api/v1/domains/4/site-config/take",
+        "x_celikpanel_request_id": "9300f2d58df4e182a83a90c057c48237"
+      },
+      "seconds": 0.57,
+      "status": 502,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T10:18:42Z",
+      "json": {
+        "actions": [],
+        "challenge_file": "unchanged",
+        "domain": "set13-n.test",
+        "domain_id": 4,
+        "enabled": "link",
+        "file_sha256": "e20f58d8223f09ff68bcb69ed94c2b9fe555dec380c326637308ce28288730a0",
+        "files": [
+          {
+            "actions": [],
+            "challenge_file": "unchanged",
+            "domain": "set13-n.test",
+            "domain_id": 4,
+            "enabled": "link",
+            "file_sha256": "e20f58d8223f09ff68bcb69ed94c2b9fe555dec380c326637308ce28288730a0",
+            "include_dir": "/etc/nginx/celikpanel-sites.d/set13-n.test",
+            "kind": "nginx_vhost",
+            "ledger": {
+              "observed_at": "2026-10-11T10:18:02Z",
+              "written_at": "2026-10-11T10:18:02Z",
+              "written_release": "v0.1.0-alpha.81 8948352e3953"
+            },
+            "managed_dir": "/etc/nginx/celikpanel-managed.d/set13-n.test",
+            "managed_include": "include /etc/nginx/celikpanel-managed.d/set13-n.test/*.conf;",
+            "path": "/etc/nginx/sites-available/set13-n.test.conf",
+            "protection": "none",
+            "render_sha256": "53a30f995ebc5278496fb3db85a8b0b86196c28482a280f51b3f840dd3486a5b",
+            "state": "managed_unchanged"
+          },
+          {
+            "actions": [
+              "keep",
+              "take",
+              "merge"
+            ],
+            "decision": {
+              "current": false,
+              "decided_at": "2026-10-11T10:18:13Z",
+              "kind": "take_celikpanel"
+            },
+            "diff": "--- /etc/systemd/system/celikapp-4.service (on this server)\n+++ CelikPanel's text\n@@ -16,8 +16,5 @@\n Restart=on-failure\n RestartSec=3\n \n-# set10: added by the server owner by hand\n-Environment=SET10_OWNER=unit\n-\n [Install]\n WantedBy=multi-user.target\n",
+            "domain": "set13-n.test",
+            "domain_id": 4,
+            "file_sha256": "c3701c92078381be5250967aa12558a65c6dcd0bdaa2deb75fadee4d3fb5a4e9",
+            "include_dir": "/etc/systemd/system/celikapp-4.service.d",
+            "kind": "app_unit",
+            "ledger": {
+              "backup_path": "/etc/systemd/system/celikapp-4.service.celikpanel-backup-20261011T101833Z",
+              "observed_at": "2026-10-11T10:18:42Z",
+              "written_at": "2026-10-11T10:18:13Z",
+              "written_release": "v0.1.0-alpha.81 8948352e3953"
+            },
+            "path": "/etc/systemd/system/celikapp-4.service",
+            "protection": "none",
+            "render_sha256": "ebd5266bb84fed0b370a385e3bebd8b8f1fac0773278ac5facb60b6164df8292",
+            "state": "owner_edited"
+          }
+        ],
+        "include_dir": "/etc/nginx/celikpanel-sites.d/set13-n.test",
+        "kind": "nginx_vhost",
+        "ledger": {
+          "observed_at": "2026-10-11T10:18:02Z",
+          "written_at": "2026-10-11T10:18:02Z",
+          "written_release": "v0.1.0-alpha.81 8948352e3953"
+        },
+        "managed_dir": "/etc/nginx/celikpanel-managed.d/set13-n.test",
+        "managed_include": "include /etc/nginx/celikpanel-managed.d/set13-n.test/*.conf;",
+        "overall_kind": "app_unit",
+        "overall_state": "owner_edited",
+        "path": "/etc/nginx/sites-available/set13-n.test.conf",
+        "protection": "none",
+        "render_sha256": "53a30f995ebc5278496fb3db85a8b0b86196c28482a280f51b3f840dd3486a5b",
+        "state": "managed_unchanged"
+      },
+      "label": "c5e page: GET site-config",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains/4/site-config"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T10:18:43Z",
+      "json": {
+        "code": "SITE_CONFIG_SERVICE_REFUSED",
+        "detail": "reload_failed",
+        "details": [
+          "application unit not activated, the previous file was put back: systemctl daemon-reload: exit status 1: Failed to reload daemon: set13 lab preparation (one injected failure); the application was not restarted (check_unavailable)"
+        ],
+        "error": "The previous unit file is back and systemd has read it again. The application was not restarted, because this server has no systemd-analyze to check the unit first — the application keeps running as it was started. Restart the application yourself once you have checked the unit.",
+        "reason": "app_unit",
+        "restore": "confirmed",
+        "service": "not_reloaded",
+        "service_active": "true",
+        "service_reason": "check_unavailable"
+      },
+      "label": "c5e take on the owner's unit (kind app_unit)",
+      "request": {
+        "body": {
+          "file_sha256": "c3701c92078381be5250967aa12558a65c6dcd0bdaa2deb75fadee4d3fb5a4e9",
+          "kind": "app_unit",
+          "render_sha256": "ebd5266bb84fed0b370a385e3bebd8b8f1fac0773278ac5facb60b6164df8292"
+        },
+        "method": "POST",
+        "path": "/api/v1/domains/4/site-config/take",
+        "x_celikpanel_request_id": "ee7ed472b7a22f8cc72ce232f0ee84dc"
+      },
+      "seconds": 0.44,
+      "status": 502,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T10:18:51Z",
+      "json": {
+        "actions": [],
+        "challenge_file": "unchanged",
+        "domain": "set13-n.test",
+        "domain_id": 4,
+        "enabled": "link",
+        "file_sha256": "e20f58d8223f09ff68bcb69ed94c2b9fe555dec380c326637308ce28288730a0",
+        "files": [
+          {
+            "actions": [],
+            "challenge_file": "unchanged",
+            "domain": "set13-n.test",
+            "domain_id": 4,
+            "enabled": "link",
+            "file_sha256": "e20f58d8223f09ff68bcb69ed94c2b9fe555dec380c326637308ce28288730a0",
+            "include_dir": "/etc/nginx/celikpanel-sites.d/set13-n.test",
+            "kind": "nginx_vhost",
+            "ledger": {
+              "observed_at": "2026-10-11T10:18:02Z",
+              "written_at": "2026-10-11T10:18:02Z",
+              "written_release": "v0.1.0-alpha.81 8948352e3953"
+            },
+            "managed_dir": "/etc/nginx/celikpanel-managed.d/set13-n.test",
+            "managed_include": "include /etc/nginx/celikpanel-managed.d/set13-n.test/*.conf;",
+            "path": "/etc/nginx/sites-available/set13-n.test.conf",
+            "protection": "none",
+            "render_sha256": "53a30f995ebc5278496fb3db85a8b0b86196c28482a280f51b3f840dd3486a5b",
+            "state": "managed_unchanged"
+          },
+          {
+            "actions": [
+              "keep",
+              "take",
+              "merge"
+            ],
+            "decision": {
+              "current": false,
+              "decided_at": "2026-10-11T10:18:13Z",
+              "kind": "take_celikpanel"
+            },
+            "diff": "--- /etc/systemd/system/celikapp-4.service (on this server)\n+++ CelikPanel's text\n@@ -16,8 +16,5 @@\n Restart=on-failure\n RestartSec=3\n \n-# set10: added by the server owner by hand\n-Environment=SET10_OWNER=unit\n-\n [Install]\n WantedBy=multi-user.target\n",
+            "domain": "set13-n.test",
+            "domain_id": 4,
+            "file_sha256": "c3701c92078381be5250967aa12558a65c6dcd0bdaa2deb75fadee4d3fb5a4e9",
+            "include_dir": "/etc/systemd/system/celikapp-4.service.d",
+            "kind": "app_unit",
+            "ledger": {
+              "backup_path": "/etc/systemd/system/celikapp-4.service.celikpanel-backup-20261011T101843Z",
+              "observed_at": "2026-10-11T10:18:43Z",
+              "written_at": "2026-10-11T10:18:13Z",
+              "written_release": "v0.1.0-alpha.81 8948352e3953"
+            },
+            "path": "/etc/systemd/system/celikapp-4.service",
+            "protection": "none",
+            "render_sha256": "ebd5266bb84fed0b370a385e3bebd8b8f1fac0773278ac5facb60b6164df8292",
+            "state": "owner_edited"
+          }
+        ],
+        "include_dir": "/etc/nginx/celikpanel-sites.d/set13-n.test",
+        "kind": "nginx_vhost",
+        "ledger": {
+          "observed_at": "2026-10-11T10:18:02Z",
+          "written_at": "2026-10-11T10:18:02Z",
+          "written_release": "v0.1.0-alpha.81 8948352e3953"
+        },
+        "managed_dir": "/etc/nginx/celikpanel-managed.d/set13-n.test",
+        "managed_include": "include /etc/nginx/celikpanel-managed.d/set13-n.test/*.conf;",
+        "overall_kind": "app_unit",
+        "overall_state": "owner_edited",
+        "path": "/etc/nginx/sites-available/set13-n.test.conf",
+        "protection": "none",
+        "render_sha256": "53a30f995ebc5278496fb3db85a8b0b86196c28482a280f51b3f840dd3486a5b",
+        "state": "managed_unchanged"
+      },
+      "label": "c5 end page: GET site-config",
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/v1/domains/4/site-config"
+      },
+      "status": 200,
+      "text": null
+    },
+    {
+      "at": "2026-10-11T10:18:52Z",
+      "json": {
+        "actions": [],
+        "backup_path": "/etc/systemd/system/celikapp-4.service.celikpanel-backup-20261011T101852Z",
+        "decision": {
+          "current": true,
+          "decided_at": "2026-10-11T10:18:52Z",
+          "kind": "take_celikpanel"
+        },
+        "domain": "set13-n.test",
+        "domain_id": 4,
+        "file_sha256": "484d63c5873af1c829e92d13d39280f608e28b12cae5d12d9dd7295c76c2beca",
+        "include_dir": "/etc/systemd/system/celikapp-4.service.d",
+        "kind": "app_unit",
+        "ledger": {
+          "backup_path": "/etc/systemd/system/celikapp-4.service.celikpanel-backup-20261011T101852Z",
+          "observed_at": "2026-10-11T10:18:52Z",
+          "written_at": "2026-10-11T10:18:52Z",
+          "written_release": "v0.1.0-alpha.81 8948352e3953"
+        },
+        "outcome": "taken",
+        "path": "/etc/systemd/system/celikapp-4.service",
+        "render_sha256": "ebd5266bb84fed0b370a385e3bebd8b8f1fac0773278ac5facb60b6164df8292",
+        "state": "managed_unchanged"
+      },
+      "label": "c5 end: take CelikPanel's unit",
+      "request": {
+        "body": {
+          "file_sha256": "c3701c92078381be5250967aa12558a65c6dcd0bdaa2deb75fadee4d3fb5a4e9",
+          "kind": "app_unit",
+          "render_sha256": "ebd5266bb84fed0b370a385e3bebd8b8f1fac0773278ac5facb60b6164df8292"
+        },
+        "method": "POST",
+        "path": "/api/v1/domains/4/site-config/take",
+        "x_celikpanel_request_id": "2f9e0df656b7abebf61bb3c186428655"
+      },
+      "seconds": 0.51,
+      "status": 200,
+      "text": null
+    }
+  ],
+  "cells": {
+    "C5": {
+      "detail": {
+        "journals": [
+          "steps/14-c5-app-unit/native/054-c5b-journal.json",
+          "steps/14-c5-app-unit/native/061-c5c-journal.json",
+          "steps/14-c5-app-unit/native/068-c5d-journal.json",
+          "steps/14-c5-app-unit/native/076-c5e-journal.json"
+        ],
+        "node": {
+          "how": "installed through the Panel",
+          "installed": [
+            "22.20.0"
+          ],
+          "status": "succeeded",
+          "version": "22.20.0"
+        }
+      },
+      "expectations": [
+        {
+          "expectation": "Node.js installed through the Panel (POST /api/v1/runtimes/node)",
+          "held": true,
+          "measured": {
+            "how": "installed through the Panel",
+            "installed": [
+              "22.20.0"
+            ],
+            "status": "succeeded",
+            "version": "22.20.0"
+          }
+        },
+        {
+          "expectation": "the hosting change answers 200",
+          "held": true,
+          "measured": 200
+        },
+        {
+          "expectation": "the unit carries Environment=PATH=<Node dir>:/usr/local/sbin:...:/bin",
+          "held": true,
+          "measured": [
+            "Environment=PATH=/opt/celikpanel/runtimes/node/22.20.0/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+          ]
+        },
+        {
+          "expectation": "ExecStart=/bin/sh -c '…' (not -lc)",
+          "held": true,
+          "measured": [
+            "ExecStart=/bin/sh -c 'node -e \"require('\\''http'\\'').createServer((q,s)=>s.end('\\''set13-n1'\\'')).listen(process.env.PORT)\"'"
+          ]
+        },
+        {
+          "expectation": "the application runs: active, NRestarts 0, no exit 127 / 'not found' in its journal, it answers on its port",
+          "held": true,
+          "measured": {
+            "http": {
+              "body": "set13-n1",
+              "status": 200
+            },
+            "journal": [
+              "2026-10-11T10:18:01.947237+00:00 dns-ubuntu systemd[1]: Started celikapp-4.service - CelikPanel app: set13-n.test."
+            ],
+            "state": {
+              "ActiveState": "active",
+              "ExecMainCode": "0",
+              "ExecMainStartTimestamp": "Sun 2026-10-11 10:18:01 UTC",
+              "ExecMainStatus": "0",
+              "MainPID": "48829",
+              "NRestarts": "0",
+              "Result": "success",
+              "SubState": "running"
+            }
+          }
+        },
+        {
+          "expectation": "the harness's own systemd-analyze verify of CelikPanel's unit (recorded)",
+          "held": true,
+          "measured": {
+            "returncode": 0,
+            "stderr": "",
+            "stdout": ""
+          }
+        },
+        {
+          "expectation": "lab: the shims are in place and the Agent's PATH finds /usr/local/sbin first",
+          "held": true,
+          "measured": {
+            "agent_path": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/snap/bin"
+          }
+        },
+        {
+          "expectation": "(b) plain take: 200 taken; the calls the Agent made are recorded (daemon-reload, try-restart; verify is documented only after a put-back); MainPID changed, active",
+          "held": true,
+          "measured": {
+            "agent_calls": [
+              "2026-10-11T10:18:12.686051205Z systemctl ppid=7749 comm=agent args=is-active celikapp-4",
+              "2026-10-11T10:18:12.713178000Z systemctl ppid=7749 comm=agent args=daemon-reload",
+              "2026-10-11T10:18:13.086200278Z systemctl ppid=7749 comm=agent args=try-restart celikapp-4"
+            ],
+            "answer": {
+              "at": "2026-10-11T10:18:12Z",
+              "json": {
+                "actions": [],
+                "backup_path": "/etc/systemd/system/celikapp-4.service.celikpanel-backup-20261011T101812Z",
+                "decision": {
+                  "current": true,
+                  "decided_at": "2026-10-11T10:18:13Z",
+                  "kind": "take_celikpanel"
+                },
+                "domain": "set13-n.test",
+                "domain_id": 4,
+                "file_sha256": "484d63c5873af1c829e92d13d39280f608e28b12cae5d12d9dd7295c76c2beca",
+                "include_dir": "/etc/systemd/system/celikapp-4.service.d",
+                "kind": "app_unit",
+                "ledger": {
+                  "backup_path": "/etc/systemd/system/celikapp-4.service.celikpanel-backup-20261011T101812Z",
+                  "observed_at": "2026-10-11T10:18:13Z",
+                  "written_at": "2026-10-11T10:18:13Z",
+                  "written_release": "v0.1.0-alpha.81 8948352e3953"
+                },
+                "outcome": "taken",
+                "path": "/etc/systemd/system/celikapp-4.service",
+                "render_sha256": "ebd5266bb84fed0b370a385e3bebd8b8f1fac0773278ac5facb60b6164df8292",
+                "state": "managed_unchanged"
+              },
+              "label": "c5b take on the owner's unit (kind app_unit)",
+              "request": {
+                "body": {
+                  "file_sha256": "c3701c92078381be5250967aa12558a65c6dcd0bdaa2deb75fadee4d3fb5a4e9",
+                  "kind": "app_unit",
+                  "render_sha256": "ebd5266bb84fed0b370a385e3bebd8b8f1fac0773278ac5facb60b6164df8292"
+                },
+                "method": "POST",
+                "path": "/api/v1/domains/4/site-config/take",
+                "x_celikpanel_request_id": "50bed7bd4cb7b3b4713ff492a1f53ba7"
+              },
+              "seconds": 0.52,
+              "status": 200,
+              "text": null
+            },
+            "main_pid": [
+              "48829",
+              "49289"
+            ]
+          }
+        },
+        {
+          "expectation": "(c) put-back after an injected daemon-reload failure: 502 SITE_CONFIG_SERVICE_REFUSED app_unit, restore confirmed",
+          "held": true,
+          "measured": {
+            "at": "2026-10-11T10:18:22Z",
+            "json": {
+              "code": "SITE_CONFIG_SERVICE_REFUSED",
+              "detail": "reload_failed",
+              "details": [
+                "application unit not activated, the previous file was put back: systemctl daemon-reload: exit status 1: Failed to reload daemon: set13 lab preparation (one injected failure)"
+              ],
+              "error": "systemd did not take CelikPanel's unit text (its reload failed), so the previous unit file was put back. Nothing else was changed. The server administrator reads systemd's message in the Panel's log, fixes the cause, then tries again.",
+              "reason": "app_unit",
+              "restore": "confirmed",
+              "service": "reloaded",
+              "service_active": "true"
+            },
+            "label": "c5c take on the owner's unit (kind app_unit)",
+            "request": {
+              "body": {
+                "file_sha256": "c3701c92078381be5250967aa12558a65c6dcd0bdaa2deb75fadee4d3fb5a4e9",
+                "kind": "app_unit",
+                "render_sha256": "ebd5266bb84fed0b370a385e3bebd8b8f1fac0773278ac5facb60b6164df8292"
+              },
+              "method": "POST",
+              "path": "/api/v1/domains/4/site-config/take",
+              "x_celikpanel_request_id": "767359637b2c673fd0c30650adce7ffe"
+            },
+            "seconds": 0.71,
+            "status": 502,
+            "text": null
+          }
+        },
+        {
+          "expectation": "(c) verify passed -> service reloaded (try-restart), service_active true",
+          "held": true,
+          "measured": {
+            "code": "SITE_CONFIG_SERVICE_REFUSED",
+            "detail": "reload_failed",
+            "details": [
+              "application unit not activated, the previous file was put back: systemctl daemon-reload: exit status 1: Failed to reload daemon: set13 lab preparation (one injected failure)"
+            ],
+            "error": "systemd did not take CelikPanel's unit text (its reload failed), so the previous unit file was put back. Nothing else was changed. The server administrator reads systemd's message in the Panel's log, fixes the cause, then tries again.",
+            "reason": "app_unit",
+            "restore": "confirmed",
+            "service": "reloaded",
+            "service_active": "true"
+          }
+        },
+        {
+          "expectation": "(c) the Agent's calls in order: failed daemon-reload, daemon-reload, systemd-analyze verify <unit>, try-restart",
+          "held": true,
+          "measured": [
+            "2026-10-11T10:18:22.597714164Z systemctl ppid=7749 comm=agent args=is-active celikapp-4",
+            "2026-10-11T10:18:22.624638077Z systemctl ppid=7749 comm=agent args=daemon-reload",
+            "2026-10-11T10:18:22.630989515Z systemctl ppid=7749 injected-failure daemon-reload rc=1",
+            "2026-10-11T10:18:22.649167625Z systemctl ppid=7749 comm=agent args=daemon-reload",
+            "2026-10-11T10:18:23.098233054Z systemd-analyze ppid=7749 comm=agent args=verify /etc/systemd/system/celikapp-4.service",
+            "2026-10-11T10:18:23.194737339Z systemd-analyze ppid=7749 rc=0",
+            "2026-10-11T10:18:23.198543367Z systemctl ppid=7749 comm=agent args=try-restart celikapp-4",
+            "2026-10-11T10:18:23.228968869Z systemctl ppid=7749 comm=agent args=is-active celikapp-4"
+          ]
+        },
+        {
+          "expectation": "(c) the owner's unit is back byte-equal; the application was restarted (MainPID changed) and is active",
+          "held": true,
+          "measured": {
+            "main_pid": [
+              "49289",
+              "49843"
+            ],
+            "sha256": [
+              "c3701c92078381be5250967aa12558a65c6dcd0bdaa2deb75fadee4d3fb5a4e9",
+              "c3701c92078381be5250967aa12558a65c6dcd0bdaa2deb75fadee4d3fb5a4e9"
+            ]
+          }
+        },
+        {
+          "expectation": "(d) the cause: the harness's own verify of the owner's unit fails",
+          "held": true,
+          "measured": {
+            "returncode": 1,
+            "stderr": "celikapp-4.service: Command /opt/set13-owner/missing-prepare is not executable: No such file or directory\n"
+          }
+        },
+        {
+          "expectation": "(d) 502 SITE_CONFIG_SERVICE_REFUSED app_unit, restore confirmed, service not_reloaded, config_refused_elsewhere, service_active true",
+          "held": true,
+          "measured": {
+            "code": "SITE_CONFIG_SERVICE_REFUSED",
+            "detail": "reload_failed",
+            "details": [
+              "systemd-analyze verify: celikapp-4.service: Command /opt/set13-owner/missing-prepare is not executable: No such file or directory: exit status 1",
+              "application unit not activated, the previous file was put back: systemctl daemon-reload: exit status 1: Failed to reload daemon: set13 lab preparation (one injected failure); the application was not restarted (config_refused_elsewhere): systemd-analyze verify: celikapp-4.service: Command /opt/set13-owner/missing-prepare is not executable: No such file or directory: exit status 1"
+            ],
+            "error": "The previous unit file is back and systemd has read it again. The application was not restarted, because systemd-analyze verify refuses the unit — the application keeps running as it was started. Fix what the check names (systemd-analyze verify: celikapp-4.service: Command /opt/set13-owner/missing-prepare is not executable: No such file or directory: exit status 1), then restart the application yourself.",
+            "reason": "app_unit",
+            "restore": "confirmed",
+            "service": "not_reloaded",
+            "service_active": "true",
+            "service_reason": "config_refused_elsewhere",
+            "vars": {
+              "line": "systemd-analyze verify: celikapp-4.service: Command /opt/set13-owner/missing-prepare is not executable: No such file or directory: exit status 1"
+            }
+          }
+        },
+        {
+          "expectation": "(d) for an administrator: verify's line (naming the missing program) in vars.line and details",
+          "held": true,
+          "measured": {
+            "details": [
+              "systemd-analyze verify: celikapp-4.service: Command /opt/set13-owner/missing-prepare is not executable: No such file or directory: exit status 1",
+              "application unit not activated, the previous file was put back: systemctl daemon-reload: exit status 1: Failed to reload daemon: set13 lab preparation (one injected failure); the application was not restarted (config_refused_elsewhere): systemd-analyze verify: celikapp-4.service: Command /opt/set13-owner/missing-prepare is not executable: No such file or directory: exit status 1"
+            ],
+            "vars": {
+              "line": "systemd-analyze verify: celikapp-4.service: Command /opt/set13-owner/missing-prepare is not executable: No such file or directory: exit status 1"
+            }
+          }
+        },
+        {
+          "expectation": "(d) the Agent ran verify, it failed, and no try-restart followed",
+          "held": true,
+          "measured": [
+            "2026-10-11T10:18:33.382673100Z systemctl ppid=7749 comm=agent args=is-active celikapp-4",
+            "2026-10-11T10:18:33.415292150Z systemctl ppid=7749 comm=agent args=daemon-reload",
+            "2026-10-11T10:18:33.422258226Z systemctl ppid=7749 injected-failure daemon-reload rc=1",
+            "2026-10-11T10:18:33.444684292Z systemctl ppid=7749 comm=agent args=daemon-reload",
+            "2026-10-11T10:18:33.765474721Z systemd-analyze ppid=7749 comm=agent args=verify /etc/systemd/system/celikapp-4.service",
+            "2026-10-11T10:18:33.865481172Z systemd-analyze ppid=7749 rc=1",
+            "2026-10-11T10:18:33.870165307Z systemctl ppid=7749 comm=agent args=is-active celikapp-4"
+          ]
+        },
+        {
+          "expectation": "(d) the application was not restarted: MainPID and NRestarts unchanged, active; the owner's unit byte-equal",
+          "held": true,
+          "measured": {
+            "state": [
+              {
+                "ActiveState": "active",
+                "ExecMainCode": "0",
+                "ExecMainStartTimestamp": "Sun 2026-10-11 10:18:23 UTC",
+                "ExecMainStatus": "0",
+                "MainPID": "49843",
+                "NRestarts": "0",
+                "Result": "success",
+                "SubState": "running"
+              },
+              {
+                "ActiveState": "active",
+                "ExecMainCode": "0",
+                "ExecMainStartTimestamp": "Sun 2026-10-11 10:18:23 UTC",
+                "ExecMainStatus": "0",
+                "MainPID": "49843",
+                "NRestarts": "0",
+                "Result": "success",
+                "SubState": "running"
+              }
+            ]
+          }
+        },
+        {
+          "expectation": "(e) lab: systemd-analyze is not executable as the Agent sees it",
+          "held": true,
+          "measured": {
+            "mount": {
+              "argv": [
+                "mount",
+                "--bind",
+                "/run/set13-lab/no-systemd-analyze",
+                "/usr/bin/systemd-analyze"
+              ],
+              "at": "2026-10-11T10:18:42Z",
+              "returncode": 0,
+              "seconds": 0.004,
+              "status": "ok",
+              "stderr": "",
+              "stdout": ""
+            },
+            "seen_by_agent": {
+              "executable": false,
+              "mode_octal": "0o644",
+              "size": 0
+            }
+          }
+        },
+        {
+          "expectation": "(e) 502, restore confirmed, service not_reloaded, service_reason check_unavailable, service_active true; the sentence names it",
+          "held": true,
+          "measured": {
+            "code": "SITE_CONFIG_SERVICE_REFUSED",
+            "detail": "reload_failed",
+            "details": [
+              "application unit not activated, the previous file was put back: systemctl daemon-reload: exit status 1: Failed to reload daemon: set13 lab preparation (one injected failure); the application was not restarted (check_unavailable)"
+            ],
+            "error": "The previous unit file is back and systemd has read it again. The application was not restarted, because this server has no systemd-analyze to check the unit first — the application keeps running as it was started. Restart the application yourself once you have checked the unit.",
+            "reason": "app_unit",
+            "restore": "confirmed",
+            "service": "not_reloaded",
+            "service_active": "true",
+            "service_reason": "check_unavailable"
+          }
+        },
+        {
+          "expectation": "(e) no try-restart; MainPID and NRestarts unchanged, active",
+          "held": true,
+          "measured": {
+            "calls": [
+              "2026-10-11T10:18:43.553230265Z systemctl ppid=7749 comm=agent args=is-active celikapp-4",
+              "2026-10-11T10:18:43.581351638Z systemctl ppid=7749 comm=agent args=daemon-reload",
+              "2026-10-11T10:18:43.587464382Z systemctl ppid=7749 injected-failure daemon-reload rc=1",
+              "2026-10-11T10:18:43.610102205Z systemctl ppid=7749 comm=agent args=daemon-reload",
+              "2026-10-11T10:18:43.919761393Z systemctl ppid=7749 comm=agent args=is-active celikapp-4"
+            ],
+            "state": [
+              {
+                "ActiveState": "active",
+                "ExecMainCode": "0",
+                "ExecMainStartTimestamp": "Sun 2026-10-11 10:18:23 UTC",
+                "ExecMainStatus": "0",
+                "MainPID": "49843",
+                "NRestarts": "0",
+                "Result": "success",
+                "SubState": "running"
+              },
+              {
+                "ActiveState": "active",
+                "ExecMainCode": "0",
+                "ExecMainStartTimestamp": "Sun 2026-10-11 10:18:23 UTC",
+                "ExecMainStatus": "0",
+                "MainPID": "49843",
+                "NRestarts": "0",
+                "Result": "success",
+                "SubState": "running"
+              }
+            ]
+          }
+        },
+        {
+          "expectation": "(e) lab: systemd-analyze executable again",
+          "held": true,
+          "measured": {
+            "executable": true,
+            "mode_octal": "0o755",
+            "size": 203624
+          }
+        },
+        {
+          "expectation": "cleanup: shims removed; the last take answers 200 and the application answers",
+          "held": true,
+          "measured": {
+            "http": {
+              "body": "set13-n1",
+              "status": 200
+            },
+            "state": {
+              "ActiveState": "active",
+              "ExecMainCode": "0",
+              "ExecMainStartTimestamp": "Sun 2026-10-11 10:18:52 UTC",
+              "ExecMainStatus": "0",
+              "MainPID": "51403",
+              "NRestarts": "0",
+              "Result": "success",
+              "SubState": "running"
+            },
+            "status": 200
+          }
+        }
+      ],
+      "verdict": "PASS"
+    }
+  },
+  "checks": [
+    {
+      "detail": {
+        "DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/4/public_html",
+        "Domain": "set13-n.test",
+        "DomainID": 4,
+        "FTPPassword": "[REDACTED]",
+        "FTPUser": "set13_n_test",
+        "PHPVersion": "8.3",
+        "ProjectType": "php",
+        "SiteID": 4,
+        "TempDomain": ""
+      },
+      "name": "the PHP site set13-n.test is created through the Panel (200 with its id)",
+      "ok": true
+    },
+    {
+      "detail": {
+        "how": "installed through the Panel",
+        "installed": [
+          "22.20.0"
+        ],
+        "status": "succeeded",
+        "version": "22.20.0"
+      },
+      "name": "C5: Node.js installed through the Panel (POST /api/v1/runtimes/node)",
+      "ok": true
+    },
+    {
+      "detail": 200,
+      "name": "C5: the hosting change answers 200",
+      "ok": true
+    },
+    {
+      "detail": [
+        "Environment=PATH=/opt/celikpanel/runtimes/node/22.20.0/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+      ],
+      "name": "C5: the unit carries Environment=PATH=<Node dir>:/usr/local/sbin:...:/bin",
+      "ok": true
+    },
+    {
+      "detail": [
+        "ExecStart=/bin/sh -c 'node -e \"require('\\''http'\\'').createServer((q,s)=>s.end('\\''set13-n1'\\'')).listen(process.env.PORT)\"'"
+      ],
+      "name": "C5: ExecStart=/bin/sh -c '…' (not -lc)",
+      "ok": true
+    },
+    {
+      "detail": {
+        "http": {
+          "body": "set13-n1",
+          "status": 200
+        },
+        "journal": [
+          "2026-10-11T10:18:01.947237+00:00 dns-ubuntu systemd[1]: Started celikapp-4.service - CelikPanel app: set13-n.test."
+        ],
+        "state": {
+          "ActiveState": "active",
+          "ExecMainCode": "0",
+          "ExecMainStartTimestamp": "Sun 2026-10-11 10:18:01 UTC",
+          "ExecMainStatus": "0",
+          "MainPID": "48829",
+          "NRestarts": "0",
+          "Result": "success",
+          "SubState": "running"
+        }
+      },
+      "name": "C5: the application runs: active, NRestarts 0, no exit 127 / 'not found' in its journal, it answers on its port",
+      "ok": true
+    },
+    {
+      "detail": {
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      },
+      "name": "C5: the harness's own systemd-analyze verify of CelikPanel's unit (recorded)",
+      "ok": true
+    },
+    {
+      "detail": {
+        "agent_path": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/snap/bin"
+      },
+      "name": "C5: lab: the shims are in place and the Agent's PATH finds /usr/local/sbin first",
+      "ok": true
+    },
+    {
+      "detail": {
+        "agent_calls": [
+          "2026-10-11T10:18:12.686051205Z systemctl ppid=7749 comm=agent args=is-active celikapp-4",
+          "2026-10-11T10:18:12.713178000Z systemctl ppid=7749 comm=agent args=daemon-reload",
+          "2026-10-11T10:18:13.086200278Z systemctl ppid=7749 comm=agent args=try-restart celikapp-4"
+        ],
+        "answer": {
+          "at": "2026-10-11T10:18:12Z",
+          "json": {
+            "actions": [],
+            "backup_path": "/etc/systemd/system/celikapp-4.service.celikpanel-backup-20261011T101812Z",
+            "decision": {
+              "current": true,
+              "decided_at": "2026-10-11T10:18:13Z",
+              "kind": "take_celikpanel"
+            },
+            "domain": "set13-n.test",
+            "domain_id": 4,
+            "file_sha256": "484d63c5873af1c829e92d13d39280f608e28b12cae5d12d9dd7295c76c2beca",
+            "include_dir": "/etc/systemd/system/celikapp-4.service.d",
+            "kind": "app_unit",
+            "ledger": {
+              "backup_path": "/etc/systemd/system/celikapp-4.service.celikpanel-backup-20261011T101812Z",
+              "observed_at": "2026-10-11T10:18:13Z",
+              "written_at": "2026-10-11T10:18:13Z",
+              "written_release": "v0.1.0-alpha.81 8948352e3953"
+            },
+            "outcome": "taken",
+            "path": "/etc/systemd/system/celikapp-4.service",
+            "render_sha256": "ebd5266bb84fed0b370a385e3bebd8b8f1fac0773278ac5facb60b6164df8292",
+            "state": "managed_unchanged"
+          },
+          "label": "c5b take on the owner's unit (kind app_unit)",
+          "request": {
+            "body": {
+              "file_sha256": "c3701c92078381be5250967aa12558a65c6dcd0bdaa2deb75fadee4d3fb5a4e9",
+              "kind": "app_unit",
+              "render_sha256": "ebd5266bb84fed0b370a385e3bebd8b8f1fac0773278ac5facb60b6164df8292"
+            },
+            "method": "POST",
+            "path": "/api/v1/domains/4/site-config/take",
+            "x_celikpanel_request_id": "50bed7bd4cb7b3b4713ff492a1f53ba7"
+          },
+          "seconds": 0.52,
+          "status": 200,
+          "text": null
+        },
+        "main_pid": [
+          "48829",
+          "49289"
+        ]
+      },
+      "name": "C5: (b) plain take: 200 taken; the calls the Agent made are recorded (daemon-reload, try-restart; verify is documented only after a put-back); MainPID changed, active",
+      "ok": true
+    },
+    {
+      "detail": {
+        "at": "2026-10-11T10:18:22Z",
+        "json": {
+          "code": "SITE_CONFIG_SERVICE_REFUSED",
+          "detail": "reload_failed",
+          "details": [
+            "application unit not activated, the previous file was put back: systemctl daemon-reload: exit status 1: Failed to reload daemon: set13 lab preparation (one injected failure)"
+          ],
+          "error": "systemd did not take CelikPanel's unit text (its reload failed), so the previous unit file was put back. Nothing else was changed. The server administrator reads systemd's message in the Panel's log, fixes the cause, then tries again.",
+          "reason": "app_unit",
+          "restore": "confirmed",
+          "service": "reloaded",
+          "service_active": "true"
+        },
+        "label": "c5c take on the owner's unit (kind app_unit)",
+        "request": {
+          "body": {
+            "file_sha256": "c3701c92078381be5250967aa12558a65c6dcd0bdaa2deb75fadee4d3fb5a4e9",
+            "kind": "app_unit",
+            "render_sha256": "ebd5266bb84fed0b370a385e3bebd8b8f1fac0773278ac5facb60b6164df8292"
+          },
+          "method": "POST",
+          "path": "/api/v1/domains/4/site-config/take",
+          "x_celikpanel_request_id": "767359637b2c673fd0c30650adce7ffe"
+        },
+        "seconds": 0.71,
+        "status": 502,
+        "text": null
+      },
+      "name": "C5: (c) put-back after an injected daemon-reload failure: 502 SITE_CONFIG_SERVICE_REFUSED app_unit, restore confirmed",
+      "ok": true
+    },
+    {
+      "detail": {
+        "code": "SITE_CONFIG_SERVICE_REFUSED",
+        "detail": "reload_failed",
+        "details": [
+          "application unit not activated, the previous file was put back: systemctl daemon-reload: exit status 1: Failed to reload daemon: set13 lab preparation (one injected failure)"
+        ],
+        "error": "systemd did not take CelikPanel's unit text (its reload failed), so the previous unit file was put back. Nothing else was changed. The server administrator reads systemd's message in the Panel's log, fixes the cause, then tries again.",
+        "reason": "app_unit",
+        "restore": "confirmed",
+        "service": "reloaded",
+        "service_active": "true"
+      },
+      "name": "C5: (c) verify passed -> service reloaded (try-restart), service_active true",
+      "ok": true
+    },
+    {
+      "detail": [
+        "2026-10-11T10:18:22.597714164Z systemctl ppid=7749 comm=agent args=is-active celikapp-4",
+        "2026-10-11T10:18:22.624638077Z systemctl ppid=7749 comm=agent args=daemon-reload",
+        "2026-10-11T10:18:22.630989515Z systemctl ppid=7749 injected-failure daemon-reload rc=1",
+        "2026-10-11T10:18:22.649167625Z systemctl ppid=7749 comm=agent args=daemon-reload",
+        "2026-10-11T10:18:23.098233054Z systemd-analyze ppid=7749 comm=agent args=verify /etc/systemd/system/celikapp-4.service",
+        "2026-10-11T10:18:23.194737339Z systemd-analyze ppid=7749 rc=0",
+        "2026-10-11T10:18:23.198543367Z systemctl ppid=7749 comm=agent args=try-restart celikapp-4",
+        "2026-10-11T10:18:23.228968869Z systemctl ppid=7749 comm=agent args=is-active celikapp-4"
+      ],
+      "name": "C5: (c) the Agent's calls in order: failed daemon-reload, daemon-reload, systemd-analyze verify <unit>, try-restart",
+      "ok": true
+    },
+    {
+      "detail": {
+        "main_pid": [
+          "49289",
+          "49843"
+        ],
+        "sha256": [
+          "c3701c92078381be5250967aa12558a65c6dcd0bdaa2deb75fadee4d3fb5a4e9",
+          "c3701c92078381be5250967aa12558a65c6dcd0bdaa2deb75fadee4d3fb5a4e9"
+        ]
+      },
+      "name": "C5: (c) the owner's unit is back byte-equal; the application was restarted (MainPID changed) and is active",
+      "ok": true
+    },
+    {
+      "detail": {
+        "returncode": 1,
+        "stderr": "celikapp-4.service: Command /opt/set13-owner/missing-prepare is not executable: No such file or directory\n"
+      },
+      "name": "C5: (d) the cause: the harness's own verify of the owner's unit fails",
+      "ok": true
+    },
+    {
+      "detail": {
+        "code": "SITE_CONFIG_SERVICE_REFUSED",
+        "detail": "reload_failed",
+        "details": [
+          "systemd-analyze verify: celikapp-4.service: Command /opt/set13-owner/missing-prepare is not executable: No such file or directory: exit status 1",
+          "application unit not activated, the previous file was put back: systemctl daemon-reload: exit status 1: Failed to reload daemon: set13 lab preparation (one injected failure); the application was not restarted (config_refused_elsewhere): systemd-analyze verify: celikapp-4.service: Command /opt/set13-owner/missing-prepare is not executable: No such file or directory: exit status 1"
+        ],
+        "error": "The previous unit file is back and systemd has read it again. The application was not restarted, because systemd-analyze verify refuses the unit — the application keeps running as it was started. Fix what the check names (systemd-analyze verify: celikapp-4.service: Command /opt/set13-owner/missing-prepare is not executable: No such file or directory: exit status 1), then restart the application yourself.",
+        "reason": "app_unit",
+        "restore": "confirmed",
+        "service": "not_reloaded",
+        "service_active": "true",
+        "service_reason": "config_refused_elsewhere",
+        "vars": {
+          "line": "systemd-analyze verify: celikapp-4.service: Command /opt/set13-owner/missing-prepare is not executable: No such file or directory: exit status 1"
+        }
+      },
+      "name": "C5: (d) 502 SITE_CONFIG_SERVICE_REFUSED app_unit, restore confirmed, service not_reloaded, config_refused_elsewhere, service_active true",
+      "ok": true
+    },
+    {
+      "detail": {
+        "details": [
+          "systemd-analyze verify: celikapp-4.service: Command /opt/set13-owner/missing-prepare is not executable: No such file or directory: exit status 1",
+          "application unit not activated, the previous file was put back: systemctl daemon-reload: exit status 1: Failed to reload daemon: set13 lab preparation (one injected failure); the application was not restarted (config_refused_elsewhere): systemd-analyze verify: celikapp-4.service: Command /opt/set13-owner/missing-prepare is not executable: No such file or directory: exit status 1"
+        ],
+        "vars": {
+          "line": "systemd-analyze verify: celikapp-4.service: Command /opt/set13-owner/missing-prepare is not executable: No such file or directory: exit status 1"
+        }
+      },
+      "name": "C5: (d) for an administrator: verify's line (naming the missing program) in vars.line and details",
+      "ok": true
+    },
+    {
+      "detail": [
+        "2026-10-11T10:18:33.382673100Z systemctl ppid=7749 comm=agent args=is-active celikapp-4",
+        "2026-10-11T10:18:33.415292150Z systemctl ppid=7749 comm=agent args=daemon-reload",
+        "2026-10-11T10:18:33.422258226Z systemctl ppid=7749 injected-failure daemon-reload rc=1",
+        "2026-10-11T10:18:33.444684292Z systemctl ppid=7749 comm=agent args=daemon-reload",
+        "2026-10-11T10:18:33.765474721Z systemd-analyze ppid=7749 comm=agent args=verify /etc/systemd/system/celikapp-4.service",
+        "2026-10-11T10:18:33.865481172Z systemd-analyze ppid=7749 rc=1",
+        "2026-10-11T10:18:33.870165307Z systemctl ppid=7749 comm=agent args=is-active celikapp-4"
+      ],
+      "name": "C5: (d) the Agent ran verify, it failed, and no try-restart followed",
+      "ok": true
+    },
+    {
+      "detail": {
+        "state": [
+          {
+            "ActiveState": "active",
+            "ExecMainCode": "0",
+            "ExecMainStartTimestamp": "Sun 2026-10-11 10:18:23 UTC",
+            "ExecMainStatus": "0",
+            "MainPID": "49843",
+            "NRestarts": "0",
+            "Result": "success",
+            "SubState": "running"
+          },
+          {
+            "ActiveState": "active",
+            "ExecMainCode": "0",
+            "ExecMainStartTimestamp": "Sun 2026-10-11 10:18:23 UTC",
+            "ExecMainStatus": "0",
+            "MainPID": "49843",
+            "NRestarts": "0",
+            "Result": "success",
+            "SubState": "running"
+          }
+        ]
+      },
+      "name": "C5: (d) the application was not restarted: MainPID and NRestarts unchanged, active; the owner's unit byte-equal",
+      "ok": true
+    },
+    {
+      "detail": {
+        "mount": {
+          "argv": [
+            "mount",
+            "--bind",
+            "/run/set13-lab/no-systemd-analyze",
+            "/usr/bin/systemd-analyze"
+          ],
+          "at": "2026-10-11T10:18:42Z",
+          "returncode": 0,
+          "seconds": 0.004,
+          "status": "ok",
+          "stderr": "",
+          "stdout": ""
+        },
+        "seen_by_agent": {
+          "executable": false,
+          "mode_octal": "0o644",
+          "size": 0
+        }
+      },
+      "name": "C5: (e) lab: systemd-analyze is not executable as the Agent sees it",
+      "ok": true
+    },
+    {
+      "detail": {
+        "code": "SITE_CONFIG_SERVICE_REFUSED",
+        "detail": "reload_failed",
+        "details": [
+          "application unit not activated, the previous file was put back: systemctl daemon-reload: exit status 1: Failed to reload daemon: set13 lab preparation (one injected failure); the application was not restarted (check_unavailable)"
+        ],
+        "error": "The previous unit file is back and systemd has read it again. The application was not restarted, because this server has no systemd-analyze to check the unit first — the application keeps running as it was started. Restart the application yourself once you have checked the unit.",
+        "reason": "app_unit",
+        "restore": "confirmed",
+        "service": "not_reloaded",
+        "service_active": "true",
+        "service_reason": "check_unavailable"
+      },
+      "name": "C5: (e) 502, restore confirmed, service not_reloaded, service_reason check_unavailable, service_active true; the sentence names it",
+      "ok": true
+    },
+    {
+      "detail": {
+        "calls": [
+          "2026-10-11T10:18:43.553230265Z systemctl ppid=7749 comm=agent args=is-active celikapp-4",
+          "2026-10-11T10:18:43.581351638Z systemctl ppid=7749 comm=agent args=daemon-reload",
+          "2026-10-11T10:18:43.587464382Z systemctl ppid=7749 injected-failure daemon-reload rc=1",
+          "2026-10-11T10:18:43.610102205Z systemctl ppid=7749 comm=agent args=daemon-reload",
+          "2026-10-11T10:18:43.919761393Z systemctl ppid=7749 comm=agent args=is-active celikapp-4"
+        ],
+        "state": [
+          {
+            "ActiveState": "active",
+            "ExecMainCode": "0",
+            "ExecMainStartTimestamp": "Sun 2026-10-11 10:18:23 UTC",
+            "ExecMainStatus": "0",
+            "MainPID": "49843",
+            "NRestarts": "0",
+            "Result": "success",
+            "SubState": "running"
+          },
+          {
+            "ActiveState": "active",
+            "ExecMainCode": "0",
+            "ExecMainStartTimestamp": "Sun 2026-10-11 10:18:23 UTC",
+            "ExecMainStatus": "0",
+            "MainPID": "49843",
+            "NRestarts": "0",
+            "Result": "success",
+            "SubState": "running"
+          }
+        ]
+      },
+      "name": "C5: (e) no try-restart; MainPID and NRestarts unchanged, active",
+      "ok": true
+    },
+    {
+      "detail": {
+        "executable": true,
+        "mode_octal": "0o755",
+        "size": 203624
+      },
+      "name": "C5: (e) lab: systemd-analyze executable again",
+      "ok": true
+    },
+    {
+      "detail": {
+        "http": {
+          "body": "set13-n1",
+          "status": 200
+        },
+        "state": {
+          "ActiveState": "active",
+          "ExecMainCode": "0",
+          "ExecMainStartTimestamp": "Sun 2026-10-11 10:18:52 UTC",
+          "ExecMainStatus": "0",
+          "MainPID": "51403",
+          "NRestarts": "0",
+          "Result": "success",
+          "SubState": "running"
+        },
+        "status": 200
+      },
+      "name": "C5: cleanup: shims removed; the last take answers 200 and the application answers",
+      "ok": true
+    }
+  ],
+  "finished_at": "2026-10-11T10:18:58Z",
+  "lab_preparation": [
+    {
+      "file": "steps/14-c5-app-unit/native/048-lab-c5-shims-install.json",
+      "label": "c5-shims-install",
+      "mode": "lab-shims13"
+    },
+    {
+      "file": "steps/14-c5-app-unit/native/056-lab-c5c-arm.json",
+      "label": "c5c-arm",
+      "mode": "lab-shims13"
+    },
+    {
+      "file": "steps/14-c5-app-unit/native/063-lab-c5d-arm.json",
+      "label": "c5d-arm",
+      "mode": "lab-shims13"
+    },
+    {
+      "file": "steps/14-c5-app-unit/native/070-lab-c5e-hide-systemd-analyze.json",
+      "label": "c5e-hide-systemd-analyze",
+      "mode": "lab-shims13"
+    },
+    {
+      "file": "steps/14-c5-app-unit/native/071-lab-c5e-arm.json",
+      "label": "c5e-arm",
+      "mode": "lab-shims13"
+    },
+    {
+      "file": "steps/14-c5-app-unit/native/077-lab-c5e-unhide-systemd-analyze.json",
+      "label": "c5e-unhide-systemd-analyze",
+      "mode": "lab-shims13"
+    },
+    {
+      "file": "steps/14-c5-app-unit/native/078-lab-c5-shims-remove.json",
+      "label": "c5-shims-remove",
+      "mode": "lab-shims13"
+    }
+  ],
+  "native_evidence": false,
+  "natives": [
+    {
+      "file": "native/045-owner-files-set13-n.test.json",
+      "label": "owner-files-set13-n.test",
+      "mode": "owner-files",
+      "owner_action": true
+    },
+    {
+      "file": "native/046-guest-clock.json",
+      "label": "guest-clock",
+      "mode": "read-ledger",
+      "owner_action": false
+    },
+    {
+      "file": "native/047-c5-0-unit.json",
+      "label": "c5-0-unit",
+      "mode": "read-unit13",
+      "owner_action": false
+    },
+    {
+      "file": "native/048-lab-c5-shims-install.json",
+      "label": "lab-c5-shims-install",
+      "mode": "lab-shims13",
+      "owner_action": false
+    },
+    {
+      "file": "native/049-owner-c5b-unit-line.json",
+      "label": "owner-c5b-unit-line",
+      "mode": "owner-unit10",
+      "owner_action": true
+    },
+    {
+      "file": "native/050-c5b-0-before.json",
+      "label": "c5b-0-before",
+      "mode": "read-unit13",
+      "owner_action": false
+    },
+    {
+      "file": "native/051-guest-clock.json",
+      "label": "guest-clock",
+      "mode": "read-ledger",
+      "owner_action": false
+    },
+    {
+      "file": "native/052-c5b-1-after.json",
+      "label": "c5b-1-after",
+      "mode": "read-unit13",
+      "owner_action": false
+    },
+    {
+      "file": "native/053-lab-log-c5b.json",
+      "label": "lab-log-c5b",
+      "mode": "read-lab13",
+      "owner_action": false
+    },
+    {
+      "file": "native/054-c5b-journal.json",
+      "label": "c5b-journal",
+      "mode": "read-window12",
+      "owner_action": false
+    },
+    {
+      "file": "native/055-owner-c5c-unit-line.json",
+      "label": "owner-c5c-unit-line",
+      "mode": "owner-unit10",
+      "owner_action": true
+    },
+    {
+      "file": "native/056-lab-c5c-arm.json",
+      "label": "lab-c5c-arm",
+      "mode": "lab-shims13",
+      "owner_action": false
+    },
+    {
+      "file": "native/057-c5c-0-before.json",
+      "label": "c5c-0-before",
+      "mode": "read-unit13",
+      "owner_action": false
+    },
+    {
+      "file": "native/058-guest-clock.json",
+      "label": "guest-clock",
+      "mode": "read-ledger",
+      "owner_action": false
+    },
+    {
+      "file": "native/059-c5c-1-after.json",
+      "label": "c5c-1-after",
+      "mode": "read-unit13",
+      "owner_action": false
+    },
+    {
+      "file": "native/060-lab-log-c5c.json",
+      "label": "lab-log-c5c",
+      "mode": "read-lab13",
+      "owner_action": false
+    },
+    {
+      "file": "native/061-c5c-journal.json",
+      "label": "c5c-journal",
+      "mode": "read-window12",
+      "owner_action": false
+    },
+    {
+      "file": "native/062-owner-c5d-unit-missing-prestart.json",
+      "label": "owner-c5d-unit-missing-prestart",
+      "mode": "owner-unit13",
+      "owner_action": true
+    },
+    {
+      "file": "native/063-lab-c5d-arm.json",
+      "label": "lab-c5d-arm",
+      "mode": "lab-shims13",
+      "owner_action": false
+    },
+    {
+      "file": "native/064-c5d-0-before.json",
+      "label": "c5d-0-before",
+      "mode": "read-unit13",
+      "owner_action": false
+    },
+    {
+      "file": "native/065-guest-clock.json",
+      "label": "guest-clock",
+      "mode": "read-ledger",
+      "owner_action": false
+    },
+    {
+      "file": "native/066-c5d-1-after.json",
+      "label": "c5d-1-after",
+      "mode": "read-unit13",
+      "owner_action": false
+    },
+    {
+      "file": "native/067-lab-log-c5d.json",
+      "label": "lab-log-c5d",
+      "mode": "read-lab13",
+      "owner_action": false
+    },
+    {
+      "file": "native/068-c5d-journal.json",
+      "label": "c5d-journal",
+      "mode": "read-window12",
+      "owner_action": false
+    },
+    {
+      "file": "native/069-owner-c5e-unit-missing-prestart-removed.json",
+      "label": "owner-c5e-unit-missing-prestart-removed",
+      "mode": "owner-unit13",
+      "owner_action": true
+    },
+    {
+      "file": "native/070-lab-c5e-hide-systemd-analyze.json",
+      "label": "lab-c5e-hide-systemd-analyze",
+      "mode": "lab-shims13",
+      "owner_action": false
+    },
+    {
+      "file": "native/071-lab-c5e-arm.json",
+      "label": "lab-c5e-arm",
+      "mode": "lab-shims13",
+      "owner_action": false
+    },
+    {
+      "file": "native/072-c5e-0-before.json",
+      "label": "c5e-0-before",
+      "mode": "read-unit13",
+      "owner_action": false
+    },
+    {
+      "file": "native/073-guest-clock.json",
+      "label": "guest-clock",
+      "mode": "read-ledger",
+      "owner_action": false
+    },
+    {
+      "file": "native/074-c5e-1-after.json",
+      "label": "c5e-1-after",
+      "mode": "read-unit13",
+      "owner_action": false
+    },
+    {
+      "file": "native/075-lab-log-c5e.json",
+      "label": "lab-log-c5e",
+      "mode": "read-lab13",
+      "owner_action": false
+    },
+    {
+      "file": "native/076-c5e-journal.json",
+      "label": "c5e-journal",
+      "mode": "read-window12",
+      "owner_action": false
+    },
+    {
+      "file": "native/077-lab-c5e-unhide-systemd-analyze.json",
+      "label": "lab-c5e-unhide-systemd-analyze",
+      "mode": "lab-shims13",
+      "owner_action": false
+    },
+    {
+      "file": "native/078-lab-c5-shims-remove.json",
+      "label": "lab-c5-shims-remove",
+      "mode": "lab-shims13",
+      "owner_action": false
+    },
+    {
+      "file": "native/079-c5-9-end.json",
+      "label": "c5-9-end",
+      "mode": "read-unit13",
+      "owner_action": false
+    }
+  ],
+  "node": "ubuntu",
+  "node_install": {
+    "final": {
+      "finished_at": "2026-10-11T10:17:49.827380108Z",
+      "id": "a6e1b62bb8c6b0bc38484fb6470517bb",
+      "kind": "runtime_install",
+      "package_name": "22.20.0",
+      "phase": "completed",
+      "request_id": "222486b345d0a5d52eef43319b73fae5",
+      "result": {
+        "installed": true,
+        "success": true,
+        "version": "22.20.0"
+      },
+      "service_id": "node",
+      "started_at": "2026-10-11T10:17:37.462619321Z",
+      "status": "succeeded"
+    },
+    "post_status": 202,
+    "version": "22.20.0"
+  },
+  "notes": [
+    {
+      "detail": [],
+      "note": "C5: PASS"
+    }
+  ],
+  "owner_actions": [
+    {
+      "at": "2026-10-11T10:18:00Z",
+      "label": "files-set13-n.test",
+      "mode": "owner-files"
+    },
+    {
+      "at": "2026-10-11T10:18:11Z",
+      "label": "c5b-unit-line",
+      "mode": "owner-unit10"
+    },
+    {
+      "at": "2026-10-11T10:18:21Z",
+      "label": "c5c-unit-line",
+      "mode": "owner-unit10"
+    },
+    {
+      "at": "2026-10-11T10:18:31Z",
+      "label": "c5d-unit-missing-prestart",
+      "mode": "owner-unit13"
+    },
+    {
+      "at": "2026-10-11T10:18:41Z",
+      "label": "c5e-unit-missing-prestart-removed",
+      "mode": "owner-unit13"
+    }
+  ],
+  "owner_waited_for_idle": {
+    "at": "2026-10-11T10:17:36Z",
+    "busy_seen": [],
+    "idle": true,
+    "polls": 1,
+    "waited_s": 0.3
+  },
+  "section": "C5-app-unit",
+  "started_at": "2026-10-11T10:17:36Z",
+  "substeps": {
+    "C5": "passed",
+    "section": "passed"
+  },
+  "title": "the Node unit's PATH and /bin/sh -c; verify before try-restart after a put-back",
+  "verdict": "passed"
+}

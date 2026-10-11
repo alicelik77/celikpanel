@@ -1,0 +1,40 @@
+{
+  "action": "owner-nginx13",
+  "after": {
+    "error": "FileNotFoundError",
+    "exists": false,
+    "path": "/etc/nginx/conf.d/zz-set13-owner.conf"
+  },
+  "at": "2026-10-11T09:53:19Z",
+  "before": {
+    "error": "FileNotFoundError",
+    "exists": false,
+    "path": "/etc/nginx/conf.d/zz-set13-owner.conf"
+  },
+  "epoch": 1791712399.6886005,
+  "mode": "owner-nginx13",
+  "nginx_test": {
+    "argv": [
+      "nginx",
+      "-t"
+    ],
+    "at": "2026-10-11T09:53:19Z",
+    "returncode": 0,
+    "seconds": 0.014,
+    "status": "ok",
+    "stderr": "nginx: the configuration file /etc/nginx/nginx.conf syntax is ok\nnginx: configuration file /etc/nginx/nginx.conf test is successful\n",
+    "stdout": ""
+  },
+  "owner_action": true,
+  "path": "/etc/nginx/conf.d/zz-set13-owner.conf",
+  "schema": "celikpanel/set13-native/v1",
+  "unit": {
+    "ActiveEnterTimestamp": "Sun 2026-10-11 09:40:53 UTC",
+    "ActiveState": "active",
+    "ExecMainStartTimestamp": "Sun 2026-10-11 09:40:53 UTC",
+    "LoadState": "loaded",
+    "MainPID": "7351",
+    "NRestarts": "0",
+    "SubState": "running"
+  }
+}

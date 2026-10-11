@@ -1,0 +1,21 @@
+{
+  "checks": {
+    "checks": 1,
+    "error": "CalledProcessError: Command '['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=5', '-o', 'StrictHostKeyChecking=yes', '-o', 'HashKnownHosts=no', '-o', 'UserKnownHostsFile=/var/tmp/cp-release-drill-s13-d13-a/cells/d6cb1e93a26558a88b692e81/ssh-known-hosts', '-i', '/var/tmp/cp-release-drill-s13-d13-a/key', '-p', '5081', 'celik@127.0.0.1', 'sudo /bin/bash -s']' returned non-zero exit status 2. | guest stderr: {\"refused\": \"PermissionError\", \"reason\": \"[Errno 13] Permission denied: '/usr/bin/systemd-analyze'\"}\n",
+    "failed": [],
+    "finished_at": "2026-10-11T09:53:17Z",
+    "notes": [],
+    "started_at": "2026-10-11T09:52:06Z",
+    "substeps": {
+      "section": "passed"
+    },
+    "title": "the Node unit's PATH and /bin/sh -c; verify before try-restart after a put-back",
+    "unknown": [],
+    "verdict": "inconclusive"
+  },
+  "finished_at": "2026-10-11T09:53:17Z",
+  "name": "C5-app-unit",
+  "reason": "CalledProcessError: Command '['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=5', '-o', 'StrictHostKeyChecking=yes', '-o', 'HashKnownHosts=no', '-o', 'UserKnownHostsFile=/var/tmp/cp-release-drill-s13-d13-a/cells/d6cb1e93a26558a88b692e81/ssh-known-hosts', '-i', '/var/tmp/cp-release-drill-s13-d13-a/key', '-p', '5081', 'celik@127.0.0.1', 'sudo /bin/bash -s']' returned non-zero exit status 2. | guest stderr: {\"refused\": \"PermissionError\", \"reason\": \"[Errno 13] Permission denied: '/usr/bin/systemd-analyze'\"}\n",
+  "started_at": "2026-10-11T09:52:06Z",
+  "verdict": "inconclusive"
+}

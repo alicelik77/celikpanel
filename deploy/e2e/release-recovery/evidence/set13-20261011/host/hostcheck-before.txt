@@ -1,0 +1,34 @@
+date_utc=2026-10-11T09:27:48Z user=root kernel=6.18.33.2-microsoft-standard-WSL2
+qemu-system procs: 0
+--- set13 run dir
+total 96
+drwxr-xr-x   5 root root  4096 Oct 11 12:27 .
+drwxrwxrwt 366 root root 73728 Oct 11 12:27 ..
+drwxr-xr-x   2 root root  4096 Oct 11 12:27 build
+drwxr-xr-x   2 root root  4096 Oct 11 12:27 host
+--- live jobs of earlier runs
+--- image cache
+total 1486060
+drwx------ 2 root root      4096 Oct  1 15:57 .
+drwx------ 5 root root      4096 Sep 28 21:06 ..
+-r--r--r-- 5 root root 556609024 Sep 27 02:09 Arch-Linux-x86_64-cloudimg-20260815.573966.qcow2
+-r--r--r-- 5 root root 340262912 Sep 27 02:09 debian-13-genericcloud-amd64-20260826-2582.qcow2
+-r--r--r-- 2 root root 624829952 Sep  8 20:39 ubuntu-24.04-server-cloudimg-amd64-20260826.img
+--- drills (count)
+48
+--- builds
+drwxr-xr-x   3 root root  4096 Oct 10 20:37 20261010t172853z
+drwxr-xr-x   3 root root  4096 Oct 10 21:54 20261010t184746z
+drwxr-xr-x   5 root root  4096 Oct 10 22:00 20261010t185436z
+drwxr-xr-x   3 root root  4096 Oct 11 03:01 20261010t235526z
+drwxr-xr-x   5 root root  4096 Oct 11 03:05 20261011t000145z
+drwxr-xr-x   3 root root  4096 Oct 11 07:18 20261011t040923z
+drwxr-xr-x   5 root root  4096 Oct 11 07:17 20261011t041117z
+drwxr-xr-x   5 root root  4096 Oct 11 07:23 20261011t041832z
+--- go
+go version go1.26.5 linux/amd64
+--- df
+/dev/sdd       1007G  166G  791G  18% /
+Mem:           15697        1136       12664          65        2204       14561
+QEMU emulator version 11.1.1
+Python 3.14.7
