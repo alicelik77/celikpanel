@@ -154,7 +154,20 @@ export function apiErrorText(e: ApiError, t: T, fallbackKey: TranslationKey = 'c
         const fileKind = e.code === 'SITE_CONFIG_NGINX_REFUSED' ? 'nginx_vhost' : e.code === 'SITE_CONFIG_SERVICE_REFUSED' ? e.reason : undefined;
         if (fileKind && e.restore === 'confirmed' && (e.service === 'not_reloaded' || e.service === 'not_running')) {
             const prefix = 'siteConfig.service.' + fileKind + '.' + e.service;
-            const keys = e.serviceReason ? [prefix + '.' + e.serviceReason, prefix] : [prefix];
+            // A service that is not running now (service_active 'false') was
+            // not reloaded, but it does not "keep running": its own sentences
+            // come first, and never the ones that say it does. 'unknown' and
+            // 'true' keep the sentences above.
+            // Şu anda çalışmayan hizmet "çalışmaya devam etmiyor": önce onun
+            // cümleleri gelir; çalıştığını söyleyenler hiç seçilmez.
+            const stopped = e.service === 'not_reloaded' && e.serviceActive === 'false';
+            const keys = stopped
+                ? [
+                      ...(e.serviceReason === 'check_unavailable' ? [prefix + '.check_unavailable.stopped'] : []),
+                      prefix + '.stopped',
+                      prefix + '.stopped.plain',
+                  ]
+                : e.serviceReason ? [prefix + '.' + e.serviceReason, prefix] : [prefix];
             for (const candidate of keys) {
                 const named = t(candidate as TranslationKey, e.vars);
                 if (named !== candidate && !named.includes('{line}')) return named;

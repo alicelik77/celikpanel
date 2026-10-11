@@ -6879,10 +6879,10 @@ sistemde ölçülmedi.
     çalışmaya devam ediyor. Denetimin adını verdiği sorunu giderin ({line}),
     sonra uygulamayı kendiniz yeniden başlatın."
   - `app_unit.not_reloaded.check_unavailable`: "Önceki birim dosyası geri kondu
-    ve systemd onu yeniden okudu. Uygulama yeniden başlatılmadı, çünkü bu
-    sunucuda birimi önce denetleyecek systemd-analyze yok — uygulama
-    başlatıldığı haliyle çalışmaya devam ediyor. Birimi denetledikten sonra
-    uygulamayı kendiniz yeniden başlatın."
+    ve systemd onu yeniden okudu. Uygulama yeniden başlatılmadı, çünkü
+    birimin denetimi bu sunucuda çalıştırılamadı (systemd-analyze yok ya da
+    bitmedi) — uygulama başlatıldığı haliyle çalışmaya devam ediyor. Birimi
+    denetledikten sonra uygulamayı kendiniz yeniden başlatın."
   - `app_unit.not_reloaded`: "Önceki birim dosyası geri kondu ve systemd onu
     yeniden okudu. Uygulama yeniden başlatılmadı, çünkü birimin denetimi geçmedi
     — uygulama başlatıldığı haliyle çalışmaya devam ediyor. Sunucu yöneticisi
@@ -6899,15 +6899,44 @@ sistemde ölçülmedi.
   bu kuralı alır; ikinci adımı (kaynak sürümün havuzunu silmek) ve oradaki
   hatadan sonraki temizlik eskisi gibi denetimsiz yeniden yükler. Site
   oluşturmanın `WEB_SERVER_REFUSED_CONFIG` yanıtı yalnız nginx önceki
-  yapılandırmayla yeniden yüklendiğinde verilir. Bilinen açıklar (yalnız
-  bileşen testli; hiçbiri gerçek sistemde ölçülmedi): cümleler `service_active`
-  alanını kullanmaz (`systemctl` hizmetin önceden çalışıp çalışmadığını
-  söyleyemediğinde gerçekte durmuş bir hizmete de "çalışmaya devam ediyor"
-  denir); yalnız `not_running` "yeniden seçin" der — `not_reloaded` cümleleri
-  yöneticinin yeniden yüklemesinde biter ve reddedilen seçimin yeniden
-  yapılması gerektiğini söylemez; zaman aşımına uğrayan ya da başlatılamayan bir
-  `systemd-analyze verify` şimdilik ret gibi (`config_refused_elsewhere`)
-  yanıtlanır.
+  yapılandırmayla yeniden yüklendiğinde verilir. Bu bloktaki üç açık
+  alpha.83 adayında kapatıldı (bileşen testli; gerçek sistemde ölçülmedi):
+  1. *Çalışma nasıl sürer.* Yukarıdaki her `not_reloaded` cümlesi artık şununla
+     biter: "Ardından CelikPanel’in metnini hâlâ istiyorsanız yeniden seçin."
+     (İngilizce: "After that, choose again if you still want CelikPanel’s
+     text.")
+  2. *Şu anda çalışmayan hizmet.* Yanıt `service: not_reloaded` ve
+     `service_active: false` taşıyorsa cümle artık hizmetin çalışmaya devam
+     ettiğini söylemez. Web sırayla şunları seçer:
+     `<tür>.not_reloaded.check_unavailable.stopped` (yalnız
+     `check_unavailable` için), `<tür>.not_reloaded.stopped` (`{line}` adlandırır;
+     yöneticinin yanıtı) ve `<tür>.not_reloaded.stopped.plain`; `true`,
+     `unknown` ve olmayan değer yukarıdaki cümleleri korur.
+     `php_pool.not_reloaded.stopped`: "Önceki dosya geri kondu. PHP-FPM şu anda
+     çalışmıyor, bu yüzden yeniden yüklenmedi; yapılandırması başka bir dosya
+     yüzünden reddediliyor. Denetimin adını verdiği sorunu giderin ({line}),
+     sonra PHP-FPM’i kendiniz başlatın. Ardından CelikPanel’in metnini hâlâ
+     istiyorsanız yeniden seçin." `nginx_vhost.not_reloaded.stopped` aynısını
+     nginx için söyler. `app_unit.not_reloaded.stopped`: "Önceki birim dosyası
+     geri kondu ve systemd onu yeniden okudu. Uygulama şu anda çalışmıyor, bu
+     yüzden yeniden başlatılmadı; systemd-analyze verify birimi reddediyor.
+     Denetimin adını verdiği sorunu giderin ({line}), sonra uygulamayı kendiniz
+     başlatın. Ardından CelikPanel’in metnini hâlâ istiyorsanız yeniden
+     seçin." `app_unit.not_reloaded.check_unavailable.stopped`: "… Uygulama şu
+     anda çalışmıyor ve CelikPanel onu başlatmadı, çünkü birimin denetimi bu
+     sunucuda çalıştırılamadı. Birimi denetleyin, sonra uygulamayı kendiniz
+     başlatın. Ardından …". `.stopped.plain` cümleleri (satırsız) "Sunucu
+     yöneticisi denetimin adını verdiği sorunu giderir, sonra … başlatır" der.
+     Ekran kataloğu yüklü değilken sunucunun kendi cümlesi geçerlidir ve hâlâ
+     hizmetin çalışmaya devam ettiğini söyler (açık).
+  3. *Çalıştırılamayan denetim ret değildir.* Agent'ın `systemd-analyze verify`
+     çağrısı (`cmd/agent/app_rpc.go`, `appUnitVerifyOutcome`) araç yoksa,
+     başlatılamazsa, öldürülürse, 15 sn içinde bitmezse ya da sessizce sıfırdan
+     farklı çıkarsa `check_unavailable` yanıtlar; yalnız çıktısı olan sıfırdan
+     farklı çıkış `config_refused_elsewhere` olur. Birim o zaman yeniden
+     başlatılmaz ve `check_unavailable` cümlesi (yukarıda değişti) denetimin
+     çalıştırılamadığını, yöneticinin birimi denetleyip uygulamayı elle yeniden
+     başlatacağını söyler.
 - *Uygulama biriminin PATH'i* (gözlem, Debian 13 a koşusu). Ölçülen: birimin
   `Environment=PATH=` satırı Panel'in Node dizinini zaten adlandırdığı hâlde,
   çıplak bir `node …` başlatma komutu birimin `ExecStart=/bin/sh -lc '…'`

@@ -194,7 +194,9 @@ var appUnitActive = func(name string) string {
 }
 
 // appUnitVerify runs `systemd-analyze verify` on a unit file (a test seam);
-// services.ErrServiceCheckUnavailable when systemd-analyze is absent.
+// services.ErrServiceCheckUnavailable when systemd-analyze is absent, cannot
+// be launched or does not finish in time: only a non-zero exit that printed
+// something is the unit being refused.
 var appUnitVerify = func(path string) error {
 	binary, err := exec.LookPath("systemd-analyze")
 	if err != nil {
@@ -207,10 +209,30 @@ var appUnitVerify = func(path string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	out, err := exec.CommandContext(ctx, binary, args...).CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("systemd-analyze verify: %s: %w", strings.TrimSpace(string(out)), err)
+	return appUnitVerifyOutcome(ctx.Err(), err, out)
+}
+
+// appUnitVerifyOutcome sorts what running `systemd-analyze verify` came to:
+// nil (the unit passed), a refusal that carries the check's own words, or
+// services.ErrServiceCheckUnavailable (the check could not be run - a timeout,
+// a launch failure, a signal, or a failure that said nothing - which is not
+// the unit being refused, so the application is neither restarted nor blamed).
+// appUnitVerifyOutcome, denetimin ne ile bittiğini ayırır: birim geçti,
+// denetimin kendi sözleriyle ret, ya da denetim çalıştırılamadı (zaman aşımı,
+// başlatılamama, sinyal, sessiz hata) - bu birimin reddedilmesi sayılmaz.
+func appUnitVerifyOutcome(contextErr, runErr error, output []byte) error {
+	if runErr == nil {
+		return nil
 	}
-	return nil
+	if contextErr != nil {
+		return services.ErrServiceCheckUnavailable
+	}
+	var exit *exec.ExitError
+	said := strings.TrimSpace(string(output))
+	if !errors.As(runErr, &exit) || exit.ExitCode() < 0 || said == "" {
+		return services.ErrServiceCheckUnavailable
+	}
+	return fmt.Errorf("systemd-analyze verify: %s: %w", said, runErr)
 }
 
 func validAppApplyRequest(req *AppApplyRequest) string {

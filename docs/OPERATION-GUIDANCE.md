@@ -6931,9 +6931,9 @@ measured on a real system.
     the application yourself."
   - `app_unit.not_reloaded.check_unavailable`: "The previous unit file is back
     and systemd has read it again. The application was not restarted, because
-    this server has no systemd-analyze to check the unit first — the
-    application keeps running as it was started. Restart the application
-    yourself once you have checked the unit."
+    the unit’s check could not be run on this server (systemd-analyze is
+    missing or did not finish) — the application keeps running as it was
+    started. Restart the application yourself once you have checked the unit."
   - `app_unit.not_reloaded`: "The previous unit file is back and systemd has
     read it again. The application was not restarted, because the unit’s check
     did not pass — the application keeps running as it was started. The server
@@ -6951,14 +6951,43 @@ measured on a real system.
   source version's pool) and the clean-up after a failure there still reload
   without the check, as before. Site creation's `WEB_SERVER_REFUSED_CONFIG` is
   answered only when nginx was reloaded with the earlier configuration.
-  Known gaps (component-tested only; none measured on a real system): the
-  sentences ignore `service_active` (when `systemctl` could not say whether
-  the service ran before, one that was in fact stopped is still told "keeps
-  running"); only `not_running` says
-  "choose again" — the `not_reloaded` sentences end at the administrator's
-  reload and do not say that the refused choice must be made again; a
-  `systemd-analyze verify` that timed out or could not be started is currently
-  answered like a refusal (`config_refused_elsewhere`).
+  Three gaps of this block are closed in the alpha.83 candidate
+  (component-tested; not measured on a real system):
+  1. *How work resumes.* Every `not_reloaded` sentence above now ends with:
+     "After that, choose again if you still want CelikPanel’s text." (Turkish:
+     "Ardından CelikPanel’in metnini hâlâ istiyorsanız yeniden seçin.").
+  2. *A service that is not running now.* When the answer carries `service:
+     not_reloaded` and `service_active: false`, the sentence no longer says the
+     service keeps running. The web chooses, in order,
+     `<kind>.not_reloaded.check_unavailable.stopped` (only for
+     `check_unavailable`), `<kind>.not_reloaded.stopped` (names `{line}`; an
+     administrator's answer) and `<kind>.not_reloaded.stopped.plain`; `true`,
+     `unknown` and an absent value keep the sentences above.
+     `php_pool.not_reloaded.stopped`: "The previous file is back. PHP-FPM is
+     not running now, so it was not reloaded; its configuration is refused by
+     another file. Fix what the check names ({line}), then start PHP-FPM
+     yourself. After that, choose again if you still want CelikPanel’s text."
+     `nginx_vhost.not_reloaded.stopped` says the same of nginx.
+     `app_unit.not_reloaded.stopped`: "The previous unit file is back and
+     systemd has read it again. The application is not running now, so it was
+     not restarted; systemd-analyze verify refuses the unit. Fix what the check
+     names ({line}), then start the application yourself. After that, choose
+     again if you still want CelikPanel’s text."
+     `app_unit.not_reloaded.check_unavailable.stopped`: "… The application is
+     not running now and CelikPanel did not start it, because the unit’s check
+     could not be run on this server. Check the unit and start the application
+     yourself. After that, choose again …". The `.stopped.plain` sentences
+     (no line) say "The server administrator fixes what the check names, then
+     starts …". While the screen catalogue is not loaded the server’s own
+     sentence stands and still says the service keeps running (open).
+  3. *A check that could not be run is not a refusal.* The Agent’s
+     `systemd-analyze verify` (`cmd/agent/app_rpc.go`, `appUnitVerifyOutcome`)
+     answers `check_unavailable` when the tool is missing, cannot be launched,
+     is killed, does not finish in 15 s or exits non-zero without a word; only a
+     non-zero exit with output is `config_refused_elsewhere`. The unit is then
+     not restarted and the `check_unavailable` sentence (changed above) says
+     the check could not be run and that the administrator checks the unit and
+     restarts the application by hand.
 - *Application unit PATH* (observation, Debian 13 run a). Measured: a bare
   `node …` start command exited 127 (`/bin/sh: 1: node: not found`) under the
   unit's `ExecStart=/bin/sh -lc '…'`, although the unit's `Environment=PATH=`

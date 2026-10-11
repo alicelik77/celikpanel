@@ -681,15 +681,17 @@ test('a refused take whose restore was not confirmed says so, with the Agent’s
 // when it appears (it is drawn above the files list) and is a status.
 test('a refused take whose service was not reloaded says so, and the answer is scrolled into view', async () => {
   const keptPool = poolFile('owner_edited', { pending_path: POOL + '.celikpanel-pending', diff: '--- a\n+++ b\n' });
-  for (const [service, serviceReason, key] of [
+  for (const [service, serviceReason, key, active = 'true'] of [
     ['not_reloaded', 'config_refused_elsewhere', 'T:siteConfig.service.php_pool.not_reloaded.config_refused_elsewhere'],
     ['not_running', undefined, 'T:siteConfig.service.php_pool.not_running'],
+    // The service is not running now: its own sentence, never the one that says it keeps running.
+    ['not_reloaded', 'config_refused_elsewhere', 'T:siteConfig.service.php_pool.not_reloaded.stopped', 'false'],
   ]) {
     serve({
       [`GET ${URL_BASE}`]: multi(vhostFile, keptPool),
       [`POST ${URL_BASE}/take`]: () => answer({
         error: 'refused', code: 'SITE_CONFIG_SERVICE_REFUSED', reason: 'php_pool', detail: 'config_refused', restore: 'confirmed',
-        service, service_reason: serviceReason, service_active: 'true', vars: serviceReason ? { line: 'ERROR: zz-owner.conf:1' } : undefined,
+        service, service_reason: serviceReason, service_active: active, vars: serviceReason ? { line: 'ERROR: zz-owner.conf:1' } : undefined,
       }, 502),
     });
     const scrolled = [];
@@ -707,6 +709,7 @@ test('a refused take whose service was not reloaded says so, and the answer is s
     assert.equal(posts().length, 1, 'the take was sent more than once');
     const shown = text();
     assert.ok(shown.includes(key), shown);
+    if (active === 'false') assert.ok(!shown.includes('config_refused_elsewhere'), shown);
     assert.ok(!shown.includes('T:err.SITE_CONFIG_SERVICE_REFUSED.php_pool '), shown);
     assert.deepEqual(scrolled.at(-1), { block: 'nearest' });
     const status = tree.root.findAll((node) => node.props && node.props.role === 'status' && 'data-site-config-refusal' in node.props);

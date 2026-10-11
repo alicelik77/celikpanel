@@ -90,7 +90,7 @@ var siteFileServiceMessages = map[string]map[string]string{
 	transport.SiteFileKindAppUnit: {
 		"not_reloaded.config_refused_elsewhere": "The previous unit file is back and systemd has read it again. The application was not restarted, because systemd-analyze verify refuses the unit — " +
 			"the application keeps running as it was started. Fix what the check names (%s), then restart the application yourself.",
-		"not_reloaded.check_unavailable": "The previous unit file is back and systemd has read it again. The application was not restarted, because this server has no systemd-analyze to check the unit first — " +
+		"not_reloaded.check_unavailable": "The previous unit file is back and systemd has read it again. The application was not restarted, because the unit's check could not be run on this server (systemd-analyze is missing or did not finish) — " +
 			"the application keeps running as it was started. Restart the application yourself once you have checked the unit.",
 		"not_reloaded": "The previous unit file is back and systemd has read it again. The application was not restarted, because the unit's check did not pass — " +
 			"the application keeps running as it was started. The server administrator fixes what the check names, then restarts the application.",

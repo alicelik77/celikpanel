@@ -4573,16 +4573,26 @@ hücreleri (denetim §9) sonra gelir. 2026-10-10 saat tarihidir.
   adımı (kaynak sürümün havuzunu silmek) ve oradaki hatadan sonraki temizlik
   hâlâ denetimsiz yeniden yükler (ilk adımı, hedef havuzu yazmak, bu kuralı
   alır); defter satırı olmayan dosya hâlâ Alan Adları listesinde yoktur;
-  başarısız olan bir geri koyma ölçülmedi; yanıtın cümleleri `service_active`
-  alanını kullanmaz ve `not_reloaded` cümleleri reddedilen seçimin yeniden
-  yapılması gerektiğini söylemez; zaman aşımına uğrayan ya da başlatılamayan
-  bir `systemd-analyze verify` ret gibi yanıtlanır. *Kanıt:* services
+  başarısız olan bir geri koyma ölçülmedi. *alpha.83 adayında düzeltildi
+  (bileşen testli; gerçek sistemde ölçülmedi):* `not_reloaded` cümleleri
+  "Ardından CelikPanel’in metnini hâlâ istiyorsanız yeniden seçin." ile biter;
+  `service_active: false` iken web, hizmetin çalışmaya devam ettiğini söyleyen
+  cümle yerine `…not_reloaded.stopped` cümlesini seçer ("… şu anda çalışmıyor,
+  bu yüzden yeniden yüklenmedi; yapılandırması başka bir dosya yüzünden
+  reddediliyor. Denetimin adını verdiği sorunu giderin ({line}), sonra …
+  kendiniz başlatın."); zaman aşımına uğrayan, başlatılamayan ya da çıktısız
+  başarısız olan bir `systemd-analyze verify` `check_unavailable` olur
+  ("birimin denetimi bu sunucuda çalıştırılamadı … yönetici birimi denetleyip
+  uygulamayı elle yeniden başlatır"); yalnız çıktısı olan sıfırdan farklı
+  çıkış ret sayılır (`appUnitVerifyOutcome`). Hâlâ açık: sunucunun kendi yedek
+  cümlesi (ekran kataloğu yüklü değilken) durmuş durumu bilmez. *Kanıt:* services
   `TestSitePoolPutBackReloadsOnlyAConfigurationTheCheckAccepts`,
   `TestNginxPutBackLeavesAStoppedNginxAlone`,
   `TestNginxRefusalPutsBackEveryWrittenFileExactlyAndLeavesKeptFiles`
   (güncellendi: doğrulandı, yeniden yüklenmedi); Agent
   `TestAppUnitRestoreRestartsOnlyAVerifiedUnit`,
-  `TestAppUnitPathDoesNotDependOnALoginShell`; Panel
+  `TestAppUnitPathDoesNotDependOnALoginShell`,
+  `TestAppUnitVerifyOutcomeSortsRefusalFromAnUnknownResult`; Panel
   `site_config_set12_test.go`; web `site-config-mounted.test.mjs`; batch10
   görüntüleri `100p6a`, `100p8`, `100p9`. Ayrıcalıklı başlatma bekçisi iki
   yeni başlatmayı adlandırır (`internal/hostcmd/privileged_command_guard_test.go`:

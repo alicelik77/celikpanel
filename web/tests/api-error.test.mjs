@@ -197,3 +197,47 @@ test('a service refusal whose restore is not confirmed never says the file was p
   }), { status: 502, headers: { 'content-type': 'application/json' } }));
   assert.equal(apiErrorText(nginx, (key) => en[key] ?? key), en['err.SITE_CONFIG_NGINX_REFUSED.unconfirmed']);
 });
+
+// A put-back after which the service was not reloaded (alpha.83): the sentence
+// says how work resumes, and a service that is not running now (service_active
+// false) never "keeps running" - it gets its own sentence, with the check's
+// line only when the answer carries one.
+test('a not-reloaded put-back says how to resume and never says a stopped service keeps running', async () => {
+  const answer = async (reason, serviceReason, serviceActive, vars) => readApiError(new Response(JSON.stringify({
+    error: 'server words', code: 'SITE_CONFIG_SERVICE_REFUSED', reason, restore: 'confirmed', service: 'not_reloaded',
+    service_reason: serviceReason, service_active: serviceActive, vars,
+  }), { status: 502, headers: { 'content-type': 'application/json' } }));
+  const line = 'zz-owner.conf:1 unknown entry';
+  for (const [catalogue, resume, running, notRunning] of [
+    [en, 'choose again if you still want CelikPanel’s text', 'keeps running', 'is not running now'],
+    [tr, 'CelikPanel’in metnini hâlâ istiyorsanız yeniden seçin', 'çalışmaya devam ediyor', 'şu anda çalışmıyor'],
+  ]) {
+    const t = (key, vars) => {
+      const text = catalogue[key];
+      if (text === undefined) return key;
+      return vars ? text.replace(/\{(\w+)\}/g, (m, name) => vars[name] ?? m) : text;
+    };
+    for (const kind of ['php_pool', 'nginx_vhost', 'app_unit']) {
+      const reason = kind === 'app_unit' ? 'check_unavailable' : 'config_refused_elsewhere';
+      // Running (or unknown): the sentence that says it keeps running, with the resume.
+      for (const active of ['true', 'unknown', undefined]) {
+        const said = apiErrorText(await answer(kind, reason, active, { line }), t);
+        assert.ok(said.includes(resume) && said.includes(running), `${kind}/${active}: ${said}`);
+        assert.ok(!said.includes(notRunning), said);
+      }
+      // Not running: its own sentence, never "keeps running".
+      for (const serviceReason of [reason, 'config_refused_elsewhere', undefined]) {
+        for (const vars of [{ line }, undefined]) {
+          const said = apiErrorText(await answer(kind, serviceReason, 'false', vars), t);
+          assert.ok(said.includes(notRunning) && said.includes(resume), `${kind}/${serviceReason}/${!!vars}: ${said}`);
+          assert.ok(!said.includes(running) && !said.includes('{line}'), said);
+          if (vars && serviceReason !== 'check_unavailable') assert.ok(said.includes(line), said);
+          if (!vars) assert.ok(!said.includes(line), said);
+        }
+      }
+    }
+    // The check that could not be run says so and leaves the restart to the administrator.
+    const unavailable = apiErrorText(await answer('app_unit', 'check_unavailable', 'true', undefined), t);
+    assert.ok(unavailable.includes(catalogue === en ? 'could not be run' : 'çalıştırılamadı'), unavailable);
+  }
+});

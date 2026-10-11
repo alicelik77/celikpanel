@@ -5303,16 +5303,26 @@ native cells (audit §9) come after. 2026-10-10 is the clock date.
   version's pool) and the clean-up after a failure there still reload without
   the check (its first step, writing the target pool, takes this rule); a file
   with no ledger row is still not in the Domains list; restoring a failing
-  put-back itself is not measured; the answer's sentences do not use
-  `service_active`, and the `not_reloaded` sentences do not say that the
-  refused choice must be made again; a `systemd-analyze verify` that timed out
-  or could not be started is answered like a refusal.
+  put-back itself is not measured. *Corrected in the alpha.83 candidate
+  (component-tested; not measured on a real system):* the `not_reloaded`
+  sentences end "After that, choose again if you still want CelikPanel’s
+  text."; with `service_active: false` the web selects a `…not_reloaded.stopped`
+  sentence ("… is not running now, so it was not reloaded; its configuration is
+  refused by another file. Fix what the check names ({line}), then start …
+  yourself.") instead of one that says the service keeps running; a
+  `systemd-analyze verify` that timed out, could not be launched or failed
+  without output is `check_unavailable` ("the unit’s check could not be run on
+  this server … the administrator checks the unit and restarts the application
+  by hand"), only a non-zero exit with output is a refusal
+  (`appUnitVerifyOutcome`). Still open: the server's own fallback sentence
+  (screen catalogue not loaded) does not know the stopped case.
   *Evidence:* services `TestSitePoolPutBackReloadsOnlyAConfigurationTheCheckAccepts`,
   `TestNginxPutBackLeavesAStoppedNginxAlone`,
   `TestNginxRefusalPutsBackEveryWrittenFileExactlyAndLeavesKeptFiles`
   (updated: confirmed, not reloaded); Agent
   `TestAppUnitRestoreRestartsOnlyAVerifiedUnit`,
-  `TestAppUnitPathDoesNotDependOnALoginShell`; Panel
+  `TestAppUnitPathDoesNotDependOnALoginShell`,
+  `TestAppUnitVerifyOutcomeSortsRefusalFromAnUnknownResult`; Panel
   `site_config_set12_test.go`; web `site-config-mounted.test.mjs`; batch10
   shots `100p6a`, `100p8`, `100p9`. The privileged-launch guard names the two
   new launches (`internal/hostcmd/privileged_command_guard_test.go`:
