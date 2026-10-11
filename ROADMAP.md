@@ -91,7 +91,8 @@ not create a replacement architecture plan.
 ### Release state — October 10, 2026
 
 This subsection records where the releases stand (written on 2026-10-10; the
-entry for the v0.1.0-alpha.83 candidate was added on 2026-10-11). It changes no
+entry for v0.1.0-alpha.83 was added on 2026-10-11 as a candidate and amended
+for its publication the same day). It changes no
 P0 status: P0.1–P0.5 are all still **partial**, and every open acceptance item
 above and below stays open.
 
@@ -332,23 +333,25 @@ above and below stays open.
   - No P0 item is closed or advanced by this release. Publishing it did not
     update any installed panel; the owner updated the two installed panels
     from the panel's own update screen.
-- **v0.1.0-alpha.83 is the next release; it is not published yet.** Owner
+- **v0.1.0-alpha.83 is published, 2026-10-11; no installed server is updated
+  to it yet.** Owner
   decisions of 2026-10-11 (clock date), two: the number is v0.1.0-alpha.83;
   and the owner-kept site configuration files
   ([D-031](docs/DECISIONS.md)) enter this release. Recorded with them: the
   narrower `Strict-Transport-Security` header of v0.1.0-alpha.82
   ([D-030](docs/DECISIONS.md)) was read from the outside on both installed
   servers before and after their update (owner-reported, in the publication
-  entry above); this candidate does not change it. The candidate is the branch
-  `fix/alpha83-known-state-gates`, draft pull request #206 into `main`: 44
-  commits after `2a0af8866` when this was written. The last commit that
-  changes a file under `cmd/`, `internal/` or `web/src` other than a test is
+  entry above); this release does not change it. The release was the branch
+  `fix/alpha83-known-state-gates`, pull request #206 into `main`: 44
+  commits after `2a0af8866` when the candidate entry was written. The last
+  commit that changes a file under `cmd/`, `internal/` or `web/src` other than a test is
   `40f02ecb6`; the commits after it add tests, evidence, documents and the
   release preparation (sequence 83, the installer's bootstrap pins and the
   README version lines, in `ab67d9fc4`, which changes no file under `cmd/`,
   `internal/` or `web/`), and further commits of that kind raise the count
   without changing this
-  ([draft release notes](docs/RELEASE-NOTES-v0.1.0-alpha.83.md)). It contains:
+  ([release notes](docs/RELEASE-NOTES-v0.1.0-alpha.83.md), whose "Publication
+  record" holds the details below). It contains:
   a site's nginx file, PHP-FPM pool and application unit that the owner
   changed are kept and named, with three choices on the domain's page
   (database schema 43 to 44, migration 044); certificate validation published
@@ -390,13 +393,53 @@ above and below stays open.
     11:44 UTC carries the last change to product code. Six runs before them had
     failed on a data race in a test's fake Agent, fixed in test code. Runs of
     commits made after 12:09 UTC are not entered here.
-  - *Open before publication:* setting the repository variable
-    `CELIKPANEL_RELEASE_SEQUENCE` to 83 (the branch protection of `main`
-    requires only "Release — reproducible archive and checksum", read on
-    2026-10-11, so the split race shards need no rename); merge, tag, verification of the six signed assets and the portal
-    publication. Each installed panel is then updated by its owner from the
-    panel's own update screen; no one else starts that.
-  - *Open for the next release, with the candidate's limits as the release
+  - *Publication, 2026-10-11 (UTC).* The owner squash-merged pull request #206
+    into `main` as `0447558e956d4c02c7bf06b368def0924856f8fc` (tree
+    `7adde05327ecadb3c7d3451ec9b08fab9494a480`, equal to the tree of the pull
+    request's last commit `304da2466`); CI on that commit (run 38145660891)
+    passed 23 of 23 jobs that ran, and the job that publishes assets was
+    skipped because it runs only for a tag. The branch protection of `main`
+    required only "Release — reproducible archive and checksum" (read on
+    2026-10-11), so the split race shards needed no rename. The owner set the
+    repository variable `CELIKPANEL_RELEASE_SEQUENCE` to 83 before tagging,
+    then created and pushed the annotated tag `v0.1.0-alpha.83` (tag object
+    `f5772a5b96fe8a341c63fd71a27a750bade4e382`) on that commit. The tag's CI
+    run (38153704563) completed successfully with 24 jobs and published the
+    release as a pre-release at 16:22:31 with six assets. Platform archive
+    `celikpanel-v0.1.0-alpha.83-linux-amd64.tar.gz`, 66,132,418 bytes,
+    SHA-256 `6275bebed2b581bad58d4323217ed14defb54d06c23cef5af94218da573aefe5`,
+    sequence 83. The assets were checked in a local build guest from a clone at
+    the tag (reported by the release preparer, not recorded in a file here):
+    both checksum files verify; the two archives are byte-identical; the signed
+    manifest says sequence 83, version v0.1.0-alpha.83, the commit above, that
+    digest and size, with `published_at` 2026-10-11T14:03:46Z; its Ed25519
+    signature verifies against the tag's `deploy/release-signing-ed25519.pem`
+    (the same file as the copy in the archive and the pin in its
+    `libexec/get.sh`); the archive's `release.commit` and `release.tree` equal
+    the tag's; `install.sh`, `libexec/get.sh` and the public key in the archive
+    are byte-identical to the tag's; both release guards exit 0; the bootstrap
+    pins are sequence 83 and v0.1.0-alpha.83. The download portal package was
+    built from the tag in pre-signed mode with the six assets, twice with
+    identical results (132,634,305 bytes, SHA-256
+    `6787d0b42ff70621fe1a2ee46c75d336ca24092108a2182e6c35a2da0f5c94d2`), its
+    contract test and the public-verifier (17 tests) and promotion (14 tests)
+    tests passed, and a local rehearsal of the real promoter against a fixture
+    copy of the alpha.82 site ended `committed` with 26 requests. The owner
+    published the portal with `deploy/publish-download-portal.ps1` (previous
+    v0.1.0-alpha.82, target v0.1.0-alpha.83): status `committed`, the backup
+    kept, one public verification pass of 26 requests (`status: ok`), the
+    success marker printed once (owner-reported). A read-only read of the
+    public site from outside afterwards (release preparer, not recorded in a
+    file here): `releases/latest.txt` is `v0.1.0-alpha.83`, `latest.json`
+    names the commit and the digest, the served manifest, signature and
+    checksum are byte-identical to the verified assets, the archive URL
+    answers 200 with `Content-Length: 66132418` (not downloaded again), `get.sh`
+    pins sequence 83 and v0.1.0-alpha.83, and the alpha.82 manifest is still
+    served. **Installed panels: not updated at the time of this record.** Each
+    owner starts that from the panel's own update screen; the outcome will be
+    recorded separately. Nothing here describes what an installed server does
+    with this release.
+  - *Open for the next release, with the release's limits as the release
     notes list them:* a PHP version switch never measured; Arch absent from the
     thirteenth record; "Keep mine", "Recreate" and "Write CelikPanel's text now"
     on a pool or unit, and the not-running case for nginx and an application,
@@ -411,11 +454,11 @@ above and below stays open.
     measured on a server; the Postfix restriction list that a DNSBL save
     rewrites to one line; no control for a database user's password. The open
     item "what an owner's hand edit of a generated site configuration file
-    meets at a Panel start" is answered by this candidate and stays open until
-    it is published.
-  - No P0 item is closed or advanced by this candidate. Publishing it will
-    not update any installed panel; only the owner starts that, from the
-    panel's own update screen.
+    meets at a Panel start" is answered by this release and stays open: no
+    installed server runs it yet.
+  - No P0 item is closed or advanced by this release or by its publication.
+    Publishing it did not update any installed panel; only the owner starts
+    that, from the panel's own update screen.
 
 ### Latest DNS results and their limits
 
@@ -450,7 +493,7 @@ above and below stays open.
 | 3 | P0.1–P0.5: close the remaining end-to-end update, access, schema, TLS/enrollment and workload matrix. **Item 3 is closed as of 2026-10-01 with named limits** ([contract section](docs/RESILIENCE-CONTRACT.md#roadmap-item-3-status-closed-on-2026-10-01-with-named-limits-p01p02p03p05)). Owner-started update runs upd2 to upd6 on disposable Debian 13 and Arch guests (upd1 reached no update) measured: a good candidate installed through the Panel's update-start API as the logged-in owner; a candidate failing before completion returned to the previous release automatically, also after a second fault (VM reset on Debian, SIGKILL on Arch); a candidate failing after completion retried three times, paused with its cause kept, and finished after the owner's printed retry; cron never interrupted and the site interrupted only around the injected VM reset (about 22 s at most); with Panel and Agent disabled across a reboot, site, database, cron and firewall kept serving (SMTP on Debian) and the renewal timer kept its state. The product defects those runs found are closed in source. Closing item 3 closes no P0 item: fixture signing and loopback origin, few repetitions and no browser, no Ubuntu, no power loss, no rollback after completion, no live status at the Panel's address while it is stopped, and paths not triggered natively stay named in the contract section. | Owner UI update admission, failed candidate, automatic rollback, a second recovery fault, authenticated guidance and preserved native workloads agree on one operation. Each claimed platform/version combination has retained evidence. |
 | 4 | Release review of the exact candidate and a short owner test path. **Candidate review done; the candidate's exact code (`f6cdd5a0`) has one complete run of the update matrix on 2026-10-02/03 and publication waits for the owner** ([release notes](docs/RELEASE-NOTES-v0.1.0-alpha.81.md)). The customer archive no longer ships the harness, test scripts or evidence and the signing step refuses one that does. A read-only review of the update path found seven defects, all seven corrected in source (component tests; residuals are listed in the contract section); the most important was that a worker started by v0.1.0-alpha.80 wrote no status record, so the new guidance never appeared on the first upgrade. That first upgrade was then measured, one run per case, from the alpha.80 source rebuilt with a test license (not the signed archive) on Debian 13 and Ubuntu 24.04 (good candidate, owner continuation, defective candidate returning to alpha.80); Arch from alpha.80 was not measured. Ubuntu exposed that an idle package helper blocked setup and could refuse an update start; the first fix did not hold on a real system, the corrected one was measured. Open for the owner: the version number; the root-only packaging tests (18) on a disposable machine or CI; production signing and its compatibility check; whether the vendor publishing tools stay in the archive; the owner test; every installed-panel update. After the review corrections, the Panel's deferred retry of its mail startup steps was added and measured, and the whole matrix was run once more on the final code (upd13: 20 cells, no candidate defect). Named limits are in the release notes; no P0 item is closed. **State on 2026-10-09:** the release is published as `v0.1.0-alpha.81` (tag at `a0beb726`, 2026-10-04). Reported by the owner, and not recorded in a file here: the publication steps (merge of pull request #204, tag, portal publication), the verification of the six signed assets, and the update of the two installed panels (one Ubuntu 24.04, one Debian 13) from the panel's own update screen on 2026-10-08. | All required acceptance items are closed, or a deliberately scoped release states its still-open limits. Verify signed artifacts and recovery compatibility; only the user starts installed-panel updates. |
 | 5 | Release review of `v0.1.0-alpha.82` (see "Release state — October 10, 2026" above). **Published 2026-10-10 (tag on `2a0af8866`; 22 of 22 CI jobs; six assets; portal published by the owner; both installed servers updated by the owner from the panel's update screen); the number is v0.1.0-alpha.82 (owner decision of 2026-10-10).** A seventh native record, a real Chrome against the published code, passed the update-window and hidden-tab cells and failed the cold page load (the `RecoveryAccess` gate); it is retained with its intake corrections. Four native runs, one follow-up and one reading of `postconf` on 2026-10-08 and 2026-10-09 measured the settings writes, the service actions, the request identity, the update from the published v0.1.0-alpha.81 (at `cfa329676`) and the last corrections on fresh guests (at `557b554eb`, PHP sites on Arch included); the one failed check, the note after a Postfix stop on Ubuntu 24.04, was corrected and measured again. The `postconf` correction (`67b62cc0f`) rests on one reading of the real program and component tests. The update matrix was repeated at `67b62cc0f` on 2026-10-09 in a fifth run: all ten cells reached the end the third run measured, once each, with guest disks in memory. The final code (`72b879eea`, which adds the Panel's narrower `Strict-Transport-Security` header, [D-030](docs/DECISIONS.md)) was then installed fresh on three platforms, its header read on the guests and one update per platform verified, in a sixth run. Not repeated on the final code: the settings-write, request-identity and full service-action cells, and seven update cells. Not run on a real system: the corrected mail certificate path. Decided by the owner on 2026-10-10: the number; the fresh-install measurement before publication; the header change. The owner's own test is the update of the two installed servers, started by the owner from the panel's update screen, with no disposable server. Done by the owner on 2026-10-10: the release sequence variable, merge, tag and portal publication; production signing ran in CI on the tag and the assets were verified; both installed-panel updates (the owner started them). Carried to the next release: the audit of what an owner's edit of a generated site configuration file meets at a Panel start, and the open list under "Release state" ("Open for the next release (2026-10-10, after publication)"), which includes four owner observations from the installed updates and the first-load interstitial. No P0 item is closed or advanced. | The fifth and sixth runs are retained ([update matrix](deploy/e2e/release-recovery/evidence/set5-20261009/README.md), [fresh install and header](deploy/e2e/release-recovery/evidence/set6-20261009/README.md)) and the [release notes](docs/RELEASE-NOTES-v0.1.0-alpha.82.md) say which check rests on which code. The release states its still-open limits. Verify signed artifacts and recovery compatibility; only the user starts installed-panel updates. |
-| 6 | Release review of the `v0.1.0-alpha.83` candidate (see "Release state — October 10, 2026" above, the entry for the candidate). **Not published; the number is v0.1.0-alpha.83 (owner decision of 2026-10-11); D-031 enters it.** Seven native records (the seventh to the thirteenth, 2026-10-10 and 2026-10-11, disposable guests, test-licence builds, updates from the tags' source rebuilt) measured the interfaces of alpha.81 and alpha.82 in a real Chrome, the first load and the access wait of the candidate, what v0.1.0-alpha.82 does with an owner's edit, the first part of D-031, its corrections, its second step (pool, application unit) with the update from alpha.82, and the corrections after that, on Debian 13, Ubuntu 24.04 and Arch except where a record says otherwise; the thirteenth ran on Debian 13 and Ubuntu 24.04 only. The changes made after the thirteenth record have component tests only. Still for the owner: setting the release sequence variable to 83, renaming and adding the required checks in the branch protection, deciding whether the vendor publishing tools and two recovery scripts stay in the archive, merge, tag, the six signed assets, portal publication, and every installed-panel update. No P0 item is closed or advanced. | The [release notes](docs/RELEASE-NOTES-v0.1.0-alpha.83.md) say which check rests on which code and list the limits; the records are under `deploy/e2e/release-recovery/evidence/`. Verify signed artifacts and recovery compatibility; only the user starts installed-panel updates. |
+| 6 | Release review of `v0.1.0-alpha.83` (see "Release state — October 10, 2026" above, the entry for this release). **Published 2026-10-11 (tag on `0447558e9`; CI on the tag 24 jobs, successful; six assets; portal published by the owner); no installed server is updated to it yet; the number is v0.1.0-alpha.83 (owner decision of 2026-10-11); D-031 enters it.** Seven native records (the seventh to the thirteenth, 2026-10-10 and 2026-10-11, disposable guests, test-licence builds, updates from the tags' source rebuilt) measured the interfaces of alpha.81 and alpha.82 in a real Chrome, the first load and the access wait of the candidate, what v0.1.0-alpha.82 does with an owner's edit, the first part of D-031, its corrections, its second step (pool, application unit) with the update from alpha.82, and the corrections after that, on Debian 13, Ubuntu 24.04 and Arch except where a record says otherwise; the thirteenth ran on Debian 13 and Ubuntu 24.04 only. The changes made after the thirteenth record have component tests only. Done by the owner on 2026-10-11: the release sequence variable set to 83, the decision that the vendor publishing tools and two recovery scripts stay in the archive, merge, tag, portal publication; the six signed assets were produced by CI on the tag and checked (a read of the branch protection showed no rename of required checks was needed). Still for the owner: every installed-panel update, started from the panel's own update screen; its outcome will be recorded separately. No P0 item is closed or advanced. | The [release notes](docs/RELEASE-NOTES-v0.1.0-alpha.83.md) say which check rests on which code and list the limits; the records are under `deploy/e2e/release-recovery/evidence/`. Verify signed artifacts and recovery compatibility; only the user starts installed-panel updates. |
 
 Each slice must identify the open acceptance it closes before more tests are added.
 Repeat a passing trial only after a relevant change or to resolve a named uncertainty.

@@ -4629,3 +4629,39 @@ hücreleri (denetim §9) sonra gelir. 2026-10-10 saat tarihidir.
   hâlâ yalnız yazım yolları ve yeniden denetimce yazılır; yerel
   güncelleme/otomatik geri alma dayanıklılığının kabul işleri değişmedi ve
   açık.
+
+### v0.1.0-alpha.83'ün yayımlanması (P0.2 alanı; ilke 2 ve 6; D-031; 2026-10-11)
+
+D-025 ilke 2 (bilinmeyen; yok, boş ya da başarı değildir) ve ilke 6 (ekran
+doğrulananı söyler); D-024; D-031. **Hiçbir P0 işi kapanmaz ya da ilerlemez.**
+P0.1–P0.5 kısmi kalır ve her açık kabul işi açık kalır. Bu girdi bir yayımı
+kaydeder; kod, şema ya da kurtarma davranışını değiştirmez. 2026-10-11 saat
+tarihidir.
+
+- **Yayımlama.** v0.1.0-alpha.83'ü 11 Ekim 2026'da sahip yayımladı: #206
+  numaralı çekme isteği `main`'e `0447558e956d4c02c7bf06b368def0924856f8fc`
+  olarak squash ile birleştirildi (ağacı, çekme isteğinin son commit'i
+  `304da2466`'nın ağacına eşit; o commit'teki CI çalışan 23 işin 23'ü, yayımlayan
+  iş yalnız bir etiket için çalıştığından atlandı), `CELIKPANEL_RELEASE_SEQUENCE`
+  depo değişkeni etiketlemeden önce 83 yapıldı, o commit'te
+  `v0.1.0-alpha.83` açıklamalı etiketi oluşturuldu, etiketin 24 işlik CI koşusu
+  başarıyla tamamlanıp 16:22:31 UTC'de altı dosyayla ön sürüm yayımladı
+  (platform arşivi SHA-256
+  `6275bebed2b581bad58d4323217ed14defb54d06c23cef5af94218da573aefe5`,
+  66.132.418 bayt, sıra 83) ve indirme portalını sahip
+  `deploy/publish-download-portal.ps1` ile yayımladı (durum `committed`, 26
+  istekli tek genel doğrulama turu, `status: ok`). Dosyaların yerel
+  doğrulaması, portal derlemesi ve provası ve sonrasında genel sitenin okunması
+  sürümü hazırlayan kişinin bildirdikleridir, burada bir dosyada kayıtlı
+  değildir. [Sürüm notlarının](RELEASE-NOTES-v0.1.0-alpha.83.tr.md) "Yayımlama
+  kaydı" bölümü bunları sayar.
+- **Kurulu paneller.** Bu kaydın yazıldığı sırada güncellenmedi. Bunu her sahip
+  panelin kendi güncelleme ekranından başlatır; sonuç ayrıca kaydedilecek.
+  Buradaki hiçbir şey kurulu bir sunucunun bu sürümle ne yaptığını anlatmaz ve
+  bu girdi hiçbir iş için kabul kanıtı değildir.
+- **Şema ya da sürüm geçişi.** Bu girdide yok (sürümün kendisi 43'ten 44'e
+  veritabanı şeması taşır; yukarıdaki D-031 girdisinde kayıtlıdır).
+  **Kurtarma davranışı.** Değişmedi.
+- **Açık.** Yukarıdaki girdilerin açık bıraktığı her şey; bunlar arasında on
+  üçüncü gerçek sistem kaydından sonra yapılan son değişikliklerin yalnız
+  bileşen testlerinin bulunması da var.

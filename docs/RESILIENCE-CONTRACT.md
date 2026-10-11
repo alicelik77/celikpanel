@@ -5358,3 +5358,38 @@ native cells (audit §9) come after. 2026-10-10 is the clock date.
   a vhost are still stored only by the write paths and the recheck; the
   acceptance items of native update/automatic-rollback resilience are
   unchanged and stay open.
+
+### Publication of v0.1.0-alpha.83 (P0.2 area; invariants 2 and 6; D-031; 2026-10-11)
+
+D-025 invariants 2 (unknown is not absent, empty or success) and 6 (a screen
+says what was verified); D-024; D-031. **No P0 item is closed or advanced.**
+P0.1 to P0.5 stay partial and every open acceptance item stays open. This entry
+records a publication; it changes no code, schema or recovery behaviour.
+2026-10-11 is the clock date.
+
+- **Publication.** v0.1.0-alpha.83 was published by the owner on 2026-10-11:
+  pull request #206 squash-merged into `main` as
+  `0447558e956d4c02c7bf06b368def0924856f8fc` (its tree equals the tree of the
+  pull request's last commit, `304da2466`; CI on that commit, 23 of 23 jobs
+  that ran, the publish job skipped because it runs only for a tag), the
+  repository variable `CELIKPANEL_RELEASE_SEQUENCE` set to 83 before tagging,
+  the annotated tag `v0.1.0-alpha.83` on that commit, the tag's CI run with 24
+  jobs, successful, publishing a pre-release at 16:22:31 UTC with six assets
+  (platform archive SHA-256
+  `6275bebed2b581bad58d4323217ed14defb54d06c23cef5af94218da573aefe5`,
+  66,132,418 bytes, sequence 83), and the download portal published by the
+  owner with `deploy/publish-download-portal.ps1` (status `committed`, one
+  public verification pass of 26 requests, `status: ok`). The local
+  verification of the assets, the portal build and its rehearsal, and the read
+  of the public site afterwards are reported by the release preparer and are
+  not recorded in a file here. The "Publication record" of the
+  [release notes](RELEASE-NOTES-v0.1.0-alpha.83.md) lists them.
+- **Installed panels.** Not updated at the time of this record. Each owner
+  starts that from the panel's own update screen; the outcome will be recorded
+  separately. Nothing here describes what an installed server does with this
+  release, and this entry is not acceptance evidence for any item.
+- **Schema or version transition.** None in this entry (the release itself
+  carries database schema 43 to 44, recorded in the D-031 entry above).
+  **Recovery behaviour.** Unchanged.
+- **Open.** Everything the entries above leave open, among them that the last
+  changes made after the thirteenth native record have component tests only.

@@ -1,10 +1,14 @@
-# v0.1.0-alpha.83 (draft, not published)
+# v0.1.0-alpha.83 (published 2026-10-11)
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.83.tr.md)
 
-This is the draft of the release that follows v0.1.0-alpha.82. The owner
-decided that its number is v0.1.0-alpha.83. Nothing of it is published, and no
-installed server runs it. This draft was written on 2026-10-11.
+This is the release that follows v0.1.0-alpha.82. It was published on
+2026-10-11 by the owner (see "Publication record" at the end). The owner
+decided that its number is v0.1.0-alpha.83. At the time of this record no
+installed server has been updated to it: the owner of each starts that from the
+panel's own update screen, and the outcome will be recorded separately. These
+notes were written as a draft on 2026-10-11 and amended for the publication on
+the same day.
 
 It does two things. It stops CelikPanel from overwriting a site configuration
 file you changed by hand: the file is kept, the site says so, and you choose
@@ -1207,34 +1211,104 @@ These are known. They are not hidden defects.
 
 ## Publication record
 
-Not published. Open before publication:
+Everything below is dated 2026-10-11 (clock date, UTC unless a time zone is
+named). The steps were taken by the owner; the checks of the assets and of the
+portal package were made by the person who prepared the release. This entry
+does not store any of the results below as a file in the repository.
+
+**What happened.**
 
 1. The number: v0.1.0-alpha.83, the owner's decision of 2026-10-11. Done.
-2. The release preparation is committed in a separate commit that changes no
+2. The release preparation was committed in a separate commit that changes no
    file under `cmd/`, `internal/` or `web/`: release sequence 83 after 82, the
    installer's bootstrap pins, the README version lines and the contract tests
    that pin them. (The owner's decision is dated 2026-10-11; that commit's
-   message says 2026-10-12 by mistake.) At publication the owner sets the
-   repository variable `CELIKPANEL_RELEASE_SEQUENCE` to 83, before the tag. The
-   real archive is built and signed by CI on the tag.
-3. Done: the results of the eleventh, twelfth and thirteenth records are
-   entered. The pull request's last head gets its own CI run; the runs up to
-   12:09 UTC on 2026-10-11 are named under "Tests".
-4. The continuous integration now splits one test group into three ("Panel
+   message says 2026-10-12 by mistake.) The real archive was built and signed
+   by CI on the tag.
+3. The results of the eleventh, twelfth and thirteenth records were entered.
+   The continuous integration runs of the pull request up to 12:09 UTC on
+   2026-10-11 are named under "Tests".
+4. The continuous integration splits one test group into three ("Panel
    race — S, except the service, setup, site and startup tests", "Panel race —
    Startup readiness", "Panel race — Site configuration"). A read of the
    branch protection of `main` on 2026-10-11 showed only one required check,
-   "Release — reproducible archive and checksum", so no rename is needed
+   "Release — reproducible archive and checksum", so no rename was needed
    before the merge; an earlier form of this item said one was.
 5. The vendor's publishing tools and the two one-time recovery scripts stay in
    this release's archive (owner decision, 2026-10-11). They do nothing on a
    customer's server; removing them is left to a later release, where the
    packaging change needs its own archive build and content checks.
-6. The owner merges, tags the release, checks the six signed assets as the
-   signed release contract describes, and publishes the download portal.
-7. After the release is published, the owner of each installed server updates
-   that server from the panel's own update screen. This is a separate step
-   from every step above; no one else starts it.
+6. Pull request #206 was squash-merged by the owner into `main` on 2026-10-11.
+   Main is commit `0447558e956d4c02c7bf06b368def0924856f8fc`, tree
+   `7adde05327ecadb3c7d3451ec9b08fab9494a480`; that tree equals the tree of
+   the pull request's last commit, `304da2466`. The continuous integration run
+   on that main commit (run 38145660891) passed: 23 of 23 jobs that ran; the
+   job that publishes assets was skipped, because it runs only for a tag.
+7. Before tagging, the owner set the repository variable
+   `CELIKPANEL_RELEASE_SEQUENCE` to 83. The owner then created and pushed the
+   annotated tag `v0.1.0-alpha.83` (tag object
+   `f5772a5b96fe8a341c63fd71a27a750bade4e382`) on the main commit above. The
+   tag's CI run (38153704563) completed successfully with 24 jobs and
+   published the release as a pre-release at 16:22:31 UTC with six assets: the
+   two archives, their two checksum files, the signed manifest and its
+   signature.
+8. The assets were checked in a local build guest, from a clone checked out at
+   the tag. The linux/amd64 archive
+   `celikpanel-v0.1.0-alpha.83-linux-amd64.tar.gz` is 66,132,418 bytes,
+   SHA-256 `6275bebed2b581bad58d4323217ed14defb54d06c23cef5af94218da573aefe5`.
+   Both checksum files verify; the two archives are byte-identical. The signed
+   manifest says `sequence=83`, `version=v0.1.0-alpha.83`, the main commit
+   above, `published_at=2026-10-11T14:03:46Z`, that SHA-256 and that size. Its
+   Ed25519 signature verifies against `deploy/release-signing-ed25519.pem`
+   from the tag (key file SHA-256
+   `7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb`, the
+   same as the copy inside the archive and as the pin in the archive's
+   `libexec/get.sh`). The `release.commit` and `release.tree` recorded in the
+   archive equal the tag's. `install.sh`, `libexec/get.sh` and the public key
+   in the archive are byte-identical to the tag's files.
+   `deploy/release-content-guard.sh` and
+   `deploy/release-acceptance-license-guard.sh` both exited 0 on the archive.
+   The archive's bootstrap pins are sequence 83 and v0.1.0-alpha.83.
+9. The download portal package was built from the tag checkout in pre-signed
+   mode with the six downloaded assets. `deploy/test-download-portal-contract.sh`
+   passed. The package was built twice with byte-identical results: 132,634,305
+   bytes, SHA-256
+   `6787d0b42ff70621fe1a2ee46c75d336ca24092108a2182e6c35a2da0f5c94d2`. Its
+   file layout is identical to the v0.1.0-alpha.82 package apart from the
+   version. In the tag checkout `deploy/test-download-portal-public-verifier.py`
+   ran 17 tests, all OK, and `deploy/test-download-portal-promotion.py` ran 14
+   tests, all OK. A local rehearsal ran the real promoter against a fixture
+   copy of the alpha.82 site served on loopback: exit 0, status `committed`,
+   26 requests, the success marker printed once, the previous version and the
+   backup kept.
+10. The owner published the portal with `deploy/publish-download-portal.ps1`
+    (previous version v0.1.0-alpha.82, target v0.1.0-alpha.83). The result was
+    status `committed`. The backup
+    `httpdocs.before-v0.1.0-alpha.83.20261011T191704Z…` is kept on the server.
+    The single public verification pass after the exchange reported
+    `status: ok`, 26 requests, one archive download, 66,672,304 bytes
+    downloaded. The marker `CELIKPANEL_DOWNLOAD_PORTAL_PUBLISHED` was printed
+    once.
+11. A read-only read of https://celikpanel.net from outside afterwards:
+    `releases/latest.txt` is `v0.1.0-alpha.83`; `releases/latest.json` names
+    the main commit and the SHA-256 above; the published signed manifest, its
+    signature and the checksum file are byte-identical to the verified GitHub
+    assets; the archive URL answers 200 with `Content-Length: 66132418` (the
+    archive was not downloaded again in this read); `get.sh` pins sequence 83
+    and v0.1.0-alpha.83; the alpha.82 manifest is still served.
+
+**Not done, and what publication does not change.**
+
+- The installed servers are not updated. At the time of this record nobody has
+  updated them: the owner of each installed server starts that from the
+  panel's own update screen, as a separate step from every step above, and no
+  one else starts it. The outcome will be recorded separately. Nothing in this
+  record describes what an installed server does with this release.
+- Publication is not product acceptance. The limits listed under "Limits of
+  this release" are unchanged by it, among them that the last changes made
+  after the short round have component tests only. All five foundation items
+  of the [resilience contract](RESILIENCE-CONTRACT.md) remain partial; no P0
+  item is closed by the release or by its publication.
 
 Install this release only through CelikPanel's update interface. Publishing it
 does not update installed servers; only the owner of a server starts its

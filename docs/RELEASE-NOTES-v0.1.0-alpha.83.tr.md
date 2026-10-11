@@ -1,10 +1,13 @@
-# v0.1.0-alpha.83 (taslak, yayımlanmadı)
+# v0.1.0-alpha.83 (11 Ekim 2026'da yayımlandı)
 
 [English](RELEASE-NOTES-v0.1.0-alpha.83.md)
 
-Bu, v0.1.0-alpha.82'yi izleyen sürümün taslağıdır. Sahip numarasının
-v0.1.0-alpha.83 olmasına karar verdi. Sürümün hiçbir parçası yayımlanmadı;
-hiçbir kurulu sunucu onu çalıştırmıyor. Bu taslak 11 Ekim 2026'da yazıldı.
+Bu, v0.1.0-alpha.82'yi izleyen sürümdür. 11 Ekim 2026'da sahip tarafından
+yayımlandı (sonda "Yayımlama kaydı"na bakın). Sahip numarasının
+v0.1.0-alpha.83 olmasına karar verdi. Bu kaydın yazıldığı sırada hiçbir kurulu
+sunucu bu sürüme güncellenmedi: bunu her sunucunun sahibi panelin kendi
+güncelleme ekranından başlatır ve sonucu ayrıca kaydedilecek. Bu notlar 11 Ekim
+2026'da taslak olarak yazıldı ve aynı gün yayımlama için değiştirildi.
 
 Sürüm iki şey yapar. Birincisi, CelikPanel'in elle değiştirdiğiniz bir site
 yapılandırma dosyasının üzerine yazmasını durdurur: dosya korunur, site bunu
@@ -1243,34 +1246,99 @@ Bunlar bilinen sınırlardır. Gizli kusur değildir.
 
 ## Yayımlama kaydı
 
-Yayımlanmadı. Yayımlamadan önce açık olanlar:
+Aşağıdaki her şey 11 Ekim 2026 tarihlidir (saat tarihi; saat dilimi
+belirtilmedikçe UTC). Adımları sahip attı; dosyaların ve portal paketinin
+denetimlerini sürümü hazırlayan kişi yaptı. Bu girdi, aşağıdaki sonuçların
+hiçbirini depoda bir dosya olarak saklamaz.
+
+**Ne oldu.**
 
 1. Numara: v0.1.0-alpha.83, sahibin 11 Ekim 2026 kararı. Yapıldı.
 2. Sürüm hazırlığı, `cmd/`, `internal/` ya da `web/` altında hiçbir dosyayı
    değiştirmeyen ayrı bir commit'te yapıldı: 82'den sonra sürüm sırası 83,
    kurucunun önyükleme sabitleri, README'nin sürüm satırları ve bunları
    sabitleyen sözleşme testleri. (Sahibin kararı 11 Ekim 2026 tarihlidir; o
-   commit'in iletisi yanlışlıkla 12 Ekim 2026 der.) Yayımlamada sahip
-   `CELIKPANEL_RELEASE_SEQUENCE` depo değişkenini etiketten önce 83 yapar.
-   Gerçek arşivi etikette CI derler ve imzalar.
-3. Yapıldı: on birinci, on ikinci ve on üçüncü kayıtların sonuçları girildi.
-   Çekme isteğinin son ucu kendi CI koşusunu alır; 11 Ekim 2026'da 12:09
-   UTC'ye kadarki koşular "Testler" altında anılır.
-4. Sürekli tümleştirme artık bir test grubunu üçe böler ("Panel race — S,
-   except the service, setup, site and startup tests", "Panel race — Startup
-   readiness", "Panel race — Site configuration"). `main` dalının koruması
-   2026-10-11'de okunduğunda tek zorunlu denetim vardı: "Release —
-   reproducible archive and checksum"; bu yüzden birleştirmeden önce ad
-   değişikliği gerekmez. Bu maddenin önceki hali gerektiğini söylüyordu.
+   commit'in iletisi yanlışlıkla 12 Ekim 2026 der.) Gerçek arşivi etikette CI
+   derledi ve imzaladı.
+3. On birinci, on ikinci ve on üçüncü kayıtların sonuçları girildi. Çekme
+   isteğinin 11 Ekim 2026'da 12:09 UTC'ye kadarki CI koşuları "Testler"
+   altında anılır.
+4. Sürekli tümleştirme bir test grubunu üçe böler ("Panel race — S, except the
+   service, setup, site and startup tests", "Panel race — Startup readiness",
+   "Panel race — Site configuration"). `main` dalının koruması 2026-10-11'de
+   okunduğunda tek zorunlu denetim vardı: "Release — reproducible archive and
+   checksum"; bu yüzden birleştirmeden önce ad değişikliği gerekmedi. Bu
+   maddenin önceki hali gerektiğini söylüyordu.
 5. Satıcının yayın araçları ile iki tek seferlik kurtarma betiği bu sürümün
    arşivinde kalır (sahip kararı, 11 Ekim 2026). Müşterinin sunucusunda hiçbir
    iş yapmazlar; çıkarılmaları, kendi arşiv derlemesini ve içerik denetimlerini
    gerektirdiği için sonraki bir sürüme bırakıldı.
-6. Sahip birleştirir, sürümü etiketler, altı imzalı dosyayı imzalı sürüm
-   sözleşmesinde anlatıldığı gibi doğrular ve indirme portalını yayımlar.
-7. Sürüm yayımlandıktan sonra, kurulu her sunucunun sahibi o sunucuyu panelin
-   kendi güncelleme ekranından günceller. Bu, yukarıdaki her adımdan ayrı bir
-   adımdır; onu başka kimse başlatmaz.
+6. #206 numaralı çekme isteğini sahip 11 Ekim 2026'da `main`'e squash olarak
+   birleştirdi. `main`, `0447558e956d4c02c7bf06b368def0924856f8fc` commit'idir,
+   ağacı `7adde05327ecadb3c7d3451ec9b08fab9494a480`; bu ağaç çekme isteğinin son
+   commit'i `304da2466`'nın ağacına eşittir. O `main` commit'indeki sürekli
+   tümleştirme koşusu (koşu 38145660891) geçti: çalışan 23 işin 23'ü; dosya
+   yayımlayan iş yalnız bir etiket için çalıştığından atlandı.
+7. Etiketlemeden önce sahip `CELIKPANEL_RELEASE_SEQUENCE` depo değişkenini 83
+   yaptı. Sonra yukarıdaki `main` commit'inde `v0.1.0-alpha.83` açıklamalı
+   etiketini (etiket nesnesi `f5772a5b96fe8a341c63fd71a27a750bade4e382`)
+   oluşturdu ve gönderdi. Etiketin CI koşusu (38153704563) 24 işle başarıyla
+   tamamlandı ve sürümü 16:22:31 UTC'de ön sürüm olarak altı dosyayla yayımladı:
+   iki arşiv, iki sağlama toplamı dosyası, imzalı manifest ve imzası.
+8. Dosyalar, etiketin çıkış yapılmış bir klonundan yerel bir derleme
+   konuğunda denetlendi. linux/amd64 arşivi
+   `celikpanel-v0.1.0-alpha.83-linux-amd64.tar.gz` 66.132.418 bayttır, SHA-256
+   `6275bebed2b581bad58d4323217ed14defb54d06c23cef5af94218da573aefe5`. İki
+   sağlama toplamı dosyası tutuyor; iki arşiv bayt bayt aynı. İmzalı manifest
+   `sequence=83`, `version=v0.1.0-alpha.83`, yukarıdaki `main` commit'i,
+   `published_at=2026-10-11T14:03:46Z`, bu SHA-256 ve bu boyutu söyler. Ed25519
+   imzası, etiketteki `deploy/release-signing-ed25519.pem` ile doğrulanır
+   (anahtar dosyasının SHA-256'sı
+   `7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb`; arşivin
+   içindeki kopya ve arşivdeki `libexec/get.sh`'nin sabitlediği değerle aynı).
+   Arşivde kayıtlı `release.commit` ve `release.tree` etikete eşit.
+   Arşivdeki `install.sh`, `libexec/get.sh` ve açık anahtar etiketin
+   dosyalarıyla bayt bayt aynı. `deploy/release-content-guard.sh` ve
+   `deploy/release-acceptance-license-guard.sh` arşivde ikisi de 0 koduyla
+   çıktı. Arşivin önyükleme sabitleri sıra 83 ve v0.1.0-alpha.83.
+9. İndirme portalı paketi, etiketin çıkış yapılmış kopyasından imza öncesi
+   kipte, indirilen altı dosyayla derlendi.
+   `deploy/test-download-portal-contract.sh` geçti. Paket iki kez bayt bayt
+   aynı sonuçla derlendi: 132.634.305 bayt, SHA-256
+   `6787d0b42ff70621fe1a2ee46c75d336ca24092108a2182e6c35a2da0f5c94d2`. Dosya
+   düzeni, sürüm dışında v0.1.0-alpha.82 paketininkiyle aynı. Etiketin
+   kopyasında `deploy/test-download-portal-public-verifier.py` 17 test koştu,
+   hepsi OK; `deploy/test-download-portal-promotion.py` 14 test koştu, hepsi
+   OK. Yerel bir prova, gerçek terfi aracını loopback'te sunulan alpha.82
+   sitesinin deneme kopyası üzerinde çalıştırdı: çıkış kodu 0, durum
+   `committed`, 26 istek, başarı işaretçisi bir kez yazıldı, önceki sürüm ve
+   yedek korundu.
+10. Sahip portalı `deploy/publish-download-portal.ps1` ile yayımladı (önceki
+    sürüm v0.1.0-alpha.82, hedef v0.1.0-alpha.83). Sonuç: durum `committed`.
+    `httpdocs.before-v0.1.0-alpha.83.20261011T191704Z…` yedeği sunucuda
+    tutuluyor. Değişimden sonraki tek genel doğrulama turu `status: ok`, 26
+    istek, bir arşiv indirmesi, 66.672.304 bayt indirildi bildirdi.
+    `CELIKPANEL_DOWNLOAD_PORTAL_PUBLISHED` işaretçisi bir kez yazıldı.
+11. Sonrasında https://celikpanel.net'in dışarıdan salt-okunur okunması:
+    `releases/latest.txt` `v0.1.0-alpha.83`'tür; `releases/latest.json` yukarıdaki
+    `main` commit'ini ve SHA-256'yı söyler; yayımlanan imzalı manifest, imzası
+    ve sağlama toplamı dosyası, doğrulanmış GitHub dosyalarıyla bayt bayt
+    aynıdır; arşiv adresi `Content-Length: 66132418` ile 200 yanıtlar (arşiv bu
+    okumada yeniden indirilmedi); `get.sh` sıra 83'ü ve v0.1.0-alpha.83'ü
+    sabitler; alpha.82 manifesti hâlâ sunuluyor.
+
+**Yapılmadı ve yayımlamanın değiştirmedikleri.**
+
+- Kurulu sunucular güncellenmedi. Bu kaydın yazıldığı sırada kimse onları
+  güncellemedi: bunu kurulu her sunucunun sahibi panelin kendi güncelleme
+  ekranından, yukarıdaki her adımdan ayrı bir adım olarak başlatır; onu başka
+  kimse başlatmaz. Sonuç ayrıca kaydedilecek. Bu kayıttaki hiçbir şey kurulu
+  bir sunucunun bu sürümle ne yaptığını anlatmaz.
+- Yayımlamak ürünün kabulü değildir. "Bu sürümün sınırları" altındaki sınırlar
+  yayımlamayla değişmez; bunlar arasında kısa turdan sonra yapılan son
+  değişikliklerin yalnız bileşen testlerinin bulunması da vardır. [Dayanıklılık
+  sözleşmesi](RESILIENCE-CONTRACT.tr.md)nin beş temel işi hâlâ kısmidir;
+  sürüm ya da yayımlanması hiçbir P0 işini kapatmaz.
 
 Bu sürümü yalnız CelikPanel'in güncelleme arayüzünden kurun. Yayımlamak kurulu
 sunucuları güncellemez; bir sunucunun güncellemesini yalnız o sunucunun sahibi,
