@@ -4655,10 +4655,21 @@ tarihidir.
   sürümü hazırlayan kişinin bildirdikleridir, burada bir dosyada kayıtlı
   değildir. [Sürüm notlarının](RELEASE-NOTES-v0.1.0-alpha.83.tr.md) "Yayımlama
   kaydı" bölümü bunları sayar.
-- **Kurulu paneller.** Bu kaydın yazıldığı sırada güncellenmedi. Bunu her sahip
-  panelin kendi güncelleme ekranından başlatır; sonuç ayrıca kaydedilecek.
-  Buradaki hiçbir şey kurulu bir sunucunun bu sürümle ne yaptığını anlatmaz ve
-  bu girdi hiçbir iş için kabul kanıtı değildir.
+- **Kurulu paneller.** Bu girdi 11 Ekim 2026'da yazıldığında güncellenmemişti.
+  Bunu her sahip panelin kendi güncelleme ekranından başlatır. 12 Ekim
+  2026'da 18:36 UTC'de dışarıdan yapılan bir okuma (salt-okunur, HTTPS
+  üzerinden, oturum açmadan; sahibinden başka kimse sunuculara dokunmadı,
+  sürümü hazırlayan kişi güncellemeyi başlatmadı, izlemedi ve doğrulamadı)
+  kurulu iki sunucunun da v0.1.0-alpha.83'ün arayüz derlemesini sunduğunu
+  gösterdi: doğrulanmış arşivdeki `web/dist/index.html` ile aynı derlenmiş
+  arayüz dosyaları; biri arşivdeki kopyayla bayt bayt aynı (aynı SHA-256);
+  `Last-Modified` 11 Ekim 2026 19:27:52 UTC ve 19:28:17 UTC. Yani sahip
+  ikisini de panelin kendi güncelleme ekranından 11 Ekim 2026'da güncelledi.
+  Bu, güncellemenin panel içindeki doğrulama sonucunu, Agent'ın sürümünü,
+  ilk başlangıcın site yapılandırma dosyalarıyla ne yaptığını ya da sahibin
+  gördüğü herhangi bir şeyi göstermez; bunların hiçbiri henüz bildirilmedi ve
+  bildirildiğinde kaydedilecek. Ayrıntılar [sürüm notlarında](RELEASE-NOTES-v0.1.0-alpha.83.tr.md)
+  ("Yayımlama kaydı", 12. madde). Bu girdi hiçbir iş için kabul kanıtı değildir.
 - **Şema ya da sürüm geçişi.** Bu girdide yok (sürümün kendisi 43'ten 44'e
   veritabanı şeması taşır; yukarıdaki D-031 girdisinde kayıtlıdır).
   **Kurtarma davranışı.** Değişmedi.

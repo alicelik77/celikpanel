@@ -4,11 +4,14 @@
 
 This is the release that follows v0.1.0-alpha.82. It was published on
 2026-10-11 by the owner (see "Publication record" at the end). The owner
-decided that its number is v0.1.0-alpha.83. At the time of this record no
-installed server has been updated to it: the owner of each starts that from the
-panel's own update screen, and the outcome will be recorded separately. These
-notes were written as a draft on 2026-10-11 and amended for the publication on
-the same day.
+decided that its number is v0.1.0-alpha.83. When the publication record was
+written on 2026-10-11, no installed server had been updated to it: the owner of
+each starts that from the panel's own update screen. On 2026-10-12 a read from
+outside found both installed servers serving this release's interface (item 12
+of the "Publication record"); what their owner saw has not been reported yet
+and will be recorded when it is. These notes were written as a draft on
+2026-10-11, amended for the publication on the same day, and amended again on
+2026-10-12 for that read.
 
 It does two things. It stops CelikPanel from overwriting a site configuration
 file you changed by hand: the file is kept, the site says so, and you choose
@@ -1212,8 +1215,9 @@ These are known. They are not hidden defects.
 ## Publication record
 
 Everything below is dated 2026-10-11 (clock date, UTC unless a time zone is
-named). The steps were taken by the owner; the checks of the assets and of the
-portal package were made by the person who prepared the release. This entry
+named), except item 12, which is dated 2026-10-12. The steps were taken by the
+owner; the checks of the assets and of the portal package were made by the
+person who prepared the release. This entry
 does not store any of the results below as a file in the repository.
 
 **What happened.**
@@ -1296,14 +1300,41 @@ does not store any of the results below as a file in the repository.
     assets; the archive URL answers 200 with `Content-Length: 66132418` (the
     archive was not downloaded again in this read); `get.sh` pins sequence 83
     and v0.1.0-alpha.83; the alpha.82 manifest is still served.
+12. Installed servers, read from outside on 2026-10-12 at 18:36 UTC. The two
+    installed servers (see the introduction) were not updated when items 1 to
+    11 were written on 2026-10-11. The read was read-only, over HTTPS and
+    without logging in. Nobody other than the owner touched the servers; the
+    person who prepared the release did not start, watch or verify the update
+    on them. Observed: both servers serve the interface build of
+    v0.1.0-alpha.83. Their start page references the same built interface
+    files as `web/dist/index.html` inside the verified v0.1.0-alpha.83
+    archive, and one of those files, read from each server, is byte-identical
+    (same SHA-256) to the copy in the archive. The `Last-Modified` dates the
+    servers give for that file are 2026-10-11 19:27:52 UTC (first server) and
+    2026-10-11 19:28:17 UTC (second server). Both still send
+    `Strict-Transport-Security: max-age=31536000`. What this shows: the Panel
+    process on each server serves this release's interface, so the owner
+    updated both from the panel's own update screen on 2026-10-11, at about
+    19:27 to 19:28 UTC. What it does not show: the update's verification result
+    inside the panel, the Agent's version, what the first start did with the
+    site configuration files (how many were adopted and how many left as they
+    were), or anything the owner saw on screen. None of that has been reported
+    yet.
 
 **Not done, and what publication does not change.**
 
-- The installed servers are not updated. At the time of this record nobody has
-  updated them: the owner of each installed server starts that from the
-  panel's own update screen, as a separate step from every step above, and no
-  one else starts it. The outcome will be recorded separately. Nothing in this
-  record describes what an installed server does with this release.
+- The installed servers were not updated when items 1 to 11 were written on
+  2026-10-11. The owner of each installed server starts that from the panel's
+  own update screen, as a separate step from every step above, and no one else
+  starts it. On 2026-10-12 a read from outside found both serving this
+  release's interface (item 12), so the owner updated both on 2026-10-11. Still
+  not reported: the update's verification result inside the panel, the Agent's
+  version, what the first start did with the site configuration files (how many
+  were adopted and how many left as they were), and the observations the
+  owner is asked for in this release (the four earlier observations, the
+  Domains list's "left as they were" row, and `postconf -n >/dev/null`). They
+  will be recorded when the owner reports them. Nothing in this record
+  describes what an installed server did with this release beyond item 12.
 - Publication is not product acceptance. The limits listed under "Limits of
   this release" are unchanged by it, among them that the last changes made
   after the short round have component tests only. All five foundation items

@@ -5384,10 +5384,22 @@ records a publication; it changes no code, schema or recovery behaviour.
   of the public site afterwards are reported by the release preparer and are
   not recorded in a file here. The "Publication record" of the
   [release notes](RELEASE-NOTES-v0.1.0-alpha.83.md) lists them.
-- **Installed panels.** Not updated at the time of this record. Each owner
-  starts that from the panel's own update screen; the outcome will be recorded
-  separately. Nothing here describes what an installed server does with this
-  release, and this entry is not acceptance evidence for any item.
+- **Installed panels.** Not updated when this entry was written on
+  2026-10-11. Each owner starts that from the panel's own update screen. On
+  2026-10-12 at 18:36 UTC a read from outside (read-only, over HTTPS, without
+  logging in; nobody other than the owner touched the servers, and the release
+  preparer did not start, watch or verify the update) found both installed
+  servers serving the interface build of v0.1.0-alpha.83: the same built
+  interface files as `web/dist/index.html` in the verified archive, one of
+  them byte-identical (same SHA-256) to the archive's copy, with
+  `Last-Modified` 2026-10-11 19:27:52 UTC and 19:28:17 UTC. So the owner
+  updated both from the panel's own update screen on 2026-10-11. This does not
+  show the update's verification result inside the panel, the Agent's
+  version, what the first start did with the site configuration files, or
+  anything the owner saw; none of that has been reported yet, and it will be
+  recorded when it is. The [release notes](RELEASE-NOTES-v0.1.0-alpha.83.md)
+  ("Publication record", item 12) hold the details. This entry is not
+  acceptance evidence for any item.
 - **Schema or version transition.** None in this entry (the release itself
   carries database schema 43 to 44, recorded in the D-031 entry above).
   **Recovery behaviour.** Unchanged.

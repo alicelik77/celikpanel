@@ -4,10 +4,14 @@
 
 Bu, v0.1.0-alpha.82'yi izleyen sürümdür. 11 Ekim 2026'da sahip tarafından
 yayımlandı (sonda "Yayımlama kaydı"na bakın). Sahip numarasının
-v0.1.0-alpha.83 olmasına karar verdi. Bu kaydın yazıldığı sırada hiçbir kurulu
-sunucu bu sürüme güncellenmedi: bunu her sunucunun sahibi panelin kendi
-güncelleme ekranından başlatır ve sonucu ayrıca kaydedilecek. Bu notlar 11 Ekim
-2026'da taslak olarak yazıldı ve aynı gün yayımlama için değiştirildi.
+v0.1.0-alpha.83 olmasına karar verdi. Yayımlama kaydı 11 Ekim 2026'da
+yazıldığında hiçbir kurulu sunucu bu sürüme güncellenmemişti: bunu her
+sunucunun sahibi panelin kendi güncelleme ekranından başlatır. 12 Ekim 2026'da
+dışarıdan yapılan bir okuma, kurulu iki sunucunun da bu sürümün arayüzünü
+sunduğunu gösterdi ("Yayımlama kaydı"nın 12. maddesi); sahibin ne gördüğü henüz
+bildirilmedi, bildirildiğinde kaydedilecek. Bu notlar 11 Ekim 2026'da taslak
+olarak yazıldı, aynı gün yayımlama için değiştirildi ve 12 Ekim 2026'da bu okuma
+için bir kez daha değiştirildi.
 
 Sürüm iki şey yapar. Birincisi, CelikPanel'in elle değiştirdiğiniz bir site
 yapılandırma dosyasının üzerine yazmasını durdurur: dosya korunur, site bunu
@@ -1247,9 +1251,10 @@ Bunlar bilinen sınırlardır. Gizli kusur değildir.
 ## Yayımlama kaydı
 
 Aşağıdaki her şey 11 Ekim 2026 tarihlidir (saat tarihi; saat dilimi
-belirtilmedikçe UTC). Adımları sahip attı; dosyaların ve portal paketinin
-denetimlerini sürümü hazırlayan kişi yaptı. Bu girdi, aşağıdaki sonuçların
-hiçbirini depoda bir dosya olarak saklamaz.
+belirtilmedikçe UTC); 12 Ekim 2026 tarihli 12. madde hariç. Adımları sahip
+attı; dosyaların ve portal paketinin denetimlerini sürümü hazırlayan kişi
+yaptı. Bu girdi, aşağıdaki sonuçların hiçbirini depoda bir dosya olarak
+saklamaz.
 
 **Ne oldu.**
 
@@ -1326,14 +1331,42 @@ hiçbirini depoda bir dosya olarak saklamaz.
     aynıdır; arşiv adresi `Content-Length: 66132418` ile 200 yanıtlar (arşiv bu
     okumada yeniden indirilmedi); `get.sh` sıra 83'ü ve v0.1.0-alpha.83'ü
     sabitler; alpha.82 manifesti hâlâ sunuluyor.
+12. Kurulu sunucular, 12 Ekim 2026'da 18:36 UTC'de dışarıdan okundu. Kurulu iki
+    sunucu (girişe bakın), 1–11. maddeler 11 Ekim 2026'da yazıldığında
+    güncellenmemişti. Okuma salt-okunurdu, HTTPS üzerinden yapıldı ve oturum
+    açılmadı. Sahibinden başka kimse sunuculara dokunmadı; sürümü hazırlayan
+    kişi güncellemeyi onlarda başlatmadı, izlemedi ve doğrulamadı. Gözlenen:
+    iki sunucu da v0.1.0-alpha.83'ün arayüz derlemesini sunuyor. Başlangıç
+    sayfaları, doğrulanmış v0.1.0-alpha.83 arşivinin içindeki
+    `web/dist/index.html` ile aynı derlenmiş arayüz dosyalarına başvuruyor; bu
+    dosyalardan biri, her sunucudan okunduğunda, arşivdeki kopyayla bayt bayt
+    aynı (aynı SHA-256). Sunucuların bu dosya için verdiği `Last-Modified`
+    tarihleri: 11 Ekim 2026 19:27:52 UTC (ilk sunucu) ve 11 Ekim 2026 19:28:17
+    UTC (ikinci sunucu). İkisi de hâlâ `Strict-Transport-Security:
+    max-age=31536000` gönderiyor. Bunun gösterdiği: her sunucudaki Panel
+    süreci bu sürümün arayüzünü sunuyor; yani sahip ikisini de panelin kendi
+    güncelleme ekranından 11 Ekim 2026'da, yaklaşık 19:27–19:28 UTC'de
+    güncelledi. Göstermedikleri: güncellemenin panel içindeki doğrulama
+    sonucu, Agent'ın sürümü, ilk başlangıcın site yapılandırma dosyalarıyla ne
+    yaptığı (kaçının devralındığı, kaçının olduğu gibi bırakıldığı) ya da
+    sahibin ekranda gördüğü herhangi bir şey. Bunların hiçbiri henüz
+    bildirilmedi.
 
 **Yapılmadı ve yayımlamanın değiştirmedikleri.**
 
-- Kurulu sunucular güncellenmedi. Bu kaydın yazıldığı sırada kimse onları
-  güncellemedi: bunu kurulu her sunucunun sahibi panelin kendi güncelleme
+- Kurulu sunucular, 1–11. maddeler 11 Ekim 2026'da yazıldığında
+  güncellenmemişti. Bunu kurulu her sunucunun sahibi panelin kendi güncelleme
   ekranından, yukarıdaki her adımdan ayrı bir adım olarak başlatır; onu başka
-  kimse başlatmaz. Sonuç ayrıca kaydedilecek. Bu kayıttaki hiçbir şey kurulu
-  bir sunucunun bu sürümle ne yaptığını anlatmaz.
+  kimse başlatmaz. 12 Ekim 2026'da dışarıdan yapılan bir okuma ikisinin de bu
+  sürümün arayüzünü sunduğunu gösterdi (12. madde); yani sahip ikisini de 11
+  Ekim 2026'da güncelledi. Hâlâ bildirilmeyenler: güncellemenin panel
+  içindeki doğrulama sonucu, Agent'ın sürümü, ilk başlangıcın site
+  yapılandırma dosyalarıyla ne yaptığı (kaçının devralındığı, kaçının olduğu
+  gibi bırakıldığı) ve bu sürümde sahibinden istenen gözlemler (önceki dört
+  gözlem, Alan Adları listesindeki "olduğu gibi bırakılan" satırı ve `postconf
+  -n >/dev/null`). Sahip bildirdiğinde kaydedilecekler. Bu kayıttaki hiçbir
+  şey, 12. madde dışında, kurulu bir sunucunun bu sürümle ne yaptığını
+  anlatmaz.
 - Yayımlamak ürünün kabulü değildir. "Bu sürümün sınırları" altındaki sınırlar
   yayımlamayla değişmez; bunlar arasında kısa turdan sonra yapılan son
   değişikliklerin yalnız bileşen testlerinin bulunması da vardır. [Dayanıklılık
