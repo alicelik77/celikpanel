@@ -1,0 +1,15 @@
+{
+  "at": "2026-10-12T21:49:24Z",
+  "prep": "slow-off",
+  "result": {
+    "at": "2026-10-12T21:49:25Z",
+    "daemon_reload_returncode": 0,
+    "epoch": 1791841765.3412209,
+    "nginx": [
+      "MainPID=7267",
+      "ExecReload={ path=/usr/sbin/nginx ; argv[]=/usr/sbin/nginx -g daemon on; master_process on; -s reload ; ignore_errors=no ; start_time=[n/a] ; stop_time=[n/a] ; pid=0 ; code=(null) ; status=0/0 }",
+      "ActiveState=active"
+    ],
+    "removed": true
+  }
+}

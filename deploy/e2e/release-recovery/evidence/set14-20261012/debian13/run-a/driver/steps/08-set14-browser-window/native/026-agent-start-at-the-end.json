@@ -1,0 +1,36 @@
+{
+  "action": "owner-agent14",
+  "after": {
+    "ActiveEnterTimestampMonotonic": "1619323861",
+    "ActiveState": "active",
+    "CPUUsageNSec": "1012189000",
+    "ControlGroup": "/system.slice/celikpanel-agent.service",
+    "ExecMainStartTimestamp": "Mon 2026-10-12 21:36:12 UTC",
+    "MainPID": "16513",
+    "MemoryCurrent": "10481664",
+    "NRestarts": "0",
+    "SubState": "running"
+  },
+  "at": "2026-10-12T21:49:30Z",
+  "before": {
+    "ActiveEnterTimestampMonotonic": "1619323861",
+    "ActiveState": "active",
+    "CPUUsageNSec": "1012189000",
+    "ControlGroup": "/system.slice/celikpanel-agent.service",
+    "ExecMainStartTimestamp": "Mon 2026-10-12 21:36:12 UTC",
+    "MainPID": "16513",
+    "MemoryCurrent": "10481664",
+    "NRestarts": "0",
+    "SubState": "running"
+  },
+  "command": "systemctl start celikpanel-agent.service",
+  "epoch": 1791841770.0231373,
+  "mode": "owner-agent14",
+  "owner_action": true,
+  "returncode": 0,
+  "schema": "celikpanel/set14-native/v1",
+  "stderr": "",
+  "unit": "celikpanel-agent.service",
+  "waited_seconds": 0.03,
+  "what": "start"
+}

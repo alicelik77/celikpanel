@@ -1,0 +1,99 @@
+Panel
+
+dns-ubuntu · 29dk süredir çalışıyor
+
+CPU kullanımı
+
+%5
+
+2 çekirdek · Yük 0.00
+
+Bellek
+
+%14
+
+431 MB / 2.9 GB
+
+Disk (/)
+
+%12
+
+2.6 GB / 22.2 GB
+
+Sistem servisleri
+
+Bilinmiyor
+
+Kontrol edilemedi: Sunucuda bir iç hata oluştu. Yeniden deneyin; sürerse panel günlüklerine bakın.
+
+Servisleri tara
+İlgi istiyor
+
+Bu sunucunun durumunun bir bölümü okunamadı; bu yüzden bu liste eksik olabilir. Bu, bir şeyin yanlış olduğu anlamına gelmez. Hiçbir şey değiştirilmedi. Tekrar deneyin.
+
+Tekrar dene
+Barındırma
+
+0
+
+Alan Adları
+
+0
+
+Veritabanları
+
+1
+
+Kullanıcılar
+
+0
+
+Posta hesabı
+
+Son etkinlik
+L
+labadmin oturum açtı2 kez
+127.0.0.1
+19 dk önce
+L
+labadmin server.setup.guidance
+127.0.0.1
+20 dk önce
+L
+labadmin server.setup.revise
+127.0.0.1
+20 dk önce
+L
+labadmin server.setup.child:certbot
+127.0.0.1
+22 dk önce
+L
+labadmin server.setup.child:php-fpm
+127.0.0.1
+22 dk önce
+L
+labadmin server.setup.child:nginx
+127.0.0.1
+22 dk önce
+L
+labadmin server.setup.child:mariadb
+127.0.0.1
+23 dk önce
+Hızlı işlemler
+Alan adı ekle
+Servis kur
+Kullanıcı ekle
+İçe aktar
+Sunucu bilgisi
+Sunucu adı
+dns-ubuntu
+IPv4 adresi
+10.0.2.15
+İşletim sistemi
+Ubuntu 24.04.4 LTS
+Çekirdek
+6.8.0-138-generic
+Mimari
+amd64
+Çalışma süresi
+29dk

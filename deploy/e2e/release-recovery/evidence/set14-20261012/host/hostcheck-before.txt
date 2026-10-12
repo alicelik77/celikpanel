@@ -1,0 +1,19 @@
+date_utc=2026-10-12T20:56:32Z whoami=0
+qemu=0
+/dev/sdd       1007G   19G  937G   2% /
+Mem:           15697         657       14813           3         422       15040
+16
+/var/tmp/cp-pair-accept
+/var/tmp/cp-set14-run
+/var/tmp/cp-v3n28
+2a0af88660773b43cbe1155c622483e2f0a2bbeb-acceptance-license
+Arch-Linux-x86_64-cloudimg-20260815.573966.qcow2
+debian-13-genericcloud-amd64-20260826-2582.qcow2
+ubuntu-24.04-server-cloudimg-amd64-20260826.img
+/opt/celikpanel-test-toolchains/go1.26.5/go/bin
+go version go1.26.5 linux/amd64
+/usr/sbin/node
+/usr/sbin/npm
+/usr/sbin/python3
+/usr/sbin/qemu-system-x86_64
+/usr/sbin/ssh

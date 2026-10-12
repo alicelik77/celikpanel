@@ -1,0 +1,1148 @@
+--- /dev/null
++++ b/deploy/e2e/release-recovery/set14_trial.py
+@@ -0,0 +1,291 @@
++#!/usr/bin/env python3
++"""set14: the fourteenth native record, on commit a5830dd3e (the Dashboard's "System services" card checks the
++components by itself: ``POST /api/v1/managed-services/scan?max_age_seconds=300`` after a read whose stored scan is
++missing or older than 300 s, only while the tab is visible, single-flight, at most once per window; a 409
++``server_setup_busy``/``service_operation_busy`` is "a change is in progress" with one follow-up after the readiness
++poll sees busy then ready; a failure is "Could not check: <reason>" with the "Scan services" button).
++
++On disposable QEMU guests (lab.py): the code installed FRESH (set6's steps: pinning, preflight, origin, install, owner,
++licence, setup), then one browser window (set12's handover, SET12_HAND) in which a real headless Chrome on the host
++(web/tools/browser-inspect/cold-load-set14.mjs) loads the Panel's Dashboard and Components page and asks the driver
++for these preparations, each recorded:
++
++  probe          native reading (guest_set14_native.py read-probe14): the stored scan's ``scanned_at`` and age (the
++                 Panel database opened read-only), the Agent's and the Panel's systemd state and CPU counters (cgroup
++                 ``cpu.stat``, ``CPUUsageNSec``, ``/proc/<pid>/stat``), ``/proc/loadavg``
++  agent-stop     owner action: ``systemctl stop celikpanel-agent.service``
++  agent-start    owner action: ``systemctl start celikpanel-agent.service``
++  slow-on        lab preparation: nginx's reload made to take 90 s (a drop-in ``ExecReload=/bin/sleep 90``)
++  action-start   the owner reloads nginx from the Panel (``POST /api/v1/service/action``, the Services page's own call),
++                 sent in a thread: it holds the Panel's change lease while the reload runs
++  action-wait    the answer of that call (bounded wait)
++  slow-off       lab preparation removed
++  journal        the Panel's and the Agent's journal since the window opened
++
++The driver calls only the Panel's HTTP API; every native fact is read over SSH; owner actions and lab preparation on
++the guest are recorded as such. Every result carries ``native_evidence: false``. Nothing here judges a P0 row.
++
++  set14_trial.py plan --cell set14-debian13 --artifacts A.json --work-root /var/tmp/cp-release-drill-X [--dry-run]
++  set14_trial.py run  --cell set14-debian13 --artifacts A.json --work-root /var/tmp/cp-release-drill-X --execute
++"""
++from __future__ import annotations
++
++import argparse
++import base64
++import dataclasses
++import json
++import os
++from pathlib import Path
++import sys
++import threading
++import time
++from typing import Any
++
++HERE = Path(__file__).resolve().parent
++if str(HERE) not in sys.path:
++    sys.path.insert(0, str(HERE))
++import set13_trial as s13  # noqa: E402
++
++s12, s10, s6, sw, base, fx = s13.s12, s13.s10, s13.s6, s13.sw, s13.base, s13.fx
++HELPER14 = "guest_set14_native.py"
++CELL_KIND = "set14-fresh-install"
++# purpose "web": the Dashboard card needs installed components, not mail; the setup is shorter.
++CELLS = {
++    "set14-debian13": sw.SettingsCell("set14-debian13", "debian13", "web", sw.WEB_PRESET, False),
++    "set14-ubuntu": sw.SettingsCell("set14-ubuntu", "ubuntu", "web", sw.WEB_PRESET, False),
++    "set14-arch": sw.SettingsCell("set14-arch", "arch", "web", sw.WEB_PRESET, False),
++}
++# The browser's language and viewport per platform (handover "browser"): each card state in English on Debian and in
++# Turkish on Ubuntu.
++BROWSER = {
++    "set14-debian13": {"lang": "en", "viewport": "desktop"},
++    "set14-ubuntu": {"lang": "tr", "viewport": "phone"},
++    "set14-arch": {"lang": "en", "viewport": "phone"},
++}
++SLOW_RELOAD_SECONDS = 90
++ACTION_SERVICE = "nginx"
++WINDOW_SECONDS = 4 * 3600
++PREPS = ("probe", "agent-stop", "agent-start", "slow-on", "slow-off", "action-start", "action-wait", "journal")
++
++
++def compact_probe(value: dict) -> dict:
++    """What the browser needs of a probe (the full reading stays in the driver's record)."""
++    units = value.get("units") or {}
++    return {"at": value.get("at"), "epoch": value.get("epoch"), "scan_cache": value.get("scan_cache"),
++            "units": {k: {f: (units.get(k) or {}).get(f) for f in ("ActiveState", "MainPID", "NRestarts", "CPUUsageNSec")}
++                      for k in ("agent", "panel")},
++            "cgroup_cpu": value.get("cgroup_cpu"), "proc_cpu": value.get("proc_cpu"), "loadavg": value.get("loadavg"),
++            "nginx_dropin": (value.get("nginx_dropin") or {}).get("exists"), "file": value.get("_file")}
++
++
++def prep_name(key: str) -> str:
++    """The preparation a request names: ``<name>-<milliseconds>`` (set12's handover)."""
++    return key.rsplit("-", 1)[0]
++
++
++class Set14Trial(s13.Set13Trial):
++    def upload_helpers(self) -> dict:
++        helpers = super().upload_helpers()
++        helpers[HELPER14] = self.lab.put_file(self.root, self.record, self.plan, self.node_name, HERE / HELPER14, HELPER14)[1]
++        return helpers
++
++    @property
++    def s14(self) -> dict:
++        return self.state.setdefault("set14", {})
++
++    def native14(self, mode: str, **arguments: Any) -> dict:
++        payload = base64.b64encode(json.dumps(arguments).encode()).decode()
++        return self.helper(HELPER14, mode, "--args-b64", payload, timeout=420)
++
++    def snap14(self, label: str, mode: str, **arguments: Any) -> dict:
++        value = self.native14(mode, **arguments)
++        self.native_sequence += 1
++        name = f"native/{self.native_sequence:03d}-{s10.safe_name(label)}.json"
++        self.record_json(name, value)
++        self.current.setdefault("natives", []).append({"label": label, "mode": mode, "file": name,
++                                                       "owner_action": mode.startswith("owner-")})
++        value["_file"] = f"{self.step_dir}/{name}"
++        return value
++
++    # -- the preparations the browser asks for -------------------------------------------------------------------
++
++    def prep(self, name: str) -> dict:
++        n = self.s14["prep_count"] = self.s14.get("prep_count", 0) + 1
++        if name == "probe":
++            return compact_probe(self.snap14(f"probe-{n}", "read-probe14"))
++        if name in ("agent-stop", "agent-start"):
++            action = name.split("-", 1)[1]
++            value = self.snap14(f"owner-agent-{action}-{n}", "owner-agent14", action=action)
++            self.current.setdefault("owner_actions", []).append({"label": name, "at": value.get("at"), "file": value["_file"]})
++            return {k: value.get(k) for k in ("command", "returncode", "waited_seconds", "at", "epoch")} | {
++                "before": (value.get("before") or {}).get("ActiveState"), "after": (value.get("after") or {}).get("ActiveState"),
++                "main_pid_after": (value.get("after") or {}).get("MainPID")}
++        if name in ("slow-on", "slow-off"):
++            value = self.snap14(f"lab-{name}-{n}", "lab-slow-reload14",
++                                **({"remove": True} if name == "slow-off" else {"seconds": SLOW_RELOAD_SECONDS}))
++            self.current.setdefault("lab_preparation", []).append({"label": name, "file": value["_file"]})
++            return {k: value.get(k) for k in ("daemon_reload_returncode", "nginx", "removed", "at", "epoch")}
++        if name == "action-start":
++            return self.action_start()
++        if name == "action-wait":
++            return self.action_wait()
++        if name == "journal":
++            since = float(self.s14.get("window_since") or time.time() - 3600)
++            window = self.window12(f"ui-journal-{n}", since - 1)
++            return {"file": window.get("_file"), "units": sorted((window.get("by_unit") or {}).keys())}
++        return {"unknown": name}
++
++    def action_start(self) -> dict:
++        if self.s14.get("action_thread"):
++            return {"refused": "an action was already started in this window"}
++        holder: dict = {}
++        self.s14["action_holder"] = holder
++
++        def reload_nginx() -> None:
++            started = time.time()
++            holder["started_epoch"] = started
++            try:
++                entry = self.call("ui: the owner reloads nginx from the Panel (POST /api/v1/service/action)", "POST",
++                                  "/api/v1/service/action", {"name": ACTION_SERVICE, "action": "reload"}, timeout=400)
++                holder["status"] = entry["status"]
++                holder["answer"] = entry.get("answer") or (entry["_parsed"] if isinstance(entry["_parsed"], dict) else None)
++            except Exception as exc:  # noqa: BLE001 - recorded and handed to the browser
++                holder["error"] = self.error_text(exc)
++            holder["seconds"] = round(time.time() - started, 2)
++            holder["ended_epoch"] = time.time()
++
++        thread = threading.Thread(target=reload_nginx, daemon=True)
++        self.s14["action_thread"] = thread
++        thread.start()
++        time.sleep(3)
++        return {"started_epoch": holder.get("started_epoch"), "service": ACTION_SERVICE, "action": "reload",
++                "still_running_after_3s": thread.is_alive()}
++
++    def action_wait(self) -> dict:
++        thread = self.s14.get("action_thread")
++        if not thread:
++            return {"refused": "no action was started"}
++        thread.join(timeout=420)
++        holder = self.s14.get("action_holder") or {}
++        return {k: holder.get(k) for k in ("status", "answer", "error", "seconds", "started_epoch", "ended_epoch")} | {
++            "finished": not thread.is_alive()}
++
++    # -- the browser window --------------------------------------------------------------------------------------
++
++    def window14(self, checks: dict) -> str:
++        self.current = {"section": "set14-browser-window", "node": self.node_name, "native_evidence": False,
++                        "started_at": base.utc_now(), "calls": [], "checks": [], "natives": [], "notes": [],
++                        "owner_actions": [], "lab_preparation": []}
++        if not os.environ.get("SET12_HAND"):
++            checks["reason"] = "no browser in this lab (SET12_HAND is not set)"
++            return "skipped"
++        record: dict = {}
++        try:
++            checks["leave_setup"] = self.leave_setup()
++            first = self.snap14("probe-before-the-window", "read-probe14")
++            self.s14["window_since"] = float(first.get("epoch") or time.time())
++            checks["probe_before_the_window"] = compact_probe(first)
++            record = self.browser_window("ui", WINDOW_SECONDS, {"browser": BROWSER[self.settings.name],
++                                                                 "cell": self.settings.name, "preps": list(PREPS)})
++            checks.update({k: v for k, v in record.items() if k != "requests"})
++            checks["prep_count"] = len(record.get("requests") or [])
++            self.record_json("browser-window.json", record)
++            try:
++                checks["probe_after_the_window"] = compact_probe(self.snap14("probe-after-the-window", "read-probe14"))
++                for label, mode, arguments in (("slow-off-at-the-end", "lab-slow-reload14", {"remove": True}),
++                                               ("agent-start-at-the-end", "owner-agent14", {"action": "start"})):
++                    self.snap14(label, mode, **arguments)
++            except Exception as exc:  # noqa: BLE001
++                checks["end_readings_error"] = self.error_text(exc)
++        finally:
++            for entry in self.current.get("calls", []):
++                entry.pop("_parsed", None)
++            self.current["finished_at"] = base.utc_now()
++            self.record_json("window.json", self.current)
++        if record.get("skipped"):
++            return "skipped"
++        if record.get("not_finished"):
++            raise base.StepInconclusive(record["not_finished"])
++        self.ensure_session()
++        return "observed"
++
++    # -- the cell ---------------------------------------------------------------------------------------------------
++
++    def execute(self) -> dict:
++        self.step("preflight", self.preflight)
++        self.step("origin", self.origin, needs=("preflight",))
++        self.step("baseline-install", self.baseline_install, needs=("origin",))
++        self.step("owner-login", self.owner_login, needs=("baseline-install",))
++        self.step("license", self.license, needs=("owner-login",))
++        self.step("setup", self.setup, needs=("license",))
++        self.step("set14-browser-window", self.window14, needs=("setup",))
++        self.step(s6.PIN_END_STEP, self.pin_at_the_end6)
++        self.step("collect", self.collect)
++        self.tunnel.close()
++        verdicts = [s["verdict"] for s in self.steps]
++        result = {"schema": base.RESULT_SCHEMA, "cell_kind": CELL_KIND, "native_evidence": False,
++                  "cell": dataclasses.asdict(self.settings),
++                  "identity": {k: self.identity[k] for k in ("cell_id", "node", "vm_uuid")},
++                  "request_id": None, "provenance": {"what": "set14: a5830dd3e installed fresh; no update"},
++                  "artifacts": {"baseline": {k: self.artifacts["baseline"][k] for k in ("version", "commit", "sha256")}},
++                  "outcome": {"classification": "set14-measured", "final_status": None},
++                  "setup": {"purpose": self.settings.purpose, "components": sorted(self.settings.components),
++                            "waiting": self.state.get("setup_waiting")},
++                  "browser": BROWSER[self.settings.name], "findings": self.state["findings"],
++                  "steps": [{k: s.get(k) for k in ("name", "verdict", "reason", "started_at", "finished_at")} for s in self.steps],
++                  "overall": base.overall(verdicts),
++                  "note": "set14: a measurement on the fresh install; no update is started and no P0 row is judged. "
++                          "The browser's own records (requests, card texts, pictures) are written on the host."}
++        self.step_dir = "result"
++        return self.ev.finalize_upd1(result)
++
++
++def build_plan(name: str, artifacts: dict, work_root: str, local_port: int) -> dict:
++    settings = CELLS[name]
++    return {"schema": "celikpanel/set14-plan/v1", "native_evidence": False, "cell": name, "work_root": work_root,
++            "local_port": local_port, "pinned_names": list(s6.PINNED_NAMES), "cell_kind": CELL_KIND,
++            "candidate": {k: artifacts["baseline"][k] for k in ("version", "commit", "sha256")},
++            "setup": {"purpose": settings.purpose, "components": sorted(settings.components), "dns_mode": "external"},
++            "browser": BROWSER[name], "preparations": list(PREPS),
++            "steps": [s6.PIN_STEP, "preflight", "origin", "baseline-install", "owner-login", "license", "setup",
++                      "set14-browser-window", s6.PIN_END_STEP, "collect"],
++            "rule": "the driver calls only the Panel's HTTP API as the logged-in owner; every native fact is an SSH reading; "
++                    "owner actions and lab preparation on the guest are recorded as such; no certificate authority and no "
++                    "licence service is contacted by the driver"}
++
++
++def main(argv: list[str] | None = None) -> int:
++    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
++    sub = parser.add_subparsers(dest="command", required=True)
++    for name in ("plan", "run"):
++        cmd = sub.add_parser(name)
++        cmd.add_argument("--cell", required=True, choices=sorted(CELLS))
++        cmd.add_argument("--artifacts", required=True, type=Path)
++        cmd.add_argument("--work-root", required=True)
++        cmd.add_argument("--local-port", type=int, default=18443)
++        if name == "plan":
++            cmd.add_argument("--dry-run", action="store_true", help="validate the plan without any guest")
++        else:
++            cmd.add_argument("--execute", action="store_true")
++    args = parser.parse_args(argv)
++    base.validate_work_root(args.work_root)
++    if not 1024 < args.local_port < 65536:
++        parser.error("--local-port must be an unprivileged loopback port")
++    document = json.loads(args.artifacts.read_text())
++    fx.configure(document)
++    cell = CELLS[args.cell].cell
++    if args.command == "plan":
++        base.validate_cell_artifacts(document, cell, check_files=not args.dry_run)
++        print(json.dumps(build_plan(args.cell, document, args.work_root, args.local_port), indent=2, sort_keys=True))
++        return 0
++    if not args.execute:
++        parser.error("run mutates one registered disposable guest and requires --execute")
++    base.validate_cell_artifacts(document, cell)
++    result = Set14Trial(CELLS[args.cell], document, args.work_root, args.local_port).execute()
++    print(json.dumps({"overall": result["overall"], "cell_kind": CELL_KIND,
++                      "steps": {s["name"]: s["verdict"] for s in result["steps"]}}, sort_keys=True))
++    return 0 if result["overall"] != "failed" else 1
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+--- /dev/null
++++ b/deploy/e2e/release-recovery/guest_set14_native.py
+@@ -0,0 +1,213 @@
++#!/usr/bin/env python3
++"""set14: native readers, owner actions and lab preparation for the fourteenth native record (commit a5830dd3e: the
++Dashboard's "System services" card checks the components by itself), on a marked disposable QEMU guest.
++
++Built on ``guest_set13_native.py`` (every set13, set12, set11, set10 and set8 mode is reused unchanged). Added:
++
++Reader (``read-probe14``) only inspects: the guest clock; the Panel's stored component scan (``service_scan_cache``
++row 1 of the Panel database, opened read-only: ``scanned_at``, its age, the size of the stored text); the Agent's and
++the Panel's systemd state (``ActiveState``, ``MainPID``, ``NRestarts``, ``CPUUsageNSec``, ``MemoryCurrent``), the
++``usage_usec``/``user_usec``/``system_usec`` lines of each unit's cgroup ``cpu.stat`` and the main process's
++``/proc/<pid>/stat`` CPU fields (``utime``, ``stime``, ``cutime``, ``cstime`` in clock ticks); ``/proc/loadavg``;
++any nginx drop-in this harness wrote.
++
++Owner action (``owner-agent14``): ``systemctl stop|start celikpanel-agent.service`` (what a server owner would type),
++then a bounded wait (at most 60 s, inside the guest) until the unit is inactive or active.
++
++Lab preparation (``lab-slow-reload14``, recorded as such): a drop-in for ``nginx.service`` whose ``ExecReload=`` is
++``/bin/sleep N`` (a reload that takes N seconds and changes nothing), or its removal; ``systemctl daemon-reload`` after
++either. It is how this harness makes one ordinary Panel operation (a reload of nginx from the Panel) hold the Panel's
++change lease long enough to load the Dashboard meanwhile.
++
++No mode prints a password, a private key or a hash of one, and no mode contacts another host.
++
++set14: on dördüncü yerel kayıt için okuyucu, sahibin elle yaptığı işlem ve laboratuvar hazırlığı. Başka sunucuya
++bağlanmaz.
++"""
++from __future__ import annotations
++
++import argparse
++import base64
++import importlib.util
++import json
++import os
++from pathlib import Path
++import sqlite3
++import subprocess
++import sys
++import time
++
++HERE = Path(__file__).resolve().parent
++SCHEMA = "celikpanel/set14-native/v1"
++
++
++def _load(name: str):
++    spec = importlib.util.spec_from_file_location("set14_" + name.replace(".", "_"), HERE / name)
++    value = importlib.util.module_from_spec(spec)
++    spec.loader.exec_module(value)
++    return value
++
++
++g13 = _load("guest_set13_native.py")
++g12, rid = g13.g12, g13.rid
++g10 = g12.g10
++run, utc, Refused = rid.run, rid.utc, rid.Refused
++
++AGENT_UNIT = "celikpanel-agent.service"
++PANEL_UNIT = "celikpanel-panel.service"
++UNITS = {"agent": AGENT_UNIT, "panel": PANEL_UNIT}
++SHOW = ("ActiveState", "SubState", "MainPID", "NRestarts", "CPUUsageNSec", "MemoryCurrent", "ControlGroup",
++        "ActiveEnterTimestampMonotonic", "ExecMainStartTimestamp")
++DROPIN_DIR = "/etc/systemd/system/nginx.service.d"
++DROPIN = DROPIN_DIR + "/zz-set14-slow-reload.conf"
++WAIT_LIMIT = 60
++
++
++def show(unit: str) -> dict:
++    out = subprocess.run(["systemctl", "show", unit, "-p", ",".join(SHOW)], capture_output=True, text=True, timeout=30)
++    value = {}
++    for line in out.stdout.splitlines():
++        key, _, rest = line.partition("=")
++        value[key] = rest
++    return value
++
++
++def cpu_stat(control_group: str) -> dict:
++    if not control_group:
++        return {"error": "no control group"}
++    path = Path("/sys/fs/cgroup") / control_group.lstrip("/") / "cpu.stat"
++    try:
++        rows = dict(line.split() for line in path.read_text().splitlines() if line.strip())
++    except OSError as exc:
++        return {"error": type(exc).__name__}
++    return {k: int(v) for k, v in rows.items() if k in ("usage_usec", "user_usec", "system_usec")}
++
++
++def proc_cpu(pid: str) -> dict:
++    try:
++        text = Path(f"/proc/{int(pid)}/stat").read_text()
++    except (OSError, ValueError) as exc:
++        return {"error": type(exc).__name__}
++    fields = text[text.rindex(")") + 2:].split()
++    # fields[0] is field 3 (state); utime is field 14 -> index 11
++    return {"utime": int(fields[11]), "stime": int(fields[12]), "cutime": int(fields[13]), "cstime": int(fields[14]),
++            "clk_tck": os.sysconf("SC_CLK_TCK")}
++
++
++def scan_cache() -> dict:
++    value = {"database": g10.PANEL_DB}
++    try:
++        connection = sqlite3.connect("file:" + g10.PANEL_DB + "?mode=ro", uri=True, timeout=20, isolation_level=None)
++    except sqlite3.Error as exc:
++        return dict(value, error=type(exc).__name__ + ": " + str(exc)[:200])
++    try:
++        connection.execute("PRAGMA query_only=ON")
++        row = connection.execute("SELECT scanned_at, length(data) FROM service_scan_cache WHERE id = 1").fetchone()
++    except sqlite3.Error as exc:
++        return dict(value, error=type(exc).__name__ + ": " + str(exc)[:200])
++    finally:
++        connection.close()
++    if row is None:
++        return dict(value, exists=False)
++    scanned_at, size = row
++    value.update(exists=True, scanned_at=scanned_at, data_bytes=size)
++    try:
++        from datetime import datetime
++        scanned = datetime.fromisoformat(scanned_at.replace("Z", "+00:00")).timestamp()
++        value.update(scanned_epoch=scanned, age_seconds=round(time.time() - scanned, 1))
++    except ValueError:
++        value["age_seconds"] = None
++    return value
++
++
++def read_probe14(args: dict) -> dict:
++    value = {"at": utc(), "epoch": time.time(), "units": {}, "cgroup_cpu": {}, "proc_cpu": {}}
++    for name, unit in UNITS.items():
++        state = show(unit)
++        value["units"][name] = state
++        value["cgroup_cpu"][name] = cpu_stat(state.get("ControlGroup", ""))
++        if state.get("MainPID") not in (None, "", "0"):
++            value["proc_cpu"][name] = proc_cpu(state["MainPID"])
++    value["scan_cache"] = scan_cache()
++    value["loadavg"] = Path("/proc/loadavg").read_text().strip()
++    value["nginx_dropin"] = {"path": DROPIN, "exists": os.path.exists(DROPIN),
++                             "text": Path(DROPIN).read_text() if os.path.exists(DROPIN) else None}
++    return value
++
++
++def owner_agent14(args: dict) -> dict:
++    action = args.get("action")
++    if action not in ("stop", "start"):
++        raise Refused("action must be stop or start")
++    value = {"action": "owner-agent14", "what": action, "unit": AGENT_UNIT, "before": show(AGENT_UNIT),
++             "command": f"systemctl {action} {AGENT_UNIT}"}
++    started = time.time()
++    done = subprocess.run(["systemctl", action, AGENT_UNIT], capture_output=True, text=True, timeout=120)
++    value["returncode"], value["stderr"] = done.returncode, done.stderr[-400:]
++    want = "active" if action == "start" else "inactive"
++    for _ in range(WAIT_LIMIT * 2):
++        state = show(AGENT_UNIT)
++        if state.get("ActiveState") in (want, "failed"):
++            break
++        time.sleep(0.5)
++    value["after"] = show(AGENT_UNIT)
++    value["waited_seconds"] = round(time.time() - started, 2)
++    value["at"], value["epoch"] = utc(), time.time()
++    return value
++
++
++def lab_slow_reload14(args: dict) -> dict:
++    value = {"action": "lab-slow-reload14", "path": DROPIN}
++    if args.get("remove"):
++        existed = os.path.exists(DROPIN)
++        if existed:
++            os.unlink(DROPIN)
++        value["removed"] = existed
++    else:
++        seconds = int(args.get("seconds") or 90)
++        if not 5 <= seconds <= 300:
++            raise Refused("seconds must be between 5 and 300")
++        os.makedirs(DROPIN_DIR, exist_ok=True)
++        text = ("# set14 lab preparation (disposable guest): a reload of nginx that takes %d s and changes nothing\n"
++                "[Service]\nExecReload=\nExecReload=/bin/sleep %d\n") % (seconds, seconds)
++        Path(DROPIN).write_text(text)
++        value["text"] = text
++    reload = subprocess.run(["systemctl", "daemon-reload"], capture_output=True, text=True, timeout=120)
++    value["daemon_reload_returncode"] = reload.returncode
++    shown = subprocess.run(["systemctl", "show", "nginx.service", "-p", "ExecReload,ActiveState,MainPID"],
++                           capture_output=True, text=True, timeout=30)
++    value["nginx"] = shown.stdout.strip().splitlines()
++    value["at"], value["epoch"] = utc(), time.time()
++    return value
++
++
++MODES = dict(g13.MODES)
++MODES.update({"read-probe14": read_probe14, "owner-agent14": owner_agent14, "lab-slow-reload14": lab_slow_reload14})
++
++
++def main(argv=None) -> int:
++    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
++    parser.add_argument("mode", choices=sorted(MODES))
++    for name in ("lab-nonce", "vm-uuid", "cell-id", "node"):
++        parser.add_argument("--" + name, required=True)
++    parser.add_argument("--args-b64", default="e30=")
++    args = parser.parse_args(argv)
++    rid._load_probe().guard_guest(args)
++    request = json.loads(base64.b64decode(args.args_b64, validate=True))
++    if not isinstance(request, dict):
++        parser.error("--args-b64 must hold a JSON object")
++    value = MODES[args.mode](request)
++    value.update(schema=SCHEMA, mode=args.mode, owner_action=args.mode.startswith("owner-"))
++    print(json.dumps(value, sort_keys=True, default=str))
++    return 0
++
++
++if __name__ == "__main__":
++    try:
++        raise SystemExit(main())
++    except Refused as exc:
++        print(json.dumps({"refused": "Refused", "reason": str(exc)[:300]}), file=sys.stderr)
++        raise SystemExit(3)
++    except Exception as exc:  # noqa: BLE001 - reported as data; the driver decides
++        print(json.dumps({"refused": type(exc).__name__, "reason": str(exc)[:300]}), file=sys.stderr)
++        raise SystemExit(2)
+--- /dev/null
++++ b/deploy/e2e/release-recovery/run-set14.sh
+@@ -0,0 +1,56 @@
++#!/usr/bin/env bash
++# set14 wrapper for the Linux QEMU host (archlinux), run as root: the fourteenth native record, on commit a5830dd3e (the
++# Dashboard's "System services" card checks the components by itself), measured on disposable guests installed fresh
++# with a real headless Chrome on the host (set14_trial.py; web/tools/browser-inspect/cold-load-set14.mjs).
++#
++#   run-set14.sh dry-run CELL ARTIFACTS_JSON LAB_NAME
++#       Validate the plan without any guest (no lab is created).
++#   run-set14.sh cell CELL ARTIFACTS_JSON LAB_NAME SSH_PORT [LOCAL_PORT]
++#       Prepare and start a NEW lab /var/tmp/cp-release-drill-LAB_NAME, run the one cell on its node, then
++#       stop the lab (disks and evidence retained).
++#
++# CELL: set14-debian13 | set14-ubuntu | set14-arch   (ARTIFACTS_JSON from `run-upd1.sh build SOURCE`)
++# One cell per new lab. SET14_NEIGHBOUR_GATE and then SET14_DISK_GATE, when set, are programs that must exit 0
++# immediately before the guest is started; otherwise no guest is started. SET12_HAND, when set, opens the browser
++# window (set12_trial.py's handover, under $SET12_RUN_ROOT/hand).
++set -euo pipefail
++HERE=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
++IMAGES=${UPD1_IMAGE_CACHE:-/var/tmp/cp-v3n28/images}
++LAB=(python3 "$HERE/lab.py")
++DRIVER=(python3 "$HERE/set14_trial.py")
++
++usage() { sed -n '2,15p' "${BASH_SOURCE[0]}" >&2; exit 2; }
++[[ $# -ge 1 ]] || usage
++command=$1; shift
++case $command in
++    dry-run)
++        [[ $# -eq 3 ]] || usage
++        exec "${DRIVER[@]}" plan --cell "$1" --artifacts "$2" --work-root "/var/tmp/cp-release-drill-$3" --dry-run
++        ;;
++    cell)
++        [[ $# -ge 4 && $# -le 5 ]] || usage
++        cell=$1 artifacts=$2 name=$3 port=$4 local_port=${5:-18443}
++        [[ $EUID -eq 0 ]] || { echo "run as root (fixture signing keys are root-only)" >&2; exit 2; }
++        root=/var/tmp/cp-release-drill-$name
++        [[ ! -e $root ]] || { echo "lab $root exists; every cell needs a NEW lab" >&2; exit 2; }
++        "${DRIVER[@]}" plan --cell "$cell" --artifacts "$artifacts" --work-root "$root" > /dev/null
++        platform=debian13-arch
++        [[ $cell != set14-ubuntu ]] || platform=ubuntu
++        "${LAB[@]}" prepare --work-root "$root" --image-cache "$IMAGES" --ssh-port "$port" --platform "$platform" --execute
++        if [[ -n ${SET14_NEIGHBOUR_GATE:-} ]]; then
++            bash "$SET14_NEIGHBOUR_GATE" "$cell $name" || { echo "SET14 cell=$cell lab=$root NOT STARTED: another measurement's guest is running" >&2; exit 75; }
++        fi
++        if [[ -n ${SET14_DISK_GATE:-} ]]; then
++            bash "$SET14_DISK_GATE" "$cell $name (guest start)" || { echo "SET14 cell=$cell lab=$root NOT STARTED: the disk gate refused the guest start" >&2; exit 75; }
++        fi
++        "${LAB[@]}" start --work-root "$root" --execute
++        "${LAB[@]}" status --work-root "$root"
++        status=0
++        "${DRIVER[@]}" run --cell "$cell" --artifacts "$artifacts" --work-root "$root" --local-port "$local_port" \
++            --execute || status=$?
++        "${LAB[@]}" stop --work-root "$root" --execute || true
++        echo "SET14 cell=$cell lab=$root driver_exit=$status evidence=$root/evidence/*/upd1"
++        exit "$status"
++        ;;
++    *) usage ;;
++esac
+--- /dev/null
++++ b/deploy/e2e/release-recovery/test_set14_trial.py
+@@ -0,0 +1,131 @@
++"""Offline tests of set14's pure rules (no guest).
++
++set14_trial imports set13_trial and so set12_trial, whose set12_fixture changes owner_update_trial's module state and
++writes its generated origin under $SET12_RUN_ROOT at import: as test_set13_trial does, the import happens inside the
++class with SET12_RUN_ROOT pointing at a temporary directory, and that state is put back afterwards."""
++from __future__ import annotations
++
++import importlib
++import importlib.util
++import os
++from pathlib import Path
++import sqlite3
++import sys
++import tempfile
++import time
++import unittest
++
++HERE = Path(__file__).resolve().parent
++if str(HERE) not in sys.path:
++    sys.path.insert(0, str(HERE))
++import owner_update_trial as out  # noqa: E402
++
++t = None  # set14_trial, imported in setUpClass
++
++
++def guest():
++    spec = importlib.util.spec_from_file_location("guest_set14_native_under_test", HERE / "guest_set14_native.py")
++    module = importlib.util.module_from_spec(spec)
++    spec.loader.exec_module(module)
++    return module
++
++
++class Set14Rules(unittest.TestCase):
++    @classmethod
++    def setUpClass(cls):
++        cls.saved = (dict(out._MODULES), dict(out.BASELINE_REFS), out.LEDGER_AFTER_RETURN,
++                     sys.modules.get("upd1_worker_fixture_origin"), os.environ.get("SET12_RUN_ROOT"))
++        cls.tmp = tempfile.TemporaryDirectory(prefix="set14-test-")
++        os.environ["SET12_RUN_ROOT"] = cls.tmp.name
++        global t
++        t = importlib.import_module("set14_trial")
++
++    @classmethod
++    def tearDownClass(cls):
++        modules, refs, ledger, origin, root = cls.saved
++        out._MODULES.clear()
++        out._MODULES.update(modules)
++        out.BASELINE_REFS.clear()
++        out.BASELINE_REFS.update(refs)
++        out.LEDGER_AFTER_RETURN = ledger
++        if origin is None:
++            sys.modules.pop("upd1_worker_fixture_origin", None)
++        else:
++            sys.modules["upd1_worker_fixture_origin"] = origin
++        if root is None:
++            os.environ.pop("SET12_RUN_ROOT", None)
++        else:
++            os.environ["SET12_RUN_ROOT"] = root
++        cls.tmp.cleanup()
++
++    def test_cells_browser_and_plan(self):
++        self.assertEqual(sorted(t.CELLS), ["set14-arch", "set14-debian13", "set14-ubuntu"])
++        self.assertEqual(sorted(t.BROWSER), sorted(t.CELLS))
++        self.assertEqual({t.BROWSER["set14-debian13"]["lang"], t.BROWSER["set14-ubuntu"]["lang"]}, {"en", "tr"})
++        for cell in t.CELLS.values():
++            self.assertEqual(cell.purpose, "web")
++            self.assertFalse(cell.mail)
++        artifacts = {"baseline": {"version": "v0.1.0-alpha.81", "commit": "c" * 40, "sha256": "0" * 64}}
++        plan = t.build_plan("set14-ubuntu", artifacts, "/var/tmp/cp-release-drill-s14-x", 19000)
++        self.assertEqual(plan["steps"][-3:], ["set14-browser-window", t.s6.PIN_END_STEP, "collect"])
++        self.assertEqual(plan["steps"][0], t.s6.PIN_STEP)
++        self.assertEqual(plan["browser"], {"lang": "tr", "viewport": "phone"})
++        self.assertFalse(plan["native_evidence"])
++
++    def test_prep_name_and_compact_probe(self):
++        self.assertEqual(t.prep_name("agent-stop-1791838458775"), "agent-stop")
++        self.assertEqual(t.prep_name("probe-1"), "probe")
++        for name in t.PREPS:
++            self.assertEqual(t.prep_name(f"{name}-{int(time.time() * 1000)}"), name)
++        value = {"at": "x", "epoch": 1.0, "scan_cache": {"exists": False},
++                 "units": {"agent": {"ActiveState": "active", "MainPID": "12", "ControlGroup": "/system.slice/a"}},
++                 "cgroup_cpu": {"agent": {"usage_usec": 5}}, "nginx_dropin": {"exists": True, "text": "secret?"}}
++        brief = t.compact_probe(value)
++        self.assertEqual(brief["units"]["agent"], {"ActiveState": "active", "MainPID": "12", "NRestarts": None, "CPUUsageNSec": None})
++        self.assertEqual(brief["units"]["panel"]["ActiveState"], None)
++        self.assertIs(brief["nginx_dropin"], True)
++
++    def test_guest_scan_cache_reads_row_and_age(self):
++        g = guest()
++        with tempfile.TemporaryDirectory(prefix="set14-db-") as tmp:
++            db = os.path.join(tmp, "celikpanel.db")
++            saved = g.g10.PANEL_DB
++            g.g10.PANEL_DB = db
++            try:
++                connection = sqlite3.connect(db)
++                connection.execute("CREATE TABLE service_scan_cache (id INTEGER PRIMARY KEY CHECK (id = 1), data TEXT NOT NULL, scanned_at TEXT NOT NULL)")
++                connection.commit()
++                self.assertEqual(g.scan_cache()["exists"], False)
++                stamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() - 400))
++                connection.execute("INSERT INTO service_scan_cache VALUES (1, ?, ?)", ("{}" * 10, stamp))
++                connection.commit()
++                connection.close()
++                value = g.scan_cache()
++                self.assertTrue(value["exists"])
++                self.assertEqual(value["scanned_at"], stamp)
++                self.assertEqual(value["data_bytes"], 20)
++                self.assertTrue(395 <= value["age_seconds"] <= 410, value["age_seconds"])
++            finally:
++                g.g10.PANEL_DB = saved
++
++    def test_guest_proc_cpu_and_cgroup_parsers(self):
++        g = guest()
++        self.assertEqual(g.cpu_stat("")["error"], "no control group")
++        self.assertIn("error", g.cpu_stat("/no/such/group-set14"))
++        self.assertIn("error", g.proc_cpu("not-a-pid"))
++        if os.path.exists("/proc/self/stat"):
++            value = g.proc_cpu(str(os.getpid()))
++            self.assertEqual(sorted(value), ["clk_tck", "cstime", "cutime", "stime", "utime"])
++
++    def test_guest_refuses_bad_arguments(self):
++        g = guest()
++        with self.assertRaises(g.Refused):
++            g.owner_agent14({"action": "restart"})
++        with self.assertRaises(g.Refused):
++            g.lab_slow_reload14({"seconds": 1})
++        self.assertIn("read-probe14", g.MODES)
++        self.assertIn("read-unit13", g.MODES)  # set13's modes are kept
++
++
++if __name__ == "__main__":
++    unittest.main()
+--- /dev/null
++++ b/web/tools/browser-inspect/cold-load-set14.mjs
+@@ -0,0 +1,442 @@
++// node cold-load-set14.mjs <handover-dir> <out-dir> <cell[,cell...]>
++// set14 (2026-10-12): commit a5830dd3e's Dashboard "System services" card, which checks the components by itself
++// (POST /api/v1/managed-services/scan?max_age_seconds=300), in a real headless Chrome against a REAL CelikPanel on a
++// disposable lab guest, reached through the lab driver's loopback SSH forward (deploy/e2e/release-recovery/
++// set14_trial.py, set12's browser window "ui"). Nothing but the loopback address of the forward is opened. The driver
++// prepares each state on request (prep-request-<name>-<n> -> prep-done) and reads the guest (probe).
++//
++//   cells: ui    phases, in this order (the language and viewport come from the handover's "browser"):
++//                1 stale-load   the stored scan older than 315 s (guest clock) or absent; one Dashboard load
++//                2 fresh-load   a second load within the window
++//                3 window       that page kept open and visible past the window
++//                4 hidden       that page hidden (another tab brought to the front) past the window, then shown
++//                5 failure      the Agent stopped by the owner; a stale load; the Agent started; "Scan services"
++//                6 components   the Components page (/services) once after the same stale condition
++//                7 held         the owner reloads nginx from the Panel while its reload takes 90 s (lab); a stale
++//                               Dashboard load meanwhile; the follow-up after the host is ready again
++//          done  writes done.json
++//
++//   BROWSER_INSPECT_MODULES  directory whose node_modules holds puppeteer-core (required; outside the repository)
++//   CHROME_PATH              the installed Chrome (default: the usual Windows/Linux places)
++//   LIVE_PROFILE_ROOT        a short directory for the browser profile (profile-dir.mjs; refused beyond 120 characters)
++//
++// Every request to /api/ is recorded (method, path with query, status, start and end time, duration); for the scan
++// POST also the answer's code and scanned_at. The card's text is sampled in the page every 100 ms (read only) and
++// every change is recorded with the page's visibility. Pictures are never taken of a page while it is hidden.
++// The owner's password is read from the root-only file the driver names and typed into the sign-in form; every text
++// this script writes is passed through the redaction list of that file first. Cookies are never read.
++import { createHash } from 'node:crypto';
++import { existsSync, readFileSync } from 'node:fs';
++import { appendFile, mkdir, writeFile } from 'node:fs/promises';
++import { createRequire } from 'node:module';
++import { join, resolve } from 'node:path';
++import { connect as tlsConnect } from 'node:tls';
++import { pathToFileURL } from 'node:url';
++import { shortProfileDir } from './profile-dir.mjs';
++
++if (!process.env.BROWSER_INSPECT_MODULES) { console.error('Set BROWSER_INSPECT_MODULES (see README.md).'); process.exit(2); }
++const requireFrom = createRequire(pathToFileURL(join(resolve(process.env.BROWSER_INSPECT_MODULES), 'package.json')));
++const loaded = await import(pathToFileURL(requireFrom.resolve('puppeteer-core')).href);
++const puppeteer = [loaded.default?.default, loaded.default, loaded].find(item => typeof item?.launch === 'function');
++const chrome = process.env.CHROME_PATH || ['C:/Program Files/Google/Chrome/Application/chrome.exe', '/usr/bin/google-chrome', '/usr/bin/chromium'].find(candidate => existsSync(candidate));
++if (!chrome) { console.error('No installed Chrome found. Set CHROME_PATH.'); process.exit(2); }
++
++const [handDir, outRoot, cellsArg = 'ui,done'] = process.argv.slice(2);
++if (!handDir || !outRoot) { console.error('usage: node cold-load-set14.mjs <handover-dir> <out-dir> <cells>'); process.exit(2); }
++const cells = cellsArg.split(',');
++const hand = JSON.parse(readFileSync(join(handDir, 'ready.json'), 'utf8'));
++const port = Number(hand.local_port);
++if (!(port > 1024 && port < 65536)) throw new Error('bad port in the handover file');
++const base = `https://127.0.0.1:${port}`;
++const wslShare = process.env.LIVE_WSL_SHARE || '//wsl.localhost/archlinux';
++const secretPath = process.platform === 'win32' ? wslShare + hand.password_file : hand.password_file;
++const pause = ms => new Promise(done => setTimeout(done, ms));
++const iso = (ms = Date.now()) => new Date(ms).toISOString();
++const DESKTOP = { width: 1440, height: 900, deviceScaleFactor: 1 };
++const PHONE = { width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true };
++const LANG = hand.browser?.lang === 'tr' ? 'tr' : 'en';
++const VIEWPORT_NAME = hand.browser?.viewport === 'phone' ? 'phone' : 'desktop';
++const VIEWPORT = VIEWPORT_NAME === 'phone' ? PHONE : DESKTOP;
++const WINDOW_S = 300;
++const STALE_S = 315;
++// The card's own strings (web/src/i18n, commit a5830dd3e), to name what the card says.
++const TEXT = {
++    label: { en: 'System services', tr: 'Sistem servisleri' },
++    scanNow: { en: 'Scan services', tr: 'Servisleri tara' },
++    states: [
++        ['checking', /Checking components|Bileşenler kontrol ediliyor/],
++        ['held', /A change is in progress|Bir değişiklik sürüyor/],
++        ['failed', /Could not check:|Kontrol edilemedi:/],
++        ['not-recent', /Not checked in the last 5 minutes|Son 5 dakikada kontrol edilmedi/],
++        ['never', /Not checked yet|Henüz bakılmadı/],
++        ['known', /\d+\s*\/\s*\d+/],
++    ],
++};
++const stateOf = text => { if (!text) return 'absent'; for (const [name, re] of TEXT.states) if (re.test(text)) return name; return 'other'; };
++
++let secret = null;
++const redactions = () => [secret?.password, ...(secret?.redact || [])].filter(value => typeof value === 'string' && value.length >= 6);
++const redact = text => { let out = String(text ?? ''); for (const value of redactions()) out = out.split(value).join('[REDACTED]'); return out; };
++const jsonl = async (file, value) => appendFile(file, redact(JSON.stringify(value)) + '\n');
++
++function leafOf() {
++    return new Promise((done, fail) => {
++        const socket = tlsConnect({ host: '127.0.0.1', port, rejectUnauthorized: false, servername: 'localhost' }, () => {
++            const cert = socket.getPeerX509Certificate();
++            socket.end();
++            if (!cert) return fail(new Error('no peer certificate'));
++            const spki = cert.publicKey.export({ type: 'spki', format: 'der' });
++            done({ leaf_sha256: createHash('sha256').update(cert.raw).digest('hex'), spki_sha256_base64: createHash('sha256').update(spki).digest('base64') });
++        });
++        socket.setTimeout(8000, () => { socket.destroy(); fail(new Error('timeout')); });
++        socket.on('error', fail);
++    });
++}
++
++const leaf = await leafOf();
++await mkdir(outRoot, { recursive: true });
++await writeFile(join(outRoot, `leaf-${Date.now()}.json`), JSON.stringify({ at: iso(), ...leaf, handover_leaf_sha256: hand.tls_leaf_sha256 }, null, 2));
++secret = JSON.parse(readFileSync(secretPath, 'utf8'));
++const profile = shortProfileDir(outRoot);
++const browser = await puppeteer.launch({
++    executablePath: chrome, headless: true, userDataDir: profile,
++    args: ['--no-first-run', '--no-default-browser-check', '--disable-background-networking', '--disable-component-update',
++        '--disable-sync', '--disable-domain-reliability', '--force-color-profile=srgb', `--ignore-certificate-errors-spki-list=${leaf.spki_sha256_base64}`],
++});
++
++// -- recording -------------------------------------------------------------------------------------------------------
++
++let phase = 'start';
++let dir = outRoot;
++const requests = [];   // every /api/ request of every page, in memory for the phase summaries
++const phases = [];
++const front = { page: null };
++
++// In the page, read only: the card's text every 100 ms and every visibility change.
++const CARD_LOGGER = `(() => {
++    const labels = ${JSON.stringify(Object.values(TEXT.label))};
++    window.__set14card = []; let last = null;
++    const find = () => {
++        for (const s of document.querySelectorAll('span.font-medium')) {
++            if (labels.includes((s.textContent || '').trim())) { const c = s.closest('section[role="status"], button'); if (c) return c; }
++        }
++        return null;
++    };
++    window.__set14find = find;
++    const tick = () => {
++        const c = find();
++        const text = c ? c.innerText.replace(/\\s+/g, ' ').trim() : null;
++        const key = text + '|' + document.visibilityState;
++        if (key !== last) { last = key; window.__set14card.push({ t: Date.now(), text, tag: c ? c.tagName : null, busy: c ? c.getAttribute('aria-busy') : null, vis: document.visibilityState, path: location.pathname }); }
++    };
++    setInterval(tick, 100);
++    document.addEventListener('visibilitychange', () => { window.__set14card.push({ t: Date.now(), ev: 'visibility', vis: document.visibilityState }); tick(); });
++})();`;
++
++async function newPage(label) {
++    const page = await browser.newPage();
++    page.__label = label;
++    await page.setViewport(VIEWPORT);
++    await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'light' }]);
++    await page.evaluateOnNewDocument(value => { try { localStorage.setItem('celikpanel.lang', value); localStorage.setItem('celikpanel.theme', 'light'); } catch { /* none */ } }, LANG);
++    await page.evaluateOnNewDocument(CARD_LOGGER);
++    const started = new Map();
++    page.on('request', req => { if (req.url().includes('/api/')) started.set(req, Date.now()); });
++    const finish = async (req, failed) => {
++        if (!req.url().includes('/api/')) return;
++        const t0 = started.get(req) ?? Date.now();
++        started.delete(req);
++        const t1 = Date.now();
++        const res = failed ? null : req.response();
++        const entry = { page: label, phase, method: req.method(), url: req.url().replace(base, ''), status: res ? res.status() : null,
++            start: iso(t0), end: iso(t1), start_ms: t0, end_ms: t1, ms: t1 - t0 };
++        if (failed) entry.error = req.failure()?.errorText;
++        if (res && req.method() === 'POST' && entry.url.startsWith('/api/v1/managed-services/scan')) {
++            try {
++                const body = JSON.parse(await res.text());
++                entry.answer = { code: body?.code ?? null, scanned_at: body?.scanned_at ?? null, services: Array.isArray(body?.services) ? body.services.length : null,
++                    error: typeof body?.error === 'string' ? body.error.slice(0, 300) : null };
++            } catch (error) { entry.answer = { unreadable: String(error.message).slice(0, 120) }; }
++        }
++        requests.push(entry);
++        await jsonl(join(dir, 'requests.jsonl'), entry);
++    };
++    page.on('requestfinished', req => void finish(req, false));
++    page.on('requestfailed', req => void finish(req, true));
++    page.on('console', message => { if (['error', 'warn', 'warning'].includes(message.type())) void jsonl(join(dir, 'console.jsonl'), { at: iso(), page: label, phase, type: message.type(), text: message.text().slice(0, 400) }); });
++    return page;
++}
++
++async function toFront(page) { await page.bringToFront(); front.page = page; await pause(300); }
++
++async function cardLog(page) {
++    const rows = await page.evaluate(() => (window.__set14card || []).splice(0)).catch(() => []);
++    for (const row of rows) await jsonl(join(dir, 'cardlog.jsonl'), { page: page.__label, phase, at: iso(row.t), ...row, state: row.text === undefined ? undefined : stateOf(row.text) });
++    return rows;
++}
++
++async function cardNow(page) {
++    return page.evaluate(() => {
++        const c = window.__set14find ? window.__set14find() : null;
++        return { text: c ? c.innerText.replace(/\s+/g, ' ').trim() : null, vis: document.visibilityState, path: location.pathname };
++    }).catch(error => ({ error: String(error.message).slice(0, 120) }));
++}
++
++async function pageText(page) {
++    return page.evaluate(() => (document.querySelector('main') || document.body).innerText.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim().slice(0, 8000)).catch(() => '');
++}
++
++const shotNames = new Set();
++async function shoot(page, name, events, extra = {}) {
++    if (front.page !== page) { await jsonl(events, { at: iso(), ev: 'shot-skipped', name, why: 'page not in front (hidden)' }); return; }
++    let n = name; let i = 2; while (shotNames.has(n)) n = `${name}-${i++}`; shotNames.add(n);
++    const card = await page.evaluateHandle(() => (window.__set14find ? window.__set14find() : null)).catch(() => null);
++    const element = card ? card.asElement() : null;
++    let cardShot = false;
++    if (element) { try { await element.screenshot({ path: join(dir, `${n}-card.png`) }); cardShot = true; } catch { /* the card moved */ } }
++    await page.screenshot({ path: join(dir, `${n}-viewport.png`), fullPage: false });
++    await writeFile(join(dir, `${n}.txt`), redact(await pageText(page)));
++    const now = await cardNow(page);
++    const facts = await page.evaluate(() => ({ password_fields_with_text: Array.from(document.querySelectorAll('input[type="password"]')).filter(i => i.value).length,
++        scroll_y: Math.round(window.scrollY) })).catch(() => ({}));
++    await jsonl(events, { at: iso(), ev: 'shot', name: n, card_picture: cardShot, card: now.text, state: stateOf(now.text), vis: now.vis, path: now.path, ...facts, ...extra });
++}
++
++// Watch one page: sample the card every 250 ms and picture each state the first time it appears in this phase.
++async function observe(page, ms, events, { shots = true, until = null, tag = '' } = {}) {
++    const seen = new Set();
++    const deadline = Date.now() + ms;
++    let lastFlush = Date.now();
++    while (Date.now() < deadline) {
++        if (until && until()) break;
++        const now = await cardNow(page);
++        const state = stateOf(now.text);
++        if (shots && state !== 'absent' && !seen.has(state) && now.vis === 'visible' && front.page === page) {
++            seen.add(state);
++            await shoot(page, `${phase}${tag}-${state}`, events, { lang: LANG, viewport: VIEWPORT_NAME });
++        }
++        if (Date.now() - lastFlush > 5000) { await cardLog(page); lastFlush = Date.now(); }
++        await pause(250);
++    }
++    await cardLog(page);
++}
++
++async function prep(name, events) {
++    const key = `${name}-${Date.now()}`;
++    const asked = Date.now();
++    await writeFile(join(handDir, `prep-request-${key}`), iso() + '\n');
++    await jsonl(events, { at: iso(), ev: 'prep-requested', name, phase });
++    for (let i = 0; i < 900 && !existsSync(join(handDir, `prep-done-${key}.json`)); i++) await pause(1000);
++    const record = existsSync(join(handDir, `prep-done-${key}.json`)) ? JSON.parse(readFileSync(join(handDir, `prep-done-${key}.json`), 'utf8')) : { missing: true };
++    const got = Date.now();
++    const out = { ...record, host_asked_ms: asked, host_got_ms: got };
++    const guest = record?.result?.epoch;
++    if (typeof guest === 'number') out.guest_minus_host_ms_approx = Math.round(guest * 1000 - (asked + got) / 2);
++    await jsonl(events, { at: iso(), ev: 'prep-done', name, phase, record: out });
++    return out;
++}
++
++async function waitStale(events, label) {
++    for (let turn = 0; turn < 6; turn++) {
++        const probe = await prep('probe', events);
++        const sc = probe.result?.scan_cache || {};
++        if (sc.exists === false) return { turn, absent: true, probe };
++        const age = Number(sc.age_seconds);
++        if (Number.isFinite(age) && age >= STALE_S) return { turn, age, probe };
++        const wait = Math.min(Math.max(Number.isFinite(age) ? STALE_S - age + 1 : 60, 1), 340);
++        await jsonl(events, { at: iso(), ev: 'wait-stale', label, age, wait_s: wait });
++        await pause(wait * 1000);
++    }
++    throw new Error(`stale condition not reached for ${label} after 6 turns`);
++}
++
++async function signIn(page, events) {
++    await page.goto(base + '/domains', { waitUntil: 'networkidle2', timeout: 60000 });
++    const shown = await page.waitForFunction(() => document.getElementById('username') ? 'form' : document.querySelector('nav, aside') ? 'signed-in' : null, { timeout: 60000 }).then(handle => handle.jsonValue());
++    await jsonl(events, { at: iso(), ev: 'sign-in-page', shown });
++    if (shown === 'signed-in') return;
++    await page.type('#username', secret.username);
++    await page.type('#password', secret.password);
++    await Promise.all([page.keyboard.press('Enter'), pause(500)]);
++    await page.waitForFunction(() => !document.getElementById('password'), { timeout: 60000 });
++    await pause(2500);
++}
++
++const scanPosts = (from, to = Infinity) => requests.filter(r => r.method === 'POST' && r.url.startsWith('/api/v1/managed-services/scan') && r.start_ms >= from && r.start_ms <= to);
++const brief = r => ({ page: r.page, url: r.url, status: r.status, start: r.start, end: r.end, ms: r.ms, answer: r.answer, error: r.error });
++
++async function phaseDone(name, started, extra = {}) {
++    const ended = Date.now();
++    const posts = scanPosts(started, ended);
++    const value = { phase: name, started: iso(started), ended: iso(ended), seconds: Math.round((ended - started) / 100) / 10,
++        scan_posts: posts.length, posts: posts.map(brief), ...extra };
++    phases.push(value);
++    await writeFile(join(dir, 'phases.json'), redact(JSON.stringify({ lang: LANG, viewport: VIEWPORT_NAME, phases }, null, 2)));
++    return value;
++}
++
++const cpu = (a, b) => {
++    const pick = p => p?.result || {};
++    const x = pick(a), y = pick(b);
++    const d = (k, u) => (y.cgroup_cpu?.[u]?.[k] ?? NaN) - (x.cgroup_cpu?.[u]?.[k] ?? NaN);
++    const n = (u, f) => Number(y.units?.[u]?.[f]) - Number(x.units?.[u]?.[f]);
++    return { wall_s: Math.round(((y.epoch ?? NaN) - (x.epoch ?? NaN)) * 10) / 10,
++        agent_usage_usec: d('usage_usec', 'agent'), agent_user_usec: d('user_usec', 'agent'), agent_system_usec: d('system_usec', 'agent'),
++        panel_usage_usec: d('usage_usec', 'panel'), agent_cpu_usage_nsec: n('agent', 'CPUUsageNSec'), panel_cpu_usage_nsec: n('panel', 'CPUUsageNSec'),
++        agent_main_pid: [x.units?.agent?.MainPID, y.units?.agent?.MainPID], loadavg: [x.loadavg, y.loadavg] };
++};
++
++async function cellUI() {
++    const events = join(dir, 'events.jsonl');
++    await jsonl(events, { at: iso(), ev: 'start', lang: LANG, viewport: VIEWPORT_NAME, chrome: await browser.version() });
++
++    phase = 'sign-in';
++    let t = Date.now();
++    const signer = await newPage('sign-in');
++    await toFront(signer);
++    await signIn(signer, events);
++    await cardLog(signer);
++    await signer.close();
++    await phaseDone('sign-in', t);
++
++    // 1 stale load
++    phase = 'stale-load';
++    const stale1 = await waitStale(events, 'stale-load');
++    const a = await prep('probe', events);
++    t = Date.now();
++    const p1 = await newPage('p1-stale');
++    await toFront(p1);
++    await p1.goto(base + '/', { waitUntil: 'domcontentloaded', timeout: 60000 });
++    await observe(p1, 45000, events);
++    const b = await prep('probe', events);
++    await p1.close();
++    await phaseDone('stale-load', t, { stale: { turn: stale1.turn, age_s: stale1.age ?? null, absent: !!stale1.absent }, cpu: cpu(a, b), probes: [a.result?.file, b.result?.file] });
++
++    // 2 fresh load, the page kept for 3 and 4
++    phase = 'fresh-load';
++    const c = await prep('probe', events);
++    t = Date.now();
++    const p2 = await newPage('p2-fresh');
++    await toFront(p2);
++    await p2.goto(base + '/', { waitUntil: 'domcontentloaded', timeout: 60000 });
++    await observe(p2, 45000, events);
++    const d = await prep('probe', events);
++    await phaseDone('fresh-load', t, { scan_age_at_start_s: c.result?.scan_cache?.age_seconds, cpu: cpu(c, d), probes: [c.result?.file, d.result?.file] });
++
++    // 3 window: p2 stays open and visible until the stored scan is 375 s old
++    phase = 'window';
++    t = Date.now();
++    const ageD = Number(d.result?.scan_cache?.age_seconds);
++    const windowMs = Math.min(Math.max((WINDOW_S + 75 - (Number.isFinite(ageD) ? ageD : 0)) * 1000, 30000), 420000);
++    const scannedBefore = d.result?.scan_cache?.scanned_epoch;
++    await observe(p2, windowMs, events);
++    const e = await prep('probe', events);
++    await phaseDone('window', t, { observed_ms: windowMs, scan_epoch_before: scannedBefore, scan_epoch_after: e.result?.scan_cache?.scanned_epoch,
++        due_epoch: typeof scannedBefore === 'number' ? scannedBefore + WINDOW_S : null });
++
++    // 4 hidden: another tab in front until the stored scan is 360 s old, then p2 shown again
++    phase = 'hidden';
++    t = Date.now();
++    const blank = await newPage('p3-blank');
++    await toFront(blank);
++    await blank.goto('about:blank');
++    const hiddenState = await cardNow(p2);
++    const ageE = Number(e.result?.scan_cache?.age_seconds);
++    const hideMs = Math.min(Math.max((WINDOW_S + 60 - (Number.isFinite(ageE) ? ageE : 0)) * 1000, 30000), 420000);
++    await observe(p2, hideMs, events, { shots: false });
++    const f = await prep('probe', events);
++    const shownAt = Date.now();
++    await toFront(p2);
++    await observe(p2, 40000, events, { tag: '-shown' });
++    await blank.close();
++    const g = await prep('probe', events);
++    await p2.close();
++    await phaseDone('hidden', t, { hidden_ms: shownAt - t, visibility_while_hidden: hiddenState.vis, posts_while_hidden: scanPosts(t, shownAt).length,
++        posts_after_shown: scanPosts(shownAt).length, shown_at: iso(shownAt), scan_age_when_shown_s: f.result?.scan_cache?.age_seconds,
++        scan_epoch_after: g.result?.scan_cache?.scanned_epoch });
++
++    // 5 failure: the Agent stopped; a stale load; started; the button
++    phase = 'failure';
++    await waitStale(events, 'failure');
++    t = Date.now();
++    const stopped = await prep('agent-stop', events);
++    const p4 = await newPage('p4-failure');
++    await toFront(p4);
++    const loadAt = Date.now();
++    await p4.goto(base + '/', { waitUntil: 'domcontentloaded', timeout: 60000 });
++    await observe(p4, 40000, events);
++    const started = await prep('agent-start', events);
++    await pause(5000);
++    await observe(p4, 10000, events, { tag: '-agent-back' });
++    const clickAt = Date.now();
++    const clicked = await p4.evaluate(label => {
++        const c = window.__set14find ? window.__set14find() : null;
++        const button = c ? Array.from(c.querySelectorAll('button')).find(b => (b.innerText || '').trim() === label) : null;
++        if (!button) return null;
++        button.click();
++        return label;
++    }, TEXT.scanNow[LANG]);
++    await jsonl(events, { at: iso(), ev: 'click', what: 'scan-services', clicked });
++    await observe(p4, 40000, events, { tag: '-after-click' });
++    const h = await prep('probe', events);
++    await p4.close();
++    await phaseDone('failure', t, { agent_stop: stopped.result, agent_start: started.result, clicked, load_at: iso(loadAt), click_at: iso(clickAt),
++        posts_before_click: scanPosts(loadAt, clickAt).length, posts_after_click: scanPosts(clickAt).length, probe_after: h.result?.file });
++
++    // 6 the Components page once, stale
++    phase = 'components';
++    await waitStale(events, 'components');
++    t = Date.now();
++    const p5 = await newPage('p5-components');
++    await toFront(p5);
++    await p5.goto(base + '/services', { waitUntil: 'domcontentloaded', timeout: 60000 });
++    await pause(1500);
++    await shoot(p5, 'components-loaded', events);
++    await pause(43000);
++    await shoot(p5, 'components-45s', events);
++    await p5.close();
++    await phaseDone('components', t);
++
++    // 7 held: a Panel operation holds the change lease while the Dashboard loads stale
++    phase = 'held';
++    await waitStale(events, 'held');
++    t = Date.now();
++    const slow = await prep('slow-on', events);
++    const action = await prep('action-start', events);
++    const p6 = await newPage('p6-held');
++    await toFront(p6);
++    const heldLoad = Date.now();
++    await p6.goto(base + '/', { waitUntil: 'domcontentloaded', timeout: 60000 });
++    let waited = null; let waitedAt = null;
++    const waiting = prep('action-wait', events).then(value => { waited = value; waitedAt = Date.now(); });
++    await observe(p6, 300000, events, { until: () => waitedAt !== null && Date.now() - waitedAt > 45000 });
++    await waiting;
++    const off = await prep('slow-off', events);
++    const k = await prep('probe', events);
++    await p6.close();
++    await phaseDone('held', t, { slow_on: slow.result, action_start: action.result, action_end: waited?.result, action_end_seen: waitedAt ? iso(waitedAt) : null,
++        load_at: iso(heldLoad), posts_while_held: scanPosts(heldLoad, waitedAt ?? Date.now()).length, posts_after_ready: waitedAt ? scanPosts(waitedAt).length : null,
++        slow_off: off.result, probe_after: k.result?.file });
++
++    phase = 'end';
++    await prep('journal', events);
++}
++
++const results = {};
++for (const cell of cells) {
++    dir = join(outRoot, cell);
++    await mkdir(dir, { recursive: true });
++    const started = iso();
++    try {
++        if (cell === 'ui') await cellUI();
++        else if (cell === 'done') await writeFile(join(handDir, 'done.json'), JSON.stringify({ at: iso(), by: 'cold-load-set14.mjs' }) + '\n');
++        else throw new Error(`unknown cell ${cell}`);
++        results[cell] = { started, ended: iso(), ok: true };
++    } catch (error) {
++        results[cell] = { started, ended: iso(), ok: false, phase, error: redact(String(error.stack || error)).slice(0, 1500) };
++    }
++    await writeFile(join(dir, 'run.json'), redact(JSON.stringify({ cell, chrome: await browser.version(), lang: LANG, viewport: VIEWPORT_NAME,
++        handover: { ...hand, password_file: '(root-only file, not copied)' }, ...results[cell] }, null, 2)));
++    console.log(JSON.stringify({ cell, ...results[cell] }));
++}
++await browser.close();

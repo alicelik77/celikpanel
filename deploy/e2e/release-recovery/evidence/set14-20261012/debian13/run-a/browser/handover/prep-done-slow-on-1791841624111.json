@@ -1,0 +1,15 @@
+{
+  "at": "2026-10-12T21:47:05Z",
+  "prep": "slow-on",
+  "result": {
+    "at": "2026-10-12T21:47:06Z",
+    "daemon_reload_returncode": 0,
+    "epoch": 1791841626.530717,
+    "nginx": [
+      "MainPID=7267",
+      "ExecReload={ path=/bin/sleep ; argv[]=/bin/sleep 90 ; ignore_errors=no ; start_time=[n/a] ; stop_time=[n/a] ; pid=0 ; code=(null) ; status=0/0 }",
+      "ActiveState=active"
+    ],
+    "removed": null
+  }
+}

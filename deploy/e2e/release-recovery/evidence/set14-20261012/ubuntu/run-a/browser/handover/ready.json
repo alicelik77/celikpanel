@@ -1,0 +1,25 @@
+{
+  "at": "2026-10-12T21:59:58Z",
+  "base": "https://127.0.0.1:19142",
+  "browser": {
+    "lang": "tr",
+    "viewport": "phone"
+  },
+  "cell": "set14-ubuntu",
+  "local_port": 19142,
+  "password_file": "/var/tmp/cp-set14-run/secret/h14ub-ui.json",
+  "preps": [
+    "probe",
+    "agent-stop",
+    "agent-start",
+    "slow-on",
+    "slow-off",
+    "action-start",
+    "action-wait",
+    "journal"
+  ],
+  "schema": "celikpanel/set12-handover/v1",
+  "tls_leaf_sha256": "32420f68ae100ce6cb19ea1710c498642434036fb95d5df586d1f20f41134f09",
+  "username": "labadmin",
+  "window": "ui"
+}

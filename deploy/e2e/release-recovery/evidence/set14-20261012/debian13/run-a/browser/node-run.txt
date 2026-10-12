@@ -1,0 +1,4 @@
+browser profile: <redacted> (46 characters, limit 120)
+{"cell":"ui","started":"2026-10-12T21:15:55.856Z","ended":"2026-10-12T21:49:27.601Z","ok":true}
+{"cell":"done","started":"2026-10-12T21:49:27.606Z","ended":"2026-10-12T21:49:27.608Z","ok":true}
+rc=0

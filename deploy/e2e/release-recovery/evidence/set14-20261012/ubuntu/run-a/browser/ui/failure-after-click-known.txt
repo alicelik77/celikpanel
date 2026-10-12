@@ -1,0 +1,104 @@
+Panel
+
+dns-ubuntu · 30dk süredir çalışıyor
+
+CPU kullanımı
+
+%0
+
+2 çekirdek · Yük 0.08
+
+Bellek
+
+%15
+
+443 MB / 2.9 GB
+
+Disk (/)
+
+%12
+
+2.6 GB / 22.2 GB
+
+Sistem servisleri
+
+3 / 3
+
+çalışan / kurulu
+
+Posta paketleri
+Kısmen kurulu
+
+Webmail: Some components are already present. Installing this profile will reconcile the full plan without removing completed services.
+
+Posta paketlerini gör
+İlgi istiyor
+
+Bu sunucunun durumunun bir bölümü okunamadı; bu yüzden bu liste eksik olabilir. Bu, bir şeyin yanlış olduğu anlamına gelmez. Hiçbir şey değiştirilmedi. Tekrar deneyin.
+
+Tekrar dene
+Barındırma
+
+0
+
+Alan Adları
+
+0
+
+Veritabanları
+
+1
+
+Kullanıcılar
+
+0
+
+Posta hesabı
+
+Son etkinlik
+L
+labadmin oturum açtı2 kez
+127.0.0.1
+20 dk önce
+L
+labadmin server.setup.guidance
+127.0.0.1
+21 dk önce
+L
+labadmin server.setup.revise
+127.0.0.1
+21 dk önce
+L
+labadmin server.setup.child:certbot
+127.0.0.1
+23 dk önce
+L
+labadmin server.setup.child:php-fpm
+127.0.0.1
+23 dk önce
+L
+labadmin server.setup.child:nginx
+127.0.0.1
+23 dk önce
+L
+labadmin server.setup.child:mariadb
+127.0.0.1
+24 dk önce
+Hızlı işlemler
+Alan adı ekle
+Servis kur
+Kullanıcı ekle
+İçe aktar
+Sunucu bilgisi
+Sunucu adı
+dns-ubuntu
+IPv4 adresi
+10.0.2.15
+İşletim sistemi
+Ubuntu 24.04.4 LTS
+Çekirdek
+6.8.0-138-generic
+Mimari
+amd64
+Çalışma süresi
+30dk

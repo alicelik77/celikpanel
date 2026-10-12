@@ -1,0 +1,317 @@
+{
+  "lang": "tr",
+  "viewport": "phone",
+  "phases": [
+    {
+      "phase": "sign-in",
+      "started": "2026-10-12T22:00:10.596Z",
+      "ended": "2026-10-12T22:00:15.081Z",
+      "seconds": 4.5,
+      "scan_posts": 0,
+      "posts": []
+    },
+    {
+      "phase": "stale-load",
+      "started": "2026-10-12T22:03:10.990Z",
+      "ended": "2026-10-12T22:03:57.829Z",
+      "seconds": 46.8,
+      "scan_posts": 1,
+      "posts": [
+        {
+          "page": "p1-stale",
+          "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+          "status": 200,
+          "start": "2026-10-12T22:03:12.147Z",
+          "end": "2026-10-12T22:03:16.592Z",
+          "ms": 4445,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-12T22:03:17.834620145Z",
+            "services": 27,
+            "error": null
+          }
+        }
+      ],
+      "stale": {
+        "turn": 1,
+        "age_s": 319.2,
+        "absent": false
+      },
+      "cpu": {
+        "wall_s": 47.5,
+        "agent_usage_usec": 533433,
+        "agent_user_usec": 207964,
+        "agent_system_usec": 325469,
+        "panel_usage_usec": 263233,
+        "agent_cpu_usage_nsec": 533433000,
+        "panel_cpu_usage_nsec": 263233000,
+        "agent_main_pid": [
+          "7757",
+          "7757"
+        ],
+        "loadavg": [
+          "0.00 0.15 0.16 1/157 21238",
+          "0.04 0.14 0.16 1/157 21386"
+        ]
+      },
+      "probes": [
+        "steps/08-set14-browser-window/native/004-probe-3.json",
+        "steps/08-set14-browser-window/native/005-probe-4.json"
+      ]
+    },
+    {
+      "phase": "fresh-load",
+      "started": "2026-10-12T22:03:59.880Z",
+      "ended": "2026-10-12T22:04:47.549Z",
+      "seconds": 47.7,
+      "scan_posts": 0,
+      "posts": [],
+      "scan_age_at_start_s": 43.2,
+      "cpu": {
+        "wall_s": 47.8,
+        "agent_usage_usec": 116300,
+        "agent_user_usec": 44956,
+        "agent_system_usec": 71345,
+        "panel_usage_usec": 173513,
+        "agent_cpu_usage_nsec": 116300000,
+        "panel_cpu_usage_nsec": 173513000,
+        "agent_main_pid": [
+          "7757",
+          "7757"
+        ],
+        "loadavg": [
+          "0.12 0.16 0.17 1/157 21440",
+          "0.06 0.13 0.16 1/157 21539"
+        ]
+      },
+      "probes": [
+        "steps/08-set14-browser-window/native/006-probe-5.json",
+        "steps/08-set14-browser-window/native/007-probe-6.json"
+      ]
+    },
+    {
+      "phase": "window",
+      "started": "2026-10-12T22:04:47.553Z",
+      "ended": "2026-10-12T22:09:34.722Z",
+      "seconds": 287.2,
+      "scan_posts": 1,
+      "posts": [
+        {
+          "page": "p2-fresh",
+          "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+          "status": 200,
+          "start": "2026-10-12T22:08:30.498Z",
+          "end": "2026-10-12T22:08:33.576Z",
+          "ms": 3078,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-12T22:08:34.814895514Z",
+            "services": 27,
+            "error": null
+          }
+        }
+      ],
+      "observed_ms": 284100,
+      "scan_epoch_before": 1791842597,
+      "scan_epoch_after": 1791842914,
+      "due_epoch": 1791842897
+    },
+    {
+      "phase": "hidden",
+      "started": "2026-10-12T22:09:34.727Z",
+      "ended": "2026-10-12T22:15:18.020Z",
+      "seconds": 343.3,
+      "scan_posts": 1,
+      "posts": [
+        {
+          "page": "p2-fresh",
+          "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+          "status": 200,
+          "start": "2026-10-12T22:14:36.538Z",
+          "end": "2026-10-12T22:14:40.389Z",
+          "ms": 3851,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-12T22:14:41.625205117Z",
+            "services": 27,
+            "error": null
+          }
+        }
+      ],
+      "hidden_ms": 301777,
+      "visibility_while_hidden": "hidden",
+      "posts_while_hidden": 0,
+      "posts_after_shown": 1,
+      "shown_at": "2026-10-12T22:14:36.504Z",
+      "scan_age_when_shown_s": 363.7,
+      "scan_epoch_after": 1791843281
+    },
+    {
+      "phase": "failure",
+      "started": "2026-10-12T22:19:58.639Z",
+      "ended": "2026-10-12T22:21:39.903Z",
+      "seconds": 101.3,
+      "scan_posts": 2,
+      "posts": [
+        {
+          "page": "p4-failure",
+          "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+          "status": 500,
+          "start": "2026-10-12T22:20:01.449Z",
+          "end": "2026-10-12T22:20:01.463Z",
+          "ms": 14,
+          "answer": {
+            "code": "INTERNAL",
+            "scanned_at": null,
+            "services": null,
+            "error": "internal server error"
+          }
+        },
+        {
+          "page": "p4-failure",
+          "url": "/api/v1/managed-services/scan",
+          "status": 200,
+          "start": "2026-10-12T22:20:57.518Z",
+          "end": "2026-10-12T22:20:59.859Z",
+          "ms": 2341,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-12T22:21:01.09330429Z",
+            "services": 27,
+            "error": null
+          }
+        }
+      ],
+      "agent_stop": {
+        "after": "inactive",
+        "at": "2026-10-12T22:20:01Z",
+        "before": "active",
+        "command": "systemctl stop celikpanel-agent.service",
+        "epoch": 1791843601.613439,
+        "main_pid_after": "0",
+        "returncode": 0,
+        "waited_seconds": 0.08
+      },
+      "agent_start": {
+        "after": "active",
+        "at": "2026-10-12T22:20:43Z",
+        "before": "inactive",
+        "command": "systemctl start celikpanel-agent.service",
+        "epoch": 1791843643.3635569,
+        "main_pid_after": "23110",
+        "returncode": 0,
+        "waited_seconds": 0.11
+      },
+      "clicked": "Servisleri tara",
+      "load_at": "2026-10-12T22:20:01.196Z",
+      "click_at": "2026-10-12T22:20:57.513Z",
+      "posts_before_click": 1,
+      "posts_after_click": 1,
+      "probe_after": "steps/08-set14-browser-window/native/015-probe-14.json"
+    },
+    {
+      "phase": "components",
+      "started": "2026-10-12T22:26:17.949Z",
+      "ended": "2026-10-12T22:27:03.246Z",
+      "seconds": 45.3,
+      "scan_posts": 1,
+      "posts": [
+        {
+          "page": "p5-components",
+          "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+          "status": 200,
+          "start": "2026-10-12T22:26:18.588Z",
+          "end": "2026-10-12T22:26:20.770Z",
+          "ms": 2182,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-12T22:26:22.009209446Z",
+            "services": 27,
+            "error": null
+          }
+        }
+      ]
+    },
+    {
+      "phase": "held",
+      "started": "2026-10-12T22:31:39.304Z",
+      "ended": "2026-10-12T22:34:02.707Z",
+      "seconds": 143.4,
+      "scan_posts": 2,
+      "posts": [
+        {
+          "page": "p6-held",
+          "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+          "status": 409,
+          "start": "2026-10-12T22:31:46.039Z",
+          "end": "2026-10-12T22:31:46.047Z",
+          "ms": 8,
+          "answer": {
+            "code": "service_operation_busy",
+            "scanned_at": null,
+            "services": null,
+            "error": "another package operation is already in progress"
+          }
+        },
+        {
+          "page": "p6-held",
+          "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+          "status": 200,
+          "start": "2026-10-12T22:33:15.998Z",
+          "end": "2026-10-12T22:33:16.043Z",
+          "ms": 45,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-12T22:33:14Z",
+            "services": 27,
+            "error": null
+          }
+        }
+      ],
+      "slow_on": {
+        "at": "2026-10-12T22:31:41Z",
+        "daemon_reload_returncode": 0,
+        "epoch": 1791844301.8002095,
+        "nginx": [
+          "MainPID=12493",
+          "ExecReload={ path=/bin/sleep ; argv[]=/bin/sleep 90 ; ignore_errors=no ; start_time=[n/a] ; stop_time=[n/a] ; pid=0 ; code=(null) ; status=0/0 }",
+          "ActiveState=active"
+        ],
+        "removed": null
+      },
+      "action_start": {
+        "action": "reload",
+        "service": "nginx",
+        "started_epoch": 1791844301.5697598,
+        "still_running_after_3s": true
+      },
+      "action_end": {
+        "answer": {
+          "success": true
+        },
+        "ended_epoch": 1791844393.6300106,
+        "error": null,
+        "finished": true,
+        "seconds": 92.06,
+        "started_epoch": 1791844301.5697598,
+        "status": 200
+      },
+      "action_end_seen": "2026-10-12T22:33:14.552Z",
+      "load_at": "2026-10-12T22:31:45.771Z",
+      "posts_while_held": 1,
+      "posts_after_ready": 1,
+      "slow_off": {
+        "at": "2026-10-12T22:34:01Z",
+        "daemon_reload_returncode": 0,
+        "epoch": 1791844441.8531864,
+        "nginx": [
+          "MainPID=12493",
+          "ExecReload={ path=/usr/sbin/nginx ; argv[]=/usr/sbin/nginx -g daemon on; master_process on; -s reload ; ignore_errors=no ; start_time=[n/a] ; stop_time=[n/a] ; pid=0 ; code=(null) ; status=0/0 }",
+          "ActiveState=active"
+        ],
+        "removed": true
+      },
+      "probe_after": "steps/08-set14-browser-window/native/022-probe-23.json"
+    }
+  ]
+}

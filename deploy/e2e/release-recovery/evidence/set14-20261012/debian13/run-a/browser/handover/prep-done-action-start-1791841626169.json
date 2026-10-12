@@ -1,0 +1,10 @@
+{
+  "at": "2026-10-12T21:47:09Z",
+  "prep": "action-start",
+  "result": {
+    "action": "reload",
+    "service": "nginx",
+    "started_epoch": 1791841626.2916903,
+    "still_running_after_3s": true
+  }
+}
