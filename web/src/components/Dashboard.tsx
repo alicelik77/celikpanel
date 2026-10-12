@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, Link } from '../router';
 import { ServerSetupDashboardNotice } from './ServerSetupGate';
 import { LicenseNotice } from './LicenseNotice';
@@ -6,7 +6,7 @@ import { accountStart, hasMailActivity } from '../lib/startGuidance';
 import {
     Cpu, MemoryStick, HardDrive, Server, Globe, Database, Activity, Bell,
     Shield, ShieldOff, Users, Mail, ArrowRight,
-    DownloadCloud, UserPlus, Plus, Lock, Layers, ScanSearch,
+    DownloadCloud, UserPlus, Plus, Lock, Layers, ScanSearch, AlertTriangle,
 } from 'lucide-react';
 import { api, type SystemStats } from '../lib/api';
 import { useI18n } from '../i18n';
@@ -189,12 +189,42 @@ function decodeDashboardServices(value: unknown): {
     };
 }
 
+// How long one component scan speaks for the host. The card reads it, and the
+// page's own check asks the server for nothing younger, so both use one window.
+// Bir bileşen taramasının makine adına ne kadar konuştuğu. Kart bunu okur,
+// sayfanın kendi kontrolü de sunucudan bundan genç bir şey istemez.
+const SCAN_WINDOW_SECONDS = 300;
+const SCAN_WINDOW_MS = SCAN_WINDOW_SECONDS * 1000;
+
 function freshScanTimestamp(value: string | null, now = Date.now()): boolean {
     if (!value) return false;
     const scannedAt = Date.parse(value);
     if (!Number.isFinite(scannedAt) || scannedAt > now) return false;
-    return now - scannedAt <= 5 * 60 * 1000;
+    return now - scannedAt <= SCAN_WINDOW_MS;
 }
+
+// A hidden tab checks nothing: nobody is reading the card, and a background
+// window must not keep the host busy. Where there is no document at all (a
+// test renderer) there is nothing to hide, so it counts as visible.
+// Gizli sekme hiçbir şeyi kontrol etmez: kartı okuyan yoktur ve arka plandaki
+// bir pencere makineyi meşgul etmemelidir. Belge hiç yoksa (test çizicisi)
+// gizlenecek bir şey de yoktur; görünür sayılır.
+function pageVisible(): boolean {
+    return typeof document === 'undefined' || document.visibilityState === 'visible';
+}
+
+// The two refusals that mean "a change holds the host": a reviewed server
+// setup, or another package operation (beginServiceMutation, 409). They are
+// not failures of the check, and asking again at once would only be refused
+// again.
+// "Makineyi bir değişiklik tutuyor" anlamına gelen iki ret: süren sunucu
+// kurulumu ya da başka bir paket işlemi (beginServiceMutation, 409). Bunlar
+// kontrolün hatası değildir; hemen yeniden sormak yine reddedilir.
+const SCAN_HELD_CODES = new Set(['server_setup_busy', 'service_operation_busy']);
+
+// What the page's last component check came to, when it did not bring a scan.
+// Sayfanın son bileşen kontrolünün, tarama getirmediğinde vardığı sonuç.
+type ScanOutcome = { kind: 'failed'; reason: string } | { kind: 'held' } | null;
 
 function serviceStatusRunning(status: string): boolean {
     const normalized = status.trim().toLowerCase();
@@ -295,6 +325,30 @@ function AdminDashboard() {
     const [noSSHAcknowledged, setNoSSHAcknowledged] = useState(false);
     const [hostMutationReadiness, setHostMutationReadiness] = useState<HostMutationReadiness | null>(null);
     const [componentScanBusy, setComponentScanBusy] = useState(false);
+    // The page's own check of the components (owner decision, 12 Oct 2026:
+    // the card used to say "Unknown" after five minutes and send the owner to
+    // another page to rescan). `scanInFlight` is the single-flight guard the
+    // state above cannot be, because two effects of one render see the same
+    // `componentScanBusy`. `lastAutoCheckAt` spaces the automatic checks by
+    // the window whatever they came to, so a refusal or a failure is never
+    // asked again in a loop.
+    // Sayfanın bileşenleri kendi kontrol etmesi (sahip kararı, 12 Eki 2026:
+    // kart beş dakika sonra "Bilinmiyor" deyip sahibi yeniden taramak için
+    // başka sayfaya gönderiyordu). `scanInFlight`, yukarıdaki durumun
+    // olamayacağı tek-uçuş korumasıdır. `lastAutoCheckAt`, otomatik
+    // kontrolleri sonuçları ne olursa olsun pencere kadar aralar; bir ret ya
+    // da hata asla döngüyle yeniden sorulmaz.
+    const scanInFlight = useRef(false);
+    const [scanOutcome, setScanOutcome] = useState<ScanOutcome>(null);
+    const [lastAutoCheckAt, setLastAutoCheckAt] = useState<number | null>(null);
+    const [visible, setVisible] = useState(pageVisible);
+    // A refusal because a change holds the host is followed up once when the
+    // readiness poll this page already runs sees the host go from busy to
+    // ready; until then the window applies.
+    // Bir değişiklik makineyi tuttuğu için gelen ret, sayfanın zaten yaptığı
+    // hazırlık yoklaması makinenin meşgulden hazıra geçtiğini görünce bir kez
+    // izlenir; o zamana dek pencere geçerlidir.
+    const heldSawBusy = useRef(false);
 
     useEffect(() => {
         const loadStats = () => api.getSystemStats().then(setStats).catch(() => {});
@@ -378,32 +432,60 @@ function AdminDashboard() {
     // Bileşenler sayfasının sunduğu kontrolün aynısı, başka sayfayı işaret
     // etmek yerine burada koşar. Yanıt, ilk yüklemeyle aynı fail-closed
     // çözücüden geçer; okunamayan bir yük asla bu ekranda sayıya dönüşmez.
-    const scanComponents = async () => {
-        if (componentScanBusy) return;
+    //
+    // `auto` is the page's own check. It is conditional: the server answers
+    // from its stored scan when that is younger than the window, runs one
+    // scan for every tab that asks at once, and refuses while a change holds
+    // the host. It raises no toast (a check nobody pressed never announces
+    // itself); its result is drawn on the card. The operator's own press
+    // stays unconditional, and keeps its toast because it may come from the
+    // mail card, away from the system-services card.
+    // `auto` sayfanın kendi kontrolüdür ve koşulludur: saklı tarama pencereden
+    // gençse sunucu ondan yanıtlar, aynı anda soran her sekme için tek tarama
+    // koşar ve bir değişiklik makineyi tutarken reddeder. Bildirim çıkarmaz;
+    // sonucu kartta çizilir. Operatörün kendi basışı koşulsuz kalır ve
+    // bildirimini korur, çünkü posta kartından da gelebilir.
+    const runComponentScan = async (mode: 'auto' | 'operator') => {
+        if (scanInFlight.current) return;
+        scanInFlight.current = true;
+        if (mode === 'auto') setLastAutoCheckAt(Date.now());
         setComponentScanBusy(true);
+        const fail = (reason: string) => {
+            setScanOutcome({ kind: 'failed', reason });
+            if (mode === 'operator') showToast('error', reason);
+        };
         try {
-            const response = await fetch('/api/v1/managed-services/scan', {
-                method: 'POST',
-                cache: 'no-store',
-            });
+            const response = await fetch(
+                mode === 'auto'
+                    ? `/api/v1/managed-services/scan?max_age_seconds=${SCAN_WINDOW_SECONDS}`
+                    : '/api/v1/managed-services/scan',
+                { method: 'POST', cache: 'no-store' },
+            );
             if (!response.ok) {
-                showToast('error', apiErrorText(await readApiError(response), t, 'services.scanFailed'));
+                const refusal = await readApiError(response);
+                if (response.status === 409 && refusal.code && SCAN_HELD_CODES.has(refusal.code)) {
+                    heldSawBusy.current = false;
+                    setScanOutcome({ kind: 'held' });
+                    if (mode === 'operator') showToast('error', apiErrorText(refusal, t, 'services.scanFailed'));
+                    return;
+                }
+                fail(apiErrorText(refusal, t, 'services.scanFailed'));
                 return;
             }
             const snapshot = decodeDashboardServices(await response.json());
             if (!snapshot) {
-                showToast('error', t('services.scanFailed'));
+                fail(t('services.scanFailed'));
                 return;
             }
-            // The check the operator ran here answers for the whole host,
-            // so the sidebar badge takes it from here — no reload, no second
-            // request, no poll.
-            // Operatörün burada çalıştırdığı kontrol bütün makine adına cevap
-            // verir; kenar çubuğu rozeti onu buradan alır.
+            // The check answers for the whole host, so the sidebar badge
+            // takes it from here — no reload, no second request, no poll.
+            // Kontrol bütün makine adına cevap verir; kenar çubuğu rozeti onu
+            // buradan alır.
             publishComponentCensus(snapshot.services);
             setServices(snapshot.services);
             setMailProfiles(snapshot.profiles);
             setServiceScannedAt(snapshot.scannedAt);
+            setScanOutcome(null);
             // Freshness is measured against a clock that ticks every 30s. A
             // scan timestamp newer than that clock reads as "in the future"
             // and would show Unknown for half a minute after a successful
@@ -417,11 +499,83 @@ function AdminDashboard() {
             // Kontrol, bileşen kayıtları hakkında da bir yanıttır.
             setScanRead('known');
         } catch {
-            showToast('error', t('services.scanFailed'));
+            fail(t('dashboard.systemServicesConnectionLost'));
         } finally {
+            scanInFlight.current = false;
             setComponentScanBusy(false);
         }
     };
+    const scanComponents = () => void runComponentScan('operator');
+
+    // The page counts as visible again the moment it is shown, and its clock
+    // moves with it, so a tab that comes back after an hour checks at once
+    // instead of on the next tick.
+    // Sayfa gösterildiği anda yeniden görünür sayılır ve saati onunla ilerler;
+    // bir saat sonra dönen sekme bir sonraki tıkı beklemeden kontrol eder.
+    useEffect(() => {
+        if (typeof document === 'undefined') return;
+        const onVisibility = () => {
+            setVisible(pageVisible());
+            setFreshnessNow(Date.now());
+        };
+        document.addEventListener('visibilitychange', onVisibility);
+        return () => document.removeEventListener('visibilitychange', onVisibility);
+    }, []);
+
+    // When the page checks by itself: the stored records were read, they are
+    // missing or older than the window, the page is on screen, nothing is
+    // being checked, and the last automatic check is at least a window ago.
+    // Nothing else starts a check: no timer scans regardless of staleness.
+    // Sayfanın kendiliğinden kontrol ettiği an: saklı kayıtlar okundu, yoklar
+    // ya da pencereden eskiler, sayfa ekranda, kontrol sürmüyor ve son
+    // otomatik kontrol en az bir pencere önce. Başka hiçbir şey kontrol
+    // başlatmaz: bayatlığa bakmadan tarayan bir zamanlayıcı yoktur.
+    const autoCheckDue = scanRead === 'known'
+        && !serviceScanFresh
+        && visible
+        && !componentScanBusy
+        && (lastAutoCheckAt === null || freshnessNow - lastAutoCheckAt >= SCAN_WINDOW_MS);
+    useEffect(() => {
+        if (autoCheckDue) void runComponentScan('auto');
+        // runComponentScan is a new function each render; the decision is
+        // autoCheckDue alone. / Karar yalnız autoCheckDue'dur.
+    }, [autoCheckDue]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // What the system-services card says, one state at a time (D-024: the
+    // checking, could-not-check and known states never look alike). A
+    // check that is due counts as checking already, so the frame between
+    // the stored records arriving and the check starting does not flash
+    // another sentence. A fresh scan is shown as known even while the
+    // operator's own check runs from the mail card.
+    // Sistem servisleri kartının söylediği; her seferinde tek durum (D-024).
+    // Vadesi gelmiş kontrol şimdiden "kontrol ediliyor" sayılır; böylece saklı
+    // kayıtların gelişiyle kontrolün başlaması arasındaki karede başka bir
+    // cümle yanıp sönmez. Taze tarama, operatörün posta kartından başlattığı
+    // kontrol sürerken de bilinen olarak gösterilir.
+    const servicesCard: 'known' | 'checking' | 'held' | 'failed' | 'unread' | 'never' | 'stale' =
+        serviceScanFresh && !hostNeverChecked ? 'known'
+            : scanRead === 'reading' || componentScanBusy || autoCheckDue ? 'checking'
+                : scanOutcome?.kind === 'held' ? 'held'
+                    : scanOutcome?.kind === 'failed' ? 'failed'
+                        : scanRead === 'unread' ? 'unread'
+                            : hostNeverChecked ? 'never'
+                                : 'stale';
+
+    // A refusal because a change held the host: follow it up once, when the
+    // readiness poll sees the host busy and then ready. A setup the poll does
+    // not see waits for the window instead.
+    // Bir değişiklik makineyi tuttuğu için gelen ret: hazırlık yoklaması
+    // makineyi önce meşgul sonra hazır görünce bir kez izlenir. Yoklamanın
+    // görmediği bir kurulum bunun yerine pencereyi bekler.
+    useEffect(() => {
+        if (scanOutcome?.kind !== 'held' || !hostMutationReadiness) return;
+        if (!hostMutationReadiness.ready) {
+            heldSawBusy.current = true;
+        } else if (heldSawBusy.current) {
+            heldSawBusy.current = false;
+            setLastAutoCheckAt(null);
+        }
+    }, [hostMutationReadiness, scanOutcome]);
 
     const serviceRunning = (id: string) => {
         if (!serviceScanFresh) return false;
@@ -655,6 +809,13 @@ function AdminDashboard() {
         scanRead === 'reading' ? 'loading' : scanRead === 'known' ? 'known' : 'unknown',
     ];
     const attentionChecking = attentionReads.includes('loading');
+    const attentionComponentsKey: TranslationKey = servicesCard === 'checking'
+        ? 'dashboard.attentionNoneChecking'
+        : servicesCard === 'failed'
+            ? 'dashboard.attentionNoneCheckFailed'
+            : servicesCard === 'held'
+                ? 'dashboard.attentionNoneCheckHeld'
+                : 'dashboard.attentionNoneUnchecked';
     const attentionUnread = attentionReads.includes('unknown');
     const retryAttention = () => {
         if (extrasRead.remote.state === 'unknown') void extrasRead.retry();
@@ -724,25 +885,87 @@ function AdminDashboard() {
                     ekran ötede yaptığı yanlış iddianın aynısıydı. Doğru olanı
                     söyler ve kontrolün kendisini taşır. Nötr, uyarı renginde
                     değil — henüz bakılmamış makine olağan ilk durumdur. */}
-                {hostNeverChecked ? (
-                    <section role="status" className="rounded-xl border border-border bg-surface p-5 text-left">
+                {/* Every state but the known one is a card of its own and not a
+                    link: it carries its own check, and a button cannot hold
+                    another. Checking replaces the number with one quiet line
+                    of the same height. Could not check names the server's
+                    reason and offers the check again, outlined, on the
+                    attention mark, not red: a check that failed is not a
+                    failed service. A change in progress offers nothing,
+                    because a check would only be refused.
+                    Bilinen dışındaki her durum bağlantı değil kendi kartıdır:
+                    kendi kontrolünü taşır, bir düğme başka bir düğmeyi
+                    taşıyamaz. "Kontrol ediliyor" sayının yerini aynı yükseklikte
+                    tek sakin satırla alır. "Kontrol edilemedi" sunucunun
+                    gerekçesini söyler ve kontrolü çerçeveli düğmeyle yeniden
+                    sunar; kırmızı değil, dikkat işaretiyle: başarısız kontrol
+                    başarısız servis değildir. Süren değişiklikte düğme yoktur,
+                    çünkü kontrol yalnız reddedilirdi. */}
+                {servicesCard !== 'known' ? (
+                    <section role="status" aria-busy={servicesCard === 'checking'} className="rounded-xl border border-border bg-surface p-5 text-left">
                         <div className="flex items-center justify-between">
                             <span className="text-sm font-medium text-fg-muted">{t('dashboard.systemServices')}</span>
                             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
                                 <Activity className="h-4 w-4" />
                             </span>
                         </div>
-                        <p className="mt-2 text-lg font-semibold text-fg">{t('services.notChecked')}</p>
-                        <p className="mt-1 text-xs text-fg-muted">{t('dashboard.componentsNotCheckedHint')}</p>
-                        <button
-                            type="button"
-                            onClick={scanComponents}
-                            disabled={componentScanBusy}
-                            className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-fg transition-colors hover:bg-primary/90 disabled:opacity-50"
-                        >
-                            <ScanSearch className="h-3.5 w-3.5" />
-                            {componentScanBusy ? t('services.scanning') : t('services.scanNow')}
-                        </button>
+                        {servicesCard === 'checking' ? (
+                            // The checking line stands where the number will,
+                            // and keeps the height of the number and its hint
+                            // line, so the answer moves nothing (a phone shows
+                            // this card alone in its row).
+                            // Kontrol satırı sayının duracağı yerdedir ve sayıyla
+                            // ipucu satırının yüksekliğini korur; yanıt hiçbir
+                            // şeyi kaydırmaz.
+                            <div className="mt-2 min-h-[3.75rem]">
+                                <Checking label={t('dashboard.systemServicesChecking')} className="min-h-9" />
+                            </div>
+                        ) : servicesCard === 'never' ? (
+                            <>
+                                <p className="mt-2 text-lg font-semibold text-fg">{t('services.notChecked')}</p>
+                                <p className="mt-1 text-xs text-fg-muted">{t('dashboard.componentsNotCheckedHint')}</p>
+                            </>
+                        ) : (
+                            <>
+                                <p className="mt-2 text-3xl font-bold tracking-tight text-fg">{t('dashboard.statusUnknown')}</p>
+                                {servicesCard === 'failed' || servicesCard === 'unread' ? (
+                                    <p className="mt-2 flex items-start gap-1.5 text-xs leading-5 text-fg">
+                                        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning" aria-hidden="true" />
+                                        <span className="min-w-0 break-words">
+                                            {t('dashboard.systemServicesCheckFailed', {
+                                                reason: scanOutcome?.kind === 'failed'
+                                                    ? scanOutcome.reason
+                                                    : t('dashboard.systemServicesRecordsUnread'),
+                                            })}
+                                        </span>
+                                    </p>
+                                ) : (
+                                    <p className="mt-2 text-xs text-fg-muted">
+                                        {t(servicesCard === 'held' ? 'dashboard.systemServicesCheckHeld' : 'dashboard.systemServicesNotRecent')}
+                                    </p>
+                                )}
+                            </>
+                        )}
+                        {(servicesCard === 'never' || servicesCard === 'stale') && (
+                            <button
+                                type="button"
+                                onClick={scanComponents}
+                                className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-fg transition-colors hover:bg-primary/90"
+                            >
+                                <ScanSearch className="h-3.5 w-3.5" />
+                                {t('services.scanNow')}
+                            </button>
+                        )}
+                        {(servicesCard === 'failed' || servicesCard === 'unread') && (
+                            <button
+                                type="button"
+                                onClick={scanComponents}
+                                className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-border-strong bg-surface px-3 py-1.5 text-xs font-semibold text-fg transition-colors hover:bg-surface-2"
+                            >
+                                <ScanSearch className="h-3.5 w-3.5" />
+                                {t('services.scanNow')}
+                            </button>
+                        )}
                     </section>
                 ) : (
                 <button
@@ -756,13 +979,9 @@ function AdminDashboard() {
                         </span>
                     </div>
                     <p className="mt-2 text-3xl font-bold tracking-tight text-fg tabular-nums">
-                        {!serviceScanFresh
-                            ? t('dashboard.statusUnknown')
-                            : `${running.length} / ${systemServices.length}`}
+                        {`${running.length} / ${systemServices.length}`}
                     </p>
-                    {!serviceScanFresh ? (
-                        <p className="mt-2 text-xs text-fg-subtle">{t('dashboard.systemServicesScanStale')}</p>
-                    ) : stoppedSvcs.length > 0 ? (
+                    {stoppedSvcs.length > 0 ? (
                         <p className="mt-2 text-xs font-medium text-warning">{t('dashboard.svcStopped', { n: stoppedSvcs.length })}</p>
                     ) : (
                         <p className="mt-2 text-xs text-fg-subtle">
@@ -890,11 +1109,15 @@ function AdminDashboard() {
                     )}
                     {/* Not "all good": it names what was read, and it does
                         not speak for components nobody has checked lately.
+                        What it says of them follows the card above: being
+                        checked, could not be checked, waiting for a change,
+                        or not checked recently.
                         "Her şey yolunda" değil: neyin okunduğunu adlandırır
-                        ve yakın zamanda bakılmamış bileşenler adına konuşmaz. */}
+                        ve yakın zamanda bakılmamış bileşenler adına konuşmaz.
+                        Onlar hakkında söylediği yukarıdaki kartı izler. */}
                     {!attentionChecking && !attentionUnread && attention.length === 0 && (
                         <p className="px-4 py-2 text-sm leading-5 text-fg-muted">
-                            {t(serviceScanFresh ? 'dashboard.attentionNone' : 'dashboard.attentionNoneUnchecked')}
+                            {t(serviceScanFresh ? 'dashboard.attentionNone' : attentionComponentsKey)}
                         </p>
                     )}
                     <ul>

@@ -63,7 +63,7 @@ function effectBodies(source) {
 // 1. One rule about probing the host, true everywhere
 // ---------------------------------------------------------------------------
 
-test('the inventory page is the only screen that probes the host on open', () => {
+test('the inventory page probes the host on open; the dashboard only asks for a scan younger than its window', () => {
     // Opening the components list runs a host-wide check when the cache is
     // missing or stale. This is deliberate and stays: the page's whole
     // purpose is "what is on this server", and the probe is read-only.
@@ -79,14 +79,13 @@ test('the inventory page is the only screen that probes the host on open', () =>
         'the inventory page must still check the host when it is opened',
     );
 
-    // And nowhere else. A page visit that probes the machine turns every
-    // screen into an inventory page and makes the operator's own check
-    // meaningless, because something already ran one.
-    // Ve başka hiçbir yerde. Makineyi yoklayan bir sayfa ziyareti, her ekranı
-    // envanter sayfasına çevirir ve operatörün kendi kontrolünü anlamsızlaştırır.
-    const triggers = /managed-services\/scan|scanComponents\(|runCheck\(|\bscan\(\)/;
+    // And nowhere else unconditionally. A page visit that probes the machine
+    // turns every screen into an inventory page and makes the operator's own
+    // check meaningless, because something already ran one.
+    // Ve başka hiçbir yerde koşulsuz değil. Makineyi yoklayan bir sayfa
+    // ziyareti, her ekranı envanter sayfasına çevirir.
+    const triggers = /managed-services\/scan|scanComponents\(|runComponentScan\(|runCheck\(|\bscan\(\)/;
     for (const [name, source] of [
-        ['Dashboard.tsx', dashboard],
         ['ServiceShell.tsx', serviceShell],
         ['ComponentDetail.tsx', componentDetail],
         ['Layout.tsx', layout],
@@ -100,8 +99,26 @@ test('the inventory page is the only screen that probes the host on open', () =>
         }
     }
 
-    // The per-service page and the dashboard keep their checks; both are
-    // reached from a control the operator presses, never from mount.
+    // The dashboard (owner decision, 12 Oct 2026): it no longer says
+    // "Unknown" and sends the owner elsewhere once its scan is five minutes
+    // old. It asks, from one effect, for a scan no older than that window -
+    // the same conditional, single-flight request the inventory page makes,
+    // which the server answers from its stored scan when that is young
+    // enough. No other dashboard effect starts a scan, and its unconditional
+    // scan stays behind the operator's own button.
+    // Pano (sahip kararı, 12 Eki 2026): taraması beş dakikalık olunca artık
+    // "Bilinmiyor" deyip sahibi başka sayfaya göndermez; tek bir etkiden,
+    // pencereden eski olmayan bir tarama ister. Koşulsuz taraması operatörün
+    // kendi düğmesinin arkasında kalır.
+    const dashboardScans = effectBodies(dashboard).filter((body) => triggers.test(body));
+    assert.equal(dashboardScans.length, 1, 'exactly one dashboard effect may ask for a scan');
+    assert.match(dashboardScans[0], /if \(autoCheckDue\) void runComponentScan\('auto'\);/);
+    assert.match(dashboard, /mode === 'auto'\s*\? `\/api\/v1\/managed-services\/scan\?max_age_seconds=\$\{SCAN_WINDOW_SECONDS\}`\s*: '\/api\/v1\/managed-services\/scan'/);
+    assert.match(dashboard, /const SCAN_WINDOW_SECONDS = 300;/);
+    assert.match(dashboard, /const scanComponents = \(\) => void runComponentScan\('operator'\);/);
+
+    // The per-service page and the dashboard keep their operator checks,
+    // reached from a control the operator presses.
     assert.match(serviceShell, /onClick=\{\(\) => void runCheck\(\)\}/);
     assert.match(dashboard, /onClick=\{scanComponents\}/);
     // A component page must not scan on open, and never has to: its state
@@ -253,7 +270,7 @@ test('no screen was left behind: every managed-services scan caller is accounted
     const allowed = new Set([
         'components/ServiceList.tsx',   // the inventory page: on open and on click
         'components/ServiceShell.tsx',  // the operator's check, from a button
-        'components/Dashboard.tsx',     // the operator's check, from a button
+        'components/Dashboard.tsx',     // the operator's check, and its own conditional check (12 Oct 2026)
         'components/ComponentOperation.tsx', // after an operation the operator started
         'lib/api.ts',                   // the client method those callers share
     ]);

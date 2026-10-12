@@ -423,11 +423,155 @@ test('Dashboard: the calm line names what was read, and does not speak for compo
     assert.ok(!statusLabels().includes('dashboard.attentionChecking'), 'the checking line stays after every read answered');
   } finally { await unmount(); }
   // The stored scan of the fixture is from 9 Oct 2026, 09:00 UTC: not current.
+  // Since 12 Oct 2026 the page checks by itself; this fixture has no scan
+  // route, so the check fails and the line says the components could not be
+  // checked rather than speaking for them.
   serve();
   await mount(dashboard());
   try {
-    assert.ok(text().includes('dashboard.attentionNoneUnchecked'), text().slice(0, 400));
+    await settle();
+    assert.ok(text().includes('dashboard.attentionNoneCheckFailed'), text().slice(0, 400));
+    assert.ok(!text().includes('dashboard.attentionNone '), 'the calm line spoke for components whose check failed');
   } finally { await unmount(); }
+});
+
+// --- The dashboard checks the components by itself (owner decision, 12 Oct 2026) --
+// One conditional scan when the stored one is missing or older than the
+// window, none for a fresh one, none while the page is hidden, never two at
+// once, and nothing asked again after a refusal. The card's states are
+// distinct: checking, the result, could not check (with the reason and the
+// check in place), and a change in progress.
+// Pano bileşenleri kendisi kontrol eder: saklı tarama yoksa ya da pencereden
+// eskiyse tek koşullu tarama; taze ise, sayfa gizliyse yok; aynı anda iki tane
+// asla; bir retten sonra yeniden sorma yok.
+const SCAN_PATH = '/api/v1/managed-services/scan';
+const scans = () => requests.filter((line) => line === `POST ${SCAN_PATH}`).length;
+let scanURLs = [];
+function recordScanURLs() {
+  scanURLs = [];
+  const inner = globalThis.fetch;
+  globalThis.fetch = (input, init = {}) => {
+    if (String(input).startsWith(SCAN_PATH)) scanURLs.push(String(input));
+    return inner(input, init);
+  };
+}
+function pageVisibility(state) {
+  const listeners = new Set();
+  globalThis.document = {
+    visibilityState: state,
+    addEventListener: (name, listener) => { if (name === 'visibilitychange') listeners.add(listener); },
+    removeEventListener: (name, listener) => { if (name === 'visibilitychange') listeners.delete(listener); },
+  };
+  return {
+    async show() {
+      globalThis.document.visibilityState = 'visible';
+      await act(async () => { for (const listener of listeners) listener(); });
+      await settle();
+    },
+    listeners,
+  };
+}
+
+test('Dashboard: a fresh stored scan → no check is asked for', async () => {
+  serve({ '/api/v1/managed-services': freshScan() });
+  await mount(dashboard());
+  try {
+    await settle();
+    assert.equal(scans(), 0, `a fresh scan was checked again: ${requests.join(', ')}`);
+    assert.ok(!text().includes('dashboard.systemServicesChecking'));
+  } finally { await unmount(); }
+});
+
+test('Dashboard: a stale stored scan → one conditional check, its result drawn on the card', async () => {
+  serve({ [SCAN_PATH]: (init) => (init.method === 'POST' ? answer(freshScan()) : answer({}, 405)) });
+  recordScanURLs();
+  await mount(dashboard());
+  try {
+    await settle();
+    await settle();
+    assert.equal(scans(), 1, `expected one check: ${requests.join(', ')}`);
+    assert.deepEqual(scanURLs, [`${SCAN_PATH}?max_age_seconds=300`], 'the page asked for an unconditional scan');
+    const shown = text();
+    assert.ok(shown.includes('0 / 0'), `the result is not drawn: ${shown.slice(0, 400)}`);
+    assert.ok(shown.includes('dashboard.attentionNone') && !shown.includes('dashboard.attentionNoneUnchecked'), shown.slice(0, 400));
+    for (const phrase of ['dashboard.systemServicesChecking', 'dashboard.statusUnknown', 'dashboard.systemServicesCheckFailed']) {
+      assert.ok(!shown.includes(phrase), `"${phrase}" is still on the card`);
+    }
+    assert.deepEqual(globalThis.currentTest.toasts, [], 'a check nobody pressed raised a toast');
+  } finally { await unmount(); }
+});
+
+test('Dashboard: while the check runs the card says it is checking, not "Unknown", and asks once', async () => {
+  serve({ [SCAN_PATH]: HANG });
+  await mount(dashboard());
+  try {
+    await settle();
+    await settle();
+    const shown = text();
+    assert.ok(statusLabels().includes('dashboard.systemServicesChecking'), `no checking line: ${shown.slice(0, 400)}`);
+    assert.ok(!shown.includes('dashboard.statusUnknown'), 'the card says Unknown while it checks');
+    assert.ok(shown.includes('dashboard.attentionNoneChecking'), shown.slice(0, 400));
+    assert.equal(scans(), 1, `more than one check is in flight: ${requests.join(', ')}`);
+  } finally { await unmount(); }
+});
+
+for (const code of ['service_operation_busy', 'server_setup_busy']) {
+  test(`Dashboard: the server refuses the check with 409 ${code} → a change is in progress, nothing asked again`, async () => {
+    serve({ [SCAN_PATH]: () => answer({ error: 'busy', code }, 409) });
+    await mount(dashboard());
+    try {
+      for (let i = 0; i < 4; i += 1) await settle();
+      const shown = text();
+      assert.ok(shown.includes('dashboard.systemServicesCheckHeld'), shown.slice(0, 400));
+      assert.ok(shown.includes('dashboard.attentionNoneCheckHeld'), shown.slice(0, 400));
+      assert.ok(!shown.includes('dashboard.systemServicesCheckFailed'), 'a refusal is drawn as a failure');
+      assert.equal(scans(), 1, `the refusal was asked again: ${requests.join(', ')}`);
+      assert.deepEqual(enabled(['services.scanNow']), [], 'a check that would only be refused is offered');
+      assert.deepEqual(globalThis.currentTest.toasts, []);
+    } finally { await unmount(); }
+  });
+}
+
+test('Dashboard: the check fails → "could not check" with the reason and the check in place, not asked again by itself', async () => {
+  serve({ [SCAN_PATH]: () => answer({ error: 'agent unavailable' }, 502) });
+  recordScanURLs();
+  await mount(dashboard());
+  try {
+    for (let i = 0; i < 4; i += 1) await settle();
+    const shown = text();
+    assert.ok(shown.includes('dashboard.systemServicesCheckFailed') && shown.includes('agent unavailable'), shown.slice(0, 400));
+    assert.ok(shown.includes('dashboard.attentionNoneCheckFailed'), shown.slice(0, 400));
+    assert.equal(scans(), 1, `the failure was asked again by itself: ${requests.join(', ')}`);
+    assert.deepEqual(globalThis.currentTest.toasts, [], 'a check nobody pressed raised a toast');
+    // The operator's own check: unconditional, from the card.
+    serve({ [SCAN_PATH]: () => answer(freshScan()) });
+    recordScanURLs();
+    await press('services.scanNow');
+    assert.deepEqual(scanURLs, [SCAN_PATH], 'the operator check must be the unconditional scan');
+    assert.ok(text().includes('0 / 0'), text().slice(0, 400));
+  } finally { await unmount(); }
+});
+
+test('Dashboard: a hidden page checks nothing; it checks once when it is shown', async () => {
+  const page = pageVisibility('hidden');
+  serve({ [SCAN_PATH]: () => answer(freshScan()) });
+  recordScanURLs();
+  await mount(dashboard());
+  try {
+    for (let i = 0; i < 3; i += 1) await settle();
+    assert.equal(scans(), 0, `a hidden page checked: ${requests.join(', ')}`);
+    assert.ok(text().includes('dashboard.systemServicesNotRecent'), text().slice(0, 400));
+    assert.equal(page.listeners.size, 1, 'the page does not listen for being shown');
+    await page.show();
+    await settle();
+    assert.equal(scans(), 1, `expected one check once shown: ${requests.join(', ')}`);
+    assert.deepEqual(scanURLs, [`${SCAN_PATH}?max_age_seconds=300`]);
+    assert.ok(text().includes('0 / 0'), text().slice(0, 400));
+  } finally {
+    await unmount();
+    assert.equal(page.listeners.size, 0, 'the visibility listener outlived the page');
+    delete globalThis.document;
+  }
 });
 
 test('Dashboard: an item is already listed while another read is on its way → no row that comes and goes', async () => {

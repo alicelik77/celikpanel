@@ -172,7 +172,16 @@ export const enScreens = {
     'dashboard.services': 'Services',
     'dashboard.systemServices': 'System services',
     'dashboard.statusUnknown': 'Unknown',
-    'dashboard.systemServicesScanStale': 'Component status is outdated. Open Components to rescan.',
+    // The card checks the components by itself (12 Oct 2026). Its states:
+    // the check is running, it could not be done (with the server's reason),
+    // a change holds the host, or the last check is older than the window
+    // and the next one has not started (a hidden tab, or the clocks differ).
+    'dashboard.systemServicesChecking': 'Checking components\u2026',
+    'dashboard.systemServicesCheckFailed': 'Could not check: {reason}',
+    'dashboard.systemServicesCheckHeld': 'A change is in progress; the status is shown when it finishes.',
+    'dashboard.systemServicesNotRecent': 'Not checked in the last 5 minutes. This page checks again by itself while it is open.',
+    'dashboard.systemServicesConnectionLost': 'The connection dropped before the answer arrived. Nothing was changed.',
+    'dashboard.systemServicesRecordsUnread': 'The stored component records could not be read. Nothing was changed.',
     // A host this panel has never looked at gets no number at all: the
     // count would be a census nobody took. Same voice as the components
     // screen, shortened for a card.
@@ -218,6 +227,9 @@ export const enScreens = {
     'dashboard.attentionChecking': 'Checking what needs attention on this server…',
     'dashboard.attentionNone': 'Nothing CelikPanel read needs action: certificates, the firewall and the installed components.',
     'dashboard.attentionNoneUnchecked': 'No certificate or firewall setting needs action. The installed components were not checked recently.',
+    'dashboard.attentionNoneChecking': 'No certificate or firewall setting needs action. The installed components are being checked\u2026',
+    'dashboard.attentionNoneCheckFailed': 'No certificate or firewall setting needs action. The installed components could not be checked.',
+    'dashboard.attentionNoneCheckHeld': 'No certificate or firewall setting needs action. The installed components are checked when the change in progress finishes.',
     'dashboard.attentionUnread': 'Part of this server’s state could not be read, so this list may be incomplete. This does not mean something is wrong. Nothing was changed. Try again.',
     'dashboard.warnCountOne': '1 alert',
     'dashboard.warnCount': '{n} alerts',
