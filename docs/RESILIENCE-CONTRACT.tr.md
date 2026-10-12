@@ -4635,8 +4635,9 @@ hücreleri (denetim §9) sonra gelir. 2026-10-10 saat tarihidir.
 D-025 ilke 2 (bilinmeyen; yok, boş ya da başarı değildir) ve ilke 6 (ekran
 doğrulananı söyler); D-024; D-031. **Hiçbir P0 işi kapanmaz ya da ilerlemez.**
 P0.1–P0.5 kısmi kalır ve her açık kabul işi açık kalır. Bu girdi bir yayımı
-kaydeder; kod, şema ya da kurtarma davranışını değiştirmez. 2026-10-11 saat
-tarihidir.
+ve sonradan okunan ve bildirilenleri kaydeder; kod, şema ya da kurtarma
+davranışını değiştirmez. 2026-10-11 yayımın saat tarihidir; kurulu sunucuların
+okunması ve sahibin bildirimi 2026-10-12 tarihlidir.
 
 - **Yayımlama.** v0.1.0-alpha.83'ü 11 Ekim 2026'da sahip yayımladı: #206
   numaralı çekme isteği `main`'e `0447558e956d4c02c7bf06b368def0924856f8fc`
@@ -4665,11 +4666,42 @@ tarihidir.
   arayüz dosyaları; biri arşivdeki kopyayla bayt bayt aynı (aynı SHA-256);
   `Last-Modified` 11 Ekim 2026 19:27:52 UTC ve 19:28:17 UTC. Yani sahip
   ikisini de panelin kendi güncelleme ekranından 11 Ekim 2026'da güncelledi.
-  Bu, güncellemenin panel içindeki doğrulama sonucunu, Agent'ın sürümünü,
-  ilk başlangıcın site yapılandırma dosyalarıyla ne yaptığını ya da sahibin
-  gördüğü herhangi bir şeyi göstermez; bunların hiçbiri henüz bildirilmedi ve
-  bildirildiğinde kaydedilecek. Ayrıntılar [sürüm notlarında](RELEASE-NOTES-v0.1.0-alpha.83.tr.md)
-  ("Yayımlama kaydı", 12. madde). Bu girdi hiçbir iş için kabul kanıtı değildir.
+  Bu okuma, güncellemenin panel içindeki doğrulama sonucunu, Agent'ın
+  sürümünü, ilk başlangıcın site yapılandırma dosyalarıyla ne yaptığını ya da
+  sahibin gördüğü herhangi bir şeyi göstermez. **Sahip 12 Ekim 2026'da
+  bildirdi** (iki ekran görüntüsü, İngilizce arayüz, sunucu başına bir tane;
+  sahibin gözlemi, laboratuvarda hiçbir şey ölçülmedi): iki kenar çubuğu da
+  `CelikPanel · v0.1.0-alpha.83 · build 0447558e956d` yazıyor ve derleme
+  kimliği sözcüğün ortasından satır kırıyor; bu yüzden başka bir numara gibi
+  okunabilir (görünüşle ilgili, sonraki sürüm için açık). İlk sunucu (alan adı
+  yok) Pano'ya düşüyor; "System services" "Unknown" diyor ve bileşen
+  durumunun eski olduğunu, Bileşenler'in yeniden taranması gerektiğini söyleyen
+  cümle var; onun için ne hata ne lisans sayfası bildirildi. İkinci sunucu,
+  planı güncellemeden önce yeniden açıldığı ve son denetimi hiç bitmediği için
+  kurulum sayfasına, 5. adıma düşüyor. Sayfa "Setup stopped: its plan was
+  reopened" diyor; bunun hata olmadığını ve kendiliğinden hiçbir şeyin
+  sürmeyeceğini, hangi denetimin beklediğini (posta ana makine adı ile onun
+  genel DNS ve ters DNS (PTR) kayıtları) ve sonraki eylemi (planı gözden
+  geçirip yeniden başlatmak) söylüyor; son adım dışında her adım "Completed"
+  diyor, son adım "Stopped", hiçbiri "In progress" demiyor. Bu, yukarıdaki
+  alpha.82 girdisindeki dördüncü sahip gözleminin (durdu ve sürüyor bir arada)
+  kurulu bir sunucuda çözülmüş görülmesidir; yalnız sahibin ekran görüntüsüne
+  dayanır. Sürümü hazırlayan kişinin 12 Ekim 2026'da dışarıdan okuduğu: o
+  sunucunun posta ana makine adı adresine çözülüyor, ama adresin ters (PTR)
+  kaydı başka bir ana makine adını söylüyor; bu yüzden bekleyen denetim, sahip
+  o kaydı barındırma sağlayıcısında, CelikPanel dışında değiştirene kadar
+  geçmeyecek; bu sahip tarafında karşılanmamış bir önkoşuldur, Panel hatası
+  değildir. **Bildirilmeyenler:** yeniden başlatma sırasında tam ekran lisans
+  sayfasının görünüp görünmediği; güncelleme bildirimi ile kartın uyuşup
+  uyuşmadığı; kurulum adresine doğrudan yüklemede anlık lisans sayfasının
+  hâlâ görünüp görünmediği; güncellemenin panel içindeki doğrulama sonucu;
+  Agent'ın sürümü; `postconf -n >/dev/null` çıktısı. İki sunucunun da alan
+  adı yok; bu yüzden ilk başlangıcın site yapılandırma dosyalarını devralması
+  orada devralacak bir şey bulmadı ve Alan Adları listesindeki "olduğu gibi
+  bırakıldı" satırı görünemez: sahibin elle düzenlemesinin bir Panel
+  başlangıcında ne ile karşılaştığı kurulu bir sunucuda görülmedi. Ayrıntılar
+  [sürüm notlarında](RELEASE-NOTES-v0.1.0-alpha.83.tr.md) ("Yayımlama kaydı",
+  12. ve 13. maddeler). Bu girdi hiçbir iş için kabul kanıtı değildir.
 - **Şema ya da sürüm geçişi.** Bu girdide yok (sürümün kendisi 43'ten 44'e
   veritabanı şeması taşır; yukarıdaki D-031 girdisinde kayıtlıdır).
   **Kurtarma davranışı.** Değişmedi.

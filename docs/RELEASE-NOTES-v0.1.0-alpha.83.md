@@ -8,10 +8,11 @@ decided that its number is v0.1.0-alpha.83. When the publication record was
 written on 2026-10-11, no installed server had been updated to it: the owner of
 each starts that from the panel's own update screen. On 2026-10-12 a read from
 outside found both installed servers serving this release's interface (item 12
-of the "Publication record"); what their owner saw has not been reported yet
-and will be recorded when it is. These notes were written as a draft on
-2026-10-11, amended for the publication on the same day, and amended again on
-2026-10-12 for that read.
+of the "Publication record"). On 2026-10-12 the owner reported what was on
+screen on both servers, as two screenshots (item 13); what that report leaves
+open is listed there, under "Not done" and under the limits. These notes were
+written as a draft on 2026-10-11, amended for the publication on the same day,
+and amended again on 2026-10-12 for that read and that report.
 
 It does two things. It stops CelikPanel from overwriting a site configuration
 file you changed by hand: the file is kept, the site says so, and you choose
@@ -1200,6 +1201,27 @@ These are known. They are not hidden defects.
     generated site configuration file" is addressed here, for the nginx file,
     the pool and the unit, to the extent the measurements above and the limits
     in this list say.
+- **Seen by the owner on the installed servers after the update (reported
+  2026-10-12), not fixed in this release.** Details are in item 13 of the
+  "Publication record"; they are the owner's screenshots, not lab measurements.
+  - *The sidebar's build id wraps in the middle of the word.* The server
+    information in the sidebar reads `CelikPanel · v0.1.0-alpha.83 · build
+    0447558e956d`, and the screenshots show the 12-character id broken after
+    its third character ("build 044", then "7558e956d" on the next line). It can
+    read as a different number. Cosmetic; open for the next release.
+  - *The second server's final setup check waits for a record that only its
+    owner can change.* Its mail host name resolves to the server's address, but
+    the reverse (PTR) record of that address, read from outside on 2026-10-12,
+    names a different host name, not the mail host name. The check "Verify the
+    mail hostname and its matching public DNS and reverse DNS (PTR) records"
+    will not pass until the owner changes that record at the hosting provider,
+    which is outside CelikPanel. This is an unmet prerequisite on the owner's
+    side, not a fault the release found in the Panel.
+  - *What the two servers cannot show.* Both have no domains, so the first
+    start had no site configuration files to adopt on them and the Domains
+    list's "left as they were" row cannot appear on them. What an owner's hand
+    edit of a generated site configuration file meets at a Panel start has not
+    been seen on an installed server.
 - **Evidence scope.** One laptop host; builds with the acceptance-test licence,
   not the signed archive; machines with outbound NAT whose traffic was not
   captured; names pinned to loopback; each cell ran once, except where a record
@@ -1215,7 +1237,7 @@ These are known. They are not hidden defects.
 ## Publication record
 
 Everything below is dated 2026-10-11 (clock date, UTC unless a time zone is
-named), except item 12, which is dated 2026-10-12. The steps were taken by the
+named), except items 12 and 13, which are dated 2026-10-12. The steps were taken by the
 owner; the checks of the assets and of the portal package were made by the
 person who prepared the release. This entry
 does not store any of the results below as a file in the repository.
@@ -1318,8 +1340,70 @@ does not store any of the results below as a file in the repository.
     19:27 to 19:28 UTC. What it does not show: the update's verification result
     inside the panel, the Agent's version, what the first start did with the
     site configuration files (how many were adopted and how many left as they
-    were), or anything the owner saw on screen. None of that has been reported
-    yet.
+    were), or anything the owner saw on screen. What the owner then reported is
+    item 13.
+13. What the owner reported on 2026-10-12, as two screenshots, one per server,
+    with the English interface, after updating both from the panel's own update
+    screen on 2026-10-11 (item 12). The screenshots are the owner's and are not
+    stored in the repository; no assistant looked at the servers beyond the read
+    in item 12. This is the owner's observation, not acceptance evidence, and
+    nothing in it was measured in the lab.
+    - Version. On both servers the sidebar's server information reads
+      `CelikPanel · v0.1.0-alpha.83 · build 0447558e956d`, the 12-character
+      prefix of the release commit. The id wraps in the middle of the word in
+      the sidebar ("build 044", then "7558e956d" on the next line); it can read
+      as a different number. Cosmetic; open for the next release.
+    - First server (hosting purpose "Custom setup"; 0 domains, 0 databases,
+      1 user, 0 mail accounts). After the update it lands on the Dashboard. The
+      "System services" card says "Unknown" with "Component status is
+      outdated. Open Components to rescan." The "Needs attention" box says "No
+      certificate or firewall setting needs action. The installed components
+      were not checked recently." The Components entry in the menu shows a
+      count of 8. The recent-activity list shows the owner's sign-in and
+      earlier setup activity. No error and no licence page is reported for this
+      server. The owner did not say whether the full-screen licence page
+      appeared during the update: not reported.
+    - Second server. After the update it lands on the server setup page, step
+      5 "Setup and verification", headed "Prepare your server", because its
+      setup plan was reopened before the update and its final check never
+      finished. Above the step list the page shows the heading "Setup stopped:
+      its plan was reopened" and a box: "This setup run stopped because its
+      plan was reopened for editing. That is not a failure: nothing was undone,
+      and the components already installed stay as they are. Nothing continues
+      by itself." Then: "When it stopped, its final check was still waiting for
+      this: Verify the mail hostname and its matching public DNS and reverse
+      DNS (PTR) records." Then: "Next: review the plan and start it again. Its
+      final check then runs again." Below the box are "Technical details"
+      (collapsed), a button "Review a revised plan", and the step list. Every
+      step reads "Completed" (DNS, firewall, server address records, public DNS
+      before certificate issuance for the panel host, secure panel access, DNS
+      pair, fail2ban, MariaDB, memcached, Node.js 24.21.0, PHP-FPM, phpmyadmin,
+      PostgreSQL, phppgadmin, redis, mail profile Webmail, mail profile
+      Spam-Protected Mail, public DNS before certificate issuance for the mail
+      host, secure mail access) except the last, "Verify the prepared server",
+      which reads "Stopped". No step reads "In progress". This is the fourth
+      observation of "The four observations after the last update" (the setup
+      page saying stopped and in progress together) seen on an installed
+      server: the page names the reason, the waiting check, who acts and the
+      next action, and the last step says only "Stopped". It rests on the
+      owner's screenshot; the owner's own setup record was not read.
+    - Public DNS, read from outside by the person who prepared the release on
+      2026-10-12 (read-only, through a public resolver; no host name, address or
+      record value is written here). The second server's mail host name
+      resolves to the server's address, but the reverse (PTR) record of that
+      address names a different host name, one that belongs to the same owner's
+      domain and is not the mail host name. So the final check named above
+      will not pass until the owner changes the PTR record at the hosting
+      provider; that is the owner's action outside CelikPanel. The page's
+      "Next" (review the plan and start it again) does not change that record.
+    - Not reported: whether the full-screen licence page appeared during the
+      restart; whether the update notice and the card agreed; whether the
+      momentary licence page still appears on a direct load of the setup
+      address; the update's verification result inside the panel; the Agent's
+      version; the output of `postconf -n >/dev/null`. The Domains list's "left as
+      they were" row could not be reported: both servers have no domains, so it
+      cannot appear on them, and the first start's adoption of site
+      configuration files had nothing to adopt on these two servers.
 
 **Not done, and what publication does not change.**
 
@@ -1327,14 +1411,19 @@ does not store any of the results below as a file in the repository.
   2026-10-11. The owner of each installed server starts that from the panel's
   own update screen, as a separate step from every step above, and no one else
   starts it. On 2026-10-12 a read from outside found both serving this
-  release's interface (item 12), so the owner updated both on 2026-10-11. Still
-  not reported: the update's verification result inside the panel, the Agent's
-  version, what the first start did with the site configuration files (how many
-  were adopted and how many left as they were), and the observations the
-  owner is asked for in this release (the four earlier observations, the
-  Domains list's "left as they were" row, and `postconf -n >/dev/null`). They
-  will be recorded when the owner reports them. Nothing in this record
-  describes what an installed server did with this release beyond item 12.
+  release's interface (item 12), so the owner updated both on 2026-10-11, and
+  the owner reported two screenshots the same day (item 13). Still open after
+  that report: whether the full-screen licence page appeared during the
+  restart; whether the update notice and the card agreed; whether the
+  momentary licence page still appears on a direct load of the setup address;
+  the update's verification result inside the panel; the Agent's version; the
+  output of `postconf -n >/dev/null`; and what the first start does with an
+  owner's edited site configuration file, because both servers have no domains
+  and so had no site files to adopt and no "left as they were" row to show.
+  The question stays open until it is seen on an installed server with sites.
+  Those items will be recorded when the owner reports them. Nothing in this
+  record describes what an installed server did with this release beyond items
+  12 and 13.
 - Publication is not product acceptance. The limits listed under "Limits of
   this release" are unchanged by it, among them that the last changes made
   after the short round have component tests only. All five foundation items

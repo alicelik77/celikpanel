@@ -8,10 +8,12 @@ v0.1.0-alpha.83 olmasına karar verdi. Yayımlama kaydı 11 Ekim 2026'da
 yazıldığında hiçbir kurulu sunucu bu sürüme güncellenmemişti: bunu her
 sunucunun sahibi panelin kendi güncelleme ekranından başlatır. 12 Ekim 2026'da
 dışarıdan yapılan bir okuma, kurulu iki sunucunun da bu sürümün arayüzünü
-sunduğunu gösterdi ("Yayımlama kaydı"nın 12. maddesi); sahibin ne gördüğü henüz
-bildirilmedi, bildirildiğinde kaydedilecek. Bu notlar 11 Ekim 2026'da taslak
-olarak yazıldı, aynı gün yayımlama için değiştirildi ve 12 Ekim 2026'da bu okuma
-için bir kez daha değiştirildi.
+sunduğunu gösterdi ("Yayımlama kaydı"nın 12. maddesi). Aynı gün sahip, iki
+sunucuda ekranda ne olduğunu iki ekran görüntüsüyle bildirdi (13. madde); bu
+bildirimin açık bıraktıkları orada, "Yapılmadı" altında ve sınırlarda
+sayılıdır. Bu notlar 11 Ekim 2026'da taslak olarak yazıldı, aynı gün yayımlama
+için değiştirildi ve 12 Ekim 2026'da bu okuma ve bu bildirim için bir kez daha
+değiştirildi.
 
 Sürüm iki şey yapar. Birincisi, CelikPanel'in elle değiştirdiğiniz bir site
 yapılandırma dosyasının üzerine yazmasını durdurur: dosya korunur, site bunu
@@ -1236,6 +1238,30 @@ Bunlar bilinen sınırlardır. Gizli kusur değildir.
     yapılandırma dosyasında kendi düzenlemeleriniz" sınırını bu sürüm nginx
     dosyası, havuz ve birim için, yukarıdaki ölçümlerin ve bu listedeki
     sınırların elverdiği ölçüde ele alır.
+- **Sahibin güncellemeden sonra kurulu sunucularda gördükleri (12 Ekim 2026'da
+  bildirildi), bu sürümde düzeltilmedi.** Ayrıntılar "Yayımlama kaydı"nın 13.
+  maddesindedir; bunlar sahibin ekran görüntüleridir, laboratuvar ölçümü
+  değildir.
+  - *Kenar çubuğundaki derleme kimliği sözcüğün ortasından satır kırıyor.*
+    Kenar çubuğundaki sunucu bilgisi `CelikPanel · v0.1.0-alpha.83 · build
+    0447558e956d` yazıyor; ekran görüntüleri 12 karakterlik kimliğin üçüncü
+    karakterinden sonra bölündüğünü gösteriyor ("build 044", sonraki satırda
+    "7558e956d"). Başka bir numara gibi okunabilir. Görünüşle ilgili; sonraki
+    sürüm için açık.
+  - *İkinci sunucunun son kurulum denetimi, yalnız sahibinin değiştirebileceği
+    bir kaydı bekliyor.* Posta ana makine adı sunucunun adresine çözülüyor,
+    ama o adresin ters (PTR) kaydı, 12 Ekim 2026'da dışarıdan okunduğunda,
+    posta ana makine adını değil başka bir ana makine adını söylüyor. "Verify
+    the mail hostname and its matching public DNS and reverse DNS (PTR)
+    records" denetimi, sahip o kaydı barındırma sağlayıcısında değiştirene
+    kadar geçmeyecek; bu CelikPanel'in dışındadır. Bu, sahip tarafında
+    karşılanmamış bir önkoşuldur; sürümün Panel'de bulduğu bir hata değildir.
+  - *İki sunucunun gösteremedikleri.* İkisinin de alan adı yok; bu yüzden ilk
+    başlangıcın onlarda devralacağı site yapılandırma dosyası yoktu ve Alan
+    Adları listesindeki "olduğu gibi bırakıldı" satırı onlarda görünemez.
+    Sahibin üretilmiş bir site yapılandırma dosyasındaki elle düzenlemesinin
+    bir Panel başlangıcında ne ile karşılaştığı, kurulu bir sunucuda
+    görülmedi.
 - **Kanıt kapsamı.** Tek bir dizüstü ana makine; imzalı arşiv değil, kabul testi
   lisanslı derlemeler; dışarıya NAT yapan ve trafiği yakalanmayan makineler;
   loopback'e sabitlenmiş adlar; bir kayıt yinelenen bir koşuyu adıyla
@@ -1251,7 +1277,7 @@ Bunlar bilinen sınırlardır. Gizli kusur değildir.
 ## Yayımlama kaydı
 
 Aşağıdaki her şey 11 Ekim 2026 tarihlidir (saat tarihi; saat dilimi
-belirtilmedikçe UTC); 12 Ekim 2026 tarihli 12. madde hariç. Adımları sahip
+belirtilmedikçe UTC); 12 Ekim 2026 tarihli 12. ve 13. maddeler hariç. Adımları sahip
 attı; dosyaların ve portal paketinin denetimlerini sürümü hazırlayan kişi
 yaptı. Bu girdi, aşağıdaki sonuçların hiçbirini depoda bir dosya olarak
 saklamaz.
@@ -1349,8 +1375,71 @@ saklamaz.
     güncelledi. Göstermedikleri: güncellemenin panel içindeki doğrulama
     sonucu, Agent'ın sürümü, ilk başlangıcın site yapılandırma dosyalarıyla ne
     yaptığı (kaçının devralındığı, kaçının olduğu gibi bırakıldığı) ya da
-    sahibin ekranda gördüğü herhangi bir şey. Bunların hiçbiri henüz
-    bildirilmedi.
+    sahibin ekranda gördüğü herhangi bir şey. Sahibin sonra bildirdikleri 13.
+    maddededir.
+13. Sahibin 12 Ekim 2026'da bildirdikleri: iki ekran görüntüsü, sunucu başına
+    bir tane, İngilizce arayüzle; ikisi de sahip tarafından panelin kendi
+    güncelleme ekranından 11 Ekim 2026'da güncellendikten sonra (12. madde).
+    Ekran görüntüleri sahibindir, depoda saklanmaz; 12. maddedeki okuma
+    dışında hiçbir asistan sunuculara bakmadı. Bu sahibin gözlemidir, kabul
+    kanıtı değildir ve hiçbiri laboratuvarda ölçülmedi.
+    - Sürüm. İki sunucuda da kenar çubuğundaki sunucu bilgisi `CelikPanel ·
+      v0.1.0-alpha.83 · build 0447558e956d` yazıyor; bu, sürüm commit'inin 12
+      karakterlik önekidir. Kenar çubuğunda kimlik sözcüğün ortasından satır
+      kırıyor ("build 044", sonraki satırda "7558e956d"); başka bir numara gibi
+      okunabilir. Görünüşle ilgili; sonraki sürüm için açık.
+    - İlk sunucu (barındırma amacı "Custom setup"; 0 alan adı, 0 veritabanı,
+      1 kullanıcı, 0 posta hesabı). Güncellemeden sonra Pano'ya düşüyor.
+      "System services" kartı "Unknown" ve "Component status is outdated. Open
+      Components to rescan." diyor. "Needs attention" kutusu "No certificate or
+      firewall setting needs action. The installed components were not checked
+      recently." diyor. Menüdeki Bileşenler girişi 8 sayısını gösteriyor. Son
+      etkinlik listesi sahibin oturum açmasını ve önceki kurulum etkinliğini
+      gösteriyor. Bu sunucu için ne bir hata ne de bir lisans sayfası
+      bildirildi. Sahip, güncelleme sırasında tam ekran lisans sayfasının
+      görünüp görünmediğini söylemedi: bildirilmedi.
+    - İkinci sunucu. Güncellemeden sonra sunucu kurulum sayfasına düşüyor: 5.
+      adım "Setup and verification", başlığı "Prepare your server"; çünkü
+      kurulum planı güncellemeden önce yeniden açılmış ve son denetimi hiç
+      bitmemişti. Adım listesinin üstünde sayfa "Setup stopped: its plan was
+      reopened" başlığını ve şu kutuyu gösteriyor: "This setup run stopped
+      because its plan was reopened for editing. That is not a failure: nothing
+      was undone, and the components already installed stay as they are.
+      Nothing continues by itself." Sonra: "When it stopped, its final check
+      was still waiting for this: Verify the mail hostname and its matching
+      public DNS and reverse DNS (PTR) records." Sonra: "Next: review the plan
+      and start it again. Its final check then runs again." Kutunun altında
+      "Technical details" (kapalı), "Review a revised plan" düğmesi ve adım
+      listesi var. Son adım dışında her adım "Completed" diyor (DNS, güvenlik
+      duvarı, sunucu adresi kayıtları, Panel ana makinesi için sertifika
+      alınmadan önce genel DNS, güvenli Panel erişimi, DNS çifti, fail2ban,
+      MariaDB, memcached, Node.js 24.21.0, PHP-FPM, phpmyadmin, PostgreSQL,
+      phppgadmin, redis, Webmail posta profili, Spam-Protected Mail posta
+      profili, posta ana makinesi için sertifika alınmadan önce genel DNS,
+      güvenli posta erişimi); son adım "Verify the prepared server" ise
+      "Stopped" diyor. Hiçbir adım "In progress" demiyor. Bu, "Son
+      güncellemeden sonraki dört gözlem"in dördüncüsünün (kurulum sayfasının
+      aynı anda durdu ve sürüyor demesi) kurulu bir sunucuda görülmesidir:
+      sayfa nedeni, bekleyen denetimi, kimin işlem yapacağını ve sonraki
+      eylemi söylüyor; son adım yalnız "Stopped" diyor. Sahibin ekran
+      görüntüsüne dayanır; sahibin kendi kurulum kaydı okunmadı.
+    - Genel DNS, sürümü hazırlayan kişi tarafından 12 Ekim 2026'da dışarıdan
+      okundu (salt-okunur, genel bir çözümleyiciyle; ana makine adı, adres ya
+      da kayıt değeri buraya yazılmadı). İkinci sunucunun posta ana makine adı
+      sunucunun adresine çözülüyor, ama o adresin ters (PTR) kaydı, aynı sahibin
+      alan adına ait olan ve posta ana makine adı olmayan başka bir ana makine
+      adını söylüyor. Bu yüzden yukarıda adı geçen son denetim, sahip PTR
+      kaydını barındırma sağlayıcısında değiştirene kadar geçmeyecek; bu
+      sahibin CelikPanel dışındaki işlemidir. Sayfadaki "Next" (planı gözden
+      geçirip yeniden başlatmak) o kaydı değiştirmez.
+    - Bildirilmeyenler: yeniden başlatma sırasında tam ekran lisans sayfasının
+      görünüp görünmediği; güncelleme bildirimi ile kartın uyuşup uyuşmadığı;
+      kurulum adresine doğrudan yüklemede anlık lisans sayfasının hâlâ görünüp
+      görünmediği; güncellemenin panel içindeki doğrulama sonucu; Agent'ın
+      sürümü; `postconf -n >/dev/null` çıktısı. Alan Adları listesindeki
+      "olduğu gibi bırakıldı" satırı bildirilemezdi: iki sunucunun da alan adı
+      yok, satır onlarda görünemez ve ilk başlangıcın site yapılandırma
+      dosyalarını devralması bu iki sunucuda devralacak bir şey bulmadı.
 
 **Yapılmadı ve yayımlamanın değiştirmedikleri.**
 
@@ -1359,14 +1448,18 @@ saklamaz.
   ekranından, yukarıdaki her adımdan ayrı bir adım olarak başlatır; onu başka
   kimse başlatmaz. 12 Ekim 2026'da dışarıdan yapılan bir okuma ikisinin de bu
   sürümün arayüzünü sunduğunu gösterdi (12. madde); yani sahip ikisini de 11
-  Ekim 2026'da güncelledi. Hâlâ bildirilmeyenler: güncellemenin panel
-  içindeki doğrulama sonucu, Agent'ın sürümü, ilk başlangıcın site
-  yapılandırma dosyalarıyla ne yaptığı (kaçının devralındığı, kaçının olduğu
-  gibi bırakıldığı) ve bu sürümde sahibinden istenen gözlemler (önceki dört
-  gözlem, Alan Adları listesindeki "olduğu gibi bırakılan" satırı ve `postconf
-  -n >/dev/null`). Sahip bildirdiğinde kaydedilecekler. Bu kayıttaki hiçbir
-  şey, 12. madde dışında, kurulu bir sunucunun bu sürümle ne yaptığını
-  anlatmaz.
+  Ekim 2026'da güncelledi ve aynı gün iki ekran görüntüsü bildirdi (13. madde).
+  Bu bildirimden sonra hâlâ açık olanlar: yeniden başlatma sırasında tam ekran
+  lisans sayfasının görünüp görünmediği; güncelleme bildirimi ile kartın
+  uyuşup uyuşmadığı; kurulum adresine doğrudan yüklemede anlık lisans
+  sayfasının hâlâ görünüp görünmediği; güncellemenin panel içindeki doğrulama
+  sonucu; Agent'ın sürümü; `postconf -n >/dev/null` çıktısı; ve ilk
+  başlangıcın sahibin düzenlediği bir site yapılandırma dosyasıyla ne
+  yaptığı, çünkü iki sunucunun da alan adı yok, dolayısıyla devralınacak site
+  dosyası ve gösterilecek bir "olduğu gibi bırakıldı" satırı yoktu. Soru,
+  siteleri olan kurulu bir sunucuda görülene kadar açık kalır. Bunlar sahip
+  bildirdiğinde kaydedilecek. Bu kayıttaki hiçbir şey, 12. ve 13. maddeler
+  dışında, kurulu bir sunucunun bu sürümle ne yaptığını anlatmaz.
 - Yayımlamak ürünün kabulü değildir. "Bu sürümün sınırları" altındaki sınırlar
   yayımlamayla değişmez; bunlar arasında kısa turdan sonra yapılan son
   değişikliklerin yalnız bileşen testlerinin bulunması da vardır. [Dayanıklılık

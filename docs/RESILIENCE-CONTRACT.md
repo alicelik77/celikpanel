@@ -5364,8 +5364,10 @@ native cells (audit §9) come after. 2026-10-10 is the clock date.
 D-025 invariants 2 (unknown is not absent, empty or success) and 6 (a screen
 says what was verified); D-024; D-031. **No P0 item is closed or advanced.**
 P0.1 to P0.5 stay partial and every open acceptance item stays open. This entry
-records a publication; it changes no code, schema or recovery behaviour.
-2026-10-11 is the clock date.
+records a publication and what was read and reported afterwards; it changes
+no code, schema or recovery behaviour. 2026-10-11 is the clock date of the
+publication; the read of the installed servers and the owner's report are
+dated 2026-10-12.
 
 - **Publication.** v0.1.0-alpha.83 was published by the owner on 2026-10-11:
   pull request #206 squash-merged into `main` as
@@ -5393,12 +5395,41 @@ records a publication; it changes no code, schema or recovery behaviour.
   interface files as `web/dist/index.html` in the verified archive, one of
   them byte-identical (same SHA-256) to the archive's copy, with
   `Last-Modified` 2026-10-11 19:27:52 UTC and 19:28:17 UTC. So the owner
-  updated both from the panel's own update screen on 2026-10-11. This does not
-  show the update's verification result inside the panel, the Agent's
+  updated both from the panel's own update screen on 2026-10-11. That read
+  does not show the update's verification result inside the panel, the Agent's
   version, what the first start did with the site configuration files, or
-  anything the owner saw; none of that has been reported yet, and it will be
-  recorded when it is. The [release notes](RELEASE-NOTES-v0.1.0-alpha.83.md)
-  ("Publication record", item 12) hold the details. This entry is not
+  anything the owner saw. **The owner reported on 2026-10-12** (two
+  screenshots, English interface, one per server; the owner's observation,
+  nothing measured in the lab): both sidebars read `CelikPanel ·
+  v0.1.0-alpha.83 · build 0447558e956d`, and the build id wraps in the middle
+  of the word, so it can read as a different number (cosmetic, open for the
+  next release). The first server (no domains) lands on the Dashboard with
+  "System services" saying "Unknown" and the sentence that component status is
+  outdated and Components should be rescanned; no error and no licence page is
+  reported for it. The second server lands on the setup page, step 5, because
+  its plan was reopened before the update and its final check never finished.
+  The page says "Setup stopped: its plan was reopened", that this is not a
+  failure and nothing continues by itself, which check was still waiting (the
+  mail host name and its public DNS and reverse DNS (PTR) records), and the
+  next action (review the plan and start it again); every step reads
+  "Completed" except the last, "Stopped", and none reads "In progress". That
+  is the fourth owner observation of the alpha.82 entry above (stopped and in
+  progress together) seen resolved on an installed server, on the owner's
+  screenshot only. Read from outside by the release preparer on 2026-10-12:
+  that server's mail host name resolves to its address, but the reverse (PTR)
+  record of the address names a different host name, so the pending check will
+  not pass until the owner changes that record at the hosting provider, outside
+  CelikPanel; this is an unmet prerequisite on the owner's side, not a Panel
+  fault. **Not reported:** whether the full-screen licence page appeared
+  during the restart; whether the update notice and the card agreed; whether
+  the momentary licence page still appears on a direct load of the setup
+  address; the update's verification result inside the panel; the Agent's
+  version; the `postconf -n >/dev/null` output. Both servers have no domains,
+  so the first start's adoption of site configuration files had nothing to
+  adopt on them and the Domains list's "left as they were" row cannot appear:
+  what an owner's hand edit meets at a Panel start has not been seen on an
+  installed server. The [release notes](RELEASE-NOTES-v0.1.0-alpha.83.md)
+  ("Publication record", items 12 and 13) hold the details. This entry is not
   acceptance evidence for any item.
 - **Schema or version transition.** None in this entry (the release itself
   carries database schema 43 to 44, recorded in the D-031 entry above).
