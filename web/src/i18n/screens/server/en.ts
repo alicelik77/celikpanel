@@ -335,6 +335,8 @@ export const enServerScreens = {
     'services.scanFailed': 'Service scan failed.',
     'services.stateUnverifiedTitle': 'Service state needs verification',
     'services.stateUnverifiedHint': 'A server action may have completed, but the latest state could not be verified. Run Rescan before changing another component.',
+    'services.stateUnreadTitle': 'Component state could not be read',
+    'services.stateUnreadHint': 'This page did not send any component action; it could not read the current state of the components. {reason} Component changes stay locked until a scan reads the state; Rescan reads it again.',
     'services.neverScanned': 'Services have not been scanned yet',
     'services.neverScannedShort': 'Not scanned yet',
     'services.neverScannedHint': 'The first visit detects installed services automatically. Cached results load immediately and refresh periodically.',

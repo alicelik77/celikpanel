@@ -106,7 +106,7 @@ func TestAcceptanceFixtureLicenseOpensGatedRoutesThroughTheLicenseScreen(t *test
 	access := httptest.NewRecorder()
 	fixture.panel.handleLicenseAccess(access, httptest.NewRequest("GET", panelLicenseAccessPath, nil))
 	var observed map[string]any
-	if err := json.Unmarshal(access.Body.Bytes(), &observed); err != nil || len(observed) != 4 || observed["can_use_panel"] != true || observed["state"] != "active" {
+	if err := json.Unmarshal(access.Body.Bytes(), &observed); err != nil || len(observed) != 5 || observed["can_use_panel"] != true || observed["state"] != "active" {
 		t.Fatalf("access observation: %v %s", err, access.Body.String())
 	}
 	if err := fixture.panel.requireServerSetupAdmission(context.Background()); err != nil {

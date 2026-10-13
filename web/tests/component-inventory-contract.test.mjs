@@ -301,3 +301,42 @@ test('the components list judges staleness from the age the server reports', () 
         /const cacheIsStale = snapshot\.scanAgeSeconds !== null\s*\? snapshot\.scanAgeSeconds < 0 \|\| snapshot\.scanAgeSeconds > AUTO_SCAN_MAX_AGE_SECONDS\s*: !Number\.isFinite\(scannedTimestamp\)\s*\|\| Date\.now\(\) - scannedTimestamp > AUTO_SCAN_MAX_AGE_SECONDS \* 1000;/,
     );
 });
+
+// set14b O2 (13 Oct 2026): with the Agent stopped, the Components page said
+// "A server action may have completed" although no action had run. A failed
+// read (the automatic check, a load, Rescan) now says the state could not be
+// read, with the read's own reason and Rescan; the "may have completed"
+// wording stays for an action that was sent. A later failed read never
+// replaces an action's unknown outcome.
+// Agent durmuşken sayfa hiçbir işlem koşmadığı halde "bir sunucu işlemi
+// tamamlanmış olabilir" diyordu. Başarısız okuma artık durumun okunamadığını,
+// nedeniyle ve Yeniden tara ile söyler; "tamamlanmış olabilir" yalnız
+// gönderilen işlem içindir.
+test('a failed read is not drawn as an action that may have completed', () => {
+    const loadFlow = serviceList.slice(serviceList.indexOf('const loadServices = async'), serviceList.indexOf('const scan = async'));
+    const scanFlow = serviceList.slice(serviceList.indexOf('const scan = async'), serviceList.indexOf('const [openDrawers'));
+    // Every failure inside a read marks a read, with the answer when there is one.
+    assert.match(loadFlow, /if \(markUnverifiedOnFailure\) markStateUnverified\(\{ kind: 'read', error \}\)/);
+    assert.match(loadFlow, /const error = await readApiError\(scanResponse\);[\s\S]*?return failAutoCheck\(error\);/);
+    assert.match(loadFlow, /const error = await readApiError\(res\);[\s\S]*?return failVerification\(error\);/);
+    assert.doesNotMatch(scanFlow, /markStateUnverified\(\)/, 'Rescan only reads');
+    assert.equal((scanFlow.match(/markStateUnverified\(\{ kind: 'read', error(: null)? \}\)/g) || []).length, 3);
+    // An action's unknown outcome is kept; the default cause is an action.
+    assert.match(serviceList, /const markStateUnverified = \(cause: UnverifiedCause = unverifiedByAction\) =>/);
+    assert.match(serviceList, /cause: previous\.unverified && previous\.cause\.kind === 'action' \? previous\.cause : cause,/);
+    // Two banners, one per cause; the read banner names the reason and offers Rescan.
+    assert.match(serviceList, /\{stateUnverified && verification\.cause\.kind === 'action' && \([\s\S]*?t\('services\.stateUnverifiedHint'\)/);
+    const readBanner = serviceList.slice(serviceList.indexOf("{stateUnverified && verification.cause.kind === 'read' && ("));
+    assert.match(readBanner.slice(0, 1200), /t\('services\.stateUnreadTitle'\)[\s\S]*t\('services\.stateUnreadHint', \{\s*reason: verification\.cause\.error \? apiErrorText\(verification\.cause\.error, t, 'services\.scanFailed'\) : t\('services\.scanFailed'\),/);
+    assert.match(readBanner.slice(0, 1200), /onClick=\{scan\}[\s\S]*t\('services\.rescan'\)/);
+    // The copy: the read sentence carries the reason and says no action was sent;
+    // it never claims an action may have completed.
+    for (const [locale, catalogue] of [['en', english], ['tr', turkish]]) {
+        const line = key => catalogue.slice(catalogue.indexOf(`'${key}': '`)).split('\n')[0];
+        assert.ok(catalogue.includes("'services.stateUnreadTitle': '"), `${locale} title`);
+        assert.match(line('services.stateUnreadHint'), /\{reason\}/, `${locale} reason`);
+        assert.doesNotMatch(line('services.stateUnreadHint'), /may have completed|tamamlanmış olabilir/);
+    }
+    assert.match(english.slice(english.indexOf("'services.stateUnreadHint'")).split('\n')[0], /did not send any component action/);
+    assert.match(turkish.slice(turkish.indexOf("'services.stateUnreadHint'")).split('\n')[0], /hiçbir bileşen işlemi göndermedi/);
+});

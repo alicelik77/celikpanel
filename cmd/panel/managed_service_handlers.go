@@ -729,14 +729,10 @@ func (p *Panel) handleManagedServicesScan(w http.ResponseWriter, r *http.Request
 
 	services, err := p.scanManagedServices(r.Context())
 	if err != nil {
-		// A scan only reads the host, so an Agent that cannot be reached is
-		// named as such; every other failure keeps the generic answer.
-		// Tarama makineyi yalnız okur; ulaşılamayan Agent adıyla söylenir,
-		// diğer her hata genel yanıtında kalır.
-		if agentUnreachable(err) {
-			writeAgentUnreachable(w, err)
-			return
-		}
+		// An Agent that cannot be reached is named by writeServerError
+		// (AGENT_UNREACHABLE); every other failure keeps the generic answer.
+		// Ulaşılamayan Agent'ı writeServerError adıyla söyler; diğer her hata
+		// genel yanıtında kalır.
 		writeServerError(w, err)
 		return
 	}

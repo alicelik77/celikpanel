@@ -153,6 +153,14 @@ func TestLicenseAccessResponseIsMinimalAndTracksState(t *testing.T) {
 		if state == "active" && result["valid_until"].(float64) > float64(time.Now().Add(time.Minute).Unix()) {
 			t.Fatal("browser deadline exceeds short verification", result)
 		}
+		// The time left is the same short deadline, stated on the server's clock
+		// (a refused licence may still carry its unexpired deadline; the page
+		// reads it only with can_use_panel).
+		// Kalan süre aynı kısa son andır; sunucunun saatiyle söylenir (reddedilen
+		// lisans dolmamış son anını taşıyabilir; sayfa onu yalnız can_use_panel ile okur).
+		if left, ok := result["valid_for_seconds"].(float64); !ok || left < 0 || left > 60 || (state == "active" && left <= 0) {
+			t.Fatal("time left does not follow the deadline", state, result)
+		}
 		wantState, wantObservation := state, "known"
 		if state == "rejected" {
 			wantState = "invalid"
@@ -160,8 +168,38 @@ func TestLicenseAccessResponseIsMinimalAndTracksState(t *testing.T) {
 		if state == "verification_unavailable" {
 			wantObservation = "unavailable"
 		}
-		if len(result) != 4 || result["state"] != wantState || result["observation"] != wantObservation || result["can_use_panel"] != (state == "active") || w.Header().Get("Cache-Control") != "no-store" {
+		if len(result) != 5 || result["state"] != wantState || result["observation"] != wantObservation || result["can_use_panel"] != (state == "active") || w.Header().Get("Cache-Control") != "no-store" {
 			t.Fatal(state, result)
+		}
+	}
+}
+
+// The access answer states the time left on the server's own clock, so a page
+// whose clock differs from the server's still follows the server's deadline
+// (set14b D2). Rule: valid_until minus the moment of the answer, millisecond
+// precision, never below 0; 0 without a deadline.
+// Erişim yanıtı kalan süreyi sunucunun kendi saatiyle söyler; saati farklı bir
+// sayfa da sunucunun son anını izler. Kural: valid_until eksi yanıt anı,
+// milisaniye hassasiyetinde, 0'ın altına inmez; son an yoksa 0.
+func TestLicenseAccessAnswerStatesTimeLeftOnTheServerClock(t *testing.T) {
+	now := time.Unix(1_800_000_000, 250_000_000)
+	for _, tc := range []struct {
+		name          string
+		status        licensing.Status
+		until         int64
+		validFor      float64
+		canUsePanel   bool
+		state, observ string
+	}{
+		{"active, offline window first", licensing.Status{State: "active", Observation: "known", ExpiresAt: 1_800_003_600, OfflineUntil: 1_800_000_060, CanProvision: true}, 1_800_000_060, 59.75, true, "active", "known"},
+		{"active, expiry first", licensing.Status{State: "active", Observation: "known", ExpiresAt: 1_800_000_010, OfflineUntil: 1_800_000_060, CanProvision: true}, 1_800_000_010, 9.75, true, "active", "known"},
+		{"deadline passed", licensing.Status{State: "verification_unavailable", Observation: "unavailable", ExpiresAt: 1_800_003_600, OfflineUntil: 1_799_999_000}, 1_799_999_000, 0, false, "verification_unavailable", "unavailable"},
+		{"no deadline", licensing.Status{State: "missing", Observation: "known"}, 0, 0, false, "missing", "known"},
+	} {
+		got := newLicenseAccessAnswer(tc.status, now)
+		want := licenseAccessAnswer{CanUsePanel: tc.canUsePanel, ValidUntil: tc.until, ValidForSeconds: tc.validFor, State: tc.state, Observation: tc.observ}
+		if got != want {
+			t.Fatalf("%s: got %+v want %+v", tc.name, got, want)
 		}
 	}
 }

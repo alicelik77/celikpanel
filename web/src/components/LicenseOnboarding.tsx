@@ -71,6 +71,9 @@ export function LicenseOnboarding({ children, onAccessChange, onRecoveryChange, 
         const request = new AbortController();
         controller.current = request;
         lastRead.current = Date.now();
+        // The deadline is dated from the moment of asking (accessObservation).
+        // Son an sorulan andan itibaren hesaplanır (accessObservation).
+        const askedAt = lastRead.current;
         setPending(true);
         const timeout = window.setTimeout(() => request.abort(), 15000);
         // Until an answer arrives, nothing came back from the Panel.
@@ -86,7 +89,7 @@ export function LicenseOnboarding({ children, onAccessChange, onRecoveryChange, 
                 throw new Error('access unavailable');
             }
             observed = 'license';
-            const result = parseAccessObservation(await response.json());
+            const result = parseAccessObservation(await response.json(), Date.now() / 1000, askedAt / 1000);
             if (!request.signal.aborted && controller.current === request) {
                 setAccess({ owner: user.username, ...result });
                 setFailed(result.allowed === null);

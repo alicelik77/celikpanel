@@ -496,6 +496,45 @@ func agentUnreachable(err error) bool {
 	return errors.Is(opErr.Err, syscall.ECONNREFUSED) || errors.Is(opErr.Err, syscall.ENOENT)
 }
 
+// agentUnreachableAlone is agentUnreachable for the shared error writer: the
+// failed dial must be the only cause along the chain. A joined error, such
+// as a failure together with its compensation, may carry a change that did
+// happen, so "nothing was changed" would be false; it keeps the generic
+// path. The one join accepted is the platform-identity sentinel with its
+// cause, because that read runs before the RPC it guards.
+// agentUnreachableAlone, ortak hata yazıcısı için agentUnreachable'dır:
+// başarısız bağlantı kurma zincirdeki tek neden olmalıdır. Birleşik hata
+// (örneğin bir hata ve onun telafisi) gerçekleşmiş bir değişiklik taşıyabilir;
+// o zaman "hiçbir şey değişmedi" yanlış olur ve genel yolda kalır. Kabul edilen
+// tek birleşim, platform kimliği işaretiyle nedenidir; o okuma koruduğu
+// çağrıdan önce koşar.
+func agentUnreachableAlone(err error) bool {
+	for err != nil {
+		if _, dial := err.(*net.OpError); dial {
+			return agentUnreachable(err)
+		}
+		switch wrapped := err.(type) {
+		case multiErrorUnwrapper:
+			var cause error
+			for _, part := range wrapped.Unwrap() {
+				if part == errAgentRPCPlatformIdentityUnavailable {
+					continue
+				}
+				if cause != nil {
+					return false
+				}
+				cause = part
+			}
+			err = cause
+		case singleErrorUnwrapper:
+			err = wrapped.Unwrap()
+		default:
+			return false
+		}
+	}
+	return false
+}
+
 // writeAgentUnreachable logs the cause and answers 503 AGENT_UNREACHABLE.
 // writeAgentUnreachable nedeni günlüğe yazar ve 503 AGENT_UNREACHABLE döner.
 func writeAgentUnreachable(w http.ResponseWriter, err error) {
@@ -630,6 +669,20 @@ func writeServerErrorFor(w http.ResponseWriter, r *http.Request, err error) {
 }
 
 func writeServerErrorAs(w http.ResponseWriter, caller *Caller, err error) {
+	// A failed dial of the Agent's socket is an unmet prerequisite with one
+	// owner action, whatever the handler was doing: no request reached the
+	// Agent. Every handler that reports through here names it (set14b O3:
+	// GET /api/v1/firewall answered 500 with the Agent stopped). A connection
+	// that broke after a request was sent is not a failed dial and keeps the
+	// paths below.
+	// Agent soketine bağlanamamak, işleyici ne yapıyor olursa olsun tek sahip
+	// eylemli karşılanmamış önkoşuldur: Agent'a hiçbir istek ulaşmamıştır.
+	// Buradan bildiren her işleyici bunu adıyla söyler. İstek gittikten sonra
+	// kopan bağlantı başarısız bağlantı kurma değildir; aşağıdaki yollarda kalır.
+	if agentUnreachableAlone(err) {
+		writeAgentUnreachable(w, err)
+		return
+	}
 	if classification, ok := classifyStableAgentError(err); ok {
 		log.Printf("[%d] %v", classification.Status, err)
 		body := apiErrorBody{
@@ -676,7 +729,11 @@ func writeClientError(w http.ResponseWriter, status int, message string) {
 func writeAgentError(w http.ResponseWriter, err error, agentDetail string) {
 	if agentDetail != "" {
 		status := http.StatusInternalServerError
-		if classification, ok := classifyStableAgentError(err); ok {
+		if agentUnreachableAlone(err) {
+			// The log line names the status writeServerError answers.
+			// Günlük satırı writeServerError'ın döneceği durumu yazar.
+			status = http.StatusServiceUnavailable
+		} else if classification, ok := classifyStableAgentError(err); ok {
 			status = classification.Status
 		}
 		log.Printf("[%d][agent] %s", status, boundedAgentDiagnostic(agentDetail))

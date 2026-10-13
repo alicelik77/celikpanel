@@ -72,7 +72,7 @@ test('partial webmail uninstall keeps an idempotent cleanup retry reachable', ()
   assert.match(partialBranch, /setRetryCleanup\(true\)/);
   assert.match(serviceList, /const \[cleanupAttempt, setCleanupAttempt\] = useState<'initial' \| 'retry' \| null>\(null\)/);
   assert.match(loadFlow, /\{ markUnverifiedOnFailure = true \}/);
-  assert.match(loadFlow, /if \(markUnverifiedOnFailure\) markStateUnverified\(\)/);
+  assert.match(loadFlow, /if \(markUnverifiedOnFailure\) markStateUnverified\(\{ kind: 'read', error \}\)/);
 
   const attemptDecision = uninstallFlow.indexOf('const nextCleanupAttempt = retryCleanup');
   const retryDecision = uninstallFlow.indexOf(`? (uninstallError ? 'retry' : 'initial')`, attemptDecision);

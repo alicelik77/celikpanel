@@ -251,3 +251,66 @@ func TestManagedServicesScanKeepsOtherFailuresInternal(t *testing.T) {
 		t.Fatalf("body=%s", recorder.Body.String())
 	}
 }
+
+// set14b O3: the shared server-error writer names an unreachable Agent for
+// every handler that reports through it, and only a failed dial; an ordinary
+// error stays 500 INTERNAL.
+// Ortak sunucu hatası yazıcısı, üzerinden bildiren her işleyici için
+// ulaşılamayan Agent'ı adıyla söyler; yalnız başarısız bağlantı kurmayı.
+// Sıradan hata 500 INTERNAL kalır.
+func TestWriteServerErrorNamesUnreachableAgentCentrally(t *testing.T) {
+	admin := httptest.NewRequest(http.MethodGet, "/api/v1/firewall", nil)
+	admin = admin.WithContext(context.WithValue(admin.Context(), callerKey, &Caller{ID: 1, Role: roleAdmin}))
+	writers := map[string]func(http.ResponseWriter, error){
+		"writeServerError":    writeServerError,
+		"writeServerErrorFor": func(w http.ResponseWriter, err error) { writeServerErrorFor(w, admin, err) },
+		"writeAgentError":     func(w http.ResponseWriter, err error) { writeAgentError(w, err, "firewall") },
+	}
+	unreachable := []error{
+		refusedAgentDial(syscall.ECONNREFUSED),
+		refusedAgentDial(syscall.ENOENT),
+		fmt.Errorf("read firewall status: %w", refusedAgentDial(syscall.ECONNREFUSED)),
+		// The identity read before a mutation RPC joins its sentinel with the cause.
+		fmt.Errorf("%w: %s: %w", errAgentRPCPlatformIdentityUnavailable, "Agent.FirewallApply", refusedAgentDial(syscall.ENOENT)),
+	}
+	for name, write := range writers {
+		for _, err := range unreachable {
+			recorder := httptest.NewRecorder()
+			write(recorder, err)
+			requireAgentUnreachableAnswer(t, recorder)
+		}
+		for _, err := range []error{
+			errors.New("state probe unavailable"),
+			&net.OpError{Op: "read", Net: "unix", Err: os.NewSyscallError("read", syscall.ECONNRESET)},
+			io.EOF,
+			// A failure joined with a compensation whose dial failed: the first
+			// part may have changed something, so the claim would be false.
+			errors.Join(errors.New("apply site config: agent answered failure"), refusedAgentDial(syscall.ECONNREFUSED)),
+			fmt.Errorf("%w; rollback: %w", errors.New("apply failed"), refusedAgentDial(syscall.ENOENT)),
+		} {
+			recorder := httptest.NewRecorder()
+			write(recorder, err)
+			var body apiErrorBody
+			if recorder.Code != http.StatusInternalServerError || json.Unmarshal(recorder.Body.Bytes(), &body) != nil || body.Code != errCodeInternal {
+				t.Fatalf("%s %v: status=%d body=%s", name, err, recorder.Code, recorder.Body.String())
+			}
+		}
+	}
+}
+
+// The reads named in set14b O3 answer AGENT_UNREACHABLE with the Agent stopped.
+// set14b O3'te adı geçen okumalar Agent durmuşken AGENT_UNREACHABLE döner.
+func TestAgentReadsNameUnreachableAgent(t *testing.T) {
+	panel := &Panel{}
+	panel.agentClient = transport.NewReconnectingClientWithContextConnector(nil,
+		func(context.Context) (*rpc.Client, error) { return nil, refusedAgentDial(syscall.ECONNREFUSED) })
+	firewall := httptest.NewRequest(http.MethodGet, "/api/v1/firewall", nil)
+	firewall = firewall.WithContext(context.WithValue(firewall.Context(), callerKey, &Caller{ID: 1, Role: roleAdmin}))
+	recorder := httptest.NewRecorder()
+	panel.handleFirewall(recorder, firewall)
+	requireAgentUnreachableAnswer(t, recorder)
+
+	recorder = httptest.NewRecorder()
+	panel.handleSystemCheck(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/system/check", nil))
+	requireAgentUnreachableAnswer(t, recorder)
+}

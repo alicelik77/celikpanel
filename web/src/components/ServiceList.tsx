@@ -112,10 +112,28 @@ type PendingComponentAction =
     | { kind: 'install-package'; service: ManagedService; pkg: string; version: string }
     | { kind: 'install-node'; service: ManagedService; version: string };
 
+/**
+ * Why the components' state is unverified (D-024: a screen does not claim
+ * what did not happen).
+ * - action: a component action was sent and the state after it could not be
+ *   confirmed, so the action may have completed.
+ * - read: no action was sent from this page; reading the state failed (the
+ *   automatic check, a load or Rescan). `error` is that read's answer, kept
+ *   in memory only; null when no answer came back or it could not be parsed.
+ * An action's unknown outcome is never replaced by a later failed read.
+ * Bileşen durumunun neden doğrulanmadığı. action: bir işlem gönderildi ve
+ * sonrası doğrulanamadı. read: bu sayfa işlem göndermedi, durum okunamadı.
+ * Bir işlemin bilinmeyen sonucu sonraki başarısız okumayla silinmez.
+ */
+type UnverifiedCause = { kind: 'action' } | { kind: 'read'; error: ApiError | null };
+
 interface ServiceVerificationState {
     unverified: boolean;
     baselineScannedAt: string | null;
+    cause: UnverifiedCause;
 }
+
+const unverifiedByAction: UnverifiedCause = { kind: 'action' };
 
 const serviceVerificationStorageKey = 'celikpanel.components.unverified-state';
 
@@ -234,23 +252,32 @@ function parseHostMutationReadiness(value: unknown): HostMutationReadiness | nul
 }
 
 function readServiceVerificationState(): ServiceVerificationState {
-    if (typeof sessionStorage === 'undefined') return { unverified: false, baselineScannedAt: null };
+    const verified: ServiceVerificationState = { unverified: false, baselineScannedAt: null, cause: unverifiedByAction };
+    if (typeof sessionStorage === 'undefined') return verified;
     try {
         const value = JSON.parse(sessionStorage.getItem(serviceVerificationStorageKey) ?? 'null') as Record<string, unknown> | null;
-        if (!value || value.unverified !== true) return { unverified: false, baselineScannedAt: null };
+        if (!value || value.unverified !== true) return verified;
         return {
             unverified: true,
             baselineScannedAt: typeof value.baselineScannedAt === 'string' ? value.baselineScannedAt : null,
+            // A record from before the cause was kept, or any other value,
+            // keeps the action wording: the safer of the two claims.
+            // Nedeni saklanmadan önceki kayıt işlem sözünü korur.
+            cause: value.cause === 'read' ? { kind: 'read', error: null } : unverifiedByAction,
         };
     } catch {
-        return { unverified: false, baselineScannedAt: null };
+        return verified;
     }
 }
 
 function persistServiceVerificationState(value: ServiceVerificationState) {
     if (typeof sessionStorage === 'undefined') return;
     try {
-        if (value.unverified) sessionStorage.setItem(serviceVerificationStorageKey, JSON.stringify(value));
+        // Only the kind of cause is kept across a reload, not the answer.
+        // Yeniden yüklemede yalnız nedenin türü saklanır, yanıt değil.
+        if (value.unverified) sessionStorage.setItem(serviceVerificationStorageKey, JSON.stringify({
+            unverified: true, baselineScannedAt: value.baselineScannedAt, cause: value.cause.kind,
+        }));
         else sessionStorage.removeItem(serviceVerificationStorageKey);
     } catch {
         // Restricted storage must not bypass the in-memory safety lock.
@@ -424,11 +451,12 @@ export function ServiceList({ onManageService }: ServiceListProps) {
     const latestScannedAtRef = useRef<string | null>(null);
     const stateUnverified = verification.unverified;
 
-    const markStateUnverified = () => {
+    const markStateUnverified = (cause: UnverifiedCause = unverifiedByAction) => {
         setVerification((previous) => {
-            const next = {
+            const next: ServiceVerificationState = {
                 unverified: true,
                 baselineScannedAt: previous.unverified ? previous.baselineScannedAt : scannedAt,
+                cause: previous.unverified && previous.cause.kind === 'action' ? previous.cause : cause,
             };
             persistServiceVerificationState(next);
             return next;
@@ -436,7 +464,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
     };
 
     const clearStateUnverified = () => {
-        const next = { unverified: false, baselineScannedAt: null };
+        const next: ServiceVerificationState = { unverified: false, baselineScannedAt: null, cause: unverifiedByAction };
         persistServiceVerificationState(next);
         setVerification(next);
     };
@@ -650,16 +678,21 @@ export function ServiceList({ onManageService }: ServiceListProps) {
     const loadServices = async (
         { markUnverifiedOnFailure = true }: { markUnverifiedOnFailure?: boolean } = {},
     ): Promise<boolean> => {
-        const failVerification = (): false => {
-            if (markUnverifiedOnFailure) markStateUnverified();
+        // A failed read: no action was sent here. A caller that sent one marks
+        // it after this, and the action's wording wins.
+        // Başarısız okuma: burada işlem gönderilmedi. İşlem gönderen çağıran
+        // bundan sonra işaretler; işlem sözü kazanır.
+        const failVerification = (error: ApiError | null = null): false => {
+            if (markUnverifiedOnFailure) markStateUnverified({ kind: 'read', error });
             return false;
         };
         setLoading(true);
         try {
             const res = await fetch('/api/v1/managed-services');
             if (!res.ok) {
-                showToast('error', apiErrorText(await readApiError(res), t));
-                return failVerification();
+                const error = await readApiError(res);
+                showToast('error', apiErrorText(error, t));
+                return failVerification(error);
             }
             const data: unknown = await res.json();
             const snapshot = parseManagedServicesSnapshot(data);
@@ -698,9 +731,9 @@ export function ServiceList({ onManageService }: ServiceListProps) {
             // the state it explains stays. The banner below outlives it.
             // Bunun yeri bir toast değildir: açıkladığı durum kalırken kendisi
             // ekrandan gider. Aşağıdaki şerit ondan uzun yaşar.
-            const failAutoCheck = (): false => {
+            const failAutoCheck = (error: ApiError | null = null): false => {
                 setAutoCheckFailed(true);
-                return failVerification();
+                return failVerification(error);
             };
             try {
                 const scanResponse = await fetch(
@@ -708,8 +741,9 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                     { method: 'POST', cache: 'no-store' },
                 );
                 if (!scanResponse.ok) {
-                    showToast('error', apiErrorText(await readApiError(scanResponse), t, 'services.scanFailed'));
-                    return failAutoCheck();
+                    const error = await readApiError(scanResponse);
+                    showToast('error', apiErrorText(error, t, 'services.scanFailed'));
+                    return failAutoCheck(error);
                 }
                 const refreshed: unknown = await scanResponse.json();
                 if (!applySnapshot(refreshed, 'scan')) {
@@ -739,21 +773,26 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                 method: 'POST',
                 cache: 'no-store',
             });
+            // Rescan only reads: a failure is a failed read, never an action
+            // that may have completed.
+            // Yeniden tarama yalnız okur: başarısızlığı okunamamadır, tamamlanmış
+            // olabilecek bir işlem değildir.
             if (!res.ok) {
-                showToast('error', apiErrorText(await readApiError(res), t, 'services.scanFailed'));
-                markStateUnverified();
+                const error = await readApiError(res);
+                showToast('error', apiErrorText(error, t, 'services.scanFailed'));
+                markStateUnverified({ kind: 'read', error });
                 return false;
             }
             const data: unknown = await res.json();
             if (!applySnapshot(data, 'scan')) {
                 showToast('error', t('services.scanFailed'));
-                markStateUnverified();
+                markStateUnverified({ kind: 'read', error: null });
                 return false;
             }
             return true;
         } catch {
             showToast('error', t('services.scanFailed'));
-            markStateUnverified();
+            markStateUnverified({ kind: 'read', error: null });
             return false;
         } finally {
             setScanning(false);
@@ -1250,12 +1289,34 @@ export function ServiceList({ onManageService }: ServiceListProps) {
 
             <ServiceActionNotice outcome={actionOutcome} onClose={() => setActionOutcome(null)} className="mb-4" />
 
-            {stateUnverified && (
+            {/* Two different situations, two sentences (D-024): an action was
+                sent and its result is unknown, or nothing was sent and the
+                state could not be read (set14b O2: with the Agent stopped the
+                page said an action "may have completed" when none had run).
+                İki ayrı durum, iki cümle: işlem gönderildi ve sonucu bilinmiyor,
+                ya da hiçbir şey gönderilmedi ve durum okunamadı. */}
+            {stateUnverified && verification.cause.kind === 'action' && (
                 <div role="alert" className="mb-4 flex items-start gap-3 rounded-xl border border-warning-mark/60 bg-warning-mark/10 p-4">
                     <ShieldOff className="mt-0.5 h-5 w-5 shrink-0 text-warning" />
                     <div>
                         <div className="text-sm font-semibold text-fg">{t('services.stateUnverifiedTitle')}</div>
                         <p className="text-sm text-fg-muted">{t('services.stateUnverifiedHint')}</p>
+                    </div>
+                </div>
+            )}
+            {stateUnverified && verification.cause.kind === 'read' && (
+                <div role="alert" className="mb-4 flex flex-wrap items-start gap-3 rounded-xl border border-warning-mark/60 bg-warning-mark/10 p-4">
+                    <ShieldOff className="mt-0.5 h-5 w-5 shrink-0 text-warning" />
+                    <div className="min-w-0 grow basis-56">
+                        <div className="text-sm font-semibold text-fg">{t('services.stateUnreadTitle')}</div>
+                        <p className="text-sm text-fg-muted">{t('services.stateUnreadHint', {
+                            reason: verification.cause.error ? apiErrorText(verification.cause.error, t, 'services.scanFailed') : t('services.scanFailed'),
+                        })}</p>
+                    </div>
+                    <div className="ml-auto shrink-0">
+                        <Button variant="secondary" icon={RefreshCw} onClick={scan} disabled={pageControlsBusy}>
+                            {scanning ? t('services.scanning') : t('services.rescan')}
+                        </Button>
                     </div>
                 </div>
             )}

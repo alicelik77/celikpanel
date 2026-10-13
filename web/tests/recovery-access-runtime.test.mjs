@@ -53,6 +53,17 @@ test('only known typed negative access requires activation; legacy positives kee
  for(const result of [{can_use_panel:true,valid_until:100},{can_use_panel:true,valid_until:160,state:'expired'},{can_use_panel:true,valid_until:160,observation:'unavailable'}])assert.throws(()=>parseAccessObservation(result,100));
 });
 
+test('the server-stated time left is added to the moment of asking; the absolute deadline is only the fallback',()=>{
+ // Server clock 420 s behind: the absolute deadline is past, the time left is not.
+ assert.deepEqual(parseAccessObservation({can_use_panel:true,valid_until:-320,valid_for_seconds:55},100,98),{allowed:true,until:153,state:'active'});
+ // Server clock ahead: the browser keeps the server's time left, not the later absolute deadline.
+ assert.deepEqual(parseAccessObservation({can_use_panel:true,valid_until:1000,valid_for_seconds:30},100,100),{allowed:true,until:130,state:'active'});
+ for(const left of [0,-5])assert.throws(()=>parseAccessObservation({can_use_panel:true,valid_until:1000,valid_for_seconds:left},100));
+ // Not a finite number: the absolute rule.
+ for(const left of [null,'55',undefined])assert.deepEqual(parseAccessObservation({can_use_panel:true,valid_until:160,valid_for_seconds:left},100),{allowed:true,until:160,state:'active'});
+ assert.equal(parseAccessObservation({state:'missing',observation:'known',can_use_panel:false,valid_until:0,valid_for_seconds:0},100).allowed,false);
+});
+
 test('saved operation is an exact ID hint; terminal messages cannot supply a server outcome',()=>{
  assert.equal(savedRecoveryRequestId(JSON.stringify({state_version:1,phase:'terminal',marker:{marker_version:1,request_id:id},message:'success',outcome:'succeeded'})),id);
  for(const value of [null,'{}','garbage',JSON.stringify({marker_version:1,request_id:'../../secret'}),JSON.stringify({marker_version:1,request_id:'A'.repeat(32)}),' '.repeat(8193)])assert.equal(savedRecoveryRequestId(value),null);

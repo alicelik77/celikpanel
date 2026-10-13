@@ -380,3 +380,38 @@ test('unavailable license observations never display an activation key form',asy
   }finally{await cleanup()}
  }
 });
+
+// set14b D2: a server clock 418 s behind the browser's kept every page from
+// loading, because the browser compared the absolute deadline with its own
+// clock. The server now states the time left on its own clock; the browser
+// adds it to the moment it asked. Without the field the old rule stays.
+// Sunucu saati tarayıcınınkinden 418 s gerideyken hiçbir sayfa açılmıyordu;
+// sunucu artık kalan süreyi kendi saatiyle söyler, tarayıcı sorduğu ana ekler.
+test('the server-stated time left decides access whatever the two clocks say; without it the absolute deadline stays',async()=>{
+ const previousTimer=window.setTimeout;
+ const cases=[
+  {name:'server clock 7 minutes behind, 55 s left',body:now=>({can_use_panel:true,valid_until:Math.floor(now/1000)-420,valid_for_seconds:55,state:'active',observation:'known'}),accepted:true},
+  {name:'no time left',body:now=>({can_use_panel:true,valid_until:Math.floor(now/1000)+60,valid_for_seconds:0,state:'active',observation:'known'}),accepted:false},
+  {name:'older server, deadline 7 minutes behind',body:now=>({can_use_panel:true,valid_until:Math.floor(now/1000)-420,state:'active',observation:'known'}),accepted:false},
+  {name:'older server, deadline ahead',body:now=>({can_use_panel:true,valid_until:Math.floor(now/1000)+60,state:'active',observation:'known'}),accepted:true},
+ ];
+ for(const item of cases){
+  fixture('admin','active');
+  const timers=[];
+  window.setTimeout=(fn,ms)=>{if(ms>15000){timers.push(ms);return 0}return previousTimer(fn,ms)};
+  globalThis.fetch=async()=>{calls.push('access');return Response.json(item.body(Date.now()))};
+  try{
+   await act(async()=>{tree=Renderer.create(React.createElement(LicenseOnboarding,null,React.createElement('main',null,'management')))});
+   assert.equal(calls.length,1,item.name);
+   assert.equal(tree.root.findAllByType('main').length,item.accepted?1:0,item.name);
+   assert.equal(heldPages().length,0,item.name);
+   assert.equal(tree.root.findAllByType('aside').length,item.accepted?0:1,`${item.name}: the licence gate`);
+   assert.equal(navigations.length,0,`${item.name}: never activation`);
+   if(item.name.startsWith('server clock')){
+    // Renewal 15 s before the server's deadline: 55 - 15 = 40 s from asking.
+    assert.ok(timers.some(ms=>ms>38000&&ms<=40000),`renewal follows the stated time left: ${timers}`);
+    assert.ok(timers.some(ms=>ms>53000&&ms<=55000),`deadline follows the stated time left: ${timers}`);
+   }
+  } finally {window.setTimeout=previousTimer;await cleanup()}
+ }
+});

@@ -83,7 +83,7 @@ func TestLicenseObservationUnavailableIsMinimalAndRecoveryIsExact(t *testing.T) 
 		if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
 			t.Fatal(err)
 		}
-		if w.Code != 200 || len(body) != 4 || body["can_use_panel"] != false || body["valid_until"] != float64(0) || body["state"] != "status_unavailable" || body["observation"] != "unavailable" {
+		if w.Code != 200 || len(body) != 5 || body["can_use_panel"] != false || body["valid_until"] != float64(0) || body["valid_for_seconds"] != float64(0) || body["state"] != "status_unavailable" || body["observation"] != "unavailable" {
 			t.Fatalf("unexpected minimal state: %d %v", w.Code, body)
 		}
 		for _, path := range []string{panelAvailabilityPath, panelRecoveryStatusPath} {

@@ -20,7 +20,12 @@ func (p *Panel) handleSystemCheck(w http.ResponseWriter, r *http.Request) {
 	var agentResp transport.CheckInstalledServicesResponse
 	err := p.callAgent("Agent.CheckInstalledServices", &transport.Empty{}, &agentResp)
 	if err != nil {
-		http.Error(w, "Failed to check services", http.StatusInternalServerError)
+		// The shared writer names an unreachable Agent (503 AGENT_UNREACHABLE)
+		// and answers every other failure with the coded INTERNAL error,
+		// instead of plain text under a JSON content type.
+		// Ortak yazıcı ulaşılamayan Agent'ı adıyla söyler (503
+		// AGENT_UNREACHABLE); diğer hatalara kodlu INTERNAL döner.
+		writeServerError(w, err)
 		return
 	}
 
