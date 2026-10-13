@@ -73,8 +73,10 @@ kusuru kaldırdı; ikincisi (sunucunun yaşı) beş dakikadan fazla geride olan
 sunucu için de kaldırır. Alanı olmayan eski bir sunucu birinci kuralda kalır.
 Eksi bir yaş ya da sonlu olmayan bir sayı taze sayılmaz. Ölçüldü (on beşinci
 kayıt, Debian 13, konuk 1,5 sn ileride): bayat yüklemede tek koşullu tarama ve
-kartın doğrudan sonuca geçmesi, "Son 5 dakikada kontrol edilmedi" karesi olmadan.
-Sunucu saatinin geride olduğu durum, aşağıdaki kusur yüzünden ölçülemedi ve açıktır.
+kartın doğrudan sonuca geçmesi, "Son 5 dakikada kontrol edilmedi" karesi
+olmadan. Sunucu saatinin geride olduğu durum sonradan, on altıncı kayıtta
+ölçüldü (set14c, Debian 13, 13 Ekim 2026, saat yedi dakika geride): tek koşullu
+tarama, ardından 90 saniyenin sonuna dek sonuç.
 
 Aynı kural, onu bozduğu laboratuvarda görülen lisans denetimi için de geçerlidir.
 `/api/v1/license/access` erişimin sonunu (`valid_until`) sunucunun saatiyle bir an
@@ -90,25 +92,26 @@ on altıncı kayıtta ölçüldü (13 Ekim 2026): konuk saati tarayıcıdan yedi
 geride ve yedi dakika ilerideyken sayfa açıldı ve erişimi 90 saniyede dört kez
 okudu; doğru saatle olduğu gibi.
 
-Tipli hata kuralı. Kendi Agent'ının yerel soketini açamayan bir Panel
-`503 AGENT_UNREACHABLE` yanıtlar: nedeni, hiçbir şeyin değiştirilmediğini, kimin
+Tipli hata kuralı. Kendi Agent'ının yerel soketini açamayan bir Panel `503
+AGENT_UNREACHABLE` yanıtlar: nedeni, hiçbir şeyin değiştirilmediğini, kimin
 işlem yapacağını, sonraki eylemi ve işin nasıl süreceğini söyler (D-024). Yanıt
 ortak sunucu hata yazıcısında tek yerde yazılır; bu yüzden o yazıcıya, Agent
 soketine başarısız bağlantı kurmanın tek neden olduğu bir durumla ulaşan her
-işleyici için geçerlidir (tarama, on bir değiştirici işleyicinin kabul denetimi,
-güvenlik duvarı okuması, sistem denetimi), işleyici işleyici değil. Yalnız
-başarısız bağlantı kurma içindir. İstek gönderildikten sonra kopan bağlantı
-bilinmeyen sonuçtur ve genel yolda kalır; bilinmeyen sonuç asla doğrulanmış bir
-başarısızlığa çevrilmez. Birleşik hata da çevrilmez; örneğin bir hata ve onun
-telafisi: önceki bir parça bir şeyi değiştirmiş olabilir ve "hiçbir şey
-değiştirilmedi" yanlış olurdu. Kabul edilen tek birleşim, platform kimliği
+işleyici için geçerlidir (tarama, değiştirici işleyicilerin kabul denetimi
+(`beginServiceMutation`; 68b79b372 commit'inde tarama işleyicisi dışında dokuz
+çağrı yeri), güvenlik duvarı okuması, sistem denetimi), işleyici işleyici değil.
+Yalnız başarısız bağlantı kurma içindir. İstek gönderildikten sonra kopan
+bağlantı bilinmeyen sonuçtur ve genel yolda kalır; bilinmeyen sonuç asla
+doğrulanmış bir başarısızlığa çevrilmez. Birleşik hata da çevrilmez; örneğin bir
+hata ve onun telafisi: önceki bir parça bir şeyi değiştirmiş olabilir ve "hiçbir
+şey değiştirilmedi" yanlış olurdu. Kabul edilen tek birleşim, platform kimliği
 işaretiyle nedenidir; çünkü o okuma koruduğu çağrıdan önce koşar. DNSSEC durumu,
 güncelleme durumu ve başlatması, alan adı silme ve posta parolası döndürme kendi
 tipli yollarında kalır. Sıradan bir hata yine `500` yanıtlar. Tarama ve kabul
-denetiminde (on beşinci kayıt) ve güvenlik duvarı okuması, sistem denetimi ile bir
-yeniden başlatma isteğinde ölçüldü (on altıncı kayıt; `503`, yalnız `code` ve
-`error`, nginx değişmedi). Açık: bir şeyi değiştirip sonra, önceki sonuca birleşmemiş
-ayrı bir bağlantıda başarısız olan bir işleyici yine de hiçbir şeyin
+denetiminde (on beşinci kayıt) ve güvenlik duvarı okuması, sistem denetimi ile
+bir yeniden başlatma isteğinde ölçüldü (on altıncı kayıt; `503`, yalnız `code`
+ve `error`, nginx değişmedi). Açık: bir şeyi değiştirip sonra, önceki sonuca
+birleşmemiş ayrı bir bağlantıda başarısız olan bir işleyici yine de hiçbir şeyin
 değiştirilmediğini söylerdi.
 
 Okuma şeridi kuralı. Başarısız bir okuma asla bir işlem iddia etmez. Bir durumu
@@ -130,9 +133,9 @@ Bunun yetkilendirmediği:
   salt-okur taramadır; bir durumu gören yoklama asla değişiklik başlatmaz ve
   hazırlık yoklamasının tek takibi de aynı taramadır.
 - Bu kararla başka hiçbir kart, sayfa ya da ekran dönüştürülmez. Dashboard'daki
-  posta yığını kartı, kendi değişikliğine kadar kendi bayat metnini ve
-  "Bileşenleri aç" düğmesini korur; sunucuyu hâlâ eski biçimde okuyan ekranlar
-  sürüm notundaki listede kalır.
+  posta yığını kartı, kendi değişikliğine kadar kendi bayat metnini ve "Yeniden
+  taramak için Bileşenleri aç" düğmesini korur; sunucuyu hâlâ eski biçimde
+  okuyan ekranlar sürüm notundaki listede kalır.
 - Temelin bittiği iddiası yok: hiçbir P0 işi kapanmaz ya da ilerlemez.
 
 Gerisiyle ilişkisi. D-024 her işlemin nedenini, kimin işlem yapacağını, sonraki

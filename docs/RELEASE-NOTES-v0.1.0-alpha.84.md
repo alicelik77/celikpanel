@@ -2,23 +2,25 @@
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.84.tr.md)
 
-This is the draft of the release that follows v0.1.0-alpha.83. The number
-v0.1.0-alpha.84 is the working name of the branch; the owner decides the
-number at publication. Nothing of it is published, and no installed server runs
-it. This draft was written on 2026-10-13.
+This is the draft of the release that follows v0.1.0-alpha.83. The owner decided
+on 2026-10-13 that the number is v0.1.0-alpha.84 (commit 1636b73f0). Nothing of
+it is published, and no installed server runs it. This draft was written on
+2026-10-13.
 
-It does three things, all on the Dashboard's "System services" card and the
-answers behind it. The card now checks the components by itself, instead of
-saying "Unknown" whenever the stored scan is more than five minutes old and
-waiting for you to press a button on another page ([D-032](DECISIONS.md)). The
-server now states how old a scan is, so the browser never compares its own
-clock with the server's. And a Panel that cannot reach the CelikPanel Agent on
-its own server says so, with the next step, instead of "an internal error".
+It does three things on the Dashboard's "System services" card and the answers
+behind it, and two beside it. The card now checks the components by itself,
+instead of saying "Unknown" whenever the stored scan is more than five minutes
+old and waiting for you to press a button on another page
+([D-032](DECISIONS.md)). The server now states how old a scan is, so the browser
+never compares its own clock with the server's. And a Panel that cannot reach
+the CelikPanel Agent on its own server says so, with the next step, instead of
+"an internal error".
 
 Found by the lab on the way, and also corrected: a server whose clock was more
 than about a minute behind the browser's kept every Panel page from loading,
 because the licence check compared the two clocks. The server now states the
-time left itself.
+time left itself. The second thing beside the card is the Components page's
+banner for a failed read, which now gives the reason.
 
 What the card does rests on component tests, on a browser against a mock of the
 API, and on three lab measurements, each a real headless Chrome against a real
@@ -48,8 +50,10 @@ refused while a change holds the server's lock), under rules that keep its
 cost small:
 
 - It checks after a successful read when the stored scan is missing or older
-  than 300 seconds, and at most once per five-minute window, whatever the
-  answer was.
+  than 300 seconds, and at most once per five-minute window, whatever the answer
+  was. The one exception: after a refusal because a change was in progress, one
+  follow-up check runs when the readiness poll sees the host ready, which can
+  add one check inside a window (`heldSawBusy` resets the window).
 - It checks only while the tab is visible. A hidden tab runs nothing; a tab
   shown again checks once if a check is due.
 - It never starts a check while another is in flight, and there is no timer
@@ -72,7 +76,10 @@ that has aged and the next check, not a state that waits for you.
 What it costs: one check is one conditional scan. Measured on two lab guests,
 one check cost the Agent about 0.2 to 0.4 seconds of CPU time (an estimate from
 two 47-second windows; see "What was measured, and how"). At most one check per
-five minutes for an open, visible Dashboard; none for a hidden tab.
+five minutes for an open, visible Dashboard, except that after a refusal because
+a change was in progress one follow-up check runs when the readiness poll sees
+the host ready, which can add one check inside a window (`heldSawBusy` resets
+the window); none for a hidden tab.
 
 **The scan's age is the server's statement.** The three managed-services
 answers carry `scan_age_seconds`, the scan's age on the server's clock when the
@@ -140,18 +147,19 @@ After a reload only the kind of cause is remembered, not the answer, so a read
 banner then gives "Service scan failed."; a record kept from before this change
 keeps the old wording.
 
-**What does not change.** The mail-stack card on the Dashboard still has its
-own copy of the old stale text and its "Open Components" button (open; see the
-limits). The Components page checks as before; only its banner for a failed
+**What does not change.** The mail-stack card on the Dashboard still has its own
+copy of the old stale text and its "Open Components to rescan" button (open; see
+the limits). The Components page checks as before; only its banner for a failed
 read changes. No database schema change and no new route.
 
 ### The defect the lab found, and the two steps that fixed it
 
 The fourteenth record measured the first version of the card. With the guest's
-clock one to two seconds ahead of the browser's (1.05 to 2.16 s measured), the
-card showed "Not checked in the last 5 minutes" for 20 to 29 seconds after
-every check, because the page rejected a scan stamp later than its own clock
-and only its 30-second tick moved past it (defect D1 of that record).
+clock one to two seconds ahead of the browser's (1.04 to 2.15 s measured), the
+card showed "Not checked in the last 5 minutes" for 20 to 29 seconds after each
+of the four automatic checks (1.5 s after the operator's press), because the
+page rejected a scan stamp later than its own clock and only its 30-second tick
+moved past it (defect D1 of that record).
 
 Step one: the page records when it received each answer that carries a scan
 stamp, and takes the earlier of the stamp and that moment as the scan's time.
@@ -234,11 +242,12 @@ the Turkish notes). Where it applies:
   through it answers `503 AGENT_UNREACHABLE` when a failed dial of the Agent's
   Unix socket (nothing listening, or no socket file; the error may be wrapped)
   is the only cause. That includes the scan handler (`POST
-  /api/v1/managed-services/scan`), the shared admission check that eleven
-  mutation handlers run before they change anything (a refused admission
-  changed nothing), the firewall read (`GET /api/v1/firewall`) and the system
-  check. The system check's other failures now answer the coded `INTERNAL`
-  error instead of plain text.
+  /api/v1/managed-services/scan`), the shared admission check
+  (`beginServiceMutation`) that the mutation handlers run before they change
+  anything (nine call sites besides the scan handler at commit 68b79b372; a
+  refused admission changed nothing), the firewall read (`GET /api/v1/firewall`)
+  and the system check. The system check's other failures now answer the coded
+  `INTERNAL` error instead of plain text.
 - Not for a joined error. One made of a failure together with its
   compensation, for instance, may carry a change that did happen, so it keeps
   the generic path. The one join accepted is the platform-identity sentinel
@@ -403,10 +412,10 @@ so it is bounded to the request's duration. Results:
 - Six scans were sent in the whole run: the stale load, the Components page,
   the three refused scans and the press.
 
-The record's intake corrected three figures of its README against the raw
-files; the figures here are those of the README as it stands. Nothing of the
-product was changed by the run, and its `result.json` carries
-`native_evidence: false`.
+The record's intake (commit fb5ec06f8) corrected three figures of its README
+against the raw files and recorded one wrong `phases.json` field; the figures
+here are those of the README as it stands. Nothing of the product was changed by
+the run, and its `result.json` carries `native_evidence: false`.
 
 **Found in the lab by the fifteenth record, gone in the sixteenth: the licence
 check (D2).** In the same record, with the guest's clock moved back (measured
@@ -523,8 +532,11 @@ and the untranslated mail-stack text are in the limits.
 ## Limits of this release
 
 These are known. They are not hidden defects. The first group is new with this
-release; the second is the list of v0.1.0-alpha.83's limits, copied, each
-marked "still open" because nothing in this release addresses it.
+release; the second is the list of v0.1.0-alpha.83's limits, condensed, each
+marked "still open" because nothing in this release addresses it. Two alpha.83
+sentences were dropped in the condensing (the evidence-scope host-standby
+sentence and "During the update to this release the open page is still
+alpha.82's"); both still hold.
 
 New with this release:
 
@@ -545,7 +557,8 @@ New with this release:
   and the Dashboard asks nothing. The held state shows for a change that does
   not scan first (a service reload was used) or one that lasts past the window.
 - **The mail-stack card on the Dashboard still has its own stale copy** of the
-  old text and its "Open Components" button. It does not check by itself.
+  old text and its "Open Components to rescan" button. It does not check by
+  itself.
 - **The sidebar's build identifier wraps in the middle of a word.** Observed by
   the owner after the update to v0.1.0-alpha.83; not fixed.
 - **Measured on Debian 13 once, nowhere else:** the licence check's fix (D2),
@@ -609,10 +622,11 @@ New with this release:
   compensation). A handler that changes something and later fails on a separate
   dial that is not joined to the earlier outcome would still claim it. Open; no
   handler-by-handler audit is claimed.
-- **No update to this candidate was measured.** The fourteenth record's guests
-  ran a disposable fixture build, not an update from v0.1.0-alpha.83. The
-  release preparation (sequence number, bootstrap pins, version lines) is not
-  done and is in no measured build.
+- **No update to this candidate was measured.** All three records (the
+  fourteenth, fifteenth and sixteenth) ran disposable fixture builds labelled
+  v0.1.0-alpha.81, whose tree differs only in `deploy/release-sequence-policy`;
+  none was an update from v0.1.0-alpha.83. The release preparation (sequence
+  number, bootstrap pins, version lines) is in no measured build.
 - **Evidence scope.** One laptop host; a test-licence build, not the signed
   archive; guests with outbound NAT whose traffic was not captured; each cell
   ran once; English was seen on a desktop window on Debian and Turkish on a
@@ -622,15 +636,15 @@ New with this release:
   Debian 13 only again: an English desktop window, Turkish on one phone window
   for the Components page, the guest's clock moved seven minutes each way, each
   cell once.
-- **Other cards when the Agent is down.** In the fourteenth and fifteenth
-  records, with the Agent stopped, the Dashboard's CPU, memory and disk cards
-  showed "—" with the amber banner, and the firewall read answered `500`. In
-  the sixteenth record the firewall read answered `503 AGENT_UNREACHABLE`
-  naming the Agent, and the CPU, memory and disk cards showed values (0 %,
-  15 %, 11 %); this release does not change those cards, and the difference was
-  not investigated. The Dashboard's "Needs attention" box does not name the
-  Agent (O6), and the Turkish Components page's firewall banner shows an
-  English sentence (O4).
+- **Other cards when the Agent is down.** In the fourteenth record, with the
+  Agent stopped, the Dashboard's CPU, memory and disk cards showed "—" with the
+  amber banner; the firewall read answered `500` in the fourteenth and fifteenth
+  records. In the sixteenth record the firewall read answered `503
+  AGENT_UNREACHABLE` naming the Agent, and the CPU, memory and disk cards showed
+  values (0 %, 15 %, 11 %); this release does not change those cards, and the
+  difference was not investigated. The Dashboard's "Needs attention" box does
+  not name the Agent (O6), and the Turkish Components page's firewall banner
+  shows an English sentence (O4).
 
 Limits of v0.1.0-alpha.83 that this release does not address (each still
 open):
@@ -731,14 +745,14 @@ Not published. Open before publication:
    on a real server. No longer open here. Not measured there, and still open:
    Ubuntu, Arch, the "may have completed" banner after an action, the guest's
    NTP settings, and its observations O4 to O6 (see the limits).
-2. The release preparation, committed separately and changing no file under
-   `cmd/`, `internal/` or `web/`: the release sequence number after the
-   previous one, the installer's bootstrap pins, the README version lines and
-   the contract tests that pin them. Not done. At publication the owner sets
-   the repository variable `CELIKPANEL_RELEASE_SEQUENCE` before the tag. The
-   real archive is built and signed by CI on the tag.
-3. The number: the owner decides it. v0.1.0-alpha.84 is the branch's working
-   name.
+2. The release preparation: done in commit 1636b73f0, which changes no file
+   under `cmd/`, `internal/` or `web/`. It holds the release sequence policy 84
+   after 83 with the alpha.83 release commit as previous, the
+   `download-portal/get.sh` pins, the README version lines and three contract
+   tests; the three contract tests pass in the build guest. Still open: the
+   repository variable `CELIKPANEL_RELEASE_SEQUENCE=84`, which the owner sets
+   before the tag. The real archive is built and signed by CI on the tag.
+3. The number: done, 2026-10-13. The owner decided that it is v0.1.0-alpha.84.
 4. The pull request's last head gets its own CI run.
 5. The owner merges, tags the release, checks the six signed assets as the
    signed release contract describes, and publishes the download portal.

@@ -2,23 +2,25 @@
 
 [English](RELEASE-NOTES-v0.1.0-alpha.84.md)
 
-Bu, v0.1.0-alpha.83'ü izleyen sürümün taslağıdır. v0.1.0-alpha.84 numarası
-dalın çalışma adıdır; numarayı yayımlama sırasında sahip belirler. Sürümün hiçbir
-parçası yayımlanmadı; hiçbir kurulu sunucu onu çalıştırmıyor. Bu taslak 13 Ekim
-2026'da yazıldı.
+Bu, v0.1.0-alpha.83'ü izleyen sürümün taslağıdır. Sahip 13 Ekim 2026'da
+numaranın v0.1.0-alpha.84 olduğuna karar verdi (commit 1636b73f0). Sürümün
+hiçbir parçası yayımlanmadı; hiçbir kurulu sunucu onu çalıştırmıyor. Bu taslak
+13 Ekim 2026'da yazıldı.
 
-Sürüm üç şey yapar; üçü de Panel'in "Sistem servisleri" kartı ve arkasındaki
-yanıtlar üzerindedir. Kart artık bileşenleri kendiliğinden kontrol eder; saklı
-tarama beş dakikadan eskiyse "Bilinmiyor" deyip sizi başka bir sayfada bir
-düğmeye basmaya bırakmaz ([D-032](DECISIONS.tr.md)). Sunucu artık bir taramanın
-ne kadar eski olduğunu kendisi söyler; böylece tarayıcı kendi saatini sunucununkiyle
-hiç karşılaştırmaz. Ve kendi sunucusundaki CelikPanel Agent'ına ulaşamayan bir
-Panel, "iç hata" demek yerine bunu ve sonraki adımı söyler.
+Sürüm, Panel'in "Sistem servisleri" kartı ve arkasındaki yanıtlar üzerinde üç
+şey, kartın yanında iki şey daha yapar. Kart artık bileşenleri kendiliğinden
+kontrol eder; saklı tarama beş dakikadan eskiyse "Bilinmiyor" deyip sizi başka
+bir sayfada bir düğmeye basmaya bırakmaz ([D-032](DECISIONS.tr.md)). Sunucu
+artık bir taramanın ne kadar eski olduğunu kendisi söyler; böylece tarayıcı
+kendi saatini sunucununkiyle hiç karşılaştırmaz. Ve kendi sunucusundaki
+CelikPanel Agent'ına ulaşamayan bir Panel, "iç hata" demek yerine bunu ve
+sonraki adımı söyler.
 
 Laboratuvarın yolda bulduğu ve düzeltilen bir kusur daha var: saati tarayıcının
-saatinden yaklaşık bir dakikadan fazla geride olan bir sunucu, lisans denetimi iki
-saati karşılaştırdığı için hiçbir Panel sayfasının açılmasına izin vermiyordu.
-Sunucu artık kalan süreyi kendisi söyler.
+saatinden yaklaşık bir dakikadan fazla geride olan bir sunucu, lisans denetimi
+iki saati karşılaştırdığı için hiçbir Panel sayfasının açılmasına izin
+vermiyordu. Sunucu artık kalan süreyi kendisi söyler. Kartın yanındaki ikinci
+şey, Bileşenler sayfasının başarısız okuma şeridir: artık nedenini söyler.
 
 Kartın yaptığı, bileşen testlerine, API taklidine karşı çalışan bir tarayıcıya
 ve üç laboratuvar ölçümüne dayanır; üçü de gerçek bir Panel'e karşı gerçek,
@@ -38,7 +40,7 @@ Hiç çalıştırılmayanları sınırlar bölümü söyler.
 **Güncellemeden sonra açık olan her CelikPanel sayfasını yeniden yükleyin.**
 Güncellemeden önce yüklenmiş bir sayfada hâlâ eski kart vardır.
 
-**Panel kendiliğinden bakar.** Bugüne kadar "Sistem servisleri" kartı, saklı
+**Dashboard kendiliğinden bakar.** Bugüne kadar "Sistem servisleri" kartı, saklı
 tarama beş dakikadan eskiyse "Bilinmiyor. Bileşen durumu eski. Yeniden taramak
 için Bileşenleri açın." diyordu ve Bileşenler sayfasında "Yeniden tara"
 düğmesine basmanızı istiyordu. Artık Panel, Bileşenler sayfasının çalıştırdığı
@@ -48,7 +50,10 @@ küçük tutan kurallarla:
 
 - Başarılı bir okumadan sonra, saklı tarama yoksa ya da 300 saniyeden eskiyse
   kontrol eder; yanıt ne olursa olsun beş dakikalık pencere başına en çok bir
-  kez.
+  kez. Tek istisna: bir değişiklik sürdüğü için reddedilmeden sonra, hazırlık
+  yoklaması sunucuyu hazır görünce bir takip kontrolü çalışır; bu, bir
+  pencerenin içine bir kontrol daha ekleyebilir (`heldSawBusy` pencereyi
+  sıfırlar).
 - Yalnız sekme görünürken kontrol eder. Gizli bir sekme hiçbir şey çalıştırmaz;
   yeniden gösterilen sekme, kontrol zamanı gelmişse bir kez kontrol eder.
 - Biri sürerken ikincisini başlatmaz; aralıkla, ne olursa olsun tarayan bir
@@ -71,7 +76,10 @@ Maliyeti: bir kontrol bir koşullu taramadır. İki laboratuvar konuğunda ölç
 üzere bir kontrol Agent'a yaklaşık 0,2 ile 0,4 saniye CPU süresine mal oldu (47
 saniyelik iki pencereden bir tahmin; "Ne ölçüldü, nasıl ölçüldü" bölümüne
 bakın). Açık ve görünür bir Dashboard için beş dakikada en çok bir kontrol;
-gizli sekme için hiç.
+istisna: bir değişiklik sürdüğü için reddedilmeden sonra hazırlık yoklaması
+sunucuyu hazır görünce bir takip kontrolü çalışır ve bir pencerenin içine bir
+kontrol daha ekleyebilir (`heldSawBusy` pencereyi sıfırlar); gizli sekme için
+hiç.
 
 **Taramanın yaşı sunucunun beyanıdır.** Üç yönetilen-servisler yanıtı
 `scan_age_seconds` taşır: yanıt yazılırken taramanın sunucu saatiyle yaşı.
@@ -143,10 +151,11 @@ okuma şeridi değişir. Veritabanı şeması değişmedi, yeni rota yok.
 ### Laboratuvarın bulduğu kusur ve onu düzelten iki adım
 
 On dördüncü kayıt kartın ilk sürümünü ölçtü. Konuğun saati tarayıcınınkinden bir
-iki saniye ileride olduğunda (1,05 ile 2,16 sn ölçüldü), kart her kontrolden
-sonra 20 ile 29 saniye "Son 5 dakikada kontrol edilmedi" gösterdi; çünkü sayfa
-kendi saatinden sonraki bir tarama damgasını reddediyordu ve yalnız 30 saniyelik
-tiki o damgayı geçiyordu (o kaydın D1 kusuru).
+iki saniye ileride olduğunda (1,04 ile 2,15 sn ölçüldü), kart dört otomatik
+kontrolün her birinden sonra (operatörün basışından 1,5 sn sonra) 20 ile 29
+saniye "Son 5 dakikada kontrol edilmedi" gösterdi; çünkü sayfa kendi saatinden
+sonraki bir tarama damgasını reddediyordu ve yalnız 30 saniyelik tiki o damgayı
+geçiyordu (o kaydın D1 kusuru).
 
 Birinci adım: sayfa, tarama damgası taşıyan her yanıtı aldığı anı kaydeder ve
 taramanın zamanı olarak damga ile o anın erken olanını alır. İkinci adım
@@ -232,11 +241,12 @@ yerler:
   işleyici, Agent'ın Unix soketine başarısız bağlantı kurma (dinleyen yok ya da
   soket dosyası yok; hata sarılmış olabilir) tek neden olduğunda `503
   AGENT_UNREACHABLE` yanıtlar. Buna tarama işleyicisi (`POST
-  /api/v1/managed-services/scan`), on bir değiştirici işleyicinin bir şeyi
-  değiştirmeden önce çalıştırdığı ortak kabul denetimi (reddedilen kabul hiçbir
-  şeyi değiştirmemiştir), güvenlik duvarı okuması (`GET /api/v1/firewall`) ve
-  sistem denetimi dahildir. Sistem denetiminin öteki hataları artık düz metin
-  yerine kodlu `INTERNAL` hatasını yanıtlar.
+  /api/v1/managed-services/scan`), değiştirici işleyicilerin bir şeyi
+  değiştirmeden önce çalıştırdığı ortak kabul denetimi (`beginServiceMutation`;
+  68b79b372 commit'inde tarama işleyicisi dışında dokuz çağrı yeri; reddedilen
+  kabul hiçbir şeyi değiştirmemiştir), güvenlik duvarı okuması (`GET
+  /api/v1/firewall`) ve sistem denetimi dahildir. Sistem denetiminin öteki
+  hataları artık düz metin yerine kodlu `INTERNAL` hatasını yanıtlar.
 - Birleşik hata için değil. Örneğin bir hata ve onun telafisinden oluşan bir
   hata gerçekleşmiş bir değişiklik taşıyabilir; bu yüzden genel yolda kalır.
   Kabul edilen tek birleşim, platform kimliği işaretiyle nedenidir; çünkü o okuma
@@ -398,8 +408,9 @@ isteğin süresi kadar bir aralıkla sınırlıdır. Sonuçlar:
 - Bütün koşuda altı tarama gönderildi: bayat yükleme, Bileşenler sayfası, üç
   reddedilen tarama ve basış.
 
-Kaydın kabul denetimi, README'sindeki üç rakamı ham dosyalara göre düzeltti; buradaki
-rakamlar README'nin şu anki hâlidir. Çalışma ürünün hiçbir şeyini değiştirmedi ve
+Kaydın kabul denetimi (commit fb5ec06f8), README'sindeki üç rakamı ham dosyalara
+göre düzeltti ve yanlış bir `phases.json` alanını kaydetti; buradaki rakamlar
+README'nin şu anki hâlidir. Çalışma ürünün hiçbir şeyini değiştirmedi ve
 `result.json`ı `native_evidence: false` taşır.
 
 **On beşinci kayıtta laboratuvarda bulundu, on altıncıda yok: lisans denetimi
@@ -518,8 +529,11 @@ O6 ile çevrilmemiş posta yığını metni sınırlardadır.
 ## Bu sürümün sınırları
 
 Bunlar bilinir. Gizli kusur değildir. İlk grup bu sürümle yeni; ikincisi
-v0.1.0-alpha.83'ün sınırlarının, bu sürümde hiçbiri ele alınmadığı için her
-biri "hâlâ açık" diye işaretlenmiş kopyasıdır.
+v0.1.0-alpha.83'ün sınırlarının, bu sürümde hiçbiri ele alınmadığı için her biri
+"hâlâ açık" diye işaretlenmiş özetidir. Özetlenirken alpha.83'ün iki cümlesi
+düşürüldü (kanıt kapsamındaki ana makine bekleme cümlesi ve "Bu sürüme
+güncelleme sırasında açık sayfa hâlâ alpha.82'nindir"); ikisi de hâlâ
+geçerlidir.
 
 Bu sürümle yeni:
 
@@ -603,10 +617,12 @@ Bu sürümle yeni:
   kapsar. Bir şeyi değiştirip sonra, önceki sonuca birleşmemiş ayrı bir bağlantıda
   başarısız olan bir işleyici yine de bunu söylerdi. Açık; işleyici işleyici bir
   denetim iddia edilmez.
-- **Bu adaya güncelleme ölçülmedi.** On dördüncü kaydın konukları,
-  v0.1.0-alpha.83'ten bir güncelleme değil, geçici bir sabit derleme çalıştırdı.
-  Sürüm hazırlığı (sürüm sırası numarası, önyükleme sabitleri, sürüm satırları)
-  yapılmadı ve ölçülen hiçbir derlemede yok.
+- **Bu adaya güncelleme ölçülmedi.** Üç kaydın (on dördüncü, on beşinci ve on
+  altıncı) hepsi v0.1.0-alpha.81 etiketli, ağacı yalnız
+  `deploy/release-sequence-policy`de farklı olan geçici sabit derlemeler
+  çalıştırdı; hiçbiri v0.1.0-alpha.83'ten bir güncelleme değildi. Sürüm
+  hazırlığı (sürüm sırası numarası, önyükleme sabitleri, sürüm satırları)
+  ölçülen hiçbir derlemede yok.
 - **Kanıt kapsamı.** Tek dizüstü ana makine; imzalı arşiv değil, test lisanslı
   bir derleme; trafiği yakalanmayan, dışarıya NAT'lı konuklar; her hücre bir kez
   koştu; İngilizce Debian'da masaüstü penceresinde, Türkçe Ubuntu'da telefon
@@ -616,14 +632,15 @@ Bu sürümle yeni:
   yalnız Debian 13 ekledi: İngilizce masaüstü penceresi, Bileşenler sayfası için
   bir Türkçe telefon penceresi, konuğun saati her yöne yedi dakika kaydırıldı,
   her hücre bir kez.
-- **Agent kapalıyken öteki kartlar.** On dördüncü ve on beşinci kayıtlarda,
-  Agent durmuşken Dashboard'ın CPU, bellek ve disk kartları kehribar uyarıyla
-  "—" gösterdi ve güvenlik duvarı okuması `500` yanıtladı. On altıncı kayıtta
-  güvenlik duvarı okuması Agent'ı adıyla söyleyen `503 AGENT_UNREACHABLE`
-  yanıtladı ve CPU, bellek ve disk kartları değer gösterdi (% 0, % 15, % 11);
-  bu sürüm o kartları değiştirmez ve fark incelenmedi. Dashboard'ın "İlgi istiyor"
-  kutusu Agent'ı adıyla söylemiyor (O6) ve Türkçe Bileşenler sayfasının güvenlik
-  duvarı şeridi İngilizce bir cümle gösteriyor (O4).
+- **Agent kapalıyken öteki kartlar.** On dördüncü kayıtta, Agent durmuşken
+  Dashboard'ın CPU, bellek ve disk kartları kehribar uyarıyla "—" gösterdi;
+  güvenlik duvarı okuması on dördüncü ve on beşinci kayıtlarda `500` yanıtladı.
+  On altıncı kayıtta güvenlik duvarı okuması Agent'ı adıyla söyleyen `503
+  AGENT_UNREACHABLE` yanıtladı ve CPU, bellek ve disk kartları değer gösterdi (%
+  0, % 15, % 11); bu sürüm o kartları değiştirmez ve fark incelenmedi.
+  Dashboard'ın "İlgi istiyor" kutusu Agent'ı adıyla söylemiyor (O6) ve Türkçe
+  Bileşenler sayfasının güvenlik duvarı şeridi İngilizce bir cümle gösteriyor
+  (O4).
 
 Bu sürümün ele almadığı v0.1.0-alpha.83 sınırları (her biri hâlâ açık):
 
@@ -722,13 +739,15 @@ Yayımlanmadı. Yayımlamadan önce açık olanlar:
    şeridi, gerçek bir sunucuda. Burada artık açık değil. Orada ölçülmeyen ve hâlâ
    açık olanlar: Ubuntu, Arch, bir işlemden sonra "tamamlanmış olabilir" şeridi,
    konuğun NTP ayarları ve gözlemleri O4 ile O6 (sınırlara bakın).
-2. Ayrı bir commit'te yapılan ve `cmd/`, `internal/` ya da `web/` altında
-   hiçbir dosyayı değiştirmeyen sürüm hazırlığı: öncekinden sonra gelen sürüm
-   sırası numarası, kurucunun önyükleme sabitleri, README sürüm satırları ve
-   onları sabitleyen sözleşme testleri. Yapılmadı. Yayımlamada sahip, etiketten
-   önce `CELIKPANEL_RELEASE_SEQUENCE` depo değişkenini ayarlar. Gerçek arşivi
-   etikette CI derler ve imzalar.
-3. Numara: sahip belirler. v0.1.0-alpha.84 dalın çalışma adıdır.
+2. Sürüm hazırlığı: 1636b73f0 commit'inde yapıldı; `cmd/`, `internal/` ya da
+   `web/` altında hiçbir dosyayı değiştirmez. İçinde 83'ten sonra 84 olan sürüm
+   sırası politikası (önceki olarak alpha.83 sürüm commit'i),
+   `download-portal/get.sh` sabitleri, README sürüm satırları ve üç sözleşme
+   testi var; üç sözleşme testi derleme konuğunda geçer. Hâlâ açık: sahibin
+   etiketten önce ayarladığı `CELIKPANEL_RELEASE_SEQUENCE=84` depo değişkeni.
+   Gerçek arşivi etikette CI derler ve imzalar.
+3. Numara: yapıldı, 13 Ekim 2026. Sahip numaranın v0.1.0-alpha.84 olduğuna karar
+   verdi.
 4. Çekme isteğinin son ucu kendi CI koşusunu alır.
 5. Sahip birleştirir, sürümü etiketler, imzalı sürüm sözleşmesinin anlattığı
    gibi altı imzalı dosyayı denetler ve indirme portalını yayımlar.

@@ -61,21 +61,22 @@ visible one more not before 300 seconds, a hidden tab none for five minutes
 and one when shown, and one check cost the Agent about 0.2 to 0.4 seconds of
 CPU (an estimate from two 47-second windows).
 
-The clock rule. The server states a scan's age (`scan_age_seconds`, on the
-three managed-services answers, measured on the server's clock when the answer
-is written); the page dates the scan as the moment it received the answer
-minus that age. The browser never compares its own clock with the server's.
-The rule has two steps because the lab found the defect in the first version:
-with the guest's clock one to two seconds ahead, the card showed "Not checked
-in the last 5 minutes" for 20 to 29 seconds after every check. The first step
-(the earlier of the stamp and the moment of receipt) removed it for a server
-ahead; the second (the server's age) also removes it for a server more than
-five minutes behind. An older server without the field keeps the first rule.
-A negative age, or one that is not a finite number, is not taken as fresh.
-Measured (fifteenth record, Debian 13, guest 1.5 s ahead): one conditional
-scan on a stale load and the card going straight to the result, with no "Not
-checked in the last 5 minutes" frame. The case of a server clock behind could
-not be measured, because of the defect below, and is open.
+The clock rule. The server states a scan's age (`scan_age_seconds`, on the three
+managed-services answers, measured on the server's clock when the answer is
+written); the page dates the scan as the moment it received the answer minus
+that age. The browser never compares its own clock with the server's. The rule
+has two steps because the lab found the defect in the first version: with the
+guest's clock one to two seconds ahead, the card showed "Not checked in the last
+5 minutes" for 20 to 29 seconds after every check. The first step (the earlier
+of the stamp and the moment of receipt) removed it for a server ahead; the
+second (the server's age) also removes it for a server more than five minutes
+behind. An older server without the field keeps the first rule. A negative age,
+or one that is not a finite number, is not taken as fresh. Measured (fifteenth
+record, Debian 13, guest 1.5 s ahead): one conditional scan on a stale load and
+the card going straight to the result, with no "Not checked in the last 5
+minutes" frame. The case of a server clock behind was measured later, in the
+sixteenth record (set14c, Debian 13, 2026-10-13, clock seven minutes behind):
+one conditional scan, then the result to the end of 90 s.
 
 The same rule holds for the licence check, which the lab showed breaking it.
 `/api/v1/license/access` gave the end of access (`valid_until`) as a time on
@@ -93,25 +94,26 @@ and seven minutes ahead of the browser's, the page mounted and read the access
 four times in 90 s, as with a correct clock.
 
 The typed-error rule. A Panel that cannot open its own Agent's local socket
-answers `503 AGENT_UNREACHABLE`: the reason, that nothing was changed, who
-acts, the next action and how work resumes (D-024). The answer is written once,
-in the shared server-error writer, so it applies to every handler that reaches
-that writer with a failed dial of the Agent's socket as the only cause (the
-scan, the admission check of eleven mutation handlers, the firewall read, the
+answers `503 AGENT_UNREACHABLE`: the reason, that nothing was changed, who acts,
+the next action and how work resumes (D-024). The answer is written once, in the
+shared server-error writer, so it applies to every handler that reaches that
+writer with a failed dial of the Agent's socket as the only cause (the scan, the
+admission check (`beginServiceMutation`) of the mutation handlers (nine call
+sites besides the scan handler at commit 68b79b372), the firewall read, the
 system check), not handler by handler. It is for a failed dial only. A
 connection that broke after a request was sent is an unknown result and keeps
-the generic path; an unknown result is never rewritten into a verified
-failure. Neither is a joined error, such as a failure together with its
-compensation: an earlier part may have changed something, and "nothing was
-changed" would be false. The one join accepted is the platform-identity
-sentinel with its cause, because that read runs before the call it guards. The
-DNSSEC status, the update status and start, domain deletion and mail password
-rotation stay on their own typed paths. An ordinary failure still answers
-`500`. Measured at the scan and at the admission check (fifteenth record) and at the
-firewall read, the system check and a restart request (sixteenth record, `503`
-with only `code` and `error`, nginx unchanged). Open: a handler
-that changes something and later fails on a separate dial that is not joined
-to the earlier outcome would still claim that nothing was changed.
+the generic path; an unknown result is never rewritten into a verified failure.
+Neither is a joined error, such as a failure together with its compensation: an
+earlier part may have changed something, and "nothing was changed" would be
+false. The one join accepted is the platform-identity sentinel with its cause,
+because that read runs before the call it guards. The DNSSEC status, the update
+status and start, domain deletion and mail password rotation stay on their own
+typed paths. An ordinary failure still answers `500`. Measured at the scan and
+at the admission check (fifteenth record) and at the firewall read, the system
+check and a restart request (sixteenth record, `503` with only `code` and
+`error`, nginx unchanged). Open: a handler that changes something and later
+fails on a separate dial that is not joined to the earlier outcome would still
+claim that nothing was changed.
 
 The read-banner rule. A failed read never claims an action. A screen that
 could not read a state says that it could not read it and why, with the next
@@ -132,9 +134,9 @@ What this does not authorise:
   Components page already offers; a poll that sees a state never starts a
   change, and the readiness poll's one follow-up is that same scan.
 - No other card, page or screen is converted by this decision. The mail-stack
-  card on the Dashboard keeps its own stale text and its "Open Components"
-  button until a change of its own; screens that still read the server the old
-  way stay on the list in the release notes.
+  card on the Dashboard keeps its own stale text and its "Open Components to
+  rescan" button until a change of its own; screens that still read the server
+  the old way stay on the list in the release notes.
 - No claim that the foundation is finished: no P0 item is closed or advanced.
 
 Relation to the rest. D-024 requires every operation to show its reason, who
