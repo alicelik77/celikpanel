@@ -36,6 +36,12 @@ fault was found in the lab by the fifteenth record and is gone in the
 sixteenth (see "What was measured, and how"). The limits say what was never
 run.
 
+After those, the seventeenth record (set15, 2026-10-13) was the
+pre-publication measurement: the candidate commit itself, installed fresh on
+Debian 13 and Ubuntu 24.04, updated from v0.1.0-alpha.83 on Debian 13, and a
+defective candidate that returned by itself. It left two open items (see the
+limits).
+
 ## What changes for the server owner
 
 **After the update, reload every CelikPanel page that was open.** A page loaded
@@ -529,6 +535,112 @@ Nothing of the product was changed by the run, and its `result.json` carries
 `native_evidence: false`. It closes no P0 row. Its observations O4, O5 and O6
 and the untranslated mail-stack text are in the limits.
 
+**The seventeenth native record**
+([set15](../deploy/e2e/release-recovery/evidence/set15-20261013/README.md),
+2026-10-13 UTC). The pre-publication measurement, and the first record to run
+`1636b73f0` itself, the commit this release is prepared in, with no fixture
+commit between. It is also the first to run an update from v0.1.0-alpha.83.
+Test-licence builds, none a release: the candidate (version v0.1.0-alpha.84,
+sequence 84) was built from `1636b73f0`; the baseline is a rebuild of the
+alpha.83 tag's source (the tag commit, unpatched), not the published archive;
+the defective candidate is `1636b73f0` plus the migrate-only defect of an
+earlier record, in `cmd/panel/main.go`. Disposable guests, a real headless
+Chrome on the host, an English desktop window (1440 by 900) on Debian 13
+and a Turkish desktop window on Ubuntu 24.04.
+
+- **Fresh installs, Debian 13 and Ubuntu 24.04.** The version route answered
+  `v0.1.0-alpha.84`, commit `1636b73f0979…`, `agent_matches: true`,
+  `schema_version: 44`; the sidebar read "CelikPanel · v0.1.0-alpha.84 ·
+  build 1636b73f0979". The bootstrap pins read 84 and `v0.1.0-alpha.84` in the
+  archive's `libexec/get.sh` (lines 6 and 7) and in the installed copy of that
+  file on both guests. Sign-in, the licence and the setup purpose `web` passed;
+  the setup waits at the DNS step and was left there. The domains list was
+  empty (`GET /api/v1/domains` answered `[]`) and the page showed no
+  first-state row. `GET /api/v1/license/access` carried `valid_for_seconds`
+  with `can_use_panel: true`, `state: active`, `observation: known`;
+  `GET /api/v1/managed-services` carried `scan_age_seconds`.
+- **The Dashboard with a stale scan.** The stored scan was 317.1 s old
+  (Debian) and 317.2 s old (Ubuntu) at the load. In 90 s each Dashboard sent
+  exactly one `POST /api/v1/managed-services/scan?max_age_seconds=300`: 200 in
+  1126 ms (Debian) and 1590 ms (Ubuntu). The card went from absent to
+  checking (1145 ms and 1611 ms after the load) to "3 / 3 running / installed"
+  ("3 / 3 çalışan / kurulu" in Turkish). "Open Components to rescan" was not
+  seen. The Components page loaded right after, with a scan 90 s old, sent no
+  scan, as designed. On Ubuntu the Components page with a stale scan (317 s)
+  sent one conditional scan (200, 2026 ms) and showed no alert and no toast.
+  On Debian that load was not measured.
+- **The update from v0.1.0-alpha.83, Debian 13, good candidate, three runs
+  (a, b, c).** A baseline with a hosted static site, updated through the
+  Panel's own update path. Every run ended `phase: succeeded`,
+  `reason: update_verified`, `terminal_proof: update_verified`, with the build
+  identity of the Agent and the Panel at `v0.1.0-alpha.84`, `1636b73f0…`, the
+  release floor at sequence 84, and the schema ledger `as-expected`. The schema
+  was 44 before (alpha.83 answered 44) and 44 after. No migration file changed
+  between the alpha.83 tag and `1636b73f0` (9 files under `cmd` and
+  `internal`, none a migration). Domains showed 1 row,
+  `site_config: managed_unchanged`.
+- **The Dashboard after the update (run c).** With a stored scan 441 s old,
+  from before the update, it sent one conditional scan by itself (200,
+  1210 ms) and went from absent to checking (1240 ms) to "6 / 6 running /
+  installed". The Components page sent no scan right after and one conditional
+  scan (200, 1187 ms) once the scan was stale. The Dashboard's Mail stacks
+  card showed "Status needs refresh" and "Open Components to rescan" for about
+  1.2 s, until the scan answered. That is the known open item in the limits
+  (the card has its own copy of the old text); it is not new.
+- **The defective candidate: the automatic return.** With the fault
+  "reboot at `payload_restored`", the guest reset once. The update recovered
+  by itself: `phase: recovered`, `reason: rollback_verified`,
+  `previous_failure: update_failed`, two automatic attempts. Afterwards the
+  Agent and the Panel reported the alpha.83 build (`v0.1.0-alpha.83`,
+  `0447558e…`), and the Panel answered: the single-page root and an API route
+  200, one route 401 or 403, an unknown path 404, and the version route named
+  alpha.83's build.
+- **Open finding: `managed_site_files` after the return.** The driver's
+  terminal step failed on its database comparison: the Panel's database after
+  the return differs from the copy taken before the update in one table,
+  `managed_site_files` (one row, 21 columns both times; only digests were
+  recorded, not the rows). The three good runs list the same table as
+  differing and pass, because the update path does not require equality. The
+  likely cause, from the source and **not confirmed from the rows**: the Panel
+  re-observes each site's files at every start and rewrites the row's
+  observation fields, `observed_at` among them
+  (`internal/services/site_file_ledger.go` lines 263 to 273, an upsert with
+  `observed_at = excluded.observed_at`, and lines 297 to 300, 327, 391 and
+  426; the column is in `internal/db/migrations/044_managed_site_files.sql`
+  line 31). After the return alpha.83 starts and observes again, so the
+  table's digest changes. The driver's check did not treat the table as
+  volatile because it did not exist in the alpha.82 baselines of the set12
+  and set13 records (ledger 43). Because the step failed, the readings after the
+  return and the browser window after it did not run, so there is no sidebar
+  picture or Dashboard reading after the return. The product-level facts
+  above stand. The finding is recorded, not judged.
+- **The recovery foundation file after the return.** After the automatic
+  return the release floor reads sequence 84 and the recovery foundation file
+  still names the defective candidate's commit, while the running build is
+  alpha.83. Recorded, not judged. This is not new as a pattern: the
+  [upd2](../deploy/e2e/release-recovery/evidence/upd2-20261001/README.md) and
+  [upd7](../deploy/e2e/release-recovery/evidence/upd7-20261001/README.md)
+  records of 2026-10-01 already show the floor and the recovery foundation
+  staying at the candidate's values after a rollback (upd2 calls the floor's
+  case by design), and the set12 record showed the floor at 83 after its
+  return to 82. The set12 and set13 READMEs do not mention the foundation
+  file. It is new only as a reading with an alpha.83 baseline.
+- **The host's sleep.** The laptop host slept from about 10:20Z to 12:35Z
+  (modern standby; the keep-awake request did not prevent it) during the
+  third good run. The guest was frozen and its clock ended 8050 s behind the
+  browser's. That run's workload verdict failed ("workload interruption outside
+  the expected windows: web, smtp, cron, panel"); this is the environment's
+  doing. Runs a and b, without the sleep, passed that verdict. The update of
+  run c itself ran after the wake.
+- **Not run or not measured:** Arch; the stale Components load on Debian fresh;
+  the readings after the defective return (see the open finding).
+
+The intake checked 1578 listed files, all present, with no secrets or operator
+identity; one host path was redacted and four README statements were corrected
+against the raw files. The run changed no product code, and its `result.json`
+files carry `native_evidence: false`. It closes no P0 row. The open finding is
+recorded, not judged a product defect.
+
 ## Limits of this release
 
 These are known. They are not hidden defects. The first group is new with this
@@ -540,10 +652,28 @@ alpha.82's"); both still hold.
 
 New with this release:
 
+- **Open finding: `managed_site_files` after an automatic return.** In the
+  seventeenth record the lab's database comparison after the return from the
+  defective candidate found one table, `managed_site_files`, differing from the
+  copy taken before the update. The cause is not confirmed from the rows (only
+  digests were kept). The likely cause, from the source, is that the Panel
+  rewrites each row's observation fields, `observed_at` among them, at every
+  start, so the return's restart changes them
+  (`internal/services/site_file_ledger.go` lines 263 to 273, 297 to 300, 327,
+  391 and 426; `044_managed_site_files.sql` line 31). The lab's check must
+  exclude the field or the table in the next record. Not judged a product
+  defect; the return itself happened and the Panel answered as alpha.83.
+- **The recovery foundation file names the defective candidate after the
+  return.** After the automatic return the file still names the defective
+  candidate's commit while the running build is alpha.83, and the release floor
+  reads 84. Recorded, not judged. Already known as a pattern from the upd2 and
+  upd7 records (2026-10-01) and the floor from the set12 record; open.
 - **Ubuntu and Arch were not measured after the changes.** The fourteenth
   record ran Debian 13 and Ubuntu 24.04 (the first commit only), the fifteenth
   and sixteenth Debian 13 only. The Debian labs' idle Arch peer was not
-  measured.
+  measured. The seventeenth record installed the candidate fresh on Ubuntu
+  24.04 and measured the Dashboard and the Components page there; no update
+  ran on Ubuntu, and Arch was not run.
 - **`server_setup_busy` was not measured.** The setup ran before the browser
   window opened, so no Dashboard load happened during it. Only
   `service_operation_busy` was seen.
@@ -622,11 +752,16 @@ New with this release:
   compensation). A handler that changes something and later fails on a separate
   dial that is not joined to the earlier outcome would still claim it. Open; no
   handler-by-handler audit is claimed.
-- **No update to this candidate was measured.** All three records (the
-  fourteenth, fifteenth and sixteenth) ran disposable fixture builds labelled
-  v0.1.0-alpha.81, whose tree differs only in `deploy/release-sequence-policy`;
-  none was an update from v0.1.0-alpha.83. The release preparation (sequence
-  number, bootstrap pins, version lines) is in no measured build.
+- **The candidate itself was measured before publication, once.** The
+  seventeenth record ran commit `1636b73f0` itself, not a fixture: fresh
+  installs on Debian 13 and Ubuntu 24.04, and the update from a rebuild of the
+  v0.1.0-alpha.83 tag on Debian 13. This closes the earlier limit that the
+  release preparation (sequence number, bootstrap pins, version lines) was in
+  no measured build. What it does not cover: the archives were test-licence
+  rebuilds, not the signed ones; the baseline was a rebuild of the alpha.83
+  tag, not the published archive; the update ran on Debian 13 only; Arch was
+  not run; the defective candidate's readings after the return did not run
+  (see the open finding).
 - **Evidence scope.** One laptop host; a test-licence build, not the signed
   archive; guests with outbound NAT whose traffic was not captured; each cell
   ran once; English was seen on a desktop window on Debian and Turkish on a
@@ -635,7 +770,10 @@ New with this release:
   load, the guest's clock moved by the harness. The sixteenth record added
   Debian 13 only again: an English desktop window, Turkish on one phone window
   for the Components page, the guest's clock moved seven minutes each way, each
-  cell once.
+  cell once. The seventeenth record added fresh installs on Debian 13 (English
+  desktop window) and Ubuntu 24.04 (Turkish desktop window), each once, and the
+  update on Debian 13 (good candidate three times, defective candidate once);
+  the clock was not moved.
 - **Other cards when the Agent is down.** In the fourteenth record, with the
   Agent stopped, the Dashboard's CPU, memory and disk cards showed "—" with the
   amber banner; the firewall read answered `500` in the fourteenth and fifteenth
@@ -745,18 +883,23 @@ Not published. Open before publication:
    on a real server. No longer open here. Not measured there, and still open:
    Ubuntu, Arch, the "may have completed" banner after an action, the guest's
    NTP settings, and its observations O4 to O6 (see the limits).
-2. The release preparation: done in commit 1636b73f0, which changes no file
+2. The pre-publication measurement: done (set15, the seventeenth record,
+   2026-10-13), on commit 1636b73f0 itself: fresh installs on Debian 13 and
+   Ubuntu 24.04, the update from v0.1.0-alpha.83 on Debian 13, and the
+   automatic return of a defective candidate. It left the two open items in the
+   limits. The owner's steps below are unchanged.
+3. The release preparation: done in commit 1636b73f0, which changes no file
    under `cmd/`, `internal/` or `web/`. It holds the release sequence policy 84
    after 83 with the alpha.83 release commit as previous, the
    `download-portal/get.sh` pins, the README version lines and three contract
    tests; the three contract tests pass in the build guest. Still open: the
    repository variable `CELIKPANEL_RELEASE_SEQUENCE=84`, which the owner sets
    before the tag. The real archive is built and signed by CI on the tag.
-3. The number: done, 2026-10-13. The owner decided that it is v0.1.0-alpha.84.
-4. The pull request's last head gets its own CI run.
-5. The owner merges, tags the release, checks the six signed assets as the
+4. The number: done, 2026-10-13. The owner decided that it is v0.1.0-alpha.84.
+5. The pull request's last head gets its own CI run.
+6. The owner merges, tags the release, checks the six signed assets as the
    signed release contract describes, and publishes the download portal.
-6. After the release is published, the owner of each installed server updates
+7. After the release is published, the owner of each installed server updates
    that server from the panel's own update screen. This is a separate step from
    every step above; no one else starts it.
 

@@ -416,8 +416,8 @@ above and below stays open.
   - No P0 item is closed or advanced by this candidate. Publishing it will
     not update any installed panel; only the owner starts that, from the
     panel's own update screen.
-- **v0.1.0-alpha.84 candidate (not published).** Written 2026-10-13. The number
-  is the branch's working name; the owner decides it at publication. Owner
+- **v0.1.0-alpha.84 candidate (not published).** Written 2026-10-13. The owner
+  decided on 2026-10-13 that the number is v0.1.0-alpha.84. Owner
   decision of 2026-10-12, after the update to v0.1.0-alpha.83: the Dashboard
   checks the components by itself, without wasting resources
   ([D-032](docs/DECISIONS.md)). The candidate is the branch
@@ -438,8 +438,13 @@ above and below stays open.
   O3; the Components page says a failed read could not read the state instead of
   saying an action may have completed, observation O2), `68b79b372` (2026-10-13:
   the read banner's text keeps a readable measure; classes only), `4ed7b1278`
-  (documents only) and `c76861cde` (2026-10-13: the sixteenth native record,
-  set14c, evidence only: no product code). No schema change, no new route
+  (documents only), `c76861cde` (2026-10-13: the sixteenth native record,
+  set14c, evidence only: no product code), `6e264615f` (documents only),
+  `1636b73f0` (2026-10-13: the release preparation: release sequence policy 84,
+  bootstrap pins, version lines and three contract tests; no file under
+  `cmd/`, `internal/` or `web/`), `aa7dac2b2` (the draft release notes;
+  documents only) and `e6ed563ad` (2026-10-13: the seventeenth native record,
+  set15, evidence only: no product code). No schema change, no new route
   ([draft release notes](docs/RELEASE-NOTES-v0.1.0-alpha.84.md)). The alpha.83
   entry above still reads "not published"; it was written before that release
   was published and is not rewritten here.
@@ -494,6 +499,36 @@ above and below stays open.
     changed code. Not measured: Ubuntu, Arch, the "may have completed" banner
     after an action, the guest's NTP settings. Observations for the next
     release: O4, O5, O6 and untranslated mail-stack text (below).
+  - *Measured: the seventeenth native record, set15, the pre-publication
+    measurement*
+    ([set15](deploy/e2e/release-recovery/evidence/set15-20261013/README.md),
+    2026-10-13 UTC; disposable guests, a real headless Chrome; test-licence
+    builds of `1636b73f0` itself and of a rebuild of the alpha.83 tag's source).
+    Fresh installs on Debian 13 (English) and Ubuntu 24.04 (Turkish): version
+    v0.1.0-alpha.84, schema 44, bootstrap pins 84 in the archive and in the
+    installed copy, no domains and no first-state row, `valid_for_seconds` and
+    `scan_age_seconds` present, exactly one conditional scan per stale Dashboard
+    load (1126 ms and 1590 ms), the Components page's conditional scan once
+    stale (Ubuntu; Debian not measured). The update from the alpha.83 rebuild
+    to the candidate on Debian 13, three runs, each `update_verified`, schema 44
+    before and after (no migration between the tag and the candidate); the
+    Dashboard after the update checked by itself (one scan, "6 / 6"), with the
+    Mail stacks card's own "Open Components to rescan" seen for about 1.2 s (the
+    known open item, not new). The defective candidate returned by itself
+    (`recovered`, `rollback_verified`, two attempts, a reboot at
+    `payload_restored`) and the Panel answered as alpha.83. **Open, recorded and
+    not judged:** after the return the lab's database comparison found
+    `managed_site_files` differing (digests only; the likely cause from the
+    source is the Panel rewriting `observed_at` and the other observation
+    fields at every start, `internal/services/site_file_ledger.go` lines 263 to
+    273, 297 to 300, 327, 391, 426; not confirmed from the rows); and the
+    recovery foundation file still names the defective candidate while the
+    running build is alpha.83 and the floor reads 84 (the pattern is already
+    known from upd2 and upd7). The host slept for about two hours during run c,
+    so that run's workload verdict failed for the environment; runs a and b
+    passed it. Not run: Arch, the Debian stale-Components load, the readings
+    after the defective return. This closes the earlier limit that the release
+    preparation was in no measured build. Closes no P0 row.
   - *Component tests on `7024534bc` (`68b79b372` after it changed classes only;
     `npm test` 1339 of 1339):* `go test ./cmd/panel/... ./internal/...` 7028
     passed, 44 skipped, 0 failed; `npm test` 1339 of 1339; `npm run build`
@@ -507,11 +542,13 @@ above and below stays open.
     keeping every page from loading, and observations O2 and O3 of the same
     record (`7024534bc`, component-tested, then measured in the sixteenth
     record).
-  - *Open before publication:* the release preparation commit (release sequence,
-    bootstrap pins, version lines; changes no file under `cmd/`, `internal/` or
-    `web/`); the owner's decision on the number; the CI run of the last head;
-    merge, tag, the six signed assets and the portal publication, all by the
-    owner. Each installed panel is then updated by its owner from the panel's
+  - *Open before publication:* the repository variable
+    `CELIKPANEL_RELEASE_SEQUENCE=84`, which the owner sets before the tag; the
+    CI run of the last head; merge, tag, the six signed assets and the portal
+    publication, all by the owner. Done: the release preparation commit
+    `1636b73f0`; the owner's decision on the number (2026-10-13); the
+    pre-publication measurement of a fresh install and of the update from
+    alpha.83 on the candidate commit itself (the seventeenth record). Each installed panel is then updated by its owner from the panel's
     own update screen; no one else starts that.
   - *Open for the next release, with this candidate's limits as the release
     notes list them:* the mail-stack card on the Dashboard still has its own
@@ -519,8 +556,11 @@ above and below stays open.
     wraps in the middle of a word (the owner's observation after the alpha.83
     update); Ubuntu (after the changes), Arch, `server_setup_busy` and the
     never-checked state not measured; the "may have completed" banner after an
-    action and the guest's NTP settings not measured; no update to this
-    candidate measured; the lab tools `mock.mjs` and
+    action and the guest's NTP settings not measured; the update to this
+    candidate was measured on Debian 13 only, from a rebuild of the alpha.83
+    tag; the open finding on `managed_site_files` after an automatic return and
+    the recovery foundation file naming the defective candidate after it (see
+    the seventeenth record above); the lab tools `mock.mjs` and
     `cold-load-set9.mjs`/`cold-load-set11.mjs` still send only `valid_until` on
     the access check; the HSTS retirement in `DomainSSLSettings` still compares
     a server timestamp with the browser's clock; the Agent answer's "nothing was

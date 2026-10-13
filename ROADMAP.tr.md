@@ -414,8 +414,8 @@ kabul işi açık kalır.
   - Bu aday hiçbir P0 işini kapatmaz ve ilerletmez. Yayımlanması kurulu hiçbir
     paneli güncellemez; güncellemeyi yalnız sahip, panelin kendi güncelleme
     ekranından başlatır.
-- **v0.1.0-alpha.84 adayı (yayımlanmadı).** 13 Ekim 2026'da yazıldı. Numara
-  dalın çalışma adıdır; sahip yayımlamada belirler. Sahibin 12 Ekim 2026 kararı,
+- **v0.1.0-alpha.84 adayı (yayımlanmadı).** 13 Ekim 2026'da yazıldı. Sahip
+  13 Ekim 2026'da numaranın v0.1.0-alpha.84 olduğuna karar verdi. Sahibin 12 Ekim 2026 kararı,
   v0.1.0-alpha.83 güncellemesinden sonra: Dashboard bileşenleri kaynak
   harcamadan kendiliğinden kontrol eder ([D-032](docs/DECISIONS.tr.md)). Aday
   `feat/alpha84-dashboard-self-check` dalıdır, `main`'in `0447558e9`'undan
@@ -436,8 +436,13 @@ kabul işi açık kalır.
   tamamlanmış olabileceğini söylemek yerine başarısız bir okumada durumu
   okuyamadığını söyler, O2 gözlemi), `68b79b372` (13 Ekim 2026: okuma şeridinin
   metni okunur bir genişlikte kalır; yalnız sınıflar), `4ed7b1278` (yalnız
-  belgeler) ve `c76861cde` (13 Ekim 2026: on altıncı gerçek sistem kaydı,
-  set14c, yalnız kanıt: ürün kodu yok). Şema değişikliği yok, yeni rota yok
+  belgeler), `c76861cde` (13 Ekim 2026: on altıncı gerçek sistem kaydı,
+  set14c, yalnız kanıt: ürün kodu yok), `6e264615f` (yalnız belgeler),
+  `1636b73f0` (13 Ekim 2026: sürüm hazırlığı: 84 sürüm sırası politikası,
+  önyükleme sabitleri, sürüm satırları ve üç sözleşme testi; `cmd/`, `internal/`
+  ya da `web/` altında hiçbir dosya), `aa7dac2b2` (sürüm notu taslağı; yalnız
+  belgeler) ve `e6ed563ad` (13 Ekim 2026: on yedinci gerçek sistem kaydı, set15,
+  yalnız kanıt: ürün kodu yok). Şema değişikliği yok, yeni rota yok
   ([sürüm notu taslağı](docs/RELEASE-NOTES-v0.1.0-alpha.84.tr.md)). Yukarıdaki
   alpha.83 girdisi hâlâ "yayımlanmadı" der; o sürüm yayımlanmadan önce
   yazılmıştı ve burada yeniden yazılmadı.
@@ -492,6 +497,36 @@ kabul işi açık kalır.
       Ölçülmeyen: Ubuntu, Arch, bir işlemden sonra "tamamlanmış olabilir"
       şeridi, konuğun NTP ayarları. Sonraki sürüm için gözlemler: O4, O5, O6 ve
       çevrilmemiş posta yığını metni (aşağıda).
+  - *Ölçülen: on yedinci gerçek sistem kaydı, set15, yayımlama öncesi ölçüm*
+    ([set15](deploy/e2e/release-recovery/evidence/set15-20261013/README.md),
+    13 Ekim 2026 UTC; geçici konuklar, gerçek, başsız bir Chrome; `1636b73f0`'ın
+    kendisinin ve alpha.83 etiketinin kaynağından yeniden yapılmış bir
+    derlemenin test lisanslı derlemeleri). Debian 13 (İngilizce) ve Ubuntu 24.04
+    (Türkçe) temiz kurulumları: sürüm v0.1.0-alpha.84, şema 44, arşivde ve kurulu
+    kopyada önyükleme sabitleri 84, alan adı ve ilk durum satırı yok,
+    `valid_for_seconds` ve `scan_age_seconds` var, bayat her Dashboard
+    yüklemesinde tam bir koşullu tarama (1126 ms ve 1590 ms), tarama bayatlayınca
+    Bileşenler sayfasının koşullu taraması (Ubuntu; Debian ölçülmedi).
+    Debian 13'te alpha.83 yeniden derlemesinden adaya güncelleme, üç koşu, her
+    biri `update_verified`, şema öncesinde ve sonrasında 44 (etiket ile aday
+    arasında göç yok); güncellemeden sonra Dashboard kendiliğinden kontrol etti
+    (bir tarama, "6 / 6"), Posta yığınları kartının kendi "Yeniden taramak için
+    Bileşenleri aç" metni yaklaşık 1,2 sn görüldü (bilinen açık madde, yeni
+    değil). Kusurlu aday kendiliğinden döndü (`recovered`, `rollback_verified`,
+    iki deneme, `payload_restored`da yeniden başlatma) ve Panel alpha.83 olarak
+    yanıtladı. **Açık, kaydedildi ve hükme bağlanmadı:** geri dönüşten sonra
+    laboratuvarın veritabanı karşılaştırması `managed_site_files`'ı farklı buldu
+    (yalnız özetler; kaynaktan olası neden Panel'in her başlangıçta
+    `observed_at` ve öteki gözlem alanlarını yeniden yazması,
+    `internal/services/site_file_ledger.go` 263 ile 273, 297 ile 300, 327, 391,
+    426. satırlar; satırlardan doğrulanmadı); ve kurtarma temeli dosyası,
+    çalışan yapı alpha.83 ve alt sınır 84 iken hâlâ kusurlu adayı adlandırır
+    (örüntü upd2 ve upd7'den zaten bilinir). Ana makine c koşusu sırasında
+    yaklaşık iki saat uyudu; o koşunun iş yükü hükmü ortam yüzünden başarısız
+    oldu, a ve b koşuları geçti. Koşulmadı: Arch, Debian'da bayat Bileşenler
+    yüklemesi, kusurlu geri dönüşten sonraki okumalar. Sürüm hazırlığının
+    ölçülen hiçbir derlemede olmadığı önceki sınırı kapatır. Hiçbir P0 satırını
+    kapatmaz.
   - *`7024534bc`'de bileşen testleri (ondan sonra `68b79b372` yalnız sınıfları
     değiştirdi; `npm test` 1339 / 1339):* `go test ./cmd/panel/...
     ./internal/...` 7028 geçti, 44 atlandı, 0 başarısız; `npm test` 1339 / 1339;
@@ -505,10 +540,12 @@ kabul işi açık kalır.
     kaydın D2 kusuru, tarayıcınınkinden geride bir sunucu saatinin hiçbir
     sayfanın açılmasına izin vermemesi, ve aynı kaydın O2 ile O3 gözlemleri
     (`7024534bc`, bileşen testli, sonra on altıncı kayıtta ölçüldü).
-  - *Yayımlamadan önce açık:* sürüm hazırlığı commit'i (sürüm sırası, önyükleme
-    sabitleri, sürüm satırları; `cmd/`, `internal/` ya da `web/` altında hiçbir
-    dosyayı değiştirmez); numara üzerine sahibin kararı; son ucun CI koşusu;
+  - *Yayımlamadan önce açık:* sahibin etiketten önce ayarladığı
+    `CELIKPANEL_RELEASE_SEQUENCE=84` depo değişkeni; son ucun CI koşusu;
     birleştirme, etiket, altı imzalı dosya ve portal yayımı, hepsi sahibin.
+    Yapıldı: `1636b73f0` sürüm hazırlığı commit'i; numara üzerine sahibin kararı
+    (13 Ekim 2026); adayın commit'inin kendisinde temiz kurulumun ve
+    alpha.83'ten güncellemenin yayımlama öncesi ölçümü (on yedinci kayıt).
     Kurulu her paneli sonra sahibi panelin kendi güncelleme ekranından
     günceller; bunu başka kimse başlatmaz.
   - *Sonraki sürüme açık, adayın sınırları sürüm notunun listelediği gibi:*
@@ -517,7 +554,11 @@ kabul işi açık kalır.
     sözcüğün ortasından bölünüyor (sahibin alpha.83 güncellemesinden sonraki
     gözlemi); Ubuntu (değişikliklerden sonra), Arch, `server_setup_busy` ve hiç
     kontrol edilmemiş durum ölçülmedi; bir işlemden sonra "tamamlanmış olabilir"
-    şeridi ve konuğun NTP ayarları ölçülmedi; bu adaya güncelleme ölçülmedi;
+    şeridi ve konuğun NTP ayarları ölçülmedi; bu adaya güncelleme yalnız Debian
+    13'te, alpha.83 etiketinin yeniden derlemesinden ölçüldü; otomatik geri
+    dönüşten sonra `managed_site_files` açık bulgusu ve geri dönüşten sonra
+    kusurlu adayı adlandıran kurtarma temeli dosyası (yukarıdaki on yedinci
+    kayda bakın);
     `mock.mjs` laboratuvar aracı ile `cold-load-set9.mjs`/`cold-load-set11.mjs`
     erişim denetiminde hâlâ yalnız `valid_until` gönderir;
     `DomainSSLSettings`teki HSTS geri çekme hâlâ bir sunucu zaman damgasını

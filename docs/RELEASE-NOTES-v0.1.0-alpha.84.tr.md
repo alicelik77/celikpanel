@@ -35,6 +35,11 @@ okuma şeridini ölçtü. Lisans denetimi kusuru on beşinci kayıtta laboratuva
 bulundu ve on altıncıda yok ("Ne ölçüldü, nasıl ölçüldü" bölümüne bakın).
 Hiç çalıştırılmayanları sınırlar bölümü söyler.
 
+Bunlardan sonra on yedinci kayıt (set15, 13 Ekim 2026) yayımlama öncesi
+ölçümdü: aday commit'in kendisi, Debian 13 ve Ubuntu 24.04'e temiz kuruldu,
+Debian 13'te v0.1.0-alpha.83'ten güncellendi ve kendiliğinden geri dönen
+kusurlu bir aday denendi. İki açık madde bıraktı (sınırlara bakın).
+
 ## Sunucu sahibi için ne değişiyor
 
 **Güncellemeden sonra açık olan her CelikPanel sayfasını yeniden yükleyin.**
@@ -525,6 +530,112 @@ düzeltti. Çalışma ürünün hiçbir şeyini değiştirmedi ve `result.json`�
 `native_evidence: false` taşır. Hiçbir P0 satırını kapatmaz. Gözlemleri O4, O5 ve
 O6 ile çevrilmemiş posta yığını metni sınırlardadır.
 
+**On yedinci gerçek sistem kaydı**
+([set15](../deploy/e2e/release-recovery/evidence/set15-20261013/README.md),
+13 Ekim 2026 UTC). Yayımlama öncesi ölçüm; aralarında hiçbir sabit commit
+olmadan, bu sürümün hazırlandığı commit olan `1636b73f0`'ın kendisini çalıştıran
+ilk kayıt. Aynı zamanda v0.1.0-alpha.83'ten bir güncelleme çalıştıran ilk kayıt.
+Test lisanslı derlemeler, hiçbiri sürüm değil: aday (sürüm v0.1.0-alpha.84,
+sıra 84) `1636b73f0`'dan derlendi; taban çizgisi, alpha.83 etiketinin kaynağından
+(etiket commit'i, yamasız) yeniden yapılmış bir derlemedir, yayımlanmış arşiv
+değil; kusurlu aday, `1636b73f0` artı daha önceki bir kaydın yalnız
+göç aşamasını bozan kusurudur (`cmd/panel/main.go`'da). Geçici konuklar, ana
+makinede gerçek, başsız bir Chrome; Debian 13'te İngilizce masaüstü penceresi
+(1440 x 900), Ubuntu 24.04'te Türkçe masaüstü penceresi.
+
+- **Temiz kurulumlar, Debian 13 ve Ubuntu 24.04.** Sürüm rotası
+  `v0.1.0-alpha.84`, commit `1636b73f0979…`, `agent_matches: true`,
+  `schema_version: 44` yanıtladı; kenar çubuğu "CelikPanel · v0.1.0-alpha.84 ·
+  build 1636b73f0979" yazdı. Önyükleme sabitleri arşivin `libexec/get.sh`
+  dosyasında (6. ve 7. satır) ve her iki konukta o dosyanın kurulu kopyasında 84
+  ve `v0.1.0-alpha.84` okundu. Oturum açma, lisans ve `web` kurulum amacı geçti;
+  kurulum DNS adımında bekler ve orada bırakıldı. Alan adı listesi boştu
+  (`GET /api/v1/domains` `[]` yanıtladı) ve sayfa ilk durum satırı göstermedi.
+  `GET /api/v1/license/access` `valid_for_seconds` taşıdı ve
+  `can_use_panel: true`, `state: active`, `observation: known` idi;
+  `GET /api/v1/managed-services` `scan_age_seconds` taşıdı.
+- **Bayat taramayla Dashboard.** Yüklemede saklı tarama 317,1 sn (Debian) ve
+  317,2 sn (Ubuntu) yaşındaydı. 90 sn içinde her Dashboard tam bir
+  `POST /api/v1/managed-services/scan?max_age_seconds=300` gönderdi: 200,
+  Debian'da 1126 ms, Ubuntu'da 1590 ms. Kart yoktan kontrol ediliyor
+  durumuna (yüklemeden 1145 ms ve 1611 ms sonra), oradan "3 / 3 running /
+  installed" (Türkçede "3 / 3 çalışan / kurulu") durumuna geçti. "Open
+  Components to rescan" görülmedi. Hemen ardından yüklenen Bileşenler
+  sayfası, taraması 90 sn yaşında olduğundan, tasarlandığı gibi tarama
+  göndermedi. Ubuntu'da bayat taramayla (317 sn) Bileşenler sayfası tek koşullu
+  tarama gönderdi (200, 2026 ms) ve uyarı ya da bildirim göstermedi. Debian'da o
+  yükleme ölçülmedi.
+- **v0.1.0-alpha.83'ten güncelleme, Debian 13, iyi aday, üç koşu (a, b, c).**
+  Barındırılan bir statik siteli taban çizgisi, Panel'in kendi güncelleme yoluyla
+  güncellendi. Her koşu `phase: succeeded`, `reason: update_verified`,
+  `terminal_proof: update_verified` ile bitti; Agent ve Panel'in yapı kimliği
+  `v0.1.0-alpha.84`, `1636b73f0…`, sürüm alt sınırı 84 sırasında, şema defteri
+  `as-expected`. Şema öncesinde 44 (alpha.83 44 yanıtladı), sonrasında 44 idi.
+  alpha.83 etiketi ile `1636b73f0` arasında hiçbir göç dosyası değişmedi
+  (`cmd` ve `internal` altında 9 dosya, hiçbiri göç değil). Alan adları 1 satır
+  gösterdi, `site_config: managed_unchanged`.
+- **Güncellemeden sonra Dashboard (c koşusu).** Güncellemeden önceki 441 sn
+  yaşında saklı taramayla kendiliğinden tek koşullu tarama gönderdi (200,
+  1210 ms) ve yoktan kontrol ediliyor durumuna (1240 ms), oradan "6 / 6 running /
+  installed" durumuna geçti. Bileşenler sayfası hemen ardından tarama
+  göndermedi, tarama bayatlayınca tek koşullu tarama gönderdi (200, 1187 ms).
+  Dashboard'ın Posta yığınları kartı, tarama yanıtlayana dek yaklaşık 1,2 sn
+  "Status needs refresh" ve "Open Components to rescan" gösterdi. Bu, sınırlarda
+  yazılı bilinen açık maddedir (kartın eski metnin kendi kopyası var); yeni
+  değildir.
+- **Kusurlu aday: otomatik geri dönüş.** "`payload_restored`da yeniden
+  başlatma" hatasıyla konuk bir kez sıfırlandı. Güncelleme kendiliğinden
+  kurtarıldı: `phase: recovered`, `reason: rollback_verified`,
+  `previous_failure: update_failed`, iki otomatik deneme. Sonrasında Agent ve
+  Panel alpha.83 yapısını bildirdi (`v0.1.0-alpha.83`, `0447558e…`) ve Panel
+  yanıtladı: tek sayfa kökü ve bir API rotası 200, bir rota 401 ya da 403, var
+  olmayan bir yol 404, sürüm rotası alpha.83'ün yapısını adlandırdı.
+- **Açık bulgu: geri dönüşten sonra `managed_site_files`.** Sürücünün son
+  adımı veritabanı karşılaştırmasında başarısız oldu: geri dönüşten sonra
+  Panel'in veritabanı, güncellemeden önce alınan kopyadan tek bir tabloda,
+  `managed_site_files`'ta farklıdır (iki seferde de bir satır, 21 sütun;
+  satırlar değil yalnız özetler kaydedildi). Üç iyi koşu aynı tabloyu farklı
+  diye listeler ve geçer, çünkü güncelleme yolu eşitlik istemez. Olası neden,
+  kaynaktan ve **satırlardan doğrulanmadı**: Panel her başlangıçta her sitenin
+  dosyalarını yeniden gözlemler ve satırın gözlem alanlarını, `observed_at`
+  dahil, yeniden yazar (`internal/services/site_file_ledger.go` 263 ile 273.
+  satırlar, `observed_at = excluded.observed_at` içeren bir upsert, ve 297 ile
+  300, 327, 391 ve 426. satırlar; sütun
+  `internal/db/migrations/044_managed_site_files.sql` 31. satırdadır). Geri
+  dönüşten sonra alpha.83 başlar ve yeniden gözlemler; tablonun özeti bu yüzden
+  değişir. Sürücünün denetimi tabloyu oynak saymadı, çünkü tablo set12 ve set13
+  kayıtlarının alpha.82 taban çizgilerinde yoktu (defter 43). Adım başarısız
+  olduğundan geri dönüş sonrası okumalar ve onu izleyen tarayıcı penceresi
+  koşmadı; bu yüzden geri dönüşten sonra kenar çubuğu resmi ya da Dashboard
+  okuması yok. Yukarıdaki ürün düzeyindeki olgular geçerlidir. Bulgu
+  kaydedildi, hükme bağlanmadı.
+- **Geri dönüşten sonra kurtarma temeli dosyası.** Otomatik geri dönüşten
+  sonra sürüm alt sınırı 84 sırasını okur ve kurtarma temeli dosyası hâlâ kusurlu
+  adayın commit'ini adlandırır; çalışan yapı alpha.83'tür. Kaydedildi, hükme
+  bağlanmadı. Örüntü olarak yeni değildir:
+  [upd2](../deploy/e2e/release-recovery/evidence/upd2-20261001/README.md) ve
+  [upd7](../deploy/e2e/release-recovery/evidence/upd7-20261001/README.md)
+  kayıtları (1 Ekim 2026) alt sınır ile kurtarma temelinin geri almadan sonra
+  adayın değerlerinde kaldığını zaten gösterir (upd2 alt sınırın durumunu tasarım
+  gereği der), set12 kaydı da 82'ye dönüşünden sonra alt sınırı 83'te gösterdi.
+  set12 ve set13 README'leri kurtarma temeli dosyasından söz etmez. Yalnız alpha.83
+  taban çizgili bir okuma olarak yenidir.
+- **Ana makinenin uykusu.** Dizüstü ana makine, üçüncü iyi koşu sırasında
+  yaklaşık 10:20Z ile 12:35Z arasında uyudu (modern bekleme; uyanık tut isteği
+  engellemedi). Konuk donmuştu ve saati tarayıcınınkinin 8050 sn gerisinde
+  bitti. O koşunun iş yükü hükmü başarısız oldu ("workload interruption outside
+  the expected windows: web, smtp, cron, panel"); bu ortamın işidir. Uyku
+  olmayan a ve b koşuları o hükmü geçti. c koşusunun güncellemesi uyanmadan
+  sonra koştu.
+- **Koşulmadı ya da ölçülmedi:** Arch; Debian temiz kurulumda bayat Bileşenler
+  yüklemesi; kusurlu geri dönüşten sonraki okumalar (açık bulguya bakın).
+
+Kabul denetimi, listelenen 1578 dosyanın hepsinin var olduğunu, gizli bilgi ya
+da işletmeci kimliği bulunmadığını denetledi; bir ana makine yolu karartıldı ve
+README'nin dört ifadesi ham dosyalara göre düzeltildi. Çalışma hiçbir ürün
+kodunu değiştirmedi ve `result.json` dosyaları `native_evidence: false` taşır.
+Hiçbir P0 satırını kapatmaz. Açık bulgu kaydedildi, bir ürün kusuru diye hükme
+bağlanmadı.
 
 ## Bu sürümün sınırları
 
@@ -537,10 +648,28 @@ geçerlidir.
 
 Bu sürümle yeni:
 
+- **Açık bulgu: otomatik geri dönüşten sonra `managed_site_files`.** On yedinci
+  kayıtta, kusurlu adaydan geri dönüşten sonra laboratuvarın veritabanı
+  karşılaştırması, güncellemeden önce alınan kopyadan farklı olan tek bir tablo
+  buldu: `managed_site_files`. Neden satırlardan doğrulanmadı (yalnız özetler
+  tutuldu). Kaynaktan olası neden, Panel'in her başlangıçta her satırın gözlem
+  alanlarını, `observed_at` dahil, yeniden yazması ve geri dönüşün yeniden
+  başlatmasının onları değiştirmesidir (`internal/services/site_file_ledger.go`
+  263 ile 273, 297 ile 300, 327, 391 ve 426. satırlar;
+  `044_managed_site_files.sql` 31. satır). Laboratuvarın denetimi bir sonraki
+  kayıtta alanı ya da tabloyu dışlamalıdır. Ürün kusuru diye hükme
+  bağlanmadı; geri dönüşün kendisi oldu ve Panel alpha.83 olarak yanıtladı.
+- **Geri dönüşten sonra kurtarma temeli dosyası kusurlu adayı adlandırır.**
+  Otomatik geri dönüşten sonra dosya, çalışan yapı alpha.83 iken hâlâ kusurlu
+  adayın commit'ini adlandırır ve sürüm alt sınırı 84 okunur. Kaydedildi,
+  hükme bağlanmadı. Örüntü olarak upd2 ve upd7 kayıtlarından (1 Ekim 2026) ve
+  alt sınır için set12 kaydından zaten bilinir; açık.
 - **Ubuntu ve Arch değişikliklerden sonra ölçülmedi.** On dördüncü kayıt
   Debian 13 ve Ubuntu 24.04'te (yalnız ilk commit), on beşinci ve on altıncı
   yalnız Debian 13'te koştu. Debian laboratuvarlarının boşta duran Arch eşi
-  ölçülmedi.
+  ölçülmedi. On yedinci kayıt adayı Ubuntu 24.04'e temiz kurdu ve orada
+  Dashboard ile Bileşenler sayfasını ölçtü; Ubuntu'da güncelleme koşmadı ve Arch
+  koşulmadı.
 - **`server_setup_busy` ölçülmedi.** Kurulum tarayıcı penceresi açılmadan önce
   koştu; bu yüzden onun sırasında hiçbir Dashboard yüklemesi olmadı. Yalnız
   `service_operation_busy` görüldü.
@@ -617,12 +746,16 @@ Bu sürümle yeni:
   kapsar. Bir şeyi değiştirip sonra, önceki sonuca birleşmemiş ayrı bir bağlantıda
   başarısız olan bir işleyici yine de bunu söylerdi. Açık; işleyici işleyici bir
   denetim iddia edilmez.
-- **Bu adaya güncelleme ölçülmedi.** Üç kaydın (on dördüncü, on beşinci ve on
-  altıncı) hepsi v0.1.0-alpha.81 etiketli, ağacı yalnız
-  `deploy/release-sequence-policy`de farklı olan geçici sabit derlemeler
-  çalıştırdı; hiçbiri v0.1.0-alpha.83'ten bir güncelleme değildi. Sürüm
-  hazırlığı (sürüm sırası numarası, önyükleme sabitleri, sürüm satırları)
-  ölçülen hiçbir derlemede yok.
+- **Aday, yayımlamadan önce kendisi bir kez ölçüldü.** On yedinci kayıt bir
+  sabit değil, `1636b73f0` commit'inin kendisini çalıştırdı: Debian 13 ve
+  Ubuntu 24.04'te temiz kurulumlar ve Debian 13'te v0.1.0-alpha.83 etiketinin
+  yeniden derlemesinden güncelleme. Bu, sürüm hazırlığının (sürüm sırası
+  numarası, önyükleme sabitleri, sürüm satırları) ölçülen hiçbir derlemede
+  olmadığı önceki sınırı kapatır. Kapsamadığı: arşivler imzalı değil, test
+  lisanslı yeniden derlemelerdi; taban çizgisi yayımlanmış arşiv değil,
+  alpha.83 etiketinin yeniden derlemesiydi; güncelleme yalnız Debian 13'te
+  koştu; Arch koşulmadı; kusurlu adayın geri dönüşten sonraki okumaları
+  koşmadı (açık bulguya bakın).
 - **Kanıt kapsamı.** Tek dizüstü ana makine; imzalı arşiv değil, test lisanslı
   bir derleme; trafiği yakalanmayan, dışarıya NAT'lı konuklar; her hücre bir kez
   koştu; İngilizce Debian'da masaüstü penceresinde, Türkçe Ubuntu'da telefon
@@ -631,7 +764,10 @@ Bu sürümle yeni:
   Türkçe, konuğun saati çalışma düzeneğince kaydırıldı. On altıncı kayıt yine
   yalnız Debian 13 ekledi: İngilizce masaüstü penceresi, Bileşenler sayfası için
   bir Türkçe telefon penceresi, konuğun saati her yöne yedi dakika kaydırıldı,
-  her hücre bir kez.
+  her hücre bir kez. On yedinci kayıt Debian 13'te (İngilizce masaüstü penceresi)
+  ve Ubuntu 24.04'te (Türkçe masaüstü penceresi) birer temiz kurulum ve Debian
+  13'te güncellemeyi (iyi aday üç kez, kusurlu aday bir kez) ekledi; saat
+  kaydırılmadı.
 - **Agent kapalıyken öteki kartlar.** On dördüncü kayıtta, Agent durmuşken
   Dashboard'ın CPU, bellek ve disk kartları kehribar uyarıyla "—" gösterdi;
   güvenlik duvarı okuması on dördüncü ve on beşinci kayıtlarda `500` yanıtladı.
@@ -739,19 +875,24 @@ Yayımlanmadı. Yayımlamadan önce açık olanlar:
    şeridi, gerçek bir sunucuda. Burada artık açık değil. Orada ölçülmeyen ve hâlâ
    açık olanlar: Ubuntu, Arch, bir işlemden sonra "tamamlanmış olabilir" şeridi,
    konuğun NTP ayarları ve gözlemleri O4 ile O6 (sınırlara bakın).
-2. Sürüm hazırlığı: 1636b73f0 commit'inde yapıldı; `cmd/`, `internal/` ya da
+2. Yayımlama öncesi ölçüm: yapıldı (set15, on yedinci kayıt, 13 Ekim 2026),
+   1636b73f0 commit'inin kendisinde: Debian 13 ve Ubuntu 24.04'e temiz
+   kurulumlar, Debian 13'te v0.1.0-alpha.83'ten güncelleme ve kusurlu bir
+   adayın otomatik geri dönüşü. Sınırlardaki iki açık maddeyi bıraktı. Aşağıdaki
+   sahip adımları değişmedi.
+3. Sürüm hazırlığı: 1636b73f0 commit'inde yapıldı; `cmd/`, `internal/` ya da
    `web/` altında hiçbir dosyayı değiştirmez. İçinde 83'ten sonra 84 olan sürüm
    sırası politikası (önceki olarak alpha.83 sürüm commit'i),
    `download-portal/get.sh` sabitleri, README sürüm satırları ve üç sözleşme
    testi var; üç sözleşme testi derleme konuğunda geçer. Hâlâ açık: sahibin
    etiketten önce ayarladığı `CELIKPANEL_RELEASE_SEQUENCE=84` depo değişkeni.
    Gerçek arşivi etikette CI derler ve imzalar.
-3. Numara: yapıldı, 13 Ekim 2026. Sahip numaranın v0.1.0-alpha.84 olduğuna karar
+4. Numara: yapıldı, 13 Ekim 2026. Sahip numaranın v0.1.0-alpha.84 olduğuna karar
    verdi.
-4. Çekme isteğinin son ucu kendi CI koşusunu alır.
-5. Sahip birleştirir, sürümü etiketler, imzalı sürüm sözleşmesinin anlattığı
+5. Çekme isteğinin son ucu kendi CI koşusunu alır.
+6. Sahip birleştirir, sürümü etiketler, imzalı sürüm sözleşmesinin anlattığı
    gibi altı imzalı dosyayı denetler ve indirme portalını yayımlar.
-6. Sürüm yayımlandıktan sonra, kurulu her sunucunun sahibi o sunucuyu panelin
+7. Sürüm yayımlandıktan sonra, kurulu her sunucunun sahibi o sunucuyu panelin
    kendi güncelleme ekranından günceller. Bu, yukarıdaki her adımdan ayrı bir
    adımdır; onu başka kimse başlatmaz.
 
