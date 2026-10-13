@@ -1,11 +1,19 @@
-# v0.1.0-alpha.84 (draft, not published)
+# v0.1.0-alpha.84 (published 2026-10-13)
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.84.tr.md)
 
-This is the draft of the release that follows v0.1.0-alpha.83. The owner decided
-on 2026-10-13 that the number is v0.1.0-alpha.84 (commit 1636b73f0). Nothing of
-it is published, and no installed server runs it. This draft was written on
-2026-10-13.
+This is the release that follows v0.1.0-alpha.83. It was published on
+2026-10-13 by the owner (see "Publication record" at the end). The owner decided
+on 2026-10-13 that the number is v0.1.0-alpha.84 (commit 1636b73f0). When the
+publication record was written on 2026-10-13, no installed server had been
+updated to it: both still served the interface build of v0.1.0-alpha.83, and
+the owner of each starts that from the panel's own update screen. Later the
+same day a read from outside found both installed servers serving this
+release's interface (item 14 of the "Publication record"), and the owner
+reported what was on screen as two screenshots (item 15); what that report
+leaves open is listed there, under "Not done" and under the limits. These
+notes were written as a draft on 2026-10-13, amended for the publication on
+the same day, and amended again on 2026-10-13 for that read and that report.
 
 It does three things on the Dashboard's "System services" card and the answers
 behind it, and two beside it. The card now checks the components by itself,
@@ -690,7 +698,10 @@ New with this release:
   old text and its "Open Components to rescan" button. It does not check by
   itself.
 - **The sidebar's build identifier wraps in the middle of a word.** Observed by
-  the owner after the update to v0.1.0-alpha.83; not fixed.
+  the owner after the update to v0.1.0-alpha.83, and seen again in the owner's
+  screenshots after the update to this release (2026-10-13, item 15 of the
+  "Publication record": "build f01", then "57e6c8f16" on the next line); not
+  fixed.
 - **Measured on Debian 13 once, nowhere else:** the licence check's fix (D2),
   the typed Agent answer on the firewall read, the system check and a restart
   request, and the Components page's read banner, all in the sixteenth record.
@@ -840,7 +851,7 @@ open):
   overlays, the Services list and pages, the sidebar, parts of the dashboard,
   add-ons, the audit log, VPN, team members and the licence page. On these a
   failed read can still look like an empty or negative state. (Still open; the
-  count was not recomputed for this draft.)
+  count was not recomputed for these notes.)
 - **The access wait.** Each page load still reads the session twice; a load
   with the HTTP cache enabled was not measured; the offline page was seen only
   in lab contexts with the recovery worker; the locked file's badge and the
@@ -868,40 +879,215 @@ open):
   address. (Still open.)
 - **Open acceptance items.** All five foundation items of the
   [resilience contract](RESILIENCE-CONTRACT.md) remain partial; this release
-  closes none. No P0 item is closed or advanced by this candidate. Decisions:
+  closes none. No P0 item is closed or advanced by this release or by its publication. Decisions:
   D-021 (unchanged), D-022, D-024, D-025, D-029, D-031, D-032 in
   [DECISIONS](DECISIONS.md).
 
 ## Publication record
 
-Not published. Open before publication:
+Everything below is dated 2026-10-13 (clock date, UTC unless a time zone is
+named). Items 1 to 5 are the preparation, written before the publication and
+kept as history. The steps from item 6 on were taken by the owner; the checks
+of the assets, of the portal package and of the public site were made by the
+person who prepared the release. Items 14 and 15 were added later the same day,
+after the owner updated the installed servers. This entry does not store any of
+the results below as a file in the repository.
+
+**What happened.**
 
 1. The next native record: done (set14c, the sixteenth, Debian 13 only,
    2026-10-13): the licence check's fix with the server's clock seven minutes
    behind and ahead, the scan's age with the clock behind, the Agent answer on
    the firewall and system-check reads, and the Components page's read banner,
-   on a real server. No longer open here. Not measured there, and still open:
-   Ubuntu, Arch, the "may have completed" banner after an action, the guest's
-   NTP settings, and its observations O4 to O6 (see the limits).
+   on a real server. Not measured there, and still open: Ubuntu, Arch, the
+   "may have completed" banner after an action, the guest's NTP settings, and
+   its observations O4 to O6 (see the limits).
 2. The pre-publication measurement: done (set15, the seventeenth record,
    2026-10-13), on commit 1636b73f0 itself: fresh installs on Debian 13 and
    Ubuntu 24.04, the update from v0.1.0-alpha.83 on Debian 13, and the
    automatic return of a defective candidate. It left the two open items in the
-   limits. The owner's steps below are unchanged.
+   limits.
 3. The release preparation: done in commit 1636b73f0, which changes no file
    under `cmd/`, `internal/` or `web/`. It holds the release sequence policy 84
    after 83 with the alpha.83 release commit as previous, the
    `download-portal/get.sh` pins, the README version lines and three contract
-   tests; the three contract tests pass in the build guest. Still open: the
-   repository variable `CELIKPANEL_RELEASE_SEQUENCE=84`, which the owner sets
-   before the tag. The real archive is built and signed by CI on the tag.
+   tests; the three contract tests pass in the build guest. The repository
+   variable is item 8. The real archive was built and signed by CI on the tag.
 4. The number: done, 2026-10-13. The owner decided that it is v0.1.0-alpha.84.
-5. The pull request's last head gets its own CI run.
-6. The owner merges, tags the release, checks the six signed assets as the
-   signed release contract describes, and publishes the download portal.
-7. After the release is published, the owner of each installed server updates
-   that server from the panel's own update screen. This is a separate step from
-   every step above; no one else starts it.
+5. The pull request's last head got its own CI run, after the branch took
+   `main` in (item 6): 24 of 24 jobs passed.
+6. The record of the publication of v0.1.0-alpha.83 (pull request #207,
+   documents only) was squash-merged by the owner first; `main` became commit
+   `c1623ff71`. The candidate branch then took `main` in (merge commit
+   `dc0ed2747`); the only conflict was the roadmap's alpha.83 entry, which was
+   resolved to `main`'s text. Its pull request #208 then left draft.
+7. Pull request #208 was squash-merged by the owner into `main` on 2026-10-13.
+   Main is commit `f0157e6c8f1614cff176821172f8a9067493e625`, tree
+   `df896a5b7288110b5418225a1439241f84a8ba49`; that tree equals the tree of the
+   pull request's last commit, `dc0ed2747`. The continuous integration run on
+   that main commit (run 38418859503) passed: 23 of 23 jobs that ran; the job
+   that publishes assets was skipped, because it runs only for a tag.
+8. Before tagging, the owner set the repository variable
+   `CELIKPANEL_RELEASE_SEQUENCE` to 84. The owner then created and pushed the
+   annotated tag `v0.1.0-alpha.84` (tag object
+   `e735308d19fab5166a2f2f4a2860b857ad0e9362`) on the main commit above. The
+   tag's CI run (38419289967) completed successfully with 24 jobs and
+   published the release as a pre-release at 15:30:58 UTC with six assets: the
+   two archives, their two checksum files, the signed manifest and its
+   signature.
+   - Process note. The owner created and pushed the tag while the continuous
+     integration run on the main commit (item 7) was still in progress: 8 of
+     its jobs had finished, none had failed, and the run completed
+     successfully afterwards. The job that publishes assets depends only on
+     the packaging job, not on the test jobs, so the order "the run on main
+     finished, then the tag" is the intended one, and it was not followed this
+     time. The same tree had passed 24 of 24 jobs on the pull request (item
+     5). This is recorded as a process note, not as a defect of the release.
+9. The assets were checked in a local build guest, from a clone checked out at
+   the tag (reported by the release preparer, not recorded in a file here).
+   The linux/amd64 archive `celikpanel-v0.1.0-alpha.84-linux-amd64.tar.gz` is
+   66,131,994 bytes, SHA-256
+   `6dc899e5dabaf471978cde47bfde4a0a649b7c3f6941b1431284c84c9743c301`.
+   Both checksum files verify; the two archives are byte-identical. The signed
+   manifest says `sequence=84`, `version=v0.1.0-alpha.84`, the main commit
+   above, `published_at=2026-10-13T15:04:13Z`, that SHA-256 and that size. Its
+   Ed25519 signature verifies against `deploy/release-signing-ed25519.pem`
+   from the tag (key file SHA-256
+   `7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb`, the
+   same as the copy inside the archive and as the pin in the archive's
+   `libexec/get.sh`). The `release.commit` and `release.tree` recorded in the
+   archive equal the tag's. `install.sh`, `libexec/get.sh` and the public key
+   in the archive are byte-identical to the tag's files.
+   `deploy/release-content-guard.sh` and
+   `deploy/release-acceptance-license-guard.sh` both exited 0 on the archive.
+   The archive's bootstrap pins are sequence 84 and v0.1.0-alpha.84.
+10. The download portal package was built from the tag checkout in pre-signed
+    mode with the six downloaded assets (reported by the release preparer, not
+    recorded in a file here). `deploy/test-download-portal-contract.sh`
+    passed. The package was built twice with byte-identical results:
+    132,639,245 bytes, SHA-256
+    `dd1b93d26b4a7d3ebc1a7fd618f75be210a941c66a95b83e28965ec3a30f856f`; 54
+    members. Its file layout is identical to the v0.1.0-alpha.83 package apart
+    from the version. In the tag checkout
+    `deploy/test-download-portal-public-verifier.py` ran 17 tests, all OK, and
+    `deploy/test-download-portal-promotion.py` ran 14 tests, all OK. A local
+    rehearsal ran the real promoter against a fixture copy of the alpha.83
+    site served on loopback: status `committed`, 26 requests, the success
+    marker printed once, the previous version and the backup kept, no error
+    output.
+11. The owner published the portal with `deploy/publish-download-portal.ps1`
+    (previous version v0.1.0-alpha.83, target v0.1.0-alpha.84). Owner-reported
+    result: status `committed`. The backup
+    `httpdocs.before-v0.1.0-alpha.84.20261013T160559Z…` is kept on the server.
+    The single public verification pass after the exchange reported
+    `status: ok`, 26 requests, one archive download, 66,671,880 bytes
+    downloaded. The marker `CELIKPANEL_DOWNLOAD_PORTAL_PUBLISHED` was printed
+    once.
+12. A read-only read of https://celikpanel.net from outside at 16:16 UTC, by
+    the release preparer: `releases/latest.txt` is `v0.1.0-alpha.84`;
+    `releases/latest.json` names sequence 84, the main commit and the SHA-256
+    above; the published signed manifest, its signature and the checksum file
+    are byte-identical to the verified GitHub assets; the archive URL answers
+    200 with `Content-Length: 66131994` (the archive was not downloaded again
+    in this read); `get.sh` pins sequence 84 and v0.1.0-alpha.84; the
+    alpha.83 manifest is still served.
+13. Installed servers, at the same read. Both still serve the interface build
+    of v0.1.0-alpha.83: their start page references the built interface file
+    of the alpha.83 archive, not that of the alpha.84 archive. They were not
+    updated at the time of this record. The owner of each starts that from the
+    panel's own update screen; the outcome will be recorded separately (items
+    14 and 15 record it).
+14. Installed servers, read from outside on 2026-10-13 at 16:59 UTC, after the
+    owner updated both. The servers were not updated at the read in item 13.
+    This read was read-only, over HTTPS and without logging in. Nobody other
+    than the owner touched the servers; the person who prepared the release did
+    not start, watch or verify the update on them. Observed: both servers serve
+    the interface build of v0.1.0-alpha.84. Their start page references the
+    same built interface file as `web/dist/index.html` inside the verified
+    v0.1.0-alpha.84 archive, and that file, read from each server, is
+    byte-identical (same SHA-256) to the copy in the archive. The
+    `Last-Modified` dates the servers give for that file are 2026-10-13
+    16:57:37 UTC (first server) and 2026-10-13 16:57:50 UTC (second server).
+    Both still send `Strict-Transport-Security: max-age=31536000`. What this
+    shows: the Panel process on each server serves this release's interface, so
+    the owner updated both from the panel's own update screen on 2026-10-13, at
+    about 16:57 UTC. What it does not show: the update's verification result
+    inside the panel, the Agent's version, or what the first start did.
+15. What the owner reported on 2026-10-13, as two screenshots, one per server,
+    with the English interface, after updating both from the panel's own update
+    screen (item 14). The screenshots are the owner's and are not stored in the
+    repository; no assistant looked at the servers beyond the read in item 14.
+    The owner's message labelled the setup-page screenshot as the first
+    server's; the screenshot's own sidebar names the second server, so the
+    screenshots are recorded here by what they show. This is the owner's
+    observation, not acceptance evidence, and nothing in it was measured in the
+    lab.
+    - Version. On both servers the sidebar's server information reads
+      `CelikPanel · v0.1.0-alpha.84 · build f0157e6c8f16`, the 12-character
+      prefix of the release commit. The id still wraps in the middle of the
+      word in the sidebar ("build f01", then "57e6c8f16" on the next line); it
+      can read as a different number. The known open item, unchanged.
+    - First server (hosting purpose "Custom setup"; 0 domains, 0 databases,
+      1 user, 0 mail accounts). After the update it lands on the Dashboard. The
+      "System services" card says "5 / 5 running / installed": no "Unknown" and
+      no "Open Components to rescan", and the owner did not have to press
+      anything. After the alpha.83 update the same card had said "Unknown" with
+      "Open Components to rescan", and the owner had rescanned by hand. The
+      "Needs attention" box says "Nothing CelikPanel read needs action:
+      certificates, the firewall and the installed components." A "Mail stacks"
+      card says "Partially installed" and, under "Webmail", "Some components
+      are already present. Installing this profile will reconcile the full plan
+      without removing completed services.", with a "View mail stacks" button.
+      The recent-activity list shows the owner's sign-ins and the setup
+      activity from five days earlier. No error and no licence page is
+      reported for this server. The owner did not say whether the full-screen
+      licence page appeared during the update: not reported.
+    - Second server. After the update it lands on the server setup page, step
+      5 "Prepare your server", headed "Setup stopped: its plan was reopened",
+      with the same box and step list as after the alpha.83 update: every step
+      reads "Completed" except the last, "Verify the prepared server", which
+      reads "Stopped"; no step reads "In progress". Unchanged since alpha.83,
+      and expected: the pending final check needs the reverse (PTR) record of
+      the server's address to name the mail host name. Read through a public
+      resolver on 2026-10-13 by the person who prepared the release
+      (read-only; no host name, address or record value is written here), the
+      PTR record still names a different host name of the owner's domain, so
+      the owner's action at the hosting provider, outside CelikPanel, is still
+      outstanding. That is not a defect of this release.
+    - Not reported: the update's verification result inside the panel; the
+      Agent's version; whether the full-screen licence page appeared during the
+      restart; the output of `postconf -n >/dev/null`. Both servers have no
+      domains, so the first start's adoption of site configuration files had
+      nothing to adopt on them, and the question of what an owner's edited site
+      file meets at a Panel start stays open on installed servers (D-031),
+      unchanged from alpha.83.
+
+**Not done, and what publication does not change.**
+
+- The installed servers were not updated when items 1 to 13 were written on
+  2026-10-13. The owner of each installed server starts that from the panel's
+  own update screen, as a separate step from every step above, and no one else
+  starts it. Later the same day a read from outside found both serving this
+  release's interface (item 14), so the owner updated both on 2026-10-13, and
+  the owner reported two screenshots (item 15). Still open after that report:
+  the update's verification result inside the panel; the Agent's version;
+  whether the full-screen licence page appeared during the restart; the output
+  of `postconf -n >/dev/null`; what the first start does with an owner's edited
+  site configuration file, because both servers have no domains and so had no
+  site files to adopt (D-031, unchanged from alpha.83); the sidebar's build id
+  wrapping in the middle of the word; and, on the second server, the PTR record
+  that only its owner can change. Those items will be recorded when the owner
+  reports them. Nothing in this record describes what an installed server did
+  with this release beyond items 14 and 15.
+- The order "the run on main finished, then the tag" was not followed (item
+  8). The run completed successfully afterwards and the same tree had passed
+  24 of 24 jobs on the pull request, but the job that publishes assets does
+  not wait for the test jobs.
+- Publication is not product acceptance. The limits listed under "Limits of
+  this release" are unchanged by it, among them the two open items left by the
+  seventeenth record. All five foundation items of the
+  [resilience contract](RESILIENCE-CONTRACT.md) remain partial; no P0 item is
+  closed or advanced by the release or by its publication.
 
 Install this release only through CelikPanel's update interface. Publishing it
 does not update installed servers; only the owner of a server starts its

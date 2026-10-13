@@ -7099,3 +7099,48 @@ known-state rule.
    next release. Not reported: the full-screen licence page during the
    restart, the update notice against the card, the momentary licence page on a
    direct load of the setup address.
+
+### Observed by the owner on installed servers after the alpha.84 update (2026-10-13)
+
+Observations, not changes. After the owner updated both installed servers to
+v0.1.0-alpha.84 from the panel's own update screen on 2026-10-13, the owner
+reported two screenshots the same day (English interface, one per server). The
+owner's message labelled the setup-page screenshot as the first server's; its
+own sidebar names the second server, so they are recorded by what they show.
+Nothing was measured in the lab for this entry, no text or screen was changed
+for it, and it is not acceptance evidence. It is set against D-024 (the current
+reason, who must act, the next action and how work resumes come before long
+lists) and the known-state rule.
+
+1. **The Dashboard card checks the components by itself (first server).** The
+   "System services" card reads "5 / 5 running / installed", with no
+   "Unknown" and no "Open Components to rescan", and the owner did not have to
+   press anything. After the alpha.83 update, observation 3 of the entry above
+   showed the same card saying "Unknown" with "Open Components to rescan", and
+   the owner had rescanned by hand. This is the design of D-032 seen on an
+   installed server, resolving that observation on the owner's screenshot. The
+   "Needs attention" box says that nothing CelikPanel read needs action:
+   certificates, the firewall and the installed components. Not reported: how
+   the card looks while a scan is held or the Agent cannot be reached; no
+   error and no licence page is reported for this server.
+2. **The setup page is unchanged from alpha.83 (second server).** It still
+   shows "Setup stopped: its plan was reopened" with the same box and step
+   list: every step "Completed" except the last, "Verify the prepared
+   server", "Stopped"; none "In progress". Expected, not a defect of this
+   release.
+3. **An unmet prerequisite that only the owner can meet, still outstanding.**
+   The pending final check needs the reverse (PTR) record of the server's
+   address to name the mail host name. Read through a public resolver on
+   2026-10-13, the record still names a different host name of the owner's
+   domain, so the owner's action at the hosting provider, outside CelikPanel,
+   is still outstanding. The page's "Next" (review the plan and start it again)
+   does not change that record, and this entry does not say whether the page
+   tells the owner this. An unmet prerequisite of the owner's, not a verified
+   failure of the Panel.
+4. **The sidebar's build id still wraps mid-word (both servers).** The server
+   information reads `CelikPanel · v0.1.0-alpha.84 · build f0157e6c8f16` and
+   the 12-character id breaks after its third character ("build f01", then
+   "57e6c8f16"), which can read as a different number. Cosmetic; open for the
+   next release, unchanged. Not reported: the update's verification result
+   inside the panel, the Agent's version, the full-screen licence page during
+   the update.
