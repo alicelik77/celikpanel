@@ -1308,8 +1308,8 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                 <div role="alert" className="mb-4 flex flex-wrap items-start gap-3 rounded-xl border border-warning-mark/60 bg-warning-mark/10 p-4">
                     <ShieldOff className="mt-0.5 h-5 w-5 shrink-0 text-warning" />
                     <div className="min-w-0 grow basis-56">
-                        <div className="text-sm font-semibold text-fg">{t('services.stateUnreadTitle')}</div>
-                        <p className="text-sm text-fg-muted">{t('services.stateUnreadHint', {
+                        <div className="text-balance text-sm font-semibold text-fg">{t('services.stateUnreadTitle')}</div>
+                        <p className="mt-0.5 max-w-[75ch] text-sm text-fg-muted">{t('services.stateUnreadHint', {
                             reason: verification.cause.error ? apiErrorText(verification.cause.error, t, 'services.scanFailed') : t('services.scanFailed'),
                         })}</p>
                     </div>
