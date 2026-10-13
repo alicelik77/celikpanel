@@ -1,0 +1,1717 @@
+{
+  "lang": "en",
+  "viewport": "desktop",
+  "phases": [
+    {
+      "phase": "sign-in",
+      "started": "2026-10-13T07:37:43.154Z",
+      "ended": "2026-10-13T07:37:47.930Z",
+      "seconds": 4.8,
+      "scan_posts": 0,
+      "scan_posts_list": [],
+      "card_sequence": [
+        {
+          "page": "sign-in",
+          "at": "2026-10-13T07:37:43.698Z",
+          "state": "absent",
+          "vis": "visible",
+          "lasted_ms": null,
+          "text": null
+        }
+      ],
+      "readiness_polls": 0
+    },
+    {
+      "phase": "baseline",
+      "started": "2026-10-13T07:40:38.486Z",
+      "ended": "2026-10-13T07:42:09.143Z",
+      "seconds": 90.7,
+      "scan_posts": 1,
+      "stale": {
+        "turn": 1,
+        "age_s": 316.8
+      },
+      "clock_read": {
+        "at": "2026-10-13T07:40:38.022Z",
+        "ms": 142,
+        "status": 200,
+        "bounds": {
+          "low": -78,
+          "high": 64
+        },
+        "mid": -7,
+        "scanned_at": "2026-10-13T07:35:21Z",
+        "scan_age_seconds": 317.086
+      },
+      "load_at": "2026-10-13T07:40:38.850Z",
+      "observed_s": 90.3,
+      "mount": {
+        "first_managed_services_read_ms": 192,
+        "first_card_ms": 253,
+        "first_card_state": "checking"
+      },
+      "access_reads_in_window": 4,
+      "access_window_s": 90,
+      "access_reads": [
+        {
+          "start": "2026-10-13T07:40:38.963Z",
+          "end": "2026-10-13T07:40:38.968Z",
+          "ms": 5,
+          "status": 200,
+          "after_load_ms": 113,
+          "since_previous_ms": null,
+          "access": {
+            "can_use_panel": true,
+            "valid_until": 1791877298,
+            "valid_for_seconds": 58.983,
+            "valid_for_seconds_type": "number",
+            "state": "active",
+            "observation": "known",
+            "keys": [
+              "can_use_panel",
+              "observation",
+              "state",
+              "valid_for_seconds",
+              "valid_until"
+            ],
+            "sent": "2026-10-13T07:40:38.963Z",
+            "received": "2026-10-13T07:40:38.968Z",
+            "valid_until_iso": "2026-10-13T07:41:38.000Z",
+            "old_rule_accepts_at_receipt": true,
+            "browser_deadline": "2026-10-13T07:41:37.946Z",
+            "old_rule_deadline_minus_new_ms": 54,
+            "server_now": "2026-10-13T07:40:39.017Z",
+            "guest_minus_browser_ms": {
+              "low": 49,
+              "high": 54
+            }
+          },
+          "error": null
+        },
+        {
+          "start": "2026-10-13T07:41:22.957Z",
+          "end": "2026-10-13T07:41:22.963Z",
+          "ms": 6,
+          "status": 200,
+          "after_load_ms": 44107,
+          "since_previous_ms": 43994,
+          "access": {
+            "can_use_panel": true,
+            "valid_until": 1791877343,
+            "valid_for_seconds": 59.987,
+            "valid_for_seconds_type": "number",
+            "state": "active",
+            "observation": "known",
+            "keys": [
+              "can_use_panel",
+              "observation",
+              "state",
+              "valid_for_seconds",
+              "valid_until"
+            ],
+            "sent": "2026-10-13T07:41:22.957Z",
+            "received": "2026-10-13T07:41:22.963Z",
+            "valid_until_iso": "2026-10-13T07:42:23.000Z",
+            "old_rule_accepts_at_receipt": true,
+            "browser_deadline": "2026-10-13T07:42:22.944Z",
+            "old_rule_deadline_minus_new_ms": 56,
+            "server_now": "2026-10-13T07:41:23.013Z",
+            "guest_minus_browser_ms": {
+              "low": 50,
+              "high": 56
+            }
+          },
+          "error": null
+        },
+        {
+          "start": "2026-10-13T07:41:38.966Z",
+          "end": "2026-10-13T07:41:38.972Z",
+          "ms": 6,
+          "status": 200,
+          "after_load_ms": 60116,
+          "since_previous_ms": 16009,
+          "access": {
+            "can_use_panel": true,
+            "valid_until": 1791877343,
+            "valid_for_seconds": 43.977,
+            "valid_for_seconds_type": "number",
+            "state": "active",
+            "observation": "known",
+            "keys": [
+              "can_use_panel",
+              "observation",
+              "state",
+              "valid_for_seconds",
+              "valid_until"
+            ],
+            "sent": "2026-10-13T07:41:38.966Z",
+            "received": "2026-10-13T07:41:38.972Z",
+            "valid_until_iso": "2026-10-13T07:42:23.000Z",
+            "old_rule_accepts_at_receipt": true,
+            "browser_deadline": "2026-10-13T07:42:22.943Z",
+            "old_rule_deadline_minus_new_ms": 57,
+            "server_now": "2026-10-13T07:41:39.023Z",
+            "guest_minus_browser_ms": {
+              "low": 51,
+              "high": 57
+            }
+          },
+          "error": null
+        },
+        {
+          "start": "2026-10-13T07:42:07.958Z",
+          "end": "2026-10-13T07:42:07.967Z",
+          "ms": 9,
+          "status": 200,
+          "after_load_ms": 89108,
+          "since_previous_ms": 28992,
+          "access": {
+            "can_use_panel": true,
+            "valid_until": 1791877388,
+            "valid_for_seconds": 59.983,
+            "valid_for_seconds_type": "number",
+            "state": "active",
+            "observation": "known",
+            "keys": [
+              "can_use_panel",
+              "observation",
+              "state",
+              "valid_for_seconds",
+              "valid_until"
+            ],
+            "sent": "2026-10-13T07:42:07.958Z",
+            "received": "2026-10-13T07:42:07.967Z",
+            "valid_until_iso": "2026-10-13T07:43:08.000Z",
+            "old_rule_accepts_at_receipt": true,
+            "browser_deadline": "2026-10-13T07:43:07.941Z",
+            "old_rule_deadline_minus_new_ms": 59,
+            "server_now": "2026-10-13T07:42:08.017Z",
+            "guest_minus_browser_ms": {
+              "low": 50,
+              "high": 59
+            }
+          },
+          "error": null
+        }
+      ],
+      "access_reads_whole_page": 4,
+      "first_post_end": "2026-10-13T07:40:40.325Z",
+      "posts_within_60s_after_first": 0,
+      "observed_after_first_post_s": 88.8,
+      "states": [
+        "absent",
+        "checking",
+        "known"
+      ],
+      "card_sequence": [
+        {
+          "page": "p1-baseline",
+          "at": "2026-10-13T07:40:38.900Z",
+          "state": "absent",
+          "vis": "visible",
+          "lasted_ms": 203,
+          "text": null
+        },
+        {
+          "page": "p1-baseline",
+          "at": "2026-10-13T07:40:39.103Z",
+          "state": "checking",
+          "vis": "visible",
+          "lasted_ms": 1226,
+          "text": "System services Checking components…"
+        },
+        {
+          "page": "p1-baseline",
+          "at": "2026-10-13T07:40:40.329Z",
+          "state": "known",
+          "vis": "visible",
+          "lasted_ms": null,
+          "text": "System services 3 / 3 running / installed"
+        }
+      ],
+      "answers": [
+        {
+          "page": "p1-baseline",
+          "method": "GET",
+          "url": "/api/v1/managed-services",
+          "status": 200,
+          "start": "2026-10-13T07:40:39.042Z",
+          "end": "2026-10-13T07:40:39.077Z",
+          "ms": 35,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-13T07:35:21Z",
+            "scan_age_seconds": 318.115,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-13T07:40:39.115Z",
+            "guest_minus_browser_ms": {
+              "low": 38,
+              "high": 73
+            }
+          }
+        },
+        {
+          "page": "p1-baseline",
+          "method": "GET",
+          "url": "/api/v1/managed-services",
+          "status": 200,
+          "start": "2026-10-13T07:40:39.106Z",
+          "end": "2026-10-13T07:40:39.116Z",
+          "ms": 10,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-13T07:35:21Z",
+            "scan_age_seconds": 318.157,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-13T07:40:39.157Z",
+            "guest_minus_browser_ms": {
+              "low": 41,
+              "high": 51
+            }
+          }
+        },
+        {
+          "page": "p1-baseline",
+          "method": "POST",
+          "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+          "status": 200,
+          "start": "2026-10-13T07:40:39.128Z",
+          "end": "2026-10-13T07:40:40.325Z",
+          "ms": 1197,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-13T07:40:40.374271704Z",
+            "scan_age_seconds": 0,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-13T07:40:40.374Z",
+            "guest_minus_browser_ms": {
+              "low": 49,
+              "high": 1246
+            }
+          }
+        }
+      ],
+      "scan_posts_list": [
+        {
+          "page": "p1-baseline",
+          "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+          "status": 200,
+          "start": "2026-10-13T07:40:39.128Z",
+          "end": "2026-10-13T07:40:40.325Z",
+          "ms": 1197,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-13T07:40:40.374271704Z",
+            "scan_age_seconds": 0,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-13T07:40:40.374Z",
+            "guest_minus_browser_ms": {
+              "low": 49,
+              "high": 1246
+            }
+          }
+        }
+      ],
+      "readiness_polls": 19
+    },
+    {
+      "phase": "agent",
+      "started": "2026-10-13T07:45:56.855Z",
+      "ended": "2026-10-13T07:47:13.506Z",
+      "seconds": 76.7,
+      "scan_posts": 4,
+      "stale": {
+        "turn": 1,
+        "age_s": 316.8
+      },
+      "agent_stop": {
+        "after": "inactive",
+        "at": "2026-10-13T07:45:58Z",
+        "before": "active",
+        "command": "systemctl stop celikpanel-agent.service",
+        "epoch": 1791877558.2088912,
+        "main_pid_after": "0",
+        "returncode": 0,
+        "waited_seconds": 0.04
+      },
+      "agent_reads": {
+        "/api/v1/firewall": {
+          "at": "2026-10-13T07:45:59Z",
+          "body": "{\"code\": \"AGENT_UNREACHABLE\", \"error\": \"The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.\"}",
+          "body_mentions_socket": false,
+          "code": "AGENT_UNREACHABLE",
+          "error": "The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.",
+          "keys": [
+            "code",
+            "error"
+          ],
+          "message": null,
+          "status": 503
+        },
+        "/api/v1/system/check": {
+          "at": "2026-10-13T07:45:59Z",
+          "body": "{\"code\": \"AGENT_UNREACHABLE\", \"error\": \"The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.\"}",
+          "body_mentions_socket": false,
+          "code": "AGENT_UNREACHABLE",
+          "error": "The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.",
+          "keys": [
+            "code",
+            "error"
+          ],
+          "message": null,
+          "status": 503
+        }
+      },
+      "admission": {
+        "agent_after": "inactive",
+        "agent_before": "inactive",
+        "at": "2026-10-13T07:46:00Z",
+        "body": {
+          "code": "AGENT_UNREACHABLE",
+          "error": "The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again."
+        },
+        "files": [
+          "steps/08-set14-browser-window/native/007-admission-before-7.json",
+          "steps/08-set14-browser-window/native/008-admission-after-7.json"
+        ],
+        "nginx_after": {
+          "ActiveEnterTimestampMonotonic": "142833567",
+          "ActiveState": "active",
+          "ExecMainStartTimestamp": "Tue 2026-10-13 07:34:40 UTC",
+          "MainPID": "7213",
+          "NRestarts": "0"
+        },
+        "nginx_before": {
+          "ActiveEnterTimestampMonotonic": "142833567",
+          "ActiveState": "active",
+          "ExecMainStartTimestamp": "Tue 2026-10-13 07:34:40 UTC",
+          "MainPID": "7213",
+          "NRestarts": "0"
+        },
+        "request": {
+          "body": {
+            "action": "restart",
+            "name": "nginx"
+          },
+          "method": "POST",
+          "path": "/api/v1/service/action"
+        },
+        "status": 503
+      },
+      "agent_start": {
+        "after": "active",
+        "at": "2026-10-13T07:46:55Z",
+        "before": "inactive",
+        "command": "systemctl start celikpanel-agent.service",
+        "epoch": 1791877615.2182307,
+        "main_pid_after": "15630",
+        "returncode": 0,
+        "waited_seconds": 0.08
+      },
+      "dashboard": {
+        "load_at": "2026-10-13T07:46:01.315Z",
+        "posts": [
+          {
+            "page": "p2-agent-dashboard-en",
+            "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+            "status": 503,
+            "start": "2026-10-13T07:46:01.538Z",
+            "end": "2026-10-13T07:46:01.541Z",
+            "ms": 3,
+            "answer": {
+              "code": "AGENT_UNREACHABLE",
+              "scanned_at": null,
+              "scan_age_seconds": "<absent>",
+              "scan_age_seconds_type": "absent",
+              "services": null,
+              "error": "The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.",
+              "message": null,
+              "body": "{\"error\":\"The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.\",\"code\":\"AGENT_UNREACHABLE\"}\n",
+              "body_mentions_socket": false
+            }
+          }
+        ],
+        "states": [
+          "absent",
+          "checking",
+          "failed"
+        ],
+        "card_sequence": [
+          {
+            "at": "2026-10-13T07:46:01.364Z",
+            "state": "absent",
+            "vis": "visible",
+            "lasted_ms": 155,
+            "text": null
+          },
+          {
+            "at": "2026-10-13T07:46:01.519Z",
+            "state": "checking",
+            "vis": "visible",
+            "lasted_ms": 25,
+            "text": "System services Checking components…"
+          },
+          {
+            "at": "2026-10-13T07:46:01.544Z",
+            "state": "failed",
+            "vis": "visible",
+            "lasted_ms": null,
+            "text": "System services Unknown Could not check: The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again. Scan services"
+          }
+        ],
+        "page_reads": 3,
+        "agent_reads_of_the_page": [
+          {
+            "url": "/api/v1/firewall",
+            "status": 503,
+            "agent_read": {
+              "ok": false,
+              "code": "AGENT_UNREACHABLE",
+              "error": "The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.",
+              "keys": [
+                "code",
+                "error"
+              ],
+              "body": "{\"error\":\"The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.\",\"code\":\"AGENT_UNREACHABLE\"}\n",
+              "body_mentions_socket": false
+            }
+          }
+        ]
+      },
+      "components_first": {
+        "load_at": "2026-10-13T07:46:42.150Z",
+        "banner": {
+          "at": "2026-10-13T07:46:43.198Z",
+          "after_load_ms": 1007,
+          "banner": "Component state could not be read This page did not send any component action; it could not read the current state of the components. The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again. Component changes stay locked until a scan reads the state; Rescan reads it again. Rescan",
+          "buttons": [
+            "Rescan"
+          ],
+          "alerts": [
+            "The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.",
+            "Firewall: Status unknown CelikPanel could not verify the active firewall policy. Controls stay disabled until the status can be read safely. The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again. Unavailable",
+            "Component state could not be read This page did not send any component action; it could not read the current state of the components. The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again. Component changes stay locked until a scan reads the state; Rescan reads it again. Rescan"
+          ],
+          "unread": [
+            "Component state could not be read This page did not send any component action; it could not read the current state of the components. The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again. Component changes stay locked until a scan reads the state; Rescan reads it again. Rescan"
+          ],
+          "unverified_in_page": false,
+          "may_have_in_page": false,
+          "lang": "en",
+          "viewport": "desktop"
+        },
+        "banners_5s_later": {
+          "alerts": [
+            "Firewall: Status unknown CelikPanel could not verify the active firewall policy. Controls stay disabled until the status can be read safely. The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again. Unavailable",
+            "Component state could not be read This page did not send any component action; it could not read the current state of the components. The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again. Component changes stay locked until a scan reads the state; Rescan reads it again. Rescan"
+          ],
+          "unread": [
+            "Component state could not be read This page did not send any component action; it could not read the current state of the components. The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again. Component changes stay locked until a scan reads the state; Rescan reads it again. Rescan"
+          ],
+          "unverified_in_page": false,
+          "may_have_in_page": false
+        },
+        "posts": [
+          {
+            "page": "p3-components-en-desktop",
+            "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+            "status": 503,
+            "start": "2026-10-13T07:46:42.346Z",
+            "end": "2026-10-13T07:46:42.453Z",
+            "ms": 107,
+            "answer": {
+              "code": "AGENT_UNREACHABLE",
+              "scanned_at": null,
+              "scan_age_seconds": "<absent>",
+              "scan_age_seconds_type": "absent",
+              "services": null,
+              "error": "The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.",
+              "message": null,
+              "body": "{\"error\":\"The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.\",\"code\":\"AGENT_UNREACHABLE\"}\n",
+              "body_mentions_socket": false
+            }
+          }
+        ],
+        "toasts": [
+          {
+            "page": "p3-components-en-desktop",
+            "lang": "en",
+            "phase": "agent",
+            "at": "2026-10-13T07:46:42.439Z",
+            "t": 1791877602439,
+            "text": "Firewall: Status unknown CelikPanel could not verify the active firewall policy. Controls stay disabled until the status can be read safely. The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again. Unavailable",
+            "path": "/services"
+          },
+          {
+            "page": "p3-components-en-desktop",
+            "lang": "en",
+            "phase": "agent",
+            "at": "2026-10-13T07:46:42.476Z",
+            "t": 1791877602476,
+            "text": "The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.",
+            "path": "/services"
+          },
+          {
+            "page": "p3-components-en-desktop",
+            "lang": "en",
+            "phase": "agent",
+            "at": "2026-10-13T07:46:42.476Z",
+            "t": 1791877602476,
+            "text": "Component state could not be read This page did not send any component action; it could not read the current state of the components. The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again. Component changes stay locked until a scan reads the state; Rescan reads it again. Rescan",
+            "path": "/services"
+          }
+        ]
+      },
+      "components_other": {
+        "load_at": "2026-10-13T07:46:48.622Z",
+        "banner": {
+          "at": "2026-10-13T07:46:49.671Z",
+          "after_load_ms": 1012,
+          "banner": "Bileşen durumu okunamadı Bu sayfa hiçbir bileşen işlemi göndermedi; bileşenlerin güncel durumunu okuyamadı. Bu sunucudaki CelikPanel Agent’ına ulaşılamıyor; bu yüzden istek yapılmadı ve hiçbir şey değiştirilmedi. Sunucunun sahibi Agent’ı sunucuda sudo systemctl status celikpanel-agent komutuyla denetler (günlüğü: sudo journalctl -u celikpanel-agent); durmuşsa sudo systemctl start celikpanel-agent ile başlatır. Agent çalışınca yeniden deneyin. Bir tarama durumu okuyana dek bileşen değişiklikleri kilitli kalır; Yeniden tara durumu yeniden okur. Yeniden tara",
+          "buttons": [
+            "Yeniden tara"
+          ],
+          "alerts": [
+            "Bu sunucudaki CelikPanel Agent’ına ulaşılamıyor; bu yüzden istek yapılmadı ve hiçbir şey değiştirilmedi. Sunucunun sahibi Agent’ı sunucuda sudo systemctl status celikpanel-agent komutuyla denetler (günlüğü: sudo journalctl -u celikpanel-agent); durmuşsa sudo systemctl start celikpanel-agent ile başlatır. Agent çalışınca yeniden deneyin.",
+            "Güvenlik duvarı: Durum bilinmiyor CelikPanel etkin güvenlik duvarı politikasını doğrulayamadı. Durum güvenle okunana kadar kontroller devre dışı kalır. The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again. Kullanılamıyor",
+            "Bileşen durumu okunamadı Bu sayfa hiçbir bileşen işlemi göndermedi; bileşenlerin güncel durumunu okuyamadı. Bu sunucudaki CelikPanel Agent’ına ulaşılamıyor; bu yüzden istek yapılmadı ve hiçbir şey değiştirilmedi. Sunucunun sahibi Agent’ı sunucuda sudo systemctl status celikpanel-agent komutuyla denetler (günlüğü: sudo journalctl -u celikpanel-agent); durmuşsa sudo systemctl start celikpanel-agent ile başlatır. Agent çalışınca yeniden deneyin. Bir tarama durumu okuyana dek bileşen değişiklikleri kilitli kalır; Yeniden tara durumu yeniden okur. Yeniden tara"
+          ],
+          "unread": [
+            "Bileşen durumu okunamadı Bu sayfa hiçbir bileşen işlemi göndermedi; bileşenlerin güncel durumunu okuyamadı. Bu sunucudaki CelikPanel Agent’ına ulaşılamıyor; bu yüzden istek yapılmadı ve hiçbir şey değiştirilmedi. Sunucunun sahibi Agent’ı sunucuda sudo systemctl status celikpanel-agent komutuyla denetler (günlüğü: sudo journalctl -u celikpanel-agent); durmuşsa sudo systemctl start celikpanel-agent ile başlatır. Agent çalışınca yeniden deneyin. Bir tarama durumu okuyana dek bileşen değişiklikleri kilitli kalır; Yeniden tara durumu yeniden okur. Yeniden tara"
+          ],
+          "unverified_in_page": false,
+          "may_have_in_page": false,
+          "lang": "tr",
+          "viewport": "phone"
+        },
+        "banners_5s_later": {
+          "alerts": [
+            "Güvenlik duvarı: Durum bilinmiyor CelikPanel etkin güvenlik duvarı politikasını doğrulayamadı. Durum güvenle okunana kadar kontroller devre dışı kalır. The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again. Kullanılamıyor",
+            "Bileşen durumu okunamadı Bu sayfa hiçbir bileşen işlemi göndermedi; bileşenlerin güncel durumunu okuyamadı. Bu sunucudaki CelikPanel Agent’ına ulaşılamıyor; bu yüzden istek yapılmadı ve hiçbir şey değiştirilmedi. Sunucunun sahibi Agent’ı sunucuda sudo systemctl status celikpanel-agent komutuyla denetler (günlüğü: sudo journalctl -u celikpanel-agent); durmuşsa sudo systemctl start celikpanel-agent ile başlatır. Agent çalışınca yeniden deneyin. Bir tarama durumu okuyana dek bileşen değişiklikleri kilitli kalır; Yeniden tara durumu yeniden okur. Yeniden tara"
+          ],
+          "unread": [
+            "Bileşen durumu okunamadı Bu sayfa hiçbir bileşen işlemi göndermedi; bileşenlerin güncel durumunu okuyamadı. Bu sunucudaki CelikPanel Agent’ına ulaşılamıyor; bu yüzden istek yapılmadı ve hiçbir şey değiştirilmedi. Sunucunun sahibi Agent’ı sunucuda sudo systemctl status celikpanel-agent komutuyla denetler (günlüğü: sudo journalctl -u celikpanel-agent); durmuşsa sudo systemctl start celikpanel-agent ile başlatır. Agent çalışınca yeniden deneyin. Bir tarama durumu okuyana dek bileşen değişiklikleri kilitli kalır; Yeniden tara durumu yeniden okur. Yeniden tara"
+          ],
+          "unverified_in_page": false,
+          "may_have_in_page": false
+        },
+        "posts": [
+          {
+            "page": "p4-components-tr-phone",
+            "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+            "status": 503,
+            "start": "2026-10-13T07:46:48.827Z",
+            "end": "2026-10-13T07:46:48.915Z",
+            "ms": 88,
+            "answer": {
+              "code": "AGENT_UNREACHABLE",
+              "scanned_at": null,
+              "scan_age_seconds": "<absent>",
+              "scan_age_seconds_type": "absent",
+              "services": null,
+              "error": "The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.",
+              "message": null,
+              "body": "{\"error\":\"The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.\",\"code\":\"AGENT_UNREACHABLE\"}\n",
+              "body_mentions_socket": false
+            }
+          }
+        ],
+        "toasts": [
+          {
+            "page": "p4-components-tr-phone",
+            "lang": "tr",
+            "phase": "agent",
+            "at": "2026-10-13T07:46:48.900Z",
+            "t": 1791877608900,
+            "text": "Güvenlik duvarı: Durum bilinmiyor CelikPanel etkin güvenlik duvarı politikasını doğrulayamadı. Durum güvenle okunana kadar kontroller devre dışı kalır. The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again. Kullanılamıyor",
+            "path": "/services"
+          },
+          {
+            "page": "p4-components-tr-phone",
+            "lang": "tr",
+            "phase": "agent",
+            "at": "2026-10-13T07:46:48.930Z",
+            "t": 1791877608930,
+            "text": "Bu sunucudaki CelikPanel Agent’ına ulaşılamıyor; bu yüzden istek yapılmadı ve hiçbir şey değiştirilmedi. Sunucunun sahibi Agent’ı sunucuda sudo systemctl status celikpanel-agent komutuyla denetler (günlüğü: sudo journalctl -u celikpanel-agent); durmuşsa sudo systemctl start celikpanel-agent ile başlatır. Agent çalışınca yeniden deneyin.",
+            "path": "/services"
+          },
+          {
+            "page": "p4-components-tr-phone",
+            "lang": "tr",
+            "phase": "agent",
+            "at": "2026-10-13T07:46:48.930Z",
+            "t": 1791877608930,
+            "text": "Bileşen durumu okunamadı Bu sayfa hiçbir bileşen işlemi göndermedi; bileşenlerin güncel durumunu okuyamadı. Bu sunucudaki CelikPanel Agent’ına ulaşılamıyor; bu yüzden istek yapılmadı ve hiçbir şey değiştirilmedi. Sunucunun sahibi Agent’ı sunucuda sudo systemctl status celikpanel-agent komutuyla denetler (günlüğü: sudo journalctl -u celikpanel-agent); durmuşsa sudo systemctl start celikpanel-agent ile başlatır. Agent çalışınca yeniden deneyin. Bir tarama durumu okuyana dek bileşen değişiklikleri kilitli kalır; Yeniden tara durumu yeniden okur. Yeniden tara",
+            "path": "/services"
+          }
+        ]
+      },
+      "posts_sent_by_itself_after_agent_start_5s": 0,
+      "clicked": "Yeniden tara",
+      "click_at": "2026-10-13T07:47:00.275Z",
+      "banner_gone_ms_after_click": 1092,
+      "banners_after_click": {
+        "alerts": [
+          "Güvenlik duvarı: Durum bilinmiyor CelikPanel etkin güvenlik duvarı politikasını doğrulayamadı. Durum güvenle okunana kadar kontroller devre dışı kalır. The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again. Kullanılamıyor"
+        ],
+        "unread": [],
+        "unverified_in_page": false,
+        "may_have_in_page": false
+      },
+      "banners_10s_later": {
+        "alerts": [
+          "Güvenlik duvarı: Durum bilinmiyor CelikPanel etkin güvenlik duvarı politikasını doğrulayamadı. Durum güvenle okunana kadar kontroller devre dışı kalır. The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again. Kullanılamıyor"
+        ],
+        "unread": [],
+        "unverified_in_page": false,
+        "may_have_in_page": false
+      },
+      "posts_after_click": 1,
+      "posts_after_click_list": [
+        {
+          "page": "p4-components-tr-phone",
+          "url": "/api/v1/managed-services/scan",
+          "status": 200,
+          "start": "2026-10-13T07:47:00.282Z",
+          "end": "2026-10-13T07:47:01.296Z",
+          "ms": 1014,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-13T07:47:01.347631559Z",
+            "scan_age_seconds": 0,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-13T07:47:01.347Z",
+            "guest_minus_browser_ms": {
+              "low": 51,
+              "high": 1065
+            }
+          }
+        }
+      ],
+      "page_agent_reads": [
+        {
+          "page": "p2-agent-dashboard-en",
+          "url": "/api/v1/firewall",
+          "status": 503,
+          "agent_read": {
+            "ok": false,
+            "code": "AGENT_UNREACHABLE",
+            "error": "The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.",
+            "keys": [
+              "code",
+              "error"
+            ],
+            "body": "{\"error\":\"The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.\",\"code\":\"AGENT_UNREACHABLE\"}\n",
+            "body_mentions_socket": false
+          }
+        },
+        {
+          "page": "p3-components-en-desktop",
+          "url": "/api/v1/firewall",
+          "status": 503,
+          "agent_read": {
+            "ok": false,
+            "code": "AGENT_UNREACHABLE",
+            "error": "The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.",
+            "keys": [
+              "code",
+              "error"
+            ],
+            "body": "{\"error\":\"The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.\",\"code\":\"AGENT_UNREACHABLE\"}\n",
+            "body_mentions_socket": false
+          }
+        },
+        {
+          "page": "p4-components-tr-phone",
+          "url": "/api/v1/firewall",
+          "status": 503,
+          "agent_read": {
+            "ok": false,
+            "code": "AGENT_UNREACHABLE",
+            "error": "The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.",
+            "keys": [
+              "code",
+              "error"
+            ],
+            "body": "{\"error\":\"The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.\",\"code\":\"AGENT_UNREACHABLE\"}\n",
+            "body_mentions_socket": false
+          }
+        }
+      ],
+      "toasts": [
+        {
+          "page": "p2-agent-dashboard-en",
+          "lang": "en",
+          "phase": "agent",
+          "at": "2026-10-13T07:46:01.537Z",
+          "t": 1791877561537,
+          "text": "Part of this server’s state could not be read, so this list may be incomplete. This does not mean something is wrong. Nothing was changed. Try again. Retry",
+          "path": "/"
+        },
+        {
+          "page": "p3-components-en-desktop",
+          "lang": "en",
+          "phase": "agent",
+          "at": "2026-10-13T07:46:42.439Z",
+          "t": 1791877602439,
+          "text": "Firewall: Status unknown CelikPanel could not verify the active firewall policy. Controls stay disabled until the status can be read safely. The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again. Unavailable",
+          "path": "/services"
+        },
+        {
+          "page": "p3-components-en-desktop",
+          "lang": "en",
+          "phase": "agent",
+          "at": "2026-10-13T07:46:42.476Z",
+          "t": 1791877602476,
+          "text": "The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.",
+          "path": "/services"
+        },
+        {
+          "page": "p3-components-en-desktop",
+          "lang": "en",
+          "phase": "agent",
+          "at": "2026-10-13T07:46:42.476Z",
+          "t": 1791877602476,
+          "text": "Component state could not be read This page did not send any component action; it could not read the current state of the components. The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again. Component changes stay locked until a scan reads the state; Rescan reads it again. Rescan",
+          "path": "/services"
+        },
+        {
+          "page": "p4-components-tr-phone",
+          "lang": "tr",
+          "phase": "agent",
+          "at": "2026-10-13T07:46:48.900Z",
+          "t": 1791877608900,
+          "text": "Güvenlik duvarı: Durum bilinmiyor CelikPanel etkin güvenlik duvarı politikasını doğrulayamadı. Durum güvenle okunana kadar kontroller devre dışı kalır. The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again. Kullanılamıyor",
+          "path": "/services"
+        },
+        {
+          "page": "p4-components-tr-phone",
+          "lang": "tr",
+          "phase": "agent",
+          "at": "2026-10-13T07:46:48.930Z",
+          "t": 1791877608930,
+          "text": "Bu sunucudaki CelikPanel Agent’ına ulaşılamıyor; bu yüzden istek yapılmadı ve hiçbir şey değiştirilmedi. Sunucunun sahibi Agent’ı sunucuda sudo systemctl status celikpanel-agent komutuyla denetler (günlüğü: sudo journalctl -u celikpanel-agent); durmuşsa sudo systemctl start celikpanel-agent ile başlatır. Agent çalışınca yeniden deneyin.",
+          "path": "/services"
+        },
+        {
+          "page": "p4-components-tr-phone",
+          "lang": "tr",
+          "phase": "agent",
+          "at": "2026-10-13T07:46:48.930Z",
+          "t": 1791877608930,
+          "text": "Bileşen durumu okunamadı Bu sayfa hiçbir bileşen işlemi göndermedi; bileşenlerin güncel durumunu okuyamadı. Bu sunucudaki CelikPanel Agent’ına ulaşılamıyor; bu yüzden istek yapılmadı ve hiçbir şey değiştirilmedi. Sunucunun sahibi Agent’ı sunucuda sudo systemctl status celikpanel-agent komutuyla denetler (günlüğü: sudo journalctl -u celikpanel-agent); durmuşsa sudo systemctl start celikpanel-agent ile başlatır. Agent çalışınca yeniden deneyin. Bir tarama durumu okuyana dek bileşen değişiklikleri kilitli kalır; Yeniden tara durumu yeniden okur. Yeniden tara",
+          "path": "/services"
+        },
+        {
+          "page": "p4-components-tr-phone",
+          "lang": "tr",
+          "phase": "agent",
+          "at": "2026-10-13T07:47:00.282Z",
+          "t": 1791877620282,
+          "text": "Bileşen durumu okunamadı Bu sayfa hiçbir bileşen işlemi göndermedi; bileşenlerin güncel durumunu okuyamadı. Bu sunucudaki CelikPanel Agent’ına ulaşılamıyor; bu yüzden istek yapılmadı ve hiçbir şey değiştirilmedi. Sunucunun sahibi Agent’ı sunucuda sudo systemctl status celikpanel-agent komutuyla denetler (günlüğü: sudo journalctl -u celikpanel-agent); durmuşsa sudo systemctl start celikpanel-agent ile başlatır. Agent çalışınca yeniden deneyin. Bir tarama durumu okuyana dek bileşen değişiklikleri kilitli kalır; Yeniden tara durumu yeniden okur. Taranıyor…",
+          "path": "/services"
+        }
+      ],
+      "scan_posts_list": [
+        {
+          "page": "p2-agent-dashboard-en",
+          "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+          "status": 503,
+          "start": "2026-10-13T07:46:01.538Z",
+          "end": "2026-10-13T07:46:01.541Z",
+          "ms": 3,
+          "answer": {
+            "code": "AGENT_UNREACHABLE",
+            "scanned_at": null,
+            "scan_age_seconds": "<absent>",
+            "scan_age_seconds_type": "absent",
+            "services": null,
+            "error": "The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.",
+            "message": null,
+            "body": "{\"error\":\"The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.\",\"code\":\"AGENT_UNREACHABLE\"}\n",
+            "body_mentions_socket": false
+          }
+        },
+        {
+          "page": "p3-components-en-desktop",
+          "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+          "status": 503,
+          "start": "2026-10-13T07:46:42.346Z",
+          "end": "2026-10-13T07:46:42.453Z",
+          "ms": 107,
+          "answer": {
+            "code": "AGENT_UNREACHABLE",
+            "scanned_at": null,
+            "scan_age_seconds": "<absent>",
+            "scan_age_seconds_type": "absent",
+            "services": null,
+            "error": "The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.",
+            "message": null,
+            "body": "{\"error\":\"The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.\",\"code\":\"AGENT_UNREACHABLE\"}\n",
+            "body_mentions_socket": false
+          }
+        },
+        {
+          "page": "p4-components-tr-phone",
+          "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+          "status": 503,
+          "start": "2026-10-13T07:46:48.827Z",
+          "end": "2026-10-13T07:46:48.915Z",
+          "ms": 88,
+          "answer": {
+            "code": "AGENT_UNREACHABLE",
+            "scanned_at": null,
+            "scan_age_seconds": "<absent>",
+            "scan_age_seconds_type": "absent",
+            "services": null,
+            "error": "The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.",
+            "message": null,
+            "body": "{\"error\":\"The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.\",\"code\":\"AGENT_UNREACHABLE\"}\n",
+            "body_mentions_socket": false
+          }
+        },
+        {
+          "page": "p4-components-tr-phone",
+          "url": "/api/v1/managed-services/scan",
+          "status": 200,
+          "start": "2026-10-13T07:47:00.282Z",
+          "end": "2026-10-13T07:47:01.296Z",
+          "ms": 1014,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-13T07:47:01.347631559Z",
+            "scan_age_seconds": 0,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-13T07:47:01.347Z",
+            "guest_minus_browser_ms": {
+              "low": 51,
+              "high": 1065
+            }
+          }
+        }
+      ],
+      "card_sequence": [
+        {
+          "page": "p2-agent-dashboard-en",
+          "at": "2026-10-13T07:46:01.364Z",
+          "state": "absent",
+          "vis": "visible",
+          "lasted_ms": 155,
+          "text": null
+        },
+        {
+          "page": "p2-agent-dashboard-en",
+          "at": "2026-10-13T07:46:01.519Z",
+          "state": "checking",
+          "vis": "visible",
+          "lasted_ms": 25,
+          "text": "System services Checking components…"
+        },
+        {
+          "page": "p2-agent-dashboard-en",
+          "at": "2026-10-13T07:46:01.544Z",
+          "state": "failed",
+          "vis": "visible",
+          "lasted_ms": null,
+          "text": "System services Unknown Could not check: The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again. Scan services"
+        },
+        {
+          "page": "p3-components-en-desktop",
+          "at": "2026-10-13T07:46:42.195Z",
+          "state": "absent",
+          "vis": "visible",
+          "lasted_ms": null,
+          "text": null
+        },
+        {
+          "page": "p4-components-tr-phone",
+          "at": "2026-10-13T07:46:48.666Z",
+          "state": "absent",
+          "vis": "visible",
+          "lasted_ms": null,
+          "text": null
+        }
+      ],
+      "readiness_polls": 16
+    },
+    {
+      "phase": "clock-behind",
+      "started": "2026-10-13T07:52:35.656Z",
+      "ended": "2026-10-13T07:54:06.166Z",
+      "seconds": 90.5,
+      "scan_posts": 1,
+      "offset_ms_probe_before_shift": 415,
+      "shift_back": {
+        "after_clock": {
+          "returncode": 0
+        },
+        "after_epoch": 1791877216.1336153,
+        "at": "2026-10-13T07:40:16Z",
+        "before_clock": {
+          "returncode": 0
+        },
+        "before_epoch": 1791877635.8409774,
+        "command": "date -u -s @<guest epoch -420000 ms>",
+        "epoch": 1791877216.153052,
+        "ntp_off_returncode": 0,
+        "returncode": 0,
+        "shift_ms": -420000,
+        "shift_total_ms": -420000,
+        "stderr": ""
+      },
+      "clock_read_after_shift": {
+        "at": "2026-10-13T07:47:16.287Z",
+        "ms": 57,
+        "status": 200,
+        "bounds": {
+          "low": -420002,
+          "high": -419945
+        },
+        "mid": -419973,
+        "scanned_at": "2026-10-13T07:47:01Z",
+        "scan_age_seconds": -404.658
+      },
+      "owner_scan": {
+        "answer": {
+          "code": null,
+          "error": null,
+          "message": null,
+          "scan_age_seconds": 0,
+          "scan_age_seconds_type": "int",
+          "scanned_at": "2026-10-13T07:40:18.229967877Z",
+          "services": 27
+        },
+        "at": "2026-10-13T07:47:18Z",
+        "status": 200
+      },
+      "stale": {
+        "turn": 1,
+        "age_s": 317.1
+      },
+      "clock_read_at_load": {
+        "at": "2026-10-13T07:52:35.273Z",
+        "ms": 56,
+        "status": 200,
+        "bounds": {
+          "low": -419999,
+          "high": -419943
+        },
+        "mid": -419971,
+        "scanned_at": "2026-10-13T07:40:18Z",
+        "scan_age_seconds": 317.33
+      },
+      "load_at": "2026-10-13T07:52:36.005Z",
+      "observed_s": 90.2,
+      "mount": {
+        "first_managed_services_read_ms": 130,
+        "first_card_ms": 165,
+        "first_card_state": "checking"
+      },
+      "access_reads_in_window": 4,
+      "access_window_s": 90,
+      "access_reads": [
+        {
+          "start": "2026-10-13T07:52:36.076Z",
+          "end": "2026-10-13T07:52:36.080Z",
+          "ms": 4,
+          "status": 200,
+          "after_load_ms": 71,
+          "since_previous_ms": null,
+          "access": {
+            "can_use_panel": true,
+            "valid_until": 1791877595,
+            "valid_for_seconds": 58.872,
+            "valid_for_seconds_type": "number",
+            "state": "active",
+            "observation": "known",
+            "keys": [
+              "can_use_panel",
+              "observation",
+              "state",
+              "valid_for_seconds",
+              "valid_until"
+            ],
+            "sent": "2026-10-13T07:52:36.076Z",
+            "received": "2026-10-13T07:52:36.080Z",
+            "valid_until_iso": "2026-10-13T07:46:35.000Z",
+            "old_rule_accepts_at_receipt": false,
+            "browser_deadline": "2026-10-13T07:53:34.948Z",
+            "old_rule_deadline_minus_new_ms": -419948,
+            "server_now": "2026-10-13T07:45:36.128Z",
+            "guest_minus_browser_ms": {
+              "low": -419952,
+              "high": -419948
+            }
+          },
+          "error": null
+        },
+        {
+          "start": "2026-10-13T07:53:19.962Z",
+          "end": "2026-10-13T07:53:19.968Z",
+          "ms": 6,
+          "status": 200,
+          "after_load_ms": 43957,
+          "since_previous_ms": 43886,
+          "access": {
+            "can_use_panel": true,
+            "valid_until": 1791877640,
+            "valid_for_seconds": 59.984,
+            "valid_for_seconds_type": "number",
+            "state": "active",
+            "observation": "known",
+            "keys": [
+              "can_use_panel",
+              "observation",
+              "state",
+              "valid_for_seconds",
+              "valid_until"
+            ],
+            "sent": "2026-10-13T07:53:19.962Z",
+            "received": "2026-10-13T07:53:19.968Z",
+            "valid_until_iso": "2026-10-13T07:47:20.000Z",
+            "old_rule_accepts_at_receipt": false,
+            "browser_deadline": "2026-10-13T07:54:19.946Z",
+            "old_rule_deadline_minus_new_ms": -419946,
+            "server_now": "2026-10-13T07:46:20.016Z",
+            "guest_minus_browser_ms": {
+              "low": -419952,
+              "high": -419946
+            }
+          },
+          "error": null
+        },
+        {
+          "start": "2026-10-13T07:53:36.087Z",
+          "end": "2026-10-13T07:53:36.093Z",
+          "ms": 6,
+          "status": 200,
+          "after_load_ms": 60082,
+          "since_previous_ms": 16125,
+          "access": {
+            "can_use_panel": true,
+            "valid_until": 1791877640,
+            "valid_for_seconds": 43.859,
+            "valid_for_seconds_type": "number",
+            "state": "active",
+            "observation": "known",
+            "keys": [
+              "can_use_panel",
+              "observation",
+              "state",
+              "valid_for_seconds",
+              "valid_until"
+            ],
+            "sent": "2026-10-13T07:53:36.087Z",
+            "received": "2026-10-13T07:53:36.093Z",
+            "valid_until_iso": "2026-10-13T07:47:20.000Z",
+            "old_rule_accepts_at_receipt": false,
+            "browser_deadline": "2026-10-13T07:54:19.946Z",
+            "old_rule_deadline_minus_new_ms": -419946,
+            "server_now": "2026-10-13T07:46:36.141Z",
+            "guest_minus_browser_ms": {
+              "low": -419952,
+              "high": -419946
+            }
+          },
+          "error": null
+        },
+        {
+          "start": "2026-10-13T07:54:04.952Z",
+          "end": "2026-10-13T07:54:04.956Z",
+          "ms": 4,
+          "status": 200,
+          "after_load_ms": 88947,
+          "since_previous_ms": 28865,
+          "access": {
+            "can_use_panel": true,
+            "valid_until": 1791877685,
+            "valid_for_seconds": 59.995,
+            "valid_for_seconds_type": "number",
+            "state": "active",
+            "observation": "known",
+            "keys": [
+              "can_use_panel",
+              "observation",
+              "state",
+              "valid_for_seconds",
+              "valid_until"
+            ],
+            "sent": "2026-10-13T07:54:04.952Z",
+            "received": "2026-10-13T07:54:04.956Z",
+            "valid_until_iso": "2026-10-13T07:48:05.000Z",
+            "old_rule_accepts_at_receipt": false,
+            "browser_deadline": "2026-10-13T07:55:04.947Z",
+            "old_rule_deadline_minus_new_ms": -419947,
+            "server_now": "2026-10-13T07:47:05.005Z",
+            "guest_minus_browser_ms": {
+              "low": -419951,
+              "high": -419947
+            }
+          },
+          "error": null
+        }
+      ],
+      "access_reads_whole_page": 4,
+      "first_post_end": "2026-10-13T07:52:37.150Z",
+      "posts_within_60s_after_first": 0,
+      "observed_after_first_post_s": 89,
+      "states": [
+        "absent",
+        "checking",
+        "known"
+      ],
+      "card_sequence": [
+        {
+          "page": "p5-behind",
+          "at": "2026-10-13T07:52:36.050Z",
+          "state": "absent",
+          "vis": "visible",
+          "lasted_ms": 120,
+          "text": null
+        },
+        {
+          "page": "p5-behind",
+          "at": "2026-10-13T07:52:36.170Z",
+          "state": "checking",
+          "vis": "visible",
+          "lasted_ms": 984,
+          "text": "System services Checking components…"
+        },
+        {
+          "page": "p5-behind",
+          "at": "2026-10-13T07:52:37.154Z",
+          "state": "known",
+          "vis": "visible",
+          "lasted_ms": null,
+          "text": "System services 3 / 3 running / installed"
+        }
+      ],
+      "answers": [
+        {
+          "page": "p5-behind",
+          "method": "GET",
+          "url": "/api/v1/managed-services",
+          "status": 200,
+          "start": "2026-10-13T07:52:36.135Z",
+          "end": "2026-10-13T07:52:36.178Z",
+          "ms": 43,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-13T07:40:18Z",
+            "scan_age_seconds": 318.196,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-13T07:45:36.196Z",
+            "guest_minus_browser_ms": {
+              "low": -419982,
+              "high": -419939
+            }
+          }
+        },
+        {
+          "page": "p5-behind",
+          "method": "GET",
+          "url": "/api/v1/managed-services",
+          "status": 200,
+          "start": "2026-10-13T07:52:36.172Z",
+          "end": "2026-10-13T07:52:36.181Z",
+          "ms": 9,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-13T07:40:18Z",
+            "scan_age_seconds": 318.221,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-13T07:45:36.221Z",
+            "guest_minus_browser_ms": {
+              "low": -419960,
+              "high": -419951
+            }
+          }
+        },
+        {
+          "page": "p5-behind",
+          "method": "POST",
+          "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+          "status": 200,
+          "start": "2026-10-13T07:52:36.194Z",
+          "end": "2026-10-13T07:52:37.150Z",
+          "ms": 956,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-13T07:45:37.199071599Z",
+            "scan_age_seconds": 0,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-13T07:45:37.199Z",
+            "guest_minus_browser_ms": {
+              "low": -419951,
+              "high": -418995
+            }
+          }
+        }
+      ],
+      "scan_posts_list": [
+        {
+          "page": "p5-behind",
+          "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+          "status": 200,
+          "start": "2026-10-13T07:52:36.194Z",
+          "end": "2026-10-13T07:52:37.150Z",
+          "ms": 956,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-13T07:45:37.199071599Z",
+            "scan_age_seconds": 0,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-13T07:45:37.199Z",
+            "guest_minus_browser_ms": {
+              "low": -419951,
+              "high": -418995
+            }
+          }
+        }
+      ],
+      "readiness_polls": 18
+    },
+    {
+      "phase": "clock-ahead",
+      "started": "2026-10-13T07:54:07.991Z",
+      "ended": "2026-10-13T07:55:39.102Z",
+      "seconds": 91.1,
+      "scan_posts": 1,
+      "shift_forward": {
+        "after_clock": {
+          "returncode": 0
+        },
+        "after_epoch": 1791878466.6536493,
+        "at": "2026-10-13T08:01:06Z",
+        "before_clock": {
+          "returncode": 0
+        },
+        "before_epoch": 1791877626.5427873,
+        "command": "date -u -s @<guest epoch +840000 ms>",
+        "epoch": 1791878466.6740477,
+        "ntp_off_returncode": 0,
+        "returncode": 0,
+        "shift_ms": 840000,
+        "shift_total_ms": 420000,
+        "stderr": ""
+      },
+      "clock_read_after_shift": {
+        "at": "2026-10-13T07:54:06.815Z",
+        "ms": 62,
+        "status": 200,
+        "bounds": {
+          "low": 419996,
+          "high": 420058
+        },
+        "mid": 420027,
+        "scanned_at": "2026-10-13T07:45:37Z",
+        "scan_age_seconds": 929.873
+      },
+      "stale": {
+        "turn": 0,
+        "age_s": 930.9
+      },
+      "clock_read_after_load": {
+        "at": "2026-10-13T07:55:38.707Z",
+        "ms": 66,
+        "status": 200,
+        "bounds": {
+          "low": 419990,
+          "high": 420056
+        },
+        "mid": 420023,
+        "scanned_at": "2026-10-13T08:01:09Z",
+        "scan_age_seconds": 89.763
+      },
+      "load_at": "2026-10-13T07:54:08.333Z",
+      "observed_s": 90.3,
+      "mount": {
+        "first_managed_services_read_ms": 132,
+        "first_card_ms": 172,
+        "first_card_state": "checking"
+      },
+      "access_reads_in_window": 4,
+      "access_window_s": 90,
+      "access_reads": [
+        {
+          "start": "2026-10-13T07:54:08.405Z",
+          "end": "2026-10-13T07:54:08.409Z",
+          "ms": 4,
+          "status": 200,
+          "after_load_ms": 72,
+          "since_previous_ms": null,
+          "access": {
+            "can_use_panel": true,
+            "valid_until": 1791878526,
+            "valid_for_seconds": 57.544,
+            "valid_for_seconds_type": "number",
+            "state": "active",
+            "observation": "known",
+            "keys": [
+              "can_use_panel",
+              "observation",
+              "state",
+              "valid_for_seconds",
+              "valid_until"
+            ],
+            "sent": "2026-10-13T07:54:08.405Z",
+            "received": "2026-10-13T07:54:08.409Z",
+            "valid_until_iso": "2026-10-13T08:02:06.000Z",
+            "old_rule_accepts_at_receipt": true,
+            "browser_deadline": "2026-10-13T07:55:05.949Z",
+            "old_rule_deadline_minus_new_ms": 420051,
+            "server_now": "2026-10-13T08:01:08.456Z",
+            "guest_minus_browser_ms": {
+              "low": 420047,
+              "high": 420051
+            }
+          },
+          "error": null
+        },
+        {
+          "start": "2026-10-13T07:54:50.954Z",
+          "end": "2026-10-13T07:54:50.958Z",
+          "ms": 4,
+          "status": 200,
+          "after_load_ms": 42621,
+          "since_previous_ms": 42549,
+          "access": {
+            "can_use_panel": true,
+            "valid_until": 1791878571,
+            "valid_for_seconds": 59.994,
+            "valid_for_seconds_type": "number",
+            "state": "active",
+            "observation": "known",
+            "keys": [
+              "can_use_panel",
+              "observation",
+              "state",
+              "valid_for_seconds",
+              "valid_until"
+            ],
+            "sent": "2026-10-13T07:54:50.954Z",
+            "received": "2026-10-13T07:54:50.958Z",
+            "valid_until_iso": "2026-10-13T08:02:51.000Z",
+            "old_rule_accepts_at_receipt": true,
+            "browser_deadline": "2026-10-13T07:55:50.948Z",
+            "old_rule_deadline_minus_new_ms": 420052,
+            "server_now": "2026-10-13T08:01:51.006Z",
+            "guest_minus_browser_ms": {
+              "low": 420048,
+              "high": 420052
+            }
+          },
+          "error": null
+        },
+        {
+          "start": "2026-10-13T07:55:08.419Z",
+          "end": "2026-10-13T07:55:08.426Z",
+          "ms": 7,
+          "status": 200,
+          "after_load_ms": 60086,
+          "since_previous_ms": 17465,
+          "access": {
+            "can_use_panel": true,
+            "valid_until": 1791878571,
+            "valid_for_seconds": 42.527,
+            "valid_for_seconds_type": "number",
+            "state": "active",
+            "observation": "known",
+            "keys": [
+              "can_use_panel",
+              "observation",
+              "state",
+              "valid_for_seconds",
+              "valid_until"
+            ],
+            "sent": "2026-10-13T07:55:08.419Z",
+            "received": "2026-10-13T07:55:08.426Z",
+            "valid_until_iso": "2026-10-13T08:02:51.000Z",
+            "old_rule_accepts_at_receipt": true,
+            "browser_deadline": "2026-10-13T07:55:50.946Z",
+            "old_rule_deadline_minus_new_ms": 420054,
+            "server_now": "2026-10-13T08:02:08.473Z",
+            "guest_minus_browser_ms": {
+              "low": 420047,
+              "high": 420054
+            }
+          },
+          "error": null
+        },
+        {
+          "start": "2026-10-13T07:55:35.959Z",
+          "end": "2026-10-13T07:55:35.965Z",
+          "ms": 6,
+          "status": 200,
+          "after_load_ms": 87626,
+          "since_previous_ms": 27540,
+          "access": {
+            "can_use_panel": true,
+            "valid_until": 1791878616,
+            "valid_for_seconds": 59.987,
+            "valid_for_seconds_type": "number",
+            "state": "active",
+            "observation": "known",
+            "keys": [
+              "can_use_panel",
+              "observation",
+              "state",
+              "valid_for_seconds",
+              "valid_until"
+            ],
+            "sent": "2026-10-13T07:55:35.959Z",
+            "received": "2026-10-13T07:55:35.965Z",
+            "valid_until_iso": "2026-10-13T08:03:36.000Z",
+            "old_rule_accepts_at_receipt": true,
+            "browser_deadline": "2026-10-13T07:56:35.946Z",
+            "old_rule_deadline_minus_new_ms": 420054,
+            "server_now": "2026-10-13T08:02:36.013Z",
+            "guest_minus_browser_ms": {
+              "low": 420048,
+              "high": 420054
+            }
+          },
+          "error": null
+        }
+      ],
+      "access_reads_whole_page": 4,
+      "first_post_end": "2026-10-13T07:54:09.572Z",
+      "posts_within_60s_after_first": 0,
+      "observed_after_first_post_s": 89.1,
+      "states": [
+        "absent",
+        "checking",
+        "known"
+      ],
+      "card_sequence": [
+        {
+          "page": "p6-ahead",
+          "at": "2026-10-13T07:54:08.377Z",
+          "state": "absent",
+          "vis": "visible",
+          "lasted_ms": 128,
+          "text": null
+        },
+        {
+          "page": "p6-ahead",
+          "at": "2026-10-13T07:54:08.505Z",
+          "state": "checking",
+          "vis": "visible",
+          "lasted_ms": 1070,
+          "text": "System services Checking components…"
+        },
+        {
+          "page": "p6-ahead",
+          "at": "2026-10-13T07:54:09.575Z",
+          "state": "known",
+          "vis": "visible",
+          "lasted_ms": null,
+          "text": "System services 3 / 3 running / installed"
+        }
+      ],
+      "answers": [
+        {
+          "page": "p6-ahead",
+          "method": "GET",
+          "url": "/api/v1/managed-services",
+          "status": 200,
+          "start": "2026-10-13T07:54:08.465Z",
+          "end": "2026-10-13T07:54:08.478Z",
+          "ms": 13,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-13T07:45:37Z",
+            "scan_age_seconds": 931.522,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-13T08:01:08.522Z",
+            "guest_minus_browser_ms": {
+              "low": 420044,
+              "high": 420057
+            }
+          }
+        },
+        {
+          "page": "p6-ahead",
+          "method": "GET",
+          "url": "/api/v1/managed-services",
+          "status": 200,
+          "start": "2026-10-13T07:54:08.506Z",
+          "end": "2026-10-13T07:54:08.516Z",
+          "ms": 10,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-13T07:45:37Z",
+            "scan_age_seconds": 931.546,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-13T08:01:08.546Z",
+            "guest_minus_browser_ms": {
+              "low": 420030,
+              "high": 420040
+            }
+          }
+        },
+        {
+          "page": "p6-ahead",
+          "method": "POST",
+          "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+          "status": 200,
+          "start": "2026-10-13T07:54:08.525Z",
+          "end": "2026-10-13T07:54:09.572Z",
+          "ms": 1047,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-13T08:01:09.61854114Z",
+            "scan_age_seconds": 0,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-13T08:01:09.618Z",
+            "guest_minus_browser_ms": {
+              "low": 420046,
+              "high": 421093
+            }
+          }
+        }
+      ],
+      "scan_posts_list": [
+        {
+          "page": "p6-ahead",
+          "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+          "status": 200,
+          "start": "2026-10-13T07:54:08.525Z",
+          "end": "2026-10-13T07:54:09.572Z",
+          "ms": 1047,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-13T08:01:09.61854114Z",
+            "scan_age_seconds": 0,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-13T08:01:09.618Z",
+            "guest_minus_browser_ms": {
+              "low": 420046,
+              "high": 421093
+            }
+          }
+        }
+      ],
+      "readiness_polls": 19
+    },
+    {
+      "phase": "restore",
+      "started": "2026-10-13T07:55:39.112Z",
+      "ended": "2026-10-13T07:56:13.519Z",
+      "seconds": 34.4,
+      "scan_posts": 0,
+      "shift_back": {
+        "after_clock": {
+          "returncode": 0
+        },
+        "after_epoch": 1791878140.4280162,
+        "at": "2026-10-13T07:55:40Z",
+        "before_clock": {
+          "returncode": 0
+        },
+        "before_epoch": 1791878560.3160636,
+        "command": "date -u -s @<guest epoch -420000 ms>",
+        "epoch": 1791878140.4450932,
+        "ntp_off_returncode": 0,
+        "returncode": 0,
+        "shift_ms": -420000,
+        "shift_total_ms": 0,
+        "stderr": ""
+      },
+      "ntp_on": {
+        "after_clock": {
+          "returncode": 0
+        },
+        "after_epoch": 1791878142.0030208,
+        "at": "2026-10-13T07:55:42Z",
+        "before_clock": {
+          "returncode": 0
+        },
+        "before_epoch": 1791878141.6950352,
+        "command": "timedatectl set-ntp true",
+        "epoch": 1791878142.0119643,
+        "ntp_off_returncode": null,
+        "returncode": 0,
+        "shift_ms": null,
+        "shift_total_ms": 0,
+        "stderr": ""
+      },
+      "clock_read_restored": {
+        "at": "2026-10-13T07:55:42.100Z",
+        "ms": 49,
+        "status": 200,
+        "bounds": {
+          "low": 3,
+          "high": 52
+        },
+        "mid": 28,
+        "scanned_at": "2026-10-13T08:01:09Z",
+        "scan_age_seconds": -326.848
+      },
+      "clock_read_restored_30s": {
+        "at": "2026-10-13T07:56:12.533Z",
+        "ms": 68,
+        "status": 200,
+        "bounds": {
+          "low": -4,
+          "high": 64
+        },
+        "mid": 30,
+        "scanned_at": "2026-10-13T08:01:09Z",
+        "scan_age_seconds": -296.403
+      },
+      "probe_clock": {
+        "CanNTP": null,
+        "NTP": null,
+        "NTPSynchronized": null,
+        "returncode": 0
+      },
+      "offset_ms_probe": 150,
+      "scan_posts_list": [],
+      "card_sequence": [],
+      "readiness_polls": 0
+    }
+  ]
+}

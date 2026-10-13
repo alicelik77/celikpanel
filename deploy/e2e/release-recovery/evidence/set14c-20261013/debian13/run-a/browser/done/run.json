@@ -1,0 +1,39 @@
+{
+  "cell": "done",
+  "chrome": "Chrome/154.0.8037.98",
+  "lang": "en",
+  "viewport": "desktop",
+  "handover": {
+    "at": "2026-10-13T07:37:27Z",
+    "base": "https://127.0.0.1:19152",
+    "browser": {
+      "lang": "en",
+      "switch_lang": "tr",
+      "switch_viewport": "phone",
+      "viewport": "desktop"
+    },
+    "cell": "set14c-debian13",
+    "local_port": 19152,
+    "password_file": "(root-only file, not copied)",
+    "preps": [
+      "probe",
+      "clockshift_m420000",
+      "clockshift_p420000",
+      "ntp-on",
+      "scan-now",
+      "admission",
+      "agent-stop",
+      "agent-start",
+      "journal",
+      "clockshift_p840000",
+      "agent-reads"
+    ],
+    "schema": "celikpanel/set12-handover/v1",
+    "tls_leaf_sha256": "4ad244501bc75b15c844328cb469fb98ab6d73d6b3ee244993641e20ff14af82",
+    "username": "labadmin",
+    "window": "ui"
+  },
+  "started": "2026-10-13T07:56:15.178Z",
+  "ended": "2026-10-13T07:56:15.181Z",
+  "ok": true
+}

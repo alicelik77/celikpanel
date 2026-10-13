@@ -1,0 +1,15 @@
+?? .agents/
+?? .attic/
+?? .claude/
+?? .codex/
+?? .github/agents/
+?? .github/hooks/
+?? .github/skills/
+?? .impeccable/review-final/
+?? .impeccable/review/
+?? .vscode/
+?? deploy/e2e/release-recovery/evidence/set14c-20261013/
+?? deploy/e2e/release-recovery/run-set14c.sh
+?? deploy/e2e/release-recovery/set14c_trial.py
+?? deploy/e2e/release-recovery/test_set14c_trial.py
+?? web/tools/browser-inspect/cold-load-set14c.mjs

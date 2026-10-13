@@ -1,0 +1,14 @@
+{
+  "at": "2026-10-13T07:46:55Z",
+  "prep": "agent-start",
+  "result": {
+    "after": "active",
+    "at": "2026-10-13T07:46:55Z",
+    "before": "inactive",
+    "command": "systemctl start celikpanel-agent.service",
+    "epoch": 1791877615.2182307,
+    "main_pid_after": "15630",
+    "returncode": 0,
+    "waited_seconds": 0.08
+  }
+}

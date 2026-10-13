@@ -1,0 +1,32 @@
+{
+  "at": "2026-10-13T07:45:59Z",
+  "prep": "agent-reads",
+  "result": {
+    "/api/v1/firewall": {
+      "at": "2026-10-13T07:45:59Z",
+      "body": "{\"code\": \"AGENT_UNREACHABLE\", \"error\": \"The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.\"}",
+      "body_mentions_socket": false,
+      "code": "AGENT_UNREACHABLE",
+      "error": "The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.",
+      "keys": [
+        "code",
+        "error"
+      ],
+      "message": null,
+      "status": 503
+    },
+    "/api/v1/system/check": {
+      "at": "2026-10-13T07:45:59Z",
+      "body": "{\"code\": \"AGENT_UNREACHABLE\", \"error\": \"The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.\"}",
+      "body_mentions_socket": false,
+      "code": "AGENT_UNREACHABLE",
+      "error": "The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.",
+      "keys": [
+        "code",
+        "error"
+      ],
+      "message": null,
+      "status": 503
+    }
+  }
+}
