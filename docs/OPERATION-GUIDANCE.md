@@ -7050,3 +7050,52 @@ Observations) and one symmetry; component-tested; not measured on a real system.
   neither. Additive; no new sentence: the finished choice's banner is
   unchanged. Measured before: the 200 of a successful take carried no
   `service` field and the reload was seen only in the journal.
+
+### Observed by the owner on installed servers after the alpha.83 update (2026-10-12)
+
+Observations, not changes. After the owner updated both installed servers to
+v0.1.0-alpha.83 from the panel's own update screen on 2026-10-11, the owner
+reported two screenshots on 2026-10-12 (English interface, one per server).
+Nothing was measured in the lab for this entry, no text or screen was changed
+for it, and it is not acceptance evidence. It is set against D-024 (the current
+reason, who must act, the next action and how work resumes come before long
+lists; a stopped operation is not also shown as in progress) and the
+known-state rule.
+
+1. **The setup page's stopped-run guidance, seen as designed (second
+   server).** The setup plan had been reopened before the update and the final
+   check never finished. The page shows, above the step list, the heading
+   "Setup stopped: its plan was reopened" and a box that says it is not a
+   failure, that nothing was undone and nothing continues by itself, which
+   check was still waiting (verify the mail host name and its matching public
+   DNS and reverse DNS (PTR) records), and the next action (review the plan and
+   start it again; the final check then runs again). Technical details are
+   collapsed under it, with a button "Review a revised plan". Every step reads
+   "Completed" except the last, "Verify the prepared server", which reads
+   "Stopped"; none reads "In progress". This is the fourth observation of the
+   alpha.82 entry above (stopped and in progress together) resolved on an
+   installed server: the reason, the waiting check, who acts and the next
+   action stand before the steps. It rests on the owner's screenshot.
+2. **An unmet prerequisite that only the owner can meet.** The waiting check
+   needs the reverse (PTR) record of the server's address to name the mail
+   host name. Read from outside on 2026-10-12, the record names a different
+   host name, so the check will not pass until the owner changes it at the
+   hosting provider, outside CelikPanel. The page's "Next" (review the plan
+   and start it again) does not change that record, and this entry does not
+   say whether the page tells the owner this; that was not reported and not
+   read. An unmet prerequisite of the owner's, not a verified failure of the
+   Panel.
+3. **An outdated-status Dashboard (first server).** The "System services"
+   card says "Unknown" with "Component status is outdated. Open Components to
+   rescan." and the "Needs attention" box says that no certificate or firewall
+   setting needs action and that the installed components were not checked
+   recently. It names the reason and the next action and does not draw an
+   unknown state as healthy. Reported without any error; whether the state
+   cleared after a rescan was not reported.
+4. **The sidebar's build id wraps mid-word (both servers).** The server
+   information reads `CelikPanel · v0.1.0-alpha.83 · build 0447558e956d` and
+   the 12-character id breaks after its third character ("build 044", then
+   "7558e956d"), which can read as a different number. Cosmetic; open for the
+   next release. Not reported: the full-screen licence page during the
+   restart, the update notice against the card, the momentary licence page on a
+   direct load of the setup address.

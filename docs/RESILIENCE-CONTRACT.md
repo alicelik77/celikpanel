@@ -5358,3 +5358,81 @@ native cells (audit §9) come after. 2026-10-10 is the clock date.
   a vhost are still stored only by the write paths and the recheck; the
   acceptance items of native update/automatic-rollback resilience are
   unchanged and stay open.
+
+### Publication of v0.1.0-alpha.83 (P0.2 area; invariants 2 and 6; D-031; 2026-10-11)
+
+D-025 invariants 2 (unknown is not absent, empty or success) and 6 (a screen
+says what was verified); D-024; D-031. **No P0 item is closed or advanced.**
+P0.1 to P0.5 stay partial and every open acceptance item stays open. This entry
+records a publication and what was read and reported afterwards; it changes
+no code, schema or recovery behaviour. 2026-10-11 is the clock date of the
+publication; the read of the installed servers and the owner's report are
+dated 2026-10-12.
+
+- **Publication.** v0.1.0-alpha.83 was published by the owner on 2026-10-11:
+  pull request #206 squash-merged into `main` as
+  `0447558e956d4c02c7bf06b368def0924856f8fc` (its tree equals the tree of the
+  pull request's last commit, `304da2466`; CI on that commit, 23 of 23 jobs
+  that ran, the publish job skipped because it runs only for a tag), the
+  repository variable `CELIKPANEL_RELEASE_SEQUENCE` set to 83 before tagging,
+  the annotated tag `v0.1.0-alpha.83` on that commit, the tag's CI run with 24
+  jobs, successful, publishing a pre-release at 16:22:31 UTC with six assets
+  (platform archive SHA-256
+  `6275bebed2b581bad58d4323217ed14defb54d06c23cef5af94218da573aefe5`,
+  66,132,418 bytes, sequence 83), and the download portal published by the
+  owner with `deploy/publish-download-portal.ps1` (status `committed`, one
+  public verification pass of 26 requests, `status: ok`). The local
+  verification of the assets, the portal build and its rehearsal, and the read
+  of the public site afterwards are reported by the release preparer and are
+  not recorded in a file here. The "Publication record" of the
+  [release notes](RELEASE-NOTES-v0.1.0-alpha.83.md) lists them.
+- **Installed panels.** Not updated when this entry was written on
+  2026-10-11. Each owner starts that from the panel's own update screen. On
+  2026-10-12 at 18:36 UTC a read from outside (read-only, over HTTPS, without
+  logging in; nobody other than the owner touched the servers, and the release
+  preparer did not start, watch or verify the update) found both installed
+  servers serving the interface build of v0.1.0-alpha.83: the same built
+  interface files as `web/dist/index.html` in the verified archive, one of
+  them byte-identical (same SHA-256) to the archive's copy, with
+  `Last-Modified` 2026-10-11 19:27:52 UTC and 19:28:17 UTC. So the owner
+  updated both from the panel's own update screen on 2026-10-11. That read
+  does not show the update's verification result inside the panel, the Agent's
+  version, what the first start did with the site configuration files, or
+  anything the owner saw. **The owner reported on 2026-10-12** (two
+  screenshots, English interface, one per server; the owner's observation,
+  nothing measured in the lab): both sidebars read `CelikPanel ·
+  v0.1.0-alpha.83 · build 0447558e956d`, and the build id wraps in the middle
+  of the word, so it can read as a different number (cosmetic, open for the
+  next release). The first server (no domains) lands on the Dashboard with
+  "System services" saying "Unknown" and the sentence that component status is
+  outdated and Components should be rescanned; no error and no licence page is
+  reported for it. The second server lands on the setup page, step 5, because
+  its plan was reopened before the update and its final check never finished.
+  The page says "Setup stopped: its plan was reopened", that this is not a
+  failure and nothing continues by itself, which check was still waiting (the
+  mail host name and its public DNS and reverse DNS (PTR) records), and the
+  next action (review the plan and start it again); every step reads
+  "Completed" except the last, "Stopped", and none reads "In progress". That
+  is the fourth owner observation of the alpha.82 entry above (stopped and in
+  progress together) seen resolved on an installed server, on the owner's
+  screenshot only. Read from outside by the release preparer on 2026-10-12:
+  that server's mail host name resolves to its address, but the reverse (PTR)
+  record of the address names a different host name, so the pending check will
+  not pass until the owner changes that record at the hosting provider, outside
+  CelikPanel; this is an unmet prerequisite on the owner's side, not a Panel
+  fault. **Not reported:** whether the full-screen licence page appeared
+  during the restart; whether the update notice and the card agreed; whether
+  the momentary licence page still appears on a direct load of the setup
+  address; the update's verification result inside the panel; the Agent's
+  version; the `postconf -n >/dev/null` output. Both servers have no domains,
+  so the first start's adoption of site configuration files had nothing to
+  adopt on them and the Domains list's "left as they were" row cannot appear:
+  what an owner's hand edit meets at a Panel start has not been seen on an
+  installed server. The [release notes](RELEASE-NOTES-v0.1.0-alpha.83.md)
+  ("Publication record", items 12 and 13) hold the details. This entry is not
+  acceptance evidence for any item.
+- **Schema or version transition.** None in this entry (the release itself
+  carries database schema 43 to 44, recorded in the D-031 entry above).
+  **Recovery behaviour.** Unchanged.
+- **Open.** Everything the entries above leave open, among them that the last
+  changes made after the thirteenth native record have component tests only.
