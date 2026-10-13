@@ -4708,3 +4708,53 @@ okunması ve sahibin bildirimi 2026-10-12 tarihlidir.
 - **Açık.** Yukarıdaki girdilerin açık bıraktığı her şey; bunlar arasında on
   üçüncü gerçek sistem kaydından sonra yapılan son değişikliklerin yalnız
   bileşen testlerinin bulunması da var.
+
+### v0.1.0-alpha.84'ün yayımlanması (P0.2 alanı; ilke 2 ve 6; D-024; D-032; 2026-10-13)
+
+D-025 ilke 2 (bilinmeyen; yok, boş ya da başarı değildir) ve ilke 6 (ekran
+doğrulananı söyler); D-024; D-032. **Hiçbir P0 işi kapanmaz ya da ilerlemez.**
+P0.1–P0.5 kısmi kalır ve her açık kabul işi açık kalır. Bu girdi bir yayımı
+ve sonradan okunanları kaydeder; kod, şema ya da kurtarma davranışını
+değiştirmez. 2026-10-13, içindeki her şeyin saat tarihidir.
+
+- **Yayımlama.** v0.1.0-alpha.84'ü 13 Ekim 2026'da sahip yayımladı.
+  v0.1.0-alpha.83'ün yayımlanma kaydı (#207 numaralı çekme isteği, yalnız
+  belgeler) önce squash olarak birleştirildi ve `main` `c1623ff71` oldu; aday
+  dal sonra `main`'i içine aldı (birleştirme commit'i `dc0ed2747`, tek çakışma
+  yol haritasının alpha.83 girdisindeydi ve `main`'in metnine göre çözüldü) ve
+  o uçtaki CI 24 işin 24'ünü geçti. #208 numaralı çekme isteği `main`'e
+  `f0157e6c8f1614cff176821172f8a9067493e625` olarak squash ile birleştirildi
+  (ağacı, çekme isteğinin son commit'i `dc0ed2747`'nin ağacına eşit; o
+  commit'teki CI, koşu 38418859503, çalışan 23 işin 23'ü, yayımlayan iş yalnız
+  bir etiket için çalıştığından atlandı). `CELIKPANEL_RELEASE_SEQUENCE` depo
+  değişkeni etiketlemeden önce 84 yapıldı ve o commit'te `v0.1.0-alpha.84`
+  açıklamalı etiketi (etiket nesnesi
+  `e735308d19fab5166a2f2f4a2860b857ad0e9362`) oluşturuldu. **Süreç notu.**
+  Sahip etiketi, `main` commit'indeki koşu sürerken gönderdi (8 işi bitmişti,
+  hiçbiri başarısız olmamıştı); koşu sonradan başarıyla tamamlandı. Dosya
+  yayımlayan iş yalnız paketleme işine bağlıdır, test işlerine bağlı değildir;
+  bu yüzden "`main`'deki koşu bitti, sonra etiket" sırası amaçlanan sıradır ve
+  bu kez izlenmedi; aynı ağaç çekme isteğinde 24 işin 24'ünü geçmişti. Bu bir
+  süreç notudur, sürümün kusuru değildir. Etiketin CI koşusu (38419289967), 24
+  iş, başarılı, 15:30:58 UTC'de altı dosyayla ön sürüm yayımladı (platform
+  arşivi SHA-256
+  `6dc899e5dabaf471978cde47bfde4a0a649b7c3f6941b1431284c84c9743c301`,
+  66.131.994 bayt, sıra 84) ve indirme portalını sahip
+  `deploy/publish-download-portal.ps1` ile yayımladı (durum `committed`, 26
+  istekli tek genel doğrulama turu, `status: ok`; sahip bildirdi). Dosyaların
+  yerel doğrulaması, portal derlemesi ve provası ve sonrasında genel sitenin
+  16:16 UTC'de okunması sürümü hazırlayan kişinin bildirdikleridir, burada bir
+  dosyada kayıtlı değildir. [Sürüm notlarının](RELEASE-NOTES-v0.1.0-alpha.84.tr.md)
+  "Yayımlama kaydı" bölümü bunları sayar.
+- **Kurulu paneller.** Bu girdi 13 Ekim 2026'da yazıldığında güncellenmemişti.
+  Genel sitenin okunduğu sırada kurulu iki sunucu da hâlâ v0.1.0-alpha.83'ün
+  arayüz derlemesini sunuyordu (başlangıç sayfaları alpha.84'ün değil, alpha.83
+  arşivinin derlenmiş arayüz dosyasına başvuruyor). Her sahip güncellemeyi
+  panelin kendi güncelleme ekranından başlatır; sonuç ayrıca kaydedilecek. Bu
+  girdideki hiçbir şey, kurulu bir sunucunun bu sürümle ne yaptığını anlatmaz ve
+  hiçbir iş için kabul kanıtı değildir.
+- **Şema ya da sürüm geçişi.** Yok: bu sürüm hiçbir şema değişikliği taşımaz
+  (veritabanı şeması 44 kalır). **Kurtarma davranışı.** Değişmedi.
+- **Açık.** Yukarıdaki girdilerin açık bıraktığı her şey; bunlar arasında on
+  yedinci gerçek sistem kaydının bıraktığı iki açık madde ve [sürüm
+  notlarında](RELEASE-NOTES-v0.1.0-alpha.84.tr.md) sayılan sınırlar da var.

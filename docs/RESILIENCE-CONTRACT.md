@@ -5436,3 +5436,54 @@ dated 2026-10-12.
   **Recovery behaviour.** Unchanged.
 - **Open.** Everything the entries above leave open, among them that the last
   changes made after the thirteenth native record have component tests only.
+
+### Publication of v0.1.0-alpha.84 (P0.2 area; invariants 2 and 6; D-024; D-032; 2026-10-13)
+
+D-025 invariants 2 (unknown is not absent, empty or success) and 6 (a screen
+says what was verified); D-024; D-032. **No P0 item is closed or advanced.**
+P0.1 to P0.5 stay partial and every open acceptance item stays open. This entry
+records a publication and what was read afterwards; it changes no code, schema
+or recovery behaviour. 2026-10-13 is the clock date of everything in it.
+
+- **Publication.** v0.1.0-alpha.84 was published by the owner on 2026-10-13.
+  The record of the publication of v0.1.0-alpha.83 (pull request #207,
+  documents only) was squash-merged first, and `main` became `c1623ff71`; the
+  candidate branch then took `main` in (merge commit `dc0ed2747`, the only
+  conflict being the roadmap's alpha.83 entry, resolved to `main`'s text), and
+  CI on that head passed 24 of 24 jobs. Pull request #208 was squash-merged
+  into `main` as `f0157e6c8f1614cff176821172f8a9067493e625` (its tree equals
+  the tree of the pull request's last commit, `dc0ed2747`; CI on that commit,
+  run 38418859503, 23 of 23 jobs that ran, the publish job skipped because it
+  runs only for a tag). The repository variable `CELIKPANEL_RELEASE_SEQUENCE`
+  was set to 84 before tagging, and the annotated tag `v0.1.0-alpha.84` (tag
+  object `e735308d19fab5166a2f2f4a2860b857ad0e9362`) was created on that
+  commit. **Process note.** The owner pushed the tag while the run on the main
+  commit was still in progress (8 of its jobs had finished, none had failed);
+  it completed successfully afterwards. The job that publishes assets depends
+  only on the packaging job, not on the test jobs, so the order "the run on
+  main finished, then the tag" is the intended one and was not followed this
+  time; the same tree had passed 24 of 24 jobs on the pull request. This is a
+  process note, not a defect of the release. The tag's CI run (38419289967),
+  24 jobs, successful, published a pre-release at 15:30:58 UTC with six assets
+  (platform archive SHA-256
+  `6dc899e5dabaf471978cde47bfde4a0a649b7c3f6941b1431284c84c9743c301`,
+  66,131,994 bytes, sequence 84), and the download portal was published by the
+  owner with `deploy/publish-download-portal.ps1` (status `committed`, one
+  public verification pass of 26 requests, `status: ok`; owner-reported). The
+  local verification of the assets, the portal build and its rehearsal, and the
+  read of the public site afterwards at 16:16 UTC are reported by the release
+  preparer and are not recorded in a file here. The "Publication record" of the
+  [release notes](RELEASE-NOTES-v0.1.0-alpha.84.md) lists them.
+- **Installed panels.** Not updated when this entry was written on
+  2026-10-13. At the read of the public site both installed servers still
+  served the interface build of v0.1.0-alpha.83 (their start page references
+  the alpha.83 archive's built interface file, not the alpha.84 one). Each
+  owner starts the update from the panel's own update screen; the outcome will
+  be recorded separately. Nothing in this entry describes what an installed
+  server did with this release, and it is not acceptance evidence for any item.
+- **Schema or version transition.** None: this release carries no schema
+  change at all (the database schema stays 44). **Recovery behaviour.**
+  Unchanged.
+- **Open.** Everything the entries above leave open, among them the two open
+  items the seventeenth native record left and the limits listed in the
+  [release notes](RELEASE-NOTES-v0.1.0-alpha.84.md).
