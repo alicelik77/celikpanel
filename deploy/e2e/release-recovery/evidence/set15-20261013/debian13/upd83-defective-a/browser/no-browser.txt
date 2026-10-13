@@ -1,0 +1,1 @@
+no browser ran for this lab (the driver's window step stopped before its handover)

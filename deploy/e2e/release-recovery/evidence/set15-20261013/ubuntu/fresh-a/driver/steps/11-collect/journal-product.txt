@@ -1,0 +1,240 @@
+2026-10-13T09:24:36.204705+00:00 dns-ubuntu systemd[1]: Starting celikpanel-agent.service - CelikPanel privileged agent...
+2026-10-13T09:24:36.224582+00:00 dns-ubuntu systemd[1]: Started celikpanel-agent.service - CelikPanel privileged agent.
+2026-10-13T09:24:36.237719+00:00 dns-ubuntu agent[7697]: 2026/10/13 09:24:36 Starting CelikPanel Agent...
+2026-10-13T09:24:36.242296+00:00 dns-ubuntu agent[7697]: 2026/10/13 09:24:36 Agent listening on unix socket /run/celikpanel/agent.sock
+2026-10-13T09:24:36.242429+00:00 dns-ubuntu agent[7697]: 2026/10/13 09:24:36 Panel certificate activation remains pending: open trusted panel TLS directory: no such file or directory
+2026-10-13T09:24:37.868598+00:00 dns-ubuntu systemd[1]: Starting celikpanel-panel.service - CelikPanel web panel...
+2026-10-13T09:24:37.890565+00:00 dns-ubuntu systemd[1]: Started celikpanel-panel.service - CelikPanel web panel.
+2026-10-13T09:24:38.084662+00:00 dns-ubuntu panel[7830]: 2026/10/13 09:24:38 Starting CelikPanel Backend...
+2026-10-13T09:24:38.091589+00:00 dns-ubuntu panel[7830]: 2026/10/13 09:24:38 ACCEPTANCE FIXTURE — NOT FOR PRODUCTION: this panel was built with the acceptance_license test tag; it never contacts the license service and accepts only the acceptance fixture license on a disposable acceptance guest (guest: verified)
+2026-10-13T09:24:38.092984+00:00 dns-ubuntu panel[7830]: 2026/10/13 09:24:38 Panel startup listener active on :2083 (HTTPS; application gated)
+2026-10-13T09:24:38.094080+00:00 dns-ubuntu panel[7830]: 2026/10/13 09:24:38 Connected to Agent RPC; preparing normal management access
+2026-10-13T09:24:38.117266+00:00 dns-ubuntu panel[7830]: 2026/10/13 09:24:38 certificate startup reconcile: certificate dependents: publish full mail SNI snapshot: mail server hostname is not a valid FQDN: invalid hostname "dns-ubuntu": a fully qualified DNS name is required; preserve pending outbox: <nil>
+2026-10-13T09:24:38.119171+00:00 dns-ubuntu panel[7830]: 2026/10/13 09:24:38 milter chain: nothing to wire at startup: no mail server is installed on this server, so there is no Postfix milter chain to compose
+2026-10-13T09:24:38.120600+00:00 dns-ubuntu panel[7830]: 2026/10/13 09:24:38 Panel ready on :2083 (HTTPS)
+2026-10-13T09:24:38.908656+00:00 dns-ubuntu systemd[1]: Stopping celikpanel-panel.service - CelikPanel web panel...
+2026-10-13T09:24:38.923890+00:00 dns-ubuntu systemd[1]: celikpanel-panel.service: Deactivated successfully.
+2026-10-13T09:24:38.924741+00:00 dns-ubuntu systemd[1]: Stopped celikpanel-panel.service - CelikPanel web panel.
+2026-10-13T09:24:39.059769+00:00 dns-ubuntu systemd[1]: Starting celikpanel-panel.service - CelikPanel web panel...
+2026-10-13T09:24:39.080632+00:00 dns-ubuntu systemd[1]: Started celikpanel-panel.service - CelikPanel web panel.
+2026-10-13T09:24:39.286460+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:24:39 Starting CelikPanel Backend...
+2026-10-13T09:24:39.293422+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:24:39 ACCEPTANCE FIXTURE — NOT FOR PRODUCTION: this panel was built with the acceptance_license test tag; it never contacts the license service and accepts only the acceptance fixture license on a disposable acceptance guest (guest: verified)
+2026-10-13T09:24:39.294066+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:24:39 Panel startup listener active on :2083 (HTTPS; application gated)
+2026-10-13T09:24:39.294602+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:24:39 Connected to Agent RPC; preparing normal management access
+2026-10-13T09:24:39.306041+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:24:39 certificate startup reconcile: certificate dependents: publish full mail SNI snapshot: mail server hostname is not a valid FQDN: invalid hostname "dns-ubuntu": a fully qualified DNS name is required; preserve pending outbox: <nil>
+2026-10-13T09:24:39.308211+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:24:39 milter chain: nothing to wire at startup: no mail server is installed on this server, so there is no Postfix milter chain to compose
+2026-10-13T09:24:39.310245+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:24:39 Panel ready on :2083 (HTTPS)
+2026-10-13T09:25:02.020820+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:25:02 http: TLS handshake error from 127.0.0.1:37592: EOF
+2026-10-13T09:25:02.306998+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:25:02 http: TLS handshake error from 127.0.0.1:37620: EOF
+2026-10-13T09:25:02.528677+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:25:02 http: TLS handshake error from 127.0.0.1:37646: EOF
+2026-10-13T09:25:02.541202+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:25:02 http: TLS handshake error from 127.0.0.1:37662: EOF
+2026-10-13T09:25:02.552859+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:25:02 http: TLS handshake error from 127.0.0.1:37680: EOF
+2026-10-13T09:25:02.563492+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:25:02 http: TLS handshake error from 127.0.0.1:37700: EOF
+2026-10-13T09:25:02.587322+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:25:02 http: TLS handshake error from 127.0.0.1:37726: EOF
+2026-10-13T09:25:02.598140+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:25:02 http: TLS handshake error from 127.0.0.1:37748: EOF
+2026-10-13T09:25:02.611464+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:25:02 http: TLS handshake error from 127.0.0.1:37766: EOF
+2026-10-13T09:25:02.623595+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:25:02 http: TLS handshake error from 127.0.0.1:37780: EOF
+2026-10-13T09:29:40.691409+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:29:40 http: TLS handshake error from 127.0.0.1:59980: EOF
+2026-10-13T09:29:40.711537+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:29:40 http: TLS handshake error from 127.0.0.1:59992: EOF
+2026-10-13T09:29:41.497076+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:29:41 http: TLS handshake error from 127.0.0.1:60000: EOF
+2026-10-13T09:29:42.196461+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:29:42 http: TLS handshake error from 127.0.0.1:60024: EOF
+2026-10-13T09:29:42.259962+00:00 dns-ubuntu cron[10463]: (CRON) DEATH (can't lock /var/run/crond.pid, otherpid may be 801: Resource temporarily unavailable)
+2026-10-13T09:29:44.382281+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:29:44 http: TLS handshake error from 127.0.0.1:60030: EOF
+2026-10-13T09:29:49.398133+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:29:49 http: TLS handshake error from 127.0.0.1:53016: EOF
+2026-10-13T09:29:51.711629+00:00 dns-ubuntu adduser[11015]: The home dir /nonexistent you specified can't be accessed: No such file or directory
+2026-10-13T09:29:51.717319+00:00 dns-ubuntu adduser[11015]: Selecting UID from range 100 to 999 ...
+2026-10-13T09:29:51.720702+00:00 dns-ubuntu adduser[11015]: Adding system user `_galera' (UID 109) ...
+2026-10-13T09:29:51.723479+00:00 dns-ubuntu adduser[11015]: Adding new user `_galera' (UID 109) with group `nogroup' ...
+2026-10-13T09:29:51.750256+00:00 dns-ubuntu useradd[11020]: new user: name=_galera, UID=109, GID=65534, home=/nonexistent, shell=/usr/sbin/nologin, from=none
+2026-10-13T09:29:51.777995+00:00 dns-ubuntu adduser[11015]: Not creating `/nonexistent'.
+2026-10-13T09:29:53.799008+00:00 dns-ubuntu addgroup[11172]: Selecting GID from range 100 to 999 ...
+2026-10-13T09:29:53.802214+00:00 dns-ubuntu addgroup[11172]: Adding group `mysql' (GID 112) ...
+2026-10-13T09:29:53.827129+00:00 dns-ubuntu groupadd[11175]: group added to /etc/group: name=mysql, GID=112
+2026-10-13T09:29:53.838151+00:00 dns-ubuntu groupadd[11175]: group added to /etc/gshadow: name=mysql
+2026-10-13T09:29:53.839692+00:00 dns-ubuntu groupadd[11175]: new group: name=mysql, GID=112
+2026-10-13T09:29:53.876324+00:00 dns-ubuntu adduser[11182]: The home dir /nonexistent you specified can't be accessed: No such file or directory
+2026-10-13T09:29:53.881030+00:00 dns-ubuntu adduser[11182]: Selecting UID from range 100 to 999 ...
+2026-10-13T09:29:53.884092+00:00 dns-ubuntu adduser[11182]: Adding system user `mysql' (UID 110) ...
+2026-10-13T09:29:53.886296+00:00 dns-ubuntu adduser[11182]: Adding new user `mysql' (UID 110) with group `mysql' ...
+2026-10-13T09:29:53.908037+00:00 dns-ubuntu useradd[11187]: new user: name=mysql, UID=110, GID=112, home=/nonexistent, shell=/bin/false, from=none
+2026-10-13T09:29:53.954085+00:00 dns-ubuntu chfn[11194]: changed user 'mysql' information
+2026-10-13T09:29:53.957428+00:00 dns-ubuntu adduser[11182]: Not creating `/nonexistent'.
+2026-10-13T09:29:54.417736+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:29:54 http: TLS handshake error from 127.0.0.1:53028: EOF
+2026-10-13T09:29:55.090477+00:00 dns-ubuntu mariadb-server.postinst[11257]: 2026-10-13  9:29:55 0 [Warning] You need to use --log-bin to make --expire-logs-days or --binlog-expire-logs-seconds work.
+2026-10-13T09:29:59.431569+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:29:59 http: TLS handshake error from 127.0.0.1:57664: EOF
+2026-10-13T09:30:04.364121+00:00 dns-ubuntu cron[11745]: (CRON) DEATH (can't lock /var/run/crond.pid, otherpid may be 801: Resource temporarily unavailable)
+2026-10-13T09:30:04.444952+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:30:04 http: TLS handshake error from 127.0.0.1:57692: EOF
+2026-10-13T09:30:09.458858+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:30:09 http: TLS handshake error from 127.0.0.1:57594: EOF
+2026-10-13T09:30:15.372737+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:30:15 http: TLS handshake error from 127.0.0.1:57600: EOF
+2026-10-13T09:30:15.943869+00:00 dns-ubuntu cron[12614]: (CRON) DEATH (can't lock /var/run/crond.pid, otherpid may be 801: Resource temporarily unavailable)
+2026-10-13T09:30:18.422023+00:00 dns-ubuntu cron[12641]: (CRON) DEATH (can't lock /var/run/crond.pid, otherpid may be 801: Resource temporarily unavailable)
+2026-10-13T09:30:20.391825+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:30:20 http: TLS handshake error from 127.0.0.1:55608: EOF
+2026-10-13T09:30:25.403240+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:30:25 http: TLS handshake error from 127.0.0.1:55616: EOF
+2026-10-13T09:30:26.874644+00:00 dns-ubuntu php8.3-common[13433]: php_invoke calendar: already enabled for PHP 8.3 fpm sapi
+2026-10-13T09:30:27.194099+00:00 dns-ubuntu php8.3-common[13631]: php_invoke ctype: already enabled for PHP 8.3 cli sapi
+2026-10-13T09:30:27.224558+00:00 dns-ubuntu php8.3-common[13663]: php_invoke ctype: already enabled for PHP 8.3 fpm sapi
+2026-10-13T09:30:27.524731+00:00 dns-ubuntu php8.3-common[13861]: php_invoke exif: already enabled for PHP 8.3 cli sapi
+2026-10-13T09:30:27.554896+00:00 dns-ubuntu php8.3-common[13893]: php_invoke exif: already enabled for PHP 8.3 fpm sapi
+2026-10-13T09:30:27.906471+00:00 dns-ubuntu php8.3-common[14123]: php_invoke fileinfo: already enabled for PHP 8.3 fpm sapi
+2026-10-13T09:30:28.250174+00:00 dns-ubuntu php8.3-common[14321]: php_invoke ffi: already enabled for PHP 8.3 cli sapi
+2026-10-13T09:30:28.277987+00:00 dns-ubuntu php8.3-common[14353]: php_invoke ffi: already enabled for PHP 8.3 fpm sapi
+2026-10-13T09:30:28.607140+00:00 dns-ubuntu php8.3-common[14551]: php_invoke ftp: already enabled for PHP 8.3 cli sapi
+2026-10-13T09:30:28.636554+00:00 dns-ubuntu php8.3-common[14583]: php_invoke ftp: already enabled for PHP 8.3 fpm sapi
+2026-10-13T09:30:28.961438+00:00 dns-ubuntu php8.3-common[14781]: php_invoke gettext: already enabled for PHP 8.3 cli sapi
+2026-10-13T09:30:28.995724+00:00 dns-ubuntu php8.3-common[14813]: php_invoke gettext: already enabled for PHP 8.3 fpm sapi
+2026-10-13T09:30:29.399047+00:00 dns-ubuntu php8.3-common[15011]: php_invoke iconv: already enabled for PHP 8.3 cli sapi
+2026-10-13T09:30:29.430572+00:00 dns-ubuntu php8.3-common[15043]: php_invoke iconv: already enabled for PHP 8.3 fpm sapi
+2026-10-13T09:30:29.747160+00:00 dns-ubuntu php8.3-common[15241]: php_invoke pdo: already enabled for PHP 8.3 cli sapi
+2026-10-13T09:30:29.776825+00:00 dns-ubuntu php8.3-common[15273]: php_invoke pdo: already enabled for PHP 8.3 fpm sapi
+2026-10-13T09:30:30.081333+00:00 dns-ubuntu php8.3-common[15471]: php_invoke phar: already enabled for PHP 8.3 cli sapi
+2026-10-13T09:30:30.111535+00:00 dns-ubuntu php8.3-common[15503]: php_invoke phar: already enabled for PHP 8.3 fpm sapi
+2026-10-13T09:30:30.413625+00:00 dns-ubuntu php8.3-common[15701]: php_invoke posix: already enabled for PHP 8.3 cli sapi
+2026-10-13T09:30:30.417074+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:30:30 http: TLS handshake error from 127.0.0.1:53974: EOF
+2026-10-13T09:30:30.762229+00:00 dns-ubuntu php8.3-common[15932]: php_invoke shmop: already enabled for PHP 8.3 cli sapi
+2026-10-13T09:30:30.793315+00:00 dns-ubuntu php8.3-common[15964]: php_invoke shmop: already enabled for PHP 8.3 fpm sapi
+2026-10-13T09:30:31.097872+00:00 dns-ubuntu php8.3-common[16162]: php_invoke sockets: already enabled for PHP 8.3 cli sapi
+2026-10-13T09:30:31.127151+00:00 dns-ubuntu php8.3-common[16194]: php_invoke sockets: already enabled for PHP 8.3 fpm sapi
+2026-10-13T09:30:31.444541+00:00 dns-ubuntu php8.3-common[16392]: php_invoke sysvmsg: already enabled for PHP 8.3 cli sapi
+2026-10-13T09:30:31.473695+00:00 dns-ubuntu php8.3-common[16424]: php_invoke sysvmsg: already enabled for PHP 8.3 fpm sapi
+2026-10-13T09:30:31.809480+00:00 dns-ubuntu php8.3-common[16654]: php_invoke sysvsem: already enabled for PHP 8.3 fpm sapi
+2026-10-13T09:30:32.130788+00:00 dns-ubuntu php8.3-common[16884]: php_invoke sysvshm: already enabled for PHP 8.3 fpm sapi
+2026-10-13T09:30:32.417805+00:00 dns-ubuntu php8.3-common[17082]: php_invoke tokenizer: already enabled for PHP 8.3 cli sapi
+2026-10-13T09:30:32.448744+00:00 dns-ubuntu php8.3-common[17114]: php_invoke tokenizer: already enabled for PHP 8.3 fpm sapi
+2026-10-13T09:30:32.772143+00:00 dns-ubuntu php8.3-readline[17313]: php_invoke readline: already enabled for PHP 8.3 cli sapi
+2026-10-13T09:30:32.801705+00:00 dns-ubuntu php8.3-readline[17345]: php_invoke readline: already enabled for PHP 8.3 fpm sapi
+2026-10-13T09:30:33.124578+00:00 dns-ubuntu php8.3-opcache[17544]: php_invoke opcache: already enabled for PHP 8.3 cli sapi
+2026-10-13T09:30:33.152277+00:00 dns-ubuntu php8.3-opcache[17576]: php_invoke opcache: already enabled for PHP 8.3 fpm sapi
+2026-10-13T09:30:33.440419+00:00 dns-ubuntu php8.3-cli[17718]: php_invoke exif: already enabled for PHP 8.3 cli sapi
+2026-10-13T09:30:33.468686+00:00 dns-ubuntu php8.3-cli[17751]: php_invoke phar: already enabled for PHP 8.3 cli sapi
+2026-10-13T09:30:33.496228+00:00 dns-ubuntu php8.3-cli[17784]: php_invoke shmop: already enabled for PHP 8.3 cli sapi
+2026-10-13T09:30:33.524140+00:00 dns-ubuntu php8.3-cli[17817]: php_invoke fileinfo: already enabled for PHP 8.3 cli sapi
+2026-10-13T09:30:33.552176+00:00 dns-ubuntu php8.3-cli[17850]: php_invoke iconv: already enabled for PHP 8.3 cli sapi
+2026-10-13T09:30:33.585679+00:00 dns-ubuntu php8.3-cli[17883]: php_invoke sysvshm: already enabled for PHP 8.3 cli sapi
+2026-10-13T09:30:33.617699+00:00 dns-ubuntu php8.3-cli[17916]: php_invoke sockets: already enabled for PHP 8.3 cli sapi
+2026-10-13T09:30:33.677967+00:00 dns-ubuntu php8.3-cli[17982]: php_invoke posix: already enabled for PHP 8.3 cli sapi
+2026-10-13T09:30:33.711337+00:00 dns-ubuntu php8.3-cli[18015]: php_invoke sysvmsg: already enabled for PHP 8.3 cli sapi
+2026-10-13T09:30:33.752824+00:00 dns-ubuntu php8.3-cli[18048]: php_invoke opcache: already enabled for PHP 8.3 cli sapi
+2026-10-13T09:30:33.797233+00:00 dns-ubuntu php8.3-cli[18081]: php_invoke gettext: already enabled for PHP 8.3 cli sapi
+2026-10-13T09:30:33.846060+00:00 dns-ubuntu php8.3-cli[18114]: php_invoke calendar: already enabled for PHP 8.3 cli sapi
+2026-10-13T09:30:33.884623+00:00 dns-ubuntu php8.3-cli[18147]: php_invoke ffi: already enabled for PHP 8.3 cli sapi
+2026-10-13T09:30:33.925158+00:00 dns-ubuntu php8.3-cli[18180]: php_invoke sysvsem: already enabled for PHP 8.3 cli sapi
+2026-10-13T09:30:33.959529+00:00 dns-ubuntu php8.3-cli[18213]: php_invoke tokenizer: already enabled for PHP 8.3 cli sapi
+2026-10-13T09:30:33.992498+00:00 dns-ubuntu php8.3-cli[18246]: php_invoke readline: already enabled for PHP 8.3 cli sapi
+2026-10-13T09:30:34.023548+00:00 dns-ubuntu php8.3-cli[18279]: php_invoke ftp: already enabled for PHP 8.3 cli sapi
+2026-10-13T09:30:34.056645+00:00 dns-ubuntu php8.3-cli[18312]: php_invoke pdo: already enabled for PHP 8.3 cli sapi
+2026-10-13T09:30:34.412218+00:00 dns-ubuntu php8.3-fpm[18484]: php_invoke phar: already enabled for PHP 8.3 fpm sapi
+2026-10-13T09:30:34.442773+00:00 dns-ubuntu php8.3-fpm[18517]: php_invoke shmop: already enabled for PHP 8.3 fpm sapi
+2026-10-13T09:30:34.472030+00:00 dns-ubuntu php8.3-fpm[18550]: php_invoke fileinfo: already enabled for PHP 8.3 fpm sapi
+2026-10-13T09:30:34.503517+00:00 dns-ubuntu php8.3-fpm[18583]: php_invoke iconv: already enabled for PHP 8.3 fpm sapi
+2026-10-13T09:30:34.536031+00:00 dns-ubuntu php8.3-fpm[18616]: php_invoke sysvshm: already enabled for PHP 8.3 fpm sapi
+2026-10-13T09:30:34.572316+00:00 dns-ubuntu php8.3-fpm[18649]: php_invoke sockets: already enabled for PHP 8.3 fpm sapi
+2026-10-13T09:30:34.605804+00:00 dns-ubuntu php8.3-fpm[18682]: php_invoke ctype: already enabled for PHP 8.3 fpm sapi
+2026-10-13T09:30:34.636005+00:00 dns-ubuntu php8.3-fpm[18715]: php_invoke posix: already enabled for PHP 8.3 fpm sapi
+2026-10-13T09:30:34.699415+00:00 dns-ubuntu php8.3-fpm[18781]: php_invoke opcache: already enabled for PHP 8.3 fpm sapi
+2026-10-13T09:30:34.729516+00:00 dns-ubuntu php8.3-fpm[18814]: php_invoke gettext: already enabled for PHP 8.3 fpm sapi
+2026-10-13T09:30:34.760231+00:00 dns-ubuntu php8.3-fpm[18847]: php_invoke calendar: already enabled for PHP 8.3 fpm sapi
+2026-10-13T09:30:34.793332+00:00 dns-ubuntu php8.3-fpm[18880]: php_invoke ffi: already enabled for PHP 8.3 fpm sapi
+2026-10-13T09:30:34.824640+00:00 dns-ubuntu php8.3-fpm[18913]: php_invoke sysvsem: already enabled for PHP 8.3 fpm sapi
+2026-10-13T09:30:34.854532+00:00 dns-ubuntu php8.3-fpm[18946]: php_invoke tokenizer: already enabled for PHP 8.3 fpm sapi
+2026-10-13T09:30:34.885078+00:00 dns-ubuntu php8.3-fpm[18979]: php_invoke readline: already enabled for PHP 8.3 fpm sapi
+2026-10-13T09:30:34.914607+00:00 dns-ubuntu php8.3-fpm[19012]: php_invoke ftp: already enabled for PHP 8.3 fpm sapi
+2026-10-13T09:30:34.944558+00:00 dns-ubuntu php8.3-fpm[19045]: php_invoke pdo: already enabled for PHP 8.3 fpm sapi
+2026-10-13T09:30:35.436255+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:30:35 http: TLS handshake error from 127.0.0.1:53998: EOF
+2026-10-13T09:30:39.491095+00:00 dns-ubuntu cron[19349]: (CRON) DEATH (can't lock /var/run/crond.pid, otherpid may be 801: Resource temporarily unavailable)
+2026-10-13T09:30:40.452352+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:30:40 http: TLS handshake error from 127.0.0.1:34216: EOF
+2026-10-13T09:30:42.524578+00:00 dns-ubuntu cron[19376]: (CRON) DEATH (can't lock /var/run/crond.pid, otherpid may be 801: Resource temporarily unavailable)
+2026-10-13T09:30:45.865598+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:30:45 http: TLS handshake error from 127.0.0.1:34242: EOF
+2026-10-13T09:30:50.879960+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:30:50 http: TLS handshake error from 127.0.0.1:58232: EOF
+2026-10-13T09:30:54.517394+00:00 dns-ubuntu cron[20073]: (CRON) DEATH (can't lock /var/run/crond.pid, otherpid may be 801: Resource temporarily unavailable)
+2026-10-13T09:30:55.895983+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:30:55 http: TLS handshake error from 127.0.0.1:58250: EOF
+2026-10-13T09:31:00.911750+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:31:00 http: TLS handshake error from 127.0.0.1:58566: EOF
+2026-10-13T09:31:05.926232+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:31:05 http: TLS handshake error from 127.0.0.1:58588: EOF
+2026-10-13T09:31:10.942899+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:31:10 http: TLS handshake error from 127.0.0.1:48546: EOF
+2026-10-13T09:31:16.520098+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:31:16 http: TLS handshake error from 127.0.0.1:48558: EOF
+2026-10-13T09:31:21.535831+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:31:21 http: TLS handshake error from 127.0.0.1:51240: EOF
+2026-10-13T09:31:26.551305+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:31:26 http: TLS handshake error from 127.0.0.1:51254: EOF
+2026-10-13T09:31:31.565654+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:31:31 http: TLS handshake error from 127.0.0.1:37460: EOF
+2026-10-13T09:31:36.582692+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:31:36 http: TLS handshake error from 127.0.0.1:37482: EOF
+2026-10-13T09:31:41.599259+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:31:41 http: TLS handshake error from 127.0.0.1:43078: EOF
+2026-10-13T09:31:46.921621+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:31:46 http: TLS handshake error from 127.0.0.1:43106: EOF
+2026-10-13T09:31:51.936558+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:31:51 http: TLS handshake error from 127.0.0.1:48144: EOF
+2026-10-13T09:31:56.953253+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:31:56 http: TLS handshake error from 127.0.0.1:48154: EOF
+2026-10-13T09:32:01.970072+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:32:01 http: TLS handshake error from 127.0.0.1:40662: EOF
+2026-10-13T09:32:06.988081+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:32:06 http: TLS handshake error from 127.0.0.1:40692: EOF
+2026-10-13T09:32:12.002813+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:32:12 http: TLS handshake error from 127.0.0.1:56388: EOF
+2026-10-13T09:32:17.597696+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:32:17 http: TLS handshake error from 127.0.0.1:56402: EOF
+2026-10-13T09:32:22.612015+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:32:22 http: TLS handshake error from 127.0.0.1:37720: EOF
+2026-10-13T09:32:27.627028+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:32:27 http: TLS handshake error from 127.0.0.1:37740: EOF
+2026-10-13T09:32:32.643087+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:32:32 http: TLS handshake error from 127.0.0.1:53474: EOF
+2026-10-13T09:32:37.660977+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:32:37 http: TLS handshake error from 127.0.0.1:53494: EOF
+2026-10-13T09:32:42.678706+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:32:42 http: TLS handshake error from 127.0.0.1:36714: EOF
+2026-10-13T09:32:47.982915+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:32:47 http: TLS handshake error from 127.0.0.1:36736: EOF
+2026-10-13T09:32:52.997993+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:32:52 http: TLS handshake error from 127.0.0.1:60818: EOF
+2026-10-13T09:32:58.011591+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:32:58 http: TLS handshake error from 127.0.0.1:60842: EOF
+2026-10-13T09:33:03.028912+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:33:03 http: TLS handshake error from 127.0.0.1:60724: EOF
+2026-10-13T09:33:04.079105+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:33:04 http: TLS handshake error from 127.0.0.1:60754: EOF
+2026-10-13T09:33:04.091691+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:33:04 http: TLS handshake error from 127.0.0.1:60770: EOF
+2026-10-13T09:33:04.101919+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:33:04 http: TLS handshake error from 127.0.0.1:60792: EOF
+2026-10-13T09:33:04.124039+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:33:04 http: TLS handshake error from 127.0.0.1:60808: EOF
+2026-10-13T09:33:04.134215+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:33:04 http: TLS handshake error from 127.0.0.1:60832: EOF
+2026-10-13T09:33:05.001426+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:33:05 http: TLS handshake error from 127.0.0.1:60848: EOF
+2026-10-13T09:33:05.013828+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:33:05 http: TLS handshake error from 127.0.0.1:60858: EOF
+2026-10-13T09:33:05.027215+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:33:05 http: TLS handshake error from 127.0.0.1:60866: EOF
+2026-10-13T09:33:05.047563+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:33:05 http: TLS handshake error from 127.0.0.1:60888: EOF
+2026-10-13T09:33:05.068195+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:33:05 http: TLS handshake error from 127.0.0.1:60902: EOF
+2026-10-13T09:33:15.721961+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:33:15 http: TLS handshake error from 127.0.0.1:57356: EOF
+2026-10-13T09:33:25.725277+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:33:25 http: TLS handshake error from 127.0.0.1:59568: EOF
+2026-10-13T09:33:36.494692+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:33:36 http: TLS handshake error from 127.0.0.1:49254: EOF
+2026-10-13T09:33:46.498324+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:33:46 http: TLS handshake error from 127.0.0.1:35150: EOF
+2026-10-13T09:33:56.501683+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:33:56 http: TLS handshake error from 127.0.0.1:39232: EOF
+2026-10-13T09:34:06.505471+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:34:06 http: TLS handshake error from 127.0.0.1:49520: EOF
+2026-10-13T09:34:16.509007+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:34:16 http: TLS handshake error from 127.0.0.1:55148: EOF
+2026-10-13T09:34:26.513903+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:34:26 http: TLS handshake error from 127.0.0.1:37704: EOF
+2026-10-13T09:34:36.516488+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:34:36 http: TLS handshake error from 127.0.0.1:60634: EOF
+2026-10-13T09:34:46.520654+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:34:46 http: TLS handshake error from 127.0.0.1:36702: EOF
+2026-10-13T09:34:56.525239+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:34:56 http: TLS handshake error from 127.0.0.1:57096: EOF
+2026-10-13T09:35:06.528679+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:35:06 http: TLS handshake error from 127.0.0.1:47112: EOF
+2026-10-13T09:35:16.533538+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:35:16 http: TLS handshake error from 127.0.0.1:56922: EOF
+2026-10-13T09:35:26.536996+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:35:26 http: TLS handshake error from 127.0.0.1:41898: EOF
+2026-10-13T09:35:36.540060+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:35:36 http: TLS handshake error from 127.0.0.1:45046: EOF
+2026-10-13T09:35:46.544187+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:35:46 http: TLS handshake error from 127.0.0.1:39410: EOF
+2026-10-13T09:35:56.547416+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:35:56 http: TLS handshake error from 127.0.0.1:48036: EOF
+2026-10-13T09:36:06.551272+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:36:06 http: TLS handshake error from 127.0.0.1:47820: EOF
+2026-10-13T09:36:17.206059+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:36:17 http: TLS handshake error from 127.0.0.1:46162: EOF
+2026-10-13T09:36:27.208250+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:36:27 http: TLS handshake error from 127.0.0.1:42392: EOF
+2026-10-13T09:36:37.212166+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:36:37 http: TLS handshake error from 127.0.0.1:50880: EOF
+2026-10-13T09:36:47.216757+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:36:47 http: TLS handshake error from 127.0.0.1:43030: EOF
+2026-10-13T09:36:57.218376+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:36:57 http: TLS handshake error from 127.0.0.1:57314: EOF
+2026-10-13T09:37:07.226233+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:37:07 http: TLS handshake error from 127.0.0.1:58038: EOF
+2026-10-13T09:37:17.230942+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:37:17 http: TLS handshake error from 127.0.0.1:53548: EOF
+2026-10-13T09:37:27.237965+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:37:27 http: TLS handshake error from 127.0.0.1:37472: EOF
+2026-10-13T09:37:37.239837+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:37:37 http: TLS handshake error from 127.0.0.1:43844: EOF
+2026-10-13T09:37:47.246751+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:37:47 http: TLS handshake error from 127.0.0.1:44880: EOF
+2026-10-13T09:37:57.247081+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:37:57 http: TLS handshake error from 127.0.0.1:39476: EOF
+2026-10-13T09:38:07.252818+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:38:07 http: TLS handshake error from 127.0.0.1:47704: EOF
+2026-10-13T09:38:17.263923+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:38:17 http: TLS handshake error from 127.0.0.1:60100: EOF
+2026-10-13T09:38:27.267652+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:38:27 http: TLS handshake error from 127.0.0.1:36458: EOF
+2026-10-13T09:38:37.271978+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:38:37 http: TLS handshake error from 127.0.0.1:43922: EOF
+2026-10-13T09:38:47.275845+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:38:47 http: TLS handshake error from 127.0.0.1:58596: EOF
+2026-10-13T09:38:57.280482+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:38:57 http: TLS handshake error from 127.0.0.1:52628: EOF
+2026-10-13T09:39:07.284399+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:39:07 http: TLS handshake error from 127.0.0.1:58842: EOF
+2026-10-13T09:39:17.289090+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:39:17 http: TLS handshake error from 127.0.0.1:48756: EOF
+2026-10-13T09:39:27.295660+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:39:27 http: TLS handshake error from 127.0.0.1:60608: EOF
+2026-10-13T09:39:37.297816+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:39:37 http: TLS handshake error from 127.0.0.1:36940: EOF
+2026-10-13T09:39:47.305516+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:39:47 http: TLS handshake error from 127.0.0.1:38310: EOF
+2026-10-13T09:39:57.309452+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:39:57 http: TLS handshake error from 127.0.0.1:47128: EOF
+2026-10-13T09:40:07.314575+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:40:07 http: TLS handshake error from 127.0.0.1:39066: EOF
+2026-10-13T09:40:17.318139+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:40:17 http: TLS handshake error from 127.0.0.1:60102: EOF
+2026-10-13T09:40:27.326148+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:40:27 http: TLS handshake error from 127.0.0.1:58458: EOF
+2026-10-13T09:40:37.330487+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:40:37 http: TLS handshake error from 127.0.0.1:51094: EOF
+2026-10-13T09:40:47.335137+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:40:47 http: TLS handshake error from 127.0.0.1:49944: EOF
+2026-10-13T09:40:57.338718+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:40:57 http: TLS handshake error from 127.0.0.1:36854: EOF
+2026-10-13T09:41:07.343812+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:41:07 http: TLS handshake error from 127.0.0.1:56136: EOF
+2026-10-13T09:41:17.349319+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:41:17 http: TLS handshake error from 127.0.0.1:56902: EOF
+2026-10-13T09:41:27.352236+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:41:27 http: TLS handshake error from 127.0.0.1:57618: EOF
+2026-10-13T09:41:31.656208+00:00 dns-ubuntu cron[21826]: (CRON) DEATH (can't lock /var/run/crond.pid, otherpid may be 801: Resource temporarily unavailable)
+2026-10-13T09:41:38.058908+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:41:38 http: TLS handshake error from 127.0.0.1:38116: EOF
+2026-10-13T09:41:48.062793+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:41:48 http: TLS handshake error from 127.0.0.1:60992: EOF
+2026-10-13T09:41:58.067263+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:41:58 http: TLS handshake error from 127.0.0.1:39956: EOF
+2026-10-13T09:42:01.596193+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:42:01 [host-mutation-readiness] inspect agent state: context canceled
+2026-10-13T09:42:04.795910+00:00 dns-ubuntu panel[7960]: 2026/10/13 09:42:04 http: TLS handshake error from 127.0.0.1:50134: EOF

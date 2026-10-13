@@ -1,0 +1,228 @@
+{
+  "checks": {
+    "api": {
+      "/api/v1/domains": {
+        "at": "2026-10-13T09:55:35Z",
+        "body": {
+          "body": "[{\"bandwidth\": 0, \"created_at\": \"2026-10-13T09:51:11Z\", \"disk_usage\": 0, \"domain_name\": \"upd1-owner.test\", \"id\": 1, \"php_version\": \"\", \"project_type\": \"static\", \"site_config\": {\"state\": \"managed_unchanged\"}, \"ssl_enabled\": false, \"status\": \"active\"}]",
+          "rows": 1,
+          "type": "list"
+        },
+        "status": 200
+      },
+      "/api/v1/license/access": {
+        "at": "2026-10-13T09:55:35Z",
+        "body": {
+          "can_use_panel": true,
+          "observation": "known",
+          "state": "active",
+          "valid_for_seconds": 22.447,
+          "valid_until": 1791885358
+        },
+        "status": 200
+      },
+      "/api/v1/managed-services": {
+        "at": "2026-10-13T09:55:35Z",
+        "body": {
+          "dns_identity_ready": true,
+          "keys": [
+            "dns_identity_ready",
+            "mail_hostname",
+            "profiles",
+            "scan_age_seconds",
+            "scanned_at",
+            "services"
+          ],
+          "mail_hostname": {
+            "current": "dns-debian13",
+            "current_usable": false,
+            "hostname": "mail-debian13.upd1-infra.test",
+            "source": "saved",
+            "will_set_hostname": false
+          },
+          "profiles": [
+            {
+              "available": false,
+              "blocked_reason": "Service state is unverified; run a fresh scan.",
+              "description": "Postfix SMTP and Dovecot IMAP/POP3 with authenticated submission.",
+              "id": "core-mail",
+              "latest_attempt_status": "none",
+              "name": "Core Mail",
+              "services": [
+                "postfix",
+                "dovecot"
+              ],
+              "status": "unknown",
+              "verified": false
+            },
+            {
+              "available": false,
+              "blocked_reason": "Service state is unverified; run a fresh scan.",
+              "description": "Core mail plus Nginx, PHP-FPM and Roundcube webmail.",
+              "id": "webmail",
+              "latest_attempt_status": "succeeded",
+              "name": "Webmail",
+              "services": [
+                "postfix",
+                "dovecot",
+                "nginx",
+                "php-fpm",
+                "roundcube"
+              ],
+              "status": "unknown",
+              "verified": false
+            },
+            {
+              "available": false,
+              "blocked_reason": "Service state is unverified; run a fresh scan.",
+              "description": "Core mail with Rspamd spam filtering.",
+              "id": "protected-mail",
+              "latest_attempt_status": "succeeded",
+              "name": "Spam-Protected Mail",
+              "services": [
+                "postfix",
+                "dovecot",
+                "rspamd"
+              ],
+              "status": "unknown",
+              "verified": false
+            }
+          ],
+          "scan_age_seconds": 392.564,
+          "scanned_at": "2026-10-13T09:49:03Z",
+          "services_count": 27
+        },
+        "status": 200
+      },
+      "/api/v1/panel/version": {
+        "at": "2026-10-13T09:55:35Z",
+        "body": {
+          "agent_commit": "1636b73f0979d9921ff99f283ceec8cfed1041dc",
+          "agent_matches": true,
+          "commit": "1636b73f0979d9921ff99f283ceec8cfed1041dc",
+          "hostname": "dns-debian13",
+          "ipv4": "192.0.2.10",
+          "schema_version": 44,
+          "version": "v0.1.0-alpha.84"
+        },
+        "status": 200
+      },
+      "/api/v1/setup": {
+        "at": "2026-10-13T09:55:35Z",
+        "body": {
+          "checks": [],
+          "draft": {
+            "database": "",
+            "dns_engine": "bind",
+            "dns_mode": "external",
+            "dns_role": "primary",
+            "local_ip": "192.0.2.10",
+            "mail_hostname": "mail-debian13.upd1-infra.test",
+            "node_version": "",
+            "ns1": "ns1.upd1-infra.test",
+            "ns2": "ns2.upd1-infra.test",
+            "panel_domain": "panel-debian13.upd1-infra.test",
+            "peer_ip": "",
+            "peer_ns": "",
+            "purpose": "web_mail",
+            "remote_dns_connection_id": ""
+          },
+          "guidance": "guided",
+          "origin": "fresh",
+          "required": true,
+          "revision": 2,
+          "server_ip": "192.0.2.10",
+          "status": "running",
+          "version": 1
+        },
+        "status": 200
+      }
+    },
+    "fields": {
+      "access_has_valid_for_seconds": true,
+      "domains_rows": 1,
+      "managed_services_has_scan_age_seconds": true,
+      "panel_version": {
+        "agent_commit": "1636b73f0979d9921ff99f283ceec8cfed1041dc",
+        "agent_matches": true,
+        "commit": "1636b73f0979d9921ff99f283ceec8cfed1041dc",
+        "hostname": "dns-debian13",
+        "ipv4": "192.0.2.10",
+        "schema_version": 44,
+        "version": "v0.1.0-alpha.84"
+      },
+      "scan_age_seconds": 392.564,
+      "valid_for_seconds": 22.447
+    },
+    "installed_pins": {
+      "lines": [
+        "== /usr/libexec/celikpanel/get.sh",
+        "6:bootstrap_release_sequence=84",
+        "7:bootstrap_release_version=v0.1.0-alpha.84",
+        "8:bootstrap_release_public_key_sha256=7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb",
+        "== end"
+      ],
+      "returncode": 0
+    },
+    "ledger": {
+      "expected_version": 44,
+      "facts": {
+        "integrity": true,
+        "ledger_is_the_released_one": true,
+        "request_identities": true,
+        "schema_is_the_released_one": true,
+        "version": true
+      },
+      "ledger_last": [
+        {
+          "filename": "042_remote_dns_publish.sql",
+          "sha256": "60b4c3ee2c0c1348072d74ef505d4f7368552f35503e90871aa7eeb4f7b9e8d5",
+          "version": 42
+        },
+        {
+          "filename": "043_request_identities.sql",
+          "sha256": "92302046d132465b5048d4c2a4a4e2e737fe9e50494ece60b679109309c89daa",
+          "version": 43
+        },
+        {
+          "filename": "044_managed_site_files.sql",
+          "sha256": "71d56b9ff119c1c8872c5e5c20f28952c1b1d781f1dae6474abc97879bf951f9",
+          "version": 44
+        }
+      ],
+      "ledger_rows": 44,
+      "ledger_sha256": "55efb384c7d1b02c48932367dad06a2086f8ffcc62ca23ad24ae7e5603e9189b",
+      "pinned_ledger_sha256": "55efb384c7d1b02c48932367dad06a2086f8ffcc62ca23ad24ae7e5603e9189b",
+      "pinned_schema_sha256": "afcb7db4bf3b619a605af88277714cbc22e7dbe5279375b80f0eb33f54de06fc",
+      "request_identities": {
+        "columns": [
+          "id",
+          "actor_user_id",
+          "method",
+          "route",
+          "request_sha256",
+          "status",
+          "response_status",
+          "response_retained",
+          "response_content_type",
+          "response_body",
+          "created_at",
+          "finished_at",
+          "expires_at"
+        ],
+        "exists": true,
+        "rows": 1
+      },
+      "schema_sha256": "afcb7db4bf3b619a605af88277714cbc22e7dbe5279375b80f0eb33f54de06fc",
+      "schema_sha256_without_statistics": "afcb7db4bf3b619a605af88277714cbc22e7dbe5279375b80f0eb33f54de06fc",
+      "schema_version": 44,
+      "statistics_tables": [],
+      "table_count": 67,
+      "verdict": "as-expected"
+    }
+  },
+  "finished_at": "2026-10-13T09:55:35Z",
+  "name": "set15-readings-after-the-update",
+  "started_at": "2026-10-13T09:55:35Z",
+  "verdict": "observed"
+}

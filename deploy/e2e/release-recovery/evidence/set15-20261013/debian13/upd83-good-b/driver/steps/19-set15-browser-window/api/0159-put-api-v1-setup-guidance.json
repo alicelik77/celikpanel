@@ -1,0 +1,107 @@
+{
+  "outcome": "response",
+  "panel": "owner",
+  "purpose": "ui: the owner chooses to set up by hand (PUT /api/v1/setup/guidance manual)",
+  "request": {
+    "body": {
+      "guidance": "manual",
+      "revision": 3
+    },
+    "headers": [
+      [
+        "Accept",
+        "application/json"
+      ],
+      [
+        "Host",
+        "127.0.0.1:19166"
+      ],
+      [
+        "Content-Type",
+        "application/json"
+      ],
+      [
+        "Origin",
+        "https://127.0.0.1:19166"
+      ],
+      [
+        "Cookie",
+        "[REDACTED]"
+      ],
+      [
+        "X-CelikPanel-Request-Id",
+        "a43d6c89714ed063463e6e6bafbfab09"
+      ]
+    ],
+    "method": "PUT",
+    "path": "/api/v1/setup/guidance"
+  },
+  "response": {
+    "elapsed_seconds": 0.01,
+    "headers": [
+      [
+        "Cache-Control",
+        "no-store"
+      ],
+      [
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+      ],
+      [
+        "Content-Type",
+        "application/json"
+      ],
+      [
+        "Referrer-Policy",
+        "no-referrer"
+      ],
+      [
+        "Strict-Transport-Security",
+        "max-age=31536000"
+      ],
+      [
+        "X-Content-Type-Options",
+        "nosniff"
+      ],
+      [
+        "X-Frame-Options",
+        "DENY"
+      ],
+      [
+        "Date",
+        "Tue, 13 Oct 2026 10:09:33 GMT"
+      ],
+      [
+        "Content-Length",
+        "467"
+      ]
+    ],
+    "json": {
+      "checks": [],
+      "draft": {
+        "database": "",
+        "dns_engine": "bind",
+        "dns_mode": "external",
+        "dns_role": "primary",
+        "local_ip": "192.0.2.10",
+        "mail_hostname": "mail-debian13.upd1-infra.test",
+        "node_version": "",
+        "ns1": "ns1.upd1-infra.test",
+        "ns2": "ns2.upd1-infra.test",
+        "panel_domain": "panel-debian13.upd1-infra.test",
+        "peer_ip": "",
+        "peer_ns": "",
+        "purpose": "web_mail",
+        "remote_dns_connection_id": ""
+      },
+      "guidance": "manual",
+      "origin": "fresh",
+      "required": true,
+      "revision": 4,
+      "status": "draft",
+      "version": 1
+    },
+    "status": 200,
+    "text": null
+  }
+}

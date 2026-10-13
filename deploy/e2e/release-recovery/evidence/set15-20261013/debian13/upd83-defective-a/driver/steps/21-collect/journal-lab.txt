@@ -1,0 +1,15 @@
+2026-10-13T12:46:31.726351+00:00 dns-debian13 systemd[1]: Started cp-lab-upd1-origin.service - Disposable upd1 celikpanel.net fixture origin (guest loopback only; lab, no product authority).
+2026-10-13T12:46:36.151942+00:00 dns-debian13 systemd[1]: Starting celikpanel-lab-current-worker-baseline.service - [systemd-run] /usr/bin/python3 -I /root/celikpanel-release-recovery-lab/current-worker-baseline-driver.py...
+2026-10-13T12:46:53.206858+00:00 dns-debian13 groupadd[3462]: group added to /etc/group: name=celikpanel, GID=989
+2026-10-13T12:46:53.215776+00:00 dns-debian13 groupadd[3462]: group added to /etc/gshadow: name=celikpanel
+2026-10-13T12:46:53.216704+00:00 dns-debian13 groupadd[3462]: new group: name=celikpanel, GID=989
+2026-10-13T12:46:53.242283+00:00 dns-debian13 useradd[3467]: new user: name=celikpanel, UID=999, GID=989, home=/var/lib/celikpanel, shell=/usr/sbin/nologin, from=none
+2026-10-13T12:47:04.500012+00:00 dns-debian13 systemd[1]: celikpanel-lab-current-worker-baseline.service: Deactivated successfully.
+2026-10-13T12:47:04.500318+00:00 dns-debian13 systemd[1]: Finished celikpanel-lab-current-worker-baseline.service - [systemd-run] /usr/bin/python3 -I /root/celikpanel-release-recovery-lab/current-worker-baseline-driver.py.
+2026-10-13T12:47:04.500529+00:00 dns-debian13 systemd[1]: celikpanel-lab-current-worker-baseline.service: Consumed 16.949s CPU time, 738.7M memory peak.
+2026-10-13T12:47:07.045987+00:00 dns-debian13 systemd[1]: celikpanel-lab-current-worker-baseline.service: Failed to open /run/systemd/transient/celikpanel-lab-current-worker-baseline.service: No such file or directory
+2026-10-13T12:47:07.244882+00:00 dns-debian13 systemd[1]: celikpanel-lab-current-worker-baseline.service: Failed to open /run/systemd/transient/celikpanel-lab-current-worker-baseline.service: No such file or directory
+2026-10-13T12:54:13.716381+00:00 dns-debian13 systemd[1]: Started cp-lab-upd1-sampler.service - Disposable upd1 workload sampler (lab only; no product authority).
+-- Boot 4a102a6c1a954bc799edac6c07748c11 --
+2026-10-13T12:57:29.381256+00:00 dns-debian13 systemd[1]: Started cp-lab-upd1-origin.service - Disposable upd1 celikpanel.net fixture origin (guest loopback only; lab, no product authority).
+2026-10-13T12:57:29.388413+00:00 dns-debian13 systemd[1]: Started cp-lab-upd1-sampler.service - Disposable upd1 workload sampler (lab only; no product authority).

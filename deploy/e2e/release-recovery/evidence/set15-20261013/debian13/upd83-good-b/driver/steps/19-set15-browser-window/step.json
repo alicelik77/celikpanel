@@ -1,0 +1,19 @@
+{
+  "checks": {
+    "leave_setup": {
+      "execution_status": "waiting",
+      "guidance": 200,
+      "guidance_after": "manual",
+      "guidance_before": "guided",
+      "phase": "access_dns",
+      "revise": 200,
+      "status_after": "draft",
+      "status_before": "running"
+    }
+  },
+  "finished_at": "2026-10-13T10:09:34Z",
+  "name": "set15-browser-window",
+  "reason": "CalledProcessError: Command '['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=5', '-o', 'StrictHostKeyChecking=yes', '-o', 'HashKnownHosts=no', '-o', 'UserKnownHostsFile=/var/tmp/cp-release-drill-s15-u83-good-b/cells/011a08093d63e3854326c131/ssh-known-hosts', '-i', '/var/tmp/cp-release-drill-s15-u83-good-b/key', '-p', '5166', 'celik@127.0.0.1', 'sudo /bin/bash -s']' returned non-zero exit status 1. | guest stderr: strap>\", line 488, in _call_with_frames_removed\n  File \"/root/celikpanel-release-recovery-lab/guest_set12_native.py\", line 52, in <module>\n    g11 = _load(\"guest_set11_native.py\")\n  File \"/root/celikpanel-release-recovery-lab/guest_set12_native.py\", line 48, in _load\n    spec.loader.exec_module(value)\n    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^\n  File \"<frozen importlib._bootstrap_external>\", line 1026, in exec_module\n  File \"<frozen importlib._bootstrap>\", line 488, in _call_with_frames_removed\n  File \"/root/celikpanel-release-recovery-lab/guest_set11_native.py\", line 54, in <module>\n    g10 = _load(\"guest_set10_native.py\")\n  File \"/root/celikpanel-release-recovery-lab/guest_set11_native.py\", line 50, in _load\n    spec.loader.exec_module(value)\n    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^\n  File \"<frozen importlib._bootstrap_external>\", line 1026, in exec_module\n  File \"<frozen importlib._bootstrap>\", line 488, in _call_with_frames_removed\n  File \"/root/celikpanel-release-recovery-lab/guest_set10_native.py\", line 52, in <module>\n    g8 = _load(\"guest_set8_native.py\")\n  File \"/root/celikpanel-release-recovery-lab/guest_set10_native.py\", line 48, in _load\n    spec.loader.exec_module(value)\n    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^\n  File \"<frozen importlib._bootstrap_external>\", line 1026, in exec_module\n  File \"<frozen importlib._bootstrap>\", line 488, in _call_with_frames_removed\n  File \"/root/celikpanel-release-recovery-lab/guest_set8_native.py\", line 55, in <module>\n    s4 = _load(\"guest_set4_native.py\")\n  File \"/root/celikpanel-release-recovery-lab/guest_set8_native.py\", line 51, in _load\n    spec.loader.exec_module(value)\n    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^\n  File \"<frozen importlib._bootstrap_external>\", line 1022, in exec_module\n  File \"<frozen importlib._bootstrap_external>\", line 1159, in get_code\n  File \"<frozen importlib._bootstrap_external>\", line 1217, in get_data\nFileNotFoundError: [Errno 2] No such file or directory: '/root/celikpanel-release-recovery-lab/guest_set4_native.py'\n",
+  "started_at": "2026-10-13T10:09:33Z",
+  "verdict": "inconclusive"
+}

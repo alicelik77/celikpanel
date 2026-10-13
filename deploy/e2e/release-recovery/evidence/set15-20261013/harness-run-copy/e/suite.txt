@@ -1,0 +1,26 @@
+test_bound_worker_copy_adds_the_pair (test_set15_trial.Set15Tests.test_bound_worker_copy_adds_the_pair) ... ok
+test_brief_body (test_set15_trial.Set15Tests.test_brief_body) ... ok
+test_cells (test_set15_trial.Set15Tests.test_cells) ... ok
+test_configure_alpha83 (test_set15_trial.Set15Tests.test_configure_alpha83) ... ok
+test_fresh_provenance_names_the_source (test_set15_trial.Set15Tests.test_fresh_provenance_names_the_source) ... ok
+test_guest_helper_chain_is_uploaded (test_set15_trial.Set15Tests.test_guest_helper_chain_is_uploaded)
+guest_set14_native.py loads guest_set13 ... guest_set4 and guest_request_identity on the guest (set15's update ... ok
+test_origin_copy_adds_the_three_transitions (test_set15_trial.Set15Tests.test_origin_copy_adds_the_three_transitions) ... ok
+test_profiles_are_added (test_set15_trial.Set15Tests.test_profiles_are_added) ... ok
+test_cells_browser_and_plan (test_set14_trial.Set14Rules.test_cells_browser_and_plan) ... ok
+test_guest_proc_cpu_and_cgroup_parsers (test_set14_trial.Set14Rules.test_guest_proc_cpu_and_cgroup_parsers) ... ok
+test_guest_refuses_bad_arguments (test_set14_trial.Set14Rules.test_guest_refuses_bad_arguments) ... ok
+test_guest_scan_cache_reads_row_and_age (test_set14_trial.Set14Rules.test_guest_scan_cache_reads_row_and_age) ... ok
+test_prep_name_and_compact_probe (test_set14_trial.Set14Rules.test_prep_name_and_compact_probe) ... ok
+test_alpha82_profile_is_added (test_set12_trial.Set12Tests.test_alpha82_profile_is_added) ... ok
+test_file_of (test_set12_trial.Set12Tests.test_file_of) ... ok
+test_first_state_line (test_set12_trial.Set12Tests.test_first_state_line) ... ok
+test_origin_copy_adds_exactly_one_transition (test_set12_trial.Set12Tests.test_origin_copy_adds_exactly_one_transition) ... ok
+test_origin_text_refuses_other_text (test_set12_trial.Set12Tests.test_origin_text_refuses_other_text) ... ok
+test_sealed_ini (test_set12_trial.Set12Tests.test_sealed_ini) ... ok
+test_syn_destinations (test_set12_trial.Set12Tests.test_syn_destinations) ... ok
+
+----------------------------------------------------------------------
+Ran 20 tests in 0.426s
+
+OK

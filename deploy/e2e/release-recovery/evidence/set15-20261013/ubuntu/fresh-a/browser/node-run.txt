@@ -1,0 +1,5 @@
+hand=\\wsl.localhost\archlinux\var\tmp\cp-set15-run\hand\h15ub-ui
+browser profile: <redacted> (46 characters, limit 120)
+{"cell":"ui","started":"2026-10-13T09:33:16.294Z","ended":"2026-10-13T09:42:03.449Z","ok":true}
+{"cell":"done","started":"2026-10-13T09:42:03.454Z","ended":"2026-10-13T09:42:03.456Z","ok":true}
+rc=0

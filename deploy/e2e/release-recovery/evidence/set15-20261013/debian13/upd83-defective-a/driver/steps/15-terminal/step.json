@@ -1,0 +1,327 @@
+{
+  "checks": {
+    "build_identity_ok": true,
+    "builds": {
+      "agent": {
+        "identity": "version=v0.1.0-alpha.83\ncommit=0447558e956d4c02c7bf06b368def0924856f8fc\n",
+        "returncode": 0,
+        "sha256": "7c1cf64e374fe86b352ff5f9316000c6038a3fae3f6888a9ccb246e7b747780f"
+      },
+      "panel": {
+        "identity": "version=v0.1.0-alpha.83\ncommit=0447558e956d4c02c7bf06b368def0924856f8fc\n",
+        "returncode": 0,
+        "sha256": "542d1d253b96b8dcfcb5f5d015b76574467f9514fc6bcfd80cdd83aade42c761"
+      }
+    },
+    "database": {
+      "differing": [
+        "managed_site_files",
+        "metrics_samples",
+        "server_setup_executions",
+        "sqlite_sequence"
+      ],
+      "post_sha256": "abe407172e49e891fb00ca19cc99ebee82b00ebf98aae49e46936ca0090fcb62",
+      "pre_sha256": "fc556b00cc912722222e9a0ae23376ecda701f2d577d2d3d062ac63c50d05990",
+      "schema_equal": true,
+      "tables_compared": 67,
+      "unexpected": [
+        "managed_site_files"
+      ],
+      "verdict": "different",
+      "volatile_excluded": [
+        "audit_logs",
+        "metrics_samples",
+        "server_setup_executions",
+        "sessions",
+        "sqlite_sequence"
+      ],
+      "volatile_reasons": {
+        "audit_logs": "authentication or background writer (BOUND-WORKER AJ)",
+        "metrics_samples": "authentication or background writer (BOUND-WORKER AJ)",
+        "server_setup_executions": "the waiting setup runner rewrites its execution row on every retry (about every 25 s: cmd/panel/server_setup_dns_retry.go claimServerSetupDNSRetry and server_setup_operations.go execution update)",
+        "sessions": "authentication or background writer (BOUND-WORKER AJ)",
+        "sqlite_sequence": "authentication or background writer (BOUND-WORKER AJ)"
+      }
+    },
+    "dns": false,
+    "dns_scope": {
+      "mode": "external",
+      "note": "DNS is not provided by this run (the owner chose DNS hosted elsewhere on one isolated node); DNS continuity is covered by the DNS pair runs of roadmap item 2",
+      "verdict": "not-provided-external-dns"
+    },
+    "final": {
+      "observation": "known",
+      "observed_at": "2026-10-13T12:58:26Z",
+      "phase": "recovered",
+      "previous_failure": "update_failed",
+      "reason": "rollback_verified",
+      "request_id": "728d3cb44ffab7ce0ec0c174a2fc2f82",
+      "schema": "celikpanel-recovery-status/v1",
+      "terminal_proof": "rollback_verified"
+    },
+    "firewall_equal": true,
+    "floor": {
+      "present": true,
+      "sha256": "0c78d5774a35a834256cea6075548011bd79d81cb0cb65b9620549219077c538",
+      "text": "format=celikpanel-release-sequence-floor-v1\nsequence=84\nversion=v0.1.0-alpha.84\n"
+    },
+    "foundation": {
+      "present": true,
+      "sha256": "b21c35a43927468956f853af71270fe3100b0d9cd4fca8203c7740db63347391",
+      "text": "format=celikpanel-release-recovery-foundation-v1\nprotocol=1\nsequence=84\nrelease-version=v0.1.0-alpha.84\nrelease-commit=9eed85587db545102ddd7ac8fb26e85c5329c4dd\nrunner-sha256=659a2f6e6f14d2255ea6fe0de1e391b06e579c3b18ecec13d29ebc35aa79e7b5\nservice-sha256=c570e53138a416a6faf531c2f53e9502ca7aa5cc1131a1f6f6ae870b940fe530\ntimer-sha256=33148e5b0fbc209ff6fd725aaaff2c569bd7470751341d4b83b301d0fa54cd86\nstart-guard-sha256=6abd30be38302b4ad09bd5c7db893aa49b97db779514b3236a2f0a4afb60cc12\nagent-dropin-sha256=82e0fe894b3fa676c1b64e65ac964b74b27dcfe5a83ddf91761f44ad5971359f\npanel-dropin-sha256=82e0fe894b3fa676c1b64e65ac964b74b27dcfe5a83ddf91761f44ad5971359f\nprotocol-sha256=a29874f40088f2b5e960b4ce63651657b1ff2622334dcc5cc11c8f338215034c\n"
+    },
+    "login_ok": true,
+    "mailbox": {
+      "checked": true,
+      "present": true,
+      "returncode": 0,
+      "status": "ok"
+    },
+    "outcome": "recovered-automatically",
+    "running_matches_installed": {
+      "celikpanel-agent.service": true,
+      "celikpanel-panel.service": true
+    },
+    "seeded_rows": {
+      "cron": true,
+      "domain": true,
+      "mail": true
+    },
+    "site_marker": true,
+    "smtp": true,
+    "timers": {
+      "changed": {},
+      "compared": 2,
+      "equal": true
+    },
+    "transaction": {
+      "fields": {},
+      "present": false,
+      "status": "ok"
+    },
+    "update_card": {
+      "availability": {
+        "body": {
+          "schema": "celikpanel-panel-availability/v1",
+          "state": "ready"
+        },
+        "http": 200
+      },
+      "check": {
+        "body": {
+          "available": true,
+          "current_commit": "0447558e956d4c02c7bf06b368def0924856f8fc",
+          "current_version": "v0.1.0-alpha.83",
+          "previous_attempt": {
+            "finished_at": "2026-10-13T12:58:26Z",
+            "phase": "recovered",
+            "request_id": "728d3cb44ffab7ce0ec0c174a2fc2f82"
+          },
+          "supported": true,
+          "target": {
+            "arch": "amd64",
+            "archive_sha256": "d3c1a158dbc9bb8ac294f98c1033cc5c3e41af15c558184310872be805c5cef2",
+            "archive_size": "66147170",
+            "commit": "9eed85587db545102ddd7ac8fb26e85c5329c4dd",
+            "os": "linux",
+            "published_at": "2026-10-13T12:46:26Z",
+            "sequence": "84",
+            "version": "v0.1.0-alpha.84"
+          }
+        },
+        "http": 200
+      },
+      "cron": {
+        "body": {
+          "jobs": [
+            {
+              "command": "/bin/date -u -Iseconds > \"$HOME/upd1-cron-stamp.txt\"",
+              "comment": "upd1 owner cron",
+              "enabled": true,
+              "id": "2455b30ed819fb8f",
+              "schedule": "* * * * *"
+            }
+          ],
+          "version": "ct1-6c9e025a95e461ac5a888e3ff347c496a910cf2756ea42f5207c7f724504e7c9"
+        },
+        "http": 200
+      },
+      "domains": {
+        "body": [
+          {
+            "bandwidth": 0,
+            "created_at": "2026-10-13T12:54:06Z",
+            "disk_usage": 0,
+            "domain_name": "upd1-owner.test",
+            "id": 1,
+            "php_version": "",
+            "project_type": "static",
+            "site_config": {
+              "state": "managed_unchanged"
+            },
+            "ssl_enabled": false,
+            "status": "active"
+          }
+        ],
+        "http": 200
+      },
+      "license": {
+        "body": {
+          "can_use_panel": true,
+          "observation": "known",
+          "state": "active",
+          "valid_until": 1791896359
+        },
+        "http": 200
+      },
+      "mail_listed": true,
+      "recovery": {
+        "body": {
+          "observation": "known",
+          "observed_at": "2026-10-13T12:58:26Z",
+          "panel_state": "ready",
+          "phase": "recovered",
+          "previous_failure": "update_failed",
+          "reason": "rollback_verified",
+          "request_id": "728d3cb44ffab7ce0ec0c174a2fc2f82",
+          "schema": "celikpanel-recovery-status/v1",
+          "terminal_proof": "rollback_verified"
+        },
+        "http": 200
+      },
+      "recovery_guidance": {
+        "actionable": true,
+        "keys": [
+          "recovery.phase.recovered",
+          "recovery.next.recovered",
+          "recovery.previousFailure",
+          "recovery.reason.update_failed"
+        ],
+        "missing_keys": [],
+        "no_actor_or_action": false,
+        "observation": {
+          "automatic_recovery": null,
+          "failure_code": null,
+          "first_failure_code": null,
+          "observation": "known",
+          "observed_at": "2026-10-13T12:58:26Z",
+          "panel_state": "ready",
+          "phase": "recovered",
+          "previous_failure": "update_failed",
+          "reason": "rollback_verified",
+          "renewal_before_update": null,
+          "request_id": "728d3cb44ffab7ce0ec0c174a2fc2f82",
+          "terminal_proof": "rollback_verified",
+          "waiting_for": null
+        },
+        "observation_unavailable": false,
+        "texts": {
+          "en": [
+            "Rollback verified",
+            "The server verified restoration of the previous release. Reload CelikPanel to check panel access.",
+            "Previously recorded failure: Update failed"
+          ],
+          "tr": [
+            "Geri alma doğrulandı",
+            "Sunucu önceki sürümün geri yüklendiğini doğruladı. Panel erişimini kontrol etmek için CelikPanel’i yeniden yükleyin.",
+            "Önceden kaydedilmiş hata: Güncelleme başarısız oldu"
+          ]
+        }
+      },
+      "status": {
+        "body": {
+          "created_at": "2026-10-13T12:56:08.941483818Z",
+          "found": true,
+          "request_id": "728d3cb44ffab7ce0ec0c174a2fc2f82",
+          "status": "failed",
+          "summary": "reviewed updater failed: exit status 1: !! CELIKPANEL_UPDATE_FAILURE code=update_failed state=recovery_required reason=offline panel database migration failed; its original database and work evidence are preserved detail=",
+          "target": {
+            "arch": "amd64",
+            "archive_sha256": "d3c1a158dbc9bb8ac294f98c1033cc5c3e41af15c558184310872be805c5cef2",
+            "archive_size": "66147170",
+            "commit": "9eed85587db545102ddd7ac8fb26e85c5329c4dd",
+            "os": "linux",
+            "sequence": "84",
+            "version": "v0.1.0-alpha.84"
+          },
+          "updated_at": "2026-10-13T12:56:55.728877432Z"
+        },
+        "http": 200
+      },
+      "update_card": {
+        "keys": [
+          "panelUpdate.outcome.rolledBackTitle",
+          "panelUpdate.outcome.rolledBack",
+          "panelUpdate.outcome.cause.generic",
+          "panelUpdate.outcome.rolledBackNext",
+          "panelUpdate.outcome.rolledBackResume",
+          "panelUpdate.outcome.serverMessage"
+        ],
+        "missing_keys": [],
+        "observation_error": null,
+        "role": "baseline",
+        "server_message": "reviewed updater failed: exit status 1: offline panel database migration failed; its original database and work evidence are preserved",
+        "source": {
+          "observation": {
+            "path": "lib/recoveryObservation.ts",
+            "sha256": "65c3b7e381c4fe2d9385c417124ef22d7112a43599d608a195c0be2771a82461"
+          },
+          "outcome": {
+            "path": "lib/systemUpdateOutcome.ts",
+            "sha256": "7329a488a436f12637f3c46a60521bbe22027de032044c4963f5686b0a83f67c"
+          },
+          "screen": {
+            "path": "components/RecoveryAccess.tsx",
+            "sha256": "ebbe647511dcecae3a3907720ba6a5ce48bca876ad459dd32288cbb72814c0e4"
+          },
+          "typed": {
+            "path": "lib/systemUpdateFailure.ts",
+            "sha256": "b12d9a0d2989bd70670e02481159128ba716bb21f15db5084b9631475a610af4"
+          }
+        },
+        "state": "rolled_back",
+        "texts": {
+          "en": [
+            "Update not completed; previous version restored",
+            "The update to v0.1.0-alpha.84 did not complete. The server was returned to v0.1.0-alpha.83 automatically and is running it now.",
+            "Cause: the update failed before it completed; the server recorded no more specific cause.",
+            "Nothing needs to be done on the server. Do not start the update to v0.1.0-alpha.84 again until a corrected version is published. If the server's message names a problem on this server, fix it first.",
+            "Nothing resumes by itself: the server keeps running v0.1.0-alpha.83. When a newer version is published, “Check for updates” offers it.",
+            "The server reported: reviewed updater failed: exit status 1: offline panel database migration failed; its original database and work evidence are preserved"
+          ],
+          "tr": [
+            "Güncelleme tamamlanmadı; önceki sürüm geri yüklendi",
+            "v0.1.0-alpha.84 sürümüne güncelleme tamamlanmadı. Sunucu otomatik olarak v0.1.0-alpha.83 sürümüne döndürüldü ve şu an onu çalıştırıyor.",
+            "Neden: güncelleme tamamlanmadan başarısız oldu; sunucu daha belirli bir neden kaydetmedi.",
+            "Sunucuda yapmanız gereken bir şey yok. Düzeltilmiş bir sürüm yayımlanana kadar v0.1.0-alpha.84 güncellemesini yeniden başlatmayın. Sunucunun iletisi bu sunucudaki bir sorunu belirtiyorsa önce onu giderin.",
+            "Hiçbir işlem kendiliğinden sürmez: sunucu v0.1.0-alpha.83 sürümünü çalıştırmaya devam eder. Daha yeni bir sürüm yayımlandığında “Güncellemeyi kontrol et” onu gösterir.",
+            "Sunucunun İngilizce günlük satırı: reviewed updater failed: exit status 1: offline panel database migration failed; its original database and work evidence are preserved"
+          ]
+        },
+        "unavailable": null
+      },
+      "update_card_judged": {
+        "findings": [],
+        "server_message_line": "reviewed updater failed: exit status 1: offline panel database migration failed; its original database and work evidence are preserved",
+        "verdict": "as-expected"
+      },
+      "version": {
+        "body": {
+          "agent_commit": "0447558e956d4c02c7bf06b368def0924856f8fc",
+          "agent_matches": true,
+          "commit": "0447558e956d4c02c7bf06b368def0924856f8fc",
+          "hostname": "dns-debian13",
+          "ipv4": "192.0.2.10",
+          "schema_version": 44,
+          "version": "v0.1.0-alpha.83"
+        },
+        "http": 200
+      }
+    }
+  },
+  "finished_at": "2026-10-13T12:58:35Z",
+  "name": "terminal",
+  "reason": "database differs from the pre-update digest: ['managed_site_files']",
+  "started_at": "2026-10-13T12:58:28Z",
+  "verdict": "failed"
+}

@@ -1,0 +1,103 @@
+{
+  "outcome": "response",
+  "panel": "owner",
+  "purpose": "SystemUpdateOperation start (once)",
+  "request": {
+    "body": {
+      "arch": "amd64",
+      "archive_sha256": "e3674bed18bdf7f0bbfc64f2b09f7d7ff810f14365d37683ae72cbc145c15bba",
+      "archive_size": "66148634",
+      "commit": "1636b73f0979d9921ff99f283ceec8cfed1041dc",
+      "confirmed": true,
+      "current_commit": "0447558e956d4c02c7bf06b368def0924856f8fc",
+      "current_version": "v0.1.0-alpha.83",
+      "os": "linux",
+      "published_at": "2026-10-13T09:58:07Z",
+      "request_id": "a20cff0360785cb63abc40f788bdc5c3",
+      "sequence": "84",
+      "version": "v0.1.0-alpha.84"
+    },
+    "headers": [
+      [
+        "Accept",
+        "application/json"
+      ],
+      [
+        "Host",
+        "127.0.0.1:19166"
+      ],
+      [
+        "Content-Type",
+        "application/json"
+      ],
+      [
+        "Origin",
+        "https://127.0.0.1:19166"
+      ],
+      [
+        "Cookie",
+        "[REDACTED]"
+      ]
+    ],
+    "method": "POST",
+    "path": "/api/v1/panel/update/start"
+  },
+  "response": {
+    "elapsed_seconds": 0.106,
+    "headers": [
+      [
+        "Cache-Control",
+        "no-store"
+      ],
+      [
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+      ],
+      [
+        "Content-Type",
+        "application/json"
+      ],
+      [
+        "Referrer-Policy",
+        "no-referrer"
+      ],
+      [
+        "Strict-Transport-Security",
+        "max-age=31536000"
+      ],
+      [
+        "X-Content-Type-Options",
+        "nosniff"
+      ],
+      [
+        "X-Frame-Options",
+        "DENY"
+      ],
+      [
+        "Date",
+        "Tue, 13 Oct 2026 10:07:04 GMT"
+      ],
+      [
+        "Content-Length",
+        "367"
+      ]
+    ],
+    "json": {
+      "accepted": true,
+      "request_id": "a20cff0360785cb63abc40f788bdc5c3",
+      "status": "queued",
+      "target": {
+        "arch": "amd64",
+        "archive_sha256": "e3674bed18bdf7f0bbfc64f2b09f7d7ff810f14365d37683ae72cbc145c15bba",
+        "archive_size": "66148634",
+        "commit": "1636b73f0979d9921ff99f283ceec8cfed1041dc",
+        "os": "linux",
+        "published_at": "2026-10-13T09:58:07Z",
+        "sequence": "84",
+        "version": "v0.1.0-alpha.84"
+      }
+    },
+    "status": 202,
+    "text": null
+  }
+}

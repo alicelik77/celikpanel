@@ -1,0 +1,61 @@
+{
+  "at": "2026-10-13T09:33:27Z",
+  "prep": "probe",
+  "result": {
+    "at": "2026-10-13T09:33:27Z",
+    "cgroup_cpu": {
+      "agent": {
+        "system_usec": 15499916,
+        "usage_usec": 37258045,
+        "user_usec": 21758128
+      },
+      "panel": {
+        "system_usec": 981505,
+        "usage_usec": 1942553,
+        "user_usec": 961048
+      }
+    },
+    "epoch": 1791884007.45249,
+    "file": "steps/09-set15-browser-window/native/002-probe-1.json",
+    "loadavg": "0.15 0.27 0.18 1/171 21037",
+    "nginx_dropin": false,
+    "proc_cpu": {
+      "agent": {
+        "clk_tck": 100,
+        "cstime": 1441,
+        "cutime": 2182,
+        "stime": 36,
+        "utime": 42
+      },
+      "panel": {
+        "clk_tck": 100,
+        "cstime": 0,
+        "cutime": 0,
+        "stime": 97,
+        "utime": 96
+      }
+    },
+    "scan_cache": {
+      "age_seconds": 152.5,
+      "data_bytes": 2262,
+      "database": "/var/lib/celikpanel/celikpanel.db",
+      "exists": true,
+      "scanned_at": "2026-10-13T09:30:55Z",
+      "scanned_epoch": 1791883855.0
+    },
+    "units": {
+      "agent": {
+        "ActiveState": "active",
+        "CPUUsageNSec": "37258045000",
+        "MainPID": "7697",
+        "NRestarts": "0"
+      },
+      "panel": {
+        "ActiveState": "active",
+        "CPUUsageNSec": "1942553000",
+        "MainPID": "7960",
+        "NRestarts": "0"
+      }
+    }
+  }
+}

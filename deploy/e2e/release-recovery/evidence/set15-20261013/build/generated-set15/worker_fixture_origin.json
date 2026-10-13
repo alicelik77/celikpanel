@@ -1,0 +1,26 @@
+{
+  "added_policies": [
+    {
+      "current": 83,
+      "previous": 82,
+      "previous_version": "v0.1.0-alpha.82",
+      "version": "v0.1.0-alpha.83"
+    },
+    {
+      "current": 84,
+      "previous": 83,
+      "previous_version": "v0.1.0-alpha.83",
+      "version": "v0.1.0-alpha.84"
+    },
+    {
+      "current": 85,
+      "previous": 84,
+      "previous_version": "v0.1.0-alpha.84",
+      "version": "v0.1.0-alpha.85"
+    }
+  ],
+  "generated": "/var/tmp/cp-set15-run/generated-set15/worker_fixture_origin.py",
+  "generated_sha256": "4328fd51ee337af27523da4b0f7c4e430287af85a2027de742e4b1c60ee01707",
+  "original": "/var/tmp/cp-set15-run/harness-e/deploy/e2e/release-recovery/worker_fixture_origin.py",
+  "original_sha256": "9b6c76caa652dec6425d3fdb956ec06599e8de3c3ae902c5783413529564e683"
+}

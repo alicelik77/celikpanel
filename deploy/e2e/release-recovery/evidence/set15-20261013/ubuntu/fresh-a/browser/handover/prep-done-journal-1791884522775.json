@@ -1,0 +1,13 @@
+{
+  "at": "2026-10-13T09:42:03Z",
+  "prep": "journal",
+  "result": {
+    "file": "steps/09-set15-browser-window/native/006-ui-journal-5-journal.json",
+    "units": [
+      "celikpanel-agent.service",
+      "celikpanel-panel.service",
+      "nginx.service",
+      "php8.3-fpm.service"
+    ]
+  }
+}

@@ -1,0 +1,644 @@
+{
+  "lang": "tr",
+  "viewport": "desktop",
+  "phases": [
+    {
+      "phase": "sign-in",
+      "started": "2026-10-13T09:33:16.304Z",
+      "ended": "2026-10-13T09:33:20.850Z",
+      "seconds": 4.5,
+      "scan_posts": 0,
+      "posts": []
+    },
+    {
+      "phase": "domains",
+      "started": "2026-10-13T09:33:20.853Z",
+      "ended": "2026-10-13T09:33:26.024Z",
+      "seconds": 5.2,
+      "scan_posts": 0,
+      "posts": [],
+      "load_at": "2026-10-13T09:33:21.203Z",
+      "first_state_row_shown": false,
+      "page_text_head": "Henüz alan adı yok\n\nİlk alan adınızı ekleyerek başlayın\n\nAlan adı ekle",
+      "domains_reads": [
+        {
+          "status": 200,
+          "start": "2026-10-13T09:33:21.342Z",
+          "ms": 11,
+          "body": "[]\n"
+        },
+        {
+          "status": 200,
+          "start": "2026-10-13T09:33:21.360Z",
+          "ms": 16,
+          "body": "[]\n"
+        }
+      ],
+      "sidebar": {
+        "at": "2026-10-13T09:33:26.000Z",
+        "aside": true,
+        "text": "CelikPanel\nPanel\nBARINDIRMA\nAlan Adları\nVeritabanları\nKullanıcılar\nMağaza\nVPN\nSUNUCU\nBileşenler\n6\nİzleme\nİçe aktar\nDenetim günlüğü\nAyarlar\nSUNUCU BILGISI\ndns-ubuntu\n192.0.2.12\nCelikPanel · v0.1.0-alpha.84 · build 1636b73f0979\n1636b73f0979d9921ff99f283ceec8cfed1041dc",
+        "stamp": [
+          "CelikPanel · v0.1.0-alpha.84 · build 1636b73f0979"
+        ],
+        "picture": "domains-sidebar.png"
+      }
+    },
+    {
+      "phase": "dashboard",
+      "started": "2026-10-13T09:36:12.221Z",
+      "ended": "2026-10-13T09:37:42.861Z",
+      "seconds": 90.6,
+      "scan_posts": 1,
+      "posts": [
+        {
+          "page": "p2-dashboard",
+          "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+          "status": 200,
+          "start": "2026-10-13T09:36:12.798Z",
+          "end": "2026-10-13T09:36:14.388Z",
+          "ms": 1590,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-13T09:36:14.467667888Z",
+            "scan_age_seconds": 0,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-13T09:36:14.467Z",
+            "guest_minus_browser_ms": {
+              "low": 79,
+              "high": 1669
+            }
+          }
+        }
+      ],
+      "stale": {
+        "turn": 1,
+        "age_s": 317.2,
+        "absent": false,
+        "probe_scan": {
+          "scanned_at": "2026-10-13T09:30:55Z",
+          "age_s": 317.2
+        }
+      },
+      "load_at": "2026-10-13T09:36:12.570Z",
+      "observed_s": 90.3,
+      "mount": {
+        "first_managed_services_read_ms": 154,
+        "first_card_ms": 211,
+        "first_card_state": "checking"
+      },
+      "posts_conditional": 1,
+      "rescan_link_seen": false,
+      "rescan_link_seen_at": [],
+      "rescan_link_checks_note": "body text sampled every ~5 s and at 10 s",
+      "access_reads": [
+        {
+          "start": "2026-10-13T09:36:12.653Z",
+          "end": "2026-10-13T09:36:12.662Z",
+          "ms": 9,
+          "status": 200,
+          "after_load_ms": 83,
+          "since_previous_ms": null,
+          "access": {
+            "can_use_panel": true,
+            "valid_until": 1791884232,
+            "valid_for_seconds": 59.26,
+            "valid_for_seconds_type": "number",
+            "state": "active",
+            "observation": "known",
+            "keys": [
+              "can_use_panel",
+              "observation",
+              "state",
+              "valid_for_seconds",
+              "valid_until"
+            ],
+            "sent": "2026-10-13T09:36:12.653Z",
+            "received": "2026-10-13T09:36:12.662Z",
+            "valid_until_iso": "2026-10-13T09:37:12.000Z",
+            "old_rule_accepts_at_receipt": true,
+            "browser_deadline": "2026-10-13T09:37:11.913Z",
+            "old_rule_deadline_minus_new_ms": 87,
+            "server_now": "2026-10-13T09:36:12.740Z",
+            "guest_minus_browser_ms": {
+              "low": 78,
+              "high": 87
+            }
+          },
+          "error": null
+        },
+        {
+          "start": "2026-10-13T09:36:56.915Z",
+          "end": "2026-10-13T09:36:56.922Z",
+          "ms": 7,
+          "status": 200,
+          "after_load_ms": 44345,
+          "since_previous_ms": 44262,
+          "access": {
+            "can_use_panel": true,
+            "valid_until": 1791884277,
+            "valid_for_seconds": 59.998,
+            "valid_for_seconds_type": "number",
+            "state": "active",
+            "observation": "known",
+            "keys": [
+              "can_use_panel",
+              "observation",
+              "state",
+              "valid_for_seconds",
+              "valid_until"
+            ],
+            "sent": "2026-10-13T09:36:56.915Z",
+            "received": "2026-10-13T09:36:56.922Z",
+            "valid_until_iso": "2026-10-13T09:37:57.000Z",
+            "old_rule_accepts_at_receipt": true,
+            "browser_deadline": "2026-10-13T09:37:56.913Z",
+            "old_rule_deadline_minus_new_ms": 87,
+            "server_now": "2026-10-13T09:36:57.002Z",
+            "guest_minus_browser_ms": {
+              "low": 80,
+              "high": 87
+            }
+          },
+          "error": null
+        },
+        {
+          "start": "2026-10-13T09:37:12.667Z",
+          "end": "2026-10-13T09:37:12.676Z",
+          "ms": 9,
+          "status": 200,
+          "after_load_ms": 60097,
+          "since_previous_ms": 15752,
+          "access": {
+            "can_use_panel": true,
+            "valid_until": 1791884277,
+            "valid_for_seconds": 44.244,
+            "valid_for_seconds_type": "number",
+            "state": "active",
+            "observation": "known",
+            "keys": [
+              "can_use_panel",
+              "observation",
+              "state",
+              "valid_for_seconds",
+              "valid_until"
+            ],
+            "sent": "2026-10-13T09:37:12.667Z",
+            "received": "2026-10-13T09:37:12.676Z",
+            "valid_until_iso": "2026-10-13T09:37:57.000Z",
+            "old_rule_accepts_at_receipt": true,
+            "browser_deadline": "2026-10-13T09:37:56.911Z",
+            "old_rule_deadline_minus_new_ms": 89,
+            "server_now": "2026-10-13T09:37:12.756Z",
+            "guest_minus_browser_ms": {
+              "low": 80,
+              "high": 89
+            }
+          },
+          "error": null
+        },
+        {
+          "start": "2026-10-13T09:37:41.914Z",
+          "end": "2026-10-13T09:37:41.921Z",
+          "ms": 7,
+          "status": 200,
+          "after_load_ms": 89344,
+          "since_previous_ms": 29247,
+          "access": {
+            "can_use_panel": true,
+            "valid_until": 1791884322,
+            "valid_for_seconds": 59.998,
+            "valid_for_seconds_type": "number",
+            "state": "active",
+            "observation": "known",
+            "keys": [
+              "can_use_panel",
+              "observation",
+              "state",
+              "valid_for_seconds",
+              "valid_until"
+            ],
+            "sent": "2026-10-13T09:37:41.914Z",
+            "received": "2026-10-13T09:37:41.921Z",
+            "valid_until_iso": "2026-10-13T09:38:42.000Z",
+            "old_rule_accepts_at_receipt": true,
+            "browser_deadline": "2026-10-13T09:38:41.912Z",
+            "old_rule_deadline_minus_new_ms": 88,
+            "server_now": "2026-10-13T09:37:42.002Z",
+            "guest_minus_browser_ms": {
+              "low": 81,
+              "high": 88
+            }
+          },
+          "error": null
+        }
+      ],
+      "states": [
+        "absent",
+        "checking",
+        "known"
+      ],
+      "card_sequence": [
+        {
+          "at": "2026-10-13T09:36:12.623Z",
+          "state": "absent",
+          "vis": "visible",
+          "lasted_ms": 158,
+          "text": null
+        },
+        {
+          "at": "2026-10-13T09:36:12.781Z",
+          "state": "checking",
+          "vis": "visible",
+          "lasted_ms": 1611,
+          "text": "Sistem servisleri Bileşenler kontrol ediliyor…"
+        },
+        {
+          "at": "2026-10-13T09:36:14.392Z",
+          "state": "known",
+          "vis": "visible",
+          "lasted_ms": null,
+          "text": "Sistem servisleri 3 / 3 çalışan / kurulu"
+        }
+      ],
+      "answers": [
+        {
+          "page": "p2-dashboard",
+          "method": "GET",
+          "url": "/api/v1/managed-services",
+          "status": 200,
+          "start": "2026-10-13T09:36:12.724Z",
+          "end": "2026-10-13T09:36:12.754Z",
+          "ms": 30,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-13T09:30:55Z",
+            "scan_age_seconds": 317.823,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-13T09:36:12.823Z",
+            "guest_minus_browser_ms": {
+              "low": 69,
+              "high": 99
+            }
+          }
+        },
+        {
+          "page": "p2-dashboard",
+          "method": "GET",
+          "url": "/api/v1/managed-services",
+          "status": 200,
+          "start": "2026-10-13T09:36:12.782Z",
+          "end": "2026-10-13T09:36:12.787Z",
+          "ms": 5,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-13T09:30:55Z",
+            "scan_age_seconds": 317.857,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-13T09:36:12.857Z",
+            "guest_minus_browser_ms": {
+              "low": 70,
+              "high": 75
+            }
+          }
+        },
+        {
+          "page": "p2-dashboard",
+          "method": "POST",
+          "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+          "status": 200,
+          "start": "2026-10-13T09:36:12.798Z",
+          "end": "2026-10-13T09:36:14.388Z",
+          "ms": 1590,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-13T09:36:14.467667888Z",
+            "scan_age_seconds": 0,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-13T09:36:14.467Z",
+            "guest_minus_browser_ms": {
+              "low": 79,
+              "high": 1669
+            }
+          }
+        }
+      ],
+      "sidebar": {
+        "at": "2026-10-13T09:37:42.842Z",
+        "aside": true,
+        "text": "CelikPanel\nPanel\nBARINDIRMA\nAlan Adları\nVeritabanları\nKullanıcılar\nMağaza\nVPN\nSUNUCU\nBileşenler\n6\nİzleme\nİçe aktar\nDenetim günlüğü\nAyarlar\nSUNUCU BILGISI\ndns-ubuntu\n192.0.2.12\nCelikPanel · v0.1.0-alpha.84 · build 1636b73f0979\n1636b73f0979d9921ff99f283ceec8cfed1041dc",
+        "stamp": [
+          "CelikPanel · v0.1.0-alpha.84 · build 1636b73f0979"
+        ],
+        "picture": "dashboard-sidebar.png"
+      }
+    },
+    {
+      "phase": "components",
+      "started": "2026-10-13T09:37:42.868Z",
+      "ended": "2026-10-13T09:42:01.506Z",
+      "seconds": 258.6,
+      "scan_posts": 1,
+      "posts": [
+        {
+          "page": "p3-components-stale",
+          "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+          "status": 200,
+          "start": "2026-10-13T09:41:31.552Z",
+          "end": "2026-10-13T09:41:33.578Z",
+          "ms": 2026,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-13T09:41:33.657060993Z",
+            "scan_age_seconds": 0,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-13T09:41:33.657Z",
+            "guest_minus_browser_ms": {
+              "low": 79,
+              "high": 2105
+            }
+          }
+        }
+      ],
+      "fresh": {
+        "load_at": "2026-10-13T09:37:43.219Z",
+        "scan_posts": 0,
+        "posts": [],
+        "posts_conditional": 0,
+        "alerts": [],
+        "toasts": [],
+        "answers": [
+          {
+            "page": "p3-components-fresh",
+            "method": "GET",
+            "url": "/api/v1/managed-services",
+            "status": 200,
+            "start": "2026-10-13T09:37:43.331Z",
+            "end": "2026-10-13T09:37:43.376Z",
+            "ms": 45,
+            "answer": {
+              "code": null,
+              "scanned_at": "2026-10-13T09:36:14Z",
+              "scan_age_seconds": 89.436,
+              "scan_age_seconds_type": "number",
+              "services": 27,
+              "error": null,
+              "message": null,
+              "server_now": "2026-10-13T09:37:43.436Z",
+              "guest_minus_browser_ms": {
+                "low": 60,
+                "high": 105
+              }
+            }
+          },
+          {
+            "page": "p3-components-fresh",
+            "method": "GET",
+            "url": "/api/v1/managed-services",
+            "status": 200,
+            "start": "2026-10-13T09:37:43.332Z",
+            "end": "2026-10-13T09:37:43.376Z",
+            "ms": 44,
+            "answer": {
+              "code": null,
+              "scanned_at": "2026-10-13T09:36:14Z",
+              "scan_age_seconds": 89.443,
+              "scan_age_seconds_type": "number",
+              "services": 27,
+              "error": null,
+              "message": null,
+              "server_now": "2026-10-13T09:37:43.443Z",
+              "guest_minus_browser_ms": {
+                "low": 67,
+                "high": 111
+              }
+            }
+          }
+        ]
+      },
+      "stale": {
+        "turn": 1,
+        "age_s": 317,
+        "absent": false,
+        "probe_scan": {
+          "scanned_at": "2026-10-13T09:36:14Z",
+          "age_s": 317
+        }
+      },
+      "stale_load": {
+        "load_at": "2026-10-13T09:41:31.387Z",
+        "scan_posts": 1,
+        "posts": [
+          {
+            "page": "p3-components-stale",
+            "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+            "status": 200,
+            "start": "2026-10-13T09:41:31.552Z",
+            "end": "2026-10-13T09:41:33.578Z",
+            "ms": 2026,
+            "answer": {
+              "code": null,
+              "scanned_at": "2026-10-13T09:41:33.657060993Z",
+              "scan_age_seconds": 0,
+              "scan_age_seconds_type": "number",
+              "services": 27,
+              "error": null,
+              "message": null,
+              "server_now": "2026-10-13T09:41:33.657Z",
+              "guest_minus_browser_ms": {
+                "low": 79,
+                "high": 2105
+              }
+            }
+          }
+        ],
+        "posts_conditional": 1,
+        "alerts": [],
+        "toasts": [],
+        "answers": [
+          {
+            "page": "p3-components-stale",
+            "method": "GET",
+            "url": "/api/v1/managed-services",
+            "status": 200,
+            "start": "2026-10-13T09:41:31.503Z",
+            "end": "2026-10-13T09:41:31.547Z",
+            "ms": 44,
+            "answer": {
+              "code": null,
+              "scanned_at": "2026-10-13T09:36:14Z",
+              "scan_age_seconds": 317.598,
+              "scan_age_seconds_type": "number",
+              "services": 27,
+              "error": null,
+              "message": null,
+              "server_now": "2026-10-13T09:41:31.598Z",
+              "guest_minus_browser_ms": {
+                "low": 51,
+                "high": 95
+              }
+            }
+          },
+          {
+            "page": "p3-components-stale",
+            "method": "GET",
+            "url": "/api/v1/managed-services",
+            "status": 200,
+            "start": "2026-10-13T09:41:31.504Z",
+            "end": "2026-10-13T09:41:31.549Z",
+            "ms": 45,
+            "answer": {
+              "code": null,
+              "scanned_at": "2026-10-13T09:36:14Z",
+              "scan_age_seconds": 317.605,
+              "scan_age_seconds_type": "number",
+              "services": 27,
+              "error": null,
+              "message": null,
+              "server_now": "2026-10-13T09:41:31.605Z",
+              "guest_minus_browser_ms": {
+                "low": 56,
+                "high": 101
+              }
+            }
+          },
+          {
+            "page": "p3-components-stale",
+            "method": "POST",
+            "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+            "status": 200,
+            "start": "2026-10-13T09:41:31.552Z",
+            "end": "2026-10-13T09:41:33.578Z",
+            "ms": 2026,
+            "answer": {
+              "code": null,
+              "scanned_at": "2026-10-13T09:41:33.657060993Z",
+              "scan_age_seconds": 0,
+              "scan_age_seconds_type": "number",
+              "services": 27,
+              "error": null,
+              "message": null,
+              "server_now": "2026-10-13T09:41:33.657Z",
+              "guest_minus_browser_ms": {
+                "low": 79,
+                "high": 2105
+              }
+            }
+          }
+        ]
+      },
+      "scan_posts_fresh": 0,
+      "scan_posts_stale": 1
+    },
+    {
+      "phase": "reads",
+      "started": "2026-10-13T09:42:01.512Z",
+      "ended": "2026-10-13T09:42:02.769Z",
+      "seconds": 1.3,
+      "scan_posts": 0,
+      "posts": [],
+      "reads": {
+        "/api/v1/panel/version": {
+          "status": 200,
+          "at": "2026-10-13T09:42:01.555Z",
+          "body": {
+            "agent_commit": "1636b73f0979d9921ff99f283ceec8cfed1041dc",
+            "agent_matches": true,
+            "commit": "1636b73f0979d9921ff99f283ceec8cfed1041dc",
+            "hostname": "dns-ubuntu",
+            "ipv4": "192.0.2.12",
+            "schema_version": 44,
+            "version": "v0.1.0-alpha.84"
+          }
+        },
+        "/api/v1/license/access": {
+          "status": 200,
+          "at": "2026-10-13T09:42:01.956Z",
+          "body": {
+            "can_use_panel": true,
+            "valid_until": 1791884551,
+            "valid_for_seconds": 28.953,
+            "state": "active",
+            "observation": "known"
+          }
+        },
+        "/api/v1/managed-services": {
+          "status": 200,
+          "at": "2026-10-13T09:42:02.363Z",
+          "body": {
+            "scanned_at": "2026-10-13T09:41:33Z",
+            "scan_age_seconds": 29.457,
+            "services": "<27 entries>",
+            "profiles": [
+              {
+                "verified": false,
+                "latest_attempt_status": "none",
+                "id": "core-mail",
+                "name": "Core Mail",
+                "description": "Postfix SMTP and Dovecot IMAP/POP3 with authenticated submission.",
+                "services": [
+                  "postfix",
+                  "dovecot"
+                ],
+                "status": "available",
+                "available": true
+              },
+              {
+                "verified": false,
+                "latest_attempt_status": "none",
+                "id": "webmail",
+                "name": "Webmail",
+                "description": "Core mail plus Nginx, PHP-FPM and Roundcube webmail.",
+                "services": [
+                  "postfix",
+                  "dovecot",
+                  "nginx",
+                  "php-fpm",
+                  "roundcube"
+                ],
+                "status": "partial",
+                "available": true,
+                "warning": "Some components are already present. Installing this profile will reconcile the full plan without removing completed services."
+              },
+              {
+                "verified": false,
+                "latest_attempt_status": "none",
+                "id": "protected-mail",
+                "name": "Spam-Protected Mail",
+                "description": "Core mail with Rspamd spam filtering.",
+                "services": [
+                  "postfix",
+                  "dovecot",
+                  "rspamd"
+                ],
+                "status": "available",
+                "available": true
+              }
+            ],
+            "dns_identity_ready": true,
+            "mail_hostname": {
+              "current": "dns-ubuntu",
+              "current_usable": false,
+              "will_set_hostname": false
+            }
+          }
+        }
+      }
+    }
+  ]
+}

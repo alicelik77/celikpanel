@@ -1,0 +1,19 @@
+Formatting '/var/tmp/cp-release-drill-s15-ub-a/cells/d0f3a1e4c5333ee36a8dd353/ubuntu/overlay.qcow2', fmt=qcow2 cluster_size=65536 extended_l2=off compression_type=zlib size=25769803776 backing_file=/var/tmp/cp-release-drill-s15-ub-a/images/ubuntu-24.04-server-cloudimg-amd64-20260826.img backing_fmt=qcow2 lazy_refcounts=off refcount_bits=16
+{"action": "prepared", "root": "/var/tmp/cp-release-drill-s15-ub-a", "cell_id": "release-recovery__d6387c840b25f541", "ssh_ports": [5162, 5163]}
+{"action": "ready", "root": "/var/tmp/cp-release-drill-s15-ub-a", "nodes": {"ubuntu": "verified-disposable-systemd-guest"}}
+{"action": "ready", "root": "/var/tmp/cp-release-drill-s15-ub-a", "nodes": {"ubuntu": "verified-disposable-systemd-guest"}}
+{"step": "set6-name-pinning", "verdict": "passed", "reason": null}
+{"step": "preflight", "verdict": "passed", "reason": null}
+{"step": "origin", "verdict": "passed", "reason": null}
+{"step": "baseline-install", "verdict": "passed", "reason": null}
+{"step": "owner-login", "verdict": "passed", "reason": null}
+{"step": "license", "verdict": "passed", "reason": null}
+{"step": "setup", "verdict": "observed", "reason": null}
+{"step": "set15-readings", "verdict": "observed", "reason": null}
+{"set12": "ready", "window": "ui", "hand": "/var/tmp/cp-set15-run/hand/h15ub-ui", "port": 19162}
+{"step": "set15-browser-window", "verdict": "observed", "reason": null}
+{"step": "set6-name-pinning-at-the-end", "verdict": "passed", "reason": null}
+{"step": "collect", "verdict": "passed", "reason": null}
+{"outcome": "set15-measured", "overall": "complete-for-review", "steps": {"baseline-install": "passed", "collect": "passed", "license": "passed", "origin": "passed", "owner-login": "passed", "preflight": "passed", "set15-browser-window": "observed", "set15-readings": "observed", "set6-name-pinning": "passed", "set6-name-pinning-at-the-end": "passed", "setup": "observed"}}
+{"action": "stopped", "root": "/var/tmp/cp-release-drill-s15-ub-a", "evidence_retained": true}
+SET15 cell=set15-ubuntu lab=/var/tmp/cp-release-drill-s15-ub-a driver_exit=0 evidence=/var/tmp/cp-release-drill-s15-ub-a/evidence/*/upd1
