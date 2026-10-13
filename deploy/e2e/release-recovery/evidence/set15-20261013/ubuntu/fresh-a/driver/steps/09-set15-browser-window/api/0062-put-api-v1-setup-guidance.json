@@ -1,0 +1,114 @@
+{
+  "outcome": "response",
+  "panel": "owner",
+  "purpose": "ui: the owner chooses to set up by hand (PUT /api/v1/setup/guidance manual)",
+  "request": {
+    "body": {
+      "guidance": "manual",
+      "revision": 3
+    },
+    "headers": [
+      [
+        "Accept",
+        "application/json"
+      ],
+      [
+        "Host",
+        "127.0.0.1:19162"
+      ],
+      [
+        "Content-Type",
+        "application/json"
+      ],
+      [
+        "Origin",
+        "https://127.0.0.1:19162"
+      ],
+      [
+        "Cookie",
+        "[REDACTED]"
+      ],
+      [
+        "X-CelikPanel-Request-Id",
+        "dbb7e97d52ff7eb1c001c0a8cfc5be6b"
+      ]
+    ],
+    "method": "PUT",
+    "path": "/api/v1/setup/guidance"
+  },
+  "response": {
+    "elapsed_seconds": 0.012,
+    "headers": [
+      [
+        "Cache-Control",
+        "no-store"
+      ],
+      [
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+      ],
+      [
+        "Content-Type",
+        "application/json"
+      ],
+      [
+        "Referrer-Policy",
+        "no-referrer"
+      ],
+      [
+        "Strict-Transport-Security",
+        "max-age=31536000"
+      ],
+      [
+        "X-Content-Type-Options",
+        "nosniff"
+      ],
+      [
+        "X-Frame-Options",
+        "DENY"
+      ],
+      [
+        "Date",
+        "Tue, 13 Oct 2026 09:33:05 GMT"
+      ],
+      [
+        "Content-Length",
+        "492"
+      ]
+    ],
+    "json": {
+      "checks": [],
+      "draft": {
+        "customization": {
+          "components": [
+            "mariadb",
+            "nginx",
+            "php-fpm"
+          ]
+        },
+        "database": "",
+        "dns_engine": "bind",
+        "dns_mode": "external",
+        "dns_role": "primary",
+        "local_ip": "192.0.2.12",
+        "mail_hostname": "",
+        "node_version": "",
+        "ns1": "ns1.upd1-infra.test",
+        "ns2": "ns2.upd1-infra.test",
+        "panel_domain": "panel-ubuntu.upd1-infra.test",
+        "peer_ip": "",
+        "peer_ns": "",
+        "purpose": "web",
+        "remote_dns_connection_id": ""
+      },
+      "guidance": "manual",
+      "origin": "fresh",
+      "required": true,
+      "revision": 4,
+      "status": "draft",
+      "version": 1
+    },
+    "status": 200,
+    "text": null
+  }
+}

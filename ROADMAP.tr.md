@@ -507,6 +507,167 @@ kabul işi açık kalır.
   - Bu sürüm ve yayımlanması hiçbir P0 işini kapatmaz ve ilerletmez.
     Yayımlanması kurulu hiçbir paneli güncellemedi; güncellemeyi yalnız sahip,
     panelin kendi güncelleme ekranından başlatır.
+- **v0.1.0-alpha.84 adayı (yayımlanmadı).** 13 Ekim 2026'da yazıldı. Sahip
+  13 Ekim 2026'da numaranın v0.1.0-alpha.84 olduğuna karar verdi. Sahibin 12 Ekim 2026 kararı,
+  v0.1.0-alpha.83 güncellemesinden sonra: Dashboard bileşenleri kaynak
+  harcamadan kendiliğinden kontrol eder ([D-032](docs/DECISIONS.tr.md)). Aday
+  `feat/alpha84-dashboard-self-check` dalıdır, `main`'in `0447558e9`'undan
+  (v0.1.0-alpha.83 adayının birleştirilmesi), `main`'e #208 numaralı taslak
+  çekme isteği. Commit'leri: `a5830dd3e` (Dashboard'ın "Sistem servisleri" kartı
+  kendiliğinden kontrol eder: en çok 300 sn'de bir, yalnız sekme görünürken,
+  aralıklı zamanlayıcı yok, yeniden deneme döngüsü yok, dört ayrı durum, süren
+  bir değişiklik için tutulma durumu), `f6eaa0b57` (on dördüncü gerçek sistem
+  kaydı, yalnız kanıt), `e6de64a5b` (sayfa bir taramayı onu aldığı andan
+  tarihler: o kaydın D1 kusuru), `1a74eeda5` (sunucu bir taramanın yaşını
+  bildirir, `scan_age_seconds`; ulaşılamayan bir Agent tarama işleyicisinde ve
+  on bir değiştirici işleyicinin kabul denetiminde `503 AGENT_UNREACHABLE`
+  yanıtlar), `fb5ec06f8` (takip eden gerçek sistem kaydı set14b, 13 Ekim 2026,
+  yalnız kanıt: ürün kodu yok), `7024534bc` (13 Ekim 2026: lisans denetimi o
+  kaydın D2 kusurundan sonra kalan süreyi bildirir, `valid_for_seconds`; tipli
+  Agent yanıtı ortak hata yazıcısına taşınır ve güvenlik duvarı okumasına ile
+  sistem denetimine ulaşır, O3 gözlemi; Bileşenler sayfası, bir işlemin
+  tamamlanmış olabileceğini söylemek yerine başarısız bir okumada durumu
+  okuyamadığını söyler, O2 gözlemi), `68b79b372` (13 Ekim 2026: okuma şeridinin
+  metni okunur bir genişlikte kalır; yalnız sınıflar), `4ed7b1278` (yalnız
+  belgeler), `c76861cde` (13 Ekim 2026: on altıncı gerçek sistem kaydı,
+  set14c, yalnız kanıt: ürün kodu yok), `6e264615f` (yalnız belgeler),
+  `1636b73f0` (13 Ekim 2026: sürüm hazırlığı: 84 sürüm sırası politikası,
+  önyükleme sabitleri, sürüm satırları ve üç sözleşme testi; `cmd/`, `internal/`
+  ya da `web/` altında hiçbir dosya), `aa7dac2b2` (sürüm notu taslağı; yalnız
+  belgeler) ve `e6ed563ad` (13 Ekim 2026: on yedinci gerçek sistem kaydı, set15,
+  yalnız kanıt: ürün kodu yok). Şema değişikliği yok, yeni rota yok
+  ([sürüm notu taslağı](docs/RELEASE-NOTES-v0.1.0-alpha.84.tr.md)).
+  - *Ölçülen: on dördüncü gerçek sistem kaydı*
+    ([set14](deploy/e2e/release-recovery/evidence/set14-20261012/README.md),
+    12 Ekim 2026 UTC; İngilizce masaüstü pencereli Debian 13 ve Türkçe telefon
+    pencereli Ubuntu 24.04, gerçek, başsız bir Chrome; yalnız `a5830dd3e`'nin
+    test lisanslı derlemesi). Bayat yüklemede tam bir koşullu tarama, tazede
+    hiç, görünür tutulan sayfada 300 sn'den önce olmamak üzere bir tane daha,
+    gizliyken hiç ve gösterilince bir tane, "bir değişiklik sürüyor" diye
+    gösterilen ve tek takibi olan `409 service_operation_busy` ve Agent
+    durmuşken "Kontrol edilemedi" ve düğmeyle gösterilen bir `500`; bir kontrol
+    için Agent'ın CPU'su yaklaşık 0,2 ile 0,4 sn. D1 kusuru (konuğun saati
+    ileriyken kart her kontrolden sonra 20 ile 29 sn "Son 5 dakikada kontrol
+    edilmedi" dedi) orada bulundu ve `e6de64a5b` ile `1a74eeda5`'te düzeltildi.
+    Sınırları: Arch koşulmadı; `server_setup_busy` ve hiç kontrol edilmemiş
+    durum ölçülmedi; taramanın sunucu tarafı duvar süresi ölçülmedi; tutulma
+    durumuna yalnız önce taramayan bir değişiklikle ulaşılır. Kaydın her kabul
+    denetimi düzeltmesi kendi metnini daraltır ve bu özete üstün gelir.
+  - *Ölçülen: on beşinci gerçek sistem kaydı, set14b*
+    ([set14b](deploy/e2e/release-recovery/evidence/set14b-20261013/README.md),
+    13 Ekim 2026 UTC; tek geçici Debian 13 konuğu, gerçek, başsız bir Chrome;
+    `1a74eeda5`'in test lisanslı derlemesi). Konuğun saati 1,5 sn ileriyken
+    bayat bir yükleme tek koşullu tarama gönderdi ve kart "Son 5 dakikada
+    kontrol edilmedi" karesi olmadan doğrudan sonuca geçti (D1 gitti);
+    `scan_age_seconds` tarama taşıyan her yanıtta bir sayıydı. Agent durmuşken
+    Dashboard (İngilizce ve Türkçe), Bileşenler sayfası ve bir servis yeniden
+    başlatma isteği, sahibin sonraki adımıyla ve soket yolu olmadan `503
+    AGENT_UNREACHABLE` yanıtladı, nginx değişmedi; Agent başlatıldıktan sonra
+    düğmeye bir basış bir tarama gönderdi. Bileşenler sayfası tek koşullu tarama
+    gönderdi. **D2 kusuru, laboratuvarda bulundu; düzeltmesinden sonra on
+    altıncı kayıtta ölçüldü:** konuğun saati 418 sn geriyken hiçbir Panel
+    sayfası açılmadı (lisans denetimi 90 sn'de 19 kez okundu); bu yüzden
+    taramanın yaşının "geride kalan saat" ölçümü yapılamadı. Ölçülmeyen: Ubuntu,
+    Arch, pencere kuralı (on dördüncü kayıttan beri değişmedi).
+  - *Ölçülen: on altıncı gerçek sistem kaydı, set14c*
+      ([set14c](deploy/e2e/release-recovery/evidence/set14c-20261013/README.md),
+      13 Ekim 2026 UTC; tek geçici Debian 13 konuğu, gerçek, başsız bir Chrome;
+      `68b79b372`'nin test lisanslı derlemesi). Konuğun saati tarayıcınınkinden
+      önce yedi dakika geride, sonra yedi dakika ileriyken Dashboard 130 ile 192
+      ms'de açıldı, lisans erişimini 90 sn'de saat doğruyken olduğu gibi dört
+      kez okudu, tam bir koşullu tarama gönderdi ve sonucu gösterdi; her erişim
+      yanıtı `valid_for_seconds` taşıdı (42,5 ile 60,0 sn) ve sayfa ondan
+      türettiği son tarihten 15 sn önce yeniden okudu (D2 gitti). Agent
+      durmuşken güvenlik duvarı okuması, sistem denetimi ve bir yeniden başlatma
+      isteği yalnız `code` ve `error` ile ve soket yolu olmadan `503
+      AGENT_UNREACHABLE` yanıtladı, nginx değişmedi ve Dashboard kartı "Kontrol
+      edilemedi" dedi (O3). Bileşenler sayfası Agent cümlesi ve Yeniden tara ile
+      "Component state could not be read" / "Bileşen durumu okunamadı" gösterdi,
+      "tamamlanmış olabilir" sözünü hiç; Agent başlatıldıktan sonra bir basış
+      tek koşulsuz tarama gönderdi ve şerit gitti (O2). Değişen kodda kusur yok.
+      Ölçülmeyen: Ubuntu, Arch, bir işlemden sonra "tamamlanmış olabilir"
+      şeridi, konuğun NTP ayarları. Sonraki sürüm için gözlemler: O4, O5, O6 ve
+      çevrilmemiş posta yığını metni (aşağıda).
+  - *Ölçülen: on yedinci gerçek sistem kaydı, set15, yayımlama öncesi ölçüm*
+    ([set15](deploy/e2e/release-recovery/evidence/set15-20261013/README.md),
+    13 Ekim 2026 UTC; geçici konuklar, gerçek, başsız bir Chrome; `1636b73f0`'ın
+    kendisinin ve alpha.83 etiketinin kaynağından yeniden yapılmış bir
+    derlemenin test lisanslı derlemeleri). Debian 13 (İngilizce) ve Ubuntu 24.04
+    (Türkçe) temiz kurulumları: sürüm v0.1.0-alpha.84, şema 44, arşivde ve kurulu
+    kopyada önyükleme sabitleri 84, alan adı ve ilk durum satırı yok,
+    `valid_for_seconds` ve `scan_age_seconds` var, bayat her Dashboard
+    yüklemesinde tam bir koşullu tarama (1126 ms ve 1590 ms), tarama bayatlayınca
+    Bileşenler sayfasının koşullu taraması (Ubuntu; Debian ölçülmedi).
+    Debian 13'te alpha.83 yeniden derlemesinden adaya güncelleme, üç koşu, her
+    biri `update_verified`, şema öncesinde ve sonrasında 44 (etiket ile aday
+    arasında göç yok); güncellemeden sonra Dashboard kendiliğinden kontrol etti
+    (bir tarama, "6 / 6"), Posta yığınları kartının kendi "Yeniden taramak için
+    Bileşenleri aç" metni yaklaşık 1,2 sn görüldü (bilinen açık madde, yeni
+    değil). Kusurlu aday kendiliğinden döndü (`recovered`, `rollback_verified`,
+    iki deneme, `payload_restored`da yeniden başlatma) ve Panel alpha.83 olarak
+    yanıtladı. **Açık, kaydedildi ve hükme bağlanmadı:** geri dönüşten sonra
+    laboratuvarın veritabanı karşılaştırması `managed_site_files`'ı farklı buldu
+    (yalnız özetler; kaynaktan olası neden Panel'in her başlangıçta
+    `observed_at` ve öteki gözlem alanlarını yeniden yazması,
+    `internal/services/site_file_ledger.go` 263 ile 273, 297 ile 300, 327, 391,
+    426. satırlar; satırlardan doğrulanmadı); ve kurtarma temeli dosyası,
+    çalışan yapı alpha.83 ve alt sınır 84 iken hâlâ kusurlu adayı adlandırır
+    (örüntü upd2 ve upd7'den zaten bilinir). Ana makine c koşusu sırasında
+    yaklaşık iki saat uyudu; o koşunun iş yükü hükmü ortam yüzünden başarısız
+    oldu, a ve b koşuları geçti. Koşulmadı: Arch, Debian'da bayat Bileşenler
+    yüklemesi, kusurlu geri dönüşten sonraki okumalar. Sürüm hazırlığının
+    ölçülen hiçbir derlemede olmadığı önceki sınırı kapatır. Hiçbir P0 satırını
+    kapatmaz.
+  - *`7024534bc`'de bileşen testleri (ondan sonra `68b79b372` yalnız sınıfları
+    değiştirdi; `npm test` 1339 / 1339):* `go test ./cmd/panel/...
+    ./internal/...` 7028 geçti, 44 atlandı, 0 başarısız; `npm test` 1339 / 1339;
+    `npm run build` bütçe içinde. D2'nin düzeltmesi (`valid_for_seconds`),
+    güvenlik duvarı ve sistem denetimi okumalarındaki Agent yanıtı (O3) ve
+    Bileşenler sayfasının okuma şeridi (O2) bileşen testliydi ve on altıncı
+    kayıt onları ölçtü.
+  - *Burada yanıtlanan, daha önce listelenmemiş olanlar:* sahibin kartın neden
+    kendiliğinden kontrol etmediği sorusu (D-032, `a5830dd3e`); on dördüncü
+    kaydın O1 gözlemi, Agent durmuşken genel iç hata (`1a74eeda5`); on beşinci
+    kaydın D2 kusuru, tarayıcınınkinden geride bir sunucu saatinin hiçbir
+    sayfanın açılmasına izin vermemesi, ve aynı kaydın O2 ile O3 gözlemleri
+    (`7024534bc`, bileşen testli, sonra on altıncı kayıtta ölçüldü).
+  - *Yayımlamadan önce açık:* sahibin etiketten önce ayarladığı
+    `CELIKPANEL_RELEASE_SEQUENCE=84` depo değişkeni; son ucun CI koşusu;
+    birleştirme, etiket, altı imzalı dosya ve portal yayımı, hepsi sahibin.
+    Yapıldı: `1636b73f0` sürüm hazırlığı commit'i; numara üzerine sahibin kararı
+    (13 Ekim 2026); adayın commit'inin kendisinde temiz kurulumun ve
+    alpha.83'ten güncellemenin yayımlama öncesi ölçümü (on yedinci kayıt).
+    Kurulu her paneli sonra sahibi panelin kendi güncelleme ekranından
+    günceller; bunu başka kimse başlatmaz.
+  - *Sonraki sürüme açık, adayın sınırları sürüm notunun listelediği gibi:*
+    Dashboard'daki posta yığını kartının hâlâ kendi bayat kopyası ve "Yeniden
+    taramak için Bileşenleri aç" düğmesi var; kenar çubuğundaki yapı kimliği bir
+    sözcüğün ortasından bölünüyor (sahibin alpha.83 güncellemesinden sonraki
+    gözlemi); Ubuntu (değişikliklerden sonra), Arch, `server_setup_busy` ve hiç
+    kontrol edilmemiş durum ölçülmedi; bir işlemden sonra "tamamlanmış olabilir"
+    şeridi ve konuğun NTP ayarları ölçülmedi; bu adaya güncelleme yalnız Debian
+    13'te, alpha.83 etiketinin yeniden derlemesinden ölçüldü; otomatik geri
+    dönüşten sonra `managed_site_files` açık bulgusu ve geri dönüşten sonra
+    kusurlu adayı adlandıran kurtarma temeli dosyası (yukarıdaki on yedinci
+    kayda bakın);
+    `mock.mjs` laboratuvar aracı ile `cold-load-set9.mjs`/`cold-load-set11.mjs`
+    erişim denetiminde hâlâ yalnız `valid_until` gönderir;
+    `DomainSSLSettings`teki HSTS geri çekme hâlâ bir sunucu zaman damgasını
+    tarayıcının saatiyle karşılaştırır; Agent yanıtındaki "hiçbir şey
+    değiştirilmedi", aynı istekte daha önce bir değişiklik olmadığını varsayar
+    (birleşik-hata koruması toplu hataları kapsar; bir şeyi değiştirip sonra
+    ayrı, birleşmemiş bir bağlantıda başarısız olan bir işleyici yine de bunu
+    söylerdi); on altıncı kaydın O4 gözlemi (Türkçe Bileşenler sayfası güvenlik
+    duvarı şeridinin sunucu cümlesini İngilizce gösteriyor,
+    `ServiceList.tsx:3259-3271`, `:3286`, `:3393`), O5 (güvenlik duvarı şeridi
+    yalnız açılışta okunur, `ServiceList.tsx:3289-3291`, `:3318`), O6
+    (Dashboard'ın "İlgi istiyor" kutusu Agent'ı adıyla söylemiyor,
+    `Dashboard.tsx:895`, `:1163-1165`; satırların hepsi `68b79b372`'de) ve
+    Türkçe Bileşenler sayfasında çevrilmemiş posta yığını metni; ve yukarıdaki
+    alpha.83 adayının, bu adayın ele almadığı her sınırı.
+  - Bu aday hiçbir P0 işini kapatmaz ve ilerletmez. P0.1–P0.5 **kısmi**
+    kalır. Yayımlanması kurulu hiçbir paneli güncellemez; güncellemeyi yalnız
+    sahip, panelin kendi güncelleme ekranından başlatır.
 
 ### Son DNS sonuçları ve sınırları
 

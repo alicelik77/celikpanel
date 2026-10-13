@@ -423,10 +423,289 @@ test('Dashboard: the calm line names what was read, and does not speak for compo
     assert.ok(!statusLabels().includes('dashboard.attentionChecking'), 'the checking line stays after every read answered');
   } finally { await unmount(); }
   // The stored scan of the fixture is from 9 Oct 2026, 09:00 UTC: not current.
+  // Since 12 Oct 2026 the page checks by itself; this fixture has no scan
+  // route, so the check fails and the line says the components could not be
+  // checked rather than speaking for them.
   serve();
   await mount(dashboard());
   try {
-    assert.ok(text().includes('dashboard.attentionNoneUnchecked'), text().slice(0, 400));
+    await settle();
+    assert.ok(text().includes('dashboard.attentionNoneCheckFailed'), text().slice(0, 400));
+    assert.ok(!text().includes('dashboard.attentionNone '), 'the calm line spoke for components whose check failed');
+  } finally { await unmount(); }
+});
+
+// --- The dashboard checks the components by itself (owner decision, 12 Oct 2026) --
+// One conditional scan when the stored one is missing or older than the
+// window, none for a fresh one, none while the page is hidden, never two at
+// once, and nothing asked again after a refusal. The card's states are
+// distinct: checking, the result, could not check (with the reason and the
+// check in place), and a change in progress.
+// Pano bileşenleri kendisi kontrol eder: saklı tarama yoksa ya da pencereden
+// eskiyse tek koşullu tarama; taze ise, sayfa gizliyse yok; aynı anda iki tane
+// asla; bir retten sonra yeniden sorma yok.
+const SCAN_PATH = '/api/v1/managed-services/scan';
+const scans = () => requests.filter((line) => line === `POST ${SCAN_PATH}`).length;
+let scanURLs = [];
+function recordScanURLs() {
+  scanURLs = [];
+  const inner = globalThis.fetch;
+  globalThis.fetch = (input, init = {}) => {
+    if (String(input).startsWith(SCAN_PATH)) scanURLs.push(String(input));
+    return inner(input, init);
+  };
+}
+function pageVisibility(state) {
+  const listeners = new Set();
+  globalThis.document = {
+    visibilityState: state,
+    addEventListener: (name, listener) => { if (name === 'visibilitychange') listeners.add(listener); },
+    removeEventListener: (name, listener) => { if (name === 'visibilitychange') listeners.delete(listener); },
+  };
+  return {
+    async show() {
+      globalThis.document.visibilityState = 'visible';
+      await act(async () => { for (const listener of listeners) listener(); });
+      await settle();
+    },
+    listeners,
+  };
+}
+
+test('Dashboard: a fresh stored scan → no check is asked for', async () => {
+  serve({ '/api/v1/managed-services': freshScan() });
+  await mount(dashboard());
+  try {
+    await settle();
+    assert.equal(scans(), 0, `a fresh scan was checked again: ${requests.join(', ')}`);
+    assert.ok(!text().includes('dashboard.systemServicesChecking'));
+  } finally { await unmount(); }
+});
+
+test('Dashboard: a stale stored scan → one conditional check, its result drawn on the card', async () => {
+  serve({ [SCAN_PATH]: (init) => (init.method === 'POST' ? answer(freshScan()) : answer({}, 405)) });
+  recordScanURLs();
+  await mount(dashboard());
+  try {
+    await settle();
+    await settle();
+    assert.equal(scans(), 1, `expected one check: ${requests.join(', ')}`);
+    assert.deepEqual(scanURLs, [`${SCAN_PATH}?max_age_seconds=300`], 'the page asked for an unconditional scan');
+    const shown = text();
+    assert.ok(shown.includes('0 / 0'), `the result is not drawn: ${shown.slice(0, 400)}`);
+    assert.ok(shown.includes('dashboard.attentionNone') && !shown.includes('dashboard.attentionNoneUnchecked'), shown.slice(0, 400));
+    for (const phrase of ['dashboard.systemServicesChecking', 'dashboard.statusUnknown', 'dashboard.systemServicesCheckFailed']) {
+      assert.ok(!shown.includes(phrase), `"${phrase}" is still on the card`);
+    }
+    assert.deepEqual(globalThis.currentTest.toasts, [], 'a check nobody pressed raised a toast');
+  } finally { await unmount(); }
+});
+
+test('Dashboard: while the check runs the card says it is checking, not "Unknown", and asks once', async () => {
+  serve({ [SCAN_PATH]: HANG });
+  await mount(dashboard());
+  try {
+    await settle();
+    await settle();
+    const shown = text();
+    assert.ok(statusLabels().includes('dashboard.systemServicesChecking'), `no checking line: ${shown.slice(0, 400)}`);
+    assert.ok(!shown.includes('dashboard.statusUnknown'), 'the card says Unknown while it checks');
+    assert.ok(shown.includes('dashboard.attentionNoneChecking'), shown.slice(0, 400));
+    assert.equal(scans(), 1, `more than one check is in flight: ${requests.join(', ')}`);
+  } finally { await unmount(); }
+});
+
+for (const code of ['service_operation_busy', 'server_setup_busy']) {
+  test(`Dashboard: the server refuses the check with 409 ${code} → a change is in progress, nothing asked again`, async () => {
+    serve({ [SCAN_PATH]: () => answer({ error: 'busy', code }, 409) });
+    await mount(dashboard());
+    try {
+      for (let i = 0; i < 4; i += 1) await settle();
+      const shown = text();
+      assert.ok(shown.includes('dashboard.systemServicesCheckHeld'), shown.slice(0, 400));
+      assert.ok(shown.includes('dashboard.attentionNoneCheckHeld'), shown.slice(0, 400));
+      assert.ok(!shown.includes('dashboard.systemServicesCheckFailed'), 'a refusal is drawn as a failure');
+      assert.equal(scans(), 1, `the refusal was asked again: ${requests.join(', ')}`);
+      assert.deepEqual(enabled(['services.scanNow']), [], 'a check that would only be refused is offered');
+      assert.deepEqual(globalThis.currentTest.toasts, []);
+    } finally { await unmount(); }
+  });
+}
+
+test('Dashboard: the check fails → "could not check" with the reason and the check in place, not asked again by itself', async () => {
+  serve({ [SCAN_PATH]: () => answer({ error: 'agent unavailable' }, 502) });
+  recordScanURLs();
+  await mount(dashboard());
+  try {
+    for (let i = 0; i < 4; i += 1) await settle();
+    const shown = text();
+    assert.ok(shown.includes('dashboard.systemServicesCheckFailed') && shown.includes('agent unavailable'), shown.slice(0, 400));
+    assert.ok(shown.includes('dashboard.attentionNoneCheckFailed'), shown.slice(0, 400));
+    assert.equal(scans(), 1, `the failure was asked again by itself: ${requests.join(', ')}`);
+    assert.deepEqual(globalThis.currentTest.toasts, [], 'a check nobody pressed raised a toast');
+    // The operator's own check: unconditional, from the card.
+    serve({ [SCAN_PATH]: () => answer(freshScan()) });
+    recordScanURLs();
+    await press('services.scanNow');
+    assert.deepEqual(scanURLs, [SCAN_PATH], 'the operator check must be the unconditional scan');
+    assert.ok(text().includes('0 / 0'), text().slice(0, 400));
+  } finally { await unmount(); }
+});
+
+test('Dashboard: a hidden page checks nothing; it checks once when it is shown', async () => {
+  const page = pageVisibility('hidden');
+  serve({ [SCAN_PATH]: () => answer(freshScan()) });
+  recordScanURLs();
+  await mount(dashboard());
+  try {
+    for (let i = 0; i < 3; i += 1) await settle();
+    assert.equal(scans(), 0, `a hidden page checked: ${requests.join(', ')}`);
+    assert.ok(text().includes('dashboard.systemServicesNotRecent'), text().slice(0, 400));
+    assert.equal(page.listeners.size, 1, 'the page does not listen for being shown');
+    await page.show();
+    await settle();
+    assert.equal(scans(), 1, `expected one check once shown: ${requests.join(', ')}`);
+    assert.deepEqual(scanURLs, [`${SCAN_PATH}?max_age_seconds=300`]);
+    assert.ok(text().includes('0 / 0'), text().slice(0, 400));
+  } finally {
+    await unmount();
+    assert.equal(page.listeners.size, 0, 'the visibility listener outlived the page');
+    delete globalThis.document;
+  }
+});
+
+// A server clock a second or two ahead of the browser (measured 12 Oct 2026 on
+// Debian 13 and Ubuntu 24.04) must not make a fresh scan read "not checked in
+// the last 5 minutes": the scan counts from when the page received it.
+// Sunucu saati tarayıcıdan bir iki saniye ileride olsa da taze tarama "son 5
+// dakikada kontrol edilmedi" okunmaz; tarama, sayfanın aldığı andan sayılır.
+const scanStampedAt = (offsetMs) => ({ ...good['/api/v1/managed-services'], scanned_at: new Date(Date.now() + offsetMs).toISOString() });
+const NOT_FRESH_PHRASES = ['dashboard.systemServicesNotRecent', 'dashboard.statusUnknown', 'dashboard.systemServicesChecking', 'dashboard.systemServicesCheckFailed'];
+
+test('Dashboard: a stored scan stamped 2 s ahead of the browser is shown as the result at once, with no check', async () => {
+  serve({ '/api/v1/managed-services': scanStampedAt(2000) });
+  await mount(dashboard());
+  try {
+    await settle();
+    const shown = text();
+    assert.ok(shown.includes('0 / 0'), shown.slice(0, 400));
+    for (const phrase of NOT_FRESH_PHRASES) assert.ok(!shown.includes(phrase), `"${phrase}" is drawn for a fresh scan`);
+    assert.equal(scans(), 0, `a fresh scan was checked again: ${requests.join(', ')}`);
+  } finally { await unmount(); }
+});
+
+test('Dashboard: a check answered with a stamp 2 s ahead is the result in the very next frame, and is not asked again', async () => {
+  serve({ [SCAN_PATH]: (init) => (init.method === 'POST' ? answer(scanStampedAt(2000)) : answer({}, 405)) });
+  await mount(dashboard());
+  try {
+    await settle();
+    await settle();
+    const shown = text();
+    assert.ok(shown.includes('0 / 0'), shown.slice(0, 400));
+    for (const phrase of NOT_FRESH_PHRASES) assert.ok(!shown.includes(phrase), `"${phrase}" is drawn after a successful check`);
+    for (let i = 0; i < 3; i += 1) await settle();
+    assert.equal(scans(), 1, `a second automatic check was started: ${requests.join(', ')}`);
+    assert.ok(text().includes('0 / 0'));
+  } finally { await unmount(); }
+});
+
+test('Dashboard: a scan 6 minutes old is not current and one 4 minutes old is', async () => {
+  const page = pageVisibility('hidden');
+  try {
+    for (const [offset, current] of [[-6 * 60_000, false], [-4 * 60_000, true]]) {
+      serve({ '/api/v1/managed-services': scanStampedAt(offset) });
+      await mount(dashboard());
+      try {
+        for (let i = 0; i < 3; i += 1) await settle();
+        const shown = text();
+        assert.equal(shown.includes('dashboard.systemServicesNotRecent'), !current, shown.slice(0, 400));
+        assert.equal(shown.includes('0 / 0'), current, shown.slice(0, 400));
+        assert.equal(scans(), 0, 'a hidden page checked');
+      } finally { await unmount(); }
+    }
+  } finally { delete globalThis.document; }
+});
+
+// The server reports the scan's age on its own clock (scan_age_seconds); the
+// page subtracts it from when it received the answer. A server clock seven
+// minutes behind the browser's then changes nothing: the age decides, not the
+// stamp. Without the field the rule above (the earlier of stamp and receipt)
+// still holds, which the tests above pin.
+// Sunucu taramanın yaşını kendi saatiyle bildirir; sayfa onu yanıtı aldığı
+// andan çıkarır. Tarayıcıdan yedi dakika geri bir sunucu saati hiçbir şeyi
+// değiştirmez: damga değil yaş karar verir.
+const scanAged = (ageSeconds, stampOffsetMs = -7 * 60_000) => ({
+  ...scanStampedAt(stampOffsetMs),
+  scan_age_seconds: ageSeconds,
+});
+
+test('Dashboard: a scan 10 s old by the server, stamped 7 min behind the browser, is the result at once with no check', async () => {
+  serve({ '/api/v1/managed-services': scanAged(10) });
+  await mount(dashboard());
+  try {
+    for (let i = 0; i < 3; i += 1) await settle();
+    const shown = text();
+    assert.ok(shown.includes('0 / 0'), shown.slice(0, 400));
+    for (const phrase of NOT_FRESH_PHRASES) assert.ok(!shown.includes(phrase), `"${phrase}" is drawn for a scan 10 s old`);
+    assert.equal(scans(), 0, `a fresh scan was checked again: ${requests.join(', ')}`);
+  } finally { await unmount(); }
+});
+
+test('Dashboard: a scan 400 s old by the server is not current, and the page asks exactly one conditional check', async () => {
+  // Hidden: the card says it is not recent and nothing is asked.
+  pageVisibility('hidden');
+  try {
+    serve({ '/api/v1/managed-services': scanAged(400, 0) });
+    await mount(dashboard());
+    try {
+      for (let i = 0; i < 3; i += 1) await settle();
+      const shown = text();
+      assert.ok(shown.includes('dashboard.systemServicesNotRecent'), shown.slice(0, 400));
+      assert.ok(!shown.includes('0 / 0'), shown.slice(0, 400));
+      assert.equal(scans(), 0, 'a hidden page checked');
+    } finally { await unmount(); }
+  } finally { delete globalThis.document; }
+
+  // Visible: one conditional check; its answer (0 s old by the server, its
+  // stamp 7 min behind the browser) is the result and is not asked again.
+  serve({
+    '/api/v1/managed-services': scanAged(400, 0),
+    [SCAN_PATH]: (init) => (init.method === 'POST' ? answer(scanAged(0)) : answer({}, 405)),
+  });
+  recordScanURLs();
+  await mount(dashboard());
+  try {
+    for (let i = 0; i < 5; i += 1) await settle();
+    assert.equal(scans(), 1, `expected exactly one check: ${requests.join(', ')}`);
+    assert.deepEqual(scanURLs, [`${SCAN_PATH}?max_age_seconds=300`], 'the page asked for an unconditional scan');
+    const shown = text();
+    assert.ok(shown.includes('0 / 0'), shown.slice(0, 400));
+    for (const phrase of NOT_FRESH_PHRASES) assert.ok(!shown.includes(phrase), `"${phrase}" is drawn after the check`);
+  } finally { await unmount(); }
+});
+
+test('Dashboard: a payload with a malformed scan age is not trusted', async () => {
+  serve({ '/api/v1/managed-services': { ...scanStampedAt(0), scan_age_seconds: '10' } });
+  await mount(dashboard());
+  try {
+    for (let i = 0; i < 3; i += 1) await settle();
+    assert.ok(!text().includes('0 / 0'), text().slice(0, 400));
+  } finally { await unmount(); }
+});
+
+// set14 O1: an Agent that cannot be reached is named on the card, not called
+// an internal error. (This harness's translator returns keys, so the reason
+// drawn is the coded answer's own sentence; the EN and TR sentences for
+// err.AGENT_UNREACHABLE are pinned in dashboard-truth-contract.)
+test('Dashboard: the check answers AGENT_UNREACHABLE → "could not check" names the Agent, asked once', async () => {
+  const sentence = 'The CelikPanel Agent on this server is not reachable';
+  serve({ [SCAN_PATH]: () => answer({ error: sentence, code: 'AGENT_UNREACHABLE' }, 503) });
+  await mount(dashboard());
+  try {
+    for (let i = 0; i < 4; i += 1) await settle();
+    const shown = text();
+    assert.ok(shown.includes('dashboard.systemServicesCheckFailed') && shown.includes(sentence), shown.slice(0, 400));
+    assert.equal(scans(), 1, `the failure was asked again by itself: ${requests.join(', ')}`);
   } finally { await unmount(); }
 });
 

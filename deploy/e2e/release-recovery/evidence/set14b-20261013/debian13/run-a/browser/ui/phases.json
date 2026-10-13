@@ -1,0 +1,1057 @@
+{
+  "lang": "en",
+  "viewport": "desktop",
+  "phases": [
+    {
+      "phase": "sign-in",
+      "started": "2026-10-13T06:06:50.783Z",
+      "ended": "2026-10-13T06:06:55.171Z",
+      "seconds": 4.4,
+      "scan_posts": 0,
+      "posts": []
+    },
+    {
+      "phase": "stale-load",
+      "started": "2026-10-13T06:09:46.374Z",
+      "ended": "2026-10-13T06:10:32.315Z",
+      "seconds": 45.9,
+      "scan_posts": 1,
+      "posts": [
+        {
+          "page": "p1-stale",
+          "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+          "status": 200,
+          "start": "2026-10-13T06:09:46.948Z",
+          "end": "2026-10-13T06:09:47.907Z",
+          "ms": 959,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-13T06:09:49.434300086Z",
+            "scan_age_seconds": 0,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-13T06:09:49.434Z",
+            "guest_minus_browser_ms": {
+              "low": 1527,
+              "high": 2486
+            }
+          }
+        }
+      ],
+      "stale": {
+        "turn": 1,
+        "age_s": 316.8,
+        "absent": false
+      },
+      "clock_read_first": {
+        "at": "2026-10-13T06:09:44.462Z",
+        "ms": 80,
+        "status": 200,
+        "bounds": {
+          "low": -45,
+          "high": 35
+        },
+        "mid": -5,
+        "scanned_at": "2026-10-13T06:04:26Z",
+        "scan_age_seconds": 318.497
+      },
+      "clock_moved": {
+        "after_clock": {
+          "returncode": 0
+        },
+        "after_epoch": 1791871787.3419266,
+        "at": "2026-10-13T06:09:47Z",
+        "before_clock": {
+          "returncode": 0
+        },
+        "before_epoch": 1791871785.5555983,
+        "command": "date -u -s @<guest epoch +1505 ms>",
+        "epoch": 1791871787.3534448,
+        "ntp_off_returncode": 0,
+        "returncode": 0,
+        "shift_ms": 1505,
+        "shift_total_ms": 1505,
+        "stderr": ""
+      },
+      "clock_read_at_load": {
+        "at": "2026-10-13T06:09:45.995Z",
+        "ms": 55,
+        "status": 200,
+        "bounds": {
+          "low": 1479,
+          "high": 1534
+        },
+        "mid": 1507,
+        "scanned_at": "2026-10-13T06:04:26Z",
+        "scan_age_seconds": 321.529
+      },
+      "offset_ms_probe_before": 563,
+      "offset_ms_probe_after": 1535,
+      "scan_before": {
+        "scanned_at": "2026-10-13T06:04:26Z",
+        "age_s": 318.3
+      },
+      "states": [
+        "absent",
+        "checking",
+        "known"
+      ],
+      "card_sequence": [
+        {
+          "at": "2026-10-13T06:09:46.780Z",
+          "state": "absent",
+          "vis": "visible",
+          "lasted_ms": 138,
+          "text": null
+        },
+        {
+          "at": "2026-10-13T06:09:46.918Z",
+          "state": "checking",
+          "vis": "visible",
+          "lasted_ms": 993,
+          "text": "System services Checking components…"
+        },
+        {
+          "at": "2026-10-13T06:09:47.911Z",
+          "state": "known",
+          "vis": "visible",
+          "lasted_ms": null,
+          "text": "System services 3 / 3 running / installed"
+        }
+      ],
+      "answers": [
+        {
+          "page": "p1-stale",
+          "method": "GET",
+          "url": "/api/v1/managed-services",
+          "status": 200,
+          "start": "2026-10-13T06:09:46.877Z",
+          "end": "2026-10-13T06:09:46.903Z",
+          "ms": 26,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-13T06:04:26Z",
+            "scan_age_seconds": 322.423,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-13T06:09:48.423Z",
+            "guest_minus_browser_ms": {
+              "low": 1520,
+              "high": 1546
+            }
+          }
+        },
+        {
+          "page": "p1-stale",
+          "method": "GET",
+          "url": "/api/v1/managed-services",
+          "status": 200,
+          "start": "2026-10-13T06:09:46.920Z",
+          "end": "2026-10-13T06:09:46.942Z",
+          "ms": 22,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-13T06:04:26Z",
+            "scan_age_seconds": 322.468,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-13T06:09:48.468Z",
+            "guest_minus_browser_ms": {
+              "low": 1526,
+              "high": 1548
+            }
+          }
+        },
+        {
+          "page": "p1-stale",
+          "method": "POST",
+          "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+          "status": 200,
+          "start": "2026-10-13T06:09:46.948Z",
+          "end": "2026-10-13T06:09:47.907Z",
+          "ms": 959,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-13T06:09:49.434300086Z",
+            "scan_age_seconds": 0,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-13T06:09:49.434Z",
+            "guest_minus_browser_ms": {
+              "low": 1527,
+              "high": 2486
+            }
+          }
+        }
+      ],
+      "probes": [
+        "steps/08-set14-browser-window/native/004-probe-3.json",
+        "steps/08-set14-browser-window/native/006-probe-5.json"
+      ]
+    },
+    {
+      "phase": "fresh-load",
+      "started": "2026-10-13T06:10:33.636Z",
+      "ended": "2026-10-13T06:11:19.995Z",
+      "seconds": 46.4,
+      "scan_posts": 0,
+      "posts": [],
+      "scan_age_at_start_s": 46,
+      "offset_ms_before": 2012,
+      "offset_ms_after": 1723,
+      "states": [
+        "absent",
+        "checking",
+        "known"
+      ],
+      "card_sequence": [
+        {
+          "at": "2026-10-13T06:10:34.038Z",
+          "state": "absent",
+          "vis": "visible",
+          "lasted_ms": 170,
+          "text": null
+        },
+        {
+          "at": "2026-10-13T06:10:34.208Z",
+          "state": "checking",
+          "vis": "visible",
+          "lasted_ms": 34,
+          "text": "System services Checking components…"
+        },
+        {
+          "at": "2026-10-13T06:10:34.242Z",
+          "state": "known",
+          "vis": "visible",
+          "lasted_ms": null,
+          "text": "System services 3 / 3 running / installed"
+        }
+      ],
+      "answers": [
+        {
+          "page": "p2-fresh",
+          "method": "GET",
+          "url": "/api/v1/managed-services",
+          "status": 200,
+          "start": "2026-10-13T06:10:34.159Z",
+          "end": "2026-10-13T06:10:34.173Z",
+          "ms": 14,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-13T06:09:49Z",
+            "scan_age_seconds": 46.695,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-13T06:10:35.695Z",
+            "guest_minus_browser_ms": {
+              "low": 1522,
+              "high": 1536
+            }
+          }
+        },
+        {
+          "page": "p2-fresh",
+          "method": "GET",
+          "url": "/api/v1/managed-services",
+          "status": 200,
+          "start": "2026-10-13T06:10:34.211Z",
+          "end": "2026-10-13T06:10:34.232Z",
+          "ms": 21,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-13T06:09:49Z",
+            "scan_age_seconds": 46.754,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-13T06:10:35.754Z",
+            "guest_minus_browser_ms": {
+              "low": 1522,
+              "high": 1543
+            }
+          }
+        }
+      ],
+      "probes": [
+        "steps/08-set14-browser-window/native/007-probe-6.json",
+        "steps/08-set14-browser-window/native/008-probe-7.json"
+      ]
+    },
+    {
+      "phase": "clock-behind",
+      "started": "2026-10-13T06:16:44.748Z",
+      "ended": "2026-10-13T06:18:21.362Z",
+      "seconds": 96.6,
+      "scan_posts": 0,
+      "posts": [],
+      "offset_ms_before_shift": 2044,
+      "shift_back": {
+        "after_clock": {
+          "returncode": 0
+        },
+        "after_epoch": 1791871463.969007,
+        "at": "2026-10-13T06:04:23Z",
+        "before_clock": {
+          "returncode": 0
+        },
+        "before_epoch": 1791871883.9323459,
+        "command": "date -u -s @<guest epoch -420000 ms>",
+        "epoch": 1791871463.9970493,
+        "ntp_off_returncode": 0,
+        "returncode": 0,
+        "shift_ms": -420000,
+        "shift_total_ms": -418495,
+        "stderr": ""
+      },
+      "offset_ms_after_shift": -417911,
+      "owner_scan": {
+        "answer": {
+          "code": null,
+          "error": null,
+          "message": null,
+          "scan_age_seconds": 0,
+          "scan_age_seconds_type": "int",
+          "scanned_at": "2026-10-13T06:04:27.549037454Z",
+          "services": 27
+        },
+        "at": "2026-10-13T06:11:26Z",
+        "status": 200
+      },
+      "stale": {
+        "turn": 1,
+        "age_s": 317.4
+      },
+      "offset_ms_at_load": -417893,
+      "offset_ms_at_end": -418327,
+      "first_post_end": null,
+      "posts_after_first": null,
+      "observed_after_first_post_s": null,
+      "clock_read_behind": {
+        "at": "2026-10-13T06:11:23.904Z",
+        "ms": 71,
+        "status": 200,
+        "bounds": {
+          "low": -418536,
+          "high": -418465
+        },
+        "mid": -418500,
+        "scanned_at": "2026-10-13T06:09:49Z",
+        "scan_age_seconds": -323.561
+      },
+      "shift_forward": {
+        "after_clock": {
+          "returncode": 0
+        },
+        "after_epoch": 1791872298.9594202,
+        "at": "2026-10-13T06:18:18Z",
+        "before_clock": {
+          "returncode": 0
+        },
+        "before_epoch": 1791871878.9180872,
+        "command": "date -u -s @<guest epoch +420000 ms>",
+        "epoch": 1791872298.9788456,
+        "ntp_off_returncode": 0,
+        "returncode": 0,
+        "shift_ms": 420000,
+        "shift_total_ms": 1505,
+        "stderr": ""
+      },
+      "ntp_on": {
+        "after_clock": {
+          "returncode": 0
+        },
+        "after_epoch": 1791872300.7830155,
+        "at": "2026-10-13T06:18:20Z",
+        "before_clock": {
+          "returncode": 0
+        },
+        "before_epoch": 1791872300.2753263,
+        "command": "timedatectl set-ntp true",
+        "epoch": 1791872300.797687,
+        "ntp_off_returncode": null,
+        "returncode": 0,
+        "shift_ms": null,
+        "shift_total_ms": 1505,
+        "stderr": ""
+      },
+      "offset_ms_after_restore": 515,
+      "clock_read_restored": {
+        "at": "2026-10-13T06:18:20.925Z",
+        "ms": 97,
+        "status": 200,
+        "bounds": {
+          "low": -56,
+          "high": 41
+        },
+        "mid": -7,
+        "scanned_at": "2026-10-13T06:04:27Z",
+        "scan_age_seconds": 833.966
+      },
+      "states": [
+        "absent"
+      ],
+      "card_sequence": [
+        {
+          "at": "2026-10-13T06:16:45.229Z",
+          "state": "absent",
+          "vis": "visible",
+          "lasted_ms": null,
+          "text": null
+        }
+      ],
+      "answers": [
+        {
+          "page": "clock-restored",
+          "method": "GET",
+          "url": "/api/v1/managed-services",
+          "status": 200,
+          "start": "2026-10-13T06:18:20.925Z",
+          "end": "2026-10-13T06:18:21.022Z",
+          "ms": 97,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-13T06:04:27Z",
+            "scan_age_seconds": 833.966,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-13T06:18:20.966Z",
+            "guest_minus_browser_ms": {
+              "low": -56,
+              "high": 41
+            }
+          }
+        }
+      ],
+      "probes": [
+        "steps/08-set14-browser-window/native/009-probe-8.json",
+        "steps/08-set14-browser-window/native/011-probe-10.json",
+        "steps/08-set14-browser-window/native/014-probe-14.json",
+        "steps/08-set14-browser-window/native/015-probe-15.json",
+        "steps/08-set14-browser-window/native/018-probe-18.json"
+      ]
+    },
+    {
+      "phase": "components",
+      "started": "2026-10-13T06:18:23.672Z",
+      "ended": "2026-10-13T06:19:08.823Z",
+      "seconds": 45.2,
+      "scan_posts": 1,
+      "posts": [
+        {
+          "page": "p4-components",
+          "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+          "status": 200,
+          "start": "2026-10-13T06:18:24.387Z",
+          "end": "2026-10-13T06:18:25.944Z",
+          "ms": 1557,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-13T06:18:25.967607422Z",
+            "scan_age_seconds": 0,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-13T06:18:25.967Z",
+            "guest_minus_browser_ms": {
+              "low": 23,
+              "high": 1580
+            }
+          }
+        }
+      ],
+      "stale": {
+        "turn": 0,
+        "age_s": 835.2
+      },
+      "offset_ms": 583,
+      "answers": [
+        {
+          "page": "p4-components",
+          "method": "GET",
+          "url": "/api/v1/managed-services",
+          "status": 200,
+          "start": "2026-10-13T06:18:24.252Z",
+          "end": "2026-10-13T06:18:24.374Z",
+          "ms": 122,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-13T06:04:27Z",
+            "scan_age_seconds": 837.349,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-13T06:18:24.349Z",
+            "guest_minus_browser_ms": {
+              "low": -25,
+              "high": 97
+            }
+          }
+        },
+        {
+          "page": "p4-components",
+          "method": "GET",
+          "url": "/api/v1/managed-services",
+          "status": 200,
+          "start": "2026-10-13T06:18:24.258Z",
+          "end": "2026-10-13T06:18:24.387Z",
+          "ms": 129,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-13T06:04:27Z",
+            "scan_age_seconds": 837.366,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-13T06:18:24.366Z",
+            "guest_minus_browser_ms": {
+              "low": -21,
+              "high": 108
+            }
+          }
+        },
+        {
+          "page": "p4-components",
+          "method": "POST",
+          "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+          "status": 200,
+          "start": "2026-10-13T06:18:24.387Z",
+          "end": "2026-10-13T06:18:25.944Z",
+          "ms": 1557,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-13T06:18:25.967607422Z",
+            "scan_age_seconds": 0,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-13T06:18:25.967Z",
+            "guest_minus_browser_ms": {
+              "low": 23,
+              "high": 1580
+            }
+          }
+        }
+      ]
+    },
+    {
+      "phase": "agent",
+      "started": "2026-10-13T06:23:41.979Z",
+      "ended": "2026-10-13T06:25:58.847Z",
+      "seconds": 136.9,
+      "scan_posts": 4,
+      "posts": [
+        {
+          "page": "p5-agent-en",
+          "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+          "status": 503,
+          "start": "2026-10-13T06:23:43.954Z",
+          "end": "2026-10-13T06:23:43.959Z",
+          "ms": 5,
+          "answer": {
+            "code": "AGENT_UNREACHABLE",
+            "scanned_at": null,
+            "scan_age_seconds": "<absent>",
+            "scan_age_seconds_type": "absent",
+            "services": null,
+            "error": "The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.",
+            "message": null,
+            "body": "{\"error\":\"The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.\",\"code\":\"AGENT_UNREACHABLE\"}\n",
+            "body_mentions_socket": false
+          }
+        },
+        {
+          "page": "p6-agent-components",
+          "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+          "status": 503,
+          "start": "2026-10-13T06:24:24.460Z",
+          "end": "2026-10-13T06:24:24.618Z",
+          "ms": 158,
+          "answer": {
+            "code": "AGENT_UNREACHABLE",
+            "scanned_at": null,
+            "scan_age_seconds": "<absent>",
+            "scan_age_seconds_type": "absent",
+            "services": null,
+            "error": "The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.",
+            "message": null,
+            "body": "{\"error\":\"The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.\",\"code\":\"AGENT_UNREACHABLE\"}\n",
+            "body_mentions_socket": false
+          }
+        },
+        {
+          "page": "p7-agent-tr",
+          "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+          "status": 503,
+          "start": "2026-10-13T06:24:31.682Z",
+          "end": "2026-10-13T06:24:31.686Z",
+          "ms": 4,
+          "answer": {
+            "code": "AGENT_UNREACHABLE",
+            "scanned_at": null,
+            "scan_age_seconds": "<absent>",
+            "scan_age_seconds_type": "absent",
+            "services": null,
+            "error": "The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.",
+            "message": null,
+            "body": "{\"error\":\"The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.\",\"code\":\"AGENT_UNREACHABLE\"}\n",
+            "body_mentions_socket": false
+          }
+        },
+        {
+          "page": "p7-agent-tr",
+          "url": "/api/v1/managed-services/scan",
+          "status": 200,
+          "start": "2026-10-13T06:25:17.488Z",
+          "end": "2026-10-13T06:25:18.525Z",
+          "ms": 1037,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-13T06:25:18.547687197Z",
+            "scan_age_seconds": 0.001,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-13T06:25:18.548Z",
+            "guest_minus_browser_ms": {
+              "low": 23,
+              "high": 1060
+            }
+          }
+        }
+      ],
+      "stale": {
+        "turn": 1,
+        "age_s": 316.8
+      },
+      "agent_stop": {
+        "after": "inactive",
+        "at": "2026-10-13T06:23:43Z",
+        "before": "active",
+        "command": "systemctl stop celikpanel-agent.service",
+        "epoch": 1791872623.2343533,
+        "main_pid_after": "0",
+        "returncode": 0,
+        "waited_seconds": 0.04
+      },
+      "agent_start": {
+        "after": "active",
+        "at": "2026-10-13T06:25:02Z",
+        "before": "inactive",
+        "command": "systemctl start celikpanel-agent.service",
+        "epoch": 1791872702.3288674,
+        "main_pid_after": "16759",
+        "returncode": 0,
+        "waited_seconds": 0.07
+      },
+      "posts_dashboard_first_lang": 1,
+      "posts_components": 1,
+      "posts_dashboard_other_lang_before_click": 1,
+      "posts_after_click": 1,
+      "toast": {
+        "at": "2026-10-13T06:24:24.822Z",
+        "text": [
+          "Firewall: Status unknown CelikPanel could not verify the active firewall policy. Controls stay disabled until the status can be read safely. internal server error Unavailable"
+        ]
+      },
+      "admission": {
+        "agent_after": "inactive",
+        "agent_before": "inactive",
+        "at": "2026-10-13T06:24:30Z",
+        "body": {
+          "code": "AGENT_UNREACHABLE",
+          "error": "The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again."
+        },
+        "files": [
+          "steps/08-set14-browser-window/native/024-admission-before-24.json",
+          "steps/08-set14-browser-window/native/025-admission-after-24.json"
+        ],
+        "nginx_after": {
+          "ActiveEnterTimestampMonotonic": "149278403",
+          "ActiveState": "active",
+          "ExecMainStartTimestamp": "Tue 2026-10-13 06:03:47 UTC",
+          "MainPID": "7197",
+          "NRestarts": "0"
+        },
+        "nginx_before": {
+          "ActiveEnterTimestampMonotonic": "149278403",
+          "ActiveState": "active",
+          "ExecMainStartTimestamp": "Tue 2026-10-13 06:03:47 UTC",
+          "MainPID": "7197",
+          "NRestarts": "0"
+        },
+        "request": {
+          "body": {
+            "action": "restart",
+            "name": "nginx"
+          },
+          "method": "POST",
+          "path": "/api/v1/service/action"
+        },
+        "status": 503
+      },
+      "clicked": "Servisleri tara",
+      "click_at": "2026-10-13T06:25:17.483Z",
+      "states_first_lang": [
+        "absent",
+        "checking",
+        "failed"
+      ],
+      "states_other_lang": [
+        "absent",
+        "checking",
+        "failed",
+        "checking",
+        "known"
+      ],
+      "card_sequence_first_lang": [
+        {
+          "at": "2026-10-13T06:23:43.724Z",
+          "state": "absent",
+          "vis": "visible",
+          "lasted_ms": 202,
+          "text": null
+        },
+        {
+          "at": "2026-10-13T06:23:43.926Z",
+          "state": "checking",
+          "vis": "visible",
+          "lasted_ms": 38,
+          "text": "System services Checking components…"
+        },
+        {
+          "at": "2026-10-13T06:23:43.964Z",
+          "state": "failed",
+          "vis": "visible",
+          "lasted_ms": null,
+          "text": "System services Unknown Could not check: The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again. Scan services"
+        }
+      ],
+      "card_sequence_other_lang": [
+        {
+          "at": "2026-10-13T06:24:31.458Z",
+          "state": "absent",
+          "vis": "visible",
+          "lasted_ms": 195,
+          "text": null
+        },
+        {
+          "at": "2026-10-13T06:24:31.653Z",
+          "state": "checking",
+          "vis": "visible",
+          "lasted_ms": 37,
+          "text": "Sistem servisleri Bileşenler kontrol ediliyor…"
+        },
+        {
+          "at": "2026-10-13T06:24:31.690Z",
+          "state": "failed",
+          "vis": "visible",
+          "lasted_ms": 45798,
+          "text": "Sistem servisleri Bilinmiyor Kontrol edilemedi: Bu sunucudaki CelikPanel Agent’ına ulaşılamıyor; bu yüzden istek yapılmadı ve hiçbir şey değiştirilmedi. Sunucunun sahibi Agent’ı sunucuda sudo systemctl status celikpanel-agent komutuyla denetler (günlüğü: sudo journalctl -u celikpanel-agent); durmuşsa sudo systemctl start celikpanel-agent ile başlatır. Agent çalışınca yeniden deneyin. Servisleri tara"
+        },
+        {
+          "at": "2026-10-13T06:25:17.488Z",
+          "state": "checking",
+          "vis": "visible",
+          "lasted_ms": 1041,
+          "text": "Sistem servisleri Bileşenler kontrol ediliyor…"
+        },
+        {
+          "at": "2026-10-13T06:25:18.529Z",
+          "state": "known",
+          "vis": "visible",
+          "lasted_ms": null,
+          "text": "Sistem servisleri 3 / 3 çalışan / kurulu"
+        }
+      ],
+      "toasts": [
+        {
+          "page": "p5-agent-en",
+          "lang": "en",
+          "phase": "agent",
+          "at": "2026-10-13T06:23:43.947Z",
+          "t": 1791872623947,
+          "text": "Part of this server’s state could not be read, so this list may be incomplete. This does not mean something is wrong. Nothing was changed. Try again. Retry",
+          "path": "/"
+        },
+        {
+          "page": "p6-agent-components",
+          "lang": "en",
+          "phase": "agent",
+          "at": "2026-10-13T06:24:24.577Z",
+          "t": 1791872664577,
+          "text": "Firewall: Status unknown CelikPanel could not verify the active firewall policy. Controls stay disabled until the status can be read safely. internal server error Unavailable",
+          "path": "/services"
+        },
+        {
+          "page": "p6-agent-components",
+          "lang": "en",
+          "phase": "agent",
+          "at": "2026-10-13T06:24:24.646Z",
+          "t": 1791872664646,
+          "text": "The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.",
+          "path": "/services"
+        },
+        {
+          "page": "p6-agent-components",
+          "lang": "en",
+          "phase": "agent",
+          "at": "2026-10-13T06:24:24.646Z",
+          "t": 1791872664646,
+          "text": "Service state needs verification A server action may have completed, but the latest state could not be verified. Run Rescan before changing another component.",
+          "path": "/services"
+        },
+        {
+          "page": "p7-agent-tr",
+          "lang": "tr",
+          "phase": "agent",
+          "at": "2026-10-13T06:24:31.666Z",
+          "t": 1791872671666,
+          "text": "Bu sunucunun durumunun bir bölümü okunamadı; bu yüzden bu liste eksik olabilir. Bu, bir şeyin yanlış olduğu anlamına gelmez. Hiçbir şey değiştirilmedi. Tekrar deneyin. Tekrar dene",
+          "path": "/"
+        }
+      ],
+      "answers": [
+        {
+          "page": "p5-agent-en",
+          "method": "GET",
+          "url": "/api/v1/managed-services",
+          "status": 200,
+          "start": "2026-10-13T06:23:43.867Z",
+          "end": "2026-10-13T06:23:43.885Z",
+          "ms": 18,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-13T06:18:25Z",
+            "scan_age_seconds": 318.9,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-13T06:23:43.900Z",
+            "guest_minus_browser_ms": {
+              "low": 15,
+              "high": 33
+            }
+          }
+        },
+        {
+          "page": "p5-agent-en",
+          "method": "GET",
+          "url": "/api/v1/managed-services",
+          "status": 200,
+          "start": "2026-10-13T06:23:43.927Z",
+          "end": "2026-10-13T06:23:43.936Z",
+          "ms": 9,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-13T06:18:25Z",
+            "scan_age_seconds": 318.947,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-13T06:23:43.947Z",
+            "guest_minus_browser_ms": {
+              "low": 11,
+              "high": 20
+            }
+          }
+        },
+        {
+          "page": "p5-agent-en",
+          "method": "POST",
+          "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+          "status": 503,
+          "start": "2026-10-13T06:23:43.954Z",
+          "end": "2026-10-13T06:23:43.959Z",
+          "ms": 5,
+          "answer": {
+            "code": "AGENT_UNREACHABLE",
+            "scanned_at": null,
+            "scan_age_seconds": "<absent>",
+            "scan_age_seconds_type": "absent",
+            "services": null,
+            "error": "The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.",
+            "message": null,
+            "body": "{\"error\":\"The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.\",\"code\":\"AGENT_UNREACHABLE\"}\n",
+            "body_mentions_socket": false
+          }
+        },
+        {
+          "page": "p6-agent-components",
+          "method": "GET",
+          "url": "/api/v1/managed-services",
+          "status": 200,
+          "start": "2026-10-13T06:24:24.401Z",
+          "end": "2026-10-13T06:24:24.454Z",
+          "ms": 53,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-13T06:18:25Z",
+            "scan_age_seconds": 359.431,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-13T06:24:24.431Z",
+            "guest_minus_browser_ms": {
+              "low": -23,
+              "high": 30
+            }
+          }
+        },
+        {
+          "page": "p6-agent-components",
+          "method": "GET",
+          "url": "/api/v1/managed-services",
+          "status": 200,
+          "start": "2026-10-13T06:24:24.401Z",
+          "end": "2026-10-13T06:24:24.456Z",
+          "ms": 55,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-13T06:18:25Z",
+            "scan_age_seconds": 359.439,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-13T06:24:24.439Z",
+            "guest_minus_browser_ms": {
+              "low": -17,
+              "high": 38
+            }
+          }
+        },
+        {
+          "page": "p6-agent-components",
+          "method": "POST",
+          "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+          "status": 503,
+          "start": "2026-10-13T06:24:24.460Z",
+          "end": "2026-10-13T06:24:24.618Z",
+          "ms": 158,
+          "answer": {
+            "code": "AGENT_UNREACHABLE",
+            "scanned_at": null,
+            "scan_age_seconds": "<absent>",
+            "scan_age_seconds_type": "absent",
+            "services": null,
+            "error": "The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.",
+            "message": null,
+            "body": "{\"error\":\"The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.\",\"code\":\"AGENT_UNREACHABLE\"}\n",
+            "body_mentions_socket": false
+          }
+        },
+        {
+          "page": "p7-agent-tr",
+          "method": "GET",
+          "url": "/api/v1/managed-services",
+          "status": 200,
+          "start": "2026-10-13T06:24:31.597Z",
+          "end": "2026-10-13T06:24:31.618Z",
+          "ms": 21,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-13T06:18:25Z",
+            "scan_age_seconds": 366.63,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-13T06:24:31.630Z",
+            "guest_minus_browser_ms": {
+              "low": 12,
+              "high": 33
+            }
+          }
+        },
+        {
+          "page": "p7-agent-tr",
+          "method": "GET",
+          "url": "/api/v1/managed-services",
+          "status": 200,
+          "start": "2026-10-13T06:24:31.655Z",
+          "end": "2026-10-13T06:24:31.670Z",
+          "ms": 15,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-13T06:18:25Z",
+            "scan_age_seconds": 366.679,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-13T06:24:31.679Z",
+            "guest_minus_browser_ms": {
+              "low": 9,
+              "high": 24
+            }
+          }
+        },
+        {
+          "page": "p7-agent-tr",
+          "method": "POST",
+          "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+          "status": 503,
+          "start": "2026-10-13T06:24:31.682Z",
+          "end": "2026-10-13T06:24:31.686Z",
+          "ms": 4,
+          "answer": {
+            "code": "AGENT_UNREACHABLE",
+            "scanned_at": null,
+            "scan_age_seconds": "<absent>",
+            "scan_age_seconds_type": "absent",
+            "services": null,
+            "error": "The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.",
+            "message": null,
+            "body": "{\"error\":\"The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.\",\"code\":\"AGENT_UNREACHABLE\"}\n",
+            "body_mentions_socket": false
+          }
+        },
+        {
+          "page": "p7-agent-tr",
+          "method": "POST",
+          "url": "/api/v1/managed-services/scan",
+          "status": 200,
+          "start": "2026-10-13T06:25:17.488Z",
+          "end": "2026-10-13T06:25:18.525Z",
+          "ms": 1037,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-13T06:25:18.547687197Z",
+            "scan_age_seconds": 0.001,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-13T06:25:18.548Z",
+            "guest_minus_browser_ms": {
+              "low": 23,
+              "high": 1060
+            }
+          }
+        }
+      ],
+      "probe_after": "steps/08-set14-browser-window/native/027-probe-26.json"
+    }
+  ]
+}

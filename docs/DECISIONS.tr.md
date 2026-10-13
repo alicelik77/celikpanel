@@ -21,6 +21,136 @@ git'te yaşar; bu dosya strateji içindir. En yeni en üstte.
 
 ---
 
+## D-032 · Panel kendiliğinden bakar; okuyabileceği bir durumu öğrenmek için sahibe bir düğmeye basmasını asla söylemez
+
+*12 Ekim 2026 (saat tarihi) · v0.1.0-alpha.83 güncellemesinden sonra sahip kararı; kaynakta, bileşen testleri ve API taklidine karşı tarayıcıyla; ilk adım on dördüncü gerçek sistem kaydında ölçüldü (Debian 13, Ubuntu 24.04, 12 Ekim 2026 UTC); tarama yaşı saat kuralı ile tarama ve kabul denetimindeki tipli Agent yanıtı on beşinci kayıtta ölçüldü (Debian 13, 13 Ekim 2026 UTC); lisans denetiminin kalan süresi, ortak hata yazıcısındaki Agent yanıtı ve okuma şeridi (13 Ekim 2026) bileşen testli, sonra on altıncı kayıtta Debian 13'te ölçüldü (set14c, 13 Ekim 2026 UTC); on beşinci kayıtta bulunan lisans denetimi kusuru orada yok*
+
+Dashboard'ın "Sistem servisleri" kartı, saklı tarama beş dakikadan eskiyse
+"Bilinmiyor. Bileşen durumu eski. Yeniden taramak için Bileşenleri açın."
+diyordu. Bileşenler sayfası, Panel'in sunduğu önbellekli, koşullu taramayı
+(`POST /api/v1/managed-services/scan?max_age_seconds=N`: aynı anda tek tarama,
+önbellekli, bir değişiklik sunucunun kilidini tutarken reddedilen) zaten
+çalıştırıyordu; Dashboard çalıştırmıyordu. Böylece sahip, Panel'in kendi
+yapabileceği bir okumayı elle yapmak zorunda kalıyordu. v0.1.0-alpha.83
+güncellemesinden sonra sahip 12 Ekim 2026'da karar verdi: Dashboard kaynak
+harcamadan kendiliğinden kontrol etmeli.
+
+Benimsenen kurallar:
+
+1. Başarılı bir okumadan sonra, saklı tarama yoksa ya da 300 saniyeden eskiyse
+   Dashboard koşullu taramayı çalıştırır; yanıt ne olursa olsun beş dakikalık
+   pencere başına en çok bir kez.
+2. Yalnız sekme görünürken. Gizli sekme hiçbir şey çalıştırmaz; yeniden
+   gösterilen sekme, kontrol zamanı gelmişse bir kez kontrol eder.
+3. Başka bir kontrol sürerken asla. Ne olursa olsun tarayan aralıklı bir
+   zamanlayıcı yok; reddedilmeden sonra yeniden deneme döngüsü yok.
+4. Bir değişiklik sürdüğü için gelen ret (`server_setup_busy`,
+   `service_operation_busy`) "bir değişiklik sürüyor" diye gösterilir ve başka
+   bir şey göndermez. Mevcut hazırlık yoklaması sunucunun meşgulden hazıra
+   geçtiğini görünce bir takip çalışır (yalnız paket işlemleri için; kurulum
+   retinden sonra bir sonraki kontrol pencereyi bekler).
+5. Başarısız bir kontrol yerinde düğmeyle "Kontrol edilemedi: <neden>" der.
+   Sahibin basışı koşulsuz kalır.
+6. Kart dört ayrı durum çizer (kontrol ediliyor, sonuç, kontrol edilemedi,
+   tutuluyor) ve "İlgi istiyor" cümlesi onları izler.
+
+Kaynak sınırı kararın parçasıdır, sonradan eklenmiş bir şey değil: bakılan bir
+Dashboard için beş dakikada en çok bir koşullu tarama, kimsenin bakmadığı için
+hiç. İki laboratuvar konuğunda ölçüldü (on dördüncü kayıt, ilk adım): bayat bir
+yükleme tam bir tarama gönderdi, taze bir yükleme hiç, görünür tutulan bir sayfa
+300 saniyeden önce olmamak üzere bir tarama daha, gizli bir sekme beş dakika
+hiç ve gösterilince bir; bir kontrol Agent'a yaklaşık 0,2 ile 0,4 saniye CPU'ya
+mal oldu (47 saniyelik iki pencereden bir tahmin).
+
+Saat kuralı. Sunucu bir taramanın yaşını söyler (`scan_age_seconds`, üç
+yönetilen-servisler yanıtında, yanıt yazılırken sunucu saatiyle ölçülür); sayfa
+taramayı yanıtı aldığı an eksi bu yaş olarak tarihler. Tarayıcı kendi saatini
+sunucununkiyle asla karşılaştırmaz. Kuralın iki adımı vardır, çünkü laboratuvar
+kusuru ilk sürümde buldu: konuğun saati bir iki saniye ileriyken kart her
+kontrolden sonra 20 ile 29 saniye "Son 5 dakikada kontrol edilmedi" gösterdi.
+Birinci adım (damga ile alınma anının erken olanı) ileride olan sunucu için
+kusuru kaldırdı; ikincisi (sunucunun yaşı) beş dakikadan fazla geride olan
+sunucu için de kaldırır. Alanı olmayan eski bir sunucu birinci kuralda kalır.
+Eksi bir yaş ya da sonlu olmayan bir sayı taze sayılmaz. Ölçüldü (on beşinci
+kayıt, Debian 13, konuk 1,5 sn ileride): bayat yüklemede tek koşullu tarama ve
+kartın doğrudan sonuca geçmesi, "Son 5 dakikada kontrol edilmedi" karesi
+olmadan. Sunucu saatinin geride olduğu durum sonradan, on altıncı kayıtta
+ölçüldü (set14c, Debian 13, 13 Ekim 2026, saat yedi dakika geride): tek koşullu
+tarama, ardından 90 saniyenin sonuna dek sonuç.
+
+Aynı kural, onu bozduğu laboratuvarda görülen lisans denetimi için de geçerlidir.
+`/api/v1/license/access` erişimin sonunu (`valid_until`) sunucunun saatiyle bir an
+olarak veriyordu ve sayfa, sonu tarayıcının saatinden sonra olmayan olumlu bir
+yanıtı reddediyordu; sunucunun saati yaklaşık bir dakikadan fazla geride olduğunda
+hiçbir Panel sayfası açılmadı (on beşinci kayıt, D2 kusuru: 418 sn geride, denetim
+90 sn'de 19 kez okundu). Sunucu artık kalan süreyi söyler (`valid_for_seconds`:
+yanıt yazılırken `valid_until` eksi sunucunun saati, sıfırın altına inmez;
+`valid_until` eski sayfalar için kalır) ve tarayıcı sonu, isteği gönderdiği an artı
+bu süre olarak alır; böylece iki saati hiç karşılaştırmaz ve sunucunun izin
+verdiğinden geç bitmez. Alan yoksa mutlak kural sürer. Düzeltme Debian 13'te
+on altıncı kayıtta ölçüldü (13 Ekim 2026): konuk saati tarayıcıdan yedi dakika
+geride ve yedi dakika ilerideyken sayfa açıldı ve erişimi 90 saniyede dört kez
+okudu; doğru saatle olduğu gibi.
+
+Tipli hata kuralı. Kendi Agent'ının yerel soketini açamayan bir Panel `503
+AGENT_UNREACHABLE` yanıtlar: nedeni, hiçbir şeyin değiştirilmediğini, kimin
+işlem yapacağını, sonraki eylemi ve işin nasıl süreceğini söyler (D-024). Yanıt
+ortak sunucu hata yazıcısında tek yerde yazılır; bu yüzden o yazıcıya, Agent
+soketine başarısız bağlantı kurmanın tek neden olduğu bir durumla ulaşan her
+işleyici için geçerlidir (tarama, değiştirici işleyicilerin kabul denetimi
+(`beginServiceMutation`; 68b79b372 commit'inde tarama işleyicisi dışında dokuz
+çağrı yeri), güvenlik duvarı okuması, sistem denetimi), işleyici işleyici değil.
+Yalnız başarısız bağlantı kurma içindir. İstek gönderildikten sonra kopan
+bağlantı bilinmeyen sonuçtur ve genel yolda kalır; bilinmeyen sonuç asla
+doğrulanmış bir başarısızlığa çevrilmez. Birleşik hata da çevrilmez; örneğin bir
+hata ve onun telafisi: önceki bir parça bir şeyi değiştirmiş olabilir ve "hiçbir
+şey değiştirilmedi" yanlış olurdu. Kabul edilen tek birleşim, platform kimliği
+işaretiyle nedenidir; çünkü o okuma koruduğu çağrıdan önce koşar. DNSSEC durumu,
+güncelleme durumu ve başlatması, alan adı silme ve posta parolası döndürme kendi
+tipli yollarında kalır. Sıradan bir hata yine `500` yanıtlar. Tarama ve kabul
+denetiminde (on beşinci kayıt) ve güvenlik duvarı okuması, sistem denetimi ile
+bir yeniden başlatma isteğinde ölçüldü (on altıncı kayıt; `503`, yalnız `code`
+ve `error`, nginx değişmedi). Açık: bir şeyi değiştirip sonra, önceki sonuca
+birleşmemiş ayrı bir bağlantıda başarısız olan bir işleyici yine de hiçbir şeyin
+değiştirilmediğini söylerdi.
+
+Okuma şeridi kuralı. Başarısız bir okuma asla bir işlem iddia etmez. Bir durumu
+okuyamayan ekran, okuyamadığını ve nedenini, sonraki eylemle söyler; bir işlem
+gönderilmediyse işlemin tamamlanmış olabileceğini söylemez. Neden saklanır:
+gönderilmiş ve doğrulanmamış bir işlem "tamamlanmış olabilir" sözünü korur ve
+sonradan başarısız olan bir okuma onun yerini asla almaz. Laboratuvarda, Agent
+durmuşken Bileşenler sayfasında bulundu (on beşinci kayıt, O2 gözlemi) ve orada
+uygulandı; on altıncı kayıtta ölçüldü (okuma şeridi İngilizce ve Türkçe, işlem
+ifadesi yok, Agent dönünce tek Yeniden tara ile gitti). Bu kuralla başka hiçbir
+ekran dönüştürülmez.
+
+Bunun yetkilendirmediği:
+
+- Kimse bakmazken çalışan bir arka plan zamanlayıcısı. Bu karar, taze bir kart
+  uğruna zamanlanmış bir tarama eklemez; Dashboard, bir kişi onu açık ve görünür
+  tuttuğunda bakar.
+- Bir değişiklik başlatan yoklama. Kontrol, Bileşenler sayfasının zaten sunduğu
+  salt-okur taramadır; bir durumu gören yoklama asla değişiklik başlatmaz ve
+  hazırlık yoklamasının tek takibi de aynı taramadır.
+- Bu kararla başka hiçbir kart, sayfa ya da ekran dönüştürülmez. Dashboard'daki
+  posta yığını kartı, kendi değişikliğine kadar kendi bayat metnini ve "Yeniden
+  taramak için Bileşenleri aç" düğmesini korur; sunucuyu hâlâ eski biçimde
+  okuyan ekranlar sürüm notundaki listede kalır.
+- Temelin bittiği iddiası yok: hiçbir P0 işi kapanmaz ya da ilerlemez.
+
+Gerisiyle ilişkisi. D-024 her işlemin nedenini, kimin işlem yapacağını, sonraki
+eylemi ve işin nasıl süreceğini göstermesini ve doğrulanmış başarısızlık,
+karşılanmamış önkoşul ve bilinmeyen sonucu ayırmasını ister; bu karar onu bileşen
+kontrolüne ve ulaşılamayan Agent'a uygular. Bilinen-durum kuralı (başarısız ya da
+eksik bir okuma boş ya da olumsuz bir durum gibi çizilmez) kartın neden
+"kontrol edilemedi" ve "tutuluyor" durumlarına ayrı ayrı sahip olduğunu ve bayat
+durumun "Bilinmiyor"a indirgenmediğini açıklar. D-022 (sunucuyu sahibi işletir;
+Panel saptar ve bildirir) Panel'in Agent'ı yeniden başlatmak yerine sahibe onu
+nasıl denetleyeceğini söylemesinin nedenidir. Panel güncellemeleri sahibin
+kalır, panelin kendi güncelleme ekranından.
+
+---
+
 ## D-031 · Sahibin değiştirdiği site yapılandırma dosyası korunur ve adlandırılır; üretim onun üstüne yazmaz
 
 *10 Ekim 2026 (saat tarihi) · Salt-okur denetimin bulgusu üzerine sahip kararı ([SITE-CONFIG-OWNER-EDITS-2026-10-10](audit/SITE-CONFIG-OWNER-EDITS-2026-10-10.md)); tasarım kararlaştırıldı; ilk adım onuncu gerçek sistem kaydında ölçüldü (iki bulgu 11 Ekim 2026'da düzeltildi); “şimdi yaz” eylemi ile tek öncelik sırası (11 Ekim 2026) ve ikinci adım (havuz, uygulama birimi; 11 Ekim 2026) bileşen testli ve sahte tarayıcıyla denendi, gerçek sistem ölçümü bekliyor*

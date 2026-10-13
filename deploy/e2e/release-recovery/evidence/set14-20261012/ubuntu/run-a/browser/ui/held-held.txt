@@ -1,0 +1,97 @@
+Panel
+
+dns-ubuntu · 41dk süredir çalışıyor
+
+CPU kullanımı
+
+%20
+
+2 çekirdek · Yük 0.00
+
+Bellek
+
+%21
+
+629 MB / 2.9 GB
+
+Disk (/)
+
+%12
+
+2.6 GB / 22.2 GB
+
+Sistem servisleri
+
+Bilinmiyor
+
+Bir değişiklik sürüyor; durum, değişiklik bitince gösterilir.
+
+İlgi istiyor
+
+İşlem gerektiren bir sertifika ya da güvenlik duvarı ayarı yok. Kurulu bileşenler, süren değişiklik bitince kontrol edilir.
+
+Barındırma
+
+0
+
+Alan Adları
+
+0
+
+Veritabanları
+
+1
+
+Kullanıcılar
+
+0
+
+Posta hesabı
+
+Son etkinlik
+L
+labadmin oturum açtı2 kez
+127.0.0.1
+31 dk önce
+L
+labadmin server.setup.guidance
+127.0.0.1
+31 dk önce
+L
+labadmin server.setup.revise
+127.0.0.1
+31 dk önce
+L
+labadmin server.setup.child:certbot
+127.0.0.1
+33 dk önce
+L
+labadmin server.setup.child:php-fpm
+127.0.0.1
+34 dk önce
+L
+labadmin server.setup.child:nginx
+127.0.0.1
+34 dk önce
+L
+labadmin server.setup.child:mariadb
+127.0.0.1
+34 dk önce
+Hızlı işlemler
+Alan adı ekle
+Servis kur
+Kullanıcı ekle
+İçe aktar
+Sunucu bilgisi
+Sunucu adı
+dns-ubuntu
+IPv4 adresi
+10.0.2.15
+İşletim sistemi
+Ubuntu 24.04.4 LTS
+Çekirdek
+6.8.0-138-generic
+Mimari
+amd64
+Çalışma süresi
+41dk

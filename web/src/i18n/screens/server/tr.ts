@@ -282,6 +282,8 @@ export const trServerScreens: Record<ServerScreenKey, string> = {
     'services.scanFailed': 'Servis taraması başarısız oldu.',
     'services.stateUnverifiedTitle': 'Servis durumu doğrulanmalı',
     'services.stateUnverifiedHint': 'Bir sunucu işlemi tamamlanmış olabilir ancak güncel durum doğrulanamadı. Başka bir bileşeni değiştirmeden önce Yeniden tara’yı çalıştırın.',
+    'services.stateUnreadTitle': 'Bileşen durumu okunamadı',
+    'services.stateUnreadHint': 'Bu sayfa hiçbir bileşen işlemi göndermedi; bileşenlerin güncel durumunu okuyamadı. {reason} Bir tarama durumu okuyana dek bileşen değişiklikleri kilitli kalır; Yeniden tara durumu yeniden okur.',
     'services.neverScanned': 'Servisler henüz taranmadı',
     'services.neverScannedShort': 'Henüz taranmadı',
     'services.neverScannedHint': 'İlk ziyarette kurulu servisler otomatik algılanır. Önbellekteki sonuçlar hemen açılır ve belirli aralıklarla yenilenir.',

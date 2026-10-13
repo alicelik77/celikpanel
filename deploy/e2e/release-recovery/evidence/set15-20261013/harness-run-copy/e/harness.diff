@@ -1,0 +1,1493 @@
+--- /dev/null
++++ b/deploy/e2e/release-recovery/set15_fixture.py
+@@ -0,0 +1,142 @@
++#!/usr/bin/env python3
++"""set15: owner_update_trial with two more release profiles, for the fifteenth native record (the pre-publication
++measurement of v0.1.0-alpha.84, commit 1636b73f0).
++
++Nothing of owner_update_trial.py, worker_fixture_origin.py or guest_bound_worker.py is changed on disk. Importing
++this module (or running it as the build's fixture driver) first imports set12_fixture (alpha.82), then adds, in this
++process only:
++
++* ``BASELINE_REFS["v0.1.0-alpha.83"]``: the update cells' baseline is the alpha.83 tag's own commit (0447558e; it
++  carries the D-027 acceptance-licence seam and its guard, so no file is patched); the candidate is labelled
++  ``v0.1.0-alpha.84 / 84`` (previous = the tag commit), which is the source commit's own release policy.
++* ``BASELINE_REFS["v0.1.0-alpha.84"]``: a label profile for the fresh-install cells. Their "baseline" (the build
++  that is installed) is the unpublished source commit 1636b73f0 itself, labelled by its own policy; the origin's
++  candidate (never installed in a fresh cell) is a fixture commit labelled ``v0.1.0-alpha.85 / 85``. The word
++  "published-tag" in the inherited provenance text does not apply to this profile; ``provenance_for`` is wrapped to say so.
++* the fixture origin's closed set of target transitions gains 84 (previous 83) and 85 (previous 84): a copy of
++  worker_fixture_origin.py with exactly those tuples (and set12's 83) appended is written under
++  ``$SET12_RUN_ROOT/generated-set15/`` and replaces set12's copy as the module the driver loads and uploads.
++* ``bound_worker_copy()``: guest_bound_worker.py with the (alpha.83, alpha.84) pair added, uploaded in place of the
++  original in the update cells (the owner-update observer validates its intent with it).
++* for the alpha.83 baseline, ``LEDGER_AFTER_UPDATE = LEDGER_AFTER_RETURN = 44`` (alpha.83's migration ledger is 44;
++  the candidate adds no migration), and set6's expected HSTS header before the update and after a return is
++  alpha.83's own (``cmd/panel/security.go:46`` of the tag: ``max-age=31536000``).
++
++  set15_fixture.py fixture-source ...   (build-set15-artifacts.sh; the same arguments as owner_update_trial.py)
++
++set15: alpha.83 tabanını, alpha.84 adayını ve taze kurulum için alpha.84 etiket profilini yalnız bu süreçte tanıtan
++ince katman; hiçbir dosyayı diskte değiştirmez.
++"""
++from __future__ import annotations
++
++import hashlib
++import importlib.util
++import json
++from pathlib import Path
++import sys
++
++HERE = Path(__file__).resolve().parent
++if str(HERE) not in sys.path:
++    sys.path.insert(0, str(HERE))
++import set12_fixture as fx12  # noqa: E402  (registers alpha.82 and loads set12's origin copy first)
++
++out = fx12.out
++ALPHA83_COMMIT = "0447558e956d4c02c7bf06b368def0924856f8fc"
++ALPHA83_REF = "v0.1.0-alpha.83"
++SOURCE_COMMIT = "1636b73f0979d9921ff99f283ceec8cfed1041dc"
++FRESH_REF = "v0.1.0-alpha.84"
++POLICY_83 = dict(fx12.CANDIDATE_POLICY_83)
++POLICY_84 = {"version": "v0.1.0-alpha.84", "current": 84, "previous": 83, "previous_version": "v0.1.0-alpha.83"}
++POLICY_85 = {"version": "v0.1.0-alpha.85", "current": 85, "previous": 84, "previous_version": "v0.1.0-alpha.84"}
++HSTS_ALPHA83 = "max-age=31536000"   # cmd/panel/security.go:46 at v0.1.0-alpha.83 (0447558e)
++GENERATED = fx12.RUN_ROOT / "generated-set15"
++PAIRS_NEW = ("    pairs = (('v0.1.0-alpha.81', 'v0.1.0-alpha.82'), ('v0.1.0-alpha.80', 'v0.1.0-alpha.81'),"
++             " ('v0.1.0-alpha.83', 'v0.1.0-alpha.84'))  # set15 (generated copy)\n")
++
++
++def origin_text(original: str) -> str:
++    """The origin's text with HERE pinned to this directory and the 83, 84 and 85 transitions appended (exact edits)."""
++    if original.count(fx12.HERE_LINE) != 1 or original.count(fx12.POLICIES_ANCHOR) != 1:
++        raise ValueError("worker_fixture_origin.py differs from the reviewed text; the set15 copy is not made")
++    text = original.replace(fx12.HERE_LINE, f"HERE = Path({str(HERE)!r})\n")
++    added = ("\n# set15 (generated, not a repository file): set12's alpha.83 transition, the update from alpha.83 to a "
++             "candidate\n# labelled v0.1.0-alpha.84, and the fresh cells' origin candidate labelled v0.1.0-alpha.85.\n"
++             f"RELEASE_POLICIES = RELEASE_POLICIES + ({POLICY_83!r}, {POLICY_84!r}, {POLICY_85!r})\n")
++    return text.replace(fx12.POLICIES_ANCHOR, "\n" + added + fx12.POLICIES_ANCHOR)
++
++
++def _write(name: str, text: str, record: dict) -> Path:
++    GENERATED.mkdir(parents=True, exist_ok=True)
++    target = GENERATED / name
++    if not target.exists() or target.read_text() != text:
++        target.write_text(text)
++    (GENERATED / (Path(name).stem + ".json")).write_text(json.dumps(record | {
++        "generated": str(target), "generated_sha256": hashlib.sha256(text.encode()).hexdigest()},
++        indent=2, sort_keys=True) + "\n")
++    return target
++
++
++def install() -> dict:
++    out.BASELINE_REFS.setdefault(ALPHA83_REF, {
++        "commit": ALPHA83_COMMIT, "baseline": (ALPHA83_REF, 83), "candidate": ("v0.1.0-alpha.84", 84),
++        "unpatched": True, "baseline_policy": dict(POLICY_83)})
++    out.BASELINE_REFS.setdefault(FRESH_REF, {
++        "commit": SOURCE_COMMIT, "baseline": (FRESH_REF, 84), "candidate": ("v0.1.0-alpha.85", 85),
++        "unpatched": True, "baseline_policy": dict(POLICY_84)})
++    source = HERE / "worker_fixture_origin.py"
++    original = source.read_text()
++    text = origin_text(original)
++    target = _write("worker_fixture_origin.py", text, {
++        "original": str(source), "original_sha256": hashlib.sha256(original.encode()).hexdigest(),
++        "added_policies": [POLICY_83, POLICY_84, POLICY_85]})
++    spec = importlib.util.spec_from_file_location(fx12.ORIGIN_NAME, target)
++    module = importlib.util.module_from_spec(spec)
++    sys.modules[fx12.ORIGIN_NAME] = module
++    spec.loader.exec_module(module)
++    out._MODULES[fx12.ORIGIN_NAME] = module   # replaces set12's copy (a superset of its transitions)
++    return {"origin": str(target)}
++
++
++def configure(document: dict) -> dict:
++    """configure_labels for a document; alpha.83 baseline: ledger 44 after the update and after a return, alpha.83's
++    HSTS header before the update and after a return."""
++    labels = out.configure_labels(document)
++    if labels.get("ref") == ALPHA83_REF:
++        out.LEDGER_AFTER_UPDATE, out.LEDGER_AFTER_RETURN = 44, 44
++        import set6_trial as s6  # noqa: PLC0415  (loaded by every set15 driver already)
++        s6.HSTS_ALPHA81 = HSTS_ALPHA83
++    return labels
++
++
++def bound_worker_copy() -> Path:
++    source = HERE / "guest_bound_worker.py"
++    original = source.read_text()
++    if original.count(fx12.PAIRS_LINE) != 1:
++        raise ValueError("guest_bound_worker.py differs from the reviewed text; the set15 copy is not made")
++    text = original.replace(fx12.PAIRS_LINE, PAIRS_NEW)
++    return _write("guest_bound_worker.py", text, {
++        "original": str(source), "original_sha256": hashlib.sha256(original.encode()).hexdigest(),
++        "added_pair": ["v0.1.0-alpha.83", "v0.1.0-alpha.84"]})
++
++
++_provenance_for = out.provenance_for
++
++
++def provenance_for(variant: str) -> dict:
++    value = _provenance_for(variant)
++    if out.LABEL_REF == FRESH_REF:
++        value = dict(value, baseline=(
++            f"set15 fresh cells: the unpublished source commit {SOURCE_COMMIT} itself (its own release policy "
++            "v0.1.0-alpha.84 / 84), built with the acceptance_license build tag; installed by the real installer; "
++            "fixture trust root enrolled; not a published tag and not the signed release archive"),
++            candidate=("unpublished-local-fixture-commit-over-the-source-labelled-v0.1.0-alpha.85; served by the "
++                       "guest-loopback origin; never installed in a fresh cell; not a release"))
++    return value
++
++
++out.provenance_for = provenance_for
++install()
++
++
++if __name__ == "__main__":
++    raise SystemExit(out.main())
+--- /dev/null
++++ b/deploy/e2e/release-recovery/set15_trial.py
+@@ -0,0 +1,305 @@
++#!/usr/bin/env python3
++"""set15: the pre-publication measurement of v0.1.0-alpha.84 (commit 1636b73f0; product code last changed in
++68b79b372), on disposable QEMU guests (lab.py), with a real headless Chrome on the host
++(web/tools/browser-inspect/cold-load-set15.mjs, set12's browser window "ui").
++
++``set15-<debian13|ubuntu|arch>`` (``Set15Trial`` over ``set14_trial.Set14Trial``): the source commit itself installed
++FRESH (artifacts document from ``build-set15-artifacts.sh --fresh``; set6's steps: pinning, preflight, origin,
++install, owner, licence, setup with purpose ``web``), then one reading step through the Panel's API (panel version,
++licence access, the stored scan, the Domains list, setup) with the installed bootstrap pins and the schema ledger read
++over SSH, then the browser window: the Domains list and the sidebar, one Dashboard load with a stale scan, the
++Components page, three direct reads (``/api/v1/panel/version``, ``/api/v1/license/access``,
++``/api/v1/managed-services``).
++
++``upd1-debian13-good`` | ``upd1-debian13-defective`` (``Set15UpdateTrial`` over ``set6_trial.Set6UpdateTrial``), with
++an artifacts document from ``build-set15-artifacts.sh --baseline-ref v0.1.0-alpha.83``: set6's owner update from the
++alpha.83 tag rebuilt as a test-licence build to the source commit (good) or to a candidate that fails at start
++(defective: set5's migrate-only defect, automatic return), without set4/set5's added PHP-site and mail sections. Before
++``collect``: the same API readings and ledger, then the same browser window (the Dashboard after the update or after
++the return, the sidebar's version line).
++
++Preparations the browser may ask for: ``probe`` (guest_set14_native.py read-probe14: the stored scan's age, the units)
++and ``journal``. The driver calls only the Panel's HTTP API; every native fact is read over SSH; owner actions on the
++guest are recorded as such. Every result carries ``native_evidence: false``. Nothing here judges a P0 row.
++
++  set15_trial.py plan --cell CELL --artifacts A.json --work-root /var/tmp/cp-release-drill-X [--dry-run]
++  set15_trial.py run  --cell CELL --artifacts A.json --work-root /var/tmp/cp-release-drill-X --execute
++"""
++from __future__ import annotations
++
++import argparse
++import dataclasses
++import json
++import os
++from pathlib import Path
++import shlex
++import sys
++import time
++from typing import Any
++
++HERE = Path(__file__).resolve().parent
++if str(HERE) not in sys.path:
++    sys.path.insert(0, str(HERE))
++import set14_trial as t14  # noqa: E402
++import set15_fixture as fx15  # noqa: E402  (after set12_fixture, which set14's chain imports)
++
++s12, s10, s6, sw, base = t14.s12, t14.s10, t14.s6, t14.sw, t14.base
++CELL_KIND = "set15-fresh-install"
++UPDATE_KIND = "set15-update"
++CELLS = {
++    "set15-debian13": sw.SettingsCell("set15-debian13", "debian13", "web", sw.WEB_PRESET, False),
++    "set15-ubuntu": sw.SettingsCell("set15-ubuntu", "ubuntu", "web", sw.WEB_PRESET, False),
++    "set15-arch": sw.SettingsCell("set15-arch", "arch", "web", sw.WEB_PRESET, False),
++}
++UPDATE_CELLS = ("upd1-debian13-good", "upd1-debian13-defective")
++BROWSER = {"set15-debian13": {"lang": "en", "viewport": "desktop"}, "set15-ubuntu": {"lang": "tr", "viewport": "desktop"},
++           "set15-arch": {"lang": "en", "viewport": "desktop"},
++           "upd1-debian13-good": {"lang": "en", "viewport": "desktop"},
++           "upd1-debian13-defective": {"lang": "en", "viewport": "desktop"}}
++PREPS = ("probe", "journal")
++WINDOW_SECONDS = 3600
++READS = (("panel version", "/api/v1/panel/version"), ("licence access", "/api/v1/license/access"),
++         ("the stored scan", "/api/v1/managed-services"), ("the Domains list", "/api/v1/domains"),
++         ("setup", "/api/v1/setup"))
++PINS_SCRIPT = r"""
++f=/usr/libexec/celikpanel/get.sh
++echo "== $f"; ls -l "$f" 2>&1; sha256sum "$f" 2>&1; grep -n '^bootstrap_release_' "$f" 2>&1
++for p in $(timeout 60 find /opt /usr/libexec /usr/local /etc /var/lib -xdev -maxdepth 5 -name release-sequence-policy -type f 2>/dev/null | sort); do
++  echo "== $p"; cat "$p"
++done
++echo "== end"
++"""
++
++
++def brief_body(path: str, parsed: Any) -> Any:
++    """What the record keeps of an answer: whole for small answers; the stored scan without its service list."""
++    if path == "/api/v1/managed-services" and isinstance(parsed, dict):
++        services = parsed.get("services")
++        return {k: v for k, v in parsed.items() if k != "services"} | {
++            "services_count": len(services) if isinstance(services, list) else None,
++            "keys": sorted(parsed)}
++    if path == "/api/v1/domains":
++        rows = parsed if isinstance(parsed, list) else (parsed or {}).get("domains") if isinstance(parsed, dict) else None
++        return {"type": type(parsed).__name__, "rows": len(rows) if isinstance(rows, list) else None,
++                "body": json.dumps(parsed, sort_keys=True)[:2000]}
++    return parsed
++
++
++class Readings15:
++    """The set15 reading step and its window, shared by the fresh and the update trials."""
++
++    def readings15(self, checks: dict, label: str, ledger_version: int) -> str:
++        self.current = {"section": f"set15-readings-{label}", "node": self.node_name, "native_evidence": False,
++                        "started_at": base.utc_now(), "calls": [], "checks": [], "natives": [], "notes": []}
++        try:
++            out = {}
++            for what, path in READS:
++                entry = self.call(f"set15: {what} ({path}) {label}", "GET", path, None, timeout=120)
++                out[path] = {"status": entry["status"], "at": entry["at"], "body": brief_body(path, entry.get("_parsed"))}
++            checks["api"] = out
++            access = (out.get("/api/v1/license/access") or {}).get("body") or {}
++            scan = (out.get("/api/v1/managed-services") or {}).get("body") or {}
++            checks["fields"] = {
++                "panel_version": (out.get("/api/v1/panel/version") or {}).get("body"),
++                "access_has_valid_for_seconds": isinstance(access, dict) and "valid_for_seconds" in access,
++                "valid_for_seconds": access.get("valid_for_seconds") if isinstance(access, dict) else None,
++                "managed_services_has_scan_age_seconds": isinstance(scan, dict) and "scan_age_seconds" in scan,
++                "scan_age_seconds": scan.get("scan_age_seconds") if isinstance(scan, dict) else None,
++                "domains_rows": ((out.get("/api/v1/domains") or {}).get("body") or {}).get("rows")}
++            pins = self.guest(PINS_SCRIPT, timeout=120)
++            pins_text = (pins.stdout or "") + ("\n# stderr:\n" + pins.stderr if pins.stderr else "")
++            self.ev.write_text(f"{self.step_dir}/installed-pins-{label}.txt", pins_text)
++            checks["installed_pins"] = {"returncode": pins.returncode,
++                                        "lines": [line for line in pins_text.splitlines()
++                                                  if line.startswith(("==", "version=", "current=", "previous"))
++                                                  or "bootstrap_release_" in line]}
++            try:
++                checks["ledger"] = self.schema_ledger(f"set15-{label}", ledger_version)
++            except Exception as exc:  # noqa: BLE001 - recorded; the cell goes on
++                checks["ledger"] = {"verdict": "inconclusive", "error": f"{type(exc).__name__}: {str(exc)[:300]}"}
++        finally:
++            for entry in self.current.get("calls", []):
++                entry.pop("_parsed", None)
++            self.current["finished_at"] = base.utc_now()
++            self.record_json("readings.json", self.current)
++        return "observed"
++
++    def window15(self, checks: dict, cell_name: str, mode: str) -> str:
++        self.current = {"section": "set15-browser-window", "node": self.node_name, "native_evidence": False,
++                        "started_at": base.utc_now(), "calls": [], "checks": [], "natives": [], "notes": [],
++                        "owner_actions": [], "lab_preparation": []}
++        if not os.environ.get("SET12_HAND"):
++            checks["reason"] = "no browser in this lab (SET12_HAND is not set)"
++            return "skipped"
++        record: dict = {}
++        try:
++            checks["leave_setup"] = self.leave_setup()
++            first = self.snap14("probe-before-the-window", "read-probe14")
++            self.s14["window_since"] = float(first.get("epoch") or time.time())
++            checks["probe_before_the_window"] = t14.compact_probe(first)
++            record = self.browser_window("ui", WINDOW_SECONDS, {"browser": BROWSER[cell_name], "cell": cell_name,
++                                                                 "mode": mode, "preps": list(PREPS)})
++            checks.update({k: v for k, v in record.items() if k != "requests"})
++            checks["prep_count"] = len(record.get("requests") or [])
++            self.record_json("browser-window.json", record)
++            try:
++                checks["probe_after_the_window"] = t14.compact_probe(self.snap14("probe-after-the-window", "read-probe14"))
++            except Exception as exc:  # noqa: BLE001
++                checks["end_readings_error"] = self.error_text(exc)
++        finally:
++            for entry in self.current.get("calls", []):
++                entry.pop("_parsed", None)
++            self.current["finished_at"] = base.utc_now()
++            self.record_json("window.json", self.current)
++        if record.get("skipped"):
++            return "skipped"
++        if record.get("not_finished"):
++            raise base.StepInconclusive(record["not_finished"])
++        self.ensure_session()
++        return "observed"
++
++
++class Set15Trial(Readings15, t14.Set14Trial):
++    def execute(self) -> dict:
++        self.step("preflight", self.preflight)
++        self.step("origin", self.origin, needs=("preflight",))
++        self.step("baseline-install", self.baseline_install, needs=("origin",))
++        self.step("owner-login", self.owner_login, needs=("baseline-install",))
++        self.step("license", self.license, needs=("owner-login",))
++        self.step("setup", self.setup, needs=("license",))
++        self.step("set15-readings", lambda checks: self.readings15(checks, "fresh", 44), needs=("setup",))
++        self.step("set15-browser-window", lambda checks: self.window15(checks, self.settings.name, "fresh"), needs=("setup",))
++        self.step(s6.PIN_END_STEP, self.pin_at_the_end6)
++        self.step("collect", self.collect)
++        self.tunnel.close()
++        verdicts = [s["verdict"] for s in self.steps]
++        result = {"schema": base.RESULT_SCHEMA, "cell_kind": CELL_KIND, "native_evidence": False,
++                  "cell": dataclasses.asdict(self.settings),
++                  "identity": {k: self.identity[k] for k in ("cell_id", "node", "vm_uuid")},
++                  "request_id": None, "provenance": {"what": "set15: 1636b73f0 installed fresh; no update"},
++                  "artifacts": {"baseline": {k: self.artifacts["baseline"][k] for k in ("version", "commit", "sha256")}},
++                  "outcome": {"classification": "set15-measured", "final_status": None},
++                  "setup": {"purpose": self.settings.purpose, "components": sorted(self.settings.components),
++                            "waiting": self.state.get("setup_waiting")},
++                  "browser": BROWSER[self.settings.name], "findings": self.state["findings"],
++                  "steps": [{k: s.get(k) for k in ("name", "verdict", "reason", "started_at", "finished_at")} for s in self.steps],
++                  "overall": base.overall(verdicts),
++                  "note": "set15: a measurement on the fresh install; no update is started and no P0 row is judged. "
++                          "The browser's own records (requests, card texts, pictures) are written on the host."}
++        self.step_dir = "result"
++        return self.ev.finalize_upd1(result)
++
++
++class Set15UpdateTrial(Readings15, s6.Set6UpdateTrial):
++    # borrowed as plain functions: set14's probe, set12's window and setup exit, set10's session check
++    native14 = t14.Set14Trial.native14
++    snap14 = t14.Set14Trial.snap14
++    s14 = t14.Set14Trial.s14
++    browser_window = s12.Set12Trial.browser_window
++    leave_setup = s12.Set12Trial.leave_setup
++    error_text = s12.Set12Mixin.error_text
++    ensure_session = s10.D031.ensure_session
++
++    def __init__(self, cell: Any, artifacts: dict, work_root: str, local_port: int) -> None:
++        super().__init__(cell, artifacts, work_root, local_port)
++        # set4/set5's PHP site (item 9) and mail (M10) sections are not part of this record (measured in set4/set5)
++        self.additions = {"item9": False, "m10": False}
++
++    def upload_helpers(self) -> dict:
++        helpers = super().upload_helpers()
++        # guest_set14_native.py loads its chain on the guest: set13 -> set12 -> set11 -> set10 -> set8 -> set4 ->
++        # request_identity (set5 uploads the last two only with its item 9 or M10, which this record does not run)
++        for name in ("guest_request_identity_native.py", "guest_set4_native.py", "guest_set8_native.py",
++                     "guest_set10_native.py", "guest_set11_native.py", "guest_set12_native.py", "guest_set13_native.py",
++                     t14.HELPER14):
++            helpers[name] = self.lab.put_file(self.root, self.record, self.plan, self.node_name, HERE / name, name)[1]
++        # the owner-update observer's closed set of labels gains (alpha.83, alpha.84): set15_fixture's copy
++        helpers["guest_bound_worker.py (set15 generated copy)"] = self.lab.put_file(
++            self.root, self.record, self.plan, self.node_name, fx15.bound_worker_copy(), "guest_bound_worker.py")[1]
++        return helpers
++
++    def prep(self, name: str) -> dict:
++        n = self.s14["prep_count"] = self.s14.get("prep_count", 0) + 1
++        if name == "probe":
++            return t14.compact_probe(self.snap14(f"probe-{n}", "read-probe14"))
++        if name == "journal":
++            since = int(float(self.s14.get("window_since") or time.time() - 3600)) - 1
++            result = self.guest("journalctl --no-pager -o short-iso-precise --since " + shlex.quote(f"@{since}") +
++                                " -u celikpanel-panel.service -u celikpanel-agent.service | tail -n 600", timeout=120)
++            name_ = f"{self.step_dir}/journal-window-{n}.txt"
++            self.ev.write_text(name_, result.stdout or "")
++            return {"file": name_, "lines": len((result.stdout or "").splitlines()), "returncode": result.returncode}
++        return {"unknown": name}
++
++    def step(self, name: str, function, *, needs: tuple = ()) -> str:
++        if name == "collect":
++            label = "after-the-update" if self.cell.variant == "good" else "after-the-return"
++            base.Trial.step(self, f"set15-readings-{label}", lambda checks: self.readings15(checks, label, 44),
++                            needs=("terminal",))
++            base.Trial.step(self, "set15-browser-window", lambda checks: self.window15(checks, self.cell.name, label),
++                            needs=("terminal",))
++        return super().step(name, function, needs=needs)
++
++
++def build_plan(name: str, artifacts: dict, work_root: str, local_port: int) -> dict:
++    plan = {"schema": "celikpanel/set15-plan/v1", "native_evidence": False, "cell": name, "work_root": work_root,
++            "local_port": local_port, "pinned_names": list(s6.PINNED_NAMES), "browser": BROWSER[name],
++            "preparations": list(PREPS),
++            "rule": "the driver calls only the Panel's HTTP API as the logged-in owner; every native fact is an SSH reading; "
++                    "owner actions on the guest are recorded as such; no certificate authority and no licence service is "
++                    "contacted by the driver"}
++    if name in CELLS:
++        settings = CELLS[name]
++        plan.update(cell_kind=CELL_KIND, candidate={k: artifacts["baseline"][k] for k in ("version", "commit", "sha256")},
++                    setup={"purpose": settings.purpose, "components": sorted(settings.components), "dns_mode": "external"},
++                    steps=[s6.PIN_STEP, "preflight", "origin", "baseline-install", "owner-login", "license", "setup",
++                           "set15-readings", "set15-browser-window", s6.PIN_END_STEP, "collect"])
++    else:
++        plan.update(cell_kind=UPDATE_KIND, baseline_ref=(artifacts.get("baseline_ref") or {}).get("ref"),
++                    update=s6.build_plan(name, artifacts, work_root, local_port),
++                    added_steps=["set15-readings-after-the-update|after-the-return", "set15-browser-window"],
++                    not_run=["set4-php-site-before/after-the-update (item 9)", "M10 (mail)"])
++    return plan
++
++
++def main(argv: list[str] | None = None) -> int:
++    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
++    sub = parser.add_subparsers(dest="command", required=True)
++    for name in ("plan", "run"):
++        cmd = sub.add_parser(name)
++        cmd.add_argument("--cell", required=True, choices=sorted(CELLS) + sorted(UPDATE_CELLS))
++        cmd.add_argument("--artifacts", required=True, type=Path)
++        cmd.add_argument("--work-root", required=True)
++        cmd.add_argument("--local-port", type=int, default=18443)
++        if name == "plan":
++            cmd.add_argument("--dry-run", action="store_true", help="validate the plan without any guest")
++        else:
++            cmd.add_argument("--execute", action="store_true")
++    args = parser.parse_args(argv)
++    base.validate_work_root(args.work_root)
++    if not 1024 < args.local_port < 65536:
++        parser.error("--local-port must be an unprivileged loopback port")
++    document = json.loads(args.artifacts.read_text())
++    labels = fx15.configure(document)
++    wanted = fx15.FRESH_REF if args.cell in CELLS else fx15.ALPHA83_REF
++    if labels.get("ref") != wanted:
++        parser.error(f"cell {args.cell} needs an artifacts document with baseline_ref {wanted}, not {labels.get('ref')}")
++    cell = CELLS[args.cell].cell if args.cell in CELLS else base.validate_cell(args.cell)
++    if args.command == "plan":
++        base.validate_cell_artifacts(document, cell, check_files=not args.dry_run)
++        print(json.dumps(build_plan(args.cell, document, args.work_root, args.local_port), indent=2, sort_keys=True))
++        return 0
++    if not args.execute:
++        parser.error("run mutates one registered disposable guest and requires --execute")
++    base.validate_cell_artifacts(document, cell)
++    if args.cell in CELLS:
++        result = Set15Trial(CELLS[args.cell], document, args.work_root, args.local_port).execute()
++    else:
++        result = Set15UpdateTrial(cell, document, args.work_root, args.local_port).execute()
++    print(json.dumps({"overall": result["overall"], "outcome": (result.get("outcome") or {}).get("classification"),
++                      "steps": {s["name"]: s["verdict"] for s in result["steps"]}}, sort_keys=True))
++    return 0 if result["overall"] != "failed" else 1
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+--- /dev/null
++++ b/deploy/e2e/release-recovery/build-set15-artifacts.sh
+@@ -0,0 +1,198 @@
++#!/usr/bin/env bash
++# set15: the archives of the pre-publication measurement of v0.1.0-alpha.84, built from one exact source commit in a
++# disposable clone. The same steps as build-set12-artifacts.sh (that script is not changed), in two modes:
++#
++#   --baseline-ref v0.1.0-alpha.83 SOURCE   (the update cells)
++#     B  baseline    the v0.1.0-alpha.83 tag's own commit (0447558e), unpatched: it carries the D-027 acceptance-
++#                    license seam and its guard (refused otherwise); its own policy (83, previous 82), its own web/.
++#     G  good        SOURCE ITSELF, no fixture commit: its committed release policy must already be exactly
++#                    v0.1.0-alpha.84 / 84, previous 83 = the tag commit (refused otherwise).
++#     D  defective   SOURCE + the fixture defect of set5: cmd/panel --migrate-only exits 1 after migrating the
++#                    isolated copy (owner_update_trial.apply_defect)
++#   --fresh SOURCE                          (the fresh-install cells)
++#     B  baseline    SOURCE ITSELF (the build that is installed), labelled by its own policy v0.1.0-alpha.84 / 84
++#     G  good        SOURCE + release policy v0.1.0-alpha.85 / 85 (previous = SOURCE): the origin's candidate only,
++#                    never installed by a fresh cell
++#     D  defective   G + the same fixture defect (never installed; the artifacts document needs it)
++#
++# The fixture driver is set15_fixture.py. Each commit is built with dns-pair-acceptance/scripts/build-dist.sh
++# --acceptance-license and CELIKPANEL_DIST_VERSION set to the committed policy's version. Output:
++# <stamp>/upd1-artifacts.json. None of these archives is a release. UPD1_REUSE_DIST_OF_COMMIT, as in
++# build-upd1-artifacts.sh, may name one commit whose dist an earlier build left (SOURCE's, for the second mode).
++#
++# usage: build-set15-artifacts.sh --baseline-ref v0.1.0-alpha.83 SOURCE_COMMIT
++#        build-set15-artifacts.sh --fresh SOURCE_COMMIT
++set -euo pipefail
++shopt -s inherit_errexit
++umask 022
++
++HERE=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
++REPO=${CELIKPANEL_REPO:-'<redacted> PROJECTS/celikpanel'}
++usage() { echo "usage: build-set15-artifacts.sh --baseline-ref v0.1.0-alpha.83 SOURCE_COMMIT | --fresh SOURCE_COMMIT" >&2; exit 2; }
++case ${1:-} in
++    --baseline-ref) [[ ${2:-} == v0.1.0-alpha.83 && $# -eq 3 ]] || usage; MODE=update; BASELINE_REF=$2; SOURCE=$3 ;;
++    --fresh) [[ $# -eq 2 ]] || usage; MODE=fresh; BASELINE_REF=v0.1.0-alpha.84; SOURCE=$2 ;;
++    *) usage ;;
++esac
++BUILD_DIST="$HERE/../dns-pair-acceptance/scripts/build-dist.sh"
++DRIVER="$HERE/set15_fixture.py"
++GUARD="$HERE/../../../deploy/release-acceptance-license-guard.sh"
++GO=${CELIKPANEL_GO:-/opt/celikpanel-test-toolchains/go1.26.5/go/bin/go}
++[[ -f $BUILD_DIST && -f $DRIVER ]] || { echo "harness files missing" >&2; exit 2; }
++command -v git >/dev/null && command -v python3 >/dev/null || { echo "git and python3 are required" >&2; exit 2; }
++
++source_commit=$(git -c safe.directory='*' -C "$REPO" rev-parse "${SOURCE}^{commit}")
++stamp=$(date -u +%Y%m%dt%H%M%Sz)
++work=/var/tmp/cp-upd1-build/$stamp
++[[ ! -e $work ]] || { echo "refusing to reuse $work" >&2; exit 2; }
++mkdir -p "$work"
++clone=$work/repo
++git -c safe.directory='*' clone --quiet --no-hardlinks "$REPO" "$clone"
++git -C "$clone" checkout --quiet --detach "$source_commit"
++git -C "$clone" config user.name "upd1 disposable fixture"
++git -C "$clone" config user.email "upd1-fixture@example.invalid"
++
++commit_fixture() {
++    local kind=$1 message=$2 previous=${3:-} commit
++    python3 "$DRIVER" fixture-source --repo "$clone" --kind "$kind" ${previous:+--previous-commit "$previous"} \
++        --baseline-ref "$BASELINE_REF" >&2
++    git -C "$clone" commit --quiet --allow-empty -am "$message"
++    commit=$(git -C "$clone" rev-parse HEAD)
++    git -C "$clone" update-ref "refs/upd1/$kind" "$commit"
++    echo "$commit"
++}
++
++build_web() {   # build web/ of the checked-out tree into $1
++    ( cd "$clone/web" && rm -rf dist && npm ci --no-audit --no-fund && npm run build ) >&2
++    [[ -f $clone/web/dist/index.html ]] || { echo "web build produced no index.html" >&2; exit 1; }
++    rm -rf -- "$1"
++    cp -a "$clone/web/dist" "$1"
++}
++
++use_web() {
++    rm -rf -- "$clone/web/dist"
++    cp -a "$1" "$clone/web/dist"
++}
++
++build() {
++    local commit=$1 version=$2 dist_json
++    dist_json=/var/tmp/cp-pair-accept/dist/$commit-acceptance-license/dist.json
++    if [[ -n ${UPD1_REUSE_DIST_OF_COMMIT:-} && ${UPD1_REUSE_DIST_OF_COMMIT} == "$commit" && -s $dist_json ]]; then
++        echo "BUILD-UPD1-REUSED: the dist of $commit ($version) at ${dist_json%/dist.json}, left by an earlier build, is" \
++            "used unchanged because UPD1_REUSE_DIST_OF_COMMIT names exactly this commit; it was NOT built by this run." >&2
++        echo "$dist_json"
++        return 0
++    fi
++    if ! CELIKPANEL_REPO=$clone CELIKPANEL_DIST_VERSION=$version CELIKPANEL_ACCEPTANCE_GUARD=$GUARD \
++        bash "$BUILD_DIST" --acceptance-license "$commit" >&2; then
++        echo "BUILD-UPD1-FAILED: the dist build of $commit ($version) failed or was refused." >&2
++        return 1
++    fi
++    [[ -s $dist_json ]] || { echo "BUILD-UPD1-FAILED: the dist build of $commit ($version) wrote no $dist_json" >&2; return 1; }
++    echo "$dist_json"
++}
++
++expected_policy() {   # version current previous previous_version previous_commit
++    printf 'format=celikpanel-release-sequence-policy-v1\nversion=%s\ncurrent=%s\nprevious=%s\nprevious_version=%s\nprevious_commit=%s\n' "$@"
++}
++
++proof=$work/baseline-ref-proof.txt
++if [[ $MODE == update ]]; then
++    tag_commit=$(git -C "$clone" rev-parse "${BASELINE_REF}^{commit}")
++    [[ $tag_commit == 0447558e956d4c02c7bf06b368def0924856f8fc ]] || { echo "$BASELINE_REF is not 0447558e" >&2; exit 1; }
++    for needed in internal/licensing/acceptance_fixture.go internal/licensing/acceptance_off.go \
++            deploy/release-acceptance-license-guard.sh; do
++        git -C "$clone" cat-file -e "$tag_commit:$needed" \
++            || { echo "$BASELINE_REF lacks $needed; it cannot be built unpatched" >&2; exit 1; }
++    done
++    [[ "$(git -C "$clone" show "$source_commit:deploy/release-sequence-policy")" == \
++       "$(expected_policy v0.1.0-alpha.84 84 83 v0.1.0-alpha.83 "$tag_commit")" ]] \
++        || { echo "the source's release policy is not v0.1.0-alpha.84 / 84 after $tag_commit; refusing" >&2; exit 1; }
++    baseline=$tag_commit
++    git -C "$clone" update-ref refs/upd1/baseline "$baseline"
++    git -C "$clone" update-ref refs/upd1/good "$source_commit"
++    {
++        echo "baseline-ref $BASELINE_REF tag_commit=$tag_commit baseline_fixture=$baseline (the tag commit itself) source=$source_commit"
++        echo "== release policy at the tag"
++        git -C "$clone" show "$tag_commit:deploy/release-sequence-policy"
++        echo "== release policy at the source (the good candidate, no fixture commit)"
++        git -C "$clone" show "$source_commit:deploy/release-sequence-policy"
++        git -C "$clone" checkout --quiet --detach "$tag_commit"
++        ( cd "$clone" && GOTOOLCHAIN=local GOFLAGS=-mod=readonly "$GO" list -deps ./cmd/agent ) > "$work/agent-deps.txt"
++        echo "== Agent package closure at the baseline (go list -deps ./cmd/agent, $(wc -l < "$work/agent-deps.txt") packages): licensing packages"
++        grep -c '/internal/licensing' "$work/agent-deps.txt" || true
++    } > "$proof"
++    [[ $(tail -n 1 "$proof") == 0 ]] || { echo "the Agent package closure includes the licensing seam; see $proof" >&2; exit 1; }
++    build_web "$work/web-dist-baseline"
++    git -C "$clone" checkout --quiet --detach "$source_commit"
++    build_web "$work/web-dist-candidate"
++    good=$source_commit
++    defective=$(commit_fixture defective "test(fixture): set15 defective candidate - migrate-only fails (unpublished, disposable)")
++    [[ -z $(git -C "$clone" diff --stat "$source_commit" "$defective" -- web) ]] || { echo "fixture commit changed web/" >&2; exit 1; }
++    use_web "$work/web-dist-baseline"
++    b_json=$(build "$baseline" "$BASELINE_REF")
++    use_web "$work/web-dist-candidate"
++    g_json=$(build "$good" v0.1.0-alpha.84)
++    d_json=$(build "$defective" v0.1.0-alpha.84)
++    seq_b=83 seq_c=84 cand_version=v0.1.0-alpha.84
++else
++    previous_tag=$(git -C "$clone" rev-parse "v0.1.0-alpha.83^{commit}")
++    [[ "$(git -C "$clone" show "$source_commit:deploy/release-sequence-policy")" == \
++       "$(expected_policy v0.1.0-alpha.84 84 83 v0.1.0-alpha.83 "$previous_tag")" ]] \
++        || { echo "the source's release policy is not v0.1.0-alpha.84 / 84 after alpha.83; refusing" >&2; exit 1; }
++    tag_commit=$source_commit
++    baseline=$source_commit
++    git -C "$clone" update-ref refs/upd1/baseline "$baseline"
++    {
++        echo "fresh: baseline = the source commit itself $source_commit (its own policy, below); not a tag"
++        git -C "$clone" show "$source_commit:deploy/release-sequence-policy"
++        ( cd "$clone" && GOTOOLCHAIN=local GOFLAGS=-mod=readonly "$GO" list -deps ./cmd/agent ) > "$work/agent-deps.txt"
++        echo "== Agent package closure at the baseline (go list -deps ./cmd/agent, $(wc -l < "$work/agent-deps.txt") packages): licensing packages"
++        grep -c '/internal/licensing' "$work/agent-deps.txt" || true
++    } > "$proof"
++    [[ $(tail -n 1 "$proof") == 0 ]] || { echo "the Agent package closure includes the licensing seam; see $proof" >&2; exit 1; }
++    build_web "$work/web-dist-candidate"
++    good=$(commit_fixture good "test(fixture): set15 origin candidate labelled v0.1.0-alpha.85 (unpublished, disposable)" "$baseline")
++    defective=$(commit_fixture defective "test(fixture): set15 defective over the alpha.85 label - migrate-only fails (unpublished, disposable)")
++    [[ -z $(git -C "$clone" diff --stat "$source_commit" "$defective" -- web) ]] || { echo "fixture commit changed web/" >&2; exit 1; }
++    use_web "$work/web-dist-candidate"
++    b_json=$(build "$baseline" v0.1.0-alpha.84)
++    g_json=$(build "$good" v0.1.0-alpha.85)
++    d_json=$(build "$defective" v0.1.0-alpha.85)
++    seq_b=84 seq_c=85 cand_version=v0.1.0-alpha.85
++fi
++
++python3 - "$work/upd1-artifacts.json" "$source_commit" "$clone" "$b_json" "$g_json" "$d_json" \
++    "$baseline" "$good" "$BASELINE_REF" "$tag_commit" "$proof" "$seq_b" "$seq_c" "$cand_version" "$MODE" <<'PY'
++import json, os, sys
++out, head, clone, b, g, d, baseline, good, ref, tag, proof, seq_b, seq_c, cand, mode = sys.argv[1:]
++def item(path, sequence, parent=None):
++    value = json.load(open(path))
++    entry = {k: value[k] for k in ("archive", "sha256", "commit", "tree", "version", "product_web_src")}
++    entry.update(sequence=sequence, license_mode=value.get("license_mode"), dist_json=path)
++    if parent:
++        entry["parent"] = parent
++    return entry
++document = {"schema": "celikpanel/upd1-artifacts/v1", "source_head": head, "clone": clone,
++            "baseline": item(b, int(seq_b)), "good": item(g, int(seq_c), baseline), "defective": item(d, int(seq_c), good)}
++document["defective"]["defect"] = "cmd/panel --migrate-only exits 1 after migrating the isolated copy"
++for role in ("baseline", "good", "defective"):
++    if os.environ.get("UPD1_REUSE_DIST_OF_COMMIT") == document[role]["commit"]:
++        document[role]["reused_dist"] = "built by an earlier run, used unchanged (UPD1_REUSE_DIST_OF_COMMIT)"
++document["baseline_ref"] = {"ref": ref, "tag_commit": tag, "patched_files": [], "proof": proof}
++if mode == "update":
++    document["provenance"] = (f"set15 update: baseline the {ref} tag's own commit ({tag}) unchanged (it carries the "
++                              f"acceptance-license seam); good: the source commit {head} itself, labelled {cand} by its "
++                              "own policy; defective: an unpublished disposable fixture commit over it; acceptance-license "
++                              "panels; signed only by the per-lab fixture key at run time; not a release")
++else:
++    document["provenance"] = (f"set15 fresh: baseline (installed) the source commit {head} itself labelled {ref} by its own "
++                              f"policy (the profile name is a label, not a published tag); good/defective: unpublished "
++                              f"disposable fixture commits labelled {cand}, served by the origin only; acceptance-license "
++                              "panels; not a release")
++with open(out, "x") as handle:
++    json.dump(document, handle, indent=2, sort_keys=True)
++    handle.write("\n")
++print(out)
++PY
++echo UPD1-ARTIFACTS-OK
+--- /dev/null
++++ b/deploy/e2e/release-recovery/run-set15.sh
+@@ -0,0 +1,57 @@
++#!/usr/bin/env bash
++# set15 wrapper for the Linux QEMU host (archlinux), run as root: the pre-publication measurement of v0.1.0-alpha.84
++# (commit 1636b73f0) on disposable guests: installed fresh (cells set15-*) and reached by the owner's update from
++# alpha.83 rebuilt from its tag (cells upd1-debian13-good, upd1-debian13-defective).
++#
++#   run-set15.sh dry-run CELL ARTIFACTS_JSON LAB_NAME
++#       Validate the plan without any guest (no lab is created).
++#   run-set15.sh cell CELL ARTIFACTS_JSON LAB_NAME SSH_PORT [LOCAL_PORT]
++#       Prepare and start a NEW lab /var/tmp/cp-release-drill-LAB_NAME, run the one cell on its node, then
++#       stop the lab (disks and evidence retained).
++#
++# CELL: set15-debian13 | set15-ubuntu | set15-arch   (ARTIFACTS_JSON from `build-set15-artifacts.sh --fresh SOURCE`)
++#       upd1-debian13-<good|defective>  (ARTIFACTS_JSON from `build-set15-artifacts.sh --baseline-ref v0.1.0-alpha.83 SOURCE`)
++# One cell per new lab. SET15_NEIGHBOUR_GATE and then SET15_DISK_GATE, when set, are programs that must exit 0
++# immediately before the guests are started; otherwise no guest is started. SET12_HAND, when set, opens the browser
++# window (set15_trial.py's handover, under $SET12_RUN_ROOT/hand).
++set -euo pipefail
++HERE=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
++IMAGES=${UPD1_IMAGE_CACHE:-/var/tmp/cp-v3n28/images}
++LAB=(python3 "$HERE/lab.py")
++DRIVER=(python3 "$HERE/set15_trial.py")
++
++usage() { sed -n '2,16p' "${BASH_SOURCE[0]}" >&2; exit 2; }
++[[ $# -ge 1 ]] || usage
++command=$1; shift
++case $command in
++    dry-run)
++        [[ $# -eq 3 ]] || usage
++        exec "${DRIVER[@]}" plan --cell "$1" --artifacts "$2" --work-root "/var/tmp/cp-release-drill-$3" --dry-run
++        ;;
++    cell)
++        [[ $# -ge 4 && $# -le 5 ]] || usage
++        cell=$1 artifacts=$2 name=$3 port=$4 local_port=${5:-18443}
++        [[ $EUID -eq 0 ]] || { echo "run as root (fixture signing keys are root-only)" >&2; exit 2; }
++        root=/var/tmp/cp-release-drill-$name
++        [[ ! -e $root ]] || { echo "lab $root exists; every cell needs a NEW lab" >&2; exit 2; }
++        "${DRIVER[@]}" plan --cell "$cell" --artifacts "$artifacts" --work-root "$root" > /dev/null
++        platform=debian13-arch
++        [[ $cell != set15-ubuntu ]] || platform=ubuntu
++        "${LAB[@]}" prepare --work-root "$root" --image-cache "$IMAGES" --ssh-port "$port" --platform "$platform" --execute
++        if [[ -n ${SET15_NEIGHBOUR_GATE:-} ]]; then
++            bash "$SET15_NEIGHBOUR_GATE" "$cell $name" || { echo "SET15 cell=$cell lab=$root NOT STARTED: another measurement's guest is running" >&2; exit 75; }
++        fi
++        if [[ -n ${SET15_DISK_GATE:-} ]]; then
++            bash "$SET15_DISK_GATE" "$cell $name (guest start)" || { echo "SET15 cell=$cell lab=$root NOT STARTED: the disk gate refused the guest start" >&2; exit 75; }
++        fi
++        "${LAB[@]}" start --work-root "$root" --execute
++        "${LAB[@]}" status --work-root "$root"
++        status=0
++        "${DRIVER[@]}" run --cell "$cell" --artifacts "$artifacts" --work-root "$root" --local-port "$local_port" \
++            --execute || status=$?
++        "${LAB[@]}" stop --work-root "$root" --execute || true
++        echo "SET15 cell=$cell lab=$root driver_exit=$status evidence=$root/evidence/*/upd1"
++        exit "$status"
++        ;;
++    *) usage ;;
++esac
+--- /dev/null
++++ b/deploy/e2e/release-recovery/test_set15_trial.py
+@@ -0,0 +1,131 @@
++"""Offline tests of set15_fixture's profiles and generated copies and of set15_trial's plan (no guest, no network).
++
++set15_fixture changes owner_update_trial's module state in its own process (two more profiles, the origin module it
++loads, the provenance text, set6's expected header); these tests import it only inside their class and put that state
++back afterwards, so the other offline tests see owner_update_trial as it is.
++"""
++from __future__ import annotations
++
++import importlib
++import os
++from pathlib import Path
++import sys
++import tempfile
++import unittest
++
++HERE = Path(__file__).resolve().parent
++sys.path.insert(0, str(HERE))
++import owner_update_trial as out  # noqa: E402
++
++LABEL_GLOBALS = ("BASELINE_VERSION", "BASELINE_SEQUENCE", "CANDIDATE_VERSION", "CANDIDATE_SEQUENCE", "LABEL_REF",
++                 "LEDGER_AFTER_UPDATE", "LEDGER_AFTER_RETURN", "provenance_for")
++
++
++class Set15Tests(unittest.TestCase):
++    @classmethod
++    def setUpClass(cls):
++        import set6_trial as s6
++        cls.s6 = s6
++        cls.saved = (dict(out._MODULES), dict(out.BASELINE_REFS), {k: getattr(out, k) for k in LABEL_GLOBALS},
++                     sys.modules.get("upd1_worker_fixture_origin"), os.environ.get("SET12_RUN_ROOT"), s6.HSTS_ALPHA81)
++        cls.tmp = tempfile.TemporaryDirectory(prefix="set15-test-")
++        os.environ["SET12_RUN_ROOT"] = cls.tmp.name
++        out._MODULES.pop("upd1_worker_fixture_origin", None)
++        for name in ("set12_fixture", "set15_fixture"):
++            sys.modules.pop(name, None)
++        cls.fx = importlib.import_module("set15_fixture")
++        cls.t = importlib.import_module("set15_trial")
++
++    @classmethod
++    def tearDownClass(cls):
++        modules, refs, labels, origin, root, hsts = cls.saved
++        out.configure_labels(None)
++        out._MODULES.clear()
++        out._MODULES.update(modules)
++        out.BASELINE_REFS.clear()
++        out.BASELINE_REFS.update(refs)
++        for key, value in labels.items():
++            setattr(out, key, value)
++        cls.s6.HSTS_ALPHA81 = hsts
++        for name in ("set12_fixture", "set15_fixture"):
++            sys.modules.pop(name, None)   # a later test module imports set12_fixture afresh (its install runs again)
++        if origin is None:
++            sys.modules.pop("upd1_worker_fixture_origin", None)
++        else:
++            sys.modules["upd1_worker_fixture_origin"] = origin
++        if root is None:
++            os.environ.pop("SET12_RUN_ROOT", None)
++        else:
++            os.environ["SET12_RUN_ROOT"] = root
++        cls.tmp.cleanup()
++
++    def test_profiles_are_added(self):
++        a83 = out.BASELINE_REFS["v0.1.0-alpha.83"]
++        self.assertEqual((a83["commit"], a83["baseline"], a83["candidate"]),
++                         (self.fx.ALPHA83_COMMIT, ("v0.1.0-alpha.83", 83), ("v0.1.0-alpha.84", 84)))
++        fresh = out.BASELINE_REFS["v0.1.0-alpha.84"]
++        self.assertEqual((fresh["commit"], fresh["baseline"], fresh["candidate"]),
++                         (self.fx.SOURCE_COMMIT, ("v0.1.0-alpha.84", 84), ("v0.1.0-alpha.85", 85)))
++        self.assertTrue(a83["unpatched"] and fresh["unpatched"])
++        self.assertIn("v0.1.0-alpha.82", out.BASELINE_REFS)
++
++    def test_origin_copy_adds_the_three_transitions(self):
++        origin = out._MODULES[self.fx.fx12.ORIGIN_NAME]
++        self.assertEqual(list(origin.RELEASE_POLICIES[-3:]), [self.fx.POLICY_83, self.fx.POLICY_84, self.fx.POLICY_85])
++        for policy in (self.fx.POLICY_84, self.fx.POLICY_85):
++            self.assertTrue(origin.allowed_policy(dict(policy)))
++        self.assertFalse(origin.allowed_policy({"version": "v0.1.0-alpha.86", "current": 86, "previous": 85,
++                                                "previous_version": "v0.1.0-alpha.85"}))
++        self.assertTrue(str(Path(origin.__file__)).startswith(self.tmp.name))
++
++    def test_bound_worker_copy_adds_the_pair(self):
++        text = self.fx.bound_worker_copy().read_text()
++        self.assertIn("('v0.1.0-alpha.83', 'v0.1.0-alpha.84')", text)
++        self.assertEqual(text.count("pairs = ("), 1)
++
++    def test_configure_alpha83(self):
++        labels = self.fx.configure({"baseline_ref": {"ref": "v0.1.0-alpha.83", "tag_commit": self.fx.ALPHA83_COMMIT}})
++        self.assertEqual(labels["candidate"], ("v0.1.0-alpha.84", 84))
++        self.assertEqual((out.LEDGER_AFTER_UPDATE, out.LEDGER_AFTER_RETURN), (44, 44))
++        self.assertEqual(self.s6.HSTS_ALPHA81, "max-age=31536000")
++
++    def test_fresh_provenance_names_the_source(self):
++        self.fx.configure({"baseline_ref": {"ref": "v0.1.0-alpha.84", "tag_commit": self.fx.SOURCE_COMMIT}})
++        text = out.provenance_for("good")["baseline"]
++        self.assertIn(self.fx.SOURCE_COMMIT, text)
++        self.assertNotIn("published-tag", text)
++
++    def test_brief_body(self):
++        body = {"scanned_at": "x", "scan_age_seconds": 12, "services": [1, 2, 3]}
++        self.assertEqual(self.t.brief_body("/api/v1/managed-services", body),
++                         {"scanned_at": "x", "scan_age_seconds": 12, "services_count": 3,
++                          "keys": ["scan_age_seconds", "scanned_at", "services"]})
++        self.assertEqual(self.t.brief_body("/api/v1/domains", [])["rows"], 0)
++        self.assertEqual(self.t.brief_body("/api/v1/panel/version", {"version": "v"}), {"version": "v"})
++
++    def test_guest_helper_chain_is_uploaded(self):
++        """guest_set14_native.py loads guest_set13 ... guest_set4 and guest_request_identity on the guest (set15's update
++        cell stopped at its first probe: run a without guest_set13_native.py, run b without guest_set4_native.py, which
++        set5 uploads only with its item 9 or M10)."""
++        import re
++        source = (HERE / "set15_trial.py").read_text()
++        chain, name = [], "guest_set14_native.py"
++        while True:
++            found = re.findall(r'_load\("(guest_[a-z0-9_]+\.py)"\)', (HERE / name).read_text())
++            if not found:
++                break
++            name = found[0]
++            chain.append(name)
++        self.assertEqual(chain[-1], "guest_request_identity_native.py")
++        for name in chain:
++            self.assertIn(f'"{name}"', source)
++
++    def test_cells(self):
++        self.assertEqual(sorted(self.t.CELLS), ["set15-arch", "set15-debian13", "set15-ubuntu"])
++        self.assertEqual({c.purpose for c in self.t.CELLS.values()}, {"web"})
++        self.assertTrue(set(self.t.UPDATE_CELLS) <= set(out.CELLS))
++        self.assertTrue(set(self.t.CELLS) | set(self.t.UPDATE_CELLS) <= set(self.t.BROWSER))
++
++
++if __name__ == "__main__":
++    unittest.main()
+--- /dev/null
++++ b/web/tools/browser-inspect/cold-load-set15.mjs
+@@ -0,0 +1,642 @@
++// node cold-load-set15.mjs <handover-dir> <out-dir> <cell[,cell...]>
++// set15 (2026-10-13): the pre-publication measurement of v0.1.0-alpha.84 (commit 1636b73f0). A real headless Chrome
++// against a REAL CelikPanel on a disposable lab guest, reached through the lab driver's loopback SSH forward
++// (deploy/e2e/release-recovery/set15_trial.py, set12's browser window "ui"), after a fresh install or after the
++// owner's update (or its automatic return). Nothing but the loopback address of the forward is opened. The recording
++// is cold-load-set14c.mjs's, copied (every /api/ request with its times; the answers of GET /api/v1/managed-services,
++// POST /api/v1/managed-services/scan and GET /api/v1/license/access), plus the bodies of GET /api/v1/domains and
++// GET /api/v1/panel/version.
++//
++//   cells: ui    phases, in this order:
++//                sign-in       the owner signs in (password from the root-only file the driver names)
++//                domains       the Domains list (desktop): page text, picture, whether the first-state ("adoption") row
++//                              is shown; the sidebar's text and a picture of the sidebar (its footer stamp is the
++//                              version line)
++//                dashboard     the stored scan older than 315 s (probe); one Dashboard load, 90 s: the scan POSTs,
++//                              the card's states, whether "Open Components to rescan" appears at any time
++//                components    the Components page, 30 s, right after the Dashboard's scan (no POST expected: the
++//                              page asks only when the stored scan is older than 300 s); then the stored scan older
++//                              than 315 s (probe) and the Components page again, 30 s: its conditional POST and answer
++//                reads         three direct reads in a page that is not the app: /api/v1/panel/version,
++//                              /api/v1/license/access, /api/v1/managed-services (bodies recorded)
++//          done  writes done.json
++//
++//   BROWSER_INSPECT_MODULES  directory whose node_modules holds puppeteer-core (required; outside the repository)
++//   CHROME_PATH              the installed Chrome (default: the usual Windows/Linux places)
++//   LIVE_PROFILE_ROOT        a short directory for the browser profile (profile-dir.mjs; refused beyond 120 characters)
++//
++// Pictures are never taken of a page while it is hidden. The owner's password is read from the root-only file the
++// driver names and typed into the sign-in form; every text this script writes is passed through the redaction list of
++// that file first. Cookies are never read.
++import { createHash } from 'node:crypto';
++import { existsSync, readFileSync } from 'node:fs';
++import { appendFile, mkdir, writeFile } from 'node:fs/promises';
++import { createRequire } from 'node:module';
++import { join, resolve } from 'node:path';
++import { connect as tlsConnect } from 'node:tls';
++import { pathToFileURL } from 'node:url';
++import { shortProfileDir } from './profile-dir.mjs';
++
++if (!process.env.BROWSER_INSPECT_MODULES) { console.error('Set BROWSER_INSPECT_MODULES (see README.md).'); process.exit(2); }
++const requireFrom = createRequire(pathToFileURL(join(resolve(process.env.BROWSER_INSPECT_MODULES), 'package.json')));
++const loaded = await import(pathToFileURL(requireFrom.resolve('puppeteer-core')).href);
++const puppeteer = [loaded.default?.default, loaded.default, loaded].find(item => typeof item?.launch === 'function');
++const chrome = process.env.CHROME_PATH || ['C:/Program Files/Google/Chrome/Application/chrome.exe', '/usr/bin/google-chrome', '/usr/bin/chromium'].find(candidate => existsSync(candidate));
++if (!chrome) { console.error('No installed Chrome found. Set CHROME_PATH.'); process.exit(2); }
++
++const [handDir, outRoot, cellsArg = 'ui,done'] = process.argv.slice(2);
++if (!handDir || !outRoot) { console.error('usage: node cold-load-set15.mjs <handover-dir> <out-dir> <cells>'); process.exit(2); }
++const cells = cellsArg.split(',');
++const hand = JSON.parse(readFileSync(join(handDir, 'ready.json'), 'utf8'));
++const port = Number(hand.local_port);
++if (!(port > 1024 && port < 65536)) throw new Error('bad port in the handover file');
++const base = `https://127.0.0.1:${port}`;
++const wslShare = process.env.LIVE_WSL_SHARE || '//wsl.localhost/archlinux';
++const secretPath = process.platform === 'win32' ? wslShare + hand.password_file : hand.password_file;
++const pause = ms => new Promise(done => setTimeout(done, ms));
++const iso = (ms = Date.now()) => new Date(ms).toISOString();
++const DESKTOP = { width: 1440, height: 900, deviceScaleFactor: 1 };
++const PHONE = { width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true };
++const LANG = hand.browser?.lang === 'tr' ? 'tr' : 'en';
++const OTHER_LANG = LANG === 'tr' ? 'en' : 'tr';
++const VIEWPORT_NAME = hand.browser?.viewport === 'phone' ? 'phone' : 'desktop';
++const VIEWPORT = VIEWPORT_NAME === 'phone' ? PHONE : DESKTOP;
++const WINDOW_S = 300;
++const STALE_S = 315;
++// The card's own strings (web/src/i18n, commit 68b79b372), to name what the card says.
++const TEXT = {
++    label: { en: 'System services', tr: 'Sistem servisleri' },
++    scanNow: { en: 'Scan services', tr: 'Servisleri tara' },
++    states: [
++        ['checking', /Checking components|Bileşenler kontrol ediliyor/],
++        ['held', /A change is in progress|Bir değişiklik sürüyor/],
++        ['failed', /Could not check:|Kontrol edilemedi:/],
++        ['not-recent', /Not checked in the last 5 minutes|Son 5 dakikada kontrol edilmedi/],
++        ['never', /Not checked yet|Henüz bakılmadı/],
++        ['known', /\d+\s*\/\s*\d+/],
++    ],
++};
++const stateOf = text => { if (!text) return 'absent'; for (const [name, re] of TEXT.states) if (re.test(text)) return name; return 'other'; };
++
++let secret = null;
++const redactions = () => [secret?.password, ...(secret?.redact || [])].filter(value => typeof value === 'string' && value.length >= 6);
++const redact = text => { let out = String(text ?? ''); for (const value of redactions()) out = out.split(value).join('[REDACTED]'); return out; };
++const jsonl = async (file, value) => appendFile(file, redact(JSON.stringify(value)) + '\n');
++
++function leafOf() {
++    return new Promise((done, fail) => {
++        const socket = tlsConnect({ host: '127.0.0.1', port, rejectUnauthorized: false, servername: 'localhost' }, () => {
++            const cert = socket.getPeerX509Certificate();
++            socket.end();
++            if (!cert) return fail(new Error('no peer certificate'));
++            const spki = cert.publicKey.export({ type: 'spki', format: 'der' });
++            done({ leaf_sha256: createHash('sha256').update(cert.raw).digest('hex'), spki_sha256_base64: createHash('sha256').update(spki).digest('base64') });
++        });
++        socket.setTimeout(8000, () => { socket.destroy(); fail(new Error('timeout')); });
++        socket.on('error', fail);
++    });
++}
++
++const leaf = await leafOf();
++await mkdir(outRoot, { recursive: true });
++await writeFile(join(outRoot, `leaf-${Date.now()}.json`), JSON.stringify({ at: iso(), ...leaf, handover_leaf_sha256: hand.tls_leaf_sha256 }, null, 2));
++secret = JSON.parse(readFileSync(secretPath, 'utf8'));
++const profile = shortProfileDir(outRoot);
++const browser = await puppeteer.launch({
++    executablePath: chrome, headless: true, userDataDir: profile,
++    args: ['--no-first-run', '--no-default-browser-check', '--disable-background-networking', '--disable-component-update',
++        '--disable-sync', '--disable-domain-reliability', '--force-color-profile=srgb', `--ignore-certificate-errors-spki-list=${leaf.spki_sha256_base64}`],
++});
++
++// -- recording -------------------------------------------------------------------------------------------------------
++
++let phase = 'start';
++let dir = outRoot;
++const requests = [];   // every /api/ request of every page, in memory for the phase summaries
++const phases = [];
++const front = { page: null };
++
++// In the page, read only: the card's text every 100 ms and every visibility change.
++const CARD_LOGGER = `(() => {
++    const labels = ${JSON.stringify(Object.values(TEXT.label))};
++    window.__set14card = []; let last = null;
++    const find = () => {
++        for (const s of document.querySelectorAll('span.font-medium')) {
++            if (labels.includes((s.textContent || '').trim())) { const c = s.closest('section[role="status"], button'); if (c) return c; }
++        }
++        return null;
++    };
++    window.__set14find = find;
++    const tick = () => {
++        const c = find();
++        const text = c ? c.innerText.replace(/\\s+/g, ' ').trim() : null;
++        const key = text + '|' + document.visibilityState;
++        if (key !== last) { last = key; window.__set14card.push({ t: Date.now(), text, tag: c ? c.tagName : null, busy: c ? c.getAttribute('aria-busy') : null, vis: document.visibilityState, path: location.pathname }); }
++    };
++    setInterval(tick, 100);
++    window.__set14toast = []; const toastSeen = new Set();
++    const toasts = () => {
++        for (const a of document.querySelectorAll('[role="alert"]')) {
++            const text = (a.innerText || '').replace(/\\s+/g, ' ').trim();
++            if (text && !toastSeen.has(text)) { toastSeen.add(text); window.__set14toast.push({ t: Date.now(), text, path: location.pathname }); }
++        }
++    };
++    const watch = () => { if (!document.documentElement) return setTimeout(watch, 10); new MutationObserver(() => { tick(); toasts(); }).observe(document.documentElement, { subtree: true, childList: true, characterData: true }); };
++    watch();
++    document.addEventListener('visibilitychange', () => { window.__set14card.push({ t: Date.now(), ev: 'visibility', vis: document.visibilityState }); tick(); });
++})();`;
++
++async function newPage(label, lang = LANG, vp = VIEWPORT_NAME) {
++    const page = await browser.newPage();
++    page.__label = label;
++    page.__lang = lang;
++    page.__vp = vp === 'phone' ? 'phone' : 'desktop';
++    await page.setViewport(page.__vp === 'phone' ? PHONE : DESKTOP);
++    await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'light' }]);
++    await page.evaluateOnNewDocument(value => { try { localStorage.setItem('celikpanel.lang', value); localStorage.setItem('celikpanel.theme', 'light'); } catch { /* none */ } }, lang);
++    await page.evaluateOnNewDocument(CARD_LOGGER);
++    const started = new Map();
++    page.on('request', req => { if (req.url().includes('/api/')) started.set(req, Date.now()); });
++    const finish = async (req, failed) => {
++        if (!req.url().includes('/api/')) return;
++        const t0 = started.get(req) ?? Date.now();
++        started.delete(req);
++        const t1 = Date.now();
++        const res = failed ? null : req.response();
++        const entry = { page: label, phase, method: req.method(), url: req.url().replace(base, ''), status: res ? res.status() : null,
++            start: iso(t0), end: iso(t1), start_ms: t0, end_ms: t1, ms: t1 - t0 };
++        if (failed) entry.error = req.failure()?.errorText;
++        const scanRead = req.method() === 'GET' && entry.url.split('?')[0] === '/api/v1/managed-services';
++        const scanPost = req.method() === 'POST' && entry.url.startsWith('/api/v1/managed-services/scan');
++        if (res && (scanRead || scanPost)) {
++            try {
++                const text = await res.text();
++                const body = JSON.parse(text);
++                const age = body && Object.prototype.hasOwnProperty.call(body, 'scan_age_seconds') ? body.scan_age_seconds : undefined;
++                entry.answer = { code: body?.code ?? null, scanned_at: body?.scanned_at ?? null,
++                    scan_age_seconds: age === undefined ? '<absent>' : age,
++                    scan_age_seconds_type: age === undefined ? 'absent' : age === null ? 'null' : typeof age,
++                    services: Array.isArray(body?.services) ? body.services.length : null,
++                    error: typeof body?.error === 'string' ? body.error.slice(0, 600) : null,
++                    message: typeof body?.message === 'string' ? body.message.slice(0, 600) : null };
++                // The server's own clock at the answer is scanned_at + scan_age_seconds; it lies between this
++                // request's start and end on this browser's clock, so the guest-minus-browser offset is bounded.
++                if (typeof body?.scanned_at === 'string' && typeof age === 'number' && Number.isFinite(Date.parse(body.scanned_at))) {
++                    const serverNow = Date.parse(body.scanned_at) + age * 1000;
++                    entry.answer.server_now = iso(serverNow);
++                    entry.answer.guest_minus_browser_ms = { low: Math.round(serverNow - t1), high: Math.round(serverNow - t0) };
++                }
++                if (!res.ok()) {
++                    entry.answer.body = text.slice(0, 3000);
++                    entry.answer.body_mentions_socket = /agent\.sock|\/run\/celikpanel|dial unix|connect:/i.test(text);
++                }
++            } catch (error) { entry.answer = { unreadable: String(error.message).slice(0, 120) }; }
++        }
++        const path0 = entry.url.split('?')[0];
++        if (res && req.method() === 'GET' && path0 === '/api/v1/license/access') {
++            try {
++                const body = JSON.parse(await res.text());
++                const vf = body && Object.prototype.hasOwnProperty.call(body, 'valid_for_seconds') ? body.valid_for_seconds : undefined;
++                entry.access = { can_use_panel: body?.can_use_panel, valid_until: body?.valid_until,
++                    valid_for_seconds: vf === undefined ? '<absent>' : vf, valid_for_seconds_type: vf === undefined ? 'absent' : vf === null ? 'null' : typeof vf,
++                    state: body?.state, observation: body?.observation, keys: Object.keys(body || {}).sort(), sent: iso(t0), received: iso(t1) };
++                if (Number.isSafeInteger(body?.valid_until)) {
++                    // The page's deadline (accessObservation.ts): the moment it asked plus valid_for_seconds; the old
++                    // rule compared valid_until (the server's clock) with this browser's clock.
++                    entry.access.valid_until_iso = iso(body.valid_until * 1000);
++                    entry.access.old_rule_accepts_at_receipt = body.valid_until * 1000 > t1;
++                    if (typeof vf === 'number' && Number.isFinite(vf)) {
++                        entry.access.browser_deadline = iso(t0 + vf * 1000);
++                        entry.access.old_rule_deadline_minus_new_ms = Math.round(body.valid_until * 1000 - (t0 + vf * 1000));
++                        if (vf > 0) {
++                            const serverNow = body.valid_until * 1000 - vf * 1000;
++                            entry.access.server_now = iso(serverNow);
++                            entry.access.guest_minus_browser_ms = { low: Math.round(serverNow - t1), high: Math.round(serverNow - t0) };
++                        }
++                    }
++                }
++            } catch (error) { entry.access = { unreadable: String(error.message).slice(0, 120) }; }
++        }
++        if (res && req.method() === 'GET' && ['/api/v1/firewall', '/api/v1/system/check'].includes(path0)) {
++            entry.agent_read = { ok: res.ok() };
++            if (!res.ok()) {
++                try {
++                    const text = await res.text();
++                    let body = null; try { body = JSON.parse(text); } catch { /* not JSON */ }
++                    entry.agent_read = { ok: false, code: body?.code ?? null, error: typeof body?.error === 'string' ? body.error.slice(0, 600) : null,
++                        keys: body && typeof body === 'object' ? Object.keys(body).sort() : null, body: text.slice(0, 3000),
++                        body_mentions_socket: /agent\.sock|\/run\/celikpanel|dial unix|connect:/i.test(text) };
++                } catch (error) { entry.agent_read = { ok: false, unreadable: String(error.message).slice(0, 120) }; }
++            }
++        }
++        if (res && req.method() === 'GET' && ['/api/v1/domains', '/api/v1/panel/version'].includes(path0)) {
++            try { entry.body = (await res.text()).slice(0, 3000); } catch (error) { entry.body_unreadable = String(error.message).slice(0, 120); }
++        }
++        requests.push(entry);
++        await jsonl(join(dir, 'requests.jsonl'), entry);
++    };
++    page.on('requestfinished', req => void finish(req, false));
++    page.on('requestfailed', req => void finish(req, true));
++    page.on('console', message => { if (['error', 'warn', 'warning'].includes(message.type())) void jsonl(join(dir, 'console.jsonl'), { at: iso(), page: label, phase, type: message.type(), text: message.text().slice(0, 400) }); });
++    return page;
++}
++
++async function toFront(page) { await page.bringToFront(); front.page = page; await pause(300); }
++
++const cardRows = [];
++const toastRows = [];
++async function cardLog(page) {
++    const rows = await page.evaluate(() => (window.__set14card || []).splice(0)).catch(() => []);
++    for (const row of rows) {
++        const value = { page: page.__label, lang: page.__lang, phase, at: iso(row.t), ...row, state: row.text === undefined ? undefined : stateOf(row.text) };
++        cardRows.push(value);
++        await jsonl(join(dir, 'cardlog.jsonl'), value);
++    }
++    const toasts = await page.evaluate(() => (window.__set14toast || []).splice(0)).catch(() => []);
++    for (const row of toasts) {
++        const value = { page: page.__label, lang: page.__lang, phase, at: iso(row.t), ...row };
++        toastRows.push(value);
++        await jsonl(join(dir, 'toasts.jsonl'), value);
++    }
++    return rows;
++}
++
++// The card's states of one page in this phase, in order, each with how long it lasted (to the next change).
++function sequenceOf(label, name) {
++    const rows = cardRows.filter(r => r.page === label && !r.ev);
++    const out = [];
++    rows.forEach((r, i) => {
++        if (r.phase !== name) return;
++        const next = rows[i + 1];
++        out.push({ at: r.at, state: r.state, vis: r.vis, lasted_ms: next ? next.t - r.t : null, text: r.text });
++    });
++    return out;
++}
++
++async function cardNow(page) {
++    return page.evaluate(() => {
++        const c = window.__set14find ? window.__set14find() : null;
++        return { text: c ? c.innerText.replace(/\s+/g, ' ').trim() : null, vis: document.visibilityState, path: location.pathname };
++    }).catch(error => ({ error: String(error.message).slice(0, 120) }));
++}
++
++async function pageText(page) {
++    return page.evaluate(() => (document.querySelector('main') || document.body).innerText.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim().slice(0, 8000)).catch(() => '');
++}
++
++const shotNames = new Set();
++async function shoot(page, name, events, extra = {}) {
++    if (front.page !== page) { await jsonl(events, { at: iso(), ev: 'shot-skipped', name, why: 'page not in front (hidden)' }); return; }
++    let n = name; let i = 2; while (shotNames.has(n)) n = `${name}-${i++}`; shotNames.add(n);
++    const card = await page.evaluateHandle(() => (window.__set14find ? window.__set14find() : null)).catch(() => null);
++    const element = card ? card.asElement() : null;
++    let cardShot = false;
++    if (element) { try { await element.screenshot({ path: join(dir, `${n}-card.png`) }); cardShot = true; } catch { /* the card moved */ } }
++    await page.screenshot({ path: join(dir, `${n}-viewport.png`), fullPage: false });
++    await writeFile(join(dir, `${n}.txt`), redact(await pageText(page)));
++    const now = await cardNow(page);
++    const facts = await page.evaluate(() => ({ password_fields_with_text: Array.from(document.querySelectorAll('input[type="password"]')).filter(i => i.value).length,
++        scroll_y: Math.round(window.scrollY) })).catch(() => ({}));
++    await jsonl(events, { at: iso(), ev: 'shot', name: n, card_picture: cardShot, card: now.text, state: stateOf(now.text), vis: now.vis, path: now.path, ...facts, ...extra });
++}
++
++// Watch one page: sample the card every 250 ms and picture each state the first time it appears in this phase.
++async function observe(page, ms, events, { shots = true, until = null, tag = '' } = {}) {
++    const seen = new Set();
++    const deadline = Date.now() + ms;
++    let lastFlush = Date.now();
++    while (Date.now() < deadline) {
++        if (until && until()) break;
++        const now = await cardNow(page);
++        const state = stateOf(now.text);
++        if (shots && state !== 'absent' && !seen.has(state) && now.vis === 'visible' && front.page === page) {
++            seen.add(state);
++            await shoot(page, `${phase}${tag}-${state}`, events, { lang: page.__lang, viewport: page.__vp });
++        }
++        if (Date.now() - lastFlush > 5000) { await cardLog(page); lastFlush = Date.now(); }
++        await pause(250);
++    }
++    await cardLog(page);
++}
++
++async function prep(name, events) {
++    const key = `${name}-${Date.now()}`;
++    const asked = Date.now();
++    await writeFile(join(handDir, `prep-request-${key}`), iso() + '\n');
++    await jsonl(events, { at: iso(), ev: 'prep-requested', name, phase });
++    for (let i = 0; i < 9000 && !existsSync(join(handDir, `prep-done-${key}.json`)); i++) await pause(100);
++    const record = existsSync(join(handDir, `prep-done-${key}.json`)) ? JSON.parse(readFileSync(join(handDir, `prep-done-${key}.json`), 'utf8')) : { missing: true };
++    const got = Date.now();
++    const out = { ...record, host_asked_ms: asked, host_got_ms: got };
++    const guest = record?.result?.epoch;
++    if (typeof guest === 'number') {
++        out.guest_minus_host_ms_approx = Math.round(guest * 1000 - (asked + got) / 2);
++        // The guest read its clock after this browser asked and before it saw the answer.
++        out.guest_minus_host_ms_bounds = { low: Math.round(guest * 1000 - got), high: Math.round(guest * 1000 - asked) };
++    }
++    await jsonl(events, { at: iso(), ev: 'prep-done', name, phase, record: out });
++    return out;
++}
++
++async function waitStale(events, label) {
++    for (let turn = 0; turn < 6; turn++) {
++        const probe = await prep('probe', events);
++        const sc = probe.result?.scan_cache || {};
++        if (sc.exists === false) return { turn, absent: true, probe };
++        const age = Number(sc.age_seconds);
++        if (Number.isFinite(age) && age >= STALE_S) return { turn, age, probe };
++        const wait = Math.min(Math.max(Number.isFinite(age) ? STALE_S - age + 1 : 60, 1), 340);
++        await jsonl(events, { at: iso(), ev: 'wait-stale', label, age, wait_s: wait });
++        await pause(wait * 1000);
++    }
++    throw new Error(`stale condition not reached for ${label} after 6 turns`);
++}
++
++async function signIn(page, events) {
++    await page.goto(base + '/domains', { waitUntil: 'networkidle2', timeout: 60000 });
++    const shown = await page.waitForFunction(() => document.getElementById('username') ? 'form' : document.querySelector('nav, aside') ? 'signed-in' : null, { timeout: 60000 }).then(handle => handle.jsonValue());
++    await jsonl(events, { at: iso(), ev: 'sign-in-page', shown });
++    if (shown === 'signed-in') return;
++    await page.type('#username', secret.username);
++    await page.type('#password', secret.password);
++    await Promise.all([page.keyboard.press('Enter'), pause(500)]);
++    await page.waitForFunction(() => !document.getElementById('password'), { timeout: 60000 });
++    await pause(2500);
++}
++
++const scanPosts = (from, to = Infinity) => requests.filter(r => r.method === 'POST' && r.url.startsWith('/api/v1/managed-services/scan') && r.start_ms >= from && r.start_ms <= to);
++const brief = r => ({ page: r.page, url: r.url, status: r.status, start: r.start, end: r.end, ms: r.ms, answer: r.answer, error: r.error });
++
++async function phaseDone(name, started, extra = {}) {
++    const ended = Date.now();
++    const posts = scanPosts(started, ended);
++    const value = { phase: name, started: iso(started), ended: iso(ended), seconds: Math.round((ended - started) / 100) / 10,
++        scan_posts: posts.length, posts: posts.map(brief), ...extra };
++    phases.push(value);
++    await writeFile(join(dir, 'phases.json'), redact(JSON.stringify({ lang: LANG, viewport: VIEWPORT_NAME, phases }, null, 2)));
++    return value;
++}
++
++const cpu = (a, b) => {
++    const pick = p => p?.result || {};
++    const x = pick(a), y = pick(b);
++    const d = (k, u) => (y.cgroup_cpu?.[u]?.[k] ?? NaN) - (x.cgroup_cpu?.[u]?.[k] ?? NaN);
++    const n = (u, f) => Number(y.units?.[u]?.[f]) - Number(x.units?.[u]?.[f]);
++    return { wall_s: Math.round(((y.epoch ?? NaN) - (x.epoch ?? NaN)) * 10) / 10,
++        agent_usage_usec: d('usage_usec', 'agent'), agent_user_usec: d('user_usec', 'agent'), agent_system_usec: d('system_usec', 'agent'),
++        panel_usage_usec: d('usage_usec', 'panel'), agent_cpu_usage_nsec: n('agent', 'CPUUsageNSec'), panel_cpu_usage_nsec: n('panel', 'CPUUsageNSec'),
++        agent_main_pid: [x.units?.agent?.MainPID, y.units?.agent?.MainPID], loadavg: [x.loadavg, y.loadavg] };
++};
++
++const offsetOf = probe => probe?.guest_minus_host_ms_approx ?? null;
++const scanOf = probe => ({ scanned_at: probe?.result?.scan_cache?.scanned_at ?? null, age_s: probe?.result?.scan_cache?.age_seconds ?? null });
++const answers = (from, to = Infinity) => requests.filter(r => r.answer && r.start_ms >= from && r.start_ms <= to)
++    .map(r => ({ page: r.page, method: r.method, url: r.url, status: r.status, start: r.start, end: r.end, ms: r.ms, answer: r.answer }));
++const statesOf = seq => seq.map(x => x.state).filter((x, i, all) => i === 0 || x !== all[i - 1]);
++
++// Wait (bounded, in this process) until an alert toast is on the page, then picture the viewport at once.
++async function shootToast(page, name, events, limitMs) {
++    const deadline = Date.now() + limitMs;
++    while (Date.now() < deadline) {
++        const text = await page.evaluate(() => Array.from(document.querySelectorAll('[role="alert"]')).map(a => (a.innerText || '').replace(/\s+/g, ' ').trim()).filter(Boolean)).catch(() => []);
++        if (text.length) {
++            await page.screenshot({ path: join(dir, `${name}-viewport.png`), fullPage: false });
++            await writeFile(join(dir, `${name}.txt`), redact(await pageText(page)));
++            await jsonl(events, { at: iso(), ev: 'shot', name, toast: text, lang: page.__lang, viewport: VIEWPORT_NAME });
++            return { at: iso(), text };
++        }
++        await pause(100);
++    }
++    await jsonl(events, { at: iso(), ev: 'toast-not-seen', name, limit_ms: limitMs });
++    return null;
++}
++
++// A read of the stored records (GET /api/v1/managed-services, the Dashboard's own first request) in a page that is
++// not the app: its answer bounds the guest-minus-browser offset (scanned_at + scan_age_seconds lies between the
++// request's start and end). It reads only; no scan is asked for.
++async function clockRead(events, label) {
++    const page = await newPage('clock-' + label);
++    const from = Date.now();
++    await page.goto(base + '/api/v1/managed-services', { waitUntil: 'load', timeout: 60000 }).catch(error => jsonl(events, { at: iso(), ev: 'clock-read-error', label, error: String(error.message).slice(0, 200) }));
++    await pause(300);
++    await page.close();
++    const row = requests.filter(r => r.page === 'clock-' + label && r.start_ms >= from && r.answer?.guest_minus_browser_ms).pop();
++    const value = row ? { at: row.start, ms: row.ms, status: row.status, bounds: row.answer.guest_minus_browser_ms,
++        mid: Math.round((row.answer.guest_minus_browser_ms.low + row.answer.guest_minus_browser_ms.high) / 2),
++        scanned_at: row.answer.scanned_at, scan_age_seconds: row.answer.scan_age_seconds } : null;
++    await jsonl(events, { at: iso(), ev: 'clock-read', label, value });
++    return value;
++}
++
++// -- set14c: the licence access reads of one page, the Components page's banners -----------------------------------
++
++const ACCESS = '/api/v1/license/access';
++// The access reads of one page from its load, with the time between them and what each answer said.
++function accessReads(label, from, windowMs) {
++    const rows = requests.filter(r => r.page === label && r.method === 'GET' && r.url.split('?')[0] === ACCESS && r.start_ms >= from && r.start_ms - from <= windowMs);
++    return rows.map((r, i) => ({ start: r.start, end: r.end, ms: r.ms, status: r.status, after_load_ms: r.start_ms - from,
++        since_previous_ms: i ? r.start_ms - rows[i - 1].start_ms : null, access: r.access ?? null, error: r.error ?? null }));
++}
++// When the page mounted: the first Dashboard read (managed-services) and the first card text that is not absent.
++function mountOf(label, from) {
++    const read = requests.find(r => r.page === label && r.method === 'GET' && r.url.split('?')[0] === '/api/v1/managed-services' && r.start_ms >= from);
++    const card = cardRows.find(r => r.page === label && !r.ev && r.state && r.state !== 'absent' && r.t >= from);
++    return { first_managed_services_read_ms: read ? read.start_ms - from : null, first_card_ms: card ? card.t - from : null, first_card_state: card?.state ?? null };
++}
++
++async function loadAndCount(label, name, events, ms, { lang = LANG, vp = VIEWPORT_NAME } = {}) {
++    const page = await newPage(label, lang, vp);
++    await toFront(page);
++    const at = Date.now();
++    await page.goto(base + '/', { waitUntil: 'domcontentloaded', timeout: 60000 });
++    await observe(page, 10000, events, { tag: '-' + name });
++    await shoot(page, `${name}-10s`, events, { lang, viewport: vp });
++    await observe(page, Math.max(ms - (Date.now() - at), 0), events, { tag: '-' + name, shots: false });
++    await shoot(page, `${name}-end`, events, { lang, viewport: vp });
++    await page.close();
++    const ended = Date.now();
++    const posts = scanPosts(at, ended);
++    const reads = accessReads(label, at, ms);
++    return { load_at: iso(at), observed_s: Math.round((ended - at) / 100) / 10, mount: mountOf(label, at),
++        access_reads_in_window: reads.length, access_window_s: ms / 1000, access_reads: reads,
++        access_reads_whole_page: requests.filter(r => r.page === label && r.url.split('?')[0] === ACCESS).length,
++        scan_posts: posts.length, posts: posts.map(brief), first_post_end: posts[0]?.end ?? null,
++        posts_within_60s_after_first: posts.length ? scanPosts(posts[0].start_ms + 1, posts[0].end_ms + 60000).length : null,
++        observed_after_first_post_s: posts.length ? Math.round((ended - posts[0].end_ms) / 100) / 10 : null,
++        states: statesOf(sequenceOf(label, phase)), card_sequence: sequenceOf(label, phase), answers: answers(at, ended) };
++}
++
++
++// -- set15: the Domains list, the sidebar, the Dashboard after a stale scan, the Components page, three reads ------
++
++const FIRST_STATE = /Site configuration files: .*recognised as CelikPanel|Site yapılandırma dosyaları: .*devralındı/;
++const RESCAN = /Open Components to rescan|Yeniden taramak için Bileşenleri aç/;
++
++// The sidebar (the app's <aside>): its text, its footer stamp (the line with "build"), a picture of the element.
++async function sidebar(page, name, events) {
++    const facts = await page.evaluate(() => {
++        const aside = document.querySelector('aside');
++        if (!aside) return { aside: false };
++        const lines = (aside.innerText || '').split('\n').map(x => x.replace(/\s+/g, ' ').trim()).filter(Boolean);
++        return { aside: true, text: lines.join('\n'), stamp: lines.filter(x => / build /.test(x) || /\bbuild\b/.test(x)) };
++    }).catch(error => ({ error: String(error.message).slice(0, 120) }));
++    const handle = await page.$('aside').catch(() => null);
++    let pictured = false;
++    if (handle && front.page === page) { try { await handle.screenshot({ path: join(dir, `${name}-sidebar.png`) }); pictured = true; } catch { /* moved */ } }
++    await writeFile(join(dir, `${name}-sidebar.txt`), redact(facts.text || ''));
++    const value = { at: iso(), ...facts, picture: pictured ? `${name}-sidebar.png` : null };
++    await jsonl(events, { ev: 'sidebar', name, ...value });
++    return value;
++}
++
++async function domainsPage(events) {
++    const label = 'p1-domains';
++    const page = await newPage(label);
++    await toFront(page);
++    const at = Date.now();
++    await page.goto(base + '/domains', { waitUntil: 'networkidle2', timeout: 60000 });
++    await pause(4000);
++    const text = await pageText(page);
++    await page.screenshot({ path: join(dir, 'domains-viewport.png'), fullPage: false });
++    await writeFile(join(dir, 'domains.txt'), redact(text));
++    const bar = await sidebar(page, 'domains', events);
++    await cardLog(page);
++    await page.close();
++    const rows = requests.filter(r => r.page === label && r.method === 'GET' && r.url.split('?')[0] === '/api/v1/domains')
++        .map(r => ({ status: r.status, start: r.start, ms: r.ms, body: r.body ?? null }));
++    return { load_at: iso(at), first_state_row_shown: FIRST_STATE.test(text), page_text_head: redact(text).slice(0, 1200),
++        domains_reads: rows, scan_posts: scanPosts(at).length, sidebar: bar };
++}
++
++async function dashboardLoad(label, name, events, ms) {
++    const page = await newPage(label);
++    await toFront(page);
++    const at = Date.now();
++    await page.goto(base + '/', { waitUntil: 'domcontentloaded', timeout: 60000 });
++    const rescanSeen = [];
++    const watch = async () => { if (await page.evaluate(src => new RegExp(src).test(document.body.innerText || ''), RESCAN.source).catch(() => false)) rescanSeen.push(iso()); };
++    await observe(page, 10000, events, { tag: '-' + name });
++    await watch();
++    await shoot(page, `${name}-10s`, events, { lang: LANG, viewport: VIEWPORT_NAME });
++    while (Date.now() - at < ms) {
++        await observe(page, Math.min(5000, Math.max(ms - (Date.now() - at), 0)), events, { tag: '-' + name, shots: false });
++        await watch();
++    }
++    await shoot(page, `${name}-end`, events, { lang: LANG, viewport: VIEWPORT_NAME });
++    await page.screenshot({ path: join(dir, `${name}-full.png`), fullPage: true });
++    await writeFile(join(dir, `${name}-full.txt`), redact(await pageText(page)));
++    const bar = await sidebar(page, name, events);
++    await page.close();
++    const ended = Date.now();
++    const posts = scanPosts(at, ended);
++    const reads = accessReads(label, at, ms);
++    return { load_at: iso(at), observed_s: Math.round((ended - at) / 100) / 10, mount: mountOf(label, at),
++        scan_posts: posts.length, posts: posts.map(brief),
++        posts_conditional: posts.filter(p => /max_age_seconds=/.test(p.url)).length,
++        rescan_link_seen: rescanSeen.length > 0, rescan_link_seen_at: rescanSeen.slice(0, 5), rescan_link_checks_note: 'body text sampled every ~5 s and at 10 s',
++        access_reads: reads, states: statesOf(sequenceOf(label, phase)), card_sequence: sequenceOf(label, phase),
++        answers: answers(at, ended), sidebar: bar };
++}
++
++async function componentsLoad(events, tag) {
++    const label = 'p3-components-' + tag;
++    const page = await newPage(label);
++    await toFront(page);
++    const at = Date.now();
++    await page.goto(base + '/services', { waitUntil: 'domcontentloaded', timeout: 60000 });
++    await pause(30000);
++    await page.screenshot({ path: join(dir, `components-${tag}-viewport.png`), fullPage: false });
++    await writeFile(join(dir, `components-${tag}.txt`), redact(await pageText(page)));
++    const alerts = await page.evaluate(() => Array.from(document.querySelectorAll('[role="alert"]')).map(a => (a.innerText || '').replace(/\s+/g, ' ').trim()).filter(Boolean)).catch(() => []);
++    await cardLog(page);
++    await page.close();
++    const ended = Date.now();
++    const posts = scanPosts(at, ended);
++    return { load_at: iso(at), scan_posts: posts.length, posts: posts.map(brief),
++        posts_conditional: posts.filter(p => /max_age_seconds=/.test(p.url)).length, alerts,
++        toasts: toastRows.filter(r => r.page === label), answers: answers(at, ended) };
++}
++
++// Direct reads in a page that is not the app: the body as the browser receives it (redacted).
++async function directReads(events) {
++    const out = {};
++    for (const path of ['/api/v1/panel/version', '/api/v1/license/access', '/api/v1/managed-services']) {
++        const page = await newPage('read-' + path.split('/').pop());
++        const from = Date.now();
++        let text = null;
++        try {
++            const res = await page.goto(base + path, { waitUntil: 'load', timeout: 60000 });
++            text = res ? await res.text() : null;
++            let body = null; try { body = JSON.parse(text); } catch { /* not JSON */ }
++            if (path === '/api/v1/managed-services' && body && Array.isArray(body.services)) body = { ...body, services: `<${body.services.length} entries>` };
++            out[path] = { status: res ? res.status() : null, at: iso(from), body };
++        } catch (error) { out[path] = { error: String(error.message).slice(0, 200) }; }
++        await pause(300);
++        await page.close();
++    }
++    await writeFile(join(dir, 'direct-reads.json'), redact(JSON.stringify(out, null, 2)));
++    await jsonl(events, { at: iso(), ev: 'direct-reads', paths: Object.keys(out) });
++    return out;
++}
++
++async function cellUI() {
++    const events = join(dir, 'events.jsonl');
++    await jsonl(events, { at: iso(), ev: 'start', mode: hand.mode, lang: LANG, viewport: VIEWPORT_NAME, chrome: await browser.version() });
++
++    phase = 'sign-in';
++    let t = Date.now();
++    const signer = await newPage('sign-in');
++    await toFront(signer);
++    await signIn(signer, events);
++    await cardLog(signer);
++    await signer.close();
++    await phaseDone('sign-in', t);
++
++    phase = 'domains';
++    t = Date.now();
++    const domains = await domainsPage(events);
++    await phaseDone('domains', t, domains);
++
++    phase = 'dashboard';
++    const stale = await waitStale(events, 'dashboard');
++    t = Date.now();
++    const dash = await dashboardLoad('p2-dashboard', 'dashboard', events, 90000);
++    await phaseDone('dashboard', t, { stale: { turn: stale.turn, age_s: stale.age ?? null, absent: stale.absent ?? false,
++        probe_scan: scanOf(stale.probe) }, ...dash });
++
++    // the Components page right after the Dashboard's scan (fresh: no POST expected), then with the stored scan stale
++    phase = 'components';
++    t = Date.now();
++    const compFresh = await componentsLoad(events, 'fresh');
++    const stale2 = await waitStale(events, 'components');
++    const compStale = await componentsLoad(events, 'stale');
++    await phaseDone('components', t, { fresh: compFresh, stale: { turn: stale2.turn, age_s: stale2.age ?? null, absent: stale2.absent ?? false,
++        probe_scan: scanOf(stale2.probe) }, stale_load: compStale, scan_posts_fresh: compFresh.scan_posts, scan_posts_stale: compStale.scan_posts });
++
++    phase = 'reads';
++    t = Date.now();
++    const reads = await directReads(events);
++    await phaseDone('reads', t, { reads });
++
++    phase = 'end';
++    await prep('journal', events);
++}
++
++const results = {};
++for (const cell of cells) {
++    dir = join(outRoot, cell);
++    await mkdir(dir, { recursive: true });
++    const started = iso();
++    try {
++        if (cell === 'ui') await cellUI();
++        else if (cell === 'done') await writeFile(join(handDir, 'done.json'), JSON.stringify({ at: iso(), by: 'cold-load-set15.mjs' }) + '\n');
++        else throw new Error(`unknown cell ${cell}`);
++        results[cell] = { started, ended: iso(), ok: true };
++    } catch (error) {
++        results[cell] = { started, ended: iso(), ok: false, phase, error: redact(String(error.stack || error)).slice(0, 1500) };
++    }
++    await writeFile(join(dir, 'run.json'), redact(JSON.stringify({ cell, chrome: await browser.version(), lang: LANG, viewport: VIEWPORT_NAME,
++        handover: { ...hand, password_file: '(root-only file, not copied)' }, ...results[cell] }, null, 2)));
++    console.log(JSON.stringify({ cell, ...results[cell] }));
++}
++await browser.close();

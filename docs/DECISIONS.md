@@ -21,6 +21,137 @@ Code decisions live in git; this file is for strategy. Newest first.
 
 ---
 
+## D-032 · The panel looks by itself; it never asks the owner to press a button to learn a state it can read
+
+*October 12, 2026 (clock date) · Owner decision after the update to v0.1.0-alpha.83; in source with component tests and a mock browser; the first step measured in the fourteenth native record (Debian 13, Ubuntu 24.04, 2026-10-12 UTC); the scan-age clock rule and the typed Agent answer at the scan and the admission check measured in the fifteenth record (Debian 13, 2026-10-13 UTC); the licence check's time left, the Agent answer in the shared error writer and the read banner (2026-10-13) component-tested, then measured on Debian 13 in the sixteenth record (set14c, 2026-10-13 UTC), where the licence-check defect found in the fifteenth record is gone*
+
+The Dashboard's "System services" card said "Unknown. Component status is
+outdated. Open Components to rescan." whenever the stored scan was older than
+five minutes. The Components page already ran the cached, conditional scan the
+Panel offers (`POST /api/v1/managed-services/scan?max_age_seconds=N`: one scan
+at a time, cached, refused while a change holds the server's lock); the
+Dashboard did not, so the owner had to carry out, by hand, a read the Panel
+could make itself. After the update to v0.1.0-alpha.83 the owner decided on
+2026-10-12: the Dashboard should check by itself, without wasting resources.
+
+The rules adopted:
+
+1. After a successful read, if the stored scan is missing or older than 300
+   seconds, the Dashboard runs the conditional scan, at most once per
+   five-minute window whatever the answer was.
+2. Only while the tab is visible. A hidden tab runs nothing; a tab shown again
+   checks once if a check is due.
+3. Never with another check in flight. No interval timer that scans
+   regardless; no retry loop after a refusal.
+4. A refusal because a change is in progress (`server_setup_busy`,
+   `service_operation_busy`) is shown as "a change is in progress" and sends
+   nothing more. One follow-up runs when the existing readiness poll sees the
+   server go from busy to ready (package operations only; after a setup
+   refusal the next check waits for the window).
+5. A failed check says "Could not check: <reason>" with the in-place button.
+   The owner's press stays unconditional.
+6. The card draws four distinct states (checking, the result, could not check,
+   held) and the "Needs attention" sentence follows them.
+
+The resource bound is part of the decision, not an afterthought: at most one
+conditional scan per five minutes for a Dashboard someone is looking at, none
+for one nobody looks at. Measured on two lab guests (fourteenth record, first
+step): a stale load sent exactly one scan, a fresh load none, a page kept
+visible one more not before 300 seconds, a hidden tab none for five minutes
+and one when shown, and one check cost the Agent about 0.2 to 0.4 seconds of
+CPU (an estimate from two 47-second windows).
+
+The clock rule. The server states a scan's age (`scan_age_seconds`, on the three
+managed-services answers, measured on the server's clock when the answer is
+written); the page dates the scan as the moment it received the answer minus
+that age. The browser never compares its own clock with the server's. The rule
+has two steps because the lab found the defect in the first version: with the
+guest's clock one to two seconds ahead, the card showed "Not checked in the last
+5 minutes" for 20 to 29 seconds after every check. The first step (the earlier
+of the stamp and the moment of receipt) removed it for a server ahead; the
+second (the server's age) also removes it for a server more than five minutes
+behind. An older server without the field keeps the first rule. A negative age,
+or one that is not a finite number, is not taken as fresh. Measured (fifteenth
+record, Debian 13, guest 1.5 s ahead): one conditional scan on a stale load and
+the card going straight to the result, with no "Not checked in the last 5
+minutes" frame. The case of a server clock behind was measured later, in the
+sixteenth record (set14c, Debian 13, 2026-10-13, clock seven minutes behind):
+one conditional scan, then the result to the end of 90 s.
+
+The same rule holds for the licence check, which the lab showed breaking it.
+`/api/v1/license/access` gave the end of access (`valid_until`) as a time on
+the server's clock, and the page refused a positive answer whose end was not
+after the browser's clock; with the server's clock more than about a minute
+behind, no Panel page loaded (fifteenth record, defect D2: 418 s behind, the
+check read 19 times in 90 s). The server now states the time left
+(`valid_for_seconds`: `valid_until` minus the server's clock when the answer is
+written, never below zero; `valid_until` stays for older pages), and the
+browser takes the end as the moment it sent the request plus that time, so it
+never compares the two clocks and never ends later than the server allows.
+Without the field the absolute rule applies. The fix was measured on Debian 13
+in the sixteenth record (2026-10-13): with the guest clock seven minutes behind
+and seven minutes ahead of the browser's, the page mounted and read the access
+four times in 90 s, as with a correct clock.
+
+The typed-error rule. A Panel that cannot open its own Agent's local socket
+answers `503 AGENT_UNREACHABLE`: the reason, that nothing was changed, who acts,
+the next action and how work resumes (D-024). The answer is written once, in the
+shared server-error writer, so it applies to every handler that reaches that
+writer with a failed dial of the Agent's socket as the only cause (the scan, the
+admission check (`beginServiceMutation`) of the mutation handlers (nine call
+sites besides the scan handler at commit 68b79b372), the firewall read, the
+system check), not handler by handler. It is for a failed dial only. A
+connection that broke after a request was sent is an unknown result and keeps
+the generic path; an unknown result is never rewritten into a verified failure.
+Neither is a joined error, such as a failure together with its compensation: an
+earlier part may have changed something, and "nothing was changed" would be
+false. The one join accepted is the platform-identity sentinel with its cause,
+because that read runs before the call it guards. The DNSSEC status, the update
+status and start, domain deletion and mail password rotation stay on their own
+typed paths. An ordinary failure still answers `500`. Measured at the scan and
+at the admission check (fifteenth record) and at the firewall read, the system
+check and a restart request (sixteenth record, `503` with only `code` and
+`error`, nginx unchanged). Open: a handler that changes something and later
+fails on a separate dial that is not joined to the earlier outcome would still
+claim that nothing was changed.
+
+The read-banner rule. A failed read never claims an action. A screen that
+could not read a state says that it could not read it and why, with the next
+action; it does not say that an action may have completed unless one was sent.
+The cause is kept: an action that was sent and not confirmed keeps its "may
+have completed" wording, and a later failed read never replaces it. Found in
+the lab on the Components page with the Agent stopped (fifteenth record,
+observation O2) and applied there; measured in the sixteenth record (the read
+banner in English and Turkish, the action wording absent, gone after one press
+of Rescan once the Agent was back). No other screen is converted by this rule.
+
+What this does not authorise:
+
+- No background timer that runs when nobody is looking. This decision adds no
+  scan on a schedule for the sake of a fresh card; the Dashboard looks when a
+  person has it open and visible.
+- No polling that starts a mutation. The check is the read-only scan the
+  Components page already offers; a poll that sees a state never starts a
+  change, and the readiness poll's one follow-up is that same scan.
+- No other card, page or screen is converted by this decision. The mail-stack
+  card on the Dashboard keeps its own stale text and its "Open Components to
+  rescan" button until a change of its own; screens that still read the server
+  the old way stay on the list in the release notes.
+- No claim that the foundation is finished: no P0 item is closed or advanced.
+
+Relation to the rest. D-024 requires every operation to show its reason, who
+acts, the next action and how work resumes, and to distinguish a verified
+failure, an unmet prerequisite and an unknown result; this decision applies it
+to the component check and to the unreachable Agent. The known-state rule (a
+failed or missing read is not drawn as an empty or negative state) is why the
+card has "could not check" and "held" as states of their own and why the stale
+state is not collapsed into "Unknown". D-022 (the owner operates the server;
+the Panel detects and reports) is why the Panel says how the owner checks the
+Agent instead of restarting it. Panel updates remain the owner's, from the
+panel's own update screen.
+
+---
+
 ## D-031 · A site configuration file the owner changed is kept and named, never overwritten by a render
 
 *October 10, 2026 (clock date) · Owner decision on a finding of the read-only audit [SITE-CONFIG-OWNER-EDITS-2026-10-10](audit/SITE-CONFIG-OWNER-EDITS-2026-10-10.md); design decided; first step measured in the tenth native record (two findings corrected 2026-10-11); the apply action and the one precedence (2026-10-11) and the second step (pool, application unit; 2026-10-11) component-tested and mock browser, native measurement pending*

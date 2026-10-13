@@ -1,0 +1,27 @@
+{
+  "at": "2026-10-13T06:06:35Z",
+  "base": "https://127.0.0.1:19151",
+  "browser": {
+    "lang": "en",
+    "switch_lang": "tr",
+    "viewport": "desktop"
+  },
+  "cell": "set14b-debian13",
+  "local_port": 19151,
+  "password_file": "/var/tmp/cp-set14b-run/secret/h14bd13-ui.json",
+  "preps": [
+    "probe",
+    "clockshift_m420000",
+    "clockshift_p420000",
+    "ntp-on",
+    "scan-now",
+    "admission",
+    "agent-stop",
+    "agent-start",
+    "journal"
+  ],
+  "schema": "celikpanel/set12-handover/v1",
+  "tls_leaf_sha256": "435f6ae2558e65df203920ee6260c178c09b1fb6dcf3ed55587ff585b23ee390",
+  "username": "labadmin",
+  "window": "ui"
+}

@@ -1,0 +1,56 @@
+{
+  "browser": {
+    "lang": "tr",
+    "viewport": "phone"
+  },
+  "candidate": {
+    "commit": "27c8b7e75d348832e737bd4a70c9ca6ef16a7129",
+    "sha256": "6cea530d2f1b4354d7a7fbf765f543a0584cf4901a48d74677d1d8a79e2f7622",
+    "version": "v0.1.0-alpha.81"
+  },
+  "cell": "set14-ubuntu",
+  "cell_kind": "set14-fresh-install",
+  "local_port": 18443,
+  "native_evidence": false,
+  "pinned_names": [
+    "celikpanel.net",
+    "acme-v02.api.letsencrypt.org",
+    "acme-staging-v02.api.letsencrypt.org",
+    "acme.zerossl.com",
+    "dv.acme-v02.api.pki.goog"
+  ],
+  "preparations": [
+    "probe",
+    "agent-stop",
+    "agent-start",
+    "slow-on",
+    "slow-off",
+    "action-start",
+    "action-wait",
+    "journal"
+  ],
+  "rule": "the driver calls only the Panel's HTTP API as the logged-in owner; every native fact is an SSH reading; owner actions and lab preparation on the guest are recorded as such; no certificate authority and no licence service is contacted by the driver",
+  "schema": "celikpanel/set14-plan/v1",
+  "setup": {
+    "components": [
+      "mariadb",
+      "nginx",
+      "php-fpm"
+    ],
+    "dns_mode": "external",
+    "purpose": "web"
+  },
+  "steps": [
+    "set6-name-pinning",
+    "preflight",
+    "origin",
+    "baseline-install",
+    "owner-login",
+    "license",
+    "setup",
+    "set14-browser-window",
+    "set6-name-pinning-at-the-end",
+    "collect"
+  ],
+  "work_root": "/var/tmp/cp-release-drill-s14-dry"
+}

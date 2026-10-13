@@ -1,0 +1,100 @@
+CPU kullanımı
+
+%0
+
+2 çekirdek · Yük 0.02
+
+Bellek
+
+%16
+
+462 MB / 2.9 GB
+
+Disk (/)
+
+%11
+
+2.7 GB / 23.4 GB
+
+Sistem servisleri
+
+3 / 3
+
+çalışan / kurulu
+
+Posta paketleri
+Kısmen kurulu
+
+Webmail: Some components are already present. Installing this profile will reconcile the full plan without removing completed services.
+
+Posta paketlerini gör
+İlgi istiyor
+
+Bu sunucunun durumunun bir bölümü okunamadı; bu yüzden bu liste eksik olabilir. Bu, bir şeyin yanlış olduğu anlamına gelmez. Hiçbir şey değiştirilmedi. Tekrar deneyin.
+
+Tekrar dene
+Barındırma
+
+0
+
+Alan Adları
+
+0
+
+Veritabanları
+
+1
+
+Kullanıcılar
+
+0
+
+Posta hesabı
+
+Son etkinlik
+L
+labadmin oturum açtı2 kez
+127.0.0.1
+18 dk önce
+L
+labadmin server.setup.guidance
+127.0.0.1
+18 dk önce
+L
+labadmin server.setup.revise
+127.0.0.1
+18 dk önce
+L
+labadmin server.setup.child:certbot
+127.0.0.1
+20 dk önce
+L
+labadmin server.setup.child:cron
+127.0.0.1
+21 dk önce
+L
+labadmin server.setup.child:php-fpm
+127.0.0.1
+21 dk önce
+L
+labadmin server.setup.child:nginx
+127.0.0.1
+21 dk önce
+Hızlı işlemler
+Alan adı ekle
+Servis kur
+Kullanıcı ekle
+İçe aktar
+Sunucu bilgisi
+Sunucu adı
+dns-debian13
+IPv4 adresi
+10.0.2.15
+İşletim sistemi
+Debian GNU/Linux 13 (trixie)
+Çekirdek
+6.12.105+deb13-cloud-amd64
+Mimari
+amd64
+Çalışma süresi
+23dk

@@ -1,0 +1,84 @@
+{
+  "at": "2026-10-13T06:18:23Z",
+  "cgroup_cpu": {
+    "agent": {
+      "system_usec": 12082544,
+      "usage_usec": 27318125,
+      "user_usec": 15235580
+    },
+    "panel": {
+      "system_usec": 1230598,
+      "usage_usec": 2501734,
+      "user_usec": 1271135
+    }
+  },
+  "clock": {
+    "returncode": 0
+  },
+  "epoch": 1791872303.6033149,
+  "loadavg": "0.96 0.26 0.19 1/128 16150",
+  "mode": "read-probe14b",
+  "nginx": {
+    "ActiveEnterTimestampMonotonic": "149278403",
+    "ActiveState": "active",
+    "ExecMainStartTimestamp": "Tue 2026-10-13 06:03:47 UTC",
+    "MainPID": "7197",
+    "NRestarts": "0",
+    "SubState": "running"
+  },
+  "nginx_dropin": {
+    "exists": false,
+    "path": "/etc/systemd/system/nginx.service.d/zz-set14-slow-reload.conf",
+    "text": null
+  },
+  "owner_action": false,
+  "proc_cpu": {
+    "agent": {
+      "clk_tck": 100,
+      "cstime": 860,
+      "cutime": 1740,
+      "stime": 54,
+      "utime": 56
+    },
+    "panel": {
+      "clk_tck": 100,
+      "cstime": 0,
+      "cutime": 0,
+      "stime": 121,
+      "utime": 126
+    }
+  },
+  "scan_cache": {
+    "age_seconds": 836.6,
+    "data_bytes": 2262,
+    "database": "/var/lib/celikpanel/celikpanel.db",
+    "exists": true,
+    "scanned_at": "2026-10-13T06:04:27Z",
+    "scanned_epoch": 1791871467.0
+  },
+  "schema": "celikpanel/set14b-native/v1",
+  "units": {
+    "agent": {
+      "ActiveEnterTimestampMonotonic": "105622500",
+      "ActiveState": "active",
+      "CPUUsageNSec": "27318108000",
+      "ControlGroup": "/system.slice/celikpanel-agent.service",
+      "ExecMainStartTimestamp": "Tue 2026-10-13 06:03:03 UTC",
+      "MainPID": "5202",
+      "MemoryCurrent": "439418880",
+      "NRestarts": "0",
+      "SubState": "running"
+    },
+    "panel": {
+      "ActiveEnterTimestampMonotonic": "108992326",
+      "ActiveState": "active",
+      "CPUUsageNSec": "2501734000",
+      "ControlGroup": "/system.slice/celikpanel-panel.service",
+      "ExecMainStartTimestamp": "Tue 2026-10-13 06:03:06 UTC",
+      "MainPID": "5420",
+      "MemoryCurrent": "32296960",
+      "NRestarts": "0",
+      "SubState": "running"
+    }
+  }
+}

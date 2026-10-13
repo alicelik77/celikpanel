@@ -1,0 +1,18 @@
+Formatting '/var/tmp/cp-release-drill-s14-ub-a/cells/490ba8baf78a64dc4601d503/ubuntu/overlay.qcow2', fmt=qcow2 cluster_size=65536 extended_l2=off compression_type=zlib size=25769803776 backing_file=/var/tmp/cp-release-drill-s14-ub-a/images/ubuntu-24.04-server-cloudimg-amd64-20260826.img backing_fmt=qcow2 lazy_refcounts=off refcount_bits=16
+{"action": "prepared", "root": "/var/tmp/cp-release-drill-s14-ub-a", "cell_id": "release-recovery__0c02ff60f8c77482", "ssh_ports": [5142, 5143]}
+{"action": "ready", "root": "/var/tmp/cp-release-drill-s14-ub-a", "nodes": {"ubuntu": "verified-disposable-systemd-guest"}}
+{"action": "ready", "root": "/var/tmp/cp-release-drill-s14-ub-a", "nodes": {"ubuntu": "verified-disposable-systemd-guest"}}
+{"step": "set6-name-pinning", "verdict": "passed", "reason": null}
+{"step": "preflight", "verdict": "passed", "reason": null}
+{"step": "origin", "verdict": "passed", "reason": null}
+{"step": "baseline-install", "verdict": "passed", "reason": null}
+{"step": "owner-login", "verdict": "passed", "reason": null}
+{"step": "license", "verdict": "passed", "reason": null}
+{"step": "setup", "verdict": "observed", "reason": null}
+{"set12": "ready", "window": "ui", "hand": "/var/tmp/cp-set14-run/hand/h14ub-ui", "port": 19142}
+{"step": "set14-browser-window", "verdict": "observed", "reason": null}
+{"step": "set6-name-pinning-at-the-end", "verdict": "passed", "reason": null}
+{"step": "collect", "verdict": "passed", "reason": null}
+{"cell_kind": "set14-fresh-install", "overall": "complete-for-review", "steps": {"baseline-install": "passed", "collect": "passed", "license": "passed", "origin": "passed", "owner-login": "passed", "preflight": "passed", "set14-browser-window": "observed", "set6-name-pinning": "passed", "set6-name-pinning-at-the-end": "passed", "setup": "observed"}}
+{"action": "stopped", "root": "/var/tmp/cp-release-drill-s14-ub-a", "evidence_retained": true}
+SET14 cell=set14-ubuntu lab=/var/tmp/cp-release-drill-s14-ub-a driver_exit=0 evidence=/var/tmp/cp-release-drill-s14-ub-a/evidence/*/upd1

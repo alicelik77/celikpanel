@@ -63,7 +63,7 @@ function effectBodies(source) {
 // 1. One rule about probing the host, true everywhere
 // ---------------------------------------------------------------------------
 
-test('the inventory page is the only screen that probes the host on open', () => {
+test('the inventory page probes the host on open; the dashboard only asks for a scan younger than its window', () => {
     // Opening the components list runs a host-wide check when the cache is
     // missing or stale. This is deliberate and stays: the page's whole
     // purpose is "what is on this server", and the probe is read-only.
@@ -79,14 +79,13 @@ test('the inventory page is the only screen that probes the host on open', () =>
         'the inventory page must still check the host when it is opened',
     );
 
-    // And nowhere else. A page visit that probes the machine turns every
-    // screen into an inventory page and makes the operator's own check
-    // meaningless, because something already ran one.
-    // Ve başka hiçbir yerde. Makineyi yoklayan bir sayfa ziyareti, her ekranı
-    // envanter sayfasına çevirir ve operatörün kendi kontrolünü anlamsızlaştırır.
-    const triggers = /managed-services\/scan|scanComponents\(|runCheck\(|\bscan\(\)/;
+    // And nowhere else unconditionally. A page visit that probes the machine
+    // turns every screen into an inventory page and makes the operator's own
+    // check meaningless, because something already ran one.
+    // Ve başka hiçbir yerde koşulsuz değil. Makineyi yoklayan bir sayfa
+    // ziyareti, her ekranı envanter sayfasına çevirir.
+    const triggers = /managed-services\/scan|scanComponents\(|runComponentScan\(|runCheck\(|\bscan\(\)/;
     for (const [name, source] of [
-        ['Dashboard.tsx', dashboard],
         ['ServiceShell.tsx', serviceShell],
         ['ComponentDetail.tsx', componentDetail],
         ['Layout.tsx', layout],
@@ -100,8 +99,26 @@ test('the inventory page is the only screen that probes the host on open', () =>
         }
     }
 
-    // The per-service page and the dashboard keep their checks; both are
-    // reached from a control the operator presses, never from mount.
+    // The dashboard (owner decision, 12 Oct 2026): it no longer says
+    // "Unknown" and sends the owner elsewhere once its scan is five minutes
+    // old. It asks, from one effect, for a scan no older than that window -
+    // the same conditional, single-flight request the inventory page makes,
+    // which the server answers from its stored scan when that is young
+    // enough. No other dashboard effect starts a scan, and its unconditional
+    // scan stays behind the operator's own button.
+    // Pano (sahip kararı, 12 Eki 2026): taraması beş dakikalık olunca artık
+    // "Bilinmiyor" deyip sahibi başka sayfaya göndermez; tek bir etkiden,
+    // pencereden eski olmayan bir tarama ister. Koşulsuz taraması operatörün
+    // kendi düğmesinin arkasında kalır.
+    const dashboardScans = effectBodies(dashboard).filter((body) => triggers.test(body));
+    assert.equal(dashboardScans.length, 1, 'exactly one dashboard effect may ask for a scan');
+    assert.match(dashboardScans[0], /if \(autoCheckDue\) void runComponentScan\('auto'\);/);
+    assert.match(dashboard, /mode === 'auto'\s*\? `\/api\/v1\/managed-services\/scan\?max_age_seconds=\$\{SCAN_WINDOW_SECONDS\}`\s*: '\/api\/v1\/managed-services\/scan'/);
+    assert.match(dashboard, /const SCAN_WINDOW_SECONDS = 300;/);
+    assert.match(dashboard, /const scanComponents = \(\) => void runComponentScan\('operator'\);/);
+
+    // The per-service page and the dashboard keep their operator checks,
+    // reached from a control the operator presses.
     assert.match(serviceShell, /onClick=\{\(\) => void runCheck\(\)\}/);
     assert.match(dashboard, /onClick=\{scanComponents\}/);
     // A component page must not scan on open, and never has to: its state
@@ -253,7 +270,7 @@ test('no screen was left behind: every managed-services scan caller is accounted
     const allowed = new Set([
         'components/ServiceList.tsx',   // the inventory page: on open and on click
         'components/ServiceShell.tsx',  // the operator's check, from a button
-        'components/Dashboard.tsx',     // the operator's check, from a button
+        'components/Dashboard.tsx',     // the operator's check, and its own conditional check (12 Oct 2026)
         'components/ComponentOperation.tsx', // after an operation the operator started
         'lib/api.ts',                   // the client method those callers share
     ]);
@@ -271,4 +288,55 @@ test('no screen was left behind: every managed-services scan caller is accounted
     };
     walk('', '');
     assert.deepEqual([...found].sort(), [...allowed].sort());
+});
+
+// 13 Oct 2026: the Components page decides whether to ask for the conditional
+// check from the age the server reports on its own clock (scan_age_seconds),
+// the clock the server judges that check on; only without the field does it
+// compare the stamp with the browser's clock, as before.
+test('the components list judges staleness from the age the server reports', () => {
+    assert.match(serviceList, /scanAgeSeconds: typeof payload\.scan_age_seconds === 'number' \? payload\.scan_age_seconds : null,/);
+    assert.match(
+        serviceList,
+        /const cacheIsStale = snapshot\.scanAgeSeconds !== null\s*\? snapshot\.scanAgeSeconds < 0 \|\| snapshot\.scanAgeSeconds > AUTO_SCAN_MAX_AGE_SECONDS\s*: !Number\.isFinite\(scannedTimestamp\)\s*\|\| Date\.now\(\) - scannedTimestamp > AUTO_SCAN_MAX_AGE_SECONDS \* 1000;/,
+    );
+});
+
+// set14b O2 (13 Oct 2026): with the Agent stopped, the Components page said
+// "A server action may have completed" although no action had run. A failed
+// read (the automatic check, a load, Rescan) now says the state could not be
+// read, with the read's own reason and Rescan; the "may have completed"
+// wording stays for an action that was sent. A later failed read never
+// replaces an action's unknown outcome.
+// Agent durmuşken sayfa hiçbir işlem koşmadığı halde "bir sunucu işlemi
+// tamamlanmış olabilir" diyordu. Başarısız okuma artık durumun okunamadığını,
+// nedeniyle ve Yeniden tara ile söyler; "tamamlanmış olabilir" yalnız
+// gönderilen işlem içindir.
+test('a failed read is not drawn as an action that may have completed', () => {
+    const loadFlow = serviceList.slice(serviceList.indexOf('const loadServices = async'), serviceList.indexOf('const scan = async'));
+    const scanFlow = serviceList.slice(serviceList.indexOf('const scan = async'), serviceList.indexOf('const [openDrawers'));
+    // Every failure inside a read marks a read, with the answer when there is one.
+    assert.match(loadFlow, /if \(markUnverifiedOnFailure\) markStateUnverified\(\{ kind: 'read', error \}\)/);
+    assert.match(loadFlow, /const error = await readApiError\(scanResponse\);[\s\S]*?return failAutoCheck\(error\);/);
+    assert.match(loadFlow, /const error = await readApiError\(res\);[\s\S]*?return failVerification\(error\);/);
+    assert.doesNotMatch(scanFlow, /markStateUnverified\(\)/, 'Rescan only reads');
+    assert.equal((scanFlow.match(/markStateUnverified\(\{ kind: 'read', error(: null)? \}\)/g) || []).length, 3);
+    // An action's unknown outcome is kept; the default cause is an action.
+    assert.match(serviceList, /const markStateUnverified = \(cause: UnverifiedCause = unverifiedByAction\) =>/);
+    assert.match(serviceList, /cause: previous\.unverified && previous\.cause\.kind === 'action' \? previous\.cause : cause,/);
+    // Two banners, one per cause; the read banner names the reason and offers Rescan.
+    assert.match(serviceList, /\{stateUnverified && verification\.cause\.kind === 'action' && \([\s\S]*?t\('services\.stateUnverifiedHint'\)/);
+    const readBanner = serviceList.slice(serviceList.indexOf("{stateUnverified && verification.cause.kind === 'read' && ("));
+    assert.match(readBanner.slice(0, 1200), /t\('services\.stateUnreadTitle'\)[\s\S]*t\('services\.stateUnreadHint', \{\s*reason: verification\.cause\.error \? apiErrorText\(verification\.cause\.error, t, 'services\.scanFailed'\) : t\('services\.scanFailed'\),/);
+    assert.match(readBanner.slice(0, 1200), /onClick=\{scan\}[\s\S]*t\('services\.rescan'\)/);
+    // The copy: the read sentence carries the reason and says no action was sent;
+    // it never claims an action may have completed.
+    for (const [locale, catalogue] of [['en', english], ['tr', turkish]]) {
+        const line = key => catalogue.slice(catalogue.indexOf(`'${key}': '`)).split('\n')[0];
+        assert.ok(catalogue.includes("'services.stateUnreadTitle': '"), `${locale} title`);
+        assert.match(line('services.stateUnreadHint'), /\{reason\}/, `${locale} reason`);
+        assert.doesNotMatch(line('services.stateUnreadHint'), /may have completed|tamamlanmış olabilir/);
+    }
+    assert.match(english.slice(english.indexOf("'services.stateUnreadHint'")).split('\n')[0], /did not send any component action/);
+    assert.match(turkish.slice(turkish.indexOf("'services.stateUnreadHint'")).split('\n')[0], /hiçbir bileşen işlemi göndermedi/);
 });

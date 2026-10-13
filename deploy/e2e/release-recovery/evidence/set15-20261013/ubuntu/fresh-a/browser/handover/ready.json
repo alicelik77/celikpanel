@@ -1,0 +1,20 @@
+{
+  "at": "2026-10-13T09:33:05Z",
+  "base": "https://127.0.0.1:19162",
+  "browser": {
+    "lang": "tr",
+    "viewport": "desktop"
+  },
+  "cell": "set15-ubuntu",
+  "local_port": 19162,
+  "mode": "fresh",
+  "password_file": "/var/tmp/cp-set15-run/secret/h15ub-ui.json",
+  "preps": [
+    "probe",
+    "journal"
+  ],
+  "schema": "celikpanel/set12-handover/v1",
+  "tls_leaf_sha256": "119f43a573dc7a4ac36fc65dd2e339ceb2115936f824f8e240e4866a4e424840",
+  "username": "labadmin",
+  "window": "ui"
+}

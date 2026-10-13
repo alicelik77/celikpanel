@@ -1,0 +1,17 @@
+{
+  "at": "2026-10-13T06:11:26Z",
+  "prep": "scan-now",
+  "result": {
+    "answer": {
+      "code": null,
+      "error": null,
+      "message": null,
+      "scan_age_seconds": 0,
+      "scan_age_seconds_type": "int",
+      "scanned_at": "2026-10-13T06:04:27.549037454Z",
+      "services": 27
+    },
+    "at": "2026-10-13T06:11:26Z",
+    "status": 200
+  }
+}

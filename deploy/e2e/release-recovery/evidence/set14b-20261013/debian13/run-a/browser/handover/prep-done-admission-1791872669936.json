@@ -1,0 +1,40 @@
+{
+  "at": "2026-10-13T06:24:30Z",
+  "prep": "admission",
+  "result": {
+    "agent_after": "inactive",
+    "agent_before": "inactive",
+    "at": "2026-10-13T06:24:30Z",
+    "body": {
+      "code": "AGENT_UNREACHABLE",
+      "error": "The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again."
+    },
+    "files": [
+      "steps/08-set14-browser-window/native/024-admission-before-24.json",
+      "steps/08-set14-browser-window/native/025-admission-after-24.json"
+    ],
+    "nginx_after": {
+      "ActiveEnterTimestampMonotonic": "149278403",
+      "ActiveState": "active",
+      "ExecMainStartTimestamp": "Tue 2026-10-13 06:03:47 UTC",
+      "MainPID": "7197",
+      "NRestarts": "0"
+    },
+    "nginx_before": {
+      "ActiveEnterTimestampMonotonic": "149278403",
+      "ActiveState": "active",
+      "ExecMainStartTimestamp": "Tue 2026-10-13 06:03:47 UTC",
+      "MainPID": "7197",
+      "NRestarts": "0"
+    },
+    "request": {
+      "body": {
+        "action": "restart",
+        "name": "nginx"
+      },
+      "method": "POST",
+      "path": "/api/v1/service/action"
+    },
+    "status": 503
+  }
+}

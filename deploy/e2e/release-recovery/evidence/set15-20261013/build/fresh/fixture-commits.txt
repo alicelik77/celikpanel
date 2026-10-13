@@ -1,0 +1,3 @@
+refs/upd1/baseline 1636b73f0979d9921ff99f283ceec8cfed1041dc tree=6442f46c91c99454378052f793dfc00e0a2baa2b Prepare v0.1.0-alpha.84: sequence 84, bootstrap pins, pinned tests
+refs/upd1/defective f94dae5295a32eef9836b53095f36948a8556e2f tree=8755884cf437a9f77d951a99c540ebf036574f57 test(fixture): set15 defective over the alpha.85 label - migrate-only fails (unpublished, disposable)
+refs/upd1/good 2c778b948fe95d46645227976386b94767b37dd1 tree=a182447ec44332261c6decc38f211e651bcb506f test(fixture): set15 origin candidate labelled v0.1.0-alpha.85 (unpublished, disposable)

@@ -1,0 +1,34 @@
+set14b checks not passed (class: product-defect | observation | not-measured | harness). Every driver step passed or was
+observed (debian13/run-a: 10 of 10); the items below come from the browser records.
+
+product-defect D2  item 2 (guest clock 418.5 s behind the browser) could not be measured: the Dashboard never mounted.
+                   The page read /api/v1/license/access 19 times, every 5 s, all 200, for the whole 90 s; it never read
+                   /api/v1/managed-services and sent no scan; the card was never on the page. The access answer's
+                   valid_until is a time on the SERVER's clock, min(ExpiresAt, OfflineUntil) (cmd/panel/license.go:226),
+                   with OfflineUntil at most 60 s after the last verification (internal/licensing/acceptance_fixture.go:301;
+                   a customer licence: internal/licensing/license.go:197, IssuedAt + 60 s); the browser rejects a positive
+                   answer whose valid_until is not after ITS OWN clock (web/src/lib/accessObservation.ts:11, now =
+                   Date.now()/1000), so access stays unknown and is read again every UNKNOWN_RECHECK_MS = 5000
+                   (web/src/components/LicenseOnboarding.tsx:15, :190). Expected effect: any server clock more than
+                   about 60 s behind the browser holds every Panel page at the licence gate. The access answer bodies
+                   were NOT recorded (the recorder keeps bodies only for managed-services), so valid_until during the skew
+                   is read from the code, not from a record. Item stopped, not repeated with a smaller skew: any skew of
+                   6 minutes or more is past that 60 s.
+                   Raw: debian13/run-a/browser/ui/requests.jsonl (page p3-behind), cardlog.jsonl, phases.json (clock-behind).
+observation O2     Components page, Agent stopped: next to the AGENT_UNREACHABLE toast the page shows the banner "Service
+                   state needs verification. A server action may have completed, but the latest state could not be
+                   verified. Run Rescan before changing another component." although no action ran and the answer says
+                   nothing was changed (any failed automatic check calls markStateUnverified:
+                   web/src/components/ServiceList.tsx:653-655 failVerification, :701-704 failAutoCheck, :710-712 the 503 path; banner :1253). Not changed by 1a74eeda5.
+observation O3     Agent stopped: GET /api/v1/firewall still answers 500 (journal "[500][agent] firewall ... cannot reach
+                   agent socket"); the Components page shows "Firewall: Status unknown ... internal server error" and
+                   the Dashboard "Part of this server's state could not be read". AGENT_UNREACHABLE covers the shared
+                   mutation admission and the scan only (as 1a74eeda5's message says); read paths keep the generic error.
+not-measured       the window rule (one conditional POST only after >= 300 s): not re-measured, as the request for this
+                   record said (set14 item 3 measured it on a5830dd3e); the freshness the trigger reads changed in
+                   e6de64a5b/1a74eeda5, the once-per-window guard did not
+not-measured       hidden tab, held (409) state, server_setup_busy, "never checked" state, Ubuntu, Arch
+not-measured       the guest's NTP settings: `timedatectl show -p A,B,...` printed no fields (returncode 0), so every
+                   probe's clock block holds only the return code (harness defect, see README)
+harness            phases.json "agent" -> "toast" names the first role="alert" element (the firewall notice), not the
+                   toast; the toast itself is in toasts.jsonl (06:24:24.646Z) and in agent-components-toast-viewport.png

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"os"
 	"os/signal"
@@ -218,12 +219,52 @@ func (p *Panel) handleLicenseAccess(w http.ResponseWriter, r *http.Request) {
 	status := p.panelLicenseStatus(r.Context())
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
-	_ = json.NewEncoder(w).Encode(struct {
-		CanUsePanel bool   `json:"can_use_panel"`
-		ValidUntil  int64  `json:"valid_until"`
-		State       string `json:"state"`
-		Observation string `json:"observation"`
-	}{status.CanProvision, min(status.ExpiresAt, status.OfflineUntil), status.State, status.Observation})
+	_ = json.NewEncoder(w).Encode(newLicenseAccessAnswer(status, time.Now()))
+}
+
+// licenseAccessAnswer is the browser's access observation. ValidUntil is the
+// absolute deadline on THIS server's clock (kept for older pages);
+// ValidForSeconds is the same deadline as the time left at the moment of the
+// answer, measured on the same clock: ValidUntil minus now, rounded to the
+// millisecond and never below 0 (0 when there is no deadline or it has
+// passed). The page takes its deadline as the moment it asked plus this time
+// left, so it never compares its own clock with the server's (D-032's clock
+// rule). Without it, a server clock more than about a minute behind the
+// browser's made every positive answer look expired and no page loaded
+// (set14b D2, Debian 13, 13 Oct 2026); a server clock ahead made access look
+// valid longer than the server allowed.
+// licenseAccessAnswer, tarayıcının erişim gözlemidir. ValidUntil BU sunucunun
+// saatiyle mutlak son andır (eski sayfalar için korunur); ValidForSeconds aynı
+// son anın yanıt anındaki kalan süresidir, aynı saatle ölçülür: ValidUntil
+// eksi şimdi, milisaniyeye yuvarlanır ve 0'ın altına inmez (son an yoksa ya da
+// geçtiyse 0). Sayfa son anı sorduğu an artı bu kalan süre olarak alır; kendi
+// saatini sunucununkiyle hiç karşılaştırmaz (D-032 saat kuralı). Bu alan
+// yokken sunucu saati tarayıcınınkinden yaklaşık bir dakikadan fazla gerideyse
+// her olumlu yanıt süresi dolmuş görünüyor ve hiçbir sayfa açılmıyordu (set14b
+// D2); sunucu saati ilerideyse erişim sunucunun izninden uzun geçerli görünüyordu.
+type licenseAccessAnswer struct {
+	CanUsePanel     bool    `json:"can_use_panel"`
+	ValidUntil      int64   `json:"valid_until"`
+	ValidForSeconds float64 `json:"valid_for_seconds"`
+	State           string  `json:"state"`
+	Observation     string  `json:"observation"`
+}
+
+// newLicenseAccessAnswer builds the answer from the licence status at `now`,
+// the moment the answer is written.
+// newLicenseAccessAnswer, yanıtı yanıtın yazıldığı `now` anındaki lisans
+// durumundan kurar.
+func newLicenseAccessAnswer(status licensing.Status, now time.Time) licenseAccessAnswer {
+	until := min(status.ExpiresAt, status.OfflineUntil)
+	validFor := 0.0
+	if until > 0 {
+		left := time.Unix(until, 0).Sub(now).Seconds()
+		validFor = max(0, math.Round(left*1000)/1000)
+	}
+	return licenseAccessAnswer{
+		CanUsePanel: status.CanProvision, ValidUntil: until, ValidForSeconds: validFor,
+		State: status.State, Observation: status.Observation,
+	}
 }
 
 func (p *Panel) allowLicensedPanel(w http.ResponseWriter, r *http.Request) bool {

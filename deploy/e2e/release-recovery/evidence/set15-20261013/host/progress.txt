@@ -1,0 +1,20 @@
+2026-10-13T09:02:01Z set15 run directory created
+2026-10-13T09:02:20Z made run copy a
+2026-10-13T09:03:15Z made run copy b
+2026-10-13T09:03:22Z start build (limit 3000s)
+2026-10-13T09:09:11Z end build rc=0
+2026-10-13T09:10:21Z start d13 (limit 6600s)
+2026-10-13T09:22:09Z end d13 rc=0
+2026-10-13T09:23:13Z made run copy c
+2026-10-13T09:23:19Z start ub (limit 6600s)
+2026-10-13T09:42:06Z end ub rc=0
+2026-10-13T09:42:28Z start ugood (limit 9000s)
+2026-10-13T09:55:39Z end ugood rc=0
+2026-10-13T09:56:47Z made run copy d
+2026-10-13T09:56:53Z start ugoodb (limit 9000s)
+2026-10-13T10:09:37Z end ugoodb rc=0
+2026-10-13T10:10:24Z made run copy e
+2026-10-13T10:10:30Z start ugoodc (limit 9000s)
+2026-10-13T12:44:41Z end ugoodc rc=1
+2026-10-13T12:45:08Z start udef (limit 7200s)
+2026-10-13T12:59:55Z end udef rc=1

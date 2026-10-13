@@ -1,0 +1,504 @@
+{
+  "lang": "en",
+  "viewport": "desktop",
+  "phases": [
+    {
+      "phase": "sign-in",
+      "started": "2026-10-13T09:17:04.646Z",
+      "ended": "2026-10-13T09:17:09.102Z",
+      "seconds": 4.5,
+      "scan_posts": 0,
+      "posts": []
+    },
+    {
+      "phase": "domains",
+      "started": "2026-10-13T09:17:09.105Z",
+      "ended": "2026-10-13T09:17:14.364Z",
+      "seconds": 5.3,
+      "scan_posts": 0,
+      "posts": [],
+      "load_at": "2026-10-13T09:17:09.466Z",
+      "first_state_row_shown": false,
+      "page_text_head": "No domains yet\n\nGet started by adding your first domain\n\nAdd domain",
+      "domains_reads": [
+        {
+          "status": 200,
+          "start": "2026-10-13T09:17:09.626Z",
+          "ms": 14,
+          "body": "[]\n"
+        },
+        {
+          "status": 200,
+          "start": "2026-10-13T09:17:09.648Z",
+          "ms": 22,
+          "body": "[]\n"
+        }
+      ],
+      "sidebar": {
+        "at": "2026-10-13T09:17:14.340Z",
+        "aside": true,
+        "text": "CelikPanel\nDashboard\nHOSTING\nDomains\nDatabases\nUsers\nStore\nVPN\nSERVER\nComponents\n6\nMonitoring\nImport\nAudit log\nSettings\nSERVER INFORMATION\ndns-debian13\n192.0.2.10\nCelikPanel · v0.1.0-alpha.84 · build 1636b73f0979\n1636b73f0979d9921ff99f283ceec8cfed1041dc",
+        "stamp": [
+          "CelikPanel · v0.1.0-alpha.84 · build 1636b73f0979"
+        ],
+        "picture": "domains-sidebar.png"
+      }
+    },
+    {
+      "phase": "dashboard",
+      "started": "2026-10-13T09:20:03.053Z",
+      "ended": "2026-10-13T09:21:33.829Z",
+      "seconds": 90.8,
+      "scan_posts": 1,
+      "posts": [
+        {
+          "page": "p2-dashboard",
+          "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+          "status": 200,
+          "start": "2026-10-13T09:20:03.664Z",
+          "end": "2026-10-13T09:20:04.790Z",
+          "ms": 1126,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-13T09:20:04.853723747Z",
+            "scan_age_seconds": 0.001,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-13T09:20:04.854Z",
+            "guest_minus_browser_ms": {
+              "low": 64,
+              "high": 1190
+            }
+          }
+        }
+      ],
+      "stale": {
+        "turn": 1,
+        "age_s": 317.1,
+        "absent": false,
+        "probe_scan": {
+          "scanned_at": "2026-10-13T09:14:46Z",
+          "age_s": 317.1
+        }
+      },
+      "load_at": "2026-10-13T09:20:03.415Z",
+      "observed_s": 90.4,
+      "mount": {
+        "first_managed_services_read_ms": 171,
+        "first_card_ms": 233,
+        "first_card_state": "checking"
+      },
+      "posts_conditional": 1,
+      "rescan_link_seen": false,
+      "rescan_link_seen_at": [],
+      "rescan_link_checks_note": "body text sampled every ~5 s and at 10 s",
+      "access_reads": [
+        {
+          "start": "2026-10-13T09:20:03.512Z",
+          "end": "2026-10-13T09:20:03.518Z",
+          "ms": 6,
+          "status": 200,
+          "after_load_ms": 97,
+          "since_previous_ms": null,
+          "access": {
+            "can_use_panel": true,
+            "valid_until": 1791883263,
+            "valid_for_seconds": 59.417,
+            "valid_for_seconds_type": "number",
+            "state": "active",
+            "observation": "known",
+            "keys": [
+              "can_use_panel",
+              "observation",
+              "state",
+              "valid_for_seconds",
+              "valid_until"
+            ],
+            "sent": "2026-10-13T09:20:03.512Z",
+            "received": "2026-10-13T09:20:03.518Z",
+            "valid_until_iso": "2026-10-13T09:21:03.000Z",
+            "old_rule_accepts_at_receipt": true,
+            "browser_deadline": "2026-10-13T09:21:02.929Z",
+            "old_rule_deadline_minus_new_ms": 71,
+            "server_now": "2026-10-13T09:20:03.583Z",
+            "guest_minus_browser_ms": {
+              "low": 65,
+              "high": 71
+            }
+          },
+          "error": null
+        },
+        {
+          "start": "2026-10-13T09:20:47.933Z",
+          "end": "2026-10-13T09:20:47.938Z",
+          "ms": 5,
+          "status": 200,
+          "after_load_ms": 44518,
+          "since_previous_ms": 44421,
+          "access": {
+            "can_use_panel": true,
+            "valid_until": 1791883308,
+            "valid_for_seconds": 59.996,
+            "valid_for_seconds_type": "number",
+            "state": "active",
+            "observation": "known",
+            "keys": [
+              "can_use_panel",
+              "observation",
+              "state",
+              "valid_for_seconds",
+              "valid_until"
+            ],
+            "sent": "2026-10-13T09:20:47.933Z",
+            "received": "2026-10-13T09:20:47.938Z",
+            "valid_until_iso": "2026-10-13T09:21:48.000Z",
+            "old_rule_accepts_at_receipt": true,
+            "browser_deadline": "2026-10-13T09:21:47.929Z",
+            "old_rule_deadline_minus_new_ms": 71,
+            "server_now": "2026-10-13T09:20:48.004Z",
+            "guest_minus_browser_ms": {
+              "low": 66,
+              "high": 71
+            }
+          },
+          "error": null
+        },
+        {
+          "start": "2026-10-13T09:21:03.524Z",
+          "end": "2026-10-13T09:21:03.531Z",
+          "ms": 7,
+          "status": 200,
+          "after_load_ms": 60109,
+          "since_previous_ms": 15591,
+          "access": {
+            "can_use_panel": true,
+            "valid_until": 1791883308,
+            "valid_for_seconds": 44.404,
+            "valid_for_seconds_type": "number",
+            "state": "active",
+            "observation": "known",
+            "keys": [
+              "can_use_panel",
+              "observation",
+              "state",
+              "valid_for_seconds",
+              "valid_until"
+            ],
+            "sent": "2026-10-13T09:21:03.524Z",
+            "received": "2026-10-13T09:21:03.531Z",
+            "valid_until_iso": "2026-10-13T09:21:48.000Z",
+            "old_rule_accepts_at_receipt": true,
+            "browser_deadline": "2026-10-13T09:21:47.928Z",
+            "old_rule_deadline_minus_new_ms": 72,
+            "server_now": "2026-10-13T09:21:03.596Z",
+            "guest_minus_browser_ms": {
+              "low": 65,
+              "high": 72
+            }
+          },
+          "error": null
+        },
+        {
+          "start": "2026-10-13T09:21:32.930Z",
+          "end": "2026-10-13T09:21:32.937Z",
+          "ms": 7,
+          "status": 200,
+          "after_load_ms": 89515,
+          "since_previous_ms": 29406,
+          "access": {
+            "can_use_panel": true,
+            "valid_until": 1791883353,
+            "valid_for_seconds": 59.998,
+            "valid_for_seconds_type": "number",
+            "state": "active",
+            "observation": "known",
+            "keys": [
+              "can_use_panel",
+              "observation",
+              "state",
+              "valid_for_seconds",
+              "valid_until"
+            ],
+            "sent": "2026-10-13T09:21:32.930Z",
+            "received": "2026-10-13T09:21:32.937Z",
+            "valid_until_iso": "2026-10-13T09:22:33.000Z",
+            "old_rule_accepts_at_receipt": true,
+            "browser_deadline": "2026-10-13T09:22:32.928Z",
+            "old_rule_deadline_minus_new_ms": 72,
+            "server_now": "2026-10-13T09:21:33.002Z",
+            "guest_minus_browser_ms": {
+              "low": 65,
+              "high": 72
+            }
+          },
+          "error": null
+        }
+      ],
+      "states": [
+        "absent",
+        "checking",
+        "known"
+      ],
+      "card_sequence": [
+        {
+          "at": "2026-10-13T09:20:03.477Z",
+          "state": "absent",
+          "vis": "visible",
+          "lasted_ms": 171,
+          "text": null
+        },
+        {
+          "at": "2026-10-13T09:20:03.648Z",
+          "state": "checking",
+          "vis": "visible",
+          "lasted_ms": 1145,
+          "text": "System services Checking components…"
+        },
+        {
+          "at": "2026-10-13T09:20:04.793Z",
+          "state": "known",
+          "vis": "visible",
+          "lasted_ms": null,
+          "text": "System services 3 / 3 running / installed"
+        }
+      ],
+      "answers": [
+        {
+          "page": "p2-dashboard",
+          "method": "GET",
+          "url": "/api/v1/managed-services",
+          "status": 200,
+          "start": "2026-10-13T09:20:03.586Z",
+          "end": "2026-10-13T09:20:03.622Z",
+          "ms": 36,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-13T09:14:46Z",
+            "scan_age_seconds": 317.671,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-13T09:20:03.671Z",
+            "guest_minus_browser_ms": {
+              "low": 49,
+              "high": 85
+            }
+          }
+        },
+        {
+          "page": "p2-dashboard",
+          "method": "GET",
+          "url": "/api/v1/managed-services",
+          "status": 200,
+          "start": "2026-10-13T09:20:03.650Z",
+          "end": "2026-10-13T09:20:03.656Z",
+          "ms": 6,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-13T09:14:46Z",
+            "scan_age_seconds": 317.716,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-13T09:20:03.716Z",
+            "guest_minus_browser_ms": {
+              "low": 60,
+              "high": 66
+            }
+          }
+        },
+        {
+          "page": "p2-dashboard",
+          "method": "POST",
+          "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+          "status": 200,
+          "start": "2026-10-13T09:20:03.664Z",
+          "end": "2026-10-13T09:20:04.790Z",
+          "ms": 1126,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-13T09:20:04.853723747Z",
+            "scan_age_seconds": 0.001,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-13T09:20:04.854Z",
+            "guest_minus_browser_ms": {
+              "low": 64,
+              "high": 1190
+            }
+          }
+        }
+      ],
+      "sidebar": {
+        "at": "2026-10-13T09:21:33.809Z",
+        "aside": true,
+        "text": "CelikPanel\nDashboard\nHOSTING\nDomains\nDatabases\nUsers\nStore\nVPN\nSERVER\nComponents\n6\nMonitoring\nImport\nAudit log\nSettings\nSERVER INFORMATION\ndns-debian13\n192.0.2.10\nCelikPanel · v0.1.0-alpha.84 · build 1636b73f0979\n1636b73f0979d9921ff99f283ceec8cfed1041dc",
+        "stamp": [
+          "CelikPanel · v0.1.0-alpha.84 · build 1636b73f0979"
+        ],
+        "picture": "dashboard-sidebar.png"
+      }
+    },
+    {
+      "phase": "components",
+      "started": "2026-10-13T09:21:33.835Z",
+      "ended": "2026-10-13T09:22:04.373Z",
+      "seconds": 30.5,
+      "scan_posts": 0,
+      "posts": [],
+      "load_at": "2026-10-13T09:21:34.198Z",
+      "posts_conditional": 0,
+      "alerts": [],
+      "toasts": [],
+      "answers": [
+        {
+          "page": "p3-components",
+          "method": "GET",
+          "url": "/api/v1/managed-services",
+          "status": 200,
+          "start": "2026-10-13T09:21:34.344Z",
+          "end": "2026-10-13T09:21:34.395Z",
+          "ms": 51,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-13T09:20:04Z",
+            "scan_age_seconds": 90.432,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-13T09:21:34.432Z",
+            "guest_minus_browser_ms": {
+              "low": 37,
+              "high": 88
+            }
+          }
+        },
+        {
+          "page": "p3-components",
+          "method": "GET",
+          "url": "/api/v1/managed-services",
+          "status": 200,
+          "start": "2026-10-13T09:21:34.344Z",
+          "end": "2026-10-13T09:21:34.396Z",
+          "ms": 52,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-13T09:20:04Z",
+            "scan_age_seconds": 90.438,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-13T09:21:34.438Z",
+            "guest_minus_browser_ms": {
+              "low": 42,
+              "high": 94
+            }
+          }
+        }
+      ]
+    },
+    {
+      "phase": "reads",
+      "started": "2026-10-13T09:22:04.379Z",
+      "ended": "2026-10-13T09:22:06.017Z",
+      "seconds": 1.6,
+      "scan_posts": 0,
+      "posts": [],
+      "reads": {
+        "/api/v1/panel/version": {
+          "status": 200,
+          "at": "2026-10-13T09:22:04.548Z",
+          "body": {
+            "agent_commit": "1636b73f0979d9921ff99f283ceec8cfed1041dc",
+            "agent_matches": true,
+            "commit": "1636b73f0979d9921ff99f283ceec8cfed1041dc",
+            "hostname": "dns-debian13",
+            "ipv4": "192.0.2.10",
+            "schema_version": 44,
+            "version": "v0.1.0-alpha.84"
+          }
+        },
+        "/api/v1/license/access": {
+          "status": 200,
+          "at": "2026-10-13T09:22:05.094Z",
+          "body": {
+            "can_use_panel": true,
+            "valid_until": 1791883353,
+            "valid_for_seconds": 27.829,
+            "state": "active",
+            "observation": "known"
+          }
+        },
+        "/api/v1/managed-services": {
+          "status": 200,
+          "at": "2026-10-13T09:22:05.608Z",
+          "body": {
+            "scanned_at": "2026-10-13T09:20:04Z",
+            "scan_age_seconds": 121.693,
+            "services": "<27 entries>",
+            "profiles": [
+              {
+                "verified": false,
+                "latest_attempt_status": "none",
+                "id": "core-mail",
+                "name": "Core Mail",
+                "description": "Postfix SMTP and Dovecot IMAP/POP3 with authenticated submission.",
+                "services": [
+                  "postfix",
+                  "dovecot"
+                ],
+                "status": "available",
+                "available": true
+              },
+              {
+                "verified": false,
+                "latest_attempt_status": "none",
+                "id": "webmail",
+                "name": "Webmail",
+                "description": "Core mail plus Nginx, PHP-FPM and Roundcube webmail.",
+                "services": [
+                  "postfix",
+                  "dovecot",
+                  "nginx",
+                  "php-fpm",
+                  "roundcube"
+                ],
+                "status": "partial",
+                "available": true,
+                "warning": "Some components are already present. Installing this profile will reconcile the full plan without removing completed services."
+              },
+              {
+                "verified": false,
+                "latest_attempt_status": "none",
+                "id": "protected-mail",
+                "name": "Spam-Protected Mail",
+                "description": "Core mail with Rspamd spam filtering.",
+                "services": [
+                  "postfix",
+                  "dovecot",
+                  "rspamd"
+                ],
+                "status": "available",
+                "available": true
+              }
+            ],
+            "dns_identity_ready": true,
+            "mail_hostname": {
+              "current": "dns-debian13",
+              "current_usable": false,
+              "will_set_hostname": false
+            }
+          }
+        }
+      }
+    }
+  ]
+}

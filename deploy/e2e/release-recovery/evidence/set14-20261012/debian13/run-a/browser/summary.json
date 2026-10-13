@@ -1,0 +1,556 @@
+{
+  "lang": "en",
+  "viewport": "desktop",
+  "phases": [
+    {
+      "phase": "sign-in",
+      "started": "2026-10-12T21:15:55.863Z",
+      "ended": "2026-10-12T21:16:00.298Z",
+      "seconds": 4.4,
+      "scan_posts": 0,
+      "scan_posts_list": [],
+      "card_sequence": [
+        {
+          "page": "sign-in",
+          "at": "2026-10-12T21:15:56.516Z",
+          "state": "absent",
+          "vis": "visible",
+          "lasted_ms": null,
+          "text": null
+        }
+      ],
+      "readiness_polls": 0
+    },
+    {
+      "phase": "stale-load",
+      "started": "2026-10-12T21:18:46.314Z",
+      "ended": "2026-10-12T21:19:33.777Z",
+      "seconds": 47.5,
+      "scan_posts": 1,
+      "stale": {
+        "turn": 1,
+        "age_s": 317.4,
+        "absent": false
+      },
+      "cpu": {
+        "wall_s": 47.4,
+        "agent_usage_usec": 293206,
+        "agent_user_usec": 149418,
+        "agent_system_usec": 143788,
+        "panel_usage_usec": 148509,
+        "agent_cpu_usage_nsec": 293206000,
+        "panel_cpu_usage_nsec": 148509000,
+        "agent_main_pid": [
+          "5222",
+          "5222"
+        ],
+        "loadavg": [
+          "0.00 0.19 0.15 1/127 15109",
+          "0.10 0.19 0.15 1/127 15223"
+        ]
+      },
+      "probes": [
+        "steps/08-set14-browser-window/native/004-probe-3.json",
+        "steps/08-set14-browser-window/native/005-probe-4.json"
+      ],
+      "scan_posts_list": [
+        {
+          "page": "p1-stale",
+          "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+          "status": 200,
+          "start": "2026-10-12T21:18:46.998Z",
+          "end": "2026-10-12T21:18:48.338Z",
+          "ms": 1340,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-12T21:18:49.569655Z",
+            "services": 27,
+            "error": null
+          }
+        }
+      ],
+      "card_sequence": [
+        {
+          "page": "p1-stale",
+          "at": "2026-10-12T21:18:46.800Z",
+          "state": "absent",
+          "vis": "visible",
+          "lasted_ms": 206,
+          "text": null
+        },
+        {
+          "page": "p1-stale",
+          "at": "2026-10-12T21:18:47.006Z",
+          "state": "checking",
+          "vis": "visible",
+          "lasted_ms": 1398,
+          "text": "System services Checking components…"
+        },
+        {
+          "page": "p1-stale",
+          "at": "2026-10-12T21:18:48.404Z",
+          "state": "not-recent",
+          "vis": "visible",
+          "lasted_ms": 28596,
+          "text": "System services Unknown Not checked in the last 5 minutes. This page checks again by itself while it is open. Scan services"
+        },
+        {
+          "page": "p1-stale",
+          "at": "2026-10-12T21:19:17.000Z",
+          "state": "known",
+          "vis": "visible",
+          "lasted_ms": null,
+          "text": "System services 3 / 3 running / installed"
+        }
+      ],
+      "readiness_polls": 10
+    },
+    {
+      "phase": "fresh-load",
+      "started": "2026-10-12T21:19:34.816Z",
+      "ended": "2026-10-12T21:20:21.319Z",
+      "seconds": 46.5,
+      "scan_posts": 0,
+      "scan_age_at_start_s": 46.7,
+      "cpu": {
+        "wall_s": 46.4,
+        "agent_usage_usec": 103960,
+        "agent_user_usec": 27282,
+        "agent_system_usec": 76678,
+        "panel_usage_usec": 168389,
+        "agent_cpu_usage_nsec": 103960000,
+        "panel_cpu_usage_nsec": 168389000,
+        "agent_main_pid": [
+          "5222",
+          "5222"
+        ],
+        "loadavg": [
+          "0.10 0.19 0.15 1/127 15240",
+          "0.04 0.16 0.14 1/124 15293"
+        ]
+      },
+      "probes": [
+        "steps/08-set14-browser-window/native/006-probe-5.json",
+        "steps/08-set14-browser-window/native/007-probe-6.json"
+      ],
+      "scan_posts_list": [],
+      "card_sequence": [
+        {
+          "page": "p2-fresh",
+          "at": "2026-10-12T21:19:35.328Z",
+          "state": "absent",
+          "vis": "visible",
+          "lasted_ms": 406,
+          "text": null
+        },
+        {
+          "page": "p2-fresh",
+          "at": "2026-10-12T21:19:35.734Z",
+          "state": "known",
+          "vis": "visible",
+          "lasted_ms": 269996,
+          "text": "System services 3 / 3 running / installed"
+        }
+      ],
+      "readiness_polls": 10
+    },
+    {
+      "phase": "window",
+      "started": "2026-10-12T21:20:21.322Z",
+      "ended": "2026-10-12T21:25:04.598Z",
+      "seconds": 283.3,
+      "scan_posts": 1,
+      "observed_ms": 282000,
+      "scan_epoch_before": 1791839929,
+      "scan_epoch_after": 1791840248,
+      "due_epoch": 1791840229,
+      "scan_posts_list": [
+        {
+          "page": "p2-fresh",
+          "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+          "status": 200,
+          "start": "2026-10-12T21:24:05.693Z",
+          "end": "2026-10-12T21:24:07.342Z",
+          "ms": 1649,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-12T21:24:08.585869802Z",
+            "services": 27,
+            "error": null
+          }
+        }
+      ],
+      "card_sequence": [
+        {
+          "page": "p2-fresh",
+          "at": "2026-10-12T21:24:05.730Z",
+          "state": "checking",
+          "vis": "visible",
+          "lasted_ms": 1696,
+          "text": "System services Checking components…"
+        },
+        {
+          "page": "p2-fresh",
+          "at": "2026-10-12T21:24:07.426Z",
+          "state": "not-recent",
+          "vis": "visible",
+          "lasted_ms": 28300,
+          "text": "System services Unknown Not checked in the last 5 minutes. This page checks again by itself while it is open. Scan services"
+        },
+        {
+          "page": "p2-fresh",
+          "at": "2026-10-12T21:24:35.726Z",
+          "state": "known",
+          "vis": "visible",
+          "lasted_ms": 28890,
+          "text": "System services 3 / 3 running / installed"
+        }
+      ],
+      "readiness_polls": 56
+    },
+    {
+      "phase": "hidden",
+      "started": "2026-10-12T21:25:04.602Z",
+      "ended": "2026-10-12T21:30:49.899Z",
+      "seconds": 345.3,
+      "scan_posts": 1,
+      "hidden_ms": 303850,
+      "visibility_while_hidden": "hidden",
+      "posts_while_hidden": 0,
+      "posts_after_shown": 1,
+      "shown_at": "2026-10-12T21:30:08.452Z",
+      "scan_age_when_shown_s": 361.1,
+      "scan_epoch_after": 1791840611,
+      "scan_posts_list": [
+        {
+          "page": "p2-fresh",
+          "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+          "status": 200,
+          "start": "2026-10-12T21:30:08.465Z",
+          "end": "2026-10-12T21:30:09.772Z",
+          "ms": 1307,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-12T21:30:11.021045897Z",
+            "services": 27,
+            "error": null
+          }
+        }
+      ],
+      "card_sequence": [
+        {
+          "page": "p2-fresh",
+          "at": "2026-10-12T21:25:04.616Z",
+          "state": "known",
+          "vis": "hidden",
+          "lasted_ms": 271119,
+          "text": "System services 3 / 3 running / installed"
+        },
+        {
+          "page": "p2-fresh",
+          "at": "2026-10-12T21:29:35.735Z",
+          "state": "not-recent",
+          "vis": "hidden",
+          "lasted_ms": 32723,
+          "text": "System services Unknown Not checked in the last 5 minutes. This page checks again by itself while it is open. Scan services"
+        },
+        {
+          "page": "p2-fresh",
+          "at": "2026-10-12T21:30:08.458Z",
+          "state": "not-recent",
+          "vis": "visible",
+          "lasted_ms": 71,
+          "text": "System services Unknown Not checked in the last 5 minutes. This page checks again by itself while it is open. Scan services"
+        },
+        {
+          "page": "p2-fresh",
+          "at": "2026-10-12T21:30:08.529Z",
+          "state": "checking",
+          "vis": "visible",
+          "lasted_ms": 1308,
+          "text": "System services Checking components…"
+        },
+        {
+          "page": "p2-fresh",
+          "at": "2026-10-12T21:30:09.837Z",
+          "state": "not-recent",
+          "vis": "visible",
+          "lasted_ms": 25902,
+          "text": "System services Unknown Not checked in the last 5 minutes. This page checks again by itself while it is open. Scan services"
+        },
+        {
+          "page": "p2-fresh",
+          "at": "2026-10-12T21:30:35.739Z",
+          "state": "known",
+          "vis": "visible",
+          "lasted_ms": null,
+          "text": "System services 3 / 3 running / installed"
+        }
+      ],
+      "readiness_polls": 69
+    },
+    {
+      "phase": "failure",
+      "started": "2026-10-12T21:35:27.202Z",
+      "ended": "2026-10-12T21:37:09.110Z",
+      "seconds": 101.9,
+      "scan_posts": 2,
+      "agent_stop": {
+        "after": "inactive",
+        "at": "2026-10-12T21:35:29Z",
+        "before": "active",
+        "command": "systemctl stop celikpanel-agent.service",
+        "epoch": 1791840929.7059567,
+        "main_pid_after": "0",
+        "returncode": 0,
+        "waited_seconds": 0.06
+      },
+      "agent_start": {
+        "after": "active",
+        "at": "2026-10-12T21:36:12Z",
+        "before": "inactive",
+        "command": "systemctl start celikpanel-agent.service",
+        "epoch": 1791840972.130267,
+        "main_pid_after": "16513",
+        "returncode": 0,
+        "waited_seconds": 0.1
+      },
+      "clicked": "Scan services",
+      "load_at": "2026-10-12T21:35:29.602Z",
+      "click_at": "2026-10-12T21:36:27.023Z",
+      "posts_before_click": 1,
+      "posts_after_click": 1,
+      "probe_after": "steps/08-set14-browser-window/native/015-probe-14.json",
+      "scan_posts_list": [
+        {
+          "page": "p4-failure",
+          "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+          "status": 500,
+          "start": "2026-10-12T21:35:29.902Z",
+          "end": "2026-10-12T21:35:29.913Z",
+          "ms": 11,
+          "answer": {
+            "code": "INTERNAL",
+            "scanned_at": null,
+            "services": null,
+            "error": "internal server error"
+          }
+        },
+        {
+          "page": "p4-failure",
+          "url": "/api/v1/managed-services/scan",
+          "status": 200,
+          "start": "2026-10-12T21:36:27.028Z",
+          "end": "2026-10-12T21:36:28.370Z",
+          "ms": 1342,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-12T21:36:29.619942078Z",
+            "services": 27,
+            "error": null
+          }
+        }
+      ],
+      "card_sequence": [
+        {
+          "page": "p4-failure",
+          "at": "2026-10-12T21:35:29.777Z",
+          "state": "absent",
+          "vis": "visible",
+          "lasted_ms": 97,
+          "text": null
+        },
+        {
+          "page": "p4-failure",
+          "at": "2026-10-12T21:35:29.874Z",
+          "state": "checking",
+          "vis": "visible",
+          "lasted_ms": 67,
+          "text": "System services Checking components…"
+        },
+        {
+          "page": "p4-failure",
+          "at": "2026-10-12T21:35:29.941Z",
+          "state": "failed",
+          "vis": "visible",
+          "lasted_ms": 57093,
+          "text": "System services Unknown Could not check: The server hit an internal error. Try again; if it persists, check the panel logs. Scan services"
+        },
+        {
+          "page": "p4-failure",
+          "at": "2026-10-12T21:36:27.034Z",
+          "state": "checking",
+          "vis": "visible",
+          "lasted_ms": 1415,
+          "text": "System services Checking components…"
+        },
+        {
+          "page": "p4-failure",
+          "at": "2026-10-12T21:36:28.449Z",
+          "state": "not-recent",
+          "vis": "visible",
+          "lasted_ms": 1498,
+          "text": "System services Unknown Not checked in the last 5 minutes. This page checks again by itself while it is open. Scan services"
+        },
+        {
+          "page": "p4-failure",
+          "at": "2026-10-12T21:36:29.947Z",
+          "state": "known",
+          "vis": "visible",
+          "lasted_ms": null,
+          "text": "System services 3 / 3 running / installed"
+        }
+      ],
+      "readiness_polls": 20
+    },
+    {
+      "phase": "components",
+      "started": "2026-10-12T21:41:45.385Z",
+      "ended": "2026-10-12T21:42:30.625Z",
+      "seconds": 45.2,
+      "scan_posts": 1,
+      "scan_posts_list": [
+        {
+          "page": "p5-components",
+          "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+          "status": 200,
+          "start": "2026-10-12T21:41:45.974Z",
+          "end": "2026-10-12T21:41:47.074Z",
+          "ms": 1100,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-12T21:41:48.323920176Z",
+            "services": 27,
+            "error": null
+          }
+        }
+      ],
+      "card_sequence": [],
+      "readiness_polls": 9
+    },
+    {
+      "phase": "held",
+      "started": "2026-10-12T21:47:04.111Z",
+      "ended": "2026-10-12T21:49:25.565Z",
+      "seconds": 141.5,
+      "scan_posts": 2,
+      "slow_on": {
+        "at": "2026-10-12T21:47:06Z",
+        "daemon_reload_returncode": 0,
+        "epoch": 1791841626.530717,
+        "nginx": [
+          "MainPID=7267",
+          "ExecReload={ path=/bin/sleep ; argv[]=/bin/sleep 90 ; ignore_errors=no ; start_time=[n/a] ; stop_time=[n/a] ; pid=0 ; code=(null) ; status=0/0 }",
+          "ActiveState=active"
+        ],
+        "removed": null
+      },
+      "action_start": {
+        "action": "reload",
+        "service": "nginx",
+        "started_epoch": 1791841626.2916903,
+        "still_running_after_3s": true
+      },
+      "action_end": {
+        "answer": {
+          "success": true
+        },
+        "ended_epoch": 1791841717.553016,
+        "error": null,
+        "finished": true,
+        "seconds": 91.26,
+        "started_epoch": 1791841626.2916903,
+        "status": 200
+      },
+      "action_end_seen": "2026-10-12T21:48:38.397Z",
+      "load_at": "2026-10-12T21:47:10.582Z",
+      "posts_while_held": 1,
+      "posts_after_ready": 1,
+      "slow_off": {
+        "at": "2026-10-12T21:49:25Z",
+        "daemon_reload_returncode": 0,
+        "epoch": 1791841765.3412209,
+        "nginx": [
+          "MainPID=7267",
+          "ExecReload={ path=/usr/sbin/nginx ; argv[]=/usr/sbin/nginx -g daemon on; master_process on; -s reload ; ignore_errors=no ; start_time=[n/a] ; stop_time=[n/a] ; pid=0 ; code=(null) ; status=0/0 }",
+          "ActiveState=active"
+        ],
+        "removed": true
+      },
+      "probe_after": "steps/08-set14-browser-window/native/022-probe-23.json",
+      "scan_posts_list": [
+        {
+          "page": "p6-held",
+          "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+          "status": 409,
+          "start": "2026-10-12T21:47:10.815Z",
+          "end": "2026-10-12T21:47:10.827Z",
+          "ms": 12,
+          "answer": {
+            "code": "service_operation_busy",
+            "scanned_at": null,
+            "services": null,
+            "error": "another package operation is already in progress"
+          }
+        },
+        {
+          "page": "p6-held",
+          "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+          "status": 200,
+          "start": "2026-10-12T21:48:40.807Z",
+          "end": "2026-10-12T21:48:40.811Z",
+          "ms": 4,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-12T21:48:38Z",
+            "services": 27,
+            "error": null
+          }
+        }
+      ],
+      "card_sequence": [
+        {
+          "page": "p6-held",
+          "at": "2026-10-12T21:47:10.733Z",
+          "state": "absent",
+          "vis": "visible",
+          "lasted_ms": 75,
+          "text": null
+        },
+        {
+          "page": "p6-held",
+          "at": "2026-10-12T21:47:10.808Z",
+          "state": "checking",
+          "vis": "visible",
+          "lasted_ms": 119,
+          "text": "System services Checking components…"
+        },
+        {
+          "page": "p6-held",
+          "at": "2026-10-12T21:47:10.927Z",
+          "state": "held",
+          "vis": "visible",
+          "lasted_ms": 89882,
+          "text": "System services Unknown A change is in progress; the status is shown when it finishes."
+        },
+        {
+          "page": "p6-held",
+          "at": "2026-10-12T21:48:40.809Z",
+          "state": "checking",
+          "vis": "visible",
+          "lasted_ms": 99,
+          "text": "System services Checking components…"
+        },
+        {
+          "page": "p6-held",
+          "at": "2026-10-12T21:48:40.908Z",
+          "state": "known",
+          "vis": "visible",
+          "lasted_ms": null,
+          "text": "System services 3 / 3 running / installed"
+        }
+      ],
+      "readiness_polls": 27
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+2026-10-13T09:23:38.005385+00:00 dns-ubuntu systemd[1]: Started cron.service - Regular background program processing daemon.
+2026-10-13T09:23:38.023697+00:00 dns-ubuntu (cron)[801]: cron.service: Referenced but unset environment variable evaluates to an empty string: EXTRA_OPTS
+2026-10-13T09:23:38.029822+00:00 dns-ubuntu cron[801]: (CRON) INFO (pidfile fd = 3)
+2026-10-13T09:23:38.035804+00:00 dns-ubuntu cron[801]: (CRON) INFO (Running @reboot jobs)
+2026-10-13T09:25:01.890171+00:00 dns-ubuntu CRON[8510]: pam_unix(cron:session): session opened for user root(uid=0) by root(uid=0)
+2026-10-13T09:25:01.890873+00:00 dns-ubuntu CRON[8518]: (root) CMD (command -v debian-sa1 > /dev/null && debian-sa1 1 1)
+2026-10-13T09:25:01.894242+00:00 dns-ubuntu CRON[8510]: pam_unix(cron:session): session closed for user root
+2026-10-13T09:29:57.834857+00:00 dns-ubuntu systemd[1]: Starting mariadb.service - MariaDB 10.11.14 database server...
+2026-10-13T09:29:57.905098+00:00 dns-ubuntu (mariadbd)[11445]: mariadb.service: Referenced but unset environment variable evaluates to an empty string: MYSQLD_OPTS, _WSREP_NEW_CLUSTER
+2026-10-13T09:29:57.927408+00:00 dns-ubuntu mariadbd[11445]: 2026-10-13  9:29:57 0 [Note] Starting MariaDB 10.11.14-MariaDB-0ubuntu0.24.04.1 source revision 053f9bcb5b147bf00edb99e1310bae9125b7f125 server_uid W4SCr1TT1XkuiEEx9TvPKXjj4bk= as process 11445
+2026-10-13T09:29:57.954762+00:00 dns-ubuntu mariadbd[11445]: 2026-10-13  9:29:57 0 [Note] InnoDB: Compressed tables use zlib 1.3
+2026-10-13T09:29:57.957021+00:00 dns-ubuntu mariadbd[11445]: 2026-10-13  9:29:57 0 [Note] InnoDB: Number of transaction pools: 1
+2026-10-13T09:29:57.957083+00:00 dns-ubuntu mariadbd[11445]: 2026-10-13  9:29:57 0 [Note] InnoDB: Using crc32 + pclmulqdq instructions
+2026-10-13T09:29:57.957529+00:00 dns-ubuntu mariadbd[11445]: 2026-10-13  9:29:57 0 [Note] InnoDB: Using io_uring
+2026-10-13T09:29:57.957974+00:00 dns-ubuntu mariadbd[11445]: 2026-10-13  9:29:57 0 [Note] InnoDB: innodb_buffer_pool_size_max=128m, innodb_buffer_pool_size=128m
+2026-10-13T09:29:57.958919+00:00 dns-ubuntu mariadbd[11445]: 2026-10-13  9:29:57 0 [Note] InnoDB: Initialized memory pressure event listener
+2026-10-13T09:29:57.958919+00:00 dns-ubuntu mariadbd[11445]: 2026-10-13  9:29:57 0 [Note] InnoDB: Completed initialization of buffer pool
+2026-10-13T09:29:57.959626+00:00 dns-ubuntu mariadbd[11445]: 2026-10-13  9:29:57 0 [Note] InnoDB: File system buffers for log disabled (block size=512 bytes)
+2026-10-13T09:29:57.975265+00:00 dns-ubuntu mariadbd[11445]: 2026-10-13  9:29:57 0 [Note] InnoDB: End of log at LSN=46980
+2026-10-13T09:29:58.025388+00:00 dns-ubuntu mariadbd[11445]: 2026-10-13  9:29:58 0 [Note] InnoDB: 128 rollback segments are active.
+2026-10-13T09:29:58.025734+00:00 dns-ubuntu mariadbd[11445]: 2026-10-13  9:29:58 0 [Note] InnoDB: Setting file './ibtmp1' size to 12.000MiB. Physically writing the file full; Please wait ...
+2026-10-13T09:29:58.025775+00:00 dns-ubuntu mariadbd[11445]: 2026-10-13  9:29:58 0 [Note] InnoDB: File './ibtmp1' size is now 12.000MiB.
+2026-10-13T09:29:58.027182+00:00 dns-ubuntu mariadbd[11445]: 2026-10-13  9:29:58 0 [Note] InnoDB: log sequence number 46980; transaction id 14
+2026-10-13T09:29:58.027488+00:00 dns-ubuntu mariadbd[11445]: 2026-10-13  9:29:58 0 [Note] InnoDB: Loading buffer pool(s) from /var/lib/mysql/ib_buffer_pool
+2026-10-13T09:29:58.027679+00:00 dns-ubuntu mariadbd[11445]: 2026-10-13  9:29:58 0 [Note] Plugin 'FEEDBACK' is disabled.
+2026-10-13T09:29:58.028709+00:00 dns-ubuntu mariadbd[11445]: 2026-10-13  9:29:58 0 [Warning] You need to use --log-bin to make --expire-logs-days or --binlog-expire-logs-seconds work.
+2026-10-13T09:29:58.030096+00:00 dns-ubuntu mariadbd[11445]: 2026-10-13  9:29:58 0 [Note] Server socket created on IP: '127.0.0.1', port: '3306'.
+2026-10-13T09:29:58.032230+00:00 dns-ubuntu mariadbd[11445]: 2026-10-13  9:29:58 0 [Note] InnoDB: Buffer pool(s) load completed at 261013  9:29:58
+2026-10-13T09:29:58.036838+00:00 dns-ubuntu mariadbd[11445]: 2026-10-13  9:29:58 0 [Note] /usr/sbin/mariadbd: ready for connections.
+2026-10-13T09:29:58.036989+00:00 dns-ubuntu mariadbd[11445]: Version: '10.11.14-MariaDB-0ubuntu0.24.04.1'  socket: '/run/mysqld/mysqld.sock'  port: 3306  Ubuntu 24.04
+2026-10-13T09:29:58.065471+00:00 dns-ubuntu systemd[1]: Started mariadb.service - MariaDB 10.11.14 database server.
+2026-10-13T09:29:58.067701+00:00 dns-ubuntu /etc/mysql/debian-start[11462]: Upgrading MariaDB tables if necessary.
+2026-10-13T09:29:58.104703+00:00 dns-ubuntu /etc/mysql/debian-start[11477]: Triggering myisam-recover for all MyISAM tables and aria-recover for all Aria tables
+2026-10-13T09:30:11.461777+00:00 dns-ubuntu systemd[1]: Starting nginx.service - A high performance web server and a reverse proxy server...
+2026-10-13T09:30:11.476826+00:00 dns-ubuntu systemd[1]: Started nginx.service - A high performance web server and a reverse proxy server.
+2026-10-13T09:35:01.905929+00:00 dns-ubuntu CRON[21140]: pam_unix(cron:session): session opened for user root(uid=0) by root(uid=0)
+2026-10-13T09:35:01.906562+00:00 dns-ubuntu CRON[21141]: (root) CMD (command -v debian-sa1 > /dev/null && debian-sa1 1 1)
+2026-10-13T09:35:01.909258+00:00 dns-ubuntu CRON[21140]: pam_unix(cron:session): session closed for user root
+2026-10-13T09:39:01.917919+00:00 dns-ubuntu CRON[21572]: pam_unix(cron:session): session opened for user root(uid=0) by root(uid=0)
+2026-10-13T09:39:01.918594+00:00 dns-ubuntu CRON[21573]: (root) CMD (  [ -x /usr/lib/php/sessionclean ] && if [ ! -d /run/systemd/system ]; then /usr/lib/php/sessionclean; fi)
+2026-10-13T09:39:01.920778+00:00 dns-ubuntu CRON[21572]: pam_unix(cron:session): session closed for user root

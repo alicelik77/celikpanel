@@ -1,0 +1,23 @@
+set14 checks not passed (class: product-defect | observation | not-measured). Every driver step passed or was observed
+(debian13/run-a and ubuntu/run-a: 10 of 10); the items below come from the browser records.
+
+product-defect D1  both platforms  card says "Unknown / Not checked in the last 5 minutes" right after a successful
+                   scan, until the next 30 s tick, because the server's scanned_at is ahead of the browser clock
+                   (guest +1.05..+2.16 s). Durations: debian13 28.6, 28.3, 25.9, 1.5 s; ubuntu 25.5, 26.9, 20.0, 1.5 s.
+                   web/src/components/Dashboard.tsx:199-204 (freshScanTimestamp rejects a future scanned_at), :495
+                   (setFreshnessNow(Date.now()) after a scan, comment :488-494), :410 (30 s clock).
+                   Raw: */run-a/browser/summary.json card_sequence; browser/ui/*-not-recent-card.png; requests.jsonl.
+observation O1     both platforms  Agent stopped: the card's reason is the generic "The server hit an internal error
+                   ... check the panel logs" (500 INTERNAL); the Panel's journal names "cannot reach agent socket".
+                   cmd/panel/service_operations.go:293.
+observation O2     a service install cannot hold the card in "held": its preflight scans first
+                   (cmd/panel/service_install_preflight.go:39); item 5 used a slow nginx reload instead.
+not-measured       server_setup_busy (no Dashboard load during the setup)
+not-measured       the "never checked" card state (the setup had scanned before the window)
+not-measured       Arch (not run)
+not-measured       Components page on a build before a5830dd3e
+not-measured       readiness answer bodies in item 5 (status codes only)
+not-measured       the scan's server-side wall time (browser request time through the SSH forward only)
+picture-cut        ubuntu/run-a/browser/ui/stale-load-checking-card.png and failure-failed-card.png show the card cut
+                   off (phone, card below the fold); the same states are whole in window-checking-card.png and
+                   failure-agent-back-failed-card.png

@@ -1,0 +1,38 @@
+date_utc=2026-10-13T09:02:01Z whoami=0
+qemu=0
+/dev/sdd       1007G   44G  913G   5% /
+Mem:           15697         666       14806           3         419       15031
+16
+/var/tmp/cp-pair-accept
+/var/tmp/cp-release-drill-s14b-d13-a
+/var/tmp/cp-release-drill-s14c-d13-a
+/var/tmp/cp-release-drill-s14-d13-a
+/var/tmp/cp-release-drill-s14-ub-a
+/var/tmp/cp-set14b-run
+/var/tmp/cp-set14c-run
+/var/tmp/cp-set14-run
+/var/tmp/cp-set15-run
+/var/tmp/cp-upd1-build
+/var/tmp/cp-v3n28
+2e64b4abf6e335f04269d571e269ab1cd0d2f89a-acceptance-license
+3a5dbba9d4319292ce4cb64d5306a19494e8d3eb-acceptance-license
+605ed8deb5b3d5fb6610a5fbce031e752af680b6-acceptance-license
+83befa2a47c8cb35028fe9f69c8239561118e8fc-acceptance-license
+8e48609f387cdcc177a8b432edc52414a7790b79-acceptance-license
+a20b6dace3966e9777de7c31b32b0316208730ac-acceptance-license
+a657c2ae97487721e5a8c6c91bdda1a35f396b78-acceptance-license
+c1465c4f31595e3a444f640bd564ccb7fee805df-acceptance-license
+d84f62b1630782e320a3f5f27bd2f5e32959379b-acceptance-license
+ee76ce1e43ffc031d367baac661eba8fddb49ed8-acceptance-license
+f23f7093c537ac2d2e80d4766e6fb923a0ae1b28-acceptance-license
+f58a91db1b9d0ad969754a9f57f4e674bea11437-acceptance-license
+Arch-Linux-x86_64-cloudimg-20260815.573966.qcow2
+debian-13-genericcloud-amd64-20260826-2582.qcow2
+ubuntu-24.04-server-cloudimg-amd64-20260826.img
+/opt/celikpanel-test-toolchains/go1.26.5/go/bin
+go version go1.26.5 linux/amd64
+/usr/sbin/node
+/usr/sbin/npm
+/usr/sbin/python3
+/usr/sbin/qemu-system-x86_64
+/usr/sbin/ssh

@@ -1,0 +1,6 @@
+2026-10-12T21:50:29Z removed /var/tmp/cp-release-drill-s14-d13-a/cells/7fe1d06067b7cc43aa872648/arch/overlay.qcow2 bytes=170000384 (overlay disk of this run's lab)
+2026-10-12T21:50:29Z removed /var/tmp/cp-release-drill-s14-d13-a/cells/7fe1d06067b7cc43aa872648/debian13/overlay.qcow2 bytes=1154088960 (overlay disk of this run's lab)
+2026-10-12T21:50:29Z removed /var/tmp/cp-release-drill-s14-d13-a/images/Arch-Linux-x86_64-cloudimg-20260815.573966.qcow2 (hard link to the cached base image; the cached file stays)
+2026-10-12T21:50:29Z removed /var/tmp/cp-release-drill-s14-d13-a/images/debian-13-genericcloud-amd64-20260826-2582.qcow2 (hard link to the cached base image; the cached file stays)
+2026-10-12T22:34:36Z removed /var/tmp/cp-release-drill-s14-ub-a/cells/490ba8baf78a64dc4601d503/ubuntu/overlay.qcow2 bytes=1243086848 (overlay disk of this run's lab)
+2026-10-12T22:34:36Z removed /var/tmp/cp-release-drill-s14-ub-a/images/ubuntu-24.04-server-cloudimg-amd64-20260826.img (hard link to the cached base image; the cached file stays)

@@ -1,0 +1,108 @@
+{
+  "ntp_on": {
+    "after_clock": {
+      "returncode": 0
+    },
+    "after_epoch": 1791872762.9075809,
+    "at": "2026-10-13T06:26:02Z",
+    "before_clock": {
+      "returncode": 0
+    },
+    "before_epoch": 1791872761.7252195,
+    "command": "timedatectl set-ntp true",
+    "epoch": 1791872762.9184985,
+    "ntp_off_returncode": null,
+    "returncode": 0,
+    "shift_ms": null,
+    "shift_total_ms": 0,
+    "stderr": ""
+  },
+  "probe": {
+    "at": "2026-10-13T06:26:03Z",
+    "cgroup_cpu": {
+      "agent": {
+        "system_usec": 142320,
+        "usage_usec": 276201,
+        "user_usec": 133881
+      },
+      "panel": {
+        "system_usec": 1470316,
+        "usage_usec": 3145094,
+        "user_usec": 1674778
+      }
+    },
+    "clock": {
+      "CanNTP": null,
+      "NTP": null,
+      "NTPSynchronized": null,
+      "returncode": 0
+    },
+    "epoch": 1791872763.8453722,
+    "file": "steps/08-set14-browser-window/native/034-probe-after-the-clock-check.json",
+    "loadavg": "0.07 0.08 0.12 1/128 17134",
+    "nginx": {
+      "ActiveEnterTimestampMonotonic": "149278403",
+      "ActiveState": "active",
+      "MainPID": "7197",
+      "NRestarts": "0"
+    },
+    "nginx_dropin": false,
+    "proc_cpu": {
+      "agent": {
+        "clk_tck": 100,
+        "cstime": 8,
+        "cutime": 8,
+        "stime": 3,
+        "utime": 5
+      },
+      "panel": {
+        "clk_tck": 100,
+        "cstime": 0,
+        "cutime": 0,
+        "stime": 145,
+        "utime": 166
+      }
+    },
+    "scan_cache": {
+      "age_seconds": 45.9,
+      "data_bytes": 2262,
+      "database": "/var/lib/celikpanel/celikpanel.db",
+      "exists": true,
+      "scanned_at": "2026-10-13T06:25:18Z",
+      "scanned_epoch": 1791872718.0
+    },
+    "units": {
+      "agent": {
+        "ActiveState": "active",
+        "CPUUsageNSec": "276201000",
+        "MainPID": "16759",
+        "NRestarts": "0"
+      },
+      "panel": {
+        "ActiveState": "active",
+        "CPUUsageNSec": "3145094000",
+        "MainPID": "5420",
+        "NRestarts": "0"
+      }
+    }
+  },
+  "shift_total_ms_before": 1505,
+  "undo": {
+    "after_clock": {
+      "returncode": 0
+    },
+    "after_epoch": 1791872761.4266558,
+    "at": "2026-10-13T06:26:01Z",
+    "before_clock": {
+      "returncode": 0
+    },
+    "before_epoch": 1791872762.6291516,
+    "command": "date -u -s @<guest epoch -1505 ms>",
+    "epoch": 1791872761.4436793,
+    "ntp_off_returncode": 0,
+    "returncode": 0,
+    "shift_ms": -1505,
+    "shift_total_ms": 0,
+    "stderr": ""
+  }
+}

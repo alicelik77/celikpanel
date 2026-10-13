@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math"
 	"net/http"
 	"path/filepath"
 	"regexp"
@@ -165,7 +166,25 @@ func (r ManagedServiceResponse) Observed() bool { return r.IsInstalled != nil }
 // managedServicesPayload iki uç noktanın da döndürdüğüdür: önbellekteki
 // tarama ve ne zaman koştuğu. scanned_at null ise hiç tarama koşmamıştır.
 type managedServicesPayload struct {
-	ScannedAt        *time.Time               `json:"scanned_at"`
+	ScannedAt *time.Time `json:"scanned_at"`
+	// ScanAgeSeconds is how old that scan is on THIS server's clock at the
+	// moment of the answer; null when no scan has run. The page dates the
+	// scan by subtracting it from the time it received the answer, so the
+	// freshness it shows needs no agreement between the server's clock and
+	// the browser's: the server already judges the conditional scan's
+	// freshness on its own clock (managedServicesCacheWithin), and this tells
+	// the page the same thing. A negative value means the stamp is later than
+	// this server's clock (the clock moved back); like the conditional scan,
+	// the page does not take it as fresh.
+	// ScanAgeSeconds, o taramanın yanıt anında BU sunucunun saatiyle yaşıdır;
+	// hiç tarama yoksa null. Sayfa, taramayı yanıtı aldığı andan bunu
+	// çıkararak tarihler; gösterdiği tazelik sunucu ile tarayıcı saatlerinin
+	// uyuşmasına dayanmaz. Sunucu koşullu taramanın tazeliğine zaten kendi
+	// saatiyle karar verir (managedServicesCacheWithin); bu alan sayfaya aynı
+	// şeyi söyler. Eksi değer, damganın bu sunucunun saatinden sonra olduğu
+	// anlamına gelir (saat geri gitti); koşullu tarama gibi sayfa da onu taze
+	// saymaz.
+	ScanAgeSeconds   *float64                 `json:"scan_age_seconds"`
 	Services         []ManagedServiceResponse `json:"services"`
 	Profiles         []MailProfileResponse    `json:"profiles"`
 	DNSIdentityReady bool                     `json:"dns_identity_ready"`
@@ -176,6 +195,21 @@ type managedServicesPayload struct {
 	// bu sunucunun şu an taşıdığı ad, kurulumun kullanacağı ad ve o adın
 	// nereden geldiği.
 	MailHostname MailHostnameIdentity `json:"mail_hostname"`
+}
+
+// stampScanAge sets ScanAgeSeconds from ScannedAt on this server's clock at
+// `now`, the moment the answer is written; millisecond precision is enough
+// for a five-minute window.
+// stampScanAge, ScanAgeSeconds'ı yanıtın yazıldığı `now` anında bu
+// sunucunun saatiyle ScannedAt'ten hesaplar; beş dakikalık pencere için
+// milisaniye yeterlidir.
+func (payload *managedServicesPayload) stampScanAge(now time.Time) {
+	payload.ScanAgeSeconds = nil
+	if payload.ScannedAt == nil {
+		return
+	}
+	age := math.Round(now.Sub(*payload.ScannedAt).Seconds()*1000) / 1000
+	payload.ScanAgeSeconds = &age
 }
 
 // serviceObservation is everything a scan can DISCOVER about this host: is the
@@ -622,6 +656,7 @@ func (p *Panel) handleManagedServices(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	payload.stampScanAge(time.Now())
 	json.NewEncoder(w).Encode(payload)
 }
 
@@ -680,6 +715,7 @@ func (p *Panel) handleManagedServicesScan(w http.ResponseWriter, r *http.Request
 			return
 		}
 		if fresh {
+			cached.stampScanAge(time.Now())
 			json.NewEncoder(w).Encode(cached)
 			return
 		}
@@ -693,6 +729,10 @@ func (p *Panel) handleManagedServicesScan(w http.ResponseWriter, r *http.Request
 
 	services, err := p.scanManagedServices(r.Context())
 	if err != nil {
+		// An Agent that cannot be reached is named by writeServerError
+		// (AGENT_UNREACHABLE); every other failure keeps the generic answer.
+		// Ulaşılamayan Agent'ı writeServerError adıyla söyler; diğer her hata
+		// genel yanıtında kalır.
 		writeServerError(w, err)
 		return
 	}
@@ -709,13 +749,15 @@ func (p *Panel) handleManagedServicesScan(w http.ResponseWriter, r *http.Request
 
 	now := time.Now().UTC()
 	dnsIdentityReady := p.managedServicesDNSIdentityReady(r.Context())
-	json.NewEncoder(w).Encode(managedServicesPayload{
+	payload := managedServicesPayload{
 		ScannedAt:        &now,
 		Services:         services,
 		Profiles:         mailProfilesView(services, true, p.packageFamily(), mailProfileCatalogBlockedReason(mailProfileHostBlockedReason(), dnsIdentityReady), webmailReady, webmailProven, profileAttempts),
 		DNSIdentityReady: dnsIdentityReady,
 		MailHostname:     p.mailHostnameIdentity(r.Context()),
-	})
+	}
+	payload.stampScanAge(time.Now())
+	json.NewEncoder(w).Encode(payload)
 }
 
 // managedServiceScanMaxAge distinguishes automatic conditional refreshes from

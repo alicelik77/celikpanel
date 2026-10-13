@@ -1,0 +1,16 @@
+{
+  "action": "lab-slow-reload14",
+  "at": "2026-10-12T21:49:29Z",
+  "daemon_reload_returncode": 0,
+  "epoch": 1791841769.7255986,
+  "mode": "lab-slow-reload14",
+  "nginx": [
+    "MainPID=7267",
+    "ExecReload={ path=/usr/sbin/nginx ; argv[]=/usr/sbin/nginx -g daemon on; master_process on; -s reload ; ignore_errors=no ; start_time=[n/a] ; stop_time=[n/a] ; pid=0 ; code=(null) ; status=0/0 }",
+    "ActiveState=active"
+  ],
+  "owner_action": false,
+  "path": "/etc/systemd/system/nginx.service.d/zz-set14-slow-reload.conf",
+  "removed": false,
+  "schema": "celikpanel/set14-native/v1"
+}

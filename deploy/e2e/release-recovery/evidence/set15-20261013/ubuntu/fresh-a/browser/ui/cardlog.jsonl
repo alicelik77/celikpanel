@@ -1,0 +1,7 @@
+{"page":"sign-in","lang":"tr","phase":"sign-in","at":"2026-10-13T09:33:16.877Z","t":1791883996877,"text":null,"tag":null,"busy":null,"vis":"visible","path":"/domains","state":"absent"}
+{"page":"p1-domains","lang":"tr","phase":"domains","at":"2026-10-13T09:33:21.251Z","t":1791884001251,"text":null,"tag":null,"busy":null,"vis":"visible","path":"/domains","state":"absent"}
+{"page":"p2-dashboard","lang":"tr","phase":"dashboard","at":"2026-10-13T09:36:12.623Z","t":1791884172623,"text":null,"tag":null,"busy":null,"vis":"visible","path":"/","state":"absent"}
+{"page":"p2-dashboard","lang":"tr","phase":"dashboard","at":"2026-10-13T09:36:12.781Z","t":1791884172781,"text":"Sistem servisleri Bileşenler kontrol ediliyor…","tag":"SECTION","busy":"true","vis":"visible","path":"/","state":"checking"}
+{"page":"p2-dashboard","lang":"tr","phase":"dashboard","at":"2026-10-13T09:36:14.392Z","t":1791884174392,"text":"Sistem servisleri 3 / 3 çalışan / kurulu","tag":"BUTTON","busy":null,"vis":"visible","path":"/","state":"known"}
+{"page":"p3-components-fresh","lang":"tr","phase":"components","at":"2026-10-13T09:37:43.260Z","t":1791884263260,"text":null,"tag":null,"busy":null,"vis":"visible","path":"/services","state":"absent"}
+{"page":"p3-components-stale","lang":"tr","phase":"components","at":"2026-10-13T09:41:31.435Z","t":1791884491435,"text":null,"tag":null,"busy":null,"vis":"visible","path":"/services","state":"absent"}

@@ -1,0 +1,87 @@
+{
+  "/api/v1/panel/version": {
+    "status": 200,
+    "at": "2026-10-13T09:42:01.555Z",
+    "body": {
+      "agent_commit": "1636b73f0979d9921ff99f283ceec8cfed1041dc",
+      "agent_matches": true,
+      "commit": "1636b73f0979d9921ff99f283ceec8cfed1041dc",
+      "hostname": "dns-ubuntu",
+      "ipv4": "192.0.2.12",
+      "schema_version": 44,
+      "version": "v0.1.0-alpha.84"
+    }
+  },
+  "/api/v1/license/access": {
+    "status": 200,
+    "at": "2026-10-13T09:42:01.956Z",
+    "body": {
+      "can_use_panel": true,
+      "valid_until": 1791884551,
+      "valid_for_seconds": 28.953,
+      "state": "active",
+      "observation": "known"
+    }
+  },
+  "/api/v1/managed-services": {
+    "status": 200,
+    "at": "2026-10-13T09:42:02.363Z",
+    "body": {
+      "scanned_at": "2026-10-13T09:41:33Z",
+      "scan_age_seconds": 29.457,
+      "services": "<27 entries>",
+      "profiles": [
+        {
+          "verified": false,
+          "latest_attempt_status": "none",
+          "id": "core-mail",
+          "name": "Core Mail",
+          "description": "Postfix SMTP and Dovecot IMAP/POP3 with authenticated submission.",
+          "services": [
+            "postfix",
+            "dovecot"
+          ],
+          "status": "available",
+          "available": true
+        },
+        {
+          "verified": false,
+          "latest_attempt_status": "none",
+          "id": "webmail",
+          "name": "Webmail",
+          "description": "Core mail plus Nginx, PHP-FPM and Roundcube webmail.",
+          "services": [
+            "postfix",
+            "dovecot",
+            "nginx",
+            "php-fpm",
+            "roundcube"
+          ],
+          "status": "partial",
+          "available": true,
+          "warning": "Some components are already present. Installing this profile will reconcile the full plan without removing completed services."
+        },
+        {
+          "verified": false,
+          "latest_attempt_status": "none",
+          "id": "protected-mail",
+          "name": "Spam-Protected Mail",
+          "description": "Core mail with Rspamd spam filtering.",
+          "services": [
+            "postfix",
+            "dovecot",
+            "rspamd"
+          ],
+          "status": "available",
+          "available": true
+        }
+      ],
+      "dns_identity_ready": true,
+      "mail_hostname": {
+        "current": "dns-ubuntu",
+        "current_usable": false,
+        "will_set_hostname": false
+      }
+    }
+  }
+}

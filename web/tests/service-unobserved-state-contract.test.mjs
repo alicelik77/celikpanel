@@ -160,27 +160,33 @@ test('an unobserved host gets no count on the dashboard, and the check instead',
     /const hostNeverChecked = services\.length > 0 && uncheckedServices\.length === services\.length;/,
   );
 
-  const guard = dashboard.indexOf('{hostNeverChecked ? (');
+  // Since 12 Oct 2026 the card has one state at a time, and "known" (the
+  // only state with a number) needs a fresh scan of a host that was observed.
+  assert.match(dashboard, /serviceScanFresh && !hostNeverChecked \? 'known'/);
+  const guard = dashboard.indexOf("{servicesCard !== 'known' ? (");
   assert.ok(guard >= 0, 'the services card must branch on whether anything was observed');
   const ratio = dashboard.indexOf('${running.length} / ${systemServices.length}');
   assert.ok(ratio > guard, 'a ratio must be reachable only after an observation is proven');
 
-  const card = dashboard.slice(guard, dashboard.indexOf('</section>', guard));
-  assert.ok(!card.includes('running.length'), 'the unobserved card must render no count at all');
-  assert.match(card, /role="status"/);
+  const unknownCard = dashboard.slice(guard, dashboard.indexOf('</section>', guard));
+  assert.ok(!unknownCard.includes('running.length'), 'the unobserved card must render no count at all');
+  assert.match(unknownCard, /role="status"/);
+  const neverStart = unknownCard.indexOf("servicesCard === 'never' ? (");
+  const card = unknownCard.slice(neverStart, unknownCard.indexOf(') : (', neverStart));
+  assert.ok(neverStart >= 0 && card.length > 0, 'the never-checked state must have its own words');
   assert.match(card, /t\('services\.notChecked'\)/);
   assert.match(card, /t\('dashboard\.componentsNotCheckedHint'\)/);
   // The same check the Components page offers, and a label that is true
   // because the button really runs it.
-  assert.match(card, /onClick=\{scanComponents\}/);
-  assert.match(card, /t\('services\.scanNow'\)/);
+  const neverCheck = unknownCard.slice(unknownCard.indexOf("{(servicesCard === 'never' || servicesCard === 'stale') && ("));
+  assert.match(neverCheck, /^[^]*?onClick=\{scanComponents\}[^]*?t\('services\.scanNow'\)/);
   // Neutral: a host that has simply not been looked at is not a fault.
   assert.doesNotMatch(card, /warning|danger/);
 });
 
 test('the dashboard check runs the same scan and stays fail-closed on a payload it cannot read', () => {
   const scan = dashboard.slice(
-    dashboard.indexOf('const scanComponents = async () => {'),
+    dashboard.indexOf("const runComponentScan = async (mode: 'auto' | 'operator') => {"),
     dashboard.indexOf('// Known installed, explicitly'),
   );
   assert.ok(scan.length > 0, 'the dashboard needs the check it offers');

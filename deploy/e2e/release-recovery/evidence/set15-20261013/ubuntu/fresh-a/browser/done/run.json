@@ -1,0 +1,29 @@
+{
+  "cell": "done",
+  "chrome": "Chrome/154.0.8037.98",
+  "lang": "tr",
+  "viewport": "desktop",
+  "handover": {
+    "at": "2026-10-13T09:33:05Z",
+    "base": "https://127.0.0.1:19162",
+    "browser": {
+      "lang": "tr",
+      "viewport": "desktop"
+    },
+    "cell": "set15-ubuntu",
+    "local_port": 19162,
+    "mode": "fresh",
+    "password_file": "(root-only file, not copied)",
+    "preps": [
+      "probe",
+      "journal"
+    ],
+    "schema": "celikpanel/set12-handover/v1",
+    "tls_leaf_sha256": "119f43a573dc7a4ac36fc65dd2e339ceb2115936f824f8e240e4866a4e424840",
+    "username": "labadmin",
+    "window": "ui"
+  },
+  "started": "2026-10-13T09:42:03.454Z",
+  "ended": "2026-10-13T09:42:03.456Z",
+  "ok": true
+}

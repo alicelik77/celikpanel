@@ -1,0 +1,19 @@
+{
+  "action": "lab-clock14b",
+  "after_clock": {
+    "returncode": 0
+  },
+  "after_epoch": 1791872300.7830155,
+  "at": "2026-10-13T06:18:20Z",
+  "before_clock": {
+    "returncode": 0
+  },
+  "before_epoch": 1791872300.2753263,
+  "command": "timedatectl set-ntp true",
+  "epoch": 1791872300.797687,
+  "mode": "lab-clock14b",
+  "owner_action": false,
+  "returncode": 0,
+  "schema": "celikpanel/set14b-native/v1",
+  "stderr": ""
+}

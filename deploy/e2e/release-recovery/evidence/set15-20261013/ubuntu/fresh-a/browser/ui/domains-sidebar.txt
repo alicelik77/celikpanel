@@ -1,0 +1,20 @@
+CelikPanel
+Panel
+BARINDIRMA
+Alan Adları
+Veritabanları
+Kullanıcılar
+Mağaza
+VPN
+SUNUCU
+Bileşenler
+6
+İzleme
+İçe aktar
+Denetim günlüğü
+Ayarlar
+SUNUCU BILGISI
+dns-ubuntu
+192.0.2.12
+CelikPanel · v0.1.0-alpha.84 · build 1636b73f0979
+1636b73f0979d9921ff99f283ceec8cfed1041dc

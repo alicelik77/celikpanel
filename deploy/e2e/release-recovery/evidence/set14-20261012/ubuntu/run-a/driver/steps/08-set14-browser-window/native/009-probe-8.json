@@ -1,0 +1,73 @@
+{
+  "at": "2026-10-12T22:14:37Z",
+  "cgroup_cpu": {
+    "agent": {
+      "system_usec": 18808950,
+      "usage_usec": 43068387,
+      "user_usec": 24259436
+    },
+    "panel": {
+      "system_usec": 2349727,
+      "usage_usec": 5344401,
+      "user_usec": 2994673
+    }
+  },
+  "epoch": 1791843277.6279294,
+  "loadavg": "0.02 0.05 0.08 1/158 22386",
+  "mode": "read-probe14",
+  "nginx_dropin": {
+    "exists": false,
+    "path": "/etc/systemd/system/nginx.service.d/zz-set14-slow-reload.conf",
+    "text": null
+  },
+  "owner_action": false,
+  "proc_cpu": {
+    "agent": {
+      "clk_tck": 100,
+      "cstime": 1682,
+      "cutime": 2358,
+      "stime": 118,
+      "utime": 112
+    },
+    "panel": {
+      "clk_tck": 100,
+      "cstime": 0,
+      "cutime": 0,
+      "stime": 233,
+      "utime": 299
+    }
+  },
+  "scan_cache": {
+    "age_seconds": 363.7,
+    "data_bytes": 2262,
+    "database": "/var/lib/celikpanel/celikpanel.db",
+    "exists": true,
+    "scanned_at": "2026-10-12T22:08:34Z",
+    "scanned_epoch": 1791842914.0
+  },
+  "schema": "celikpanel/set14-native/v1",
+  "units": {
+    "agent": {
+      "ActiveEnterTimestampMonotonic": "79086268",
+      "ActiveState": "active",
+      "CPUUsageNSec": "43068387000",
+      "ControlGroup": "/system.slice/celikpanel-agent.service",
+      "ExecMainStartTimestamp": "Mon 2026-10-12 21:51:23 UTC",
+      "MainPID": "7757",
+      "MemoryCurrent": "504475648",
+      "NRestarts": "0",
+      "SubState": "running"
+    },
+    "panel": {
+      "ActiveEnterTimestampMonotonic": "82361289",
+      "ActiveState": "active",
+      "CPUUsageNSec": "5344401000",
+      "ControlGroup": "/system.slice/celikpanel-panel.service",
+      "ExecMainStartTimestamp": "Mon 2026-10-12 21:51:27 UTC",
+      "MainPID": "7955",
+      "MemoryCurrent": "16465920",
+      "NRestarts": "0",
+      "SubState": "running"
+    }
+  }
+}

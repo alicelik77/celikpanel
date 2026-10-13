@@ -1,0 +1,53 @@
+date_utc=2026-10-13T13:05:09Z qemu=0 jobs=0
+/var/tmp/cp-pair-accept
+/var/tmp/cp-release-drill-s14b-d13-a
+/var/tmp/cp-release-drill-s14c-d13-a
+/var/tmp/cp-release-drill-s14-d13-a
+/var/tmp/cp-release-drill-s14-ub-a
+/var/tmp/cp-release-drill-s15-d13-a
+/var/tmp/cp-release-drill-s15-u83-def-a
+/var/tmp/cp-release-drill-s15-u83-good-a
+/var/tmp/cp-release-drill-s15-u83-good-b
+/var/tmp/cp-release-drill-s15-u83-good-c
+/var/tmp/cp-release-drill-s15-ub-a
+/var/tmp/cp-set12-run
+/var/tmp/cp-set14b-run
+/var/tmp/cp-set14c-run
+/var/tmp/cp-set14-run
+/var/tmp/cp-set15-run
+/var/tmp/cp-upd1-build
+/var/tmp/cp-v3n28
+322M	/var/tmp/cp-set15-run
+65M	/var/tmp/cp-release-drill-s15-d13-a
+67M	/var/tmp/cp-release-drill-s15-u83-def-a
+67M	/var/tmp/cp-release-drill-s15-u83-good-a
+67M	/var/tmp/cp-release-drill-s15-u83-good-b
+67M	/var/tmp/cp-release-drill-s15-u83-good-c
+65M	/var/tmp/cp-release-drill-s15-ub-a
+1.4G	/var/tmp/cp-upd1-build/20261013t090322z
+1.4G	/var/tmp/cp-upd1-build/20261013t090641z
+/var/tmp/cp-release-drill-s15-d13-a/cells/eaf7fdd94f28de2b44bd2d17/debian13/seed.iso
+/var/tmp/cp-release-drill-s15-d13-a/cells/eaf7fdd94f28de2b44bd2d17/arch/seed.iso
+/var/tmp/cp-release-drill-s15-u83-def-a/cells/b2467cebd0f76b3a4d216022/debian13/seed.iso
+/var/tmp/cp-release-drill-s15-u83-def-a/cells/b2467cebd0f76b3a4d216022/arch/seed.iso
+/var/tmp/cp-release-drill-s15-u83-good-a/cells/8c9220a3bf3338a660a3aa49/debian13/seed.iso
+/var/tmp/cp-release-drill-s15-u83-good-a/cells/8c9220a3bf3338a660a3aa49/arch/seed.iso
+/var/tmp/cp-release-drill-s15-u83-good-b/cells/011a08093d63e3854326c131/debian13/seed.iso
+/var/tmp/cp-release-drill-s15-u83-good-b/cells/011a08093d63e3854326c131/arch/seed.iso
+/var/tmp/cp-release-drill-s15-u83-good-c/cells/4b659e67449e776321f7033b/debian13/seed.iso
+/var/tmp/cp-release-drill-s15-u83-good-c/cells/4b659e67449e776321f7033b/arch/seed.iso
+0
+2026-10-13T12:08:11 .
+2026-10-13T12:05:08 0447558e956d4c02c7bf06b368def0924856f8fc-acceptance-license
+2026-10-13T10:27:58 09d96f93ceb1abbcf8ea66993e4e276023fb8df7-acceptance-license
+2026-10-13T12:05:55 1636b73f0979d9921ff99f283ceec8cfed1041dc-acceptance-license
+2026-10-13T12:08:11 2c778b948fe95d46645227976386b94767b37dd1-acceptance-license
+2026-10-13T10:28:45 2e64b4abf6e335f04269d571e269ab1cd0d2f89a-acceptance-license
+2026-10-13T10:30:41 3a5dbba9d4319292ce4cb64d5306a19494e8d3eb-acceptance-license
+2026-10-13T12:06:41 9eed85587db545102ddd7ac8fb26e85c5329c4dd-acceptance-license
+2026-10-13T10:31:40 f23f7093c537ac2d2e80d4766e6fb923a0ae1b28-acceptance-license
+2026-10-13T10:29:46 f58a91db1b9d0ad969754a9f57f4e674bea11437-acceptance-license
+2026-10-13T12:09:11 f94dae5295a32eef9836b53095f36948a8556e2f-acceptance-license
+Arch-Linux-x86_64-cloudimg-20260815.573966.qcow2
+debian-13-genericcloud-amd64-20260826-2582.qcow2
+ubuntu-24.04-server-cloudimg-amd64-20260826.img

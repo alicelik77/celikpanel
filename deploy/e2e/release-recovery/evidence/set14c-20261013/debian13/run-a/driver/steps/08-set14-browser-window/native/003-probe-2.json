@@ -1,0 +1,84 @@
+{
+  "at": "2026-10-13T07:40:37Z",
+  "cgroup_cpu": {
+    "agent": {
+      "system_usec": 13677249,
+      "usage_usec": 30123590,
+      "user_usec": 16446341
+    },
+    "panel": {
+      "system_usec": 1103452,
+      "usage_usec": 2326013,
+      "user_usec": 1222561
+    }
+  },
+  "clock": {
+    "returncode": 0
+  },
+  "epoch": 1791877237.798329,
+  "loadavg": "0.01 0.15 0.10 1/126 15064",
+  "mode": "read-probe14b",
+  "nginx": {
+    "ActiveEnterTimestampMonotonic": "142833567",
+    "ActiveState": "active",
+    "ExecMainStartTimestamp": "Tue 2026-10-13 07:34:40 UTC",
+    "MainPID": "7213",
+    "NRestarts": "0",
+    "SubState": "running"
+  },
+  "nginx_dropin": {
+    "exists": false,
+    "path": "/etc/systemd/system/nginx.service.d/zz-set14-slow-reload.conf",
+    "text": null
+  },
+  "owner_action": false,
+  "proc_cpu": {
+    "agent": {
+      "clk_tck": 100,
+      "cstime": 1010,
+      "cutime": 1894,
+      "stime": 44,
+      "utime": 42
+    },
+    "panel": {
+      "clk_tck": 100,
+      "cstime": 0,
+      "cutime": 0,
+      "stime": 108,
+      "utime": 121
+    }
+  },
+  "scan_cache": {
+    "age_seconds": 316.8,
+    "data_bytes": 2262,
+    "database": "/var/lib/celikpanel/celikpanel.db",
+    "exists": true,
+    "scanned_at": "2026-10-13T07:35:21Z",
+    "scanned_epoch": 1791876921.0
+  },
+  "schema": "celikpanel/set14b-native/v1",
+  "units": {
+    "agent": {
+      "ActiveEnterTimestampMonotonic": "79230147",
+      "ActiveState": "active",
+      "CPUUsageNSec": "30123590000",
+      "ControlGroup": "/system.slice/celikpanel-agent.service",
+      "ExecMainStartTimestamp": "Tue 2026-10-13 07:33:36 UTC",
+      "MainPID": "5193",
+      "MemoryCurrent": "440979456",
+      "NRestarts": "0",
+      "SubState": "running"
+    },
+    "panel": {
+      "ActiveEnterTimestampMonotonic": "82552363",
+      "ActiveState": "active",
+      "CPUUsageNSec": "2326013000",
+      "ControlGroup": "/system.slice/celikpanel-panel.service",
+      "ExecMainStartTimestamp": "Tue 2026-10-13 07:33:40 UTC",
+      "MainPID": "5392",
+      "MemoryCurrent": "96448512",
+      "NRestarts": "0",
+      "SubState": "running"
+    }
+  }
+}

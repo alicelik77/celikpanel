@@ -1,0 +1,22 @@
+{
+  "at": "2026-10-13T06:18:19Z",
+  "prep": "ntp-on",
+  "result": {
+    "after_clock": {
+      "returncode": 0
+    },
+    "after_epoch": 1791872300.7830155,
+    "at": "2026-10-13T06:18:20Z",
+    "before_clock": {
+      "returncode": 0
+    },
+    "before_epoch": 1791872300.2753263,
+    "command": "timedatectl set-ntp true",
+    "epoch": 1791872300.797687,
+    "ntp_off_returncode": null,
+    "returncode": 0,
+    "shift_ms": null,
+    "shift_total_ms": 1505,
+    "stderr": ""
+  }
+}

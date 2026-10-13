@@ -1,0 +1,17 @@
+?? .agents/
+?? .attic/
+?? .claude/
+?? .codex/
+?? .github/agents/
+?? .github/hooks/
+?? .github/skills/
+?? .impeccable/review-final/
+?? .impeccable/review/
+?? .vscode/
+?? deploy/e2e/release-recovery/build-set15-artifacts.sh
+?? deploy/e2e/release-recovery/evidence/set15-20261013/
+?? deploy/e2e/release-recovery/run-set15.sh
+?? deploy/e2e/release-recovery/set15_fixture.py
+?? deploy/e2e/release-recovery/set15_trial.py
+?? deploy/e2e/release-recovery/test_set15_trial.py
+?? web/tools/browser-inspect/cold-load-set15.mjs

@@ -1,0 +1,150 @@
+{
+  "artifacts": {
+    "baseline": {
+      "commit": "09d96f93ceb1abbcf8ea66993e4e276023fb8df7",
+      "sha256": "833c1b0e783ec04b1b8968315030ce40721609649ca71da6bdcab24ae9e29c75",
+      "version": "v0.1.0-alpha.81"
+    }
+  },
+  "browser": {
+    "lang": "en",
+    "switch_lang": "tr",
+    "switch_viewport": "phone",
+    "viewport": "desktop"
+  },
+  "cell": {
+    "components": [
+      "nginx",
+      "php-fpm",
+      "mariadb"
+    ],
+    "mail": false,
+    "name": "set14c-debian13",
+    "node": "debian13",
+    "purpose": "web"
+  },
+  "cell_kind": "set14c-fresh-install",
+  "findings": [
+    "debian13: server setup waits at access_dns (server_setup_access_dns_required) on an isolated host; later wizard steps were not run: ['09-panel_certificate', '10-verify']"
+  ],
+  "identity": {
+    "cell_id": "release-recovery__a4f9fb3046d9f02d",
+    "node": "debian13",
+    "vm_uuid": "2909ede2-b737-597c-ba78-fb6cf45209e8"
+  },
+  "native_evidence": false,
+  "note": "set14c: a measurement on the fresh install; no update is started and no P0 row is judged. The browser's own records (requests, card texts, pictures) are written on the host.",
+  "outcome": {
+    "classification": "set14c-measured",
+    "final_status": null
+  },
+  "overall": "complete-for-review",
+  "provenance": {
+    "what": "set14c: 68b79b372 installed fresh; no update"
+  },
+  "request_id": null,
+  "schema": "celikpanel/upd1-owner-update-result/v1",
+  "setup": {
+    "components": [
+      "mariadb",
+      "nginx",
+      "php-fpm"
+    ],
+    "purpose": "web",
+    "waiting": {
+      "code": "server_setup_access_dns_required",
+      "mail_steps_reached": true,
+      "not_run": [
+        "09-panel_certificate",
+        "10-verify"
+      ],
+      "phase": "access_dns",
+      "polls": 25,
+      "stable_wait_seconds": 122.2,
+      "steps": {
+        "01-dns": "succeeded",
+        "02-service": "succeeded",
+        "03-service": "succeeded",
+        "04-service": "succeeded",
+        "05-service": "succeeded",
+        "06-service": "succeeded",
+        "07-firewall": "succeeded",
+        "08-access_dns": "running",
+        "09-panel_certificate": "pending",
+        "10-verify": "pending"
+      }
+    }
+  },
+  "steps": [
+    {
+      "finished_at": "2026-10-13T07:32:54Z",
+      "name": "set6-name-pinning",
+      "reason": null,
+      "started_at": "2026-10-13T07:32:50Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-13T07:33:00Z",
+      "name": "preflight",
+      "reason": null,
+      "started_at": "2026-10-13T07:32:54Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-13T07:33:09Z",
+      "name": "origin",
+      "reason": null,
+      "started_at": "2026-10-13T07:33:00Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-13T07:33:45Z",
+      "name": "baseline-install",
+      "reason": null,
+      "started_at": "2026-10-13T07:33:09Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-13T07:33:46Z",
+      "name": "owner-login",
+      "reason": null,
+      "started_at": "2026-10-13T07:33:45Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-13T07:33:46Z",
+      "name": "license",
+      "reason": null,
+      "started_at": "2026-10-13T07:33:46Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-13T07:37:27Z",
+      "name": "setup",
+      "reason": null,
+      "started_at": "2026-10-13T07:33:46Z",
+      "verdict": "observed"
+    },
+    {
+      "finished_at": "2026-10-13T07:56:17Z",
+      "name": "set14-browser-window",
+      "reason": null,
+      "started_at": "2026-10-13T07:37:27Z",
+      "verdict": "observed"
+    },
+    {
+      "finished_at": "2026-10-13T07:56:17Z",
+      "name": "set6-name-pinning-at-the-end",
+      "reason": null,
+      "started_at": "2026-10-13T07:56:17Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-13T07:56:18Z",
+      "name": "collect",
+      "reason": null,
+      "started_at": "2026-10-13T07:56:17Z",
+      "verdict": "passed"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+#!/bin/bash
+# set14c: the real headless Chrome on the Windows host against the lab's Panel (through the driver's loopback forward).
+# usage: browser.sh PREFIX   (Git Bash on the host; bounded by `timeout`; output under scratchpad set14c/browser)
+set -u
+S=<redacted>
+prefix=$1
+out=$S/set14c/browser/$prefix-ui
+log=$S/set14c/browser/$prefix.log
+[ -e "$out" ] && { echo "refusing: $out exists"; exit 2; }
+mkdir -p "$out"
+cd "/c/CELIKBROS PROJECTS/celikpanel" || exit 2
+export BROWSER_INSPECT_MODULES="$(cygpath -w "$S/set7/browser-modules")"
+outw=$(cygpath -w "$out")
+hand='\\wsl.localhost\archlinux\var\tmp\cp-set14c-run\hand\'"$prefix"'-ui'
+echo "hand=$hand" > "$log"
+MSYS_NO_PATHCONV=1 timeout 5400 node web/tools/browser-inspect/cold-load-set14c.mjs "$hand" "$outw" ui,done >> "$log" 2>&1
+echo "rc=$?" >> "$log"

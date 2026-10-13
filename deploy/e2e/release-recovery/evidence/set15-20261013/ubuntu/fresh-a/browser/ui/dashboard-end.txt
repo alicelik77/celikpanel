@@ -1,0 +1,99 @@
+CPU kullanımı
+
+%3
+
+2 çekirdek · Yük 0.13
+
+Bellek
+
+%16
+
+483 MB / 2.9 GB
+
+Disk (/)
+
+%12
+
+2.6 GB / 22.2 GB
+
+Sistem servisleri
+
+3 / 3
+
+çalışan / kurulu
+
+Posta paketleri
+Kısmen kurulu
+
+Webmail: Some components are already present. Installing this profile will reconcile the full plan without removing completed services.
+
+Posta paketlerini gör
+İlgi istiyor
+
+CelikPanel’in okuduklarında işlem gerektiren bir şey yok: sertifikalar, güvenlik duvarı ve kurulu bileşenler.
+
+Barındırma
+
+0
+
+Alan Adları
+
+0
+
+Veritabanları
+
+1
+
+Kullanıcılar
+
+0
+
+Posta hesabı
+
+Son etkinlik
+L
+labadmin oturum açtı2 kez
+127.0.0.1
+4 dk önce
+L
+labadmin server.setup.guidance
+127.0.0.1
+4 dk önce
+L
+labadmin server.setup.revise
+127.0.0.1
+4 dk önce
+L
+labadmin server.setup.child:certbot
+127.0.0.1
+6 dk önce
+L
+labadmin server.setup.child:php-fpm
+127.0.0.1
+6 dk önce
+L
+labadmin server.setup.child:nginx
+127.0.0.1
+7 dk önce
+L
+labadmin server.setup.child:mariadb
+127.0.0.1
+7 dk önce
+Hızlı işlemler
+Alan adı ekle
+Servis kur
+Kullanıcı ekle
+İçe aktar
+Sunucu bilgisi
+Sunucu adı
+dns-ubuntu
+IPv4 adresi
+10.0.2.15
+İşletim sistemi
+Ubuntu 24.04.4 LTS
+Çekirdek
+6.8.0-138-generic
+Mimari
+amd64
+Çalışma süresi
+14dk
