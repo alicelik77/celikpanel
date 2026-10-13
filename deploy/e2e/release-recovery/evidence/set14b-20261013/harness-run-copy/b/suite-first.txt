@@ -1,0 +1,32 @@
+test_cell_plan_and_set14_names (test_set14b_trial.Set14bRules.test_cell_plan_and_set14_names) ... ok
+test_guest_refuses_bad_shift_and_keeps_modes (test_set14b_trial.Set14bRules.test_guest_refuses_bad_shift_and_keeps_modes) ... ok
+test_prep_names_and_shift (test_set14b_trial.Set14bRules.test_prep_names_and_shift) ... ok
+test_scan_fields (test_set14b_trial.Set14bRules.test_scan_fields) ... ok
+test_cells_browser_and_plan (test_set14_trial.Set14Rules.test_cells_browser_and_plan) ... FAIL
+test_guest_proc_cpu_and_cgroup_parsers (test_set14_trial.Set14Rules.test_guest_proc_cpu_and_cgroup_parsers) ... ok
+test_guest_refuses_bad_arguments (test_set14_trial.Set14Rules.test_guest_refuses_bad_arguments) ... ok
+test_guest_scan_cache_reads_row_and_age (test_set14_trial.Set14Rules.test_guest_scan_cache_reads_row_and_age) ... ok
+test_prep_name_and_compact_probe (test_set14_trial.Set14Rules.test_prep_name_and_compact_probe) ... ok
+
+======================================================================
+FAIL: test_cells_browser_and_plan (test_set14_trial.Set14Rules.test_cells_browser_and_plan)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/var/tmp/cp-set14b-run/harness-b/deploy/e2e/release-recovery/test_set14_trial.py", line 63, in test_cells_browser_and_plan
+    self.assertEqual(sorted(t.BROWSER), sorted(t.CELLS))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['set14-arch', 'set14-debian13', 'set14-ubuntu', 'set14b-debian13'] != ['set14-arch', 'set14-debian13', 'set14-ubuntu']
+
+First list contains 1 additional elements.
+First extra element 3:
+'set14b-debian13'
+
+- ['set14-arch', 'set14-debian13', 'set14-ubuntu', 'set14b-debian13']
+?                                                -------------------
+
++ ['set14-arch', 'set14-debian13', 'set14-ubuntu']
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.535s
+
+FAILED (failures=1)

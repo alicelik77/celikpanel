@@ -1,0 +1,22 @@
+{
+  "at": "2026-10-13T06:18:17Z",
+  "prep": "clockshift_p420000",
+  "result": {
+    "after_clock": {
+      "returncode": 0
+    },
+    "after_epoch": 1791872298.9594202,
+    "at": "2026-10-13T06:18:18Z",
+    "before_clock": {
+      "returncode": 0
+    },
+    "before_epoch": 1791871878.9180872,
+    "command": "date -u -s @<guest epoch +420000 ms>",
+    "epoch": 1791872298.9788456,
+    "ntp_off_returncode": 0,
+    "returncode": 0,
+    "shift_ms": 420000,
+    "shift_total_ms": 1505,
+    "stderr": ""
+  }
+}

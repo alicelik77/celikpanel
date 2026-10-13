@@ -1,0 +1,24 @@
+{
+  "action": "lab-clock14b",
+  "after_clock": {
+    "returncode": 0
+  },
+  "after_epoch": 1791872761.4266558,
+  "at": "2026-10-13T06:26:01Z",
+  "before_clock": {
+    "returncode": 0
+  },
+  "before_epoch": 1791872762.6291516,
+  "command": "date -u -s @<guest epoch -1505 ms>",
+  "epoch": 1791872761.4436793,
+  "mode": "lab-clock14b",
+  "ntp_off_returncode": 0,
+  "ntp_off_stderr": "",
+  "owner_action": false,
+  "returncode": 0,
+  "schema": "celikpanel/set14b-native/v1",
+  "shift_ms": -1505,
+  "stderr": "",
+  "stdout": "Tue Oct 13 06:26:01 UTC 2026",
+  "target_epoch": 1791872761.424793
+}

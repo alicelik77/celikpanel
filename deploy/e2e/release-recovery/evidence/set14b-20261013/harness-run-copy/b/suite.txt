@@ -1,0 +1,14 @@
+test_cell_plan_and_set14_names (test_set14b_trial.Set14bRules.test_cell_plan_and_set14_names) ... ok
+test_guest_refuses_bad_shift_and_keeps_modes (test_set14b_trial.Set14bRules.test_guest_refuses_bad_shift_and_keeps_modes) ... ok
+test_prep_names_and_shift (test_set14b_trial.Set14bRules.test_prep_names_and_shift) ... ok
+test_scan_fields (test_set14b_trial.Set14bRules.test_scan_fields) ... ok
+test_cells_browser_and_plan (test_set14_trial.Set14Rules.test_cells_browser_and_plan) ... ok
+test_guest_proc_cpu_and_cgroup_parsers (test_set14_trial.Set14Rules.test_guest_proc_cpu_and_cgroup_parsers) ... ok
+test_guest_refuses_bad_arguments (test_set14_trial.Set14Rules.test_guest_refuses_bad_arguments) ... ok
+test_guest_scan_cache_reads_row_and_age (test_set14_trial.Set14Rules.test_guest_scan_cache_reads_row_and_age) ... ok
+test_prep_name_and_compact_probe (test_set14_trial.Set14Rules.test_prep_name_and_compact_probe) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.352s
+
+OK

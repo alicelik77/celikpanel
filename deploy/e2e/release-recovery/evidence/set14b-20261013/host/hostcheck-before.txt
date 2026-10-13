@@ -1,0 +1,28 @@
+date_utc=2026-10-13T05:53:33Z whoami=0
+qemu=0
+/dev/sdd       1007G   27G  929G   3% /
+Mem:           15697         672       14797           3         422       15025
+16
+/var/tmp/cp-pair-accept
+/var/tmp/cp-release-drill-s14-d13-a
+/var/tmp/cp-release-drill-s14-ub-a
+/var/tmp/cp-set14b-run
+/var/tmp/cp-set14-run
+/var/tmp/cp-upd1-build
+/var/tmp/cp-v3n28
+27c8b7e75d348832e737bd4a70c9ca6ef16a7129-acceptance-license
+2a0af88660773b43cbe1155c622483e2f0a2bbeb-acceptance-license
+2b2812c6e6a1c0d83f0892ab819c03f461137c62-acceptance-license
+605ed8deb5b3d5fb6610a5fbce031e752af680b6-acceptance-license
+83befa2a47c8cb35028fe9f69c8239561118e8fc-acceptance-license
+8e48609f387cdcc177a8b432edc52414a7790b79-acceptance-license
+Arch-Linux-x86_64-cloudimg-20260815.573966.qcow2
+debian-13-genericcloud-amd64-20260826-2582.qcow2
+ubuntu-24.04-server-cloudimg-amd64-20260826.img
+/opt/celikpanel-test-toolchains/go1.26.5/go/bin
+go version go1.26.5 linux/amd64
+/usr/sbin/node
+/usr/sbin/npm
+/usr/sbin/python3
+/usr/sbin/qemu-system-x86_64
+/usr/sbin/ssh

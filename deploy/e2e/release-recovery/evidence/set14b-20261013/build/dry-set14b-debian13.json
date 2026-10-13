@@ -1,0 +1,58 @@
+{
+  "browser": {
+    "lang": "en",
+    "switch_lang": "tr",
+    "viewport": "desktop"
+  },
+  "candidate": {
+    "commit": "d84f62b1630782e320a3f5f27bd2f5e32959379b",
+    "sha256": "65d9cde9e7a6b3d2fd9412059869177d5717cb0f7f6596a647a263f9b110552b",
+    "version": "v0.1.0-alpha.81"
+  },
+  "cell": "set14b-debian13",
+  "cell_kind": "set14b-fresh-install",
+  "local_port": 18443,
+  "native_evidence": false,
+  "pinned_names": [
+    "celikpanel.net",
+    "acme-v02.api.letsencrypt.org",
+    "acme-staging-v02.api.letsencrypt.org",
+    "acme.zerossl.com",
+    "dv.acme-v02.api.pki.goog"
+  ],
+  "preparations": [
+    "probe",
+    "clockshift_m420000",
+    "clockshift_p420000",
+    "ntp-on",
+    "scan-now",
+    "admission",
+    "agent-stop",
+    "agent-start",
+    "journal"
+  ],
+  "rule": "the driver calls only the Panel's HTTP API as the logged-in owner; every native fact is an SSH reading; owner actions and lab preparation (the guest clock) on the guest are recorded as such; no certificate authority and no licence service is contacted by the driver",
+  "schema": "celikpanel/set14b-plan/v1",
+  "setup": {
+    "components": [
+      "mariadb",
+      "nginx",
+      "php-fpm"
+    ],
+    "dns_mode": "external",
+    "purpose": "web"
+  },
+  "steps": [
+    "set6-name-pinning",
+    "preflight",
+    "origin",
+    "baseline-install",
+    "owner-login",
+    "license",
+    "setup",
+    "set14-browser-window",
+    "set6-name-pinning-at-the-end",
+    "collect"
+  ],
+  "work_root": "/var/tmp/cp-release-drill-s14b-dry"
+}

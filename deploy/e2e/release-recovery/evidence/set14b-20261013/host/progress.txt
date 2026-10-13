@@ -1,0 +1,9 @@
+2026-10-13T05:53:33Z set14b run directory created
+2026-10-13T05:53:54Z made run copy a
+2026-10-13T05:54:05Z start build (limit 3600s)
+2026-10-13T05:59:29Z end build rc=0
+2026-10-13T06:00:05Z made run copy b
+2026-10-13T06:00:41Z removed run copy b (made before a harness correction); making it again
+2026-10-13T06:00:54Z made run copy b
+2026-10-13T06:01:11Z start d13 (limit 7200s)
+2026-10-13T06:26:05Z end d13 rc=0
