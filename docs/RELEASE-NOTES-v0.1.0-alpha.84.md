@@ -7,9 +7,13 @@ This is the release that follows v0.1.0-alpha.83. It was published on
 on 2026-10-13 that the number is v0.1.0-alpha.84 (commit 1636b73f0). When the
 publication record was written on 2026-10-13, no installed server had been
 updated to it: both still served the interface build of v0.1.0-alpha.83, and
-the owner of each starts that from the panel's own update screen. These notes
-were written as a draft on 2026-10-13 and amended for the publication on the
-same day.
+the owner of each starts that from the panel's own update screen. Later the
+same day a read from outside found both installed servers serving this
+release's interface (item 14 of the "Publication record"), and the owner
+reported what was on screen as two screenshots (item 15); what that report
+leaves open is listed there, under "Not done" and under the limits. These
+notes were written as a draft on 2026-10-13, amended for the publication on
+the same day, and amended again on 2026-10-13 for that read and that report.
 
 It does three things on the Dashboard's "System services" card and the answers
 behind it, and two beside it. The card now checks the components by itself,
@@ -694,7 +698,10 @@ New with this release:
   old text and its "Open Components to rescan" button. It does not check by
   itself.
 - **The sidebar's build identifier wraps in the middle of a word.** Observed by
-  the owner after the update to v0.1.0-alpha.83; not fixed.
+  the owner after the update to v0.1.0-alpha.83, and seen again in the owner's
+  screenshots after the update to this release (2026-10-13, item 15 of the
+  "Publication record": "build f01", then "57e6c8f16" on the next line); not
+  fixed.
 - **Measured on Debian 13 once, nowhere else:** the licence check's fix (D2),
   the typed Agent answer on the firewall read, the system check and a restart
   request, and the Components page's read banner, all in the sixteenth record.
@@ -882,8 +889,9 @@ Everything below is dated 2026-10-13 (clock date, UTC unless a time zone is
 named). Items 1 to 5 are the preparation, written before the publication and
 kept as history. The steps from item 6 on were taken by the owner; the checks
 of the assets, of the portal package and of the public site were made by the
-person who prepared the release. This entry does not store any of the results
-below as a file in the repository.
+person who prepared the release. Items 14 and 15 were added later the same day,
+after the owner updated the installed servers. This entry does not store any of
+the results below as a file in the repository.
 
 **What happened.**
 
@@ -987,15 +995,90 @@ below as a file in the repository.
     of v0.1.0-alpha.83: their start page references the built interface file
     of the alpha.83 archive, not that of the alpha.84 archive. They were not
     updated at the time of this record. The owner of each starts that from the
-    panel's own update screen; the outcome will be recorded separately.
+    panel's own update screen; the outcome will be recorded separately (items
+    14 and 15 record it).
+14. Installed servers, read from outside on 2026-10-13 at 16:59 UTC, after the
+    owner updated both. The servers were not updated at the read in item 13.
+    This read was read-only, over HTTPS and without logging in. Nobody other
+    than the owner touched the servers; the person who prepared the release did
+    not start, watch or verify the update on them. Observed: both servers serve
+    the interface build of v0.1.0-alpha.84. Their start page references the
+    same built interface file as `web/dist/index.html` inside the verified
+    v0.1.0-alpha.84 archive, and that file, read from each server, is
+    byte-identical (same SHA-256) to the copy in the archive. The
+    `Last-Modified` dates the servers give for that file are 2026-10-13
+    16:57:37 UTC (first server) and 2026-10-13 16:57:50 UTC (second server).
+    Both still send `Strict-Transport-Security: max-age=31536000`. What this
+    shows: the Panel process on each server serves this release's interface, so
+    the owner updated both from the panel's own update screen on 2026-10-13, at
+    about 16:57 UTC. What it does not show: the update's verification result
+    inside the panel, the Agent's version, or what the first start did.
+15. What the owner reported on 2026-10-13, as two screenshots, one per server,
+    with the English interface, after updating both from the panel's own update
+    screen (item 14). The screenshots are the owner's and are not stored in the
+    repository; no assistant looked at the servers beyond the read in item 14.
+    The owner's message labelled the setup-page screenshot as the first
+    server's; the screenshot's own sidebar names the second server, so the
+    screenshots are recorded here by what they show. This is the owner's
+    observation, not acceptance evidence, and nothing in it was measured in the
+    lab.
+    - Version. On both servers the sidebar's server information reads
+      `CelikPanel · v0.1.0-alpha.84 · build f0157e6c8f16`, the 12-character
+      prefix of the release commit. The id still wraps in the middle of the
+      word in the sidebar ("build f01", then "57e6c8f16" on the next line); it
+      can read as a different number. The known open item, unchanged.
+    - First server (hosting purpose "Custom setup"; 0 domains, 0 databases,
+      1 user, 0 mail accounts). After the update it lands on the Dashboard. The
+      "System services" card says "5 / 5 running / installed": no "Unknown" and
+      no "Open Components to rescan", and the owner did not have to press
+      anything. After the alpha.83 update the same card had said "Unknown" with
+      "Open Components to rescan", and the owner had rescanned by hand. The
+      "Needs attention" box says "Nothing CelikPanel read needs action:
+      certificates, the firewall and the installed components." A "Mail stacks"
+      card says "Partially installed" and, under "Webmail", "Some components
+      are already present. Installing this profile will reconcile the full plan
+      without removing completed services.", with a "View mail stacks" button.
+      The recent-activity list shows the owner's sign-ins and the setup
+      activity from five days earlier. No error and no licence page is
+      reported for this server. The owner did not say whether the full-screen
+      licence page appeared during the update: not reported.
+    - Second server. After the update it lands on the server setup page, step
+      5 "Prepare your server", headed "Setup stopped: its plan was reopened",
+      with the same box and step list as after the alpha.83 update: every step
+      reads "Completed" except the last, "Verify the prepared server", which
+      reads "Stopped"; no step reads "In progress". Unchanged since alpha.83,
+      and expected: the pending final check needs the reverse (PTR) record of
+      the server's address to name the mail host name. Read through a public
+      resolver on 2026-10-13 by the person who prepared the release
+      (read-only; no host name, address or record value is written here), the
+      PTR record still names a different host name of the owner's domain, so
+      the owner's action at the hosting provider, outside CelikPanel, is still
+      outstanding. That is not a defect of this release.
+    - Not reported: the update's verification result inside the panel; the
+      Agent's version; whether the full-screen licence page appeared during the
+      restart; the output of `postconf -n >/dev/null`. Both servers have no
+      domains, so the first start's adoption of site configuration files had
+      nothing to adopt on them, and the question of what an owner's edited site
+      file meets at a Panel start stays open on installed servers (D-031),
+      unchanged from alpha.83.
 
 **Not done, and what publication does not change.**
 
-- The installed servers were not updated when this record was written on
-  2026-10-13 (item 13). The owner of each installed server starts that from
-  the panel's own update screen, as a separate step from every step above, and
-  no one else starts it. Nothing in this record describes what an installed
-  server did with this release.
+- The installed servers were not updated when items 1 to 13 were written on
+  2026-10-13. The owner of each installed server starts that from the panel's
+  own update screen, as a separate step from every step above, and no one else
+  starts it. Later the same day a read from outside found both serving this
+  release's interface (item 14), so the owner updated both on 2026-10-13, and
+  the owner reported two screenshots (item 15). Still open after that report:
+  the update's verification result inside the panel; the Agent's version;
+  whether the full-screen licence page appeared during the restart; the output
+  of `postconf -n >/dev/null`; what the first start does with an owner's edited
+  site configuration file, because both servers have no domains and so had no
+  site files to adopt (D-031, unchanged from alpha.83); the sidebar's build id
+  wrapping in the middle of the word; and, on the second server, the PTR record
+  that only its owner can change. Those items will be recorded when the owner
+  reports them. Nothing in this record describes what an installed server did
+  with this release beyond items 14 and 15.
 - The order "the run on main finished, then the tag" was not followed (item
   8). The run completed successfully afterwards and the same tree had passed
   24 of 24 jobs on the pull request, but the job that publishes assets does

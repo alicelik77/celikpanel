@@ -7048,3 +7048,48 @@ kuralına karşı konur.
    okunabilir. Görünüşle ilgili; sonraki sürüm için açık. Bildirilmeyenler:
    yeniden başlatma sırasında tam ekran lisans sayfası, güncelleme bildirimi ile
    kart, kurulum adresine doğrudan yüklemede anlık lisans sayfası.
+
+### Alpha.84 güncellemesinden sonra kurulu sunucularda sahibin gözlemleri (2026-10-13)
+
+Gözlemler, değişiklik değil. Sahip kurulu iki sunucuyu 13 Ekim 2026'da panelin
+kendi güncelleme ekranından v0.1.0-alpha.84'e güncelledikten sonra aynı gün iki
+ekran görüntüsü bildirdi (İngilizce arayüz, sunucu başına bir tane). Sahibin
+mesajı kurulum sayfası görüntüsünü ilk sunucununki olarak adlandırdı; görüntünün
+kendi kenar çubuğu ikinci sunucuyu adlandırıyor, bu yüzden gösterdiklerine göre
+kaydedildi. Bu girdi için laboratuvarda hiçbir şey ölçülmedi, hiçbir metin ya da
+ekran değiştirilmedi ve kabul kanıtı değildir. D-024'e (mevcut neden, kimin
+işlem yapacağı, somut sonraki eylem ve nasıl devam edileceği uzun listelerden
+önce gelir) ve bilinen-durum kuralına karşı konur.
+
+1. **Pano kartı bileşenleri kendiliğinden kontrol ediyor (ilk sunucu).**
+   "System services" kartı "5 / 5 running / installed" diyor; "Unknown" ve
+   "Open Components to rescan" yok ve sahibin hiçbir şeye basması gerekmedi.
+   alpha.83 güncellemesinden sonra, yukarıdaki girdinin 3. gözlemi aynı kartın
+   "Unknown" ve "Open Components to rescan" dediğini göstermişti ve sahip elle
+   yeniden taramıştı. Bu, D-032'nin tasarımının kurulu bir sunucuda görülmesidir
+   ve sahibin ekran görüntüsünde o gözlemi çözer. "Needs attention" kutusu
+   CelikPanel'in okuduğu hiçbir şeyin işlem gerektirmediğini söylüyor:
+   sertifikalar, güvenlik duvarı ve kurulu bileşenler. Bildirilmeyenler: bir
+   tarama tutulurken ya da Agent'a ulaşılamazken kartın nasıl göründüğü; bu
+   sunucu için ne bir hata ne de bir lisans sayfası bildirildi.
+2. **Kurulum sayfası alpha.83'ten beri değişmedi (ikinci sunucu).** Hâlâ aynı
+   kutu ve adım listesiyle "Setup stopped: its plan was reopened" gösteriyor:
+   son adım "Verify the prepared server" "Stopped" diyor, diğer her adım
+   "Completed"; hiçbiri "In progress" demiyor. Beklenen durum, bu sürümün
+   kusuru değil.
+3. **Yalnız sahibin karşılayabileceği karşılanmamış önkoşul, hâlâ bekliyor.**
+   Bekleyen son denetim, sunucu adresinin ters (PTR) kaydının posta ana makine
+   adını söylemesini ister. 13 Ekim 2026'da genel bir çözümleyiciyle okunduğunda
+   kayıt hâlâ sahibin alan adına ait başka bir ana makine adını söylüyor; yani
+   sahibin barındırma sağlayıcısında, CelikPanel dışında yapacağı işlem hâlâ
+   bekliyor. Sayfadaki "Next" (planı gözden geçirip yeniden başlat) o kaydı
+   değiştirmez; bu girdi sayfanın bunu sahibine söyleyip söylemediğini de
+   söylemez. Sahibin karşılanmamış önkoşuludur, Panel'in doğrulanmış bir hatası
+   değildir.
+4. **Kenar çubuğundaki derleme kimliği hâlâ sözcüğün ortasından satır kırıyor
+   (iki sunucu).** Sunucu bilgisi `CelikPanel · v0.1.0-alpha.84 · build
+   f0157e6c8f16` yazıyor ve 12 karakterlik kimlik üçüncü karakterden sonra
+   bölünüyor ("build f01", sonraki satırda "57e6c8f16"); başka bir numara gibi
+   okunabilir. Görünüşle ilgili; sonraki sürüm için açık, değişmedi.
+   Bildirilmeyenler: güncellemenin panel içindeki doğrulama sonucu, Agent'ın
+   sürümü, güncelleme sırasında tam ekran lisans sayfası.

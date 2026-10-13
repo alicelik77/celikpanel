@@ -7,8 +7,13 @@ yayımlandı (sondaki "Yayımlama kaydı"na bakın). Sahip 13 Ekim 2026'da numar
 v0.1.0-alpha.84 olduğuna karar verdi (commit 1636b73f0). Yayımlama kaydı 13 Ekim
 2026'da yazıldığında hiçbir kurulu sunucu bu sürüme güncellenmemişti: ikisi de
 hâlâ v0.1.0-alpha.83'ün arayüz derlemesini sunuyordu ve her birinin güncellemesini
-sahibi panelin kendi güncelleme ekranından başlatır. Bu notlar 13 Ekim 2026'da
-taslak olarak yazıldı ve aynı gün yayımlanma için güncellendi.
+sahibi panelin kendi güncelleme ekranından başlatır. Aynı gün, daha sonra,
+dışarıdan yapılan bir okuma kurulu iki sunucunun da bu sürümün arayüzünü
+sunduğunu gösterdi ("Yayımlama kaydı"nın 14. maddesi) ve sahip ekranda ne
+olduğunu iki ekran görüntüsüyle bildirdi (15. madde); bu bildirimin açık
+bıraktıkları orada, "Yapılmayanlar" altında ve sınırlarda sayılıdır. Bu notlar
+13 Ekim 2026'da taslak olarak yazıldı, aynı gün yayımlanma için güncellendi ve
+yine 13 Ekim 2026'da bu okuma ve bu bildirim için bir kez daha güncellendi.
 
 Sürüm, Panel'in "Sistem servisleri" kartı ve arkasındaki yanıtlar üzerinde üç
 şey, kartın yanında iki şey daha yapar. Kart artık bileşenleri kendiliğinden
@@ -690,7 +695,10 @@ Bu sürümle yeni:
   "Yeniden taramak için Bileşenleri aç" düğmesi var. Kendiliğinden kontrol
   etmez.
 - **Kenar çubuğundaki yapı kimliği bir sözcüğün ortasından bölünüyor.** Sahip
-  tarafından v0.1.0-alpha.83 güncellemesinden sonra gözlendi; düzeltilmedi.
+  tarafından v0.1.0-alpha.83 güncellemesinden sonra gözlendi ve bu sürüme
+  güncellemeden sonra sahibin ekran görüntülerinde yeniden görüldü (13 Ekim
+  2026, "Yayımlama kaydı"nın 15. maddesi: "build f01", sonraki satırda
+  "57e6c8f16"); düzeltilmedi.
 - **Debian 13'te bir kez ölçüldü, başka hiçbir yerde:** lisans denetiminin
   düzeltmesi (D2), güvenlik duvarı okumasında, sistem denetiminde ve bir yeniden
   başlatma isteğinde tipli Agent yanıtı ve Bileşenler sayfasının okuma şeridi,
@@ -873,8 +881,9 @@ Aşağıdaki her şey 13 Ekim 2026 tarihlidir (saat tarihi; saat dilimi
 belirtilmedikçe UTC). 1'den 5'e kadar olan maddeler hazırlıktır; yayımlamadan
 önce yazıldılar ve geçmiş olarak korunur. 6. maddeden itibaren adımları sahip
 attı; dosyaların, portal paketinin ve genel sitenin denetimlerini sürümü
-hazırlayan kişi yaptı. Bu girdi, aşağıdaki sonuçların hiçbirini depoda bir
-dosya olarak saklamaz.
+hazırlayan kişi yaptı. 14. ve 15. maddeler aynı gün, sahip kurulu sunucuları
+güncelledikten sonra eklendi. Bu girdi, aşağıdaki sonuçların hiçbirini depoda
+bir dosya olarak saklamaz.
 
 **Ne oldu.**
 
@@ -973,15 +982,92 @@ dosya olarak saklamaz.
     derlemesini sunuyor: başlangıç sayfaları alpha.84 arşivinin değil, alpha.83
     arşivinin derlenmiş arayüz dosyasına başvuruyor. Bu kayıt yazılırken
     güncellenmemişlerdi. Her birinin güncellemesini sahibi panelin kendi
-    güncelleme ekranından başlatır; sonuç ayrıca kaydedilecek.
+    güncelleme ekranından başlatır; sonuç ayrıca kaydedilecek (14. ve 15.
+    maddeler kaydeder).
+14. Kurulu sunucular, 13 Ekim 2026'da 16:59 UTC'de dışarıdan okundu; sahip
+    ikisini de güncelledikten sonra. 13. maddedeki okumada sunucular
+    güncellenmemişti. Bu okuma salt-okunurdu, HTTPS üzerinden ve oturum
+    açılmadan yapıldı. Sunuculara sahipten başka kimse dokunmadı; sürümü
+    hazırlayan kişi güncellemeyi onlarda başlatmadı, izlemedi ya da
+    doğrulamadı. Gözlenen: iki sunucu da v0.1.0-alpha.84'ün arayüz derlemesini
+    sunuyor. Başlangıç sayfaları, doğrulanmış v0.1.0-alpha.84 arşivinin içindeki
+    `web/dist/index.html` ile aynı derlenmiş arayüz dosyasına başvuruyor ve o
+    dosya, her sunucudan okunduğunda arşivdeki kopyayla bayt bayt aynıdır (aynı
+    SHA-256). Sunucuların o dosya için verdiği `Last-Modified` tarihleri 13 Ekim
+    2026 16:57:37 UTC (ilk sunucu) ve 13 Ekim 2026 16:57:50 UTC (ikinci
+    sunucu). İkisi de hâlâ `Strict-Transport-Security: max-age=31536000`
+    gönderiyor. Bunun gösterdiği: her sunucudaki Panel süreci bu sürümün
+    arayüzünü sunuyor; yani sahip ikisini de panelin kendi güncelleme
+    ekranından 13 Ekim 2026'da, yaklaşık 16:57 UTC'de güncelledi. Göstermedikleri:
+    güncellemenin panel içindeki doğrulama sonucu, Agent'ın sürümü ya da ilk
+    başlangıcın ne yaptığı.
+15. Sahibin 13 Ekim 2026'da bildirdikleri: iki ekran görüntüsü, sunucu başına
+    bir tane, İngilizce arayüzle; ikisini de panelin kendi güncelleme
+    ekranından güncelledikten sonra (14. madde). Ekran görüntüleri sahibindir,
+    depoda saklanmaz; 14. maddedeki okuma dışında hiçbir asistan sunuculara
+    bakmadı. Sahibin mesajı kurulum sayfası görüntüsünü ilk sunucununki olarak
+    adlandırdı; görüntünün kendi kenar çubuğu ikinci sunucuyu adlandırıyor, bu
+    yüzden görüntüler burada gösterdiklerine göre kaydedildi. Bu sahibin
+    gözlemidir, kabul kanıtı değildir ve hiçbiri laboratuvarda ölçülmedi.
+    - Sürüm. İki sunucuda da kenar çubuğundaki sunucu bilgisi `CelikPanel ·
+      v0.1.0-alpha.84 · build f0157e6c8f16` yazıyor; bu, sürüm commit'inin 12
+      karakterlik önekidir. Kimlik kenar çubuğunda hâlâ sözcüğün ortasından
+      satır kırıyor ("build f01", sonraki satırda "57e6c8f16"); başka bir numara
+      gibi okunabilir. Bilinen açık madde, değişmedi.
+    - İlk sunucu (barındırma amacı "Custom setup"; 0 alan adı, 0 veritabanı,
+      1 kullanıcı, 0 posta hesabı). Güncellemeden sonra Pano'ya düşüyor.
+      "System services" kartı "5 / 5 running / installed" diyor: ne "Unknown"
+      ne de "Open Components to rescan" var ve sahibin hiçbir şeye basması
+      gerekmedi. alpha.83 güncellemesinden sonra aynı kart "Unknown" ve "Open
+      Components to rescan" demişti ve sahip elle yeniden taramıştı. "Needs
+      attention" kutusu "Nothing CelikPanel read needs action: certificates,
+      the firewall and the installed components." diyor. "Mail stacks" kartı
+      "Partially installed" diyor ve "Webmail" altında "Some components are
+      already present. Installing this profile will reconcile the full plan
+      without removing completed services." yazıyor, yanında "View mail stacks"
+      düğmesi var. Son etkinlik listesi sahibin oturum açmalarını ve beş gün
+      önceki kurulum etkinliğini gösteriyor. Bu sunucu için ne bir hata ne de
+      bir lisans sayfası bildirildi. Sahip, güncelleme sırasında tam ekran
+      lisans sayfasının görünüp görünmediğini söylemedi: bildirilmedi.
+    - İkinci sunucu. Güncellemeden sonra sunucu kurulum sayfasına düşüyor: 5.
+      adım "Prepare your server", başlığı "Setup stopped: its plan was
+      reopened"; kutu ve adım listesi alpha.83 güncellemesinden sonrakiyle aynı:
+      son adım dışında her adım "Completed" diyor; son adım "Verify the prepared
+      server" ise "Stopped" diyor. Hiçbir adım "In progress" demiyor. alpha.83'ten
+      beri değişmedi ve beklenen durum bu: bekleyen son denetim, sunucunun
+      adresinin ters (PTR) kaydının posta ana makine adını söylemesini
+      gerektiriyor. Sürümü hazırlayan kişi tarafından 13 Ekim 2026'da genel bir
+      çözümleyiciyle okundu (salt-okunur; ana makine adı, adres ya da kayıt
+      değeri buraya yazılmadı): PTR kaydı hâlâ sahibin alan adına ait başka bir
+      ana makine adını söylüyor; yani sahibin barındırma sağlayıcısında,
+      CelikPanel dışında yapacağı işlem hâlâ bekliyor. Bu, bu sürümün bir
+      kusuru değildir.
+    - Bildirilmeyenler: güncellemenin panel içindeki doğrulama sonucu; Agent'ın
+      sürümü; yeniden başlatma sırasında tam ekran lisans sayfasının görünüp
+      görünmediği; `postconf -n >/dev/null` çıktısı. İki sunucunun da alan adı
+      yok; bu yüzden ilk başlangıcın site yapılandırma dosyalarını devralması
+      onlarda devralacak bir şey bulmadı ve sahibin düzenlediği bir site
+      dosyasının bir Panel başlangıcında ne ile karşılaştığı sorusu kurulu
+      sunucularda açık kalır (D-031); alpha.83'ten beri değişmedi.
 
 **Yapılmayanlar ve yayımlamanın değiştirmedikleri.**
 
-- Kurulu sunucular, bu kayıt 13 Ekim 2026'da yazıldığında güncellenmemişti (13.
-  madde). Kurulu her sunucunun güncellemesini sahibi panelin kendi güncelleme
-  ekranından, yukarıdaki her adımdan ayrı bir adım olarak başlatır; onu başka
-  kimse başlatmaz. Bu kayıttaki hiçbir şey, kurulu bir sunucunun bu sürümle ne
-  yaptığını anlatmaz.
+- Kurulu sunucular, 1'den 13'e kadar olan maddeler 13 Ekim 2026'da
+  yazıldığında güncellenmemişti. Kurulu her sunucunun güncellemesini sahibi
+  panelin kendi güncelleme ekranından, yukarıdaki her adımdan ayrı bir adım
+  olarak başlatır; onu başka kimse başlatmaz. Aynı gün, daha sonra, dışarıdan
+  yapılan bir okuma ikisinin de bu sürümün arayüzünü sunduğunu gösterdi (14.
+  madde); yani sahip ikisini de 13 Ekim 2026'da güncelledi ve iki ekran
+  görüntüsü bildirdi (15. madde). Bu bildirimden sonra hâlâ açık olanlar:
+  güncellemenin panel içindeki doğrulama sonucu; Agent'ın sürümü; yeniden
+  başlatma sırasında tam ekran lisans sayfasının görünüp görünmediği;
+  `postconf -n >/dev/null` çıktısı; ilk başlangıcın sahibin düzenlediği bir
+  site yapılandırma dosyasıyla ne yaptığı, çünkü iki sunucunun da alan adı yok,
+  dolayısıyla devralınacak site dosyası yoktu (D-031, alpha.83'ten beri
+  değişmedi); kenar çubuğundaki yapı kimliğinin sözcüğün ortasından satır
+  kırması; ve ikinci sunucuda, yalnız sahibinin değiştirebileceği PTR kaydı. Bunlar
+  sahip bildirdiğinde kaydedilecek. Bu kayıttaki hiçbir şey, 14. ve 15. maddeler
+  dışında, kurulu bir sunucunun bu sürümle ne yaptığını anlatmaz.
 - "`main`'deki koşu bitti, sonra etiket" sırası izlenmedi (8. madde). Koşu
   sonradan başarıyla tamamlandı ve aynı ağaç çekme isteğinde 24 işin 24'ünü
   geçmişti; ama dosya yayımlayan iş test işlerini beklemez.

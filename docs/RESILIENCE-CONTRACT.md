@@ -5478,9 +5478,30 @@ or recovery behaviour. 2026-10-13 is the clock date of everything in it.
   2026-10-13. At the read of the public site both installed servers still
   served the interface build of v0.1.0-alpha.83 (their start page references
   the alpha.83 archive's built interface file, not the alpha.84 one). Each
-  owner starts the update from the panel's own update screen; the outcome will
-  be recorded separately. Nothing in this entry describes what an installed
-  server did with this release, and it is not acceptance evidence for any item.
+  owner starts the update from the panel's own update screen. Later the same
+  day, at 16:59 UTC, a read from outside (read-only, over HTTPS, without
+  logging in; nobody other than the owner touched the servers, and the release
+  preparer did not start, watch or verify the update) found both installed
+  servers serving the interface build of v0.1.0-alpha.84: the same built
+  interface file as `web/dist/index.html` in the verified archive,
+  byte-identical (same SHA-256) on each server, with `Last-Modified`
+  2026-10-13 16:57:37 UTC and 16:57:50 UTC. So the owner updated both from the
+  panel's own update screen on 2026-10-13. That read does not show the
+  update's verification result inside the panel, the Agent's version, or what
+  the first start did. The owner then reported two screenshots (English
+  interface, one per server): the sidebar of both reads v0.1.0-alpha.84 with
+  its build id still wrapped mid-word; the first server lands on a Dashboard
+  whose "System services" card reads "5 / 5 running / installed" without the
+  owner pressing anything; the second lands on the setup page, unchanged from
+  alpha.83, its final check waiting for a reverse DNS (PTR) record that only
+  its owner can change (not a defect of this release). Not reported: the
+  update's verification result inside the panel, the Agent's version, the
+  full-screen licence page during the update, the `postconf -n >/dev/null`
+  output; both servers have no domains, so the site-file adoption of the first
+  start had nothing to adopt and the D-031 question stays open on installed
+  servers. The [release notes](RELEASE-NOTES-v0.1.0-alpha.84.md) ("Publication
+  record", items 14 and 15) hold the details. This is the owner's observation
+  and an outside read, and this entry is not acceptance evidence for any item.
 - **Schema or version transition.** None: this release carries no schema
   change at all (the database schema stays 44). **Recovery behaviour.**
   Unchanged.

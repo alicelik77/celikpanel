@@ -4750,9 +4750,31 @@ değiştirmez. 2026-10-13, içindeki her şeyin saat tarihidir.
   Genel sitenin okunduğu sırada kurulu iki sunucu da hâlâ v0.1.0-alpha.83'ün
   arayüz derlemesini sunuyordu (başlangıç sayfaları alpha.84'ün değil, alpha.83
   arşivinin derlenmiş arayüz dosyasına başvuruyor). Her sahip güncellemeyi
-  panelin kendi güncelleme ekranından başlatır; sonuç ayrıca kaydedilecek. Bu
-  girdideki hiçbir şey, kurulu bir sunucunun bu sürümle ne yaptığını anlatmaz ve
-  hiçbir iş için kabul kanıtı değildir.
+  panelin kendi güncelleme ekranından başlatır. Aynı gün, daha sonra, 16:59
+  UTC'de dışarıdan yapılan bir okuma (salt-okunur, HTTPS, oturum açılmadan;
+  sunuculara sahipten başka kimse dokunmadı, sürümü hazırlayan kişi
+  güncellemeyi başlatmadı, izlemedi ya da doğrulamadı) kurulu iki sunucunun da
+  v0.1.0-alpha.84'ün arayüz derlemesini sunduğunu gösterdi: doğrulanmış
+  arşivdeki `web/dist/index.html` ile aynı derlenmiş arayüz dosyası, her
+  sunucuda bayt bayt aynı (aynı SHA-256), `Last-Modified` 13 Ekim 2026
+  16:57:37 UTC ve 16:57:50 UTC. Yani sahip ikisini de panelin kendi güncelleme
+  ekranından 13 Ekim 2026'da güncelledi. Bu okuma güncellemenin panel
+  içindeki doğrulama sonucunu, Agent'ın sürümünü ya da ilk başlangıcın ne
+  yaptığını göstermez. Sahip sonra iki ekran görüntüsü bildirdi (İngilizce
+  arayüz, sunucu başına bir tane): ikisinin kenar çubuğu v0.1.0-alpha.84
+  yazıyor, yapı kimliği hâlâ sözcüğün ortasından satır kırıyor; ilk sunucu,
+  "System services" kartı sahip hiçbir şeye basmadan "5 / 5 running /
+  installed" diyen bir Dashboard'a düşüyor; ikinci sunucu alpha.83'ten beri
+  değişmeyen kurulum sayfasına düşüyor, son denetimi yalnız sahibinin
+  değiştirebileceği bir ters DNS (PTR) kaydını bekliyor (bu sürümün kusuru
+  değildir). Bildirilmeyenler: güncellemenin panel içindeki doğrulama sonucu,
+  Agent'ın sürümü, güncelleme sırasında tam ekran lisans sayfası, `postconf -n
+  >/dev/null` çıktısı; iki sunucunun da alan adı yok, bu yüzden ilk
+  başlangıcın site dosyalarını devralması devralacak bir şey bulmadı ve D-031
+  sorusu kurulu sunucularda açık kalır. Ayrıntılar [sürüm
+  notlarında](RELEASE-NOTES-v0.1.0-alpha.84.tr.md) ("Yayımlama kaydı", 14. ve
+  15. maddeler). Bu sahibin gözlemi ve dışarıdan bir okumadır; bu girdi hiçbir
+  iş için kabul kanıtı değildir.
 - **Şema ya da sürüm geçişi.** Yok: bu sürüm hiçbir şema değişikliği taşımaz
   (veritabanı şeması 44 kalır). **Kurtarma davranışı.** Değişmedi.
 - **Açık.** Yukarıdaki girdilerin açık bıraktığı her şey; bunlar arasında on
