@@ -23,7 +23,7 @@ git'te yaşar; bu dosya strateji içindir. En yeni en üstte.
 
 ## D-032 · Panel kendiliğinden bakar; okuyabileceği bir durumu öğrenmek için sahibe bir düğmeye basmasını asla söylemez
 
-*12 Ekim 2026 (saat tarihi) · v0.1.0-alpha.83 güncellemesinden sonra sahip kararı; kaynakta, bileşen testleri ve API taklidine karşı tarayıcıyla; ilk adım on dördüncü gerçek sistem kaydında ölçüldü (Debian 13, Ubuntu 24.04, 12 Ekim 2026 UTC); tarama yaşı saat kuralı ile tarama ve kabul denetimindeki tipli Agent yanıtı on beşinci kayıtta ölçüldü (Debian 13, 13 Ekim 2026 UTC); lisans denetiminin kalan süresi, ortak hata yazıcısındaki Agent yanıtı ve okuma şeridi (13 Ekim 2026) yalnız bileşen testli, lisans denetimi kusuru laboratuvarda bulundu ve düzeltmesinden sonra yeniden ölçülmedi*
+*12 Ekim 2026 (saat tarihi) · v0.1.0-alpha.83 güncellemesinden sonra sahip kararı; kaynakta, bileşen testleri ve API taklidine karşı tarayıcıyla; ilk adım on dördüncü gerçek sistem kaydında ölçüldü (Debian 13, Ubuntu 24.04, 12 Ekim 2026 UTC); tarama yaşı saat kuralı ile tarama ve kabul denetimindeki tipli Agent yanıtı on beşinci kayıtta ölçüldü (Debian 13, 13 Ekim 2026 UTC); lisans denetiminin kalan süresi, ortak hata yazıcısındaki Agent yanıtı ve okuma şeridi (13 Ekim 2026) bileşen testli, sonra on altıncı kayıtta Debian 13'te ölçüldü (set14c, 13 Ekim 2026 UTC); on beşinci kayıtta bulunan lisans denetimi kusuru orada yok*
 
 Dashboard'ın "Sistem servisleri" kartı, saklı tarama beş dakikadan eskiyse
 "Bilinmiyor. Bileşen durumu eski. Yeniden taramak için Bileşenleri açın."
@@ -85,8 +85,10 @@ hiçbir Panel sayfası açılmadı (on beşinci kayıt, D2 kusuru: 418 sn geride
 yanıt yazılırken `valid_until` eksi sunucunun saati, sıfırın altına inmez;
 `valid_until` eski sayfalar için kalır) ve tarayıcı sonu, isteği gönderdiği an artı
 bu süre olarak alır; böylece iki saati hiç karşılaştırmaz ve sunucunun izin
-verdiğinden geç bitmez. Alan yoksa mutlak kural sürer. Düzeltme bileşen testli,
-henüz yeniden ölçülmedi.
+verdiğinden geç bitmez. Alan yoksa mutlak kural sürer. Düzeltme Debian 13'te
+on altıncı kayıtta ölçüldü (13 Ekim 2026): konuk saati tarayıcıdan yedi dakika
+geride ve yedi dakika ilerideyken sayfa açıldı ve erişimi 90 saniyede dört kez
+okudu; doğru saatle olduğu gibi.
 
 Tipli hata kuralı. Kendi Agent'ının yerel soketini açamayan bir Panel
 `503 AGENT_UNREACHABLE` yanıtlar: nedeni, hiçbir şeyin değiştirilmediğini, kimin
@@ -103,8 +105,9 @@ değiştirilmedi" yanlış olurdu. Kabul edilen tek birleşim, platform kimliği
 işaretiyle nedenidir; çünkü o okuma koruduğu çağrıdan önce koşar. DNSSEC durumu,
 güncelleme durumu ve başlatması, alan adı silme ve posta parolası döndürme kendi
 tipli yollarında kalır. Sıradan bir hata yine `500` yanıtlar. Tarama ve kabul
-denetiminde ölçüldü (on beşinci kayıt); güvenlik duvarı okuması ve sistem denetimi
-yalnız bileşen testli. Açık: bir şeyi değiştirip sonra, önceki sonuca birleşmemiş
+denetiminde (on beşinci kayıt) ve güvenlik duvarı okuması, sistem denetimi ile bir
+yeniden başlatma isteğinde ölçüldü (on altıncı kayıt; `503`, yalnız `code` ve
+`error`, nginx değişmedi). Açık: bir şeyi değiştirip sonra, önceki sonuca birleşmemiş
 ayrı bir bağlantıda başarısız olan bir işleyici yine de hiçbir şeyin
 değiştirilmediğini söylerdi.
 
@@ -114,8 +117,9 @@ gönderilmediyse işlemin tamamlanmış olabileceğini söylemez. Neden saklanı
 gönderilmiş ve doğrulanmamış bir işlem "tamamlanmış olabilir" sözünü korur ve
 sonradan başarısız olan bir okuma onun yerini asla almaz. Laboratuvarda, Agent
 durmuşken Bileşenler sayfasında bulundu (on beşinci kayıt, O2 gözlemi) ve orada
-uygulandı; bileşen testli, henüz yeniden ölçülmedi. Bu kuralla başka hiçbir ekran
-dönüştürülmez.
+uygulandı; on altıncı kayıtta ölçüldü (okuma şeridi İngilizce ve Türkçe, işlem
+ifadesi yok, Agent dönünce tek Yeniden tara ile gitti). Bu kuralla başka hiçbir
+ekran dönüştürülmez.
 
 Bunun yetkilendirmediği:
 

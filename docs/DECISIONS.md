@@ -23,7 +23,7 @@ Code decisions live in git; this file is for strategy. Newest first.
 
 ## D-032 · The panel looks by itself; it never asks the owner to press a button to learn a state it can read
 
-*October 12, 2026 (clock date) · Owner decision after the update to v0.1.0-alpha.83; in source with component tests and a mock browser; the first step measured in the fourteenth native record (Debian 13, Ubuntu 24.04, 2026-10-12 UTC); the scan-age clock rule and the typed Agent answer at the scan and the admission check measured in the fifteenth record (Debian 13, 2026-10-13 UTC); the licence check's time left, the Agent answer in the shared error writer and the read banner (2026-10-13) component-tested only, the licence-check defect found in the lab and not re-measured after its fix*
+*October 12, 2026 (clock date) · Owner decision after the update to v0.1.0-alpha.83; in source with component tests and a mock browser; the first step measured in the fourteenth native record (Debian 13, Ubuntu 24.04, 2026-10-12 UTC); the scan-age clock rule and the typed Agent answer at the scan and the admission check measured in the fifteenth record (Debian 13, 2026-10-13 UTC); the licence check's time left, the Agent answer in the shared error writer and the read banner (2026-10-13) component-tested, then measured on Debian 13 in the sixteenth record (set14c, 2026-10-13 UTC), where the licence-check defect found in the fifteenth record is gone*
 
 The Dashboard's "System services" card said "Unknown. Component status is
 outdated. Open Components to rescan." whenever the stored scan was older than
@@ -87,8 +87,10 @@ check read 19 times in 90 s). The server now states the time left
 written, never below zero; `valid_until` stays for older pages), and the
 browser takes the end as the moment it sent the request plus that time, so it
 never compares the two clocks and never ends later than the server allows.
-Without the field the absolute rule applies. The fix is component-tested and
-not yet re-measured.
+Without the field the absolute rule applies. The fix was measured on Debian 13
+in the sixteenth record (2026-10-13): with the guest clock seven minutes behind
+and seven minutes ahead of the browser's, the page mounted and read the access
+four times in 90 s, as with a correct clock.
 
 The typed-error rule. A Panel that cannot open its own Agent's local socket
 answers `503 AGENT_UNREACHABLE`: the reason, that nothing was changed, who
@@ -105,8 +107,9 @@ changed" would be false. The one join accepted is the platform-identity
 sentinel with its cause, because that read runs before the call it guards. The
 DNSSEC status, the update status and start, domain deletion and mail password
 rotation stay on their own typed paths. An ordinary failure still answers
-`500`. Measured at the scan and at the admission check (fifteenth record); the
-firewall read and the system check are component-tested only. Open: a handler
+`500`. Measured at the scan and at the admission check (fifteenth record) and at the
+firewall read, the system check and a restart request (sixteenth record, `503`
+with only `code` and `error`, nginx unchanged). Open: a handler
 that changes something and later fails on a separate dial that is not joined
 to the earlier outcome would still claim that nothing was changed.
 
@@ -116,8 +119,9 @@ action; it does not say that an action may have completed unless one was sent.
 The cause is kept: an action that was sent and not confirmed keeps its "may
 have completed" wording, and a later failed read never replaces it. Found in
 the lab on the Components page with the Agent stopped (fifteenth record,
-observation O2) and applied there; component-tested, not yet re-measured. No
-other screen is converted by this rule.
+observation O2) and applied there; measured in the sixteenth record (the read
+banner in English and Turkish, the action wording absent, gone after one press
+of Rescan once the Agent was back). No other screen is converted by this rule.
 
 What this does not authorise:
 

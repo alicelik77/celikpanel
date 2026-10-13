@@ -21,16 +21,18 @@ because the licence check compared the two clocks. The server now states the
 time left itself.
 
 What the card does rests on component tests, on a browser against a mock of the
-API, and on two lab measurements, each a real headless Chrome against a real
+API, and on three lab measurements, each a real headless Chrome against a real
 Panel: the fourteenth native record (Debian 13 and Ubuntu 24.04), which
-measured the first of the product commits only, and the fifteenth (set14b,
-Debian 13 only, 2026-10-13), which measured the two corrections that followed
-(the clock rule and the server-stated age) and the typed Agent answer at the
-scan and at the admission check. The licence check's correction, the typed
-Agent answer on the other reads and the Components page's read banner were
-made after that measurement and have component tests only; the licence-check
-fault they correct was found in the lab and has not been re-measured after the
-fix (see "What was measured, and how"). The limits say what was never run.
+measured the first of the product commits only; the fifteenth (set14b, Debian
+13 only, 2026-10-13), which measured the two corrections that followed (the
+clock rule and the server-stated age) and the typed Agent answer at the scan
+and at the admission check; and the sixteenth (set14c, Debian 13 only,
+2026-10-13), which measured, on the last product commit, the licence check's
+correction, the typed Agent answer on the firewall read, the system check and
+a restart request, and the Components page's read banner. The licence-check
+fault was found in the lab by the fifteenth record and is gone in the
+sixteenth (see "What was measured, and how"). The limits say what was never
+run.
 
 ## What changes for the server owner
 
@@ -258,12 +260,15 @@ answers `500`.
   to "Not checked in the last 5 minutes" for up to 30 seconds when the server's
   clock is ahead of the browser's.
 - A server whose clock is more than five minutes behind the browser's no
-  longer makes a fresh scan read as stale (component-tested; the lab could not
-  measure it, see the limits).
+  longer makes a fresh scan read as stale (component-tested; measured once, on
+  Debian 13, with the clock seven minutes behind: one conditional scan, then
+  the result to the end of 90 s).
 - A server whose clock is more than about a minute behind the browser's used to
   keep every Panel page from loading. Now the server states the time left and
   the browser never compares the two clocks (`valid_for_seconds` on
-  `/api/v1/license/access`). Found in the lab; the fix is not yet re-measured.
+  `/api/v1/license/access`). Found in the lab; measured after the fix on
+  Debian 13 only: with the clock seven minutes behind, and seven minutes
+  ahead, the Dashboard loaded at once.
 - With the Agent stopped, a refused scan or change, the firewall read and the
   system check say the Agent is not reachable and what to run, in English and
   Turkish, instead of an internal error.
@@ -288,7 +293,7 @@ repeated); `npm run build` within budget (Dashboard chunk 37.67 KiB of
 160.25). The web test count was 1324 after the first commit and 1328 after the
 clock correction.
 
-On the last product commit (`7024534bc`): `gofmt`, `go vet` and the arm64 build
+On `7024534bc`: `gofmt`, `go vet` and the arm64 build
 clean; `go test ./cmd/panel/... ./internal/...` 7028 passed, 44 skipped, 0
 failed (3 new: the time left on every access state; the central writer
 answering `503` for a refused dial, a missing socket, a wrapped dial and an
@@ -298,7 +303,10 @@ rollback; the firewall and system-check reads naming the Agent); `npm test`
 1339 of 1339 (3 new: an answer whose `valid_until` is seven minutes past by the
 browser's clock but whose `valid_for_seconds` is 55 is accepted, 0 is not, and
 without the field the old rule holds; the two banners); `npm run build` within
-budget. Not yet measured on a real server.
+budget. The commit after it that touched product code, `68b79b372`, changed
+two class names only (keys, strings and behaviour unchanged): `npm test` 1339
+of 1339, `npm run build` within budget. Measured on a real server once, Debian
+13 only, on `68b79b372`: see the sixteenth record below.
 
 **Mock browser.** A headless Chrome against a loopback mock of the API drew the
 four states in English on a desktop and in Turkish on a phone, with exactly one
@@ -400,28 +408,117 @@ files; the figures here are those of the README as it stands. Nothing of the
 product was changed by the run, and its `result.json` carries
 `native_evidence: false`.
 
-**Found in the lab, and not yet re-measured after the fix: the licence check
-(D2).** In the same record, with the guest's clock moved back (measured 418.5 s
-behind the browser's), no Panel page loaded in 90 s. The page read
+**Found in the lab by the fifteenth record, gone in the sixteenth: the licence
+check (D2).** In the same record, with the guest's clock moved back (measured
+418.5 s behind the browser's), no Panel page loaded in 90 s. The page read
 `/api/v1/license/access` 19 times, every 5 s, all 200, and nothing else: no
 managed-services read, no scan, no Dashboard. The cause was read from the code,
 not from the answers: `valid_until` is a time at most 60 s after the last
 verification on the server's clock, and the page refused a positive answer
 whose `valid_until` was not after the browser's clock. The record did not keep
 the access answers' bodies and took no picture of the held page. The correction
-(`valid_for_seconds`, above) was made after the record and has component tests
-only; it has not been run against a real server with a skewed clock. For the
-same reason the measurement the record set out to make for a clock behind (one
-conditional scan, the result at once, no second scan) could not be made and is
-not yet measured.
+(`valid_for_seconds`, above) was made after the record; the sixteenth record
+measured it. For the same reason the measurement the fifteenth record set out
+to make for a clock behind (one conditional scan, the result at once, no second
+scan) could not be made there; the sixteenth record made it.
 
-**Observed in the same record, then corrected in source, not re-measured.**
+**Observed in the same record, then corrected in source, then measured in the
+sixteenth.**
 With the Agent stopped, the Components page showed "A server action may have
 completed" although none had run (O2), and the firewall read answered `500`
 (O3: the Components page showed "Firewall: Status unknown" with an internal
 error text, the Dashboard "Part of this server's state could not be read").
-The read banner and the shared error writer, above, answer them and have
-component tests only.
+The read banner and the shared error writer, above, answer them; they had
+component tests, and the sixteenth record measured both.
+
+**The sixteenth native record**
+([set14c](../deploy/e2e/release-recovery/evidence/set14c-20261013/README.md),
+2026-10-13 UTC). A test-licence build of `68b79b372`, the last product commit,
+on one disposable Debian 13 guest, with a real headless Chrome 154 on the host:
+an English desktop window (1440 by 900) and, for the Components page, one
+Turkish phone window (390 by 844). The installed archive was a disposable
+fixture build whose tree differs from `68b79b372`'s in one file,
+`deploy/release-sequence-policy`. The harness moved the guest's clock. The
+offset was read from the answers themselves: from a managed-services answer
+(`scanned_at` plus `scan_age_seconds`) and, more tightly, from each licence
+access answer (`valid_until` minus `valid_for_seconds`, the server's clock when
+it answered). Offsets, guest minus browser:
+
+- Natural, before the first load: -78 to +64 ms.
+- Seven minutes behind: -420,002 to -419,945 ms.
+- Seven minutes ahead: +419,996 to +420,058 ms.
+- Restored: +3 to +52 ms, and 30 s later -4 to +64 ms. The harness's net shift
+  was 0 at the end.
+
+Results:
+
+- **The licence check, three loads.** The same Dashboard load three times, each
+  with a stored scan older than 300 s (316.8, 317.1 and 930.9 s) and watched
+  for 90 s: with the clock as it was, 420 s behind, and 420 s ahead. The
+  Dashboard mounted (first managed-services read) 192, 130 and 132 ms after
+  the load, and the card appeared 253, 165 and 172 ms after it. The page read
+  `/api/v1/license/access` 4 times in each 90 s (at 0.11, 44.1, 60.1 and
+  89.1 s; 0.07, 44.0, 60.1 and 88.9 s; 0.07, 42.6, 60.1 and 87.6 s), every
+  answer 200 with `can_use_panel: true`, `state: active`,
+  `observation: known`. Each load sent exactly one conditional scan
+  (`max_age_seconds=300`, 200; 1197, 956 and 1047 ms) and the card went from
+  absent to checking to "3 / 3 running / installed" and stayed so to the end.
+  No second scan came (none seen 88.8, 89.0 and 89.1 s after the first). With
+  the server seven minutes behind, the page behaved as with the clock correct:
+  no hold, no read every 5 s (the fifteenth record: 19 reads at 5 s in 90 s
+  and no Dashboard). The same with the server seven minutes ahead.
+- **The access answers.** All 12 answers of the three loads have exactly the
+  keys `can_use_panel`, `observation`, `state`, `valid_for_seconds` and
+  `valid_until`; `valid_for_seconds` is a JSON number, 42.5 to 60.0 s. (In the
+  whole run 17 answers carried the same five keys; the four of the Agent phase
+  ranged from 16.7 to 59.99 s.) In all three loads the page read again 15 s
+  before the deadline computed as the moment it sent the request plus
+  `valid_for_seconds`. With the server behind, the absolute `valid_until` was
+  already in the past by the browser's clock: 361.1 s before the first answer
+  was received and 360.0 to 376.1 s before the next three (not 420 s, because
+  `valid_until` is the server's clock plus about 60 s); by calculation the old
+  rule would have refused them, its deadline lying about 419.9 s before the
+  one the page used. With the server ahead, the absolute `valid_until` would
+  have let the page accept access 420.05 s longer than the server said; the
+  page's own deadline was not later. The browser's internal deadline is not
+  readable from outside; it is inferred from the timing of the reads.
+- **The Agent stopped, the reads.** The firewall read (`GET /api/v1/firewall`),
+  the system check (`GET /api/v1/system/check`) and a restart request for
+  nginx (`POST /api/v1/service/action`) each answered `503 AGENT_UNREACHABLE`.
+  The three bodies are the same, hold only `code` and `error`, and name no
+  socket path; the cause stayed in the Panel's journal. The refused restart
+  changed nothing: nginx's main process id, restart counter and start
+  timestamps were identical before and after. (The fifteenth record measured
+  the firewall read as `500`.)
+- **The Dashboard with the Agent stopped.** One conditional scan, `503` in
+  3 ms; the card went from absent to checking to "Unknown / Could not check:"
+  with the Agent sentence and the "Scan services" button, held to the end of
+  40 s, with no second scan. The page's own firewall read answered the same
+  `503`. The other cards (CPU, memory, disk, hosting, recent activity) were
+  shown. The Dashboard showed no firewall banner, and its "Needs attention" box
+  did not name the Agent (O6, below).
+- **The Components page with the Agent stopped.** English desktop: one
+  conditional scan, `503` in 107 ms; the banner "Component state could not be
+  read" with the Agent sentence as the reason, the line that the page sent no
+  component action, and a "Rescan" button, seen 1007 ms after the load and
+  still there 5 s later. Turkish phone: one scan, `503` in 88 ms; the banner
+  "Bileşen durumu okunamadı" with "Yeniden tara", seen 1012 ms after the load.
+  Neither page showed the "Service state needs verification" or "may have
+  completed" wording (in Turkish "Servis durumu doğrulanmalı", "tamamlanmış
+  olabilir"). Each page also showed the Agent sentence as an error toast.
+- **The Agent started again, and the press.** The Turkish page sent nothing by
+  itself in the 5 s before the press. One press of "Yeniden tara" sent one
+  unconditional scan (200, 1014 ms, `scan_age_seconds` 0, 27 services); the
+  banner was gone 1092 ms after the press and still gone 10 s later.
+- The browser sent 7 scans in the whole run: one per measured load, the three
+  refused ones and the press.
+
+The record found no defect in the code those commits changed. Its intake
+checked 273 files listed in four checksum lists (all present, no secrets or
+operator identity) and corrected two README statements against the raw files.
+Nothing of the product was changed by the run, and its `result.json` carries
+`native_evidence: false`. It closes no P0 row. Its observations O4, O5 and O6
+and the untranslated mail-stack text are in the limits.
 
 ## Limits of this release
 
@@ -431,8 +528,9 @@ marked "still open" because nothing in this release addresses it.
 
 New with this release:
 
-- **Arch was not measured.** The fourteenth record ran Debian 13 and Ubuntu
-  24.04, the fifteenth Debian 13 only. The Debian labs' idle Arch peer was not
+- **Ubuntu and Arch were not measured after the changes.** The fourteenth
+  record ran Debian 13 and Ubuntu 24.04 (the first commit only), the fifteenth
+  and sixteenth Debian 13 only. The Debian labs' idle Arch peer was not
   measured.
 - **`server_setup_busy` was not measured.** The setup ran before the browser
   window opened, so no Dashboard load happened during it. Only
@@ -450,21 +548,54 @@ New with this release:
   old text and its "Open Components" button. It does not check by itself.
 - **The sidebar's build identifier wraps in the middle of a word.** Observed by
   the owner after the update to v0.1.0-alpha.83; not fixed.
-- **Component-tested only until the next record:** the licence check's fix
-  (D2), the typed Agent answer on the reads beyond the scan and the admission
-  check (the firewall, the system check) and the Components page's read banner.
-  The fault D2 was seen in a browser against a real Panel; its fix was not.
-  Neither a server clock several minutes behind nor the firewall and
-  system-check answers with the Agent stopped was seen after the change.
-- **The scan's age with the server's clock behind the browser's was not
-  measured.** The licence check held the page before it could (D2), so the
-  "clock behind" measurement of the fifteenth record was not possible. Only a
-  clock ahead was measured.
+- **Measured on Debian 13 once, nowhere else:** the licence check's fix (D2),
+  the typed Agent answer on the firewall read, the system check and a restart
+  request, and the Components page's read banner, all in the sixteenth record.
+  Ubuntu and Arch were not run after these changes. The "may have completed"
+  banner after an action whose result is unknown was not measured: producing it
+  needs a component action whose answer is lost, which the harness has no cheap
+  way to do. It has component tests only.
+- **O4: the Turkish Components page shows the firewall banner's server sentence
+  in English.** Seen in the sixteenth record with the Agent stopped:
+  "Güvenlik duvarı: Durum bilinmiyor" followed by the English Agent sentence.
+  `FirewallBar.load` takes the answer's `error` string as the message
+  (`web/src/components/ServiceList.tsx:3259-3271`, `:3286`) and shows it
+  (`:3393`) instead of the translation of the code (`err.AGENT_UNREACHABLE`),
+  which the scan banner and the toast use. Open for the next release. Line
+  numbers here are those of `68b79b372`.
+- **O5: the firewall banner is not read again after the Agent returns.** After
+  the press and 10 s later, the Turkish page still showed "Durum bilinmiyor"
+  with the Agent sentence although the Agent was running and the scan had
+  succeeded: `FirewallBar` reads only on mount (`ServiceList.tsx:3289-3291`)
+  and after its own action (`:3318`); Rescan does not read it. A reload would.
+  Open for the next release.
+- **O6: the Dashboard's "Needs attention" box does not name the Agent.** With
+  `GET /api/v1/firewall` answering `503 AGENT_UNREACHABLE`, the box says only
+  that part of the state could not be read (`dashboard.attentionUnread`,
+  `web/src/components/Dashboard.tsx:895`, `:1163-1165`), while the System
+  services card on the same page names the Agent and the owner's commands.
+  Open for the next release.
+- **Untranslated English text on the Turkish Components page.** The mail stack
+  descriptions ("Postfix SMTP and Dovecot IMAP/POP3 with authenticated
+  submission.", "Core mail plus Nginx, PHP-FPM and Roundcube webmail.") and
+  "Some components are already present. Installing this profile will reconcile
+  the full plan without removing completed services." Seen in the sixteenth
+  record; not looked into. Open for the next release.
+- **The guest's NTP settings were not measured.** In the sixteenth record
+  `timedatectl show` printed no fields, so only the return codes of the clock
+  changes are recorded; whether the time service stepped the clock after it was
+  switched on again cannot be told.
+- **The scan's age with the server's clock behind the browser's was measured
+  once.** The fifteenth record could not make that measurement (D2 held the
+  page). The sixteenth made it on Debian 13 only, once each with the clock seven
+  minutes behind and seven minutes ahead (see above); Ubuntu and Arch were not
+  run.
 - **The fifteenth record ran Debian 13 only.** Ubuntu and Arch were not
   re-measured; the window rule, the hidden tab, the held (`409`) state,
   `server_setup_busy` and the never-checked state were not asked for (the
   window rule is unchanged since the fourteenth record). Its access answers'
-  bodies were not recorded, and the guest's time-service settings were not.
+  bodies were not recorded (the sixteenth recorded them), and the guest's
+  time-service settings were not.
 - **The lab tools still send only `valid_until`.** The mock server `mock.mjs`
   and the cold-load tools `cold-load-set9.mjs` and `cold-load-set11.mjs` answer
   the access check with `valid_until` only, so they exercise the old rule and
@@ -487,16 +618,19 @@ New with this release:
   ran once; English was seen on a desktop window on Debian and Turkish on a
   phone window on Ubuntu, not both languages on both. The fifteenth record
   added Debian 13 only: an English desktop window, Turkish for one Dashboard
-  load, the guest's clock moved by the harness.
-- **Other cards when the Agent is down.** With the Agent stopped the
-  Dashboard's CPU, memory and disk cards showed "—" with the amber banner, and
-  the firewall read answered `500`. This was seen in the intake of the
-  fourteenth record and again in the fifteenth. The firewall read now names the
-  Agent (component-tested); the cards and the amber banner are not changed
-  here. What the firewall "Status unknown" line on the Components page and the
-  Dashboard's "Part of this server's state could not be read" banner say after
-  this change was not seen: they were observed with the Agent stopped in the
-  fifteenth record (with the earlier `500`), not measured.
+  load, the guest's clock moved by the harness. The sixteenth record added
+  Debian 13 only again: an English desktop window, Turkish on one phone window
+  for the Components page, the guest's clock moved seven minutes each way, each
+  cell once.
+- **Other cards when the Agent is down.** In the fourteenth and fifteenth
+  records, with the Agent stopped, the Dashboard's CPU, memory and disk cards
+  showed "—" with the amber banner, and the firewall read answered `500`. In
+  the sixteenth record the firewall read answered `503 AGENT_UNREACHABLE`
+  naming the Agent, and the CPU, memory and disk cards showed values (0 %,
+  15 %, 11 %); this release does not change those cards, and the difference was
+  not investigated. The Dashboard's "Needs attention" box does not name the
+  Agent (O6), and the Turkish Components page's firewall banner shows an
+  English sentence (O4).
 
 Limits of v0.1.0-alpha.83 that this release does not address (each still
 open):
@@ -590,10 +724,13 @@ open):
 
 Not published. Open before publication:
 
-1. The next native record, not run: the licence check's fix with a server clock
-   several minutes behind the browser's (D2), then the scan's age with the
-   clock behind that D2 made impossible; the Agent answer on the firewall and
-   system-check reads; and the Components page's read banner, on a real server.
+1. The next native record: done (set14c, the sixteenth, Debian 13 only,
+   2026-10-13): the licence check's fix with the server's clock seven minutes
+   behind and ahead, the scan's age with the clock behind, the Agent answer on
+   the firewall and system-check reads, and the Components page's read banner,
+   on a real server. No longer open here. Not measured there, and still open:
+   Ubuntu, Arch, the "may have completed" banner after an action, the guest's
+   NTP settings, and its observations O4 to O6 (see the limits).
 2. The release preparation, committed separately and changing no file under
    `cmd/`, `internal/` or `web/`: the release sequence number after the
    previous one, the installer's bootstrap pins, the README version lines and
