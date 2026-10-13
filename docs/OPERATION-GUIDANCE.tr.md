@@ -7000,3 +7000,51 @@ Observations) ve bir simetri; bileşen testli; gerçek bir sistemde ölçülmedi
   de taşımaz. Eklemeli; yeni cümle yok: biten seçimin bandı değişmedi.
   Önceden ölçülen: başarılı bir almanın 200'ü `service` alanı taşımıyordu ve
   yeniden yükleme yalnız günlükte görülüyordu.
+
+### Alpha.83 güncellemesinden sonra kurulu sunucularda sahibin gözlemleri (2026-10-12)
+
+Gözlemler, değişiklik değil. Sahip kurulu iki sunucuyu 11 Ekim 2026'da panelin
+kendi güncelleme ekranından v0.1.0-alpha.83'e güncelledikten sonra 12 Ekim
+2026'da iki ekran görüntüsü bildirdi (İngilizce arayüz, sunucu başına bir
+tane). Bu girdi için laboratuvarda hiçbir şey ölçülmedi, hiçbir metin ya da
+ekran değiştirilmedi ve kabul kanıtı değildir. D-024'e (mevcut neden, kimin
+işlem yapacağı, somut sonraki eylem ve nasıl devam edileceği uzun listelerden
+önce gelir; durmuş bir işlem aynı zamanda sürüyor gösterilmez) ve bilinen-durum
+kuralına karşı konur.
+
+1. **Kurulum sayfasının durmuş çalıştırma yönlendirmesi, tasarlandığı gibi
+   görüldü (ikinci sunucu).** Kurulum planı güncellemeden önce yeniden
+   açılmıştı ve son denetim hiç bitmemişti. Sayfa, adım listesinin üstünde
+   "Setup stopped: its plan was reopened" başlığını ve bir kutu gösteriyor: bu
+   bir hata değil, hiçbir şey geri alınmadı ve kendiliğinden hiçbir şey
+   sürmeyecek; hangi denetim bekliyordu (posta ana makine adını ve ona uyan
+   genel DNS ile ters DNS (PTR) kayıtlarını doğrula); sonraki eylem (planı
+   gözden geçirip yeniden başlat; son denetim sonra yeniden koşar). Altında
+   kapalı teknik ayrıntılar ve "Review a revised plan" düğmesi var. Son adım
+   "Verify the prepared server" "Stopped" diyor, diğer her adım "Completed";
+   hiçbiri "In progress" demiyor. Bu, yukarıdaki alpha.82 girdisinin dördüncü
+   gözleminin (durdu ve sürüyor bir arada) kurulu bir sunucuda çözülmüş
+   görülmesidir: neden, bekleyen denetim, kimin işlem yapacağı ve sonraki eylem
+   adımlardan önce duruyor. Sahibin ekran görüntüsüne dayanır.
+2. **Yalnız sahibin karşılayabileceği karşılanmamış önkoşul.** Bekleyen denetim,
+   sunucu adresinin ters (PTR) kaydının posta ana makine adını söylemesini
+   ister. 12 Ekim 2026'da dışarıdan okunduğunda kayıt başka bir ana makine adını
+   söylüyor; bu yüzden sahip onu barındırma sağlayıcısında, CelikPanel dışında
+   değiştirene kadar denetim geçmeyecek. Sayfadaki "Next" (planı gözden geçirip
+   yeniden başlat) o kaydı değiştirmez; bu girdi sayfanın bunu sahibine söyleyip
+   söylemediğini de söylemez, çünkü bu bildirilmedi ve okunmadı. Sahibin
+   karşılanmamış önkoşuludur, Panel'in doğrulanmış bir hatası değildir.
+3. **Eski durumlu bir Pano (ilk sunucu).** "System services" kartı "Unknown" ve
+   "Component status is outdated. Open Components to rescan." diyor; "Needs
+   attention" kutusu hiçbir sertifika ya da güvenlik duvarı ayarının işlem
+   gerektirmediğini ve kurulu bileşenlerin yakın zamanda denetlenmediğini
+   söylüyor. Nedeni ve sonraki eylemi söylüyor, bilinmeyen durumu sağlıklı gibi
+   çizmiyor. Hata bildirilmeden bildirildi; yeniden taramadan sonra durumun
+   düzelip düzelmediği bildirilmedi.
+4. **Kenar çubuğundaki derleme kimliği sözcüğün ortasından satır kırıyor (iki
+   sunucu).** Sunucu bilgisi `CelikPanel · v0.1.0-alpha.83 · build
+   0447558e956d` yazıyor ve 12 karakterlik kimlik üçüncü karakterden sonra
+   bölünüyor ("build 044", sonraki satırda "7558e956d"); başka bir numara gibi
+   okunabilir. Görünüşle ilgili; sonraki sürüm için açık. Bildirilmeyenler:
+   yeniden başlatma sırasında tam ekran lisans sayfası, güncelleme bildirimi ile
+   kart, kurulum adresine doğrudan yüklemede anlık lisans sayfası.
