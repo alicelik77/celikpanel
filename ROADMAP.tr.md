@@ -414,6 +414,66 @@ kabul işi açık kalır.
   - Bu aday hiçbir P0 işini kapatmaz ve ilerletmez. Yayımlanması kurulu hiçbir
     paneli güncellemez; güncellemeyi yalnız sahip, panelin kendi güncelleme
     ekranından başlatır.
+- **v0.1.0-alpha.84 adayı (yayımlanmadı).** 13 Ekim 2026'da yazıldı. Numara
+  dalın çalışma adıdır; sahip yayımlamada belirler. Sahibin 12 Ekim 2026 kararı,
+  v0.1.0-alpha.83 güncellemesinden sonra: Dashboard bileşenleri kaynak
+  harcamadan kendiliğinden kontrol eder ([D-032](docs/DECISIONS.tr.md)). Aday
+  `feat/alpha84-dashboard-self-check` dalıdır, `main`'in `0447558e9`'undan
+  (v0.1.0-alpha.83 adayının birleştirilmesi), `main`'e #208 numaralı taslak
+  çekme isteği. Commit'leri: `a5830dd3e` (Dashboard'ın "Sistem servisleri" kartı
+  kendiliğinden kontrol eder: en çok 300 sn'de bir, yalnız sekme görünürken,
+  aralıklı zamanlayıcı yok, yeniden deneme döngüsü yok, dört ayrı durum, süren
+  bir değişiklik için tutulma durumu), `f6eaa0b57` (on dördüncü gerçek sistem
+  kaydı, yalnız kanıt), `e6de64a5b` (sayfa bir taramayı onu aldığı andan
+  tarihler: o kaydın D1 kusuru) ve `1a74eeda5` (sunucu bir taramanın yaşını
+  bildirir, `scan_age_seconds`; ulaşılamayan bir Agent tarama işleyicisinde ve
+  on bir değiştirici işleyicinin kabul denetiminde `503 AGENT_UNREACHABLE`
+  yanıtlar). Şema değişikliği yok, yeni rota yok
+  ([sürüm notu taslağı](docs/RELEASE-NOTES-v0.1.0-alpha.84.tr.md)). Yukarıdaki
+  alpha.83 girdisi hâlâ "yayımlanmadı" der; o sürüm yayımlanmadan önce
+  yazılmıştı ve burada yeniden yazılmadı.
+  - *Ölçülen: on dördüncü gerçek sistem kaydı*
+    ([set14](deploy/e2e/release-recovery/evidence/set14-20261012/README.md),
+    12 Ekim 2026 UTC; İngilizce masaüstü pencereli Debian 13 ve Türkçe telefon
+    pencereli Ubuntu 24.04, gerçek, başsız bir Chrome; yalnız `a5830dd3e`'nin
+    test lisanslı derlemesi). Bayat yüklemede tam bir koşullu tarama, tazede
+    hiç, görünür tutulan sayfada 300 sn'den önce olmamak üzere bir tane daha,
+    gizliyken hiç ve gösterilince bir tane, "bir değişiklik sürüyor" diye
+    gösterilen ve tek takibi olan `409 service_operation_busy` ve Agent
+    durmuşken "Kontrol edilemedi" ve düğmeyle gösterilen bir `500`; bir kontrol
+    için Agent'ın CPU'su yaklaşık 0,2 ile 0,4 sn. D1 kusuru (konuğun saati
+    ileriyken kart her kontrolden sonra 20 ile 29 sn "Son 5 dakikada kontrol
+    edilmedi" dedi) orada bulundu ve `e6de64a5b` ile `1a74eeda5`'te düzeltildi.
+    Sınırları: Arch koşulmadı; `server_setup_busy` ve hiç kontrol edilmemiş
+    durum ölçülmedi; taramanın sunucu tarafı duvar süresi ölçülmedi; tutulma
+    durumuna yalnız önce taramayan bir değişiklikle ulaşılır. Kaydın her kabul
+    denetimi düzeltmesi kendi metnini daraltır ve bu özete üstün gelir.
+  - *Son ürün commit'inde bileşen testleri:* `go test ./cmd/panel/...
+    ./internal/...` 7025 geçti, 44 atlandı, 0 başarısız; `npm test` 1336 /
+    1336; `npm run build` bütçe içinde (Dashboard parçası 160,25 KiB'tan 37,67
+    KiB). İki düzeltmenin (saat kuralı, sunucunun bildirdiği yaş) ve tipli Agent
+    yanıtının yalnız bileşen testleri var; hiçbir gerçek sistemde çalıştırılmadı.
+  - *Burada yanıtlanan, daha önce listelenmemiş olanlar:* sahibin kartın neden
+    kendiliğinden kontrol etmediği sorusu (D-032, `a5830dd3e`); on dördüncü
+    kaydın O1 gözlemi, Agent durmuşken genel iç hata (`1a74eeda5`).
+  - *Yayımlamadan önce açık:* on beşinci kayıt (set14b), tek platform, son kodda
+    D1 ve O1'i yeniden ölçer (sürüyor; sayıları henüz hiçbir yere girilmedi);
+    sürüm hazırlığı commit'i (sürüm sırası, önyükleme sabitleri, sürüm
+    satırları; `cmd/`, `internal/` ya da `web/` altında hiçbir dosyayı
+    değiştirmez); numara üzerine sahibin kararı; son ucun CI koşusu; birleştirme,
+    etiket, altı imzalı dosya ve portal yayımı, hepsi sahibin. Kurulu her paneli
+    sonra sahibi panelin kendi güncelleme ekranından günceller; bunu başka kimse
+    başlatmaz.
+  - *Sonraki sürüme açık, adayın sınırları sürüm notunun listelediği gibi:*
+    Dashboard'daki posta yığını kartının hâlâ kendi bayat kopyası ve "Yeniden
+    taramak için Bileşenleri aç" düğmesi var; kenar çubuğundaki yapı kimliği bir
+    sözcüğün ortasından bölünüyor (sahibin alpha.83 güncellemesinden sonraki
+    gözlemi); Arch, `server_setup_busy` ve hiç kontrol edilmemiş durum
+    ölçülmedi; bu adaya güncelleme ölçülmedi; ve yukarıdaki alpha.83 adayının, bu
+    adayın ele almadığı her sınırı.
+  - Bu aday hiçbir P0 işini kapatmaz ve ilerletmez. P0.1–P0.5 **kısmi**
+    kalır. Yayımlanması kurulu hiçbir paneli güncellemez; güncellemeyi yalnız
+    sahip, panelin kendi güncelleme ekranından başlatır.
 
 ### Son DNS sonuçları ve sınırları
 

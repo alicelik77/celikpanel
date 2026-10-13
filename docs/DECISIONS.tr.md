@@ -21,6 +21,94 @@ git'te yaşar; bu dosya strateji içindir. En yeni en üstte.
 
 ---
 
+## D-032 · Panel kendiliğinden bakar; okuyabileceği bir durumu öğrenmek için sahibe bir düğmeye basmasını asla söylemez
+
+*12 Ekim 2026 (saat tarihi) · v0.1.0-alpha.83 güncellemesinden sonra sahip kararı; kaynakta, bileşen testleri ve API taklidine karşı tarayıcıyla; ilk adım on dördüncü gerçek sistem kaydında ölçüldü (Debian 13, Ubuntu 24.04, 12 Ekim 2026 UTC); saat kuralı, sunucunun bildirdiği yaş ve tipli Agent yanıtı bileşen testli, kısa laboratuvar ölçümleri bekliyor (13 Ekim 2026)*
+
+Dashboard'ın "Sistem servisleri" kartı, saklı tarama beş dakikadan eskiyse
+"Bilinmiyor. Bileşen durumu eski. Yeniden taramak için Bileşenleri açın."
+diyordu. Bileşenler sayfası, Panel'in sunduğu önbellekli, koşullu taramayı
+(`POST /api/v1/managed-services/scan?max_age_seconds=N`: aynı anda tek tarama,
+önbellekli, bir değişiklik sunucunun kilidini tutarken reddedilen) zaten
+çalıştırıyordu; Dashboard çalıştırmıyordu. Böylece sahip, Panel'in kendi
+yapabileceği bir okumayı elle yapmak zorunda kalıyordu. v0.1.0-alpha.83
+güncellemesinden sonra sahip 12 Ekim 2026'da karar verdi: Dashboard kaynak
+harcamadan kendiliğinden kontrol etmeli.
+
+Benimsenen kurallar:
+
+1. Başarılı bir okumadan sonra, saklı tarama yoksa ya da 300 saniyeden eskiyse
+   Dashboard koşullu taramayı çalıştırır; yanıt ne olursa olsun beş dakikalık
+   pencere başına en çok bir kez.
+2. Yalnız sekme görünürken. Gizli sekme hiçbir şey çalıştırmaz; yeniden
+   gösterilen sekme, kontrol zamanı gelmişse bir kez kontrol eder.
+3. Başka bir kontrol sürerken asla. Ne olursa olsun tarayan aralıklı bir
+   zamanlayıcı yok; reddedilmeden sonra yeniden deneme döngüsü yok.
+4. Bir değişiklik sürdüğü için gelen ret (`server_setup_busy`,
+   `service_operation_busy`) "bir değişiklik sürüyor" diye gösterilir ve başka
+   bir şey göndermez. Mevcut hazırlık yoklaması sunucunun meşgulden hazıra
+   geçtiğini görünce bir takip çalışır (yalnız paket işlemleri için; kurulum
+   retinden sonra bir sonraki kontrol pencereyi bekler).
+5. Başarısız bir kontrol yerinde düğmeyle "Kontrol edilemedi: <neden>" der.
+   Sahibin basışı koşulsuz kalır.
+6. Kart dört ayrı durum çizer (kontrol ediliyor, sonuç, kontrol edilemedi,
+   tutuluyor) ve "İlgi istiyor" cümlesi onları izler.
+
+Kaynak sınırı kararın parçasıdır, sonradan eklenmiş bir şey değil: bakılan bir
+Dashboard için beş dakikada en çok bir koşullu tarama, kimsenin bakmadığı için
+hiç. İki laboratuvar konuğunda ölçüldü (on dördüncü kayıt, ilk adım): bayat bir
+yükleme tam bir tarama gönderdi, taze bir yükleme hiç, görünür tutulan bir sayfa
+300 saniyeden önce olmamak üzere bir tarama daha, gizli bir sekme beş dakika
+hiç ve gösterilince bir; bir kontrol Agent'a yaklaşık 0,2 ile 0,4 saniye CPU'ya
+mal oldu (47 saniyelik iki pencereden bir tahmin).
+
+Saat kuralı. Sunucu bir taramanın yaşını söyler (`scan_age_seconds`, üç
+yönetilen-servisler yanıtında, yanıt yazılırken sunucu saatiyle ölçülür); sayfa
+taramayı yanıtı aldığı an eksi bu yaş olarak tarihler. Tarayıcı kendi saatini
+sunucununkiyle asla karşılaştırmaz. Kuralın iki adımı vardır, çünkü laboratuvar
+kusuru ilk sürümde buldu: konuğun saati bir iki saniye ileriyken kart her
+kontrolden sonra 20 ile 29 saniye "Son 5 dakikada kontrol edilmedi" gösterdi.
+Birinci adım (damga ile alınma anının erken olanı) ileride olan sunucu için
+kusuru kaldırdı; ikincisi (sunucunun yaşı) beş dakikadan fazla geride olan
+sunucu için de kaldırır. Alanı olmayan eski bir sunucu birinci kuralda kalır.
+Eksi bir yaş ya da sonlu olmayan bir sayı taze sayılmaz.
+
+Tipli hata kuralı. Kendi Agent'ının yerel soketini açamayan bir Panel
+`503 AGENT_UNREACHABLE` yanıtlar: nedeni, hiçbir şeyin değiştirilmediğini, kimin
+işlem yapacağını, sonraki eylemi ve işin nasıl süreceğini söyler (D-024). Bunu
+tarama işleyicisinde ve on bir değiştirici işleyicinin ortak kabul denetiminde
+yapar; yalnız başarısız bağlantı kurma için geçerlidir. İstek gönderildikten
+sonra kopan bağlantı bilinmeyen sonuçtur ve genel yolda kalır; bilinmeyen sonuç
+asla doğrulanmış bir başarısızlığa çevrilmez. Sıradan bir tarama hatası yine
+`500` yanıtlar.
+
+Bunun yetkilendirmediği:
+
+- Kimse bakmazken çalışan bir arka plan zamanlayıcısı. Bu karar, taze bir kart
+  uğruna zamanlanmış bir tarama eklemez; Dashboard, bir kişi onu açık ve görünür
+  tuttuğunda bakar.
+- Bir değişiklik başlatan yoklama. Kontrol, Bileşenler sayfasının zaten sunduğu
+  salt-okur taramadır; bir durumu gören yoklama asla değişiklik başlatmaz ve
+  hazırlık yoklamasının tek takibi de aynı taramadır.
+- Bu kararla başka hiçbir kart, sayfa ya da ekran dönüştürülmez. Dashboard'daki
+  posta yığını kartı, kendi değişikliğine kadar kendi bayat metnini ve
+  "Bileşenleri aç" düğmesini korur; sunucuyu hâlâ eski biçimde okuyan ekranlar
+  sürüm notundaki listede kalır.
+- Temelin bittiği iddiası yok: hiçbir P0 işi kapanmaz ya da ilerlemez.
+
+Gerisiyle ilişkisi. D-024 her işlemin nedenini, kimin işlem yapacağını, sonraki
+eylemi ve işin nasıl süreceğini göstermesini ve doğrulanmış başarısızlık,
+karşılanmamış önkoşul ve bilinmeyen sonucu ayırmasını ister; bu karar onu bileşen
+kontrolüne ve ulaşılamayan Agent'a uygular. Bilinen-durum kuralı (başarısız ya da
+eksik bir okuma boş ya da olumsuz bir durum gibi çizilmez) kartın neden
+"kontrol edilemedi" ve "tutuluyor" durumlarına ayrı ayrı sahip olduğunu ve bayat
+durumun "Bilinmiyor"a indirgenmediğini açıklar. D-022 (sunucuyu sahibi işletir;
+Panel saptar ve bildirir) Panel'in Agent'ı yeniden başlatmak yerine sahibe onu
+nasıl denetleyeceğini söylemesinin nedenidir. Panel güncellemeleri sahibin
+kalır, panelin kendi güncelleme ekranından.
+
+---
+
 ## D-031 · Sahibin değiştirdiği site yapılandırma dosyası korunur ve adlandırılır; üretim onun üstüne yazmaz
 
 *10 Ekim 2026 (saat tarihi) · Salt-okur denetimin bulgusu üzerine sahip kararı ([SITE-CONFIG-OWNER-EDITS-2026-10-10](audit/SITE-CONFIG-OWNER-EDITS-2026-10-10.md)); tasarım kararlaştırıldı; ilk adım onuncu gerçek sistem kaydında ölçüldü (iki bulgu 11 Ekim 2026'da düzeltildi); “şimdi yaz” eylemi ile tek öncelik sırası (11 Ekim 2026) ve ikinci adım (havuz, uygulama birimi; 11 Ekim 2026) bileşen testli ve sahte tarayıcıyla denendi, gerçek sistem ölçümü bekliyor*

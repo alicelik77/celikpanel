@@ -416,6 +416,68 @@ above and below stays open.
   - No P0 item is closed or advanced by this candidate. Publishing it will
     not update any installed panel; only the owner starts that, from the
     panel's own update screen.
+- **v0.1.0-alpha.84 candidate (not published).** Written 2026-10-13. The
+  number is the branch's working name; the owner decides it at publication.
+  Owner decision of 2026-10-12, after the update to v0.1.0-alpha.83: the
+  Dashboard checks the components by itself, without wasting resources
+  ([D-032](docs/DECISIONS.md)). The candidate is the branch
+  `feat/alpha84-dashboard-self-check`, from `main` at `0447558e9` (the merge of
+  the v0.1.0-alpha.83 candidate), draft pull request #208 into `main`. Its
+  commits: `a5830dd3e` (the Dashboard's "System services" card checks by
+  itself: once per 300 s at most, only while the tab is visible, no interval
+  timer, no retry loop, four distinct states, a held state for a change in
+  progress), `f6eaa0b57` (the fourteenth native record, evidence only),
+  `e6de64a5b` (the page dates a scan from the moment it received it: defect
+  D1 of that record) and `1a74eeda5` (the server states a scan's age,
+  `scan_age_seconds`; an unreachable Agent answers `503 AGENT_UNREACHABLE`
+  in the scan handler and in the admission check of eleven mutation
+  handlers). No schema change, no new route
+  ([draft release notes](docs/RELEASE-NOTES-v0.1.0-alpha.84.md)). The
+  alpha.83 entry above still reads "not published"; it was written before that
+  release was published and is not rewritten here.
+  - *Measured: the fourteenth native record*
+    ([set14](deploy/e2e/release-recovery/evidence/set14-20261012/README.md),
+    2026-10-12 UTC; Debian 13 with an English desktop window and Ubuntu 24.04
+    with a Turkish phone window, a real headless Chrome; a test-licence build of
+    `a5830dd3e` only). Exactly one conditional scan on a stale load, none on a
+    fresh one, one more not before 300 s on a page kept visible, none while
+    hidden and one when shown, `409 service_operation_busy` shown as "a change
+    is in progress" with one follow-up, and with the Agent stopped a `500`
+    shown as "Could not check" with the button; the Agent's CPU for a check
+    about 0.2 to 0.4 s. Defect D1 (the card said "Not checked in the last 5
+    minutes" for 20 to 29 s after every check when the guest's clock was ahead)
+    was found there and corrected in `e6de64a5b` and `1a74eeda5`. Its limits:
+    Arch not run; `server_setup_busy` and the never-checked state not
+    measured; the scan's server-side wall time not measured; the held state
+    reachable only by a change that does not scan first. Each intake correction
+    of the record narrows its own text and wins over this summary.
+  - *Component tests on the last product commit:* `go test ./cmd/panel/...
+    ./internal/...` 7025 passed, 44 skipped, 0 failed; `npm test` 1336 of 1336;
+    `npm run build` within budget (Dashboard chunk 37.67 KiB of 160.25). The
+    two corrections (the clock rule, the server-stated age) and the typed
+    Agent answer have component tests only; no real system has run them.
+  - *Answered here, not listed before:* the owner's question why the card did
+    not check by itself (D-032, `a5830dd3e`); observation O1 of the fourteenth
+    record, the generic internal error with the Agent stopped
+    (`1a74eeda5`).
+  - *Open before publication:* the fifteenth record (set14b), one platform,
+    re-measuring D1 and O1 on the final code (running; its numbers are not
+    entered anywhere yet); the release preparation commit (release sequence,
+    bootstrap pins, version lines; changes no file under `cmd/`, `internal/`
+    or `web/`); the owner's decision on the number; the CI run of the last
+    head; merge, tag, the six signed assets and the portal publication, all by
+    the owner. Each installed panel is then updated by its owner from the
+    panel's own update screen; no one else starts that.
+  - *Open for the next release, with this candidate's limits as the release
+    notes list them:* the mail-stack card on the Dashboard still has its own
+    stale copy and its "Open Components" button; the sidebar's build
+    identifier wraps in the middle of a word (the owner's observation after the
+    alpha.83 update); Arch, `server_setup_busy` and the never-checked state
+    not measured; no update to this candidate measured; and every limit of the
+    alpha.83 candidate above, which this candidate does not address.
+  - No P0 item is closed or advanced by this candidate. P0.1–P0.5 stay
+    **partial**. Publishing it will not update any installed panel; only the
+    owner starts that, from the panel's own update screen.
 
 ### Latest DNS results and their limits
 
