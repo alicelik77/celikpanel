@@ -13,7 +13,7 @@ const tr = turkishCatalogue;
 test('mail journey requires fresh runtime state and completed profile reconciliation', () => {
   assert.match(operation, /typeof profile\.verified !== 'boolean'/);
   assert.match(operation, /profile\.verified && status !== 'complete'/);
-  assert.match(dashboard, /const serviceScanFresh = freshScanTimestamp\(serviceScan\.scannedAt, serviceScan\.observedAt, freshnessNow\)/);
+  assert.match(dashboard, /const serviceScanFresh = freshScanTimestamp\(\s*serviceScan\.scannedAt,\s*serviceScan\.observedAt,\s*serviceScan\.scanAgeSeconds,\s*freshnessNow,\s*\)/);
   assert.match(dashboard, /profile\.status === 'complete'[\s\S]*profile\.verified[\s\S]*!profile\.warning/);
   assert.match(dashboard, /const mailProfileVerified = verifiedMailProfiles\.length > 0/);
   assert.match(dashboard, /mailProfiles && hasMailActivity\(mailProfiles\)/);
@@ -170,8 +170,49 @@ test('scan freshness is measured from when the page received the scan, not from 
   assert.match(fn[0], /!Number\.isFinite\(scannedAt\)\) return null/);
   assert.doesNotMatch(fn[0], /scannedAt > now/, 'a stamp later than the browser clock is rejected again');
   assert.doesNotMatch(dashboard, /scannedAt > now/);
-  // Both places that learn of a scan record when they did.
-  assert.equal((dashboard.match(/setServiceScan\(\{ scannedAt: snapshot\.scannedAt, observedAt \}\)/g) || []).length, 2);
+  // Both places that learn of a scan record when they did, with the age the
+  // server reported.
+  assert.equal((dashboard.match(/setServiceScan\(\{ scannedAt: snapshot\.scannedAt, scanAgeSeconds: snapshot\.scanAgeSeconds, observedAt \}\)/g) || []).length, 2);
   assert.doesNotMatch(dashboard, /setServiceScannedAt/);
   assert.match(dashboard, /const SCAN_WINDOW_SECONDS = 300;/);
+});
+
+// 13 Oct 2026, the limit e6de64a5b left open: a server clock more than five
+// minutes behind the browser's still read a just-finished scan as stale. The
+// server now reports the scan's age on its own clock (scan_age_seconds) and the
+// page subtracts it from when it received the answer; without the field the
+// earlier rule stands.
+test('the scan is dated by the age the server reports, with the earlier rule as the fallback', () => {
+  const fn = dashboard.match(/function effectiveScanTime[\s\S]*?\n}\n\nfunction freshScanTimestamp[\s\S]*?\n}\n/);
+  assert.ok(fn, 'effectiveScanTime / freshScanTimestamp not found');
+  assert.match(fn[0], /if \(ageSeconds !== null\) \{\s*if \(!Number\.isFinite\(ageSeconds\) \|\| ageSeconds < 0\) return null;\s*return observedAt - ageSeconds \* 1000;\s*\}/);
+  // The age wins over the stamp; the stamp rule stays for an older server.
+  assert.ok(fn[0].indexOf('observedAt - ageSeconds * 1000') < fn[0].indexOf('Math.min(scannedAt, observedAt)'));
+  assert.match(fn[0], /Math\.min\(scannedAt, observedAt\)/);
+  // The decoder accepts the optional field and still fails a wrong one closed.
+  const decoder = dashboard.match(/function decodeDashboardServices[\s\S]*?\n}\n/);
+  assert.ok(decoder, 'decodeDashboardServices not found');
+  assert.match(decoder[0], /const scanAge = payload\.scan_age_seconds;/);
+  assert.match(decoder[0], /scanAge !== undefined\s*&& scanAge !== null\s*&& \(typeof scanAge !== 'number' \|\| !Number\.isFinite\(scanAge\) \|\| scannedAt === null\)/);
+  assert.match(decoder[0], /scanAgeSeconds: typeof scanAge === 'number' \? scanAge : null,/);
+});
+
+// set14 O1: with the Agent stopped the card said "The server hit an internal
+// error". The Panel now answers 503 AGENT_UNREACHABLE and the card's reason is
+// that code's sentence, in both languages.
+test('an unreachable Agent is named on the card in EN and TR', () => {
+  const httperr = readFileSync(new URL('../../cmd/panel/httperr.go', import.meta.url), 'utf8');
+  assert.match(httperr, /errCodeAgentUnreachable = "AGENT_UNREACHABLE"/);
+  assert.match(httperr, /writeCodedError\(w, http\.StatusServiceUnavailable, errCodeAgentUnreachable, agentUnreachableMessage, ""\)/);
+  for (const [catalogue, words] of [
+    [en, ['not reachable', 'nothing was changed', 'server owner', 'sudo systemctl status celikpanel-agent', 'try again']],
+    [tr, ['ulaşılamıyor', 'hiçbir şey değiştirilmedi', 'Sunucunun sahibi', 'sudo systemctl status celikpanel-agent', 'yeniden deneyin']],
+  ]) {
+    const line = catalogue.match(/'err\.AGENT_UNREACHABLE': '([^']*)'/);
+    assert.ok(line, 'missing err.AGENT_UNREACHABLE');
+    for (const word of words) assert.ok(line[1].includes(word), `${word} missing from ${line[1]}`);
+    assert.doesNotMatch(line[1], /internal error|iç hata/);
+  }
+  // The card's failure reason is the coded answer's sentence (err.<CODE>).
+  assert.match(dashboard, /fail\(apiErrorText\(refusal, t, 'services\.scanFailed'\)\);/);
 });

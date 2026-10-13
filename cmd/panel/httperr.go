@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
+	"net"
 	"net/http"
 	"strings"
+	"syscall"
 
 	"github.com/alicelik/celikpanel/internal/transport"
 )
@@ -303,6 +305,14 @@ const (
 	// Yeni yapılandırma dosyası kuruldu, hizmet onunla yeniden yüklenemedi ve
 	// önceki dosya geri kondu (`restored`) ya da konamadı (`not_restored`).
 	errCodeConfigReloadFailed = "CONFIG_RELOAD_FAILED"
+	// AGENT_UNREACHABLE: the Panel could not open the CelikPanel Agent's
+	// local socket on this server (the socket is missing or nothing accepts
+	// on it), so the request was not carried out. An unmet prerequisite with
+	// one owner action, not an internal error (set14 O1, 13 Oct 2026).
+	// AGENT_UNREACHABLE: Panel bu sunucudaki CelikPanel Agent'ının yerel
+	// soketini açamadı (soket yok ya da kabul eden yok); istek yapılmadı.
+	// Tek bir sahip eylemi olan karşılanmamış önkoşuldur, iç hata değil.
+	errCodeAgentUnreachable = "AGENT_UNREACHABLE"
 )
 
 type agentRPCPlatformErrorClassification struct {
@@ -455,6 +465,42 @@ func classifyStableAgentError(err error) (agentRPCPlatformErrorClassification, b
 		return classification, true
 	}
 	return classifyAgentRPCPlatformError(err)
+}
+
+// agentUnreachableMessage is the sentence for AGENT_UNREACHABLE: the reason,
+// that nothing was changed, who acts, the next action and how work resumes
+// (D-024). The screens show their own translation (err.AGENT_UNREACHABLE).
+// agentUnreachableMessage, AGENT_UNREACHABLE cümlesidir: neden, hiçbir şeyin
+// değişmediği, kimin ne yapacağı ve işin nasıl süreceği (D-024).
+const agentUnreachableMessage = "The CelikPanel Agent on this server is not reachable, " +
+	"so this request was not carried out and nothing was changed. " +
+	"The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent " +
+	"(its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with " +
+	"sudo systemctl start celikpanel-agent. Once the Agent is running, try again."
+
+// agentUnreachable reports whether err is the Panel failing to open the
+// Agent's local Unix socket at all: the socket file is missing (ENOENT) or
+// nothing accepts on it (ECONNREFUSED). Only a failed dial counts, because
+// then no request reached the Agent; a connection that broke after the
+// request was sent is an unknown result and keeps the generic path.
+// agentUnreachable, hatanın Panel'in Agent'ın yerel Unix soketini hiç
+// açamaması olup olmadığını bildirir: soket dosyası yok (ENOENT) ya da kabul
+// eden yok (ECONNREFUSED). Yalnız başarısız bağlantı kurma sayılır; o zaman
+// Agent'a hiçbir istek ulaşmamıştır. İstek gittikten sonra kopan bağlantı
+// bilinmeyen sonuçtur ve genel yolda kalır.
+func agentUnreachable(err error) bool {
+	var opErr *net.OpError
+	if err == nil || !errors.As(err, &opErr) || opErr.Op != "dial" || opErr.Net != "unix" {
+		return false
+	}
+	return errors.Is(opErr.Err, syscall.ECONNREFUSED) || errors.Is(opErr.Err, syscall.ENOENT)
+}
+
+// writeAgentUnreachable logs the cause and answers 503 AGENT_UNREACHABLE.
+// writeAgentUnreachable nedeni günlüğe yazar ve 503 AGENT_UNREACHABLE döner.
+func writeAgentUnreachable(w http.ResponseWriter, err error) {
+	log.Printf("[%d] %v", http.StatusServiceUnavailable, err)
+	writeCodedError(w, http.StatusServiceUnavailable, errCodeAgentUnreachable, agentUnreachableMessage, "")
 }
 
 // writeCodedError is the single writer of the contract. action, when

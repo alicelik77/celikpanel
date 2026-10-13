@@ -241,3 +241,14 @@ test('a not-reloaded put-back says how to resume and never says a stopped servic
     assert.ok(unavailable.includes(catalogue === en ? 'could not be run' : 'çalıştırılamadı'), unavailable);
   }
 });
+
+// set14 O1: an unreachable Agent is a coded 503, and each language shows its
+// own sentence for it instead of the server's English text or "internal error".
+test('AGENT_UNREACHABLE shows its own sentence in EN and TR', () => {
+  const translate = (catalog) => (key) => catalog[key] ?? key;
+  const refusal = { code: 'AGENT_UNREACHABLE', message: 'server text' };
+  assert.equal(apiErrorText(refusal, translate(en), 'services.scanFailed'), en['err.AGENT_UNREACHABLE']);
+  assert.equal(apiErrorText(refusal, translate(tr), 'services.scanFailed'), tr['err.AGENT_UNREACHABLE']);
+  assert.notEqual(en['err.AGENT_UNREACHABLE'], en['err.INTERNAL']);
+  assert.notEqual(tr['err.AGENT_UNREACHABLE'], tr['err.INTERNAL']);
+});

@@ -289,3 +289,15 @@ test('no screen was left behind: every managed-services scan caller is accounted
     walk('', '');
     assert.deepEqual([...found].sort(), [...allowed].sort());
 });
+
+// 13 Oct 2026: the Components page decides whether to ask for the conditional
+// check from the age the server reports on its own clock (scan_age_seconds),
+// the clock the server judges that check on; only without the field does it
+// compare the stamp with the browser's clock, as before.
+test('the components list judges staleness from the age the server reports', () => {
+    assert.match(serviceList, /scanAgeSeconds: typeof payload\.scan_age_seconds === 'number' \? payload\.scan_age_seconds : null,/);
+    assert.match(
+        serviceList,
+        /const cacheIsStale = snapshot\.scanAgeSeconds !== null\s*\? snapshot\.scanAgeSeconds < 0 \|\| snapshot\.scanAgeSeconds > AUTO_SCAN_MAX_AGE_SECONDS\s*: !Number\.isFinite\(scannedTimestamp\)\s*\|\| Date\.now\(\) - scannedTimestamp > AUTO_SCAN_MAX_AGE_SECONDS \* 1000;/,
+    );
+});

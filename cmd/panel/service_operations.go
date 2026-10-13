@@ -290,6 +290,15 @@ func (p *Panel) beginServiceMutation(w http.ResponseWriter, r *http.Request) (fu
 	statusCancel()
 	if statusErr != nil {
 		release()
+		// Admission is checked before any change, so an Agent that cannot be
+		// reached is named and nothing was changed; any other cause keeps the
+		// generic answer.
+		// Kabul her değişiklikten önce denetlenir; ulaşılamayan Agent adıyla
+		// söylenir ve hiçbir şey değişmemiştir. Diğer nedenler genel yanıtta kalır.
+		if agentUnreachable(statusErr) {
+			writeAgentUnreachable(w, fmt.Errorf("verify privileged service mutation admission: %w", statusErr))
+			return nil, true
+		}
 		writeServerError(w, fmt.Errorf("verify privileged service mutation admission: %w", statusErr))
 		return nil, true
 	}

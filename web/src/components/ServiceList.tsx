@@ -89,6 +89,10 @@ interface ManagedServicesSnapshot {
     services: ManagedService[];
     profiles: ManagedMailProfile[];
     scannedAt: string | null;
+    // The scan's age on the server's clock at the answer; null from an older
+    // server or with no scan. / Taramanın yanıt anında sunucu saatiyle yaşı;
+    // eski sunucuda ya da tarama yoksa null.
+    scanAgeSeconds: number | null;
     dnsIdentityReady: boolean;
     mailHostname: MailHostnameIdentity;
 }
@@ -185,6 +189,15 @@ function parseManagedServicesSnapshot(value: unknown): ManagedServicesSnapshot |
             typeof payload.scanned_at !== 'string'
             || !Number.isFinite(Date.parse(payload.scanned_at))
         )
+        // Optional; when present, a finite number next to a stamp.
+        // İsteğe bağlı; varsa bir damganın yanında sonlu bir sayı.
+        || payload.scan_age_seconds !== undefined
+        && payload.scan_age_seconds !== null
+        && (
+            typeof payload.scan_age_seconds !== 'number'
+            || !Number.isFinite(payload.scan_age_seconds)
+            || typeof payload.scanned_at !== 'string'
+        )
     ) {
         return null;
     }
@@ -192,6 +205,7 @@ function parseManagedServicesSnapshot(value: unknown): ManagedServicesSnapshot |
         services: payload.services,
         profiles,
         scannedAt: typeof payload.scanned_at === 'string' ? payload.scanned_at : null,
+        scanAgeSeconds: typeof payload.scan_age_seconds === 'number' ? payload.scan_age_seconds : null,
         dnsIdentityReady: payload.dns_identity_ready,
         mailHostname,
     };
@@ -654,10 +668,21 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                 return failVerification();
             }
 
+            // The server's own age of the scan decides, as it does for the
+            // conditional scan, so the browser's clock is not compared with
+            // the server's; a negative age (a stamp after the server's clock)
+            // is not fresh there either. An older server sends no age: then
+            // the stamp is compared with this browser's clock as before.
+            // Taramanın sunucunun kendi saatiyle yaşı karar verir (koşullu
+            // taramada olduğu gibi); tarayıcı saati sunucununkiyle
+            // karşılaştırılmaz. Eksi yaş orada da taze değildir. Eski sunucu
+            // yaş göndermez: o zaman damga eskisi gibi tarayıcı saatiyle
+            // karşılaştırılır.
             const scannedTimestamp = Date.parse(snapshot.scannedAt ?? '');
-            const cacheIsStale =
-                !Number.isFinite(scannedTimestamp)
-                || Date.now() - scannedTimestamp > AUTO_SCAN_MAX_AGE_SECONDS * 1000;
+            const cacheIsStale = snapshot.scanAgeSeconds !== null
+                ? snapshot.scanAgeSeconds < 0 || snapshot.scanAgeSeconds > AUTO_SCAN_MAX_AGE_SECONDS
+                : !Number.isFinite(scannedTimestamp)
+                    || Date.now() - scannedTimestamp > AUTO_SCAN_MAX_AGE_SECONDS * 1000;
             if (!cacheIsStale) return true;
 
             // Keep a valid cached page visible while it is refreshed. A fresh
