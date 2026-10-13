@@ -13,7 +13,7 @@ const tr = turkishCatalogue;
 test('mail journey requires fresh runtime state and completed profile reconciliation', () => {
   assert.match(operation, /typeof profile\.verified !== 'boolean'/);
   assert.match(operation, /profile\.verified && status !== 'complete'/);
-  assert.match(dashboard, /const serviceScanFresh = freshScanTimestamp\(serviceScannedAt, freshnessNow\)/);
+  assert.match(dashboard, /const serviceScanFresh = freshScanTimestamp\(serviceScan\.scannedAt, serviceScan\.observedAt, freshnessNow\)/);
   assert.match(dashboard, /profile\.status === 'complete'[\s\S]*profile\.verified[\s\S]*!profile\.warning/);
   assert.match(dashboard, /const mailProfileVerified = verifiedMailProfiles\.length > 0/);
   assert.match(dashboard, /mailProfiles && hasMailActivity\(mailProfiles\)/);
@@ -98,7 +98,7 @@ test('audit, alert and gauge fixes remain localized in EN and TR', () => {
 test('the dashboard checks the components by itself, conditionally, and only when it is seen', () => {
   // One window for the card and for what the check asks the server.
   assert.match(dashboard, /const SCAN_WINDOW_SECONDS = 300;/);
-  assert.match(dashboard, /return now - scannedAt <= SCAN_WINDOW_MS;/);
+  assert.match(dashboard, /return now - effective <= SCAN_WINDOW_MS;/);
   assert.match(dashboard, /`\/api\/v1\/managed-services\/scan\?max_age_seconds=\$\{SCAN_WINDOW_SECONDS\}`/);
   // When it runs: the stored records were read, they are not fresh, the page
   // is visible, nothing is in flight, and the last automatic check is a
@@ -155,4 +155,23 @@ test('the system-services card has distinct, honest states', () => {
   for (const catalogue of [en, tr]) {
     assert.match(catalogue, /'dashboard\.systemServicesCheckFailed': '[^']*\{reason\}'/);
   }
+});
+
+// 12 Oct 2026 (set14, Debian 13 and Ubuntu 24.04): the server's scanned_at ran
+// 1-2 s ahead of the browser and the old rule rejected a stamp later than the
+// browser's clock, so the card said "Unknown" for 20-29 s after a successful
+// check. Freshness is now measured from the moment the page learned of the scan.
+test('scan freshness is measured from when the page received the scan, not from two clocks', () => {
+  const fn = dashboard.match(/function effectiveScanTime[\s\S]*?\n}\n\nfunction freshScanTimestamp[\s\S]*?\n}\n/);
+  assert.ok(fn, 'effectiveScanTime / freshScanTimestamp not found');
+  assert.match(fn[0], /Math\.min\(scannedAt, observedAt\)/);
+  assert.match(fn[0], /now - effective <= SCAN_WINDOW_MS/);
+  assert.match(fn[0], /if \(!value\) return null;/);
+  assert.match(fn[0], /!Number\.isFinite\(scannedAt\)\) return null/);
+  assert.doesNotMatch(fn[0], /scannedAt > now/, 'a stamp later than the browser clock is rejected again');
+  assert.doesNotMatch(dashboard, /scannedAt > now/);
+  // Both places that learn of a scan record when they did.
+  assert.equal((dashboard.match(/setServiceScan\(\{ scannedAt: snapshot\.scannedAt, observedAt \}\)/g) || []).length, 2);
+  assert.doesNotMatch(dashboard, /setServiceScannedAt/);
+  assert.match(dashboard, /const SCAN_WINDOW_SECONDS = 300;/);
 });

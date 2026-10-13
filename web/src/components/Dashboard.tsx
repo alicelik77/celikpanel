@@ -196,11 +196,34 @@ function decodeDashboardServices(value: unknown): {
 const SCAN_WINDOW_SECONDS = 300;
 const SCAN_WINDOW_MS = SCAN_WINDOW_SECONDS * 1000;
 
-function freshScanTimestamp(value: string | null, now = Date.now()): boolean {
-    if (!value) return false;
+// When the page learned of a scan counts, not only what the server stamped on
+// it. The server's clock may run ahead of the browser's by a second or two
+// (measured 12 Oct 2026: 1.05-2.16 s), and a scan cannot be newer than the
+// moment this page received it. So the effective scan time is the earlier of
+// the stamp and `observedAt` (the browser's time of the response): a server
+// clock ahead gives `observedAt`; a server clock behind keeps the older
+// stamp (conservative). Age is then measured on the browser's clock alone, so
+// a stamp "in the future" can no longer turn a fresh result into "Unknown".
+// No stamp, or one that cannot be parsed, is never fresh.
+// Sayfanın taramayı ne zaman öğrendiği de sayılır; yalnız sunucunun damgası
+// değil. Sunucu saati tarayıcınınkinden bir iki saniye ileride olabilir
+// (12 Eki 2026'da ölçüldü: 1,05-2,16 sn) ve bir tarama, bu sayfanın onu aldığı
+// andan yeni olamaz. Etkin tarama zamanı damga ile `observedAt` (yanıtın
+// tarayıcı saatiyle zamanı) arasında erken olandır: sunucu saati ileriyse
+// `observedAt`, geriyse eski damga kalır (temkinli). Yaş yalnız tarayıcı
+// saatiyle ölçülür; "gelecekteki" bir damga artık taze sonucu "Bilinmiyor"a
+// çeviremez. Damga yoksa ya da çözülemiyorsa asla taze değildir.
+function effectiveScanTime(value: string | null, observedAt: number): number | null {
+    if (!value) return null;
     const scannedAt = Date.parse(value);
-    if (!Number.isFinite(scannedAt) || scannedAt > now) return false;
-    return now - scannedAt <= SCAN_WINDOW_MS;
+    if (!Number.isFinite(scannedAt)) return null;
+    return Math.min(scannedAt, observedAt);
+}
+
+function freshScanTimestamp(value: string | null, observedAt: number, now = Date.now()): boolean {
+    const effective = effectiveScanTime(value, observedAt);
+    if (effective === null) return false;
+    return now - effective <= SCAN_WINDOW_MS;
 }
 
 // A hidden tab checks nothing: nobody is reading the card, and a background
@@ -318,7 +341,12 @@ function AdminDashboard() {
     const domains = lastKnown(domainList.remote)?.value ?? NO_DOMAINS;
     const extras = lastKnown(extrasRead.remote)?.value ?? null;
     const [audit, setAudit] = useState<AuditLite[]>([]);
-    const [serviceScannedAt, setServiceScannedAt] = useState<string | null>(null);
+    // The scan stamp the server sent and the browser's time of the response
+    // that carried it, kept together. / Sunucunun gönderdiği tarama damgası ve
+    // onu getiren yanıtın tarayıcı saatiyle zamanı; birlikte tutulur.
+    const [serviceScan, setServiceScan] = useState<{ scannedAt: string | null; observedAt: number }>(
+        () => ({ scannedAt: null, observedAt: Date.now() }),
+    );
     const [freshnessNow, setFreshnessNow] = useState(() => Date.now());
     const [fwBusy, setFwBusy] = useState(false);
     const [firewallConfirmationOpen, setFirewallConfirmationOpen] = useState(false);
@@ -380,8 +408,9 @@ function AdminDashboard() {
                 publishComponentCensus(snapshot.services);
                 setServices(snapshot.services);
                 setMailProfiles(snapshot.profiles);
-                setServiceScannedAt(snapshot.scannedAt);
-                setFreshnessNow(Date.now());
+                const observedAt = Date.now();
+                setServiceScan({ scannedAt: snapshot.scannedAt, observedAt });
+                setFreshnessNow(observedAt);
                 setScanRead('known');
             })
             .catch(() => {
@@ -411,7 +440,7 @@ function AdminDashboard() {
         return () => window.clearInterval(timer);
     }, []);
 
-    const serviceScanFresh = freshScanTimestamp(serviceScannedAt, freshnessNow);
+    const serviceScanFresh = freshScanTimestamp(serviceScan.scannedAt, serviceScan.observedAt, freshnessNow);
 
     // The census this panel has actually taken. `is_installed: null` is a row
     // nobody has looked at on this host, so it belongs to NEITHER side of a
@@ -484,15 +513,19 @@ function AdminDashboard() {
             publishComponentCensus(snapshot.services);
             setServices(snapshot.services);
             setMailProfiles(snapshot.profiles);
-            setServiceScannedAt(snapshot.scannedAt);
+            // The scan is dated by the moment this page received it (see
+            // effectiveScanTime), so a server clock a little ahead of this
+            // browser cannot make the fresh answer read "in the future". The
+            // freshness clock moves with the answer so the age is never
+            // measured from before it arrived.
+            // Tarama, bu sayfanın onu aldığı anla tarihlenir
+            // (effectiveScanTime); sunucu saati tarayıcıdan biraz ileride
+            // olsa da taze yanıt "gelecekte" okunmaz. Tazelik saati yanıtla
+            // ilerler; yaş yanıttan önceki bir andan ölçülmez.
+            const observedAt = Date.now();
+            setServiceScan({ scannedAt: snapshot.scannedAt, observedAt });
             setScanOutcome(null);
-            // Freshness is measured against a clock that ticks every 30s. A
-            // scan timestamp newer than that clock reads as "in the future"
-            // and would show Unknown for half a minute after a successful
-            // check, so move the clock with the answer.
-            // Tazelik 30 saniyede bir ilerleyen bir saate göre ölçülür; taze
-            // tarama damgası o saatten yeni olduğu için saati birlikte ilerlet.
-            setFreshnessNow(Date.now());
+            setFreshnessNow(observedAt);
             // The check is an answer about the component records too: an
             // earlier read that failed no longer makes the attention list
             // say it could not be read.
@@ -526,6 +559,10 @@ function AdminDashboard() {
     // missing or older than the window, the page is on screen, nothing is
     // being checked, and the last automatic check is at least a window ago.
     // Nothing else starts a check: no timer scans regardless of staleness.
+    // "Older than the window" is serviceScanFresh, which dates the scan by when
+    // this page received it, so a server clock ahead cannot start a second check.
+    // "Pencereden eski" serviceScanFresh'tir; taramayı sayfanın aldığı andan
+    // tarihler, bu yüzden ileri bir sunucu saati ikinci kontrol başlatamaz.
     // Sayfanın kendiliğinden kontrol ettiği an: saklı kayıtlar okundu, yoklar
     // ya da pencereden eskiler, sayfa ekranda, kontrol sürmüyor ve son
     // otomatik kontrol en az bir pencere önce. Başka hiçbir şey kontrol

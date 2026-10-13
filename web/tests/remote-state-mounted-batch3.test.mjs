@@ -574,6 +574,58 @@ test('Dashboard: a hidden page checks nothing; it checks once when it is shown',
   }
 });
 
+// A server clock a second or two ahead of the browser (measured 12 Oct 2026 on
+// Debian 13 and Ubuntu 24.04) must not make a fresh scan read "not checked in
+// the last 5 minutes": the scan counts from when the page received it.
+// Sunucu saati tarayıcıdan bir iki saniye ileride olsa da taze tarama "son 5
+// dakikada kontrol edilmedi" okunmaz; tarama, sayfanın aldığı andan sayılır.
+const scanStampedAt = (offsetMs) => ({ ...good['/api/v1/managed-services'], scanned_at: new Date(Date.now() + offsetMs).toISOString() });
+const NOT_FRESH_PHRASES = ['dashboard.systemServicesNotRecent', 'dashboard.statusUnknown', 'dashboard.systemServicesChecking', 'dashboard.systemServicesCheckFailed'];
+
+test('Dashboard: a stored scan stamped 2 s ahead of the browser is shown as the result at once, with no check', async () => {
+  serve({ '/api/v1/managed-services': scanStampedAt(2000) });
+  await mount(dashboard());
+  try {
+    await settle();
+    const shown = text();
+    assert.ok(shown.includes('0 / 0'), shown.slice(0, 400));
+    for (const phrase of NOT_FRESH_PHRASES) assert.ok(!shown.includes(phrase), `"${phrase}" is drawn for a fresh scan`);
+    assert.equal(scans(), 0, `a fresh scan was checked again: ${requests.join(', ')}`);
+  } finally { await unmount(); }
+});
+
+test('Dashboard: a check answered with a stamp 2 s ahead is the result in the very next frame, and is not asked again', async () => {
+  serve({ [SCAN_PATH]: (init) => (init.method === 'POST' ? answer(scanStampedAt(2000)) : answer({}, 405)) });
+  await mount(dashboard());
+  try {
+    await settle();
+    await settle();
+    const shown = text();
+    assert.ok(shown.includes('0 / 0'), shown.slice(0, 400));
+    for (const phrase of NOT_FRESH_PHRASES) assert.ok(!shown.includes(phrase), `"${phrase}" is drawn after a successful check`);
+    for (let i = 0; i < 3; i += 1) await settle();
+    assert.equal(scans(), 1, `a second automatic check was started: ${requests.join(', ')}`);
+    assert.ok(text().includes('0 / 0'));
+  } finally { await unmount(); }
+});
+
+test('Dashboard: a scan 6 minutes old is not current and one 4 minutes old is', async () => {
+  const page = pageVisibility('hidden');
+  try {
+    for (const [offset, current] of [[-6 * 60_000, false], [-4 * 60_000, true]]) {
+      serve({ '/api/v1/managed-services': scanStampedAt(offset) });
+      await mount(dashboard());
+      try {
+        for (let i = 0; i < 3; i += 1) await settle();
+        const shown = text();
+        assert.equal(shown.includes('dashboard.systemServicesNotRecent'), !current, shown.slice(0, 400));
+        assert.equal(shown.includes('0 / 0'), current, shown.slice(0, 400));
+        assert.equal(scans(), 0, 'a hidden page checked');
+      } finally { await unmount(); }
+    }
+  } finally { delete globalThis.document; }
+});
+
 test('Dashboard: an item is already listed while another read is on its way → no row that comes and goes', async () => {
   serve({ '/api/v1/managed-services': freshScan(), '/api/v1/firewall': { ...good['/api/v1/firewall'], enabled: false, persistence_state: 'disabled' }, '/api/v1/dashboard': HANG });
   await mount(dashboard());
