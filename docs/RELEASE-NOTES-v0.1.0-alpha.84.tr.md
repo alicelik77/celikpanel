@@ -15,14 +15,22 @@ ne kadar eski olduğunu kendisi söyler; böylece tarayıcı kendi saatini sunuc
 hiç karşılaştırmaz. Ve kendi sunucusundaki CelikPanel Agent'ına ulaşamayan bir
 Panel, "iç hata" demek yerine bunu ve sonraki adımı söyler.
 
+Laboratuvarın yolda bulduğu ve düzeltilen bir kusur daha var: saati tarayıcının
+saatinden yaklaşık bir dakikadan fazla geride olan bir sunucu, lisans denetimi iki
+saati karşılaştırdığı için hiçbir Panel sayfasının açılmasına izin vermiyordu.
+Sunucu artık kalan süreyi kendisi söyler.
+
 Kartın yaptığı, bileşen testlerine, API taklidine karşı çalışan bir tarayıcıya
-ve tek bir laboratuvar ölçümüne dayanır (on dördüncü gerçek sistem kaydı:
-Debian 13 ve Ubuntu 24.04, gerçek bir Panel'e karşı gerçek, başsız bir Chrome);
-bu ölçüm üç ürün commit'inin yalnız ilkini ölçtü. Ölçümden sonra yapılan iki
-düzeltmenin (saat kuralı ve sunucunun bildirdiği yaş) ve tipli Agent yanıtının
-yalnız bileşen testleri var. Onları tek platformda ölçen kısa bir laboratuvar
-turu sürüyor; buraya girilmedi ("Ne ölçüldü, nasıl ölçüldü" bölümüne bakın).
-Hiç çalıştırılmayanları sınırlar bölümü söyler.
+ve iki laboratuvar ölçümüne dayanır; ikisi de gerçek bir Panel'e karşı gerçek,
+başsız bir Chrome'dur: on dördüncü gerçek sistem kaydı (Debian 13 ve Ubuntu
+24.04), ürün commit'lerinin yalnız ilkini ölçtü; on beşinci kayıt (set14b, yalnız
+Debian 13, 13 Ekim 2026) ardından gelen iki düzeltmeyi (saat kuralı ve sunucunun
+bildirdiği yaş) ve tarama ile kabul denetimindeki tipli Agent yanıtını ölçtü.
+Lisans denetiminin düzeltmesi, tipli Agent yanıtının öteki okumalardaki kapsamı
+ve Bileşenler sayfasının okuma şeridi bu ölçümden sonra yapıldı ve yalnız bileşen
+testleri var; düzelttikleri lisans denetimi kusuru laboratuvarda bulundu ve
+düzeltmeden sonra yeniden ölçülmedi ("Ne ölçüldü, nasıl ölçüldü" bölümüne
+bakın). Hiç çalıştırılmayanları sınırlar bölümü söyler.
 
 ## Sunucu sahibi için ne değişiyor
 
@@ -78,14 +86,58 @@ sahibinin Agent'ı sunucuda `sudo systemctl status celikpanel-agent` ile
 denetlediğini (günlüğü: `sudo journalctl -u celikpanel-agent`) ve durmuşsa `sudo
 systemctl start celikpanel-agent` ile başlattığını, Agent çalışınca yeniden
 denemenizi. Bu, kartta ve reddedilen bir kabulün yanıtını gösteren her ekranda
-"Sunucuda bir iç hata oluştu"nun yerini alır. Yalnız başarısız bağlantı kurma
-sayılır. İstek gönderildikten sonra kopan bağlantı bilinmeyen sonuçtur ve genel
-yanıtta kalır.
+"Sunucuda bir iç hata oluştu"nun yerini alır. Yanıt artık Panel'in ortak sunucu
+hata yazıcısında tek yerde yazılır; bu yüzden o yazıcıya, Agent soketine başarısız
+bağlantı kurmanın tek neden olduğu bir durumla ulaşan her işleyici için geçerlidir:
+tarama ve kabul denetiminin yanında, Agent durmuşken hâlâ genel bir iç hata
+yanıtlayan güvenlik duvarı okuması ve sistem denetimi için de. Birleşik bir hata
+(örneğin bir hata ve onun telafisi) genel yanıtta kalır; çünkü isteğin önceki bir
+parçası bir şeyi değiştirmiş olabilir ve "hiçbir şey değiştirilmedi" yanlış olur.
+Kendi tipli yollarında kalanlar, değişmedi: DNSSEC durumu, güncelleme durumu ve
+başlatması, alan adı silme ve posta parolası döndürme. Yalnız başarısız bağlantı
+kurma sayılır. İstek gönderildikten sonra kopan bağlantı bilinmeyen sonuçtur ve
+genel yanıtta kalır.
+
+**Geride kalan sunucu saati artık Panel'in açılmasını engellemez.** Panel'in erişim
+denetimi (`GET /api/v1/license/access`) erişimin sonunu sunucunun saatiyle bir an
+olarak veriyordu ve sayfa, sonu tarayıcının kendi saatinden sonra olmayan olumlu
+bir yanıtı reddediyordu. Saati tarayıcınınkinden yaklaşık bir dakikadan fazla
+geride olan bir sunucu bu yüzden her yanıtı süresi dolmuş gösteriyordu: hiçbir
+Panel sayfası açılmıyor, sayfa denetimi beş saniyede bir yeniden okuyordu
+(laboratuvarda bulundu; "Ne ölçüldü, nasıl ölçüldü" bölümüne bakın). Şimdi sunucu
+kalan süreyi kendisi söyler (`valid_for_seconds`) ve sayfa sonu, isteği gönderdiği
+an artı bu süre olarak alır. İki saati hiç karşılaştırmaz: sunucu saatinin
+tarayıcınınkinden geride ya da ileride olması bir şeyi değiştirmez ve son, sunucunun
+izin verdiğinden geç çıkamaz. Mutlak zaman (`valid_until`) hâlâ gönderilir. Alan
+yoksa (eski bir sunucu) eski kural sürer. Sessiz okuma, yeniden denetim ve 15 sn /
+30 sn aşamaları değişmedi.
+
+**Bileşenler sayfası, hiçbir işlem koşmamışken artık bir işlemin tamamlanmış
+olabileceğini söylemez.** Agent durmuşken sayfanın otomatik denetimi başarısız
+oluyor ve sayfa hiçbir işlem göndermemiş olduğu hâlde "Servis durumu doğrulanmalı"
+ile "Bir sunucu işlemi tamamlanmış olabilir" gösteriyordu. Sayfa artık durumun
+neden doğrulanmadığını saklar ve iki şeritten birini gösterir:
+
+- Bu sayfadan bir bileşen işlemi gönderildi ve sonucu doğrulanamadı: şerit eskisidir.
+  Başlık: "Servis durumu doğrulanmalı". İpucu: "Bir sunucu işlemi tamamlanmış olabilir
+  ancak güncel durum doğrulanamadı. Başka bir bileşeni değiştirmeden önce Yeniden
+  tara’yı çalıştırın." Sonradan başarısız olan bir okuma onun yerini asla almaz.
+- İşlem gönderilmedi ve durum okunamadı (otomatik denetim, bir sayfa yüklemesi ya da
+  Yeniden tara): şerit yenidir ve Yeniden tara düğmesi vardır. Başlık: "Bileşen
+  durumu okunamadı". İpucu: "Bu sayfa hiçbir bileşen işlemi göndermedi;
+  bileşenlerin güncel durumunu okuyamadı. {reason} Bir tarama durumu okuyana dek
+  bileşen değişiklikleri kilitli kalır; Yeniden tara durumu yeniden okur."
+  `{reason}`, başarısız olan yanıtın cümlesidir (Agent durmuşken yukarıdaki
+  `AGENT_UNREACHABLE` cümlesi); yanıt gelmediyse "Servis taraması başarısız oldu."
+
+Yeniden yüklemeden sonra yalnız nedenin türü hatırlanır, yanıt değil; bu yüzden
+okuma şeridi o zaman "Servis taraması başarısız oldu." der. Bu değişiklikten önce
+saklanmış bir kayıt eski sözü korur.
 
 **Değişmeyenler.** Dashboard'daki posta yığını kartının hâlâ eski bayat metnin
 kendi kopyası ve "Yeniden taramak için Bileşenleri aç" düğmesi var (açık;
-sınırlara bakın). Bileşenler sayfası eskisi gibi davranır. Veritabanı şeması değişmedi, yeni rota
-yok.
+sınırlara bakın). Bileşenler sayfası denetimlerini eskisi gibi yapar; yalnız başarısız
+okuma şeridi değişir. Veritabanı şeması değişmedi, yeni rota yok.
 
 ### Laboratuvarın bulduğu kusur ve onu düzelten iki adım
 
@@ -103,7 +155,7 @@ hâlâ bayat okunuyordu.
 
 ## API değişiklikleri
 
-Yeni rota yok. Bir yeni alan ve bir yeni hata kodu.
+Yeni rota yok. İki yeni alan ve bir yeni hata kodu.
 
 ### `scan_age_seconds`
 
@@ -132,6 +184,32 @@ olduğu anlamına gelir (saat geri gitti); koşullu tarama gibi sayfa da onu taz
 saymaz. Alanı tanımayan bir istemci onu yok sayar. Alanı bozuk bulan bir sayfa
 ona güvenmez.
 
+### `valid_for_seconds`
+
+`GET /api/v1/license/access` yanıtında, değişmeyen `valid_until`ın yanında.
+
+```json
+{
+  "can_use_panel": true,
+  "valid_until": 1791871840,
+  "valid_for_seconds": 55.4,
+  "state": "active",
+  "observation": "known"
+}
+```
+
+(Değerler örnektir.)
+
+`valid_until`, erişimin sonudur: sunucunun saatiyle bir an (lisansın bitişi ile
+çevrimdışı iznin erken olanı), eskisi gibi. `valid_for_seconds`, aynı sonun yanıt
+yazılırken kalan süresidir, aynı saatle ölçülür: `valid_until` eksi sunucunun
+saati, milisaniye hassasiyetiyle, sıfırın altına inmez (son yoksa ya da geçtiyse
+0). Sayfa sonu, isteği gönderdiği an artı `valid_for_seconds` olarak alır;
+`valid_until`ı kendi saatiyle karşılaştırmaz. O an sunucunun ölçümünden sonra
+olamayacağı için son, sunucunun izin verdiğinden geç çıkamaz. Alanı bulamayan ya da
+sonlu sayı olmayan bulan sayfa `valid_until`ı eskisi gibi kullanır. Kalan süresi 0
+olan olumlu bir yanıt kabul edilmez. Alanı tanımayan bir istemci onu yok sayar.
+
 ### `503 AGENT_UNREACHABLE`
 
 ```json
@@ -149,16 +227,25 @@ journalctl -u celikpanel-agent); durmuşsa sudo systemctl start
 celikpanel-agent ile başlatır. Agent çalışınca yeniden deneyin." Uygulandığı
 yerler:
 
-- Tarama işleyicisi (`POST /api/v1/managed-services/scan`), Panel Agent'ın
-  soketini açamadığında.
-- On bir değiştirici işleyicinin bir şeyi değiştirmeden önce çalıştırdığı ortak
-  kabul denetimi. Reddedilen bir kabul artık bunu söyler; kabul her değişiklikten
-  önce çalışır, yani hiçbir şey değişmemiştir.
+- Panel'in ortak sunucu hata yazıcısı. Bir hatayı onun üzerinden bildiren her
+  işleyici, Agent'ın Unix soketine başarısız bağlantı kurma (dinleyen yok ya da
+  soket dosyası yok; hata sarılmış olabilir) tek neden olduğunda `503
+  AGENT_UNREACHABLE` yanıtlar. Buna tarama işleyicisi (`POST
+  /api/v1/managed-services/scan`), on bir değiştirici işleyicinin bir şeyi
+  değiştirmeden önce çalıştırdığı ortak kabul denetimi (reddedilen kabul hiçbir
+  şeyi değiştirmemiştir), güvenlik duvarı okuması (`GET /api/v1/firewall`) ve
+  sistem denetimi dahildir. Sistem denetiminin öteki hataları artık düz metin
+  yerine kodlu `INTERNAL` hatasını yanıtlar.
+- Birleşik hata için değil. Örneğin bir hata ve onun telafisinden oluşan bir
+  hata gerçekleşmiş bir değişiklik taşıyabilir; bu yüzden genel yolda kalır.
+  Kabul edilen tek birleşim, platform kimliği işaretiyle nedenidir; çünkü o okuma
+  koruduğu çağrıdan önce koşar.
+- Kendi tipli yollarında kalanlar, değişmedi: DNSSEC durumu, güncelleme durumu ve
+  başlatması, alan adı silme ve posta parolası döndürme.
 
-Yanıt bir soket yolu taşımaz; neden Panel'in günlüğüne yazılır. Yalnız Agent'ın
-Unix soketine başarısız bağlantı kurma sayılır (dinleyen yok ya da soket
-dosyası yok). İstek gönderildikten sonra kopan bağlantı genel yolda kalır ve
-bilinmeyen sonuçtur. Sıradan bir tarama hatası yine `500` yanıtlar.
+Yanıt bir soket yolu taşımaz; neden Panel'in günlüğüne yazılır. İstek
+gönderildikten sonra kopan bağlantı (sıfırlama, akış sonu) genel yolda kalır ve
+bilinmeyen sonuçtur. Sıradan bir hata yine `500` yanıtlar.
 
 ## Fark edeceğiniz davranış değişiklikleri
 
@@ -169,15 +256,24 @@ bilinmeyen sonuçtur. Sıradan bir tarama hatası yine `500` yanıtlar.
   tarayıcınınkinden ileride olduğunda artık 30 saniyeye kadar "Son 5 dakikada
   kontrol edilmedi"ye düşmez.
 - Saati tarayıcınınkinden beş dakikadan fazla geride olan bir sunucu artık taze
-  taramayı bayat okutmaz.
-- Agent durmuşken reddedilen bir tarama ya da değişiklik, iç hata yerine
-  Agent'a ulaşılamadığını ve ne çalıştırılacağını İngilizce ve Türkçe söyler.
+  taramayı bayat okutmaz (bileşen testli; laboratuvar ölçemedi, sınırlara bakın).
+- Saati tarayıcınınkinden yaklaşık bir dakikadan fazla geride olan bir sunucu,
+  hiçbir Panel sayfasının açılmasına izin vermiyordu. Şimdi sunucu kalan süreyi
+  söyler ve tarayıcı iki saati hiç karşılaştırmaz (`/api/v1/license/access`
+  yanıtında `valid_for_seconds`). Laboratuvarda bulundu; düzeltme henüz yeniden
+  ölçülmedi.
+- Agent durmuşken reddedilen bir tarama ya da değişiklik, güvenlik duvarı okuması
+  ve sistem denetimi, iç hata yerine Agent'a ulaşılamadığını ve ne
+  çalıştırılacağını İngilizce ve Türkçe söyler.
+- Bileşenler sayfasında başarısız bir okuma, hiçbir sunucu işlemi gönderilmemişken
+  bir işlemin tamamlanmış olabileceğini söylemek yerine durumun "okunamadığını" ve
+  nedenini, Yeniden tara ile söyler. O söz, sonucu bilinmeyen bir işlem için kalır.
 - Kartın metinleri İngilizce ve Türkçedir; `dashboard.systemServicesScanStale`
   kaldırıldı.
 
 ## Ne ölçüldü, nasıl ölçüldü
 
-**Bileşen testleri.** Son ürün commit'inde: `gofmt`, `go vet` ve arm64 derlemesi
+**Bileşen testleri.** `1a74eeda5`'te: `gofmt`, `go vet` ve arm64 derlemesi
 temiz; `go test ./cmd/panel/... ./internal/...` 7025 geçti, 44 atlandı, 0
 başarısız (7 yeni: her yanıttaki alan, yalnız başarısız bağlantı kurmayı kabul
 eden yardımcı, gövdede soket metni olmadan kabulde `503`, kabulden sonra Agent
@@ -188,6 +284,18 @@ koşullu tarama gönderir; bozuk yaşa güvenilmez; `503` nedenle "kontrol
 edilemedi" gösterir ve tekrarlanmaz); `npm run build` bütçe içinde (Dashboard
 parçası 160,25 KiB'tan 37,67 KiB). Web test sayısı ilk commit'ten sonra 1324,
 saat düzeltmesinden sonra 1328'di.
+
+Son ürün commit'inde (`7024534bc`): `gofmt`, `go vet` ve arm64 derlemesi temiz;
+`go test ./cmd/panel/... ./internal/...` 7028 geçti, 44 atlandı, 0 başarısız (3
+yeni: her erişim durumunda kalan süre; ortak yazıcının reddedilen bağlantı, eksik
+soket, sarılmış bağlantı ve üç yazıcının hepsinden geçen kimlik artı bağlantı
+hatası için `503`, sıradan hata, sıfırlama, akış sonu, birleşik bağlantı ve
+hata artı geri alma için `500` yanıtlaması; güvenlik duvarı ve sistem denetimi
+okumalarının Agent'ı adıyla söylemesi); `npm test` 1339 / 1339 (3 yeni:
+`valid_until`ı tarayıcının saatine göre yedi dakika geçmiş ama
+`valid_for_seconds`ı 55 olan yanıt kabul edilir, 0 edilmez ve alan yokken eski
+kural sürer; iki şerit); `npm run build` bütçe içinde. Gerçek bir sunucuda henüz
+ölçülmedi.
 
 **API taklidine karşı tarayıcı.** API'nin loopback taklidine karşı başsız bir
 Chrome, dört durumu İngilizce masaüstünde ve Türkçe telefonda çizdi; her yükleme
@@ -240,14 +348,75 @@ zamanlamasından okunur; iki Türkçe telefon görüntüsü kartın üstünden k
 Çalışma ürünün hiçbir şeyini değiştirmedi ve her `result.json` `native_evidence:
 false` taşır.
 
-**Bekleyen, ölçülmedi: on beşinci kayıt (set14b).** Tek platform, iki
-düzeltmeden sonraki kodda D1 kusurunu ve O1 gözlemini yeniden ölçen kısa bir
-tur: konuğun saati tarayıcınınkinden ileriyken kartın bir kontrolden sonra
-hâlâ "Son 5 dakikada kontrol edilmedi"ye düşüp düşmediği ve Agent durmuşken
-kartın ve yanıtın ne söylediği (`503 AGENT_UNREACHABLE`). **Sürüyor ve bu
-yazılırken ölçülmedi. Sayıları, kabul denetiminden sonra buraya girilir. O güne
-kadar bu notlardaki iki düzeltme ve tipli Agent yanıtı hakkındaki her ifade
-yalnız bileşen testlerine dayanır.** [sayılar girilecek]
+**On beşinci gerçek sistem kaydı**
+([set14b](../deploy/e2e/release-recovery/evidence/set14b-20261013/README.md),
+13 Ekim 2026 UTC). `1a74eeda5`'in (saat kuralı, sunucunun bildirdiği yaş, tarama
+ve kabul denetimindeki Agent yanıtı) test lisanslı bir derlemesi, tek bir geçici
+Debian 13 konuğunda, ana makinede gerçek, başsız bir Chrome 154 ile: İngilizce
+masaüstü penceresi (1440 × 900) ve bir Dashboard yüklemesi için Türkçe. Çalışma
+düzeneği, on dördüncü kaydın sapmasını yeniden üretmek için konuğun saatini
+kaydırdı; sapma yanıtların kendisinden okundu (her biri `scanned_at` ve
+`scan_age_seconds` taşır; toplamları yanıtı yazarken sunucunun saatidir), yani
+isteğin süresi kadar bir aralıkla sınırlıdır. Sonuçlar:
+
+- Konuğun saati tarayıcınınkinden 1,48 ile 1,55 sn ileriydi. Bayat bir yükleme
+  (saklı tarama 316,8 sn eski) tam bir koşullu tarama gönderdi
+  (`max_age_seconds=300`, 200, 27 servis, 959 ms) ve kart "Bileşenler
+  kontrol ediliyor…"dan doğrudan sonuca geçti: yanıttan 4 ms sonra, ve sayfa 45 sn
+  sonra kapanana dek orada kaldı. Koşunun hiçbir anında "Son 5 dakikada kontrol
+  edilmedi" karesi görünmedi (on dördüncü kayıt, Debian'da bu noktada 28,6 sn
+  ölçmüştü): D1 kusuru gitti. Taze bir yükleme (saklı tarama 46 sn eski) hiç
+  göndermedi.
+- `scan_age_seconds`, tarama taşıyan, tarayıcının kaydettiği 19 yanıtın hepsinde
+  bir sayıydı; sürücünün kendi taramasında `0`'dı; tarama taşımayan `503`
+  gövdelerinde yoktur. Hiç `null` olmadı; çünkü bir tarama her zaman vardı.
+- Bileşenler sayfası, 835,2 sn eski saklı taramayla, tam bir koşullu tarama
+  gönderdi (200, 1557 ms) ve toast göstermedi.
+- Agent durmuşken İngilizce Dashboard, Bileşenler sayfası ve Türkçe Dashboard
+  birer tarama gönderdi ve `503 AGENT_UNREACHABLE` aldı (5, 158 ve 4 ms). Üç gövde
+  aynıdır: `{"error": <cümle>, "code": "AGENT_UNREACHABLE"}`. İleti `error`
+  içindedir (`message` alanı yoktur) ve soket yolu yoktur; neden Panel'in
+  günlüğünde kaldı. Dashboard kartı cümleyle ve "Scan services" düğmesiyle
+  "Unknown / Could not check:" gösterdi; Türkçede "Servisleri tara" düğmesiyle
+  "Bilinmiyor / Kontrol edilemedi:"; sayfa kapanana dek tutuldu ve ikinci tarama
+  gönderilmedi. Bileşenler sayfası cümleyi yanıttan 28 ms sonra bir hata
+  toast'ında gösterdi.
+- Agent durmuşken nginx için bir servis yeniden başlatma isteği (`POST
+  /api/v1/service/action`, oturum açmış sahip olarak) aynı `503` ile reddedildi.
+  Hiçbir şey değişmedi: nginx'in ana süreç numarası, başlangıç zaman damgası,
+  yeniden başlama sayacı ve exec-başlangıç zamanı öncesinde ve sonrasında aynıydı.
+- Agent yeniden başlatıldıktan sonra "Servisleri tara"ya bir basış bir koşulsuz
+  tarama gönderdi (200, 1037 ms, `scan_age_seconds` 0,001) ve kart sonucu
+  gösterdi. Türkçe sayfa, basıştan önceki 15 sn'de kendiliğinden hiçbir şey
+  göndermemişti.
+- Bütün koşuda altı tarama gönderildi: bayat yükleme, Bileşenler sayfası, üç
+  reddedilen tarama ve basış.
+
+Kaydın kabul denetimi, README'sindeki üç rakamı ham dosyalara göre düzeltti; buradaki
+rakamlar README'nin şu anki hâlidir. Çalışma ürünün hiçbir şeyini değiştirmedi ve
+`result.json`ı `native_evidence: false` taşır.
+
+**Laboratuvarda bulundu ve düzeltmeden sonra henüz yeniden ölçülmedi: lisans
+denetimi (D2).** Aynı kayıtta, konuğun saati geri kaydırıldığında (tarayıcınınkinden
+418,5 sn geride ölçüldü), 90 sn içinde hiçbir Panel sayfası açılmadı. Sayfa
+`/api/v1/license/access`i 19 kez, 5 sn'de bir okudu, hepsi 200, ve başka hiçbir şey:
+yönetilen-servisler okuması yok, tarama yok, Dashboard yok. Neden yanıtlardan değil
+koddan okundu: `valid_until`, sunucunun saatiyle son doğrulamadan en çok 60 sn
+sonraki bir andır ve sayfa, `valid_until`ı tarayıcının saatinden sonra olmayan
+olumlu bir yanıtı reddediyordu. Kayıt erişim yanıtlarının gövdelerini saklamadı ve
+tutulan sayfanın görüntüsünü almadı. Düzeltme (`valid_for_seconds`, yukarıda)
+kayıttan sonra yapıldı ve yalnız bileşen testleri var; saati sapmış gerçek bir
+sunucuya karşı çalıştırılmadı. Aynı nedenle kaydın geride kalan saat için yapmak
+istediği ölçüm (tek koşullu tarama, sonuç hemen, ikinci tarama yok) yapılamadı ve
+henüz ölçülmedi.
+
+**Aynı kayıtta gözlenen, sonra kaynakta düzeltilen, yeniden ölçülmeyen.** Agent
+durmuşken Bileşenler sayfası hiçbir işlem koşmamışken "Bir sunucu işlemi
+tamamlanmış olabilir" gösterdi (O2) ve güvenlik duvarı okuması `500` yanıtladı
+(O3: Bileşenler sayfası bir iç hata metniyle "Firewall: Status unknown",
+Dashboard "Part of this server's state could not be read" gösterdi). Yukarıdaki
+okuma şeridi ve ortak hata yazıcısı bunları yanıtlar ve yalnız bileşen testleri
+vardır.
 
 ## Bu sürümün sınırları
 
@@ -257,8 +426,9 @@ biri "hâlâ açık" diye işaretlenmiş kopyasıdır.
 
 Bu sürümle yeni:
 
-- **Arch ölçülmedi.** On dördüncü kayıt Debian 13 ve Ubuntu 24.04'te koştu.
-  Debian laboratuvarının boşta duran Arch eşi ölçülmedi.
+- **Arch ölçülmedi.** On dördüncü kayıt Debian 13 ve Ubuntu 24.04'te, on beşinci
+  yalnız Debian 13'te koştu. Debian laboratuvarlarının boşta duran Arch eşi
+  ölçülmedi.
 - **`server_setup_busy` ölçülmedi.** Kurulum tarayıcı penceresi açılmadan önce
   koştu; bu yüzden onun sırasında hiçbir Dashboard yüklemesi olmadı. Yalnız
   `service_operation_busy` görüldü.
@@ -277,10 +447,33 @@ Bu sürümle yeni:
   etmez.
 - **Kenar çubuğundaki yapı kimliği bir sözcüğün ortasından bölünüyor.** Sahip
   tarafından v0.1.0-alpha.83 güncellemesinden sonra gözlendi; düzeltilmedi.
-- **İki düzeltme ve tipli Agent yanıtı gerçek bir sistemde ölçülmedi**, bu
-  notların şu anki durumunda (bekleyen on beşinci kayda bakın). Birkaç dakika
-  geride bir sunucu saati de `503` yanıtı da gerçek bir Panel'e karşı bir
-  tarayıcıda görülmedi.
+- **Bir sonraki kayda dek yalnız bileşen testli:** lisans denetiminin düzeltmesi
+  (D2), tarama ve kabul denetiminin ötesindeki okumalarda (güvenlik duvarı, sistem
+  denetimi) tipli Agent yanıtı ve Bileşenler sayfasının okuma şeridi. D2 kusuru
+  gerçek bir Panel'e karşı bir tarayıcıda görüldü; düzeltmesi görülmedi. Değişiklikten
+  sonra ne birkaç dakika geride bir sunucu saati ne de Agent durmuşken güvenlik
+  duvarı ve sistem denetimi yanıtları görüldü.
+- **Sunucu saati tarayıcınınkinden geriyken taramanın yaşı ölçülmedi.** Lisans
+  denetimi sayfayı, ölçüm yapılamadan tuttu (D2); bu yüzden on beşinci kaydın
+  "geride kalan saat" ölçümü mümkün olmadı. Yalnız ileri saat ölçüldü.
+- **On beşinci kayıt yalnız Debian 13'te koştu.** Ubuntu ve Arch yeniden
+  ölçülmedi; pencere kuralı, gizli sekme, tutulan (`409`) durum,
+  `server_setup_busy` ve hiç kontrol edilmemiş durum istenmedi (pencere kuralı on
+  dördüncü kayıttan beri değişmedi). Erişim yanıtlarının gövdeleri ve konuğun saat
+  hizmeti ayarları kaydedilmedi.
+- **Laboratuvar araçları hâlâ yalnız `valid_until` gönderir.** `mock.mjs` taklit
+  sunucusu ile `cold-load-set9.mjs` ve `cold-load-set11.mjs` ilk yükleme araçları
+  erişim denetimini yalnız `valid_until` ile yanıtlar; bu yüzden `valid_for_seconds`ı
+  değil eski kuralı sınarlar.
+- **`DomainSSLSettings`teki HSTS geri çekme hâlâ bir sunucu zaman damgasını
+  tarayıcının saatiyle karşılaştırır.** Yukarıdaki kusurlarla aynı sınıf; burada
+  değiştirilmedi. Açık.
+- **"Hiçbir şey değiştirilmedi", aynı istekte daha önce bir değişiklik olmadığını
+  varsayar.** Yazıcı başarısız bağlantı kurmayı yalnız tek neden olduğunda Agent
+  yanıtı sayar ve birleşik-hata koruması toplu hataları (bir hata ve telafisi)
+  kapsar. Bir şeyi değiştirip sonra, önceki sonuca birleşmemiş ayrı bir bağlantıda
+  başarısız olan bir işleyici yine de bunu söylerdi. Açık; işleyici işleyici bir
+  denetim iddia edilmez.
 - **Bu adaya güncelleme ölçülmedi.** On dördüncü kaydın konukları,
   v0.1.0-alpha.83'ten bir güncelleme değil, geçici bir sabit derleme çalıştırdı.
   Sürüm hazırlığı (sürüm sırası numarası, önyükleme sabitleri, sürüm satırları)
@@ -288,11 +481,18 @@ Bu sürümle yeni:
 - **Kanıt kapsamı.** Tek dizüstü ana makine; imzalı arşiv değil, test lisanslı
   bir derleme; trafiği yakalanmayan, dışarıya NAT'lı konuklar; her hücre bir kez
   koştu; İngilizce Debian'da masaüstü penceresinde, Türkçe Ubuntu'da telefon
-  penceresinde görüldü, iki dil iki platformda değil.
+  penceresinde görüldü, iki dil iki platformda değil. On beşinci kayıt yalnız
+  Debian 13 ekledi: İngilizce masaüstü penceresi, bir Dashboard yüklemesi için
+  Türkçe, konuğun saati çalışma düzeneğince kaydırıldı.
 - **Agent kapalıyken öteki kartlar.** Agent durmuşken Dashboard'ın CPU, bellek ve
   disk kartları kehribar uyarıyla "—" gösterdi ve güvenlik duvarı okuması `500`
-  yanıtladı. Bu, on dördüncü kaydın kabul denetiminde görüldü, daha fazla
-  ölçülmedi ve burada değiştirilmedi.
+  yanıtladı. Bu, on dördüncü kaydın kabul denetiminde ve yine on beşincide
+  görüldü. Güvenlik duvarı okuması artık Agent'ı adıyla söyler (bileşen testli);
+  kartlar ve kehribar uyarı burada değiştirilmedi. Bileşenler sayfasındaki
+  güvenlik duvarı "Status unknown" satırının ve Dashboard'ın "Part of this
+  server's state could not be read" şeridinin bu değişiklikten sonra ne dediği
+  görülmedi: on beşinci kayıtta Agent durmuşken (önceki `500` ile) gözlendiler,
+  ölçülmediler.
 
 Bu sürümün ele almadığı v0.1.0-alpha.83 sınırları (her biri hâlâ açık):
 
@@ -384,9 +584,11 @@ Bu sürümün ele almadığı v0.1.0-alpha.83 sınırları (her biri hâlâ aç�
 
 Yayımlanmadı. Yayımlamadan önce açık olanlar:
 
-1. On beşinci kayıt (set14b): tek platform, son ürün kodunda D1 kusurunun ve O1
-   gözleminin yeniden ölçümü. Sürüyor; sayıları, kabul denetimi bitince "Ne
-   ölçüldü, nasıl ölçüldü" bölümüne girilir.
+1. Bir sonraki gerçek sistem kaydı, koşulmadı: lisans denetiminin düzeltmesi,
+   tarayıcınınkinden birkaç dakika geride bir sunucu saatiyle (D2), sonra D2'nin
+   imkânsız kıldığı geride kalan saatte taramanın yaşı; güvenlik duvarı ve sistem
+   denetimi okumalarında Agent yanıtı; ve Bileşenler sayfasının okuma şeridi,
+   gerçek bir sunucuda.
 2. Ayrı bir commit'te yapılan ve `cmd/`, `internal/` ya da `web/` altında
    hiçbir dosyayı değiştirmeyen sürüm hazırlığı: öncekinden sonra gelen sürüm
    sırası numarası, kurucunun önyükleme sabitleri, README sürüm satırları ve

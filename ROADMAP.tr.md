@@ -425,10 +425,16 @@ kabul işi açık kalır.
   aralıklı zamanlayıcı yok, yeniden deneme döngüsü yok, dört ayrı durum, süren
   bir değişiklik için tutulma durumu), `f6eaa0b57` (on dördüncü gerçek sistem
   kaydı, yalnız kanıt), `e6de64a5b` (sayfa bir taramayı onu aldığı andan
-  tarihler: o kaydın D1 kusuru) ve `1a74eeda5` (sunucu bir taramanın yaşını
+  tarihler: o kaydın D1 kusuru), `1a74eeda5` (sunucu bir taramanın yaşını
   bildirir, `scan_age_seconds`; ulaşılamayan bir Agent tarama işleyicisinde ve
   on bir değiştirici işleyicinin kabul denetiminde `503 AGENT_UNREACHABLE`
-  yanıtlar). Şema değişikliği yok, yeni rota yok
+  yanıtlar), `fb5ec06f8` (takip eden gerçek sistem kaydı set14b, 13 Ekim 2026,
+  yalnız kanıt: ürün kodu yok) ve `7024534bc` (13 Ekim 2026: lisans denetimi o
+  kaydın D2 kusurundan sonra kalan süreyi bildirir, `valid_for_seconds`; tipli
+  Agent yanıtı ortak hata yazıcısına taşınır ve güvenlik duvarı okumasına ile
+  sistem denetimine ulaşır, O3 gözlemi; Bileşenler sayfası, bir işlemin
+  tamamlanmış olabileceğini söylemek yerine başarısız bir okumada durumu
+  okuyamadığını söyler, O2 gözlemi). Şema değişikliği yok, yeni rota yok
   ([sürüm notu taslağı](docs/RELEASE-NOTES-v0.1.0-alpha.84.tr.md)). Yukarıdaki
   alpha.83 girdisi hâlâ "yayımlanmadı" der; o sürüm yayımlanmadan önce
   yazılmıştı ve burada yeniden yazılmadı.
@@ -448,17 +454,39 @@ kabul işi açık kalır.
     durum ölçülmedi; taramanın sunucu tarafı duvar süresi ölçülmedi; tutulma
     durumuna yalnız önce taramayan bir değişiklikle ulaşılır. Kaydın her kabul
     denetimi düzeltmesi kendi metnini daraltır ve bu özete üstün gelir.
-  - *Son ürün commit'inde bileşen testleri:* `go test ./cmd/panel/...
-    ./internal/...` 7025 geçti, 44 atlandı, 0 başarısız; `npm test` 1336 /
-    1336; `npm run build` bütçe içinde (Dashboard parçası 160,25 KiB'tan 37,67
-    KiB). İki düzeltmenin (saat kuralı, sunucunun bildirdiği yaş) ve tipli Agent
-    yanıtının yalnız bileşen testleri var; hiçbir gerçek sistemde çalıştırılmadı.
+  - *Ölçülen: on beşinci gerçek sistem kaydı, set14b*
+    ([set14b](deploy/e2e/release-recovery/evidence/set14b-20261013/README.md),
+    13 Ekim 2026 UTC; tek geçici Debian 13 konuğu, gerçek, başsız bir Chrome;
+    `1a74eeda5`'in test lisanslı derlemesi). Konuğun saati 1,5 sn ileriyken
+    bayat bir yükleme tek koşullu tarama gönderdi ve kart "Son 5 dakikada kontrol
+    edilmedi" karesi olmadan doğrudan sonuca geçti (D1 gitti); `scan_age_seconds`
+    tarama taşıyan her yanıtta bir sayıydı. Agent durmuşken Dashboard (İngilizce
+    ve Türkçe), Bileşenler sayfası ve bir servis yeniden başlatma isteği,
+    sahibin sonraki adımıyla ve soket yolu olmadan `503 AGENT_UNREACHABLE`
+    yanıtladı, nginx değişmedi; Agent başlatıldıktan sonra düğmeye bir basış bir
+    tarama gönderdi. Bileşenler sayfası tek koşullu tarama gönderdi. **D2
+    kusuru, laboratuvarda bulundu ve düzeltmesinden sonra yeniden ölçülmedi:**
+    konuğun saati 418 sn geriyken hiçbir Panel sayfası açılmadı (lisans denetimi
+    90 sn'de 19 kez okundu); bu yüzden taramanın yaşının "geride kalan saat"
+    ölçümü yapılamadı. Ölçülmeyen: Ubuntu, Arch, pencere kuralı (on dördüncü
+    kayıttan beri değişmedi).
+  - *Son ürün commit'inde (`7024534bc`) bileşen testleri:* `go test
+    ./cmd/panel/... ./internal/...` 7028 geçti, 44 atlandı, 0 başarısız; `npm
+    test` 1339 / 1339; `npm run build` bütçe içinde. D2'nin düzeltmesi
+    (`valid_for_seconds`), güvenlik duvarı ve sistem denetimi okumalarındaki Agent
+    yanıtı (O3) ve Bileşenler sayfasının okuma şeridi (O2) bir sonraki kayda dek
+    yalnız bileşen testlidir.
   - *Burada yanıtlanan, daha önce listelenmemiş olanlar:* sahibin kartın neden
     kendiliğinden kontrol etmediği sorusu (D-032, `a5830dd3e`); on dördüncü
-    kaydın O1 gözlemi, Agent durmuşken genel iç hata (`1a74eeda5`).
-  - *Yayımlamadan önce açık:* on beşinci kayıt (set14b), tek platform, son kodda
-    D1 ve O1'i yeniden ölçer (sürüyor; sayıları henüz hiçbir yere girilmedi);
-    sürüm hazırlığı commit'i (sürüm sırası, önyükleme sabitleri, sürüm
+    kaydın O1 gözlemi, Agent durmuşken genel iç hata (`1a74eeda5`); on beşinci
+    kaydın D2 kusuru, tarayıcınınkinden geride bir sunucu saatinin hiçbir sayfanın
+    açılmasına izin vermemesi, ve aynı kaydın O2 ile O3 gözlemleri (`7024534bc`,
+    yalnız bileşen testli).
+  - *Yayımlamadan önce açık:* bir sonraki gerçek sistem kaydı (koşulmadı): D2'nin
+    düzeltmesi, tarayıcınınkinden birkaç dakika geride bir sunucu saatiyle, sonra
+    geride kalan saatte taramanın yaşı, güvenlik duvarı ve sistem denetimi
+    okumalarındaki Agent yanıtı ve Bileşenler sayfasının okuma şeridi, gerçek bir
+    sunucuda; sürüm hazırlığı commit'i (sürüm sırası, önyükleme sabitleri, sürüm
     satırları; `cmd/`, `internal/` ya da `web/` altında hiçbir dosyayı
     değiştirmez); numara üzerine sahibin kararı; son ucun CI koşusu; birleştirme,
     etiket, altı imzalı dosya ve portal yayımı, hepsi sahibin. Kurulu her paneli
@@ -469,7 +497,15 @@ kabul işi açık kalır.
     taramak için Bileşenleri aç" düğmesi var; kenar çubuğundaki yapı kimliği bir
     sözcüğün ortasından bölünüyor (sahibin alpha.83 güncellemesinden sonraki
     gözlemi); Arch, `server_setup_busy` ve hiç kontrol edilmemiş durum
-    ölçülmedi; bu adaya güncelleme ölçülmedi; ve yukarıdaki alpha.83 adayının, bu
+    ölçülmedi; bu adaya güncelleme ölçülmedi; `mock.mjs` laboratuvar aracı ile
+    `cold-load-set9.mjs`/`cold-load-set11.mjs` erişim denetiminde hâlâ yalnız
+    `valid_until` gönderir; `DomainSSLSettings`teki HSTS geri çekme hâlâ bir sunucu
+    zaman damgasını tarayıcının saatiyle karşılaştırır; Agent yanıtındaki
+    "hiçbir şey değiştirilmedi", aynı istekte daha önce bir değişiklik olmadığını
+    varsayar (birleşik-hata koruması toplu hataları kapsar; bir şeyi değiştirip
+    sonra ayrı, birleşmemiş bir bağlantıda başarısız olan bir işleyici yine de
+    bunu söylerdi); Agent durmuşken güvenlik duvarı "durum bilinmiyor" şeridi on
+    beşinci kayıtta gözlendi, ölçülmedi; ve yukarıdaki alpha.83 adayının, bu
     adayın ele almadığı her sınırı.
   - Bu aday hiçbir P0 işini kapatmaz ve ilerletmez. P0.1–P0.5 **kısmi**
     kalır. Yayımlanması kurulu hiçbir paneli güncellemez; güncellemeyi yalnız

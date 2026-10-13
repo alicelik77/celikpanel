@@ -23,7 +23,7 @@ git'te yaşar; bu dosya strateji içindir. En yeni en üstte.
 
 ## D-032 · Panel kendiliğinden bakar; okuyabileceği bir durumu öğrenmek için sahibe bir düğmeye basmasını asla söylemez
 
-*12 Ekim 2026 (saat tarihi) · v0.1.0-alpha.83 güncellemesinden sonra sahip kararı; kaynakta, bileşen testleri ve API taklidine karşı tarayıcıyla; ilk adım on dördüncü gerçek sistem kaydında ölçüldü (Debian 13, Ubuntu 24.04, 12 Ekim 2026 UTC); saat kuralı, sunucunun bildirdiği yaş ve tipli Agent yanıtı bileşen testli, kısa laboratuvar ölçümleri bekliyor (13 Ekim 2026)*
+*12 Ekim 2026 (saat tarihi) · v0.1.0-alpha.83 güncellemesinden sonra sahip kararı; kaynakta, bileşen testleri ve API taklidine karşı tarayıcıyla; ilk adım on dördüncü gerçek sistem kaydında ölçüldü (Debian 13, Ubuntu 24.04, 12 Ekim 2026 UTC); tarama yaşı saat kuralı ile tarama ve kabul denetimindeki tipli Agent yanıtı on beşinci kayıtta ölçüldü (Debian 13, 13 Ekim 2026 UTC); lisans denetiminin kalan süresi, ortak hata yazıcısındaki Agent yanıtı ve okuma şeridi (13 Ekim 2026) yalnız bileşen testli, lisans denetimi kusuru laboratuvarda bulundu ve düzeltmesinden sonra yeniden ölçülmedi*
 
 Dashboard'ın "Sistem servisleri" kartı, saklı tarama beş dakikadan eskiyse
 "Bilinmiyor. Bileşen durumu eski. Yeniden taramak için Bileşenleri açın."
@@ -71,16 +71,51 @@ kontrolden sonra 20 ile 29 saniye "Son 5 dakikada kontrol edilmedi" gösterdi.
 Birinci adım (damga ile alınma anının erken olanı) ileride olan sunucu için
 kusuru kaldırdı; ikincisi (sunucunun yaşı) beş dakikadan fazla geride olan
 sunucu için de kaldırır. Alanı olmayan eski bir sunucu birinci kuralda kalır.
-Eksi bir yaş ya da sonlu olmayan bir sayı taze sayılmaz.
+Eksi bir yaş ya da sonlu olmayan bir sayı taze sayılmaz. Ölçüldü (on beşinci
+kayıt, Debian 13, konuk 1,5 sn ileride): bayat yüklemede tek koşullu tarama ve
+kartın doğrudan sonuca geçmesi, "Son 5 dakikada kontrol edilmedi" karesi olmadan.
+Sunucu saatinin geride olduğu durum, aşağıdaki kusur yüzünden ölçülemedi ve açıktır.
+
+Aynı kural, onu bozduğu laboratuvarda görülen lisans denetimi için de geçerlidir.
+`/api/v1/license/access` erişimin sonunu (`valid_until`) sunucunun saatiyle bir an
+olarak veriyordu ve sayfa, sonu tarayıcının saatinden sonra olmayan olumlu bir
+yanıtı reddediyordu; sunucunun saati yaklaşık bir dakikadan fazla geride olduğunda
+hiçbir Panel sayfası açılmadı (on beşinci kayıt, D2 kusuru: 418 sn geride, denetim
+90 sn'de 19 kez okundu). Sunucu artık kalan süreyi söyler (`valid_for_seconds`:
+yanıt yazılırken `valid_until` eksi sunucunun saati, sıfırın altına inmez;
+`valid_until` eski sayfalar için kalır) ve tarayıcı sonu, isteği gönderdiği an artı
+bu süre olarak alır; böylece iki saati hiç karşılaştırmaz ve sunucunun izin
+verdiğinden geç bitmez. Alan yoksa mutlak kural sürer. Düzeltme bileşen testli,
+henüz yeniden ölçülmedi.
 
 Tipli hata kuralı. Kendi Agent'ının yerel soketini açamayan bir Panel
 `503 AGENT_UNREACHABLE` yanıtlar: nedeni, hiçbir şeyin değiştirilmediğini, kimin
-işlem yapacağını, sonraki eylemi ve işin nasıl süreceğini söyler (D-024). Bunu
-tarama işleyicisinde ve on bir değiştirici işleyicinin ortak kabul denetiminde
-yapar; yalnız başarısız bağlantı kurma için geçerlidir. İstek gönderildikten
-sonra kopan bağlantı bilinmeyen sonuçtur ve genel yolda kalır; bilinmeyen sonuç
-asla doğrulanmış bir başarısızlığa çevrilmez. Sıradan bir tarama hatası yine
-`500` yanıtlar.
+işlem yapacağını, sonraki eylemi ve işin nasıl süreceğini söyler (D-024). Yanıt
+ortak sunucu hata yazıcısında tek yerde yazılır; bu yüzden o yazıcıya, Agent
+soketine başarısız bağlantı kurmanın tek neden olduğu bir durumla ulaşan her
+işleyici için geçerlidir (tarama, on bir değiştirici işleyicinin kabul denetimi,
+güvenlik duvarı okuması, sistem denetimi), işleyici işleyici değil. Yalnız
+başarısız bağlantı kurma içindir. İstek gönderildikten sonra kopan bağlantı
+bilinmeyen sonuçtur ve genel yolda kalır; bilinmeyen sonuç asla doğrulanmış bir
+başarısızlığa çevrilmez. Birleşik hata da çevrilmez; örneğin bir hata ve onun
+telafisi: önceki bir parça bir şeyi değiştirmiş olabilir ve "hiçbir şey
+değiştirilmedi" yanlış olurdu. Kabul edilen tek birleşim, platform kimliği
+işaretiyle nedenidir; çünkü o okuma koruduğu çağrıdan önce koşar. DNSSEC durumu,
+güncelleme durumu ve başlatması, alan adı silme ve posta parolası döndürme kendi
+tipli yollarında kalır. Sıradan bir hata yine `500` yanıtlar. Tarama ve kabul
+denetiminde ölçüldü (on beşinci kayıt); güvenlik duvarı okuması ve sistem denetimi
+yalnız bileşen testli. Açık: bir şeyi değiştirip sonra, önceki sonuca birleşmemiş
+ayrı bir bağlantıda başarısız olan bir işleyici yine de hiçbir şeyin
+değiştirilmediğini söylerdi.
+
+Okuma şeridi kuralı. Başarısız bir okuma asla bir işlem iddia etmez. Bir durumu
+okuyamayan ekran, okuyamadığını ve nedenini, sonraki eylemle söyler; bir işlem
+gönderilmediyse işlemin tamamlanmış olabileceğini söylemez. Neden saklanır:
+gönderilmiş ve doğrulanmamış bir işlem "tamamlanmış olabilir" sözünü korur ve
+sonradan başarısız olan bir okuma onun yerini asla almaz. Laboratuvarda, Agent
+durmuşken Bileşenler sayfasında bulundu (on beşinci kayıt, O2 gözlemi) ve orada
+uygulandı; bileşen testli, henüz yeniden ölçülmedi. Bu kuralla başka hiçbir ekran
+dönüştürülmez.
 
 Bunun yetkilendirmediği:
 

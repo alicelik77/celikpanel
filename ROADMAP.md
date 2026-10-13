@@ -428,10 +428,17 @@ above and below stays open.
   timer, no retry loop, four distinct states, a held state for a change in
   progress), `f6eaa0b57` (the fourteenth native record, evidence only),
   `e6de64a5b` (the page dates a scan from the moment it received it: defect
-  D1 of that record) and `1a74eeda5` (the server states a scan's age,
+  D1 of that record), `1a74eeda5` (the server states a scan's age,
   `scan_age_seconds`; an unreachable Agent answers `503 AGENT_UNREACHABLE`
   in the scan handler and in the admission check of eleven mutation
-  handlers). No schema change, no new route
+  handlers), `fb5ec06f8` (the follow-up native record set14b, 2026-10-13,
+  evidence only: no product code) and `7024534bc` (2026-10-13: the licence
+  check states the time left, `valid_for_seconds`, after defect D2 of that
+  record; the typed Agent answer moves into the shared error writer and
+  reaches the firewall read and the system check, observation O3; the
+  Components page says a failed read could not read the state instead of
+  saying an action may have completed, observation O2). No schema change, no
+  new route
   ([draft release notes](docs/RELEASE-NOTES-v0.1.0-alpha.84.md)). The
   alpha.83 entry above still reads "not published"; it was written before that
   release was published and is not rewritten here.
@@ -451,30 +458,61 @@ above and below stays open.
     measured; the scan's server-side wall time not measured; the held state
     reachable only by a change that does not scan first. Each intake correction
     of the record narrows its own text and wins over this summary.
-  - *Component tests on the last product commit:* `go test ./cmd/panel/...
-    ./internal/...` 7025 passed, 44 skipped, 0 failed; `npm test` 1336 of 1336;
-    `npm run build` within budget (Dashboard chunk 37.67 KiB of 160.25). The
-    two corrections (the clock rule, the server-stated age) and the typed
-    Agent answer have component tests only; no real system has run them.
+  - *Measured: the fifteenth native record, set14b*
+    ([set14b](deploy/e2e/release-recovery/evidence/set14b-20261013/README.md),
+    2026-10-13 UTC; one disposable Debian 13 guest, a real headless Chrome; a
+    test-licence build of `1a74eeda5`). With the guest's clock 1.5 s ahead, a
+    stale load sent one conditional scan and the card went straight to the
+    result, with no "Not checked in the last 5 minutes" frame (D1 is gone);
+    `scan_age_seconds` was a number on every answer that carried a scan. With
+    the Agent stopped, the Dashboard (English and Turkish), the Components
+    page and a service restart request answered `503 AGENT_UNREACHABLE` with
+    the owner's next step and no socket path, nginx unchanged; after the
+    Agent's start one press of the button sent one scan. The Components page
+    sent one conditional scan. **Defect D2, found in the lab and not
+    re-measured after its fix:** with the guest's clock 418 s behind, no
+    Panel page loaded (the licence check read 19 times in 90 s), so the
+    "clock behind" measurement of the scan age was not possible. Not
+    measured: Ubuntu, Arch, the window rule (unchanged since the fourteenth
+    record).
+  - *Component tests on the last product commit (`7024534bc`):* `go test
+    ./cmd/panel/... ./internal/...` 7028 passed, 44 skipped, 0 failed; `npm
+    test` 1339 of 1339; `npm run build` within budget. D2's fix
+    (`valid_for_seconds`), the Agent answer on the firewall and system-check
+    reads (O3) and the Components page's read banner (O2) have component tests
+    only until the next record.
   - *Answered here, not listed before:* the owner's question why the card did
     not check by itself (D-032, `a5830dd3e`); observation O1 of the fourteenth
-    record, the generic internal error with the Agent stopped
-    (`1a74eeda5`).
-  - *Open before publication:* the fifteenth record (set14b), one platform,
-    re-measuring D1 and O1 on the final code (running; its numbers are not
-    entered anywhere yet); the release preparation commit (release sequence,
-    bootstrap pins, version lines; changes no file under `cmd/`, `internal/`
-    or `web/`); the owner's decision on the number; the CI run of the last
-    head; merge, tag, the six signed assets and the portal publication, all by
-    the owner. Each installed panel is then updated by its owner from the
-    panel's own update screen; no one else starts that.
+    record, the generic internal error with the Agent stopped (`1a74eeda5`);
+    defect D2 of the fifteenth record, a server clock behind the browser's
+    keeping every page from loading, and observations O2 and O3 of the same
+    record (`7024534bc`, component-tested only).
+  - *Open before publication:* the next native record (not run): D2's fix with
+    a server clock several minutes behind the browser's, then the scan's age
+    with the clock behind, the Agent answer on the firewall and system-check
+    reads, and the Components page's read banner, on a real server; the release
+    preparation commit (release sequence, bootstrap pins, version lines;
+    changes no file under `cmd/`, `internal/` or `web/`); the owner's decision
+    on the number; the CI run of the last head; merge, tag, the six signed
+    assets and the portal publication, all by the owner. Each installed panel
+    is then updated by its owner from the panel's own update screen; no one
+    else starts that.
   - *Open for the next release, with this candidate's limits as the release
     notes list them:* the mail-stack card on the Dashboard still has its own
     stale copy and its "Open Components" button; the sidebar's build
     identifier wraps in the middle of a word (the owner's observation after the
     alpha.83 update); Arch, `server_setup_busy` and the never-checked state
-    not measured; no update to this candidate measured; and every limit of the
-    alpha.83 candidate above, which this candidate does not address.
+    not measured; no update to this candidate measured; the lab tools
+    `mock.mjs` and `cold-load-set9.mjs`/`cold-load-set11.mjs` still send only
+    `valid_until` on the access check; the HSTS retirement in
+    `DomainSSLSettings` still compares a server timestamp with the browser's
+    clock; the Agent answer's "nothing was changed" assumes no earlier change
+    in the same request (the joined-error guard covers aggregate errors; a
+    handler that changes something and later fails on a separate unjoined dial
+    would still claim it); the firewall "status unknown" banner with the Agent
+    stopped was observed in the fifteenth record, not measured; and every
+    limit of the alpha.83 candidate above, which this candidate does not
+    address.
   - No P0 item is closed or advanced by this candidate. P0.1–P0.5 stay
     **partial**. Publishing it will not update any installed panel; only the
     owner starts that, from the panel's own update screen.

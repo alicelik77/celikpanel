@@ -23,7 +23,7 @@ Code decisions live in git; this file is for strategy. Newest first.
 
 ## D-032 · The panel looks by itself; it never asks the owner to press a button to learn a state it can read
 
-*October 12, 2026 (clock date) · Owner decision after the update to v0.1.0-alpha.83; in source with component tests and a mock browser; the first step measured in the fourteenth native record (Debian 13, Ubuntu 24.04, 2026-10-12 UTC); the clock rule, the server-stated age and the typed Agent answer component-tested, their short lab measurement pending (2026-10-13)*
+*October 12, 2026 (clock date) · Owner decision after the update to v0.1.0-alpha.83; in source with component tests and a mock browser; the first step measured in the fourteenth native record (Debian 13, Ubuntu 24.04, 2026-10-12 UTC); the scan-age clock rule and the typed Agent answer at the scan and the admission check measured in the fifteenth record (Debian 13, 2026-10-13 UTC); the licence check's time left, the Agent answer in the shared error writer and the read banner (2026-10-13) component-tested only, the licence-check defect found in the lab and not re-measured after its fix*
 
 The Dashboard's "System services" card said "Unknown. Component status is
 outdated. Open Components to rescan." whenever the stored scan was older than
@@ -72,15 +72,52 @@ in the last 5 minutes" for 20 to 29 seconds after every check. The first step
 ahead; the second (the server's age) also removes it for a server more than
 five minutes behind. An older server without the field keeps the first rule.
 A negative age, or one that is not a finite number, is not taken as fresh.
+Measured (fifteenth record, Debian 13, guest 1.5 s ahead): one conditional
+scan on a stale load and the card going straight to the result, with no "Not
+checked in the last 5 minutes" frame. The case of a server clock behind could
+not be measured, because of the defect below, and is open.
+
+The same rule holds for the licence check, which the lab showed breaking it.
+`/api/v1/license/access` gave the end of access (`valid_until`) as a time on
+the server's clock, and the page refused a positive answer whose end was not
+after the browser's clock; with the server's clock more than about a minute
+behind, no Panel page loaded (fifteenth record, defect D2: 418 s behind, the
+check read 19 times in 90 s). The server now states the time left
+(`valid_for_seconds`: `valid_until` minus the server's clock when the answer is
+written, never below zero; `valid_until` stays for older pages), and the
+browser takes the end as the moment it sent the request plus that time, so it
+never compares the two clocks and never ends later than the server allows.
+Without the field the absolute rule applies. The fix is component-tested and
+not yet re-measured.
 
 The typed-error rule. A Panel that cannot open its own Agent's local socket
 answers `503 AGENT_UNREACHABLE`: the reason, that nothing was changed, who
-acts, the next action and how work resumes (D-024). It does this in the scan
-handler and in the shared admission check of eleven mutation handlers; it
-applies to a failed dial only. A connection that broke after a request was
-sent is an unknown result and keeps the generic path; an unknown result is
-never rewritten into a verified failure. An ordinary scan failure still
-answers `500`.
+acts, the next action and how work resumes (D-024). The answer is written once,
+in the shared server-error writer, so it applies to every handler that reaches
+that writer with a failed dial of the Agent's socket as the only cause (the
+scan, the admission check of eleven mutation handlers, the firewall read, the
+system check), not handler by handler. It is for a failed dial only. A
+connection that broke after a request was sent is an unknown result and keeps
+the generic path; an unknown result is never rewritten into a verified
+failure. Neither is a joined error, such as a failure together with its
+compensation: an earlier part may have changed something, and "nothing was
+changed" would be false. The one join accepted is the platform-identity
+sentinel with its cause, because that read runs before the call it guards. The
+DNSSEC status, the update status and start, domain deletion and mail password
+rotation stay on their own typed paths. An ordinary failure still answers
+`500`. Measured at the scan and at the admission check (fifteenth record); the
+firewall read and the system check are component-tested only. Open: a handler
+that changes something and later fails on a separate dial that is not joined
+to the earlier outcome would still claim that nothing was changed.
+
+The read-banner rule. A failed read never claims an action. A screen that
+could not read a state says that it could not read it and why, with the next
+action; it does not say that an action may have completed unless one was sent.
+The cause is kept: an action that was sent and not confirmed keeps its "may
+have completed" wording, and a later failed read never replaces it. Found in
+the lab on the Components page with the Agent stopped (fifteenth record,
+observation O2) and applied there; component-tested, not yet re-measured. No
+other screen is converted by this rule.
 
 What this does not authorise:
 
