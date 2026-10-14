@@ -4731,10 +4731,14 @@ değiştirmez. 2026-10-13, içindeki her şeyin saat tarihidir.
   açıklamalı etiketi (etiket nesnesi
   `e735308d19fab5166a2f2f4a2860b857ad0e9362`) oluşturuldu. **Süreç notu.**
   Sahip etiketi, `main` commit'indeki koşu sürerken gönderdi (8 işi bitmişti,
-  hiçbiri başarısız olmamıştı); koşu sonradan başarıyla tamamlandı. Dosya
-  yayımlayan iş yalnız paketleme işine bağlıdır, test işlerine bağlı değildir;
-  bu yüzden "`main`'deki koşu bitti, sonra etiket" sırası amaçlanan sıradır ve
-  bu kez izlenmedi; aynı ağaç çekme isteğinde 24 işin 24'ünü geçmişti. Bu bir
+  hiçbiri başarısız olmamıştı); koşu sonradan başarıyla tamamlandı.
+  "`main`'deki koşu bitti, sonra etiket" sırası amaçlanan sıradır ve bu kez
+  izlenmedi (düzeltme 2026-10-14: bu notun önceki hâli yayımlayan işin yalnız
+  paketleme işine bağlı olduğunu, test işlerine bağlı olmadığını söylüyordu;
+  oysa yayımlayan iş paketleme işine, o da aynı koşunun her test ve derleme
+  işine bağlıdır, yani bir etiketin dosyaları ancak o koşu geçtikten sonra
+  yayımlanır; iki koşu arasındaki sıraya dair not geçerlidir); aynı ağaç çekme
+  isteğinde 24 işin 24'ünü geçmişti. Bu bir
   süreç notudur, sürümün kusuru değildir. Etiketin CI koşusu (38419289967), 24
   iş, başarılı, 15:30:58 UTC'de altı dosyayla ön sürüm yayımladı (platform
   arşivi SHA-256

@@ -928,12 +928,16 @@ bir dosya olarak saklamaz.
    iki arşiv, iki sağlama toplamı dosyası, imzalı manifest ve imzası.
    - Süreç notu. Sahip etiketi, `main` commit'indeki sürekli tümleştirme koşusu
      (7. madde) hâlâ sürerken oluşturdu ve gönderdi: o koşunun 8 işi bitmişti,
-     hiçbiri başarısız olmamıştı ve koşu sonradan başarıyla tamamlandı. Dosya
-     yayımlayan iş yalnız paketleme işine bağlıdır, test işlerine bağlı değildir;
-     bu yüzden "`main`'deki koşu bitti, sonra etiket" sırası amaçlanan sıradır
-     ve bu kez izlenmedi. Aynı ağaç çekme isteğinde 24 işin 24'ünü geçmişti (5.
-     madde). Bu, sürümün bir kusuru olarak değil, bir süreç notu olarak
-     kaydedilir.
+     hiçbiri başarısız olmamıştı ve koşu sonradan başarıyla tamamlandı. "`main`'deki
+     koşu bitti, sonra etiket" sırası amaçlanan sıradır ve bu kez izlenmedi.
+     (Düzeltme 2026-10-14: bu notun önceki hâli, dosya yayımlayan işin yalnız
+     paketleme işine bağlı olduğunu, test işlerine bağlı olmadığını söylüyordu.
+     Bu yanlıştı. Yayımlayan iş paketleme işine, paketleme işi de aynı koşunun
+     her test ve derleme işine bağlıdır; bu yüzden bir etiketin dosyaları ancak
+     o koşu geçtikten sonra yayımlanır. Yayımı, 24 işin hepsini geçen etiketin
+     kendi koşusu denetledi. Süreç notu olarak yalnız iki koşu arasındaki sıra
+     geçerlidir.) Aynı ağaç çekme isteğinde 24 işin 24'ünü geçmişti (5. madde).
+     Bu, sürümün bir kusuru olarak değil, bir süreç notu olarak kaydedilir.
 9. Dosyalar, etiketin çıkış yapılmış bir klonundan yerel bir derleme
    konuğunda denetlendi (sürümü hazırlayan kişi bildirdi, burada bir dosyada
    kayıtlı değil). linux/amd64 arşivi
@@ -1070,7 +1074,9 @@ bir dosya olarak saklamaz.
   dışında, kurulu bir sunucunun bu sürümle ne yaptığını anlatmaz.
 - "`main`'deki koşu bitti, sonra etiket" sırası izlenmedi (8. madde). Koşu
   sonradan başarıyla tamamlandı ve aynı ağaç çekme isteğinde 24 işin 24'ünü
-  geçmişti; ama dosya yayımlayan iş test işlerini beklemez.
+  geçmişti. (Düzeltme 2026-10-14: dosya yayımlayan iş paketleme işine, o da
+  etiketin kendi koşusundaki her test ve derleme işine bağlıdır; dosyalar o
+  koşu geçmeden yayımlanamazdı. Yalnız iki koşu arasındaki sıra geçerlidir.)
 - Yayımlanma, ürün kabulü değildir. "Bu sürümün sınırları" altında sayılan
   sınırlar onunla değişmez; bunların arasında on yedinci kaydın bıraktığı iki
   açık madde vardır. [Dayanıklılık sözleşmesi](RESILIENCE-CONTRACT.tr.md)nin beş

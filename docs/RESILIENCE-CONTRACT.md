@@ -5459,11 +5459,15 @@ or recovery behaviour. 2026-10-13 is the clock date of everything in it.
   object `e735308d19fab5166a2f2f4a2860b857ad0e9362`) was created on that
   commit. **Process note.** The owner pushed the tag while the run on the main
   commit was still in progress (8 of its jobs had finished, none had failed);
-  it completed successfully afterwards. The job that publishes assets depends
-  only on the packaging job, not on the test jobs, so the order "the run on
-  main finished, then the tag" is the intended one and was not followed this
-  time; the same tree had passed 24 of 24 jobs on the pull request. This is a
-  process note, not a defect of the release. The tag's CI run (38419289967),
+  it completed successfully afterwards. The order "the run on main finished,
+  then the tag" is the intended one and was not followed this time (corrected
+  2026-10-14: an earlier version of this note said the publishing job depends
+  only on the packaging job and not on the test jobs; in fact the publishing
+  job depends on the packaging job, which depends on every test and build job
+  of the same run, so a tag's assets are published only after that run
+  passed; the note about the order between the two runs stands); the same
+  tree had passed 24 of 24 jobs on the pull request. This is a process note,
+  not a defect of the release. The tag's CI run (38419289967),
   24 jobs, successful, published a pre-release at 15:30:58 UTC with six assets
   (platform archive SHA-256
   `6dc899e5dabaf471978cde47bfde4a0a649b7c3f6941b1431284c84c9743c301`,
