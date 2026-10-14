@@ -29,6 +29,7 @@ export const useI18n = () => ({ t: (key, vars={}) => {
     return text;
 }});
 export const Button = props => React.createElement('button', props);
+export const KeepWords = props => props.text;
 export const ErrorBanner = props => React.createElement('error-banner', props);
 export const AlertTriangle=()=>React.createElement('warning-icon');
 export const Loader2=()=>React.createElement('spinner-icon');

@@ -42,6 +42,7 @@ const stub = dataModule(`import React from '${reactURL}';
  export const refreshRemote = () => {};
  export const Button = props => React.createElement('button', props);
  export const ErrorBanner = props => React.createElement('error-banner', props);
+ export const KeepWords = props => props.text;
  export const AlertTriangle = () => React.createElement('warning-icon');
  export const Loader2 = props => React.createElement('spinner-icon', props);
  export const WifiOff = () => React.createElement('offline-icon');
@@ -120,6 +121,10 @@ for (const [locale, c] of Object.entries({ en, tr })) {
       assert.ok(page.includes(c['services.operation.reconnecting']), 'the status names the reconnect');
       assert.ok(page.includes(c['services.operation.reconnectingAuto']), 'the sentence says the page asks again by itself');
       assert.equal(reconnectSpinners().length, 1, 'the reconnect carries motion');
+      // Inline before the first word, so it stays with the sentence when a phone
+      // wraps it (browser inspection 2026-10-14: a flex item sat apart at the edge).
+      assert.match(reconnectSpinners()[0].props.className || '', /(^| )inline-block( |$)/);
+      assert.ok(!/(^| )flex( |$)/.test(reconnectSpinners()[0].parent.props.className || ''), 'the sentence is not a flex row that parts the spinner from its text');
       assert.ok(pending().includes(3000), 'the next read is scheduled');
       assert.equal(pending().filter(ms => ms === 60000).length, 1, 'the reconnect is bounded');
       // Further refused reads do not restart the bound.

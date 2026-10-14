@@ -4,7 +4,7 @@ import { useI18n } from '../i18n';
 import type { ApiError } from '../lib/apiError';
 import { operationError, type ComponentOperation, type InteractionBlockView } from './ComponentOperation';
 import { componentOperationGuidance, componentOperationPhaseKey } from '../lib/componentOperationGuidance';
-import { Button, ErrorBanner } from './ui';
+import { Button, ErrorBanner, KeepWords } from './ui';
 
 type OperationOverlayProps = {
     view: InteractionBlockView | null;
@@ -127,14 +127,18 @@ export default function OperationOverlay(props: OperationOverlayProps | FailureO
                 {/* While reconnecting the lock reads by itself: shown with motion and a
                     sentence that nothing needs pressing, for a bounded time (owner rule
                     2026-10-14). Yeniden baglanirken kilit kendisi okur; hareketle ve sinirli sure. */}
-                <p role={statusRole} aria-live="polite" className={`mt-2 text-sm font-medium text-fg-muted${reconnecting && !reconnectSlow ? ' flex items-center justify-center gap-2' : ''}`}>
-                    {reconnecting && !reconnectSlow && <LoaderCircle className="h-4 w-4 shrink-0 text-primary motion-safe:animate-spin" aria-hidden="true" data-operation-reconnecting="" />}
+                {/* The spinner stands inline before the first word, so it stays with the
+                    sentence when a narrow screen wraps it (2026-10-14: as a flex item it sat
+                    apart at the left edge of a two-line centred sentence on a phone).
+                    Dar ekranda cümle kırılınca da ilk sözcüğün yanında kalır. */}
+                <p role={statusRole} aria-live="polite" className="mt-2 text-sm font-medium text-fg-muted">
+                    {reconnecting && !reconnectSlow && <LoaderCircle className="mr-2 inline-block h-4 w-4 align-[-0.2em] text-primary motion-safe:animate-spin" aria-hidden="true" data-operation-reconnecting="" />}
                     <span>{statusText}</span>
                 </p>
                 {reconnecting && (reconnectSlow
                     ? (
                         <p role="status" className="mt-4 rounded-lg border border-warning-mark/50 bg-warning-mark/10 px-4 py-3 text-left text-xs leading-5 text-fg" data-operation-reconnect-slow="">
-                            {t('services.operation.reconnectSlow')}
+                            <KeepWords text={t('services.operation.reconnectSlow')} />
                         </p>
                     )
                     : (
