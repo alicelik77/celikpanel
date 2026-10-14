@@ -98,6 +98,7 @@ export const tr: Record<ShellKey, string> = {
     'login.verify': 'Doğrula',
     'err.panel_certificate_activation_pending': 'Önceki panel sertifikası etkinleştirmesi hâlâ tamamlanıyor. Kısa süre bekleyip yeniden deneyin. Hiçbir sertifika durumu ezilmedi.',
     'nav.settings': 'Ayarlar',
+    'nav.menu': 'Menü',
     'nav.monitoring': 'İzleme',
     'nav.group.hosting': 'Barındırma',
     'nav.group.server': 'Sunucu',

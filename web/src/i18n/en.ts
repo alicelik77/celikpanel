@@ -190,6 +190,7 @@ export const en = {
     'panelUpdate.outcome.stoppedNext': "Nothing needs to be done on the server, unless the server's message below names a condition on this server, such as another operation still running or the package manager busy: then let it finish or fix it first.",
     'panelUpdate.outcome.stoppedResume': "Nothing resumes by itself. Starting the update to {target} again is safe.",
     'nav.settings': 'Settings',
+    'nav.menu': 'Menu',
     'nav.monitoring': 'Monitoring',
     'nav.group.hosting': 'Hosting',
     'nav.group.server': 'Server',

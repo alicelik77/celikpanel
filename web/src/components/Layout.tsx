@@ -205,7 +205,7 @@ export function Layout({ children, currentPage = '', onPageChange, mode = 'panel
                         {!setupMode && <button
                             className="rounded-lg p-1.5 text-fg-muted hover:bg-surface-2 md:hidden"
                             onClick={() => setMobileOpen(true)}
-                            aria-label="Menu"
+                            aria-label={t('nav.menu')}
                         >
                             <Menu className="h-5 w-5" />
                         </button>}

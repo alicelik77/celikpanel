@@ -72,11 +72,12 @@ const subscriptionsURL = compileSource('lib/subscriptions.ts', besideRemote);
 const accountsURL = compileSource('lib/accounts.ts', besideRemote);
 const managedServicesURL = compileSource('lib/managedServices.ts', besideRemote);
 const sslTierURL = compileSource('lib/sslTier.ts', () => stub);
+const hstsRemainingURL = compileSource('lib/hstsRemaining.ts', () => stub);
 // The identity a state-changing request carries is the real one (D-029).
 const requestIdentityURL = compileSource('lib/requestIdentity.ts', () => stub);
 const own = {
   '/auth/domainAccess': domainAccessURL, '/lib/domainDeletionPending': deletionURL, '/lib/subscriptions': subscriptionsURL,
-  '/lib/accounts': accountsURL, '/lib/managedServices': managedServicesURL, '/lib/sslTier': sslTierURL,
+  '/lib/accounts': accountsURL, '/lib/managedServices': managedServicesURL, '/lib/sslTier': sslTierURL, '/lib/hstsRemaining': hstsRemainingURL,
   '/lib/requestIdentity': requestIdentityURL,
 };
 // The two notices of 10 Oct 2026 are the shipped ones: what a service action

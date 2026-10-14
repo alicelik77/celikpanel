@@ -7,6 +7,7 @@ import type { TranslationKey } from '../i18n/en';
 import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
 import { CertificateIssueNotice, isCertificateIssueFailure } from './CertificateIssueNotice';
 import { decodeListIn, lastKnown, useRemote } from '../lib/remote';
+import { formatHSTSRemainingSeconds } from '../lib/hstsRemaining';
 import { sslTier, sslTierLabelFor } from '../lib/sslTier';
 import { useLostAnswer } from '../lib/lostAnswer';
 
@@ -1337,13 +1338,7 @@ function formatHSTSRetirementDate(retireAfter: Date, locale: 'tr' | 'en'): strin
 }
 
 function formatHSTSRemaining(retireAfter: Date, nowMs: number, locale: 'tr' | 'en'): string {
-    const remainingSeconds = Math.max(1, Math.ceil((retireAfter.getTime() - nowMs) / 1_000));
-    const formatter = new Intl.RelativeTimeFormat(locale === 'tr' ? 'tr-TR' : 'en-US', { numeric: 'always' });
-
-    if (remainingSeconds >= 86_400) return formatter.format(Math.ceil(remainingSeconds / 86_400), 'day');
-    if (remainingSeconds >= 3_600) return formatter.format(Math.ceil(remainingSeconds / 3_600), 'hour');
-    if (remainingSeconds >= 60) return formatter.format(Math.ceil(remainingSeconds / 60), 'minute');
-    return formatter.format(remainingSeconds, 'second');
+    return formatHSTSRemainingSeconds((retireAfter.getTime() - nowMs) / 1_000, locale);
 }
 
 function uniqueDNSNames(names: string[]): string[] {
