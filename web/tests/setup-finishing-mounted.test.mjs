@@ -153,6 +153,7 @@ for (const locale of ['en', 'tr']) {
         try {
             assert.equal(verifyState(tree), 'waitingReverseDNS');
             assert.ok(intervals(win).includes(3000));
+            assert.ok(buttonNamed(tree, c['setup.editPlan']), 'a waiting final check offers Edit plan');
             await checkAgain(tree, c);
             assert.equal(world.reloads.at(-1), 'manual', 'the explicit check asks the server to finish');
             assert.equal(world.reloads.filter(value => value === 'manual').length, 1, 'only the click is explicit');
@@ -165,8 +166,11 @@ for (const locale of ['en', 'tr']) {
             const sentence = tree.root.findByProps({ 'data-setup-finishing': '' });
             assert.equal(sentence.findAll(node => node.props && node.props['data-spinner'] !== undefined).length, 1, 'the sentence carries a spinner');
             assert.ok(tree.root.findAll(node => node.props && node.props['data-step-state'] === 'finishing')[0].findAll(node => node.props && node.props['data-spinner'] !== undefined).length === 1, 'the step carries a spinner');
-            assert.equal(buttonNamed(tree, c['setup.verify']), undefined, 'no "Check requirements again" while finishing');
-            assert.equal(buttonNamed(tree, c['setup.verifyChecking']), undefined);
+            assert.ok(!buttonNamed(tree, c['setup.verify']), 'no "Check requirements again" while finishing');
+            assert.ok(!buttonNamed(tree, c['setup.verifyChecking']));
+            // Edit plan stops the run; nothing needs to be done while it finishes.
+            assert.ok(!buttonNamed(tree, c['setup.editPlan']), 'no Edit plan while finishing');
+            assert.ok(!page.includes(c['setup.reviseHelp']), 'no Edit plan help while finishing');
             assert.ok(!page.includes('static.42.provider.example'), 'the old unmet result is not shown as current');
             assert.ok(!page.includes(c['setup.stepState.waitingReverseDNS']));
             assert.ok(intervals(win).includes(1500) && !intervals(win).includes(3000), 'the page reads more often while finishing');
@@ -187,6 +191,7 @@ for (const locale of ['en', 'tr']) {
         try {
             await checkAgain(tree, c);
             assert.equal(verifyState(tree), 'finishing');
+            assert.ok(!buttonNamed(tree, c['setup.editPlan']), 'no Edit plan while finishing');
             assert.ok([...win.timers.values()].some(item => item.kind === 'timeout' && item.ms === 60000), 'the wait is bounded');
             await fire(win, 'timeout', 60000);
             const page = textOf(tree.toJSON());
@@ -196,6 +201,7 @@ for (const locale of ['en', 'tr']) {
             assert.equal(tree.root.findAll(node => node.props && node.props['data-setup-finishing'] !== undefined).length, 0, 'no spinner left running');
             assert.notEqual(verifyState(tree), 'finishing');
             assert.ok(buttonNamed(tree, c['setup.verify']), 'the owner can check again');
+            assert.ok(buttonNamed(tree, c['setup.editPlan']), 'Edit plan returns with the unknown result');
             assert.ok(intervals(win).includes(3000), 'back to the usual reads');
             const reload = buttonNamed(tree, c['setup.reloadPage']);
             assert.ok(reload, 'reload this page');
@@ -219,6 +225,7 @@ for (const locale of ['en', 'tr']) {
             assert.ok(page.includes('other.provider.example'), 'the run’s own newer observation is shown');
             assert.ok(!page.includes(c['setup.finishing']));
             assert.ok(buttonNamed(tree, c['setup.verify']));
+            assert.ok(buttonNamed(tree, c['setup.editPlan']), 'Edit plan returns once the run is waiting again');
         } finally { await unmount(tree); }
     });
 }

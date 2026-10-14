@@ -481,7 +481,9 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
         finally { pendingRef.current = false; if (alive.current) setBusy(false); }
     }
     const waitingVerification = execution?.status === 'waiting' && execution.phase === 'verification';
-    const canReviseWaiting = execution?.status === 'waiting' && ['verification', 'dns_publisher', 'dns_readiness', 'access_dns', 'primary_dns', 'infrastructure_dns'].includes(execution.phase);
+    // Not offered while setup is finishing: it is the one control that stops the
+    // run, and nothing needs to be done then. It returns with the unknown result.
+    const canReviseWaiting = !finishing && execution?.status === 'waiting' && ['verification', 'dns_publisher', 'dns_readiness', 'access_dns', 'primary_dns', 'infrastructure_dns'].includes(execution.phase);
     const waitingLicense = execution?.status === 'waiting' && execution.phase === 'license';
     const waitingDNSPrerequisite = execution?.status === 'waiting' && ['access_dns', 'primary_dns', 'infrastructure_dns'].includes(execution.phase);
     const confirmingPrevious = execution?.status === 'running' && execution.error?.code.split(':')[0] === 'server_setup_reconciling';
@@ -596,7 +598,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                             const tone = status === 'failed' ? 'font-medium text-danger' : status === 'waitingOwner' || status === 'stopped' ? 'font-medium text-fg' : 'text-fg-muted';
                             return <li key={item.id} className="flex flex-col items-start justify-between gap-2 py-4 sm:flex-row sm:items-center sm:gap-4" data-step-state={status}><div className="min-w-0"><p className="font-medium">{t(`setup.kind.${item.kind}`, { target: stepTarget(item.kind, item.target) })}</p>{item.qualifier && item.kind !== 'mail_enrollment' && <p className="mt-1 break-words text-sm text-fg-muted">{item.qualifier}</p>}{handoverNotice && item.kind === 'panel_certificate' && <p className="mt-1 text-sm text-fg-muted">{t('setup.handover.stepNote')}</p>}</div><span className={`flex shrink-0 items-center gap-2 text-sm ${tone}`}>{status === 'succeeded' ? <Check className="h-4 w-4 text-success" aria-hidden="true" /> : status === 'running' || status === 'finishing' ? <Loader2 className="h-4 w-4 motion-safe:animate-spin" aria-hidden="true" /> : <Circle className="h-3 w-3" aria-hidden="true" />}{t(setupStepStateLabel[status])}</span></li>; })}
                     </ol>
-                    {waitingVerification && <p className="mt-5 text-sm text-fg-muted">{t('setup.reviseHelp')}</p>}
+                    {waitingVerification && !finishing && <p className="mt-5 text-sm text-fg-muted">{t('setup.reviseHelp')}</p>}
                     {completionFailed && <p role="alert" className="mt-5 text-sm text-danger">{t('setup.verificationFailed')}</p>}
                     {panelURL && new URL(panelURL).hostname !== window.location.hostname && <p className="mt-6"><a href={new URL('/setup', panelURL).href} className="font-semibold text-primary underline underline-offset-4">{t('setup.secureAddress')}</a></p>}
                     {waitingLicense && <Link to="/settings?section=license" className="mt-5 inline-flex text-primary underline underline-offset-4">{t('license.activate')}</Link>}
