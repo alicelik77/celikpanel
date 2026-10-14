@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, Loader2 as LoaderCircle, WifiOff, X } from 'lucide-react';
 import { useI18n } from '../i18n';
 import type { ApiError } from '../lib/apiError';
@@ -16,6 +16,14 @@ type OperationOverlayProps = {
     interrupted: boolean;
 };
 
+// The lock reads the operation again every 3 s while the connection is lost.
+// Past this bound it no longer shows that as a short reconnect: it says the
+// result is not known and what the owner can check (D-024, owner rule
+// 2026-10-14). The reads go on after it; the lock stays.
+// Baglanti kopukken kilit islemi her 3 sn'de yeniden okur. Bu sureden sonra
+// sonuc bilinmiyor denir; okumalar surer, kilit kalir.
+export const operationReconnectLimit = 60_000;
+
 type FailureOverlayProps = {
     failure: ApiError;
     dismissLabel: string;
@@ -25,10 +33,23 @@ type FailureOverlayProps = {
 export default function OperationOverlay(props: OperationOverlayProps | FailureOverlayProps) {
     const { t } = useI18n();
     const dialogRef = useRef<HTMLDivElement>(null);
+    const [reconnectSlow, setReconnectSlow] = useState(false);
+    // Only this overlay's own lost connection without a recorded failure is a
+    // reconnect: a recorded failure is known and keeps its own wording.
+    // Yalniz kayitli hatasi olmayan kendi baglanti kaybi yeniden baglanmadir.
+    const reconnecting = !('failure' in props) && !props.view && props.interrupted
+        && props.operation?.status !== 'failed';
 
     useEffect(() => {
         dialogRef.current?.focus();
     }, []);
+
+    useEffect(() => {
+        setReconnectSlow(false);
+        if (!reconnecting) return;
+        const timer = window.setTimeout(() => setReconnectSlow(true), operationReconnectLimit);
+        return () => window.clearTimeout(timer);
+    }, [reconnecting]);
 
     if ('failure' in props) {
         return (
@@ -103,9 +124,24 @@ export default function OperationOverlay(props: OperationOverlayProps | FailureO
                 <h2 id="component-operation-title" className="text-xl font-semibold text-fg">
                     {view?.title ?? t(knownFailure ? 'services.operation.failedTitle' : 'services.operation.title', { name: label || t('services.install') })}
                 </h2>
-                <p role={statusRole} aria-live="polite" className="mt-2 text-sm font-medium text-fg-muted">
-                    {statusText}
+                {/* While reconnecting the lock reads by itself: shown with motion and a
+                    sentence that nothing needs pressing, for a bounded time (owner rule
+                    2026-10-14). Yeniden baglanirken kilit kendisi okur; hareketle ve sinirli sure. */}
+                <p role={statusRole} aria-live="polite" className={`mt-2 text-sm font-medium text-fg-muted${reconnecting && !reconnectSlow ? ' flex items-center justify-center gap-2' : ''}`}>
+                    {reconnecting && !reconnectSlow && <LoaderCircle className="h-4 w-4 shrink-0 text-primary motion-safe:animate-spin" aria-hidden="true" data-operation-reconnecting="" />}
+                    <span>{statusText}</span>
                 </p>
+                {reconnecting && (reconnectSlow
+                    ? (
+                        <p role="status" className="mt-4 rounded-lg border border-warning-mark/50 bg-warning-mark/10 px-4 py-3 text-left text-xs leading-5 text-fg" data-operation-reconnect-slow="">
+                            {t('services.operation.reconnectSlow')}
+                        </p>
+                    )
+                    : (
+                        <p className="mt-2 text-sm leading-6 text-fg-muted">
+                            {t('services.operation.reconnectingAuto')}
+                        </p>
+                    ))}
                 {view?.details && view.details.length > 0 && (
                     <dl className="mt-4 grid grid-cols-1 gap-2 text-left text-xs sm:grid-cols-3">
                         {view.details.map((detail) => (

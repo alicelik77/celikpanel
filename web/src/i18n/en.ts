@@ -383,6 +383,10 @@ export const en = {
     'license.connectionRetry': 'The latest access check failed. Retrying automatically; the current page is preserved while the last verified access remains valid.',
     'services.operation.reloadHelp': 'Reloading reconnects to the recorded operation. It does not start another installation.',
     'services.operation.reconnecting': 'Connection interrupted. Reconnecting without unlocking the panel…',
+    // Reconnecting is active and bounded (owner rule 2026-10-14): the page reads by itself every 3 s.
+    // Yeniden bağlanma etkin ve sınırlıdır: sayfa her 3 sn'de kendisi okur.
+    'services.operation.reconnectingAuto': 'This page asks the server again every few seconds by itself; you do not need to press anything.',
+    'services.operation.reconnectSlow': "This page has not had a usable answer from the panel for more than a minute, so the result of this operation is not known yet. This does not mean it failed: the server keeps the operation's record, and this page keeps asking by itself. Do not start the operation again. If the panel still does not answer, check on the server whether it is running: sudo systemctl status celikpanel-panel. If it is stopped, start it with sudo systemctl start celikpanel-panel, then reload this page.",
     'services.operation.refreshing': "Server operation finished. Verifying the current service state…",
     'services.operation.backgroundHint': 'The job continues on the server. Reloading this page is safe; the panel will reattach with the operation id or its pre-request recovery marker. Other panel actions stay locked until the result is known.',
     'services.operation.id': 'Operation: {id}',
