@@ -38,6 +38,13 @@ type PanelBuild = {
 };
 
 export const PANEL_UPDATE_CHECK_TIMEOUT_MS = 8000;
+// While the card says the server is busy it reads readiness again by itself,
+// as the Components page does (owner rule 2026-10-14, audit row 25): GET only,
+// one read at a time, only while the tab is visible. It never starts or admits
+// an update; Start still makes its own fresh admission check.
+// Kart sunucu mesgul derken hazirligi kendisi yeniden okur: yalniz GET, ayni
+// anda tek okuma, yalniz sekme gorunurken. Guncellemeyi asla baslatmaz.
+export const PANEL_UPDATE_READINESS_POLL_MS = 5000;
 
 export type PanelUpdateCheckRuntime = {
     fetch: typeof fetch;
@@ -182,6 +189,56 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
         }
     }
 
+    // The quiet re-read. It does not draw the card's "checking" look: the busy
+    // text stays until a read says ready, then the card returns to its normal
+    // state. A read that could not verify keeps what is shown.
+    // Sessiz yeniden okuma: "denetleniyor" gorunumu cizilmez; hazir denene
+    // kadar mesgul metni kalir. Dogrulanamayan okuma gosterileni degistirmez.
+    const target = check?.target;
+    const active = systemUpdate.active;
+    const quietReadinessPoll = Boolean(target && check?.available) && !active && !starting
+        && !checking && !readinessChecking && readiness?.ready === false;
+    useEffect(() => {
+        if (!quietReadinessPoll) return;
+        const generation = lifecycleGeneration.current;
+        let stopped = false;
+        let timer: number | undefined;
+        let controller: AbortController | null = null;
+        const visible = () => document.visibilityState === 'visible';
+        const schedule = () => {
+            if (stopped || timer !== undefined || controller || !visible()) return;
+            timer = window.setTimeout(() => { timer = undefined; void read(); }, PANEL_UPDATE_READINESS_POLL_MS);
+        };
+        const read = async () => {
+            if (stopped || !visible()) return;
+            // A Retry, a check or a Start owns its own read; this one waits.
+            if (actionInFlight.current) { schedule(); return; }
+            const own = new AbortController();
+            controller = own;
+            const next = await fetchHostMutationReadiness(undefined, own.signal);
+            if (controller === own) controller = null;
+            if (stopped || own.signal.aborted || lifecycleGeneration.current !== generation) return;
+            if (next.ready || next.reason !== 'state_unverified') {
+                setReadiness(current => current && current.ready === next.ready
+                    && (current.ready || (!next.ready && current.reason === next.reason)) ? current : next);
+            }
+            schedule();
+        };
+        const onVisibility = () => {
+            if (visible()) { schedule(); return; }
+            if (timer !== undefined) window.clearTimeout(timer);
+            timer = undefined;
+        };
+        document.addEventListener('visibilitychange', onVisibility);
+        schedule();
+        return () => {
+            stopped = true;
+            if (timer !== undefined) window.clearTimeout(timer);
+            controller?.abort();
+            document.removeEventListener('visibilitychange', onVisibility);
+        };
+    }, [quietReadinessPoll]);
+
     async function retryHostMutationReadiness() {
         if (actionInFlight.current || systemUpdate.active) return;
         actionInFlight.current = true;
@@ -265,8 +322,6 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
         }
     }
 
-    const target = check?.target;
-    const active = systemUpdate.active;
     const currentVersion = check?.current_version ?? currentBuild?.version;
     const currentCommit = check?.current_commit ?? currentBuild?.commit;
     const readinessReason = readiness?.ready === false
@@ -386,6 +441,9 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
                                 <div>
                                     <p className="font-semibold text-fg">{readinessTitle}</p>
                                     {!readinessChecking && readinessReason && <p className="mt-1 text-fg-muted">{readinessReason}</p>}
+                                    {!readinessChecking && readiness?.ready === false && (
+                                        <p className="mt-1 text-fg-muted" data-readiness-auto-resume="">{t('services.mutationReadiness.autoResume')}</p>
+                                    )}
                                 </div>
                             </div>
                             {readiness?.ready === false && !readinessChecking && (
