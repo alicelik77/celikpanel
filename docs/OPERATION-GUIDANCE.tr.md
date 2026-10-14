@@ -7216,3 +7216,136 @@ ve `celikpanel` satırı olmayan bir `/etc/group`. Konuğun kendisi değiştiril
   bildirimiyle biter.
 - Hiçbir kurulu sunucu değiştirilmedi. Buradaki hiçbir şey kurulu bir sunucuda
   kabul kanıtı değildir.
+
+### Hareketsiz görünen bekleme ekranları: sahibin kuralı ve bekleme durumlarının denetimi (2026-10-14)
+
+**Sahibin gözlemi.** Yukarıdaki kayıttaki bildirimden sonra sahip 14 Ekim 2026'da
+her ekran için bir kural koydu. Özünde:
+
+- kullanıcıyı bekleten bir ekran ya görünür biçimde bekler (hareketle; araya
+  girebilecek denetimler devre dışıdır) ya da yapılacak bir şey olmadığını ve
+  kendiliğinden güncelleneceğini açıkça söyler; ve işi çabuk bitirir;
+- etkin düğmelerin yanında duran hareketsiz bir bekleme cümlesi kusurdur:
+  hareketsiz görünen bir ekranın önünde kimse iki dakika beklemez;
+- sahibin payına düşen iş bitmişken ekran hiçbir zaman "Sizi bekliyor" demez;
+  örneğin sağlayıcıda yapılan bir değişiklik yayılırken.
+
+Bu, D-024'ün (mevcut neden, kimin işlem yapacağı, sonraki eylem ve işin nasıl
+devam edeceği) beklemeye uygulanmasıdır; ilgili yerde D-032 de geçerlidir (panel
+kendisi bakar; okuyabileceği bir durumu öğrenmek için sahibe düğmeye bastırmaz).
+Şema, defter ya da sürüm geçişi yok; aşağıda bir eklemeli yanıt alanı ve üç
+eklemeli profil alanı var.
+
+**Denetim.** Web arayüzü, bir sayfanın sunucuyu, bir arka plan işlemini, bir
+yoklamayı, bir sağlayıcıyı, lisansı ya da dış bir denetimi beklediği her durum
+için kaynaktan okundu: 37 durum. Kapsam: kurulum (son kontrol dışındaki
+aşamalar), Bileşenler ve bileşen sayfaları, Pano, lisans ve erişim katmanları,
+panel güncelleme akışı, alan adı sertifikaları ve HSTS, DNS, içe aktarma, PHP,
+yedekler ve kenar çubuğundaki yapı damgası. Sonuç: 18 durum kurala zaten
+uyuyordu, 16'sı uymuyordu ve burada değiştirildi, 3'ü uymuyor ve açık kaldı
+(aşağıda). Her satır koddan, dosya ve satır numarasıyla okundu; hiçbiri kurulu
+bir sunucuda ölçülmedi.
+
+**Ne değişti.**
+
+- **Kurulum: kesilen okumadan sonra yeniden bağlanma ve planlı sertifika
+  yeniden başlatması.** Cümlenin yanında dönen bir simge. Cümle artık sayfanın
+  birkaç saniyede bir sunucuya kendiliğinden yeniden sorduğunu ve yapılacak bir
+  şey olmadığını söylüyor; önceden sahibe "Bu işleme yeniden bağlan" düğmesine basmasını
+  söylüyordu. 60 saniye sonra simge durur; sayfa sonucun bilinmediğini (hata
+  olmadığını), sormaya devam ettiğini ve paneli sunucuda nasıl denetleyeceğini
+  söyler (`sudo systemctl status celikpanel-panel`, sonra
+  `sudo systemctl start celikpanel-panel`); "Bu sayfayı yeniden yükle" sunulur.
+- **Kurulum: "Gereksinimleri tekrar kontrol et" ve "Bu bağlantıyla kuruluma devam et".**
+  İstek sürerken dönen simge.
+- **Bileşenler güvenlik duvarı bandı (alpha.84 notlarındaki O4 ve O5).** Kodlu
+  yanıt sayfanın dilinde söylenir (Türkçe sayfada sunucunun İngilizce cümlesi
+  yerine `err.AGENT_UNREACHABLE`); bant, sayfanın aldığı her taramada güvenlik
+  duvarını yeniden okur.
+- **Pano "İlgi istiyor" bölümü (O6).** Okumalarından biri `AGENT_UNREACHABLE` ile
+  reddedildiyse bildirim, "bu bir şeyin yanlış olduğu anlamına gelmez" yerine
+  Agent'ı ve sahibin komutlarını (`err.AGENT_UNREACHABLE`) adlandırır.
+- **Pano Posta paketleri kartı.** Sayfanın kendi kontrolünü izler: kontrol
+  ediliyor (dönen simgeyle), bir değişiklik bekletiyor, kontrol edilemedi ya da
+  yakın zamanda kontrol edilmedi. "Yeniden taramak için Bileşenleri aç" ve
+  "…posta durumuna güvenmeden önce yeniden tarayın" kaldırıldı.
+- **Posta profili metni.** Adlar ve açıklamalar profil kimliğine göre
+  katalogdan gelir. Panel engel ve uyarı cümlelerini artık türlü gönderir
+  (`blocked_code` ile `blocked_vars` ve `warning_code`; eski metnin yanında, o
+  metin eski sayfalar için kalır); sayfa kodu kendi dilinde söyler. Üç sunucu
+  cümlesi artık "run a fresh scan" ya da "run another scan" demez; durumu bir
+  sonraki bileşen kontrolünün doğrulayacağını söyler. Son denemenin hatası,
+  "Son deneme şunu bildirdi:" girişinin ardından sunucunun kendi sözleriyle
+  kalır.
+- **Sunucu değişikliği beklemeleri** (Bileşenler bandı, Pano güvenlik duvarı
+  penceresi). Şu cümle eklenir: "Bu sayfa birkaç saniyede bir yeniden denetler
+  ve bu beklemeyi kendiliğinden kaldırır; sayfayı yeniden yüklemeniz gerekmez."
+  Doğrulanamayan durum artık sayfanın yeniden yüklenmesini istemez. Bir bileşen
+  sayfasının kurulum penceresi hazır olma durumunu bir kez okuyordu; artık
+  pencere açıkken 5 saniyede bir okur (yalnız GET).
+- **Uzun bir isteği devre dışı ve hareketsiz bir etiketin arkasında yürüten
+  düğmeler** (alan adı sertifikası alma, etkinleştirmeyi yeniden deneme ve
+  yükleme, panel sertifikası, bölge yayımlama, PHP sürümü, içe aktarma
+  incelemesi ve çalıştırma, depo etkinleştirme, sürüm kaldırma). İstek
+  süresince düğmenin dönen simgesi.
+- **HSTS geri çekilmesi (saat kuralı).** Alan adı SSL yanıtına
+  `settings.hsts_retire_remaining_seconds` eklendi: yanıt yazılırken sunucunun
+  saatiyle kalan süre; `hsts_retire_after` korunur. Sayfa sonu, yanıtı aldığı
+  andan tarihler ve kendi saatini sunucunun damgasıyla karşılaştırmaz. Alanı
+  göndermeyen eski panelde eski kural sürer.
+- **Kenar çubuğu yapı kimliği.** "build" ve 12 karakterlik kimlik tek bir birim
+  olarak kalır; satır artık kimliğin içinde kırılmaz. Tam kimlik başlıkta ve
+  ekran okuyucu metnindedir.
+- **Laboratuvar araçları.** Sahte sunucu lisans erişim denetimini panel gibi
+  `valid_for_seconds` ile yanıtlar ve bir `clockSkew` denetimi vardır. 9. ve
+  11. setlerin soğuk yükleme araçları zamanlı tıklamayı sayfanın son anına göre
+  planlar.
+
+**Kanıt.** Commit'ler `2e273cc55` ile `1c5454c53` arası (on üç commit; bu işin
+parçası olmayan `a87ce0b97` hariç).
+
+- Web, her değişiklik için bağlanan testler: kurulumda yeniden bağlanma, sınırlı
+  bildirimi ve kontrol düğmeleri; Bileşenler güvenlik duvarı bandının Türkçesi
+  ve yeniden okunması; Agent'lı Pano ilgi bildirimi; posta kartının durumları ve
+  türlü metni; sunucu saati geride, ileride ve eski panelle HSTS; sertifika,
+  bölge, PHP ve içe aktarma simgeleri; kurulum penceresinin yeniden okuması;
+  Bileşenler hazırlık bandı. Her biri, değişiklikten önceki ekrana karşı
+  başarısız oldu. Depo ve sürüm kaldırma düğmelerinin yalnız kaynak denetimi
+  var; yapı damgası kaynaktan çizilir ve eski sınıfla başarısız olur.
+- Web, kod listesi: bir test `mailProfileTextCodes` listesini panelin
+  kaynağından okur ve her kod için aynı değerleri kullanan, tarama sözü
+  geçmeyen İngilizce ve Türkçe birer cümle ister.
+- Go: `TestStampHSTSRetireRemaining`,
+  `TestDomainSSLAnswerCarriesHSTSRetireRemaining`,
+  `TestMailProfileTextCodesAreListed` (kod türündeki her sabit listededir),
+  `TestMailProfileViewTypesItsSentences`.
+- Sayılar: `npm test` 1375/1375; `npx tsc --noEmit` temiz; beş katalog çiftinin
+  hepsinde İngilizce ve Türkçe anahtar kümeleri eşit;
+  `go test ./cmd/panel/...` 1542 test ve 1665 alt test geçti, 6 atlandı,
+  0 başarısız (WSL konuğu `CelikPanel-S2-Debian`). Agent paketi ne değiştirildi
+  ne çalıştırıldı.
+- Sahte sunucu yerel bir portta elle ölçüldü: etkin lisans için 59,2 saniye
+  kaldı; `clockSkew` −420 ile damga 420 saniye kaydı, kalan süre 59,1 saniye
+  kaldı; eksik lisans 0 yanıtladı.
+
+**Açık kalanlar.**
+
+- **Satır 16, bağlantı kesildikten sonra bileşen işlemi kilidi:** hareketsiz bir
+  WifiOff simgesi, sınırsız olarak 3 saniyede bir yeniden deneme; yeniden
+  yükleme sunuluyor. Sınır ve metni için sahibin kararı gerekir.
+- **Satır 25, panel güncelleme kartının hazır olma durumu:** sunucunun boş olup
+  olmadığını öğrenmek için sahip "Tekrar dene"ye basar. Sahibin kararı
+  gerekir; kendiliğinden okumalar kartın denetim durumunu her seferinde yeniden
+  çizerdi.
+- **Satır 35, bir alan adının "DNS değişikliği yayılıyor" durumu:** doğru
+  olarak sahibin işi sayılmıyor, ama kendiliğinden yeniden okunmuyor. Dış DNS
+  sorgularının sıklığı için sahibin kararı gerekir.
+- **Şablonlu metin.** `component_not_installable` platform ayrıntısını taşımaz
+  (o yalnız eski metinde var); hizmet yerine bir rolü adlandıran gereksinim,
+  rolün belirteciyle gösterilir. Posta profilleri dışındaki sunucu cümleleri hâlâ
+  "rescan" diyor (`managed_service_handlers.go` içindeki önbellek durumu reddi,
+  `store_backend.go` içindeki teklif durumları).
+- **Laboratuvar araçları.** Soğuk yükleme araçları değiştirildi ama
+  çalıştırılmadı; bir konukta çalıştırılmaları gerekir.
+- Buradaki hiçbir şey kurulu bir sunucuda ya da yerel bir kayıtta ölçülmedi ve
+  kabul kanıtı değildir. Hiçbir kurulu sunucu değiştirilmedi.
