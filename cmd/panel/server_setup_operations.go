@@ -84,6 +84,56 @@ type serverSetupExecution struct {
 
 var serverSetupRunners sync.Map
 
+// serverSetupWakes holds one buffered (size 1) channel per panel. The owner's
+// explicit "Check requirements again", once every check passes, pokes it so a
+// runner waiting at the final verification makes its next pass now instead of
+// after the rest of its 20 s sleep. A poke never starts a runner or a mutation:
+// the runner alone completes setup, through its usual single pass.
+// Sahibin acik yeniden kontrolu bekleyen calisanin uykusunu kisaltir; hicbir
+// calisan ya da degisiklik baslatmaz, kurulumu yalniz calisan tamamlar.
+var serverSetupWakes sync.Map
+
+// serverSetupWaitingInterval is the unattended re-check cadence of a waiting run.
+const serverSetupWaitingInterval = 20 * time.Second
+
+func (p *Panel) serverSetupWakeChannel() chan struct{} {
+	value, _ := serverSetupWakes.LoadOrStore(p, make(chan struct{}, 1))
+	return value.(chan struct{})
+}
+
+// wakeServerSetupRunner is non-blocking: a pending poke is enough, a second
+// one is dropped.
+func (p *Panel) wakeServerSetupRunner() {
+	select {
+	case p.serverSetupWakeChannel() <- struct{}{}:
+	default:
+	}
+}
+
+// sleepServerSetupRunner waits for the interval or a poke, whichever is first.
+func (p *Panel) sleepServerSetupRunner(interval time.Duration) {
+	timer := time.NewTimer(interval)
+	defer timer.Stop()
+	select {
+	case <-timer.C:
+	case <-p.serverSetupWakeChannel():
+	}
+}
+
+// wakeServerSetupVerification pokes the runner only when the latest run waits
+// at its final verification and the owner's explicit check just saw every
+// check pass. Any other state is left to the runner's own cadence.
+func (p *Panel) wakeServerSetupVerification(ctx context.Context, checks []serverSetupCheck) {
+	if !serverSetupChecksReady(checks) {
+		return
+	}
+	execution, err := p.latestServerSetupExecution(ctx)
+	if err != nil || execution == nil || execution.Status != "waiting" || execution.Phase != "verification" {
+		return
+	}
+	p.wakeServerSetupRunner()
+}
+
 func serverSetupID(parts ...string) string {
 	sum := sha256.Sum256([]byte(strings.Join(parts, "\x00")))
 	return hex.EncodeToString(sum[:16])
@@ -768,6 +818,11 @@ func (p *Panel) launchServerSetupExecution() {
 	if _, loaded := serverSetupRunners.LoadOrStore(p, true); loaded {
 		return
 	}
+	// A poke left over from an earlier run must not cut this run's first wait.
+	select {
+	case <-p.serverSetupWakeChannel():
+	default:
+	}
 	go func() {
 		lastID := ""
 		defer func() { p.finishServerSetupRunner(lastID) }()
@@ -801,7 +856,7 @@ func (p *Panel) launchServerSetupExecution() {
 			}
 			if !progressed {
 				if execution.Status == "waiting" {
-					time.Sleep(20 * time.Second)
+					p.sleepServerSetupRunner(serverSetupWaitingInterval)
 				} else {
 					time.Sleep(2 * time.Second)
 				}

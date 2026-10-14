@@ -353,6 +353,14 @@ func (p *Panel) handleServerSetup(w http.ResponseWriter, r *http.Request) {
 				writeServerError(w, err)
 				return
 			}
+			// Only the owner's explicit "Check requirements again" (manual=1)
+			// shortens the waiting run's sleep, and only when every check
+			// passed. It never completes setup here: the runner rechecks and
+			// completes in its own single pass. Page polls do not send manual=1.
+			// Yalniz sahibin acik kontrolu bekleyen calisani uyandirir.
+			if r.URL.Query().Get("manual") == "1" {
+				p.wakeServerSetupVerification(ctx, s.Checks)
+			}
 		}
 		json.NewEncoder(w).Encode(s)
 	case http.MethodPut:
