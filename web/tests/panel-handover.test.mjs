@@ -171,7 +171,8 @@ test('the wizard states the restart in advance and names it when the connection 
   // The drop: recognised from the last execution read, replaces the unknown text.
   assert.match(wizard, /const handoverDrop = reconnecting \? plannedHandoverDrop\(execution, currentHost\) : null;/);
   assert.match(wizard, /t\(handoverDrop \? 'setup\.handover\.dropTitle' : reconnecting \? 'setup\.reconnecting'/);
-  assert.match(wizard, /\{handoverDrop \? <div role="status"[\s\S]*?t\('setup\.handover\.drop', \{ host: handoverDrop\.host \}\)[\s\S]*?: reconnecting && <p[^>]*>\{t\('setup\.uncertain'\)\}<\/p>\}/);
+  // Since 2026-10-14 both carry a spinner, and the unknown result is bounded (setup-finishing-mounted).
+  assert.match(wizard, /\{handoverDrop \? <div role="status"[\s\S]*?t\('setup\.handover\.drop', \{ host: handoverDrop\.host \}\)[\s\S]*?: reconnecting && \(reconnectSlow[\s\S]*?t\('setup\.reconnectSlow'\)[\s\S]*?<span>\{t\('setup\.uncertain'\)\}<\/span><\/p>\)\}/);
   // The address is a real link to the wizard on the secure origin.
   assert.match(wizard, /<AddressLink href=\{`\$\{url\}\/setup`\} address=\{url\} \/>/);
   assert.doesNotMatch(wizard.slice(wizard.indexOf('function SetupHandoverAddress(')), /break-all[^\n]*\{url\}/);
