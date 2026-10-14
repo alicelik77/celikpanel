@@ -7144,3 +7144,111 @@ lists) and the known-state rule.
    next release, unchanged. Not reported: the update's verification result
    inside the panel, the Agent's version, the full-screen licence page during
    the update.
+
+### The final setup check while reverse DNS spreads, and after every check passes (2026-10-14)
+
+**Observed by the owner.** On 2026-10-13 and 2026-10-14 the owner worked
+through the final setup step, "Verify the prepared server", on the second
+server (Frankfurt, v0.1.0-alpha.84). The final check waited for the reverse
+DNS (PTR) name of the server's address. The owner had already changed it at the
+VPS provider; the provider was still spreading the change and the public
+resolver 1.1.1.1 still answered with the old name from its cache. Meanwhile:
+
+1. The step read "Waiting for you". The box named the observed and the expected
+   name and said to set it at the provider, and that setup checks again by
+   itself. Nothing said that a change made at the provider takes time to reach
+   public DNS, which resolver was asked, or that nothing more was needed in
+   CelikPanel. The owner kept asking what to do.
+2. After "Check requirements again", every check passed. The step then read
+   "Waiting for requirements" under a static box, "These checks passed.
+   Waiting for the server to confirm setup completion.", with no motion, the
+   buttons still enabled and nothing saying that nothing needed to be done. The
+   waiting run completed only on its next 20-second pass. In substance, the
+   owner's words: this confuses people; they will not know what to do and will
+   press things impatiently; if they must wait, make them wait or tell them
+   clearly to wait; nobody waits two minutes while nothing seems to happen.
+
+This is D-024's rule that the current reason, who must act, the next action and
+how work resumes are said, and that waiting is not shown as passive or as
+the owner's task when it is not. No schema, ledger or version transition; the
+execution JSON is unchanged.
+
+**What changed.**
+
+- **A. The run finishes on the owner's passing check.** The setup runner's
+  20-second wait while waiting also ends on a per-panel wake signal (a buffered
+  channel of one). Only the owner's explicit check, `GET /api/v1/setup?check=1&manual=1`,
+  sends it, and only when every check passed while the latest run waits at its
+  final verification. The handler neither completes setup nor starts a
+  mutation; the runner rechecks and completes in its own single pass. Page
+  polls do not send `manual=1`. The unattended 20-second cadence is unchanged.
+- **B. Finishing is shown as active and bounded.** After a passing check the
+  heading and the final step read "Finishing setup", with a spinner on the step
+  and beside the sentence "Every check passed. The panel is completing setup
+  now, and you do not need to do anything. This page updates by itself when it
+  is done." The page reads the operation every 1.5 seconds instead of 3. It
+  ends when the run leaves the final check, or when the run itself records a
+  newer, different unmet result, which is then shown. After 60 seconds without
+  confirmation the page says the result is not known (not a failure), to reload
+  the page, and that if it persists the setup run may have stopped and
+  `sudo systemctl restart celikpanel-panel` resumes the same setup at its final
+  check without repeating finished steps; "Check requirements again" and
+  "Reload this page" are offered. The passive "These checks passed…" string is
+  removed.
+- **Edit plan is not offered while finishing.** It is the one control on that
+  step that stops the run. It and its help line return with the 60-second
+  notice or when the run waits again; its behaviour is unchanged.
+- **C. Waiting for reverse DNS is said as such.** A final check waiting only on
+  a reverse DNS mismatch reads "Waiting for reverse DNS" instead of "Waiting
+  for you"; a plan correction open beside it still reads "Waiting for you". The
+  guidance adds: "A change made at your server provider can take from a few
+  minutes to several hours to reach public DNS, because DNS resolvers keep the
+  old name until their saved copy expires. Once you have made the change, you
+  do not need to do anything more in CelikPanel."
+- **D. A stale first resolver no longer decides.** In the Agent's mail identity
+  lookup, a PTR answer that is not the expected name (or no PTR) also asks the
+  next resolver. Any resolver that returns the expected name with a matching
+  forward A/AAAA record proves the identity. Otherwise the first observation is
+  reported as before, preferring a PTR that names the host but whose forward
+  record does not match yet. A matching first answer asks nothing more.
+
+**Evidence.** Commits `a94f83cb0`, `febbe09e3`, `c714238d6` and `e358ebe3c`.
+
+- New Go tests:
+  - the stale-resolver cases (`TestMailDNSIdentityAsksNextResolverWhenFirstAnswerIsStale`, six cases);
+  - the manual check completing a waiting run well before the 20-second
+    interval, while a plain check read and an operation read wake nothing,
+    complete nothing and start no mutation. A negative control with the flag
+    renamed failed after 5.6 seconds.
+- New web tests (`web/tests/setup-finishing-mounted.test.mjs`, English and
+  Turkish), whose Edit plan checks fail against the screen without that change:
+  - finishing with spinners, no "Check requirements again" or Edit plan, 1.5-second
+    reads, and completion with no click and only GET requests;
+  - the 60-second fallback;
+  - a newer unmet result ending finishing.
+- Updated final-check tests cover the reverse DNS label and wording.
+- Counts:
+  - `npm test` 1348 of 1348; `npx tsc --noEmit` clean;
+  - `go test ./cmd/panel/...` 1538 tests and 1662 subtests passed, 6 skipped;
+  - `go test ./cmd/agent/...` 1798 tests and 2822 subtests passed, 29 skipped, 0 failed.
+
+The Go runs were in the WSL guest `CelikPanel-S2-Debian`. That guest is itself
+a running CelikPanel host (BIND active, a `celikpanel` group, a live Agent
+state root), and as is the Agent package fails 19 tests on this branch and on
+`e3c8f735a` alike. The Agent count above was measured in a private mount
+namespace that showed the tests a clean host: empty directories over
+`/var/lib/celikpanel-agent-private` and `/run/celikpanel`, and an `/etc/group`
+without `celikpanel`; the guest itself was not changed.
+
+**Open.**
+
+- The resolver that answered is not named on the page, because the Agent does
+  not report it.
+- Change D takes effect only after the Agent is updated. Until then a stale
+  first resolver can still read as a mismatch, although the wording above now
+  covers that wait.
+- If the runner's own recheck after a passing check finds exactly the same
+  unmet result as before, the page cannot tell it from no recheck yet. It then
+  ends at the 60-second "not known" notice rather than at once.
+- No installed server was changed, and nothing here is acceptance on an
+  installed server.

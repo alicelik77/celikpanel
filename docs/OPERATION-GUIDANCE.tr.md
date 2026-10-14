@@ -7093,3 +7093,126 @@ işlem yapacağı, somut sonraki eylem ve nasıl devam edileceği uzun listelerd
    okunabilir. Görünüşle ilgili; sonraki sürüm için açık, değişmedi.
    Bildirilmeyenler: güncellemenin panel içindeki doğrulama sonucu, Agent'ın
    sürümü, güncelleme sırasında tam ekran lisans sayfası.
+
+### Ters DNS yayılırken ve bütün kontroller geçtikten sonra kurulumun son kontrolü (2026-10-14)
+
+**Sahibin gözlemi.** Sahip 13 ve 14 Ekim 2026'da ikinci sunucuda (Frankfurt,
+v0.1.0-alpha.84) kurulumun son adımı "Verify the prepared server" ile uğraştı.
+Son kontrol, sunucu adresinin ters DNS (PTR) adını bekliyordu. Sahip bu adı VPS
+sağlayıcısında çoktan değiştirmişti. Sağlayıcı değişikliği hâlâ yayıyordu ve
+genel çözümleyici 1.1.1.1 önbellekteki eski adla yanıt veriyordu. Bu sırada:
+
+1. Adım "Waiting for you" diyordu. Kutu gözlenen ve beklenen adı söylüyor,
+   adın sağlayıcıda ayarlanacağını ve kurulumun kendiliğinden yeniden kontrol
+   edeceğini belirtiyordu. Ama sağlayıcıda yapılan değişikliğin genel DNS'e
+   ulaşmasının zaman aldığını, hangi çözümleyiciye sorulduğunu ya da
+   CelikPanel'de başka bir şey gerekmediğini söyleyen bir şey yoktu. Sahip ne
+   yapacağını sormaya devam etti.
+2. "Check requirements again" düğmesinden sonra bütün kontroller geçti. Adım
+   bu kez "Waiting for requirements" dedi. Altında hareketsiz bir kutu vardı:
+   "These checks passed. Waiting for the server to confirm setup completion."
+   Hiçbir hareket yoktu, düğmeler hâlâ etkindi ve yapılacak bir şey olmadığını
+   söyleyen bir şey yoktu. Bekleyen çalışma ancak 20 saniyelik bir sonraki
+   geçişinde tamamlandı. Sahibin sözleri, özünde şöyle:
+   - bu insanların kafasını karıştırır;
+   - ne yapacaklarını bilmezler ve sabırsızlıkla bir şeylere basarlar;
+   - beklemeleri gerekiyorsa bekletilmeli ya da açıkça beklemeleri söylenmeli;
+   - işlem yapıyor görünmüyorken kimse iki dakika beklemez.
+
+Bu, D-024'ün kuralıdır: mevcut neden, kimin işlem yapacağı, sonraki eylem ve
+işin nasıl devam edeceği söylenir. Bekleme pasif ya da sahibin işi değilken
+sahibin işiymiş gibi gösterilmez. Şema, defter ya da sürüm geçişi yok; işlem
+JSON'u değişmedi.
+
+**Ne değişti.**
+
+- **A. Çalışma sahibin geçen kontrolüyle tamamlanır.** Bekleyen kurulum
+  çalışanının 20 saniyelik uykusu, panel başına bir uyandırma sinyaliyle (tek
+  yerlik tamponlu kanal) de biter.
+  - Sinyali yalnız sahibin açık kontrolü gönderir:
+    `GET /api/v1/setup?check=1&manual=1`. O da yalnız bütün kontroller geçtiyse
+    ve son çalışma son doğrulamasında bekliyorsa.
+  - İstek işleyici kurulumu tamamlamaz ve değişiklik başlatmaz. Çalışan kendi
+    tek geçişinde yeniden kontrol eder ve tamamlar.
+  - Sayfa sorguları `manual=1` göndermez. Gözetimsiz 20 saniyelik aralık
+    değişmedi.
+- **B. Tamamlanma etkin ve sınırlı gösterilir.** Geçen bir kontrolden sonra
+  başlık ve son adım "Kurulum tamamlanıyor" der.
+  - Adımda ve şu cümlenin yanında dönen bir simge vardır: "Bütün kontroller
+    geçti. Panel kurulumu şimdi tamamlıyor; sizin bir şey yapmanız gerekmiyor.
+    İş bitince bu sayfa kendiliğinden güncellenir."
+  - Sayfa işlemi 3 yerine 1,5 saniyede bir okur.
+  - Bu durum, çalışma son kontrolden çıkınca biter. Çalışmanın kendisi yeni ve
+    farklı bir karşılanmamış sonuç kaydederse de biter; o sonuç gösterilir.
+  - 60 saniye içinde doğrulama gelmezse sayfa sonucun bilinmediğini söyler (bu
+    bir hata değildir) ve sayfanın yeniden yüklenmesini ister. Durum sürerse
+    kurulum çalışmasının durmuş olabileceğini ve
+    `sudo systemctl restart celikpanel-panel` komutunun aynı kurulumu, biten
+    adımları tekrarlamadan son kontrolünden sürdüreceğini belirtir.
+    "Gereksinimleri tekrar kontrol et" ve "Bu sayfayı yeniden yükle" sunulur.
+  - Pasif "These checks passed…" metni kaldırıldı.
+- **Tamamlanırken "Planı düzenle" sunulmaz.** Bu adımda çalışmayı durduran tek
+  denetimdir. Düğme ve yardım satırı, 60 saniyelik bildirimle ya da çalışma
+  yeniden beklemeye geçince geri gelir; davranışı değişmedi.
+- **C. Ters DNS beklemesi kendi adıyla söylenir.** Yalnız ters DNS
+  uyuşmazlığını bekleyen son kontrol "Waiting for you" yerine "Ters DNS
+  bekleniyor" der. Yanında açık bir plan düzeltmesi varsa yine "Sizi bekliyor"
+  der. Yönlendirmeye şu cümle eklendi: "Sunucu sağlayıcınızda yapılan bir
+  değişikliğin genel DNS’e ulaşması birkaç dakikadan birkaç saate kadar
+  sürebilir; çünkü DNS çözümleyicileri eski adı, kayıtlı kopyalarının süresi
+  dolana kadar kullanır. Değişikliği yaptıysanız CelikPanel’de başka bir şey
+  yapmanız gerekmez."
+- **D. Eski yanıtlı ilk çözümleyici artık karar vermez.** Agent'ın posta
+  kimliği sorgusunda, beklenen ad olmayan bir PTR yanıtı (ya da PTR olmaması)
+  sonraki çözümleyiciye de sorulur.
+  - Beklenen adı ve eşleşen ileri A/AAAA kaydını veren herhangi bir
+    çözümleyici kimliği kanıtlar.
+  - Aksi halde ilk gözlem eskisi gibi bildirilir. Ancak ana makineyi adlandıran
+    ama ileri kaydı henüz eşleşmeyen bir PTR yanıtı öne alınır.
+  - Eşleşen bir ilk yanıttan sonra başka sorgu yapılmaz.
+
+**Kanıt.** Commit'ler: `a94f83cb0`, `febbe09e3`, `c714238d6`, `e358ebe3c`.
+
+- Yeni Go testleri:
+  - eski yanıtlı çözümleyici durumları
+    (`TestMailDNSIdentityAsksNextResolverWhenFirstAnswerIsStale`, altı durum);
+  - açık kontrolün, bekleyen çalışmayı 20 saniyelik aralıktan çok önce
+    tamamlatması. Düz bir kontrol okuması ve bir işlem okuması hiçbir şeyi
+    uyandırmaz, tamamlamaz ve değişiklik başlatmaz. Parametre adı değiştirilmiş
+    olumsuz kontrol 5,6 saniyede başarısız oldu.
+- Yeni web testleri (`web/tests/setup-finishing-mounted.test.mjs`, İngilizce ve
+  Türkçe). "Planı düzenle" kontrolleri, o değişiklik olmayan ekrana karşı
+  başarısız olur:
+  - dönen simgeler, "Gereksinimleri tekrar kontrol et" ve "Planı düzenle"
+    olmadan tamamlanma, 1,5 saniyelik okumalar, tıklamasız ve yalnız GET
+    istekleriyle bitiş;
+  - 60 saniyelik geri dönüş;
+  - yeni karşılanmamış sonucun tamamlanmayı bitirmesi.
+- Güncellenen son kontrol testleri ters DNS etiketini ve metnini kapsar.
+- Sayılar:
+  - `npm test` 1348/1348; `npx tsc --noEmit` temiz;
+  - `go test ./cmd/panel/...` 1538 test ve 1662 alt test geçti, 6 atlandı;
+  - `go test ./cmd/agent/...` 1798 test ve 2822 alt test geçti, 29 atlandı,
+    0 başarısız.
+
+Go çalıştırmaları WSL konuğu `CelikPanel-S2-Debian` içinde yapıldı. Bu konuk
+kendisi de çalışan bir CelikPanel sunucusudur: BIND etkin, bir `celikpanel`
+grubu ve canlı bir Agent durum kökü var. Bu haliyle Agent paketi, bu dalda da
+`e3c8f735a` üzerinde de aynı 19 testte başarısız olur. Yukarıdaki Agent sayısı,
+testlere temiz bir sunucu gösteren özel bir bağlama ad alanında ölçüldü:
+`/var/lib/celikpanel-agent-private` ve `/run/celikpanel` üzerine boş dizinler
+ve `celikpanel` satırı olmayan bir `/etc/group`. Konuğun kendisi değiştirilmedi.
+
+**Açık kalanlar.**
+
+- Yanıt veren çözümleyici sayfada adlandırılmıyor, çünkü Agent bunu
+  bildirmiyor.
+- D değişikliği yalnız Agent güncellendikten sonra etkili olur. O zamana kadar
+  eski yanıtlı ilk çözümleyici yine uyuşmazlık gibi okunabilir; ama yukarıdaki
+  metin artık bu beklemeyi açıklıyor.
+- Geçen bir kontrolden sonra çalışanın kendi yeniden kontrolü öncekiyle tıpatıp
+  aynı karşılanmamış sonucu bulursa, sayfa bunu henüz yeniden kontrol
+  yapılmamış olmaktan ayıramaz. Bu durumda hemen değil, 60 saniyelik "bilinmiyor"
+  bildirimiyle biter.
+- Hiçbir kurulu sunucu değiştirilmedi. Buradaki hiçbir şey kurulu bir sunucuda
+  kabul kanıtı değildir.
