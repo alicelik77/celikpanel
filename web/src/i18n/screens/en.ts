@@ -231,6 +231,8 @@ export const enScreens = {
     'dashboard.attentionNoneCheckFailed': 'No certificate or firewall setting needs action. The installed components could not be checked.',
     'dashboard.attentionNoneCheckHeld': 'No certificate or firewall setting needs action. The installed components are checked when the change in progress finishes.',
     'dashboard.attentionUnread': 'Part of this server’s state could not be read, so this list may be incomplete. This does not mean something is wrong. Nothing was changed. Try again.',
+    // Followed by err.AGENT_UNREACHABLE when the Agent is what could not be reached (2026-10-14).
+    'dashboard.attentionUnreadAgent': 'Part of this server’s state could not be read, so this list may be incomplete.',
     'dashboard.warnCountOne': '1 alert',
     'dashboard.warnCount': '{n} alerts',
     'dashboard.allGood': 'All good — nothing needs attention.',

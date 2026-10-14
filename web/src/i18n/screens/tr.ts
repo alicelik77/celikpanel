@@ -216,6 +216,8 @@ export const trScreens: Record<ScreenKey, string> = {
     'dashboard.attentionNoneCheckFailed': 'İşlem gerektiren bir sertifika ya da güvenlik duvarı ayarı yok. Kurulu bileşenler kontrol edilemedi.',
     'dashboard.attentionNoneCheckHeld': 'İşlem gerektiren bir sertifika ya da güvenlik duvarı ayarı yok. Kurulu bileşenler, süren değişiklik bitince kontrol edilir.',
     'dashboard.attentionUnread': 'Bu sunucunun durumunun bir bölümü okunamadı; bu yüzden bu liste eksik olabilir. Bu, bir şeyin yanlış olduğu anlamına gelmez. Hiçbir şey değiştirilmedi. Tekrar deneyin.',
+    // Agent'a ulaşılamadığında ardından err.AGENT_UNREACHABLE gelir (2026-10-14).
+    'dashboard.attentionUnreadAgent': 'Bu sunucunun durumunun bir bölümü okunamadı; bu yüzden bu liste eksik olabilir.',
     'dashboard.warnCountOne': '1 uyarı',
     'dashboard.warnCount': '{n} uyarı',
     'dashboard.allGood': 'Her şey yolunda — ilgi isteyen bir şey yok.',

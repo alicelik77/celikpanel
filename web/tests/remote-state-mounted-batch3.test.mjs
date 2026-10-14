@@ -926,3 +926,24 @@ test('Components: the firewall banner is read again with the page’s scan, so t
     assert.equal(requests.filter((line) => line.startsWith('POST ') && !line.startsWith('POST /api/v1/managed-services/scan')).length, 0, `the page changed something: ${requests.join(', ')}`);
   } finally { await unmount(); delete globalThis.batch3Words; }
 });
+
+// --- The Dashboard's attention list names the Agent (2026-10-14, sixteenth record O6) ---
+test('Dashboard: with the Agent not reachable, the attention notice names the Agent and what the owner checks', async () => {
+  globalThis.batch3Words = { 'err.AGENT_UNREACHABLE': tr['err.AGENT_UNREACHABLE'] };
+  serve({ '/api/v1/managed-services': freshScan(), '/api/v1/firewall': AGENT_DOWN });
+  await mount(dashboard());
+  try {
+    const shown = text();
+    assert.ok(shown.includes('dashboard.attentionUnreadAgent'), `the notice is the generic one: ${shown.slice(0, 600)}`);
+    assert.ok(shown.includes(tr['err.AGENT_UNREACHABLE']), 'the Agent sentence, with the owner’s commands, is missing');
+    assert.ok(!shown.includes('dashboard.attentionUnread '), 'the generic "nothing is wrong" notice is not shown beside it');
+    for (const phrase of CLAIMS) assert.ok(!shown.includes(phrase), `"${phrase}" is on screen while the firewall is unknown`);
+    assert.equal(requests.filter((line) => !line.startsWith('GET ')).length, 0, `the page sent a change by itself: ${requests.join(', ')}`);
+  } finally { await unmount(); delete globalThis.batch3Words; }
+  // Any other refusal keeps the generic notice.
+  serve({ '/api/v1/managed-services': freshScan(), '/api/v1/firewall': REFUSED });
+  await mount(dashboard());
+  try {
+    assert.ok(text().includes('dashboard.attentionUnread') && !text().includes('dashboard.attentionUnreadAgent'), text().slice(0, 400));
+  } finally { await unmount(); }
+});

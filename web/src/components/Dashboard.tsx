@@ -893,6 +893,12 @@ function AdminDashboard() {
                 ? 'dashboard.attentionNoneCheckHeld'
                 : 'dashboard.attentionNoneUnchecked';
     const attentionUnread = attentionReads.includes('unknown');
+    // A read refused because the Agent is not reachable names the Agent and
+    // what the owner checks (err.AGENT_UNREACHABLE), as the system-services
+    // card beside it does (sixteenth record, O6).
+    // Agent'a ulasilamadigi icin reddedilen okuma Agent'i ve sahibin denetimini adlandirir.
+    const attentionAgentUnreachable = [extrasRead.remote, domainList.remote, firewall.remote]
+        .some((remote) => remote.state === 'unknown' && remote.reason.code === 'AGENT_UNREACHABLE');
     const retryAttention = () => {
         if (extrasRead.remote.state === 'unknown') void extrasRead.retry();
         if (domainList.remote.state === 'unknown') void domainList.retry();
@@ -1162,7 +1168,9 @@ function AdminDashboard() {
                     durur; kutu o zaman yalnız bilinen kalemler için çizilir. */}
                 {attentionUnread && (
                     <CouldNotCheck
-                        text={t('dashboard.attentionUnread')}
+                        text={attentionAgentUnreachable
+                            ? `${t('dashboard.attentionUnreadAgent')} ${t('err.AGENT_UNREACHABLE')}`
+                            : t('dashboard.attentionUnread')}
                         onRetry={retryAttention}
                         busy={attentionChecking}
                         className={attention.length > 0 ? 'mb-3' : ''}
