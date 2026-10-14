@@ -1537,7 +1537,7 @@ export const trScreens: Record<ScreenKey, string> = {
     "setup.progressHelp": "Sayfayı yenileseniz veya bağlantınız kesilse de işlem sunucuda devam eder. CelikPanel aynı işleme yeniden bağlanır.",
     "setup.confirmingPrevious": "Önceki işlemin sonucu doğrulanıyor. Doğrulama tamamlandığında kurulum devam eder.",
     "setup.reconnecting": "Kuruluma yeniden bağlanılıyor",
-    "setup.uncertain": "Sonuç henüz doğrulanmadı. Başka bir kurulum başlatmayın. Bu işlemi kontrol etmek için yeniden bağlanın.",
+    "setup.uncertain": "Sonuç henüz doğrulanmadı. Başka bir kurulum başlatmayın. Bu sayfa birkaç saniyede bir sunucuya kendiliğinden yeniden sorar; sizin bir şey yapmanız gerekmez. Hemen sormak için Bu işleme yeniden bağlan düğmesini kullanın.",
     "setup.reconnect": "Bu işleme yeniden bağlan",
     "setup.operationFailed": "Kurulum için işlem gerekiyor",
     "setup.failedHelp": "İşlem aşağıdaki adımda durdu. Tamamlanan adımlar korunur. Yeni bir plan hazırlamadan önce sorunu inceleyin.",
@@ -1742,6 +1742,8 @@ export const trScreens: Record<ScreenKey, string> = {
     'setup.finishing': 'Bütün kontroller geçti. Panel kurulumu şimdi tamamlıyor; sizin bir şey yapmanız gerekmiyor. İş bitince bu sayfa kendiliğinden güncellenir.',
     'setup.finishingSlow': 'Bütün kontroller yaklaşık bir dakika önce geçti, ama sunucu kurulumun tamamlandığını henüz doğrulamadı. Bu, kurulumun başarısız olduğu anlamına gelmez; sonuç henüz bilinmiyor. Güncel durumu görmek için bu sayfayı yeniden yükleyin. Yine aynı mesaj görünüyorsa sunucudaki kurulum çalışması durmuş olabilir. Paneli yeniden başlatmak aynı kurulumu, biten adımları tekrarlamadan son kontrolünden sürdürür: sunucuda sudo systemctl restart celikpanel-panel komutunu çalıştırın. Barındırılan siteler ve hizmetler çalışmaya devam eder.',
     'setup.reloadPage': 'Bu sayfayı yeniden yükle',
+    // Yeniden bağlanma sınırlıdır: bir dakika yanıt gelmezse (2026-10-14).
+    'setup.reconnectSlow': 'Panel bu sayfaya bir dakikadan uzun süredir yanıt vermiyor; bu yüzden bu kurulumun sonucu henüz bilinmiyor. Bu, kurulumun başarısız olduğu anlamına gelmez. Bu sayfa kendiliğinden sormaya devam eder; başka bir kurulum başlatmayın. Yine yanıt gelmezse panelin çalışıp çalışmadığını sunucuda denetleyin: sudo systemctl status celikpanel-panel. Durmuşsa sudo systemctl start celikpanel-panel ile başlatın, sonra bu sayfayı yeniden yükleyin.',
     'setup.guide.verificationWaiting': 'Bütün kurulum adımları bitti. Kurulum, son kontrolünde şunu bekliyor:',
     'setup.guide.verificationResume': 'Kurulum kendiliğinden yeniden kontrol eder ve bütün kontroller geçince tamamlanır. Hemen kontrol etmek için Gereksinimleri tekrar kontrol et düğmesini kullanın.',
     'setup.guide.revisedTitle': 'Kurulum durdu: planı yeniden açıldı',

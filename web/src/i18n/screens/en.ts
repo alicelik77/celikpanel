@@ -1558,7 +1558,7 @@ export const enScreens = {
     "setup.progressHelp": "Work continues on the server if you refresh or disconnect. CelikPanel will reconnect to this same operation.",
     "setup.confirmingPrevious": "The previous operation’s result is being verified. Setup will continue when verification finishes.",
     "setup.reconnecting": "Reconnecting to setup",
-    "setup.uncertain": "The result has not been confirmed yet. Do not start another installation. Reconnect to check this operation.",
+    "setup.uncertain": "The result has not been confirmed yet. Do not start another installation. This page asks the server again every few seconds by itself, and you do not need to do anything; to ask now, use Reconnect to this operation.",
     "setup.reconnect": "Reconnect to this operation",
     "setup.operationFailed": "Setup needs attention",
     "setup.failedHelp": "The operation stopped at the step shown below. Completed steps are preserved. Review the issue before preparing another plan.",
@@ -1765,6 +1765,9 @@ export const enScreens = {
     'setup.finishing': 'Every check passed. The panel is completing setup now, and you do not need to do anything. This page updates by itself when it is done.',
     'setup.finishingSlow': 'Every check passed about a minute ago, but the server has not yet confirmed that setup is complete. This does not mean setup failed; the result is not known yet. Reload this page to read the current state. If it still says this, the setup run on the server may have stopped. Restarting the panel resumes the same setup at its final check without repeating finished steps: on the server, run sudo systemctl restart celikpanel-panel. Hosted sites and services keep running.',
     'setup.reloadPage': 'Reload this page',
+    // Reconnecting is bounded: after a minute without an answer (2026-10-14).
+    // Yeniden bağlanma sınırlıdır: bir dakika yanıt gelmezse.
+    'setup.reconnectSlow': 'The panel has not answered this page for more than a minute, so the result of this setup is not known yet. This does not mean setup failed. This page keeps asking by itself; do not start another installation. If it still has no answer, check on the server whether the panel is running: sudo systemctl status celikpanel-panel. If it is stopped, start it with sudo systemctl start celikpanel-panel, then reload this page.',
     'setup.guide.verificationWaiting': 'Every installation step has finished. Setup is waiting at its final check for this:',
     'setup.guide.verificationResume': 'Setup checks again by itself and finishes when every check passes. To check now, use Check requirements again.',
     'setup.guide.revisedTitle': 'Setup stopped: its plan was reopened',

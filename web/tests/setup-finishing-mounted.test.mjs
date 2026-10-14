@@ -228,14 +228,70 @@ for (const locale of ['en', 'tr']) {
             assert.ok(buttonNamed(tree, c['setup.editPlan']), 'Edit plan returns once the run is waiting again');
         } finally { await unmount(tree); }
     });
+
+    // Owner rule 2026-10-14: a page that waits shows motion or says plainly that
+    // nothing needs doing, and it does not wait silently for ever.
+    test(`${locale}: "Check requirements again" spins while the check runs`, async () => {
+        const { tree } = await mount(locale);
+        let answer;
+        globalThis.finishing.context.reload = () => new Promise(resolve => { answer = resolve; });
+        try {
+            await act(async () => { void buttonNamed(tree, c['setup.verify']).props.onClick(); });
+            const busy = buttonNamed(tree, c['setup.verifyChecking']);
+            assert.ok(busy, 'the button names the running check');
+            assert.equal(busy.props.loading, true, 'the button shows motion while the check runs');
+            await act(async () => { answer({ version: 1, revision: 3, origin: 'fresh', status: 'waiting', required: true, draft, checks: [ptrCheck('static.42.provider.example')] }); });
+            await act(async () => {});
+            assert.notEqual(buttonNamed(tree, c['setup.verify'])?.props.loading, true, 'the motion ends with the answer');
+        } finally { await unmount(tree); }
+    });
+
+    test(`${locale}: a lost connection reconnects with motion, says nothing needs doing, and is bounded`, async () => {
+        const { tree, world, win } = await mount(locale);
+        try {
+            const answer = globalThis.fetch;
+            globalThis.fetch = async (url, options) => {
+                world.calls.push({ url: String(url), method: options?.method || 'GET' });
+                if (String(url).includes('/setup/operation')) throw new TypeError('connection refused');
+                return Response.json(world.snapshot);
+            };
+            await fire(win, 'interval', 3000);
+            let page = textOf(tree.toJSON());
+            assert.ok(page.includes(c['setup.reconnecting']), 'the heading names the reconnect');
+            assert.ok(page.includes(c['setup.uncertain']), 'the sentence says the page asks again by itself');
+            const sentence = tree.root.findByProps({ 'data-setup-reconnecting': '' });
+            assert.equal(sentence.findAll(node => node.props && node.props['data-spinner'] !== undefined).length, 1, 'the reconnect carries a spinner');
+            assert.ok(intervals(win).includes(3000), 'the page keeps reading by itself');
+            assert.ok([...win.timers.values()].some(item => item.kind === 'timeout' && item.ms === 60000), 'the reconnect is bounded');
+            await fire(win, 'timeout', 60000);
+            page = textOf(tree.toJSON());
+            assert.ok(page.includes(c['setup.reconnectSlow']), 'an honest unknown result after a minute');
+            assert.ok(c['setup.reconnectSlow'].includes('sudo systemctl status celikpanel-panel'));
+            assert.equal(tree.root.findAll(node => node.props && node.props['data-setup-reconnecting'] !== undefined).length, 0, 'no spinner left running');
+            assert.ok(intervals(win).includes(3000), 'reads continue after the notice');
+            const reload = buttonNamed(tree, c['setup.reloadPage']);
+            assert.ok(reload, 'reload this page');
+            await act(async () => reload.props.onClick());
+            assert.equal(win.reloads, 1);
+            // The server answers again: the reconnect and its notice end by themselves.
+            globalThis.fetch = answer;
+            await fire(win, 'interval', 3000);
+            page = textOf(tree.toJSON());
+            assert.ok(!page.includes(c['setup.reconnectSlow']) && !page.includes(c['setup.reconnecting']));
+            assert.ok(world.calls.every(call => call.method === 'GET'), 'reconnecting only reads');
+        } finally { await unmount(tree); }
+    });
 }
 
 test('the finishing and reverse DNS wording names who acts and how it resumes in both languages', () => {
-    for (const key of ['setup.finishing', 'setup.finishingSlow', 'setup.finishingTitle', 'setup.reloadPage', 'setup.stepState.finishing', 'setup.stepState.waitingReverseDNS', 'setup.guide.reverseDNSPropagation']) {
+    for (const key of ['setup.finishing', 'setup.finishingSlow', 'setup.finishingTitle', 'setup.reloadPage', 'setup.stepState.finishing', 'setup.stepState.waitingReverseDNS', 'setup.guide.reverseDNSPropagation', 'setup.uncertain', 'setup.reconnectSlow']) {
         for (const locale of ['en', 'tr']) assert.ok(catalogues[locale][key], `${locale} ${key}`);
     }
     assert.match(catalogues.en['setup.finishing'], /you do not need to do anything/);
     assert.match(catalogues.tr['setup.finishing'], /sizin bir şey yapmanız gerekmiyor/);
+    assert.match(catalogues.en['setup.uncertain'], /by itself, and you do not need to do anything/);
+    assert.match(catalogues.tr['setup.uncertain'], /kendiliğinden yeniden sorar; sizin bir şey yapmanız gerekmez/);
+    for (const locale of ['en', 'tr']) assert.match(catalogues[locale]['setup.reconnectSlow'], /sudo systemctl start celikpanel-panel/);
     assert.match(catalogues.en['setup.guide.reverseDNSPropagation'], /you do not need to do anything more in CelikPanel\.$/);
     assert.match(catalogues.tr['setup.guide.reverseDNSPropagation'], /CelikPanel’de başka bir şey yapmanız gerekmez\.$/);
     for (const locale of ['en', 'tr']) assert.doesNotMatch(catalogues[locale]['setup.stepState.waitingReverseDNS'], /you|siz/i, 'not "Waiting for you"');

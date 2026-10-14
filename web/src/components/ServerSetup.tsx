@@ -160,6 +160,11 @@ export function ServerSetup() {
 // Sahibin basarili kontrolunden sonra tamamlanma; bu sureden sonra sonuc
 // bilinmiyor denir, sonsuz bekleme gosterilmez.
 const setupFinishingLimit = 60_000;
+// The page keeps reading a setup it could not reach every few seconds. Past
+// this bound it stops showing that as a short reconnect and says the result is
+// not known and what the owner can check (D-024, owner rule 2026-10-14).
+// Ulasilamayan kurulum okunmaya devam eder; bu sureden sonra sonuc bilinmiyor denir.
+const setupReconnectLimit = 60_000;
 const setupChecksPassed = (checks: ServerSetupCheck[]) => checks.length > 0 && checks.every(check => check.state === 'ready');
 
 function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
@@ -194,6 +199,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     const [remoteVerified, setRemoteVerified] = useState(false);
     const [error, setError] = useState('');
     const [reconnecting, setReconnecting] = useState(false);
+    const [reconnectSlow, setReconnectSlow] = useState(false);
     const [enrollmentNotice, setEnrollmentNotice] = useState<'checking' | 'unknown' | null>(null);
     const [completionFailed, setCompletionFailed] = useState(false);
     const [verificationResult, setVerificationResult] = useState<{ checks: ServerSetupCheck[]; failed: boolean } | null>(null);
@@ -335,6 +341,14 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
         const timer = window.setTimeout(() => setFinishingSlow(true), setupFinishingLimit);
         return () => window.clearTimeout(timer);
     }, [finishingRun]);
+    // Reconnecting is shown as active for a bounded time; the reads go on after it.
+    // Yeniden baglanma sinirli sure etkin gosterilir; okumalar sonra da surer.
+    useEffect(() => {
+        setReconnectSlow(false);
+        if (!reconnecting) return;
+        const timer = window.setTimeout(() => setReconnectSlow(true), setupReconnectLimit);
+        return () => window.clearTimeout(timer);
+    }, [reconnecting]);
     // Once the certificate handover is behind this setup, drop its flag from
     // the saved marker: a later restart is then not explained as the handover.
     // Devir geride kalinca isaret kaldirilir; sonraki yeniden baslatma devir sayilmaz.
@@ -562,8 +576,13 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
             {resolving ? <div className="flex items-center gap-3"><Spinner label={t('setup.resuming')} /><p>{t('setup.resuming')}</p></div>
                 : step === 'progress' || hasOperation ? <section aria-labelledby="setup-progress-title">
                     <h2 id="setup-progress-title" className="text-xl font-semibold">{t(handoverDrop ? 'setup.handover.dropTitle' : reconnecting ? 'setup.reconnecting' : stateTitle ?? (finishing ? 'setup.finishingTitle' : execution?.status === 'failed' ? 'setup.operationFailed' : waitingLicense ? 'setup.licenseWaiting' : execution?.status === 'waiting' ? 'setup.waiting' : execution?.status === 'succeeded' ? 'setup.verifying' : 'setup.installing'))}</h2>
-                    {handoverDrop ? <div role="status" className="mt-3 max-w-2xl"><p className="break-words text-sm leading-6 text-fg-muted">{t('setup.handover.drop', { host: handoverDrop.host })}</p>{handoverDrop.elsewhere && <SetupHandoverAddress lead={t('setup.handover.dropAddress')} url={handoverURL} />}</div>
-                        : reconnecting && <p className="mt-3 text-sm leading-6 text-fg-muted">{t('setup.uncertain')}</p>}
+                    {/* The page reads the operation again by itself while it reconnects: that is
+                        shown as active, with motion, and for a bounded time (owner rule 2026-10-14).
+                        Sayfa yeniden baglanirken islemi kendisi okur; bu hareketle ve sinirli sure gosterilir. */}
+                    {handoverDrop ? <div role="status" className="mt-3 max-w-2xl"><p className="flex items-start gap-3 break-words text-sm leading-6 text-fg-muted" data-setup-reconnecting=""><Loader2 className="mt-1 h-4 w-4 shrink-0 text-primary motion-safe:animate-spin" aria-hidden="true" /><span>{t('setup.handover.drop', { host: handoverDrop.host })}</span></p>{handoverDrop.elsewhere && <SetupHandoverAddress lead={t('setup.handover.dropAddress')} url={handoverURL} />}</div>
+                        : reconnecting && (reconnectSlow
+                            ? <div role="status" className="mt-3 max-w-2xl rounded-lg border border-border bg-surface p-4"><p className="break-words text-sm leading-6" data-setup-reconnect-slow="">{t('setup.reconnectSlow')}</p><Button variant="secondary" className="mt-3" onClick={() => window.location.reload()}>{t('setup.reloadPage')}</Button></div>
+                            : <p role="status" className="mt-3 flex max-w-2xl items-start gap-3 text-sm leading-6 text-fg-muted" data-setup-reconnecting=""><Loader2 className="mt-1 h-4 w-4 shrink-0 text-primary motion-safe:animate-spin" aria-hidden="true" /><span>{t('setup.uncertain')}</span></p>)}
                     {execution?.status === 'waiting' && execution.phase === 'dns_publisher' && <SetupDNSPublisher key={execution.id} execution={execution} onBound={reconcile} />}
                     {hostBusy ? <div role="alert" className={`mt-4 rounded-lg border p-4 sm:p-5 ${hostBusy.caution ? 'border-warning-mark/40 bg-warning-mark/10' : 'border-border bg-surface'}`}>
                         <p className="max-w-3xl break-words text-sm leading-6 text-fg">{t(hostBusy.body)}</p>
@@ -605,7 +624,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                     <div className="mt-6 flex flex-wrap gap-3">
                         {canReviseWaiting && !guidance && <Button variant="secondary" disabled={busy} onClick={() => void reviseWaiting()}>{t('setup.editPlan')}</Button>}
                         {execution?.status === 'failed' ? !guidance && <Button variant="primary" onClick={editPlan}>{t('setup.revise')}</Button>
-                            : waitingVerification ? !finishing && <Button variant="primary" disabled={busy} onClick={() => void verifyManual()}>{t(verifyingRequirements ? 'setup.verifyChecking' : 'setup.verify')}</Button>
+                            : waitingVerification ? !finishing && <Button variant="primary" disabled={busy} loading={verifyingRequirements} onClick={() => void verifyManual()}>{t(verifyingRequirements ? 'setup.verifyChecking' : 'setup.verify')}</Button>
                                 : (reconnecting || completionFailed) && <Button variant={handoverDrop ? 'secondary' : 'primary'} disabled={busy} onClick={() => void (marker && !execution ? resumeUnconfirmed() : reconcile())}>{t(marker && !execution ? 'setup.resumeConfirmed' : 'setup.reconnect')}</Button>}
                     </div>
                     {waitingVerification && <div role="status" aria-live="polite" aria-atomic="true" className="mt-4 text-sm">
@@ -785,7 +804,7 @@ function SetupDNSPublisher({ execution, onBound }: { execution: ServerSetupExecu
             <fieldset disabled={busy || bound}><ServerSetupDNSConnection value={connection} requiredEndpoint={endpoint} onChange={id => { setConnection(id); setVerified(false); setFailed(false); }} onValidityChange={setVerified} /></fieldset>
             {failed && <p role="alert" className="text-sm text-danger">{t('setup.publisher.bindFailed')}</p>}
             {bound && <p role="status" className="text-sm text-fg-muted">{t('setup.publisher.bound')}</p>}
-            <Button type="button" variant="primary" disabled={!connection || !verified || busy || bound} onClick={() => void bind()}>{t('setup.publisher.continue')}</Button>
+            <Button type="button" variant="primary" disabled={!connection || !verified || busy || bound} loading={busy} onClick={() => void bind()}>{t('setup.publisher.continue')}</Button>
         </> : <p role="alert" className="text-sm text-danger">{t('setup.publisher.endpointRequired')}</p>}
     </div>;
 }
