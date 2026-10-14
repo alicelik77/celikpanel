@@ -52,6 +52,8 @@ interface SSLSettings {
     hsts_enabled: boolean;
     hsts_max_age: number;
     hsts_retire_after?: string | null;
+    // Additive (2026-10-14): the time left on the server's clock when it answered.
+    hsts_retire_remaining_seconds?: number | null;
 }
 
 interface SSLData {
@@ -243,7 +245,7 @@ export function DomainSSLSettings({
     useEffect(() => {
         const now = Date.now();
         setClockMs(now);
-        const retireAfter = parseActiveHSTSRetirement(data?.settings.hsts_retire_after, now);
+        const retireAfter = activeHSTSRetirement(hstsRetirementEnd(data?.settings, observedAt), now);
         if (!retireAfter) return;
 
         let timer: number | undefined;
@@ -258,7 +260,7 @@ export function DomainSSLSettings({
         return () => {
             if (timer !== undefined) window.clearTimeout(timer);
         };
-    }, [data?.settings.hsts_retire_after]);
+    }, [data?.settings.hsts_retire_after, data?.settings.hsts_retire_remaining_seconds, observedAt]);
 
     useEffect(() => {
         const certificate = data?.certificate;
@@ -566,7 +568,7 @@ export function DomainSSLSettings({
             showToast('warning', t('ssl.removeBlockedByHsts'));
             return;
         }
-        const retirementUntil = parseActiveHSTSRetirement(data?.settings.hsts_retire_after, Date.now());
+        const retirementUntil = activeHSTSRetirement(hstsRetirementEnd(data?.settings, observedAt), Date.now());
         if (retirementUntil) {
             showToast(
                 'warning',
@@ -619,7 +621,7 @@ export function DomainSSLSettings({
         ...(mailAvailable === true && includeMail ? [mailName] : []),
     ]);
     const renewalState = cert ? renewalStatusMeta(cert.renewal_status) : null;
-    const hstsRetirementUntil = parseActiveHSTSRetirement(data.settings.hsts_retire_after, clockMs);
+    const hstsRetirementUntil = activeHSTSRetirement(hstsRetirementEnd(data.settings, observedAt), clockMs);
     const hstsRetirementDate = hstsRetirementUntil
         ? formatHSTSRetirementDate(hstsRetirementUntil, locale)
         : '';
@@ -743,6 +745,7 @@ export function DomainSSLSettings({
                                                 icon={RefreshCw}
                                                 onClick={handleRetryActivation}
                                                 disabled={readOnly || locked || retrying}
+                                                loading={retrying}
                                                 className="shrink-0"
                                             >
                                                 {t(retrying ? 'ssl.retrying' : 'ssl.retryActivation')}
@@ -957,6 +960,7 @@ export function DomainSSLSettings({
                                 icon={Lock}
                                 onClick={handleIssue}
                                 disabled={locked || providersRead.remote.state !== 'known' || issuing || !email || replacementBlockedByMailState}
+                                loading={issuing}
                             >
                                 {issuing
                                     ? t(data.has_certificate ? 'ssl.reissuing' : 'ssl.issuing')
@@ -981,6 +985,7 @@ export function DomainSSLSettings({
                                     variant="primary"
                                     icon={Upload}
                                     disabled={locked || uploading || !certFile || !keyFile || replacementBlockedByMailState}
+                                    loading={uploading}
                                 >
                                     {uploading ? t('ssl.uploading') : t('ssl.upload')}
                                 </Button>
@@ -1299,11 +1304,29 @@ function normaliseDNSName(name: string): string {
     return name.trim().toLowerCase().replace(/\.$/, '');
 }
 
-function parseActiveHSTSRetirement(raw: string | null | undefined, nowMs: number): Date | null {
-    if (!raw) return null;
-    const retireAfter = new Date(raw);
-    if (!Number.isFinite(retireAfter.getTime()) || retireAfter.getTime() <= nowMs) return null;
-    return retireAfter;
+// The end of an HSTS retirement on THIS browser's clock (D-032 clock rule, as
+// lib/accessObservation.ts and the Dashboard's scan age). The server states the
+// time left on its own clock when it answered; the page adds it to the moment
+// it received that answer, which is not earlier than the server's measurement,
+// so the end is never earlier than the server allows and controls the server
+// still refuses are not offered. The browser never compares its clock with the
+// server's stamp. An older server without the field, or a value that is not a
+// finite number, keeps the absolute hsts_retire_after rule.
+// HSTS geri çekilmesinin bu tarayıcının saatindeki sonu: sunucunun kendi
+// saatiyle söylediği kalan süre, yanıtın alındığı ana eklenir.
+function hstsRetirementEnd(settings: { hsts_retire_after?: string | null; hsts_retire_remaining_seconds?: number | null } | undefined, observedAt: number): Date | null {
+    if (!settings) return null;
+    const remaining = settings.hsts_retire_remaining_seconds;
+    if (typeof remaining === 'number' && Number.isFinite(remaining)) {
+        return remaining > 0 ? new Date(observedAt + remaining * 1_000) : null;
+    }
+    if (!settings.hsts_retire_after) return null;
+    const retireAfter = new Date(settings.hsts_retire_after);
+    return Number.isFinite(retireAfter.getTime()) ? retireAfter : null;
+}
+
+function activeHSTSRetirement(end: Date | null, nowMs: number): Date | null {
+    return end && end.getTime() > nowMs ? end : null;
 }
 
 function formatHSTSRetirementDate(retireAfter: Date, locale: 'tr' | 'en'): string {

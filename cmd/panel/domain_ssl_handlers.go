@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"net/http"
 	"strings"
 	"time"
@@ -113,6 +114,33 @@ type SSLSettings struct {
 	HSTSEnabled     bool       `json:"hsts_enabled"`
 	HSTSMaxAge      int        `json:"hsts_max_age"`
 	HSTSRetireAfter *time.Time `json:"hsts_retire_after,omitempty"`
+	// HSTSRetireRemainingSeconds is how long the HSTS retirement still runs,
+	// measured on THIS server's clock when the answer is written (D-032 clock
+	// rule, as scan_age_seconds and valid_for_seconds). The page adds it to
+	// the moment it received the answer and never compares its own clock with
+	// HSTSRetireAfter. 0 once the retirement has passed; absent without one.
+	// Additive: HSTSRetireAfter stays for older pages.
+	// HSTS geri çekilmesinin kalan süresi, yanıt yazılırken BU sunucunun
+	// saatiyle; sayfa bunu yanıtı aldığı ana ekler ve kendi saatini
+	// HSTSRetireAfter ile karşılaştırmaz. Eklemeli; eski alan kalır.
+	HSTSRetireRemainingSeconds *float64 `json:"hsts_retire_remaining_seconds,omitempty"`
+}
+
+// stampHSTSRetireRemaining sets HSTSRetireRemainingSeconds from
+// HSTSRetireAfter on this server's clock at `now`, the moment the answer is
+// written; millisecond precision, never negative.
+// stampHSTSRetireRemaining, kalan süreyi yanıtın yazıldığı `now` anında bu
+// sunucunun saatiyle hesaplar; milisaniye hassasiyetinde, asla negatif değil.
+func (settings *SSLSettings) stampHSTSRetireRemaining(now time.Time) {
+	settings.HSTSRetireRemainingSeconds = nil
+	if settings.HSTSRetireAfter == nil {
+		return
+	}
+	remaining := math.Round(settings.HSTSRetireAfter.Sub(now).Seconds()*1000) / 1000
+	if remaining < 0 {
+		remaining = 0
+	}
+	settings.HSTSRetireRemainingSeconds = &remaining
 }
 
 // DomainSSLResponse represents the complete SSL status for a domain
@@ -316,6 +344,7 @@ func (p *Panel) handleGetDomainSSL(w http.ResponseWriter, r *http.Request, domai
 		}
 		settings.HSTSRetireAfter = retireAfter
 	}
+	settings.stampHSTSRetireRemaining(time.Now())
 	response.Settings = settings
 
 	// Get certificate info. The sqlite driver hands TEXT columns back as
