@@ -905,6 +905,10 @@ export const trScreens: Record<ScreenKey, string> = {
     'conn.status.propagating': 'DNS değişikliği yayılıyor',
     'conn.propagation.title': 'Genel DNS önbellekleri henüz aynı cevabı vermiyor',
     'conn.propagation.desc': 'Kayıtçıdaki değişiklik internete ulaşıyor, ancak bazı çözümleyiciler önceki cevabı hâlâ tutuyor. Kayıtları tekrar değiştirmeyin; aşağıdaki satırlar canlı farkı gösterir.',
+    // Değişiklik yayılırken kart kendiliğinden yeniden kontrol eder (2026-10-14).
+    'conn.propagation.auto': 'Sağlayıcınızda yapılan bir DNS değişikliğinin yayılması birkaç dakikadan birkaç saate kadar sürebilir. Bu sayfa yarım dakikada bir kendiliğinden yeniden kontrol eder; sizin bir şey yapmanız gerekmez. Tekrar kontrol et düğmesi hemen kontrol eder.',
+    'conn.propagation.lastChecked': 'Son kontrol: {time}.',
+    'conn.propagation.autoStopped': 'Son kontrolde ({time}) değişiklik hâlâ yayılıyordu. Bu sayfa 30 dakika sonra kendiliğinden kontrol etmeyi bıraktı. Bu bir hata değildir: bir DNS değişikliğinin yayılması birkaç saat sürebilir. Tekrar kontrol et düğmesini kullanın ya da daha sonra yeniden bakın.',
     'conn.okDelegated': 'Bu alan adı yapılandırılmış ad sunucularına tam bağlı; kayıtlar, posta kimlik doğrulaması ve sertifikalar burada yönetiliyor.',
     "conn.okARecord": "Bu alan adı bu sunucuyu gösteriyor. DNS sağlayıcınızda kalır; e-postayı açarken gerekli posta ve kimlik doğrulama kayıtlarını oraya ekleyin.",
     'conn.sslReady': 'Bu alan adı için sertifika alınabilir. İstemek için Barındırma altındaki SSL bölümünü açın.',

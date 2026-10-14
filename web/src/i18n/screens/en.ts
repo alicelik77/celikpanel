@@ -922,6 +922,11 @@ export const enScreens = {
     'conn.status.propagating': 'DNS update is spreading',
     'conn.propagation.title': 'Public DNS caches do not agree yet',
     'conn.propagation.desc': 'The registrar change is reaching the Internet, but some resolvers still hold the previous answer. Do not change the records again; the rows below show the live split.',
+    // The card checks again by itself while a change spreads (owner rule 2026-10-14).
+    // Değişiklik yayılırken kart kendiliğinden yeniden kontrol eder.
+    'conn.propagation.auto': 'A DNS change at your provider can take from a few minutes to several hours to spread. This page checks again by itself every half minute, and you do not need to do anything. Check again checks now.',
+    'conn.propagation.lastChecked': 'Last checked at {time}.',
+    'conn.propagation.autoStopped': 'Still spreading as of the last check at {time}. This page stopped checking by itself after 30 minutes. This is not a failure: a DNS change can take several hours to spread. Use Check again, or come back later.',
     'conn.okDelegated': 'This domain is fully connected to the configured nameservers, so records, mail authentication and certificates are managed here.',
     "conn.okARecord": "This domain points to this server. DNS remains at your provider; add the required mail and authentication records there when enabling mail.",
     'conn.sslReady': 'A certificate can be issued for this domain. Open the SSL section under Hosting to request one.',
