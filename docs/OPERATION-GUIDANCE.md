@@ -7413,6 +7413,7 @@ and not measured on an installed server.
   received it; never compared with the browser's clock). Then it stops and says
   that the change was still spreading at the last check, that this is not a
   failure, and to use "Check again" or come back later.
-- Counts: `npm test` 1386 of 1386 (eleven new tests, each failing against the
-  screen before its change); `npx tsc --noEmit` clean. No Go was changed or
+- Counts: `npm test` 1386 of 1386 (eleven new tests: nine mounted ones, each
+  failing against the screen before its change, and two wording checks);
+  `npx tsc --noEmit` clean. No Go was changed or
   run.

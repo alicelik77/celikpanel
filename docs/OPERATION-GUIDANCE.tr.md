@@ -7382,6 +7382,7 @@ yapıldı ve kurulu bir sunucuda ölçülmedi.
   karşılaştırılmaz). Sonra durur ve son kontrolde değişikliğin hâlâ yayıldığını,
   bunun bir hata olmadığını, "Tekrar kontrol et"in kullanılabileceğini ya da
   daha sonra yeniden bakılabileceğini söyler.
-- Sayılar: `npm test` 1386/1386 (her biri değişiklikten önceki ekrana karşı
-  başarısız olan on bir yeni test); `npx tsc --noEmit` temiz. Go değiştirilmedi
+- Sayılar: `npm test` 1386/1386 (on bir yeni test: her biri değişiklikten
+  önceki ekrana karşı başarısız olan dokuz bağlanan test ve iki metin
+  denetimi); `npx tsc --noEmit` temiz. Go değiştirilmedi
   ve çalıştırılmadı.
