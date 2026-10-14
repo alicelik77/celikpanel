@@ -1587,3 +1587,36 @@ test('Import: while an archive is inspected the button spins', async () => {
     assert.equal(calls.filter((call) => call.method === 'POST').length, 1);
   } finally { await cleanup(); }
 });
+
+// --- A paused server change lifts by itself (owner rule 2026-10-14) -----------
+// The install dialog read whether the server was ready once, when it opened, and
+// said "Wait for it to finish" with nothing ever reading again.
+test('A component page: the install dialog reads readiness again while the server is busy, says so, and lifts by itself', async () => {
+  let busy = true;
+  serve({
+    '/api/v1/managed-services': json({ services: [record({ is_installed: false, status: '', unit: undefined })] }),
+    '/api/v1/host-mutation-readiness': () => Response.json(busy ? { ready: false, code: 'HOST_MUTATION_BUSY', reason: 'package_manager_active' } : { ready: true }),
+  });
+  const timers = [];
+  const realSetInterval = globalThis.setInterval;
+  const realClearInterval = globalThis.clearInterval;
+  globalThis.setInterval = (fn, ms) => { timers.push({ fn, ms }); return timers.length; };
+  globalThis.clearInterval = () => {};
+  try {
+    await mount(ServiceShell, shell);
+    await press(buttons('svc.install')[0]);
+    assert.ok(has('services.mutationReadiness.package_manager_active'), text().slice(0, 600));
+    assert.ok(has('services.mutationReadiness.autoResume'), 'the dialog does not say the pause lifts by itself');
+    const poll = timers.find((item) => item.ms === 5000);
+    assert.ok(poll, 'the dialog does not read again');
+    busy = false;
+    await act(async () => { poll.fn(); await settled(); await settled(); });
+    assert.equal(reads('/api/v1/host-mutation-readiness'), 2);
+    assert.ok(!has('services.mutationReadiness.autoResume') && !has('services.mutationReadiness.package_manager_active'), 'the pause did not lift');
+    assert.equal(calls.filter((call) => call.method !== 'GET').length, 0, 'reading readiness changed something');
+  } finally {
+    globalThis.setInterval = realSetInterval;
+    globalThis.clearInterval = realClearInterval;
+    await cleanup();
+  }
+});

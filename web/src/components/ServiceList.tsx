@@ -1197,7 +1197,9 @@ export function ServiceList({ onManageService }: ServiceListProps) {
             {hostMutationReadiness?.ready === false && (
                 <section role='status' className='mb-4 rounded-xl border border-warning-mark/60 bg-warning-mark/20 px-4 py-3 text-sm text-fg'>
                     <span className='font-semibold'>{t('services.mutationReadiness.title')}</span>{' '}
-                    {readinessMessage}
+                    {readinessMessage}{' '}
+                    {/* The readiness poll above lifts this by itself (owner rule 2026-10-14). */}
+                    {t('services.mutationReadiness.autoResume')}
                 </section>
             )}
 

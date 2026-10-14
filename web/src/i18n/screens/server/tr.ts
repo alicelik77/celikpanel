@@ -841,7 +841,9 @@ export const trServerScreens: Record<ServerScreenKey, string> = {
     'services.mutationReadiness.agent_mutation_active': 'Bu sunucuda başka bir bileşen değişikliği hâlâ sürüyor. Tamamlanmasını bekleyin.',
     'services.mutationReadiness.host_lock_busy': 'Başka bir sunucu değişikliği işlem kilidini hâlâ tutuyor. Kısa süre bekleyip yeniden deneyin.',
     'services.mutationReadiness.package_manager_active': 'İşletim sistemi paket kuruyor veya güncelliyor. Tamamlanmasını bekleyin.',
-    'services.mutationReadiness.state_unverified': 'CelikPanel sunucunun boşta olduğunu güvenle doğrulayamadı. Değişiklik yapmadan önce sayfayı yenileyin.',
+    'services.mutationReadiness.state_unverified': 'CelikPanel sunucunun boşta olduğunu güvenle doğrulayamadı; doğrulayana kadar değişiklikler beklemede kalır.',
+    // Sayfanın hazır olma durumunu kendiliğinden yeniden okuduğu yerlerde (2026-10-14).
+    'services.mutationReadiness.autoResume': 'Bu sayfa birkaç saniyede bir yeniden denetler ve bu beklemeyi kendiliğinden kaldırır; sayfayı yeniden yüklemeniz gerekmez.',
     'services.confirm.start.title': '{name} başlatılsın mı?',
     'services.confirm.start.description': 'Bu işlem servis sürecini başlatır. Servisi kullanan özellikler hemen erişilebilir olabilir.',
     'services.confirm.start.button': '{name} başlat',

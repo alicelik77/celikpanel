@@ -1000,3 +1000,14 @@ test('Dashboard mail card: the profile name and the server’s sentence are said
     assert.ok(!shown.includes('Some components are already present'), 'the English server sentence is shown');
   } finally { await unmount(); delete globalThis.batch3MailActivity; }
 });
+
+test('Components: a paused server change says the page lifts it by itself, without asking for a reload', async () => {
+  serve({ '/api/v1/host-mutation-readiness': { ready: false, code: 'HOST_MUTATION_BUSY', reason: 'package_manager_active' }, '/api/v1/managed-services/scan': scanRoute });
+  await mount(React.createElement(ServiceList, {}));
+  try {
+    await settle();
+    const shown = text();
+    assert.ok(shown.includes('services.mutationReadiness.package_manager_active'), shown.slice(0, 400));
+    assert.ok(shown.includes('services.mutationReadiness.autoResume'), 'the banner does not say it lifts by itself');
+  } finally { await unmount(); }
+});

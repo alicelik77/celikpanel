@@ -898,7 +898,9 @@ export const enServerScreens = {
     'services.mutationReadiness.agent_mutation_active': 'Another component change is still running on this server. Wait for it to finish.',
     'services.mutationReadiness.host_lock_busy': 'Another server change still holds the operation lock. Wait briefly, then try again.',
     'services.mutationReadiness.package_manager_active': 'The operating system is installing or updating packages. Wait for it to finish.',
-    'services.mutationReadiness.state_unverified': 'CelikPanel could not safely verify that the server is idle. Refresh the page before making a change.',
+    'services.mutationReadiness.state_unverified': 'CelikPanel could not safely verify that the server is idle, so changes stay paused until it can.',
+    // Where the page reads readiness again by itself (2026-10-14): nothing to do, it lifts by itself.
+    'services.mutationReadiness.autoResume': 'This page checks again every few seconds and lifts this pause by itself; you do not need to reload it.',
     'services.confirm.start.title': 'Start {name}?',
     'services.confirm.start.description': 'This starts the service process. Features that use it may become reachable immediately.',
     'services.confirm.start.button': 'Start {name}',

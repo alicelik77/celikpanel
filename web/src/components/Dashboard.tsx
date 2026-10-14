@@ -1440,6 +1440,8 @@ function DashboardFirewallConfirmationDialog({
                 <p role="status" className="rounded-lg border border-warning-mark/60 bg-warning-mark/20 px-3 py-2 text-sm text-fg">
                     <span className="font-semibold">{t('services.mutationReadiness.title')}</span>{' '}
                     {readinessMessage}
+                    {/* The page reads readiness every 5 s and lifts this by itself (2026-10-14). */}
+                    {readiness?.ready === false && <>{' '}{t('services.mutationReadiness.autoResume')}</>}
                 </p>
             )}
         </Dialog>
