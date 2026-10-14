@@ -970,6 +970,19 @@ export const enServerScreens = {
     'services.mailProfiles.dnsRequired': 'Configure and publish this server’s DNS identity before installing a mail stack. The profiles remain visible so you can review them.',
     'services.mailProfiles.dnsRequiredShort': 'Configure and publish the server DNS identity first.',
     'services.mailProfiles.status.unknown': 'Awaiting verified scan',
+    // The compiled profiles' descriptions and the server's profile sentences in
+    // the interface language (lib/mailProfileText.ts, 2026-10-14).
+    // Derlenmiş profillerin açıklamaları ve sunucunun profil cümleleri arayüz dilinde.
+    'services.mailProfiles.description.coreMail': 'Postfix SMTP and Dovecot IMAP/POP3 with authenticated submission.',
+    'services.mailProfiles.description.webmail': 'Core mail plus Nginx, PHP-FPM and Roundcube webmail.',
+    'services.mailProfiles.description.protectedMail': 'Core mail with Rspamd spam filtering.',
+    'services.mailProfiles.text.repairToVerify': 'Components are running. Run Repair to verify and reconcile the complete mail profile, including mail TLS and authenticated submission.',
+    'services.mailProfiles.text.webmailUnverified': 'Whether the webmail runtime is ready is not verified yet. The next component scan checks it.',
+    'services.mailProfiles.text.roundcubeNotReady': 'Roundcube is installed, but its Unix-socket runtime is not ready.',
+    'services.mailProfiles.text.partlyPresent': 'Some components are already present. Installing this profile completes the full plan without removing the services already in place.',
+    'services.mailProfiles.text.stateUnverified': 'The service state is not verified yet. The next component scan checks it.',
+    'services.mailProfiles.text.stateIncomplete': 'The service state that was read is incomplete. The next component scan checks it again.',
+    'services.mailProfiles.text.catalogueIncomplete': 'The server’s profile catalogue is incomplete.',
     'services.mailProfiles.status.available': 'Ready to install',
     'services.mailProfiles.status.partial': 'Partially installed',
     'services.mailProfiles.status.complete': 'Components running',

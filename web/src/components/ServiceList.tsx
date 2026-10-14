@@ -24,6 +24,7 @@ import {
 } from './FirewallSSHNotice';
 import { Link, useLocation, useNavigate } from '../router';
 import { publishComponentCensus } from '../lib/componentCensus';
+import { mailProfileDescription, mailProfileName, mailProfileSentence } from '../lib/mailProfileText';
 
 // One installed copy of a runtime (B3b): php8.3-fpm is an instance, a Node
 // tree under /opt/celikpanel/runtimes is an instance. `unit` empty means the
@@ -1128,7 +1129,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
         setProfileTarget(null);
         await startInstall({
             serviceId: profile.id,
-            name: profile.name,
+            name: mailProfileName(profile, t),
             operationKind: 'mail_profile_install',
             ...(chosenHostname ? { mailHostname: chosenHostname } : {}),
         });
@@ -2024,8 +2025,8 @@ function MailProfileCards({ profiles, services, disabled, dnsIdentityReady, onIn
                         : profile.status === 'complete' && profile.warning
                         ? t('services.mailProfiles.profileComponentsNeedRepair')
                         : profile.status === 'blocked'
-                            ? profile.blocked_reason
-                            : profile.warning;
+                            ? profile.blocked_reason && mailProfileSentence(profile.blocked_reason, t)
+                            : profile.warning && mailProfileSentence(profile.warning, t);
                     const ActionIcon = profile.status === 'available' ? DownloadCloud : RotateCw;
                     return (
                         <article key={profile.id} className='flex min-w-0 flex-col rounded-xl border border-border bg-surface p-4'>
@@ -2036,8 +2037,8 @@ function MailProfileCards({ profiles, services, disabled, dnsIdentityReady, onIn
                                         : <Mail className='h-5 w-5' />}
                                 </span>
                                 <div className='min-w-0'>
-                                    <h3 className='font-semibold text-fg'>{profile.name}</h3>
-                                    <p className='mt-1 text-xs leading-5 text-fg-muted'>{profile.description}</p>
+                                    <h3 className='font-semibold text-fg'>{mailProfileName(profile, t)}</h3>
+                                    <p className='mt-1 text-xs leading-5 text-fg-muted'>{mailProfileDescription(profile, t)}</p>
                                 </div>
                             </div>
                             <div className='mt-4 flex flex-wrap gap-1.5' aria-label={t('services.mailProfiles.includes')}>
@@ -2193,7 +2194,7 @@ function MailProfileInstallDialog({
         <Dialog
             id='mail-profile-confirm'
             width='xl'
-            title={t(`services.mailProfiles.plan.title.${mode}` as Parameters<typeof t>[0], { name: profile.name })}
+            title={t(`services.mailProfiles.plan.title.${mode}` as Parameters<typeof t>[0], { name: mailProfileName(profile, t) })}
             description={t('services.mailProfiles.plan.description')}
             onDismiss={onCancel}
             footerLead={
@@ -2221,7 +2222,7 @@ function MailProfileInstallDialog({
                         disabled={!acknowledged || !hostnameReady}
                         onClick={() => onConfirm(hostnameSettled ? '' : canonicalHostname ?? '')}
                     >
-                        {t(`services.mailProfiles.plan.confirm.${mode}` as Parameters<typeof t>[0], { name: profile.name })}
+                        {t(`services.mailProfiles.plan.confirm.${mode}` as Parameters<typeof t>[0], { name: mailProfileName(profile, t) })}
                     </Button>
                 </>
             }

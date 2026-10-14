@@ -74,7 +74,8 @@ const stub = dataModule(`
   // What the Components page imports beside these.
   export const useLocation = () => ({ hash: '', pathname: '/services' });
   export const ServiceActionNotice = () => null, isServiceActionOutcome = () => false;
-  export const accountStart = () => null, hasMailActivity = () => false;
+  // The mail-stack card is drawn only where a test asks for it.
+  export const accountStart = () => null, hasMailActivity = () => globalThis.batch3MailActivity === true;
   // What components/ComponentOperation.tsx imports and never calls here: only
   // its decoder is used, and that is the real one.
   export const createPortal = () => null;
@@ -104,6 +105,7 @@ const Dashboard = await pick(lib('components/Dashboard.tsx', {
   '/lib/firewall': firewallURL,
   '/lib/accounts': lib('lib/accounts.ts', { '/remote': remoteURL }),
   '/lib/dashboardMailTruth': lib('lib/dashboardMailTruth.ts'),
+  '/lib/mailProfileText': lib('lib/mailProfileText.ts'),
   '/lib/componentCensus': lib('lib/componentCensus.ts'),
   '/ComponentOperation': operationURL,
 }), 'Dashboard');
@@ -116,6 +118,7 @@ const ServiceList = await pick(lib('components/ServiceList.tsx', {
     export const useComponentOperation = () => idle;
   `),
   '/lib/componentCensus': lib('lib/componentCensus.ts'),
+  '/lib/mailProfileText': lib('lib/mailProfileText.ts'),
 }), 'ServiceList');
 globalThis.window ??= globalThis;
 // The real DNS engine card, mounted with the real decoder of its state. What
@@ -946,4 +949,54 @@ test('Dashboard: with the Agent not reachable, the attention notice names the Ag
   try {
     assert.ok(text().includes('dashboard.attentionUnread') && !text().includes('dashboard.attentionUnreadAgent'), text().slice(0, 400));
   } finally { await unmount(); }
+});
+
+// --- The Dashboard's mail-stack card follows the page's own check (2026-10-14) ---
+// It said "Status needs refresh", "Open Components and rescan before trusting
+// mail status" and offered "Open Components to rescan" while the page was
+// checking by itself (D-032), and showed the server's English profile text.
+const STALE = '2026-10-09T09:00:00Z';
+const mailScan = (scannedAt, profiles) => ({ ...good['/api/v1/managed-services'], scanned_at: scannedAt, profiles });
+const MAIL_STALE_KEYS = ['dashboard.mailStacks.rescan', 'dashboard.mailStacks.scanStale', 'dashboard.mailStacks.status.stale'];
+
+test('Dashboard mail card: while the page checks by itself it says so, with motion, and asks nothing', async () => {
+  globalThis.batch3MailActivity = true;
+  serve({ '/api/v1/managed-services': mailScan(STALE, [profile('core-mail'), profile('webmail'), profile('protected-mail')]), '/api/v1/managed-services/scan': HANG });
+  await mount(dashboard());
+  try {
+    const shown = text();
+    assert.ok(shown.includes('dashboard.mailStacks.status.checking'), `the card does not say it is checking: ${shown.slice(0, 600)}`);
+    assert.ok(statusLabels().includes('dashboard.systemServicesChecking'), 'the card carries the checking spinner');
+    for (const key of MAIL_STALE_KEYS) assert.ok(!shown.includes(key), `"${key}" is on screen while the page checks by itself`);
+    assert.equal(requests.filter((line) => line.startsWith('POST /api/v1/managed-services/scan')).length, 1, 'one check, by the page');
+  } finally { await unmount(); delete globalThis.batch3MailActivity; }
+});
+
+test('Dashboard mail card: a check that could not run says the status is not known, without sending the owner to rescan', async () => {
+  globalThis.batch3MailActivity = true;
+  serve({ '/api/v1/managed-services': mailScan(STALE, [profile('core-mail'), profile('webmail'), profile('protected-mail')]), '/api/v1/managed-services/scan': REFUSED });
+  await mount(dashboard());
+  try {
+    await settle();
+    const shown = text();
+    assert.ok(shown.includes('dashboard.mailStacks.checkFailed'), shown.slice(0, 600));
+    const card = tree.root.find((node) => node.props['aria-labelledby'] === 'dashboard-mail-stacks-heading');
+    const cardText = JSON.stringify(card.findAll((node) => typeof node.type === 'string').map((node) => node.children.filter((child) => typeof child === 'string')));
+    assert.ok(cardText.includes('dashboard.statusUnknown'), `the card does not say the status is unknown: ${cardText}`);
+    for (const key of MAIL_STALE_KEYS) assert.ok(!shown.includes(key), `"${key}" is on screen`);
+    assert.ok(shown.includes('dashboard.mailStacks.open'), 'the card still opens the mail stacks');
+  } finally { await unmount(); delete globalThis.batch3MailActivity; }
+});
+
+test('Dashboard mail card: the profile name and the server’s sentence are said in the interface language', async () => {
+  globalThis.batch3MailActivity = true;
+  const partial = { ...profile('core-mail'), status: 'partial', warning: 'Some components are already present. Installing this profile will reconcile the full plan without removing completed services.' };
+  serve({ '/api/v1/managed-services': mailScan(new Date().toISOString(), [partial, profile('webmail'), profile('protected-mail')]) });
+  await mount(dashboard());
+  try {
+    const shown = text();
+    assert.ok(shown.includes('dashboard.audit.profile.coreMail'), `the profile is not named in the interface language: ${shown.slice(0, 600)}`);
+    assert.ok(shown.includes('services.mailProfiles.text.partlyPresent'), 'the server sentence is not translated');
+    assert.ok(!shown.includes('Some components are already present'), 'the English server sentence is shown');
+  } finally { await unmount(); delete globalThis.batch3MailActivity; }
 });

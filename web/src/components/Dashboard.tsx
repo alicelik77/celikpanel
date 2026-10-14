@@ -21,6 +21,7 @@ import { countText, decodeList, lastKnown, mapRemote, useRemote, type Observed, 
 import { decodeFirewallStatus, useFirewallStatus, type FirewallStatus } from '../lib/firewall';
 import { USERS_URL, decodeUsers } from '../lib/accounts';
 import { summarizeDashboardMailTruth } from '../lib/dashboardMailTruth';
+import { mailProfileName, mailProfileSentence } from '../lib/mailProfileText';
 import { publishComponentCensus } from '../lib/componentCensus';
 import {
     decodeManagedMailProfiles,
@@ -1115,6 +1116,7 @@ function AdminDashboard() {
                     scanFresh={serviceScanFresh}
                     hostNeverChecked={hostNeverChecked}
                     checking={componentScanBusy}
+                    card={servicesCard}
                     onCheck={scanComponents}
                     onOpen={() => navigate('/services#mail-stacks')}
                 />
@@ -1457,22 +1459,34 @@ function DashboardFirewallConfirmationDialog({
 // koşmamış bir makinede operatöre taramanın beş dakikadan eski olduğunu
 // söylüyordu. R-040'ın bileşenler ekranında ve yanındaki sistem servisleri
 // kartında kaldırdığı bilinmeyen/yok katlaması bir kart öteye sağ kalmıştı.
-function MailStackSummary({ profiles, scanFresh, hostNeverChecked, checking, onCheck, onOpen }: {
+// Since D-032 the page checks the components by itself. While the scan is not
+// current this card follows that check, as the system-services card does:
+// checking (with motion), held by a change, could not check, or not checked
+// recently; it no longer sends the owner to Components to rescan (alpha.84
+// open item, 2026-10-14). Profile names and the server's sentences are said in
+// the interface language (lib/mailProfileText.ts).
+// D-032'den beri sayfa bileşenleri kendisi kontrol eder; tarama güncel değilken
+// bu kart o kontrolü izler ve sahibi yeniden taramaya göndermez.
+function MailStackSummary({ profiles, scanFresh, hostNeverChecked, checking, card, onCheck, onOpen }: {
     profiles: ManagedMailProfile[];
     scanFresh: boolean;
     hostNeverChecked: boolean;
     checking: boolean;
+    card: 'known' | 'checking' | 'held' | 'failed' | 'unread' | 'never' | 'stale';
     onCheck: () => void;
     onOpen: () => void;
 }) {
     const { t } = useI18n();
     const { complete, problem, partial, needsAttention, availableOnly } =
         summarizeDashboardMailTruth(profiles, scanFresh);
+    const checkingNow = !hostNeverChecked && !scanFresh && card === 'checking';
+    const problemName = problem ? mailProfileName(problem, t) : '';
 
     const statusKey: TranslationKey = hostNeverChecked
         ? 'services.notChecked'
         : !scanFresh
-        ? 'dashboard.mailStacks.status.stale'
+        ? checkingNow ? 'dashboard.mailStacks.status.checking'
+            : card === 'stale' ? 'dashboard.mailStacks.status.stale' : 'dashboard.statusUnknown'
         : partial
             ? 'dashboard.mailStacks.status.partial'
         : needsAttention
@@ -1483,18 +1497,22 @@ function MailStackSummary({ profiles, scanFresh, hostNeverChecked, checking, onC
     const detail = hostNeverChecked
         ? t('dashboard.mailStacks.notChecked')
         : !scanFresh
-        ? t('dashboard.mailStacks.scanStale')
+        ? card === 'held'
+            ? t('dashboard.systemServicesCheckHeld')
+            : card === 'failed' || card === 'unread'
+                ? t('dashboard.mailStacks.checkFailed')
+                : t('dashboard.systemServicesNotRecent')
         : problem?.latest_attempt_error || problem?.blocked_reason || problem?.warning
             ? t('dashboard.mailStacks.reason', {
-                name: problem?.name ?? t('dashboard.mailStacks.title'),
-                reason: problem?.latest_attempt_error ?? problem?.blocked_reason ?? problem?.warning ?? '',
+                name: problemName || t('dashboard.mailStacks.title'),
+                reason: mailProfileSentence(problem?.latest_attempt_error ?? problem?.blocked_reason ?? problem?.warning ?? '', t),
             })
             : problem?.latest_attempt_status === 'failed'
-                ? t('dashboard.mailStacks.reconciliationFailed', { name: problem.name })
+                ? t('dashboard.mailStacks.reconciliationFailed', { name: problemName })
                 : problem?.latest_attempt_status === 'in_progress'
-                    ? t('dashboard.mailStacks.reconciliationInProgress', { name: problem.name })
+                    ? t('dashboard.mailStacks.reconciliationInProgress', { name: problemName })
                     : problem?.latest_attempt_status === 'succeeded' && !problem.verified
-                        ? t('dashboard.mailStacks.reconciliationUnverified', { name: problem.name })
+                        ? t('dashboard.mailStacks.reconciliationUnverified', { name: problemName })
                         : partial
                             ? t('dashboard.mailStacks.partialHint')
                             : problem
@@ -1524,7 +1542,9 @@ function MailStackSummary({ profiles, scanFresh, hostNeverChecked, checking, onC
                             <h2 id='dashboard-mail-stacks-heading' className='font-semibold text-fg'>{t('dashboard.mailStacks.title')}</h2>
                             <span className={'rounded-full px-2.5 py-1 text-xs font-semibold ' + statusClass}>{t(statusKey)}</span>
                         </div>
-                        <p className='mt-1 text-sm text-fg-muted'>{detail}</p>
+                        {checkingNow
+                            ? <Checking label={t('dashboard.systemServicesChecking')} className='mt-1' />
+                            : <p className='mt-1 text-sm text-fg-muted'>{detail}</p>}
                     </div>
                     {/* The same check the system-services card beside it
                         offers, run here rather than pointing at another page —
@@ -1544,7 +1564,7 @@ function MailStackSummary({ profiles, scanFresh, hostNeverChecked, checking, onC
                         </button>
                     ) : (
                         <button type='button' onClick={onOpen} className='inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-sm font-semibold text-primary-fg hover:bg-primary/90'>
-                            {t(scanFresh ? 'dashboard.mailStacks.open' : 'dashboard.mailStacks.rescan')} <ArrowRight className='h-4 w-4' />
+                            {t('dashboard.mailStacks.open')} <ArrowRight className='h-4 w-4' />
                         </button>
                     )}
                 </div>
