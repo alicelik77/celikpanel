@@ -12,7 +12,7 @@ import { api, type SystemStats } from '../lib/api';
 import { useI18n } from '../i18n';
 import { useAuth } from '../auth/AuthContext';
 import type { TranslationKey } from '../i18n/en';
-import { Button, Checking, CouldNotCheck, Dialog, Spinner, UsageBar, Card } from './ui';
+import { Button, Checking, CouldNotCheck, Dialog, KeepWords, Spinner, UsageBar, Card } from './ui';
 import { PageHeader } from './PageHeader';
 import { showToast } from './Toast';
 import { FirewallNoSSHAcknowledgement, readFirewallSSHReason } from './FirewallSSHNotice';
@@ -1015,11 +1015,11 @@ function AdminDashboard() {
                                     <p className="mt-2 flex items-start gap-1.5 text-xs leading-5 text-fg">
                                         <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning" aria-hidden="true" />
                                         <span className="min-w-0 break-words">
-                                            {t('dashboard.systemServicesCheckFailed', {
+                                            <KeepWords text={t('dashboard.systemServicesCheckFailed', {
                                                 reason: scanOutcome?.kind === 'failed'
                                                     ? scanOutcome.reason
                                                     : t('dashboard.systemServicesRecordsUnread'),
-                                            })}
+                                            })} />
                                         </span>
                                     </p>
                                 ) : (
@@ -1170,9 +1170,9 @@ function AdminDashboard() {
                     durur; kutu o zaman yalnız bilinen kalemler için çizilir. */}
                 {attentionUnread && (
                     <CouldNotCheck
-                        text={attentionAgentUnreachable
+                        text={<KeepWords text={attentionAgentUnreachable
                             ? `${t('dashboard.attentionUnreadAgent')} ${t('err.AGENT_UNREACHABLE')}`
-                            : t('dashboard.attentionUnread')}
+                            : t('dashboard.attentionUnread')} />}
                         onRetry={retryAttention}
                         busy={attentionChecking}
                         className={attention.length > 0 ? 'mb-3' : ''}

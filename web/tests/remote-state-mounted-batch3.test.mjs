@@ -212,7 +212,9 @@ async function unmount() {
 }
 const text = () => {
   const walk = (node) => (typeof node === 'string' ? node : !node ? '' : Array.isArray(node) ? node.map(walk).join(' ') : walk(node.children));
-  return walk(tree.toJSON());
+  // Runs of white space are one space: a sentence drawn in pieces (KeepWords
+  // keeps a hyphenated command whole) reads as the same sentence.
+  return walk(tree.toJSON()).replace(/\s+/g, ' ');
 };
 const buttons = () => tree.root.findAll((node) => node.type === 'button');
 const label = (node) => { const walk = (n) => (typeof n === 'string' ? n : (n.children || []).map(walk).join('')); return walk(node); };
@@ -908,6 +910,15 @@ test('Components: the firewall banner says a coded refusal in the interface lang
     assert.ok(shown.includes('firewall.unknown'), `the banner does not say the state is unknown: ${shown.slice(0, 400)}`);
     assert.ok(shown.includes(tr['err.AGENT_UNREACHABLE']), `the Agent is not named in the interface language: ${shown.slice(0, 400)}`);
     assert.ok(!shown.includes('The CelikPanel Agent on this server is not reachable.'), 'the server sentence is shown instead of the translation');
+    // A read that failed is not a failure of the firewall: the attention
+    // surface, never the failure colour; and a command is never broken at its
+    // hyphen ("celikpanel-" / "agent"; browser inspection 2026-10-14).
+    const banner = tree.root.find((node) => node.props && node.props['data-firewall-unread'] !== undefined);
+    const classes = [banner, ...banner.findAll((node) => typeof node.props?.className === 'string')].map((node) => node.props.className).join(' ');
+    assert.ok(!/danger/.test(classes), `the unread firewall is drawn in the failure colour: ${classes}`);
+    assert.match(banner.props.className, /warning-mark/);
+    const whole = banner.findAll((node) => node.type === 'span' && /whitespace-nowrap/.test(node.props.className || '')).map((node) => node.props.children);
+    assert.ok(whole.includes('celikpanel-agent'), `the command can break at its hyphen: ${JSON.stringify(whole)}`);
   } finally { await unmount(); delete globalThis.batch3Words; }
 });
 

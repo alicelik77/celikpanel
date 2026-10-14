@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Copy, Globe, RefreshCw, ShieldCheck, AlertTriangle, Check } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
-import { Checking, CouldNotCheck, RemoteGate, StatusDot } from './ui';
+import { Checking, CouldNotCheck, KeepWords, RemoteGate, StatusDot } from './ui';
 import { decodeList, lastKnown, useRemote } from '../lib/remote';
 import { HelpButton } from './HelpDrawer';
 
@@ -296,7 +296,7 @@ export function DomainConnection({ domainId, domainName }: { domainId: number; d
                                 <span className="font-medium text-fg">{observation.resolver}</span>
                                 {' — NS '}
                                 <span className="font-mono">
-                                    {observation.nameservers.length ? observation.nameservers.join(', ') : t('conn.none')}
+                                    {observation.nameservers.length ? <KeepWords text={observation.nameservers.join(', ')} /> : t('conn.none')}
                                 </span>
                                 {' · IP '}
                                 <span className="font-mono">

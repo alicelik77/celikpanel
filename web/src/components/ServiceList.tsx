@@ -3,7 +3,7 @@ import { Settings, Play, Square, RotateCw, RefreshCw, ScanSearch, DownloadCloud,
 import type { LucideIcon } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
-import { Button, Checking, CouldNotCheck, Dialog, EmptyState, ErrorBanner, SearchInput, Spinner, StatusDot } from './ui';
+import { Button, Checking, CouldNotCheck, Dialog, EmptyState, ErrorBanner, KeepWords, SearchInput, Spinner, StatusDot } from './ui';
 import { PageHeader } from './PageHeader';
 import { readApiError, apiErrorText, type ApiError } from '../lib/apiError';
 import { ServiceActionNotice, isServiceActionOutcome } from './ServiceActionNotice';
@@ -3408,26 +3408,29 @@ function FirewallBar({
         else await toggle();
     };
 
+    // A read that failed is not a failure of the firewall: it stands on the
+    // attention surface with ink text, never in the failure colour (DESIGN.md,
+    // "could not check"; browser inspection 2026-10-14). The text keeps a
+    // readable width: on a phone the unavailable control goes under it
+    // instead of squeezing it to half the card.
+    // Basarisiz okuma guvenlik duvarinin basarisizligi degildir: dikkat
+    // yuzeyinde, murekkep metinle durur; telefonda denetim metnin altina iner.
     if (statusError) {
         return (
-            <section role="alert" className="mb-4 rounded-xl border border-danger/40 bg-danger/5 p-4">
-                <div className="flex flex-wrap items-center gap-3">
-                    <ShieldOff className="h-5 w-5 shrink-0 text-danger" />
-                    <div className="min-w-0 flex-1">
+            <section role="alert" className="mb-4 rounded-xl border border-warning-mark/60 bg-warning-mark/20 p-4" data-firewall-unread="">
+                <div className="flex flex-wrap items-start gap-3">
+                    <ShieldOff className="mt-0.5 h-5 w-5 shrink-0 text-warning" aria-hidden="true" />
+                    <div className="min-w-0 flex-1 basis-64">
                         <div className="text-sm font-semibold text-fg">
                             {t('firewall.title')}{' '}
-                            <span className="text-danger">{t('firewall.unknown')}</span>
+                            <span>{t('firewall.unknown')}</span>
                         </div>
                         <p className="text-xs text-fg-muted">{t('firewall.unknownHint')}</p>
-                        <p className="mt-1 break-words text-xs text-danger">{statusError}</p>
+                        <p className="mt-1 break-words text-xs text-fg"><KeepWords text={statusError} /></p>
                     </div>
-                    <button
-                        type="button"
-                        disabled
-                        className="cursor-not-allowed rounded-lg border border-border-strong bg-surface px-3 py-1.5 text-xs font-semibold text-fg opacity-50"
-                    >
+                    <Button type="button" variant="secondary" disabled>
                         {t('firewall.controlUnavailable')}
-                    </button>
+                    </Button>
                 </div>
             </section>
         );
