@@ -7,7 +7,7 @@ import type { TranslationKey } from '../i18n/en';
 // alpha.84). The profile id names its words; a server sentence this page has
 // words for is said in the interface language, and any other is shown as the
 // server wrote it. Matching the server's sentence is an interim: a typed
-// reason on the answer would replace it (open in docs/OPERATION-GUIDANCE.md).
+// reason on the answer would replace it (a server change, not made yet).
 //
 // Bir posta profilinin adı ve söyledikleri, arayüz dilinde. Sunucu üç profili
 // İngilizce ad ve açıklamayla, durum cümlelerini İngilizce metin olarak
