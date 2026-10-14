@@ -12,7 +12,7 @@ import { ServerSetupSteps } from './ServerSetupSteps';
 import { ServerSetupDNSConnection } from './ServerSetupDNSConnections';
 import { remoteDNSEndpoint } from '../lib/remoteDNS';
 import { ServerSetupChoice, ServerSetupManualAction } from './ServerSetupChoice';
-import { Button, inputClass, Spinner } from './ui';
+import { Button, inputClass, KeepWords, Spinner } from './ui';
 import { AddressLink } from './AddressLink';
 import { ServerSetupComponents, useSetupComponentCatalog } from './ServerSetupComponents';
 import { setupComponentName, setupExecutionGuidance, setupHostBusyGuidance, setupHostingRootBlockerValues, setupPlanReopened, setupStepState, setupStepStateLabel, type SetupGuidanceText } from '../lib/serverSetupGuidance';
@@ -581,7 +581,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                         Sayfa yeniden baglanirken islemi kendisi okur; bu hareketle ve sinirli sure gosterilir. */}
                     {handoverDrop ? <div role="status" className="mt-3 max-w-2xl"><p className="flex items-start gap-3 break-words text-sm leading-6 text-fg-muted" data-setup-reconnecting=""><Loader2 className="mt-1 h-4 w-4 shrink-0 text-primary motion-safe:animate-spin" aria-hidden="true" /><span>{t('setup.handover.drop', { host: handoverDrop.host })}</span></p>{handoverDrop.elsewhere && <SetupHandoverAddress lead={t('setup.handover.dropAddress')} url={handoverURL} />}</div>
                         : reconnecting && (reconnectSlow
-                            ? <div role="status" className="mt-3 max-w-2xl rounded-lg border border-border bg-surface p-4"><p className="break-words text-sm leading-6" data-setup-reconnect-slow="">{t('setup.reconnectSlow')}</p><Button variant="secondary" className="mt-3" onClick={() => window.location.reload()}>{t('setup.reloadPage')}</Button></div>
+                            ? <div role="status" className="mt-3 max-w-2xl rounded-lg border border-border bg-surface p-4"><p className="break-words text-sm leading-6" data-setup-reconnect-slow=""><KeepWords text={t('setup.reconnectSlow')} /></p><Button variant="secondary" className="mt-3" onClick={() => window.location.reload()}>{t('setup.reloadPage')}</Button></div>
                             : <p role="status" className="mt-3 flex max-w-2xl items-start gap-3 text-sm leading-6 text-fg-muted" data-setup-reconnecting=""><Loader2 className="mt-1 h-4 w-4 shrink-0 text-primary motion-safe:animate-spin" aria-hidden="true" /><span>{t('setup.uncertain')}</span></p>)}
                     {execution?.status === 'waiting' && execution.phase === 'dns_publisher' && <SetupDNSPublisher key={execution.id} execution={execution} onBound={reconcile} />}
                     {hostBusy ? <div role="alert" className={`mt-4 rounded-lg border p-4 sm:p-5 ${hostBusy.caution ? 'border-warning-mark/40 bg-warning-mark/10' : 'border-border bg-surface'}`}>
@@ -613,7 +613,12 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                         {execution?.steps.map(item => {
                             // The step's real state: a stopped run shows nothing in progress, and a
                             // waiting final check says what it waits for (lib/serverSetupGuidance).
-                            const status = finishing && item.kind === 'verify' ? 'finishing' : setupStepState(execution, item, progressChecks);
+                            const status = finishing && item.kind === 'verify' ? 'finishing'
+                                // Past the finishing bound every check had passed and completion is
+                                // not confirmed: not "Waiting for requirements" (browser inspection
+                                // 2026-10-14). Sinirdan sonra: kontroller gecti, tamamlanma dogrulanmadi.
+                                : finishingRun && finishingSlow && item.kind === 'verify' && waitingVerification ? 'unconfirmed'
+                                    : setupStepState(execution, item, progressChecks);
                             const tone = status === 'failed' ? 'font-medium text-danger' : status === 'waitingOwner' || status === 'stopped' ? 'font-medium text-fg' : 'text-fg-muted';
                             return <li key={item.id} className="flex flex-col items-start justify-between gap-2 py-4 sm:flex-row sm:items-center sm:gap-4" data-step-state={status}><div className="min-w-0"><p className="font-medium">{t(`setup.kind.${item.kind}`, { target: stepTarget(item.kind, item.target) })}</p>{item.qualifier && item.kind !== 'mail_enrollment' && <p className="mt-1 break-words text-sm text-fg-muted">{item.qualifier}</p>}{handoverNotice && item.kind === 'panel_certificate' && <p className="mt-1 text-sm text-fg-muted">{t('setup.handover.stepNote')}</p>}</div><span className={`flex shrink-0 items-center gap-2 text-sm ${tone}`}>{status === 'succeeded' ? <Check className="h-4 w-4 text-success" aria-hidden="true" /> : status === 'running' || status === 'finishing' ? <Loader2 className="h-4 w-4 motion-safe:animate-spin" aria-hidden="true" /> : <Circle className="h-3 w-3" aria-hidden="true" />}{t(setupStepStateLabel[status])}</span></li>; })}
                     </ol>
@@ -630,7 +635,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                     {waitingVerification && <div role="status" aria-live="polite" aria-atomic="true" className="mt-4 text-sm">
                         {verificationMessage && <div className="rounded-lg border border-border bg-surface p-4">
                             {finishing ? <p className="flex items-start gap-3 font-medium" data-setup-finishing=""><Loader2 className="mt-0.5 h-4 w-4 shrink-0 text-primary motion-safe:animate-spin" aria-hidden="true" /><span>{t(verificationMessage)}</span></p>
-                                : <p className={verificationMessage === 'setup.finishingSlow' ? 'max-w-3xl break-words leading-6' : 'font-medium'}>{t(verificationMessage)}</p>}
+                                : <p className={verificationMessage === 'setup.finishingSlow' ? 'max-w-3xl break-words leading-6' : 'font-medium'}>{verificationMessage === 'setup.finishingSlow' ? <KeepWords text={t(verificationMessage)} /> : t(verificationMessage)}</p>}
                             {!verifyingRequirements && verifiedBlockers.length > 0 && <ul className="mt-2 list-disc space-y-2 pl-5 text-fg-muted">{verifiedBlockers.map(check => <li key={check.id}>{failureText(check.code)}</li>)}</ul>}
                             {verificationMessage === 'setup.finishingSlow' && <Button variant="secondary" className="mt-3" onClick={() => window.location.reload()}>{t('setup.reloadPage')}</Button>}
                         </div>}

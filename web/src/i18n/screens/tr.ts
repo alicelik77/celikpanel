@@ -1744,6 +1744,8 @@ export const trScreens: Record<ScreenKey, string> = {
     // Ters DNS değişikliği genel DNS'e yayılır; sahibin başarılı kontrolünden sonra tamamlanma (2026-10-14).
     'setup.stepState.waitingReverseDNS': 'Ters DNS bekleniyor',
     'setup.stepState.finishing': 'Kurulum tamamlanıyor',
+    // 60 sn sınırından sonra: bütün kontroller geçti, tamamlanma doğrulanmadı.
+    'setup.stepState.unconfirmed': 'Henüz doğrulanmadı',
     'setup.guide.reverseDNSPropagation': 'Sunucu sağlayıcınızda yapılan bir değişikliğin genel DNS’e ulaşması birkaç dakikadan birkaç saate kadar sürebilir; çünkü DNS çözümleyicileri eski adı, kayıtlı kopyalarının süresi dolana kadar kullanır. Değişikliği yaptıysanız CelikPanel’de başka bir şey yapmanız gerekmez.',
     'setup.finishingTitle': 'Kurulum tamamlanıyor',
     'setup.finishing': 'Bütün kontroller geçti. Panel kurulumu şimdi tamamlıyor; sizin bir şey yapmanız gerekmiyor. İş bitince bu sayfa kendiliğinden güncellenir.',

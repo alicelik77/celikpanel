@@ -49,6 +49,7 @@ export const Link = props => React.createElement('a', { ...props, href: props.to
 export const useServerSetup = () => globalThis.finalCheck.context;
 export const ServerSetupShell = props => React.createElement('main', null, props.navigation, props.children);
 export const Button = props => React.createElement('button', props);
+export const KeepWords = props => props.text;
 export const Spinner = () => React.createElement('span', null, 'loading');
 export const ArrowRight = () => null, Check = () => null, Circle = () => null, Loader2 = () => null;
 export const ServerSetupDNSConnection = () => null;

@@ -80,7 +80,7 @@ function checkLine(check: ServerSetupCheck): SetupCheckLine {
 // the server completes setup.
 // Durmus calismada surmekte olan adim yoktur; bekleyen son denetim neyi
 // bekledigini soyler. Ters DNS saglayicida ayarlanir ve yayilmasi beklenir.
-export type SetupStepState = 'pending' | 'running' | 'succeeded' | 'failed' | 'stopped' | 'notStarted' | 'waitingOwner' | 'waitingReverseDNS' | 'waitingRequirement' | 'finishing' | 'unknown';
+export type SetupStepState = 'pending' | 'running' | 'succeeded' | 'failed' | 'stopped' | 'notStarted' | 'waitingOwner' | 'waitingReverseDNS' | 'waitingRequirement' | 'finishing' | 'unconfirmed' | 'unknown';
 // The typed reason whose fix is made at the server provider and then spreads
 // through public DNS (cmd/panel setupMailIdentityReason).
 const reverseDNSWait = (check: ServerSetupCheck) => check.id === 'mail_identity' && check.state === 'action_required' && check.reason === 'reverse_dns_mismatch' && !!setupCheckReasonText(check);
@@ -106,7 +106,7 @@ export const setupStepStateLabel: Record<SetupStepState, TranslationKey> = {
     pending: 'setup.operation.pending', running: 'setup.operation.running', succeeded: 'setup.operation.succeeded',
     failed: 'setup.stepState.failed', stopped: 'setup.stepState.stopped', notStarted: 'setup.stepState.notStarted',
     waitingOwner: 'setup.stepState.waitingOwner', waitingReverseDNS: 'setup.stepState.waitingReverseDNS', waitingRequirement: 'setup.verifyWaiting',
-    finishing: 'setup.stepState.finishing', unknown: 'setup.stepState.unknown',
+    finishing: 'setup.stepState.finishing', unconfirmed: 'setup.stepState.unconfirmed', unknown: 'setup.stepState.unknown',
 };
 
 const componentNames: Record<string, string> = { nginx: 'Nginx', 'php-fpm': 'PHP-FPM', mariadb: 'MariaDB', postgresql: 'PostgreSQL', node: 'Node.js', nftables: 'nftables', certbot: 'Certbot', postfix: 'Postfix', dovecot: 'Dovecot', rspamd: 'Rspamd', roundcube: 'Roundcube', bind: 'BIND', pdns: 'PowerDNS', webmail: 'Webmail', 'core-mail': 'Core Mail', 'protected-mail': 'Spam-Protected Mail' };

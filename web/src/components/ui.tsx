@@ -570,6 +570,26 @@ export function Checking({ label, className }: { label: string; className?: stri
     );
 }
 
+// A sentence whose hyphenated tokens never break at their hyphen. A browser
+// may wrap a line after a hyphen, so "sudo systemctl start celikpanel-agent"
+// was drawn as "celikpanel-" / "agent", and a resolver's
+// "dns1.registrar-servers.example" as "registrar-" / "servers.example": two
+// words the owner then reads or types apart (browser inspection of the waiting
+// states, 2026-10-14; the owner's rule: nothing breaks inside a word). The line
+// still wraps at spaces, and the characters are unchanged, so copying gives
+// exactly the command. A token longer than 40 characters stays free to wrap,
+// so it can never push a phone screen sideways.
+// Tireli sözcükler tirelerinden bölünmez; satır boşluklarda kırılır, metin aynı kalır.
+export function KeepWords({ text }: { text: string }) {
+    return (
+        <>
+            {text.split(/(\S+-\S+)/).map((part, index) => (index % 2 === 1 && part.length <= 40
+                ? <span key={index} className="whitespace-nowrap">{part}</span>
+                : part))}
+        </>
+    );
+}
+
 export function CouldNotCheck({
     text,
     onRetry,

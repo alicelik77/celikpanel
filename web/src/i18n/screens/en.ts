@@ -1768,6 +1768,8 @@ export const enScreens = {
     // Ters DNS değişikliği genel DNS'e yayılır; sahibin başarılı kontrolünden sonra tamamlanma.
     'setup.stepState.waitingReverseDNS': 'Waiting for reverse DNS',
     'setup.stepState.finishing': 'Finishing setup',
+    // After the 60 s finishing bound: every check passed, completion not confirmed (2026-10-14).
+    'setup.stepState.unconfirmed': 'Not confirmed yet',
     'setup.guide.reverseDNSPropagation': 'A change made at your server provider can take from a few minutes to several hours to reach public DNS, because DNS resolvers keep the old name until their saved copy expires. Once you have made the change, you do not need to do anything more in CelikPanel.',
     'setup.finishingTitle': 'Finishing setup',
     'setup.finishing': 'Every check passed. The panel is completing setup now, and you do not need to do anything. This page updates by itself when it is done.',

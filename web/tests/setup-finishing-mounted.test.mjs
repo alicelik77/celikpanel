@@ -47,6 +47,7 @@ export const Link = props => React.createElement('a', { ...props, href: props.to
 export const useServerSetup = () => globalThis.finishing.context;
 export const ServerSetupShell = props => React.createElement('main', null, props.navigation, props.children);
 export const Button = props => React.createElement('button', props);
+export const KeepWords = props => props.text;
 export const Spinner = () => React.createElement('span', null, 'loading');
 export const ArrowRight = () => null, Check = () => null, Circle = () => null;
 export const Loader2 = props => React.createElement('svg', { 'data-spinner': '', className: props.className });
@@ -200,6 +201,11 @@ for (const locale of ['en', 'tr']) {
             assert.ok(!page.includes(c['setup.finishing']));
             assert.equal(tree.root.findAll(node => node.props && node.props['data-setup-finishing'] !== undefined).length, 0, 'no spinner left running');
             assert.notEqual(verifyState(tree), 'finishing');
+            // Every check had passed: the step says completion is not confirmed,
+            // not "Waiting for requirements" (browser inspection 2026-10-14).
+            assert.equal(verifyState(tree), 'unconfirmed');
+            assert.ok(page.includes(c['setup.stepState.unconfirmed']));
+            assert.ok(!page.includes(c['setup.verifyWaiting']), 'no "Waiting for requirements" after every check passed');
             assert.ok(buttonNamed(tree, c['setup.verify']), 'the owner can check again');
             assert.ok(buttonNamed(tree, c['setup.editPlan']), 'Edit plan returns with the unknown result');
             assert.ok(intervals(win).includes(3000), 'back to the usual reads');

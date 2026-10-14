@@ -37,6 +37,7 @@ export const ServerSetupShell = props => React.createElement('main',null,props.n
 export const Layout = props => React.createElement('div',null,props.children);
 export const BrandMark=()=>null, LanguageSwitcher=()=>null, ThemeSwitcher=()=>null, ChangePasswordModal=()=>null;
 export const Button=props=>React.createElement('button',props);
+export const KeepWords=props=>props.text;
 export const Spinner=()=>React.createElement('span',null,'loading');
 export const ArrowRight=()=>null, Check=()=>null, Circle=()=>null, Loader2=()=>null;
 export const ServerSetupDNSConnection=props=>React.createElement('remote-connection',props);
