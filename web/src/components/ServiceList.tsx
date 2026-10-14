@@ -418,6 +418,12 @@ export function ServiceList({ onManageService }: ServiceListProps) {
     const [services, setServices] = useState<ManagedService[]>([]);
     const [profiles, setProfiles] = useState<ManagedMailProfile[]>([]);
     const [scannedAt, setScannedAt] = useState<string | null>(null);
+    // Counts the scans this page has received. The firewall banner reads its
+    // state again with each, so it does not keep an Agent error the scan no
+    // longer shows (sixteenth record, O5).
+    // Bu sayfanin aldigi taramalari sayar; guvenlik duvari bandi her birinde
+    // durumunu yeniden okur.
+    const [scanRound, setScanRound] = useState(0);
     const [dnsIdentityReady, setDNSIdentityReady] = useState(false);
     const [mailHostname, setMailHostname] = useState<MailHostnameIdentity | null>(null);
     const [hostMutationReadiness, setHostMutationReadiness] = useState<HostMutationReadiness | null>(null);
@@ -473,6 +479,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
         const snapshot = parseManagedServicesSnapshot(value);
         if (!snapshot) return false;
         if (source === 'scan' && snapshot.scannedAt === null) return false;
+        if (source === 'scan') setScanRound((round) => round + 1);
 
         const currentScannedAt = latestScannedAtRef.current;
         const currentTimestamp = Date.parse(currentScannedAt || '');
@@ -1183,6 +1190,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                 readiness={hostMutationReadiness}
                 readinessMessage={readinessMessage}
                 onRefreshReadiness={loadHostMutationReadiness}
+                refreshKey={scanRound}
             />
 
             {hostMutationReadiness?.ready === false && (
@@ -3214,10 +3222,13 @@ function FirewallBar({
     readiness,
     readinessMessage,
     onRefreshReadiness,
+    refreshKey,
 }: {
     readiness: HostMutationReadiness | null;
     readinessMessage: string;
     onRefreshReadiness: () => Promise<boolean>;
+    // Changes with each scan the page receives; the state is read again then.
+    refreshKey: number;
 }) {
     const { t } = useI18n();
     type FirewallViewStatus = {
@@ -3242,9 +3253,13 @@ function FirewallBar({
     // so an agent/permission/network failure can never be mistaken for an open firewall.
     // Başarısız durum okuması ne "açık" ne de "kapalı"dır. Agent/yetki/ağ
     // hatasının açık bir güvenlik duvarıyla karıştırılmaması için bu ayrımı koru.
+    // Only the latest read may set what the banner says.
+    // Bandin soyledigini yalniz en son okuma belirler.
+    const loadSeq = useRef(0);
     const load = async () => {
+        const seq = ++loadSeq.current;
         try {
-            const r = await fetch('/api/v1/firewall');
+            const r = await fetch('/api/v1/firewall', { cache: 'no-store' });
             let body: unknown;
             try {
                 body = await r.json();
@@ -3256,19 +3271,25 @@ function FirewallBar({
                 );
             }
 
-            const apiError =
-                typeof body === 'object' &&
-                body !== null &&
-                'error' in body &&
-                typeof body.error === 'string' &&
-                body.error.trim()
-                    ? body.error
-                    : '';
+            // A coded answer is said in the interface language (err.<CODE>, for
+            // example err.AGENT_UNREACHABLE); only an uncoded one keeps the
+            // server's own words (sixteenth record, O4).
+            // Kodlu yanit arayuz dilinde soylenir; yalniz kodsuz olan sunucunun
+            // kendi sozlerini korur.
+            const record = typeof body === 'object' && body !== null ? body as Record<string, unknown> : null;
+            const apiError: ApiError | null =
+                record && typeof record.error === 'string' && record.error.trim()
+                    ? {
+                        message: record.error,
+                        code: typeof record.code === 'string' && record.code ? record.code : undefined,
+                        reason: typeof record.reason === 'string' && record.reason ? record.reason : undefined,
+                    }
+                    : null;
             if (!r.ok) {
-                throw new Error(apiError || `${t('firewall.loadFailed')} (HTTP ${r.status})`);
+                throw new Error(apiError ? apiErrorText(apiError, t, 'firewall.loadFailed') : `${t('firewall.loadFailed')} (HTTP ${r.status})`);
             }
             if (apiError) {
-                throw new Error(apiError);
+                throw new Error(apiErrorText(apiError, t, 'firewall.loadFailed'));
             }
             if (
                 typeof body !== 'object' ||
@@ -3279,16 +3300,20 @@ function FirewallBar({
                 throw new Error(t('firewall.invalidResponse'));
             }
 
+            if (seq !== loadSeq.current) return;
             setSt(body as FirewallViewStatus);
             setStatusError(null);
         } catch (e) {
+            if (seq !== loadSeq.current) return;
             setSt(null);
             setStatusError(e instanceof Error && e.message ? e.message : t('firewall.loadFailed'));
         }
     };
+    // Read on mount and again with every scan the page receives.
+    // Acilista ve sayfanin aldigi her taramada yeniden okunur.
     useEffect(() => {
         void load();
-    }, []);
+    }, [refreshKey]);
 
     const toggle = async () => {
         if (!st) return;

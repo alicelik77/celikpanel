@@ -6,6 +6,7 @@ import Renderer, { act } from 'react-test-renderer';
 import { dataModule, reactURL, remoteURL, sharedLayer } from './fixtures/shared-layer.mjs';
 import { readAllowList, scanTree } from './remote-state-ratchet.mjs';
 import { fileURLToPath } from 'node:url';
+import { tr } from '../src/i18n/tr.ts';
 
 // NO NEGATIVE UI UNLESS KNOWN, third batch (9 Oct 2026, D-024): the Fail2ban,
 // Nginx, PHP and Dovecot pages, the PowerDNS page's file list, and the DNS
@@ -26,11 +27,13 @@ import { fileURLToPath } from 'node:url';
 
 const source = (path) => readFileSync(new URL('../src/' + path, import.meta.url), 'utf8');
 const screenFiles = ['Fail2banManagement', 'NginxManagement', 'PHPManagement', 'PHPExtendedConfig', 'DovecotManagement', 'PowerDNSManagement', 'DNSServerSettings'];
+// The Components page is mounted for its firewall banner (2026-10-14); it is
+// not one of this batch's moved screens.
 const icons = new Set(['AlertTriangle']);
 // The dashboard is mounted too, for its attention list and the firewall's
 // state. It stays on the ratchet's list (its system figures, audit trail and
 // component read are not moved), so it is not one of `screenFiles`.
-for (const name of [...screenFiles, 'Dashboard', 'DNSEngineCard']) {
+for (const name of [...screenFiles, 'Dashboard', 'DNSEngineCard', 'ServiceList']) {
   for (const match of source(`components/${name}.tsx`).matchAll(/import\s*\{([^}]+)\}\s*from 'lucide-react'/g)) {
     for (const item of match[1].split(',')) {
       const icon = item.replace(/\btype\b/, '').trim().split(/\s+as\s+/)[0];
@@ -42,7 +45,9 @@ for (const name of [...screenFiles, 'Dashboard', 'DNSEngineCard']) {
 const stub = dataModule(`
   import React from '${reactURL}';
   ${[...icons].map((name) => `export const ${name} = () => null;`).join('\n')}
-  const i18n = { t: (key, vars) => (vars ? key + JSON.stringify(vars) : key), locale: 'en' };
+  // A test may give real sentences for some keys (globalThis.batch3Words);
+  // every other key is shown as itself.
+  const i18n = { t: (key, vars) => globalThis.batch3Words?.[key] ?? (vars ? key + JSON.stringify(vars) : key), locale: 'en' };
   export const useI18n = () => i18n;
   export const useNavigate = () => () => true;
   export const Link = (props) => React.createElement('a', null, props.children);
@@ -65,7 +70,10 @@ const stub = dataModule(`
   // What the dashboard imports beside the shared layer.
   export const useAuth = () => ({ role: 'admin', user: { username: 'admin', role: 'admin' } });
   export const ServerSetupDashboardNotice = () => null, LicenseNotice = () => null, PageHeader = () => null;
-  export const FirewallNoSSHAcknowledgement = () => null, readFirewallSSHReason = () => null;
+  export const FirewallNoSSHAcknowledgement = () => null, readFirewallSSHReason = () => null, FirewallSSHReasonLine = () => null;
+  // What the Components page imports beside these.
+  export const useLocation = () => ({ hash: '', pathname: '/services' });
+  export const ServiceActionNotice = () => null, isServiceActionOutcome = () => false;
   export const accountStart = () => null, hasMailActivity = () => false;
   // What components/ComponentOperation.tsx imports and never calls here: only
   // its decoder is used, and that is the real one.
@@ -99,6 +107,16 @@ const Dashboard = await pick(lib('components/Dashboard.tsx', {
   '/lib/componentCensus': lib('lib/componentCensus.ts'),
   '/ComponentOperation': operationURL,
 }), 'Dashboard');
+// The Components page, with the real decoders of ComponentOperation and an
+// operation tracker that is idle.
+const ServiceList = await pick(lib('components/ServiceList.tsx', {
+  '/ComponentOperation': dataModule(`
+    export * from '${operationURL}';
+    const idle = { startInstall: async () => true, catalogSnapshot: null, locked: false, checking: false, operation: null, failure: null };
+    export const useComponentOperation = () => idle;
+  `),
+  '/lib/componentCensus': lib('lib/componentCensus.ts'),
+}), 'ServiceList');
 globalThis.window ??= globalThis;
 // The real DNS engine card, mounted with the real decoder of its state. What
 // stands in for the tracker is the lock it would draw: every view the card
@@ -864,4 +882,47 @@ test('DNS engine card, past the safety limit: the lock is released, nothing is s
     assert.equal(notice().length, 0, 'the finished change still shows the notice');
     assert.deepEqual(globalThis.currentTest.toasts, [['success', 'dnsEngine.switchCompleted']]);
   } finally { await unmount(); }
+});
+
+// --- The Components page's firewall banner (2026-10-14, sixteenth record O4/O5) ---
+// With the Agent stopped, GET /api/v1/firewall answers 503 AGENT_UNREACHABLE.
+// The banner said the server's English sentence on a Turkish page and kept it
+// after the Agent came back, because it read the firewall only on mount.
+const AGENT_DOWN = () => answer({ error: 'The CelikPanel Agent on this server is not reachable.', code: 'AGENT_UNREACHABLE' }, 503);
+const scanRoute = () => answer({ ...good['/api/v1/managed-services'], scanned_at: new Date().toISOString() });
+
+test('Components: the firewall banner says a coded refusal in the interface language, not the server sentence', async () => {
+  // The Turkish page: the catalogue's Turkish sentence for the code.
+  globalThis.batch3Words = { 'err.AGENT_UNREACHABLE': tr['err.AGENT_UNREACHABLE'] };
+  serve({ '/api/v1/firewall': AGENT_DOWN, '/api/v1/managed-services/scan': scanRoute });
+  await mount(React.createElement(ServiceList, {}));
+  try {
+    await settle();
+    const shown = text();
+    assert.ok(shown.includes('firewall.unknown'), `the banner does not say the state is unknown: ${shown.slice(0, 400)}`);
+    assert.ok(shown.includes(tr['err.AGENT_UNREACHABLE']), `the Agent is not named in the interface language: ${shown.slice(0, 400)}`);
+    assert.ok(!shown.includes('The CelikPanel Agent on this server is not reachable.'), 'the server sentence is shown instead of the translation');
+  } finally { await unmount(); delete globalThis.batch3Words; }
+});
+
+test('Components: the firewall banner is read again with the page’s scan, so the Agent coming back clears it', async () => {
+  let firewall = AGENT_DOWN;
+  globalThis.batch3Words = { 'err.AGENT_UNREACHABLE': tr['err.AGENT_UNREACHABLE'] };
+  serve({ '/api/v1/firewall': (init) => firewall(init), '/api/v1/managed-services/scan': scanRoute });
+  await mount(React.createElement(ServiceList, {}));
+  try {
+    await settle();
+    assert.ok(text().includes(tr['err.AGENT_UNREACHABLE']), text().slice(0, 400));
+    const before = requests.filter((line) => line === 'GET /api/v1/firewall').length;
+    // The Agent is running again; the owner rescans.
+    firewall = () => answer(good['/api/v1/firewall']);
+    await press('services.rescan');
+    await settle();
+    const after = requests.filter((line) => line === 'GET /api/v1/firewall').length;
+    assert.ok(after > before, `the scan did not read the firewall again (${before} → ${after})`);
+    const shown = text();
+    assert.ok(!shown.includes('firewall.unknown') && !shown.includes(tr['err.AGENT_UNREACHABLE']), `the old Agent error stays: ${shown.slice(0, 400)}`);
+    assert.ok(shown.includes('firewall.on'), shown.slice(0, 400));
+    assert.equal(requests.filter((line) => line.startsWith('POST ') && !line.startsWith('POST /api/v1/managed-services/scan')).length, 0, `the page changed something: ${requests.join(', ')}`);
+  } finally { await unmount(); delete globalThis.batch3Words; }
 });
