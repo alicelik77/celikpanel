@@ -145,6 +145,86 @@ type MailProfileResponse struct {
 	Available           bool     `json:"available"`
 	BlockedReason       string   `json:"blocked_reason,omitempty"`
 	Warning             string   `json:"warning,omitempty"`
+	// BlockedCode/BlockedVars and WarningCode type the two
+	// sentences above (additive, 2026-10-14), as the setup checks' code and
+	// vars do: a page says them in its own language and keeps the English
+	// text only for a code it does not know. The text stays for older pages.
+	// Yukarıdaki iki cümlenin türlü karşılığı; sayfa kendi dilinde söyler.
+	BlockedCode mailProfileTextCode `json:"blocked_code,omitempty"`
+	BlockedVars map[string]string   `json:"blocked_vars,omitempty"`
+	WarningCode mailProfileTextCode `json:"warning_code,omitempty"`
+}
+
+// mailProfileTextCode names one blocked or warning sentence of a mail
+// profile. Every constant of this type must be in mailProfileTextCodes
+// (TestMailProfileTextCodesAreListed), and web/tests/mail-profile-text.test.mjs
+// reads that list from this file and requires an English and a Turkish
+// sentence for each, so a new code cannot reach a page without words.
+// Bir posta profilinin engel ya da uyarı cümlesinin adı; her biri listede ve
+// iki dilde sözü olmak zorundadır.
+type mailProfileTextCode string
+
+const (
+	mailProfileBlockedStateUnverified     mailProfileTextCode = "state_unverified"
+	mailProfileBlockedStateIncomplete     mailProfileTextCode = "state_incomplete"
+	mailProfileBlockedCatalogueIncomplete mailProfileTextCode = "catalogue_incomplete"
+	mailProfileBlockedHostnameUnknown     mailProfileTextCode = "hostname_unknown"
+	mailProfileBlockedDNSIdentity         mailProfileTextCode = "dns_identity_not_ready"
+	mailProfileBlockedNotInstallable      mailProfileTextCode = "component_not_installable"
+	mailProfileBlockedConflict            mailProfileTextCode = "component_conflict"
+	mailProfileBlockedRequires            mailProfileTextCode = "component_requires"
+	mailProfileWarningRepairToVerify      mailProfileTextCode = "repair_to_verify"
+	mailProfileWarningWebmailUnverified   mailProfileTextCode = "webmail_unverified"
+	mailProfileWarningRoundcubeNotReady   mailProfileTextCode = "roundcube_not_ready"
+	mailProfileWarningPartlyPresent       mailProfileTextCode = "partly_present"
+)
+
+// mailProfileTextCodes is every code above: the list the web test reads.
+var mailProfileTextCodes = []mailProfileTextCode{
+	mailProfileBlockedStateUnverified,
+	mailProfileBlockedStateIncomplete,
+	mailProfileBlockedCatalogueIncomplete,
+	mailProfileBlockedHostnameUnknown,
+	mailProfileBlockedDNSIdentity,
+	mailProfileBlockedNotInstallable,
+	mailProfileBlockedConflict,
+	mailProfileBlockedRequires,
+	mailProfileWarningRepairToVerify,
+	mailProfileWarningWebmailUnverified,
+	mailProfileWarningRoundcubeNotReady,
+	mailProfileWarningPartlyPresent,
+}
+
+// The English sentences of the codes that carry no values. None asks the
+// owner to scan: the panel checks the components by itself (D-032).
+const (
+	mailProfileStateUnverifiedText     = "The service state is not verified yet; the next component check verifies it."
+	mailProfileStateIncompleteText     = "The service state that was read is incomplete; the next component check reads it again."
+	mailProfileCatalogueIncompleteText = "The server profile catalogue is incomplete."
+	mailProfileWebmailUnverifiedText   = "Webmail runtime readiness is not verified yet; the next component check verifies it."
+	mailProfileRoundcubeNotReadyText   = "Roundcube is installed, but its Unix-socket runtime is not ready."
+	mailProfilePartlyPresentText       = "Some components are already present. Installing this profile will reconcile the full plan without removing completed services."
+)
+
+// mailProfileHostBlockedCode types the host-wide blocked sentence handed to
+// mailProfilesView; that sentence is always one of this package's constants.
+func mailProfileHostBlockedCode(text string) mailProfileTextCode {
+	switch text {
+	case mailProfileServerHostnameUnknown:
+		return mailProfileBlockedHostnameUnknown
+	case mailProfileDNSIdentityMessage:
+		return mailProfileBlockedDNSIdentity
+	}
+	return ""
+}
+
+// mailProfileServiceName is a catalogue service's display name, or the token
+// itself (a requirement may name a role rather than a service).
+func mailProfileServiceName(id string) string {
+	if managed := core.GetManagedServiceByID(id); managed != nil {
+		return managed.Name
+	}
+	return id
 }
 
 type mailProfileAttemptProof struct {
@@ -776,13 +856,15 @@ func mailProfilesView(
 			Available:           false,
 		}
 		if !verified {
-			view.BlockedReason = "Service state is unverified; run a fresh scan."
+			view.BlockedReason = mailProfileStateUnverifiedText
+			view.BlockedCode = mailProfileBlockedStateUnverified
 			profiles = append(profiles, view)
 			continue
 		}
 		if hostBlockedReason != "" {
 			view.Status = mailProfileStatusBlocked
 			view.BlockedReason = hostBlockedReason
+			view.BlockedCode = mailProfileHostBlockedCode(hostBlockedReason)
 			profiles = append(profiles, view)
 			continue
 		}
@@ -799,34 +881,49 @@ func mailProfilesView(
 			projected[id] = true
 		}
 		if incompleteObservation {
-			view.BlockedReason = "Fresh service state is incomplete; run another scan."
+			view.BlockedReason = mailProfileStateIncompleteText
+			view.BlockedCode = mailProfileBlockedStateIncomplete
 			profiles = append(profiles, view)
 			continue
 		}
 
 		blockedReason := ""
+		var blockedCode mailProfileTextCode
+		var blockedVars map[string]string
 		for _, id := range definition.Services {
 			managed := core.GetManagedServiceByID(id)
 			if managed == nil {
-				blockedReason = "The server profile catalogue is incomplete."
+				blockedReason, blockedCode = mailProfileCatalogueIncompleteText, mailProfileBlockedCatalogueIncomplete
 				break
 			}
-			if reason := core.ManagedServiceInstallDisabledReason(managed, packageFamily); reason != "" {
+			if kind, reason := core.ManagedServiceInstallBlock(managed, packageFamily); reason != "" {
 				blockedReason = managed.Name + ": " + reason
+				blockedCode = mailProfileBlockedNotInstallable
+				blockedVars = map[string]string{"component": managed.Name, "kind": string(kind)}
 				break
 			}
 			if taken := core.SeatTakenBy(managed, projected); taken != "" {
 				blockedReason = fmt.Sprintf("%s conflicts with installed %s.", managed.Name, taken)
+				blockedCode = mailProfileBlockedConflict
+				blockedVars = map[string]string{"component": managed.Name, "conflicting": taken}
 				break
 			}
 			if missing := core.RequirementsMissing(managed, projected); len(missing) > 0 {
+				names := make([]string, 0, len(missing))
+				for _, token := range missing {
+					names = append(names, mailProfileServiceName(token))
+				}
 				blockedReason = fmt.Sprintf("%s requires %s outside this profile.", managed.Name, strings.Join(missing, ", "))
+				blockedCode = mailProfileBlockedRequires
+				blockedVars = map[string]string{"component": managed.Name, "required": strings.Join(names, ", ")}
 				break
 			}
 		}
 		if blockedReason != "" {
 			view.Status = mailProfileStatusBlocked
 			view.BlockedReason = blockedReason
+			view.BlockedCode = blockedCode
+			view.BlockedVars = blockedVars
 			profiles = append(profiles, view)
 			continue
 		}
@@ -843,14 +940,15 @@ func mailProfilesView(
 			}
 		}
 		webmailWarning := ""
+		var webmailWarningCode mailProfileTextCode
 		if definition.ID == "webmail" && allReady {
 			switch {
 			case !webmailProven:
 				allReady = false
-				webmailWarning = "Webmail runtime readiness is unverified; run a fresh scan."
+				webmailWarning, webmailWarningCode = mailProfileWebmailUnverifiedText, mailProfileWarningWebmailUnverified
 			case !webmailReady:
 				allReady = false
-				webmailWarning = "Roundcube is installed, but its Unix-socket runtime is not ready."
+				webmailWarning, webmailWarningCode = mailProfileRoundcubeNotReadyText, mailProfileWarningRoundcubeNotReady
 			}
 		}
 		view.Available = true
@@ -864,13 +962,14 @@ func mailProfilesView(
 				// submission reconciliations. Keep that distinction visible instead of
 				// over-claiming a complete mail setup from component state alone.
 				view.Warning = mailProfileReconciliationWarning
+				view.WarningCode = mailProfileWarningRepairToVerify
 			}
 		case anyInstalled:
 			view.Status = mailProfileStatusPartial
 			if webmailWarning != "" {
-				view.Warning = webmailWarning
+				view.Warning, view.WarningCode = webmailWarning, webmailWarningCode
 			} else {
-				view.Warning = "Some components are already present. Installing this profile will reconcile the full plan without removing completed services."
+				view.Warning, view.WarningCode = mailProfilePartlyPresentText, mailProfileWarningPartlyPresent
 			}
 		default:
 			view.Status = mailProfileStatusAvailable

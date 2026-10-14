@@ -2,17 +2,18 @@ import type { TranslationKey } from '../i18n/en';
 
 // What a mail profile is called and what it says, in the interface language.
 // The server sends its three compiled profiles with an English name and
-// description, and its state sentences as English text (cmd/panel/
-// mail_profiles.go). A Turkish page showed them in English (sixteenth record,
-// alpha.84). The profile id names its words; a server sentence this page has
-// words for is said in the interface language, and any other is shown as the
-// server wrote it. Matching the server's sentence is an interim: a typed
-// reason on the answer would replace it (a server change, not made yet).
+// description, and its blocked and warning sentences as English text with a
+// typed code beside them (blocked_code with blocked_vars, warning_code;
+// cmd/panel/mail_profiles.go, 2026-10-14). A Turkish page showed the English
+// text (sixteenth record, alpha.84). The page says a code in its own language;
+// the server's text is shown only when no code came (an older Panel) or the
+// code is one this page has no words for. The last attempt's error is the
+// server's own words, introduced by a translated lead-in.
 //
-// Bir posta profilinin adı ve söyledikleri, arayüz dilinde. Sunucu üç profili
-// İngilizce ad ve açıklamayla, durum cümlelerini İngilizce metin olarak
-// gönderir. Profil kimliği kendi sözlerini adlandırır; bu sayfanın sözü olan
-// sunucu cümlesi arayüz dilinde söylenir, olmayan sunucunun yazdığı gibi kalır.
+// Bir posta profilinin adı ve söyledikleri, arayüz dilinde. Sunucu engel ve
+// uyarı cümlelerini İngilizce metin ve yanında türlü bir kodla gönderir; sayfa
+// kodu kendi dilinde söyler, metni yalnız kod gelmediğinde ya da bilmediği bir
+// kod olduğunda gösterir.
 
 type Translate = (key: TranslationKey, vars?: Record<string, string | number>) => string;
 
@@ -22,34 +23,53 @@ const profileWords: Record<string, { name: TranslationKey; description: Translat
     'protected-mail': { name: 'dashboard.audit.profile.protectedMail', description: 'services.mailProfiles.description.protectedMail' },
 };
 
-// The server's sentences, exactly as cmd/panel/mail_profiles.go writes them.
-const serverSentences: Record<string, TranslationKey> = {
-    'Components are running. Run Repair to verify and reconcile the complete mail profile, including mail TLS and authenticated submission.': 'services.mailProfiles.text.repairToVerify',
-    'Webmail runtime readiness is unverified; run a fresh scan.': 'services.mailProfiles.text.webmailUnverified',
-    'Roundcube is installed, but its Unix-socket runtime is not ready.': 'services.mailProfiles.text.roundcubeNotReady',
-    'Some components are already present. Installing this profile will reconcile the full plan without removing completed services.': 'services.mailProfiles.text.partlyPresent',
-    'Service state is unverified; run a fresh scan.': 'services.mailProfiles.text.stateUnverified',
-    'Fresh service state is incomplete; run another scan.': 'services.mailProfiles.text.stateIncomplete',
-    'The server profile catalogue is incomplete.': 'services.mailProfiles.text.catalogueIncomplete',
-};
-
-interface ProfileIdentity {
+interface ProfileText {
     id: string;
     name: string;
     description?: string;
+    blocked_reason?: string;
+    blocked_code?: unknown;
+    blocked_vars?: unknown;
+    warning?: string;
+    warning_code?: unknown;
+    latest_attempt_error?: string;
 }
 
-export function mailProfileName(profile: ProfileIdentity, t: Translate): string {
+export function mailProfileName(profile: ProfileText, t: Translate): string {
     const words = profileWords[profile.id];
     return words ? t(words.name) : profile.name;
 }
 
-export function mailProfileDescription(profile: ProfileIdentity, t: Translate): string {
+export function mailProfileDescription(profile: ProfileText, t: Translate): string {
     const words = profileWords[profile.id];
     return words ? t(words.description) : profile.description ?? '';
 }
 
-export function mailProfileSentence(text: string, t: Translate): string {
-    const key = serverSentences[text.trim()];
-    return key ? t(key) : text;
+// The sentence of a code, or null when there is no code or no words for it.
+// Only string values are used; a missing value leaves its sentence unused.
+function codeSentence(code: unknown, vars: unknown, t: Translate): string | null {
+    if (typeof code !== 'string' || !/^[a-z_]+$/.test(code)) return null;
+    const key = `services.mailProfiles.code.${code}` as TranslationKey;
+    const values: Record<string, string> = {};
+    if (vars && typeof vars === 'object') {
+        for (const [name, value] of Object.entries(vars as Record<string, unknown>)) {
+            if (typeof value === 'string') values[name] = value;
+        }
+    }
+    const said = t(key, values);
+    if (said === key || /\{\w+\}/.test(said)) return null;
+    return said;
+}
+
+export function mailProfileBlocked(profile: ProfileText, t: Translate): string {
+    return codeSentence(profile.blocked_code, profile.blocked_vars, t) ?? profile.blocked_reason ?? '';
+}
+
+export function mailProfileWarning(profile: ProfileText, t: Translate): string {
+    return codeSentence(profile.warning_code, undefined, t) ?? profile.warning ?? '';
+}
+
+export function mailProfileAttemptError(profile: ProfileText, t: Translate): string {
+    const error = profile.latest_attempt_error?.trim();
+    return error ? t('services.mailProfiles.attemptError', { error }) : '';
 }

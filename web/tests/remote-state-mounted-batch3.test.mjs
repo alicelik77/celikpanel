@@ -7,6 +7,8 @@ import { dataModule, reactURL, remoteURL, sharedLayer } from './fixtures/shared-
 import { readAllowList, scanTree } from './remote-state-ratchet.mjs';
 import { fileURLToPath } from 'node:url';
 import { tr } from '../src/i18n/tr.ts';
+import { trScreens } from '../src/i18n/screens/tr.ts';
+import { trServerScreens } from '../src/i18n/screens/server/tr.ts';
 
 // NO NEGATIVE UI UNLESS KNOWN, third batch (9 Oct 2026, D-024): the Fail2ban,
 // Nginx, PHP and Dovecot pages, the PowerDNS page's file list, and the DNS
@@ -47,7 +49,8 @@ const stub = dataModule(`
   ${[...icons].map((name) => `export const ${name} = () => null;`).join('\n')}
   // A test may give real sentences for some keys (globalThis.batch3Words);
   // every other key is shown as itself.
-  const i18n = { t: (key, vars) => globalThis.batch3Words?.[key] ?? (vars ? key + JSON.stringify(vars) : key), locale: 'en' };
+  const fill = (text, vars) => Object.entries(vars || {}).reduce((out, [name, value]) => out.split('{' + name + '}').join(String(value)), text);
+  const i18n = { t: (key, vars) => (globalThis.batch3Words?.[key] !== undefined ? fill(globalThis.batch3Words[key], vars) : vars ? key + JSON.stringify(vars) : key), locale: 'en' };
   export const useI18n = () => i18n;
   export const useNavigate = () => () => true;
   export const Link = (props) => React.createElement('a', null, props.children);
@@ -988,17 +991,32 @@ test('Dashboard mail card: a check that could not run says the status is not kno
   } finally { await unmount(); delete globalThis.batch3MailActivity; }
 });
 
-test('Dashboard mail card: the profile name and the server’s sentence are said in the interface language', async () => {
+test('Dashboard mail card: the profile name and the Panel’s typed sentences are said in the interface language', async () => {
   globalThis.batch3MailActivity = true;
-  const partial = { ...profile('core-mail'), status: 'partial', warning: 'Some components are already present. Installing this profile will reconcile the full plan without removing completed services.' };
-  serve({ '/api/v1/managed-services': mailScan(new Date().toISOString(), [partial, profile('webmail'), profile('protected-mail')]) });
-  await mount(dashboard());
+  globalThis.batch3Words = {
+    'dashboard.audit.profile.coreMail': trScreens['dashboard.audit.profile.coreMail'],
+    'services.mailProfiles.code.partly_present': trServerScreens['services.mailProfiles.code.partly_present'],
+    'services.mailProfiles.attemptError': trServerScreens['services.mailProfiles.attemptError'],
+  };
+  const english = 'Some components are already present. Installing this profile will reconcile the full plan without removing completed services.';
+  const partial = { ...profile('core-mail'), status: 'partial', warning: english, warning_code: 'partly_present' };
+  const shown = async (core) => {
+    serve({ '/api/v1/managed-services': mailScan(new Date().toISOString(), [core, profile('webmail'), profile('protected-mail')]) });
+    await mount(dashboard());
+    try { return text(); } finally { await unmount(); }
+  };
   try {
-    const shown = text();
-    assert.ok(shown.includes('dashboard.audit.profile.coreMail'), `the profile is not named in the interface language: ${shown.slice(0, 600)}`);
-    assert.ok(shown.includes('services.mailProfiles.text.partlyPresent'), 'the server sentence is not translated');
-    assert.ok(!shown.includes('Some components are already present'), 'the English server sentence is shown');
-  } finally { await unmount(); delete globalThis.batch3MailActivity; }
+    let page = await shown(partial);
+    assert.ok(page.includes('Temel Posta'), `the profile is not named in Turkish: ${page.slice(0, 600)}`);
+    assert.ok(page.includes(trServerScreens['services.mailProfiles.code.partly_present']), 'the typed warning is not said in Turkish');
+    assert.ok(!page.includes(english), 'the English server sentence is shown beside a code');
+    // An older Panel sends no code: its words are shown as it wrote them.
+    page = await shown({ ...partial, warning_code: undefined });
+    assert.ok(page.includes(english), 'the text of a Panel without codes is lost');
+    // The last attempt's error keeps the server's words behind a Turkish lead-in.
+    page = await shown({ ...profile('core-mail'), status: 'partial', latest_attempt_status: 'failed', latest_attempt_error: 'submission verification failed' });
+    assert.ok(page.includes('Son deneme şunu bildirdi: submission verification failed'), page.slice(0, 600));
+  } finally { delete globalThis.batch3MailActivity; delete globalThis.batch3Words; }
 });
 
 test('Components: a paused server change says the page lifts it by itself, without asking for a reload', async () => {

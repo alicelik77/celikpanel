@@ -21,7 +21,7 @@ import { countText, decodeList, lastKnown, mapRemote, useRemote, type Observed, 
 import { decodeFirewallStatus, useFirewallStatus, type FirewallStatus } from '../lib/firewall';
 import { USERS_URL, decodeUsers } from '../lib/accounts';
 import { summarizeDashboardMailTruth } from '../lib/dashboardMailTruth';
-import { mailProfileName, mailProfileSentence } from '../lib/mailProfileText';
+import { mailProfileAttemptError, mailProfileBlocked, mailProfileName, mailProfileWarning } from '../lib/mailProfileText';
 import { publishComponentCensus } from '../lib/componentCensus';
 import {
     decodeManagedMailProfiles,
@@ -1507,7 +1507,7 @@ function MailStackSummary({ profiles, scanFresh, hostNeverChecked, checking, car
         : problem?.latest_attempt_error || problem?.blocked_reason || problem?.warning
             ? t('dashboard.mailStacks.reason', {
                 name: problemName || t('dashboard.mailStacks.title'),
-                reason: mailProfileSentence(problem?.latest_attempt_error ?? problem?.blocked_reason ?? problem?.warning ?? '', t),
+                reason: problem?.latest_attempt_error ? mailProfileAttemptError(problem, t) : problem?.blocked_reason ? mailProfileBlocked(problem, t) : problem ? mailProfileWarning(problem, t) : '',
             })
             : problem?.latest_attempt_status === 'failed'
                 ? t('dashboard.mailStacks.reconciliationFailed', { name: problemName })

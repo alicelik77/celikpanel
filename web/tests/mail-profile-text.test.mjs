@@ -1,8 +1,10 @@
-// The mail profiles' names, descriptions and the server's profile sentences in
-// the interface language (sixteenth record, alpha.84: English text on the
-// Turkish Components page and Dashboard card). The sentences this page has
-// words for are matched against the server's own source, so a server wording
-// change shows up here instead of silently falling back to English.
+// The mail profiles' names, descriptions and their blocked and warning
+// sentences in the interface language (sixteenth record, alpha.84: English text
+// on the Turkish Components page and Dashboard card). Since 2026-10-14 the
+// Panel types each sentence (blocked_code with blocked_vars, warning_code). The
+// list of codes is read from the Panel's own source (mailProfileTextCodes,
+// which a Go test keeps complete), so a code the Panel can send without words
+// here fails this test instead of falling back to English.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -19,32 +21,66 @@ const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.Modu
 const lib = await import('data:text/javascript;base64,' + Buffer.from(compiled).toString('base64'));
 const server = readFileSync(new URL('../../cmd/panel/mail_profiles.go', import.meta.url), 'utf8');
 const catalogues = { en: { ...en, ...enScreens, ...enServerScreens }, tr: { ...tr, ...trScreens, ...trServerScreens } };
-const say = (locale) => (key) => catalogues[locale][key] ?? key;
-const sentences = [...source.matchAll(/^    '([^']+)': 'services\.mailProfiles\.text\.(\w+)',$/gm)].map((m) => [m[1], 'services.mailProfiles.text.' + m[2]]);
+// The page's own t: the catalogue's sentence with its values, or the key.
+const say = (locale) => (key, vars = {}) => {
+  let text = catalogues[locale][key] ?? key;
+  for (const [name, value] of Object.entries(vars)) text = text.replaceAll(`{${name}}`, String(value));
+  return text;
+};
 
-test('every server sentence the page translates is written that way by the server', () => {
-  assert.ok(sentences.length >= 7, `found ${sentences.length}`);
-  for (const [sentence] of sentences) assert.ok(server.includes(`"${sentence}"`) || server.includes(`= "${sentence}"`), `the server no longer writes: ${sentence}`);
+// mailProfileTextCodes in cmd/panel/mail_profiles.go, resolved to its values.
+const values = Object.fromEntries([...server.matchAll(/^\t(mailProfile\w+)\s+mailProfileTextCode = "([a-z_]+)"$/gm)].map((m) => [m[1], m[2]]));
+const listBody = /var mailProfileTextCodes = \[\]mailProfileTextCode\{([\s\S]*?)\n\}/.exec(server)?.[1] ?? '';
+const codes = [...listBody.matchAll(/\b(mailProfile\w+),/g)].map((m) => values[m[1]]);
+const placeholders = (text) => [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
+
+test('every code the Panel can send has an English and a Turkish sentence with the same values', () => {
+  assert.ok(codes.length >= 12, `read ${codes.length} codes from the Panel`);
+  assert.ok(codes.every(Boolean), `a listed code has no value: ${JSON.stringify(codes)}`);
+  for (const code of codes) {
+    const key = `services.mailProfiles.code.${code}`;
+    assert.ok(catalogues.en[key], `no English sentence for ${code}`);
+    assert.ok(catalogues.tr[key], `no Turkish sentence for ${code}`);
+    assert.notEqual(catalogues.tr[key], catalogues.en[key], `${code} is not translated`);
+    assert.deepEqual(placeholders(catalogues.tr[key]), placeholders(catalogues.en[key]), `${code}: the two sentences use different values`);
+    for (const locale of ['en', 'tr']) assert.doesNotMatch(catalogues[locale][key], /scan|tara/i, `${locale} ${code} asks for a scan (D-032)`);
+  }
+  // The sentence matching that came before the codes is gone.
+  assert.doesNotMatch(source, /serverSentences|mailProfileSentence/);
+  for (const locale of ['en', 'tr']) assert.equal(Object.keys(catalogues[locale]).filter((key) => key.startsWith('services.mailProfiles.text.')).length, 0);
 });
 
-test('the profile text is said in Turkish on a Turkish page, and unknown text is kept as the server wrote it', () => {
-  for (const [sentence, key] of sentences) {
-    assert.ok(catalogues.en[key] && catalogues.tr[key], key);
-    assert.notEqual(catalogues.tr[key], catalogues.en[key], `${key} is not translated`);
-    assert.equal(lib.mailProfileSentence(sentence, say('tr')), catalogues.tr[key]);
-  }
-  assert.equal(lib.mailProfileSentence('Postfix: package unavailable', say('tr')), 'Postfix: package unavailable');
+test('a code is said in the page language; its text is the fallback only when there is no usable code', () => {
+  const conflict = { id: 'core-mail', name: 'Core Mail', blocked_reason: 'Postfix conflicts with installed Exim.', blocked_code: 'component_conflict', blocked_vars: { component: 'Postfix', conflicting: 'Exim' } };
+  assert.equal(lib.mailProfileBlocked(conflict, say('tr')), 'Postfix, kurulu Exim ile çakışıyor.');
+  assert.equal(lib.mailProfileBlocked(conflict, say('en')), 'Postfix conflicts with the installed Exim.');
+  // An older Panel: no code, its text.
+  assert.equal(lib.mailProfileBlocked({ ...conflict, blocked_code: undefined }, say('tr')), conflict.blocked_reason);
+  // A code this page has no words for, a value missing, or not the shape: the text.
+  assert.equal(lib.mailProfileBlocked({ ...conflict, blocked_code: 'from_a_newer_panel' }, say('tr')), conflict.blocked_reason);
+  assert.equal(lib.mailProfileBlocked({ ...conflict, blocked_vars: { component: 'Postfix' } }, say('tr')), conflict.blocked_reason);
+  assert.equal(lib.mailProfileBlocked({ ...conflict, blocked_code: 7 }, say('tr')), conflict.blocked_reason);
+  assert.equal(lib.mailProfileBlocked({ ...conflict, blocked_vars: { component: 'Postfix', conflicting: 3 } }, say('tr')), conflict.blocked_reason);
+  const partial = { id: 'core-mail', name: 'Core Mail', warning: 'Some components are already present…', warning_code: 'partly_present' };
+  assert.equal(lib.mailProfileWarning(partial, say('tr')), catalogues.tr['services.mailProfiles.code.partly_present']);
+  assert.equal(lib.mailProfileWarning({ ...partial, warning_code: undefined }, say('tr')), partial.warning);
+  assert.equal(lib.mailProfileWarning({ id: 'core-mail', name: 'x' }, say('tr')), '');
+});
+
+test('the last attempt’s error keeps the server’s words behind a translated lead-in', () => {
+  const failed = { id: 'core-mail', name: 'Core Mail', latest_attempt_error: 'submission verification failed' };
+  assert.equal(lib.mailProfileAttemptError(failed, say('tr')), 'Son deneme şunu bildirdi: submission verification failed');
+  assert.equal(lib.mailProfileAttemptError(failed, say('en')), 'The last attempt reported: submission verification failed');
+  assert.equal(lib.mailProfileAttemptError({ id: 'core-mail', name: 'x' }, say('tr')), '');
+});
+
+test('names and descriptions come from the catalogue by profile id', () => {
   const core = { id: 'core-mail', name: 'Core Mail', description: 'Postfix SMTP and Dovecot IMAP/POP3 with authenticated submission.' };
   assert.equal(lib.mailProfileName(core, say('tr')), 'Temel Posta');
   assert.equal(lib.mailProfileDescription(core, say('tr')), catalogues.tr['services.mailProfiles.description.coreMail']);
-  assert.equal(lib.mailProfileDescription(core, say('en')), core.description, 'the English words are the server’s');
-  for (const id of ['webmail', 'protected-mail']) assert.notEqual(lib.mailProfileDescription({ id, name: id }, say('tr')), '');
   const other = { id: 'future-mail', name: 'Future Mail', description: 'From a newer server.' };
   assert.equal(lib.mailProfileName(other, say('tr')), 'Future Mail');
   assert.equal(lib.mailProfileDescription(other, say('tr')), 'From a newer server.');
-});
-
-test('the English descriptions match the server’s compiled ones', () => {
   for (const [key, text] of [['coreMail', 'Postfix SMTP and Dovecot IMAP/POP3 with authenticated submission.'], ['webmail', 'Core mail plus Nginx, PHP-FPM and Roundcube webmail.'], ['protectedMail', 'Core mail with Rspamd spam filtering.']]) {
     assert.equal(catalogues.en[`services.mailProfiles.description.${key}`], text);
     assert.ok(server.includes(`Description: "${text}"`), text);

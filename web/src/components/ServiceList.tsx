@@ -24,7 +24,7 @@ import {
 } from './FirewallSSHNotice';
 import { Link, useLocation, useNavigate } from '../router';
 import { publishComponentCensus } from '../lib/componentCensus';
-import { mailProfileDescription, mailProfileName, mailProfileSentence } from '../lib/mailProfileText';
+import { mailProfileBlocked, mailProfileDescription, mailProfileName, mailProfileWarning } from '../lib/mailProfileText';
 
 // One installed copy of a runtime (B3b): php8.3-fpm is an instance, a Node
 // tree under /opt/celikpanel/runtimes is an instance. `unit` empty means the
@@ -2027,8 +2027,8 @@ function MailProfileCards({ profiles, services, disabled, dnsIdentityReady, onIn
                         : profile.status === 'complete' && profile.warning
                         ? t('services.mailProfiles.profileComponentsNeedRepair')
                         : profile.status === 'blocked'
-                            ? profile.blocked_reason && mailProfileSentence(profile.blocked_reason, t)
-                            : profile.warning && mailProfileSentence(profile.warning, t);
+                            ? mailProfileBlocked(profile, t)
+                            : mailProfileWarning(profile, t);
                     const ActionIcon = profile.status === 'available' ? DownloadCloud : RotateCw;
                     return (
                         <article key={profile.id} className='flex min-w-0 flex-col rounded-xl border border-border bg-surface p-4'>
