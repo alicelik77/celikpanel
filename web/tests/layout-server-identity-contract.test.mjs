@@ -63,3 +63,38 @@ test('server identity uses existing localized labels', () => {
     assert.ok(tr.includes("'" + key + "':"), 'missing TR key ' + key);
   }
 });
+
+// The build id is one unit that never breaks inside (owner, alpha.83 and
+// alpha.84: "build f01" / "57e6c8f16"). Rendered from source with every other
+// import of Layout stubbed.
+test('the sidebar build id wraps only before "build", never inside the id, and keeps the full id', async () => {
+  const { createRequire } = await import('node:module');
+  const { pathToFileURL } = await import('node:url');
+  const ts = (await import('typescript')).default;
+  const React = (await import('react')).default;
+  const Renderer = (await import('react-test-renderer')).default;
+  const require = createRequire(import.meta.url);
+  const reactURL = pathToFileURL(require.resolve('react')).href;
+  const data = (text) => 'data:text/javascript;base64,' + Buffer.from(text).toString('base64');
+  const names = new Set();
+  for (const match of layout.matchAll(/^import (?!type)\{([^}]+)\} from '([^']+)';$/gm)) {
+    if (match[2] === 'react') continue;
+    for (const item of match[1].split(',')) { const name = item.replace(/\btype\b/, '').trim(); if (name && !/^type\s/.test(item.trim())) names.add(name); }
+  }
+  names.delete('useI18n');
+  const stub = data(`import React from '${reactURL}';
+    ${[...names].map((name) => `export const ${name} = () => null;`).join('\n')}
+    export const useI18n = () => ({ t: (key) => key, locale: 'en' });`);
+  const compiled = ts.transpileModule(layout, { compilerOptions: { jsx: ts.JsxEmit.React, module: ts.ModuleKind.ES2022, target: ts.ScriptTarget.ES2020 } }).outputText
+    .replace(/from ['"]([^'"]+)['"]/g, (_, specifier) => `from '${specifier === 'react' ? reactURL : stub}'`);
+  const { BuildStamp } = await import(data(`import React from '${reactURL}';\n${compiled}`));
+  const commit = 'f0157e6c8f16a1b2c3d4e5f60718293a4b5c6d7e';
+  const tree = Renderer.create(React.createElement(BuildStamp, { runtime: { version: 'v0.1.0-alpha.84', commit, agent_commit: commit, agent_matches: true } }));
+  const unit = tree.root.find((node) => node.props['data-build-stamp'] !== undefined);
+  assert.match(unit.props.className, /whitespace-nowrap/);
+  assert.doesNotMatch(unit.props.className, /break-all|break-words|overflow-wrap/);
+  assert.ok(unit.props.title.endsWith(commit), 'the full id is in the title');
+  const walk = (node) => (typeof node === 'string' ? node : (node.children || []).map(walk).join(' '));
+  const shown = walk(unit);
+  assert.ok(shown.includes('f0157e6c8f16') && shown.includes(commit), 'the short id is shown and the full id is kept for screen readers');
+});

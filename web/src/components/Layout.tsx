@@ -559,7 +559,7 @@ function UserMenu() {
 // operatöre yeni yapının indiğini böyle göreceğini söylüyordu. Artık sürüm ve
 // panelin commit'i çalışan binary'den gelir; panel/agent uyuşmazlığı da güven
 // veren bir damganın arkasına gizlenmek yerine uyarı olarak gösterilir.
-function BuildStamp({ runtime }: { runtime: PanelRuntime | null }) {
+export function BuildStamp({ runtime }: { runtime: PanelRuntime | null }) {
     const { t } = useI18n();
     if (!runtime) return <>{t('app.name')}</>;
     const v = runtime;
@@ -578,12 +578,19 @@ function BuildStamp({ runtime }: { runtime: PanelRuntime | null }) {
     // sayfa zeminine çiziliyordu. Hash düzyazı değil kimliktir: operatörün
     // okuyup karşılaştırdığı yer baş taraftır; damga onu gösterir, tam değeri
     // ise commit'i atmadan ya da taşırmadan bir üşürme kadar uzakta tutar.
+    // "build" and the short id are one unit that never breaks inside: with
+    // break-all the id broke after its third character ("build f01" /
+    // "57e6c8f16"), which reads as a different number (owner, alpha.83 and
+    // alpha.84). The line now wraps only before the unit; the full id stays in
+    // the title and for screen readers.
+    // "build" ve kısa kimlik içinden bölünmeyen tek birimdir; satır yalnız
+    // birimden önce kırılır, tam kimlik başlıkta ve ekran okuyucuda kalır.
     const shortCommit = v.commit.slice(0, 12);
 
     return (
         <>
             {t('app.name')} · {v.version} ·{' '}
-            <span className="break-all font-mono" title={`${t('common.buildHint')} — ${v.commit}`}>
+            <span className="inline-block whitespace-nowrap font-mono" data-build-stamp="" title={`${t('common.buildHint')} — ${v.commit}`}>
                 build <span aria-hidden="true">{shortCommit}</span>
                 <span className="sr-only">{v.commit}</span>
             </span>
