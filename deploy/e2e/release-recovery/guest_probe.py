@@ -410,6 +410,46 @@ def _typed_row(row, budget: list[int]) -> bytes:
     return digest.digest()
 
 
+LEDGER_TABLE = "managed_site_files"
+# Columns the Panel rewrites on every plain start while observing the site files, with no site change
+# (internal/services/site_file_ledger.go RecordSiteFileResult: observed_at = now, lines ~263-273).
+# Only observed_at is confirmed from source; the other columns the same upsert rewrites (state, state_reason,
+# file_sha256, pending_*, backup_path) keep their value when the files are unchanged, so they stay compared.
+LEDGER_VOLATILE_COLUMNS = ("observed_at",)
+LEDGER_MAX_ROWS = 5000
+TABLE_DIGEST_PREFIX = b"celikpanel/sqlite-table/v1\x00"
+STABLE_DIGEST_PREFIX = b"celikpanel/sqlite-table-stable/v1\x00"
+
+
+def _json_value(value):
+    if isinstance(value, bytes):
+        return {"blob_hex": value.hex()}
+    return value
+
+
+def ledger_projection(labels, rows, volatile=LEDGER_VOLATILE_COLUMNS) -> dict:
+    """The site-file ledger as rows plus two digests (set15 finding: the digest alone could not say what changed).
+
+    ``labels`` are the projected column names (the rowid alias first when the table has one) and ``rows`` the
+    values in that order. ``full_sha256`` is the table digest this probe has always reported
+    (``tables[].sha256``), so older records stay comparable; ``stable_sha256`` is the same construction over the
+    rows with the ``volatile`` columns removed. The rows are returned ordered by their first column.
+    """
+    budget = [0]
+    keep = [i for i, name in enumerate(labels) if name not in volatile]
+    full, stable = hashlib.sha256(TABLE_DIGEST_PREFIX), hashlib.sha256(STABLE_DIGEST_PREFIX)
+    full_rows = sorted(_typed_row(row, budget) for row in rows)
+    stable_rows = sorted(_typed_row([row[i] for i in keep], budget) for row in rows)
+    for item in full_rows:
+        full.update(item)
+    for item in stable_rows:
+        stable.update(item)
+    ordered = sorted(rows, key=lambda row: (row[0] is None, row[0]))
+    return {"columns": list(labels), "volatile_columns": [name for name in labels if name in volatile],
+            "row_count": len(rows), "full_sha256": full.hexdigest(), "stable_sha256": stable.hexdigest(),
+            "rows": [{name: _json_value(value) for name, value in zip(labels, row)} for row in ordered]}
+
+
 def _quoted(name: str) -> str:
     if not isinstance(name, str) or not name or len(name.encode("utf-8")) > 256 or "\x00" in name:
         raise ProbeError("database identifier exceeds bound")
@@ -437,7 +477,7 @@ def _database_semantics(connection, deadline: float) -> dict:
     version = connection.execute("PRAGMA main.user_version").fetchone()[0]
     application = connection.execute("PRAGMA main.application_id").fetchone()[0]
     table_kinds = {row[1]: (row[2], row[4]) for row in connection.execute("PRAGMA main.table_list")}
-    tables, total_rows = [], 0
+    tables, total_rows, ledger = [], 0, None
     for kind, name, _, sql in schema:
         if kind != "table":
             continue
@@ -459,18 +499,22 @@ def _database_semantics(connection, deadline: float) -> dict:
             if rowid is None:
                 raise ProbeError("all implicit rowid aliases are shadowed")
             projection.insert(0, rowid)
-        rows = []
+        rows, raw_rows = [], []
         for row in connection.execute("SELECT " + ",".join(projection) + " FROM main." + quoted):
             tick()
             total_rows += 1
             if total_rows > DB_MAX_ROWS:
                 raise ProbeError("database row count exceeds bound")
             rows.append(_typed_row(row, budget))
+            if name == LEDGER_TABLE and len(raw_rows) < LEDGER_MAX_ROWS:
+                raw_rows.append(tuple(row))
         table_digest = hashlib.sha256(b"celikpanel/sqlite-table/v1\x00")
         for row_digest in sorted(rows):
             table_digest.update(row_digest)
         tables.append({"name": name, "rows": len(rows), "columns": len(columns),
                        "rowid_included": rowid is not None, "sha256": table_digest.hexdigest()})
+        if name == LEDGER_TABLE and len(raw_rows) == len(rows):
+            ledger = ledger_projection(([rowid] if rowid is not None else []) + column_names, raw_rows)
     tables.sort(key=lambda value: value["name"])
     semantic = {"schema": DATABASE_SEMANTIC_SCHEMA, "schema_sha256": schema_digest.hexdigest(),
                 "user_version": version, "application_id": application, "tables": tables,
@@ -486,7 +530,7 @@ def _database_semantics(connection, deadline: float) -> dict:
             migrations = values
     return {"status": "ok", "integrity_check": ["ok"], "user_version": version,
             "schema_version": max(migrations) if migrations else None, "migrations": migrations,
-            "semantic": semantic}
+            "semantic": semantic, "site_file_ledger": ledger}
 
 
 def _observe_database_path(path: Path, *, immutable=False) -> dict:

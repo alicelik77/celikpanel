@@ -926,3 +926,17 @@ also proves the five archives B, G, D, S and R. That test and the
 Git-backed tests in `test_recovery_candidate_archive.py` need `git` and a
 POSIX host; otherwise they are skipped. None of these tests establishes a
 native result.
+
+## Two digests for `managed_site_files` (set15 finding, 2026-10-14)
+
+In the seventeenth native record (set15) the table digest of `managed_site_files` differed after the
+defective candidate's return, and the raw files held only the digest, so nobody could say whether the
+ledger came back byte for byte. `guest_probe.py` now also reports `database.site_file_ledger`: the rows
+themselves (ordered by rowid, as JSON lines in `guest-observation-<label>-managed-site-files.jsonl`) and two
+digests. `full_sha256` is the unchanged table digest (`tables[].sha256`), so earlier records stay comparable.
+`stable_sha256` is the same construction over the rows with `observed_at` removed, the one column the Panel
+rewrites on every plain start (`internal/services/site_file_ledger.go`, `RecordSiteFileResult`). When only
+`observed_at` differs, `compare_databases` lists the table under `volatile_columns_only` instead of
+`unexpected` and reports both digests and the changed columns per row under `site_file_ledger`; any other
+changed column still fails the comparison. This is offline logic only (`test_guest_probe.py`,
+`test_owner_update_trial.py`); only a real guest run shows which columns actually change after a return.
