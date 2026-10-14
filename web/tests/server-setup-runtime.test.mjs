@@ -1078,7 +1078,8 @@ test('final verification stays waiting and manual checks report unchanged, unkno
         const read=fetch;
         globalThis.fetch=async(url,options)=>url.includes('/setup/operation')?Response.json(waiting):read(url,options);
         let finish, reject, manual=false;
-        fixture.context.reload=()=>manual?new Promise((resolve,fail)=>{finish=resolve;reject=fail;}):Promise.resolve(state);
+        const reloads=[];
+        fixture.context.reload=(checks)=>{reloads.push(checks);return manual?new Promise((resolve,fail)=>{finish=resolve;reject=fail;}):Promise.resolve(state);};
         try{
             await mount();
             const row=tree.root.findAllByType('ol').find(item=>item.props['aria-live']==='polite');
@@ -1091,11 +1092,17 @@ test('final verification stays waiting and manual checks report unchanged, unkno
                 if(outcome==='error')reject(new Error('offline'));
                 else finish({...state,checks:outcome==='empty'?[]:[{id:'mail_identity',state:outcome,code:outcome==='ready'?'ready':outcome==='unknown'?'mail_identity_unavailable':'mail_identity_required'}]});
             });
-            assert.equal(findButton('setup.verify').props.disabled,false);
-            const message=outcome==='error'||outcome==='empty'?'setup.verificationFailed':outcome==='unknown'?'setup.verifyUnknown':outcome==='ready'?'setup.verifyChecksPassed':'setup.verifyStillWaiting';
+            // The owner's check is the explicit one; page reads are not.
+            assert.equal(reloads.at(-1),'manual');
+            assert.ok(reloads.slice(0,-1).every(value=>value!=='manual'));
+            // Every check passed: the server is finishing, so there is nothing to press.
+            if(outcome==='ready')assert.equal(findButton('setup.verify'),undefined);
+            else assert.equal(findButton('setup.verify').props.disabled,false);
+            const message=outcome==='error'||outcome==='empty'?'setup.verificationFailed':outcome==='unknown'?'setup.verifyUnknown':outcome==='ready'?'setup.finishing':'setup.verifyStillWaiting';
             const result=tree.root.findAllByProps({role:'status'}).find(item=>item.props['aria-atomic']==='true');
-            assert.ok(JSON.stringify(result.findAllByType('p').map(item=>item.props.children).concat(result.findAllByType('li').map(item=>item.props.children))).includes(message),outcome);
-            if(outcome==='unknown'||outcome==='action_required')assert.ok(JSON.stringify(result.findAllByType('p').map(item=>item.props.children).concat(result.findAllByType('li').map(item=>item.props.children))).includes('setup.blocker.mailIdentity'));
+            const said=[...result.findAllByType('p'),...result.findAllByType('span'),...result.findAllByType('li')].flatMap(item=>[item.props.children].flat()).filter(child=>typeof child==='string');
+            assert.ok(said.includes(message),outcome);
+            if(outcome==='unknown'||outcome==='action_required')assert.ok(said.includes('setup.blocker.mailIdentity'));
             assert.ok(!JSON.stringify(tree.toJSON()).includes('setup.completeTitle'));
             assert.ok(calls.every(call=>!call.options?.method||call.options.method==='GET'));
             assert.equal(store.size,1);

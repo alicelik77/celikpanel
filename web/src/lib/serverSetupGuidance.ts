@@ -72,16 +72,26 @@ function checkLine(check: ServerSetupCheck): SetupCheckLine {
 
 // What the step list says a step is. A stopped run has no step in progress; a
 // final check that waits says whether it waits for the owner, for another
-// requirement, or could not be read (D-024, 2026-10-10).
+// requirement, or could not be read (D-024, 2026-10-10). A reverse DNS name
+// is set at the server provider and then has to reach public DNS, so a final
+// check waiting only on it says so instead of "Waiting for you": the owner may
+// already have done everything (owner report 2026-10-14). 'finishing' is set
+// by the screen alone, after the owner's check saw every check pass and while
+// the server completes setup.
 // Durmus calismada surmekte olan adim yoktur; bekleyen son denetim neyi
-// bekledigini soyler.
-export type SetupStepState = 'pending' | 'running' | 'succeeded' | 'failed' | 'stopped' | 'notStarted' | 'waitingOwner' | 'waitingRequirement' | 'unknown';
+// bekledigini soyler. Ters DNS saglayicida ayarlanir ve yayilmasi beklenir.
+export type SetupStepState = 'pending' | 'running' | 'succeeded' | 'failed' | 'stopped' | 'notStarted' | 'waitingOwner' | 'waitingReverseDNS' | 'waitingRequirement' | 'finishing' | 'unknown';
+// The typed reason whose fix is made at the server provider and then spreads
+// through public DNS (cmd/panel setupMailIdentityReason).
+const reverseDNSWait = (check: ServerSetupCheck) => check.id === 'mail_identity' && check.state === 'action_required' && check.reason === 'reverse_dns_mismatch' && !!setupCheckReasonText(check);
 export function setupStepState(execution: ServerSetupExecution, step: ServerSetupExecution['steps'][number], checks: ServerSetupCheck[] = execution.checks || []): SetupStepState {
     const stopped = execution.status === 'failed';
     if (step.kind === 'verify') {
         if (execution.status === 'waiting' && execution.phase === 'verification') {
             const open = checks.filter(check => check.state !== 'ready');
-            if (open.some(check => check.state === 'action_required' && setupCheckReasonText(check))) return 'waitingOwner';
+            const typed = open.filter(check => check.state === 'action_required' && setupCheckReasonText(check));
+            if (typed.some(check => !reverseDNSWait(check))) return 'waitingOwner';
+            if (typed.length > 0) return 'waitingReverseDNS';
             if (open.length > 0 && open.every(check => check.state === 'unknown')) return 'unknown';
             return 'waitingRequirement';
         }
@@ -95,7 +105,8 @@ export function setupStepState(execution: ServerSetupExecution, step: ServerSetu
 export const setupStepStateLabel: Record<SetupStepState, TranslationKey> = {
     pending: 'setup.operation.pending', running: 'setup.operation.running', succeeded: 'setup.operation.succeeded',
     failed: 'setup.stepState.failed', stopped: 'setup.stepState.stopped', notStarted: 'setup.stepState.notStarted',
-    waitingOwner: 'setup.stepState.waitingOwner', waitingRequirement: 'setup.verifyWaiting', unknown: 'setup.stepState.unknown',
+    waitingOwner: 'setup.stepState.waitingOwner', waitingReverseDNS: 'setup.stepState.waitingReverseDNS', waitingRequirement: 'setup.verifyWaiting',
+    finishing: 'setup.stepState.finishing', unknown: 'setup.stepState.unknown',
 };
 
 const componentNames: Record<string, string> = { nginx: 'Nginx', 'php-fpm': 'PHP-FPM', mariadb: 'MariaDB', postgresql: 'PostgreSQL', node: 'Node.js', nftables: 'nftables', certbot: 'Certbot', postfix: 'Postfix', dovecot: 'Dovecot', rspamd: 'Rspamd', roundcube: 'Roundcube', bind: 'BIND', pdns: 'PowerDNS', webmail: 'Webmail', 'core-mail': 'Core Mail', 'protected-mail': 'Spam-Protected Mail' };
@@ -312,6 +323,10 @@ export function setupExecutionGuidance(execution: ServerSetupExecution, componen
             if (!codes.has(actual)) result.messages.push(text(actual));
             codes.add(actual);
         }
+        // A reverse DNS change made at the provider takes time to reach public
+        // DNS; once made, nothing more is needed in CelikPanel (2026-10-14).
+        // Saglayicidaki ters DNS degisikligi genel DNS'e zamanla ulasir.
+        if (open.some(reverseDNSWait)) result.messages.push(text('setup.guide.reverseDNSPropagation'));
         if (execution.status === 'waiting') result.messages.push(text('setup.guide.verificationResume'));
     }
     if (result.messages.length === 0) result.messages.push(text('setup.guide.unknown'));

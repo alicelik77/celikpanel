@@ -154,6 +154,14 @@ export function ServerSetup() {
     return <SetupWizard initial={snapshot} />;
 }
 
+// After the owner's check saw every check pass, the server completes setup on
+// its next pass, normally within seconds. Past this bound the page stops
+// showing it as in progress and says the result is not known (D-024).
+// Sahibin basarili kontrolunden sonra tamamlanma; bu sureden sonra sonuc
+// bilinmiyor denir, sonsuz bekleme gosterilmez.
+const setupFinishingLimit = 60_000;
+const setupChecksPassed = (checks: ServerSetupCheck[]) => checks.length > 0 && checks.every(check => check.state === 'ready');
+
 function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     const setup = useServerSetup()!;
     const { user } = useAuth();
@@ -190,6 +198,12 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     const [completionFailed, setCompletionFailed] = useState(false);
     const [verificationResult, setVerificationResult] = useState<{ checks: ServerSetupCheck[]; failed: boolean } | null>(null);
     const [verifyingRequirements, setVerifyingRequirements] = useState(false);
+    // checks: the run's own last recorded checks when the owner's check passed.
+    // A newer unmet result from the run itself ends the finishing state.
+    const [finishingRun, setFinishingRun] = useState<{ checks: string } | null>(null);
+    const [finishingSlow, setFinishingSlow] = useState(false);
+    // Every check passed on the owner's check; the server is completing setup.
+    const finishing = !!finishingRun && !finishingSlow && execution?.status === 'waiting' && execution.phase === 'verification';
     const [manualExit, setManualExit] = useState(false);
     const pendingRef = useRef(false);
     const pollingRef = useRef(false);
@@ -300,9 +314,27 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     useEffect(() => {
         if (snapshot.status === 'ready' || (!reconnecting && !marker && !execution)) return;
         if (execution?.status === 'failed' && !reconnecting) return;
-        const timer = window.setInterval(() => void reconcile(), 3000);
+        // Read more often while setup is finishing, so completion shows promptly.
+        const timer = window.setInterval(() => void reconcile(), finishing ? 1500 : 3000);
         return () => window.clearInterval(timer);
-    }, [execution, marker, reconnecting, resolving, reconcile, snapshot.status]);
+    }, [execution, marker, reconnecting, resolving, reconcile, snapshot.status, finishing]);
+    // Finishing ends with the run's own next state: it left the final check, or
+    // it recorded a newer result with a requirement unmet again.
+    // Calisma son kontrolden cikinca ya da yeni bir karsilanmamis sonuc kaydedince biter.
+    useEffect(() => {
+        if (!finishingRun || !execution) return;
+        const waitingFinal = execution.status === 'waiting' && execution.phase === 'verification';
+        const checks = execution.checks || [];
+        const unmetAgain = waitingFinal && JSON.stringify(checks) !== finishingRun.checks && !setupChecksPassed(checks);
+        if (waitingFinal && !unmetAgain) return;
+        setFinishingRun(null); setFinishingSlow(false);
+        if (unmetAgain) setVerificationResult(null);
+    }, [execution, finishingRun]);
+    useEffect(() => {
+        if (!finishingRun) return;
+        const timer = window.setTimeout(() => setFinishingSlow(true), setupFinishingLimit);
+        return () => window.clearTimeout(timer);
+    }, [finishingRun]);
     // Once the certificate handover is behind this setup, drop its flag from
     // the saved marker: a later restart is then not explained as the handover.
     // Devir geride kalinca isaret kaldirilir; sonraki yeniden baslatma devir sayilmaz.
@@ -380,12 +412,15 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     async function verifyManual() {
         if (pendingRef.current) return;
         pendingRef.current = true; setBusy(true); setError('');
-        setVerifyingRequirements(true); setVerificationResult(null);
+        setVerifyingRequirements(true); setVerificationResult(null); setFinishingRun(null); setFinishingSlow(false);
         try {
-            const latest = await setup.reload(true);
+            // 'manual' lets a run waiting at its final check finish on its next
+            // pass when every check passes; the server, not this page, completes it.
+            const latest = await setup.reload('manual');
             if (!alive.current) return;
             accept(latest);
             setVerificationResult({ checks: latest.checks, failed: false });
+            if (setupChecksPassed(latest.checks)) setFinishingRun({ checks: JSON.stringify(execution?.checks || []) });
             await reconcile();
         } catch { if (alive.current) setVerificationResult({ checks: [], failed: true }); }
         finally { pendingRef.current = false; if (alive.current) { setBusy(false); setVerifyingRequirements(false); } }
@@ -428,7 +463,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     }
     function resetForReview() {
         pollEpoch.current++;
-        setVerificationResult(null);
+        setVerificationResult(null); setFinishingRun(null); setFinishingSlow(false);
         try { localStorage.removeItem(markerKey(user.username)); } catch { /* next start still requires storage */ }
         markerRef.current = null; setMarker(null); setExecution(null); setPlan(null); setAcknowledged(false); setStep('access');
     }
@@ -491,7 +526,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     const observingMailEnrollment = progressCurrentStep?.kind === 'mail_enrollment' && execution?.status === 'running' && ['running', 'rollback', 'unknown', 'not_recorded', 'handoff'].some(reason => execution.error?.code === `server_setup_mail_enrollment_${reason}`);
     const mailEnrollmentToRetry = !reconnecting && retryableMailEnrollmentHandoff(execution);
     const mailEnrollmentToContinue = !reconnecting && continuableMailEnrollment(execution);
-    const guidance = execution && !reconnecting ? setupExecutionGuidance(execution, componentLabel) : null;
+    const guidance = execution && !reconnecting && !finishing ? setupExecutionGuidance(execution, componentLabel) : null;
     // A server that was busy is a typed wait, not a failure: its reason leads the
     // screen, with the action beside it, and the generic paragraphs stay out.
     const hostBusy = execution?.status === 'failed' && !reconnecting ? setupHostBusyGuidance(execution.error) : null;
@@ -506,7 +541,8 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
         : !verificationResult ? null
         : verificationResult.failed || verificationResult.checks.length === 0 ? 'setup.verificationFailed'
         : verifiedBlockers.some(check => check.state === 'unknown') ? 'setup.verifyUnknown'
-        : verifiedBlockers.length > 0 ? 'setup.verifyStillWaiting' : 'setup.verifyChecksPassed';
+        : verifiedBlockers.length > 0 ? 'setup.verifyStillWaiting'
+        : finishing ? 'setup.finishing' : finishingRun && finishingSlow ? 'setup.finishingSlow' : null;
 
     if (manualExit) return <Navigate to="/" replace />;
     return <ServerSetupShell navigation={!completed ? <ServerSetupSteps steps={steps} current={hasOperation ? 'progress' : step} /> : undefined}>
@@ -523,7 +559,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
             {error && <p role="alert" className="mb-5 rounded-lg border border-danger/40 bg-danger/5 p-4 text-sm text-danger">{error}</p>}
             {resolving ? <div className="flex items-center gap-3"><Spinner label={t('setup.resuming')} /><p>{t('setup.resuming')}</p></div>
                 : step === 'progress' || hasOperation ? <section aria-labelledby="setup-progress-title">
-                    <h2 id="setup-progress-title" className="text-xl font-semibold">{t(handoverDrop ? 'setup.handover.dropTitle' : reconnecting ? 'setup.reconnecting' : stateTitle ?? (execution?.status === 'failed' ? 'setup.operationFailed' : waitingLicense ? 'setup.licenseWaiting' : execution?.status === 'waiting' ? 'setup.waiting' : execution?.status === 'succeeded' ? 'setup.verifying' : 'setup.installing'))}</h2>
+                    <h2 id="setup-progress-title" className="text-xl font-semibold">{t(handoverDrop ? 'setup.handover.dropTitle' : reconnecting ? 'setup.reconnecting' : stateTitle ?? (finishing ? 'setup.finishingTitle' : execution?.status === 'failed' ? 'setup.operationFailed' : waitingLicense ? 'setup.licenseWaiting' : execution?.status === 'waiting' ? 'setup.waiting' : execution?.status === 'succeeded' ? 'setup.verifying' : 'setup.installing'))}</h2>
                     {handoverDrop ? <div role="status" className="mt-3 max-w-2xl"><p className="break-words text-sm leading-6 text-fg-muted">{t('setup.handover.drop', { host: handoverDrop.host })}</p>{handoverDrop.elsewhere && <SetupHandoverAddress lead={t('setup.handover.dropAddress')} url={handoverURL} />}</div>
                         : reconnecting && <p className="mt-3 text-sm leading-6 text-fg-muted">{t('setup.uncertain')}</p>}
                     {execution?.status === 'waiting' && execution.phase === 'dns_publisher' && <SetupDNSPublisher key={execution.id} execution={execution} onBound={reconcile} />}
@@ -556,9 +592,9 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                         {execution?.steps.map(item => {
                             // The step's real state: a stopped run shows nothing in progress, and a
                             // waiting final check says what it waits for (lib/serverSetupGuidance).
-                            const status = setupStepState(execution, item, progressChecks);
+                            const status = finishing && item.kind === 'verify' ? 'finishing' : setupStepState(execution, item, progressChecks);
                             const tone = status === 'failed' ? 'font-medium text-danger' : status === 'waitingOwner' || status === 'stopped' ? 'font-medium text-fg' : 'text-fg-muted';
-                            return <li key={item.id} className="flex flex-col items-start justify-between gap-2 py-4 sm:flex-row sm:items-center sm:gap-4" data-step-state={status}><div className="min-w-0"><p className="font-medium">{t(`setup.kind.${item.kind}`, { target: stepTarget(item.kind, item.target) })}</p>{item.qualifier && item.kind !== 'mail_enrollment' && <p className="mt-1 break-words text-sm text-fg-muted">{item.qualifier}</p>}{handoverNotice && item.kind === 'panel_certificate' && <p className="mt-1 text-sm text-fg-muted">{t('setup.handover.stepNote')}</p>}</div><span className={`flex shrink-0 items-center gap-2 text-sm ${tone}`}>{status === 'succeeded' ? <Check className="h-4 w-4 text-success" aria-hidden="true" /> : status === 'running' ? <Loader2 className="h-4 w-4 motion-safe:animate-spin" aria-hidden="true" /> : <Circle className="h-3 w-3" aria-hidden="true" />}{t(setupStepStateLabel[status])}</span></li>; })}
+                            return <li key={item.id} className="flex flex-col items-start justify-between gap-2 py-4 sm:flex-row sm:items-center sm:gap-4" data-step-state={status}><div className="min-w-0"><p className="font-medium">{t(`setup.kind.${item.kind}`, { target: stepTarget(item.kind, item.target) })}</p>{item.qualifier && item.kind !== 'mail_enrollment' && <p className="mt-1 break-words text-sm text-fg-muted">{item.qualifier}</p>}{handoverNotice && item.kind === 'panel_certificate' && <p className="mt-1 text-sm text-fg-muted">{t('setup.handover.stepNote')}</p>}</div><span className={`flex shrink-0 items-center gap-2 text-sm ${tone}`}>{status === 'succeeded' ? <Check className="h-4 w-4 text-success" aria-hidden="true" /> : status === 'running' || status === 'finishing' ? <Loader2 className="h-4 w-4 motion-safe:animate-spin" aria-hidden="true" /> : <Circle className="h-3 w-3" aria-hidden="true" />}{t(setupStepStateLabel[status])}</span></li>; })}
                     </ol>
                     {waitingVerification && <p className="mt-5 text-sm text-fg-muted">{t('setup.reviseHelp')}</p>}
                     {completionFailed && <p role="alert" className="mt-5 text-sm text-danger">{t('setup.verificationFailed')}</p>}
@@ -567,13 +603,15 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                     <div className="mt-6 flex flex-wrap gap-3">
                         {canReviseWaiting && !guidance && <Button variant="secondary" disabled={busy} onClick={() => void reviseWaiting()}>{t('setup.editPlan')}</Button>}
                         {execution?.status === 'failed' ? !guidance && <Button variant="primary" onClick={editPlan}>{t('setup.revise')}</Button>
-                            : waitingVerification ? <Button variant="primary" disabled={busy} onClick={() => void verifyManual()}>{t(verifyingRequirements ? 'setup.verifyChecking' : 'setup.verify')}</Button>
+                            : waitingVerification ? !finishing && <Button variant="primary" disabled={busy} onClick={() => void verifyManual()}>{t(verifyingRequirements ? 'setup.verifyChecking' : 'setup.verify')}</Button>
                                 : (reconnecting || completionFailed) && <Button variant={handoverDrop ? 'secondary' : 'primary'} disabled={busy} onClick={() => void (marker && !execution ? resumeUnconfirmed() : reconcile())}>{t(marker && !execution ? 'setup.resumeConfirmed' : 'setup.reconnect')}</Button>}
                     </div>
                     {waitingVerification && <div role="status" aria-live="polite" aria-atomic="true" className="mt-4 text-sm">
                         {verificationMessage && <div className="rounded-lg border border-border bg-surface p-4">
-                            <p className="font-medium">{t(verificationMessage)}</p>
+                            {finishing ? <p className="flex items-start gap-3 font-medium" data-setup-finishing=""><Loader2 className="mt-0.5 h-4 w-4 shrink-0 text-primary motion-safe:animate-spin" aria-hidden="true" /><span>{t(verificationMessage)}</span></p>
+                                : <p className={verificationMessage === 'setup.finishingSlow' ? 'max-w-3xl break-words leading-6' : 'font-medium'}>{t(verificationMessage)}</p>}
                             {!verifyingRequirements && verifiedBlockers.length > 0 && <ul className="mt-2 list-disc space-y-2 pl-5 text-fg-muted">{verifiedBlockers.map(check => <li key={check.id}>{failureText(check.code)}</li>)}</ul>}
+                            {verificationMessage === 'setup.finishingSlow' && <Button variant="secondary" className="mt-3" onClick={() => window.location.reload()}>{t('setup.reloadPage')}</Button>}
                         </div>}
                     </div>}
                 </section> : <form onSubmit={next} className="min-w-0">

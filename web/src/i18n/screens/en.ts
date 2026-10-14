@@ -1569,7 +1569,6 @@ export const enScreens = {
     "setup.verifyWaiting": "Waiting for requirements",
     "setup.verifyStillWaiting": "Check finished. These requirements still need attention:",
     "setup.verifyUnknown": "Some checks could not be completed. The server is not yet confirmed ready:",
-    "setup.verifyChecksPassed": "These checks passed. Waiting for the server to confirm setup completion.",
     "setup.revise": "Review a revised plan",
     "setup.details": "Technical details",
     "setup.secureAddress": "Continue at the secure panel address",
@@ -1757,6 +1756,15 @@ export const enScreens = {
     'setup.stepState.failed': 'Failed',
     'setup.stepState.stopped': 'Stopped',
     'setup.stepState.notStarted': 'Not started',
+    // A reverse DNS change spreads through public DNS; finishing after the owner's passing check (2026-10-14).
+    // Ters DNS değişikliği genel DNS'e yayılır; sahibin başarılı kontrolünden sonra tamamlanma.
+    'setup.stepState.waitingReverseDNS': 'Waiting for reverse DNS',
+    'setup.stepState.finishing': 'Finishing setup',
+    'setup.guide.reverseDNSPropagation': 'A change made at your server provider can take from a few minutes to several hours to reach public DNS, because DNS resolvers keep the old name until their saved copy expires. Once you have made the change, you do not need to do anything more in CelikPanel.',
+    'setup.finishingTitle': 'Finishing setup',
+    'setup.finishing': 'Every check passed. The panel is completing setup now, and you do not need to do anything. This page updates by itself when it is done.',
+    'setup.finishingSlow': 'Every check passed about a minute ago, but the server has not yet confirmed that setup is complete. This does not mean setup failed; the result is not known yet. Reload this page to read the current state. If it still says this, the setup run on the server may have stopped. Restarting the panel resumes the same setup at its final check without repeating finished steps: on the server, run sudo systemctl restart celikpanel-panel. Hosted sites and services keep running.',
+    'setup.reloadPage': 'Reload this page',
     'setup.guide.verificationWaiting': 'Every installation step has finished. Setup is waiting at its final check for this:',
     'setup.guide.verificationResume': 'Setup checks again by itself and finishes when every check passes. To check now, use Check requirements again.',
     'setup.guide.revisedTitle': 'Setup stopped: its plan was reopened',

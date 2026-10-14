@@ -9,7 +9,10 @@ import { Button, Spinner } from './ui';
 
 interface ServerSetupContextValue {
     snapshot: ServerSetupSnapshot | null;
-    reload: (checks?: boolean) => Promise<ServerSetupSnapshot>;
+    // 'manual': the owner's explicit "Check requirements again". It also lets a
+    // run waiting at its final check finish now when every check passes; the
+    // server never completes setup on a page poll (cmd/panel handleServerSetup).
+    reload: (checks?: boolean | 'manual') => Promise<ServerSetupSnapshot>;
     accept: (snapshot: ServerSetupSnapshot) => void;
 }
 const ServerSetupContext = createContext<ServerSetupContextValue | null>(null);
@@ -44,13 +47,13 @@ export function ServerSetupGate({ children }: { children: ReactNode }) {
     const [failed, setFailed] = useState(false);
     const generation = useRef(0);
     const controller = useRef<AbortController | null>(null);
-    const reload = useCallback(async (checks = false) => {
+    const reload = useCallback(async (checks: boolean | 'manual' = false) => {
         const current = ++generation.current;
         controller.current?.abort();
         const pending = new AbortController(); controller.current = pending;
         const timeout = window.setTimeout(() => pending.abort(), checks ? 25000 : 15000);
         try {
-            const response = await fetch(`/api/v1/setup${checks ? '?check=1' : ''}`, { cache: 'no-store', signal: pending.signal });
+            const response = await fetch(`/api/v1/setup${checks === 'manual' ? '?check=1&manual=1' : checks ? '?check=1' : ''}`, { cache: 'no-store', signal: pending.signal });
             if (!response.ok) throw new Error('setup status');
             const next = decodeServerSetup(await response.json());
             if (!next) throw new Error('setup contract');
