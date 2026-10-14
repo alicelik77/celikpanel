@@ -121,6 +121,9 @@ async function api(req, res, path, query) {
     if (key === 'GET /api/v1/panel/access-address') { send(res, 200, { hostname: state.served }); return; }
     if (!state.session) { coded(res, 401, 'AUTH_REQUIRED', 'authentication required'); return; }
     if (key === 'POST /api/v1/auth/logout') { state.session = false; send(res, 200, {}); return; }
+    // --- batch 12 (14 Oct 2026): the waiting states; answers only while `state.b12` is set ---
+    if (await (await import('./mock-batch12.mjs')).batch12(req, res, path, query, { state, send, coded, snapshot })) return;
+    // --- end of batch 12 ---
     // --- batch 5 (10 Oct 2026): the request identity, service actions, VPN ---
     // Before the routes below, because it answers some of the same addresses
     // through the guard's contract; it answers only while `state.b5` is set.

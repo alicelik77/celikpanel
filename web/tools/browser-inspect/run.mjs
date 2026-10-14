@@ -1,4 +1,4 @@
-// node run.mjs <desktop|phone> <en|tr> <light|dark> <port> [scenario,scenario...]
+// node run.mjs <desktop|laptop|phone> <en|tr> <light|dark> <port> [scenario,scenario...]
 // Drives a real headless Chrome against the loopback mock (mock.mjs) and saves
 // screenshots plus a text/observation record per state. Reads and screenshots
 // only; it talks to 127.0.0.1 and to nothing else. See README.md.
@@ -45,7 +45,8 @@ const browser = await puppeteer.launch({
     args: ['--no-first-run', '--no-default-browser-check', '--disable-background-networking', '--force-color-profile=srgb', '--hide-scrollbars=false'],
 });
 const report = { config: { vp, locale, theme }, states: {}, errors: [] };
-const viewport = vp === 'phone' ? { width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true } : { width: 1440, height: 900, deviceScaleFactor: 1 };
+// `laptop` (1280×800) since batch 12 (2026-10-14).
+const viewport = vp === 'phone' ? { width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true } : vp === 'laptop' ? { width: 1280, height: 800, deviceScaleFactor: 1 } : { width: 1440, height: 900, deviceScaleFactor: 1 };
 
 async function newPage(storage = {}) {
     const context = await browser.createBrowserContext();
@@ -1744,6 +1745,10 @@ const scenarios = {
 // --- batch 11 (2026-10-10): step 1b's second round and the session wait after an answer ---
 (await import('./scenarios-batch11.mjs')).default(scenarios, { base, vp, locale, theme, ctl, reset, drainLog, newPage, closePage, shot, into, clickByText, waitFor, pause, quiet });
 // --- end of batch 11 ---
+
+// --- batch 12 (2026-10-14): the waiting states of the alpha.85 branch ---
+(await import('./scenarios-batch12.mjs')).default(scenarios, { base, vp, locale, theme, out, viewport, ctl, reset, drainLog, newPage, closePage, shot, into, clickByText, waitFor, pause, quiet });
+// --- end of batch 12 ---
 
 for (const [name, run] of Object.entries(scenarios)) {
     if (wanted && !wanted.includes(name)) continue;
