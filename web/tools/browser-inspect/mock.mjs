@@ -41,6 +41,10 @@ const state = {
     revision: 3,
     execution: null,       // set by /setup/start or by ctl
     license: 'active',     // active | missing | expired | invalid | unavailable | error | drop | hang
+    // Seconds the mock server's clock is ahead (+) of or behind (-) the
+    // browser's. Only the absolute stamps move; the time left stays true, as
+    // on a real server whose clock is off (D-032 clock rule).
+    clockSkew: 0,
     served: '',            // hostname reported by /panel/access-address
     overrides: {},         // path -> { status, body, delay, drop, hang, after, times }
     domains: [],
@@ -125,10 +129,20 @@ async function api(req, res, path, query) {
     if (key === 'GET /api/v1/auth/me') { send(res, 200, user); return; }
     if (key === 'GET /api/v1/panel/availability') { send(res, 200, { schema: 'celikpanel-panel-availability/v1', state: state.mode === 'starting' ? 'starting' : 'ready' }); return; }
     if (key === 'GET /api/v1/license/access') {
-        const now = Math.floor(Date.now() / 1000);
-        if (state.license === 'active') { send(res, 200, { can_use_panel: true, valid_until: now + (state.validity || 60), state: 'active', observation: 'known' }); return; }
-        if (['missing', 'expired', 'invalid'].includes(state.license)) { send(res, 200, { can_use_panel: false, valid_until: 0, state: state.license, observation: 'known' }); return; }
-        if (state.license === 'unavailable') { send(res, 200, { can_use_panel: false, valid_until: 0, state: 'status_unavailable', observation: 'unknown' }); return; }
+        // The real answer (cmd/panel/license.go newLicenseAccessAnswer): the
+        // absolute end on the server's clock and the time left measured on it
+        // when the answer is written, in seconds to the millisecond; 0 when
+        // there is no end. Sending only valid_until exercised the rule the
+        // alpha.84 licence fix replaced.
+        const serverNowMs = Date.now() + Number(state.clockSkew || 0) * 1000;
+        const now = Math.floor(serverNowMs / 1000);
+        if (state.license === 'active') {
+            const until = now + (state.validity || 60);
+            send(res, 200, { can_use_panel: true, valid_until: until, valid_for_seconds: Math.max(0, Math.round(until * 1000 - serverNowMs) / 1000), state: 'active', observation: 'known' });
+            return;
+        }
+        if (['missing', 'expired', 'invalid'].includes(state.license)) { send(res, 200, { can_use_panel: false, valid_until: 0, valid_for_seconds: 0, state: state.license, observation: 'known' }); return; }
+        if (state.license === 'unavailable') { send(res, 200, { can_use_panel: false, valid_until: 0, valid_for_seconds: 0, state: 'status_unavailable', observation: 'unknown' }); return; }
         if (state.license === 'drop') { req.socket.destroy(); return; }
         if (state.license === 'hang') return;
         coded(res, 503, 'LICENSE_STATUS_UNAVAILABLE', 'license status unavailable'); return;

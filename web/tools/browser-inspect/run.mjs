@@ -38,7 +38,7 @@ const mock = spawn(process.execPath, [fileURLToPath(new URL('./mock.mjs', import
 await pause(700);
 const ctl = body => fetch(`${base}/__ctl`, { method: 'POST', body: JSON.stringify(body) });
 const drainLog = async () => (await fetch(`${base}/__log`)).json();
-const reset = () => ctl({ mode: 'ok', session: true, setupStatus: 'ready', execution: null, license: 'active', served: '', validity: 60, componentOperation: null, update: null, host: '', managedScan: null, clear: ['/api/v1/domains', '/api/v1/auth/me', '/api/v1/panel/availability', '/api/v1/license/access', '/api/v1/hosting/capabilities'] }).then(() => { /* execution null handled below */ });
+const reset = () => ctl({ mode: 'ok', session: true, setupStatus: 'ready', execution: null, license: 'active', served: '', validity: 60, clockSkew: 0, componentOperation: null, update: null, host: '', managedScan: null, clear: ['/api/v1/domains', '/api/v1/auth/me', '/api/v1/panel/availability', '/api/v1/license/access', '/api/v1/hosting/capabilities'] }).then(() => { /* execution null handled below */ });
 
 const browser = await puppeteer.launch({
     executablePath: chrome, headless: true,
