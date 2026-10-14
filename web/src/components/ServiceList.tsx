@@ -2515,6 +2515,7 @@ function InstallServiceDialog({
                                     variant="secondary"
                                     onClick={() => setRepoAction('enable')}
                                     disabled={repoBusy || busy || !repoKnown || Boolean(repo.error_code && !repo.repairable)}
+                                    loading={repoBusy}
                                     icon={Layers}
                                 >
                                     {repoBusy ? t('services.repo.enabling') : t('services.repo.enable')}
@@ -2938,7 +2939,7 @@ function VersionDrawer({
                             <span className={`text-xs ${repoError ? 'text-danger' : 'text-fg-subtle'}`}>
                                 {repoError || t('services.repo.note')}
                             </span>
-                            <Button variant="secondary" onClick={() => setRepoAction('enable')} disabled={repoBusy || Boolean(repo.error_code && !repo.repairable)}>
+                            <Button variant="secondary" onClick={() => setRepoAction('enable')} disabled={repoBusy || Boolean(repo.error_code && !repo.repairable)} loading={repoBusy}>
                                 {repoBusy ? t('services.repo.enabling') : t('services.repo.enable')}
                             </Button>
                         </div>
@@ -3074,7 +3075,7 @@ function VersionDrawer({
                             <Button variant="secondary" onClick={() => setRemoveTarget(null)} disabled={removing}>
                                 {t('common.cancel')}
                             </Button>
-                            <Button variant="danger" onClick={() => removeVersion(removeTarget)} disabled={removing} icon={Trash2}>
+                            <Button variant="danger" onClick={() => removeVersion(removeTarget)} disabled={removing} loading={removing} icon={Trash2}>
                                 {removing ? t('services.uninstalling') : t('services.removeVersion')}
                             </Button>
                         </>

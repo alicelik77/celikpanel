@@ -1572,3 +1572,18 @@ test('Panel certificate: while the request runs the button spins', async () => {
     if (finish) await act(async () => { finish(); await settled(); await settled(); });
   } finally { await cleanup(); }
 });
+
+test('Import: while an archive is inspected the button spins', async () => {
+  serve({ '/api/v1/subscriptions': json({ subscriptions: [{ id: 3, name: 'Main', owner: 'admin' }] }) }, 'admin', {
+    '/api/v1/import/cpanel/inspect': () => new Promise(() => {}),
+  });
+  try {
+    await mount(ImportPage);
+    await act(async () => { tree.root.findAllByProps({ placeholder: '/var/lib/celikpanel-imports/cpmove-user.tar.gz' })[0].props.onChange({ target: { value: '/var/lib/celikpanel-imports/a.tar.gz' } }); await settled(); });
+    await act(async () => { void buttons('import.inspect')[0].props.onClick({}); await settled(); });
+    const busy = buttons('import.inspecting')[0];
+    assert.ok(busy, 'the button names the inspection in flight');
+    assert.equal(busy.props['aria-busy'], true, 'the button shows its spinner');
+    assert.equal(calls.filter((call) => call.method === 'POST').length, 1);
+  } finally { await cleanup(); }
+});

@@ -1024,3 +1024,31 @@ test('the panels of this batch are off the ratchet’s list; the log viewer keep
   assert.deepEqual(tree['src/components/DomainLogsViewer.tsx'], { rawRead: 1 });
   assert.deepEqual(list['src/components/DomainLogsViewer.tsx'], { rawRead: 1 });
 });
+
+// --- A change in flight shows motion (owner rule 2026-10-14) ------------------
+// Publishing a zone and applying a PHP version run a server reload; their
+// buttons were disabled with a static "Publishing…" / "Applying…" label.
+const inFlight = [
+  { name: 'DNS, publishing the zone', element: el(DomainDNSManager), path: `${D}/dns/zone`, start: 'dns.republish', busy: 'dns.publishing' },
+  { name: 'PHP, applying a version', element: php, path: `${D}/php`, with: { '/api/v1/hosting/capabilities': { ...good['/api/v1/hosting/capabilities'], php_versions: ['8.3', '8.4'] } },
+    pick: async () => { const picker = fields().find((node) => node.type === 'select' && !node.props.name); await act(async () => { picker.props.onChange({ target: { value: '8.4' } }); }); },
+    start: 'php.apply', busy: 'php.applying' },
+];
+for (const row of inFlight) {
+  test(`${row.name}: the button spins while the change runs, and the change is sent once`, async () => {
+    serve({ ...row.with, [row.path]: (init) => (init.method && init.method !== 'GET' ? HANG() : answer(good[row.path])) });
+    await mount(row.element());
+    try {
+      if (row.pick) await row.pick();
+      const node = buttons().find((item) => label(item).includes(row.start) && !item.props.disabled);
+      assert.ok(node, `no enabled ${row.start}: ${buttons().map(label).join(' | ')}`);
+      await act(async () => { void node.props.onClick({ preventDefault() {} }); });
+      await settle();
+      const busy = buttons().find((item) => label(item).includes(row.busy));
+      assert.ok(busy, `no ${row.busy}: ${buttons().map(label).join(' | ')}`);
+      assert.equal(busy.props['aria-busy'], true, 'the button shows its spinner');
+      assert.equal(busy.props.disabled, true);
+      assert.equal(requests.filter((line) => line.startsWith('POST ') || line.startsWith('PUT ')).length, 1, requests.join(', '));
+    } finally { await unmount(); }
+  });
+}
