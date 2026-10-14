@@ -7349,3 +7349,39 @@ parçası olmayan `a87ce0b97` hariç).
   çalıştırılmadı; bir konukta çalıştırılmaları gerekir.
 - Buradaki hiçbir şey kurulu bir sunucuda ya da yerel bir kayıtta ölçülmedi ve
   kabul kanıtı değildir. Hiçbir kurulu sunucu değiştirilmedi.
+
+**Satır 16, 25 ve 35: karar verildi ve yapıldı (2026-10-14).** Sahip yukarıda
+açık kalan üç satır için karar verdi; üçü de kaynakta, bağlanan testlerle
+yapıldı ve kurulu bir sunucuda ölçülmedi.
+
+- **Satır 16** (`8e68b3ce2`). Bağlantı kesildiğinde bileşen işlemi kilidi
+  "Yeniden bağlanılıyor…" yanında dönen bir simge gösterir ve sayfanın birkaç
+  saniyede bir sunucuya kendiliğinden yeniden sorduğunu, hiçbir düğmeye
+  basılması gerekmediğini söyler. Kullanılabilir yanıt gelmeden 60 saniye
+  geçince simge durur ve kilit, sonucun henüz bilinmediğini, bunun başarısızlık
+  anlamına gelmediğini, sunucunun işlemin kaydını tuttuğunu ve panelin sunucuda
+  nasıl denetleneceğini söyler (`sudo systemctl status celikpanel-panel`, sonra
+  `sudo systemctl start celikpanel-panel`); "Sayfayı yenile" kalır. Okumalar 3
+  saniyede bir sürer ve genel kilit kalır. Kaydedilmiş bir hata kendi metnini
+  korur.
+- **Satır 25** (`3abbe3f76`). Panel güncelleme kartı sunucunun meşgul olduğunu
+  söylerken hazır olma durumunu 5 saniyede bir yeniden okur: yalnız GET, aynı
+  anda tek okuma, yalnız sekme görünürken ve denetim görünümünü çizmeden.
+  Meşgul metni, bir okuma hazır diyene kadar kalır; doğrulayamayan bir okuma
+  gösterileni değiştirmez. Meşgul metninin altında
+  `services.mutationReadiness.autoResume` durur ve "Tekrar dene" kalır.
+  Okumalar sekme gizlenince ve kart meşgul durumundan çıkınca durur. Hiçbiri
+  güncelleme başlatmaz ya da kabul ettirmez.
+- **Satır 35** (`0ad26074d`). Bir alan adının DNS değişikliği yayılırken ve
+  sekme görünürken bağlantı kartı, "Tekrar kontrol et"in gönderdiği GET ile
+  30 saniyede bir, en çok 60 kez (görünür bir sayfanın 30 dakikası) yeniden
+  kontrol eder. Sağlayıcıdaki bir değişikliğin yayılmasının birkaç dakikadan
+  birkaç saate kadar sürebileceğini, sayfanın kendiliğinden kontrol ettiğini ve
+  bir şey yapılması gerekmediğini, son kontrolün zamanını da söyler (yanıtın
+  `checked_at` damgası, yoksa sayfanın yanıtı aldığı an; tarayıcı saatiyle asla
+  karşılaştırılmaz). Sonra durur ve son kontrolde değişikliğin hâlâ yayıldığını,
+  bunun bir hata olmadığını, "Tekrar kontrol et"in kullanılabileceğini ya da
+  daha sonra yeniden bakılabileceğini söyler.
+- Sayılar: `npm test` 1386/1386 (her biri değişiklikten önceki ekrana karşı
+  başarısız olan on bir yeni test); `npx tsc --noEmit` temiz. Go değiştirilmedi
+  ve çalıştırılmadı.

@@ -7382,3 +7382,37 @@ measured on an installed server.
   guest run.
 - Nothing here was measured on an installed server or in a native record, and
   it is not acceptance evidence. No installed server was changed.
+
+**Rows 16, 25 and 35: decided and done (2026-10-14).** The owner decided the
+three rows left open above; they are now done in source, with mounted tests,
+and not measured on an installed server.
+
+- **Row 16** (`8e68b3ce2`). While the connection is lost the component
+  operation lock shows a spinner beside "Reconnecting…" and says that the page
+  asks the server again every few seconds by itself and nothing needs to be
+  pressed. After 60 s without a usable answer the spinner stops and the lock
+  says the result is not known yet, that this does not mean it failed, that the
+  server keeps the operation's record, and how to check the panel on the server
+  (`sudo systemctl status celikpanel-panel`, then
+  `sudo systemctl start celikpanel-panel`); "Reload page" stays. The reads go
+  on every 3 s and the global lock stays. A recorded failure keeps its own
+  wording.
+- **Row 25** (`3abbe3f76`). While the panel update card says the server is
+  busy it reads readiness again every 5 s: GET only, one read at a time, only
+  while the tab is visible, without drawing its checking look. The busy text
+  stays until a read says ready; a read that could not verify keeps what is
+  shown. `services.mutationReadiness.autoResume` stands under the busy text and
+  Retry stays. The reads stop when the tab is hidden and when the card leaves
+  the busy state. Nothing in them starts or admits an update.
+- **Row 35** (`0ad26074d`). While a domain's DNS change spreads and the tab is
+  visible, the connection card checks again every 30 s with the GET that
+  "Check again" sends, for at most 60 checks (30 minutes of a visible page). It
+  says that a change at the provider can take from a few minutes to several
+  hours to spread, that the page checks by itself and nothing needs doing, and
+  when it last checked (the answer's `checked_at`, else the moment the page
+  received it; never compared with the browser's clock). Then it stops and says
+  that the change was still spreading at the last check, that this is not a
+  failure, and to use "Check again" or come back later.
+- Counts: `npm test` 1386 of 1386 (eleven new tests, each failing against the
+  screen before its change); `npx tsc --noEmit` clean. No Go was changed or
+  run.
