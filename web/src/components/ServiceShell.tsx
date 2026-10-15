@@ -10,6 +10,7 @@ import { ServiceActionNotice, isServiceActionOutcome } from './ServiceActionNoti
 import { readServiceActionNote } from '../lib/serviceActionNote';
 import { decodeManagedServicesSnapshot, useComponentOperation } from './ComponentOperation';
 import { publishComponentCensus } from '../lib/componentCensus';
+import { startVisibleReads } from '../lib/visibleReads';
 
 interface ManagedService {
     id: string;
@@ -229,15 +230,18 @@ export function ServiceShell({
             setInstallReadinessLoading(false);
         };
 
-        void checkReadiness();
         // While the dialog is open the answer is read again, so a busy server
         // lifts its pause by itself instead of leaving a static "wait" in place
-        // (owner rule 2026-10-14). Reads only.
-        // Pencere açıkken hazır olma durumu yeniden okunur; yalnız okur.
-        const timer = setInterval(() => void checkReadiness(), 5000);
+        // (owner rule 2026-10-14). Reads only, one at a time, and only while
+        // the tab is visible; shown again, it reads once at once (2026-10-15).
+        // Pencere açıkken ve sekme görünürken hazır olma durumu yeniden okunur.
+        const stopReads = startVisibleReads(checkReadiness, 5000, {
+            setInterval: (callback, ms) => setInterval(callback, ms) as unknown as number,
+            clearInterval: (id) => clearInterval(id),
+        }, { immediate: true });
         return () => {
             cancelled = true;
-            clearInterval(timer);
+            stopReads();
         };
     }, [installConfirmationOpen, serviceId]);
 

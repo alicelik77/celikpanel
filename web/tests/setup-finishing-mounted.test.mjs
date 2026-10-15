@@ -36,6 +36,7 @@ const dnsTurkishURL = dataURL(compile('../src/i18n/setupDNS/tr.ts'));
 const dnsCopyURL = dataURL(compile('../src/i18n/setupDNS.ts').replace("from './setupDNS/en'", `from '${dnsEnglishURL}'`).replace("from './setupDNS/tr'", `from '${dnsTurkishURL}'`));
 const guidanceURL = dataURL(compile('../src/lib/serverSetupGuidance.ts'));
 const handoverURL = dataURL(compile('../src/lib/panelHandover.ts'));
+const visibleReadsURL = dataURL(compile('../src/lib/visibleReads.ts'));
 const catalogues = { en: { ...en, ...enScreens, ...enServerScreens }, tr: { ...tr, ...trScreens, ...trServerScreens } };
 const stub = dataURL(`
 import React from '${reactURL}';
@@ -61,7 +62,7 @@ export const AddressLink = props => React.createElement('a', { href: props.href 
 `);
 const source = compile('../src/components/ServerSetup.tsx').replace(/from ['"]([^'"]+)['"]/g, (_, path) => {
     const url = path === 'react' ? reactURL : path.endsWith('/remoteDNS') ? remoteURL : path.endsWith('/serverSetupComponents') ? componentLibURL
-        : path.endsWith('/setupDNS') ? dnsCopyURL : path.endsWith('/panelHandover') ? handoverURL : path.endsWith('/serverSetupGuidance') ? guidanceURL
+        : path.endsWith('/setupDNS') ? dnsCopyURL : path.endsWith('/visibleReads') ? visibleReadsURL : path.endsWith('/panelHandover') ? handoverURL : path.endsWith('/serverSetupGuidance') ? guidanceURL
             : path.endsWith('/serverSetupOperation') ? operationURL : path.endsWith('/serverSetup') ? setupURL : stub;
     return `from '${url}'`;
 });
@@ -288,6 +289,36 @@ for (const locale of ['en', 'tr']) {
         } finally { await unmount(tree); }
     });
 }
+
+// The page reads its operation only while the tab is visible (2026-10-15, the
+// open item of the alpha.85 notes): hidden, the interval stops and nothing is
+// read; shown again, one read at once and the interval resumes. Reads only.
+test('a hidden setup page stops its reads, and reads once at once when shown again', async () => {
+    const doc = new EventTarget();
+    doc.visibilityState = 'hidden';
+    globalThis.document = doc;
+    const { tree, world, win } = await mount('en');
+    const operationReads = () => world.calls.filter(call => call.url.includes('/setup/operation')).length;
+    try {
+        await act(async () => {});
+        const afterMount = operationReads();
+        assert.ok(afterMount >= 1, 'the page reads once when it opens');
+        assert.deepEqual(intervals(win), [], 'no interval while hidden');
+        doc.visibilityState = 'visible';
+        await act(async () => { doc.dispatchEvent(new Event('visibilitychange')); });
+        await act(async () => {});
+        assert.equal(operationReads(), afterMount + 1, 'one read at once when shown');
+        assert.ok(intervals(win).includes(3000), 'the interval resumes');
+        doc.visibilityState = 'hidden';
+        await act(async () => { doc.dispatchEvent(new Event('visibilitychange')); });
+        assert.deepEqual(intervals(win), [], 'hidden again: the interval stops');
+        assert.equal(operationReads(), afterMount + 1);
+        assert.ok(world.calls.every(call => call.method === 'GET'), 'reads only');
+    } finally {
+        await unmount(tree);
+        delete globalThis.document;
+    }
+});
 
 test('the finishing and reverse DNS wording names who acts and how it resumes in both languages', () => {
     for (const key of ['setup.finishing', 'setup.finishingSlow', 'setup.finishingTitle', 'setup.reloadPage', 'setup.stepState.finishing', 'setup.stepState.waitingReverseDNS', 'setup.guide.reverseDNSPropagation', 'setup.uncertain', 'setup.reconnectSlow']) {

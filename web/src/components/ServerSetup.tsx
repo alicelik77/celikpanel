@@ -18,6 +18,7 @@ import { ServerSetupComponents, useSetupComponentCatalog } from './ServerSetupCo
 import { setupComponentName, setupExecutionGuidance, setupHostBusyGuidance, setupHostingRootBlockerValues, setupPlanReopened, setupStepState, setupStepStateLabel, type SetupGuidanceText } from '../lib/serverSetupGuidance';
 import { setupEffectiveComponents, setupPresetComponents } from '../lib/serverSetupComponents';
 import { handoverAddress, handoverSettled, plannedHandoverDrop, setupHandover, setupStartMarkerKey } from '../lib/panelHandover';
+import { startVisibleReads } from '../lib/visibleReads';
 
 function useSetupI18n() {
     const i18n = useI18n();
@@ -321,8 +322,14 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
         if (snapshot.status === 'ready' || (!reconnecting && !marker && !execution)) return;
         if (execution?.status === 'failed' && !reconnecting) return;
         // Read more often while setup is finishing, so completion shows promptly.
-        const timer = window.setInterval(() => void reconcile(), finishing ? 1500 : 3000);
-        return () => window.clearInterval(timer);
+        // Only while the tab is visible; shown again, it reads once at once
+        // (2026-10-15). Nothing here depends on reading while hidden: the
+        // operation runs on the server, its record is kept there, and the
+        // 60 s notices only change wording.
+        return startVisibleReads(reconcile, finishing ? 1500 : 3000, {
+            setInterval: (callback, ms) => window.setInterval(callback, ms),
+            clearInterval: (id) => window.clearInterval(id),
+        });
     }, [execution, marker, reconnecting, resolving, reconcile, snapshot.status, finishing]);
     // Finishing ends with the run's own next state: it left the final check, or
     // it recorded a newer result with a requirement unmet again.

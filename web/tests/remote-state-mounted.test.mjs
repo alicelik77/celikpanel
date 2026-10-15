@@ -79,6 +79,8 @@ const own = {
   '/auth/domainAccess': domainAccessURL, '/lib/domainDeletionPending': deletionURL, '/lib/subscriptions': subscriptionsURL,
   '/lib/accounts': accountsURL, '/lib/managedServices': managedServicesURL, '/lib/sslTier': sslTierURL, '/lib/hstsRemaining': hstsRemainingURL,
   '/lib/requestIdentity': requestIdentityURL,
+  // Reads that run only while the page is visible are the real ones (2026-10-15).
+  '/lib/visibleReads': compileSource('lib/visibleReads.ts', () => stub),
 };
 // The two notices of 10 Oct 2026 are the shipped ones: what a service action
 // ended with, and a change whose one-time result is not kept.
@@ -1614,6 +1616,43 @@ test('A component page: the install dialog reads readiness again while the serve
     await act(async () => { poll.fn(); await settled(); await settled(); });
     assert.equal(reads('/api/v1/host-mutation-readiness'), 2);
     assert.ok(!has('services.mutationReadiness.autoResume') && !has('services.mutationReadiness.package_manager_active'), 'the pause did not lift');
+    assert.equal(calls.filter((call) => call.method !== 'GET').length, 0, 'reading readiness changed something');
+  } finally {
+    globalThis.setInterval = realSetInterval;
+    globalThis.clearInterval = realClearInterval;
+    await cleanup();
+  }
+});
+
+// The dialog's re-read runs only while the tab is visible (2026-10-15, the open
+// item of the alpha.85 notes): hidden, no interval and no read after the
+// opening one; shown again, one read at once and the interval resumes.
+test('A component page: the install dialog stops reading readiness while the tab is hidden, and reads once when shown', async () => {
+  serve({
+    '/api/v1/managed-services': json({ services: [record({ is_installed: false, status: '', unit: undefined })] }),
+    '/api/v1/host-mutation-readiness': () => Response.json({ ready: false, code: 'HOST_MUTATION_BUSY', reason: 'package_manager_active' }),
+  });
+  const doc = Object.assign(new EventTarget(), { visibilityState: 'hidden' });
+  globalThis.document = doc;
+  const timers = new Map();
+  let next = 1;
+  const realSetInterval = globalThis.setInterval;
+  const realClearInterval = globalThis.clearInterval;
+  globalThis.setInterval = (fn, ms) => { const id = next++; timers.set(id, { fn, ms }); return id; };
+  globalThis.clearInterval = (id) => { timers.delete(id); };
+  const polls = () => [...timers.values()].filter((item) => item.ms === 5000);
+  try {
+    await mount(ServiceShell, shell);
+    await press(buttons('svc.install')[0]);
+    assert.equal(reads('/api/v1/host-mutation-readiness'), 1, 'the dialog reads once when it opens');
+    assert.equal(polls().length, 0, 'no re-read is scheduled while the tab is hidden');
+    doc.visibilityState = 'visible';
+    await act(async () => { doc.dispatchEvent(new Event('visibilitychange')); await settled(); await settled(); });
+    assert.equal(reads('/api/v1/host-mutation-readiness'), 2, 'shown again: one read at once');
+    assert.equal(polls().length, 1, 'the re-read resumes');
+    doc.visibilityState = 'hidden';
+    await act(async () => { doc.dispatchEvent(new Event('visibilitychange')); });
+    assert.equal(polls().length, 0, 'hidden again: the re-read stops');
     assert.equal(calls.filter((call) => call.method !== 'GET').length, 0, 'reading readiness changed something');
   } finally {
     globalThis.setInterval = realSetInterval;

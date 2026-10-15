@@ -38,6 +38,7 @@ const dnsTurkishURL = dataURL(compile('../src/i18n/setupDNS/tr.ts'));
 const dnsCopyURL = dataURL(compile('../src/i18n/setupDNS.ts').replace("from './setupDNS/en'", `from '${dnsEnglishURL}'`).replace("from './setupDNS/tr'", `from '${dnsTurkishURL}'`));
 const guidanceURL = dataURL(compile('../src/lib/serverSetupGuidance.ts'));
 const handoverURL = dataURL(compile('../src/lib/panelHandover.ts'));
+const visibleReadsURL = dataURL(compile('../src/lib/visibleReads.ts'));
 const catalogues = { en: { ...en, ...enScreens, ...enServerScreens }, tr: { ...tr, ...trScreens, ...trServerScreens } };
 const stub = dataURL(`
 import React from '${reactURL}';
@@ -62,7 +63,7 @@ export const AddressLink = props => React.createElement('a', { href: props.href 
 `);
 const source = compile('../src/components/ServerSetup.tsx').replace(/from ['"]([^'"]+)['"]/g, (_, path) => {
     const url = path === 'react' ? reactURL : path.endsWith('/remoteDNS') ? remoteURL : path.endsWith('/serverSetupComponents') ? componentLibURL
-        : path.endsWith('/setupDNS') ? dnsCopyURL : path.endsWith('/panelHandover') ? handoverURL : path.endsWith('/serverSetupGuidance') ? guidanceURL
+        : path.endsWith('/setupDNS') ? dnsCopyURL : path.endsWith('/visibleReads') ? visibleReadsURL : path.endsWith('/panelHandover') ? handoverURL : path.endsWith('/serverSetupGuidance') ? guidanceURL
             : path.endsWith('/serverSetupOperation') ? operationURL : path.endsWith('/serverSetup') ? setupURL : stub;
     return `from '${url}'`;
 });
