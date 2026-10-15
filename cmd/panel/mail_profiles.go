@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"slices"
@@ -379,12 +380,15 @@ func (p *Panel) handleMailProfileInstall(w http.ResponseWriter, r *http.Request)
 		writeClientError(w, http.StatusBadRequest, "invalid request_id")
 		return
 	}
-	// A supplied mail hostname is validated and saved before anything starts,
-	// so the operator learns it is unusable in the dialog they typed it in
-	// rather than from a failed operation minutes later.
-	// Verilen bir posta ana bilgisayar adı, hiçbir şey başlamadan önce
-	// doğrulanır ve kaydedilir; böylece operatör adın kullanılamaz olduğunu
-	// dakikalar sonra başarısız bir işlemden değil, yazdığı pencerede öğrenir.
+	// A supplied mail hostname is validated before anything starts, so the
+	// operator learns it is unusable in the dialog they typed it in rather
+	// than from a failed operation minutes later. It is saved only once the
+	// operation is admitted (below): a refusal because a setup run or another
+	// operation is in progress leaves the saved name as it was (2026-10-16,
+	// the mail host name can be corrected from this dialog).
+	// Verilen ad hiçbir şey başlamadan önce doğrulanır; yalnız işlem kabul
+	// edildikten sonra kaydedilir. Meşgul reddi kayıtlı adı değiştirmez.
+	suppliedHostname := ""
 	if supplied := strings.TrimSpace(request.MailHostname); supplied != "" {
 		canonical, err := hostname.CanonicalFQDN(supplied)
 		if err != nil {
@@ -393,10 +397,7 @@ func (p *Panel) handleMailProfileInstall(w http.ResponseWriter, r *http.Request)
 				mailProfileServerHostnameMessage, "")
 			return
 		}
-		if err := p.setSetting(r.Context(), settingMailHostname, canonical); err != nil {
-			writeServerError(w, err)
-			return
-		}
+		suppliedHostname = canonical
 	}
 
 	existing, found, err := p.idempotentServiceOperation(
@@ -437,10 +438,23 @@ func (p *Panel) handleMailProfileInstall(w http.ResponseWriter, r *http.Request)
 		}
 	}()
 
+	previousHostname := p.setting(r.Context(), settingMailHostname)
+	if suppliedHostname != "" && suppliedHostname != previousHostname {
+		if err := p.setSetting(r.Context(), settingMailHostname, suppliedHostname); err != nil {
+			writeServerError(w, err)
+			return
+		}
+	}
 	actor := captureServiceOperationActor(r)
 	op, err := p.createServiceOperationRequest(
 		r.Context(), serviceOperationKindMailProfileInstall, request.ProfileID, "", request.RequestID, actor,
 	)
+	if err != nil && suppliedHostname != "" && suppliedHostname != previousHostname {
+		// Not admitted after all: the name that was saved for it goes back.
+		if restoreErr := p.setSetting(r.Context(), settingMailHostname, previousHostname); restoreErr != nil {
+			log.Printf("mail hostname not restored after a refused profile request: %v", restoreErr)
+		}
+	}
 	switch {
 	case errors.Is(err, errServiceOperationBusy):
 		writeServiceOperationBusy(w)
