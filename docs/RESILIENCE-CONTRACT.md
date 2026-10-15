@@ -5659,3 +5659,68 @@ behaviour. 2026-10-15 is the clock date of everything in it.
   not reached natively, and that set16 ran a fixture commit. The update
   screen's problem-looking notice during the expected restart is open for the
   next release.
+
+### Candidate v0.1.0-alpha.86 (P0.1/P0.2 area; invariants 2 and 6; D-024; D-032; D-033; 2026-10-15)
+
+D-025 invariants 2 (unknown is not absent, empty or success) and 6 (a screen
+says what was verified); D-024; D-032; D-033. **No P0 item is closed or
+advanced.** P0.1 to P0.5 stay partial and every open acceptance item stays
+open. This entry records a candidate that is not published; 2026-10-15 is the
+clock date of the entry.
+
+- **What the candidate changes.** The update screen during the update's own
+  planned restart (the owner's observation of 2026-10-15 during the real
+  update of the second installed server to alpha.85): a read that loses the
+  connection, or meets a 5xx answer, after the server last said that exact
+  request was active is shown as "restarting" with a spinner and the T+
+  counter; the warning and the "not known" wording come only after 6 minutes
+  from the update's start and at least 2 minutes from the first lost read, or
+  with a verified failure, which keeps its own wording; one notice instead of
+  the card and the corner notice saying the same thing
+  (`web/src/lib/systemUpdateTracking.ts`, `SystemUpdateOperation.tsx`,
+  `PanelUpdateCard.tsx`). Every automatic re-read stays a GET and now runs
+  only while the tab is visible, including the component install dialog's and
+  the setup page's (`web/src/lib/visibleReads.ts`). No sentence asks the owner
+  to rescan; the Dashboard, the Components page and a component's own page
+  answer an unverifiable stored component record with a conditional check (a
+  read, once, no loop; a held check resumes by itself with one follow-up). The
+  username `system` is reserved (`400 USERNAME_RESERVED`); no existing row is
+  changed. The Agent's mail health answer gains two additive fields that name
+  the resolver behind the reverse DNS answer. Besides: the page's language
+  attribute, component names and descriptions and audit actions in the
+  interface language, mail-profile sentences, the Store's unknown state, and
+  the publishing script's defaults. No change to the update path itself, the
+  recovery runner, the release floor or the native services. The
+  [release notes](RELEASE-NOTES-v0.1.0-alpha.86.md) say which check rests on
+  which code.
+- **Invariants touched.** Invariant 2: an outage inside the update's expected
+  restart is not shown as an unknown result until the bound passes, and after
+  it is "not known yet", not a failure; a verified failure keeps its own
+  wording. A Store offering whose component state is unknown is no longer
+  called unsupported. Invariant 6: the audit log names the actor that wrote an
+  action, and a person can no longer be shown as "System". Polling never starts
+  or admits a mutation (D-024); the held-check follow-up is a read.
+- **Schema or version transition.** None: no migration between the alpha.85 tag
+  and the candidate (the database schema stays 44). The release sequence moves
+  from 85 to 86 in the release preparation `313f3eea2`, with the alpha.85
+  release commit `36c33c4531ee6c1306d324db7a666403176f3bf7` as previous; the
+  transition rules are unchanged. **Recovery behaviour.** Unchanged.
+- **Evidence.** Component tests: `go test -v ./cmd/panel/...
+  ./internal/transport/... ./internal/auth/...` 1602 top-level tests passed, 6
+  skipped, 0 failed (at `8fe746582` and again at `21f07e7a8`);
+  `go test ./cmd/agent/...` 1799 passed, 29 skipped under a clean mount
+  namespace (at `1abe1717d`); `npm test` 1463 of 1463. Browser inspections
+  against the mock: batch 13 (the restart notice, three states in 8
+  configurations) and batch 14 (23 states in 8 configurations). The
+  pre-publication native record, set17, had not been made when this entry was
+  written; its pointer and figures are to be added from its README before
+  publication.
+- **Open.** No native run of the candidate yet; the 6-minute bound rests on
+  two lab updates (set16) and one owner observation, and the update provider
+  ran only in the mock browser; the new update screen is seen only from the
+  update after this one; the resolver fields reach a server only with an Agent
+  update; the audit log stores no actor kind; no installed server measured.
+  The open items of the alpha.85 entries stay open, among them the recovery
+  foundation file after a return (set12, set15, set16) and "Finishing setup"
+  and the update card's busy state not reached natively. Everything the
+  entries above leave open stays open.

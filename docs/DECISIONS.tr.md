@@ -115,6 +115,41 @@ kontrollerine gerçek sistemde ulaşılamadı. Bir gerçek sistem çalıştırma
 bir sunucu ve kurulum penceresinin ile kurulum sayfasının okumalarının
 görünürlüğe bağlanması için açık.
 
+*15 Ekim 2026 tarihli not (saat tarihi): v0.1.0-alpha.86 adayında (yayımlanmadı)
+uygulandı.* O aday için yeni bir karar kaydedilmez; yaptıkları bu kararı ve
+D-032'yi izler ve yukarıdaki metin değişmedi.
+
+- 1. ve 3. kurallar, sahibin 15 Ekim 2026'da ikinci kurulu sunucunun alpha.85'e
+  gerçek güncellemesi sırasındaki gözleminden sonra: güncellemenin kendi
+  planladığı yeniden başlama ilerleme olarak gösterilir ("Panel, güncellemenin
+  bir parçası olarak yeniden başlıyor…", dönen simge, T+ sayacı); uyarı ve
+  "bilinmiyor" metni yalnız bir sınırdan sonra (güncellemenin başlangıcından 6
+  dakika ve ilk kopan okumadan en az 2 dakika) ya da kendi metnini koruyan
+  doğrulanmış bir hatayla gelir. Güncelleme kartı ve köşe bildirimi artık aynı
+  şeyi iki kez söylemez. Sınır iki laboratuvar güncellemesine (set16) ve o tek
+  sahip gözlemine dayanır.
+- "Bunun yetkilendirmediği" altında adı geçen açık kaynakta kapandı: bileşen kurma
+  penceresinin yeniden okuması ve kurulum sayfasının okumaları artık yalnız
+  sekme görünürken çalışır (`web/src/lib/visibleReads.ts`) ve bu kararın
+  eklediği her yeniden okuma, sekme yeniden gösterilince hemen bir kez okur (6.
+  kural).
+- D-032 ile: hiçbir sunucu ya da sayfa cümlesi sahipten yeniden tarama istemez;
+  doğrulanamayan kayıtlı bir bileşen kaydını Dashboard, Bileşenler sayfası ve
+  bir bileşenin kendi sayfası kendileri kontrol eder; bir değişiklik yüzünden
+  tutulan kontrol sekme görünürken kendiliğinden sürer (yalnız okuma, tek
+  izleme, döngü yok).
+- Kendi başına bir karar değil: `system` kullanıcı adı ayrıldı
+  (`USERNAME_RESERVED`); çünkü denetim günlüğü artık o aktörü "Sistem" diye
+  söyler ve bir kişi sistem olarak gösterilmemelidir (D-024: ekran doğru olanı
+  söyler). Bu bir politika değişikliği değil, bir doğrulama kuralıdır; var olan
+  satıra dokunulmaz.
+
+Notun durumu: kaynakta, bileşen testleri ve taklit tarayıcıyla (13. ve 14.
+tarayıcı inceleme turları); not yazıldığında adayın gerçek sistem kaydı yoktu
+ve kurulu bir sunucuda hiçbir şey ölçülmedi. Hangi kontrolün hangi koda
+dayandığını [alpha.86 sürüm notları](RELEASE-NOTES-v0.1.0-alpha.86.tr.md)
+söyler. Hiçbir P0 işi kapanmaz ya da ilerlemez.
+
 ---
 
 ## D-032 · Panel kendiliğinden bakar; okuyabileceği bir durumu öğrenmek için sahibe bir düğmeye basmasını asla söylemez

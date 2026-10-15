@@ -4930,3 +4930,67 @@ bir yayımı kaydeder; kod, şema ya da kurtarma davranışını değiştirmez.
   sistemde ulaşılamaması ve set16'nın bir sabit commit üzerinde çalışması.
   Güncelleme ekranının beklenen yeniden başlatma sırasında sorun gibi görünen
   bildirimi sonraki sürüm için açık.
+
+### v0.1.0-alpha.86 adayı (P0.1/P0.2 alanı; ilke 2 ve 6; D-024; D-032; D-033; 2026-10-15)
+
+D-025 ilke 2 (bilinmeyen; yok, boş ya da başarı değildir) ve ilke 6 (ekran
+doğrulananı söyler); D-024; D-032; D-033. **Hiçbir P0 işi kapanmaz ya da
+ilerlemez.** P0.1–P0.5 kısmi kalır ve her açık kabul işi açık kalır. Bu girdi
+yayımlanmamış bir adayı kaydeder; 2026-10-15 girdinin saat tarihidir.
+
+- **Adayın değiştirdikleri.** Güncellemenin kendi planladığı yeniden başlama
+  sırasında güncelleme ekranı (sahibin 15 Ekim 2026'da ikinci kurulu sunucunun
+  alpha.85'e gerçek güncellemesi sırasındaki gözlemi): sunucu o isteğin etkin
+  olduğunu son söyledikten sonra bağlantıyı yitiren ya da 5xx yanıt alan okuma,
+  dönen simge ve T+ sayacıyla "yeniden başlıyor" olarak gösterilir; uyarı ve
+  "bilinmiyor" metni yalnız güncellemenin başlangıcından 6 dakika ve ilk kopan
+  okumadan en az 2 dakika sonra ya da kendi metnini koruyan doğrulanmış bir
+  hatayla gelir; kart ve köşe bildirimi aynı şeyi söylemek yerine tek bildirim
+  (`web/src/lib/systemUpdateTracking.ts`, `SystemUpdateOperation.tsx`,
+  `PanelUpdateCard.tsx`). Her kendiliğinden yeniden okuma GET kalır ve artık
+  bileşen kurma penceresininki ve kurulum sayfasınınki dahil yalnız sekme
+  görünürken çalışır (`web/src/lib/visibleReads.ts`). Hiçbir cümle sahipten
+  yeniden tarama istemez; Dashboard, Bileşenler sayfası ve bir bileşenin kendi
+  sayfası doğrulanamayan kayıtlı bileşen kaydına koşullu bir kontrolle yanıt
+  verir (bir okuma, bir kez, döngü yok; tutulan kontrol tek izlemeyle
+  kendiliğinden sürer). `system` kullanıcı adı ayrıldı
+  (`400 USERNAME_RESERVED`); var olan hiçbir satır değişmez. Agent'ın posta
+  sağlık yanıtı, ters DNS yanıtının arkasındaki çözümleyiciyi adlandıran iki ek
+  alan kazanır. Ayrıca: sayfanın dil özniteliği, arayüz dilinde bileşen adları
+  ve açıklamaları ile denetim eylemleri, posta profili cümleleri, Mağaza'nın
+  bilinmeyen durumu ve yayımlama betiğinin varsayılanları. Güncelleme yolunun
+  kendisinde, kurtarma çalıştırıcısında, sürüm tabanında ya da yerel
+  hizmetlerde değişiklik yok. Hangi denetimin hangi koda dayandığını
+  [sürüm notları](RELEASE-NOTES-v0.1.0-alpha.86.tr.md) söyler.
+- **Dokunulan ilkeler.** İlke 2: güncellemenin beklenen yeniden başlaması
+  içindeki bir kesinti, sınır geçene dek bilinmeyen sonuç olarak gösterilmez;
+  sınırdan sonra da hata değil "henüz bilinmiyor"dur; doğrulanmış bir hata
+  kendi metnini korur. Bileşen durumu bilinmeyen bir Mağaza ürünü artık
+  desteklenmiyor diye anılmaz. İlke 6: denetim günlüğü bir eylemi yazan aktörü
+  adlandırır ve bir kişi artık "Sistem" olarak gösterilemez. Yoklama asla bir
+  değişiklik başlatmaz ya da kabul etmez (D-024); tutulan kontrolün izlemesi bir
+  okumadır.
+- **Şema ya da sürüm geçişi.** Yok: alpha.85 etiketi ile aday arasında taşıma
+  yok (veritabanı şeması 44 kalır). Sürüm sırası, sürüm hazırlığı `313f3eea2`'de
+  önceki olarak alpha.85 sürüm commit'i
+  `36c33c4531ee6c1306d324db7a666403176f3bf7` ile 85'ten 86'ya geçer; geçiş
+  kuralları değişmedi. **Kurtarma davranışı.** Değişmedi.
+- **Kanıt.** Bileşen testleri: `go test -v ./cmd/panel/...
+  ./internal/transport/... ./internal/auth/...` 1602 üst düzey test geçti, 6
+  atlandı, 0 başarısız (`8fe746582`'de ve yeniden `21f07e7a8`'de);
+  `go test ./cmd/agent/...` temiz bir bağlama ad alanında 1799 geçti, 29
+  atlandı (`1abe1717d`'de); `npm test` 1463/1463. Taklide karşı tarayıcı
+  incelemeleri: 13. tur (yeniden başlama bildirimi, 8 yapılandırmada üç durum)
+  ve 14. tur (8 yapılandırmada 23 durum). Yayımlama öncesi gerçek sistem kaydı
+  set17, bu girdi yazıldığında yapılmamıştı; bağlantısı ve rakamları
+  yayımlamadan önce README'sinden eklenecek.
+- **Açık.** Adayın henüz gerçek sistem koşusu yok; 6 dakikalık sınır iki
+  laboratuvar güncellemesine (set16) ve bir sahip gözlemine dayanır ve
+  güncelleme sağlayıcısı yalnız taklit tarayıcıda çalıştı; yeni güncelleme
+  ekranı ancak bundan sonraki güncellemede görülür; çözümleyici alanları bir
+  sunucuya ancak Agent güncellemesiyle ulaşır; denetim günlüğü aktör türü
+  saklamaz; hiçbir kurulu sunucu ölçülmedi. alpha.85 girdilerinin açık kalemleri
+  açık kalır; aralarında geri dönüşten sonra kurtarma temel dosyası (set12,
+  set15, set16) ve "Kurulum tamamlanıyor"a ve güncelleme kartının meşgul
+  durumuna gerçek sistemde ulaşılamaması vardır. Yukarıdaki girdilerin açık
+  bıraktığı her şey açık kalır.

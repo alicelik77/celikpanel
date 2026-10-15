@@ -7619,7 +7619,7 @@ sunucuda ölçülmedi; hiçbir P0 işi kapanmaz ya da ilerlemez.
    `component_state_*` cümlesi (`blocker_reason` ile türlü, sunucu
    yerelleştirir) kontrolün bir yönetici Panel, Bileşenler sayfası ya da bir
    bileşenin sayfası açıkken çalıştığını ve sonra Mağaza'nın yeniden açılmasını söyler
-   (`cd2275e47`).
+   (`cd2275e47`; üçüncü sayfa `21f07e7a8` ile eklendi).
 5. **`component_not_installable` içinde platform** (alpha.85 "Şablonlu
    metin"). `blocked_vars.platform` doğrulanmış paket ekosistemini adlandırır
    ("Debian/Ubuntu (apt)", "Arch Linux (pacman)", "Fedora/RHEL (dnf)");
@@ -7713,8 +7713,8 @@ Agent, 2026-10-14 denetim kaydındaki temiz bağlama ad alanında).
     bitince sayfa kendiliğinden yeniden denetler; Tekrar dene hemen sorar."
     `err.SERVICE_STATE_UNVERIFIED` ve `err.SERVICE_STATE_REFRESH_FAILED` üçüncü
     yeri de söyler: "Panel, Bileşenler sayfası ya da bir bileşenin sayfası
-    açıkken" (`cmd/panel/managed_service_handlers.go` içindeki Go ret metni hâlâ
-    eski ifadeyi taşır; web metni koddan söyler).
+    açıkken" (`cmd/panel/managed_service_handlers.go` içindeki Go ret metni
+    `a6bdf410b`'den beri aynısını söyler; web metni koddan söyler).
     `lib/managedServices.ts` (`useStoredRecordCheck`, `runStoredRecordCheck`),
     `ServiceRecordLookup`, `ComponentPanels`, `ServiceShell`; EN/TR
     `component.checkingStored`, `component.checkHeld`. Testler:

@@ -7645,8 +7645,9 @@ natively or on an installed server; no P0 item is closed or advanced.
    answer that code with their conditional check (a read; once; no toast; a
    failed check keeps "could not check"). The Store's three
    `component_state_*` sentences (typed by `blocker_reason`, localised by the
-   server) say that the check runs while an administrator has the Dashboard or
-   Components open, and to open the Store again after it (`cd2275e47`).
+   server) say that the check runs while an administrator has the Dashboard, the
+   Components page or a component's page open, and to open the Store again
+   after it (`cd2275e47`; the third page added in `21f07e7a8`).
 5. **The platform in `component_not_installable`** (alpha.85 "Templated
    text"). `blocked_vars.platform` names a verified package ecosystem
    ("Debian/Ubuntu (apt)", "Arch Linux (pacman)", "Fedora/RHEL (dnf)"); an
@@ -7743,8 +7744,8 @@ the Agent in the clean mount namespace of the 2026-10-14 audit entry).
     again asks now." `err.SERVICE_STATE_UNVERIFIED` and
     `err.SERVICE_STATE_REFRESH_FAILED` now name the third place: "while the
     Dashboard, the Components page or a component's page is open" (the Go
-    refusal text in `cmd/panel/managed_service_handlers.go` still has the older
-    wording; the web says it from the code).
+    refusal text in `cmd/panel/managed_service_handlers.go` says the same since
+    `a6bdf410b`; the web says it from the code).
     `lib/managedServices.ts` (`useStoredRecordCheck`, `runStoredRecordCheck`),
     `ServiceRecordLookup`, `ComponentPanels`, `ServiceShell`; EN/TR
     `component.checkingStored`, `component.checkHeld`. Tests: sixteen mounted

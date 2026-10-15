@@ -112,6 +112,40 @@ the component lock's reconnect and the spreading-domain checks were not reached
 natively. Open for a native run, for an installed server and for the
 visibility gating of the install dialog's and setup's reads.
 
+*Note of 2026-10-15 (clock date): applied in the v0.1.0-alpha.86 candidate (not
+published).* No new decision is recorded for that candidate; what it does
+follows this decision and D-032, and the text above is unchanged.
+
+- Rules 1 and 3, after the owner's observation of 2026-10-15 during the real
+  update of the second installed server to alpha.85: the update's own planned
+  restart is shown as progress ("The panel is restarting as part of the
+  update…", a spinner, the T+ counter), and the warning and "not known" wording
+  come only after a bound (6 minutes from the update's start and at least 2
+  minutes from the first lost read) or with a verified failure, which keeps its
+  own wording. The update card and the corner notice no longer say the same
+  thing twice. The bound rests on two lab updates (set16) and that one owner
+  observation.
+- The gap named under "What this does not authorise" is closed in source: the
+  component install dialog's re-read and the setup page's reads now run only
+  while the tab is visible (`web/src/lib/visibleReads.ts`), and every re-read
+  this decision added reads once at once when the tab is shown again (rule 6).
+- With D-032: no server or page sentence asks the owner to rescan; a stored
+  component record that cannot be verified is checked by the Dashboard, the
+  Components page and a component's own page themselves, and a check held by a
+  change resumes by itself while the tab is visible (reads only, one follow-up,
+  no loop).
+- Not a decision of its own: the username `system` is reserved
+  (`USERNAME_RESERVED`), because the audit log now says that actor as "System"
+  and a person must not be shown as the system (D-024: a screen says what is
+  true). It is a validation rule, not a policy change; an existing row is not
+  touched.
+
+Status of the note: in source with component tests and a mock browser
+(browser-inspection batches 13 and 14); no native record of the candidate when
+the note was written, and nothing measured on an installed server. The
+[alpha.86 release notes](RELEASE-NOTES-v0.1.0-alpha.86.md) say which check rests
+on which code. No P0 item is closed or advanced.
+
 ---
 
 ## D-032 · The panel looks by itself; it never asks the owner to press a button to learn a state it can read
