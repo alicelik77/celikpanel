@@ -7617,8 +7617,8 @@ sunucuda ölçülmedi; hiçbir P0 işi kapanmaz ya da ilerlemez.
    koda artık koşullu kontrolleriyle yanıt verir (okuma; bir kez; bildirim yok;
    başarısız kontrol "denetlenemedi" durumunu korur). Mağaza'nın üç
    `component_state_*` cümlesi (`blocker_reason` ile türlü, sunucu
-   yerelleştirir) kontrolün bir yönetici Panel ya da Bileşenler sayfasını
-   açtığında çalıştığını ve sonra Mağaza'nın yeniden açılmasını söyler
+   yerelleştirir) kontrolün bir yönetici Panel, Bileşenler sayfası ya da bir
+   bileşenin sayfası açıkken çalıştığını ve sonra Mağaza'nın yeniden açılmasını söyler
    (`cd2275e47`).
 5. **`component_not_installable` içinde platform** (alpha.85 "Şablonlu
    metin"). `blocked_vars.platform` doğrulanmış paket ekosistemini adlandırır

@@ -123,16 +123,16 @@ const RDNS = [
 // The Store's three sentences, as cmd/panel/store_backend.go says them.
 const STORE_TEXT = {
     component_state_unavailable: {
-        en: 'CelikPanel has no usable record of this server\'s components yet. It checks them by itself while an administrator has the Dashboard or the Components page open; open the Store again after that check.',
-        tr: 'CelikPanel\'de bu sunucunun bileşenlerine ait kullanılabilir bir kayıt henüz yok. Bir yönetici Panel ya da Bileşenler sayfasını açtığında bileşenleri kendiliğinden denetler; o denetimden sonra Mağaza\'yı yeniden açın.',
+        en: 'CelikPanel has no usable record of this server\'s components yet. It checks them by itself while an administrator has the Dashboard, the Components page or a component\'s page open; open the Store again after that check.',
+        tr: 'CelikPanel\'de bu sunucunun bileşenlerine ait kullanılabilir bir kayıt henüz yok. Bir yönetici Panel, Bileşenler sayfası ya da bir bileşenin sayfası açıkken bileşenleri kendiliğinden denetler; o denetimden sonra Mağaza\'yı yeniden açın.',
     },
     component_state_stale: {
-        en: 'The record of this server\'s components is older than 15 minutes. CelikPanel checks them again by itself while an administrator has the Dashboard or the Components page open; open the Store again after that check.',
-        tr: 'Bu sunucunun bileşenlerine ait kayıt 15 dakikadan eski. CelikPanel, bir yönetici Panel ya da Bileşenler sayfasını açtığında bileşenleri kendiliğinden yeniden denetler; o denetimden sonra Mağaza\'yı yeniden açın.',
+        en: 'The record of this server\'s components is older than 15 minutes. CelikPanel checks them again by itself while an administrator has the Dashboard, the Components page or a component\'s page open; open the Store again after that check.',
+        tr: 'Bu sunucunun bileşenlerine ait kayıt 15 dakikadan eski. CelikPanel, bir yönetici Panel, Bileşenler sayfası ya da bir bileşenin sayfası açıkken bileşenleri kendiliğinden yeniden denetler; o denetimden sonra Mağaza\'yı yeniden açın.',
     },
     component_state_invalid: {
-        en: 'The stored record of this server\'s components could not be read. CelikPanel checks them again by itself while an administrator has the Dashboard or the Components page open; open the Store again after that check.',
-        tr: 'Bu sunucunun bileşenleri için saklanan kayıt okunamadı. CelikPanel, bir yönetici Panel ya da Bileşenler sayfasını açtığında bileşenleri kendiliğinden yeniden denetler; o denetimden sonra Mağaza\'yı yeniden açın.',
+        en: 'The stored record of this server\'s components could not be read. CelikPanel checks them again by itself while an administrator has the Dashboard, the Components page or a component\'s page open; open the Store again after that check.',
+        tr: 'Bu sunucunun bileşenleri için saklanan kayıt okunamadı. CelikPanel, bir yönetici Panel, Bileşenler sayfası ya da bir bileşenin sayfası açıkken bileşenleri kendiliğinden yeniden denetler; o denetimden sonra Mağaza\'yı yeniden açın.',
     },
 };
 const storeItems = locale => Object.entries(STORE_TEXT).map(([code, text], index) => ({
