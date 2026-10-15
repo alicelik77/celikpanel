@@ -228,8 +228,17 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
             }
             schedule();
         };
+        // A tab shown again reads at once (as lib/visibleReads.ts does), then
+        // the delay resumes from that read; a read already in flight is that
+        // read (2026-10-15).
+        // Yeniden gosterilen sekme hemen bir kez okur; suren okuma o okumadir.
         const onVisibility = () => {
-            if (visible()) { schedule(); return; }
+            if (visible()) {
+                if (timer !== undefined) window.clearTimeout(timer);
+                timer = undefined;
+                if (!controller) void read();
+                return;
+            }
             if (timer !== undefined) window.clearTimeout(timer);
             timer = undefined;
         };

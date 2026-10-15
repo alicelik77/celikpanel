@@ -157,8 +157,18 @@ export function DomainConnection({ domainId, domainName }: { domainId: number; d
             if (autoChecks.current >= DOMAIN_SPREAD_AUTO_CHECKS) { setAutoStopped(true); return; }
             schedule();
         };
+        // A tab shown again checks at once (as lib/visibleReads.ts does), then
+        // the delay resumes from that check; a check already on its way is
+        // that check (tick waits for it). The check counts toward the bound
+        // (2026-10-15).
+        // Yeniden gosterilen sekme hemen bir kez denetler; denetim sinira sayilir.
         const onVisibility = () => {
-            if (visible()) { schedule(); return; }
+            if (visible()) {
+                if (timer !== undefined) window.clearTimeout(timer);
+                timer = undefined;
+                void tick();
+                return;
+            }
             if (timer !== undefined) window.clearTimeout(timer);
             timer = undefined;
         };
