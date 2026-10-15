@@ -112,6 +112,53 @@ the component lock's reconnect and the spreading-domain checks were not reached
 natively. Open for a native run, for an installed server and for the
 visibility gating of the install dialog's and setup's reads.
 
+*Note of 2026-10-15 (clock date): applied in the v0.1.0-alpha.86 candidate (not
+published).* No new decision is recorded for that candidate; what it does
+follows this decision and D-032, and the text above is unchanged.
+
+- Rules 1 and 3, after the owner's observation of 2026-10-15 during the real
+  update of the second installed server to alpha.85: the update's own planned
+  restart is shown as progress ("The panel is restarting as part of the
+  update…", a spinner, the T+ counter), and the warning and "not known" wording
+  come only after a bound (6 minutes from the update's start and at least 2
+  minutes from the first lost read) or with a verified failure, which keeps its
+  own wording. The update card and the corner notice no longer say the same
+  thing twice. The bound rests on two lab updates (set16) and that one owner
+  observation.
+- Rules 1 and 3 after the native records set17 and set17b: inside the same
+  bound neither the licence gate nor the session gate replaces that progress
+  with its own hold (set17 D1), and the update's navigation lock covers the
+  restart while its restart signal is active, at the latest 6 minutes from
+  the start (set17b F1; the release preparer's decision of 2026-10-15, under the
+  owner's standing instruction of 2026-10-13, an application of this rule; not
+  an owner decision and not a new decision).
+- The gap named under "What this does not authorise" is closed in source: the
+  component install dialog's re-read and the setup page's reads now run only
+  while the tab is visible (`web/src/lib/visibleReads.ts`), and the two re-reads
+  of this decision that already stopped while the tab was hidden, the update
+  card's readiness re-read and the spreading domain's re-check, now read once at
+  once when the tab is shown again (rule 6); the other re-reads of this decision
+  were not audited for this.
+- With D-032: no server or page sentence asks the owner to rescan; a stored
+  component record that cannot be verified is checked by the Dashboard, the
+  Components page and a component's own page themselves, and a check held by a
+  change resumes by itself while the tab is visible (reads only, one follow-up,
+  no loop).
+- Not a decision of its own: the username `system` is reserved
+  (`USERNAME_RESERVED`), because the audit log now says that actor as "System"
+  and a person must not be shown as the system (D-024: a screen says what is
+  true). It is a validation rule, not a policy change; an existing row is not
+  touched.
+
+Status of the note: in source with component tests and a mock browser
+(browser-inspection batches 13 to 15). Native records set17 (at `313f3eea2`)
+and set17b (at `ecd2a5f08`) under `deploy/e2e/release-recovery/evidence/`
+measured the calm restart; the lock change made after them (`7265d3c99`) and
+the session gate's `PANEL_STARTING` path were not measured natively, and
+nothing was measured on an installed server. The
+[alpha.86 release notes](RELEASE-NOTES-v0.1.0-alpha.86.md) say which check rests
+on which code. No P0 item is closed or advanced.
+
 ---
 
 ## D-032 · The panel looks by itself; it never asks the owner to press a button to learn a state it can read

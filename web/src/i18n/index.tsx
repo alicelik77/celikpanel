@@ -177,6 +177,20 @@ export function I18nProvider({ children }: { children: ReactNode }) {
         };
     }, [loaded]);
 
+    // The document's language follows the language the page is drawn in, so a
+    // Turkish page is `lang="tr"` for screen readers, hyphenation and the
+    // browser's translation offer. Before the first catalogue arrives the boot
+    // screen is drawn in the target language; after a switch the old language
+    // stays until the new catalogue has arrived, because the text does too.
+    // Belgenin dili, sayfanın çizildiği dili izler: Türkçe sayfa `lang="tr"`
+    // olur. İlk katalog gelmeden açılış ekranı hedef dilde çizilir; dil
+    // değişince yeni katalog gelene dek eski dil kalır, çünkü metin de kalır.
+    const drawnLocale = loaded?.locale ?? targetLocale;
+    useEffect(() => {
+        if (typeof document === 'undefined' || !document.documentElement) return;
+        document.documentElement.lang = drawnLocale;
+    }, [drawnLocale]);
+
     const setLocale = (l: Locale) => {
         setTargetLocale(l);
     };

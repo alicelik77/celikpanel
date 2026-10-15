@@ -163,7 +163,7 @@ test('every component row links to its component page, whatever its state', () =
     assert.match(read('router.tsx'), /return <a \{\.\.\.rest\} href=\{to\}/);
 
     // The accessible name is the component's own name.
-    assert.match(rows.slice(link), /\{s\.name\}\s*\n\s*<\/Link>/);
+    assert.match(rows.slice(link), /\{componentName\(s, t\)\}\s*\n\s*<\/Link>/);
     // Keyboard users must see where they are.
     assert.match(rows.slice(link), /focus-visible:ring-2/);
 
@@ -272,6 +272,7 @@ test('no screen was left behind: every managed-services scan caller is accounted
         'components/ServiceShell.tsx',  // the operator's check, from a button
         'components/Dashboard.tsx',     // the operator's check, and its own conditional check (12 Oct 2026)
         'components/ComponentOperation.tsx', // after an operation the operator started
+        'lib/managedServices.ts',       // a component page's own conditional check on an unverifiable record (15 Oct 2026, D-032)
         'lib/api.ts',                   // the client method those callers share
     ]);
     const found = new Set();
@@ -339,4 +340,40 @@ test('a failed read is not drawn as an action that may have completed', () => {
     }
     assert.match(english.slice(english.indexOf("'services.stateUnreadHint'")).split('\n')[0], /did not send any component action/);
     assert.match(turkish.slice(turkish.indexOf("'services.stateUnreadHint'")).split('\n')[0], /hiçbir bileşen işlemi göndermedi/);
+});
+
+// D-032: the banner for an action whose outcome is unknown no longer tells the
+// owner to press Rescan; it says what CelikPanel does by itself and when the
+// lock lifts. The sentence stays true to the page: the load flow re-checks when
+// the stored check is older than AUTO_SCAN_MAX_AGE_SECONDS.
+// D-032: sonucu bilinmeyen işlemin şeridi artık Yeniden tara'ya basmayı
+// söylemez; CelikPanel'in kendiliğinden ne yaptığını ve kilidin ne zaman
+// kalktığını söyler.
+test('the unknown-outcome banner names what the panel does by itself, not a button', () => {
+    const line = (catalogue, key) => catalogue.slice(catalogue.indexOf(`'${key}': '`)).split('\n')[0];
+    const en = line(english, 'services.stateUnverifiedHint');
+    const tr = line(turkish, 'services.stateUnverifiedHint');
+    assert.match(en, /may have completed, but the latest state could not be verified/);
+    assert.match(en, /checks the components again by itself/);
+    assert.match(en, /lock lifts/);
+    assert.doesNotMatch(en, /rescan|run |press |click /i);
+    assert.match(tr, /tamamlanmış olabilir ancak güncel durum doğrulanamadı/);
+    assert.match(tr, /kendiliğinden yeniden denetler/);
+    assert.match(tr, /kilit/);
+    assert.doesNotMatch(tr, /yeniden tara|çalıştırın|basın|tıklayın/i);
+    // The claim rests on the load flow's conditional check.
+    assert.match(serviceList, /const AUTO_SCAN_MAX_AGE_SECONDS = 300;/);
+    assert.match(serviceList, /managed-services\/scan\?max_age_seconds=\$\{AUTO_SCAN_MAX_AGE_SECONDS\}/);
+});
+
+// The Panel refuses the audit actor's name for a user; the page says why.
+// Panel, denetim aktörünün adını kullanıcıya vermez; sayfa nedenini söyler.
+test('USERNAME_RESERVED has an EN and TR sentence that names the reason and the way on', () => {
+    const line = (catalogue, key) => catalogue.slice(catalogue.indexOf(`'${key}': '`)).split('\n')[0];
+    const en = line(english, 'err.USERNAME_RESERVED');
+    const tr = line(turkish, 'err.USERNAME_RESERVED');
+    assert.match(en, /reserved/);
+    assert.match(en, /choose a different username/);
+    assert.match(tr, /ayrılmıştır/);
+    assert.match(tr, /başka bir kullanıcı adı seçin/);
 });

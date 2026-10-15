@@ -1,0 +1,65 @@
+{
+  "checks": {
+    "origin_check": {
+      "addresses": [
+        "127.0.0.1"
+      ],
+      "boot_id": "da5896a4-4955-41e2-a063-b2ecadf48de5",
+      "getent_outcome": "found",
+      "getent_returncode": 0,
+      "getent_status": "ok",
+      "getent_stdout": "127.0.0.1       celikpanel.net\n",
+      "http": "200",
+      "loopback_only": true,
+      "ok": true,
+      "unit": {
+        "ActiveState": "active",
+        "NRestarts": "0",
+        "UnitFileState": "enabled"
+      }
+    },
+    "origin_unit": {
+      "path": "/etc/systemd/system/cp-lab-upd1-origin.service",
+      "results": [
+        {
+          "returncode": 0,
+          "status": "ok"
+        },
+        {
+          "returncode": 0,
+          "status": "ok"
+        }
+      ],
+      "unit": "cp-lab-upd1-origin.service",
+      "unit_sha256": "69ac987769638d8357c3ff35cbd6b9f54de8466c9784e08154d1ffe3a1790bbb"
+    },
+    "provenance": "unpublished-local-artifact-with-disposable-fixture-trust",
+    "provision": {
+      "bind": "127.0.0.1:443",
+      "hosts_mapping": "the lab pre-pin line of the first step, kept",
+      "origin": "https://celikpanel.net",
+      "provenance": "unpublished-local-artifact-with-disposable-fixture-trust",
+      "release_key_enrolled": false
+    },
+    "staged": {
+      "helper": "/root/celikpanel-release-recovery-lab/worker-fixture-origin.py",
+      "intent": "/root/celikpanel-release-recovery-lab/worker-origin-intent.json"
+    },
+    "target": {
+      "arch": "amd64",
+      "archive": "celikpanel-v0.1.0-alpha.86-linux-amd64.tar.gz",
+      "archive_sha256": "4569b5eb0dba432799be5f63abeec4afca48669ead46151dd10d8ae80ccd72d0",
+      "archive_size": "66171280",
+      "commit": "ecd2a5f088d676f7cc8a8e571ed3c903ea951f3e",
+      "format": "celikpanel-release-manifest-v2",
+      "os": "linux",
+      "published_at": "2026-10-15T18:02:52Z",
+      "sequence": "86",
+      "version": "v0.1.0-alpha.86"
+    }
+  },
+  "finished_at": "2026-10-15T18:02:58Z",
+  "name": "origin",
+  "started_at": "2026-10-15T18:02:51Z",
+  "verdict": "passed"
+}

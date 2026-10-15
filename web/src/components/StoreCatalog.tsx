@@ -53,6 +53,8 @@ export interface StoreItemView {
     entitlementState: StoreEntitlementState;
     state: StoreItemState;
     stateReason?: string;
+    // The server's typed reason (blocker_reason), when it sent one.
+    blockerReason?: string;
     action: StoreItemAction;
     actionPath?: string;
 }
@@ -70,7 +72,11 @@ interface StoreCatalogProps {
     onAction: (item: StoreItemView) => void;
 }
 
-type StateFilter = 'all' | StoreItemState;
+// "not_known" is the filter for offerings whose component state is not known
+// yet; they are not in "Unsupported here", as their badge does not say it.
+// "not_known": bileşen durumu henüz bilinmeyen ürünlerin süzgeci; rozetleri
+// "desteklenmiyor" demediği için o süzgeçte değildir.
+type StateFilter = 'all' | StoreItemState | 'not_known';
 
 type StoreTranslate = (key: TranslationKey, vars?: Record<string, string | number>) => string;
 
@@ -134,7 +140,7 @@ export function StoreCatalog({ items, subscription, busyItemIDs, onAction }: Sto
                 .toLocaleLowerCase(locale === 'tr' ? 'tr-TR' : 'en-US');
             return (!normalizedQuery || haystack.includes(normalizedQuery)) &&
                 (category === 'all' || item.category === category) &&
-                (state === 'all' || item.state === state);
+                matchesStateFilter(item, state);
         });
     }, [category, items, locale, query, state, t]);
     const hasFilters = query !== '' || category !== 'all' || state !== 'all';
@@ -198,6 +204,7 @@ export function StoreCatalog({ items, subscription, busyItemIDs, onAction }: Sto
                                     <option value="available">{t('addons.state.available')}</option>
                                     <option value="included">{t('addons.state.included')}</option>
                                     <option value="coming_soon">{t('addons.state.comingSoon')}</option>
+                                    <option value="not_known">{t('addons.state.notKnownYet')}</option>
                                     <option value="unsupported">{t('addons.state.unsupported')}</option>
                                 </select>
                             </label>
@@ -237,7 +244,7 @@ export function StoreCatalog({ items, subscription, busyItemIDs, onAction }: Sto
 
 function StoreItemCard({ item, busy, onAction }: { item: StoreItemView; busy: boolean; onAction: () => void }) {
     const { t } = useI18n();
-    const visual = stateVisual(item.state);
+    const visual = stateVisual(componentStateNotKnown(item) ? 'not_known' : item.state);
     const StateIcon = visual.icon;
     const ProductIcon = storeProductIcon(item.icon);
     const entitlement = entitlementVisual(item.entitlementState);
@@ -307,8 +314,34 @@ function StoreItemCard({ item, busy, onAction }: { item: StoreItemView; busy: bo
     );
 }
 
-function stateVisual(state: StoreItemState) {
+// The server marks an offering "unsupported" also when it has no usable record
+// of this server's components (blocker_reason component_state_*: none yet, older
+// than 15 minutes, unreadable). Its sentence says a check runs; the badge must
+// not say "not supported" for a state that is not known (browser batch 14,
+// 2026-10-15).
+// Bilesen kaydi yok, eski ya da okunamiyorsa durum bilinmiyordur; rozet
+// "desteklenmiyor" demez.
+export function componentStateNotKnown(item: Pick<StoreItemView, 'state' | 'blockerReason'>): boolean {
+    return item.state === 'unsupported' && /^component_state_[a-z_]+$/.test(item.blockerReason ?? '');
+}
+
+function matchesStateFilter(item: StoreItemView, filter: StateFilter): boolean {
+    if (filter === 'all') return true;
+    const notKnown = componentStateNotKnown(item);
+    if (filter === 'not_known') return notKnown;
+    if (filter === 'unsupported') return item.state === 'unsupported' && !notKnown;
+    return item.state === filter;
+}
+
+function stateVisual(state: StoreItemState | 'not_known') {
     switch (state) {
+    case 'not_known':
+        return {
+            icon: Clock3,
+            labelKey: 'addons.state.notKnownYet' as const,
+            iconClass: 'bg-surface-2 text-fg-subtle',
+            badgeClass: 'border-border bg-surface text-fg-muted',
+        };
     case 'included':
         return {
             icon: Check,

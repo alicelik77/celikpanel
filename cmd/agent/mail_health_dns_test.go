@@ -414,3 +414,94 @@ func TestMailDNSIdentityAsksNextResolverWhenFirstAnswerIsStale(t *testing.T) {
 		}
 	})
 }
+
+// The health answer names the resolver whose reverse DNS answer it reports,
+// and says when the resolvers disagree (2026-10-15), so the setup's final
+// check can say which resolver still has the old name while a change at the
+// server provider spreads. A failed lookup names no resolver.
+// Saglik yaniti bildirdigi ters DNS yanitini veren cozumleyiciyi adlandirir ve
+// cozumleyiciler uyusmadiginda bunu soyler; basarisiz sorgu cozumleyici adlandirmaz.
+func TestMailHealthNamesTheResolverAndSaysWhenResolversDisagree(t *testing.T) {
+	const source = "192.0.2.15"
+	resolver := func(t *testing.T, ptr string, address string) string {
+		server, _ := mailDNSFixture(t, func(name string, kind uint16) []byte {
+			if kind == dnsTypePTR {
+				if ptr == "" {
+					return nil
+				}
+				data, _ := encodeDNSName(ptr)
+				return data
+			}
+			return net.ParseIP(address).To4()
+		})
+		return server
+	}
+	host := func(address string) string {
+		name, _, err := net.SplitHostPort(address)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return name
+	}
+	record := func(t *testing.T, resolvers []string) *MailHealthResponse {
+		t.Helper()
+		result, err := mailDNSIdentityObserved(context.Background(), source, "mail.example.test", resolvers)
+		resp := &MailHealthResponse{}
+		recordMailDNSLookup(resp, result.PTR, result.Aligned, result.Forward, err)
+		recordMailDNSResolver(resp, result, err)
+		return resp
+	}
+
+	t.Run("two resolvers with the same old name agree, and the first is named", func(t *testing.T) {
+		a, b := resolver(t, "old.provider.test", source), resolver(t, "old.provider.test", source)
+		resp := record(t, []string{a, b})
+		if resp.PTR != "old.provider.test" || resp.ReverseDNSResolver != host(a) || resp.ReverseDNSResolversDisagree {
+			t.Fatalf("got %+v", resp)
+		}
+	})
+	t.Run("an old name and a different name disagree; the reported answer names its resolver", func(t *testing.T) {
+		a, b := resolver(t, "old.provider.test", source), resolver(t, "other.provider.test", source)
+		resp := record(t, []string{a, b})
+		if resp.PTR != "old.provider.test" || resp.ReverseDNSResolver != host(a) || !resp.ReverseDNSResolversDisagree {
+			t.Fatalf("got %+v", resp)
+		}
+	})
+	t.Run("the expected name without a forward match is preferred and named with its resolver", func(t *testing.T) {
+		a, b := resolver(t, "old.provider.test", source), resolver(t, "mail.example.test", "192.0.2.16")
+		resp := record(t, []string{a, b})
+		if resp.PTR != "mail.example.test" || resp.ReverseDNSResolver != host(b) || !resp.ReverseDNSResolversDisagree {
+			t.Fatalf("got %+v", resp)
+		}
+	})
+	t.Run("no PTR at one resolver and a name at another disagree", func(t *testing.T) {
+		a, b := resolver(t, "", source), resolver(t, "old.provider.test", source)
+		resp := record(t, []string{a, b})
+		if resp.PTR != "" || resp.ReverseDNSResolver != host(a) || !resp.ReverseDNSResolversDisagree {
+			t.Fatalf("got %+v", resp)
+		}
+	})
+	t.Run("a verified identity names the resolver that proved it", func(t *testing.T) {
+		a, b := resolver(t, "old.provider.test", source), resolver(t, "mail.example.test", source)
+		resp := record(t, []string{a, b})
+		if resp.PTR != "mail.example.test" || !resp.FCrDNS || resp.ReverseDNSResolver != host(b) || !resp.ReverseDNSResolversDisagree {
+			t.Fatalf("got %+v", resp)
+		}
+	})
+	t.Run("a lookup no resolver answered names no resolver", func(t *testing.T) {
+		listener, err := net.Listen("tcp", "127.0.0.1:0")
+		if err != nil {
+			t.Fatal(err)
+		}
+		closed := listener.Addr().String()
+		_ = listener.Close()
+		resp := record(t, []string{closed})
+		if resp.ReverseDNSLookup != transport.MailDNSLookupFailed || resp.ReverseDNSResolver != "" || resp.ReverseDNSResolversDisagree {
+			t.Fatalf("got %+v", resp)
+		}
+	})
+	t.Run("the public resolvers are named by address, without the port", func(t *testing.T) {
+		if got := mailDNSResolverName("1.1.1.1:53"); got != "1.1.1.1" {
+			t.Fatalf("got %q", got)
+		}
+	})
+}

@@ -1,0 +1,30 @@
+HEAD feef819a7c202dd0d86b77b176fb2ff1e605055e
+source 313f3eea2c9b89251588648b09484cd34b7aecb1 tree ce64f0a85fc3a90452be753560abc24fad0f115d
+last product commit 21f07e7a86fcab07689c855c8b51bff097f12ad3
+git diff --stat 21f07e7a8 313f3eea2c9b89251588648b09484cd34b7aecb1 -- cmd internal web:
+(end; empty = 313f3eea2c9b89251588648b09484cd34b7aecb1 changes no product file)
+git diff --name-only 21f07e7a8 313f3eea2c9b89251588648b09484cd34b7aecb1:
+README.md
+README.tr.md
+deploy/release-sequence-policy
+deploy/test-download-portal-contract.sh
+deploy/test-release-sequence-policy.sh
+deploy/test-signed-release-manifest-contract.sh
+download-portal/get.sh
+(end)
+git diff --stat 313f3eea2c9b89251588648b09484cd34b7aecb1 HEAD -- cmd internal web deploy/release-sequence-policy:
+(end; empty = no product change after 313f3eea2c9b89251588648b09484cd34b7aecb1)
+git status --short -- cmd internal web/src deploy/release-sequence-policy:
+(end; empty = no uncommitted product change)
+release policy at 313f3eea2c9b89251588648b09484cd34b7aecb1:
+format=celikpanel-release-sequence-policy-v1
+version=v0.1.0-alpha.86
+current=86
+previous=85
+previous_version=v0.1.0-alpha.85
+previous_commit=36c33c4531ee6c1306d324db7a666403176f3bf7
+tag v0.1.0-alpha.85 = 36c33c4531ee6c1306d324db7a666403176f3bf7
+git diff --stat v0.1.0-alpha.85 313f3eea2c9b89251588648b09484cd34b7aecb1 -- internal/db/migrations:
+(end)
+git diff --stat v0.1.0-alpha.85 313f3eea2c9b89251588648b09484cd34b7aecb1 -- cmd/panel/main.go:
+(end)

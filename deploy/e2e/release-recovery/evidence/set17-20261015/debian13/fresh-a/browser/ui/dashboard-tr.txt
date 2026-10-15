@@ -1,0 +1,99 @@
+CPU kullanımı
+
+%0
+
+2 çekirdek · Yük 0.11
+
+Bellek
+
+%18
+
+543 MB / 2.9 GB
+
+Disk (/)
+
+%11
+
+2.7 GB / 23.4 GB
+
+Sistem servisleri
+
+3 / 3
+
+çalışan / kurulu
+
+Posta paketleri
+Kısmen kurulu
+
+Webmail: Bazı bileşenler zaten kurulu. Bu profili kurmak, yerinde olan hizmetleri kaldırmadan planın tamamını tamamlar.
+
+Posta paketlerini gör
+İlgi istiyor
+
+CelikPanel’in okuduklarında işlem gerektiren bir şey yok: sertifikalar, güvenlik duvarı ve kurulu bileşenler.
+
+Barındırma
+
+0
+
+Alan Adları
+
+0
+
+Veritabanları
+
+1
+
+Kullanıcılar
+
+0
+
+Posta hesabı
+
+Son etkinlik
+L
+labadmin oturum açtı2 kez
+127.0.0.1
+1 dk önce
+L
+labadmin rehberli ya da elle kurulum arasında seçim yaptı
+127.0.0.1
+1 dk önce
+L
+labadmin değiştirmek için kurulum planını yeniden açtı
+127.0.0.1
+1 dk önce
+L
+labadmin kurulum sırasında Let’s Encrypt istemcisi (certbot) bileşenini hazırladı
+127.0.0.1
+3 dk önce
+L
+labadmin kurulum sırasında Zamanlanmış görevler (cron) bileşenini hazırladı
+127.0.0.1
+3 dk önce
+L
+labadmin kurulum sırasında PHP-FPM bileşenini hazırladı
+127.0.0.1
+3 dk önce
+L
+labadmin kurulum sırasında Nginx bileşenini hazırladı
+127.0.0.1
+4 dk önce
+Hızlı işlemler
+Alan adı ekle
+Servis kur
+Kullanıcı ekle
+İçe aktar
+Sunucu bilgisi
+Sunucu adı
+dns-debian13
+IPv4 adresi
+10.0.2.15
+İşletim sistemi
+Debian GNU/Linux 13 (trixie)
+Çekirdek
+6.12.105+deb13-cloud-amd64
+Mimari
+amd64
+Çalışma süresi
+7dk

@@ -1,0 +1,128 @@
+{
+  "checks": {
+    "check": {
+      "body": {
+        "available": true,
+        "current_commit": "36c33c4531ee6c1306d324db7a666403176f3bf7",
+        "current_version": "v0.1.0-alpha.85",
+        "supported": true,
+        "target": {
+          "arch": "amd64",
+          "archive_sha256": "6c64289048f9e3fd98655bf761665c3b1f500ec654007da776d422654f747d39",
+          "archive_size": "66169992",
+          "commit": "313f3eea2c9b89251588648b09484cd34b7aecb1",
+          "os": "linux",
+          "published_at": "2026-10-15T14:00:26Z",
+          "sequence": "86",
+          "version": "v0.1.0-alpha.86"
+        }
+      },
+      "http": 200
+    },
+    "observer_armed": {
+      "at": "2026-10-15T14:09:50Z",
+      "seconds": 0.62
+    },
+    "observer_intent": {
+      "baseline": {
+        "agent_sha256": "8fc2d03a376738535e1fa81eea0b820f2224b6ee30117735bb1427c817c11eeb",
+        "commit": "36c33c4531ee6c1306d324db7a666403176f3bf7",
+        "panel_sha256": "7be2afccff3d1299867352e4489719f6a1cea562acc1064ed8527c2819a83210",
+        "version": "v0.1.0-alpha.85"
+      },
+      "identity": {
+        "cell_id": "release-recovery__d51fa5d1df7e7ba4",
+        "node": "debian13",
+        "nonce": "d51fa5d1df7e7ba4943800b0e2704f22c63b94213845278f76dbbd1683eebe0d",
+        "vm_uuid": "a2208751-01b9-5c86-a251-a3aa53b0f5dc"
+      },
+      "mode": "watch",
+      "operation_id": "c876195db9e3f3bc57af846ab248f793",
+      "recovery_fault": null,
+      "schema": "celikpanel/owner-update-observer-intent/v1",
+      "target": {
+        "agent_sha256": "360fcce3e7d1e6f1d86c51ce5e97eda222f744a93269df86daae90ac80d3c503",
+        "commit": "313f3eea2c9b89251588648b09484cd34b7aecb1",
+        "panel_sha256": "6fa269f0ef72aacc095ec8c44e3c68b8df64501d9540991ad88e6a927efadc03",
+        "version": "v0.1.0-alpha.86"
+      }
+    },
+    "observer_unit": "celikpanel-lab-owner-update-observer-c876195db9e3f3bc57af846ab248f793.service",
+    "origin_check": {
+      "addresses": [
+        "127.0.0.1"
+      ],
+      "boot_id": "4c23bfbd-60b6-4389-9a76-a6fe938693aa",
+      "getent_outcome": "found",
+      "getent_returncode": 0,
+      "getent_status": "ok",
+      "getent_stdout": "127.0.0.1       celikpanel.net\n",
+      "http": "200",
+      "loopback_only": true,
+      "ok": true,
+      "unit": {
+        "ActiveState": "active",
+        "NRestarts": "0",
+        "UnitFileState": "enabled"
+      }
+    },
+    "page_window": {
+      "browser_done": {
+        "at": "2026-10-15T14:10:11.033Z",
+        "by": "cold-load-set17.mjs",
+        "started": true
+      },
+      "ended_at": "2026-10-15T14:10:11Z",
+      "hand": "/var/tmp/cp-set17/hand/h17ugood-page",
+      "password_file_removed": true,
+      "window": "page"
+    },
+    "page_window_preps": [
+      {
+        "at": "2026-10-15T14:09:49Z",
+        "prep": "page-ready",
+        "result": {
+          "current_version": "v0.1.0-alpha.85",
+          "ok": true,
+          "target": {
+            "archive_sha256": "6c64289048f9e3fd98655bf761665c3b1f500ec654007da776d422654f747d39",
+            "commit": "313f3eea2c9b89251588648b09484cd34b7aecb1",
+            "sequence": "86",
+            "version": "v0.1.0-alpha.86"
+          }
+        }
+      },
+      {
+        "at": "2026-10-15T14:09:50Z",
+        "prep": "arm_c876195db9e3f3bc57af846ab248f793",
+        "result": {
+          "armed": true,
+          "request_id": "c876195db9e3f3bc57af846ab248f793",
+          "seconds": 0.62
+        }
+      }
+    ],
+    "request_id": "c876195db9e3f3bc57af846ab248f793",
+    "start_answer": {
+      "answered_ms": null,
+      "armed": {
+        "armed": true,
+        "request_id": "c876195db9e3f3bc57af846ab248f793",
+        "seconds": 0.62
+      },
+      "body": null,
+      "failed": null,
+      "held_ms": 1792073390004,
+      "note": "the page's own POST, held unchanged until the observer was armed, then released",
+      "pressed_ms": 1792073389922,
+      "released_ms": 1792073391008,
+      "request_id": "c876195db9e3f3bc57af846ab248f793",
+      "schema": "celikpanel/set17-start-answer/v1",
+      "status": null
+    }
+  },
+  "finished_at": "2026-10-15T14:10:11Z",
+  "name": "arm",
+  "started_at": "2026-10-15T14:09:10Z",
+  "verdict": "passed"
+}

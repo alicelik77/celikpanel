@@ -1,0 +1,231 @@
+{
+  "checks": {
+    "api": {
+      "/api/v1/domains": {
+        "at": "2026-10-15T14:37:00Z",
+        "body": {
+          "body": "[]",
+          "rows": 0,
+          "type": "list"
+        },
+        "status": 200
+      },
+      "/api/v1/license/access": {
+        "at": "2026-10-15T14:37:00Z",
+        "body": {
+          "can_use_panel": true,
+          "observation": "known",
+          "state": "active",
+          "valid_for_seconds": 53.88,
+          "valid_until": 1792075074
+        },
+        "status": 200
+      },
+      "/api/v1/managed-services": {
+        "at": "2026-10-15T14:37:00Z",
+        "body": {
+          "dns_identity_ready": true,
+          "keys": [
+            "dns_identity_ready",
+            "mail_hostname",
+            "profiles",
+            "scan_age_seconds",
+            "scanned_at",
+            "services"
+          ],
+          "mail_hostname": {
+            "current": "dns-debian13",
+            "current_usable": false,
+            "will_set_hostname": false
+          },
+          "profiles": [
+            {
+              "available": true,
+              "description": "Postfix SMTP and Dovecot IMAP/POP3 with authenticated submission.",
+              "id": "core-mail",
+              "latest_attempt_status": "none",
+              "name": "Core Mail",
+              "services": [
+                "postfix",
+                "dovecot"
+              ],
+              "status": "available",
+              "verified": false
+            },
+            {
+              "available": true,
+              "description": "Core mail plus Nginx, PHP-FPM and Roundcube webmail.",
+              "id": "webmail",
+              "latest_attempt_status": "none",
+              "name": "Webmail",
+              "services": [
+                "postfix",
+                "dovecot",
+                "nginx",
+                "php-fpm",
+                "roundcube"
+              ],
+              "status": "partial",
+              "verified": false,
+              "warning": "Some components are already present. Installing this profile will reconcile the full plan without removing completed services.",
+              "warning_code": "partly_present"
+            },
+            {
+              "available": true,
+              "description": "Core mail with Rspamd spam filtering.",
+              "id": "protected-mail",
+              "latest_attempt_status": "none",
+              "name": "Spam-Protected Mail",
+              "services": [
+                "postfix",
+                "dovecot",
+                "rspamd"
+              ],
+              "status": "available",
+              "verified": false
+            }
+          ],
+          "scan_age_seconds": 130.131,
+          "scanned_at": "2026-10-15T14:34:50Z",
+          "services_count": 27
+        },
+        "status": 200
+      },
+      "/api/v1/panel/version": {
+        "at": "2026-10-15T14:37:00Z",
+        "body": {
+          "agent_commit": "313f3eea2c9b89251588648b09484cd34b7aecb1",
+          "agent_matches": true,
+          "commit": "313f3eea2c9b89251588648b09484cd34b7aecb1",
+          "hostname": "dns-debian13",
+          "ipv4": "192.0.2.10",
+          "schema_version": 44,
+          "version": "v0.1.0-alpha.86"
+        },
+        "status": 200
+      },
+      "/api/v1/setup": {
+        "at": "2026-10-15T14:37:00Z",
+        "body": {
+          "checks": [],
+          "draft": {
+            "customization": {
+              "components": [
+                "mariadb",
+                "nginx",
+                "php-fpm"
+              ]
+            },
+            "database": "",
+            "dns_engine": "bind",
+            "dns_mode": "external",
+            "dns_role": "primary",
+            "local_ip": "192.0.2.10",
+            "mail_hostname": "",
+            "node_version": "",
+            "ns1": "ns1.upd1-infra.test",
+            "ns2": "ns2.upd1-infra.test",
+            "panel_domain": "panel-debian13.upd1-infra.test",
+            "peer_ip": "",
+            "peer_ns": "",
+            "purpose": "web",
+            "remote_dns_connection_id": ""
+          },
+          "guidance": "guided",
+          "origin": "fresh",
+          "required": true,
+          "revision": 2,
+          "server_ip": "192.0.2.10",
+          "status": "running",
+          "version": 1
+        },
+        "status": 200
+      }
+    },
+    "fields": {
+      "access_has_valid_for_seconds": true,
+      "domains_rows": 0,
+      "managed_services_has_scan_age_seconds": true,
+      "panel_version": {
+        "agent_commit": "313f3eea2c9b89251588648b09484cd34b7aecb1",
+        "agent_matches": true,
+        "commit": "313f3eea2c9b89251588648b09484cd34b7aecb1",
+        "hostname": "dns-debian13",
+        "ipv4": "192.0.2.10",
+        "schema_version": 44,
+        "version": "v0.1.0-alpha.86"
+      },
+      "setup_status": "running"
+    },
+    "installed_pins": {
+      "lines": [
+        "== /usr/libexec/celikpanel/get.sh",
+        "6:bootstrap_release_sequence=86",
+        "7:bootstrap_release_version=v0.1.0-alpha.86",
+        "8:bootstrap_release_public_key_sha256=7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb",
+        "== end"
+      ],
+      "returncode": 0
+    },
+    "ledger": {
+      "expected_version": 44,
+      "facts": {
+        "integrity": true,
+        "ledger_is_the_released_one": true,
+        "request_identities": true,
+        "schema_is_the_released_one": true,
+        "version": true
+      },
+      "ledger_last": [
+        {
+          "filename": "042_remote_dns_publish.sql",
+          "sha256": "60b4c3ee2c0c1348072d74ef505d4f7368552f35503e90871aa7eeb4f7b9e8d5",
+          "version": 42
+        },
+        {
+          "filename": "043_request_identities.sql",
+          "sha256": "92302046d132465b5048d4c2a4a4e2e737fe9e50494ece60b679109309c89daa",
+          "version": 43
+        },
+        {
+          "filename": "044_managed_site_files.sql",
+          "sha256": "71d56b9ff119c1c8872c5e5c20f28952c1b1d781f1dae6474abc97879bf951f9",
+          "version": 44
+        }
+      ],
+      "ledger_rows": 44,
+      "ledger_sha256": "55efb384c7d1b02c48932367dad06a2086f8ffcc62ca23ad24ae7e5603e9189b",
+      "pinned_ledger_sha256": "55efb384c7d1b02c48932367dad06a2086f8ffcc62ca23ad24ae7e5603e9189b",
+      "pinned_schema_sha256": "afcb7db4bf3b619a605af88277714cbc22e7dbe5279375b80f0eb33f54de06fc",
+      "request_identities": {
+        "columns": [
+          "id",
+          "actor_user_id",
+          "method",
+          "route",
+          "request_sha256",
+          "status",
+          "response_status",
+          "response_retained",
+          "response_content_type",
+          "response_body",
+          "created_at",
+          "finished_at",
+          "expires_at"
+        ],
+        "exists": true,
+        "rows": 0
+      },
+      "schema_sha256": "afcb7db4bf3b619a605af88277714cbc22e7dbe5279375b80f0eb33f54de06fc",
+      "schema_sha256_without_statistics": "afcb7db4bf3b619a605af88277714cbc22e7dbe5279375b80f0eb33f54de06fc",
+      "schema_version": 44,
+      "statistics_tables": [],
+      "table_count": 67,
+      "verdict": "as-expected"
+    }
+  },
+  "finished_at": "2026-10-15T14:37:00Z",
+  "name": "set17-readings",
+  "started_at": "2026-10-15T14:37:00Z",
+  "verdict": "observed"
+}

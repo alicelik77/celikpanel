@@ -1,0 +1,24 @@
+Account security
+Sign-in protection and administrator security.
+Server setup
+Setup wizard and your configuration preference.
+Panel HTTPS
+Panel domain and HTTPS certificate.
+License
+Server license, activation and annual renewal.
+CelikPanel updates
+Check signed releases and install them only after explicit confirmation.
+Server security
+Read-only audit of exposed services and access controls.
+DNS infrastructure
+Shared nameservers, node identity and replication topology.
+System databases
+Inspect and safely maintain the SQLite files CelikPanel and installed services keep.
+Two-factor authentication
+
+Add a second step to sign-in using an authenticator app (Google Authenticator, Authy, 1Password…).
+
+Confirm your current password before changing two-factor authentication. Other signed-in devices will be signed out.
+
+Password
+Set up two-factor

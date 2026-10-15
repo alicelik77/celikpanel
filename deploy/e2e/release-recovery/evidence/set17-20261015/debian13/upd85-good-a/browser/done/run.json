@@ -1,0 +1,27 @@
+{
+  "cell": "done",
+  "chrome": "Chrome/155.0.8059.40",
+  "handover": {
+    "at": "2026-10-15T14:12:39Z",
+    "base": "https://127.0.0.1:19272",
+    "browser": {
+      "lang": "en",
+      "viewport": "desktop"
+    },
+    "cell": "upd1-debian13-good",
+    "local_port": 19272,
+    "mode": "after-the-update",
+    "password_file": "(root-only file, not copied)",
+    "preps": [
+      "probe",
+      "journal"
+    ],
+    "schema": "celikpanel/set12-handover/v1",
+    "tls_leaf_sha256": "f703f987814226b075074fbc4f8ad2c186f1d56491029ede66486c283cdacf71",
+    "username": "labadmin",
+    "window": "ui"
+  },
+  "started": "2026-10-15T14:14:35.370Z",
+  "ended": "2026-10-15T14:14:35.372Z",
+  "ok": true
+}

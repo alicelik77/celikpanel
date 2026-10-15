@@ -1,0 +1,80 @@
+# cold-load-set17.mjs: run copy c (e81bc9c8f9d0cea7fb7336c90bd9aeec4d165fd8b8592805155b23e3b08f0c9b) -> committed (5e8fb7157277632ec50466df1faa00a3e07cc753efab4349d512be21cd829c0d)
+--- a/cold-load-set17.mjs
++++ b/cold-load-set17.mjs
+@@ -241,9 +241,13 @@
+     const sidebarVersion = sidebar ? ((txt(sidebar) || '').match(/v0\.1\.0-alpha\.\d+/) || [])[0] || null : null;
+     const stamp = document.querySelector('[data-build-stamp]');
+     const app = document.querySelector('div.contents');
++    // set17 run: every other visible dialog (the licence access gate drew one over the update's restart in cell u86).
++    const others = Array.from(document.querySelectorAll('[role="dialog"], [role="alertdialog"], [aria-modal="true"]'))
++        .filter(x => x !== dlg && !(dlg && dlg.contains(x)) && x.getBoundingClientRect().width > 0)
++        .map(x => { const box = x.querySelector('h1, h2, h3') ; const panelEl = x.firstElementChild || x; return { title: box ? txt(box) : null, text: (txt(x) || '').slice(0, 900), surface: cs(panelEl), buttons: Array.from(x.querySelectorAll('button')).map(b => txt(b)) }; });
+     return { t: Date.now(), path: location.pathname + location.search, vis: document.visibilityState, tokens, dialog, corner, card, buttons,
+         card_current_version: currentVersion, alerts, sidebar_version: sidebarVersion, build_stamp: stamp ? txt(stamp) : null,
+-        app_aria_hidden: app ? app.getAttribute('aria-hidden') : null, html_lang: document.documentElement.lang || null };
++        app_aria_hidden: app ? app.getAttribute('aria-hidden') : null, html_lang: document.documentElement.lang || null, other_dialogs: others };
+ };
+ 
+ // Which theme token a computed colour is (light theme): the rgb triple against each token's "r g b".
+@@ -321,7 +325,8 @@
+             try { s = await page.evaluate(PAGE_SAMPLE); } catch (error) { s = { t: t0, error: String(error.message).slice(0, 120) }; }
+             if (!s.error) {
+                 s.surface = surfaceOf(s);
+-                s.kind = { dialog: kindOf(s.dialog ? `${s.dialog.title} ${s.dialog.status}` : null), corner: kindOf(s.corner?.text), card: s.card?.phase ?? null, card_text: kindOf(s.card?.text) };
++                s.kind = { dialog: kindOf(s.dialog ? `${s.dialog.title} ${s.dialog.status}` : null), corner: kindOf(s.corner?.text), card: s.card?.phase ?? null, card_text: kindOf(s.card?.text),
++                    other_dialogs: (s.other_dialogs || []).map(d => /The Panel is not answering|Panel yanıt vermiyor/.test(d.text || '') ? 'licence-gate-not-answering' : kindOf(d.text)) };
+                 const key = JSON.stringify([s.kind, !!s.dialog, !!s.corner, s.surface.dialog_icon?.background, s.surface.dialog_icon?.svg, s.surface.card?.icon_color, s.alerts.length, s.sidebar_version, s.card_current_version]);
+                 if (!shotKeys.has(key) && shots < 24 && s.vis === 'visible') {
+                     shotKeys.add(key); shots++;
+@@ -421,12 +426,16 @@
+         const releasedAt = Date.now();
+         await got.req.continue().catch(error => { summary.release_error = String(error.message).slice(0, 160); });
+         summary.release = { released_at: iso(releasedAt), held_ms: releasedAt - got.at, armed: armed?.result ?? armed };
+-        const answer = await Promise.race([answerPromise, pause(20000).then(() => null)]);
++        // set17 run: the answer of the held request is not always reported by the browser's network events (the
++        // request leaves through the page's service worker); 5 s, then the page's own dialog line is recorded.
++        const answer = await Promise.race([answerPromise, pause(5000).then(() => null)]);
++        const pageSaid = await page.evaluate(() => { const s = document.getElementById('system-update-operation-status'); return s ? (s.innerText || '').trim() : null; }).catch(() => null);
+         page.off('request', onRequest);
+         await page.setRequestInterception(false).catch(() => {});
+         let answerBody = null; try { answerBody = answer?.text ? JSON.parse(answer.text) : null; } catch { answerBody = answer?.text?.slice(0, 600) ?? null; }
+         const startAnswer = { schema: 'celikpanel/set17-start-answer/v1', request_id: rid, pressed_ms: clickAt, held_ms: got.at, released_ms: releasedAt,
+             answered_ms: answer?.at ?? null, status: answer?.status ?? null, failed: answer?.failed ?? null, body: answerBody, armed: armed?.result ?? armed,
++            answer_seen_by_the_browser: answer !== null, page_dialog_line_after_release: pageSaid,
+             note: 'the page\'s own POST, held unchanged until the observer was armed, then released' };
+         summary.start_answer = startAnswer;
+         await writeFile(join(handDir, 'start-answer.json'), redact(JSON.stringify(startAnswer, null, 2)) + '\n');
+@@ -460,7 +469,7 @@
+     // states: a new row each time the visible kind/surface changes
+     const states = [];
+     for (const s of ok) {
+-        const key = JSON.stringify([s.kind, !!s.dialog, !!s.corner, s.surface?.dialog_icon?.background, s.surface?.dialog_icon?.svg, s.surface?.card?.icon_color, (s.alerts || []).length]);
++        const key = JSON.stringify([s.kind, !!s.dialog, !!s.corner, s.surface?.dialog_icon?.background, s.surface?.dialog_icon?.svg, s.surface?.card?.icon_color, (s.alerts || []).length, (s.other_dialogs || []).map(d => d.title)]);
+         const last = states[states.length - 1];
+         if (!last || last.key !== key) {
+             states.push({ key, from: iso(s.t), from_s: rel(s.t), to: iso(s.t), to_s: rel(s.t), samples: 1,
+@@ -470,6 +479,7 @@
+                     card: s.surface?.card ? { border: s.surface.card.border, background: s.surface.card.background, icon_color: s.surface.card.icon_color, svg: s.surface.card.svg, spinning: s.surface.card.spinning } : null,
+                     corner: s.surface?.corner ? { border: s.surface.corner.border, background: s.surface.corner.background } : null, alerts: s.surface?.alerts },
+                 warning_surface: warningIn(s.surface || {}), danger_surface: dangerIn(s.surface || {}),
++                other_dialogs: (s.other_dialogs || []).map(d => ({ title: d.title, text: d.text, buttons: d.buttons, surface: d.surface })),
+                 app_aria_hidden: s.app_aria_hidden, sidebar_version: s.sidebar_version, card_current_version: s.card_current_version, buttons: s.buttons, picture: s.picture ?? null });
+         } else {
+             last.to = iso(s.t); last.to_s = rel(s.t); last.samples += 1;
+@@ -498,6 +508,7 @@
+     const restarting = ok.filter(s => s.kind?.dialog === 'restarting' || s.kind?.card_text === 'restarting' || s.kind?.corner === 'restarting');
+     const corners = ok.filter(s => s.corner);
+     const warn = ok.filter(s => warningIn(s.surface || {}));
++    const otherDialogs = ok.filter(s => (s.other_dialogs || []).length);
+     const outageS = firstLost && answeredAfter ? (answeredAfter.start_ms - firstLost.start_ms) / 1000 : null;
+     return {
+         pressed_at: summary.start_pressed_at ?? null,
+@@ -513,6 +524,8 @@
+         not_known_wording: { samples: notKnown.length, first: notKnown[0] ? { at: iso(notKnown[0].t), s: rel(notKnown[0].t) } : null },
+         restarting_wording: { samples: restarting.length, first: restarting[0] ? { at: iso(restarting[0].t), s: rel(restarting[0].t) } : null, last: restarting.length ? { at: iso(restarting[restarting.length - 1].t), s: rel(restarting[restarting.length - 1].t) } : null },
+         corner_notice: { samples: corners.length, first: corners[0] ? { at: iso(corners[0].t), s: rel(corners[0].t), text: corners[0].corner.text.slice(0, 400) } : null },
++        other_dialogs: { samples: otherDialogs.length, first: otherDialogs[0] ? { at: iso(otherDialogs[0].t), s: rel(otherDialogs[0].t), titles: otherDialogs[0].other_dialogs.map(d => d.title) } : null,
++            last: otherDialogs.length ? { at: iso(otherDialogs[otherDialogs.length - 1].t), s: rel(otherDialogs[otherDialogs.length - 1].t) } : null },
+         warning_surface: { samples: warn.length, first: warn[0] ? { at: iso(warn[0].t), s: rel(warn[0].t) } : null },
+         alerts_seen: [...new Set(ok.flatMap(s => (s.alerts || []).map(a => a.text.slice(0, 200))))],
+         bound: { window_from_start_s: 360, window_from_first_lost_read_s: 120,

@@ -1,0 +1,103 @@
+{
+  "checks": {
+    "agent_states_while_held": [
+      "inactive"
+    ],
+    "completion_pending_seen": {
+      "agent": "inactive",
+      "at": "2026-10-15T18:12:06.082Z",
+      "epoch": 1792087926.083,
+      "markers": [
+        "completion.pending"
+      ],
+      "panel": "failed",
+      "worker": "active"
+    },
+    "events": 13,
+    "frozen": {
+      "after_marker_ms": 72,
+      "agent": "inactive",
+      "at": "2026-10-15T18:12:06.119Z",
+      "epoch": 1792087926.119,
+      "markers": [
+        "completion.pending"
+      ],
+      "panel": "failed",
+      "worker_freezer": "frozen"
+    },
+    "held_seconds": 150.3,
+    "kinds": [
+      "armed",
+      "markers",
+      "markers",
+      "completion_pending_seen",
+      "frozen",
+      "held",
+      "thawed",
+      "after_thaw",
+      "after_thaw",
+      "after_thaw",
+      "after_thaw",
+      "after_thaw",
+      "released"
+    ],
+    "panel_active_after_thaw": {
+      "after_thaw_s": 1.6,
+      "at": "2026-10-15T18:14:38.049Z",
+      "epoch": 1792088078.049
+    },
+    "panel_states_while_held": [
+      "failed"
+    ],
+    "released": {
+      "at": "2026-10-15T18:14:48.375Z",
+      "epoch": 1792088088.375,
+      "event": "released",
+      "held_seconds": 150.0,
+      "operation_id": "12d6fcbdabeac9e8a6753aecf5c57cce",
+      "reason": "held and thawed",
+      "schema": "celikpanel/set17b-restart-delay/v1",
+      "worker": "celikpanel-self-update-12d6fcbdabeac9e8a6753aecf5c57cce.service"
+    },
+    "start": {
+      "argv": [
+        "systemd-run",
+        "--unit=celikpanel-lab-set17b-restart-delay-12d6fcbdabeac9e8a6753aecf5c57cce.service",
+        "--no-block",
+        "--property=RuntimeMaxSec=1200",
+        "--property=TimeoutStopSec=30",
+        "--property=UMask=0077",
+        "--property=ExecStopPost=-/usr/bin/systemctl thaw celikpanel-self-update-12d6fcbdabeac9e8a6753aecf5c57cce.service",
+        "python3",
+        "-I",
+        "/root/celikpanel-release-recovery-lab/guest_set17b_restart_delay.py",
+        "--operation-id",
+        "12d6fcbdabeac9e8a6753aecf5c57cce",
+        "--delay-seconds",
+        "150",
+        "--limit-seconds",
+        "900"
+      ],
+      "at": "2026-10-15T18:11:30Z",
+      "returncode": 0,
+      "started": true,
+      "stderr": "Running as unit: celikpanel-lab-set17b-restart-delay-12d6fcbdabeac9e8a6753aecf5c57cce.service; invocation ID: 28066b0bfa244ab3ac5d896cfa11ecbf\n",
+      "unit": "celikpanel-lab-set17b-restart-delay-12d6fcbdabeac9e8a6753aecf5c57cce.service",
+      "what": "lab preparation (not a product change): hold the update's own worker once its transaction is completion-pending, for 150 s while the Panel is stopped",
+      "worker": "celikpanel-self-update-12d6fcbdabeac9e8a6753aecf5c57cce.service"
+    },
+    "thawed": {
+      "agent": "inactive",
+      "at": "2026-10-15T18:14:36.406Z",
+      "epoch": 1792088076.406,
+      "panel": "failed",
+      "reason": "the delay of 150 s ended",
+      "returncode": 0,
+      "worker_freezer": "running"
+    }
+  },
+  "finished_at": "2026-10-15T18:16:19Z",
+  "name": "set17b-restart-delay",
+  "started_at": "2026-10-15T18:16:19Z",
+  "verdict": "observed"
+}

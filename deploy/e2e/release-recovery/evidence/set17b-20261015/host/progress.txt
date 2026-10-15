@@ -1,0 +1,17 @@
+2026-10-15T17:05:07Z set17b run directory created
+2026-10-15T17:05:27Z made run copy b
+2026-10-15T17:05:32Z start build (limit 3600s)
+2026-10-15T17:10:52Z end build rc=0
+2026-10-15T17:11:08Z made run copy c
+2026-10-15T17:12:02Z start u86a (limit 5400s)
+2026-10-15T17:26:04Z end u86a rc=0
+2026-10-15T17:29:00Z made run copy d
+2026-10-15T17:29:02Z run copy d made after run a (helper trigger changed to completion.pending)
+2026-10-15T17:29:15Z start u86a2 (limit 5400s)
+2026-10-15T17:44:22Z end u86a2 rc=0
+2026-10-15T17:45:13Z made run copy e
+2026-10-15T17:45:15Z run copy e made after run a (the delay step reading starts with set +e)
+2026-10-15T17:45:22Z start u86b (limit 5400s)
+2026-10-15T18:01:27Z end u86b rc=0
+2026-10-15T18:01:43Z start ctl (limit 5400s)
+2026-10-15T18:16:23Z end ctl rc=0

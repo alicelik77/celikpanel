@@ -1,0 +1,19 @@
+{
+  "at": "2026-10-15T14:38:56Z",
+  "prep": "unverifiable-record",
+  "result": {
+    "epoch": 1792075136.9625027,
+    "returncode": 0,
+    "row_after": {
+      "data_length": 47,
+      "scanned_at": "2026-10-15T14:34:50Z"
+    },
+    "row_before": {
+      "data_head_is_json": true,
+      "data_length": 2262,
+      "scanned_at": "2026-10-15T14:34:50Z"
+    },
+    "rows_changed": 1,
+    "what": "lab preparation: the stored component record (service_scan_cache id 1, data column) replaced by bytes that do not decode; scanned_at unchanged"
+  }
+}

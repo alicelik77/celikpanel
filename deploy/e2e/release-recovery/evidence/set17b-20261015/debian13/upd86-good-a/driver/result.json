@@ -1,0 +1,379 @@
+{
+  "artifacts": {
+    "baseline": {
+      "commit": "ecd2a5f088d676f7cc8a8e571ed3c903ea951f3e",
+      "sha256": "4569b5eb0dba432799be5f63abeec4afca48669ead46151dd10d8ae80ccd72d0",
+      "version": "v0.1.0-alpha.86"
+    },
+    "defective": {
+      "commit": "0aa2bb3c1394aeee5cc7e153a8b96a0e4d0ee51b",
+      "sha256": "1df2f933c669c4bf27e81323df1c5d58c8a0ecde6a65d3aa19ecf4f179b60d0c",
+      "version": "v0.1.0-alpha.87"
+    },
+    "good": {
+      "commit": "20a9baa5d0ccb269528a02ec8c14229bc2ee2493",
+      "sha256": "34c753c6158ecedfea501d3f9c5494557f12609b61e989bbc00cecdba82cb93e",
+      "version": "v0.1.0-alpha.87"
+    }
+  },
+  "cell": {
+    "h19": true,
+    "mail_required": true,
+    "name": "upd1-debian13-good",
+    "node": "debian13",
+    "pk_observe": false,
+    "recovery_fault": null,
+    "scenario": null,
+    "variant": "good"
+  },
+  "deferred_mail": {
+    "last": {
+      "deferred": [
+        "mail certificate publication",
+        "mail filter wiring"
+      ],
+      "finished": true,
+      "gave_up": false,
+      "pid": "46843",
+      "ready_at": "2026-10-15T17:42:40.217542+00:00",
+      "repeated": [],
+      "resolved": {
+        "mail certificate publication": [
+          {
+            "at": "2026-10-15T17:43:21.486587+00:00",
+            "attempt": 1,
+            "outcome": "completed"
+          }
+        ],
+        "mail filter wiring": [
+          {
+            "at": "2026-10-15T17:43:21.486587+00:00",
+            "attempt": 1,
+            "outcome": "completed"
+          }
+        ]
+      },
+      "started_at": "2026-10-15T17:42:40.164521+00:00"
+    },
+    "panel_processes": [
+      {
+        "attempt_lines": 0,
+        "deferred": [],
+        "finished": true,
+        "gave_up": false,
+        "pid": "5323",
+        "ready_at": "2026-10-15T17:31:05.294654+00:00",
+        "repeated": [],
+        "started_at": "2026-10-15T17:31:05.260325+00:00"
+      },
+      {
+        "attempt_lines": 0,
+        "deferred": [],
+        "finished": true,
+        "gave_up": false,
+        "pid": "5388",
+        "ready_at": "2026-10-15T17:31:06.544701+00:00",
+        "repeated": [],
+        "started_at": "2026-10-15T17:31:06.516987+00:00"
+      },
+      {
+        "attempt_lines": 1,
+        "deferred": [
+          "mail certificate publication",
+          "mail filter wiring"
+        ],
+        "finished": true,
+        "gave_up": false,
+        "pid": "46843",
+        "ready_at": "2026-10-15T17:42:40.217542+00:00",
+        "repeated": [],
+        "started_at": "2026-10-15T17:42:40.164521+00:00"
+      }
+    ],
+    "settle": {
+      "at": "2026-10-15T17:44:10Z",
+      "attempt_lines_after": 1,
+      "attempt_lines_before": 1,
+      "repeated_after": [],
+      "same_process": true,
+      "seconds_after_resolution": 45.0
+    },
+    "watch_seconds": 66.5
+  },
+  "findings": [
+    "debian13: server setup waits at access_dns (server_setup_access_dns_required) on an isolated host; later wizard steps were not run: ['11-panel_certificate', '12-access_dns', '13-mail_certificate', '14-mail_enrollment', '15-verify']"
+  ],
+  "identity": {
+    "cell_id": "release-recovery__ee0ed40a5a8308d2",
+    "node": "debian13",
+    "vm_uuid": "96b2c2bc-1cb9-5703-98ba-1fb3e7f2f8b9"
+  },
+  "native_evidence": false,
+  "note": "Observations for the owner's review; the P0 rows are judged separately.",
+  "outcome": {
+    "attempts": {
+      "automatic": [],
+      "automatic_count": 0,
+      "journal_admissions": [],
+      "owner": [],
+      "owner_count": 0
+    },
+    "classification": "update-verified",
+    "final_status": {
+      "observation": "known",
+      "observed_at": "2026-10-15T17:42:50Z",
+      "phase": "succeeded",
+      "reason": "update_verified",
+      "request_id": "c072318ef107da22b18f66fb0001e81b",
+      "schema": "celikpanel-recovery-status/v1",
+      "terminal_proof": "update_verified"
+    },
+    "owner_continuation": false,
+    "owner_reboot": null,
+    "pin_changes": [],
+    "port_hold": null,
+    "reboot": null,
+    "track_stop": null
+  },
+  "overall": "inconclusive",
+  "provenance": {
+    "baseline": "set17 fresh cell and second update: the unpublished source commit ecd2a5f088d676f7cc8a8e571ed3c903ea951f3e itself (its own release policy v0.1.0-alpha.86 / 86, previous the alpha.85 tag commit); built with the acceptance_license build tag; installed by the real installer; fixture trust root enrolled; not a published tag and not the signed release archive",
+    "candidate": "unpublished-local-fixture-commit-over-the-source-labelled-v0.1.0-alpha.87 (release policy only); served by the guest-loopback origin; installed only by the second update; not a release",
+    "defect": "fixture source patch: cmd/panel --migrate-only exits 1 after migrating the isolated copy (genuine candidate failure after candidate-installed, simulated by a committed fixture change)"
+  },
+  "request_id": "c072318ef107da22b18f66fb0001e81b",
+  "schema": "celikpanel/upd1-owner-update-result/v1",
+  "scope": {
+    "cron": {
+      "crontab": "/usr/bin/crontab",
+      "verdict": "available"
+    },
+    "dns": {
+      "mode": "external",
+      "note": "DNS is not provided by this run (the owner chose DNS hosted elsewhere on one isolated node); DNS continuity is covered by the DNS pair runs of roadmap item 2",
+      "verdict": "not-provided-external-dns"
+    },
+    "origin": {
+      "after-provision": {
+        "addresses": [
+          "127.0.0.1"
+        ],
+        "http": "200",
+        "ok": true
+      },
+      "before-arm": {
+        "addresses": [
+          "127.0.0.1"
+        ],
+        "http": "200",
+        "ok": true
+      }
+    },
+    "setup": {
+      "code": "server_setup_access_dns_required",
+      "not_run": [
+        "11-panel_certificate",
+        "12-access_dns",
+        "13-mail_certificate",
+        "14-mail_enrollment",
+        "15-verify"
+      ],
+      "phase": "access_dns",
+      "verdict": "observed isolated-host wait",
+      "volatile_tables_added": [
+        "server_setup_executions"
+      ]
+    }
+  },
+  "set5": {
+    "additions": {
+      "item9": false,
+      "m10": false
+    },
+    "cell_kind": "set5-closing-update",
+    "pinned_names": [
+      "acme-v02.api.letsencrypt.org",
+      "acme-staging-v02.api.letsencrypt.org",
+      "acme.zerossl.com",
+      "dv.acme-v02.api.pki.goog"
+    ],
+    "sections": {}
+  },
+  "set6": {
+    "cell_kind": "set6-good-update",
+    "expected_strict_transport_security": {
+      "after_the_update": "max-age=31536000",
+      "before_the_update": "max-age=31536000"
+    },
+    "pinned_names": [
+      "celikpanel.net",
+      "acme-v02.api.letsencrypt.org",
+      "acme-staging-v02.api.letsencrypt.org",
+      "acme.zerossl.com",
+      "dv.acme-v02.api.pki.goog"
+    ]
+  },
+  "steps": [
+    {
+      "finished_at": "2026-10-15T17:30:21Z",
+      "name": "set6-name-pinning",
+      "reason": null,
+      "started_at": "2026-10-15T17:30:16Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-15T17:30:26Z",
+      "name": "preflight",
+      "reason": null,
+      "started_at": "2026-10-15T17:30:21Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-15T17:30:35Z",
+      "name": "origin",
+      "reason": null,
+      "started_at": "2026-10-15T17:30:26Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-15T17:31:09Z",
+      "name": "baseline-install",
+      "reason": null,
+      "started_at": "2026-10-15T17:30:35Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-15T17:31:10Z",
+      "name": "owner-login",
+      "reason": null,
+      "started_at": "2026-10-15T17:31:09Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-15T17:31:10Z",
+      "name": "license",
+      "reason": null,
+      "started_at": "2026-10-15T17:31:10Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-15T17:37:48Z",
+      "name": "setup",
+      "reason": null,
+      "started_at": "2026-10-15T17:31:10Z",
+      "verdict": "observed"
+    },
+    {
+      "finished_at": "2026-10-15T17:37:50Z",
+      "name": "seed",
+      "reason": null,
+      "started_at": "2026-10-15T17:37:48Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-15T17:37:51Z",
+      "name": "set6-headers-before-the-update",
+      "reason": null,
+      "started_at": "2026-10-15T17:37:50Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-15T17:39:08Z",
+      "name": "pre-state",
+      "reason": null,
+      "started_at": "2026-10-15T17:37:51Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-15T17:39:26Z",
+      "name": "arm",
+      "reason": null,
+      "started_at": "2026-10-15T17:39:08Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-15T17:39:26Z",
+      "name": "owner-start",
+      "reason": null,
+      "started_at": "2026-10-15T17:39:26Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-15T17:42:58Z",
+      "name": "track",
+      "reason": null,
+      "started_at": "2026-10-15T17:39:26Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-15T17:42:58Z",
+      "name": "owner-continuation (required)",
+      "reason": null,
+      "started_at": "2026-10-15T17:42:58Z",
+      "verdict": "skipped"
+    },
+    {
+      "finished_at": "2026-10-15T17:43:04Z",
+      "name": "terminal",
+      "reason": null,
+      "started_at": "2026-10-15T17:42:58Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-15T17:44:11Z",
+      "name": "deferred-mail-watch",
+      "reason": null,
+      "started_at": "2026-10-15T17:43:04Z",
+      "verdict": "observed"
+    },
+    {
+      "finished_at": "2026-10-15T17:44:17Z",
+      "name": "post-update-facts",
+      "reason": null,
+      "started_at": "2026-10-15T17:44:11Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-15T17:44:17Z",
+      "name": "set17-readings-after-the-update",
+      "reason": null,
+      "started_at": "2026-10-15T17:44:17Z",
+      "verdict": "observed"
+    },
+    {
+      "finished_at": "2026-10-15T17:44:18Z",
+      "name": "set17b-restart-delay",
+      "reason": "CalledProcessError: Command '['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=5', '-o', 'StrictHostKeyChecking=yes', '-o', 'HashKnownHosts=no', '-o', 'UserKnownHostsFile=/var/tmp/cp-release-drill-s17b-u86-a2/cells/878f8e94ec0b14c2b49f890c/ssh-known-hosts', '-i', '/var/tmp/cp-release-drill-s17b-u86-a2/key', '-p', '5284', 'celik@127.0.0.1', 'sudo /bin/bash -s']' returned non-zero exit status 2.",
+      "started_at": "2026-10-15T17:44:17Z",
+      "verdict": "inconclusive"
+    },
+    {
+      "finished_at": "2026-10-15T17:44:18Z",
+      "name": "set6-headers-after-the-update",
+      "reason": null,
+      "started_at": "2026-10-15T17:44:18Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-15T17:44:20Z",
+      "name": "collect",
+      "reason": null,
+      "started_at": "2026-10-15T17:44:18Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-15T17:44:20Z",
+      "name": "verdicts",
+      "reason": null,
+      "started_at": "2026-10-15T17:44:20Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-15T17:44:21Z",
+      "name": "set6-name-pinning-at-the-end",
+      "reason": null,
+      "started_at": "2026-10-15T17:44:20Z",
+      "verdict": "passed"
+    }
+  ]
+}

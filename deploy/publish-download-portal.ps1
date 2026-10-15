@@ -16,8 +16,11 @@ param(
     [string]$RemoteLive,
     [string]$RemoteBackups,
     [string]$RemoteLock,
-    [string]$Promoter = (Join-Path $PSScriptRoot 'promote-download-portal.py'),
-    [string]$PublicVerifier = (Join-Path $PSScriptRoot 'verify-download-portal-public.py'),
+    # Empty means the file beside this script. The default is resolved in the
+    # body: $PSScriptRoot can be empty during parameter binding when the script
+    # is run with powershell -File from another working directory (2026-10-15).
+    [string]$Promoter,
+    [string]$PublicVerifier,
     [string]$SshExecutable,
     [string]$ScpExecutable,
     [ValidateRange(1, 65535)][int]$SshPort = 22,
@@ -195,6 +198,22 @@ function Invoke-BoundedChild {
 function Show-ChildOutput($Result) {
     if (-not [string]::IsNullOrWhiteSpace($Result.Stdout)) { Write-Host $Result.Stdout.TrimEnd() }
     if (-not [string]::IsNullOrWhiteSpace($Result.Stderr)) { Write-Warning $Result.Stderr.TrimEnd() }
+}
+
+# The directory of this script, from the first of the automatic values that is
+# set. A parameter default cannot rely on $PSScriptRoot (see the param block).
+function Resolve-PublisherScriptDirectory([string]$ScriptRoot, [string]$CommandPath, [string]$InvocationPath) {
+    if (-not [string]::IsNullOrEmpty($ScriptRoot)) { return $ScriptRoot }
+    foreach ($Path in @($CommandPath, $InvocationPath)) {
+        if (-not [string]::IsNullOrEmpty($Path)) { return (Split-Path -Parent $Path) }
+    }
+    throw 'The directory of publish-download-portal.ps1 is unknown; pass -Promoter and -PublicVerifier explicitly.'
+}
+
+if ([string]::IsNullOrEmpty($Promoter) -or [string]::IsNullOrEmpty($PublicVerifier)) {
+    $ScriptDirectory = Resolve-PublisherScriptDirectory $PSScriptRoot $PSCommandPath $MyInvocation.MyCommand.Path
+    if ([string]::IsNullOrEmpty($Promoter)) { $Promoter = Join-Path $ScriptDirectory 'promote-download-portal.py' }
+    if ([string]::IsNullOrEmpty($PublicVerifier)) { $PublicVerifier = Join-Path $ScriptDirectory 'verify-download-portal-public.py' }
 }
 
 if ($PreviousVersion -notmatch $VersionPattern -or $TargetVersion -notmatch $VersionPattern) {

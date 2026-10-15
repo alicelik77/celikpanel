@@ -4930,3 +4930,101 @@ bir yayımı kaydeder; kod, şema ya da kurtarma davranışını değiştirmez.
   sistemde ulaşılamaması ve set16'nın bir sabit commit üzerinde çalışması.
   Güncelleme ekranının beklenen yeniden başlatma sırasında sorun gibi görünen
   bildirimi sonraki sürüm için açık.
+
+### v0.1.0-alpha.86 adayı (P0.1/P0.2 alanı; ilke 2 ve 6; D-024; D-032; D-033; 2026-10-15)
+
+D-025 ilke 2 (bilinmeyen; yok, boş ya da başarı değildir) ve ilke 6 (ekran
+doğrulananı söyler); D-024; D-032; D-033. **Hiçbir P0 işi kapanmaz ya da
+ilerlemez.** P0.1–P0.5 kısmi kalır ve her açık kabul işi açık kalır. Bu girdi
+yayımlanmamış bir adayı kaydeder; 2026-10-15 girdinin saat tarihidir.
+
+- **Adayın değiştirdikleri.** Güncellemenin kendi planladığı yeniden başlama
+  sırasında güncelleme ekranı (sahibin 15 Ekim 2026'da ikinci kurulu sunucunun
+  alpha.85'e gerçek güncellemesi sırasındaki gözlemi): sunucu o isteğin etkin
+  olduğunu son söyledikten sonra bağlantıyı yitiren ya da 5xx yanıt alan okuma,
+  dönen simge ve T+ sayacıyla "yeniden başlıyor" olarak gösterilir; uyarı ve
+  "bilinmiyor" metni yalnız güncellemenin başlangıcından 6 dakika ve ilk kopan
+  okumadan en az 2 dakika sonra ya da kendi metnini koruyan doğrulanmış bir
+  hatayla gelir; kart ve köşe bildirimi aynı şeyi söylemek yerine tek bildirim
+  (`web/src/lib/systemUpdateTracking.ts`, `SystemUpdateOperation.tsx`,
+  `PanelUpdateCard.tsx`). Burada adı geçen kendiliğinden yeniden okumalar GET
+  kalır: alpha.85'in sekmenin görünürlüğüne bakmıyor diye listelediği bileşen
+  kurma penceresinin ve kurulum sayfasının okumaları artık yalnız sekme
+  görünürken çalışır (`web/src/lib/visibleReads.ts`), güncelleme kartının ve
+  yayılan alan adının yeniden okumaları zaten öyleydi; diğer yeniden okumalar
+  bunun için denetlenmedi. Hiçbir cümle sahipten
+  yeniden tarama istemez; Dashboard, Bileşenler sayfası ve bir bileşenin kendi
+  sayfası doğrulanamayan kayıtlı bileşen kaydına koşullu bir kontrolle yanıt
+  verir (bir okuma, bir kez, döngü yok; tutulan kontrol tek izlemeyle
+  kendiliğinden sürer). `system` kullanıcı adı ayrıldı
+  (`400 USERNAME_RESERVED`); var olan hiçbir satır değişmez. Agent'ın posta
+  sağlık yanıtı, ters DNS yanıtının arkasındaki çözümleyiciyi adlandıran iki ek
+  alan kazanır. Ayrıca: sayfanın dil özniteliği, arayüz dilinde bileşen adları
+  ve açıklamaları ile denetim eylemleri, posta profili cümleleri, Mağaza'nın
+  bilinmeyen durumu ve yayımlama betiğinin varsayılanları. Gerçek sistem
+  kayıtlarından (aşağıda) sonra yalnız web'de üç düzeltme: izlenen güncelleme
+  Panel'i yeniden başlatırken lisans kapısı son olumlu kararını korur ve
+  hiçbir şey çizmez (`e8aa9c5c0`, set17 D1), `503 PANEL_STARTING` yanıtı
+  oturumu işaretlemez (`b7b0f4766`) ve izleme okumasını iki dakikadan önce
+  kaybettiğinde hâlâ tutulan gezinti kilidi, izleme güncellemenin kaydını
+  yeniden okuyana dek, en geç başlangıçtan 6 dakika sürer (`7265d3c99`,
+  set17b F1, sürümü hazırlayanın 15 Ekim 2026 kararı, D-033 ve sahibin 13 Ekim
+  2026 tarihli kalıcı talimatı altında; sahibin kararı değil); hepsi tarayıcının
+  saatiyle
+  güncellemenin kendi yeniden başlama penceresine bağlı, yalnız okuma.
+  Güncelleme yolunun kendisinde, kurtarma çalıştırıcısında, sürüm tabanında ya
+  da yerel hizmetlerde değişiklik yok. Hangi denetimin hangi koda dayandığını
+  [sürüm notları](RELEASE-NOTES-v0.1.0-alpha.86.tr.md) söyler.
+- **Dokunulan ilkeler.** İlke 2: güncellemenin beklenen yeniden başlaması
+  içindeki bir kesinti, sınır geçene dek bilinmeyen sonuç olarak gösterilmez;
+  sınırdan sonra da hata değil "henüz bilinmiyor"dur; doğrulanmış bir hata
+  kendi metnini korur. O pencere içinde ne lisans kapısı ne oturum kapısı
+  beklenen kesintiyi bir tutmaya çevirir; Panel'den gelen her yanıt eskisi
+  gibi uygulanır ve pencereden sonra var olan pencereler görünür. Bileşen
+  durumu bilinmeyen bir Mağaza ürünü artık
+  desteklenmiyor diye anılmaz. İlke 6: denetim günlüğü bir eylemi yazan aktörü
+  adlandırır ve yeni bir hesap ya da ekip üyesi `system` diye adlandırılamaz,
+  böylece bir kişi "Sistem" olarak gösterilmez (bu adı taşıyan var olan bir
+  satıra dokunulmaz). Yoklama asla bir
+  değişiklik başlatmaz ya da kabul etmez (D-024); tutulan kontrolün izlemesi bir
+  okumadır.
+- **Şema ya da sürüm geçişi.** Yok: alpha.85 etiketi ile aday arasında taşıma
+  yok (veritabanı şeması 44 kalır). Sürüm sırası, sürüm hazırlığı `313f3eea2`'de
+  önceki olarak alpha.85 sürüm commit'i
+  `36c33c4531ee6c1306d324db7a666403176f3bf7` ile 85'ten 86'ya geçer; geçiş
+  kuralları değişmedi. **Kurtarma davranışı.** Değişmedi.
+- **Kanıt.** Bileşen testleri: `go test -v ./cmd/panel/...
+  ./internal/transport/... ./internal/auth/...` 1602 üst düzey test geçti, 6
+  atlandı, 0 başarısız (`8fe746582`'de ve yeniden `21f07e7a8`'de);
+  `go test ./cmd/agent/...` temiz bir bağlama ad alanında 1799 geçti, 29
+  atlandı (`1abe1717d`'de); `21f07e7a8`'den sonra hiçbir Go dosyası
+  değişmedi; `npm test` üç web düzeltmesinden önce 1463/1463 ve `7265d3c99`'da
+  1483/1483. Taklide karşı tarayıcı incelemeleri: 13. tur (yeniden başlama
+  bildirimi, 8 yapılandırmada üç durum), 14. tur (8 yapılandırmada 23 durum) ve
+  15. tur (bir yeniden başlama boyunca lisans kapısı, `PANEL_STARTING` ve
+  kilit, 8 yapılandırmada). Gerçek sistem kayıtları (test lisanslı yapılarla
+  QEMU/KVM konukları; ölçümdür, kabul değildir): `313f3eea2`'de
+  `deploy/e2e/release-recovery/evidence/set17-20261015/README.md` ve
+  `ecd2a5f08`'de `deploy/e2e/release-recovery/evidence/set17b-20261015/README.md`
+  (yaklaşık 3 dakikalık yeniden başlama kesintisini bir laboratuvar gecikmesi
+  yaptı; ürünün özelliği değildir). Sonuç: beş aday koşusunun hepsinde
+  güncelleme sayfası "bilinmiyor" metninden ve uyarı yüzeyinden 0 örnekle
+  sakin yeniden başlamayı gösterdi; alpha.85'in sayfası üç denetim koşusunda
+  ikisini de gösterdi; her iyi güncelleme `update_verified`, iki kusurlu
+  güncelleme `recovered`/`rollback_verified`, her defter karşılaştırması
+  `equal-except-volatile` bitti; set17 D1 set17b'nin iki koşusunda yeniden
+  üretilmedi (mekanizma kanıtlanmadı); set17b F1 sonradan değiştirildi.
+- **Açık.** Gerçek sistem kayıtları `313f3eea2`'yi ve `ecd2a5f08`'i ölçtü;
+  `7265d3c99`'un F1 kilit uzatması gerçek sistemde ölçülmedi; oturum kapısının
+  `PANEL_STARTING` yolu gerçek sistemde çalışmadı (set17b'de 0 yanıt); 6
+  dakikalık gecikme metni gerçek sistemde üretilmedi; Ubuntu 24.04 ve Arch
+  set17b'de, Arch ve temiz Ubuntu kurulumu hiçbirinde koşulmadı; çözümleyici
+  cümlesine ulaşılamadı; 6 dakikalık sınır laboratuvar güncellemelerine ve bir
+  sahip gözlemine dayanır; yeni güncelleme
+  ekranı ancak bundan sonraki güncellemede görülür; çözümleyici alanları bir
+  sunucuya ancak Agent güncellemesiyle ulaşır; denetim günlüğü aktör türü
+  saklamaz; hiçbir kurulu sunucu ölçülmedi. alpha.85 girdilerinin açık kalemleri
+  açık kalır; aralarında geri dönüşten sonra kurtarma temel dosyası (set12,
+  set15, set16 ve yeniden set17) ve "Kurulum tamamlanıyor"a ve güncelleme kartının meşgul
+  durumuna gerçek sistemde ulaşılamaması vardır. Yukarıdaki girdilerin açık
+  bıraktığı her şey açık kalır.

@@ -399,6 +399,18 @@ func setupMailIdentityReason(health transport.MailHealthResponse, mailHostname s
 		if setupShownDNSName(ptr) {
 			vars["ptr"] = strings.ToLower(ptr)
 		}
+		// The resolver that gave this answer, and whether the resolvers
+		// disagree (additive Agent fields, 2026-10-15): while a change made at
+		// the provider spreads, the page can say which resolver still has the
+		// old answer. An older Agent sends neither, and the sentence stays.
+		// Bu yaniti veren cozumleyici ve cozumleyicilerin uyusmadigi; eski
+		// Agent ikisini de gondermez ve cumle degismez.
+		if resolver := net.ParseIP(health.ReverseDNSResolver); resolver != nil && health.ReverseDNSLookup == transport.MailDNSLookupDone {
+			vars["resolver"] = resolver.String()
+			if health.ReverseDNSResolversDisagree {
+				vars["resolvers"] = "disagree"
+			}
+		}
 		return "reverse_dns_mismatch", vars
 	}
 	if !health.FCrDNS {

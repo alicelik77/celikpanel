@@ -1,0 +1,40 @@
+HEAD ecd2a5f088d676f7cc8a8e571ed3c903ea951f3e
+source ecd2a5f088d676f7cc8a8e571ed3c903ea951f3e tree 9fce9365ea8da90da7503a3b6663fb0c237c1d36
+set17's source 313f3eea2c9b89251588648b09484cd34b7aecb1
+git diff --stat 313f3eea2 ecd2a5f088d676f7cc8a8e571ed3c903ea951f3e -- cmd internal web/src deploy/release-sequence-policy update.sh install.sh:
+ web/src/App.tsx                              |   9 +-
+ web/src/components/LicenseOnboarding.tsx     |  91 ++++++++++++++++---
+ web/src/components/SystemUpdateOperation.tsx |  15 ++++
+ web/src/lib/systemUpdateRestartSignal.ts     | 110 +++++++++++++++++++++++
+ web/src/lib/useUpdateRestartStarting.ts      | 128 +++++++++++++++++++++++++++
+ 5 files changed, 337 insertions(+), 16 deletions(-)
+(end)
+git log --oneline 313f3eea2..ecd2a5f088d676f7cc8a8e571ed3c903ea951f3e:
+ecd2a5f08 Operation guidance: item 16, the session gate during the new Panel's start, EN and TR
+389ce2831 Browser inspection batch 15: d1starting, PANEL_STARTING for 20 s during the update's restart
+b7b0f4766 set17 D1 open item: the session gate lets the update's restart own PANEL_STARTING
+6ef895a9d Operation guidance: item 16, set17 D1 (the licence gate during the update's restart), EN and TR
+59e793b2b Browser inspection batch 15: set17 D1, the licence gate during the update's restart
+e8aa9c5c0 set17 D1: the licence gate keeps its last positive decision through the update's restart
+0bf1ee601 Native record set17: the seal lists the seven driver SHA256SUMS files as well
+4a29f4754 Native record set17: the v0.1.0-alpha.86 candidate installed fresh, updated from alpha.85, and its own update page during a real restart
+feef819a7 Add the draft release documents of v0.1.0-alpha.86 (EN and TR)
+(end)
+git status --short -- cmd internal web/src deploy/release-sequence-policy update.sh:
+(end; empty = no uncommitted product change)
+release policy at ecd2a5f088d676f7cc8a8e571ed3c903ea951f3e:
+format=celikpanel-release-sequence-policy-v1
+version=v0.1.0-alpha.86
+current=86
+previous=85
+previous_version=v0.1.0-alpha.85
+previous_commit=36c33c4531ee6c1306d324db7a666403176f3bf7
+tag v0.1.0-alpha.85 = 36c33c4531ee6c1306d324db7a666403176f3bf7
+git diff --stat v0.1.0-alpha.85 ecd2a5f088d676f7cc8a8e571ed3c903ea951f3e -- internal/db/migrations:
+(end)
+update.sh checkpoint lines at ecd2a5f088d676f7cc8a8e571ed3c903ea951f3e:
+2893:    printf '%s\n' 'CELIKPANEL_UPDATE_CHECKPOINT database_verified_before_start'
+4162:printf '%s\n' 'CELIKPANEL_UPDATE_CHECKPOINT database_verified_before_start'
+update.sh checkpoint lines at v0.1.0-alpha.85:
+2893:    printf '%s\n' 'CELIKPANEL_UPDATE_CHECKPOINT database_verified_before_start'
+4162:printf '%s\n' 'CELIKPANEL_UPDATE_CHECKPOINT database_verified_before_start'

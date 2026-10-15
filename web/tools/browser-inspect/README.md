@@ -360,3 +360,39 @@ test-side clock control, not a product change: before the page loads,
 Each record adds the number of spinners on screen, the visible buttons with
 their disabled state, and whether the page scrolls sideways. The screenshots
 are the inspection; these scenarios do not fail on a finding.
+
+## Scenarios of the fourteenth batch (the alpha.86 candidate's smaller corrections, 2026-10-15)
+
+These live in `scenarios-batch14.mjs` and need no mock routes of their own: the
+audit log, the Store and the refused reads and actions are answered by
+`mock.mjs` overrides, the fresh component scan by `mock-batch12.mjs`. Run them
+with `laptop` and `phone`, both languages and both themes; each state is also
+copied to `BROWSER_INSPECT_SHOTS` as `<state>-<lang>-<theme>-<width>.png`.
+
+| Name | States |
+| --- | --- |
+| `c86components` | the Components page with the whole catalogue (27 ids) at the top and whole (the viewport made as tall as `<main>`), a search by a translated description, the install and uninstall dialogs, a component page whose record read is refused with `SERVICE_STATE_UNVERIFIED`, an action answered with `SERVICE_STATE_REFRESH_FAILED` (toast and banner, then the locked rows), and a stored record that cannot be verified on load (checking, checked) |
+| `c86mail` | the mail profile cards: `component_not_installable` with a platform, `component_requires` with a role token and with a mixed list |
+| `c86dashboard` | Recent activity (setup, mail, certificate, repeated sign-in, an unknown action, the `system` actor) and the stopped-service lines |
+| `c86rdns` | the setup final step's reverse DNS sentence: a resolver named, resolvers disagreeing with and without a PTR, no PTR, an older Agent |
+| `c86store` | the Store with the three `component_state_*` sentences |
+| `c86lang` | `document.documentElement.lang` before and after a switch TR↔EN and back (printed to the console and kept in the record) |
+
+## Scenario of the fifteenth batch (set17 D1, 2026-10-15)
+
+`scenarios-batch15.mjs`, no mock routes of its own (`mode: 'down'`, `validity`,
+`update` and an override of `/api/v1/panel/version`). Run it with `laptop` and
+`phone`, both languages and both themes; it takes about 110 seconds of real
+time, because the outage is not shortened. Each state is also copied to
+`BROWSER_INSPECT_SHOTS` as `<state>-<lang>-<theme>-<width>.png`.
+
+| Name | States |
+| --- | --- |
+| `d1restart` | an update this browser started (its stored record, 40 s old, inside the navigation lock) with access valid for 45 s; the Panel down for 90 s, about T+45 s to T+135 s, across the two-minute lease (photographed at 60 s and 88 s: the update's dialog, the licence gate's dialog if any, held pages, a connection banner, and the navigation lock: its dialog, its line, the application made inert, the dialog's T+); the Panel back on the new version ("verifying"; past the lease the lock ends here, set17b F1); the update completed and the page reloaded |
+| `d1starting` | the same update; the Panel down for 25 s, then answering for 20 s with its management still starting (`mode: 'starting'`: management refused with 503 `PANEL_STARTING`, readiness "starting"; photographed at 10 s and 18 s with the requests refused and the readiness reads since the last state, and whether "The panel is starting" is shown); the Panel back on the new version ("verifying", the lock); the update completed and the page reloaded. About 65 seconds |
+
+Each record adds the document language, English catalogue text on a Turkish
+page (`englishLeaks`), raw action ids, codes and tokens (`rawTokens`), visible
+toasts, the buttons with their disabled state (a button in a disabled fieldset
+counts as disabled) and sideways scrolling of the page and of `<main>`. The
+screenshots are the inspection; these scenarios do not fail on a finding.

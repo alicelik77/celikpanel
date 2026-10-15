@@ -1,0 +1,22 @@
+{
+  "at": "2026-10-15T15:30:02Z",
+  "base": "https://127.0.0.1:19275",
+  "baseline_version": "v0.1.0-alpha.85",
+  "browser": {
+    "lang": "en",
+    "viewport": "desktop"
+  },
+  "cell": "upd1-ubuntu-good",
+  "local_port": 19275,
+  "mode": "update-page",
+  "password_file": "/var/tmp/cp-set17/secret/h17ubgood-page.json",
+  "preps": [
+    "page-ready",
+    "arm_<request id>"
+  ],
+  "schema": "celikpanel/set12-handover/v1",
+  "target_version": "v0.1.0-alpha.86",
+  "tls_leaf_sha256": "cc37e717b24e580f332587a37a328c37c345a3edad1ae256861b6032893e49da",
+  "username": "labadmin",
+  "window": "page"
+}

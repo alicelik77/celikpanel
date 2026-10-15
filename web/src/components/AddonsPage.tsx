@@ -416,6 +416,7 @@ function normalizeStoreItems(values: StoreAPIItem[] | undefined, uncategorized: 
             entitlementState,
             state,
             stateReason: value.state_reason?.trim() || value.blocker_reason?.trim() || undefined,
+            blockerReason: value.blocker_reason?.trim() || undefined,
             action: actionEnabled ? action : 'none',
             actionPath,
         }];

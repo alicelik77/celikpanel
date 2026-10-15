@@ -1,0 +1,17 @@
+{
+  "schema": "celikpanel/set17-start-answer/v1",
+  "request_id": "c876195db9e3f3bc57af846ab248f793",
+  "pressed_ms": 1792073389922,
+  "held_ms": 1792073390004,
+  "released_ms": 1792073391008,
+  "answered_ms": null,
+  "status": null,
+  "failed": null,
+  "body": null,
+  "armed": {
+    "armed": true,
+    "request_id": "c876195db9e3f3bc57af846ab248f793",
+    "seconds": 0.62
+  },
+  "note": "the page's own POST, held unchanged until the observer was armed, then released"
+}

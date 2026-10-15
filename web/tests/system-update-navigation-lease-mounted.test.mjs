@@ -108,7 +108,7 @@ class FakeLeaseRuntime {
 }
 
 function Probe({ identity, createdAt, runtime, phase = 'active', requested = true }) {
-    const lease = useSystemUpdateNavigationLease(identity, createdAt, requested, runtime.options);
+    const lease = useSystemUpdateNavigationLease(identity, createdAt, requested, null, runtime.options);
     return React.createElement('output', {
         'data-blocked': lease.blocked,
         'data-released': lease.released,
@@ -121,7 +121,7 @@ function blocked(renderer) {
 }
 
 function GuardProbe({ identity, createdAt, runtime, requested, page }) {
-    const lease = useSystemUpdateNavigationLease(identity, createdAt, requested, runtime.options);
+    const lease = useSystemUpdateNavigationLease(identity, createdAt, requested, null, runtime.options);
     const navigationBlocked = watchdog.systemUpdateGlobalNavigationBlocked(requested, lease.blocked);
     const blocker = React.useRef(navigationBlocked);
     blocker.current = navigationBlocked;
@@ -403,4 +403,204 @@ test('localStorage SecurityError is navigation-safe and never installs a broken 
         if (previousWindow === undefined) delete globalThis.window;
         else globalThis.window = previousWindow;
     }
+});
+
+// Native record set17b, finding F1 (2026-10-15): in both candidate runs the
+// lock ended by its two-minute lease at T+120 s while the Panel was down until
+// T+194 to 203 s. While the followed update's restart signal says its tracking
+// has lost the Panel, the lock is kept until the tracking reaches the Panel
+// again or the restart window ends, whichever comes first. The probe is wired
+// as the provider wires it: the real restart signal, its selector and the lease.
+const trackingURL = compileURL('../src/lib/systemUpdateTracking.ts');
+const restartSignal = await import(compileURL('../src/lib/systemUpdateRestartSignal.ts', [
+    [/from ['"]react['"]/, `from '${reactURL}'`],
+    [/from ['"]\.\/systemUpdateTracking['"]/, `from '${trackingURL}'`],
+]));
+const tracking = await import(trackingURL);
+
+const F1_REQUEST = 'f'.repeat(32);
+function RestartProbe({ identity, createdAt, runtime, requested = true, wired = true }) {
+    const published = restartSignal.useSystemUpdateRestart();
+    const restart = restartSignal.systemUpdateNavigationRestart(published, identity, createdAt);
+    const lease = useSystemUpdateNavigationLease(identity, createdAt, requested, wired ? restart : null, runtime.options);
+    return React.createElement('output', { 'data-blocked': lease.blocked });
+}
+function mountRestart(runtime, props = {}) {
+    let renderer;
+    act(() => {
+        renderer = TestRenderer.create(React.createElement(RestartProbe, {
+            identity: F1_REQUEST, createdAt: runtime.time, runtime, ...props,
+        }));
+    });
+    return renderer;
+}
+// What the provider publishes: the followed request, its start, the first lost
+// read of the current outage (null while its reads answer).
+const publish = (startedAt, lostSince) => act(() => restartSignal.publishSystemUpdateRestart({ requestID: F1_REQUEST, startedAt, lostSince }));
+const endSignal = () => act(() => restartSignal.publishSystemUpdateRestart(null));
+const at = (runtime, start, offset) => act(() => runtime.advance(start + offset - runtime.time));
+
+test('set17b F1: the lock is kept at T+121 s through an outage that began at T+25 s and released at reconnection', () => {
+    const start = 10_000_000;
+    const runtime = new FakeLeaseRuntime(start);
+    const renderer = mountRestart(runtime);
+    try {
+        publish(start, null);
+        at(runtime, start, 25_000);
+        publish(start, start + 25_000);
+        at(runtime, start, 121_000);
+        assert.equal(blocked(renderer), true, 'T+121 s: past the two-minute lease, the Panel still down');
+        at(runtime, start, 193_000);
+        assert.equal(blocked(renderer), true, 'T+193 s: still down (set17b run b reconnected at T+193.6 s)');
+        assert.equal(runtime.values.get(watchdog.SYSTEM_UPDATE_NAVIGATION_RELEASE_KEY), undefined, 'nothing released yet');
+        // The tracking reaches the Panel and reads the update's record.
+        publish(start, null);
+        assert.equal(blocked(renderer), false, 'released at reconnection');
+        assert.equal(runtime.values.get(watchdog.SYSTEM_UPDATE_NAVIGATION_RELEASE_KEY), F1_REQUEST, 'released for good');
+        // A second outage inside the window never brings it back.
+        at(runtime, start, 200_000);
+        publish(start, start + 200_000);
+        assert.equal(blocked(renderer), false);
+        assert.equal(runtime.tasks.size, 0);
+    } finally { endSignal(); act(() => renderer.unmount()); }
+});
+
+test('set17b F1: without reconnection the lock ends with the restart window, 6 minutes from the start', () => {
+    const start = 11_000_000;
+    const runtime = new FakeLeaseRuntime(start);
+    const renderer = mountRestart(runtime);
+    try {
+        at(runtime, start, 119_000);
+        publish(start, start + 119_000);
+        assert.equal(tracking.systemUpdateRestartDeadline(start, start + 119_000), start + tracking.SYSTEM_UPDATE_EXPECTED_RESTART_MS);
+        at(runtime, start, 359_999);
+        assert.equal(blocked(renderer), true, 'T+359.999 s: inside the window');
+        at(runtime, start, 360_000);
+        assert.equal(blocked(renderer), false, 'T+360 s: the window ended, the Panel never answered');
+        assert.equal(runtime.values.get(watchdog.SYSTEM_UPDATE_NAVIGATION_RELEASE_KEY), F1_REQUEST);
+    } finally { endSignal(); act(() => renderer.unmount()); }
+
+    // A throttled background tab: the window's end is applied on wake.
+    const runtime2 = new FakeLeaseRuntime(start);
+    const renderer2 = mountRestart(runtime2);
+    try {
+        at(runtime2, start, 25_000);
+        publish(start, start + 25_000);
+        act(() => runtime2.elapseWhileThrottled(400_000));
+        assert.equal(blocked(renderer2), true, 'no timer ran while throttled');
+        act(() => runtime2.wake());
+        assert.equal(blocked(renderer2), false, 'released on wake, past the window');
+    } finally { endSignal(); act(() => renderer2.unmount()); }
+});
+
+test('set17b F1: without a restart the two-minute lease is unchanged', () => {
+    const cases = [
+        { name: 'no signal', signal: () => {} },
+        { name: 'the server said active and its reads answer', signal: start => publish(start, null) },
+        { name: 'another request is restarting', signal: start => act(() => restartSignal.publishSystemUpdateRestart({ requestID: 'e'.repeat(32), startedAt: start, lostSince: start + 25_000 })) },
+        { name: 'another start of the same request', signal: start => publish(start + 1, start + 25_000) },
+    ];
+    for (const item of cases) {
+        const start = 12_000_000;
+        const runtime = new FakeLeaseRuntime(start);
+        const renderer = mountRestart(runtime);
+        try {
+            at(runtime, start, 25_000);
+            item.signal(start);
+            at(runtime, start, 119_999);
+            assert.equal(blocked(renderer), true, item.name);
+            at(runtime, start, 120_000);
+            assert.equal(blocked(renderer), false, `${item.name}: released at exactly 120 s`);
+        } finally { endSignal(); act(() => renderer.unmount()); }
+    }
+
+    // A restart that begins after the lease ended does not bring the lock back,
+    // and a lost read later than the lease does not stretch a late timer.
+    const start = 13_000_000;
+    const runtime = new FakeLeaseRuntime(start);
+    const renderer = mountRestart(runtime);
+    try {
+        at(runtime, start, 120_000);
+        assert.equal(blocked(renderer), false);
+        publish(start, start + 121_000);
+        assert.equal(blocked(renderer), false, 'released stays released');
+    } finally { endSignal(); act(() => renderer.unmount()); }
+    const late = new FakeLeaseRuntime(start);
+    const lateRenderer = mountRestart(late);
+    try {
+        act(() => late.elapseWhileThrottled(130_000));
+        publish(start, start + 130_000);
+        act(() => late.wake());
+        assert.equal(blocked(lateRenderer), false, 'a lost read after the lease is not a reason to keep it');
+    } finally { endSignal(); act(() => lateRenderer.unmount()); }
+});
+
+test('set17b F1: the rule "released for good once no longer requested" holds inside the restart window', () => {
+    const start = 14_000_000;
+    const runtime = new FakeLeaseRuntime(start);
+    const renderer = mountRestart(runtime);
+    try {
+        at(runtime, start, 25_000);
+        publish(start, start + 25_000);
+        at(runtime, start, 150_000);
+        assert.equal(blocked(renderer), true);
+        act(() => renderer.update(React.createElement(RestartProbe, { identity: F1_REQUEST, createdAt: start, runtime, requested: false })));
+        assert.equal(blocked(renderer), false, 'no longer requested: released');
+        act(() => renderer.update(React.createElement(RestartProbe, { identity: F1_REQUEST, createdAt: start, runtime, requested: true })));
+        assert.equal(blocked(renderer), false, 'requested again inside the window: never re-locked');
+    } finally { endSignal(); act(() => renderer.unmount()); }
+});
+
+test('set17b F1: a wall-clock rollback during the restart cannot lengthen the lock after reconnection', () => {
+    const start = 15_000_000;
+    const runtime = new FakeLeaseRuntime(start);
+    const renderer = mountRestart(runtime);
+    try {
+        at(runtime, start, 25_000);
+        publish(start, start + 25_000);
+        at(runtime, start, 200_000);
+        // The wall clock steps back 150 s (T+50 s on the wall, 200 s monotonic).
+        runtime.time -= 150_000;
+        publish(start, null);
+        assert.equal(blocked(renderer), false, 'measured on the monotonic scale: past the lease');
+    } finally { endSignal(); act(() => renderer.unmount()); }
+});
+
+test('set17b F1 control: the previous lease (no restart passed) ends at T+120 s in the middle of the outage', () => {
+    // The same outage as the first F1 test with the restart withheld, which is
+    // the lease before this change: the lock ends mid-outage.
+    const start = 16_000_000;
+    const runtime = new FakeLeaseRuntime(start);
+    const renderer = mountRestart(runtime, { wired: false });
+    try {
+        at(runtime, start, 25_000);
+        publish(start, start + 25_000);
+        at(runtime, start, 119_999);
+        assert.equal(blocked(renderer), true);
+        at(runtime, start, 120_000);
+        assert.equal(blocked(renderer), false, 'F1 as set17b measured it: the lock gone while the Panel is down');
+    } finally { endSignal(); act(() => renderer.unmount()); }
+});
+
+test('set17b F1: the navigation deadline function and its bounds', () => {
+    const start = 17_000_000;
+    const lease = start + watchdog.SYSTEM_UPDATE_BLOCKING_DEADLINE_MS;
+    const deadline = watchdog.systemUpdateNavigationDeadline;
+    assert.equal(watchdog.SYSTEM_UPDATE_RESTART_NAVIGATION_LIMIT_MS, tracking.SYSTEM_UPDATE_EXPECTED_RESTART_MS, 'the limit is the restart window');
+    assert.equal(deadline(start, null), lease);
+    assert.equal(deadline(start, { lostSince: start + 25_000, until: start + 360_000 }), start + 360_000);
+    assert.equal(deadline(start, { lostSince: start + 25_000, until: start + 9_999_999 }), start + 360_000, 'never past 6 minutes');
+    assert.equal(deadline(start, { lostSince: start + 120_000, until: start + 360_000 }), lease, 'a lost read at or after the lease');
+    assert.equal(deadline(start, { lostSince: start - 1, until: start + 360_000 }), lease, 'a lost read before the start');
+    assert.equal(deadline(start, { lostSince: start + 25_000, until: start + 100_000 }), lease, 'never shorter than the lease');
+    assert.equal(deadline(start, { lostSince: Number.NaN, until: start + 360_000 }), lease);
+    assert.equal(deadline(start, { lostSince: start + 25_000, until: Number.POSITIVE_INFINITY }), lease);
+    const select = restartSignal.systemUpdateNavigationRestart;
+    const signal = { requestID: F1_REQUEST, startedAt: start, lostSince: start + 25_000 };
+    assert.deepEqual(select(signal, F1_REQUEST, start), { lostSince: start + 25_000, until: start + 360_000 });
+    assert.equal(select({ ...signal, lostSince: null }, F1_REQUEST, start), null, 'reads answer: no restart');
+    assert.equal(select(signal, 'e'.repeat(32), start), null);
+    assert.equal(select(signal, F1_REQUEST, start + 1), null);
+    assert.equal(select(null, F1_REQUEST, start), null);
+    assert.equal(select(signal, null, null), null);
 });

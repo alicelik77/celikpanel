@@ -1,0 +1,36 @@
+{
+  "browser_done": {
+    "at": "2026-10-15T15:30:19.612Z",
+    "by": "cold-load-set17.mjs",
+    "started": true
+  },
+  "ended_at": "2026-10-15T15:30:20Z",
+  "hand": "/var/tmp/cp-set17/hand/h17ubgood-page",
+  "password_file_removed": true,
+  "requests": [
+    {
+      "at": "2026-10-15T15:30:12Z",
+      "prep": "page-ready",
+      "result": {
+        "current_version": "v0.1.0-alpha.85",
+        "ok": true,
+        "target": {
+          "archive_sha256": "6c64289048f9e3fd98655bf761665c3b1f500ec654007da776d422654f747d39",
+          "commit": "313f3eea2c9b89251588648b09484cd34b7aecb1",
+          "sequence": "86",
+          "version": "v0.1.0-alpha.86"
+        }
+      }
+    },
+    {
+      "at": "2026-10-15T15:30:14Z",
+      "prep": "arm_3a1292fdde9af159ba2e1b1059622b1c",
+      "result": {
+        "armed": true,
+        "request_id": "3a1292fdde9af159ba2e1b1059622b1c",
+        "seconds": 0.78
+      }
+    }
+  ],
+  "window": "page"
+}

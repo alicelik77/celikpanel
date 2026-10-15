@@ -7532,3 +7532,406 @@ after the update. The first measurement of the two screens the release changed
 ("Finishing setup" and the update card's busy state) has still not been made
 natively; the owner's observation (b) is of the update screen's unknown state
 during the restart, not of the busy state this release changed.
+
+### The update's own restart shown as calm progress, and one notice instead of two (2026-10-15)
+
+**Observed by the owner.** During the real update of the second installed
+server from v0.1.0-alpha.84 to v0.1.0-alpha.85 (2026-10-15), while the panel
+restarted as the update's own plan says it will, the update page showed a
+warning-marked "The state of the update to v0.1.0-alpha.85 could not be read
+just now, so it is not known whether it has finished…" and, at the same time,
+the corner notice said the same thing with "T+02:59". The update then completed
+normally. In substance, the owner's words: this looks like a problem although
+nothing is wrong; while the operation does what it said it would, a less
+alarming message is right, and the problem wording belongs to a real problem
+only. This is D-033 (expected waiting is shown as progress; the "not known"
+wording comes after a bound or on a verified failure) and D-024 (a verified
+failure, an unmet prerequisite and an unknown result stay apart). No schema,
+ledger or version transition; no Go change.
+
+**Cause, as found in the code.** Every status read that lost the connection set
+the followed update's phase to unknown at once
+(`systemUpdateOperationPhase(outcome.operation)` called with no record, in
+`SystemUpdateOperation.tsx`; the function is in `lib/systemUpdateTracking.ts`),
+with
+no notion of the restart the update plans. The Panel's status answer knows only
+queued, running (with "verifying" once the new Panel answers), succeeded and
+failed; the Agent's updater, which restarts the Panel and the Agent, runs while
+the record is running. After the two-minute navigation lock
+(`SYSTEM_UPDATE_BLOCKING_DEADLINE_MS`) the corner notice is drawn on every
+page, so on the update page the card and the corner notice both said it.
+
+**What changed.**
+
+- A read that loses the connection (or meets a 5xx) after the server last said
+  this exact request is active (the start was accepted, or a read answered
+  queued or running) is the phase "restarting": a spinner, "The panel is
+  restarting as part of the update. This page reconnects by itself; nothing
+  needs to be pressed.", the T+ counter, and the update lock unchanged. While
+  it lasts the page reads at most every 3 s, so it reconnects promptly.
+- The warning mark and the "not known" wording appear only after the window:
+  6 minutes from the update's start, and at least 2 minutes from the first lost
+  read. Under the unknown line the notice then says that the panel has not
+  answered for longer than an update normally needs, that this does not mean
+  it failed, that the server keeps the record and the notice keeps reading, and
+  what the owner checks (`sudo systemctl status celikpanel-panel`). A verified
+  failure is a terminal outcome and keeps its own wording. "Do not start
+  another update" stays.
+- One notice: while the update card is on screen it carries the T+ counter and
+  the ID, and the corner notice is not drawn for a followed update; on other
+  pages the corner notice is the one notice. A known outcome keeps the corner
+  notice. The card's unknown line now says "This page reads it again by
+  itself".
+
+**The bound and its source.** set16
+(`deploy/e2e/release-recovery/evidence/set16-20261014/*/upd84-good-a/driver/steps/12-owner-start`
+and `13-track`): a good update alpha.84 → alpha.85 took 51 s on Debian 13
+(start 22:55:07Z, `update_verified` 22:55:58Z) and 48 s on Ubuntu 24.04, with
+the Panel's API unanswered for at most 32 s and 25 s; the lab served the archive
+from a local origin. The owner's real update still had no answer at T+02:59.
+The window is about twice the longest of these (2 × 3 min); the 2 minutes from
+the first lost read are about four times the longest measured outage, for a
+restart that begins late in a slow update.
+
+**Evidence.** Web: `tests/update-restart-notice-mounted.test.mjs` (13 tests:
+the read classification and the window, the wording in both languages, the
+mounted card in the restart and past the window, the single-notice rule, and
+the provider's wiring as a source check), each failing against the previous
+card, provider or library; `npm test` 1404 of 1404 at that commit;
+`npx tsc --noEmit` clean. The provider itself is not mounted in a test (it
+needs IndexedDB, Web Locks and the authentication signal); it was run in a
+real Chrome against the lab mock (browser-inspect batch 13, `u86restart`):
+1280×800 and 390×844, English and Turkish, light and dark, 24 states. In the
+restart: spinner, no warning mark, no corner notice on the update page, the
+corner notice calm on Domains; past the window (the page's `Date.now` moved
+7 minutes ahead on the test side): the warning mark and the unknown wording;
+no horizontal overflow.
+
+**Not measured.** No native run and no installed server reached this code; the
+window rests on two lab updates and one owner observation. A real update whose
+restart outlasts 6 minutes from its start would show the unknown wording while
+still being normal.
+
+**Also in this candidate (2026-10-15).** Fifteen smaller corrections from the
+open items of the alpha.85 notes and two from the candidate's own native records
+(items 16 and 17), each with tests that fail against the previous source. No schema, ledger or version transition; nothing was measured
+natively or on an installed server; no P0 item is closed or advanced.
+
+1. **The page's language attribute** (set16 O1). The i18n provider sets
+   `document.documentElement.lang` to the language the page is drawn in: the
+   target language on the boot screen, and after a switch only once the new
+   catalogue has arrived (`d2c0add01`; `tests/document-language.test.mjs`).
+2. **Component names in the interface language** (set16 O2). Every catalogue id
+   (`internal/core` ManagedServices) has an EN and TR display name
+   (`services.component.name.<id>`; product names stay, "Firewall engine" is
+   "Güvenlik duvarı motoru", the certbot and cron names are translated); the
+   ids are unchanged, and an id the page does not know keeps the server's name.
+   Used on Components, its dialogs, the component page, setup's component step
+   and the Dashboard's stopped-service line; the cron and firewall-engine
+   guidance name the row as the page shows it (`151969774`;
+   `tests/component-names.test.mjs` reads the ids from the Go catalogue).
+3. **Recent activity in sentences** (set16 O3; seen on both installed servers,
+   (h) above). `cmd/panel/audit_actions.go` lists the 179 action names the
+   Panel writes; a Go test derives them from the source of every
+   `INSERT INTO audit_logs` (go/ast, following parameters per call site,
+   closures, locals, concatenation, `fmt.Sprintf` and the service-operation
+   writer) and fails on a missing or a stale name; one unreachable shape is
+   exempted with its reason. `web/src/lib/auditAction.ts` says each name in EN
+   and TR with the target as `{target}`; an unknown action is humanised, never
+   shown as its id (`8a5f299fa`; `tests/audit-actions.test.mjs` reads the Go
+   list).
+4. **No server sentence asks for a rescan** (D-032; alpha.85 "Templated
+   text"). The refusal of an unverifiable stored component record
+   (`SERVICE_STATE_UNVERIFIED`, already typed) says that CelikPanel checks the
+   components again by itself, and the Dashboard and the Components page now
+   answer that code with their conditional check (a read; once; no toast; a
+   failed check keeps "could not check"). The Store's three
+   `component_state_*` sentences (typed by `blocker_reason`, localised by the
+   server) say that the check runs while an administrator has the Dashboard, the
+   Components page or a component's page open, and to open the Store again
+   after it (`cd2275e47`; the third page added in `21f07e7a8`).
+5. **The platform in `component_not_installable`** (alpha.85 "Templated
+   text"). `blocked_vars.platform` names a verified package ecosystem
+   ("Debian/Ubuntu (apt)", "Arch Linux (pacman)", "Fedora/RHEL (dnf)"); an
+   unverified platform or an older Panel keeps the shorter sentence
+   (`80d763949`).
+6. **The resolver behind the reverse DNS sentence** (alpha.85 "The resolver
+   that answered is not named"; (f) above). The Agent's mail health answer has
+   two additive fields, `reverse_dns_resolver` and
+   `reverse_dns_resolvers_disagree`; the Panel passes them as
+   `resolver`/`resolvers=disagree`, and setup's final check names the resolver
+   and, when they disagree, says so (four new EN/TR sentences). An older Agent
+   sends neither and the previous sentence stays; the field reaches a server
+   only with an Agent update (`e2c630faa`).
+7. **A tab shown again reads at once** (D-033 rule 6). The update card's quiet
+   readiness re-read and the spreading domain's re-check read once immediately
+   when the tab is shown, as `lib/visibleReads.ts` does; a read in flight is
+   that read; GET only (`1abe1717d`).
+
+Counts at `1abe1717d`: `npm test` 1435 of 1435; `npx tsc --noEmit` clean;
+`go test ./cmd/panel/... ./internal/transport/...` 1585 tests and 1688
+subtests passed, 6 skipped, 0 failed; `go test ./cmd/agent/...` 1799 tests and
+2829 subtests passed, 29 skipped, 0 failed (WSL guest `CelikPanel-S2-Debian`,
+the Agent in the clean mount namespace of the 2026-10-14 audit entry).
+8. **Component descriptions in the interface language.** Every catalogue id has
+   an EN and TR one-line description (`services.component.description.<id>`;
+   "Intrusion Prevention" is "Saldırı önleme"), said by `componentDescription`
+   beside `componentName` on the Components rows, the install and uninstall
+   dialogs and the search; an unknown component keeps the server's text
+   (`ef7690fc0`; `tests/component-names.test.mjs` reads the descriptions from
+   the Go catalogue).
+9. **The system actor in Recent activity.** The reserved actor `system` (the
+   Panel writes it for an action without a signed-in user) is said "System" /
+   "Sistem" on the Dashboard and the audit log; any other name is shown as it
+   is. `ValidateUsername` does not reserve the name, so a user literally named
+   `system` would also be translated; the server sends no separate marker
+   (`4372fc86e`).
+10. **`err.SERVICE_STATE_REFRESH_FAILED` without a button** (D-032). It says
+    that the page assumes neither the outcome nor the state and that
+    CelikPanel checks the components again by itself while the Dashboard or
+    the Components page is open, as `SERVICE_STATE_UNVERIFIED` does
+    (`d2b58e7e9`). The page's own `services.stateUnverifiedHint` banner still
+    says "Run Rescan"; it is not changed here (item 12 changes it).
+11. **A role in a mail-profile requirement** (`component_requires`). `required`
+    can hold a role token (`web-server`, `smtp-server`, `imap-server`,
+    `spam-filter`, `dns-server`, `kv-store`: the catalogue's `ConflictGroup`
+    values) next to component names. The page says each role by its display
+    name (`services.mailProfiles.role.<token>`, EN/TR); a role it does not
+    know is said as words, never as the token (`0a81043cf`; the test reads the
+    roles from the Go catalogue).
+
+12. **`services.stateUnverifiedHint` without a button** (D-032). The banner for
+    an action whose outcome is unknown no longer says "Run Rescan". It says the
+    action may have completed, that component changes stay locked for now, that
+    CelikPanel checks the components again by itself each time the page is
+    opened once its last check is a few minutes old, and that the lock lifts
+    when that check shows the new state. That is what the load flow does
+    (conditional scan, `AUTO_SCAN_MAX_AGE_SECONDS`); there is no timer, so the
+    sentence does not promise one. EN/TR; the test pins the words and the
+    constant it rests on.
+13. **`system` is reserved as a username.** `auth.ValidateUsername` refuses
+    `system` in any letter case (`ErrReservedUsername`), so a person cannot take
+    the audit actor the Dashboard says "System". Every path that takes a
+    username from a person goes through it (account creation, team-member
+    creation and rename, the admin CLI and its prompt; the demo-mode seed
+    creates three fixed accounts, none named `system`, without it). The two HTTP
+    paths answer `400 USERNAME_RESERVED`
+    (typed; EN/TR sentence `err.USERNAME_RESERVED`); the CLI prints its usual
+    invalid-name message. No migration or seed creates a user named `system`;
+    an existing row is not touched, and a team member who already has the name
+    can still be edited while the name is unchanged. Not done: the audit log
+    does not store an actor kind, so a pre-existing `system` row would still be
+    drawn as "System" (it cannot arise from this Panel).
+14. **A component's own page checks by itself on an unverifiable record**
+    (D-032, D-033). On `/services/<id>` a `503 SERVICE_STATE_UNVERIFIED` answer
+    was the generic "This component's record could not be read" whose Retry
+    kept failing until the Dashboard or the Components page ran its check. The
+    page now answers that code as they do: one conditional
+    `POST /api/v1/managed-services/scan?max_age_seconds=300` (a read), shared
+    by everything on the page (the reloaded-page lookup, the sections, the
+    header), no toast, then the record is read again. While it runs the page
+    says so in a quiet line ("CelikPanel is checking the components now ...
+    you do not need to do anything") with no Retry. A failed check keeps the
+    existing "could not check" state and is not asked again by itself. A check
+    held by a change in progress (409 `server_setup_busy` /
+    `service_operation_busy`) says so and resumes by itself, as the Dashboard
+    does: while the held state is on screen the page reads
+    `GET /api/v1/host-mutation-readiness` (reads only; every 5 seconds, only
+    while the tab is visible, one at a time, one poll however many readers the
+    page has) and, when that read goes from busy to ready, asks for the record
+    once more (one follow-up check, no loop). A change the poll never sees as
+    busy, or a server that stays busy, leaves the held state in place; Retry
+    stays and asks at once. A refusal that returns after a successful check is
+    not checked a second time. Any other refusal is unchanged (negative
+    control). `component.checkHeld` no longer tells the person to press Try
+    again: "This page checks again by itself when the change finishes; Try
+    again asks now." `err.SERVICE_STATE_UNVERIFIED` and
+    `err.SERVICE_STATE_REFRESH_FAILED` now name the third place: "while the
+    Dashboard, the Components page or a component's page is open" (the Go
+    refusal text in `cmd/panel/managed_service_handlers.go` says the same since
+    `a6bdf410b`; the web says it from the code).
+    `lib/managedServices.ts` (`useStoredRecordCheck`, `runStoredRecordCheck`),
+    `ServiceRecordLookup`, `ComponentPanels`, `ServiceShell`; EN/TR
+    `component.checkingStored`, `component.checkHeld`. Tests: sixteen mounted
+    cases in `tests/remote-state-mounted.test.mjs` (two pages, eight cases
+    each: the check, checking, failed, held, held resumes by itself, held is
+    not followed up when never or always busy, held reads only while the tab is
+    visible, no loop) plus the negative control; the resume cases fail when the
+    follow-up or the visibility rule is removed.
+15. **The Store's state filter** lists the offerings whose component state is
+    not known under their own entry, "State not known yet" / "Durum henüz
+    bilinmiyor", and no longer under "Unsupported here" (which their badge had
+    already stopped saying, `1f564fdb0`); the default view still shows them.
+    `tests/store-state-not-known-mounted.test.mjs` mounts the filter in both
+    languages and fails against the previous grouping.
+
+Counts after items 8 to 15: `npm test` 1463 of 1463; `npx tsc --noEmit` clean;
+`npm run build` passes with its bundle budget; the Go figures below are from
+items 8 to 13 and were not re-run (items 14 and 15 are web only);
+`go test -v ./cmd/panel/... ./internal/transport/... ./internal/auth/...`: 1602
+top-level tests and 1655 first-level subtests passed, 6 skipped, 0 failed (WSL
+guest `CelikPanel-S2-Debian`). The Agent was not run again.
+
+16. **The licence gate during the update's own restart** (set17 D1; recorded
+    in `deploy/e2e/release-recovery/evidence/set17-20261015/README.md`,
+    "Defect D1", screenshot
+    `debian13/upd86-good-a/browser/page/state-05-viewport.png`; that record
+    stays as it was written). In candidate run a the gate drew "The Panel is
+    not answering; an update may be restarting it" with "The latest result
+    could not be read..." over the update's calm restart at T+55.9 s, and the
+    update's navigation lock did not come back after reconnection. Cause: once
+    the outage outlasted the access validity of the last good access read
+    (`valid_for_seconds`; the gate appeared 41.8 to 60.3 s after the last good
+    access read in the three runs of the records that showed it), the gate's
+    decision lapsed
+    to unknown (`LicenseOnboarding.tsx`, the deadline timer and the failed-read
+    branch); the gate then drew its hold and raised its observation recovery,
+    which App turns into `publishSystemUpdateAuthentication(false)`; the
+    provider paused the tracking, the lock was no longer requested, and the
+    navigation lease releases an engaged lock that is no longer requested for
+    good (`useSystemUpdateNavigationLease.ts`, by design). The lease is
+    unchanged; the gate no longer causes the pause. The provider publishes the
+    followed update once the server has said it is active, with its first lost
+    read (`lib/systemUpdateRestartSignal.ts`). While that update restarts the
+    Panel, a read that got no answer (or "still starting") keeps the gate's
+    last positive decision until the update's own restart window ends (the
+    calm notice's bound: 6 minutes from the start, at least 2 minutes from the
+    first lost read of the tracking or of the gate), never later than the
+    decision's own end plus 6 minutes. The gate draws nothing then (no hold,
+    no connection banner), reads the access every 5 s while the tab is
+    visible, and once more at once when the update tracking reaches the Panel
+    again. Any answer from the Panel is applied as before (a known negative
+    still replaces the page); after the window the existing dialog appears.
+    Only the browser's clock: the moment of asking plus `valid_for_seconds`,
+    and the update's own moments (D-032). No new strings. Tests:
+    `tests/license-onboarding-runtime.test.mjs`, five mounted tests with a
+    controlled clock (the lab's figures: 45 s validity, an outage of 70 s
+    inside the window, reconnection; the window's two bounds; a Panel answer
+    during the restart; no followed update; the gate wired to the real
+    navigation lease as App and the provider wire it: held through the outage
+    and after reconnection, ended by its own 2-minute bound); four fail
+    against the previous gate, the no-update control passes on both;
+    `tests/update-restart-notice-mounted.test.mjs`, three more (the window
+    function, the signal, the provider's wiring). Browser inspection batch 15
+    (`d1restart`: the Panel down for 90 s with access valid for 45 s, then
+    back on the new version), EN/TR, light/dark, 1280 and 390: at 60 s and
+    88 s of outage only the update's calm dialog with its lock, no gate dialog,
+    no held pages, no warning mark, no horizontal overflow; after
+    reconnection "Update installed, being verified" with the lock still on;
+    then the new version. Nothing measured natively or on an installed server.
+
+    **The session gate during the new Panel's start** (the same class of
+    defect, recorded open above and fixed in this candidate; not seen in set17
+    or set17b; set17's sampling of other dialogs was partial, see its README).
+    While the new Panel starts, its
+    management answers `503 PANEL_STARTING`, the update tracking's own status
+    read included. Cause: the fetch interception in `App.tsx` (AuthGate) marked
+    the session unavailable on the first such answer to any request
+    (`markUnavailable()`); `AccessHold` then held the pages with "The panel is
+    starting", App published `publishSystemUpdateAuthentication(false)`, the
+    provider paused the tracking, and the navigation lease released its engaged
+    lock for good (`useSystemUpdateNavigationLease.ts`, unchanged). Now, while
+    the followed update restarts the Panel, such an answer does not mark the
+    session (`lib/useUpdateRestartStarting.ts`). The bound is the update's own
+    restart window (6 minutes from the start, at least 2 minutes from the
+    first lost read of the tracking or this page's first `PANEL_STARTING`
+    answer; that first answer is never moved later, so repeated answers cannot
+    extend it: `systemUpdateSessionGraceEnd`). Inside it nothing is drawn, the
+    tracking keeps running, the lock ends only by its own 2-minute bound, and
+    the Panel's readiness (`/api/v1/panel/availability`) is read every 5 s
+    while the tab is visible, and at once when the tab is shown again or the
+    tracking reaches the Panel again; a ready answer ends the wait, a 401 still
+    ends the session. When the window ends without a ready answer the session
+    is marked as before (its read, the hold and its explanation). Connection
+    failures are not handled by the interception at all and were not a path to
+    this hold. Reads only; nothing is retried or started. Browser clock only
+    (D-032). No new strings. Tests: `tests/access-hold-runtime.test.mjs`, three
+    mounted tests with a controlled clock on the real session, hold, lease and
+    signal (`PANEL_STARTING` on the access read, the update status read and a
+    page read: no hold, no pause, the lock kept and later released by its own
+    bound, readiness read every 5 s and no more after a ready answer; the
+    window's bound with repeated answers, then the hold as before; the
+    control without a followed update: hold, pause, lock released); the first
+    two fail against the previous `App.tsx`, the control passes on both;
+    `tests/update-restart-notice-mounted.test.mjs`, one for the bound.
+    Browser inspection batch 15 (`d1starting`: the Panel down for 25 s, then
+    20 s of `PANEL_STARTING`, then back on the new version), EN/TR,
+    light/dark, 1280 and 390: at 10 s and 18 s of the start only the update's
+    calm restart dialog with its lock (4 and 2 requests refused with
+    `PANEL_STARTING` in the two intervals); no session hold, no "The panel is
+    starting", no gate dialog, no connection banner, no warning mark, no
+    horizontal overflow; then "Update installed, being verified" with the lock;
+    then the new version. Still open: when the 2-minute lock has ended and the
+    window has not, pages the owner opens may show their own refusals of a
+    still-starting Panel until the window ends (the update's notice remains);
+    an `AUTH_STATUS_UNAVAILABLE` answer still marks the session at once. Not
+    measured natively or on an installed server.
+
+17. **The navigation lock through the update's own restart** (set17b F1;
+    recorded in `deploy/e2e/release-recovery/evidence/set17b-20261015/README.md`,
+    "F1", screenshot `debian13/upd86-good-a/browser/page/state-06-viewport.png`;
+    that record stays as it was written). In both candidate runs the update's
+    navigation lock (its full-page dialog) ended at T+120.3 s and T+120.5 s by
+    its two-minute lease (`SYSTEM_UPDATE_BLOCKING_DEADLINE_MS`), while the
+    Panel was down for another 82 s and 73 s (reconnection at T+202.8 s and
+    T+193.6 s). Decision of the release preparer (2026-10-15), under D-033 and
+    the owner's standing instruction of 2026-10-13, not an owner decision (the
+    set17b record leaves the question to the release preparer): while the
+    update's restart signal is active, the lock covers the restart. Now, when
+    the update
+    tracking has lost its read of the followed update before the two-minute
+    lease ends (and the server had said the update is active), a lock that is
+    still held is kept until the tracking reaches the Panel again and reads the
+    update's record, or until the update's restart window ends (6 minutes from
+    the start, at least 2 minutes from the first lost read), whichever comes
+    first (`systemUpdateNavigationDeadline` in `lib/systemUpdateWatchdog.ts`,
+    `systemUpdateNavigationRestart` in `lib/systemUpdateRestartSignal.ts`; the
+    provider passes the restart signal it publishes, for its exact request, to
+    `useSystemUpdateNavigationLease`). Bounds: never past 6 minutes from the
+    start; a lost read at or after the two-minute lease extends nothing; a
+    released lock is never re-opened; a lock that is no longer requested is
+    still released for good; the deadline is measured against a monotonic
+    anchor fixed once per update, so a wall-clock step back cannot lengthen it.
+    Without a restart the two-minute lease is unchanged. Reconnection here is
+    the first read of the update's record that is answered (verifying, running,
+    an outcome, or not found); the lock does not wait for the outcome itself.
+    One string changed, the lock line (`panelUpdate.interactionLocked`), which
+    promised two minutes: "Navigation is temporarily locked while this update
+    is checked. It unlocks by itself after two minutes; if the panel is still
+    restarting then, once it answers again, at the latest six minutes after the
+    start. Tracking continues." / "Bu güncelleme denetlenirken gezinme geçici
+    olarak kilitlidir. İki dakika sonra kendiliğinden açılır; panel o sırada
+    hâlâ yeniden başlıyorsa yeniden yanıt verdiğinde, en geç başlangıçtan altı
+    dakika sonra açılır. İşlem arka planda izlenmeye devam eder." Tests:
+    `tests/system-update-navigation-lease-mounted.test.mjs`, seven mounted tests
+    with a controlled clock wired as the provider wires them (the real restart
+    signal, its selector and the lease): the lock held at T+121 s and T+193 s
+    through an outage that began at T+25 s, released for good at reconnection
+    and not re-opened by a second outage; released at T+360 s without
+    reconnection, and on wake in a throttled tab; the two-minute lease
+    unchanged without a restart (no signal, reads answering, another request,
+    another start, a restart after the lease, a lost read after a late timer);
+    released for good when no longer requested inside the window; a wall-clock
+    step back of 150 s at reconnection; the control (the restart withheld,
+    which is the previous lease) ending at T+120 s mid-outage; the deadline
+    function's bounds. Three fail against the previous lease; the unchanged
+    lease, the control and the clock test pass on both.
+    `tests/update-restart-notice-mounted.test.mjs`, one for the provider's
+    wiring and the lock line; `tests/panel-update-ui-contract.test.mjs`, the
+    line's bounds; `tests/license-onboarding-runtime.test.mjs` now wires its
+    harness lease as the provider does (unchanged result). Browser inspection
+    batch 15 (`d1restart`, now with the update's record 40 s old so that the
+    90-second outage, about T+45 s to T+135 s, crosses the two-minute lease, and
+    the lock's state recorded), EN/TR, light/dark, 1280 and 390: at 60 s of
+    outage (T+01:43) and 88 s (T+02:11) the update's calm restart dialog with
+    the lock line and the application made inert, no gate dialog, no held
+    pages, no warning mark, no connection banner, no horizontal overflow; after
+    reconnection (T+02:16) no dialog and no inert application, the card "being
+    verified"; then the new version, in all eight. Not measured natively or on
+    an installed server. Still open: the item 16 note about pages the owner
+    opens after the lock has ended and before the window has, now only for a
+    restart that begins after the two-minute lease or for the time between
+    reconnection and the update's outcome.
+
+Counts after item 17: `npm test` 1483 of 1483; `npx tsc --noEmit` clean;
+`npm run build` passes with its bundle budget. Web only; Go not run again.

@@ -1,0 +1,2 @@
+lab=/var/tmp/cp-release-drill-s17-ub-u85-def-a
+upd1-ubuntu-defective-20261015t153515z

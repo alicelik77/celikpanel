@@ -1,0 +1,31 @@
+== celikpanel-lab-set17b-restart-delay-12d6fcbdabeac9e8a6753aecf5c57cce.service
+Result=success
+ExecMainStatus=0
+LoadState=not-found
+ActiveState=inactive
+FreezerState=running
+SubState=dead
+== celikpanel-self-update-12d6fcbdabeac9e8a6753aecf5c57cce.service
+Result=success
+ExecMainStatus=0
+LoadState=not-found
+ActiveState=inactive
+FreezerState=running
+SubState=dead
+== celikpanel-panel.service
+TimeoutStartUSec=1min 30s
+ActiveState=active
+DropInPaths=/etc/systemd/system/celikpanel-panel.service.d/10-release-transaction-guard.conf
+== drop-in directories of the Panel unit
+ls: cannot access '/run/systemd/system/celikpanel-panel.service.d': No such file or directory
+ls: cannot access '/run/systemd/system.control/celikpanel-panel.service.d': No such file or directory
+/etc/systemd/system/celikpanel-panel.service.d:
+total 12
+drwxr-xr-x  2 root root 4096 Oct 15 18:11 .
+drwxr-xr-x 21 root root 4096 Oct 15 18:11 ..
+-rw-r--r--  1 root root  157 Oct 15 18:11 10-release-transaction-guard.conf
+== transient lab units
+UNIT LOAD ACTIVE SUB DESCRIPTION
+
+0 loaded units listed.
+To show all installed unit files use 'systemctl list-unit-files'.

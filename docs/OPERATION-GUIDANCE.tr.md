@@ -7504,3 +7504,399 @@ nasıl okunduğunu söylemez. Sürümün değiştirdiği iki ekranın ("Finishin
 ve güncelleme kartının meşgul durumu) ilk gerçek sistem ölçümü hâlâ yapılmadı;
 sahibin (b) gözlemi bu sürümün değiştirdiği meşgul durumunun değil, yeniden
 başlatma sırasında güncelleme ekranının bilinmeyen durumunun gözlemidir.
+
+### Güncellemenin kendi yeniden başlaması sakin ilerleme olarak, iki bildirim yerine bir bildirim (2026-10-15)
+
+**Sahibin gözlemi.** İkinci kurulu sunucunun v0.1.0-alpha.84'ten
+v0.1.0-alpha.85'e gerçek güncellemesinde (2026-10-15), panel güncellemenin kendi
+planının söylediği gibi yeniden başlarken güncelleme sayfası uyarı işaretli
+"v0.1.0-alpha.85 güncellemesinin durumu şu an okunamadı; bu yüzden bitip
+bitmediği bilinmiyor…" gösterdi ve aynı anda köşe bildirimi aynı şeyi "T+02:59"
+ile söyledi. Güncelleme sonra olağan biçimde tamamlandı. Sahibin sözleri
+özetle: hiçbir sorun yokken bu bir sorun gibi görünüyor; işlem söylediğini
+yaparken daha az ürkütücü bir ileti doğrudur, sorun metni yalnız gerçek bir
+soruna aittir. Bu D-033'tür (beklenen bekleme ilerleme olarak gösterilir;
+"bilinmiyor" metni bir sınırdan sonra ya da doğrulanmış hatada gelir) ve D-024
+(doğrulanmış hata, eksik önkoşul ve bilinmeyen sonuç ayrı kalır). Şema, kayıt
+defteri ya da sürüm geçişi yok; Go değişmedi.
+
+**Koddaki neden.** Bağlantıyı yitiren her durum okuması izlenen güncellemenin
+aşamasını hemen bilinmiyor yapıyordu (`SystemUpdateOperation.tsx` içinde kayıt
+olmadan çağrılan `systemUpdateOperationPhase(outcome.operation)`; işlev
+`lib/systemUpdateTracking.ts` içindedir); güncellemenin planladığı yeniden
+başlama hesaba katılmıyordu. Panel'in durum yanıtı yalnız kuyrukta, çalışıyor
+(yeni Panel yanıt verince "verifying"), başarılı ve başarısız bilir; Panel'i ve
+Agent'ı yeniden başlatan güncelleyici kayıt çalışıyorken çalışır. İki dakikalık
+gezinti kilidinden (`SYSTEM_UPDATE_BLOCKING_DEADLINE_MS`) sonra köşe bildirimi
+her sayfada çizilir; bu yüzden güncelleme sayfasında kart ve köşe bildirimi
+aynı şeyi söyledi.
+
+**Ne değişti.**
+
+- Sunucu bu isteğin etkin olduğunu son söyledikten sonra (başlatma kabul
+  edildi ya da bir okuma kuyrukta veya çalışıyor dedi) bağlantıyı yitiren (ya da
+  5xx alan) bir okuma "yeniden başlıyor" aşamasıdır: dönen simge, "Panel,
+  güncellemenin bir parçası olarak yeniden başlıyor. Bu sayfa kendiliğinden
+  yeniden bağlanır; hiçbir şeye basmanız gerekmiyor.", T+ sayacı ve değişmeyen
+  güncelleme kilidi. Bu sürerken sayfa en geç 3 saniyede bir okur; böylece
+  hemen yeniden bağlanır.
+- Uyarı işareti ve "bilinmiyor" metni yalnız pencere aşılınca görünür:
+  güncellemenin başlangıcından 6 dakika, ilk kopan okumadan en az 2 dakika.
+  Bilinmiyor satırının altında bildirim, panelin bir güncellemenin normalde
+  gerektirdiğinden uzun süredir yanıt vermediğini, bunun başarısızlık anlamına
+  gelmediğini, sunucunun kaydı tuttuğunu ve bildirimin okumayı sürdürdüğünü,
+  sahibin neyi denetleyeceğini (`sudo systemctl status celikpanel-panel`)
+  söyler. Doğrulanmış bir hata sonlanmış bir sonuçtur ve kendi metnini korur.
+  "İkinci bir güncelleme başlatmayın" kalır.
+- Tek bildirim: güncelleme kartı ekrandayken T+ sayacını ve kimliği taşır ve
+  izlenen güncelleme için köşe bildirimi çizilmez; başka sayfalarda tek bildirim
+  köşe bildirimidir. Bilinen bir sonuç köşe bildirimini korur. Kartın
+  bilinmiyor satırı artık "Bu sayfa onu kendiliğinden yeniden okur" der.
+
+**Sınır ve kaynağı.** set16
+(`deploy/e2e/release-recovery/evidence/set16-20261014/*/upd84-good-a/driver/steps/12-owner-start`
+ve `13-track`): alpha.84 → alpha.85 iyi güncelleme Debian 13'te 51 sn
+(başlangıç 22:55:07Z, `update_verified` 22:55:58Z), Ubuntu 24.04'te 48 sn sürdü;
+Panel API'si en çok 32 sn ve 25 sn yanıtsız kaldı; laboratuvar arşivi yerel bir
+kaynaktan verdi. Sahibin gerçek güncellemesi T+02:59'da hâlâ yanıt vermiyordu.
+Pencere bunların en uzununun yaklaşık iki katıdır (2 × 3 dk); ilk kopan
+okumadan itibaren 2 dakika, yavaş bir güncellemede geç başlayan bir yeniden
+başlama için, ölçülen en uzun kesintinin yaklaşık dört katıdır.
+
+**Kanıt.** Web: `tests/update-restart-notice-mounted.test.mjs` (13 test: okuma
+sınıflandırması ve pencere, iki dilde metin, yeniden başlamada ve pencere
+sonrasında bağlanan kart, tek bildirim kuralı ve sağlayıcının bağlantıları için
+kaynak denetimi); her biri önceki kart, sağlayıcı ya da kitaplığa karşı
+başarısız olur; o commit'te `npm test` 1404/1404; `npx tsc --noEmit` temiz.
+Sağlayıcının kendisi bir testte bağlanmadı (IndexedDB, Web Locks ve kimlik
+sinyali gerektirir); gerçek Chrome'da laboratuvar sahte sunucusuna karşı
+çalıştırıldı (browser-inspect grup 13, `u86restart`): 1280×800 ve 390×844,
+İngilizce ve Türkçe, açık ve koyu, 24 durum. Yeniden başlamada: dönen simge,
+uyarı işareti yok, güncelleme sayfasında köşe bildirimi yok, Alan adları
+sayfasında köşe bildirimi sakin; pencere sonrasında (sayfanın `Date.now` değeri
+test tarafında 7 dakika ileri alındı): uyarı işareti ve bilinmiyor metni; yatay
+taşma yok.
+
+**Ölçülmeyen.** Bu koda hiçbir yerel çalıştırma ve hiçbir kurulu sunucu
+ulaşmadı; pencere iki laboratuvar güncellemesine ve bir sahip gözlemine dayanır.
+Yeniden başlaması başlangıcından itibaren 6 dakikayı aşan gerçek bir güncelleme,
+hâlâ olağanken bilinmiyor metnini gösterir.
+
+**Bu adayda ayrıca (2026-10-15).** Alpha.85 notlarının açık kalemlerinden on beş
+ve adayın kendi yerel kayıtlarından iki (16. ve 17. kalem) küçük düzeltme; her birinin testleri önceki kaynağa karşı başarısız olur. Şema,
+defter ya da sürüm geçişi yok; hiçbir şey yerel çalıştırmada ya da kurulu bir
+sunucuda ölçülmedi; hiçbir P0 işi kapanmaz ya da ilerlemez.
+
+1. **Sayfanın dil özniteliği** (set16 O1). i18n sağlayıcısı
+   `document.documentElement.lang` değerini sayfanın çizildiği dile ayarlar:
+   açılış ekranında hedef dil, dil değişince ancak yeni katalog geldiğinde
+   (`d2c0add01`; `tests/document-language.test.mjs`).
+2. **Bileşen adları arayüz dilinde** (set16 O2). Her katalog kimliğinin
+   (`internal/core` ManagedServices) İngilizce ve Türkçe görünen adı vardır
+   (`services.component.name.<id>`; ürün adları aynı kalır, "Firewall engine"
+   "Güvenlik duvarı motoru" olur, certbot ve cron adları çevrilir); kimlikler
+   değişmez, sayfanın bilmediği kimlik sunucunun adını korur. Bileşenler
+   sayfasında, iletişim kutularında, bileşen sayfasında, kurulumun bileşen
+   adımında ve Panel'in duran hizmet satırında kullanılır; cron ve güvenlik
+   duvarı motoru yönlendirmesi satırı sayfanın gösterdiği adla anar
+   (`151969774`; `tests/component-names.test.mjs` kimlikleri Go kataloğundan
+   okur).
+3. **Son etkinlik cümle olarak** (set16 O3; iki kurulu sunucuda da görüldü,
+   yukarıdaki (h)). `cmd/panel/audit_actions.go` Panel'in yazdığı 179 eylem
+   adını listeler; bir Go testi adları her `INSERT INTO audit_logs` kaynağından
+   türetir (go/ast; parametreleri çağrı yeri başına, kapanışları, yerel
+   değişkenleri, birleştirmeyi, `fmt.Sprintf`'i ve hizmet işlemi yazıcısını
+   izler) ve eksik ya da bayat adda başarısız olur; ulaşılamayan bir biçim
+   gerekçesiyle muaf tutulur. `web/src/lib/auditAction.ts` her adı İngilizce ve
+   Türkçe, hedefi `{target}` olarak söyler; bilinmeyen eylem kimlik olarak
+   değil, sözcükleriyle gösterilir (`8a5f299fa`; `tests/audit-actions.test.mjs`
+   Go listesini okur).
+4. **Hiçbir sunucu cümlesi yeniden tarama istemez** (D-032; alpha.85
+   "Şablonlu metin"). Doğrulanamayan kayıtlı bileşen kaydının reti
+   (`SERVICE_STATE_UNVERIFIED`, zaten türlü) CelikPanel'in bileşenleri
+   kendiliğinden yeniden denetlediğini söyler; Panel ve Bileşenler sayfası bu
+   koda artık koşullu kontrolleriyle yanıt verir (okuma; bir kez; bildirim yok;
+   başarısız kontrol "denetlenemedi" durumunu korur). Mağaza'nın üç
+   `component_state_*` cümlesi (`blocker_reason` ile türlü, sunucu
+   yerelleştirir) kontrolün bir yönetici Panel, Bileşenler sayfası ya da bir
+   bileşenin sayfası açıkken çalıştığını ve sonra Mağaza'nın yeniden açılmasını söyler
+   (`cd2275e47`; üçüncü sayfa `21f07e7a8` ile eklendi).
+5. **`component_not_installable` içinde platform** (alpha.85 "Şablonlu
+   metin"). `blocked_vars.platform` doğrulanmış paket ekosistemini adlandırır
+   ("Debian/Ubuntu (apt)", "Arch Linux (pacman)", "Fedora/RHEL (dnf)");
+   doğrulanmamış platform ya da eski Panel kısa cümleyi korur (`80d763949`).
+6. **Ters DNS cümlesinin arkasındaki çözümleyici** (alpha.85 "Yanıt veren
+   çözümleyici adlandırılmaz"; yukarıdaki (f)). Agent'ın posta sağlık
+   yanıtında iki ek alan vardır: `reverse_dns_resolver` ve
+   `reverse_dns_resolvers_disagree`; Panel bunları `resolver` ve
+   `resolvers=disagree` olarak geçirir; kurulumun son kontrolü çözümleyiciyi
+   adlandırır ve uyuşmadıklarında bunu söyler (dört yeni İngilizce/Türkçe
+   cümle). Eski Agent ikisini de göndermez ve önceki cümle kalır; alan bir
+   sunucuya ancak Agent güncellemesiyle ulaşır (`e2c630faa`).
+7. **Yeniden gösterilen sekme hemen okur** (D-033 kural 6). Güncelleme
+   kartının sessiz hazırlık okuması ve yayılan alan adının yeniden kontrolü,
+   sekme gösterildiğinde `lib/visibleReads.ts` gibi hemen bir kez okur; süren
+   okuma o okumadır; yalnız GET (`1abe1717d`).
+
+`1abe1717d` için sayılar: `npm test` 1435/1435; `npx tsc --noEmit` temiz;
+`go test ./cmd/panel/... ./internal/transport/...` 1585 test ve 1688 alt
+test geçti, 6 atlandı, 0 başarısız; `go test ./cmd/agent/...` 1799 test ve 2829
+alt test geçti, 29 atlandı, 0 başarısız (WSL konuğu `CelikPanel-S2-Debian`;
+Agent, 2026-10-14 denetim kaydındaki temiz bağlama ad alanında).
+8. **Bileşen açıklamaları arayüz dilinde.** Her katalog kimliğinin İngilizce ve
+   Türkçe tek satırlık açıklaması vardır (`services.component.description.<id>`;
+   "Intrusion Prevention" yerine "Saldırı önleme"); Bileşenler satırlarında,
+   kurma ve kaldırma pencerelerinde ve aramada `componentName`in yanında
+   `componentDescription` söyler; bilinmeyen bileşen sunucunun metnini korur
+   (`ef7690fc0`; `tests/component-names.test.mjs` açıklamaları Go
+   kataloğundan okur).
+9. **Son etkinlikte sistem aktörü.** Ayrılmış aktör `system` (Panel, oturum
+   açmış kullanıcısı olmayan eylem için yazar) Panoda ve denetim günlüğünde
+   "Sistem" / "System" olarak söylenir; başka her ad olduğu gibi gösterilir.
+   `ValidateUsername` bu adı ayırmaz; bu yüzden tam olarak `system` adlı bir
+   kullanıcı da çevrilirdi; sunucu ayrı bir işaret göndermez (`4372fc86e`).
+10. **Düğme göstermeyen `err.SERVICE_STATE_REFRESH_FAILED`** (D-032). Sayfanın
+    ne sonucu ne durumu varsaydığını ve CelikPanel'in, Panel ya da Bileşenler
+    sayfası açıkken bileşenleri kendiliğinden yeniden denetlediğini söyler;
+    `SERVICE_STATE_UNVERIFIED` gibi (`d2b58e7e9`). Sayfanın kendi
+    `services.stateUnverifiedHint` uyarısı hâlâ "Yeniden tara'yı çalıştırın"
+    der; burada değiştirilmedi (12. kalem değiştirir).
+11. **Posta profili gereksiniminde rol** (`component_requires`). `required`,
+    bileşen adlarının yanında rol belirteci taşıyabilir (`web-server`,
+    `smtp-server`, `imap-server`, `spam-filter`, `dns-server`, `kv-store`:
+    katalogdaki `ConflictGroup` değerleri). Sayfa her rolü görünen adıyla
+    söyler (`services.mailProfiles.role.<token>`, EN/TR); tanımadığı rol
+    belirteç olarak değil sözcük olarak söylenir (`0a81043cf`; test rolleri Go
+    kataloğundan okur).
+
+12. **Düğme göstermeyen `services.stateUnverifiedHint`** (D-032). Sonucu
+    bilinmeyen işlemin şeridi artık "Yeniden tara'yı çalıştırın" demez. İşlemin
+    tamamlanmış olabileceğini, bileşen değişikliklerinin şimdilik kilitli
+    kaldığını, CelikPanel'in bu sayfa her açıldığında son denetim birkaç
+    dakikadan eskiyse bileşenleri kendiliğinden yeniden denetlediğini ve
+    kilidin bu denetim yeni durumu gösterince kalktığını söyler. Yükleme akışı
+    tam bunu yapar (koşullu tarama, `AUTO_SCAN_MAX_AGE_SECONDS`); zamanlayıcı
+    yoktur, cümle de zamanlayıcı vaat etmez. EN/TR; test sözcükleri ve
+    dayandığı sabiti sabitler.
+13. **`system` kullanıcı adı olarak ayrıldı.** `auth.ValidateUsername`,
+    `system` adını her harf biçiminde reddeder (`ErrReservedUsername`); böylece
+    Panonun "Sistem" dediği denetim aktörünü kimse alamaz. Her oluşturma yolu
+    ondan geçer (hesap oluşturma, ekip üyesi oluşturma ve yeniden adlandırma,
+    yönetici CLI'si ve istemi). İki HTTP yolu `400 USERNAME_RESERVED` döner
+    (kodlu; EN/TR cümle `err.USERNAME_RESERVED`); CLI her zamanki geçersiz ad
+    iletisini yazar. Hiçbir geçiş ya da tohum `system` adlı kullanıcı
+    oluşturmaz; var olan satıra dokunulmaz, bu adı zaten taşıyan ekip üyesi ad
+    değişmediği sürece düzenlenebilir. Yapılmadı: denetim günlüğü aktör türü
+    saklamaz; bu yüzden önceden var olan bir `system` satırı yine "Sistem"
+    çizilirdi (bu Panelden doğamaz).
+14. **Bileşenin kendi sayfası, doğrulanamayan kayıtta kendisi kontrol eder**
+    (D-032, D-033). `/services/<id>` sayfasında `503 SERVICE_STATE_UNVERIFIED`
+    yanıtı, Pano ya da Bileşenler sayfası kontrolünü çalıştırana dek Tekrar
+    dene'nin başarısız kaldığı genel "Bu bileşenin kaydı okunamadı" idi. Sayfa
+    artık bu kodu onlar gibi yanıtlar: tek koşullu
+    `POST /api/v1/managed-services/scan?max_age_seconds=300` (bir okuma);
+    sayfadaki her şey (yeniden yüklenen sayfanın arama adımı, bölümler, başlık)
+    onu paylaşır, bildirim çıkmaz, ardından kayıt yeniden okunur. Sürerken sayfa
+    bunu sakin bir satırla söyler ("CelikPanel bileşenleri şimdi kontrol
+    ediyor ... sizin bir şey yapmanız gerekmiyor"); Tekrar dene yoktur.
+    Başarısız kontrol mevcut "kontrol edilemedi" durumunu korur ve kendiliğinden
+    yeniden sorulmaz. Süren bir değişiklik yüzünden tutulan kontrol (409
+    `server_setup_busy` / `service_operation_busy`) bunu söyler ve Pano gibi
+    kendiliğinden sürer: tutulan durum ekrandayken sayfa
+    `GET /api/v1/host-mutation-readiness` okur (yalnız okuma; 5 saniyede bir,
+    yalnız sekme görünürken, tek tek; sayfada kaç okuyan olursa olsun tek
+    yoklama) ve bu okuma meşgulden hazıra geçince kaydı bir kez daha ister (tek
+    izleme kontrolü, döngü yok). Yoklamanın hiç meşgul görmediği bir değişiklik
+    ya da sürekli meşgul kalan sunucu tutulan durumu yerinde bırakır; Tekrar dene
+    durur ve hemen sorar. Başarılı kontrolden sonra yine dönen ret ikinci kez
+    kontrol edilmez. Başka her ret değişmez (olumsuz kontrol).
+    `component.checkHeld` artık Tekrar dene'ye basmayı söylemez: "Değişiklik
+    bitince sayfa kendiliğinden yeniden denetler; Tekrar dene hemen sorar."
+    `err.SERVICE_STATE_UNVERIFIED` ve `err.SERVICE_STATE_REFRESH_FAILED` üçüncü
+    yeri de söyler: "Panel, Bileşenler sayfası ya da bir bileşenin sayfası
+    açıkken" (`cmd/panel/managed_service_handlers.go` içindeki Go ret metni
+    `a6bdf410b`'den beri aynısını söyler; web metni koddan söyler).
+    `lib/managedServices.ts` (`useStoredRecordCheck`, `runStoredRecordCheck`),
+    `ServiceRecordLookup`, `ComponentPanels`, `ServiceShell`; EN/TR
+    `component.checkingStored`, `component.checkHeld`. Testler:
+    `tests/remote-state-mounted.test.mjs` içinde on altı bağlanmış durum (iki
+    sayfa, sayfa başına sekiz: kontrol, kontrol ediliyor, başarısız, tutulan,
+    tutulanın kendiliğinden sürmesi, hiç ya da hep meşgulken izlenmemesi,
+    yalnız sekme görünürken okuma, döngü yok) ve olumsuz kontrol; izleme ya da
+    görünürlük kuralı kaldırılınca süren durumlar başarısız olur.
+15. **Mağazanın durum süzgeci**, bileşen durumu bilinmeyen ürünleri kendi
+    girdisi altında listeler: "Durum henüz bilinmiyor" / "State not known yet";
+    artık "Bu sunucuda desteklenmiyor" altında değildir (rozetleri bunu zaten
+    söylemiyordu, `1f564fdb0`); varsayılan görünüm onları yine gösterir.
+    `tests/store-state-not-known-mounted.test.mjs` süzgeci iki dilde bağlar ve
+    önceki gruplamaya karşı başarısız olur.
+
+8-15. kalemlerden sonraki sayılar: `npm test` 1463/1463; `npx tsc --noEmit`
+temiz; `npm run build` paket bütçesiyle geçer; aşağıdaki Go sayıları 8-13.
+kalemlerdendir ve yeniden koşulmadı (14 ve 15. kalemler yalnız web); `go test -v ./cmd/panel/... ./internal/transport/... ./internal/auth/...`:
+1602 üst düzey test ve 1655 birinci düzey alt test geçti, 6 atlandı, 0
+başarısız (WSL konuğu `CelikPanel-S2-Debian`). Agent yeniden koşulmadı.
+
+16. **Güncellemenin kendi yeniden başlamasında lisans kapısı** (set17 D1;
+    `deploy/e2e/release-recovery/evidence/set17-20261015/README.md` içinde
+    "Defect D1", ekran görüntüsü
+    `debian13/upd86-good-a/browser/page/state-05-viewport.png`; o kayıt
+    yazıldığı gibi kalır). Aday a koşusunda kapı, güncellemenin sakin yeniden
+    başlamasının üstüne T+55,9 s'de "The Panel is not answering; an update may
+    be restarting it" ve "The latest result could not be read..." penceresini
+    çizdi; yeniden bağlanınca güncellemenin gezinme kilidi geri gelmedi.
+    Neden: kesinti son iyi erişim okumasının geçerlilik süresini
+    (`valid_for_seconds`; kapı, onu gösteren kayıtların üç koşusunda son iyi
+    erişim okumasından 41,8 ile 60,3 sn sonra göründü) aşınca kapının kararı
+    bilinmeze düşüyordu (`LicenseOnboarding.tsx`, son an zamanlayıcısı ve
+    başarısız okuma dalı); kapı tutma katmanını çiziyor ve gözlem kurtarmasını
+    bildiriyordu; App bunu `publishSystemUpdateAuthentication(false)` yapar,
+    sağlayıcı izlemeyi duraklatır, kilit artık istenmez ve gezinme kirası
+    devreye girmiş ama artık istenmeyen kilidi kalıcı olarak bırakır
+    (`useSystemUpdateNavigationLease.ts`, tasarım gereği). Kira değişmedi;
+    duraklamaya artık kapı yol açmıyor. Sağlayıcı, sunucu güncellemenin etkin
+    olduğunu söyledikten sonra izlenen güncellemeyi ilk kayıp okumasıyla
+    yayımlar (`lib/systemUpdateRestartSignal.ts`). Bu güncelleme Paneli
+    yeniden başlatırken yanıt alamayan (ya da "henüz başlıyor" alan) okuma,
+    kapının son olumlu kararını güncellemenin kendi yeniden başlama penceresi
+    bitene kadar korur (sakin bildirimin sınırı: başlangıçtan 6 dakika,
+    izlemenin ya da kapının ilk kayıp okumasından en az 2 dakika); kararın
+    kendi sonu artı 6 dakikayı hiç aşmaz. Kapı o sırada bir şey çizmez (tutma
+    yok, bağlantı şeridi yok), sekme görünürken erişimi 5 saniyede bir okur,
+    güncelleme izlemesi Panele yeniden ulaşınca bir kez hemen okur. Panelin
+    her yanıtı eskisi gibi uygulanır (bilinen olumsuz karar sayfayı yine
+    değiştirir); pencereden sonra mevcut pencere görünür. Yalnız tarayıcının
+    saati: sorulan an artı `valid_for_seconds` ve güncellemenin kendi anları
+    (D-032). Yeni metin yok. Testler: `tests/license-onboarding-runtime.test.mjs`
+    içinde denetimli saatle beş bağlanmış test (laboratuvar değerleri: 45 s
+    geçerlilik, pencere içinde 70 s kesinti, yeniden bağlanma; pencerenin iki
+    sınırı; yeniden başlama sırasında Panel yanıtı; izlenen güncelleme yok;
+    kapı, App ile sağlayıcının bağladığı gibi gerçek gezinme kirasına bağlı:
+    kesinti boyunca ve yeniden bağlanınca tutulur, kendi 2 dakikalık sınırıyla
+    biter); dördü önceki kapıya karşı başarısız olur, güncellemesiz denetim
+    ikisinde de geçer; `tests/update-restart-notice-mounted.test.mjs` içinde
+    üç durum daha (pencere işlevi, sinyal, sağlayıcının bağlantısı). Tarayıcı
+    incelemesi 15. grup (`d1restart`: erişim 45 s geçerliyken Panel 90 s
+    kapalı, sonra yeni sürümle geri), EN/TR, açık/koyu, 1280 ve 390:
+    kesintinin 60. ve 88. saniyesinde yalnız güncellemenin kilitli sakin
+    penceresi; kapı penceresi, tutulan sayfa, uyarı işareti, yatay taşma yok;
+    yeniden bağlanınca kilit sürerken "Update installed, being verified";
+    ardından yeni sürüm. Yerel çalıştırmada ya da kurulu sunucuda hiçbir şey
+    ölçülmedi.
+
+    **Yeni Panel başlarken oturum kapısı** (aynı kusur sınıfı; yukarıda açık
+    diye kaydedilmişti, bu adayda düzeltildi; set17 ve set17b'de görülmedi;
+    set17'nin diğer pencere örneklemesi kısmiydi, bkz. README'si). Yeni Panel
+    başlarken yönetim istekleri,
+    güncelleme izlemesinin kendi durum okuması da dahil, `503 PANEL_STARTING`
+    yanıtı alır. Neden: `App.tsx` içindeki istek yakalayıcı (AuthGate) herhangi
+    bir isteğe gelen ilk böyle yanıtta oturumu kullanılamaz sayıyordu
+    (`markUnavailable()`); ardından `AccessHold` sayfaları "Panel başlatılıyor"
+    ile tutuyor, App `publishSystemUpdateAuthentication(false)` yayımlıyor,
+    sağlayıcı izlemeyi duraklatıyor ve gezinme kirası devreye girmiş kilidi
+    kalıcı olarak bırakıyordu (`useSystemUpdateNavigationLease.ts`, değişmedi).
+    Artık izlenen güncelleme Paneli yeniden başlatırken böyle bir yanıt oturumu
+    işaretlemez (`lib/useUpdateRestartStarting.ts`). Sınır, güncellemenin kendi
+    yeniden başlama penceresidir (başlangıçtan 6 dakika; izlemenin ilk kayıp
+    okumasından ya da bu sayfanın ilk `PANEL_STARTING` yanıtından en az 2
+    dakika; o ilk yanıt hiç ileri alınmaz, tekrarlanan yanıtlar sınırı
+    uzatamaz: `systemUpdateSessionGraceEnd`). Pencere içinde bir şey çizilmez,
+    izleme sürer, kilit yalnız kendi 2 dakikalık sınırıyla biter; Panelin hazır
+    olma durumu (`/api/v1/panel/availability`) sekme görünürken 5 saniyede bir,
+    sekme yeniden görünür olunca ve izleme Panele yeniden ulaşınca hemen
+    okunur; hazır yanıtı beklemeyi bitirir, 401 oturumu yine sonlandırır.
+    Pencere hazır yanıtı olmadan biterse oturum eskisi gibi işaretlenir
+    (okuması, tutma katmanı ve açıklaması). Bağlantı hatalarını yakalayıcı hiç
+    ele almaz; bu tutmaya giden bir yol değildi. Yalnız okuma; hiçbir şey
+    yinelenmez ya da başlatılmaz. Yalnız tarayıcının saati (D-032). Yeni metin
+    yok. Testler: `tests/access-hold-runtime.test.mjs` içinde gerçek oturum,
+    tutma katmanı, kira ve sinyalle, denetimli saatli üç bağlanmış test
+    (erişim okumasında, güncelleme durum okumasında ve bir sayfa okumasında
+    `PANEL_STARTING`: tutma yok, duraklama yok, kilit korunur ve sonra kendi
+    sınırıyla bırakılır, hazır olma 5 saniyede bir okunur ve hazır yanıtından
+    sonra okunmaz; tekrarlanan yanıtlarla pencerenin sınırı, ardından eskisi
+    gibi tutma; izlenen güncelleme olmadan denetim: tutma, duraklama, kilit
+    bırakılır); ilk ikisi önceki `App.tsx`'e karşı başarısız olur, denetim
+    ikisinde de geçer; `tests/update-restart-notice-mounted.test.mjs` içinde
+    sınır için bir test. Tarayıcı incelemesi 15. grup (`d1starting`: Panel 25 s
+    kapalı, sonra 20 s `PANEL_STARTING`, sonra yeni sürümle geri), EN/TR,
+    açık/koyu, 1280 ve 390: başlamanın 10. ve 18. saniyesinde yalnız
+    güncellemenin kilitli sakin yeniden başlama penceresi (iki aralıkta 4 ve 2
+    istek `PANEL_STARTING` ile reddedildi); oturum tutması, "Panel
+    başlatılıyor", kapı penceresi, bağlantı şeridi, uyarı işareti, yatay taşma
+    yok; ardından kilit sürerken "Update installed, being verified"; ardından
+    yeni sürüm. Hâlâ açık: 2 dakikalık kilit bitip pencere bitmediğinde,
+    sahibin açtığı sayfalar pencere bitene kadar henüz başlayan Panelin kendi
+    retlerini gösterebilir (güncellemenin bildirimi kalır);
+    `AUTH_STATUS_UNAVAILABLE` yanıtı oturumu yine hemen işaretler. Yerel
+    çalıştırmada ya da kurulu sunucuda ölçülmedi.
+
+17. **Güncellemenin kendi yeniden başlamasında gezinme kilidi** (set17b F1;
+    `deploy/e2e/release-recovery/evidence/set17b-20261015/README.md` içinde
+    "F1", ekran görüntüsü
+    `debian13/upd86-good-a/browser/page/state-06-viewport.png`; o kayıt
+    yazıldığı gibi kalır). İki aday koşusunda güncellemenin gezinme kilidi (tam
+    sayfa penceresi) iki dakikalık kirasıyla (`SYSTEM_UPDATE_BLOCKING_DEADLINE_MS`)
+    T+120,3 s ve T+120,5 s'de bitti; Panel 82 s ve 73 s daha kapalıydı
+    (yeniden bağlantı T+202,8 s ve T+193,6 s). Sürümü hazırlayanın kararı
+    (2026-10-15), D-033 ve sahibin 2026-10-13 tarihli kalıcı talimatı altında;
+    sahibin kararı değil (set17b kaydı soruyu sürümü hazırlayana bırakır):
+    güncellemenin yeniden başlama sinyali etkinken kilit yeniden başlamayı
+    kapsar. Artık güncelleme izlemesi, iki dakikalık kira bitmeden izlenen
+    güncellemenin okumasını kaybettiyse (ve sunucu güncellemenin etkin
+    olduğunu söylemişse), hâlâ tutulan kilit, izleme Panele yeniden ulaşıp
+    güncellemenin kaydını okuyana ya da güncellemenin yeniden başlama penceresi
+    (başlangıçtan 6 dakika, ilk kayıp okumadan en az 2 dakika) bitene kadar
+    sürer; hangisi önce gelirse (`lib/systemUpdateWatchdog.ts` içinde
+    `systemUpdateNavigationDeadline`, `lib/systemUpdateRestartSignal.ts` içinde
+    `systemUpdateNavigationRestart`; sağlayıcı yayımladığı yeniden başlama
+    sinyalini kendi tam isteği için `useSystemUpdateNavigationLease` kancasına
+    verir). Sınırlar: başlangıçtan 6 dakikayı hiç aşmaz; iki dakikalık kiranın
+    bittiği anda ya da sonra kaybedilen okuma hiçbir şeyi uzatmaz; bırakılan
+    kilit hiç yeniden açılmaz; artık istenmeyen kilit yine kalıcı olarak
+    bırakılır; son an güncelleme başına bir kez sabitlenen tekdüze bir
+    dayanakla ölçülür, duvar saatinin geri alınması kilidi uzatamaz. Yeniden
+    başlama yoksa iki dakikalık kira değişmez. Buradaki yeniden bağlantı,
+    güncellemenin kaydının yanıtlanan ilk okumasıdır (doğrulanıyor, çalışıyor,
+    bir sonuç ya da bulunamadı); kilit sonucun kendisini beklemez. Tek metin
+    değişti, iki dakika vaat eden kilit satırı (`panelUpdate.interactionLocked`):
+    "Bu güncelleme denetlenirken gezinme geçici olarak kilitlidir. İki dakika
+    sonra kendiliğinden açılır; panel o sırada hâlâ yeniden başlıyorsa yeniden
+    yanıt verdiğinde, en geç başlangıçtan altı dakika sonra açılır. İşlem arka
+    planda izlenmeye devam eder." / "Navigation is temporarily locked while this
+    update is checked. It unlocks by itself after two minutes; if the panel is
+    still restarting then, once it answers again, at the latest six minutes
+    after the start. Tracking continues." Testler:
+    `tests/system-update-navigation-lease-mounted.test.mjs` içinde sağlayıcının
+    bağladığı gibi bağlanmış (gerçek yeniden başlama sinyali, seçicisi ve kira)
+    denetimli saatli yedi test: T+25 s'de başlayan kesintide kilit T+121 s ve
+    T+193 s'de tutulur, yeniden bağlantıda kalıcı olarak bırakılır ve ikinci
+    bir kesinti onu açmaz; yeniden bağlantı olmadan T+360 s'de ve kısılmış
+    sekmede uyanınca bırakılır; yeniden başlama yoksa iki dakikalık kira
+    değişmez (sinyal yok, okumalar yanıtlanıyor, başka istek, başka başlangıç,
+    kiradan sonra başlayan yeniden başlama, geciken zamanlayıcıdan sonra kayıp
+    okuma); pencere içinde artık istenmeyince kalıcı olarak bırakılır; yeniden
+    bağlantıda duvar saati 150 s geri alınır; denetim (yeniden başlama
+    verilmez, yani önceki kira) kesintinin ortasında T+120 s'de biter; son an
+    işlevinin sınırları. Üçü önceki kiraya karşı başarısız olur; değişmeyen
+    kira, denetim ve saat testi ikisinde de geçer.
+    `tests/update-restart-notice-mounted.test.mjs` içinde sağlayıcının
+    bağlantısı ve kilit satırı için bir test;
+    `tests/panel-update-ui-contract.test.mjs` içinde satırın sınırları;
+    `tests/license-onboarding-runtime.test.mjs` düzeneğindeki kira artık
+    sağlayıcının bağladığı gibi bağlanır (sonuç değişmedi). Tarayıcı incelemesi
+    15. grup (`d1restart`; güncellemenin kaydı artık 40 s eski, böylece
+    yaklaşık T+45 s ile T+135 s arasındaki 90 saniyelik kesinti iki dakikalık
+    kirayı aşar; kilidin durumu kaydedilir), EN/TR, açık/koyu, 1280 ve 390:
+    kesintinin 60. (T+01:43) ve 88. saniyesinde (T+02:11) kilit satırıyla
+    güncellemenin sakin yeniden başlama penceresi ve etkisizleştirilmiş
+    uygulama; kapı penceresi, tutulan sayfa, uyarı işareti, bağlantı şeridi,
+    yatay taşma yok; yeniden bağlantıdan sonra (T+02:16) pencere yok, uygulama
+    etkisiz değil, kart "doğrulanıyor"; ardından yeni sürüm; sekizinde de.
+    Yerel çalıştırmada ya da kurulu sunucuda ölçülmedi. Hâlâ açık: 16. kalemin,
+    kilit bitip pencere bitmeden sahibin açtığı sayfalarla ilgili notu artık
+    yalnız iki dakikalık kiradan sonra başlayan bir yeniden başlama ya da
+    yeniden bağlantı ile güncellemenin sonucu arasındaki süre için geçerlidir.
+
+17. kalemden sonraki sayılar: `npm test` 1483/1483; `npx tsc --noEmit` temiz;
+`npm run build` paket bütçesiyle geçer. Yalnız web; Go yeniden koşulmadı.

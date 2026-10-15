@@ -79,6 +79,10 @@ const own = {
   '/auth/domainAccess': domainAccessURL, '/lib/domainDeletionPending': deletionURL, '/lib/subscriptions': subscriptionsURL,
   '/lib/accounts': accountsURL, '/lib/managedServices': managedServicesURL, '/lib/sslTier': sslTierURL, '/lib/hstsRemaining': hstsRemainingURL,
   '/lib/requestIdentity': requestIdentityURL,
+  // Reads that run only while the page is visible are the real ones (2026-10-15).
+  '/lib/visibleReads': compileSource('lib/visibleReads.ts', () => stub),
+  // Component names in the interface language (2026-10-15).
+  '/lib/componentName': compileSource('lib/componentName.ts', () => stub),
 };
 // The two notices of 10 Oct 2026 are the shipped ones: what a service action
 // ended with, and a change whose one-time result is not kept.
@@ -1620,4 +1624,264 @@ test('A component page: the install dialog reads readiness again while the serve
     globalThis.clearInterval = realClearInterval;
     await cleanup();
   }
+});
+
+// The dialog's re-read runs only while the tab is visible (2026-10-15, the open
+// item of the alpha.85 notes): hidden, no interval and no read after the
+// opening one; shown again, one read at once and the interval resumes.
+test('A component page: the install dialog stops reading readiness while the tab is hidden, and reads once when shown', async () => {
+  serve({
+    '/api/v1/managed-services': json({ services: [record({ is_installed: false, status: '', unit: undefined })] }),
+    '/api/v1/host-mutation-readiness': () => Response.json({ ready: false, code: 'HOST_MUTATION_BUSY', reason: 'package_manager_active' }),
+  });
+  const doc = Object.assign(new EventTarget(), { visibilityState: 'hidden' });
+  globalThis.document = doc;
+  const timers = new Map();
+  let next = 1;
+  const realSetInterval = globalThis.setInterval;
+  const realClearInterval = globalThis.clearInterval;
+  globalThis.setInterval = (fn, ms) => { const id = next++; timers.set(id, { fn, ms }); return id; };
+  globalThis.clearInterval = (id) => { timers.delete(id); };
+  const polls = () => [...timers.values()].filter((item) => item.ms === 5000);
+  try {
+    await mount(ServiceShell, shell);
+    await press(buttons('svc.install')[0]);
+    assert.equal(reads('/api/v1/host-mutation-readiness'), 1, 'the dialog reads once when it opens');
+    assert.equal(polls().length, 0, 'no re-read is scheduled while the tab is hidden');
+    doc.visibilityState = 'visible';
+    await act(async () => { doc.dispatchEvent(new Event('visibilitychange')); await settled(); await settled(); });
+    assert.equal(reads('/api/v1/host-mutation-readiness'), 2, 'shown again: one read at once');
+    assert.equal(polls().length, 1, 'the re-read resumes');
+    doc.visibilityState = 'hidden';
+    await act(async () => { doc.dispatchEvent(new Event('visibilitychange')); });
+    assert.equal(polls().length, 0, 'hidden again: the re-read stops');
+    assert.equal(calls.filter((call) => call.method !== 'GET').length, 0, 'reading readiness changed something');
+  } finally {
+    globalThis.setInterval = realSetInterval;
+    globalThis.clearInterval = realClearInterval;
+    await cleanup();
+  }
+});
+
+// --- A component page whose stored record the server cannot verify (15 Oct 2026, D-032) ---
+// The Panel refuses the stored record with 503 SERVICE_STATE_UNVERIFIED. The
+// Dashboard and the Components page answer that with their own conditional
+// check; the component's own page does too (it used to say "could not be read"
+// and Retry kept failing until one of those pages ran the check).
+// Sunucunun doğrulayamadığı kayıtlı kayıtta bileşenin kendi sayfası da kendi
+// koşullu kontrolünü bir kez yapar; "okunamadı" deyip boşuna Tekrar dene sunmaz.
+const UNVERIFIED = { error: 'the stored component record could not be verified', code: 'SERVICE_STATE_UNVERIFIED' };
+const redisRecord = { id: 'redis', name: 'Redis', kind: 'service', is_installed: true, status: 'active (running)', unit: 'redis-server', versions: ['7'], ports: ['6379/tcp'], config_files: [{ path: '/etc/redis/redis.conf', is_managed: false }] };
+const SCAN = '/api/v1/managed-services/scan';
+// The record is refused until a scan ran; the scan answers `scan`. With
+// `checks: false` the scan "succeeds" and the record stays refused for good.
+function unverifiedUntilChecked(scan, { checks = true } = {}) {
+  let checked = false;
+  return {
+    read: () => (checked ? Response.json({ services: [redisRecord] }) : Response.json(UNVERIFIED, { status: 503 })),
+    changes: { [SCAN]: () => { if (checks) checked = true; return scan(); } },
+  };
+}
+const READINESS = '/api/v1/host-mutation-readiness';
+// The first check is refused because a change holds the server; the second succeeds.
+function heldThenOk() {
+  let attempts = 0;
+  let checked = false;
+  return {
+    busy: true,
+    read: () => (checked ? Response.json({ services: [redisRecord] }) : Response.json(UNVERIFIED, { status: 503 })),
+    changes: {
+      [SCAN]: () => {
+        attempts += 1;
+        if (attempts === 1) return Response.json({ error: 'busy', code: 'service_operation_busy' }, { status: 409 });
+        checked = true;
+        return Response.json({ services: [redisRecord], scanned_at: new Date().toISOString(), scan_age_seconds: 0 });
+      },
+    },
+  };
+}
+// Captures the intervals a page schedules, so a test ticks them itself.
+function fakeIntervals() {
+  const timers = new Map();
+  let next = 1;
+  const realSet = globalThis.setInterval;
+  const realClear = globalThis.clearInterval;
+  globalThis.setInterval = (fn, ms) => { const id = next++; timers.set(id, { fn, ms }); return id; };
+  globalThis.clearInterval = (id) => { timers.delete(id); };
+  return {
+    polls: () => [...timers.values()].filter((item) => item.ms === 5000),
+    restore() { globalThis.setInterval = realSet; globalThis.clearInterval = realClear; },
+  };
+}
+const scanCalls = () => calls.filter((call) => call.method === 'POST' && call.url.startsWith(SCAN));
+const callLog = () => calls.map((call) => `${call.method} ${call.url}`).join(', ');
+const freshCheck = async () => (await import(managedServicesURL)).resetStoredRecordCheck();
+const spin = async (rounds) => { for (let i = 0; i < rounds; i += 1) await act(async () => { await settled(); }); };
+
+for (const [name, Component, props, drawn] of [
+  ['ServiceRecordLookup (a reloaded component page)', ServiceRecordLookup, { serviceId: 'redis', onBack() {}, children: () => 'component-page' }, 'component-page'],
+  ['ComponentDetail (the sections of a component page)', ComponentDetail, { serviceId: 'redis', onBack() {} }, '/etc/redis/redis.conf'],
+]) {
+  test(`${name}: an unverifiable stored record → one conditional check, then the record is read again; no toast`, async () => {
+    await freshCheck();
+    const door = unverifiedUntilChecked(() => Response.json({ services: [redisRecord], scanned_at: new Date().toISOString(), scan_age_seconds: 0 }));
+    serve({ '/api/v1/managed-services': door.read }, 'admin', door.changes);
+    try {
+      await mount(Component, props);
+      await spin(4);
+      assert.equal(scanCalls().length, 1, `expected one check: ${callLog()}`);
+      assert.equal(scanCalls()[0].url, `${SCAN}?max_age_seconds=300`, 'the page asked for an unconditional scan');
+      assert.ok(has(drawn), `the record is not drawn after the check: ${text().slice(0, 300)}`);
+      assert.ok(!has('component.unknown'), 'the refusal was still reported as unreadable');
+      assert.deepEqual(globalThis.currentTest.toasts, [], 'a check nobody pressed raised a toast');
+      assert.equal(calls.filter((call) => call.method !== 'GET' && !call.url.startsWith(SCAN)).length, 0, 'the page changed something');
+    } finally { await cleanup(); }
+  });
+
+  test(`${name}: while the check runs the page says it is checking and offers no Retry`, async () => {
+    await freshCheck();
+    serve({ '/api/v1/managed-services': () => Response.json(UNVERIFIED, { status: 503 }) }, 'admin', { [SCAN]: () => new Promise(() => {}) });
+    try {
+      await mount(Component, props);
+      await spin(3);
+      assert.ok(has('component.checkingStored'), `no checking line: ${text().slice(0, 300)}`);
+      assert.ok(!has('component.unknown'), 'the refusal is shown as unreadable while it is being checked');
+      assert.equal(buttons('common.retry').length, 0, 'Retry is offered while the check is on its way');
+      assert.equal(scanCalls().length, 1);
+    } finally { await cleanup(); }
+  });
+
+  test(`${name}: a failed check is "could not check" with Retry, not asked again by itself; Retry asks once more`, async () => {
+    await freshCheck();
+    serve({ '/api/v1/managed-services': () => Response.json(UNVERIFIED, { status: 503 }) }, 'admin', { [SCAN]: () => Response.json({ error: 'agent unavailable' }, { status: 502 }) });
+    try {
+      await mount(Component, props);
+      await spin(6);
+      assert.equal(scanCalls().length, 1, `the failure was asked again by itself: ${callLog()}`);
+      assert.ok(has('component.unknown'), `no could-not-check state: ${text().slice(0, 300)}`);
+      assert.ok(!has('component.checkingStored'), 'still shown as checking');
+      assert.ok(buttons('common.retry').length >= 1, 'no Retry');
+      assert.deepEqual(globalThis.currentTest.toasts, []);
+      await press(buttons('common.retry')[0]);
+      await spin(4);
+      assert.equal(scanCalls().length, 2, 'Retry did not ask once more');
+    } finally { await cleanup(); }
+  });
+
+  test(`${name}: a check held by a change in progress says so, once, with Retry`, async () => {
+    await freshCheck();
+    serve({ '/api/v1/managed-services': () => Response.json(UNVERIFIED, { status: 503 }) }, 'admin', { [SCAN]: () => Response.json({ error: 'busy', code: 'service_operation_busy' }, { status: 409 }) });
+    try {
+      await mount(Component, props);
+      await spin(6);
+      assert.equal(scanCalls().length, 1, 'a held check was asked again by itself');
+      assert.ok(has("component.checkHeld"), `the held state is not said: ${text().slice(300, 1200)}`);
+      assert.ok(buttons('common.retry').length >= 1, 'no Retry');
+      assert.deepEqual(globalThis.currentTest.toasts, []);
+    } finally { await cleanup(); }
+  });
+
+  // --- A held check resumes by itself (15 Oct 2026) ---------------------------
+  // The held state used to wait for the person's "Try again". It now follows
+  // the Dashboard: the host-mutation-readiness read (GET only, tab visible,
+  // one at a time, every 5 s) sees the server go from busy to ready, and the
+  // record is asked for once more. No loop, and Retry stays.
+  test(`${name}: a held check resumes by itself once the readiness read goes busy → ready: one follow-up check, GET only`, async () => {
+    await freshCheck();
+    const held = heldThenOk();
+    const clock = fakeIntervals();
+    serve({ '/api/v1/managed-services': held.read, [READINESS]: () => Response.json(held.busy ? { ready: false, code: 'HOST_MUTATION_BUSY', reason: 'package_manager_active' } : { ready: true }) }, 'admin', held.changes);
+    try {
+      await mount(Component, props);
+      await spin(6);
+      assert.equal(scanCalls().length, 1, `expected the one held check: ${callLog()}`);
+      assert.ok(has('component.checkHeld'), 'the held state is not said');
+      assert.ok(buttons('common.retry').length >= 1, 'Retry is gone');
+      assert.equal(reads(READINESS), 1, 'the first readiness read did not run');
+      assert.equal(clock.polls().length, 1, 'no re-read is scheduled');
+      await act(async () => { clock.polls()[0].fn(); await settled(); await settled(); });
+      assert.equal(reads(READINESS), 2);
+      assert.equal(scanCalls().length, 1, 'a check was asked while the server was still busy');
+      held.busy = false;
+      await act(async () => { clock.polls()[0].fn(); await settled(); await settled(); });
+      await spin(6);
+      assert.equal(scanCalls().length, 2, `expected exactly one follow-up check: ${callLog()}`);
+      assert.ok(has(drawn), `the record is not drawn after the follow-up: ${text().slice(0, 300)}`);
+      assert.ok(!has('component.checkHeld'));
+      assert.equal(clock.polls().length, 0, 'the readiness read goes on after the held state ended');
+      assert.equal(reads(READINESS), 3, 'readiness was read more than the three times asked');
+      assert.equal(calls.filter((call) => call.method !== 'GET' && !call.url.startsWith(SCAN)).length, 0, 'the page changed something');
+      assert.deepEqual(globalThis.currentTest.toasts, []);
+    } finally { clock.restore(); await cleanup(); }
+  });
+
+  test(`${name}: a held check is not followed up when the server never reads as busy, or stays busy (negative control)`, async () => {
+    for (const busyAlways of [false, true]) {
+      await freshCheck();
+      const clock = fakeIntervals();
+      serve({
+        '/api/v1/managed-services': () => Response.json(UNVERIFIED, { status: 503 }),
+        [READINESS]: () => Response.json(busyAlways ? { ready: false, code: 'HOST_MUTATION_BUSY', reason: 'package_manager_active' } : { ready: true }),
+      }, 'admin', { [SCAN]: () => Response.json({ error: 'busy', code: 'service_operation_busy' }, { status: 409 }) });
+      try {
+        await mount(Component, props);
+        await spin(6);
+        for (let i = 0; i < 4; i += 1) await act(async () => { clock.polls()[0]?.fn(); await settled(); await settled(); });
+        await spin(4);
+        assert.equal(scanCalls().length, 1, `${busyAlways ? 'busy forever' : 'never busy'}: a follow-up check ran: ${callLog()}`);
+        assert.ok(has('component.checkHeld'), 'the held state was dropped');
+        assert.ok(buttons('common.retry').length >= 1, 'no Retry');
+      } finally { clock.restore(); await cleanup(); }
+    }
+  });
+
+  test(`${name}: a held check reads readiness only while the tab is visible`, async () => {
+    await freshCheck();
+    const clock = fakeIntervals();
+    serve({
+      '/api/v1/managed-services': () => Response.json(UNVERIFIED, { status: 503 }),
+      [READINESS]: () => Response.json({ ready: false, code: 'HOST_MUTATION_BUSY', reason: 'package_manager_active' }),
+    }, 'admin', { [SCAN]: () => Response.json({ error: 'busy', code: 'service_operation_busy' }, { status: 409 }) });
+    const doc = Object.assign(new EventTarget(), { visibilityState: 'hidden' });
+    globalThis.document = doc;
+    try {
+      await mount(Component, props);
+      await spin(6);
+      assert.ok(has('component.checkHeld'));
+      assert.equal(reads(READINESS), 0, 'readiness was read in a hidden tab');
+      assert.equal(clock.polls().length, 0, 'a re-read is scheduled in a hidden tab');
+      doc.visibilityState = 'visible';
+      await act(async () => { doc.dispatchEvent(new Event('visibilitychange')); await settled(); await settled(); });
+      assert.equal(reads(READINESS), 1, 'shown again: one read at once');
+      assert.equal(clock.polls().length, 1, 'the re-read does not resume');
+      doc.visibilityState = 'hidden';
+      await act(async () => { doc.dispatchEvent(new Event('visibilitychange')); });
+      assert.equal(clock.polls().length, 0, 'hidden again: the re-read goes on');
+      assert.equal(calls.filter((call) => call.method !== 'GET' && !call.url.startsWith(SCAN)).length, 0);
+      assert.equal(scanCalls().length, 1);
+    } finally { clock.restore(); await cleanup(); }
+  });
+
+  test(`${name}: a refusal that returns after a successful check is not checked again by itself`, async () => {
+    // The check succeeds but the record stays refused: one check, not a loop.
+    await freshCheck();
+    const door = unverifiedUntilChecked(() => Response.json({ services: [redisRecord] }), { checks: false });
+    serve({ '/api/v1/managed-services': door.read }, 'admin', door.changes);
+    try {
+      await mount(Component, props);
+      await spin(8);
+      assert.equal(scanCalls().length, 1, `a loop: ${callLog()}`);
+      assert.ok(has('component.unknown'), 'the record that is still refused is not reported');
+    } finally { await cleanup(); }
+  });
+}
+
+test('a component page whose stored record is refused for another reason does not run the check (negative control)', async () => {
+  serve({ '/api/v1/managed-services': json({ error: 'server sentence', code: 'INTERNAL' }, 502) });
+  try {
+    await mount(ServiceRecordLookup, { serviceId: 'redis', onBack() {}, children: () => 'component-page' });
+    await spin(3);
+    assert.equal(scanCalls().length, 0, 'the check ran for an unrelated refusal');
+    assert.ok(has('component.unknown'));
+  } finally { await cleanup(); }
 });

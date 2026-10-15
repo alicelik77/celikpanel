@@ -150,7 +150,7 @@ test('partial webmail uninstall keeps an idempotent cleanup retry reachable', ()
 
   const cleanupSuccessChoice = uninstallFlow.indexOf('nextCleanupAttempt !== null', uninstallRequest);
   const cleanupSuccessCopy = uninstallFlow.indexOf(`t('services.webmailCleanupCompleted')`, cleanupSuccessChoice);
-  const ordinarySuccessCopy = uninstallFlow.indexOf(`t('services.uninstalled', { name: service.name })`, cleanupSuccessCopy);
+  const ordinarySuccessCopy = uninstallFlow.indexOf(`t('services.uninstalled', { name: componentName(service, t) })`, cleanupSuccessCopy);
   const successToast = uninstallFlow.lastIndexOf('showToast(', cleanupSuccessChoice);
   const closeBeforeSuccess = uninstallFlow.lastIndexOf('closeUninstallDialog();', successToast);
   assert.ok(cleanupSuccessChoice >= 0, 'successful cleanup requests must branch on the captured attempt kind');
@@ -236,9 +236,19 @@ test('state refresh failure copy never claims the operation completed', () => {
   const turkishRefresh = turkish.match(/'err\.SERVICE_STATE_REFRESH_FAILED': '([^']+)'/)?.[1] ?? '';
 
   assert.match(englishRefresh, /operation outcome and current service state could not be verified/i);
-  assert.match(englishRefresh, /Run Rescan/);
   assert.doesNotMatch(englishRefresh, /completed|succeeded|removed/i);
   assert.match(turkishRefresh, /İşlemin sonucu ve servisin güncel durumu doğrulanamadı/);
-  assert.match(turkishRefresh, /Yeniden Tara/);
   assert.doesNotMatch(turkishRefresh, /tamamlandı|başarılı|kaldırıldı/i);
+  // D-032: no sentence tells the owner to run a button; the Panel checks again.
+  assert.doesNotMatch(englishRefresh, /rescan/i);
+  assert.match(englishRefresh, /checks the components again by itself/);
+  assert.doesNotMatch(turkishRefresh, /yeniden tara/i);
+  assert.match(turkishRefresh, /kendiliğinden yeniden denetler/);
+  // A component's own page checks too (15 Oct 2026): the sentence names it.
+  assert.match(englishRefresh, /while the Dashboard, the Components page or a component’s page is open/);
+  assert.match(turkishRefresh, /Panel, Bileşenler sayfası ya da bir bileşenin sayfası açıkken/);
+  const englishUnverified = english.match(/'err\.SERVICE_STATE_UNVERIFIED': '([^']+)'/)?.[1] ?? '';
+  const turkishUnverified = turkish.match(/'err\.SERVICE_STATE_UNVERIFIED': '([^']+)'/)?.[1] ?? '';
+  assert.match(englishUnverified, /while the Dashboard, the Components page or a component’s page is open/);
+  assert.match(turkishUnverified, /Panel, Bileşenler sayfası ya da bir bileşenin sayfası açıkken/);
 });

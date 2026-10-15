@@ -330,9 +330,11 @@ test('update copy is localized and update components contain no visible Turkish 
     assert.match(tracker, /useI18n\(\)/);
 });
 
-test('navigation lock copy describes the same bounded two-minute watchdog policy', () => {
-    assert.ok(en.includes('It unlocks automatically after two minutes; tracking continues.'));
-    assert.ok(tr.includes('dakika sonra otomatik'));
+test('navigation lock copy describes the same bounded watchdog policy: two minutes, or the restart up to six', () => {
+    // set17b F1: the restart keeps the lock until the panel answers again, at most 6 minutes from the start.
+    assert.ok(en.includes('It unlocks by itself after two minutes; if the panel is still restarting then, once it answers again, at the latest six minutes after the start. Tracking continues.'));
+    assert.ok(tr.includes('İki dakika sonra kendiliğinden açılır; panel o sırada hâlâ yeniden başlıyorsa yeniden yanıt verdiğinde, en geç başlangıçtan altı dakika sonra açılır.'));
+    assert.match(watchdog, /const SYSTEM_UPDATE_RESTART_NAVIGATION_LIMIT_MS = 6 \* 60_000/);
     assert.match(watchdog, /const SYSTEM_UPDATE_BLOCKING_DEADLINE_MS = 2 \* 60_000/);
 });
 

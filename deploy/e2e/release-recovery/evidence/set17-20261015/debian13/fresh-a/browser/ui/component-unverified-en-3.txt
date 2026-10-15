@@ -1,0 +1,26 @@
+Components
+Nginx
+
+Running
+
+Help
+Start
+Stop
+Restart
+Global
+SSL/TLS
+Rate limits
+Worker processes
+auto
+Worker connections
+768
+Keepalive timeout
+—
+Client max body size
+—
+Server tokens
+off; # Recommended practice is to turn this off
+Gzip
+on
+
+Read-only, parsed live from nginx -T. In-panel editing is not supported yet.

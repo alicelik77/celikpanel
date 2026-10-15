@@ -61,7 +61,10 @@ const loaderURL = link('../src/lib/accessGuidance.ts', specifier => specifier.en
 const withGuidance = specifier => real(specifier, item => item.endsWith('/accessGuidance') ? loaderURL : stub);
 const holdURL = link('../src/components/AccessHold.tsx', withGuidance);
 const bareHoldURL = link('../src/components/AccessHold.tsx', specifier => real(specifier, () => stub));
-const onboardingURL = link('../src/components/LicenseOnboarding.tsx', specifier => real(specifier, item => item.endsWith('/accessObservation') ? accessURL : item.endsWith('/AccessHold') ? holdURL : stub));
+// The followed update's restart signal is the real one; nothing publishes it here (set17 D1).
+const trackingURL = dataModule(compile('../src/lib/systemUpdateTracking.ts'));
+const restartURL = link('../src/lib/systemUpdateRestartSignal.ts', specifier => specifier.endsWith('/systemUpdateTracking') ? trackingURL : stub);
+const onboardingURL = link('../src/components/LicenseOnboarding.tsx', specifier => real(specifier, item => item.endsWith('/accessObservation') ? accessURL : item.endsWith('/AccessHold') ? holdURL : item.endsWith('/systemUpdateRestartSignal') ? restartURL : stub));
 const loginURL = link('../src/components/Login.tsx', withGuidance);
 const noticeURL = link('../src/components/UpdateReloadNotice.tsx', withGuidance);
 const bareNoticeURL = link('../src/components/UpdateReloadNotice.tsx', () => stub);
@@ -70,19 +73,22 @@ const sessionURL = link('../src/auth/usePanelSession.ts', specifier => real(spec
 // The interception sends every call through the request identity (D-029); the
 // gate is tested with the real one.
 const identityURL = dataModule(compile('../src/lib/requestIdentity.ts'));
+// The session gate's handling of the followed update's restart is the real one (2026-10-15).
+const startingURL = link('../src/lib/useUpdateRestartStarting.ts', specifier => specifier.endsWith('/systemUpdateRestartSignal') ? restartURL : stub);
 const app = source('../src/App.tsx');
 const gateURL = dataModule(`import React, { useCallback, useState, useEffect, useLayoutEffect, useRef, Suspense } from '${reactURL}';
  import { usePanelSession } from '${sessionURL}';
  import { AccessHold } from '${holdURL}';
  import { Login } from '${loginURL}';
  import { sendIdentified } from '${identityURL}';
+ import { useUpdateRestartStarting } from '${startingURL}';
  const fixture = () => globalThis.holdTest;
  const RecoveryAccess = props => React.createElement('aside', { cause: props.cause, checking: props.checking, user: props.user }, 'recovery');
  const AuthProvider = ({ user, onLogout, children }) => { fixture().logout = onLogout; return React.createElement('section', { 'data-user': user.username }, children); };
  const LicenseOnboarding = ({ children, suspended }) => React.createElement('article', { suspended }, children);
  const PageLoading = () => null, ComponentOperationProvider = ({ children }) => children, ServerSetupGate = ({ children }) => children;
  const AppRoutes = () => React.createElement(fixture().Routes);
- const publishSystemUpdateAuthentication = value => fixture().published.push(value);
+ const publishSystemUpdateAuthentication = value => { fixture().published.push(value); fixture().onPublished?.(value); };
  const shouldApplyUnauthorizedResponse = (request, current) => request === current;
  ${ts.transpileModule(app.slice(app.indexOf('function AuthGate()'), app.indexOf('function StandaloneRecovery(')) + '\nexport { AuthGate };', { compilerOptions: { jsx: ts.JsxEmit.React, module: ts.ModuleKind.ES2022, target: ts.ScriptTarget.ES2020 } }).outputText}`);
 
@@ -760,4 +766,206 @@ test('the update record names the update only within 30 minutes of its start', a
   const declarations = ['../src/lib/recoveryObservation.ts', '../src/components/SystemUpdateOperation.tsx', '../src/components/AccessHold.tsx', '../src/components/RecoveryAccess.tsx', '../src/offline/page.ts']
     .map(path => (source(path).match(/'celikpanel\.system-update-operation\.v1'/g) || []).length);
   assert.deepEqual(declarations, [1, 0, 0, 0, 0]);
+});
+
+// The open item of set17 D1 (2026-10-15): while the new Panel starts after an
+// update, its management answers 503 PANEL_STARTING. The first such answer to
+// any request marked the session unavailable: AccessHold held the pages, App
+// paused the update tracking (publishSystemUpdateAuthentication(false)) and the
+// update's navigation lease released its engaged lock for good. While the
+// followed update restarts the Panel, inside its own restart window, such an
+// answer is that restart: no hold, the tracking is not paused, the lock stays
+// until its own bound, and the Panel's readiness is read every 5 s. After the
+// window, the session is marked as before. A controlled clock; the lease, the
+// session, the hold and the restart signal are the real ones.
+//
+// set17 D1'in acik maddesi: guncellemeden sonra yeni Panel baslarken gelen
+// PANEL_STARTING yaniti, guncellemenin kendi penceresi icinde oturumu tutmaz,
+// izlemeyi duraklatmaz ve gezinme kilidini birakmaz; pencereden sonra eski
+// davranis gecerlidir.
+const leaseWatchdogURL = dataModule(compile('../src/lib/systemUpdateWatchdog.ts'));
+const leaseURL = link('../src/lib/useSystemUpdateNavigationLease.ts', specifier => specifier.endsWith('/systemUpdateWatchdog') ? leaseWatchdogURL : stub);
+const { useSystemUpdateNavigationLease } = await import(leaseURL);
+const restartSignal = await import(restartURL);
+const { UPDATE_RESTART_SESSION_READ_MS } = await import(startingURL);
+const settleAll = async () => { for (let i = 0; i < 6; i++) await new Promise(done => setImmediate(done)); };
+function fakeTime(start) {
+  const saved = { setTimeout: window.setTimeout, clearTimeout: window.clearTimeout, setInterval: window.setInterval, clearInterval: window.clearInterval, now: Date.now };
+  let now = start, next = 1; const tasks = new Map();
+  window.setTimeout = (fn, delay = 0) => { const id = next++; tasks.set(id, { at: now + Math.max(0, Number(delay) || 0), fn, every: 0 }); return id; };
+  window.setInterval = (fn, delay = 0) => { const id = next++; tasks.set(id, { at: now + delay, fn, every: Math.max(1, delay) }); return id; };
+  window.clearTimeout = window.clearInterval = id => { tasks.delete(id); };
+  Date.now = () => now;
+  return {
+    async advance(ms) {
+      const target = now + ms;
+      for (;;) {
+        let due = null;
+        for (const [id, task] of tasks) if (task.at <= target && (!due || task.at < due[1].at)) due = [id, task];
+        if (!due) break;
+        const [id, task] = due;
+        now = task.at;
+        if (task.every) task.at += task.every; else tasks.delete(id);
+        await act(async () => { task.fn(); await settleAll(); });
+      }
+      now = target;
+      await act(settleAll);
+    },
+    restore() { Object.assign(window, { setTimeout: saved.setTimeout, clearTimeout: saved.clearTimeout, setInterval: saved.setInterval, clearInterval: saved.clearInterval }); Date.now = saved.now; },
+  };
+}
+const REQUEST = 'b'.repeat(32);
+// The Panel as an update restarts it: answering, then refusing connections,
+// then starting (management refused with PANEL_STARTING, readiness "starting"),
+// then ready again.
+async function restartLab(start, startedAt) {
+  const lab = { phase: 'up', reads: [], lease: [], startedAt };
+  const replies = {
+    me: async () => { if (lab.phase === 'down') throw new TypeError('Failed to fetch'); return admin; },
+    availability: async () => {
+      lab.reads.push(Date.now() - start);
+      if (lab.phase === 'down') throw new TypeError('Failed to fetch');
+      return available(lab.phase === 'starting' ? 'starting' : 'ready');
+    },
+    management: async () => {
+      if (lab.phase === 'down') throw new TypeError('Failed to fetch');
+      return lab.phase === 'starting' ? problem(503, 'PANEL_STARTING') : Response.json({});
+    },
+  };
+  const values = new Map();
+  const runtime = {
+    now: () => Date.now(), monotonicNow: () => Date.now(),
+    schedule: (fn, delay) => window.setTimeout(fn, delay), cancel: id => window.clearTimeout(id),
+    storage: { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, value), removeItem: key => values.delete(key), key: () => null, length: 0 },
+    subscribe: () => () => {}, subscribeWake: () => () => {},
+  };
+  // Wired as App and the provider wire it: the lock is requested while the
+  // update tracking runs, and the tracking runs while the session publishes true.
+  function Lease() {
+    const [tracking, setTracking] = React.useState(false);
+    globalThis.holdTest.onPublished = setTracking;
+    const lease = useSystemUpdateNavigationLease(REQUEST, startedAt, tracking, null, runtime);
+    lab.lease.push(lease.blocked);
+    return null;
+  }
+  fixture({ Routes, me: () => replies.me(), reads: 0 });
+  globalThis.fetch = (url, options) => { globalThis.holdTest.requests = [...(globalThis.holdTest.requests ?? []), [String(url), options?.method ?? 'GET']]; return String(url).includes('/panel/availability') ? replies.availability() : replies.management(String(url)); };
+  mounts = 0;
+  await act(async () => { tree = Renderer.create(React.createElement(React.Fragment, null, React.createElement(Lease), React.createElement(AuthGate))); await settleAll(); });
+  return lab;
+}
+// Requests the page, the update tracking and the licence gate make while the Panel starts.
+async function startingAnswers() {
+  await act(async () => {
+    await fetch('/api/v1/license/access');
+    await fetch(`/api/v1/panel/update/status?request_id=${REQUEST}`);
+    await fetch('/api/v1/domains');
+    await settleAll();
+  });
+}
+const publishedSince = from => globalThis.holdTest.published.slice(from);
+const signal = (startedAt, lostSince) => act(async () => restartSignal.publishSystemUpdateRestart({ requestID: REQUEST, startedAt, lostSince }));
+const noSignal = () => act(async () => restartSignal.publishSystemUpdateRestart(null));
+function assertPageStayed() {
+  assert.equal(tree.root.findAllByType('main').length, 1, 'the page stays mounted');
+  assert.equal(mounts, 1, 'the page was never rebuilt');
+}
+
+test('update restart: PANEL_STARTING inside the restart window holds nothing, keeps the tracking and the lock, and reads readiness on', async () => {
+  const start = Date.now();
+  const clock = fakeTime(start);
+  try {
+    // The update started 20 s before; the server has said it is active.
+    const lab = await restartLab(start, start - 20000);
+    await signal(lab.startedAt, null);
+    await clock.advance(2000);
+    assert.equal(globalThis.holdTest.published.at(-1), true, 'the update tracking runs');
+    assert.equal(lab.lease.at(-1), true, 'the update holds its navigation lock');
+    const from = globalThis.holdTest.published.length;
+    // T+20 s: the old Panel stops; the tracking's first lost read at T+25.6 s.
+    await clock.advance(18000);
+    lab.phase = 'down';
+    await clock.advance(5600);
+    await signal(lab.startedAt, start + 25600);
+    await act(async () => { await fetch('/api/v1/domains').catch(() => {}); });
+    // T+40 s: the new Panel answers, its management still starting, for 20 s.
+    await clock.advance(40000 - (Date.now() - start));
+    lab.phase = 'starting';
+    const readsBefore = lab.reads.length;
+    await startingAnswers();
+    await clock.advance(1);
+    assert.equal(held().length, 0, 'no held pages');
+    assert.equal(layers().length, 0, 'no "The Panel is starting" dialog over the update');
+    assert.ok(!text().includes('recovery.startingTitle'), text());
+    assert.equal(tree.root.findByType('article').props.suspended, false, 'the licence gate is not suspended');
+    assert.deepEqual(publishedSince(from).filter(value => value === false), [], 'the update tracking is not paused');
+    assert.equal(lab.lease.at(-1), true, 'the lock is kept');
+    // Repeated answers through the start: still nothing; readiness read every 5 s.
+    for (let i = 0; i < 3; i++) { await startingAnswers(); await clock.advance(UPDATE_RESTART_SESSION_READ_MS); }
+    assert.equal(held().length, 0);
+    const during = lab.reads.slice(readsBefore);
+    assert.ok(during.length >= 3, `readiness is read on during the start: ${during}`);
+    assert.ok(during.every((at, index) => index === 0 || at - during[index - 1] >= UPDATE_RESTART_SESSION_READ_MS), `not more often than every 5 s: ${during}`);
+    // T+60 s: ready. The next read ends the wait; no hold was ever drawn.
+    await clock.advance(60000 - (Date.now() - start));
+    lab.phase = 'up';
+    await clock.advance(UPDATE_RESTART_SESSION_READ_MS);
+    const settled = lab.reads.length;
+    await clock.advance(3 * UPDATE_RESTART_SESSION_READ_MS);
+    assert.equal(lab.reads.length, settled, 'a ready answer ends the readiness reads');
+    assert.equal(held().length, 0);
+    assert.deepEqual(publishedSince(from).filter(value => value === false), []);
+    assert.equal(lab.lease.at(-1), true, 'still locked after the Panel came back');
+    assertPageStayed();
+    // The lock still ends by its own bound: 2 minutes from the update's start (T+100 s).
+    await clock.advance(100000 - (Date.now() - start) - 1000);
+    assert.equal(lab.lease.at(-1), true, '1 s before its bound');
+    await clock.advance(2000);
+    assert.equal(lab.lease.at(-1), false, 'released by its own bound');
+    assert.deepEqual(publishedSince(from).filter(value => value === false), []);
+    assert.ok(globalThis.holdTest.requests.every(([, method]) => method === 'GET'), 'reads only');
+  } finally { await noSignal(); clock.restore(); await clean(); }
+});
+
+test('update restart: the window bounds the wait; repeated answers cannot extend it; then the hold explains as before', async () => {
+  const start = Date.now();
+  const clock = fakeTime(start);
+  try {
+    // Started 5 min 30 s before: the window is 2 minutes from the first PANEL_STARTING answer (T+5 s).
+    const lab = await restartLab(start, start - 330000);
+    await signal(lab.startedAt, null);
+    await clock.advance(5000);
+    const from = globalThis.holdTest.published.length;
+    lab.phase = 'starting';
+    await startingAnswers();
+    // Answers keep coming until 2 s before the end.
+    while (Date.now() - start < 115000) { await clock.advance(10000); await startingAnswers(); }
+    await clock.advance(125000 - 2000 - (Date.now() - start));
+    await startingAnswers();
+    assert.equal(held().length, 0, '2 s before the end: still the update restart');
+    assert.deepEqual(publishedSince(from).filter(value => value === false), []);
+    await clock.advance(4000);
+    assert.equal(held().length, 1, '2 s after the end: the session is marked as before');
+    await clock.advance(2000);
+    assert.ok(text().includes('recovery.startingTitle'), text());
+    assert.equal(globalThis.holdTest.published.at(-1), false, 'and the tracking is paused as before');
+    assertPageStayed();
+  } finally { await noSignal(); clock.restore(); await clean(); }
+});
+
+test('update restart control: without a followed update PANEL_STARTING holds the page, pauses the tracking and the lock ends', async () => {
+  const start = Date.now();
+  const clock = fakeTime(start);
+  try {
+    const lab = await restartLab(start, start - 20000);
+    await clock.advance(2000);
+    assert.equal(lab.lease.at(-1), true);
+    lab.phase = 'starting';
+    await startingAnswers();
+    await clock.advance(2000);
+    assert.equal(held().length, 1);
+    assert.ok(text().includes('recovery.startingTitle'), text());
+    assert.equal(globalThis.holdTest.published.at(-1), false);
+    assert.equal(lab.lease.at(-1), false, 'an engaged lock that is no longer requested is released for good');
+  } finally { clock.restore(); await clean(); }
 });

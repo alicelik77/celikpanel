@@ -1,0 +1,19 @@
+update baseline v0.1.0-alpha.85 85 36c33c4531ee6c1306d324db7a666403176f3bf7 31b03ddd762e20d0a841e728b75df321ba0fe96b15e9d1a568843d49d3245c16 /var/tmp/cp-pair-accept/dist/36c33c4531ee6c1306d324db7a666403176f3bf7-acceptance-license/dist.json 
+update good v0.1.0-alpha.86 86 ecd2a5f088d676f7cc8a8e571ed3c903ea951f3e 4569b5eb0dba432799be5f63abeec4afca48669ead46151dd10d8ae80ccd72d0 /var/tmp/cp-pair-accept/dist/ecd2a5f088d676f7cc8a8e571ed3c903ea951f3e-acceptance-license/dist.json 
+update defective v0.1.0-alpha.86 86 8acfb74a842488c46a8083cca05e2bb10fc1fb97 ab140cf3749d018af75d83d6214f61a10869a36f6b9cc8f241c1e92e232a4736 /var/tmp/cp-pair-accept/dist/8acfb74a842488c46a8083cca05e2bb10fc1fb97-acceptance-license/dist.json 
+second baseline v0.1.0-alpha.86 86 ecd2a5f088d676f7cc8a8e571ed3c903ea951f3e 4569b5eb0dba432799be5f63abeec4afca48669ead46151dd10d8ae80ccd72d0 /var/tmp/cp-pair-accept/dist/ecd2a5f088d676f7cc8a8e571ed3c903ea951f3e-acceptance-license/dist.json built by an earlier run, used unchanged (UPD1_REUSE_DIST_OF_COMMIT)
+second good v0.1.0-alpha.87 87 20a9baa5d0ccb269528a02ec8c14229bc2ee2493 34c753c6158ecedfea501d3f9c5494557f12609b61e989bbc00cecdba82cb93e /var/tmp/cp-pair-accept/dist/20a9baa5d0ccb269528a02ec8c14229bc2ee2493-acceptance-license/dist.json 
+second defective v0.1.0-alpha.87 87 0aa2bb3c1394aeee5cc7e153a8b96a0e4d0ee51b 1df2f933c669c4bf27e81323df1c5d58c8a0ecde6a65d3aa19ecf4f179b60d0c /var/tmp/cp-pair-accept/dist/0aa2bb3c1394aeee5cc7e153a8b96a0e4d0ee51b-acceptance-license/dist.json 
+total 28
+drwxr-xr-x 7 root root 4096 Oct 15 20:10 .
+drwxr-xr-x 5 root root 4096 Oct 12 22:46 ..
+drwxr-xr-x 4 root root 4096 Oct 15 20:10 0aa2bb3c1394aeee5cc7e153a8b96a0e4d0ee51b-acceptance-license
+drwxr-xr-x 4 root root 4096 Oct 15 20:10 20a9baa5d0ccb269528a02ec8c14229bc2ee2493-acceptance-license
+drwxr-xr-x 4 root root 4096 Oct 15 20:07 36c33c4531ee6c1306d324db7a666403176f3bf7-acceptance-license
+drwxr-xr-x 4 root root 4096 Oct 15 20:08 8acfb74a842488c46a8083cca05e2bb10fc1fb97-acceptance-license
+drwxr-xr-x 4 root root 4096 Oct 15 20:07 ecd2a5f088d676f7cc8a8e571ed3c903ea951f3e-acceptance-license
+1.4G	/var/tmp/cp-pair-accept/dist/0aa2bb3c1394aeee5cc7e153a8b96a0e4d0ee51b-acceptance-license
+1.4G	/var/tmp/cp-pair-accept/dist/20a9baa5d0ccb269528a02ec8c14229bc2ee2493-acceptance-license
+1.4G	/var/tmp/cp-pair-accept/dist/36c33c4531ee6c1306d324db7a666403176f3bf7-acceptance-license
+1.4G	/var/tmp/cp-pair-accept/dist/8acfb74a842488c46a8083cca05e2bb10fc1fb97-acceptance-license
+1.4G	/var/tmp/cp-pair-accept/dist/ecd2a5f088d676f7cc8a8e571ed3c903ea951f3e-acceptance-license

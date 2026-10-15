@@ -1,0 +1,130 @@
+{
+  "checks": {
+    "check": {
+      "body": {
+        "available": true,
+        "current_commit": "313f3eea2c9b89251588648b09484cd34b7aecb1",
+        "current_version": "v0.1.0-alpha.86",
+        "supported": true,
+        "target": {
+          "arch": "amd64",
+          "archive_sha256": "887a16c0d3c7c1ce30371dbdc91661aadf6a9bf95663233ef8c35464d026ccfc",
+          "archive_size": "66170399",
+          "commit": "c48678d34583868ab583db4cfb6c97c36e423db6",
+          "os": "linux",
+          "published_at": "2026-10-15T14:16:28Z",
+          "sequence": "87",
+          "version": "v0.1.0-alpha.87"
+        }
+      },
+      "http": 200
+    },
+    "observer_armed": {
+      "at": "2026-10-15T14:25:28Z",
+      "seconds": 0.85
+    },
+    "observer_intent": {
+      "baseline": {
+        "agent_sha256": "360fcce3e7d1e6f1d86c51ce5e97eda222f744a93269df86daae90ac80d3c503",
+        "commit": "313f3eea2c9b89251588648b09484cd34b7aecb1",
+        "panel_sha256": "6fa269f0ef72aacc095ec8c44e3c68b8df64501d9540991ad88e6a927efadc03",
+        "version": "v0.1.0-alpha.86"
+      },
+      "identity": {
+        "cell_id": "release-recovery__601235e6341b9f1b",
+        "node": "debian13",
+        "nonce": "601235e6341b9f1b6fb4ee0213fc32099b369b274ba3bdd3f9f2c8d0da15fc1e",
+        "vm_uuid": "70e51c2f-7028-5607-8cff-c727e18b6fee"
+      },
+      "mode": "watch",
+      "operation_id": "1669d2e8c9cd241bc0c93505605454f0",
+      "recovery_fault": null,
+      "schema": "celikpanel/owner-update-observer-intent/v1",
+      "target": {
+        "agent_sha256": "05dd42e7a9f208e62426b9ee52b885bf341afecc442701cb03aed2a9deaadef7",
+        "commit": "c48678d34583868ab583db4cfb6c97c36e423db6",
+        "panel_sha256": "9e097f99907cb3df015c7c0582b751435eab200a09c71583292304e482d28431",
+        "version": "v0.1.0-alpha.87"
+      }
+    },
+    "observer_unit": "celikpanel-lab-owner-update-observer-1669d2e8c9cd241bc0c93505605454f0.service",
+    "origin_check": {
+      "addresses": [
+        "127.0.0.1"
+      ],
+      "boot_id": "9deb546c-f4f9-406f-845d-c2d141a43b47",
+      "getent_outcome": "found",
+      "getent_returncode": 0,
+      "getent_status": "ok",
+      "getent_stdout": "127.0.0.1       celikpanel.net\n",
+      "http": "200",
+      "loopback_only": true,
+      "ok": true,
+      "unit": {
+        "ActiveState": "active",
+        "NRestarts": "0",
+        "UnitFileState": "enabled"
+      }
+    },
+    "page_window": {
+      "browser_done": {
+        "at": "2026-10-15T14:25:33.480Z",
+        "by": "cold-load-set17.mjs",
+        "started": true
+      },
+      "ended_at": "2026-10-15T14:25:34Z",
+      "hand": "/var/tmp/cp-set17/hand/h17u86-page",
+      "password_file_removed": true,
+      "window": "page"
+    },
+    "page_window_preps": [
+      {
+        "at": "2026-10-15T14:25:26Z",
+        "prep": "page-ready",
+        "result": {
+          "current_version": "v0.1.0-alpha.86",
+          "ok": true,
+          "target": {
+            "archive_sha256": "887a16c0d3c7c1ce30371dbdc91661aadf6a9bf95663233ef8c35464d026ccfc",
+            "commit": "c48678d34583868ab583db4cfb6c97c36e423db6",
+            "sequence": "87",
+            "version": "v0.1.0-alpha.87"
+          }
+        }
+      },
+      {
+        "at": "2026-10-15T14:25:28Z",
+        "prep": "arm_1669d2e8c9cd241bc0c93505605454f0",
+        "result": {
+          "armed": true,
+          "request_id": "1669d2e8c9cd241bc0c93505605454f0",
+          "seconds": 0.85
+        }
+      }
+    ],
+    "request_id": "1669d2e8c9cd241bc0c93505605454f0",
+    "start_answer": {
+      "answer_seen_by_the_browser": false,
+      "answered_ms": null,
+      "armed": {
+        "armed": true,
+        "request_id": "1669d2e8c9cd241bc0c93505605454f0",
+        "seconds": 0.85
+      },
+      "body": null,
+      "failed": null,
+      "held_ms": 1792074327265,
+      "note": "the page's own POST, held unchanged until the observer was armed, then released",
+      "page_dialog_line_after_release": "The update is being applied; the panel may be unavailable briefly.",
+      "pressed_ms": 1792074327159,
+      "released_ms": 1792074328467,
+      "request_id": "1669d2e8c9cd241bc0c93505605454f0",
+      "schema": "celikpanel/set17-start-answer/v1",
+      "status": null
+    }
+  },
+  "finished_at": "2026-10-15T14:25:34Z",
+  "name": "arm",
+  "started_at": "2026-10-15T14:25:14Z",
+  "verdict": "passed"
+}

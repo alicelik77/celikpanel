@@ -1,0 +1,94 @@
+{
+  "guest_fresh": true,
+  "helpers": {
+    "guest_bound_worker.py": "1ebff5e14d87761e72dbb3ca30c6f1aaad5a2aa5df7971f23ab81ae305bc3ea1",
+    "guest_bound_worker.py (set17 generated copy)": "c3ef61b8101b6f40cc1ce31cd617a087ff00e06db9feca19996f63f29011c719",
+    "guest_owner_port_hold.py": "81c3ccc9ed21edaa3429546a3abcbef81ac8a738c182bee752bb7486490a8bde",
+    "guest_owner_update_observer.py": "263ed14c59f24956aaf0e21ece5b74b9f81dbfe19ad652d89a87ea6e25f731af",
+    "guest_port_fault.py": "be8eb7008d50b343c1194bef8c32c14335fa750cd7be61c43a7c1e52b2d6efc6",
+    "guest_probe.py": "417dcfc2ad32c399aa43bc33d886f64eee9eae88707556ff22cf0ea6b3a008a2",
+    "guest_recovery_fault.py": "4d9ae59bcbc2fdb4a6f42ade529c1b6b1f6366b726f92ba37058957b7696da50",
+    "guest_recovery_handoff.py": "21dfaa3bc76b56f463a706f50f8b6413a5325ebba978b113a0b4a59d2be4c0cf",
+    "guest_request_identity_native.py": "5300f7398b81a0126765d49db8c070eb35a472daa1260074f5f25b1745242349",
+    "guest_set10_native.py": "562b857fa64bb950d8a34704f60fc5b682b665b117a03eba387d6493899b181b",
+    "guest_set11_native.py": "5471d8ce8c10657697d540a5fb8d3ca067ecccace6339fdc3a37ef26242d348c",
+    "guest_set12_native.py": "19e93626f3ef5c0434514c83fd33962c2afc729b398d3abc88c756cab56faa0d",
+    "guest_set13_native.py": "302e45f1ca7fe33f66fe280b823d10e652e330b649c53120edafee142f0d03c1",
+    "guest_set14_native.py": "eebc8a4f358e052753e182b020546569bf47ecb19f6bf454550be0edfa28d624",
+    "guest_set4_native.py": "3d601a1cb544abd7a244d9015804e6acfd584c079691b56bf7c7af0f94017c12",
+    "guest_set8_native.py": "8c58a8a6485d8eea9a3020666cfdcb4ef230cd2be1a8a141b4e9242082d6172b",
+    "guest_upd1_workload.py": "3d2f218f298b3ded3228b0089155b45e1e81c8dce9a8b8783e5face05287b8cf",
+    "guest_update_kill.py": "f996f1cedf3777ef12b1f44282dcb3208c61400f76f27c4ed3fe4e290f95cd26"
+  },
+  "origin_name_before": {
+    "hosts_mappings": [],
+    "nsswitch_hosts": "hosts:          files myhostname resolve [!UNAVAIL=return] dns",
+    "resolver_queried": false
+  },
+  "proofs": {
+    "baseline": {
+      "agent_sha256": "8fc2d03a376738535e1fa81eea0b820f2224b6ee30117735bb1427c817c11eeb",
+      "commit": "36c33c4531ee6c1306d324db7a666403176f3bf7",
+      "dns_owner_tools": [
+        "dns-owner-tools/README.md",
+        "dns-owner-tools/bind-peer-inspect",
+        "dns-owner-tools/dns-peer-enroll",
+        "dns-owner-tools/pdns-peer-inspect"
+      ],
+      "files": 211,
+      "panel_sha256": "7be2afccff3d1299867352e4489719f6a1cea562acc1064ed8527c2819a83210",
+      "release_policy": {
+        "current": 85,
+        "format": "celikpanel-release-sequence-policy-v1",
+        "previous": 84,
+        "previous_commit": "f0157e6c8f1614cff176821172f8a9067493e625",
+        "previous_version": "v0.1.0-alpha.84",
+        "sha256": "3fdf0147b7f54b4535a9fa24e4966679e90a01ec27a188fba39e2f1fe3244643",
+        "version": "v0.1.0-alpha.85"
+      },
+      "source_proof": {
+        "acceptance_notice_sha256": "c68e9ee52f873ac4ebca4bd26c55d0946559ecaa6278b91f3b9e06ef66a9c87e",
+        "commit": "36c33c4531ee6c1306d324db7a666403176f3bf7",
+        "exempted_from_git_proof": [
+          "ACCEPTANCE-LICENSE-BUILD.txt"
+        ],
+        "method": "real Git commit/tree and every packaged static source blob",
+        "tree": "c451c26de3cb179251e8dfd4b033ec7a9e18005e",
+        "verified_static_files": 62
+      },
+      "tree": "c451c26de3cb179251e8dfd4b033ec7a9e18005e"
+    },
+    "defective": {
+      "agent_sha256": "92aba1bdf0619553da5ab41de261055a7beee1e76f9603e57e478e61d1ef5eab",
+      "commit": "6544ee8b1186ad42b38bd2b3b0cac1c8f07f50b1",
+      "dns_owner_tools": [
+        "dns-owner-tools/README.md",
+        "dns-owner-tools/bind-peer-inspect",
+        "dns-owner-tools/dns-peer-enroll",
+        "dns-owner-tools/pdns-peer-inspect"
+      ],
+      "files": 214,
+      "panel_sha256": "617d37a7cee01a90ab6e29c2a916a6128851760da5acea96b0c73b548dec6e16",
+      "release_policy": {
+        "current": 86,
+        "format": "celikpanel-release-sequence-policy-v1",
+        "previous": 85,
+        "previous_commit": "36c33c4531ee6c1306d324db7a666403176f3bf7",
+        "previous_version": "v0.1.0-alpha.85",
+        "sha256": "cd8320f0b18d55213689adbbc95f41e3204b89827cf99acb07cbc21e35a99e02",
+        "version": "v0.1.0-alpha.86"
+      },
+      "source_proof": {
+        "acceptance_notice_sha256": "0847df105ad290f53f4d9713f9b62471f1e93b3df97bd6b5e9e39d16b1e9e03d",
+        "commit": "6544ee8b1186ad42b38bd2b3b0cac1c8f07f50b1",
+        "exempted_from_git_proof": [
+          "ACCEPTANCE-LICENSE-BUILD.txt"
+        ],
+        "method": "real Git commit/tree and every packaged static source blob",
+        "tree": "e941b8f1ccf9de29bd03cfd11ad0d8652c9b6f32",
+        "verified_static_files": 62
+      },
+      "tree": "e941b8f1ccf9de29bd03cfd11ad0d8652c9b6f32"
+    }
+  }
+}

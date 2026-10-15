@@ -1,0 +1,29 @@
+{
+  "cell": "page",
+  "chrome": "Chrome/155.0.8059.40",
+  "handover": {
+    "at": "2026-10-15T18:11:13Z",
+    "base": "https://127.0.0.1:19283",
+    "baseline_version": "v0.1.0-alpha.85",
+    "browser": {
+      "lang": "en",
+      "viewport": "desktop"
+    },
+    "cell": "set17b-upd1-debian13-good-control",
+    "local_port": 19283,
+    "mode": "update-page",
+    "password_file": "(root-only file, not copied)",
+    "preps": [
+      "page-ready",
+      "arm_<request id>"
+    ],
+    "schema": "celikpanel/set12-handover/v1",
+    "target_version": "v0.1.0-alpha.86",
+    "tls_leaf_sha256": "47eaa7316f8d6eece9c19902b555c5168239c501fb0538ea65c4756d3c277d04",
+    "username": "labadmin",
+    "window": "page"
+  },
+  "started": "2026-10-15T18:11:14.991Z",
+  "ended": "2026-10-15T18:15:15.157Z",
+  "ok": true
+}

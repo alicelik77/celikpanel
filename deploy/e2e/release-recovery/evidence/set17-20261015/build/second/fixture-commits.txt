@@ -1,0 +1,4 @@
+refs/upd1/baseline 313f3eea2c9b89251588648b09484cd34b7aecb1 tree=ce64f0a85fc3a90452be753560abc24fad0f115d Prepare v0.1.0-alpha.86: sequence 86, bootstrap pins, pinned tests
+refs/upd1/defective 8c6ac88b290b6662c8618878661b02857ff80348 tree=13a7fd995b002c0fd5ab89f28f9a9548f95e0bd5 test(fixture): set17 defective over the alpha.87 label - migrate-only fails (unpublished, disposable)
+refs/upd1/good c48678d34583868ab583db4cfb6c97c36e423db6 tree=ef82bc14b1148ac5f6ab11fa97335fa57c0fae63 test(fixture): set17 second update labelled v0.1.0-alpha.87 (release policy only; unpublished, disposable)
+refs/upd1/installed 313f3eea2c9b89251588648b09484cd34b7aecb1 tree=ce64f0a85fc3a90452be753560abc24fad0f115d Prepare v0.1.0-alpha.86: sequence 86, bootstrap pins, pinned tests

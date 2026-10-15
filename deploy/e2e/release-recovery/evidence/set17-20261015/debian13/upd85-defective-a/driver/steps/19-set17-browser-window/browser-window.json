@@ -1,0 +1,21 @@
+{
+  "browser_done": {
+    "at": "2026-10-15T15:11:59.330Z",
+    "by": "cold-load-set17.mjs"
+  },
+  "ended_at": "2026-10-15T15:12:00Z",
+  "hand": "/var/tmp/cp-set17/hand/h17udef-ui",
+  "password_file_removed": true,
+  "requests": [
+    {
+      "at": "2026-10-15T15:11:59Z",
+      "prep": "journal",
+      "result": {
+        "file": "steps/19-set17-browser-window/journal-window-1.txt",
+        "lines": 50,
+        "returncode": 0
+      }
+    }
+  ],
+  "window": "ui"
+}

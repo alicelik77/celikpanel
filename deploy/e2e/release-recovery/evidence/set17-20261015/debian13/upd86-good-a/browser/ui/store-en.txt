@@ -1,0 +1,278 @@
+Subscription Store
+Catalog management
+Subscription
+Admin Subscription — labadmin
+Rights for this subscription
+
+Admin Subscription
+
+labadmin
+
+The Store grants product rights only. Open Components to install or manage server software.
+
+Catalog
+
+Showing 20 of 20
+
+Search
+Category
+All categories
+Applications
+Automation
+Backups
+Containers
+Development
+DNS
+Email
+Monitoring
+Network
+Security
+Status
+All statuses
+Available
+Included
+Coming soon
+State not known yet
+Unsupported here
+Available
+
+APPLICATIONS
+
+One-click WordPress install
+
+By WordPress.org
+
+Grant a subscription access to the curated WordPress installer. Site deployment stays in Domain Apps.
+
+Grant access
+Available
+
+NETWORK
+
+VPN access
+
+By WireGuard
+
+Grant a subscription permission to create private WireGuard peers.
+
+Install all required components before granting this entitlement.
+
+Open in Components
+Included
+
+SECURITY
+
+SSL automation
+
+By Let's Encrypt / Certbot
+
+Issue and automatically renew trusted website certificates with ACME.
+
+Manage in Components
+Included
+
+DNS
+
+DNSSEC
+
+By CelikPanel / PowerDNS
+
+Sign authoritative DNS zones and publish registrar DS records safely.
+
+Open in Components
+Included
+
+BACKUPS
+
+Local backups
+
+By CelikPanel
+
+Create and schedule local file, database and full-domain backups.
+
+Open Domain Apps
+Included
+
+SECURITY
+
+ClamAV malware scanner
+
+By ClamAV
+
+Scan hosted files with the open-source ClamAV engine.
+
+Open in Components
+Included
+
+SECURITY
+
+Fail2Ban intrusion prevention
+
+By Fail2Ban
+
+Block repeated abusive login attempts with managed jails.
+
+Open in Components
+Included
+
+EMAIL
+
+Roundcube webmail
+
+By Roundcube
+
+Browser-based mail for domains hosted on this server.
+
+Manage in Components
+Included
+
+EMAIL
+
+Rspamd spam protection
+
+By Rspamd
+
+Modern spam filtering and DKIM integration for the local mail stack.
+
+Manage in Components
+Included
+
+MONITORING
+
+Netdata monitoring
+
+By Netdata
+
+Real-time server metrics through the managed Netdata component.
+
+Open in Components
+Coming soon
+
+SECURITY
+
+Managed per-site firewall
+
+By CelikPanel
+
+Customer-visible per-site firewall policy is not available yet.
+
+This offering is not available yet.
+
+Coming soon
+Coming soon
+
+EMAIL
+
+Business email
+
+By CelikPanel
+
+Larger enforced mailbox quotas and commercial mail features are in development.
+
+This offering is not available yet.
+
+Coming soon
+Coming soon
+
+NETWORK
+
+Dedicated IP
+
+By CelikPanel
+
+Subscription-level dedicated address allocation is in development.
+
+This offering is not available yet.
+
+Coming soon
+Coming soon
+
+AUTOMATION
+
+CelikPanel AI Agent
+
+By CelikPanel
+
+A panel-scoped assistant that can explain and perform approved CelikPanel operations.
+
+This offering is not available yet.
+
+Coming soon
+Coming soon
+
+DEVELOPMENT
+
+Git deployment
+
+By CelikPanel
+
+Deploy a site from an approved repository and branch.
+
+This offering is not available yet.
+
+Coming soon
+Coming soon
+
+BACKUPS
+
+Remote backup destinations
+
+By CelikPanel
+
+Send encrypted backups to S3-compatible or FTP destinations.
+
+This offering is not available yet.
+
+Coming soon
+Coming soon
+
+APPLICATIONS
+
+WordPress Toolkit
+
+By CelikPanel
+
+Lifecycle, security and update management for installed WordPress sites.
+
+This offering is not available yet.
+
+Coming soon
+Coming soon
+
+CONTAINERS
+
+Docker manager
+
+By Docker
+
+Policy-controlled container and Compose management is in development.
+
+This offering is not available yet.
+
+Coming soon
+Coming soon
+
+SECURITY
+
+Web application firewall
+
+By CelikPanel
+
+Managed per-site WAF rules and audit events are in development.
+
+This offering is not available yet.
+
+Coming soon
+Coming soon
+
+DNS
+
+External DNS sync
+
+By CelikPanel
+
+Provider API integrations for controlled DNS publication are in development.
+
+This offering is not available yet.
+
+Coming soon

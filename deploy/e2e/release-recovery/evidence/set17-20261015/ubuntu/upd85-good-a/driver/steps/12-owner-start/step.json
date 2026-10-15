@@ -1,0 +1,61 @@
+{
+  "checks": {
+    "by": "the owner's press in the browser: the page's own POST /api/v1/panel/update/start (held unchanged until the observer was armed, then released); the driver sent no start",
+    "packagekit_after_answer": {
+      "before": {
+        "at": "2026-10-15T15:30:20.897316Z",
+        "context_processes": [
+          {
+            "cmdline": "/usr/bin/python3 /usr/share/unattended-upgrades/unattended-upgrade-shutdown --wait-for-signal",
+            "comm": "unattended-upgr",
+            "pid": 856,
+            "ppid": "1"
+          }
+        ],
+        "general_lock_lines": [],
+        "lock_lines": [],
+        "other_package_processes": [],
+        "packagekit_unit": [
+          "ExecMainStartTimestamp=",
+          "ActiveState=inactive",
+          "SubState=dead"
+        ],
+        "packagekitd": [],
+        "rule": "idle",
+        "unparsed_lock_lines": []
+      },
+      "host_utc": "2026-10-15T15:30:20Z",
+      "label": "owner-start-after-answer"
+    },
+    "start": {
+      "body": null,
+      "failed": null,
+      "http": null,
+      "request_id": "3a1292fdde9af159ba2e1b1059622b1c"
+    },
+    "start_outcome": "unknown in the page; reconciled by the status read",
+    "status_after_the_start": {
+      "body": {
+        "created_at": "2026-10-15T15:30:14.761227039Z",
+        "found": true,
+        "request_id": "3a1292fdde9af159ba2e1b1059622b1c",
+        "status": "running",
+        "target": {
+          "arch": "amd64",
+          "archive_sha256": "6c64289048f9e3fd98655bf761665c3b1f500ec654007da776d422654f747d39",
+          "archive_size": "66169992",
+          "commit": "313f3eea2c9b89251588648b09484cd34b7aecb1",
+          "os": "linux",
+          "sequence": "86",
+          "version": "v0.1.0-alpha.86"
+        },
+        "updated_at": "2026-10-15T15:30:14.850641214Z"
+      },
+      "http": 200
+    }
+  },
+  "finished_at": "2026-10-15T15:30:20Z",
+  "name": "owner-start",
+  "started_at": "2026-10-15T15:30:20Z",
+  "verdict": "passed"
+}

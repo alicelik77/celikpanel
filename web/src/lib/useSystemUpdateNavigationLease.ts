@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useLayoutEffect, useReducer, useRef } from 'react';
 import {
-    SYSTEM_UPDATE_BLOCKING_DEADLINE_MS,
     SYSTEM_UPDATE_NAVIGATION_RELEASE_KEY,
     rememberSystemUpdateNavigationRelease,
     systemUpdateNavigationBlocked,
+    systemUpdateNavigationDeadline,
     systemUpdateNavigationReleasedInStorage,
     type SystemUpdateNavigationReleaseStorage,
+    type SystemUpdateNavigationRestart,
 } from './systemUpdateWatchdog';
 
 type TimerHandle = ReturnType<typeof setTimeout>;
@@ -81,10 +82,17 @@ function initiallyBlocked(
 // The lease is intentionally monotonic for an exact operation identity. Once
 // released, no phase transition, authentication event, wall-clock correction,
 // reload, or sibling-tab event may reacquire the global navigation lock.
+//
+// restart is the followed update's own restart while its tracking has lost the
+// Panel (set17b F1): a lock still held is then kept until the tracking reaches
+// the Panel again (restart becomes null) or the restart window ends, whichever
+// comes first (systemUpdateNavigationDeadline). It never re-opens a released
+// lock. Without it the two-minute lease is unchanged.
 export function useSystemUpdateNavigationLease(
     identity: string | null,
     createdAt: number | null,
     requested: boolean,
+    restart: SystemUpdateNavigationRestart | null,
     runtime: SystemUpdateNavigationLeaseRuntime = {},
 ): SystemUpdateNavigationLease {
     const now = runtime.now ?? defaultNow;
@@ -95,13 +103,18 @@ export function useSystemUpdateNavigationLease(
     const subscribe = runtime.subscribe ?? defaultSubscribe;
     const subscribeWake = runtime.subscribeWake ?? defaultSubscribeWake;
     const [, render] = useReducer((value: number) => value + 1, 0);
-    const stateRef = useRef<{ identity: string | null; blocked: boolean; engaged: boolean } | null>(null);
+    // anchor: the monotonic moment that corresponds to createdAt, fixed once
+    // per identity, so a deadline moved by a restart (or back at reconnection)
+    // is measured on the same monotonic scale and a wall-clock rollback between
+    // two runs of the timer effect cannot lengthen the lock.
+    const stateRef = useRef<{ identity: string | null; blocked: boolean; engaged: boolean; anchor: number | null } | null>(null);
 
     if (stateRef.current === null || stateRef.current.identity !== identity) {
         stateRef.current = {
             identity,
             blocked: initiallyBlocked(identity, createdAt, now(), storage),
             engaged: false,
+            anchor: null,
         };
     }
     if (requested && stateRef.current.blocked) stateRef.current.engaged = true;
@@ -115,6 +128,7 @@ export function useSystemUpdateNavigationLease(
     }, [storage]);
 
     const blocked = stateRef.current.blocked;
+    const deadline = createdAt === null ? Number.NaN : systemUpdateNavigationDeadline(createdAt, restart);
 
     // If a lock that was actually shown becomes inapplicable (authentication
     // pause, terminal transition, or exact-record reconciliation), release it
@@ -127,9 +141,14 @@ export function useSystemUpdateNavigationLease(
     useEffect(() => {
         if (!identity || createdAt === null || !blocked) return undefined;
         const observedNow = now();
-        const observedMonotonic = monotonicNow();
         const elapsed = observedNow - createdAt;
-        const remaining = SYSTEM_UPDATE_BLOCKING_DEADLINE_MS - elapsed;
+        const state = stateRef.current;
+        if (state && state.identity === identity && state.anchor === null) state.anchor = monotonicNow() - elapsed;
+        const anchor = state?.anchor ?? Number.NaN;
+        const span = deadline - createdAt;
+        const monotonicRemaining = span - (monotonicNow() - anchor);
+        const remaining = Number.isFinite(monotonicRemaining)
+            ? Math.min(deadline - observedNow, monotonicRemaining) : deadline - observedNow;
         if (!Number.isFinite(remaining) || remaining <= 0 || elapsed < 0) {
             release(identity, true);
             return undefined;
@@ -139,10 +158,10 @@ export function useSystemUpdateNavigationLease(
         // cannot be extended by a wall-clock rollback after this point.
         const checkDeadline = () => {
             const wallElapsed = now() - createdAt;
-            const monotonicElapsed = monotonicNow() - observedMonotonic;
+            const monotonicElapsed = monotonicNow() - anchor;
             if (!Number.isFinite(wallElapsed) || wallElapsed < 0
-                || wallElapsed >= SYSTEM_UPDATE_BLOCKING_DEADLINE_MS
-                || (Number.isFinite(monotonicElapsed) && monotonicElapsed >= remaining)) {
+                || wallElapsed >= span
+                || (Number.isFinite(monotonicElapsed) && monotonicElapsed >= span)) {
                 release(identity, true);
             }
         };
@@ -156,7 +175,7 @@ export function useSystemUpdateNavigationLease(
             unsubscribe();
             unsubscribeWake();
         };
-    }, [blocked, cancel, createdAt, identity, monotonicNow, now, release, schedule, subscribe, subscribeWake]);
+    }, [blocked, cancel, createdAt, deadline, identity, monotonicNow, now, release, schedule, subscribe, subscribeWake]);
 
     useEffect(() => {
         if (identity && !blocked) rememberSystemUpdateNavigationRelease(storage, identity);

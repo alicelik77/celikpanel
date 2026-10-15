@@ -1,0 +1,9 @@
+{
+  "at": "2026-10-15T15:30:14Z",
+  "prep": "arm_3a1292fdde9af159ba2e1b1059622b1c",
+  "result": {
+    "armed": true,
+    "request_id": "3a1292fdde9af159ba2e1b1059622b1c",
+    "seconds": 0.78
+  }
+}

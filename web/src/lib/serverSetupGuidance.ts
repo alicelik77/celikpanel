@@ -37,7 +37,7 @@ const address = (value: unknown): value is string => typeof value === 'string' &
 export function setupCheckReasonText(check: ServerSetupCheck): SetupGuidanceText | null {
     if (check.id !== 'mail_identity' || typeof check.reason !== 'string') return null;
     const vars = check.vars && typeof check.vars === 'object' && !Array.isArray(check.vars) ? check.vars : {};
-    const { hostname, ip, ptr, current, name } = vars as Record<string, unknown>;
+    const { hostname, ip, ptr, current, name, resolver, resolvers } = vars as Record<string, unknown>;
     if (check.state === 'unknown') {
         return check.reason === 'reverse_dns_unknown' && address(ip) ? text('setup.check.mailIdentity.reverseDNSUnknown', { ip }) : null;
     }
@@ -50,6 +50,16 @@ export function setupCheckReasonText(check: ServerSetupCheck): SetupGuidanceText
     }
     if (!dnsName(hostname) || !address(ip)) return null;
     if (check.reason === 'reverse_dns_mismatch') {
+        // The resolver that gave the answer, and whether the resolvers
+        // disagree (2026-10-15); an older Agent sends neither, and the
+        // sentence names no resolver.
+        // Yaniti veren cozumleyici ve cozumleyicilerin uyusmadigi; eski Agent
+        // ikisini de gondermez.
+        if (address(resolver)) {
+            const disagree = resolvers === 'disagree';
+            if (dnsName(ptr)) return text(disagree ? 'setup.check.mailIdentity.reverseDNSDisagree' : 'setup.check.mailIdentity.reverseDNSFrom', { ip, ptr, hostname, resolver });
+            return text(disagree ? 'setup.check.mailIdentity.reverseDNSMissingDisagree' : 'setup.check.mailIdentity.reverseDNSMissingFrom', { ip, hostname, resolver });
+        }
         return dnsName(ptr) ? text('setup.check.mailIdentity.reverseDNS', { ip, ptr, hostname }) : text('setup.check.mailIdentity.reverseDNSMissing', { ip, hostname });
     }
     if (check.reason === 'forward_dns_mismatch') return text('setup.check.mailIdentity.forwardDNS', { ip, hostname });

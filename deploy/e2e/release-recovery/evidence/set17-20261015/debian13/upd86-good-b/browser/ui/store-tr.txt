@@ -1,0 +1,278 @@
+Abonelik Mağazası
+Katalog yönetimi
+Abonelik
+Admin Subscription — labadmin
+Bu aboneliğin hakları
+
+Admin Subscription
+
+labadmin
+
+Mağaza yalnızca ürün hakkı verir. Sunucu yazılımlarını kurmak veya yönetmek için Bileşenler sayfasını açın.
+
+Katalog
+
+20 üründen 20 tanesi gösteriliyor
+
+Ara
+Kategori
+Tüm kategoriler
+Ağ
+DNS
+E-posta
+Geliştirme
+Güvenlik
+İzleme
+Konteynerler
+Otomasyon
+Uygulamalar
+Yedekleme
+Durum
+Tüm durumlar
+Kullanılabilir
+Dahil
+Yakında
+Durum henüz bilinmiyor
+Bu sunucuda desteklenmiyor
+Kullanılabilir
+
+UYGULAMALAR
+
+Tek tıkla WordPress kurulumu
+
+Sağlayıcı: WordPress.org
+
+Bir aboneliğe seçilmiş WordPress kurucusuna erişim verir. Site kurulumu Alan Adı Uygulamaları bölümünde kalır.
+
+Erişim ver
+Kullanılabilir
+
+AĞ
+
+VPN erişimi
+
+Sağlayıcı: WireGuard
+
+Bir aboneliğe özel WireGuard eşleri oluşturma izni verir.
+
+Bu hakkı vermeden önce gerekli tüm bileşenleri kurun.
+
+Bileşenlerde aç
+Dahil
+
+GÜVENLİK
+
+SSL otomasyonu
+
+Sağlayıcı: Let's Encrypt / Certbot
+
+ACME ile güvenilir site sertifikaları alın ve otomatik yenileyin.
+
+Bileşenlerde yönet
+Dahil
+
+DNS
+
+DNSSEC
+
+Sağlayıcı: CelikPanel / PowerDNS
+
+Yetkili DNS bölgelerini imzalayın ve kayıt kuruluşu DS kayıtlarını güvenle yayınlayın.
+
+Bileşenlerde aç
+Dahil
+
+YEDEKLEME
+
+Yerel yedekler
+
+Sağlayıcı: CelikPanel
+
+Yerel dosya, veritabanı ve tam alan adı yedekleri oluşturun ve zamanlayın.
+
+Alan Adı Uygulamalarını aç
+Dahil
+
+GÜVENLİK
+
+ClamAV zararlı yazılım tarayıcısı
+
+Sağlayıcı: ClamAV
+
+Barındırılan dosyaları açık kaynak ClamAV motoruyla tarayın.
+
+Bileşenlerde aç
+Dahil
+
+GÜVENLİK
+
+Fail2Ban saldırı önleme
+
+Sağlayıcı: Fail2Ban
+
+Yönetilen jail kurallarıyla tekrarlanan kötü niyetli giriş denemelerini engelleyin.
+
+Bileşenlerde aç
+Dahil
+
+E-POSTA
+
+Roundcube web posta
+
+Sağlayıcı: Roundcube
+
+Bu sunucuda barındırılan alan adları için tarayıcı tabanlı e-posta.
+
+Bileşenlerde yönet
+Dahil
+
+E-POSTA
+
+Rspamd spam koruması
+
+Sağlayıcı: Rspamd
+
+Yerel posta yığını için modern spam süzme ve DKIM entegrasyonu.
+
+Bileşenlerde yönet
+Dahil
+
+İZLEME
+
+Netdata izleme
+
+Sağlayıcı: Netdata
+
+Yönetilen Netdata bileşeni üzerinden gerçek zamanlı sunucu ölçümleri.
+
+Bileşenlerde aç
+Yakında
+
+GÜVENLİK
+
+Yönetilen site güvenlik duvarı
+
+Sağlayıcı: CelikPanel
+
+Müşteriye açık site bazlı güvenlik duvarı ilkesi henüz hazır değil.
+
+Bu teklif henüz kullanıma açık değil.
+
+Yakında
+Yakında
+
+E-POSTA
+
+Kurumsal e-posta
+
+Sağlayıcı: CelikPanel
+
+Daha büyük zorunlu posta kutusu kotaları ve ticari posta özellikleri geliştiriliyor.
+
+Bu teklif henüz kullanıma açık değil.
+
+Yakında
+Yakında
+
+AĞ
+
+Özel IP
+
+Sağlayıcı: CelikPanel
+
+Abonelik bazlı özel adres tahsisi geliştiriliyor.
+
+Bu teklif henüz kullanıma açık değil.
+
+Yakında
+Yakında
+
+OTOMASYON
+
+CelikPanel AI Agent
+
+Sağlayıcı: CelikPanel
+
+Yalnız CelikPanel işlemlerini açıklayan ve onaylanan panel işlemlerini yapabilen asistan.
+
+Bu teklif henüz kullanıma açık değil.
+
+Yakında
+Yakında
+
+GELİŞTİRME
+
+Git ile yayınlama
+
+Sağlayıcı: CelikPanel
+
+Bir siteyi onaylanmış depo ve daldan yayınlayın.
+
+Bu teklif henüz kullanıma açık değil.
+
+Yakında
+Yakında
+
+YEDEKLEME
+
+Uzak yedek hedefleri
+
+Sağlayıcı: CelikPanel
+
+Şifreli yedekleri S3 uyumlu veya FTP hedeflerine gönderin.
+
+Bu teklif henüz kullanıma açık değil.
+
+Yakında
+Yakında
+
+UYGULAMALAR
+
+WordPress Araç Seti
+
+Sağlayıcı: CelikPanel
+
+Kurulu WordPress siteleri için yaşam döngüsü, güvenlik ve güncelleme yönetimi.
+
+Bu teklif henüz kullanıma açık değil.
+
+Yakında
+Yakında
+
+KONTEYNERLER
+
+Docker yöneticisi
+
+Sağlayıcı: Docker
+
+İlke kontrollü container ve Compose yönetimi geliştiriliyor.
+
+Bu teklif henüz kullanıma açık değil.
+
+Yakında
+Yakında
+
+GÜVENLİK
+
+Web uygulama güvenlik duvarı
+
+Sağlayıcı: CelikPanel
+
+Yönetilen site bazlı WAF kuralları ve denetim olayları geliştiriliyor.
+
+Bu teklif henüz kullanıma açık değil.
+
+Yakında
+Yakında
+
+DNS
+
+Harici DNS eşitleme
+
+Sağlayıcı: CelikPanel
+
+Kontrollü DNS yayını için sağlayıcı API entegrasyonları geliştiriliyor.
+
+Bu teklif henüz kullanıma açık değil.
+
+Yakında

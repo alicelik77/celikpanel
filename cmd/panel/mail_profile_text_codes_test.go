@@ -102,6 +102,16 @@ func TestMailProfileViewTypesItsSentences(t *testing.T) {
 	check("platform not verified", profileViewByID(t, mailProfilesView(catalogView(nil, ""), true, "", "", false, true, nil), "core-mail"), want{
 		blocked: mailProfileBlockedNotInstallable, vars: map[string]string{"component": "Postfix", "kind": "distribution"},
 	})
+	// A verified platform is named; an unverified one is not (2026-10-15).
+	if platform, ok := profileViewByID(t, mailProfilesView(catalogView(nil, ""), true, "", "", false, true, nil), "core-mail").BlockedVars["platform"]; ok {
+		t.Fatalf("an unverified platform is named: %q", platform)
+	}
+	check("pacman layout", profileViewByID(t, mailProfilesView(catalogView(nil, "pacman"), true, "pacman", "", false, true, nil), "core-mail"), want{
+		blocked: mailProfileBlockedNotInstallable, vars: map[string]string{"component": "Dovecot", "kind": "distribution", "platform": "Arch Linux (pacman)"},
+	})
+	check("dnf preview", profileViewByID(t, mailProfilesView(catalogView(nil, "dnf"), true, "dnf", "", false, true, nil), "core-mail"), want{
+		blocked: mailProfileBlockedNotInstallable, vars: map[string]string{"component": "Postfix", "platform": "Fedora/RHEL (dnf)"},
+	})
 	conflict := catalogView([]serviceObservation{{ID: "exim", IsInstalled: true, Status: "active (running)"}}, "apt")
 	conflicted := profileViewByID(t, mailProfilesView(conflict, true, "apt", "", false, true, nil), "core-mail")
 	check("conflict", conflicted, want{blocked: mailProfileBlockedConflict, vars: map[string]string{"component": "Postfix"}})

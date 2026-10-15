@@ -10,6 +10,8 @@ import {
 } from 'lucide-react';
 import { api, type SystemStats } from '../lib/api';
 import { useI18n } from '../i18n';
+import { componentName } from '../lib/componentName';
+import { auditActionText, auditActorName } from '../lib/auditAction';
 import { useAuth } from '../auth/AuthContext';
 import type { TranslationKey } from '../i18n/en';
 import { Button, Checking, CouldNotCheck, Dialog, KeepWords, Spinner, UsageBar, Card } from './ui';
@@ -94,8 +96,11 @@ function decodeExtras(raw: unknown): Extras {
 }
 
 const NO_DOMAINS: DomainLite[] = [];
+// The stored component record could not be verified: a read the page answers
+// with its own conditional check instead of "could not be read".
+// Kayıtlı bileşen kaydı doğrulanamadı: sayfa bunu kendi koşullu kontrolüyle yanıtlar.
+const STORED_RECORD_UNVERIFIED = Symbol('stored component record unverified');
 
-type Translate = ReturnType<typeof useI18n>['t'];
 
 function groupAuditEntries(entries: AuditLite[]): AuditGroup[] {
     const groups = new Map<string, AuditGroup>();
@@ -115,27 +120,6 @@ function groupAuditEntries(entries: AuditLite[]): AuditGroup[] {
         }
     }
     return [...groups.values()];
-}
-
-function auditActionText(action: string, t: Translate): string {
-    const event = action.split(' — ', 1)[0];
-    if (event === 'auth.login' || event === 'auth.login.2fa') {
-        return t('dashboard.audit.login');
-    }
-    const profileEvent = event.match(/^mail\.profile\.install(?:\.recovered)?(\.failed)?:([^\s]+)$/);
-    if (profileEvent) {
-        const profileKey = ({
-            'core-mail': 'dashboard.audit.profile.coreMail',
-            webmail: 'dashboard.audit.profile.webmail',
-            'protected-mail': 'dashboard.audit.profile.protectedMail',
-        } as const)[profileEvent[2] as 'core-mail' | 'webmail' | 'protected-mail'];
-        const profile = profileKey ? t(profileKey) : profileEvent[2];
-        return t(
-            profileEvent[1] ? 'dashboard.audit.mailProfileFailed' : 'dashboard.audit.mailProfileInstalled',
-            { profile },
-        );
-    }
-    return action;
 }
 
 function decodeDashboardServices(value: unknown): {
@@ -351,9 +335,14 @@ function AdminDashboard() {
     const fw: FirewallStatus | null = fwChanged && !(fwKnown && fwKnown.observedAt >= fwChanged.observedAt)
         ? fwChanged.value
         : fwKnown?.value ?? null;
-    // The stored component records: read, could not be read, or known.
-    // Kayıtlı bileşen kayıtları: okunuyor, okunamadı ya da biliniyor.
-    const [scanRead, setScanRead] = useState<'reading' | 'unread' | 'known'>('reading');
+    // The stored component records: read, could not be read, known, or
+    // stored but not verifiable (SERVICE_STATE_UNVERIFIED). The last is a
+    // record the page replaces by itself with its conditional check (D-032,
+    // 2026-10-15), as it does a stale one.
+    // Kayıtlı bileşen kayıtları: okunuyor, okunamadı, biliniyor ya da kayıtlı
+    // ama doğrulanamıyor. Sonuncusunu sayfa, bayat kayıt gibi, koşullu
+    // kontrolüyle kendisi yeniler.
+    const [scanRead, setScanRead] = useState<'reading' | 'unread' | 'known' | 'unverified'>('reading');
     const [scanAttempt, setScanAttempt] = useState(0);
     // The four counts under "Hosting" and the list of recent domains are drawn
     // from three reads. Each count is a number only for an answer the server
@@ -428,7 +417,11 @@ function AdminDashboard() {
         let current = true;
         setScanRead('reading');
         fetch('/api/v1/managed-services')
-            .then((r) => (r.ok ? r.json() : Promise.reject(new Error('refused'))))
+            .then(async (r) => {
+                if (r.ok) return r.json();
+                const refusal = await readApiError(r);
+                throw refusal.code === 'SERVICE_STATE_UNVERIFIED' ? STORED_RECORD_UNVERIFIED : new Error('refused');
+            })
             .then((value: unknown) => {
                 if (!current) return;
                 const snapshot = decodeDashboardServices(value);
@@ -444,8 +437,8 @@ function AdminDashboard() {
                 setFreshnessNow(observedAt);
                 setScanRead('known');
             })
-            .catch(() => {
-                if (current) setScanRead('unread');
+            .catch((cause: unknown) => {
+                if (current) setScanRead(cause === STORED_RECORD_UNVERIFIED ? 'unverified' : 'unread');
             });
         return () => {
             current = false;
@@ -607,8 +600,7 @@ function AdminDashboard() {
     // ya da pencereden eskiler, sayfa ekranda, kontrol sürmüyor ve son
     // otomatik kontrol en az bir pencere önce. Başka hiçbir şey kontrol
     // başlatmaz: bayatlığa bakmadan tarayan bir zamanlayıcı yoktur.
-    const autoCheckDue = scanRead === 'known'
-        && !serviceScanFresh
+    const autoCheckDue = (scanRead === 'unverified' || (scanRead === 'known' && !serviceScanFresh))
         && visible
         && !componentScanBusy
         && (lastAutoCheckAt === null || freshnessNow - lastAutoCheckAt >= SCAN_WINDOW_MS);
@@ -634,7 +626,7 @@ function AdminDashboard() {
             : scanRead === 'reading' || componentScanBusy || autoCheckDue ? 'checking'
                 : scanOutcome?.kind === 'held' ? 'held'
                     : scanOutcome?.kind === 'failed' ? 'failed'
-                        : scanRead === 'unread' ? 'unread'
+                        : scanRead === 'unread' || scanRead === 'unverified' ? 'unread'
                             : hostNeverChecked ? 'never'
                                 : 'stale';
 
@@ -804,7 +796,7 @@ function AdminDashboard() {
         attention.push({
             key: `svc-${s.id}`,
             icon: Activity,
-            text: t('dashboard.svcStoppedItem', { name: s.name }),
+            text: t('dashboard.svcStoppedItem', { name: componentName(s, t) }),
             action: t('dashboard.goServices'),
             to: '/services',
         });
@@ -883,7 +875,8 @@ function AdminDashboard() {
         extrasRead.remote.state,
         domainList.remote.state,
         firewall.remote.state,
-        scanRead === 'reading' ? 'loading' : scanRead === 'known' ? 'known' : 'unknown',
+        scanRead === 'reading' || (scanRead === 'unverified' && servicesCard === 'checking') ? 'loading'
+            : scanRead === 'known' ? 'known' : 'unknown',
     ];
     const attentionChecking = attentionReads.includes('loading');
     const attentionComponentsKey: TranslationKey = servicesCard === 'checking'
@@ -904,7 +897,7 @@ function AdminDashboard() {
         if (extrasRead.remote.state === 'unknown') void extrasRead.retry();
         if (domainList.remote.state === 'unknown') void domainList.retry();
         if (firewall.remote.state === 'unknown') void firewall.retry();
-        if (scanRead === 'unread') setScanAttempt((n) => n + 1);
+        if (scanRead === 'unread' || scanRead === 'unverified') setScanAttempt((n) => n + 1);
     };
 
     // The section leaves the page only when the server has said there is
@@ -1304,10 +1297,10 @@ function AdminDashboard() {
                                 {recentActivity.map((e) => (
                                     <li key={e.id} className="flex flex-wrap items-center gap-2.5 border-b border-border px-4 py-2.5 last:border-0">
                                         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-2 text-xs font-semibold uppercase text-fg-muted">
-                                            {e.username.slice(0, 1) || '?'}
+                                            {auditActorName(e.username, t).slice(0, 1) || '?'}
                                         </span>
                                         <span className="min-w-0 flex-1 text-sm text-fg">
-                                            <span className="font-semibold">{e.username}</span>{' '}
+                                            <span className="font-semibold">{auditActorName(e.username, t)}</span>{' '}
                                             <span className="text-fg-muted">{auditActionText(e.action, t)}</span>
                                             {e.count > 1 && (
                                                 <span className="ml-2 rounded-full bg-surface-2 px-2 py-0.5 text-xs font-semibold text-fg-muted">

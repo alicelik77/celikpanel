@@ -39,7 +39,19 @@ import {
     systemUpdateMutationLocked,
 } from '../lib/systemUpdateWatchdog';
 import { useSystemUpdateNavigationLease } from '../lib/useSystemUpdateNavigationLease';
-import { decodeSystemUpdatePhase, systemUpdateClockTime, systemUpdateOperationPhase, systemUpdateTrackingText, type SystemUpdateTracking, type SystemUpdateTrackingPhase } from '../lib/systemUpdateTracking';
+import { publishSystemUpdateRestart, systemUpdateNavigationRestart, useSystemUpdateRestart } from '../lib/systemUpdateRestartSignal';
+import {
+    decodeSystemUpdatePhase,
+    systemUpdateClockTime,
+    systemUpdateCornerNoticeRepeats,
+    systemUpdateDisplayedPhase,
+    systemUpdateFollowRead,
+    systemUpdateTrackingText,
+    SYSTEM_UPDATE_READ_MEMORY,
+    type SystemUpdateReadMemory,
+    type SystemUpdateTracking,
+    type SystemUpdateTrackingPhase,
+} from '../lib/systemUpdateTracking';
 
 type Translate = ReturnType<typeof useI18n>['t'];
 
@@ -50,6 +62,7 @@ const TAB_RELOADED_MARKER_KEY = 'celikpanel.system-update-reloaded.v1';
 const POST_UPDATE_RELOAD_MS = 1500;
 const POLL_MIN_MS = 1500;
 const POLL_MAX_MS = 15000;
+const RESTART_POLL_MAX_MS = 3000;
 const POLL_REQUEST_TIMEOUT_MS = 10000;
 const START_REQUEST_TIMEOUT_MS = 15000;
 const NOT_FOUND_GRACE_MS = 120000;
@@ -96,6 +109,9 @@ type TrackingView = {
     lastAttemptAt: number | null;
     // What the last exact read established (lib/systemUpdateTracking.ts).
     phase: SystemUpdateTrackingPhase;
+    // While phase is 'restarting': when the expected restart window ends
+    // (this browser's clock). Null in every other phase.
+    restartDeadline: number | null;
 };
 
 type TerminalResult = {
@@ -160,6 +176,9 @@ type SystemUpdateOperationContextValue = {
     // The update this browser follows and what its last read established;
     // null when none is followed or its outcome is known.
     tracking: SystemUpdateTracking | null;
+    // A page that shows the followed update itself (the update card)
+    // registers while mounted, so the corner notice does not repeat it.
+    registerInlineNotice?: () => () => void;
 };
 
 type PendingRenderCommit = {
@@ -649,6 +668,7 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
         disconnected: false,
         lastAttemptAt: null,
         phase: 'reading',
+        restartDeadline: null,
     });
     const [terminal, setTerminal] = useState<TerminalResult | null>(initialTerminal);
     const terminalRef = useRef<TerminalResult | null>(initialTerminal);
@@ -662,6 +682,16 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
     const authPausedRef = useRef(true);
     const authenticatedRef = useRef(false);
     const [now, setNow] = useState(Date.now());
+    const [inlineNotices, setInlineNotices] = useState(0);
+    const registerInlineNotice = useCallback(() => {
+        setInlineNotices((count) => count + 1);
+        let registered = true;
+        return () => {
+            if (!registered) return;
+            registered = false;
+            setInlineNotices((count) => Math.max(0, count - 1));
+        };
+    }, []);
     const [reloadRetryNonce, setReloadRetryNonce] = useState(0);
     const [tabReloadReceiptNonce, setTabReloadReceiptNonce] = useState(0);
     const reloadTimerRef = useRef<number | null>(null);
@@ -676,6 +706,14 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
     const guardReadyRef = useRef(false);
     const pollWakeRef = useRef<(() => void) | null>(null);
     const notFoundObservationRef = useRef<SystemUpdateNotFoundObservation | null>(null);
+    // The request the server last said is active (start accepted, or a read
+    // answered queued or running), and the first lost read of the current
+    // outage. Together they tell the update's planned restart from an unknown
+    // state (lib/systemUpdateTracking.ts, owner report 2026-10-15).
+    const readMemoryRef = useRef<{ requestID: string; memory: SystemUpdateReadMemory } | null>(null);
+    const readMemory = useCallback((requestID: string): SystemUpdateReadMemory => (
+        readMemoryRef.current?.requestID === requestID ? readMemoryRef.current.memory : SYSTEM_UPDATE_READ_MEMORY
+    ), []);
     const authSignalGenerationRef = useRef(0);
     // Dispatch authority belongs to this live document only. sessionStorage is
     // deliberately not used: duplicated/opener tabs can inherit its values and
@@ -696,10 +734,21 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
             || marker !== null
             || terminalBlocks
         ));
+    // The update's own restart keeps a lock that is still held until the
+    // tracking reaches the Panel again or the restart window ends (native
+    // record set17b, finding F1): the signal this provider publishes below,
+    // for this exact request, while its tracking has lost the Panel.
+    const publishedRestart = useSystemUpdateRestart();
+    const navigationRestart = systemUpdateNavigationRestart(
+        publishedRestart,
+        marker?.request_id ?? null,
+        marker?.created_at ?? null,
+    );
     const navigationLease = useSystemUpdateNavigationLease(
         modalIdentity,
         exactMarker?.created_at ?? null,
         operationBlocks,
+        exactMarker === marker ? navigationRestart : null,
     );
     const navigationLeaseReleasedRef = useRef(navigationLease.released);
     navigationLeaseReleasedRef.current = navigationLease.released;
@@ -776,6 +825,7 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
                 disconnected: false,
                 lastAttemptAt: null,
                 phase: 'reading',
+                restartDeadline: null,
             });
             setAuthPaused(false);
             setProvisional(exactMarker);
@@ -879,6 +929,7 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
                     disconnected: false,
                     lastAttemptAt: null,
                     phase: 'reading',
+                    restartDeadline: null,
                 });
             });
             return;
@@ -1098,6 +1149,12 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
                 }),
             });
             if (response.ok) {
+                // The server accepted this exact request: it is active, and its
+                // plan restarts the panel and the agent.
+                readMemoryRef.current = {
+                    requestID: exactMarker.request_id,
+                    memory: { ...readMemory(exactMarker.request_id), lastKnownActive: true },
+                };
                 if (markerMatches(markerRef.current, exactMarker)) {
                     setView((current) => ({
                         ...current,
@@ -1148,7 +1205,7 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
         } finally {
             window.clearTimeout(timeout);
         }
-    }, [adoptCanonicalSnapshot, commitTerminal, reconcileCanonicalRecord, t]);
+    }, [adoptCanonicalSnapshot, commitTerminal, readMemory, reconcileCanonicalRecord, t]);
 
     const postAuthorizedStart = useCallback(async (
         exactMarker: UpdateMarker,
@@ -1550,6 +1607,7 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
                         disconnected: false,
                         lastAttemptAt: attemptAt,
                         phase: 'unknown',
+                        restartDeadline: null,
                     });
                 });
                 return;
@@ -1559,12 +1617,17 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
                 return;
             }
             if (outcome.kind === 'not-found') {
+                readMemoryRef.current = {
+                    requestID: exactMarker.request_id,
+                    memory: { ...readMemory(exactMarker.request_id), lostSince: null },
+                };
                 setView({
                     operation: null,
                     message: outcome.message,
                     disconnected: false,
                     lastAttemptAt: attemptAt,
                     phase: 'reading',
+                    restartDeadline: null,
                 });
                 const recovery = await recoverNotFound(exactMarker);
                 if (recovery.kind === 'terminal' || recovery.kind === 'stale') return;
@@ -1590,14 +1653,28 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
                 if (!committed) schedule(POLL_MIN_MS);
                 return;
             }
+            // A record that was read names its phase; a lost read after the
+            // server said this update is active is its own planned restart
+            // until the window ends; any other failed read is unknown.
+            const { phase, restartDeadline, memory } = systemUpdateFollowRead(
+                readMemory(exactMarker.request_id),
+                { operation: outcome.operation, disconnected: outcome.disconnected, at: attemptAt },
+                exactMarker.created_at,
+            );
+            readMemoryRef.current = { requestID: exactMarker.request_id, memory };
             setView({
                 operation: outcome.operation ?? null,
                 message: outcome.message,
                 disconnected: outcome.disconnected,
                 lastAttemptAt: attemptAt,
-                // A record that was read names its phase; a read that failed is unknown.
-                phase: systemUpdateOperationPhase(outcome.operation),
+                phase,
+                restartDeadline,
             });
+            if (phase === 'restarting') {
+                // Reconnect promptly once the panel answers again: a refused
+                // connection costs nothing, so the back-off stays short.
+                delay = Math.min(delay, RESTART_POLL_MAX_MS);
+            }
             if (pollAgain) {
                 pollAgain = false;
                 delay = POLL_MIN_MS;
@@ -1623,7 +1700,7 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
             if (pollWakeRef.current === wake) pollWakeRef.current = null;
             if (timer !== null) window.clearTimeout(timer);
         };
-    }, [backgroundTracking, canonicalReady, clearNotFoundObservation, commitTerminal, marker, reconcileCanonicalRecord, recoverNotFound, resumeTrackingGuard, t]);
+    }, [backgroundTracking, canonicalReady, clearNotFoundObservation, commitTerminal, marker, readMemory, reconcileCanonicalRecord, recoverNotFound, resumeTrackingGuard, t]);
 
     useLayoutEffect(() => {
         if (!blocking) return undefined;
@@ -1917,14 +1994,40 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
         : t(value.fallback && !screensReady ? value.fallback : value.key, value.vars));
     const terminalKind = pendingReload || requiredReloadMarker ? 'succeeded'
         : failureGuidance?.state === 'succeeded' ? 'succeeded' : displayedTerminal?.kind;
-    const disconnected = !pendingReload && !requiredReloadMarker && marker !== null && view.disconnected;
+    // The update's own restart, inside its window, is progress: no warning
+    // icon, no "not known" (owner report 2026-10-15, D-033). After the window
+    // the same state is said as unknown, by itself, on the next second.
+    const displayedPhase = systemUpdateDisplayedPhase(view.phase, view.restartDeadline, now);
+    const restartOverdue = view.phase === 'restarting' && displayedPhase === 'unknown';
+    const disconnected = !pendingReload && !requiredReloadMarker && marker !== null && view.disconnected
+        && displayedPhase !== 'restarting';
     // The exact record this document follows, while its outcome is not known
     // (owner report 2026-10-10): its phase is what the last read established.
     // Sonucu bilinmeyen, izlenen kaydin asamasi son okumanin soyledigidir.
     const followed = marker !== null && provisional === null && pendingReload === null
         && requiredReloadMarker === null && displayedTerminal === null ? marker : null;
-    const tracking: SystemUpdateTracking | null = followed ? { version: followed.target.version, phase: view.phase } : null;
+    const tracking: SystemUpdateTracking | null = followed ? {
+        version: followed.target.version,
+        phase: displayedPhase,
+        elapsed: formatElapsed(followed.created_at, now),
+        requestID: followed.request_id,
+        ...(restartOverdue ? { overdue: true } : {}),
+    } : null;
     const trackingText = tracking ? systemUpdateTrackingText(tracking, view.message, t) : null;
+    // The licence gate keeps its last positive decision through this update's
+    // planned restart (set17 D1, lib/systemUpdateRestartSignal.ts): published
+    // once the server has said the followed request is active, with the first
+    // lost read of the current outage. Nothing is published for an update whose
+    // outcome is known, or before the server has said it is active.
+    const followedMemory = followed ? readMemory(followed.request_id) : null;
+    const restartRequestID = followed && followedMemory?.lastKnownActive ? followed.request_id : null;
+    const restartStartedAt = followed ? followed.created_at : null;
+    const restartLostSince = followedMemory?.lostSince ?? null;
+    useEffect(() => {
+        publishSystemUpdateRestart(restartRequestID === null || restartStartedAt === null ? null
+            : { requestID: restartRequestID, startedAt: restartStartedAt, lostSince: restartLostSince });
+    }, [restartRequestID, restartStartedAt, restartLostSince]);
+    useEffect(() => () => publishSystemUpdateRestart(null), []);
     const title = failureGuidance
         ? outcomeText(failureGuidance.title)
         : terminalKind === 'succeeded'
@@ -1954,7 +2057,10 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
             )}
         </>
     );
+    // One notice, not two (lib/systemUpdateTracking.ts).
+    const inlineNoticeCarriesTracking = systemUpdateCornerNoticeRepeats(inlineNotices, tracking !== null);
     const backgroundVisible = navigationLease.released && !authPaused && !blocking && exactMarker !== null
+        && !inlineNoticeCarriesTracking
         && (provisional !== null || marker !== null || pendingReload !== null
             || requiredReloadMarker !== null || terminalBlocks);
 
@@ -1963,6 +2069,7 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
             active: occupied,
             start,
             tracking,
+            registerInlineNotice,
         }}>
             <div ref={applicationRef} className="contents" aria-hidden={blocking ? true : undefined}>
                 {children}

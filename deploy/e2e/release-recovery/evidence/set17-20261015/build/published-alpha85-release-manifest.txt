@@ -1,0 +1,13 @@
+# one public GET at 2026-10-15T16:02:36Z: https://celikpanel.net/releases/v0.1.0-alpha.85/linux/amd64/release-manifest-v2
+format=celikpanel-release-manifest-v2
+sequence=85
+version=v0.1.0-alpha.85
+commit=36c33c4531ee6c1306d324db7a666403176f3bf7
+published_at=2026-10-15T05:14:06Z
+os=linux
+arch=amd64
+archive=celikpanel-v0.1.0-alpha.85-linux-amd64.tar.gz
+archive_sha256=cb6424b712052df2768f6c16dd6a66c8ea05a13393e71933c38ae639c3fb0792
+archive_size=66146417
+
+# curl rc=0

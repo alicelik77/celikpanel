@@ -1,0 +1,20 @@
+wait for //wsl.localhost/archlinux/var/tmp/cp-set17/hand/h17ugood-ui/ready.json start=2026-10-15T14:10:18Z limit=5400s
+handover after 138s at 2026-10-15T14:12:39Z tool_sha256=e81bc9c8f9d0cea7fb7336c90bd9aeec4d165fd8b8592805155b23e3b08f0c9b
+browser profile: <redacted> (46 characters, limit 120)
+{"cell":"ui","started":"2026-10-15T14:12:41.026Z","ended":"2026-10-15T14:14:35.365Z","ok":true}
+{"cell":"done","started":"2026-10-15T14:14:35.370Z","ended":"2026-10-15T14:14:35.372Z","ok":true}
+flag));
+                   ^
+
+Error: ENOENT: no such file or directory, open 'C:\wsl.localhost\archlinux\var\tmp\cp-set17\hand\h17ugood-ui\ready.json'
+    at readFileSync (node:fs:441:20)
+    at file:///C:/CELIKBROS%20PROJECTS/celikpanel/web/tools/browser-inspect/cold-load-set17.mjs:60:25 {
+  errno: -4058,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: 'C:\\wsl.localhost\\archlinux\\var\\tmp\\cp-set17\\hand\\h17ugood-ui\\ready.json'
+}
+
+Node.js v24.18.0
+rc=1 end=2026-10-15T14:12:42Z
+rc=0 end=2026-10-15T14:14:35Z

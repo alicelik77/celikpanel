@@ -5659,3 +5659,101 @@ behaviour. 2026-10-15 is the clock date of everything in it.
   not reached natively, and that set16 ran a fixture commit. The update
   screen's problem-looking notice during the expected restart is open for the
   next release.
+
+### Candidate v0.1.0-alpha.86 (P0.1/P0.2 area; invariants 2 and 6; D-024; D-032; D-033; 2026-10-15)
+
+D-025 invariants 2 (unknown is not absent, empty or success) and 6 (a screen
+says what was verified); D-024; D-032; D-033. **No P0 item is closed or
+advanced.** P0.1 to P0.5 stay partial and every open acceptance item stays
+open. This entry records a candidate that is not published; 2026-10-15 is the
+clock date of the entry.
+
+- **What the candidate changes.** The update screen during the update's own
+  planned restart (the owner's observation of 2026-10-15 during the real
+  update of the second installed server to alpha.85): a read that loses the
+  connection, or meets a 5xx answer, after the server last said that exact
+  request was active is shown as "restarting" with a spinner and the T+
+  counter; the warning and the "not known" wording come only after 6 minutes
+  from the update's start and at least 2 minutes from the first lost read, or
+  with a verified failure, which keeps its own wording; one notice instead of
+  the card and the corner notice saying the same thing
+  (`web/src/lib/systemUpdateTracking.ts`, `SystemUpdateOperation.tsx`,
+  `PanelUpdateCard.tsx`). The automatic re-reads named here stay GET reads: the
+  component install dialog's and the setup page's reads, which alpha.85 listed
+  as not checking the tab's visibility, now run only while it is visible
+  (`web/src/lib/visibleReads.ts`), as the update card's and the spreading
+  domain's re-reads already did; the other re-reads were not audited for this.
+  No sentence asks the owner
+  to rescan; the Dashboard, the Components page and a component's own page
+  answer an unverifiable stored component record with a conditional check (a
+  read, once, no loop; a held check resumes by itself with one follow-up). The
+  username `system` is reserved (`400 USERNAME_RESERVED`); no existing row is
+  changed. The Agent's mail health answer gains two additive fields that name
+  the resolver behind the reverse DNS answer. Besides: the page's language
+  attribute, component names and descriptions and audit actions in the
+  interface language, mail-profile sentences, the Store's unknown state, and
+  the publishing script's defaults. After the native records (below), three
+  web-only corrections: while the followed update restarts the Panel, the
+  licence gate keeps its last positive decision and draws nothing
+  (`e8aa9c5c0`, set17 D1), a `503 PANEL_STARTING` answer does not mark the
+  session (`b7b0f4766`), and a navigation lock still held when the tracking
+  lost its read before two minutes lasts until the tracking reads the update's
+  record again, at the latest 6 minutes from the start (`7265d3c99`, set17b F1,
+  the release preparer's decision of 2026-10-15 under D-033 and the owner's
+  standing instruction of 2026-10-13, not an owner decision); all bounded by the
+  update's own
+  restart window on the browser's clock, reads only. No change to the update
+  path itself, the recovery runner, the release floor or the native services.
+  The [release notes](RELEASE-NOTES-v0.1.0-alpha.86.md) say which check rests
+  on which code.
+- **Invariants touched.** Invariant 2: an outage inside the update's expected
+  restart is not shown as an unknown result until the bound passes, and after
+  it is "not known yet", not a failure; a verified failure keeps its own
+  wording. Inside that window neither the licence gate nor the session gate
+  turns the expected outage into a hold; any answer from the Panel is applied
+  as before, and after the window the existing dialogs appear. A Store
+  offering whose component state is unknown is no longer called unsupported.
+  Invariant 6: the audit log names the actor that wrote an
+  action, and a new account or team member cannot be named `system`, so a person
+  is not shown as "System" (an existing row of that name is not touched).
+  Polling never starts
+  or admits a mutation (D-024); the held-check follow-up is a read.
+- **Schema or version transition.** None: no migration between the alpha.85 tag
+  and the candidate (the database schema stays 44). The release sequence moves
+  from 85 to 86 in the release preparation `313f3eea2`, with the alpha.85
+  release commit `36c33c4531ee6c1306d324db7a666403176f3bf7` as previous; the
+  transition rules are unchanged. **Recovery behaviour.** Unchanged.
+- **Evidence.** Component tests: `go test -v ./cmd/panel/...
+  ./internal/transport/... ./internal/auth/...` 1602 top-level tests passed, 6
+  skipped, 0 failed (at `8fe746582` and again at `21f07e7a8`);
+  `go test ./cmd/agent/...` 1799 passed, 29 skipped under a clean mount
+  namespace (at `1abe1717d`); no Go file changed after `21f07e7a8`;
+  `npm test` 1463 of 1463 before the three web corrections and 1483 of 1483 at
+  `7265d3c99`. Browser inspections against the mock: batch 13 (the restart
+  notice, three states in 8 configurations), batch 14 (23 states in 8
+  configurations) and batch 15 (the licence gate, `PANEL_STARTING` and the
+  lock through a restart, in 8 configurations). Native records (QEMU/KVM
+  guests, test-licence builds; measurements, not acceptance):
+  `deploy/e2e/release-recovery/evidence/set17-20261015/README.md` at
+  `313f3eea2` and `deploy/e2e/release-recovery/evidence/set17b-20261015/README.md`
+  at `ecd2a5f08` (its restart outage of about 3 minutes made by a lab delay,
+  not a product property). Outcome: in all five candidate runs the update page
+  showed the calm restart with 0 samples of the "not known" wording or the
+  warning surface, where alpha.85's page showed both in its three control
+  runs; every good update ended `update_verified`, both defective updates
+  `recovered`/`rollback_verified`, every ledger comparison
+  `equal-except-volatile`; set17 D1 was not reproduced in set17b's two runs
+  (mechanism not established); set17b F1 was changed afterwards.
+- **Open.** The native records measured `313f3eea2` and `ecd2a5f08`; the F1
+  lock extension of `7265d3c99` is not measured natively; the session gate's
+  `PANEL_STARTING` path was not exercised natively (0 answers in set17b); the
+  6-minute overdue wording was not produced natively; Ubuntu 24.04 and Arch
+  were not run in set17b, Arch and a fresh Ubuntu install in neither; the
+  resolver sentence was not reachable; the 6-minute bound rests on lab
+  updates and one owner observation; the new update screen is seen only from the
+  update after this one; the resolver fields reach a server only with an Agent
+  update; the audit log stores no actor kind; no installed server measured.
+  The open items of the alpha.85 entries stay open, among them the recovery
+  foundation file after a return (set12, set15, set16, and again set17) and "Finishing setup"
+  and the update card's busy state not reached natively. Everything the
+  entries above leave open stays open.

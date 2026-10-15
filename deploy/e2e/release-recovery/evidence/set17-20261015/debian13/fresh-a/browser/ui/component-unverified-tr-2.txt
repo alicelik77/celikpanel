@@ -1,0 +1,1 @@
+Kayıtlı kayıt doğrulanamadı; bu yüzden CelikPanel bileşenleri şimdi kontrol ediyor. Hiçbir şey değiştirilmedi ve sizin bir şey yapmanız gerekmiyor; bu sayfa kontrol bitince dolar.

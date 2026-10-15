@@ -1,0 +1,25 @@
+{"at":"2026-10-15T14:37:05.083Z","ev":"start","mode":"fresh","chrome":"Chrome/155.0.8059.40"}
+{"at":"2026-10-15T14:37:06.197Z","ev":"sign-in-page","shown":"form"}
+{"at":"2026-10-15T14:37:13.344Z","ev":"shot","name":"sidebar-1280x800"}
+{"ev":"sidebar-width","at":"2026-10-15T14:37:13.360Z","name":"1280x800","menu_opened":null,"found":true,"class":"inline-block whitespace-nowrap font-mono","id_text":"313f3eea2c9b","id_rects":[{"top":772,"left":60,"width":89}],"id_on_one_line":true,"stamp_line":"CelikPanel · v0.1.0-alpha.86 · build 313f3eea2c9b 313f3eea2c9b89251588648b09484cd34b7aecb1","overflows_container":false,"white_space":"nowrap"}
+{"at":"2026-10-15T14:37:18.470Z","ev":"shot","name":"sidebar-390x844"}
+{"ev":"sidebar-width","at":"2026-10-15T14:37:18.485Z","name":"390x844","menu_opened":true,"found":true,"class":"inline-block whitespace-nowrap font-mono","id_text":"313f3eea2c9b","id_rects":[{"top":816,"left":60,"width":89}],"id_on_one_line":true,"stamp_line":"CelikPanel · v0.1.0-alpha.86 · build 313f3eea2c9b 313f3eea2c9b89251588648b09484cd34b7aecb1","overflows_container":false,"white_space":"nowrap"}
+{"at":"2026-10-15T14:37:39.076Z","ev":"shot","name":"components-en","lang":"en"}
+{"at":"2026-10-15T14:37:59.706Z","ev":"shot","name":"components-tr","lang":"tr"}
+{"at":"2026-10-15T14:38:15.317Z","ev":"shot","name":"dashboard-en","lang":"en"}
+{"at":"2026-10-15T14:38:30.915Z","ev":"shot","name":"dashboard-tr","lang":"tr"}
+{"at":"2026-10-15T14:38:43.487Z","ev":"shot","name":"store-en","lang":"en"}
+{"at":"2026-10-15T14:38:56.032Z","ev":"shot","name":"store-tr","lang":"tr"}
+{"at":"2026-10-15T14:38:56.063Z","ev":"prep-requested","name":"unverifiable-record","phase":"component-unverified"}
+{"at":"2026-10-15T14:38:56.950Z","ev":"prep-done","name":"unverifiable-record","phase":"component-unverified","record":{"at":"2026-10-15T14:38:56Z","prep":"unverifiable-record","result":{"epoch":1792075136.9625027,"returncode":0,"row_after":{"data_length":47,"scanned_at":"2026-10-15T14:34:50Z"},"row_before":{"data_head_is_json":true,"data_length":2262,"scanned_at":"2026-10-15T14:34:50Z"},"rows_changed":1,"what":"lab preparation: the stored component record (service_scan_cache id 1, data column) replaced by bytes that do not decode; scanned_at unchanged"},"host_asked_ms":1792075136053,"host_got_ms":1792075136950}}
+{"at":"2026-10-15T14:38:57.470Z","ev":"shot","name":"component-unverified-en-1","kinds":[]}
+{"at":"2026-10-15T14:38:57.803Z","ev":"shot","name":"component-unverified-en-2","kinds":["checking-stored"]}
+{"at":"2026-10-15T14:38:58.627Z","ev":"shot","name":"component-unverified-en-3","kinds":[]}
+{"at":"2026-10-15T14:39:42.592Z","ev":"prep-requested","name":"unverifiable-record","phase":"component-unverified"}
+{"at":"2026-10-15T14:39:43.249Z","ev":"prep-done","name":"unverifiable-record","phase":"component-unverified","record":{"at":"2026-10-15T14:39:43Z","prep":"unverifiable-record","result":{"epoch":1792075183.2154303,"returncode":0,"row_after":{"data_length":47,"scanned_at":"2026-10-15T14:38:58Z"},"row_before":{"data_head_is_json":true,"data_length":2262,"scanned_at":"2026-10-15T14:38:58Z"},"rows_changed":1,"what":"lab preparation: the stored component record (service_scan_cache id 1, data column) replaced by bytes that do not decode; scanned_at unchanged"},"host_asked_ms":1792075182584,"host_got_ms":1792075183249}}
+{"at":"2026-10-15T14:39:43.772Z","ev":"shot","name":"component-unverified-tr-1","kinds":[]}
+{"at":"2026-10-15T14:39:44.115Z","ev":"shot","name":"component-unverified-tr-2","kinds":["checking-stored"]}
+{"at":"2026-10-15T14:39:45.227Z","ev":"shot","name":"component-unverified-tr-3","kinds":[]}
+{"at":"2026-10-15T14:40:30.045Z","ev":"direct-reads","paths":["/api/v1/panel/version","/api/v1/license/access","/api/v1/managed-services"]}
+{"at":"2026-10-15T14:40:30.103Z","ev":"prep-requested","name":"journal","phase":"end"}
+{"at":"2026-10-15T14:40:30.679Z","ev":"prep-done","name":"journal","phase":"end","record":{"at":"2026-10-15T14:40:30Z","prep":"journal","result":{"file":"steps/09-set17-browser-window/native/002-ui-journal-3-journal.json","units":["celikpanel-agent.service","celikpanel-panel.service","nginx.service","php8.4-fpm.service"]},"host_asked_ms":1792075230089,"host_got_ms":1792075230679}}

@@ -24,6 +24,7 @@ import {
 } from './FirewallSSHNotice';
 import { Link, useLocation, useNavigate } from '../router';
 import { publishComponentCensus } from '../lib/componentCensus';
+import { componentDescription, componentName } from '../lib/componentName';
 import { mailProfileBlocked, mailProfileDescription, mailProfileName, mailProfileWarning } from '../lib/mailProfileText';
 
 // One installed copy of a runtime (B3b): php8.3-fpm is an instance, a Node
@@ -654,7 +655,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
             // claim this page must stop making.
             // Kurulu görünümü, YOK olduğunu BİLDİĞİMİZİ gizler.
             (!hideNotInstalled || s.is_installed !== false) &&
-            (q === '' || `${s.name} ${s.description} ${s.id}`.toLowerCase().includes(q)),
+            (q === '' || `${componentName(s, t)} ${s.name} ${s.description} ${componentDescription(s, t)} ${s.id}`.toLowerCase().includes(q)),
     );
 
     // A server nobody has looked at yet: every row is unknown. This is the
@@ -697,34 +698,46 @@ export function ServiceList({ onManageService }: ServiceListProps) {
         setLoading(true);
         try {
             const res = await fetch('/api/v1/managed-services');
+            // A stored record the server cannot verify is not a failed read
+            // to report: the page replaces it with its own conditional check
+            // below, as it does a stale one (D-032, 2026-10-15). Any other
+            // refusal is reported.
+            // Sunucunun doğrulayamadığı kayıtlı kayıt bildirilecek bir okuma
+            // hatası değildir: sayfa onu, bayat kayıt gibi, aşağıdaki koşullu
+            // kontrolüyle kendisi yeniler.
+            let storedScannedAt: string | null = null;
             if (!res.ok) {
                 const error = await readApiError(res);
-                showToast('error', apiErrorText(error, t));
-                return failVerification(error);
-            }
-            const data: unknown = await res.json();
-            const snapshot = parseManagedServicesSnapshot(data);
-            if (!snapshot || !applySnapshot(data, 'load')) {
-                showToast('error', t('services.scanFailed'));
-                return failVerification();
-            }
+                if (error.code !== 'SERVICE_STATE_UNVERIFIED') {
+                    showToast('error', apiErrorText(error, t));
+                    return failVerification(error);
+                }
+            } else {
+                const data: unknown = await res.json();
+                const snapshot = parseManagedServicesSnapshot(data);
+                if (!snapshot || !applySnapshot(data, 'load')) {
+                    showToast('error', t('services.scanFailed'));
+                    return failVerification();
+                }
 
-            // The server's own age of the scan decides, as it does for the
-            // conditional scan, so the browser's clock is not compared with
-            // the server's; a negative age (a stamp after the server's clock)
-            // is not fresh there either. An older server sends no age: then
-            // the stamp is compared with this browser's clock as before.
-            // Taramanın sunucunun kendi saatiyle yaşı karar verir (koşullu
-            // taramada olduğu gibi); tarayıcı saati sunucununkiyle
-            // karşılaştırılmaz. Eksi yaş orada da taze değildir. Eski sunucu
-            // yaş göndermez: o zaman damga eskisi gibi tarayıcı saatiyle
-            // karşılaştırılır.
-            const scannedTimestamp = Date.parse(snapshot.scannedAt ?? '');
-            const cacheIsStale = snapshot.scanAgeSeconds !== null
-                ? snapshot.scanAgeSeconds < 0 || snapshot.scanAgeSeconds > AUTO_SCAN_MAX_AGE_SECONDS
-                : !Number.isFinite(scannedTimestamp)
-                    || Date.now() - scannedTimestamp > AUTO_SCAN_MAX_AGE_SECONDS * 1000;
-            if (!cacheIsStale) return true;
+                // The server's own age of the scan decides, as it does for the
+                // conditional scan, so the browser's clock is not compared with
+                // the server's; a negative age (a stamp after the server's clock)
+                // is not fresh there either. An older server sends no age: then
+                // the stamp is compared with this browser's clock as before.
+                // Taramanın sunucunun kendi saatiyle yaşı karar verir (koşullu
+                // taramada olduğu gibi); tarayıcı saati sunucununkiyle
+                // karşılaştırılmaz. Eksi yaş orada da taze değildir. Eski sunucu
+                // yaş göndermez: o zaman damga eskisi gibi tarayıcı saatiyle
+                // karşılaştırılır.
+                const scannedTimestamp = Date.parse(snapshot.scannedAt ?? '');
+                const cacheIsStale = snapshot.scanAgeSeconds !== null
+                    ? snapshot.scanAgeSeconds < 0 || snapshot.scanAgeSeconds > AUTO_SCAN_MAX_AGE_SECONDS
+                    : !Number.isFinite(scannedTimestamp)
+                        || Date.now() - scannedTimestamp > AUTO_SCAN_MAX_AGE_SECONDS * 1000;
+                if (!cacheIsStale) return true;
+                storedScannedAt = snapshot.scannedAt;
+            }
 
             // Keep a valid cached page visible while it is refreshed. A fresh
             // install has no trusted observation yet, so retain the loader
@@ -733,7 +746,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
             // Geçerli önbelleği yenilerken sayfada tut. Taze kurulumda henüz
             // güvenilir gözlem yoktur; bütün katalog yanlışlıkla "kurulu değil"
             // görünmesin diye ilk tarama bitene dek yükleyiciyi koru.
-            if (snapshot.scannedAt !== null) setLoading(false);
+            if (storedScannedAt !== null) setLoading(false);
             setScanning(true);
             // A toast is the wrong home for this: it leaves the screen while
             // the state it explains stays. The banner below outlives it.
@@ -836,7 +849,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
         setInstallTarget(null);
         await startInstall({
             serviceId: service.id,
-            name: service.name,
+            name: componentName(service, t),
             ...(pkg ? { package: pkg } : {}),
         });
     };
@@ -945,7 +958,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                 'success',
                 nextCleanupAttempt !== null
                     ? t('services.webmailCleanupCompleted')
-                    : t('services.uninstalled', { name: service.name }),
+                    : t('services.uninstalled', { name: componentName(service, t) }),
             );
             if (!(await loadServices())) markStateUnverified();
         } catch {
@@ -1157,7 +1170,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
         case 'repair':
             await startInstall({
                 serviceId: action.service.id,
-                name: action.service.name,
+                name: componentName(action.service, t),
                 ...(action.service.repair_package ? { package: action.service.repair_package } : {}),
             });
             break;
@@ -1165,7 +1178,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
             await startInstall({
                 serviceId: action.service.id,
                 package: action.pkg,
-                name: `${action.service.name} ${action.version}`,
+                name: `${componentName(action.service, t)} ${action.version}`,
             });
             break;
         case 'install-node':
@@ -1518,9 +1531,9 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                                 to={`/services/${s.id}`}
                                                                 className={`rounded-md text-base font-medium outline-none after:absolute after:inset-0 after:content-[''] focus-visible:ring-2 focus-visible:ring-primary/40 ${s.is_installed ? 'text-fg' : 'text-fg-muted'}`}
                                                             >
-                                                                {s.name}
+                                                                {componentName(s, t)}
                                                             </Link>
-                                                            <div className="truncate text-xs text-fg-subtle">{s.description}</div>
+                                                            <div className="text-pretty text-xs text-fg-subtle">{componentDescription(s, t)}</div>
                                                         </div>
                                                     </div>
                                                     <div className="hidden w-28 shrink-0 sm:block">
@@ -1612,7 +1625,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                                 type="button"
                                                                 onClick={() => navigate('/settings?section=dns')}
                                                                 title={t('services.manageDNSEngineHint')}
-                                                                className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/15"
+                                                                className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/15 disabled:cursor-not-allowed disabled:opacity-50"
                                                             >
                                                                 {t('services.manageDNSEngine')}
                                                                 <ChevronRight className="h-3.5 w-3.5" />
@@ -1629,7 +1642,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                                 type="button"
                                                                 onClick={() => navigate('/domains')}
                                                                 title={t('services.useBuiltInSFTPHint')}
-                                                                className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/15"
+                                                                className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/15 disabled:cursor-not-allowed disabled:opacity-50"
                                                             >
                                                                 {t('services.useBuiltInSFTP')}
                                                                 <ChevronRight className="h-3.5 w-3.5" />
@@ -1695,7 +1708,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                         type="button"
                                                         onClick={() => navigate('/settings?section=dns')}
                                                         title={t('services.manageDNSEngineHint')}
-                                                        className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/15"
+                                                        className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/15 disabled:cursor-not-allowed disabled:opacity-50"
                                                     >
                                                         <Settings className="h-3.5 w-3.5" />
                                                         {t('services.manageDNSEngine')}
@@ -1785,7 +1798,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                     {s.kind === 'runtime' && (
                                                     <button
                                                         onClick={() => toggleDrawer(s.id)}
-                                                        className="ml-1 inline-flex items-center gap-1.5 rounded-lg border border-border-strong bg-surface px-2.5 py-1.5 text-xs font-medium text-fg transition-colors hover:bg-surface-2"
+                                                        className="ml-1 inline-flex items-center gap-1.5 rounded-lg border border-border-strong bg-surface px-2.5 py-1.5 text-xs font-medium text-fg transition-colors hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-50"
                                                     >
                                                         {openDrawers.has(s.id) ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                                                         {t('services.versionsToggle')}
@@ -1798,7 +1811,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                     {s.kind !== 'tool' && (
                                                     <button
                                                         onClick={() => onManageService?.(s.id, s.versions)}
-                                                        className="ml-1 inline-flex items-center gap-1.5 rounded-lg border border-border-strong bg-surface px-2.5 py-1.5 text-xs font-medium text-fg transition-colors hover:bg-surface-2"
+                                                        className="ml-1 inline-flex items-center gap-1.5 rounded-lg border border-border-strong bg-surface px-2.5 py-1.5 text-xs font-medium text-fg transition-colors hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-50"
                                                     >
                                                         <Settings className="h-3.5 w-3.5" />
                                                         {t('services.manage')}
@@ -1816,7 +1829,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                     <button
                                                         onClick={() => openUninstallDialog(s)}
                                                         title={t('services.uninstall')}
-                                                        className="inline-flex items-center rounded-lg border border-border-strong bg-surface p-1.5 text-fg-muted transition-colors hover:bg-danger/10 hover:text-danger"
+                                                        className="inline-flex items-center rounded-lg border border-border-strong bg-surface p-1.5 text-fg-muted transition-colors hover:bg-danger/10 hover:text-danger disabled:cursor-not-allowed disabled:opacity-50"
                                                     >
                                                         <Trash2 className="h-3.5 w-3.5" />
                                                     </button>
@@ -1928,12 +1941,12 @@ function ComponentActionConfirmationDialog({
             ? 'repair'
             : 'install';
     const targetName = action.kind === 'instance'
-        ? `${action.service.name} (${action.unit})`
+        ? `${componentName(action.service, t)} (${action.unit})`
         : action.kind === 'install-package'
-            ? `${action.service.name} ${action.version}`
+            ? `${componentName(action.service, t)} ${action.version}`
             : action.kind === 'install-node'
                 ? `Node ${action.version}`
-                : action.service.name;
+                : componentName(action.service, t);
     const icon = actionName === 'start'
         ? Play
         : actionName === 'stop'
@@ -1991,7 +2004,7 @@ function MailProfileCards({ profiles, services, disabled, dnsIdentityReady, onIn
         if (profile.status === 'complete') return t('services.mailProfiles.repair');
         return t('services.mailProfiles.unavailable');
     };
-    const serviceName = (id: string) => services.find((service) => service.id === id)?.name ?? id;
+    const serviceName = (id: string) => componentName(services.find((service) => service.id === id) ?? id, t);
     return (
         <section id='mail-stacks' tabIndex={-1} aria-labelledby='mail-profile-heading' className='mb-6 scroll-mt-24'>
             <div className='mb-3 flex items-start gap-3'>
@@ -2128,7 +2141,7 @@ function MailProfileInstallDialog({
     const ports = Array.from(new Set(components.flatMap((service) => service.ports ?? []))).sort();
     const restarted = components
         .filter((service) => service.kind === 'service')
-        .map((service) => service.name);
+        .map((service) => componentName(service, t));
 
     useEffect(() => {
         // The first thing to do is the first thing focused: on a server that
@@ -2237,7 +2250,7 @@ function MailProfileInstallDialog({
                         {components.map((service) => (
                             <div key={service.id} className='grid grid-cols-[minmax(0,1fr)_auto] gap-3 border-t border-border px-4 py-3'>
                                 <div className='min-w-0'>
-                                    <p className='text-sm font-medium text-fg'>{service.name}</p>
+                                    <p className='text-sm font-medium text-fg'>{componentName(service, t)}</p>
                                     <p className='break-words font-mono text-xs text-fg-subtle'>{componentPackages(service)}</p>
                                 </div>
                                 <span className='max-w-52 text-right font-mono text-xs font-medium text-fg'>
@@ -2433,8 +2446,8 @@ function InstallServiceDialog({
             <Dialog
                 id="service-install"
                 iconSlot={<span className="text-3xl leading-none">{service.icon}</span>}
-                title={t('services.installTitle', { name: service.name })}
-                description={service.description}
+                title={t('services.installTitle', { name: componentName(service, t) })}
+                description={componentDescription(service, t)}
                 busy={busy || repoBusy}
                 onDismiss={onCancel}
                 actions={
@@ -2483,7 +2496,7 @@ function InstallServiceDialog({
                 {repoRead.remote.state === 'unknown' && (
                     <CouldNotCheck
                         className="mb-4"
-                        text={t(repoObserved ? 'services.repo.stale' : 'services.repo.unknown', { name: service.name })}
+                        text={t(repoObserved ? 'services.repo.stale' : 'services.repo.unknown', { name: componentName(service, t) })}
                         onRetry={() => void repoRead.retry()}
                         busy={repoRead.reading}
                     />
@@ -2570,7 +2583,7 @@ function InstallServiceDialog({
             {repoAction && repo && (
                 <RepositoryActionConfirmationDialog
                     action={repoAction}
-                    repositoryName={repo.name || service.name}
+                    repositoryName={repo.name || componentName(service, t)}
                     confirmDisabled={repoBusy ? true : busy}
                     onCancel={() => setRepoAction(null)}
                     onConfirm={() => {
@@ -2961,7 +2974,7 @@ function VersionDrawer({
                                             className="inline-flex items-center gap-1.5 rounded-lg border border-border-strong bg-surface px-3 py-1.5 text-xs font-semibold text-fg transition-colors hover:bg-surface-2 disabled:opacity-50"
                                         >
                                             <DownloadCloud className="h-3.5 w-3.5" />
-                                            {installing === pkg ? t('services.installing') : `${service.name} ${v}`}
+                                            {installing === pkg ? t('services.installing') : `${componentName(service, t)} ${v}`}
                                             {isEOL(v) && (
                                                 <span className="rounded bg-warning/15 px-1 py-0.5 text-xs font-bold uppercase text-warning">
                                                     {t('services.eolBadge')}
@@ -3038,7 +3051,7 @@ function VersionDrawer({
             {repoAction && repo && (
                 <RepositoryActionConfirmationDialog
                     action={repoAction}
-                    repositoryName={repo.name || service.name}
+                    repositoryName={repo.name || componentName(service, t)}
                     confirmDisabled={repoBusy}
                     onCancel={() => setRepoAction(null)}
                     onConfirm={() => {
@@ -3070,7 +3083,7 @@ function VersionDrawer({
                     icon={Trash2}
                     dismissible={false}
                     busy={removing}
-                    title={t('services.removeVersionTitle', { name: service.name, version: removeTarget.version })}
+                    title={t('services.removeVersionTitle', { name: componentName(service, t), version: removeTarget.version })}
                     description={t('services.removeVersionWarn')}
                     actions={
                         <>
@@ -3177,8 +3190,8 @@ function UninstallServiceDialog({
             busy={busy}
             title={retryCleanup
                 ? t('services.cleanupWebmailTitle')
-                : t('services.uninstallTitle', { name: service.name })}
-            description={service.description}
+                : t('services.uninstallTitle', { name: componentName(service, t) })}
+            description={componentDescription(service, t)}
             actions={
                 <>
                     <Button variant="secondary" onClick={onCancel} disabled={busy}>{t('common.cancel')}</Button>

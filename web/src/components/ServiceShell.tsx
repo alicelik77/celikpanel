@@ -10,6 +10,8 @@ import { ServiceActionNotice, isServiceActionOutcome } from './ServiceActionNoti
 import { readServiceActionNote } from '../lib/serviceActionNote';
 import { decodeManagedServicesSnapshot, useComponentOperation } from './ComponentOperation';
 import { publishComponentCensus } from '../lib/componentCensus';
+import { runStoredRecordCheck } from '../lib/managedServices';
+import { startVisibleReads } from '../lib/visibleReads';
 
 interface ManagedService {
     id: string;
@@ -175,8 +177,16 @@ export function ServiceShell({
         setRereading(true);
         try {
             const response = await fetch('/api/v1/managed-services');
-            if (!response.ok) return;
-            const snapshot = decodeManagedServicesSnapshot(await response.json());
+            let snapshot: ReturnType<typeof decodeManagedServicesSnapshot> = null;
+            if (response.ok) {
+                snapshot = decodeManagedServicesSnapshot(await response.json());
+            } else if ((await readApiError(response)).code === 'SERVICE_STATE_UNVERIFIED') {
+                // A stored record the server cannot verify is answered by the
+                // conditional check, shared with the rest of this page (D-032).
+                // Doğrulanamayan kayıt, sayfanın geri kalanıyla paylaşılan
+                // koşullu kontrolle yanıtlanır.
+                snapshot = await runStoredRecordCheck();
+            }
             if (!snapshot) return;
             publishComponentCensus(snapshot.services);
             setSvc(findService(snapshot.services, serviceId));
@@ -229,15 +239,18 @@ export function ServiceShell({
             setInstallReadinessLoading(false);
         };
 
-        void checkReadiness();
         // While the dialog is open the answer is read again, so a busy server
         // lifts its pause by itself instead of leaving a static "wait" in place
-        // (owner rule 2026-10-14). Reads only.
-        // Pencere açıkken hazır olma durumu yeniden okunur; yalnız okur.
-        const timer = setInterval(() => void checkReadiness(), 5000);
+        // (owner rule 2026-10-14). Reads only, one at a time, and only while
+        // the tab is visible; shown again, it reads once at once (2026-10-15).
+        // Pencere açıkken ve sekme görünürken hazır olma durumu yeniden okunur.
+        const stopReads = startVisibleReads(checkReadiness, 5000, {
+            setInterval: (callback, ms) => setInterval(callback, ms) as unknown as number,
+            clearInterval: (id) => clearInterval(id),
+        }, { immediate: true });
         return () => {
             cancelled = true;
-            clearInterval(timer);
+            stopReads();
         };
     }, [installConfirmationOpen, serviceId]);
 

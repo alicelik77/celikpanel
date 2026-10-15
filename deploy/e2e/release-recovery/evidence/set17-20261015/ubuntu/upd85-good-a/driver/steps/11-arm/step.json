@@ -1,0 +1,193 @@
+{
+  "checks": {
+    "check": {
+      "body": {
+        "available": true,
+        "current_commit": "36c33c4531ee6c1306d324db7a666403176f3bf7",
+        "current_version": "v0.1.0-alpha.85",
+        "supported": true,
+        "target": {
+          "arch": "amd64",
+          "archive_sha256": "6c64289048f9e3fd98655bf761665c3b1f500ec654007da776d422654f747d39",
+          "archive_size": "66169992",
+          "commit": "313f3eea2c9b89251588648b09484cd34b7aecb1",
+          "os": "linux",
+          "published_at": "2026-10-15T15:12:53Z",
+          "sequence": "86",
+          "version": "v0.1.0-alpha.86"
+        }
+      },
+      "http": 200
+    },
+    "observer_armed": {
+      "at": "2026-10-15T15:30:14Z",
+      "seconds": 0.78
+    },
+    "observer_intent": {
+      "baseline": {
+        "agent_sha256": "8fc2d03a376738535e1fa81eea0b820f2224b6ee30117735bb1427c817c11eeb",
+        "commit": "36c33c4531ee6c1306d324db7a666403176f3bf7",
+        "panel_sha256": "7be2afccff3d1299867352e4489719f6a1cea562acc1064ed8527c2819a83210",
+        "version": "v0.1.0-alpha.85"
+      },
+      "identity": {
+        "cell_id": "release-recovery__cafb37f890653ce6",
+        "node": "ubuntu",
+        "nonce": "cafb37f890653ce6a6e2478ce991cb3f80adeaf37a0fc4a3a44be4254b483e96",
+        "vm_uuid": "f7c3339d-e986-528a-823e-d762a3e7ed78"
+      },
+      "mode": "watch",
+      "operation_id": "3a1292fdde9af159ba2e1b1059622b1c",
+      "recovery_fault": null,
+      "schema": "celikpanel/owner-update-observer-intent/v1",
+      "target": {
+        "agent_sha256": "360fcce3e7d1e6f1d86c51ce5e97eda222f744a93269df86daae90ac80d3c503",
+        "commit": "313f3eea2c9b89251588648b09484cd34b7aecb1",
+        "panel_sha256": "6fa269f0ef72aacc095ec8c44e3c68b8df64501d9540991ad88e6a927efadc03",
+        "version": "v0.1.0-alpha.86"
+      }
+    },
+    "observer_unit": "celikpanel-lab-owner-update-observer-3a1292fdde9af159ba2e1b1059622b1c.service",
+    "origin_check": {
+      "addresses": [
+        "127.0.0.1"
+      ],
+      "boot_id": "82c53f28-7eb5-4f3f-a815-944efa47482b",
+      "getent_outcome": "found",
+      "getent_returncode": 0,
+      "getent_status": "ok",
+      "getent_stdout": "127.0.0.1       celikpanel.net\n",
+      "http": "200",
+      "loopback_only": true,
+      "ok": true,
+      "unit": {
+        "ActiveState": "active",
+        "NRestarts": "0",
+        "UnitFileState": "enabled"
+      }
+    },
+    "owner_waited_for_idle": {
+      "at": "2026-10-15T15:30:10Z",
+      "busy_seen": [],
+      "idle": true,
+      "polls": 1,
+      "waited_s": 0.2
+    },
+    "packagekit_at_arm": {
+      "after": {
+        "at": "2026-10-15T15:30:11.518633Z",
+        "context_processes": [
+          {
+            "cmdline": "/usr/bin/python3 /usr/share/unattended-upgrades/unattended-upgrade-shutdown --wait-for-signal",
+            "comm": "unattended-upgr",
+            "pid": 856,
+            "ppid": "1"
+          }
+        ],
+        "general_lock_lines": [],
+        "lock_lines": [],
+        "other_package_processes": [],
+        "packagekit_unit": [
+          "ExecMainStartTimestamp=",
+          "ActiveState=inactive",
+          "SubState=dead"
+        ],
+        "packagekitd": [],
+        "rule": "idle",
+        "unparsed_lock_lines": []
+      },
+      "before": {
+        "at": "2026-10-15T15:30:11.264091Z",
+        "context_processes": [
+          {
+            "cmdline": "/usr/bin/python3 /usr/share/unattended-upgrades/unattended-upgrade-shutdown --wait-for-signal",
+            "comm": "unattended-upgr",
+            "pid": 856,
+            "ppid": "1"
+          }
+        ],
+        "general_lock_lines": [],
+        "lock_lines": [],
+        "other_package_processes": [],
+        "packagekit_unit": [
+          "ExecMainStartTimestamp=",
+          "ActiveState=inactive",
+          "SubState=dead"
+        ],
+        "packagekitd": [],
+        "rule": "idle",
+        "unparsed_lock_lines": []
+      },
+      "host_utc": "2026-10-15T15:30:10Z",
+      "label": "arm-before-check",
+      "readiness": {
+        "answered_by": "agent",
+        "body": {
+          "ready": true
+        },
+        "http": 200,
+        "utc": "2026-10-15T15:30:11Z"
+      }
+    },
+    "page_window": {
+      "browser_done": {
+        "at": "2026-10-15T15:30:19.612Z",
+        "by": "cold-load-set17.mjs",
+        "started": true
+      },
+      "ended_at": "2026-10-15T15:30:20Z",
+      "hand": "/var/tmp/cp-set17/hand/h17ubgood-page",
+      "password_file_removed": true,
+      "window": "page"
+    },
+    "page_window_preps": [
+      {
+        "at": "2026-10-15T15:30:12Z",
+        "prep": "page-ready",
+        "result": {
+          "current_version": "v0.1.0-alpha.85",
+          "ok": true,
+          "target": {
+            "archive_sha256": "6c64289048f9e3fd98655bf761665c3b1f500ec654007da776d422654f747d39",
+            "commit": "313f3eea2c9b89251588648b09484cd34b7aecb1",
+            "sequence": "86",
+            "version": "v0.1.0-alpha.86"
+          }
+        }
+      },
+      {
+        "at": "2026-10-15T15:30:14Z",
+        "prep": "arm_3a1292fdde9af159ba2e1b1059622b1c",
+        "result": {
+          "armed": true,
+          "request_id": "3a1292fdde9af159ba2e1b1059622b1c",
+          "seconds": 0.78
+        }
+      }
+    ],
+    "request_id": "3a1292fdde9af159ba2e1b1059622b1c",
+    "start_answer": {
+      "answer_seen_by_the_browser": false,
+      "answered_ms": null,
+      "armed": {
+        "armed": true,
+        "request_id": "3a1292fdde9af159ba2e1b1059622b1c",
+        "seconds": 0.78
+      },
+      "body": null,
+      "failed": null,
+      "held_ms": 1792078213506,
+      "note": "the page's own POST, held unchanged until the observer was armed, then released",
+      "page_dialog_line_after_release": "The update is being applied; the panel may be unavailable briefly.",
+      "pressed_ms": 1792078213449,
+      "released_ms": 1792078214603,
+      "request_id": "3a1292fdde9af159ba2e1b1059622b1c",
+      "schema": "celikpanel/set17-start-answer/v1",
+      "status": null
+    }
+  },
+  "finished_at": "2026-10-15T15:30:20Z",
+  "name": "arm",
+  "started_at": "2026-10-15T15:30:02Z",
+  "verdict": "passed"
+}

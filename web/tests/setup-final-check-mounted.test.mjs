@@ -32,12 +32,14 @@ const compile = path => ts.transpileModule(readFileSync(new URL(path, import.met
 const setupURL = dataURL(compile('../src/lib/serverSetup.ts'));
 const remoteURL = dataURL(compile('../src/lib/remoteDNS.ts'));
 const componentLibURL = dataURL(compile('../src/lib/serverSetupComponents.ts').replace("from './serverSetup'", `from '${setupURL}'`));
+const componentNameURL = dataURL(compile('../src/lib/componentName.ts'));
 const operationURL = dataURL(compile('../src/lib/serverSetupOperation.ts').replace("from './serverSetup'", `from '${setupURL}'`));
 const dnsEnglishURL = dataURL(compile('../src/i18n/setupDNS/en.ts'));
 const dnsTurkishURL = dataURL(compile('../src/i18n/setupDNS/tr.ts'));
 const dnsCopyURL = dataURL(compile('../src/i18n/setupDNS.ts').replace("from './setupDNS/en'", `from '${dnsEnglishURL}'`).replace("from './setupDNS/tr'", `from '${dnsTurkishURL}'`));
 const guidanceURL = dataURL(compile('../src/lib/serverSetupGuidance.ts'));
 const handoverURL = dataURL(compile('../src/lib/panelHandover.ts'));
+const visibleReadsURL = dataURL(compile('../src/lib/visibleReads.ts'));
 const catalogues = { en: { ...en, ...enScreens, ...enServerScreens }, tr: { ...tr, ...trScreens, ...trServerScreens } };
 const stub = dataURL(`
 import React from '${reactURL}';
@@ -61,8 +63,8 @@ export const inputClass = '';
 export const AddressLink = props => React.createElement('a', { href: props.href }, props.address);
 `);
 const source = compile('../src/components/ServerSetup.tsx').replace(/from ['"]([^'"]+)['"]/g, (_, path) => {
-    const url = path === 'react' ? reactURL : path.endsWith('/remoteDNS') ? remoteURL : path.endsWith('/serverSetupComponents') ? componentLibURL
-        : path.endsWith('/setupDNS') ? dnsCopyURL : path.endsWith('/panelHandover') ? handoverURL : path.endsWith('/serverSetupGuidance') ? guidanceURL
+    const url = path === 'react' ? reactURL : path.endsWith('/remoteDNS') ? remoteURL : path.endsWith('/componentName') ? componentNameURL : path.endsWith('/serverSetupComponents') ? componentLibURL
+        : path.endsWith('/setupDNS') ? dnsCopyURL : path.endsWith('/visibleReads') ? visibleReadsURL : path.endsWith('/panelHandover') ? handoverURL : path.endsWith('/serverSetupGuidance') ? guidanceURL
             : path.endsWith('/serverSetupOperation') ? operationURL : path.endsWith('/serverSetup') ? setupURL : stub;
     return `from '${url}'`;
 });
@@ -81,6 +83,11 @@ const scenarios = {
     waitingOwner: { snapshot: 'waiting', execution: run({ status: 'waiting', checks: [ptrCheck] }) },
     // No PTR confirmed at all: still set at the provider, still spreads through DNS.
     ptrMissing: { snapshot: 'waiting', execution: run({ status: 'waiting', checks: [{ ...ptrCheck, vars: { hostname: 'mail.example.com', ip: '203.0.113.42' } }] }) },
+    // The Agent names the resolver that answered, and says when the resolvers disagree (2026-10-15).
+    ptrResolver: { snapshot: 'waiting', execution: run({ status: 'waiting', checks: [{ ...ptrCheck, vars: { ...ptrCheck.vars, resolver: '8.8.8.8' } }] }) },
+    ptrDisagree: { snapshot: 'waiting', execution: run({ status: 'waiting', checks: [{ ...ptrCheck, vars: { ...ptrCheck.vars, resolver: '1.1.1.1', resolvers: 'disagree' } }] }) },
+    ptrMissingDisagree: { snapshot: 'waiting', execution: run({ status: 'waiting', checks: [{ ...ptrCheck, vars: { hostname: 'mail.example.com', ip: '203.0.113.42', resolver: '1.1.1.1', resolvers: 'disagree' } }] }) },
+    ptrBadResolver: { snapshot: 'waiting', execution: run({ status: 'waiting', checks: [{ ...ptrCheck, vars: { ...ptrCheck.vars, resolver: '<b>x</b>', resolvers: 'disagree' } }] }) },
     // A PTR wait together with a plan correction the owner makes in the panel.
     ptrAndPlan: { snapshot: 'waiting', execution: run({ status: 'waiting', checks: [ptrCheck, { id: 'panel_https', state: 'action_required', code: 'panel_https_required' }, { id: 'mail_identity', state: 'action_required', code: 'mail_identity_required', reason: 'mail_name_not_canonical', vars: { name: 'mail' } }] }) },
     prerequisite: { snapshot: 'waiting', execution: run({ status: 'waiting', checks: [{ id: 'mail_delivery', state: 'action_required', code: 'mail_delivery_required' }] }) },
@@ -277,3 +284,30 @@ test('the final-check wording claims no result it lacks and names the next actio
     assert.equal(tr['setup.stepState.unknown'], 'Kontrol edilemedi');
     assert.equal(Object.keys(en).filter(key => key.startsWith('setup.check.')).sort().join(), Object.keys(tr).filter(key => key.startsWith('setup.check.')).sort().join());
 });
+
+// The resolver that gave the reverse DNS answer is named, and a disagreement
+// between resolvers is said (2026-10-15). An older Agent sends neither and the
+// sentence stays (the scenarios above); a resolver that is not an address is
+// not shown. The step still waits for reverse DNS, not for the owner.
+// Ters DNS yanitini veren cozumleyici adlandirilir; uyusmazlik soylenir.
+const fill = (template, values) => template.replace(/\{(\w+)\}/g, (all, key) => values[key] ?? all);
+for (const locale of ['en', 'tr']) {
+    const c = catalogues[locale];
+    for (const [name, key, values] of [
+        ['ptrResolver', 'setup.check.mailIdentity.reverseDNSFrom', { ip: '203.0.113.42', ptr: 'static.42.provider.example', hostname: 'mail.example.com', resolver: '8.8.8.8' }],
+        ['ptrDisagree', 'setup.check.mailIdentity.reverseDNSDisagree', { ip: '203.0.113.42', ptr: 'static.42.provider.example', hostname: 'mail.example.com', resolver: '1.1.1.1' }],
+        ['ptrMissingDisagree', 'setup.check.mailIdentity.reverseDNSMissingDisagree', { ip: '203.0.113.42', hostname: 'mail.example.com', resolver: '1.1.1.1' }],
+        ['ptrBadResolver', 'setup.check.mailIdentity.reverseDNS', { ip: '203.0.113.42', ptr: 'static.42.provider.example', hostname: 'mail.example.com' }],
+    ]) {
+        test(`${locale}: the reverse DNS sentence for ${name} names what the Agent reported`, async () => {
+            const { tree } = await mount(name, locale);
+            try {
+                const page = textOf(tree.toJSON());
+                assert.ok(c[key], 'no sentence ' + key);
+                assert.ok(page.includes(fill(c[key], values)), `${key} is not on the page: ${page.slice(0, 600)}`);
+                assert.ok(!page.includes('<b>x</b>'), 'a resolver that is not an address is shown');
+                assert.equal(verifyState(tree), 'waitingReverseDNS');
+            } finally { await unmount(tree); }
+        });
+    }
+}

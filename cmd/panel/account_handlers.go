@@ -256,7 +256,7 @@ func (p *Panel) handleCreateUser(w http.ResponseWriter, r *http.Request, c *Call
 	}
 
 	if err := auth.ValidateUsername(req.Username); err != nil {
-		writeClientError(w, http.StatusBadRequest, err.Error())
+		writeUsernameError(w, err)
 		return
 	}
 	if len(req.Password) < minPasswordLen {

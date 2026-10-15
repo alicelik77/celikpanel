@@ -1,0 +1,22 @@
+{
+  "at": "2026-10-15T14:25:15Z",
+  "base": "https://127.0.0.1:19273",
+  "baseline_version": "v0.1.0-alpha.86",
+  "browser": {
+    "lang": "en",
+    "viewport": "desktop"
+  },
+  "cell": "upd86-debian13-good",
+  "local_port": 19273,
+  "mode": "update-page",
+  "password_file": "/var/tmp/cp-set17/secret/h17u86-page.json",
+  "preps": [
+    "page-ready",
+    "arm_<request id>"
+  ],
+  "schema": "celikpanel/set12-handover/v1",
+  "target_version": "v0.1.0-alpha.87",
+  "tls_leaf_sha256": "cf1d478c254230ba08d72cbab93c27a83dba5d433265a8a6b9ace21ac17f8fb1",
+  "username": "labadmin",
+  "window": "page"
+}

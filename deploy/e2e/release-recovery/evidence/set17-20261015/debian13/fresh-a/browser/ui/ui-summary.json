@@ -1,0 +1,1331 @@
+{
+  "mode": "fresh",
+  "phases": {
+    "sidebar": {
+      "started": "2026-10-15T14:37:09.379Z",
+      "w1280": {
+        "at": "2026-10-15T14:37:13.360Z",
+        "name": "1280x800",
+        "menu_opened": null,
+        "found": true,
+        "class": "inline-block whitespace-nowrap font-mono",
+        "id_text": "313f3eea2c9b",
+        "id_rects": [
+          {
+            "top": 772,
+            "left": 60,
+            "width": 89
+          }
+        ],
+        "id_on_one_line": true,
+        "stamp_line": "CelikPanel · v0.1.0-alpha.86 · build 313f3eea2c9b 313f3eea2c9b89251588648b09484cd34b7aecb1",
+        "overflows_container": false,
+        "white_space": "nowrap"
+      },
+      "w390": {
+        "at": "2026-10-15T14:37:18.485Z",
+        "name": "390x844",
+        "menu_opened": true,
+        "found": true,
+        "class": "inline-block whitespace-nowrap font-mono",
+        "id_text": "313f3eea2c9b",
+        "id_rects": [
+          {
+            "top": 816,
+            "left": 60,
+            "width": 89
+          }
+        ],
+        "id_on_one_line": true,
+        "stamp_line": "CelikPanel · v0.1.0-alpha.86 · build 313f3eea2c9b 313f3eea2c9b89251588648b09484cd34b7aecb1",
+        "overflows_container": false,
+        "white_space": "nowrap"
+      },
+      "seconds": 9.1
+    },
+    "components": {
+      "started": "2026-10-15T14:37:18.493Z",
+      "en": {
+        "lang": "en",
+        "load_at": "2026-10-15T14:37:18.845Z",
+        "html_lang": "en",
+        "rows": 27,
+        "catalogue_ids": 27,
+        "rows_in_catalogue": 27,
+        "names_match": 27,
+        "names_differ": [],
+        "descriptions_match": 27,
+        "descriptions_differ": [],
+        "catalogue_ids_not_on_page": [],
+        "rows_not_in_catalogue": [],
+        "managed_services_reads": [
+          {
+            "status": 200,
+            "ms": 49
+          },
+          {
+            "status": 200,
+            "ms": 50
+          }
+        ],
+        "rows_detail": [
+          {
+            "id": "bind",
+            "name": "BIND",
+            "description": "DNS Server",
+            "installed_look": false,
+            "catalogue_name": "BIND",
+            "catalogue_description": "DNS Server",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "pdns",
+            "name": "PowerDNS",
+            "description": "DNS Server",
+            "installed_look": false,
+            "catalogue_name": "PowerDNS",
+            "catalogue_description": "DNS Server",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "php-fpm",
+            "name": "PHP-FPM",
+            "description": "PHP FastCGI Process Manager",
+            "installed_look": true,
+            "catalogue_name": "PHP-FPM",
+            "catalogue_description": "PHP FastCGI Process Manager",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "node",
+            "name": "Node.js",
+            "description": "JavaScript Runtime",
+            "installed_look": false,
+            "catalogue_name": "Node.js",
+            "catalogue_description": "JavaScript Runtime",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "nginx",
+            "name": "Nginx",
+            "description": "Reverse Proxy Server",
+            "installed_look": true,
+            "catalogue_name": "Nginx",
+            "catalogue_description": "Reverse Proxy Server",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "apache",
+            "name": "Apache",
+            "description": "Web Server",
+            "installed_look": false,
+            "catalogue_name": "Apache",
+            "catalogue_description": "Web Server",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "postgresql",
+            "name": "PostgreSQL",
+            "description": "Database Server",
+            "installed_look": false,
+            "catalogue_name": "PostgreSQL",
+            "catalogue_description": "Database Server",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "mariadb",
+            "name": "MariaDB",
+            "description": "Database Server",
+            "installed_look": true,
+            "catalogue_name": "MariaDB",
+            "catalogue_description": "Database Server",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "phpmyadmin",
+            "name": "phpMyAdmin",
+            "description": "MariaDB/MySQL web admin tool",
+            "installed_look": false,
+            "catalogue_name": "phpMyAdmin",
+            "catalogue_description": "MariaDB/MySQL web admin tool",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "phppgadmin",
+            "name": "phpPgAdmin",
+            "description": "PostgreSQL web admin tool",
+            "installed_look": false,
+            "catalogue_name": "phpPgAdmin",
+            "catalogue_description": "PostgreSQL web admin tool",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "postfix",
+            "name": "Postfix",
+            "description": "SMTP Server",
+            "installed_look": false,
+            "catalogue_name": "Postfix",
+            "catalogue_description": "SMTP Server",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "exim",
+            "name": "Exim",
+            "description": "SMTP Server",
+            "installed_look": false,
+            "catalogue_name": "Exim",
+            "catalogue_description": "SMTP Server",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "rspamd",
+            "name": "Rspamd",
+            "description": "Spam Filter & DKIM",
+            "installed_look": false,
+            "catalogue_name": "Rspamd",
+            "catalogue_description": "Spam Filter & DKIM",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "dovecot",
+            "name": "Dovecot",
+            "description": "IMAP/POP3 Server",
+            "installed_look": false,
+            "catalogue_name": "Dovecot",
+            "catalogue_description": "IMAP/POP3 Server",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "roundcube",
+            "name": "Roundcube",
+            "description": "Webmail",
+            "installed_look": false,
+            "catalogue_name": "Roundcube",
+            "catalogue_description": "Webmail",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "spamassassin",
+            "name": "SpamAssassin",
+            "description": "Spam Filter",
+            "installed_look": false,
+            "catalogue_name": "SpamAssassin",
+            "catalogue_description": "Spam Filter",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "wireguard",
+            "name": "WireGuard VPN",
+            "description": "Built-in VPN server",
+            "installed_look": false,
+            "catalogue_name": "WireGuard VPN",
+            "catalogue_description": "Built-in VPN server",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "certbot",
+            "name": "Let’s Encrypt client (certbot)",
+            "description": "SSL certificate provider",
+            "installed_look": true,
+            "catalogue_name": "Let’s Encrypt client (certbot)",
+            "catalogue_description": "SSL certificate provider",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "fail2ban",
+            "name": "Fail2ban",
+            "description": "Intrusion Prevention",
+            "installed_look": false,
+            "catalogue_name": "Fail2ban",
+            "catalogue_description": "Intrusion Prevention",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "nftables",
+            "name": "Firewall engine",
+            "description": "nftables — the panel firewall’s packet-filtering engine",
+            "installed_look": true,
+            "catalogue_name": "Firewall engine",
+            "catalogue_description": "nftables — the panel firewall’s packet-filtering engine",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "clamav",
+            "name": "ClamAV",
+            "description": "Antivirus / malware scanner",
+            "installed_look": false,
+            "catalogue_name": "ClamAV",
+            "catalogue_description": "Antivirus / malware scanner",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "redis",
+            "name": "Redis",
+            "description": "Cache Server",
+            "installed_look": false,
+            "catalogue_name": "Redis",
+            "catalogue_description": "Cache Server",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "valkey",
+            "name": "Valkey",
+            "description": "Cache Server",
+            "installed_look": false,
+            "catalogue_name": "Valkey",
+            "catalogue_description": "Cache Server",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "memcached",
+            "name": "Memcached",
+            "description": "Cache Server",
+            "installed_look": false,
+            "catalogue_name": "Memcached",
+            "catalogue_description": "Cache Server",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "vsftpd",
+            "name": "vsftpd",
+            "description": "FTP Server",
+            "installed_look": false,
+            "catalogue_name": "vsftpd",
+            "catalogue_description": "FTP Server",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "netdata",
+            "name": "Netdata",
+            "description": "Real-time metrics agent",
+            "installed_look": false,
+            "catalogue_name": "Netdata",
+            "catalogue_description": "Real-time metrics agent",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "cron",
+            "name": "Scheduled tasks (cron)",
+            "description": "Native cron daemon that runs scheduled tasks",
+            "installed_look": true,
+            "catalogue_name": "Scheduled tasks (cron)",
+            "catalogue_description": "Native cron daemon that runs scheduled tasks",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          }
+        ]
+      },
+      "tr": {
+        "lang": "tr",
+        "load_at": "2026-10-15T14:37:39.457Z",
+        "html_lang": "tr",
+        "rows": 27,
+        "catalogue_ids": 27,
+        "rows_in_catalogue": 27,
+        "names_match": 27,
+        "names_differ": [],
+        "descriptions_match": 27,
+        "descriptions_differ": [],
+        "catalogue_ids_not_on_page": [],
+        "rows_not_in_catalogue": [],
+        "managed_services_reads": [
+          {
+            "status": 200,
+            "ms": 43
+          },
+          {
+            "status": 200,
+            "ms": 25
+          }
+        ],
+        "rows_detail": [
+          {
+            "id": "bind",
+            "name": "BIND",
+            "description": "DNS sunucusu",
+            "installed_look": false,
+            "catalogue_name": "BIND",
+            "catalogue_description": "DNS sunucusu",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "pdns",
+            "name": "PowerDNS",
+            "description": "DNS sunucusu",
+            "installed_look": false,
+            "catalogue_name": "PowerDNS",
+            "catalogue_description": "DNS sunucusu",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "php-fpm",
+            "name": "PHP-FPM",
+            "description": "PHP FastCGI Süreç Yöneticisi",
+            "installed_look": true,
+            "catalogue_name": "PHP-FPM",
+            "catalogue_description": "PHP FastCGI Süreç Yöneticisi",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "node",
+            "name": "Node.js",
+            "description": "JavaScript çalışma ortamı",
+            "installed_look": false,
+            "catalogue_name": "Node.js",
+            "catalogue_description": "JavaScript çalışma ortamı",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "nginx",
+            "name": "Nginx",
+            "description": "Ters vekil sunucu",
+            "installed_look": true,
+            "catalogue_name": "Nginx",
+            "catalogue_description": "Ters vekil sunucu",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "apache",
+            "name": "Apache",
+            "description": "Web sunucusu",
+            "installed_look": false,
+            "catalogue_name": "Apache",
+            "catalogue_description": "Web sunucusu",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "postgresql",
+            "name": "PostgreSQL",
+            "description": "Veritabanı sunucusu",
+            "installed_look": false,
+            "catalogue_name": "PostgreSQL",
+            "catalogue_description": "Veritabanı sunucusu",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "mariadb",
+            "name": "MariaDB",
+            "description": "Veritabanı sunucusu",
+            "installed_look": true,
+            "catalogue_name": "MariaDB",
+            "catalogue_description": "Veritabanı sunucusu",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "phpmyadmin",
+            "name": "phpMyAdmin",
+            "description": "MariaDB/MySQL web yönetim aracı",
+            "installed_look": false,
+            "catalogue_name": "phpMyAdmin",
+            "catalogue_description": "MariaDB/MySQL web yönetim aracı",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "phppgadmin",
+            "name": "phpPgAdmin",
+            "description": "PostgreSQL web yönetim aracı",
+            "installed_look": false,
+            "catalogue_name": "phpPgAdmin",
+            "catalogue_description": "PostgreSQL web yönetim aracı",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "postfix",
+            "name": "Postfix",
+            "description": "SMTP sunucusu",
+            "installed_look": false,
+            "catalogue_name": "Postfix",
+            "catalogue_description": "SMTP sunucusu",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "exim",
+            "name": "Exim",
+            "description": "SMTP sunucusu",
+            "installed_look": false,
+            "catalogue_name": "Exim",
+            "catalogue_description": "SMTP sunucusu",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "rspamd",
+            "name": "Rspamd",
+            "description": "Spam filtresi ve DKIM",
+            "installed_look": false,
+            "catalogue_name": "Rspamd",
+            "catalogue_description": "Spam filtresi ve DKIM",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "dovecot",
+            "name": "Dovecot",
+            "description": "IMAP/POP3 sunucusu",
+            "installed_look": false,
+            "catalogue_name": "Dovecot",
+            "catalogue_description": "IMAP/POP3 sunucusu",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "roundcube",
+            "name": "Roundcube",
+            "description": "Webmail",
+            "installed_look": false,
+            "catalogue_name": "Roundcube",
+            "catalogue_description": "Webmail",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "spamassassin",
+            "name": "SpamAssassin",
+            "description": "Spam filtresi",
+            "installed_look": false,
+            "catalogue_name": "SpamAssassin",
+            "catalogue_description": "Spam filtresi",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "wireguard",
+            "name": "WireGuard VPN",
+            "description": "Yerleşik VPN sunucusu",
+            "installed_look": false,
+            "catalogue_name": "WireGuard VPN",
+            "catalogue_description": "Yerleşik VPN sunucusu",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "certbot",
+            "name": "Let’s Encrypt istemcisi (certbot)",
+            "description": "SSL sertifikası sağlayıcısı",
+            "installed_look": true,
+            "catalogue_name": "Let’s Encrypt istemcisi (certbot)",
+            "catalogue_description": "SSL sertifikası sağlayıcısı",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "fail2ban",
+            "name": "Fail2ban",
+            "description": "Saldırı önleme",
+            "installed_look": false,
+            "catalogue_name": "Fail2ban",
+            "catalogue_description": "Saldırı önleme",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "nftables",
+            "name": "Güvenlik duvarı motoru",
+            "description": "nftables — panel güvenlik duvarının paket süzme motoru",
+            "installed_look": true,
+            "catalogue_name": "Güvenlik duvarı motoru",
+            "catalogue_description": "nftables — panel güvenlik duvarının paket süzme motoru",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "clamav",
+            "name": "ClamAV",
+            "description": "Antivirüs / zararlı yazılım tarayıcısı",
+            "installed_look": false,
+            "catalogue_name": "ClamAV",
+            "catalogue_description": "Antivirüs / zararlı yazılım tarayıcısı",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "redis",
+            "name": "Redis",
+            "description": "Önbellek sunucusu",
+            "installed_look": false,
+            "catalogue_name": "Redis",
+            "catalogue_description": "Önbellek sunucusu",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "valkey",
+            "name": "Valkey",
+            "description": "Önbellek sunucusu",
+            "installed_look": false,
+            "catalogue_name": "Valkey",
+            "catalogue_description": "Önbellek sunucusu",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "memcached",
+            "name": "Memcached",
+            "description": "Önbellek sunucusu",
+            "installed_look": false,
+            "catalogue_name": "Memcached",
+            "catalogue_description": "Önbellek sunucusu",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "vsftpd",
+            "name": "vsftpd",
+            "description": "FTP sunucusu",
+            "installed_look": false,
+            "catalogue_name": "vsftpd",
+            "catalogue_description": "FTP sunucusu",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "netdata",
+            "name": "Netdata",
+            "description": "Gerçek zamanlı ölçüm aracısı",
+            "installed_look": false,
+            "catalogue_name": "Netdata",
+            "catalogue_description": "Gerçek zamanlı ölçüm aracısı",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "cron",
+            "name": "Zamanlanmış görevler (cron)",
+            "description": "Zamanlanmış görevleri çalıştıran yerel cron hizmeti",
+            "installed_look": true,
+            "catalogue_name": "Zamanlanmış görevler (cron)",
+            "catalogue_description": "Zamanlanmış görevleri çalıştıran yerel cron hizmeti",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          }
+        ]
+      },
+      "seconds": 41.2
+    },
+    "dashboard": {
+      "started": "2026-10-15T14:37:59.730Z",
+      "en": {
+        "lang": "en",
+        "load_at": "2026-10-15T14:38:00.093Z",
+        "html_lang": "en",
+        "section_found": true,
+        "items": [
+          "L labadmin signed in2 times 127.0.0.1 1 min ago",
+          "L labadmin chose between guided and manual setup 127.0.0.1 1 min ago",
+          "L labadmin reopened the setup plan to change it 127.0.0.1 1 min ago",
+          "L labadmin prepared Let’s Encrypt client (certbot) during setup 127.0.0.1 3 min ago",
+          "L labadmin prepared Scheduled tasks (cron) during setup 127.0.0.1 3 min ago",
+          "L labadmin prepared PHP-FPM during setup 127.0.0.1 3 min ago",
+          "L labadmin prepared Nginx during setup 127.0.0.1 4 min ago"
+        ],
+        "items_with_a_raw_id": [],
+        "items_with_an_underscore_word": [],
+        "audit_actions_read": [
+          "labadmin: auth.login",
+          "labadmin: server.setup.guidance",
+          "labadmin: server.setup.revise",
+          "labadmin: server.setup.child:certbot",
+          "labadmin: server.setup.child:cron",
+          "labadmin: server.setup.child:php-fpm",
+          "labadmin: server.setup.child:nginx",
+          "labadmin: server.setup.child:mariadb",
+          "labadmin: server.setup.start:web",
+          "labadmin: server.setup.draft",
+          "labadmin: server.setup.guidance",
+          "labadmin: auth.login"
+        ]
+      },
+      "tr": {
+        "lang": "tr",
+        "load_at": "2026-10-15T14:38:15.699Z",
+        "html_lang": "tr",
+        "section_found": true,
+        "items": [
+          "L labadmin oturum açtı2 kez 127.0.0.1 1 dk önce",
+          "L labadmin rehberli ya da elle kurulum arasında seçim yaptı 127.0.0.1 1 dk önce",
+          "L labadmin değiştirmek için kurulum planını yeniden açtı 127.0.0.1 1 dk önce",
+          "L labadmin kurulum sırasında Let’s Encrypt istemcisi (certbot) bileşenini hazırladı 127.0.0.1 3 dk önce",
+          "L labadmin kurulum sırasında Zamanlanmış görevler (cron) bileşenini hazırladı 127.0.0.1 3 dk önce",
+          "L labadmin kurulum sırasında PHP-FPM bileşenini hazırladı 127.0.0.1 3 dk önce",
+          "L labadmin kurulum sırasında Nginx bileşenini hazırladı 127.0.0.1 4 dk önce"
+        ],
+        "items_with_a_raw_id": [],
+        "items_with_an_underscore_word": [],
+        "audit_actions_read": [
+          "labadmin: auth.login",
+          "labadmin: server.setup.guidance",
+          "labadmin: server.setup.revise",
+          "labadmin: server.setup.child:certbot",
+          "labadmin: server.setup.child:cron",
+          "labadmin: server.setup.child:php-fpm",
+          "labadmin: server.setup.child:nginx",
+          "labadmin: server.setup.child:mariadb",
+          "labadmin: server.setup.start:web",
+          "labadmin: server.setup.draft",
+          "labadmin: server.setup.guidance",
+          "labadmin: auth.login"
+        ]
+      },
+      "seconds": 31.2
+    },
+    "store": {
+      "started": "2026-10-15T14:38:30.939Z",
+      "en": {
+        "lang": "en",
+        "load_at": "2026-10-15T14:38:31.297Z",
+        "path": "/addons",
+        "html_lang": "en",
+        "options": [],
+        "buttons": [
+          "Subscription Store",
+          "Catalog management"
+        ],
+        "badges": [],
+        "badge_counts": {},
+        "reads": [
+          {
+            "url": "/api/v1/auth/me",
+            "status": 200
+          },
+          {
+            "url": "/api/v1/auth/me",
+            "status": 200
+          },
+          {
+            "url": "/api/v1/panel/availability",
+            "status": 200
+          },
+          {
+            "url": "/api/v1/license/access",
+            "status": 200
+          },
+          {
+            "url": "/api/v1/service/operation?active=1",
+            "status": 200
+          },
+          {
+            "url": "/api/v1/setup",
+            "status": 200
+          },
+          {
+            "url": "/api/v1/panel/version",
+            "status": 200
+          },
+          {
+            "url": "/api/v1/panel/version",
+            "status": 200
+          },
+          {
+            "url": "/api/v1/domains",
+            "status": 200
+          },
+          {
+            "url": "/api/v1/managed-services",
+            "status": 200
+          },
+          {
+            "url": "/api/v1/subscriptions",
+            "status": 200
+          }
+        ]
+      },
+      "tr": {
+        "lang": "tr",
+        "load_at": "2026-10-15T14:38:43.858Z",
+        "path": "/addons",
+        "html_lang": "tr",
+        "options": [],
+        "buttons": [
+          "Abonelik Mağazası",
+          "Katalog yönetimi"
+        ],
+        "badges": [],
+        "badge_counts": {},
+        "reads": [
+          {
+            "url": "/api/v1/auth/me",
+            "status": null
+          },
+          {
+            "url": "/api/v1/auth/me",
+            "status": 200
+          },
+          {
+            "url": "/api/v1/panel/availability",
+            "status": 200
+          },
+          {
+            "url": "/api/v1/license/access",
+            "status": 200
+          },
+          {
+            "url": "/api/v1/service/operation?active=1",
+            "status": 200
+          },
+          {
+            "url": "/api/v1/setup",
+            "status": 200
+          },
+          {
+            "url": "/api/v1/panel/version",
+            "status": 200
+          },
+          {
+            "url": "/api/v1/domains",
+            "status": 200
+          },
+          {
+            "url": "/api/v1/panel/version",
+            "status": 200
+          },
+          {
+            "url": "/api/v1/managed-services",
+            "status": 200
+          },
+          {
+            "url": "/api/v1/subscriptions",
+            "status": 200
+          }
+        ]
+      },
+      "seconds": 25.1
+    },
+    "component-unverified": {
+      "started": "2026-10-15T14:38:56.052Z",
+      "en": {
+        "lang": "en",
+        "id": "nginx",
+        "html_lang": "en",
+        "preparation": {
+          "epoch": 1792075136.9625027,
+          "returncode": 0,
+          "row_after": {
+            "data_length": 47,
+            "scanned_at": "2026-10-15T14:34:50Z"
+          },
+          "row_before": {
+            "data_head_is_json": true,
+            "data_length": 2262,
+            "scanned_at": "2026-10-15T14:34:50Z"
+          },
+          "rows_changed": 1,
+          "what": "lab preparation: the stored component record (service_scan_cache id 1, data column) replaced by bytes that do not decode; scanned_at unchanged"
+        },
+        "sequence": [
+          {
+            "at": "2026-10-15T14:38:57.474Z",
+            "after_ms": 159,
+            "kinds": [],
+            "alerts": [],
+            "text_head": "",
+            "picture": "component-unverified-en-1"
+          },
+          {
+            "at": "2026-10-15T14:38:57.806Z",
+            "after_ms": 491,
+            "kinds": [
+              "checking-stored"
+            ],
+            "alerts": [],
+            "text_head": "The stored record could not be verified, so CelikPanel is checking the components now. Nothing was changed and you do not need to do anything; this page fills in when the check finishes.",
+            "picture": "component-unverified-en-2"
+          },
+          {
+            "at": "2026-10-15T14:38:58.631Z",
+            "after_ms": 1316,
+            "kinds": [],
+            "alerts": [],
+            "text_head": "Components Nginx Running Help Start Stop Restart Global SSL/TLS Rate limits Worker processes auto Worker connections 768 Keepalive timeout — Client max body size — Server tokens off; # Recommended practice is to turn this off Gzip on Read-only, parsed live from nginx -T. In-panel editing is not supported yet.",
+            "picture": "component-unverified-en-3"
+          }
+        ],
+        "unverified_answers": [
+          {
+            "method": "GET",
+            "url": "/api/v1/managed-services",
+            "status": 503,
+            "start": "2026-10-15T14:38:57.430Z",
+            "ms": 42,
+            "body": "{\"error\":\"the stored component record could not be verified, so it is not shown and nothing was changed; CelikPanel checks the components again by itself while the Dashboard, the Components page or a component's page is open\",\"code\":\"SERVICE_STATE_UNVERIFIED\",\"action\":\"/services\"}\n"
+          },
+          {
+            "method": "GET",
+            "url": "/api/v1/managed-services",
+            "status": 503,
+            "start": "2026-10-15T14:38:57.431Z",
+            "ms": 43,
+            "body": "{\"error\":\"the stored component record could not be verified, so it is not shown and nothing was changed; CelikPanel checks the components again by itself while the Dashboard, the Components page or a component's page is open\",\"code\":\"SERVICE_STATE_UNVERIFIED\",\"action\":\"/services\"}\n"
+          }
+        ],
+        "scan_posts": [
+          {
+            "method": "POST",
+            "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+            "status": 200,
+            "start": "2026-10-15T14:38:57.477Z",
+            "ms": 980
+          }
+        ],
+        "requests": [
+          {
+            "method": "GET",
+            "url": "/api/v1/auth/me",
+            "status": 200,
+            "start": "2026-10-15T14:38:57.371Z",
+            "ms": 12
+          },
+          {
+            "method": "GET",
+            "url": "/api/v1/auth/me",
+            "status": 200,
+            "start": "2026-10-15T14:38:57.382Z",
+            "ms": 7
+          },
+          {
+            "method": "GET",
+            "url": "/api/v1/panel/availability",
+            "status": 200,
+            "start": "2026-10-15T14:38:57.389Z",
+            "ms": 5
+          },
+          {
+            "method": "GET",
+            "url": "/api/v1/license/access",
+            "status": 200,
+            "start": "2026-10-15T14:38:57.398Z",
+            "ms": 23
+          },
+          {
+            "method": "GET",
+            "url": "/api/v1/setup",
+            "status": 200,
+            "start": "2026-10-15T14:38:57.431Z",
+            "ms": 41
+          },
+          {
+            "method": "GET",
+            "url": "/api/v1/service/operation?active=1",
+            "status": 200,
+            "start": "2026-10-15T14:38:57.431Z",
+            "ms": 42
+          },
+          {
+            "method": "GET",
+            "url": "/api/v1/domains",
+            "status": 200,
+            "start": "2026-10-15T14:38:57.431Z",
+            "ms": 42
+          },
+          {
+            "method": "GET",
+            "url": "/api/v1/managed-services",
+            "status": 503,
+            "start": "2026-10-15T14:38:57.430Z",
+            "ms": 42,
+            "body": "{\"error\":\"the stored component record could not be verified, so it is not shown and nothing was changed; CelikPanel checks the components again by itself while the Dashboard, the Components page or a component's page is open\",\"code\":\"SERVICE_STATE_UNVERIFIED\",\"action\":\"/services\"}\n"
+          },
+          {
+            "method": "GET",
+            "url": "/api/v1/panel/version",
+            "status": 200,
+            "start": "2026-10-15T14:38:57.431Z",
+            "ms": 42
+          },
+          {
+            "method": "GET",
+            "url": "/api/v1/managed-services",
+            "status": 503,
+            "start": "2026-10-15T14:38:57.431Z",
+            "ms": 43,
+            "body": "{\"error\":\"the stored component record could not be verified, so it is not shown and nothing was changed; CelikPanel checks the components again by itself while the Dashboard, the Components page or a component's page is open\",\"code\":\"SERVICE_STATE_UNVERIFIED\",\"action\":\"/services\"}\n"
+          },
+          {
+            "method": "POST",
+            "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+            "status": 200,
+            "start": "2026-10-15T14:38:57.477Z",
+            "ms": 980
+          },
+          {
+            "method": "GET",
+            "url": "/api/v1/managed-services",
+            "status": 200,
+            "start": "2026-10-15T14:38:58.460Z",
+            "ms": 7
+          },
+          {
+            "method": "GET",
+            "url": "/api/v1/nginx/global",
+            "status": 200,
+            "start": "2026-10-15T14:38:58.485Z",
+            "ms": 13
+          },
+          {
+            "method": "GET",
+            "url": "/api/v1/managed-services",
+            "status": 200,
+            "start": "2026-10-15T14:38:58.485Z",
+            "ms": 15
+          },
+          {
+            "method": "GET",
+            "url": "/api/v1/nginx/ratelimits",
+            "status": 200,
+            "start": "2026-10-15T14:38:58.485Z",
+            "ms": 25
+          },
+          {
+            "method": "GET",
+            "url": "/api/v1/nginx/ssl",
+            "status": 200,
+            "start": "2026-10-15T14:38:58.485Z",
+            "ms": 25
+          },
+          {
+            "method": "GET",
+            "url": "/api/v1/license/access",
+            "status": 200,
+            "start": "2026-10-15T14:39:08.937Z",
+            "ms": 9
+          }
+        ]
+      },
+      "tr": {
+        "lang": "tr",
+        "id": "nginx",
+        "html_lang": "tr",
+        "preparation": {
+          "epoch": 1792075183.2154303,
+          "returncode": 0,
+          "row_after": {
+            "data_length": 47,
+            "scanned_at": "2026-10-15T14:38:58Z"
+          },
+          "row_before": {
+            "data_head_is_json": true,
+            "data_length": 2262,
+            "scanned_at": "2026-10-15T14:38:58Z"
+          },
+          "rows_changed": 1,
+          "what": "lab preparation: the stored component record (service_scan_cache id 1, data column) replaced by bytes that do not decode; scanned_at unchanged"
+        },
+        "sequence": [
+          {
+            "at": "2026-10-15T14:39:43.782Z",
+            "after_ms": 174,
+            "kinds": [],
+            "alerts": [],
+            "text_head": "",
+            "picture": "component-unverified-tr-1"
+          },
+          {
+            "at": "2026-10-15T14:39:44.120Z",
+            "after_ms": 512,
+            "kinds": [
+              "checking-stored"
+            ],
+            "alerts": [],
+            "text_head": "Kayıtlı kayıt doğrulanamadı; bu yüzden CelikPanel bileşenleri şimdi kontrol ediyor. Hiçbir şey değiştirilmedi ve sizin bir şey yapmanız gerekmiyor; bu sayfa kontrol bitince dolar.",
+            "picture": "component-unverified-tr-2"
+          },
+          {
+            "at": "2026-10-15T14:39:45.231Z",
+            "after_ms": 1623,
+            "kinds": [],
+            "alerts": [],
+            "text_head": "Bileşenler Nginx Çalışıyor Yardım Başlat Durdur Yeniden başlat Genel SSL/TLS Hız limitleri Worker süreçleri auto Worker bağlantıları 768 Keepalive zaman aşımı — İstemci maks. gövde boyutu — Sunucu jetonları off; # Recommended practice is to turn this off Gzip on Salt okunur, nginx -T'den canlı ayrıştırılır. Panel içi düzenleme henüz desteklenmiyor.",
+            "picture": "component-unverified-tr-3"
+          }
+        ],
+        "unverified_answers": [
+          {
+            "method": "GET",
+            "url": "/api/v1/managed-services",
+            "status": 503,
+            "start": "2026-10-15T14:39:43.727Z",
+            "ms": 43,
+            "body": "{\"error\":\"the stored component record could not be verified, so it is not shown and nothing was changed; CelikPanel checks the components again by itself while the Dashboard, the Components page or a component's page is open\",\"code\":\"SERVICE_STATE_UNVERIFIED\",\"action\":\"/services\"}\n"
+          },
+          {
+            "method": "GET",
+            "url": "/api/v1/managed-services",
+            "status": 503,
+            "start": "2026-10-15T14:39:43.727Z",
+            "ms": 44,
+            "body": "{\"error\":\"the stored component record could not be verified, so it is not shown and nothing was changed; CelikPanel checks the components again by itself while the Dashboard, the Components page or a component's page is open\",\"code\":\"SERVICE_STATE_UNVERIFIED\",\"action\":\"/services\"}\n"
+          }
+        ],
+        "scan_posts": [
+          {
+            "method": "POST",
+            "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+            "status": 200,
+            "start": "2026-10-15T14:39:43.777Z",
+            "ms": 1153
+          }
+        ],
+        "requests": [
+          {
+            "method": "GET",
+            "url": "/api/v1/auth/me",
+            "status": null,
+            "start": "2026-10-15T14:39:43.664Z",
+            "ms": 12
+          },
+          {
+            "method": "GET",
+            "url": "/api/v1/auth/me",
+            "status": 200,
+            "start": "2026-10-15T14:39:43.676Z",
+            "ms": 6
+          },
+          {
+            "method": "GET",
+            "url": "/api/v1/panel/availability",
+            "status": 200,
+            "start": "2026-10-15T14:39:43.683Z",
+            "ms": 5
+          },
+          {
+            "method": "GET",
+            "url": "/api/v1/license/access",
+            "status": 200,
+            "start": "2026-10-15T14:39:43.691Z",
+            "ms": 5
+          },
+          {
+            "method": "GET",
+            "url": "/api/v1/domains",
+            "status": 200,
+            "start": "2026-10-15T14:39:43.727Z",
+            "ms": 44
+          },
+          {
+            "method": "GET",
+            "url": "/api/v1/service/operation?active=1",
+            "status": 200,
+            "start": "2026-10-15T14:39:43.728Z",
+            "ms": 43
+          },
+          {
+            "method": "GET",
+            "url": "/api/v1/setup",
+            "status": 200,
+            "start": "2026-10-15T14:39:43.728Z",
+            "ms": 43
+          },
+          {
+            "method": "GET",
+            "url": "/api/v1/managed-services",
+            "status": 503,
+            "start": "2026-10-15T14:39:43.727Z",
+            "ms": 43,
+            "body": "{\"error\":\"the stored component record could not be verified, so it is not shown and nothing was changed; CelikPanel checks the components again by itself while the Dashboard, the Components page or a component's page is open\",\"code\":\"SERVICE_STATE_UNVERIFIED\",\"action\":\"/services\"}\n"
+          },
+          {
+            "method": "GET",
+            "url": "/api/v1/managed-services",
+            "status": 503,
+            "start": "2026-10-15T14:39:43.727Z",
+            "ms": 44,
+            "body": "{\"error\":\"the stored component record could not be verified, so it is not shown and nothing was changed; CelikPanel checks the components again by itself while the Dashboard, the Components page or a component's page is open\",\"code\":\"SERVICE_STATE_UNVERIFIED\",\"action\":\"/services\"}\n"
+          },
+          {
+            "method": "GET",
+            "url": "/api/v1/panel/version",
+            "status": 200,
+            "start": "2026-10-15T14:39:43.727Z",
+            "ms": 45
+          },
+          {
+            "method": "POST",
+            "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+            "status": 200,
+            "start": "2026-10-15T14:39:43.777Z",
+            "ms": 1153
+          },
+          {
+            "method": "GET",
+            "url": "/api/v1/managed-services",
+            "status": 200,
+            "start": "2026-10-15T14:39:44.934Z",
+            "ms": 6
+          },
+          {
+            "method": "GET",
+            "url": "/api/v1/managed-services",
+            "status": 200,
+            "start": "2026-10-15T14:39:44.957Z",
+            "ms": 5
+          },
+          {
+            "method": "GET",
+            "url": "/api/v1/nginx/ssl",
+            "status": 200,
+            "start": "2026-10-15T14:39:44.957Z",
+            "ms": 18
+          },
+          {
+            "method": "GET",
+            "url": "/api/v1/nginx/ratelimits",
+            "status": 200,
+            "start": "2026-10-15T14:39:44.958Z",
+            "ms": 23
+          },
+          {
+            "method": "GET",
+            "url": "/api/v1/nginx/global",
+            "status": 200,
+            "start": "2026-10-15T14:39:44.957Z",
+            "ms": 26
+          },
+          {
+            "method": "GET",
+            "url": "/api/v1/license/access",
+            "status": 200,
+            "start": "2026-10-15T14:39:53.936Z",
+            "ms": 6
+          }
+        ]
+      },
+      "seconds": 92.7
+    },
+    "reads": {
+      "started": "2026-10-15T14:40:28.717Z",
+      "reads": {
+        "/api/v1/panel/version": {
+          "status": 200,
+          "at": "2026-10-15T14:40:28.775Z",
+          "body": {
+            "agent_commit": "313f3eea2c9b89251588648b09484cd34b7aecb1",
+            "agent_matches": true,
+            "commit": "313f3eea2c9b89251588648b09484cd34b7aecb1",
+            "hostname": "dns-debian13",
+            "ipv4": "192.0.2.10",
+            "schema_version": 44,
+            "version": "v0.1.0-alpha.86"
+          }
+        },
+        "/api/v1/license/access": {
+          "status": 200,
+          "at": "2026-10-15T14:40:29.201Z",
+          "body": {
+            "can_use_panel": true,
+            "valid_until": 1792075254,
+            "valid_for_seconds": 24.723,
+            "state": "active",
+            "observation": "known"
+          }
+        },
+        "/api/v1/managed-services": {
+          "status": 200,
+          "at": "2026-10-15T14:40:29.630Z",
+          "body": {
+            "scanned_at": "2026-10-15T14:39:44Z",
+            "scan_age_seconds": 45.704,
+            "services": "<27 entries>",
+            "profiles": "<3 entries>",
+            "dns_identity_ready": true,
+            "mail_hostname": {
+              "current": "dns-debian13",
+              "current_usable": false,
+              "will_set_hostname": false
+            }
+          }
+        }
+      },
+      "seconds": 1.3
+    }
+  }
+}

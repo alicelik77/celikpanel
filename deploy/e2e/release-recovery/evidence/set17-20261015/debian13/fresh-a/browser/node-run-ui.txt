@@ -1,0 +1,6 @@
+wait for //wsl.localhost/archlinux/var/tmp/cp-set17/hand/h17d13-ui/ready.json start=2026-10-15T14:30:25Z limit=5400s
+handover after 390s at 2026-10-15T14:37:03Z tool_sha256=5e8fb7157277632ec50466df1faa00a3e07cc753efab4349d512be21cd829c0d
+browser profile: <redacted> (46 characters, limit 120)
+{"cell":"ui","started":"2026-10-15T14:37:05.083Z","ended":"2026-10-15T14:40:30.683Z","ok":true}
+{"cell":"done","started":"2026-10-15T14:40:30.689Z","ended":"2026-10-15T14:40:30.693Z","ok":true}
+rc=0 end=2026-10-15T14:40:31Z

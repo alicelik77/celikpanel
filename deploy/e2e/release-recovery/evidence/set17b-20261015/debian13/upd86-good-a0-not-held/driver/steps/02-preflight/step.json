@@ -1,0 +1,105 @@
+{
+  "checks": {
+    "guest_fresh": true,
+    "helpers": {
+      "guest_bound_worker.py": "1ebff5e14d87761e72dbb3ca30c6f1aaad5a2aa5df7971f23ab81ae305bc3ea1",
+      "guest_bound_worker.py (set17 generated copy)": "c3ef61b8101b6f40cc1ce31cd617a087ff00e06db9feca19996f63f29011c719",
+      "guest_owner_port_hold.py": "81c3ccc9ed21edaa3429546a3abcbef81ac8a738c182bee752bb7486490a8bde",
+      "guest_owner_update_observer.py": "263ed14c59f24956aaf0e21ece5b74b9f81dbfe19ad652d89a87ea6e25f731af",
+      "guest_port_fault.py": "be8eb7008d50b343c1194bef8c32c14335fa750cd7be61c43a7c1e52b2d6efc6",
+      "guest_probe.py": "417dcfc2ad32c399aa43bc33d886f64eee9eae88707556ff22cf0ea6b3a008a2",
+      "guest_recovery_fault.py": "4d9ae59bcbc2fdb4a6f42ade529c1b6b1f6366b726f92ba37058957b7696da50",
+      "guest_recovery_handoff.py": "21dfaa3bc76b56f463a706f50f8b6413a5325ebba978b113a0b4a59d2be4c0cf",
+      "guest_request_identity_native.py": "5300f7398b81a0126765d49db8c070eb35a472daa1260074f5f25b1745242349",
+      "guest_set10_native.py": "562b857fa64bb950d8a34704f60fc5b682b665b117a03eba387d6493899b181b",
+      "guest_set11_native.py": "5471d8ce8c10657697d540a5fb8d3ca067ecccace6339fdc3a37ef26242d348c",
+      "guest_set12_native.py": "19e93626f3ef5c0434514c83fd33962c2afc729b398d3abc88c756cab56faa0d",
+      "guest_set13_native.py": "302e45f1ca7fe33f66fe280b823d10e652e330b649c53120edafee142f0d03c1",
+      "guest_set14_native.py": "eebc8a4f358e052753e182b020546569bf47ecb19f6bf454550be0edfa28d624",
+      "guest_set17b_restart_delay.py (set17b lab preparation)": "4c882f5f9994d7f907c431abd1a964619fd4aa2efa4d05ea08e3bfbc5f8a8055",
+      "guest_set4_native.py": "3d601a1cb544abd7a244d9015804e6acfd584c079691b56bf7c7af0f94017c12",
+      "guest_set8_native.py": "8c58a8a6485d8eea9a3020666cfdcb4ef230cd2be1a8a141b4e9242082d6172b",
+      "guest_upd1_workload.py": "3d2f218f298b3ded3228b0089155b45e1e81c8dce9a8b8783e5face05287b8cf",
+      "guest_update_kill.py": "f996f1cedf3777ef12b1f44282dcb3208c61400f76f27c4ed3fe4e290f95cd26"
+    },
+    "origin_name_before": {
+      "hosts_mappings": [],
+      "nsswitch_hosts": "hosts:          files myhostname resolve [!UNAVAIL=return] dns",
+      "resolver_queried": false
+    },
+    "proofs": {
+      "baseline": {
+        "agent_sha256": "581e0ce49b7f372286e653832627c34e70ced1c5df7f18f84548fef12c3a8df5",
+        "commit": "ecd2a5f088d676f7cc8a8e571ed3c903ea951f3e",
+        "dns_owner_tools": [
+          "dns-owner-tools/README.md",
+          "dns-owner-tools/bind-peer-inspect",
+          "dns-owner-tools/dns-peer-enroll",
+          "dns-owner-tools/pdns-peer-inspect"
+        ],
+        "files": 214,
+        "panel_sha256": "1235841f8c71094a5f32f39b47a9bf3dc15e7c60fa0f4f1259aba006929b7656",
+        "release_policy": {
+          "current": 86,
+          "format": "celikpanel-release-sequence-policy-v1",
+          "previous": 85,
+          "previous_commit": "36c33c4531ee6c1306d324db7a666403176f3bf7",
+          "previous_version": "v0.1.0-alpha.85",
+          "sha256": "cd8320f0b18d55213689adbbc95f41e3204b89827cf99acb07cbc21e35a99e02",
+          "version": "v0.1.0-alpha.86"
+        },
+        "source_proof": {
+          "acceptance_notice_sha256": "857cf276f111f721797e215a07d5aa56c42ff6f83251f67e9f767c3ab8577e18",
+          "commit": "ecd2a5f088d676f7cc8a8e571ed3c903ea951f3e",
+          "exempted_from_git_proof": [
+            "ACCEPTANCE-LICENSE-BUILD.txt"
+          ],
+          "method": "real Git commit/tree and every packaged static source blob",
+          "tree": "9fce9365ea8da90da7503a3b6663fb0c237c1d36",
+          "verified_static_files": 62
+        },
+        "tree": "9fce9365ea8da90da7503a3b6663fb0c237c1d36"
+      },
+      "good": {
+        "agent_sha256": "3e5a4599446ef441183d606902a7e6d5c475c4d0f98d7a28109b69e7a78d0250",
+        "commit": "20a9baa5d0ccb269528a02ec8c14229bc2ee2493",
+        "dns_owner_tools": [
+          "dns-owner-tools/README.md",
+          "dns-owner-tools/bind-peer-inspect",
+          "dns-owner-tools/dns-peer-enroll",
+          "dns-owner-tools/pdns-peer-inspect"
+        ],
+        "files": 214,
+        "panel_sha256": "633600a6cb45b347d7a911c5f44e03da76bac647d8338a1af393497467ef2137",
+        "release_policy": {
+          "current": 87,
+          "format": "celikpanel-release-sequence-policy-v1",
+          "previous": 86,
+          "previous_commit": "ecd2a5f088d676f7cc8a8e571ed3c903ea951f3e",
+          "previous_version": "v0.1.0-alpha.86",
+          "sha256": "9db5ca2374a9f59fe95029ae7fb33cd2a20a4cdf68a20429a777a7fad9e7ebdd",
+          "version": "v0.1.0-alpha.87"
+        },
+        "source_proof": {
+          "acceptance_notice_sha256": "95cf534cdd07c6b515e236880585b0eda1b7c62c7bb2b661c9b40df3ff00afcc",
+          "commit": "20a9baa5d0ccb269528a02ec8c14229bc2ee2493",
+          "exempted_from_git_proof": [
+            "ACCEPTANCE-LICENSE-BUILD.txt"
+          ],
+          "method": "real Git commit/tree and every packaged static source blob",
+          "tree": "34f4b2d5260ed9e92245e826ae0de6909dc450e1",
+          "verified_static_files": 62
+        },
+        "tree": "34f4b2d5260ed9e92245e826ae0de6909dc450e1"
+      }
+    },
+    "set6_note": "`origin_name_before.hosts_mappings` is empty when the only line that maps the name is the lab's own pin of the first step; the lines as read are in the field above",
+    "set6_origin_name_lines_in_the_hosts_file": [
+      "127.0.0.1 celikpanel.net # disposable CelikPanel lab pin before provisioning"
+    ]
+  },
+  "finished_at": "2026-10-15T17:13:14Z",
+  "name": "preflight",
+  "started_at": "2026-10-15T17:13:09Z",
+  "verdict": "passed"
+}

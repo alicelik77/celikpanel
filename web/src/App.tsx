@@ -16,6 +16,7 @@ import {
 import { Login } from './components/Login';
 import { LicenseOnboarding } from './components/LicenseOnboarding';
 import { usePanelSession } from './auth/usePanelSession';
+import { useUpdateRestartStarting } from './lib/useUpdateRestartStarting';
 import { RecoveryAccess } from './components/RecoveryAccess';
 import { AccessHold } from './components/AccessHold';
 import { AuthProvider, useAuth } from './auth/AuthContext';
@@ -395,6 +396,10 @@ function AuthGate() {
   const { user, state, checking, unanswered, afterAnswer, failure, generation: authGenerationRef, retry, transitionAuthentication, markUnavailable } = usePanelSession();
   const [observationRecovery, setObservationRecovery] = useState(false);
   const endSession = useCallback(() => transitionAuthentication(null), [transitionAuthentication]);
+  // While the followed update restarts the Panel, "still starting" is that
+  // restart, not a reason to hold the pages (lib/useUpdateRestartStarting.ts).
+  // Güncellemenin kendi yeniden başlaması sürerken "hâlâ başlıyor" sayfaları tutmaz.
+  const updateRestartStarting = useUpdateRestartStarting(state === 'ready', markUnavailable);
   // The identity whose pages are mounted, whether the owner signed out, and
   // whether the session ended under a mounted page. Derived while rendering so
   // that the pages and their hold never disagree for a frame.
@@ -451,13 +456,13 @@ function AuthGate() {
             window.dispatchEvent(new Event('celikpanel:license-locked'));
           }
           if (problem.code === 'AUTH_STATUS_UNAVAILABLE') markUnavailable(true);
-          if (problem.code === 'panel_starting' || problem.code === 'PANEL_STARTING') markUnavailable();
+          if ((problem.code === 'panel_starting' || problem.code === 'PANEL_STARTING') && !updateRestartStarting()) markUnavailable();
         }).catch(() => {});
       }
       return res;
     };
     return () => { window.fetch = originalFetch; };
-  }, [transitionAuthentication, markUnavailable, authGenerationRef]);
+  }, [transitionAuthentication, markUnavailable, authGenerationRef, updateRestartStarting]);
 
   // The router keeps the address while the sign-in form is shown, so signing in
   // again opens the same route. What was typed on that page is not kept.

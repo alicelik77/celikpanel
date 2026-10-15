@@ -1,6 +1,32 @@
 package auth
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+	"strings"
+)
+
+// ReservedUsernameSystem is the actor the Panel writes to the audit log for an
+// action without a signed-in user; the Dashboard says it "System" / "Sistem".
+// A person must not be able to take that name, or their actions would be
+// shown as the Panel's own.
+//
+// ReservedUsernameSystem, Panel'in oturum açmış kullanıcısı olmayan eylemler
+// için denetim günlüğüne yazdığı aktördür; Pano onu "Sistem" diye söyler.
+// Biri bu adı alamaz; yoksa eylemleri Panel'inkiymiş gibi görünürdü.
+const ReservedUsernameSystem = "system"
+
+// ErrReservedUsername is returned for a name that is reserved (case-insensitive).
+// Existing rows are not touched; only a new or changed name is refused.
+//
+// ErrReservedUsername, ayrılmış bir ad için döner (büyük/küçük harf duyarsız).
+// Var olan satırlara dokunulmaz; yalnız yeni ya da değişen ad reddedilir.
+var ErrReservedUsername = errors.New("username is reserved")
+
+// IsReservedUsername reports whether the name is reserved, ignoring case.
+func IsReservedUsername(username string) bool {
+	return strings.EqualFold(username, ReservedUsernameSystem)
+}
 
 // ValidateUsername enforces a conservative username policy: 3–32 characters
 // of letters, digits, underscore, hyphen or dot, starting with a letter or
@@ -27,6 +53,9 @@ func ValidateUsername(username string) error {
 		if !isLetter && !isDigit && r != '_' && r != '-' && r != '.' {
 			return fmt.Errorf("username contains an invalid character %q", r)
 		}
+	}
+	if IsReservedUsername(username) {
+		return ErrReservedUsername
 	}
 	return nil
 }

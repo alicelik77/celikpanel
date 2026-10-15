@@ -9,6 +9,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/alicelik/celikpanel/internal/auth"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -96,6 +97,7 @@ const (
 	errCodeLicenseStatusUnavailable       = "LICENSE_STATUS_UNAVAILABLE"
 	errCodeLicenseVerificationUnavailable = "LICENSE_VERIFICATION_UNAVAILABLE"
 	errCodeAdminOnly                      = "ADMIN_ONLY"
+	errCodeUsernameReserved               = "USERNAME_RESERVED"
 	errCodeAdditionalUserScope            = "ADDITIONAL_USER_SCOPE"
 	errCodeAccountSuspended               = "ACCOUNT_SUSPENDED"
 	errCodeDomainDeletionPending          = "DOMAIN_DELETION_PENDING"
@@ -712,6 +714,20 @@ func writeServerErrorAs(w http.ResponseWriter, caller *Caller, err error) {
 		log.Printf("[500] %v", err)
 	}
 	writeCodedError(w, http.StatusInternalServerError, errCodeInternal, "internal server error", "")
+}
+
+// writeUsernameError answers a username ValidateUsername refused: a reserved
+// name gets its own code (the page says why in the interface language), any
+// other refusal keeps its explicit message.
+// writeUsernameError, ValidateUsername'in reddettiği kullanıcı adını yanıtlar:
+// ayrılmış ad kendi kodunu alır (sayfa nedenini arayüz dilinde söyler), diğer
+// retler açık iletilerini korur.
+func writeUsernameError(w http.ResponseWriter, err error) {
+	if errors.Is(err, auth.ErrReservedUsername) {
+		writeCodedError(w, http.StatusBadRequest, errCodeUsernameReserved, "that username is reserved; choose another", "")
+		return
+	}
+	writeClientError(w, http.StatusBadRequest, err.Error())
 }
 
 // writeClientError returns a 4xx with a safe, explicit message. The

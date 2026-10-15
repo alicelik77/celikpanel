@@ -1,0 +1,44 @@
+{
+  "/api/v1/panel/version": {
+    "status": 200,
+    "at": "2026-10-15T14:29:59.070Z",
+    "body": {
+      "agent_commit": "c48678d34583868ab583db4cfb6c97c36e423db6",
+      "agent_matches": true,
+      "commit": "c48678d34583868ab583db4cfb6c97c36e423db6",
+      "hostname": "dns-debian13",
+      "ipv4": "192.0.2.10",
+      "schema_version": 44,
+      "version": "v0.1.0-alpha.87"
+    }
+  },
+  "/api/v1/license/access": {
+    "status": 200,
+    "at": "2026-10-15T14:29:59.500Z",
+    "body": {
+      "can_use_panel": true,
+      "valid_until": 1792074648,
+      "valid_for_seconds": 48.41,
+      "state": "active",
+      "observation": "known"
+    }
+  },
+  "/api/v1/managed-services": {
+    "status": 200,
+    "at": "2026-10-15T14:29:59.918Z",
+    "body": {
+      "scanned_at": "2026-10-15T14:28:23Z",
+      "scan_age_seconds": 97.015,
+      "services": "<27 entries>",
+      "profiles": "<3 entries>",
+      "dns_identity_ready": true,
+      "mail_hostname": {
+        "current": "dns-debian13",
+        "current_usable": false,
+        "hostname": "mail-debian13.upd1-infra.test",
+        "source": "saved",
+        "will_set_hostname": false
+      }
+    }
+  }
+}

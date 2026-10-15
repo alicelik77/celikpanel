@@ -133,9 +133,11 @@ test('a hidden tab checks nothing, and the checks resume when it is shown', asyn
         assert.equal(calls.length, 1, 'no check while hidden');
         globalThis.document.visibilityState = 'visible';
         await act(async () => { globalThis.document.dispatchEvent(new Event('visibilitychange')); });
-        assert.equal(pollTimers().length, 1, 'shown again: the next check is scheduled');
+        // Shown again: one check at once, not after the delay (2026-10-15).
+        assert.equal(calls.length, 2, 'shown again: the card checks at once');
+        assert.equal(pollTimers().length, 1, 'then the next check is scheduled');
         assert.equal(await firePoll(), 1);
-        assert.equal(calls.length, 2);
+        assert.equal(calls.length, 3);
         assert.ok(calls.every(call => call.method === 'GET'));
     } finally { await unmount(); }
 });

@@ -1,0 +1,8 @@
+Ran 11 tests in 0.496s
+OK
+Ran 8 tests in 0.518s
+OK
+compiled set17_trial.py
+compiled set17_fixture.py
+shell syntax ok
+tool syntax ok

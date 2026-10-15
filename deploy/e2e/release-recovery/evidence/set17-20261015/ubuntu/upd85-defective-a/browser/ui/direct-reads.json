@@ -1,0 +1,44 @@
+{
+  "/api/v1/panel/version": {
+    "status": 200,
+    "at": "2026-10-15T15:57:50.317Z",
+    "body": {
+      "agent_commit": "36c33c4531ee6c1306d324db7a666403176f3bf7",
+      "agent_matches": true,
+      "commit": "36c33c4531ee6c1306d324db7a666403176f3bf7",
+      "hostname": "dns-ubuntu",
+      "ipv4": "192.0.2.12",
+      "schema_version": 44,
+      "version": "v0.1.0-alpha.85"
+    }
+  },
+  "/api/v1/license/access": {
+    "status": 200,
+    "at": "2026-10-15T15:57:50.728Z",
+    "body": {
+      "can_use_panel": true,
+      "valid_until": 1792079916,
+      "valid_for_seconds": 45.173,
+      "state": "active",
+      "observation": "known"
+    }
+  },
+  "/api/v1/managed-services": {
+    "status": 200,
+    "at": "2026-10-15T15:57:51.136Z",
+    "body": {
+      "scanned_at": "2026-10-15T15:56:15Z",
+      "scan_age_seconds": 96.235,
+      "services": "<27 entries>",
+      "profiles": "<3 entries>",
+      "dns_identity_ready": true,
+      "mail_hostname": {
+        "current": "dns-ubuntu",
+        "current_usable": false,
+        "hostname": "mail-ubuntu.upd1-infra.test",
+        "source": "saved",
+        "will_set_hostname": false
+      }
+    }
+  }
+}

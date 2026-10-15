@@ -47,18 +47,70 @@ export function mailProfileDescription(profile: ProfileText, t: Translate): stri
 
 // The sentence of a code, or null when there is no code or no words for it.
 // Only string values are used; a missing value leaves its sentence unused.
+// A code may have a fuller sentence for an optional value: component_not_installable
+// names the platform when the Panel sends one (2026-10-15); without it (an
+// unverified platform, an older Panel) the shorter sentence stands.
+// Bir kodun isteğe bağlı bir değer için daha dolu bir cümlesi olabilir.
+const fullerSentence: Record<string, { value: string; key: TranslationKey }> = {
+    component_not_installable: { value: 'platform', key: 'services.mailProfiles.code.component_not_installable.platform' },
+};
+// A requirement may name a role instead of a component ("web-server": any
+// installed web server satisfies it; cmd/panel mailProfileServiceName sends
+// the token itself). The Panel joins what is missing with ", " in `required`.
+// Each role token is said by its display name; a component name (already a
+// product name) is left as it is; a role token this page has no name for
+// (a newer Panel) is said as words, never as the raw token.
+//
+// Gereksinim bileşen yerine bir rol adı verebilir ("web-server"). Her rol adı
+// görünen adıyla söylenir; bileşen adı olduğu gibi kalır; bilinmeyen rol adı
+// sözcük olarak söylenir, ham belirteç olarak değil.
+const requirementRoles = ['web-server', 'smtp-server', 'imap-server', 'spam-filter', 'dns-server', 'kv-store'] as const;
+// More than one requirement is said as a list with "and" before the last one,
+// and the sentence takes its plural form (browser batch 14, 2026-10-15:
+// "requires Redis, key-value store, mail relay host, which is not part of
+// this profile").
+// Birden fazla gereksinim "ve" ile biten bir liste olarak söylenir.
+export function requirementItems(required: string, t: Translate): string[] {
+    return required.split(', ').filter(Boolean).map((token) => {
+        if (!/^[a-z]+(-[a-z]+)+$/.test(token)) return token;
+        if ((requirementRoles as readonly string[]).includes(token)) {
+            return t(`services.mailProfiles.role.${token}` as TranslationKey);
+        }
+        return token.replace(/-/g, ' ');
+    });
+}
+export function requirementText(required: string, t: Translate): string {
+    const items = requirementItems(required, t);
+    if (items.length < 2) return items.join('');
+    return `${items.slice(0, -1).join(', ')} ${t('services.mailProfiles.requirementAnd')} ${items[items.length - 1]}`;
+}
+
 function codeSentence(code: unknown, vars: unknown, t: Translate): string | null {
     if (typeof code !== 'string' || !/^[a-z_]+$/.test(code)) return null;
-    const key = `services.mailProfiles.code.${code}` as TranslationKey;
     const values: Record<string, string> = {};
     if (vars && typeof vars === 'object') {
         for (const [name, value] of Object.entries(vars as Record<string, unknown>)) {
             if (typeof value === 'string') values[name] = value;
         }
     }
-    const said = t(key, values);
-    if (said === key || /\{\w+\}/.test(said)) return null;
-    return said;
+    const say = (key: TranslationKey): string | null => {
+        const said = t(key, values);
+        return said === key || /\{\w+\}/.test(said) ? null : said;
+    };
+    if (code === 'component_requires' && values.required) {
+        const several = requirementItems(values.required, t).length > 1;
+        values.required = requirementText(values.required, t);
+        if (several) {
+            const said = say('services.mailProfiles.code.component_requires.many');
+            if (said) return said;
+        }
+    }
+    const fuller = fullerSentence[code];
+    if (fuller && values[fuller.value]?.trim()) {
+        const said = say(fuller.key);
+        if (said) return said;
+    }
+    return say(`services.mailProfiles.code.${code}` as TranslationKey);
 }
 
 export function mailProfileBlocked(profile: ProfileText, t: Translate): string {

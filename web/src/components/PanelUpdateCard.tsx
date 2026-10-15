@@ -148,6 +148,10 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
     // what the notice says (owner report 2026-10-10).
     const tracking = systemUpdate.tracking ?? null;
     const verifying = tracking?.phase === 'verifying';
+    // This card is the one notice for the followed update while it is on
+    // screen; the corner notice does not repeat it (owner report 2026-10-15).
+    const registerInlineNotice = systemUpdate.registerInlineNotice;
+    useEffect(() => registerInlineNotice?.(), [registerInlineNotice]);
     // Read on mount and again when the followed update is found installed, so
     // the version shown is the one this panel runs now. A GET only.
     useEffect(() => {
@@ -224,8 +228,17 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
             }
             schedule();
         };
+        // A tab shown again reads at once (as lib/visibleReads.ts does), then
+        // the delay resumes from that read; a read already in flight is that
+        // read (2026-10-15).
+        // Yeniden gosterilen sekme hemen bir kez okur; suren okuma o okumadir.
         const onVisibility = () => {
-            if (visible()) { schedule(); return; }
+            if (visible()) {
+                if (timer !== undefined) window.clearTimeout(timer);
+                timer = undefined;
+                if (!controller) void read();
+                return;
+            }
             if (timer !== undefined) window.clearTimeout(timer);
             timer = undefined;
         };
@@ -375,12 +388,28 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
 
             {tracking && (
                 <div className="mt-4 flex items-start gap-2 rounded-lg border border-border bg-surface-subtle p-3 text-sm text-fg" role="status" aria-live="polite" data-update-phase={tracking.phase}>
+                    {/* The update's own restart is progress, drawn as such;
+                        the warning mark is for a state that is not known
+                        (after the restart window, or a failed read). */}
                     {tracking.phase === 'unknown'
                         ? <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
                         : <Loader2 className="mt-0.5 h-4 w-4 shrink-0 motion-safe:animate-spin text-primary" aria-hidden="true" />}
-                    <p>{t(tracking.phase === 'verifying' ? 'panelUpdate.card.verifying'
-                        : tracking.phase === 'unknown' ? 'panelUpdate.card.unknown'
-                            : tracking.phase === 'reading' ? 'panelUpdate.card.reading' : 'panelUpdate.card.applying', { version: tracking.version })}</p>
+                    <div className="min-w-0">
+                        <p>{t(tracking.phase === 'verifying' ? 'panelUpdate.card.verifying'
+                            : tracking.phase === 'unknown' ? 'panelUpdate.card.unknown'
+                                : tracking.phase === 'restarting' ? 'panelUpdate.card.restarting'
+                                    : tracking.phase === 'reading' ? 'panelUpdate.card.reading' : 'panelUpdate.card.applying', { version: tracking.version })}</p>
+                        {tracking.phase === 'unknown' && tracking.overdue && (
+                            <p className="mt-1 text-fg-muted" data-update-overdue="true">{t('panelUpdate.tracking.restartOverdue')}</p>
+                        )}
+                        {tracking.elapsed && tracking.requestID && (
+                            <p className="mt-1 flex flex-wrap gap-x-2 font-mono text-xs text-fg-subtle" data-update-elapsed="true">
+                                <span>{`T+${tracking.elapsed}`}</span>
+                                <span aria-hidden="true">·</span>
+                                <span className="break-all">{`ID ${tracking.requestID}`}</span>
+                            </p>
+                        )}
+                    </div>
                 </div>
             )}
 

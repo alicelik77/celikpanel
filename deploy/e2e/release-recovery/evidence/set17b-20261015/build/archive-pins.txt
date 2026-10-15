@@ -1,0 +1,78 @@
+### update baseline celikpanel-v0.1.0-alpha.85-acceptance-license.tar.gz sha256=31b03ddd762e20d0a841e728b75df321ba0fe96b15e9d1a568843d49d3245c16
+== celikpanel-v0.1.0-alpha.85/deploy/release-sequence-policy sha256=3fdf0147b7f54b4535a9fa24e4966679e90a01ec27a188fba39e2f1fe3244643
+format=celikpanel-release-sequence-policy-v1
+version=v0.1.0-alpha.85
+current=85
+previous=84
+previous_version=v0.1.0-alpha.84
+previous_commit=f0157e6c8f1614cff176821172f8a9067493e625
+== celikpanel-v0.1.0-alpha.85/libexec/get.sh sha256=9b0cf04f0cd52578d837c37c41cea5adf19d81b0eb8d8b2fdbd2c1aeaf598d2f
+6:bootstrap_release_sequence=85
+7:bootstrap_release_version=v0.1.0-alpha.85
+8:bootstrap_release_public_key_sha256=7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb
+== celikpanel-v0.1.0-alpha.85/download-portal/get.sh absent
+### update good celikpanel-v0.1.0-alpha.86-acceptance-license.tar.gz sha256=4569b5eb0dba432799be5f63abeec4afca48669ead46151dd10d8ae80ccd72d0
+== celikpanel-v0.1.0-alpha.86/deploy/release-sequence-policy sha256=cd8320f0b18d55213689adbbc95f41e3204b89827cf99acb07cbc21e35a99e02
+format=celikpanel-release-sequence-policy-v1
+version=v0.1.0-alpha.86
+current=86
+previous=85
+previous_version=v0.1.0-alpha.85
+previous_commit=36c33c4531ee6c1306d324db7a666403176f3bf7
+== celikpanel-v0.1.0-alpha.86/libexec/get.sh sha256=0a71748503e8e8b67766577a269379eb48f92da968f1daf00f5f6c47a286dbf7
+6:bootstrap_release_sequence=86
+7:bootstrap_release_version=v0.1.0-alpha.86
+8:bootstrap_release_public_key_sha256=7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb
+== celikpanel-v0.1.0-alpha.86/download-portal/get.sh absent
+### update defective celikpanel-v0.1.0-alpha.86-acceptance-license.tar.gz sha256=ab140cf3749d018af75d83d6214f61a10869a36f6b9cc8f241c1e92e232a4736
+== celikpanel-v0.1.0-alpha.86/deploy/release-sequence-policy sha256=cd8320f0b18d55213689adbbc95f41e3204b89827cf99acb07cbc21e35a99e02
+format=celikpanel-release-sequence-policy-v1
+version=v0.1.0-alpha.86
+current=86
+previous=85
+previous_version=v0.1.0-alpha.85
+previous_commit=36c33c4531ee6c1306d324db7a666403176f3bf7
+== celikpanel-v0.1.0-alpha.86/libexec/get.sh sha256=0a71748503e8e8b67766577a269379eb48f92da968f1daf00f5f6c47a286dbf7
+6:bootstrap_release_sequence=86
+7:bootstrap_release_version=v0.1.0-alpha.86
+8:bootstrap_release_public_key_sha256=7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb
+== celikpanel-v0.1.0-alpha.86/download-portal/get.sh absent
+### second baseline celikpanel-v0.1.0-alpha.86-acceptance-license.tar.gz sha256=4569b5eb0dba432799be5f63abeec4afca48669ead46151dd10d8ae80ccd72d0
+== celikpanel-v0.1.0-alpha.86/deploy/release-sequence-policy sha256=cd8320f0b18d55213689adbbc95f41e3204b89827cf99acb07cbc21e35a99e02
+format=celikpanel-release-sequence-policy-v1
+version=v0.1.0-alpha.86
+current=86
+previous=85
+previous_version=v0.1.0-alpha.85
+previous_commit=36c33c4531ee6c1306d324db7a666403176f3bf7
+== celikpanel-v0.1.0-alpha.86/libexec/get.sh sha256=0a71748503e8e8b67766577a269379eb48f92da968f1daf00f5f6c47a286dbf7
+6:bootstrap_release_sequence=86
+7:bootstrap_release_version=v0.1.0-alpha.86
+8:bootstrap_release_public_key_sha256=7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb
+== celikpanel-v0.1.0-alpha.86/download-portal/get.sh absent
+### second good celikpanel-v0.1.0-alpha.87-acceptance-license.tar.gz sha256=34c753c6158ecedfea501d3f9c5494557f12609b61e989bbc00cecdba82cb93e
+== celikpanel-v0.1.0-alpha.87/deploy/release-sequence-policy sha256=9db5ca2374a9f59fe95029ae7fb33cd2a20a4cdf68a20429a777a7fad9e7ebdd
+format=celikpanel-release-sequence-policy-v1
+version=v0.1.0-alpha.87
+current=87
+previous=86
+previous_version=v0.1.0-alpha.86
+previous_commit=ecd2a5f088d676f7cc8a8e571ed3c903ea951f3e
+== celikpanel-v0.1.0-alpha.87/libexec/get.sh sha256=0a71748503e8e8b67766577a269379eb48f92da968f1daf00f5f6c47a286dbf7
+6:bootstrap_release_sequence=86
+7:bootstrap_release_version=v0.1.0-alpha.86
+8:bootstrap_release_public_key_sha256=7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb
+== celikpanel-v0.1.0-alpha.87/download-portal/get.sh absent
+### second defective celikpanel-v0.1.0-alpha.87-acceptance-license.tar.gz sha256=1df2f933c669c4bf27e81323df1c5d58c8a0ecde6a65d3aa19ecf4f179b60d0c
+== celikpanel-v0.1.0-alpha.87/deploy/release-sequence-policy sha256=9db5ca2374a9f59fe95029ae7fb33cd2a20a4cdf68a20429a777a7fad9e7ebdd
+format=celikpanel-release-sequence-policy-v1
+version=v0.1.0-alpha.87
+current=87
+previous=86
+previous_version=v0.1.0-alpha.86
+previous_commit=ecd2a5f088d676f7cc8a8e571ed3c903ea951f3e
+== celikpanel-v0.1.0-alpha.87/libexec/get.sh sha256=0a71748503e8e8b67766577a269379eb48f92da968f1daf00f5f6c47a286dbf7
+6:bootstrap_release_sequence=86
+7:bootstrap_release_version=v0.1.0-alpha.86
+8:bootstrap_release_public_key_sha256=7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb
+== celikpanel-v0.1.0-alpha.87/download-portal/get.sh absent

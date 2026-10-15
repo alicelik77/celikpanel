@@ -168,9 +168,11 @@ test('the quiet reads stop while the tab is hidden and resume when it is shown',
         assert.equal(reads(), 1, 'no read while hidden');
         globalThis.document.visibilityState = 'visible';
         await act(async () => { globalThis.document.dispatchEvent(new Event('visibilitychange')); });
-        assert.equal(pollTimers().length, 1, 'shown again: the next read is scheduled');
+        // Shown again: one read at once, not after the delay (2026-10-15).
+        assert.equal(reads(), 2, 'shown again: the card reads at once');
+        assert.equal(pollTimers().length, 1, 'then the next read is scheduled');
         assert.equal(await firePoll(), 1);
-        assert.equal(reads(), 2);
+        assert.equal(reads(), 3);
         assert.ok(calls.every(call => call.method === 'GET'));
         assert.equal(starts, 0);
     } finally { await unmount(); globalThis.fetch = originalFetch; }

@@ -1,0 +1,1051 @@
+{
+  "mode": "after-the-update",
+  "phases": {
+    "sidebar": {
+      "started": "2026-10-15T14:54:10.939Z",
+      "w1280": {
+        "at": "2026-10-15T14:54:14.901Z",
+        "name": "1280x800",
+        "menu_opened": null,
+        "found": true,
+        "class": "inline-block whitespace-nowrap font-mono",
+        "id_text": "c48678d34583",
+        "id_rects": [
+          {
+            "top": 772,
+            "left": 60,
+            "width": 89
+          }
+        ],
+        "id_on_one_line": true,
+        "stamp_line": "CelikPanel · v0.1.0-alpha.87 · build c48678d34583 c48678d34583868ab583db4cfb6c97c36e423db6",
+        "overflows_container": false,
+        "white_space": "nowrap"
+      },
+      "w390": {
+        "at": "2026-10-15T14:54:19.784Z",
+        "name": "390x844",
+        "menu_opened": true,
+        "found": true,
+        "class": "inline-block whitespace-nowrap font-mono",
+        "id_text": "c48678d34583",
+        "id_rects": [
+          {
+            "top": 816,
+            "left": 60,
+            "width": 89
+          }
+        ],
+        "id_on_one_line": true,
+        "stamp_line": "CelikPanel · v0.1.0-alpha.87 · build c48678d34583 c48678d34583868ab583db4cfb6c97c36e423db6",
+        "overflows_container": false,
+        "white_space": "nowrap"
+      },
+      "seconds": 8.8
+    },
+    "components": {
+      "started": "2026-10-15T14:54:19.791Z",
+      "en": {
+        "lang": "en",
+        "load_at": "2026-10-15T14:54:20.144Z",
+        "html_lang": "en",
+        "rows": 27,
+        "catalogue_ids": 27,
+        "rows_in_catalogue": 27,
+        "names_match": 27,
+        "names_differ": [],
+        "descriptions_match": 27,
+        "descriptions_differ": [],
+        "catalogue_ids_not_on_page": [],
+        "rows_not_in_catalogue": [],
+        "managed_services_reads": [
+          {
+            "status": 200,
+            "ms": 42
+          },
+          {
+            "status": 200,
+            "ms": 42
+          }
+        ],
+        "rows_detail": [
+          {
+            "id": "bind",
+            "name": "BIND",
+            "description": "DNS Server",
+            "installed_look": false,
+            "catalogue_name": "BIND",
+            "catalogue_description": "DNS Server",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "pdns",
+            "name": "PowerDNS",
+            "description": "DNS Server",
+            "installed_look": false,
+            "catalogue_name": "PowerDNS",
+            "catalogue_description": "DNS Server",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "php-fpm",
+            "name": "PHP-FPM",
+            "description": "PHP FastCGI Process Manager",
+            "installed_look": true,
+            "catalogue_name": "PHP-FPM",
+            "catalogue_description": "PHP FastCGI Process Manager",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "node",
+            "name": "Node.js",
+            "description": "JavaScript Runtime",
+            "installed_look": false,
+            "catalogue_name": "Node.js",
+            "catalogue_description": "JavaScript Runtime",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "nginx",
+            "name": "Nginx",
+            "description": "Reverse Proxy Server",
+            "installed_look": true,
+            "catalogue_name": "Nginx",
+            "catalogue_description": "Reverse Proxy Server",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "apache",
+            "name": "Apache",
+            "description": "Web Server",
+            "installed_look": false,
+            "catalogue_name": "Apache",
+            "catalogue_description": "Web Server",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "postgresql",
+            "name": "PostgreSQL",
+            "description": "Database Server",
+            "installed_look": false,
+            "catalogue_name": "PostgreSQL",
+            "catalogue_description": "Database Server",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "mariadb",
+            "name": "MariaDB",
+            "description": "Database Server",
+            "installed_look": true,
+            "catalogue_name": "MariaDB",
+            "catalogue_description": "Database Server",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "phpmyadmin",
+            "name": "phpMyAdmin",
+            "description": "MariaDB/MySQL web admin tool",
+            "installed_look": false,
+            "catalogue_name": "phpMyAdmin",
+            "catalogue_description": "MariaDB/MySQL web admin tool",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "phppgadmin",
+            "name": "phpPgAdmin",
+            "description": "PostgreSQL web admin tool",
+            "installed_look": false,
+            "catalogue_name": "phpPgAdmin",
+            "catalogue_description": "PostgreSQL web admin tool",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "postfix",
+            "name": "Postfix",
+            "description": "SMTP Server",
+            "installed_look": true,
+            "catalogue_name": "Postfix",
+            "catalogue_description": "SMTP Server",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "exim",
+            "name": "Exim",
+            "description": "SMTP Server",
+            "installed_look": false,
+            "catalogue_name": "Exim",
+            "catalogue_description": "SMTP Server",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "rspamd",
+            "name": "Rspamd",
+            "description": "Spam Filter & DKIM",
+            "installed_look": true,
+            "catalogue_name": "Rspamd",
+            "catalogue_description": "Spam Filter & DKIM",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "dovecot",
+            "name": "Dovecot",
+            "description": "IMAP/POP3 Server",
+            "installed_look": true,
+            "catalogue_name": "Dovecot",
+            "catalogue_description": "IMAP/POP3 Server",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "roundcube",
+            "name": "Roundcube",
+            "description": "Webmail",
+            "installed_look": true,
+            "catalogue_name": "Roundcube",
+            "catalogue_description": "Webmail",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "spamassassin",
+            "name": "SpamAssassin",
+            "description": "Spam Filter",
+            "installed_look": false,
+            "catalogue_name": "SpamAssassin",
+            "catalogue_description": "Spam Filter",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "wireguard",
+            "name": "WireGuard VPN",
+            "description": "Built-in VPN server",
+            "installed_look": false,
+            "catalogue_name": "WireGuard VPN",
+            "catalogue_description": "Built-in VPN server",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "certbot",
+            "name": "Let’s Encrypt client (certbot)",
+            "description": "SSL certificate provider",
+            "installed_look": true,
+            "catalogue_name": "Let’s Encrypt client (certbot)",
+            "catalogue_description": "SSL certificate provider",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "fail2ban",
+            "name": "Fail2ban",
+            "description": "Intrusion Prevention",
+            "installed_look": false,
+            "catalogue_name": "Fail2ban",
+            "catalogue_description": "Intrusion Prevention",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "nftables",
+            "name": "Firewall engine",
+            "description": "nftables — the panel firewall’s packet-filtering engine",
+            "installed_look": true,
+            "catalogue_name": "Firewall engine",
+            "catalogue_description": "nftables — the panel firewall’s packet-filtering engine",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "clamav",
+            "name": "ClamAV",
+            "description": "Antivirus / malware scanner",
+            "installed_look": false,
+            "catalogue_name": "ClamAV",
+            "catalogue_description": "Antivirus / malware scanner",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "redis",
+            "name": "Redis",
+            "description": "Cache Server",
+            "installed_look": false,
+            "catalogue_name": "Redis",
+            "catalogue_description": "Cache Server",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "valkey",
+            "name": "Valkey",
+            "description": "Cache Server",
+            "installed_look": false,
+            "catalogue_name": "Valkey",
+            "catalogue_description": "Cache Server",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "memcached",
+            "name": "Memcached",
+            "description": "Cache Server",
+            "installed_look": false,
+            "catalogue_name": "Memcached",
+            "catalogue_description": "Cache Server",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "vsftpd",
+            "name": "vsftpd",
+            "description": "FTP Server",
+            "installed_look": false,
+            "catalogue_name": "vsftpd",
+            "catalogue_description": "FTP Server",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "netdata",
+            "name": "Netdata",
+            "description": "Real-time metrics agent",
+            "installed_look": false,
+            "catalogue_name": "Netdata",
+            "catalogue_description": "Real-time metrics agent",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "cron",
+            "name": "Scheduled tasks (cron)",
+            "description": "Native cron daemon that runs scheduled tasks",
+            "installed_look": true,
+            "catalogue_name": "Scheduled tasks (cron)",
+            "catalogue_description": "Native cron daemon that runs scheduled tasks",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          }
+        ]
+      },
+      "tr": {
+        "lang": "tr",
+        "load_at": "2026-10-15T14:54:40.706Z",
+        "html_lang": "tr",
+        "rows": 27,
+        "catalogue_ids": 27,
+        "rows_in_catalogue": 27,
+        "names_match": 27,
+        "names_differ": [],
+        "descriptions_match": 27,
+        "descriptions_differ": [],
+        "catalogue_ids_not_on_page": [],
+        "rows_not_in_catalogue": [],
+        "managed_services_reads": [
+          {
+            "status": 200,
+            "ms": 40
+          },
+          {
+            "status": 200,
+            "ms": 34
+          }
+        ],
+        "rows_detail": [
+          {
+            "id": "bind",
+            "name": "BIND",
+            "description": "DNS sunucusu",
+            "installed_look": false,
+            "catalogue_name": "BIND",
+            "catalogue_description": "DNS sunucusu",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "pdns",
+            "name": "PowerDNS",
+            "description": "DNS sunucusu",
+            "installed_look": false,
+            "catalogue_name": "PowerDNS",
+            "catalogue_description": "DNS sunucusu",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "php-fpm",
+            "name": "PHP-FPM",
+            "description": "PHP FastCGI Süreç Yöneticisi",
+            "installed_look": true,
+            "catalogue_name": "PHP-FPM",
+            "catalogue_description": "PHP FastCGI Süreç Yöneticisi",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "node",
+            "name": "Node.js",
+            "description": "JavaScript çalışma ortamı",
+            "installed_look": false,
+            "catalogue_name": "Node.js",
+            "catalogue_description": "JavaScript çalışma ortamı",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "nginx",
+            "name": "Nginx",
+            "description": "Ters vekil sunucu",
+            "installed_look": true,
+            "catalogue_name": "Nginx",
+            "catalogue_description": "Ters vekil sunucu",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "apache",
+            "name": "Apache",
+            "description": "Web sunucusu",
+            "installed_look": false,
+            "catalogue_name": "Apache",
+            "catalogue_description": "Web sunucusu",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "postgresql",
+            "name": "PostgreSQL",
+            "description": "Veritabanı sunucusu",
+            "installed_look": false,
+            "catalogue_name": "PostgreSQL",
+            "catalogue_description": "Veritabanı sunucusu",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "mariadb",
+            "name": "MariaDB",
+            "description": "Veritabanı sunucusu",
+            "installed_look": true,
+            "catalogue_name": "MariaDB",
+            "catalogue_description": "Veritabanı sunucusu",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "phpmyadmin",
+            "name": "phpMyAdmin",
+            "description": "MariaDB/MySQL web yönetim aracı",
+            "installed_look": false,
+            "catalogue_name": "phpMyAdmin",
+            "catalogue_description": "MariaDB/MySQL web yönetim aracı",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "phppgadmin",
+            "name": "phpPgAdmin",
+            "description": "PostgreSQL web yönetim aracı",
+            "installed_look": false,
+            "catalogue_name": "phpPgAdmin",
+            "catalogue_description": "PostgreSQL web yönetim aracı",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "postfix",
+            "name": "Postfix",
+            "description": "SMTP sunucusu",
+            "installed_look": true,
+            "catalogue_name": "Postfix",
+            "catalogue_description": "SMTP sunucusu",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "exim",
+            "name": "Exim",
+            "description": "SMTP sunucusu",
+            "installed_look": false,
+            "catalogue_name": "Exim",
+            "catalogue_description": "SMTP sunucusu",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "rspamd",
+            "name": "Rspamd",
+            "description": "Spam filtresi ve DKIM",
+            "installed_look": true,
+            "catalogue_name": "Rspamd",
+            "catalogue_description": "Spam filtresi ve DKIM",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "dovecot",
+            "name": "Dovecot",
+            "description": "IMAP/POP3 sunucusu",
+            "installed_look": true,
+            "catalogue_name": "Dovecot",
+            "catalogue_description": "IMAP/POP3 sunucusu",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "roundcube",
+            "name": "Roundcube",
+            "description": "Webmail",
+            "installed_look": true,
+            "catalogue_name": "Roundcube",
+            "catalogue_description": "Webmail",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "spamassassin",
+            "name": "SpamAssassin",
+            "description": "Spam filtresi",
+            "installed_look": false,
+            "catalogue_name": "SpamAssassin",
+            "catalogue_description": "Spam filtresi",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "wireguard",
+            "name": "WireGuard VPN",
+            "description": "Yerleşik VPN sunucusu",
+            "installed_look": false,
+            "catalogue_name": "WireGuard VPN",
+            "catalogue_description": "Yerleşik VPN sunucusu",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "certbot",
+            "name": "Let’s Encrypt istemcisi (certbot)",
+            "description": "SSL sertifikası sağlayıcısı",
+            "installed_look": true,
+            "catalogue_name": "Let’s Encrypt istemcisi (certbot)",
+            "catalogue_description": "SSL sertifikası sağlayıcısı",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "fail2ban",
+            "name": "Fail2ban",
+            "description": "Saldırı önleme",
+            "installed_look": false,
+            "catalogue_name": "Fail2ban",
+            "catalogue_description": "Saldırı önleme",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "nftables",
+            "name": "Güvenlik duvarı motoru",
+            "description": "nftables — panel güvenlik duvarının paket süzme motoru",
+            "installed_look": true,
+            "catalogue_name": "Güvenlik duvarı motoru",
+            "catalogue_description": "nftables — panel güvenlik duvarının paket süzme motoru",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "clamav",
+            "name": "ClamAV",
+            "description": "Antivirüs / zararlı yazılım tarayıcısı",
+            "installed_look": false,
+            "catalogue_name": "ClamAV",
+            "catalogue_description": "Antivirüs / zararlı yazılım tarayıcısı",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "redis",
+            "name": "Redis",
+            "description": "Önbellek sunucusu",
+            "installed_look": false,
+            "catalogue_name": "Redis",
+            "catalogue_description": "Önbellek sunucusu",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "valkey",
+            "name": "Valkey",
+            "description": "Önbellek sunucusu",
+            "installed_look": false,
+            "catalogue_name": "Valkey",
+            "catalogue_description": "Önbellek sunucusu",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "memcached",
+            "name": "Memcached",
+            "description": "Önbellek sunucusu",
+            "installed_look": false,
+            "catalogue_name": "Memcached",
+            "catalogue_description": "Önbellek sunucusu",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "vsftpd",
+            "name": "vsftpd",
+            "description": "FTP sunucusu",
+            "installed_look": false,
+            "catalogue_name": "vsftpd",
+            "catalogue_description": "FTP sunucusu",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "netdata",
+            "name": "Netdata",
+            "description": "Gerçek zamanlı ölçüm aracısı",
+            "installed_look": false,
+            "catalogue_name": "Netdata",
+            "catalogue_description": "Gerçek zamanlı ölçüm aracısı",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          },
+          {
+            "id": "cron",
+            "name": "Zamanlanmış görevler (cron)",
+            "description": "Zamanlanmış görevleri çalıştıran yerel cron hizmeti",
+            "installed_look": true,
+            "catalogue_name": "Zamanlanmış görevler (cron)",
+            "catalogue_description": "Zamanlanmış görevleri çalıştıran yerel cron hizmeti",
+            "name_matches": true,
+            "description_matches": true,
+            "description_is_other_language": false
+          }
+        ]
+      },
+      "seconds": 41.1
+    },
+    "dashboard": {
+      "started": "2026-10-15T14:55:00.941Z",
+      "en": {
+        "lang": "en",
+        "load_at": "2026-10-15T14:55:01.289Z",
+        "html_lang": "en",
+        "section_found": true,
+        "items": [
+          "L labadmin signed in4 times 127.0.0.1 1 min ago",
+          "L labadmin chose between guided and manual setup 127.0.0.1 1 min ago",
+          "L labadmin reopened the setup plan to change it 127.0.0.1 1 min ago",
+          "L labadmin changed a backup schedule 127.0.0.1 1 min ago",
+          "L labadmin changed the mail policy 127.0.0.1 1 min ago",
+          "L labadmin created a backup 127.0.0.1 1 min ago",
+          "L labadmin added a domain 127.0.0.1 5 min ago"
+        ],
+        "items_with_a_raw_id": [],
+        "items_with_an_underscore_word": [],
+        "audit_actions_read": [
+          "labadmin: auth.login",
+          "labadmin: server.setup.guidance",
+          "labadmin: server.setup.revise",
+          "labadmin: backup.schedule:weekly",
+          "labadmin: mail.policy",
+          "labadmin: backup.create:full",
+          "labadmin: auth.login",
+          "labadmin: auth.login",
+          "labadmin: domain.create",
+          "labadmin: subscription.bootstrap",
+          "labadmin: server.setup.child:certbot",
+          "labadmin: server.setup.child:cron",
+          "labadmin: server.setup.child:protected-mail",
+          "labadmin: server.setup.child:webmail",
+          "labadmin: server.setup.child:mariadb",
+          "labadmin: server.setup.child:php-fpm",
+          "labadmin: server.setup.child:nginx",
+          "labadmin: server.setup.start:web_mail",
+          "labadmin: server.setup.draft",
+          "labadmin: server.setup.guidance",
+          "labadmin: auth.login"
+        ]
+      },
+      "tr": {
+        "lang": "tr",
+        "load_at": "2026-10-15T14:55:16.868Z",
+        "html_lang": "tr",
+        "section_found": true,
+        "items": [
+          "L labadmin oturum açtı4 kez 127.0.0.1 1 dk önce",
+          "L labadmin rehberli ya da elle kurulum arasında seçim yaptı 127.0.0.1 1 dk önce",
+          "L labadmin değiştirmek için kurulum planını yeniden açtı 127.0.0.1 1 dk önce",
+          "L labadmin bir yedekleme zamanlamasını değiştirdi 127.0.0.1 1 dk önce",
+          "L labadmin posta politikasını değiştirdi 127.0.0.1 1 dk önce",
+          "L labadmin bir yedek oluşturdu 127.0.0.1 1 dk önce",
+          "L labadmin bir alan adı ekledi 127.0.0.1 6 dk önce"
+        ],
+        "items_with_a_raw_id": [],
+        "items_with_an_underscore_word": [],
+        "audit_actions_read": [
+          "labadmin: auth.login",
+          "labadmin: server.setup.guidance",
+          "labadmin: server.setup.revise",
+          "labadmin: backup.schedule:weekly",
+          "labadmin: mail.policy",
+          "labadmin: backup.create:full",
+          "labadmin: auth.login",
+          "labadmin: auth.login",
+          "labadmin: domain.create",
+          "labadmin: subscription.bootstrap",
+          "labadmin: server.setup.child:certbot",
+          "labadmin: server.setup.child:cron",
+          "labadmin: server.setup.child:protected-mail",
+          "labadmin: server.setup.child:webmail",
+          "labadmin: server.setup.child:mariadb",
+          "labadmin: server.setup.child:php-fpm",
+          "labadmin: server.setup.child:nginx",
+          "labadmin: server.setup.start:web_mail",
+          "labadmin: server.setup.draft",
+          "labadmin: server.setup.guidance",
+          "labadmin: auth.login"
+        ]
+      },
+      "seconds": 31.2
+    },
+    "store": {
+      "started": "2026-10-15T14:55:32.098Z",
+      "en": {
+        "lang": "en",
+        "load_at": "2026-10-15T14:55:32.462Z",
+        "path": "/addons",
+        "html_lang": "en",
+        "options": [
+          "Admin Subscription — labadmin",
+          "All categories",
+          "Applications",
+          "Automation",
+          "Backups",
+          "Containers",
+          "Development",
+          "DNS",
+          "Email",
+          "Monitoring",
+          "Network",
+          "Security",
+          "All statuses",
+          "Available",
+          "Included",
+          "Coming soon",
+          "State not known yet",
+          "Unsupported here"
+        ],
+        "buttons": [
+          "Subscription Store",
+          "Catalog management"
+        ],
+        "badges": [
+          "Available",
+          "Available",
+          "Included",
+          "Included",
+          "Included",
+          "Included",
+          "Included",
+          "Included",
+          "Included",
+          "Included",
+          "Coming soon",
+          "Coming soon",
+          "Coming soon",
+          "Coming soon",
+          "Coming soon",
+          "Coming soon",
+          "Coming soon",
+          "Coming soon",
+          "Coming soon",
+          "Coming soon"
+        ],
+        "badge_counts": {
+          "Available": 2,
+          "Included": 8,
+          "Coming soon": 10
+        },
+        "reads": [
+          {
+            "url": "/api/v1/auth/me",
+            "status": null
+          },
+          {
+            "url": "/api/v1/auth/me",
+            "status": 200
+          },
+          {
+            "url": "/api/v1/panel/availability",
+            "status": 200
+          },
+          {
+            "url": "/api/v1/license/access",
+            "status": 200
+          },
+          {
+            "url": "/api/v1/service/operation?active=1",
+            "status": 200
+          },
+          {
+            "url": "/api/v1/setup",
+            "status": 200
+          },
+          {
+            "url": "/api/v1/panel/version",
+            "status": 200
+          },
+          {
+            "url": "/api/v1/panel/version",
+            "status": 200
+          },
+          {
+            "url": "/api/v1/domains",
+            "status": 200
+          },
+          {
+            "url": "/api/v1/managed-services",
+            "status": 200
+          },
+          {
+            "url": "/api/v1/subscriptions",
+            "status": 200
+          },
+          {
+            "url": "/api/v1/store?subscription_id=2&locale=en",
+            "status": 200
+          },
+          {
+            "url": "/api/v1/license/access",
+            "status": 200
+          }
+        ]
+      },
+      "tr": {
+        "lang": "tr",
+        "load_at": "2026-10-15T14:55:45.030Z",
+        "path": "/addons",
+        "html_lang": "tr",
+        "options": [
+          "Admin Subscription — labadmin",
+          "Tüm kategoriler",
+          "Ağ",
+          "DNS",
+          "E-posta",
+          "Geliştirme",
+          "Güvenlik",
+          "İzleme",
+          "Konteynerler",
+          "Otomasyon",
+          "Uygulamalar",
+          "Yedekleme",
+          "Tüm durumlar",
+          "Kullanılabilir",
+          "Dahil",
+          "Yakında",
+          "Durum henüz bilinmiyor",
+          "Bu sunucuda desteklenmiyor"
+        ],
+        "buttons": [
+          "Abonelik Mağazası",
+          "Katalog yönetimi"
+        ],
+        "badges": [
+          "Kullanılabilir",
+          "Kullanılabilir",
+          "Dahil",
+          "Dahil",
+          "Dahil",
+          "Dahil",
+          "Dahil",
+          "Dahil",
+          "Dahil",
+          "Dahil",
+          "Yakında",
+          "Yakında",
+          "Yakında",
+          "Yakında",
+          "Yakında",
+          "Yakında",
+          "Yakında",
+          "Yakında",
+          "Yakında",
+          "Yakında"
+        ],
+        "badge_counts": {
+          "Kullanılabilir": 2,
+          "Dahil": 8,
+          "Yakında": 10
+        },
+        "reads": [
+          {
+            "url": "/api/v1/auth/me",
+            "status": null
+          },
+          {
+            "url": "/api/v1/auth/me",
+            "status": 200
+          },
+          {
+            "url": "/api/v1/panel/availability",
+            "status": 200
+          },
+          {
+            "url": "/api/v1/license/access",
+            "status": 200
+          },
+          {
+            "url": "/api/v1/service/operation?active=1",
+            "status": 200
+          },
+          {
+            "url": "/api/v1/setup",
+            "status": 200
+          },
+          {
+            "url": "/api/v1/panel/version",
+            "status": 200
+          },
+          {
+            "url": "/api/v1/domains",
+            "status": 200
+          },
+          {
+            "url": "/api/v1/managed-services",
+            "status": 200
+          },
+          {
+            "url": "/api/v1/panel/version",
+            "status": 200
+          },
+          {
+            "url": "/api/v1/subscriptions",
+            "status": 200
+          },
+          {
+            "url": "/api/v1/store?subscription_id=2&locale=tr",
+            "status": 200
+          }
+        ]
+      },
+      "seconds": 25.2
+    },
+    "reads": {
+      "started": "2026-10-15T14:55:57.275Z",
+      "reads": {
+        "/api/v1/panel/version": {
+          "status": 200,
+          "at": "2026-10-15T14:55:57.322Z",
+          "body": {
+            "agent_commit": "c48678d34583868ab583db4cfb6c97c36e423db6",
+            "agent_matches": true,
+            "commit": "c48678d34583868ab583db4cfb6c97c36e423db6",
+            "hostname": "dns-debian13",
+            "ipv4": "192.0.2.10",
+            "schema_version": 44,
+            "version": "v0.1.0-alpha.87"
+          }
+        },
+        "/api/v1/license/access": {
+          "status": 200,
+          "at": "2026-10-15T14:55:57.755Z",
+          "body": {
+            "can_use_panel": true,
+            "valid_until": 1792076193,
+            "valid_for_seconds": 35.176,
+            "state": "active",
+            "observation": "known"
+          }
+        },
+        "/api/v1/managed-services": {
+          "status": 200,
+          "at": "2026-10-15T14:55:58.143Z",
+          "body": {
+            "scanned_at": "2026-10-15T14:54:21Z",
+            "scan_age_seconds": 97.216,
+            "services": "<27 entries>",
+            "profiles": "<3 entries>",
+            "dns_identity_ready": true,
+            "mail_hostname": {
+              "current": "dns-debian13",
+              "current_usable": false,
+              "hostname": "mail-debian13.upd1-infra.test",
+              "source": "saved",
+              "will_set_hostname": false
+            }
+          }
+        }
+      },
+      "seconds": 1.3
+    }
+  }
+}

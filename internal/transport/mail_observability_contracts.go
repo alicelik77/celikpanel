@@ -177,6 +177,14 @@ type MailHealthResponse struct {
 	// iken bu alanlar bir sey soylemez (bilinmeyen bilinmeyen kalir).
 	ReverseDNSLookup      string `json:"reverse_dns_lookup,omitempty"`
 	ReverseDNSLookupError string `json:"reverse_dns_lookup_error,omitempty"`
+	// Additive (2026-10-15): the public resolver whose reverse DNS answer PTR
+	// is (its IP address), and whether the resolvers asked gave different
+	// answers, as they do while a change made at the server provider spreads.
+	// Set only when ReverseDNSLookup is "looked_up". Empty from an older Agent.
+	// Ek alan: PTR yanitini veren genel cozumleyici ve cozumleyicilerin farkli
+	// yanit verip vermedigi; eski Agent'ta bostur.
+	ReverseDNSResolver          string `json:"reverse_dns_resolver,omitempty"`
+	ReverseDNSResolversDisagree bool   `json:"reverse_dns_resolvers_disagree,omitempty"`
 }
 
 const (

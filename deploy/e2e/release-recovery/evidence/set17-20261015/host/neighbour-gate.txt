@@ -1,0 +1,7 @@
+2026-10-15T13:59:06Z neighbour gate for upd1-debian13-good s17-u85-good-a qemu_processes=0
+2026-10-15T14:15:18Z neighbour gate for upd86-debian13-good s17-u86-good-a qemu_processes=0
+2026-10-15T14:30:26Z neighbour gate for set17-debian13 s17-d13-a qemu_processes=0
+2026-10-15T14:40:50Z neighbour gate for upd86-debian13-good s17-u86-good-b qemu_processes=0
+2026-10-15T14:56:27Z neighbour gate for upd1-debian13-defective s17-u85-def-a qemu_processes=0
+2026-10-15T15:12:20Z neighbour gate for upd1-ubuntu-good s17-ub-u85-good-a qemu_processes=0
+2026-10-15T15:34:52Z neighbour gate for upd1-ubuntu-defective s17-ub-u85-def-a qemu_processes=0
