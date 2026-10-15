@@ -91,6 +91,7 @@ ba795af8e1f5b6cc28f8dce5744a96851f8c94c386af390d5efa998f60f13bef *./debian13/fre
 ba795af8e1f5b6cc28f8dce5744a96851f8c94c386af390d5efa998f60f13bef *./debian13/fresh-a/browser/ui/store-tr-viewport.png
 d12e8dda58821e8519d5abd64237933af76dd321890301406ffc2bed117f2a13 *./debian13/fresh-a/browser/ui/store-tr.txt
 01becc064cc80b1881dbf5a4e1721de45c95c8fb89fc8af15ed6f1e9f2fcec09 *./debian13/fresh-a/browser/ui/ui-summary.json
+f08face34b25f62f9fe59f9bb6186e0eb432438b95065d9f2de73458de885b80 *./debian13/fresh-a/driver/SHA256SUMS
 db23cd598549e5ad8aa60e09580f11b01cba50239bb73c5dc1f5ab2d437a8354 *./debian13/fresh-a/driver/result.json
 6695ac26034559cda3e622c98ec2fb55eee46c657e02713a04e8839d85fd8f6d *./debian13/fresh-a/driver/set6-redaction-sweep.json
 224c42775c4f42ff04d3e8f0628911ff1b34463539463e6434a481698d5ac381 *./debian13/fresh-a/driver/steps/01-set6-name-pinning/name-pinning.json
@@ -245,6 +246,7 @@ b8eb84d9611b24d54c83d7932e9067a4fa3ae9afe29faf1d92e44888ff397960 *./debian13/upd
 b8eb84d9611b24d54c83d7932e9067a4fa3ae9afe29faf1d92e44888ff397960 *./debian13/upd85-defective-a/browser/ui/store-tr-viewport.png
 b8fb3839b92c13b15fedf2d204ea3fbf740a0200a38b75eeb3c001fe22af8120 *./debian13/upd85-defective-a/browser/ui/store-tr.txt
 da79bfe68e7debccfe90633ff0b0e7990cce8d085cf489525aa3dfbbdd50eae8 *./debian13/upd85-defective-a/browser/ui/ui-summary.json
+2c3190a6e765773a3d3684acb28a902a2053a959adaf8e6c94bec55ae333c8e3 *./debian13/upd85-defective-a/driver/SHA256SUMS
 1aa39d2c70664a63994525cf190a4a7045b660522cf2a18ef4bd7e35a7c872ef *./debian13/upd85-defective-a/driver/result.json
 23eb08a03c60babc6eadd83b05406114cccce69db2ea6b9e22525ad148e0c433 *./debian13/upd85-defective-a/driver/set5-redaction-sweep.json
 820ae9358135abe2b938a222adaa5b1eba8e8b9353cd8c3b5d114adb9d539d46 *./debian13/upd85-defective-a/driver/set6-redaction-sweep.json
@@ -619,6 +621,7 @@ d1b951ee8d785b0d71fea67f87988e5e1d9b88eb077e31c41d4acb43abd533a1 *./debian13/upd
 d1b951ee8d785b0d71fea67f87988e5e1d9b88eb077e31c41d4acb43abd533a1 *./debian13/upd85-good-a/browser/ui/store-tr-viewport.png
 982f7a4d155625984b325de379319cc110814404180e521246beb5e8fa3dc34c *./debian13/upd85-good-a/browser/ui/store-tr.txt
 78204dbbd6d35d2a04c0a4138b053b02de7a07d4a1c4d757f145da3102854f5c *./debian13/upd85-good-a/browser/ui/ui-summary.json
+95a531688706279d82c9bf6e413e52c437766c73321f8a2d17aa0d8545dd3255 *./debian13/upd85-good-a/driver/SHA256SUMS
 d67f86831136904b88f5a43779c6d72321d0bdb6b044645dcdd409f158400703 *./debian13/upd85-good-a/driver/result.json
 a4d4dd0085e05646fc9588052287f7c5b0190963075f532a712f8993011037dc *./debian13/upd85-good-a/driver/set5-redaction-sweep.json
 097b40d432516363fbfdc0452219cb7b45bc58beda89939c449b8ee2653f0e2c *./debian13/upd85-good-a/driver/set6-redaction-sweep.json
@@ -956,6 +959,7 @@ e731d86447f40f65b150e7a13c66a7ebde8c681c6c9f1f21c87d6bdb9c458040 *./debian13/upd
 25a94ff8ef41281e5eeab51f1b72fcf54a345ee7b10cfe9d263cdc95a45057a7 *./debian13/upd86-good-a/browser/ui/store-tr-viewport.png
 982f7a4d155625984b325de379319cc110814404180e521246beb5e8fa3dc34c *./debian13/upd86-good-a/browser/ui/store-tr.txt
 3fca4b462037ce992989e1d621a25fb1cf31735e6088ee65f361010f82f4d6c2 *./debian13/upd86-good-a/browser/ui/ui-summary.json
+6d3644d9994b11a4536d79bfc9d18d1dae794952f61ad2ded41ba8fc14e5a7c2 *./debian13/upd86-good-a/driver/SHA256SUMS
 7fb8788c1d54d000594b1802dc07f4dd6e6b63051f4c1cfed2bcd5529efac153 *./debian13/upd86-good-a/driver/result.json
 968c3afe4020cc396b0c93e93c6c9def3dfb3f4c9d5093f0599cb59613891c0f *./debian13/upd86-good-a/driver/set5-redaction-sweep.json
 f7448b55a9e5677c3adc40d08dccb37c9b4d4cd1875772a293176f5a59408547 *./debian13/upd86-good-a/driver/set6-redaction-sweep.json
@@ -1303,6 +1307,7 @@ e731d86447f40f65b150e7a13c66a7ebde8c681c6c9f1f21c87d6bdb9c458040 *./debian13/upd
 25a94ff8ef41281e5eeab51f1b72fcf54a345ee7b10cfe9d263cdc95a45057a7 *./debian13/upd86-good-b/browser/ui/store-tr-viewport.png
 982f7a4d155625984b325de379319cc110814404180e521246beb5e8fa3dc34c *./debian13/upd86-good-b/browser/ui/store-tr.txt
 019d7ed8c2161cd8eb924e7e45153ae45104cb455fc4e816e0b571f317d266fe *./debian13/upd86-good-b/browser/ui/ui-summary.json
+b379c679120c1e25e2308de899f81bc8e7659c5213e7ddc56ad2110a920a040d *./debian13/upd86-good-b/driver/SHA256SUMS
 796b8bb3be8d69ce34e86cde9e04fc47727a6270a0aba405dd3cec9556b5894b *./debian13/upd86-good-b/driver/result.json
 b5d887df4384d9c58c14d8ae5f6d7c059dff93de00f66ca1014128318fd236bd *./debian13/upd86-good-b/driver/set5-redaction-sweep.json
 6f4da7c572de511a674fa590fb5a1dd6ab98992afc20de409b8e9710c560e5fa *./debian13/upd86-good-b/driver/set6-redaction-sweep.json
@@ -1661,6 +1666,7 @@ a364d2c0ee755f4c647113cfa9dff988fcc29e1ecc990d571ab823df0ed73790 *./ubuntu/upd85
 a364d2c0ee755f4c647113cfa9dff988fcc29e1ecc990d571ab823df0ed73790 *./ubuntu/upd85-defective-a/browser/ui/store-tr-viewport.png
 b8fb3839b92c13b15fedf2d204ea3fbf740a0200a38b75eeb3c001fe22af8120 *./ubuntu/upd85-defective-a/browser/ui/store-tr.txt
 eee8970c13934469a1a58dae2dccea28b690b1828cce9a4ad87d180534efc61b *./ubuntu/upd85-defective-a/browser/ui/ui-summary.json
+3f380a5bf35ac5080f778af3d843be8151767f11e8ed721acc84d020b050e097 *./ubuntu/upd85-defective-a/driver/SHA256SUMS
 9498bd291dc974bff6aae192231e51b75cd259814afff8c8ec2c2b3d8efd6323 *./ubuntu/upd85-defective-a/driver/result.json
 3b39b7d9e001dc95bba9ca857d5cc79ca8e58a1557aea76f80940e9d2f909423 *./ubuntu/upd85-defective-a/driver/set5-redaction-sweep.json
 b7a7939d408cde13d74eca7b0451ff37496d719dc1fe0a085132f88d08e4ab28 *./ubuntu/upd85-defective-a/driver/set6-redaction-sweep.json
@@ -2058,6 +2064,7 @@ d0fb2443a57d8851ef0df3a149bcef4f59d7f3427eb44bfab2ad07cb52302500 *./ubuntu/upd85
 d0fb2443a57d8851ef0df3a149bcef4f59d7f3427eb44bfab2ad07cb52302500 *./ubuntu/upd85-good-a/browser/ui/store-tr-viewport.png
 982f7a4d155625984b325de379319cc110814404180e521246beb5e8fa3dc34c *./ubuntu/upd85-good-a/browser/ui/store-tr.txt
 109b54be24969294c7c4eaceb1c30ebc16e01f294e5dab9c543db0ac2ad10a9f *./ubuntu/upd85-good-a/browser/ui/ui-summary.json
+c710bf5991a4049cc1c92e01f214e4f789c80125a3c6fdc5ef86a4bcd34e8bc5 *./ubuntu/upd85-good-a/driver/SHA256SUMS
 18fc8ecd655a3609c21af9918325ef152f56d55b5d8bffb8e869c391146e97f5 *./ubuntu/upd85-good-a/driver/result.json
 8e5573d962df0a804b03eba2e5325eebf4b950dbe338df9dceb8a6ada7e6b8d8 *./ubuntu/upd85-good-a/driver/set5-redaction-sweep.json
 bb26138a26698bd9b5506dfbc40ed9047cd58a204943d73def94d8fd03c1c8d5 *./ubuntu/upd85-good-a/driver/set6-redaction-sweep.json
