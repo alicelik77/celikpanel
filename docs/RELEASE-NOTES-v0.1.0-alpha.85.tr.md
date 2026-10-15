@@ -1,16 +1,19 @@
-# v0.1.0-alpha.85 (taslak, yayımlanmadı)
+# v0.1.0-alpha.85 (15 Ekim 2026'da yayımlandı)
 
 [English](RELEASE-NOTES-v0.1.0-alpha.85.md)
 
-Bu, v0.1.0-alpha.84'ü izleyen sürümün taslağıdır. v0.1.0-alpha.85
-numarasını, sahibin 13 Ekim 2026 tarihli kalıcı talimatı uyarınca ("hem sürüm
-numaraları hem de commit işlemleri için bana sormana gerek yok": sürüm
-numaraları ve commit'ler için sahibe sorulmaz) sürümü hazırlayan seçti; sahibin
-bu sürüm için adını koyduğu bir numara değildir. Sürüm hazırlığı 5443fe055
-commit'idir (84'ten sonra sıra 85; önceki olarak alpha.84 sürüm commit'i
-`f0157e6c8`). Sürümün hiçbir parçası yayımlanmadı ve bu taslak, onu çalıştıran
-hiçbir kurulu sunucu kaydetmez. Bu taslak 15 Ekim 2026'da (UTC)
-yazıldı.
+Bu, v0.1.0-alpha.84'ü izleyen sürümdür. 15 Ekim 2026'da yayımlandı (sondaki
+"Yayımlama kaydı"na bakın). v0.1.0-alpha.85 numarasını, sahibin 13 Ekim 2026
+tarihli kalıcı talimatı uyarınca ("hem sürüm numaraları hem de commit işlemleri
+için bana sormana gerek yok": sürüm numaraları ve commit'ler için sahibe sorulmaz)
+sürümü hazırlayan seçti; sahibin bu sürüm için adını koyduğu bir numara
+değildir. Sürüm hazırlığı 5443fe055 commit'idir (84'ten sonra sıra 85; önceki olarak
+alpha.84 sürüm commit'i `f0157e6c8`). Yayımlama kaydı 15 Ekim 2026'da yazıldığında
+hiçbir kurulu sunucu bu sürüme güncellenmemişti; her birinin güncellemesini sahibi
+panelin kendi güncelleme ekranından başlatır. Sahip sonra ikisini de o ekrandan
+güncelledi ve 15 Ekim 2026'da bildirdi (yayımlama kaydı, 11. madde ve ardından
+gelen sahip gözlemleri). Bu notlar 15 Ekim 2026'da (UTC)
+taslak olarak yazıldı ve aynı gün yayımlanma için güncellendi.
 
 Sürüm, sahibin 14 Ekim 2026'da her ekran için koyduğu bir kuralı uygular: sizi
 bekleten bir ekran beklediğini gösterir ya da sizin bir şey yapmanız
@@ -563,9 +566,10 @@ alpha.84 listesidir, kısaltılmış.
 
 Bu sürümle yeni:
 
-- **Hiçbir kurulu sunucu ölçülmedi.** Bu sürümün hiçbir parçası kurulu bir
-  sunucuda görülmedi; denetimin satırları koddan okundu ve gerçek sistem kaydı
-  geçici konuklarda çalıştı.
+- **Hiçbir kurulu sunucu ölçülmedi.** Denetimin satırları koddan okundu ve
+  gerçek sistem kaydı geçici konuklarda çalıştı. Yayımlanmadan sonra sahip iki
+  kurulu sunucuyu da güncelledi ve ekranların gösterdiğini bildirdi (ekran
+  görüntüleri, yayımlama kaydına bakın); bu bir ölçüm değil, sahibin gözlemidir.
 - **"Kurulum tamamlanıyor" gerçek sistemde görülmedi.** Sahibin kurulu ikinci
   sunucuda karşılaştığı durum, hiçbir laboratuvar konuğunda olmayan bir ters
   DNS adı ister. Yalnız bağlanan testleri ve taklide karşı tarayıcısı var.
@@ -639,7 +643,7 @@ kısaltılmış; tam liste [alpha.84 notlarındadır](RELEASE-NOTES-v0.1.0-alpha
   değişiklik olmadığını varsayar; işleyici işleyici bir denetim iddia edilmez.
 - On altıncı kayıtta konuğun NTP ayarları; on altıncı kaydın saat durumları
   yalnız Debian 13'te ölçüldü.
-- Sunucuyu hâlâ eski biçimde okuyan ekranlar (sayı bu taslak için yeniden
+- Sunucuyu hâlâ eski biçimde okuyan ekranlar (sayı bu notlar için yeniden
   hesaplanmadı); erişim beklemesi; güncelleme bildirimi; kurulumun posta kimliği
   nedeni gerçek bir Agent'tan hiç okunmadı; ve alpha.84 notlarının hâlâ açık
   saydığı v0.1.0-alpha.83 ve v0.1.0-alpha.82 sınırları.
@@ -651,27 +655,243 @@ kısaltılmış; tam liste [alpha.84 notlarındadır](RELEASE-NOTES-v0.1.0-alpha
 
 ## Yayımlama kaydı
 
-Yayımlanmadı. Sahip yayımlayana kadar burada hiçbir şey kaydedilmez.
-Yayımlamadan önce açık olanlar:
+Aşağıdaki her şey 15 Ekim 2026 tarihlidir (saat tarihi; saat dilimi
+belirtilmedikçe UTC). 1'den 3'e kadar olan maddeler hazırlıktır; yayımlamadan
+önce yazıldılar ve geçmiş olarak korunur. Birleştirmeyi (4. madde), depo
+değişkenini ve etiketi (6. madde) sahip yaptı; dosyaların, portal paketinin ve
+genel sitenin denetimlerini ve portalın yayımlanmasını (9. madde) sürümü
+hazırlayan kişi yaptı. Sahibin 15 Ekim 2026 tarihli talimatı şuydu: "bunları
+neden sen yapmıyorsun… benden istiyorsun". Bu sürümden itibaren birleştirme,
+depo değişkeni, etiket ve portal yayımı sürümü hazırlayan kişiye aittir; kurulu
+panelleri yalnız sahip günceller. Bu girdi, aşağıdaki sonuçların hiçbirini
+depoda bir dosya olarak saklamaz.
+
+**Ne oldu.**
 
 1. Yayımlama öncesi ölçüm: yapıldı (set16, on sekizinci kayıt, 14 Ekim 2026
    UTC), adayın ürün kodunda, bir sabit commit üzerinden: Debian 13'e temiz
    kurulum ve Debian 13 ile Ubuntu 24.04'te alpha.84'ten güncelleme, sağlam ve
    kusurlu. Sınırları yukarıdadır.
 2. Sürüm hazırlığı: 5443fe055 commit'inde yapıldı (numarayı sahibin 13 Ekim
-   2026 tarihli kalıcı talimatı uyarınca sürümü hazırlayan seçti); `cmd/`, `internal/` ya da
-   `web/` altında hiçbir dosyayı değiştirmez: önceki olarak alpha.84 sürüm
-   commit'i `f0157e6c8` ile 84'ten sonra 85 sürüm sırası politikası,
-   `download-portal/get.sh` sabitleri (sıra 85 ve sürüm v0.1.0-alpha.85; açık
-   anahtar sabiti değişmedi), README sürüm satırları ve geçen üç sözleşme
-   testi. Hâlâ açık: sahibin etiketten önce ayarladığı depo değişkeni
-   `CELIKPANEL_RELEASE_SEQUENCE=85`. Gerçek arşivi etikette CI derler ve imzalar.
-3. Çekme isteğinin son ucu kendi CI koşusunu alır.
-4. Sahip birleştirir, sürümü etiketler, altı imzalı dosyayı imzalı sürüm
-   sözleşmesinin anlattığı gibi denetler ve indirme portalını yayımlar.
-5. Sürüm yayımlandıktan sonra her kurulu sunucunun sahibi o sunucuyu panelin
-   kendi güncelleme ekranından günceller. Bu, yukarıdaki her adımdan ayrı bir
-   adımdır; onu başka kimse başlatmaz.
+   2026 tarihli kalıcı talimatı uyarınca sürümü hazırlayan seçti); `cmd/`,
+   `internal/` ya da `web/` altında hiçbir dosyayı değiştirmez: önceki olarak
+   alpha.84 sürüm commit'i `f0157e6c8` ile 84'ten sonra 85 sürüm sırası
+   politikası, `download-portal/get.sh` sabitleri (sıra 85 ve sürüm
+   v0.1.0-alpha.85; açık anahtar sabiti değişmedi), README sürüm satırları ve
+   geçen üç sözleşme testi. Depo değişkeni 6. maddededir. Gerçek arşivi etikette
+   CI derledi ve imzaladı.
+3. Numara: v0.1.0-alpha.85; 15 Ekim 2026'da sürümü hazırlayan seçti, sahibin 13
+   Ekim 2026 tarihli kalıcı talimatı uyarınca.
+4. #210 numaralı çekme isteğini sahip 15 Ekim 2026'da `main`'e squash olarak
+   birleştirdi. CI'ı: 23 iş başarılı, 1 iş atlandı (dosya yayımlayan iş; yalnız
+   bir etiket için çalışır). `main`,
+   `36c33c4531ee6c1306d324db7a666403176f3bf7` commit'idir, ağacı
+   `c451c26de3cb179251e8dfd4b033ec7a9e18005e`.
+5. O `main` commit'indeki sürekli tümleştirme koşusu (koşu 38685686782). İlk
+   denemesi başarısızlıkla sonuçlandı: 2 iş hiçbir adım çalışmadan başarısız
+   oldu, "Platform portability - Linux arm64 compile only" ve "Panel race -
+   Server setup"; ikisinde de GitHub'ın şu hatası vardı: "An action could not
+   be found at the URI
+   https://codeload.github.com/actions/setup-go/tar.gz/924ae3a1…"
+   (`actions/setup-go@v6` indirilemedi). Sürümü hazırlayan kişi başarısız
+   işleri yeniden çalıştırdı; koşu sonra başarıyla sonuçlandı: 24 iş, 0
+   başarısız. Etiket ancak bundan sonra gönderildi; yani "`main`'deki koşu
+   bitti, sonra etiket" sırası bu kez izlendi (alpha.84'te izlenmemişti).
+6. Sahip `CELIKPANEL_RELEASE_SEQUENCE` depo değişkenini 84'ten 85'e çıkardı,
+   sonra 15 Ekim 2026'da yukarıdaki `main` commit'inde `v0.1.0-alpha.85`
+   açıklamalı etiketini (etiket nesnesi
+   `c491a103f2f6913f58e5ba418a3361188ef11dde`) oluşturdu ve gönderdi. Etiketin CI
+   koşusu (38688902643) 24 işle başarıyla tamamlandı ve sürüm
+   2026-10-15T06:10:06Z'de ön sürüm olarak altı dosyayla yayımlandı: iki arşiv,
+   iki sağlama toplamı dosyası, imzalı manifest ve imzası.
+7. Dosyaları sürümü hazırlayan kişi bir indirmeden denetledi (`gh release
+   download`; hazırlayan kişi bildirdi, burada bir dosyada kayıtlı değil).
+   Platform arşivi ile genel arşiv bayt bayt aynıdır: 66.146.417 bayt, SHA-256
+   `cb6424b712052df2768f6c16dd6a66c8ea05a13393e71933c38ae639c3fb0792`. İki
+   `.sha256` dosyası da `sha256sum -c` ile doğrulanır. İmzalı manifest 332
+   bayttır; sıra 85, sürüm v0.1.0-alpha.85, yukarıdaki `main` commit'i
+   (`36c33c45…`), `published_at` 2026-10-15T05:14:06Z, linux/amd64 der. 64
+   baytlık Ed25519 imzası, izlenen `deploy/release-signing-ed25519.pem` ile
+   `openssl pkeyutl -verify -rawin -pubin` kullanılarak doğrulanır (anahtarın
+   SHA-256'sı
+   `7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb`; alpha.84'ünkiyle
+   aynı). Arşivde 234 üye var. İçindeki `libexec/get.sh` sıra 85'i ve
+   v0.1.0-alpha.85'i sabitler; `release-sequence-policy` 85 der, önceki 84,
+   `f0157e6c8f1614cff176821172f8a9067493e625`; `release.commit` yukarıdaki
+   `main` commit'idir. Arayüz paketi `web/dist/assets/app-Br53Jd-B.js`'tir
+   (242.703 bayt, SHA-256
+   `33930d92e988c87ad677de54a3e2ef5c4b53361b64c777686eb4f0121806eda4`;
+   alpha.84'ünki `app-CX7VTgkx.js` idi). `release-content-guard.sh` ve
+   `release-acceptance-license-guard.sh` ikisi de 0 döndürdü. Sınır: etiketin
+   dosyaları bir derleme konuğundaki klondan değil, Windows'ta `git archive`
+   ile alındı. Bildirilmeyen: `release.tree` karşılaştırması.
+8. İndirme portalı paketi `deploy/build-download-portal.sh` ile imza öncesi
+   kipte derlendi (özel anahtar kullanılmadı): 132.665.325 bayt, SHA-256
+   `80358e4b84551778906833a9750bff2ab66a79ddfca0653668a7ae2565c8d69b`, 54 üye,
+   iki kez bayt bayt aynı derlendi. `releases/latest.txt` v0.1.0-alpha.85 der;
+   paketlenen `get.sh`'nin SHA-256'sı
+   `9b0cf04f0cd52578d837c37c41cea5adf19d81b0eb8d8b2fdbd2c1aeaf598d2f`, etiketinkine
+   eşit. Bildirilmeyenler: portal sözleşme testi, genel doğrulayıcı testleri ve
+   terfi testleri. Sınır: canlı sitenin bir kopyasında terfi aracı provası
+   yapılmadı.
+9. Portalı sahip değil, sürümü hazırlayan kişi `deploy/publish-download-portal.ps1`
+   ile ve `-PreviousVersion v0.1.0-alpha.84 -TargetVersion v0.1.0-alpha.85
+   -TransferTimeoutSeconds 1800` ile yayımladı. İlk çağrı (`powershell -File
+   deploy/publish-download-portal.ps1 …`, göreli betik yoluyla) hiçbir aktarım
+   olmadan parametre bağlama aşamasında durdu: 19. satırda `Join-Path : Cannot
+   bind argument to parameter 'Path' because it is an empty string`
+   (`$PSScriptRoot` bir parametre varsayılanında boş). Betiğin mutlak yoluyla ve
+   açık `-Promoter` ile `-PublicVerifier` ile yapılan ikinci çağrı başarılı
+   oldu: `CELIKPANEL_PORTAL_UPLOAD_READY`, `CELIKPANEL_PORTAL_UPLOAD_PINNED`,
+   terfi aracının sonucu `status: committed`, previous_version
+   v0.1.0-alpha.84, yedek `httpdocs.before-v0.1.0-alpha.85.20261015T062427Z…`,
+   genel doğrulama `status: ok`, 26 sınırından 26 istek ve 66.686.303 baytlık
+   bir arşiv GET'i, sonra `CELIKPANEL_DOWNLOAD_PORTAL_PUBLISHED`.
+10. 15 Ekim 2026 06:24:40Z'de dışarıdan okuma (salt-okunur; sürümü hazırlayan
+    kişi): `releases/latest.txt` v0.1.0-alpha.85'tir; `get.sh`
+    `Strict-Transport-Security: max-age=15768000; includeSubDomains` ile
+    sunuluyor ve sıra 85'i sabitliyor; `releases/latest.json` sıra 85'i,
+    `36c33c45…` commit'ini ve `cb6424b7…` SHA-256'sını söyler. Bildirilmeyen:
+    yayımlanan diğer dosyaların GitHub dosyalarıyla bayt karşılaştırması.
+11. Kurulu sunucular: 1–10. maddeler yazılırken güncellenmemişti; sahip sonra
+    ikisini de güncelledi. Sahip iki güncellemeyi de panelin kendi güncelleme
+    ekranından başlattı ve sunucularda başka hiçbir şeye dokunmadı; sürümü
+    hazırlayan kişi onları güncellemedi, onlara bağlanmadı ve ölçmedi. İkisi de
+    v0.1.0-alpha.85 çalıştırıyor (commit `36c33c45…`). Sahibin bildirdikleri
+    aşağıda, 12. maddeden sonra, "Kurulu panel güncellemelerinden sonra sahibin
+    gözlemleri" başlığı altındadır.
+12. Laboratuvar ortamı notu, ürün gerçeği değil: laboratuvar bilgisayarı
+    KB5127648 numaralı Windows güncellemesinden sonra KVM'yi kaybetti (AMD;
+    microsoft/WSL sorunları #41917 ve #41918) ve sahip set16'yı çalıştırmak için
+    o güncellemeyi kaldırdı.
+
+**Kurulu panel güncellemelerinden sonra sahibin gözlemleri.**
+
+Kaynak: sahibin 15 Ekim 2026 tarihli altı ekran görüntüsü ve mesajı, yaklaşık
+07:00Z'de alındı. Sahip iki güncellemeyi de panelin kendi güncelleme ekranından
+başlattı ve sunucularda başka hiçbir şeye dokunmadı; sürümü hazırlayan kişi
+onları güncellemedi, onlara bağlanmadı ve ölçmedi. 15 Ekim 2026 09:58Z'de
+yazıldı. Aşağıdaki her şey sahibin gözlemi ve dışarıdan bir okumadır; kabul
+kanıtı değildir ve hiçbir P0 işini kapatmaz.
+
+(a) **İki sunucu da v0.1.0-alpha.85 çalıştırıyor.** Ayarlar → CelikPanel
+    güncellemeleri sayfası Frankfurt'ta (72.62.38.15, Debian 13, çekirdek
+    6.12.107+deb13-amd64, çalışma süresi 36 g 12 sa) ve Boston'da (2.25.80.4,
+    Ubuntu 24.04.4, çekirdek 6.8.0-139-generic, çalışma süresi 37 g 14 sa)
+    "Current version v0.1.0-alpha.85" ve "Current commit
+    36c33c4531ee6c1306d324db7a666403176f3bf7" gösteriyor. Kenar çubuğu ikisinde
+    de "CelikPanel · v0.1.0-alpha.85 · build 36c33c4531ee" yazısını tek satırda
+    gösteriyor: alpha.84'te görülen sözcüğün ortasından satır kırılması gitti.
+    Bu düzeltmenin kurulu bir sunucuda ilk gözlemidir; set16 onu yalnız bir
+    laboratuvarda okumuştu.
+
+(b) **Frankfurt, güncellemesi sırasında: beklenen bir yeniden başlatma için
+    sorun gibi görünen bir bildirim.** Hedef ayrıntılarından önce (Target
+    version v0.1.0-alpha.85, Sequence 85, Package size 66146417 bytes, SHA-256
+    `cb6424b7…`) güncelleme sayfası uyarı renginde bir bildirim gösterdi: "The
+    state of the update to v0.1.0-alpha.85 could not be read just now, so it is
+    not known whether it has finished. The update notice reads it again by
+    itself. Do not start another update." Aynı anda bir toast da vardı:
+    "CelikPanel updates — The state of this update could not be read just now,
+    so whether it is still running or has finished is not known. This notice
+    reads it again by itself; do not start another update. The connection was
+    interrupted; the panel may be restarting. The same operation will be
+    tracked. Navigate; updates locked. v0.1.0-alpha.85 · T+02:59 · ID
+    f142f0a883f393df25bda7927dfb2c70". Sonra sayfa güncellemenin bittiğini
+    bildirdi ve sürüm değişti. Sahibin sözleri özetle: ortada bir sorun yokken
+    bu bir sorun mesajı gibi görünüyor, çünkü panel güncellemenin parçası olarak
+    yeniden başlıyor; işlem söylediği şeyi yaparken daha az ürküten bir mesaj
+    doğrudur, sorun dili yalnız gerçek bir soruna aittir. Sahibin gözlemi olarak
+    kaydedildi. Metin bilinmeyen bir sonuç konusunda dürüsttür (D-024:
+    bilinmeyen sonuç başarısızlık değildir); sahibin itiraz ettiği,
+    güncellemenin kendi beklenen yeniden başlatma penceresi içinde nasıl
+    sunulduğu ve iki yüzeyin aynı şeyi söylemesidir.
+
+(c) **Sonraki sürüm için açık (D-033, D-024): beklenen yeniden başlatma
+    sırasında sakin ilerleme.** Güncellemenin kendi beklenen yeniden başlatma
+    penceresinde sayfa, T+ sayacıyla sakin bir ilerleme göstermelidir ("panel
+    güncellemenin parçası olarak yeniden başlıyor; bu sayfa kendiliğinden
+    yeniden bağlanır"). Uyarı yüzeyi ve "bilinmiyor" ifadesi yalnız beklenen
+    pencere geçtikten sonra ya da doğrulanmış bir başarısızlıkta görünmelidir.
+    Aynı şeyi söyleyen bir bildirim şeridi artı bir toast değil, tek bir
+    bildirim. Nereye bakılacağı (her biri yazıldığı sırada bu dalda var olduğu
+    doğrulanarak): `web/src/components/SystemUpdateOperation.tsx`
+    (`panelUpdate.connectionLost` ile başarısız olan okumaların ~550 ve ~599.
+    satırlarda, durum okumalarının ~1135–1144 arasında `true` yaptığı ve
+    ~1920'de kullanılan `disconnected` bayrağı; ~1550–1596 arasındaki `phase:
+    'unknown'` görünümü; 55. satırdaki `NOT_FOUND_GRACE_MS` (120000 ms) yalnız
+    tam bir 404 için tanınan süredir, kopan bağlantı için değil);
+    `web/src/lib/systemUpdateWatchdog.ts` 6. satırdaki bekçi sabiti
+    `SYSTEM_UPDATE_BLOCKING_DEADLINE_MS` (2 dakika); ve
+    `web/src/components/PanelUpdateCard.tsx` (~382. satır
+    `panelUpdate.card.unknown`'u seçer, metni
+    `web/src/i18n/screens/server/en.ts` 1130. satırda; toast metni
+    `panelUpdate.tracking.unknown` ile eşleşir, `web/src/i18n/en.ts` 160.
+    satır). Bu kayıt için izlenmeyenler: toast'u hangi bileşenin çıkardığı ve
+    yeniden başlatmanın toplamda ne kadar sürdüğü (toast alındığında T+02:59
+    gösteriyordu).
+
+(d) **Boston'un Panosu güncellemeden sonra.** Sistem hizmetleri "5 / 5 running /
+    installed", hiçbir şeye basılmadan. Mail stacks "Partially installed —
+    Webmail: Some components are already present. Installing this profile
+    completes the full plan without removing the services already in place." (bu
+    sürümün türlenmiş uyarı metni, `partly_present`). Needs attention: "Nothing
+    CelikPanel read needs action: certificates, the firewall and the installed
+    components." Güncellemeden önce (alpha.84, aynı sabah) Boston'un Needs
+    attention bölümü "Part of this server's state could not be read, so this
+    list may be incomplete…" yazısını Try again / Retry düğmesiyle göstermişti;
+    güncellemeden sonra okuma başarılı oldu. Önceki başarısız okumanın nedeni
+    bilinmiyor (bildirilmedi, ölçülmedi).
+
+(e) **Frankfurt'un Panosu güncellemeden hemen sonra.** Sistem hizmetleri
+    "Checking components…" ve dönen bir gösterge; Mail stacks rozeti "Checking…"
+    ve "Checking components…"; Needs attention "No certificate or firewall
+    setting needs action. The installed components are being checked…". Bunlar
+    bu sürümün denetleme durumlarıdır ve kurulu bir sunucuda ilk kez görüldü.
+    Denetimden sonraki sonuç yakalanmadı.
+
+(f) **Frankfurt'un kurulum son adımı, güncellemeden önce (alpha.84).** Hâlâ
+    "Waiting for you" yazıyordu; 72.62.38.15'in PTR'si server1.celikhost.com
+    olarak okunuyordu, oysa sürümü hazırlayan kişinin bakış noktasından her
+    genel çözümleyici ve sağlayıcının iki ad sunucusu
+    mail.frankfurt.celikhost.com yanıtını veriyordu (06:44Z'de 44 sorgunun
+    44'ü). Güncellemeden sonraki durum henüz bildirilmedi.
+
+(g) **Bildirilmeyenler:** güncelleme sırasında tam ekran lisans sayfası;
+    Agent'ın sürümü; `postconf -n >/dev/null` çıktısı. Her biri
+    "kaydedilmedi"dir; "çalıştı" da değildir, "başarısız" da.
+
+(h) **"Recent activity" hâlâ ham denetim kimliklerini gösteriyor** (iki Panoda
+    da: `server.setup.child:nginx`, `server_setup_mail_enrollment_requested`):
+    set16'nın O3'ü, kurulu sunucularda doğrulandı. Açık, bu sürümle değişmedi.
+
+Bu gözlemler sahibindir ve dışarıdan bir okumadır. Sürümü hazırlayan kişi hiçbir
+kurulu sunucuyu ölçmedi, bunlar kabul kanıtı değildir ve hiçbir P0 işini
+kapatmaz ya da ilerletmez. Bu kayıttaki hiçbir kodu değiştirmezler: (c)'deki
+açık iş sonraki sürüm içindir.
+
+**Yapılmayanlar ve yayımlamanın değiştirmedikleri.**
+
+- **Yayımlama betiğinin açık kusuru.** `deploy/publish-download-portal.ps1`,
+  göreli betik yoluyla başlatılınca çöker; çünkü parametre varsayılanları orada
+  boş olan `$PSScriptRoot`'u kullanır (9. madde). Hiçbir aktarımdan önce
+  başarısız oldu ve mutlak yolla çağrı çalıştı. Sonraki sürüm için açık:
+  varsayılanları betiğin gövdesinde hesaplamak.
+- Kurulu sunucular 1–10. maddeler yazılırken güncellenmemişti. Sahip ikisini de
+  sonra, panelin kendi güncelleme ekranından, yukarıdaki her adımdan ayrı bir
+  adım olarak güncelledi; onu başka kimse başlatmaz. Sahibin bildirdikleri
+  yukarıdaki blokta. Hâlâ bildirilmedi, bu yüzden kaydedilmedi: güncelleme
+  sırasında tam ekran lisans sayfasının görünüp görünmediği; Agent'ın sürümü;
+  Frankfurt'un güncellemeden sonraki kurulum son adımı; `postconf -n >/dev/null`
+  çıktısı; Frankfurt'un güncellemeden sonraki bileşen denetiminin sonucu. Sonraki
+  sürüm için açık: yukarıdaki (c).
+- Yukarıdaki denetimlerin sınırları: dosyalar bir derleme konuğundaki klondan
+  değil, Windows'ta `git archive` ile alındı (7. madde) ve canlı sitenin bir
+  kopyasında terfi aracı provası yapılmadı (8. madde).
+- Yayımlanma, ürün kabulü değildir. "Bu sürümün sınırları" altında sayılan
+  sınırlar onunla değişmez. [Dayanıklılık sözleşmesi](RESILIENCE-CONTRACT.tr.md)nin
+  beş temel işinin hepsi kısmi kalır; P0.1–P0.5 kısmi kalır ve sürüm ya da
+  yayımlanması hiçbir P0 işini kapatmaz ve ilerletmez.
 
 Bu sürümü yalnız CelikPanel'in güncelleme arayüzüyle kurun. Yayımlanması kurulu
 sunucuları güncellemez; bir sunucunun güncellemesini yalnız sahibi, panelin
