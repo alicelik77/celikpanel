@@ -1108,7 +1108,7 @@ export const trServerScreens: Record<ServerScreenKey, string> = {
     'panelUpdate.card.reading': '{version} güncellemesinin durumu okunuyor…',
     'panelUpdate.card.applying': '{version} güncellemesi uygulanıyor. Güncelleme kontrolü, güncelleme bittiğinde yeniden kullanılabilir.',
     'panelUpdate.card.verifying': '{version} kuruldu ve bu panel onu çalıştırıyor. Güncelleme hâlâ doğrulanıyor; güncelleme kontrolü, güncelleme bittiğinde yeniden kullanılabilir. Bir şey yapmanız gerekmiyor.',
-    'panelUpdate.card.unknown': '{version} güncellemesinin durumu şu an okunamadı; bu yüzden bitip bitmediği bilinmiyor. Güncelleme bildirimi onu kendiliğinden yeniden okur. İkinci bir güncelleme başlatmayın.',
+    'panelUpdate.card.unknown': '{version} güncellemesinin durumu şu an okunamadı; bu yüzden bitip bitmediği bilinmiyor. Bu sayfa onu kendiliğinden yeniden okur. İkinci bir güncelleme başlatmayın.',
     'panelUpdate.card.restarting': 'Panel, {version} güncellemesinin bir parçası olarak yeniden başlıyor. Bu sayfa kendiliğinden yeniden bağlanır; hiçbir şeye basmanız gerekmiyor.',
     // --- güncelleme kartı bloğunun sonu ---
     // --- sahibin değiştirdiği site yapılandırma dosyası (D-031, 2026-10-10) ---

@@ -394,8 +394,10 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
                             <p className="mt-1 text-fg-muted" data-update-overdue="true">{t('panelUpdate.tracking.restartOverdue')}</p>
                         )}
                         {tracking.elapsed && tracking.requestID && (
-                            <p className="mt-1 break-all font-mono text-xs text-fg-subtle" data-update-elapsed="true">
-                                {`T+${tracking.elapsed} · ID ${tracking.requestID}`}
+                            <p className="mt-1 flex flex-wrap gap-x-2 font-mono text-xs text-fg-subtle" data-update-elapsed="true">
+                                <span>{`T+${tracking.elapsed}`}</span>
+                                <span aria-hidden="true">·</span>
+                                <span className="break-all">{`ID ${tracking.requestID}`}</span>
                             </p>
                         )}
                     </div>
