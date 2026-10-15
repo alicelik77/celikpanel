@@ -7418,29 +7418,117 @@ and not measured on an installed server.
   `npx tsc --noEmit` clean. No Go was changed or
   run.
 
-### Installed servers after the alpha.85 publication: what the owner has not yet reported (2026-10-15)
+### Installed servers after the alpha.85 publication: what the owner reported (2026-10-15)
 
-No observation yet, and no change. v0.1.0-alpha.85 was published on 2026-10-15
-and no installed server had been updated when this entry was written; only the
-owner starts that, from the panel's own update screen. Nothing was measured on
-an installed server for this entry, no text or screen was changed for it, and
-it is not acceptance evidence. It is set against D-024 (the current reason, who
-must act, the next action and how work resumes come before long lists), D-033
-(a screen that makes the owner wait shows that it waits, or says that nothing
-needs to be done) and the known-state rule.
+The owner updated both installed servers to v0.1.0-alpha.85 from the panel's own
+update screen and reported what the screens showed. Written 2026-10-15 at
+09:58Z. Nothing was measured by the release preparer on an installed server for
+this entry, no text or screen was changed for it, and it is not acceptance
+evidence. It is set against D-024 (the current reason, who must act, the next
+action and how work resumes come before long lists; an unknown result is not a
+failure), D-033 (a screen that makes the owner wait shows that it waits, or says
+that nothing needs to be done) and the known-state rule.
 
-1. **What the owner is asked to report after the update, and nothing else is
-   recorded until then.** Each server's update result inside the panel; whether
-   the full-screen licence page appeared during the update; the Agent's
-   version; Frankfurt's setup final step after the update; and the output of
-   `postconf -n >/dev/null`. Until the owner reports them, each is "not
-   recorded", not "worked" and not "failed".
-2. **The waiting states this release changed were not reached on an installed
-   server.** "Finishing setup", with its reverse DNS wait and its 60 s bound
-   ending in "not known yet", and the update card's busy state were reached
-   only in mounted tests and the mock browser, never natively (release notes,
-   "Limits of this release"). What the owner sees there after the update is the
-   first measurement of those two screens.
-3. **The sidebar's build id was changed in this release.** It is meant to stay
-   in one piece; set16 read it on one line at 1280×800 and 390×844 in a lab. An
-   installed server's sidebar is not yet read.
+Source: the owner's six screenshots and message of 2026-10-15, received about
+07:00Z. The owner started both updates from the panel's own update screen and
+touched nothing else on the servers; the release preparer did not update,
+connect to or measure them. Written 2026-10-15 at 09:58Z. Everything below is
+the owner's observation and an outside read; it is not acceptance evidence and
+closes no P0 item.
+
+(a) **Both servers run v0.1.0-alpha.85.** The Settings → CelikPanel updates page
+    shows "Current version v0.1.0-alpha.85" and "Current commit
+    36c33c4531ee6c1306d324db7a666403176f3bf7" on Frankfurt (72.62.38.15, Debian
+    13, kernel 6.12.107+deb13-amd64, uptime 36 d 12 h) and on Boston (2.25.80.4,
+    Ubuntu 24.04.4, kernel 6.8.0-139-generic, uptime 37 d 14 h). The sidebar
+    reads "CelikPanel · v0.1.0-alpha.85 · build 36c33c4531ee" on one line on
+    both: the mid-word wrap seen on alpha.84 is gone. This is the first
+    observation of that fix on an installed server; set16 had read it only in a
+    lab.
+
+(b) **Frankfurt, during its update: a problem-looking notice for an expected
+    restart.** Before the target details (Target version v0.1.0-alpha.85,
+    Sequence 85, Package size 66146417 bytes, SHA-256 `cb6424b7…`) the update
+    page showed a warning-coloured notice, "The state of the update to
+    v0.1.0-alpha.85 could not be read just now, so it is not known whether it
+    has finished. The update notice reads it again by itself. Do not start
+    another update.", and at the same time a toast, "CelikPanel updates — The
+    state of this update could not be read just now, so whether it is still
+    running or has finished is not known. This notice reads it again by itself;
+    do not start another update. The connection was interrupted; the panel may
+    be restarting. The same operation will be tracked. Navigate; updates locked.
+    v0.1.0-alpha.85 · T+02:59 · ID f142f0a883f393df25bda7927dfb2c70". Then the
+    page reported the update done and the version changed. The owner's words in
+    substance: this looks like a problem message although nothing is wrong,
+    because the panel is restarting as part of the update; a less alarming
+    message is right while the operation is doing what it said it would, and the
+    problem wording belongs only to a real problem. Recorded as an owner
+    observation. The text is honest about an unknown result (D-024: an unknown
+    result is not a failure); what the owner objects to is how it is presented
+    inside the update's own expected restart window, and that two surfaces say
+    the same thing.
+
+(c) **Open for the next release (D-033, D-024): calm progress during the
+    expected restart.** During the update's own expected restart window the page
+    should show calm progress ("the panel is restarting as part of the update;
+    this page reconnects by itself") with the T+ counter. The warning surface
+    and the "not known" wording should appear only after the expected window
+    passes or on a verified failure. One notice, not a banner plus a toast
+    saying the same thing. Where to look, each checked to exist on this branch
+    at the time of writing: `web/src/components/SystemUpdateOperation.tsx` (the
+    `disconnected` flag, set to true by reads that fail with
+    `panelUpdate.connectionLost` at lines ~550 and ~599 and by the status reads
+    at ~1135–1144, and used at ~1920; the `phase: 'unknown'` view at ~1550–1596;
+    note that `NOT_FOUND_GRACE_MS` at line 55, 120000 ms, is the grace for an
+    exact 404 only, not for a lost connection); the watchdog constant
+    `SYSTEM_UPDATE_BLOCKING_DEADLINE_MS` (2 minutes) in
+    `web/src/lib/systemUpdateWatchdog.ts` line 6; and
+    `web/src/components/PanelUpdateCard.tsx` (line ~382 picks
+    `panelUpdate.card.unknown`, text at `web/src/i18n/screens/server/en.ts` line
+    1130; the toast text matches `panelUpdate.tracking.unknown`,
+    `web/src/i18n/en.ts` line 160). Not traced for this record: which component
+    raises the toast, and how long the restart took in total (the toast showed
+    T+02:59 when captured).
+
+(d) **Boston's Dashboard after the update.** System services "5 / 5 running /
+    installed" with nothing pressed. Mail stacks "Partially installed — Webmail:
+    Some components are already present. Installing this profile completes the
+    full plan without removing the services already in place." (the typed
+    warning text of this release, `partly_present`). Needs attention: "Nothing
+    CelikPanel read needs action: certificates, the firewall and the installed
+    components." Before the update (alpha.84, the same morning) Boston's Needs
+    attention had shown "Part of this server's state could not be read, so this
+    list may be incomplete…" with a Try again / Retry button; after the update
+    the read succeeded. The cause of the earlier failed read is not known (not
+    reported, not measured).
+
+(e) **Frankfurt's Dashboard right after the update.** System services "Checking
+    components…" with a spinner; Mail stacks chip "Checking…" with "Checking
+    components…"; Needs attention "No certificate or firewall setting needs
+    action. The installed components are being checked…". These are the checking
+    states of this release, seen on an installed server for the first time. The
+    result after the check was not captured.
+
+(f) **Frankfurt's setup final step, before the update (alpha.84).** It still
+    read "Waiting for you", with the PTR of 72.62.38.15 read as
+    server1.celikhost.com, while every public resolver and both provider name
+    servers answered mail.frankfurt.celikhost.com from the release preparer's
+    vantage point (44 of 44 queries at 06:44Z). The state after the update is
+    not yet reported.
+
+(g) **Not reported:** the full-screen licence page during the update; the
+    Agent's version; the output of `postconf -n >/dev/null`. Each is "not
+    recorded", not "worked" and not "failed".
+
+(h) **"Recent activity" still shows raw audit ids** on both Dashboards
+    (`server.setup.child:nginx`, `server_setup_mail_enrollment_requested`): O3
+    of set16, confirmed on installed servers. Open, unchanged by this release.
+
+What this entry does not say: it does not say the update screen is wrong about
+the state it could not read (the text is honest, and the update completed); it
+does not say what the licence page, the Agent's version or `postconf -n
+>/dev/null` showed; and it does not say how Frankfurt's setup final step reads
+after the update. The first measurement of the two screens the release changed
+("Finishing setup" and the update card's busy state) has still not been made
+natively; the owner's observation (b) is of the update screen's unknown state
+during the restart, not of the busy state this release changed.

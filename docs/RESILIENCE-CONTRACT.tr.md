@@ -4891,19 +4891,42 @@ bir yayımı kaydeder; kod, şema ya da kurtarma davranışını değiştirmez.
   bağlama aşamasında durdu (`$PSScriptRoot` bir parametre varsayılanında boş);
   mutlak yolla çağrı başarılı oldu. Sonraki sürüm için açık: varsayılanları
   betiğin gövdesinde hesaplamak.
-- **Kurulu paneller.** Bu girdi 15 Ekim 2026'da yazıldığında güncellenmemişti.
-  Bunu yalnız sahip, panelin kendi güncelleme ekranından başlatır. Sahibin
-  bildireceği ve o zamana kadar kaydedilmeyecek olanlar: her sunucunun
-  güncelleme sonucu, güncelleme sırasında tam ekran lisans sayfası, Agent'ın
-  sürümü, Frankfurt'un güncellemeden sonraki kurulum son adımı ve
-  `postconf -n >/dev/null` çıktısı. Bu girdi hiçbir iş için kabul kanıtı
-  değildir.
+- **Kurulu paneller.** Bu girdi 15 Ekim 2026'da yazıldığında güncellenmemişti;
+  sahip sonra panelin kendi güncelleme ekranından güncelledi ve aynı gün
+  bildirdi (yaklaşık 07:00Z'de alınan altı ekran görüntüsü ve bir mesaj;
+  09:58Z'de kaydedildi). İkisi de Current version v0.1.0-alpha.85 ve commit
+  `36c33c45…` gösteriyor, kenar çubuğundaki yapı kimliği tek satırda. Sahibin
+  gözlemleri, dışarıdan bir okuma ve kabul kanıtı değil: Frankfurt'un
+  güncellemesi sırasında sayfa, güncellemenin kendi beklenen yeniden başlatması
+  içinde, uyarı renginde bir "could not be read just now, so it is not known
+  whether it has finished" bildirimi ve aynı şeyi söyleyen bir toast gösterdi;
+  sahip bunun, ortada sorun yokken sorun gibi okunduğunu söylüyor. **Sonraki
+  sürüm için açık (D-033, D-024; ilke 2 olduğu gibi kalır, bilinmeyen sonuç
+  başarısızlık değildir):** beklenen yeniden başlatma penceresinde T+ sayacıyla
+  sakin ilerleme, uyarı yüzeyi ve "bilinmiyor" ifadesi yalnız pencere geçtikten
+  sonra ya da doğrulanmış başarısızlıkta, ve bir bildirim şeridi artı bir toast
+  yerine tek bir bildirim (`web/src/components/SystemUpdateOperation.tsx`,
+  `web/src/components/PanelUpdateCard.tsx`). Boston'un Panosu güncellemeden
+  sonra 5 / 5 hizmeti, türlenmiş kısmi posta profili metnini ve "Nothing
+  CelikPanel read needs action" yazısını gösterdi; öncesinde (alpha.84) Needs
+  attention bir okumada başarısız olmuştu, neden bilinmiyor. Frankfurt'un Panosu
+  güncellemeden hemen sonra "Checking…" durumlarını gösterdi; sonuç yakalanmadı.
+  "Recent activity" hâlâ ham denetim kimliklerini gösteriyor (set16 O3).
+  Bildirilmedi, bu yüzden kaydedilmedi: güncelleme sırasında tam ekran lisans
+  sayfası, Agent'ın sürümü, Frankfurt'un güncellemeden sonraki kurulum son adımı
+  ve `postconf -n >/dev/null` çıktısı. Tam liste [sürüm
+  notlarında](RELEASE-NOTES-v0.1.0-alpha.85.tr.md), "Kurulu panel
+  güncellemelerinden sonra sahibin gözlemleri" altında. Bu girdi hiçbir işi
+  kapatmaz ve hiçbir P0 işini ilerletmez.
 - **Şema ya da sürüm geçişi.** Yok: bu sürüm hiçbir şema değişikliği taşımaz
   (veritabanı şeması 44 kalır); sürüm sırası 5443fe055 sürüm hazırlığında,
   önceki olarak alpha.84 sürüm commit'i `f0157e6c8` ile 84'ten 85'e geçti.
   **Kurtarma davranışı.** Değişmedi.
 - **Açık.** Yukarıdaki girdilerin açık bıraktığı her şey; bunlar arasında
   [sürüm notlarında](RELEASE-NOTES-v0.1.0-alpha.85.tr.md) sayılan sınırlar var:
-  hiçbir kurulu sunucunun ölçülmemesi, "Finishing setup" ve güncelleme kartının
-  meşgul durumuna gerçek sistemde ulaşılamaması ve set16'nın bir sabit commit
-  üzerinde çalışması.
+  hiçbir kurulu sunucunun ölçülmemesi (kurulu panel güncellemelerinden sonra
+  sahibin gözlemleri ekran görüntüleri ve dışarıdan bir okumadır, ölçüm
+  değil), "Finishing setup" ve güncelleme kartının meşgul durumuna gerçek
+  sistemde ulaşılamaması ve set16'nın bir sabit commit üzerinde çalışması.
+  Güncelleme ekranının beklenen yeniden başlatma sırasında sorun gibi görünen
+  bildirimi sonraki sürüm için açık.

@@ -5621,17 +5621,41 @@ behaviour. 2026-10-15 is the clock date of everything in it.
   parameter binding before any transfer (`$PSScriptRoot` is empty in a
   parameter default); the invocation with the absolute path succeeded. Open for
   the next release: compute the defaults in the script body.
-- **Installed panels.** Not updated when this entry was written on 2026-10-15.
-  Only the owner starts that, from the panel's own update screen. To be
-  reported by the owner and not recorded until then: each server's update
-  result, the full-screen licence page during the update, the Agent's version,
-  Frankfurt's setup final step after the update, and the output of
-  `postconf -n >/dev/null`. This entry is not acceptance evidence for any item.
+- **Installed panels.** Not updated when this entry was written on 2026-10-15;
+  updated by the owner afterwards, from the panel's own update screen, and
+  reported the same day (six screenshots and a message received about 07:00Z;
+  recorded 09:58Z). Both show Current version v0.1.0-alpha.85 and commit
+  `36c33c45…`, and the sidebar build id on one line. Owner observations, an
+  outside read and not acceptance evidence: during Frankfurt's update the page
+  showed a warning-coloured "could not be read just now, so it is not known
+  whether it has finished" notice and a toast saying the same, inside the
+  update's own expected restart; the owner finds this reads like a problem when
+  nothing is wrong. **Open for the next release (D-033, D-024; invariant 2 stays
+  as it is, an unknown result is not a failure):** calm progress with the T+
+  counter during the expected restart window, the warning surface and the "not
+  known" wording only after the window passes or on a verified failure, and one
+  notice instead of a banner plus a toast
+  (`web/src/components/SystemUpdateOperation.tsx`,
+  `web/src/components/PanelUpdateCard.tsx`). Boston's Dashboard after the update
+  read 5 / 5 services, the typed partial mail-profile text and "Nothing
+  CelikPanel read needs action"; before it (alpha.84) its Needs attention had
+  failed a read, cause not known. Frankfurt's Dashboard showed the "Checking…"
+  states right after the update; the result was not captured. "Recent activity"
+  still shows raw audit ids (set16 O3). Not reported, so not recorded: the
+  full-screen licence page during the update, the Agent's version, Frankfurt's
+  setup final step after the update, and the output of `postconf -n >/dev/null`.
+  The [release notes](RELEASE-NOTES-v0.1.0-alpha.85.md), "Owner's observations
+  after the installed-panel updates", hold the full list. This entry closes no
+  item and advances no P0 item.
 - **Schema or version transition.** None: this release carries no schema
   change (the database schema stays 44); the release sequence moved from 84 to
   85 in the release preparation `5443fe055`, with the alpha.84 release commit
   `f0157e6c8` as previous. **Recovery behaviour.** Unchanged.
 - **Open.** Everything the entries above leave open, among them the limits
   listed in the [release notes](RELEASE-NOTES-v0.1.0-alpha.85.md): that no
-  installed server was measured, that "Finishing setup" and the update card's
-  busy state were not reached natively, and that set16 ran a fixture commit.
+  installed server was measured (the owner's observations after the
+  installed-panel updates are screenshots and an outside read, not
+  measurements), that "Finishing setup" and the update card's busy state were
+  not reached natively, and that set16 ran a fixture commit. The update
+  screen's problem-looking notice during the expected restart is open for the
+  next release.

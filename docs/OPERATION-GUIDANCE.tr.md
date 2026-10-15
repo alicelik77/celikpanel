@@ -7387,29 +7387,120 @@ yapıldı ve kurulu bir sunucuda ölçülmedi.
   denetimi); `npx tsc --noEmit` temiz. Go değiştirilmedi
   ve çalıştırılmadı.
 
-### Alpha.85 yayımından sonra kurulu sunucular: sahibin henüz bildirmedikleri (2026-10-15)
+### Alpha.85 yayımından sonra kurulu sunucular: sahibin bildirdikleri (2026-10-15)
 
-Henüz gözlem yok ve değişiklik yok. v0.1.0-alpha.85 15 Ekim 2026'da yayımlandı
-ve bu girdi yazıldığında hiçbir kurulu sunucu güncellenmemişti; bunu yalnız
-sahip, panelin kendi güncelleme ekranından başlatır. Bu girdi için kurulu
-hiçbir sunucuda bir şey ölçülmedi, hiçbir metin ya da ekran değiştirilmedi ve
-kabul kanıtı değildir. D-024'e (mevcut neden, kimin işlem yapacağı, somut
-sonraki eylem ve nasıl devam edileceği uzun listelerden önce gelir), D-033'e
-(sahibi bekleten bir ekran beklediğini gösterir ya da bir şey yapması
-gerekmediğini söyler) ve bilinen-durum kuralına karşı konur.
+Sahip iki kurulu sunucuyu da panelin kendi güncelleme ekranından
+v0.1.0-alpha.85'e güncelledi ve ekranların gösterdiğini bildirdi. 15 Ekim 2026
+09:58Z'de yazıldı. Bu girdi için sürümü hazırlayan kişi kurulu hiçbir sunucuda
+bir şey ölçmedi, hiçbir metin ya da ekran değiştirilmedi ve kabul kanıtı
+değildir. D-024'e (mevcut neden, kimin işlem yapacağı, somut sonraki eylem ve
+nasıl devam edileceği uzun listelerden önce gelir; bilinmeyen sonuç başarısızlık
+değildir), D-033'e (sahibi bekleten bir ekran beklediğini gösterir ya da bir şey
+yapması gerekmediğini söyler) ve bilinen-durum kuralına karşı konur.
 
-1. **Sahipten güncellemeden sonra bildirmesi istenenler; o zamana kadar başka
-   hiçbir şey kaydedilmez.** Her sunucunun panel içindeki güncelleme sonucu;
-   güncelleme sırasında tam ekran lisans sayfasının görünüp görünmediği;
-   Agent'ın sürümü; Frankfurt'un güncellemeden sonraki kurulum son adımı;
-   `postconf -n >/dev/null` çıktısı. Sahip bildirene kadar her biri "kaydedilmedi"dir;
-   "çalıştı" da değildir, "başarısız" da.
-2. **Bu sürümün değiştirdiği bekleme durumlarına kurulu bir sunucuda
-   ulaşılmadı.** Ters DNS beklemesi ve "not known yet" ile biten 60 sn sınırıyla
-   "Finishing setup" ve güncelleme kartının meşgul durumuna yalnız bağlanmış
-   testlerde ve sahte tarayıcıda ulaşıldı, gerçek sistemde hiç (sürüm notları,
-   "Bu sürümün sınırları"). Güncellemeden sonra sahibin orada göreceği, bu iki
-   ekranın ilk ölçümüdür.
-3. **Kenar çubuğundaki yapı kimliği bu sürümde değiştirildi.** Tek parça kalması
-   amaçlanır; set16 onu laboratuvarda 1280×800 ve 390×844'te tek satırda okudu.
-   Kurulu bir sunucunun kenar çubuğu henüz okunmadı.
+Kaynak: sahibin 15 Ekim 2026 tarihli altı ekran görüntüsü ve mesajı, yaklaşık
+07:00Z'de alındı. Sahip iki güncellemeyi de panelin kendi güncelleme ekranından
+başlattı ve sunucularda başka hiçbir şeye dokunmadı; sürümü hazırlayan kişi
+onları güncellemedi, onlara bağlanmadı ve ölçmedi. 15 Ekim 2026 09:58Z'de
+yazıldı. Aşağıdaki her şey sahibin gözlemi ve dışarıdan bir okumadır; kabul
+kanıtı değildir ve hiçbir P0 işini kapatmaz.
+
+(a) **İki sunucu da v0.1.0-alpha.85 çalıştırıyor.** Ayarlar → CelikPanel
+    güncellemeleri sayfası Frankfurt'ta (72.62.38.15, Debian 13, çekirdek
+    6.12.107+deb13-amd64, çalışma süresi 36 g 12 sa) ve Boston'da (2.25.80.4,
+    Ubuntu 24.04.4, çekirdek 6.8.0-139-generic, çalışma süresi 37 g 14 sa)
+    "Current version v0.1.0-alpha.85" ve "Current commit
+    36c33c4531ee6c1306d324db7a666403176f3bf7" gösteriyor. Kenar çubuğu ikisinde
+    de "CelikPanel · v0.1.0-alpha.85 · build 36c33c4531ee" yazısını tek satırda
+    gösteriyor: alpha.84'te görülen sözcüğün ortasından satır kırılması gitti.
+    Bu düzeltmenin kurulu bir sunucuda ilk gözlemidir; set16 onu yalnız bir
+    laboratuvarda okumuştu.
+
+(b) **Frankfurt, güncellemesi sırasında: beklenen bir yeniden başlatma için
+    sorun gibi görünen bir bildirim.** Hedef ayrıntılarından önce (Target
+    version v0.1.0-alpha.85, Sequence 85, Package size 66146417 bytes, SHA-256
+    `cb6424b7…`) güncelleme sayfası uyarı renginde bir bildirim gösterdi: "The
+    state of the update to v0.1.0-alpha.85 could not be read just now, so it is
+    not known whether it has finished. The update notice reads it again by
+    itself. Do not start another update." Aynı anda bir toast da vardı:
+    "CelikPanel updates — The state of this update could not be read just now,
+    so whether it is still running or has finished is not known. This notice
+    reads it again by itself; do not start another update. The connection was
+    interrupted; the panel may be restarting. The same operation will be
+    tracked. Navigate; updates locked. v0.1.0-alpha.85 · T+02:59 · ID
+    f142f0a883f393df25bda7927dfb2c70". Sonra sayfa güncellemenin bittiğini
+    bildirdi ve sürüm değişti. Sahibin sözleri özetle: ortada bir sorun yokken
+    bu bir sorun mesajı gibi görünüyor, çünkü panel güncellemenin parçası olarak
+    yeniden başlıyor; işlem söylediği şeyi yaparken daha az ürküten bir mesaj
+    doğrudur, sorun dili yalnız gerçek bir soruna aittir. Sahibin gözlemi olarak
+    kaydedildi. Metin bilinmeyen bir sonuç konusunda dürüsttür (D-024:
+    bilinmeyen sonuç başarısızlık değildir); sahibin itiraz ettiği,
+    güncellemenin kendi beklenen yeniden başlatma penceresi içinde nasıl
+    sunulduğu ve iki yüzeyin aynı şeyi söylemesidir.
+
+(c) **Sonraki sürüm için açık (D-033, D-024): beklenen yeniden başlatma
+    sırasında sakin ilerleme.** Güncellemenin kendi beklenen yeniden başlatma
+    penceresinde sayfa, T+ sayacıyla sakin bir ilerleme göstermelidir ("panel
+    güncellemenin parçası olarak yeniden başlıyor; bu sayfa kendiliğinden
+    yeniden bağlanır"). Uyarı yüzeyi ve "bilinmiyor" ifadesi yalnız beklenen
+    pencere geçtikten sonra ya da doğrulanmış bir başarısızlıkta görünmelidir.
+    Aynı şeyi söyleyen bir bildirim şeridi artı bir toast değil, tek bir
+    bildirim. Nereye bakılacağı (her biri yazıldığı sırada bu dalda var olduğu
+    doğrulanarak): `web/src/components/SystemUpdateOperation.tsx`
+    (`panelUpdate.connectionLost` ile başarısız olan okumaların ~550 ve ~599.
+    satırlarda, durum okumalarının ~1135–1144 arasında `true` yaptığı ve
+    ~1920'de kullanılan `disconnected` bayrağı; ~1550–1596 arasındaki `phase:
+    'unknown'` görünümü; 55. satırdaki `NOT_FOUND_GRACE_MS` (120000 ms) yalnız
+    tam bir 404 için tanınan süredir, kopan bağlantı için değil);
+    `web/src/lib/systemUpdateWatchdog.ts` 6. satırdaki bekçi sabiti
+    `SYSTEM_UPDATE_BLOCKING_DEADLINE_MS` (2 dakika); ve
+    `web/src/components/PanelUpdateCard.tsx` (~382. satır
+    `panelUpdate.card.unknown`'u seçer, metni
+    `web/src/i18n/screens/server/en.ts` 1130. satırda; toast metni
+    `panelUpdate.tracking.unknown` ile eşleşir, `web/src/i18n/en.ts` 160.
+    satır). Bu kayıt için izlenmeyenler: toast'u hangi bileşenin çıkardığı ve
+    yeniden başlatmanın toplamda ne kadar sürdüğü (toast alındığında T+02:59
+    gösteriyordu).
+
+(d) **Boston'un Panosu güncellemeden sonra.** Sistem hizmetleri "5 / 5 running /
+    installed", hiçbir şeye basılmadan. Mail stacks "Partially installed —
+    Webmail: Some components are already present. Installing this profile
+    completes the full plan without removing the services already in place." (bu
+    sürümün türlenmiş uyarı metni, `partly_present`). Needs attention: "Nothing
+    CelikPanel read needs action: certificates, the firewall and the installed
+    components." Güncellemeden önce (alpha.84, aynı sabah) Boston'un Needs
+    attention bölümü "Part of this server's state could not be read, so this
+    list may be incomplete…" yazısını Try again / Retry düğmesiyle göstermişti;
+    güncellemeden sonra okuma başarılı oldu. Önceki başarısız okumanın nedeni
+    bilinmiyor (bildirilmedi, ölçülmedi).
+
+(e) **Frankfurt'un Panosu güncellemeden hemen sonra.** Sistem hizmetleri
+    "Checking components…" ve dönen bir gösterge; Mail stacks rozeti "Checking…"
+    ve "Checking components…"; Needs attention "No certificate or firewall
+    setting needs action. The installed components are being checked…". Bunlar
+    bu sürümün denetleme durumlarıdır ve kurulu bir sunucuda ilk kez görüldü.
+    Denetimden sonraki sonuç yakalanmadı.
+
+(f) **Frankfurt'un kurulum son adımı, güncellemeden önce (alpha.84).** Hâlâ
+    "Waiting for you" yazıyordu; 72.62.38.15'in PTR'si server1.celikhost.com
+    olarak okunuyordu, oysa sürümü hazırlayan kişinin bakış noktasından her
+    genel çözümleyici ve sağlayıcının iki ad sunucusu
+    mail.frankfurt.celikhost.com yanıtını veriyordu (06:44Z'de 44 sorgunun
+    44'ü). Güncellemeden sonraki durum henüz bildirilmedi.
+
+(g) **Bildirilmeyenler:** güncelleme sırasında tam ekran lisans sayfası;
+    Agent'ın sürümü; `postconf -n >/dev/null` çıktısı. Her biri
+    "kaydedilmedi"dir; "çalıştı" da değildir, "başarısız" da.
+
+(h) **"Recent activity" hâlâ ham denetim kimliklerini gösteriyor** (iki Panoda
+    da: `server.setup.child:nginx`, `server_setup_mail_enrollment_requested`):
+    set16'nın O3'ü, kurulu sunucularda doğrulandı. Açık, bu sürümle değişmedi.
+
+Bu girdinin söylemedikleri: güncelleme ekranının okuyamadığı durum hakkında
+yanlış olduğunu söylemez (metin dürüsttür ve güncelleme tamamlandı); lisans
+sayfasının, Agent'ın sürümünün ya da `postconf -n >/dev/null` çıktısının ne
+gösterdiğini söylemez; ve Frankfurt'un kurulum son adımının güncellemeden sonra
+nasıl okunduğunu söylemez. Sürümün değiştirdiği iki ekranın ("Finishing setup"
+ve güncelleme kartının meşgul durumu) ilk gerçek sistem ölçümü hâlâ yapılmadı;
+sahibin (b) gözlemi bu sürümün değiştirdiği meşgul durumunun değil, yeniden
+başlatma sırasında güncelleme ekranının bilinmeyen durumunun gözlemidir.
