@@ -1,0 +1,6 @@
+qemu: QEMU emulator version 11.1.1
+kernel (WSL): 6.18.33.2-microsoft-standard-WSL2
+python: Python 3.14.7
+node (WSL): v26.8.1
+/dev/kvm: crw-rw-rw- 1 root kvm 10, 232 Oct 15 18:58 /dev/kvm
+svm/vmx processors: 16 of 16

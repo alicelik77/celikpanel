@@ -1,0 +1,240 @@
+Güvenlik duvarı: Açık
+
+Yalnız bu portlara erişilebilir; gerisi engelli.
+
+Kapat
+22/tcp (SSH)
+25/tcp
+80/tcp
+110/tcp
+143/tcp
+443/tcp
+465/tcp
+587/tcp
+993/tcp
+995/tcp
+2083/tcp
+Yeniden tara
+Son tarama: 15.10.2026 18:10:22
+Kurulu (10)
+Katalog (27)
+Tümünü aç
+Tümünü kapat
+Tek tıkla posta paketleri
+
+Doğrulanmış bir posta paketini kurtarılabilir tek işlemle kurun. Servisleri aşağıdan ayrı ayrı kurmaya devam edebilirsiniz.
+
+Temel Posta
+
+Kimlik doğrulamalı gönderimle Postfix SMTP ve Dovecot IMAP/POP3.
+
+Postfix
+Dovecot
+
+Bileşenler çalışıyor. TLS, kimlik doğrulamalı gönderim ve posta profilinin tamamını doğrulayıp uzlaştırmak için Onar işlemini çalıştırın.
+
+Bileşenler çalışıyor
+Onar
+Webmail
+
+Temel postaya ek olarak Nginx, PHP-FPM ve Roundcube webmail.
+
+Postfix
+Dovecot
+Nginx
+PHP-FPM
+Roundcube
+Bileşenler çalışıyor
+Onar
+Spam Korumalı Posta
+
+Rspamd spam filtrelemeli temel posta.
+
+Postfix
+Dovecot
+Rspamd
+Bileşenler çalışıyor
+Onar
+
+Toplam 27 öğe
+
+DNS
+0/2
+🌐
+BIND
+DNS Server
+—
+Kurulu değil
+DNS motorunu yönet
+⚡
+PowerDNS
+DNS Server
+—
+Kurulu değil
+DNS motorunu yönet
+Web sunucuları
+2/4
+🐘
+PHP-FPM
+PHP FastCGI Process Manager
+8.4
+Çalışıyor
+Sürümler
+1
+Yönet
+🟩
+Node.js
+JavaScript Runtime
+—
+Kurulu değil
+Kur
+🔄
+Nginx
+Reverse Proxy Server
+—
+Çalışıyor
+Yönet
+🪶
+Apache
+Web Server
+—
+Kurulu değil
+Nginx ile çakışır
+Veritabanları
+1/4
+🐘
+PostgreSQL
+Database Server
+—
+Kurulu değil
+Kur
+🦭
+MariaDB
+Database Server
+—
+Çalışıyor
+Yönet
+🐬
+phpMyAdmin
+MariaDB/MySQL web admin tool
+—
+Kurulu değil
+Kur
+🐘
+phpPgAdmin
+PostgreSQL web admin tool
+—
+Kurulu değil
+PostgreSQL gerekir
+E-posta
+4/6
+📧
+Postfix
+SMTP Server
+—
+Çalışıyor
+Yönet
+📮
+Exim
+SMTP Server
+—
+Kurulu değil
+Postfix ile çakışır
+🧹
+Rspamd
+Spam Filter & DKIM
+—
+Çalışıyor
+Yönet
+📬
+Dovecot
+IMAP/POP3 Server
+—
+Çalışıyor
+Yönet
+✉️
+Roundcube
+Webmail
+—
+Kurulu
+Web postayı onar
+🛡️
+SpamAssassin
+Spam Filter
+—
+Kurulu değil
+Rspamd ile çakışır
+Güvenlik
+2/5
+🔐
+WireGuard VPN
+Built-in VPN server
+—
+Kurulu değil
+Kur
+🔐
+Let's Encrypt client (certbot)
+SSL certificate provider
+—
+Kurulu
+🚫
+Fail2ban
+Intrusion Prevention
+—
+Kurulu değil
+Kur
+🧱
+Firewall engine
+nftables — the panel firewall's packet-filtering engine
+—
+Kurulu
+🦠
+ClamAV
+Antivirus / malware scanner
+—
+Kurulu değil
+Kur
+Önbellek
+0/3
+⚡
+Redis
+Cache Server
+—
+Kurulu değil
+Kur
+🗝️
+Valkey
+Cache Server
+—
+Kurulu değil
+Kur
+💾
+Memcached
+Cache Server
+—
+Kurulu değil
+Kur
+FTP
+0/1
+📂
+vsftpd
+FTP Server
+—
+Kurulu değil
+Yerleşik SFTP’yi kullanın
+İzleme
+0/1
+📈
+Netdata
+Real-time metrics agent
+—
+Kurulu değil
+Kur
+Sistem
+1/1
+⏰
+Scheduled tasks (cron)
+Native cron daemon that runs scheduled tasks
+—
+Çalışıyor
+Yönet

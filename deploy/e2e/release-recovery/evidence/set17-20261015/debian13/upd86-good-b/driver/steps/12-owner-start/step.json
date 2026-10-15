@@ -1,0 +1,35 @@
+{
+  "checks": {
+    "by": "the owner's press in the browser: the page's own POST /api/v1/panel/update/start (held unchanged until the observer was armed, then released); the driver sent no start",
+    "start": {
+      "body": null,
+      "failed": null,
+      "http": null,
+      "request_id": "013d1f2889302c1b39bd8d5bcd5da764"
+    },
+    "start_outcome": "unknown in the page; reconciled by the status read",
+    "status_after_the_start": {
+      "body": {
+        "created_at": "2026-10-15T14:51:25.394158949Z",
+        "found": true,
+        "request_id": "013d1f2889302c1b39bd8d5bcd5da764",
+        "status": "running",
+        "target": {
+          "arch": "amd64",
+          "archive_sha256": "887a16c0d3c7c1ce30371dbdc91661aadf6a9bf95663233ef8c35464d026ccfc",
+          "archive_size": "66170399",
+          "commit": "c48678d34583868ab583db4cfb6c97c36e423db6",
+          "os": "linux",
+          "sequence": "87",
+          "version": "v0.1.0-alpha.87"
+        },
+        "updated_at": "2026-10-15T14:51:25.492480283Z"
+      },
+      "http": 200
+    }
+  },
+  "finished_at": "2026-10-15T14:51:31Z",
+  "name": "owner-start",
+  "started_at": "2026-10-15T14:51:31Z",
+  "verdict": "passed"
+}

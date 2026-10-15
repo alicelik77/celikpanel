@@ -1,0 +1,20 @@
+Formatting '/var/tmp/cp-release-drill-s17-d13-a/cells/74d09b0d37319fb965dac927/debian13/overlay.qcow2', fmt=qcow2 cluster_size=65536 extended_l2=off compression_type=zlib size=25769803776 backing_file=/var/tmp/cp-release-drill-s17-d13-a/images/debian-13-genericcloud-amd64-20260826-2582.qcow2 backing_fmt=qcow2 lazy_refcounts=off refcount_bits=16
+Formatting '/var/tmp/cp-release-drill-s17-d13-a/cells/74d09b0d37319fb965dac927/arch/overlay.qcow2', fmt=qcow2 cluster_size=65536 extended_l2=off compression_type=zlib size=25769803776 backing_file=/var/tmp/cp-release-drill-s17-d13-a/images/Arch-Linux-x86_64-cloudimg-20260815.573966.qcow2 backing_fmt=qcow2 lazy_refcounts=off refcount_bits=16
+{"action": "prepared", "root": "/var/tmp/cp-release-drill-s17-d13-a", "cell_id": "release-recovery__707e041c711bc8f6", "ssh_ports": [5271, 5272]}
+{"action": "ready", "root": "/var/tmp/cp-release-drill-s17-d13-a", "nodes": {"arch": "verified-disposable-systemd-guest", "debian13": "verified-disposable-systemd-guest"}}
+{"action": "ready", "root": "/var/tmp/cp-release-drill-s17-d13-a", "nodes": {"arch": "verified-disposable-systemd-guest", "debian13": "verified-disposable-systemd-guest"}}
+{"step": "set6-name-pinning", "verdict": "passed", "reason": null}
+{"step": "preflight", "verdict": "passed", "reason": null}
+{"step": "origin", "verdict": "passed", "reason": null}
+{"step": "baseline-install", "verdict": "passed", "reason": null}
+{"step": "owner-login", "verdict": "passed", "reason": null}
+{"step": "license", "verdict": "passed", "reason": null}
+{"step": "setup", "verdict": "observed", "reason": null}
+{"step": "set17-readings", "verdict": "observed", "reason": null}
+{"set12": "ready", "window": "ui", "hand": "/var/tmp/cp-set17/hand/h17d13-ui", "port": 19271}
+{"step": "set17-browser-window", "verdict": "observed", "reason": null}
+{"step": "set6-name-pinning-at-the-end", "verdict": "passed", "reason": null}
+{"step": "collect", "verdict": "passed", "reason": null}
+{"outcome": "set17-measured", "overall": "complete-for-review", "steps": {"baseline-install": "passed", "collect": "passed", "license": "passed", "origin": "passed", "owner-login": "passed", "preflight": "passed", "set17-browser-window": "observed", "set17-readings": "observed", "set6-name-pinning": "passed", "set6-name-pinning-at-the-end": "passed", "setup": "observed"}}
+{"action": "stopped", "root": "/var/tmp/cp-release-drill-s17-d13-a", "evidence_retained": true}
+SET17 cell=set17-debian13 lab=/var/tmp/cp-release-drill-s17-d13-a driver_exit=0 evidence=/var/tmp/cp-release-drill-s17-d13-a/evidence/*/upd1

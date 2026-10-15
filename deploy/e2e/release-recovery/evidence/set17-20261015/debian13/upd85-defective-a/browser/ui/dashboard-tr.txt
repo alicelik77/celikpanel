@@ -1,0 +1,104 @@
+CPU kullanımı
+
+%3
+
+2 çekirdek · Yük 0.12
+
+Bellek
+
+%22
+
+651 MB / 2.9 GB
+
+Disk (/)
+
+%14
+
+3.3 GB / 23.4 GB
+
+Sistem servisleri
+
+6 / 6
+
+çalışan / kurulu
+
+Posta paketleri
+Hazır
+
+En az bir posta profilinin taze bileşen taraması ve tamamlanmış uzlaştırması var.
+
+Posta paketlerini gör
+İlgi istiyor
+1 uyarı
+Antivirüs kurulu değil — içerik barındırıyorsunuz ama tarayan bir şey yok
+Servis kur
+Barındırma
+
+1
+
+Alan Adları
+
+0
+
+Veritabanları
+
+1
+
+Kullanıcılar
+
+1
+
+Posta hesabı
+
+Son eklenen domainler
+upd1-owner.test
+static
+SSL yok
+6 dk önce
+Son etkinlik
+L
+labadmin oturum açtı3 kez
+127.0.0.1
+1 dk önce
+L
+labadmin server.setup.guidance
+127.0.0.1
+1 dk önce
+L
+labadmin server.setup.revise
+127.0.0.1
+1 dk önce
+L
+labadmin domain.create
+127.0.0.1
+6 dk önce
+L
+labadmin subscription.bootstrap
+127.0.0.1
+6 dk önce
+L
+labadmin server.setup.child:certbot
+127.0.0.1
+8 dk önce
+L
+labadmin server.setup.child:cron
+127.0.0.1
+8 dk önce
+Hızlı işlemler
+Alan adı ekle
+Servis kur
+Kullanıcı ekle
+İçe aktar
+Sunucu bilgisi
+Sunucu adı
+dns-debian13
+IPv4 adresi
+10.0.2.15
+İşletim sistemi
+Debian GNU/Linux 13 (trixie)
+Çekirdek
+6.12.105+deb13-cloud-amd64
+Mimari
+amd64
+Çalışma süresi
+3dk

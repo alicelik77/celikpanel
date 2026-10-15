@@ -1,0 +1,26 @@
+Bileşenler
+Nginx
+
+Çalışıyor
+
+Yardım
+Başlat
+Durdur
+Yeniden başlat
+Genel
+SSL/TLS
+Hız limitleri
+Worker süreçleri
+auto
+Worker bağlantıları
+768
+Keepalive zaman aşımı
+—
+İstemci maks. gövde boyutu
+—
+Sunucu jetonları
+off; # Recommended practice is to turn this off
+Gzip
+on
+
+Salt okunur, nginx -T'den canlı ayrıştırılır. Panel içi düzenleme henüz desteklenmiyor.

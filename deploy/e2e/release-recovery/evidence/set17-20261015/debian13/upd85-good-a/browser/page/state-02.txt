@@ -1,0 +1,40 @@
+Account security
+Sign-in protection and administrator security.
+Server setup
+Setup wizard and your configuration preference.
+Panel HTTPS
+Panel domain and HTTPS certificate.
+License
+Server license, activation and annual renewal.
+CelikPanel updates
+Check signed releases and install them only after explicit confirmation.
+Server security
+Read-only audit of exposed services and access controls.
+DNS infrastructure
+Shared nameservers, node identity and replication topology.
+System databases
+Inspect and safely maintain the SQLite files CelikPanel and installed services keep.
+CelikPanel updates
+
+The panel and agent apply only a signed package that matches the verified operating system and architecture.
+
+Check for updates
+
+Alpha release: Make sure you have a current backup first. The operation restarts the panel and agent and may cause a short interruption. An update never starts automatically.
+
+Current version
+v0.1.0-alpha.85
+Current commit
+36c33c4531ee6c1306d324db7a666403176f3bf7
+Target version
+v0.1.0-alpha.86
+Target platform
+linux/amd64
+Sequence
+86
+Package size
+66169992 bytes
+SHA-256
+6c64289048f9e3fd98655bf761665c3b1f500ec654007da776d422654f747d39
+
+Reading the state of the update to v0.1.0-alpha.86…

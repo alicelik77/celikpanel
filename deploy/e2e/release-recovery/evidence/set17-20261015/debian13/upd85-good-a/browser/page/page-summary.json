@@ -1,0 +1,577 @@
+{
+  "target_version": "v0.1.0-alpha.86",
+  "baseline_version": "v0.1.0-alpha.85",
+  "cell": "upd1-debian13-good",
+  "opened_at": "2026-10-15T14:09:47.152Z",
+  "page_ready": {
+    "current_version": "v0.1.0-alpha.85",
+    "ok": true,
+    "target": {
+      "archive_sha256": "6c64289048f9e3fd98655bf761665c3b1f500ec654007da776d422654f747d39",
+      "commit": "313f3eea2c9b89251588648b09484cd34b7aecb1",
+      "sequence": "86",
+      "version": "v0.1.0-alpha.86"
+    }
+  },
+  "check_pressed": {
+    "at": "2026-10-15T14:09:49.314Z",
+    "button": "Check for updates"
+  },
+  "start_enabled": {
+    "enabled": true,
+    "after_ms": 518
+  },
+  "start_pressed_at": "2026-10-15T14:09:49.922Z",
+  "start_request": {
+    "held_at": "2026-10-15T14:09:50.004Z",
+    "after_press_ms": 82,
+    "request_id": "c876195db9e3f3bc57af846ab248f793",
+    "body_keys": [
+      "arch",
+      "archive_sha256",
+      "archive_size",
+      "commit",
+      "confirmed",
+      "current_commit",
+      "current_version",
+      "os",
+      "published_at",
+      "request_id",
+      "sequence",
+      "version"
+    ],
+    "target_version": "v0.1.0-alpha.86",
+    "confirmed": true
+  },
+  "release": {
+    "released_at": "2026-10-15T14:09:51.008Z",
+    "held_ms": 1004,
+    "armed": {
+      "armed": true,
+      "request_id": "c876195db9e3f3bc57af846ab248f793",
+      "seconds": 0.62
+    }
+  },
+  "start_answer": {
+    "schema": "celikpanel/set17-start-answer/v1",
+    "request_id": "c876195db9e3f3bc57af846ab248f793",
+    "pressed_ms": 1792073389922,
+    "held_ms": 1792073390004,
+    "released_ms": 1792073391008,
+    "answered_ms": null,
+    "status": null,
+    "failed": null,
+    "body": null,
+    "armed": {
+      "armed": true,
+      "request_id": "c876195db9e3f3bc57af846ab248f793",
+      "seconds": 0.62
+    },
+    "note": "the page's own POST, held unchanged until the observer was armed, then released"
+  },
+  "bounded_end": {
+    "at": "2026-10-15T14:11:35.760Z",
+    "reached_target": true,
+    "limit_ms": 600000
+  },
+  "timeline": {
+    "pressed_at": "2026-10-15T14:09:49.922Z",
+    "samples": 215,
+    "sample_errors": 0,
+    "probes": 215,
+    "states": [
+      {
+        "from": "2026-10-15T14:09:47.243Z",
+        "from_s": -2.7,
+        "to": "2026-10-15T14:09:49.776Z",
+        "to_s": -0.1,
+        "samples": 6,
+        "dialog": null,
+        "dialog_kind": null,
+        "corner_present": false,
+        "corner_kind": null,
+        "corner_text": null,
+        "card_phase": null,
+        "card_text": null,
+        "surface": {
+          "dialog_icon": null,
+          "card": null,
+          "corner": null,
+          "alerts": []
+        },
+        "warning_surface": false,
+        "danger_surface": false,
+        "app_aria_hidden": null,
+        "sidebar_version": "v0.1.0-alpha.85",
+        "card_current_version": "v0.1.0-alpha.85",
+        "buttons": [
+          {
+            "text": "Check for updates",
+            "disabled": false,
+            "id": null
+          }
+        ],
+        "picture": "state-01"
+      },
+      {
+        "from": "2026-10-15T14:09:50.284Z",
+        "from_s": 0.4,
+        "to": "2026-10-15T14:09:50.797Z",
+        "to_s": 0.9,
+        "samples": 2,
+        "dialog": {
+          "title": "CelikPanel updates",
+          "status": "The request record is not visible yet; the same identity is being tracked automatically.",
+          "t_plus_first": "00:00",
+          "lock_line": "Navigation is temporarily locked while this update is checked. It unlocks automatically after two minutes; tracking continues."
+        },
+        "dialog_kind": "other",
+        "corner_present": false,
+        "corner_kind": null,
+        "corner_text": null,
+        "card_phase": "reading",
+        "card_text": "Reading the state of the update to v0.1.0-alpha.86…",
+        "surface": {
+          "dialog_icon": {
+            "background": "primary/0.1",
+            "color": "primary",
+            "svg": "lucide-loader2",
+            "spinning": true
+          },
+          "card": {
+            "border": null,
+            "background": null,
+            "icon_color": "primary",
+            "svg": "lucide-loader2",
+            "spinning": true
+          },
+          "corner": null,
+          "alerts": []
+        },
+        "warning_surface": false,
+        "danger_surface": false,
+        "app_aria_hidden": "true",
+        "sidebar_version": "v0.1.0-alpha.85",
+        "card_current_version": "v0.1.0-alpha.85",
+        "buttons": [
+          {
+            "text": "Check for updates",
+            "disabled": true,
+            "id": null
+          }
+        ],
+        "picture": "state-02",
+        "t_plus_last": "00:00"
+      },
+      {
+        "from": "2026-10-15T14:09:51.304Z",
+        "from_s": 1.4,
+        "to": "2026-10-15T14:09:51.304Z",
+        "to_s": 1.4,
+        "samples": 1,
+        "dialog": {
+          "title": "CelikPanel updates",
+          "status": "The request was accepted; secure status tracking started.",
+          "t_plus_first": "00:01",
+          "lock_line": "Navigation is temporarily locked while this update is checked. It unlocks automatically after two minutes; tracking continues."
+        },
+        "dialog_kind": "accepted",
+        "corner_present": false,
+        "corner_kind": null,
+        "corner_text": null,
+        "card_phase": "reading",
+        "card_text": "Reading the state of the update to v0.1.0-alpha.86…",
+        "surface": {
+          "dialog_icon": {
+            "background": "primary/0.1",
+            "color": "primary",
+            "svg": "lucide-loader2",
+            "spinning": true
+          },
+          "card": {
+            "border": null,
+            "background": null,
+            "icon_color": "primary",
+            "svg": "lucide-loader2",
+            "spinning": true
+          },
+          "corner": null,
+          "alerts": []
+        },
+        "warning_surface": false,
+        "danger_surface": false,
+        "app_aria_hidden": "true",
+        "sidebar_version": "v0.1.0-alpha.85",
+        "card_current_version": "v0.1.0-alpha.85",
+        "buttons": [
+          {
+            "text": "Check for updates",
+            "disabled": true,
+            "id": null
+          }
+        ],
+        "picture": "state-03"
+      },
+      {
+        "from": "2026-10-15T14:09:51.817Z",
+        "from_s": 1.9,
+        "to": "2026-10-15T14:10:30.771Z",
+        "to_s": 40.8,
+        "samples": 78,
+        "dialog": {
+          "title": "CelikPanel updates",
+          "status": "The update is being applied; the panel may be unavailable briefly.",
+          "t_plus_first": "00:01",
+          "lock_line": "Navigation is temporarily locked while this update is checked. It unlocks automatically after two minutes; tracking continues."
+        },
+        "dialog_kind": "applying",
+        "corner_present": false,
+        "corner_kind": null,
+        "corner_text": null,
+        "card_phase": "applying",
+        "card_text": "The update to v0.1.0-alpha.86 is being applied. Checking for updates is available again when it has finished.",
+        "surface": {
+          "dialog_icon": {
+            "background": "primary/0.1",
+            "color": "primary",
+            "svg": "lucide-loader2",
+            "spinning": true
+          },
+          "card": {
+            "border": null,
+            "background": null,
+            "icon_color": "primary",
+            "svg": "lucide-loader2",
+            "spinning": true
+          },
+          "corner": null,
+          "alerts": []
+        },
+        "warning_surface": false,
+        "danger_surface": false,
+        "app_aria_hidden": "true",
+        "sidebar_version": "v0.1.0-alpha.85",
+        "card_current_version": "v0.1.0-alpha.85",
+        "buttons": [
+          {
+            "text": "Check for updates",
+            "disabled": true,
+            "id": null
+          }
+        ],
+        "picture": "state-04",
+        "t_plus_last": "00:40"
+      },
+      {
+        "from": "2026-10-15T14:10:31.281Z",
+        "from_s": 41.4,
+        "to": "2026-10-15T14:11:00.775Z",
+        "to_s": 70.9,
+        "samples": 59,
+        "dialog": {
+          "title": "CelikPanel updates",
+          "status": "The state of this update could not be read just now, so whether it is still running or has finished is not known. This notice reads it again by itself; do not start another update.",
+          "t_plus_first": "00:41",
+          "lock_line": "Navigation is temporarily locked while this update is checked. It unlocks automatically after two minutes; tracking continues."
+        },
+        "dialog_kind": "unknown",
+        "corner_present": false,
+        "corner_kind": null,
+        "corner_text": null,
+        "card_phase": "unknown",
+        "card_text": "The state of the update to v0.1.0-alpha.86 could not be read just now, so it is not known whether it has finished. The update notice reads it again by itself. Do not start another update.",
+        "surface": {
+          "dialog_icon": {
+            "background": "warning-mark/0.2",
+            "color": "warning",
+            "svg": "lucide-wifi-off",
+            "spinning": false
+          },
+          "card": {
+            "border": null,
+            "background": null,
+            "icon_color": "warning",
+            "svg": "lucide-alert-triangle",
+            "spinning": false
+          },
+          "corner": null,
+          "alerts": []
+        },
+        "warning_surface": true,
+        "danger_surface": false,
+        "app_aria_hidden": "true",
+        "sidebar_version": "v0.1.0-alpha.85",
+        "card_current_version": "v0.1.0-alpha.85",
+        "buttons": [
+          {
+            "text": "Check for updates",
+            "disabled": true,
+            "id": null
+          }
+        ],
+        "picture": "state-05",
+        "t_plus_last": "01:10"
+      },
+      {
+        "from": "2026-10-15T14:11:01.285Z",
+        "from_s": 71.4,
+        "to": "2026-10-15T14:11:07.866Z",
+        "to_s": 77.9,
+        "samples": 14,
+        "dialog": {
+          "title": "Update installed, being verified",
+          "status": "v0.1.0-alpha.86 is installed and this panel is running it. The update is being verified and is not finished yet; this notice follows it by itself. You do not need to do anything.",
+          "t_plus_first": "01:11",
+          "lock_line": "Navigation is temporarily locked while this update is checked. It unlocks automatically after two minutes; tracking continues."
+        },
+        "dialog_kind": "verifying",
+        "corner_present": false,
+        "corner_kind": null,
+        "corner_text": null,
+        "card_phase": "verifying",
+        "card_text": "v0.1.0-alpha.86 is installed and this panel is running it. The update is still being verified; checking for updates is available again when it has finished. You do not need to do anything.",
+        "surface": {
+          "dialog_icon": {
+            "background": "primary/0.1",
+            "color": "primary",
+            "svg": "lucide-loader2",
+            "spinning": true
+          },
+          "card": {
+            "border": null,
+            "background": null,
+            "icon_color": "primary",
+            "svg": "lucide-loader2",
+            "spinning": true
+          },
+          "corner": null,
+          "alerts": []
+        },
+        "warning_surface": false,
+        "danger_surface": false,
+        "app_aria_hidden": "true",
+        "sidebar_version": "v0.1.0-alpha.85",
+        "card_current_version": "v0.1.0-alpha.85",
+        "buttons": [
+          {
+            "text": "Check for updates",
+            "disabled": true,
+            "id": null
+          }
+        ],
+        "picture": "state-06",
+        "t_plus_last": "01:17"
+      },
+      {
+        "from": "2026-10-15T14:11:08.371Z",
+        "from_s": 78.4,
+        "to": "2026-10-15T14:11:12.954Z",
+        "to_s": 83,
+        "samples": 10,
+        "dialog": null,
+        "dialog_kind": null,
+        "corner_present": true,
+        "corner_kind": "verifying",
+        "corner_text": "Update installed, being verified v0.1.0-alpha.86 is installed and this panel is running it. The update is being verified and is not finished yet; this notice follows it by itself. You do not need to do anything. Navigate; updates locked. v0.1.0-alpha.86 · T+01:17 ID c876195db9e3f3bc57af846ab248f793",
+        "card_phase": "verifying",
+        "card_text": "v0.1.0-alpha.86 is installed and this panel is running it. The update is still being verified; checking for updates is available again when it has finished. You do not need to do anything.",
+        "surface": {
+          "dialog_icon": null,
+          "card": {
+            "border": null,
+            "background": null,
+            "icon_color": "primary",
+            "svg": "lucide-loader2",
+            "spinning": true
+          },
+          "corner": {
+            "border": null,
+            "background": null
+          },
+          "alerts": []
+        },
+        "warning_surface": false,
+        "danger_surface": false,
+        "app_aria_hidden": null,
+        "sidebar_version": "v0.1.0-alpha.85",
+        "card_current_version": "v0.1.0-alpha.85",
+        "buttons": [
+          {
+            "text": "Check for updates",
+            "disabled": true,
+            "id": null
+          }
+        ],
+        "picture": "state-07"
+      },
+      {
+        "from": "2026-10-15T14:11:13.458Z",
+        "from_s": 83.5,
+        "to": "2026-10-15T14:11:14.466Z",
+        "to_s": 84.5,
+        "samples": 3,
+        "dialog": null,
+        "dialog_kind": null,
+        "corner_present": true,
+        "corner_kind": "reloading",
+        "corner_text": "The update completed. The panel and agent restarted on the new version. The update completed. Reloading this page with v0.1.0-alpha.86… Navigate; updates locked. v0.1.0-alpha.86 · T+01:22 ID c876195db9e3f3bc57af846ab248f793",
+        "card_phase": null,
+        "card_text": null,
+        "surface": {
+          "dialog_icon": null,
+          "card": null,
+          "corner": {
+            "border": null,
+            "background": null
+          },
+          "alerts": []
+        },
+        "warning_surface": false,
+        "danger_surface": false,
+        "app_aria_hidden": null,
+        "sidebar_version": "v0.1.0-alpha.85",
+        "card_current_version": "v0.1.0-alpha.85",
+        "buttons": [
+          {
+            "text": "Check for updates",
+            "disabled": true,
+            "id": null
+          }
+        ],
+        "picture": "state-08"
+      },
+      {
+        "from": "2026-10-15T14:11:14.969Z",
+        "from_s": 85,
+        "to": "2026-10-15T14:11:35.835Z",
+        "to_s": 105.9,
+        "samples": 42,
+        "dialog": null,
+        "dialog_kind": null,
+        "corner_present": false,
+        "corner_kind": null,
+        "corner_text": null,
+        "card_phase": null,
+        "card_text": null,
+        "surface": {
+          "dialog_icon": null,
+          "card": null,
+          "corner": null,
+          "alerts": []
+        },
+        "warning_surface": false,
+        "danger_surface": false,
+        "app_aria_hidden": null,
+        "sidebar_version": null,
+        "card_current_version": null,
+        "buttons": null,
+        "picture": "state-09"
+      }
+    ],
+    "availability_windows": [
+      {
+        "answered": true,
+        "from": "2026-10-15T14:09:50.282Z",
+        "from_s": 0.4,
+        "to": "2026-10-15T14:10:26.213Z",
+        "to_s": 36.3,
+        "reads": 72,
+        "first": 401
+      },
+      {
+        "answered": false,
+        "from": "2026-10-15T14:10:26.761Z",
+        "from_s": 36.8,
+        "to": "2026-10-15T14:10:58.695Z",
+        "to_s": 68.8,
+        "reads": 64,
+        "first": "ECONNRESET"
+      },
+      {
+        "answered": true,
+        "from": "2026-10-15T14:10:59.206Z",
+        "from_s": 69.3,
+        "to": "2026-10-15T14:11:35.760Z",
+        "to_s": 105.8,
+        "reads": 73,
+        "first": 401
+      }
+    ],
+    "availability_outages": 1,
+    "availability_longest_outage_s": 31.934,
+    "page_status_reads": 13,
+    "page_status_reads_lost": 2,
+    "page_first_lost_read": {
+      "at": "2026-10-15T14:10:30.877Z",
+      "s": 41,
+      "status": null,
+      "error": "net::ERR_CONNECTION_CLOSED"
+    },
+    "page_first_answer_after_loss": {
+      "at": "2026-10-15T14:11:00.949Z",
+      "s": 71,
+      "status": 200
+    },
+    "page_outage_s": 30.072,
+    "version_changed": {
+      "at": "2026-10-15T14:11:15.472Z",
+      "s": 85.6,
+      "sidebar": "v0.1.0-alpha.86",
+      "card": "v0.1.0-alpha.86"
+    },
+    "navigations": [
+      {
+        "at": "2026-10-15T14:11:14.814Z",
+        "t": 1792073474814,
+        "url": "/settings?section=updates&_cp_update=c876195db9e3f3bc57af846ab248f793",
+        "s": 84.9
+      },
+      {
+        "at": "2026-10-15T14:11:14.945Z",
+        "t": 1792073474945,
+        "url": "/settings?section=updates&_cp_update=c876195db9e3f3bc57af846ab248f793",
+        "s": 85
+      },
+      {
+        "at": "2026-10-15T14:11:14.967Z",
+        "t": 1792073474967,
+        "url": "/settings?section=updates",
+        "s": 85
+      }
+    ],
+    "not_known_wording": {
+      "samples": 59,
+      "first": {
+        "at": "2026-10-15T14:10:31.281Z",
+        "s": 41.4
+      }
+    },
+    "restarting_wording": {
+      "samples": 0,
+      "first": null,
+      "last": null
+    },
+    "corner_notice": {
+      "samples": 13,
+      "first": {
+        "at": "2026-10-15T14:11:08.371Z",
+        "s": 78.4,
+        "text": "Update installed, being verified v0.1.0-alpha.86 is installed and this panel is running it. The update is being verified and is not finished yet; this notice follows it by itself. You do not need to do anything. Navigate; updates locked. v0.1.0-alpha.86 · T+01:17 ID c876195db9e3f3bc57af846ab248f793"
+      }
+    },
+    "warning_surface": {
+      "samples": 59,
+      "first": {
+        "at": "2026-10-15T14:10:31.281Z",
+        "s": 41.4
+      }
+    },
+    "alerts_seen": [],
+    "bound": {
+      "window_from_start_s": 360,
+      "window_from_first_lost_read_s": 120,
+      "first_lost_read_after_press_s": 41,
+      "note": "the candidate shows the unknown wording only after 6 min from the start and at least 2 min from the first lost read"
+    }
+  }
+}

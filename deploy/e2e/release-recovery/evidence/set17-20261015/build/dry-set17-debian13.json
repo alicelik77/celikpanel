@@ -1,0 +1,52 @@
+{
+  "browser": {
+    "lang": "en",
+    "viewport": "desktop"
+  },
+  "candidate": {
+    "commit": "313f3eea2c9b89251588648b09484cd34b7aecb1",
+    "sha256": "6c64289048f9e3fd98655bf761665c3b1f500ec654007da776d422654f747d39",
+    "version": "v0.1.0-alpha.86"
+  },
+  "cell": "set17-debian13",
+  "cell_kind": "set17-fresh-install",
+  "local_port": 18443,
+  "native_evidence": false,
+  "pinned_names": [
+    "celikpanel.net",
+    "acme-v02.api.letsencrypt.org",
+    "acme-staging-v02.api.letsencrypt.org",
+    "acme.zerossl.com",
+    "dv.acme-v02.api.pki.goog"
+  ],
+  "preparations": [
+    "probe",
+    "journal",
+    "unverifiable-record"
+  ],
+  "rule": "the driver calls only the Panel's HTTP API as the logged-in owner; every native fact is an SSH reading; owner actions and lab preparation on the guest are recorded as such; no certificate authority and no licence service is contacted by the driver",
+  "schema": "celikpanel/set17-plan/v1",
+  "setup": {
+    "components": [
+      "mariadb",
+      "nginx",
+      "php-fpm"
+    ],
+    "dns_mode": "external",
+    "purpose": "web"
+  },
+  "steps": [
+    "set6-name-pinning",
+    "preflight",
+    "origin",
+    "baseline-install",
+    "owner-login",
+    "license",
+    "setup",
+    "set17-readings",
+    "set17-browser-window",
+    "set6-name-pinning-at-the-end",
+    "collect"
+  ],
+  "work_root": "/var/tmp/cp-release-drill-s17-dry"
+}

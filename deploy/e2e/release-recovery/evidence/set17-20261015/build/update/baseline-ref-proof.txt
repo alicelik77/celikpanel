@@ -1,0 +1,20 @@
+baseline-ref v0.1.0-alpha.85 tag_commit=36c33c4531ee6c1306d324db7a666403176f3bf7 baseline_fixture=36c33c4531ee6c1306d324db7a666403176f3bf7 (the tag commit itself) source=313f3eea2c9b89251588648b09484cd34b7aecb1 good=313f3eea2c9b89251588648b09484cd34b7aecb1 (the source itself, no fixture commit) defective=6544ee8b1186ad42b38bd2b3b0cac1c8f07f50b1
+== release policy at the tag
+format=celikpanel-release-sequence-policy-v1
+version=v0.1.0-alpha.85
+current=85
+previous=84
+previous_version=v0.1.0-alpha.84
+previous_commit=f0157e6c8f1614cff176821172f8a9067493e625
+== release policy at the source = the good candidate (its own; previous_commit is the tag commit)
+format=celikpanel-release-sequence-policy-v1
+version=v0.1.0-alpha.86
+current=86
+previous=85
+previous_version=v0.1.0-alpha.85
+previous_commit=36c33c4531ee6c1306d324db7a666403176f3bf7
+== the defective fixture commit changes: cmd/panel/main.go 
+== git diff --stat 36c33c4531ee6c1306d324db7a666403176f3bf7 313f3eea2c9b89251588648b09484cd34b7aecb1 -- internal/db/migrations (empty = no migration between them):
+== (end)
+== Agent package closure at the baseline (go list -deps ./cmd/agent, 317 packages): licensing packages
+0

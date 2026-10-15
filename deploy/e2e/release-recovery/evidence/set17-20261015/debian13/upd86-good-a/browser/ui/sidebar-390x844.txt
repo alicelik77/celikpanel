@@ -1,0 +1,23 @@
+Home
+/
+Settings
+Settings
+
+Manage access, security, software updates and server infrastructure.
+
+Account security
+Server setup
+Panel HTTPS
+License
+CelikPanel updates
+Server security
+DNS infrastructure
+System databases
+Two-factor authentication
+
+Add a second step to sign-in using an authenticator app (Google Authenticator, Authy, 1Password…).
+
+Confirm your current password before changing two-factor authentication. Other signed-in devices will be signed out.
+
+Password
+Set up two-factor

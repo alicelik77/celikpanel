@@ -1,0 +1,15 @@
+{"at":"2026-10-15T14:54:06.654Z","ev":"start","mode":"after-the-update","chrome":"Chrome/155.0.8059.40"}
+{"at":"2026-10-15T14:54:07.791Z","ev":"sign-in-page","shown":"form"}
+{"at":"2026-10-15T14:54:14.887Z","ev":"shot","name":"sidebar-1280x800"}
+{"ev":"sidebar-width","at":"2026-10-15T14:54:14.901Z","name":"1280x800","menu_opened":null,"found":true,"class":"inline-block whitespace-nowrap font-mono","id_text":"c48678d34583","id_rects":[{"top":772,"left":60,"width":89}],"id_on_one_line":true,"stamp_line":"CelikPanel · v0.1.0-alpha.87 · build c48678d34583 c48678d34583868ab583db4cfb6c97c36e423db6","overflows_container":false,"white_space":"nowrap"}
+{"at":"2026-10-15T14:54:19.771Z","ev":"shot","name":"sidebar-390x844"}
+{"ev":"sidebar-width","at":"2026-10-15T14:54:19.784Z","name":"390x844","menu_opened":true,"found":true,"class":"inline-block whitespace-nowrap font-mono","id_text":"c48678d34583","id_rects":[{"top":816,"left":60,"width":89}],"id_on_one_line":true,"stamp_line":"CelikPanel · v0.1.0-alpha.87 · build c48678d34583 c48678d34583868ab583db4cfb6c97c36e423db6","overflows_container":false,"white_space":"nowrap"}
+{"at":"2026-10-15T14:54:40.337Z","ev":"shot","name":"components-en","lang":"en"}
+{"at":"2026-10-15T14:55:00.921Z","ev":"shot","name":"components-tr","lang":"tr"}
+{"at":"2026-10-15T14:55:16.481Z","ev":"shot","name":"dashboard-en","lang":"en"}
+{"at":"2026-10-15T14:55:32.077Z","ev":"shot","name":"dashboard-tr","lang":"tr"}
+{"at":"2026-10-15T14:55:44.646Z","ev":"shot","name":"store-en","lang":"en"}
+{"at":"2026-10-15T14:55:57.254Z","ev":"shot","name":"store-tr","lang":"tr"}
+{"at":"2026-10-15T14:55:58.522Z","ev":"direct-reads","paths":["/api/v1/panel/version","/api/v1/license/access","/api/v1/managed-services"]}
+{"at":"2026-10-15T14:55:58.555Z","ev":"prep-requested","name":"journal","phase":"end"}
+{"at":"2026-10-15T14:55:59.662Z","ev":"prep-done","name":"journal","phase":"end","record":{"at":"2026-10-15T14:55:59Z","prep":"journal","result":{"file":"steps/19-set17-browser-window/journal-window-1.txt","lines":46,"returncode":0},"host_asked_ms":1792076158547,"host_got_ms":1792076159662}}

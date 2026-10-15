@@ -1,0 +1,7 @@
+2026-10-15T13:59:06Z before upd1-debian13-good s17-u85-good-a (guest start) free_GiB=359 free_bytes=386330677248 (Get-PSDrive C reading of 2026-10-15T13:58:46Z, 20s old) allowed=yes
+2026-10-15T14:15:18Z before upd86-debian13-good s17-u86-good-a (guest start) free_GiB=358 free_bytes=384958849024 (Get-PSDrive C reading of 2026-10-15T14:14:46Z, 32s old) allowed=yes
+2026-10-15T14:30:26Z before set17-debian13 s17-d13-a (guest start) free_GiB=358 free_bytes=384950935552 (Get-PSDrive C reading of 2026-10-15T14:29:47Z, 39s old) allowed=yes
+2026-10-15T14:40:50Z before upd86-debian13-good s17-u86-good-b (guest start) free_GiB=358 free_bytes=384703111168 (Get-PSDrive C reading of 2026-10-15T14:40:48Z, 2s old) allowed=yes
+2026-10-15T14:56:27Z before upd1-debian13-defective s17-u85-def-a (guest start) free_GiB=358 free_bytes=384707579904 (Get-PSDrive C reading of 2026-10-15T14:55:48Z, 39s old) allowed=yes
+2026-10-15T15:12:20Z before upd1-ubuntu-good s17-ub-u85-good-a (guest start) free_GiB=358 free_bytes=384631599104 (Get-PSDrive C reading of 2026-10-15T15:11:49Z, 31s old) allowed=yes
+2026-10-15T15:34:52Z before upd1-ubuntu-defective s17-ub-u85-def-a (guest start) free_GiB=357 free_bytes=384373997568 (Get-PSDrive C reading of 2026-10-15T15:34:50Z, 2s old) allowed=yes

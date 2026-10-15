@@ -1,0 +1,14 @@
+{
+  "at": "2026-10-15T14:09:49Z",
+  "prep": "page-ready",
+  "result": {
+    "current_version": "v0.1.0-alpha.85",
+    "ok": true,
+    "target": {
+      "archive_sha256": "6c64289048f9e3fd98655bf761665c3b1f500ec654007da776d422654f747d39",
+      "commit": "313f3eea2c9b89251588648b09484cd34b7aecb1",
+      "sequence": "86",
+      "version": "v0.1.0-alpha.86"
+    }
+  }
+}

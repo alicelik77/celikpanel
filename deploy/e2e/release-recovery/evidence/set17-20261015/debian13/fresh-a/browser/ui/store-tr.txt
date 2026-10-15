@@ -1,0 +1,5 @@
+Abonelik Mağazası
+Katalog yönetimi
+Abonelik yok
+
+Önce bir müşteri ve plan oluşturun.

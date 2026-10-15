@@ -1,0 +1,20 @@
+{
+  "at": "2026-10-15T15:55:57Z",
+  "base": "https://127.0.0.1:19276",
+  "browser": {
+    "lang": "en",
+    "viewport": "desktop"
+  },
+  "cell": "upd1-ubuntu-defective",
+  "local_port": 19276,
+  "mode": "after-the-return",
+  "password_file": "/var/tmp/cp-set17/secret/h17ubdef-ui.json",
+  "preps": [
+    "probe",
+    "journal"
+  ],
+  "schema": "celikpanel/set12-handover/v1",
+  "tls_leaf_sha256": "e92808433b32a19a70642f2f0b6dfedb7dcbac1741d5e88daabd1fe7dd395ca2",
+  "username": "labadmin",
+  "window": "ui"
+}

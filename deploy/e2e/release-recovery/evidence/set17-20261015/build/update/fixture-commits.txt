@@ -1,0 +1,3 @@
+refs/upd1/baseline 36c33c4531ee6c1306d324db7a666403176f3bf7 tree=c451c26de3cb179251e8dfd4b033ec7a9e18005e Release candidate v0.1.0-alpha.85: the setup final step finishes, and waiting screens say what they wait for (#210)
+refs/upd1/defective 6544ee8b1186ad42b38bd2b3b0cac1c8f07f50b1 tree=e941b8f1ccf9de29bd03cfd11ad0d8652c9b6f32 test(fixture): set17 defective candidate - migrate-only fails (unpublished, disposable)
+refs/upd1/good 313f3eea2c9b89251588648b09484cd34b7aecb1 tree=ce64f0a85fc3a90452be753560abc24fad0f115d Prepare v0.1.0-alpha.86: sequence 86, bootstrap pins, pinned tests

@@ -1,0 +1,428 @@
+{
+  "artifacts": {
+    "baseline": {
+      "commit": "36c33c4531ee6c1306d324db7a666403176f3bf7",
+      "sha256": "31b03ddd762e20d0a841e728b75df321ba0fe96b15e9d1a568843d49d3245c16",
+      "version": "v0.1.0-alpha.85"
+    },
+    "defective": {
+      "commit": "6544ee8b1186ad42b38bd2b3b0cac1c8f07f50b1",
+      "sha256": "0397f4e85a3d60b2f82391166a95909cf04e6884ed7e5a2ecb33eb105011dfbb",
+      "version": "v0.1.0-alpha.86"
+    },
+    "good": {
+      "commit": "313f3eea2c9b89251588648b09484cd34b7aecb1",
+      "sha256": "6c64289048f9e3fd98655bf761665c3b1f500ec654007da776d422654f747d39",
+      "version": "v0.1.0-alpha.86"
+    }
+  },
+  "cell": {
+    "h19": true,
+    "mail_required": true,
+    "name": "upd1-ubuntu-good",
+    "node": "ubuntu",
+    "pk_observe": true,
+    "recovery_fault": null,
+    "scenario": null,
+    "variant": "good"
+  },
+  "deferred_mail": {
+    "last": {
+      "deferred": [
+        "mail certificate publication",
+        "mail filter wiring"
+      ],
+      "finished": true,
+      "gave_up": false,
+      "pid": "58849",
+      "ready_at": "2026-10-15T15:31:01.760119+00:00",
+      "repeated": [],
+      "resolved": {
+        "mail certificate publication": [
+          {
+            "at": "2026-10-15T15:31:43.310325+00:00",
+            "attempt": 1,
+            "outcome": "completed"
+          }
+        ],
+        "mail filter wiring": [
+          {
+            "at": "2026-10-15T15:31:43.310325+00:00",
+            "attempt": 1,
+            "outcome": "completed"
+          }
+        ]
+      },
+      "started_at": "2026-10-15T15:31:01.689950+00:00"
+    },
+    "panel_processes": [
+      {
+        "attempt_lines": 0,
+        "deferred": [],
+        "finished": true,
+        "gave_up": false,
+        "pid": "7907",
+        "ready_at": "2026-10-15T15:13:38.535083+00:00",
+        "repeated": [],
+        "started_at": "2026-10-15T15:13:38.500802+00:00"
+      },
+      {
+        "attempt_lines": 0,
+        "deferred": [],
+        "finished": true,
+        "gave_up": false,
+        "pid": "7969",
+        "ready_at": "2026-10-15T15:13:39.745906+00:00",
+        "repeated": [],
+        "started_at": "2026-10-15T15:13:39.721025+00:00"
+      },
+      {
+        "attempt_lines": 1,
+        "deferred": [
+          "mail certificate publication",
+          "mail filter wiring"
+        ],
+        "finished": true,
+        "gave_up": false,
+        "pid": "58849",
+        "ready_at": "2026-10-15T15:31:01.760119+00:00",
+        "repeated": [],
+        "started_at": "2026-10-15T15:31:01.689950+00:00"
+      }
+    ],
+    "settle": {
+      "at": "2026-10-15T15:32:28Z",
+      "attempt_lines_after": 1,
+      "attempt_lines_before": 1,
+      "repeated_after": [],
+      "same_process": true,
+      "seconds_after_resolution": 45.0
+    },
+    "watch_seconds": 66.6
+  },
+  "findings": [
+    "ubuntu: server setup waits at access_dns (server_setup_access_dns_required) on an isolated host; later wizard steps were not run: ['10-panel_certificate', '11-access_dns', '12-mail_certificate', '13-mail_enrollment', '14-verify']"
+  ],
+  "identity": {
+    "cell_id": "release-recovery__cafb37f890653ce6",
+    "node": "ubuntu",
+    "vm_uuid": "f7c3339d-e986-528a-823e-d762a3e7ed78"
+  },
+  "native_evidence": false,
+  "note": "Observations for the owner's review; the P0 rows are judged separately.",
+  "outcome": {
+    "attempts": {
+      "automatic": [],
+      "automatic_count": 0,
+      "journal_admissions": [],
+      "owner": [],
+      "owner_count": 0
+    },
+    "classification": "update-verified",
+    "final_status": {
+      "observation": "known",
+      "observed_at": "2026-10-15T15:31:13Z",
+      "phase": "succeeded",
+      "reason": "update_verified",
+      "request_id": "3a1292fdde9af159ba2e1b1059622b1c",
+      "schema": "celikpanel-recovery-status/v1",
+      "terminal_proof": "update_verified"
+    },
+    "owner_continuation": false,
+    "owner_reboot": null,
+    "pin_changes": [],
+    "port_hold": null,
+    "reboot": null,
+    "track_stop": null
+  },
+  "overall": "complete-for-review",
+  "packagekit": {
+    "apt_backend": [
+      true
+    ],
+    "backend_pathnames_seen": [
+      "/usr/lib/x86_64-linux-gnu/packagekit-backend/libpk_backend_apt.so"
+    ],
+    "children_seen": [],
+    "context_processes_seen": [
+      "unattended-upgr",
+      "http",
+      "https",
+      "gpgv",
+      "apt-key",
+      "frontend",
+      "needrestart",
+      "apt-check"
+    ],
+    "grep_c_aptcc": [
+      0
+    ],
+    "lock_lines_seen": [
+      "/var/lib/apt/lists/lock owner=apt-get",
+      "/var/lib/dpkg/lock owner=dpkg",
+      "/var/cache/apt/archives/lock owner=apt-get",
+      "/var/lib/dpkg/lock-frontend owner=apt-get",
+      "/var/lib/dpkg/lock owner=apt-get"
+    ],
+    "observations": 38,
+    "other_processes_seen": [
+      "apt-get",
+      "dpkg"
+    ],
+    "pk_alive_rule_idle_bracketed": {
+      "agent_other": 0,
+      "agent_package_manager_active": 0,
+      "agent_ready": 13,
+      "panel_answered": 12
+    },
+    "readiness": {
+      "HOST_MUTATION_BUSY/panel_operation_active": 22,
+      "ready": 15
+    },
+    "rule": {
+      "busy": 19,
+      "idle": 56
+    },
+    "with_packagekitd": 34
+  },
+  "provenance": {
+    "baseline": "published-tag-v0.1.0-alpha.85-commit-unchanged (the tag carries the D-027 acceptance-license seam; bin/panel is built from the tag's source with the acceptance_license build tag); its release policy, installer, update/rollback/recovery/bootstrap scripts, get.sh, web and Agent are the tag's; installed by the real installer; fixture trust root enrolled; not-production-release-admission; not the signed release archive",
+    "candidate": "the unpublished source commit 313f3eea2c9b itself, whose own release policy is v0.1.0-alpha.86 / 86 after the alpha.85 tag commit (no fixture commit); acceptance-license build; not a release",
+    "defect": "fixture source patch: cmd/panel --migrate-only exits 1 after migrating the isolated copy (genuine candidate failure after candidate-installed, simulated by a committed fixture change)"
+  },
+  "request_id": "3a1292fdde9af159ba2e1b1059622b1c",
+  "schema": "celikpanel/upd1-owner-update-result/v1",
+  "scope": {
+    "cron": {
+      "crontab": "/usr/bin/crontab",
+      "verdict": "available"
+    },
+    "dns": {
+      "mode": "external",
+      "note": "DNS is not provided by this run (the owner chose DNS hosted elsewhere on one isolated node); DNS continuity is covered by the DNS pair runs of roadmap item 2",
+      "verdict": "not-provided-external-dns"
+    },
+    "origin": {
+      "after-provision": {
+        "addresses": [
+          "127.0.0.1"
+        ],
+        "http": "200",
+        "ok": true
+      },
+      "before-arm": {
+        "addresses": [
+          "127.0.0.1"
+        ],
+        "http": "200",
+        "ok": true
+      }
+    },
+    "setup": {
+      "code": "server_setup_access_dns_required",
+      "not_run": [
+        "10-panel_certificate",
+        "11-access_dns",
+        "12-mail_certificate",
+        "13-mail_enrollment",
+        "14-verify"
+      ],
+      "phase": "access_dns",
+      "verdict": "observed isolated-host wait",
+      "volatile_tables_added": [
+        "server_setup_executions"
+      ]
+    }
+  },
+  "set5": {
+    "additions": {
+      "item9": false,
+      "m10": false
+    },
+    "cell_kind": "set5-closing-update",
+    "pinned_names": [
+      "acme-v02.api.letsencrypt.org",
+      "acme-staging-v02.api.letsencrypt.org",
+      "acme.zerossl.com",
+      "dv.acme-v02.api.pki.goog"
+    ],
+    "sections": {}
+  },
+  "set6": {
+    "cell_kind": "set6-good-update",
+    "expected_strict_transport_security": {
+      "after_the_update": "max-age=31536000",
+      "before_the_update": "max-age=31536000"
+    },
+    "pinned_names": [
+      "celikpanel.net",
+      "acme-v02.api.letsencrypt.org",
+      "acme-staging-v02.api.letsencrypt.org",
+      "acme.zerossl.com",
+      "dv.acme-v02.api.pki.goog"
+    ]
+  },
+  "steps": [
+    {
+      "finished_at": "2026-10-15T15:12:45Z",
+      "name": "set6-name-pinning",
+      "reason": null,
+      "started_at": "2026-10-15T15:12:41Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-15T15:12:52Z",
+      "name": "preflight",
+      "reason": null,
+      "started_at": "2026-10-15T15:12:45Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-15T15:13:00Z",
+      "name": "origin",
+      "reason": null,
+      "started_at": "2026-10-15T15:12:52Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-15T15:13:51Z",
+      "name": "baseline-install",
+      "reason": null,
+      "started_at": "2026-10-15T15:13:00Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-15T15:13:52Z",
+      "name": "owner-login",
+      "reason": null,
+      "started_at": "2026-10-15T15:13:51Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-15T15:13:52Z",
+      "name": "license",
+      "reason": null,
+      "started_at": "2026-10-15T15:13:52Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-15T15:25:13Z",
+      "name": "setup",
+      "reason": null,
+      "started_at": "2026-10-15T15:13:52Z",
+      "verdict": "observed"
+    },
+    {
+      "finished_at": "2026-10-15T15:28:12Z",
+      "name": "seed",
+      "reason": null,
+      "started_at": "2026-10-15T15:25:13Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-15T15:28:12Z",
+      "name": "set6-headers-before-the-update",
+      "reason": null,
+      "started_at": "2026-10-15T15:28:12Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-15T15:30:02Z",
+      "name": "pre-state",
+      "reason": null,
+      "started_at": "2026-10-15T15:28:12Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-15T15:30:20Z",
+      "name": "arm",
+      "reason": null,
+      "started_at": "2026-10-15T15:30:02Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-15T15:30:20Z",
+      "name": "owner-start",
+      "reason": null,
+      "started_at": "2026-10-15T15:30:20Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-15T15:31:15Z",
+      "name": "track",
+      "reason": null,
+      "started_at": "2026-10-15T15:30:20Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-15T15:31:15Z",
+      "name": "owner-continuation (required)",
+      "reason": null,
+      "started_at": "2026-10-15T15:31:15Z",
+      "verdict": "skipped"
+    },
+    {
+      "finished_at": "2026-10-15T15:31:22Z",
+      "name": "terminal",
+      "reason": null,
+      "started_at": "2026-10-15T15:31:15Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-15T15:32:28Z",
+      "name": "deferred-mail-watch",
+      "reason": null,
+      "started_at": "2026-10-15T15:31:22Z",
+      "verdict": "observed"
+    },
+    {
+      "finished_at": "2026-10-15T15:32:35Z",
+      "name": "post-update-facts",
+      "reason": null,
+      "started_at": "2026-10-15T15:32:28Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-15T15:32:35Z",
+      "name": "set17-readings-after-the-update",
+      "reason": null,
+      "started_at": "2026-10-15T15:32:35Z",
+      "verdict": "observed"
+    },
+    {
+      "finished_at": "2026-10-15T15:34:33Z",
+      "name": "set17-browser-window",
+      "reason": null,
+      "started_at": "2026-10-15T15:32:35Z",
+      "verdict": "observed"
+    },
+    {
+      "finished_at": "2026-10-15T15:34:33Z",
+      "name": "set6-headers-after-the-update",
+      "reason": null,
+      "started_at": "2026-10-15T15:34:33Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-15T15:34:36Z",
+      "name": "collect",
+      "reason": null,
+      "started_at": "2026-10-15T15:34:33Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-15T15:34:36Z",
+      "name": "verdicts",
+      "reason": null,
+      "started_at": "2026-10-15T15:34:36Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-15T15:34:36Z",
+      "name": "set6-name-pinning-at-the-end",
+      "reason": null,
+      "started_at": "2026-10-15T15:34:36Z",
+      "verdict": "passed"
+    }
+  ]
+}

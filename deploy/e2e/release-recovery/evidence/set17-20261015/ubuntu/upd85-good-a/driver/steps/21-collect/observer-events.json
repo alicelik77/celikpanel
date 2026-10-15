@@ -1,0 +1,214 @@
+[
+  {
+    "at": "2026-10-15T15:30:14.413040+00:00",
+    "event": "armed",
+    "identity": {
+      "cell_id": "release-recovery__cafb37f890653ce6",
+      "node": "ubuntu",
+      "nonce": "cafb37f890653ce6a6e2478ce991cb3f80adeaf37a0fc4a3a44be4254b483e96",
+      "vm_uuid": "f7c3339d-e986-528a-823e-d762a3e7ed78"
+    },
+    "mode": "watch",
+    "operation_id": "3a1292fdde9af159ba2e1b1059622b1c",
+    "recovery_fault": null,
+    "schema": "celikpanel/owner-update-observer/v1",
+    "timeout_seconds": 3600.0
+  },
+  {
+    "at": "2026-10-15T15:30:14.432278+00:00",
+    "event": "timeline",
+    "identity": {
+      "cell_id": "release-recovery__cafb37f890653ce6",
+      "node": "ubuntu",
+      "nonce": "cafb37f890653ce6a6e2478ce991cb3f80adeaf37a0fc4a3a44be4254b483e96",
+      "vm_uuid": "f7c3339d-e986-528a-823e-d762a3e7ed78"
+    },
+    "operation_id": "3a1292fdde9af159ba2e1b1059622b1c",
+    "recovery": "inactive",
+    "schema": "celikpanel/owner-update-observer/v1",
+    "snapshot": null,
+    "transaction_operation": null,
+    "transaction_phase": null,
+    "worker": "inactive",
+    "worker_freezer": "running"
+  },
+  {
+    "at": "2026-10-15T15:30:14.859906+00:00",
+    "event": "timeline",
+    "identity": {
+      "cell_id": "release-recovery__cafb37f890653ce6",
+      "node": "ubuntu",
+      "nonce": "cafb37f890653ce6a6e2478ce991cb3f80adeaf37a0fc4a3a44be4254b483e96",
+      "vm_uuid": "f7c3339d-e986-528a-823e-d762a3e7ed78"
+    },
+    "operation_id": "3a1292fdde9af159ba2e1b1059622b1c",
+    "recovery": "inactive",
+    "schema": "celikpanel/owner-update-observer/v1",
+    "snapshot": null,
+    "transaction_operation": null,
+    "transaction_phase": null,
+    "worker": "active",
+    "worker_freezer": "running"
+  },
+  {
+    "at": "2026-10-15T15:30:30.307432+00:00",
+    "event": "timeline",
+    "identity": {
+      "cell_id": "release-recovery__cafb37f890653ce6",
+      "node": "ubuntu",
+      "nonce": "cafb37f890653ce6a6e2478ce991cb3f80adeaf37a0fc4a3a44be4254b483e96",
+      "vm_uuid": "f7c3339d-e986-528a-823e-d762a3e7ed78"
+    },
+    "operation_id": "3a1292fdde9af159ba2e1b1059622b1c",
+    "recovery": "activating",
+    "schema": "celikpanel/owner-update-observer/v1",
+    "snapshot": null,
+    "transaction_operation": null,
+    "transaction_phase": null,
+    "worker": "active",
+    "worker_freezer": "running"
+  },
+  {
+    "at": "2026-10-15T15:30:30.755105+00:00",
+    "event": "timeline",
+    "identity": {
+      "cell_id": "release-recovery__cafb37f890653ce6",
+      "node": "ubuntu",
+      "nonce": "cafb37f890653ce6a6e2478ce991cb3f80adeaf37a0fc4a3a44be4254b483e96",
+      "vm_uuid": "f7c3339d-e986-528a-823e-d762a3e7ed78"
+    },
+    "operation_id": "3a1292fdde9af159ba2e1b1059622b1c",
+    "recovery": "inactive",
+    "schema": "celikpanel/owner-update-observer/v1",
+    "snapshot": null,
+    "transaction_operation": null,
+    "transaction_phase": null,
+    "worker": "active",
+    "worker_freezer": "running"
+  },
+  {
+    "at": "2026-10-15T15:30:34.172297+00:00",
+    "event": "timeline",
+    "identity": {
+      "cell_id": "release-recovery__cafb37f890653ce6",
+      "node": "ubuntu",
+      "nonce": "cafb37f890653ce6a6e2478ce991cb3f80adeaf37a0fc4a3a44be4254b483e96",
+      "vm_uuid": "f7c3339d-e986-528a-823e-d762a3e7ed78"
+    },
+    "operation_id": "3a1292fdde9af159ba2e1b1059622b1c",
+    "recovery": "inactive",
+    "schema": "celikpanel/owner-update-observer/v1",
+    "snapshot": "20261015T153031Z-from-unknown-to-313f3eea2c9b89251588648b09484cd34b7aecb1-f1b0399ecc8afe791a59e9e29f72596e",
+    "transaction_operation": "update",
+    "transaction_phase": "active",
+    "worker": "active",
+    "worker_freezer": "running"
+  },
+  {
+    "at": "2026-10-15T15:30:59.892843+00:00",
+    "event": "timeline",
+    "identity": {
+      "cell_id": "release-recovery__cafb37f890653ce6",
+      "node": "ubuntu",
+      "nonce": "cafb37f890653ce6a6e2478ce991cb3f80adeaf37a0fc4a3a44be4254b483e96",
+      "vm_uuid": "f7c3339d-e986-528a-823e-d762a3e7ed78"
+    },
+    "operation_id": "3a1292fdde9af159ba2e1b1059622b1c",
+    "recovery": "inactive",
+    "schema": "celikpanel/owner-update-observer/v1",
+    "snapshot": "20261015T153031Z-from-unknown-to-313f3eea2c9b89251588648b09484cd34b7aecb1-f1b0399ecc8afe791a59e9e29f72596e",
+    "transaction_operation": "update",
+    "transaction_phase": "completion.pending",
+    "worker": "active",
+    "worker_freezer": "running"
+  },
+  {
+    "at": "2026-10-15T15:31:00.736289+00:00",
+    "event": "timeline",
+    "identity": {
+      "cell_id": "release-recovery__cafb37f890653ce6",
+      "node": "ubuntu",
+      "nonce": "cafb37f890653ce6a6e2478ce991cb3f80adeaf37a0fc4a3a44be4254b483e96",
+      "vm_uuid": "f7c3339d-e986-528a-823e-d762a3e7ed78"
+    },
+    "operation_id": "3a1292fdde9af159ba2e1b1059622b1c",
+    "recovery": "activating",
+    "schema": "celikpanel/owner-update-observer/v1",
+    "snapshot": "20261015T153031Z-from-unknown-to-313f3eea2c9b89251588648b09484cd34b7aecb1-f1b0399ecc8afe791a59e9e29f72596e",
+    "transaction_operation": "update",
+    "transaction_phase": "completion.pending",
+    "worker": "active",
+    "worker_freezer": "running"
+  },
+  {
+    "at": "2026-10-15T15:31:01.255355+00:00",
+    "event": "timeline",
+    "identity": {
+      "cell_id": "release-recovery__cafb37f890653ce6",
+      "node": "ubuntu",
+      "nonce": "cafb37f890653ce6a6e2478ce991cb3f80adeaf37a0fc4a3a44be4254b483e96",
+      "vm_uuid": "f7c3339d-e986-528a-823e-d762a3e7ed78"
+    },
+    "operation_id": "3a1292fdde9af159ba2e1b1059622b1c",
+    "recovery": "inactive",
+    "schema": "celikpanel/owner-update-observer/v1",
+    "snapshot": "20261015T153031Z-from-unknown-to-313f3eea2c9b89251588648b09484cd34b7aecb1-f1b0399ecc8afe791a59e9e29f72596e",
+    "transaction_operation": "update",
+    "transaction_phase": "completion.pending",
+    "worker": "active",
+    "worker_freezer": "running"
+  },
+  {
+    "at": "2026-10-15T15:31:09.447228+00:00",
+    "event": "timeline",
+    "identity": {
+      "cell_id": "release-recovery__cafb37f890653ce6",
+      "node": "ubuntu",
+      "nonce": "cafb37f890653ce6a6e2478ce991cb3f80adeaf37a0fc4a3a44be4254b483e96",
+      "vm_uuid": "f7c3339d-e986-528a-823e-d762a3e7ed78"
+    },
+    "operation_id": "3a1292fdde9af159ba2e1b1059622b1c",
+    "recovery": "inactive",
+    "schema": "celikpanel/owner-update-observer/v1",
+    "snapshot": null,
+    "transaction_operation": null,
+    "transaction_phase": null,
+    "worker": "active",
+    "worker_freezer": "running"
+  },
+  {
+    "at": "2026-10-15T15:31:13.166672+00:00",
+    "event": "timeline",
+    "identity": {
+      "cell_id": "release-recovery__cafb37f890653ce6",
+      "node": "ubuntu",
+      "nonce": "cafb37f890653ce6a6e2478ce991cb3f80adeaf37a0fc4a3a44be4254b483e96",
+      "vm_uuid": "f7c3339d-e986-528a-823e-d762a3e7ed78"
+    },
+    "operation_id": "3a1292fdde9af159ba2e1b1059622b1c",
+    "recovery": "inactive",
+    "schema": "celikpanel/owner-update-observer/v1",
+    "snapshot": null,
+    "transaction_operation": null,
+    "transaction_phase": null,
+    "worker": "inactive",
+    "worker_freezer": "running"
+  },
+  {
+    "at": "2026-10-15T15:31:13.170472+00:00",
+    "checkpoint_verified": false,
+    "event": "released",
+    "identity": {
+      "cell_id": "release-recovery__cafb37f890653ce6",
+      "node": "ubuntu",
+      "nonce": "cafb37f890653ce6a6e2478ce991cb3f80adeaf37a0fc4a3a44be4254b483e96",
+      "vm_uuid": "f7c3339d-e986-528a-823e-d762a3e7ed78"
+    },
+    "kill_sent": false,
+    "operation_id": "3a1292fdde9af159ba2e1b1059622b1c",
+    "reason": "worker-exited",
+    "recovery_fault_armed": false,
+    "schema": "celikpanel/owner-update-observer/v1",
+    "thaw_exit": null
+  }
+]
