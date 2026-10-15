@@ -7417,3 +7417,80 @@ and not measured on an installed server.
   failing against the screen before its change, and two wording checks);
   `npx tsc --noEmit` clean. No Go was changed or
   run.
+
+### The update's own restart shown as calm progress, and one notice instead of two (2026-10-15)
+
+**Observed by the owner.** During the real update of the second installed
+server from v0.1.0-alpha.84 to v0.1.0-alpha.85 (2026-10-15), while the panel
+restarted as the update's own plan says it will, the update page showed a
+warning-marked "The state of the update to v0.1.0-alpha.85 could not be read
+just now, so it is not known whether it has finished…" and, at the same time,
+the corner notice said the same thing with "T+02:59". The update then completed
+normally. In substance, the owner's words: this looks like a problem although
+nothing is wrong; while the operation does what it said it would, a less
+alarming message is right, and the problem wording belongs to a real problem
+only. This is D-033 (expected waiting is shown as progress; the "not known"
+wording comes after a bound or on a verified failure) and D-024 (a verified
+failure, an unmet prerequisite and an unknown result stay apart). No schema,
+ledger or version transition; no Go change.
+
+**Cause, as found in the code.** Every status read that lost the connection set
+the followed update's phase to unknown at once
+(`systemUpdateOperationPhase(undefined)` in `SystemUpdateOperation.tsx`), with
+no notion of the restart the update plans. The Panel's status answer knows only
+queued, running (with "verifying" once the new Panel answers), succeeded and
+failed; the Agent's updater, which restarts the Panel and the Agent, runs while
+the record is running. After the two-minute navigation lock
+(`SYSTEM_UPDATE_BLOCKING_DEADLINE_MS`) the corner notice is drawn on every
+page, so on the update page the card and the corner notice both said it.
+
+**What changed.**
+
+- A read that loses the connection (or meets a 5xx) after the server last said
+  this exact request is active (the start was accepted, or a read answered
+  queued or running) is the phase "restarting": a spinner, "The panel is
+  restarting as part of the update. This page reconnects by itself; nothing
+  needs to be pressed.", the T+ counter, and the update lock unchanged. While
+  it lasts the page reads at most every 3 s, so it reconnects promptly.
+- The warning mark and the "not known" wording appear only after the window:
+  6 minutes from the update's start, and at least 2 minutes from the first lost
+  read. Under the unknown line the notice then says that the panel has not
+  answered for longer than an update normally needs, that this does not mean
+  it failed, that the server keeps the record and the notice keeps reading, and
+  what the owner checks (`sudo systemctl status celikpanel-panel`). A verified
+  failure is a terminal outcome and keeps its own wording. "Do not start
+  another update" stays.
+- One notice: while the update card is on screen it carries the T+ counter and
+  the ID, and the corner notice is not drawn for a followed update; on other
+  pages the corner notice is the one notice. A known outcome keeps the corner
+  notice. The card's unknown line now says "This page reads it again by
+  itself".
+
+**The bound and its source.** set16
+(`deploy/e2e/release-recovery/evidence/set16-20261014/*/upd84-good-a/driver/steps/12-owner-start`
+and `13-track`): a good update alpha.84 → alpha.85 took 51 s on Debian 13
+(start 22:55:07Z, `update_verified` 22:55:58Z) and 48 s on Ubuntu 24.04, with
+the Panel's API unanswered for at most 32 s and 25 s; the lab served the archive
+from a local origin. The owner's real update still had no answer at T+02:59.
+The window is about twice the longest of these (2 × 3 min); the 2 minutes from
+the first lost read are about four times the longest measured outage, for a
+restart that begins late in a slow update.
+
+**Evidence.** Web: `tests/update-restart-notice-mounted.test.mjs` (13 tests:
+the read classification and the window, the wording in both languages, the
+mounted card in the restart and past the window, the single-notice rule, and
+the provider's wiring as a source check), each failing against the previous
+card, provider or library; `npm test` 1404 of 1404 at that commit;
+`npx tsc --noEmit` clean. The provider itself is not mounted in a test (it
+needs IndexedDB, Web Locks and the authentication signal); it was run in a
+real Chrome against the lab mock (browser-inspect batch 13, `u86restart`):
+1280×800 and 390×844, English and Turkish, light and dark, 24 states. In the
+restart: spinner, no warning mark, no corner notice on the update page, the
+corner notice calm on Domains; past the window (the page's `Date.now` moved
+7 minutes ahead on the test side): the warning mark and the unknown wording;
+no horizontal overflow.
+
+**Not measured.** No native run and no installed server reached this code; the
+window rests on two lab updates and one owner observation. A real update whose
+restart outlasts 6 minutes from its start would show the unknown wording while
+still being normal.

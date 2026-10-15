@@ -7386,3 +7386,79 @@ yapıldı ve kurulu bir sunucuda ölçülmedi.
   önceki ekrana karşı başarısız olan dokuz bağlanan test ve iki metin
   denetimi); `npx tsc --noEmit` temiz. Go değiştirilmedi
   ve çalıştırılmadı.
+
+### Güncellemenin kendi yeniden başlaması sakin ilerleme olarak, iki bildirim yerine bir bildirim (2026-10-15)
+
+**Sahibin gözlemi.** İkinci kurulu sunucunun v0.1.0-alpha.84'ten
+v0.1.0-alpha.85'e gerçek güncellemesinde (2026-10-15), panel güncellemenin kendi
+planının söylediği gibi yeniden başlarken güncelleme sayfası uyarı işaretli
+"v0.1.0-alpha.85 güncellemesinin durumu şu an okunamadı; bu yüzden bitip
+bitmediği bilinmiyor…" gösterdi ve aynı anda köşe bildirimi aynı şeyi "T+02:59"
+ile söyledi. Güncelleme sonra olağan biçimde tamamlandı. Sahibin sözleri
+özetle: hiçbir sorun yokken bu bir sorun gibi görünüyor; işlem söylediğini
+yaparken daha az ürkütücü bir ileti doğrudur, sorun metni yalnız gerçek bir
+soruna aittir. Bu D-033'tür (beklenen bekleme ilerleme olarak gösterilir;
+"bilinmiyor" metni bir sınırdan sonra ya da doğrulanmış hatada gelir) ve D-024
+(doğrulanmış hata, eksik önkoşul ve bilinmeyen sonuç ayrı kalır). Şema, kayıt
+defteri ya da sürüm geçişi yok; Go değişmedi.
+
+**Koddaki neden.** Bağlantıyı yitiren her durum okuması izlenen güncellemenin
+aşamasını hemen bilinmiyor yapıyordu (`SystemUpdateOperation.tsx` içinde
+`systemUpdateOperationPhase(undefined)`); güncellemenin planladığı yeniden
+başlama hesaba katılmıyordu. Panel'in durum yanıtı yalnız kuyrukta, çalışıyor
+(yeni Panel yanıt verince "verifying"), başarılı ve başarısız bilir; Panel'i ve
+Agent'ı yeniden başlatan güncelleyici kayıt çalışıyorken çalışır. İki dakikalık
+gezinti kilidinden (`SYSTEM_UPDATE_BLOCKING_DEADLINE_MS`) sonra köşe bildirimi
+her sayfada çizilir; bu yüzden güncelleme sayfasında kart ve köşe bildirimi
+aynı şeyi söyledi.
+
+**Ne değişti.**
+
+- Sunucu bu isteğin etkin olduğunu son söyledikten sonra (başlatma kabul
+  edildi ya da bir okuma kuyrukta veya çalışıyor dedi) bağlantıyı yitiren (ya da
+  5xx alan) bir okuma "yeniden başlıyor" aşamasıdır: dönen simge, "Panel,
+  güncellemenin bir parçası olarak yeniden başlıyor. Bu sayfa kendiliğinden
+  yeniden bağlanır; hiçbir şeye basmanız gerekmiyor.", T+ sayacı ve değişmeyen
+  güncelleme kilidi. Bu sürerken sayfa en geç 3 saniyede bir okur; böylece
+  hemen yeniden bağlanır.
+- Uyarı işareti ve "bilinmiyor" metni yalnız pencere aşılınca görünür:
+  güncellemenin başlangıcından 6 dakika, ilk kopan okumadan en az 2 dakika.
+  Bilinmiyor satırının altında bildirim, panelin bir güncellemenin normalde
+  gerektirdiğinden uzun süredir yanıt vermediğini, bunun başarısızlık anlamına
+  gelmediğini, sunucunun kaydı tuttuğunu ve bildirimin okumayı sürdürdüğünü,
+  sahibin neyi denetleyeceğini (`sudo systemctl status celikpanel-panel`)
+  söyler. Doğrulanmış bir hata sonlanmış bir sonuçtur ve kendi metnini korur.
+  "İkinci bir güncelleme başlatmayın" kalır.
+- Tek bildirim: güncelleme kartı ekrandayken T+ sayacını ve kimliği taşır ve
+  izlenen güncelleme için köşe bildirimi çizilmez; başka sayfalarda tek bildirim
+  köşe bildirimidir. Bilinen bir sonuç köşe bildirimini korur. Kartın
+  bilinmiyor satırı artık "Bu sayfa onu kendiliğinden yeniden okur" der.
+
+**Sınır ve kaynağı.** set16
+(`deploy/e2e/release-recovery/evidence/set16-20261014/*/upd84-good-a/driver/steps/12-owner-start`
+ve `13-track`): alpha.84 → alpha.85 iyi güncelleme Debian 13'te 51 sn
+(başlangıç 22:55:07Z, `update_verified` 22:55:58Z), Ubuntu 24.04'te 48 sn sürdü;
+Panel API'si en çok 32 sn ve 25 sn yanıtsız kaldı; laboratuvar arşivi yerel bir
+kaynaktan verdi. Sahibin gerçek güncellemesi T+02:59'da hâlâ yanıt vermiyordu.
+Pencere bunların en uzununun yaklaşık iki katıdır (2 × 3 dk); ilk kopan
+okumadan itibaren 2 dakika, yavaş bir güncellemede geç başlayan bir yeniden
+başlama için, ölçülen en uzun kesintinin yaklaşık dört katıdır.
+
+**Kanıt.** Web: `tests/update-restart-notice-mounted.test.mjs` (13 test: okuma
+sınıflandırması ve pencere, iki dilde metin, yeniden başlamada ve pencere
+sonrasında bağlanan kart, tek bildirim kuralı ve sağlayıcının bağlantıları için
+kaynak denetimi); her biri önceki kart, sağlayıcı ya da kitaplığa karşı
+başarısız olur; o commit'te `npm test` 1404/1404; `npx tsc --noEmit` temiz.
+Sağlayıcının kendisi bir testte bağlanmadı (IndexedDB, Web Locks ve kimlik
+sinyali gerektirir); gerçek Chrome'da laboratuvar sahte sunucusuna karşı
+çalıştırıldı (browser-inspect grup 13, `u86restart`): 1280×800 ve 390×844,
+İngilizce ve Türkçe, açık ve koyu, 24 durum. Yeniden başlamada: dönen simge,
+uyarı işareti yok, güncelleme sayfasında köşe bildirimi yok, Alan adları
+sayfasında köşe bildirimi sakin; pencere sonrasında (sayfanın `Date.now` değeri
+test tarafında 7 dakika ileri alındı): uyarı işareti ve bilinmiyor metni; yatay
+taşma yok.
+
+**Ölçülmeyen.** Bu koda hiçbir yerel çalıştırma ve hiçbir kurulu sunucu
+ulaşmadı; pencere iki laboratuvar güncellemesine ve bir sahip gözlemine dayanır.
+Yeniden başlaması başlangıcından itibaren 6 dakikayı aşan gerçek bir güncelleme,
+hâlâ olağanken bilinmiyor metnini gösterir.
