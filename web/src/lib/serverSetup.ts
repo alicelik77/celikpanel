@@ -39,34 +39,47 @@ export interface ServerSetupSnapshot {
     draft: ServerSetupDraft;
     checks: ServerSetupCheck[];
     server_ip?: string;
+    // Additive (2026-10-16): a completed setup being extended keeps its
+    // completion record; extension_base is the draft as it was completed.
+    extension?: boolean;
+    extension_base?: ServerSetupDraft;
 }
 const draftStrings = ['remote_dns_connection_id', 'panel_domain', 'mail_hostname', 'ns1', 'ns2', 'local_ip', 'peer_ip', 'peer_ns', 'node_version', 'database'] as const;
 function record(value: unknown): value is Record<string, unknown> {
     return !!value && typeof value === 'object' && !Array.isArray(value);
 }
-export function decodeServerSetup(value: unknown): ServerSetupSnapshot | null {
-    if (!record(value) || value.version !== 1 || !Number.isSafeInteger(value.revision) || (value.revision as number) < 0
-        || !['fresh', 'legacy'].includes(String(value.origin))
-        || !['new', 'legacy', 'draft', 'running', 'waiting', 'failed', 'ready'].includes(String(value.status))
-        || typeof value.required !== 'boolean' || !record(value.draft) || !Array.isArray(value.checks)) return null;
-    const draft = value.draft;
+function validDraft(draft: unknown): draft is Record<string, unknown> {
+    if (!record(draft)) return false;
     if (!setupPurposes.includes(draft.purpose as SetupPurpose)
         || !['local', 'existing', 'external'].includes(String(draft.dns_mode))
         || !['bind', 'pdns'].includes(String(draft.dns_engine))
         || !['primary', 'secondary'].includes(String(draft.dns_role))
-        || draftStrings.some(key => typeof draft[key] !== 'string')) return null;
-    if (draft.infrastructure_dns !== undefined && (!record(draft.infrastructure_dns)
-        || typeof draft.infrastructure_dns.zone !== 'string' || draft.infrastructure_dns.zone.length > 253
-        || (draft.infrastructure_dns.peer_panel_domain !== undefined && (typeof draft.infrastructure_dns.peer_panel_domain !== 'string' || draft.infrastructure_dns.peer_panel_domain.length > 253)))) return null;
-    if (draft.dns_hosting_management !== undefined && !['manual', 'panel'].includes(String(draft.dns_hosting_management))) return null;
-    if (draft.dns_publisher_endpoint !== undefined && typeof draft.dns_publisher_endpoint !== 'string') return null;
-    if (draft.customization !== undefined && (!record(draft.customization) || !Array.isArray(draft.customization.components)
-        || draft.customization.components.length > 80 || draft.customization.components.some(id => typeof id !== 'string' || !/^[a-z][a-z0-9-]{0,63}$/.test(id))
-        || new Set(draft.customization.components).size !== draft.customization.components.length)) return null;
+        || draftStrings.some(key => typeof draft[key] !== 'string')) return false;
+    const infrastructure = draft.infrastructure_dns;
+    if (infrastructure !== undefined && (!record(infrastructure)
+        || typeof infrastructure.zone !== 'string' || infrastructure.zone.length > 253
+        || (infrastructure.peer_panel_domain !== undefined && (typeof infrastructure.peer_panel_domain !== 'string' || infrastructure.peer_panel_domain.length > 253)))) return false;
+    if (draft.dns_hosting_management !== undefined && !['manual', 'panel'].includes(String(draft.dns_hosting_management))) return false;
+    if (draft.dns_publisher_endpoint !== undefined && typeof draft.dns_publisher_endpoint !== 'string') return false;
+    const customization = draft.customization;
+    if (customization !== undefined && (!record(customization) || !Array.isArray(customization.components)
+        || customization.components.length > 80 || customization.components.some(id => typeof id !== 'string' || !/^[a-z][a-z0-9-]{0,63}$/.test(id))
+        || new Set(customization.components).size !== customization.components.length)) return false;
+    return true;
+}
+export function decodeServerSetup(value: unknown): ServerSetupSnapshot | null {
+    if (!record(value) || value.version !== 1 || !Number.isSafeInteger(value.revision) || (value.revision as number) < 0
+        || !['fresh', 'legacy'].includes(String(value.origin))
+        || !['new', 'legacy', 'draft', 'running', 'waiting', 'failed', 'ready'].includes(String(value.status))
+        || typeof value.required !== 'boolean' || !Array.isArray(value.checks)) return null;
+    if (!validDraft(value.draft)) return null;
+    if (value.extension !== undefined && typeof value.extension !== 'boolean') return null;
+    if (value.extension_base !== undefined && (value.extension !== true || !validDraft(value.extension_base))) return null;
     if (value.checks.some(check => !record(check) || typeof check.id !== 'string'
         || !['ready', 'action_required', 'unknown'].includes(String(check.state)) || typeof check.code !== 'string')) return null;
     if (value.server_ip !== undefined && typeof value.server_ip !== 'string') return null;
     if (value.status === 'ready' && value.required) return null;
+    if (value.extension === true && (value.status === 'ready' || value.required)) return null;
     if (value.guidance !== undefined && !['undecided', 'guided', 'manual'].includes(String(value.guidance))) return null;
     return value as unknown as ServerSetupSnapshot;
 }
@@ -74,6 +87,9 @@ export function isSetupRecoveryPath(pathname: string): boolean {
     return pathname === '/settings' || pathname === '/services' || pathname.startsWith('/services/');
 }
 export function shouldOpenServerSetup(snapshot: ServerSetupSnapshot, pathname: string): boolean {
+    // Extending a completed setup never routes the owner into setup: the
+    // server stays prepared and the Dashboard notice links to the extension.
+    if (snapshot.extension) return false;
     const active = snapshot.status === 'running' || snapshot.status === 'waiting';
     const needsChoice = snapshot.guidance === 'undecided' && snapshot.status !== 'ready';
     return (active || needsChoice || (snapshot.required && snapshot.guidance !== 'manual'))
@@ -136,6 +152,7 @@ export function setupDetectedIPv4(value?: string): string {
 // Yalniz sekmenin duzenleme durumu tutulur; sunucu surumu ve islem kabul
 // denetimleri gecerliligini korur. Plan veya baslatma izni burada saklanmaz.
 export type SetupEditorStep = 'purpose' | 'components' | 'access' | 'review';
+export const setupEditorKey = (username: string) => `celikpanel.setup.editor.${username}`;
 export interface SetupEditorCheckpoint {
     version: 1;
     revision: number;
@@ -155,4 +172,18 @@ export function decodeSetupEditorCheckpoint(raw: string | null, snapshot: Server
         if (value.step === 'review' && JSON.stringify(restored.draft) !== JSON.stringify(snapshot.draft)) return null;
         return { version: 1, revision: snapshot.revision, step: value.step as SetupEditorStep, draft: restored.draft };
     } catch { return null; }
+}
+
+// What an extension changes, against the draft it started from: the settings
+// the owner sees on the access step. Empty without a base.
+// Genisletmenin tabana gore degistirdigi ayarlar.
+export type SetupExtensionChangeKey = 'purpose' | 'panel_domain' | 'mail_hostname' | 'dns_mode' | 'node_version' | 'database' | 'dns_hosting_management';
+export interface SetupExtensionChange { key: SetupExtensionChangeKey; before: string; after: string }
+export function setupExtensionChanges(base: ServerSetupDraft | undefined, draft: ServerSetupDraft): SetupExtensionChange[] {
+    if (!base) return [];
+    const purpose = (value: ServerSetupDraft) => value.customization ? 'custom' : value.purpose;
+    const keys: SetupExtensionChangeKey[] = ['purpose', 'panel_domain', 'mail_hostname', 'dns_mode', 'node_version', 'database', 'dns_hosting_management'];
+    const read = (value: ServerSetupDraft, key: SetupExtensionChangeKey) => key === 'purpose' ? purpose(value) : String(value[key] ?? '');
+    return keys.map(key => ({ key, before: read(base, key), after: read(draft, key) }))
+        .filter(change => change.before !== change.after);
 }

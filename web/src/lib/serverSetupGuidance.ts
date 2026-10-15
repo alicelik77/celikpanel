@@ -73,7 +73,10 @@ const checkNames: Record<string, TranslationKey> = {
     firewall: 'setup.check.name.firewall', services: 'setup.check.name.services', mail_tls: 'setup.check.name.mail_tls',
     mail_identity: 'setup.check.name.mail_identity', mail_delivery: 'setup.check.name.mail_delivery',
 };
-function checkLine(check: ServerSetupCheck): SetupCheckLine {
+// One line per open check, said the same way wherever a check is listed: the
+// run's guidance and the box under "Check requirements again" (2026-10-16).
+// Acik kontrol her yerde ayni tipli cumleyle soylenir.
+export function setupCheckLine(check: ServerSetupCheck): SetupCheckLine {
     const typed = setupCheckReasonText(check);
     if (typed) return { check, text: typed };
     if (check.state === 'unknown') return { check, text: { key: 'setup.check.notRead', name: checkNames[check.id] || 'setup.check.name.other' } };
@@ -238,7 +241,7 @@ export function setupExecutionGuidance(execution: ServerSetupExecution, componen
         const open = execution.phase === 'verification' ? (execution.checks || []).filter(check => check.state !== 'ready') : [];
         if (open.length > 0) {
             result.messages.push(text('setup.guide.revisedChecks'));
-            result.checks = open.map(checkLine);
+            result.checks = open.map(setupCheckLine);
             result.checksAt = result.messages.length - 1;
         }
         result.messages.push(text('setup.guide.revisedNext'));
@@ -317,7 +320,7 @@ export function setupExecutionGuidance(execution: ServerSetupExecution, componen
         // katlanmadan soylenir.
         const open = (execution.checks || []).filter(check => check.state !== 'ready');
         result.messages.push(text(execution.status === 'waiting' ? 'setup.guide.verificationWaiting' : 'setup.guide.verification'));
-        if (open.length > 0) { result.checks = open.map(checkLine); result.checksAt = 0; }
+        if (open.length > 0) { result.checks = open.map(setupCheckLine); result.checksAt = 0; }
         const codes = new Set<string>();
         for (const check of open) {
             if (setupCheckReasonText(check)) continue;

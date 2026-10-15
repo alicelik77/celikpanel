@@ -64,10 +64,18 @@ export function ServerSetupSettings() {
     if (!setup?.snapshot) return <div className="space-y-4" role="status"><p>{t('setup.loading')}</p><Button onClick={() => void setup?.reload().catch(() => {})}>{t('common.retry')}</Button></div>;
     const snapshot = setup.snapshot;
     const active = ['running', 'waiting'].includes(snapshot.status);
+    // A completed setup offers its extension here as well (2026-10-16): the
+    // sentence says what extending does and does not do before the link.
+    // Tamamlanmis kurulum burada da genisletilebilir.
+    const ready = snapshot.status === 'ready';
+    const extending = snapshot.extension === true;
+    const help = extending ? (active ? 'setup.extend.dashboardRunning' : 'setup.extend.dashboardDraft') : ready ? 'setup.extend.help' : snapshot.guidance === 'manual' ? 'setup.manualSelected' : 'setup.choiceIntro';
+    const action = extending ? 'setup.extend.continue' : ready ? 'setup.extend.title' : active ? 'setup.resume' : 'setup.openWizard';
     return <section className="rounded-xl border border-border bg-surface p-6" aria-labelledby="setup-settings-title">
         <h2 id="setup-settings-title" className="text-lg font-semibold">{t('setup.settingsTitle')}</h2>
-        <p className="mt-3 max-w-2xl text-sm text-fg-muted">{t(snapshot.guidance === 'manual' ? 'setup.manualSelected' : snapshot.status === 'ready' ? 'setup.completeHelp' : 'setup.choiceIntro')}</p>
-        <Link to="/setup" className="mt-5 inline-flex rounded-lg border border-border-strong px-4 py-2 text-sm font-semibold text-primary hover:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">{t(active ? 'setup.resume' : 'setup.openWizard')}</Link>
-        {!active && snapshot.guidance !== 'manual' && snapshot.status !== 'ready' && <ServerSetupManualAction snapshot={snapshot} onChosen={setup.accept} />}
+        {ready && <p className="mt-3 max-w-2xl text-sm text-fg-muted">{t('setup.completeHelp')}</p>}
+        <p className="mt-3 max-w-2xl text-sm text-fg-muted">{t(help)}</p>
+        <Link to="/setup" className="mt-5 inline-flex rounded-lg border border-border-strong px-4 py-2 text-sm font-semibold text-primary hover:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">{t(action)}</Link>
+        {!active && !extending && snapshot.guidance !== 'manual' && !ready && <ServerSetupManualAction snapshot={snapshot} onChosen={setup.accept} />}
     </section>;
 }

@@ -50,12 +50,12 @@ const stepsURL = dataURL(`import React from '${reactURL}';\n` + compile('../src/
 const choiceURL = dataURL(`import React from '${reactURL}';\n` + compile('../src/components/ServerSetupChoice.tsx').replace(/from ['"]([^'"]+)['"]/g, (_, path) => `from '${path === 'react' ? reactURL : path.endsWith('/serverSetup') ? setupURL : stub}'`));
 const componentUIURL = dataURL(`import React from '${reactURL}';\n` + compile('../src/components/ServerSetupComponents.tsx').replace(/from ['"]([^'"]+)['"]/g, (_, path) => `from '${path === 'react' ? reactURL : path.endsWith('/componentName') ? componentNameURL : path.endsWith('/serverSetupComponents') ? componentLibURL : stub}'`));
 const { ServerSetupComponents: ComponentPicker } = await import(componentUIURL);
-async function loadComponent(name) {
+async function loadComponent(name, exported = name) {
     const source = compile(`../src/components/${name}.tsx`).replace(/from ['"]([^'"]+)['"]/g, (_, path) => {
         const url = path === 'react' ? reactURL : path.endsWith('/ServerSetupSteps') ? stepsURL : path.endsWith('/remoteDNS') ? remoteURL : path.endsWith('/ServerSetupComponents') ? componentUIURL : path.endsWith('/componentName') ? componentNameURL : path.endsWith('/serverSetupComponents') ? componentLibURL : path.endsWith('/ServerSetupChoice') ? choiceURL : path.endsWith('/setupDNS') ? dnsCopyURL : path.endsWith('/visibleReads') ? visibleReadsURL : path.endsWith('/panelHandover') ? handoverURL : path.endsWith('/serverSetupGuidance') ? guidanceURL : path.endsWith('/serverSetupOperation') ? operationURL : path.endsWith('/serverSetup') ? setupURL : stub;
         return `from '${url}'`;
     });
-    return (await import(dataURL(`import React from '${reactURL}';\n${source}`)))[name];
+    return (await import(dataURL(`import React from '${reactURL}';\n${source}`)))[exported];
 }
 const Gate = await loadComponent('ServerSetupGate');
 const Wizard = await loadComponent('ServerSetup');
@@ -1105,7 +1105,10 @@ test('final verification stays waiting and manual checks report unchanged, unkno
             const result=tree.root.findAllByProps({role:'status'}).find(item=>item.props['aria-atomic']==='true');
             const said=[...result.findAllByType('p'),...result.findAllByType('span'),...result.findAllByType('li')].flatMap(item=>[item.props.children].flat()).filter(child=>typeof child==='string');
             assert.ok(said.includes(message),outcome);
-            if(outcome==='unknown'||outcome==='action_required')assert.ok(said.includes('setup.blocker.mailIdentity'));
+            // The box says each open check as the run's guidance does (2026-10-16):
+            // a check that could not be read is said as not read, not as missing.
+            if(outcome==='action_required')assert.ok(said.includes('setup.blocker.mailIdentity'));
+            if(outcome==='unknown')assert.ok(said.includes('setup.check.notRead')&&!said.includes('setup.blocker.mailIdentity'));
             assert.ok(!JSON.stringify(tree.toJSON()).includes('setup.completeTitle'));
             assert.ok(calls.every(call=>!call.options?.method||call.options.method==='GET'));
             assert.equal(store.size,1);
@@ -1113,6 +1116,34 @@ test('final verification stays waiting and manual checks report unchanged, unkno
     }
 });
 
+
+// Gap 8 of the second-server work (2026-10-16): after "Check requirements
+// again" the box under the button says the typed reason of an open check, the
+// same sentence the run's guidance uses, instead of the generic one.
+test('the manual re-check box says the typed reason sentence the guidance uses',async()=>{
+    init('admin',{status:'waiting'});
+    const marker={plan_id:'a'.repeat(32),request_id:'b'.repeat(32),panel_domain:'panel.example.com'};
+    store.set('celikpanel.setup.start.admin',JSON.stringify(marker));
+    const typed={id:'mail_identity',state:'action_required',code:'mail_identity_required',reason:'reverse_dns_mismatch',vars:{hostname:'mail.example.com',ip:'203.0.113.7',ptr:'old.example.net',resolver:'1.1.1.1'}};
+    const waiting={...execution(marker,'waiting'),phase:'verification',steps:[{id:'verify',kind:'verify',target:'web',status:'succeeded'}],checks:[typed]};
+    const read=fetch;
+    globalThis.fetch=async(url,options)=>url.includes('/setup/operation')?Response.json(waiting):read(url,options);
+    let finish, manual=false;
+    fixture.context.reload=()=>manual?new Promise(resolve=>{finish=resolve;}):Promise.resolve(state);
+    try{
+        await mount();
+        manual=true;
+        await act(async()=>{void findButton('setup.verify').props.onClick();});
+        await act(async()=>{finish({...state,checks:[typed]});});
+        const result=tree.root.findAllByProps({role:'status'}).find(item=>item.props['aria-atomic']==='true');
+        const items=result.findAllByType('li').flatMap(item=>[item.props.children].flat()).filter(child=>typeof child==='string');
+        assert.ok(items.includes('setup.check.mailIdentity.reverseDNSFrom'),JSON.stringify(items));
+        // Negative control: the generic sentence is not said for a typed reason.
+        assert.ok(!items.includes('setup.blocker.mailIdentity'),JSON.stringify(items));
+        const guidance=JSON.stringify(tree.root.findAllByProps({'data-setup-checks':''}).map(list=>list.findAllByType('li').flatMap(item=>[item.props.children].flat()).filter(child=>typeof child==='string')));
+        assert.ok(guidance.includes('setup.check.mailIdentity.reverseDNSFrom'),guidance);
+    }finally{await cleanup();}
+});
 
 test('recorded mail enrollment survives reload and continues only by explicit click with the same step', async()=>{
     for (const outcome of ['accepted','lost','refused']) {
@@ -1278,4 +1309,173 @@ test('a reviewed plan with the certificate step states the restart before setup 
         assert.ok(content.includes('setup.handover.title')&&content.includes('setup.handover.address'),content.slice(0,400));
         assert.ok(tree.root.findAllByType('a').some(link=>link.props.href==='https://panel.example.com/setup'));
     }finally{await cleanup();}
+});
+
+
+// --- Extending a completed setup (2026-10-16, second server as a full peer) ---
+// The ready screen and Settings offer the extension and say what it does and
+// does not do; beginning it sends one request and reopens the wizard on the
+// purpose step; the review says what changes; stopping restores the completed
+// setup; an extension never routes the owner into setup.
+const Notice = await loadComponent('ServerSetupGate', 'ServerSetupDashboardNotice');
+const { ServerSetupSettings } = await import(choiceURL);
+const NoticeInGate = () => React.createElement(Gate, null, React.createElement(Notice));
+const readyDraft = () => ({ ...fresh().draft, panel_domain: 'panel.example.com', dns_mode: 'external' });
+const writes = () => calls.filter(call => call.options?.method && call.options.method !== 'GET');
+const textOf = () => JSON.stringify(tree.toJSON());
+
+test('extension state decoder: an extension is never ready or required, and a base needs an extension', () => {
+    const base = readyDraft();
+    const extending = { ...fresh(), status: 'draft', required: false, extension: true, extension_base: base };
+    assert.equal(setup.decodeServerSetup(extending).extension, true);
+    assert.equal(setup.decodeServerSetup({ ...extending, status: 'ready' }), null);
+    assert.equal(setup.decodeServerSetup({ ...extending, required: true }), null);
+    assert.equal(setup.decodeServerSetup({ ...fresh(), extension_base: base }), null);
+    assert.equal(setup.decodeServerSetup({ ...extending, extension_base: { purpose: 'nothing' } }), null);
+    // Routing: an extension stays out of setup; the same draft as a first setup does not.
+    assert.equal(setup.shouldOpenServerSetup(extending, '/domains'), false);
+    assert.equal(setup.shouldOpenServerSetup({ ...extending, extension: undefined, extension_base: undefined, required: true }, '/domains'), true);
+    assert.deepEqual(setup.setupExtensionChanges(base, { ...base, mail_hostname: 'mail.example.com', customization: { components: ['postfix'] } }).map(change => [change.key, change.before, change.after]),
+        [['purpose', 'web', 'custom'], ['mail_hostname', '', 'mail.example.com']]);
+    assert.deepEqual(setup.setupExtensionChanges(undefined, base), []);
+});
+
+test('a completed setup offers its extension, says what it does not do, and begins it with one request', async () => {
+    init('admin', { status: 'ready', required: false, draft: readyDraft() });
+    const base = state.draft; const read = fetch; const posted = [];
+    globalThis.fetch = async (url, options) => {
+        if (url === '/api/v1/setup/extend') {
+            calls.push({ url, options }); posted.push(JSON.parse(options.body));
+            state = { ...state, status: 'draft', extension: true, extension_base: base, revision: state.revision + 1 };
+            return Response.json(state);
+        }
+        return read(url, options);
+    };
+    try {
+        await mount();
+        const section = tree.root.findByProps({ 'data-setup-extend': '' });
+        assert.ok(JSON.stringify(section.findAllByType('p').map(item => item.props.children)).includes('setup.extend.help'));
+        assert.equal(writes().length, 0, 'the ready screen changed something by itself');
+        await act(async () => { await findButton('setup.extend.action').props.onClick(); });
+        assert.deepEqual(posted, [{ revision: 1, action: 'begin' }]);
+        // The gate draws the accepted state: the wizard reopens as an extension.
+        await act(async () => { tree.update(React.createElement(Wizard, null)); await new Promise(resolve => setTimeout(resolve, 0)); });
+        const shown = textOf();
+        assert.ok(shown.includes('setup.extend.title') && shown.includes('setup.extend.intro'), shown.slice(0, 400));
+        assert.ok(tree.root.findAllByProps({ name: 'setup-purpose' }).length > 0, 'the extension opens on the purpose step');
+        assert.ok(findButton('setup.extend.stop'));
+        assert.ok(!shown.includes('setup.manualHelp'), 'the manual-setup choice is offered to an extension');
+        assert.ok(writes().every(call => call.url === '/api/v1/setup/extend'));
+    } finally { await cleanup(); }
+    // Control: a first setup in progress has no extension section.
+    init('admin', { status: 'draft' });
+    try { await mount(); assert.equal(tree.root.findAllByProps({ 'data-setup-extend': '' }).length, 0); } finally { await cleanup(); }
+});
+
+test('a refused extension says why, leaves the setup as it was and is not sent again', async () => {
+    init('admin', { status: 'ready', required: false, draft: readyDraft() });
+    const read = fetch;
+    globalThis.fetch = async (url, options) => {
+        if (url === '/api/v1/setup/extend') { calls.push({ url, options }); return Response.json({ error: 'busy', code: 'server_setup_busy' }, { status: 409 }); }
+        return read(url, options);
+    };
+    try {
+        await mount();
+        await act(async () => { await findButton('setup.extend.action').props.onClick(); });
+        const alert = tree.root.findAllByProps({ role: 'alert' }).map(item => item.props.children);
+        assert.ok(alert.includes('setup.extend.busy'), JSON.stringify(alert));
+        assert.equal(writes().length, 1);
+        assert.equal(state.status, 'ready');
+        assert.ok(textOf().includes('setup.completeTitle'));
+    } finally { await cleanup(); }
+});
+
+test('the review of an extension says what changes, what is installed and what is kept', async () => {
+    const base = readyDraft();
+    const draft = { ...base, mail_hostname: 'mail.example.com', customization: { components: ['dovecot', 'mariadb', 'nginx', 'php-fpm', 'postfix'] } };
+    init('admin', { status: 'draft', required: false, extension: true, extension_base: base, draft });
+    globalThis.sessionStorage.setItem('celikpanel.setup.editor.admin', JSON.stringify({ version: 1, revision: state.revision, step: 'review', draft }));
+    const read = fetch;
+    globalThis.fetch = async (url, options) => url === '/api/v1/setup/plan'
+        ? Response.json(plan({ steps: [{ id: '01-mail_profile', kind: 'mail_profile', target: 'core-mail' }, { id: '02-verify', kind: 'verify', target: 'custom' }],
+            components: [{ id: 'nginx', selected: true, required: false, installed: true }, { id: 'postfix', selected: true, required: false, installed: false }] }))
+        : read(url, options);
+    try {
+        await mount();
+        const review = tree.root.findByProps({ 'data-setup-extension-review': '' });
+        const said = JSON.stringify(review.findAll(node => typeof node.props?.children === 'string').map(node => node.props.children));
+        const mailRow = review.findByProps({ 'data-change': 'mail_hostname' });
+        assert.ok(JSON.stringify(mailRow.findAllByType('span').map(item => item.props.children)).includes('mail.example.com'));
+        assert.ok(JSON.stringify(mailRow.findAllByType('span').map(item => item.props.children)).includes('setup.extend.none'));
+        assert.ok(review.findAllByProps({ 'data-change': 'purpose' }).length === 1);
+        assert.equal(review.findAllByProps({ 'data-change': 'panel_domain' }).length, 0, 'an unchanged setting is listed as a change');
+        assert.equal(review.findAllByProps({ 'data-install': 'core-mail' }).length, 1, said);
+        assert.ok(said.includes('setup.extend.keptTitle'), said);
+        assert.ok(!textOf().includes('setup.components.reviewTitle'), 'the whole component list replaces what changes');
+    } finally { await cleanup(); }
+    // Control: the same review as a first setup keeps the whole component list.
+    init('admin', { status: 'draft', draft });
+    globalThis.sessionStorage.setItem('celikpanel.setup.editor.admin', JSON.stringify({ version: 1, revision: state.revision, step: 'review', draft }));
+    const again = fetch;
+    globalThis.fetch = async (url, options) => url === '/api/v1/setup/plan' ? Response.json(plan({ components: [{ id: 'nginx', selected: true, required: false, installed: true }] })) : again(url, options);
+    try {
+        await mount();
+        assert.equal(tree.root.findAllByProps({ 'data-setup-extension-review': '' }).length, 0);
+        assert.ok(textOf().includes('setup.components.reviewTitle'));
+    } finally { await cleanup(); }
+});
+
+test('stopping an extension restores the completed setup with one request', async () => {
+    const base = readyDraft();
+    init('admin', { status: 'draft', required: false, extension: true, extension_base: base, draft: { ...base, mail_hostname: 'mail.example.com' } });
+    const read = fetch; const posted = [];
+    globalThis.fetch = async (url, options) => {
+        if (url === '/api/v1/setup/extend') {
+            calls.push({ url, options }); posted.push(JSON.parse(options.body));
+            state = { ...fresh(), status: 'ready', required: false, draft: base, revision: state.revision + 1 };
+            return Response.json(state);
+        }
+        return read(url, options);
+    };
+    try {
+        await mount();
+        assert.ok(textOf().includes('setup.extend.stopHelp'));
+        await act(async () => { await findButton('setup.extend.stop').props.onClick(); });
+        assert.deepEqual(posted, [{ revision: 1, action: 'cancel' }]);
+        await act(async () => { tree.update(React.createElement(Wizard, null)); await new Promise(resolve => setTimeout(resolve, 0)); });
+        assert.ok(textOf().includes('setup.completeTitle'));
+    } finally { await cleanup(); }
+});
+
+test('the Dashboard and Settings say an extension is not a setup to resume, and the gate keeps management open', async () => {
+    const base = readyDraft();
+    for (const status of ['draft', 'running']) {
+        init('admin', { status, required: false, extension: true, extension_base: base, draft: base });
+        // The notice reads the gate's own context: it is mounted inside the
+        // gate, on a page the gate always draws.
+        fixture.path = '/settings';
+        try {
+            await mount(NoticeInGate);
+            const shown = textOf();
+            assert.ok(shown.includes('setup.extend.dashboardTitle') && shown.includes(status === 'running' ? 'setup.extend.dashboardRunning' : 'setup.extend.dashboardDraft'), shown);
+            assert.ok(shown.includes('setup.extend.continue') && !shown.includes('setup.resume'));
+        } finally { await cleanup(); }
+        init('admin', { status, required: false, extension: true, extension_base: base, draft: base });
+        fixture.path = '/domains';
+        try {
+            await mount(Gate);
+            assert.equal(tree.root.findAllByType('redirect').length, 0, 'an extension routed the owner into setup');
+            assert.equal(tree.root.findAllByProps({ 'data-management': true }).length, 1);
+        } finally { await cleanup(); }
+    }
+    init('admin', { status: 'ready', required: false, draft: base });
+    try {
+        await mount(ServerSetupSettings);
+        const shown = textOf();
+        assert.ok(shown.includes('setup.extend.help') && shown.includes('setup.extend.title'), shown);
+    } finally { await cleanup(); }
+    // Control: a first setup in progress is still resumed from the Dashboard.
+    init('admin', { status: 'draft' });
+    fixture.path = '/settings';
+    try { await mount(NoticeInGate); assert.ok(textOf().includes('setup.resume')); } finally { await cleanup(); }
 });
