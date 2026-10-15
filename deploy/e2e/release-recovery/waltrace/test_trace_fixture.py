@@ -112,6 +112,48 @@ class ObservationContractTests(unittest.TestCase):
             operation.assert_not_called()
 
 
+class ProcessIdentityTests(unittest.TestCase):
+    def reaped_child(self):
+        child = subprocess.Popen([sys.executable, '-c', 'pass'])
+        started = None
+        try:
+            started = trace.start_time(child.pid)
+        except (FileNotFoundError, ProcessLookupError):
+            pass
+        child.wait(timeout=10)
+        return child.pid, started
+
+    def test_live_task_is_running_and_wrong_identity_is_not(self):
+        started = trace.start_time(os.getpid())
+        self.assertTrue(trace.is_running(os.getpid(), started))
+        self.assertFalse(trace.is_running(os.getpid(), started + 1))
+
+    def test_reaped_task_is_not_running_and_does_not_raise(self):
+        pid, started = self.reaped_child()
+        self.assertFalse(trace.is_running(pid, 0 if started is None else started))
+
+    def test_task_vanishing_between_the_two_reads_is_not_running(self):
+        for error in (ProcessLookupError(3, 'No such process'), FileNotFoundError(2, 'No such file')):
+            with mock.patch.object(trace, 'start_time', return_value=7),                     mock.patch.object(trace, 'process_status', side_effect=error):
+                self.assertFalse(trace.is_running(1234, 7))
+
+    def test_zombie_is_not_running(self):
+        with mock.patch.object(trace, 'start_time', return_value=7),                 mock.patch.object(trace, 'process_status', return_value={'State': 'Z (zombie)'}):
+            self.assertFalse(trace.is_running(1234, 7))
+
+    def test_strict_readers_still_report_a_missing_task(self):
+        pid, _ = self.reaped_child()
+        with self.assertRaises((FileNotFoundError, ProcessLookupError)):
+            trace.process_status(pid)
+        with self.assertRaises((FileNotFoundError, ProcessLookupError)):
+            trace.start_time(pid)
+
+    def test_unrelated_errors_are_not_swallowed(self):
+        with mock.patch.object(trace, 'start_time', side_effect=PermissionError(13, 'denied')):
+            with self.assertRaises(PermissionError):
+                trace.is_running(1234, 7)
+
+
 @unittest.skipUnless(os.environ.get('CELIKPANEL_WALTRACE_CHILD'), 'requires freshly built controlled child')
 class RealControlledChildTests(unittest.TestCase):
     @classmethod
@@ -193,11 +235,8 @@ class RealControlledChildTests(unittest.TestCase):
             while time.monotonic() < deadline:
                 running = []
                 for tid, started in identities.items():
-                    try:
-                        if trace.start_time(tid) == started and not trace.process_status(tid)['State'].startswith('Z'):
-                            running.append(tid)
-                    except FileNotFoundError:
-                        pass
+                    if trace.is_running(tid, started):
+                        running.append(tid)
                 if not running:
                     break
                 time.sleep(0.01)
