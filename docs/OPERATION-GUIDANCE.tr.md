@@ -7386,3 +7386,30 @@ yapıldı ve kurulu bir sunucuda ölçülmedi.
   önceki ekrana karşı başarısız olan dokuz bağlanan test ve iki metin
   denetimi); `npx tsc --noEmit` temiz. Go değiştirilmedi
   ve çalıştırılmadı.
+
+### Alpha.85 yayımından sonra kurulu sunucular: sahibin henüz bildirmedikleri (2026-10-15)
+
+Henüz gözlem yok ve değişiklik yok. v0.1.0-alpha.85 15 Ekim 2026'da yayımlandı
+ve bu girdi yazıldığında hiçbir kurulu sunucu güncellenmemişti; bunu yalnız
+sahip, panelin kendi güncelleme ekranından başlatır. Bu girdi için kurulu
+hiçbir sunucuda bir şey ölçülmedi, hiçbir metin ya da ekran değiştirilmedi ve
+kabul kanıtı değildir. D-024'e (mevcut neden, kimin işlem yapacağı, somut
+sonraki eylem ve nasıl devam edileceği uzun listelerden önce gelir), D-033'e
+(sahibi bekleten bir ekran beklediğini gösterir ya da bir şey yapması
+gerekmediğini söyler) ve bilinen-durum kuralına karşı konur.
+
+1. **Sahipten güncellemeden sonra bildirmesi istenenler; o zamana kadar başka
+   hiçbir şey kaydedilmez.** Her sunucunun panel içindeki güncelleme sonucu;
+   güncelleme sırasında tam ekran lisans sayfasının görünüp görünmediği;
+   Agent'ın sürümü; Frankfurt'un güncellemeden sonraki kurulum son adımı;
+   `postconf -n >/dev/null` çıktısı. Sahip bildirene kadar her biri "kaydedilmedi"dir;
+   "çalıştı" da değildir, "başarısız" da.
+2. **Bu sürümün değiştirdiği bekleme durumlarına kurulu bir sunucuda
+   ulaşılmadı.** Ters DNS beklemesi ve "not known yet" ile biten 60 sn sınırıyla
+   "Finishing setup" ve güncelleme kartının meşgul durumuna yalnız bağlanmış
+   testlerde ve sahte tarayıcıda ulaşıldı, gerçek sistemde hiç (sürüm notları,
+   "Bu sürümün sınırları"). Güncellemeden sonra sahibin orada göreceği, bu iki
+   ekranın ilk ölçümüdür.
+3. **Kenar çubuğundaki yapı kimliği bu sürümde değiştirildi.** Tek parça kalması
+   amaçlanır; set16 onu laboratuvarda 1280×800 ve 390×844'te tek satırda okudu.
+   Kurulu bir sunucunun kenar çubuğu henüz okunmadı.

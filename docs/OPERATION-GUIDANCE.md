@@ -7417,3 +7417,30 @@ and not measured on an installed server.
   failing against the screen before its change, and two wording checks);
   `npx tsc --noEmit` clean. No Go was changed or
   run.
+
+### Installed servers after the alpha.85 publication: what the owner has not yet reported (2026-10-15)
+
+No observation yet, and no change. v0.1.0-alpha.85 was published on 2026-10-15
+and no installed server had been updated when this entry was written; only the
+owner starts that, from the panel's own update screen. Nothing was measured on
+an installed server for this entry, no text or screen was changed for it, and
+it is not acceptance evidence. It is set against D-024 (the current reason, who
+must act, the next action and how work resumes come before long lists), D-033
+(a screen that makes the owner wait shows that it waits, or says that nothing
+needs to be done) and the known-state rule.
+
+1. **What the owner is asked to report after the update, and nothing else is
+   recorded until then.** Each server's update result inside the panel; whether
+   the full-screen licence page appeared during the update; the Agent's
+   version; Frankfurt's setup final step after the update; and the output of
+   `postconf -n >/dev/null`. Until the owner reports them, each is "not
+   recorded", not "worked" and not "failed".
+2. **The waiting states this release changed were not reached on an installed
+   server.** "Finishing setup", with its reverse DNS wait and its 60 s bound
+   ending in "not known yet", and the update card's busy state were reached
+   only in mounted tests and the mock browser, never natively (release notes,
+   "Limits of this release"). What the owner sees there after the update is the
+   first measurement of those two screens.
+3. **The sidebar's build id was changed in this release.** It is meant to stay
+   in one piece; set16 read it on one line at 1280×800 and 390×844 in a lab. An
+   installed server's sidebar is not yet read.

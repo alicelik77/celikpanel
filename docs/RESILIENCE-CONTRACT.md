@@ -5576,3 +5576,62 @@ clock date of the entry, and the measurement it cites ran on 2026-10-14 and
   reached natively; no installed server was measured. set16 is a measurement,
   not acceptance evidence, and closes no P0 row. Everything the entries above
   leave open stays open.
+
+### Publication of v0.1.0-alpha.85 (P0.1/P0.2 area; invariants 2 and 6; D-024; D-032; D-033; 2026-10-15)
+
+D-025 invariants 2 (unknown is not absent, empty or success) and 6 (a screen
+says what was verified); D-024; D-032; D-033. **No P0 item is closed or
+advanced.** P0.1 to P0.5 stay partial and every open acceptance item stays
+open. This entry records a publication; it changes no code, schema or recovery
+behaviour. 2026-10-15 is the clock date of everything in it.
+
+- **Publication.** v0.1.0-alpha.85 was published on 2026-10-15. The owner
+  squash-merged pull request #210 into `main` as
+  `36c33c4531ee6c1306d324db7a666403176f3bf7` (tree
+  `c451c26de3cb179251e8dfd4b033ec7a9e18005e`; CI on the pull request: 23 jobs
+  succeeded, 1 skipped, the publish job, which runs only for a tag). The run on
+  the main commit (38685686782) first concluded failure: two jobs ("Platform
+  portability - Linux arm64 compile only" and "Panel race - Server setup")
+  failed before any step ran, both with GitHub's error that an action could not
+  be found at the codeload URI of `actions/setup-go@v6`. The release preparer
+  re-ran the failed jobs and the run concluded success, 24 jobs, 0 failed. The
+  tag was pushed only after that, so the order "the run on main finished, then
+  the tag" was followed this time. The owner set the repository variable
+  `CELIKPANEL_RELEASE_SEQUENCE` from 84 to 85 and created and pushed the
+  annotated tag `v0.1.0-alpha.85` (tag object
+  `c491a103f2f6913f58e5ba418a3361188ef11dde`). The tag's CI run (38688902643),
+  24 jobs, successful, published a pre-release at 2026-10-15T06:10:06Z with six
+  assets (platform archive SHA-256
+  `cb6424b712052df2768f6c16dd6a66c8ea05a13393e71933c38ae639c3fb0792`,
+  66,146,417 bytes, sequence 85). The release preparer, not the owner,
+  published the download portal with `deploy/publish-download-portal.ps1`
+  (status `committed`, one public verification pass `status: ok` with 26
+  requests of a limit of 26), under the owner's instruction of 2026-10-15; from
+  this release on the merge, the repository variable, the tag and the portal
+  publication are the preparer's, and installed-panel updates remain the
+  owner's only. The assets and the portal package were checked by the preparer
+  from a download and the public site was read from outside at 06:24:40Z
+  (reported by the preparer, not recorded in a file here). Limits: the tag's
+  files were taken with `git archive` on Windows, not from a clone in a build
+  guest, and no promoter rehearsal against a copy of the live site was made.
+  The "Publication record" of the
+  [release notes](RELEASE-NOTES-v0.1.0-alpha.85.md) lists them.
+- **Open defect of the publishing script.** The first invocation of
+  `deploy/publish-download-portal.ps1` with a relative script path stopped at
+  parameter binding before any transfer (`$PSScriptRoot` is empty in a
+  parameter default); the invocation with the absolute path succeeded. Open for
+  the next release: compute the defaults in the script body.
+- **Installed panels.** Not updated when this entry was written on 2026-10-15.
+  Only the owner starts that, from the panel's own update screen. To be
+  reported by the owner and not recorded until then: each server's update
+  result, the full-screen licence page during the update, the Agent's version,
+  Frankfurt's setup final step after the update, and the output of
+  `postconf -n >/dev/null`. This entry is not acceptance evidence for any item.
+- **Schema or version transition.** None: this release carries no schema
+  change (the database schema stays 44); the release sequence moved from 84 to
+  85 in the release preparation `5443fe055`, with the alpha.84 release commit
+  `f0157e6c8` as previous. **Recovery behaviour.** Unchanged.
+- **Open.** Everything the entries above leave open, among them the limits
+  listed in the [release notes](RELEASE-NOTES-v0.1.0-alpha.85.md): that no
+  installed server was measured, that "Finishing setup" and the update card's
+  busy state were not reached natively, and that set16 ran a fixture commit.

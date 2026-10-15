@@ -1,16 +1,19 @@
-# v0.1.0-alpha.85 (draft, not published)
+# v0.1.0-alpha.85 (published 2026-10-15)
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.85.tr.md)
 
-This is the draft of the release that follows v0.1.0-alpha.84. The number
+This is the release that follows v0.1.0-alpha.84. It was published on
+2026-10-15 (see "Publication record" at the end). The number
 v0.1.0-alpha.85 was chosen by the release preparer under the owner's standing
 instruction of 2026-10-13 ("hem sürüm numaraları hem de commit işlemleri için
 bana sormana gerek yok": no need to ask the owner about version numbers or
 commits); it is not a number the owner named for this release. The release
 preparation is commit 5443fe055 (sequence 85 after 84, with the alpha.84
-release commit `f0157e6c8` as the previous one). Nothing of it is published,
-and this draft records no installed server running it. This draft was written
-on 2026-10-15 (UTC).
+release commit `f0157e6c8` as the previous one). When the publication record
+was written on 2026-10-15, no installed server had been updated to it; the
+owner of each starts that from the panel's own update screen. These notes were
+written as a draft on 2026-10-15 (UTC) and amended for the publication the
+same day.
 
 It applies one rule the owner set on 2026-10-14 for every screen: a screen that
 makes you wait shows that it is waiting, or says plainly that you do not need
@@ -627,7 +630,7 @@ open), condensed; the full list is in the
 - The guest's NTP settings in the sixteenth record; the clock cases of the
   sixteenth record were measured on Debian 13 only.
 - Screens that still read the server the old way (the count was not recomputed
-  for this draft); the access wait; the update notice; setup's mail identity
+  for these notes); the access wait; the update notice; setup's mail identity
   reason never read from a real Agent; and the limits of v0.1.0-alpha.83 and
   v0.1.0-alpha.82 that the alpha.84 notes list as still open.
 - **Open acceptance items.** All five foundation items of the
@@ -638,8 +641,19 @@ open), condensed; the full list is in the
 
 ## Publication record
 
-Not published. Nothing is recorded here until the owner publishes. Open before
-publication:
+Everything below is dated 2026-10-15 (clock date, UTC unless a time zone is
+named). Items 1 to 3 are the preparation, written before the publication and
+kept as history. The merge (item 4), the repository variable and the tag (item
+6) were done by the owner; the checks of the assets, of the portal package and
+of the public site, and the portal publication (item 9), were done by the
+person who prepared the release. The owner's instruction of 2026-10-15 was
+"bunları neden sen yapmıyorsun… benden istiyorsun" (why do you not do these
+yourself, why do you ask me). From this release on, the merge, the repository
+variable, the tag and the portal publication are the release preparer's;
+installed-panel updates remain the owner's only. This entry does not store any
+of the results below as a file in the repository.
+
+**What happened.**
 
 1. The pre-publication measurement: done (set16, the eighteenth record,
    2026-10-14 UTC), on the candidate's product code through a fixture commit:
@@ -647,19 +661,115 @@ publication:
    Ubuntu 24.04, good and defective. Its limits are above.
 2. The release preparation: done in commit 5443fe055 (the number was chosen by
    the release preparer under the owner's standing instruction of 2026-10-13),
-   which changes no file under `cmd/`, `internal/` or `web/`: the release sequence policy 85 after 84
-   with the alpha.84 release commit `f0157e6c8` as previous, the
-   `download-portal/get.sh` pins (sequence 85 and version v0.1.0-alpha.85; the
-   public-key pin unchanged), the README version lines and three contract tests,
-   which pass. Still open: the repository variable
-   `CELIKPANEL_RELEASE_SEQUENCE=85`, which the owner sets before the tag. The
-   real archive is built and signed by CI on the tag.
-3. The pull request's last head gets its own CI run.
-4. The owner merges, tags the release, checks the six signed assets as the
-   signed release contract describes, and publishes the download portal.
-5. After the release is published, the owner of each installed server updates
-   that server from the panel's own update screen. This is a separate step from
-   every step above; no one else starts it.
+   which changes no file under `cmd/`, `internal/` or `web/`: the release
+   sequence policy 85 after 84 with the alpha.84 release commit `f0157e6c8` as
+   previous, the `download-portal/get.sh` pins (sequence 85 and version
+   v0.1.0-alpha.85; the public-key pin unchanged), the README version lines and
+   three contract tests, which pass. The repository variable is item 6. The
+   real archive was built and signed by CI on the tag.
+3. The number: v0.1.0-alpha.85, chosen by the release preparer on 2026-10-15
+   under the owner's standing instruction of 2026-10-13.
+4. Pull request #210 was squash-merged by the owner into `main` on 2026-10-15.
+   Its CI: 23 jobs succeeded and 1 was skipped (the job that publishes assets,
+   which runs only for a tag). Main is commit
+   `36c33c4531ee6c1306d324db7a666403176f3bf7`, tree
+   `c451c26de3cb179251e8dfd4b033ec7a9e18005e`.
+5. The continuous integration run on that main commit (run 38685686782). Its
+   first attempt concluded failure: 2 jobs failed before any step ran,
+   "Platform portability - Linux arm64 compile only" and "Panel race - Server
+   setup", both with GitHub's error "An action could not be found at the URI
+   https://codeload.github.com/actions/setup-go/tar.gz/924ae3a1…" (the
+   download of `actions/setup-go@v6` failed). The release preparer re-ran the
+   failed jobs; the run then concluded success, 24 jobs, 0 failed. The tag was
+   pushed only after that, so the order "the run on main finished, then the
+   tag" was followed this time (it was not for alpha.84).
+6. The owner set the repository variable `CELIKPANEL_RELEASE_SEQUENCE` from 84
+   to 85, then created and pushed the annotated tag `v0.1.0-alpha.85` (tag
+   object `c491a103f2f6913f58e5ba418a3361188ef11dde`) on 2026-10-15 on the main
+   commit above. The tag's CI run (38688902643) completed successfully with 24
+   jobs, and the release was published at 2026-10-15T06:10:06Z as a pre-release
+   with six assets: the two archives, their two checksum files, the signed
+   manifest and its signature.
+7. The assets were checked by the release preparer from a download
+   (`gh release download`; reported by the preparer, not recorded in a file
+   here). The platform archive and the generic archive are byte-identical,
+   66,146,417 bytes, SHA-256
+   `cb6424b712052df2768f6c16dd6a66c8ea05a13393e71933c38ae639c3fb0792`. Both
+   `.sha256` files verify with `sha256sum -c`. The signed manifest is 332 bytes
+   and says sequence 85, version v0.1.0-alpha.85, the main commit above
+   (`36c33c45…`), `published_at` 2026-10-15T05:14:06Z, linux/amd64. Its 64-byte
+   Ed25519 signature verifies with `openssl pkeyutl -verify -rawin -pubin`
+   against the tracked `deploy/release-signing-ed25519.pem` (key SHA-256
+   `7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb`, the same
+   as alpha.84's). The archive has 234 members. Inside it, `libexec/get.sh` pins
+   sequence 85 and v0.1.0-alpha.85; `release-sequence-policy` says 85 with
+   previous 84, `f0157e6c8f1614cff176821172f8a9067493e625`; `release.commit` is
+   the main commit above. The interface bundle is
+   `web/dist/assets/app-Br53Jd-B.js` (242,703 bytes, SHA-256
+   `33930d92e988c87ad677de54a3e2ef5c4b53361b64c777686eb4f0121806eda4`;
+   alpha.84's was `app-CX7VTgkx.js`). `release-content-guard.sh` and
+   `release-acceptance-license-guard.sh` both returned 0. Limit: the tag's
+   files were taken with `git archive` on Windows, not from a clone in a build
+   guest. Not reported: the `release.tree` comparison.
+8. The download portal package was built pre-signed with
+   `deploy/build-download-portal.sh` (no private key used): 132,665,325 bytes,
+   SHA-256 `80358e4b84551778906833a9750bff2ab66a79ddfca0653668a7ae2565c8d69b`,
+   54 members, built twice byte-identical. `releases/latest.txt` says
+   v0.1.0-alpha.85; the packaged `get.sh` has SHA-256
+   `9b0cf04f0cd52578d837c37c41cea5adf19d81b0eb8d8b2fdbd2c1aeaf598d2f`, equal to
+   the tag's. Not reported: the portal contract test, the public-verifier tests
+   and the promotion tests. Limit: no promoter rehearsal against a copy of the
+   live site was made.
+9. The portal was published by the release preparer, not the owner, with
+   `deploy/publish-download-portal.ps1` and `-PreviousVersion v0.1.0-alpha.84
+   -TargetVersion v0.1.0-alpha.85 -TransferTimeoutSeconds 1800`. The first
+   invocation (`powershell -File deploy/publish-download-portal.ps1 …` with a
+   relative script path) stopped at parameter binding before any transfer:
+   `Join-Path : Cannot bind argument to parameter 'Path' because it is an empty
+   string` at line 19 (`$PSScriptRoot` is empty in a parameter default). The
+   second invocation, with the script's absolute path and explicit `-Promoter`
+   and `-PublicVerifier`, succeeded: `CELIKPANEL_PORTAL_UPLOAD_READY`,
+   `CELIKPANEL_PORTAL_UPLOAD_PINNED`, the promoter's result `status: committed`
+   with previous_version v0.1.0-alpha.84 and the backup
+   `httpdocs.before-v0.1.0-alpha.85.20261015T062427Z…`, public verification
+   `status: ok` with 26 requests of a limit of 26 and one archive GET of
+   66,686,303 bytes, then `CELIKPANEL_DOWNLOAD_PORTAL_PUBLISHED`.
+10. A read from outside at 2026-10-15 06:24:40Z (read-only; release preparer):
+    `releases/latest.txt` is v0.1.0-alpha.85; `get.sh` is served with
+    `Strict-Transport-Security: max-age=15768000; includeSubDomains` and pins
+    sequence 85; `releases/latest.json` names sequence 85, commit `36c33c45…`
+    and SHA-256 `cb6424b7…`. Not reported: a byte comparison of the other
+    published files with the GitHub assets.
+11. Installed servers, at the time of this record: not updated. Only the owner
+    starts that, from the panel's own update screen. The outcome will be
+    recorded separately.
+12. Lab-environment note, not a product fact: the lab host lost KVM after
+    Windows update KB5127648 (AMD; microsoft/WSL issues #41917 and #41918), and
+    the owner removed that update to run set16.
+
+**Not done, and what publication does not change.**
+
+- **Open defect of the publishing script.** `deploy/publish-download-portal.ps1`
+  fails when it is started with a relative script path, because its parameter
+  defaults use `$PSScriptRoot`, which is empty there (item 9). It failed before
+  any transfer, and the absolute-path invocation worked. Open for the next
+  release: compute the defaults in the script body.
+- The installed servers were not updated when this record was written. The
+  owner of each starts that from the panel's own update screen, as a separate
+  step from every step above, and no one else starts it. To be reported by the
+  owner later: each server's update result; whether the full-screen licence
+  page appeared during the update; the Agent's version; Frankfurt's setup final
+  step after the update; the output of `postconf -n >/dev/null`. Not recorded
+  until the owner reports them. Nothing in this record describes what an
+  installed server did with this release.
+- Limits of the checks above: the assets' files were taken with `git archive`
+  on Windows, not from a clone in a build guest (item 7), and no promoter
+  rehearsal against a copy of the live site was made (item 8).
+- Publication is not product acceptance. The limits listed under "Limits of
+  this release" are unchanged by it. All five foundation items of the
+  [resilience contract](RESILIENCE-CONTRACT.md) remain partial; P0.1 to P0.5
+  stay partial and no P0 item is closed or advanced by the release or by its
+  publication.
 
 Install this release only through CelikPanel's update interface. Publishing it
 does not update installed servers; only the owner of a server starts its

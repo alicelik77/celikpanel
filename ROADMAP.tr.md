@@ -97,7 +97,8 @@ okunması ve sahibin bildirimi için bir kez daha değiştirildi;
 v0.1.0-alpha.84'ün girdisi 13 Ekim 2026'da aday olarak eklendi, aynı gün
 yayımlanması için değiştirildi ve yine o gün kurulu sunucuların okunması ve
 sahibin bildirimi için bir kez daha değiştirildi; v0.1.0-alpha.85'in
-girdisi 15 Ekim 2026'da aday olarak eklendi). Hiçbir P0 durumunu
+girdisi 15 Ekim 2026'da aday olarak eklendi ve aynı gün yayımlanması için
+değiştirildi). Hiçbir P0 durumunu
 değiştirmez: P0.1–P0.5'in tamamı hâlâ **kısmi**; yukarıdaki ve aşağıdaki her açık
 kabul işi açık kalır.
 
@@ -773,14 +774,16 @@ kabul işi açık kalır.
   - Bu sürüm ya da yayımlanması hiçbir P0 işini kapatmaz ve ilerletmez.
     P0.1–P0.5 **kısmi** kalır. Yayımlanması kurulu hiçbir paneli güncellemedi;
     güncellemeyi yalnız sahip, panelin kendi güncelleme ekranından başlatır.
-- **v0.1.0-alpha.85 adayı (yayımlanmadı).** 15 Ekim 2026'da yazıldı. Numarayı,
+- **v0.1.0-alpha.85 yayımlandı, 15 Ekim 2026; hiçbir kurulu sunucu henüz
+  güncellenmedi.** 15 Ekim 2026'da aday olarak yazıldı ve aynı gün yayımlanması
+  için değiştirildi. Numarayı,
   sahibin 13 Ekim 2026 tarihli kalıcı talimatı uyarınca sürümü hazırlayan seçti:
   v0.1.0-alpha.85 (sürüm hazırlığı `5443fe055`). Sahibin 14 Ekim 2026
   kararı, kurulu ikinci sunucudaki kurulumun son adımından sonra: sahibi
   bekleten bir ekran beklediğini gösterir ya da yapılacak bir şey olmadığını
   söyler ve bir sınırdan sonra dürüst bir "henüz bilinmiyor" ile biter
   ([D-033](docs/DECISIONS.tr.md)). Aday `fix/alpha85-setup-finish-wait`
-  dalıdır, `main`'in `e3c8f735a`'sından (v0.1.0-alpha.84'ün yayımlanma kaydı).
+  dalıydı, `main`'in `e3c8f735a`'sından (v0.1.0-alpha.84'ün yayımlanma kaydı).
   Ürün commit'leri: `a94f83cb0` (ilk ters DNS yanıtı eskiyse Agent sonraki
   çözümleyiciye sorar), `febbe09e3` (kurulum, sahibin geçen yeniden
   kontrolüyle tamamlanır, `GET /api/v1/setup?check=1&manual=1`), `c714238d6`
@@ -800,7 +803,7 @@ kabul işi açık kalır.
   kararlı bir özeti kaydeder), `0b43ee81e` (on ikinci tarayıcı incelemesi
   turu), `a945a4dbf` ve `e3feee06d` (set16 düzeneği ve on sekizinci gerçek
   sistem kaydı, yalnız kanıt) ve belgeler. Şema değişikliği yok, yeni rota yok
-  ([sürüm notu taslağı](docs/RELEASE-NOTES-v0.1.0-alpha.85.tr.md)).
+  ([sürüm notları](docs/RELEASE-NOTES-v0.1.0-alpha.85.tr.md)).
   - *Ölçülen: on sekizinci gerçek sistem kaydı, set16, yayımlama öncesi ölçüm*
     ([set16](deploy/e2e/release-recovery/evidence/set16-20261014/README.md),
     14 Ekim 2026 UTC; geçici QEMU/KVM konukları, gerçek, başsız bir Chrome;
@@ -844,14 +847,83 @@ kabul işi açık kalır.
     kırılması; HSTS süresinin iki saati karşılaştırması; laboratuvar
     araçlarının yalnız `valid_until` göndermesi; otomatik geri dönüşten sonraki
     `managed_site_files` bulgusu (set16'nın sabit commit'i için).
-  - *Yayımlamadan önce açık:* sahibin etiketten önce ayarladığı depo değişkeni
-    `CELIKPANEL_RELEASE_SEQUENCE=85`; son ucun CI koşusu; birleştirme, etiket,
-    altı imzalı dosya ve portal yayımı, hepsi sahip tarafından. Yapılan: sürüm
-    hazırlığı commit'i `5443fe055`; yayımlama öncesi ölçüm (set16). Her kurulu
-    paneli ardından sahibi, panelin kendi güncelleme ekranından günceller;
-    bunu başka kimse başlatmaz.
-  - *Sonraki sürüm için açık, sürüm notlarının saydığı aday sınırlarıyla:*
-    hiçbir kurulu sunucu ölçülmedi; "Kurulum tamamlanıyor"a ve güncelleme
+  - *Yayımlama, 15 Ekim 2026 (UTC).* Sahip #210 numaralı çekme isteğini
+    `main`'e `36c33c4531ee6c1306d324db7a666403176f3bf7` olarak squash ile
+    birleştirdi (ağacı `c451c26de3cb179251e8dfd4b033ec7a9e18005e`); çekme
+    isteğindeki CI: 23 iş başarılı, 1 iş atlandı (yayımlayan iş, yalnız
+    etiket). O `main` commit'indeki koşu (38685686782) önce başarısızlıkla
+    sonuçlandı: 2 iş ("Platform portability - Linux arm64 compile only" ve
+    "Panel race - Server setup") hiçbir adım çalışmadan başarısız oldu; ikisinde
+    de GitHub'ın şu hatası vardı: "An action could not be found at the URI
+    https://codeload.github.com/actions/setup-go/tar.gz/924ae3a1…"
+    (`actions/setup-go@v6` indirilemedi). Sürümü hazırlayan kişi başarısız
+    işleri yeniden çalıştırdı; koşu başarıyla sonuçlandı: 24 iş, 0 başarısız.
+    Etiket ancak bundan sonra gönderildi; yani "`main`'deki koşu bitti, sonra
+    etiket" sırası bu kez izlendi. Sahip `CELIKPANEL_RELEASE_SEQUENCE` depo
+    değişkenini 84'ten 85'e çıkardı ve `v0.1.0-alpha.85` açıklamalı etiketini
+    (etiket nesnesi `c491a103f2f6913f58e5ba418a3361188ef11dde`) oluşturup
+    gönderdi. Etiketin CI koşusu (38688902643) 24 işle başarıyla tamamlandı ve
+    sürümü 2026-10-15T06:10:06Z'de altı dosyayla ön sürüm olarak yayımladı.
+    Platform arşivi, genel arşivle bayt bayt aynı, 66.146.417 bayt, SHA-256
+    `cb6424b712052df2768f6c16dd6a66c8ea05a13393e71933c38ae639c3fb0792`, sıra
+    85. Dosyaları sürümü hazırlayan kişi bir indirmeden denetledi (`gh release
+    download`; hazırlayan kişi bildirdi, burada bir dosyada kayıtlı değil): iki
+    `.sha256` dosyası doğrulanır; manifest (332 bayt: sıra 85, sürüm
+    v0.1.0-alpha.85, commit `36c33c45…`, `published_at` 2026-10-15T05:14:06Z,
+    linux/amd64) ve 64 baytlık Ed25519 imzası, izlenen
+    `deploy/release-signing-ed25519.pem` ile (SHA-256
+    `7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb`;
+    alpha.84'ünkiyle aynı) `openssl pkeyutl -verify -rawin -pubin` kullanılarak
+    doğrulanır; arşivde 234 üye var, içindeki `libexec/get.sh` 85 /
+    v0.1.0-alpha.85'i sabitler, `release-sequence-policy` 85 der, önceki 84
+    `f0157e6c8f1614cff176821172f8a9067493e625`, `release.commit` `main`
+    commit'idir, arayüz paketi `web/dist/assets/app-Br53Jd-B.js`'tir (242.703
+    bayt, SHA-256
+    `33930d92e988c87ad677de54a3e2ef5c4b53361b64c777686eb4f0121806eda4`;
+    alpha.84'ünki `app-CX7VTgkx.js` idi) ve içerik denetçisi ile kabul-lisansı
+    denetçisi ikisi de 0 döndürdü. Sınır: etiketin dosyaları bir derleme
+    konuğundaki klondan değil, Windows'ta `git archive` ile alındı. İndirme
+    portalı paketi `deploy/build-download-portal.sh` ile imza öncesi kipte
+    derlendi (özel anahtar kullanılmadı): 132.665.325 bayt, SHA-256
+    `80358e4b84551778906833a9750bff2ab66a79ddfca0653668a7ae2565c8d69b`, 54 üye,
+    iki kez bayt bayt aynı derlendi; `releases/latest.txt` v0.1.0-alpha.85;
+    paketlenen `get.sh` (SHA-256
+    `9b0cf04f0cd52578d837c37c41cea5adf19d81b0eb8d8b2fdbd2c1aeaf598d2f`)
+    etiketinkine eşit. Canlı sitenin bir kopyasında terfi aracı provası
+    yapılmadı. Portalı sahip değil, sürümü hazırlayan kişi yayımladı; sahibin 15
+    Ekim 2026 tarihli talimatı uyarınca ("bunları neden sen yapmıyorsun…
+    benden istiyorsun"; bu sürümden itibaren birleştirme, depo değişkeni, etiket
+    ve portal yayımı hazırlayan kişiye aittir, kurulu panel güncellemelerini ise
+    yalnız sahip yapar), `deploy/publish-download-portal.ps1` ile
+    (`-PreviousVersion v0.1.0-alpha.84 -TargetVersion v0.1.0-alpha.85
+    -TransferTimeoutSeconds 1800`). Göreli betik yoluyla yapılan ilk çağrı
+    hiçbir aktarım olmadan parametre bağlama aşamasında durdu (`Join-Path :
+    Cannot bind argument to parameter 'Path' because it is an empty string`,
+    19. satır: `$PSScriptRoot` bir parametre varsayılanında boş). Betiğin mutlak
+    yolu ve açık `-Promoter` ile `-PublicVerifier` ile yapılan ikinci çağrı
+    başarılı oldu: terfi aracı `status: committed`, önceki v0.1.0-alpha.84,
+    yedek `httpdocs.before-v0.1.0-alpha.85.20261015T062427Z…`, genel doğrulama
+    `status: ok` (26 sınırından 26 istek, 66.686.303 baytlık bir arşiv GET'i),
+    `CELIKPANEL_DOWNLOAD_PORTAL_PUBLISHED`. 06:24:40Z'de dışarıdan okuma:
+    `releases/latest.txt` v0.1.0-alpha.85'tir; `get.sh`
+    `Strict-Transport-Security: max-age=15768000; includeSubDomains` ile
+    sunuluyor ve 85'i sabitliyor; `releases/latest.json` sıra 85'i, `36c33c45…`
+    commit'ini ve `cb6424b7…` SHA-256'sını söyler. **Kurulu paneller: bu kayıt
+    yazılırken güncellenmemişti.** Bunu yalnız sahip, panelin kendi güncelleme
+    ekranından başlatır. Sahibin bildireceği ve o zamana kadar
+    kaydedilmeyecek olanlar: iki sunucunun güncelleme sonucu, güncelleme
+    sırasında tam ekran lisans sayfası, Agent'ın sürümü, Frankfurt'un
+    güncellemeden sonraki kurulum son adımı ve `postconf -n >/dev/null`
+    çıktısı. Laboratuvar ortamı notu, ürün gerçeği değil: laboratuvar
+    bilgisayarı KB5127648 numaralı Windows güncellemesinden sonra KVM'yi kaybetti
+    (AMD; microsoft/WSL sorunları #41917 ve #41918) ve sahip set16'yı
+    çalıştırmak için o güncellemeyi kaldırdı. Yayımlanma, ürün kabulü değildir.
+    [Sürüm notları](docs/RELEASE-NOTES-v0.1.0-alpha.85.tr.md), "Yayımlama
+    kaydı", her adımı kimin yaptığını ve kimin bildirdiğini söyler.
+  - *Sonraki sürüm için açık, sürüm notlarının saydığı bu sürümün sınırlarıyla:*
+    `deploy/publish-download-portal.ps1` göreli betik yoluyla çöker, çünkü
+    parametre varsayılanları `$PSScriptRoot`'u kullanır (varsayılanlar betiğin
+    gövdesinde hesaplanmalı); hiçbir kurulu sunucu ölçülmedi; "Kurulum tamamlanıyor"a ve güncelleme
     kartının meşgul durumuna gerçek sistemde ulaşılamadı (yalnız bağlanan
     testler ve taklide karşı tarayıcı), bileşen kilidinin yeniden bağlanmasına,
     yayılan alan adı kontrollerine ve HSTS'nin kalan süresine de; yanıt veren
@@ -862,11 +934,11 @@ kabul işi açık kalır.
     derlemeydi; kurtarma temel dosyası bir geri dönüşten sonra kusurlu adayı
     adlandırır (set12, set15, set16); set16'nın O1–O3'ü; şablonlu metin
     (`component_not_installable`, roller, posta profilleri dışında "rescan");
-    Arch; ve yukarıdaki alpha.84 sürümünün bu adayın ele almadığı her sınırı.
-  - Bu aday hiçbir P0 işini kapatmaz ve ilerletmez. P0.1–P0.5 **kısmi** kalır;
-    set16 bir ölçümdür, kabul değildir. Yayımlanması kurulu hiçbir paneli
-    güncellemeyecek; güncellemeyi yalnız sahip, panelin kendi güncelleme
-    ekranından başlatır.
+    Arch; ve yukarıdaki alpha.84 sürümünün bu sürümün ele almadığı her sınırı.
+  - Bu sürüm ya da yayımlanması hiçbir P0 işini kapatmaz ve ilerletmez.
+    P0.1–P0.5 **kısmi** kalır; set16 bir ölçümdür, kabul değildir.
+    Yayımlanması kurulu hiçbir paneli güncellemedi; güncellemeyi yalnız sahip,
+    panelin kendi güncelleme ekranından başlatır.
 
 ### Son DNS sonuçları ve sınırları
 
@@ -903,7 +975,7 @@ kabul işi açık kalır.
 | 5 | `v0.1.0-alpha.82` sürüm incelemesi (yukarıdaki "Sürüm durumu — 10 Ekim 2026" bölümüne bakın). **10 Ekim 2026'da yayımlandı (etiket `2a0af8866` üzerinde; 22 CI işinin 22'si; altı dosya; portalı sahip yayımladı; kurulu iki sunucuyu sahip panelin güncelleme ekranından güncelledi); numara v0.1.0-alpha.82 (sahibin 10 Ekim 2026 kararı).** Yedinci bir gerçek sistem kaydı, yayımlanmış koda karşı gerçek bir Chrome, güncelleme penceresi ve gizli sekme hücrelerini geçti, soğuk sayfa yüklemesinde (`RecoveryAccess` kapısı) kaldı; kabul denetimindeki daraltmalarıyla saklanıyor. 8 ve 9 Ekim 2026'daki dört gerçek sistem koşusu, bir ek ölçüm ve `postconf`'un bir okuması; ayar kayıtlarını, hizmet işlemlerini, istek kimliğini, yayımlanmış v0.1.0-alpha.81'den güncellemeyi (`cfa329676` hâliyle) ve yeni kurulmuş konuklarda son düzeltmeleri (`557b554eb` hâliyle, Arch'ta PHP siteleri dahil) ölçtü; geçmeyen tek denetim, Ubuntu 24.04'te Postfix durdurulduktan sonraki not, düzeltildi ve yeniden ölçüldü. `postconf` düzeltmesi (`67b62cc0f`) gerçek programın bir okumasına ve bileşen testlerine dayanır. Güncelleme matrisi 9 Ekim 2026'da `67b62cc0f` hâlinde, beşinci bir koşuda yinelendi: on hücrenin tamamı, her biri bir kez ve konuk diskleri bellekteyken, üçüncü koşunun ölçtüğü sonuca ulaştı. Ardından son kod (`72b879eea`; Panel'in daraltılmış `Strict-Transport-Security` başlığını ekler, [D-030](docs/DECISIONS.tr.md)) altıncı bir koşuda üç platformda yeni kuruldu, başlığı konuklarda okundu ve platform başına bir güncelleme doğrulandı. Son kodda yinelenmeyenler: ayar kaydı, istek kimliği ve tam hizmet işlemi hücreleri ile yedi güncelleme hücresi. Gerçek bir sistemde çalıştırılmayan: düzeltilmiş posta sertifikası yolu. Sahibin 10 Ekim 2026'da karara bağladıkları: numara; yayımlamadan önce yeni kurulum ölçümü; başlık değişikliği. Sahibin kendi denemesi, kurulu iki sunucunun sahip tarafından panelin güncelleme ekranından başlatılan güncellemesidir; geçici sunucu kullanılmaz. Sahibin 10 Ekim 2026'da yaptıkları: sürüm sırası değişkeni, birleştirme, etiket ve portal yayını; üretim imzalaması etiket üzerinde CI içinde çalıştı ve dosyalar doğrulandı; kurulu iki panelin güncellemesi (sahip başlattı). Sonraki sürüme taşınan: sahibin üretilmiş bir site yapılandırma dosyasındaki düzenlemesinin bir Panel başlangıcında neyle karşılaştığının denetimi ve "Sürüm durumu" altındaki açık liste ("Sonraki sürüme açık işler (10 Ekim 2026, yayımlamadan sonra)"); bu liste kurulu güncellemelerden dört sahip gözlemini ve ilk yükleme ara ekranını içerir. Hiçbir P0 işi kapanmadı ve ilerlemedi. | Beşinci ve altıncı koşular saklanır ([güncelleme matrisi](deploy/e2e/release-recovery/evidence/set5-20261009/README.md), [yeni kurulum ve başlık](deploy/e2e/release-recovery/evidence/set6-20261009/README.md)) ve [sürüm notları](docs/RELEASE-NOTES-v0.1.0-alpha.82.tr.md) hangi denetimin hangi koda dayandığını söyler. Sürüm, açık kalan sınırlarını belirtir. İmzalı dosyalar ve kurtarma uyumu doğrulanır; kurulu panel güncellemesini yalnız kullanıcı başlatır. |
 | 6 | `v0.1.0-alpha.83` sürüm incelemesi (yukarıdaki "Sürüm durumu — 10 Ekim 2026" bölümünde bu sürümün girdisine bakın). **11 Ekim 2026'da yayımlandı (etiket `0447558e9` üzerinde; etiketin CI'ı 24 iş, başarılı; altı dosya; portalı sahip yayımladı); sahip kurulu iki sunucuyu da 11 Ekim 2026'da ona güncelledi, 12 Ekim 2026'da dışarıdan arayüzünü sunarken gözlendi ve sahibin 12 Ekim 2026 tarihli iki ekran görüntüsünde görüldü (kayıtlı, açık kısımlarıyla); numara v0.1.0-alpha.83 (sahibin 11 Ekim 2026 kararı); D-031 bu sürüme girer.** Yedi gerçek sistem kaydı (yedinciden on üçüncüye, 10 ve 11 Ekim 2026, geçici konuklar, test lisanslı derlemeler, etiketlerin yeniden derlenmiş kaynağından güncellemeler) alpha.81 ve alpha.82 arayüzlerini gerçek bir Chrome'da, adayın ilk yüklemesini ve erişim beklemesini, v0.1.0-alpha.82'nin sahip düzenlemesiyle yaptığını, D-031'in ilk bölümünü, düzeltmelerini, ikinci adımını (havuz, uygulama birimi) alpha.82'den güncellemeyle ve ondan sonraki düzeltmeleri, kaydın aksini söylediği yerler dışında Debian 13, Ubuntu 24.04 ve Arch'ta ölçtü; on üçüncü kayıt yalnız Debian 13 ve Ubuntu 24.04'te koştu. On üçüncü kayıttan sonra yapılan değişikliklerin yalnız bileşen testleri var. Sahibin 11 Ekim 2026'da yaptıkları: sürüm sırası değişkeni 83 yapıldı, satıcının yayın araçları ile iki kurtarma betiğinin arşivde kalacağına karar verildi, birleştirme, etiket, portal yayımı; altı imzalı dosyayı etikette CI üretti ve denetlendi (`main` korumasının okunması zorunlu denetimlerde ad değişikliği gerekmediğini gösterdi). Kurulu paneller: yayımlama kaydı 11 Ekim 2026'da yazıldığında güncellenmemişti; 12 Ekim 2026'da dışarıdan yapılan bir okuma ikisinin de bu sürümün arayüzünü sunduğunu gösterdi, yani sahip ikisini de panelin kendi güncelleme ekranından 11 Ekim 2026'da güncelledi. Sahibin 12 Ekim 2026 tarihli iki ekran görüntüsü, ikisinin de kenar çubuğunda v0.1.0-alpha.83'ü (derleme kimliği sözcüğün ortasından satır kırıyor), ilk sunucuda bir Pano'yu, ikincisinde ise "Setup stopped: its plan was reopened" diyen, son adımı "Stopped" olan ve hiçbir adımı "In progress" olmayan, son denetimi yalnız sahibin değiştirebileceği bir ters DNS (PTR) kaydını bekleyen kurulum sayfasını gösteriyor. Bildirilmeyenler: yeniden başlatma sırasında tam ekran lisans sayfası, güncelleme bildirimi ile kart, kurulum adresine doğrudan yüklemede anlık lisans sayfası, güncellemenin panel içindeki doğrulama sonucu, Agent'ın sürümü, `postconf -n >/dev/null` çıktısı; iki sunucunun da alan adı yok, bu yüzden ilk başlangıcın site dosyası devralması orada devralacak bir şey bulmadı ve Alan Adları satırı görülemez. Hiçbir P0 işi kapanmaz ya da ilerlemez; bu sahibin gözlemidir, kabul kanıtı değildir. | [Sürüm notları](docs/RELEASE-NOTES-v0.1.0-alpha.83.tr.md) hangi denetimin hangi koda dayandığını söyler ve sınırları sayar; kayıtlar `deploy/e2e/release-recovery/evidence/` altındadır. İmzalı dosyalar ve kurtarma uyumu doğrulanır; kurulu panel güncellemesini yalnız kullanıcı başlatır. |
 | 7 | `v0.1.0-alpha.84` sürüm incelemesi (yukarıdaki "Sürüm durumu — 10 Ekim 2026" bölümünde bu sürümün girdisine bakın). **13 Ekim 2026'da yayımlandı (etiket `f0157e6c8` üzerinde; etiketin CI'ı 24 iş, başarılı; altı dosya; portalı sahip yayımladı); kurulu iki sunucuyu da sahip 13 Ekim 2026'da ona güncelledi (16:16 UTC'de dışarıdan yapılan okumada hâlâ v0.1.0-alpha.83'ün arayüz derlemesini sunuyorlardı; 16:59 UTC'de alpha.84'ünkini sunuyorlardı) ve sahibin 13 Ekim 2026 tarihli iki ekran görüntüsünde görüldü (kaydedildi, açık kısımlarla); numara v0.1.0-alpha.84 (sahibin 13 Ekim 2026 kararı); D-032 bu sürüme girer.** Dashboard'ın "Sistem servisleri" kartı bileşenleri kendiliğinden kontrol eder, sunucu bir taramanın yaşını ve lisansın kalan süresini söyler, ulaşılamayan Agent adıyla söylenir. Dört gerçek sistem kaydı (on dördüncüden on yediye, 12 ve 13 Ekim 2026, geçici konuklar, test lisanslı derlemeler, gerçek başsız Chrome) bunu ölçtü: on yedinci, sürüm commit'inin kendisinde, Debian 13 ve Ubuntu 24.04'e temiz kurulumları ve yalnız Debian 13'te alpha.83'ten güncellemeyi kapsadı ve iki açık madde bıraktı. Sahibin 13 Ekim 2026'da yaptıkları: #207 sonra #208'in birleştirilmesi, sürüm sırası değişkeninin 84 yapılması, etiket, portal yayımı; altı imzalı dosyayı etikette CI üretti ve denetlendi. Süreç notu: etiket, `main` commit'indeki CI koşusu sürerken gönderildi (koşu sonradan geçti; aynı ağaç çekme isteğinde 24 işin 24'ünü geçmişti); (düzeltme 2026-10-14: yayımlayan iş paketleme işine, o da aynı koşunun her test ve derleme işine bağlıdır; yani bir etiketin dosyaları ancak o koşu geçtikten sonra yayımlanır; `main` koşusu ile etiket arasındaki sıraya dair not geçerlidir). Kurulu paneller: yayımlama kaydı yazıldığında güncellenmemişti; 13 Ekim 2026'da dışarıdan yapılan bir okuma ikisinin de bu sürümün arayüzünü sunduğunu gösterdi; yani sahip ikisini de panelin kendi güncelleme ekranından güncelledi. Sahibin iki ekran görüntüsü ikisinin kenar çubuğunda v0.1.0-alpha.84'ü (yapı kimliği hâlâ sözcüğün ortasından satır kırıyor), ilk sunucuda "System services" kartı hiçbir şeye basılmadan "5 / 5 running / installed" diyen bir Dashboard'u, ikincisinde alpha.83'ten beri değişmeyen kurulum sayfasını gösteriyor; son denetimi yalnız sahibinin değiştirebileceği bir ters DNS (PTR) kaydını bekliyor. Bildirilmeyenler: güncellemenin panel içindeki doğrulama sonucu, Agent'ın sürümü, güncelleme sırasında tam ekran lisans sayfası, `postconf -n >/dev/null` çıktısı; iki sunucunun da alan adı yok, bu yüzden D-031 sorusu kurulu sunucularda açık kalır. Hiçbir P0 işi kapanmaz ya da ilerlemez; yayımlanma ürün kabulü değildir ve bu sahibin gözlemi ile dışarıdan bir okumadır, kabul kanıtı değildir. | [Sürüm notları](docs/RELEASE-NOTES-v0.1.0-alpha.84.tr.md) hangi denetimin hangi koda dayandığını söyler ve sınırları sayar; kayıtlar `deploy/e2e/release-recovery/evidence/` altındadır. İmzalı dosyalar ve kurtarma uyumu doğrulanır; kurulu panel güncellemesini yalnız kullanıcı başlatır. |
-| 8 | `v0.1.0-alpha.85` sürüm incelemesi (yukarıdaki "Sürüm durumu — 10 Ekim 2026" bölümünde bu adayın girdisine bakın). **Aday, yayımlanmadı; numarayı sahibin 13 Ekim 2026 tarihli kalıcı talimatı uyarınca sürümü hazırlayan seçti: v0.1.0-alpha.85 (sürüm hazırlığı `5443fe055`, 84'ten sonra sıra 85); D-033 bu sürüme girer.** Sahibin kurulu ikinci sunucudaki son kurulum adımından sonra 14 Ekim 2026'da koyduğu kural: sahibi bekleten bir ekran beklediğini gösterir ya da yapılacak bir şey olmadığını söyler ve bir sınırdan sonra dürüst bir "henüz bilinmiyor" ile biter. Kurulum sahibin geçen kontrolüyle tamamlanır ve ters DNS beklemesini adıyla söyler; 37 bekleme durumunun denetimi 19'unu değiştirdi (önce 16, sonra sahibin aynı gün karar verdiği 3); alpha.84'ün O4–O6'sı, Posta paketleri kartı, türlü posta profili cümleleri, sunucunun saatiyle HSTS'nin kalan süresi ve kenar çubuğundaki yapı kimliği düzeltildi; Agent eski bir PTR yanıtında sonraki çözümleyiciye sorar. Bir gerçek sistem kaydı (on sekizinci, set16, 14 Ekim 2026, geçici konuklar, bir sabit commit'in test lisanslı derlemeleri, gerçek başsız Chrome) Debian 13'e temiz kurulumu ve Debian 13 ile Ubuntu 24.04'te alpha.84'ten sağlam ve kusurlu güncellemeyi ölçtü (`update_verified`; `recovered` / `rollback_verified`; geri dönüşten sonra defter `equal-except-volatile`, yalnız `observed_at`). Gerçek sistemde ulaşılamayan: "Kurulum tamamlanıyor" ve güncelleme kartının meşgul durumu. Yayımlamadan önce açık, hepsi sahip tarafından: sürüm sırası değişkeni 85, son ucun CI koşusu, birleştirme, etiket, altı imzalı dosya, portal yayımı. Hiçbir kurulu sunucu ölçülmedi; hiçbir P0 işi kapanmaz ya da ilerlemez; set16 bir ölçümdür, kabul kanıtı değildir. | [Sürüm notları](docs/RELEASE-NOTES-v0.1.0-alpha.85.tr.md) hangi denetimin hangi koda dayandığını söyler ve sınırları sayar; kayıtlar `deploy/e2e/release-recovery/evidence/` altındadır. İmzalı dosyalar ve kurtarma uyumu doğrulanır; kurulu panel güncellemesini yalnız kullanıcı başlatır. |
+| 8 | `v0.1.0-alpha.85` sürüm incelemesi (yukarıdaki "Sürüm durumu — 10 Ekim 2026" bölümünde bu sürümün girdisine bakın). **15 Ekim 2026'da yayımlandı (etiket `36c33c45` üzerinde; etiketin CI'ı 24 iş, başarılı; altı dosya; portalı sürümü hazırlayan kişi yayımladı); yayımlama kaydı yazılırken kurulu paneller güncellenmemişti; v0.1.0-alpha.85 numarasını sahibin 13 Ekim 2026 tarihli kalıcı talimatı uyarınca sürümü hazırlayan seçti (sürüm hazırlığı `5443fe055`, 84'ten sonra sıra 85); D-033 bu sürüme girer.** Sahibin kurulu ikinci sunucudaki son kurulum adımından sonra 14 Ekim 2026'da koyduğu kural: sahibi bekleten bir ekran beklediğini gösterir ya da yapılacak bir şey olmadığını söyler ve bir sınırdan sonra dürüst bir "henüz bilinmiyor" ile biter. Kurulum sahibin geçen kontrolüyle tamamlanır ve ters DNS beklemesini adıyla söyler; 37 bekleme durumunun denetimi 19'unu değiştirdi (önce 16, sonra sahibin aynı gün karar verdiği 3); alpha.84'ün O4–O6'sı, Posta paketleri kartı, türlü posta profili cümleleri, sunucunun saatiyle HSTS'nin kalan süresi ve kenar çubuğundaki yapı kimliği düzeltildi; Agent eski bir PTR yanıtında sonraki çözümleyiciye sorar. Bir gerçek sistem kaydı (on sekizinci, set16, 14 Ekim 2026, geçici konuklar, bir sabit commit'in test lisanslı derlemeleri, gerçek başsız Chrome) Debian 13'e temiz kurulumu ve Debian 13 ile Ubuntu 24.04'te alpha.84'ten sağlam ve kusurlu güncellemeyi ölçtü (`update_verified`; `recovered` / `rollback_verified`; geri dönüşten sonra defter `equal-except-volatile`, yalnız `observed_at`). Gerçek sistemde ulaşılamayan: "Kurulum tamamlanıyor" ve güncelleme kartının meşgul durumu. 15 Ekim 2026'da yapılanlar: #210 numaralı çekme isteğini sahip squash ile birleştirdi; `main` commit'indeki koşu, `actions/setup-go@v6` indirilemediği için iki işte hiçbir adım çalışmadan bir kez başarısız oldu, sürümü hazırlayan kişi onu yeniden çalıştırdı ve başarılı oldu, etiket ancak ondan sonra gönderildi (amaçlanan sıra izlendi); sahip sürüm sırası değişkenini 85 yaptı ve etiketi gönderdi; CI altı dosyayı imzaladı; dosyaları ve portal paketini hazırlayan kişi bir indirmeden denetledi; portalı hazırlayan kişi yayımladı (ilk çağrı, `$PSScriptRoot` bir parametre varsayılanında boş olduğundan hiçbir aktarım olmadan parametre bağlama aşamasında durdu: sonraki sürüm için açık). Sahibin güncellemeden sonra bildireceği: iki sunucunun güncelleme sonucu, tam ekran lisans sayfası, Agent'ın sürümü, Frankfurt'un kurulum son adımı, `postconf -n >/dev/null`. Hiçbir kurulu sunucu ölçülmedi; hiçbir P0 işi kapanmaz ya da ilerlemez; yayımlanma ürün kabulü değildir ve set16 bir ölçümdür, kabul kanıtı değildir. | [Sürüm notları](docs/RELEASE-NOTES-v0.1.0-alpha.85.tr.md) hangi denetimin hangi koda dayandığını söyler ve sınırları sayar; kayıtlar `deploy/e2e/release-recovery/evidence/` altındadır. İmzalı dosyalar ve kurtarma uyumu doğrulanır; kurulu panel güncellemesini yalnız kullanıcı başlatır. |
 
 Yeni test eklemeden önce hangi açık kabulün kapanacağı belirtilir.
 Geçen deney, ancak ilgili değişiklik veya adı konmuş belirsizlik nedeniyle tekrarlanır.
