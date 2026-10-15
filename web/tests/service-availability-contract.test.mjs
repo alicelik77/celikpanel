@@ -244,4 +244,11 @@ test('state refresh failure copy never claims the operation completed', () => {
   assert.match(englishRefresh, /checks the components again by itself/);
   assert.doesNotMatch(turkishRefresh, /yeniden tara/i);
   assert.match(turkishRefresh, /kendiliğinden yeniden denetler/);
+  // A component's own page checks too (15 Oct 2026): the sentence names it.
+  assert.match(englishRefresh, /while the Dashboard, the Components page or a component’s page is open/);
+  assert.match(turkishRefresh, /Panel, Bileşenler sayfası ya da bir bileşenin sayfası açıkken/);
+  const englishUnverified = english.match(/'err\.SERVICE_STATE_UNVERIFIED': '([^']+)'/)?.[1] ?? '';
+  const turkishUnverified = turkish.match(/'err\.SERVICE_STATE_UNVERIFIED': '([^']+)'/)?.[1] ?? '';
+  assert.match(englishUnverified, /while the Dashboard, the Components page or a component’s page is open/);
+  assert.match(turkishUnverified, /Panel, Bileşenler sayfası ya da bir bileşenin sayfası açıkken/);
 });

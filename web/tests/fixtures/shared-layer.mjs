@@ -81,6 +81,8 @@ export const serviceActionNoteURL = compileSource('lib/serviceActionNote.ts', un
 // The component census (lib/componentCensus.ts) is the shipped module: lib/managedServices.ts
 // publishes into it after its conditional check (15 Oct 2026, D-032).
 const componentCensusURL = compileSource('lib/componentCensus.ts', unexpected('lib/componentCensus.ts'));
+// So is lib/visibleReads.ts, which the held check's resume uses (15 Oct 2026).
+const visibleReadsURL = compileSource('lib/visibleReads.ts', unexpected('lib/visibleReads.ts'));
 
 export function sharedLayer(stubURL, extra = {}) {
   const uiURL = compileSource('components/ui.tsx', (specifier) => (
@@ -97,6 +99,7 @@ export function sharedLayer(stubURL, extra = {}) {
     '/lib/siteWebServerRefused': siteWebServerRefusedURL,
     '/lib/serviceActionNote': serviceActionNoteURL,
     '/componentCensus': componentCensusURL,
+    '/visibleReads': visibleReadsURL,
     '/ui': uiURL,
     ...extra,
   };

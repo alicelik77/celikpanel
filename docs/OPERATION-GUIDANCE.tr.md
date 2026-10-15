@@ -7698,17 +7698,31 @@ Agent, 2026-10-14 denetim kaydındaki temiz bağlama ad alanında).
     onu paylaşır, bildirim çıkmaz, ardından kayıt yeniden okunur. Sürerken sayfa
     bunu sakin bir satırla söyler ("CelikPanel bileşenleri şimdi kontrol
     ediyor ... sizin bir şey yapmanız gerekmiyor"); Tekrar dene yoktur.
-    Başarısız kontrol mevcut "kontrol edilemedi" durumunu korur; süren bir
-    değişiklik yüzünden tutulan kontrol (409 `server_setup_busy` /
-    `service_operation_busy`) bunu Tekrar dene ile söyler; hiçbiri kendiliğinden
-    yeniden sorulmaz ve başarılı kontrolden sonra yine dönen ret ikinci kez
-    kontrol edilmez (döngü yok). Yalnız kişinin Tekrar dene'si bir kez daha
-    sorar. Başka her ret değişmez (olumsuz kontrol).
+    Başarısız kontrol mevcut "kontrol edilemedi" durumunu korur ve kendiliğinden
+    yeniden sorulmaz. Süren bir değişiklik yüzünden tutulan kontrol (409
+    `server_setup_busy` / `service_operation_busy`) bunu söyler ve Pano gibi
+    kendiliğinden sürer: tutulan durum ekrandayken sayfa
+    `GET /api/v1/host-mutation-readiness` okur (yalnız okuma; 5 saniyede bir,
+    yalnız sekme görünürken, tek tek; sayfada kaç okuyan olursa olsun tek
+    yoklama) ve bu okuma meşgulden hazıra geçince kaydı bir kez daha ister (tek
+    izleme kontrolü, döngü yok). Yoklamanın hiç meşgul görmediği bir değişiklik
+    ya da sürekli meşgul kalan sunucu tutulan durumu yerinde bırakır; Tekrar dene
+    durur ve hemen sorar. Başarılı kontrolden sonra yine dönen ret ikinci kez
+    kontrol edilmez. Başka her ret değişmez (olumsuz kontrol).
+    `component.checkHeld` artık Tekrar dene'ye basmayı söylemez: "Değişiklik
+    bitince sayfa kendiliğinden yeniden denetler; Tekrar dene hemen sorar."
+    `err.SERVICE_STATE_UNVERIFIED` ve `err.SERVICE_STATE_REFRESH_FAILED` üçüncü
+    yeri de söyler: "Panel, Bileşenler sayfası ya da bir bileşenin sayfası
+    açıkken" (`cmd/panel/managed_service_handlers.go` içindeki Go ret metni hâlâ
+    eski ifadeyi taşır; web metni koddan söyler).
     `lib/managedServices.ts` (`useStoredRecordCheck`, `runStoredRecordCheck`),
     `ServiceRecordLookup`, `ComponentPanels`, `ServiceShell`; EN/TR
     `component.checkingStored`, `component.checkHeld`. Testler:
-    `tests/remote-state-mounted.test.mjs` içinde on bağlanmış durum (iki sayfa,
-    sayfa başına beş) ve olumsuz kontrol; hepsi kontrol olmadan başarısız olur.
+    `tests/remote-state-mounted.test.mjs` içinde on altı bağlanmış durum (iki
+    sayfa, sayfa başına sekiz: kontrol, kontrol ediliyor, başarısız, tutulan,
+    tutulanın kendiliğinden sürmesi, hiç ya da hep meşgulken izlenmemesi,
+    yalnız sekme görünürken okuma, döngü yok) ve olumsuz kontrol; izleme ya da
+    görünürlük kuralı kaldırılınca süren durumlar başarısız olur.
 15. **Mağazanın durum süzgeci**, bileşen durumu bilinmeyen ürünleri kendi
     girdisi altında listeler: "Durum henüz bilinmiyor" / "State not known yet";
     artık "Bu sunucuda desteklenmiyor" altında değildir (rozetleri bunu zaten
@@ -7716,7 +7730,7 @@ Agent, 2026-10-14 denetim kaydındaki temiz bağlama ad alanında).
     `tests/store-state-not-known-mounted.test.mjs` süzgeci iki dilde bağlar ve
     önceki gruplamaya karşı başarısız olur.
 
-8-15. kalemlerden sonraki sayılar: `npm test` 1457/1457; `npx tsc --noEmit`
+8-15. kalemlerden sonraki sayılar: `npm test` 1463/1463; `npx tsc --noEmit`
 temiz; `npm run build` paket bütçesiyle geçer; aşağıdaki Go sayıları 8-13.
 kalemlerdendir ve yeniden koşulmadı (14 ve 15. kalemler yalnız web); `go test -v ./cmd/panel/... ./internal/transport/... ./internal/auth/...`:
 1602 üst düzey test ve 1655 birinci düzey alt test geçti, 6 atlandı, 0

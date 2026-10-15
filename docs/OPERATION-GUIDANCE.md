@@ -7727,16 +7727,32 @@ the Agent in the clean mount namespace of the 2026-10-14 audit entry).
     header), no toast, then the record is read again. While it runs the page
     says so in a quiet line ("CelikPanel is checking the components now ...
     you do not need to do anything") with no Retry. A failed check keeps the
-    existing "could not check" state; a check held by a change in progress
-    (409 `server_setup_busy` / `service_operation_busy`) says so with Retry;
-    neither is asked again by itself, and a refusal that returns after a
-    successful check is not checked a second time (no loop). Only the person's
-    Retry asks once more. Any other refusal is unchanged (negative control).
+    existing "could not check" state and is not asked again by itself. A check
+    held by a change in progress (409 `server_setup_busy` /
+    `service_operation_busy`) says so and resumes by itself, as the Dashboard
+    does: while the held state is on screen the page reads
+    `GET /api/v1/host-mutation-readiness` (reads only; every 5 seconds, only
+    while the tab is visible, one at a time, one poll however many readers the
+    page has) and, when that read goes from busy to ready, asks for the record
+    once more (one follow-up check, no loop). A change the poll never sees as
+    busy, or a server that stays busy, leaves the held state in place; Retry
+    stays and asks at once. A refusal that returns after a successful check is
+    not checked a second time. Any other refusal is unchanged (negative
+    control). `component.checkHeld` no longer tells the person to press Try
+    again: "This page checks again by itself when the change finishes; Try
+    again asks now." `err.SERVICE_STATE_UNVERIFIED` and
+    `err.SERVICE_STATE_REFRESH_FAILED` now name the third place: "while the
+    Dashboard, the Components page or a component's page is open" (the Go
+    refusal text in `cmd/panel/managed_service_handlers.go` still has the older
+    wording; the web says it from the code).
     `lib/managedServices.ts` (`useStoredRecordCheck`, `runStoredRecordCheck`),
     `ServiceRecordLookup`, `ComponentPanels`, `ServiceShell`; EN/TR
-    `component.checkingStored`, `component.checkHeld`. Tests: ten mounted
-    cases in `tests/remote-state-mounted.test.mjs` (two pages, five cases
-    each) plus the negative control, all failing without the check.
+    `component.checkingStored`, `component.checkHeld`. Tests: sixteen mounted
+    cases in `tests/remote-state-mounted.test.mjs` (two pages, eight cases
+    each: the check, checking, failed, held, held resumes by itself, held is
+    not followed up when never or always busy, held reads only while the tab is
+    visible, no loop) plus the negative control; the resume cases fail when the
+    follow-up or the visibility rule is removed.
 15. **The Store's state filter** lists the offerings whose component state is
     not known under their own entry, "State not known yet" / "Durum henüz
     bilinmiyor", and no longer under "Unsupported here" (which their badge had
@@ -7744,7 +7760,7 @@ the Agent in the clean mount namespace of the 2026-10-14 audit entry).
     `tests/store-state-not-known-mounted.test.mjs` mounts the filter in both
     languages and fails against the previous grouping.
 
-Counts after items 8 to 15: `npm test` 1457 of 1457; `npx tsc --noEmit` clean;
+Counts after items 8 to 15: `npm test` 1463 of 1463; `npx tsc --noEmit` clean;
 `npm run build` passes with its bundle budget; the Go figures below are from
 items 8 to 13 and were not re-run (items 14 and 15 are web only);
 `go test -v ./cmd/panel/... ./internal/transport/... ./internal/auth/...`: 1602

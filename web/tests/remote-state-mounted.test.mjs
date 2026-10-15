@@ -1682,6 +1682,37 @@ function unverifiedUntilChecked(scan, { checks = true } = {}) {
     changes: { [SCAN]: () => { if (checks) checked = true; return scan(); } },
   };
 }
+const READINESS = '/api/v1/host-mutation-readiness';
+// The first check is refused because a change holds the server; the second succeeds.
+function heldThenOk() {
+  let attempts = 0;
+  let checked = false;
+  return {
+    busy: true,
+    read: () => (checked ? Response.json({ services: [redisRecord] }) : Response.json(UNVERIFIED, { status: 503 })),
+    changes: {
+      [SCAN]: () => {
+        attempts += 1;
+        if (attempts === 1) return Response.json({ error: 'busy', code: 'service_operation_busy' }, { status: 409 });
+        checked = true;
+        return Response.json({ services: [redisRecord], scanned_at: new Date().toISOString(), scan_age_seconds: 0 });
+      },
+    },
+  };
+}
+// Captures the intervals a page schedules, so a test ticks them itself.
+function fakeIntervals() {
+  const timers = new Map();
+  let next = 1;
+  const realSet = globalThis.setInterval;
+  const realClear = globalThis.clearInterval;
+  globalThis.setInterval = (fn, ms) => { const id = next++; timers.set(id, { fn, ms }); return id; };
+  globalThis.clearInterval = (id) => { timers.delete(id); };
+  return {
+    polls: () => [...timers.values()].filter((item) => item.ms === 5000),
+    restore() { globalThis.setInterval = realSet; globalThis.clearInterval = realClear; },
+  };
+}
 const scanCalls = () => calls.filter((call) => call.method === 'POST' && call.url.startsWith(SCAN));
 const callLog = () => calls.map((call) => `${call.method} ${call.url}`).join(', ');
 const freshCheck = async () => (await import(managedServicesURL)).resetStoredRecordCheck();
@@ -1748,6 +1779,87 @@ for (const [name, Component, props, drawn] of [
       assert.ok(buttons('common.retry').length >= 1, 'no Retry');
       assert.deepEqual(globalThis.currentTest.toasts, []);
     } finally { await cleanup(); }
+  });
+
+  // --- A held check resumes by itself (15 Oct 2026) ---------------------------
+  // The held state used to wait for the person's "Try again". It now follows
+  // the Dashboard: the host-mutation-readiness read (GET only, tab visible,
+  // one at a time, every 5 s) sees the server go from busy to ready, and the
+  // record is asked for once more. No loop, and Retry stays.
+  test(`${name}: a held check resumes by itself once the readiness read goes busy → ready: one follow-up check, GET only`, async () => {
+    await freshCheck();
+    const held = heldThenOk();
+    const clock = fakeIntervals();
+    serve({ '/api/v1/managed-services': held.read, [READINESS]: () => Response.json(held.busy ? { ready: false, code: 'HOST_MUTATION_BUSY', reason: 'package_manager_active' } : { ready: true }) }, 'admin', held.changes);
+    try {
+      await mount(Component, props);
+      await spin(6);
+      assert.equal(scanCalls().length, 1, `expected the one held check: ${callLog()}`);
+      assert.ok(has('component.checkHeld'), 'the held state is not said');
+      assert.ok(buttons('common.retry').length >= 1, 'Retry is gone');
+      assert.equal(reads(READINESS), 1, 'the first readiness read did not run');
+      assert.equal(clock.polls().length, 1, 'no re-read is scheduled');
+      await act(async () => { clock.polls()[0].fn(); await settled(); await settled(); });
+      assert.equal(reads(READINESS), 2);
+      assert.equal(scanCalls().length, 1, 'a check was asked while the server was still busy');
+      held.busy = false;
+      await act(async () => { clock.polls()[0].fn(); await settled(); await settled(); });
+      await spin(6);
+      assert.equal(scanCalls().length, 2, `expected exactly one follow-up check: ${callLog()}`);
+      assert.ok(has(drawn), `the record is not drawn after the follow-up: ${text().slice(0, 300)}`);
+      assert.ok(!has('component.checkHeld'));
+      assert.equal(clock.polls().length, 0, 'the readiness read goes on after the held state ended');
+      assert.equal(reads(READINESS), 3, 'readiness was read more than the three times asked');
+      assert.equal(calls.filter((call) => call.method !== 'GET' && !call.url.startsWith(SCAN)).length, 0, 'the page changed something');
+      assert.deepEqual(globalThis.currentTest.toasts, []);
+    } finally { clock.restore(); await cleanup(); }
+  });
+
+  test(`${name}: a held check is not followed up when the server never reads as busy, or stays busy (negative control)`, async () => {
+    for (const busyAlways of [false, true]) {
+      await freshCheck();
+      const clock = fakeIntervals();
+      serve({
+        '/api/v1/managed-services': () => Response.json(UNVERIFIED, { status: 503 }),
+        [READINESS]: () => Response.json(busyAlways ? { ready: false, code: 'HOST_MUTATION_BUSY', reason: 'package_manager_active' } : { ready: true }),
+      }, 'admin', { [SCAN]: () => Response.json({ error: 'busy', code: 'service_operation_busy' }, { status: 409 }) });
+      try {
+        await mount(Component, props);
+        await spin(6);
+        for (let i = 0; i < 4; i += 1) await act(async () => { clock.polls()[0]?.fn(); await settled(); await settled(); });
+        await spin(4);
+        assert.equal(scanCalls().length, 1, `${busyAlways ? 'busy forever' : 'never busy'}: a follow-up check ran: ${callLog()}`);
+        assert.ok(has('component.checkHeld'), 'the held state was dropped');
+        assert.ok(buttons('common.retry').length >= 1, 'no Retry');
+      } finally { clock.restore(); await cleanup(); }
+    }
+  });
+
+  test(`${name}: a held check reads readiness only while the tab is visible`, async () => {
+    await freshCheck();
+    const clock = fakeIntervals();
+    serve({
+      '/api/v1/managed-services': () => Response.json(UNVERIFIED, { status: 503 }),
+      [READINESS]: () => Response.json({ ready: false, code: 'HOST_MUTATION_BUSY', reason: 'package_manager_active' }),
+    }, 'admin', { [SCAN]: () => Response.json({ error: 'busy', code: 'service_operation_busy' }, { status: 409 }) });
+    const doc = Object.assign(new EventTarget(), { visibilityState: 'hidden' });
+    globalThis.document = doc;
+    try {
+      await mount(Component, props);
+      await spin(6);
+      assert.ok(has('component.checkHeld'));
+      assert.equal(reads(READINESS), 0, 'readiness was read in a hidden tab');
+      assert.equal(clock.polls().length, 0, 'a re-read is scheduled in a hidden tab');
+      doc.visibilityState = 'visible';
+      await act(async () => { doc.dispatchEvent(new Event('visibilitychange')); await settled(); await settled(); });
+      assert.equal(reads(READINESS), 1, 'shown again: one read at once');
+      assert.equal(clock.polls().length, 1, 'the re-read does not resume');
+      doc.visibilityState = 'hidden';
+      await act(async () => { doc.dispatchEvent(new Event('visibilitychange')); });
+      assert.equal(clock.polls().length, 0, 'hidden again: the re-read goes on');
+      assert.equal(calls.filter((call) => call.method !== 'GET' && !call.url.startsWith(SCAN)).length, 0);
+      assert.equal(scanCalls().length, 1);
+    } finally { clock.restore(); await cleanup(); }
   });
 
   test(`${name}: a refusal that returns after a successful check is not checked again by itself`, async () => {

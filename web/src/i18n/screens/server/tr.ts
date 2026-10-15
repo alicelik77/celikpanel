@@ -661,7 +661,7 @@ export const trServerScreens: Record<ServerScreenKey, string> = {
     'component.checking': 'Bu bileşenin kaydı okunuyor…',
     'component.unknown': 'Bu bileşenin kaydı sunucudan okunamadı; bu yüzden birimi, sürümleri, portları, ayar dosyaları ve günlüğü gösterilmiyor. Bu, bunların olmadığı anlamına gelmez. Hiçbir şey değiştirilmedi. Tekrar deneyin.',
     'component.checkingStored': 'Kayıtlı kayıt doğrulanamadı; bu yüzden CelikPanel bileşenleri şimdi kontrol ediyor. Hiçbir şey değiştirilmedi ve sizin bir şey yapmanız gerekmiyor; bu sayfa kontrol bitince dolar.',
-    'component.checkHeld': 'Bu sunucuda bir değişiklik sürüyor; bu yüzden kayıtlı kayıt henüz doğrulanamıyor. Hiçbir şey değiştirilmedi. Değişiklik bitince Tekrar dene’ye basın.',
+    'component.checkHeld': 'Bu sunucuda bir değişiklik sürüyor; bu yüzden kayıtlı kayıt henüz doğrulanamıyor. Hiçbir şey değiştirilmedi. Değişiklik bitince sayfa kendiliğinden yeniden denetler; Tekrar dene hemen sorar.',
     'component.absent': 'Bu sunucunun kataloğunda “{id}” bileşeni yok',
     'component.absentHint': 'Sunucu yanıt verdi ve listesinde böyle bir bileşen yok. Adres yanlış yazılmış olabilir ya da bileşen bu sunucuda sunulmuyor. Hiçbir şey değiştirilmedi.',
     'component.logsChecking': '{unit} günlüğü okunuyor…',

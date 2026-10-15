@@ -2,6 +2,7 @@ import { decodeManagedServicesSnapshot, type ManagedServicesSnapshot } from '../
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
 import { readApiError } from './apiError';
 import { publishComponentCensus } from './componentCensus';
+import { startVisibleReads } from './visibleReads';
 import { mapRemote, useRemote, type Remote, type RemoteHandle } from './remote';
 
 // The stored component records, for a screen that only shows them or takes a
@@ -111,13 +112,76 @@ const checkedRefusals = new WeakSet<object>();
 function setCheckState(next: StoredRecordCheckState) {
     if (checkState === next) return;
     checkState = next;
+    syncHeldPoll();
     for (const listener of [...checkListeners]) listener();
+}
+
+// --- A check held by a change resumes by itself (15 Oct 2026) ------------------
+//
+// The refusal "a change holds the server" (409 server_setup_busy or
+// service_operation_busy) is not a failure of the check, and asking again at
+// once would only be refused again. While a screen shows it, the page reads
+// GET /api/v1/host-mutation-readiness (reads only, never a change) and, when
+// that read goes from busy to ready, asks for the record once more: one
+// follow-up check, as the Dashboard makes after its own held check. The read
+// runs only while the tab is visible, one at a time, every 5 seconds, and
+// stops with the held state; it is one poll however many readers are on screen.
+// A change the poll never sees as busy leaves the person's Retry as it was.
+// Bir değişiklik sunucuyu tuttuğu için reddedilen kontrol, değişiklik bitince
+// kendiliğinden bir kez sürer: hazırlık okuması (yalnız GET) meşgulden hazıra
+// geçince kayıt bir kez daha istenir. Okuma yalnız sekme görünürken, tek tek ve
+// 5 saniyede bir yapılır; durum bitince durur; ekranda kaç okuyan olursa olsun
+// tek yoklamadır. Yoklamanın meşgul görmediği değişiklikte Tekrar dene kalır.
+const HELD_POLL_MS = 5000;
+const rereaders = new Set<() => Promise<unknown>>();
+let stopHeldPoll: (() => void) | null = null;
+
+async function hostBusyNow(): Promise<boolean | null> {
+    try {
+        const response = await fetch('/api/v1/host-mutation-readiness', { method: 'GET', cache: 'no-store' });
+        // An unreadable answer is no information: neither busy nor ready.
+        if (!response.ok) throw new Error('unreadable');
+        const payload = await response.json() as { ready?: unknown } | null;
+        return payload && typeof payload.ready === 'boolean' ? !payload.ready : null;
+    } catch {
+        return null;
+    }
+}
+
+function syncHeldPoll() {
+    const wanted = checkState === 'held' && rereaders.size > 0;
+    if (!wanted) {
+        if (stopHeldPoll) { stopHeldPoll(); stopHeldPoll = null; }
+        return;
+    }
+    if (stopHeldPoll) return;
+    let sawBusy = false;
+    let resumed = false;
+    stopHeldPoll = startVisibleReads(async () => {
+        const busy = await hostBusyNow();
+        if (resumed || checkState !== 'held' || busy === null) return;
+        if (busy) {
+            sawBusy = true;
+            return;
+        }
+        if (!sawBusy) return;
+        resumed = true;
+        // The record is read again (the one shared read); it is refused as
+        // before and the check runs once. Leaving 'held' ends this poll.
+        const [reread] = rereaders;
+        setCheckState('idle');
+        if (reread) void reread();
+    }, HELD_POLL_MS, {
+        setInterval: (callback, ms) => setInterval(callback, ms) as unknown as number,
+        clearInterval: (id) => clearInterval(id),
+    }, { immediate: typeof document === 'undefined' || document.visibilityState !== 'hidden' });
 }
 
 /** Forgets an episode (a check that never answered would otherwise be shared for good). For tests. */
 export function resetStoredRecordCheck(): void {
     checkInflight = null;
     checkState = 'idle';
+    syncHeldPoll();
 }
 
 export function isStoredRecordUnverified(remote: Remote<unknown>): boolean {
@@ -172,7 +236,10 @@ function subscribeToCheck(listener: () => void): () => void {
         // With no reader left on screen the episode is over: a later visit
         // starts from a clean state and checks once.
         // Ekranda okuyan kalmayınca bölüm biter; sonraki ziyaret temiz başlar.
-        if (checkListeners.size === 0 && checkState !== 'checking') checkState = 'idle';
+        if (checkListeners.size === 0 && checkState !== 'checking') {
+            checkState = 'idle';
+            syncHeldPoll();
+        }
     };
 }
 
@@ -180,6 +247,16 @@ export function useStoredRecordCheck(handle: RemoteHandle<ManagedServicesSnapsho
     const state = useSyncExternalStore(subscribeToCheck, () => checkState);
     const { remote, retry: reread } = handle;
     const unverified = isStoredRecordUnverified(remote);
+
+    // While this reader is on screen, a held check can resume through it.
+    useEffect(() => {
+        rereaders.add(reread);
+        syncHeldPoll();
+        return () => {
+            rereaders.delete(reread);
+            syncHeldPoll();
+        };
+    }, [reread]);
 
     useEffect(() => {
         if (remote.state === 'known' && checkState !== 'checking') setCheckState('idle');
