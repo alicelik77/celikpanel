@@ -378,6 +378,18 @@ copied to `BROWSER_INSPECT_SHOTS` as `<state>-<lang>-<theme>-<width>.png`.
 | `c86store` | the Store with the three `component_state_*` sentences |
 | `c86lang` | `document.documentElement.lang` before and after a switch TR↔EN and back (printed to the console and kept in the record) |
 
+## Scenario of the fifteenth batch (set17 D1, 2026-10-15)
+
+`scenarios-batch15.mjs`, no mock routes of its own (`mode: 'down'`, `validity`,
+`update` and an override of `/api/v1/panel/version`). Run it with `laptop` and
+`phone`, both languages and both themes; it takes about 110 seconds of real
+time, because the outage is not shortened. Each state is also copied to
+`BROWSER_INSPECT_SHOTS` as `<state>-<lang>-<theme>-<width>.png`.
+
+| Name | States |
+| --- | --- |
+| `d1restart` | an update this browser started (its stored record, inside the navigation lock) with access valid for 45 s; the Panel down for 90 s (photographed at 60 s and 88 s: the update's dialog, the licence gate's dialog if any, held pages, a connection banner); the Panel back on the new version ("verifying", the lock); the update completed and the page reloaded |
+
 Each record adds the document language, English catalogue text on a Turkish
 page (`englishLeaks`), raw action ids, codes and tokens (`rawTokens`), visible
 toasts, the buttons with their disabled state (a button in a disabled fieldset

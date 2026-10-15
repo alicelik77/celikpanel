@@ -7611,8 +7611,8 @@ restart outlasts 6 minutes from its start would show the unknown wording while
 still being normal.
 
 **Also in this candidate (2026-10-15).** Fifteen smaller corrections from the
-open items of the alpha.85 notes, each with tests that fail against the
-previous source. No schema, ledger or version transition; nothing was measured
+open items of the alpha.85 notes and one from the candidate's own native record
+(item 16), each with tests that fail against the previous source. No schema, ledger or version transition; nothing was measured
 natively or on an installed server; no P0 item is closed or advanced.
 
 1. **The page's language attribute** (set16 O1). The i18n provider sets
@@ -7767,3 +7767,55 @@ items 8 to 13 and were not re-run (items 14 and 15 are web only);
 `go test -v ./cmd/panel/... ./internal/transport/... ./internal/auth/...`: 1602
 top-level tests and 1655 first-level subtests passed, 6 skipped, 0 failed (WSL
 guest `CelikPanel-S2-Debian`). The Agent was not run again.
+
+16. **The licence gate during the update's own restart** (set17 D1; recorded
+    in `deploy/e2e/release-recovery/evidence/set17-20261015/README.md`,
+    "Defect D1", screenshot
+    `debian13/upd86-good-a/browser/page/state-05-viewport.png`; that record
+    stays as it was written). In candidate run a the gate drew "The Panel is
+    not answering; an update may be restarting it" with "The latest result
+    could not be read..." over the update's calm restart at T+55.9 s, and the
+    update's navigation lock did not come back after reconnection. Cause: once
+    the outage outlasted the access validity of the last good access read
+    (`valid_for_seconds`, 42 to 60 s in the lab), the gate's decision lapsed
+    to unknown (`LicenseOnboarding.tsx`, the deadline timer and the failed-read
+    branch); the gate then drew its hold and raised its observation recovery,
+    which App turns into `publishSystemUpdateAuthentication(false)`; the
+    provider paused the tracking, the lock was no longer requested, and the
+    navigation lease releases an engaged lock that is no longer requested for
+    good (`useSystemUpdateNavigationLease.ts`, by design). The lease is
+    unchanged; the gate no longer causes the pause. The provider publishes the
+    followed update once the server has said it is active, with its first lost
+    read (`lib/systemUpdateRestartSignal.ts`). While that update restarts the
+    Panel, a read that got no answer (or "still starting") keeps the gate's
+    last positive decision until the update's own restart window ends (the
+    calm notice's bound: 6 minutes from the start, at least 2 minutes from the
+    first lost read of the tracking or of the gate), never later than the
+    decision's own end plus 6 minutes. The gate draws nothing then (no hold,
+    no connection banner), reads the access every 5 s while the tab is
+    visible, and once more at once when the update tracking reaches the Panel
+    again. Any answer from the Panel is applied as before (a known negative
+    still replaces the page); after the window the existing dialog appears.
+    Only the browser's clock: the moment of asking plus `valid_for_seconds`,
+    and the update's own moments (D-032). No new strings. Tests:
+    `tests/license-onboarding-runtime.test.mjs`, five mounted tests with a
+    controlled clock (the lab's figures: 45 s validity, an outage of 70 s
+    inside the window, reconnection; the window's two bounds; a Panel answer
+    during the restart; no followed update; the gate wired to the real
+    navigation lease as App and the provider wire it: held through the outage
+    and after reconnection, ended by its own 2-minute bound); four fail
+    against the previous gate, the no-update control passes on both;
+    `tests/update-restart-notice-mounted.test.mjs`, three more (the window
+    function, the signal, the provider's wiring). Browser inspection batch 15
+    (`d1restart`: the Panel down for 90 s with access valid for 45 s, then
+    back on the new version), EN/TR, light/dark, 1280 and 390: at 60 s and
+    88 s of outage only the update's calm dialog with its lock, no gate dialog,
+    no held pages, no warning mark, no horizontal overflow; after
+    reconnection "Update installed, being verified" with the lock still on;
+    then the new version. Not covered: the session gate (`App.tsx` AuthGate)
+    holds the same way when an API answers `503 PANEL_STARTING` during the
+    new Panel's start; not seen in set17 (no session hold in four updates), not
+    changed here. Nothing measured natively or on an installed server.
+
+Counts after item 16: `npm test` 1471 of 1471; `npx tsc --noEmit` clean;
+`npm run build` passes with its bundle budget. Web only; Go not run again.

@@ -7582,7 +7582,7 @@ Yeniden başlaması başlangıcından itibaren 6 dakikayı aşan gerçek bir gü
 hâlâ olağanken bilinmiyor metnini gösterir.
 
 **Bu adayda ayrıca (2026-10-15).** Alpha.85 notlarının açık kalemlerinden on beş
-küçük düzeltme; her birinin testleri önceki kaynağa karşı başarısız olur. Şema,
+ve adayın kendi yerel kaydından bir (16. kalem) küçük düzeltme; her birinin testleri önceki kaynağa karşı başarısız olur. Şema,
 defter ya da sürüm geçişi yok; hiçbir şey yerel çalıştırmada ya da kurulu bir
 sunucuda ölçülmedi; hiçbir P0 işi kapanmaz ya da ilerlemez.
 
@@ -7735,3 +7735,55 @@ temiz; `npm run build` paket bütçesiyle geçer; aşağıdaki Go sayıları 8-1
 kalemlerdendir ve yeniden koşulmadı (14 ve 15. kalemler yalnız web); `go test -v ./cmd/panel/... ./internal/transport/... ./internal/auth/...`:
 1602 üst düzey test ve 1655 birinci düzey alt test geçti, 6 atlandı, 0
 başarısız (WSL konuğu `CelikPanel-S2-Debian`). Agent yeniden koşulmadı.
+
+16. **Güncellemenin kendi yeniden başlamasında lisans kapısı** (set17 D1;
+    `deploy/e2e/release-recovery/evidence/set17-20261015/README.md` içinde
+    "Defect D1", ekran görüntüsü
+    `debian13/upd86-good-a/browser/page/state-05-viewport.png`; o kayıt
+    yazıldığı gibi kalır). Aday a koşusunda kapı, güncellemenin sakin yeniden
+    başlamasının üstüne T+55,9 s'de "The Panel is not answering; an update may
+    be restarting it" ve "The latest result could not be read..." penceresini
+    çizdi; yeniden bağlanınca güncellemenin gezinme kilidi geri gelmedi.
+    Neden: kesinti son iyi erişim okumasının geçerlilik süresini
+    (`valid_for_seconds`, laboratuvarda 42-60 s) aşınca kapının kararı
+    bilinmeze düşüyordu (`LicenseOnboarding.tsx`, son an zamanlayıcısı ve
+    başarısız okuma dalı); kapı tutma katmanını çiziyor ve gözlem kurtarmasını
+    bildiriyordu; App bunu `publishSystemUpdateAuthentication(false)` yapar,
+    sağlayıcı izlemeyi duraklatır, kilit artık istenmez ve gezinme kirası
+    devreye girmiş ama artık istenmeyen kilidi kalıcı olarak bırakır
+    (`useSystemUpdateNavigationLease.ts`, tasarım gereği). Kira değişmedi;
+    duraklamaya artık kapı yol açmıyor. Sağlayıcı, sunucu güncellemenin etkin
+    olduğunu söyledikten sonra izlenen güncellemeyi ilk kayıp okumasıyla
+    yayımlar (`lib/systemUpdateRestartSignal.ts`). Bu güncelleme Paneli
+    yeniden başlatırken yanıt alamayan (ya da "henüz başlıyor" alan) okuma,
+    kapının son olumlu kararını güncellemenin kendi yeniden başlama penceresi
+    bitene kadar korur (sakin bildirimin sınırı: başlangıçtan 6 dakika,
+    izlemenin ya da kapının ilk kayıp okumasından en az 2 dakika); kararın
+    kendi sonu artı 6 dakikayı hiç aşmaz. Kapı o sırada bir şey çizmez (tutma
+    yok, bağlantı şeridi yok), sekme görünürken erişimi 5 saniyede bir okur,
+    güncelleme izlemesi Panele yeniden ulaşınca bir kez hemen okur. Panelin
+    her yanıtı eskisi gibi uygulanır (bilinen olumsuz karar sayfayı yine
+    değiştirir); pencereden sonra mevcut pencere görünür. Yalnız tarayıcının
+    saati: sorulan an artı `valid_for_seconds` ve güncellemenin kendi anları
+    (D-032). Yeni metin yok. Testler: `tests/license-onboarding-runtime.test.mjs`
+    içinde denetimli saatle beş bağlanmış test (laboratuvar değerleri: 45 s
+    geçerlilik, pencere içinde 70 s kesinti, yeniden bağlanma; pencerenin iki
+    sınırı; yeniden başlama sırasında Panel yanıtı; izlenen güncelleme yok;
+    kapı, App ile sağlayıcının bağladığı gibi gerçek gezinme kirasına bağlı:
+    kesinti boyunca ve yeniden bağlanınca tutulur, kendi 2 dakikalık sınırıyla
+    biter); dördü önceki kapıya karşı başarısız olur, güncellemesiz denetim
+    ikisinde de geçer; `tests/update-restart-notice-mounted.test.mjs` içinde
+    üç durum daha (pencere işlevi, sinyal, sağlayıcının bağlantısı). Tarayıcı
+    incelemesi 15. grup (`d1restart`: erişim 45 s geçerliyken Panel 90 s
+    kapalı, sonra yeni sürümle geri), EN/TR, açık/koyu, 1280 ve 390:
+    kesintinin 60. ve 88. saniyesinde yalnız güncellemenin kilitli sakin
+    penceresi; kapı penceresi, tutulan sayfa, uyarı işareti, yatay taşma yok;
+    yeniden bağlanınca kilit sürerken "Update installed, being verified";
+    ardından yeni sürüm. Kapsanmayan: oturum kapısı (`App.tsx` AuthGate), yeni
+    Panel başlarken bir API `503 PANEL_STARTING` yanıtı verirse aynı biçimde
+    tutar; set17'de görülmedi (dört güncellemede oturum tutması yok), burada
+    değiştirilmedi. Yerel çalıştırmada ya da kurulu sunucuda hiçbir şey
+    ölçülmedi.
+
+16. kalemden sonraki sayılar: `npm test` 1471/1471; `npx tsc --noEmit` temiz;
+`npm run build` paket bütçesiyle geçer. Yalnız web; Go yeniden koşulmadı.
