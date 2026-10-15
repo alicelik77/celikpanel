@@ -56,6 +56,20 @@ func TestServerSetupMailIdentityCheckNamesTheTypedReason(t *testing.T) {
 		{"looked up, forward does not return", func(h *transport.MailHealthResponse) {
 			h.FCrDNS, h.ReverseDNSLookup = false, transport.MailDNSLookupDone
 		}, "forward_dns_mismatch", map[string]string{"hostname": "mail.example.test", "ip": "203.0.113.42"}},
+		// The resolver that answered, and whether the resolvers disagree
+		// (2026-10-15); an older Agent sends neither (the cases above).
+		{"looked up, PTR named by its resolver", func(h *transport.MailHealthResponse) {
+			h.PTR, h.PTRAligned, h.FCrDNS, h.ReverseDNSLookup = "server1.provider.example.", false, false, transport.MailDNSLookupDone
+			h.ReverseDNSResolver = "8.8.8.8"
+		}, "reverse_dns_mismatch", map[string]string{"hostname": "mail.example.test", "ip": "203.0.113.42", "ptr": "server1.provider.example", "resolver": "8.8.8.8"}},
+		{"looked up, resolvers disagree", func(h *transport.MailHealthResponse) {
+			h.PTR, h.PTRAligned, h.FCrDNS, h.ReverseDNSLookup = "server1.provider.example.", false, false, transport.MailDNSLookupDone
+			h.ReverseDNSResolver, h.ReverseDNSResolversDisagree = "1.1.1.1", true
+		}, "reverse_dns_mismatch", map[string]string{"hostname": "mail.example.test", "ip": "203.0.113.42", "ptr": "server1.provider.example", "resolver": "1.1.1.1", "resolvers": "disagree"}},
+		{"a resolver that is not an address is not named", func(h *transport.MailHealthResponse) {
+			h.PTR, h.PTRAligned, h.FCrDNS, h.ReverseDNSLookup = "", false, false, transport.MailDNSLookupDone
+			h.ReverseDNSResolver, h.ReverseDNSResolversDisagree = "<b>resolver</b>", true
+		}, "reverse_dns_mismatch", map[string]string{"hostname": "mail.example.test", "ip": "203.0.113.42"}},
 		// A verified owner action comes before a lookup that got no answer.
 		{"mail name differs, lookup failed", func(h *transport.MailHealthResponse) {
 			h.Myhostname, h.PTR, h.PTRAligned, h.FCrDNS = "other.example.test", "", false, false

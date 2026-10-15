@@ -41,8 +41,9 @@ func (a *Agent) MailHealth(_ *transport.Empty, resp *MailHealthResponse) error {
 	}
 
 	if resp.ServerIP != "" {
-		ptr, aligned, forward, err := publicMailDNSIdentity(context.Background(), resp.ServerIP, resp.Myhostname)
-		recordMailDNSLookup(resp, ptr, aligned, forward, err)
+		result, err := publicMailDNSIdentity(context.Background(), resp.ServerIP, resp.Myhostname)
+		recordMailDNSLookup(resp, result.PTR, result.Aligned, result.Forward, err)
+		recordMailDNSResolver(resp, result, err)
 	}
 
 	// One well-known MX, short timeout. Failure here almost always means the
@@ -75,6 +76,20 @@ func recordMailDNSLookup(resp *MailHealthResponse, ptr string, aligned, forward 
 		resp.ReverseDNSLookup = transport.MailDNSLookupFailed
 		resp.ReverseDNSLookupError = mailDNSLookupErrorClass(err)
 	}
+}
+
+// recordMailDNSResolver names, beside a reverse DNS answer, the resolver that
+// gave it and whether the resolvers disagreed (additive, 2026-10-15), so the
+// setup's final check can say which resolver still has the old name while a
+// change at the server provider spreads. Only an answer is attributed.
+// Ters DNS yanitinin yanina onu veren cozumleyiciyi ve cozumleyicilerin
+// uyusmadigini yazar; yalniz bir yanit atfedilir.
+func recordMailDNSResolver(resp *MailHealthResponse, result mailDNSIdentityResult, err error) {
+	if err != nil || net.ParseIP(result.Resolver) == nil {
+		return
+	}
+	resp.ReverseDNSResolver = result.Resolver
+	resp.ReverseDNSResolversDisagree = result.Disagree
 }
 
 // isPrivateIP reports whether the server sits behind NAT (dev boxes, home

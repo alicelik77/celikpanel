@@ -16,8 +16,37 @@ import (
 // Mail identity is an external DNS fact. The hostname operation deliberately
 // puts the local FQDN in /etc/hosts; NSS and net.Resolver address lookups can
 // therefore neither prove nor disprove its public forward/reverse records.
-func publicMailDNSIdentity(ctx context.Context, source, hostname string) (string, bool, bool, error) {
-	return mailDNSIdentityAt(ctx, source, hostname, []string{"1.1.1.1:53", "8.8.8.8:53"})
+func publicMailDNSIdentity(ctx context.Context, source, hostname string) (mailDNSIdentityResult, error) {
+	return mailDNSIdentityObserved(ctx, source, hostname, []string{"1.1.1.1:53", "8.8.8.8:53"})
+}
+
+// mailDNSIdentityResult is what the public resolvers said about the server's
+// mail identity, and who said it: Resolver is the address of the resolver
+// whose answer is reported (2026-10-15), and Disagree is true when two
+// resolvers gave different reverse DNS answers, as they do while a change made
+// at the server provider spreads.
+// Genel cozumleyicilerin posta kimligi hakkinda soyledigi ve kimin soyledigi:
+// Resolver bildirilen yaniti veren cozumleyicidir; Disagree iki cozumleyici
+// farkli ters DNS yaniti verdiginde dogrudur.
+type mailDNSIdentityResult struct {
+	PTR      string
+	Aligned  bool
+	Forward  bool
+	Resolver string
+	Disagree bool
+}
+
+func mailDNSIdentityAt(ctx context.Context, source, hostname string, resolvers []string) (string, bool, bool, error) {
+	result, err := mailDNSIdentityObserved(ctx, source, hostname, resolvers)
+	return result.PTR, result.Aligned, result.Forward, err
+}
+
+// mailDNSResolverName is the resolver's address without its port.
+func mailDNSResolverName(resolver string) string {
+	if host, _, err := net.SplitHostPort(resolver); err == nil {
+		return host
+	}
+	return resolver
 }
 
 // errMailDNSIdentityInvalid: the address or host name cannot be looked up, so no
@@ -58,11 +87,11 @@ func queryMailDNSAnswer(ctx context.Context, resolver, name string, qtype uint16
 	return names, err
 }
 
-func mailDNSIdentityAt(ctx context.Context, source, hostname string, resolvers []string) (string, bool, bool, error) {
+func mailDNSIdentityObserved(ctx context.Context, source, hostname string, resolvers []string) (mailDNSIdentityResult, error) {
 	ip := net.ParseIP(source)
 	hostname = strings.ToLower(strings.TrimSuffix(hostname, "."))
 	if ip == nil || !serviceMutationCanonicalFQDN(hostname) {
-		return "", false, false, errMailDNSIdentityInvalid
+		return mailDNSIdentityResult{}, errMailDNSIdentityInvalid
 	}
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -98,9 +127,14 @@ func mailDNSIdentityAt(ctx context.Context, source, hostname string, resolvers [
 	observed := false
 	var observedPTR string
 	var observedAligned bool
-	observe := func(ptr string, aligned bool) {
+	var observedBy string
+	// Every resolver's conclusive reverse DNS answer, to tell whether they
+	// agree. / Her cozumleyicinin kesin ters DNS yaniti, uyusup uyusmadiklari icin.
+	answers := map[string]bool{}
+	observe := func(ptr string, aligned bool, resolver string) {
+		answers[ptr] = true
 		if !observed || (aligned && !observedAligned) {
-			observed, observedPTR, observedAligned = true, ptr, aligned
+			observed, observedPTR, observedAligned, observedBy = true, ptr, aligned, mailDNSResolverName(resolver)
 		}
 	}
 	for _, resolver := range resolvers {
@@ -110,7 +144,7 @@ func mailDNSIdentityAt(ctx context.Context, source, hostname string, resolvers [
 			continue
 		}
 		if len(names) == 0 {
-			observe("", false)
+			observe("", false, resolver)
 			continue
 		}
 		matched := false
@@ -126,23 +160,30 @@ func mailDNSIdentityAt(ctx context.Context, source, hostname string, resolvers [
 			}
 			for _, address := range addresses {
 				if ip.Equal(net.ParseIP(address)) {
-					return hostname, true, true, nil
+					answers[hostname] = true
+					return mailDNSIdentityResult{
+						PTR: hostname, Aligned: true, Forward: true,
+						Resolver: mailDNSResolverName(resolver), Disagree: len(answers) > 1,
+					}, nil
 				}
 			}
-			observe(hostname, true)
+			observe(hostname, true, resolver)
 			break
 		}
 		if !matched {
-			observe(names[0], false)
+			observe(names[0], false, resolver)
 		}
 	}
 	if observed {
-		return observedPTR, observedAligned, false, nil
+		return mailDNSIdentityResult{
+			PTR: observedPTR, Aligned: observedAligned,
+			Resolver: observedBy, Disagree: len(answers) > 1,
+		}, nil
 	}
 	if lastErr == nil {
 		lastErr = errNoMailDNSResolver
 	}
-	return "", false, false, lastErr
+	return mailDNSIdentityResult{}, lastErr
 }
 
 func queryMailDNS(ctx context.Context, resolver, name string, qtype uint16) ([]string, error) {
