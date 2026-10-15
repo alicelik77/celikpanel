@@ -7581,7 +7581,7 @@ ulaşmadı; pencere iki laboratuvar güncellemesine ve bir sahip gözlemine daya
 Yeniden başlaması başlangıcından itibaren 6 dakikayı aşan gerçek bir güncelleme,
 hâlâ olağanken bilinmiyor metnini gösterir.
 
-**Bu adayda ayrıca (2026-10-15).** Alpha.85 notlarının açık kalemlerinden yedi
+**Bu adayda ayrıca (2026-10-15).** Alpha.85 notlarının açık kalemlerinden on bir
 küçük düzeltme; her birinin testleri önceki kaynağa karşı başarısız olur. Şema,
 defter ya da sürüm geçişi yok; hiçbir şey yerel çalıştırmada ya da kurulu bir
 sunucuda ölçülmedi; hiçbir P0 işi kapanmaz ya da ilerlemez.
@@ -7642,5 +7642,31 @@ sunucuda ölçülmedi; hiçbir P0 işi kapanmaz ya da ilerlemez.
 test geçti, 6 atlandı, 0 başarısız; `go test ./cmd/agent/...` 1799 test ve 2829
 alt test geçti, 29 atlandı, 0 başarısız (WSL konuğu `CelikPanel-S2-Debian`;
 Agent, 2026-10-14 denetim kaydındaki temiz bağlama ad alanında).
-Yapılmayan: katalog bileşen açıklamaları Türkçe sayfada hâlâ İngilizce; Son etkinlik'teki "system" kullanıcı adı çevrilmiyor;
-`err.SERVICE_STATE_REFRESH_FAILED` hâlâ "Yeniden Tara" diyor.
+8. **Bileşen açıklamaları arayüz dilinde.** Her katalog kimliğinin İngilizce ve
+   Türkçe tek satırlık açıklaması vardır (`services.component.description.<id>`;
+   "Intrusion Prevention" yerine "Saldırı önleme"); Bileşenler satırlarında,
+   kurma ve kaldırma pencerelerinde ve aramada `componentName`in yanında
+   `componentDescription` söyler; bilinmeyen bileşen sunucunun metnini korur
+   (`ef7690fc0`; `tests/component-names.test.mjs` açıklamaları Go
+   kataloğundan okur).
+9. **Son etkinlikte sistem aktörü.** Ayrılmış aktör `system` (Panel, oturum
+   açmış kullanıcısı olmayan eylem için yazar) Panoda ve denetim günlüğünde
+   "Sistem" / "System" olarak söylenir; başka her ad olduğu gibi gösterilir.
+   `ValidateUsername` bu adı ayırmaz; bu yüzden tam olarak `system` adlı bir
+   kullanıcı da çevrilirdi; sunucu ayrı bir işaret göndermez (`4372fc86e`).
+10. **Düğme göstermeyen `err.SERVICE_STATE_REFRESH_FAILED`** (D-032). Sayfanın
+    ne sonucu ne durumu varsaydığını ve CelikPanel'in, Panel ya da Bileşenler
+    sayfası açıkken bileşenleri kendiliğinden yeniden denetlediğini söyler;
+    `SERVICE_STATE_UNVERIFIED` gibi (`d2b58e7e9`). Sayfanın kendi
+    `services.stateUnverifiedHint` uyarısı hâlâ "Yeniden tara'yı çalıştırın"
+    der; burada değiştirilmedi.
+11. **Posta profili gereksiniminde rol** (`component_requires`). `required`,
+    bileşen adlarının yanında rol belirteci taşıyabilir (`web-server`,
+    `smtp-server`, `imap-server`, `spam-filter`, `dns-server`, `kv-store`:
+    katalogdaki `ConflictGroup` değerleri). Sayfa her rolü görünen adıyla
+    söyler (`services.mailProfiles.role.<token>`, EN/TR); tanımadığı rol
+    belirteç olarak değil sözcük olarak söylenir (`0a81043cf`; test rolleri Go
+    kataloğundan okur).
+
+8-11. kalemlerden sonraki sayılar: `npm test` 1438/1438; `npx tsc --noEmit`
+temiz; Go değişmedi, yukarıdaki Go sayıları geçerli.

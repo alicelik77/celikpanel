@@ -7610,7 +7610,7 @@ window rests on two lab updates and one owner observation. A real update whose
 restart outlasts 6 minutes from its start would show the unknown wording while
 still being normal.
 
-**Also in this candidate (2026-10-15).** Seven smaller corrections from the
+**Also in this candidate (2026-10-15).** Eleven smaller corrections from the
 open items of the alpha.85 notes, each with tests that fail against the
 previous source. No schema, ledger or version transition; nothing was measured
 natively or on an installed server; no P0 item is closed or advanced.
@@ -7670,6 +7670,32 @@ Counts at `1abe1717d`: `npm test` 1435 of 1435; `npx tsc --noEmit` clean;
 subtests passed, 6 skipped, 0 failed; `go test ./cmd/agent/...` 1799 tests and
 2829 subtests passed, 29 skipped, 0 failed (WSL guest `CelikPanel-S2-Debian`,
 the Agent in the clean mount namespace of the 2026-10-14 audit entry).
-Not done: the catalogue's component descriptions are still English
-on a Turkish page; the "system" user name in Recent activity is not
-translated; `err.SERVICE_STATE_REFRESH_FAILED` still says "Run Rescan".
+8. **Component descriptions in the interface language.** Every catalogue id has
+   an EN and TR one-line description (`services.component.description.<id>`;
+   "Intrusion Prevention" is "Saldırı önleme"), said by `componentDescription`
+   beside `componentName` on the Components rows, the install and uninstall
+   dialogs and the search; an unknown component keeps the server's text
+   (`ef7690fc0`; `tests/component-names.test.mjs` reads the descriptions from
+   the Go catalogue).
+9. **The system actor in Recent activity.** The reserved actor `system` (the
+   Panel writes it for an action without a signed-in user) is said "System" /
+   "Sistem" on the Dashboard and the audit log; any other name is shown as it
+   is. `ValidateUsername` does not reserve the name, so a user literally named
+   `system` would also be translated; the server sends no separate marker
+   (`4372fc86e`).
+10. **`err.SERVICE_STATE_REFRESH_FAILED` without a button** (D-032). It says
+    that the page assumes neither the outcome nor the state and that
+    CelikPanel checks the components again by itself while the Dashboard or
+    the Components page is open, as `SERVICE_STATE_UNVERIFIED` does
+    (`d2b58e7e9`). The page's own `services.stateUnverifiedHint` banner still
+    says "Run Rescan"; it is not changed here.
+11. **A role in a mail-profile requirement** (`component_requires`). `required`
+    can hold a role token (`web-server`, `smtp-server`, `imap-server`,
+    `spam-filter`, `dns-server`, `kv-store`: the catalogue's `ConflictGroup`
+    values) next to component names. The page says each role by its display
+    name (`services.mailProfiles.role.<token>`, EN/TR); a role it does not
+    know is said as words, never as the token (`0a81043cf`; the test reads the
+    roles from the Go catalogue).
+
+Counts after items 8 to 11: `npm test` 1438 of 1438; `npx tsc --noEmit` clean;
+no Go changed, so the Go counts above stand.
