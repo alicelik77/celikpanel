@@ -79,7 +79,7 @@ test('audit, alert and gauge fixes remain localized in EN and TR', () => {
     'dashboard.statusUnknown',
     'dashboard.step.serviceScan',
     'dashboard.fwPersistenceItem',
-    'dashboard.audit.mailProfileFailed',
+    'dashboard.audit.action.mail.profile.install.failed',
     'dashboard.step.dnsIdentity',
     'dashboard.saveFirewall',
   ]) {

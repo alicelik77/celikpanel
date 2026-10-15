@@ -11,6 +11,7 @@ import {
 import { api, type SystemStats } from '../lib/api';
 import { useI18n } from '../i18n';
 import { componentName } from '../lib/componentName';
+import { auditActionText } from '../lib/auditAction';
 import { useAuth } from '../auth/AuthContext';
 import type { TranslationKey } from '../i18n/en';
 import { Button, Checking, CouldNotCheck, Dialog, KeepWords, Spinner, UsageBar, Card } from './ui';
@@ -96,7 +97,6 @@ function decodeExtras(raw: unknown): Extras {
 
 const NO_DOMAINS: DomainLite[] = [];
 
-type Translate = ReturnType<typeof useI18n>['t'];
 
 function groupAuditEntries(entries: AuditLite[]): AuditGroup[] {
     const groups = new Map<string, AuditGroup>();
@@ -116,27 +116,6 @@ function groupAuditEntries(entries: AuditLite[]): AuditGroup[] {
         }
     }
     return [...groups.values()];
-}
-
-function auditActionText(action: string, t: Translate): string {
-    const event = action.split(' — ', 1)[0];
-    if (event === 'auth.login' || event === 'auth.login.2fa') {
-        return t('dashboard.audit.login');
-    }
-    const profileEvent = event.match(/^mail\.profile\.install(?:\.recovered)?(\.failed)?:([^\s]+)$/);
-    if (profileEvent) {
-        const profileKey = ({
-            'core-mail': 'dashboard.audit.profile.coreMail',
-            webmail: 'dashboard.audit.profile.webmail',
-            'protected-mail': 'dashboard.audit.profile.protectedMail',
-        } as const)[profileEvent[2] as 'core-mail' | 'webmail' | 'protected-mail'];
-        const profile = profileKey ? t(profileKey) : profileEvent[2];
-        return t(
-            profileEvent[1] ? 'dashboard.audit.mailProfileFailed' : 'dashboard.audit.mailProfileInstalled',
-            { profile },
-        );
-    }
-    return action;
 }
 
 function decodeDashboardServices(value: unknown): {

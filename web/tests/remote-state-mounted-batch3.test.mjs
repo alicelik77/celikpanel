@@ -111,6 +111,7 @@ const Dashboard = await pick(lib('components/Dashboard.tsx', {
   '/lib/mailProfileText': lib('lib/mailProfileText.ts'),
   '/lib/componentName': lib('lib/componentName.ts'),
   '/lib/componentCensus': lib('lib/componentCensus.ts'),
+  '/lib/auditAction': lib('lib/auditAction.ts', { '/componentName': lib('lib/componentName.ts') }),
   '/ComponentOperation': operationURL,
 }), 'Dashboard');
 // The Components page, with the real decoders of ComponentOperation and an
