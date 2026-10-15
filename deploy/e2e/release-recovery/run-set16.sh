@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # set16 wrapper for the Linux QEMU host (archlinux), run as root: the pre-publication measurement of the
-# v0.1.0-alpha.85 candidate (commit 0bea00fa0) on disposable guests: installed fresh (cells set16-*) and reached by the
+# v0.1.0-alpha.85 candidate (commit 89cf88397) on disposable guests: installed fresh (cells set16-*) and reached by the
 # owner's update from alpha.84 rebuilt from its tag (cells upd1-<debian13|ubuntu>-<good|defective>).
 #
 #   run-set16.sh dry-run CELL ARTIFACTS_JSON LAB_NAME

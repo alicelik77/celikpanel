@@ -1,0 +1,55 @@
+== /var/tmp/cp-pair-accept/dist/1d586b7384bb6dfd42a80612c895ff3f76b98c1b-acceptance-license/
+archive-evidence-entries.json
+build.log
+celikpanel-v0.1.0-alpha.86-acceptance-license.tar.gz
+dist.json
+go-version.txt
+guard-refusal.txt
+src
+web-dist.sha256
+{'sha256': 'c61c4515068d8580b1f11158a6d30102805aee83f6efd2d71a998e36e09a9455', 'version': 'v0.1.0-alpha.86', 'commit': '1d586b7384bb6dfd42a80612c895ff3f76b98c1b', 'license_mode': 'acceptance-fixture', 'archive': '/var/tmp/cp-pair-accept/dist/1d586b7384bb6dfd42a80612c895ff3f76b98c1b-acceptance-license/celikpanel-v0.1.0-alpha.86-acceptance-license.tar.gz', 'release': False}
+sha256 c61c4515068d8580b1f11158a6d30102805aee83f6efd2d71a998e36e09a9455 celikpanel-v0.1.0-alpha.86-acceptance-license.tar.gz
+== /var/tmp/cp-pair-accept/dist/4403975c7b96957671afe33b7a0746638fbf8752-acceptance-license/
+archive-evidence-entries.json
+build.log
+celikpanel-v0.1.0-alpha.86-acceptance-license.tar.gz
+dist.json
+go-version.txt
+guard-refusal.txt
+src
+web-dist.sha256
+{'sha256': 'da5082d1d79408e556cbc43b1b964be5303e19059f45aad6aca0bcbfcd692aac', 'version': 'v0.1.0-alpha.86', 'commit': '4403975c7b96957671afe33b7a0746638fbf8752', 'license_mode': 'acceptance-fixture', 'archive': '/var/tmp/cp-pair-accept/dist/4403975c7b96957671afe33b7a0746638fbf8752-acceptance-license/celikpanel-v0.1.0-alpha.86-acceptance-license.tar.gz', 'release': False}
+sha256 da5082d1d79408e556cbc43b1b964be5303e19059f45aad6aca0bcbfcd692aac celikpanel-v0.1.0-alpha.86-acceptance-license.tar.gz
+== /var/tmp/cp-pair-accept/dist/524f86dd14186f6bc91dbd49ab559c706eb9bd4a-acceptance-license/
+archive-evidence-entries.json
+build.log
+celikpanel-v0.1.0-alpha.85-acceptance-license.tar.gz
+dist.json
+go-version.txt
+guard-refusal.txt
+src
+web-dist.sha256
+{'sha256': '77f39013cb3ef7fff68e3495794dd0034bcb4a396f7e8c2bd649db710119be3a', 'version': 'v0.1.0-alpha.85', 'commit': '524f86dd14186f6bc91dbd49ab559c706eb9bd4a', 'license_mode': 'acceptance-fixture', 'archive': '/var/tmp/cp-pair-accept/dist/524f86dd14186f6bc91dbd49ab559c706eb9bd4a-acceptance-license/celikpanel-v0.1.0-alpha.85-acceptance-license.tar.gz', 'release': False}
+sha256 77f39013cb3ef7fff68e3495794dd0034bcb4a396f7e8c2bd649db710119be3a celikpanel-v0.1.0-alpha.85-acceptance-license.tar.gz
+== /var/tmp/cp-pair-accept/dist/d5d673ebd95eeb80d16f93577c340d4a9d6a9f36-acceptance-license/
+archive-evidence-entries.json
+build.log
+celikpanel-v0.1.0-alpha.85-acceptance-license.tar.gz
+dist.json
+go-version.txt
+guard-refusal.txt
+src
+web-dist.sha256
+{'sha256': '3913d51374ba8db47fd4acce0af21d0c4150690664809d8932e355dbfdff40ad', 'version': 'v0.1.0-alpha.85', 'commit': 'd5d673ebd95eeb80d16f93577c340d4a9d6a9f36', 'license_mode': 'acceptance-fixture', 'archive': '/var/tmp/cp-pair-accept/dist/d5d673ebd95eeb80d16f93577c340d4a9d6a9f36-acceptance-license/celikpanel-v0.1.0-alpha.85-acceptance-license.tar.gz', 'release': False}
+sha256 3913d51374ba8db47fd4acce0af21d0c4150690664809d8932e355dbfdff40ad celikpanel-v0.1.0-alpha.85-acceptance-license.tar.gz
+== /var/tmp/cp-pair-accept/dist/f0157e6c8f1614cff176821172f8a9067493e625-acceptance-license/
+archive-evidence-entries.json
+build.log
+celikpanel-v0.1.0-alpha.84-acceptance-license.tar.gz
+dist.json
+go-version.txt
+guard-refusal.txt
+src
+web-dist.sha256
+{'sha256': '9f86eb4352ce685e064c51c68aab9b592f99612ff3dcca7f71983c9305708dd4', 'version': 'v0.1.0-alpha.84', 'commit': 'f0157e6c8f1614cff176821172f8a9067493e625', 'license_mode': 'acceptance-fixture', 'archive': '/var/tmp/cp-pair-accept/dist/f0157e6c8f1614cff176821172f8a9067493e625-acceptance-license/celikpanel-v0.1.0-alpha.84-acceptance-license.tar.gz', 'release': False}
+sha256 9f86eb4352ce685e064c51c68aab9b592f99612ff3dcca7f71983c9305708dd4 celikpanel-v0.1.0-alpha.84-acceptance-license.tar.gz

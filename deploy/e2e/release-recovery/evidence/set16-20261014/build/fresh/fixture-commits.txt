@@ -1,0 +1,4 @@
+refs/upd1/baseline d5d673ebd95eeb80d16f93577c340d4a9d6a9f36 tree=f2eb40e416a9963818b8d96087428cfdcd50fff4 test(fixture): set16 candidate labelled v0.1.0-alpha.85 (release policy only; unpublished, disposable)
+refs/upd1/defective 4403975c7b96957671afe33b7a0746638fbf8752 tree=8687487514ec10b9dc350d71088cae00b54cd861 test(fixture): set16 defective over the alpha.86 label - migrate-only fails (unpublished, disposable)
+refs/upd1/good 1d586b7384bb6dfd42a80612c895ff3f76b98c1b tree=b7ab6efce03fe3aad5960e0ca71f9f91d7d473d2 test(fixture): set16 origin candidate labelled v0.1.0-alpha.86 (unpublished, disposable)
+refs/upd1/installed d5d673ebd95eeb80d16f93577c340d4a9d6a9f36 tree=f2eb40e416a9963818b8d96087428cfdcd50fff4 test(fixture): set16 candidate labelled v0.1.0-alpha.85 (release policy only; unpublished, disposable)

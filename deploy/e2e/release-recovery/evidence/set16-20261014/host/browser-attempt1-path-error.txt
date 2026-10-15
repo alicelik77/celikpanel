@@ -1,0 +1,16 @@
+hand=\wsl.localhost\archlinux\var\tmp\cp-set16\hand\h16d13-ui start=2026-10-14T22:30:41Z
+node:fs:441
+    return binding.readFileUtf8(path, stringToFlags(options.flag));
+                   ^
+
+Error: ENOENT: no such file or directory, open 'C:\wsl.localhost\archlinux\var\tmp\cp-set16\hand\h16d13-ui\ready.json'
+    at readFileSync (node:fs:441:20)
+    at file:///C:/CELIKBROS%20PROJECTS/celikpanel/web/tools/browser-inspect/cold-load-set16.mjs:59:25 {
+  errno: -4058,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: 'C:\\wsl.localhost\\archlinux\\var\\tmp\\cp-set16\\hand\\h16d13-ui\\ready.json'
+}
+
+Node.js v24.18.0
+rc=1 end=2026-10-14T22:30:42Z

@@ -1,0 +1,21 @@
+CelikPanel
+Dashboard
+HOSTING
+Domains
+1
+Databases
+Users
+Store
+VPN
+SERVER
+Components
+10
+Monitoring
+Import
+Audit log
+Settings
+SERVER INFORMATION
+dns-debian13
+192.0.2.10
+CelikPanel · v0.1.0-alpha.84 · build f0157e6c8f16
+f0157e6c8f1614cff176821172f8a9067493e625

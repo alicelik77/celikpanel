@@ -1,0 +1,104 @@
+CPU usage
+
+2%
+
+2 cores · Load 0.08
+
+Memory
+
+22%
+
+644 MB / 2.9 GB
+
+Disk (/)
+
+14%
+
+3.3 GB / 23.4 GB
+
+System services
+
+6 / 6
+
+running / installed
+
+Mail stacks
+Ready
+
+At least one mail profile has a fresh component scan and completed reconciliation.
+
+View mail stacks
+Needs attention
+1 alert
+No antivirus installed — you are hosting content but nothing scans it
+Install a service
+Hosting
+
+1
+
+Domains
+
+0
+
+Databases
+
+1
+
+Users
+
+1
+
+Mail accounts
+
+Recently added domains
+upd1-owner.test
+static
+No SSL
+7 min ago
+Recent activity
+L
+labadmin signed in3 times
+127.0.0.1
+1 min ago
+L
+labadmin server.setup.guidance
+127.0.0.1
+2 min ago
+L
+labadmin server.setup.revise
+127.0.0.1
+2 min ago
+L
+labadmin domain.create
+127.0.0.1
+7 min ago
+L
+labadmin subscription.bootstrap
+127.0.0.1
+7 min ago
+L
+labadmin server.setup.child:certbot
+127.0.0.1
+9 min ago
+L
+labadmin server.setup.child:cron
+127.0.0.1
+9 min ago
+Quick actions
+Add domain
+Install a service
+Add user
+Import
+Server information
+Hostname
+dns-debian13
+IPv4 address
+10.0.2.15
+Operating system
+Debian GNU/Linux 13 (trixie)
+Kernel
+6.12.105+deb13-cloud-amd64
+Architecture
+amd64
+Uptime
+4m

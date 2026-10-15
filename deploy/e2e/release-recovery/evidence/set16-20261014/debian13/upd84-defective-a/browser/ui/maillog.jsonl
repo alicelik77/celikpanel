@@ -1,0 +1,6 @@
+{"page":"sign-in","lang":"en","phase":"sign-in","at":"2026-10-14T23:13:46.115Z","t":1792019626115,"text":null,"spinners":null,"vis":"visible","path":"/domains","state":"absent"}
+{"page":"p1-domains","lang":"en","phase":"domains","at":"2026-10-14T23:13:50.343Z","t":1792019630343,"text":null,"spinners":null,"vis":"visible","path":"/domains","state":"absent"}
+{"page":"p2-dashboard","lang":"en","phase":"dashboard","at":"2026-10-14T23:14:05.075Z","t":1792019645075,"text":null,"spinners":null,"vis":"visible","path":"/","state":"absent"}
+{"page":"p2-dashboard","lang":"en","phase":"dashboard","at":"2026-10-14T23:14:05.310Z","t":1792019645310,"text":"Mail stacks Status needs refresh The component scan is older than five minutes. Open Components and rescan before trusting mail status. Open Components to rescan","spinners":0,"vis":"visible","path":"/","state":"other"}
+{"page":"p2-dashboard","lang":"en","phase":"dashboard","at":"2026-10-14T23:14:07.221Z","t":1792019647221,"text":"Mail stacks Ready At least one mail profile has a fresh component scan and completed reconciliation. View mail stacks","spinners":0,"vis":"visible","path":"/","state":"ready"}
+{"page":"p3-components-fresh","lang":"en","phase":"components","at":"2026-10-14T23:15:35.958Z","t":1792019735958,"text":null,"spinners":null,"vis":"visible","path":"/services","state":"absent"}

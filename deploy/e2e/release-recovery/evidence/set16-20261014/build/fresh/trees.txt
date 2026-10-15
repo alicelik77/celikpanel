@@ -1,0 +1,7 @@
+### baseline d5d673ebd95eeb80d16f93577c340d4a9d6a9f36 tree f2eb40e416a9963818b8d96087428cfdcd50fff4: files that differ from the source 89cf883971800c39c72c9f8358c58d56aace4194
+M	deploy/release-sequence-policy
+### good 1d586b7384bb6dfd42a80612c895ff3f76b98c1b tree b7ab6efce03fe3aad5960e0ca71f9f91d7d473d2: files that differ from the source 89cf883971800c39c72c9f8358c58d56aace4194
+M	deploy/release-sequence-policy
+### defective 4403975c7b96957671afe33b7a0746638fbf8752 tree 8687487514ec10b9dc350d71088cae00b54cd861: files that differ from the source 89cf883971800c39c72c9f8358c58d56aace4194
+M	cmd/panel/main.go
+M	deploy/release-sequence-policy

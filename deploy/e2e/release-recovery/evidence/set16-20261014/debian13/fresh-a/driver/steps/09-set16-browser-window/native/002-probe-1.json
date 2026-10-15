@@ -1,0 +1,84 @@
+{
+  "at": "2026-10-14T22:32:53Z",
+  "cgroup_cpu": {
+    "agent": {
+      "system_usec": 9764874,
+      "usage_usec": 21341229,
+      "user_usec": 11576355
+    },
+    "panel": {
+      "system_usec": 915282,
+      "usage_usec": 1593292,
+      "user_usec": 678010
+    }
+  },
+  "clock": {
+    "returncode": 0
+  },
+  "epoch": 1792017173.9851995,
+  "loadavg": "0.09 0.17 0.10 1/127 15028",
+  "mode": "read-probe14b",
+  "nginx": {
+    "ActiveEnterTimestampMonotonic": "157550122",
+    "ActiveState": "active",
+    "ExecMainStartTimestamp": "Wed 2026-10-14 22:27:44 UTC",
+    "MainPID": "7214",
+    "NRestarts": "0",
+    "SubState": "running"
+  },
+  "nginx_dropin": {
+    "exists": false,
+    "path": "/etc/systemd/system/nginx.service.d/zz-set14-slow-reload.conf",
+    "text": null
+  },
+  "owner_action": false,
+  "proc_cpu": {
+    "agent": {
+      "clk_tck": 100,
+      "cstime": 662,
+      "cutime": 1397,
+      "stime": 29,
+      "utime": 28
+    },
+    "panel": {
+      "clk_tck": 100,
+      "cstime": 0,
+      "cutime": 0,
+      "stime": 90,
+      "utime": 67
+    }
+  },
+  "scan_cache": {
+    "age_seconds": 278.0,
+    "data_bytes": 2262,
+    "database": "/var/lib/celikpanel/celikpanel.db",
+    "exists": true,
+    "scanned_at": "2026-10-14T22:28:16Z",
+    "scanned_epoch": 1792016896.0
+  },
+  "schema": "celikpanel/set14b-native/v1",
+  "units": {
+    "agent": {
+      "ActiveEnterTimestampMonotonic": "97095909",
+      "ActiveState": "active",
+      "CPUUsageNSec": "21341229000",
+      "ControlGroup": "/system.slice/celikpanel-agent.service",
+      "ExecMainStartTimestamp": "Wed 2026-10-14 22:26:43 UTC",
+      "MainPID": "5197",
+      "MemoryCurrent": "441040896",
+      "NRestarts": "0",
+      "SubState": "running"
+    },
+    "panel": {
+      "ActiveEnterTimestampMonotonic": "99930709",
+      "ActiveState": "active",
+      "CPUUsageNSec": "1593292000",
+      "ControlGroup": "/system.slice/celikpanel-panel.service",
+      "ExecMainStartTimestamp": "Wed 2026-10-14 22:26:46 UTC",
+      "MainPID": "5392",
+      "MemoryCurrent": "97173504",
+      "NRestarts": "0",
+      "SubState": "running"
+    }
+  }
+}

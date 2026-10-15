@@ -1,0 +1,6 @@
+{"page":"sign-in","lang":"en","phase":"sign-in","at":"2026-10-14T23:35:39.730Z","t":1792020939730,"text":null,"tag":null,"busy":null,"vis":"visible","path":"/domains","state":"absent"}
+{"page":"p1-domains","lang":"en","phase":"domains","at":"2026-10-14T23:35:43.913Z","t":1792020943913,"text":null,"tag":null,"busy":null,"vis":"visible","path":"/domains","state":"absent"}
+{"page":"p2-dashboard","lang":"en","phase":"dashboard","at":"2026-10-14T23:35:59.175Z","t":1792020959175,"text":null,"tag":null,"busy":null,"vis":"visible","path":"/","state":"absent"}
+{"page":"p2-dashboard","lang":"en","phase":"dashboard","at":"2026-10-14T23:35:59.319Z","t":1792020959319,"text":"System services Checking components…","tag":"SECTION","busy":"true","vis":"visible","path":"/","state":"checking"}
+{"page":"p2-dashboard","lang":"en","phase":"dashboard","at":"2026-10-14T23:36:01.964Z","t":1792020961964,"text":"System services 6 / 6 running / installed","tag":"BUTTON","busy":null,"vis":"visible","path":"/","state":"known"}
+{"page":"p3-components-fresh","lang":"en","phase":"components","at":"2026-10-14T23:37:29.954Z","t":1792021049954,"text":null,"tag":null,"busy":null,"vis":"visible","path":"/services","state":"absent"}

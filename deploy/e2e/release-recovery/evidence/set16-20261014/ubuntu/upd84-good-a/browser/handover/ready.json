@@ -1,0 +1,20 @@
+{
+  "at": "2026-10-14T23:35:22Z",
+  "base": "https://127.0.0.1:19264",
+  "browser": {
+    "lang": "en",
+    "viewport": "desktop"
+  },
+  "cell": "upd1-ubuntu-good",
+  "local_port": 19264,
+  "mode": "after-the-update",
+  "password_file": "/var/tmp/cp-set16/secret/h16ubgood-ui.json",
+  "preps": [
+    "probe",
+    "journal"
+  ],
+  "schema": "celikpanel/set12-handover/v1",
+  "tls_leaf_sha256": "f05bb32a92a991bec246470d3e303de1a7fef1f0505c114e6b4275ded8188655",
+  "username": "labadmin",
+  "window": "ui"
+}

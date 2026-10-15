@@ -1,0 +1,102 @@
+{
+  "native_evidence": false,
+  "proofs": {
+    "baseline": {
+      "agent_sha256": "b75633d9024fc1af85830081e9e84b95d2bfb2f1cc6670ccab2b1c64c5a41f48",
+      "commit": "d5d673ebd95eeb80d16f93577c340d4a9d6a9f36",
+      "dns_owner_tools": [
+        "dns-owner-tools/README.md",
+        "dns-owner-tools/bind-peer-inspect",
+        "dns-owner-tools/dns-peer-enroll",
+        "dns-owner-tools/pdns-peer-inspect"
+      ],
+      "files": 211,
+      "panel_sha256": "7577aa7e27f5d3b2b657ae914901f463493e036438eaef6999b74c432339dc8e",
+      "release_policy": {
+        "current": 85,
+        "format": "celikpanel-release-sequence-policy-v1",
+        "previous": 84,
+        "previous_commit": "f0157e6c8f1614cff176821172f8a9067493e625",
+        "previous_version": "v0.1.0-alpha.84",
+        "sha256": "3fdf0147b7f54b4535a9fa24e4966679e90a01ec27a188fba39e2f1fe3244643",
+        "version": "v0.1.0-alpha.85"
+      },
+      "source_proof": {
+        "acceptance_notice_sha256": "f4b6d708493d601d6369fa68d1f3ec1019430626f3a9b86e65556b514275f57b",
+        "commit": "d5d673ebd95eeb80d16f93577c340d4a9d6a9f36",
+        "exempted_from_git_proof": [
+          "ACCEPTANCE-LICENSE-BUILD.txt"
+        ],
+        "method": "real Git commit/tree and every packaged static source blob",
+        "tree": "f2eb40e416a9963818b8d96087428cfdcd50fff4",
+        "verified_static_files": 62
+      },
+      "tree": "f2eb40e416a9963818b8d96087428cfdcd50fff4"
+    },
+    "defective": {
+      "agent_sha256": "853bee677ed1dbf49257d21e2f33db41b8c0decfc3c91d3d6ae649e101eaf392",
+      "commit": "4403975c7b96957671afe33b7a0746638fbf8752",
+      "dns_owner_tools": [
+        "dns-owner-tools/README.md",
+        "dns-owner-tools/bind-peer-inspect",
+        "dns-owner-tools/dns-peer-enroll",
+        "dns-owner-tools/pdns-peer-inspect"
+      ],
+      "files": 211,
+      "panel_sha256": "e8e7190bcfcef1c5157a91c2f7e164ec39629be0528de9093d073e096921e0e1",
+      "release_policy": {
+        "current": 86,
+        "format": "celikpanel-release-sequence-policy-v1",
+        "previous": 85,
+        "previous_commit": "d5d673ebd95eeb80d16f93577c340d4a9d6a9f36",
+        "previous_version": "v0.1.0-alpha.85",
+        "sha256": "778fb6a8a0167965109fdc166c9d8d110330046dff6dc9ac6b117f3684b75e90",
+        "version": "v0.1.0-alpha.86"
+      },
+      "source_proof": {
+        "acceptance_notice_sha256": "4cff75f89f7bdf64447d09e0bfef686abf444f058bf1c0440d29322904a161a7",
+        "commit": "4403975c7b96957671afe33b7a0746638fbf8752",
+        "exempted_from_git_proof": [
+          "ACCEPTANCE-LICENSE-BUILD.txt"
+        ],
+        "method": "real Git commit/tree and every packaged static source blob",
+        "tree": "8687487514ec10b9dc350d71088cae00b54cd861",
+        "verified_static_files": 62
+      },
+      "tree": "8687487514ec10b9dc350d71088cae00b54cd861"
+    },
+    "good": {
+      "agent_sha256": "4afa51264c221d7d28cfa13e8a7ebd569926633be77329c4d5b5d47b20e39458",
+      "commit": "1d586b7384bb6dfd42a80612c895ff3f76b98c1b",
+      "dns_owner_tools": [
+        "dns-owner-tools/README.md",
+        "dns-owner-tools/bind-peer-inspect",
+        "dns-owner-tools/dns-peer-enroll",
+        "dns-owner-tools/pdns-peer-inspect"
+      ],
+      "files": 211,
+      "panel_sha256": "ca47c180dd45441e4dc3ce523b2ebc06b5890fb2ba1c689fca85331144c6eb39",
+      "release_policy": {
+        "current": 86,
+        "format": "celikpanel-release-sequence-policy-v1",
+        "previous": 85,
+        "previous_commit": "d5d673ebd95eeb80d16f93577c340d4a9d6a9f36",
+        "previous_version": "v0.1.0-alpha.85",
+        "sha256": "778fb6a8a0167965109fdc166c9d8d110330046dff6dc9ac6b117f3684b75e90",
+        "version": "v0.1.0-alpha.86"
+      },
+      "source_proof": {
+        "acceptance_notice_sha256": "c219d6ce011c71ff76cc0ad55296644c962df9ac0c1cfe07baa095f38bd4b06f",
+        "commit": "1d586b7384bb6dfd42a80612c895ff3f76b98c1b",
+        "exempted_from_git_proof": [
+          "ACCEPTANCE-LICENSE-BUILD.txt"
+        ],
+        "method": "real Git commit/tree and every packaged static source blob",
+        "tree": "b7ab6efce03fe3aad5960e0ca71f9f91d7d473d2",
+        "verified_static_files": 62
+      },
+      "tree": "b7ab6efce03fe3aad5960e0ca71f9f91d7d473d2"
+    }
+  },
+  "schema": "celikpanel/upd1-artifact-proof/v1"
+}

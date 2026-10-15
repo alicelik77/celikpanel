@@ -1,5 +1,5 @@
 // node cold-load-set16.mjs <handover-dir> <out-dir> <cell[,cell...]>
-// set16 (2026-10-14): the pre-publication measurement of the v0.1.0-alpha.85 candidate (commit 0bea00fa0). A real
+// set16 (2026-10-14): the pre-publication measurement of the v0.1.0-alpha.85 candidate (commit 89cf88397). A real
 // headless Chrome against a REAL CelikPanel on a disposable lab guest, reached through the lab driver's loopback SSH
 // forward (deploy/e2e/release-recovery/set16_trial.py, set12's browser window "ui"), after a fresh install or after
 // the owner's update (or its automatic return). Nothing but the loopback address of the forward is opened. The
@@ -740,6 +740,46 @@ async function attentionFacts(page) {
     }).catch(error => ({ error: String(error.message).slice(0, 160) }));
 }
 
+// set16 rerun (2026-10-15): what the surface of a refused read looks like, measured, not judged here: the computed
+// border, background and text colours of each [role="alert"] in the given root (and of every element inside it whose
+// text colour is the theme's failure colour, --danger), and for each "celikpanel-agent" in its text the line boxes
+// of exactly that token (one top = drawn unbroken). Light theme: --danger 179 38 30, --warning-mark 245 179 1.
+const SURFACE_FACTS = (rootSelector) => {
+    const root = rootSelector ? document.querySelector(rootSelector) : document;
+    if (!root) return { found: false, root: rootSelector };
+    const danger = getComputedStyle(document.documentElement).getPropertyValue('--danger').trim();
+    const dangerRgb = danger ? 'rgb(' + danger.split(/\s+/).join(', ') + ')' : null;
+    const alerts = Array.from(root.querySelectorAll('[role="alert"]')).filter(a => a.getBoundingClientRect().width > 0);
+    const tokenRuns = (el, token) => {
+        const out = [];
+        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+        for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+            let i = n.textContent.indexOf(token);
+            while (i >= 0) {
+                const r = document.createRange(); r.setStart(n, i); r.setEnd(n, i + token.length);
+                const tops = Array.from(r.getClientRects()).filter(x => x.width > 0).map(x => Math.round(x.top));
+                const parent = n.parentElement;
+                out.push({ tops, unbroken: new Set(tops).size === 1, nowrap_parent: parent ? getComputedStyle(parent).whiteSpace : null });
+                i = n.textContent.indexOf(token, i + token.length);
+            }
+        }
+        return out;
+    };
+    return { found: true, root: rootSelector, danger_rgb: dangerRgb, alerts: alerts.map(a => {
+        const s = getComputedStyle(a);
+        const inDanger = Array.from(a.querySelectorAll('*')).filter(x => danger && (getComputedStyle(x).color.match(/\d+/g) || []).slice(0, 3).join(' ') === danger.split(/\s+/).join(' ')).map(x => x.tagName + ':' + (x.textContent || '').trim().slice(0, 60));
+        const tokens = tokenRuns(a, 'celikpanel-agent');
+        return { text: (a.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 300), class: a.className, data_firewall_unread: a.hasAttribute('data-firewall-unread'),
+            border_color: s.borderTopColor, background_color: s.backgroundColor, color: s.color,
+            failure_colour_on_alert: danger ? [s.borderTopColor, s.backgroundColor, s.color].some(c => (c.match(/\d+/g) || []).slice(0, 3).join(' ') === danger.split(/\s+/).join(' ')) : null,
+            elements_in_failure_colour: inDanger, width: Math.round(a.getBoundingClientRect().width),
+            celikpanel_agent_tokens: tokens.length, celikpanel_agent_all_unbroken: tokens.length ? tokens.every(x => x.unbroken) : null, token_runs: tokens };
+    }) };
+};
+async function surfaceFacts(page, rootSelector = null) {
+    return page.evaluate(SURFACE_FACTS, rootSelector).catch(error => ({ error: String(error.message).slice(0, 160) }));
+}
+
 async function agentPhase(events) {
     const out = {};
     out.stop = await prep('agent-stop', events);
@@ -753,10 +793,23 @@ async function agentPhase(events) {
     await comp.screenshot({ path: join(dir, 'components-tr-agent-stopped-viewport.png'), fullPage: false });
     const compText = redact(await pageText(comp));
     await writeFile(join(dir, 'components-tr-agent-stopped.txt'), compText);
+    out.components_tr_surface = await surfaceFacts(comp, 'main');
     out.components_tr = { load_at: iso(at), ...(await bannerFacts(comp)), agent_sentence_tr: AGENT_TR.test(compText), agent_sentence_en: AGENT_EN.test(compText),
         firewall_reads: requests.filter(r => r.page === label && r.url.split('?')[0] === '/api/v1/firewall').map(r => ({ start: r.start, status: r.status, ms: r.ms, agent_read: r.agent_read })),
         scan_posts: scanPosts(at).filter(r => r.page === label).map(brief) };
     await cardLog(comp);
+    {   // set16 rerun: the same page at 390x844 (Turkish), the surface and the command tokens at phone width
+        const pl = 'p6-components-tr-phone-agent-stopped';
+        const pp = await newPage(pl, 'tr', 'phone');
+        await toFront(pp);
+        await pp.goto(base + '/services', { waitUntil: 'domcontentloaded', timeout: 60000 });
+        await pause(20000);
+        await pp.screenshot({ path: join(dir, 'components-tr-phone-agent-stopped-viewport.png'), fullPage: false });
+        await pp.screenshot({ path: join(dir, 'components-tr-phone-agent-stopped-full.png'), fullPage: true });
+        out.components_tr_phone_surface = await surfaceFacts(pp, 'main');
+        await pp.close();
+    }
+    await toFront(comp);
     // the Dashboard in Turkish and in English with the Agent stopped (the Components page stays open behind them)
     for (const [lang, tag] of [['tr', 'tr'], ['en', 'en']]) {
         const dl = 'p6-dashboard-' + tag + '-agent-stopped';
@@ -770,8 +823,9 @@ async function agentPhase(events) {
         const text = redact(await pageText(page));
         await writeFile(join(dir, `dashboard-${tag}-agent-stopped-full.txt`), text);
         const attention = await attentionFacts(page);
+        const attentionSurface = await page.evaluate(() => { const s = Array.from(document.querySelectorAll('section')).find(x => /^(Needs attention|İlgi istiyor)/.test((x.innerText || '').trim())); if (s) s.setAttribute('data-set16-attention', ''); return !!s; }).then(found => found ? surfaceFacts(page, '[data-set16-attention]') : { found: false }).catch(error => ({ error: String(error.message).slice(0, 160) }));
         await cardLog(page);
-        out['dashboard_' + tag] = { load_at: iso(t0), attention,
+        out['dashboard_' + tag] = { load_at: iso(t0), attention, attention_surface: attentionSurface,
             attention_names_agent: attention.found ? (lang === 'tr' ? AGENT_TR : AGENT_EN).test(attention.text) : false,
             agent_sentence_other_language: lang === 'tr' ? AGENT_EN.test(text) : AGENT_TR.test(text),
             states: statesOf(sequenceOf(dl, phase)), mail_states: statesOf(mailSequenceOf(dl, phase)),

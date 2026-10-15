@@ -1,0 +1,100 @@
+CPU kullanımı
+
+%2
+
+2 çekirdek · Yük 0.00
+
+Bellek
+
+%16
+
+467 MB / 2.9 GB
+
+Disk (/)
+
+%11
+
+2.7 GB / 23.4 GB
+
+Sistem servisleri
+
+3 / 3
+
+çalışan / kurulu
+
+Posta paketleri
+Kısmen kurulu
+
+Webmail: Bazı bileşenler zaten kurulu. Bu profili kurmak, yerinde olan hizmetleri kaldırmadan planın tamamını tamamlar.
+
+Posta paketlerini gör
+İlgi istiyor
+
+Bu sunucunun durumunun bir bölümü okunamadı; bu yüzden bu liste eksik olabilir. Bu sunucudaki CelikPanel Agent’ına ulaşılamıyor; bu yüzden istek yapılmadı ve hiçbir şey değiştirilmedi. Sunucunun sahibi Agent’ı sunucuda sudo systemctl status celikpanel-agent komutuyla denetler (günlüğü: sudo journalctl -u celikpanel-agent); durmuşsa sudo systemctl start celikpanel-agent ile başlatır. Agent çalışınca yeniden deneyin.
+
+Tekrar dene
+Barındırma
+
+0
+
+Alan Adları
+
+0
+
+Veritabanları
+
+1
+
+Kullanıcılar
+
+0
+
+Posta hesabı
+
+Son etkinlik
+L
+labadmin oturum açtı2 kez
+127.0.0.1
+10 dk önce
+L
+labadmin server.setup.guidance
+127.0.0.1
+13 dk önce
+L
+labadmin server.setup.revise
+127.0.0.1
+13 dk önce
+L
+labadmin server.setup.child:certbot
+127.0.0.1
+15 dk önce
+L
+labadmin server.setup.child:cron
+127.0.0.1
+15 dk önce
+L
+labadmin server.setup.child:php-fpm
+127.0.0.1
+15 dk önce
+L
+labadmin server.setup.child:nginx
+127.0.0.1
+15 dk önce
+Hızlı işlemler
+Alan adı ekle
+Servis kur
+Kullanıcı ekle
+İçe aktar
+Sunucu bilgisi
+Sunucu adı
+dns-debian13
+IPv4 adresi
+10.0.2.15
+İşletim sistemi
+Debian GNU/Linux 13 (trixie)
+Çekirdek
+6.12.105+deb13-cloud-amd64
+Mimari
+amd64
+Çalışma süresi
+18dk

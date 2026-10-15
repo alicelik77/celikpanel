@@ -1,0 +1,129 @@
+--- a/deploy/e2e/release-recovery/set16_fixture.py
++++ b/deploy/e2e/release-recovery/set16_fixture.py
+@@ -1,6 +1,6 @@
+ #!/usr/bin/env python3
+ """set16: owner_update_trial with the release profiles of the eighteenth native record (the pre-publication
+-measurement of the v0.1.0-alpha.85 candidate, commit 0bea00fa0 on fix/alpha85-setup-finish-wait).
++measurement of the v0.1.0-alpha.85 candidate, commit 89cf88397 (first planned on 0bea00fa0) on fix/alpha85-setup-finish-wait).
+ 
+ Nothing of owner_update_trial.py, worker_fixture_origin.py, guest_bound_worker.py, set12_fixture.py or
+ set15_fixture.py is changed on disk. Importing this module (or running it as the build's fixture driver) first imports
+@@ -48,7 +48,7 @@
+ fx12, out = fx15.fx12, fx15.out
+ ALPHA84_COMMIT = "f0157e6c8f1614cff176821172f8a9067493e625"
+ ALPHA84_REF = "v0.1.0-alpha.84"
+-SOURCE_COMMIT = "0bea00fa041e62610d8d1f433b582b8dca8c9db5"
++SOURCE_COMMIT = "89cf883971800c39c72c9f8358c58d56aace4194"   # set16 rerun (2026-10-15 local): HEAD moved from 0bea00fa0
+ FRESH_REF = "v0.1.0-alpha.85"
+ POLICY_84 = dict(fx15.POLICY_84)
+ POLICY_85 = dict(fx15.POLICY_85)
+--- a/deploy/e2e/release-recovery/set16_trial.py
++++ b/deploy/e2e/release-recovery/set16_trial.py
+@@ -1,5 +1,5 @@
+ #!/usr/bin/env python3
+-"""set16: the pre-publication measurement of the v0.1.0-alpha.85 candidate (commit 0bea00fa0, branch
++"""set16: the pre-publication measurement of the v0.1.0-alpha.85 candidate (commit 89cf88397, first planned on 0bea00fa0; branch
+ fix/alpha85-setup-finish-wait), on disposable QEMU guests (lab.py), with a real headless Chrome on the host
+ (web/tools/browser-inspect/cold-load-set16.mjs, set12's browser window "ui").
+ 
+--- a/deploy/e2e/release-recovery/run-set16.sh
++++ b/deploy/e2e/release-recovery/run-set16.sh
+@@ -1,6 +1,6 @@
+ #!/usr/bin/env bash
+ # set16 wrapper for the Linux QEMU host (archlinux), run as root: the pre-publication measurement of the
+-# v0.1.0-alpha.85 candidate (commit 0bea00fa0) on disposable guests: installed fresh (cells set16-*) and reached by the
++# v0.1.0-alpha.85 candidate (commit 89cf88397) on disposable guests: installed fresh (cells set16-*) and reached by the
+ # owner's update from alpha.84 rebuilt from its tag (cells upd1-<debian13|ubuntu>-<good|defective>).
+ #
+ #   run-set16.sh dry-run CELL ARTIFACTS_JSON LAB_NAME
+--- a/web/tools/browser-inspect/cold-load-set16.mjs
++++ b/web/tools/browser-inspect/cold-load-set16.mjs
+@@ -1,5 +1,5 @@
+ // node cold-load-set16.mjs <handover-dir> <out-dir> <cell[,cell...]>
+-// set16 (2026-10-14): the pre-publication measurement of the v0.1.0-alpha.85 candidate (commit 0bea00fa0). A real
++// set16 (2026-10-14): the pre-publication measurement of the v0.1.0-alpha.85 candidate (commit 89cf88397). A real
+ // headless Chrome against a REAL CelikPanel on a disposable lab guest, reached through the lab driver's loopback SSH
+ // forward (deploy/e2e/release-recovery/set16_trial.py, set12's browser window "ui"), after a fresh install or after
+ // the owner's update (or its automatic return). Nothing but the loopback address of the forward is opened. The
+@@ -740,6 +740,46 @@
+     }).catch(error => ({ error: String(error.message).slice(0, 160) }));
+ }
+ 
++// set16 rerun (2026-10-15): what the surface of a refused read looks like, measured, not judged here: the computed
++// border, background and text colours of each [role="alert"] in the given root (and of every element inside it whose
++// text colour is the theme's failure colour, --danger), and for each "celikpanel-agent" in its text the line boxes
++// of exactly that token (one top = drawn unbroken). Light theme: --danger 179 38 30, --warning-mark 245 179 1.
++const SURFACE_FACTS = (rootSelector) => {
++    const root = rootSelector ? document.querySelector(rootSelector) : document;
++    if (!root) return { found: false, root: rootSelector };
++    const danger = getComputedStyle(document.documentElement).getPropertyValue('--danger').trim();
++    const dangerRgb = danger ? 'rgb(' + danger.split(/\s+/).join(', ') + ')' : null;
++    const alerts = Array.from(root.querySelectorAll('[role="alert"]')).filter(a => a.getBoundingClientRect().width > 0);
++    const tokenRuns = (el, token) => {
++        const out = [];
++        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
++        for (let n = walker.nextNode(); n; n = walker.nextNode()) {
++            let i = n.textContent.indexOf(token);
++            while (i >= 0) {
++                const r = document.createRange(); r.setStart(n, i); r.setEnd(n, i + token.length);
++                const tops = Array.from(r.getClientRects()).filter(x => x.width > 0).map(x => Math.round(x.top));
++                const parent = n.parentElement;
++                out.push({ tops, unbroken: new Set(tops).size === 1, nowrap_parent: parent ? getComputedStyle(parent).whiteSpace : null });
++                i = n.textContent.indexOf(token, i + token.length);
++            }
++        }
++        return out;
++    };
++    return { found: true, root: rootSelector, danger_rgb: dangerRgb, alerts: alerts.map(a => {
++        const s = getComputedStyle(a);
++        const inDanger = Array.from(a.querySelectorAll('*')).filter(x => danger && (getComputedStyle(x).color.match(/\d+/g) || []).slice(0, 3).join(' ') === danger.split(/\s+/).join(' ')).map(x => x.tagName + ':' + (x.textContent || '').trim().slice(0, 60));
++        const tokens = tokenRuns(a, 'celikpanel-agent');
++        return { text: (a.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 300), class: a.className, data_firewall_unread: a.hasAttribute('data-firewall-unread'),
++            border_color: s.borderTopColor, background_color: s.backgroundColor, color: s.color,
++            failure_colour_on_alert: danger ? [s.borderTopColor, s.backgroundColor, s.color].some(c => (c.match(/\d+/g) || []).slice(0, 3).join(' ') === danger.split(/\s+/).join(' ')) : null,
++            elements_in_failure_colour: inDanger, width: Math.round(a.getBoundingClientRect().width),
++            celikpanel_agent_tokens: tokens.length, celikpanel_agent_all_unbroken: tokens.length ? tokens.every(x => x.unbroken) : null, token_runs: tokens };
++    }) };
++};
++async function surfaceFacts(page, rootSelector = null) {
++    return page.evaluate(SURFACE_FACTS, rootSelector).catch(error => ({ error: String(error.message).slice(0, 160) }));
++}
++
+ async function agentPhase(events) {
+     const out = {};
+     out.stop = await prep('agent-stop', events);
+@@ -753,10 +793,23 @@
+     await comp.screenshot({ path: join(dir, 'components-tr-agent-stopped-viewport.png'), fullPage: false });
+     const compText = redact(await pageText(comp));
+     await writeFile(join(dir, 'components-tr-agent-stopped.txt'), compText);
++    out.components_tr_surface = await surfaceFacts(comp, 'main');
+     out.components_tr = { load_at: iso(at), ...(await bannerFacts(comp)), agent_sentence_tr: AGENT_TR.test(compText), agent_sentence_en: AGENT_EN.test(compText),
+         firewall_reads: requests.filter(r => r.page === label && r.url.split('?')[0] === '/api/v1/firewall').map(r => ({ start: r.start, status: r.status, ms: r.ms, agent_read: r.agent_read })),
+         scan_posts: scanPosts(at).filter(r => r.page === label).map(brief) };
+     await cardLog(comp);
++    {   // set16 rerun: the same page at 390x844 (Turkish), the surface and the command tokens at phone width
++        const pl = 'p6-components-tr-phone-agent-stopped';
++        const pp = await newPage(pl, 'tr', 'phone');
++        await toFront(pp);
++        await pp.goto(base + '/services', { waitUntil: 'domcontentloaded', timeout: 60000 });
++        await pause(20000);
++        await pp.screenshot({ path: join(dir, 'components-tr-phone-agent-stopped-viewport.png'), fullPage: false });
++        await pp.screenshot({ path: join(dir, 'components-tr-phone-agent-stopped-full.png'), fullPage: true });
++        out.components_tr_phone_surface = await surfaceFacts(pp, 'main');
++        await pp.close();
++    }
++    await toFront(comp);
+     // the Dashboard in Turkish and in English with the Agent stopped (the Components page stays open behind them)
+     for (const [lang, tag] of [['tr', 'tr'], ['en', 'en']]) {
+         const dl = 'p6-dashboard-' + tag + '-agent-stopped';
+@@ -770,8 +823,9 @@
+         const text = redact(await pageText(page));
+         await writeFile(join(dir, `dashboard-${tag}-agent-stopped-full.txt`), text);
+         const attention = await attentionFacts(page);
++        const attentionSurface = await page.evaluate(() => { const s = Array.from(document.querySelectorAll('section')).find(x => /^(Needs attention|İlgi istiyor)/.test((x.innerText || '').trim())); if (s) s.setAttribute('data-set16-attention', ''); return !!s; }).then(found => found ? surfaceFacts(page, '[data-set16-attention]') : { found: false }).catch(error => ({ error: String(error.message).slice(0, 160) }));
+         await cardLog(page);
+-        out['dashboard_' + tag] = { load_at: iso(t0), attention,
++        out['dashboard_' + tag] = { load_at: iso(t0), attention, attention_surface: attentionSurface,
+             attention_names_agent: attention.found ? (lang === 'tr' ? AGENT_TR : AGENT_EN).test(attention.text) : false,
+             agent_sentence_other_language: lang === 'tr' ? AGENT_EN.test(text) : AGENT_TR.test(text),
+             states: statesOf(sequenceOf(dl, phase)), mail_states: statesOf(mailSequenceOf(dl, phase)),

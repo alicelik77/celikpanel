@@ -1,0 +1,5 @@
+hand=\\wsl.localhost\archlinux\var\tmp\cp-set16\hand\h16ubgood-ui start=2026-10-14T23:35:38Z
+browser profile: <redacted> (46 characters, limit 120)
+{"cell":"ui","started":"2026-10-14T23:35:39.336Z","ended":"2026-10-14T23:38:02.010Z","ok":true}
+{"cell":"done","started":"2026-10-14T23:38:02.013Z","ended":"2026-10-14T23:38:02.015Z","ok":true}
+rc=0 end=2026-10-14T23:38:02Z

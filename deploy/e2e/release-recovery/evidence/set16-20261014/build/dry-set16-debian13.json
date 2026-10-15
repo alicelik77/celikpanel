@@ -1,0 +1,58 @@
+{
+  "browser": {
+    "lang": "en",
+    "viewport": "desktop"
+  },
+  "candidate": {
+    "commit": "d5d673ebd95eeb80d16f93577c340d4a9d6a9f36",
+    "sha256": "3913d51374ba8db47fd4acce0af21d0c4150690664809d8932e355dbfdff40ad",
+    "version": "v0.1.0-alpha.85"
+  },
+  "cell": "set16-debian13",
+  "cell_kind": "set16-fresh-install",
+  "local_port": 18443,
+  "native_evidence": false,
+  "pinned_names": [
+    "celikpanel.net",
+    "acme-v02.api.letsencrypt.org",
+    "acme-staging-v02.api.letsencrypt.org",
+    "acme.zerossl.com",
+    "dv.acme-v02.api.pki.goog"
+  ],
+  "preparations": [
+    "probe",
+    "clockshift_p90000",
+    "clockshift_m180000",
+    "ntp-on",
+    "agent-stop",
+    "agent-start",
+    "agent-reads",
+    "scan-now",
+    "journal"
+  ],
+  "rule": "the driver calls only the Panel's HTTP API as the logged-in owner; every native fact is an SSH reading; owner actions and lab preparation (the guest clock) on the guest are recorded as such; no certificate authority and no licence service is contacted by the driver",
+  "schema": "celikpanel/set16-plan/v1",
+  "setup": {
+    "components": [
+      "mariadb",
+      "nginx",
+      "php-fpm"
+    ],
+    "dns_mode": "external",
+    "purpose": "web"
+  },
+  "steps": [
+    "set6-name-pinning",
+    "preflight",
+    "origin",
+    "baseline-install",
+    "owner-login",
+    "license",
+    "setup",
+    "set16-readings",
+    "set16-browser-window",
+    "set6-name-pinning-at-the-end",
+    "collect"
+  ],
+  "work_root": "/var/tmp/cp-release-drill-s16-dry"
+}

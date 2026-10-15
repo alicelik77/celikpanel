@@ -1,0 +1,17 @@
+Admin Subscription
+
+0 B of 10.00 GB disk
+
+Domains 1/999
+Databases 0/999
+Mail 1/50
+Add domain
+
+1 items total
+
+	Domain name	Type	Disk usage	Traffic	Status
+
+upd1-owner.test
+	static	0 B	0 B/mo
+Active
+1 items total

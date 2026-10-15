@@ -1,0 +1,20 @@
+{
+  "at": "2026-10-14T22:57:30Z",
+  "base": "https://127.0.0.1:19262",
+  "browser": {
+    "lang": "en",
+    "viewport": "desktop"
+  },
+  "cell": "upd1-debian13-good",
+  "local_port": 19262,
+  "mode": "after-the-update",
+  "password_file": "/var/tmp/cp-set16/secret/h16ugood-ui.json",
+  "preps": [
+    "probe",
+    "journal"
+  ],
+  "schema": "celikpanel/set12-handover/v1",
+  "tls_leaf_sha256": "4e4a6f61b5ab9a2c50c1b673bd5911b87944a9fa945776da50bae3d0409d9dbc",
+  "username": "labadmin",
+  "window": "ui"
+}

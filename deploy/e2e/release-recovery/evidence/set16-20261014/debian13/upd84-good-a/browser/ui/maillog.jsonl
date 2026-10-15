@@ -1,0 +1,6 @@
+{"page":"sign-in","lang":"en","phase":"sign-in","at":"2026-10-14T22:57:41.003Z","t":1792018661003,"text":null,"spinners":null,"vis":"visible","path":"/domains","state":"absent"}
+{"page":"p1-domains","lang":"en","phase":"domains","at":"2026-10-14T22:57:45.172Z","t":1792018665172,"text":null,"spinners":null,"vis":"visible","path":"/domains","state":"absent"}
+{"page":"p2-dashboard","lang":"en","phase":"dashboard","at":"2026-10-14T22:57:59.897Z","t":1792018679897,"text":null,"spinners":null,"vis":"visible","path":"/","state":"absent"}
+{"page":"p2-dashboard","lang":"en","phase":"dashboard","at":"2026-10-14T22:58:00.057Z","t":1792018680057,"text":"Mail stacks Checking… Checking components… View mail stacks","spinners":1,"vis":"visible","path":"/","state":"checking"}
+{"page":"p2-dashboard","lang":"en","phase":"dashboard","at":"2026-10-14T22:58:01.085Z","t":1792018681085,"text":"Mail stacks Ready At least one mail profile has a fresh component scan and completed reconciliation. View mail stacks","spinners":0,"vis":"visible","path":"/","state":"ready"}
+{"page":"p3-components-fresh","lang":"en","phase":"components","at":"2026-10-14T22:59:30.862Z","t":1792018770862,"text":null,"spinners":null,"vis":"visible","path":"/services","state":"absent"}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""set16: the pre-publication measurement of the v0.1.0-alpha.85 candidate (commit 0bea00fa0, branch
+"""set16: the pre-publication measurement of the v0.1.0-alpha.85 candidate (commit 89cf88397, first planned on 0bea00fa0; branch
 fix/alpha85-setup-finish-wait), on disposable QEMU guests (lab.py), with a real headless Chrome on the host
 (web/tools/browser-inspect/cold-load-set16.mjs, set12's browser window "ui").
 

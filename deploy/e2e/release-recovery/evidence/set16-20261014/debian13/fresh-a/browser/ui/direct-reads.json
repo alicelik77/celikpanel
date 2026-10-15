@@ -1,0 +1,88 @@
+{
+  "/api/v1/panel/version": {
+    "status": 200,
+    "at": "2026-10-14T22:44:36.024Z",
+    "body": {
+      "agent_commit": "d5d673ebd95eeb80d16f93577c340d4a9d6a9f36",
+      "agent_matches": true,
+      "commit": "d5d673ebd95eeb80d16f93577c340d4a9d6a9f36",
+      "hostname": "dns-debian13",
+      "ipv4": "192.0.2.10",
+      "schema_version": 44,
+      "version": "v0.1.0-alpha.85"
+    }
+  },
+  "/api/v1/license/access": {
+    "status": 200,
+    "at": "2026-10-14T22:44:36.409Z",
+    "body": {
+      "can_use_panel": true,
+      "valid_until": 1792017913,
+      "valid_for_seconds": 35.516,
+      "state": "active",
+      "observation": "known"
+    }
+  },
+  "/api/v1/managed-services": {
+    "status": 200,
+    "at": "2026-10-14T22:44:36.781Z",
+    "body": {
+      "scanned_at": "2026-10-14T22:44:17Z",
+      "scan_age_seconds": 20.857,
+      "services": "<27 entries>",
+      "profiles": [
+        {
+          "verified": false,
+          "latest_attempt_status": "none",
+          "id": "core-mail",
+          "name": "Core Mail",
+          "description": "Postfix SMTP and Dovecot IMAP/POP3 with authenticated submission.",
+          "services": [
+            "postfix",
+            "dovecot"
+          ],
+          "status": "available",
+          "available": true
+        },
+        {
+          "verified": false,
+          "latest_attempt_status": "none",
+          "id": "webmail",
+          "name": "Webmail",
+          "description": "Core mail plus Nginx, PHP-FPM and Roundcube webmail.",
+          "services": [
+            "postfix",
+            "dovecot",
+            "nginx",
+            "php-fpm",
+            "roundcube"
+          ],
+          "status": "partial",
+          "available": true,
+          "warning": "Some components are already present. Installing this profile will reconcile the full plan without removing completed services.",
+          "warning_code": "partly_present"
+        },
+        {
+          "verified": false,
+          "latest_attempt_status": "none",
+          "id": "protected-mail",
+          "name": "Spam-Protected Mail",
+          "description": "Core mail with Rspamd spam filtering.",
+          "services": [
+            "postfix",
+            "dovecot",
+            "rspamd"
+          ],
+          "status": "available",
+          "available": true
+        }
+      ],
+      "dns_identity_ready": true,
+      "mail_hostname": {
+        "current": "dns-debian13",
+        "current_usable": false,
+        "will_set_hostname": false
+      }
+    }
+  }
+}

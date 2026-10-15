@@ -1,0 +1,5 @@
+2026-10-14T22:25:01Z before set16-debian13 s16-d13-a (guest start) free_GiB=346 free_bytes=371907584000 (Get-PSDrive C reading of 2026-10-14T22:24:25Z, 36s old) allowed=yes
+2026-10-14T22:45:03Z before upd1-debian13-good s16-u84-good-a (guest start) free_GiB=346 free_bytes=371647991808 (Get-PSDrive C reading of 2026-10-14T22:44:26Z, 37s old) allowed=yes
+2026-10-14T23:00:36Z before upd1-debian13-defective s16-u84-def-a (guest start) free_GiB=345 free_bytes=370918576128 (Get-PSDrive C reading of 2026-10-14T23:00:26Z, 10s old) allowed=yes
+2026-10-14T23:16:40Z before upd1-ubuntu-good s16-ub-u84-good-a (guest start) free_GiB=343 free_bytes=368559423488 (Get-PSDrive C reading of 2026-10-14T23:16:27Z, 13s old) allowed=yes
+2026-10-14T23:38:29Z before upd1-ubuntu-defective s16-ub-u84-def-a (guest start) free_GiB=341 free_bytes=366168821760 (Get-PSDrive C reading of 2026-10-14T23:38:28Z, 1s old) allowed=yes

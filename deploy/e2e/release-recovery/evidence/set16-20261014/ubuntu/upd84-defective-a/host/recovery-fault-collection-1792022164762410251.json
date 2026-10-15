@@ -1,0 +1,88 @@
+{
+  "events_base64": "eyJhY3Rpb24iOiAicmVib290IiwgImF0IjogIjIwMjYtMTAtMTRUMjM6NTU6NDQuMzQ5MjE4KzAwOjAwIiwgImNoZWNrcG9pbnQiOiAicGF5bG9hZF9yZXN0b3JlZCIsICJldmVudCI6ICJhcm1lZCIsICJpZGVudGl0eSI6IHsiY2VsbF9pZCI6ICJyZWxlYXNlLXJlY292ZXJ5X19kNDMyMGIwNmJhNzA1OWRiIiwgIm5vZGUiOiAidWJ1bnR1IiwgIm5vbmNlIjogImQ0MzIwYjA2YmE3MDU5ZGJmNzM5MmQ5NzNhZTRlNWE2MDlkMDljNGI3NDAzZmIwMThiNDQxMDIyNDcxMjgzMmIiLCAidm1fdXVpZCI6ICJjMmZhYjVhOC0wYmJkLTU1ZTEtYmIzMC1iZDM1MmUwMzU4ZmQifSwgIm9wZXJhdGlvbl9pZCI6ICI2MzZlZmMwYzJhNzdiMjY0YzgyYWI5NmQzZTI3NWY0NSIsICJzY2hlbWEiOiAiY2VsaWtwYW5lbC9yZWNvdmVyeS1mYXVsdC92MSIsICJ0aW1lb3V0X3NlY29uZHMiOiA2MDB9CnsiYXQiOiAiMjAyNi0xMC0xNFQyMzo1NjowNS4xMjY0NTYrMDA6MDAiLCAiZXZlbnQiOiAiZnJlZXplX3JlcXVlc3RlZCIsICJpZGVudGl0eSI6IHsiY2VsbF9pZCI6ICJyZWxlYXNlLXJlY292ZXJ5X19kNDMyMGIwNmJhNzA1OWRiIiwgIm5vZGUiOiAidWJ1bnR1IiwgIm5vbmNlIjogImQ0MzIwYjA2YmE3MDU5ZGJmNzM5MmQ5NzNhZTRlNWE2MDlkMDljNGI3NDAzZmIwMThiNDQxMDIyNDcxMjgzMmIiLCAidm1fdXVpZCI6ICJjMmZhYjVhOC0wYmJkLTU1ZTEtYmIzMC1iZDM1MmUwMzU4ZmQifSwgIm9wZXJhdGlvbl9pZCI6ICI2MzZlZmMwYzJhNzdiMjY0YzgyYWI5NmQzZTI3NWY0NSIsICJzY2hlbWEiOiAiY2VsaWtwYW5lbC9yZWNvdmVyeS1mYXVsdC92MSIsICJ3b3JrZXIiOiB7ImJvb3RfaWQiOiAiZjNjYzZkZTUtNmFjNy00MWZjLThhMjEtYmM0MWE4ZGVlZGNjIiwgImNncm91cCI6ICIvc3lzdGVtLnNsaWNlL2NlbGlrcGFuZWwtcmVsZWFzZS1yZWNvdmVyeS5zZXJ2aWNlIiwgImNncm91cF9kZXZpY2UiOiAyOCwgImNncm91cF9pbm9kZSI6IDIzNzM0LCAiY29tbWFuZF9zaGEyNTYiOiAiNDA2ZmRlYTY3NGI0Mjc3ZTlmOWEzNzYzNTllYTdjNzMwMTQ0ZGJjMmFlYTgxYTc5YjhiYjdhYmEyY2UwMzcwZiIsICJpbnZvY2F0aW9uX2lkIjogIjgxNzEzYjU5NjA3MzQ4YzJhNzM5YWU1ODllYmFkNzkyIiwgInBpZCI6IDU5MjQ1LCAicnVubmluZ19leGVjdXRhYmxlX3NoYTI1NiI6ICJiYzU5NDVmZWI4YmQyNjIwM2ViZmFmZWE1Y2UxODc4YmIyZTMyY2I4ZmI1MGFiN2FlMzk1Y2ZiMWUxYWFhZWYxIiwgInN0YXJ0X3RpY2tzIjogIjEwMzQwNCIsICJ1bml0IjogImNlbGlrcGFuZWwtcmVsZWFzZS1yZWNvdmVyeS5zZXJ2aWNlIn19CnsiYXQiOiAiMjAyNi0xMC0xNFQyMzo1NjowNS4xNzQwMzQrMDA6MDAiLCAiZXZlbnQiOiAiZnJlZXplX29ic2VydmVkIiwgImlkZW50aXR5IjogeyJjZWxsX2lkIjogInJlbGVhc2UtcmVjb3ZlcnlfX2Q0MzIwYjA2YmE3MDU5ZGIiLCAibm9kZSI6ICJ1YnVudHUiLCAibm9uY2UiOiAiZDQzMjBiMDZiYTcwNTlkYmY3MzkyZDk3M2FlNGU1YTYwOWQwOWM0Yjc0MDNmYjAxOGI0NDEwMjI0NzEyODMyYiIsICJ2bV91dWlkIjogImMyZmFiNWE4LTBiYmQtNTVlMS1iYjMwLWJkMzUyZTAzNThmZCJ9LCAib3BlcmF0aW9uX2lkIjogIjYzNmVmYzBjMmE3N2IyNjRjODJhYjk2ZDNlMjc1ZjQ1IiwgInNjaGVtYSI6ICJjZWxpa3BhbmVsL3JlY292ZXJ5LWZhdWx0L3YxIiwgInNjb3BlIjogImNsZWFudXAtb25seSIsICJ3b3JrZXIiOiB7ImJvb3RfaWQiOiAiZjNjYzZkZTUtNmFjNy00MWZjLThhMjEtYmM0MWE4ZGVlZGNjIiwgImNncm91cCI6ICIvc3lzdGVtLnNsaWNlL2NlbGlrcGFuZWwtcmVsZWFzZS1yZWNvdmVyeS5zZXJ2aWNlIiwgImNncm91cF9kZXZpY2UiOiAyOCwgImNncm91cF9pbm9kZSI6IDIzNzM0LCAiY29tbWFuZF9zaGEyNTYiOiAiNDA2ZmRlYTY3NGI0Mjc3ZTlmOWEzNzYzNTllYTdjNzMwMTQ0ZGJjMmFlYTgxYTc5YjhiYjdhYmEyY2UwMzcwZiIsICJpbnZvY2F0aW9uX2lkIjogIjgxNzEzYjU5NjA3MzQ4YzJhNzM5YWU1ODllYmFkNzkyIiwgInBpZCI6IDU5MjQ1LCAicnVubmluZ19leGVjdXRhYmxlX3NoYTI1NiI6ICJiYzU5NDVmZWI4YmQyNjIwM2ViZmFmZWE1Y2UxODc4YmIyZTMyY2I4ZmI1MGFiN2FlMzk1Y2ZiMWUxYWFhZWYxIiwgInN0YXJ0X3RpY2tzIjogIjEwMzQwNCIsICJ1bml0IjogImNlbGlrcGFuZWwtcmVsZWFzZS1yZWNvdmVyeS5zZXJ2aWNlIn19CnsiYXQiOiAiMjAyNi0xMC0xNFQyMzo1NjowNS4yODgxNzQrMDA6MDAiLCAiY2hlY2twb2ludCI6IHsiYm9vdF9pZCI6ICJmM2NjNmRlNS02YWM3LTQxZmMtOGEyMS1iYzQxYThkZWVkY2MiLCAiY2hlY2twb2ludCI6ICJwYXlsb2FkX3Jlc3RvcmVkIiwgImludm9jYXRpb25faWQiOiAiODE3MTNiNTk2MDczNDhjMmE3MzlhZTU4OWViYWQ3OTIiLCAibWFpbl9waWQiOiA1OTI0NSwgIm1haW5fc3RhcnRfdGlja3MiOiAiMTAzNDA0IiwgIm9ic2VydmVkX2F0IjogIjIwMjYtMTAtMTRUMjM6NTY6MDUuMDE0NjM1MjAzWiIsICJyZWNvdmVyeV91bml0IjogImNlbGlrcGFuZWwtcmVsZWFzZS1yZWNvdmVyeS5zZXJ2aWNlIiwgInJ1bnRpbWVfbWFuaWZlc3Rfc2hhMjU2IjogIjM3YTYxYjBjOTJhZDNmOTQ0ZTNmZGNkZGZlYmJlZDRjNjBhY2EyZjQ5ZWQ1NmZjN2NhZTNiMWRmM2JhNDU5ODciLCAic2NoZW1hIjogImNlbGlrcGFuZWwvcmVjb3ZlcnktY2hlY2twb2ludC92MSIsICJzZXF1ZW5jZSI6IDIsICJzbmFwc2hvdCI6ICIyMDI2MTAxNFQyMzU1MjlaLWZyb20tdW5rbm93bi10by01MjRmODZkZDE0MTg2ZjZiYzkxZGJkNDlhYjU1OWM3MDZlYjliZDRhLTQ3NGEyZmNhOTMxMzE5N2EwNzEyYTRiN2UwNmUyOGVjIiwgInRyYW5zYWN0aW9uX29wZXJhdGlvbiI6ICJyb2xsYmFjayIsICJ0cmFuc2FjdGlvbl9waGFzZSI6ICJhY3RpdmUiLCAidHJhbnNhY3Rpb25fdG9rZW5fc2hhMjU2IjogIltSRURBQ1RFRC1TSEEyNTZdIn0sICJjaGVja3BvaW50X3NoYTI1NiI6ICI1YzU4NzZhZmRjNjBhODVlZTM5Mzk3MTBkNGU2NDFlNzBlNDdjNWJhOTQxOGM1YmMyZTAzMmU1YzliZWM5ZmM5IiwgImV2ZW50IjogImNoZWNrcG9pbnRfdmVyaWZpZWQiLCAiaWRlbnRpdHkiOiB7ImNlbGxfaWQiOiAicmVsZWFzZS1yZWNvdmVyeV9fZDQzMjBiMDZiYTcwNTlkYiIsICJub2RlIjogInVidW50dSIsICJub25jZSI6ICJkNDMyMGIwNmJhNzA1OWRiZjczOTJkOTczYWU0ZTVhNjA5ZDA5YzRiNzQwM2ZiMDE4YjQ0MTAyMjQ3MTI4MzJiIiwgInZtX3V1aWQiOiAiYzJmYWI1YTgtMGJiZC01NWUxLWJiMzAtYmQzNTJlMDM1OGZkIn0sICJvcGVyYXRpb25faWQiOiAiNjM2ZWZjMGMyYTc3YjI2NGM4MmFiOTZkM2UyNzVmNDUiLCAic2NoZW1hIjogImNlbGlrcGFuZWwvcmVjb3ZlcnktZmF1bHQvdjEiLCAic25hcHNob3RfcHJvb2YiOiB7Im1hbmlmZXN0X3NoYTI1NiI6ICJlMzU3NTRjNGRlOGZkZjVmMzBiNzgyNjE5NGQ4ZjNhNGNkYjZjODg4YWQ4OGExMTFjNzVhYmEzZGYyOTQwNDMxIiwgInJ1bnRpbWUiOiB7InJ1bnRpbWVfbWFuaWZlc3Rfc2hhMjU2IjogIjM3YTYxYjBjOTJhZDNmOTQ0ZTNmZGNkZGZlYmJlZDRjNjBhY2EyZjQ5ZWQ1NmZjN2NhZTNiMWRmM2JhNDU5ODciLCAidmVyaWZpZWRfZmlsZXMiOiAxMn0sICJzbmFwc2hvdCI6ICIyMDI2MTAxNFQyMzU1MjlaLWZyb20tdW5rbm93bi10by01MjRmODZkZDE0MTg2ZjZiYzkxZGJkNDlhYjU1OWM3MDZlYjliZDRhLTQ3NGEyZmNhOTMxMzE5N2EwNzEyYTRiN2UwNmUyOGVjIiwgInZlcmlmaWVkX2ZpbGVzIjogMTU1fSwgInRyYW5zYWN0aW9uIjogeyJzbmFwc2hvdCI6ICIyMDI2MTAxNFQyMzU1MjlaLWZyb20tdW5rbm93bi10by01MjRmODZkZDE0MTg2ZjZiYzkxZGJkNDlhYjU1OWM3MDZlYjliZDRhLTQ3NGEyZmNhOTMxMzE5N2EwNzEyYTRiN2UwNmUyOGVjIiwgInRyYW5zYWN0aW9uX29wZXJhdGlvbiI6ICJyb2xsYmFjayIsICJ0cmFuc2FjdGlvbl9waGFzZSI6ICJhY3RpdmUiLCAidHJhbnNhY3Rpb25fdG9rZW5fc2hhMjU2IjogIltSRURBQ1RFRC1TSEEyNTZdIn0sICJ3b3JrZXIiOiB7ImJvb3RfaWQiOiAiZjNjYzZkZTUtNmFjNy00MWZjLThhMjEtYmM0MWE4ZGVlZGNjIiwgImNncm91cCI6ICIvc3lzdGVtLnNsaWNlL2NlbGlrcGFuZWwtcmVsZWFzZS1yZWNvdmVyeS5zZXJ2aWNlIiwgImNncm91cF9kZXZpY2UiOiAyOCwgImNncm91cF9pbm9kZSI6IDIzNzM0LCAiY29tbWFuZF9zaGEyNTYiOiAiNDA2ZmRlYTY3NGI0Mjc3ZTlmOWEzNzYzNTllYTdjNzMwMTQ0ZGJjMmFlYTgxYTc5YjhiYjdhYmEyY2UwMzcwZiIsICJpbnZvY2F0aW9uX2lkIjogIjgxNzEzYjU5NjA3MzQ4YzJhNzM5YWU1ODllYmFkNzkyIiwgInBpZCI6IDU5MjQ1LCAicnVubmluZ19leGVjdXRhYmxlX3NoYTI1NiI6ICJiYzU5NDVmZWI4YmQyNjIwM2ViZmFmZWE1Y2UxODc4YmIyZTMyY2I4ZmI1MGFiN2FlMzk1Y2ZiMWUxYWFhZWYxIiwgInN0YXJ0X3RpY2tzIjogIjEwMzQwNCIsICJ1bml0IjogImNlbGlrcGFuZWwtcmVsZWFzZS1yZWNvdmVyeS5zZXJ2aWNlIn19CnsiYXQiOiAiMjAyNi0xMC0xNFQyMzo1NjowNS4zMDY2NzQrMDA6MDAiLCAiY2hlY2twb2ludF9zaGEyNTYiOiAiNWM1ODc2YWZkYzYwYTg1ZWUzOTM5NzEwZDRlNjQxZTcwZTQ3YzViYTk0MThjNWJjMmUwMzJlNWM5YmVjOWZjOSIsICJldmVudCI6ICJyZWJvb3RfcmVhZHkiLCAiZnJvemVuX2hvbGRfc2Vjb25kcyI6IDMwLCAiaWRlbnRpdHkiOiB7ImNlbGxfaWQiOiAicmVsZWFzZS1yZWNvdmVyeV9fZDQzMjBiMDZiYTcwNTlkYiIsICJub2RlIjogInVidW50dSIsICJub25jZSI6ICJkNDMyMGIwNmJhNzA1OWRiZjczOTJkOTczYWU0ZTVhNjA5ZDA5YzRiNzQwM2ZiMDE4YjQ0MTAyMjQ3MTI4MzJiIiwgInZtX3V1aWQiOiAiYzJmYWI1YTgtMGJiZC01NWUxLWJiMzAtYmQzNTJlMDM1OGZkIn0sICJvcGVyYXRpb25faWQiOiAiNjM2ZWZjMGMyYTc3YjI2NGM4MmFiOTZkM2UyNzVmNDUiLCAicmVib290X3Njb3BlIjogInJlZ2lzdGVyZWQtUUVNVS1ob3N0LWNvbnRyb2xsZXItb25seSIsICJzY2hlbWEiOiAiY2VsaWtwYW5lbC9yZWNvdmVyeS1mYXVsdC92MSIsICJ3b3JrZXIiOiB7ImJvb3RfaWQiOiAiZjNjYzZkZTUtNmFjNy00MWZjLThhMjEtYmM0MWE4ZGVlZGNjIiwgImNncm91cCI6ICIvc3lzdGVtLnNsaWNlL2NlbGlrcGFuZWwtcmVsZWFzZS1yZWNvdmVyeS5zZXJ2aWNlIiwgImNncm91cF9kZXZpY2UiOiAyOCwgImNncm91cF9pbm9kZSI6IDIzNzM0LCAiY29tbWFuZF9zaGEyNTYiOiAiNDA2ZmRlYTY3NGI0Mjc3ZTlmOWEzNzYzNTllYTdjNzMwMTQ0ZGJjMmFlYTgxYTc5YjhiYjdhYmEyY2UwMzcwZiIsICJpbnZvY2F0aW9uX2lkIjogIjgxNzEzYjU5NjA3MzQ4YzJhNzM5YWU1ODllYmFkNzkyIiwgInBpZCI6IDU5MjQ1LCAicnVubmluZ19leGVjdXRhYmxlX3NoYTI1NiI6ICJiYzU5NDVmZWI4YmQyNjIwM2ViZmFmZWE1Y2UxODc4YmIyZTMyY2I4ZmI1MGFiN2FlMzk1Y2ZiMWUxYWFhZWYxIiwgInN0YXJ0X3RpY2tzIjogIjEwMzQwNCIsICJ1bml0IjogImNlbGlrcGFuZWwtcmVsZWFzZS1yZWNvdmVyeS5zZXJ2aWNlIn19Cg==",
+  "events_sha256": "4cc7f804fd1cab5398d9652400ffb809c96365519201d85f2dda4946b1b27b38",
+  "identity": {
+    "cell_id": "release-recovery__d4320b06ba7059db",
+    "node": "ubuntu",
+    "nonce": "d4320b06ba7059dbf7392d973ae4e5a609d09c4b7403fb018b4410224712832b",
+    "vm_uuid": "c2fab5a8-0bbd-55e1-bb30-bd352e0358fd"
+  },
+  "intent": {
+    "action": "reboot",
+    "checkpoint": "payload_restored",
+    "identity": {
+      "cell_id": "release-recovery__d4320b06ba7059db",
+      "node": "ubuntu",
+      "nonce": "d4320b06ba7059dbf7392d973ae4e5a609d09c4b7403fb018b4410224712832b",
+      "vm_uuid": "c2fab5a8-0bbd-55e1-bb30-bd352e0358fd"
+    },
+    "operation_id": "636efc0c2a77b264c82ab96d3e275f45",
+    "runtime_manifest_sha256": "37a61b0c92ad3f944e3fdcddfebbed4c60aca2f49ed56fc7cae3b1df3ba45987",
+    "schema": "celikpanel/recovery-fault-intent/v1",
+    "snapshot": "20261014T235529Z-from-unknown-to-524f86dd14186f6bc91dbd49ab559c706eb9bd4a-474a2fca9313197a0712a4b7e06e28ec",
+    "snapshot_manifest_sha256": "e35754c4de8fdf5f30b7826194d8f3a4cdb6c888ad88a111c75aba3df2940431",
+    "transaction_token_sha256": "[REDACTED-SHA256]",
+    "worker_command": [
+      "/bin/bash",
+      "/usr/libexec/celikpanel/recovery-runtimes/v1/37a61b0c92ad3f944e3fdcddfebbed4c60aca2f49ed56fc7cae3b1df3ba45987/deploy/recovery/runtime-entry.sh"
+    ],
+    "worker_executable_sha256": "bc5945feb8bd26203ebfafea5ce1878bb2e32cb8fb50ab7ae395cfb1e1aaaef1"
+  },
+  "operation_id": "636efc0c2a77b264c82ab96d3e275f45",
+  "reboot_proof": {
+    "checkpoint": {
+      "boot_id": "f3cc6de5-6ac7-41fc-8a21-bc41a8deedcc",
+      "checkpoint": "payload_restored",
+      "invocation_id": "81713b59607348c2a739ae589ebad792",
+      "main_pid": 59245,
+      "main_start_ticks": "103404",
+      "observed_at": "2026-10-14T23:56:05.014635203Z",
+      "recovery_unit": "celikpanel-release-recovery.service",
+      "runtime_manifest_sha256": "37a61b0c92ad3f944e3fdcddfebbed4c60aca2f49ed56fc7cae3b1df3ba45987",
+      "schema": "celikpanel/recovery-checkpoint/v1",
+      "sequence": 2,
+      "snapshot": "20261014T235529Z-from-unknown-to-524f86dd14186f6bc91dbd49ab559c706eb9bd4a-474a2fca9313197a0712a4b7e06e28ec",
+      "transaction_operation": "rollback",
+      "transaction_phase": "active",
+      "transaction_token_sha256": "[REDACTED-SHA256]"
+    },
+    "checkpoint_sha256": "5c5876afdc60a85ee3939710d4e641e70e47c5ba9418c5bc2e032e5c9bec9fc9",
+    "transaction": {
+      "snapshot": "20261014T235529Z-from-unknown-to-524f86dd14186f6bc91dbd49ab559c706eb9bd4a-474a2fca9313197a0712a4b7e06e28ec",
+      "transaction_operation": "rollback",
+      "transaction_phase": "active",
+      "transaction_token_sha256": "[REDACTED-SHA256]"
+    },
+    "worker": {
+      "boot_id": "f3cc6de5-6ac7-41fc-8a21-bc41a8deedcc",
+      "cgroup": "/system.slice/celikpanel-release-recovery.service",
+      "cgroup_device": 28,
+      "cgroup_inode": 23734,
+      "command_sha256": "406fdea674b4277e9f9a376359ea7c730144dbc2aea81a79b8bb7aba2ce0370f",
+      "invocation_id": "81713b59607348c2a739ae589ebad792",
+      "pid": 59245,
+      "running_executable_sha256": "bc5945feb8bd26203ebfafea5ce1878bb2e32cb8fb50ab7ae395cfb1e1aaaef1",
+      "start_ticks": "103404",
+      "unit": "celikpanel-release-recovery.service"
+    }
+  },
+  "schema": "celikpanel/recovery-fault-handoff/v1",
+  "set6_base64_redaction": {
+    "digests_of_this_object_that_no_longer_match_the_stored_text": [
+      "events_sha256"
+    ],
+    "members_changed": [
+      "events_base64"
+    ],
+    "note": "a *_sha256 member of this object that was computed over the original text is the digest of the text before the replacement",
+    "what": "base64 text in these members held the digest of a credential; it was decoded, the digest was replaced by [REDACTED-SHA256] and the text was encoded again"
+  },
+  "unit": {
+    "ActiveState": "active",
+    "ControlGroup": "/system.slice/celikpanel-lab-recovery-fault-636efc0c2a77b264c82ab96d3e275f45.service",
+    "Id": "celikpanel-lab-recovery-fault-636efc0c2a77b264c82ab96d3e275f45.service",
+    "InvocationID": "09dbecd17d2843bb895dda496272ecde",
+    "LoadState": "loaded",
+    "MainPID": "57381"
+  }
+}

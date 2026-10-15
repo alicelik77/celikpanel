@@ -1,0 +1,19 @@
+--- a/deploy/e2e/release-recovery/set16_fixture.py
++++ b/deploy/e2e/release-recovery/set16_fixture.py
+@@ -1,6 +1,6 @@
+ #!/usr/bin/env python3
+ """set16: owner_update_trial with the release profiles of the eighteenth native record (the pre-publication
+-measurement of the v0.1.0-alpha.85 candidate, commit 0bea00fa0 on fix/alpha85-setup-finish-wait).
++measurement of the v0.1.0-alpha.85 candidate, commit 89cf88397 (first planned on 0bea00fa0) on fix/alpha85-setup-finish-wait).
+ 
+ Nothing of owner_update_trial.py, worker_fixture_origin.py, guest_bound_worker.py, set12_fixture.py or
+ set15_fixture.py is changed on disk. Importing this module (or running it as the build's fixture driver) first imports
+@@ -48,7 +48,7 @@
+ fx12, out = fx15.fx12, fx15.out
+ ALPHA84_COMMIT = "f0157e6c8f1614cff176821172f8a9067493e625"
+ ALPHA84_REF = "v0.1.0-alpha.84"
+-SOURCE_COMMIT = "0bea00fa041e62610d8d1f433b582b8dca8c9db5"
++SOURCE_COMMIT = "89cf883971800c39c72c9f8358c58d56aace4194"   # set16 rerun (2026-10-15 local): HEAD moved from 0bea00fa0
+ FRESH_REF = "v0.1.0-alpha.85"
+ POLICY_84 = dict(fx15.POLICY_84)
+ POLICY_85 = dict(fx15.POLICY_85)
