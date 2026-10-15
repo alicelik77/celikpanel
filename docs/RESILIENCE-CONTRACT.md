@@ -5757,3 +5757,61 @@ clock date of the entry.
   foundation file after a return (set12, set15, set16, and again set17) and "Finishing setup"
   and the update card's busy state not reached natively. Everything the
   entries above leave open stays open.
+
+### Publication of v0.1.0-alpha.86 (P0.1/P0.2 area; invariants 2 and 6; D-024; D-032; D-033; 2026-10-15)
+
+D-025 invariants 2 (unknown is not absent, empty or success) and 6 (a screen
+says what was verified); D-024; D-032; D-033. **No P0 item is closed or
+advanced.** P0.1 to P0.5 stay partial and every open acceptance item stays
+open. This entry records a publication; it changes no code, schema or recovery
+behaviour. 2026-10-15 is the clock date of everything in it.
+
+- **Publication.** v0.1.0-alpha.86 was published on 2026-10-15, all of it by
+  the release preparer under the owner's instruction of 2026-10-15 (the merge,
+  the repository variable, the tag and the portal publication are the
+  preparer's; installed-panel updates remain the owner's only). Pull request
+  #213 (CI: 24 jobs, all success or skipped) was squash-merged into `main` as
+  `8d260f317e58bed7fcd84c6cbb01823c4fe3f166` (tree
+  `5aaee3d01a4c80632ee3e1abec2c11c986da90df`). The run on the main commit
+  (38795120470) concluded success, 24 jobs, and the tag was pushed only after
+  it finished, so the order "the run on main finished, then the tag" was
+  followed. The preparer set the repository variable
+  `CELIKPANEL_RELEASE_SEQUENCE` from 85 to 86 and created and pushed the
+  annotated tag `v0.1.0-alpha.86` (tag object
+  `8399668a3fc600ed3951c1c3c22739b3f4ffa35d`). The tag's CI run (38797990342),
+  24 jobs, successful, published a pre-release at 2026-10-15T20:18:29Z with six
+  assets (platform archive SHA-256
+  `5949a0fd36f8a9f9f0308749962ec92c641df0e8cdbce72ed6b6316578a16a7d`,
+  66,159,282 bytes, sequence 86). The preparer published the download portal
+  with `deploy/publish-download-portal.ps1` (status `committed`, one public
+  verification pass `status: ok` with 26 of 26 requests). The assets and the
+  portal package were checked by the preparer from a download and the public
+  site was read from outside at 20:27:35Z (reported by the preparer, not
+  recorded in a file here). Limits: the tag's files were taken with
+  `git archive` on Windows, not from a clone in a build guest; no promoter
+  rehearsal against a copy of the live site was made; the archive was not
+  compared file by file with alpha.85's package; the publisher's own test
+  (`deploy/test-download-portal-publisher.ps1`) was not run. The "Publication
+  record" of the [release notes](RELEASE-NOTES-v0.1.0-alpha.86.md) lists them.
+- **The publishing script.** The portal was published with the script's
+  absolute path, so that invocation did not exercise the correction of the
+  relative-path defect that the candidate made.
+- **Installed panels.** Not updated when this entry was written on 2026-10-15.
+  Only the owner starts that, from the panel's own update screen. To be
+  reported by the owner and not recorded until then: each server's update
+  result and what the update page showed during the restart (the calm notice,
+  no gate dialog, the lock), the full-screen licence page during the update,
+  the Agent's version, Frankfurt's setup final step after the update, and the
+  output of `postconf -n >/dev/null`. This entry is not acceptance evidence for
+  any item.
+- **Schema or version transition.** None: this release carries no schema
+  change (the database schema stays 44); the release sequence moved from 85 to
+  86 in the release preparation `313f3eea2`, with the alpha.85 release commit
+  `36c33c4531ee6c1306d324db7a666403176f3bf7` as previous. **Recovery
+  behaviour.** Unchanged.
+- **Open.** Everything the entries above leave open, among them the limits
+  listed in the [release notes](RELEASE-NOTES-v0.1.0-alpha.86.md): that no
+  installed server was measured, that the F1 lock extension of `7265d3c99` and
+  the session gate's `PANEL_STARTING` path were not measured natively, and that
+  the new update screen is seen on an installed server only from the update
+  after this one.
