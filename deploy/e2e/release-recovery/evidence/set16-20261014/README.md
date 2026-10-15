@@ -1,12 +1,13 @@
 # set16, 2026-10-14 (UTC): the pre-publication measurement of the v0.1.0-alpha.85 candidate (commit 89cf88397): fresh install on Debian 13, the owner's update from alpha.84 rebuilt from its tag, good and defective, on Debian 13 and Ubuntu 24.04, in a real headless Chrome
 
-A measurement record. `date -u` on the host (Git Bash) read `Wed Oct 14 22:08:10 UTC 2026` at the start; the run
-directory was made at 22:16:46Z, the last lab ended at 2026-10-15T00:01:17Z (`host/progress.txt`), and the end reading
-is in the last section. Page text and pictures show the host's local time (UTC+3); times here are UTC.
+A measurement record. The run coordinator reported a host `date -u` reading of `Wed Oct 14 22:08:10 UTC 2026` at the
+start (reported by the run coordinator; not recorded in this folder; the folder's earliest reading is 22:16:24Z); the run
+directory was made at 22:16:46Z and the last lab ended at 2026-10-15T00:01:17Z (`host/progress.txt`); the end readings
+are in the last section. Page text and pictures show the host's local time (UTC+3); times here are UTC.
 
 This folder replaces the uncommitted first attempt of the same name (2026-10-14 10:52Z–11:16Z, candidate 0bea00fa0),
-which stopped before its first cell because WSL had no `/dev/kvm`. That attempt was read and then deleted; nothing of
-it is kept here. KVM was back for this run: `/dev/kvm` present, `svm` on 16 of 16 processors (`host/hostcheck.txt`).
+which stopped before its first cell because WSL had no `/dev/kvm`. This is reported by the coordinator; that attempt's
+folder was deleted and is not verifiable here; nothing of it is kept. KVM was back for this run: `/dev/kvm` present, `svm` on 16 of 16 processors (`host/hostcheck.txt`).
 
 The harness addressed no installed server, no licence service, no certificate authority and no celikpanel.net. The
 release origin's name and the certificate-authority names were pinned to each guest's loopback as the first driver step
@@ -50,8 +51,8 @@ Full fixture commit ids (`build/*/fixture-commits.txt`): d5d673ebd95eeb80d16f935
 524f86dd14186f6bc91dbd49ab559c706eb9bd4a, 1d586b7384bb6dfd42a80612c895ff3f76b98c1b,
 4403975c7b96957671afe33b7a0746638fbf8752.
 
-**alpha.84 is a local build, not byte-identical to the published archive.** Local `9f86eb43…` (the same digest as the
-first attempt's rebuild of the same commit), published `6dc899e5dabaf471978cde47bfde4a0a649b7c3f6941b1431284c84c9743c301`.
+**alpha.84 is a local build, not byte-identical to the published archive.** Local `9f86eb43…` (reported by the coordinator as the same digest as the
+first attempt's rebuild of the same commit; that attempt's folder was deleted and is not verifiable here), published `6dc899e5dabaf471978cde47bfde4a0a649b7c3f6941b1431284c84c9743c301`.
 It is a test-licence derivation (`bin/panel` with `-tags acceptance_license`, an `ACCEPTANCE-LICENSE-BUILD.txt`
 notice, a regenerated `SHA256SUMS`); the ordinary archive of the same commit was not built, so it was not compared.
 
@@ -67,8 +68,8 @@ the real release commit is expected to move them). The installer accepted the fr
 `install.sh` has the same SHA-256 (`e16ac93a…`) in every archive. Installed copy on every guest
 (`*/*/driver/steps/*set16-readings*/installed-pins-*.txt`): 84 / v0.1.0-alpha.84.
 
-**Proof and dry runs.** `set16_fixture.py prove` passed for both documents (`build/update-prove.json`,
-`build/fresh-prove.json`, rc 0); dry runs of six cells (the five that ran and `set16-ubuntu`, which was not run) wrote their plans with empty stderr (`build/dry-*.json`, `.err`); the offline suites in copy `c`
+**Proof and dry runs.** `set16_fixture.py prove` ran for both documents (`build/update-prove.json`,
+`build/fresh-prove.json`; the exit code is not recorded in this folder); dry runs of six cells (the five that ran and `set16-ubuntu`, which was not run) wrote their plans with empty stderr (`build/dry-*.json`, `.err`); the offline suites in copy `c`
 passed (`harness-run-copy/c/suite.txt`: set16 11 tests OK, set15 8 tests OK). The Agent package closure of each
 installed baseline contains no licensing package (`baseline-ref-proof.txt`, last line `0`).
 
@@ -84,7 +85,7 @@ installed baseline contains no licensing package (`baseline-ref-proof.txt`, last
 | 4 "Finishing setup" | NOT REACHABLE without public DNS (below) | — | — |
 | 4 the update card's busy state | NOT MEASURED (below) | — | — |
 
-Cells 1–2 took 51 min 18 s together (22:24:54Z–23:16:12Z), under the 3 h limit, so cell 3 (Ubuntu) ran.
+Cells 1–2 took 51 min 18 s together (22:24:54Z–23:16:12Z), within the coordinator's 3-hour budget for cells 1–2 (not a harness limit; the per-cell harness limit is 9000 s), so cell 3 (Ubuntu) ran.
 
 ## Facts per cell
 
@@ -238,7 +239,7 @@ v0.1.0-alpha.85 baseline (it accepts the plan but fails at 05-mail_profile)" (`o
   `set16_trial.py`, `run-set16.sh` and the tool name the commit.
 - `cold-load-set16.mjs`: `SURFACE_FACTS` (computed border, background and text colours of each `[role="alert"]`,
   elements in the failure colour, and the line boxes of each `celikpanel-agent` token), used on the Turkish Components
-  page at 1440×900 and at a new 390×844 load, and on the Dashboard's "Needs attention" section; `node --check` passed.
+  page at 1440×900 and at a new 390×844 load, and on the Dashboard's "Needs attention" section (the syntax check is not recorded in this folder).
   `tools/analysis/edit_tool.py` is the edit as applied.
 - Run copies: `harness-run-copy/b` (build) and `c` (every set16 file; all cells ran from `c`), hashes and diffs.
 
@@ -248,6 +249,7 @@ Redacted at collection by the harness (owner password, session, fixture keys); s
 changed 0 files in three labs and 1 host-side file in each defective lab (`*/host/digest-sweep-at-staging.json`; no driver
 file changed, `SHA256SUMS` verified again). `tools/scrub.py` replaced host paths with `<redacted>` in 31 text files; a
 text search finds no private key, token, cookie or unredacted password. `host/keepawake.log` matches `.gitignore`.
-C: (Get-PSDrive) 343.77 GiB free at 22:12:57Z, lowest 338.51 GiB (00:00:28Z) (`host/c-drive-watch.txt`); WSL `/` 939 GB
+C: (Get-PSDrive) 343.77 GiB free at 22:12:57Z (reported by the run coordinator; not recorded in this folder: the folder's earliest
+reading is 22:16:24Z / 343.95 GiB), lowest 338.51 GiB (00:00:28Z) (`host/c-drive-watch.txt`); WSL `/` 939 GB
 free at the start. The keep-awake request (22:16:24Z–00:01:56Z) prevented sleep: the disk watcher has a reading every
-minute. Labs are removed after the commit (last section of the coordinator's report).
+minute.
