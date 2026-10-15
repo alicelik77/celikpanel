@@ -1,4 +1,4 @@
-# set17b, 2026-10-15 (UTC): the v0.1.0-alpha.86 candidate's update page through a LONG restart outage (about 3 minutes, as on the owner's server), twice, with alpha.85's page under the same outage as the control, on Debian 13 in a real headless Chrome
+# set17b, 2026-10-15 (UTC): the v0.1.0-alpha.86 candidate's update page through a LONG restart outage (about 3 minutes, made by a lab delay to resemble the owner's reported restart), twice, with alpha.85's page under the same outage as the control, on Debian 13 in a real headless Chrome
 
 A measurement record, the twentieth native record. Host `date -u` at the start of the work: `Thu Oct 15 16:51:11 UTC
 2026` (reported by the run coordinator; the folder's earliest reading is 17:04:54Z, `host/c-drive-watch.txt`); the run
@@ -13,15 +13,15 @@ archive is a test-licence (`acceptance_license`) build with `release: false`; no
 carries `native_evidence: false`; this record closes no P0 row. No product file was changed. This is a measurement,
 not acceptance evidence: QEMU/KVM guests, test-licence builds, nothing judged.
 
-**Outcome in one line.** With the Panel held down about 3 minutes (page outage 177.2 s and 166.5 s), the candidate's
+**Outcome in one line (observed in these labs; not acceptance evidence).** With the Panel held down about 3 minutes by a lab delay (the update's worker was frozen; a lab change to the update's timing, not a property of the product) (page outage 177.2 s and 166.5 s), the candidate's
 page showed the calm restart ("The panel is restarting as part of the update…", spinner, primary colour) for the whole
 outage in both runs: no warning surface, no "not known" wording, no licence gate dialog, no access hold, no corner
 notice before the result; the licence gate's own access reads failed 39 and 35 times without drawing anything. alpha.85's
-page under the same outage showed what the owner saw: "could not be read just now" with the warning surface from T+25.6 s
+page under the same outage showed what the owner described (that report is not recorded in this folder): "could not be read just now" with the warning surface from T+25.6 s
 and the licence gate's "The Panel is not answering; an update may be restarting it" over the page from T+59.8 s until
 the Panel answered at T+194.3 s, with the update's navigation lock gone from T+59.8 s. **One finding against the brief's
 expectation (F1):** on the candidate the update's navigation lock (its full-page dialog) ended at T+120 s in both runs,
-in the middle of the outage, by the product's documented two-minute lease; the card underneath kept the calm restart
+in the middle of the outage, by the documented two-minute lease of the measured commit ecd2a5f08; the card underneath kept the calm restart
 line and "Check for updates" stayed disabled until the new version showed. `PANEL_STARTING` was never answered to the
 page (O1), so the session gate's new path is still not exercised natively. Every update ended `update_verified`, and the
 database comparison was `equal-except-volatile` with `managed_site_files` changed in `observed_at` only.
@@ -34,13 +34,12 @@ systemd loads ONLY that drop-in (`deploy/release-transaction-guard.sh`, `release
 `DropInPaths` must equal exactly `…/celikpanel-panel.service.d/10-release-transaction-guard.conf`, otherwise "systemd
 did not load only the exact transaction guard for celikpanel-panel.service"; `release_txn_verify_unit_guard_files`:
 "guard directory contains unrecognized entries"). A drop-in with `ExecStartPre=/bin/sleep 150` (in `/etc` or `/run`)
-would therefore have stopped the update before its first change, not lengthened its restart. No drop-in and no unit
-file was written in any lab; `units-at-collection.txt` (runs b and control) shows the Panel unit's only drop-in after the
+would therefore have stopped the update before its first change, not lengthened its restart. No drop-in and no persistent unit file was written in any lab (the helper ran as a transient `systemd-run` unit, below); `units-at-collection.txt` (runs b and control) shows the Panel unit's only drop-in after the
 update: `DropInPaths=/etc/systemd/system/celikpanel-panel.service.d/10-release-transaction-guard.conf`, no
 `/run/systemd/system{,.control}/celikpanel-panel.service.d`, `TimeoutStartUSec=1min 30s` (unchanged).
 
 **What was done instead** (`deploy/e2e/release-recovery/guest_set17b_restart_delay.py`, committed; uploaded to each
-guest's private lab directory and started by the driver right after the owner's start, as the transient unit
+guest's private lab directory and started by the driver after the owner's start (armed 7.3 to 7.9 s after the press), as the transient unit
 `celikpanel-lab-set17b-restart-delay-<request id>.service` with `RuntimeMaxSec=1200` and
 `ExecStopPost=-/usr/bin/systemctl thaw celikpanel-self-update-<request id>.service`; the exact `systemd-run` argv is in
 each `driver/steps/11-arm/step.json`, `set17b_restart_delay_start`): the helper reads the release transaction's marker
@@ -49,8 +48,7 @@ and the Panel are stopped; what follows is the offline database step, the artifa
 Panel starts) and the Panel unit is not running, it freezes the update's own worker unit with `systemctl freeze` (the
 cgroup freezer: no signal, nothing killed), waits 150 s, and thaws it. The updater then continues where it was and
 starts the Agent and the Panel itself. Between that marker and the Panel start `update.sh` runs no `timeout` command and
-no clock-bounded wait, and the release recovery watchdog leaves a held transaction lock alone (it ran every 30 s and
-exited). Every helper event is in `driver/steps/19-set17b-restart-delay/set17b-restart-delay-events.jsonl`.
+no clock-bounded wait, and, per the helper's own header comment, the release recovery watchdog leaves a held transaction lock alone (the watchdog's runs are not recorded in this folder). The 150 s hold, and with it the page outages of 177.2 s and 166.5 s, are made by the lab. Every helper event is in `driver/steps/19-set17b-restart-delay/set17b-restart-delay-events.jsonl`.
 
 | | run a | run b | control |
 | --- | --- | --- | --- |
@@ -74,7 +72,7 @@ tries are not part of this record's measurements (`tools/helpertest*.sh`).
 ## Source
 
 Candidate: the committed HEAD `ecd2a5f088d676f7cc8a8e571ed3c903ea951f3e` ("Operation guidance: item 16, the session
-gate during the new Panel's start, EN and TR"), branch `fix/alpha86-update-restart-notice`, pushed, built from
+gate during the new Panel's start, EN and TR"), branch `fix/alpha86-update-restart-notice`, built from
 `git clone`, never from the working tree. Against set17's source 313f3eea2 it changes five product files, all under
 `web/src` (`App.tsx`, `LicenseOnboarding.tsx`, `SystemUpdateOperation.tsx`, new `systemUpdateRestartSignal.ts` and
 `useUpdateRestartStarting.ts`: set17 D1's licence gate grace and the session gate's PANEL_STARTING grace;
@@ -100,9 +98,8 @@ Full fixture commit ids (`build/*/fixture-commits.txt`): 8acfb74a842488c46a8083c
 20a9baa5d0ccb269528a02ec8c14229bc2ee2493, 0aa2bb3c1394aeee5cc7e153a8b96a0e4d0ee51b. alpha.85 is a local test-licence
 build, not the published archive (`cb6424b7…`; see set17). Pins (`build/archive-pins.txt`): alpha.85 `85`; every
 alpha.86 archive `86 / v0.1.0-alpha.86`; the alpha.87-labelled archives keep 86 (policy-only fixture). Proof
-(`set17_fixture.py prove`, both documents, exit 0), dry runs of both set17b cells from copies c, d and e (`build/dry-*`,
-empty stderr), offline checks in each copy (`harness-run-copy/*/suite.txt`: set16 11 tests OK, set15 8 tests OK, set17 and
-set17b files compiled, shell and tool syntax OK).
+(`set17_fixture.py prove`, both documents; empty stderr, the exit code is not recorded), dry runs of both set17b cells from copies c, d and e (`build/dry-*`,
+empty stderr), offline checks in copies c, d and e (`harness-run-copy/*/suite.txt`, copy b has none: set16 11 tests OK, set15 8 tests OK, set17, set17b and the guest helper compiled, the helper's argument check printed its usage error as intended, shell syntax OK, tool syntax OK).
 
 ## Cells (Debian 13 only; one new lab each, one at a time)
 
@@ -118,7 +115,7 @@ API/root agreement passed). After each update: Agent and Panel `v0.1.0-alpha.87 
 `v0.1.0-alpha.86 / ecd2a5f0…` (control), `agent_matches true`, floor 87 / 86, `post-update-facts` passed, schema ledger
 44 `as-expected`. The start was the owner's press in the browser exactly as in set17 (the page's own POST held unchanged
 until the driver's read-only observer was armed: holds 878, 890, 1429 and 893 ms; observer armed in 0.49–0.58 s).
-Run b's longer hold (1429 ms) is the browser's, still far below the page's 15 s start timeout.
+Run b's hold was longer (1429 ms; the cause is not recorded in this folder), still far below the page's 15 s start timeout.
 
 ## The update page through the outage (sampled every 500 ms, read until 12 min after the press; `browser/page/`)
 
@@ -138,7 +135,7 @@ Surfaces are the light theme's computed colours.
 | "not known" wording / warning surface | 0 / 0 | **0 / 0** | **0 / 0** | 333 / 333 |
 | licence gate dialog ("The Panel is not answering; an update may be restarting it") | none | **none** | **none** | **T+59.8–194.3 s, 266 samples**, pages held (`data-access-hold="blocked"`) |
 | session gate hold ("The panel is starting") / any `[data-top-layer="hold"]` | none | **none** | **none** | only the licence gate's |
-| licence access reads during the outage (all failed) | 7 | 39 (T+30.4–200.4 s) | 35 (T+39.6–189.6 s) | 31; the page's update status reads stopped after T+55.5 s (next read at T+194.6 s; 27 recovery-status reads instead) |
+| licence access reads during the outage (all failed) | 7 | 39 (T+30.4–200.4 s) | 35 (T+39.6–189.6 s) | 31; the page's update status reads stopped after T+55.5 s (next read at T+194.6 s; 28 recovery-status reads instead, 27 failed and the last answered at T+194.5 s) |
 | `PANEL_STARTING` answers to the page | 0 | **0** | **0** | 0 |
 | update dialog with the navigation-lock line | T+0.2–76.6 s (until the reload) | **T+0.5–119.8 s; gone from T+120.3 s (F1)** | **T+0.5–120.0 s; gone from T+120.5 s (F1)** | T+0.1–59.3 s; gone from T+59.8 s (the gate) |
 | after the dialog, during the outage | – | card alone: "restarting", spinner, T+ running, no corner notice (T+120.3–202.5 s) | same (T+120.5–193.5 s) | the gate's dialog; card "unknown", warning |
@@ -150,9 +147,11 @@ Surfaces are the light theme's computed colours.
 **Against the bounds.** The candidate's restart window ends at the later of 6 minutes from the start and 2 minutes from
 the first lost read (`web/src/lib/systemUpdateTracking.ts`), here T+360 s. Reconnection came at T+202.8 s and T+193.6 s,
 157 s and 166 s before it, so the "not known" wording was correctly not reached (0 samples). The outage from the first
-lost read (177.2 s, 166.5 s) passed the 2-minute minimum, which by itself does not end the window. The licence access
-validity of the last good access read (T−4.8 s and T−5.3 s; set17 measured 42–60 s) was passed by about 2.5 minutes in
-both candidate runs without the gate's dialog; the control drew it 60.3 s after its last good access read (T−0.5 s).
+lost read (177.2 s, 166.5 s) passed the 2-minute minimum, which by itself does not end the window. The last good
+licence access read was at T−4.8 s and T−5.3 s in the candidate runs; the last failed access read was 205 s and 195 s after it
+(39 and 35 failed reads), without the gate's dialog; the control drew it 60.3 s after its last good access read (T−0.5 s).
+set17's candidate showed the gate 60.0 s after its last good read in one run and not in a second run that reconnected after
+57.9 s; the mechanism is not established (set17 D1).
 The 6-minute "overdue" wording was not produced natively (the outage stayed below it, as planned).
 
 ## Ledger (database before the update against after it, terminal step)
@@ -173,23 +172,24 @@ them, and never installed).
 
 ## Findings, defects, observations
 
-**D1 of set17 under a long outage: not reproduced on the candidate; reproduced on alpha.85.** Two candidate runs with
+**D1 of set17 under a long outage: observed in set17, not reproduced on the candidate in set17b; seen again on alpha.85.** Two candidate runs with
 166–177 s page outages and 35–39 failed licence access reads each showed no gate dialog and no hold; the update tracking
 went on reading every ~3 s throughout (66–69 status reads). alpha.85's page under the same outage drew the gate's
-dialog for 134.5 s and its status tracking paused for 139 s. Classification: verified in this lab (2 of 2 candidate runs,
-1 of 1 control).
+dialog for 134.5 s and its status tracking paused for 139 s. Qualifiers: set17b's candidate ecd2a5f08 is not set17's candidate (313f3eea2): it contains the licence gate grace written after set17's D1
+(Source above); D1 was timing-dependent in set17 (1 of 2 candidate runs), so two runs without it do not show that it cannot occur.
+Classification: observed in these labs (0 of 2 candidate runs showed it, 1 of 1 control did).
 
-**F1 (verified; the product's documented behaviour, differs from this brief's expectation): the update's navigation lock
+**F1 (observed in these labs; the documented behaviour of the measured commit ecd2a5f08, which differs from this brief's expectation): the update's navigation lock
 ends after two minutes, in the middle of a long restart.** In both candidate runs the update dialog ("Navigation is
 temporarily locked while this update is checked. It unlocks automatically after two minutes; tracking continues.",
 `panelUpdate.interactionLocked`; `SYSTEM_UPDATE_BLOCKING_DEADLINE_MS = 2 * 60_000` in
-`web/src/lib/systemUpdateWatchdog.ts`) closed at T+120.3 s and T+120.5 s while the Panel was still down for another
+`web/src/lib/systemUpdateWatchdog.ts` at ecd2a5f08) closed at T+120.3 s and T+120.5 s while the Panel was still down for another
 82 s and 73 s. What followed was calm: the card kept "The panel is restarting as part of the update to
 v0.1.0-alpha.87…" with the spinner and the running T+ (`debian13/upd86-good-a/browser/page/state-06-viewport.png`), no
 corner notice appeared until the result, no warning, and "Check for updates" stayed disabled until the new version
 showed. The brief expected the lock to stay engaged through the outage and after reconnection; it did not (it ended by
 its own lease, not through the gate as in set17 D1). Whether the lease should cover the update's restart window
-(6 minutes) is a product decision for the owner. Reproduce: any owner update whose Panel outage outlasts T+120 s.
+(6 minutes) is a decision left to the release preparer; this record measures ecd2a5f08 only and states no change as made. Reproduce: any owner update whose Panel outage outlasts T+120 s.
 
 **O1 (open): `PANEL_STARTING` never reached the page.** 0 answers in all four runs: after the thaw systemd reported the
 Panel active 1.6–1.7 s later and the page's next reads (every ~3 s) were already answered `200`; the page's availability
@@ -224,7 +224,7 @@ has); not imitated. Console: only `ERR_CONNECTION_CLOSED` during the outage and 
 
 ## Open items
 
-- F1: the navigation lock's two-minute lease against the update's 6-minute restart window (owner decision).
+- F1: the navigation lock's two-minute lease against the update's 6-minute restart window (decision left to the release preparer).
 - O1: the session gate's `PANEL_STARTING` grace not exercised natively.
 - The 6-minute "overdue" wording not produced natively (outage held below it by design).
 - O2: why the Panel unit reads `failed` while the updater has it stopped.
@@ -246,6 +246,6 @@ has); not imitated. Console: only `ERR_CONNECTION_CLOSED` during the outage and 
 Redacted at collection by the harness (owner password, session, fixture keys); set6's digest sweep over each staged lab
 changed 0 files (`*/host/digest-sweep-at-staging.json`; driver `SHA256SUMS` verified again). `tools/scrub.py` replaced
 host paths with `<redacted>` in 32 text files (`host/scrub.txt`). C: (Get-PSDrive) 356.98 GiB free at 17:04:54Z, lowest
-356.09 GiB at 18:18:58Z (`host/c-drive-watch.txt`); WSL `/` 941 GB free at 16:56Z, 924 GB at 18:17Z with the labs
-present. The labs, the run directory, the dist folders and the browser profiles are removed after this record is
+356.09 GiB at 18:18:58Z (`host/c-drive-watch.txt`); WSL `/` 941 GB free at 17:05:07Z (`host/hostcheck-before.txt`); the later
+WSL reading (924 GB at 18:17Z) is not recorded in this folder. A text search of this folder finds no private key, token, cookie, user path, unredacted password, or any of the owner's server names and addresses; the project's own checkout path (CELIKBROS PROJECTS/celikpanel, not an owner value) remains in a few text files (`tools/*.sh`). The labs, the run directory, the dist folders and the browser profiles are removed after this record is
 committed.

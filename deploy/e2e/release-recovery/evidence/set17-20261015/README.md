@@ -3,7 +3,7 @@
 A measurement record, the nineteenth native record. Host `date -u` at the start of the work: `Thu Oct 15 13:29:48 UTC
 2026` (reported by the run coordinator; not recorded in this folder; the folder's earliest reading is 13:50:45Z,
 `host/c-drive-watch.txt`); the run directory was made at 13:50:54Z and the last lab ended at 15:57:57Z
-(`host/progress.txt`); the end readings were taken at 16:04:01Z. Page text and pictures show the host's local time
+(`host/progress.txt`); the folder's last drive reading is 16:01:51Z (`host/c-drive-watch.txt`); the end readings the run coordinator reports at 16:04:01Z are not recorded in this folder. Page text and pictures show the host's local time
 (UTC+3); times here are UTC.
 
 The harness addressed no installed server, no licence service, no certificate authority. celikpanel.net was read once,
@@ -17,7 +17,7 @@ release. Every `result.json` carries `native_evidence: false`; this record close
 changed. This is a measurement, not acceptance evidence and not native evidence: QEMU/KVM guests, test-licence builds,
 nothing judged.
 
-**Outcome in one line.** All seven labs ran to `complete-for-review`; the six update labs' `verdicts` step passed. The
+**Outcome in one line (observed in these labs; not acceptance evidence).** All seven labs ran to `complete-for-review`; the six update labs' `verdicts` step passed. The
 candidate installed fresh, updated from alpha.85 on Debian 13 and Ubuntu 24.04 (`update_verified`), updated itself to
 a v0.1.0-alpha.87 label twice (`update_verified`), and the defective candidate returned by itself on both platforms
 (`recovered`, `rollback_verified`); after each return the database comparison was `equal-except-volatile` with
@@ -33,13 +33,12 @@ update's navigation lock did not come back; the same dialog appeared on alpha.85
 
 Candidate: the committed HEAD `313f3eea2c9b89251588648b09484cd34b7aecb1` ("Prepare v0.1.0-alpha.86"), branch
 `fix/alpha86-update-restart-notice`, built from `git clone`, never from the working tree. **No fixture commit labels
-it**: when the work began HEAD was 21f07e7a8 and the plan was a fixture commit changing only
-`deploy/release-sequence-policy` to 86; at 13:33:57Z the release preparer committed 313f3eea2, which already carries
+it**: the plan reported by the run coordinator (not recorded in this folder) was a fixture commit changing only
+`deploy/release-sequence-policy` to 86; the release preparer then committed 313f3eea2 (commit time not recorded in this folder), which already carries
 that policy (`version=v0.1.0-alpha.86 current=86 previous=85 previous_commit=36c33c45…`) and the bootstrap pins 86, and
 changes no file under `cmd/`, `internal/` or `web/` against 21f07e7a8 (`build/source-check.txt`: `git diff --stat
 21f07e7a8 313f3eea2 -- cmd internal web` empty; the 7 files it changes are listed there). So the candidate is the
-source commit itself, and every candidate page reads `build 313f3eea2c9b`. A later commit, feef819a7 (release
-documents only), was HEAD when the run directory was made; `git diff --stat 313f3eea2 HEAD -- cmd internal web
+source commit itself, and every candidate page reads `build 313f3eea2c9b`. A later commit, feef819a7 (its content is not recorded in this folder), was HEAD when the run directory was made (`build/source-check.txt`); `git diff --stat 313f3eea2 HEAD -- cmd internal web
 deploy/release-sequence-policy` was empty. No migration between the alpha.85 tag and the candidate (ledger 44);
 `cmd/panel/main.go` unchanged between them.
 
@@ -69,7 +68,7 @@ c48678d34583868ab583db4cfb6c97c36e423db6, 8c6ac88b290b6662c8618878661b02857ff803
 (the real release commit's pins, not a fixture); the alpha.87-labelled archives keep 86 (the fixture changes the policy
 only). Installed copy on the fresh guest: 86 / v0.1.0-alpha.86.
 
-**Proof and dry runs.** `set17_fixture.py prove` for both documents (`build/*-prove.json`, exit 0); dry runs of the six
+**Proof and dry runs.** `set17_fixture.py prove` for both documents (`build/*-prove.json`; empty stderr, the exit code is not recorded); dry runs of the six
 cell kinds wrote their plans with empty stderr (`build/dry-*`); offline suites in copy `c` (`harness-run-copy/c/suite.txt`:
 set16 11 tests OK, set15 8 tests OK; set17 files compiled; shell and tool syntax OK).
 
@@ -122,7 +121,7 @@ the forward (answered = any HTTP status). Surface tokens are the light theme's c
 | "not known" wording | 59 samples, T+41.4–70.9 s | 51 samples, T+25.9–51.3 s | 0 | 0 |
 | warning surface | 59 samples | 51 samples | 0 | 0 |
 | corner notice during the outage | none | none | none | none |
-| other dialog over the page | none | licence gate "The Panel is not answering; an update may be restarting it", T+36.5–51.3 s (update dialog gone from T+36.5 s, card kept the warning) | **licence gate, seen at T+55.9 s, gone at T+61.0 s (D1)**; the update dialog did not come back | none |
+| other dialog over the page | none seen (other dialogs were not sampled in this run; the update dialog itself stayed until T+70.9 s) | licence gate "The Panel is not answering; an update may be restarting it", T+36.5–51.3 s (update dialog gone from T+36.5 s, card kept the warning) | **licence gate, seen at T+55.9 s, gone at T+61.0 s (D1)**; the update dialog did not come back | none |
 | probe not answered | T+36.8–68.8 s (31.9 s) | T+20.8–48.2 s (27.4 s) | T+26.3–56.8 s (30.5 s) | T+25.5–53.0 s (27.5 s) |
 | page outage (first lost → first answered status read) | 30.1 s (T+41.0 → 71.0) | 26.0 s (25.5 → 51.5) | 35.2 s (25.6 → 60.8) | 30.3 s (25.5 → 55.8) |
 | after reconnection | "Update installed, being verified" T+71.4–77.9 s; then the corner notice **and** the card both say "being verified" T+78.4–83.0 s | corner notice and card both "being verified" T+51.8–60.5 s | card "verifying" T+61.0–69.7 s, then corner "The update completed… Reloading" T+70.2–71.2 s (card gone) | dialog "Update installed, being verified" T+55.9–68.6 s, then "The update completed…" with CheckCircle2 on `success/0.1` T+69.1–70.6 s |
@@ -143,8 +142,7 @@ run a), as the change describes.
 ## Facts per cell
 
 **1 fresh (Debian 13).** Install 14:31:42Z–14:33:03Z, owner login, licence passed; setup purpose `web` (DNS external)
-waited at `access_dns` (`server_setup_access_dns_required`), and the owner chose "set up by hand" before the browser
-window. `GET /api/v1/panel/version` → `v0.1.0-alpha.86`, commit and Agent commit `313f3eea…`, `agent_matches true`,
+waited at `access_dns` (`server_setup_access_dns_required`), and the driver's scripted owner call `PUT /api/v1/setup/guidance` (`manual`, 14:37:01Z, `steps/09-set17-browser-window/api/0069-put-api-v1-setup-guidance.json`) moved it to "set up by hand" when the browser window began. `GET /api/v1/panel/version` → `v0.1.0-alpha.86`, commit and Agent commit `313f3eea…`, `agent_matches true`,
 `schema_version 44`; ledger `as-expected` (44); installed pins 86 / v0.1.0-alpha.86; `valid_for_seconds` and
 `scan_age_seconds` present; domains 0.
 
@@ -189,12 +187,12 @@ Agent and Panel after the return `v0.1.0-alpha.85 / 36c33c45…`; login, site ma
 | Dashboard Recent activity | sentences, no raw id and no underscore word in EN or TR (7 rows each) after setup (fresh: "prepared Nginx during setup", "kurulum sırasında Nginx bileşenini hazırladı", from `server.setup.child:nginx`) and after the updates ("changed a backup schedule" from `backup.schedule:weekly`, "added a domain" from `domain.create`); after the returns alpha.85 shows the raw ids again (6 of 7 rows). |
 | Sidebar build id | `build 313f3eea2c9b` (candidate), `c48678d34583` (alpha.87 label), `36c33c4531ee` (after returns): one line at 1280×800 and 390×844, no overflow, in every lab. |
 | Store state badges | after the updates (one subscription seeded): EN "Available" 2, "Included" 8, "Coming soon" 10; the status filter lists "State not known yet" separately from "Unsupported here" (TR "Durum henüz bilinmiyor", "Bu sunucuda desteklenmiyor"); no offering was in the not-known state. Fresh cell: "No subscriptions — Create a customer and plan first." |
-| A component's own page on `SERVICE_STATE_UNVERIFIED` | produced by a **lab preparation** (the stored record's `data` replaced by bytes that do not decode; recorded in `steps/09-set17-browser-window`). `/services/nginx`, EN and TR: two `GET /api/v1/managed-services` → 503 with the new refusal text; the quiet line "The stored record could not be verified, so CelikPanel is checking the components now. Nothing was changed and you do not need to do anything…" (TR "Kayıtlı kayıt doğrulanamadı; bu yüzden CelikPanel bileşenleri şimdi kontrol ediyor…") from 0.5 s; one `POST /api/v1/managed-services/scan?max_age_seconds=300` 200 (980 / 1153 ms); the record read again 200; the page filled at 1.3 / 1.6 s; no alert or toast, one scan only. |
+| A component's own page on `SERVICE_STATE_UNVERIFIED` | produced by a **lab preparation** in the fresh Debian cell only (`debian13/fresh-a`; the stored record's `data` replaced by bytes that do not decode; recorded in `steps/09-set17-browser-window`). `/services/nginx`, EN and TR: two `GET /api/v1/managed-services` → 503 with the new refusal text; the quiet line "The stored record could not be verified, so CelikPanel is checking the components now. Nothing was changed and you do not need to do anything…" (TR "Kayıtlı kayıt doğrulanamadı; bu yüzden CelikPanel bileşenleri şimdi kontrol ediyor…") from 0.5 s; one `POST /api/v1/managed-services/scan?max_age_seconds=300` 200 (980 / 1153 ms); the record read again 200; the page filled at 1.3 / 1.6 s; no alert or toast, one scan only. |
 | Setup final step's resolver sentence | not reachable: the step needs the server's public reverse DNS name, which no lab guest has; not imitated. |
 
 ## Defects and observations
 
-**D1 (verified, timing-dependent; pre-existing mechanism, not covered by the change): the licence access gate draws its
+**D1 (observed, timing-dependent; also seen on alpha.85's page, so not specific to the candidate's restart notice): the licence access gate draws its
 own "not answering" dialog over the update's restart and ends the update's navigation lock.** Candidate run a: the
 last good `GET /api/v1/license/access` was at 14:25:22.9Z; at 14:26:22.8Z and 22.9Z (T+55.6 s, inside the restart)
 access reads failed with the Panel down, and at T+55.9 s the page showed `accessHold` cause `update`: "The Panel is not
@@ -204,9 +202,12 @@ a second update." with "Check this operation" / "Check panel access" (`debian13/
 The update's own calm dialog was gone from that moment and did not return (navigation lease released for good); the
 card underneath still read "restarting"; the gate closed by T+61.0 s when access answered. Run b reconnected 57.9 s
 after its last good access read and did not show it; alpha.85 Ubuntu showed the same gate at T+36.5 s (41.8 s after its
-last good access read). So the gate appears whenever the outage passes the licence access validity measured from the
-last good read (here between about 42 and 60 s), which a real server's restart (the owner's T+02:59) would pass; the
-"not known" wording then reaches the owner inside the expected window through this second surface. Reproduce: start an
+last good access read). The access read log (`browser/page/requests.jsonl`) does not explain when the gate appears: access reads failed in all
+four runs (run a at T+40.8 and T+55.6 s, gate at T+55.9 s; Ubuntu control first at T+21.5 s, gate at T+36.5 s; run b once at
+T+42.6 s, answered at T+55.5 s; Debian control at T+55.1 and T+63.0 s, no gate seen, the other dialogs not being sampled
+there), so the mechanism is not established by this folder. Whether the owner's own restart (reported by the release
+preparer as T+02:59, not recorded in this folder) would show the dialog is not established; if it does, the "not known"
+wording reaches the owner inside the expected window through this second surface. Reproduce: start an
 update in the browser and keep the Panel down past the access validity of the last good access read. Classification:
 verified observation in this lab (one of two candidate runs, one of two control runs); not a measured failure of the
 update.
@@ -215,7 +216,7 @@ update.
 request leaves through the page's service worker); the start was reconciled by status reads.
 
 **O2 (alpha.85, for the record): the corner notice and the card repeat each other** after the navigation lock closes
-(both "being verified"), the "two notices" the owner reported; not seen on the candidate.
+(both "being verified"), the "two notices" the owner described (that report is not recorded in this folder); not seen on the candidate.
 
 ## Open items
 
@@ -252,7 +253,7 @@ request leaves through the page's service worker); the start was reconciled by s
 Redacted at collection by the harness (owner password, session, fixture keys); set6's digest sweep over each staged lab
 changed 0 files in five labs and 1 host-side file in each defective lab (`*/host/digest-sweep-at-staging.json`; driver
 `SHA256SUMS` verified again). `tools/scrub.py` replaced host paths with `<redacted>` in 45 text files (`host/scrub.txt`);
-a text search finds no private key, token, cookie, user path or unredacted password. C: (Get-PSDrive) 359.77 GiB free
-at 13:50:45Z, lowest 357.31 GiB, 357.41 GiB at 16:03:51Z (`host/c-drive-watch.txt`); WSL `/` 939 GB free at 13:33Z,
-920 GB at 16:04Z with the labs still present. The labs, the run directory and the dist folders are removed after this
+a text search of this folder finds no private key, token, cookie, user path (a `C:` `Users` directory), unredacted password, or any of the owner's server names and addresses; the project's own checkout path (CELIKBROS PROJECTS/celikpanel, not an owner value) remains in a few text files (browser stack traces, harness diffs, `tools/*.sh`). C: (Get-PSDrive) 359.77 GiB free
+at 13:50:45Z, lowest 357.31 GiB (15:50:51Z), last reading 357.49 GiB at 16:01:51Z (`host/c-drive-watch.txt`); WSL `/` 939 GB free at 13:50:54Z
+(`host/hostcheck-before.txt`); the later WSL reading (920 GB at 16:04Z) is not recorded in this folder. The labs, the run directory and the dist folders are removed after this
 record is committed.
