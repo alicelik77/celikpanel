@@ -2486,25 +2486,26 @@ function MailProfileInstallDialog({
                                             : 'border-border-strong focus:border-primary'
                                     }`}
                                 />
+                                {/* While a saved name is being changed, the note under the field
+                                    says what the change does, so the field's description is that
+                                    sentence (2026-10-16). / Ad degisirken alanin aciklamasi etkidir. */}
                                 <p
                                     id='mail-profile-hostname-note'
+                                    {...(renaming ? { 'data-mail-hostname-effects': '' } : {})}
                                     className={`mt-1 text-xs leading-5 ${
-                                        hostnameInvalid && hostnameTouched ? 'text-danger' : 'text-fg-muted'
+                                        hostnameInvalid && hostnameTouched ? 'text-danger' : renaming ? 'text-fg' : 'text-fg-muted'
                                     }`}
                                 >
                                     {hostnameInvalid && hostnameTouched
                                         ? t('services.mailProfiles.hostname.invalid')
-                                        : canonicalHostname
-                                            ? t('services.mailProfiles.hostname.rename', {
-                                                hostname: canonicalHostname,
-                                            })
-                                            : t('services.mailProfiles.hostname.invalid')}
+                                        : renaming
+                                            ? t('services.mailProfiles.hostname.changeEffects', { old: savedName, new: canonicalHostname ?? '' })
+                                            : canonicalHostname
+                                                ? t('services.mailProfiles.hostname.rename', {
+                                                    hostname: canonicalHostname,
+                                                })
+                                                : t('services.mailProfiles.hostname.invalid')}
                                 </p>
-                                {renaming && (
-                                    <p className='mt-2 rounded-md border border-border bg-surface-2/50 p-2 text-xs leading-5 text-fg' data-mail-hostname-effects=''>
-                                        {t('services.mailProfiles.hostname.changeEffects', { old: savedName, new: canonicalHostname ?? '' })}
-                                    </p>
-                                )}
                                 {hostnameSettled && editingName && (
                                     <button
                                         type='button'
