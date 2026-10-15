@@ -1170,6 +1170,8 @@ test('Components: on a secondary DNS server the mail box names the primary and t
     assert.equal(buttons().filter((node) => label(node).includes('services.mailProfiles.configureDNS')).length, 0, 'the dead-end button is still offered');
     assert.ok(buttons().some((node) => label(node).includes('services.mailProfiles.secondary.openSetup')));
     assert.ok(shown.includes('services.mailProfiles.secondary.short'));
+    // Its cards do not say "ready to install" beside an action that waits for the record (2026-10-16).
+    assert.ok(shown.includes('services.mailProfiles.status.waitingDNS') && !shown.includes('services.mailProfiles.status.available'), shown.slice(0, 800));
   } finally { await unmount(); }
   // Control: the same server without the guidance keeps the generic box.
   serve({ '/api/v1/managed-services': secondaryScan(null) });
@@ -1198,6 +1200,8 @@ test('Components: a server whose setup has finished adds mail through a setup ex
   await mount(React.createElement(ServiceList, {}));
   try {
     await settle();
+    // Control for the secondary server's status: with its DNS identity ready a profile is ready to install.
+    assert.ok(text().includes('services.mailProfiles.status.available') && !text().includes('services.mailProfiles.status.waitingDNS'));
     await press('services.mailProfiles.install');
     const shown = text();
     assert.ok(hasNode('data-mail-profile-route') && shown.includes('services.mailProfiles.setupRoute.note'), shown.slice(0, 800));
@@ -1232,15 +1236,27 @@ test('Components: a refused setup extension keeps the dialog open with the reaso
   globalThis.batch3Navigated = [];
   browserStorage();
   globalThis.batch3Setup = setupContext(readySetup());
+  let release;
   serve({
     '/api/v1/managed-services': savedNameScan(),
-    '/api/v1/setup/extend': () => answer({ error: 'busy', code: 'server_setup_busy' }, 409),
+    '/api/v1/setup/extend': () => new Promise((resolve) => { release = () => resolve(answer({ error: 'busy', code: 'server_setup_busy' }, 409)); }),
   });
   await mount(React.createElement(ServiceList, {}));
   try {
     await settle();
     await press('services.mailProfiles.install');
+    await press('services.mailProfiles.hostname.change');
     await press('services.mailProfiles.setupRoute.confirm');
+    // While setup is asked, nothing in the dialog can change or close what was sent (2026-10-16).
+    const locked = () => ({
+      cancel: buttons().find((node) => label(node).includes('common.cancel')).props.disabled,
+      keep: buttons().find((node) => label(node).includes('services.mailProfiles.hostname.keep')).props.disabled,
+      name: tree.root.find((node) => node.props && node.props.id === 'mail-profile-hostname').props.disabled,
+    });
+    assert.deepEqual(locked(), { cancel: true, keep: true, name: true });
+    await act(async () => { release(); });
+    await settle();
+    assert.deepEqual(locked(), { cancel: false, keep: false, name: false });
     assert.ok(text().includes('services.mailProfiles.setupRoute.busy'), text().slice(0, 800));
     assert.deepEqual(globalThis.batch3Navigated, []);
     assert.equal(requests.filter((line) => line === 'POST /api/v1/setup/extend').length, 1, 'the refused request was sent again');

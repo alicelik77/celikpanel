@@ -1074,6 +1074,7 @@ export const enServerScreens = {
     'services.mailProfiles.status.partial': 'Partially installed',
     'services.mailProfiles.status.complete': 'Components running',
     'services.mailProfiles.status.blocked': 'Unavailable',
+    'services.mailProfiles.status.waitingDNS': 'Waiting for the mail DNS record',
     'services.mailProfiles.profileComponentsNeedRepair': 'Components are running. Run Repair to verify and reconcile TLS, authenticated submission, and the complete mail profile.',
     'services.mailProfiles.plan.title.install': 'Install {name}',
     'services.mailProfiles.plan.title.continue': 'Continue {name}',

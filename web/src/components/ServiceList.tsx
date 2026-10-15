@@ -2178,14 +2178,17 @@ function MailProfileCards({ profiles, services, disabled, dnsIdentityReady, dnsG
                             <div className='mt-auto flex items-center justify-between gap-3 pt-4'>
                                 <span className='inline-flex items-center gap-1.5 text-xs font-medium text-fg-muted'>
                                     <StatusDot ok={profile.status === 'complete'} />
-                                    {t(`services.mailProfiles.status.${profile.status}` as Parameters<typeof t>[0])}
+                                    {/* Not "ready to install" while its action waits for the mail record (2026-10-16). */}
+                                    {!dnsIdentityReady && profile.status === 'available'
+                                        ? t('services.mailProfiles.status.waitingDNS')
+                                        : t(`services.mailProfiles.status.${profile.status}` as Parameters<typeof t>[0])}
                                 </span>
                                 <button
                                     type='button'
                                     onClick={() => onInstall(profile)}
                                     disabled={disabled || !dnsIdentityReady || !actionable}
                                     title={detail || actionLabel(profile)}
-                                    className='inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-fg hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50'
+                                    className='inline-flex items-center gap-1.5 rounded-lg border border-transparent bg-primary px-3 py-1.5 text-xs font-semibold text-primary-fg hover:bg-primary/90 disabled:cursor-not-allowed disabled:border-dashed disabled:border-current disabled:bg-transparent disabled:text-fg-muted'
                                 >
                                     <ActionIcon className='h-3.5 w-3.5' />
                                     {actionLabel(profile)}
@@ -2224,6 +2227,13 @@ function MailProfileInstallDialog({
     const [editingName, setEditingName] = useState(false);
     const [routeBusy, setRouteBusy] = useState(false);
     const [routeError, setRouteError] = useState<TranslationKey | null>(null);
+    // A refusal is said under the name, at the end of the dialog's scrolling
+    // body; on a phone that is below what is shown, so it is brought into view
+    // (2026-10-16). / Ret nedeni gorunur alana alinir.
+    const routeErrorRef = useRef<HTMLParagraphElement>(null);
+    useEffect(() => {
+        if (routeError) routeErrorRef.current?.scrollIntoView?.({ block: 'nearest' });
+    }, [routeError]);
     // The server is only asked for a name when it does not already carry a
     // fully qualified one. A server that does is stated as a fact and left
     // alone. / Sunucudan bir ad yalniz zaten tam nitelikli bir ad tasimiyorsa
@@ -2340,6 +2350,9 @@ function MailProfileInstallDialog({
             title={t(`services.mailProfiles.plan.title.${mode}` as Parameters<typeof t>[0], { name: mailProfileName(profile, t) })}
             description={t('services.mailProfiles.plan.description')}
             onDismiss={onCancel}
+            // While setup is asked to take the profile, the dialog stays and
+            // nothing in it can change what was sent (2026-10-16).
+            busy={routeBusy}
             footerLead={throughSetup ? undefined :
                 <label className='flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3'>
                     <input
@@ -2356,7 +2369,7 @@ function MailProfileInstallDialog({
             }
             actions={
                 <>
-                    <Button variant='secondary' onClick={onCancel}>
+                    <Button variant='secondary' disabled={routeBusy} onClick={onCancel}>
                         {t('common.cancel')}
                     </Button>
                     {throughSetup ? (
@@ -2444,8 +2457,9 @@ function MailProfileInstallDialog({
                                 <button
                                     type='button'
                                     data-mail-hostname-change=''
+                                    disabled={routeBusy}
                                     onClick={() => { setHostnameDraft(savedName); setEditingName(true); }}
-                                    className='min-h-9 text-xs font-medium text-primary underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
+                                    className='min-h-9 text-xs font-medium text-primary underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-60'
                                 >
                                     {t('services.mailProfiles.hostname.change')}
                                 </button>
@@ -2473,6 +2487,7 @@ function MailProfileInstallDialog({
                                     autoComplete='off'
                                     spellCheck={false}
                                     value={hostnameDraft}
+                                    disabled={routeBusy}
                                     placeholder={t('services.mailProfiles.hostname.placeholder')}
                                     aria-describedby='mail-profile-hostname-hint mail-profile-hostname-note'
                                     aria-invalid={hostnameInvalid || undefined}
@@ -2509,8 +2524,9 @@ function MailProfileInstallDialog({
                                 {hostnameSettled && editingName && (
                                     <button
                                         type='button'
+                                        disabled={routeBusy}
                                         onClick={() => { setEditingName(false); setHostnameDraft(savedName); setHostnameTouched(false); }}
-                                        className='mt-2 min-h-9 text-xs font-medium text-primary underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
+                                        className='mt-2 min-h-9 text-xs font-medium text-primary underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-60'
                                     >
                                         {t('services.mailProfiles.hostname.keep', { hostname: savedName })}
                                     </button>
@@ -2528,7 +2544,7 @@ function MailProfileInstallDialog({
                         )}
                     </section>
                     {routeError && (
-                        <p role='alert' className='mb-2 text-sm leading-6 text-fg' data-mail-profile-route-error=''>{t(routeError)}</p>
+                        <p ref={routeErrorRef} role='alert' className='mb-2 text-sm leading-6 text-fg' data-mail-profile-route-error=''>{t(routeError)}</p>
                     )}
         </Dialog>
     );

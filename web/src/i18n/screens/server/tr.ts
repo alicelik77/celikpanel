@@ -1009,6 +1009,7 @@ export const trServerScreens: Record<ServerScreenKey, string> = {
     'services.mailProfiles.status.partial': 'Kısmen kurulu',
     'services.mailProfiles.status.complete': 'Bileşenler çalışıyor',
     'services.mailProfiles.status.blocked': 'Kullanılamıyor',
+    'services.mailProfiles.status.waitingDNS': 'Posta DNS kaydı bekleniyor',
     'services.mailProfiles.profileComponentsNeedRepair': 'Bileşenler çalışıyor. TLS, kimlik doğrulamalı gönderim ve posta profilinin tamamını doğrulayıp uzlaştırmak için Onar işlemini çalıştırın.',
     'services.mailProfiles.plan.title.install': '{name} kur',
     'services.mailProfiles.plan.title.continue': '{name} kurulumuna devam et',
