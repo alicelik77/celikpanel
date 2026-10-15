@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { api, type SystemStats } from '../lib/api';
 import { useI18n } from '../i18n';
+import { componentName } from '../lib/componentName';
 import { useAuth } from '../auth/AuthContext';
 import type { TranslationKey } from '../i18n/en';
 import { Button, Checking, CouldNotCheck, Dialog, KeepWords, Spinner, UsageBar, Card } from './ui';
@@ -804,7 +805,7 @@ function AdminDashboard() {
         attention.push({
             key: `svc-${s.id}`,
             icon: Activity,
-            text: t('dashboard.svcStoppedItem', { name: s.name }),
+            text: t('dashboard.svcStoppedItem', { name: componentName(s, t) }),
             action: t('dashboard.goServices'),
             to: '/services',
         });

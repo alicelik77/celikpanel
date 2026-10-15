@@ -17,6 +17,7 @@ const compile = path => ts.transpileModule(readFileSync(new URL(path, import.met
 const remoteURL = dataURL(compile('../src/lib/remoteDNS.ts'));
 const setupURL = dataURL(compile('../src/lib/serverSetup.ts'));
 const componentLibURL = dataURL(compile('../src/lib/serverSetupComponents.ts').replace("from './serverSetup'", `from '${setupURL}'`));
+const componentNameURL = dataURL(compile('../src/lib/componentName.ts'));
 const operationURL = dataURL(compile('../src/lib/serverSetupOperation.ts').replace("from './serverSetup'", `from '${setupURL}'`));
 const dnsEnglishURL = dataURL(compile('../src/i18n/setupDNS/en.ts'));
 const dnsTurkishURL = dataURL(compile('../src/i18n/setupDNS/tr.ts'));
@@ -47,11 +48,11 @@ export const AddressLink=props=>React.createElement('a',{href:props.href},props.
 `);
 const stepsURL = dataURL(`import React from '${reactURL}';\n` + compile('../src/components/ServerSetupSteps.tsx').replace(/from ['"]([^'"]+)['"]/g, (_, path) => `from '${stub}'`));
 const choiceURL = dataURL(`import React from '${reactURL}';\n` + compile('../src/components/ServerSetupChoice.tsx').replace(/from ['"]([^'"]+)['"]/g, (_, path) => `from '${path === 'react' ? reactURL : path.endsWith('/serverSetup') ? setupURL : stub}'`));
-const componentUIURL = dataURL(`import React from '${reactURL}';\n` + compile('../src/components/ServerSetupComponents.tsx').replace(/from ['"]([^'"]+)['"]/g, (_, path) => `from '${path === 'react' ? reactURL : path.endsWith('/serverSetupComponents') ? componentLibURL : stub}'`));
+const componentUIURL = dataURL(`import React from '${reactURL}';\n` + compile('../src/components/ServerSetupComponents.tsx').replace(/from ['"]([^'"]+)['"]/g, (_, path) => `from '${path === 'react' ? reactURL : path.endsWith('/componentName') ? componentNameURL : path.endsWith('/serverSetupComponents') ? componentLibURL : stub}'`));
 const { ServerSetupComponents: ComponentPicker } = await import(componentUIURL);
 async function loadComponent(name) {
     const source = compile(`../src/components/${name}.tsx`).replace(/from ['"]([^'"]+)['"]/g, (_, path) => {
-        const url = path === 'react' ? reactURL : path.endsWith('/ServerSetupSteps') ? stepsURL : path.endsWith('/remoteDNS') ? remoteURL : path.endsWith('/ServerSetupComponents') ? componentUIURL : path.endsWith('/serverSetupComponents') ? componentLibURL : path.endsWith('/ServerSetupChoice') ? choiceURL : path.endsWith('/setupDNS') ? dnsCopyURL : path.endsWith('/visibleReads') ? visibleReadsURL : path.endsWith('/panelHandover') ? handoverURL : path.endsWith('/serverSetupGuidance') ? guidanceURL : path.endsWith('/serverSetupOperation') ? operationURL : path.endsWith('/serverSetup') ? setupURL : stub;
+        const url = path === 'react' ? reactURL : path.endsWith('/ServerSetupSteps') ? stepsURL : path.endsWith('/remoteDNS') ? remoteURL : path.endsWith('/ServerSetupComponents') ? componentUIURL : path.endsWith('/componentName') ? componentNameURL : path.endsWith('/serverSetupComponents') ? componentLibURL : path.endsWith('/ServerSetupChoice') ? choiceURL : path.endsWith('/setupDNS') ? dnsCopyURL : path.endsWith('/visibleReads') ? visibleReadsURL : path.endsWith('/panelHandover') ? handoverURL : path.endsWith('/serverSetupGuidance') ? guidanceURL : path.endsWith('/serverSetupOperation') ? operationURL : path.endsWith('/serverSetup') ? setupURL : stub;
         return `from '${url}'`;
     });
     return (await import(dataURL(`import React from '${reactURL}';\n${source}`)))[name];

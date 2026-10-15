@@ -4,6 +4,7 @@ import { ServiceShell } from './ServiceShell';
 import { Checking, CouldNotCheck, KnownEmpty, RemoteGate } from './ui';
 import { useI18n } from '../i18n';
 import { apiErrorText } from '../lib/apiError';
+import { componentName } from '../lib/componentName';
 import { decodeListIn, lastKnown, mapRemote, useRemote } from '../lib/remote';
 import { useManagedServices, type ManagedServicesSnapshot } from '../lib/managedServices';
 
@@ -65,6 +66,7 @@ function componentIn(snapshot: ManagedServicesSnapshot, serviceId: string): Comp
 // kendi günlüğünü — gösterir. Yarın kataloğa eklenen bir bileşen, bu dosyaya
 // dokunulmadan çalışan bir Yönet sayfasına kavuşur.
 export function ComponentDetail({ serviceId, onBack, onSelectConfig }: { serviceId: string; onBack: () => void; onSelectConfig?: (path: string) => void }) {
+    const { t } = useI18n();
     const catalogue = useManagedServices();
     // On an unchecked host this record carries no unit, no versions and no
     // config files — not because there are none, but because nobody has
@@ -89,7 +91,8 @@ export function ComponentDetail({ serviceId, onBack, onSelectConfig }: { service
     // Başlat ve durdur kabuğundur, kendi kaydından: bu sayfa onlar için birim
     // adlandırmaz.
     const known = lastKnown(catalogue.remote);
-    const name = (known && componentIn(known.value, serviceId)?.name) || serviceId;
+    const record = known ? componentIn(known.value, serviceId) : undefined;
+    const name = record ? componentName(record, t) : serviceId;
 
     return (
         <ServiceShell

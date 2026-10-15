@@ -25,10 +25,14 @@ test('native cron copy stays in EN/TR parity', () => {
     assert.ok(hasKey(englishCatalogue, key), 'missing EN key ' + key);
     assert.ok(hasKey(turkishCatalogue, key), 'missing TR key ' + key);
   }
+  // The guidance names the Components row as that page shows it in the same
+  // language (services.component.name.cron, 2026-10-15).
   for (const catalogue of [englishCatalogue, turkishCatalogue]) {
+    const row = value(catalogue, 'services.component.name.cron');
+    assert.ok(row, 'no Components row name for cron');
     for (const key of ['err.CRON_NOT_INSTALLED', 'err.CRON_NOT_INSTALLED.read']) {
       const text = value(catalogue, key);
-      for (const part of ['sudo apt-get install cron', 'sudo pacman -S cronie', 'sudo systemctl enable --now cronie', 'Scheduled tasks (cron)']) {
+      for (const part of ['sudo apt-get install cron', 'sudo pacman -S cronie', 'sudo systemctl enable --now cronie', `“${row}”`]) {
         assert.ok(text.includes(part), `${key} lacks ${part}: ${text}`);
       }
     }

@@ -978,6 +978,38 @@ export const enServerScreens = {
     'services.mailProfiles.description.coreMail': 'Postfix SMTP and Dovecot IMAP/POP3 with authenticated submission.',
     'services.mailProfiles.description.webmail': 'Core mail plus Nginx, PHP-FPM and Roundcube webmail.',
     'services.mailProfiles.description.protectedMail': 'Core mail with Rspamd spam filtering.',
+    // Each server catalogue component's display name, by catalogue id
+    // (internal/core ManagedServices; lib/componentName.ts, 2026-10-15). The
+    // catalogue's own name is English; a product name stays as it is, a
+    // descriptive one is translated. tests/component-names.test.mjs reads the
+    // ids from the Go catalogue, so a new component without a name here fails.
+    'services.component.name.php-fpm': 'PHP-FPM',
+    'services.component.name.node': 'Node.js',
+    'services.component.name.nginx': 'Nginx',
+    'services.component.name.apache': 'Apache',
+    'services.component.name.postgresql': 'PostgreSQL',
+    'services.component.name.mariadb': 'MariaDB',
+    'services.component.name.phpmyadmin': 'phpMyAdmin',
+    'services.component.name.phppgadmin': 'phpPgAdmin',
+    'services.component.name.postfix': 'Postfix',
+    'services.component.name.exim': 'Exim',
+    'services.component.name.rspamd': 'Rspamd',
+    'services.component.name.dovecot': 'Dovecot',
+    'services.component.name.roundcube': 'Roundcube',
+    'services.component.name.spamassassin': 'SpamAssassin',
+    'services.component.name.wireguard': 'WireGuard VPN',
+    'services.component.name.certbot': 'Let’s Encrypt client (certbot)',
+    'services.component.name.fail2ban': 'Fail2ban',
+    'services.component.name.nftables': 'Firewall engine',
+    'services.component.name.clamav': 'ClamAV',
+    'services.component.name.bind': 'BIND',
+    'services.component.name.pdns': 'PowerDNS',
+    'services.component.name.vsftpd': 'vsftpd',
+    'services.component.name.redis': 'Redis',
+    'services.component.name.valkey': 'Valkey',
+    'services.component.name.memcached': 'Memcached',
+    'services.component.name.netdata': 'Netdata',
+    'services.component.name.cron': 'Scheduled tasks (cron)',
     // The typed blocked and warning sentences (cmd/panel mailProfileTextCode, 2026-10-14);
     // every code the Panel lists needs one here (tests/mail-profile-text.test.mjs).
     'services.mailProfiles.code.state_unverified': 'The service state is not verified yet; the next component check verifies it.',

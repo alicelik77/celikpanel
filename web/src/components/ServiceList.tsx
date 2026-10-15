@@ -24,6 +24,7 @@ import {
 } from './FirewallSSHNotice';
 import { Link, useLocation, useNavigate } from '../router';
 import { publishComponentCensus } from '../lib/componentCensus';
+import { componentName } from '../lib/componentName';
 import { mailProfileBlocked, mailProfileDescription, mailProfileName, mailProfileWarning } from '../lib/mailProfileText';
 
 // One installed copy of a runtime (B3b): php8.3-fpm is an instance, a Node
@@ -654,7 +655,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
             // claim this page must stop making.
             // Kurulu görünümü, YOK olduğunu BİLDİĞİMİZİ gizler.
             (!hideNotInstalled || s.is_installed !== false) &&
-            (q === '' || `${s.name} ${s.description} ${s.id}`.toLowerCase().includes(q)),
+            (q === '' || `${componentName(s, t)} ${s.name} ${s.description} ${s.id}`.toLowerCase().includes(q)),
     );
 
     // A server nobody has looked at yet: every row is unknown. This is the
@@ -836,7 +837,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
         setInstallTarget(null);
         await startInstall({
             serviceId: service.id,
-            name: service.name,
+            name: componentName(service, t),
             ...(pkg ? { package: pkg } : {}),
         });
     };
@@ -945,7 +946,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                 'success',
                 nextCleanupAttempt !== null
                     ? t('services.webmailCleanupCompleted')
-                    : t('services.uninstalled', { name: service.name }),
+                    : t('services.uninstalled', { name: componentName(service, t) }),
             );
             if (!(await loadServices())) markStateUnverified();
         } catch {
@@ -1157,7 +1158,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
         case 'repair':
             await startInstall({
                 serviceId: action.service.id,
-                name: action.service.name,
+                name: componentName(action.service, t),
                 ...(action.service.repair_package ? { package: action.service.repair_package } : {}),
             });
             break;
@@ -1165,7 +1166,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
             await startInstall({
                 serviceId: action.service.id,
                 package: action.pkg,
-                name: `${action.service.name} ${action.version}`,
+                name: `${componentName(action.service, t)} ${action.version}`,
             });
             break;
         case 'install-node':
@@ -1518,7 +1519,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                                 to={`/services/${s.id}`}
                                                                 className={`rounded-md text-base font-medium outline-none after:absolute after:inset-0 after:content-[''] focus-visible:ring-2 focus-visible:ring-primary/40 ${s.is_installed ? 'text-fg' : 'text-fg-muted'}`}
                                                             >
-                                                                {s.name}
+                                                                {componentName(s, t)}
                                                             </Link>
                                                             <div className="truncate text-xs text-fg-subtle">{s.description}</div>
                                                         </div>
@@ -1928,12 +1929,12 @@ function ComponentActionConfirmationDialog({
             ? 'repair'
             : 'install';
     const targetName = action.kind === 'instance'
-        ? `${action.service.name} (${action.unit})`
+        ? `${componentName(action.service, t)} (${action.unit})`
         : action.kind === 'install-package'
-            ? `${action.service.name} ${action.version}`
+            ? `${componentName(action.service, t)} ${action.version}`
             : action.kind === 'install-node'
                 ? `Node ${action.version}`
-                : action.service.name;
+                : componentName(action.service, t);
     const icon = actionName === 'start'
         ? Play
         : actionName === 'stop'
@@ -1991,7 +1992,7 @@ function MailProfileCards({ profiles, services, disabled, dnsIdentityReady, onIn
         if (profile.status === 'complete') return t('services.mailProfiles.repair');
         return t('services.mailProfiles.unavailable');
     };
-    const serviceName = (id: string) => services.find((service) => service.id === id)?.name ?? id;
+    const serviceName = (id: string) => componentName(services.find((service) => service.id === id) ?? id, t);
     return (
         <section id='mail-stacks' tabIndex={-1} aria-labelledby='mail-profile-heading' className='mb-6 scroll-mt-24'>
             <div className='mb-3 flex items-start gap-3'>
@@ -2128,7 +2129,7 @@ function MailProfileInstallDialog({
     const ports = Array.from(new Set(components.flatMap((service) => service.ports ?? []))).sort();
     const restarted = components
         .filter((service) => service.kind === 'service')
-        .map((service) => service.name);
+        .map((service) => componentName(service, t));
 
     useEffect(() => {
         // The first thing to do is the first thing focused: on a server that
@@ -2237,7 +2238,7 @@ function MailProfileInstallDialog({
                         {components.map((service) => (
                             <div key={service.id} className='grid grid-cols-[minmax(0,1fr)_auto] gap-3 border-t border-border px-4 py-3'>
                                 <div className='min-w-0'>
-                                    <p className='text-sm font-medium text-fg'>{service.name}</p>
+                                    <p className='text-sm font-medium text-fg'>{componentName(service, t)}</p>
                                     <p className='break-words font-mono text-xs text-fg-subtle'>{componentPackages(service)}</p>
                                 </div>
                                 <span className='max-w-52 text-right font-mono text-xs font-medium text-fg'>
@@ -2433,7 +2434,7 @@ function InstallServiceDialog({
             <Dialog
                 id="service-install"
                 iconSlot={<span className="text-3xl leading-none">{service.icon}</span>}
-                title={t('services.installTitle', { name: service.name })}
+                title={t('services.installTitle', { name: componentName(service, t) })}
                 description={service.description}
                 busy={busy || repoBusy}
                 onDismiss={onCancel}
@@ -2483,7 +2484,7 @@ function InstallServiceDialog({
                 {repoRead.remote.state === 'unknown' && (
                     <CouldNotCheck
                         className="mb-4"
-                        text={t(repoObserved ? 'services.repo.stale' : 'services.repo.unknown', { name: service.name })}
+                        text={t(repoObserved ? 'services.repo.stale' : 'services.repo.unknown', { name: componentName(service, t) })}
                         onRetry={() => void repoRead.retry()}
                         busy={repoRead.reading}
                     />
@@ -2570,7 +2571,7 @@ function InstallServiceDialog({
             {repoAction && repo && (
                 <RepositoryActionConfirmationDialog
                     action={repoAction}
-                    repositoryName={repo.name || service.name}
+                    repositoryName={repo.name || componentName(service, t)}
                     confirmDisabled={repoBusy ? true : busy}
                     onCancel={() => setRepoAction(null)}
                     onConfirm={() => {
@@ -2961,7 +2962,7 @@ function VersionDrawer({
                                             className="inline-flex items-center gap-1.5 rounded-lg border border-border-strong bg-surface px-3 py-1.5 text-xs font-semibold text-fg transition-colors hover:bg-surface-2 disabled:opacity-50"
                                         >
                                             <DownloadCloud className="h-3.5 w-3.5" />
-                                            {installing === pkg ? t('services.installing') : `${service.name} ${v}`}
+                                            {installing === pkg ? t('services.installing') : `${componentName(service, t)} ${v}`}
                                             {isEOL(v) && (
                                                 <span className="rounded bg-warning/15 px-1 py-0.5 text-xs font-bold uppercase text-warning">
                                                     {t('services.eolBadge')}
@@ -3038,7 +3039,7 @@ function VersionDrawer({
             {repoAction && repo && (
                 <RepositoryActionConfirmationDialog
                     action={repoAction}
-                    repositoryName={repo.name || service.name}
+                    repositoryName={repo.name || componentName(service, t)}
                     confirmDisabled={repoBusy}
                     onCancel={() => setRepoAction(null)}
                     onConfirm={() => {
@@ -3070,7 +3071,7 @@ function VersionDrawer({
                     icon={Trash2}
                     dismissible={false}
                     busy={removing}
-                    title={t('services.removeVersionTitle', { name: service.name, version: removeTarget.version })}
+                    title={t('services.removeVersionTitle', { name: componentName(service, t), version: removeTarget.version })}
                     description={t('services.removeVersionWarn')}
                     actions={
                         <>
@@ -3177,7 +3178,7 @@ function UninstallServiceDialog({
             busy={busy}
             title={retryCleanup
                 ? t('services.cleanupWebmailTitle')
-                : t('services.uninstallTitle', { name: service.name })}
+                : t('services.uninstallTitle', { name: componentName(service, t) })}
             description={service.description}
             actions={
                 <>

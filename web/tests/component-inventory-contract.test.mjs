@@ -163,7 +163,7 @@ test('every component row links to its component page, whatever its state', () =
     assert.match(read('router.tsx'), /return <a \{\.\.\.rest\} href=\{to\}/);
 
     // The accessible name is the component's own name.
-    assert.match(rows.slice(link), /\{s\.name\}\s*\n\s*<\/Link>/);
+    assert.match(rows.slice(link), /\{componentName\(s, t\)\}\s*\n\s*<\/Link>/);
     // Keyboard users must see where they are.
     assert.match(rows.slice(link), /focus-visible:ring-2/);
 

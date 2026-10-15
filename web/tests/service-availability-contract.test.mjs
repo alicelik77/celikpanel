@@ -150,7 +150,7 @@ test('partial webmail uninstall keeps an idempotent cleanup retry reachable', ()
 
   const cleanupSuccessChoice = uninstallFlow.indexOf('nextCleanupAttempt !== null', uninstallRequest);
   const cleanupSuccessCopy = uninstallFlow.indexOf(`t('services.webmailCleanupCompleted')`, cleanupSuccessChoice);
-  const ordinarySuccessCopy = uninstallFlow.indexOf(`t('services.uninstalled', { name: service.name })`, cleanupSuccessCopy);
+  const ordinarySuccessCopy = uninstallFlow.indexOf(`t('services.uninstalled', { name: componentName(service, t) })`, cleanupSuccessCopy);
   const successToast = uninstallFlow.lastIndexOf('showToast(', cleanupSuccessChoice);
   const closeBeforeSuccess = uninstallFlow.lastIndexOf('closeUninstallDialog();', successToast);
   assert.ok(cleanupSuccessChoice >= 0, 'successful cleanup requests must branch on the captured attempt kind');

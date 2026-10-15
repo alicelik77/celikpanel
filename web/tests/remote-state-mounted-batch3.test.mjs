@@ -109,6 +109,7 @@ const Dashboard = await pick(lib('components/Dashboard.tsx', {
   '/lib/accounts': lib('lib/accounts.ts', { '/remote': remoteURL }),
   '/lib/dashboardMailTruth': lib('lib/dashboardMailTruth.ts'),
   '/lib/mailProfileText': lib('lib/mailProfileText.ts'),
+  '/lib/componentName': lib('lib/componentName.ts'),
   '/lib/componentCensus': lib('lib/componentCensus.ts'),
   '/ComponentOperation': operationURL,
 }), 'Dashboard');
@@ -122,6 +123,7 @@ const ServiceList = await pick(lib('components/ServiceList.tsx', {
   `),
   '/lib/componentCensus': lib('lib/componentCensus.ts'),
   '/lib/mailProfileText': lib('lib/mailProfileText.ts'),
+  '/lib/componentName': lib('lib/componentName.ts'),
 }), 'ServiceList');
 globalThis.window ??= globalThis;
 // The real DNS engine card, mounted with the real decoder of its state. What

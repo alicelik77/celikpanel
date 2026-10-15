@@ -81,6 +81,8 @@ const own = {
   '/lib/requestIdentity': requestIdentityURL,
   // Reads that run only while the page is visible are the real ones (2026-10-15).
   '/lib/visibleReads': compileSource('lib/visibleReads.ts', () => stub),
+  // Component names in the interface language (2026-10-15).
+  '/lib/componentName': compileSource('lib/componentName.ts', () => stub),
 };
 // The two notices of 10 Oct 2026 are the shipped ones: what a service action
 // ended with, and a change whose one-time result is not kept.

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
+import { componentName } from '../lib/componentName';
 import { decodeSetupComponentCatalog, setupComponentClosure, setupComponentGroups, type SetupComponentCatalog } from '../lib/serverSetupComponents';
 import { Button } from './ui';
 
@@ -65,7 +66,7 @@ export function ServerSetupComponents({ catalog, selected, onChange, disabled }:
                     const unavailable = catalog.inventory_state !== 'ready' || group.some(row => !row.supported);
                     const locked = neededBy.length > 0 || (!checked && (unavailable || conflicts.length > 0));
                     const installed = catalog.inventory_state === 'ready' && group.every(row => row.installed);
-                    const name = group.map(row => row.name).join(' + ');
+                    const name = group.map(row => componentName(row, t)).join(' + ');
                     const rowID = `setup-component-${group[0].id}`;
                     return <div key={rowID} className="px-4 py-3">
                         <label htmlFor={rowID} className={`flex items-start gap-3 ${locked ? 'cursor-default' : 'cursor-pointer'}`}>
@@ -74,11 +75,11 @@ export function ServerSetupComponents({ catalog, selected, onChange, disabled }:
                                 className="mt-1 h-4 w-4 shrink-0 accent-primary" />
                             <span className="min-w-0 flex-1"><span className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"><span className="font-medium">{name}</span>{installed && <span className="text-xs text-fg-muted">{t('setup.components.installed')}</span>}</span>
                                 <span id={`${rowID}-detail`} className="mt-1 block text-sm leading-6 text-fg-muted">
-                                    {neededBy.length > 0 ? t('setup.components.requiredBy', { names: neededBy.map(id => lookup.get(id)?.name || id).join(', ') })
+                                    {neededBy.length > 0 ? t('setup.components.requiredBy', { names: neededBy.map(id => componentName(lookup.get(id) ?? id, t)).join(', ') })
                                         : unavailable ? t('setup.components.unavailable')
-                                            : conflicts.length > 0 ? t('setup.components.conflicts', { names: conflicts.map(row => row.name).join(', ') })
+                                            : conflicts.length > 0 ? t('setup.components.conflicts', { names: conflicts.map(row => componentName(row, t)).join(', ') })
                                                 : group.length > 1 ? t('setup.components.together')
-                                                    : group[0].dependencies.length > 0 ? t('setup.components.includes', { names: group[0].dependencies.map(id => lookup.get(id)?.name || id).join(', ') })
+                                                    : group[0].dependencies.length > 0 ? t('setup.components.includes', { names: group[0].dependencies.map(id => componentName(lookup.get(id) ?? id, t)).join(', ') })
                                                         : installed ? t('setup.components.keep') : t('setup.components.optional')}
                                 </span>
                             </span>

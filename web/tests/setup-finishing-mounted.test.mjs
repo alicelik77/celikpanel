@@ -30,6 +30,7 @@ const compile = path => ts.transpileModule(readFileSync(new URL(path, import.met
 const setupURL = dataURL(compile('../src/lib/serverSetup.ts'));
 const remoteURL = dataURL(compile('../src/lib/remoteDNS.ts'));
 const componentLibURL = dataURL(compile('../src/lib/serverSetupComponents.ts').replace("from './serverSetup'", `from '${setupURL}'`));
+const componentNameURL = dataURL(compile('../src/lib/componentName.ts'));
 const operationURL = dataURL(compile('../src/lib/serverSetupOperation.ts').replace("from './serverSetup'", `from '${setupURL}'`));
 const dnsEnglishURL = dataURL(compile('../src/i18n/setupDNS/en.ts'));
 const dnsTurkishURL = dataURL(compile('../src/i18n/setupDNS/tr.ts'));
@@ -61,7 +62,7 @@ export const inputClass = '';
 export const AddressLink = props => React.createElement('a', { href: props.href }, props.address);
 `);
 const source = compile('../src/components/ServerSetup.tsx').replace(/from ['"]([^'"]+)['"]/g, (_, path) => {
-    const url = path === 'react' ? reactURL : path.endsWith('/remoteDNS') ? remoteURL : path.endsWith('/serverSetupComponents') ? componentLibURL
+    const url = path === 'react' ? reactURL : path.endsWith('/remoteDNS') ? remoteURL : path.endsWith('/componentName') ? componentNameURL : path.endsWith('/serverSetupComponents') ? componentLibURL
         : path.endsWith('/setupDNS') ? dnsCopyURL : path.endsWith('/visibleReads') ? visibleReadsURL : path.endsWith('/panelHandover') ? handoverURL : path.endsWith('/serverSetupGuidance') ? guidanceURL
             : path.endsWith('/serverSetupOperation') ? operationURL : path.endsWith('/serverSetup') ? setupURL : stub;
     return `from '${url}'`;

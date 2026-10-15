@@ -294,8 +294,8 @@ export const en = {
     'err.QUOTA_DISK_EXCEEDED': 'Your plan’s disk quota is full. Free some space or upgrade your plan.',
     'err.ENTITLEMENT_REQUIRED': 'This feature requires an add-on your subscription does not include.',
     'err.ENTITLEMENT_REQUIRED.action': 'View add-ons',
-    'err.FIREWALL_ENGINE_MISSING': 'The firewall engine (nftables) is not installed — install it from Services first.',
-    'err.FIREWALL_ENGINE_MISSING.action': 'Go to Services',
+    'err.FIREWALL_ENGINE_MISSING': 'The firewall engine (nftables) is not installed — install “Firewall engine” on the Components page first.',
+    'err.FIREWALL_ENGINE_MISSING.action': 'Go to Components',
     // Scheduled tasks need the server's native cron (upd1, 1 Oct 2026). The
     // base sentence answers a refused change; .read answers the list.
     'err.CRON_NOT_INSTALLED': 'Scheduled tasks need this server’s cron service, and it is not installed, so nothing was changed. The server owner installs it once: in CelikPanel, open Components and install “Scheduled tasks (cron)”. Or, on the server, run sudo apt-get install cron on Debian/Ubuntu, or sudo pacman -S cronie and then sudo systemctl enable --now cronie on Arch. Then refresh this page and make the change again; nothing retries by itself.',
