@@ -7609,3 +7609,67 @@ no horizontal overflow.
 window rests on two lab updates and one owner observation. A real update whose
 restart outlasts 6 minutes from its start would show the unknown wording while
 still being normal.
+
+**Also in this candidate (2026-10-15).** Seven smaller corrections from the
+open items of the alpha.85 notes, each with tests that fail against the
+previous source. No schema, ledger or version transition; nothing was measured
+natively or on an installed server; no P0 item is closed or advanced.
+
+1. **The page's language attribute** (set16 O1). The i18n provider sets
+   `document.documentElement.lang` to the language the page is drawn in: the
+   target language on the boot screen, and after a switch only once the new
+   catalogue has arrived (`d2c0add01`; `tests/document-language.test.mjs`).
+2. **Component names in the interface language** (set16 O2). Every catalogue id
+   (`internal/core` ManagedServices) has an EN and TR display name
+   (`services.component.name.<id>`; product names stay, "Firewall engine" is
+   "Güvenlik duvarı motoru", the certbot and cron names are translated); the
+   ids are unchanged, and an id the page does not know keeps the server's name.
+   Used on Components, its dialogs, the component page, setup's component step
+   and the Dashboard's stopped-service line; the cron and firewall-engine
+   guidance name the row as the page shows it (`151969774`;
+   `tests/component-names.test.mjs` reads the ids from the Go catalogue).
+3. **Recent activity in sentences** (set16 O3; seen on both installed servers,
+   (h) above). `cmd/panel/audit_actions.go` lists the 179 action names the
+   Panel writes; a Go test derives them from the source of every
+   `INSERT INTO audit_logs` (go/ast, following parameters per call site,
+   closures, locals, concatenation, `fmt.Sprintf` and the service-operation
+   writer) and fails on a missing or a stale name; one unreachable shape is
+   exempted with its reason. `web/src/lib/auditAction.ts` says each name in EN
+   and TR with the target as `{target}`; an unknown action is humanised, never
+   shown as its id (`8a5f299fa`; `tests/audit-actions.test.mjs` reads the Go
+   list).
+4. **No server sentence asks for a rescan** (D-032; alpha.85 "Templated
+   text"). The refusal of an unverifiable stored component record
+   (`SERVICE_STATE_UNVERIFIED`, already typed) says that CelikPanel checks the
+   components again by itself, and the Dashboard and the Components page now
+   answer that code with their conditional check (a read; once; no toast; a
+   failed check keeps "could not check"). The Store's three
+   `component_state_*` sentences (typed by `blocker_reason`, localised by the
+   server) say that the check runs while an administrator has the Dashboard or
+   Components open, and to open the Store again after it (`cd2275e47`).
+5. **The platform in `component_not_installable`** (alpha.85 "Templated
+   text"). `blocked_vars.platform` names a verified package ecosystem
+   ("Debian/Ubuntu (apt)", "Arch Linux (pacman)", "Fedora/RHEL (dnf)"); an
+   unverified platform or an older Panel keeps the shorter sentence
+   (`80d763949`).
+6. **The resolver behind the reverse DNS sentence** (alpha.85 "The resolver
+   that answered is not named"; (f) above). The Agent's mail health answer has
+   two additive fields, `reverse_dns_resolver` and
+   `reverse_dns_resolvers_disagree`; the Panel passes them as
+   `resolver`/`resolvers=disagree`, and setup's final check names the resolver
+   and, when they disagree, says so (four new EN/TR sentences). An older Agent
+   sends neither and the previous sentence stays; the field reaches a server
+   only with an Agent update (`e2c630faa`).
+7. **A tab shown again reads at once** (D-033 rule 6). The update card's quiet
+   readiness re-read and the spreading domain's re-check read once immediately
+   when the tab is shown, as `lib/visibleReads.ts` does; a read in flight is
+   that read; GET only (`1abe1717d`).
+
+Counts at `1abe1717d`: `npm test` 1435 of 1435; `npx tsc --noEmit` clean;
+`go test ./cmd/panel/... ./internal/transport/...` 1585 tests and 1688
+subtests passed, 6 skipped, 0 failed; `go test ./cmd/agent/...` 1799 tests and
+2829 subtests passed, 29 skipped, 0 failed (WSL guest `CelikPanel-S2-Debian`,
+the Agent in the clean mount namespace of the 2026-10-14 audit entry).
+Not done: the catalogue's component descriptions are still English
+on a Turkish page; the "system" user name in Recent activity is not
+translated; `err.SERVICE_STATE_REFRESH_FAILED` still says "Run Rescan".

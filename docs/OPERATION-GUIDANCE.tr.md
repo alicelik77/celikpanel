@@ -7580,3 +7580,67 @@ taşma yok.
 ulaşmadı; pencere iki laboratuvar güncellemesine ve bir sahip gözlemine dayanır.
 Yeniden başlaması başlangıcından itibaren 6 dakikayı aşan gerçek bir güncelleme,
 hâlâ olağanken bilinmiyor metnini gösterir.
+
+**Bu adayda ayrıca (2026-10-15).** Alpha.85 notlarının açık kalemlerinden yedi
+küçük düzeltme; her birinin testleri önceki kaynağa karşı başarısız olur. Şema,
+defter ya da sürüm geçişi yok; hiçbir şey yerel çalıştırmada ya da kurulu bir
+sunucuda ölçülmedi; hiçbir P0 işi kapanmaz ya da ilerlemez.
+
+1. **Sayfanın dil özniteliği** (set16 O1). i18n sağlayıcısı
+   `document.documentElement.lang` değerini sayfanın çizildiği dile ayarlar:
+   açılış ekranında hedef dil, dil değişince ancak yeni katalog geldiğinde
+   (`d2c0add01`; `tests/document-language.test.mjs`).
+2. **Bileşen adları arayüz dilinde** (set16 O2). Her katalog kimliğinin
+   (`internal/core` ManagedServices) İngilizce ve Türkçe görünen adı vardır
+   (`services.component.name.<id>`; ürün adları aynı kalır, "Firewall engine"
+   "Güvenlik duvarı motoru" olur, certbot ve cron adları çevrilir); kimlikler
+   değişmez, sayfanın bilmediği kimlik sunucunun adını korur. Bileşenler
+   sayfasında, iletişim kutularında, bileşen sayfasında, kurulumun bileşen
+   adımında ve Panel'in duran hizmet satırında kullanılır; cron ve güvenlik
+   duvarı motoru yönlendirmesi satırı sayfanın gösterdiği adla anar
+   (`151969774`; `tests/component-names.test.mjs` kimlikleri Go kataloğundan
+   okur).
+3. **Son etkinlik cümle olarak** (set16 O3; iki kurulu sunucuda da görüldü,
+   yukarıdaki (h)). `cmd/panel/audit_actions.go` Panel'in yazdığı 179 eylem
+   adını listeler; bir Go testi adları her `INSERT INTO audit_logs` kaynağından
+   türetir (go/ast; parametreleri çağrı yeri başına, kapanışları, yerel
+   değişkenleri, birleştirmeyi, `fmt.Sprintf`'i ve hizmet işlemi yazıcısını
+   izler) ve eksik ya da bayat adda başarısız olur; ulaşılamayan bir biçim
+   gerekçesiyle muaf tutulur. `web/src/lib/auditAction.ts` her adı İngilizce ve
+   Türkçe, hedefi `{target}` olarak söyler; bilinmeyen eylem kimlik olarak
+   değil, sözcükleriyle gösterilir (`8a5f299fa`; `tests/audit-actions.test.mjs`
+   Go listesini okur).
+4. **Hiçbir sunucu cümlesi yeniden tarama istemez** (D-032; alpha.85
+   "Şablonlu metin"). Doğrulanamayan kayıtlı bileşen kaydının reti
+   (`SERVICE_STATE_UNVERIFIED`, zaten türlü) CelikPanel'in bileşenleri
+   kendiliğinden yeniden denetlediğini söyler; Panel ve Bileşenler sayfası bu
+   koda artık koşullu kontrolleriyle yanıt verir (okuma; bir kez; bildirim yok;
+   başarısız kontrol "denetlenemedi" durumunu korur). Mağaza'nın üç
+   `component_state_*` cümlesi (`blocker_reason` ile türlü, sunucu
+   yerelleştirir) kontrolün bir yönetici Panel ya da Bileşenler sayfasını
+   açtığında çalıştığını ve sonra Mağaza'nın yeniden açılmasını söyler
+   (`cd2275e47`).
+5. **`component_not_installable` içinde platform** (alpha.85 "Şablonlu
+   metin"). `blocked_vars.platform` doğrulanmış paket ekosistemini adlandırır
+   ("Debian/Ubuntu (apt)", "Arch Linux (pacman)", "Fedora/RHEL (dnf)");
+   doğrulanmamış platform ya da eski Panel kısa cümleyi korur (`80d763949`).
+6. **Ters DNS cümlesinin arkasındaki çözümleyici** (alpha.85 "Yanıt veren
+   çözümleyici adlandırılmaz"; yukarıdaki (f)). Agent'ın posta sağlık
+   yanıtında iki ek alan vardır: `reverse_dns_resolver` ve
+   `reverse_dns_resolvers_disagree`; Panel bunları `resolver` ve
+   `resolvers=disagree` olarak geçirir; kurulumun son kontrolü çözümleyiciyi
+   adlandırır ve uyuşmadıklarında bunu söyler (dört yeni İngilizce/Türkçe
+   cümle). Eski Agent ikisini de göndermez ve önceki cümle kalır; alan bir
+   sunucuya ancak Agent güncellemesiyle ulaşır (`e2c630faa`).
+7. **Yeniden gösterilen sekme hemen okur** (D-033 kural 6). Güncelleme
+   kartının sessiz hazırlık okuması ve yayılan alan adının yeniden kontrolü,
+   sekme gösterildiğinde `lib/visibleReads.ts` gibi hemen bir kez okur; süren
+   okuma o okumadır; yalnız GET (`1abe1717d`).
+
+`1abe1717d` için sayılar: `npm test` 1435/1435; `npx tsc --noEmit` temiz;
+`go test ./cmd/panel/... ./internal/transport/...` 1585 test ve 1688 alt
+test geçti, 6 atlandı, 0 başarısız; `go test ./cmd/agent/...` 1799 test ve 2829
+alt test geçti, 29 atlandı, 0 başarısız (WSL konuğu `CelikPanel-S2-Debian`;
+Agent, 2026-10-14 denetim kaydındaki temiz bağlama ad alanında).
+Yapılmayan: katalog bileşen açıklamaları Türkçe sayfada hâlâ İngilizce; Son etkinlik'teki "system" kullanıcı adı çevrilmiyor;
+`err.SERVICE_STATE_REFRESH_FAILED` hâlâ "Yeniden Tara" diyor.
