@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net"
 	"strings"
+
+	"github.com/alicelik/celikpanel/internal/transport"
 )
 
 const (
@@ -129,4 +131,63 @@ func mailProfileCatalogBlockedReason(hostBlockedReason string, dnsIdentityReady 
 		return mailProfileDNSIdentityMessage
 	}
 	return ""
+}
+
+// mailProfileDNSGuidance is the truth the Components page says when the mail
+// profiles wait for a DNS identity on a server whose DNS role is secondary
+// (2026-10-16). A secondary serves copies of the primary's zones and cannot
+// create a record, so "Configure DNS" on this server is a dead end: the record
+// for the mail host name is created on the primary DNS server (named here from
+// the saved DNS infrastructure settings) or at the external DNS provider. The
+// exact record is given when it is known: the name the mail install would use
+// and this server's public IPv4 address.
+// Ikincil DNS sunucusu kayit olusturamaz; posta adinin kaydi birincilde ya da
+// dis saglayicida olusturulur. Bilinen kayit adi, turu ve degeriyle soylenir.
+type mailProfileDNSGuidance struct {
+	Reason            string `json:"reason"`
+	PrimaryNameserver string `json:"primary_nameserver,omitempty"`
+	PrimaryIP         string `json:"primary_ip,omitempty"`
+	RecordName        string `json:"record_name,omitempty"`
+	RecordType        string `json:"record_type"`
+	RecordValue       string `json:"record_value,omitempty"`
+}
+
+const mailProfileDNSGuidanceSecondary = "dns_secondary"
+
+// mailProfileDNSGuidanceFor answers nil unless the identity is not ready and
+// this server's DNS engine is the secondary of a pair. Reads only.
+func (p *Panel) mailProfileDNSGuidanceFor(ctx context.Context, dnsIdentityReady bool) *mailProfileDNSGuidance {
+	if dnsIdentityReady {
+		return nil
+	}
+	if mode, err := p.setupDNSManagementMode(ctx); err != nil || mode != setupDNSModeLocal {
+		return nil
+	}
+	state, err := readDNSEngineDBState(ctx, p.db.GetDB())
+	if err != nil || state.ActiveEngine == "" || state.PairRole != transport.DNSPairRoleSecondary {
+		return nil
+	}
+	guidance := &mailProfileDNSGuidance{Reason: mailProfileDNSGuidanceSecondary, RecordType: "A"}
+	if name := canonicalDNSName(p.setting(ctx, settingDNSPeerNS)); validDNSHostname(name) {
+		guidance.PrimaryNameserver = name
+	}
+	if address, ok := canonicalIPv4(p.setting(ctx, settingDNSPeerIP)); ok {
+		guidance.PrimaryIP = address
+	}
+	if identity := p.mailHostnameIdentity(ctx); identity.Hostname != "" {
+		guidance.RecordName = identity.Hostname
+	}
+	candidates := []string{}
+	if state, err := p.loadServerSetup(ctx); err == nil {
+		candidates = append(candidates, state.Draft.LocalIP)
+	}
+	candidates = append(candidates, serverPrimaryIP())
+	for _, candidate := range candidates {
+		address, ok := canonicalIPv4(candidate)
+		if parsed := net.ParseIP(address); ok && parsed != nil && parsed.IsGlobalUnicast() && !parsed.IsPrivate() {
+			guidance.RecordValue = address
+			break
+		}
+	}
+	return guidance
 }
