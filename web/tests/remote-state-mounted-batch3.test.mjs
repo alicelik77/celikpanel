@@ -1045,6 +1045,31 @@ test('Components: a paused server change says the page lifts it by itself, witho
   } finally { await unmount(); }
 });
 
+// Browser batch 14 (2026-10-15): with the page locked ("needs verification"),
+// Manage, Manage DNS engine and Uninstall were disabled by the row's fieldset
+// but drawn as if they could be pressed; and a longer translated description
+// was cut with an ellipsis at 390 px ("nftables — panel güvenlik duvarının
+// paket süzme mot…"). Every button of a row says it is off when it is off,
+// and a description wraps.
+// Kilitli sayfada satırın düğmeleri kapalı olduklarını gösterir; açıklama
+// kesilmez, satır kırar.
+test('Components: every row button looks off when the row is locked, and a description wraps instead of being cut', async () => {
+  serve({ '/api/v1/managed-services/scan': scanRoute });
+  await mount(React.createElement(ServiceList, {}));
+  try {
+    for (let i = 0; i < 3; i += 1) await settle();
+    const rows = tree.root.findAll((node) => node.type === 'fieldset' && String(node.props.className || '').includes('relative'));
+    const rowButtons = rows.flatMap((row) => row.findAll((node) => node.type === 'button'));
+    assert.ok(rowButtons.length >= 3, `expected the rows' buttons, found ${rowButtons.length}`);
+    for (const button of rowButtons) {
+      assert.match(String(button.props.className || ''), /disabled:(?:opacity|cursor)/, `"${label(button) || button.props.title}" has no disabled look`);
+    }
+    const descriptions = tree.root.findAll((node) => node.type === 'div' && / on this server$/.test(label(node)) && !node.findAll((child) => child !== node && child.type === 'div').length);
+    assert.ok(descriptions.length >= 2, `no component descriptions drawn: ${text().slice(0, 300)}`);
+    for (const node of descriptions) assert.doesNotMatch(String(node.props.className || ''), /\btruncate\b/, label(node));
+  } finally { await unmount(); }
+});
+
 // --- A stored component record the server cannot verify (2026-10-15, D-032) ---
 // The Panel refuses it with 503 SERVICE_STATE_UNVERIFIED. The sentence used to
 // ask the owner to run Rescan; the Dashboard and the Components page now answer

@@ -1533,7 +1533,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                             >
                                                                 {componentName(s, t)}
                                                             </Link>
-                                                            <div className="truncate text-xs text-fg-subtle">{componentDescription(s, t)}</div>
+                                                            <div className="text-pretty text-xs text-fg-subtle">{componentDescription(s, t)}</div>
                                                         </div>
                                                     </div>
                                                     <div className="hidden w-28 shrink-0 sm:block">
@@ -1625,7 +1625,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                                 type="button"
                                                                 onClick={() => navigate('/settings?section=dns')}
                                                                 title={t('services.manageDNSEngineHint')}
-                                                                className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/15"
+                                                                className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/15 disabled:cursor-not-allowed disabled:opacity-50"
                                                             >
                                                                 {t('services.manageDNSEngine')}
                                                                 <ChevronRight className="h-3.5 w-3.5" />
@@ -1642,7 +1642,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                                 type="button"
                                                                 onClick={() => navigate('/domains')}
                                                                 title={t('services.useBuiltInSFTPHint')}
-                                                                className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/15"
+                                                                className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/15 disabled:cursor-not-allowed disabled:opacity-50"
                                                             >
                                                                 {t('services.useBuiltInSFTP')}
                                                                 <ChevronRight className="h-3.5 w-3.5" />
@@ -1708,7 +1708,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                         type="button"
                                                         onClick={() => navigate('/settings?section=dns')}
                                                         title={t('services.manageDNSEngineHint')}
-                                                        className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/15"
+                                                        className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/15 disabled:cursor-not-allowed disabled:opacity-50"
                                                     >
                                                         <Settings className="h-3.5 w-3.5" />
                                                         {t('services.manageDNSEngine')}
@@ -1798,7 +1798,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                     {s.kind === 'runtime' && (
                                                     <button
                                                         onClick={() => toggleDrawer(s.id)}
-                                                        className="ml-1 inline-flex items-center gap-1.5 rounded-lg border border-border-strong bg-surface px-2.5 py-1.5 text-xs font-medium text-fg transition-colors hover:bg-surface-2"
+                                                        className="ml-1 inline-flex items-center gap-1.5 rounded-lg border border-border-strong bg-surface px-2.5 py-1.5 text-xs font-medium text-fg transition-colors hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-50"
                                                     >
                                                         {openDrawers.has(s.id) ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                                                         {t('services.versionsToggle')}
@@ -1811,7 +1811,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                     {s.kind !== 'tool' && (
                                                     <button
                                                         onClick={() => onManageService?.(s.id, s.versions)}
-                                                        className="ml-1 inline-flex items-center gap-1.5 rounded-lg border border-border-strong bg-surface px-2.5 py-1.5 text-xs font-medium text-fg transition-colors hover:bg-surface-2"
+                                                        className="ml-1 inline-flex items-center gap-1.5 rounded-lg border border-border-strong bg-surface px-2.5 py-1.5 text-xs font-medium text-fg transition-colors hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-50"
                                                     >
                                                         <Settings className="h-3.5 w-3.5" />
                                                         {t('services.manage')}
@@ -1829,7 +1829,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                     <button
                                                         onClick={() => openUninstallDialog(s)}
                                                         title={t('services.uninstall')}
-                                                        className="inline-flex items-center rounded-lg border border-border-strong bg-surface p-1.5 text-fg-muted transition-colors hover:bg-danger/10 hover:text-danger"
+                                                        className="inline-flex items-center rounded-lg border border-border-strong bg-surface p-1.5 text-fg-muted transition-colors hover:bg-danger/10 hover:text-danger disabled:cursor-not-allowed disabled:opacity-50"
                                                     >
                                                         <Trash2 className="h-3.5 w-3.5" />
                                                     </button>
