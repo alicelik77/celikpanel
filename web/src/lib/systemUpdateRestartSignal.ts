@@ -82,3 +82,29 @@ export function systemUpdateAccessGraceEnd(
     const restartEnd = systemUpdateRestartDeadline(signal.startedAt, Math.min(...lost));
     return Math.min(restartEnd, decisionUntilMs + SYSTEM_UPDATE_EXPECTED_RESTART_MS);
 }
+
+// Until when the session gate does not treat "Panel management is still
+// starting" (503 PANEL_STARTING) as a reason to hold the mounted pages, while
+// the followed update restarts the Panel, or null when that does not apply.
+//
+// An answer of PANEL_STARTING is itself the evidence: the new Panel answered,
+// and its management is not served yet. startingSince is this document's first
+// such answer for the followed update; it is never moved later, so repeated
+// answers cannot extend the bound. The bound is the update's own restart window
+// (the calm notice's: 6 minutes from the start, at least 2 minutes from the
+// first lost read of the tracking or the first PANEL_STARTING answer). After it
+// the session gate holds the pages and explains as before.
+//
+// Izlenen guncelleme Paneli yeniden baslatirken oturum kapisinin PANEL_STARTING
+// yanitini sayfalari tutmak icin neden saymadigi son an; uygulanmiyorsa null.
+// Sinir guncellemenin kendi yeniden baslama penceresidir; ilk yanit hic
+// ileri alinmaz, tekrarlanan yanitlar siniri uzatamaz.
+export function systemUpdateSessionGraceEnd(
+    signal: SystemUpdateRestartSignal | null,
+    startingSince: number,
+): number | null {
+    if (!signal || !Number.isFinite(startingSince)) return null;
+    const lost = typeof signal.lostSince === 'number' && Number.isFinite(signal.lostSince)
+        ? Math.min(signal.lostSince, startingSince) : startingSince;
+    return systemUpdateRestartDeadline(signal.startedAt, lost);
+}

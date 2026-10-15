@@ -278,6 +278,17 @@ test('set17 D1: the access grace ends with the update restart window, needs a lo
     assert.equal(grace({ ...signal, lostSince: Number.NaN }, until, null), null);
 });
 
+test('the session grace ends with the update restart window from the first PANEL_STARTING answer or lost read', () => {
+    const { systemUpdateSessionGraceEnd: grace } = restartSignal;
+    const start = 1_800_000_000_000;
+    const signal = { requestID: 'a'.repeat(32), startedAt: start, lostSince: null };
+    assert.equal(grace(null, start + 40_000), null, 'no followed update: the session is marked as before');
+    assert.equal(grace(signal, start + 40_000), start + SYSTEM_UPDATE_EXPECTED_RESTART_MS, '6 minutes from the start');
+    assert.equal(grace(signal, start + 300_000), start + 300_000 + SYSTEM_UPDATE_RESTART_AFTER_LOSS_MS, 'a late start: 2 minutes from the first answer');
+    assert.equal(grace({ ...signal, lostSince: start + 290_000 }, start + 300_000), start + 290_000 + SYSTEM_UPDATE_RESTART_AFTER_LOSS_MS, 'the earlier lost read counts');
+    assert.equal(grace(signal, Number.NaN), null);
+});
+
 test('set17 D1: the restart signal publishes only a change and is read by subscribers', () => {
     const seen = [];
     const unsubscribe = restartSignal.subscribeSystemUpdateRestart(() => seen.push(restartSignal.currentSystemUpdateRestart()));
