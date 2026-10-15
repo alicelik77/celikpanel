@@ -12,6 +12,12 @@
 //               request dropped), then the Panel back on the new version:
 //               "verifying", then "succeeded" and the page's own reload
 //
+//   d1starting  the open item of D1 (2026-10-15): the same update, the Panel
+//               down for 25 s, then answering for 20 s with its management
+//               still starting (every management request refused with 503
+//               PANEL_STARTING, readiness "starting"; the session, access and
+//               recovery reads answer), then back on the new version
+//
 // The update is not started by a press here: the record is the one the page
 // writes when it starts one (as batch 13). The restart window is not shortened
 // in the product; the outage is real time. The mock on 127.0.0.1 answers
@@ -42,6 +48,7 @@ const facts = page => page.evaluate(() => {
         accessHoldDialog: visible(hold) ? hold.innerText.split('\n').filter(Boolean) : null,
         accessHeldPages: document.querySelectorAll('[data-access-hold="blocked"]').length,
         notAnsweringText: notAnswering,
+        startingHoldText: /The panel is starting|Panel başlatılıyor/i.test(document.body.innerText),
         connectionBanner: Array.from(document.querySelectorAll('[role="status"]')).filter(visible).map(node => node.innerText).filter(text => /connection|bağlantı/i.test(text)),
         sidebarVersion: (document.body.innerText.match(/v0\.1\.0-alpha\.\d+/g) || []).slice(-1)[0] ?? null,
         reloaded: location.search.includes('_cp_update'),
@@ -49,7 +56,7 @@ const facts = page => page.evaluate(() => {
     };
 });
 
-export default function batch15(scenarios, { base, locale, theme, out, viewport, ctl, reset, newPage, closePage, shot, waitFor, pause }) {
+export default function batch15(scenarios, { base, locale, theme, out, viewport, ctl, reset, drainLog, newPage, closePage, shot, waitFor, pause }) {
     const shots = resolve(process.env.BROWSER_INSPECT_SHOTS || out);
     const snap = async (page, state, note = {}) => {
         await shot(page, `d1-${state}`, { ...(await facts(page)), ...note });
@@ -84,6 +91,51 @@ export default function batch15(scenarios, { base, locale, theme, out, viewport,
         await waitFor(page, () => location.search.includes('_cp_update'), 30000).catch(() => {});
         await pause(4000);
         await snap(page, 'new-version');
+        await closePage(page);
+        await ctl({ clearAll: true });
+    };
+
+    // While the new Panel starts, its management answers PANEL_STARTING. Inside
+    // the update's restart window the session gate holds nothing and the
+    // tracking keeps the lock; the Panel's readiness is read every 5 s.
+    scenarios.d1starting = async () => {
+        await reset();
+        await ctl({ clearAll: true });
+        await ctl({ validity: 45, update: { request_id: UPDATE_ID, status: 'running', target: TARGET } });
+        const page = await newPage(followed(2_000));
+        await page.goto(`${base}/settings?section=updates`, { waitUntil: 'domcontentloaded' });
+        await waitFor(page, () => !!document.querySelector('[aria-labelledby="system-update-operation-title"]'), 20000).catch(() => {});
+        await pause(2500);
+        await ctl({ mode: 'down' });
+        const down = Date.now();
+        await pause(25_000);
+        // The new Panel answers; its management is still starting for 20 s.
+        await drainLog();
+        await ctl({ mode: 'starting' });
+        const starting = Date.now();
+        const requests = async () => {
+            const lines = (await drainLog()).filter(line => line.includes(' /api/'));
+            return {
+                apiRequests: lines.length,
+                refusedStarting: lines.filter(line => !/\/api\/v1\/(panel\/availability|recovery\/status|license\/access|panel\/access-address|auth\/)/.test(line)).length,
+                readinessReads: lines.filter(line => line.includes('/api/v1/panel/availability')).length,
+            };
+        };
+        await pause(10_000);
+        await snap(page, 'starting-10s', { startingSeconds: Math.round((Date.now() - starting) / 1000), secondsSinceDown: Math.round((Date.now() - down) / 1000), ...(await requests()) });
+        await pause(Math.max(0, 18_000 - (Date.now() - starting)));
+        await snap(page, 'starting-18s', { startingSeconds: Math.round((Date.now() - starting) / 1000), ...(await requests()) });
+        await pause(Math.max(0, 20_000 - (Date.now() - starting)));
+        // Ready, on the new version: "verifying", the lock still on.
+        await ctl({ mode: 'ok', update: { request_id: UPDATE_ID, status: 'running', target: TARGET, phase: 'verifying' }, override: installed });
+        await waitFor(page, () => /alpha\.86/.test(document.querySelector('[aria-labelledby="system-update-operation-title"]')?.innerText || '')
+            && !/restart|yeniden başl/i.test(document.querySelector('[aria-labelledby="system-update-operation-title"]')?.innerText || ''), 20000).catch(() => {});
+        await pause(1500);
+        await snap(page, 'starting-ready', { secondsSinceDown: Math.round((Date.now() - down) / 1000) });
+        await ctl({ update: { request_id: UPDATE_ID, status: 'succeeded', target: TARGET } });
+        await waitFor(page, () => location.search.includes('_cp_update'), 30000).catch(() => {});
+        await pause(4000);
+        await snap(page, 'starting-new-version');
         await closePage(page);
         await ctl({ clearAll: true });
     };

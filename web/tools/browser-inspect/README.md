@@ -389,6 +389,7 @@ time, because the outage is not shortened. Each state is also copied to
 | Name | States |
 | --- | --- |
 | `d1restart` | an update this browser started (its stored record, inside the navigation lock) with access valid for 45 s; the Panel down for 90 s (photographed at 60 s and 88 s: the update's dialog, the licence gate's dialog if any, held pages, a connection banner); the Panel back on the new version ("verifying", the lock); the update completed and the page reloaded |
+| `d1starting` | the same update; the Panel down for 25 s, then answering for 20 s with its management still starting (`mode: 'starting'`: management refused with 503 `PANEL_STARTING`, readiness "starting"; photographed at 10 s and 18 s with the requests refused and the readiness reads since the last state, and whether "The panel is starting" is shown); the Panel back on the new version ("verifying", the lock); the update completed and the page reloaded. About 65 seconds |
 
 Each record adds the document language, English catalogue text on a Turkish
 page (`englishLeaks`), raw action ids, codes and tokens (`rawTokens`), visible
