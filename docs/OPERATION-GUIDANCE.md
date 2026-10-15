@@ -7551,7 +7551,9 @@ ledger or version transition; no Go change.
 
 **Cause, as found in the code.** Every status read that lost the connection set
 the followed update's phase to unknown at once
-(`systemUpdateOperationPhase(undefined)` in `SystemUpdateOperation.tsx`), with
+(`systemUpdateOperationPhase(outcome.operation)` called with no record, in
+`SystemUpdateOperation.tsx`; the function is in `lib/systemUpdateTracking.ts`),
+with
 no notion of the restart the update plans. The Panel's status answer knows only
 queued, running (with "verifying" once the new Panel answers), succeeded and
 failed; the Agent's updater, which restarts the Panel and the Agent, runs while
@@ -7709,9 +7711,11 @@ the Agent in the clean mount namespace of the 2026-10-14 audit entry).
     constant it rests on.
 13. **`system` is reserved as a username.** `auth.ValidateUsername` refuses
     `system` in any letter case (`ErrReservedUsername`), so a person cannot take
-    the audit actor the Dashboard says "System". Every creation path goes
-    through it (account creation, team-member creation and rename, the admin
-    CLI and its prompt). The two HTTP paths answer `400 USERNAME_RESERVED`
+    the audit actor the Dashboard says "System". Every path that takes a
+    username from a person goes through it (account creation, team-member
+    creation and rename, the admin CLI and its prompt; the demo-mode seed
+    creates three fixed accounts, none named `system`, without it). The two HTTP
+    paths answer `400 USERNAME_RESERVED`
     (typed; EN/TR sentence `err.USERNAME_RESERVED`); the CLI prints its usual
     invalid-name message. No migration or seed creates a user named `system`;
     an existing row is not touched, and a team member who already has the name
@@ -7777,7 +7781,9 @@ guest `CelikPanel-S2-Debian`). The Agent was not run again.
     could not be read..." over the update's calm restart at T+55.9 s, and the
     update's navigation lock did not come back after reconnection. Cause: once
     the outage outlasted the access validity of the last good access read
-    (`valid_for_seconds`, 42 to 60 s in the lab), the gate's decision lapsed
+    (`valid_for_seconds`; the gate appeared 41.8 to 60.3 s after the last good
+    access read in the three runs of the records that showed it), the gate's
+    decision lapsed
     to unknown (`LicenseOnboarding.tsx`, the deadline timer and the failed-read
     branch); the gate then drew its hold and raised its observation recovery,
     which App turns into `publishSystemUpdateAuthentication(false)`; the
@@ -7815,8 +7821,9 @@ guest `CelikPanel-S2-Debian`). The Agent was not run again.
     then the new version. Nothing measured natively or on an installed server.
 
     **The session gate during the new Panel's start** (the same class of
-    defect, recorded open above and fixed in this candidate; not seen in set17,
-    which had no session hold in four updates). While the new Panel starts, its
+    defect, recorded open above and fixed in this candidate; not seen in set17
+    or set17b; set17's sampling of other dialogs was partial, see its README).
+    While the new Panel starts, its
     management answers `503 PANEL_STARTING`, the update tracking's own status
     read included. Cause: the fetch interception in `App.tsx` (AuthGate) marked
     the session unavailable on the first such answer to any request
@@ -7867,8 +7874,11 @@ guest `CelikPanel-S2-Debian`). The Agent was not run again.
     navigation lock (its full-page dialog) ended at T+120.3 s and T+120.5 s by
     its two-minute lease (`SYSTEM_UPDATE_BLOCKING_DEADLINE_MS`), while the
     Panel was down for another 82 s and 73 s (reconnection at T+202.8 s and
-    T+193.6 s). Owner's decision (2026-10-15): while the update's restart
-    signal is active, the lock covers the restart. Now, when the update
+    T+193.6 s). Decision of the release preparer (2026-10-15), under D-033 and
+    the owner's standing instruction of 2026-10-13, not an owner decision (the
+    set17b record leaves the question to the release preparer): while the
+    update's restart signal is active, the lock covers the restart. Now, when
+    the update
     tracking has lost its read of the followed update before the two-minute
     lease ends (and the server had said the update is active), a lock that is
     still held is kept until the tracking reaches the Panel again and reads the

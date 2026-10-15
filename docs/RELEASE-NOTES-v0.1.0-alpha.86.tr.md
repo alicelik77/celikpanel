@@ -5,8 +5,12 @@
 Bu, v0.1.0-alpha.85'i izleyen sürümün taslağıdır. v0.1.0-alpha.86 numarasını,
 sahibin 13 Ekim 2026 tarihli kalıcı talimatı uyarınca ("hem sürüm numaraları
 hem de commit işlemleri için bana sormana gerek yok": sürüm numaraları ve
-commit'ler için sahibe sorulmaz) sürümü hazırlayan seçti; sahibin bu sürüm
-için adını koyduğu bir numara değildir. Sürüm hazırlığı `313f3eea2`
+commit'ler için sahibe sorulmaz) sürümü hazırlayan seçti; sahibin bu sürüm için
+adını koyduğu bir numara değildir. Sahibin bu sürümdeki kendi kararları
+şunlardır: kural (D-033, 14 Ekim 2026), aşağıda anlatılan 15 Ekim 2026 gözlemi
+ve "devam. sorun yok." yanıtı (v0.1.0-alpha.86'yı eldeki kalemlerle yayımla;
+ikinci sunucu işi sonra). Aşağıdaki F1 kilit kararı sürümü hazırlayanındır.
+Sürüm hazırlığı `313f3eea2`
 commit'idir (85'ten sonra sıra 86; önceki olarak alpha.85 sürüm commit'i
 `36c33c4531ee6c1306d324db7a666403176f3bf7`). Hiçbir parçası yayımlanmadı ve bu
 taslak onu çalıştıran hiçbir kurulu sunucu kaydetmez. Bu taslak 15 Ekim
@@ -44,8 +48,10 @@ kilidi) ve bu adayın daha önceki commit'lerinde yapılmış iki gerçek sistem
 kaydına dayanır: sürüm hazırlığı `313f3eea2`'de set17 ve `ecd2a5f08`'de
 set17b ("Gerçek sistem kayıtları set17 ve set17b" bölümü). set17 bir kusur
 buldu (D1: lisans kapısı yeniden başlamanın üstüne kendi penceresini çizdi);
-set17b, sahibin ardından değiştirilmesine karar verdiği bir davranışı kaydetti
-(F1: gezinti kilidi uzun bir yeniden başlamanın ortasında bitti). İkisi de bu
+set17b, sürümü hazırlayanın ardından değiştirmeye karar verdiği bir davranışı
+kaydetti; bu karar D-033 ve sahibin 13 Ekim 2026 tarihli kalıcı talimatı
+altındadır, sahibin kararı değildir (F1: gezinti kilidi uzun bir yeniden
+başlamanın ortasında bitti). İkisi de bu
 adayda düzeltildi; F1 düzeltmesi (`7265d3c99`) son gerçek sistem kaydından
 sonra geldi. Hiç çalıştırılmayanları sınırlar bölümü söyler.
 
@@ -84,8 +90,10 @@ güncellemeyi panelin kendi güncelleme ekranından siz başlatırsınız.
 
 **Beklenen yeniden başlama içinde sakin ilerleme.** Bugüne kadar bağlantıyı
 yitiren her durum okuması, izlenen güncellemenin aşamasını hemen bilinmiyor
-yapıyordu (`web/src/components/SystemUpdateOperation.tsx` içinde
-`systemUpdateOperationPhase(undefined)`); güncellemenin planladığı yeniden
+yapıyordu (`web/src/components/SystemUpdateOperation.tsx` içinde kayıt olmadan
+çağrılan `systemUpdateOperationPhase(outcome.operation)`; işlev
+`web/src/lib/systemUpdateTracking.ts` içindedir); güncellemenin planladığı
+yeniden
 başlama hesaba katılmıyordu. Panel'in durum yanıtı yalnız kuyrukta, çalışıyor
 (yeni Panel yanıt verince "verifying"), başarılı ve başarısız bilir; Agent'ın
 güncelleyicisi Panel'i ve Agent'ı kayıt çalışıyorken yeniden başlatır. Artık,
@@ -181,8 +189,11 @@ yukarıdaki neden kaynaktan okunmuştur. Bu değişikliği taşıyan bir adayda
 set17b, iki koşuda pencereyi göstermedi.
 
 **Yeni Panel başlarken oturum tutması yok (`b7b0f4766`).** Aynı sınıftan bir
-kusur; D1 düzeltilirken kaynakta bulundu, ne set17 ne set17b bir oturum
-tutması gösterdi. Yeni Panel başlarken yönetimi, güncellemenin kendi durum
+kusur; D1 düzeltilirken kaynakta bulundu, iki kayıt da bir oturum tutması
+göstermez (set17b dört koşuda onu aradı; set17'nin diğer pencere örneklemesi
+kısmiydi: Debian denetim koşusunda örneklenmedi ve aracı her görünür pencereyi
+ancak adayın kendi sayfasının a koşusundan sonra örnekledi). Yeni Panel
+başlarken yönetimi, güncellemenin kendi durum
 okuması dahil `503 PANEL_STARTING` yanıtı verir ve `App.tsx` (AuthGate)
 içindeki fetch yakalaması böyle ilk yanıtta oturumu kullanılamaz işaretliyordu:
 sayfalar "Panel başlatılıyor" ile tutuldu, izleme duraklatıldı ve kilit kalıcı
@@ -209,9 +220,12 @@ arasında).
 Yeniden başlama kesintisini laboratuvarın yaklaşık 3 dakikaya uzattığı set17b'de
 güncellemenin gezinti kilidi (tam sayfa penceresi) Panel hâlâ kapalıyken iki
 dakikalık kirasıyla T+120,3 sn ve T+120,5 sn'de bitti; kart sakin kaldı ve
-"Güncellemeyi kontrol et" devre dışı kaldı. Sahip 15 Ekim 2026'da,
+"Güncellemeyi kontrol et" devre dışı kaldı. Sürümü hazırlayan 15 Ekim 2026'da,
 güncellemenin yeniden başlama sinyali etkinken kilidin yeniden başlamayı
-kapsamasına karar verdi (OPERATION-GUIDANCE 17. kalem). Artık izleme, izlenen
+kapsamasına karar verdi (OPERATION-GUIDANCE 17. kalem): D-033'ün bir
+uygulamasıdır, sahibin 13 Ekim 2026 tarihli kalıcı talimatı altındadır; sahibin
+kararı değildir (set17b'nin README'si soruyu sürümü hazırlayana bırakır). Artık
+izleme, izlenen
 güncellemenin okumasını iki dakikalık kira bitmeden kaybettiyse, hâlâ tutulan
 kilit izleme Panel'e yeniden ulaşıp güncellemenin kaydını okuyana ya da yeniden
 başlama penceresi bitene dek sürer; hangisi önce gelirse
@@ -337,9 +351,11 @@ kullanıcısı olmayan bir eylem için aktör olarak `system` yazar. Dashboard v
 denetim günlüğü artık onu "Sistem" / "System" diye söyler; başka her ad olduğu
 gibi gösterilir (`4372fc86e`). Bu adı hiçbir kişinin alamaması için
 `auth.ValidateUsername` (`internal/auth/validate.go`) `system` adını her harf
-biçiminde reddeder (`ErrReservedUsername`). Her oluşturma yolu ondan geçer:
-hesap oluşturma, ekip üyesi oluşturma ve yeniden adlandırma, yönetici CLI'si ve
-istemi. İki HTTP yolu `400 USERNAME_RESERVED` döner (kodlu; İngilizce ve Türkçe
+biçiminde reddeder (`ErrReservedUsername`). Bir kişiden kullanıcı adı alan her
+yol ondan geçer: hesap oluşturma, ekip üyesi oluşturma ve yeniden adlandırma,
+yönetici CLI'si ve istemi (demo modu tohumu, hiçbiri `system` adını taşımayan üç
+sabit hesabı onsuz oluşturur). İki HTTP yolu `400 USERNAME_RESERVED` döner
+(kodlu; İngilizce ve Türkçe
 cümle `err.USERNAME_RESERVED`); CLI her zamanki geçersiz ad iletisini yazar.
 Hiçbir geçiş ya da tohum `system` adlı kullanıcı oluşturmaz; var olan satıra
 dokunulmaz ve bu adı zaten taşıyan bir ekip üyesi, ad değişmediği sürece
@@ -599,12 +615,14 @@ altında hiçbir dosyayı değiştirmez; `7265d3c99`'dan sonraki commit'ler
 - Web: `npm test` 1483/1483; [OPERATION-GUIDANCE](OPERATION-GUIDANCE.tr.md)
   içinde `7265d3c99` için kaydedildi (17. kalemden sonraki sayılar; `npx tsc
   --noEmit` temiz ve `npm run build` bütçe içinde) ve 15 Ekim 2026'da
-  `155a984ea`'da aynı sayıyla yeniden koşuldu. Üç düzeltmeden önce: 1463/1463;
+  `155a984ea`'da ve `70870dfad`'de aynı sayıyla yeniden koşuldu. Üç düzeltmeden
+  önce: 1463/1463;
   `00138c530` için kaydedildi ve sürüm hazırlığı commit'i `313f3eea2`'de
   yeniden koşuldu (aralarında `web/src` ya da `web/tests` altında hiçbir dosya
   değişmedi); `npm run build` o zaman tür denetimi ve paket bütçesiyle geçti
   (en büyük zaman uyumsuz parça, Türkçe ekran kataloğu, 152,44 KiB;
-  düzeltmelerden sonra yeniden ölçülmedi). Web sayısı alpha.85'te 1391,
+  `70870dfad`'de aynı, orada `npm run build` yeniden geçti). Web sayısı
+  alpha.85'te 1391,
   yeniden başlama bildiriminden sonra 1404, görünürlük sınırlamasından sonra
   1409, `1abe1717d`'de 1435, `297f1f0b1`'de 1457, `00138c530`'da 1463 ve
   `7265d3c99`'da 1483 idi.
@@ -626,8 +644,10 @@ altında hiçbir dosyayı değiştirmez; `7265d3c99`'dan sonraki commit'ler
   yeniden koşulmadı; yukarıdaki Go sayıları kaydedilmiş olanlardır.
 - Sürüm hazırlığının sözleşme testleri geçer: sıra politikası sözleşmesi,
   okuduğu `v0.1.0-alpha.85` etiketine sahip Windows Git Bash kopyasında ("85 ->
-  86; historical bootstrap sequence 85"); indirme portalı ve imzalı manifest
-  sözleşmeleri WSL konuğunda.
+  86; historical bootstrap sequence 85"); ve, sürümü hazırlayanın bildirdiği
+  gibi, indirme portalı ve imzalı manifest sözleşmeleri WSL konuğunda (hiçbir
+  commit'te kayıtlı değil ve bu belgelerin doğrulanmasında yeniden koşulmadı:
+  Windows kopyasında anahtar dosyası denetimleri nedeniyle reddederler).
 
 **On üçüncü tarayıcı inceleme turu** (`u86restart`,
 `web/tools/browser-inspect/scenarios-batch13.mjs`, `15d80851e`). Windows'taki
@@ -899,9 +919,11 @@ Bu sürümle yeni:
 - **Lisans kapısının sessiz yolu iki gerçek sistem koşusuna dayanır.** set17b
   iki aday koşusunda D1'i göstermedi; D1 zamanlamaya bağlıydı (set17'de 2'nin
   1'i) ve mekanizmasını iki kayıt da kanıtlamaz.
-- **6 dakikalık "gecikme" metni gerçek sistemde üretilmedi.** Her gerçek
-  sistem kesintisi sınırın altında kaldı (set17: en çok 35,2 sn; set17b: en
-  çok 177,2 sn, tasarım gereği altında tutuldu). set17b'nin 3 dakikalık
+- **6 dakikalık "gecikme" metni gerçek sistemde üretilmedi.** Her gerçek sistem
+  aday koşusu yeniden başlama penceresi bitmeden yeniden bağlandı (set17: sayfa
+  kesintisi en çok 35,2 sn; set17b: en çok 177,2 sn, tasarım gereği altında
+  tutuldu; en geç yeniden bağlantı basıştan T+202,8 sn'de, pencere T+360 sn'de
+  biter). set17b'nin 3 dakikalık
   kesintilerini laboratuvar yaptı (dondurulmuş güncelleme işçisi): ürünün bir
   özelliği değil, bir laboratuvar değişikliğidir ve gerçek yeniden başlamaların
   ne kadar sürdüğünün kanıtı değildir.
@@ -921,8 +943,8 @@ Bu sürümle yeni:
 - **Çözümleyici cümlesine gerçek sistemde ulaşılamadı.** Sunucunun genel ters
   DNS adını ister, hiçbir laboratuvar konuğunda yoktur; taklit edilmedi.
 - **İncelenmedi:** güncelleyici durdurmuşken Panel biriminin neden `failed`
-  okunduğu (set17b O2); her koşuda güncelleyicinin kendi başlatmasıyla
-  `active`'e döndü.
+  okunduğu (set17b O2); tutulan üç koşuda (a, b, denetim) güncelleyicinin kendi
+  başlatmasıyla `active`'e döndü.
 - **Yeni güncelleme ekranı ancak sonraki güncellemede görülür.** Bu sürüme
   güncelleme, sunucunun çalıştırdığı sürümün ekranlarıyla izlenir (iki kurulu
   sunucuda da alpha.85); bu yüzden sahip o güncelleme sırasında alpha.85
@@ -942,8 +964,9 @@ Bu sürümle yeni:
   konuklarıdır; ölçümdür, kabul değildir.
 
 Bu sürümün yanıtladıkları, kaynakta ve bileşen testleriyle: beklenen yeniden
-başlama sırasında güncelleme ekranının sorun gibi görünen bildirimi (sahibin
-15 Ekim 2026 tarihli bildiriminin (c) maddesi; ayrıca set17 ve set17b'de daha
+başlama sırasında güncelleme ekranının sorun gibi görünen bildirimi (sahibin 15
+Ekim 2026 tarihli gözlemi; kurulu sunuculara ilişkin işlem rehberi girdisinin
+(b) ve (c) maddeleri; ayrıca set17 ve set17b'de daha
 önceki commit'ler `313f3eea2` ve `ecd2a5f08` üzerinde, denetim olarak
 alpha.85'in sayfasıyla gerçek sistemde gözlendi); set17'nin D1'i (lisans
 kapısı; set17b'nin iki koşusunda yeniden üretilmedi); oturum kapısının

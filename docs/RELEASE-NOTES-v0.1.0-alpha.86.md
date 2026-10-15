@@ -6,7 +6,11 @@ This is the draft of the release that follows v0.1.0-alpha.85. The number
 v0.1.0-alpha.86 was chosen by the release preparer under the owner's standing
 instruction of 2026-10-13 ("hem sürüm numaraları hem de commit işlemleri için
 bana sormana gerek yok": no need to ask the owner about version numbers or
-commits); it is not a number the owner named for this release. The release
+commits); it is not a number the owner named for this release. The owner's own
+decisions in this release are the rule (D-033, 2026-10-14), the observation of
+2026-10-15 described below, and the reply "devam. sorun yok." (publish
+v0.1.0-alpha.86 with the items in hand; the second-server work comes later). The
+F1 lock decision below is the release preparer's. The release
 preparation is commit `313f3eea2` (sequence 86 after 85, with the alpha.85
 release commit `36c33c4531ee6c1306d324db7a666403176f3bf7` as the previous
 one). Nothing of it is published, and this draft records no installed server
@@ -45,8 +49,10 @@ navigation lock during the restart), and on two native records made on earlier
 commits of this candidate: set17 at the release preparation `313f3eea2` and
 set17b at `ecd2a5f08` (section "Native records set17 and set17b"). set17 found
 one defect (D1: the licence gate drew its own dialog over the restart); set17b
-recorded one behaviour the owner then decided to change (F1: the navigation
-lock ended in the middle of a long restart). Both are corrected in this
+recorded one behaviour that the release preparer then decided to change, under
+D-033 and the owner's standing instruction of 2026-10-13 and not by an owner
+decision (F1: the navigation lock ended in the middle of a long restart). Both
+are corrected in this
 candidate; the F1 correction (`7265d3c99`) came after the last native record.
 The limits say what was never run.
 
@@ -84,8 +90,9 @@ you start that yourself, from the panel's own update screen.
 
 **Calm progress inside the expected restart.** Until now every status read that
 lost the connection set the followed update's phase to unknown at once
-(`systemUpdateOperationPhase(undefined)` in
-`web/src/components/SystemUpdateOperation.tsx`), with no notion of the restart
+(`systemUpdateOperationPhase(outcome.operation)` called with no record, in
+`web/src/components/SystemUpdateOperation.tsx`; the function is in
+`web/src/lib/systemUpdateTracking.ts`), with no notion of the restart
 the update plans: the Panel's status answer knows only queued, running (with
 "verifying" once the new Panel answers), succeeded and failed, and the Agent's
 updater restarts the Panel and the Agent while the record is running. Now a
@@ -179,8 +186,11 @@ source. set17b, on a candidate that carries this change, did not show the
 dialog in two runs.
 
 **No session hold while the new Panel starts (`b7b0f4766`).** The same class of
-defect, found in the source while correcting D1; neither set17 nor set17b
-showed a session hold. While the new Panel starts, its management answers
+defect, found in the source while correcting D1; neither record shows a session
+hold (set17b looked for one in all four runs; set17's sampling of other dialogs
+was partial: its Debian control run did not sample them, and its tool sampled
+every visible dialog only after run a of the candidate's own page). While the
+new Panel starts, its management answers
 `503 PANEL_STARTING`, the update's own status read included, and the fetch
 interception in `App.tsx` (AuthGate) marked the session unavailable on the
 first such answer: the pages were held with "The panel is starting", the
@@ -208,9 +218,12 @@ outcome).
 whose restart outage the lab made about 3 minutes long, the update's navigation
 lock (its full-page dialog) ended by its two-minute lease at T+120.3 s and
 T+120.5 s while the Panel was still down; the card stayed calm and "Check for
-updates" stayed disabled. The owner decided on 2026-10-15 that the lock covers
-the update's restart while its restart signal is active (OPERATION-GUIDANCE
-item 17). Now, when the tracking has lost its read of the followed update
+updates" stayed disabled. The release preparer decided on 2026-10-15 that the
+lock covers the update's restart while its restart signal is active
+(OPERATION-GUIDANCE item 17): an application of D-033 under the owner's standing
+instruction of 2026-10-13, not an owner decision (set17b's README leaves the
+question to the release preparer). Now, when the tracking has lost its read of
+the followed update
 before the two-minute lease ends, a lock that is still held is kept until the
 tracking reaches the Panel again and reads the update's record, or until the
 restart window ends, whichever comes first (`systemUpdateNavigationDeadline` in
@@ -335,9 +348,11 @@ the actor `system` for an action without a signed-in user. The Dashboard and
 the audit log now say it as "System" / "Sistem"; any other name is shown as it
 is (`4372fc86e`). So that no person can take that name,
 `auth.ValidateUsername` (`internal/auth/validate.go`) refuses `system` in any
-letter case (`ErrReservedUsername`). Every creation path goes through it:
-account creation, team-member creation and rename, the admin CLI and its
-prompt. The two HTTP paths answer `400 USERNAME_RESERVED` (typed; English and
+letter case (`ErrReservedUsername`). Every path that takes a username from a
+person goes through it: account creation, team-member creation and rename, the
+admin CLI and its prompt (the demo-mode seed creates three fixed accounts, none
+named `system`, without it). The two HTTP paths answer `400 USERNAME_RESERVED`
+(typed; English and
 Turkish sentence `err.USERNAME_RESERVED`); the CLI prints its usual
 invalid-name message. No migration or seed creates a user named `system`; an
 existing row is not touched, and a team member who already has the name can
@@ -588,13 +603,15 @@ changes no file under `cmd/`, `internal/` or `web/`, and the commits after
 
 - Web: `npm test` 1483 of 1483, recorded at `7265d3c99` in
   [OPERATION-GUIDANCE](OPERATION-GUIDANCE.md) (counts after item 17, with
-  `npx tsc --noEmit` clean and `npm run build` within its budget), and run
-  again on 2026-10-15 at `155a984ea` with the same count. Before the three
+  `npx tsc --noEmit` clean and `npm run build` within its budget), and run again
+  on 2026-10-15 at `155a984ea` and at `70870dfad` with the same count. Before
+  the three
   corrections: 1463 of 1463, recorded at `00138c530` and run again at the
   release preparation commit `313f3eea2` (no file under `web/src` or
   `web/tests` changed between them); `npm run build` then passed with its type
   check and the bundle budget (the largest asynchronous chunk, the Turkish
-  screen catalogue, 152.44 KiB; not re-measured after the corrections). The web
+  screen catalogue, 152.44 KiB; the same at `70870dfad`, where `npm run build`
+  passed again). The web
   count was 1391 at alpha.85, 1404 after the restart notice, 1409 after the
   visibility gating, 1435 at `1abe1717d`, 1457 at `297f1f0b1`, 1463 at
   `00138c530` and 1483 at `7265d3c99`.
@@ -616,8 +633,11 @@ changes no file under `cmd/`, `internal/` or `web/`, and the commits after
   web-only corrections; the Go counts above are the recorded ones.
 - The release preparation's contract tests pass: the sequence-policy contract
   in the Windows Git Bash checkout, which has the `v0.1.0-alpha.85` tag it
-  reads ("85 -> 86; historical bootstrap sequence 85"), and the download-portal
-  and signed-manifest contracts in the WSL guest.
+  reads ("85 -> 86; historical bootstrap sequence 85"), and, as the release
+  preparer reported, the download-portal and signed-manifest contracts in the
+  WSL guest (not recorded in a commit, and not re-run by the fact-check of these
+  documents: they refuse in the Windows checkout, where the key-file checks
+  fail).
 
 **The thirteenth browser-inspection batch** (`u86restart`,
 `web/tools/browser-inspect/scenarios-batch13.mjs`, `15d80851e`). A real Chrome
@@ -885,8 +905,10 @@ New with this release:
   show D1 in two candidate runs; D1 was timing-dependent (1 of 2 in set17),
   and its mechanism is not established by either record.
 - **The 6-minute "overdue" wording was not produced natively.** Every native
-  outage stayed below the bound (set17: at most 35.2 s; set17b: at most
-  177.2 s, held below it by design). set17b's 3-minute outages were made by the
+  candidate run reconnected before the restart window ended (set17: page outages
+  of at most 35.2 s; set17b: at most 177.2 s, held below it by design, with the
+  latest reconnection at T+202.8 s from the press against a window ending at
+  T+360 s). set17b's 3-minute outages were made by the
   lab (a frozen update worker): a lab change, not a product property, and not
   evidence of how long real restarts last.
 - **The 6-minute bound rests on lab updates and one owner observation.**
@@ -905,8 +927,8 @@ New with this release:
 - **The resolver sentence was not reachable natively.** It needs the server's
   public reverse DNS name, which no lab guest has; it was not imitated.
 - **Not investigated:** why the Panel unit reads `failed` while the updater
-  has it stopped (set17b O2); it returned to `active` at the updater's own
-  start in every run.
+  has it stopped (set17b O2); it returned to `active` at the updater's own start
+  in each of the three held runs (a, b, control).
 - **The new update screen is seen only from the next update.** The update to
   this release is followed by the screens of the version the server runs
   (alpha.85 on both installed servers), so the owner sees the alpha.85
@@ -926,7 +948,8 @@ New with this release:
 
 Answered by this release, in source and with component tests: the update
 screen's problem-looking notice during the expected restart (the owner's
-report (c) of 2026-10-15; also observed natively in set17 and set17b on the
+observation of 2026-10-15, items (b) and (c) of the operation guidance's entry
+on the installed servers; also observed natively in set17 and set17b on the
 earlier commits `313f3eea2` and `ecd2a5f08`, with alpha.85's page as the
 control); set17's D1 (the licence gate, not reproduced in set17b's two runs);
 the session gate's `PANEL_STARTING` hold (not exercised natively); set17b's F1

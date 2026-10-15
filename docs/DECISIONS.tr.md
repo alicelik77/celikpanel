@@ -132,13 +132,16 @@ D-032'yi izler ve yukarıdaki metin değişmedi.
   sınır içinde ne lisans kapısı ne oturum kapısı o ilerlemenin yerine kendi
   tutmasını koyar (set17 D1) ve güncellemenin gezinti kilidi, yeniden başlama
   sinyali etkinken yeniden başlamayı en geç başlangıçtan 6 dakikaya dek
-  kapsar (set17b F1; sahibin 15 Ekim 2026 kararı, bu kuralın bir uygulaması,
-  yeni bir karar değil).
+  kapsar (set17b F1; sürümü hazırlayanın 15 Ekim 2026 kararı, sahibin 13 Ekim
+  2026 tarihli kalıcı talimatı altında, bu kuralın bir uygulaması; sahibin
+  kararı değil ve yeni bir karar değil).
 - "Bunun yetkilendirmediği" altında adı geçen açık kaynakta kapandı: bileşen kurma
   penceresinin yeniden okuması ve kurulum sayfasının okumaları artık yalnız
-  sekme görünürken çalışır (`web/src/lib/visibleReads.ts`) ve bu kararın
-  eklediği her yeniden okuma, sekme yeniden gösterilince hemen bir kez okur (6.
-  kural).
+  sekme görünürken çalışır (`web/src/lib/visibleReads.ts`) ve bu kararın sekme
+  gizliyken zaten duran iki yeniden okuması, güncelleme kartının hazırlık
+  yeniden okuması ve yayılan alan adının yeniden kontrolü, sekme yeniden
+  gösterilince hemen bir kez okur (6. kural); bu kararın diğer yeniden okumaları
+  bunun için denetlenmedi.
 - D-032 ile: hiçbir sunucu ya da sayfa cümlesi sahipten yeniden tarama istemez;
   doğrulanamayan kayıtlı bir bileşen kaydını Dashboard, Bileşenler sayfası ve
   bir bileşenin kendi sayfası kendileri kontrol eder; bir değişiklik yüzünden

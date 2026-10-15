@@ -5678,9 +5678,12 @@ clock date of the entry.
   with a verified failure, which keeps its own wording; one notice instead of
   the card and the corner notice saying the same thing
   (`web/src/lib/systemUpdateTracking.ts`, `SystemUpdateOperation.tsx`,
-  `PanelUpdateCard.tsx`). Every automatic re-read stays a GET and now runs
-  only while the tab is visible, including the component install dialog's and
-  the setup page's (`web/src/lib/visibleReads.ts`). No sentence asks the owner
+  `PanelUpdateCard.tsx`). The automatic re-reads named here stay GET reads: the
+  component install dialog's and the setup page's reads, which alpha.85 listed
+  as not checking the tab's visibility, now run only while it is visible
+  (`web/src/lib/visibleReads.ts`), as the update card's and the spreading
+  domain's re-reads already did; the other re-reads were not audited for this.
+  No sentence asks the owner
   to rescan; the Dashboard, the Components page and a component's own page
   answer an unverifiable stored component record with a conditional check (a
   read, once, no loop; a held check resumes by itself with one follow-up). The
@@ -5695,8 +5698,10 @@ clock date of the entry.
   (`e8aa9c5c0`, set17 D1), a `503 PANEL_STARTING` answer does not mark the
   session (`b7b0f4766`), and a navigation lock still held when the tracking
   lost its read before two minutes lasts until the tracking reads the update's
-  record again, at the latest 6 minutes from the start (`7265d3c99`, set17b
-  F1, the owner's decision of 2026-10-15); all bounded by the update's own
+  record again, at the latest 6 minutes from the start (`7265d3c99`, set17b F1,
+  the release preparer's decision of 2026-10-15 under D-033 and the owner's
+  standing instruction of 2026-10-13, not an owner decision); all bounded by the
+  update's own
   restart window on the browser's clock, reads only. No change to the update
   path itself, the recovery runner, the release floor or the native services.
   The [release notes](RELEASE-NOTES-v0.1.0-alpha.86.md) say which check rests
@@ -5709,7 +5714,9 @@ clock date of the entry.
   as before, and after the window the existing dialogs appear. A Store
   offering whose component state is unknown is no longer called unsupported.
   Invariant 6: the audit log names the actor that wrote an
-  action, and a person can no longer be shown as "System". Polling never starts
+  action, and a new account or team member cannot be named `system`, so a person
+  is not shown as "System" (an existing row of that name is not touched).
+  Polling never starts
   or admits a mutation (D-024); the held-check follow-up is a read.
 - **Schema or version transition.** None: no migration between the alpha.85 tag
   and the candidate (the database schema stays 44). The release sequence moves
@@ -5733,7 +5740,7 @@ clock date of the entry.
   not a product property). Outcome: in all five candidate runs the update page
   showed the calm restart with 0 samples of the "not known" wording or the
   warning surface, where alpha.85's page showed both in its three control
-  runs; every update ended `update_verified`, both defective updates
+  runs; every good update ended `update_verified`, both defective updates
   `recovered`/`rollback_verified`, every ledger comparison
   `equal-except-volatile`; set17 D1 was not reproduced in set17b's two runs
   (mechanism not established); set17b F1 was changed afterwards.

@@ -7521,8 +7521,9 @@ soruna aittir. Bu D-033'tür (beklenen bekleme ilerleme olarak gösterilir;
 defteri ya da sürüm geçişi yok; Go değişmedi.
 
 **Koddaki neden.** Bağlantıyı yitiren her durum okuması izlenen güncellemenin
-aşamasını hemen bilinmiyor yapıyordu (`SystemUpdateOperation.tsx` içinde
-`systemUpdateOperationPhase(undefined)`); güncellemenin planladığı yeniden
+aşamasını hemen bilinmiyor yapıyordu (`SystemUpdateOperation.tsx` içinde kayıt
+olmadan çağrılan `systemUpdateOperationPhase(outcome.operation)`; işlev
+`lib/systemUpdateTracking.ts` içindedir); güncellemenin planladığı yeniden
 başlama hesaba katılmıyordu. Panel'in durum yanıtı yalnız kuyrukta, çalışıyor
 (yeni Panel yanıt verince "verifying"), başarılı ve başarısız bilir; Panel'i ve
 Agent'ı yeniden başlatan güncelleyici kayıt çalışıyorken çalışır. İki dakikalık
@@ -7745,7 +7746,8 @@ başarısız (WSL konuğu `CelikPanel-S2-Debian`). Agent yeniden koşulmadı.
     be restarting it" ve "The latest result could not be read..." penceresini
     çizdi; yeniden bağlanınca güncellemenin gezinme kilidi geri gelmedi.
     Neden: kesinti son iyi erişim okumasının geçerlilik süresini
-    (`valid_for_seconds`, laboratuvarda 42-60 s) aşınca kapının kararı
+    (`valid_for_seconds`; kapı, onu gösteren kayıtların üç koşusunda son iyi
+    erişim okumasından 41,8 ile 60,3 sn sonra göründü) aşınca kapının kararı
     bilinmeze düşüyordu (`LicenseOnboarding.tsx`, son an zamanlayıcısı ve
     başarısız okuma dalı); kapı tutma katmanını çiziyor ve gözlem kurtarmasını
     bildiriyordu; App bunu `publishSystemUpdateAuthentication(false)` yapar,
@@ -7783,8 +7785,9 @@ başarısız (WSL konuğu `CelikPanel-S2-Debian`). Agent yeniden koşulmadı.
     ölçülmedi.
 
     **Yeni Panel başlarken oturum kapısı** (aynı kusur sınıfı; yukarıda açık
-    diye kaydedilmişti, bu adayda düzeltildi; set17'de görülmedi, dört
-    güncellemede oturum tutması yoktu). Yeni Panel başlarken yönetim istekleri,
+    diye kaydedilmişti, bu adayda düzeltildi; set17 ve set17b'de görülmedi;
+    set17'nin diğer pencere örneklemesi kısmiydi, bkz. README'si). Yeni Panel
+    başlarken yönetim istekleri,
     güncelleme izlemesinin kendi durum okuması da dahil, `503 PANEL_STARTING`
     yanıtı alır. Neden: `App.tsx` içindeki istek yakalayıcı (AuthGate) herhangi
     bir isteğe gelen ilk böyle yanıtta oturumu kullanılamaz sayıyordu
@@ -7835,7 +7838,9 @@ başarısız (WSL konuğu `CelikPanel-S2-Debian`). Agent yeniden koşulmadı.
     yazıldığı gibi kalır). İki aday koşusunda güncellemenin gezinme kilidi (tam
     sayfa penceresi) iki dakikalık kirasıyla (`SYSTEM_UPDATE_BLOCKING_DEADLINE_MS`)
     T+120,3 s ve T+120,5 s'de bitti; Panel 82 s ve 73 s daha kapalıydı
-    (yeniden bağlantı T+202,8 s ve T+193,6 s). Sahibin kararı (2026-10-15):
+    (yeniden bağlantı T+202,8 s ve T+193,6 s). Sürümü hazırlayanın kararı
+    (2026-10-15), D-033 ve sahibin 2026-10-13 tarihli kalıcı talimatı altında;
+    sahibin kararı değil (set17b kaydı soruyu sürümü hazırlayana bırakır):
     güncellemenin yeniden başlama sinyali etkinken kilit yeniden başlamayı
     kapsar. Artık güncelleme izlemesi, iki dakikalık kira bitmeden izlenen
     güncellemenin okumasını kaybettiyse (ve sunucu güncellemenin etkin

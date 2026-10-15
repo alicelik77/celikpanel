@@ -129,12 +129,16 @@ follows this decision and D-032, and the text above is unchanged.
   bound neither the licence gate nor the session gate replaces that progress
   with its own hold (set17 D1), and the update's navigation lock covers the
   restart while its restart signal is active, at the latest 6 minutes from
-  the start (set17b F1; the owner's decision of 2026-10-15, an application of
-  this rule, not a new decision).
+  the start (set17b F1; the release preparer's decision of 2026-10-15, under the
+  owner's standing instruction of 2026-10-13, an application of this rule; not
+  an owner decision and not a new decision).
 - The gap named under "What this does not authorise" is closed in source: the
   component install dialog's re-read and the setup page's reads now run only
-  while the tab is visible (`web/src/lib/visibleReads.ts`), and every re-read
-  this decision added reads once at once when the tab is shown again (rule 6).
+  while the tab is visible (`web/src/lib/visibleReads.ts`), and the two re-reads
+  of this decision that already stopped while the tab was hidden, the update
+  card's readiness re-read and the spreading domain's re-check, now read once at
+  once when the tab is shown again (rule 6); the other re-reads of this decision
+  were not audited for this.
 - With D-032: no server or page sentence asks the owner to rescan; a stored
   component record that cannot be verified is checked by the Dashboard, the
   Components page and a component's own page themselves, and a check held by a

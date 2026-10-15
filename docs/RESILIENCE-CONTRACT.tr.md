@@ -4947,9 +4947,12 @@ yayımlanmamış bir adayı kaydeder; 2026-10-15 girdinin saat tarihidir.
   okumadan en az 2 dakika sonra ya da kendi metnini koruyan doğrulanmış bir
   hatayla gelir; kart ve köşe bildirimi aynı şeyi söylemek yerine tek bildirim
   (`web/src/lib/systemUpdateTracking.ts`, `SystemUpdateOperation.tsx`,
-  `PanelUpdateCard.tsx`). Her kendiliğinden yeniden okuma GET kalır ve artık
-  bileşen kurma penceresininki ve kurulum sayfasınınki dahil yalnız sekme
-  görünürken çalışır (`web/src/lib/visibleReads.ts`). Hiçbir cümle sahipten
+  `PanelUpdateCard.tsx`). Burada adı geçen kendiliğinden yeniden okumalar GET
+  kalır: alpha.85'in sekmenin görünürlüğüne bakmıyor diye listelediği bileşen
+  kurma penceresinin ve kurulum sayfasının okumaları artık yalnız sekme
+  görünürken çalışır (`web/src/lib/visibleReads.ts`), güncelleme kartının ve
+  yayılan alan adının yeniden okumaları zaten öyleydi; diğer yeniden okumalar
+  bunun için denetlenmedi. Hiçbir cümle sahipten
   yeniden tarama istemez; Dashboard, Bileşenler sayfası ve bir bileşenin kendi
   sayfası doğrulanamayan kayıtlı bileşen kaydına koşullu bir kontrolle yanıt
   verir (bir okuma, bir kez, döngü yok; tutulan kontrol tek izlemeyle
@@ -4965,7 +4968,9 @@ yayımlanmamış bir adayı kaydeder; 2026-10-15 girdinin saat tarihidir.
   oturumu işaretlemez (`b7b0f4766`) ve izleme okumasını iki dakikadan önce
   kaybettiğinde hâlâ tutulan gezinti kilidi, izleme güncellemenin kaydını
   yeniden okuyana dek, en geç başlangıçtan 6 dakika sürer (`7265d3c99`,
-  set17b F1, sahibin 15 Ekim 2026 kararı); hepsi tarayıcının saatiyle
+  set17b F1, sürümü hazırlayanın 15 Ekim 2026 kararı, D-033 ve sahibin 13 Ekim
+  2026 tarihli kalıcı talimatı altında; sahibin kararı değil); hepsi tarayıcının
+  saatiyle
   güncellemenin kendi yeniden başlama penceresine bağlı, yalnız okuma.
   Güncelleme yolunun kendisinde, kurtarma çalıştırıcısında, sürüm tabanında ya
   da yerel hizmetlerde değişiklik yok. Hangi denetimin hangi koda dayandığını
@@ -4978,7 +4983,9 @@ yayımlanmamış bir adayı kaydeder; 2026-10-15 girdinin saat tarihidir.
   gibi uygulanır ve pencereden sonra var olan pencereler görünür. Bileşen
   durumu bilinmeyen bir Mağaza ürünü artık
   desteklenmiyor diye anılmaz. İlke 6: denetim günlüğü bir eylemi yazan aktörü
-  adlandırır ve bir kişi artık "Sistem" olarak gösterilemez. Yoklama asla bir
+  adlandırır ve yeni bir hesap ya da ekip üyesi `system` diye adlandırılamaz,
+  böylece bir kişi "Sistem" olarak gösterilmez (bu adı taşıyan var olan bir
+  satıra dokunulmaz). Yoklama asla bir
   değişiklik başlatmaz ya da kabul etmez (D-024); tutulan kontrolün izlemesi bir
   okumadır.
 - **Şema ya da sürüm geçişi.** Yok: alpha.85 etiketi ile aday arasında taşıma
@@ -5003,7 +5010,7 @@ yayımlanmamış bir adayı kaydeder; 2026-10-15 girdinin saat tarihidir.
   yaptı; ürünün özelliği değildir). Sonuç: beş aday koşusunun hepsinde
   güncelleme sayfası "bilinmiyor" metninden ve uyarı yüzeyinden 0 örnekle
   sakin yeniden başlamayı gösterdi; alpha.85'in sayfası üç denetim koşusunda
-  ikisini de gösterdi; her güncelleme `update_verified`, iki kusurlu
+  ikisini de gösterdi; her iyi güncelleme `update_verified`, iki kusurlu
   güncelleme `recovered`/`rollback_verified`, her defter karşılaştırması
   `equal-except-volatile` bitti; set17 D1 set17b'nin iki koşusunda yeniden
   üretilmedi (mekanizma kanıtlanmadı); set17b F1 sonradan değiştirildi.
