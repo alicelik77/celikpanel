@@ -45,7 +45,7 @@ func TestUnverifiedComponentRecordRefusalSaysThePanelChecksByItself(t *testing.T
 	if askForRescan.MatchString(body.Error) {
 		t.Fatalf("the refusal asks the owner to rescan: %q", body.Error)
 	}
-	for _, part := range []string{"nothing was changed", "checks the components again by itself"} {
+	for _, part := range []string{"nothing was changed", "checks the components again by itself", "while the Dashboard, the Components page or a component's page is open"} {
 		if !strings.Contains(body.Error, part) {
 			t.Fatalf("the refusal lacks %q: %q", part, body.Error)
 		}
