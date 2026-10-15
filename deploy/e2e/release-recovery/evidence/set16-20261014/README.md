@@ -14,18 +14,20 @@ of every lab and read back at its end (`*/*/driver/steps/01-set6-name-pinning`, 
 all 5 labs). Nothing else was blocked: the guests had outbound NAT (QEMU user networking), so setup installed its
 components from each distribution's repositories. The driver's fixed wording "isolated node" does not mean network
 isolation. Every archive is a test-licence (`acceptance_license`) build with `release: false`; none is a release. Every
-`result.json` carries `native_evidence: false`; this record closes no P0 row. No product file was changed.
+`result.json` carries `native_evidence: false`; this record closes no P0 row. No product file was changed. This is a
+measurement, not acceptance evidence and not native evidence: QEMU/KVM guests, test-licence builds, nothing judged.
 
-**Outcome in one line.** All five labs ran to `complete-for-review` with `verdicts` passed. The candidate installed
+**Outcome in one line.** All five labs ran to `complete-for-review`; the four update labs' `verdicts` step passed (the fresh lab has no
+`verdicts` step: its setup, readings and browser steps read `observed`, the rest `passed`). The candidate installed
 fresh, updated from alpha.84 on Debian 13 and Ubuntu 24.04 (`update_verified`), and the defective candidate returned by
 itself on both (`recovered`, `rollback_verified`). After each return the database comparison was
 `equal-except-volatile`: `managed_site_files` changed in `observed_at` only, the stable digest equal. No defect of the
-candidate was verified. The browser checks below passed as measured; three pre-existing observations are listed.
+candidate was observed in these five labs. The browser checks below passed as measured; three pre-existing observations are listed.
 
 ## Source
 
 Built from `git clone` of the repository at the committed HEAD `89cf883971800c39c72c9f8358c58d56aace4194`, branch
-`fix/alpha85-setup-finish-wait`, never from the working tree. `build/source-check.txt` (22:16:46Z): `git diff --stat
+`fix/alpha85-setup-finish-wait`, never from the working tree. `build/source-check.txt` (the file carries no time; the run directory was made 22:16:46Z): `git diff --stat
 89cf88397 HEAD -- cmd internal web/src` empty, `git status --short -- cmd internal web/src
 deploy/release-sequence-policy` empty, `git diff --stat v0.1.0-alpha.84 89cf88397 -- internal/db/migrations` empty (no
 migration between the tag and the candidate; the ledger stays 44).
@@ -66,7 +68,7 @@ the real release commit is expected to move them). The installer accepted the fr
 (`*/*/driver/steps/*set16-readings*/installed-pins-*.txt`): 84 / v0.1.0-alpha.84.
 
 **Proof and dry runs.** `set16_fixture.py prove` passed for both documents (`build/update-prove.json`,
-`build/fresh-prove.json`, rc 0); dry runs of all six cells passed (`build/dry-*.json`); the offline suites in copy `c`
+`build/fresh-prove.json`, rc 0); dry runs of six cells (the five that ran and `set16-ubuntu`, which was not run) wrote their plans with empty stderr (`build/dry-*.json`, `.err`); the offline suites in copy `c`
 passed (`harness-run-copy/c/suite.txt`: set16 11 tests OK, set15 8 tests OK). The Agent package closure of each
 installed baseline contains no licensing package (`baseline-ref-proof.txt`, last line `0`).
 
@@ -125,7 +127,8 @@ and Panel; login, site marker, SMTP and firewall equal. The terminal step **pass
 The rows are in `steps/10-pre-state/guest-observation-pre-update-managed-site-files.jsonl` and
 `steps/15-terminal/guest-observation-post-recovery-managed-site-files.jsonl` (first line: columns and both digests; then
 one JSON line per row). The row is the seeded site's `nginx_vhost` (`/etc/nginx/sites-available/upd1-owner.test.conf`,
-`managed_unchanged`); `written_at`, `body_sha256` and `file_sha256` are unchanged. This answers set15's open question for
+`managed_unchanged`); `written_at`, `body_sha256` and `file_sha256` are unchanged. The comparison covered 67 tables and left out five as volatile (`audit_logs`, `metrics_samples`,
+`server_setup_executions`, `sessions`, `sqlite_sequence`; `15-terminal/step.json` `database`). This answers set15's open question for
 this fixture: only `observed_at` changed after the return.
 
 ## Browser (real headless Chrome on the host, `web/tools/browser-inspect/cold-load-set16.mjs`)
@@ -144,24 +147,26 @@ error, not a product result; the driver waited for the window as designed.
 | Debian after the update | 413.5 s | 1, 200, 1025 ms | absent → checking 1046 ms → "6 / 6" | absent 160 ms → "Checking…" with 1 spinner 1028 ms → "Ready" |
 | Ubuntu after the update | 557.7 s | 1, 200, 2622 ms | absent → checking 2645 ms → "6 / 6" | absent → "Checking…" with 1 spinner 2626 ms → "Ready" |
 | Debian after the return (alpha.84) | 462.7 s | 1, 200, 1908 ms | checking 1939 ms → "6 / 6" | alpha.84's "Status needs refresh … Open Components and rescan" 1911 ms → "Ready" |
-| Ubuntu after the return (alpha.84) | 641.4 s | 1, 200, 1531 ms | checking 1531 ms → "6 / 6" | alpha.84's old wording 1496 ms → "Ready" |
+| Ubuntu after the return (alpha.84) | 641.4 s | 1, 200, 1492 ms | checking 1531 ms → "6 / 6" | alpha.84's old wording 1496 ms → "Ready" |
 
 On the candidate "Open Components to rescan" was never seen; after the returns the old wording is alpha.84's own, as
 expected of a return. Components right after the Dashboard: 0 POSTs in every lab; with the scan stale (fresh cell,
 317.1 s) 1 conditional POST, 200, 873 ms, no alert, no toast.
 
 **Licence gate with the guest clock moved (fresh cell; lab preparation, NTP off, undone at the end).** Before the
-shift the guest read about +1.05 s against the browser.
+shift the guest read +1.072 … +1.078 s against the browser (access answers, 22:33–22:35Z).
 
 | | guest − browser (from the access answers) | page mounted | access reads | `can_use_panel` | `valid_for_seconds` | old rule (`valid_until` vs browser clock) would refuse |
 | --- | --- | --- | --- | --- | --- | --- |
 | +90 s | +91.065 … +91.070 s | yes | 3 | true ×3 | 58.418, 59.995, 43.408 | 0 of 3 |
 | −90 s | −88.937 … −88.932 s | yes | 3 | true ×3 | 59.107, 59.999, 44.099 | 3 of 3 |
 
-Restored to +1.05 s and NTP on at 22:41:57Z (`clock_at_the_end` in step 09). Pictures:
+Restored to about +1.05 s (`events.jsonl` `clock-read` `restored`: mid +1.047 s, bounds +1.025 … +1.068 s) and NTP on at
+22:41:57Z (`ntp-on` prep, guest clock; `clock_at_the_end` in step 09). Pictures:
 `debian13/fresh-a/browser/ui/clock-dashboard-{ahead90,behind90}-known-viewport.png`.
 
-**Components in Turkish with the Agent stopped** (owner action `systemctl stop celikpanel-agent.service` 22:42:00Z).
+**Components in Turkish with the Agent stopped** (owner action `systemctl stop celikpanel-agent.service` 22:42:00Z on the guest clock, which ran about 1.4 s ahead of the
+host's; the host asked at 22:41:58.2Z and the first 503 was read at 22:41:59.6Z).
 `GET /api/v1/firewall` 503 `AGENT_UNREACHABLE`. The banner reads "Güvenlik duvarı: Durum bilinmiyor" and the Turkish
 `err.AGENT_UNREACHABLE` sentence ("Bu sunucudaki CelikPanel Agent’ına ulaşılamıyor; …"); the English sentence is absent.
 Surface (computed, light theme; failure colour `--danger` = rgb(179, 38, 30)): border rgba(245, 179, 1, 0.6), background
@@ -187,7 +192,9 @@ produced.
 `inline-block whitespace-nowrap font-mono`, the 12-character id one client rectangle, "build" and the id on one line,
 no overflow of the sidebar, at 1280×800 and at 390×844 (menu opened). Pictures:
 `debian13/fresh-a/browser/ui/sidebar-1280x800-{viewport,stamp}.png`, `sidebar-390x844-{viewport,stamp}.png`. After
-the returns (alpha.84) the id breaks (`id_on_one_line: false`), alpha.84's own `break-all` stamp.
+the returns (alpha.84) the id breaks at 1280×800 (`id_on_one_line: false`, two rectangles), alpha.84's own `break-all`
+stamp; the 390×844 read after the returns found the stamp with empty boxes (no rectangles, width 0), so nothing is claimed
+there.
 
 **"Finishing setup" was not reachable.** The fresh cell's setup (purpose `web`, DNS external) waits at its public-DNS
 step, `access_dns`, and the final step "Verify the prepared server" needs the server's reverse DNS name, which no lab
@@ -198,7 +205,8 @@ server busy while the update card is open. Not attempted; nothing is said about 
 
 ## Defects and observations
 
-No defect of the candidate was verified. Pre-existing observations, not changes of this branch, recorded and not
+No defect of the candidate was observed in these five labs. Pre-existing observations (the files behind O1 and O2 and
+O3's `auditActionText` are unchanged between v0.1.0-alpha.84 and this candidate), not changes of this branch, recorded and not
 judged:
 
 - **O1 `<html lang="en">` on Turkish pages.** `bannerFacts` read `html_lang: "en"` on the Turkish Components page.
@@ -207,8 +215,10 @@ judged:
 - **O2 an English component name on the Turkish Components page.** "Firewall engine" and "nftables — the panel
   firewall's packet-filtering engine" come from the server catalogue (`internal/core/managed_services.go:915-916`)
   (`components-tr-agent-stopped.txt`).
-- **O3 raw audit action ids on the Turkish Dashboard.** "Son etkinlik" lists `server.setup.guidance`,
-  `server.setup.revise`, `server.setup.child:*` (`dashboard-tr-agent-stopped-viewport.png`).
+- **O3 raw audit action ids on the Dashboard.** "Son etkinlik" lists `server.setup.guidance`,
+  `server.setup.revise`, `server.setup.child:*` (`dashboard-tr-agent-stopped-viewport.png`); the English "Recent activity"
+  shows the same ids (`clock-dashboard-behind90-known-viewport.png`). `auditActionText` in
+  `web/src/components/Dashboard.tsx:120` maps only login and mail-profile events and returns every other action as is.
 
 ## Open items
 
@@ -217,6 +227,9 @@ judged:
   pattern as set15 and set12; not judged here.
 - The update card's busy state; "Finishing setup"; Arch; a fresh Ubuntu install of this candidate (not planned).
 - The mail card's "held by a change" state was not produced.
+- The fresh cell's `result.json` findings carry the harness's fixed sentence "web_mail was not attempted on the published
+v0.1.0-alpha.85 baseline (it accepts the plan but fails at 05-mail_profile)" (`owner_update_trial.py:4063`). This run
+  installed purpose `web`; the sentence is not a measurement of this run.
 - set4/set5's PHP-site (item 9) and M10 mail sections were switched off (measured in set4/set5).
 
 ## Harness changes in this run (committed with this record)
