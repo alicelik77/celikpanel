@@ -249,3 +249,61 @@ test('the provider: restart from the read, warning only off the restart, a failu
     // The do-not-start-another-update lock is untouched: mutation stays occupied.
     assert.match(tracker, /const occupied = systemUpdateMutationLocked\(/);
 });
+
+// Native record set17, defect D1 (2026-10-15): the licence gate drew its own
+// "not answering" dialog over the update's restart and, through the observation
+// recovery it raised, ended the update's navigation lock. The provider now
+// publishes the followed update to the gate (lib/systemUpdateRestartSignal.ts),
+// and the gate keeps its last positive decision inside the same window.
+const restartSignal = await import(compileURL('../src/lib/systemUpdateRestartSignal.ts', [
+    [/from ['"]react['"]/, `from '${reactURL}'`],
+    [/from ['"]\.\/systemUpdateTracking['"]/, `from '${compileURL('../src/lib/systemUpdateTracking.ts')}'`],
+]));
+
+test('set17 D1: the access grace ends with the update restart window, needs a lost read, and is bounded by the decision', () => {
+    const { systemUpdateAccessGraceEnd: grace } = restartSignal;
+    const start = 1_800_000_000_000;
+    const signal = { requestID: 'a'.repeat(32), startedAt: start, lostSince: null };
+    const until = start + 30_000;
+    assert.equal(grace(null, until, start + 20_000), null, 'no followed update: nothing is kept');
+    assert.equal(grace(signal, until, null), null, 'no lost read: the decision ends at its own deadline');
+    // The update tracking's or the gate's lost read: the earlier one counts.
+    assert.equal(grace({ ...signal, lostSince: start + 25_000 }, until, null), start + SYSTEM_UPDATE_EXPECTED_RESTART_MS);
+    assert.equal(grace(signal, until, start + 25_000), start + SYSTEM_UPDATE_EXPECTED_RESTART_MS);
+    assert.equal(grace({ ...signal, lostSince: start + 300_000 }, start + 400_000, start + 290_000),
+        start + 290_000 + SYSTEM_UPDATE_RESTART_AFTER_LOSS_MS, 'a late restart: 2 minutes from the first lost read');
+    // Never later than the decision's own end plus the 6-minute window.
+    assert.equal(grace({ ...signal, lostSince: start + 600_000 }, start + 10_000, null), start + 10_000 + SYSTEM_UPDATE_EXPECTED_RESTART_MS);
+    assert.equal(grace({ ...signal, lostSince: start + 25_000 }, 0, null), null, 'no positive decision: nothing to keep');
+    assert.equal(grace({ ...signal, lostSince: Number.NaN }, until, null), null);
+});
+
+test('set17 D1: the restart signal publishes only a change and is read by subscribers', () => {
+    const seen = [];
+    const unsubscribe = restartSignal.subscribeSystemUpdateRestart(() => seen.push(restartSignal.currentSystemUpdateRestart()));
+    try {
+        const value = { requestID: 'b'.repeat(32), startedAt: 1, lostSince: null };
+        restartSignal.publishSystemUpdateRestart(value);
+        restartSignal.publishSystemUpdateRestart({ ...value });
+        restartSignal.publishSystemUpdateRestart({ ...value, lostSince: 5 });
+        restartSignal.publishSystemUpdateRestart(null);
+        restartSignal.publishSystemUpdateRestart(null);
+        assert.deepEqual(seen, [value, { ...value, lostSince: 5 }, null]);
+    } finally { unsubscribe(); restartSignal.publishSystemUpdateRestart(null); }
+});
+
+test('set17 D1: the provider publishes the followed update once the server said it is active, with its first lost read', () => {
+    const tracker = readFileSync(new URL('../src/components/SystemUpdateOperation.tsx', import.meta.url), 'utf8');
+    assert.match(tracker, /import \{ publishSystemUpdateRestart \} from '\.\.\/lib\/systemUpdateRestartSignal';/);
+    assert.match(tracker, /const followedMemory = followed \? readMemory\(followed\.request_id\) : null;/);
+    assert.match(tracker, /const restartRequestID = followed && followedMemory\?\.lastKnownActive \? followed\.request_id : null;/);
+    assert.match(tracker, /const restartLostSince = followedMemory\?\.lostSince \?\? null;/);
+    assert.match(tracker, /publishSystemUpdateRestart\(restartRequestID === null \|\| restartStartedAt === null \? null\n\s+: \{ requestID: restartRequestID, startedAt: restartStartedAt, lostSince: restartLostSince \}\);/);
+    assert.match(tracker, /useEffect\(\(\) => \(\) => publishSystemUpdateRestart\(null\), \[\]\);/);
+    // The gate reads it; App still pauses the update tracking on the gate's
+    // observation recovery, which the gate no longer raises inside the window.
+    const gate = readFileSync(new URL('../src/components/LicenseOnboarding.tsx', import.meta.url), 'utf8');
+    assert.match(gate, /const published = useSystemUpdateRestart\(\);/);
+    const app = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
+    assert.match(app, /publishSystemUpdateAuthentication\(state === 'ready' && !observationRecovery && user\?\.effective_role === 'admin'\);/);
+});

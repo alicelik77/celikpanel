@@ -61,7 +61,10 @@ const loaderURL = link('../src/lib/accessGuidance.ts', specifier => specifier.en
 const withGuidance = specifier => real(specifier, item => item.endsWith('/accessGuidance') ? loaderURL : stub);
 const holdURL = link('../src/components/AccessHold.tsx', withGuidance);
 const bareHoldURL = link('../src/components/AccessHold.tsx', specifier => real(specifier, () => stub));
-const onboardingURL = link('../src/components/LicenseOnboarding.tsx', specifier => real(specifier, item => item.endsWith('/accessObservation') ? accessURL : item.endsWith('/AccessHold') ? holdURL : stub));
+// The followed update's restart signal is the real one; nothing publishes it here (set17 D1).
+const trackingURL = dataModule(compile('../src/lib/systemUpdateTracking.ts'));
+const restartURL = link('../src/lib/systemUpdateRestartSignal.ts', specifier => specifier.endsWith('/systemUpdateTracking') ? trackingURL : stub);
+const onboardingURL = link('../src/components/LicenseOnboarding.tsx', specifier => real(specifier, item => item.endsWith('/accessObservation') ? accessURL : item.endsWith('/AccessHold') ? holdURL : item.endsWith('/systemUpdateRestartSignal') ? restartURL : stub));
 const loginURL = link('../src/components/Login.tsx', withGuidance);
 const noticeURL = link('../src/components/UpdateReloadNotice.tsx', withGuidance);
 const bareNoticeURL = link('../src/components/UpdateReloadNotice.tsx', () => stub);

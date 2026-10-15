@@ -6,6 +6,7 @@ import { Button, Spinner } from './ui';
 import { parseAccessObservation, type AccessObservation } from '../lib/accessObservation';
 import { readApiError } from '../lib/apiError';
 import { useQuietRead } from '../lib/quietRead';
+import { systemUpdateAccessGraceEnd, useSystemUpdateRestart } from '../lib/systemUpdateRestartSignal';
 import { RecoveryAccess } from './RecoveryAccess';
 import { AccessHold } from './AccessHold';
 
@@ -64,6 +65,28 @@ export function LicenseOnboarding({ children, onAccessChange, onRecoveryChange, 
     const latest = useRef(access);
     latest.current = access;
     const lastRead = useRef(0);
+    // The update this browser follows, and the gate's own first lost read of the
+    // current outage (set17 D1). While the update's planned restart lasts, a
+    // read that got no answer from the Panel does not end a positive decision:
+    // the update's own screen owns the page, and nothing more is drawn here
+    // (lib/systemUpdateRestartSignal.ts). An answer from the Panel is applied
+    // as before.
+    // Guncellemenin planli yeniden baslamasi surerken yanitsiz okuma olumlu
+    // karari bitirmez; Panel'in yaniti her zamanki gibi uygulanir.
+    const published = useSystemUpdateRestart();
+    const [lostSince, setLostSince] = useState<number | null>(null);
+    const lostSinceRef = useRef<number | null>(null);
+    // The update's last signal stays the evidence while the gate itself has not
+    // been answered again: the update's read that ends its restart can also be
+    // the one that ends its tracking (an outcome read), and the decision must
+    // not lapse in the moment before the gate's own read answers.
+    const lastRestart = useRef(published);
+    if (published) lastRestart.current = published;
+    else if (lostSince === null) lastRestart.current = null;
+    const restart = published ?? lastRestart.current;
+    const restartRef = useRef(restart);
+    restartRef.current = restart;
+    const graceEnd = useCallback((until: number) => systemUpdateAccessGraceEnd(restartRef.current, until * 1000, lostSinceRef.current), []);
     const check = useCallback(async () => {
         // Focus and periodic checks share the pending request.
         // Odak ve zamanlayıcı kontrolleri sürmekte olan isteği paylaşır.
@@ -91,6 +114,8 @@ export function LicenseOnboarding({ children, onAccessChange, onRecoveryChange, 
             observed = 'license';
             const result = parseAccessObservation(await response.json(), Date.now() / 1000, askedAt / 1000);
             if (!request.signal.aborted && controller.current === request) {
+                lostSinceRef.current = null;
+                setLostSince(null);
                 setAccess({ owner: user.username, ...result });
                 setFailed(result.allowed === null);
                 if (result.allowed === null) setCause('license');
@@ -98,12 +123,22 @@ export function LicenseOnboarding({ children, onAccessChange, onRecoveryChange, 
         } catch {
             if (controller.current === request) {
                 setCause(observed);
+                // No answer from the Panel (or "still starting"): the first such read
+                // of this outage dates the gate's side of the update's restart.
+                const unanswered = observed !== 'license';
+                if (unanswered && lostSinceRef.current === null) {
+                    lostSinceRef.current = askedAt;
+                    setLostSince(askedAt);
+                }
                 // A failed request is not a license rejection. Keep only an
-                // unexpired decision for this identity; never extend its deadline.
+                // unexpired decision for this identity; never extend its deadline,
+                // except through the followed update's restart window.
                 // Bağlantı hatası lisans reddi değildir; bu kimliğin geçerli kararı
-                // yalnızca sunucunun belirlediği süre dolana kadar korunur.
+                // yalnızca sunucunun belirlediği süre (ya da izlenen güncellemenin
+                // yeniden başlama penceresi) dolana kadar korunur.
                 setAccess(previous => previous?.owner === user.username
-                    && (previous.allowed === false || (previous.allowed && previous.until * 1000 > Date.now()))
+                    && (previous.allowed === false || (previous.allowed && (previous.until * 1000 > Date.now()
+                        || (unanswered && (graceEnd(previous.until) ?? 0) > Date.now()))))
                     ? previous : { owner: user.username, allowed: null, until: 0, state: 'status_unavailable' });
                 setFailed(true);
             }
@@ -111,7 +146,7 @@ export function LicenseOnboarding({ children, onAccessChange, onRecoveryChange, 
             window.clearTimeout(timeout);
             if (controller.current === request) { controller.current = null; setPending(false); }
         }
-    }, [user.username]);
+    }, [graceEnd, user.username]);
 
     useEffect(() => {
         void check();
@@ -124,7 +159,8 @@ export function LicenseOnboarding({ children, onAccessChange, onRecoveryChange, 
         // saate gore uygulanir; suresi dolan karar yenisi okunurken kullanilmaz.
         const returned = () => {
             void check();
-            setAccess(previous => previous?.allowed && previous.until * 1000 <= Date.now() ? { ...previous, allowed: null } : previous);
+            setAccess(previous => previous?.allowed && previous.until * 1000 <= Date.now()
+                && !((graceEnd(previous.until) ?? 0) > Date.now()) ? { ...previous, allowed: null } : previous);
         };
         const shown = () => { if (document.visibilityState === 'visible') returned(); };
         const locked = () => {
@@ -157,7 +193,7 @@ export function LicenseOnboarding({ children, onAccessChange, onRecoveryChange, 
             document.removeEventListener('visibilitychange', shown);
             window.removeEventListener('celikpanel:license-locked', locked);
         };
-    }, [check, user.username]);
+    }, [check, graceEnd, user.username]);
 
     useEffect(() => {
         if (!access?.allowed) return;
@@ -169,13 +205,28 @@ export function LicenseOnboarding({ children, onAccessChange, onRecoveryChange, 
         }, Math.min(2147483647, refreshDelay)) : undefined;
         // At the deadline the decision is no longer used. That is not a failed
         // check: a hidden tab is deliberately not refreshed, and it reads again
-        // when the owner returns to it.
-        const timer = window.setTimeout(() => {
+        // when the owner returns to it. While the followed update restarts the
+        // Panel, the decision lasts to the end of its restart window instead;
+        // the access is still read at its own deadline (and then every few
+        // seconds, below), so an answer ends the wait as soon as there is one.
+        // Izlenen guncelleme Paneli yeniden baslatirken karar, yeniden baslama
+        // penceresinin sonuna kadar surer; erisim yine kendi son aninda okunur.
+        const until = access.until * 1000;
+        const end = Math.max(until, systemUpdateAccessGraceEnd(restart, until, lostSince) ?? 0);
+        const lapse = () => {
             if (document.visibilityState === 'visible') void check();
             setAccess(previous => previous ? { ...previous, allowed: null } : null);
-        }, Math.min(2147483647, Math.max(0, access.until * 1000 - Date.now())));
-        return () => { window.clearTimeout(timer); window.clearTimeout(refreshTimer); };
-    }, [access, check]);
+        };
+        const delay = (at: number) => Math.min(2147483647, Math.max(0, at - Date.now()));
+        // Inside the window with the deadline already past, a gate that has not
+        // failed yet reads once now; one that has failed reads on its re-check.
+        const readAtUntil = end > until && (until > Date.now() || !failed);
+        const timer = end > until
+            ? (readAtUntil ? window.setTimeout(() => { if (document.visibilityState === 'visible') void check(); }, delay(until)) : undefined)
+            : window.setTimeout(lapse, delay(until));
+        const graceTimer = end > until ? window.setTimeout(lapse, delay(end)) : undefined;
+        return () => { window.clearTimeout(timer); window.clearTimeout(graceTimer); window.clearTimeout(refreshTimer); };
+    }, [access, check, restart, lostSince, failed]);
 
     const known = access?.owner === user.username ? access : null;
     const allowed = known?.allowed === true;
@@ -187,12 +238,24 @@ export function LicenseOnboarding({ children, onAccessChange, onRecoveryChange, 
     const unknown = !allowed && !denied && access !== null;
     // The first read of this identity has not answered yet (nothing is mounted).
     const quiet = useQuietRead(!failed && !known);
+    // A positive decision kept through the update's restart: nothing is drawn
+    // here, and the access is read again quietly until the Panel answers.
+    const restartQuiet = allowed && failed && restart !== null && (restart.lostSince !== null || lostSince !== null);
 
     useEffect(() => {
-        if (!unknown) return;
+        if (!unknown && !restartQuiet) return;
         const timer = window.setInterval(() => { if (document.visibilityState === 'visible') void check(); }, UNKNOWN_RECHECK_MS);
         return () => window.clearInterval(timer);
-    }, [unknown, check]);
+    }, [unknown, restartQuiet, check]);
+    // The update tracking reached the Panel again: read the access at once, so the
+    // decision is renewed before the restart window would end it.
+    const trackingLost = published?.lostSince ?? null;
+    const trackingLostBefore = useRef(trackingLost);
+    useEffect(() => {
+        const before = trackingLostBefore.current;
+        trackingLostBefore.current = trackingLost;
+        if (before !== null && trackingLost === null && failed && document.visibilityState === 'visible') void check();
+    }, [trackingLost, failed, check]);
 
     // Pause the root update overlay while activation owns the screen. This
     // changes browser tracking only; the server's running operation continues.
@@ -207,7 +270,7 @@ export function LicenseOnboarding({ children, onAccessChange, onRecoveryChange, 
         if (allowed && location.pathname === '/activate') navigate('/', { replace: true });
     }, [access, allowed, location.pathname, navigate, user.username]);
     if (allowed || held) return <AccessHold active={held} silent={suspended} cause={cause} checking={pending} user={user} onRetry={() => void check()}>
-        {allowed && failed && <div role="status" className="flex flex-wrap items-center justify-center gap-3 border-b border-border bg-surface px-4 py-3 text-sm text-fg">
+        {allowed && failed && !restartQuiet && <div role="status" className="flex flex-wrap items-center justify-center gap-3 border-b border-border bg-surface px-4 py-3 text-sm text-fg">
             <p className="max-w-prose">{t('license.connectionRetry')}</p>
             <Button variant="secondary" onClick={() => void check()}>{t('license.refresh')}</Button>
             <Button variant="secondary" onClick={() => window.location.reload()}>{t('common.reloadPage')}</Button>

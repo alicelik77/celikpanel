@@ -39,6 +39,7 @@ import {
     systemUpdateMutationLocked,
 } from '../lib/systemUpdateWatchdog';
 import { useSystemUpdateNavigationLease } from '../lib/useSystemUpdateNavigationLease';
+import { publishSystemUpdateRestart } from '../lib/systemUpdateRestartSignal';
 import {
     decodeSystemUpdatePhase,
     systemUpdateClockTime,
@@ -2002,6 +2003,20 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
         ...(restartOverdue ? { overdue: true } : {}),
     } : null;
     const trackingText = tracking ? systemUpdateTrackingText(tracking, view.message, t) : null;
+    // The licence gate keeps its last positive decision through this update's
+    // planned restart (set17 D1, lib/systemUpdateRestartSignal.ts): published
+    // once the server has said the followed request is active, with the first
+    // lost read of the current outage. Nothing is published for an update whose
+    // outcome is known, or before the server has said it is active.
+    const followedMemory = followed ? readMemory(followed.request_id) : null;
+    const restartRequestID = followed && followedMemory?.lastKnownActive ? followed.request_id : null;
+    const restartStartedAt = followed ? followed.created_at : null;
+    const restartLostSince = followedMemory?.lostSince ?? null;
+    useEffect(() => {
+        publishSystemUpdateRestart(restartRequestID === null || restartStartedAt === null ? null
+            : { requestID: restartRequestID, startedAt: restartStartedAt, lostSince: restartLostSince });
+    }, [restartRequestID, restartStartedAt, restartLostSince]);
+    useEffect(() => () => publishSystemUpdateRestart(null), []);
     const title = failureGuidance
         ? outcomeText(failureGuidance.title)
         : terminalKind === 'succeeded'

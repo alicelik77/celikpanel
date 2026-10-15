@@ -86,6 +86,8 @@ const eagerModules = [
   'src/lib/systemUpdateLease.ts',
   'src/lib/systemUpdateWatchdog.ts',
   'src/lib/useSystemUpdateNavigationLease.ts',
+  'src/lib/systemUpdateRestartSignal.ts',
+  'src/lib/systemUpdateTracking.ts',
   'src/lib/panelUpdateAdmission.ts',
   'src/components/BrandMark.tsx',
   'src/components/Login.tsx',

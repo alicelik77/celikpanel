@@ -38,6 +38,14 @@ const stub = dataModule(`
   // The first-read quiet time and the update hint have their own tests (access-hold-runtime).
   export const useQuietRead = () => false, savedUpdateUnfinished = () => false, UPDATE_MARKER_KEY = 'celikpanel.system-update-operation.v1';
 `);
+// The followed update's restart signal and its window are the real ones (set17 D1).
+const compileTs = path => ts.transpileModule(readFileSync(new URL(path, import.meta.url), 'utf8'), {compilerOptions:{module:ts.ModuleKind.ES2022,target:ts.ScriptTarget.ES2020}}).outputText;
+const trackingURL = dataModule(compileTs('../src/lib/systemUpdateTracking.ts'));
+const restartURL = dataModule(compileTs('../src/lib/systemUpdateRestartSignal.ts')
+  .replace(/from ['"]react['"]/, `from '${reactURL}'`).replace(/from ['"]\.\/systemUpdateTracking['"]/, `from '${trackingURL}'`));
+const watchdogURL = dataModule(compileTs('../src/lib/systemUpdateWatchdog.ts'));
+const leaseURL = dataModule(compileTs('../src/lib/useSystemUpdateNavigationLease.ts')
+  .replace(/from ['"]react['"]/, `from '${reactURL}'`).replace(/from ['"]\.\/systemUpdateWatchdog['"]/, `from '${watchdogURL}'`));
 const holdURL = dataModule(`import React from '${reactURL}';\n` + ts.transpileModule(readFileSync(new URL('../src/components/AccessHold.tsx', import.meta.url), 'utf8'), { compilerOptions: {
   jsx: ts.JsxEmit.React, module: ts.ModuleKind.ES2022, target: ts.ScriptTarget.ES2020,
 }}).outputText.replace(/from ['"]([^'"]+)['"]/g, (_, specifier) => `from '${specifier === 'react' ? reactURL : stub}'`));
@@ -45,7 +53,7 @@ async function component(name) {
   const source = readFileSync(new URL(`../src/components/${name}.tsx`, import.meta.url), 'utf8');
   const compiled = ts.transpileModule(source, { compilerOptions: {
     jsx: ts.JsxEmit.React, module: ts.ModuleKind.ES2022, target: ts.ScriptTarget.ES2020,
-  }}).outputText.replace(/import\('\.\/LicenseLockScreen'\)/g, `import('${stub}')`).replace(/from ['"]([^'"]+)['"]/g, (_, specifier) => `from '${specifier === 'react' ? reactURL : specifier.endsWith('/accessObservation') ? accessURL : specifier.endsWith('/AccessHold') ? holdURL : stub}'`);
+  }}).outputText.replace(/import\('\.\/LicenseLockScreen'\)/g, `import('${stub}')`).replace(/from ['"]([^'"]+)['"]/g, (_, specifier) => `from '${specifier === 'react' ? reactURL : specifier.endsWith('/accessObservation') ? accessURL : specifier.endsWith('/AccessHold') ? holdURL : specifier.endsWith('/systemUpdateRestartSignal') ? restartURL : stub}'`);
   return (await import(dataModule(`import React from '${reactURL}';\n${compiled}`)))[name];
 }
 const LicenseOnboarding = await component('LicenseOnboarding');
@@ -414,4 +422,220 @@ test('the server-stated time left decides access whatever the two clocks say; wi
    }
   } finally {window.setTimeout=previousTimer;await cleanup()}
  }
+});
+
+// Native record set17, defect D1 (2026-10-15): during a real update's restart,
+// once the outage outlasted the access validity of the last good access read,
+// the gate drew "The Panel is not answering; an update may be restarting it"
+// over the update's calm restart, and the observation recovery it raised paused
+// the update tracking, which released the update's navigation lock for good.
+// While the followed update restarts the Panel (its own window, the same bound as
+// the calm notice), a read that got no answer keeps the last positive decision,
+// nothing is drawn, and the access is read again quietly; after the window the
+// honest dialog appears. The browser's clock only: valid_for_seconds from the
+// moment of asking, plus the update's window.
+//
+// set17 D1: guncellemenin yeniden baslamasinda lisans kapisi kendi penceresini
+// aciyor ve guncellemenin gezinme kilidini birakiyordu. Pencere icinde son olumlu
+// karar korunur, bir sey cizilmez, erisim sessizce yeniden okunur.
+const restartSignal = await import(restartURL);
+const { useSystemUpdateNavigationLease } = await import(leaseURL);
+const settle = async () => { for (let i = 0; i < 4; i++) await new Promise(done => setImmediate(done)); };
+function fakeTime(start) {
+ const saved = { setTimeout: window.setTimeout, clearTimeout: window.clearTimeout, setInterval: window.setInterval, clearInterval: window.clearInterval, now: Date.now };
+ let now = start, next = 1; const tasks = new Map();
+ window.setTimeout = (fn, delay = 0) => { const id = next++; tasks.set(id, { at: now + Math.max(0, Number(delay) || 0), fn, every: 0 }); return id; };
+ window.setInterval = (fn, delay = 0) => { const id = next++; tasks.set(id, { at: now + delay, fn, every: Math.max(1, delay) }); return id; };
+ window.clearTimeout = window.clearInterval = id => { tasks.delete(id); };
+ Date.now = () => now;
+ return {
+  async advance(ms) {
+   const target = now + ms;
+   for (;;) {
+    let due = null;
+    for (const [id, task] of tasks) if (task.at <= target && (!due || task.at < due[1].at)) due = [id, task];
+    if (!due) break;
+    const [id, task] = due;
+    now = task.at;
+    if (task.every) task.at += task.every; else tasks.delete(id);
+    await act(async () => { task.fn(); await settle(); });
+   }
+   now = target;
+   await act(settle);
+  },
+  restore() { Object.assign(window, { setTimeout: saved.setTimeout, clearTimeout: saved.clearTimeout, setInterval: saved.setInterval, clearInterval: saved.clearInterval }); Date.now = saved.now; },
+ };
+}
+// The lab's figures: 45 s of access validity, an update started 20 s before the
+// page opened, the Panel down from T+20 s to T+90 s.
+const VALID_FOR = 45;
+function restartFixture(start, { startedAt = start - 20000 } = {}) {
+ fixture('admin', 'active');
+ const reads = [];
+ let down = false;
+ globalThis.fetch = async url => {
+  reads.push(Date.now() - start);
+  if (down) throw new TypeError('Failed to fetch');
+  return Response.json({ can_use_panel: true, state: 'active', observation: 'known', valid_until: Math.floor(Date.now() / 1000) + VALID_FOR, valid_for_seconds: VALID_FOR });
+ };
+ const recoveries = [];
+ let mounts = 0;
+ function Management() { React.useEffect(() => { mounts++; }, []); return React.createElement('main', null, 'management'); }
+ return {
+  reads, recoveries, startedAt,
+  get mounts() { return mounts; },
+  setDown(value) { down = value; },
+  async publish(lostSince) { await act(async () => restartSignal.publishSystemUpdateRestart({ requestID: 'a'.repeat(32), startedAt, lostSince })); },
+  element: (Gate = LicenseOnboarding, extra = {}) => React.createElement(Gate, { onRecoveryChange: value => recoveries.push(value), ...extra }, React.createElement(Management)),
+ };
+}
+const banner = () => tree.root.findAll(node => node.type === 'div' && node.props.role === 'status');
+async function endRestart() { await act(async () => restartSignal.publishSystemUpdateRestart(null)); }
+
+test('set17 D1: inside the update restart an expired access validity draws nothing, keeps the decision and reads on quietly', async () => {
+ const start = Date.now();
+ const clock = fakeTime(start);
+ const lab = restartFixture(start);
+ try {
+  await lab.publish(null);
+  await act(async () => { tree = Renderer.create(lab.element()); await settle(); });
+  assert.equal(tree.root.findAllByType('main').length, 1);
+  await clock.advance(20000);
+  lab.setDown(true);
+  // The update tracking's first lost read (T+25.6 s in set17 run a).
+  await clock.advance(5600);
+  await lab.publish(start + 25600);
+  // Past the access validity (45 s) and well into the outage.
+  await clock.advance(64400);
+  assert.equal(tree.root.findAllByType('main').length, 1, 'the page stays mounted');
+  assert.equal(heldPages().length, 0, 'the update overlay owns the screen; the gate adds no hold');
+  assert.equal(holdLayer().length, 0, 'no "The Panel is not answering" dialog');
+  assert.equal(tree.root.findAllByType('aside').length, 0);
+  assert.equal(banner().length, 0, 'no connection banner either');
+  assert.ok(!lab.recoveries.includes(true), 'no observation recovery, so the update tracking is never paused');
+  const during = lab.reads.filter(at => at > 20000);
+  assert.ok(during.length >= 10, `the access is read again by itself during the outage: ${during}`);
+  // The 5-second re-check, the read at the access deadline and the regular
+  // 60-second check may meet in one moment; never more often than that.
+  const moments = [...new Set(during)];
+  assert.ok(moments.every((at, index) => index === 0 || at - moments[index - 1] >= 5000), `not more often than the re-check: ${during}`);
+  assert.ok(during.length <= moments.length + 2, `at most the two coinciding timers: ${during}`);
+  // Reconnection: the update tracking reads the Panel again; the gate reads at once.
+  lab.setDown(false);
+  const before = lab.reads.length;
+  await lab.publish(null);
+  assert.equal(lab.reads.length, before + 1, 'one read at once when the update reached the Panel again');
+  await clock.advance(2000);
+  assert.equal(tree.root.findAllByType('main').length, 1);
+  assert.equal(holdLayer().length, 0);
+  assert.equal(banner().length, 0);
+  assert.equal(lab.mounts, 1, 'the page was never rebuilt');
+  assert.ok(!lab.recoveries.includes(true));
+ } finally { await endRestart(); clock.restore(); await cleanup(); }
+});
+
+test('set17 D1: without a followed update a lost read past the access validity is explained as before', async () => {
+ const start = Date.now();
+ const clock = fakeTime(start);
+ const lab = restartFixture(start);
+ try {
+  await act(async () => { tree = Renderer.create(lab.element()); await settle(); });
+  await clock.advance(20000);
+  lab.setDown(true);
+  await clock.advance(24000);
+  assert.equal(holdLayer().length, 0, 'inside the access validity nothing is drawn');
+  await clock.advance(3000);
+  assert.equal(heldPages().length, 1, 'past it the pages are held');
+  assert.equal(holdLayer().length, 1, 'and the gate explains it');
+  assert.ok(lab.recoveries.includes(true), 'the observation recovery is raised as before');
+ } finally { await endRestart(); clock.restore(); await cleanup(); }
+});
+
+test('set17 D1: the decision is kept to the end of the update restart window, then the honest dialog appears', async () => {
+ // The window is the calm notice's: 6 minutes from the start, at least 2 minutes
+ // from the first lost read. Access validity ends at T+45 s in both cases.
+ const cases = [
+  { name: 'started at T-20 s: 6 minutes from the start', startedAt: -20000, end: 340000 },
+  { name: 'started at T-5 min 30 s: 2 minutes from the lost read at T+20 s', startedAt: -330000, end: 140000 },
+ ];
+ for (const item of cases) {
+  const start = Date.now();
+  const clock = fakeTime(start);
+  const lab = restartFixture(start, { startedAt: start + item.startedAt });
+  try {
+   await lab.publish(null);
+   await act(async () => { tree = Renderer.create(lab.element()); await settle(); });
+   await clock.advance(20000);
+   lab.setDown(true);
+   await lab.publish(start + 20000);
+   await clock.advance(item.end - 22000);
+   assert.equal(holdLayer().length, 0, `${item.name}: 2 s before the end, still the update restart`);
+   assert.ok(!lab.recoveries.includes(true), item.name);
+   await clock.advance(4000);
+   assert.equal(heldPages().length, 1, `${item.name}: 2 s after the end, the window is over`);
+   assert.equal(holdLayer().length, 1, item.name);
+   assert.ok(lab.recoveries.includes(true), item.name);
+  } finally { await endRestart(); clock.restore(); await cleanup(); }
+ }
+});
+
+test('set17 D1: an answer from the Panel is applied during the restart; a known negative is not kept', async () => {
+ const start = Date.now();
+ const clock = fakeTime(start);
+ const lab = restartFixture(start);
+ try {
+  await lab.publish(null);
+  await act(async () => { tree = Renderer.create(lab.element()); await settle(); });
+  await clock.advance(20000);
+  lab.setDown(true);
+  await lab.publish(start + 20000);
+  await clock.advance(30000);
+  assert.equal(holdLayer().length, 0);
+  globalThis.fetch = async () => Response.json({ can_use_panel: false, state: 'expired', observation: 'known', valid_until: 0 });
+  await clock.advance(5000);
+  assert.equal(tree.root.findAllByType('main').length, 0, 'a known negative replaces the page as before');
+  assert.equal(navigations.at(-1)?.[0], '/activate');
+ } finally { await endRestart(); clock.restore(); await cleanup(); }
+});
+
+// The update's navigation lock (2 minutes from its start) is released for good
+// once the update tracking is paused; App pauses it while the gate raises its
+// observation recovery (publishSystemUpdateAuthentication). The harness wires
+// the gate to the real lease the way App and the provider do.
+test('set17 D1: the update navigation lock survives the restart and is still held after reconnection', async () => {
+ const start = Date.now();
+ const clock = fakeTime(start);
+ const lab = restartFixture(start);
+ const values = new Map();
+ const runtime = {
+  now: () => Date.now(), monotonicNow: () => Date.now(),
+  schedule: (fn, delay) => window.setTimeout(fn, delay), cancel: id => window.clearTimeout(id),
+  storage: { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, value), removeItem: key => values.delete(key), key: () => null, length: 0 },
+  subscribe: () => () => {}, subscribeWake: () => () => {},
+ };
+ const lease = [];
+ function Harness() {
+  const [recovering, setRecovering] = React.useState(false);
+  const state = useSystemUpdateNavigationLease('a'.repeat(32), lab.startedAt, !recovering, runtime);
+  lease.push(state.blocked);
+  return lab.element(LicenseOnboarding, { onRecoveryChange: value => { lab.recoveries.push(value); setRecovering(value); } });
+ }
+ try {
+  await lab.publish(null);
+  await act(async () => { tree = Renderer.create(React.createElement(Harness)); await settle(); });
+  assert.equal(lease.at(-1), true, 'the lock is held while the update runs');
+  await clock.advance(20000);
+  lab.setDown(true);
+  await lab.publish(start + 25600);
+  await clock.advance(70000);
+  assert.equal(lease.at(-1), true, 'T+90 s: the lock is still held through the outage');
+  lab.setDown(false);
+  await lab.publish(null);
+  await clock.advance(5000);
+  assert.equal(lease.at(-1), true, 'after reconnection the lock is the one held before the outage');
+  assert.ok(!lease.includes(false), 'it was never released on the way');
+  // Its own 2-minute bound still ends it (T-20 s + 120 s).
+  await clock.advance(10000);
+  assert.equal(lease.at(-1), false, 'the bounded lease ends by itself as before');
+ } finally { await endRestart(); clock.restore(); await cleanup(); }
 });
