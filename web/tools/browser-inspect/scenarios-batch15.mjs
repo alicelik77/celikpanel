@@ -6,11 +6,16 @@
 // reconnection (deploy/e2e/release-recovery/evidence/set17-20261015, "Defect
 // D1"; debian13/upd86-good-a/browser/page/state-05-viewport.png).
 //
-//   d1restart   an update this browser started (its stored record, 2 s old,
+//   d1restart   an update this browser started (its stored record, 40 s old,
 //               inside the two-minute navigation lock), the access answer
 //               valid for 45 s, then the Panel down for 90 s (every API
 //               request dropped), then the Panel back on the new version:
-//               "verifying", then "succeeded" and the page's own reload
+//               "verifying", then "succeeded" and the page's own reload.
+//               Since set17b F1 (2026-10-15) the record is 40 s old so that
+//               the outage (about T+45 s to T+135 s) crosses the two-minute
+//               lease: the lock state is recorded at 60 s and 88 s of outage
+//               (about T+105 s and T+133 s) and after reconnection, where the
+//               lock ends because the tracking reached the Panel again
 //
 //   d1starting  the open item of D1 (2026-10-15): the same update, the Panel
 //               down for 25 s, then answering for 20 s with its management
@@ -53,6 +58,14 @@ const facts = page => page.evaluate(() => {
         sidebarVersion: (document.body.innerText.match(/v0\.1\.0-alpha\.\d+/g) || []).slice(-1)[0] ?? null,
         reloaded: location.search.includes('_cp_update'),
         pageOverflowX: document.documentElement.scrollWidth > window.innerWidth,
+        // The update's navigation lock (set17b F1): its full-page dialog with
+        // the lock line, and the application behind it made inert.
+        navigationLock: {
+            dialog: visible(update),
+            lockLine: visible(update) && /Navigation is temporarily locked|gezinme geçici olarak kilitlidir/i.test(update.innerText),
+            applicationInert: !!document.querySelector('[inert][aria-busy="true"]'),
+            elapsed: (update?.innerText.match(/T\+\s*([0-9:]+)/) || [])[1] ?? null,
+        },
     };
 });
 
@@ -68,7 +81,7 @@ export default function batch15(scenarios, { base, locale, theme, out, viewport,
         await reset();
         await ctl({ clearAll: true });
         await ctl({ validity: 45, update: { request_id: UPDATE_ID, status: 'running', target: TARGET } });
-        const page = await newPage(followed(2_000));
+        const page = await newPage(followed(40_000));
         await page.goto(`${base}/settings?section=updates`, { waitUntil: 'domcontentloaded' });
         await waitFor(page, () => !!document.querySelector('[aria-labelledby="system-update-operation-title"]'), 20000).catch(() => {});
         await pause(2500);
@@ -80,10 +93,15 @@ export default function batch15(scenarios, { base, locale, theme, out, viewport,
         await pause(Math.max(0, 88_000 - (Date.now() - down)));
         await snap(page, 'outage-88s', { outageSeconds: Math.round((Date.now() - down) / 1000) });
         await pause(Math.max(0, 90_000 - (Date.now() - down)));
-        // The Panel answers again, already the new version: "verifying".
+        // The Panel answers again, already the new version: "verifying". Past
+        // the two-minute lease the lock ends here (set17b F1); inside it the
+        // dialog says "verifying" with the lock still on.
         await ctl({ mode: 'ok', update: { request_id: UPDATE_ID, status: 'running', target: TARGET, phase: 'verifying' }, override: installed });
-        await waitFor(page, () => /alpha\.86/.test(document.querySelector('[aria-labelledby="system-update-operation-title"]')?.innerText || '')
-            && !/restart|yeniden başl/i.test(document.querySelector('[aria-labelledby="system-update-operation-title"]')?.innerText || ''), 20000).catch(() => {});
+        await waitFor(page, () => {
+            const dialog = document.querySelector('[aria-labelledby="system-update-operation-title"]');
+            if (!dialog) return /verif|doğrula/i.test(document.body.innerText);
+            return /alpha\.86/.test(dialog.innerText) && !/restart|yeniden başl/i.test(dialog.innerText);
+        }, 20000).catch(() => {});
         await pause(1500);
         await snap(page, 'reconnected', { secondsSinceDown: Math.round((Date.now() - down) / 1000) });
         // The update completes: the page reloads once on the new version.

@@ -7582,7 +7582,7 @@ Yeniden başlaması başlangıcından itibaren 6 dakikayı aşan gerçek bir gü
 hâlâ olağanken bilinmiyor metnini gösterir.
 
 **Bu adayda ayrıca (2026-10-15).** Alpha.85 notlarının açık kalemlerinden on beş
-ve adayın kendi yerel kaydından bir (16. kalem) küçük düzeltme; her birinin testleri önceki kaynağa karşı başarısız olur. Şema,
+ve adayın kendi yerel kayıtlarından iki (16. ve 17. kalem) küçük düzeltme; her birinin testleri önceki kaynağa karşı başarısız olur. Şema,
 defter ya da sürüm geçişi yok; hiçbir şey yerel çalıştırmada ya da kurulu bir
 sunucuda ölçülmedi; hiçbir P0 işi kapanmaz ya da ilerlemez.
 
@@ -7828,5 +7828,70 @@ başarısız (WSL konuğu `CelikPanel-S2-Debian`). Agent yeniden koşulmadı.
     `AUTH_STATUS_UNAVAILABLE` yanıtı oturumu yine hemen işaretler. Yerel
     çalıştırmada ya da kurulu sunucuda ölçülmedi.
 
-16. kalemden sonraki sayılar: `npm test` 1475/1475; `npx tsc --noEmit` temiz;
+17. **Güncellemenin kendi yeniden başlamasında gezinme kilidi** (set17b F1;
+    `deploy/e2e/release-recovery/evidence/set17b-20261015/README.md` içinde
+    "F1", ekran görüntüsü
+    `debian13/upd86-good-a/browser/page/state-06-viewport.png`; o kayıt
+    yazıldığı gibi kalır). İki aday koşusunda güncellemenin gezinme kilidi (tam
+    sayfa penceresi) iki dakikalık kirasıyla (`SYSTEM_UPDATE_BLOCKING_DEADLINE_MS`)
+    T+120,3 s ve T+120,5 s'de bitti; Panel 82 s ve 73 s daha kapalıydı
+    (yeniden bağlantı T+202,8 s ve T+193,6 s). Sahibin kararı (2026-10-15):
+    güncellemenin yeniden başlama sinyali etkinken kilit yeniden başlamayı
+    kapsar. Artık güncelleme izlemesi, iki dakikalık kira bitmeden izlenen
+    güncellemenin okumasını kaybettiyse (ve sunucu güncellemenin etkin
+    olduğunu söylemişse), hâlâ tutulan kilit, izleme Panele yeniden ulaşıp
+    güncellemenin kaydını okuyana ya da güncellemenin yeniden başlama penceresi
+    (başlangıçtan 6 dakika, ilk kayıp okumadan en az 2 dakika) bitene kadar
+    sürer; hangisi önce gelirse (`lib/systemUpdateWatchdog.ts` içinde
+    `systemUpdateNavigationDeadline`, `lib/systemUpdateRestartSignal.ts` içinde
+    `systemUpdateNavigationRestart`; sağlayıcı yayımladığı yeniden başlama
+    sinyalini kendi tam isteği için `useSystemUpdateNavigationLease` kancasına
+    verir). Sınırlar: başlangıçtan 6 dakikayı hiç aşmaz; iki dakikalık kiranın
+    bittiği anda ya da sonra kaybedilen okuma hiçbir şeyi uzatmaz; bırakılan
+    kilit hiç yeniden açılmaz; artık istenmeyen kilit yine kalıcı olarak
+    bırakılır; son an güncelleme başına bir kez sabitlenen tekdüze bir
+    dayanakla ölçülür, duvar saatinin geri alınması kilidi uzatamaz. Yeniden
+    başlama yoksa iki dakikalık kira değişmez. Buradaki yeniden bağlantı,
+    güncellemenin kaydının yanıtlanan ilk okumasıdır (doğrulanıyor, çalışıyor,
+    bir sonuç ya da bulunamadı); kilit sonucun kendisini beklemez. Tek metin
+    değişti, iki dakika vaat eden kilit satırı (`panelUpdate.interactionLocked`):
+    "Bu güncelleme denetlenirken gezinme geçici olarak kilitlidir. İki dakika
+    sonra kendiliğinden açılır; panel o sırada hâlâ yeniden başlıyorsa yeniden
+    yanıt verdiğinde, en geç başlangıçtan altı dakika sonra açılır. İşlem arka
+    planda izlenmeye devam eder." / "Navigation is temporarily locked while this
+    update is checked. It unlocks by itself after two minutes; if the panel is
+    still restarting then, once it answers again, at the latest six minutes
+    after the start. Tracking continues." Testler:
+    `tests/system-update-navigation-lease-mounted.test.mjs` içinde sağlayıcının
+    bağladığı gibi bağlanmış (gerçek yeniden başlama sinyali, seçicisi ve kira)
+    denetimli saatli yedi test: T+25 s'de başlayan kesintide kilit T+121 s ve
+    T+193 s'de tutulur, yeniden bağlantıda kalıcı olarak bırakılır ve ikinci
+    bir kesinti onu açmaz; yeniden bağlantı olmadan T+360 s'de ve kısılmış
+    sekmede uyanınca bırakılır; yeniden başlama yoksa iki dakikalık kira
+    değişmez (sinyal yok, okumalar yanıtlanıyor, başka istek, başka başlangıç,
+    kiradan sonra başlayan yeniden başlama, geciken zamanlayıcıdan sonra kayıp
+    okuma); pencere içinde artık istenmeyince kalıcı olarak bırakılır; yeniden
+    bağlantıda duvar saati 150 s geri alınır; denetim (yeniden başlama
+    verilmez, yani önceki kira) kesintinin ortasında T+120 s'de biter; son an
+    işlevinin sınırları. Üçü önceki kiraya karşı başarısız olur; değişmeyen
+    kira, denetim ve saat testi ikisinde de geçer.
+    `tests/update-restart-notice-mounted.test.mjs` içinde sağlayıcının
+    bağlantısı ve kilit satırı için bir test;
+    `tests/panel-update-ui-contract.test.mjs` içinde satırın sınırları;
+    `tests/license-onboarding-runtime.test.mjs` düzeneğindeki kira artık
+    sağlayıcının bağladığı gibi bağlanır (sonuç değişmedi). Tarayıcı incelemesi
+    15. grup (`d1restart`; güncellemenin kaydı artık 40 s eski, böylece
+    yaklaşık T+45 s ile T+135 s arasındaki 90 saniyelik kesinti iki dakikalık
+    kirayı aşar; kilidin durumu kaydedilir), EN/TR, açık/koyu, 1280 ve 390:
+    kesintinin 60. (T+01:43) ve 88. saniyesinde (T+02:11) kilit satırıyla
+    güncellemenin sakin yeniden başlama penceresi ve etkisizleştirilmiş
+    uygulama; kapı penceresi, tutulan sayfa, uyarı işareti, bağlantı şeridi,
+    yatay taşma yok; yeniden bağlantıdan sonra (T+02:16) pencere yok, uygulama
+    etkisiz değil, kart "doğrulanıyor"; ardından yeni sürüm; sekizinde de.
+    Yerel çalıştırmada ya da kurulu sunucuda ölçülmedi. Hâlâ açık: 16. kalemin,
+    kilit bitip pencere bitmeden sahibin açtığı sayfalarla ilgili notu artık
+    yalnız iki dakikalık kiradan sonra başlayan bir yeniden başlama ya da
+    yeniden bağlantı ile güncellemenin sonucu arasındaki süre için geçerlidir.
+
+17. kalemden sonraki sayılar: `npm test` 1483/1483; `npx tsc --noEmit` temiz;
 `npm run build` paket bütçesiyle geçer. Yalnız web; Go yeniden koşulmadı.

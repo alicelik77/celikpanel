@@ -7611,8 +7611,8 @@ restart outlasts 6 minutes from its start would show the unknown wording while
 still being normal.
 
 **Also in this candidate (2026-10-15).** Fifteen smaller corrections from the
-open items of the alpha.85 notes and one from the candidate's own native record
-(item 16), each with tests that fail against the previous source. No schema, ledger or version transition; nothing was measured
+open items of the alpha.85 notes and two from the candidate's own native records
+(items 16 and 17), each with tests that fail against the previous source. No schema, ledger or version transition; nothing was measured
 natively or on an installed server; no P0 item is closed or advanced.
 
 1. **The page's language attribute** (set16 O1). The i18n provider sets
@@ -7860,5 +7860,68 @@ guest `CelikPanel-S2-Debian`). The Agent was not run again.
     an `AUTH_STATUS_UNAVAILABLE` answer still marks the session at once. Not
     measured natively or on an installed server.
 
-Counts after item 16: `npm test` 1475 of 1475; `npx tsc --noEmit` clean;
+17. **The navigation lock through the update's own restart** (set17b F1;
+    recorded in `deploy/e2e/release-recovery/evidence/set17b-20261015/README.md`,
+    "F1", screenshot `debian13/upd86-good-a/browser/page/state-06-viewport.png`;
+    that record stays as it was written). In both candidate runs the update's
+    navigation lock (its full-page dialog) ended at T+120.3 s and T+120.5 s by
+    its two-minute lease (`SYSTEM_UPDATE_BLOCKING_DEADLINE_MS`), while the
+    Panel was down for another 82 s and 73 s (reconnection at T+202.8 s and
+    T+193.6 s). Owner's decision (2026-10-15): while the update's restart
+    signal is active, the lock covers the restart. Now, when the update
+    tracking has lost its read of the followed update before the two-minute
+    lease ends (and the server had said the update is active), a lock that is
+    still held is kept until the tracking reaches the Panel again and reads the
+    update's record, or until the update's restart window ends (6 minutes from
+    the start, at least 2 minutes from the first lost read), whichever comes
+    first (`systemUpdateNavigationDeadline` in `lib/systemUpdateWatchdog.ts`,
+    `systemUpdateNavigationRestart` in `lib/systemUpdateRestartSignal.ts`; the
+    provider passes the restart signal it publishes, for its exact request, to
+    `useSystemUpdateNavigationLease`). Bounds: never past 6 minutes from the
+    start; a lost read at or after the two-minute lease extends nothing; a
+    released lock is never re-opened; a lock that is no longer requested is
+    still released for good; the deadline is measured against a monotonic
+    anchor fixed once per update, so a wall-clock step back cannot lengthen it.
+    Without a restart the two-minute lease is unchanged. Reconnection here is
+    the first read of the update's record that is answered (verifying, running,
+    an outcome, or not found); the lock does not wait for the outcome itself.
+    One string changed, the lock line (`panelUpdate.interactionLocked`), which
+    promised two minutes: "Navigation is temporarily locked while this update
+    is checked. It unlocks by itself after two minutes; if the panel is still
+    restarting then, once it answers again, at the latest six minutes after the
+    start. Tracking continues." / "Bu güncelleme denetlenirken gezinme geçici
+    olarak kilitlidir. İki dakika sonra kendiliğinden açılır; panel o sırada
+    hâlâ yeniden başlıyorsa yeniden yanıt verdiğinde, en geç başlangıçtan altı
+    dakika sonra açılır. İşlem arka planda izlenmeye devam eder." Tests:
+    `tests/system-update-navigation-lease-mounted.test.mjs`, seven mounted tests
+    with a controlled clock wired as the provider wires them (the real restart
+    signal, its selector and the lease): the lock held at T+121 s and T+193 s
+    through an outage that began at T+25 s, released for good at reconnection
+    and not re-opened by a second outage; released at T+360 s without
+    reconnection, and on wake in a throttled tab; the two-minute lease
+    unchanged without a restart (no signal, reads answering, another request,
+    another start, a restart after the lease, a lost read after a late timer);
+    released for good when no longer requested inside the window; a wall-clock
+    step back of 150 s at reconnection; the control (the restart withheld,
+    which is the previous lease) ending at T+120 s mid-outage; the deadline
+    function's bounds. Three fail against the previous lease; the unchanged
+    lease, the control and the clock test pass on both.
+    `tests/update-restart-notice-mounted.test.mjs`, one for the provider's
+    wiring and the lock line; `tests/panel-update-ui-contract.test.mjs`, the
+    line's bounds; `tests/license-onboarding-runtime.test.mjs` now wires its
+    harness lease as the provider does (unchanged result). Browser inspection
+    batch 15 (`d1restart`, now with the update's record 40 s old so that the
+    90-second outage, about T+45 s to T+135 s, crosses the two-minute lease, and
+    the lock's state recorded), EN/TR, light/dark, 1280 and 390: at 60 s of
+    outage (T+01:43) and 88 s (T+02:11) the update's calm restart dialog with
+    the lock line and the application made inert, no gate dialog, no held
+    pages, no warning mark, no connection banner, no horizontal overflow; after
+    reconnection (T+02:16) no dialog and no inert application, the card "being
+    verified"; then the new version, in all eight. Not measured natively or on
+    an installed server. Still open: the item 16 note about pages the owner
+    opens after the lock has ended and before the window has, now only for a
+    restart that begins after the two-minute lease or for the time between
+    reconnection and the update's outcome.
+
+Counts after item 17: `npm test` 1483 of 1483; `npx tsc --noEmit` clean;
 `npm run build` passes with its bundle budget. Web only; Go not run again.
