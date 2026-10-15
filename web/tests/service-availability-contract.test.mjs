@@ -236,9 +236,12 @@ test('state refresh failure copy never claims the operation completed', () => {
   const turkishRefresh = turkish.match(/'err\.SERVICE_STATE_REFRESH_FAILED': '([^']+)'/)?.[1] ?? '';
 
   assert.match(englishRefresh, /operation outcome and current service state could not be verified/i);
-  assert.match(englishRefresh, /Run Rescan/);
   assert.doesNotMatch(englishRefresh, /completed|succeeded|removed/i);
   assert.match(turkishRefresh, /İşlemin sonucu ve servisin güncel durumu doğrulanamadı/);
-  assert.match(turkishRefresh, /Yeniden Tara/);
   assert.doesNotMatch(turkishRefresh, /tamamlandı|başarılı|kaldırıldı/i);
+  // D-032: no sentence tells the owner to run a button; the Panel checks again.
+  assert.doesNotMatch(englishRefresh, /rescan/i);
+  assert.match(englishRefresh, /checks the components again by itself/);
+  assert.doesNotMatch(turkishRefresh, /yeniden tara/i);
+  assert.match(turkishRefresh, /kendiliğinden yeniden denetler/);
 });
