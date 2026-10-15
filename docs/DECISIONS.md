@@ -125,6 +125,12 @@ follows this decision and D-032, and the text above is unchanged.
   own wording. The update card and the corner notice no longer say the same
   thing twice. The bound rests on two lab updates (set16) and that one owner
   observation.
+- Rules 1 and 3 after the native records set17 and set17b: inside the same
+  bound neither the licence gate nor the session gate replaces that progress
+  with its own hold (set17 D1), and the update's navigation lock covers the
+  restart while its restart signal is active, at the latest 6 minutes from
+  the start (set17b F1; the owner's decision of 2026-10-15, an application of
+  this rule, not a new decision).
 - The gap named under "What this does not authorise" is closed in source: the
   component install dialog's re-read and the setup page's reads now run only
   while the tab is visible (`web/src/lib/visibleReads.ts`), and every re-read
@@ -141,8 +147,11 @@ follows this decision and D-032, and the text above is unchanged.
   touched.
 
 Status of the note: in source with component tests and a mock browser
-(browser-inspection batches 13 and 14); no native record of the candidate when
-the note was written, and nothing measured on an installed server. The
+(browser-inspection batches 13 to 15). Native records set17 (at `313f3eea2`)
+and set17b (at `ecd2a5f08`) under `deploy/e2e/release-recovery/evidence/`
+measured the calm restart; the lock change made after them (`7265d3c99`) and
+the session gate's `PANEL_STARTING` path were not measured natively, and
+nothing was measured on an installed server. The
 [alpha.86 release notes](RELEASE-NOTES-v0.1.0-alpha.86.md) say which check rests
 on which code. No P0 item is closed or advanced.
 

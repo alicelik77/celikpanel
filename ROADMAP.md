@@ -99,7 +99,8 @@ publication the same day, and amended again that day for the read of the
 installed servers and the owner's report; the entry for
 v0.1.0-alpha.85 was added on 2026-10-15 as a candidate and amended for its
 publication the same day; the entry for v0.1.0-alpha.86 was added on
-2026-10-15 as a candidate). It changes no
+2026-10-15 as a candidate and amended the same day for the native records
+set17 and set17b). It changes no
 P0 status: P0.1–P0.5 are all still **partial**, and every open acceptance item
 above and below stays open.
 
@@ -996,24 +997,53 @@ above and below stays open.
   resolver behind the reverse DNS answer, `reverse_dns_resolver` and
   `reverse_dns_resolvers_disagree`), and `1f564fdb0`, `01861bfc9` and
   `e2853c873` (the Store's "State not known yet" and corrections from the
-  fourteenth browser batch). Besides: `a45c1bfcb` (browser batch 14; batch 13
-  is in `15d80851e`), `498dc49e1` (a lab test race, merged from `main`), and
+  fourteenth browser batch), and, after the native records, `e8aa9c5c0` (set17
+  D1: the licence gate keeps its last positive decision through the update's
+  restart), `b7b0f4766` (the session gate lets the update's restart own
+  `503 PANEL_STARTING`) and `7265d3c99` (set17b F1: the navigation lock covers
+  the restart, at the latest 6 minutes from the start; owner's decision of
+  2026-10-15), all three web only. Besides: `a45c1bfcb` (browser batch 14;
+  batch 13 is in `15d80851e`), `59e793b2b`, `389ce2831` and `155a984ea`
+  (browser batch 15), `4a29f4754`, `0bf1ee601` and `1f9495f7b` (the native
+  records set17 and set17b with their harness), `d72e4528a` (their intake
+  corrections), `498dc49e1` (a lab test race, merged from `main`), and
   documents. No schema change, no new route
   ([draft release notes](docs/RELEASE-NOTES-v0.1.0-alpha.86.md)).
-  - *Measured:* no native record of the candidate when this entry was written;
-    the pre-publication measurement is set17, whose figures are to be taken
-    from its README into the release notes before publication.
+  - *Measured:* two native records on earlier commits of the candidate,
+    QEMU/KVM guests with test-licence builds, not acceptance evidence:
+    [set17](deploy/e2e/release-recovery/evidence/set17-20261015/README.md) at
+    `313f3eea2` (fresh install on Debian 13; the update from alpha.85 good
+    and defective on Debian 13 and Ubuntu 24.04, `update_verified` and
+    `recovered`/`rollback_verified`, ledger `equal-except-volatile`; the
+    candidate's own update page twice) and
+    [set17b](deploy/e2e/release-recovery/evidence/set17b-20261015/README.md)
+    at `ecd2a5f08` (Debian 13; a restart outage of about 3 minutes made by a
+    lab delay, a lab change and not a product property). Outcome: the
+    candidate's update page showed the calm restart, with 0 samples of the
+    "not known" wording or the warning surface, in all five candidate runs
+    (two in set17, three in set17b), where alpha.85's page showed both in all
+    three control runs; set17 recorded D1 (the licence gate's dialog
+    over the restart in one of two runs), not reproduced in set17b's two runs
+    on a candidate carrying its fix (mechanism not established); set17b
+    recorded F1 (the lock ended at T+120 s mid-outage), changed afterwards in
+    `7265d3c99`, which is not measured natively. `PANEL_STARTING` never
+    reached the page; the 6-minute overdue wording was not produced. The
+    READMEs are the source of truth; the release notes summarise them.
   - *Component tests:* `go test -v ./cmd/panel/... ./internal/transport/...
     ./internal/auth/...` 1602 top-level tests passed, 6 skipped, 0 failed (at
     `8fe746582`, and again at `21f07e7a8` with the same counts);
     `go test ./cmd/agent/...` 1799 passed, 29 skipped, 0 failed under a clean
     mount namespace in the WSL guest (at `1abe1717d`; nothing the Agent builds
-    changed after it); `npm test` 1463 of 1463 (at `00138c530`, and again at
-    `313f3eea2`) and `npm run build` within budget; the three contract tests of
-    the release preparation pass. Browser batch 13: three states of the
-    restart notice in 8 configurations against the mock; batch 14: 23 states in
-    8 configurations, six defects corrected after it, and a seventh (the bundle
-    budget) found by `npm run build`.
+    changed after it); no Go file changed after `21f07e7a8`, so Go was not run
+    again after the web-only corrections; `npm test` 1463 of 1463 (at
+    `00138c530`, and again at `313f3eea2`), then 1483 of 1483 at `7265d3c99`
+    (and again at `155a984ea`), and `npm run build` within budget; the three
+    contract tests of the release preparation pass. Browser batch 13: three
+    states of the restart notice in 8 configurations against the mock; batch
+    14: 23 states in 8 configurations, six defects corrected after it, and a
+    seventh (the bundle budget) found by `npm run build`; batch 15: the
+    licence gate, the session gate's `PANEL_STARTING` and the lock through a
+    restart, in 8 configurations.
   - *Answered here from the alpha.85 list and the owner's report:* the
     problem-looking notice during the expected restart (c); the publishing
     script's `$PSScriptRoot` defect; the install dialog's and setup's reads not
@@ -1021,16 +1051,22 @@ above and below stays open.
     servers (h); templated text (`component_not_installable`, roles, "rescan"
     outside the mail profiles); the resolver that answered (in source; needs an
     Agent update). All in source with component tests; none measured natively.
-  - *Open before publication:* set17; the repository variable
+  - *Open before publication:* the repository variable
     `CELIKPANEL_RELEASE_SEQUENCE=86`; the CI run of the last head; merge, the
     run on the main commit, tag, the six signed assets and the portal
     publication (the release preparer's, under the owner's instruction of
-    2026-10-15). Done: the release preparation `313f3eea2`. Each installed
+    2026-10-15). Done: the release preparation `313f3eea2`; the
+    pre-publication measurement (set17 and set17b). Each installed
     panel is then updated by its owner from the panel's own update screen; no
     one else starts that.
-  - *Open, with this candidate's limits as the release notes list them:* no
-    native run yet; the 6-minute bound rests on two lab updates and one owner
-    observation, and the restart provider ran only in the mock browser; the new
+  - *Open, with this candidate's limits as the release notes list them:* the
+    native records measured `313f3eea2` and `ecd2a5f08`, so the F1 lock
+    extension of `7265d3c99` (the lock kept past two minutes until the panel
+    answers, and its changed line) is not measured natively; the session
+    gate's `PANEL_STARTING` path was not exercised natively; the 6-minute
+    overdue wording was not produced; Ubuntu 24.04 and Arch were not run in
+    set17b, Arch and a fresh Ubuntu install in neither; the 6-minute bound
+    rests on lab updates and one owner observation; the new
     update screen is seen only from the update after this one; the resolver
     sentence needs an Agent update; the audit log stores no actor kind; no
     installed server measured; and every limit of the alpha.85 release above
@@ -1077,7 +1113,7 @@ above and below stays open.
 | 6 | Release review of `v0.1.0-alpha.83` (see "Release state — October 10, 2026" above, the entry for this release). **Published 2026-10-11 (tag on `0447558e9`; CI on the tag 24 jobs, successful; six assets; portal published by the owner); both installed servers were updated to it by the owner on 2026-10-11, found serving its interface from outside on 2026-10-12, and shown on the owner's two screenshots of 2026-10-12 (recorded, with open parts); the number is v0.1.0-alpha.83 (owner decision of 2026-10-11); D-031 enters it.** Seven native records (the seventh to the thirteenth, 2026-10-10 and 2026-10-11, disposable guests, test-licence builds, updates from the tags' source rebuilt) measured the interfaces of alpha.81 and alpha.82 in a real Chrome, the first load and the access wait of the candidate, what v0.1.0-alpha.82 does with an owner's edit, the first part of D-031, its corrections, its second step (pool, application unit) with the update from alpha.82, and the corrections after that, on Debian 13, Ubuntu 24.04 and Arch except where a record says otherwise; the thirteenth ran on Debian 13 and Ubuntu 24.04 only. The changes made after the thirteenth record have component tests only. Done by the owner on 2026-10-11: the release sequence variable set to 83, the decision that the vendor publishing tools and two recovery scripts stay in the archive, merge, tag, portal publication; the six signed assets were produced by CI on the tag and checked (a read of the branch protection showed no rename of required checks was needed). Installed panels: not updated when the publication record was written on 2026-10-11; on 2026-10-12 a read from outside found both serving this release's interface, so the owner updated both from the panel's own update screen on 2026-10-11. The owner's two screenshots of 2026-10-12 show v0.1.0-alpha.83 in the sidebar of both (its build id wraps mid-word), a Dashboard on the first server, and on the second the setup page saying "Setup stopped: its plan was reopened" with the last step "Stopped" and none "In progress", its final check waiting for a reverse DNS (PTR) record only the owner can change. Not reported: the full-screen licence page during the restart, the update notice against the card, the momentary licence page on a direct load of the setup address, the update's verification result inside the panel, the Agent's version, the `postconf -n >/dev/null` output; both servers have no domains, so the site-file adoption of the first start had nothing to adopt there and the Domains row cannot be seen. No P0 item is closed or advanced; this is the owner's observation, not acceptance evidence. | The [release notes](docs/RELEASE-NOTES-v0.1.0-alpha.83.md) say which check rests on which code and list the limits; the records are under `deploy/e2e/release-recovery/evidence/`. Verify signed artifacts and recovery compatibility; only the user starts installed-panel updates. |
 | 7 | Release review of `v0.1.0-alpha.84` (see "Release state — October 10, 2026" above, the entry for this release). **Published 2026-10-13 (tag on `f0157e6c8`; CI on the tag 24 jobs, successful; six assets; portal published by the owner); both installed servers were updated to it by the owner on 2026-10-13 (still serving the interface build of v0.1.0-alpha.83 at a read from outside at 16:16 UTC; serving alpha.84's at 16:59 UTC) and shown on the owner's two screenshots of 2026-10-13 (recorded, with open parts); the number is v0.1.0-alpha.84 (owner decision of 2026-10-13); D-032 enters it.** The Dashboard's "System services" card checks the components by itself, the server states a scan's age and the time left on the licence, and an unreachable Agent is named. Four native records (the fourteenth to the seventeenth, 2026-10-12 and 2026-10-13, disposable guests, test-licence builds, real headless Chrome) measured it: the seventeenth, on the release commit itself, covered fresh installs on Debian 13 and Ubuntu 24.04 and the update from alpha.83 on Debian 13 only, and left two open items. Done by the owner on 2026-10-13: merge of #207 then #208, the release sequence variable set to 84, tag, portal publication; the six signed assets were produced by CI on the tag and checked. Process note: the tag was pushed while the CI run on the main commit was still in progress (it passed afterwards; the same tree had passed 24 of 24 on the pull request); (corrected 2026-10-14: the publishing job depends on the packaging job, which depends on every test and build job of the same run, so a tag's assets are published only after that run passed; the note about the order between the run on main and the tag stands). Installed panels: not updated when the publication record was written; on 2026-10-13 a read from outside found both serving this release's interface, so the owner updated both from the panel's own update screen. The owner's two screenshots show v0.1.0-alpha.84 in the sidebar of both (its build id still wraps mid-word), on the first server a Dashboard whose "System services" card reads "5 / 5 running / installed" with nothing pressed, and on the second the setup page unchanged from alpha.83, its final check waiting for a reverse DNS (PTR) record only the owner can change. Not reported: the update's verification result inside the panel, the Agent's version, the full-screen licence page during the update, the `postconf -n >/dev/null` output; both servers have no domains, so the D-031 question stays open on installed servers. No P0 item is closed or advanced; publication is not product acceptance, and this is the owner's observation and an outside read, not acceptance evidence. | The [release notes](docs/RELEASE-NOTES-v0.1.0-alpha.84.md) say which check rests on which code and list the limits; the records are under `deploy/e2e/release-recovery/evidence/`. Verify signed artifacts and recovery compatibility; only the user starts installed-panel updates. |
 | 8 | Release review of `v0.1.0-alpha.85` (see "Release state — October 10, 2026" above, the entry for this release). **Published 2026-10-15 (tag on `36c33c45`; CI on the tag 24 jobs, successful; six assets; portal published by the release preparer); installed panels not updated when the publication record was written, then updated by the owner from the panel's own update screen (report of 2026-10-15, recorded 09:58Z); the number v0.1.0-alpha.85 was chosen by the release preparer under the owner's standing instruction of 2026-10-13 (release preparation `5443fe055`, sequence 85 after 84); D-033 enters it.** The owner's rule of 2026-10-14 after the last setup step on the second installed server: a screen that makes the owner wait shows that it waits or says that nothing needs to be done, and ends with an honest "not known yet" after a bound. Setup finishes on the owner's passing check and names the reverse DNS wait; an audit of 37 waiting states changed 19 (16, then the 3 the owner decided the same day); O4–O6 of alpha.84, the Mail stacks card, typed mail profile sentences, the HSTS time left on the server's clock and the sidebar build id are corrected; the Agent asks the next resolver on a stale PTR. One native record (the eighteenth, set16, 2026-10-14, disposable guests, test-licence builds of a fixture commit, real headless Chrome) measured a fresh install on Debian 13 and the update from alpha.84 on Debian 13 and Ubuntu 24.04, good and defective (`update_verified`; `recovered` / `rollback_verified`; the ledger after the return `equal-except-volatile`, only `observed_at`). Not reached natively: "Finishing setup" and the update card's busy state. Done on 2026-10-15: pull request #210 squash-merged by the owner; the run on the main commit failed once on two jobs before any step ran (the download of `actions/setup-go@v6`), was re-run by the release preparer and succeeded, and only then was the tag pushed (the intended order was followed); the owner set the release sequence variable to 85 and pushed the tag; CI signed six assets; the assets and the portal package were checked from a download by the preparer; the preparer published the portal (the first invocation stopped at parameter binding before any transfer, because `$PSScriptRoot` is empty in a parameter default: open for the next release). Owner's report after the updates (screenshots, an outside read, not acceptance evidence): both servers show v0.1.0-alpha.85 and the sidebar build id on one line; Frankfurt's update page showed a warning-coloured "could not be read just now / not known whether it has finished" notice plus a toast during the update's own expected restart, which the owner finds reads like a problem when nothing is wrong (open for the next release under D-033 and D-024: calm progress with the T+ counter inside the expected window, the warning and "not known" wording only after it or on a verified failure, one notice; `web/src/components/SystemUpdateOperation.tsx`, `PanelUpdateCard.tsx`); Boston's Dashboard read 5 / 5 services and "Nothing CelikPanel read needs action" (its earlier failed read has no known cause); Frankfurt's Dashboard showed "Checking…" states, result not captured; raw audit ids remain in "Recent activity". Not reported: the full-screen licence page, the Agent's version, Frankfurt's setup final step after the update, `postconf -n >/dev/null`. No installed server measured by the release preparer; no P0 item is closed or advanced; publication is not product acceptance, and set16 is a measurement, not acceptance evidence. | The [release notes](docs/RELEASE-NOTES-v0.1.0-alpha.85.md) say which check rests on which code and list the limits; the records are under `deploy/e2e/release-recovery/evidence/`. Verify signed artifacts and recovery compatibility; only the user starts installed-panel updates. |
-| 9 | Release review of `v0.1.0-alpha.86` (see "Release state — October 10, 2026" above, the entry for this candidate). **Candidate, not published; the number v0.1.0-alpha.86 was chosen by the release preparer under the owner's standing instruction of 2026-10-13 (release preparation `313f3eea2`, sequence 86 after 85); D-033 and D-024 apply, no new decision.** The owner's observation of 2026-10-15 during the real update to alpha.85: the update's own restart was shown with a warning and a toast saying the state was not known, although nothing was wrong. The candidate shows that restart as calm progress, keeps the warning and "not known" wording for after a bound (6 minutes from the start, at least 2 minutes from the first lost read) or a verified failure, and says it in one notice. Besides: the publishing script's relative-path defect; reads only while the tab is visible; set16 O1–O3 (the page language, 27 component names and descriptions in Turkish, 179 audit actions as sentences); `system` reserved as a username; no sentence asks for a rescan, and a component's own page checks an unverifiable record by itself; the platform and role names in mail-profile sentences; the resolver behind the reverse DNS sentence (needs an Agent update); the Store's "State not known yet". Component tests and browser batches 13 and 14 against the mock; no native record when this row was written (set17 pending). Open before publication: set17, the release sequence variable 86, the CI run of the last head, merge, tag, the six signed assets, portal publication (the release preparer's). No installed server measured; no P0 item is closed or advanced; publication would not be acceptance. | The [release notes](docs/RELEASE-NOTES-v0.1.0-alpha.86.md) say which check rests on which code and list the limits; the records are under `deploy/e2e/release-recovery/evidence/`. Verify signed artifacts and recovery compatibility; only the user starts installed-panel updates. |
+| 9 | Release review of `v0.1.0-alpha.86` (see "Release state — October 10, 2026" above, the entry for this candidate). **Candidate, not published; the number v0.1.0-alpha.86 was chosen by the release preparer under the owner's standing instruction of 2026-10-13 (release preparation `313f3eea2`, sequence 86 after 85); D-033 and D-024 apply, no new decision.** The owner's observation of 2026-10-15 during the real update to alpha.85: the update's own restart was shown with a warning and a toast saying the state was not known, although nothing was wrong. The candidate shows that restart as calm progress, keeps the warning and "not known" wording for after a bound (6 minutes from the start, at least 2 minutes from the first lost read) or a verified failure, and says it in one notice. Besides: the publishing script's relative-path defect; reads only while the tab is visible; set16 O1–O3 (the page language, 27 component names and descriptions in Turkish, 179 audit actions as sentences); `system` reserved as a username; no sentence asks for a rescan, and a component's own page checks an unverifiable record by itself; the platform and role names in mail-profile sentences; the resolver behind the reverse DNS sentence (needs an Agent update); the Store's "State not known yet"; after the native records, the licence gate and the session gate stay quiet through the update's restart (set17 D1) and the navigation lock covers the restart, at the latest 6 minutes from the start (set17b F1, owner's decision), all web only. Component tests (web 1483 of 1483 at `7265d3c99`) and browser batches 13 to 15 against the mock; native records [set17](deploy/e2e/release-recovery/evidence/set17-20261015/README.md) (at `313f3eea2`) and [set17b](deploy/e2e/release-recovery/evidence/set17b-20261015/README.md) (at `ecd2a5f08`, a restart outage of about 3 minutes made by a lab delay): the candidate's page stayed calm with no "not known" wording in all five candidate runs where alpha.85's page showed it; set17 D1 not reproduced in set17b's two runs (mechanism not established); F1's change after set17b and the `PANEL_STARTING` path not measured natively. Open before publication: the release sequence variable 86, the CI run of the last head, merge, tag, the six signed assets, portal publication (the release preparer's). No installed server measured; no P0 item is closed or advanced; publication would not be acceptance. | The [release notes](docs/RELEASE-NOTES-v0.1.0-alpha.86.md) say which check rests on which code and list the limits; the records are under `deploy/e2e/release-recovery/evidence/`. Verify signed artifacts and recovery compatibility; only the user starts installed-panel updates. |
 
 Each slice must identify the open acceptance it closes before more tests are added.
 Repeat a passing trial only after a relevant change or to resolve a named uncertainty.

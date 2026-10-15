@@ -128,6 +128,12 @@ D-032'yi izler ve yukarıdaki metin değişmedi.
   doğrulanmış bir hatayla gelir. Güncelleme kartı ve köşe bildirimi artık aynı
   şeyi iki kez söylemez. Sınır iki laboratuvar güncellemesine (set16) ve o tek
   sahip gözlemine dayanır.
+- 1. ve 3. kurallar, set17 ve set17b gerçek sistem kayıtlarından sonra: aynı
+  sınır içinde ne lisans kapısı ne oturum kapısı o ilerlemenin yerine kendi
+  tutmasını koyar (set17 D1) ve güncellemenin gezinti kilidi, yeniden başlama
+  sinyali etkinken yeniden başlamayı en geç başlangıçtan 6 dakikaya dek
+  kapsar (set17b F1; sahibin 15 Ekim 2026 kararı, bu kuralın bir uygulaması,
+  yeni bir karar değil).
 - "Bunun yetkilendirmediği" altında adı geçen açık kaynakta kapandı: bileşen kurma
   penceresinin yeniden okuması ve kurulum sayfasının okumaları artık yalnız
   sekme görünürken çalışır (`web/src/lib/visibleReads.ts`) ve bu kararın
@@ -144,9 +150,12 @@ D-032'yi izler ve yukarıdaki metin değişmedi.
   söyler). Bu bir politika değişikliği değil, bir doğrulama kuralıdır; var olan
   satıra dokunulmaz.
 
-Notun durumu: kaynakta, bileşen testleri ve taklit tarayıcıyla (13. ve 14.
-tarayıcı inceleme turları); not yazıldığında adayın gerçek sistem kaydı yoktu
-ve kurulu bir sunucuda hiçbir şey ölçülmedi. Hangi kontrolün hangi koda
+Notun durumu: kaynakta, bileşen testleri ve taklit tarayıcıyla (13.–15.
+tarayıcı inceleme turları). `deploy/e2e/release-recovery/evidence/` altındaki
+set17 (`313f3eea2`'de) ve set17b (`ecd2a5f08`'de) gerçek sistem kayıtları
+sakin yeniden başlamayı ölçtü; onlardan sonra yapılan kilit değişikliği
+(`7265d3c99`) ve oturum kapısının `PANEL_STARTING` yolu gerçek sistemde
+ölçülmedi ve kurulu bir sunucuda hiçbir şey ölçülmedi. Hangi kontrolün hangi koda
 dayandığını [alpha.86 sürüm notları](RELEASE-NOTES-v0.1.0-alpha.86.tr.md)
 söyler. Hiçbir P0 işi kapanmaz ya da ilerlemez.
 

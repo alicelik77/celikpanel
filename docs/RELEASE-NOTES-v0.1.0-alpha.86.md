@@ -10,7 +10,10 @@ commits); it is not a number the owner named for this release. The release
 preparation is commit `313f3eea2` (sequence 86 after 85, with the alpha.85
 release commit `36c33c4531ee6c1306d324db7a666403176f3bf7` as the previous
 one). Nothing of it is published, and this draft records no installed server
-running it. This draft was written on 2026-10-15 (UTC).
+running it. This draft was written on 2026-10-15 (UTC) and completed the same
+day (UTC) after the native records set17 and set17b and the three web
+corrections that followed from them; the candidate's last product commit is
+`7265d3c99`.
 
 It started with what the owner saw on 2026-10-15 while updating the second
 installed server (Frankfurt) from v0.1.0-alpha.84 to v0.1.0-alpha.85 from the
@@ -35,11 +38,17 @@ setup's reverse DNS sentence, the reads that ran while the tab was hidden, and
 the publishing script's relative-path defect. It reserves the username `system`,
 because the audit log now says that actor's name as "System".
 
-What it does rests on component tests and on two browser inspections against a
-mock of the API (the thirteenth batch: the restart notice; the fourteenth
-batch: the smaller corrections). When this draft was written no native record
-of the candidate had been made; the section "Native record set17" is to be
-filled before publication. The limits say what was never run.
+What it does rests on component tests, on three browser inspections against a
+mock of the API (the thirteenth batch: the restart notice; the fourteenth: the
+smaller corrections; the fifteenth: the licence gate, the session gate and the
+navigation lock during the restart), and on two native records made on earlier
+commits of this candidate: set17 at the release preparation `313f3eea2` and
+set17b at `ecd2a5f08` (section "Native records set17 and set17b"). set17 found
+one defect (D1: the licence gate drew its own dialog over the restart); set17b
+recorded one behaviour the owner then decided to change (F1: the navigation
+lock ended in the middle of a long restart). Both are corrected in this
+candidate; the F1 correction (`7265d3c99`) came after the last native record.
+The limits say what was never run.
 
 ## What you will see
 
@@ -49,7 +58,10 @@ old screens. The next time you update CelikPanel from its own update screen,
 the moment the panel restarts as part of that update reads "The panel is
 restarting as part of the update. This page reconnects by itself; nothing needs
 to be pressed.", with a spinner and the time counter, and one notice instead of
-two. Only if the panel has not answered after about 6 minutes from the start of
+two. No licence or session dialog covers the page during that restart, and if
+the panel is still restarting when the usual two-minute navigation lock would
+end, the lock stays until the panel answers again, at the latest 6 minutes
+after the update started. Only if the panel has not answered after about 6 minutes from the start of
 the update (and at least 2 minutes after it stopped answering) does the notice
 say that the state is not known yet, that this does not mean it failed, and
 what to check on the server. That change is in the new version's screens, so
@@ -129,7 +141,96 @@ provider's wiring as a source check), each failing against the previous card,
 provider or library; `npm test` 1404 of 1404 at `8e27dd0eb`. The provider
 itself is not mounted in a test (it needs IndexedDB, Web Locks and the
 authentication signal); it ran in a real Chrome against the lab mock in the
-thirteenth browser batch (below).
+thirteenth browser batch, and against real Panels in QEMU guests in set17 and
+set17b (below).
+
+The native records then showed that two other parts of the page could still
+replace the calm restart, and that the navigation lock could end in the middle
+of a long one. Three web-only corrections follow; none changes a Go file, the
+schema or a version transition, and each reads only and uses the browser's
+clock only (D-032).
+
+**The licence gate stays quiet during the restart (set17 D1, `e8aa9c5c0`).**
+In one of set17's two candidate runs the licence access gate drew its own
+dialog, "The Panel is not answering; an update may be restarting it", over the
+calm restart at T+55.9 s, and the update's navigation lock did not come back.
+The cause found in the source: the gate's last positive decision lapsed during
+the outage; the gate then drew its hold and raised its observation recovery,
+which `App.tsx` turns into `publishSystemUpdateAuthentication(false)`; the
+update provider paused its tracking, the lock was no longer requested, and the
+navigation lease releases an engaged lock that is no longer requested for good
+(`useSystemUpdateNavigationLease.ts`, by design; unchanged). The provider now
+publishes the followed update, once the server has said it is active, with its
+first lost read (`web/src/lib/systemUpdateRestartSignal.ts`). While that update
+restarts the Panel, an access read that gets no answer keeps the gate's last
+positive decision until the update's own restart window ends (6 minutes from
+the start, at least 2 minutes from the first lost read; never later than the
+decision's own end plus 6 minutes). The gate draws nothing then, reads the
+access every 5 s while the tab is visible, and once at once when the tracking
+reaches the Panel again; any answer from the Panel is applied as before, and
+after the window the existing dialog appears (`LicenseOnboarding.tsx`,
+`SystemUpdateOperation.tsx`). No new strings. Tests: five mounted cases with a
+controlled clock in `web/tests/license-onboarding-runtime.test.mjs` (four fail
+against the previous gate; the no-update control passes on both) and three in
+`update-restart-notice-mounted.test.mjs`. The set17 record itself says that its
+folder does not establish the mechanism (the failed access reads and the
+moment the gate appeared do not fit one rule); the cause above is read from the
+source. set17b, on a candidate that carries this change, did not show the
+dialog in two runs.
+
+**No session hold while the new Panel starts (`b7b0f4766`).** The same class of
+defect, found in the source while correcting D1; neither set17 nor set17b
+showed a session hold. While the new Panel starts, its management answers
+`503 PANEL_STARTING`, the update's own status read included, and the fetch
+interception in `App.tsx` (AuthGate) marked the session unavailable on the
+first such answer: the pages were held with "The panel is starting", the
+tracking paused and the lock was released for good. While the followed update
+restarts the Panel such an answer no longer marks the session
+(`web/src/lib/useUpdateRestartStarting.ts`; bound
+`systemUpdateSessionGraceEnd`: the same window, counted from the first lost
+read of the tracking or the page's first `PANEL_STARTING` answer, which is
+never moved later). Inside it nothing is drawn, the tracking keeps running, and
+the Panel's readiness (`/api/v1/panel/availability`) is read every 5 s while
+the tab is visible; a ready answer ends the wait, a 401 still ends the session,
+and when the window ends without a ready answer the session is marked as
+before. No new strings. Tests: three mounted cases with a controlled clock in
+`web/tests/access-hold-runtime.test.mjs` (the first two fail against the
+previous `App.tsx`; the no-update control passes on both) and one in
+`update-restart-notice-mounted.test.mjs`. Still open
+([OPERATION-GUIDANCE](OPERATION-GUIDANCE.md), items 16 and 17): an
+`AUTH_STATUS_UNAVAILABLE` answer still marks the session at once, and pages
+the owner opens after the lock has ended and before the window has may show
+their own refusals of a still-starting Panel (now only for a restart that
+begins after the two-minute lease, or between reconnection and the update's
+outcome).
+
+**The navigation lock covers the restart (set17b F1, `7265d3c99`).** In set17b,
+whose restart outage the lab made about 3 minutes long, the update's navigation
+lock (its full-page dialog) ended by its two-minute lease at T+120.3 s and
+T+120.5 s while the Panel was still down; the card stayed calm and "Check for
+updates" stayed disabled. The owner decided on 2026-10-15 that the lock covers
+the update's restart while its restart signal is active (OPERATION-GUIDANCE
+item 17). Now, when the tracking has lost its read of the followed update
+before the two-minute lease ends, a lock that is still held is kept until the
+tracking reaches the Panel again and reads the update's record, or until the
+restart window ends, whichever comes first (`systemUpdateNavigationDeadline` in
+`web/src/lib/systemUpdateWatchdog.ts`, `systemUpdateNavigationRestart` in
+`systemUpdateRestartSignal.ts`, `useSystemUpdateNavigationLease.ts`). It never
+lasts past 6 minutes from the start; a read lost at or after the two-minute
+lease extends nothing; a released lock is never re-opened; the deadline is
+measured against a monotonic anchor, so a wall-clock step back cannot lengthen
+it. Without a restart the two-minute lease is unchanged. One string changed,
+the lock line (`panelUpdate.interactionLocked`): "Navigation is temporarily
+locked while this update is checked. It unlocks by itself after two minutes;
+if the panel is still restarting then, once it answers again, at the latest
+six minutes after the start. Tracking continues." Tests: seven mounted tests
+with a controlled clock in
+`web/tests/system-update-navigation-lease-mounted.test.mjs` (three fail against
+the previous lease; the unchanged lease, the control and the clock test pass on
+both), one wiring test in `update-restart-notice-mounted.test.mjs`, and the
+line's bounds in `panel-update-ui-contract.test.mjs`. `npm test` 1483 of 1483
+at `7265d3c99`. This change came after the last native record and is not
+measured natively (see the limits).
 
 ### The publishing script
 
@@ -412,7 +513,8 @@ bundle budget (`8a3729cbe`, above).
 **What does not change.** No database schema change (the ledger stays 44; no
 migration between the alpha.85 tag and this candidate) and no new route. The
 update path, the recovery runner, the release floor and the native services
-are unchanged. The Agent changes only its mail health answer.
+are unchanged. The Agent changes only its mail health answer. The three
+corrections after set17 (`e8aa9c5c0`, `b7b0f4766`, `7265d3c99`) are web only.
 
 ## API changes
 
@@ -455,6 +557,10 @@ did not change.
   warning mark and "not known" come only after 6 minutes from the start and
   2 minutes from the first lost read. You see this from the update that
   follows this release.
+- During that restart neither the licence dialog nor "The panel is starting"
+  covers the update page, and the navigation lock lasts until the panel
+  answers again when the restart is still going at two minutes (at the latest
+  6 minutes from the start); its line says so.
 - The page's language attribute follows the language the page is drawn in.
 - On Turkish pages, component names and descriptions are Turkish.
 - "Recent activity" says each action as a sentence; "System" for actions
@@ -474,18 +580,24 @@ did not change.
 ## What was measured, and how
 
 **Component tests.** The product code of this candidate is that of
-`21f07e7a8`; the release preparation `313f3eea2` changes no file under
-`cmd/`, `internal/` or `web/`.
+`7265d3c99`: the code of `21f07e7a8` plus the three web-only corrections
+`e8aa9c5c0`, `b7b0f4766` and `7265d3c99`. The release preparation `313f3eea2`
+changes no file under `cmd/`, `internal/` or `web/`, and the commits after
+`7265d3c99` change no file under `web/src`, `cmd/` or `internal/` (only
+`web/tools`, the evidence READMEs and documents).
 
-- Web: `npm test` 1463 of 1463, recorded at `00138c530` in
-  [OPERATION-GUIDANCE](OPERATION-GUIDANCE.md) (entry of 2026-10-15) and run
-  again on 2026-10-15 at the release preparation commit `313f3eea2` (same
-  count; no file under `web/src` or `web/tests` changed after `00138c530`);
-  `npm run build` passes with its type check and the bundle budget (the largest
-  asynchronous chunk, the Turkish screen catalogue, 152.44 KiB). The web count
-  was 1391 at alpha.85, 1404 after the restart notice, 1409 after the
-  visibility gating, 1435 at `1abe1717d`, 1457 at `297f1f0b1` and 1463 at
-  `00138c530`.
+- Web: `npm test` 1483 of 1483, recorded at `7265d3c99` in
+  [OPERATION-GUIDANCE](OPERATION-GUIDANCE.md) (counts after item 17, with
+  `npx tsc --noEmit` clean and `npm run build` within its budget), and run
+  again on 2026-10-15 at `155a984ea` with the same count. Before the three
+  corrections: 1463 of 1463, recorded at `00138c530` and run again at the
+  release preparation commit `313f3eea2` (no file under `web/src` or
+  `web/tests` changed between them); `npm run build` then passed with its type
+  check and the bundle budget (the largest asynchronous chunk, the Turkish
+  screen catalogue, 152.44 KiB; not re-measured after the corrections). The web
+  count was 1391 at alpha.85, 1404 after the restart notice, 1409 after the
+  visibility gating, 1435 at `1abe1717d`, 1457 at `297f1f0b1`, 1463 at
+  `00138c530` and 1483 at `7265d3c99`.
 - Go, in the WSL guest `CelikPanel-S2-Debian`:
   `go test -v ./cmd/panel/... ./internal/transport/... ./internal/auth/...`
   1602 top-level tests and 1655 first-level subtests passed, 6 skipped, 0
@@ -498,7 +610,10 @@ did not change.
   2026-10-14 audit entry (the guest is itself a running CelikPanel host).
   After `1abe1717d` nothing under `cmd/agent/` changed and, under `internal/`,
   only `internal/auth`, which only `cmd/panel` imports; the Agent was not run
-  again.
+  again. No file under `cmd/` or `internal/` (nor `go.mod` or `go.sum`)
+  changed after `21f07e7a8` (`git diff --stat 21f07e7a8 155a984ea -- cmd
+  internal go.mod go.sum` is empty), so Go was not run again after the
+  web-only corrections; the Go counts above are the recorded ones.
 - The release preparation's contract tests pass: the sequence-policy contract
   in the Windows Git Bash checkout, which has the `v0.1.0-alpha.85` tag it
   reads ("85 -> 86; historical bootstrap sequence 85"), and the download-portal
@@ -530,14 +645,216 @@ sideways scrolling. Its six defects are listed above. Neither batch's pictures
 are stored in the repository, and the batches' run results are not recorded in
 a file; the 23 states are counted from the scenario source.
 
-### Native record set17
+**The fifteenth browser-inspection batch** (`d1restart`, `d1starting`;
+`web/tools/browser-inspect/scenarios-batch15.mjs`, `59e793b2b`, `389ce2831`,
+`155a984ea`), on the built candidate in the same 8 configurations. `d1restart`:
+an update this browser started, its record 40 s old, access valid for 45 s,
+the Panel down for 90 s across the two-minute lease, then back on the new
+version. At 60 s of outage (T+01:43) and 88 s (T+02:11) the update's calm
+restart dialog with the lock line and the application made inert; no licence
+gate dialog, no held pages, no warning mark, no connection banner, no
+horizontal overflow; after reconnection (T+02:16) no dialog and no inert
+application, the card "being verified"; then the new version, in all eight.
+`d1starting`: the Panel down for 25 s, then 20 s of `503 PANEL_STARTING`
+(readiness "starting"), then back. At 10 s and 18 s of the start only the
+update's calm restart dialog with its lock (4 and 2 requests refused with
+`PANEL_STARTING` in the two intervals); no session hold, no "The panel is
+starting", no gate dialog; then "Update installed, being verified" with the
+lock, then the new version. The results are recorded in
+[OPERATION-GUIDANCE](OPERATION-GUIDANCE.md) items 16 and 17 and in the commit
+messages; the pictures are not stored in the repository.
 
-*To be filled from the set17 README before publication.*
+### Native records set17 and set17b
+
+The source of truth for every figure in this section is the record's own
+README: `deploy/e2e/release-recovery/evidence/set17-20261015/README.md` (the
+nineteenth native record; `4a29f4754`, seal completed in `0bf1ee601`) and
+`deploy/e2e/release-recovery/evidence/set17b-20261015/README.md` (the
+twentieth; `1f9495f7b`), both with their wording corrected at intake in
+`d72e4528a` (no raw file changed). Where this summary and a README differ, the
+README holds. Both are measurements, not acceptance evidence: QEMU/KVM guests
+with outbound NAT, test-licence (`acceptance_license`) builds with
+`release: false`, every `result.json` with `native_evidence: false`. No
+installed server, licence service or certificate authority was addressed; the
+release origin's name and the certificate-authority names were pinned to each
+guest's loopback as the first driver step of every lab and read back at its
+end (passed in all 7 labs of set17 and all 4 of set17b). They close no P0 row.
+
+**set17: the candidate at the release preparation `313f3eea2`.** Run directory
+made at 13:50:54Z, last lab ended at 15:57:57Z (2026-10-15, UTC). Go 1.26.5,
+builds from `git clone`. No fixture commit labels the candidate: it is the
+source commit itself, with its own policy (86 after 85) and the bootstrap pins
+86, and `git diff --stat 21f07e7a8 313f3eea2 -- cmd internal web` is empty.
+
+| Build | Version / seq | Commit | Archive SHA-256 |
+| --- | --- | --- | --- |
+| baseline | v0.1.0-alpha.85 / 85 | `36c33c45` (tag commit, local test-licence build) | `31b03ddd762e20d0a841e728b75df321ba0fe96b15e9d1a568843d49d3245c16` |
+| candidate | v0.1.0-alpha.86 / 86 | `313f3eea` | `6c64289048f9e3fd98655bf761665c3b1f500ec654007da776d422654f747d39` |
+| defective candidate | v0.1.0-alpha.86 / 86 | `6544ee8b1186ad42b38bd2b3b0cac1c8f07f50b1` (313f3eea + set5's migrate-only defect) | `0397f4e85a3d60b2f82391166a95909cf04e6884ed7e5a2ecb33eb105011dfbb` |
+| second update's target | v0.1.0-alpha.87 / 87 | `c48678d34583868ab583db4cfb6c97c36e423db6` (policy only) | `887a16c0d3c7c1ce30371dbdc91661aadf6a9bf95663233ef8c35464d026ccfc` |
+| its defective twin (never installed) | v0.1.0-alpha.87 / 87 | `8c6ac88b290b6662c8618878661b02857ff80348` | `8227bac036ac5ccdeb7fc29a4f00e1d56fad2d0b98bd2a93023458ffc56d2f86` |
+
+The local alpha.85 build is not byte-identical to the published archive
+(`cb6424b712052df2768f6c16dd6a66c8ea05a13393e71933c38ae639c3fb0792`, read once
+from the published release manifest outside the labs).
+
+| Cell | Debian 13 | Ubuntu 24.04 |
+| --- | --- | --- |
+| fresh install of the candidate, sign-in, licence, setup `web` | PASS (14:30:23Z–14:40:33Z) | not planned |
+| update alpha.85 → candidate, good | `update_verified` (13:59:03Z–14:14:40Z) | `update_verified` (15:12:18Z–15:34:38Z) |
+| update, defective → automatic return | `recovered` / `rollback_verified` (14:56:24Z–15:12:04Z) | same (15:34:51Z–15:57:57Z) |
+| the candidate's own update page (candidate → v0.1.0-alpha.87 label) | twice, `update_verified` (run a 14:15:12Z–14:30:06Z, run b 14:40:47Z–14:56:04Z) | not planned |
+
+All seven labs ran to `complete-for-review`; the six update labs' `verdicts`
+step passed. The fresh install reported `v0.1.0-alpha.86`, `agent_matches true`,
+`schema_version 44`, ledger `as-expected` and installed pins 86. The defective
+update had one guest reset injected (Debian 15:07:28Z, SSH back after 8.91 s;
+Ubuntu 15:53:19Z, 11.62 s), made two automatic attempts and no owner attempt,
+and ended `phase: recovered, reason: rollback_verified, previous_failure:
+update_failed`, with alpha.85 (`36c33c45…`) running and login, site marker and
+firewall equal. The ledger after each return: `equal-except-volatile`,
+`unexpected []`, one `managed_site_files` row before and after, changed in
+`observed_at` only, `stable_sha256` equal before and after (Debian `7efbb2c8…`,
+Ubuntu `45c5e796…`); 67 tables compared, five volatile tables left out. The
+good updates were also `equal-except-volatile` in `observed_at` only.
+
+*The update page during a real update* (sampled every 500 ms; T+ from the
+owner's press in a real headless Chrome; the page's own start request was held
+unchanged for 880 to 1202 ms until the driver's read-only observer was armed,
+below the page's 15 s start timeout):
+
+| | alpha.85, Debian (control) | alpha.85, Ubuntu (control) | candidate run a | candidate run b |
+| --- | --- | --- | --- | --- |
+| first lost status read | T+41.0 s | T+25.5 s | T+25.6 s | T+25.5 s |
+| page outage (first lost → first answered read) | 30.1 s | 26.0 s | 35.2 s | 30.3 s |
+| during the outage | "could not be read just now … not known", warning surface (59 samples) | the same (51 samples) | "The panel is restarting as part of the update…", spinner on the primary colour; 0 "not known", 0 warning | the same; 0, 0 |
+| corner notice during the outage | none | none | none | none |
+| other dialog over the page | none seen (not sampled in that run) | licence gate, T+36.5–51.3 s | **licence gate, T+55.9–61.0 s (D1)** | none |
+| update dialog (navigation lock) | until T+77.9 s | until T+36.0 s (licence gate) | until T+55.4 s (licence gate) | until T+70.6 s |
+| after reconnection | corner notice **and** card "being verified" (T+78.4–83.0 s) | both (T+51.8–60.5 s) | card "verifying", then the corner notice for the known outcome only (T+70.2–71.2 s) | dialog "Update installed, being verified", then "The update completed…" |
+| new version on the page | T+85.6 s | T+63.0 s | T+71.7 s | T+71.2 s |
+
+"Check for updates" stayed disabled until the new version showed in all four.
+The bound was not approached: the longest page outage was 35.2 s from the first
+lost read (bound 120 s) and the latest reconnection T+71.0 s from the press
+(bound 360 s); the driver's host loop saw the Panel down for 25–35 s in each
+good update.
+
+*Browser checks on the candidate* (TR and EN; in the fresh cell and after all
+four candidate updates): the Components page with 27 of 27 names and 27 of 27
+descriptions equal to the catalogue; `document.documentElement.lang` `tr` on
+Turkish pages and `en` on English; Recent activity in sentences, no raw id (7
+rows each); the sidebar build id on one line at 1280×800 and 390×844; the
+Store's filter lists "State not known yet" apart from "Unsupported here" (no
+offering was in that state); and a component's own page on
+`SERVICE_STATE_UNVERIFIED`, produced by a lab preparation in the fresh Debian
+cell only: the quiet checking line from 0.5 s, one
+`POST /api/v1/managed-services/scan?max_age_seconds=300` answered 200, the
+record read again, the page filled at 1.3 / 1.6 s, no alert or toast. After the
+two returns alpha.85 behaved as alpha.85 (`lang` `en`, raw ids in 6 of 7 rows,
+its English server names). The setup final step's resolver sentence was not
+reachable (no lab guest has a public reverse DNS name; not imitated).
+
+*Findings.* **D1** (the licence gate during the restart; above): a verified
+observation in this lab, in one of two candidate runs and one of two control
+runs; not a measured failure of the update; the folder does not establish when
+the gate appears. **O1** (harness): Chrome's network events do not report the
+answer of the held start request (it leaves through the page's service
+worker); each start was reconciled by a status read. **O2** (alpha.85): the
+corner notice and the card repeat "being verified" after the lock closes; not
+seen on the candidate. Open in the record: after each return the foundation
+file still names the defective candidate (`release-commit=6544ee8b…`, sequence
+86) while alpha.85 runs, and the floor reads 86, as in set12, set15 and set16.
+
+**set17b: the candidate at `ecd2a5f08`, through a restart outage of about 3
+minutes.** Run directory made at 17:05:07Z, last lab ended at 18:16:23Z
+(2026-10-15, UTC). Against `313f3eea2` the candidate changes five product
+files, all under `web/src` (D1's licence gate grace and the session gate's
+`PANEL_STARTING` grace); again the source commit itself with its own policy.
+Debian 13 only, four labs, one at a time. Builds (Go 1.26.5): the candidate
+`ecd2a5f0` →
+`4569b5eb0dba432799be5f63abeec4afca48669ead46151dd10d8ae80ccd72d0`; alpha.85
+`31b03ddd…`, byte-identical to set17's local build; the v0.1.0-alpha.87 label
+`20a9baa5d0ccb269528a02ec8c14229bc2ee2493` →
+`34c753c6158ecedfea501d3f9c5494557f12609b61e989bbc00cecdba82cb93e`; the
+defective archives (`8acfb74a842488c46a8083cca05e2bb10fc1fb97` →
+`ab140cf3…`, `0aa2bb3c1394aeee5cc7e153a8b96a0e4d0ee51b` → `1df2f933…`) were
+built only because the artifacts documents require them and never installed.
+
+*The long outage is a lab change, not a product property.* A drop-in with
+`ExecStartPre=/bin/sleep 150` would have been refused by the updater's own
+transaction guard (it requires that systemd loads only its guard drop-in), so
+no drop-in and no persistent unit file was written. A transient helper unit
+(`guest_set17b_restart_delay.py`) froze the update's own worker unit with
+`systemctl freeze` once the updater had renamed its `active` marker to
+`completion.pending` (candidate installed, Agent and Panel stopped), held it
+for 150.2 s, 150.7 s and 150.3 s (runs a, b, control), and thawed it; the
+updater then started the Agent (0.6–1.1 s after the thaw) and the Panel
+(1.6–1.7 s) itself. The first attempt, run a0, held nothing (H1) and is kept as
+an ordinary short-outage run.
+
+| | run a0 (not held) | run a | run b | control (alpha.85's page) |
+| --- | --- | --- | --- | --- |
+| pressed | 17:23:22.3Z | 17:39:19.5Z | 17:56:27.3Z | 18:11:23.3Z |
+| first lost → first answered read | T+25.5 → 62.0 s | T+25.5 → 202.8 s | T+27.0 → 193.6 s | T+25.5 → 194.6 s |
+| page outage | 36.5 s | **177.2 s** | **166.5 s** | **169.1 s** |
+| during the outage | "restarting", 72 samples | "restarting", 347 samples | "restarting", 328 samples | "could not be read just now … not known", 333 samples from T+25.6 s |
+| "not known" / warning surface | 0 / 0 | **0 / 0** | **0 / 0** | 333 / 333 |
+| licence gate dialog | none | **none** | **none** | T+59.8–194.3 s (266 samples), pages held |
+| failed licence access reads during the outage | 7 | 39 | 35 | 31 |
+| `PANEL_STARTING` answers to the page | 0 | 0 | 0 | 0 |
+| update dialog with the lock line | until the reload (T+76.6 s) | **T+0.5–119.8 s (F1)** | **T+0.5–120.0 s (F1)** | until T+59.3 s (the gate) |
+| after the dialog, during the outage | – | card alone: "restarting", spinner, T+ running, no corner notice | the same | the gate's dialog; card "unknown", warning |
+| "Check for updates" disabled until | T+76.6 s | T+217.3 s | T+208.2 s | T+210.5 s |
+| after reconnection | "being verified", then "The update completed… Reloading" | card "verifying", then corner "completed… Reloading" | the same | corner **and** card "being verified" (T+194.8–209.0 s) |
+| new version on the page | T+77.1 s | T+217.8 s | T+209.2 s | T+211.0 s |
+| driver's final state | `update_verified` 17:24:33Z | 17:42:50Z | 17:59:51Z | 18:14:48Z |
+
+Every lab's `verdicts` step passed (web, SMTP and cron never interrupted;
+Panel `down-only-during-transaction`), every update ended `update_verified`
+with `post-update-facts` passed and schema ledger 44 `as-expected`, and every
+database comparison was `equal-except-volatile`, `managed_site_files` in
+`observed_at` only. Runs a0 and a end `inconclusive` only because a harness
+step's unit reading stopped early (H2); runs b and control end
+`complete-for-review`. Against the bounds: the window ended at T+360 s;
+reconnection came 157 s and 166 s before it, so "not known" was correctly not
+reached; the 6-minute overdue wording was not produced (the outage was held
+below it by design). The last good access read was 205 s and 195 s before the
+last failed one in the candidate runs, without the gate's dialog; the control
+drew it 60.3 s after its last good access read.
+
+*Findings.* **D1** was not reproduced on the candidate (0 of 2 runs) and was
+seen again on alpha.85 (1 of 1). Qualifiers from the record: set17b's candidate
+is not set17's (it carries the gate grace written after D1); D1 was
+timing-dependent in set17 (1 of 2 candidate runs), so two runs without it do
+not show that it cannot occur; the mechanism is not established. **F1**: the
+lock ended at T+120.3 s and T+120.5 s by the documented two-minute lease of the
+measured commit `ecd2a5f08`, while the Panel was down for another 82 s and
+73 s; what followed was calm. It was changed afterwards in `7265d3c99` (above);
+that change is component-tested and inspected in batch 15, not measured
+natively. **O1**: `PANEL_STARTING` never reached the page in four runs
+(systemd reported the Panel active 1.6–1.7 s after the thaw, and the page's
+next reads were already answered `200`), so the session gate's grace was not
+exercised natively. **O2** (not investigated): the Panel
+unit read `failed` while the updater had it stopped, and returned to `active`
+at the updater's own start. **O3** (alpha.85): two notices after
+reconnection, as set17's O2. **H1–H3** (harness): the updater's checkpoint
+line is not in the journal of an owner's update (fixed with the marker
+trigger); the unit reading under `set -eu` (fixed with `set +e`); the held
+start's answer not reported by Chrome (as set17 O1). Only the update page was
+observed; set17's browser checks were not repeated. Console: only
+`ERR_CONNECTION_CLOSED` during the outage and two `401` before sign-in.
 
 **Harness and lab-tool changes on this branch.**
 
 - `15d80851e`, `a45c1bfcb`: the thirteenth and fourteenth browser-inspection
-  batches.
+  batches; `59e793b2b`, `389ce2831`, `155a984ea`: the fifteenth.
+- `4a29f4754`: set17's harness (`set17_fixture.py`, `set17_trial.py`,
+  `build-set17-artifacts.sh`, `run-set17.sh`,
+  `web/tools/browser-inspect/cold-load-set17.mjs`); `1f9495f7b`: set17b's
+  (`set17b_trial.py`, `run-set17b.sh`, the lab preparation
+  `guest_set17b_restart_delay.py`, `cold-load-set17b.mjs`). Lab code only;
+  the changes made to them during each run are recorded in the READMEs.
 - `f89551e9b`: the publisher's own test (above).
 - `498dc49e1` (pull request #212, merged from `main`): the WAL-trace
   tracer-death test treats a task that vanished between two `/proc` reads as
@@ -550,15 +867,46 @@ These are known. They are not hidden defects.
 
 New with this release:
 
-- **No native run yet.** When this draft was written no native record of this
-  candidate existed; everything above rests on component tests and the mock
-  browser. The section "Native record set17" is filled before publication.
-- **The 6-minute bound rests on two lab updates and one owner observation.**
-  set16's two good updates (51 s and 48 s) and the owner's real update
+- **The native records measured earlier commits.** set17 measured the release
+  preparation `313f3eea2`, set17b measured `ecd2a5f08`. The final candidate
+  carries web-only changes after them: `7265d3c99` (product: the navigation
+  lock through the restart), `155a984ea` (the fifteenth browser batch's
+  scenario and the operation guidance; no product file) and `d72e4528a` (the
+  two READMEs' wording). Not natively measured therefore: the F1 lock
+  extension, that is, the lock kept past two minutes until the tracking reads
+  the update's record again (at the latest 6 minutes from the start), and the
+  changed lock line. It rests on component tests and the fifteenth browser
+  batch against the mock. Everything else in the candidate's product code is
+  the code set17b measured.
+- **The session gate's `PANEL_STARTING` path was not exercised natively.**
+  `PANEL_STARTING` reached the page 0 times in set17b's four runs; the grace
+  rests on component tests and the batch-15 scenario `d1starting`.
+- **The licence gate's quiet path rests on two native runs.** set17b did not
+  show D1 in two candidate runs; D1 was timing-dependent (1 of 2 in set17),
+  and its mechanism is not established by either record.
+- **The 6-minute "overdue" wording was not produced natively.** Every native
+  outage stayed below the bound (set17: at most 35.2 s; set17b: at most
+  177.2 s, held below it by design). set17b's 3-minute outages were made by the
+  lab (a frozen update worker): a lab change, not a product property, and not
+  evidence of how long real restarts last.
+- **The 6-minute bound rests on lab updates and one owner observation.**
+  set16's two good updates (51 s and 48 s), the four updates set17 observed
+  on the page (page outages of 26.0 to 35.2 s, reconnection at the latest
+  T+71.0 s), and the owner's real update
   (T+02:59 with no answer). A real update whose restart lasts longer than 6
   minutes from its start, and longer than 2 minutes from the first lost read,
   shows the unknown wording while still being normal. The restart provider is
-  not mounted in a component test; it ran in the mock browser only.
+  not mounted in a component test; it ran in the mock browser and in the QEMU
+  guests of set17 and set17b.
+- **Platforms.** set17 ran Debian 13 (fresh install, update, return, the
+  candidate's own page) and Ubuntu 24.04 (update and return only); set17b ran
+  Debian 13 only. Ubuntu 24.04 and Arch were not run in set17b; Arch and a
+  fresh Ubuntu install of the candidate were run in neither.
+- **The resolver sentence was not reachable natively.** It needs the server's
+  public reverse DNS name, which no lab guest has; it was not imitated.
+- **Not investigated:** why the Panel unit reads `failed` while the updater
+  has it stopped (set17b O2); it returned to `active` at the updater's own
+  start in every run.
 - **The new update screen is seen only from the next update.** The update to
   this release is followed by the screens of the version the server runs
   (alpha.85 on both installed servers), so the owner sees the alpha.85
@@ -573,11 +921,16 @@ New with this release:
   administrator has one of the three pages open; nothing checks while nobody
   looks (by design, D-032).
 - **No installed server was measured.** Nothing in this candidate has reached
-  an installed server.
+  an installed server. The native records are QEMU/KVM guests with
+  test-licence builds; they are measurements, not acceptance.
 
-Answered by this release, in source and with component tests (no native run):
-the update screen's problem-looking notice during the expected restart (the
-owner's report (c) of 2026-10-15); the publishing script's `$PSScriptRoot`
+Answered by this release, in source and with component tests: the update
+screen's problem-looking notice during the expected restart (the owner's
+report (c) of 2026-10-15; also observed natively in set17 and set17b on the
+earlier commits `313f3eea2` and `ecd2a5f08`, with alpha.85's page as the
+control); set17's D1 (the licence gate, not reproduced in set17b's two runs);
+the session gate's `PANEL_STARTING` hold (not exercised natively); set17b's F1
+(not measured natively); the publishing script's `$PSScriptRoot`
 defect; the reads not gated on visibility; set16's O1 to O3, and "Recent
 activity" raw ids on both installed servers (h); the "Templated text" limit
 (`component_not_installable` platform, roles shown as tokens, "rescan" outside
@@ -597,7 +950,8 @@ open), condensed; the full list is in the
   update; the owner has not reported the Agent's version.
 - The recovery foundation file after a return still names the defective
   candidate while the running build is the previous release, and the floor
-  reads the candidate's sequence (set12, set15, set16). Open.
+  reads the candidate's sequence (set12, set15, set16, and again set17).
+  Open.
 - Not reported by the owner after the alpha.85 update: the full-screen licence
   page during the update, the Agent's version, Frankfurt's setup final step
   after the update, the output of `postconf -n >/dev/null`, and the result of
@@ -616,8 +970,10 @@ open), condensed; the full list is in the
 Not published. Nothing is recorded here until it is published. Open before
 publication:
 
-1. The pre-publication measurement: set17, not made when this draft was
-   written. Its figures go into "Native record set17" above, from its README.
+1. The pre-publication measurement: made. set17 at `313f3eea2` and set17b at
+   `ecd2a5f08`, summarised in "Native records set17 and set17b" above from
+   their READMEs. The final candidate's web change after them (`7265d3c99`)
+   has no native record; the limits say so.
 2. The release preparation: done in commit `313f3eea2` (the number was chosen
    by the release preparer under the owner's standing instruction of
    2026-10-13), which changes no file under `cmd/`, `internal/` or `web/`: the
