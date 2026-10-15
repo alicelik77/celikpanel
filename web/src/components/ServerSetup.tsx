@@ -216,6 +216,13 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     const [completionFailed, setCompletionFailed] = useState(false);
     const [verificationResult, setVerificationResult] = useState<{ checks: ServerSetupCheck[]; failed: boolean } | null>(null);
     const [verifyingRequirements, setVerifyingRequirements] = useState(false);
+    // The answer to "Check requirements again" opens under the button, which
+    // can be the last thing on the screen: it is brought into view when it
+    // arrives (2026-10-16). / Kontrolun cevabi geldiginde gorunur alana alinir.
+    const verificationBox = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        if (verificationResult && !verifyingRequirements) verificationBox.current?.scrollIntoView?.({ block: 'nearest' });
+    }, [verificationResult, verifyingRequirements]);
     // checks: the run's own last recorded checks when the owner's check passed.
     // A newer unmet result from the run itself ends the finishing state.
     const [finishingRun, setFinishingRun] = useState<{ checks: string } | null>(null);
@@ -701,7 +708,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                                 : (reconnecting || completionFailed) && <Button variant={handoverDrop ? 'secondary' : 'primary'} disabled={busy} onClick={() => void (marker && !execution ? resumeUnconfirmed() : reconcile())}>{t(marker && !execution ? 'setup.resumeConfirmed' : 'setup.reconnect')}</Button>}
                     </div>
                     {waitingVerification && <div role="status" aria-live="polite" aria-atomic="true" className="mt-4 text-sm">
-                        {verificationMessage && <div className="rounded-lg border border-border bg-surface p-4">
+                        {verificationMessage && <div ref={verificationBox} className="scroll-mb-6 rounded-lg border border-border bg-surface p-4">
                             {finishing ? <p className="flex items-start gap-3 font-medium" data-setup-finishing=""><Loader2 className="mt-0.5 h-4 w-4 shrink-0 text-primary motion-safe:animate-spin" aria-hidden="true" /><span>{t(verificationMessage)}</span></p>
                                 : <p className={verificationMessage === 'setup.finishingSlow' ? 'max-w-3xl break-words leading-6' : 'font-medium'}>{verificationMessage === 'setup.finishingSlow' ? <KeepWords text={t(verificationMessage)} /> : t(verificationMessage)}</p>}
                             {!verifyingRequirements && verifiedBlockers.length > 0 && <ul className="mt-2 list-disc space-y-2 pl-5 text-fg-muted">{verifiedBlockers.map(check => <li key={check.id} className="break-words" data-check={check.id}>{checkSentence(check)}</li>)}</ul>}
@@ -713,7 +720,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                         <legend className="text-xl font-semibold">{t('setup.purposeTitle')}</legend>
                         <div className="mt-4 divide-y divide-border rounded-xl border border-border bg-surface">
                             {setupPurposes.map(purpose => <div key={purpose} className={`first:rounded-t-xl last:rounded-b-xl ${draft.purpose === purpose ? 'bg-surface-2' : 'hover:bg-surface-subtle'}`}>
-                                <label className="flex cursor-pointer items-start gap-4 px-4 py-4 sm:px-5"><input type="radio" name="setup-purpose" value={purpose} checked={draft.purpose === purpose} onChange={() => { setDraft(previous => chooseSetupPurpose(previous, purpose)); setPlan(null); }} className="mt-1 h-4 w-4 shrink-0 accent-primary" /><span className="grid min-w-0 flex-1 gap-1 xl:grid-cols-3 xl:gap-5"><span className="font-semibold"><span id={`setup-purpose-title-${purpose}`}>{t(`setup.purpose.${purpose}`)}</span>{purpose === 'web' && <span className="mt-1 block text-xs font-normal text-fg-muted">{t('setup.recommended')}</span>}</span><span className="text-sm leading-6 text-fg-muted xl:col-span-2">{t(`setup.purpose.${purpose}.help`)}</span></span></label>
+                                <label className="flex cursor-pointer items-start gap-4 px-4 py-4 sm:px-5"><input type="radio" name="setup-purpose" value={purpose} checked={draft.purpose === purpose} onChange={() => { setDraft(previous => chooseSetupPurpose(previous, purpose)); setPlan(null); }} className="mt-1 h-4 w-4 shrink-0 accent-primary" /><span className="grid min-w-0 flex-1 gap-1 xl:grid-cols-3 xl:gap-5"><span className="font-semibold"><span id={`setup-purpose-title-${purpose}`}>{t(`setup.purpose.${purpose}`)}</span>{purpose === 'web' && <span className="mt-1 block text-xs font-normal text-fg-muted">{t('setup.recommended')}</span>}</span><span className="text-sm leading-6 text-fg-muted xl:col-span-2"><KeepWords text={t(`setup.purpose.${purpose}.help`)} /></span></span></label>
                                 {draft.purpose === purpose && purpose !== 'custom' && <button type="button" disabled={!catalog || busy} aria-describedby={`setup-purpose-title-${purpose}`} className="mb-3 ml-12 inline-flex min-h-9 items-center text-sm font-medium text-primary underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-60 sm:ml-[3.25rem]" onClick={() => { if (!catalog) return; change('customization', { components: draft.customization?.components || setupPresetComponents(draft, catalog) }); setStep('components'); }}>{t('setup.components.customize')}</button>}
                             </div>)}
                         </div>
@@ -787,7 +794,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                         <h2 id="setup-plan-title" className="text-xl font-semibold">{t('setup.reviewTitle')}</h2><p className="mt-3 text-sm leading-6 text-fg-muted">{t('setup.reviewHelp')}</p>
                         {handoverNotice && <SetupHandoverNotice host={handoverNotice.host} url={handoverURL} />}
                         {plan.infrastructure_dns && <SetupInfrastructureDNSReview value={plan.infrastructure_dns} />}
-                        {extending && <SetupExtensionReview plan={plan} changes={extensionChanges.map(change => ({ key: change.key, label: t(extensionLabels[change.key]), before: extensionValue(change.key, change.before), after: extensionValue(change.key, change.after), literal: extensionLiteral(change.key) }))} name={(kind, target) => kind === 'service' ? componentName(catalog?.components.find(row => row.id === target) ?? { id: target, name: stepTarget('service', target) }, t) : t(`setup.kind.${kind}` as TranslationKey, { target: stepTarget(kind, target) })} />}
+                        {extending && <SetupExtensionReview plan={plan} changes={extensionChanges.map(change => ({ key: change.key, label: t(extensionLabels[change.key]), before: extensionValue(change.key, change.before), after: extensionValue(change.key, change.after), beforeLiteral: extensionLiteral(change.key) && change.before !== '', afterLiteral: extensionLiteral(change.key) && change.after !== '' }))} name={(kind, target) => kind === 'service' ? componentName(catalog?.components.find(row => row.id === target) ?? { id: target, name: stepTarget('service', target) }, t) : t(`setup.kind.${kind}` as TranslationKey, { target: stepTarget(kind, target) })} />}
                         {plan.components && !extending && <div className="mt-5"><h3 className="font-semibold">{t('setup.components.reviewTitle')}</h3><ul className="mt-2 divide-y divide-border">{plan.components.map(item => <li key={item.id} className="flex flex-wrap items-baseline justify-between gap-2 py-2 text-sm"><span>{componentName(catalog?.components.find(row => row.id === item.id) ?? { id: item.id, name: stepTarget('service', item.id) }, t)}</span><span className="text-fg-muted">{t(item.installed ? 'setup.components.keep' : item.required ? 'setup.components.dependency' : 'setup.components.toInstall')}</span></li>)}</ul><p className="mt-3 text-sm text-fg-muted">{t('setup.components.preserve')}</p></div>}
                         <ol className="mt-5 divide-y divide-border">{plan.steps.map(item => <li key={item.id} className="py-4"><p className="font-medium">{t(`setup.kind.${item.kind}`, { target: stepTarget(item.kind, item.target) })}</p>{item.qualifier && item.kind !== 'mail_enrollment' && <p className="mt-1 text-sm text-fg-muted">{item.qualifier}</p>}{handoverNotice && item.kind === 'panel_certificate' && <p className="mt-1 text-sm text-fg-muted">{t('setup.handover.stepNote')}</p>}</li>)}</ol>
                         <dl className="mt-5 space-y-3 rounded-lg bg-surface-2 p-4 text-sm"><div><dt className="font-semibold">{t('setup.firewallReview')}</dt><dd className="mt-1 leading-6 text-fg-muted">{t('setup.firewallHelp')}</dd></div><div><dt className="font-semibold">TCP</dt><dd className="mt-1 break-words tabular-nums">{plan.tcp_ports.join(', ') || t('setup.noPorts')}</dd></div><div><dt className="font-semibold">UDP</dt><dd className="mt-1 break-words tabular-nums">{plan.udp_ports.join(', ') || t('setup.noPorts')}</dd></div><div><dt className="font-semibold">{t('setup.certificateContact')}</dt><dd className="mt-1 break-all">{plan.contact_email}</dd></div>{plan.hostname_change && <div><dt className="font-semibold">{t('setup.hostnameChange')}</dt><dd className="mt-1 break-all">{plan.hostname_change}</dd></div>}</dl>
@@ -825,7 +832,8 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
 // Genisletme incelemesi degiseni one koyar; adim listesi eksiksiz kalir.
 function SetupExtensionReview({ plan, changes, name }: {
     plan: ServerSetupPlan;
-    changes: { key: string; label: string; before: string; after: string; literal: boolean }[];
+    // A literal value keeps the mono face; "none" is a word and does not (2026-10-16).
+    changes: { key: string; label: string; before: string; after: string; beforeLiteral: boolean; afterLiteral: boolean }[];
     name: (kind: string, target: string) => string;
 }) {
     const { t } = useSetupI18n();
@@ -836,7 +844,7 @@ function SetupExtensionReview({ plan, changes, name }: {
             <h3 id="setup-extension-changes" className="font-semibold">{t('setup.extend.changesTitle')}</h3>
             {changes.length > 0 ? <dl className="mt-2 divide-y divide-border border-y border-border">{changes.map(change => <div key={change.key} className="grid gap-1 py-3 text-sm sm:grid-cols-[minmax(0,13rem)_minmax(0,1fr)] sm:gap-4" data-change={change.key}>
                 <dt className="text-fg-muted">{change.label}</dt>
-                <dd className={`flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 ${change.literal ? 'font-mono' : ''}`}><span className="break-all text-fg-muted">{change.before}</span><ArrowRight className="h-3.5 w-3.5 shrink-0 text-fg-muted" aria-hidden="true" /><span className="sr-only">→</span><span className="break-all font-medium text-fg">{change.after}</span></dd>
+                <dd className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1"><span className={`break-all text-fg-muted ${change.beforeLiteral ? 'font-mono' : ''}`}>{change.before}</span><ArrowRight className="h-3.5 w-3.5 shrink-0 text-fg-muted" aria-hidden="true" /><span className="sr-only">→</span><span className={`break-all font-medium text-fg ${change.afterLiteral ? 'font-mono' : ''}`}>{change.after}</span></dd>
             </div>)}</dl> : <p className="mt-2 text-sm leading-6 text-fg-muted">{t('setup.extend.noChanges')}</p>}
         </section>
         <section aria-labelledby="setup-extension-installs">

@@ -3,7 +3,7 @@ import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
 import { componentName } from '../lib/componentName';
 import { decodeSetupComponentCatalog, setupComponentClosure, setupComponentGroups, type SetupComponentCatalog } from '../lib/serverSetupComponents';
-import { Button } from './ui';
+import { Button, KeepWords } from './ui';
 
 export function useSetupComponentCatalog(enabled: boolean) {
     const [catalog, setCatalog] = useState<SetupComponentCatalog | null>(null);
@@ -75,12 +75,13 @@ export function ServerSetupComponents({ catalog, selected, onChange, disabled }:
                                 className="mt-1 h-4 w-4 shrink-0 accent-primary" />
                             <span className="min-w-0 flex-1"><span className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"><span className="font-medium">{name}</span>{installed && <span className="text-xs text-fg-muted">{t('setup.components.installed')}</span>}</span>
                                 <span id={`${rowID}-detail`} className="mt-1 block text-sm leading-6 text-fg-muted">
-                                    {neededBy.length > 0 ? t('setup.components.requiredBy', { names: neededBy.map(id => componentName(lookup.get(id) ?? id, t)).join(', ') })
+                                    {/* "PHP-FPM" and "E-posta" do not break at their hyphen. */}
+                                    <KeepWords text={neededBy.length > 0 ? t('setup.components.requiredBy', { names: neededBy.map(id => componentName(lookup.get(id) ?? id, t)).join(', ') })
                                         : unavailable ? t('setup.components.unavailable')
                                             : conflicts.length > 0 ? t('setup.components.conflicts', { names: conflicts.map(row => componentName(row, t)).join(', ') })
                                                 : group.length > 1 ? t('setup.components.together')
                                                     : group[0].dependencies.length > 0 ? t('setup.components.includes', { names: group[0].dependencies.map(id => componentName(lookup.get(id) ?? id, t)).join(', ') })
-                                                        : installed ? t('setup.components.keep') : t('setup.components.optional')}
+                                                        : installed ? t('setup.components.keep') : t('setup.components.optional')} />
                                 </span>
                             </span>
                         </label>

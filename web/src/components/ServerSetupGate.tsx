@@ -97,7 +97,7 @@ export function ServerSetupDashboardNotice() {
         return <section className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-surface px-5 py-5" aria-labelledby="setup-dashboard-title" data-setup-extension="">
             <div className="min-w-0 flex-1 basis-72"><h2 id="setup-dashboard-title" className="font-semibold">{t('setup.extend.dashboardTitle')}</h2>
                 <p className="mt-1 max-w-2xl text-sm text-fg-muted">{t(running ? 'setup.extend.dashboardRunning' : 'setup.extend.dashboardDraft')}</p></div>
-            <Link to="/setup" className="rounded-lg border border-border-strong px-4 py-2 text-sm font-semibold text-primary hover:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">{t('setup.extend.continue')}</Link>
+            <Link to="/setup" className="rounded-lg border border-border-strong px-4 py-2 text-sm font-semibold text-primary hover:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">{t(running ? 'setup.extend.showProgress' : 'setup.extend.continue')}</Link>
         </section>;
     }
     if (snapshot.guidance === 'manual' && !['running', 'waiting'].includes(snapshot.status)) return null;

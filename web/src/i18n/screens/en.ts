@@ -1608,6 +1608,7 @@ export const enScreens = {
     "setup.extend.dashboardDraft": "Your additions are saved and have not started. The server keeps working as it is.",
     "setup.extend.dashboardRunning": "The extension is running. Its page shows the progress; nothing needs to be done here.",
     "setup.extend.continue": "Continue extending",
+    "setup.extend.showProgress": "Show its progress",
     "setup.nextWebsite": "Add your first website",
     "setup.nextApplication": "Add your application’s domain",
     "setup.nextDNS": "Open DNS infrastructure",

@@ -70,7 +70,7 @@ export function ServerSetupSettings() {
     const ready = snapshot.status === 'ready';
     const extending = snapshot.extension === true;
     const help = extending ? (active ? 'setup.extend.dashboardRunning' : 'setup.extend.dashboardDraft') : ready ? 'setup.extend.help' : snapshot.guidance === 'manual' ? 'setup.manualSelected' : 'setup.choiceIntro';
-    const action = extending ? 'setup.extend.continue' : ready ? 'setup.extend.title' : active ? 'setup.resume' : 'setup.openWizard';
+    const action = extending ? (active ? 'setup.extend.showProgress' : 'setup.extend.continue') : ready ? 'setup.extend.title' : active ? 'setup.resume' : 'setup.openWizard';
     return <section className="rounded-xl border border-border bg-surface p-6" aria-labelledby="setup-settings-title">
         <h2 id="setup-settings-title" className="text-lg font-semibold">{t('setup.settingsTitle')}</h2>
         {ready && <p className="mt-3 max-w-2xl text-sm text-fg-muted">{t('setup.completeHelp')}</p>}

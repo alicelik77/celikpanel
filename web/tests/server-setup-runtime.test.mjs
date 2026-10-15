@@ -1145,6 +1145,30 @@ test('the manual re-check box says the typed reason sentence the guidance uses',
     }finally{await cleanup();}
 });
 
+test('the answer to the manual re-check is brought into view when it arrives, not while it is read',async()=>{
+    init('admin',{status:'waiting'});
+    const marker={plan_id:'a'.repeat(32),request_id:'b'.repeat(32),panel_domain:'panel.example.com'};
+    store.set('celikpanel.setup.start.admin',JSON.stringify(marker));
+    const typed={id:'mail_identity',state:'action_required',code:'mail_identity_required',reason:'reverse_dns_mismatch',vars:{hostname:'mail.example.com',ip:'203.0.113.7',ptr:'old.example.net',resolver:'1.1.1.1'}};
+    const waiting={...execution(marker,'waiting'),phase:'verification',steps:[{id:'verify',kind:'verify',target:'web',status:'succeeded'}],checks:[typed]};
+    const read=fetch;
+    globalThis.fetch=async(url,options)=>url.includes('/setup/operation')?Response.json(waiting):read(url,options);
+    let finish, manual=false;
+    fixture.context.reload=()=>manual?new Promise(resolve=>{finish=resolve;}):Promise.resolve(state);
+    // Each host node gets the least a ref is asked for; scrolls are recorded.
+    const scrolled=[];
+    const createNodeMock=element=>({focus(){},scrollIntoView(options){scrolled.push({type:element.type,className:String(element.props.className||''),options});}});
+    try{
+        await act(async()=>{tree=Renderer.create(React.createElement(Wizard,null,React.createElement('section',{'data-management':true})),{createNodeMock});});
+        manual=true;
+        await act(async()=>{void findButton('setup.verify').props.onClick();});
+        const box=()=>scrolled.filter(item=>item.type==='div'&&item.className.includes('scroll-mb-6'));
+        assert.equal(box().length,0,'the box was scrolled to while the check was still being read');
+        await act(async()=>{finish({...state,checks:[typed]});});
+        assert.deepEqual(box().map(item=>item.options),[{block:'nearest'}]);
+    }finally{await cleanup();}
+});
+
 test('recorded mail enrollment survives reload and continues only by explicit click with the same step', async()=>{
     for (const outcome of ['accepted','lost','refused']) {
         init('admin',{status:'running'});
@@ -1407,6 +1431,9 @@ test('the review of an extension says what changes, what is installed and what i
         const mailRow = review.findByProps({ 'data-change': 'mail_hostname' });
         assert.ok(JSON.stringify(mailRow.findAllByType('span').map(item => item.props.children)).includes('mail.example.com'));
         assert.ok(JSON.stringify(mailRow.findAllByType('span').map(item => item.props.children)).includes('setup.extend.none'));
+        // A literal keeps the mono face; "none" is a word (2026-10-16).
+        const face = value => String(mailRow.findAllByType('span').find(item => item.props.children === value).props.className || '').includes('font-mono');
+        assert.deepEqual([face('setup.extend.none'), face('mail.example.com')], [false, true]);
         assert.ok(review.findAllByProps({ 'data-change': 'purpose' }).length === 1);
         assert.equal(review.findAllByProps({ 'data-change': 'panel_domain' }).length, 0, 'an unchanged setting is listed as a change');
         assert.equal(review.findAllByProps({ 'data-install': 'core-mail' }).length, 1, said);
@@ -1458,7 +1485,15 @@ test('the Dashboard and Settings say an extension is not a setup to resume, and 
             await mount(NoticeInGate);
             const shown = textOf();
             assert.ok(shown.includes('setup.extend.dashboardTitle') && shown.includes(status === 'running' ? 'setup.extend.dashboardRunning' : 'setup.extend.dashboardDraft'), shown);
-            assert.ok(shown.includes('setup.extend.continue') && !shown.includes('setup.resume'));
+            // A running extension needs nothing from the owner: its link shows the progress (2026-10-16).
+            assert.ok(shown.includes(status === 'running' ? 'setup.extend.showProgress' : 'setup.extend.continue') && !shown.includes('setup.resume'), shown);
+            assert.ok(!shown.includes(status === 'running' ? 'setup.extend.continue' : 'setup.extend.showProgress'), shown);
+        } finally { await cleanup(); }
+        init('admin', { status, required: false, extension: true, extension_base: base, draft: base });
+        try {
+            await mount(ServerSetupSettings);
+            const shown = textOf();
+            assert.ok(shown.includes(status === 'running' ? 'setup.extend.showProgress' : 'setup.extend.continue'), shown);
         } finally { await cleanup(); }
         init('admin', { status, required: false, extension: true, extension_base: base, draft: base });
         fixture.path = '/domains';

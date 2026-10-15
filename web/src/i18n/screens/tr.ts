@@ -1586,6 +1586,7 @@ export const trScreens: Record<ScreenKey, string> = {
     "setup.extend.dashboardDraft": "Eklemeleriniz kaydedildi, henüz başlamadı. Sunucu olduğu gibi çalışmaya devam ediyor.",
     "setup.extend.dashboardRunning": "Genişletme çalışıyor. İlerlemesi kendi sayfasında görünür; burada bir şey yapmanız gerekmiyor.",
     "setup.extend.continue": "Genişletmeye devam et",
+    "setup.extend.showProgress": "İlerlemesini göster",
     "setup.nextWebsite": "İlk web sitenizi ekleyin",
     "setup.nextApplication": "Uygulamanızın alan adını ekleyin",
     "setup.nextDNS": "DNS altyapısını açın",
