@@ -5512,3 +5512,65 @@ or recovery behaviour. 2026-10-13 is the clock date of everything in it.
 - **Open.** Everything the entries above leave open, among them the two open
   items the seventeenth native record left and the limits listed in the
   [release notes](RELEASE-NOTES-v0.1.0-alpha.84.md).
+
+### Candidate v0.1.0-alpha.85 (P0.1/P0.2 area; invariants 2 and 6; D-024; D-032; D-033; 2026-10-15)
+
+D-025 invariants 2 (unknown is not absent, empty or success) and 6 (a screen
+says what was verified); D-024; D-032; D-033. **No P0 item is closed or
+advanced.** P0.1 to P0.5 stay partial and every open acceptance item stays
+open. This entry records a candidate that is not published; 2026-10-15 is the
+clock date of the entry, and the measurement it cites ran on 2026-10-14 and
+2026-10-15 UTC.
+
+- **What the candidate changes.** Screens that wait (D-033): setup finishes on
+  the owner's passing check (`GET /api/v1/setup?check=1&manual=1` wakes the
+  waiting run; the request completes nothing and starts nothing), shows
+  "Finishing setup" with a 60 s bound that ends in "not known yet", and names
+  the reverse DNS wait; an audit of 37 waiting states changed 19, each
+  automatic re-read a GET, one at a time, only while visible; observations O4
+  to O6 of alpha.84, the Mail stacks card, typed mail profile sentences, the
+  HSTS time left on the server's clock (`hsts_retire_remaining_seconds`) and
+  the sidebar build id. In the Agent, the mail identity lookup asks the next
+  resolver when the first reverse DNS answer is stale. No change to the update
+  path, the recovery runner, the release floor or the native services. The
+  [release notes](RELEASE-NOTES-v0.1.0-alpha.85.md) say which check rests on
+  which code.
+- **Invariants touched.** Invariant 2: a bounded wait ends in "not known yet",
+  not in a failure or a negative state, and a known failure keeps its own
+  wording; the screenshot round replaced a "Waiting for requirements" label
+  that read as an unmet prerequisite while the result was unknown. Invariant 6:
+  a screen no longer says "Waiting for you" when the owner's part is done, and
+  a refused read stands on the attention surface, not the failure one.
+  Polling never starts or admits a mutation (D-024).
+- **Schema or version transition.** None: no migration between the alpha.84 tag
+  and the candidate (the database schema stays 44). The release sequence moves
+  from 84 to 85 in the release preparation `5443fe055`, with the alpha.84
+  release commit `f0157e6c8` as previous; the transition rules are unchanged.
+  **Recovery behaviour.** Unchanged.
+- **Evidence.** The eighteenth native record,
+  [set16](../deploy/e2e/release-recovery/evidence/set16-20261014/README.md)
+  (2026-10-14 22:16:46Z to 2026-10-15 00:01:17Z UTC; disposable QEMU/KVM
+  guests; test-licence builds; `native_evidence: false`). It measured the update
+  and the automatic return on two distributions: a fresh install on Debian 13;
+  the update from a local rebuild of the alpha.84 tag (`9f86eb43…`, not
+  byte-identical to the published `6dc899e5…`) to the fixture commit
+  `d5d673eb` (`89cf88397` plus the sequence policy) on Debian 13 and Ubuntu
+  24.04, each `succeeded / update_verified`, floor 85, ledger 44; and a
+  defective candidate (`524f86dd`, a migrate-only defect, one guest reset) that
+  returned by itself on both, `recovered / rollback_verified`, two automatic
+  attempts, the Panel and Agent answering as alpha.84. After each return the
+  database comparison was `equal-except-volatile`: in `managed_site_files` only
+  `observed_at` changed, the stable digest equal (Debian `a39f9b86…`, Ubuntu
+  `985eed03…`), which answers set15's open finding for this fixture (the probe
+  change `a87ce0b97`). Component tests: `go test ./cmd/panel/...` 1542 passed,
+  6 skipped; `go test ./cmd/agent/...` 1798 passed, 29 skipped under a clean
+  mount namespace; `npm test` 1391 of 1391.
+- **Open.** After each return the recovery foundation file still names the
+  defective candidate (`524f86dd…`, sequence 85) while the running build is
+  alpha.84, and the floor reads 85: the pattern of set12 and set15, recorded
+  and not judged. One run per cell on one laptop host; Arch not run; no fresh
+  Ubuntu install; the release preparation commit (bootstrap pins 85) is in no
+  measured build; "Finishing setup" and the update card's busy state were not
+  reached natively; no installed server was measured. set16 is a measurement,
+  not acceptance evidence, and closes no P0 row. Everything the entries above
+  leave open stays open.
