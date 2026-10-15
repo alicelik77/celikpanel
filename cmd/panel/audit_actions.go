@@ -121,6 +121,8 @@ var auditActionNames = []string{
 	"server.setup.complete",
 	"server.setup.dns_publisher",
 	"server.setup.draft",
+	"server.setup.extend",
+	"server.setup.extend.cancel",
 	"server.setup.guidance",
 	"server.setup.mail_enrollment.continue",
 	"server.setup.mail_enrollment.retry_reviewed",
