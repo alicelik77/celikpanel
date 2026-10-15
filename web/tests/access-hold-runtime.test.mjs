@@ -844,7 +844,7 @@ async function restartLab(start, startedAt) {
   function Lease() {
     const [tracking, setTracking] = React.useState(false);
     globalThis.holdTest.onPublished = setTracking;
-    const lease = useSystemUpdateNavigationLease(REQUEST, startedAt, tracking, runtime);
+    const lease = useSystemUpdateNavigationLease(REQUEST, startedAt, tracking, null, runtime);
     lab.lease.push(lease.blocked);
     return null;
   }

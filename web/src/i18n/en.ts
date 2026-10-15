@@ -163,7 +163,7 @@ export const en = {
     'panelUpdate.lastRead': 'Last read',
     // --- end of the update notice block ---
     'panelUpdate.canonicalChecking': 'Checking unfinished updates...',
-    'panelUpdate.interactionLocked': 'Navigation is temporarily locked while this update is checked. It unlocks automatically after two minutes; tracking continues.',
+    'panelUpdate.interactionLocked': 'Navigation is temporarily locked while this update is checked. It unlocks by itself after two minutes; if the panel is still restarting then, once it answers again, at the latest six minutes after the start. Tracking continues.',
     'panelUpdate.ambiguous': 'The start response is uncertain. This request will not be repeated; its exact server status will be tracked.',
     'panelUpdate.outcome.rolledBackTitle': 'Update not completed; previous version restored',
     'panelUpdate.outcome.rolledBack': 'The update to {target} did not complete. The server was returned to {previous} automatically and is running it now.',

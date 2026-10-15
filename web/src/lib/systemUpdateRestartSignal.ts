@@ -108,3 +108,26 @@ export function systemUpdateSessionGraceEnd(
         ? Math.min(signal.lostSince, startingSince) : startingSince;
     return systemUpdateRestartDeadline(signal.startedAt, lost);
 }
+
+// The followed update's restart as the navigation lease needs it (native
+// record set17b, finding F1), or null when it does not apply: the published
+// signal names this exact request and start, and its tracking has lost the
+// Panel (lostSince). It becomes null again when the tracking reaches the Panel
+// and reads the update's record, which ends a lock the restart kept. until is
+// the update's own restart window (6 minutes from the start, at least 2
+// minutes from the first lost read); the lease applies its own bounds
+// (lib/systemUpdateWatchdog.ts, systemUpdateNavigationDeadline).
+//
+// Gezinme kirasinin gordugu bicimiyle izlenen guncellemenin yeniden
+// baslamasi; izleme Paneli yeniden okuyunca null olur ve kilidi biter.
+export function systemUpdateNavigationRestart(
+    signal: SystemUpdateRestartSignal | null,
+    requestID: string | null,
+    startedAt: number | null,
+): { lostSince: number; until: number } | null {
+    if (!signal || requestID === null || startedAt === null) return null;
+    if (signal.requestID !== requestID || signal.startedAt !== startedAt) return null;
+    const lost = signal.lostSince;
+    if (typeof lost !== 'number' || !Number.isFinite(lost) || !Number.isFinite(startedAt)) return null;
+    return { lostSince: lost, until: systemUpdateRestartDeadline(startedAt, lost) };
+}

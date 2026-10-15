@@ -305,7 +305,7 @@ test('set17 D1: the restart signal publishes only a change and is read by subscr
 
 test('set17 D1: the provider publishes the followed update once the server said it is active, with its first lost read', () => {
     const tracker = readFileSync(new URL('../src/components/SystemUpdateOperation.tsx', import.meta.url), 'utf8');
-    assert.match(tracker, /import \{ publishSystemUpdateRestart \} from '\.\.\/lib\/systemUpdateRestartSignal';/);
+    assert.match(tracker, /import \{ publishSystemUpdateRestart, systemUpdateNavigationRestart, useSystemUpdateRestart \} from '\.\.\/lib\/systemUpdateRestartSignal';/);
     assert.match(tracker, /const followedMemory = followed \? readMemory\(followed\.request_id\) : null;/);
     assert.match(tracker, /const restartRequestID = followed && followedMemory\?\.lastKnownActive \? followed\.request_id : null;/);
     assert.match(tracker, /const restartLostSince = followedMemory\?\.lostSince \?\? null;/);
@@ -317,4 +317,25 @@ test('set17 D1: the provider publishes the followed update once the server said 
     assert.match(gate, /const published = useSystemUpdateRestart\(\);/);
     const app = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
     assert.match(app, /publishSystemUpdateAuthentication\(state === 'ready' && !observationRecovery && user\?\.effective_role === 'admin'\);/);
+});
+
+// Native record set17b, finding F1 (2026-10-15): the lock ended by its
+// two-minute lease at T+120 s in the middle of the restart. The provider now
+// hands the lease the restart it publishes, for the exact request it follows;
+// the lease's own behaviour is tested mounted in
+// tests/system-update-navigation-lease-mounted.test.mjs.
+test('set17b F1: the provider keeps the navigation lock through its own published restart', () => {
+    const tracker = readFileSync(new URL('../src/components/SystemUpdateOperation.tsx', import.meta.url), 'utf8');
+    assert.match(tracker, /const publishedRestart = useSystemUpdateRestart\(\);/);
+    assert.match(tracker, /const navigationRestart = systemUpdateNavigationRestart\(\n\s+publishedRestart,\n\s+marker\?\.request_id \?\? null,\n\s+marker\?\.created_at \?\? null,\n\s+\);/);
+    assert.match(tracker, /useSystemUpdateNavigationLease\(\n\s+modalIdentity,\n\s+exactMarker\?\.created_at \?\? null,\n\s+operationBlocks,\n\s+exactMarker === marker \? navigationRestart : null,\n\s+\);/);
+    const { systemUpdateNavigationRestart: select } = restartSignal;
+    const start = 1_800_000_000_000;
+    const id = 'c'.repeat(32);
+    assert.deepEqual(select({ requestID: id, startedAt: start, lostSince: start + 25_000 }, id, start),
+        { lostSince: start + 25_000, until: systemUpdateRestartDeadline(start, start + 25_000) });
+    assert.equal(select({ requestID: id, startedAt: start, lostSince: null }, id, start), null, 'reconnected: the restart no longer keeps the lock');
+    // The lock line says the same bounds, in both languages.
+    assert.match(en['panelUpdate.interactionLocked'], /after two minutes; if the panel is still restarting then, once it answers again, at the latest six minutes after the start/);
+    assert.match(tr['panelUpdate.interactionLocked'], /İki dakika sonra kendiliğinden açılır; panel o sırada hâlâ yeniden başlıyorsa yeniden yanıt verdiğinde, en geç başlangıçtan altı dakika sonra açılır/);
 });

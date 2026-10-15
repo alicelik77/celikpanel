@@ -372,7 +372,7 @@ export const tr: Record<ShellKey, string> = {
     'panelUpdate.lastRead': 'Son okuma',
     // --- güncelleme bildirimi bloğunun sonu ---
     'panelUpdate.canonicalChecking': 'Tamamlanmamış güncelleme denetleniyor...',
-    'panelUpdate.interactionLocked': 'Bu güncelleme denetlenirken gezinme geçici olarak kilitlidir. İki dakika sonra otomatik açılır; işlem arka planda izlenmeye devam eder.',
+    'panelUpdate.interactionLocked': 'Bu güncelleme denetlenirken gezinme geçici olarak kilitlidir. İki dakika sonra kendiliğinden açılır; panel o sırada hâlâ yeniden başlıyorsa yeniden yanıt verdiğinde, en geç başlangıçtan altı dakika sonra açılır. İşlem arka planda izlenmeye devam eder.',
     'panelUpdate.ambiguous': 'Başlatma yanıtı belirsiz. İstek tekrarlanmayacak; aynı sunucu durumu izlenecek.',
     'panelUpdate.outcome.rolledBackTitle': 'Güncelleme tamamlanmadı; önceki sürüm geri yüklendi',
     'panelUpdate.outcome.rolledBack': '{target} sürümüne güncelleme tamamlanmadı. Sunucu otomatik olarak {previous} sürümüne döndürüldü ve şu an onu çalıştırıyor.',

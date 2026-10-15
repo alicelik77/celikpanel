@@ -616,7 +616,9 @@ test('set17 D1: the update navigation lock survives the restart and is still hel
  const lease = [];
  function Harness() {
   const [recovering, setRecovering] = React.useState(false);
-  const state = useSystemUpdateNavigationLease('a'.repeat(32), lab.startedAt, !recovering, runtime);
+  // The restart keeps the lock as the provider wires it (set17b F1).
+  const restart = restartSignal.systemUpdateNavigationRestart(restartSignal.useSystemUpdateRestart(), 'a'.repeat(32), lab.startedAt);
+  const state = useSystemUpdateNavigationLease('a'.repeat(32), lab.startedAt, !recovering, restart, runtime);
   lease.push(state.blocked);
   return lab.element(LicenseOnboarding, { onRecoveryChange: value => { lab.recoveries.push(value); setRecovering(value); } });
  }

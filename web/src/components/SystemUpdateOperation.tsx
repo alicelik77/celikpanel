@@ -39,7 +39,7 @@ import {
     systemUpdateMutationLocked,
 } from '../lib/systemUpdateWatchdog';
 import { useSystemUpdateNavigationLease } from '../lib/useSystemUpdateNavigationLease';
-import { publishSystemUpdateRestart } from '../lib/systemUpdateRestartSignal';
+import { publishSystemUpdateRestart, systemUpdateNavigationRestart, useSystemUpdateRestart } from '../lib/systemUpdateRestartSignal';
 import {
     decodeSystemUpdatePhase,
     systemUpdateClockTime,
@@ -734,10 +734,21 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
             || marker !== null
             || terminalBlocks
         ));
+    // The update's own restart keeps a lock that is still held until the
+    // tracking reaches the Panel again or the restart window ends (native
+    // record set17b, finding F1): the signal this provider publishes below,
+    // for this exact request, while its tracking has lost the Panel.
+    const publishedRestart = useSystemUpdateRestart();
+    const navigationRestart = systemUpdateNavigationRestart(
+        publishedRestart,
+        marker?.request_id ?? null,
+        marker?.created_at ?? null,
+    );
     const navigationLease = useSystemUpdateNavigationLease(
         modalIdentity,
         exactMarker?.created_at ?? null,
         operationBlocks,
+        exactMarker === marker ? navigationRestart : null,
     );
     const navigationLeaseReleasedRef = useRef(navigationLease.released);
     navigationLeaseReleasedRef.current = navigationLease.released;
