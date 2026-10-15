@@ -97,6 +97,10 @@ test('an action this page has no words for is said as words, never as its raw id
     assert.ok(said.length > 0);
   }
   assert.equal(lib.auditActionText('from.a_newer:panel — reason', say('en')), 'from a newer panel');
+  // The target is kept as written: a domain stays a domain (browser batch 14,
+  // 2026-10-15: "backup offsite verify partial example com" on the Dashboard).
+  assert.equal(lib.auditActionText('backup.offsite.verify_partial:example.com — 2 of 3', say('tr')), 'backup offsite verify partial example.com');
+  assert.equal(lib.auditActionText('brand.new.thing:203.0.113.10', say('en')), 'brand new thing 203.0.113.10');
   // A sentence that needs a target the action lacks is not drawn half-empty.
   assert.equal(lib.auditActionText('domain.delete', say('en')), 'domain delete');
 });

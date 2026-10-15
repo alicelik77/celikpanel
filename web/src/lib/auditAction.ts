@@ -53,10 +53,15 @@ function targetText(name: string, target: string, t: Translate): string {
     return target;
 }
 
+// The name becomes words; its target is kept as written, after them, so a
+// domain or an address stays readable ("example.com", not "example com").
+// Ad sözcüklere çevrilir; hedef yazıldığı gibi arkasında kalır.
 export function humaniseAuditAction(action: string): string {
+    const { name, target } = auditActionParts(action);
+    const words = name.replace(/[._:\-/]+/g, ' ').trim();
+    if (words) return target ? `${words} ${target}` : words;
     const event = action.split(' — ', 1)[0].trim();
-    const words = event.split(/\s/, 1)[0].replace(/[._:\-/]+/g, ' ').trim();
-    return words || action.trim();
+    return event.split(/\s/, 1)[0].replace(/[._:\-/]+/g, ' ').trim() || action.trim();
 }
 
 export function auditActionText(action: string, t: Translate): string {
