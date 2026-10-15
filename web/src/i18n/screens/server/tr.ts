@@ -987,6 +987,8 @@ export const trServerScreens: Record<ServerScreenKey, string> = {
     'services.mailProfiles.code.component_not_installable.platform': '{component} bu sunucunun platformunda otomatik olarak kurulamıyor: {platform}.',
     'services.mailProfiles.code.component_conflict': '{component}, kurulu {conflicting} ile çakışıyor.',
     'services.mailProfiles.code.component_requires': '{component} için bu profilin parçası olmayan {required} gerekiyor.',
+    'services.mailProfiles.code.component_requires.many': '{component} için bu profilin parçası olmayan {required} gerekiyor.',
+    'services.mailProfiles.requirementAnd': 've',
     // Bir gereksinim bileşen yerine rol adı verebilir (web-server …); katalogdaki
     // rol adları (internal/core ManagedServices içindeki ConflictGroup).
     'services.mailProfiles.role.web-server': 'web sunucusu',

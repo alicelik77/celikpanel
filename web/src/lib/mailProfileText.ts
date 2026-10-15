@@ -65,14 +65,24 @@ const fullerSentence: Record<string, { value: string; key: TranslationKey }> = {
 // görünen adıyla söylenir; bileşen adı olduğu gibi kalır; bilinmeyen rol adı
 // sözcük olarak söylenir, ham belirteç olarak değil.
 const requirementRoles = ['web-server', 'smtp-server', 'imap-server', 'spam-filter', 'dns-server', 'kv-store'] as const;
-export function requirementText(required: string, t: Translate): string {
-    return required.split(', ').map((token) => {
+// More than one requirement is said as a list with "and" before the last one,
+// and the sentence takes its plural form (browser batch 14, 2026-10-15:
+// "requires Redis, key-value store, mail relay host, which is not part of
+// this profile").
+// Birden fazla gereksinim "ve" ile biten bir liste olarak söylenir.
+export function requirementItems(required: string, t: Translate): string[] {
+    return required.split(', ').filter(Boolean).map((token) => {
         if (!/^[a-z]+(-[a-z]+)+$/.test(token)) return token;
         if ((requirementRoles as readonly string[]).includes(token)) {
             return t(`services.mailProfiles.role.${token}` as TranslationKey);
         }
         return token.replace(/-/g, ' ');
-    }).join(', ');
+    });
+}
+export function requirementText(required: string, t: Translate): string {
+    const items = requirementItems(required, t);
+    if (items.length < 2) return items.join('');
+    return `${items.slice(0, -1).join(', ')} ${t('services.mailProfiles.requirementAnd')} ${items[items.length - 1]}`;
 }
 
 function codeSentence(code: unknown, vars: unknown, t: Translate): string | null {
@@ -83,11 +93,18 @@ function codeSentence(code: unknown, vars: unknown, t: Translate): string | null
             if (typeof value === 'string') values[name] = value;
         }
     }
-    if (code === 'component_requires' && values.required) values.required = requirementText(values.required, t);
     const say = (key: TranslationKey): string | null => {
         const said = t(key, values);
         return said === key || /\{\w+\}/.test(said) ? null : said;
     };
+    if (code === 'component_requires' && values.required) {
+        const several = requirementItems(values.required, t).length > 1;
+        values.required = requirementText(values.required, t);
+        if (several) {
+            const said = say('services.mailProfiles.code.component_requires.many');
+            if (said) return said;
+        }
+    }
     const fuller = fullerSentence[code];
     if (fuller && values[fuller.value]?.trim()) {
         const said = say(fuller.key);

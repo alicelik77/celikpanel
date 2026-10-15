@@ -116,11 +116,17 @@ test('a role in a requirement is named in the page language, never as its raw to
   for (const locale of ['en', 'tr']) assert.equal(roleKeys(locale).length, roles.length, `${locale} names a role the catalogue does not have`);
 
   const roleRequired = { id: 'webmail', name: 'Webmail', blocked_reason: 'Roundcube requires web-server outside this profile.', blocked_code: 'component_requires', blocked_vars: { component: 'Roundcube', required: 'web-server' } };
-  assert.equal(lib.mailProfileBlocked(roleRequired, say('en')), 'Roundcube requires web server, which is not part of this profile.');
+  assert.equal(lib.mailProfileBlocked(roleRequired, say('en')), 'Roundcube requires a web server, which is not part of this profile.');
   assert.equal(lib.mailProfileBlocked(roleRequired, say('tr')), 'Roundcube için bu profilin parçası olmayan web sunucusu gerekiyor.');
   // A role beside component names: the names stay, the roles are named.
   const mixed = { ...roleRequired, blocked_vars: { component: 'phpMyAdmin', required: 'MariaDB, web-server, PHP-FPM' } };
-  assert.equal(lib.mailProfileBlocked(mixed, say('tr')), 'phpMyAdmin için bu profilin parçası olmayan MariaDB, web sunucusu, PHP-FPM gerekiyor.');
+  assert.equal(lib.mailProfileBlocked(mixed, say('tr')), 'phpMyAdmin için bu profilin parçası olmayan MariaDB, web sunucusu ve PHP-FPM gerekiyor.');
+  // Several requirements: a list with "and" and the plural sentence (browser batch 14,
+  // 2026-10-15: "requires Redis, key-value store, mail relay host, which is not part of this profile").
+  assert.equal(lib.mailProfileBlocked(mixed, say('en')), 'phpMyAdmin requires MariaDB, a web server and PHP-FPM, which are not part of this profile.');
+  const two = { ...roleRequired, blocked_vars: { component: 'Rspamd', required: 'Redis, kv-store' } };
+  assert.equal(lib.mailProfileBlocked(two, say('en')), 'Rspamd requires Redis and a key-value store, which are not part of this profile.');
+  assert.equal(lib.mailProfileBlocked(two, say('tr')), 'Rspamd için bu profilin parçası olmayan Redis ve anahtar-değer deposu gerekiyor.');
   // A role this page has no name for (a newer Panel): words, not the token.
   const newer = { ...roleRequired, blocked_vars: { component: 'Roundcube', required: 'queue-server' } };
   assert.equal(lib.mailProfileBlocked(newer, say('en')), 'Roundcube requires queue server, which is not part of this profile.');
