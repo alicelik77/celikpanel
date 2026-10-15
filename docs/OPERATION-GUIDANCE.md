@@ -7935,3 +7935,35 @@ guest `CelikPanel-S2-Debian`). The Agent was not run again.
 
 Counts after item 17: `npm test` 1483 of 1483; `npx tsc --noEmit` clean;
 `npm run build` passes with its bundle budget. Web only; Go not run again.
+
+### Installed servers after the alpha.86 publication: what the owner has not yet reported (2026-10-15)
+
+No observation yet, and no change. v0.1.0-alpha.86 was published on 2026-10-15
+and no installed server had been updated when this entry was written; only the
+owner starts that, from the panel's own update screen. Nothing was measured on
+an installed server for this entry, no text or screen was changed for it, and
+it is not acceptance evidence. It is set against D-024 (the current reason, who
+must act, the next action and how work resumes come before long lists), D-033
+(a screen that makes the owner wait shows that it waits, or says that nothing
+needs to be done) and the known-state rule.
+
+1. **What the owner is asked to report after the update, and nothing else is
+   recorded until then.** Five things: (a) each server's update result inside
+   the panel and what the update page showed during the restart (the calm
+   notice, no gate dialog, the lock); (b) whether the full-screen licence page
+   appeared during the update; (c) the Agent's version; (d) Frankfurt's setup
+   final step after the update; (e) the output of `postconf -n >/dev/null`.
+   Until the owner reports them, each is "not recorded", not "worked" and not
+   "failed".
+2. **The restart notice of this release is not seen on the update that
+   installs it.** The update from alpha.85 to alpha.86 runs on alpha.85's update
+   screen, which is the screen that showed the warning and the toast the owner
+   reported. The calm notice, the single notice and the lock through the
+   restart are seen on an installed server only from the update after this one
+   (release notes, "Limits of this release"). What the owner sees on the
+   update to alpha.86 therefore says nothing about them, and must not be
+   recorded as if it did.
+3. **What was measured natively is a lab.** The calm restart was measured in
+   two native records (set17 and set17b) on disposable guests with test-licence
+   builds; the F1 lock extension and the session gate's `PANEL_STARTING` path
+   were not measured natively. Nothing here is an installed-server observation.
