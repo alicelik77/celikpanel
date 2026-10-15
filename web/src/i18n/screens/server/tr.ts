@@ -40,6 +40,7 @@ export const trServerScreens: Record<ServerScreenKey, string> = {
     'addons.state.included': 'Dahil',
     'addons.state.comingSoon': 'Yakında',
     'addons.state.unsupported': 'Bu sunucuda desteklenmiyor',
+    'addons.state.notKnownYet': 'Durum henüz bilinmiyor',
     'addons.entitlement.owned': 'Erişim verildi',
     'addons.entitlement.expired': 'Erişim süresi doldu',
     'addons.entitlement.suspended': 'Erişim askıya alındı',

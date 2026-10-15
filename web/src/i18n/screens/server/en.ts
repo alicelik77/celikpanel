@@ -47,6 +47,9 @@ export const enServerScreens = {
     'addons.state.included': 'Included',
     'addons.state.comingSoon': 'Coming soon',
     'addons.state.unsupported': 'Unsupported here',
+    // The component record is missing, old or unreadable (component_state_*):
+    // not known, which is not "unsupported".
+    'addons.state.notKnownYet': 'State not known yet',
     'addons.entitlement.owned': 'Access granted',
     'addons.entitlement.expired': 'Access expired',
     'addons.entitlement.suspended': 'Access suspended',
