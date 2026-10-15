@@ -8091,3 +8091,72 @@ inspection with the loopback mock (desktop EN light, phone TR dark): the ready
 screen, the extension review, the secondary box and the dialog with a name
 change; it found the rename sentence said twice, corrected in `32f0a3766`. Not
 measured natively or on an installed server.
+
+**What set18 found in the browser, and the corrections (2026-10-16).** The
+native record `deploy/e2e/release-recovery/evidence/set18-20261015/README.md`
+(lab DNS and lab ACME, Debian 13, candidate `5d54aba1e`) followed a fresh setup
+and an extension adding Core Mail to ready. Three of its findings are corrected
+in source; none of the corrections was measured natively or on an installed
+server.
+
+- **D1 (verified failure in the lab, both routes, two browsers): an extension
+  opened on the completed run.** Cause: `GET /api/v1/setup/operation` without a
+  request id answers the latest run, which during an extension in draft is the
+  completed setup's own succeeded run; the page then reloaded the setup, saw
+  `status: draft` and showed "Verifying the result" and "Completion could not
+  be verified… the server has not been declared ready", polling every 3 s, with
+  the access step, the review, Start and "Stop extending" out of reach. The
+  server now says the truth: the operation answer carries the additive field
+  `superseded: true` when the run succeeded and the setup is an extension in
+  draft (`serverSetupRunSuperseded` in `cmd/panel/server_setup_operations.go`,
+  the field on `serverSetupOperationResponse`); an older page ignores it, and
+  the run itself is still answered. The page treats a superseded run as no
+  current operation (`readExecution` in `web/src/components/ServerSetup.tsx`):
+  the extension's wizard shows on its purpose step (or the access step from
+  Components) with "Stop extending"; a start marker left from that finished run
+  is dropped. The decoder keeps the flag only on a succeeded run, so it can
+  never hide a run in progress or a failure. Starting the extension moves the
+  state to running, so the extension's own run is never flagged and the page
+  shows its steps; a first setup whose run succeeded without the state becoming
+  ready still says "Completion could not be verified"; a revised extension
+  still shows its reopened run. Tests:
+  `TestServerSetupOperationMarksTheCompletedRunSupersededByAnExtension`
+  (first setup not ready, ready, extension in draft by both read routes,
+  stopped, again, running; fails when the flag is switched off);
+  `web/tests/server-setup-runtime.test.mjs`: the wizard and "Stop extending"
+  with the flag on both routes and with a stale marker, and the D1 screen
+  without it (control); start shows the new run; "Stop extending" returns to
+  the ready screen; the decoder. Both mounted D1 tests fail when the page
+  ignores the flag.
+- **O1 (wording): for about one second after "Start reviewed setup" the
+  guidance said "No more specific requirement has been confirmed for this
+  step… waiting alone may not resolve a missing requirement."** Cause: the
+  start answer is the accepted run in phase `queued` with every step pending,
+  and the guidance had no sentence for it, so it fell through to the generic
+  one. Now the guidance block names the run's own first step and says
+  "Setup has started with the step shown here. The panel begins it in a moment
+  and this page updates by itself; you do not need to do anything." (TR "Kurulum
+  burada gösterilen adımla başladı. Panel bu adımı birazdan başlatır ve bu sayfa
+  kendiliğinden güncellenir; bir şey yapmanız gerekmiyor.";
+  `setup.guide.queued`, `setupExecutionGuidance` in
+  `web/src/lib/serverSetupGuidance.ts`, `guidanceStepItem` in the wizard).
+  Mounted test (fails without the queued sentence).
+- **O3: "Continue recorded operation" stayed enabled for about 4 s while the
+  mail enrollment was running; the tool pressed it three times** (same request
+  id, no second enrollment). Cause: the page was single-flight only while its
+  own request and the read after it were in flight; the next read still showed
+  the step continuable, so the button came back. Now the press is remembered
+  until a read shows that operation moved on (another run, another state code,
+  or the step no longer running): the button stays disabled with its spinner
+  and reads "Checking the same operation" (TR "Aynı işlem denetleniyor";
+  `setup.mailEnrollment.sent`). A press no read confirms is offered again after
+  15 s; the server answers a repeat for the same request without a second
+  operation. Mounted test (fails when the press is not remembered).
+
+Counts after these corrections: `npm test` 1499 of 1499 (22 s); `npx tsc
+--noEmit` clean (17 s); `npm run build` passes with its bundle budget (20 s);
+`go test -run Setup ./cmd/panel` in the WSL guest: 181 top-level tests pass
+(29 s), `go vet` and gofmt clean. Still open from set18: the extension review
+blocks and the access step's secondary-DNS box have not been seen rendered on
+a native server; O2 (no-SNI certificate) and O4 (the lab port in the handover
+address) are not judged.

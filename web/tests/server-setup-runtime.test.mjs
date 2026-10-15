@@ -1514,3 +1514,159 @@ test('the Dashboard and Settings say an extension is not a setup to resume, and 
     fixture.path = '/settings';
     try { await mount(NoticeInGate); assert.ok(textOf().includes('setup.resume')); } finally { await cleanup(); }
 });
+
+// set18 D1 (2026-10-16): while a completed setup is being extended, the latest
+// run is the completed setup's own succeeded run. The operation read marks it
+// superseded; the page shows the extension's wizard and "Stop extending", not
+// "Verifying the result" and "Completion could not be verified".
+const completedRun = (extra = {}) => ({ id: 'd'.repeat(32), request_id: 'd'.repeat(32), plan_id: 'e'.repeat(32), status: 'succeeded', phase: 'complete',
+    steps: [{ id: '01-verify', kind: 'verify', target: 'web', status: 'succeeded' }], ...extra });
+function extensionFixture({ flag = true, step } = {}) {
+    const base = readyDraft();
+    init('admin', { status: 'draft', required: false, extension: true, extension_base: base, completed_at: '2026-10-15T22:57:21Z', draft: { ...base, mail_hostname: 'mail.example.com' } });
+    if (step) globalThis.sessionStorage.setItem('celikpanel.setup.editor.admin', JSON.stringify({ version: 1, revision: state.revision, step, draft: state.draft }));
+    const read = fetch; const run = { started: null, posted: [] };
+    globalThis.fetch = async (url, options) => {
+        if (url.includes('/setup/operation')) {
+            calls.push({ url, options });
+            if (run.started && url.endsWith('request_id=' + run.started.request_id)) return Response.json(execution(run.started));
+            // The server flags the completed run only while the extension is a draft.
+            return Response.json(completedRun(flag && state.extension && state.status === 'draft' ? { superseded: true } : {}));
+        }
+        if (url === '/api/v1/setup/start') {
+            calls.push({ url, options }); run.started = JSON.parse(options.body);
+            state = { ...state, status: 'running' };
+            return Response.json(execution(run.started), { status: 202 });
+        }
+        if (url === '/api/v1/setup/extend') {
+            calls.push({ url, options }); run.posted.push(JSON.parse(options.body));
+            state = { ...fresh(), status: 'ready', required: false, completed_at: '2026-10-15T22:57:21Z', draft: base, revision: state.revision + 1 };
+            return Response.json(state);
+        }
+        return read(url, options);
+    };
+    return run;
+}
+const settle = () => act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
+
+test('an extension of a completed setup opens its wizard, not the completed run (set18 D1)', async () => {
+    extensionFixture();
+    try {
+        await mount(); await settle();
+        const shown = textOf();
+        assert.ok(calls.some(call => call.url.includes('/setup/operation')), 'the operation was not read');
+        assert.ok(!shown.includes('setup.verificationFailed') && !shown.includes('setup.verifying') && !shown.includes('setup.reconnect'), shown.slice(0, 600));
+        assert.ok(tree.root.findAllByProps({ name: 'setup-purpose' }).length > 0, 'the extension does not open on the purpose step');
+        assert.ok(findButton('setup.extend.stop'), 'Stop extending is not reachable');
+        assert.equal(tree.root.findAllByProps({ 'data-setup-extend-stop': '' }).length, 1);
+        assert.equal(writes().length, 0);
+    } finally { await cleanup(); }
+    // The Components route lands on the access step with the mail host name.
+    extensionFixture({ step: 'access' });
+    try {
+        await mount(); await settle();
+        assert.equal(tree.root.findByProps({ id: 'setup-panel_domain' }).props.value, 'panel.example.com');
+        assert.ok(findButton('setup.extend.stop'));
+        assert.ok(!textOf().includes('setup.verificationFailed'));
+    } finally { await cleanup(); }
+    // A start marker left from the completed run is dropped, not reconciled.
+    extensionFixture();
+    store.set('celikpanel.setup.start.admin', JSON.stringify({ request_id: 'd'.repeat(32), plan_id: 'e'.repeat(32), panel_domain: 'panel.example.com' }));
+    try {
+        await mount(); await settle();
+        assert.ok(calls.some(call => call.url.endsWith('request_id=' + 'd'.repeat(32))));
+        assert.equal(store.has('celikpanel.setup.start.admin'), false, 'the finished run marker was kept');
+        assert.ok(findButton('setup.extend.stop') && !textOf().includes('setup.verificationFailed'));
+    } finally { await cleanup(); }
+    // Negative control: the same state without the server's flag is the D1 screen.
+    extensionFixture({ flag: false });
+    try {
+        await mount(); await settle();
+        assert.ok(textOf().includes('setup.verificationFailed'), 'the control no longer reproduces D1');
+        assert.equal(findButton('setup.extend.stop'), undefined);
+    } finally { await cleanup(); }
+});
+
+test('a started extension shows its own run and first step; stopping returns to the ready screen (set18 D1, O1)', async () => {
+    const run = extensionFixture();
+    try {
+        await mount(); await settle();
+        await toReview();
+        await act(async () => tree.root.findByProps({ type: 'checkbox' }).props.onChange({ target: { checked: true } }));
+        await act(async () => { await findButton('setup.start').props.onClick(); });
+        await settle();
+        assert.equal(calls.filter(call => call.url === '/api/v1/setup/start').length, 1);
+        const shown = textOf();
+        assert.ok(shown.includes('setup.installing') && shown.includes('setup.kind.verify'), shown.slice(0, 600));
+        // O1: the accepted run names its first step, not the generic sentence.
+        assert.ok(shown.includes('setup.guide.queued') && !shown.includes('setup.guide.unknown'), shown.slice(0, 800));
+        assert.ok(!shown.includes('setup.verificationFailed'));
+        assert.equal(findButton('setup.extend.stop'), undefined, 'Stop extending offered while the extension runs');
+        assert.ok(run.started && JSON.parse(store.get('celikpanel.setup.start.admin')).request_id === run.started.request_id);
+    } finally { await cleanup(); }
+    const stopped = extensionFixture();
+    try {
+        await mount(); await settle();
+        await act(async () => { await findButton('setup.extend.stop').props.onClick(); });
+        assert.deepEqual(stopped.posted, [{ revision: 1, action: 'cancel' }]);
+        await act(async () => { tree.update(React.createElement(Wizard, null)); await new Promise(resolve => setTimeout(resolve, 0)); });
+        await settle();
+        const shown = textOf();
+        assert.ok(shown.includes('setup.completeTitle') && !shown.includes('setup.verificationFailed'), shown.slice(0, 600));
+    } finally { await cleanup(); }
+});
+
+test('operation decoder keeps the superseded flag only on a succeeded run', () => {
+    assert.equal(operations.decodeSetupExecution(completedRun({ superseded: true })).superseded, true);
+    const running = operations.decodeSetupExecution({ ...completedRun({ superseded: true }), status: 'running', steps: [{ id: '01-verify', kind: 'verify', target: 'web', status: 'running' }] });
+    assert.ok(running && running.superseded === undefined, 'a flag hid a run in progress');
+    const odd = operations.decodeSetupExecution(completedRun({ superseded: 'yes' }));
+    assert.ok(odd && odd.superseded === undefined);
+});
+
+// set18 O3: "Continue recorded operation" stays disabled and says it is
+// checking from the first press until a read shows the operation moved on.
+test('a pressed mail enrollment continuation stays single-flight until the operation moves (set18 O3)', async () => {
+    init('admin', { status: 'running' });
+    const saved = { plan_id: 'a'.repeat(32), request_id: 'b'.repeat(32), panel_domain: 'panel.example.com' };
+    store.set('celikpanel.setup.start.admin', JSON.stringify(saved));
+    let current = { ...execution(saved), phase: 'mail-renewal', steps: [{ id: 'mail-renewal', kind: 'mail_enrollment', target: 'mail-renewal', qualifier: 'c'.repeat(64), status: 'running' }], error: { code: 'server_setup_mail_enrollment_running', message: 'recorded' } };
+    const ticks = []; const settleTimers = [];
+    globalThis.window.setInterval = callback => { ticks.push(callback); return ticks.length; };
+    globalThis.window.clearInterval = () => {};
+    globalThis.window.setTimeout = (callback, ms) => { if (ms === 15000) { settleTimers.push(callback); return 0; } return setTimeout(callback, ms); };
+    globalThis.window.clearTimeout = id => { if (id) clearTimeout(id); };
+    const read = fetch; let posted = 0;
+    globalThis.fetch = async (url, options) => {
+        if (url === '/api/v1/setup/mail-enrollment/continue') { posted++; return Response.json({ handoff: 'unknown' }); }
+        if (url.includes('/setup/operation')) return Response.json(current);
+        return read(url, options);
+    };
+    const tick = () => act(async () => { await ticks[ticks.length - 1](); await new Promise(resolve => setTimeout(resolve, 0)); });
+    try {
+        await mount();
+        const button = findButton('setup.mailEnrollment.continue');
+        await act(async () => { void button.props.onClick(); void button.props.onClick(); });
+        let sent = findButton('setup.mailEnrollment.sent');
+        assert.ok(sent && sent.props.disabled === true && sent.props.loading === true, 'the pressed button is offered again');
+        assert.equal(findButton('setup.mailEnrollment.continue'), undefined);
+        await act(async () => { await sent.props.onClick(); });
+        // The same state read again does not confirm anything.
+        await tick();
+        sent = findButton('setup.mailEnrollment.sent');
+        assert.ok(sent && sent.props.disabled === true);
+        await act(async () => { await sent.props.onClick(); });
+        assert.equal(posted, 1, 'the continuation was sent again while in flight');
+        // A read showing the operation moved settles the press.
+        current = { ...current, error: { code: 'server_setup_mail_enrollment_rollback', message: 'recorded' } };
+        await tick();
+        const again = findButton('setup.mailEnrollment.continue');
+        assert.ok(again && !again.props.disabled, 'a moved operation keeps the button disabled');
+        // Unconfirmed: after the bound the button is offered again.
+        await act(async () => { await again.props.onClick(); });
+        assert.equal(posted, 2);
+        assert.ok(findButton('setup.mailEnrollment.sent'));
+        await act(async () => { settleTimers[settleTimers.length - 1](); });
+        assert.ok(findButton('setup.mailEnrollment.continue') && !findButton('setup.mailEnrollment.continue').props.disabled);
+    } finally { await cleanup(); }
+});

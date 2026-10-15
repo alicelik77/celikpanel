@@ -177,6 +177,11 @@ const setupFinishingLimit = 60_000;
 // not known and what the owner can check (D-024, owner rule 2026-10-14).
 // Ulasilamayan kurulum okunmaya devam eder; bu sureden sonra sonuc bilinmiyor denir.
 const setupReconnectLimit = 60_000;
+// A continuation that no read has confirmed stops being shown as in flight
+// after this bound; the button is offered again (the server answers a repeat
+// for the same request without starting a second operation).
+// Dogrulanmayan devam istegi bu sureden sonra yeniden sunulur.
+const enrollmentSettleLimit = 15_000;
 const setupChecksPassed = (checks: ServerSetupCheck[]) => checks.length > 0 && checks.every(check => check.state === 'ready');
 
 function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
@@ -213,6 +218,11 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     const [reconnecting, setReconnecting] = useState(false);
     const [reconnectSlow, setReconnectSlow] = useState(false);
     const [enrollmentNotice, setEnrollmentNotice] = useState<'checking' | 'unknown' | null>(null);
+    // The mail enrollment continuation the owner pressed, from the press until
+    // a read shows that operation moved on (set18 O3): the button stays
+    // disabled and says it is checking, so it is not pressed again meanwhile.
+    // Basilan devam istegi, islem ilerleyene dek; dugme bu surede kapalidir.
+    const [enrollmentSent, setEnrollmentSent] = useState<{ execution: string; step: string; code: string } | null>(null);
     const [completionFailed, setCompletionFailed] = useState(false);
     const [verificationResult, setVerificationResult] = useState<{ checks: ServerSetupCheck[]; failed: boolean } | null>(null);
     const [verifyingRequirements, setVerifyingRequirements] = useState(false);
@@ -292,6 +302,18 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
         }
         const next = decodeSetupExecution(value, current);
         if (!next) throw new Error('operation identity');
+        // The completed setup's own run while that setup is being extended
+        // (set18 D1): not this wizard's operation, and not a completion to
+        // verify. The extension's wizard is shown; a start marker left from
+        // that finished run is dropped. Once the extension starts, its own run
+        // is read. / Genisletilen kurulumun eski calismasi gosterilmez.
+        if (next.superseded) {
+            if (current && markerRef.current === current) {
+                try { localStorage.removeItem(markerKey(user.username)); } catch { /* the marker only selects what to read */ }
+                markerRef.current = null; setMarker(null);
+            }
+            return null;
+        }
         return next;
     }
     const reconcile = useCallback(async () => {
@@ -370,6 +392,20 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
         const timer = window.setTimeout(() => setFinishingSlow(true), setupFinishingLimit);
         return () => window.clearTimeout(timer);
     }, [finishingRun]);
+    // The press is settled by the operation itself: another run, another state
+    // of the same step, or the step no longer running (set18 O3).
+    // Devam istegi islemin kendi yeni durumuyla sonuclanir.
+    useEffect(() => {
+        if (!enrollmentSent) return;
+        const same = !!execution && execution.id === enrollmentSent.execution && (execution.error?.code || '') === enrollmentSent.code
+            && execution.steps.some(item => item.id === enrollmentSent.step && item.status === 'running');
+        if (!same) setEnrollmentSent(null);
+    }, [execution, enrollmentSent]);
+    useEffect(() => {
+        if (!enrollmentSent) return;
+        const timer = window.setTimeout(() => setEnrollmentSent(null), enrollmentSettleLimit);
+        return () => window.clearTimeout(timer);
+    }, [enrollmentSent]);
     // Reconnecting is shown as active for a bounded time; the reads go on after it.
     // Yeniden baglanma sinirli sure etkin gosterilir; okumalar sonra da surer.
     useEffect(() => {
@@ -486,8 +522,9 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     }
     async function continueMailEnrollment(initialRetry = false) {
         const current = initialRetry ? retryableMailEnrollmentHandoff(execution) : continuableMailEnrollment(execution);
-        if (!current || !execution || reconnecting || pendingRef.current) return;
+        if (!current || !execution || reconnecting || enrollmentSent || pendingRef.current) return;
         pendingRef.current = true; setBusy(true); setError(''); setEnrollmentNotice(null);
+        setEnrollmentSent({ execution: execution.id, step: current.id, code: execution.error?.code || '' });
         try {
             const response = await setupFetch(`/api/v1/setup/mail-enrollment/${initialRetry ? 'retry' : 'continue'}`, requestOptions({ execution_id: execution.id, step_id: current.id }));
             const result: unknown = response.ok ? await response.json() : null;
@@ -618,7 +655,10 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     // guidance, so the block under it does not repeat that as a second heading;
     // only a run in progress keeps "what happens at this step" as the block's label.
     const stateTitle = hostBusy ? hostBusy.title : guidance && (execution?.status !== 'running' || confirmingPrevious) ? guidance.title : null;
-    const guidanceStep = progressCurrentStep && !waitingLicense ? t(`setup.kind.${progressCurrentStep.kind}`, { target: stepTarget(progressCurrentStep.kind, progressCurrentStep.target) }) : '';
+    // A run accepted but not yet at its first step names that first step (set18 O1).
+    // Kabul edilmis, henuz baslamamis calisma ilk adimini adlandirir.
+    const guidanceStepItem = progressCurrentStep || (execution?.status === 'running' && execution.phase === 'queued' ? execution.steps.find(item => item.status === 'pending') : undefined);
+    const guidanceStep = guidanceStepItem && !waitingLicense ? t(`setup.kind.${guidanceStepItem.kind}`, { target: stepTarget(guidanceStepItem.kind, guidanceStepItem.target) }) : '';
     const progressChecks = (verificationResult && !verificationResult.failed ? verificationResult.checks : execution?.checks || snapshot.checks).filter(check => check.state !== 'ready');
     const verifiedBlockers = verificationResult?.checks.filter(check => check.state !== 'ready') || [];
     const verificationMessage = verifyingRequirements ? 'setup.verifyChecking'
@@ -671,8 +711,8 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                             {index === (guidance.checksAt ?? 0) && guidance.checks && guidance.checks.length > 0 && <ul className="space-y-2 rounded-md border border-border bg-surface-2 px-4 py-3 text-fg" data-setup-checks="">{guidance.checks.map(line => <li key={line.check.id} className="break-words" data-check={line.check.id} data-state={line.check.state}>{line.text ? say(line.text) : failureText(line.check.code)}</li>)}</ul>}
                         </div>)}</div>
                         {canReviseWaiting && <Button variant="secondary" disabled={busy} className="mt-3" onClick={() => void reviseWaiting()}>{t('setup.editPlan')}</Button>}
-                        {mailEnrollmentToContinue && <Button variant="secondary" disabled={busy} className="mt-3" onClick={() => void continueMailEnrollment()}>{t('setup.mailEnrollment.continue')}</Button>}
-                        {mailEnrollmentToRetry && <Button variant="secondary" disabled={busy} className="mt-3" onClick={() => void continueMailEnrollment(true)}>{t('setup.mailEnrollment.retry')}</Button>}
+                        {mailEnrollmentToContinue && <Button variant="secondary" disabled={busy || !!enrollmentSent} loading={!!enrollmentSent} className="mt-3" onClick={() => void continueMailEnrollment()}>{t(enrollmentSent ? 'setup.mailEnrollment.sent' : 'setup.mailEnrollment.continue')}</Button>}
+                        {mailEnrollmentToRetry && <Button variant="secondary" disabled={busy || !!enrollmentSent} loading={!!enrollmentSent} className="mt-3" onClick={() => void continueMailEnrollment(true)}>{t(enrollmentSent ? 'setup.mailEnrollment.sent' : 'setup.mailEnrollment.retry')}</Button>}
                         {enrollmentNotice && progressCurrentStep?.kind === 'mail_enrollment' && <p role="status" className="mt-3 text-sm">{t(`setup.mailEnrollment.${enrollmentNotice}`)}</p>}
                         {execution?.context?.infrastructure_dns && ['infrastructure_dns', 'access_dns'].includes(progressCurrentStep?.kind || execution?.phase || '') && <details className="mt-3 text-sm"><summary className="cursor-pointer font-medium text-primary">{t('setup.infrastructure.reviewTitle')}</summary><SetupInfrastructureDNSReview value={execution.context.infrastructure_dns} compact /></details>}
                         {guidance.details.length > 0 && <details className="mt-3 text-sm leading-6"><summary className="cursor-pointer font-medium text-primary">{t('setup.guide.more')}</summary><ul className="mt-2 list-disc space-y-2 pl-5 text-fg-muted">{guidance.details.map((message, index) => <li key={index}>{say(message)}</li>)}</ul></details>}

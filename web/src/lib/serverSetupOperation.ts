@@ -21,6 +21,10 @@ export interface ServerSetupExecution {
     steps: (SetupPlanStep & { status: 'pending' | 'running' | 'failed' | 'succeeded' })[];
     error?: SetupExecutionError; panel_url?: string; checks?: ServerSetupCheck[];
     context?: SetupExecutionContext;
+    // The run succeeded and belongs to a completed setup that is now being
+    // extended (server answer, set18 D1): it is not the current operation.
+    // Genisletilen tamamlanmis kurulumun calismasi; guncel islem degildir.
+    superseded?: boolean;
 }
 // component/step/detail are optional install-failure guidance; detail is one
 // bounded, redacted host line. reason is the typed cause of HOST_MUTATION_BUSY.
@@ -85,6 +89,13 @@ export function decodeSetupExecution(value: unknown, marker?: SetupStartMarker |
             const { component: _component, step: _step, detail: _detail, reason: _reason, ...kept } = error;
             value = { ...value, error: kept };
         }
+    }
+    if (!isRecord(value)) return null;
+    // Only a succeeded run can be superseded; any other value is dropped, so a
+    // malformed flag can never hide a run that is still in progress or failed.
+    if (value.superseded !== undefined && (value.superseded !== true || value.status !== 'succeeded')) {
+        const { superseded: _superseded, ...kept } = value;
+        value = kept;
     }
     if (!isRecord(value)) return null;
     const context = value.context;

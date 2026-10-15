@@ -8054,3 +8054,71 @@ adresindeki sahte API ile tarayıcı incelemesi (masaüstü EN açık, telefon T
 koyu): hazır ekranı, genişletme incelemesi, ikincil kutusu ve ad değişikliğiyle
 pencere; yeni adın iki kez söylendiğini buldu, `32f0a3766`'da düzeltildi. Doğal
 olarak ya da kurulu bir sunucuda ölçülmedi.
+
+**set18'in tarayıcıda bulduğu ve düzeltilenler (2026-10-16).** Doğal kayıt
+`deploy/e2e/release-recovery/evidence/set18-20261015/README.md` (laboratuvar
+DNS'i ve laboratuvar ACME'si, Debian 13, aday `5d54aba1e`) temiz bir kurulumu ve
+Core Mail ekleyen bir genişletmeyi hazır duruma kadar izledi. Bulgularından üçü
+kaynakta düzeltildi; düzeltmelerin hiçbiri doğal olarak ya da kurulu bir
+sunucuda ölçülmedi.
+
+- **D1 (laboratuvarda doğrulanmış hata, iki yol, iki tarayıcı): genişletme
+  tamamlanmış çalışmayla açılıyordu.** Neden: istek kimliği olmadan
+  `GET /api/v1/setup/operation` son çalışmayı yanıtlar; taslaktaki bir
+  genişletme sırasında bu, tamamlanmış kurulumun kendi başarılı çalışmasıdır.
+  Sayfa kurulumu yeniden okuyup `status: draft` görünce "Sonuç doğrulanıyor" ve
+  "Tamamlanma doğrulanamadı… sunucu hazır olarak işaretlenmedi" gösteriyor, 3 saniyede
+  bir okuyordu; erişim adımı, inceleme, Başlat ve "Genişletmeden vazgeç"
+  ulaşılamazdı. Artık sunucu doğruyu söylüyor: çalışma başarılıysa ve kurulum
+  taslaktaki bir genişletmeyse işlem yanıtı ek alan `superseded: true` taşır
+  (`cmd/panel/server_setup_operations.go` içinde `serverSetupRunSuperseded`,
+  alan `serverSetupOperationResponse` üzerinde); eski sayfa bunu yok sayar ve
+  çalışmanın kendisi yine yanıtlanır. Sayfa yerini almış çalışmayı güncel işlem
+  saymaz (`web/src/components/ServerSetup.tsx` içinde `readExecution`):
+  genişletmenin sihirbazı amaç adımında (Bileşenler'den gelince erişim
+  adımında) "Genişletmeden vazgeç" ile görünür; o bitmiş çalışmadan kalan başlatma
+  işareti silinir. Çözücü alanı yalnız başarılı çalışmada tutar; böylece süren
+  bir çalışmayı ya da bir hatayı asla gizleyemez. Genişletme başlayınca durum
+  çalışıyor olur; genişletmenin kendi çalışması hiç işaretlenmez ve sayfa onun
+  adımlarını gösterir. Çalışması başarılı olup durumu hazır olmayan ilk kurulum
+  yine "Tamamlanma doğrulanamadı" der; düzenlemeye açılmış genişletme yine
+  yeniden açılan çalışmasını gösterir. Testler:
+  `TestServerSetupOperationMarksTheCompletedRunSupersededByAnExtension` (hazır
+  olmayan ilk kurulum, hazır, iki okuma yolundan taslaktaki genişletme,
+  bırakılmış, yeniden, çalışıyor; alan kapatılınca kalıyor);
+  `web/tests/server-setup-runtime.test.mjs`: alanla iki yolda ve eski işaretle
+  sihirbaz ve "Genişletmeden vazgeç", alansız D1 ekranı (denetim); başlatınca yeni
+  çalışma; "Genişletmeden vazgeç" hazır ekranına döner; çözücü. Sayfa alanı yok
+  sayınca iki takılı D1 testi de kalıyor.
+- **O1 (ifade): "İncelenen kurulumu başlat"tan sonra yaklaşık bir saniye
+  yönlendirme "Bu adım için daha belirli bir gereksinim henüz doğrulanmadı…
+  yalnızca beklemek eksik bir gereksinimi gidermeyebilir." diyordu.** Neden:
+  başlatma yanıtı, bütün adımları bekleyen `queued` evresindeki kabul edilmiş
+  çalışmadır ve yönlendirmede bunun cümlesi yoktu; genel cümleye düşüyordu.
+  Artık yönlendirme kutusu çalışmanın kendi ilk adımını adlandırır ve "Kurulum
+  burada gösterilen adımla başladı. Panel bu adımı birazdan başlatır ve bu sayfa
+  kendiliğinden güncellenir; bir şey yapmanız gerekmiyor." der (EN "Setup has
+  started with the step shown here. The panel begins it in a moment and this
+  page updates by itself; you do not need to do anything.";
+  `setup.guide.queued`, `web/src/lib/serverSetupGuidance.ts` içinde
+  `setupExecutionGuidance`, sihirbazda `guidanceStepItem`). Takılı test
+  (bu cümle olmadan kalıyor).
+- **O3: posta yenileme kaydı çalışırken "Kayıtlı işleme devam et" yaklaşık 4
+  saniye etkin kaldı; araç üç kez bastı** (aynı istek kimliği, ikinci kayıt
+  yok). Neden: sayfa yalnız kendi isteği ve ardındaki okuma sürerken tek
+  uçuşluydu; sonraki okuma adımı hâlâ devam ettirilebilir gösterince düğme geri
+  geliyordu. Artık basış, bir okuma o işlemin ilerlediğini gösterene (başka
+  çalışma, başka durum kodu ya da adım artık çalışmıyor) kadar hatırlanır:
+  düğme dönen işaretiyle kapalı kalır ve "Aynı işlem denetleniyor" der (EN
+  "Checking the same operation"; `setup.mailEnrollment.sent`). Hiçbir okumanın
+  doğrulamadığı basış 15 saniye sonra yeniden sunulur; sunucu aynı isteğin
+  tekrarını ikinci işlem başlatmadan yanıtlar. Takılı test (basış
+  hatırlanmayınca kalıyor).
+
+Bu düzeltmelerden sonra sayılar: `npm test` 1499'da 1499 (22 sn); `npx tsc
+--noEmit` temiz (17 sn); `npm run build` paket bütçesiyle geçiyor (20 sn); WSL
+konuğunda `go test -run Setup ./cmd/panel`: 181 üst düzey test geçti (29 sn),
+`go vet` ve gofmt temiz. set18'den açık kalanlar: genişletme incelemesinin
+blokları ve erişim adımının ikincil DNS kutusu doğal bir sunucuda çizilmiş
+görülmedi; O2 (SNI'sız sertifika) ve O4 (devir adresindeki laboratuvar bağlantı
+noktası) değerlendirilmedi.

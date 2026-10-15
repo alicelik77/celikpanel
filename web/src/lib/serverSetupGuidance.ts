@@ -312,6 +312,11 @@ export function setupExecutionGuidance(execution: ServerSetupExecution, componen
         result.messages.push(text('setup.guide.component'));
     } else if (phase === 'firewall') {
         result.messages.push(text('setup.guide.firewall'));
+    } else if (phase === 'queued' && execution.status === 'running' && !current) {
+        // Accepted, first step not begun yet: the run's own first step is named
+        // (ServerSetup), not the generic "no specific requirement" (set18 O1).
+        // Kabul edildi, ilk adim henuz baslamadi: genel cumle yerine ilk adim.
+        result.messages.push(text('setup.guide.queued'));
     } else if (phase === 'verification') {
         // The reason, who acts and the next action are said before the step
         // list and are not folded away (D-024, owner report 2026-10-10): the

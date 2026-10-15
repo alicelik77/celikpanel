@@ -269,3 +269,61 @@ func TestServerSetupReviseKeepsAnExtension(t *testing.T) {
 		t.Fatalf("reopened extension: %+v %v", state, err)
 	}
 }
+
+// set18 D1 (2026-10-16): while a completed setup is being extended and the
+// extension has not started, the latest run is the completed setup's own
+// succeeded run. The operation read says so (superseded), so the page shows
+// the extension's wizard instead of "completion could not be verified".
+func TestServerSetupOperationMarksTheCompletedRunSupersededByAnExtension(t *testing.T) {
+	f, state := setupOperationFixture(t)
+	plan := saveSetupPlanForTest(t, f, state)
+	id := strings.Repeat("6", 32)
+	execution := serverSetupExecution{ID: id, RequestID: id, PlanID: plan.ID, Status: "succeeded", Phase: "complete"}
+	for _, step := range plan.Steps {
+		execution.Steps = append(execution.Steps, serverSetupExecutionStep{serverSetupPlanStep: step, Status: "succeeded", RequestID: serverSetupID(id, step.ID, "request"), OwnerID: serverSetupID(id, step.ID, "owner")})
+	}
+	raw, _ := json.Marshal(execution)
+	if _, err := f.database.GetDB().Exec(`INSERT INTO server_setup_executions(id,request_id,plan_id,status,execution_json,created_at,updated_at) VALUES(?,?,?,'succeeded',?,'now','now')`, id, id, plan.ID, string(raw)); err != nil {
+		t.Fatal(err)
+	}
+	read := func(label string, want bool) {
+		t.Helper()
+		for _, query := range []string{"", "?request_id=" + id} {
+			response, body := readSetupExecutionContextResponse(t, f, query)
+			if response.serverSetupExecution == nil || response.ID != id || response.Status != "succeeded" {
+				t.Fatalf("%s%s: the run itself must stay readable: %s", label, query, body)
+			}
+			if response.Superseded != want || strings.Contains(body, `"superseded"`) != want {
+				t.Fatalf("%s%s: superseded=%v, want %v: %s", label, query, response.Superseded, want, body)
+			}
+		}
+	}
+	// Negative control: a first setup whose run succeeded but whose state is
+	// not ready is a completion still to verify, never superseded.
+	read("first setup not ready", false)
+	ready := markServerSetupReadyForTest(t, f)
+	read("completed setup", false)
+	if w := postSetupExtendForTest(t, f, map[string]any{"revision": ready.Revision, "action": "begin"}); w.Code != http.StatusOK {
+		t.Fatalf("begin: %d %s", w.Code, w.Body.String())
+	}
+	read("extension in draft", true)
+	extending, _ := f.panel.loadServerSetup(context.Background())
+	if w := postSetupExtendForTest(t, f, map[string]any{"revision": extending.Revision, "action": "cancel"}); w.Code != http.StatusOK {
+		t.Fatalf("cancel: %d %s", w.Code, w.Body.String())
+	}
+	read("extension stopped", false)
+	again, _ := f.panel.loadServerSetup(context.Background())
+	if w := postSetupExtendForTest(t, f, map[string]any{"revision": again.Revision, "action": "begin"}); w.Code != http.StatusOK {
+		t.Fatalf("begin again: %d %s", w.Code, w.Body.String())
+	}
+	read("extension in draft again", true)
+	// Once the extension starts the state is running: whatever run the read
+	// answers is not flagged (the page shows the extension's own run).
+	if _, err := f.database.GetDB().Exec(`UPDATE server_setup_state SET status='running' WHERE id=1`); err != nil {
+		t.Fatal(err)
+	}
+	read("extension running", false)
+	if f.agent.installCalls.Load() != 0 {
+		t.Fatal("reading the operation changed the host")
+	}
+}
