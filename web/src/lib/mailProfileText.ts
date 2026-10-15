@@ -54,6 +54,27 @@ export function mailProfileDescription(profile: ProfileText, t: Translate): stri
 const fullerSentence: Record<string, { value: string; key: TranslationKey }> = {
     component_not_installable: { value: 'platform', key: 'services.mailProfiles.code.component_not_installable.platform' },
 };
+// A requirement may name a role instead of a component ("web-server": any
+// installed web server satisfies it; cmd/panel mailProfileServiceName sends
+// the token itself). The Panel joins what is missing with ", " in `required`.
+// Each role token is said by its display name; a component name (already a
+// product name) is left as it is; a role token this page has no name for
+// (a newer Panel) is said as words, never as the raw token.
+//
+// Gereksinim bileşen yerine bir rol adı verebilir ("web-server"). Her rol adı
+// görünen adıyla söylenir; bileşen adı olduğu gibi kalır; bilinmeyen rol adı
+// sözcük olarak söylenir, ham belirteç olarak değil.
+const requirementRoles = ['web-server', 'smtp-server', 'imap-server', 'spam-filter', 'dns-server', 'kv-store'] as const;
+export function requirementText(required: string, t: Translate): string {
+    return required.split(', ').map((token) => {
+        if (!/^[a-z]+(-[a-z]+)+$/.test(token)) return token;
+        if ((requirementRoles as readonly string[]).includes(token)) {
+            return t(`services.mailProfiles.role.${token}` as TranslationKey);
+        }
+        return token.replace(/-/g, ' ');
+    }).join(', ');
+}
+
 function codeSentence(code: unknown, vars: unknown, t: Translate): string | null {
     if (typeof code !== 'string' || !/^[a-z_]+$/.test(code)) return null;
     const values: Record<string, string> = {};
@@ -62,6 +83,7 @@ function codeSentence(code: unknown, vars: unknown, t: Translate): string | null
             if (typeof value === 'string') values[name] = value;
         }
     }
+    if (code === 'component_requires' && values.required) values.required = requirementText(values.required, t);
     const say = (key: TranslationKey): string | null => {
         const said = t(key, values);
         return said === key || /\{\w+\}/.test(said) ? null : said;

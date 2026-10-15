@@ -987,6 +987,14 @@ export const trServerScreens: Record<ServerScreenKey, string> = {
     'services.mailProfiles.code.component_not_installable.platform': '{component} bu sunucunun platformunda otomatik olarak kurulamıyor: {platform}.',
     'services.mailProfiles.code.component_conflict': '{component}, kurulu {conflicting} ile çakışıyor.',
     'services.mailProfiles.code.component_requires': '{component} için bu profilin parçası olmayan {required} gerekiyor.',
+    // Bir gereksinim bileşen yerine rol adı verebilir (web-server …); katalogdaki
+    // rol adları (internal/core ManagedServices içindeki ConflictGroup).
+    'services.mailProfiles.role.web-server': 'web sunucusu',
+    'services.mailProfiles.role.smtp-server': 'SMTP sunucusu',
+    'services.mailProfiles.role.imap-server': 'IMAP sunucusu',
+    'services.mailProfiles.role.spam-filter': 'spam filtresi',
+    'services.mailProfiles.role.dns-server': 'DNS sunucusu',
+    'services.mailProfiles.role.kv-store': 'anahtar-değer deposu',
     'services.mailProfiles.code.repair_to_verify': 'Bileşenler çalışıyor. Posta TLS’i ve kimlik doğrulamalı gönderim dahil posta profilinin tamamını doğrulamak ve uzlaştırmak için Onar’ı çalıştırın.',
     'services.mailProfiles.code.webmail_unverified': 'Webmail çalışma ortamının hazır olduğu henüz doğrulanmadı; bir sonraki bileşen kontrolü bunu doğrular.',
     'services.mailProfiles.code.roundcube_not_ready': 'Roundcube kurulu, ancak Unix soketli çalışma ortamı hazır değil.',

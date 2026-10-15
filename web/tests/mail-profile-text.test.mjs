@@ -99,3 +99,30 @@ test('a component that cannot be installed names the platform when the Panel sen
   assert.deepEqual(placeholders(catalogues.tr[key]), placeholders(catalogues.en[key]));
   assert.deepEqual(placeholders(catalogues.en[key]), ['component', 'platform']);
 });
+
+test('a role in a requirement is named in the page language, never as its raw token', () => {
+  // The roles are the catalogue's own: every ConflictGroup value (a requirement
+  // names a role by it), read from internal/core ManagedServices.
+  const catalogue = readFileSync(new URL('../../internal/core/managed_services.go', import.meta.url), 'utf8');
+  const roles = [...new Set([...catalogue.matchAll(/^\t\tConflictGroup:\s+"([a-z-]+)"/gm)].map((m) => m[1]))];
+  assert.ok(roles.length >= 6 && roles.includes('web-server'), `read ${roles.length} roles from the catalogue`);
+  for (const role of roles) {
+    const key = `services.mailProfiles.role.${role}`;
+    assert.ok(catalogues.en[key], `no English name for the role ${role}`);
+    assert.ok(catalogues.tr[key], `no Turkish name for the role ${role}`);
+    assert.notEqual(catalogues.tr[key], catalogues.en[key], `${role} is not translated`);
+  }
+  const roleKeys = (locale) => Object.keys(catalogues[locale]).filter((key) => key.startsWith('services.mailProfiles.role.'));
+  for (const locale of ['en', 'tr']) assert.equal(roleKeys(locale).length, roles.length, `${locale} names a role the catalogue does not have`);
+
+  const roleRequired = { id: 'webmail', name: 'Webmail', blocked_reason: 'Roundcube requires web-server outside this profile.', blocked_code: 'component_requires', blocked_vars: { component: 'Roundcube', required: 'web-server' } };
+  assert.equal(lib.mailProfileBlocked(roleRequired, say('en')), 'Roundcube requires web server, which is not part of this profile.');
+  assert.equal(lib.mailProfileBlocked(roleRequired, say('tr')), 'Roundcube için bu profilin parçası olmayan web sunucusu gerekiyor.');
+  // A role beside component names: the names stay, the roles are named.
+  const mixed = { ...roleRequired, blocked_vars: { component: 'phpMyAdmin', required: 'MariaDB, web-server, PHP-FPM' } };
+  assert.equal(lib.mailProfileBlocked(mixed, say('tr')), 'phpMyAdmin için bu profilin parçası olmayan MariaDB, web sunucusu, PHP-FPM gerekiyor.');
+  // A role this page has no name for (a newer Panel): words, not the token.
+  const newer = { ...roleRequired, blocked_vars: { component: 'Roundcube', required: 'queue-server' } };
+  assert.equal(lib.mailProfileBlocked(newer, say('en')), 'Roundcube requires queue server, which is not part of this profile.');
+  for (const locale of ['en', 'tr']) assert.doesNotMatch(lib.mailProfileBlocked(roleRequired, say(locale)), /web-server/);
+});

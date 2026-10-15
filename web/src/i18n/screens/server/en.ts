@@ -1050,6 +1050,14 @@ export const enServerScreens = {
     'services.mailProfiles.code.component_not_installable.platform': '{component} cannot be installed automatically on this server’s platform: {platform}.',
     'services.mailProfiles.code.component_conflict': '{component} conflicts with the installed {conflicting}.',
     'services.mailProfiles.code.component_requires': '{component} requires {required}, which is not part of this profile.',
+    // A requirement can name a role instead of a component (web-server …); the
+    // catalogue's role names (ConflictGroup in internal/core ManagedServices).
+    'services.mailProfiles.role.web-server': 'web server',
+    'services.mailProfiles.role.smtp-server': 'SMTP server',
+    'services.mailProfiles.role.imap-server': 'IMAP server',
+    'services.mailProfiles.role.spam-filter': 'spam filter',
+    'services.mailProfiles.role.dns-server': 'DNS server',
+    'services.mailProfiles.role.kv-store': 'key-value store',
     'services.mailProfiles.code.repair_to_verify': 'Components are running. Run Repair to verify and reconcile the complete mail profile, including mail TLS and authenticated submission.',
     'services.mailProfiles.code.webmail_unverified': 'Whether the webmail runtime is ready is not verified yet; the next component check verifies it.',
     'services.mailProfiles.code.roundcube_not_ready': 'Roundcube is installed, but its Unix-socket runtime is not ready.',
