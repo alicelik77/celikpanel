@@ -144,6 +144,7 @@ export const tr: Record<ShellKey, string> = {
     'err.license_required': "Paneli kullanmak için aktif sunucu lisansı gerekiyor. Mevcut hizmetler ve zamanlanmış görevler çalışmaya devam eder. Sunucu yöneticiniz lisansı etkinleştirmeli veya yenilemeli.",
     'err.AUTH_REQUIRED': 'Oturumunuz sona erdi — yeniden giriş yapın.',
     'err.ADMIN_ONLY': 'Bu işlem yönetici yetkisi gerektirir.',
+    'err.USERNAME_RESERVED': 'Bu kullanıcı adı, etkinlik günlüğünde CelikPanel’in kendi eylemleri için ayrılmıştır. Hiçbir şey oluşturulmadı ya da değiştirilmedi; başka bir kullanıcı adı seçin.',
     'err.ACCOUNT_SUSPENDED': 'Bu hesap askıya alınmış.',
     'err.DOMAIN_DELETION_PENDING': 'Bu domain siliniyor. Silme işlemi tamamlanana veya güvenle yeniden denenene kadar posta ayarları değiştirilemez.',
     'err.DOMAIN_DELETION_FAILED.mail_runtime_cleanup_failed': 'Silme işlemi, bu alan adının postası bu sunucudan kaldırılırken durdu. DNS bölgesi ve web sitesi değişmedi. Bunu bu sunucunun sahibi bu sunucuda düzeltir: hatanın tam metni panel günlüğündedir (sudo journalctl -u celikpanel-panel | grep "domain deletion"). Hatanın adını verdiği posta depolama dizinini denetleyin — normalde /var/mail/vhosts; /var/mail dağıtımın bağlantısıysa /var/spool/mail/vhosts — ve bu yolda başka bir sembolik bağlantı olmadığından emin olun. Ardından “Bu silme işlemini yeniden dene” (bu alan adında Sil) ile aynı silme işlemini yeniden başlatın: posta temizliği yinelenir ve kalan adımlarla sürer. Kendiliğinden yeniden denenmez.',

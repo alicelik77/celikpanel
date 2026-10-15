@@ -7581,7 +7581,7 @@ ulaşmadı; pencere iki laboratuvar güncellemesine ve bir sahip gözlemine daya
 Yeniden başlaması başlangıcından itibaren 6 dakikayı aşan gerçek bir güncelleme,
 hâlâ olağanken bilinmiyor metnini gösterir.
 
-**Bu adayda ayrıca (2026-10-15).** Alpha.85 notlarının açık kalemlerinden on bir
+**Bu adayda ayrıca (2026-10-15).** Alpha.85 notlarının açık kalemlerinden on üç
 küçük düzeltme; her birinin testleri önceki kaynağa karşı başarısız olur. Şema,
 defter ya da sürüm geçişi yok; hiçbir şey yerel çalıştırmada ya da kurulu bir
 sunucuda ölçülmedi; hiçbir P0 işi kapanmaz ya da ilerlemez.
@@ -7659,7 +7659,7 @@ Agent, 2026-10-14 denetim kaydındaki temiz bağlama ad alanında).
     sayfası açıkken bileşenleri kendiliğinden yeniden denetlediğini söyler;
     `SERVICE_STATE_UNVERIFIED` gibi (`d2b58e7e9`). Sayfanın kendi
     `services.stateUnverifiedHint` uyarısı hâlâ "Yeniden tara'yı çalıştırın"
-    der; burada değiştirilmedi.
+    der; burada değiştirilmedi (12. kalem değiştirir).
 11. **Posta profili gereksiniminde rol** (`component_requires`). `required`,
     bileşen adlarının yanında rol belirteci taşıyabilir (`web-server`,
     `smtp-server`, `imap-server`, `spam-filter`, `dns-server`, `kv-store`:
@@ -7668,5 +7668,28 @@ Agent, 2026-10-14 denetim kaydındaki temiz bağlama ad alanında).
     belirteç olarak değil sözcük olarak söylenir (`0a81043cf`; test rolleri Go
     kataloğundan okur).
 
-8-11. kalemlerden sonraki sayılar: `npm test` 1438/1438; `npx tsc --noEmit`
-temiz; Go değişmedi, yukarıdaki Go sayıları geçerli.
+12. **Düğme göstermeyen `services.stateUnverifiedHint`** (D-032). Sonucu
+    bilinmeyen işlemin şeridi artık "Yeniden tara'yı çalıştırın" demez. İşlemin
+    tamamlanmış olabileceğini, bileşen değişikliklerinin şimdilik kilitli
+    kaldığını, CelikPanel'in bu sayfa her açıldığında son denetim birkaç
+    dakikadan eskiyse bileşenleri kendiliğinden yeniden denetlediğini ve
+    kilidin bu denetim yeni durumu gösterince kalktığını söyler. Yükleme akışı
+    tam bunu yapar (koşullu tarama, `AUTO_SCAN_MAX_AGE_SECONDS`); zamanlayıcı
+    yoktur, cümle de zamanlayıcı vaat etmez. EN/TR; test sözcükleri ve
+    dayandığı sabiti sabitler.
+13. **`system` kullanıcı adı olarak ayrıldı.** `auth.ValidateUsername`,
+    `system` adını her harf biçiminde reddeder (`ErrReservedUsername`); böylece
+    Panonun "Sistem" dediği denetim aktörünü kimse alamaz. Her oluşturma yolu
+    ondan geçer (hesap oluşturma, ekip üyesi oluşturma ve yeniden adlandırma,
+    yönetici CLI'si ve istemi). İki HTTP yolu `400 USERNAME_RESERVED` döner
+    (kodlu; EN/TR cümle `err.USERNAME_RESERVED`); CLI her zamanki geçersiz ad
+    iletisini yazar. Hiçbir geçiş ya da tohum `system` adlı kullanıcı
+    oluşturmaz; var olan satıra dokunulmaz, bu adı zaten taşıyan ekip üyesi ad
+    değişmediği sürece düzenlenebilir. Yapılmadı: denetim günlüğü aktör türü
+    saklamaz; bu yüzden önceden var olan bir `system` satırı yine "Sistem"
+    çizilirdi (bu Panelden doğamaz).
+
+8-13. kalemlerden sonraki sayılar: `npm test` 1440/1440; `npx tsc --noEmit`
+temiz; `go test -v ./cmd/panel/... ./internal/transport/... ./internal/auth/...`:
+1602 üst düzey test ve 1655 birinci düzey alt test geçti, 6 atlandı, 0
+başarısız (WSL konuğu `CelikPanel-S2-Debian`). Agent yeniden koşulmadı.

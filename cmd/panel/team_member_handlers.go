@@ -91,7 +91,7 @@ func (p *Panel) handleTeamMembers(w http.ResponseWriter, r *http.Request) {
 			request.Status = "active"
 		}
 		if err := validateTeamMemberIdentity(request.Username, request.Email, request.Password, request.Status, true); err != nil {
-			writeClientError(w, http.StatusBadRequest, err.Error())
+			writeUsernameError(w, err)
 			return
 		}
 		passwordHash, err := auth.HashPassword(request.Password)
@@ -165,8 +165,19 @@ func (p *Panel) handleTeamMemberByID(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if err := validateTeamMemberUpdateRequest(request); err != nil {
-			writeClientError(w, http.StatusBadRequest, err.Error())
-			return
+			// A member who already carries a reserved name (nothing here ever
+			// created one) may still be edited while the name is unchanged.
+			// Ayrılmış ada zaten sahip bir üye (burada hiçbir şey oluşturmaz),
+			// ad değişmediği sürece düzenlenebilir.
+			keeps := false
+			if errors.Is(err, auth.ErrReservedUsername) && request.Username != nil {
+				current, getErr := repository.GetByOwner(r.Context(), ownerID, memberID)
+				keeps = getErr == nil && current.Username == strings.TrimSpace(*request.Username)
+			}
+			if !keeps {
+				writeUsernameError(w, err)
+				return
+			}
 		}
 		update := repositories.TeamMemberUpdate{
 			Username: request.Username,
@@ -285,6 +296,9 @@ func validateTeamMemberIdentity(username, email, password, status string, passwo
 	username = strings.TrimSpace(username)
 	email = strings.TrimSpace(email)
 	if err := auth.ValidateUsername(username); err != nil {
+		if errors.Is(err, auth.ErrReservedUsername) {
+			return err
+		}
 		return errors.New("invalid username")
 	}
 	address, err := mail.ParseAddress(email)
@@ -303,6 +317,9 @@ func validateTeamMemberIdentity(username, email, password, status string, passwo
 func validateTeamMemberUpdateRequest(request updateTeamMemberRequest) error {
 	if request.Username != nil {
 		if err := auth.ValidateUsername(strings.TrimSpace(*request.Username)); err != nil {
+			if errors.Is(err, auth.ErrReservedUsername) {
+				return err
+			}
 			return errors.New("invalid username")
 		}
 	}

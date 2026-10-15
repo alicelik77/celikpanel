@@ -7610,7 +7610,7 @@ window rests on two lab updates and one owner observation. A real update whose
 restart outlasts 6 minutes from its start would show the unknown wording while
 still being normal.
 
-**Also in this candidate (2026-10-15).** Eleven smaller corrections from the
+**Also in this candidate (2026-10-15).** Thirteen smaller corrections from the
 open items of the alpha.85 notes, each with tests that fail against the
 previous source. No schema, ledger or version transition; nothing was measured
 natively or on an installed server; no P0 item is closed or advanced.
@@ -7688,7 +7688,7 @@ the Agent in the clean mount namespace of the 2026-10-14 audit entry).
     CelikPanel checks the components again by itself while the Dashboard or
     the Components page is open, as `SERVICE_STATE_UNVERIFIED` does
     (`d2b58e7e9`). The page's own `services.stateUnverifiedHint` banner still
-    says "Run Rescan"; it is not changed here.
+    says "Run Rescan"; it is not changed here (item 12 changes it).
 11. **A role in a mail-profile requirement** (`component_requires`). `required`
     can hold a role token (`web-server`, `smtp-server`, `imap-server`,
     `spam-filter`, `dns-server`, `kv-store`: the catalogue's `ConflictGroup`
@@ -7697,5 +7697,28 @@ the Agent in the clean mount namespace of the 2026-10-14 audit entry).
     know is said as words, never as the token (`0a81043cf`; the test reads the
     roles from the Go catalogue).
 
-Counts after items 8 to 11: `npm test` 1438 of 1438; `npx tsc --noEmit` clean;
-no Go changed, so the Go counts above stand.
+12. **`services.stateUnverifiedHint` without a button** (D-032). The banner for
+    an action whose outcome is unknown no longer says "Run Rescan". It says the
+    action may have completed, that component changes stay locked for now, that
+    CelikPanel checks the components again by itself each time the page is
+    opened once its last check is a few minutes old, and that the lock lifts
+    when that check shows the new state. That is what the load flow does
+    (conditional scan, `AUTO_SCAN_MAX_AGE_SECONDS`); there is no timer, so the
+    sentence does not promise one. EN/TR; the test pins the words and the
+    constant it rests on.
+13. **`system` is reserved as a username.** `auth.ValidateUsername` refuses
+    `system` in any letter case (`ErrReservedUsername`), so a person cannot take
+    the audit actor the Dashboard says "System". Every creation path goes
+    through it (account creation, team-member creation and rename, the admin
+    CLI and its prompt). The two HTTP paths answer `400 USERNAME_RESERVED`
+    (typed; EN/TR sentence `err.USERNAME_RESERVED`); the CLI prints its usual
+    invalid-name message. No migration or seed creates a user named `system`;
+    an existing row is not touched, and a team member who already has the name
+    can still be edited while the name is unchanged. Not done: the audit log
+    does not store an actor kind, so a pre-existing `system` row would still be
+    drawn as "System" (it cannot arise from this Panel).
+
+Counts after items 8 to 13: `npm test` 1440 of 1440; `npx tsc --noEmit` clean;
+`go test -v ./cmd/panel/... ./internal/transport/... ./internal/auth/...`: 1602
+top-level tests and 1655 first-level subtests passed, 6 skipped, 0 failed (WSL
+guest `CelikPanel-S2-Debian`). The Agent was not run again.

@@ -334,7 +334,7 @@ export const enServerScreens = {
     'services.autoCheckFailed': 'The check that runs when this page opens could not finish, so nothing below has been confirmed on this server. Run the check again.',
     'services.scanFailed': 'Service scan failed.',
     'services.stateUnverifiedTitle': 'Service state needs verification',
-    'services.stateUnverifiedHint': 'A server action may have completed, but the latest state could not be verified. Run Rescan before changing another component.',
+    'services.stateUnverifiedHint': 'A server action may have completed, but the latest state could not be verified, so component changes stay locked for now. CelikPanel checks the components again by itself each time this page is opened once its last check is a few minutes old; the lock lifts when that check shows the new state.',
     'services.stateUnreadTitle': 'Component state could not be read',
     'services.stateUnreadHint': 'This page did not send any component action; it could not read the current state of the components. {reason} Component changes stay locked until a scan reads the state; Rescan reads it again.',
     'services.neverScanned': 'Services have not been scanned yet',

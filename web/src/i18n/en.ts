@@ -240,6 +240,7 @@ export const en = {
     'err.license_required': "An active server license is required to use the panel. Existing services and scheduled tasks keep running. Your server administrator must activate or renew the license.",
     'err.AUTH_REQUIRED': 'Your session has expired — sign in again.',
     'err.ADMIN_ONLY': 'This action requires an administrator.',
+    'err.USERNAME_RESERVED': 'This username is reserved for CelikPanel’s own actions in the activity log. Nothing was created or changed; choose a different username.',
     'err.ACCOUNT_SUSPENDED': 'This account is suspended.',
     'err.DOMAIN_DELETION_PENDING': 'This domain is being deleted. Mail settings cannot be changed until deletion finishes or is safely retried.',
     'err.DOMAIN_DELETION_FAILED.mail_runtime_cleanup_failed': 'Deletion stopped while removing this domain’s mail from this server. The DNS zone and the website are unchanged. The server owner fixes this on this server: the exact error is in the panel log (sudo journalctl -u celikpanel-panel | grep "domain deletion"). Check the mail storage directory it names — normally /var/mail/vhosts, or /var/spool/mail/vhosts where /var/mail is the distribution’s link — and make sure no other symbolic link is in that path. Then use “Retry this deletion” (Delete on this domain) to run this same deletion again: it repeats the mail cleanup and continues with the remaining steps. Nothing retries by itself.',
