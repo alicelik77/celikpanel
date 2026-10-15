@@ -91,7 +91,7 @@
     },
     "src/components/ServiceShell.tsx": {
       "swallowedFailure": 2,
-      "ignoredFailure": 2,
+      "ignoredFailure": 1,
       "rawRead": 2,
       "unprovenEmptyState": 2
     },

@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { Boxes } from 'lucide-react';
 import { useI18n } from '../i18n';
 import { lastKnown } from '../lib/remote';
-import { useManagedServices } from '../lib/managedServices';
+import { isStoredRecordUnverified, useManagedServices, useStoredRecordCheck } from '../lib/managedServices';
 import { Button, Checking, CouldNotCheck, KnownEmpty } from './ui';
 
 // The management page of one component, addressed by its id. The versions the
@@ -31,6 +31,7 @@ export function ServiceRecordLookup({
 }) {
     const { t } = useI18n();
     const catalogue = useManagedServices();
+    const check = useStoredRecordCheck(catalogue);
     const known = lastKnown(catalogue.remote);
     const record = known?.value.services.find((service) => service.id === serviceId);
     const versions = carriedVersions ?? (Array.isArray(record?.versions) ? (record.versions as string[]) : null);
@@ -42,7 +43,11 @@ export function ServiceRecordLookup({
         <div className="p-6 md:p-8">
             {catalogue.remote.state === 'loading' ? (
                 <Checking label={t('component.checking')} />
-            ) : known ? (
+            ) : check.checking ? (
+                <Checking label={t('component.checkingStored')} />
+            ) : check.held ? (
+                <CouldNotCheck text={t('component.checkHeld')} onRetry={() => void check.retry()} busy={catalogue.reading} />
+            ) : known && !isStoredRecordUnverified(catalogue.remote) ? (
                 <KnownEmpty
                     of={known}
                     icon={Boxes}
@@ -52,7 +57,7 @@ export function ServiceRecordLookup({
                 />
             ) : (
                 <>
-                    <CouldNotCheck text={t('component.unknown')} onRetry={() => void catalogue.retry()} busy={catalogue.reading} />
+                    <CouldNotCheck text={t('component.unknown')} onRetry={() => void check.retry()} busy={catalogue.reading} />
                     <div className="mt-3">{back}</div>
                 </>
             )}

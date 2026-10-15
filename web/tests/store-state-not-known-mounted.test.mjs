@@ -96,3 +96,39 @@ test('Store: only the typed component_state_* reasons on an unsupported offering
 test('Store: the page passes the server\'s typed reason to the catalogue', () => {
   assert.match(read('../src/components/AddonsPage.tsx'), /blockerReason: value\.blocker_reason\?\.trim\(\) \|\| undefined/);
 });
+
+// The state filter (2026-10-15): the offerings whose state is not known have
+// their own entry, "State not known yet", and are no longer listed under
+// "Unsupported here", which their badge does not say either.
+// Durum süzgeci: durumu bilinmeyen ürünlerin kendi girdisi vardır ve artık
+// "Bu sunucuda desteklenmiyor" altında listelenmezler.
+async function shownBy(catalog, value) {
+  globalThis.storeCatalog = catalog;
+  let tree;
+  await act(async () => {
+    tree = Renderer.create(React.createElement(StoreCatalog, { items, subscription: { id: 1, name: 'example.com', owner: 'customer1' }, busyItemIDs: new Set(), onAction: () => {} }));
+  });
+  const select = tree.root.findAll((node) => node.type === 'select')[1];
+  const options = select.findAll((node) => node.type === 'option').map((node) => [node.props.value, (node.children || []).join('')]);
+  await act(async () => select.props.onChange({ target: { value } }));
+  const walk = (node) => (typeof node === 'string' ? node : (node.children || []).map(walk).join(''));
+  const names = tree.root.findAll((node) => node.type === 'article').map((card) => walk(card.find((node) => node.type === 'h3')));
+  await act(async () => tree.unmount());
+  return { names, options };
+}
+
+test('Store: the state filter lists "State not known yet" apart from "Unsupported here", in both languages', async () => {
+  for (const [locale, catalog] of [['en', { ...en, ...enServerScreens }], ['tr', { ...tr, ...trServerScreens }]]) {
+    const unknown = await shownBy(catalog, 'not_known');
+    assert.deepEqual(unknown.names.sort(), ['cache', 'scanner', 'webmail'], `${locale}: not-known filter`);
+    const entry = unknown.options.find(([value]) => value === 'not_known');
+    assert.ok(entry, `${locale}: no filter entry for an unknown state`);
+    assert.equal(entry[1], catalog['addons.state.notKnownYet'], locale);
+    assert.notEqual(entry[1], catalog['addons.state.unsupported']);
+    const unsupported = await shownBy(catalog, 'unsupported');
+    assert.deepEqual(unsupported.names, ['legacy'], `${locale}: "unsupported" still lists offerings whose state is not known`);
+    const everything = await shownBy(catalog, 'all');
+    assert.equal(everything.names.length, 4, `${locale}: the default view lost an offering`);
+  }
+  assert.notEqual(enServerScreens['addons.state.notKnownYet'], trServerScreens['addons.state.notKnownYet']);
+});

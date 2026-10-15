@@ -272,6 +272,7 @@ test('no screen was left behind: every managed-services scan caller is accounted
         'components/ServiceShell.tsx',  // the operator's check, from a button
         'components/Dashboard.tsx',     // the operator's check, and its own conditional check (12 Oct 2026)
         'components/ComponentOperation.tsx', // after an operation the operator started
+        'lib/managedServices.ts',       // a component page's own conditional check on an unverifiable record (15 Oct 2026, D-032)
         'lib/api.ts',                   // the client method those callers share
     ]);
     const found = new Set();

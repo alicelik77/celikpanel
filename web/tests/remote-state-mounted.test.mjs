@@ -1662,3 +1662,114 @@ test('A component page: the install dialog stops reading readiness while the tab
     await cleanup();
   }
 });
+
+// --- A component page whose stored record the server cannot verify (15 Oct 2026, D-032) ---
+// The Panel refuses the stored record with 503 SERVICE_STATE_UNVERIFIED. The
+// Dashboard and the Components page answer that with their own conditional
+// check; the component's own page does too (it used to say "could not be read"
+// and Retry kept failing until one of those pages ran the check).
+// Sunucunun doğrulayamadığı kayıtlı kayıtta bileşenin kendi sayfası da kendi
+// koşullu kontrolünü bir kez yapar; "okunamadı" deyip boşuna Tekrar dene sunmaz.
+const UNVERIFIED = { error: 'the stored component record could not be verified', code: 'SERVICE_STATE_UNVERIFIED' };
+const redisRecord = { id: 'redis', name: 'Redis', kind: 'service', is_installed: true, status: 'active (running)', unit: 'redis-server', versions: ['7'], ports: ['6379/tcp'], config_files: [{ path: '/etc/redis/redis.conf', is_managed: false }] };
+const SCAN = '/api/v1/managed-services/scan';
+// The record is refused until a scan ran; the scan answers `scan`. With
+// `checks: false` the scan "succeeds" and the record stays refused for good.
+function unverifiedUntilChecked(scan, { checks = true } = {}) {
+  let checked = false;
+  return {
+    read: () => (checked ? Response.json({ services: [redisRecord] }) : Response.json(UNVERIFIED, { status: 503 })),
+    changes: { [SCAN]: () => { if (checks) checked = true; return scan(); } },
+  };
+}
+const scanCalls = () => calls.filter((call) => call.method === 'POST' && call.url.startsWith(SCAN));
+const callLog = () => calls.map((call) => `${call.method} ${call.url}`).join(', ');
+const freshCheck = async () => (await import(managedServicesURL)).resetStoredRecordCheck();
+const spin = async (rounds) => { for (let i = 0; i < rounds; i += 1) await act(async () => { await settled(); }); };
+
+for (const [name, Component, props, drawn] of [
+  ['ServiceRecordLookup (a reloaded component page)', ServiceRecordLookup, { serviceId: 'redis', onBack() {}, children: () => 'component-page' }, 'component-page'],
+  ['ComponentDetail (the sections of a component page)', ComponentDetail, { serviceId: 'redis', onBack() {} }, '/etc/redis/redis.conf'],
+]) {
+  test(`${name}: an unverifiable stored record → one conditional check, then the record is read again; no toast`, async () => {
+    await freshCheck();
+    const door = unverifiedUntilChecked(() => Response.json({ services: [redisRecord], scanned_at: new Date().toISOString(), scan_age_seconds: 0 }));
+    serve({ '/api/v1/managed-services': door.read }, 'admin', door.changes);
+    try {
+      await mount(Component, props);
+      await spin(4);
+      assert.equal(scanCalls().length, 1, `expected one check: ${callLog()}`);
+      assert.equal(scanCalls()[0].url, `${SCAN}?max_age_seconds=300`, 'the page asked for an unconditional scan');
+      assert.ok(has(drawn), `the record is not drawn after the check: ${text().slice(0, 300)}`);
+      assert.ok(!has('component.unknown'), 'the refusal was still reported as unreadable');
+      assert.deepEqual(globalThis.currentTest.toasts, [], 'a check nobody pressed raised a toast');
+      assert.equal(calls.filter((call) => call.method !== 'GET' && !call.url.startsWith(SCAN)).length, 0, 'the page changed something');
+    } finally { await cleanup(); }
+  });
+
+  test(`${name}: while the check runs the page says it is checking and offers no Retry`, async () => {
+    await freshCheck();
+    serve({ '/api/v1/managed-services': () => Response.json(UNVERIFIED, { status: 503 }) }, 'admin', { [SCAN]: () => new Promise(() => {}) });
+    try {
+      await mount(Component, props);
+      await spin(3);
+      assert.ok(has('component.checkingStored'), `no checking line: ${text().slice(0, 300)}`);
+      assert.ok(!has('component.unknown'), 'the refusal is shown as unreadable while it is being checked');
+      assert.equal(buttons('common.retry').length, 0, 'Retry is offered while the check is on its way');
+      assert.equal(scanCalls().length, 1);
+    } finally { await cleanup(); }
+  });
+
+  test(`${name}: a failed check is "could not check" with Retry, not asked again by itself; Retry asks once more`, async () => {
+    await freshCheck();
+    serve({ '/api/v1/managed-services': () => Response.json(UNVERIFIED, { status: 503 }) }, 'admin', { [SCAN]: () => Response.json({ error: 'agent unavailable' }, { status: 502 }) });
+    try {
+      await mount(Component, props);
+      await spin(6);
+      assert.equal(scanCalls().length, 1, `the failure was asked again by itself: ${callLog()}`);
+      assert.ok(has('component.unknown'), `no could-not-check state: ${text().slice(0, 300)}`);
+      assert.ok(!has('component.checkingStored'), 'still shown as checking');
+      assert.ok(buttons('common.retry').length >= 1, 'no Retry');
+      assert.deepEqual(globalThis.currentTest.toasts, []);
+      await press(buttons('common.retry')[0]);
+      await spin(4);
+      assert.equal(scanCalls().length, 2, 'Retry did not ask once more');
+    } finally { await cleanup(); }
+  });
+
+  test(`${name}: a check held by a change in progress says so, once, with Retry`, async () => {
+    await freshCheck();
+    serve({ '/api/v1/managed-services': () => Response.json(UNVERIFIED, { status: 503 }) }, 'admin', { [SCAN]: () => Response.json({ error: 'busy', code: 'service_operation_busy' }, { status: 409 }) });
+    try {
+      await mount(Component, props);
+      await spin(6);
+      assert.equal(scanCalls().length, 1, 'a held check was asked again by itself');
+      assert.ok(has("component.checkHeld"), `the held state is not said: ${text().slice(300, 1200)}`);
+      assert.ok(buttons('common.retry').length >= 1, 'no Retry');
+      assert.deepEqual(globalThis.currentTest.toasts, []);
+    } finally { await cleanup(); }
+  });
+
+  test(`${name}: a refusal that returns after a successful check is not checked again by itself`, async () => {
+    // The check succeeds but the record stays refused: one check, not a loop.
+    await freshCheck();
+    const door = unverifiedUntilChecked(() => Response.json({ services: [redisRecord] }), { checks: false });
+    serve({ '/api/v1/managed-services': door.read }, 'admin', door.changes);
+    try {
+      await mount(Component, props);
+      await spin(8);
+      assert.equal(scanCalls().length, 1, `a loop: ${callLog()}`);
+      assert.ok(has('component.unknown'), 'the record that is still refused is not reported');
+    } finally { await cleanup(); }
+  });
+}
+
+test('a component page whose stored record is refused for another reason does not run the check (negative control)', async () => {
+  serve({ '/api/v1/managed-services': json({ error: 'server sentence', code: 'INTERNAL' }, 502) });
+  try {
+    await mount(ServiceRecordLookup, { serviceId: 'redis', onBack() {}, children: () => 'component-page' });
+    await spin(3);
+    assert.equal(scanCalls().length, 0, 'the check ran for an unrelated refusal');
+    assert.ok(has('component.unknown'));
+  } finally { await cleanup(); }
+});

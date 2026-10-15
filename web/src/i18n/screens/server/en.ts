@@ -719,6 +719,8 @@ export const enServerScreens = {
     'component.logsFailed': 'Logs could not be read.',
     'component.checking': 'Reading this component’s record…',
     'component.unknown': 'This component’s record could not be read from the server, so its unit, versions, ports, configuration files and log are not shown. This does not mean it has none. Nothing was changed. Try again.',
+    'component.checkingStored': 'The stored record could not be verified, so CelikPanel is checking the components now. Nothing was changed and you do not need to do anything; this page fills in when the check finishes.',
+    'component.checkHeld': 'A change is in progress on this server, so the stored record cannot be verified yet. Nothing was changed. Press Try again when the change has finished.',
     'component.absent': 'This server’s catalogue has no component “{id}”',
     'component.absentHint': 'The server answered, and its list has no such component. The address may be mistyped, or the component is not offered on this server. Nothing was changed.',
     'component.logsChecking': 'Reading the log of {unit}…',

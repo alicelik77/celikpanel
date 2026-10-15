@@ -10,6 +10,7 @@ import { ServiceActionNotice, isServiceActionOutcome } from './ServiceActionNoti
 import { readServiceActionNote } from '../lib/serviceActionNote';
 import { decodeManagedServicesSnapshot, useComponentOperation } from './ComponentOperation';
 import { publishComponentCensus } from '../lib/componentCensus';
+import { runStoredRecordCheck } from '../lib/managedServices';
 import { startVisibleReads } from '../lib/visibleReads';
 
 interface ManagedService {
@@ -176,8 +177,16 @@ export function ServiceShell({
         setRereading(true);
         try {
             const response = await fetch('/api/v1/managed-services');
-            if (!response.ok) return;
-            const snapshot = decodeManagedServicesSnapshot(await response.json());
+            let snapshot: ReturnType<typeof decodeManagedServicesSnapshot> = null;
+            if (response.ok) {
+                snapshot = decodeManagedServicesSnapshot(await response.json());
+            } else if ((await readApiError(response)).code === 'SERVICE_STATE_UNVERIFIED') {
+                // A stored record the server cannot verify is answered by the
+                // conditional check, shared with the rest of this page (D-032).
+                // Doğrulanamayan kayıt, sayfanın geri kalanıyla paylaşılan
+                // koşullu kontrolle yanıtlanır.
+                snapshot = await runStoredRecordCheck();
+            }
             if (!snapshot) return;
             publishComponentCensus(snapshot.services);
             setSvc(findService(snapshot.services, serviceId));

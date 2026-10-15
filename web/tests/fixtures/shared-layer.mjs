@@ -78,12 +78,17 @@ export const downloadURL = compileSource('lib/download.ts', (specifier) => (
 export const siteWebServerRefusedURL = compileSource('lib/siteWebServerRefused.ts', unexpected('lib/siteWebServerRefused.ts'));
 export const serviceActionNoteURL = compileSource('lib/serviceActionNote.ts', unexpected('lib/serviceActionNote.ts'));
 
+// The component census (lib/componentCensus.ts) is the shipped module: lib/managedServices.ts
+// publishes into it after its conditional check (15 Oct 2026, D-032).
+const componentCensusURL = compileSource('lib/componentCensus.ts', unexpected('lib/componentCensus.ts'));
+
 export function sharedLayer(stubURL, extra = {}) {
   const uiURL = compileSource('components/ui.tsx', (specifier) => (
     specifier.endsWith('/apiError') ? apiErrorURL : stubURL
   ));
   const table = {
     '/lib/apiError': apiErrorURL,
+    '/apiError': apiErrorURL,
     '/lib/remote': remoteURL,
     '/lib/hostingCapabilities': capabilitiesURL,
     '/lib/lostAnswer': lostAnswerURL,
@@ -91,6 +96,7 @@ export function sharedLayer(stubURL, extra = {}) {
     '/lib/download': downloadURL,
     '/lib/siteWebServerRefused': siteWebServerRefusedURL,
     '/lib/serviceActionNote': serviceActionNoteURL,
+    '/componentCensus': componentCensusURL,
     '/ui': uiURL,
     ...extra,
   };

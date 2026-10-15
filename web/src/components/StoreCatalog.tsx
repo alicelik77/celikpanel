@@ -72,7 +72,11 @@ interface StoreCatalogProps {
     onAction: (item: StoreItemView) => void;
 }
 
-type StateFilter = 'all' | StoreItemState;
+// "not_known" is the filter for offerings whose component state is not known
+// yet; they are not in "Unsupported here", as their badge does not say it.
+// "not_known": bileşen durumu henüz bilinmeyen ürünlerin süzgeci; rozetleri
+// "desteklenmiyor" demediği için o süzgeçte değildir.
+type StateFilter = 'all' | StoreItemState | 'not_known';
 
 type StoreTranslate = (key: TranslationKey, vars?: Record<string, string | number>) => string;
 
@@ -136,7 +140,7 @@ export function StoreCatalog({ items, subscription, busyItemIDs, onAction }: Sto
                 .toLocaleLowerCase(locale === 'tr' ? 'tr-TR' : 'en-US');
             return (!normalizedQuery || haystack.includes(normalizedQuery)) &&
                 (category === 'all' || item.category === category) &&
-                (state === 'all' || item.state === state);
+                matchesStateFilter(item, state);
         });
     }, [category, items, locale, query, state, t]);
     const hasFilters = query !== '' || category !== 'all' || state !== 'all';
@@ -200,6 +204,7 @@ export function StoreCatalog({ items, subscription, busyItemIDs, onAction }: Sto
                                     <option value="available">{t('addons.state.available')}</option>
                                     <option value="included">{t('addons.state.included')}</option>
                                     <option value="coming_soon">{t('addons.state.comingSoon')}</option>
+                                    <option value="not_known">{t('addons.state.notKnownYet')}</option>
                                     <option value="unsupported">{t('addons.state.unsupported')}</option>
                                 </select>
                             </label>
@@ -318,6 +323,14 @@ function StoreItemCard({ item, busy, onAction }: { item: StoreItemView; busy: bo
 // "desteklenmiyor" demez.
 export function componentStateNotKnown(item: Pick<StoreItemView, 'state' | 'blockerReason'>): boolean {
     return item.state === 'unsupported' && /^component_state_[a-z_]+$/.test(item.blockerReason ?? '');
+}
+
+function matchesStateFilter(item: StoreItemView, filter: StateFilter): boolean {
+    if (filter === 'all') return true;
+    const notKnown = componentStateNotKnown(item);
+    if (filter === 'not_known') return notKnown;
+    if (filter === 'unsupported') return item.state === 'unsupported' && !notKnown;
+    return item.state === filter;
 }
 
 function stateVisual(state: StoreItemState | 'not_known') {

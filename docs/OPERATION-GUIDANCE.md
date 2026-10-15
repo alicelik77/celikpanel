@@ -7610,7 +7610,7 @@ window rests on two lab updates and one owner observation. A real update whose
 restart outlasts 6 minutes from its start would show the unknown wording while
 still being normal.
 
-**Also in this candidate (2026-10-15).** Thirteen smaller corrections from the
+**Also in this candidate (2026-10-15).** Fifteen smaller corrections from the
 open items of the alpha.85 notes, each with tests that fail against the
 previous source. No schema, ledger or version transition; nothing was measured
 natively or on an installed server; no P0 item is closed or advanced.
@@ -7717,8 +7717,36 @@ the Agent in the clean mount namespace of the 2026-10-14 audit entry).
     can still be edited while the name is unchanged. Not done: the audit log
     does not store an actor kind, so a pre-existing `system` row would still be
     drawn as "System" (it cannot arise from this Panel).
+14. **A component's own page checks by itself on an unverifiable record**
+    (D-032, D-033). On `/services/<id>` a `503 SERVICE_STATE_UNVERIFIED` answer
+    was the generic "This component's record could not be read" whose Retry
+    kept failing until the Dashboard or the Components page ran its check. The
+    page now answers that code as they do: one conditional
+    `POST /api/v1/managed-services/scan?max_age_seconds=300` (a read), shared
+    by everything on the page (the reloaded-page lookup, the sections, the
+    header), no toast, then the record is read again. While it runs the page
+    says so in a quiet line ("CelikPanel is checking the components now ...
+    you do not need to do anything") with no Retry. A failed check keeps the
+    existing "could not check" state; a check held by a change in progress
+    (409 `server_setup_busy` / `service_operation_busy`) says so with Retry;
+    neither is asked again by itself, and a refusal that returns after a
+    successful check is not checked a second time (no loop). Only the person's
+    Retry asks once more. Any other refusal is unchanged (negative control).
+    `lib/managedServices.ts` (`useStoredRecordCheck`, `runStoredRecordCheck`),
+    `ServiceRecordLookup`, `ComponentPanels`, `ServiceShell`; EN/TR
+    `component.checkingStored`, `component.checkHeld`. Tests: ten mounted
+    cases in `tests/remote-state-mounted.test.mjs` (two pages, five cases
+    each) plus the negative control, all failing without the check.
+15. **The Store's state filter** lists the offerings whose component state is
+    not known under their own entry, "State not known yet" / "Durum henüz
+    bilinmiyor", and no longer under "Unsupported here" (which their badge had
+    already stopped saying, `1f564fdb0`); the default view still shows them.
+    `tests/store-state-not-known-mounted.test.mjs` mounts the filter in both
+    languages and fails against the previous grouping.
 
-Counts after items 8 to 13: `npm test` 1440 of 1440; `npx tsc --noEmit` clean;
+Counts after items 8 to 15: `npm test` 1457 of 1457; `npx tsc --noEmit` clean;
+`npm run build` passes with its bundle budget; the Go figures below are from
+items 8 to 13 and were not re-run (items 14 and 15 are web only);
 `go test -v ./cmd/panel/... ./internal/transport/... ./internal/auth/...`: 1602
 top-level tests and 1655 first-level subtests passed, 6 skipped, 0 failed (WSL
 guest `CelikPanel-S2-Debian`). The Agent was not run again.

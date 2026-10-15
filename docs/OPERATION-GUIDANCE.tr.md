@@ -7581,7 +7581,7 @@ ulaşmadı; pencere iki laboratuvar güncellemesine ve bir sahip gözlemine daya
 Yeniden başlaması başlangıcından itibaren 6 dakikayı aşan gerçek bir güncelleme,
 hâlâ olağanken bilinmiyor metnini gösterir.
 
-**Bu adayda ayrıca (2026-10-15).** Alpha.85 notlarının açık kalemlerinden on üç
+**Bu adayda ayrıca (2026-10-15).** Alpha.85 notlarının açık kalemlerinden on beş
 küçük düzeltme; her birinin testleri önceki kaynağa karşı başarısız olur. Şema,
 defter ya da sürüm geçişi yok; hiçbir şey yerel çalıştırmada ya da kurulu bir
 sunucuda ölçülmedi; hiçbir P0 işi kapanmaz ya da ilerlemez.
@@ -7688,8 +7688,36 @@ Agent, 2026-10-14 denetim kaydındaki temiz bağlama ad alanında).
     değişmediği sürece düzenlenebilir. Yapılmadı: denetim günlüğü aktör türü
     saklamaz; bu yüzden önceden var olan bir `system` satırı yine "Sistem"
     çizilirdi (bu Panelden doğamaz).
+14. **Bileşenin kendi sayfası, doğrulanamayan kayıtta kendisi kontrol eder**
+    (D-032, D-033). `/services/<id>` sayfasında `503 SERVICE_STATE_UNVERIFIED`
+    yanıtı, Pano ya da Bileşenler sayfası kontrolünü çalıştırana dek Tekrar
+    dene'nin başarısız kaldığı genel "Bu bileşenin kaydı okunamadı" idi. Sayfa
+    artık bu kodu onlar gibi yanıtlar: tek koşullu
+    `POST /api/v1/managed-services/scan?max_age_seconds=300` (bir okuma);
+    sayfadaki her şey (yeniden yüklenen sayfanın arama adımı, bölümler, başlık)
+    onu paylaşır, bildirim çıkmaz, ardından kayıt yeniden okunur. Sürerken sayfa
+    bunu sakin bir satırla söyler ("CelikPanel bileşenleri şimdi kontrol
+    ediyor ... sizin bir şey yapmanız gerekmiyor"); Tekrar dene yoktur.
+    Başarısız kontrol mevcut "kontrol edilemedi" durumunu korur; süren bir
+    değişiklik yüzünden tutulan kontrol (409 `server_setup_busy` /
+    `service_operation_busy`) bunu Tekrar dene ile söyler; hiçbiri kendiliğinden
+    yeniden sorulmaz ve başarılı kontrolden sonra yine dönen ret ikinci kez
+    kontrol edilmez (döngü yok). Yalnız kişinin Tekrar dene'si bir kez daha
+    sorar. Başka her ret değişmez (olumsuz kontrol).
+    `lib/managedServices.ts` (`useStoredRecordCheck`, `runStoredRecordCheck`),
+    `ServiceRecordLookup`, `ComponentPanels`, `ServiceShell`; EN/TR
+    `component.checkingStored`, `component.checkHeld`. Testler:
+    `tests/remote-state-mounted.test.mjs` içinde on bağlanmış durum (iki sayfa,
+    sayfa başına beş) ve olumsuz kontrol; hepsi kontrol olmadan başarısız olur.
+15. **Mağazanın durum süzgeci**, bileşen durumu bilinmeyen ürünleri kendi
+    girdisi altında listeler: "Durum henüz bilinmiyor" / "State not known yet";
+    artık "Bu sunucuda desteklenmiyor" altında değildir (rozetleri bunu zaten
+    söylemiyordu, `1f564fdb0`); varsayılan görünüm onları yine gösterir.
+    `tests/store-state-not-known-mounted.test.mjs` süzgeci iki dilde bağlar ve
+    önceki gruplamaya karşı başarısız olur.
 
-8-13. kalemlerden sonraki sayılar: `npm test` 1440/1440; `npx tsc --noEmit`
-temiz; `go test -v ./cmd/panel/... ./internal/transport/... ./internal/auth/...`:
+8-15. kalemlerden sonraki sayılar: `npm test` 1457/1457; `npx tsc --noEmit`
+temiz; `npm run build` paket bütçesiyle geçer; aşağıdaki Go sayıları 8-13.
+kalemlerdendir ve yeniden koşulmadı (14 ve 15. kalemler yalnız web); `go test -v ./cmd/panel/... ./internal/transport/... ./internal/auth/...`:
 1602 üst düzey test ve 1655 birinci düzey alt test geçti, 6 atlandı, 0
 başarısız (WSL konuğu `CelikPanel-S2-Debian`). Agent yeniden koşulmadı.

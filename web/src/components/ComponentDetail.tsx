@@ -6,7 +6,7 @@ import { useI18n } from '../i18n';
 import { apiErrorText } from '../lib/apiError';
 import { componentName } from '../lib/componentName';
 import { decodeListIn, lastKnown, mapRemote, useRemote } from '../lib/remote';
-import { useManagedServices, type ManagedServicesSnapshot } from '../lib/managedServices';
+import { useManagedServices, useStoredRecordCheck, type ManagedServicesSnapshot } from '../lib/managedServices';
 
 interface Instance {
     version: string;
@@ -136,6 +136,7 @@ export function ComponentPanels({
     // The same read the page above makes, so the two share one request.
     // Üstteki sayfanın yaptığı okumanın aynısı; ikisi tek isteği paylaşır.
     const catalogue = useManagedServices();
+    const check = useStoredRecordCheck(catalogue);
     const record = mapRemote(catalogue.remote, (snapshot) => componentIn(snapshot, serviceId));
     const want = { facts: true, configs: true, journal: true, ...show };
 
@@ -144,11 +145,18 @@ export function ComponentPanels({
     // Aşağıdaki hiçbir şey, gelmemiş bir kayıttan çizilmez.
     return (
         <div className="mt-6 space-y-6 first:mt-0">
+            {/* A stored record the server cannot verify is answered by the
+                conditional check, not reported as unreadable (D-032). */}
+            {record.state === 'unknown' && !record.previous && check.checking ? (
+                <Checking label={t('component.checkingStored')} />
+            ) : record.state === 'unknown' && !record.previous && check.held ? (
+                <CouldNotCheck text={t('component.checkHeld')} onRetry={() => void check.retry()} busy={catalogue.reading} />
+            ) : (
             <RemoteGate
                 remote={record}
                 checking={t('component.checking')}
                 failed={t('component.unknown')}
-                onRetry={() => void catalogue.retry()}
+                onRetry={() => void check.retry()}
                 busy={catalogue.reading}
             >
                 {({ value: svc }) => (
@@ -159,6 +167,7 @@ export function ComponentPanels({
                     </div>
                 )}
             </RemoteGate>
+            )}
         </div>
     );
 }
