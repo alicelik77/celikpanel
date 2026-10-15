@@ -100,6 +100,19 @@ def process_status(tid):
     return answer
 
 
+def is_running(tid, started):
+    # True only while the task with this exact identity still exists and is not a zombie. A task
+    # that is gone, replaced by a recycled id, or already dead is simply "not running": /proc can
+    # raise FileNotFoundError or ProcessLookupError (ESRCH) between two reads of a dying task.
+    # Callers that require the task to exist keep using start_time/process_status, which still raise.
+    try:
+        if start_time(tid) != started:
+            return False
+        return not process_status(tid)['State'].startswith('Z')
+    except (FileNotFoundError, ProcessLookupError):
+        return False
+
+
 def read_file(path):
     descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC | os.O_NONBLOCK)
     try:
