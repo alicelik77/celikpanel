@@ -2,24 +2,31 @@
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.85.tr.md)
 
-This is the draft of the release that follows v0.1.0-alpha.84. The number is
-v0.1.0-alpha.85; the release preparation is commit 5443fe055 (sequence 85 after
-84, with the alpha.84 release commit `f0157e6c8` as the previous one). Nothing
-of it is published, and no installed server runs it. This draft was written on
-2026-10-15 (UTC).
+This is the draft of the release that follows v0.1.0-alpha.84. The number
+v0.1.0-alpha.85 was chosen by the release preparer under the owner's standing
+instruction of 2026-10-13 ("hem sürüm numaraları hem de commit işlemleri için
+bana sormana gerek yok": no need to ask the owner about version numbers or
+commits); it is not a number the owner named for this release. The release
+preparation is commit 5443fe055 (sequence 85 after 84, with the alpha.84
+release commit `f0157e6c8` as the previous one). Nothing of it is published,
+and this draft records no installed server running it. This draft was written
+on 2026-10-15 (UTC).
 
-It does one thing the owner asked for on 2026-10-14, everywhere: a screen that
-makes you wait now shows that it is waiting, or says plainly that you do not
-need to do anything ([D-033](DECISIONS.md)). It started at the last step of
+It applies one rule the owner set on 2026-10-14 for every screen: a screen that
+makes you wait shows that it is waiting, or says plainly that you do not need
+to do anything ([D-033](DECISIONS.md)). This release applies it to the waiting
+states that a read of the web interface found. It started at the last step of
 setup on the second installed server. There the final check waited for a
 reverse DNS name that the owner had already changed at the provider and that
 public DNS was still spreading. The step said "Waiting for you", and after every
 check passed it showed a still sentence beside enabled buttons until the next
 20-second pass. That step now finishes on the owner's passing check, shows
 "Finishing setup" with motion, and names the reverse DNS wait for what it is.
-The rest of the interface was then read for every state in which a page waits:
+The
+web interface was then read from source for the states in which a page waits:
 37 states, of which 18 already met the rule, 16 were changed at once, and the
-3 left open were decided by the owner the same day and changed too.
+3 left open were decided by the owner the same day and changed too (read from
+code; not measured on an installed server).
 
 Beside that: observations O4 to O6 of the alpha.84 notes are corrected (the
 Components firewall banner and the Dashboard's "Needs attention" box), the
@@ -41,19 +48,19 @@ owner met) and the update card's busy state, could not be reached in the lab.
 
 Plain words first, for the server owner. After the update, reload every
 CelikPanel page that was open; a page loaded before the update still has the
-old screens. When a page waits for the server, a provider or a background job,
-you now see either something moving (a spinner beside the sentence, with the
+old screens. On the screens the audit covered, when a page waits for the server, a
+provider or a background job, you now see either something moving (a spinner beside the sentence, with the
 buttons that would get in the way switched off) or a sentence that says nothing
-needs to be done and the page updates by itself. A wait has an end: if nothing
+needs to be done and the page updates by itself. Those waits have an end: if nothing
 is confirmed after about a minute, the page says the result is not known yet,
 that this is not a failure, and what to check. If setup is waiting for a
 reverse DNS name you have already changed at your server provider, the step
 now reads "Waiting for reverse DNS" and tells you that the change can take from
 a few minutes to several hours to reach public DNS and that you do not need to
 do anything more in CelikPanel. When you press "Check requirements again" and
-every check passes, the step reads "Finishing setup" and completes within
-seconds instead of after the next 20-second pass. With the CelikPanel Agent
-stopped, the Turkish Components page and the Dashboard's "Needs attention" box
+every check passes, the step reads "Finishing setup" and completes without
+waiting for the next 20-second pass (component-tested; not seen on a real
+setup). With the CelikPanel Agent stopped, the Turkish Components page and the Dashboard's "Needs attention" box
 now say so in the page's language, with the commands to run. Nothing here
 changes your server's services. Publishing this release updates no installed
 server; you start that yourself, from the panel's own update screen.
@@ -114,10 +121,10 @@ nothing more. Test: `TestMailDNSIdentityAsksNextResolverWhenFirstAnswerIsStale`
 (six cases). This takes effect only after the Agent is updated (see the
 limits).
 
-**Every waiting state was read, and 19 were changed.** The web interface was
-read from source for every state in which a page waits for the server, a
-background operation, a poll, a provider, the licence or an external check:
-37 states across setup (the phases other than the final check), the
+**The waiting states were read, and 19 were changed.** The web interface was
+read from source for the states in which a page waits for the server, a
+background operation, a poll, a provider, the licence or an external check;
+the read found 37 states across setup (the phases other than the final check), the
 Components and component pages, the Dashboard, the licence and access layers,
 the panel update flow, domain certificates and HSTS, DNS, imports, PHP,
 backups and the sidebar build stamp. 18 already met the rule; 16 did not and
@@ -164,7 +171,8 @@ idle" (2026-10-14). The changes, by screen:
   dialog; `5403eed88`). They add "This page checks again every few seconds and
   lifts this pause by itself; you do not need to reload it." The unverified
   state no longer asks for a reload. A component page's install dialog now
-  reads readiness every 5 s while open (GET only), not once.
+  reads readiness every 5 s while open (GET only), not once; the code does not
+  check whether the tab is visible.
 - *Buttons that ran a long request behind a disabled, still label*
   (`f643f838d`, `875e9c2bd`): domain certificate issue, activation retry and
   upload, panel certificate, zone publish, PHP version, import inspection and
@@ -217,8 +225,9 @@ clock when the answer is written (`stampHSTSRetireRemaining` in
 (`DomainSSLSettings.tsx`) dates the end from the moment it received the answer
 and no longer compares its own clock with the server's `hsts_retire_after`,
 which is kept. An older Panel without the field keeps the old rule. This
-closes the alpha.84 limit that the HSTS retirement in `DomainSSLSettings`
-compared a server timestamp with the browser's clock. Tests:
+answers the alpha.84 limit that the HSTS retirement in `DomainSSLSettings`
+compared a server timestamp with the browser's clock (component-tested; not
+measured natively). Tests:
 `TestStampHSTSRetireRemaining`, `TestDomainSSLAnswerCarriesHSTSRetireRemaining`,
 and mounted tests in `web/tests/remote-state-mounted.test.mjs` with the server's
 clock behind and ahead and with an older Panel.
@@ -294,17 +303,21 @@ code it does not know. A client that does not know the fields ignores them.
 
 ## Behaviour changes you will notice
 
-- The last step of setup completes within seconds of a passing "Check
-  requirements again", shows "Finishing setup" with a spinner meanwhile, and
-  does not offer "Edit plan" while finishing.
+- The last step of setup completes after a passing "Check requirements again"
+  without waiting for the next 20-second pass, shows "Finishing setup" with a
+  spinner meanwhile, and does not offer "Edit plan" while finishing.
 - A final check waiting only for reverse DNS reads "Waiting for reverse DNS",
   not "Waiting for you", and says the change can take hours to spread and
   nothing more is needed in CelikPanel.
-- Every wait the audit found either moves or says nothing needs doing, and
-  ends with an honest "not known yet" after its bound: setup and the component
-  lock after 60 s, a spreading domain after 60 checks.
-- The update card, a component's install dialog, the pauses and a spreading
-  domain read the server again by themselves while visible (reads only).
+- The waits the audit changed either move or say nothing needs doing. Setup
+  and the component lock end with an honest "not known yet" after 60 s (their
+  reads go on), a spreading domain after 60 checks. This is read from code and
+  tested on mounted screens; it was not seen on an installed server.
+- The update card and a spreading domain read the server again by themselves
+  only while the tab is visible. A component's install dialog reads readiness
+  every 5 s while it is open, and the pauses lift when a read finds the server
+  ready (reads only; the install dialog's reads are not paused by a hidden
+  tab).
 - On the Turkish Components page with the Agent stopped, the firewall banner
   speaks Turkish and is read again after Rescan; the Dashboard's "Needs
   attention" names the Agent.
@@ -335,13 +348,14 @@ The commits after it change evidence, documents, one lab tool
   `./internal/...` was not run on this branch; no file under `internal/`
   changed.
 - Web: `npm test` 1391 of 1391, run again on 2026-10-15 on the release
-  preparation commit; `npm run build` passes with its type check and the bundle
+  preparation commit and at this draft's head (`bb5244c77`, same count); `npm run build` passes with its type check and the bundle
   budget (Dashboard chunk 38.28 KiB of 160.25 KiB). The web count was 1348
   after the setup change, 1375 after the audit's sixteen changes, 1386 after
-  rows 16, 25 and 35, and 1391 after the screenshot round's corrections. Each
-  mounted test of a changed state failed against the screen before its change,
-  except as the guidance entry names (the repository and version-removal
-  buttons have a source check only; two wording checks read the catalogues).
+  rows 16, 25 and 35, and 1391 after the screenshot round's corrections. The guidance entries record that the mounted tests added for the audit's
+  changes failed against the screen before their change; the exceptions are the
+  repository and version-removal buttons (a source check only) and two wording
+  checks that read the catalogues. For the setup finishing change only its
+  Edit plan checks are recorded as failing without it.
 - The release preparation's three contract tests pass: the download-portal and
   signed-manifest contracts in the build guest, and the sequence-policy
   contract in the Windows checkout, because it reads the `v0.1.0-alpha.84` tag
@@ -350,7 +364,7 @@ The commits after it change evidence, documents, one lab tool
 
 **The screenshot round (the twelfth browser-inspection batch).** A real Chrome
 on Windows against the loopback mock, `web/tools/browser-inspect/
-scenarios-batch12.mjs` with `mock-batch12.mjs` (`0b43ee81e`), drove every state
+scenarios-batch12.mjs` with `mock-batch12.mjs` (`0b43ee81e`), drove the states
 changed by the two 2026-10-14 guidance entries: 31 states in 8 configurations
 (1280 and 390 wide, light and dark, English and Turkish), with no scenario
 errors and no page scrolling sideways, as recorded in that commit. The 60 s
@@ -513,8 +527,8 @@ product file.
 - `c2144b785`: the lab mock answers the licence access check with
   `valid_for_seconds`, as the Panel does, and has a `clockSkew` control; the
   cold-load tools for sets 9 and 11 plan their timed click on the page's
-  deadline. This closes the alpha.84 limit that the lab tools sent only
-  `valid_until`. The mock was measured by hand on a local port (59.2 s left for
+  deadline. This addresses, in the tools' source, the alpha.84 limit that
+  the lab tools sent only `valid_until`. The mock was measured by hand on a local port (59.2 s left for
   an active licence; with `clockSkew` −420 the stamp moved 420 s and the time
   left stayed 59.1 s; a missing licence answered 0); the cold-load tools were
   not run.
@@ -555,6 +569,11 @@ New with this release:
   left: none of them was produced in the native record.
 - **The resolver that answered is not named.** The Agent does not report which
   resolver gave the reverse DNS answer, so the page cannot say it.
+- **Re-reads are not all gated on the tab being visible.** The update card's
+  and the spreading domain's re-reads stop when the tab is hidden. The
+  component install dialog's 5 s re-read and the setup page's reads (1.5 s
+  while finishing, 3 s otherwise) do not check the tab's visibility
+  (`ServiceShell.tsx`, `ServerSetup.tsx`). All are GET reads.
 - **The Agent change needs an Agent update.** Asking the next resolver takes
   effect only after the Agent is updated. Until then a stale first resolver can
   still read as a mismatch, although the wording now covers that wait.
@@ -569,8 +588,8 @@ New with this release:
   the alpha.84 tag (`9f86eb43…`), not from `6dc899e5…`; the ordinary archive of
   that commit was not built, so it was not compared.
 - **set16 is a measurement, not acceptance.** QEMU/KVM guests, test-licence
-  builds, one run per cell on one laptop host, outbound NAT not captured; every
-  `result.json` carries `native_evidence: false`.
+  builds, one run per cell on one host, no capture of the guests' outbound NAT
+  traffic in the record; every `result.json` carries `native_evidence: false`.
 - **The recovery foundation file after a return** still names the defective
   candidate while the running build is the previous release, and the floor
   reads the candidate's sequence (set12, set15 and set16). Recorded, not
@@ -587,7 +606,9 @@ New with this release:
   card's "held by a change" state; the cold-load tools for sets 9 and 11 after
   their change.
 
-Closed by this release from the alpha.84 list: O4, O5 and O6; the Mail stacks
+Answered by this release from the alpha.84 list (in source and with component
+tests; set16 observed O4 to O6, the Mail stacks card and the sidebar build id;
+the cold-load tools were not run): O4, O5 and O6; the Mail stacks
 card's stale copy; the untranslated mail profile text on the Turkish Components
 page; the sidebar build id wrapping mid-word; the HSTS retirement comparing two
 clocks; the lab tools sending only `valid_until`; and the `managed_site_files`
@@ -611,7 +632,8 @@ open), condensed; the full list is in the
   v0.1.0-alpha.82 that the alpha.84 notes list as still open.
 - **Open acceptance items.** All five foundation items of the
   [resilience contract](RESILIENCE-CONTRACT.md) remain partial; this release
-  closes none and advances none. P0.1–P0.5 stay **partial**. Decisions: D-022,
+  closes none and advances none. P0.1–P0.5 stay **partial**. Publishing this
+  release would not be acceptance of it. Decisions: D-022,
   D-024, D-025, D-032 and D-033 in [DECISIONS](DECISIONS.md).
 
 ## Publication record
@@ -623,8 +645,9 @@ publication:
    2026-10-14 UTC), on the candidate's product code through a fixture commit:
    a fresh install on Debian 13 and the update from alpha.84 on Debian 13 and
    Ubuntu 24.04, good and defective. Its limits are above.
-2. The release preparation: done in commit 5443fe055, which changes no file
-   under `cmd/`, `internal/` or `web/`: the release sequence policy 85 after 84
+2. The release preparation: done in commit 5443fe055 (the number was chosen by
+   the release preparer under the owner's standing instruction of 2026-10-13),
+   which changes no file under `cmd/`, `internal/` or `web/`: the release sequence policy 85 after 84
    with the alpha.84 release commit `f0157e6c8` as previous, the
    `download-portal/get.sh` pins (sequence 85 and version v0.1.0-alpha.85; the
    public-key pin unchanged), the README version lines and three contract tests,

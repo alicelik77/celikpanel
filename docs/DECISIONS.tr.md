@@ -78,10 +78,16 @@ söyler.
 Bunun yetkilendirmediği:
 
 - Bir değişiklik başlatan ya da kabul eden yoklama. Bu kararın eklediği her
-  kendiliğinden yeniden okuma bir okumadır (GET), aynı anda tektir ve yalnız
-  sayfa görünürken çalışır; bir yeniden okuma asla ikinci bir değişiklik
-  başlatmaz.
-- Kimse bakmazken çalışan bir zamanlayıcı ya da sınırsız bir bekleme.
+  kendiliğinden yeniden okuma bir okumadır (GET); bir yeniden okuma asla ikinci
+  bir değişiklik başlatmaz. Güncelleme kartının ve yayılan alan adının yeniden
+  okumaları aynı anda tektir ve yalnız sayfa görünürken çalışır; bileşen kurulum
+  penceresinin 5 saniyelik yeniden okuması ve kurulum sayfasının okumaları
+  sekmenin görünürlüğüne bakmaz (açık; sürüm notlarına bakın).
+- Kimse bakmazken çalışan yeni bir zamanlayıcı ya da hareket olarak gösterilen
+  sınırsız bir bekleme: sınır hareketi bitirir ve bildirim sonucun bilinmediğini
+  söyler (kurulumun ve bileşen kilidinin okumaları ondan sonra da sürer). Kurulum
+  penceresinin yeniden okuması, sekme ne olursa olsun pencere açıkken çalışır;
+  bu bir açıktır, bir yetki değil.
 - Doğrulanmış bir hata ya da karşılanmamış bir önkoşul yerine "henüz
   bilinmiyor": üçü ayrı kalır (D-024).
 - Her ekranın ölçüldüğü iddiası. Denetim koddan okundu; gerçek sistem kaydı bir
@@ -105,8 +111,9 @@ testlerle. Bileşenler güvenlik duvarı şeridi, Dashboard'ın ilgi bildirimi v
 Posta paketleri kartı ile kenar çubuğundaki yapı kimliği on sekizinci gerçek
 sistem kaydında ölçüldü. Kurulumun tamamlanmasına, güncelleme kartının meşgul
 durumuna, bileşen kilidinin yeniden bağlanmasına ve yayılan alan adı
-kontrollerine gerçek sistemde ulaşılamadı. Bir gerçek sistem çalıştırması ve
-kurulu bir sunucu için açık.
+kontrollerine gerçek sistemde ulaşılamadı. Bir gerçek sistem çalıştırması, kurulu
+bir sunucu ve kurulum penceresinin ile kurulum sayfasının okumalarının
+görünürlüğe bağlanması için açık.
 
 ---
 

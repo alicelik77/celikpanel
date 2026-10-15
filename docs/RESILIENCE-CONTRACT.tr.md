@@ -4798,8 +4798,9 @@ yayımlanmamış bir adayı kaydeder; 2026-10-15 girdinin saat tarihidir, andı�
   çalışmayı uyandırır; istek hiçbir şeyi tamamlamaz ve hiçbir şey başlatmaz),
   "henüz bilinmiyor" ile biten 60 sn'lik bir sınırla "Kurulum tamamlanıyor"
   gösterir ve ters DNS beklemesini adıyla söyler; 37 bekleme durumunun
-  denetimi 19'unu değiştirdi, her kendiliğinden yeniden okuma bir GET'tir, aynı
-  anda tektir ve yalnız görünürken çalışır; alpha.84'ün O4–O6 gözlemleri,
+  denetimi 19'unu değiştirdi, her kendiliğinden yeniden okuma bir GET'tir (güncelleme
+  kartınınki ve yayılan bir alan adınınki aynı anda tektir ve yalnız görünürken
+  çalışır; kurulum penceresininki ve kurulum sayfasınınki görünürlüğe bakmaz); alpha.84'ün O4–O6 gözlemleri,
   Posta paketleri kartı, türlü posta profili cümleleri, sunucunun saatiyle
   HSTS'nin kalan süresi (`hsts_retire_remaining_seconds`) ve kenar çubuğundaki
   yapı kimliği. Agent'ta posta kimliği sorgusu, ilk ters DNS yanıtı eskiyse
@@ -4839,7 +4840,7 @@ yayımlanmamış bir adayı kaydeder; 2026-10-15 girdinin saat tarihidir, andı�
 - **Açık.** Her geri dönüşten sonra kurtarma temel dosyası, çalışan derleme
   alpha.84 olduğu hâlde kusurlu adayı adlandırmayı sürdürür (`524f86dd…`, sıra
   85) ve taban 85 okur: set12 ve set15'in örüntüsü, kaydedildi ve
-  yargılanmadı. Tek dizüstü ana makinede hücre başına tek çalıştırma; Arch
+  yargılanmadı. Tek ana makinede hücre başına tek çalıştırma; Arch
   çalıştırılmadı; temiz Ubuntu kurulumu yok; sürüm hazırlığı commit'i (85
   önyükleme sabitleri) ölçülmüş hiçbir derlemede yok; "Kurulum tamamlanıyor"a
   ve güncelleme kartının meşgul durumuna gerçek sistemde ulaşılamadı; hiçbir

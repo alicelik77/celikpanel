@@ -5527,7 +5527,9 @@ clock date of the entry, and the measurement it cites ran on 2026-10-14 and
   waiting run; the request completes nothing and starts nothing), shows
   "Finishing setup" with a 60 s bound that ends in "not known yet", and names
   the reverse DNS wait; an audit of 37 waiting states changed 19, each
-  automatic re-read a GET, one at a time, only while visible; observations O4
+  automatic re-read a GET (the update card's and a spreading domain's one at a
+  time and only while visible; the install dialog's and setup's not gated on
+  visibility); observations O4
   to O6 of alpha.84, the Mail stacks card, typed mail profile sentences, the
   HSTS time left on the server's clock (`hsts_retire_remaining_seconds`) and
   the sidebar build id. In the Agent, the mail identity lookup asks the next
@@ -5568,7 +5570,7 @@ clock date of the entry, and the measurement it cites ran on 2026-10-14 and
 - **Open.** After each return the recovery foundation file still names the
   defective candidate (`524f86dd…`, sequence 85) while the running build is
   alpha.84, and the floor reads 85: the pattern of set12 and set15, recorded
-  and not judged. One run per cell on one laptop host; Arch not run; no fresh
+  and not judged. One run per cell on one host; Arch not run; no fresh
   Ubuntu install; the release preparation commit (bootstrap pins 85) is in no
   measured build; "Finishing setup" and the update card's busy state were not
   reached natively; no installed server was measured. set16 is a measurement,

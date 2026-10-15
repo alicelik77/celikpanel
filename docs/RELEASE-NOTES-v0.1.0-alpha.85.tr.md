@@ -2,25 +2,30 @@
 
 [English](RELEASE-NOTES-v0.1.0-alpha.85.md)
 
-Bu, v0.1.0-alpha.84'ü izleyen sürümün taslağıdır. Numara v0.1.0-alpha.85'tir;
-sürüm hazırlığı 5443fe055 commit'idir (84'ten sonra sıra 85; önceki olarak
-alpha.84 sürüm commit'i `f0157e6c8`). Sürümün hiçbir parçası yayımlanmadı;
-hiçbir kurulu sunucu onu çalıştırmıyor. Bu taslak 15 Ekim 2026'da (UTC)
+Bu, v0.1.0-alpha.84'ü izleyen sürümün taslağıdır. v0.1.0-alpha.85
+numarasını, sahibin 13 Ekim 2026 tarihli kalıcı talimatı uyarınca ("hem sürüm
+numaraları hem de commit işlemleri için bana sormana gerek yok": sürüm
+numaraları ve commit'ler için sahibe sorulmaz) sürümü hazırlayan seçti; sahibin
+bu sürüm için adını koyduğu bir numara değildir. Sürüm hazırlığı 5443fe055
+commit'idir (84'ten sonra sıra 85; önceki olarak alpha.84 sürüm commit'i
+`f0157e6c8`). Sürümün hiçbir parçası yayımlanmadı ve bu taslak, onu çalıştıran
+hiçbir kurulu sunucu kaydetmez. Bu taslak 15 Ekim 2026'da (UTC)
 yazıldı.
 
-Sürüm, sahibin 14 Ekim 2026'da istediği bir şeyi her yerde yapar: sizi
-bekleten bir ekran artık beklediğini gösterir ya da sizin bir şey yapmanız
-gerekmediğini açıkça söyler ([D-033](DECISIONS.tr.md)). İş, kurulu ikinci
+Sürüm, sahibin 14 Ekim 2026'da her ekran için koyduğu bir kuralı uygular: sizi
+bekleten bir ekran beklediğini gösterir ya da sizin bir şey yapmanız
+gerekmediğini açıkça söyler ([D-033](DECISIONS.tr.md)). Bu sürüm kuralı, web
+arayüzünün okunmasında bulunan bekleme durumlarına uygular. İş, kurulu ikinci
 sunucuda kurulumun son adımında başladı. Orada son kontrol, sahibin
 sağlayıcıda çoktan değiştirdiği ve genel DNS'in hâlâ yaymakta olduğu bir ters
 DNS adını bekliyordu. Adım "Waiting for you" diyordu; bütün kontroller
 geçtikten sonra da bir sonraki 20 saniyelik geçişe kadar etkin düğmelerin
 yanında hareketsiz bir cümle gösterdi. O adım artık sahibin geçen kontrolüyle
 tamamlanır, hareketle "Kurulum tamamlanıyor" gösterir ve ters DNS beklemesini
-kendi adıyla söyler. Ardından arayüzün geri kalanı, bir sayfanın beklediği her
-durum için okundu: 37 durum; 18'i kurala zaten uyuyordu, 16'sı hemen
+kendi adıyla söyler. Ardından web arayüzü, bir sayfanın beklediği durumlar için
+kaynaktan okundu: 37 durum; 18'i kurala zaten uyuyordu, 16'sı hemen
 değiştirildi, açık kalan 3'ü için sahip aynı gün karar verdi ve onlar da
-değiştirildi.
+değiştirildi (koddan okundu; kurulu bir sunucuda ölçülmedi).
 
 Bunun yanında: alpha.84 notlarının O4–O6 gözlemleri düzeltildi (Bileşenler
 güvenlik duvarı şeridi ve Dashboard'ın "İlgi istiyor" kutusu), Dashboard'ın
@@ -43,11 +48,11 @@ durumuna, laboratuvarda ulaşılamadı.
 
 Önce sade sözlerle, sunucu sahibi için. Güncellemeden sonra açık olan her
 CelikPanel sayfasını yeniden yükleyin; güncellemeden önce yüklenmiş bir sayfada
-eski ekranlar durur. Bir sayfa sunucuyu, bir sağlayıcıyı ya da arka plandaki bir
-işi beklediğinde artık ya hareket eden bir şey görürsünüz (cümlenin yanında
+eski ekranlar durur. Denetimin kapsadığı ekranlarda, bir sayfa sunucuyu, bir sağlayıcıyı ya da
+arka plandaki bir işi beklediğinde artık ya hareket eden bir şey görürsünüz (cümlenin yanında
 dönen bir simge; araya girebilecek düğmeler kapalıdır) ya da yapılacak bir şey
-olmadığını ve sayfanın kendiliğinden güncelleneceğini söyleyen bir cümle. Her
-beklemenin bir sonu vardır: yaklaşık bir dakika içinde hiçbir şey doğrulanmazsa
+olmadığını ve sayfanın kendiliğinden güncelleneceğini söyleyen bir cümle. Bu
+beklemelerin bir sonu vardır: yaklaşık bir dakika içinde hiçbir şey doğrulanmazsa
 sayfa sonucun henüz bilinmediğini, bunun bir hata olmadığını ve neyi
 denetleyeceğinizi söyler. Kurulum, sunucu sağlayıcınızda çoktan değiştirdiğiniz
 bir ters DNS adını bekliyorsa adım artık "Ters DNS bekleniyor" der; değişikliğin
@@ -55,7 +60,7 @@ genel DNS'e ulaşmasının birkaç dakikadan birkaç saate kadar sürebileceğin
 CelikPanel'de başka bir şey yapmanız gerekmediğini söyler. "Gereksinimleri
 tekrar kontrol et" düğmesine bastığınızda bütün kontroller geçerse adım
 "Kurulum tamamlanıyor" der ve bir sonraki 20 saniyelik geçişi beklemeden
-saniyeler içinde tamamlanır. CelikPanel Agent'ı durmuşken Türkçe Bileşenler
+tamamlanır (bileşen testleriyle sınandı; gerçek bir kurulumda görülmedi). CelikPanel Agent'ı durmuşken Türkçe Bileşenler
 sayfası ve Dashboard'ın "İlgi istiyor" kutusu bunu artık sayfanın dilinde,
 çalıştırılacak komutlarla söyler. Buradaki hiçbir şey sunucunuzun hizmetlerini
 değiştirmez. Bu sürümün yayımlanması hiçbir kurulu sunucuyu güncellemez;
@@ -120,10 +125,10 @@ yapılmaz. Test: `TestMailDNSIdentityAsksNextResolverWhenFirstAnswerIsStale`
 (altı durum). Bu değişiklik yalnız Agent güncellendikten sonra etkili olur
 (sınırlara bakın).
 
-**Her bekleme durumu okundu ve 19'u değiştirildi.** Web arayüzü, bir sayfanın
+**Bekleme durumları okundu ve 19'u değiştirildi.** Web arayüzü, bir sayfanın
 sunucuyu, bir arka plan işlemini, bir yoklamayı, bir sağlayıcıyı, lisansı ya
-da dış bir denetimi beklediği her durum için kaynaktan okundu: 37 durum.
-Kapsam: kurulum (son kontrol dışındaki aşamalar), Bileşenler ve bileşen
+da dış bir denetimi beklediği durumlar için kaynaktan okundu; okuma 37 durum
+buldu. Kapsam: kurulum (son kontrol dışındaki aşamalar), Bileşenler ve bileşen
 sayfaları, Dashboard, lisans ve erişim katmanları, panel güncelleme akışı, alan
 adı sertifikaları ve HSTS, DNS, içe aktarma, PHP, yedekler ve kenar çubuğundaki
 yapı damgası. 18'i kurala zaten uyuyordu; 16'sı uymuyordu ve değiştirildi; 3'ü
@@ -173,7 +178,8 @@ bekleme ekranları" kaydındadır (2026-10-14). Ekran ekran değişiklikler:
   bir yeniden denetler ve bu beklemeyi kendiliğinden kaldırır; sayfayı yeniden
   yüklemeniz gerekmez." Doğrulanamayan durum artık yeniden yükleme istemez. Bir
   bileşen sayfasının kurulum penceresi hazır olma durumunu artık bir kez değil,
-  açıkken 5 sn'de bir okur (yalnız GET).
+  açıkken 5 sn'de bir okur (yalnız GET); kod sekmenin görünür olup olmadığına
+  bakmaz.
 - *Uzun bir isteği devre dışı ve hareketsiz bir etiketin arkasında yürüten
   düğmeler* (`f643f838d`, `875e9c2bd`): alan adı sertifikası alma,
   etkinleştirmeyi yeniden deneme ve yükleme, panel sertifikası, bölge yayımlama,
@@ -228,7 +234,8 @@ saatiyle kalan süre (`cmd/panel/domain_ssl_handlers.go` içindeki
 yanıtı aldığı andan tarihler ve kendi saatini, korunan `hsts_retire_after` ile
 artık karşılaştırmaz. Alanı göndermeyen eski bir Panel'de eski kural sürer. Bu,
 `DomainSSLSettings` içindeki HSTS süresinin bir sunucu zaman damgasını
-tarayıcının saatiyle karşılaştırdığını söyleyen alpha.84 sınırını kapatır.
+tarayıcının saatiyle karşılaştırdığını söyleyen alpha.84 sınırını yanıtlar (bileşen testleriyle sınandı; gerçek
+sistemde ölçülmedi).
 Testler: `TestStampHSTSRetireRemaining`,
 `TestDomainSSLAnswerCarriesHSTSRetireRemaining` ve sunucunun saati geride,
 ileride ve eski Panel'le `web/tests/remote-state-mounted.test.mjs` içindeki
@@ -305,17 +312,21 @@ tanımayan bir istemci onları yok sayar.
 ## Fark edeceğiniz davranış değişiklikleri
 
 - Kurulumun son adımı, geçen bir "Gereksinimleri tekrar kontrol et"ten sonra
-  saniyeler içinde tamamlanır; bu arada dönen simgeyle "Kurulum tamamlanıyor"
+  bir sonraki 20 saniyelik geçişi beklemeden tamamlanır; bu arada dönen simgeyle "Kurulum tamamlanıyor"
   gösterir ve tamamlanırken "Planı düzenle" sunmaz.
 - Yalnız ters DNS'i bekleyen son kontrol "Sizi bekliyor" değil "Ters DNS
   bekleniyor" der; değişikliğin yayılmasının saatler sürebileceğini ve
   CelikPanel'de başka bir şey gerekmediğini söyler.
-- Denetimin bulduğu her bekleme ya hareket eder ya da yapılacak bir şey
-  olmadığını söyler ve sınırından sonra dürüst bir "henüz bilinmiyor" ile biter:
-  kurulum ve bileşen kilidi 60 sn sonra, yayılan bir alan adı 60 kontrolden
-  sonra.
-- Güncelleme kartı, bir bileşenin kurulum penceresi, beklemeler ve yayılan bir
-  alan adı görünürken sunucuyu kendiliğinden yeniden okur (yalnız okuma).
+- Denetimin değiştirdiği beklemeler ya hareket eder ya da yapılacak bir şey
+  olmadığını söyler. Kurulum ve bileşen kilidi 60 sn sonra (okumaları sürer),
+  yayılan bir alan adı 60 kontrolden sonra dürüst bir "henüz bilinmiyor" ile
+  biter. Bu, koddan okundu ve bağlanan ekranlarda sınandı; kurulu bir sunucuda
+  görülmedi.
+- Güncelleme kartı ve yayılan bir alan adı sunucuyu yalnız sekme görünürken
+  kendiliğinden yeniden okur. Bir bileşenin kurulum penceresi hazır olma
+  durumunu açıkken 5 sn'de bir okur ve beklemeler, bir okuma sunucunun hazır
+  olduğunu bulunca kalkar (yalnız okuma; kurulum penceresinin okumaları gizli
+  bir sekmede durmaz).
 - Agent durmuşken Türkçe Bileşenler sayfasında güvenlik duvarı şeridi Türkçe
   konuşur ve Yeniden tara'dan sonra yeniden okunur; Dashboard'ın "İlgi istiyor"
   kutusu Agent'ı adıyla söyler.
@@ -347,14 +358,17 @@ ve sürüm hazırlığını değiştirir; hiçbiri `cmd/panel/`, `cmd/agent/`,
   sayılardır. `./internal/...` bu dalda çalıştırılmadı; `internal/` altında
   hiçbir dosya değişmedi.
 - Web: `npm test` 1391/1391; 15 Ekim 2026'da sürüm hazırlığı commit'inde yeniden
+  çalıştırıldı ve bu taslağın ucunda (`bb5244c77`) aynı sayıyla bir kez daha
   çalıştırıldı. `npm run build` tür denetimi ve paket bütçesiyle geçer
   (Dashboard parçası 160,25 KiB'ın 38,28 KiB'ı). Web sayısı kurulum
   değişikliğinden sonra 1348, denetimin on altı değişikliğinden sonra 1375, 16,
   25 ve 35. satırlardan sonra 1386 ve ekran görüntüsü turunun düzeltmelerinden
-  sonra 1391'di. Değişen bir durumun her bağlanan testi, değişiklikten önceki
-  ekrana karşı başarısız oldu; istisnaları rehber kaydı adlandırır (depo ve
-  sürüm kaldırma düğmelerinin yalnız kaynak denetimi var; iki metin denetimi
-  katalogları okur).
+  sonra 1391'di. Rehber kayıtları, denetimin değişiklikleri için eklenen bağlanan
+  testlerin değişiklikten önceki ekrana karşı başarısız olduğunu kaydeder;
+  istisnalar depo ve sürüm kaldırma düğmeleri (yalnız kaynak denetimi) ve
+  katalogları okuyan iki metin denetimidir. Kurulumun tamamlanması
+  değişikliği için yalnız "Planı düzenle" denetimlerinin, değişiklik olmadan
+  başarısız olduğu kaydedilmiştir.
 - Sürüm hazırlığının üç sözleşme testi geçer: indirme portalı ve imzalı manifest
   sözleşmeleri derleme konuğunda; sıra politikası sözleşmesi Windows çalışma
   kopyasında, çünkü `v0.1.0-alpha.84` etiketini konukta bulunmayan git ile okur
@@ -363,7 +377,7 @@ ve sürüm hazırlığını değiştirir; hiçbiri `cmd/panel/`, `cmd/agent/`,
 **Ekran görüntüsü turu (on ikinci tarayıcı incelemesi turu).** Windows'ta
 gerçek bir Chrome, yerel API taklidine karşı (`0b43ee81e`,
 `web/tools/browser-inspect/scenarios-batch12.mjs` ve `mock-batch12.mjs`),
-2026-10-14 tarihli iki rehber kaydının değiştirdiği her durumu sürdü: 8
+2026-10-14 tarihli iki rehber kaydının değiştirdiği durumları sürdü: 8
 yapılandırmada 31 durum (1280 ve 390 genişlik, açık ve koyu tema, İngilizce ve
 Türkçe); o commit'te kaydedildiği gibi senaryo hatası yok, yana kayan sayfa yok.
 60 sn'lik sınırlara ve 30 sn'lik aralığa ürün değişikliğiyle değil, test
@@ -524,7 +538,7 @@ değiştirmedi.
   `valid_for_seconds` ile yanıtlar ve bir `clockSkew` denetimi vardır; 9. ve 11.
   setlerin soğuk yükleme araçları zamanlı tıklamayı sayfanın son anına göre
   planlar. Bu, laboratuvar araçlarının yalnız `valid_until` gönderdiğini
-  söyleyen alpha.84 sınırını kapatır. Taklit yerel bir bağlantı noktasında elle
+  söyleyen alpha.84 sınırını araçların kaynağında giderir. Taklit yerel bir bağlantı noktasında elle
   ölçüldü (etkin lisans için 59,2 sn kaldı; `clockSkew` −420 ile damga 420 sn
   kaydı ve kalan süre 59,1 sn kaldı; eksik lisans 0 yanıtladı); soğuk yükleme
   araçları çalıştırılmadı.
@@ -567,6 +581,12 @@ Bu sürümle yeni:
   üretilmedi.
 - **Yanıt veren çözümleyici adlandırılmaz.** Agent ters DNS yanıtını hangi
   çözümleyicinin verdiğini bildirmez; bu yüzden sayfa bunu söyleyemez.
+- **Yeniden okumaların hepsi sekmenin görünür olmasına bağlı değildir.**
+  Güncelleme kartının ve yayılan alan adının yeniden okumaları sekme gizlenince
+  durur. Bileşen kurulum penceresinin 5 sn'lik yeniden okuması ve kurulum
+  sayfasının okumaları (tamamlanırken 1,5 sn, aksi halde 3 sn) sekmenin
+  görünürlüğüne bakmaz (`ServiceShell.tsx`, `ServerSetup.tsx`). Hepsi GET
+  okumasıdır.
 - **Agent değişikliği bir Agent güncellemesi ister.** Sonraki çözümleyiciye
   sormak yalnız Agent güncellendikten sonra etkili olur. O zamana kadar eski
   yanıtlı ilk çözümleyici yine uyuşmazlık gibi okunabilir; ama metin artık bu
@@ -582,8 +602,8 @@ Bu sürümle yeni:
   yeniden derlemesinden (`9f86eb43…`) ölçüldü; o commit'in olağan arşivi
   derlenmedi, bu yüzden karşılaştırılmadı.
 - **set16 bir ölçümdür, kabul değildir.** QEMU/KVM konukları, test lisanslı
-  derlemeler, tek dizüstü ana makinede hücre başına tek çalıştırma, dışarıya
-  NAT trafiği yakalanmadı; her `result.json` `native_evidence: false` taşır.
+  derlemeler, tek ana makinede hücre başına tek çalıştırma, konukların dışarıya NAT
+  trafiğinin yakalanmış bir kaydı yok; her `result.json` `native_evidence: false` taşır.
 - **Geri dönüşten sonra kurtarma temel dosyası** çalışan derleme önceki sürüm
   olduğu hâlde kusurlu adayı adlandırmayı sürdürür ve taban adayın sırasını
   okur (set12, set15 ve set16). Kaydedildi, yargılanmadı; açık.
@@ -599,7 +619,9 @@ Bu sürümle yeni:
   paketleri kartının "bir değişiklik bekletiyor" durumu; değişiklikten sonra 9.
   ve 11. setlerin soğuk yükleme araçları.
 
-Bu sürümün alpha.84 listesinden kapattıkları: O4, O5 ve O6; Posta paketleri
+Bu sürümün alpha.84 listesinden yanıtladıkları (kaynakta ve bileşen testleriyle;
+set16 O4–O6'yı, Posta paketleri kartını ve kenar çubuğundaki yapı kimliğini
+gözlemledi; soğuk yükleme araçları çalıştırılmadı): O4, O5 ve O6; Posta paketleri
 kartının bayat kopyası; Türkçe Bileşenler sayfasındaki çevrilmemiş posta profili
 metni; kenar çubuğundaki yapı kimliğinin sözcük ortasından kırılması; HSTS
 süresinin iki saati karşılaştırması; laboratuvar araçlarının yalnız
@@ -623,7 +645,8 @@ kısaltılmış; tam liste [alpha.84 notlarındadır](RELEASE-NOTES-v0.1.0-alpha
   saydığı v0.1.0-alpha.83 ve v0.1.0-alpha.82 sınırları.
 - **Açık kabul işleri.** [Dayanıklılık sözleşmesinin](RESILIENCE-CONTRACT.tr.md)
   beş temel işinin hepsi kısmi kalır; bu sürüm hiçbirini kapatmaz ve
-  ilerletmez. P0.1–P0.5 **kısmi** kalır. Kararlar: [DECISIONS](DECISIONS.tr.md)
+  ilerletmez. P0.1–P0.5 **kısmi** kalır. Bu sürümün yayımlanması onun kabulü
+  olmaz. Kararlar: [DECISIONS](DECISIONS.tr.md)
   içinde D-022, D-024, D-025, D-032 ve D-033.
 
 ## Yayımlama kaydı
@@ -635,7 +658,8 @@ Yayımlamadan önce açık olanlar:
    UTC), adayın ürün kodunda, bir sabit commit üzerinden: Debian 13'e temiz
    kurulum ve Debian 13 ile Ubuntu 24.04'te alpha.84'ten güncelleme, sağlam ve
    kusurlu. Sınırları yukarıdadır.
-2. Sürüm hazırlığı: 5443fe055 commit'inde yapıldı; `cmd/`, `internal/` ya da
+2. Sürüm hazırlığı: 5443fe055 commit'inde yapıldı (numarayı sahibin 13 Ekim
+   2026 tarihli kalıcı talimatı uyarınca sürümü hazırlayan seçti); `cmd/`, `internal/` ya da
    `web/` altında hiçbir dosyayı değiştirmez: önceki olarak alpha.84 sürüm
    commit'i `f0157e6c8` ile 84'ten sonra 85 sürüm sırası politikası,
    `download-portal/get.sh` sabitleri (sıra 85 ve sürüm v0.1.0-alpha.85; açık

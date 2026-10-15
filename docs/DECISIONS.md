@@ -76,9 +76,16 @@ release notes of v0.1.0-alpha.85 say which check rests on which code.
 What this does not authorise:
 
 - No polling that starts or admits a mutation. Every automatic re-read added by
-  this decision is a read (GET), one at a time, only while the page is visible;
-  a re-read never starts a second change.
-- No timer that runs when nobody is looking, and no unbounded wait.
+  this decision is a read (GET); a re-read never starts a second change. The
+  update card's and the spreading domain's re-reads run one at a time and only
+  while the page is visible; the component install dialog's 5-second re-read
+  and the setup page's reads do not check visibility (open; see the release
+  notes).
+- No new timer that runs when nobody is looking, and no unbounded wait shown as
+  motion: the bound ends the motion and the notice says the result is not known
+  (setup's and the component lock's reads go on after it). The install dialog's
+  re-read runs while the dialog is open whatever the tab's visibility; that is
+  a gap, not an authorisation.
 - No "not known yet" in place of a verified failure or an unmet prerequisite:
   the three stay apart (D-024).
 - No claim that every screen was measured. The audit was read from code; the
@@ -102,7 +109,8 @@ published), with mounted tests. The Components firewall banner, the Dashboard's
 attention notice and Mail stacks card and the sidebar build id were measured in
 the eighteenth native record. Setup finishing, the update card's busy state,
 the component lock's reconnect and the spreading-domain checks were not reached
-natively. Open for a native run and for an installed server.
+natively. Open for a native run, for an installed server and for the
+visibility gating of the install dialog's and setup's reads.
 
 ---
 
