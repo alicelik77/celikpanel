@@ -47,18 +47,31 @@ export function mailProfileDescription(profile: ProfileText, t: Translate): stri
 
 // The sentence of a code, or null when there is no code or no words for it.
 // Only string values are used; a missing value leaves its sentence unused.
+// A code may have a fuller sentence for an optional value: component_not_installable
+// names the platform when the Panel sends one (2026-10-15); without it (an
+// unverified platform, an older Panel) the shorter sentence stands.
+// Bir kodun isteğe bağlı bir değer için daha dolu bir cümlesi olabilir.
+const fullerSentence: Record<string, { value: string; key: TranslationKey }> = {
+    component_not_installable: { value: 'platform', key: 'services.mailProfiles.code.component_not_installable.platform' },
+};
 function codeSentence(code: unknown, vars: unknown, t: Translate): string | null {
     if (typeof code !== 'string' || !/^[a-z_]+$/.test(code)) return null;
-    const key = `services.mailProfiles.code.${code}` as TranslationKey;
     const values: Record<string, string> = {};
     if (vars && typeof vars === 'object') {
         for (const [name, value] of Object.entries(vars as Record<string, unknown>)) {
             if (typeof value === 'string') values[name] = value;
         }
     }
-    const said = t(key, values);
-    if (said === key || /\{\w+\}/.test(said)) return null;
-    return said;
+    const say = (key: TranslationKey): string | null => {
+        const said = t(key, values);
+        return said === key || /\{\w+\}/.test(said) ? null : said;
+    };
+    const fuller = fullerSentence[code];
+    if (fuller && values[fuller.value]?.trim()) {
+        const said = say(fuller.key);
+        if (said) return said;
+    }
+    return say(`services.mailProfiles.code.${code}` as TranslationKey);
 }
 
 export function mailProfileBlocked(profile: ProfileText, t: Translate): string {

@@ -179,6 +179,24 @@ const (
 	mailProfileWarningPartlyPresent       mailProfileTextCode = "partly_present"
 )
 
+// mailProfilePlatformName names a package ecosystem for the typed
+// component_not_installable sentence ({platform}); "" when the platform is not
+// verified, and the sentence then names no platform. The names are product
+// names, the same in every language.
+// mailProfilePlatformName, türlü cümle için paket ekosistemini adlandırır;
+// platform doğrulanmamışsa boştur.
+func mailProfilePlatformName(family string) string {
+	switch family {
+	case "apt":
+		return "Debian/Ubuntu (apt)"
+	case "pacman":
+		return "Arch Linux (pacman)"
+	case "dnf":
+		return "Fedora/RHEL (dnf)"
+	}
+	return ""
+}
+
 // mailProfileTextCodes is every code above: the list the web test reads.
 var mailProfileTextCodes = []mailProfileTextCode{
 	mailProfileBlockedStateUnverified,
@@ -900,6 +918,13 @@ func mailProfilesView(
 				blockedReason = managed.Name + ": " + reason
 				blockedCode = mailProfileBlockedNotInstallable
 				blockedVars = map[string]string{"component": managed.Name, "kind": string(kind)}
+				// The old text named the platform through its reason; the typed
+				// sentence names it by a value both languages can show.
+				// Eski metin platformu gerekçesiyle anıyordu; türlü cümle onu
+				// iki dilin de gösterebileceği bir değerle adlandırır.
+				if platform := mailProfilePlatformName(packageFamily); platform != "" {
+					blockedVars["platform"] = platform
+				}
 				break
 			}
 			if taken := core.SeatTakenBy(managed, projected); taken != "" {

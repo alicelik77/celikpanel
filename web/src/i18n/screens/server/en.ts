@@ -1018,6 +1018,7 @@ export const enServerScreens = {
     'services.mailProfiles.code.hostname_unknown': 'This server’s own hostname could not be read, so the mail hostname cannot be decided.',
     'services.mailProfiles.code.dns_identity_not_ready': 'DNS identity is not ready. Install a supported DNS server and save the shared nameserver names and operating mode in Settings before installing a mail profile.',
     'services.mailProfiles.code.component_not_installable': '{component} cannot be installed automatically on this server.',
+    'services.mailProfiles.code.component_not_installable.platform': '{component} cannot be installed automatically on this server’s platform: {platform}.',
     'services.mailProfiles.code.component_conflict': '{component} conflicts with the installed {conflicting}.',
     'services.mailProfiles.code.component_requires': '{component} requires {required}, which is not part of this profile.',
     'services.mailProfiles.code.repair_to_verify': 'Components are running. Run Repair to verify and reconcile the complete mail profile, including mail TLS and authenticated submission.',

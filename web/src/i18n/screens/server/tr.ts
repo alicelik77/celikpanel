@@ -955,6 +955,7 @@ export const trServerScreens: Record<ServerScreenKey, string> = {
     'services.mailProfiles.code.hostname_unknown': 'Bu sunucunun kendi ana bilgisayar adı okunamadı; bu yüzden posta ana bilgisayar adı belirlenemiyor.',
     'services.mailProfiles.code.dns_identity_not_ready': 'DNS kimliği hazır değil. Bir posta profili kurmadan önce desteklenen bir DNS sunucusu kurun; ortak ad sunucusu adlarını ve çalışma kipini Ayarlar’da kaydedin.',
     'services.mailProfiles.code.component_not_installable': '{component} bu sunucuda otomatik olarak kurulamıyor.',
+    'services.mailProfiles.code.component_not_installable.platform': '{component} bu sunucunun platformunda otomatik olarak kurulamıyor: {platform}.',
     'services.mailProfiles.code.component_conflict': '{component}, kurulu {conflicting} ile çakışıyor.',
     'services.mailProfiles.code.component_requires': '{component} için bu profilin parçası olmayan {required} gerekiyor.',
     'services.mailProfiles.code.repair_to_verify': 'Bileşenler çalışıyor. Posta TLS’i ve kimlik doğrulamalı gönderim dahil posta profilinin tamamını doğrulamak ve uzlaştırmak için Onar’ı çalıştırın.',

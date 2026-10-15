@@ -86,3 +86,16 @@ test('names and descriptions come from the catalogue by profile id', () => {
     assert.ok(server.includes(`Description: "${text}"`), text);
   }
 });
+
+test('a component that cannot be installed names the platform when the Panel sends it, in both languages', () => {
+  const blocked = { id: 'core-mail', name: 'Core Mail', blocked_reason: 'Dovecot: the Arch Linux Dovecot package layout is not supported yet', blocked_code: 'component_not_installable', blocked_vars: { component: 'Dovecot', kind: 'distribution', platform: 'Arch Linux (pacman)' } };
+  assert.equal(lib.mailProfileBlocked(blocked, say('en')), 'Dovecot cannot be installed automatically on this server’s platform: Arch Linux (pacman).');
+  assert.equal(lib.mailProfileBlocked(blocked, say('tr')), 'Dovecot bu sunucunun platformunda otomatik olarak kurulamıyor: Arch Linux (pacman).');
+  // An unverified platform, or an older Panel: no platform, the shorter sentence.
+  const unnamed = { ...blocked, blocked_vars: { component: 'Dovecot', kind: 'distribution' } };
+  assert.equal(lib.mailProfileBlocked(unnamed, say('tr')), catalogues.tr['services.mailProfiles.code.component_not_installable'].replace('{component}', 'Dovecot'));
+  assert.equal(lib.mailProfileBlocked({ ...blocked, blocked_vars: { component: 'Dovecot', platform: '  ' } }, say('en')), 'Dovecot cannot be installed automatically on this server.');
+  const key = 'services.mailProfiles.code.component_not_installable.platform';
+  assert.deepEqual(placeholders(catalogues.tr[key]), placeholders(catalogues.en[key]));
+  assert.deepEqual(placeholders(catalogues.en[key]), ['component', 'platform']);
+});
