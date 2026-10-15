@@ -295,7 +295,7 @@ export function DomainDNSManager({
                     hint={t('dns.zoneMissingHint', { name: domainName })}
                     action={
                         readOnly ? undefined : (
-                            <Button variant="primary" icon={Plus} disabled={publishing || !canChange} onClick={publishZone}>
+                            <Button variant="primary" icon={Plus} disabled={publishing || !canChange} loading={publishing} onClick={publishZone}>
                                 {publishing ? t('dns.publishing') : t('dns.enableZone')}
                             </Button>
                         )
@@ -380,6 +380,7 @@ export function DomainDNSManager({
                                 variant="secondary"
                                 icon={RefreshCw}
                                 disabled={publishing || !canChange || (!remoteDNS && dnsServer === '')}
+                                loading={publishing}
                                 onClick={publishZone}
                             >
                                 {publishing ? t('dns.publishing') : t('dns.republish')}

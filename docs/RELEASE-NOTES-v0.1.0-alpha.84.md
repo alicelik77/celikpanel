@@ -938,11 +938,17 @@ the results below as a file in the repository.
    - Process note. The owner created and pushed the tag while the continuous
      integration run on the main commit (item 7) was still in progress: 8 of
      its jobs had finished, none had failed, and the run completed
-     successfully afterwards. The job that publishes assets depends only on
-     the packaging job, not on the test jobs, so the order "the run on main
-     finished, then the tag" is the intended one, and it was not followed this
-     time. The same tree had passed 24 of 24 jobs on the pull request (item
-     5). This is recorded as a process note, not as a defect of the release.
+     successfully afterwards. The order "the run on main finished, then the
+     tag" is the intended one, and it was not followed this time. (Corrected
+     2026-10-14: an earlier version of this note said the job that publishes
+     assets depends only on the packaging job, not on the test jobs. That was
+     wrong. The publishing job depends on the packaging job, which depends on
+     every test and build job of the same run, so a tag's assets are published
+     only after that run has passed; the tag's own run, which passed all 24
+     jobs, gated the publication. Only the order between the two runs stands
+     as the process note.) The same tree had passed 24 of 24 jobs on the pull
+     request (item 5). This is recorded as a process note, not as a defect of
+     the release.
 9. The assets were checked in a local build guest, from a clone checked out at
    the tag (reported by the release preparer, not recorded in a file here).
    The linux/amd64 archive `celikpanel-v0.1.0-alpha.84-linux-amd64.tar.gz` is
@@ -1081,8 +1087,11 @@ the results below as a file in the repository.
   with this release beyond items 14 and 15.
 - The order "the run on main finished, then the tag" was not followed (item
   8). The run completed successfully afterwards and the same tree had passed
-  24 of 24 jobs on the pull request, but the job that publishes assets does
-  not wait for the test jobs.
+  24 of 24 jobs on the pull request. (Corrected 2026-10-14: the job that
+  publishes assets depends on the packaging job, which depends on every test
+  and build job of the tag's own run, so the assets could not have been
+  published unless that run passed; only the order between the two runs
+  stands.)
 - Publication is not product acceptance. The limits listed under "Limits of
   this release" are unchanged by it, among them the two open items left by the
   seventeenth record. All five foundation items of the

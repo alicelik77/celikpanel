@@ -7093,3 +7093,296 @@ işlem yapacağı, somut sonraki eylem ve nasıl devam edileceği uzun listelerd
    okunabilir. Görünüşle ilgili; sonraki sürüm için açık, değişmedi.
    Bildirilmeyenler: güncellemenin panel içindeki doğrulama sonucu, Agent'ın
    sürümü, güncelleme sırasında tam ekran lisans sayfası.
+
+### Ters DNS yayılırken ve bütün kontroller geçtikten sonra kurulumun son kontrolü (2026-10-14)
+
+**Sahibin gözlemi.** Sahip 13 ve 14 Ekim 2026'da ikinci sunucuda (Frankfurt,
+v0.1.0-alpha.84) kurulumun son adımı "Verify the prepared server" ile uğraştı.
+Son kontrol, sunucu adresinin ters DNS (PTR) adını bekliyordu. Sahip bu adı VPS
+sağlayıcısında çoktan değiştirmişti. Sağlayıcı değişikliği hâlâ yayıyordu ve
+genel çözümleyici 1.1.1.1 önbellekteki eski adla yanıt veriyordu. Bu sırada:
+
+1. Adım "Waiting for you" diyordu. Kutu gözlenen ve beklenen adı söylüyor,
+   adın sağlayıcıda ayarlanacağını ve kurulumun kendiliğinden yeniden kontrol
+   edeceğini belirtiyordu. Ama sağlayıcıda yapılan değişikliğin genel DNS'e
+   ulaşmasının zaman aldığını, hangi çözümleyiciye sorulduğunu ya da
+   CelikPanel'de başka bir şey gerekmediğini söyleyen bir şey yoktu. Sahip ne
+   yapacağını sormaya devam etti.
+2. "Check requirements again" düğmesinden sonra bütün kontroller geçti. Adım
+   bu kez "Waiting for requirements" dedi. Altında hareketsiz bir kutu vardı:
+   "These checks passed. Waiting for the server to confirm setup completion."
+   Hiçbir hareket yoktu, düğmeler hâlâ etkindi ve yapılacak bir şey olmadığını
+   söyleyen bir şey yoktu. Bekleyen çalışma ancak 20 saniyelik bir sonraki
+   geçişinde tamamlandı. Sahibin sözleri, özünde şöyle:
+   - bu insanların kafasını karıştırır;
+   - ne yapacaklarını bilmezler ve sabırsızlıkla bir şeylere basarlar;
+   - beklemeleri gerekiyorsa bekletilmeli ya da açıkça beklemeleri söylenmeli;
+   - işlem yapıyor görünmüyorken kimse iki dakika beklemez.
+
+Bu, D-024'ün kuralıdır: mevcut neden, kimin işlem yapacağı, sonraki eylem ve
+işin nasıl devam edeceği söylenir. Bekleme pasif ya da sahibin işi değilken
+sahibin işiymiş gibi gösterilmez. Şema, defter ya da sürüm geçişi yok; işlem
+JSON'u değişmedi.
+
+**Ne değişti.**
+
+- **A. Çalışma sahibin geçen kontrolüyle tamamlanır.** Bekleyen kurulum
+  çalışanının 20 saniyelik uykusu, panel başına bir uyandırma sinyaliyle (tek
+  yerlik tamponlu kanal) de biter.
+  - Sinyali yalnız sahibin açık kontrolü gönderir:
+    `GET /api/v1/setup?check=1&manual=1`. O da yalnız bütün kontroller geçtiyse
+    ve son çalışma son doğrulamasında bekliyorsa.
+  - İstek işleyici kurulumu tamamlamaz ve değişiklik başlatmaz. Çalışan kendi
+    tek geçişinde yeniden kontrol eder ve tamamlar.
+  - Sayfa sorguları `manual=1` göndermez. Gözetimsiz 20 saniyelik aralık
+    değişmedi.
+- **B. Tamamlanma etkin ve sınırlı gösterilir.** Geçen bir kontrolden sonra
+  başlık ve son adım "Kurulum tamamlanıyor" der.
+  - Adımda ve şu cümlenin yanında dönen bir simge vardır: "Bütün kontroller
+    geçti. Panel kurulumu şimdi tamamlıyor; sizin bir şey yapmanız gerekmiyor.
+    İş bitince bu sayfa kendiliğinden güncellenir."
+  - Sayfa işlemi 3 yerine 1,5 saniyede bir okur.
+  - Bu durum, çalışma son kontrolden çıkınca biter. Çalışmanın kendisi yeni ve
+    farklı bir karşılanmamış sonuç kaydederse de biter; o sonuç gösterilir.
+  - 60 saniye içinde doğrulama gelmezse sayfa sonucun bilinmediğini söyler (bu
+    bir hata değildir) ve sayfanın yeniden yüklenmesini ister. Durum sürerse
+    kurulum çalışmasının durmuş olabileceğini ve
+    `sudo systemctl restart celikpanel-panel` komutunun aynı kurulumu, biten
+    adımları tekrarlamadan son kontrolünden sürdüreceğini belirtir.
+    "Gereksinimleri tekrar kontrol et" ve "Bu sayfayı yeniden yükle" sunulur.
+  - Pasif "These checks passed…" metni kaldırıldı.
+- **Tamamlanırken "Planı düzenle" sunulmaz.** Bu adımda çalışmayı durduran tek
+  denetimdir. Düğme ve yardım satırı, 60 saniyelik bildirimle ya da çalışma
+  yeniden beklemeye geçince geri gelir; davranışı değişmedi.
+- **C. Ters DNS beklemesi kendi adıyla söylenir.** Yalnız ters DNS
+  uyuşmazlığını bekleyen son kontrol "Waiting for you" yerine "Ters DNS
+  bekleniyor" der. Yanında açık bir plan düzeltmesi varsa yine "Sizi bekliyor"
+  der. Yönlendirmeye şu cümle eklendi: "Sunucu sağlayıcınızda yapılan bir
+  değişikliğin genel DNS’e ulaşması birkaç dakikadan birkaç saate kadar
+  sürebilir; çünkü DNS çözümleyicileri eski adı, kayıtlı kopyalarının süresi
+  dolana kadar kullanır. Değişikliği yaptıysanız CelikPanel’de başka bir şey
+  yapmanız gerekmez."
+- **D. Eski yanıtlı ilk çözümleyici artık karar vermez.** Agent'ın posta
+  kimliği sorgusunda, beklenen ad olmayan bir PTR yanıtı (ya da PTR olmaması)
+  sonraki çözümleyiciye de sorulur.
+  - Beklenen adı ve eşleşen ileri A/AAAA kaydını veren herhangi bir
+    çözümleyici kimliği kanıtlar.
+  - Aksi halde ilk gözlem eskisi gibi bildirilir. Ancak ana makineyi adlandıran
+    ama ileri kaydı henüz eşleşmeyen bir PTR yanıtı öne alınır.
+  - Eşleşen bir ilk yanıttan sonra başka sorgu yapılmaz.
+
+**Kanıt.** Commit'ler: `a94f83cb0`, `febbe09e3`, `c714238d6`, `e358ebe3c`.
+
+- Yeni Go testleri:
+  - eski yanıtlı çözümleyici durumları
+    (`TestMailDNSIdentityAsksNextResolverWhenFirstAnswerIsStale`, altı durum);
+  - açık kontrolün, bekleyen çalışmayı 20 saniyelik aralıktan çok önce
+    tamamlatması. Düz bir kontrol okuması ve bir işlem okuması hiçbir şeyi
+    uyandırmaz, tamamlamaz ve değişiklik başlatmaz. Parametre adı değiştirilmiş
+    olumsuz kontrol 5,6 saniyede başarısız oldu.
+- Yeni web testleri (`web/tests/setup-finishing-mounted.test.mjs`, İngilizce ve
+  Türkçe). "Planı düzenle" kontrolleri, o değişiklik olmayan ekrana karşı
+  başarısız olur:
+  - dönen simgeler, "Gereksinimleri tekrar kontrol et" ve "Planı düzenle"
+    olmadan tamamlanma, 1,5 saniyelik okumalar, tıklamasız ve yalnız GET
+    istekleriyle bitiş;
+  - 60 saniyelik geri dönüş;
+  - yeni karşılanmamış sonucun tamamlanmayı bitirmesi.
+- Güncellenen son kontrol testleri ters DNS etiketini ve metnini kapsar.
+- Sayılar:
+  - `npm test` 1348/1348; `npx tsc --noEmit` temiz;
+  - `go test ./cmd/panel/...` 1538 test ve 1662 alt test geçti, 6 atlandı;
+  - `go test ./cmd/agent/...` 1798 test ve 2822 alt test geçti, 29 atlandı,
+    0 başarısız.
+
+Go çalıştırmaları WSL konuğu `CelikPanel-S2-Debian` içinde yapıldı. Bu konuk
+kendisi de çalışan bir CelikPanel sunucusudur: BIND etkin, bir `celikpanel`
+grubu ve canlı bir Agent durum kökü var. Bu haliyle Agent paketi, bu dalda da
+`e3c8f735a` üzerinde de aynı 19 testte başarısız olur. Yukarıdaki Agent sayısı,
+testlere temiz bir sunucu gösteren özel bir bağlama ad alanında ölçüldü:
+`/var/lib/celikpanel-agent-private` ve `/run/celikpanel` üzerine boş dizinler
+ve `celikpanel` satırı olmayan bir `/etc/group`. Konuğun kendisi değiştirilmedi.
+
+**Açık kalanlar.**
+
+- Yanıt veren çözümleyici sayfada adlandırılmıyor, çünkü Agent bunu
+  bildirmiyor.
+- D değişikliği yalnız Agent güncellendikten sonra etkili olur. O zamana kadar
+  eski yanıtlı ilk çözümleyici yine uyuşmazlık gibi okunabilir; ama yukarıdaki
+  metin artık bu beklemeyi açıklıyor.
+- Geçen bir kontrolden sonra çalışanın kendi yeniden kontrolü öncekiyle tıpatıp
+  aynı karşılanmamış sonucu bulursa, sayfa bunu henüz yeniden kontrol
+  yapılmamış olmaktan ayıramaz. Bu durumda hemen değil, 60 saniyelik "bilinmiyor"
+  bildirimiyle biter.
+- Hiçbir kurulu sunucu değiştirilmedi. Buradaki hiçbir şey kurulu bir sunucuda
+  kabul kanıtı değildir.
+
+### Hareketsiz görünen bekleme ekranları: sahibin kuralı ve bekleme durumlarının denetimi (2026-10-14)
+
+**Sahibin gözlemi.** Yukarıdaki kayıttaki bildirimden sonra sahip 14 Ekim 2026'da
+her ekran için bir kural koydu. Özünde:
+
+- kullanıcıyı bekleten bir ekran ya görünür biçimde bekler (hareketle; araya
+  girebilecek denetimler devre dışıdır) ya da yapılacak bir şey olmadığını ve
+  kendiliğinden güncelleneceğini açıkça söyler; ve işi çabuk bitirir;
+- etkin düğmelerin yanında duran hareketsiz bir bekleme cümlesi kusurdur:
+  hareketsiz görünen bir ekranın önünde kimse iki dakika beklemez;
+- sahibin payına düşen iş bitmişken ekran hiçbir zaman "Sizi bekliyor" demez;
+  örneğin sağlayıcıda yapılan bir değişiklik yayılırken.
+
+Bu, D-024'ün (mevcut neden, kimin işlem yapacağı, sonraki eylem ve işin nasıl
+devam edeceği) beklemeye uygulanmasıdır; ilgili yerde D-032 de geçerlidir (panel
+kendisi bakar; okuyabileceği bir durumu öğrenmek için sahibe düğmeye bastırmaz).
+Şema, defter ya da sürüm geçişi yok; aşağıda bir eklemeli yanıt alanı ve üç
+eklemeli profil alanı var.
+
+**Denetim.** Web arayüzü, bir sayfanın sunucuyu, bir arka plan işlemini, bir
+yoklamayı, bir sağlayıcıyı, lisansı ya da dış bir denetimi beklediği her durum
+için kaynaktan okundu: 37 durum. Kapsam: kurulum (son kontrol dışındaki
+aşamalar), Bileşenler ve bileşen sayfaları, Pano, lisans ve erişim katmanları,
+panel güncelleme akışı, alan adı sertifikaları ve HSTS, DNS, içe aktarma, PHP,
+yedekler ve kenar çubuğundaki yapı damgası. Sonuç: 18 durum kurala zaten
+uyuyordu, 16'sı uymuyordu ve burada değiştirildi, 3'ü uymuyor ve açık kaldı
+(aşağıda). Her satır koddan, dosya ve satır numarasıyla okundu; hiçbiri kurulu
+bir sunucuda ölçülmedi.
+
+**Ne değişti.**
+
+- **Kurulum: kesilen okumadan sonra yeniden bağlanma ve planlı sertifika
+  yeniden başlatması.** Cümlenin yanında dönen bir simge. Cümle artık sayfanın
+  birkaç saniyede bir sunucuya kendiliğinden yeniden sorduğunu ve yapılacak bir
+  şey olmadığını söylüyor; önceden sahibe "Bu işleme yeniden bağlan" düğmesine basmasını
+  söylüyordu. 60 saniye sonra simge durur; sayfa sonucun bilinmediğini (hata
+  olmadığını), sormaya devam ettiğini ve paneli sunucuda nasıl denetleyeceğini
+  söyler (`sudo systemctl status celikpanel-panel`, sonra
+  `sudo systemctl start celikpanel-panel`); "Bu sayfayı yeniden yükle" sunulur.
+- **Kurulum: "Gereksinimleri tekrar kontrol et" ve "Bu bağlantıyla kuruluma devam et".**
+  İstek sürerken dönen simge.
+- **Bileşenler güvenlik duvarı bandı (alpha.84 notlarındaki O4 ve O5).** Kodlu
+  yanıt sayfanın dilinde söylenir (Türkçe sayfada sunucunun İngilizce cümlesi
+  yerine `err.AGENT_UNREACHABLE`); bant, sayfanın aldığı her taramada güvenlik
+  duvarını yeniden okur.
+- **Pano "İlgi istiyor" bölümü (O6).** Okumalarından biri `AGENT_UNREACHABLE` ile
+  reddedildiyse bildirim, "bu bir şeyin yanlış olduğu anlamına gelmez" yerine
+  Agent'ı ve sahibin komutlarını (`err.AGENT_UNREACHABLE`) adlandırır.
+- **Pano Posta paketleri kartı.** Sayfanın kendi kontrolünü izler: kontrol
+  ediliyor (dönen simgeyle), bir değişiklik bekletiyor, kontrol edilemedi ya da
+  yakın zamanda kontrol edilmedi. "Yeniden taramak için Bileşenleri aç" ve
+  "…posta durumuna güvenmeden önce yeniden tarayın" kaldırıldı.
+- **Posta profili metni.** Adlar ve açıklamalar profil kimliğine göre
+  katalogdan gelir. Panel engel ve uyarı cümlelerini artık türlü gönderir
+  (`blocked_code` ile `blocked_vars` ve `warning_code`; eski metnin yanında, o
+  metin eski sayfalar için kalır); sayfa kodu kendi dilinde söyler. Üç sunucu
+  cümlesi artık "run a fresh scan" ya da "run another scan" demez; durumu bir
+  sonraki bileşen kontrolünün doğrulayacağını söyler. Son denemenin hatası,
+  "Son deneme şunu bildirdi:" girişinin ardından sunucunun kendi sözleriyle
+  kalır.
+- **Sunucu değişikliği beklemeleri** (Bileşenler bandı, Pano güvenlik duvarı
+  penceresi). Şu cümle eklenir: "Bu sayfa birkaç saniyede bir yeniden denetler
+  ve bu beklemeyi kendiliğinden kaldırır; sayfayı yeniden yüklemeniz gerekmez."
+  Doğrulanamayan durum artık sayfanın yeniden yüklenmesini istemez. Bir bileşen
+  sayfasının kurulum penceresi hazır olma durumunu bir kez okuyordu; artık
+  pencere açıkken 5 saniyede bir okur (yalnız GET).
+- **Uzun bir isteği devre dışı ve hareketsiz bir etiketin arkasında yürüten
+  düğmeler** (alan adı sertifikası alma, etkinleştirmeyi yeniden deneme ve
+  yükleme, panel sertifikası, bölge yayımlama, PHP sürümü, içe aktarma
+  incelemesi ve çalıştırma, depo etkinleştirme, sürüm kaldırma). İstek
+  süresince düğmenin dönen simgesi.
+- **HSTS geri çekilmesi (saat kuralı).** Alan adı SSL yanıtına
+  `settings.hsts_retire_remaining_seconds` eklendi: yanıt yazılırken sunucunun
+  saatiyle kalan süre; `hsts_retire_after` korunur. Sayfa sonu, yanıtı aldığı
+  andan tarihler ve kendi saatini sunucunun damgasıyla karşılaştırmaz. Alanı
+  göndermeyen eski panelde eski kural sürer.
+- **Kenar çubuğu yapı kimliği.** "build" ve 12 karakterlik kimlik tek bir birim
+  olarak kalır; satır artık kimliğin içinde kırılmaz. Tam kimlik başlıkta ve
+  ekran okuyucu metnindedir.
+- **Laboratuvar araçları.** Sahte sunucu lisans erişim denetimini panel gibi
+  `valid_for_seconds` ile yanıtlar ve bir `clockSkew` denetimi vardır. 9. ve
+  11. setlerin soğuk yükleme araçları zamanlı tıklamayı sayfanın son anına göre
+  planlar.
+
+**Kanıt.** Commit'ler `2e273cc55` ile `1c5454c53` arası (on üç commit; bu işin
+parçası olmayan `a87ce0b97` hariç).
+
+- Web, her değişiklik için bağlanan testler: kurulumda yeniden bağlanma, sınırlı
+  bildirimi ve kontrol düğmeleri; Bileşenler güvenlik duvarı bandının Türkçesi
+  ve yeniden okunması; Agent'lı Pano ilgi bildirimi; posta kartının durumları ve
+  türlü metni; sunucu saati geride, ileride ve eski panelle HSTS; sertifika,
+  bölge, PHP ve içe aktarma simgeleri; kurulum penceresinin yeniden okuması;
+  Bileşenler hazırlık bandı. Her biri, değişiklikten önceki ekrana karşı
+  başarısız oldu. Depo ve sürüm kaldırma düğmelerinin yalnız kaynak denetimi
+  var; yapı damgası kaynaktan çizilir ve eski sınıfla başarısız olur.
+- Web, kod listesi: bir test `mailProfileTextCodes` listesini panelin
+  kaynağından okur ve her kod için aynı değerleri kullanan, tarama sözü
+  geçmeyen İngilizce ve Türkçe birer cümle ister.
+- Go: `TestStampHSTSRetireRemaining`,
+  `TestDomainSSLAnswerCarriesHSTSRetireRemaining`,
+  `TestMailProfileTextCodesAreListed` (kod türündeki her sabit listededir),
+  `TestMailProfileViewTypesItsSentences`.
+- Sayılar: `npm test` 1375/1375; `npx tsc --noEmit` temiz; beş katalog çiftinin
+  hepsinde İngilizce ve Türkçe anahtar kümeleri eşit;
+  `go test ./cmd/panel/...` 1542 test ve 1665 alt test geçti, 6 atlandı,
+  0 başarısız (WSL konuğu `CelikPanel-S2-Debian`). Agent paketi ne değiştirildi
+  ne çalıştırıldı.
+- Sahte sunucu yerel bir portta elle ölçüldü: etkin lisans için 59,2 saniye
+  kaldı; `clockSkew` −420 ile damga 420 saniye kaydı, kalan süre 59,1 saniye
+  kaldı; eksik lisans 0 yanıtladı.
+
+**Açık kalanlar.**
+
+- **Satır 16, bağlantı kesildikten sonra bileşen işlemi kilidi:** hareketsiz bir
+  WifiOff simgesi, sınırsız olarak 3 saniyede bir yeniden deneme; yeniden
+  yükleme sunuluyor. Sınır ve metni için sahibin kararı gerekir.
+- **Satır 25, panel güncelleme kartının hazır olma durumu:** sunucunun boş olup
+  olmadığını öğrenmek için sahip "Tekrar dene"ye basar. Sahibin kararı
+  gerekir; kendiliğinden okumalar kartın denetim durumunu her seferinde yeniden
+  çizerdi.
+- **Satır 35, bir alan adının "DNS değişikliği yayılıyor" durumu:** doğru
+  olarak sahibin işi sayılmıyor, ama kendiliğinden yeniden okunmuyor. Dış DNS
+  sorgularının sıklığı için sahibin kararı gerekir.
+- **Şablonlu metin.** `component_not_installable` platform ayrıntısını taşımaz
+  (o yalnız eski metinde var); hizmet yerine bir rolü adlandıran gereksinim,
+  rolün belirteciyle gösterilir. Posta profilleri dışındaki sunucu cümleleri hâlâ
+  "rescan" diyor (`managed_service_handlers.go` içindeki önbellek durumu reddi,
+  `store_backend.go` içindeki teklif durumları).
+- **Laboratuvar araçları.** Soğuk yükleme araçları değiştirildi ama
+  çalıştırılmadı; bir konukta çalıştırılmaları gerekir.
+- Buradaki hiçbir şey kurulu bir sunucuda ya da yerel bir kayıtta ölçülmedi ve
+  kabul kanıtı değildir. Hiçbir kurulu sunucu değiştirilmedi.
+
+**Satır 16, 25 ve 35: karar verildi ve yapıldı (2026-10-14).** Sahip yukarıda
+açık kalan üç satır için karar verdi; üçü de kaynakta, bağlanan testlerle
+yapıldı ve kurulu bir sunucuda ölçülmedi.
+
+- **Satır 16** (`8e68b3ce2`). Bağlantı kesildiğinde bileşen işlemi kilidi
+  "Yeniden bağlanılıyor…" yanında dönen bir simge gösterir ve sayfanın birkaç
+  saniyede bir sunucuya kendiliğinden yeniden sorduğunu, hiçbir düğmeye
+  basılması gerekmediğini söyler. Kullanılabilir yanıt gelmeden 60 saniye
+  geçince simge durur ve kilit, sonucun henüz bilinmediğini, bunun başarısızlık
+  anlamına gelmediğini, sunucunun işlemin kaydını tuttuğunu ve panelin sunucuda
+  nasıl denetleneceğini söyler (`sudo systemctl status celikpanel-panel`, sonra
+  `sudo systemctl start celikpanel-panel`); "Sayfayı yenile" kalır. Okumalar 3
+  saniyede bir sürer ve genel kilit kalır. Kaydedilmiş bir hata kendi metnini
+  korur.
+- **Satır 25** (`3abbe3f76`). Panel güncelleme kartı sunucunun meşgul olduğunu
+  söylerken hazır olma durumunu 5 saniyede bir yeniden okur: yalnız GET, aynı
+  anda tek okuma, yalnız sekme görünürken ve denetim görünümünü çizmeden.
+  Meşgul metni, bir okuma hazır diyene kadar kalır; doğrulayamayan bir okuma
+  gösterileni değiştirmez. Meşgul metninin altında
+  `services.mutationReadiness.autoResume` durur ve "Tekrar dene" kalır.
+  Okumalar sekme gizlenince ve kart meşgul durumundan çıkınca durur. Hiçbiri
+  güncelleme başlatmaz ya da kabul ettirmez.
+- **Satır 35** (`0ad26074d`). Bir alan adının DNS değişikliği yayılırken ve
+  sekme görünürken bağlantı kartı, "Tekrar kontrol et"in gönderdiği GET ile
+  30 saniyede bir, en çok 60 kez (görünür bir sayfanın 30 dakikası) yeniden
+  kontrol eder. Sağlayıcıdaki bir değişikliğin yayılmasının birkaç dakikadan
+  birkaç saate kadar sürebileceğini, sayfanın kendiliğinden kontrol ettiğini ve
+  bir şey yapılması gerekmediğini, son kontrolün zamanını da söyler (yanıtın
+  `checked_at` damgası, yoksa sayfanın yanıtı aldığı an; tarayıcı saatiyle asla
+  karşılaştırılmaz). Sonra durur ve son kontrolde değişikliğin hâlâ yayıldığını,
+  bunun bir hata olmadığını, "Tekrar kontrol et"in kullanılabileceğini ya da
+  daha sonra yeniden bakılabileceğini söyler.
+- Sayılar: `npm test` 1386/1386 (on bir yeni test: her biri değişiklikten
+  önceki ekrana karşı başarısız olan dokuz bağlanan test ve iki metin
+  denetimi); `npx tsc --noEmit` temiz. Go değiştirilmedi
+  ve çalıştırılmadı.

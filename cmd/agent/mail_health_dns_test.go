@@ -328,3 +328,89 @@ func TestMailDNSLookupOutcomeSeparatesNoAnswerFromNoRecord(t *testing.T) {
 		}
 	})
 }
+
+// A reverse DNS name the owner has just changed at the provider reaches
+// public resolvers at different times: the first resolver may still serve the
+// old answer from its cache. A stale first answer must not hide a later
+// resolver's verified identity; when none confirms it, the first observation is
+// kept (owner report 2026-10-14).
+// Ilk cozumleyicinin eski onbellek yaniti sonraki cozumleyicinin dogruladigi
+// kimligi gizlemez; hicbiri dogrulamazsa ilk gozlem korunur.
+func TestMailDNSIdentityAsksNextResolverWhenFirstAnswerIsStale(t *testing.T) {
+	const source = "192.0.2.15"
+	resolver := func(t *testing.T, ptr string, address string) (string, *sync.Map) {
+		return mailDNSFixture(t, func(name string, kind uint16) []byte {
+			if kind == dnsTypePTR {
+				if ptr == "" {
+					return nil
+				}
+				data, _ := encodeDNSName(ptr)
+				return data
+			}
+			return net.ParseIP(address).To4()
+		})
+	}
+	closed := func(t *testing.T) string {
+		listener, err := net.Listen("tcp", "127.0.0.1:0")
+		if err != nil {
+			t.Fatal(err)
+		}
+		address := listener.Addr().String()
+		_ = listener.Close()
+		return address
+	}
+	for _, tc := range []struct {
+		name             string
+		resolvers        func(t *testing.T) []string
+		ptr              string
+		aligned, forward bool
+	}{
+		{"stale name then expected", func(t *testing.T) []string {
+			a, _ := resolver(t, "old.provider.test", source)
+			b, _ := resolver(t, "mail.example.test", source)
+			return []string{a, b}
+		}, "mail.example.test", true, true},
+		{"cached no-PTR then expected", func(t *testing.T) []string {
+			a, _ := resolver(t, "", source)
+			b, _ := resolver(t, "mail.example.test", source)
+			return []string{a, b}
+		}, "mail.example.test", true, true},
+		{"both disagree keeps the first observed name", func(t *testing.T) []string {
+			a, _ := resolver(t, "old.provider.test", source)
+			b, _ := resolver(t, "other.provider.test", source)
+			return []string{a, b}
+		}, "old.provider.test", false, false},
+		{"stale name then no answer keeps the stale name", func(t *testing.T) []string {
+			a, _ := resolver(t, "old.provider.test", source)
+			return []string{a, closed(t)}
+		}, "old.provider.test", false, false},
+		{"stale name then PTR without forward match prefers the PTR", func(t *testing.T) []string {
+			a, _ := resolver(t, "old.provider.test", source)
+			b, _ := resolver(t, "mail.example.test", "192.0.2.16")
+			return []string{a, b}
+		}, "mail.example.test", true, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ptr, aligned, forward, err := mailDNSIdentityAt(context.Background(), source, "mail.example.test", tc.resolvers(t))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if ptr != tc.ptr || aligned != tc.aligned || forward != tc.forward {
+				t.Fatalf("got ptr=%q aligned=%v forward=%v, want %q %v %v", ptr, aligned, forward, tc.ptr, tc.aligned, tc.forward)
+			}
+		})
+	}
+	t.Run("a verified first answer does not ask the next resolver", func(t *testing.T) {
+		a, _ := resolver(t, "mail.example.test", source)
+		b, seen := resolver(t, "old.provider.test", source)
+		ptr, aligned, forward, err := mailDNSIdentityAt(context.Background(), source, "mail.example.test", []string{a, b})
+		if err != nil || ptr != "mail.example.test" || !aligned || !forward {
+			t.Fatalf("got %q %v %v %v", ptr, aligned, forward, err)
+		}
+		count := 0
+		seen.Range(func(any, any) bool { count++; return true })
+		if count != 0 {
+			t.Fatalf("second resolver asked %d names after a verified answer", count)
+		}
+	})
+}

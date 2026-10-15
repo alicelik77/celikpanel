@@ -123,18 +123,29 @@ const browser = await puppeteer.launch({
 });
 const viewport = { width: 1440, height: 900, deviceScaleFactor: 1 };
 
-// The page's last access decision deadline (valid_until, epoch s), for the timed update cell.
+// The page's last access decision deadline, for the timed update cell. Since alpha.84 the page takes it as
+// the moment it asked plus valid_for_seconds (lib/accessObservation.ts, D-032 clock rule), not valid_until on
+// the server's clock; so does this tool. An answer without the field keeps valid_until.
 let lastAccess = null;
+const accessAsked = new WeakMap();
 async function instrument(page, dir, label) {
     const net = join(dir, `network-${label}.jsonl`);
     const ids = new Map();
     let n = 0;
-    page.on('request', req => { const id = ++n; ids.set(req, id); void jsonl(net, { at: iso(), ev: 'request', id, method: req.method(), url: req.url().replace(base, ''), type: req.resourceType() }); });
+    page.on('request', req => { const id = ++n; ids.set(req, id); if (req.url().includes('/api/v1/license/access')) accessAsked.set(req, Date.now()); void jsonl(net, { at: iso(), ev: 'request', id, method: req.method(), url: req.url().replace(base, ''), type: req.resourceType() }); });
     page.on('response', res => {
         void jsonl(net, { at: iso(), ev: 'response', id: ids.get(res.request()), method: res.request().method(), url: res.url().replace(base, ''), status: res.status(), sw: res.fromServiceWorker() });
         // The access decision the page received (no key, binding or identity is in this answer: cmd/panel/license.go).
         if (res.url().includes('/api/v1/panel/availability')) void res.json().then(body => jsonl(join(dir, `availability-${label}.jsonl`), { at: iso(), status: res.status(), schema: body?.schema, state: body?.state })).catch(() => jsonl(join(dir, `availability-${label}.jsonl`), { at: iso(), status: res.status(), body: 'not json' }));
-        if (res.url().includes('/api/v1/license/access') && res.status() === 200) void res.json().then(body => { if (Number.isSafeInteger(body.valid_until)) lastAccess = { at: Date.now(), until: body.valid_until }; return jsonl(join(dir, `access-${label}.jsonl`), { at: iso(), can_use_panel: body.can_use_panel, valid_until: body.valid_until, valid_until_iso: Number.isSafeInteger(body.valid_until) ? iso(body.valid_until * 1000) : null, state: body.state, observation: body.observation }); }).catch(() => {});
+        if (res.url().includes('/api/v1/license/access') && res.status() === 200) {
+            const asked = accessAsked.get(res.request()) ?? Date.now();
+            void res.json().then(body => {
+                const validFor = typeof body.valid_for_seconds === 'number' && Number.isFinite(body.valid_for_seconds) ? body.valid_for_seconds : null;
+                const deadlineMs = validFor !== null ? asked + validFor * 1000 : Number.isSafeInteger(body.valid_until) ? body.valid_until * 1000 : null;
+                if (deadlineMs !== null) lastAccess = { at: Date.now(), deadlineMs };
+                return jsonl(join(dir, `access-${label}.jsonl`), { at: iso(), asked: iso(asked), can_use_panel: body.can_use_panel, valid_until: body.valid_until, valid_until_iso: Number.isSafeInteger(body.valid_until) ? iso(body.valid_until * 1000) : null, valid_for_seconds: validFor ?? '<absent>', page_deadline_iso: deadlineMs !== null ? iso(deadlineMs) : null, state: body.state, observation: body.observation });
+            }).catch(() => {});
+        }
     });
     page.on('requestfailed', req => void jsonl(net, { at: iso(), ev: 'failed', id: ids.get(req), method: req.method(), url: req.url().replace(base, ''), error: req.failure()?.errorText }));
     page.on('framenavigated', frame => { if (frame === page.mainFrame()) void jsonl(net, { at: iso(), ev: 'navigated', url: frame.url().replace(base, '') }); });
@@ -435,9 +446,9 @@ async function cellUpdateFocus(dir) {
     if (timed) {
         const lead = Number(process.env.LIVE_UPDATE_LEAD_MS || 41500);
         if (!lastAccess) throw new Error('no access answer recorded before the timed click');
-        let deadline = lastAccess.until * 1000;
+        let deadline = lastAccess.deadlineMs;
         while (deadline - lead < Date.now() + 3000) deadline += 45000;
-        await jsonl(events, { at: iso(), ev: 'timed-click-plan', last_access_until: iso(lastAccess.until * 1000), target_deadline: iso(deadline), click_at: iso(deadline - lead), lead_ms: lead });
+        await jsonl(events, { at: iso(), ev: 'timed-click-plan', last_access_deadline: iso(lastAccess.deadlineMs), target_deadline: iso(deadline), click_at: iso(deadline - lead), lead_ms: lead });
         await pause(Math.max(0, deadline - lead - Date.now()));
     }
     const probe = hostProbe(join(dir, 'host-probe.jsonl'));

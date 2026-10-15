@@ -1,0 +1,107 @@
+{
+  "outcome": "response",
+  "panel": "owner",
+  "purpose": "ui: the owner reopens the plan (POST /api/v1/setup/revise)",
+  "request": {
+    "body": {
+      "execution_id": "23df888afe5ab656e091063c89fe83d9",
+      "revision": 2
+    },
+    "headers": [
+      [
+        "Accept",
+        "application/json"
+      ],
+      [
+        "Host",
+        "127.0.0.1:19264"
+      ],
+      [
+        "Content-Type",
+        "application/json"
+      ],
+      [
+        "Origin",
+        "https://127.0.0.1:19264"
+      ],
+      [
+        "Cookie",
+        "[REDACTED]"
+      ],
+      [
+        "X-CelikPanel-Request-Id",
+        "c1bec3d325c41c72a4dcec68d9c77dcd"
+      ]
+    ],
+    "method": "POST",
+    "path": "/api/v1/setup/revise"
+  },
+  "response": {
+    "elapsed_seconds": 0.014,
+    "headers": [
+      [
+        "Cache-Control",
+        "no-store"
+      ],
+      [
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+      ],
+      [
+        "Content-Type",
+        "application/json"
+      ],
+      [
+        "Referrer-Policy",
+        "no-referrer"
+      ],
+      [
+        "Strict-Transport-Security",
+        "max-age=31536000"
+      ],
+      [
+        "X-Content-Type-Options",
+        "nosniff"
+      ],
+      [
+        "X-Frame-Options",
+        "DENY"
+      ],
+      [
+        "Date",
+        "Wed, 14 Oct 2026 23:35:22 GMT"
+      ],
+      [
+        "Content-Length",
+        "463"
+      ]
+    ],
+    "json": {
+      "checks": [],
+      "draft": {
+        "database": "",
+        "dns_engine": "bind",
+        "dns_mode": "external",
+        "dns_role": "primary",
+        "local_ip": "192.0.2.12",
+        "mail_hostname": "mail-ubuntu.upd1-infra.test",
+        "node_version": "",
+        "ns1": "ns1.upd1-infra.test",
+        "ns2": "ns2.upd1-infra.test",
+        "panel_domain": "panel-ubuntu.upd1-infra.test",
+        "peer_ip": "",
+        "peer_ns": "",
+        "purpose": "web_mail",
+        "remote_dns_connection_id": ""
+      },
+      "guidance": "guided",
+      "origin": "fresh",
+      "required": true,
+      "revision": 3,
+      "status": "draft",
+      "version": 1
+    },
+    "status": 200,
+    "text": null
+  }
+}

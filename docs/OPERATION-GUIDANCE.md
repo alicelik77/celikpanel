@@ -7144,3 +7144,276 @@ lists) and the known-state rule.
    next release, unchanged. Not reported: the update's verification result
    inside the panel, the Agent's version, the full-screen licence page during
    the update.
+
+### The final setup check while reverse DNS spreads, and after every check passes (2026-10-14)
+
+**Observed by the owner.** On 2026-10-13 and 2026-10-14 the owner worked
+through the final setup step, "Verify the prepared server", on the second
+server (Frankfurt, v0.1.0-alpha.84). The final check waited for the reverse
+DNS (PTR) name of the server's address. The owner had already changed it at the
+VPS provider; the provider was still spreading the change and the public
+resolver 1.1.1.1 still answered with the old name from its cache. Meanwhile:
+
+1. The step read "Waiting for you". The box named the observed and the expected
+   name and said to set it at the provider, and that setup checks again by
+   itself. Nothing said that a change made at the provider takes time to reach
+   public DNS, which resolver was asked, or that nothing more was needed in
+   CelikPanel. The owner kept asking what to do.
+2. After "Check requirements again", every check passed. The step then read
+   "Waiting for requirements" under a static box, "These checks passed.
+   Waiting for the server to confirm setup completion.", with no motion, the
+   buttons still enabled and nothing saying that nothing needed to be done. The
+   waiting run completed only on its next 20-second pass. In substance, the
+   owner's words: this confuses people; they will not know what to do and will
+   press things impatiently; if they must wait, make them wait or tell them
+   clearly to wait; nobody waits two minutes while nothing seems to happen.
+
+This is D-024's rule that the current reason, who must act, the next action and
+how work resumes are said, and that waiting is not shown as passive or as
+the owner's task when it is not. No schema, ledger or version transition; the
+execution JSON is unchanged.
+
+**What changed.**
+
+- **A. The run finishes on the owner's passing check.** The setup runner's
+  20-second wait while waiting also ends on a per-panel wake signal (a buffered
+  channel of one). Only the owner's explicit check, `GET /api/v1/setup?check=1&manual=1`,
+  sends it, and only when every check passed while the latest run waits at its
+  final verification. The handler neither completes setup nor starts a
+  mutation; the runner rechecks and completes in its own single pass. Page
+  polls do not send `manual=1`. The unattended 20-second cadence is unchanged.
+- **B. Finishing is shown as active and bounded.** After a passing check the
+  heading and the final step read "Finishing setup", with a spinner on the step
+  and beside the sentence "Every check passed. The panel is completing setup
+  now, and you do not need to do anything. This page updates by itself when it
+  is done." The page reads the operation every 1.5 seconds instead of 3. It
+  ends when the run leaves the final check, or when the run itself records a
+  newer, different unmet result, which is then shown. After 60 seconds without
+  confirmation the page says the result is not known (not a failure), to reload
+  the page, and that if it persists the setup run may have stopped and
+  `sudo systemctl restart celikpanel-panel` resumes the same setup at its final
+  check without repeating finished steps; "Check requirements again" and
+  "Reload this page" are offered. The passive "These checks passed…" string is
+  removed.
+- **Edit plan is not offered while finishing.** It is the one control on that
+  step that stops the run. It and its help line return with the 60-second
+  notice or when the run waits again; its behaviour is unchanged.
+- **C. Waiting for reverse DNS is said as such.** A final check waiting only on
+  a reverse DNS mismatch reads "Waiting for reverse DNS" instead of "Waiting
+  for you"; a plan correction open beside it still reads "Waiting for you". The
+  guidance adds: "A change made at your server provider can take from a few
+  minutes to several hours to reach public DNS, because DNS resolvers keep the
+  old name until their saved copy expires. Once you have made the change, you
+  do not need to do anything more in CelikPanel."
+- **D. A stale first resolver no longer decides.** In the Agent's mail identity
+  lookup, a PTR answer that is not the expected name (or no PTR) also asks the
+  next resolver. Any resolver that returns the expected name with a matching
+  forward A/AAAA record proves the identity. Otherwise the first observation is
+  reported as before, preferring a PTR that names the host but whose forward
+  record does not match yet. A matching first answer asks nothing more.
+
+**Evidence.** Commits `a94f83cb0`, `febbe09e3`, `c714238d6` and `e358ebe3c`.
+
+- New Go tests:
+  - the stale-resolver cases (`TestMailDNSIdentityAsksNextResolverWhenFirstAnswerIsStale`, six cases);
+  - the manual check completing a waiting run well before the 20-second
+    interval, while a plain check read and an operation read wake nothing,
+    complete nothing and start no mutation. A negative control with the flag
+    renamed failed after 5.6 seconds.
+- New web tests (`web/tests/setup-finishing-mounted.test.mjs`, English and
+  Turkish), whose Edit plan checks fail against the screen without that change:
+  - finishing with spinners, no "Check requirements again" or Edit plan, 1.5-second
+    reads, and completion with no click and only GET requests;
+  - the 60-second fallback;
+  - a newer unmet result ending finishing.
+- Updated final-check tests cover the reverse DNS label and wording.
+- Counts:
+  - `npm test` 1348 of 1348; `npx tsc --noEmit` clean;
+  - `go test ./cmd/panel/...` 1538 tests and 1662 subtests passed, 6 skipped;
+  - `go test ./cmd/agent/...` 1798 tests and 2822 subtests passed, 29 skipped, 0 failed.
+
+The Go runs were in the WSL guest `CelikPanel-S2-Debian`. That guest is itself
+a running CelikPanel host (BIND active, a `celikpanel` group, a live Agent
+state root), and as is the Agent package fails 19 tests on this branch and on
+`e3c8f735a` alike. The Agent count above was measured in a private mount
+namespace that showed the tests a clean host: empty directories over
+`/var/lib/celikpanel-agent-private` and `/run/celikpanel`, and an `/etc/group`
+without `celikpanel`; the guest itself was not changed.
+
+**Open.**
+
+- The resolver that answered is not named on the page, because the Agent does
+  not report it.
+- Change D takes effect only after the Agent is updated. Until then a stale
+  first resolver can still read as a mismatch, although the wording above now
+  covers that wait.
+- If the runner's own recheck after a passing check finds exactly the same
+  unmet result as before, the page cannot tell it from no recheck yet. It then
+  ends at the 60-second "not known" notice rather than at once.
+- No installed server was changed, and nothing here is acceptance on an
+  installed server.
+
+### Waiting screens that look idle: the owner's rule and an audit of the waiting states (2026-10-14)
+
+**Observed by the owner.** After the report in the entry above, the owner set
+a rule on 2026-10-14 for every screen. In substance:
+
+- a screen that makes the user wait either visibly waits (motion, with the
+  controls that would interfere disabled) or says plainly that nothing needs
+  to be done and that it updates by itself, and it finishes promptly;
+- a static waiting sentence beside enabled buttons is a defect: nobody waits
+  two minutes in front of a screen that looks idle;
+- a screen never says "Waiting for you" when the owner's part is already done,
+  for example while a change made at a provider spreads.
+
+This is D-024 (the current reason, who acts, the next action and how work
+resumes) applied to waiting, and D-032 (the panel looks by itself and does not
+ask the owner to press a button to learn a state it can read). No schema,
+ledger or version transition; one additive answer field and three additive
+profile fields (below).
+
+**Audit.** The web interface was read, from source, for every state in which a
+page waits for the server, a background operation, a poll, a provider, the
+licence or an external check: 37 states across setup (the phases other than
+the final check), the Components and component pages, the Dashboard, the
+licence and access layers, the panel update flow, domain certificates and
+HSTS, DNS, imports, PHP, backups and the sidebar build stamp. Verdicts: 18
+already met the rule, 16 did not and were changed here, and 3 did not and are
+left open (below). Every row was read from code with a file and line; none was
+measured on an installed server.
+
+**What changed.**
+
+- **Setup, reconnecting after a lost read, and the planned certificate
+  restart.** A spinner beside the sentence. The sentence now says that the page
+  asks the server again every few seconds by itself and that nothing needs to
+  be done; it used to ask the owner to press "Reconnect to this operation". After 60 s the spinner
+  stops and the page says the result is not known (not a failure), that it
+  keeps asking, and how to check the panel on the server
+  (`sudo systemctl status celikpanel-panel`, then
+  `sudo systemctl start celikpanel-panel`), with "Reload this page".
+- **Setup, "Check requirements again" and "Use this connection and continue
+  setup".** A spinner while the request runs.
+- **Components firewall banner (O4 and O5 of the alpha.84 notes).** A coded
+  answer is said in the page language (`err.AGENT_UNREACHABLE` on the Turkish
+  page instead of the server's English sentence), and the banner reads the
+  firewall again with each scan the page receives.
+- **Dashboard "Needs attention" (O6).** When one of its reads was refused with
+  `AGENT_UNREACHABLE`, the notice names the Agent and the owner's commands
+  (`err.AGENT_UNREACHABLE`) instead of "this does not mean something is wrong".
+- **Dashboard Mail stacks card.** It follows the page's own check: checking
+  (with a spinner), held by a change, could not check, or not checked recently.
+  "Open Components to rescan" and "…rescan before trusting mail status" are
+  removed.
+- **Mail profile text.** Names and descriptions come from the catalogue by
+  profile id. The Panel now types its blocked and warning sentences
+  (`blocked_code` with `blocked_vars`, and `warning_code`, beside the old text,
+  which stays for older pages), and the page says the code in its language.
+  Three server sentences no longer say "run a fresh scan" or "run another
+  scan"; they say that the next component check verifies the state. The last
+  attempt's error keeps the server's words behind "The last attempt reported:".
+- **Server-change pauses** (Components banner, Dashboard firewall dialog).
+  They add "This page checks again every few seconds and lifts this pause by
+  itself; you do not need to reload it." The unverified state no longer asks
+  for a page reload. A component page's install dialog read readiness once; it
+  now reads it every 5 s while it is open (GET only).
+- **Buttons that ran a long request behind a disabled, static label**
+  (domain certificate issue, activation retry and upload, panel certificate,
+  zone publish, PHP version, import inspection and run, repository enable,
+  version removal). The button's spinner for the length of the request.
+- **HSTS retirement (clock rule).** The domain SSL answer adds
+  `settings.hsts_retire_remaining_seconds`: the time left on the server's clock
+  when the answer is written; `hsts_retire_after` is kept. The page dates the
+  end from the moment it received the answer and no longer compares its clock
+  with the server's stamp. An older Panel without the field keeps the old rule.
+- **Sidebar build id.** "build" and the 12-character id stay one unit, so the
+  line no longer breaks inside the id; the full id is in the title and in the
+  screen-reader text.
+- **Lab tools.** The mock answers the licence access check with
+  `valid_for_seconds`, as the Panel does, and has a `clockSkew` control; the
+  cold-load tools for sets 9 and 11 plan their timed click on the page's
+  deadline.
+
+**Evidence.** Commits `2e273cc55` to `1c5454c53` (thirteen, without
+`a87ce0b97`, which is not part of this work).
+
+- Web, mounted tests per change: the setup reconnect and its bounded notice
+  and the check buttons; the Components firewall banner in Turkish and its
+  re-read; the Dashboard attention notice with the Agent; the mail card's
+  states and typed text; HSTS with the server's clock behind and ahead and an
+  older Panel; the certificate, zone, PHP and import spinners; the install
+  dialog's re-read; the Components readiness banner. Each failed against the
+  screen before its change. The repository and version-removal buttons have a
+  source check only; the build stamp is rendered from source and fails with the
+  old class.
+- Web, the code list: a test reads `mailProfileTextCodes` from the Panel's
+  source and requires an English and a Turkish sentence for every code, with
+  the same values and no scan wording.
+- Go: `TestStampHSTSRetireRemaining`,
+  `TestDomainSSLAnswerCarriesHSTSRetireRemaining`,
+  `TestMailProfileTextCodesAreListed` (every constant of the code type is in
+  the list), `TestMailProfileViewTypesItsSentences`.
+- Counts: `npm test` 1375 of 1375; `npx tsc --noEmit` clean; the English and
+  Turkish key sets are equal in all five catalogue pairs;
+  `go test ./cmd/panel/...` 1542 tests and 1665 subtests passed, 6 skipped,
+  0 failed (WSL guest `CelikPanel-S2-Debian`). The Agent package was neither
+  changed nor run.
+- The lab mock was measured by hand on a local port: 59.2 s left for an active
+  licence; with `clockSkew` −420 the stamp moved 420 s and the time left stayed
+  59.1 s; a missing licence answered 0.
+
+**Open.**
+
+- **Row 16, the component operation lock after a lost connection:** a WifiOff
+  icon without motion, retrying every 3 s with no bound; reload is offered.
+  Needs an owner decision on the bound and its wording.
+- **Row 25, the panel update card's readiness:** the owner presses Retry to
+  learn whether the server is free. Needs an owner decision; automatic reads
+  would redraw the card's checking state each time.
+- **Row 35, a domain's "DNS update is spreading":** rightly not the owner's
+  task, but not read again by itself. Needs an owner decision on the cadence of
+  external DNS lookups.
+- **Templated text.** `component_not_installable` does not carry the platform
+  detail, which only the old text has, and a requirement that names a role
+  rather than a service is shown as the role's token. Server sentences outside
+  the mail profiles still say "rescan" (the cached-state refusal in
+  `managed_service_handlers.go`, the offering states in `store_backend.go`).
+- **Lab tools.** The cold-load tools were changed but not run; they need a
+  guest run.
+- Nothing here was measured on an installed server or in a native record, and
+  it is not acceptance evidence. No installed server was changed.
+
+**Rows 16, 25 and 35: decided and done (2026-10-14).** The owner decided the
+three rows left open above; they are now done in source, with mounted tests,
+and not measured on an installed server.
+
+- **Row 16** (`8e68b3ce2`). While the connection is lost the component
+  operation lock shows a spinner beside "Reconnecting…" and says that the page
+  asks the server again every few seconds by itself and nothing needs to be
+  pressed. After 60 s without a usable answer the spinner stops and the lock
+  says the result is not known yet, that this does not mean it failed, that the
+  server keeps the operation's record, and how to check the panel on the server
+  (`sudo systemctl status celikpanel-panel`, then
+  `sudo systemctl start celikpanel-panel`); "Reload page" stays. The reads go
+  on every 3 s and the global lock stays. A recorded failure keeps its own
+  wording.
+- **Row 25** (`3abbe3f76`). While the panel update card says the server is
+  busy it reads readiness again every 5 s: GET only, one read at a time, only
+  while the tab is visible, without drawing its checking look. The busy text
+  stays until a read says ready; a read that could not verify keeps what is
+  shown. `services.mutationReadiness.autoResume` stands under the busy text and
+  Retry stays. The reads stop when the tab is hidden and when the card leaves
+  the busy state. Nothing in them starts or admits an update.
+- **Row 35** (`0ad26074d`). While a domain's DNS change spreads and the tab is
+  visible, the connection card checks again every 30 s with the GET that
+  "Check again" sends, for at most 60 checks (30 minutes of a visible page). It
+  says that a change at the provider can take from a few minutes to several
+  hours to spread, that the page checks by itself and nothing needs doing, and
+  when it last checked (the answer's `checked_at`, else the moment the page
+  received it; never compared with the browser's clock). Then it stops and says
+  that the change was still spreading at the last check, that this is not a
+  failure, and to use "Check again" or come back later.
+- Counts: `npm test` 1386 of 1386 (eleven new tests: nine mounted ones, each
+  failing against the screen before its change, and two wording checks);
+  `npx tsc --noEmit` clean. No Go was changed or
+  run.

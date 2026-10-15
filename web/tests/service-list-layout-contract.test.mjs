@@ -102,3 +102,12 @@ test('the components toolbar never end-aligns a row it cannot fit', () => {
   const control = source.slice(clusterAt, catalogAt);
   assert.match(control, /inline-flex overflow-hidden rounded-lg border border-border-strong/);
 });
+
+// Owner rule 2026-10-14: a button whose request makes the owner wait shows its
+// spinner while it runs (Button loading), not only a disabled static label.
+test('the repository and version-removal buttons spin while their request runs', () => {
+  const page = readFileSync(new URL('../src/components/ServiceList.tsx', import.meta.url), 'utf8');
+  assert.equal((page.match(/\{repoBusy \? t\('services\.repo\.enabling'\)/g) || []).length, 2);
+  assert.equal((page.match(/loading=\{repoBusy\}/g) || []).length, 2, 'both repository buttons spin');
+  assert.match(page, /onClick=\{\(\) => removeVersion\(removeTarget\)\} disabled=\{removing\} loading=\{removing\}/);
+});

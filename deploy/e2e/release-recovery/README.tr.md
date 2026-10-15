@@ -665,3 +665,17 @@ kaynağından değerlendirilir. Yedek anahtar katalogda yoksa bu bir bulgudur.
 Komutlar ve hücre ayrıntıları İngilizce bölümdedir
 ([README.md](README.md#owner-started-update-acceptance-upd1)). Çevrimdışı
 testler (`test_owner_update_trial.py`, 161 test) yerel sonucu kanıtlamaz.
+
+## `managed_site_files` için iki özet (set15 bulgusu, 14 Ekim 2026)
+
+On yedinci yerel kayıtta (set15) hatalı adayın geri dönüşünden sonra `managed_site_files` tablo özeti
+değişti. Ham dosyalarda yalnız özet vardı; bu yüzden defterin bayt bayt geri gelip gelmediği
+söylenemedi. `guest_probe.py` artık `database.site_file_ledger` da bildirir: satırların kendisi
+(rowid sırasıyla, `guest-observation-<etiket>-managed-site-files.jsonl` içinde JSON satırları) ve iki
+özet. `full_sha256` değişmeyen tablo özetidir (`tables[].sha256`); eski kayıtlar karşılaştırılabilir
+kalır. `stable_sha256` aynı yapıdır, ancak Panel'in her sade başlangıçta yeniden yazdığı tek sütun olan
+`observed_at` çıkarılmıştır (`internal/services/site_file_ledger.go`, `RecordSiteFileResult`). Yalnız
+`observed_at` farklıysa `compare_databases` tabloyu `unexpected` yerine `volatile_columns_only`
+altında gösterir; iki özeti ve satır başına değişen sütunları `site_file_ledger` altında bildirir.
+Başka bir sütun değişirse karşılaştırma yine başarısız olur. Bu yalnız çevrimdışı mantıktır; hangi
+sütunların geri dönüşten sonra gerçekten değiştiği ancak gerçek bir konuk çalıştırmasıyla görülür.

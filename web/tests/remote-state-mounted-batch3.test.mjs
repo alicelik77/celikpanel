@@ -6,6 +6,9 @@ import Renderer, { act } from 'react-test-renderer';
 import { dataModule, reactURL, remoteURL, sharedLayer } from './fixtures/shared-layer.mjs';
 import { readAllowList, scanTree } from './remote-state-ratchet.mjs';
 import { fileURLToPath } from 'node:url';
+import { tr } from '../src/i18n/tr.ts';
+import { trScreens } from '../src/i18n/screens/tr.ts';
+import { trServerScreens } from '../src/i18n/screens/server/tr.ts';
 
 // NO NEGATIVE UI UNLESS KNOWN, third batch (9 Oct 2026, D-024): the Fail2ban,
 // Nginx, PHP and Dovecot pages, the PowerDNS page's file list, and the DNS
@@ -26,11 +29,13 @@ import { fileURLToPath } from 'node:url';
 
 const source = (path) => readFileSync(new URL('../src/' + path, import.meta.url), 'utf8');
 const screenFiles = ['Fail2banManagement', 'NginxManagement', 'PHPManagement', 'PHPExtendedConfig', 'DovecotManagement', 'PowerDNSManagement', 'DNSServerSettings'];
+// The Components page is mounted for its firewall banner (2026-10-14); it is
+// not one of this batch's moved screens.
 const icons = new Set(['AlertTriangle']);
 // The dashboard is mounted too, for its attention list and the firewall's
 // state. It stays on the ratchet's list (its system figures, audit trail and
 // component read are not moved), so it is not one of `screenFiles`.
-for (const name of [...screenFiles, 'Dashboard', 'DNSEngineCard']) {
+for (const name of [...screenFiles, 'Dashboard', 'DNSEngineCard', 'ServiceList']) {
   for (const match of source(`components/${name}.tsx`).matchAll(/import\s*\{([^}]+)\}\s*from 'lucide-react'/g)) {
     for (const item of match[1].split(',')) {
       const icon = item.replace(/\btype\b/, '').trim().split(/\s+as\s+/)[0];
@@ -42,7 +47,10 @@ for (const name of [...screenFiles, 'Dashboard', 'DNSEngineCard']) {
 const stub = dataModule(`
   import React from '${reactURL}';
   ${[...icons].map((name) => `export const ${name} = () => null;`).join('\n')}
-  const i18n = { t: (key, vars) => (vars ? key + JSON.stringify(vars) : key), locale: 'en' };
+  // A test may give real sentences for some keys (globalThis.batch3Words);
+  // every other key is shown as itself.
+  const fill = (text, vars) => Object.entries(vars || {}).reduce((out, [name, value]) => out.split('{' + name + '}').join(String(value)), text);
+  const i18n = { t: (key, vars) => (globalThis.batch3Words?.[key] !== undefined ? fill(globalThis.batch3Words[key], vars) : vars ? key + JSON.stringify(vars) : key), locale: 'en' };
   export const useI18n = () => i18n;
   export const useNavigate = () => () => true;
   export const Link = (props) => React.createElement('a', null, props.children);
@@ -65,8 +73,12 @@ const stub = dataModule(`
   // What the dashboard imports beside the shared layer.
   export const useAuth = () => ({ role: 'admin', user: { username: 'admin', role: 'admin' } });
   export const ServerSetupDashboardNotice = () => null, LicenseNotice = () => null, PageHeader = () => null;
-  export const FirewallNoSSHAcknowledgement = () => null, readFirewallSSHReason = () => null;
-  export const accountStart = () => null, hasMailActivity = () => false;
+  export const FirewallNoSSHAcknowledgement = () => null, readFirewallSSHReason = () => null, FirewallSSHReasonLine = () => null;
+  // What the Components page imports beside these.
+  export const useLocation = () => ({ hash: '', pathname: '/services' });
+  export const ServiceActionNotice = () => null, isServiceActionOutcome = () => false;
+  // The mail-stack card is drawn only where a test asks for it.
+  export const accountStart = () => null, hasMailActivity = () => globalThis.batch3MailActivity === true;
   // What components/ComponentOperation.tsx imports and never calls here: only
   // its decoder is used, and that is the real one.
   export const createPortal = () => null;
@@ -96,9 +108,21 @@ const Dashboard = await pick(lib('components/Dashboard.tsx', {
   '/lib/firewall': firewallURL,
   '/lib/accounts': lib('lib/accounts.ts', { '/remote': remoteURL }),
   '/lib/dashboardMailTruth': lib('lib/dashboardMailTruth.ts'),
+  '/lib/mailProfileText': lib('lib/mailProfileText.ts'),
   '/lib/componentCensus': lib('lib/componentCensus.ts'),
   '/ComponentOperation': operationURL,
 }), 'Dashboard');
+// The Components page, with the real decoders of ComponentOperation and an
+// operation tracker that is idle.
+const ServiceList = await pick(lib('components/ServiceList.tsx', {
+  '/ComponentOperation': dataModule(`
+    export * from '${operationURL}';
+    const idle = { startInstall: async () => true, catalogSnapshot: null, locked: false, checking: false, operation: null, failure: null };
+    export const useComponentOperation = () => idle;
+  `),
+  '/lib/componentCensus': lib('lib/componentCensus.ts'),
+  '/lib/mailProfileText': lib('lib/mailProfileText.ts'),
+}), 'ServiceList');
 globalThis.window ??= globalThis;
 // The real DNS engine card, mounted with the real decoder of its state. What
 // stands in for the tracker is the lock it would draw: every view the card
@@ -188,7 +212,9 @@ async function unmount() {
 }
 const text = () => {
   const walk = (node) => (typeof node === 'string' ? node : !node ? '' : Array.isArray(node) ? node.map(walk).join(' ') : walk(node.children));
-  return walk(tree.toJSON());
+  // Runs of white space are one space: a sentence drawn in pieces (KeepWords
+  // keeps a hyphenated command whole) reads as the same sentence.
+  return walk(tree.toJSON()).replace(/\s+/g, ' ');
 };
 const buttons = () => tree.root.findAll((node) => node.type === 'button');
 const label = (node) => { const walk = (n) => (typeof n === 'string' ? n : (n.children || []).map(walk).join('')); return walk(node); };
@@ -863,5 +889,154 @@ test('DNS engine card, past the safety limit: the lock is released, nothing is s
     assert.equal(sent(RECONCILE), 1);
     assert.equal(notice().length, 0, 'the finished change still shows the notice');
     assert.deepEqual(globalThis.currentTest.toasts, [['success', 'dnsEngine.switchCompleted']]);
+  } finally { await unmount(); }
+});
+
+// --- The Components page's firewall banner (2026-10-14, sixteenth record O4/O5) ---
+// With the Agent stopped, GET /api/v1/firewall answers 503 AGENT_UNREACHABLE.
+// The banner said the server's English sentence on a Turkish page and kept it
+// after the Agent came back, because it read the firewall only on mount.
+const AGENT_DOWN = () => answer({ error: 'The CelikPanel Agent on this server is not reachable.', code: 'AGENT_UNREACHABLE' }, 503);
+const scanRoute = () => answer({ ...good['/api/v1/managed-services'], scanned_at: new Date().toISOString() });
+
+test('Components: the firewall banner says a coded refusal in the interface language, not the server sentence', async () => {
+  // The Turkish page: the catalogue's Turkish sentence for the code.
+  globalThis.batch3Words = { 'err.AGENT_UNREACHABLE': tr['err.AGENT_UNREACHABLE'] };
+  serve({ '/api/v1/firewall': AGENT_DOWN, '/api/v1/managed-services/scan': scanRoute });
+  await mount(React.createElement(ServiceList, {}));
+  try {
+    await settle();
+    const shown = text();
+    assert.ok(shown.includes('firewall.unknown'), `the banner does not say the state is unknown: ${shown.slice(0, 400)}`);
+    assert.ok(shown.includes(tr['err.AGENT_UNREACHABLE']), `the Agent is not named in the interface language: ${shown.slice(0, 400)}`);
+    assert.ok(!shown.includes('The CelikPanel Agent on this server is not reachable.'), 'the server sentence is shown instead of the translation');
+    // A read that failed is not a failure of the firewall: the attention
+    // surface, never the failure colour; and a command is never broken at its
+    // hyphen ("celikpanel-" / "agent"; browser inspection 2026-10-14).
+    const banner = tree.root.find((node) => node.props && node.props['data-firewall-unread'] !== undefined);
+    const classes = [banner, ...banner.findAll((node) => typeof node.props?.className === 'string')].map((node) => node.props.className).join(' ');
+    assert.ok(!/danger/.test(classes), `the unread firewall is drawn in the failure colour: ${classes}`);
+    assert.match(banner.props.className, /warning-mark/);
+    const whole = banner.findAll((node) => node.type === 'span' && /whitespace-nowrap/.test(node.props.className || '')).map((node) => node.props.children);
+    assert.ok(whole.includes('celikpanel-agent'), `the command can break at its hyphen: ${JSON.stringify(whole)}`);
+  } finally { await unmount(); delete globalThis.batch3Words; }
+});
+
+test('Components: the firewall banner is read again with the page’s scan, so the Agent coming back clears it', async () => {
+  let firewall = AGENT_DOWN;
+  globalThis.batch3Words = { 'err.AGENT_UNREACHABLE': tr['err.AGENT_UNREACHABLE'] };
+  serve({ '/api/v1/firewall': (init) => firewall(init), '/api/v1/managed-services/scan': scanRoute });
+  await mount(React.createElement(ServiceList, {}));
+  try {
+    await settle();
+    assert.ok(text().includes(tr['err.AGENT_UNREACHABLE']), text().slice(0, 400));
+    const before = requests.filter((line) => line === 'GET /api/v1/firewall').length;
+    // The Agent is running again; the owner rescans.
+    firewall = () => answer(good['/api/v1/firewall']);
+    await press('services.rescan');
+    await settle();
+    const after = requests.filter((line) => line === 'GET /api/v1/firewall').length;
+    assert.ok(after > before, `the scan did not read the firewall again (${before} → ${after})`);
+    const shown = text();
+    assert.ok(!shown.includes('firewall.unknown') && !shown.includes(tr['err.AGENT_UNREACHABLE']), `the old Agent error stays: ${shown.slice(0, 400)}`);
+    assert.ok(shown.includes('firewall.on'), shown.slice(0, 400));
+    assert.equal(requests.filter((line) => line.startsWith('POST ') && !line.startsWith('POST /api/v1/managed-services/scan')).length, 0, `the page changed something: ${requests.join(', ')}`);
+  } finally { await unmount(); delete globalThis.batch3Words; }
+});
+
+// --- The Dashboard's attention list names the Agent (2026-10-14, sixteenth record O6) ---
+test('Dashboard: with the Agent not reachable, the attention notice names the Agent and what the owner checks', async () => {
+  globalThis.batch3Words = { 'err.AGENT_UNREACHABLE': tr['err.AGENT_UNREACHABLE'] };
+  serve({ '/api/v1/managed-services': freshScan(), '/api/v1/firewall': AGENT_DOWN });
+  await mount(dashboard());
+  try {
+    const shown = text();
+    assert.ok(shown.includes('dashboard.attentionUnreadAgent'), `the notice is the generic one: ${shown.slice(0, 600)}`);
+    assert.ok(shown.includes(tr['err.AGENT_UNREACHABLE']), 'the Agent sentence, with the owner’s commands, is missing');
+    assert.ok(!shown.includes('dashboard.attentionUnread '), 'the generic "nothing is wrong" notice is not shown beside it');
+    for (const phrase of CLAIMS) assert.ok(!shown.includes(phrase), `"${phrase}" is on screen while the firewall is unknown`);
+    assert.equal(requests.filter((line) => !line.startsWith('GET ')).length, 0, `the page sent a change by itself: ${requests.join(', ')}`);
+  } finally { await unmount(); delete globalThis.batch3Words; }
+  // Any other refusal keeps the generic notice.
+  serve({ '/api/v1/managed-services': freshScan(), '/api/v1/firewall': REFUSED });
+  await mount(dashboard());
+  try {
+    assert.ok(text().includes('dashboard.attentionUnread') && !text().includes('dashboard.attentionUnreadAgent'), text().slice(0, 400));
+  } finally { await unmount(); }
+});
+
+// --- The Dashboard's mail-stack card follows the page's own check (2026-10-14) ---
+// It said "Status needs refresh", "Open Components and rescan before trusting
+// mail status" and offered "Open Components to rescan" while the page was
+// checking by itself (D-032), and showed the server's English profile text.
+const STALE = '2026-10-09T09:00:00Z';
+const mailScan = (scannedAt, profiles) => ({ ...good['/api/v1/managed-services'], scanned_at: scannedAt, profiles });
+const MAIL_STALE_KEYS = ['dashboard.mailStacks.rescan', 'dashboard.mailStacks.scanStale', 'dashboard.mailStacks.status.stale'];
+
+test('Dashboard mail card: while the page checks by itself it says so, with motion, and asks nothing', async () => {
+  globalThis.batch3MailActivity = true;
+  serve({ '/api/v1/managed-services': mailScan(STALE, [profile('core-mail'), profile('webmail'), profile('protected-mail')]), '/api/v1/managed-services/scan': HANG });
+  await mount(dashboard());
+  try {
+    const shown = text();
+    assert.ok(shown.includes('dashboard.mailStacks.status.checking'), `the card does not say it is checking: ${shown.slice(0, 600)}`);
+    assert.ok(statusLabels().includes('dashboard.systemServicesChecking'), 'the card carries the checking spinner');
+    for (const key of MAIL_STALE_KEYS) assert.ok(!shown.includes(key), `"${key}" is on screen while the page checks by itself`);
+    assert.equal(requests.filter((line) => line.startsWith('POST /api/v1/managed-services/scan')).length, 1, 'one check, by the page');
+  } finally { await unmount(); delete globalThis.batch3MailActivity; }
+});
+
+test('Dashboard mail card: a check that could not run says the status is not known, without sending the owner to rescan', async () => {
+  globalThis.batch3MailActivity = true;
+  serve({ '/api/v1/managed-services': mailScan(STALE, [profile('core-mail'), profile('webmail'), profile('protected-mail')]), '/api/v1/managed-services/scan': REFUSED });
+  await mount(dashboard());
+  try {
+    await settle();
+    const shown = text();
+    assert.ok(shown.includes('dashboard.mailStacks.checkFailed'), shown.slice(0, 600));
+    const card = tree.root.find((node) => node.props['aria-labelledby'] === 'dashboard-mail-stacks-heading');
+    const cardText = JSON.stringify(card.findAll((node) => typeof node.type === 'string').map((node) => node.children.filter((child) => typeof child === 'string')));
+    assert.ok(cardText.includes('dashboard.statusUnknown'), `the card does not say the status is unknown: ${cardText}`);
+    for (const key of MAIL_STALE_KEYS) assert.ok(!shown.includes(key), `"${key}" is on screen`);
+    assert.ok(shown.includes('dashboard.mailStacks.open'), 'the card still opens the mail stacks');
+  } finally { await unmount(); delete globalThis.batch3MailActivity; }
+});
+
+test('Dashboard mail card: the profile name and the Panel’s typed sentences are said in the interface language', async () => {
+  globalThis.batch3MailActivity = true;
+  globalThis.batch3Words = {
+    'dashboard.audit.profile.coreMail': trScreens['dashboard.audit.profile.coreMail'],
+    'services.mailProfiles.code.partly_present': trServerScreens['services.mailProfiles.code.partly_present'],
+    'services.mailProfiles.attemptError': trServerScreens['services.mailProfiles.attemptError'],
+  };
+  const english = 'Some components are already present. Installing this profile will reconcile the full plan without removing completed services.';
+  const partial = { ...profile('core-mail'), status: 'partial', warning: english, warning_code: 'partly_present' };
+  const shown = async (core) => {
+    serve({ '/api/v1/managed-services': mailScan(new Date().toISOString(), [core, profile('webmail'), profile('protected-mail')]) });
+    await mount(dashboard());
+    try { return text(); } finally { await unmount(); }
+  };
+  try {
+    let page = await shown(partial);
+    assert.ok(page.includes('Temel Posta'), `the profile is not named in Turkish: ${page.slice(0, 600)}`);
+    assert.ok(page.includes(trServerScreens['services.mailProfiles.code.partly_present']), 'the typed warning is not said in Turkish');
+    assert.ok(!page.includes(english), 'the English server sentence is shown beside a code');
+    // An older Panel sends no code: its words are shown as it wrote them.
+    page = await shown({ ...partial, warning_code: undefined });
+    assert.ok(page.includes(english), 'the text of a Panel without codes is lost');
+    // The last attempt's error keeps the server's words behind a Turkish lead-in.
+    page = await shown({ ...profile('core-mail'), status: 'partial', latest_attempt_status: 'failed', latest_attempt_error: 'submission verification failed' });
+    assert.ok(page.includes('Son deneme şunu bildirdi: submission verification failed'), page.slice(0, 600));
+  } finally { delete globalThis.batch3MailActivity; delete globalThis.batch3Words; }
+});
+
+test('Components: a paused server change says the page lifts it by itself, without asking for a reload', async () => {
+  serve({ '/api/v1/host-mutation-readiness': { ready: false, code: 'HOST_MUTATION_BUSY', reason: 'package_manager_active' }, '/api/v1/managed-services/scan': scanRoute });
+  await mount(React.createElement(ServiceList, {}));
+  try {
+    await settle();
+    const shown = text();
+    assert.ok(shown.includes('services.mutationReadiness.package_manager_active'), shown.slice(0, 400));
+    assert.ok(shown.includes('services.mutationReadiness.autoResume'), 'the banner does not say it lifts by itself');
   } finally { await unmount(); }
 });

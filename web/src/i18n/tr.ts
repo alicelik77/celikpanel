@@ -98,6 +98,7 @@ export const tr: Record<ShellKey, string> = {
     'login.verify': 'Doğrula',
     'err.panel_certificate_activation_pending': 'Önceki panel sertifikası etkinleştirmesi hâlâ tamamlanıyor. Kısa süre bekleyip yeniden deneyin. Hiçbir sertifika durumu ezilmedi.',
     'nav.settings': 'Ayarlar',
+    'nav.menu': 'Menü',
     'nav.monitoring': 'İzleme',
     'nav.group.hosting': 'Barındırma',
     'nav.group.server': 'Sunucu',
@@ -288,6 +289,9 @@ export const tr: Record<ShellKey, string> = {
     'license.connectionRetry': 'Son erişim kontrolü başarısız oldu. Otomatik olarak yeniden deneniyor; son doğrulanmış erişim geçerli olduğu sürece mevcut sayfa korunur.',
     'services.operation.reloadHelp': 'Sayfayı yenilemek kaydedilen işleme yeniden bağlanır. Yeni bir kurulum başlatmaz.',
     'services.operation.reconnecting': 'Bağlantı kesildi. Panel kilidi açılmadan yeniden bağlanılıyor…',
+    // Yeniden bağlanma etkin ve sınırlıdır (2026-10-14): sayfa her 3 sn'de kendisi okur.
+    'services.operation.reconnectingAuto': 'Bu sayfa birkaç saniyede bir sunucuya kendiliğinden yeniden sorar; hiçbir düğmeye basmanız gerekmez.',
+    'services.operation.reconnectSlow': "Bu sayfa bir dakikadan uzun süredir panelden kullanılabilir bir yanıt alamadı; bu yüzden bu işlemin sonucu henüz bilinmiyor. Bu, işlemin başarısız olduğu anlamına gelmez: sunucu işlemin kaydını tutar ve bu sayfa kendiliğinden sormaya devam eder. İşlemi yeniden başlatmayın. Panel yine yanıt vermezse çalışıp çalışmadığını sunucuda denetleyin: sudo systemctl status celikpanel-panel. Durmuşsa sudo systemctl start celikpanel-panel ile başlatın, sonra bu sayfayı yeniden yükleyin.",
     'services.operation.refreshing': "Sunucudaki işlem bitti. Güncel servis durumu doğrulanıyor…",
     'services.operation.backgroundHint': 'İş sunucuda devam eder. Bu sayfayı yenilemek güvenlidir; panel işlem kimliğiyle veya istek öncesi kurtarma işaretçisiyle yeniden bağlanır. Sonuç kesinleşene kadar diğer panel işlemleri kilitli kalır.',
     'services.operation.id': 'İşlem: {id}',

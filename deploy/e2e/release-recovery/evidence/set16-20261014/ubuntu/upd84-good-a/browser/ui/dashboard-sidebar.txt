@@ -1,0 +1,21 @@
+CelikPanel
+Dashboard
+HOSTING
+Domains
+1
+Databases
+Users
+Store
+VPN
+SERVER
+Components
+10
+Monitoring
+Import
+Audit log
+Settings
+SERVER INFORMATION
+dns-ubuntu
+192.0.2.12
+CelikPanel · v0.1.0-alpha.85 · build d5d673ebd95e
+d5d673ebd95eeb80d16f93577c340d4a9d6a9f36

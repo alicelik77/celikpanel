@@ -4731,10 +4731,14 @@ değiştirmez. 2026-10-13, içindeki her şeyin saat tarihidir.
   açıklamalı etiketi (etiket nesnesi
   `e735308d19fab5166a2f2f4a2860b857ad0e9362`) oluşturuldu. **Süreç notu.**
   Sahip etiketi, `main` commit'indeki koşu sürerken gönderdi (8 işi bitmişti,
-  hiçbiri başarısız olmamıştı); koşu sonradan başarıyla tamamlandı. Dosya
-  yayımlayan iş yalnız paketleme işine bağlıdır, test işlerine bağlı değildir;
-  bu yüzden "`main`'deki koşu bitti, sonra etiket" sırası amaçlanan sıradır ve
-  bu kez izlenmedi; aynı ağaç çekme isteğinde 24 işin 24'ünü geçmişti. Bu bir
+  hiçbiri başarısız olmamıştı); koşu sonradan başarıyla tamamlandı.
+  "`main`'deki koşu bitti, sonra etiket" sırası amaçlanan sıradır ve bu kez
+  izlenmedi (düzeltme 2026-10-14: bu notun önceki hâli yayımlayan işin yalnız
+  paketleme işine bağlı olduğunu, test işlerine bağlı olmadığını söylüyordu;
+  oysa yayımlayan iş paketleme işine, o da aynı koşunun her test ve derleme
+  işine bağlıdır, yani bir etiketin dosyaları ancak o koşu geçtikten sonra
+  yayımlanır; iki koşu arasındaki sıraya dair not geçerlidir); aynı ağaç çekme
+  isteğinde 24 işin 24'ünü geçmişti. Bu bir
   süreç notudur, sürümün kusuru değildir. Etiketin CI koşusu (38419289967), 24
   iş, başarılı, 15:30:58 UTC'de altı dosyayla ön sürüm yayımladı (platform
   arşivi SHA-256
@@ -4780,3 +4784,66 @@ değiştirmez. 2026-10-13, içindeki her şeyin saat tarihidir.
 - **Açık.** Yukarıdaki girdilerin açık bıraktığı her şey; bunlar arasında on
   yedinci gerçek sistem kaydının bıraktığı iki açık madde ve [sürüm
   notlarında](RELEASE-NOTES-v0.1.0-alpha.84.tr.md) sayılan sınırlar da var.
+
+### v0.1.0-alpha.85 adayı (P0.1/P0.2 alanı; ilke 2 ve 6; D-024; D-032; D-033; 2026-10-15)
+
+D-025 ilke 2 (bilinmeyen; yok, boş ya da başarı değildir) ve ilke 6 (ekran
+doğrulananı söyler); D-024; D-032; D-033. **Hiçbir P0 işi kapanmaz ya da
+ilerlemez.** P0.1–P0.5 kısmi kalır ve her açık kabul işi açık kalır. Bu girdi
+yayımlanmamış bir adayı kaydeder; 2026-10-15 girdinin saat tarihidir, andığı
+ölçüm 14 ve 15 Ekim 2026 UTC'de çalıştı.
+
+- **Adayın değiştirdikleri.** Bekleyen ekranlar (D-033): kurulum sahibin geçen
+  kontrolüyle tamamlanır (`GET /api/v1/setup?check=1&manual=1` bekleyen
+  çalışmayı uyandırır; istek hiçbir şeyi tamamlamaz ve hiçbir şey başlatmaz),
+  "henüz bilinmiyor" ile biten 60 sn'lik bir sınırla "Kurulum tamamlanıyor"
+  gösterir ve ters DNS beklemesini adıyla söyler; 37 bekleme durumunun
+  denetimi 19'unu değiştirdi, her kendiliğinden yeniden okuma bir GET'tir (güncelleme
+  kartınınki ve yayılan bir alan adınınki aynı anda tektir ve yalnız görünürken
+  çalışır; kurulum penceresininki ve kurulum sayfasınınki görünürlüğe bakmaz); alpha.84'ün O4–O6 gözlemleri,
+  Posta paketleri kartı, türlü posta profili cümleleri, sunucunun saatiyle
+  HSTS'nin kalan süresi (`hsts_retire_remaining_seconds`) ve kenar çubuğundaki
+  yapı kimliği. Agent'ta posta kimliği sorgusu, ilk ters DNS yanıtı eskiyse
+  sonraki çözümleyiciye sorar. Güncelleme yolunda, kurtarma çalıştırıcısında,
+  sürüm tabanında ya da yerel hizmetlerde değişiklik yok. Hangi denetimin
+  hangi koda dayandığını [sürüm notları](RELEASE-NOTES-v0.1.0-alpha.85.tr.md)
+  söyler.
+- **Dokunulan ilkeler.** İlke 2: sınırlı bir bekleme bir hata ya da olumsuz bir
+  durumla değil "henüz bilinmiyor" ile biter ve bilinen bir hata kendi
+  sözlerini korur; ekran görüntüsü turu, sonuç bilinmezken karşılanmamış bir
+  önkoşul gibi okunan "Gereksinimler bekleniyor" etiketini değiştirdi. İlke 6:
+  sahibin payına düşen iş bitmişken ekran artık "Sizi bekliyor" demez ve
+  reddedilen bir okuma hata yüzeyinde değil dikkat yüzeyinde durur. Yoklama
+  asla bir değişiklik başlatmaz ya da kabul etmez (D-024).
+- **Şema ya da sürüm geçişi.** Yok: alpha.84 etiketi ile aday arasında taşıma
+  yok (veritabanı şeması 44 kalır). Sürüm sırası, sürüm hazırlığı `5443fe055`'te
+  önceki olarak alpha.84 sürüm commit'i `f0157e6c8` ile 84'ten 85'e geçer;
+  geçiş kuralları değişmedi. **Kurtarma davranışı.** Değişmedi.
+- **Kanıt.** On sekizinci gerçek sistem kaydı,
+  [set16](../deploy/e2e/release-recovery/evidence/set16-20261014/README.md)
+  (14 Ekim 2026 22:16:46Z ile 15 Ekim 2026 00:01:17Z UTC arası; geçici
+  QEMU/KVM konukları; test lisanslı derlemeler; `native_evidence: false`).
+  Güncellemeyi ve kendiliğinden geri dönüşü iki dağıtımda ölçtü: Debian 13'e
+  temiz kurulum; Debian 13 ve Ubuntu 24.04'te alpha.84 etiketinin yerel yeniden
+  derlemesinden (`9f86eb43…`, yayımlanan `6dc899e5…` ile bayt bayt aynı değil)
+  sabit commit `d5d673eb`'ye (`89cf88397` artı sıra politikası) güncelleme, her
+  biri `succeeded / update_verified`, taban 85, defter 44; ve ikisinde de
+  kendiliğinden geri dönen kusurlu bir aday (`524f86dd`, yalnız-taşıma kusuru,
+  bir konuk sıfırlaması), `recovered / rollback_verified`, iki otomatik deneme,
+  Panel ve Agent alpha.84 olarak yanıt verdi. Her geri dönüşten sonra veritabanı
+  karşılaştırması `equal-except-volatile` idi: `managed_site_files`'ta yalnız
+  `observed_at` değişti, kararlı özet eşit (Debian `a39f9b86…`, Ubuntu
+  `985eed03…`); bu, set15'in açık bulgusunu bu sabit commit için yanıtlar
+  (yoklayıcı değişikliği `a87ce0b97`). Bileşen testleri:
+  `go test ./cmd/panel/...` 1542 geçti, 6 atlandı; `go test ./cmd/agent/...`
+  temiz bir bağlama ad alanında 1798 geçti, 29 atlandı; `npm test` 1391/1391.
+- **Açık.** Her geri dönüşten sonra kurtarma temel dosyası, çalışan derleme
+  alpha.84 olduğu hâlde kusurlu adayı adlandırmayı sürdürür (`524f86dd…`, sıra
+  85) ve taban 85 okur: set12 ve set15'in örüntüsü, kaydedildi ve
+  yargılanmadı. Tek ana makinede hücre başına tek çalıştırma; Arch
+  çalıştırılmadı; temiz Ubuntu kurulumu yok; sürüm hazırlığı commit'i (85
+  önyükleme sabitleri) ölçülmüş hiçbir derlemede yok; "Kurulum tamamlanıyor"a
+  ve güncelleme kartının meşgul durumuna gerçek sistemde ulaşılamadı; hiçbir
+  kurulu sunucu ölçülmedi. set16 bir ölçümdür, kabul kanıtı değildir ve hiçbir
+  P0 satırını kapatmaz. Yukarıdaki girdilerin açık bıraktığı her şey açık
+  kalır.

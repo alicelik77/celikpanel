@@ -898,7 +898,9 @@ export const enServerScreens = {
     'services.mutationReadiness.agent_mutation_active': 'Another component change is still running on this server. Wait for it to finish.',
     'services.mutationReadiness.host_lock_busy': 'Another server change still holds the operation lock. Wait briefly, then try again.',
     'services.mutationReadiness.package_manager_active': 'The operating system is installing or updating packages. Wait for it to finish.',
-    'services.mutationReadiness.state_unverified': 'CelikPanel could not safely verify that the server is idle. Refresh the page before making a change.',
+    'services.mutationReadiness.state_unverified': 'CelikPanel could not safely verify that the server is idle, so changes stay paused until it can.',
+    // Where the page reads readiness again by itself (2026-10-14): nothing to do, it lifts by itself.
+    'services.mutationReadiness.autoResume': 'This page checks again every few seconds and lifts this pause by itself; you do not need to reload it.',
     'services.confirm.start.title': 'Start {name}?',
     'services.confirm.start.description': 'This starts the service process. Features that use it may become reachable immediately.',
     'services.confirm.start.button': 'Start {name}',
@@ -970,6 +972,27 @@ export const enServerScreens = {
     'services.mailProfiles.dnsRequired': 'Configure and publish this server’s DNS identity before installing a mail stack. The profiles remain visible so you can review them.',
     'services.mailProfiles.dnsRequiredShort': 'Configure and publish the server DNS identity first.',
     'services.mailProfiles.status.unknown': 'Awaiting verified scan',
+    // The compiled profiles' descriptions and the server's profile sentences in
+    // the interface language (lib/mailProfileText.ts, 2026-10-14).
+    // Derlenmiş profillerin açıklamaları ve sunucunun profil cümleleri arayüz dilinde.
+    'services.mailProfiles.description.coreMail': 'Postfix SMTP and Dovecot IMAP/POP3 with authenticated submission.',
+    'services.mailProfiles.description.webmail': 'Core mail plus Nginx, PHP-FPM and Roundcube webmail.',
+    'services.mailProfiles.description.protectedMail': 'Core mail with Rspamd spam filtering.',
+    // The typed blocked and warning sentences (cmd/panel mailProfileTextCode, 2026-10-14);
+    // every code the Panel lists needs one here (tests/mail-profile-text.test.mjs).
+    'services.mailProfiles.code.state_unverified': 'The service state is not verified yet; the next component check verifies it.',
+    'services.mailProfiles.code.state_incomplete': 'The service state that was read is incomplete; the next component check reads it again.',
+    'services.mailProfiles.code.catalogue_incomplete': 'The server’s profile catalogue is incomplete.',
+    'services.mailProfiles.code.hostname_unknown': 'This server’s own hostname could not be read, so the mail hostname cannot be decided.',
+    'services.mailProfiles.code.dns_identity_not_ready': 'DNS identity is not ready. Install a supported DNS server and save the shared nameserver names and operating mode in Settings before installing a mail profile.',
+    'services.mailProfiles.code.component_not_installable': '{component} cannot be installed automatically on this server.',
+    'services.mailProfiles.code.component_conflict': '{component} conflicts with the installed {conflicting}.',
+    'services.mailProfiles.code.component_requires': '{component} requires {required}, which is not part of this profile.',
+    'services.mailProfiles.code.repair_to_verify': 'Components are running. Run Repair to verify and reconcile the complete mail profile, including mail TLS and authenticated submission.',
+    'services.mailProfiles.code.webmail_unverified': 'Whether the webmail runtime is ready is not verified yet; the next component check verifies it.',
+    'services.mailProfiles.code.roundcube_not_ready': 'Roundcube is installed, but its Unix-socket runtime is not ready.',
+    'services.mailProfiles.code.partly_present': 'Some components are already present. Installing this profile completes the full plan without removing the services already in place.',
+    'services.mailProfiles.attemptError': 'The last attempt reported: {error}',
     'services.mailProfiles.status.available': 'Ready to install',
     'services.mailProfiles.status.partial': 'Partially installed',
     'services.mailProfiles.status.complete': 'Components running',

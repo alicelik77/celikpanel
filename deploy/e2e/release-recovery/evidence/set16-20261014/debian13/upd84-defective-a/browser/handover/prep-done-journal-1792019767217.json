@@ -1,0 +1,9 @@
+{
+  "at": "2026-10-14T23:16:07Z",
+  "prep": "journal",
+  "result": {
+    "file": "steps/19-set16-browser-window/journal-window-2.txt",
+    "lines": 60,
+    "returncode": 0
+  }
+}

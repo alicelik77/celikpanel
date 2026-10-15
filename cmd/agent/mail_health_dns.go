@@ -82,21 +82,43 @@ func mailDNSIdentityAt(ctx context.Context, source, hostname string, resolvers [
 		}
 		reverse = out.String() + "ip6.arpa"
 	}
+	// A resolver's answer that is not the expected identity does not end the
+	// lookup: the next resolver is asked too. A reverse DNS name the owner has
+	// just changed at the server provider takes time to reach public DNS, and
+	// each resolver may keep the old answer (or the old "no such name") cached
+	// for up to the record's TTL. Any resolver that returns the expected name
+	// with a matching forward A/AAAA record proves the identity. When none does,
+	// the first conclusive observation is reported as before, except that a PTR
+	// naming the host whose forward record does not match yet is preferred:
+	// it shows the provider-side change has taken effect.
+	// Sahibin saglayicida yeni degistirdigi PTR yayilirken bir cozumleyici eski
+	// yaniti TTL boyunca onbellekte tutabilir; beklenen kimligi gosteren herhangi
+	// bir cozumleyici yeterlidir, yoksa ilk kesin gozlem bildirilir.
 	var lastErr error
+	observed := false
+	var observedPTR string
+	var observedAligned bool
+	observe := func(ptr string, aligned bool) {
+		if !observed || (aligned && !observedAligned) {
+			observed, observedPTR, observedAligned = true, ptr, aligned
+		}
+	}
 	for _, resolver := range resolvers {
 		names, err := queryMailDNSAnswer(ctx, resolver, reverse, dnsTypePTR)
 		if err != nil {
 			lastErr = err
 			continue
 		}
-		lastErr = nil
 		if len(names) == 0 {
-			return "", false, false, nil
+			observe("", false)
+			continue
 		}
+		matched := false
 		for _, name := range names {
 			if name != hostname {
 				continue
 			}
+			matched = true
 			addresses, err := queryMailDNSAnswer(ctx, resolver, hostname, qtype)
 			if err != nil {
 				lastErr = err
@@ -107,11 +129,15 @@ func mailDNSIdentityAt(ctx context.Context, source, hostname string, resolvers [
 					return hostname, true, true, nil
 				}
 			}
-			return hostname, true, false, nil
+			observe(hostname, true)
+			break
 		}
-		if lastErr == nil {
-			return names[0], false, false, nil
+		if !matched {
+			observe(names[0], false)
 		}
+	}
+	if observed {
+		return observedPTR, observedAligned, false, nil
 	}
 	if lastErr == nil {
 		lastErr = errNoMailDNSResolver

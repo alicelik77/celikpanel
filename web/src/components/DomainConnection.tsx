@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Copy, Globe, RefreshCw, ShieldCheck, AlertTriangle, Check } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
-import { Checking, CouldNotCheck, RemoteGate, StatusDot } from './ui';
-import { decodeList, useRemote } from '../lib/remote';
+import { Checking, CouldNotCheck, KeepWords, RemoteGate, StatusDot } from './ui';
+import { decodeList, lastKnown, useRemote } from '../lib/remote';
 import { HelpButton } from './HelpDrawer';
 
 // The screen that answers "what do I do at my registrar?" — and then checks.
@@ -113,10 +113,72 @@ function decodeConnection(raw: unknown): Connection {
     };
 }
 
+// While a DNS change is spreading the card checks again by itself (owner rule
+// 2026-10-14, audit row 35): the same GET as "Check again", every 30 s, only
+// while the tab is visible, one read at a time, for at most 30 minutes of a
+// visible page. Then it stops and says so; "Check again" still checks now.
+// DNS degisikligi yayilirken kart kendisi yeniden kontrol eder: "Tekrar kontrol
+// et" ile ayni GET, 30 sn'de bir, yalniz sekme gorunurken, en cok 30 dakika.
+export const DOMAIN_SPREAD_RECHECK_MS = 30_000;
+export const DOMAIN_SPREAD_AUTO_CHECKS = 60;
+
 export function DomainConnection({ domainId, domainName }: { domainId: number; domainName: string }) {
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
     const connection = useRemote(`/api/v1/domains/${domainId}/connection`, decodeConnection, { init: { cache: 'no-store' } });
     const recheck = () => void connection.retry();
+
+    const shown = lastKnown(connection.remote);
+    const spreading = shown?.value.propagation_pending === true;
+    const [autoStopped, setAutoStopped] = useState(false);
+    const autoChecks = useRef(0);
+    const latest = useRef(connection);
+    latest.current = connection;
+    useEffect(() => {
+        if (!spreading) {
+            autoChecks.current = 0;
+            setAutoStopped(false);
+            return;
+        }
+        if (autoStopped) return;
+        let stopped = false;
+        let timer: number | undefined;
+        const visible = () => document.visibilityState === 'visible';
+        const schedule = () => {
+            if (stopped || timer !== undefined || !visible()) return;
+            timer = window.setTimeout(() => { timer = undefined; void tick(); }, DOMAIN_SPREAD_RECHECK_MS);
+        };
+        const tick = async () => {
+            if (stopped || !visible()) return;
+            // The owner's own "Check again" is on its way: that is this check.
+            if (latest.current.reading) { schedule(); return; }
+            autoChecks.current += 1;
+            await latest.current.retry();
+            if (stopped) return;
+            if (autoChecks.current >= DOMAIN_SPREAD_AUTO_CHECKS) { setAutoStopped(true); return; }
+            schedule();
+        };
+        const onVisibility = () => {
+            if (visible()) { schedule(); return; }
+            if (timer !== undefined) window.clearTimeout(timer);
+            timer = undefined;
+        };
+        document.addEventListener('visibilitychange', onVisibility);
+        schedule();
+        return () => {
+            stopped = true;
+            if (timer !== undefined) window.clearTimeout(timer);
+            document.removeEventListener('visibilitychange', onVisibility);
+        };
+    }, [spreading, autoStopped]);
+    // When the last answer was written: the server's own stamp, else the moment
+    // this page received it. Shown as a time, never compared with this clock.
+    // Son yanitin zamani: sunucunun damgasi, yoksa sayfanin aldigi an; karsilastirilmaz.
+    const lastCheckedAt = (() => {
+        if (!shown) return '';
+        const stamped = Date.parse(shown.value.checked_at);
+        return new Date(Number.isFinite(stamped) ? stamped : shown.observedAt)
+            .toLocaleTimeString(locale === 'tr' ? 'tr-TR' : 'en-US');
+    })();
 
     // Two different things can be unknown here, and neither is "this domain
     // does not point here":
@@ -212,6 +274,18 @@ export function DomainConnection({ domainId, domainName }: { domainId: number; d
                 </div>
             </div>
 
+            {/* A change at the provider spreads by itself; the card checks again by
+                itself and says when it last did, and when it has stopped.
+                Sağlayıcıdaki değişiklik kendiliğinden yayılır; kart kendisi yeniden
+                kontrol eder, en son ne zaman ve ne zaman bıraktığını söyler. */}
+            {c.propagation_pending && (
+                <p role="status" aria-live="polite" className="mb-4 max-w-[75ch] text-xs leading-relaxed text-fg-muted" data-conn-spread-auto={autoStopped ? 'stopped' : 'checking'}>
+                    {autoStopped
+                        ? t('conn.propagation.autoStopped', { time: lastCheckedAt })
+                        : <>{t('conn.propagation.auto')} {t('conn.propagation.lastChecked', { time: lastCheckedAt })}</>}
+                </p>
+            )}
+
             {c.propagation_pending && c.resolver_observations?.length ? (
                 <div className="mb-4 rounded-lg border border-warning-mark/60 bg-warning-mark/20 p-3">
                     <p className="text-sm font-medium text-fg">{t('conn.propagation.title')}</p>
@@ -222,7 +296,7 @@ export function DomainConnection({ domainId, domainName }: { domainId: number; d
                                 <span className="font-medium text-fg">{observation.resolver}</span>
                                 {' — NS '}
                                 <span className="font-mono">
-                                    {observation.nameservers.length ? observation.nameservers.join(', ') : t('conn.none')}
+                                    {observation.nameservers.length ? <KeepWords text={observation.nameservers.join(', ')} /> : t('conn.none')}
                                 </span>
                                 {' · IP '}
                                 <span className="font-mono">

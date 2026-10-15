@@ -29,6 +29,7 @@ export const useI18n = () => ({ t: (key, vars={}) => {
     return text;
 }});
 export const Button = props => React.createElement('button', props);
+export const KeepWords = props => props.text;
 export const ErrorBanner = props => React.createElement('error-banner', props);
 export const AlertTriangle=()=>React.createElement('warning-icon');
 export const Loader2=()=>React.createElement('spinner-icon');
@@ -40,6 +41,9 @@ const overlaySource = compile(read('../src/components/OperationOverlay.tsx')).re
     return `from '${url}'`;
 });
 const Overlay = (await import(dataURL(`import React from '${reactURL}';\n${overlaySource}`))).default;
+// The overlay bounds a reconnect with a window timer; these tests do not fire it
+// (component-operation-reconnect-mounted.test.mjs does).
+globalThis.window = { setTimeout: () => 0, clearTimeout: () => {} };
 const base = { view:null, operation:null, label:'Nginx', submitting:false, recovering:false, refreshing:false, interrupted:false };
 const operation = (status='running', extra={}) => ({id:'op-123',phase:'installing',status,...extra});
 
@@ -77,7 +81,7 @@ for (const [locale,catalog] of Object.entries({en,tr})) {
             assert.ok(!text.includes(catalog['services.operation.backgroundHint']));
             assert.equal(tree.root.findAllByType('button').length,1);
             assert.equal(tree.root.findByType('button').props.children,catalog['common.reloadPage']);
-            let reloads=0; globalThis.window={location:{reload(){reloads++}}};
+            let reloads=0; globalThis.window={...globalThis.window,location:{reload(){reloads++}}};
             tree.root.findByType('button').props.onClick();
             assert.equal(reloads,1);
         });

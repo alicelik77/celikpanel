@@ -1,0 +1,1898 @@
+{
+  "lang": "en",
+  "viewport": "desktop",
+  "phases": [
+    {
+      "phase": "sign-in",
+      "started": "2026-10-14T22:32:32.488Z",
+      "ended": "2026-10-14T22:32:36.667Z",
+      "seconds": 4.2,
+      "scan_posts": 0,
+      "posts": []
+    },
+    {
+      "phase": "domains",
+      "started": "2026-10-14T22:32:36.670Z",
+      "ended": "2026-10-14T22:32:42.753Z",
+      "seconds": 6.1,
+      "scan_posts": 0,
+      "posts": [],
+      "load_at": "2026-10-14T22:32:37.166Z",
+      "first_state_row_shown": false,
+      "page_text_head": "No domains yet\n\nGet started by adding your first domain\n\nAdd domain",
+      "domains_reads": [
+        {
+          "status": 200,
+          "start": "2026-10-14T22:32:37.262Z",
+          "ms": 10,
+          "body": "[]\n"
+        }
+      ],
+      "sidebar": {
+        "at": "2026-10-14T22:32:42.733Z",
+        "aside": true,
+        "text": "CelikPanel\nDashboard\nHOSTING\nDomains\nDatabases\nUsers\nStore\nVPN\nSERVER\nComponents\n6\nMonitoring\nImport\nAudit log\nSettings\nSERVER INFORMATION\ndns-debian13\n192.0.2.10\nCelikPanel · v0.1.0-alpha.85 · build d5d673ebd95e\nd5d673ebd95eeb80d16f93577c340d4a9d6a9f36",
+        "stamp": [
+          "CelikPanel · v0.1.0-alpha.85 · build d5d673ebd95e"
+        ],
+        "picture": "domains-sidebar.png"
+      }
+    },
+    {
+      "phase": "sidebar",
+      "started": "2026-10-14T22:32:42.756Z",
+      "ended": "2026-10-14T22:32:52.068Z",
+      "seconds": 9.3,
+      "scan_posts": 0,
+      "posts": [],
+      "w1280": {
+        "at": "2026-10-14T22:32:46.480Z",
+        "name": "1280x800",
+        "viewport": {
+          "width": 1280,
+          "height": 800,
+          "phone": false
+        },
+        "menu_opened": null,
+        "found": true,
+        "via": "data-build-stamp",
+        "class": "inline-block whitespace-nowrap font-mono",
+        "white_space": "nowrap",
+        "word_break": "normal",
+        "display": "inline-block",
+        "id_text": "d5d673ebd95e",
+        "id_rects": [
+          {
+            "top": 772,
+            "left": 60,
+            "width": 89
+          }
+        ],
+        "id_on_one_line": true,
+        "build_word_top": 772,
+        "build_and_id_share_a_line": true,
+        "unit_box": {
+          "left": 16,
+          "right": 149,
+          "top": 772,
+          "width": 133
+        },
+        "container": "ASIDE",
+        "container_box": {
+          "left": 0,
+          "right": 256,
+          "width": 256
+        },
+        "overflows_container": false,
+        "stamp_line": "CelikPanel · v0.1.0-alpha.85 · build d5d673ebd95e d5d673ebd95eeb80d16f93577c340d4a9d6a9f36",
+        "title": "The git revision this panel is running. It comes from the running server, so it changes whenever a new build is actually live. — d5d673ebd95eeb80d16f93577c340d4a9d6a9f36",
+        "stamp_picture": true
+      },
+      "w390": {
+        "at": "2026-10-14T22:32:52.065Z",
+        "name": "390x844",
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "phone": true
+        },
+        "menu_opened": true,
+        "found": true,
+        "via": "data-build-stamp",
+        "class": "inline-block whitespace-nowrap font-mono",
+        "white_space": "nowrap",
+        "word_break": "normal",
+        "display": "inline-block",
+        "id_text": "d5d673ebd95e",
+        "id_rects": [
+          {
+            "top": 816,
+            "left": 60,
+            "width": 89
+          }
+        ],
+        "id_on_one_line": true,
+        "build_word_top": 816,
+        "build_and_id_share_a_line": true,
+        "unit_box": {
+          "left": 16,
+          "right": 149,
+          "top": 816,
+          "width": 133
+        },
+        "container": "DIV",
+        "container_box": {
+          "left": 16,
+          "right": 240,
+          "width": 224
+        },
+        "overflows_container": false,
+        "stamp_line": "CelikPanel · v0.1.0-alpha.85 · build d5d673ebd95e d5d673ebd95eeb80d16f93577c340d4a9d6a9f36",
+        "title": "The git revision this panel is running. It comes from the running server, so it changes whenever a new build is actually live. — d5d673ebd95eeb80d16f93577c340d4a9d6a9f36",
+        "stamp_picture": true
+      }
+    },
+    {
+      "phase": "dashboard",
+      "started": "2026-10-14T22:33:32.428Z",
+      "ended": "2026-10-14T22:35:03.359Z",
+      "seconds": 90.9,
+      "scan_posts": 1,
+      "posts": [
+        {
+          "page": "p2-dashboard",
+          "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+          "status": 200,
+          "start": "2026-10-14T22:33:32.995Z",
+          "end": "2026-10-14T22:33:33.859Z",
+          "ms": 864,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-14T22:33:34.933520661Z",
+            "scan_age_seconds": 0,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-14T22:33:34.933Z",
+            "guest_minus_browser_ms": {
+              "low": 1074,
+              "high": 1938
+            }
+          }
+        }
+      ],
+      "stale": {
+        "turn": 1,
+        "age_s": 317.3,
+        "absent": false,
+        "probe_scan": {
+          "scanned_at": "2026-10-14T22:28:16Z",
+          "age_s": 317.3
+        }
+      },
+      "load_at": "2026-10-14T22:33:32.795Z",
+      "observed_s": 90.6,
+      "mount": {
+        "first_managed_services_read_ms": 138,
+        "first_card_ms": 184,
+        "first_card_state": "checking"
+      },
+      "posts_conditional": 1,
+      "rescan_link_seen": false,
+      "rescan_link_seen_at": [],
+      "rescan_link_checks_note": "body text sampled every ~5 s and at 10 s",
+      "access_reads": [
+        {
+          "start": "2026-10-14T22:33:32.867Z",
+          "end": "2026-10-14T22:33:32.870Z",
+          "ms": 3,
+          "status": 200,
+          "after_load_ms": 72,
+          "since_previous_ms": null,
+          "access": {
+            "can_use_panel": true,
+            "valid_until": 1792017273,
+            "valid_for_seconds": 59.055,
+            "valid_for_seconds_type": "number",
+            "state": "active",
+            "observation": "known",
+            "keys": [
+              "can_use_panel",
+              "observation",
+              "state",
+              "valid_for_seconds",
+              "valid_until"
+            ],
+            "sent": "2026-10-14T22:33:32.867Z",
+            "received": "2026-10-14T22:33:32.870Z",
+            "valid_until_iso": "2026-10-14T22:34:33.000Z",
+            "old_rule_accepts_at_receipt": true,
+            "browser_deadline": "2026-10-14T22:34:31.922Z",
+            "old_rule_deadline_minus_new_ms": 1078,
+            "server_now": "2026-10-14T22:33:33.945Z",
+            "guest_minus_browser_ms": {
+              "low": 1075,
+              "high": 1078
+            }
+          },
+          "error": null
+        },
+        {
+          "start": "2026-10-14T22:34:16.929Z",
+          "end": "2026-10-14T22:34:16.934Z",
+          "ms": 5,
+          "status": 200,
+          "after_load_ms": 44134,
+          "since_previous_ms": 44062,
+          "access": {
+            "can_use_panel": true,
+            "valid_until": 1792017318,
+            "valid_for_seconds": 59.993,
+            "valid_for_seconds_type": "number",
+            "state": "active",
+            "observation": "known",
+            "keys": [
+              "can_use_panel",
+              "observation",
+              "state",
+              "valid_for_seconds",
+              "valid_until"
+            ],
+            "sent": "2026-10-14T22:34:16.929Z",
+            "received": "2026-10-14T22:34:16.934Z",
+            "valid_until_iso": "2026-10-14T22:35:18.000Z",
+            "old_rule_accepts_at_receipt": true,
+            "browser_deadline": "2026-10-14T22:35:16.922Z",
+            "old_rule_deadline_minus_new_ms": 1078,
+            "server_now": "2026-10-14T22:34:18.007Z",
+            "guest_minus_browser_ms": {
+              "low": 1073,
+              "high": 1078
+            }
+          },
+          "error": null
+        },
+        {
+          "start": "2026-10-14T22:34:32.878Z",
+          "end": "2026-10-14T22:34:32.882Z",
+          "ms": 4,
+          "status": 200,
+          "after_load_ms": 60083,
+          "since_previous_ms": 15949,
+          "access": {
+            "can_use_panel": true,
+            "valid_until": 1792017318,
+            "valid_for_seconds": 44.045,
+            "valid_for_seconds_type": "number",
+            "state": "active",
+            "observation": "known",
+            "keys": [
+              "can_use_panel",
+              "observation",
+              "state",
+              "valid_for_seconds",
+              "valid_until"
+            ],
+            "sent": "2026-10-14T22:34:32.878Z",
+            "received": "2026-10-14T22:34:32.882Z",
+            "valid_until_iso": "2026-10-14T22:35:18.000Z",
+            "old_rule_accepts_at_receipt": true,
+            "browser_deadline": "2026-10-14T22:35:16.923Z",
+            "old_rule_deadline_minus_new_ms": 1077,
+            "server_now": "2026-10-14T22:34:33.955Z",
+            "guest_minus_browser_ms": {
+              "low": 1073,
+              "high": 1077
+            }
+          },
+          "error": null
+        },
+        {
+          "start": "2026-10-14T22:35:01.935Z",
+          "end": "2026-10-14T22:35:01.938Z",
+          "ms": 3,
+          "status": 200,
+          "after_load_ms": 89140,
+          "since_previous_ms": 29057,
+          "access": {
+            "can_use_panel": true,
+            "valid_until": 1792017363,
+            "valid_for_seconds": 59.99,
+            "valid_for_seconds_type": "number",
+            "state": "active",
+            "observation": "known",
+            "keys": [
+              "can_use_panel",
+              "observation",
+              "state",
+              "valid_for_seconds",
+              "valid_until"
+            ],
+            "sent": "2026-10-14T22:35:01.935Z",
+            "received": "2026-10-14T22:35:01.938Z",
+            "valid_until_iso": "2026-10-14T22:36:03.000Z",
+            "old_rule_accepts_at_receipt": true,
+            "browser_deadline": "2026-10-14T22:36:01.925Z",
+            "old_rule_deadline_minus_new_ms": 1075,
+            "server_now": "2026-10-14T22:35:03.010Z",
+            "guest_minus_browser_ms": {
+              "low": 1072,
+              "high": 1075
+            }
+          },
+          "error": null
+        }
+      ],
+      "states": [
+        "absent",
+        "checking",
+        "known"
+      ],
+      "card_sequence": [
+        {
+          "at": "2026-10-14T22:33:32.843Z",
+          "state": "absent",
+          "vis": "visible",
+          "lasted_ms": 136,
+          "text": null
+        },
+        {
+          "at": "2026-10-14T22:33:32.979Z",
+          "state": "checking",
+          "vis": "visible",
+          "lasted_ms": 885,
+          "text": "System services Checking components…"
+        },
+        {
+          "at": "2026-10-14T22:33:33.864Z",
+          "state": "known",
+          "vis": "visible",
+          "lasted_ms": null,
+          "text": "System services 3 / 3 running / installed"
+        }
+      ],
+      "mail_states": [
+        "absent",
+        "partial"
+      ],
+      "mail_sequence": [
+        {
+          "at": "2026-10-14T22:33:32.843Z",
+          "state": "absent",
+          "spinners": null,
+          "vis": "visible",
+          "lasted_ms": 1021,
+          "old_wording": false,
+          "text": null
+        },
+        {
+          "at": "2026-10-14T22:33:33.864Z",
+          "state": "partial",
+          "spinners": 0,
+          "vis": "visible",
+          "lasted_ms": null,
+          "old_wording": false,
+          "text": "Mail stacks Partially installed Webmail: Some components are already present. Installing this profile completes the full plan without removing the services already in place. View mail stacks"
+        }
+      ],
+      "answers": [
+        {
+          "page": "p2-dashboard",
+          "method": "GET",
+          "url": "/api/v1/managed-services",
+          "status": 200,
+          "start": "2026-10-14T22:33:32.933Z",
+          "end": "2026-10-14T22:33:32.946Z",
+          "ms": 13,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-14T22:28:16Z",
+            "scan_age_seconds": 318.018,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-14T22:33:34.018Z",
+            "guest_minus_browser_ms": {
+              "low": 1072,
+              "high": 1085
+            }
+          }
+        },
+        {
+          "page": "p2-dashboard",
+          "method": "GET",
+          "url": "/api/v1/managed-services",
+          "status": 200,
+          "start": "2026-10-14T22:33:32.980Z",
+          "end": "2026-10-14T22:33:32.986Z",
+          "ms": 6,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-14T22:28:16Z",
+            "scan_age_seconds": 318.05,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-14T22:33:34.050Z",
+            "guest_minus_browser_ms": {
+              "low": 1064,
+              "high": 1070
+            }
+          }
+        },
+        {
+          "page": "p2-dashboard",
+          "method": "POST",
+          "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+          "status": 200,
+          "start": "2026-10-14T22:33:32.995Z",
+          "end": "2026-10-14T22:33:33.859Z",
+          "ms": 864,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-14T22:33:34.933520661Z",
+            "scan_age_seconds": 0,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-14T22:33:34.933Z",
+            "guest_minus_browser_ms": {
+              "low": 1074,
+              "high": 1938
+            }
+          }
+        }
+      ],
+      "sidebar": {
+        "at": "2026-10-14T22:35:03.343Z",
+        "aside": true,
+        "text": "CelikPanel\nDashboard\nHOSTING\nDomains\nDatabases\nUsers\nStore\nVPN\nSERVER\nComponents\n6\nMonitoring\nImport\nAudit log\nSettings\nSERVER INFORMATION\ndns-debian13\n192.0.2.10\nCelikPanel · v0.1.0-alpha.85 · build d5d673ebd95e\nd5d673ebd95eeb80d16f93577c340d4a9d6a9f36",
+        "stamp": [
+          "CelikPanel · v0.1.0-alpha.85 · build d5d673ebd95e"
+        ],
+        "picture": "dashboard-sidebar.png"
+      }
+    },
+    {
+      "phase": "components",
+      "started": "2026-10-14T22:35:03.364Z",
+      "ended": "2026-10-14T22:39:20.790Z",
+      "seconds": 257.4,
+      "scan_posts": 1,
+      "posts": [
+        {
+          "page": "p3-components-stale",
+          "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+          "status": 200,
+          "start": "2026-10-14T22:38:50.658Z",
+          "end": "2026-10-14T22:38:51.531Z",
+          "ms": 873,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-14T22:38:52.598881931Z",
+            "scan_age_seconds": 0,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-14T22:38:52.598Z",
+            "guest_minus_browser_ms": {
+              "low": 1067,
+              "high": 1940
+            }
+          }
+        }
+      ],
+      "fresh": {
+        "load_at": "2026-10-14T22:35:03.704Z",
+        "scan_posts": 0,
+        "posts": [],
+        "posts_conditional": 0,
+        "alerts": [],
+        "toasts": [],
+        "answers": [
+          {
+            "page": "p3-components-fresh",
+            "method": "GET",
+            "url": "/api/v1/managed-services",
+            "status": 200,
+            "start": "2026-10-14T22:35:03.815Z",
+            "end": "2026-10-14T22:35:03.859Z",
+            "ms": 44,
+            "answer": {
+              "code": null,
+              "scanned_at": "2026-10-14T22:33:34Z",
+              "scan_age_seconds": 90.91,
+              "scan_age_seconds_type": "number",
+              "services": 27,
+              "error": null,
+              "message": null,
+              "server_now": "2026-10-14T22:35:04.910Z",
+              "guest_minus_browser_ms": {
+                "low": 1051,
+                "high": 1095
+              }
+            }
+          },
+          {
+            "page": "p3-components-fresh",
+            "method": "GET",
+            "url": "/api/v1/managed-services",
+            "status": 200,
+            "start": "2026-10-14T22:35:03.815Z",
+            "end": "2026-10-14T22:35:03.859Z",
+            "ms": 44,
+            "answer": {
+              "code": null,
+              "scanned_at": "2026-10-14T22:33:34Z",
+              "scan_age_seconds": 90.913,
+              "scan_age_seconds_type": "number",
+              "services": 27,
+              "error": null,
+              "message": null,
+              "server_now": "2026-10-14T22:35:04.913Z",
+              "guest_minus_browser_ms": {
+                "low": 1054,
+                "high": 1098
+              }
+            }
+          }
+        ]
+      },
+      "stale": {
+        "turn": 1,
+        "age_s": 317.1,
+        "absent": false,
+        "probe_scan": {
+          "scanned_at": "2026-10-14T22:33:34Z",
+          "age_s": 317.1
+        }
+      },
+      "stale_load": {
+        "load_at": "2026-10-14T22:38:50.508Z",
+        "scan_posts": 1,
+        "posts": [
+          {
+            "page": "p3-components-stale",
+            "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+            "status": 200,
+            "start": "2026-10-14T22:38:50.658Z",
+            "end": "2026-10-14T22:38:51.531Z",
+            "ms": 873,
+            "answer": {
+              "code": null,
+              "scanned_at": "2026-10-14T22:38:52.598881931Z",
+              "scan_age_seconds": 0,
+              "scan_age_seconds_type": "number",
+              "services": 27,
+              "error": null,
+              "message": null,
+              "server_now": "2026-10-14T22:38:52.598Z",
+              "guest_minus_browser_ms": {
+                "low": 1067,
+                "high": 1940
+              }
+            }
+          }
+        ],
+        "posts_conditional": 1,
+        "alerts": [],
+        "toasts": [],
+        "answers": [
+          {
+            "page": "p3-components-stale",
+            "method": "GET",
+            "url": "/api/v1/managed-services",
+            "status": 200,
+            "start": "2026-10-14T22:38:50.613Z",
+            "end": "2026-10-14T22:38:50.654Z",
+            "ms": 41,
+            "answer": {
+              "code": null,
+              "scanned_at": "2026-10-14T22:33:34Z",
+              "scan_age_seconds": 317.698,
+              "scan_age_seconds_type": "number",
+              "services": 27,
+              "error": null,
+              "message": null,
+              "server_now": "2026-10-14T22:38:51.698Z",
+              "guest_minus_browser_ms": {
+                "low": 1044,
+                "high": 1085
+              }
+            }
+          },
+          {
+            "page": "p3-components-stale",
+            "method": "GET",
+            "url": "/api/v1/managed-services",
+            "status": 200,
+            "start": "2026-10-14T22:38:50.613Z",
+            "end": "2026-10-14T22:38:50.655Z",
+            "ms": 42,
+            "answer": {
+              "code": null,
+              "scanned_at": "2026-10-14T22:33:34Z",
+              "scan_age_seconds": 317.702,
+              "scan_age_seconds_type": "number",
+              "services": 27,
+              "error": null,
+              "message": null,
+              "server_now": "2026-10-14T22:38:51.702Z",
+              "guest_minus_browser_ms": {
+                "low": 1047,
+                "high": 1089
+              }
+            }
+          },
+          {
+            "page": "p3-components-stale",
+            "method": "POST",
+            "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+            "status": 200,
+            "start": "2026-10-14T22:38:50.658Z",
+            "end": "2026-10-14T22:38:51.531Z",
+            "ms": 873,
+            "answer": {
+              "code": null,
+              "scanned_at": "2026-10-14T22:38:52.598881931Z",
+              "scan_age_seconds": 0,
+              "scan_age_seconds_type": "number",
+              "services": 27,
+              "error": null,
+              "message": null,
+              "server_now": "2026-10-14T22:38:52.598Z",
+              "guest_minus_browser_ms": {
+                "low": 1067,
+                "high": 1940
+              }
+            }
+          }
+        ]
+      },
+      "scan_posts_fresh": 0,
+      "scan_posts_stale": 1
+    },
+    {
+      "phase": "clock",
+      "started": "2026-10-14T22:39:20.795Z",
+      "ended": "2026-10-14T22:41:58.238Z",
+      "seconds": 157.4,
+      "scan_posts": 0,
+      "posts": [],
+      "steps": [
+        {
+          "what": "prep clockshift_p90000",
+          "at": "2026-10-14T22:39:21.704Z",
+          "value": {
+            "at": "2026-10-14T22:39:21Z",
+            "prep": "clockshift_p90000",
+            "result": {
+              "after_clock": {
+                "returncode": 0
+              },
+              "after_epoch": 1792017652.680596,
+              "at": "2026-10-14T22:40:52Z",
+              "before_clock": {
+                "returncode": 0
+              },
+              "before_epoch": 1792017562.3583996,
+              "command": "date -u -s @<guest epoch +90000 ms>",
+              "epoch": 1792017652.691338,
+              "ntp_off_returncode": 0,
+              "returncode": 0,
+              "shift_ms": 90000,
+              "shift_total_ms": 90000,
+              "stderr": ""
+            },
+            "host_asked_ms": 1792017560795,
+            "host_got_ms": 1792017561701,
+            "guest_minus_host_ms_approx": 91443,
+            "guest_minus_host_ms_bounds": {
+              "low": 90990,
+              "high": 91896
+            }
+          }
+        },
+        {
+          "what": "prep clockshift_m180000",
+          "at": "2026-10-14T22:40:39.041Z",
+          "value": {
+            "at": "2026-10-14T22:40:38Z",
+            "prep": "clockshift_m180000",
+            "result": {
+              "after_clock": {
+                "returncode": 0
+              },
+              "after_epoch": 1792017550.0104156,
+              "at": "2026-10-14T22:39:10Z",
+              "before_clock": {
+                "returncode": 0
+              },
+              "before_epoch": 1792017729.9336364,
+              "command": "date -u -s @<guest epoch -180000 ms>",
+              "epoch": 1792017550.0250869,
+              "ntp_off_returncode": 0,
+              "returncode": 0,
+              "shift_ms": -180000,
+              "shift_total_ms": -90000,
+              "stderr": ""
+            },
+            "host_asked_ms": 1792017638262,
+            "host_got_ms": 1792017639038,
+            "guest_minus_host_ms_approx": -88625,
+            "guest_minus_host_ms_bounds": {
+              "low": -89013,
+              "high": -88237
+            }
+          }
+        },
+        {
+          "what": "prep clockshift_p90000 (back to the start)",
+          "at": "2026-10-14T22:41:56.397Z",
+          "value": {
+            "at": "2026-10-14T22:41:56Z",
+            "prep": "clockshift_p90000",
+            "result": {
+              "after_clock": {
+                "returncode": 0
+              },
+              "after_epoch": 1792017717.3699174,
+              "at": "2026-10-14T22:41:57Z",
+              "before_clock": {
+                "returncode": 0
+              },
+              "before_epoch": 1792017627.280495,
+              "command": "date -u -s @<guest epoch +90000 ms>",
+              "epoch": 1792017717.37998,
+              "ntp_off_returncode": 0,
+              "returncode": 0,
+              "shift_ms": 90000,
+              "shift_total_ms": 0,
+              "stderr": ""
+            },
+            "host_asked_ms": 1792017715614,
+            "host_got_ms": 1792017716392,
+            "guest_minus_host_ms_approx": 1377,
+            "guest_minus_host_ms_bounds": {
+              "low": 988,
+              "high": 1766
+            }
+          }
+        },
+        {
+          "what": "prep ntp-on",
+          "at": "2026-10-14T22:41:57.830Z",
+          "value": {
+            "at": "2026-10-14T22:41:57Z",
+            "prep": "ntp-on",
+            "result": {
+              "after_clock": {
+                "returncode": 0
+              },
+              "after_epoch": 1792017718.85689,
+              "at": "2026-10-14T22:41:58Z",
+              "before_clock": {
+                "returncode": 0
+              },
+              "before_epoch": 1792017718.591296,
+              "command": "timedatectl set-ntp true",
+              "epoch": 1792017718.8647046,
+              "ntp_off_returncode": null,
+              "returncode": 0,
+              "shift_ms": null,
+              "shift_total_ms": 0,
+              "stderr": ""
+            },
+            "host_asked_ms": 1792017716397,
+            "host_got_ms": 1792017717827,
+            "guest_minus_host_ms_approx": 1753,
+            "guest_minus_host_ms_bounds": {
+              "low": 1038,
+              "high": 2468
+            }
+          }
+        }
+      ],
+      "ahead": {
+        "tag": "ahead90",
+        "clock_before": {
+          "at": "2026-10-14T22:39:21.741Z",
+          "ms": 45,
+          "status": 200,
+          "bounds": {
+            "low": 91024,
+            "high": 91069
+          },
+          "mid": 91047,
+          "scanned_at": "2026-10-14T22:38:52Z",
+          "scan_age_seconds": 120.81
+        },
+        "clock_after": {
+          "at": "2026-10-14T22:40:37.886Z",
+          "ms": 57,
+          "status": 200,
+          "bounds": {
+            "low": 91015,
+            "high": 91072
+          },
+          "mid": 91044,
+          "scanned_at": "2026-10-14T22:38:52Z",
+          "scan_age_seconds": 196.958
+        },
+        "access_offsets_ms": [
+          {
+            "low": 91065,
+            "high": 91068
+          },
+          {
+            "low": 91065,
+            "high": 91068
+          },
+          {
+            "low": 91065,
+            "high": 91070
+          }
+        ],
+        "mounted": true,
+        "other_api_reads": 48,
+        "access_reads_whole_page": 3,
+        "old_rule_would_refuse": 0,
+        "load_at": "2026-10-14T22:39:22.458Z",
+        "observed_s": 75.4,
+        "mount": {
+          "first_managed_services_read_ms": 107,
+          "first_card_ms": 138,
+          "first_card_state": "checking"
+        },
+        "scan_posts": 0,
+        "posts": [],
+        "posts_conditional": 0,
+        "rescan_link_seen": false,
+        "rescan_link_seen_at": [],
+        "rescan_link_checks_note": "body text sampled every ~5 s and at 10 s",
+        "access_reads": [
+          {
+            "start": "2026-10-14T22:39:22.514Z",
+            "end": "2026-10-14T22:39:22.517Z",
+            "ms": 3,
+            "status": 200,
+            "after_load_ms": 56,
+            "since_previous_ms": null,
+            "access": {
+              "can_use_panel": true,
+              "valid_until": 1792017712,
+              "valid_for_seconds": 58.418,
+              "valid_for_seconds_type": "number",
+              "state": "active",
+              "observation": "known",
+              "keys": [
+                "can_use_panel",
+                "observation",
+                "state",
+                "valid_for_seconds",
+                "valid_until"
+              ],
+              "sent": "2026-10-14T22:39:22.514Z",
+              "received": "2026-10-14T22:39:22.517Z",
+              "valid_until_iso": "2026-10-14T22:41:52.000Z",
+              "old_rule_accepts_at_receipt": true,
+              "browser_deadline": "2026-10-14T22:40:20.932Z",
+              "old_rule_deadline_minus_new_ms": 91068,
+              "server_now": "2026-10-14T22:40:53.582Z",
+              "guest_minus_browser_ms": {
+                "low": 91065,
+                "high": 91068
+              }
+            },
+            "error": null
+          },
+          {
+            "start": "2026-10-14T22:40:05.937Z",
+            "end": "2026-10-14T22:40:05.940Z",
+            "ms": 3,
+            "status": 200,
+            "after_load_ms": 43479,
+            "since_previous_ms": 43423,
+            "access": {
+              "can_use_panel": true,
+              "valid_until": 1792017757,
+              "valid_for_seconds": 59.995,
+              "valid_for_seconds_type": "number",
+              "state": "active",
+              "observation": "known",
+              "keys": [
+                "can_use_panel",
+                "observation",
+                "state",
+                "valid_for_seconds",
+                "valid_until"
+              ],
+              "sent": "2026-10-14T22:40:05.937Z",
+              "received": "2026-10-14T22:40:05.940Z",
+              "valid_until_iso": "2026-10-14T22:42:37.000Z",
+              "old_rule_accepts_at_receipt": true,
+              "browser_deadline": "2026-10-14T22:41:05.932Z",
+              "old_rule_deadline_minus_new_ms": 91068,
+              "server_now": "2026-10-14T22:41:37.005Z",
+              "guest_minus_browser_ms": {
+                "low": 91065,
+                "high": 91068
+              }
+            },
+            "error": null
+          },
+          {
+            "start": "2026-10-14T22:40:22.522Z",
+            "end": "2026-10-14T22:40:22.527Z",
+            "ms": 5,
+            "status": 200,
+            "after_load_ms": 60064,
+            "since_previous_ms": 16585,
+            "access": {
+              "can_use_panel": true,
+              "valid_until": 1792017757,
+              "valid_for_seconds": 43.408,
+              "valid_for_seconds_type": "number",
+              "state": "active",
+              "observation": "known",
+              "keys": [
+                "can_use_panel",
+                "observation",
+                "state",
+                "valid_for_seconds",
+                "valid_until"
+              ],
+              "sent": "2026-10-14T22:40:22.522Z",
+              "received": "2026-10-14T22:40:22.527Z",
+              "valid_until_iso": "2026-10-14T22:42:37.000Z",
+              "old_rule_accepts_at_receipt": true,
+              "browser_deadline": "2026-10-14T22:41:05.930Z",
+              "old_rule_deadline_minus_new_ms": 91070,
+              "server_now": "2026-10-14T22:41:53.592Z",
+              "guest_minus_browser_ms": {
+                "low": 91065,
+                "high": 91070
+              }
+            },
+            "error": null
+          }
+        ],
+        "states": [
+          "absent",
+          "checking",
+          "known"
+        ],
+        "card_sequence": [
+          {
+            "at": "2026-10-14T22:39:22.494Z",
+            "state": "absent",
+            "vis": "visible",
+            "lasted_ms": 102,
+            "text": null
+          },
+          {
+            "at": "2026-10-14T22:39:22.596Z",
+            "state": "checking",
+            "vis": "visible",
+            "lasted_ms": 16,
+            "text": "System services Checking components…"
+          },
+          {
+            "at": "2026-10-14T22:39:22.612Z",
+            "state": "known",
+            "vis": "visible",
+            "lasted_ms": null,
+            "text": "System services 3 / 3 running / installed"
+          }
+        ],
+        "mail_states": [
+          "absent",
+          "partial"
+        ],
+        "mail_sequence": [
+          {
+            "at": "2026-10-14T22:39:22.494Z",
+            "state": "absent",
+            "spinners": null,
+            "vis": "visible",
+            "lasted_ms": 118,
+            "old_wording": false,
+            "text": null
+          },
+          {
+            "at": "2026-10-14T22:39:22.612Z",
+            "state": "partial",
+            "spinners": 0,
+            "vis": "visible",
+            "lasted_ms": null,
+            "old_wording": false,
+            "text": "Mail stacks Partially installed Webmail: Some components are already present. Installing this profile completes the full plan without removing the services already in place. View mail stacks"
+          }
+        ],
+        "answers": [
+          {
+            "page": "p5-dashboard-ahead90",
+            "method": "GET",
+            "url": "/api/v1/managed-services",
+            "status": 200,
+            "start": "2026-10-14T22:39:22.565Z",
+            "end": "2026-10-14T22:39:22.576Z",
+            "ms": 11,
+            "answer": {
+              "code": null,
+              "scanned_at": "2026-10-14T22:38:52Z",
+              "scan_age_seconds": 121.637,
+              "scan_age_seconds_type": "number",
+              "services": 27,
+              "error": null,
+              "message": null,
+              "server_now": "2026-10-14T22:40:53.637Z",
+              "guest_minus_browser_ms": {
+                "low": 91061,
+                "high": 91072
+              }
+            }
+          },
+          {
+            "page": "p5-dashboard-ahead90",
+            "method": "GET",
+            "url": "/api/v1/managed-services",
+            "status": 200,
+            "start": "2026-10-14T22:39:22.597Z",
+            "end": "2026-10-14T22:39:22.605Z",
+            "ms": 8,
+            "answer": {
+              "code": null,
+              "scanned_at": "2026-10-14T22:38:52Z",
+              "scan_age_seconds": 121.659,
+              "scan_age_seconds_type": "number",
+              "services": 27,
+              "error": null,
+              "message": null,
+              "server_now": "2026-10-14T22:40:53.659Z",
+              "guest_minus_browser_ms": {
+                "low": 91054,
+                "high": 91062
+              }
+            }
+          }
+        ],
+        "sidebar": {
+          "at": "2026-10-14T22:40:37.831Z",
+          "aside": true,
+          "text": "CelikPanel\nDashboard\nHOSTING\nDomains\nDatabases\nUsers\nStore\nVPN\nSERVER\nComponents\n6\nMonitoring\nImport\nAudit log\nSettings\nSERVER INFORMATION\ndns-debian13\n192.0.2.10\nCelikPanel · v0.1.0-alpha.85 · build d5d673ebd95e\nd5d673ebd95eeb80d16f93577c340d4a9d6a9f36",
+          "stamp": [
+            "CelikPanel · v0.1.0-alpha.85 · build d5d673ebd95e"
+          ],
+          "picture": "dashboard-ahead90-sidebar.png"
+        }
+      },
+      "behind": {
+        "tag": "behind90",
+        "clock_before": {
+          "at": "2026-10-14T22:40:39.076Z",
+          "ms": 43,
+          "status": 200,
+          "bounds": {
+            "low": -88974,
+            "high": -88931
+          },
+          "mid": -88952,
+          "scanned_at": "2026-10-14T22:38:52Z",
+          "scan_age_seconds": 18.145
+        },
+        "clock_after": {
+          "at": "2026-10-14T22:41:55.238Z",
+          "ms": 52,
+          "status": 200,
+          "bounds": {
+            "low": -88983,
+            "high": -88931
+          },
+          "mid": -88957,
+          "scanned_at": "2026-10-14T22:38:52Z",
+          "scan_age_seconds": 94.307
+        },
+        "access_offsets_ms": [
+          {
+            "low": -88937,
+            "high": -88934
+          },
+          {
+            "low": -88936,
+            "high": -88933
+          },
+          {
+            "low": -88936,
+            "high": -88932
+          }
+        ],
+        "mounted": true,
+        "other_api_reads": 48,
+        "access_reads_whole_page": 3,
+        "old_rule_would_refuse": 3,
+        "load_at": "2026-10-14T22:40:39.769Z",
+        "observed_s": 75.4,
+        "mount": {
+          "first_managed_services_read_ms": 108,
+          "first_card_ms": 139,
+          "first_card_state": "checking"
+        },
+        "scan_posts": 0,
+        "posts": [],
+        "posts_conditional": 0,
+        "rescan_link_seen": false,
+        "rescan_link_seen_at": [],
+        "rescan_link_checks_note": "body text sampled every ~5 s and at 10 s",
+        "access_reads": [
+          {
+            "start": "2026-10-14T22:40:39.827Z",
+            "end": "2026-10-14T22:40:39.830Z",
+            "ms": 3,
+            "status": 200,
+            "after_load_ms": 58,
+            "since_previous_ms": null,
+            "access": {
+              "can_use_panel": true,
+              "valid_until": 1792017610,
+              "valid_for_seconds": 59.107,
+              "valid_for_seconds_type": "number",
+              "state": "active",
+              "observation": "known",
+              "keys": [
+                "can_use_panel",
+                "observation",
+                "state",
+                "valid_for_seconds",
+                "valid_until"
+              ],
+              "sent": "2026-10-14T22:40:39.827Z",
+              "received": "2026-10-14T22:40:39.830Z",
+              "valid_until_iso": "2026-10-14T22:40:10.000Z",
+              "old_rule_accepts_at_receipt": false,
+              "browser_deadline": "2026-10-14T22:41:38.934Z",
+              "old_rule_deadline_minus_new_ms": -88934,
+              "server_now": "2026-10-14T22:39:10.893Z",
+              "guest_minus_browser_ms": {
+                "low": -88937,
+                "high": -88934
+              }
+            },
+            "error": null
+          },
+          {
+            "start": "2026-10-14T22:41:23.934Z",
+            "end": "2026-10-14T22:41:23.937Z",
+            "ms": 3,
+            "status": 200,
+            "after_load_ms": 44165,
+            "since_previous_ms": 44107,
+            "access": {
+              "can_use_panel": true,
+              "valid_until": 1792017655,
+              "valid_for_seconds": 59.999,
+              "valid_for_seconds_type": "number",
+              "state": "active",
+              "observation": "known",
+              "keys": [
+                "can_use_panel",
+                "observation",
+                "state",
+                "valid_for_seconds",
+                "valid_until"
+              ],
+              "sent": "2026-10-14T22:41:23.934Z",
+              "received": "2026-10-14T22:41:23.937Z",
+              "valid_until_iso": "2026-10-14T22:40:55.000Z",
+              "old_rule_accepts_at_receipt": false,
+              "browser_deadline": "2026-10-14T22:42:23.933Z",
+              "old_rule_deadline_minus_new_ms": -88933,
+              "server_now": "2026-10-14T22:39:55.001Z",
+              "guest_minus_browser_ms": {
+                "low": -88936,
+                "high": -88933
+              }
+            },
+            "error": null
+          },
+          {
+            "start": "2026-10-14T22:41:39.833Z",
+            "end": "2026-10-14T22:41:39.837Z",
+            "ms": 4,
+            "status": 200,
+            "after_load_ms": 60064,
+            "since_previous_ms": 15899,
+            "access": {
+              "can_use_panel": true,
+              "valid_until": 1792017655,
+              "valid_for_seconds": 44.099,
+              "valid_for_seconds_type": "number",
+              "state": "active",
+              "observation": "known",
+              "keys": [
+                "can_use_panel",
+                "observation",
+                "state",
+                "valid_for_seconds",
+                "valid_until"
+              ],
+              "sent": "2026-10-14T22:41:39.833Z",
+              "received": "2026-10-14T22:41:39.837Z",
+              "valid_until_iso": "2026-10-14T22:40:55.000Z",
+              "old_rule_accepts_at_receipt": false,
+              "browser_deadline": "2026-10-14T22:42:23.932Z",
+              "old_rule_deadline_minus_new_ms": -88932,
+              "server_now": "2026-10-14T22:40:10.901Z",
+              "guest_minus_browser_ms": {
+                "low": -88936,
+                "high": -88932
+              }
+            },
+            "error": null
+          }
+        ],
+        "states": [
+          "absent",
+          "checking",
+          "known"
+        ],
+        "card_sequence": [
+          {
+            "at": "2026-10-14T22:40:39.805Z",
+            "state": "absent",
+            "vis": "visible",
+            "lasted_ms": 103,
+            "text": null
+          },
+          {
+            "at": "2026-10-14T22:40:39.908Z",
+            "state": "checking",
+            "vis": "visible",
+            "lasted_ms": 14,
+            "text": "System services Checking components…"
+          },
+          {
+            "at": "2026-10-14T22:40:39.922Z",
+            "state": "known",
+            "vis": "visible",
+            "lasted_ms": null,
+            "text": "System services 3 / 3 running / installed"
+          }
+        ],
+        "mail_states": [
+          "absent",
+          "partial"
+        ],
+        "mail_sequence": [
+          {
+            "at": "2026-10-14T22:40:39.805Z",
+            "state": "absent",
+            "spinners": null,
+            "vis": "visible",
+            "lasted_ms": 117,
+            "old_wording": false,
+            "text": null
+          },
+          {
+            "at": "2026-10-14T22:40:39.922Z",
+            "state": "partial",
+            "spinners": 0,
+            "vis": "visible",
+            "lasted_ms": null,
+            "old_wording": false,
+            "text": "Mail stacks Partially installed Webmail: Some components are already present. Installing this profile completes the full plan without removing the services already in place. View mail stacks"
+          }
+        ],
+        "answers": [
+          {
+            "page": "p5-dashboard-behind90",
+            "method": "GET",
+            "url": "/api/v1/managed-services",
+            "status": 200,
+            "start": "2026-10-14T22:40:39.877Z",
+            "end": "2026-10-14T22:40:39.887Z",
+            "ms": 10,
+            "answer": {
+              "code": null,
+              "scanned_at": "2026-10-14T22:38:52Z",
+              "scan_age_seconds": 18.946,
+              "scan_age_seconds_type": "number",
+              "services": 27,
+              "error": null,
+              "message": null,
+              "server_now": "2026-10-14T22:39:10.946Z",
+              "guest_minus_browser_ms": {
+                "low": -88941,
+                "high": -88931
+              }
+            }
+          },
+          {
+            "page": "p5-dashboard-behind90",
+            "method": "GET",
+            "url": "/api/v1/managed-services",
+            "status": 200,
+            "start": "2026-10-14T22:40:39.909Z",
+            "end": "2026-10-14T22:40:39.915Z",
+            "ms": 6,
+            "answer": {
+              "code": null,
+              "scanned_at": "2026-10-14T22:38:52Z",
+              "scan_age_seconds": 18.965,
+              "scan_age_seconds_type": "number",
+              "services": 27,
+              "error": null,
+              "message": null,
+              "server_now": "2026-10-14T22:39:10.965Z",
+              "guest_minus_browser_ms": {
+                "low": -88950,
+                "high": -88944
+              }
+            }
+          }
+        ],
+        "sidebar": {
+          "at": "2026-10-14T22:41:55.178Z",
+          "aside": true,
+          "text": "CelikPanel\nDashboard\nHOSTING\nDomains\nDatabases\nUsers\nStore\nVPN\nSERVER\nComponents\n6\nMonitoring\nImport\nAudit log\nSettings\nSERVER INFORMATION\ndns-debian13\n192.0.2.10\nCelikPanel · v0.1.0-alpha.85 · build d5d673ebd95e\nd5d673ebd95eeb80d16f93577c340d4a9d6a9f36",
+          "stamp": [
+            "CelikPanel · v0.1.0-alpha.85 · build d5d673ebd95e"
+          ],
+          "picture": "dashboard-behind90-sidebar.png"
+        }
+      },
+      "restored": {
+        "at": "2026-10-14T22:41:57.866Z",
+        "ms": 43,
+        "status": 200,
+        "bounds": {
+          "low": 1025,
+          "high": 1068
+        },
+        "mid": 1047,
+        "scanned_at": "2026-10-14T22:38:52Z",
+        "scan_age_seconds": 186.934
+      }
+    },
+    {
+      "phase": "agent",
+      "started": "2026-10-14T22:41:58.245Z",
+      "ended": "2026-10-14T22:44:35.980Z",
+      "seconds": 157.7,
+      "scan_posts": 2,
+      "posts": [
+        {
+          "page": "p6-dashboard-en-agent-stopped",
+          "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+          "status": 503,
+          "start": "2026-10-14T22:44:01.788Z",
+          "end": "2026-10-14T22:44:01.791Z",
+          "ms": 3,
+          "answer": {
+            "code": "AGENT_UNREACHABLE",
+            "scanned_at": null,
+            "scan_age_seconds": "<absent>",
+            "scan_age_seconds_type": "absent",
+            "services": null,
+            "error": "The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.",
+            "message": null,
+            "body": "{\"error\":\"The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.\",\"code\":\"AGENT_UNREACHABLE\"}\n",
+            "body_mentions_socket": false
+          }
+        },
+        {
+          "page": "p6-components-tr-agent-stopped",
+          "url": "/api/v1/managed-services/scan",
+          "status": 200,
+          "start": "2026-10-14T22:44:15.857Z",
+          "end": "2026-10-14T22:44:16.707Z",
+          "ms": 850,
+          "answer": {
+            "code": null,
+            "scanned_at": "2026-10-14T22:44:17.772240806Z",
+            "scan_age_seconds": 0,
+            "scan_age_seconds_type": "number",
+            "services": 27,
+            "error": null,
+            "message": null,
+            "server_now": "2026-10-14T22:44:17.772Z",
+            "guest_minus_browser_ms": {
+              "low": 1065,
+              "high": 1915
+            }
+          }
+        }
+      ],
+      "stop": {
+        "at": "2026-10-14T22:41:59Z",
+        "prep": "agent-stop",
+        "result": {
+          "after": "inactive",
+          "at": "2026-10-14T22:42:00Z",
+          "before": "active",
+          "command": "systemctl stop celikpanel-agent.service",
+          "epoch": 1792017720.1110346,
+          "main_pid_after": "0",
+          "returncode": 0,
+          "waited_seconds": 0.02
+        },
+        "host_asked_ms": 1792017718245,
+        "host_got_ms": 1792017719121,
+        "guest_minus_host_ms_approx": 1428,
+        "guest_minus_host_ms_bounds": {
+          "low": 990,
+          "high": 1866
+        }
+      },
+      "components_tr_surface": {
+        "found": true,
+        "root": "main",
+        "danger_rgb": "rgb(179, 38, 30)",
+        "alerts": [
+          {
+            "text": "Güvenlik duvarı: Durum bilinmiyor CelikPanel etkin güvenlik duvarı politikasını doğrulayamadı. Durum güvenle okunana kadar kontroller devre dışı kalır. Bu sunucudaki CelikPanel Agent’ına ulaşılamıyor; bu yüzden istek yapılmadı ve hiçbir şey değiştirilmedi. Sunucunun sahibi Agent’ı sunucuda sudo syst",
+            "class": "mb-4 rounded-xl border border-warning-mark/60 bg-warning-mark/20 p-4",
+            "data_firewall_unread": true,
+            "border_color": "rgba(245, 179, 1, 0.6)",
+            "background_color": "rgba(245, 179, 1, 0.2)",
+            "color": "rgb(14, 31, 61)",
+            "failure_colour_on_alert": false,
+            "elements_in_failure_colour": [],
+            "width": 1120,
+            "celikpanel_agent_tokens": 3,
+            "celikpanel_agent_all_unbroken": true,
+            "token_runs": [
+              {
+                "tops": [
+                  196
+                ],
+                "unbroken": true,
+                "nowrap_parent": "nowrap"
+              },
+              {
+                "tops": [
+                  196
+                ],
+                "unbroken": true,
+                "nowrap_parent": "nowrap"
+              },
+              {
+                "tops": [
+                  196
+                ],
+                "unbroken": true,
+                "nowrap_parent": "nowrap"
+              }
+            ]
+          }
+        ]
+      },
+      "components_tr": {
+        "load_at": "2026-10-14T22:41:59.463Z",
+        "firewall_lines": [
+          "Güvenlik duvarı: Durum bilinmiyor",
+          "CelikPanel etkin güvenlik duvarı politikasını doğrulayamadı. Durum güvenle okunana kadar kontroller devre dışı kalır.",
+          "Firewall engine",
+          "nftables — the panel firewall's packet-filtering engine"
+        ],
+        "alerts": [
+          "Güvenlik duvarı: Durum bilinmiyor CelikPanel etkin güvenlik duvarı politikasını doğrulayamadı. Durum güvenle okunana kadar kontroller devre dışı kalır. Bu sunucudaki CelikPanel Agent’ına ulaşılamıyor; bu yüzden istek yapılmadı ve hiçbir şey değiştirilmedi. Sunucunun sahibi Agent’ı sunucuda sudo systemctl status celikpanel-agent komutuyla denetler (günlüğü: sudo journalctl -u celikpanel-agent); durmuşsa sudo systemctl start celikpanel-agent ile başlatır. Agent çalışınca yeniden deneyin. Kullanılamıyor"
+        ],
+        "html_lang": "en",
+        "agent_sentence_tr": true,
+        "agent_sentence_en": false,
+        "firewall_reads": [
+          {
+            "start": "2026-10-14T22:41:59.608Z",
+            "status": 503,
+            "ms": 10,
+            "agent_read": {
+              "ok": false,
+              "code": "AGENT_UNREACHABLE",
+              "error": "The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.",
+              "keys": [
+                "code",
+                "error"
+              ],
+              "body": "{\"error\":\"The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.\",\"code\":\"AGENT_UNREACHABLE\"}\n",
+              "body_mentions_socket": false
+            }
+          }
+        ],
+        "scan_posts": []
+      },
+      "components_tr_phone_surface": {
+        "found": true,
+        "root": "main",
+        "danger_rgb": "rgb(179, 38, 30)",
+        "alerts": [
+          {
+            "text": "Güvenlik duvarı: Durum bilinmiyor CelikPanel etkin güvenlik duvarı politikasını doğrulayamadı. Durum güvenle okunana kadar kontroller devre dışı kalır. Bu sunucudaki CelikPanel Agent’ına ulaşılamıyor; bu yüzden istek yapılmadı ve hiçbir şey değiştirilmedi. Sunucunun sahibi Agent’ı sunucuda sudo syst",
+            "class": "mb-4 rounded-xl border border-warning-mark/60 bg-warning-mark/20 p-4",
+            "data_firewall_unread": true,
+            "border_color": "rgba(245, 179, 1, 0.6)",
+            "background_color": "rgba(245, 179, 1, 0.2)",
+            "color": "rgb(14, 31, 61)",
+            "failure_colour_on_alert": false,
+            "elements_in_failure_colour": [],
+            "width": 342,
+            "celikpanel_agent_tokens": 3,
+            "celikpanel_agent_all_unbroken": true,
+            "token_runs": [
+              {
+                "tops": [
+                  335
+                ],
+                "unbroken": true,
+                "nowrap_parent": "nowrap"
+              },
+              {
+                "tops": [
+                  367
+                ],
+                "unbroken": true,
+                "nowrap_parent": "nowrap"
+              },
+              {
+                "tops": [
+                  383
+                ],
+                "unbroken": true,
+                "nowrap_parent": "nowrap"
+              }
+            ]
+          }
+        ]
+      },
+      "dashboard_tr": {
+        "load_at": "2026-10-14T22:42:50.865Z",
+        "attention": {
+          "found": true,
+          "text": "İlgi istiyor Bu sunucunun durumunun bir bölümü okunamadı; bu yüzden bu liste eksik olabilir. Bu sunucudaki CelikPanel Agent’ına ulaşılamıyor; bu yüzden istek yapılmadı ve hiçbir şey değiştirilmedi. Sunucunun sahibi Agent’ı sunucuda sudo systemctl status celikpanel-agent komutuyla denetler (günlüğü: sudo journalctl -u celikpanel-agent); durmuşsa sudo systemctl start celikpanel-agent ile başlatır. Agent çalışınca yeniden deneyin. Tekrar dene",
+          "busy": "false"
+        },
+        "attention_surface": {
+          "found": true,
+          "root": "[data-set16-attention]",
+          "danger_rgb": "rgb(179, 38, 30)",
+          "alerts": [
+            {
+              "text": "Bu sunucunun durumunun bir bölümü okunamadı; bu yüzden bu liste eksik olabilir. Bu sunucudaki CelikPanel Agent’ına ulaşılamıyor; bu yüzden istek yapılmadı ve hiçbir şey değiştirilmedi. Sunucunun sahibi Agent’ı sunucuda sudo systemctl status celikpanel-agent komutuyla denetler (günlüğü: sudo journalc",
+              "class": "flex items-start gap-2 rounded-lg border border-warning-mark/50 bg-warning-mark/20 p-3 text-sm leading-relaxed text-fg ",
+              "data_firewall_unread": false,
+              "border_color": "rgba(245, 179, 1, 0.5)",
+              "background_color": "rgba(245, 179, 1, 0.2)",
+              "color": "rgb(14, 31, 61)",
+              "failure_colour_on_alert": false,
+              "elements_in_failure_colour": [],
+              "width": 1120,
+              "celikpanel_agent_tokens": 3,
+              "celikpanel_agent_all_unbroken": true,
+              "token_runs": [
+                {
+                  "tops": [
+                    531
+                  ],
+                  "unbroken": true,
+                  "nowrap_parent": "nowrap"
+                },
+                {
+                  "tops": [
+                    553
+                  ],
+                  "unbroken": true,
+                  "nowrap_parent": "nowrap"
+                },
+                {
+                  "tops": [
+                    553
+                  ],
+                  "unbroken": true,
+                  "nowrap_parent": "nowrap"
+                }
+              ]
+            }
+          ]
+        },
+        "attention_names_agent": true,
+        "agent_sentence_other_language": false,
+        "states": [
+          "absent",
+          "checking",
+          "known"
+        ],
+        "mail_states": [
+          "absent",
+          "partial"
+        ],
+        "scan_posts": [],
+        "agent_reads": [
+          {
+            "url": "/api/v1/firewall",
+            "status": 503,
+            "agent_read": {
+              "ok": false,
+              "code": "AGENT_UNREACHABLE",
+              "error": "The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.",
+              "keys": [
+                "code",
+                "error"
+              ],
+              "body": "{\"error\":\"The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.\",\"code\":\"AGENT_UNREACHABLE\"}\n",
+              "body_mentions_socket": false
+            }
+          }
+        ]
+      },
+      "dashboard_en": {
+        "load_at": "2026-10-14T22:43:31.633Z",
+        "attention": {
+          "found": true,
+          "text": "Needs attention Part of this server’s state could not be read, so this list may be incomplete. The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again. Retry",
+          "busy": "false"
+        },
+        "attention_surface": {
+          "found": true,
+          "root": "[data-set16-attention]",
+          "danger_rgb": "rgb(179, 38, 30)",
+          "alerts": [
+            {
+              "text": "Part of this server’s state could not be read, so this list may be incomplete. The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo",
+              "class": "flex items-start gap-2 rounded-lg border border-warning-mark/50 bg-warning-mark/20 p-3 text-sm leading-relaxed text-fg ",
+              "data_firewall_unread": false,
+              "border_color": "rgba(245, 179, 1, 0.5)",
+              "background_color": "rgba(245, 179, 1, 0.2)",
+              "color": "rgb(14, 31, 61)",
+              "failure_colour_on_alert": false,
+              "elements_in_failure_colour": [],
+              "width": 1120,
+              "celikpanel_agent_tokens": 3,
+              "celikpanel_agent_all_unbroken": true,
+              "token_runs": [
+                {
+                  "tops": [
+                    757
+                  ],
+                  "unbroken": true,
+                  "nowrap_parent": "nowrap"
+                },
+                {
+                  "tops": [
+                    779
+                  ],
+                  "unbroken": true,
+                  "nowrap_parent": "nowrap"
+                },
+                {
+                  "tops": [
+                    779
+                  ],
+                  "unbroken": true,
+                  "nowrap_parent": "nowrap"
+                }
+              ]
+            }
+          ]
+        },
+        "attention_names_agent": true,
+        "agent_sentence_other_language": false,
+        "states": [
+          "absent",
+          "checking",
+          "known",
+          "checking",
+          "failed"
+        ],
+        "mail_states": [
+          "absent",
+          "partial",
+          "checking",
+          "check-failed"
+        ],
+        "scan_posts": [
+          {
+            "page": "p6-dashboard-en-agent-stopped",
+            "url": "/api/v1/managed-services/scan?max_age_seconds=300",
+            "status": 503,
+            "start": "2026-10-14T22:44:01.788Z",
+            "end": "2026-10-14T22:44:01.791Z",
+            "ms": 3,
+            "answer": {
+              "code": "AGENT_UNREACHABLE",
+              "scanned_at": null,
+              "scan_age_seconds": "<absent>",
+              "scan_age_seconds_type": "absent",
+              "services": null,
+              "error": "The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.",
+              "message": null,
+              "body": "{\"error\":\"The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.\",\"code\":\"AGENT_UNREACHABLE\"}\n",
+              "body_mentions_socket": false
+            }
+          }
+        ],
+        "agent_reads": [
+          {
+            "url": "/api/v1/firewall",
+            "status": 503,
+            "agent_read": {
+              "ok": false,
+              "code": "AGENT_UNREACHABLE",
+              "error": "The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.",
+              "keys": [
+                "code",
+                "error"
+              ],
+              "body": "{\"error\":\"The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.\",\"code\":\"AGENT_UNREACHABLE\"}\n",
+              "body_mentions_socket": false
+            }
+          }
+        ]
+      },
+      "start": {
+        "at": "2026-10-14T22:44:12Z",
+        "prep": "agent-start",
+        "result": {
+          "after": "active",
+          "at": "2026-10-14T22:44:13Z",
+          "before": "inactive",
+          "command": "systemctl start celikpanel-agent.service",
+          "epoch": 1792017853.4818625,
+          "main_pid_after": "16177",
+          "returncode": 0,
+          "waited_seconds": 0.07
+        },
+        "host_asked_ms": 1792017851972,
+        "host_got_ms": 1792017852528,
+        "guest_minus_host_ms_approx": 1232,
+        "guest_minus_host_ms_bounds": {
+          "low": 954,
+          "high": 1510
+        }
+      },
+      "components_tr_after_rescan": {
+        "pressed": true,
+        "press_at": "2026-10-14T22:44:15.850Z",
+        "firewall_lines": [
+          "Güvenlik duvarı: Açık",
+          "Firewall engine",
+          "nftables — the panel firewall's packet-filtering engine"
+        ],
+        "alerts": [],
+        "html_lang": "en",
+        "agent_sentence_tr": false,
+        "firewall_reads_after_press": [
+          {
+            "start": "2026-10-14T22:44:16.712Z",
+            "status": 200,
+            "ms": 16
+          }
+        ],
+        "scan_posts_after_press": [
+          {
+            "page": "p6-components-tr-agent-stopped",
+            "url": "/api/v1/managed-services/scan",
+            "status": 200,
+            "start": "2026-10-14T22:44:15.857Z",
+            "end": "2026-10-14T22:44:16.707Z",
+            "ms": 850,
+            "answer": {
+              "code": null,
+              "scanned_at": "2026-10-14T22:44:17.772240806Z",
+              "scan_age_seconds": 0,
+              "scan_age_seconds_type": "number",
+              "services": 27,
+              "error": null,
+              "message": null,
+              "server_now": "2026-10-14T22:44:17.772Z",
+              "guest_minus_browser_ms": {
+                "low": 1065,
+                "high": 1915
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "phase": "reads",
+      "started": "2026-10-14T22:44:35.988Z",
+      "ended": "2026-10-14T22:44:37.147Z",
+      "seconds": 1.2,
+      "scan_posts": 0,
+      "posts": [],
+      "reads": {
+        "/api/v1/panel/version": {
+          "status": 200,
+          "at": "2026-10-14T22:44:36.024Z",
+          "body": {
+            "agent_commit": "d5d673ebd95eeb80d16f93577c340d4a9d6a9f36",
+            "agent_matches": true,
+            "commit": "d5d673ebd95eeb80d16f93577c340d4a9d6a9f36",
+            "hostname": "dns-debian13",
+            "ipv4": "192.0.2.10",
+            "schema_version": 44,
+            "version": "v0.1.0-alpha.85"
+          }
+        },
+        "/api/v1/license/access": {
+          "status": 200,
+          "at": "2026-10-14T22:44:36.409Z",
+          "body": {
+            "can_use_panel": true,
+            "valid_until": 1792017913,
+            "valid_for_seconds": 35.516,
+            "state": "active",
+            "observation": "known"
+          }
+        },
+        "/api/v1/managed-services": {
+          "status": 200,
+          "at": "2026-10-14T22:44:36.781Z",
+          "body": {
+            "scanned_at": "2026-10-14T22:44:17Z",
+            "scan_age_seconds": 20.857,
+            "services": "<27 entries>",
+            "profiles": [
+              {
+                "verified": false,
+                "latest_attempt_status": "none",
+                "id": "core-mail",
+                "name": "Core Mail",
+                "description": "Postfix SMTP and Dovecot IMAP/POP3 with authenticated submission.",
+                "services": [
+                  "postfix",
+                  "dovecot"
+                ],
+                "status": "available",
+                "available": true
+              },
+              {
+                "verified": false,
+                "latest_attempt_status": "none",
+                "id": "webmail",
+                "name": "Webmail",
+                "description": "Core mail plus Nginx, PHP-FPM and Roundcube webmail.",
+                "services": [
+                  "postfix",
+                  "dovecot",
+                  "nginx",
+                  "php-fpm",
+                  "roundcube"
+                ],
+                "status": "partial",
+                "available": true,
+                "warning": "Some components are already present. Installing this profile will reconcile the full plan without removing completed services.",
+                "warning_code": "partly_present"
+              },
+              {
+                "verified": false,
+                "latest_attempt_status": "none",
+                "id": "protected-mail",
+                "name": "Spam-Protected Mail",
+                "description": "Core mail with Rspamd spam filtering.",
+                "services": [
+                  "postfix",
+                  "dovecot",
+                  "rspamd"
+                ],
+                "status": "available",
+                "available": true
+              }
+            ],
+            "dns_identity_ready": true,
+            "mail_hostname": {
+              "current": "dns-debian13",
+              "current_usable": false,
+              "will_set_hostname": false
+            }
+          }
+        }
+      }
+    }
+  ]
+}

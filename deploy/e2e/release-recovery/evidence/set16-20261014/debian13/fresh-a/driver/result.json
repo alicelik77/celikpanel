@@ -1,0 +1,156 @@
+{
+  "artifacts": {
+    "baseline": {
+      "commit": "d5d673ebd95eeb80d16f93577c340d4a9d6a9f36",
+      "sha256": "3913d51374ba8db47fd4acce0af21d0c4150690664809d8932e355dbfdff40ad",
+      "version": "v0.1.0-alpha.85"
+    }
+  },
+  "browser": {
+    "lang": "en",
+    "viewport": "desktop"
+  },
+  "cell": {
+    "components": [
+      "nginx",
+      "php-fpm",
+      "mariadb"
+    ],
+    "mail": false,
+    "name": "set16-debian13",
+    "node": "debian13",
+    "purpose": "web"
+  },
+  "cell_kind": "set16-fresh-install",
+  "findings": [
+    "debian13: web_mail was not attempted on the published v0.1.0-alpha.85 baseline (it accepts the plan but fails at 05-mail_profile); mail is recorded as not provided on this platform",
+    "debian13: server setup waits at access_dns (server_setup_access_dns_required) on an isolated host; later wizard steps were not run: ['09-panel_certificate', '10-verify']"
+  ],
+  "identity": {
+    "cell_id": "release-recovery__52e0e487d2f01e75",
+    "node": "debian13",
+    "vm_uuid": "266a3f67-8ca2-541b-a923-7af3b2dca721"
+  },
+  "native_evidence": false,
+  "note": "set16: a measurement on the fresh install; no update is started and no P0 row is judged. The browser's own records (requests, card texts, pictures) are written on the host.",
+  "outcome": {
+    "classification": "set16-measured",
+    "final_status": null
+  },
+  "overall": "complete-for-review",
+  "provenance": {
+    "what": "set16: the alpha.85-labelled fixture over 89cf88397 installed fresh; no update"
+  },
+  "request_id": null,
+  "schema": "celikpanel/upd1-owner-update-result/v1",
+  "setup": {
+    "components": [
+      "mariadb",
+      "nginx",
+      "php-fpm"
+    ],
+    "purpose": "web",
+    "waiting": {
+      "code": "server_setup_access_dns_required",
+      "mail_steps_reached": true,
+      "not_run": [
+        "09-panel_certificate",
+        "10-verify"
+      ],
+      "phase": "access_dns",
+      "polls": 25,
+      "stable_wait_seconds": 121.9,
+      "steps": {
+        "01-dns": "succeeded",
+        "02-service": "succeeded",
+        "03-service": "succeeded",
+        "04-service": "succeeded",
+        "05-service": "succeeded",
+        "06-service": "succeeded",
+        "07-firewall": "succeeded",
+        "08-access_dns": "running",
+        "09-panel_certificate": "pending",
+        "10-verify": "pending"
+      }
+    }
+  },
+  "steps": [
+    {
+      "finished_at": "2026-10-14T22:26:02Z",
+      "name": "set6-name-pinning",
+      "reason": null,
+      "started_at": "2026-10-14T22:25:58Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-14T22:26:08Z",
+      "name": "preflight",
+      "reason": null,
+      "started_at": "2026-10-14T22:26:02Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-14T22:26:15Z",
+      "name": "origin",
+      "reason": null,
+      "started_at": "2026-10-14T22:26:08Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-14T22:26:49Z",
+      "name": "baseline-install",
+      "reason": null,
+      "started_at": "2026-10-14T22:26:15Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-14T22:26:49Z",
+      "name": "owner-login",
+      "reason": null,
+      "started_at": "2026-10-14T22:26:49Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-14T22:26:50Z",
+      "name": "license",
+      "reason": null,
+      "started_at": "2026-10-14T22:26:49Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-14T22:30:24Z",
+      "name": "setup",
+      "reason": null,
+      "started_at": "2026-10-14T22:26:50Z",
+      "verdict": "observed"
+    },
+    {
+      "finished_at": "2026-10-14T22:30:25Z",
+      "name": "set16-readings",
+      "reason": null,
+      "started_at": "2026-10-14T22:30:24Z",
+      "verdict": "observed"
+    },
+    {
+      "finished_at": "2026-10-14T22:44:39Z",
+      "name": "set16-browser-window",
+      "reason": null,
+      "started_at": "2026-10-14T22:30:25Z",
+      "verdict": "observed"
+    },
+    {
+      "finished_at": "2026-10-14T22:44:39Z",
+      "name": "set6-name-pinning-at-the-end",
+      "reason": null,
+      "started_at": "2026-10-14T22:44:39Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-14T22:44:40Z",
+      "name": "collect",
+      "reason": null,
+      "started_at": "2026-10-14T22:44:39Z",
+      "verdict": "passed"
+    }
+  ]
+}

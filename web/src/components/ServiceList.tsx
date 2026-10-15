@@ -3,7 +3,7 @@ import { Settings, Play, Square, RotateCw, RefreshCw, ScanSearch, DownloadCloud,
 import type { LucideIcon } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
-import { Button, Checking, CouldNotCheck, Dialog, EmptyState, ErrorBanner, SearchInput, Spinner, StatusDot } from './ui';
+import { Button, Checking, CouldNotCheck, Dialog, EmptyState, ErrorBanner, KeepWords, SearchInput, Spinner, StatusDot } from './ui';
 import { PageHeader } from './PageHeader';
 import { readApiError, apiErrorText, type ApiError } from '../lib/apiError';
 import { ServiceActionNotice, isServiceActionOutcome } from './ServiceActionNotice';
@@ -24,6 +24,7 @@ import {
 } from './FirewallSSHNotice';
 import { Link, useLocation, useNavigate } from '../router';
 import { publishComponentCensus } from '../lib/componentCensus';
+import { mailProfileBlocked, mailProfileDescription, mailProfileName, mailProfileWarning } from '../lib/mailProfileText';
 
 // One installed copy of a runtime (B3b): php8.3-fpm is an instance, a Node
 // tree under /opt/celikpanel/runtimes is an instance. `unit` empty means the
@@ -418,6 +419,12 @@ export function ServiceList({ onManageService }: ServiceListProps) {
     const [services, setServices] = useState<ManagedService[]>([]);
     const [profiles, setProfiles] = useState<ManagedMailProfile[]>([]);
     const [scannedAt, setScannedAt] = useState<string | null>(null);
+    // Counts the scans this page has received. The firewall banner reads its
+    // state again with each, so it does not keep an Agent error the scan no
+    // longer shows (sixteenth record, O5).
+    // Bu sayfanin aldigi taramalari sayar; guvenlik duvari bandi her birinde
+    // durumunu yeniden okur.
+    const [scanRound, setScanRound] = useState(0);
     const [dnsIdentityReady, setDNSIdentityReady] = useState(false);
     const [mailHostname, setMailHostname] = useState<MailHostnameIdentity | null>(null);
     const [hostMutationReadiness, setHostMutationReadiness] = useState<HostMutationReadiness | null>(null);
@@ -473,6 +480,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
         const snapshot = parseManagedServicesSnapshot(value);
         if (!snapshot) return false;
         if (source === 'scan' && snapshot.scannedAt === null) return false;
+        if (source === 'scan') setScanRound((round) => round + 1);
 
         const currentScannedAt = latestScannedAtRef.current;
         const currentTimestamp = Date.parse(currentScannedAt || '');
@@ -1121,7 +1129,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
         setProfileTarget(null);
         await startInstall({
             serviceId: profile.id,
-            name: profile.name,
+            name: mailProfileName(profile, t),
             operationKind: 'mail_profile_install',
             ...(chosenHostname ? { mailHostname: chosenHostname } : {}),
         });
@@ -1183,12 +1191,15 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                 readiness={hostMutationReadiness}
                 readinessMessage={readinessMessage}
                 onRefreshReadiness={loadHostMutationReadiness}
+                refreshKey={scanRound}
             />
 
             {hostMutationReadiness?.ready === false && (
                 <section role='status' className='mb-4 rounded-xl border border-warning-mark/60 bg-warning-mark/20 px-4 py-3 text-sm text-fg'>
                     <span className='font-semibold'>{t('services.mutationReadiness.title')}</span>{' '}
-                    {readinessMessage}
+                    {readinessMessage}{' '}
+                    {/* The readiness poll above lifts this by itself (owner rule 2026-10-14). */}
+                    {t('services.mutationReadiness.autoResume')}
                 </section>
             )}
 
@@ -2016,8 +2027,8 @@ function MailProfileCards({ profiles, services, disabled, dnsIdentityReady, onIn
                         : profile.status === 'complete' && profile.warning
                         ? t('services.mailProfiles.profileComponentsNeedRepair')
                         : profile.status === 'blocked'
-                            ? profile.blocked_reason
-                            : profile.warning;
+                            ? mailProfileBlocked(profile, t)
+                            : mailProfileWarning(profile, t);
                     const ActionIcon = profile.status === 'available' ? DownloadCloud : RotateCw;
                     return (
                         <article key={profile.id} className='flex min-w-0 flex-col rounded-xl border border-border bg-surface p-4'>
@@ -2028,8 +2039,8 @@ function MailProfileCards({ profiles, services, disabled, dnsIdentityReady, onIn
                                         : <Mail className='h-5 w-5' />}
                                 </span>
                                 <div className='min-w-0'>
-                                    <h3 className='font-semibold text-fg'>{profile.name}</h3>
-                                    <p className='mt-1 text-xs leading-5 text-fg-muted'>{profile.description}</p>
+                                    <h3 className='font-semibold text-fg'>{mailProfileName(profile, t)}</h3>
+                                    <p className='mt-1 text-xs leading-5 text-fg-muted'>{mailProfileDescription(profile, t)}</p>
                                 </div>
                             </div>
                             <div className='mt-4 flex flex-wrap gap-1.5' aria-label={t('services.mailProfiles.includes')}>
@@ -2185,7 +2196,7 @@ function MailProfileInstallDialog({
         <Dialog
             id='mail-profile-confirm'
             width='xl'
-            title={t(`services.mailProfiles.plan.title.${mode}` as Parameters<typeof t>[0], { name: profile.name })}
+            title={t(`services.mailProfiles.plan.title.${mode}` as Parameters<typeof t>[0], { name: mailProfileName(profile, t) })}
             description={t('services.mailProfiles.plan.description')}
             onDismiss={onCancel}
             footerLead={
@@ -2213,7 +2224,7 @@ function MailProfileInstallDialog({
                         disabled={!acknowledged || !hostnameReady}
                         onClick={() => onConfirm(hostnameSettled ? '' : canonicalHostname ?? '')}
                     >
-                        {t(`services.mailProfiles.plan.confirm.${mode}` as Parameters<typeof t>[0], { name: profile.name })}
+                        {t(`services.mailProfiles.plan.confirm.${mode}` as Parameters<typeof t>[0], { name: mailProfileName(profile, t) })}
                     </Button>
                 </>
             }
@@ -2506,6 +2517,7 @@ function InstallServiceDialog({
                                     variant="secondary"
                                     onClick={() => setRepoAction('enable')}
                                     disabled={repoBusy || busy || !repoKnown || Boolean(repo.error_code && !repo.repairable)}
+                                    loading={repoBusy}
                                     icon={Layers}
                                 >
                                     {repoBusy ? t('services.repo.enabling') : t('services.repo.enable')}
@@ -2929,7 +2941,7 @@ function VersionDrawer({
                             <span className={`text-xs ${repoError ? 'text-danger' : 'text-fg-subtle'}`}>
                                 {repoError || t('services.repo.note')}
                             </span>
-                            <Button variant="secondary" onClick={() => setRepoAction('enable')} disabled={repoBusy || Boolean(repo.error_code && !repo.repairable)}>
+                            <Button variant="secondary" onClick={() => setRepoAction('enable')} disabled={repoBusy || Boolean(repo.error_code && !repo.repairable)} loading={repoBusy}>
                                 {repoBusy ? t('services.repo.enabling') : t('services.repo.enable')}
                             </Button>
                         </div>
@@ -3065,7 +3077,7 @@ function VersionDrawer({
                             <Button variant="secondary" onClick={() => setRemoveTarget(null)} disabled={removing}>
                                 {t('common.cancel')}
                             </Button>
-                            <Button variant="danger" onClick={() => removeVersion(removeTarget)} disabled={removing} icon={Trash2}>
+                            <Button variant="danger" onClick={() => removeVersion(removeTarget)} disabled={removing} loading={removing} icon={Trash2}>
                                 {removing ? t('services.uninstalling') : t('services.removeVersion')}
                             </Button>
                         </>
@@ -3214,10 +3226,13 @@ function FirewallBar({
     readiness,
     readinessMessage,
     onRefreshReadiness,
+    refreshKey,
 }: {
     readiness: HostMutationReadiness | null;
     readinessMessage: string;
     onRefreshReadiness: () => Promise<boolean>;
+    // Changes with each scan the page receives; the state is read again then.
+    refreshKey: number;
 }) {
     const { t } = useI18n();
     type FirewallViewStatus = {
@@ -3242,9 +3257,13 @@ function FirewallBar({
     // so an agent/permission/network failure can never be mistaken for an open firewall.
     // Başarısız durum okuması ne "açık" ne de "kapalı"dır. Agent/yetki/ağ
     // hatasının açık bir güvenlik duvarıyla karıştırılmaması için bu ayrımı koru.
+    // Only the latest read may set what the banner says.
+    // Bandin soyledigini yalniz en son okuma belirler.
+    const loadSeq = useRef(0);
     const load = async () => {
+        const seq = ++loadSeq.current;
         try {
-            const r = await fetch('/api/v1/firewall');
+            const r = await fetch('/api/v1/firewall', { cache: 'no-store' });
             let body: unknown;
             try {
                 body = await r.json();
@@ -3256,19 +3275,25 @@ function FirewallBar({
                 );
             }
 
-            const apiError =
-                typeof body === 'object' &&
-                body !== null &&
-                'error' in body &&
-                typeof body.error === 'string' &&
-                body.error.trim()
-                    ? body.error
-                    : '';
+            // A coded answer is said in the interface language (err.<CODE>, for
+            // example err.AGENT_UNREACHABLE); only an uncoded one keeps the
+            // server's own words (sixteenth record, O4).
+            // Kodlu yanit arayuz dilinde soylenir; yalniz kodsuz olan sunucunun
+            // kendi sozlerini korur.
+            const record = typeof body === 'object' && body !== null ? body as Record<string, unknown> : null;
+            const apiError: ApiError | null =
+                record && typeof record.error === 'string' && record.error.trim()
+                    ? {
+                        message: record.error,
+                        code: typeof record.code === 'string' && record.code ? record.code : undefined,
+                        reason: typeof record.reason === 'string' && record.reason ? record.reason : undefined,
+                    }
+                    : null;
             if (!r.ok) {
-                throw new Error(apiError || `${t('firewall.loadFailed')} (HTTP ${r.status})`);
+                throw new Error(apiError ? apiErrorText(apiError, t, 'firewall.loadFailed') : `${t('firewall.loadFailed')} (HTTP ${r.status})`);
             }
             if (apiError) {
-                throw new Error(apiError);
+                throw new Error(apiErrorText(apiError, t, 'firewall.loadFailed'));
             }
             if (
                 typeof body !== 'object' ||
@@ -3279,16 +3304,20 @@ function FirewallBar({
                 throw new Error(t('firewall.invalidResponse'));
             }
 
+            if (seq !== loadSeq.current) return;
             setSt(body as FirewallViewStatus);
             setStatusError(null);
         } catch (e) {
+            if (seq !== loadSeq.current) return;
             setSt(null);
             setStatusError(e instanceof Error && e.message ? e.message : t('firewall.loadFailed'));
         }
     };
+    // Read on mount and again with every scan the page receives.
+    // Acilista ve sayfanin aldigi her taramada yeniden okunur.
     useEffect(() => {
         void load();
-    }, []);
+    }, [refreshKey]);
 
     const toggle = async () => {
         if (!st) return;
@@ -3379,26 +3408,29 @@ function FirewallBar({
         else await toggle();
     };
 
+    // A read that failed is not a failure of the firewall: it stands on the
+    // attention surface with ink text, never in the failure colour (DESIGN.md,
+    // "could not check"; browser inspection 2026-10-14). The text keeps a
+    // readable width: on a phone the unavailable control goes under it
+    // instead of squeezing it to half the card.
+    // Basarisiz okuma guvenlik duvarinin basarisizligi degildir: dikkat
+    // yuzeyinde, murekkep metinle durur; telefonda denetim metnin altina iner.
     if (statusError) {
         return (
-            <section role="alert" className="mb-4 rounded-xl border border-danger/40 bg-danger/5 p-4">
-                <div className="flex flex-wrap items-center gap-3">
-                    <ShieldOff className="h-5 w-5 shrink-0 text-danger" />
-                    <div className="min-w-0 flex-1">
+            <section role="alert" className="mb-4 rounded-xl border border-warning-mark/60 bg-warning-mark/20 p-4" data-firewall-unread="">
+                <div className="flex flex-wrap items-start gap-3">
+                    <ShieldOff className="mt-0.5 h-5 w-5 shrink-0 text-warning" aria-hidden="true" />
+                    <div className="min-w-0 flex-1 basis-64">
                         <div className="text-sm font-semibold text-fg">
                             {t('firewall.title')}{' '}
-                            <span className="text-danger">{t('firewall.unknown')}</span>
+                            <span>{t('firewall.unknown')}</span>
                         </div>
                         <p className="text-xs text-fg-muted">{t('firewall.unknownHint')}</p>
-                        <p className="mt-1 break-words text-xs text-danger">{statusError}</p>
+                        <p className="mt-1 break-words text-xs text-fg"><KeepWords text={statusError} /></p>
                     </div>
-                    <button
-                        type="button"
-                        disabled
-                        className="cursor-not-allowed rounded-lg border border-border-strong bg-surface px-3 py-1.5 text-xs font-semibold text-fg opacity-50"
-                    >
+                    <Button type="button" variant="secondary" disabled>
                         {t('firewall.controlUnavailable')}
-                    </button>
+                    </Button>
                 </div>
             </section>
         );

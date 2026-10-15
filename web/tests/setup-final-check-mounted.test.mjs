@@ -49,6 +49,7 @@ export const Link = props => React.createElement('a', { ...props, href: props.to
 export const useServerSetup = () => globalThis.finalCheck.context;
 export const ServerSetupShell = props => React.createElement('main', null, props.navigation, props.children);
 export const Button = props => React.createElement('button', props);
+export const KeepWords = props => props.text;
 export const Spinner = () => React.createElement('span', null, 'loading');
 export const ArrowRight = () => null, Check = () => null, Circle = () => null, Loader2 = () => null;
 export const ServerSetupDNSConnection = () => null;
@@ -78,6 +79,10 @@ const scenarios = {
     // The owner's state: the plan was reopened while the final check waited for PTR.
     reopened: { snapshot: 'draft', execution: run({ status: 'failed', error: { code: 'server_setup_plan_revised', message: 'The administrator reopened the plan. Completed host changes remain in place.' }, checks: [ptrCheck] }) },
     waitingOwner: { snapshot: 'waiting', execution: run({ status: 'waiting', checks: [ptrCheck] }) },
+    // No PTR confirmed at all: still set at the provider, still spreads through DNS.
+    ptrMissing: { snapshot: 'waiting', execution: run({ status: 'waiting', checks: [{ ...ptrCheck, vars: { hostname: 'mail.example.com', ip: '203.0.113.42' } }] }) },
+    // A PTR wait together with a plan correction the owner makes in the panel.
+    ptrAndPlan: { snapshot: 'waiting', execution: run({ status: 'waiting', checks: [ptrCheck, { id: 'panel_https', state: 'action_required', code: 'panel_https_required' }, { id: 'mail_identity', state: 'action_required', code: 'mail_identity_required', reason: 'mail_name_not_canonical', vars: { name: 'mail' } }] }) },
     prerequisite: { snapshot: 'waiting', execution: run({ status: 'waiting', checks: [{ id: 'mail_delivery', state: 'action_required', code: 'mail_delivery_required' }] }) },
     unknown: { snapshot: 'waiting', execution: run({ status: 'waiting', checks: [{ id: 'mail_identity', state: 'unknown', code: 'mail_identity_unavailable' }] }) },
     // The Agent's reverse DNS lookup got no answer: unknown, not "no PTR" (2026-10-10).
@@ -150,19 +155,40 @@ for (const locale of ['en', 'tr']) {
         } finally { await unmount(tree); }
     });
 
-    test(`${locale}: a final check waiting for the owner names the reverse DNS, who sets it and how setup resumes, above the list`, async () => {
+    // Owner report 2026-10-14: after changing the PTR at the provider the owner
+    // kept asking what to do. The step says what it waits for, not "Waiting
+    // for you", and the guidance says a provider change takes time to reach
+    // public DNS and that nothing more is needed in CelikPanel.
+    test(`${locale}: a final check waiting for reverse DNS names it, who sets it, that the change takes time, and how setup resumes, above the list`, async () => {
         const { tree } = await mount('waitingOwner', locale);
         try {
             const page = textOf(tree.toJSON());
             const list = page.indexOf(c['setup.kind.verify']);
             before(page, c['setup.guide.verificationWaiting'], list);
+            before(page, c['setup.guide.reverseDNSPropagation'], list);
             before(page, c['setup.guide.verificationResume'], list);
+            assert.ok(page.indexOf('static.42.provider.example') < page.indexOf(c['setup.guide.reverseDNSPropagation']), 'the action comes before the wait');
+            assert.ok(page.indexOf(c['setup.guide.reverseDNSPropagation']) < page.indexOf(c['setup.guide.verificationResume']), 'how it resumes comes last');
             assert.ok(page.includes('203.0.113.42') && page.indexOf('static.42.provider.example') < list);
             assert.equal(insideDetails(tree, tree.root.findByProps({ 'data-check': 'mail_identity' })), false);
-            assert.equal(verifyState(tree), 'waitingOwner');
-            assert.ok(page.includes(c['setup.stepState.waitingOwner']));
+            assert.equal(verifyState(tree), 'waitingReverseDNS');
+            assert.ok(page.includes(c['setup.stepState.waitingReverseDNS']));
+            assert.ok(!page.includes(c['setup.stepState.waitingOwner']), 'not "Waiting for you"');
             assert.equal(tree.root.findAllByType('details').some(item => textOf(item.children.map(child => child.children ?? child)).includes(c['setup.guide.more'])), false, 'no folded "Checks and how to continue"');
         } finally { await unmount(tree); }
+    });
+
+    test(`${locale}: a reverse DNS name that could not be confirmed waits for reverse DNS too; a plan correction alongside it waits for the owner`, async () => {
+        for (const [name, state, wait] of [['ptrMissing', 'waitingReverseDNS', true], ['ptrAndPlan', 'waitingOwner', true]]) {
+            const { tree } = await mount(name, locale);
+            try {
+                const page = textOf(tree.toJSON());
+                const list = page.indexOf(c['setup.kind.verify']);
+                assert.equal(verifyState(tree), state, name);
+                assert.ok(page.includes(c[`setup.stepState.${state}`]), name);
+                if (wait) before(page, c['setup.guide.reverseDNSPropagation'], list);
+            } finally { await unmount(tree); }
+        }
     });
 
     test(`${locale}: an unmet prerequisite without a typed reason keeps its own sentence and its help, unfolded`, async () => {
@@ -174,6 +200,7 @@ for (const locale of ['en', 'tr']) {
             before(page, c['setup.guide.mailDelivery'], list);
             assert.equal(verifyState(tree), 'waitingRequirement');
             assert.ok(page.includes(c['setup.verifyWaiting']));
+            assert.ok(!page.includes(c['setup.guide.reverseDNSPropagation']), 'the DNS wait is said only for reverse DNS');
         } finally { await unmount(tree); }
     });
 

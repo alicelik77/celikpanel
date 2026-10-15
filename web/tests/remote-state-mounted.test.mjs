@@ -72,11 +72,12 @@ const subscriptionsURL = compileSource('lib/subscriptions.ts', besideRemote);
 const accountsURL = compileSource('lib/accounts.ts', besideRemote);
 const managedServicesURL = compileSource('lib/managedServices.ts', besideRemote);
 const sslTierURL = compileSource('lib/sslTier.ts', () => stub);
+const hstsRemainingURL = compileSource('lib/hstsRemaining.ts', () => stub);
 // The identity a state-changing request carries is the real one (D-029).
 const requestIdentityURL = compileSource('lib/requestIdentity.ts', () => stub);
 const own = {
   '/auth/domainAccess': domainAccessURL, '/lib/domainDeletionPending': deletionURL, '/lib/subscriptions': subscriptionsURL,
-  '/lib/accounts': accountsURL, '/lib/managedServices': managedServicesURL, '/lib/sslTier': sslTierURL,
+  '/lib/accounts': accountsURL, '/lib/managedServices': managedServicesURL, '/lib/sslTier': sslTierURL, '/lib/hstsRemaining': hstsRemainingURL,
   '/lib/requestIdentity': requestIdentityURL,
 };
 // The two notices of 10 Oct 2026 are the shipped ones: what a service action
@@ -1497,5 +1498,126 @@ test('every text of the three states exists in both languages, and the could-not
   for (const row of table) {
     if (!row.checking) continue;
     for (const catalogue of [englishCatalogue, turkishCatalogue]) assert.match(line(catalogue, row.checking), /…',$/, row.checking);
+  }
+});
+
+// --- The HSTS retirement and the clock rule (D-032, 2026-10-14) ---------------
+// The page took hsts_retire_after and compared it with the browser's clock. With
+// the server's clock behind, a retirement still running read as over, and the
+// removal the server refuses was offered; with it ahead, a finished one kept the
+// controls locked. The server now states the time left on its own clock.
+const sslWith = (settings) => () => {
+  const body = healthy['/api/v1/domains/1/ssl']();
+  return body.json().then((value) => Response.json({ ...value, settings: { ...value.settings, hsts_enabled: false, ...settings } }));
+};
+const minutes = (n) => new Date(Date.now() + n * 60_000).toISOString();
+const removeButton = () => buttons('ssl.remove')[0];
+
+for (const [name, settings, active] of [
+  ['the server clock behind the browser: the stamp has passed here, ten minutes are left there', { hsts_retire_after: minutes(-5), hsts_retire_remaining_seconds: 600 }, true],
+  ['the server clock ahead of the browser: the stamp is ahead here, nothing is left there', { hsts_retire_after: minutes(10), hsts_retire_remaining_seconds: 0 }, false],
+  ['an older server without the time left keeps the stamp rule', { hsts_retire_after: minutes(10) }, true],
+]) {
+  test(`Domain certificate, HSTS retirement — ${name}`, async () => {
+    serve({ '/api/v1/domains/1/ssl': sslWith(settings) });
+    // A running retirement ticks its countdown on the window's timer.
+    const timers = [];
+    globalThis.window.setTimeout = (fn, ms) => { timers.push(ms); return timers.length; };
+    globalThis.window.clearTimeout = () => {};
+    try {
+      await mount(DomainSSLSettings, { ...domain, mailAvailable: true });
+      assert.equal(has('ssl.hstsRetirementActive'), active, `retirement shown = ${has('ssl.hstsRetirementActive')}`);
+      assert.equal(removeButton().props.disabled, active, 'removing the certificate is offered only when the server allows it');
+    } finally { await cleanup(); }
+  });
+}
+
+// --- A certificate request in flight shows motion (owner rule 2026-10-14) ------
+test('Domain certificate: while a certificate is requested the button spins and nothing else can be sent', async () => {
+  const none = { domain_id: 1, domain_name: 'example.com', has_certificate: false, settings: { force_https: false, hsts_enabled: false, hsts_max_age: 300 } };
+  let finish;
+  serve({ '/api/v1/domains/1/ssl': () => Response.json(none) }, 'admin', {
+    '/api/v1/domains/1/ssl/letsencrypt': () => new Promise((resolve) => { finish = () => resolve(Response.json({ success: true })); }),
+  });
+  try {
+    await mount(DomainSSLSettings, { ...domain, mailAvailable: true });
+    await act(async () => { tree.root.findAllByProps({ type: 'email' })[0].props.onChange({ target: { value: 'owner@example.com' } }); await settled(); });
+    const issue = buttons('ssl.issue').find((node) => !node.props.disabled);
+    await act(async () => { void issue.props.onClick({}); await settled(); });
+    const busy = buttons('ssl.issuing')[0];
+    assert.ok(busy, 'the button names the request in flight');
+    assert.equal(busy.props['aria-busy'], true, 'the button shows its spinner');
+    assert.equal(busy.props.disabled, true);
+    assert.equal(calls.filter((call) => call.method === 'POST').length, 1);
+    await act(async () => { finish(); await settled(); await settled(); });
+  } finally { await cleanup(); }
+});
+
+test('Panel certificate: while the request runs the button spins', async () => {
+  let finish;
+  serve({ '/api/v1/panel/certificate': json({ https_enabled: false, self_signed: true, issuer: '', expires_at: '' }) }, 'admin', {
+    '/api/v1/panel/certificate': () => new Promise((resolve) => { finish = () => resolve(Response.json({ error: 'stopped by the test' }, { status: 409 })); }),
+  });
+  globalThis.currentTest.section = 'panel';
+  try {
+    await mount(Settings);
+    const field = tree.root.findAllByProps({ placeholder: 'panel.example.com' })[0];
+    assert.ok(field, 'the panel certificate form is on the page');
+    await act(async () => { field.props.onChange({ target: { value: 'panel.example.com' } }); await settled(); });
+    const issue = buttons('panelCert.issue').find((node) => !node.props.disabled);
+    assert.ok(issue, 'the request is offered');
+    await act(async () => { void issue.props.onClick({}); await settled(); });
+    const busy = buttons('panelCert.issuing')[0];
+    assert.ok(busy, 'the button names the request in flight');
+    assert.equal(busy.props['aria-busy'], true, 'the button shows its spinner');
+    if (finish) await act(async () => { finish(); await settled(); await settled(); });
+  } finally { await cleanup(); }
+});
+
+test('Import: while an archive is inspected the button spins', async () => {
+  serve({ '/api/v1/subscriptions': json({ subscriptions: [{ id: 3, name: 'Main', owner: 'admin' }] }) }, 'admin', {
+    '/api/v1/import/cpanel/inspect': () => new Promise(() => {}),
+  });
+  try {
+    await mount(ImportPage);
+    await act(async () => { tree.root.findAllByProps({ placeholder: '/var/lib/celikpanel-imports/cpmove-user.tar.gz' })[0].props.onChange({ target: { value: '/var/lib/celikpanel-imports/a.tar.gz' } }); await settled(); });
+    await act(async () => { void buttons('import.inspect')[0].props.onClick({}); await settled(); });
+    const busy = buttons('import.inspecting')[0];
+    assert.ok(busy, 'the button names the inspection in flight');
+    assert.equal(busy.props['aria-busy'], true, 'the button shows its spinner');
+    assert.equal(calls.filter((call) => call.method === 'POST').length, 1);
+  } finally { await cleanup(); }
+});
+
+// --- A paused server change lifts by itself (owner rule 2026-10-14) -----------
+// The install dialog read whether the server was ready once, when it opened, and
+// said "Wait for it to finish" with nothing ever reading again.
+test('A component page: the install dialog reads readiness again while the server is busy, says so, and lifts by itself', async () => {
+  let busy = true;
+  serve({
+    '/api/v1/managed-services': json({ services: [record({ is_installed: false, status: '', unit: undefined })] }),
+    '/api/v1/host-mutation-readiness': () => Response.json(busy ? { ready: false, code: 'HOST_MUTATION_BUSY', reason: 'package_manager_active' } : { ready: true }),
+  });
+  const timers = [];
+  const realSetInterval = globalThis.setInterval;
+  const realClearInterval = globalThis.clearInterval;
+  globalThis.setInterval = (fn, ms) => { timers.push({ fn, ms }); return timers.length; };
+  globalThis.clearInterval = () => {};
+  try {
+    await mount(ServiceShell, shell);
+    await press(buttons('svc.install')[0]);
+    assert.ok(has('services.mutationReadiness.package_manager_active'), text().slice(0, 600));
+    assert.ok(has('services.mutationReadiness.autoResume'), 'the dialog does not say the pause lifts by itself');
+    const poll = timers.find((item) => item.ms === 5000);
+    assert.ok(poll, 'the dialog does not read again');
+    busy = false;
+    await act(async () => { poll.fn(); await settled(); await settled(); });
+    assert.equal(reads('/api/v1/host-mutation-readiness'), 2);
+    assert.ok(!has('services.mutationReadiness.autoResume') && !has('services.mutationReadiness.package_manager_active'), 'the pause did not lift');
+    assert.equal(calls.filter((call) => call.method !== 'GET').length, 0, 'reading readiness changed something');
+  } finally {
+    globalThis.setInterval = realSetInterval;
+    globalThis.clearInterval = realClearInterval;
+    await cleanup();
   }
 });

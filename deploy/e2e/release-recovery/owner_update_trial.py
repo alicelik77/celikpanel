@@ -1716,6 +1716,37 @@ def volatile_tables(setup_waiting: bool) -> dict:
     return tables
 
 
+LEDGER_TABLE_NAME = "managed_site_files"
+
+
+def ledger_comparison(before: Any, after: Any) -> dict | None:
+    """The site-file ledger of two database observations (guest_probe.ledger_projection), or None when either lacks it.
+
+    Reports the full and the stable digest of both sides, whether each is equal, and which columns differ per row
+    (so a record shows what changed, not only that a digest did). ``stable_equal`` needs equal volatile-column lists.
+    """
+    old, new = (before or {}).get("site_file_ledger"), (after or {}).get("site_file_ledger")
+    keys = ("full_sha256", "stable_sha256", "volatile_columns", "rows", "row_count")
+    if not all(isinstance(x, dict) and all(k in x for k in keys) for x in (old, new)):
+        return None
+    old_rows = {r.get(old.get("columns", [None])[0], i): r for i, r in enumerate(old["rows"])}
+    new_rows = {r.get(new.get("columns", [None])[0], i): r for i, r in enumerate(new["rows"])}
+    changed = {str(key): sorted(c for c in set(old_rows[key]) | set(new_rows[key])
+                                if old_rows[key].get(c) != new_rows[key].get(c))
+               for key in sorted(old_rows.keys() & new_rows.keys(), key=str)
+               if old_rows[key] != new_rows[key]}
+    volatile = sorted(set(old["volatile_columns"]) | set(new["volatile_columns"]))
+    return {"full_sha256_before": old["full_sha256"], "full_sha256_after": new["full_sha256"],
+            "stable_sha256_before": old["stable_sha256"], "stable_sha256_after": new["stable_sha256"],
+            "full_equal": old["full_sha256"] == new["full_sha256"],
+            "stable_equal": old["stable_sha256"] == new["stable_sha256"]
+                            and old["volatile_columns"] == new["volatile_columns"],
+            "volatile_columns": volatile, "rows_before": old["row_count"], "rows_after": new["row_count"],
+            "rows_added": sorted(map(str, new_rows.keys() - old_rows.keys())),
+            "rows_removed": sorted(map(str, old_rows.keys() - new_rows.keys())),
+            "changed_columns_by_rowid": changed}
+
+
 def compare_databases(before: dict, after: dict, volatile: frozenset | dict = VOLATILE_TABLES) -> dict:
     try:
         pre, post = before["semantic"], after["semantic"]
@@ -1725,7 +1756,14 @@ def compare_databases(before: dict, after: dict, volatile: frozenset | dict = VO
     post_tables = {t["name"]: t for t in post.get("tables", [])}
     names = sorted(set(pre_tables) | set(post_tables))
     differing = [n for n in names if pre_tables.get(n, {}).get("sha256") != post_tables.get(n, {}).get("sha256")]
-    unexpected = [n for n in differing if n not in volatile]
+    # set15 (2026-10-13): managed_site_files differs on every start only through observed_at. When the probe
+    # recorded the rows' stable digest (columns that change on a plain start removed) and both are equal, the
+    # table is reported as volatile in those columns only; otherwise it stays unexpected.
+    ledger = ledger_comparison(before, after)
+    column_volatile = {}
+    if ledger and ledger["stable_equal"] and LEDGER_TABLE_NAME in differing and LEDGER_TABLE_NAME not in volatile:
+        column_volatile[LEDGER_TABLE_NAME] = ledger["volatile_columns"]
+    unexpected = [n for n in differing if n not in volatile and n not in column_volatile]
     schema_equal = pre.get("schema_sha256") == post.get("schema_sha256")
     verdict = "equal-except-volatile" if schema_equal and not unexpected else "different"
     if schema_equal and not differing:
@@ -1733,6 +1771,10 @@ def compare_databases(before: dict, after: dict, volatile: frozenset | dict = VO
     result = {"verdict": verdict, "schema_equal": schema_equal, "tables_compared": len(names),
               "differing": differing, "unexpected": unexpected, "volatile_excluded": sorted(volatile),
               "pre_sha256": pre.get("sha256"), "post_sha256": post.get("sha256")}
+    if ledger:
+        result["site_file_ledger"] = ledger
+    if column_volatile:
+        result["volatile_columns_only"] = column_volatile
     if isinstance(volatile, dict):
         result["volatile_reasons"] = {name: volatile[name] for name in sorted(volatile)}
     return result
@@ -4287,7 +4329,25 @@ class Trial:
             args += ["--operation-id", self.state["request_id"]]
         value = self.helper("guest_probe.py", None, *args, timeout=180)
         self.record_json(f"guest-observation-{label}.json", value)
+        self.record_site_file_ledger(label, value)
         return value
+
+    def record_site_file_ledger(self, label: str, value: Any) -> None:
+        """set15 finding: the rows of managed_site_files as JSON lines, with both digests on the first line, so a
+        later difference can be read from rows (guest_probe.ledger_projection). Never fails the observation."""
+        try:
+            ledger = ((value or {}).get("database") or {}).get("site_file_ledger")
+            if not isinstance(ledger, dict):
+                return
+            head = {k: ledger.get(k) for k in ("columns", "volatile_columns", "row_count", "full_sha256", "stable_sha256")}
+            text = "\n".join(json.dumps(item, sort_keys=True) for item in [{"ledger": head}, *ledger.get("rows", [])]) + "\n"
+            self.ev.write_text(f"{self.step_dir}/guest-observation-{label}-managed-site-files.jsonl", text)
+            digests = {k: ledger.get(k) for k in ("full_sha256", "stable_sha256", "row_count")}
+            self.state.setdefault("site_file_ledger_digests", {})[label] = digests
+            print(f"managed_site_files {label}: full_sha256={digests['full_sha256']} "
+                  f"stable_sha256={digests['stable_sha256']} rows={digests['row_count']}", file=sys.stderr, flush=True)
+        except Exception as exc:  # noqa: BLE001 - the observation itself is already recorded
+            print(f"managed_site_files {label}: rows not recorded ({type(exc).__name__})", file=sys.stderr, flush=True)
 
     def workload_snapshot(self, label: str, dns_server: str | None = None) -> dict:
         seed = self.state["seed"]

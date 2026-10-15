@@ -230,8 +230,14 @@ export function ServiceShell({
         };
 
         void checkReadiness();
+        // While the dialog is open the answer is read again, so a busy server
+        // lifts its pause by itself instead of leaving a static "wait" in place
+        // (owner rule 2026-10-14). Reads only.
+        // Pencere açıkken hazır olma durumu yeniden okunur; yalnız okur.
+        const timer = setInterval(() => void checkReadiness(), 5000);
         return () => {
             cancelled = true;
+            clearInterval(timer);
         };
     }, [installConfirmationOpen, serviceId]);
 
@@ -611,6 +617,7 @@ function ServiceInstallConfirmationDialog({
                         <span className="font-semibold">{t('services.mutationReadiness.title')} </span>
                     )}
                     {readinessMessage}
+                    {readiness?.ready === false && <>{' '}{t('services.mutationReadiness.autoResume')}</>}
                 </div>
             )}
         </Dialog>

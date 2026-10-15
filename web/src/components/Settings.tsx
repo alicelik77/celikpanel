@@ -824,6 +824,7 @@ function PanelCertificatePanel({ active }: { active: boolean }) {
                             variant="primary"
                             onClick={issue}
                             disabled={!certificateKnown || busy || pendingOperation !== null || restarting || !domain}
+                            loading={busy && !unconfirmed}
                         >
                             {busy && !unconfirmed ? t('panelCert.issuing') : t('panelCert.issue')}
                         </Button>

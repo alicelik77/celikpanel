@@ -21,6 +21,102 @@ git'te yaşar; bu dosya strateji içindir. En yeni en üstte.
 
 ---
 
+## D-033 · Sahibi bekleten bir ekran beklediğini gösterir ya da yapılacak bir şey olmadığını söyler
+
+*14 Ekim 2026 (saat tarihi) · Kurulu ikinci sunucudaki (Frankfurt, v0.1.0-alpha.84) kurulumun son adımından sonra sahip kararı; web arayüzünün okunmasıyla bulunan her bekleme durumuna (37 durum) kaynakta, bağlanan testler ve API taklidine karşı tarayıcıyla uygulandı (14 Ekim 2026); kısmen on sekizinci gerçek sistem kaydında ölçüldü (set16, 14 Ekim 2026 UTC: Dashboard'ın Posta paketleri kartı ve kenar çubuğundaki yapı kimliği Debian 13 ve Ubuntu 24.04'te; Agent durmuşken Bileşenler güvenlik duvarı şeridi ve "İlgi istiyor" kutusu yalnız Debian 13'te); kurulumun tamamlanmasına ve güncelleme kartının meşgul durumuna gerçek sistemde ulaşılamadı; kurulu bir sunucuda hiçbir şey ölçülmedi*
+
+Sahip 13 ve 14 Ekim 2026'da kurulu ikinci sunucuda kurulumun son adımı "Verify
+the prepared server" ile uğraştı. Son kontrol, sunucu adresinin ters DNS (PTR)
+adını bekliyordu. Sahip bu adı VPS sağlayıcısında çoktan değiştirmişti;
+sağlayıcı değişikliği hâlâ yayıyordu ve sorulan genel çözümleyici önbelleğindeki
+eski adla yanıt veriyordu. Sahibin payına düşen iş bitmiş olduğu hâlde adım
+"Waiting for you" diyordu; sağlayıcıdaki bir değişikliğin genel DNS'e ulaşmasının
+zaman aldığını ya da CelikPanel'de başka bir şey gerekmediğini söyleyen bir şey
+yoktu. "Check requirements again" bütün kontrolleri geçirdikten sonra adım,
+hareketsiz bir cümlenin ("These checks passed. Waiting for the server to confirm
+setup completion.") altında "Waiting for requirements" dedi; düğmeler etkindi,
+hareket yoktu; çalışma ancak bir sonraki 20 saniyelik geçişinde tamamlandı.
+Sahibin sözleri, özünde: bu insanların kafasını karıştırır; ne yapacaklarını
+bilmezler ve sabırsızlıkla bir şeylere basarlar; beklemeleri gerekiyorsa
+bekletilmeli ya da açıkça beklemeleri söylenmeli; işlem yapıyor görünmüyorken
+kimse iki dakika beklemez. Sahip ardından kuralı her ekran için koydu.
+
+Benimsenen kurallar:
+
+1. Kullanıcıyı bekleten bir ekran ya görünür biçimde bekler (hareketle; araya
+   girebilecek denetimler devre dışıdır) ya da yapılacak bir şey olmadığını ve
+   sayfanın kendiliğinden güncelleneceğini açıkça söyler. Yapabildiği yerde
+   ikisini birden yapar.
+2. İşi çabuk bitirir. Sahibin kendi eyleminin bitirebileceği bir bekleme (geçen
+   bir kontrol) bir sonraki zamanlayıcıda değil, o eylemle biter.
+3. Her beklemenin bir sınırı vardır. Sınırdan sonra ekran hareketini durdurur ve
+   dürüstçe sonucun henüz bilinmediğini, bunun bir hata olmadığını, kimin işlem
+   yapacağını ve neyin denetleneceğini, işin nasıl süreceğini söyler; bilinen bir
+   hata kendi sözlerini korur.
+4. Etkin düğmelerin yanında duran hareketsiz bir bekleme cümlesi kusurdur.
+5. Sahibin payına düşen iş bitmişken ekran hiçbir zaman "Sizi bekliyor" demez;
+   örneğin sağlayıcıda yapılan bir değişiklik yayılırken. Neyi beklediğini (ör.
+   "Ters DNS bekleniyor") ve bunun ne kadar sürebileceğini söyler.
+6. Okuyabileceği bir durumu bekleyen ekran, sahibe bir düğmeye bastırmak yerine
+   görünür olduğu sürece onu kendiliğinden yeniden okur (yalnız okuma).
+
+Sonuçları. Web arayüzü, bir sayfanın sunucuyu, bir arka plan işlemini, bir
+yoklamayı, bir sağlayıcıyı, lisansı ya da dış bir denetimi beklediği her durum
+için kaynaktan okundu: 37 durum. 18'i kurala zaten uyuyordu, 16'sı 14 Ekim
+2026'da değiştirildi; 3'ü (bağlantı kesildikten sonra bileşen işlem kilidi,
+panel güncelleme kartının hazır olma durumu ve bir alan adının yayılan DNS
+değişikliği) için sahip aynı gün karar verdi ve ardından onlar da değiştirildi.
+Seçilen sınırlar: kurulumun tamamlanması, kurulumun yeniden bağlanması ve
+bileşen kilidi için 60 saniye; güncelleme kartı sunucunun meşgul olduğunu
+söylerken hazır olma durumunun 5 saniyede bir yeniden okunması; yayılan bir alan
+adının 30 saniyede bir, en çok 60 kez kontrol edilmesi. Kurulumun son adımı
+artık sahibin geçen kontrolüyle tamamlanır. Satırlar, commit'ler ve testler
+[OPERATION-GUIDANCE](OPERATION-GUIDANCE.tr.md) içindeki 2026-10-14 tarihli iki
+kayıttadır; hangi denetimin hangi koda dayandığını v0.1.0-alpha.85 sürüm notları
+söyler.
+
+Bunun yetkilendirmediği:
+
+- Bir değişiklik başlatan ya da kabul eden yoklama. Bu kararın eklediği her
+  kendiliğinden yeniden okuma bir okumadır (GET); bir yeniden okuma asla ikinci
+  bir değişiklik başlatmaz. Güncelleme kartının ve yayılan alan adının yeniden
+  okumaları aynı anda tektir ve yalnız sayfa görünürken çalışır; bileşen kurulum
+  penceresinin 5 saniyelik yeniden okuması ve kurulum sayfasının okumaları
+  sekmenin görünürlüğüne bakmaz (açık; sürüm notlarına bakın).
+- Kimse bakmazken çalışan yeni bir zamanlayıcı ya da hareket olarak gösterilen
+  sınırsız bir bekleme: sınır hareketi bitirir ve bildirim sonucun bilinmediğini
+  söyler (kurulumun ve bileşen kilidinin okumaları ondan sonra da sürer). Kurulum
+  penceresinin yeniden okuması, sekme ne olursa olsun pencere açıkken çalışır;
+  bu bir açıktır, bir yetki değil.
+- Doğrulanmış bir hata ya da karşılanmamış bir önkoşul yerine "henüz
+  bilinmiyor": üçü ayrı kalır (D-024).
+- Her ekranın ölçüldüğü iddiası. Denetim koddan okundu; gerçek sistem kaydı bir
+  kısmına ulaştı; kurulu bir sunucuda hiçbir şey ölçülmedi.
+- Kurulu panellerde değişiklik. Panel güncellemeleri sahibin kalır, panelin
+  kendi güncelleme ekranından; hiçbir P0 işi kapanmaz ya da ilerlemez.
+
+Gerisiyle ilişkisi. D-024 her işlemin mevcut nedenini, kimin işlem yapacağını,
+sonraki eylemi ve işin nasıl süreceğini göstermesini ve doğrulanmış hata,
+karşılanmamış önkoşul ve bilinmeyen sonucu ayırmasını ister; bu karar onu
+beklemeye uygular ve bir beklemenin bekleme gibi görünmesi ve bitmesi gerektiğini
+ekler. D-032 (panel kendiliğinden bakar; okuyabileceği bir durumu öğrenmek için
+sahibe bir düğmeye bastırmaz), 6. kuralın sormak yerine yeniden okumasının
+nedenidir. Bilinen-durum kuralı, sınırın olumsuz bir durumla değil "henüz
+bilinmiyor" ile bitmesinin nedenidir. D-022 (sunucuyu sahibi işletir), sınırlı
+bildirimlerin bir şeyi yeniden başlatmak yerine sahibe paneli sunucuda nasıl
+denetleyeceğini söylemesinin nedenidir.
+
+Durum. v0.1.0-alpha.85 adayının dalında (yayımlanmadı) kaynakta, bağlanan
+testlerle. Bileşenler güvenlik duvarı şeridi, Dashboard'ın ilgi bildirimi ve
+Posta paketleri kartı ile kenar çubuğundaki yapı kimliği on sekizinci gerçek
+sistem kaydında ölçüldü. Kurulumun tamamlanmasına, güncelleme kartının meşgul
+durumuna, bileşen kilidinin yeniden bağlanmasına ve yayılan alan adı
+kontrollerine gerçek sistemde ulaşılamadı. Bir gerçek sistem çalıştırması, kurulu
+bir sunucu ve kurulum penceresinin ile kurulum sayfasının okumalarının
+görünürlüğe bağlanması için açık.
+
+---
+
 ## D-032 · Panel kendiliğinden bakar; okuyabileceği bir durumu öğrenmek için sahibe bir düğmeye basmasını asla söylemez
 
 *12 Ekim 2026 (saat tarihi) · v0.1.0-alpha.83 güncellemesinden sonra sahip kararı; kaynakta, bileşen testleri ve API taklidine karşı tarayıcıyla; ilk adım on dördüncü gerçek sistem kaydında ölçüldü (Debian 13, Ubuntu 24.04, 12 Ekim 2026 UTC); tarama yaşı saat kuralı ile tarama ve kabul denetimindeki tipli Agent yanıtı on beşinci kayıtta ölçüldü (Debian 13, 13 Ekim 2026 UTC); lisans denetiminin kalan süresi, ortak hata yazıcısındaki Agent yanıtı ve okuma şeridi (13 Ekim 2026) bileşen testli, sonra on altıncı kayıtta Debian 13'te ölçüldü (set14c, 13 Ekim 2026 UTC); on beşinci kayıtta bulunan lisans denetimi kusuru orada yok*

@@ -416,7 +416,7 @@ export function ImportPage() {
                     </label>
                     <ErrorBanner error={refusal} className="mt-4" />
                     <div className="mt-4 flex justify-end">
-                        <Button variant="primary" icon={Eye} onClick={inspect} disabled={busy || !path.trim()}>
+                        <Button variant="primary" icon={Eye} onClick={inspect} disabled={busy || !path.trim()} loading={busy}>
                             {busy ? t('import.inspecting') : t('import.inspect')}
                         </Button>
                     </div>
@@ -546,7 +546,7 @@ export function ImportPage() {
                                 Kaybolan yanıttan sonra, bir kontrol alan adının
                                 olmadığını göstermedikçe yeniden sunulmaz. */}
                             {(!unknownResult || unknownResult.check === 'absent') && (
-                                <Button variant="primary" icon={FolderInput} onClick={runImport} disabled={busy || !subsKnown || subID === 0 || !targetDomain}>
+                                <Button variant="primary" icon={FolderInput} onClick={runImport} disabled={busy || !subsKnown || subID === 0 || !targetDomain} loading={busy}>
                                     {busy ? t('import.running') : t(unknownResult ? 'import.runAgain' : 'import.run')}
                                 </Button>
                             )}

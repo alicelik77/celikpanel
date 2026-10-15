@@ -21,6 +21,99 @@ Code decisions live in git; this file is for strategy. Newest first.
 
 ---
 
+## D-033 · A screen that makes the owner wait shows that it waits, or says that nothing needs to be done
+
+*October 14, 2026 (clock date) · Owner decision after the final setup step on the second installed server (Frankfurt, v0.1.0-alpha.84); applied in source to every waiting state found by a read of the web interface (37 states), with mounted tests and a mock browser (2026-10-14); partly measured in the eighteenth native record (set16, 2026-10-14 UTC: the Dashboard's Mail stacks card and the sidebar build id on Debian 13 and Ubuntu 24.04; the Components firewall banner and the "Needs attention" box with the Agent stopped on Debian 13 only); setup finishing and the update card's busy state not reached natively; nothing measured on an installed server*
+
+On 2026-10-13 and 2026-10-14 the owner worked through the last step of setup,
+"Verify the prepared server", on the second installed server. The final check
+waited for the reverse DNS (PTR) name of the server's address. The owner had
+already changed it at the VPS provider; the provider was still spreading the
+change, and the public resolver asked still answered the old name from its
+cache. The step read "Waiting for you", although the owner's part was done, and
+nothing said that a change at the provider takes time to reach public DNS or
+that nothing more was needed in CelikPanel. After "Check requirements again"
+passed every check, the step read "Waiting for requirements" under a still
+sentence ("These checks passed. Waiting for the server to confirm setup
+completion."), with the buttons enabled and no motion; the run completed only on
+its next 20-second pass. In substance, the owner's words: this confuses people;
+they will not know what to do and will press things impatiently; if they must
+wait, make them wait or tell them clearly to wait; nobody waits two minutes
+while nothing seems to happen. The owner then set the rule for every screen.
+
+The rules adopted:
+
+1. A screen that makes the user wait either visibly waits (motion, with the
+   controls that would interfere disabled) or says plainly that nothing needs
+   to be done and that the page updates by itself. Where it can, it does both.
+2. It finishes promptly. A wait that the owner's own action can end (a passing
+   check) ends on that action, not on the next timer.
+3. A wait has a bound. After it, the screen stops its motion and says honestly
+   that the result is not known yet, that this is not a failure, who acts and
+   what to check, and how work resumes; a known failure keeps its own wording.
+4. A static waiting sentence beside enabled buttons is a defect.
+5. A screen never says "Waiting for you" when the owner's part is already done,
+   for example while a change made at a provider spreads. It names what it
+   waits for (for instance "Waiting for reverse DNS") and how long that can
+   take.
+6. A screen that waits for a state it can read reads it again by itself while
+   it is visible (reads only), instead of asking the owner to press a button.
+
+Consequences. The web interface was read from source for every state in which
+a page waits for the server, a background operation, a poll, a provider, the
+licence or an external check: 37 states. 18 already met the rule, 16 were
+changed on 2026-10-14, and 3 (the component operation lock after a lost
+connection, the panel update card's readiness and a domain's spreading DNS
+change) were decided by the owner the same day and changed after that. The
+bounds chosen: 60 seconds for setup finishing, setup reconnecting and the
+component lock; readiness re-read every 5 seconds while the update card says
+the server is busy; a spreading domain checked every 30 seconds for at most 60
+checks. The last step of setup now finishes on the owner's passing check. The
+rows, the commits and the tests are in
+[OPERATION-GUIDANCE](OPERATION-GUIDANCE.md), the two entries of 2026-10-14; the
+release notes of v0.1.0-alpha.85 say which check rests on which code.
+
+What this does not authorise:
+
+- No polling that starts or admits a mutation. Every automatic re-read added by
+  this decision is a read (GET); a re-read never starts a second change. The
+  update card's and the spreading domain's re-reads run one at a time and only
+  while the page is visible; the component install dialog's 5-second re-read
+  and the setup page's reads do not check visibility (open; see the release
+  notes).
+- No new timer that runs when nobody is looking, and no unbounded wait shown as
+  motion: the bound ends the motion and the notice says the result is not known
+  (setup's and the component lock's reads go on after it). The install dialog's
+  re-read runs while the dialog is open whatever the tab's visibility; that is
+  a gap, not an authorisation.
+- No "not known yet" in place of a verified failure or an unmet prerequisite:
+  the three stay apart (D-024).
+- No claim that every screen was measured. The audit was read from code; the
+  native record reached part of it; nothing was measured on an installed
+  server.
+- No change to installed panels. Panel updates remain the owner's, from the
+  panel's own update screen; no P0 item is closed or advanced.
+
+Relation to the rest. D-024 requires every operation to show the current
+reason, who acts, the next action and how work resumes, and to distinguish a
+verified failure, an unmet prerequisite and an unknown result; this decision
+applies it to waiting, and adds that a wait must look like a wait and end. D-032
+(the panel looks by itself and does not ask the owner to press a button to learn
+a state it can read) is why rule 6 reads again instead of asking. The
+known-state rule is why the bound ends in "not known yet" and not in a negative
+state. D-022 (the owner operates the server) is why the bounded notices say how
+the owner checks the panel on the server rather than restarting anything.
+
+Status. In source on the branch of the v0.1.0-alpha.85 candidate (not
+published), with mounted tests. The Components firewall banner, the Dashboard's
+attention notice and Mail stacks card and the sidebar build id were measured in
+the eighteenth native record. Setup finishing, the update card's busy state,
+the component lock's reconnect and the spreading-domain checks were not reached
+natively. Open for a native run, for an installed server and for the
+visibility gating of the install dialog's and setup's reads.
+
+---
+
 ## D-032 · The panel looks by itself; it never asks the owner to press a button to learn a state it can read
 
 *October 12, 2026 (clock date) · Owner decision after the update to v0.1.0-alpha.83; in source with component tests and a mock browser; the first step measured in the fourteenth native record (Debian 13, Ubuntu 24.04, 2026-10-12 UTC); the scan-age clock rule and the typed Agent answer at the scan and the admission check measured in the fifteenth record (Debian 13, 2026-10-13 UTC); the licence check's time left, the Agent answer in the shared error writer and the read banner (2026-10-13) component-tested, then measured on Debian 13 in the sixteenth record (set14c, 2026-10-13 UTC), where the licence-check defect found in the fifteenth record is gone*

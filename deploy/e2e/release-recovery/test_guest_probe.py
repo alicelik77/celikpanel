@@ -165,5 +165,68 @@ class ObservationTests(unittest.TestCase):
         self.assertTrue(all(result[key]["status"] == "unknown" for key in ("soa_udp", "soa_tcp", "a_udp", "a_tcp")))
 
 
+class SiteFileLedgerDigestTests(unittest.TestCase):
+    """set15 finding: managed_site_files is recorded as rows plus a full and a stable (observed_at-free) digest."""
+
+    LABELS = ["rowid", "id", "site_id", "path", "state", "observed_at"]
+
+    def rows(self, observed_at):
+        return [(1, 1, 7, "/etc/nginx/a.conf", "managed_unchanged", observed_at),
+                (2, 2, 7, "/etc/nginx/b.conf", "owner_edited", observed_at)]
+
+    def test_a_changed_observed_at_changes_only_the_full_digest(self):
+        before = probe.ledger_projection(self.LABELS, self.rows(1760000000))
+        after = probe.ledger_projection(self.LABELS, self.rows(1760009999))
+        self.assertNotEqual(before["full_sha256"], after["full_sha256"])
+        self.assertEqual(before["stable_sha256"], after["stable_sha256"])
+        self.assertEqual(before["volatile_columns"], ["observed_at"])
+        self.assertEqual(before["rows"][0]["path"], "/etc/nginx/a.conf")
+
+    def test_a_changed_state_changes_both_digests(self):
+        rows = self.rows(5)
+        other = [rows[0], (2, 2, 7, "/etc/nginx/b.conf", "foreign", 5)]
+        a, b = probe.ledger_projection(self.LABELS, rows), probe.ledger_projection(self.LABELS, other)
+        self.assertNotEqual(a["full_sha256"], b["full_sha256"])
+        self.assertNotEqual(a["stable_sha256"], b["stable_sha256"])
+
+    def test_row_order_does_not_matter_and_rows_come_out_ordered(self):
+        rows = self.rows(5)
+        a = probe.ledger_projection(self.LABELS, rows)
+        b = probe.ledger_projection(self.LABELS, list(reversed(rows)))
+        self.assertEqual((a["full_sha256"], a["stable_sha256"]), (b["full_sha256"], b["stable_sha256"]))
+        self.assertEqual([r["id"] for r in b["rows"]], [1, 2])
+
+    def test_the_observed_database_reports_the_same_full_digest_as_the_table_entry(self):
+        connection = sqlite3.connect(":memory:", isolation_level=None)
+        connection.executescript("""
+            CREATE TABLE schema_migrations(version INTEGER);
+            INSERT INTO schema_migrations VALUES (44);
+            CREATE TABLE managed_site_files(id INTEGER PRIMARY KEY, site_id INTEGER, path TEXT, state TEXT,
+                                            observed_at INTEGER NOT NULL DEFAULT 0);
+            INSERT INTO managed_site_files(site_id, path, state, observed_at) VALUES (7, '/x', 'managed_unchanged', 100);
+        """)
+        connection.execute("BEGIN")
+        first = probe._database_semantics(connection, probe.time.monotonic() + 30)
+        connection.execute("ROLLBACK")
+        connection.execute("UPDATE managed_site_files SET observed_at = 200")
+        connection.execute("BEGIN")
+        second = probe._database_semantics(connection, probe.time.monotonic() + 30)
+        connection.execute("ROLLBACK")
+        entry = {t["name"]: t for t in first["semantic"]["tables"]}["managed_site_files"]
+        self.assertEqual(first["site_file_ledger"]["full_sha256"], entry["sha256"])
+        self.assertNotEqual(first["site_file_ledger"]["full_sha256"], second["site_file_ledger"]["full_sha256"])
+        self.assertEqual(first["site_file_ledger"]["stable_sha256"], second["site_file_ledger"]["stable_sha256"])
+        self.assertEqual(set(entry), {"name", "rows", "columns", "rowid_included", "sha256"})
+        self.assertEqual(first["site_file_ledger"]["rows"][0]["observed_at"], 100)
+
+    def test_a_database_without_the_table_has_no_ledger(self):
+        connection = sqlite3.connect(":memory:", isolation_level=None)
+        connection.execute("CREATE TABLE schema_migrations(version INTEGER)")
+        connection.execute("BEGIN")
+        result = probe._database_semantics(connection, probe.time.monotonic() + 30)
+        connection.execute("ROLLBACK")
+        self.assertIsNone(result["site_file_ledger"])
+
+
 if __name__ == "__main__":
     unittest.main()

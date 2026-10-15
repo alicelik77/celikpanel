@@ -329,3 +329,34 @@ and the import's answers through the plan of the fifth batch.
 
 Every record of this batch fails when the page scrolls sideways, when a text
 is cut inside its box, or when a placeholder is on screen.
+
+## Scenarios of the twelfth batch (the waiting states, 2026-10-14)
+
+These live in `scenarios-batch12.mjs`, with two mock routes in
+`mock-batch12.mjs` (state under `state.b12`; asked before the routes of
+`mock.mjs`, because the owner's explicit setup check is the same address as the
+snapshot read). `run.mjs` adds a `laptop` viewport (1280×800) for them. Each
+state is also copied to `BROWSER_INSPECT_SHOTS` (default: the run's out dir) as
+`<state>-<lang>-<theme>-<width>.png`.
+
+A state behind a 60 s bound (setup finishing, setup reconnecting, the component
+operation lock) or behind the 30 s spreading cadence is reached with a
+test-side clock control, not a product change: before the page loads,
+`window.setTimeout` called with exactly that delay waits a shorter one
+(`fastTimers`); the record names the shortening.
+
+| Name | States |
+| --- | --- |
+| `w85setup` | the final setup step waiting for reverse DNS (lead and step), "Finishing setup" after a passing check (lead and step), and its unknown-result notice |
+| `w85reconnect` | setup reconnecting after a lost operation read, and its notice |
+| `w85components` | the Components page: the firewall banner refused with `AGENT_UNREACHABLE`, the readiness pause, the mail profile cards with typed codes and with an older Panel's text only; a component page's install dialog while the server is busy |
+| `w85dashboard` | "Needs attention" naming the Agent; the System services and Mail stacks cards checking, known, could not check, not checked recently and held by a change |
+| `w85overlay` | the component operation lock after a lost connection, and its notice |
+| `w85update` | the panel update card while the server is busy |
+| `w85spread` | a domain's DNS change spreading, and the automatic checks stopped after 60 of them |
+| `w85ssl` | a certificate request running; the HSTS retirement dated by the time left the server states, with its clock 7 minutes behind |
+| `w85sidebar` | the sidebar build id (the menu opened on a phone) |
+
+Each record adds the number of spinners on screen, the visible buttons with
+their disabled state, and whether the page scrolls sideways. The screenshots
+are the inspection; these scenarios do not fail on a finding.

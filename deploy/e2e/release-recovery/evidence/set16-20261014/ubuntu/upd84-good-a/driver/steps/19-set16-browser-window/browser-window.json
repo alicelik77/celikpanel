@@ -1,0 +1,82 @@
+{
+  "browser_done": {
+    "at": "2026-10-14T23:38:02.013Z",
+    "by": "cold-load-set16.mjs"
+  },
+  "ended_at": "2026-10-14T23:38:02Z",
+  "hand": "/var/tmp/cp-set16/hand/h16ubgood-ui",
+  "password_file_removed": true,
+  "requests": [
+    {
+      "at": "2026-10-14T23:35:58Z",
+      "prep": "probe",
+      "result": {
+        "at": "2026-10-14T23:35:59Z",
+        "cgroup_cpu": {
+          "agent": {
+            "system_usec": 2815454,
+            "usage_usec": 4948376,
+            "user_usec": 2132922
+          },
+          "panel": {
+            "system_usec": 734962,
+            "usage_usec": 1293934,
+            "user_usec": 558972
+          }
+        },
+        "epoch": 1792020959.7312696,
+        "file": "steps/19-set16-browser-window/native/002-probe-1.json",
+        "loadavg": "1.58 1.06 0.59 1/177 64587",
+        "nginx_dropin": false,
+        "proc_cpu": {
+          "agent": {
+            "clk_tck": 100,
+            "cstime": 245,
+            "cutime": 211,
+            "stime": 17,
+            "utime": 15
+          },
+          "panel": {
+            "clk_tck": 100,
+            "cstime": 0,
+            "cutime": 0,
+            "stime": 71,
+            "utime": 54
+          }
+        },
+        "scan_cache": {
+          "age_seconds": 557.7,
+          "data_bytes": 2593,
+          "database": "/var/lib/celikpanel/celikpanel.db",
+          "exists": true,
+          "scanned_at": "2026-10-14T23:26:42Z",
+          "scanned_epoch": 1792020402.0
+        },
+        "units": {
+          "agent": {
+            "ActiveState": "active",
+            "CPUUsageNSec": "4948376000",
+            "MainPID": "57405",
+            "NRestarts": "0"
+          },
+          "panel": {
+            "ActiveState": "active",
+            "CPUUsageNSec": "1293934000",
+            "MainPID": "57618",
+            "NRestarts": "0"
+          }
+        }
+      }
+    },
+    {
+      "at": "2026-10-14T23:38:01Z",
+      "prep": "journal",
+      "result": {
+        "file": "steps/19-set16-browser-window/journal-window-2.txt",
+        "lines": 58,
+        "returncode": 0
+      }
+    }
+  ],
+  "window": "ui"
+}

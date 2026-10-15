@@ -8,6 +8,10 @@ import TestRenderer, { act } from 'react-test-renderer';
 import ts from 'typescript';
 
 const require = createRequire(import.meta.url);
+// The card re-reads readiness by itself while it says the server is busy; these
+// tests do not fire that timer (panel-update-readiness-poll-mounted.test.mjs does).
+globalThis.document ??= Object.assign(new EventTarget(), { visibilityState: 'visible' });
+globalThis.window ??= { setTimeout: () => 0, clearTimeout: () => {} };
 
 function moduleURL(source) {
     return 'data:text/javascript;base64,' + Buffer.from(source).toString('base64');

@@ -1,0 +1,81 @@
+{
+  "checks": {
+    "packagekit_after_answer": {
+      "before": {
+        "at": "2026-10-14T23:33:11.287158Z",
+        "context_processes": [
+          {
+            "cmdline": "/usr/bin/python3 /usr/share/unattended-upgrades/unattended-upgrade-shutdown --wait-for-signal",
+            "comm": "unattended-upgr",
+            "pid": 855,
+            "ppid": "1"
+          }
+        ],
+        "general_lock_lines": [],
+        "lock_lines": [],
+        "other_package_processes": [],
+        "packagekit_unit": [
+          "ExecMainStartTimestamp=",
+          "ActiveState=inactive",
+          "SubState=dead"
+        ],
+        "packagekitd": [],
+        "rule": "idle",
+        "unparsed_lock_lines": []
+      },
+      "host_utc": "2026-10-14T23:33:09Z",
+      "label": "owner-start-after-answer"
+    },
+    "packagekit_before_post": {
+      "before": {
+        "at": "2026-10-14T23:33:10.942659Z",
+        "context_processes": [
+          {
+            "cmdline": "/usr/bin/python3 /usr/share/unattended-upgrades/unattended-upgrade-shutdown --wait-for-signal",
+            "comm": "unattended-upgr",
+            "pid": 855,
+            "ppid": "1"
+          }
+        ],
+        "general_lock_lines": [],
+        "lock_lines": [],
+        "other_package_processes": [],
+        "packagekit_unit": [
+          "ExecMainStartTimestamp=",
+          "ActiveState=inactive",
+          "SubState=dead"
+        ],
+        "packagekitd": [],
+        "rule": "idle",
+        "unparsed_lock_lines": []
+      },
+      "host_utc": "2026-10-14T23:33:09Z",
+      "label": "owner-start-before-post"
+    },
+    "readiness": {
+      "ready": true
+    },
+    "start": {
+      "body": {
+        "accepted": true,
+        "request_id": "8f20d2e824aeae4093cf8101c33f17d9",
+        "status": "queued",
+        "target": {
+          "arch": "amd64",
+          "archive_sha256": "3913d51374ba8db47fd4acce0af21d0c4150690664809d8932e355dbfdff40ad",
+          "archive_size": "66158589",
+          "commit": "d5d673ebd95eeb80d16f93577c340d4a9d6a9f36",
+          "os": "linux",
+          "published_at": "2026-10-14T23:17:13Z",
+          "sequence": "85",
+          "version": "v0.1.0-alpha.85"
+        }
+      },
+      "http": 202
+    }
+  },
+  "finished_at": "2026-10-14T23:33:10Z",
+  "name": "owner-start",
+  "started_at": "2026-10-14T23:33:09Z",
+  "verdict": "passed"
+}

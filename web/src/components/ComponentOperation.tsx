@@ -61,6 +61,12 @@ export interface ManagedMailProfile {
     latest_attempt_error?: string;
     blocked_reason?: string;
     warning?: string;
+    // Additive (2026-10-14): the typed form of the two sentences above
+    // (cmd/panel mailProfileTextCode). Read through lib/mailProfileText.ts,
+    // which checks their shape and falls back to the text.
+    blocked_code?: string;
+    blocked_vars?: Record<string, string>;
+    warning_code?: string;
 }
 
 

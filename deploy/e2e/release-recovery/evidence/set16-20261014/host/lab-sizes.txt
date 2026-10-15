@@ -1,0 +1,5 @@
+2.1G	/var/tmp/cp-release-drill-s16-d13-a
+2.6G	/var/tmp/cp-release-drill-s16-u84-good-a
+2.7G	/var/tmp/cp-release-drill-s16-u84-def-a
+2.3G	/var/tmp/cp-release-drill-s16-ub-u84-good-a
+2.4G	/var/tmp/cp-release-drill-s16-ub-u84-def-a

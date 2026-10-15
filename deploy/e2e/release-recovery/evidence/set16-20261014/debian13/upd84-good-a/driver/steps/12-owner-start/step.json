@@ -1,0 +1,29 @@
+{
+  "checks": {
+    "readiness": {
+      "ready": true
+    },
+    "start": {
+      "body": {
+        "accepted": true,
+        "request_id": "631d10cae62766ca34bc27f787a7b29a",
+        "status": "queued",
+        "target": {
+          "arch": "amd64",
+          "archive_sha256": "3913d51374ba8db47fd4acce0af21d0c4150690664809d8932e355dbfdff40ad",
+          "archive_size": "66158589",
+          "commit": "d5d673ebd95eeb80d16f93577c340d4a9d6a9f36",
+          "os": "linux",
+          "published_at": "2026-10-14T22:46:11Z",
+          "sequence": "85",
+          "version": "v0.1.0-alpha.85"
+        }
+      },
+      "http": 202
+    }
+  },
+  "finished_at": "2026-10-14T22:55:07Z",
+  "name": "owner-start",
+  "started_at": "2026-10-14T22:55:07Z",
+  "verdict": "passed"
+}

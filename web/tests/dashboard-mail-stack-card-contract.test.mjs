@@ -43,15 +43,26 @@ test('dashboard mail copy stays in EN/TR parity', () => {
     'dashboard.mailStacks.completeHint',
     'dashboard.mailStacks.partialHint',
     'dashboard.mailStacks.attentionHint',
-    'dashboard.mailStacks.scanStale',
+    'dashboard.mailStacks.checkFailed',
+    'dashboard.mailStacks.status.checking',
     'dashboard.mailStacks.reason',
     'dashboard.mailStacks.reconciliationFailed',
     'dashboard.mailStacks.reconciliationInProgress',
     'dashboard.mailStacks.reconciliationUnverified',
     'dashboard.mailStacks.open',
-    'dashboard.mailStacks.rescan',
   ]) {
     assert.ok(en.includes(`'${key}':`), 'missing EN key ' + key);
     assert.ok(tr.includes(`'${key}':`), 'missing TR key ' + key);
+  }
+});
+
+// D-032 (2026-10-14): the page checks the components by itself, so the card no
+// longer sends the owner to Components to rescan; the old sentence and button
+// are gone from both catalogues.
+test('the mail card never asks the owner to rescan by hand', () => {
+  for (const key of ['dashboard.mailStacks.rescan', 'dashboard.mailStacks.scanStale']) {
+    assert.ok(!en.includes(`'${key}':`), 'EN still has ' + key);
+    assert.ok(!tr.includes(`'${key}':`), 'TR still has ' + key);
+    assert.ok(!dashboard.includes(key), 'the dashboard still uses ' + key);
   }
 });

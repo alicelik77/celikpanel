@@ -245,6 +245,7 @@ export function DomainPHPSettings({
                                     icon={Save}
                                     onClick={handleVersionChange}
                                     disabled={readOnly || saving || !canSave || !pending || (isAdditionalUser && !versions.includes(selectedVersion))}
+                                    loading={saving}
                                 >
                                     {saving ? t('php.applying') : t('php.apply')}
                                 </Button>

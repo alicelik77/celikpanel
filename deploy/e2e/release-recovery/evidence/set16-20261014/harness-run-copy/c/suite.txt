@@ -1,0 +1,26 @@
+test_bound_worker_copy_adds_both_pairs (test_set16_trial.Set16Tests.test_bound_worker_copy_adds_both_pairs) ... ok
+test_browser_tool_asks_only_for_known_preparations (test_set16_trial.Set16Tests.test_browser_tool_asks_only_for_known_preparations)
+test_build_script_labels_only_the_policy (test_set16_trial.Set16Tests.test_build_script_labels_only_the_policy) ... ok
+test_cells (test_set16_trial.Set16Tests.test_cells) ... ok
+test_clock_preparations_parse (test_set16_trial.Set16Tests.test_clock_preparations_parse) ... ok
+test_configure_alpha84 (test_set16_trial.Set16Tests.test_configure_alpha84) ... ok
+test_configure_fresh_takes_the_installed_commit (test_set16_trial.Set16Tests.test_configure_fresh_takes_the_installed_commit) ... ok
+test_guest_helper_chain_is_uploaded (test_set16_trial.Set16Tests.test_guest_helper_chain_is_uploaded) ... ok
+test_ledger_summary (test_set16_trial.Set16Tests.test_ledger_summary) ... ok
+test_origin_copy_adds_86 (test_set16_trial.Set16Tests.test_origin_copy_adds_86) ... ok
+test_update_profile_replaces_set15_label (test_set16_trial.Set16Tests.test_update_profile_replaces_set15_label) ... ok
+Ran 11 tests in 0.293s
+OK
+test_bound_worker_copy_adds_the_pair (test_set15_trial.Set15Tests.test_bound_worker_copy_adds_the_pair) ... ok
+test_brief_body (test_set15_trial.Set15Tests.test_brief_body) ... ok
+test_cells (test_set15_trial.Set15Tests.test_cells) ... ok
+test_configure_alpha83 (test_set15_trial.Set15Tests.test_configure_alpha83) ... ok
+test_fresh_provenance_names_the_source (test_set15_trial.Set15Tests.test_fresh_provenance_names_the_source) ... ok
+test_guest_helper_chain_is_uploaded (test_set15_trial.Set15Tests.test_guest_helper_chain_is_uploaded)
+test_origin_copy_adds_the_three_transitions (test_set15_trial.Set15Tests.test_origin_copy_adds_the_three_transitions) ... ok
+test_profiles_are_added (test_set15_trial.Set15Tests.test_profiles_are_added) ... ok
+Ran 8 tests in 0.271s
+OK
+compiled set16_trial.py
+compiled set16_fixture.py
+shell syntax ok

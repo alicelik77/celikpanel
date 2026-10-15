@@ -1,0 +1,6 @@
+go version go1.26.5 linux/amd64
+=== update 2026-10-14T22:17:04Z
+update rc=0 /var/tmp/cp-set16/cp-upd1-build/20261014t221704z/upd1-artifacts.json UPD1-ARTIFACTS-OK 
+=== fresh 2026-10-14T22:20:25Z installed=d5d673ebd95eeb80d16f93577c340d4a9d6a9f36
+fresh rc=0 /var/tmp/cp-set16/cp-upd1-build/20261014t222025z/upd1-artifacts.json UPD1-ARTIFACTS-OK 
+=== end 2026-10-14T22:22:49Z

@@ -1,0 +1,104 @@
+CPU usage
+
+0%
+
+2 cores · Load 0.27
+
+Memory
+
+21%
+
+638 MB / 2.9 GB
+
+Disk (/)
+
+14%
+
+3.2 GB / 22.2 GB
+
+System services
+
+6 / 6
+
+running / installed
+
+Mail stacks
+Ready
+
+At least one mail profile has a fresh component scan and completed reconciliation.
+
+View mail stacks
+Needs attention
+1 alert
+No antivirus installed — you are hosting content but nothing scans it
+Install a service
+Hosting
+
+1
+
+Domains
+
+0
+
+Databases
+
+1
+
+Users
+
+1
+
+Mail accounts
+
+Recently added domains
+upd1-owner.test
+static
+No SSL
+5 min ago
+Recent activity
+L
+labadmin signed in3 times
+127.0.0.1
+just now
+L
+labadmin server.setup.guidance
+127.0.0.1
+just now
+L
+labadmin server.setup.revise
+127.0.0.1
+just now
+L
+labadmin domain.create
+127.0.0.1
+5 min ago
+L
+labadmin subscription.bootstrap
+127.0.0.1
+5 min ago
+L
+labadmin server.setup.child:certbot
+127.0.0.1
+10 min ago
+L
+labadmin server.setup.child:protected-mail
+127.0.0.1
+11 min ago
+Quick actions
+Add domain
+Install a service
+Add user
+Import
+Server information
+Hostname
+dns-ubuntu
+IPv4 address
+10.0.2.15
+Operating system
+Ubuntu 24.04.4 LTS
+Kernel
+6.8.0-138-generic
+Architecture
+amd64
+Uptime
+3m

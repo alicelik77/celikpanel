@@ -1038,6 +1038,29 @@ class DatabaseVolatileTests(unittest.TestCase):
         return {"semantic": {"schema_sha256": "s", "sha256": "x",
                              "tables": [{"name": n, "sha256": v} for n, v in tables.items()]}}
 
+    def test_site_file_ledger_that_differs_only_in_observed_at_is_reported_not_unexpected(self):
+        def ledger(observed_at, state="managed_unchanged"):
+            rows = [{"rowid": 1, "id": 1, "state": state, "observed_at": observed_at}]
+            return {"columns": ["rowid", "id", "state", "observed_at"], "volatile_columns": ["observed_at"],
+                    "row_count": 1, "full_sha256": f"full-{observed_at}-{state}", "stable_sha256": f"stable-{state}",
+                    "rows": rows}
+        pre = dict(self.db({"managed_site_files": "a"}), site_file_ledger=ledger(1))
+        post = dict(self.db({"managed_site_files": "b"}), site_file_ledger=ledger(2))
+        same = t.compare_databases(pre, post, t.volatile_tables(False))
+        self.assertEqual((same["verdict"], same["unexpected"]), ("equal-except-volatile", []))
+        self.assertEqual(same["volatile_columns_only"], {"managed_site_files": ["observed_at"]})
+        self.assertFalse(same["site_file_ledger"]["full_equal"])
+        self.assertTrue(same["site_file_ledger"]["stable_equal"])
+        self.assertEqual(same["site_file_ledger"]["changed_columns_by_rowid"], {"1": ["observed_at"]})
+        moved = dict(self.db({"managed_site_files": "b"}), site_file_ledger=ledger(2, "owner_edited"))
+        real = t.compare_databases(pre, moved, t.volatile_tables(False))
+        self.assertEqual((real["verdict"], real["unexpected"]), ("different", ["managed_site_files"]))
+        self.assertEqual(real["site_file_ledger"]["changed_columns_by_rowid"], {"1": ["observed_at", "state"]})
+        old = t.compare_databases(self.db({"managed_site_files": "a"}), self.db({"managed_site_files": "b"}),
+                                  t.volatile_tables(False))
+        self.assertEqual(old["unexpected"], ["managed_site_files"])
+        self.assertNotIn("site_file_ledger", old)
+
     def test_waiting_setup_rows_are_excluded_explicitly(self):
         pre = self.db({"domains": "1", "server_setup_executions": "a", "server_setup_state": "s"})
         post = self.db({"domains": "1", "server_setup_executions": "b", "server_setup_state": "s"})
