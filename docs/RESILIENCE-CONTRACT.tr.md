@@ -4847,3 +4847,86 @@ yayımlanmamış bir adayı kaydeder; 2026-10-15 girdinin saat tarihidir, andı�
   kurulu sunucu ölçülmedi. set16 bir ölçümdür, kabul kanıtı değildir ve hiçbir
   P0 satırını kapatmaz. Yukarıdaki girdilerin açık bıraktığı her şey açık
   kalır.
+
+### v0.1.0-alpha.85'in yayımlanması (P0.1/P0.2 alanı; ilke 2 ve 6; D-024; D-032; D-033; 2026-10-15)
+
+D-025 ilke 2 (bilinmeyen; yok, boş ya da başarı değildir) ve ilke 6 (ekran
+doğrulananı söyler); D-024; D-032; D-033. **Hiçbir P0 işi kapanmaz ya da
+ilerlemez.** P0.1–P0.5 kısmi kalır ve her açık kabul işi açık kalır. Bu girdi
+bir yayımı kaydeder; kod, şema ya da kurtarma davranışını değiştirmez.
+2026-10-15, içindeki her şeyin saat tarihidir.
+
+- **Yayımlama.** v0.1.0-alpha.85 15 Ekim 2026'da yayımlandı. Sahip #210 numaralı
+  çekme isteğini `main`'e
+  `36c33c4531ee6c1306d324db7a666403176f3bf7` olarak squash ile birleştirdi
+  (ağacı `c451c26de3cb179251e8dfd4b033ec7a9e18005e`; çekme isteğindeki CI: 23
+  iş başarılı, 1 iş atlandı; yayımlayan iş yalnız bir etiket için çalışır). O
+  `main` commit'indeki koşu (38685686782) önce başarısızlıkla sonuçlandı: iki
+  iş ("Platform portability - Linux arm64 compile only" ve "Panel race - Server
+  setup") hiçbir adım çalışmadan başarısız oldu; ikisinde de GitHub'ın,
+  `actions/setup-go@v6`'nın codeload adresinde bir eylemin bulunamadığı hatası
+  vardı. Sürümü hazırlayan kişi başarısız işleri yeniden çalıştırdı ve koşu
+  başarıyla sonuçlandı: 24 iş, 0 başarısız. Etiket ancak bundan sonra
+  gönderildi; yani "`main`'deki koşu bitti, sonra etiket" sırası bu kez
+  izlendi. Sahip `CELIKPANEL_RELEASE_SEQUENCE` depo değişkenini 84'ten 85'e
+  çıkardı ve `v0.1.0-alpha.85` açıklamalı etiketini (etiket nesnesi
+  `c491a103f2f6913f58e5ba418a3361188ef11dde`) oluşturup gönderdi. Etiketin CI
+  koşusu (38688902643), 24 iş, başarılı, 2026-10-15T06:10:06Z'de altı dosyayla
+  ön sürüm yayımladı (platform arşivi SHA-256
+  `cb6424b712052df2768f6c16dd6a66c8ea05a13393e71933c38ae639c3fb0792`,
+  66.146.417 bayt, sıra 85). İndirme portalını sahip değil, sürümü hazırlayan
+  kişi `deploy/publish-download-portal.ps1` ile yayımladı (durum `committed`,
+  26 sınırından 26 istekli tek genel doğrulama turu, `status: ok`); sahibin 15
+  Ekim 2026 tarihli talimatı uyarınca; bu sürümden itibaren birleştirme, depo
+  değişkeni, etiket ve portal yayımı hazırlayan kişiye aittir, kurulu panel
+  güncellemelerini ise yalnız sahip yapar. Dosyaları ve portal paketini
+  hazırlayan kişi bir indirmeden denetledi ve genel siteyi 06:24:40Z'de
+  dışarıdan okudu (hazırlayan kişi bildirdi, burada bir dosyada kayıtlı
+  değil). Sınırlar: etiketin dosyaları bir derleme konuğundaki klondan değil,
+  Windows'ta `git archive` ile alındı ve canlı sitenin bir kopyasında terfi
+  aracı provası yapılmadı. [Sürüm notlarının](RELEASE-NOTES-v0.1.0-alpha.85.tr.md)
+  "Yayımlama kaydı" bölümü bunları sayar.
+- **Yayımlama betiğinin açık kusuru.** `deploy/publish-download-portal.ps1`'in
+  göreli betik yoluyla yapılan ilk çağrısı, hiçbir aktarım olmadan parametre
+  bağlama aşamasında durdu (`$PSScriptRoot` bir parametre varsayılanında boş);
+  mutlak yolla çağrı başarılı oldu. Sonraki sürüm için açık: varsayılanları
+  betiğin gövdesinde hesaplamak.
+- **Kurulu paneller.** Bu girdi 15 Ekim 2026'da yazıldığında güncellenmemişti;
+  sahip sonra panelin kendi güncelleme ekranından güncelledi ve aynı gün
+  bildirdi (yaklaşık 07:00Z'de alınan altı ekran görüntüsü ve bir mesaj;
+  09:58Z'de kaydedildi). İkisi de Current version v0.1.0-alpha.85 ve commit
+  `36c33c45…` gösteriyor, kenar çubuğundaki yapı kimliği tek satırda. Sahibin
+  gözlemleri, dışarıdan bir okuma ve kabul kanıtı değil: Frankfurt'un
+  güncellemesi sırasında sayfa, güncellemenin kendi beklenen yeniden başlatması
+  içinde, uyarı renginde bir "could not be read just now, so it is not known
+  whether it has finished" bildirimi ve aynı şeyi söyleyen bir toast gösterdi;
+  sahip bunun, ortada sorun yokken sorun gibi okunduğunu söylüyor. **Sonraki
+  sürüm için açık (D-033, D-024; ilke 2 olduğu gibi kalır, bilinmeyen sonuç
+  başarısızlık değildir):** beklenen yeniden başlatma penceresinde T+ sayacıyla
+  sakin ilerleme, uyarı yüzeyi ve "bilinmiyor" ifadesi yalnız pencere geçtikten
+  sonra ya da doğrulanmış başarısızlıkta, ve bir bildirim şeridi artı bir toast
+  yerine tek bir bildirim (`web/src/components/SystemUpdateOperation.tsx`,
+  `web/src/components/PanelUpdateCard.tsx`). Boston'un Panosu güncellemeden
+  sonra 5 / 5 hizmeti, türlenmiş kısmi posta profili metnini ve "Nothing
+  CelikPanel read needs action" yazısını gösterdi; öncesinde (alpha.84) Needs
+  attention bir okumada başarısız olmuştu, neden bilinmiyor. Frankfurt'un Panosu
+  güncellemeden hemen sonra "Checking…" durumlarını gösterdi; sonuç yakalanmadı.
+  "Recent activity" hâlâ ham denetim kimliklerini gösteriyor (set16 O3).
+  Bildirilmedi, bu yüzden kaydedilmedi: güncelleme sırasında tam ekran lisans
+  sayfası, Agent'ın sürümü, Frankfurt'un güncellemeden sonraki kurulum son adımı
+  ve `postconf -n >/dev/null` çıktısı. Tam liste [sürüm
+  notlarında](RELEASE-NOTES-v0.1.0-alpha.85.tr.md), "Kurulu panel
+  güncellemelerinden sonra sahibin gözlemleri" altında. Bu girdi hiçbir işi
+  kapatmaz ve hiçbir P0 işini ilerletmez.
+- **Şema ya da sürüm geçişi.** Yok: bu sürüm hiçbir şema değişikliği taşımaz
+  (veritabanı şeması 44 kalır); sürüm sırası 5443fe055 sürüm hazırlığında,
+  önceki olarak alpha.84 sürüm commit'i `f0157e6c8` ile 84'ten 85'e geçti.
+  **Kurtarma davranışı.** Değişmedi.
+- **Açık.** Yukarıdaki girdilerin açık bıraktığı her şey; bunlar arasında
+  [sürüm notlarında](RELEASE-NOTES-v0.1.0-alpha.85.tr.md) sayılan sınırlar var:
+  hiçbir kurulu sunucunun ölçülmemesi (kurulu panel güncellemelerinden sonra
+  sahibin gözlemleri ekran görüntüleri ve dışarıdan bir okumadır, ölçüm
+  değil), "Finishing setup" ve güncelleme kartının meşgul durumuna gerçek
+  sistemde ulaşılamaması ve set16'nın bir sabit commit üzerinde çalışması.
+  Güncelleme ekranının beklenen yeniden başlatma sırasında sorun gibi görünen
+  bildirimi sonraki sürüm için açık.
