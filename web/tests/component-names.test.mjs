@@ -28,8 +28,8 @@ const say = (locale) => (key) => catalogues[locale][key] ?? key;
 const goSource = read('../../internal/core/managed_services.go');
 const listBody = /\nvar ManagedServices = \[\]ManagedService\{\n([\s\S]*?)\n\}\n/.exec(goSource)?.[1] ?? '';
 const constants = Object.fromEntries([...goSource.matchAll(/^const (\w+) = "([a-z0-9-]+)"$/gm)].map((m) => [m[1], m[2]]));
-const entries = [...listBody.matchAll(/^\t\tID:\s+(?:"([a-z0-9-]+)"|(\w+)),\n\t\tName:\s+"([^"]+)",/gm)]
-  .map((m) => ({ id: m[1] ?? constants[m[2]], name: m[3] }));
+const entries = [...listBody.matchAll(/^\t\tID:\s+(?:"([a-z0-9-]+)"|(\w+)),\n\t\tName:\s+"([^"]+)",\n\t\tDescription:\s+"([^"]+)",/gm)]
+  .map((m) => ({ id: m[1] ?? constants[m[2]], name: m[3], description: m[4] }));
 
 test('every catalogue component has an English and a Turkish display name', () => {
   assert.ok(entries.length >= 25, `read ${entries.length} components from the Go catalogue`);
@@ -73,10 +73,35 @@ test('a component this page has no name for keeps the server’s name, then its 
 test('the component screens name a component through the catalogue words', () => {
   const list = read('../src/components/ServiceList.tsx');
   // Only the search reads the server's name, beside the translated one.
-  const drawn = list.replace('`${componentName(s, t)} ${s.name} ${s.description} ${s.id}`', '');
+  const drawn = list.replace('`${componentName(s, t)} ${s.name} ${s.description} ${componentDescription(s, t)} ${s.id}`', '');
   assert.ok(!/\{(?:s|service)\.name\}|\$\{(?:s|service|action\.service)\.name\}/.test(drawn), 'the Components list draws the server name raw');
   assert.ok(!/name: (?:action\.)?service\.name\b/.test(list), 'a dialog or operation names the component by the server name');
   assert.ok(/componentName\(record, t\)/.test(read('../src/components/ComponentDetail.tsx')));
   assert.ok(!/row\.name\b|\?\.name \|\| id/.test(read('../src/components/ServerSetupComponents.tsx')));
   assert.ok(/svcStoppedItem', \{ name: componentName\(s, t\) \}/.test(read('../src/components/Dashboard.tsx')));
+});
+
+test('every catalogue component has an English and a Turkish description, and a page shows them', () => {
+  for (const { id, description } of entries) {
+    const key = `services.component.description.${id}`;
+    assert.ok(catalogues.en[key], `no English description for ${id}`);
+    assert.ok(catalogues.tr[key], `no Turkish description for ${id}`);
+    assert.equal(catalogues.en[key], description.replaceAll("'", '’'), `${id}: the English description differs from the catalogue's`);
+  }
+  const ids = new Set(entries.map((entry) => entry.id));
+  for (const locale of ['en', 'tr']) {
+    for (const key of Object.keys(catalogues[locale]).filter((item) => item.startsWith('services.component.description.'))) {
+      assert.ok(ids.has(key.slice('services.component.description.'.length)), `${locale} describes ${key}, which is not in the catalogue`);
+    }
+  }
+  assert.equal(lib.componentDescription({ id: 'fail2ban', description: 'Intrusion Prevention' }, say('tr')), 'Saldırı önleme');
+  assert.equal(lib.componentDescription({ id: 'fail2ban', description: 'Intrusion Prevention' }, say('en')), 'Intrusion Prevention');
+  assert.equal(lib.componentDescription({ id: 'cron', description: 'x' }, say('tr')), 'Zamanlanmış görevleri çalıştıran yerel cron hizmeti');
+  // Unknown component: the server's text, then nothing (never the id).
+  assert.equal(lib.componentDescription({ id: 'from-a-newer-panel', description: 'Something new' }, say('tr')), 'Something new');
+  assert.equal(lib.componentDescription({ id: 'from-a-newer-panel' }, say('tr')), '');
+  assert.equal(lib.componentDescription({ id: 'Bad Id', description: 'Shown as sent' }, say('tr')), 'Shown as sent');
+  const list = read('../src/components/ServiceList.tsx');
+  assert.ok(!/(?<!\$)\{(?:s|service)\.description\}/.test(list), 'the Components list or a dialog draws the server description raw');
+  assert.ok((list.match(/componentDescription\((?:s|service), t\)/g) ?? []).length >= 4, 'the list row, install, uninstall dialogs and search use the translated description');
 });

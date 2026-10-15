@@ -24,7 +24,7 @@ import {
 } from './FirewallSSHNotice';
 import { Link, useLocation, useNavigate } from '../router';
 import { publishComponentCensus } from '../lib/componentCensus';
-import { componentName } from '../lib/componentName';
+import { componentDescription, componentName } from '../lib/componentName';
 import { mailProfileBlocked, mailProfileDescription, mailProfileName, mailProfileWarning } from '../lib/mailProfileText';
 
 // One installed copy of a runtime (B3b): php8.3-fpm is an instance, a Node
@@ -655,7 +655,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
             // claim this page must stop making.
             // Kurulu görünümü, YOK olduğunu BİLDİĞİMİZİ gizler.
             (!hideNotInstalled || s.is_installed !== false) &&
-            (q === '' || `${componentName(s, t)} ${s.name} ${s.description} ${s.id}`.toLowerCase().includes(q)),
+            (q === '' || `${componentName(s, t)} ${s.name} ${s.description} ${componentDescription(s, t)} ${s.id}`.toLowerCase().includes(q)),
     );
 
     // A server nobody has looked at yet: every row is unknown. This is the
@@ -1533,7 +1533,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                             >
                                                                 {componentName(s, t)}
                                                             </Link>
-                                                            <div className="truncate text-xs text-fg-subtle">{s.description}</div>
+                                                            <div className="truncate text-xs text-fg-subtle">{componentDescription(s, t)}</div>
                                                         </div>
                                                     </div>
                                                     <div className="hidden w-28 shrink-0 sm:block">
@@ -2447,7 +2447,7 @@ function InstallServiceDialog({
                 id="service-install"
                 iconSlot={<span className="text-3xl leading-none">{service.icon}</span>}
                 title={t('services.installTitle', { name: componentName(service, t) })}
-                description={service.description}
+                description={componentDescription(service, t)}
                 busy={busy || repoBusy}
                 onDismiss={onCancel}
                 actions={
@@ -3191,7 +3191,7 @@ function UninstallServiceDialog({
             title={retryCleanup
                 ? t('services.cleanupWebmailTitle')
                 : t('services.uninstallTitle', { name: componentName(service, t) })}
-            description={service.description}
+            description={componentDescription(service, t)}
             actions={
                 <>
                     <Button variant="secondary" onClick={onCancel} disabled={busy}>{t('common.cancel')}</Button>

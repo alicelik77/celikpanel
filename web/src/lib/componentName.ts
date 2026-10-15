@@ -21,3 +21,19 @@ export function componentName(component: { id: string; name?: string } | string,
     const said = t(key);
     return said === key ? fallback : said;
 }
+
+// A catalogue component's one-line description in the interface language
+// ("Intrusion Prevention" is English on a Turkish page otherwise). Same rule as
+// the name: a component this page has no description for keeps the server's
+// own text.
+//
+// Bileşenin tek satırlık açıklaması arayüz dilinde; bilinmeyen bileşen
+// sunucunun metnini korur.
+export function componentDescription(component: { id: string; description?: string } | string, t: Translate): string {
+    const id = typeof component === 'string' ? component : component.id;
+    const fallback = (typeof component === 'string' ? '' : component.description?.trim()) || '';
+    if (!/^[a-z0-9][a-z0-9-]*$/.test(id)) return fallback;
+    const key = `services.component.description.${id}` as TranslationKey;
+    const said = t(key);
+    return said === key ? fallback : said;
+}
