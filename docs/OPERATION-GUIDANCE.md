@@ -7812,10 +7812,53 @@ guest `CelikPanel-S2-Debian`). The Agent was not run again.
     88 s of outage only the update's calm dialog with its lock, no gate dialog,
     no held pages, no warning mark, no horizontal overflow; after
     reconnection "Update installed, being verified" with the lock still on;
-    then the new version. Not covered: the session gate (`App.tsx` AuthGate)
-    holds the same way when an API answers `503 PANEL_STARTING` during the
-    new Panel's start; not seen in set17 (no session hold in four updates), not
-    changed here. Nothing measured natively or on an installed server.
+    then the new version. Nothing measured natively or on an installed server.
 
-Counts after item 16: `npm test` 1471 of 1471; `npx tsc --noEmit` clean;
+    **The session gate during the new Panel's start** (the same class of
+    defect, recorded open above and fixed in this candidate; not seen in set17,
+    which had no session hold in four updates). While the new Panel starts, its
+    management answers `503 PANEL_STARTING`, the update tracking's own status
+    read included. Cause: the fetch interception in `App.tsx` (AuthGate) marked
+    the session unavailable on the first such answer to any request
+    (`markUnavailable()`); `AccessHold` then held the pages with "The panel is
+    starting", App published `publishSystemUpdateAuthentication(false)`, the
+    provider paused the tracking, and the navigation lease released its engaged
+    lock for good (`useSystemUpdateNavigationLease.ts`, unchanged). Now, while
+    the followed update restarts the Panel, such an answer does not mark the
+    session (`lib/useUpdateRestartStarting.ts`). The bound is the update's own
+    restart window (6 minutes from the start, at least 2 minutes from the
+    first lost read of the tracking or this page's first `PANEL_STARTING`
+    answer; that first answer is never moved later, so repeated answers cannot
+    extend it: `systemUpdateSessionGraceEnd`). Inside it nothing is drawn, the
+    tracking keeps running, the lock ends only by its own 2-minute bound, and
+    the Panel's readiness (`/api/v1/panel/availability`) is read every 5 s
+    while the tab is visible, and at once when the tab is shown again or the
+    tracking reaches the Panel again; a ready answer ends the wait, a 401 still
+    ends the session. When the window ends without a ready answer the session
+    is marked as before (its read, the hold and its explanation). Connection
+    failures are not handled by the interception at all and were not a path to
+    this hold. Reads only; nothing is retried or started. Browser clock only
+    (D-032). No new strings. Tests: `tests/access-hold-runtime.test.mjs`, three
+    mounted tests with a controlled clock on the real session, hold, lease and
+    signal (`PANEL_STARTING` on the access read, the update status read and a
+    page read: no hold, no pause, the lock kept and later released by its own
+    bound, readiness read every 5 s and no more after a ready answer; the
+    window's bound with repeated answers, then the hold as before; the
+    control without a followed update: hold, pause, lock released); the first
+    two fail against the previous `App.tsx`, the control passes on both;
+    `tests/update-restart-notice-mounted.test.mjs`, one for the bound.
+    Browser inspection batch 15 (`d1starting`: the Panel down for 25 s, then
+    20 s of `PANEL_STARTING`, then back on the new version), EN/TR,
+    light/dark, 1280 and 390: at 10 s and 18 s of the start only the update's
+    calm restart dialog with its lock (4 and 2 requests refused with
+    `PANEL_STARTING` in the two intervals); no session hold, no "The panel is
+    starting", no gate dialog, no connection banner, no warning mark, no
+    horizontal overflow; then "Update installed, being verified" with the lock;
+    then the new version. Still open: when the 2-minute lock has ended and the
+    window has not, pages the owner opens may show their own refusals of a
+    still-starting Panel until the window ends (the update's notice remains);
+    an `AUTH_STATUS_UNAVAILABLE` answer still marks the session at once. Not
+    measured natively or on an installed server.
+
+Counts after item 16: `npm test` 1475 of 1475; `npx tsc --noEmit` clean;
 `npm run build` passes with its bundle budget. Web only; Go not run again.

@@ -7779,11 +7779,54 @@ başarısız (WSL konuğu `CelikPanel-S2-Debian`). Agent yeniden koşulmadı.
     kesintinin 60. ve 88. saniyesinde yalnız güncellemenin kilitli sakin
     penceresi; kapı penceresi, tutulan sayfa, uyarı işareti, yatay taşma yok;
     yeniden bağlanınca kilit sürerken "Update installed, being verified";
-    ardından yeni sürüm. Kapsanmayan: oturum kapısı (`App.tsx` AuthGate), yeni
-    Panel başlarken bir API `503 PANEL_STARTING` yanıtı verirse aynı biçimde
-    tutar; set17'de görülmedi (dört güncellemede oturum tutması yok), burada
-    değiştirilmedi. Yerel çalıştırmada ya da kurulu sunucuda hiçbir şey
+    ardından yeni sürüm. Yerel çalıştırmada ya da kurulu sunucuda hiçbir şey
     ölçülmedi.
 
-16. kalemden sonraki sayılar: `npm test` 1471/1471; `npx tsc --noEmit` temiz;
+    **Yeni Panel başlarken oturum kapısı** (aynı kusur sınıfı; yukarıda açık
+    diye kaydedilmişti, bu adayda düzeltildi; set17'de görülmedi, dört
+    güncellemede oturum tutması yoktu). Yeni Panel başlarken yönetim istekleri,
+    güncelleme izlemesinin kendi durum okuması da dahil, `503 PANEL_STARTING`
+    yanıtı alır. Neden: `App.tsx` içindeki istek yakalayıcı (AuthGate) herhangi
+    bir isteğe gelen ilk böyle yanıtta oturumu kullanılamaz sayıyordu
+    (`markUnavailable()`); ardından `AccessHold` sayfaları "Panel başlatılıyor"
+    ile tutuyor, App `publishSystemUpdateAuthentication(false)` yayımlıyor,
+    sağlayıcı izlemeyi duraklatıyor ve gezinme kirası devreye girmiş kilidi
+    kalıcı olarak bırakıyordu (`useSystemUpdateNavigationLease.ts`, değişmedi).
+    Artık izlenen güncelleme Paneli yeniden başlatırken böyle bir yanıt oturumu
+    işaretlemez (`lib/useUpdateRestartStarting.ts`). Sınır, güncellemenin kendi
+    yeniden başlama penceresidir (başlangıçtan 6 dakika; izlemenin ilk kayıp
+    okumasından ya da bu sayfanın ilk `PANEL_STARTING` yanıtından en az 2
+    dakika; o ilk yanıt hiç ileri alınmaz, tekrarlanan yanıtlar sınırı
+    uzatamaz: `systemUpdateSessionGraceEnd`). Pencere içinde bir şey çizilmez,
+    izleme sürer, kilit yalnız kendi 2 dakikalık sınırıyla biter; Panelin hazır
+    olma durumu (`/api/v1/panel/availability`) sekme görünürken 5 saniyede bir,
+    sekme yeniden görünür olunca ve izleme Panele yeniden ulaşınca hemen
+    okunur; hazır yanıtı beklemeyi bitirir, 401 oturumu yine sonlandırır.
+    Pencere hazır yanıtı olmadan biterse oturum eskisi gibi işaretlenir
+    (okuması, tutma katmanı ve açıklaması). Bağlantı hatalarını yakalayıcı hiç
+    ele almaz; bu tutmaya giden bir yol değildi. Yalnız okuma; hiçbir şey
+    yinelenmez ya da başlatılmaz. Yalnız tarayıcının saati (D-032). Yeni metin
+    yok. Testler: `tests/access-hold-runtime.test.mjs` içinde gerçek oturum,
+    tutma katmanı, kira ve sinyalle, denetimli saatli üç bağlanmış test
+    (erişim okumasında, güncelleme durum okumasında ve bir sayfa okumasında
+    `PANEL_STARTING`: tutma yok, duraklama yok, kilit korunur ve sonra kendi
+    sınırıyla bırakılır, hazır olma 5 saniyede bir okunur ve hazır yanıtından
+    sonra okunmaz; tekrarlanan yanıtlarla pencerenin sınırı, ardından eskisi
+    gibi tutma; izlenen güncelleme olmadan denetim: tutma, duraklama, kilit
+    bırakılır); ilk ikisi önceki `App.tsx`'e karşı başarısız olur, denetim
+    ikisinde de geçer; `tests/update-restart-notice-mounted.test.mjs` içinde
+    sınır için bir test. Tarayıcı incelemesi 15. grup (`d1starting`: Panel 25 s
+    kapalı, sonra 20 s `PANEL_STARTING`, sonra yeni sürümle geri), EN/TR,
+    açık/koyu, 1280 ve 390: başlamanın 10. ve 18. saniyesinde yalnız
+    güncellemenin kilitli sakin yeniden başlama penceresi (iki aralıkta 4 ve 2
+    istek `PANEL_STARTING` ile reddedildi); oturum tutması, "Panel
+    başlatılıyor", kapı penceresi, bağlantı şeridi, uyarı işareti, yatay taşma
+    yok; ardından kilit sürerken "Update installed, being verified"; ardından
+    yeni sürüm. Hâlâ açık: 2 dakikalık kilit bitip pencere bitmediğinde,
+    sahibin açtığı sayfalar pencere bitene kadar henüz başlayan Panelin kendi
+    retlerini gösterebilir (güncellemenin bildirimi kalır);
+    `AUTH_STATUS_UNAVAILABLE` yanıtı oturumu yine hemen işaretler. Yerel
+    çalıştırmada ya da kurulu sunucuda ölçülmedi.
+
+16. kalemden sonraki sayılar: `npm test` 1475/1475; `npx tsc --noEmit` temiz;
 `npm run build` paket bütçesiyle geçer. Yalnız web; Go yeniden koşulmadı.
