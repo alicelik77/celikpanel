@@ -360,3 +360,26 @@ test-side clock control, not a product change: before the page loads,
 Each record adds the number of spinners on screen, the visible buttons with
 their disabled state, and whether the page scrolls sideways. The screenshots
 are the inspection; these scenarios do not fail on a finding.
+
+## Scenarios of the fourteenth batch (the alpha.86 candidate's smaller corrections, 2026-10-15)
+
+These live in `scenarios-batch14.mjs` and need no mock routes of their own: the
+audit log, the Store and the refused reads and actions are answered by
+`mock.mjs` overrides, the fresh component scan by `mock-batch12.mjs`. Run them
+with `laptop` and `phone`, both languages and both themes; each state is also
+copied to `BROWSER_INSPECT_SHOTS` as `<state>-<lang>-<theme>-<width>.png`.
+
+| Name | States |
+| --- | --- |
+| `c86components` | the Components page with the whole catalogue (27 ids) at the top and whole (the viewport made as tall as `<main>`), a search by a translated description, the install and uninstall dialogs, a component page whose record read is refused with `SERVICE_STATE_UNVERIFIED`, an action answered with `SERVICE_STATE_REFRESH_FAILED` (toast and banner, then the locked rows), and a stored record that cannot be verified on load (checking, checked) |
+| `c86mail` | the mail profile cards: `component_not_installable` with a platform, `component_requires` with a role token and with a mixed list |
+| `c86dashboard` | Recent activity (setup, mail, certificate, repeated sign-in, an unknown action, the `system` actor) and the stopped-service lines |
+| `c86rdns` | the setup final step's reverse DNS sentence: a resolver named, resolvers disagreeing with and without a PTR, no PTR, an older Agent |
+| `c86store` | the Store with the three `component_state_*` sentences |
+| `c86lang` | `document.documentElement.lang` before and after a switch TR↔EN and back (printed to the console and kept in the record) |
+
+Each record adds the document language, English catalogue text on a Turkish
+page (`englishLeaks`), raw action ids, codes and tokens (`rawTokens`), visible
+toasts, the buttons with their disabled state (a button in a disabled fieldset
+counts as disabled) and sideways scrolling of the page and of `<main>`. The
+screenshots are the inspection; these scenarios do not fail on a finding.
