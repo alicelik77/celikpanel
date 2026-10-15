@@ -1,0 +1,20 @@
+{
+  "schema": "celikpanel/set17-start-answer/v1",
+  "tool": "cold-load-set17b.mjs",
+  "request_id": "12d6fcbdabeac9e8a6753aecf5c57cce",
+  "pressed_ms": 1792087883347,
+  "held_ms": 1792087883400,
+  "released_ms": 1792087884293,
+  "answered_ms": null,
+  "status": null,
+  "failed": null,
+  "body": null,
+  "armed": {
+    "armed": true,
+    "request_id": "12d6fcbdabeac9e8a6753aecf5c57cce",
+    "seconds": 0.49
+  },
+  "answer_seen_by_the_browser": false,
+  "page_dialog_line_after_release": "The update is being applied; the panel may be unavailable briefly.",
+  "note": "the page's own POST, held unchanged until the observer was armed, then released"
+}

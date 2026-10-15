@@ -1,0 +1,36 @@
+{
+  "browser_done": {
+    "at": "2026-10-15T17:23:28.306Z",
+    "by": "cold-load-set17b.mjs",
+    "started": true
+  },
+  "ended_at": "2026-10-15T17:23:29Z",
+  "hand": "/var/tmp/cp-set17b/hand/h17bu86a-page",
+  "password_file_removed": true,
+  "requests": [
+    {
+      "at": "2026-10-15T17:23:21Z",
+      "prep": "page-ready",
+      "result": {
+        "current_version": "v0.1.0-alpha.86",
+        "ok": true,
+        "target": {
+          "archive_sha256": "34c753c6158ecedfea501d3f9c5494557f12609b61e989bbc00cecdba82cb93e",
+          "commit": "20a9baa5d0ccb269528a02ec8c14229bc2ee2493",
+          "sequence": "87",
+          "version": "v0.1.0-alpha.87"
+        }
+      }
+    },
+    {
+      "at": "2026-10-15T17:23:23Z",
+      "prep": "arm_d5978efa122f19c0d54edbde38d79c60",
+      "result": {
+        "armed": true,
+        "request_id": "d5978efa122f19c0d54edbde38d79c60",
+        "seconds": 0.51
+      }
+    }
+  ],
+  "window": "page"
+}

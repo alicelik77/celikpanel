@@ -1,0 +1,9 @@
+second: baseline = the update document's good commit ecd2a5f088d676f7cc8a8e571ed3c903ea951f3e itself (the source, its own release policy, below); not a tag
+format=celikpanel-release-sequence-policy-v1
+version=v0.1.0-alpha.86
+current=86
+previous=85
+previous_version=v0.1.0-alpha.85
+previous_commit=36c33c4531ee6c1306d324db7a666403176f3bf7
+== Agent package closure at the baseline (go list -deps ./cmd/agent, 317 packages): licensing packages
+0

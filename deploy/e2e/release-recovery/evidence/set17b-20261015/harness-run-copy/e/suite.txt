@@ -1,0 +1,11 @@
+Ran 11 tests in 0.323s
+OK
+Ran 8 tests in 0.287s
+OK
+compiled set17_trial.py
+compiled set17_fixture.py
+compiled set17b_trial.py
+compiled guest_set17b_restart_delay.py
+guest_set17b_restart_delay.py: error: operation id must be 32 hex; delay in (0, 600]; limit in (0, 1800]
+shell syntax ok
+tool syntax ok

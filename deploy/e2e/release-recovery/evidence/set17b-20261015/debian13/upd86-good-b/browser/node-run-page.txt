@@ -1,0 +1,5 @@
+wait for //wsl.localhost/archlinux/var/tmp/cp-set17b/hand/h17bu86b-page/ready.json start=2026-10-15T17:45:22Z limit=5400s
+handover after 642s at 2026-10-15T17:56:16Z tool_sha256=fabf21620d9070d26970ad894c1e648da61e3fe0e549476d9b935260d22dccd9
+browser profile: <redacted> (46 characters, limit 120)
+{"cell":"page","started":"2026-10-15T17:56:17.579Z","ended":"2026-10-15T18:00:17.368Z","ok":true}
+rc=0 end=2026-10-15T18:00:17Z

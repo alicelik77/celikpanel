@@ -1,0 +1,3 @@
+refs/upd1/baseline 36c33c4531ee6c1306d324db7a666403176f3bf7 tree=c451c26de3cb179251e8dfd4b033ec7a9e18005e Release candidate v0.1.0-alpha.85: the setup final step finishes, and waiting screens say what they wait for (#210)
+refs/upd1/defective 8acfb74a842488c46a8083cca05e2bb10fc1fb97 tree=19235cbdcc7b6e26bd44395037a532c256f76a75 test(fixture): set17 defective candidate - migrate-only fails (unpublished, disposable)
+refs/upd1/good ecd2a5f088d676f7cc8a8e571ed3c903ea951f3e tree=9fce9365ea8da90da7503a3b6663fb0c237c1d36 Operation guidance: item 16, the session gate during the new Panel's start, EN and TR
