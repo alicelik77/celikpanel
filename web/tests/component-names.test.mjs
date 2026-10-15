@@ -105,3 +105,14 @@ test('every catalogue component has an English and a Turkish description, and a 
   assert.ok(!/(?<!\$)\{(?:s|service)\.description\}/.test(list), 'the Components list or a dialog draws the server description raw');
   assert.ok((list.match(/componentDescription\((?:s|service), t\)/g) ?? []).length >= 4, 'the list row, install, uninstall dialogs and search use the translated description');
 });
+
+// Browser batch 14 (2026-10-15): the Dashboard's "service is stopped" line led
+// to the Components page with "Go to services" / "Servislere git", a page the
+// menu does not have. The link names the page as the menu does.
+// Panodaki bağlantı sayfayı menüdeki adıyla söyler.
+test('the Dashboard link to the Components page names it as the menu does', () => {
+  for (const locale of ['en', 'tr']) {
+    const page = catalogues[locale]['nav.services'];
+    assert.ok(catalogues[locale]['dashboard.goServices'].includes(page), `${locale}: "${catalogues[locale]['dashboard.goServices']}" does not name "${page}"`);
+  }
+});

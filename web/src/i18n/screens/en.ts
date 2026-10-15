@@ -244,7 +244,7 @@ export const enScreens = {
     'dashboard.certWaitingOwnerExpired': '{domain}: a certificate is waiting for your choice on the site’s configuration file; the one in use expired {days} days ago',
     'dashboard.openDomain': 'Open the domain',
     'dashboard.svcStoppedItem': '{name} service is stopped',
-    'dashboard.goServices': 'Go to services',
+    'dashboard.goServices': 'Open Components',
     'dashboard.goSettings': 'Go to settings',
     'dashboard.fwOffItem': 'Firewall is off — all ports are open',
     'dashboard.fwPersistenceItem': 'The live firewall policy is not verified as saved for reboot.',

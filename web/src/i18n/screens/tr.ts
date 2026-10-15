@@ -229,7 +229,7 @@ export const trScreens: Record<ScreenKey, string> = {
     'dashboard.certWaitingOwnerExpired': '{domain}: bir sertifika, sitenin yapılandırma dosyası için seçiminizi bekliyor; kullanılan sertifikanın süresi {days} gün önce doldu',
     'dashboard.openDomain': 'Alan adını aç',
     'dashboard.svcStoppedItem': '{name} servisi durdu',
-    'dashboard.goServices': 'Servislere git',
+    'dashboard.goServices': 'Bileşenleri aç',
     'dashboard.goSettings': 'Ayarlara git',
     'dashboard.fwOffItem': 'Güvenlik duvarı kapalı — tüm portlar açık',
     'dashboard.fwPersistenceItem': 'Canlı güvenlik duvarı politikasının yeniden başlatma için kaydedildiği doğrulanmadı.',
