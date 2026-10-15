@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ScrollText } from 'lucide-react';
 import { useI18n } from '../i18n';
+import { auditActorName } from '../lib/auditAction';
 import { EmptyState, Spinner } from './ui';
 import { PageHeader } from './PageHeader';
 
@@ -74,7 +75,7 @@ export function AuditLogPage() {
                                         <td className="whitespace-nowrap px-4 py-3 text-fg-muted">
                                             {new Date(e.created_at.replace(' ', 'T') + 'Z').toLocaleString()}
                                         </td>
-                                        <td className="px-4 py-3 text-base font-medium text-fg">{e.username}</td>
+                                        <td className="px-4 py-3 text-base font-medium text-fg">{auditActorName(e.username, t)}</td>
                                         <td className="px-4 py-3">
                                             <span className="rounded-md bg-surface-2 px-2 py-0.5 font-mono text-xs text-fg-muted">
                                                 {verb}

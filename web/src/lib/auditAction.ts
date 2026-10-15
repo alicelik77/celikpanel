@@ -68,3 +68,14 @@ export function auditActionText(action: string, t: Translate): string {
     if (said === key || (!target && t(key).includes('{target}'))) return humaniseAuditAction(action);
     return said;
 }
+
+// Who did it. The Panel writes the reserved name "system" for an action that
+// has no signed-in user (cmd/panel/audit.go); that one name is said in the
+// interface language, every other name is shown exactly as the user typed it.
+//
+// Eylemi kimin yaptığı. Panel, oturum açmış kullanıcısı olmayan eylem için
+// "system" adını yazar; yalnızca bu ad arayüz dilinde söylenir, kullanıcı
+// adları olduğu gibi gösterilir.
+export function auditActorName(username: string, t: Translate): string {
+    return username === 'system' ? t('dashboard.audit.actor.system') : username;
+}

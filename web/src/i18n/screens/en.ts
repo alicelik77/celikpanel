@@ -277,6 +277,7 @@ export const enScreens = {
     'dashboard.audit.profile.webmail': 'Webmail',
     'dashboard.audit.profile.protectedMail': 'Spam-Protected Mail',
     'dashboard.audit.repeated': '{n} times',
+    'dashboard.audit.actor.system': 'System',
     // Each audit action the Panel writes, said after the user's name in Recent
     // activity (lib/auditAction.ts, 2026-10-15). The names are the Panel's own
     // list (cmd/panel auditActionNames); tests/audit-actions.test.mjs requires a

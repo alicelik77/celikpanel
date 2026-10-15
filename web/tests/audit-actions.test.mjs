@@ -103,7 +103,19 @@ test('an action this page has no words for is said as words, never as its raw id
 
 test('the Dashboard says actions through the library', () => {
   const dashboard = read('../src/components/Dashboard.tsx');
-  assert.match(dashboard, /import \{ auditActionText \} from '\.\.\/lib\/auditAction';/);
+  assert.match(dashboard, /import \{ auditActionText, auditActorName \} from '\.\.\/lib\/auditAction';/);
   assert.match(dashboard, /\{auditActionText\(e\.action, t\)\}/);
   assert.ok(!/function auditActionText/.test(dashboard), 'the Dashboard keeps its own partial mapping');
+});
+
+test('only the reserved system actor is translated; user names never', () => {
+  assert.equal(lib.auditActorName('system', say('en')), 'System');
+  assert.equal(lib.auditActorName('system', say('tr')), 'Sistem');
+  for (const name of ['admin', 'alice', 'System', 'systemd', 'sistem', '']) {
+    assert.equal(lib.auditActorName(name, say('tr')), name);
+  }
+  const dashboard = read('../src/components/Dashboard.tsx');
+  assert.ok(!/\{e\.username\}/.test(dashboard), 'the Dashboard draws the actor raw');
+  assert.match(dashboard, /auditActorName\(e\.username, t\)/);
+  assert.ok(!/\{e\.username\}/.test(read('../src/components/AuditLogPage.tsx')), 'the audit log draws the actor raw');
 });

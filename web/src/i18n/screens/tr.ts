@@ -262,6 +262,7 @@ export const trScreens: Record<ScreenKey, string> = {
     'dashboard.audit.profile.webmail': 'Webmail',
     'dashboard.audit.profile.protectedMail': 'Spam Korumalı Posta',
     'dashboard.audit.repeated': '{n} kez',
+    'dashboard.audit.actor.system': 'Sistem',
     // Panel'in yazdığı her denetim eylemi, Son etkinlik'te kullanıcı adından
     // sonra söylenir (2026-10-15). {target}, eylemin hedefidir.
     'dashboard.audit.action.2fa.disable': 'iki faktörlü doğrulamayı kapattı',

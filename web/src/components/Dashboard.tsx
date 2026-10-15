@@ -11,7 +11,7 @@ import {
 import { api, type SystemStats } from '../lib/api';
 import { useI18n } from '../i18n';
 import { componentName } from '../lib/componentName';
-import { auditActionText } from '../lib/auditAction';
+import { auditActionText, auditActorName } from '../lib/auditAction';
 import { useAuth } from '../auth/AuthContext';
 import type { TranslationKey } from '../i18n/en';
 import { Button, Checking, CouldNotCheck, Dialog, KeepWords, Spinner, UsageBar, Card } from './ui';
@@ -1297,10 +1297,10 @@ function AdminDashboard() {
                                 {recentActivity.map((e) => (
                                     <li key={e.id} className="flex flex-wrap items-center gap-2.5 border-b border-border px-4 py-2.5 last:border-0">
                                         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-2 text-xs font-semibold uppercase text-fg-muted">
-                                            {e.username.slice(0, 1) || '?'}
+                                            {auditActorName(e.username, t).slice(0, 1) || '?'}
                                         </span>
                                         <span className="min-w-0 flex-1 text-sm text-fg">
-                                            <span className="font-semibold">{e.username}</span>{' '}
+                                            <span className="font-semibold">{auditActorName(e.username, t)}</span>{' '}
                                             <span className="text-fg-muted">{auditActionText(e.action, t)}</span>
                                             {e.count > 1 && (
                                                 <span className="ml-2 rounded-full bg-surface-2 px-2 py-0.5 text-xs font-semibold text-fg-muted">
