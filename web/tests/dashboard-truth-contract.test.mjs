@@ -49,7 +49,7 @@ test('system service truth never promotes tools into running daemons', () => {
   assert.match(dashboard, /const attentionChecking = attentionReads\.includes\('loading'\);/);
   assert.match(dashboard, /const attentionUnread = attentionReads\.includes\('unknown'\);/);
   assert.match(dashboard,
-    /const attentionReads = \[\s*extrasRead\.remote\.state,\s*domainList\.remote\.state,\s*firewall\.remote\.state,\s*scanRead === 'reading' \? 'loading' : scanRead === 'known' \? 'known' : 'unknown',\s*\];/,
+    /const attentionReads = \[\s*extrasRead\.remote\.state,\s*domainList\.remote\.state,\s*firewall\.remote\.state,\s*scanRead === 'reading' \|\| \(scanRead === 'unverified' && servicesCard === 'checking'\) \? 'loading'\s*: scanRead === 'known' \? 'known' : 'unknown',\s*\];/,
     'the calm line waits for the certificates, the domain list, the firewall and the component records');
   // The firewall is "off" only for an answer that says so: an answer without a
   // boolean `enabled`, or one carrying the Agent's own error, is unknown.
@@ -104,7 +104,8 @@ test('the dashboard checks the components by itself, conditionally, and only whe
   // is visible, nothing is in flight, and the last automatic check is a
   // window ago.
   assert.match(dashboard,
-    /const autoCheckDue = scanRead === 'known'\s*&& !serviceScanFresh\s*&& visible\s*&& !componentScanBusy\s*&& \(lastAutoCheckAt === null \|\| freshnessNow - lastAutoCheckAt >= SCAN_WINDOW_MS\);/);
+    // A stored record the server cannot verify is due as a stale one is (2026-10-15).
+    /const autoCheckDue = \(scanRead === 'unverified' \|\| \(scanRead === 'known' && !serviceScanFresh\)\)\s*&& visible\s*&& !componentScanBusy\s*&& \(lastAutoCheckAt === null \|\| freshnessNow - lastAutoCheckAt >= SCAN_WINDOW_MS\);/);
   assert.match(dashboard, /document\.visibilityState === 'visible'/);
   assert.match(dashboard, /document\.addEventListener\('visibilitychange', onVisibility\)/);
   assert.match(dashboard, /return \(\) => document\.removeEventListener\('visibilitychange', onVisibility\)/);

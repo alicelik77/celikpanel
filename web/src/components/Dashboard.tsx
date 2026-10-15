@@ -96,6 +96,10 @@ function decodeExtras(raw: unknown): Extras {
 }
 
 const NO_DOMAINS: DomainLite[] = [];
+// The stored component record could not be verified: a read the page answers
+// with its own conditional check instead of "could not be read".
+// Kayıtlı bileşen kaydı doğrulanamadı: sayfa bunu kendi koşullu kontrolüyle yanıtlar.
+const STORED_RECORD_UNVERIFIED = Symbol('stored component record unverified');
 
 
 function groupAuditEntries(entries: AuditLite[]): AuditGroup[] {
@@ -331,9 +335,14 @@ function AdminDashboard() {
     const fw: FirewallStatus | null = fwChanged && !(fwKnown && fwKnown.observedAt >= fwChanged.observedAt)
         ? fwChanged.value
         : fwKnown?.value ?? null;
-    // The stored component records: read, could not be read, or known.
-    // Kayıtlı bileşen kayıtları: okunuyor, okunamadı ya da biliniyor.
-    const [scanRead, setScanRead] = useState<'reading' | 'unread' | 'known'>('reading');
+    // The stored component records: read, could not be read, known, or
+    // stored but not verifiable (SERVICE_STATE_UNVERIFIED). The last is a
+    // record the page replaces by itself with its conditional check (D-032,
+    // 2026-10-15), as it does a stale one.
+    // Kayıtlı bileşen kayıtları: okunuyor, okunamadı, biliniyor ya da kayıtlı
+    // ama doğrulanamıyor. Sonuncusunu sayfa, bayat kayıt gibi, koşullu
+    // kontrolüyle kendisi yeniler.
+    const [scanRead, setScanRead] = useState<'reading' | 'unread' | 'known' | 'unverified'>('reading');
     const [scanAttempt, setScanAttempt] = useState(0);
     // The four counts under "Hosting" and the list of recent domains are drawn
     // from three reads. Each count is a number only for an answer the server
@@ -408,7 +417,11 @@ function AdminDashboard() {
         let current = true;
         setScanRead('reading');
         fetch('/api/v1/managed-services')
-            .then((r) => (r.ok ? r.json() : Promise.reject(new Error('refused'))))
+            .then(async (r) => {
+                if (r.ok) return r.json();
+                const refusal = await readApiError(r);
+                throw refusal.code === 'SERVICE_STATE_UNVERIFIED' ? STORED_RECORD_UNVERIFIED : new Error('refused');
+            })
             .then((value: unknown) => {
                 if (!current) return;
                 const snapshot = decodeDashboardServices(value);
@@ -424,8 +437,8 @@ function AdminDashboard() {
                 setFreshnessNow(observedAt);
                 setScanRead('known');
             })
-            .catch(() => {
-                if (current) setScanRead('unread');
+            .catch((cause: unknown) => {
+                if (current) setScanRead(cause === STORED_RECORD_UNVERIFIED ? 'unverified' : 'unread');
             });
         return () => {
             current = false;
@@ -587,8 +600,7 @@ function AdminDashboard() {
     // ya da pencereden eskiler, sayfa ekranda, kontrol sürmüyor ve son
     // otomatik kontrol en az bir pencere önce. Başka hiçbir şey kontrol
     // başlatmaz: bayatlığa bakmadan tarayan bir zamanlayıcı yoktur.
-    const autoCheckDue = scanRead === 'known'
-        && !serviceScanFresh
+    const autoCheckDue = (scanRead === 'unverified' || (scanRead === 'known' && !serviceScanFresh))
         && visible
         && !componentScanBusy
         && (lastAutoCheckAt === null || freshnessNow - lastAutoCheckAt >= SCAN_WINDOW_MS);
@@ -614,7 +626,7 @@ function AdminDashboard() {
             : scanRead === 'reading' || componentScanBusy || autoCheckDue ? 'checking'
                 : scanOutcome?.kind === 'held' ? 'held'
                     : scanOutcome?.kind === 'failed' ? 'failed'
-                        : scanRead === 'unread' ? 'unread'
+                        : scanRead === 'unread' || scanRead === 'unverified' ? 'unread'
                             : hostNeverChecked ? 'never'
                                 : 'stale';
 
@@ -863,7 +875,8 @@ function AdminDashboard() {
         extrasRead.remote.state,
         domainList.remote.state,
         firewall.remote.state,
-        scanRead === 'reading' ? 'loading' : scanRead === 'known' ? 'known' : 'unknown',
+        scanRead === 'reading' || (scanRead === 'unverified' && servicesCard === 'checking') ? 'loading'
+            : scanRead === 'known' ? 'known' : 'unknown',
     ];
     const attentionChecking = attentionReads.includes('loading');
     const attentionComponentsKey: TranslationKey = servicesCard === 'checking'
@@ -884,7 +897,7 @@ function AdminDashboard() {
         if (extrasRead.remote.state === 'unknown') void extrasRead.retry();
         if (domainList.remote.state === 'unknown') void domainList.retry();
         if (firewall.remote.state === 'unknown') void firewall.retry();
-        if (scanRead === 'unread') setScanAttempt((n) => n + 1);
+        if (scanRead === 'unread' || scanRead === 'unverified') setScanAttempt((n) => n + 1);
     };
 
     // The section leaves the page only when the server has said there is

@@ -6,6 +6,7 @@ import Renderer, { act } from 'react-test-renderer';
 import { dataModule, reactURL, remoteURL, sharedLayer } from './fixtures/shared-layer.mjs';
 import { readAllowList, scanTree } from './remote-state-ratchet.mjs';
 import { fileURLToPath } from 'node:url';
+import { en } from '../src/i18n/en.ts';
 import { tr } from '../src/i18n/tr.ts';
 import { trScreens } from '../src/i18n/screens/tr.ts';
 import { trServerScreens } from '../src/i18n/screens/server/tr.ts';
@@ -1042,4 +1043,61 @@ test('Components: a paused server change says the page lifts it by itself, witho
     assert.ok(shown.includes('services.mutationReadiness.package_manager_active'), shown.slice(0, 400));
     assert.ok(shown.includes('services.mutationReadiness.autoResume'), 'the banner does not say it lifts by itself');
   } finally { await unmount(); }
+});
+
+// --- A stored component record the server cannot verify (2026-10-15, D-032) ---
+// The Panel refuses it with 503 SERVICE_STATE_UNVERIFIED. The sentence used to
+// ask the owner to run Rescan; the Dashboard and the Components page now answer
+// it with their own conditional check (a read that writes a new record), once,
+// with no toast, as they do for a stale record.
+// Sunucunun doğrulayamadığı kayıtlı bileşen kaydı: Pano ve Bileşenler sayfası
+// sahibe Yeniden Tara dedirtmeden kendi koşullu kontrolünü bir kez yapar.
+const UNVERIFIED_RECORD = () => answer({ error: 'the stored component record could not be verified', code: 'SERVICE_STATE_UNVERIFIED' }, 503);
+
+test('Dashboard: a stored record the server cannot verify → one conditional check by itself, its result drawn, no toast', async () => {
+  serve({ '/api/v1/managed-services': UNVERIFIED_RECORD, [SCAN_PATH]: (init) => (init.method === 'POST' ? answer(freshScan()) : answer({}, 405)) });
+  recordScanURLs();
+  await mount(dashboard());
+  try {
+    for (let i = 0; i < 4; i += 1) await settle();
+    assert.deepEqual(scanURLs, [`${SCAN_PATH}?max_age_seconds=300`], `expected one conditional check: ${requests.join(', ')}`);
+    const shown = text();
+    assert.ok(shown.includes('0 / 0'), `the result is not drawn: ${shown.slice(0, 400)}`);
+    assert.ok(!shown.includes('dashboard.attentionUnread'), `the record is reported as unreadable: ${shown.slice(0, 400)}`);
+    assert.deepEqual(globalThis.currentTest.toasts, [], 'a check nobody pressed raised a toast');
+    assert.equal(requests.filter((line) => line.startsWith('POST ') && line !== `POST ${SCAN_PATH}`).length, 0, `the page changed something: ${requests.join(', ')}`);
+  } finally { await unmount(); }
+});
+
+test('Dashboard: the check after an unverifiable record fails → "could not check", not asked again by itself', async () => {
+  serve({ '/api/v1/managed-services': UNVERIFIED_RECORD, [SCAN_PATH]: () => answer({ error: 'agent unavailable' }, 502) });
+  await mount(dashboard());
+  try {
+    for (let i = 0; i < 6; i += 1) await settle();
+    assert.equal(scans(), 1, `the failure was asked again by itself: ${requests.join(', ')}`);
+    assert.ok(text().includes('dashboard.systemServicesCheckFailed'), text().slice(0, 400));
+  } finally { await unmount(); }
+});
+
+test('Components: a stored record the server cannot verify → one conditional check, the list drawn, no error toast', async () => {
+  serve({ '/api/v1/managed-services': UNVERIFIED_RECORD, [SCAN_PATH]: scanRoute });
+  recordScanURLs();
+  await mount(React.createElement(ServiceList, {}));
+  try {
+    for (let i = 0; i < 4; i += 1) await settle();
+    assert.equal(scanURLs.length, 1, `expected one check: ${requests.join(', ')}`);
+    assert.match(scanURLs[0], /\?max_age_seconds=\d+$/, 'the page asked for an unconditional scan');
+    assert.deepEqual(globalThis.currentTest.toasts.filter(([kind]) => kind === 'error'), [], 'the stored record was reported as a failed read');
+    assert.ok(text().includes('pdns'), `the list is not drawn: ${text().slice(0, 400)}`);
+  } finally { await unmount(); }
+});
+
+test('the sentence for an unverifiable stored record says the panel checks by itself, in both languages', () => {
+  for (const catalogue of [en, tr]) {
+    const sentence = catalogue['err.SERVICE_STATE_UNVERIFIED'];
+    assert.ok(sentence, 'no sentence');
+    assert.doesNotMatch(sentence, /Rescan|Yeniden Tara|rescan|yeniden tara/, sentence);
+    assert.match(sentence, /CelikPanel/);
+  }
+  assert.notEqual(en['err.SERVICE_STATE_UNVERIFIED'], tr['err.SERVICE_STATE_UNVERIFIED']);
 });

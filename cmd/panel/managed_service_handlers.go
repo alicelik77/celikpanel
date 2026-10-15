@@ -627,7 +627,7 @@ func (p *Panel) handleManagedServices(w http.ResponseWriter, r *http.Request) {
 		if decodeErr != nil {
 			log.Printf("cached service state is unverified: %v", decodeErr)
 			writeCodedError(w, http.StatusServiceUnavailable, errCodeServiceStateUnverified,
-				"cached service state could not be verified; run a fresh scan", "/services")
+				serviceStateUnverifiedMessage, "/services")
 			return
 		}
 		if t, terr := time.Parse(time.RFC3339, scannedAt); terr == nil {
@@ -759,6 +759,16 @@ func (p *Panel) handleManagedServicesScan(w http.ResponseWriter, r *http.Request
 	payload.stampScanAge(time.Now())
 	json.NewEncoder(w).Encode(payload)
 }
+
+// serviceStateUnverifiedMessage is the refusal of a stored component record
+// that cannot be verified. Under D-032 it says what the panel does, not what
+// the owner should press: the Dashboard and the Components page answer this
+// code with their own conditional check, which writes a new record
+// (2026-10-15). The web says it from the code (err.SERVICE_STATE_UNVERIFIED).
+// serviceStateUnverifiedMessage, doğrulanamayan kayıtlı bileşen kaydının
+// retidir; sahibin neye basacağını değil panelin ne yaptığını söyler.
+const serviceStateUnverifiedMessage = "the stored component record could not be verified, so it is not shown and nothing was changed; " +
+	"CelikPanel checks the components again by itself while the Dashboard or the Components page is open"
 
 // managedServiceScanMaxAge distinguishes automatic conditional refreshes from
 // an operator's explicit Rescan. Manual requests omit the parameter and always

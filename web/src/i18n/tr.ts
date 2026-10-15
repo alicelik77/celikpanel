@@ -222,7 +222,7 @@ export const tr: Record<ShellKey, string> = {
     'err.SERVICE_UNINSTALL_PARTIAL': 'Servis durduruldu veya devre dışı bırakıldı ancak paket kaldırma tamamlanmadı. Güncel durumu yeniden tarandı; tekrar denemeden önce bileşeni inceleyin.',
     'err.WEBMAIL_UNINSTALL_PARTIAL': 'Roundcube artık algılanmıyor ancak kaldırma temizliği ve sonlandırması tam olarak doğrulanamadı. Güvenle tamamlamak için bu penceredeki Web posta temizliğini yeniden dene düğmesini kullanın.',
     'err.SERVICE_STATE_REFRESH_FAILED': 'İşlemin sonucu ve servisin güncel durumu doğrulanamadı. Başka bir işlem yapmadan önce Yeniden Tara’yı çalıştırın.',
-    'err.SERVICE_STATE_UNVERIFIED': 'Önbellekteki servis durumu bozuk veya doğrulanamıyor. Herhangi bir bileşeni değiştirmeden önce Yeniden Tara’yı çalıştırın.',
+    'err.SERVICE_STATE_UNVERIFIED': 'Bu sunucunun bileşenleri için saklanan kayıt doğrulanamadı; bu yüzden gösterilmiyor ve hiçbir şey değişmedi. CelikPanel, Panel ya da Bileşenler sayfası açıkken bileşenleri kendiliğinden yeniden denetler; o denetimden sonra bu sayfayı yeniden açın.',
     'err.HOST_MUTATION_BUSY': 'Başka bir sunucu değişikliği veya işletim sistemi paket işlemi hâlâ sürüyor. Tamamlanmasını bekleyip yeniden deneyin.',
     'err.HOST_MUTATION_BUSY.package_manager_active': 'Bu sunucunun paket yöneticisi meşgul — bu sunucuda bir paket işlemi hâlâ sürüyor. Tamamlanmasını bekleyip yeniden deneyin.',
     'err.HOST_MUTATION_BUSY.agent_mutation_active': 'Bu sunucuda başka bir CelikPanel değişikliği hâlâ sürüyor. Tamamlanmasını bekleyip yeniden deneyin.',

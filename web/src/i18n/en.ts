@@ -318,7 +318,7 @@ export const en = {
     'err.SERVICE_UNINSTALL_PARTIAL': 'The service was stopped or disabled, but package removal did not finish. Its current state was rescanned; review the component before trying again.',
     'err.WEBMAIL_UNINSTALL_PARTIAL': 'Roundcube is no longer detected, but its uninstall cleanup and finalization could not be fully verified. Use Retry webmail cleanup in this dialog to finish safely.',
     'err.SERVICE_STATE_REFRESH_FAILED': 'The operation outcome and current service state could not be verified. Run Rescan before taking another action.',
-    'err.SERVICE_STATE_UNVERIFIED': 'The cached service state is damaged or unverifiable. Run Rescan before changing any component.',
+    'err.SERVICE_STATE_UNVERIFIED': 'The stored record of this server’s components could not be verified, so it is not shown and nothing was changed. CelikPanel checks the components again by itself while the Dashboard or the Components page is open; open this page again after that check.',
     'err.HOST_MUTATION_BUSY': 'Another server change or operating-system package task is still running. Wait for it to finish, then try again.',
     'err.HOST_MUTATION_BUSY.package_manager_active': 'This server\'s package manager is busy — a package task is still running on this server. Wait for it to finish, then try again.',
     'err.HOST_MUTATION_BUSY.agent_mutation_active': 'Another CelikPanel change is still running on this server. Wait for it to finish, then try again.',

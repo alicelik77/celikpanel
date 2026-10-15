@@ -698,34 +698,46 @@ export function ServiceList({ onManageService }: ServiceListProps) {
         setLoading(true);
         try {
             const res = await fetch('/api/v1/managed-services');
+            // A stored record the server cannot verify is not a failed read
+            // to report: the page replaces it with its own conditional check
+            // below, as it does a stale one (D-032, 2026-10-15). Any other
+            // refusal is reported.
+            // Sunucunun doğrulayamadığı kayıtlı kayıt bildirilecek bir okuma
+            // hatası değildir: sayfa onu, bayat kayıt gibi, aşağıdaki koşullu
+            // kontrolüyle kendisi yeniler.
+            let storedScannedAt: string | null = null;
             if (!res.ok) {
                 const error = await readApiError(res);
-                showToast('error', apiErrorText(error, t));
-                return failVerification(error);
-            }
-            const data: unknown = await res.json();
-            const snapshot = parseManagedServicesSnapshot(data);
-            if (!snapshot || !applySnapshot(data, 'load')) {
-                showToast('error', t('services.scanFailed'));
-                return failVerification();
-            }
+                if (error.code !== 'SERVICE_STATE_UNVERIFIED') {
+                    showToast('error', apiErrorText(error, t));
+                    return failVerification(error);
+                }
+            } else {
+                const data: unknown = await res.json();
+                const snapshot = parseManagedServicesSnapshot(data);
+                if (!snapshot || !applySnapshot(data, 'load')) {
+                    showToast('error', t('services.scanFailed'));
+                    return failVerification();
+                }
 
-            // The server's own age of the scan decides, as it does for the
-            // conditional scan, so the browser's clock is not compared with
-            // the server's; a negative age (a stamp after the server's clock)
-            // is not fresh there either. An older server sends no age: then
-            // the stamp is compared with this browser's clock as before.
-            // Taramanın sunucunun kendi saatiyle yaşı karar verir (koşullu
-            // taramada olduğu gibi); tarayıcı saati sunucununkiyle
-            // karşılaştırılmaz. Eksi yaş orada da taze değildir. Eski sunucu
-            // yaş göndermez: o zaman damga eskisi gibi tarayıcı saatiyle
-            // karşılaştırılır.
-            const scannedTimestamp = Date.parse(snapshot.scannedAt ?? '');
-            const cacheIsStale = snapshot.scanAgeSeconds !== null
-                ? snapshot.scanAgeSeconds < 0 || snapshot.scanAgeSeconds > AUTO_SCAN_MAX_AGE_SECONDS
-                : !Number.isFinite(scannedTimestamp)
-                    || Date.now() - scannedTimestamp > AUTO_SCAN_MAX_AGE_SECONDS * 1000;
-            if (!cacheIsStale) return true;
+                // The server's own age of the scan decides, as it does for the
+                // conditional scan, so the browser's clock is not compared with
+                // the server's; a negative age (a stamp after the server's clock)
+                // is not fresh there either. An older server sends no age: then
+                // the stamp is compared with this browser's clock as before.
+                // Taramanın sunucunun kendi saatiyle yaşı karar verir (koşullu
+                // taramada olduğu gibi); tarayıcı saati sunucununkiyle
+                // karşılaştırılmaz. Eksi yaş orada da taze değildir. Eski sunucu
+                // yaş göndermez: o zaman damga eskisi gibi tarayıcı saatiyle
+                // karşılaştırılır.
+                const scannedTimestamp = Date.parse(snapshot.scannedAt ?? '');
+                const cacheIsStale = snapshot.scanAgeSeconds !== null
+                    ? snapshot.scanAgeSeconds < 0 || snapshot.scanAgeSeconds > AUTO_SCAN_MAX_AGE_SECONDS
+                    : !Number.isFinite(scannedTimestamp)
+                        || Date.now() - scannedTimestamp > AUTO_SCAN_MAX_AGE_SECONDS * 1000;
+                if (!cacheIsStale) return true;
+                storedScannedAt = snapshot.scannedAt;
+            }
 
             // Keep a valid cached page visible while it is refreshed. A fresh
             // install has no trusted observation yet, so retain the loader
@@ -734,7 +746,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
             // Geçerli önbelleği yenilerken sayfada tut. Taze kurulumda henüz
             // güvenilir gözlem yoktur; bütün katalog yanlışlıkla "kurulu değil"
             // görünmesin diye ilk tarama bitene dek yükleyiciyi koru.
-            if (snapshot.scannedAt !== null) setLoading(false);
+            if (storedScannedAt !== null) setLoading(false);
             setScanning(true);
             // A toast is the wrong home for this: it leaves the screen while
             // the state it explains stays. The banner below outlives it.

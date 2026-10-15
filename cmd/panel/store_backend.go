@@ -357,15 +357,22 @@ func localizedStoreText(value storeLocalizedText, locale string) string {
 	return value.EN
 }
 
+// localizedStoreReason says a blocker code in the requested language. The
+// Store reads only the stored component record (it never asks the Agent); the
+// three component_state_* sentences say what CelikPanel does under D-032: the
+// Dashboard and the Components page check the components by themselves while
+// an administrator has them open (2026-10-15).
+// Mağaza yalnız kayıtlı bileşen kaydını okur; component_state_* cümleleri
+// D-032 gereği CelikPanel'in ne yaptığını söyler.
 func localizedStoreReason(code, locale string) string {
 	reasons := map[string]storeLocalizedText{
 		"admin_required":              {EN: "Only the server administrator can change Store entitlements.", TR: "Mağaza haklarını yalnız sunucu yöneticisi değiştirebilir."},
 		"subscription_required":       {EN: "Choose a subscription to manage this offering.", TR: "Bu teklifi yönetmek için bir abonelik seçin."},
 		"coming_soon":                 {EN: "This offering is not available yet.", TR: "Bu teklif henüz kullanıma açık değil."},
 		"retired":                     {EN: "This offering has been retired.", TR: "Bu teklif kullanımdan kaldırıldı."},
-		"component_state_unavailable": {EN: "Run a Components rescan before using this offering.", TR: "Bu teklifi kullanmadan önce Bileşenler taramasını çalıştırın."},
-		"component_state_stale":       {EN: "Component state is older than 15 minutes; rescan it first.", TR: "Bileşen durumu 15 dakikadan eski; önce yeniden tarayın."},
-		"component_state_invalid":     {EN: "The saved component scan is invalid; rescan it first.", TR: "Kaydedilen bileşen taraması geçersiz; önce yeniden tarayın."},
+		"component_state_unavailable": {EN: "CelikPanel has no usable record of this server's components yet. It checks them by itself while an administrator has the Dashboard or the Components page open; open the Store again after that check.", TR: "CelikPanel'de bu sunucunun bileşenlerine ait kullanılabilir bir kayıt henüz yok. Bir yönetici Panel ya da Bileşenler sayfasını açtığında bileşenleri kendiliğinden denetler; o denetimden sonra Mağaza'yı yeniden açın."},
+		"component_state_stale":       {EN: "The record of this server's components is older than 15 minutes. CelikPanel checks them again by itself while an administrator has the Dashboard or the Components page open; open the Store again after that check.", TR: "Bu sunucunun bileşenlerine ait kayıt 15 dakikadan eski. CelikPanel, bir yönetici Panel ya da Bileşenler sayfasını açtığında bileşenleri kendiliğinden yeniden denetler; o denetimden sonra Mağaza'yı yeniden açın."},
+		"component_state_invalid":     {EN: "The stored record of this server's components could not be read. CelikPanel checks them again by itself while an administrator has the Dashboard or the Components page open; open the Store again after that check.", TR: "Bu sunucunun bileşenleri için saklanan kayıt okunamadı. CelikPanel, bir yönetici Panel ya da Bileşenler sayfasını açtığında bileşenleri kendiliğinden yeniden denetler; o denetimden sonra Mağaza'yı yeniden açın."},
 		"component_state_unknown":     {EN: "The required component state is unknown.", TR: "Gerekli bileşen durumu bilinmiyor."},
 		"unknown_component":           {EN: "This offering references an unknown component.", TR: "Bu teklif bilinmeyen bir bileşene başvuruyor."},
 		"platform_unsupported":        {EN: "A required component is unsupported on this platform.", TR: "Gerekli bir bileşen bu platformda desteklenmiyor."},
