@@ -1758,6 +1758,10 @@ const scenarios = {
 (await import('./scenarios-batch14.mjs')).default(scenarios, { base, vp, locale, theme, out, viewport, ctl, reset, drainLog, newPage, closePage, shot, into, clickByText, waitFor, pause, quiet });
 // --- end of batch 14 ---
 
+// --- batch 15 (2026-10-15): set17 D1, the licence gate during the update's restart ---
+(await import('./scenarios-batch15.mjs')).default(scenarios, { base, vp, locale, theme, out, viewport, ctl, reset, drainLog, newPage, closePage, shot, into, clickByText, waitFor, pause, quiet });
+// --- end of batch 15 ---
+
 for (const [name, run] of Object.entries(scenarios)) {
     if (wanted && !wanted.includes(name)) continue;
     const started = Date.now();
