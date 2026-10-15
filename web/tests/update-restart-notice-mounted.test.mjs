@@ -1,0 +1,251 @@
+// The update's own restart is progress, not a problem (owner report
+// 2026-10-15, Frankfurt, a real update alpha.84 -> alpha.85): while the panel
+// restarted as the update's plan says it will, the update page showed a
+// warning-marked "could not be read just now, so it is not known whether it has
+// finished" and, at the same time, a corner notice saying the same thing with
+// "T+02:59". D-033: expected waiting is calm progress; the "not known" wording
+// and the warning mark come only after the expected window or on a verified
+// failure (D-024 keeps the three apart). One notice, not two.
+//
+// Guncellemenin kendi yeniden baslamasi ilerlemedir; "bilinmiyor" ancak
+// beklenen pencere asilinca ya da dogrulanmis hatada. Tek bildirim.
+import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
+import { readFileSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
+import test from 'node:test';
+import React from 'react';
+import TestRenderer, { act } from 'react-test-renderer';
+import ts from 'typescript';
+import { en } from '../src/i18n/en.ts';
+import { tr } from '../src/i18n/tr.ts';
+import { enServerScreens } from '../src/i18n/screens/server/en.ts';
+import { trServerScreens } from '../src/i18n/screens/server/tr.ts';
+import {
+    SYSTEM_UPDATE_EXPECTED_RESTART_MS,
+    SYSTEM_UPDATE_READ_MEMORY,
+    SYSTEM_UPDATE_RESTART_AFTER_LOSS_MS,
+    systemUpdateCornerNoticeRepeats,
+    systemUpdateDisplayedPhase,
+    systemUpdateFollowRead,
+    systemUpdateRestartDeadline,
+    systemUpdateTrackingText,
+} from '../src/lib/systemUpdateTracking.ts';
+
+globalThis.document ??= Object.assign(new EventTarget(), { visibilityState: 'visible' });
+globalThis.window ??= { setTimeout: () => 0, clearTimeout: () => {} };
+
+const require = createRequire(import.meta.url);
+const moduleURL = source => 'data:text/javascript;base64,' + Buffer.from(source).toString('base64');
+function compileURL(relativePath, replacements = []) {
+    let compiled = ts.transpileModule(readFileSync(new URL(relativePath, import.meta.url), 'utf8'), {
+        compilerOptions: { module: ts.ModuleKind.ES2022, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX },
+    }).outputText;
+    for (const [pattern, replacement] of replacements) compiled = compiled.replace(pattern, replacement);
+    return moduleURL(compiled);
+}
+const reactURL = pathToFileURL(require.resolve('react')).href;
+const jsxRuntimeURL = pathToFileURL(require.resolve('react/jsx-runtime')).href;
+const catalogues = { en: { ...en, ...enServerScreens }, tr: { ...tr, ...trServerScreens } };
+const fill = (text, vars) => String(text).replace(/\{(\w+)\}/g, (all, name) => vars?.[name] ?? all);
+const iconsURL = moduleURL(`import React from '${reactURL}';
+const icon = name => props => React.createElement('i', { ...props, 'data-icon': name });
+export const AlertTriangle = icon('AlertTriangle'), DownloadCloud = icon('DownloadCloud'), Loader2 = icon('Loader2'), RefreshCw = icon('RefreshCw');`);
+const uiURL = moduleURL(`import React from '${reactURL}'; export function Button({ children, ...props }) { return React.createElement('button', props, children); }`);
+const i18nURL = moduleURL(`const fill = (text, vars) => String(text).replace(/\\{(\\w+)\\}/g, (all, name) => vars && vars[name] !== undefined ? String(vars[name]) : all);
+export function useI18n() { const c = globalThis.__restartCatalogue; return { t: (key, vars) => fill(c.strings[key] ?? key, vars), locale: c.locale }; }`);
+const apiErrorURL = moduleURL(`export async function readApiError() { return {}; } export function apiErrorText() { return 'api-error'; }`);
+const operationURL = moduleURL(`
+export function createSystemUpdateRequestID() { return 'mounted-request-id'; }
+export function systemUpdateResponseHint() { return 'response-error'; }
+export function useSystemUpdateOperation() { return globalThis.__restartOperation; }
+export function validUpdateTarget() { return true; }
+export function validUpdateVersion() { return true; }`);
+const admissionURL = moduleURL(`
+export function unverifiedHostMutationReadiness() { return { ready: false, code: 'HOST_MUTATION_UNAVAILABLE', reason: 'state_unverified' }; }
+export function fetchHostMutationReadiness() { return Promise.resolve({ ready: true }); }
+export async function runHostMutationAdmission(read, onReady) { const r = await read(); if (r.ready) await onReady(); return r; }`);
+const outcomeURL = compileURL('../src/lib/systemUpdateOutcome.ts', [
+    [/from ['"]\.\/recoveryObservation['"]/g, `from '${compileURL('../src/lib/recoveryObservation.ts')}'`],
+    [/from ['"]\.\/systemUpdateFailure['"]/g, `from '${compileURL('../src/lib/systemUpdateFailure.ts')}'`],
+]);
+const { PanelUpdateCard } = await import(compileURL('../src/components/PanelUpdateCard.tsx', [
+    [/from ['"]\.\.\/lib\/systemUpdateOutcome['"]/g, `from '${outcomeURL}'`],
+    [/from ['"]react['"]/g, `from '${reactURL}'`],
+    [/from ['"]react\/jsx-runtime['"]/g, `from '${jsxRuntimeURL}'`],
+    [/from ['"]lucide-react['"]/g, `from '${iconsURL}'`],
+    [/from ['"]\.\/ui['"]/g, `from '${uiURL}'`],
+    [/from ['"]\.\.\/i18n['"]/g, `from '${i18nURL}'`],
+    [/from ['"]\.\.\/lib\/apiError['"]/g, `from '${apiErrorURL}'`],
+    [/from ['"]\.\.\/lib\/panelUpdateAdmission['"]/g, `from '${admissionURL}'`],
+    [/from ['"]\.\/SystemUpdateOperation['"]/g, `from '${operationURL}'`],
+]));
+
+const flush = async () => { for (let i = 0; i < 4; i += 1) await Promise.resolve(); };
+function textOf(node) {
+    if (node === null || node === undefined || typeof node === 'boolean') return '';
+    if (typeof node === 'string' || typeof node === 'number') return String(node);
+    if (Array.isArray(node)) return node.map(textOf).join(' ');
+    return textOf(node.children);
+}
+const REQUEST = 'f142f0a883f393df25bda7927dfb2c70';
+async function mountCard(locale, tracking, registrations = null) {
+    globalThis.__restartCatalogue = { locale, strings: catalogues[locale] };
+    globalThis.__restartOperation = {
+        active: tracking !== null,
+        start: async () => ({ kind: 'accepted' }),
+        tracking,
+        ...(registrations ? {
+            registerInlineNotice: () => {
+                registrations.registered += 1;
+                return () => { registrations.released += 1; };
+            },
+        } : {}),
+    };
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async (path) => {
+        if (String(path) === '/api/v1/panel/version') return { ok: true, json: async () => ({ version: 'v0.1.0-alpha.84', commit: 'f'.repeat(40) }) };
+        throw new Error('unexpected fetch ' + path);
+    };
+    let renderer;
+    await act(async () => { renderer = TestRenderer.create(React.createElement(PanelUpdateCard)); await flush(); });
+    return { renderer, restore: () => { globalThis.fetch = originalFetch; } };
+}
+const row = renderer => renderer.root.find(node => node.props && node.props['data-update-phase'] !== undefined);
+const icons = node => node.findAll(child => child.props && child.props['data-icon'] !== undefined).map(child => child.props['data-icon']);
+const classes = node => node.findAll(child => typeof child.props?.className === 'string').map(child => child.props.className).join(' ');
+const tTo = locale => (key, vars) => fill(catalogues[locale][key] ?? key, vars);
+
+const START = Date.UTC(2026, 9, 15, 6, 40, 0);
+const at = seconds => START + seconds * 1000;
+
+test('the restart window: 6 minutes from the start, and at least 2 minutes from the first lost read', () => {
+    assert.equal(SYSTEM_UPDATE_EXPECTED_RESTART_MS, 360_000);
+    assert.equal(SYSTEM_UPDATE_RESTART_AFTER_LOSS_MS, 120_000);
+    assert.equal(systemUpdateRestartDeadline(START, at(20)), at(360));
+    assert.equal(systemUpdateRestartDeadline(START, at(300)), at(420), 'a late restart still gets 2 minutes');
+    // An invalid start never creates an unbounded calm state.
+    assert.equal(systemUpdateRestartDeadline(Number.NaN, at(20)), at(140));
+});
+
+test('a lost read after the server said the update is running is the restart; without that it is unknown', () => {
+    let step = systemUpdateFollowRead(SYSTEM_UPDATE_READ_MEMORY, { operation: { status: 'running' }, disconnected: false, at: at(5) }, START);
+    assert.equal(step.phase, 'applying');
+    assert.deepEqual(step.memory, { lastKnownActive: true, lostSince: null });
+    step = systemUpdateFollowRead(step.memory, { operation: null, disconnected: true, at: at(20) }, START);
+    assert.equal(step.phase, 'restarting');
+    assert.equal(step.restartDeadline, at(360));
+    // The outage keeps its first moment.
+    step = systemUpdateFollowRead(step.memory, { operation: null, disconnected: true, at: at(40) }, START);
+    assert.equal(step.memory.lostSince, at(20));
+    // A read that answers ends the outage.
+    step = systemUpdateFollowRead(step.memory, { operation: { status: 'running', phase: 'verifying' }, disconnected: false, at: at(52) }, START);
+    assert.equal(step.phase, 'verifying');
+    assert.equal(step.memory.lostSince, null);
+    // Queued counts as active: the worker may begin at any moment.
+    const queued = systemUpdateFollowRead(SYSTEM_UPDATE_READ_MEMORY, { operation: { status: 'queued' }, disconnected: false, at: at(1) }, START);
+    assert.equal(systemUpdateFollowRead(queued.memory, { operation: null, disconnected: true, at: at(3) }, START).phase, 'restarting');
+    // Nothing read yet in this document: a lost read is not known.
+    const cold = systemUpdateFollowRead(SYSTEM_UPDATE_READ_MEMORY, { operation: null, disconnected: true, at: at(3) }, START);
+    assert.equal(cold.phase, 'unknown');
+    assert.equal(cold.restartDeadline, null);
+    // An answer that could not be verified is not a restart.
+    assert.equal(systemUpdateFollowRead({ lastKnownActive: true, lostSince: null }, { operation: null, disconnected: false, at: at(3) }, START).phase, 'unknown');
+});
+
+test('the measured updates never reach "not known"; past the window it is said by itself', () => {
+    // set16 Debian 13: start 22:55:07Z, API unanswered 22:55:19Z..22:55:51Z.
+    const memory = systemUpdateFollowRead(SYSTEM_UPDATE_READ_MEMORY, { operation: { status: 'running' }, disconnected: false, at: at(12) }, START).memory;
+    const lost = systemUpdateFollowRead(memory, { operation: null, disconnected: true, at: at(19) }, START);
+    for (const second of [19, 30, 44]) assert.equal(systemUpdateDisplayedPhase(lost.phase, lost.restartDeadline, at(second)), 'restarting');
+    // The owner's real update: still no answer at T+02:59.
+    assert.equal(systemUpdateDisplayedPhase(lost.phase, lost.restartDeadline, at(179)), 'restarting');
+    assert.equal(systemUpdateDisplayedPhase(lost.phase, lost.restartDeadline, at(359)), 'restarting');
+    assert.equal(systemUpdateDisplayedPhase(lost.phase, lost.restartDeadline, at(360)), 'unknown');
+    assert.equal(systemUpdateDisplayedPhase('restarting', null, at(10)), 'unknown', 'no deadline is never calm');
+    assert.equal(systemUpdateDisplayedPhase('applying', null, at(999)), 'applying');
+});
+
+for (const locale of ['en', 'tr']) {
+    const c = catalogues[locale];
+    const t = tTo(locale);
+
+    test(`${locale}: the restart is said once, calmly, with nothing to press`, () => {
+        const notice = systemUpdateTrackingText({ version: 'v0.1.0-alpha.85', phase: 'restarting' }, c['panelUpdate.connectionLost'], t);
+        assert.deepEqual(notice, { title: null, message: c['panelUpdate.tracking.restarting'], hint: null });
+        assert.equal(en['panelUpdate.tracking.restarting'], 'The panel is restarting as part of the update. This page reconnects by itself; nothing needs to be pressed.');
+        assert.doesNotMatch(notice.message, /not known|bilinmiyor|could not|okunamadı/);
+    });
+
+    test(`${locale}: past the window the notice says not known, not failed, and what the owner checks`, () => {
+        const notice = systemUpdateTrackingText({ version: 'v0.1.0-alpha.85', phase: 'unknown', overdue: true }, c['panelUpdate.connectionLost'], t);
+        assert.equal(notice.message, c['panelUpdate.tracking.unknown']);
+        assert.equal(notice.hint, c['panelUpdate.tracking.restartOverdue']);
+        assert.match(notice.hint, /sudo systemctl status celikpanel-panel/);
+        assert.match(notice.hint, locale === 'en' ? /does not mean the update failed/ : /başarısız olduğu anlamına gelmez/);
+    });
+
+    test(`${locale}: the update card draws the restart as progress, carries T+ and the ID, and keeps the lock`, async () => {
+        const registrations = { registered: 0, released: 0 };
+        const tracking = { version: 'v0.1.0-alpha.85', phase: 'restarting', elapsed: '02:59', requestID: REQUEST };
+        const { renderer, restore } = await mountCard(locale, tracking, registrations);
+        try {
+            const line = row(renderer);
+            const text = textOf(line);
+            assert.ok(text.includes(fill(c['panelUpdate.card.restarting'], { version: 'v0.1.0-alpha.85' })), text);
+            assert.ok(!text.includes(fill(c['panelUpdate.card.unknown'], { version: 'v0.1.0-alpha.85' })));
+            assert.deepEqual(icons(line), ['Loader2']);
+            assert.doesNotMatch(classes(line), /warning/);
+            assert.ok(text.includes(`T+02:59 · ID ${REQUEST}`), 'the counter and the ID are on the card');
+            assert.equal(line.props.role, 'status');
+            const check = renderer.root.findAll(node => node.type === 'button' && textOf(node).includes(c['panelUpdate.check']));
+            assert.equal(check.length, 1);
+            assert.equal(check[0].props.disabled, true, 'checking for updates stays locked');
+            assert.equal(registrations.registered, 1, 'the card is the one notice while it is on screen');
+        } finally { restore(); await act(async () => renderer.unmount()); }
+        assert.equal(registrations.released, 1, 'leaving the page gives the corner notice back');
+    });
+
+    test(`${locale}: past the window the card shows the warning mark, not known, and what to check`, async () => {
+        const tracking = { version: 'v0.1.0-alpha.85', phase: 'unknown', overdue: true, elapsed: '06:01', requestID: REQUEST };
+        const { renderer, restore } = await mountCard(locale, tracking);
+        try {
+            const line = row(renderer);
+            const text = textOf(line);
+            assert.deepEqual(icons(line), ['AlertTriangle']);
+            assert.match(classes(line), /text-warning/);
+            assert.ok(text.includes(fill(c['panelUpdate.card.unknown'], { version: 'v0.1.0-alpha.85' })));
+            assert.ok(text.includes(c['panelUpdate.tracking.restartOverdue']));
+            assert.ok(!text.includes(fill(c['panelUpdate.card.restarting'], { version: 'v0.1.0-alpha.85' })));
+            assert.ok(text.includes(`T+06:01 · ID ${REQUEST}`));
+        } finally { restore(); await act(async () => renderer.unmount()); }
+    });
+}
+
+test('one notice: the corner notice does not repeat the card, and a known outcome keeps it', () => {
+    assert.equal(systemUpdateCornerNoticeRepeats(1, true), true);
+    assert.equal(systemUpdateCornerNoticeRepeats(0, true), false, 'another page: the corner notice is the one');
+    assert.equal(systemUpdateCornerNoticeRepeats(1, false), false, 'a failure or success: the card does not show it');
+});
+
+test('the provider: restart from the read, warning only off the restart, a failure stays a failure, one notice', () => {
+    const tracker = readFileSync(new URL('../src/components/SystemUpdateOperation.tsx', import.meta.url), 'utf8');
+    // The poll classifies every non-terminal read; a verified failure is
+    // committed as terminal before it, so it is never shown as a restart.
+    const failed = tracker.indexOf("if (outcome.kind === 'failed') {\n                const committed = await commitTerminal(exactMarker, 'failed', outcome.message);");
+    const follow = tracker.indexOf('systemUpdateFollowRead(\n                readMemory(exactMarker.request_id),');
+    assert.ok(failed > 0 && follow > failed);
+    // The start POST accepted by the server makes the request known active.
+    assert.match(tracker, /if \(response\.ok\) \{\n(?:.*\n){0,3}\s+readMemoryRef\.current = \{\n\s+requestID: exactMarker\.request_id,\n\s+memory: \{ \.\.\.readMemory\(exactMarker\.request_id\), lastKnownActive: true \},/);
+    // What is drawn: the displayed phase, with the window applied each second.
+    assert.match(tracker, /const displayedPhase = systemUpdateDisplayedPhase\(view\.phase, view\.restartDeadline, now\);/);
+    assert.match(tracker, /phase: displayedPhase,/);
+    // The dialog's warning icon (WifiOff) is not drawn during the restart.
+    assert.match(tracker, /const disconnected = !pendingReload && !requiredReloadMarker && marker !== null && view\.disconnected\n\s+&& displayedPhase !== 'restarting';/);
+    // The corner notice is not drawn while the card carries the same state.
+    assert.match(tracker, /const inlineNoticeCarriesTracking = systemUpdateCornerNoticeRepeats\(inlineNotices, tracking !== null\);/);
+    assert.match(tracker, /const backgroundVisible = navigationLease\.released && !authPaused && !blocking && exactMarker !== null\n\s+&& !inlineNoticeCarriesTracking/);
+    assert.match(tracker, /registerInlineNotice,\n\s+\}\}>/);
+    // The do-not-start-another-update lock is untouched: mutation stays occupied.
+    assert.match(tracker, /const occupied = systemUpdateMutationLocked\(/);
+});

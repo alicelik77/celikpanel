@@ -366,6 +366,8 @@ export const tr: Record<ShellKey, string> = {
     'panelUpdate.tracking.verifyingTitle': 'Güncelleme kuruldu, doğrulanıyor',
     'panelUpdate.tracking.verifying': '{version} kuruldu ve bu panel onu çalıştırıyor. Güncelleme doğrulanıyor ve henüz bitmedi; bu bildirim onu kendiliğinden izler. Bir şey yapmanız gerekmiyor.',
     'panelUpdate.tracking.unknown': 'Bu güncellemenin durumu şu an okunamadı; bu yüzden hâlâ sürüp sürmediği ya da bitip bitmediği bilinmiyor. Bu bildirim kendiliğinden yeniden okur; başka bir güncelleme başlatmayın.',
+    'panelUpdate.tracking.restarting': 'Panel, güncellemenin bir parçası olarak yeniden başlıyor. Bu sayfa kendiliğinden yeniden bağlanır; hiçbir şeye basmanız gerekmiyor.',
+    'panelUpdate.tracking.restartOverdue': 'Panel, bir güncellemenin onu yeniden başlatması için normalde gereken süreden daha uzun süredir yanıt vermiyor. Bu, güncellemenin başarısız olduğu anlamına gelmez: sunucu güncellemenin kaydını tutar ve bu bildirim onu kendiliğinden okumayı sürdürür. Panel yine yanıt vermezse çalışıp çalışmadığını sunucuda denetleyin: sudo systemctl status celikpanel-panel.',
     'panelUpdate.lastRead': 'Son okuma',
     // --- güncelleme bildirimi bloğunun sonu ---
     'panelUpdate.canonicalChecking': 'Tamamlanmamış güncelleme denetleniyor...',

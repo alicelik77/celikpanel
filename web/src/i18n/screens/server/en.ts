@@ -1128,6 +1128,7 @@ export const enServerScreens = {
     'panelUpdate.card.applying': 'The update to {version} is being applied. Checking for updates is available again when it has finished.',
     'panelUpdate.card.verifying': '{version} is installed and this panel is running it. The update is still being verified; checking for updates is available again when it has finished. You do not need to do anything.',
     'panelUpdate.card.unknown': 'The state of the update to {version} could not be read just now, so it is not known whether it has finished. The update notice reads it again by itself. Do not start another update.',
+    'panelUpdate.card.restarting': 'The panel is restarting as part of the update to {version}. This page reconnects by itself; nothing needs to be pressed.',
     // --- end of the update card block ---
     // --- a site configuration file the owner changed (D-031, 2026-10-10) ---
     'siteConfig.tab': 'Configuration file',

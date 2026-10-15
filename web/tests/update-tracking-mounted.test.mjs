@@ -156,7 +156,9 @@ for (const locale of ['en', 'tr']) {
 
 test('the provider wires the typed phase, a reading placeholder and the finished-record rule', () => {
     const tracker = readFileSync(new URL('../src/components/SystemUpdateOperation.tsx', import.meta.url), 'utf8');
-    assert.match(tracker, /phase: systemUpdateOperationPhase\(outcome\.operation\)/);
+    // The read's phase now comes through systemUpdateFollowRead (2026-10-15),
+    // which names a read record's phase with systemUpdateOperationPhase.
+    assert.match(tracker, /systemUpdateFollowRead\(\n\s+readMemory\(exactMarker\.request_id\),\n\s+\{ operation: outcome\.operation,/);
     assert.match(tracker, /message: message \?\? t\('panelUpdate\.tracking\.reading'\)/);
     assert.match(tracker, /const followed = marker !== null && provisional === null && pendingReload === null\s*&& requiredReloadMarker === null && displayedTerminal === null \? marker : null;/);
     assert.match(tracker, /tracking,\n/);

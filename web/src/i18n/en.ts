@@ -158,6 +158,8 @@ export const en = {
     'panelUpdate.tracking.verifyingTitle': 'Update installed, being verified',
     'panelUpdate.tracking.verifying': '{version} is installed and this panel is running it. The update is being verified and is not finished yet; this notice follows it by itself. You do not need to do anything.',
     'panelUpdate.tracking.unknown': 'The state of this update could not be read just now, so whether it is still running or has finished is not known. This notice reads it again by itself; do not start another update.',
+    'panelUpdate.tracking.restarting': 'The panel is restarting as part of the update. This page reconnects by itself; nothing needs to be pressed.',
+    'panelUpdate.tracking.restartOverdue': "The panel has not answered for longer than an update normally needs to restart it. This does not mean the update failed: the server keeps the update's record, and this notice keeps reading it by itself. If the panel still does not answer, check on the server whether it is running: sudo systemctl status celikpanel-panel.",
     'panelUpdate.lastRead': 'Last read',
     // --- end of the update notice block ---
     'panelUpdate.canonicalChecking': 'Checking unfinished updates...',
