@@ -1,0 +1,29 @@
+Prepare your server
+
+Choose what this server will do. CelikPanel will prepare a plan before making changes.
+
+Set the panel address and DNS method
+Panel address
+
+Point this address to the server. Setup requires a trusted HTTPS certificate with automatic renewal.
+
+Where will DNS records be managed?
+
+This chooses the default for new domains. Existing domains keep their DNS ownership.
+
+This server
+Use this server together with a second DNS server.
+External DNS provider
+Keep DNS at your provider. Add the records CelikPanel shows.
+Existing CelikPanel DNS
+Connect to a CelikPanel DNS server you already use.
+
+Create the required server address records at the provider or primary that already manages them. Setup checks public DNS before requesting certificates; you can return to this same operation while records become available.
+
+Back
+Review setup plan
+I’ll configure it myself
+
+Your choice is saved for this server, so this prompt will not appear again. You can reopen the wizard in Settings → Server setup. Security and service requirements still apply.
+
+Access and recovery

@@ -1,0 +1,1700 @@
+--- /dev/null
++++ b/deploy/e2e/release-recovery/set18_fixture.py
+@@ -0,0 +1,133 @@
++#!/usr/bin/env python3
++"""set18: owner_update_trial with the release profile of the twenty-first native record (the alpha.87 candidate,
++HEAD 5d54aba1e of feat/alpha87-second-server, installed fresh and set up to ready on a lab with its own DNS and ACME).
++
++Nothing of owner_update_trial.py, worker_fixture_origin.py or the set12/set15/set16/set17 fixture modules is changed
++on disk. Importing this module (or running it as the build's fixture driver) first imports set17_fixture (which
++registers every earlier profile), then, in this process only:
++
++* ``BASELINE_REFS["v0.1.0-alpha.87"]``: a label profile for the fresh cell. Its "baseline" (the build that is
++  installed) is a fixture commit over the source that changes ONLY the release policy to ``v0.1.0-alpha.87 / 87``
++  (previous 86 = the v0.1.0-alpha.86 tag commit 8d260f31); its commit is only known after the build, so
++  ``configure`` takes it from the artifacts document. The origin's candidate is a second policy-only fixture labelled
++  ``v0.1.0-alpha.88 / 88`` (previous 87); it is never installed (set18 starts no update), but the artifacts document
++  and the origin step need it.
++* the fixture origin's closed set of target transitions gains 88 (previous 87) besides set17's: a copy of
++  worker_fixture_origin.py is written under ``$SET12_RUN_ROOT/generated-set18/`` and replaces set17's copy.
++* ``provenance_for`` names the set18 baseline.
++
++  set18_fixture.py fixture-source ...   (build-set18-artifacts.sh; the same arguments as owner_update_trial.py)
++  set18_fixture.py prove --artifacts A.json
++
++set18: alpha.87 etiketli adayi (kaynak + yalniz surum politikasi) ve kurulmayan alpha.88 etiketini yalniz bu surecte
++tanitan ince katman; hicbir dosyayi diskte degistirmez.
++"""
++from __future__ import annotations
++
++import hashlib
++import importlib.util
++import json
++from pathlib import Path
++import re
++import sys
++
++HERE = Path(__file__).resolve().parent
++if str(HERE) not in sys.path:
++    sys.path.insert(0, str(HERE))
++import set17_fixture as fx17  # noqa: E402  (registers every earlier profile and loads set17's origin copy first)
++
++fx16, fx15, fx12, out = fx17.fx16, fx17.fx15, fx17.fx12, fx17.out
++SOURCE_COMMIT = "5d54aba1e9c93357fa0c19d3b0487e27384acd01"   # set18 (2026-10-15): HEAD of feat/alpha87-second-server
++TAG86_COMMIT = "8d260f317e58bed7fcd84c6cbb01823c4fe3f166"    # v0.1.0-alpha.86
++THIRD_REF = "v0.1.0-alpha.87"
++POLICY_87 = dict(fx17.POLICY_87)
++POLICY_88 = {"version": "v0.1.0-alpha.88", "current": 88, "previous": 87, "previous_version": "v0.1.0-alpha.87"}
++THIRD_PROFILE = {"commit": None, "baseline": (THIRD_REF, 87), "candidate": ("v0.1.0-alpha.88", 88),
++                 "unpatched": True, "baseline_policy": dict(POLICY_87)}
++GENERATED = fx12.RUN_ROOT / "generated-set18"
++HEX40 = re.compile(r"[0-9a-f]{40}")
++
++
++def origin_text(original: str) -> str:
++    """set17's origin text plus the 88 transition (exact edit before the same anchor)."""
++    text = fx17.origin_text(original)
++    if text.count(fx12.POLICIES_ANCHOR) != 1:
++        raise ValueError("set17's origin copy differs from the reviewed text; the set18 copy is not made")
++    added = ("\n# set18 (generated, not a repository file): the never-installed origin candidate labelled "
++             f"v0.1.0-alpha.88 (previous 87).\nRELEASE_POLICIES = RELEASE_POLICIES + ({POLICY_88!r},)\n")
++    return text.replace(fx12.POLICIES_ANCHOR, "\n" + added + fx12.POLICIES_ANCHOR)
++
++
++def install() -> dict:
++    out.BASELINE_REFS[THIRD_REF] = dict(THIRD_PROFILE)
++    source = HERE / "worker_fixture_origin.py"
++    original = source.read_text()
++    text = origin_text(original)
++    GENERATED.mkdir(parents=True, exist_ok=True)
++    target = GENERATED / "worker_fixture_origin.py"
++    if not target.exists() or target.read_text() != text:
++        target.write_text(text)
++    (GENERATED / "worker_fixture_origin.json").write_text(json.dumps({
++        "original": str(source), "original_sha256": hashlib.sha256(original.encode()).hexdigest(),
++        "generated": str(target), "generated_sha256": hashlib.sha256(text.encode()).hexdigest(),
++        "added_policies": [fx15.POLICY_83, fx16.POLICY_84, fx17.POLICY_85, fx17.POLICY_86, POLICY_87, POLICY_88]},
++        indent=2, sort_keys=True) + "\n")
++    spec = importlib.util.spec_from_file_location(fx12.ORIGIN_NAME, target)
++    module = importlib.util.module_from_spec(spec)
++    sys.modules[fx12.ORIGIN_NAME] = module
++    spec.loader.exec_module(module)
++    out._MODULES[fx12.ORIGIN_NAME] = module   # replaces set17's copy (a superset of its transitions)
++    return {"origin": str(target)}
++
++
++def adopt_third_commit(document: dict) -> None:
++    """The alpha.87 label profile's commit is the document's installed commit (known only after the build)."""
++    ref = (document or {}).get("baseline_ref") or {}
++    if isinstance(ref, dict) and ref.get("ref") == THIRD_REF:
++        commit = ref.get("tag_commit")
++        if not HEX40.fullmatch(str(commit or "")) or (document.get("baseline") or {}).get("commit") != commit:
++            raise ValueError("the alpha.87 label profile needs the installed commit named in baseline_ref and baseline")
++        out.BASELINE_REFS[THIRD_REF]["commit"] = commit
++
++
++def main(argv: list[str] | None = None) -> int:
++    args = list(sys.argv[1:] if argv is None else argv)
++    if "--artifacts" in args and args.index("--artifacts") + 1 < len(args):
++        try:
++            adopt_third_commit(json.loads(Path(args[args.index("--artifacts") + 1]).read_text()))
++        except (OSError, ValueError):
++            pass   # owner_update_trial reports an unreadable or inconsistent document itself
++    return out.main(argv)
++
++
++def configure(document: dict) -> dict:
++    """configure_labels for a set18 document (ledger 44 as set17: no migration since the alpha.85 tag)."""
++    adopt_third_commit(document)
++    labels = out.configure_labels(document)
++    if labels.get("ref") == THIRD_REF:
++        out.LEDGER_AFTER_UPDATE, out.LEDGER_AFTER_RETURN = 44, 44
++    return labels
++
++
++_provenance_set17 = out.provenance_for
++
++
++def provenance_for(variant: str) -> dict:
++    value = _provenance_set17(variant)
++    if out.LABEL_REF == THIRD_REF:
++        value = dict(value, baseline=(
++            f"set18 fresh cell: an unpublished fixture commit over the source {SOURCE_COMMIT} that changes only the "
++            f"release policy to v0.1.0-alpha.87 / 87 (previous 86 = the v0.1.0-alpha.86 tag commit {TAG86_COMMIT}); "
++            "built with the acceptance_license build tag; installed by the real installer; fixture trust root "
++            "enrolled; not a published tag and not a release"),
++            candidate=("unpublished-local-fixture-commit-labelled-v0.1.0-alpha.88 (release policy only); served by the "
++                       "guest-loopback origin; never installed in set18; not a release"))
++    return value
++
++
++out.provenance_for = provenance_for
++install()
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+--- /dev/null
++++ b/deploy/e2e/release-recovery/build-set18-artifacts.sh
+@@ -0,0 +1,148 @@
++#!/usr/bin/env bash
++# set18: the archives of the twenty-first native record (the alpha.87 candidate installed fresh and set up to ready),
++# built from one exact source commit in a disposable clone, with build-set17-artifacts.sh's steps (that script is not
++# changed):
++#
++#   build-set18-artifacts.sh SOURCE
++#     B  baseline    SOURCE + a fixture commit that changes ONLY the release policy to v0.1.0-alpha.87 / 87, previous
++#                    86 = the v0.1.0-alpha.86 tag commit (8d260f31): the installed candidate
++#     G  good        B + a fixture commit that changes ONLY the release policy to v0.1.0-alpha.88 / 88 (previous = B):
++#                    the origin's candidate; never installed (set18 starts no update)
++#     D  defective   G + set5's fixture defect (never installed; the artifacts document needs it)
++#
++# The fixture driver is set18_fixture.py. Each commit is built with dns-pair-acceptance/scripts/build-dist.sh
++# --acceptance-license and CELIKPANEL_DIST_VERSION set to the committed policy's version. The disposable clone lives
++# under ${SET18_BUILD_ROOT:-/var/tmp/cp-set18/cp-upd1-build}/<stamp>; build-dist.sh writes its dist under
++# /var/tmp/cp-pair-accept/dist/ as before. Output: <stamp>/upd1-artifacts.json. None of these archives is a release.
++set -euo pipefail
++shopt -s inherit_errexit
++umask 022
++
++HERE=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
++REPO=${CELIKPANEL_REPO:-'/mnt/c/CELIKBROS PROJECTS/celikpanel'}
++usage() { echo "usage: build-set18-artifacts.sh SOURCE_COMMIT" >&2; exit 2; }
++[[ $# -eq 1 ]] || usage
++SOURCE=$1
++BUILD_DIST="$HERE/../dns-pair-acceptance/scripts/build-dist.sh"
++DRIVER="$HERE/set18_fixture.py"
++GUARD="$HERE/../../../deploy/release-acceptance-license-guard.sh"
++GO=${CELIKPANEL_GO:-/opt/celikpanel-test-toolchains/go1.26.5/go/bin/go}
++TAG86=8d260f317e58bed7fcd84c6cbb01823c4fe3f166
++[[ -f $BUILD_DIST && -f $DRIVER ]] || { echo "harness files missing" >&2; exit 2; }
++
++source_commit=$(git -c safe.directory='*' -C "$REPO" rev-parse "${SOURCE}^{commit}")
++stamp=$(date -u +%Y%m%dt%H%M%Sz)
++work=${SET18_BUILD_ROOT:-/var/tmp/cp-set18/cp-upd1-build}/$stamp
++[[ ! -e $work ]] || { echo "refusing to reuse $work" >&2; exit 2; }
++mkdir -p "$work"
++clone=$work/repo
++git -c safe.directory='*' clone --quiet --no-hardlinks "$REPO" "$clone"
++git -C "$clone" checkout --quiet --detach "$source_commit"
++git -C "$clone" config user.name "upd1 disposable fixture"
++git -C "$clone" config user.email "upd1-fixture@example.invalid"
++
++commit_fixture() {   # kind message baseline_ref [previous]
++    local kind=$1 message=$2 ref=$3 previous=${4:-} commit
++    python3 "$DRIVER" fixture-source --repo "$clone" --kind "$kind" ${previous:+--previous-commit "$previous"} \
++        --baseline-ref "$ref" >&2
++    git -C "$clone" commit --quiet --allow-empty -am "$message"
++    commit=$(git -C "$clone" rev-parse HEAD)
++    git -C "$clone" update-ref "refs/upd1/$kind" "$commit"
++    echo "$commit"
++}
++
++build_web() {
++    ( cd "$clone/web" && rm -rf dist && npm ci --no-audit --no-fund && npm run build ) >&2
++    [[ -f $clone/web/dist/index.html ]] || { echo "web build produced no index.html" >&2; exit 1; }
++    rm -rf -- "$1"
++    cp -a "$clone/web/dist" "$1"
++}
++
++use_web() {
++    rm -rf -- "$clone/web/dist"
++    cp -a "$1" "$clone/web/dist"
++}
++
++build() {
++    local commit=$1 version=$2 dist_json
++    dist_json=/var/tmp/cp-pair-accept/dist/$commit-acceptance-license/dist.json
++    if ! CELIKPANEL_REPO=$clone CELIKPANEL_DIST_VERSION=$version CELIKPANEL_ACCEPTANCE_GUARD=$GUARD \
++        bash "$BUILD_DIST" --acceptance-license "$commit" >&2; then
++        echo "BUILD-SET18-FAILED: the dist build of $commit ($version) failed or was refused." >&2
++        return 1
++    fi
++    [[ -s $dist_json ]] || { echo "BUILD-SET18-FAILED: the dist build of $commit ($version) wrote no $dist_json" >&2; return 1; }
++    echo "$dist_json"
++}
++
++expected_policy() {   # version current previous previous_version previous_commit
++    printf 'format=celikpanel-release-sequence-policy-v1\nversion=%s\ncurrent=%s\nprevious=%s\nprevious_version=%s\nprevious_commit=%s\n' "$@"
++}
++
++only_policy_changed() {
++    [[ "$(git -C "$clone" diff --name-only "$1" "$2")" == deploy/release-sequence-policy ]]
++}
++
++git -C "$clone" merge-base --is-ancestor "$TAG86" "$source_commit" \
++    || { echo "the v0.1.0-alpha.86 tag commit is not an ancestor of the source; refusing" >&2; exit 1; }
++[[ $(git -C "$clone" rev-parse 'v0.1.0-alpha.86^{commit}') == "$TAG86" ]] || { echo "v0.1.0-alpha.86 is not 8d260f31" >&2; exit 1; }
++build_web "$work/web-dist-candidate"
++# The installed candidate: SOURCE + policy 87 (previous 86 = the alpha.86 tag commit), through set17's alpha.86 label
++# profile, whose candidate is v0.1.0-alpha.87 / 87 after v0.1.0-alpha.86 / 86.
++baseline=$(commit_fixture good "test(fixture): set18 candidate labelled v0.1.0-alpha.87 (release policy only; unpublished, disposable)" v0.1.0-alpha.86 "$TAG86")
++git -C "$clone" update-ref refs/upd1/baseline "$baseline"
++only_policy_changed "$source_commit" "$baseline" || { echo "the baseline fixture changed more than the release policy" >&2; exit 1; }
++[[ "$(git -C "$clone" show "$baseline:deploy/release-sequence-policy")" == \
++   "$(expected_policy v0.1.0-alpha.87 87 86 v0.1.0-alpha.86 "$TAG86")" ]] \
++    || { echo "the baseline fixture's policy is not v0.1.0-alpha.87 / 87 after the alpha.86 tag" >&2; exit 1; }
++good=$(commit_fixture good "test(fixture): set18 origin candidate labelled v0.1.0-alpha.88 (release policy only; never installed)" v0.1.0-alpha.87 "$baseline")
++only_policy_changed "$baseline" "$good" || { echo "the good fixture changed more than the release policy" >&2; exit 1; }
++[[ "$(git -C "$clone" show "$good:deploy/release-sequence-policy")" == \
++   "$(expected_policy v0.1.0-alpha.88 88 87 v0.1.0-alpha.87 "$baseline")" ]] \
++    || { echo "the good fixture's policy is not v0.1.0-alpha.88 / 88 after the baseline" >&2; exit 1; }
++defective=$(commit_fixture defective "test(fixture): set18 defective over the alpha.88 label - migrate-only fails (never installed)" v0.1.0-alpha.87)
++[[ -z $(git -C "$clone" diff --stat "$source_commit" "$defective" -- web) ]] || { echo "fixture commit changed web/" >&2; exit 1; }
++proof=$work/baseline-ref-proof.txt
++{
++    echo "set18: source=$source_commit baseline=$baseline (source + policy 87) good=$good (policy 88) defective=$defective"
++    echo "== release policy at the source"; git -C "$clone" show "$source_commit:deploy/release-sequence-policy"
++    echo "== release policy at the baseline (installed)"; git -C "$clone" show "$baseline:deploy/release-sequence-policy"
++    echo "== release policy at the good fixture (never installed)"; git -C "$clone" show "$good:deploy/release-sequence-policy"
++    echo "== git diff --stat $TAG86 $source_commit -- internal/db/migrations (empty = no migration since the alpha.86 tag):"
++    git -C "$clone" diff --stat "$TAG86" "$source_commit" -- internal/db/migrations
++    echo "== (end)"
++    git -C "$clone" checkout --quiet --detach "$baseline"
++    ( cd "$clone" && GOTOOLCHAIN=local GOFLAGS=-mod=readonly "$GO" list -deps ./cmd/agent ) > "$work/agent-deps.txt"
++    echo "== Agent package closure at the baseline ($(wc -l < "$work/agent-deps.txt") packages): licensing packages"
++    grep -c '/internal/licensing' "$work/agent-deps.txt" || true
++} > "$proof"
++[[ $(tail -n 1 "$proof") == 0 ]] || { echo "the Agent package closure includes the licensing seam; see $proof" >&2; exit 1; }
++use_web "$work/web-dist-candidate"
++b_json=$(build "$baseline" v0.1.0-alpha.87)
++g_json=$(build "$good" v0.1.0-alpha.88)
++d_json=$(build "$defective" v0.1.0-alpha.88)
++
++python3 - "$work/upd1-artifacts.json" "$source_commit" "$clone" "$b_json" "$g_json" "$d_json" "$baseline" "$good" "$proof" <<'PY'
++import json, sys
++out, head, clone, b, g, d, baseline, good, proof = sys.argv[1:]
++def item(path, sequence, parent=None):
++    value = json.load(open(path))
++    entry = {k: value[k] for k in ("archive", "sha256", "commit", "tree", "version", "product_web_src")}
++    entry.update(sequence=sequence, license_mode=value.get("license_mode"), dist_json=path)
++    if parent:
++        entry["parent"] = parent
++    return entry
++document = {"schema": "celikpanel/upd1-artifacts/v1", "source_head": head, "clone": clone,
++            "baseline": item(b, 87), "good": item(g, 88, baseline), "defective": item(d, 88, good)}
++document["defective"]["defect"] = "cmd/panel/main.go --migrate-only exits 1 after migrating the isolated copy"
++document["baseline_ref"] = {"ref": "v0.1.0-alpha.87", "tag_commit": baseline, "patched_files": [], "proof": proof}
++document["provenance"] = (f"set18: baseline (installed) an unpublished fixture commit {baseline} over the source {head} "
++                          "that changes only the release policy to v0.1.0-alpha.87 / 87 (previous the alpha.86 tag); "
++                          "good/defective: unpublished disposable fixture commits labelled v0.1.0-alpha.88, served by the "
++                          "origin, never installed; acceptance-license panels; not a release")
++with open(out, "x") as handle:
++    json.dump(document, handle, indent=2, sort_keys=True)
++    handle.write("\n")
++print(out)
++PY
++echo SET18-ARTIFACTS-OK
+--- /dev/null
++++ b/deploy/e2e/release-recovery/set18_trial.py
+@@ -0,0 +1,283 @@
++#!/usr/bin/env python3
++"""set18: the twenty-first native record. The alpha.87 candidate (HEAD 5d54aba1e of feat/alpha87-second-server plus a
++policy-only fixture commit labelled v0.1.0-alpha.87 / 87) installed FRESH on a disposable Debian 13 guest whose lab
++has its own DNS and its own ACME server (guest_set18_lab_dns.py, a lab preparation, not a product change), so that the
++owner's guided setup can reach "ready" and an extension of it can add a mail profile, in a real headless Chrome
++(web/tools/browser-inspect/cold-load-set18.mjs, set12's browser window protocol).
++
++``set18-debian13`` (``Set18Trial`` over ``set17_trial.Set17Trial``): pinning, preflight, origin, the lab network
++preparation (``set18-lab-network``: DNS responder, DNAT of the public resolvers, outbound 443 block with the package
++hosts allowed, pebble and its root in the system trust, certbot's user configuration), install, owner, licence, then
++the browser window "setup" (the owner runs the wizard with purpose web to ready; the Components mail route and
++"Stop extending"; the extension from the ready screen adding Core mail), then readings, pinning at the end, collect.
++
++Preparations the browser may ask for: ``probe``, ``journal``, ``lab-state`` (read-only), ``lab-mail-a`` (the owner adds
++the mail host's A record at the DNS provider: the lab record table), ``lab-ptr-mail`` (the owner sets the reverse DNS
++at the server provider: the lab record table), ``refresh-pin`` (the driver re-reads the Panel's TLS leaf after the
++certificate handover), ``setup-read`` (GET /api/v1/setup and the latest operation). The driver calls only the Panel's
++HTTP API; every native fact is read over SSH. Every result carries ``native_evidence: false``. Nothing here judges a
++P0 row.
++
++  set18_trial.py plan --cell set18-debian13 --artifacts A.json --work-root /var/tmp/cp-release-drill-X [--dry-run]
++  set18_trial.py run  --cell set18-debian13 --artifacts A.json --work-root /var/tmp/cp-release-drill-X --execute
++"""
++from __future__ import annotations
++
++import argparse
++import dataclasses
++import json
++import os
++from pathlib import Path
++import shlex
++import sys
++import time
++
++HERE = Path(__file__).resolve().parent
++if str(HERE) not in sys.path:
++    sys.path.insert(0, str(HERE))
++import set17_trial as t17  # noqa: E402  (set16/set15/set14 chain, set17_fixture)
++import set18_fixture as fx18  # noqa: E402  (after set17_fixture: the alpha.87 profile and the 88 origin copy)
++
++s16, s6, sw, base, t14 = t17.s16, t17.s6, t17.sw, t17.base, t17.t14
++out = fx18.out
++HELPER = "guest_set18_lab_dns.py"
++SERVER_IP = "192.0.2.10"
++PANEL_DOMAIN = "panel.set18.test"
++MAIL_HOSTNAME = "mail.set18.test"
++CELL_KIND = "set18-fresh-setup-to-ready"
++CELLS = {"set18-debian13": sw.SettingsCell("set18-debian13", "debian13", "web", sw.WEB_PRESET, False)}
++BROWSER = {"set18-debian13": {"lang": "en", "viewport": "1280"}}
++PREPS = ("probe", "journal", "lab-state", "lab-mail-a", "lab-ptr-mail", "refresh-pin", "setup-read")
++WINDOW_SECONDS = 4 * 3600
++SETUP_READS = (("setup", "/api/v1/setup"), ("operation", "/api/v1/setup/operation"),
++               ("version", "/api/v1/panel/version"), ("managed services", "/api/v1/managed-services"))
++NATIVE_READING = r"""set +e
++echo "== hostname"; hostnamectl --static 2>&1; hostname -f 2>&1
++echo "== panel TLS (127.0.0.1:2083, SNI panel.set18.test)"; echo | timeout 10 openssl s_client -connect 127.0.0.1:2083 -servername panel.set18.test 2>/dev/null | openssl x509 -noout -subject -issuer -dates -ext subjectAltName 2>&1
++echo "== submission TLS (127.0.0.1:587)"; echo | timeout 10 openssl s_client -starttls smtp -connect 127.0.0.1:587 -servername mail.set18.test 2>/dev/null | openssl x509 -noout -subject -issuer -dates 2>&1
++echo "== imaps TLS (127.0.0.1:993)"; echo | timeout 10 openssl s_client -connect 127.0.0.1:993 -servername mail.set18.test 2>/dev/null | openssl x509 -noout -subject -issuer -dates 2>&1
++echo "== certbot lineages"; ls -la /etc/letsencrypt/live 2>&1; for f in /etc/letsencrypt/renewal/*.conf; do echo "-- $f"; grep -E '^(server|no_verify_ssl|authenticator|webroot_path|account) ' "$f"; done 2>&1
++echo "== certbot timer"; systemctl is-enabled certbot.timer 2>&1; systemctl is-active certbot.timer 2>&1
++echo "== postfix"; postconf -h myhostname smtpd_tls_security_level smtpd_tls_cert_file 2>&1
++echo "== units"; systemctl is-active nginx postfix dovecot mariadb celikpanel-panel celikpanel-agent 2>&1 | paste -sd' '
++echo "== listeners"; ss -ltnp 2>/dev/null | awk 'NR>1{print $4, $6}' | sort | head -n 60
++echo "== celikpanel firewall table"; nft list tables 2>&1
++"""
++
++
++class Set18Trial(t17.Set17Trial):
++    def upload_helpers(self) -> dict:
++        helpers = super().upload_helpers()
++        helpers[f"{HELPER} (set18 lab preparation)"] = self.lab.put_file(
++            self.root, self.record, self.plan, self.node_name, HERE / HELPER, HELPER)[1]
++        return helpers
++
++    def lab_helper(self, mode: str, *args: str, timeout: float = 120) -> dict:
++        argv = ["python3", "-I", f"{out.PRIVATE}/{HELPER}", mode, *args]
++        result = self.guest(shlex.join(argv), timeout=timeout)
++        try:
++            return json.loads((result.stdout or "").strip().splitlines()[-1])
++        except (ValueError, IndexError):
++            return {"returncode": result.returncode, "stdout": (result.stdout or "")[-1500:], "stderr": (result.stderr or "")[-1500:]}
++
++    def lab_network(self, checks: dict) -> str:
++        """Lab preparation (not a product change): DNS responder, DNAT, outbound rules, pebble, trust, certbot config."""
++        record = self.lab_helper("prepare", "--server-ip", SERVER_IP, timeout=1500)
++        self.record_json("set18-lab-network.json", record)
++        dns = record.get("dns_checks") or []
++        answered = [c for c in dns if c.get("name") == PANEL_DOMAIN and c.get("rcode") == 0 and c.get("answers") == 1]
++        checks.update(what=record.get("what"), server_ip=SERVER_IP, route_get_1_1_1_1=record.get("route_get_1_1_1_1"),
++                      dns_checks=dns, block_check=record.get("block_check_203_0_113_1_443"),
++                      pebble_install=record.get("pebble_install"), pebble_version=record.get("pebble_version"),
++                      pebble_root=record.get("pebble_root"), directory=(record.get("directory") or "")[:300],
++                      certbot_cli_ini=record.get("certbot_cli_ini"), allowed_hosts=(record.get("tables") or {}).get("allowed_hosts"),
++                      error=None if "error" not in record else record)
++        problems = []
++        if len(answered) != 8:
++            problems.append(f"the redirected resolvers answered the panel name {len(answered)} of 8 times")
++        if f"src {SERVER_IP}" not in str(record.get("route_get_1_1_1_1")):
++            problems.append("the route to 1.1.1.1 does not name the server address")
++        if "newNonce" not in str(record.get("directory")):
++            problems.append("pebble's directory was not read")
++        if "rc=0" in str(record.get("block_check_203_0_113_1_443")):
++            problems.append("outbound 443 to a non-lab address was not refused")
++        if problems:
++            raise base.StepFailed("; ".join(problems))
++        return "passed"
++
++    def prep(self, name: str) -> dict:
++        if name == "lab-state":
++            return self.lab_helper("state", timeout=120)
++        if name in ("lab-mail-a", "lab-ptr-mail"):
++            value = self.lab_helper("set-record", "--what", name[len("lab-"):], timeout=120)
++            self.current.setdefault("lab_preparation", []).append({"at": base.utc_now(), "what": name, "result": value})
++            return value
++        if name == "refresh-pin":
++            before = getattr(self.transport, "leaf_sha256", None)
++            leaf = self.refresh_pin()
++            return {"before": before, "after": leaf, "changed": before != leaf}
++        if name == "setup-read":
++            self.refresh_pin()
++            values = {}
++            for what, path in SETUP_READS[:2]:
++                entry = self.call(f"set18: {what} ({path})", "GET", path, None, timeout=60)
++                values[what] = {"status": entry["status"], "body": entry.get("json")}
++            return values
++        return super().prep(name)
++
++    def window18(self, checks: dict) -> str:
++        self.current = {"section": "set18-browser-window", "node": self.node_name, "native_evidence": False,
++                        "started_at": base.utc_now(), "calls": [], "checks": [], "natives": [], "notes": [],
++                        "owner_actions": [], "lab_preparation": []}
++        if not os.environ.get("SET12_HAND"):
++            checks["reason"] = "no browser in this lab (SET12_HAND is not set)"
++            return "skipped"
++        record: dict = {}
++        try:
++            first = self.snap14("probe-before-the-window", "read-probe14")
++            self.s14["window_since"] = float(first.get("epoch") or time.time())
++            checks["probe_before_the_window"] = t14.compact_probe(first)
++            record = self.browser_window("setup", WINDOW_SECONDS, {
++                "browser": BROWSER[self.settings.name], "cell": self.settings.name, "mode": "set18", "preps": list(PREPS),
++                "lab": {"panel_domain": PANEL_DOMAIN, "mail_hostname": MAIL_HOSTNAME, "server_ip": SERVER_IP,
++                        "mail_profile": "core-mail"}})
++            checks.update({k: v for k, v in record.items() if k != "requests"})
++            checks["prep_count"] = len(record.get("requests") or [])
++            self.record_json("browser-window.json", record)
++        finally:
++            try:
++                checks["pin_after_the_window"] = self.prep("refresh-pin")
++            except Exception as exc:  # noqa: BLE001
++                checks["pin_after_the_window_error"] = self.error_text(exc)
++            for entry in self.current.get("calls", []):
++                entry.pop("_parsed", None)
++            self.current["finished_at"] = base.utc_now()
++            self.record_json("window.json", self.current)
++        if record.get("skipped"):
++            return "skipped"
++        if record.get("not_finished"):
++            raise base.StepInconclusive(record["not_finished"])
++        checks["session"] = self.ensure_session()
++        return "observed"
++
++    def readings18(self, checks: dict) -> str:
++        self.current = {"section": "set18-readings", "node": self.node_name, "native_evidence": False,
++                        "started_at": base.utc_now(), "calls": [], "checks": [], "natives": [], "notes": []}
++        try:
++            self.refresh_pin()
++            api = {}
++            for what, path in SETUP_READS:
++                entry = self.call(f"set18: {what} ({path})", "GET", path, None, timeout=120)
++                body = entry.get("json")
++                if path == "/api/v1/managed-services" and isinstance(body, dict):
++                    body = {k: body.get(k) for k in ("scan_age_seconds", "dns_identity_ready", "mail_dns_guidance", "mail_profiles")}
++                api[path] = {"status": entry["status"], "at": entry["at"], "body": body}
++            checks["api"] = api
++            setup = (api.get("/api/v1/setup") or {}).get("body") or {}
++            checks["setup_status"] = setup.get("status") if isinstance(setup, dict) else None
++            checks["setup_extension"] = setup.get("extension") if isinstance(setup, dict) else None
++            native = self.guest(NATIVE_READING, timeout=180)
++            self.ev.write_text(f"{self.step_dir}/native-reading.txt", (native.stdout or "") + (native.stderr or ""))
++            lab = self.lab_helper("state", timeout=120)
++            self.record_json("set18-lab-state-at-the-end.json", lab)
++            checks["lab_units"] = lab.get("units")
++            checks["lab_block_log"] = lab.get("block_log")
++            checks["lab_renewal"] = lab.get("letsencrypt_renewal")
++            checks["lab_queries_total"] = lab.get("queries_total")
++            try:
++                checks["ledger"] = self.schema_ledger("set18-fresh", t17.LEDGER_VERSION)
++            except Exception as exc:  # noqa: BLE001 - recorded; the cell goes on
++                checks["ledger"] = {"verdict": "inconclusive", "error": f"{type(exc).__name__}: {str(exc)[:300]}"}
++        finally:
++            for entry in self.current.get("calls", []):
++                entry.pop("_parsed", None)
++            self.current["finished_at"] = base.utc_now()
++            self.record_json("readings.json", self.current)
++        return "observed"
++
++    def execute(self) -> dict:
++        self.step("preflight", self.preflight)
++        self.step("origin", self.origin, needs=("preflight",))
++        self.step("set18-lab-network", self.lab_network, needs=("origin",))
++        self.step("baseline-install", self.baseline_install, needs=("set18-lab-network",))
++        self.step("owner-login", self.owner_login, needs=("baseline-install",))
++        self.step("license", self.license, needs=("owner-login",))
++        self.step("set18-browser-window", self.window18, needs=("license",))
++        self.step("set18-readings", self.readings18, needs=("baseline-install",))
++        self.step(s6.PIN_END_STEP, self.pin_at_the_end6)
++        self.step("collect", self.collect)
++        self.tunnel.close()
++        verdicts = [s["verdict"] for s in self.steps]
++        result = {"schema": base.RESULT_SCHEMA, "cell_kind": CELL_KIND, "native_evidence": False,
++                  "cell": dataclasses.asdict(self.settings),
++                  "identity": {k: self.identity[k] for k in ("cell_id", "node", "vm_uuid")},
++                  "request_id": None,
++                  "provenance": {"what": f"set18: a policy-only fixture over the source {fx18.SOURCE_COMMIT[:9]} labelled "
++                                         "v0.1.0-alpha.87, installed fresh on a lab with its own DNS and ACME; no update"},
++                  "artifacts": {"baseline": {k: self.artifacts["baseline"][k] for k in ("version", "commit", "sha256")}},
++                  "outcome": {"classification": "set18-measured", "final_status": None},
++                  "lab": {"panel_domain": PANEL_DOMAIN, "mail_hostname": MAIL_HOSTNAME, "server_ip": SERVER_IP,
++                          "preparation": "guest_set18_lab_dns.py (lab-only DNS, DNAT, outbound 443 block, pebble)"},
++                  "browser": BROWSER[self.settings.name], "findings": self.state["findings"],
++                  "steps": [{k: s.get(k) for k in ("name", "verdict", "reason", "started_at", "finished_at")} for s in self.steps],
++                  "overall": base.overall(verdicts),
++                  "note": "set18: a measurement on the fresh install; the owner's setup and its extension run in the "
++                          "browser; no update is started and no P0 row is judged."}
++        self.step_dir = "result"
++        return self.ev.finalize_upd1(result)
++
++
++def build_plan(name: str, artifacts: dict, work_root: str, local_port: int) -> dict:
++    settings = CELLS[name]
++    return {"schema": "celikpanel/set18-plan/v1", "native_evidence": False, "cell": name, "work_root": work_root,
++            "local_port": local_port, "pinned_names": list(s6.PINNED_NAMES), "browser": BROWSER[name],
++            "cell_kind": CELL_KIND, "candidate": {k: artifacts["baseline"][k] for k in ("version", "commit", "sha256")},
++            "setup": {"purpose": settings.purpose, "dns_mode": "external", "panel_domain": PANEL_DOMAIN,
++                      "extension": {"mail_profile": "core-mail", "mail_hostname": MAIL_HOSTNAME}},
++            "lab": {"helper": HELPER, "server_ip": SERVER_IP},
++            "preparations": list(PREPS),
++            "steps": [s6.PIN_STEP, "preflight", "origin", "set18-lab-network", "baseline-install", "owner-login",
++                      "license", "set18-browser-window", "set18-readings", s6.PIN_END_STEP, "collect"],
++            "rule": "the driver calls only the Panel's HTTP API as the logged-in owner; every native fact is an SSH "
++                    "reading; owner actions and lab preparation on the guest are recorded as such; no certificate "
++                    "authority and no licence service is contacted; outbound 443 from the guest is refused except to "
++                    "the package hosts"}
++
++
++def main(argv: list[str] | None = None) -> int:
++    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
++    sub = parser.add_subparsers(dest="command", required=True)
++    for name in ("plan", "run"):
++        cmd = sub.add_parser(name)
++        cmd.add_argument("--cell", required=True, choices=sorted(CELLS))
++        cmd.add_argument("--artifacts", required=True, type=Path)
++        cmd.add_argument("--work-root", required=True)
++        cmd.add_argument("--local-port", type=int, default=18443)
++        if name == "plan":
++            cmd.add_argument("--dry-run", action="store_true", help="validate the plan without any guest")
++        else:
++            cmd.add_argument("--execute", action="store_true")
++    args = parser.parse_args(argv)
++    base.validate_work_root(args.work_root)
++    if not 1024 < args.local_port < 65536:
++        parser.error("--local-port must be an unprivileged loopback port")
++    document = json.loads(args.artifacts.read_text())
++    labels = fx18.configure(document)
++    if labels.get("ref") != fx18.THIRD_REF:
++        parser.error(f"cell {args.cell} needs an artifacts document with baseline_ref {fx18.THIRD_REF}, not {labels.get('ref')}")
++    cell = CELLS[args.cell].cell
++    if args.command == "plan":
++        base.validate_cell_artifacts(document, cell, check_files=not args.dry_run)
++        print(json.dumps(build_plan(args.cell, document, args.work_root, args.local_port), indent=2, sort_keys=True))
++        return 0
++    if not args.execute:
++        parser.error("run mutates one registered disposable guest and requires --execute")
++    base.validate_cell_artifacts(document, cell)
++    result = Set18Trial(CELLS[args.cell], document, args.work_root, args.local_port).execute()
++    print(json.dumps({"overall": result["overall"], "outcome": (result.get("outcome") or {}).get("classification"),
++                      "steps": {s["name"]: s["verdict"] for s in result["steps"]}}, sort_keys=True))
++    return 0 if result["overall"] != "failed" else 1
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+--- /dev/null
++++ b/deploy/e2e/release-recovery/run-set18.sh
+@@ -0,0 +1,55 @@
++#!/usr/bin/env bash
++# set18 wrapper for the Linux QEMU host (archlinux), run as root: the alpha.87 candidate installed fresh on a
++# disposable Debian 13 guest whose lab has its own DNS and ACME server (lab preparation guest_set18_lab_dns.py), the
++# owner's setup run to ready and extended in a real headless Chrome (window "setup").
++#
++#   run-set18.sh dry-run CELL ARTIFACTS_JSON LAB_NAME
++#       Validate the plan without any guest (no lab is created).
++#   run-set18.sh cell CELL ARTIFACTS_JSON LAB_NAME SSH_PORT [LOCAL_PORT]
++#       Prepare and start a NEW lab /var/tmp/cp-release-drill-LAB_NAME (lab.py accepts no other place), run the one
++#       cell on its node, then stop the lab (disks and evidence retained).
++#
++# CELL: set18-debian13   (ARTIFACTS_JSON from `build-set18-artifacts.sh SOURCE`)
++# One cell per new lab. SET17_NEIGHBOUR_GATE and then SET17_DISK_GATE, when set, are programs that must exit 0
++# immediately before the guests are started; otherwise no guest is started. SET12_HAND opens the browser window
++# "setup" (required; under $SET12_RUN_ROOT/hand).
++set -euo pipefail
++HERE=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
++IMAGES=${UPD1_IMAGE_CACHE:-/var/tmp/cp-v3n28/images}
++LAB=(python3 "$HERE/lab.py")
++DRIVER=(python3 "$HERE/set18_trial.py")
++
++usage() { sed -n '2,15p' "${BASH_SOURCE[0]}" >&2; exit 2; }
++[[ $# -ge 1 ]] || usage
++command=$1; shift
++case $command in
++    dry-run)
++        [[ $# -eq 3 ]] || usage
++        exec "${DRIVER[@]}" plan --cell "$1" --artifacts "$2" --work-root "/var/tmp/cp-release-drill-$3" --dry-run
++        ;;
++    cell)
++        [[ $# -ge 4 && $# -le 5 ]] || usage
++        cell=$1 artifacts=$2 name=$3 port=$4 local_port=${5:-18443}
++        [[ $EUID -eq 0 ]] || { echo "run as root (fixture signing keys are root-only)" >&2; exit 2; }
++        [[ -n ${SET12_HAND:-} ]] || { echo "set18 cells need the browser window (SET12_HAND)" >&2; exit 2; }
++        root=/var/tmp/cp-release-drill-$name
++        [[ ! -e $root ]] || { echo "lab $root exists; every cell needs a NEW lab" >&2; exit 2; }
++        "${DRIVER[@]}" plan --cell "$cell" --artifacts "$artifacts" --work-root "$root" > /dev/null
++        "${LAB[@]}" prepare --work-root "$root" --image-cache "$IMAGES" --ssh-port "$port" --platform debian13-arch --execute
++        if [[ -n ${SET17_NEIGHBOUR_GATE:-} ]]; then
++            bash "$SET17_NEIGHBOUR_GATE" "$cell $name" || { echo "SET18 cell=$cell lab=$root NOT STARTED: another measurement's guest is running" >&2; exit 75; }
++        fi
++        if [[ -n ${SET17_DISK_GATE:-} ]]; then
++            bash "$SET17_DISK_GATE" "$cell $name (guest start)" || { echo "SET18 cell=$cell lab=$root NOT STARTED: the disk gate refused the guest start" >&2; exit 75; }
++        fi
++        "${LAB[@]}" start --work-root "$root" --execute
++        "${LAB[@]}" status --work-root "$root"
++        status=0
++        "${DRIVER[@]}" run --cell "$cell" --artifacts "$artifacts" --work-root "$root" --local-port "$local_port" \
++            --execute || status=$?
++        "${LAB[@]}" stop --work-root "$root" --execute || true
++        echo "SET18 cell=$cell lab=$root driver_exit=$status evidence=$root/evidence/*/upd1"
++        exit "$status"
++        ;;
++    *) usage ;;
++esac
+--- /dev/null
++++ b/deploy/e2e/release-recovery/guest_set18_lab_dns.py
+@@ -0,0 +1,522 @@
++#!/usr/bin/env python3
++"""set18 lab preparation (NOT a product change): a lab-only DNS and ACME fixture inside one disposable guest, so that a
++fresh CelikPanel can finish its setup and an extension of it without public DNS and without any certificate authority.
++
++What it does on the guest, and nothing else (every rule and command is printed into the JSON record):
++
++* a small DNS responder (this file, mode ``serve``, a transient systemd unit) on 127.0.0.1, TCP and UDP, one port per
++  "resolver" it stands in for (5300 pebble, 5301 1.1.1.1, 5302 8.8.8.8, 5303 9.9.9.9, 5304 208.67.222.222). It
++  answers the lab zone ``set18.test`` and the reverse name of the server address from a JSON record table, NXDOMAIN
++  for unknown names inside them and REFUSED for every other name; every question is logged.
++* nftables table ``ip set18lab``: OUTPUT DNAT of udp/tcp 53 to 1.1.1.1, 8.8.8.8, 9.9.9.9 and 208.67.222.222 (the
++  public resolvers hardcoded in cmd/ and internal/) to those ports; OUTPUT DNAT of tcp 25 to any non-local address to
++  127.0.0.1:25 (the lab's "open outbound port 25"; no SMTP leaves the guest); an OUTPUT filter that rejects tcp/udp
++  443 to every address except loopback, the lab networks and the package hosts of the apt sources (resolved, kept in
++  a set). Table ``ip6 set18lab6`` does the same 443 filter for IPv6. A guard unit re-applies a missing table.
++* routes for those four resolver addresses through the default gateway with source 192.0.2.10 (the address the
++  Panel reads as this server's, `ip route get 192.0.2.1`), so that the Agent's own address reading (`ip route get
++  1.1.1.1`) names the same address, as on a server with one public address.
++* pebble (Debian's ``pebble`` package, the ACME test server) as a transient unit on 127.0.0.1:14000 with its own CA,
++  resolving through the lab responder (port 5300), validating HTTP-01 on port 80 of this guest; its root installed into
++  the system trust (``/usr/local/share/ca-certificates/set18-lab-pebble-root.crt``); certbot pointed at it by its own
++  user configuration file ``/root/.config/letsencrypt/cli.ini`` (``server`` and ``no-verify-ssl``).
++
++usage (as root, from the lab's private directory):
++  guest_set18_lab_dns.py prepare --server-ip 192.0.2.10
++  guest_set18_lab_dns.py set-record --what mail-a|ptr-mail
++  guest_set18_lab_dns.py state
++  guest_set18_lab_dns.py serve | guard        (started by prepare as transient units)
++"""
++from __future__ import annotations
++
++import argparse
++import json
++import os
++from pathlib import Path
++import re
++import selectors
++import socket
++import struct
++import subprocess
++import sys
++import time
++
++LAB = Path("/root/celikpanel-release-recovery-lab/set18-lab")
++RECORDS = LAB / "records.json"
++QUERY_LOG = LAB / "resolver-queries.jsonl"
++GUARD_LOG = LAB / "guard.jsonl"
++RECORD_LOG = LAB / "record-changes.jsonl"
++PEBBLE_DIR = LAB / "pebble"
++ZONE = "set18.test"
++PANEL = "panel.set18.test"
++MAIL = "mail.set18.test"
++PROVIDER = "host-192-0-2-10.provider.set18.test"
++PORTS = {5300: "pebble", 5301: "1.1.1.1", 5302: "8.8.8.8", 5303: "9.9.9.9", 5304: "208.67.222.222"}
++RESOLVERS = {"1.1.1.1": 5301, "8.8.8.8": 5302, "9.9.9.9": 5303, "208.67.222.222": 5304}
++ALWAYS_ALLOWED_HOSTS = ("deb.debian.org", "security.debian.org", "packages.sury.org")
++CLI_INI = Path("/root/.config/letsencrypt/cli.ini")
++CA_FILE = Path("/usr/local/share/ca-certificates/set18-lab-pebble-root.crt")
++HERE = Path(__file__).resolve()
++TABLE4, TABLE6 = "set18lab", "set18lab6"
++
++
++def now() -> str:
++    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()) + f"{time.time() % 1:.3f}"[1:]
++
++
++def log(path: Path, value: dict) -> None:
++    with path.open("a") as handle:
++        handle.write(json.dumps({"at": now(), "epoch": round(time.time(), 3), **value}, sort_keys=True) + "\n")
++
++
++def run(argv: list[str], timeout: float = 120, check: bool = False, input_text: str | None = None) -> dict:
++    result = subprocess.run(argv, capture_output=True, text=True, timeout=timeout, input=input_text)
++    record = {"argv": argv, "returncode": result.returncode, "stdout": result.stdout[-3000:], "stderr": result.stderr[-2000:]}
++    if check and result.returncode != 0:
++        raise RuntimeError(json.dumps(record))
++    return record
++
++
++# -- the DNS responder --------------------------------------------------------------------------------------------
++
++def reverse_name(ip: str) -> str:
++    return ".".join(reversed(ip.split("."))) + ".in-addr.arpa"
++
++
++def load_records() -> dict:
++    return json.loads(RECORDS.read_text())
++
++
++def encode_name(name: str) -> bytes:
++    out = b""
++    for label in name.rstrip(".").split("."):
++        raw = label.encode("ascii")
++        out += bytes([len(raw)]) + raw
++    return out + b"\x00"
++
++
++def decode_question(message: bytes) -> tuple[str, int, int, int]:
++    offset, labels = 12, []
++    while True:
++        length = message[offset]
++        if length == 0:
++            offset += 1
++            break
++        if length & 0xC0:
++            raise ValueError("compressed question")
++        labels.append(message[offset + 1:offset + 1 + length].decode("ascii").lower())
++        offset += 1 + length
++    qtype, qclass = struct.unpack("!HH", message[offset:offset + 4])
++    return ".".join(labels), qtype, qclass, offset + 4
++
++
++def answer(message: bytes, records: dict, server_reverse_zone: str) -> tuple[bytes, dict]:
++    ident, flags = struct.unpack("!HH", message[:4])
++    name, qtype, qclass, end = decode_question(message)
++    question = message[12:end]
++    rd = flags & 0x0100
++    in_zone = name == ZONE or name.endswith("." + ZONE) or name == server_reverse_zone or name.endswith("." + server_reverse_zone)
++    a = records.get("A", {})
++    ptr = records.get("PTR", {})
++    rrs: list[bytes] = []
++    values: list[str] = []
++    if not in_zone or qclass != 1:
++        rcode = 5
++    else:
++        known = name in a or name in ptr or name in (ZONE, server_reverse_zone)
++        rcode = 0 if known else 3
++        if qtype == 1 and name in a:
++            for value in a[name]:
++                rrs.append(b"\xc0\x0c" + struct.pack("!HHIH", 1, 1, 60, 4) + socket.inet_aton(value))
++                values.append(value)
++        elif qtype == 12 and name in ptr:
++            target = encode_name(ptr[name])
++            rrs.append(b"\xc0\x0c" + struct.pack("!HHIH", 12, 1, 60, len(target)) + target)
++            values.append(ptr[name])
++    header = struct.pack("!HHHHHH", ident, 0x8000 | 0x0400 | rd | 0x0080 | rcode, 1, len(rrs), 0, 0)
++    return header + question + b"".join(rrs), {"qname": name, "qtype": qtype, "rcode": rcode, "answers": values}
++
++
++def serve() -> int:
++    records_mtime, records = 0.0, {}
++    server_ip = json.loads((LAB / "lab.json").read_text())["server_ip"]
++    reverse_zone = ".".join(reversed(server_ip.split(".")[:3])) + ".in-addr.arpa"
++    selector = selectors.DefaultSelector()
++    for port, label in PORTS.items():
++        udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
++        udp.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
++        udp.bind(("127.0.0.1", port))
++        selector.register(udp, selectors.EVENT_READ, ("udp", label))
++        tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
++        tcp.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
++        tcp.bind(("127.0.0.1", port))
++        tcp.listen(64)
++        selector.register(tcp, selectors.EVENT_READ, ("tcp", label))
++    log(QUERY_LOG, {"event": "listening", "ports": PORTS})
++
++    def respond(message: bytes, proto: str, label: str, client: str) -> bytes | None:
++        nonlocal records_mtime, records
++        try:
++            mtime = RECORDS.stat().st_mtime
++            if mtime != records_mtime:
++                records, records_mtime = load_records(), mtime
++            reply, info = answer(message, records, reverse_zone)
++        except Exception as exc:  # noqa: BLE001 - a malformed question is logged and dropped
++            log(QUERY_LOG, {"event": "dropped", "as": label, "proto": proto, "client": client, "error": str(exc)[:200]})
++            return None
++        log(QUERY_LOG, {"event": "query", "as": label, "proto": proto, "client": client, **info})
++        return reply
++
++    while True:
++        for key, _ in selector.select(timeout=5):
++            sock, (proto, label) = key.fileobj, key.data
++            if proto == "udp":
++                message, address = sock.recvfrom(4096)
++                reply = respond(message, proto, label, address[0])
++                if reply:
++                    sock.sendto(reply, address)
++            else:
++                conn, address = sock.accept()
++                conn.settimeout(3)
++                try:
++                    size = conn.recv(2)
++                    if len(size) == 2:
++                        length = struct.unpack("!H", size)[0]
++                        message = b""
++                        while len(message) < length:
++                            chunk = conn.recv(length - len(message))
++                            if not chunk:
++                                break
++                            message += chunk
++                        reply = respond(message, proto, label, address[0])
++                        if reply:
++                            conn.sendall(struct.pack("!H", len(reply)) + reply)
++                except OSError:
++                    pass
++                finally:
++                    conn.close()
++
++
++# -- nftables, routes, allow-list -----------------------------------------------------------------------------------
++
++def apt_https_hosts() -> list[str]:
++    hosts = set(ALWAYS_ALLOWED_HOSTS)
++    paths = [Path("/etc/apt/sources.list")] + sorted(Path("/etc/apt/sources.list.d").glob("*"))
++    for path in paths:
++        try:
++            text = path.read_text()
++        except OSError:
++            continue
++        hosts.update(re.findall(r"https://([A-Za-z0-9.-]+)", text))
++    return sorted(hosts)
++
++
++def resolve(hosts: list[str]) -> tuple[list[str], list[str]]:
++    v4, v6 = set(), set()
++    for host in hosts:
++        try:
++            for family, _, _, _, sockaddr in socket.getaddrinfo(host, 443, proto=socket.IPPROTO_TCP):
++                (v4 if family == socket.AF_INET else v6).add(sockaddr[0])
++        except OSError:
++            continue
++    return sorted(v4), sorted(v6)
++
++
++def ruleset(server_ip: str) -> str:
++    dnat = "\n".join(f"        ip daddr {address} {proto} dport 53 counter dnat to 127.0.0.1:{port}"
++                     for address, port in RESOLVERS.items() for proto in ("udp", "tcp"))
++    return f"""table ip {TABLE4} {{
++    set allow443 {{ type ipv4_addr; }}
++    chain out_nat {{
++        type nat hook output priority -100; policy accept;
++{dnat}
++        tcp dport 25 ip daddr != {{ 127.0.0.0/8, {server_ip}, 10.0.2.0/24 }} counter dnat to 127.0.0.1:25
++    }}
++    chain out_filter {{
++        type filter hook output priority 0; policy accept;
++        tcp dport 443 ip daddr {{ 127.0.0.0/8, 192.0.2.0/24, 10.0.2.0/24 }} counter accept
++        tcp dport 443 ip daddr @allow443 counter accept
++        tcp dport 443 counter log prefix "set18-lab-443-block " reject with tcp reset
++        udp dport 443 counter reject
++    }}
++}}
++table ip6 {TABLE6} {{
++    set allow443 {{ type ipv6_addr; }}
++    chain out_filter {{
++        type filter hook output priority 0; policy accept;
++        tcp dport 443 ip6 daddr ::1 counter accept
++        tcp dport 443 ip6 daddr @allow443 counter accept
++        tcp dport 443 counter log prefix "set18-lab-443-block6 " reject with tcp reset
++        udp dport 443 counter reject
++    }}
++}}
++"""
++
++
++def add_allowed(v4: list[str], v6: list[str]) -> list[dict]:
++    done = []
++    if v4:
++        done.append(run(["nft", "add", "element", "ip", TABLE4, "allow443", "{ " + ", ".join(v4) + " }"]))
++    if v6:
++        done.append(run(["nft", "add", "element", "ip6", TABLE6, "allow443", "{ " + ", ".join(v6) + " }"]))
++    return done
++
++
++def default_route() -> tuple[str, str]:
++    text = run(["ip", "-4", "route", "show", "default"])["stdout"]
++    match = re.search(r"default via (\S+) dev (\S+)", text)
++    if not match:
++        raise RuntimeError("no IPv4 default route")
++    return match.group(1), match.group(2)
++
++
++def apply_routes(server_ip: str) -> list[dict]:
++    gateway, device = default_route()
++    return [run(["ip", "route", "replace", f"{address}/32", "via", gateway, "dev", device, "src", server_ip])
++            for address in RESOLVERS]
++
++
++def tables_present() -> bool:
++    return (run(["nft", "list", "table", "ip", TABLE4])["returncode"] == 0
++            and run(["nft", "list", "table", "ip6", TABLE6])["returncode"] == 0)
++
++
++def apply_tables(server_ip: str) -> dict:
++    for family, table in (("ip", TABLE4), ("ip6", TABLE6)):
++        if run(["nft", "list", "table", family, table])["returncode"] == 0:
++            run(["nft", "delete", "table", family, table])
++    text = ruleset(server_ip)
++    (LAB / "set18lab.nft").write_text(text)
++    applied = run(["nft", "-f", str(LAB / "set18lab.nft")])
++    v4, v6 = resolve(apt_https_hosts())
++    return {"ruleset": text, "nft_f": applied, "allowed_hosts": apt_https_hosts(), "allowed_v4": v4, "allowed_v6": v6,
++            "add_elements": add_allowed(v4, v6)}
++
++
++def guard() -> int:
++    server_ip = json.loads((LAB / "lab.json").read_text())["server_ip"]
++    seen4: set[str] = set()
++    seen6: set[str] = set()
++    last_refresh = 0.0
++    log(GUARD_LOG, {"event": "started"})
++    while True:
++        try:
++            if not tables_present():
++                record = apply_tables(server_ip)
++                seen4, seen6 = set(record["allowed_v4"]), set(record["allowed_v6"])
++                log(GUARD_LOG, {"event": "tables-reapplied", "nft_f_rc": record["nft_f"]["returncode"]})
++            routes = run(["ip", "-4", "route", "show"])["stdout"]
++            missing = [a for a in RESOLVERS if not re.search(rf"^{re.escape(a)} via .* src {re.escape(server_ip)}", routes, re.M)]
++            if missing:
++                log(GUARD_LOG, {"event": "routes-reapplied", "missing": missing,
++                                "result": [r["returncode"] for r in apply_routes(server_ip)]})
++            if time.time() - last_refresh > 10:
++                last_refresh = time.time()
++                v4, v6 = resolve(apt_https_hosts())
++                new4, new6 = sorted(set(v4) - seen4), sorted(set(v6) - seen6)
++                if new4 or new6:
++                    add_allowed(new4, new6)
++                    seen4.update(new4)
++                    seen6.update(new6)
++                    log(GUARD_LOG, {"event": "allow443-added", "v4": new4, "v6": new6})
++        except Exception as exc:  # noqa: BLE001 - the guard keeps going and says why
++            log(GUARD_LOG, {"event": "error", "error": str(exc)[:300]})
++        time.sleep(2)
++
++
++# -- prepare --------------------------------------------------------------------------------------------------------
++
++def dns_probe(resolver: str, name: str, qtype: int, proto: str = "udp") -> dict:
++    ident = int.from_bytes(os.urandom(2), "big")
++    query = struct.pack("!HHHHHH", ident, 0x0100, 1, 0, 0, 0) + encode_name(name) + struct.pack("!HH", qtype, 1)
++    try:
++        if proto == "udp":
++            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
++            sock.settimeout(3)
++            sock.sendto(query, (resolver, 53))
++            reply = sock.recv(4096)
++        else:
++            sock = socket.create_connection((resolver, 53), timeout=3)
++            sock.sendall(struct.pack("!H", len(query)) + query)
++            length = struct.unpack("!H", sock.recv(2))[0]
++            reply = b""
++            while len(reply) < length:
++                reply += sock.recv(length - len(reply))
++        sock.close()
++        flags, _, ancount = struct.unpack("!HHH", reply[2:8])
++        return {"resolver": resolver, "proto": proto, "name": name, "qtype": qtype, "rcode": flags & 15, "answers": ancount}
++    except OSError as exc:
++        return {"resolver": resolver, "proto": proto, "name": name, "qtype": qtype, "error": str(exc)[:120]}
++
++
++def fetch(url: str) -> str | None:
++    """A lab-loopback HTTPS read (pebble's own listener certificate is not trusted, by design)."""
++    import ssl
++    import urllib.request
++    context = ssl.create_default_context()
++    context.check_hostname = False
++    context.verify_mode = ssl.CERT_NONE
++    try:
++        with urllib.request.urlopen(url, timeout=5, context=context) as response:
++            return response.read().decode()
++    except OSError:
++        return None
++
++
++def start_unit(unit: str, argv: list[str], environment: dict | None = None) -> dict:
++    run(["systemctl", "stop", unit])
++    run(["systemctl", "reset-failed", unit])
++    command = ["systemd-run", f"--unit={unit}", "--property=Restart=on-failure", "--property=RestartSec=2",
++               "--property=UMask=0077"]
++    for key, value in (environment or {}).items():
++        command.append(f"--setenv={key}={value}")
++    return run(command + argv)
++
++
++def prepare(server_ip: str) -> dict:
++    LAB.mkdir(parents=True, exist_ok=True, mode=0o700)
++    record: dict = {"what": "set18 lab preparation (not a product change): lab-only DNS, ACME and outbound rules",
++                    "at": now(), "server_ip": server_ip}
++    seen_src = run(["ip", "-4", "route", "get", "192.0.2.1"])["stdout"]
++    record["route_to_192_0_2_1"] = seen_src.strip()
++    if f"src {server_ip}" not in seen_src:
++        raise RuntimeError(f"this guest does not read {server_ip} as its address: {seen_src!r}")
++    (LAB / "lab.json").write_text(json.dumps({"server_ip": server_ip}) + "\n")
++    rev = reverse_name(server_ip)
++    records = {"A": {PANEL: [server_ip], PROVIDER: [server_ip]}, "PTR": {rev: PROVIDER},
++               "note": f"{PANEL} prepared before setup; {MAIL} absent until the owner adds it; PTR at the provider's default name"}
++    RECORDS.write_text(json.dumps(records, indent=2, sort_keys=True) + "\n")
++    log(RECORD_LOG, {"event": "initial", "records": records})
++    record["records_initial"] = records
++    # nft (the nftables package: not in the Debian cloud image; setup's own nftables component then reads it as
++    # already installed) and pebble, from the distribution's repository, before any rule exists.
++    env = {**os.environ, "DEBIAN_FRONTEND": "noninteractive"}
++    update = subprocess.run(["apt-get", "update"], capture_output=True, text=True, timeout=600, env=env)
++    install = subprocess.run(["apt-get", "install", "-y", "--no-install-recommends", "nftables", "pebble"], capture_output=True,
++                             text=True, timeout=900, env=env)
++    record["packages_install"] = {"update_rc": update.returncode, "install_rc": install.returncode,
++                                  "packages": ["nftables", "pebble"], "install_tail": install.stdout[-1500:],
++                                  "stderr_tail": install.stderr[-800:],
++                                  "nftables_service": run(["sh", "-c", "systemctl is-enabled nftables.service 2>&1; systemctl is-active nftables.service 2>&1 || true"])["stdout"]}
++    record["pebble_install"] = record["packages_install"]
++    record["resolver_unit"] = start_unit("set18-lab-resolver.service", ["python3", "-I", str(HERE), "serve"])
++    record["apt_sources"] = run(["sh", "-c", "grep -rhE '^(deb |URIs:)' /etc/apt/sources.list /etc/apt/sources.list.d/ 2>/dev/null"])["stdout"]
++    record["tables"] = apply_tables(server_ip)
++    record["routes"] = apply_routes(server_ip)
++    record["route_get_1_1_1_1"] = run(["ip", "-4", "route", "get", "1.1.1.1"])["stdout"].strip()
++    time.sleep(1)
++    record["dns_checks"] = [dns_probe(r, PANEL, 1, proto) for r in RESOLVERS for proto in ("udp", "tcp")] + \
++        [dns_probe("1.1.1.1", rev, 12, "tcp"), dns_probe("8.8.8.8", MAIL, 1, "tcp"), dns_probe("1.1.1.1", "example.com", 1)]
++    blocked = run(["sh", "-c", "timeout 8 bash -c 'exec 3<>/dev/tcp/203.0.113.1/443' 2>&1; echo rc=$?"], timeout=20)
++    record["block_check_203_0_113_1_443"] = blocked["stdout"].strip()
++    record["pebble_version"] = run(["sh", "-c", "dpkg-query -W pebble; command -v pebble"])["stdout"]
++    record["pebble_packaged_units"] = run(["sh", "-c", "systemctl list-unit-files --no-pager 'pebble*' 2>&1; systemctl is-active pebble.service 2>&1 || true"])["stdout"]
++    run(["systemctl", "disable", "--now", "pebble.service"])
++    PEBBLE_DIR.mkdir(parents=True, exist_ok=True, mode=0o700)
++    run(["openssl", "req", "-x509", "-newkey", "ec", "-pkeyopt", "ec_paramgen_curve:P-256", "-nodes", "-days", "30",
++         "-subj", "/CN=set18-lab-pebble-listener", "-addext", "subjectAltName=IP:127.0.0.1,DNS:localhost",
++         "-keyout", str(PEBBLE_DIR / "listener-key.pem"), "-out", str(PEBBLE_DIR / "listener-cert.pem")], check=True)
++    config = {"pebble": {"listenAddress": "127.0.0.1:14000", "managementListenAddress": "127.0.0.1:15000",
++                         "certificate": str(PEBBLE_DIR / "listener-cert.pem"), "privateKey": str(PEBBLE_DIR / "listener-key.pem"),
++                         "httpPort": 80, "tlsPort": 443, "ocspResponderURL": "", "externalAccountBindingRequired": False}}
++    (PEBBLE_DIR / "pebble-config.json").write_text(json.dumps(config, indent=2) + "\n")
++    record["pebble_config"] = config
++    pebble_env = {"PEBBLE_VA_NOSLEEP": "1", "PEBBLE_WFE_NONCEREJECT": "0"}
++    record["pebble_unit"] = start_unit("set18-lab-pebble.service",
++                                       ["/usr/bin/pebble", "-config", str(PEBBLE_DIR / "pebble-config.json"),
++                                        "-dnsserver", "127.0.0.1:5300"], pebble_env)
++    record["pebble_environment"] = pebble_env
++    root = None
++    for _ in range(30):
++        root = fetch("https://127.0.0.1:15000/roots/0")
++        if root and "BEGIN CERTIFICATE" in root:
++            break
++        root = None
++        time.sleep(1)
++    if root is None:
++        raise RuntimeError("pebble's root could not be read")
++    CA_FILE.write_text(root)
++    record["pebble_root"] = run(["openssl", "x509", "-noout", "-subject", "-fingerprint", "-sha256", "-in", str(CA_FILE)])["stdout"]
++    record["update_ca_certificates"] = run(["update-ca-certificates"])
++    record["directory"] = (fetch("https://127.0.0.1:14000/dir") or "")[:800]
++    CLI_INI.parent.mkdir(parents=True, exist_ok=True)
++    CLI_INI.write_text("# set18 lab only (disposable guest): certbot uses the lab's own ACME server inside this guest.\n"
++                       "server = https://127.0.0.1:14000/dir\nno-verify-ssl = true\n")
++    record["certbot_cli_ini"] = {"path": str(CLI_INI), "text": CLI_INI.read_text()}
++    record["guard_unit"] = start_unit("set18-lab-guard.service", ["python3", "-I", str(HERE), "guard"])
++    record["finished_at"] = now()
++    return record
++
++
++def set_record(what: str) -> dict:
++    server_ip = json.loads((LAB / "lab.json").read_text())["server_ip"]
++    records = load_records()
++    before = json.loads(json.dumps(records))
++    if what == "mail-a":
++        records["A"][MAIL] = [server_ip]
++        meaning = f"the owner adds the A record {MAIL} -> {server_ip} at the DNS provider (lab record table)"
++    elif what == "ptr-mail":
++        records["PTR"][reverse_name(server_ip)] = MAIL
++        meaning = f"the owner sets the reverse DNS of {server_ip} to {MAIL} at the server provider (lab record table)"
++    else:
++        raise ValueError("unknown record change")
++    temporary = RECORDS.with_suffix(".tmp")
++    temporary.write_text(json.dumps(records, indent=2, sort_keys=True) + "\n")
++    os.replace(temporary, RECORDS)
++    log(RECORD_LOG, {"event": what, "meaning": meaning, "before": before, "after": records})
++    return {"at": now(), "what": what, "meaning": meaning, "after": records,
++            "checks": [dns_probe("1.1.1.1", MAIL, 1, "tcp"), dns_probe("8.8.8.8", reverse_name(server_ip), 12, "tcp")]}
++
++
++def tail(path: Path, lines: int) -> list:
++    try:
++        return [json.loads(line) for line in path.read_text().splitlines()[-lines:]]
++    except (OSError, ValueError):
++        return []
++
++
++def state() -> dict:
++    return {"at": now(),
++            "nft": run(["sh", "-c", f"nft list table ip {TABLE4}; nft list table ip6 {TABLE6}"])["stdout"],
++            "routes": run(["ip", "-4", "route", "show"])["stdout"],
++            "route_get_1_1_1_1": run(["ip", "-4", "route", "get", "1.1.1.1"])["stdout"].strip(),
++            "units": run(["sh", "-c", "systemctl show set18-lab-resolver.service set18-lab-pebble.service set18-lab-guard.service --no-pager -p Id -p ActiveState -p SubState -p NRestarts"])["stdout"],
++            "records": load_records() if RECORDS.exists() else None,
++            "record_changes": tail(RECORD_LOG, 20),
++            "guard_events": tail(GUARD_LOG, 40),
++            "queries_total": sum(1 for _ in QUERY_LOG.open()) if QUERY_LOG.exists() else 0,
++            "queries_last": tail(QUERY_LOG, 60),
++            "pebble_journal": run(["journalctl", "-u", "set18-lab-pebble.service", "--no-pager", "-o", "short-iso", "-n", "120"])["stdout"][-12000:],
++            "block_log": run(["sh", "-c", "journalctl -k --no-pager -o short-iso | grep -F set18-lab-443-block | tail -n 40"])["stdout"],
++            "cli_ini": CLI_INI.read_text() if CLI_INI.exists() else None,
++            "letsencrypt_renewal": run(["sh", "-c", "for f in /etc/letsencrypt/renewal/*.conf; do echo \"== $f\"; grep -E '^(server|no_verify_ssl|authenticator|account) ' \"$f\"; done 2>/dev/null"])["stdout"],
++            "ca_file": run(["openssl", "x509", "-noout", "-subject", "-fingerprint", "-sha256", "-in", str(CA_FILE)])["stdout"] if CA_FILE.exists() else None}
++
++
++def main() -> int:
++    parser = argparse.ArgumentParser()
++    parser.add_argument("mode", choices=("prepare", "serve", "guard", "set-record", "state"))
++    parser.add_argument("--server-ip")
++    parser.add_argument("--what")
++    args, _ = parser.parse_known_args()
++    if os.geteuid() != 0:
++        print(json.dumps({"error": "run as root"}))
++        return 2
++    if args.mode == "serve":
++        return serve()
++    if args.mode == "guard":
++        return guard()
++    if args.mode == "prepare":
++        if not args.server_ip or not re.fullmatch(r"\d+\.\d+\.\d+\.\d+", args.server_ip):
++            parser.error("prepare needs --server-ip")
++        value = prepare(args.server_ip)
++    elif args.mode == "set-record":
++        value = set_record(args.what or "")
++    else:
++        value = state()
++    print(json.dumps(value, sort_keys=True))
++    return 0
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+--- /dev/null
++++ b/web/tools/browser-inspect/cold-load-set18.mjs
+@@ -0,0 +1,541 @@
++// node cold-load-set18.mjs <handover-dir> <out-dir> [setup,done]
++// set18 (2026-10-15): the owner's guided setup run to READY and an extension of it, in a real headless Chrome against
++// a REAL CelikPanel on a disposable lab guest whose lab has its own DNS and ACME server (deploy/e2e/release-recovery/
++// guest_set18_lab_dns.py, a lab preparation; set18_trial.py, set12's browser window protocol, window "setup").
++// Nothing but the loopback address of the driver's forward is opened.
++//
++//   cell "setup":
++//     1  setup to ready (English, 1280x800): sign-in, "Set up with the wizard", purpose Web hosting, panel address
++//        hand.lab.panel_domain, DNS external, review (the plan's blocks recorded), confirm, start; the run is followed
++//        (the page sampled every second, every new state pictured) to "Your server is ready". The page's own reads
++//        are recorded with their bodies (/api/v1/setup*). The Panel's certificate changes in this run (the handover),
++//        so Chrome is started with --ignore-certificate-errors (lab loopback only); the leaf is recorded before and
++//        after.
++//     3  the Components mail route: Components -> Core Mail -> Install -> the dialog's setup route, the mail host name
++//        hand.lab.mail_hostname, "Review in server setup" -> the wizard's access step (prefilled) -> the review (what
++//        changes / to be installed / kept) -> back to the access step, the secondary-DNS box of the access step
++//        (local DNS, role secondary; UI state only, never saved) -> "Stop extending" -> the ready screen; the driver
++//        reads the setup and its latest operation (nothing started).
++//     2  the extension from the ready screen: "Extend setup" -> "Customize selection" -> Postfix + Dovecot -> the
++//        access step (mail host name) -> review (blocks recorded) -> confirm, start; followed to ready. When the run
++//        waits at the public DNS check of the mail host name, the owner adds the record (driver preparation
++//        "lab-mail-a": the lab's record table); when the final check names the reverse DNS, the owner sets it at the
++//        provider ("lab-ptr-mail") and presses "Check requirements again" (the "Finishing setup" state).
++//     Browser checks: the ready screen (with the extension section), the Components mail dialog (setup route), the
++//     extension's access step and review, at 1280x800 and 390x844, English and Turkish.
++//   cell "done": writes done.json
++//
++//   BROWSER_INSPECT_MODULES  directory whose node_modules holds puppeteer-core (required; outside the repository)
++//   CHROME_PATH              the installed Chrome (default: the usual Windows/Linux places)
++//
++// The owner's password is read from the root-only file the driver names and typed into the sign-in form; every text
++// this script writes is passed through the redaction list of that file first. Cookies are never read.
++import { createHash } from 'node:crypto';
++import { existsSync, readFileSync } from 'node:fs';
++import { appendFile, mkdir, writeFile } from 'node:fs/promises';
++import { createRequire } from 'node:module';
++import { join, resolve } from 'node:path';
++import { connect as tlsConnect } from 'node:tls';
++import { pathToFileURL } from 'node:url';
++import { shortProfileDir } from './profile-dir.mjs';
++
++if (!process.env.BROWSER_INSPECT_MODULES) { console.error('Set BROWSER_INSPECT_MODULES (see README.md).'); process.exit(2); }
++const requireFrom = createRequire(pathToFileURL(join(resolve(process.env.BROWSER_INSPECT_MODULES), 'package.json')));
++const loaded = await import(pathToFileURL(requireFrom.resolve('puppeteer-core')).href);
++const puppeteer = [loaded.default?.default, loaded.default, loaded].find(item => typeof item?.launch === 'function');
++const chrome = process.env.CHROME_PATH || ['C:/Program Files/Google/Chrome/Application/chrome.exe', '/usr/bin/google-chrome', '/usr/bin/chromium'].find(candidate => existsSync(candidate));
++if (!chrome) { console.error('No installed Chrome found. Set CHROME_PATH.'); process.exit(2); }
++
++const [handDir, outRoot, cellsArg = 'setup,done'] = process.argv.slice(2);
++if (!handDir || !outRoot) { console.error('usage: node cold-load-set18.mjs <handover-dir> <out-dir> <cells>'); process.exit(2); }
++const cells = cellsArg.split(',');
++const hand = JSON.parse(readFileSync(join(handDir, 'ready.json'), 'utf8'));
++const port = Number(hand.local_port);
++if (!(port > 1024 && port < 65536)) throw new Error('bad port in the handover file');
++const LAB = hand.lab || {};
++if (!/^[a-z0-9.-]+\.test$/.test(LAB.panel_domain || '') || !/^[a-z0-9.-]+\.test$/.test(LAB.mail_hostname || '')) throw new Error('the handover names no lab host names');
++const base = `https://127.0.0.1:${port}`;
++const wslShare = process.env.LIVE_WSL_SHARE || '//wsl.localhost/archlinux';
++const secretPath = process.platform === 'win32' ? wslShare + hand.password_file : hand.password_file;
++const pause = ms => new Promise(done => setTimeout(done, ms));
++const iso = (ms = Date.now()) => new Date(ms).toISOString();
++const VIEWPORTS = { '1280': { width: 1280, height: 800, deviceScaleFactor: 1 }, phone: { width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true } };
++
++let secret = null;
++const redactions = () => [secret?.password, ...(secret?.redact || [])].filter(value => typeof value === 'string' && value.length >= 6);
++const redact = text => { let out = String(text ?? ''); for (const value of redactions()) out = out.split(value).join('[REDACTED]'); return out; };
++const jsonl = async (file, value) => appendFile(file, redact(JSON.stringify(value)) + '\n');
++
++function leafOf() {
++    return new Promise((done, fail) => {
++        const socket = tlsConnect({ host: '127.0.0.1', port, rejectUnauthorized: false, servername: 'localhost' }, () => {
++            const cert = socket.getPeerX509Certificate();
++            socket.end();
++            if (!cert) return fail(new Error('no peer certificate'));
++            done({ leaf_sha256: createHash('sha256').update(cert.raw).digest('hex'), subject: cert.subject, issuer: cert.issuer, valid_to: cert.validTo, san: cert.subjectAltName });
++        });
++        socket.setTimeout(8000, () => { socket.destroy(); fail(new Error('timeout')); });
++        socket.on('error', fail);
++    });
++}
++
++await mkdir(outRoot, { recursive: true });
++const dir = outRoot;
++const events = join(dir, 'events.jsonl');
++const leafRecord = async label => { try { const leaf = await leafOf(); await jsonl(join(dir, 'leaf.jsonl'), { at: iso(), label, ...leaf, handover_leaf_sha256: hand.tls_leaf_sha256 }); return leaf; } catch (error) { await jsonl(join(dir, 'leaf.jsonl'), { at: iso(), label, error: String(error.message).slice(0, 120) }); return null; } };
++await leafRecord('start');
++secret = JSON.parse(readFileSync(secretPath, 'utf8'));
++const profile = shortProfileDir(outRoot);
++const browser = await puppeteer.launch({
++    executablePath: chrome, headless: true, userDataDir: profile,
++    // The Panel's certificate changes during setup (lab pebble CA, not trusted by Chrome); only the loopback forward is opened.
++    args: ['--no-first-run', '--no-default-browser-check', '--disable-background-networking', '--disable-component-update',
++        '--disable-sync', '--disable-domain-reliability', '--force-color-profile=srgb', '--ignore-certificate-errors'],
++});
++
++// -- recording -----------------------------------------------------------------------------------------------------
++
++let phase = 'start';
++const front = { page: null };
++const latest = { operation: null, setup: null };
++const BODY_PREFIXES = ['/api/v1/setup', '/api/v1/panel/version'];
++
++async function newPage(label, lang = 'en', vp = '1280') {
++    const page = await browser.newPage();
++    page.__label = label;
++    await page.setViewport(VIEWPORTS[vp]);
++    await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'light' }]);
++    // The language follows a per-tab value (sessionStorage) so that a reload can switch it.
++    await page.evaluateOnNewDocument(value => { try { const chosen = sessionStorage.getItem('set18.lang') || value; localStorage.setItem('celikpanel.lang', chosen); localStorage.setItem('celikpanel.theme', 'light'); } catch { /* none */ } }, lang);
++    const started = new Map();
++    page.on('request', req => { if (req.url().includes('/api/')) started.set(req, Date.now()); });
++    const finish = async (req, failed) => {
++        if (!req.url().includes('/api/')) return;
++        const t0 = started.get(req) ?? Date.now();
++        started.delete(req);
++        const res = failed ? null : req.response();
++        const entry = { page: label, phase, method: req.method(), url: req.url().replace(base, ''), status: res ? res.status() : null, start: iso(t0), ms: Date.now() - t0 };
++        if (failed) entry.error = req.failure()?.errorText;
++        const path0 = entry.url.split('?')[0];
++        if (res && BODY_PREFIXES.some(prefix => path0.startsWith(prefix))) {
++            try {
++                const text = await res.text();
++                entry.body = text.slice(0, 20000);
++                const value = JSON.parse(text);
++                if (path0 === '/api/v1/setup/operation' && value && typeof value === 'object') latest.operation = { at: Date.now(), value };
++                if (path0 === '/api/v1/setup' && value && typeof value === 'object' && req.method() === 'GET') latest.setup = { at: Date.now(), value };
++            } catch (error) { entry.body_unreadable = String(error.message).slice(0, 120); }
++            if (['POST', 'PUT'].includes(req.method())) { try { entry.request_body = (req.postData() || '').slice(0, 4000); } catch { /* none */ } }
++        } else if (res && res.status() >= 400) {
++            try { const code = (JSON.parse(await res.text()) || {}).code; if (typeof code === 'string') entry.code = code.slice(0, 80); } catch { /* not JSON */ }
++        }
++        await jsonl(join(dir, 'requests.jsonl'), entry);
++    };
++    page.on('requestfinished', req => void finish(req, false));
++    page.on('requestfailed', req => void finish(req, true));
++    page.on('console', message => { if (['error', 'warn', 'warning'].includes(message.type())) void jsonl(join(dir, 'console.jsonl'), { at: iso(), page: label, phase, type: message.type(), text: message.text().slice(0, 400) }); });
++    return page;
++}
++
++async function toFront(page) { await page.bringToFront(); front.page = page; await pause(300); }
++async function pageText(page) {
++    return page.evaluate(() => (document.querySelector('main') || document.body).innerText.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim().slice(0, 16000)).catch(() => '');
++}
++const shotNames = new Set();
++async function shot(page, name, extra = {}, full = false) {
++    if (front.page !== page) { await jsonl(events, { at: iso(), ev: 'shot-skipped', name }); return null; }
++    let n = name; let i = 2; while (shotNames.has(n)) n = `${name}-${i++}`; shotNames.add(n);
++    try {
++        await page.screenshot({ path: join(dir, `${n}-viewport.png`), fullPage: false });
++        if (full) await page.screenshot({ path: join(dir, `${n}-full.png`), fullPage: true });
++    } catch (error) { await jsonl(events, { at: iso(), ev: 'shot-failed', name: n, error: String(error.message).slice(0, 160) }); return null; }
++    await writeFile(join(dir, `${n}.txt`), redact(await pageText(page)));
++    await jsonl(events, { at: iso(), ev: 'shot', name: n, phase, ...extra });
++    return n;
++}
++async function prep(name, limitMs = 900000) {
++    const key = `${name}-${Date.now()}`;
++    const asked = Date.now();
++    await writeFile(join(handDir, `prep-request-${key}`), iso() + '\n');
++    await jsonl(events, { at: iso(), ev: 'prep-requested', name, phase });
++    const file = join(handDir, `prep-done-${key}.json`);
++    while (Date.now() - asked < limitMs && !existsSync(file)) await pause(200);
++    const record = existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : { missing: true, waited_ms: Date.now() - asked };
++    const out = { ...record, host_asked_ms: asked, host_got_ms: Date.now() };
++    await jsonl(events, { at: iso(), ev: 'prep-done', name, phase, record: out });
++    return out;
++}
++const note = async (ev, extra = {}) => jsonl(events, { at: iso(), ev, phase, ...extra });
++
++async function signIn(page) {
++    await page.goto(base + '/', { waitUntil: 'networkidle2', timeout: 60000 });
++    const shown = await page.waitForFunction(() => document.getElementById('username') ? 'form' : document.querySelector('main, nav, aside') ? 'signed-in' : null, { timeout: 60000 }).then(handle => handle.jsonValue());
++    await note('sign-in-page', { shown });
++    if (shown === 'signed-in') return;
++    await page.type('#username', secret.username);
++    await page.type('#password', secret.password);
++    await Promise.all([page.keyboard.press('Enter'), pause(500)]);
++    await page.waitForFunction(() => !document.getElementById('password'), { timeout: 60000 });
++    await pause(2500);
++}
++
++// -- page helpers --------------------------------------------------------------------------------------------------
++
++async function clickText(page, pattern, scope = 'main', tags = 'button, a') {
++    const source = pattern.source; const flags = pattern.flags;
++    const clicked = await page.evaluate((scopeSel, tagSel, src, fl) => {
++        const re = new RegExp(src, fl);
++        const root = document.querySelector(scopeSel) || document.body;
++        const el = Array.from(root.querySelectorAll(tagSel)).find(x => re.test((x.innerText || x.textContent || '').trim()) && !x.disabled && x.getClientRects().length);
++        if (!el) return null;
++        el.scrollIntoView({ block: 'center' }); el.click();
++        return (el.innerText || '').trim().slice(0, 120);
++    }, scope, tags, source, flags).catch(() => null);
++    await note('click', { pattern: String(pattern), clicked });
++    return clicked;
++}
++async function waitFor(page, fn, timeout = 60000, arg = null) {
++    try { await page.waitForFunction(fn, { timeout, polling: 500 }, arg); return true; } catch { return false; }
++}
++async function fill(page, selector, value) {
++    await page.waitForSelector(selector, { timeout: 30000 });
++    await page.click(selector, { clickCount: 3 });
++    await page.keyboard.down('Control'); await page.keyboard.press('KeyA'); await page.keyboard.up('Control');
++    await page.keyboard.press('Backspace');
++    await page.type(selector, value, { delay: 20 });
++    const now = await page.$eval(selector, el => el.value);
++    await note('fill', { selector, value, now });
++    return now === value;
++}
++async function settle(page, ms = 1500) { await page.waitForNetworkIdle({ idleTime: 600, timeout: 15000 }).catch(() => {}); await pause(ms); }
++
++const SETUP_SAMPLE = () => {
++    const txt = el => el ? (el.innerText || '').replace(/\s+/g, ' ').trim() : null;
++    const main = document.querySelector('main') || document.body;
++    const guidance = document.querySelector('aside[aria-labelledby="setup-guidance-title"], aside[aria-labelledby="setup-progress-title"]');
++    return {
++        t: Date.now(), path: location.pathname, vis: document.visibilityState, lang: document.documentElement.lang || null,
++        h1: txt(main.querySelector('h1')), progress_title: txt(document.getElementById('setup-progress-title')),
++        guidance_title: txt(document.getElementById('setup-guidance-title')), guidance: guidance ? txt(guidance).slice(0, 3000) : null,
++        checks: Array.from(document.querySelectorAll('[data-check]')).map(li => ({ id: li.getAttribute('data-check'), state: li.getAttribute('data-state'), text: txt(li) })),
++        steps: Array.from(document.querySelectorAll('[data-step-state]')).map(li => ({ state: li.getAttribute('data-step-state'), text: txt(li) })),
++        finishing: txt(document.querySelector('[data-setup-finishing]')),
++        reconnecting: txt(document.querySelector('[data-setup-reconnecting]')), reconnect_slow: txt(document.querySelector('[data-setup-reconnect-slow]')),
++        handover: txt(document.querySelector('aside[aria-labelledby="setup-handover-title"]')),
++        alerts: Array.from(document.querySelectorAll('[role="alert"]')).filter(a => a.getClientRects().length).map(a => txt(a).slice(0, 800)),
++        statuses: Array.from(main.querySelectorAll('[role="status"]')).filter(a => a.getClientRects().length).map(a => txt(a).slice(0, 800)).slice(0, 8),
++        buttons: Array.from(main.querySelectorAll('button, a')).filter(b => b.getClientRects().length).map(b => ({ text: txt(b), disabled: !!b.disabled })).filter(b => b.text).slice(0, 30),
++        extend_section: txt(document.querySelector('[data-setup-extend]')), extend_stop: txt(document.querySelector('[data-setup-extend-stop]')),
++        overflow_x: document.documentElement.scrollWidth > document.documentElement.clientWidth,
++    };
++};
++const signature = s => JSON.stringify([s.h1, s.progress_title, s.guidance_title, !!s.finishing, s.steps.map(x => x.state), s.checks.map(x => `${x.id}:${x.state}`), !!s.reconnecting, !!s.reconnect_slow, s.alerts.length, (s.guidance || '').slice(0, 160)]);
++const op = () => latest.operation?.value || null;
++const opStep = (execution, kind, target) => (execution?.steps || []).find(x => x.kind === kind && (!target || x.target === target));
++
++// Follow a started run until the server is ready (or failed, or the bound).
++async function follow(page, label, limitMs, mail) {
++    const started = Date.now();
++    const result = { label, started_at: iso(started), states: 0, pictures: [], owner_actions: [], lab: [] };
++    let lastSig = null; let shots = 0; let lastHeartbeat = 0;
++    let mailWaitSince = null; let ptrSeenAt = null; let lastVerifyPress = 0; let waitingVerifySince = null; let slowSince = null;
++    let done = false;
++    while (!done && Date.now() - started < limitMs) {
++        const t0 = Date.now();
++        let s;
++        try { s = await page.evaluate(SETUP_SAMPLE); } catch (error) { s = { t: t0, error: String(error.message).slice(0, 160) }; }
++        const execution = op();
++        if (!s.error) {
++            s.operation = execution ? { status: execution.status, phase: execution.phase, error: execution.error?.code || null, steps: (execution.steps || []).map(x => `${x.id}:${x.status}`) } : null;
++            const sig = signature(s);
++            if (sig !== lastSig || Date.now() - lastHeartbeat > 30000) {
++                lastHeartbeat = Date.now();
++                if (sig !== lastSig) { result.states++; s.new_state = true; }
++                if (sig !== lastSig && shots < 70 && s.vis === 'visible') { shots++; s.picture = await shot(page, `${label}-state-${String(shots).padStart(2, '0')}`, { t_plus_s: Math.round((Date.now() - started) / 1000) }); if (s.picture) result.pictures.push(s.picture); }
++                lastSig = sig;
++                await jsonl(join(dir, `${label}-samples.jsonl`), s);
++            }
++            if (s.finishing && !result.finishing_seen) { result.finishing_seen = { at: iso(), text: s.finishing }; }
++            if (/ready|hazır/i.test(s.h1 || '') && s.extend_section) { result.ready_at = iso(); done = true; break; }
++            if (execution?.status === 'failed') { result.failed = { at: iso(), error: execution.error }; if (!result.failed_picture) result.failed_picture = await shot(page, `${label}-failed`, {}, true); if (Date.now() - Date.parse(result.failed.at) > 0) { done = true; break; } }
++            // the reconnect has been slow for a minute: the owner reloads the page, as it offers
++            if (s.reconnect_slow) { slowSince = slowSince || Date.now(); if (Date.now() - slowSince > 60000) { result.owner_actions.push({ at: iso(), action: 'reload (Reload this page)' }); await clickText(page, /Reload this page|Sayfayı yeniden yükle/); slowSince = null; await settle(page); } } else slowSince = null;
++            // a recorded mail enrollment wait offers the owner's explicit action
++            if (s.buttons.some(b => /Continue recorded operation|Retry reviewed handoff/.test(b.text) && !b.disabled)) { const c = await clickText(page, /Continue recorded operation|Retry reviewed handoff/); result.owner_actions.push({ at: iso(), action: c }); }
++            if (mail && execution) {
++                const mailDNS = opStep(execution, 'access_dns', LAB.mail_hostname);
++                if (execution.status === 'waiting' && execution.phase === mailDNS?.id && !result.lab.some(x => x.what === 'lab-mail-a')) {
++                    mailWaitSince = mailWaitSince || Date.now();
++                    if (Date.now() - mailWaitSince > 50000) {
++                        await shot(page, `${label}-mail-dns-waiting`, {}, true);
++                        const r = await prep('lab-mail-a', 120000);
++                        result.lab.push({ at: iso(), what: 'lab-mail-a', ok: !r.result?.error, waited_s: Math.round((Date.now() - mailWaitSince) / 1000) });
++                    }
++                }
++                const identity = (execution.checks || []).find(c => c.id === 'mail_identity');
++                if (execution.status === 'waiting' && execution.phase === 'verification' && identity && identity.state !== 'ready' && !result.lab.some(x => x.what === 'lab-ptr-mail')) {
++                    ptrSeenAt = ptrSeenAt || Date.now();
++                    result.mail_identity_seen = result.mail_identity_seen || { at: iso(), check: identity, page_lines: s.checks };
++                    if (Date.now() - ptrSeenAt > 45000) {
++                        await shot(page, `${label}-reverse-dns`, {}, true);
++                        // the owner also asks for the check once, so the result box names it too
++                        await clickText(page, /^Check requirements again$/); result.owner_actions.push({ at: iso(), action: 'Check requirements again (before the PTR change)' });
++                        await pause(6000); await shot(page, `${label}-reverse-dns-checked`, {}, true);
++                        await jsonl(join(dir, `${label}-samples.jsonl`), { ...(await page.evaluate(SETUP_SAMPLE).catch(() => ({}))), marker: 'after the owner check, before the PTR change' });
++                        const r = await prep('lab-ptr-mail', 120000);
++                        result.lab.push({ at: iso(), what: 'lab-ptr-mail', ok: !r.result?.error });
++                        await pause(3000);
++                        await clickText(page, /^Check requirements again$/); lastVerifyPress = Date.now();
++                        result.owner_actions.push({ at: iso(), action: 'Check requirements again (after the PTR change)' });
++                    }
++                }
++            }
++            // waiting at the final check with no lab change pending: the owner checks again, at most once a minute
++            if (execution?.status === 'waiting' && execution.phase === 'verification') {
++                waitingVerifySince = waitingVerifySince || Date.now();
++                const pending = mail && !result.lab.some(x => x.what === 'lab-ptr-mail');
++                if (!pending && Date.now() - waitingVerifySince > 25000 && Date.now() - lastVerifyPress > 60000) {
++                    if (await clickText(page, /^Check requirements again$/)) { lastVerifyPress = Date.now(); result.owner_actions.push({ at: iso(), action: 'Check requirements again' }); }
++                }
++            } else waitingVerifySince = null;
++        } else {
++            await jsonl(join(dir, `${label}-samples.jsonl`), s);
++        }
++        await pause(Math.max(0, (s.finishing || execution?.phase === 'verification' ? 500 : 1000) - (Date.now() - t0)));
++    }
++    result.ended_at = iso();
++    result.duration_s = Math.round((Date.now() - started) / 1000);
++    result.final_operation = op();
++    result.final_picture = await shot(page, `${label}-final`, {}, true);
++    if (!result.ready_at && !result.failed) result.not_finished = `not ready within ${Math.round(limitMs / 60000)} min`;
++    await writeFile(join(dir, `${label}-summary.json`), redact(JSON.stringify(result, null, 2)));
++    return result;
++}
++
++// One picture per language and viewport; reopen() brings the page back to the view after a reload.
++async function variants(page, name, reopen) {
++    const out = [];
++    for (const [lang, vp] of [['en', '1280'], ['en', 'phone'], ['tr', '1280'], ['tr', 'phone']]) {
++        try {
++            await page.setViewport(VIEWPORTS[vp]);
++            await page.evaluate(value => sessionStorage.setItem('set18.lang', value), lang);
++            await page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 });
++            await settle(page, 2000);
++            if (reopen) await reopen(lang);
++            await settle(page, 1200);
++            const facts = await page.evaluate(() => ({ lang: document.documentElement.lang || null, overflow_x: document.documentElement.scrollWidth > document.documentElement.clientWidth, width: document.documentElement.clientWidth })).catch(() => ({}));
++            const picture = await shot(page, `${name}-${lang}-${vp}`, { lang, vp, facts }, true);
++            out.push({ lang, vp, picture, ...facts });
++        } catch (error) { out.push({ lang, vp, error: String(error.message).slice(0, 200) }); }
++    }
++    await page.setViewport(VIEWPORTS['1280']);
++    await page.evaluate(() => sessionStorage.setItem('set18.lang', 'en')).catch(() => {});
++    await page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 }).catch(() => {});
++    await settle(page, 2000);
++    if (reopen) await reopen('en');
++    await jsonl(join(dir, 'variants.jsonl'), { at: iso(), name, out });
++    return out;
++}
++
++async function reviewBlocks(page) {
++    return page.evaluate(() => {
++        const txt = el => el ? (el.innerText || '').replace(/\s+/g, ' ').trim() : null;
++        const review = document.querySelector('[data-setup-extension-review]');
++        const changes = Array.from(document.querySelectorAll('[data-change]')).map(x => ({ key: x.getAttribute('data-change'), text: txt(x) }));
++        const installs = Array.from(document.querySelectorAll('[data-install]')).map(x => ({ target: x.getAttribute('data-install'), text: txt(x) }));
++        const kept = review ? review.querySelector('details') : null;
++        if (kept) kept.open = true;
++        const steps = Array.from(document.querySelectorAll('section[aria-labelledby="setup-plan-title"] ol > li')).map(txt);
++        const dl = Array.from(document.querySelectorAll('section[aria-labelledby="setup-plan-title"] dl > div')).map(txt);
++        const blockers = txt(document.querySelector('section[aria-labelledby="setup-plan-title"] [role="alert"]'));
++        return { extension_review: txt(review), changes, installs, kept: kept ? txt(kept) : null, steps, facts: dl, blockers, handover: txt(document.querySelector('aside[aria-labelledby="setup-handover-title"]')) };
++    });
++}
++
++// -- the cell ------------------------------------------------------------------------------------------------------
++
++async function cellSetup() {
++    const summary = { cell: hand.cell, lab: LAB, chrome: await browser.version(), started_at: iso() };
++    const write = async () => writeFile(join(dir, 'setup-summary.json'), redact(JSON.stringify(summary, null, 2)));
++    await note('start', { chrome: summary.chrome });
++    const page = await newPage('owner', 'en', '1280');
++    await toFront(page);
++    try {
++        // ---- 1. the owner's guided setup, purpose web, to ready
++        phase = 'c1-wizard';
++        await signIn(page);
++        await page.goto(base + '/setup', { waitUntil: 'domcontentloaded', timeout: 60000 });
++        await settle(page, 2500);
++        await shot(page, 'c1-01-opened', {}, true);
++        if (await clickText(page, /^Set up with the wizard$/)) { await settle(page); await shot(page, 'c1-02-wizard'); }
++        await page.waitForSelector('input[name="setup-purpose"][value="web"]', { timeout: 60000 });
++        await page.click('input[name="setup-purpose"][value="web"]');
++        await pause(500);
++        await shot(page, 'c1-03-purpose');
++        await clickText(page, /^Continue/, 'main', 'button[type="submit"]');
++        await page.waitForSelector('#setup-panel_domain', { timeout: 60000 });
++        await fill(page, '#setup-panel_domain', LAB.panel_domain);
++        await page.click('input[name="setup-dns"][value="external"]');
++        await pause(800);
++        await shot(page, 'c1-04-access', {}, true);
++        await clickText(page, /^Review setup plan/, 'main', 'button[type="submit"]');
++        const reviewed = await waitFor(page, () => !!document.getElementById('setup-plan-title'), 90000);
++        await settle(page);
++        summary.c1_review = reviewed ? await reviewBlocks(page) : { not_shown: true };
++        await shot(page, 'c1-05-review', {}, true);
++        if (!reviewed || summary.c1_review.blockers) { summary.c1_stopped = 'the review did not show a plan that can start'; await write(); return summary; }
++        await page.click('section[aria-labelledby="setup-plan-title"] input[type="checkbox"]');
++        await pause(500);
++        phase = 'c1-run';
++        summary.c1_start_pressed_at = iso();
++        await clickText(page, /^Start reviewed setup$/);
++        summary.c1 = await follow(page, 'c1', 75 * 60000, false);
++        await leafRecord('after-c1');
++        summary.c1_pin = await prep('refresh-pin', 120000);
++        await write();
++        if (!summary.c1.ready_at) return summary;
++        await settle(page, 2000);
++        await shot(page, 'c1-ready', {}, true);
++        summary.c1_ready_variants = await variants(page, 'v-ready', null);
++        summary.c1_setup_read = await prep('setup-read', 120000);
++        await write();
++
++        // ---- 3. the Components mail route, then "Stop extending"
++        phase = 'c3-components';
++        await page.goto(base + '/services', { waitUntil: 'domcontentloaded', timeout: 60000 });
++        await settle(page, 3000);
++        // Core Mail's card: the one whose component chips are Postfix and Dovecot only (the same names in EN and TR).
++        const openDialog = async () => {
++            const opened = await page.evaluate(() => {
++                const card = Array.from(document.querySelectorAll('#mail-stacks article')).find(a => {
++                    const chips = Array.from(a.querySelectorAll('span.rounded-md')).map(x => (x.innerText || '').trim()).join(' ');
++                    return /Postfix/.test(chips) && /Dovecot/.test(chips) && !/Roundcube|Rspamd/i.test(chips);
++                });
++                const button = card ? Array.from(card.querySelectorAll('button')).find(b => !b.disabled) : null;
++                if (!button) return null;
++                button.scrollIntoView({ block: 'center' }); button.click();
++                return { card: (card.querySelector('h3')?.innerText || '').trim(), button: (button.innerText || '').trim() };
++            }).catch(() => null);
++            await waitFor(page, () => !!document.querySelector('[data-mail-profile-route]'), 20000);
++            return opened;
++        };
++        await page.waitForSelector('#mail-stacks', { timeout: 60000 }).catch(() => {});
++        await shot(page, 'c3-01-components', {}, true);
++        summary.c3_card_button = await openDialog();
++        await settle(page, 1000);
++        summary.c3_dialog = await page.evaluate(() => {
++            const txt = el => el ? (el.innerText || '').replace(/\s+/g, ' ').trim() : null;
++            const dialog = document.querySelector('[data-mail-profile-route]')?.closest('[role="dialog"]') || document.querySelector('[role="dialog"]');
++            return { route: document.querySelector('[data-mail-profile-route]')?.getAttribute('data-mail-profile-route') || null, text: txt(dialog)?.slice(0, 4000),
++                hostname_value: document.getElementById('mail-profile-hostname')?.value ?? null, buttons: Array.from(dialog?.querySelectorAll('button') || []).map(b => ({ text: txt(b), disabled: b.disabled })) };
++        });
++        await shot(page, 'c3-02-dialog', {}, true);
++        summary.c3_dialog_variants = await variants(page, 'v-mail-dialog', async () => { await page.waitForSelector('#mail-stacks', { timeout: 60000 }).catch(() => {}); await settle(page, 1500); await openDialog(); });
++        if (await page.$('#mail-profile-hostname')) await fill(page, '#mail-profile-hostname', LAB.mail_hostname);
++        else if (await clickText(page, /^Change$/, '[role="dialog"]')) { await pause(500); await fill(page, '#mail-profile-hostname', LAB.mail_hostname); }
++        await pause(800);
++        await shot(page, 'c3-03-dialog-filled', {}, true);
++        summary.c3_review_in_setup_pressed_at = iso();
++        await clickText(page, /^Review in server setup$/, '[role="dialog"]');
++        const landed = await waitFor(page, () => location.pathname === '/setup' && !!document.getElementById('setup-panel_domain'), 60000);
++        await settle(page, 2000);
++        summary.c3_landed = { access_step: landed, at: iso(), sample: await page.evaluate(SETUP_SAMPLE).catch(() => null),
++            values: await page.evaluate(() => ({ panel_domain: document.getElementById('setup-panel_domain')?.value ?? null, mail_hostname: document.getElementById('setup-mail_hostname')?.value ?? null, dns: document.querySelector('input[name="setup-dns"]:checked')?.value ?? null })).catch(() => null) };
++        await shot(page, 'c3-04-access-step', {}, true);
++        summary.c3_access_variants = await variants(page, 'v-ext-access', null);
++        await clickText(page, /^Review setup plan/, 'main', 'button[type="submit"]');
++        const reviewed3 = await waitFor(page, () => !!document.getElementById('setup-plan-title'), 90000);
++        await settle(page);
++        summary.c3_review = reviewed3 ? await reviewBlocks(page) : { not_shown: true };
++        await shot(page, 'c3-05-review', {}, true);
++        if (reviewed3) summary.c3_review_variants = await variants(page, 'v-ext-review', async () => { await waitFor(page, () => !!document.getElementById('setup-plan-title'), 60000); await page.evaluate(() => { const d = document.querySelector('[data-setup-extension-review] details'); if (d) d.open = true; }); });
++        // back to the access step: the secondary-DNS box (UI state only; "Stop extending" discards it)
++        await clickText(page, /^Back$/);
++        await page.waitForSelector('#setup-panel_domain', { timeout: 30000 }).catch(() => {});
++        phase = 'c4-secondary-box';
++        await page.click('input[name="setup-dns"][value="local"]').catch(() => {});
++        await pause(600);
++        await page.select('#setup-dns_role', 'secondary').catch(() => {});
++        await pause(600);
++        const nsInputs = await page.evaluate(() => Array.from(document.querySelectorAll('input[id^="setup-ns"], #setup-local_ip, #setup-peer_ip')).map(x => x.id));
++        for (const id of nsInputs) {
++            const value = id === 'setup-ns1' ? 'ns1.set18.test' : id === 'setup-ns2' ? 'ns2.set18.test' : id === 'setup-peer_ip' ? '192.0.2.20' : null;
++            if (value) await fill(page, `#${id}`, value);
++        }
++        await pause(800);
++        summary.c4_secondary_box = await page.evaluate(() => {
++            const txt = el => el ? (el.innerText || '').replace(/\s+/g, ' ').trim() : null;
++            const box = Array.from(document.querySelectorAll('main div')).find(d => /This secondary receives its DNS zones from/.test(d.innerText || '') && d.children.length <= 3);
++            return { text: txt(box), inputs: Array.from(document.querySelectorAll('input[id^="setup-"], select[id^="setup-"]')).map(x => ({ id: x.id, value: x.value })) };
++        });
++        await page.evaluate(() => { const b = Array.from(document.querySelectorAll('main div')).find(d => /This secondary receives its DNS zones from/.test(d.innerText || '') && d.children.length <= 3); if (b) b.scrollIntoView({ block: 'center' }); });
++        await shot(page, 'c4-secondary-box', {}, true);
++        // stop extending: the ready screen comes back and nothing was installed
++        phase = 'c3-stop';
++        summary.c3_stop_pressed_at = iso();
++        await clickText(page, /^Stop extending$/);
++        const restored = await waitFor(page, () => !!document.querySelector('[data-setup-extend]'), 60000);
++        await settle(page, 1500);
++        summary.c3_stopped = { ready_screen: restored, at: iso(), sample: await page.evaluate(SETUP_SAMPLE).catch(() => null) };
++        await shot(page, 'c3-06-ready-again', {}, true);
++        summary.c3_setup_read = await prep('setup-read', 120000);
++        await write();
++
++        // ---- 2. the extension from the ready screen: Core Mail
++        phase = 'c2-wizard';
++        await clickText(page, /^Extend setup$/);
++        await waitFor(page, () => !!document.querySelector('input[name="setup-purpose"]') || !!document.getElementById('setup-panel_domain'), 60000);
++        await settle(page, 1500);
++        await shot(page, 'c2-01-extending', {}, true);
++        if (!(await page.$('input[name="setup-purpose"]'))) await clickText(page, /^Back$/);
++        await clickText(page, /^Customize selection$/);
++        await waitFor(page, () => !!document.querySelector('input[id^="setup-component-"]'), 60000);
++        await settle(page, 1000);
++        const mailGroup = await page.evaluate(() => {
++            const rows = Array.from(document.querySelectorAll('input[id^="setup-component-"]'));
++            const row = rows.find(x => /Postfix/i.test(x.closest('label')?.innerText || '') && /Dovecot/i.test(x.closest('label')?.innerText || '') && !/Roundcube|Rspamd/i.test(x.closest('label')?.innerText || ''))
++                || rows.find(x => /Postfix/i.test(x.closest('label')?.innerText || ''));
++            if (!row) return null;
++            if (!row.checked) row.click();
++            return { id: row.id, label: (row.closest('label')?.innerText || '').replace(/\s+/g, ' ').trim(), checked_now: row.checked };
++        });
++        summary.c2_mail_component = mailGroup;
++        await pause(800);
++        await shot(page, 'c2-02-components', {}, true);
++        await clickText(page, /^Continue/, 'main', 'button[type="submit"]');
++        await page.waitForSelector('#setup-mail_hostname', { timeout: 60000 });
++        await fill(page, '#setup-mail_hostname', LAB.mail_hostname);
++        await pause(600);
++        await shot(page, 'c2-03-access', {}, true);
++        await clickText(page, /^Review setup plan/, 'main', 'button[type="submit"]');
++        const reviewed2 = await waitFor(page, () => !!document.getElementById('setup-plan-title'), 90000);
++        await settle(page);
++        summary.c2_review = reviewed2 ? await reviewBlocks(page) : { not_shown: true };
++        await shot(page, 'c2-04-review', {}, true);
++        if (!reviewed2 || summary.c2_review.blockers) { summary.c2_stopped = 'the review did not show a plan that can start'; await write(); return summary; }
++        await page.click('section[aria-labelledby="setup-plan-title"] input[type="checkbox"]');
++        await pause(500);
++        phase = 'c2-run';
++        summary.c2_start_pressed_at = iso();
++        await clickText(page, /^Start reviewed setup$/);
++        summary.c2 = await follow(page, 'c2', 90 * 60000, true);
++        await leafRecord('after-c2');
++        if (summary.c2.ready_at) { await settle(page, 2000); summary.c2_ready_variants = await variants(page, 'v-ready-after-extension', null); }
++        summary.c2_setup_read = await prep('setup-read', 120000);
++        summary.lab_state = await prep('lab-state', 120000);
++        summary.ended_at = iso();
++        await write();
++        return summary;
++    } catch (error) {
++        summary.error = String(error.stack || error.message).slice(0, 2000);
++        await shot(page, 'error', {}, true).catch(() => {});
++        await write();
++        return summary;
++    }
++}
++
++for (const cell of cells) {
++    if (cell === 'setup') await cellSetup();
++    else if (cell === 'done') { if (!existsSync(join(handDir, 'done.json'))) await writeFile(join(handDir, 'done.json'), JSON.stringify({ at: iso(), by: 'cold-load-set18.mjs' }) + '\n'); }
++}
++await browser.close();

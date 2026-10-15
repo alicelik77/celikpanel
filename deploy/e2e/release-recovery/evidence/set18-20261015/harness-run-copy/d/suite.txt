@@ -1,0 +1,7 @@
+compiled set18_trial.py
+compiled set18_fixture.py
+compiled guest_set18_lab_dns.py
+shell syntax ok
+tool syntax ok
+prove rc=0
+dry rc=0

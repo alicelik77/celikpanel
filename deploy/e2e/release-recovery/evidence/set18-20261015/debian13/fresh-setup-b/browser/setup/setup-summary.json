@@ -1,0 +1,249 @@
+{
+  "cell": "set18-debian13",
+  "lab": {
+    "mail_hostname": "mail.set18.test",
+    "mail_profile": "core-mail",
+    "panel_domain": "panel.set18.test",
+    "server_ip": "192.0.2.10"
+  },
+  "chrome": "Chrome/155.0.8059.40",
+  "started_at": "2026-10-15T22:55:08.097Z",
+  "c1_review": {
+    "extension_review": null,
+    "changes": [],
+    "installs": [],
+    "kept": null,
+    "steps": [
+      "Configure DNS: Use an external DNS provider",
+      "Prepare component: Nginx",
+      "Prepare component: PHP-FPM",
+      "Prepare component: MariaDB",
+      "Prepare component: Scheduled tasks (cron)",
+      "Prepare component: Let’s Encrypt client (certbot)",
+      "Apply and save the firewall policy",
+      "Verify public DNS before certificate issuance: panel.set18.test 192.0.2.10",
+      "Secure panel access: panel.set18.test The Panel restarts once here.",
+      "Verify the prepared server"
+    ],
+    "facts": [
+      "Permanent firewall policy Keep current SSH and panel access, allow the required ports below, and restore the policy after reboot. The server checks management access before applying it.",
+      "TCP 22, 80, 443, 2083",
+      "UDP No additional ports",
+      "Certificate contact email labadmin@example.invalid"
+    ],
+    "blockers": null,
+    "handover": "The Panel restarts once during this setup At the step “Secure panel access: panel.set18.test”, the Panel gets its certificate and restarts once to start using it. This page then loses its connection for a short time. That is planned: setup continues on the server and this page reconnects by itself. You do not need to do anything. Once that step has finished, the Panel can also be opened at its secure address: https://panel.set18.test:19319 You sign in again there, and setup shows the same progress. If the browser warns about the certificate at that address, the step has not finished yet, and this page keeps following setup by itself."
+  },
+  "c1_start_pressed_at": "2026-10-15T22:55:26.554Z",
+  "c1": {
+    "label": "c1",
+    "started_at": "2026-10-15T22:55:26.571Z",
+    "states": 11,
+    "pictures": [
+      "c1-state-01",
+      "c1-state-02",
+      "c1-state-03",
+      "c1-state-04",
+      "c1-state-05",
+      "c1-state-06",
+      "c1-state-07",
+      "c1-state-08",
+      "c1-state-09",
+      "c1-state-10",
+      "c1-state-11"
+    ],
+    "owner_actions": [],
+    "lab": [],
+    "ready_at": "2026-10-15T22:57:21.449Z",
+    "ended_at": "2026-10-15T22:57:21.449Z",
+    "duration_s": 115,
+    "final_operation": {
+      "id": "38545bfb2e0223ed38163a59453813d1",
+      "request_id": "38545bfb2e0223ed38163a59453813d1",
+      "plan_id": "0488f13c49caf20b2285094f39416731",
+      "status": "succeeded",
+      "phase": "complete",
+      "steps": [
+        {
+          "id": "01-dns",
+          "kind": "dns",
+          "target": "external",
+          "status": "succeeded",
+          "request_id": "52541d8372f3230dcb47710c653ef4b4",
+          "owner_id": "c9ae1136159f902ff56118e2838ee389"
+        },
+        {
+          "id": "02-service",
+          "kind": "service",
+          "target": "nginx",
+          "status": "succeeded",
+          "request_id": "307b0d3ff9111189e284ff7510c016d8",
+          "owner_id": "8c4ee274eed11f9fcfccae85faf938bb",
+          "operation_id": "8ba11be5af173805229726d1abff28a8"
+        },
+        {
+          "id": "03-service",
+          "kind": "service",
+          "target": "php-fpm",
+          "status": "succeeded",
+          "request_id": "3bcb3538db05ee6a97c05364506bc96d",
+          "owner_id": "a883a527a73111899e73fddcc3c25dc8",
+          "operation_id": "bf1c0e1fa23425d96286282e2160bd86"
+        },
+        {
+          "id": "04-service",
+          "kind": "service",
+          "target": "mariadb",
+          "status": "succeeded",
+          "request_id": "215dc8a4cc7993b006db303d7055994c",
+          "owner_id": "33dc559b88e2f9db0d0e419cf00f773e",
+          "operation_id": "0f8d3200a6d923f63f28b77bd49d6be9"
+        },
+        {
+          "id": "05-service",
+          "kind": "service",
+          "target": "cron",
+          "status": "succeeded",
+          "request_id": "8b2e6e14bc00b846449296ca8654e267",
+          "owner_id": "ed6b83177a73457b57ad3a3d5cffad4d",
+          "operation_id": "4e3e30fc6cbff775a7c00fb62fa64ccf"
+        },
+        {
+          "id": "06-service",
+          "kind": "service",
+          "target": "certbot",
+          "status": "succeeded",
+          "request_id": "9ba9cd24c36c7e36fbf8c139ce5788fc",
+          "owner_id": "287518115efd7122a4d85935f79f88ae",
+          "operation_id": "17be36e7d77435322d2508c281fb603c"
+        },
+        {
+          "id": "07-firewall",
+          "kind": "firewall",
+          "target": "enable_and_persist",
+          "status": "succeeded",
+          "request_id": "c68c52a2e436ea862cd931e0ec18fee7",
+          "owner_id": "94c029511c298f831c8d30ab247562bb"
+        },
+        {
+          "id": "08-access_dns",
+          "kind": "access_dns",
+          "target": "panel.set18.test",
+          "qualifier": "192.0.2.10",
+          "status": "succeeded",
+          "request_id": "0f0cdfeec07568634b54da224742e161",
+          "owner_id": "6abcfcdb9a743cd40b5077cb9fa59546"
+        },
+        {
+          "id": "09-panel_certificate",
+          "kind": "panel_certificate",
+          "target": "panel.set18.test",
+          "status": "succeeded",
+          "request_id": "730487bff176fe3020018b755f175b46",
+          "owner_id": "ff61a593c2f141eeec4004a6607b23b6",
+          "operation_id": "39e6177a3ac80c12f1c7d7009a7f6385"
+        },
+        {
+          "id": "10-verify",
+          "kind": "verify",
+          "target": "web",
+          "status": "succeeded",
+          "request_id": "0f864fcf8b5ef1826fe2b610cbe0c538",
+          "owner_id": "fb091d8853b7ba9c6fab4713fb2e70a3"
+        }
+      ],
+      "checks": [
+        {
+          "id": "panel_https",
+          "state": "ready",
+          "code": "ready"
+        },
+        {
+          "id": "panel_renewal",
+          "state": "ready",
+          "code": "ready"
+        },
+        {
+          "id": "dns",
+          "state": "ready",
+          "code": "ready"
+        },
+        {
+          "id": "firewall",
+          "state": "ready",
+          "code": "ready"
+        },
+        {
+          "id": "services",
+          "state": "ready",
+          "code": "ready"
+        }
+      ],
+      "panel_url": "https://panel.set18.test:2083/",
+      "context": {
+        "access_dns_ip": "192.0.2.10",
+        "dns_mode": "external",
+        "dns_role": "",
+        "dns_engine": "",
+        "local_nameserver": "",
+        "local_ip": "",
+        "peer_nameserver": "",
+        "peer_ip": "",
+        "panel_domain": "panel.set18.test",
+        "mail_hostname": "",
+        "dns_hosting_management": ""
+      }
+    },
+    "final_picture": "c1-final"
+  },
+  "c1_pin": {
+    "at": "2026-10-15T22:57:22Z",
+    "prep": "refresh-pin",
+    "result": {
+      "after": "9409a263b9766ae113282ab54498a6d1ea9360f5104e6767949eb9e49d1955d3",
+      "before": "85306a7abcd37ac214fe231aaab9e0fe2862913bc664361520c62ed20270e3c5",
+      "changed": true
+    },
+    "host_asked_ms": 1792105041641,
+    "host_got_ms": 1792105042918
+  },
+  "c1_ready_variants": [
+    {
+      "lang": "en",
+      "vp": "1280",
+      "picture": "v-ready-en-1280",
+      "overflow_x": false,
+      "width": 1280
+    },
+    {
+      "lang": "en",
+      "vp": "phone",
+      "picture": "v-ready-en-phone",
+      "overflow_x": false,
+      "width": 390
+    },
+    {
+      "lang": "tr",
+      "vp": "1280",
+      "picture": "v-ready-tr-1280",
+      "overflow_x": false,
+      "width": 1280
+    },
+    {
+      "lang": "tr",
+      "vp": "phone",
+      "picture": "v-ready-tr-phone",
+      "overflow_x": false,
+      "width": 390
+    }
+  ],
+  "c1_setup_read": {
+    "at": "2026-10-15T22:59:29Z",
+    "prep": "setup-read",
+    "result": {
+      "error": "PinMismatch: panel TLS leaf differs from the guest-reported certificate"
+    },
+    "host_asked_ms": 1792105168876,
+    "host_got_ms": 1792105169508
+  }
+}

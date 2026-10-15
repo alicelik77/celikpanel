@@ -1,0 +1,230 @@
+{
+  "cell_directory": "/var/tmp/cp-release-drill-s18-b/cells/3fb08ed294e47132a0d2a13d",
+  "cell_id": "release-recovery__48039281abefb57f",
+  "host_requirements": {
+    "accelerator": "kvm",
+    "daemonization": "qemu-daemonize",
+    "os": "linux",
+    "qmp_transport": "unix"
+  },
+  "nodes": {
+    "arch": {
+      "base": {
+        "bytes": 556609024,
+        "digest": {
+          "algorithm": "sha256",
+          "value": "5d8be8d28cfd290f051b0f67df0a6874596ad23de3f3f18b90c91aeb758eb878"
+        },
+        "path": "/var/tmp/cp-release-drill-s18-b/images/Arch-Linux-x86_64-cloudimg-20260815.573966.qcow2"
+      },
+      "cloud_init": {
+        "meta-data": "instance-id: dns-kill-198ed003c904b2fe53de\nlocal-hostname: dns-arch\n",
+        "network-config": "version: 2\nethernets:\n  mgmt:\n    match:\n      macaddress: \"52:54:00:13:00:11\"\n    set-name: mgmt0\n    dhcp4: true\n    dhcp6: false\n    optional: false\n  peer:\n    match:\n      macaddress: \"52:54:00:53:00:11\"\n    set-name: peer0\n    dhcp4: false\n    dhcp6: false\n    addresses:\n      - 192.0.2.11/24\n    optional: false\n",
+        "user-data": "#cloud-config\nusers:\n  - default\n  - name: celik\n    gecos: CelikPanel kill matrix\n    groups: [wheel]\n    sudo: [\"ALL=(ALL) NOPASSWD:ALL\"]\n    shell: /bin/bash\n    lock_passwd: true\n    ssh_authorized_keys:\n      - \"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIA25+4KuA97FTbjkD9KWQ/nW0GLSm6vJoqICfK5jkIgz celikpanel-lab\"\ndisable_root: true\nssh_pwauth: false\npackage_update: false\npackage_upgrade: false\nwrite_files:\n  - path: /etc/celikpanel-dns-kill-matrix\n    owner: root:root\n    permissions: '0444'\n    content: |\n      schema=celikpanel/dns-kill-fixture-plan/v1\n      cell_id=release-recovery__48039281abefb57f\n      node=arch\n  - path: /etc/celikpanel-release-recovery-lab\n    owner: root:root\n    permissions: '0444'\n    content: |\n      {\"schema\": \"celikpanel-release-recovery-lab/v1\", \"nonce\": \"48039281abefb57fe99cc17aeb49a5e2a448176816b65b6fbbdd8de2c6e2a235\", \"vm_uuid\": \"012bb5fd-e34d-5838-b29d-b572be23b3aa\", \"cell_id\": \"release-recovery__48039281abefb57f\", \"node\": \"arch\"}\nruncmd:\n  - [systemctl, enable, --now, sshd.service]\n  - [touch, /etc/celikpanel-dns-kill-matrix-ready]\nfinal_message: \"CelikPanel DNS kill fixture ready\"\n"
+      },
+      "hostname": "dns-arch",
+      "management": {
+        "mac": "52:54:00:13:00:11",
+        "mode": "qemu-user-nat",
+        "ssh_host": "127.0.0.1",
+        "ssh_port": 5320
+      },
+      "overlay_command": [
+        "qemu-img",
+        "create",
+        "-f",
+        "qcow2",
+        "-F",
+        "qcow2",
+        "-b",
+        "/var/tmp/cp-release-drill-s18-b/images/Arch-Linux-x86_64-cloudimg-20260815.573966.qcow2",
+        "/var/tmp/cp-release-drill-s18-b/cells/3fb08ed294e47132a0d2a13d/arch/overlay.qcow2",
+        "24G"
+      ],
+      "paths": {
+        "directory": "/var/tmp/cp-release-drill-s18-b/cells/3fb08ed294e47132a0d2a13d/arch",
+        "overlay": "/var/tmp/cp-release-drill-s18-b/cells/3fb08ed294e47132a0d2a13d/arch/overlay.qcow2",
+        "pid": "/var/tmp/cp-release-drill-s18-b/cells/3fb08ed294e47132a0d2a13d/arch/qemu.pid",
+        "qmp": "/var/tmp/cp-release-drill-s18-b/cells/3fb08ed294e47132a0d2a13d/arch/qmp.sock",
+        "seed_directory": "/var/tmp/cp-release-drill-s18-b/cells/3fb08ed294e47132a0d2a13d/arch/seed",
+        "seed_iso": "/var/tmp/cp-release-drill-s18-b/cells/3fb08ed294e47132a0d2a13d/arch/seed.iso",
+        "serial": "/var/tmp/cp-release-drill-s18-b/cells/3fb08ed294e47132a0d2a13d/arch/serial.log"
+      },
+      "peer": {
+        "address": "192.0.2.11/24",
+        "device_id": "peer-link",
+        "mac": "52:54:00:53:00:11",
+        "transport": "loopback-socket",
+        "transport_port": 5321
+      },
+      "qemu_command": [
+        "qemu-system-x86_64",
+        "-name",
+        "dns-kill-arch",
+        "-uuid",
+        "012bb5fd-e34d-5838-b29d-b572be23b3aa",
+        "-accel",
+        "kvm",
+        "-cpu",
+        "host",
+        "-smp",
+        "2",
+        "-m",
+        "3072",
+        "-drive",
+        "file=/var/tmp/cp-release-drill-s18-b/cells/3fb08ed294e47132a0d2a13d/arch/overlay.qcow2,if=virtio,format=qcow2,cache=none,discard=unmap",
+        "-drive",
+        "file=/var/tmp/cp-release-drill-s18-b/cells/3fb08ed294e47132a0d2a13d/arch/seed.iso,if=virtio,format=raw,media=cdrom,readonly=on",
+        "-netdev",
+        "user,id=mgmt,hostfwd=tcp:127.0.0.1:5320-:22",
+        "-device",
+        "virtio-net-pci,netdev=mgmt,id=mgmt-link,mac=52:54:00:13:00:11",
+        "-netdev",
+        "socket,id=peer,connect=127.0.0.1:5321",
+        "-device",
+        "virtio-net-pci,netdev=peer,id=peer-link,mac=52:54:00:53:00:11",
+        "-qmp",
+        "unix:/var/tmp/cp-release-drill-s18-b/cells/3fb08ed294e47132a0d2a13d/arch/qmp.sock,server=on,wait=off",
+        "-pidfile",
+        "/var/tmp/cp-release-drill-s18-b/cells/3fb08ed294e47132a0d2a13d/arch/qemu.pid",
+        "-serial",
+        "file:/var/tmp/cp-release-drill-s18-b/cells/3fb08ed294e47132a0d2a13d/arch/serial.log",
+        "-display",
+        "none",
+        "-monitor",
+        "none",
+        "-daemonize"
+      ],
+      "seed_command": [
+        "genisoimage",
+        "-quiet",
+        "-output",
+        "/var/tmp/cp-release-drill-s18-b/cells/3fb08ed294e47132a0d2a13d/arch/seed.iso",
+        "-volid",
+        "cidata",
+        "-joliet",
+        "-rock",
+        "/var/tmp/cp-release-drill-s18-b/cells/3fb08ed294e47132a0d2a13d/arch/seed/user-data",
+        "/var/tmp/cp-release-drill-s18-b/cells/3fb08ed294e47132a0d2a13d/arch/seed/meta-data",
+        "/var/tmp/cp-release-drill-s18-b/cells/3fb08ed294e47132a0d2a13d/arch/seed/network-config"
+      ]
+    },
+    "debian13": {
+      "base": {
+        "bytes": 340262912,
+        "digest": {
+          "algorithm": "sha512",
+          "value": "184761b0dad0f9ace02f9298050ca96ce3caa39a461a47706d47ff9698b59933918b91b40177fbd4d392f6446af8b4d18ecb94caca988169b19641606bf34003"
+        },
+        "path": "/var/tmp/cp-release-drill-s18-b/images/debian-13-genericcloud-amd64-20260826-2582.qcow2"
+      },
+      "cloud_init": {
+        "meta-data": "instance-id: dns-kill-63e326cc05016dbe3adc\nlocal-hostname: dns-debian13\n",
+        "network-config": "version: 2\nethernets:\n  mgmt:\n    match:\n      macaddress: \"52:54:00:13:00:10\"\n    set-name: mgmt0\n    dhcp4: true\n    dhcp6: false\n    optional: false\n  peer:\n    match:\n      macaddress: \"52:54:00:53:00:10\"\n    set-name: peer0\n    dhcp4: false\n    dhcp6: false\n    addresses:\n      - 192.0.2.10/24\n    optional: false\n",
+        "user-data": "#cloud-config\nusers:\n  - default\n  - name: celik\n    gecos: CelikPanel kill matrix\n    groups: [sudo]\n    sudo: [\"ALL=(ALL) NOPASSWD:ALL\"]\n    shell: /bin/bash\n    lock_passwd: true\n    ssh_authorized_keys:\n      - \"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIA25+4KuA97FTbjkD9KWQ/nW0GLSm6vJoqICfK5jkIgz celikpanel-lab\"\ndisable_root: true\nssh_pwauth: false\npackage_update: false\npackage_upgrade: false\nwrite_files:\n  - path: /etc/celikpanel-dns-kill-matrix\n    owner: root:root\n    permissions: '0444'\n    content: |\n      schema=celikpanel/dns-kill-fixture-plan/v1\n      cell_id=release-recovery__48039281abefb57f\n      node=debian13\n  - path: /etc/celikpanel-release-recovery-lab\n    owner: root:root\n    permissions: '0444'\n    content: |\n      {\"schema\": \"celikpanel-release-recovery-lab/v1\", \"nonce\": \"48039281abefb57fe99cc17aeb49a5e2a448176816b65b6fbbdd8de2c6e2a235\", \"vm_uuid\": \"4777cfe7-f9e0-5f28-b992-c094d2bc5178\", \"cell_id\": \"release-recovery__48039281abefb57f\", \"node\": \"debian13\"}\nruncmd:\n  - [systemctl, enable, --now, ssh.service]\n  - [touch, /etc/celikpanel-dns-kill-matrix-ready]\nfinal_message: \"CelikPanel DNS kill fixture ready\"\n"
+      },
+      "hostname": "dns-debian13",
+      "management": {
+        "mac": "52:54:00:13:00:10",
+        "mode": "qemu-user-nat",
+        "ssh_host": "127.0.0.1",
+        "ssh_port": 5319
+      },
+      "overlay_command": [
+        "qemu-img",
+        "create",
+        "-f",
+        "qcow2",
+        "-F",
+        "qcow2",
+        "-b",
+        "/var/tmp/cp-release-drill-s18-b/images/debian-13-genericcloud-amd64-20260826-2582.qcow2",
+        "/var/tmp/cp-release-drill-s18-b/cells/3fb08ed294e47132a0d2a13d/debian13/overlay.qcow2",
+        "24G"
+      ],
+      "paths": {
+        "directory": "/var/tmp/cp-release-drill-s18-b/cells/3fb08ed294e47132a0d2a13d/debian13",
+        "overlay": "/var/tmp/cp-release-drill-s18-b/cells/3fb08ed294e47132a0d2a13d/debian13/overlay.qcow2",
+        "pid": "/var/tmp/cp-release-drill-s18-b/cells/3fb08ed294e47132a0d2a13d/debian13/qemu.pid",
+        "qmp": "/var/tmp/cp-release-drill-s18-b/cells/3fb08ed294e47132a0d2a13d/debian13/qmp.sock",
+        "seed_directory": "/var/tmp/cp-release-drill-s18-b/cells/3fb08ed294e47132a0d2a13d/debian13/seed",
+        "seed_iso": "/var/tmp/cp-release-drill-s18-b/cells/3fb08ed294e47132a0d2a13d/debian13/seed.iso",
+        "serial": "/var/tmp/cp-release-drill-s18-b/cells/3fb08ed294e47132a0d2a13d/debian13/serial.log"
+      },
+      "peer": {
+        "address": "192.0.2.10/24",
+        "device_id": "peer-link",
+        "mac": "52:54:00:53:00:10",
+        "transport": "loopback-socket",
+        "transport_port": 5321
+      },
+      "qemu_command": [
+        "qemu-system-x86_64",
+        "-name",
+        "dns-kill-debian13",
+        "-uuid",
+        "4777cfe7-f9e0-5f28-b992-c094d2bc5178",
+        "-accel",
+        "kvm",
+        "-cpu",
+        "host",
+        "-smp",
+        "2",
+        "-m",
+        "3072",
+        "-drive",
+        "file=/var/tmp/cp-release-drill-s18-b/cells/3fb08ed294e47132a0d2a13d/debian13/overlay.qcow2,if=virtio,format=qcow2,cache=none,discard=unmap",
+        "-drive",
+        "file=/var/tmp/cp-release-drill-s18-b/cells/3fb08ed294e47132a0d2a13d/debian13/seed.iso,if=virtio,format=raw,media=cdrom,readonly=on",
+        "-netdev",
+        "user,id=mgmt,hostfwd=tcp:127.0.0.1:5319-:22",
+        "-device",
+        "virtio-net-pci,netdev=mgmt,id=mgmt-link,mac=52:54:00:13:00:10",
+        "-netdev",
+        "socket,id=peer,listen=127.0.0.1:5321",
+        "-device",
+        "virtio-net-pci,netdev=peer,id=peer-link,mac=52:54:00:53:00:10",
+        "-qmp",
+        "unix:/var/tmp/cp-release-drill-s18-b/cells/3fb08ed294e47132a0d2a13d/debian13/qmp.sock,server=on,wait=off",
+        "-pidfile",
+        "/var/tmp/cp-release-drill-s18-b/cells/3fb08ed294e47132a0d2a13d/debian13/qemu.pid",
+        "-serial",
+        "file:/var/tmp/cp-release-drill-s18-b/cells/3fb08ed294e47132a0d2a13d/debian13/serial.log",
+        "-display",
+        "none",
+        "-monitor",
+        "none",
+        "-daemonize"
+      ],
+      "seed_command": [
+        "genisoimage",
+        "-quiet",
+        "-output",
+        "/var/tmp/cp-release-drill-s18-b/cells/3fb08ed294e47132a0d2a13d/debian13/seed.iso",
+        "-volid",
+        "cidata",
+        "-joliet",
+        "-rock",
+        "/var/tmp/cp-release-drill-s18-b/cells/3fb08ed294e47132a0d2a13d/debian13/seed/user-data",
+        "/var/tmp/cp-release-drill-s18-b/cells/3fb08ed294e47132a0d2a13d/debian13/seed/meta-data",
+        "/var/tmp/cp-release-drill-s18-b/cells/3fb08ed294e47132a0d2a13d/debian13/seed/network-config"
+      ]
+    }
+  },
+  "peer_link_policy": {
+    "change_requires": {
+      "cell_id": "release-recovery__48039281abefb57f",
+      "exit_code": 137,
+      "kill_proven": true,
+      "schema": "celikpanel/dns-kill-proof/v1"
+    },
+    "initial": "up",
+    "qmp_device": "peer-link"
+  },
+  "schema": "celikpanel/dns-kill-fixture-plan/v1",
+  "start_order": [
+    "debian13",
+    "arch"
+  ],
+  "work_root": "/var/tmp/cp-release-drill-s18-b"
+}

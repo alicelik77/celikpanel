@@ -1,0 +1,56 @@
+Extend this server’s setup
+
+Follow the setup steps and their recorded results here.
+
+Setup is waiting for a requirement
+
+Every installation step has finished. Setup is waiting at its final check for this:
+
+The public resolver 1.1.1.1 reports host-192-0-2-10.provider.set18.test as the reverse DNS (PTR) name of this server’s address 192.0.2.10; mail servers expect mail.set18.test. You set this at your server provider, not in CelikPanel: in the provider’s control panel, or by asking its support to set the reverse DNS of 192.0.2.10 to mail.set18.test.
+
+A change made at your server provider can take from a few minutes to several hours to reach public DNS, because DNS resolvers keep the old name until their saved copy expires. Once you have made the change, you do not need to do anything more in CelikPanel.
+
+Setup checks again by itself and finishes when every check passes. To check now, use Check requirements again.
+
+Edit plan
+
+Configure DNS: Use an external DNS provider
+
+Completed
+
+Prepare mail profile: Core Mail
+
+Completed
+
+Apply and save the firewall policy
+
+Completed
+
+Verify public DNS before certificate issuance: panel.set18.test
+
+192.0.2.10
+
+Completed
+
+Verify public DNS before certificate issuance: mail.set18.test
+
+192.0.2.10
+
+Completed
+
+Secure mail access: mail.set18.test
+
+Completed
+
+Prepare independent mail certificate renewal
+
+Completed
+
+Verify the prepared server
+
+Waiting for reverse DNS
+
+If the saved inputs need to change, edit the remaining plan. Completed services and configuration will be kept. Editing is allowed only after every installation step has finished.
+
+Check requirements again
+Access and recovery

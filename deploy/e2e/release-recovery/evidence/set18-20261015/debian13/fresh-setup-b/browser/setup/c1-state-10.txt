@@ -1,0 +1,55 @@
+Prepare your server
+
+Follow the setup steps and their recorded results here.
+
+The Panel restarts at this step
+
+This page lost its connection while setup was securing panel access for panel.set18.test. That is expected: the Panel restarts once at this step to start using its new certificate. Setup continues on the server and this page reconnects by itself. Do not start setup again.
+
+If this page has not reconnected after a few minutes, continue at the Panel’s secure address: https://panel.set18.test:2083
+
+You sign in again there, and setup shows the same progress. If the browser warns about the certificate at that address, the step has not finished yet, and this page keeps following setup by itself.
+
+Configure DNS: Use an external DNS provider
+
+Completed
+
+Prepare component: Nginx
+
+Completed
+
+Prepare component: PHP-FPM
+
+Completed
+
+Prepare component: MariaDB
+
+Completed
+
+Prepare component: Scheduled tasks (cron)
+
+Completed
+
+Prepare component: Let’s Encrypt client (certbot)
+
+Completed
+
+Apply and save the firewall policy
+
+Completed
+
+Verify public DNS before certificate issuance: panel.set18.test
+
+192.0.2.10
+
+Completed
+
+Secure panel access: panel.set18.test
+
+In progress
+
+Verify the prepared server
+
+Waiting
+Reconnect to this operation
+Access and recovery

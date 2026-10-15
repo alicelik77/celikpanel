@@ -1,0 +1,1867 @@
+{
+  "cell": "set18-debian13",
+  "lab": {
+    "mail_hostname": "mail.set18.test",
+    "mail_profile": "core-mail",
+    "panel_domain": "panel.set18.test",
+    "server_ip": "192.0.2.10"
+  },
+  "mode": "resume",
+  "chrome": "Chrome/155.0.8059.40",
+  "started_at": "2026-10-15T23:12:26.597Z",
+  "r1_sample": {
+    "t": 1792105958670,
+    "path": "/setup",
+    "vis": "visible",
+    "lang": "en",
+    "h1": "Extend this server’s setup",
+    "progress_title": "Verifying the result",
+    "guidance_title": null,
+    "guidance": null,
+    "checks": [],
+    "steps": [
+      {
+        "state": "succeeded",
+        "text": "Configure DNS: Use an external DNS provider Completed"
+      },
+      {
+        "state": "succeeded",
+        "text": "Prepare component: Nginx Completed"
+      },
+      {
+        "state": "succeeded",
+        "text": "Prepare component: PHP-FPM Completed"
+      },
+      {
+        "state": "succeeded",
+        "text": "Prepare component: MariaDB Completed"
+      },
+      {
+        "state": "succeeded",
+        "text": "Prepare component: Scheduled tasks (cron) Completed"
+      },
+      {
+        "state": "succeeded",
+        "text": "Prepare component: Let’s Encrypt client (certbot) Completed"
+      },
+      {
+        "state": "succeeded",
+        "text": "Apply and save the firewall policy Completed"
+      },
+      {
+        "state": "succeeded",
+        "text": "Verify public DNS before certificate issuance: panel.set18.test 192.0.2.10 Completed"
+      },
+      {
+        "state": "succeeded",
+        "text": "Secure panel access: panel.set18.test Completed"
+      },
+      {
+        "state": "running",
+        "text": "Verify the prepared server In progress"
+      }
+    ],
+    "finishing": null,
+    "reconnecting": null,
+    "reconnect_slow": null,
+    "handover": null,
+    "alerts": [
+      "Completion could not be verified. Reconnect to obtain fresh evidence; the server has not been declared ready."
+    ],
+    "statuses": [],
+    "buttons": [
+      {
+        "text": "Continue at the secure panel address",
+        "disabled": false
+      },
+      {
+        "text": "Reconnect to this operation",
+        "disabled": false
+      }
+    ],
+    "extend_section": null,
+    "extend_stop": null,
+    "overflow_x": false
+  },
+  "r1_stop_button_present": false,
+  "r1_state": {
+    "status": 200,
+    "json": {
+      "version": 1,
+      "revision": 4,
+      "origin": "fresh",
+      "status": "draft",
+      "draft": {
+        "purpose": "web",
+        "remote_dns_connection_id": "",
+        "panel_domain": "panel.set18.test",
+        "mail_hostname": "mail.set18.test",
+        "dns_mode": "external",
+        "dns_engine": "bind",
+        "dns_role": "primary",
+        "ns1": "",
+        "ns2": "",
+        "local_ip": "192.0.2.10",
+        "peer_ip": "",
+        "peer_ns": "",
+        "node_version": "",
+        "database": "mariadb",
+        "customization": {
+          "components": [
+            "dovecot",
+            "mariadb",
+            "nginx",
+            "php-fpm",
+            "postfix"
+          ]
+        }
+      },
+      "completed_at": "2026-10-15T22:57:20Z",
+      "required": false,
+      "guidance": "guided",
+      "checks": [],
+      "server_ip": "192.0.2.10",
+      "extension": true,
+      "extension_base": {
+        "purpose": "web",
+        "remote_dns_connection_id": "",
+        "panel_domain": "panel.set18.test",
+        "mail_hostname": "",
+        "dns_mode": "external",
+        "dns_engine": "bind",
+        "dns_role": "primary",
+        "ns1": "",
+        "ns2": "",
+        "local_ip": "192.0.2.10",
+        "peer_ip": "",
+        "peer_ns": "",
+        "node_version": "",
+        "database": "mariadb"
+      }
+    },
+    "text": null
+  },
+  "r1_operation": {
+    "status": 200,
+    "json": {
+      "id": "38545bfb2e0223ed38163a59453813d1",
+      "request_id": "38545bfb2e0223ed38163a59453813d1",
+      "plan_id": "0488f13c49caf20b2285094f39416731",
+      "status": "succeeded",
+      "phase": "complete",
+      "steps": [
+        {
+          "id": "01-dns",
+          "kind": "dns",
+          "target": "external",
+          "status": "succeeded",
+          "request_id": "52541d8372f3230dcb47710c653ef4b4",
+          "owner_id": "c9ae1136159f902ff56118e2838ee389"
+        },
+        {
+          "id": "02-service",
+          "kind": "service",
+          "target": "nginx",
+          "status": "succeeded",
+          "request_id": "307b0d3ff9111189e284ff7510c016d8",
+          "owner_id": "8c4ee274eed11f9fcfccae85faf938bb",
+          "operation_id": "8ba11be5af173805229726d1abff28a8"
+        },
+        {
+          "id": "03-service",
+          "kind": "service",
+          "target": "php-fpm",
+          "status": "succeeded",
+          "request_id": "3bcb3538db05ee6a97c05364506bc96d",
+          "owner_id": "a883a527a73111899e73fddcc3c25dc8",
+          "operation_id": "bf1c0e1fa23425d96286282e2160bd86"
+        },
+        {
+          "id": "04-service",
+          "kind": "service",
+          "target": "mariadb",
+          "status": "succeeded",
+          "request_id": "215dc8a4cc7993b006db303d7055994c",
+          "owner_id": "33dc559b88e2f9db0d0e419cf00f773e",
+          "operation_id": "0f8d3200a6d923f63f28b77bd49d6be9"
+        },
+        {
+          "id": "05-service",
+          "kind": "service",
+          "target": "cron",
+          "status": "succeeded",
+          "request_id": "8b2e6e14bc00b846449296ca8654e267",
+          "owner_id": "ed6b83177a73457b57ad3a3d5cffad4d",
+          "operation_id": "4e3e30fc6cbff775a7c00fb62fa64ccf"
+        },
+        {
+          "id": "06-service",
+          "kind": "service",
+          "target": "certbot",
+          "status": "succeeded",
+          "request_id": "9ba9cd24c36c7e36fbf8c139ce5788fc",
+          "owner_id": "287518115efd7122a4d85935f79f88ae",
+          "operation_id": "17be36e7d77435322d2508c281fb603c"
+        },
+        {
+          "id": "07-firewall",
+          "kind": "firewall",
+          "target": "enable_and_persist",
+          "status": "succeeded",
+          "request_id": "c68c52a2e436ea862cd931e0ec18fee7",
+          "owner_id": "94c029511c298f831c8d30ab247562bb"
+        },
+        {
+          "id": "08-access_dns",
+          "kind": "access_dns",
+          "target": "panel.set18.test",
+          "qualifier": "192.0.2.10",
+          "status": "succeeded",
+          "request_id": "0f0cdfeec07568634b54da224742e161",
+          "owner_id": "6abcfcdb9a743cd40b5077cb9fa59546"
+        },
+        {
+          "id": "09-panel_certificate",
+          "kind": "panel_certificate",
+          "target": "panel.set18.test",
+          "status": "succeeded",
+          "request_id": "730487bff176fe3020018b755f175b46",
+          "owner_id": "ff61a593c2f141eeec4004a6607b23b6",
+          "operation_id": "39e6177a3ac80c12f1c7d7009a7f6385"
+        },
+        {
+          "id": "10-verify",
+          "kind": "verify",
+          "target": "web",
+          "status": "succeeded",
+          "request_id": "0f864fcf8b5ef1826fe2b610cbe0c538",
+          "owner_id": "fb091d8853b7ba9c6fab4713fb2e70a3"
+        }
+      ],
+      "checks": [
+        {
+          "id": "panel_https",
+          "state": "ready",
+          "code": "ready"
+        },
+        {
+          "id": "panel_renewal",
+          "state": "ready",
+          "code": "ready"
+        },
+        {
+          "id": "dns",
+          "state": "ready",
+          "code": "ready"
+        },
+        {
+          "id": "firewall",
+          "state": "ready",
+          "code": "ready"
+        },
+        {
+          "id": "services",
+          "state": "ready",
+          "code": "ready"
+        }
+      ],
+      "panel_url": "https://panel.set18.test:2083/",
+      "context": {
+        "access_dns_ip": "192.0.2.10",
+        "dns_mode": "external",
+        "dns_role": "",
+        "dns_engine": "",
+        "local_nameserver": "",
+        "local_ip": "",
+        "peer_nameserver": "",
+        "peer_ip": "",
+        "panel_domain": "panel.set18.test",
+        "mail_hostname": "",
+        "dns_hosting_management": ""
+      }
+    },
+    "text": null
+  },
+  "r2_cancel": {
+    "status": 200,
+    "state": {
+      "status": "ready",
+      "revision": 5,
+      "draft_components": null,
+      "mail_hostname": ""
+    }
+  },
+  "r2_sample": {
+    "t": 1792105964235,
+    "path": "/setup",
+    "vis": "visible",
+    "lang": "en",
+    "h1": "Your server is ready",
+    "progress_title": null,
+    "guidance_title": null,
+    "guidance": null,
+    "checks": [],
+    "steps": [],
+    "finishing": null,
+    "reconnecting": null,
+    "reconnect_slow": null,
+    "handover": null,
+    "alerts": [],
+    "statuses": [],
+    "buttons": [
+      {
+        "text": "Add your first website",
+        "disabled": false
+      },
+      {
+        "text": "Extend setup",
+        "disabled": false
+      }
+    ],
+    "extend_section": "Extend this server’s setup Add what this server should also do, such as mail, or correct a host name. Extending installs and configures only what you add. It never removes, stops or replaces anything already installed, and your websites keep running. You review every change before it starts. Extend setup",
+    "extend_stop": null,
+    "overflow_x": false
+  },
+  "r2_operation": {
+    "status": 200,
+    "json": {
+      "id": "38545bfb2e0223ed38163a59453813d1",
+      "request_id": "38545bfb2e0223ed38163a59453813d1",
+      "plan_id": "0488f13c49caf20b2285094f39416731",
+      "status": "succeeded",
+      "phase": "complete",
+      "steps": [
+        {
+          "id": "01-dns",
+          "kind": "dns",
+          "target": "external",
+          "status": "succeeded",
+          "request_id": "52541d8372f3230dcb47710c653ef4b4",
+          "owner_id": "c9ae1136159f902ff56118e2838ee389"
+        },
+        {
+          "id": "02-service",
+          "kind": "service",
+          "target": "nginx",
+          "status": "succeeded",
+          "request_id": "307b0d3ff9111189e284ff7510c016d8",
+          "owner_id": "8c4ee274eed11f9fcfccae85faf938bb",
+          "operation_id": "8ba11be5af173805229726d1abff28a8"
+        },
+        {
+          "id": "03-service",
+          "kind": "service",
+          "target": "php-fpm",
+          "status": "succeeded",
+          "request_id": "3bcb3538db05ee6a97c05364506bc96d",
+          "owner_id": "a883a527a73111899e73fddcc3c25dc8",
+          "operation_id": "bf1c0e1fa23425d96286282e2160bd86"
+        },
+        {
+          "id": "04-service",
+          "kind": "service",
+          "target": "mariadb",
+          "status": "succeeded",
+          "request_id": "215dc8a4cc7993b006db303d7055994c",
+          "owner_id": "33dc559b88e2f9db0d0e419cf00f773e",
+          "operation_id": "0f8d3200a6d923f63f28b77bd49d6be9"
+        },
+        {
+          "id": "05-service",
+          "kind": "service",
+          "target": "cron",
+          "status": "succeeded",
+          "request_id": "8b2e6e14bc00b846449296ca8654e267",
+          "owner_id": "ed6b83177a73457b57ad3a3d5cffad4d",
+          "operation_id": "4e3e30fc6cbff775a7c00fb62fa64ccf"
+        },
+        {
+          "id": "06-service",
+          "kind": "service",
+          "target": "certbot",
+          "status": "succeeded",
+          "request_id": "9ba9cd24c36c7e36fbf8c139ce5788fc",
+          "owner_id": "287518115efd7122a4d85935f79f88ae",
+          "operation_id": "17be36e7d77435322d2508c281fb603c"
+        },
+        {
+          "id": "07-firewall",
+          "kind": "firewall",
+          "target": "enable_and_persist",
+          "status": "succeeded",
+          "request_id": "c68c52a2e436ea862cd931e0ec18fee7",
+          "owner_id": "94c029511c298f831c8d30ab247562bb"
+        },
+        {
+          "id": "08-access_dns",
+          "kind": "access_dns",
+          "target": "panel.set18.test",
+          "qualifier": "192.0.2.10",
+          "status": "succeeded",
+          "request_id": "0f0cdfeec07568634b54da224742e161",
+          "owner_id": "6abcfcdb9a743cd40b5077cb9fa59546"
+        },
+        {
+          "id": "09-panel_certificate",
+          "kind": "panel_certificate",
+          "target": "panel.set18.test",
+          "status": "succeeded",
+          "request_id": "730487bff176fe3020018b755f175b46",
+          "owner_id": "ff61a593c2f141eeec4004a6607b23b6",
+          "operation_id": "39e6177a3ac80c12f1c7d7009a7f6385"
+        },
+        {
+          "id": "10-verify",
+          "kind": "verify",
+          "target": "web",
+          "status": "succeeded",
+          "request_id": "0f864fcf8b5ef1826fe2b610cbe0c538",
+          "owner_id": "fb091d8853b7ba9c6fab4713fb2e70a3"
+        }
+      ],
+      "checks": [
+        {
+          "id": "panel_https",
+          "state": "ready",
+          "code": "ready"
+        },
+        {
+          "id": "panel_renewal",
+          "state": "ready",
+          "code": "ready"
+        },
+        {
+          "id": "dns",
+          "state": "ready",
+          "code": "ready"
+        },
+        {
+          "id": "firewall",
+          "state": "ready",
+          "code": "ready"
+        },
+        {
+          "id": "services",
+          "state": "ready",
+          "code": "ready"
+        }
+      ],
+      "panel_url": "https://panel.set18.test:2083/",
+      "context": {
+        "access_dns_ip": "192.0.2.10",
+        "dns_mode": "external",
+        "dns_role": "",
+        "dns_engine": "",
+        "local_nameserver": "",
+        "local_ip": "",
+        "peer_nameserver": "",
+        "peer_ip": "",
+        "panel_domain": "panel.set18.test",
+        "mail_hostname": "",
+        "dns_hosting_management": ""
+      }
+    },
+    "text": null
+  },
+  "r2_services": {
+    "status": 200,
+    "installed": [],
+    "mail_profiles": []
+  },
+  "r3_extend_clicked": "Extend setup",
+  "r3_sample": {
+    "t": 1792105972095,
+    "path": "/setup",
+    "vis": "visible",
+    "lang": "en",
+    "h1": "Extend this server’s setup",
+    "progress_title": "Verifying the result",
+    "guidance_title": null,
+    "guidance": null,
+    "checks": [],
+    "steps": [
+      {
+        "state": "succeeded",
+        "text": "Configure DNS: Use an external DNS provider Completed"
+      },
+      {
+        "state": "succeeded",
+        "text": "Prepare component: Nginx Completed"
+      },
+      {
+        "state": "succeeded",
+        "text": "Prepare component: PHP-FPM Completed"
+      },
+      {
+        "state": "succeeded",
+        "text": "Prepare component: MariaDB Completed"
+      },
+      {
+        "state": "succeeded",
+        "text": "Prepare component: Scheduled tasks (cron) Completed"
+      },
+      {
+        "state": "succeeded",
+        "text": "Prepare component: Let’s Encrypt client (certbot) Completed"
+      },
+      {
+        "state": "succeeded",
+        "text": "Apply and save the firewall policy Completed"
+      },
+      {
+        "state": "succeeded",
+        "text": "Verify public DNS before certificate issuance: panel.set18.test 192.0.2.10 Completed"
+      },
+      {
+        "state": "succeeded",
+        "text": "Secure panel access: panel.set18.test Completed"
+      },
+      {
+        "state": "running",
+        "text": "Verify the prepared server In progress"
+      }
+    ],
+    "finishing": null,
+    "reconnecting": null,
+    "reconnect_slow": null,
+    "handover": null,
+    "alerts": [
+      "Completion could not be verified. Reconnect to obtain fresh evidence; the server has not been declared ready."
+    ],
+    "statuses": [],
+    "buttons": [
+      {
+        "text": "Continue at the secure panel address",
+        "disabled": false
+      },
+      {
+        "text": "Reconnect to this operation",
+        "disabled": false
+      }
+    ],
+    "extend_section": null,
+    "extend_stop": null,
+    "overflow_x": false
+  },
+  "r3_purpose_step_shown": false,
+  "r3_begin": {
+    "status": 200,
+    "extension": true,
+    "revision": 7,
+    "components": {
+      "components": [
+        "dovecot",
+        "mariadb",
+        "nginx",
+        "php-fpm",
+        "postfix"
+      ]
+    },
+    "purpose": "web",
+    "mail_hostname": "mail.set18.test",
+    "base": {
+      "purpose": "web",
+      "customization": null,
+      "mail_hostname": null
+    }
+  },
+  "r3_plan": {
+    "status": 200,
+    "id": "be3c80283d439b8680e26b14524e6aa3",
+    "can_start": true,
+    "blockers": [],
+    "steps": [
+      "01-dns dns external",
+      "02-mail_profile mail_profile core-mail",
+      "03-firewall firewall enable_and_persist",
+      "04-access_dns access_dns panel.set18.test 192.0.2.10",
+      "05-access_dns access_dns mail.set18.test 192.0.2.10",
+      "06-mail_certificate mail_certificate mail.set18.test",
+      "07-mail_enrollment mail_enrollment mail-renewal d0f44a526bb3cd88c1f0b1ea705e8ba1096954a199179d96ffa02b2269887aba",
+      "08-verify verify web"
+    ],
+    "components": [
+      {
+        "id": "postfix",
+        "selected": true,
+        "required": false,
+        "installed": false
+      },
+      {
+        "id": "dovecot",
+        "selected": true,
+        "required": false,
+        "installed": false
+      },
+      {
+        "id": "mariadb",
+        "selected": true,
+        "required": false,
+        "installed": true
+      },
+      {
+        "id": "nginx",
+        "selected": true,
+        "required": false,
+        "installed": true
+      },
+      {
+        "id": "php-fpm",
+        "selected": true,
+        "required": false,
+        "installed": true
+      },
+      {
+        "id": "nftables",
+        "selected": false,
+        "required": true,
+        "installed": true
+      },
+      {
+        "id": "certbot",
+        "selected": false,
+        "required": true,
+        "installed": true
+      },
+      {
+        "id": "cron",
+        "selected": false,
+        "required": true,
+        "installed": true
+      }
+    ],
+    "tcp": [
+      22,
+      25,
+      80,
+      110,
+      143,
+      443,
+      465,
+      587,
+      993,
+      995,
+      2083
+    ],
+    "udp": [],
+    "hostname_change": null,
+    "contact": "labadmin@example.invalid"
+  },
+  "c2_start_pressed_at": "2026-10-15T23:12:53.110Z",
+  "c2_start": {
+    "status": 202,
+    "execution": {
+      "id": "49fc52bbb1934eddc8cbd62fac688354",
+      "status": "running",
+      "phase": "queued"
+    }
+  },
+  "c2": {
+    "label": "c2",
+    "started_at": "2026-10-15T23:13:10.405Z",
+    "states": 10,
+    "pictures": [
+      "c2-state-01",
+      "c2-state-02",
+      "c2-state-03",
+      "c2-state-04",
+      "c2-state-05",
+      "c2-state-06",
+      "c2-state-07",
+      "c2-state-08",
+      "c2-state-09",
+      "c2-state-10"
+    ],
+    "owner_actions": [
+      {
+        "at": "2026-10-15T23:23:31.753Z",
+        "action": "Continue recorded operation"
+      },
+      {
+        "at": "2026-10-15T23:23:32.646Z",
+        "action": "Continue recorded operation"
+      },
+      {
+        "at": "2026-10-15T23:23:33.657Z",
+        "action": "Continue recorded operation"
+      },
+      {
+        "at": "2026-10-15T23:23:34.666Z",
+        "action": "Continue recorded operation"
+      },
+      {
+        "at": "2026-10-15T23:24:23.953Z",
+        "action": "Check requirements again (before the PTR change)"
+      },
+      {
+        "at": "2026-10-15T23:24:33.606Z",
+        "action": "Check requirements again (after the PTR change)"
+      }
+    ],
+    "lab": [
+      {
+        "at": "2026-10-15T23:24:30.588Z",
+        "what": "lab-ptr-mail",
+        "ok": true
+      }
+    ],
+    "mail_identity_seen": {
+      "at": "2026-10-15T23:23:38.321Z",
+      "check": {
+        "id": "mail_identity",
+        "state": "action_required",
+        "code": "mail_identity_required",
+        "reason": "reverse_dns_mismatch",
+        "vars": {
+          "hostname": "mail.set18.test",
+          "ip": "192.0.2.10",
+          "ptr": "host-192-0-2-10.provider.set18.test",
+          "resolver": "1.1.1.1"
+        }
+      },
+      "page_lines": [
+        {
+          "id": "mail_identity",
+          "state": "action_required",
+          "text": "The public resolver 1.1.1.1 reports host-192-0-2-10.provider.set18.test as the reverse DNS (PTR) name of this server’s address 192.0.2.10; mail servers expect mail.set18.test. You set this at your server provider, not in CelikPanel: in the provider’s control panel, or by asking its support to set the reverse DNS of 192.0.2.10 to mail.set18.test."
+        }
+      ]
+    },
+    "finishing_seen": {
+      "at": "2026-10-15T23:24:34.874Z",
+      "text": "Every check passed. The panel is completing setup now, and you do not need to do anything. This page updates by itself when it is done."
+    },
+    "ready_at": "2026-10-15T23:24:39.125Z",
+    "ended_at": "2026-10-15T23:24:39.125Z",
+    "duration_s": 689,
+    "final_operation": {
+      "id": "49fc52bbb1934eddc8cbd62fac688354",
+      "request_id": "49fc52bbb1934eddc8cbd62fac688354",
+      "plan_id": "be3c80283d439b8680e26b14524e6aa3",
+      "status": "succeeded",
+      "phase": "complete",
+      "steps": [
+        {
+          "id": "01-dns",
+          "kind": "dns",
+          "target": "external",
+          "status": "succeeded",
+          "request_id": "5df896e19d914e09f30082ab3438984e",
+          "owner_id": "4e6cbba756baf37274c5efdd36530d59"
+        },
+        {
+          "id": "02-mail_profile",
+          "kind": "mail_profile",
+          "target": "core-mail",
+          "status": "succeeded",
+          "request_id": "91945706a21b67e21a1fc850cb470958",
+          "owner_id": "72c7c0f94994f441a2d424b612a79c90",
+          "operation_id": "4a675199eb50ddb9247f047cfe00287f"
+        },
+        {
+          "id": "03-firewall",
+          "kind": "firewall",
+          "target": "enable_and_persist",
+          "status": "succeeded",
+          "request_id": "edf0afe26279db33a3faf25757b59d26",
+          "owner_id": "e43e5202420d0f47271d27162b93a17d"
+        },
+        {
+          "id": "04-access_dns",
+          "kind": "access_dns",
+          "target": "panel.set18.test",
+          "qualifier": "192.0.2.10",
+          "status": "succeeded",
+          "request_id": "38fea58babc29fa341a0b5b95ec1a703",
+          "owner_id": "c927ef3bf1ad21db9b3a4492a0fbd8a4"
+        },
+        {
+          "id": "05-access_dns",
+          "kind": "access_dns",
+          "target": "mail.set18.test",
+          "qualifier": "192.0.2.10",
+          "status": "succeeded",
+          "request_id": "757c0b89eb0f143dd339f7fc9ca090f2",
+          "owner_id": "dada709ede1a076c10958d8e4b907626"
+        },
+        {
+          "id": "06-mail_certificate",
+          "kind": "mail_certificate",
+          "target": "mail.set18.test",
+          "status": "succeeded",
+          "request_id": "31b20476b45b7816933ffa860e247040",
+          "owner_id": "a29e35cc2fff7bd5e57578d23b9f8d98"
+        },
+        {
+          "id": "07-mail_enrollment",
+          "kind": "mail_enrollment",
+          "target": "mail-renewal",
+          "qualifier": "d0f44a526bb3cd88c1f0b1ea705e8ba1096954a199179d96ffa02b2269887aba",
+          "status": "succeeded",
+          "request_id": "1ef445f70f22423d89605126de0f8a08",
+          "owner_id": "70c54cf8f5a4af28b2030b2ed3413410",
+          "enrollment_dispatch_attempted": true
+        },
+        {
+          "id": "08-verify",
+          "kind": "verify",
+          "target": "web",
+          "status": "succeeded",
+          "request_id": "bebc6c8674cac913589d6d9334f75ee4",
+          "owner_id": "e2048c65b43b314ec827836ff886813b"
+        }
+      ],
+      "checks": [
+        {
+          "id": "panel_https",
+          "state": "ready",
+          "code": "ready"
+        },
+        {
+          "id": "panel_renewal",
+          "state": "ready",
+          "code": "ready"
+        },
+        {
+          "id": "dns",
+          "state": "ready",
+          "code": "ready"
+        },
+        {
+          "id": "firewall",
+          "state": "ready",
+          "code": "ready"
+        },
+        {
+          "id": "services",
+          "state": "ready",
+          "code": "ready"
+        },
+        {
+          "id": "mail_tls",
+          "state": "ready",
+          "code": "ready"
+        },
+        {
+          "id": "mail_identity",
+          "state": "ready",
+          "code": "ready"
+        },
+        {
+          "id": "mail_delivery",
+          "state": "ready",
+          "code": "ready"
+        }
+      ],
+      "panel_url": "https://panel.set18.test:2083/",
+      "context": {
+        "access_dns_ip": "192.0.2.10",
+        "dns_mode": "external",
+        "dns_role": "",
+        "dns_engine": "",
+        "local_nameserver": "",
+        "local_ip": "",
+        "peer_nameserver": "",
+        "peer_ip": "",
+        "panel_domain": "panel.set18.test",
+        "mail_hostname": "mail.set18.test",
+        "dns_hosting_management": ""
+      }
+    },
+    "final_picture": "c2-final"
+  },
+  "c2_ready_variants": [
+    {
+      "lang": "en",
+      "vp": "1280",
+      "picture": "v-ready-after-extension-en-1280",
+      "overflow_x": false,
+      "width": 1280
+    },
+    {
+      "lang": "en",
+      "vp": "phone",
+      "picture": "v-ready-after-extension-en-phone",
+      "overflow_x": false,
+      "width": 390
+    },
+    {
+      "lang": "tr",
+      "vp": "1280",
+      "picture": "v-ready-after-extension-tr-1280",
+      "overflow_x": false,
+      "width": 1280
+    },
+    {
+      "lang": "tr",
+      "vp": "phone",
+      "picture": "v-ready-after-extension-tr-phone",
+      "overflow_x": false,
+      "width": 390
+    }
+  ],
+  "c2_state": {
+    "status": 200,
+    "setup_status": "ready",
+    "checks": []
+  },
+  "lab_state": {
+    "at": "2026-10-15T23:27:45Z",
+    "prep": "lab-state",
+    "result": {
+      "at": "2026-10-15T23:27:45Z.943",
+      "block_log": "2026-10-15T22:54:26+00:00 dns-debian13 kernel: set18-lab-443-block IN= OUT=mgmt0 SRC=10.0.2.15 DST=203.0.113.1 LEN=60 TOS=0x00 PREC=0x00 TTL=64 ID=8241 DF PROTO=TCP SPT=47530 DPT=443 WINDOW=64240 RES=0x00 SYN URGP=0 \n",
+      "ca_file": "subject=CN=Pebble Root CA 3a4c96\nsha256 Fingerprint=55:22:C5:F7:FF:73:F1:58:F0:23:3A:E9:62:9D:19:7B:35:7B:9E:CD:EC:61:A5:7C:D3:2B:FC:E5:37:BE:F6:F9\n",
+      "cli_ini": "# set18 lab only (disposable guest): certbot uses the lab's own ACME server inside this guest.\nserver = https://127.0.0.1:14000/dir\nno-verify-ssl = true\n",
+      "guard_events": [
+        {
+          "at": "2026-10-15T22:54:28Z.785",
+          "epoch": 1792104868.785,
+          "event": "started"
+        },
+        {
+          "at": "2026-10-15T22:54:28Z.813",
+          "epoch": 1792104868.813,
+          "event": "allow443-added",
+          "v4": [
+            "146.75.122.132",
+            "146.75.123.52",
+            "151.101.130.132",
+            "151.101.194.132",
+            "151.101.2.132",
+            "151.101.66.132"
+          ],
+          "v6": [
+            "2a04:4e42:200::644",
+            "2a04:4e42:400::644",
+            "2a04:4e42:600::644",
+            "2a04:4e42:8e::644",
+            "2a04:4e42:8e::820",
+            "2a04:4e42::644"
+          ]
+        }
+      ],
+      "letsencrypt_renewal": "== /etc/letsencrypt/renewal/celikpanel-mail-d1f1f42a0d6e147093b16151.conf\naccount = 75a292cba125631743691d9439b6adfa\nserver = https://127.0.0.1:14000/dir\nauthenticator = webroot\n== /etc/letsencrypt/renewal/celikpanel-panel-8fd6660f0018afe910870f38.conf\naccount = 75a292cba125631743691d9439b6adfa\nserver = https://127.0.0.1:14000/dir\nauthenticator = webroot\n",
+      "nft": "table ip set18lab {\n\tset allow443 {\n\t\ttype ipv4_addr\n\t\telements = { 146.75.122.132, 146.75.123.52,\n\t\t\t     151.101.2.132, 151.101.66.132,\n\t\t\t     151.101.130.132, 151.101.194.132 }\n\t}\n\n\tchain out_nat {\n\t\ttype nat hook output priority dstnat; policy accept;\n\t\tip daddr 1.1.1.1 udp dport 53 counter packets 2 bytes 119 dnat to 127.0.0.1:5301\n\t\tip daddr 1.1.1.1 tcp dport 53 counter packets 90 bytes 5400 dnat to 127.0.0.1:5301\n\t\tip daddr 8.8.8.8 udp dport 53 counter packets 1 bytes 62 dnat to 127.0.0.1:5302\n\t\tip daddr 8.8.8.8 tcp dport 53 counter packets 70 bytes 4200 dnat to 127.0.0.1:5302\n\t\tip daddr 9.9.9.9 udp dport 53 counter packets 1 bytes 62 dnat to 127.0.0.1:5303\n\t\tip daddr 9.9.9.9 tcp dport 53 counter packets 1 bytes 60 dnat to 127.0.0.1:5303\n\t\tip daddr 208.67.222.222 udp dport 53 counter packets 1 bytes 62 dnat to 127.0.0.1:5304\n\t\tip daddr 208.67.222.222 tcp dport 53 counter packets 1 bytes 60 dnat to 127.0.0.1:5304\n\t\ttcp dport 25 ip daddr != { 10.0.2.0/24, 127.0.0.0/8, 192.0.2.10 } counter packets 152 bytes 9120 dnat to 127.0.0.1:25\n\t}\n\n\tchain out_filter {\n\t\ttype filter hook output priority filter; policy accept;\n\t\ttcp dport 443 ip daddr { 10.0.2.0/24, 127.0.0.0/8, 192.0.2.0/24 } counter packets 0 bytes 0 accept\n\t\ttcp dport 443 ip daddr @allow443 counter packets 7390 bytes 329651 accept\n\t\ttcp dport 443 counter packets 1 bytes 60 log prefix \"set18-lab-443-block \" reject with tcp reset\n\t\tudp dport 443 counter packets 0 bytes 0 reject\n\t}\n}\ntable ip6 set18lab6 {\n\tset allow443 {\n\t\ttype ipv6_addr\n\t\telements = { 2a04:4e42::644,\n\t\t\t     2a04:4e42:8e::644,\n\t\t\t     2a04:4e42:8e::820,\n\t\t\t     2a04:4e42:200::644,\n\t\t\t     2a04:4e42:400::644,\n\t\t\t     2a04:4e42:600::644 }\n\t}\n\n\tchain out_filter {\n\t\ttype filter hook output priority filter; policy accept;\n\t\ttcp dport 443 ip6 daddr ::1 counter packets 0 bytes 0 accept\n\t\ttcp dport 443 ip6 daddr @allow443 counter packets 2 bytes 160 accept\n\t\ttcp dport 443 counter packets 0 bytes 0 log prefix \"set18-lab-443-block6 \" reject with tcp reset\n\t\tudp dport 443 counter packets 0 bytes 0 reject\n\t}\n}\n",
+      "pebble_journal": "15 23:23:18 GET /dir -> calling handler()\n2026-10-15T23:23:18+00:00 dns-debian13 pebble[2945]: Pebble 2026/10/15 23:23:18 HEAD /nonce-plz -> calling handler()\n2026-10-15T23:23:18+00:00 dns-debian13 pebble[2945]: Pebble 2026/10/15 23:23:18 POST /order-plz -> calling handler()\n2026-10-15T23:23:18+00:00 dns-debian13 pebble[2945]: Pebble 2026/10/15 23:23:18 There are now 2 authorizations in the db\n2026-10-15T23:23:18+00:00 dns-debian13 pebble[2945]: Pebble 2026/10/15 23:23:18 Added order \"Dq7jhhJ45wyMoMOYedCz3uswtAs5-jljVORC3-YGPe0\" to the db\n2026-10-15T23:23:18+00:00 dns-debian13 pebble[2945]: Pebble 2026/10/15 23:23:18 There are now 2 orders in the db\n2026-10-15T23:23:18+00:00 dns-debian13 pebble[2945]: Pebble 2026/10/15 23:23:18 POST /authZ/ -> calling handler()\n2026-10-15T23:23:18+00:00 dns-debian13 pebble[2945]: Pebble 2026/10/15 23:23:18 POST /chalZ/ -> calling handler()\n2026-10-15T23:23:18+00:00 dns-debian13 pebble[2945]: Pebble 2026/10/15 23:23:18 Pulled a task from the Tasks queue: &va.vaTask{Identifier:acme.Identifier{Type:\"dns\", Value:\"mail.set18.test\"}, Challenge:(*core.Challenge)(0xc0000a0aa0), Account:(*core.Account)(0xc0000bb800), AccountURL:\"https://127.0.0.1:14000/my-account/4b75e1a82ac07850\", Wildcard:false}\n2026-10-15T23:23:18+00:00 dns-debian13 pebble[2945]: Pebble 2026/10/15 23:23:18 Starting 3 validations.\n2026-10-15T23:23:18+00:00 dns-debian13 pebble[2945]: Pebble 2026/10/15 23:23:18 Attempting to validate w/ HTTP: http://mail.set18.test:80/.well-known/acme-challenge/8U7NEpPdGyLA03g6QuyewCmTxyJ9LIjLfFk13kuzNJY\n2026-10-15T23:23:18+00:00 dns-debian13 pebble[2945]: Pebble 2026/10/15 23:23:18 Attempting to validate w/ HTTP: http://mail.set18.test:80/.well-known/acme-challenge/8U7NEpPdGyLA03g6QuyewCmTxyJ9LIjLfFk13kuzNJY\n2026-10-15T23:23:18+00:00 dns-debian13 pebble[2945]: Pebble 2026/10/15 23:23:18 Attempting to validate w/ HTTP: http://mail.set18.test:80/.well-known/acme-challenge/8U7NEpPdGyLA03g6QuyewCmTxyJ9LIjLfFk13kuzNJY\n2026-10-15T23:23:18+00:00 dns-debian13 pebble[2945]: Pebble 2026/10/15 23:23:18 authz 1TqJGsjd4sPs4uGyJBO01Exg0SpHmWcSUaLPIJ1vSKM set VALID by completed challenge pwgnsD_dmB9LjyG9qeTAcCws9Of4lT_LK_-OERUy0t8\n2026-10-15T23:23:19+00:00 dns-debian13 pebble[2945]: Pebble 2026/10/15 23:23:19 POST /authZ/ -> calling handler()\n2026-10-15T23:23:19+00:00 dns-debian13 pebble[2945]: Pebble 2026/10/15 23:23:19 POST /finalize-order/ -> calling handler()\n2026-10-15T23:23:19+00:00 dns-debian13 pebble[2945]: Pebble 2026/10/15 23:23:19 Order Dq7jhhJ45wyMoMOYedCz3uswtAs5-jljVORC3-YGPe0 is fully authorized. Processing finalization\n2026-10-15T23:23:19+00:00 dns-debian13 pebble[2945]: Pebble 2026/10/15 23:23:19 Issued certificate serial 777b8a714b5256be for order Dq7jhhJ45wyMoMOYedCz3uswtAs5-jljVORC3-YGPe0\n2026-10-15T23:23:20+00:00 dns-debian13 pebble[2945]: Pebble 2026/10/15 23:23:20 POST /my-order/ -> calling handler()\n2026-10-15T23:23:20+00:00 dns-debian13 pebble[2945]: Pebble 2026/10/15 23:23:20 POST /certZ/ -> calling handler()\n",
+      "queries_last": [
+        {
+          "answers": [],
+          "as": "8.8.8.8",
+          "at": "2026-10-15T23:21:37Z.647",
+          "client": "192.0.2.10",
+          "epoch": 1792106497.647,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "mail.set18.test",
+          "qtype": 1,
+          "rcode": 3
+        },
+        {
+          "answers": [],
+          "as": "1.1.1.1",
+          "at": "2026-10-15T23:21:37Z.648",
+          "client": "192.0.2.10",
+          "epoch": 1792106497.648,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "mail.set18.test",
+          "qtype": 1,
+          "rcode": 3
+        },
+        {
+          "answers": [],
+          "as": "8.8.8.8",
+          "at": "2026-10-15T23:21:57Z.661",
+          "client": "192.0.2.10",
+          "epoch": 1792106517.661,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "mail.set18.test",
+          "qtype": 28,
+          "rcode": 3
+        },
+        {
+          "answers": [],
+          "as": "8.8.8.8",
+          "at": "2026-10-15T23:21:57Z.661",
+          "client": "192.0.2.10",
+          "epoch": 1792106517.661,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "mail.set18.test",
+          "qtype": 1,
+          "rcode": 3
+        },
+        {
+          "answers": [],
+          "as": "1.1.1.1",
+          "at": "2026-10-15T23:21:57Z.661",
+          "client": "192.0.2.10",
+          "epoch": 1792106517.661,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "mail.set18.test",
+          "qtype": 28,
+          "rcode": 3
+        },
+        {
+          "answers": [],
+          "as": "1.1.1.1",
+          "at": "2026-10-15T23:21:57Z.661",
+          "client": "192.0.2.10",
+          "epoch": 1792106517.661,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "mail.set18.test",
+          "qtype": 1,
+          "rcode": 3
+        },
+        {
+          "answers": [],
+          "as": "1.1.1.1",
+          "at": "2026-10-15T23:22:17Z.674",
+          "client": "192.0.2.10",
+          "epoch": 1792106537.674,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "mail.set18.test",
+          "qtype": 28,
+          "rcode": 3
+        },
+        {
+          "answers": [],
+          "as": "8.8.8.8",
+          "at": "2026-10-15T23:22:17Z.674",
+          "client": "192.0.2.10",
+          "epoch": 1792106537.674,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "mail.set18.test",
+          "qtype": 28,
+          "rcode": 3
+        },
+        {
+          "answers": [],
+          "as": "1.1.1.1",
+          "at": "2026-10-15T23:22:17Z.674",
+          "client": "192.0.2.10",
+          "epoch": 1792106537.674,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "mail.set18.test",
+          "qtype": 1,
+          "rcode": 3
+        },
+        {
+          "answers": [],
+          "as": "8.8.8.8",
+          "at": "2026-10-15T23:22:17Z.675",
+          "client": "192.0.2.10",
+          "epoch": 1792106537.675,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "mail.set18.test",
+          "qtype": 1,
+          "rcode": 3
+        },
+        {
+          "answers": [],
+          "as": "8.8.8.8",
+          "at": "2026-10-15T23:22:37Z.685",
+          "client": "192.0.2.10",
+          "epoch": 1792106557.685,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "mail.set18.test",
+          "qtype": 28,
+          "rcode": 3
+        },
+        {
+          "answers": [],
+          "as": "8.8.8.8",
+          "at": "2026-10-15T23:22:37Z.685",
+          "client": "192.0.2.10",
+          "epoch": 1792106557.685,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "mail.set18.test",
+          "qtype": 1,
+          "rcode": 3
+        },
+        {
+          "answers": [],
+          "as": "1.1.1.1",
+          "at": "2026-10-15T23:22:37Z.685",
+          "client": "192.0.2.10",
+          "epoch": 1792106557.685,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "mail.set18.test",
+          "qtype": 28,
+          "rcode": 3
+        },
+        {
+          "answers": [],
+          "as": "1.1.1.1",
+          "at": "2026-10-15T23:22:37Z.685",
+          "client": "192.0.2.10",
+          "epoch": 1792106557.685,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "mail.set18.test",
+          "qtype": 1,
+          "rcode": 3
+        },
+        {
+          "answers": [],
+          "as": "8.8.8.8",
+          "at": "2026-10-15T23:22:57Z.697",
+          "client": "192.0.2.10",
+          "epoch": 1792106577.697,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "mail.set18.test",
+          "qtype": 28,
+          "rcode": 3
+        },
+        {
+          "answers": [],
+          "as": "8.8.8.8",
+          "at": "2026-10-15T23:22:57Z.697",
+          "client": "192.0.2.10",
+          "epoch": 1792106577.697,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "mail.set18.test",
+          "qtype": 1,
+          "rcode": 3
+        },
+        {
+          "answers": [],
+          "as": "1.1.1.1",
+          "at": "2026-10-15T23:22:57Z.697",
+          "client": "192.0.2.10",
+          "epoch": 1792106577.697,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "mail.set18.test",
+          "qtype": 28,
+          "rcode": 3
+        },
+        {
+          "answers": [],
+          "as": "1.1.1.1",
+          "at": "2026-10-15T23:22:57Z.698",
+          "client": "192.0.2.10",
+          "epoch": 1792106577.698,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "mail.set18.test",
+          "qtype": 1,
+          "rcode": 3
+        },
+        {
+          "answers": [
+            "192.0.2.10"
+          ],
+          "as": "1.1.1.1",
+          "at": "2026-10-15T23:23:09Z.402",
+          "client": "192.0.2.10",
+          "epoch": 1792106589.402,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "mail.set18.test",
+          "qtype": 1,
+          "rcode": 0
+        },
+        {
+          "answers": [
+            "host-192-0-2-10.provider.set18.test"
+          ],
+          "as": "8.8.8.8",
+          "at": "2026-10-15T23:23:09Z.403",
+          "client": "192.0.2.10",
+          "epoch": 1792106589.403,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "10.2.0.192.in-addr.arpa",
+          "qtype": 12,
+          "rcode": 0
+        },
+        {
+          "answers": [],
+          "as": "8.8.8.8",
+          "at": "2026-10-15T23:23:17Z.713",
+          "client": "192.0.2.10",
+          "epoch": 1792106597.713,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "mail.set18.test",
+          "qtype": 28,
+          "rcode": 0
+        },
+        {
+          "answers": [],
+          "as": "1.1.1.1",
+          "at": "2026-10-15T23:23:17Z.713",
+          "client": "192.0.2.10",
+          "epoch": 1792106597.713,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "mail.set18.test",
+          "qtype": 28,
+          "rcode": 0
+        },
+        {
+          "answers": [
+            "192.0.2.10"
+          ],
+          "as": "8.8.8.8",
+          "at": "2026-10-15T23:23:17Z.713",
+          "client": "192.0.2.10",
+          "epoch": 1792106597.713,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "mail.set18.test",
+          "qtype": 1,
+          "rcode": 0
+        },
+        {
+          "answers": [
+            "192.0.2.10"
+          ],
+          "as": "1.1.1.1",
+          "at": "2026-10-15T23:23:17Z.713",
+          "client": "192.0.2.10",
+          "epoch": 1792106597.713,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "mail.set18.test",
+          "qtype": 1,
+          "rcode": 0
+        },
+        {
+          "answers": [],
+          "as": "pebble",
+          "at": "2026-10-15T23:23:18Z.366",
+          "client": "127.0.0.1",
+          "epoch": 1792106598.366,
+          "event": "query",
+          "proto": "udp",
+          "qname": "mail.set18.test",
+          "qtype": 28,
+          "rcode": 0
+        },
+        {
+          "answers": [],
+          "as": "pebble",
+          "at": "2026-10-15T23:23:18Z.366",
+          "client": "127.0.0.1",
+          "epoch": 1792106598.366,
+          "event": "query",
+          "proto": "udp",
+          "qname": "mail.set18.test",
+          "qtype": 28,
+          "rcode": 0
+        },
+        {
+          "answers": [],
+          "as": "pebble",
+          "at": "2026-10-15T23:23:18Z.366",
+          "client": "127.0.0.1",
+          "epoch": 1792106598.366,
+          "event": "query",
+          "proto": "udp",
+          "qname": "mail.set18.test",
+          "qtype": 28,
+          "rcode": 0
+        },
+        {
+          "answers": [
+            "192.0.2.10"
+          ],
+          "as": "pebble",
+          "at": "2026-10-15T23:23:18Z.367",
+          "client": "127.0.0.1",
+          "epoch": 1792106598.367,
+          "event": "query",
+          "proto": "udp",
+          "qname": "mail.set18.test",
+          "qtype": 1,
+          "rcode": 0
+        },
+        {
+          "answers": [
+            "192.0.2.10"
+          ],
+          "as": "pebble",
+          "at": "2026-10-15T23:23:18Z.367",
+          "client": "127.0.0.1",
+          "epoch": 1792106598.367,
+          "event": "query",
+          "proto": "udp",
+          "qname": "mail.set18.test",
+          "qtype": 1,
+          "rcode": 0
+        },
+        {
+          "answers": [
+            "192.0.2.10"
+          ],
+          "as": "pebble",
+          "at": "2026-10-15T23:23:18Z.367",
+          "client": "127.0.0.1",
+          "epoch": 1792106598.367,
+          "event": "query",
+          "proto": "udp",
+          "qname": "mail.set18.test",
+          "qtype": 1,
+          "rcode": 0
+        },
+        {
+          "answers": [
+            "host-192-0-2-10.provider.set18.test"
+          ],
+          "as": "1.1.1.1",
+          "at": "2026-10-15T23:23:35Z.568",
+          "client": "192.0.2.10",
+          "epoch": 1792106615.568,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "10.2.0.192.in-addr.arpa",
+          "qtype": 12,
+          "rcode": 0
+        },
+        {
+          "answers": [
+            "host-192-0-2-10.provider.set18.test"
+          ],
+          "as": "8.8.8.8",
+          "at": "2026-10-15T23:23:35Z.569",
+          "client": "192.0.2.10",
+          "epoch": 1792106615.569,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "10.2.0.192.in-addr.arpa",
+          "qtype": 12,
+          "rcode": 0
+        },
+        {
+          "answers": [
+            "host-192-0-2-10.provider.set18.test"
+          ],
+          "as": "1.1.1.1",
+          "at": "2026-10-15T23:23:56Z.461",
+          "client": "192.0.2.10",
+          "epoch": 1792106636.461,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "10.2.0.192.in-addr.arpa",
+          "qtype": 12,
+          "rcode": 0
+        },
+        {
+          "answers": [
+            "host-192-0-2-10.provider.set18.test"
+          ],
+          "as": "8.8.8.8",
+          "at": "2026-10-15T23:23:56Z.462",
+          "client": "192.0.2.10",
+          "epoch": 1792106636.462,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "10.2.0.192.in-addr.arpa",
+          "qtype": 12,
+          "rcode": 0
+        },
+        {
+          "answers": [
+            "host-192-0-2-10.provider.set18.test"
+          ],
+          "as": "1.1.1.1",
+          "at": "2026-10-15T23:24:17Z.284",
+          "client": "192.0.2.10",
+          "epoch": 1792106657.284,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "10.2.0.192.in-addr.arpa",
+          "qtype": 12,
+          "rcode": 0
+        },
+        {
+          "answers": [
+            "host-192-0-2-10.provider.set18.test"
+          ],
+          "as": "8.8.8.8",
+          "at": "2026-10-15T23:24:17Z.285",
+          "client": "192.0.2.10",
+          "epoch": 1792106657.285,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "10.2.0.192.in-addr.arpa",
+          "qtype": 12,
+          "rcode": 0
+        },
+        {
+          "answers": [
+            "host-192-0-2-10.provider.set18.test"
+          ],
+          "as": "1.1.1.1",
+          "at": "2026-10-15T23:24:24Z.947",
+          "client": "192.0.2.10",
+          "epoch": 1792106664.947,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "10.2.0.192.in-addr.arpa",
+          "qtype": 12,
+          "rcode": 0
+        },
+        {
+          "answers": [
+            "host-192-0-2-10.provider.set18.test"
+          ],
+          "as": "8.8.8.8",
+          "at": "2026-10-15T23:24:24Z.948",
+          "client": "192.0.2.10",
+          "epoch": 1792106664.948,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "10.2.0.192.in-addr.arpa",
+          "qtype": 12,
+          "rcode": 0
+        },
+        {
+          "answers": [
+            "192.0.2.10"
+          ],
+          "as": "1.1.1.1",
+          "at": "2026-10-15T23:24:30Z.648",
+          "client": "192.0.2.10",
+          "epoch": 1792106670.648,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "mail.set18.test",
+          "qtype": 1,
+          "rcode": 0
+        },
+        {
+          "answers": [
+            "mail.set18.test"
+          ],
+          "as": "8.8.8.8",
+          "at": "2026-10-15T23:24:30Z.648",
+          "client": "192.0.2.10",
+          "epoch": 1792106670.648,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "10.2.0.192.in-addr.arpa",
+          "qtype": 12,
+          "rcode": 0
+        },
+        {
+          "answers": [
+            "mail.set18.test"
+          ],
+          "as": "1.1.1.1",
+          "at": "2026-10-15T23:24:34Z.612",
+          "client": "192.0.2.10",
+          "epoch": 1792106674.612,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "10.2.0.192.in-addr.arpa",
+          "qtype": 12,
+          "rcode": 0
+        },
+        {
+          "answers": [
+            "192.0.2.10"
+          ],
+          "as": "1.1.1.1",
+          "at": "2026-10-15T23:24:34Z.613",
+          "client": "192.0.2.10",
+          "epoch": 1792106674.613,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "mail.set18.test",
+          "qtype": 1,
+          "rcode": 0
+        },
+        {
+          "answers": [
+            "mail.set18.test"
+          ],
+          "as": "1.1.1.1",
+          "at": "2026-10-15T23:24:35Z.435",
+          "client": "192.0.2.10",
+          "epoch": 1792106675.435,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "10.2.0.192.in-addr.arpa",
+          "qtype": 12,
+          "rcode": 0
+        },
+        {
+          "answers": [
+            "192.0.2.10"
+          ],
+          "as": "1.1.1.1",
+          "at": "2026-10-15T23:24:35Z.436",
+          "client": "192.0.2.10",
+          "epoch": 1792106675.436,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "mail.set18.test",
+          "qtype": 1,
+          "rcode": 0
+        },
+        {
+          "answers": [
+            "mail.set18.test"
+          ],
+          "as": "1.1.1.1",
+          "at": "2026-10-15T23:24:36Z.264",
+          "client": "192.0.2.10",
+          "epoch": 1792106676.264,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "10.2.0.192.in-addr.arpa",
+          "qtype": 12,
+          "rcode": 0
+        },
+        {
+          "answers": [
+            "192.0.2.10"
+          ],
+          "as": "1.1.1.1",
+          "at": "2026-10-15T23:24:36Z.264",
+          "client": "192.0.2.10",
+          "epoch": 1792106676.264,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "mail.set18.test",
+          "qtype": 1,
+          "rcode": 0
+        },
+        {
+          "answers": [
+            "mail.set18.test"
+          ],
+          "as": "1.1.1.1",
+          "at": "2026-10-15T23:24:38Z.459",
+          "client": "192.0.2.10",
+          "epoch": 1792106678.459,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "10.2.0.192.in-addr.arpa",
+          "qtype": 12,
+          "rcode": 0
+        },
+        {
+          "answers": [
+            "192.0.2.10"
+          ],
+          "as": "1.1.1.1",
+          "at": "2026-10-15T23:24:38Z.459",
+          "client": "192.0.2.10",
+          "epoch": 1792106678.459,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "mail.set18.test",
+          "qtype": 1,
+          "rcode": 0
+        },
+        {
+          "answers": [
+            "mail.set18.test"
+          ],
+          "as": "1.1.1.1",
+          "at": "2026-10-15T23:24:39Z.355",
+          "client": "192.0.2.10",
+          "epoch": 1792106679.355,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "10.2.0.192.in-addr.arpa",
+          "qtype": 12,
+          "rcode": 0
+        },
+        {
+          "answers": [
+            "192.0.2.10"
+          ],
+          "as": "1.1.1.1",
+          "at": "2026-10-15T23:24:39Z.356",
+          "client": "192.0.2.10",
+          "epoch": 1792106679.356,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "mail.set18.test",
+          "qtype": 1,
+          "rcode": 0
+        },
+        {
+          "answers": [
+            "mail.set18.test"
+          ],
+          "as": "1.1.1.1",
+          "at": "2026-10-15T23:24:57Z.459",
+          "client": "192.0.2.10",
+          "epoch": 1792106697.459,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "10.2.0.192.in-addr.arpa",
+          "qtype": 12,
+          "rcode": 0
+        },
+        {
+          "answers": [
+            "192.0.2.10"
+          ],
+          "as": "1.1.1.1",
+          "at": "2026-10-15T23:24:57Z.459",
+          "client": "192.0.2.10",
+          "epoch": 1792106697.459,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "mail.set18.test",
+          "qtype": 1,
+          "rcode": 0
+        },
+        {
+          "answers": [
+            "mail.set18.test"
+          ],
+          "as": "1.1.1.1",
+          "at": "2026-10-15T23:25:30Z.852",
+          "client": "192.0.2.10",
+          "epoch": 1792106730.852,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "10.2.0.192.in-addr.arpa",
+          "qtype": 12,
+          "rcode": 0
+        },
+        {
+          "answers": [
+            "192.0.2.10"
+          ],
+          "as": "1.1.1.1",
+          "at": "2026-10-15T23:25:30Z.852",
+          "client": "192.0.2.10",
+          "epoch": 1792106730.852,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "mail.set18.test",
+          "qtype": 1,
+          "rcode": 0
+        },
+        {
+          "answers": [
+            "mail.set18.test"
+          ],
+          "as": "1.1.1.1",
+          "at": "2026-10-15T23:26:04Z.396",
+          "client": "192.0.2.10",
+          "epoch": 1792106764.396,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "10.2.0.192.in-addr.arpa",
+          "qtype": 12,
+          "rcode": 0
+        },
+        {
+          "answers": [
+            "192.0.2.10"
+          ],
+          "as": "1.1.1.1",
+          "at": "2026-10-15T23:26:04Z.397",
+          "client": "192.0.2.10",
+          "epoch": 1792106764.397,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "mail.set18.test",
+          "qtype": 1,
+          "rcode": 0
+        },
+        {
+          "answers": [
+            "mail.set18.test"
+          ],
+          "as": "1.1.1.1",
+          "at": "2026-10-15T23:26:37Z.864",
+          "client": "192.0.2.10",
+          "epoch": 1792106797.864,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "10.2.0.192.in-addr.arpa",
+          "qtype": 12,
+          "rcode": 0
+        },
+        {
+          "answers": [
+            "192.0.2.10"
+          ],
+          "as": "1.1.1.1",
+          "at": "2026-10-15T23:26:37Z.865",
+          "client": "192.0.2.10",
+          "epoch": 1792106797.865,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "mail.set18.test",
+          "qtype": 1,
+          "rcode": 0
+        },
+        {
+          "answers": [
+            "mail.set18.test"
+          ],
+          "as": "1.1.1.1",
+          "at": "2026-10-15T23:27:11Z.327",
+          "client": "192.0.2.10",
+          "epoch": 1792106831.327,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "10.2.0.192.in-addr.arpa",
+          "qtype": 12,
+          "rcode": 0
+        },
+        {
+          "answers": [
+            "192.0.2.10"
+          ],
+          "as": "1.1.1.1",
+          "at": "2026-10-15T23:27:11Z.327",
+          "client": "192.0.2.10",
+          "epoch": 1792106831.327,
+          "event": "query",
+          "proto": "tcp",
+          "qname": "mail.set18.test",
+          "qtype": 1,
+          "rcode": 0
+        }
+      ],
+      "queries_total": 180,
+      "record_changes": [
+        {
+          "at": "2026-10-15T22:54:15Z.899",
+          "epoch": 1792104855.899,
+          "event": "initial",
+          "records": {
+            "A": {
+              "host-192-0-2-10.provider.set18.test": [
+                "192.0.2.10"
+              ],
+              "panel.set18.test": [
+                "192.0.2.10"
+              ]
+            },
+            "PTR": {
+              "10.2.0.192.in-addr.arpa": "host-192-0-2-10.provider.set18.test"
+            },
+            "note": "panel.set18.test prepared before setup; mail.set18.test absent until the owner adds it; PTR at the provider's default name"
+          }
+        },
+        {
+          "after": {
+            "A": {
+              "host-192-0-2-10.provider.set18.test": [
+                "192.0.2.10"
+              ],
+              "mail.set18.test": [
+                "192.0.2.10"
+              ],
+              "panel.set18.test": [
+                "192.0.2.10"
+              ]
+            },
+            "PTR": {
+              "10.2.0.192.in-addr.arpa": "host-192-0-2-10.provider.set18.test"
+            },
+            "note": "panel.set18.test prepared before setup; mail.set18.test absent until the owner adds it; PTR at the provider's default name"
+          },
+          "at": "2026-10-15T23:23:09Z.400",
+          "before": {
+            "A": {
+              "host-192-0-2-10.provider.set18.test": [
+                "192.0.2.10"
+              ],
+              "panel.set18.test": [
+                "192.0.2.10"
+              ]
+            },
+            "PTR": {
+              "10.2.0.192.in-addr.arpa": "host-192-0-2-10.provider.set18.test"
+            },
+            "note": "panel.set18.test prepared before setup; mail.set18.test absent until the owner adds it; PTR at the provider's default name"
+          },
+          "epoch": 1792106589.4,
+          "event": "mail-a",
+          "meaning": "the owner adds the A record mail.set18.test -> 192.0.2.10 at the DNS provider (lab record table)"
+        },
+        {
+          "after": {
+            "A": {
+              "host-192-0-2-10.provider.set18.test": [
+                "192.0.2.10"
+              ],
+              "mail.set18.test": [
+                "192.0.2.10"
+              ],
+              "panel.set18.test": [
+                "192.0.2.10"
+              ]
+            },
+            "PTR": {
+              "10.2.0.192.in-addr.arpa": "mail.set18.test"
+            },
+            "note": "panel.set18.test prepared before setup; mail.set18.test absent until the owner adds it; PTR at the provider's default name"
+          },
+          "at": "2026-10-15T23:24:30Z.646",
+          "before": {
+            "A": {
+              "host-192-0-2-10.provider.set18.test": [
+                "192.0.2.10"
+              ],
+              "mail.set18.test": [
+                "192.0.2.10"
+              ],
+              "panel.set18.test": [
+                "192.0.2.10"
+              ]
+            },
+            "PTR": {
+              "10.2.0.192.in-addr.arpa": "host-192-0-2-10.provider.set18.test"
+            },
+            "note": "panel.set18.test prepared before setup; mail.set18.test absent until the owner adds it; PTR at the provider's default name"
+          },
+          "epoch": 1792106670.646,
+          "event": "ptr-mail",
+          "meaning": "the owner sets the reverse DNS of 192.0.2.10 to mail.set18.test at the server provider (lab record table)"
+        }
+      ],
+      "records": {
+        "A": {
+          "host-192-0-2-10.provider.set18.test": [
+            "192.0.2.10"
+          ],
+          "mail.set18.test": [
+            "192.0.2.10"
+          ],
+          "panel.set18.test": [
+            "192.0.2.10"
+          ]
+        },
+        "PTR": {
+          "10.2.0.192.in-addr.arpa": "mail.set18.test"
+        },
+        "note": "panel.set18.test prepared before setup; mail.set18.test absent until the owner adds it; PTR at the provider's default name"
+      },
+      "route_get_1_1_1_1": "1.1.1.1 via 10.0.2.2 dev mgmt0 src 192.0.2.10 uid 0 \n    cache",
+      "routes": "default via 10.0.2.2 dev mgmt0 proto dhcp src 10.0.2.15 metric 100 \n1.1.1.1 via 10.0.2.2 dev mgmt0 src 192.0.2.10 \n8.8.8.8 via 10.0.2.2 dev mgmt0 src 192.0.2.10 \n9.9.9.9 via 10.0.2.2 dev mgmt0 src 192.0.2.10 \n10.0.2.0/24 dev mgmt0 proto kernel scope link src 10.0.2.15 metric 100 \n10.0.2.2 dev mgmt0 proto dhcp scope link src 10.0.2.15 metric 100 \n10.0.2.3 dev mgmt0 proto dhcp scope link src 10.0.2.15 metric 100 \n192.0.2.0/24 dev peer0 proto kernel scope link src 192.0.2.10 \n208.67.222.222 via 10.0.2.2 dev mgmt0 src 192.0.2.10 \n",
+      "units": "NRestarts=0\nId=set18-lab-resolver.service\nActiveState=active\nSubState=running\n\nNRestarts=0\nId=set18-lab-pebble.service\nActiveState=active\nSubState=running\n\nNRestarts=0\nId=set18-lab-guard.service\nActiveState=active\nSubState=running\n"
+    },
+    "host_asked_ms": 1792106865548,
+    "host_got_ms": 1792106865980
+  },
+  "ended_at": "2026-10-15T23:27:45.987Z"
+}

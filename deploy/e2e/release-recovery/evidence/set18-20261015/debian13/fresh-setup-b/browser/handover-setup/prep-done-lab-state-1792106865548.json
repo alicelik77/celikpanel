@@ -1,0 +1,956 @@
+{
+  "at": "2026-10-15T23:27:45Z",
+  "prep": "lab-state",
+  "result": {
+    "at": "2026-10-15T23:27:45Z.943",
+    "block_log": "2026-10-15T22:54:26+00:00 dns-debian13 kernel: set18-lab-443-block IN= OUT=mgmt0 SRC=10.0.2.15 DST=203.0.113.1 LEN=60 TOS=0x00 PREC=0x00 TTL=64 ID=8241 DF PROTO=TCP SPT=47530 DPT=443 WINDOW=64240 RES=0x00 SYN URGP=0 \n",
+    "ca_file": "subject=CN=Pebble Root CA 3a4c96\nsha256 Fingerprint=55:22:C5:F7:FF:73:F1:58:F0:23:3A:E9:62:9D:19:7B:35:7B:9E:CD:EC:61:A5:7C:D3:2B:FC:E5:37:BE:F6:F9\n",
+    "cli_ini": "# set18 lab only (disposable guest): certbot uses the lab's own ACME server inside this guest.\nserver = https://127.0.0.1:14000/dir\nno-verify-ssl = true\n",
+    "guard_events": [
+      {
+        "at": "2026-10-15T22:54:28Z.785",
+        "epoch": 1792104868.785,
+        "event": "started"
+      },
+      {
+        "at": "2026-10-15T22:54:28Z.813",
+        "epoch": 1792104868.813,
+        "event": "allow443-added",
+        "v4": [
+          "146.75.122.132",
+          "146.75.123.52",
+          "151.101.130.132",
+          "151.101.194.132",
+          "151.101.2.132",
+          "151.101.66.132"
+        ],
+        "v6": [
+          "2a04:4e42:200::644",
+          "2a04:4e42:400::644",
+          "2a04:4e42:600::644",
+          "2a04:4e42:8e::644",
+          "2a04:4e42:8e::820",
+          "2a04:4e42::644"
+        ]
+      }
+    ],
+    "letsencrypt_renewal": "== /etc/letsencrypt/renewal/celikpanel-mail-d1f1f42a0d6e147093b16151.conf\naccount = 75a292cba125631743691d9439b6adfa\nserver = https://127.0.0.1:14000/dir\nauthenticator = webroot\n== /etc/letsencrypt/renewal/celikpanel-panel-8fd6660f0018afe910870f38.conf\naccount = 75a292cba125631743691d9439b6adfa\nserver = https://127.0.0.1:14000/dir\nauthenticator = webroot\n",
+    "nft": "table ip set18lab {\n\tset allow443 {\n\t\ttype ipv4_addr\n\t\telements = { 146.75.122.132, 146.75.123.52,\n\t\t\t     151.101.2.132, 151.101.66.132,\n\t\t\t     151.101.130.132, 151.101.194.132 }\n\t}\n\n\tchain out_nat {\n\t\ttype nat hook output priority dstnat; policy accept;\n\t\tip daddr 1.1.1.1 udp dport 53 counter packets 2 bytes 119 dnat to 127.0.0.1:5301\n\t\tip daddr 1.1.1.1 tcp dport 53 counter packets 90 bytes 5400 dnat to 127.0.0.1:5301\n\t\tip daddr 8.8.8.8 udp dport 53 counter packets 1 bytes 62 dnat to 127.0.0.1:5302\n\t\tip daddr 8.8.8.8 tcp dport 53 counter packets 70 bytes 4200 dnat to 127.0.0.1:5302\n\t\tip daddr 9.9.9.9 udp dport 53 counter packets 1 bytes 62 dnat to 127.0.0.1:5303\n\t\tip daddr 9.9.9.9 tcp dport 53 counter packets 1 bytes 60 dnat to 127.0.0.1:5303\n\t\tip daddr 208.67.222.222 udp dport 53 counter packets 1 bytes 62 dnat to 127.0.0.1:5304\n\t\tip daddr 208.67.222.222 tcp dport 53 counter packets 1 bytes 60 dnat to 127.0.0.1:5304\n\t\ttcp dport 25 ip daddr != { 10.0.2.0/24, 127.0.0.0/8, 192.0.2.10 } counter packets 152 bytes 9120 dnat to 127.0.0.1:25\n\t}\n\n\tchain out_filter {\n\t\ttype filter hook output priority filter; policy accept;\n\t\ttcp dport 443 ip daddr { 10.0.2.0/24, 127.0.0.0/8, 192.0.2.0/24 } counter packets 0 bytes 0 accept\n\t\ttcp dport 443 ip daddr @allow443 counter packets 7390 bytes 329651 accept\n\t\ttcp dport 443 counter packets 1 bytes 60 log prefix \"set18-lab-443-block \" reject with tcp reset\n\t\tudp dport 443 counter packets 0 bytes 0 reject\n\t}\n}\ntable ip6 set18lab6 {\n\tset allow443 {\n\t\ttype ipv6_addr\n\t\telements = { 2a04:4e42::644,\n\t\t\t     2a04:4e42:8e::644,\n\t\t\t     2a04:4e42:8e::820,\n\t\t\t     2a04:4e42:200::644,\n\t\t\t     2a04:4e42:400::644,\n\t\t\t     2a04:4e42:600::644 }\n\t}\n\n\tchain out_filter {\n\t\ttype filter hook output priority filter; policy accept;\n\t\ttcp dport 443 ip6 daddr ::1 counter packets 0 bytes 0 accept\n\t\ttcp dport 443 ip6 daddr @allow443 counter packets 2 bytes 160 accept\n\t\ttcp dport 443 counter packets 0 bytes 0 log prefix \"set18-lab-443-block6 \" reject with tcp reset\n\t\tudp dport 443 counter packets 0 bytes 0 reject\n\t}\n}\n",
+    "pebble_journal": "15 23:23:18 GET /dir -> calling handler()\n2026-10-15T23:23:18+00:00 dns-debian13 pebble[2945]: Pebble 2026/10/15 23:23:18 HEAD /nonce-plz -> calling handler()\n2026-10-15T23:23:18+00:00 dns-debian13 pebble[2945]: Pebble 2026/10/15 23:23:18 POST /order-plz -> calling handler()\n2026-10-15T23:23:18+00:00 dns-debian13 pebble[2945]: Pebble 2026/10/15 23:23:18 There are now 2 authorizations in the db\n2026-10-15T23:23:18+00:00 dns-debian13 pebble[2945]: Pebble 2026/10/15 23:23:18 Added order \"Dq7jhhJ45wyMoMOYedCz3uswtAs5-jljVORC3-YGPe0\" to the db\n2026-10-15T23:23:18+00:00 dns-debian13 pebble[2945]: Pebble 2026/10/15 23:23:18 There are now 2 orders in the db\n2026-10-15T23:23:18+00:00 dns-debian13 pebble[2945]: Pebble 2026/10/15 23:23:18 POST /authZ/ -> calling handler()\n2026-10-15T23:23:18+00:00 dns-debian13 pebble[2945]: Pebble 2026/10/15 23:23:18 POST /chalZ/ -> calling handler()\n2026-10-15T23:23:18+00:00 dns-debian13 pebble[2945]: Pebble 2026/10/15 23:23:18 Pulled a task from the Tasks queue: &va.vaTask{Identifier:acme.Identifier{Type:\"dns\", Value:\"mail.set18.test\"}, Challenge:(*core.Challenge)(0xc0000a0aa0), Account:(*core.Account)(0xc0000bb800), AccountURL:\"https://127.0.0.1:14000/my-account/4b75e1a82ac07850\", Wildcard:false}\n2026-10-15T23:23:18+00:00 dns-debian13 pebble[2945]: Pebble 2026/10/15 23:23:18 Starting 3 validations.\n2026-10-15T23:23:18+00:00 dns-debian13 pebble[2945]: Pebble 2026/10/15 23:23:18 Attempting to validate w/ HTTP: http://mail.set18.test:80/.well-known/acme-challenge/8U7NEpPdGyLA03g6QuyewCmTxyJ9LIjLfFk13kuzNJY\n2026-10-15T23:23:18+00:00 dns-debian13 pebble[2945]: Pebble 2026/10/15 23:23:18 Attempting to validate w/ HTTP: http://mail.set18.test:80/.well-known/acme-challenge/8U7NEpPdGyLA03g6QuyewCmTxyJ9LIjLfFk13kuzNJY\n2026-10-15T23:23:18+00:00 dns-debian13 pebble[2945]: Pebble 2026/10/15 23:23:18 Attempting to validate w/ HTTP: http://mail.set18.test:80/.well-known/acme-challenge/8U7NEpPdGyLA03g6QuyewCmTxyJ9LIjLfFk13kuzNJY\n2026-10-15T23:23:18+00:00 dns-debian13 pebble[2945]: Pebble 2026/10/15 23:23:18 authz 1TqJGsjd4sPs4uGyJBO01Exg0SpHmWcSUaLPIJ1vSKM set VALID by completed challenge pwgnsD_dmB9LjyG9qeTAcCws9Of4lT_LK_-OERUy0t8\n2026-10-15T23:23:19+00:00 dns-debian13 pebble[2945]: Pebble 2026/10/15 23:23:19 POST /authZ/ -> calling handler()\n2026-10-15T23:23:19+00:00 dns-debian13 pebble[2945]: Pebble 2026/10/15 23:23:19 POST /finalize-order/ -> calling handler()\n2026-10-15T23:23:19+00:00 dns-debian13 pebble[2945]: Pebble 2026/10/15 23:23:19 Order Dq7jhhJ45wyMoMOYedCz3uswtAs5-jljVORC3-YGPe0 is fully authorized. Processing finalization\n2026-10-15T23:23:19+00:00 dns-debian13 pebble[2945]: Pebble 2026/10/15 23:23:19 Issued certificate serial 777b8a714b5256be for order Dq7jhhJ45wyMoMOYedCz3uswtAs5-jljVORC3-YGPe0\n2026-10-15T23:23:20+00:00 dns-debian13 pebble[2945]: Pebble 2026/10/15 23:23:20 POST /my-order/ -> calling handler()\n2026-10-15T23:23:20+00:00 dns-debian13 pebble[2945]: Pebble 2026/10/15 23:23:20 POST /certZ/ -> calling handler()\n",
+    "queries_last": [
+      {
+        "answers": [],
+        "as": "8.8.8.8",
+        "at": "2026-10-15T23:21:37Z.647",
+        "client": "192.0.2.10",
+        "epoch": 1792106497.647,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "mail.set18.test",
+        "qtype": 1,
+        "rcode": 3
+      },
+      {
+        "answers": [],
+        "as": "1.1.1.1",
+        "at": "2026-10-15T23:21:37Z.648",
+        "client": "192.0.2.10",
+        "epoch": 1792106497.648,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "mail.set18.test",
+        "qtype": 1,
+        "rcode": 3
+      },
+      {
+        "answers": [],
+        "as": "8.8.8.8",
+        "at": "2026-10-15T23:21:57Z.661",
+        "client": "192.0.2.10",
+        "epoch": 1792106517.661,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "mail.set18.test",
+        "qtype": 28,
+        "rcode": 3
+      },
+      {
+        "answers": [],
+        "as": "8.8.8.8",
+        "at": "2026-10-15T23:21:57Z.661",
+        "client": "192.0.2.10",
+        "epoch": 1792106517.661,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "mail.set18.test",
+        "qtype": 1,
+        "rcode": 3
+      },
+      {
+        "answers": [],
+        "as": "1.1.1.1",
+        "at": "2026-10-15T23:21:57Z.661",
+        "client": "192.0.2.10",
+        "epoch": 1792106517.661,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "mail.set18.test",
+        "qtype": 28,
+        "rcode": 3
+      },
+      {
+        "answers": [],
+        "as": "1.1.1.1",
+        "at": "2026-10-15T23:21:57Z.661",
+        "client": "192.0.2.10",
+        "epoch": 1792106517.661,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "mail.set18.test",
+        "qtype": 1,
+        "rcode": 3
+      },
+      {
+        "answers": [],
+        "as": "1.1.1.1",
+        "at": "2026-10-15T23:22:17Z.674",
+        "client": "192.0.2.10",
+        "epoch": 1792106537.674,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "mail.set18.test",
+        "qtype": 28,
+        "rcode": 3
+      },
+      {
+        "answers": [],
+        "as": "8.8.8.8",
+        "at": "2026-10-15T23:22:17Z.674",
+        "client": "192.0.2.10",
+        "epoch": 1792106537.674,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "mail.set18.test",
+        "qtype": 28,
+        "rcode": 3
+      },
+      {
+        "answers": [],
+        "as": "1.1.1.1",
+        "at": "2026-10-15T23:22:17Z.674",
+        "client": "192.0.2.10",
+        "epoch": 1792106537.674,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "mail.set18.test",
+        "qtype": 1,
+        "rcode": 3
+      },
+      {
+        "answers": [],
+        "as": "8.8.8.8",
+        "at": "2026-10-15T23:22:17Z.675",
+        "client": "192.0.2.10",
+        "epoch": 1792106537.675,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "mail.set18.test",
+        "qtype": 1,
+        "rcode": 3
+      },
+      {
+        "answers": [],
+        "as": "8.8.8.8",
+        "at": "2026-10-15T23:22:37Z.685",
+        "client": "192.0.2.10",
+        "epoch": 1792106557.685,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "mail.set18.test",
+        "qtype": 28,
+        "rcode": 3
+      },
+      {
+        "answers": [],
+        "as": "8.8.8.8",
+        "at": "2026-10-15T23:22:37Z.685",
+        "client": "192.0.2.10",
+        "epoch": 1792106557.685,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "mail.set18.test",
+        "qtype": 1,
+        "rcode": 3
+      },
+      {
+        "answers": [],
+        "as": "1.1.1.1",
+        "at": "2026-10-15T23:22:37Z.685",
+        "client": "192.0.2.10",
+        "epoch": 1792106557.685,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "mail.set18.test",
+        "qtype": 28,
+        "rcode": 3
+      },
+      {
+        "answers": [],
+        "as": "1.1.1.1",
+        "at": "2026-10-15T23:22:37Z.685",
+        "client": "192.0.2.10",
+        "epoch": 1792106557.685,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "mail.set18.test",
+        "qtype": 1,
+        "rcode": 3
+      },
+      {
+        "answers": [],
+        "as": "8.8.8.8",
+        "at": "2026-10-15T23:22:57Z.697",
+        "client": "192.0.2.10",
+        "epoch": 1792106577.697,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "mail.set18.test",
+        "qtype": 28,
+        "rcode": 3
+      },
+      {
+        "answers": [],
+        "as": "8.8.8.8",
+        "at": "2026-10-15T23:22:57Z.697",
+        "client": "192.0.2.10",
+        "epoch": 1792106577.697,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "mail.set18.test",
+        "qtype": 1,
+        "rcode": 3
+      },
+      {
+        "answers": [],
+        "as": "1.1.1.1",
+        "at": "2026-10-15T23:22:57Z.697",
+        "client": "192.0.2.10",
+        "epoch": 1792106577.697,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "mail.set18.test",
+        "qtype": 28,
+        "rcode": 3
+      },
+      {
+        "answers": [],
+        "as": "1.1.1.1",
+        "at": "2026-10-15T23:22:57Z.698",
+        "client": "192.0.2.10",
+        "epoch": 1792106577.698,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "mail.set18.test",
+        "qtype": 1,
+        "rcode": 3
+      },
+      {
+        "answers": [
+          "192.0.2.10"
+        ],
+        "as": "1.1.1.1",
+        "at": "2026-10-15T23:23:09Z.402",
+        "client": "192.0.2.10",
+        "epoch": 1792106589.402,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "mail.set18.test",
+        "qtype": 1,
+        "rcode": 0
+      },
+      {
+        "answers": [
+          "host-192-0-2-10.provider.set18.test"
+        ],
+        "as": "8.8.8.8",
+        "at": "2026-10-15T23:23:09Z.403",
+        "client": "192.0.2.10",
+        "epoch": 1792106589.403,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "10.2.0.192.in-addr.arpa",
+        "qtype": 12,
+        "rcode": 0
+      },
+      {
+        "answers": [],
+        "as": "8.8.8.8",
+        "at": "2026-10-15T23:23:17Z.713",
+        "client": "192.0.2.10",
+        "epoch": 1792106597.713,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "mail.set18.test",
+        "qtype": 28,
+        "rcode": 0
+      },
+      {
+        "answers": [],
+        "as": "1.1.1.1",
+        "at": "2026-10-15T23:23:17Z.713",
+        "client": "192.0.2.10",
+        "epoch": 1792106597.713,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "mail.set18.test",
+        "qtype": 28,
+        "rcode": 0
+      },
+      {
+        "answers": [
+          "192.0.2.10"
+        ],
+        "as": "8.8.8.8",
+        "at": "2026-10-15T23:23:17Z.713",
+        "client": "192.0.2.10",
+        "epoch": 1792106597.713,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "mail.set18.test",
+        "qtype": 1,
+        "rcode": 0
+      },
+      {
+        "answers": [
+          "192.0.2.10"
+        ],
+        "as": "1.1.1.1",
+        "at": "2026-10-15T23:23:17Z.713",
+        "client": "192.0.2.10",
+        "epoch": 1792106597.713,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "mail.set18.test",
+        "qtype": 1,
+        "rcode": 0
+      },
+      {
+        "answers": [],
+        "as": "pebble",
+        "at": "2026-10-15T23:23:18Z.366",
+        "client": "127.0.0.1",
+        "epoch": 1792106598.366,
+        "event": "query",
+        "proto": "udp",
+        "qname": "mail.set18.test",
+        "qtype": 28,
+        "rcode": 0
+      },
+      {
+        "answers": [],
+        "as": "pebble",
+        "at": "2026-10-15T23:23:18Z.366",
+        "client": "127.0.0.1",
+        "epoch": 1792106598.366,
+        "event": "query",
+        "proto": "udp",
+        "qname": "mail.set18.test",
+        "qtype": 28,
+        "rcode": 0
+      },
+      {
+        "answers": [],
+        "as": "pebble",
+        "at": "2026-10-15T23:23:18Z.366",
+        "client": "127.0.0.1",
+        "epoch": 1792106598.366,
+        "event": "query",
+        "proto": "udp",
+        "qname": "mail.set18.test",
+        "qtype": 28,
+        "rcode": 0
+      },
+      {
+        "answers": [
+          "192.0.2.10"
+        ],
+        "as": "pebble",
+        "at": "2026-10-15T23:23:18Z.367",
+        "client": "127.0.0.1",
+        "epoch": 1792106598.367,
+        "event": "query",
+        "proto": "udp",
+        "qname": "mail.set18.test",
+        "qtype": 1,
+        "rcode": 0
+      },
+      {
+        "answers": [
+          "192.0.2.10"
+        ],
+        "as": "pebble",
+        "at": "2026-10-15T23:23:18Z.367",
+        "client": "127.0.0.1",
+        "epoch": 1792106598.367,
+        "event": "query",
+        "proto": "udp",
+        "qname": "mail.set18.test",
+        "qtype": 1,
+        "rcode": 0
+      },
+      {
+        "answers": [
+          "192.0.2.10"
+        ],
+        "as": "pebble",
+        "at": "2026-10-15T23:23:18Z.367",
+        "client": "127.0.0.1",
+        "epoch": 1792106598.367,
+        "event": "query",
+        "proto": "udp",
+        "qname": "mail.set18.test",
+        "qtype": 1,
+        "rcode": 0
+      },
+      {
+        "answers": [
+          "host-192-0-2-10.provider.set18.test"
+        ],
+        "as": "1.1.1.1",
+        "at": "2026-10-15T23:23:35Z.568",
+        "client": "192.0.2.10",
+        "epoch": 1792106615.568,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "10.2.0.192.in-addr.arpa",
+        "qtype": 12,
+        "rcode": 0
+      },
+      {
+        "answers": [
+          "host-192-0-2-10.provider.set18.test"
+        ],
+        "as": "8.8.8.8",
+        "at": "2026-10-15T23:23:35Z.569",
+        "client": "192.0.2.10",
+        "epoch": 1792106615.569,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "10.2.0.192.in-addr.arpa",
+        "qtype": 12,
+        "rcode": 0
+      },
+      {
+        "answers": [
+          "host-192-0-2-10.provider.set18.test"
+        ],
+        "as": "1.1.1.1",
+        "at": "2026-10-15T23:23:56Z.461",
+        "client": "192.0.2.10",
+        "epoch": 1792106636.461,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "10.2.0.192.in-addr.arpa",
+        "qtype": 12,
+        "rcode": 0
+      },
+      {
+        "answers": [
+          "host-192-0-2-10.provider.set18.test"
+        ],
+        "as": "8.8.8.8",
+        "at": "2026-10-15T23:23:56Z.462",
+        "client": "192.0.2.10",
+        "epoch": 1792106636.462,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "10.2.0.192.in-addr.arpa",
+        "qtype": 12,
+        "rcode": 0
+      },
+      {
+        "answers": [
+          "host-192-0-2-10.provider.set18.test"
+        ],
+        "as": "1.1.1.1",
+        "at": "2026-10-15T23:24:17Z.284",
+        "client": "192.0.2.10",
+        "epoch": 1792106657.284,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "10.2.0.192.in-addr.arpa",
+        "qtype": 12,
+        "rcode": 0
+      },
+      {
+        "answers": [
+          "host-192-0-2-10.provider.set18.test"
+        ],
+        "as": "8.8.8.8",
+        "at": "2026-10-15T23:24:17Z.285",
+        "client": "192.0.2.10",
+        "epoch": 1792106657.285,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "10.2.0.192.in-addr.arpa",
+        "qtype": 12,
+        "rcode": 0
+      },
+      {
+        "answers": [
+          "host-192-0-2-10.provider.set18.test"
+        ],
+        "as": "1.1.1.1",
+        "at": "2026-10-15T23:24:24Z.947",
+        "client": "192.0.2.10",
+        "epoch": 1792106664.947,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "10.2.0.192.in-addr.arpa",
+        "qtype": 12,
+        "rcode": 0
+      },
+      {
+        "answers": [
+          "host-192-0-2-10.provider.set18.test"
+        ],
+        "as": "8.8.8.8",
+        "at": "2026-10-15T23:24:24Z.948",
+        "client": "192.0.2.10",
+        "epoch": 1792106664.948,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "10.2.0.192.in-addr.arpa",
+        "qtype": 12,
+        "rcode": 0
+      },
+      {
+        "answers": [
+          "192.0.2.10"
+        ],
+        "as": "1.1.1.1",
+        "at": "2026-10-15T23:24:30Z.648",
+        "client": "192.0.2.10",
+        "epoch": 1792106670.648,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "mail.set18.test",
+        "qtype": 1,
+        "rcode": 0
+      },
+      {
+        "answers": [
+          "mail.set18.test"
+        ],
+        "as": "8.8.8.8",
+        "at": "2026-10-15T23:24:30Z.648",
+        "client": "192.0.2.10",
+        "epoch": 1792106670.648,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "10.2.0.192.in-addr.arpa",
+        "qtype": 12,
+        "rcode": 0
+      },
+      {
+        "answers": [
+          "mail.set18.test"
+        ],
+        "as": "1.1.1.1",
+        "at": "2026-10-15T23:24:34Z.612",
+        "client": "192.0.2.10",
+        "epoch": 1792106674.612,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "10.2.0.192.in-addr.arpa",
+        "qtype": 12,
+        "rcode": 0
+      },
+      {
+        "answers": [
+          "192.0.2.10"
+        ],
+        "as": "1.1.1.1",
+        "at": "2026-10-15T23:24:34Z.613",
+        "client": "192.0.2.10",
+        "epoch": 1792106674.613,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "mail.set18.test",
+        "qtype": 1,
+        "rcode": 0
+      },
+      {
+        "answers": [
+          "mail.set18.test"
+        ],
+        "as": "1.1.1.1",
+        "at": "2026-10-15T23:24:35Z.435",
+        "client": "192.0.2.10",
+        "epoch": 1792106675.435,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "10.2.0.192.in-addr.arpa",
+        "qtype": 12,
+        "rcode": 0
+      },
+      {
+        "answers": [
+          "192.0.2.10"
+        ],
+        "as": "1.1.1.1",
+        "at": "2026-10-15T23:24:35Z.436",
+        "client": "192.0.2.10",
+        "epoch": 1792106675.436,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "mail.set18.test",
+        "qtype": 1,
+        "rcode": 0
+      },
+      {
+        "answers": [
+          "mail.set18.test"
+        ],
+        "as": "1.1.1.1",
+        "at": "2026-10-15T23:24:36Z.264",
+        "client": "192.0.2.10",
+        "epoch": 1792106676.264,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "10.2.0.192.in-addr.arpa",
+        "qtype": 12,
+        "rcode": 0
+      },
+      {
+        "answers": [
+          "192.0.2.10"
+        ],
+        "as": "1.1.1.1",
+        "at": "2026-10-15T23:24:36Z.264",
+        "client": "192.0.2.10",
+        "epoch": 1792106676.264,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "mail.set18.test",
+        "qtype": 1,
+        "rcode": 0
+      },
+      {
+        "answers": [
+          "mail.set18.test"
+        ],
+        "as": "1.1.1.1",
+        "at": "2026-10-15T23:24:38Z.459",
+        "client": "192.0.2.10",
+        "epoch": 1792106678.459,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "10.2.0.192.in-addr.arpa",
+        "qtype": 12,
+        "rcode": 0
+      },
+      {
+        "answers": [
+          "192.0.2.10"
+        ],
+        "as": "1.1.1.1",
+        "at": "2026-10-15T23:24:38Z.459",
+        "client": "192.0.2.10",
+        "epoch": 1792106678.459,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "mail.set18.test",
+        "qtype": 1,
+        "rcode": 0
+      },
+      {
+        "answers": [
+          "mail.set18.test"
+        ],
+        "as": "1.1.1.1",
+        "at": "2026-10-15T23:24:39Z.355",
+        "client": "192.0.2.10",
+        "epoch": 1792106679.355,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "10.2.0.192.in-addr.arpa",
+        "qtype": 12,
+        "rcode": 0
+      },
+      {
+        "answers": [
+          "192.0.2.10"
+        ],
+        "as": "1.1.1.1",
+        "at": "2026-10-15T23:24:39Z.356",
+        "client": "192.0.2.10",
+        "epoch": 1792106679.356,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "mail.set18.test",
+        "qtype": 1,
+        "rcode": 0
+      },
+      {
+        "answers": [
+          "mail.set18.test"
+        ],
+        "as": "1.1.1.1",
+        "at": "2026-10-15T23:24:57Z.459",
+        "client": "192.0.2.10",
+        "epoch": 1792106697.459,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "10.2.0.192.in-addr.arpa",
+        "qtype": 12,
+        "rcode": 0
+      },
+      {
+        "answers": [
+          "192.0.2.10"
+        ],
+        "as": "1.1.1.1",
+        "at": "2026-10-15T23:24:57Z.459",
+        "client": "192.0.2.10",
+        "epoch": 1792106697.459,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "mail.set18.test",
+        "qtype": 1,
+        "rcode": 0
+      },
+      {
+        "answers": [
+          "mail.set18.test"
+        ],
+        "as": "1.1.1.1",
+        "at": "2026-10-15T23:25:30Z.852",
+        "client": "192.0.2.10",
+        "epoch": 1792106730.852,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "10.2.0.192.in-addr.arpa",
+        "qtype": 12,
+        "rcode": 0
+      },
+      {
+        "answers": [
+          "192.0.2.10"
+        ],
+        "as": "1.1.1.1",
+        "at": "2026-10-15T23:25:30Z.852",
+        "client": "192.0.2.10",
+        "epoch": 1792106730.852,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "mail.set18.test",
+        "qtype": 1,
+        "rcode": 0
+      },
+      {
+        "answers": [
+          "mail.set18.test"
+        ],
+        "as": "1.1.1.1",
+        "at": "2026-10-15T23:26:04Z.396",
+        "client": "192.0.2.10",
+        "epoch": 1792106764.396,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "10.2.0.192.in-addr.arpa",
+        "qtype": 12,
+        "rcode": 0
+      },
+      {
+        "answers": [
+          "192.0.2.10"
+        ],
+        "as": "1.1.1.1",
+        "at": "2026-10-15T23:26:04Z.397",
+        "client": "192.0.2.10",
+        "epoch": 1792106764.397,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "mail.set18.test",
+        "qtype": 1,
+        "rcode": 0
+      },
+      {
+        "answers": [
+          "mail.set18.test"
+        ],
+        "as": "1.1.1.1",
+        "at": "2026-10-15T23:26:37Z.864",
+        "client": "192.0.2.10",
+        "epoch": 1792106797.864,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "10.2.0.192.in-addr.arpa",
+        "qtype": 12,
+        "rcode": 0
+      },
+      {
+        "answers": [
+          "192.0.2.10"
+        ],
+        "as": "1.1.1.1",
+        "at": "2026-10-15T23:26:37Z.865",
+        "client": "192.0.2.10",
+        "epoch": 1792106797.865,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "mail.set18.test",
+        "qtype": 1,
+        "rcode": 0
+      },
+      {
+        "answers": [
+          "mail.set18.test"
+        ],
+        "as": "1.1.1.1",
+        "at": "2026-10-15T23:27:11Z.327",
+        "client": "192.0.2.10",
+        "epoch": 1792106831.327,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "10.2.0.192.in-addr.arpa",
+        "qtype": 12,
+        "rcode": 0
+      },
+      {
+        "answers": [
+          "192.0.2.10"
+        ],
+        "as": "1.1.1.1",
+        "at": "2026-10-15T23:27:11Z.327",
+        "client": "192.0.2.10",
+        "epoch": 1792106831.327,
+        "event": "query",
+        "proto": "tcp",
+        "qname": "mail.set18.test",
+        "qtype": 1,
+        "rcode": 0
+      }
+    ],
+    "queries_total": 180,
+    "record_changes": [
+      {
+        "at": "2026-10-15T22:54:15Z.899",
+        "epoch": 1792104855.899,
+        "event": "initial",
+        "records": {
+          "A": {
+            "host-192-0-2-10.provider.set18.test": [
+              "192.0.2.10"
+            ],
+            "panel.set18.test": [
+              "192.0.2.10"
+            ]
+          },
+          "PTR": {
+            "10.2.0.192.in-addr.arpa": "host-192-0-2-10.provider.set18.test"
+          },
+          "note": "panel.set18.test prepared before setup; mail.set18.test absent until the owner adds it; PTR at the provider's default name"
+        }
+      },
+      {
+        "after": {
+          "A": {
+            "host-192-0-2-10.provider.set18.test": [
+              "192.0.2.10"
+            ],
+            "mail.set18.test": [
+              "192.0.2.10"
+            ],
+            "panel.set18.test": [
+              "192.0.2.10"
+            ]
+          },
+          "PTR": {
+            "10.2.0.192.in-addr.arpa": "host-192-0-2-10.provider.set18.test"
+          },
+          "note": "panel.set18.test prepared before setup; mail.set18.test absent until the owner adds it; PTR at the provider's default name"
+        },
+        "at": "2026-10-15T23:23:09Z.400",
+        "before": {
+          "A": {
+            "host-192-0-2-10.provider.set18.test": [
+              "192.0.2.10"
+            ],
+            "panel.set18.test": [
+              "192.0.2.10"
+            ]
+          },
+          "PTR": {
+            "10.2.0.192.in-addr.arpa": "host-192-0-2-10.provider.set18.test"
+          },
+          "note": "panel.set18.test prepared before setup; mail.set18.test absent until the owner adds it; PTR at the provider's default name"
+        },
+        "epoch": 1792106589.4,
+        "event": "mail-a",
+        "meaning": "the owner adds the A record mail.set18.test -> 192.0.2.10 at the DNS provider (lab record table)"
+      },
+      {
+        "after": {
+          "A": {
+            "host-192-0-2-10.provider.set18.test": [
+              "192.0.2.10"
+            ],
+            "mail.set18.test": [
+              "192.0.2.10"
+            ],
+            "panel.set18.test": [
+              "192.0.2.10"
+            ]
+          },
+          "PTR": {
+            "10.2.0.192.in-addr.arpa": "mail.set18.test"
+          },
+          "note": "panel.set18.test prepared before setup; mail.set18.test absent until the owner adds it; PTR at the provider's default name"
+        },
+        "at": "2026-10-15T23:24:30Z.646",
+        "before": {
+          "A": {
+            "host-192-0-2-10.provider.set18.test": [
+              "192.0.2.10"
+            ],
+            "mail.set18.test": [
+              "192.0.2.10"
+            ],
+            "panel.set18.test": [
+              "192.0.2.10"
+            ]
+          },
+          "PTR": {
+            "10.2.0.192.in-addr.arpa": "host-192-0-2-10.provider.set18.test"
+          },
+          "note": "panel.set18.test prepared before setup; mail.set18.test absent until the owner adds it; PTR at the provider's default name"
+        },
+        "epoch": 1792106670.646,
+        "event": "ptr-mail",
+        "meaning": "the owner sets the reverse DNS of 192.0.2.10 to mail.set18.test at the server provider (lab record table)"
+      }
+    ],
+    "records": {
+      "A": {
+        "host-192-0-2-10.provider.set18.test": [
+          "192.0.2.10"
+        ],
+        "mail.set18.test": [
+          "192.0.2.10"
+        ],
+        "panel.set18.test": [
+          "192.0.2.10"
+        ]
+      },
+      "PTR": {
+        "10.2.0.192.in-addr.arpa": "mail.set18.test"
+      },
+      "note": "panel.set18.test prepared before setup; mail.set18.test absent until the owner adds it; PTR at the provider's default name"
+    },
+    "route_get_1_1_1_1": "1.1.1.1 via 10.0.2.2 dev mgmt0 src 192.0.2.10 uid 0 \n    cache",
+    "routes": "default via 10.0.2.2 dev mgmt0 proto dhcp src 10.0.2.15 metric 100 \n1.1.1.1 via 10.0.2.2 dev mgmt0 src 192.0.2.10 \n8.8.8.8 via 10.0.2.2 dev mgmt0 src 192.0.2.10 \n9.9.9.9 via 10.0.2.2 dev mgmt0 src 192.0.2.10 \n10.0.2.0/24 dev mgmt0 proto kernel scope link src 10.0.2.15 metric 100 \n10.0.2.2 dev mgmt0 proto dhcp scope link src 10.0.2.15 metric 100 \n10.0.2.3 dev mgmt0 proto dhcp scope link src 10.0.2.15 metric 100 \n192.0.2.0/24 dev peer0 proto kernel scope link src 192.0.2.10 \n208.67.222.222 via 10.0.2.2 dev mgmt0 src 192.0.2.10 \n",
+    "units": "NRestarts=0\nId=set18-lab-resolver.service\nActiveState=active\nSubState=running\n\nNRestarts=0\nId=set18-lab-pebble.service\nActiveState=active\nSubState=running\n\nNRestarts=0\nId=set18-lab-guard.service\nActiveState=active\nSubState=running\n"
+  }
+}

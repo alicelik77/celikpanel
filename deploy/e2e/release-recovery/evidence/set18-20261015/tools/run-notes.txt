@@ -1,0 +1,3 @@
+2026-10-15T23:10:56Z browser run 1 (tool cold-load-set18.mjs first text) stopped by the coordinator after D1 (the extension wizard shows the completed run); window h18b-setup kept open
+2026-10-15T23:12:25Z browser run 2 (cell resume) started on window h18b-setup
+2026-10-15T23:23:09Z H3: coordinator requested lab-mail-a through the handover directory

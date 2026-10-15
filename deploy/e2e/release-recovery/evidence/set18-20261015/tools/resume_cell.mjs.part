@@ -1,0 +1,90 @@
+
+// The page's own session makes one wizard request (a stand-in for a button D1 makes unreachable); recorded in full.
+async function pageCall(page, label, method, path, body) {
+    const value = await page.evaluate(async (m, p, b) => {
+        const response = await fetch(p, { method: m, headers: b ? { 'Content-Type': 'application/json' } : {}, body: b ? JSON.stringify(b) : undefined, cache: 'no-store' });
+        const text = await response.text();
+        let json = null; try { json = JSON.parse(text); } catch { /* not JSON */ }
+        return { status: response.status, json, text: json ? null : text.slice(0, 600) };
+    }, method, path, body ?? null).catch(error => ({ error: String(error.message).slice(0, 300) }));
+    await note('stand-in-request', { label, method, path, body, status: value.status, answer: value.json ?? value.text ?? value.error });
+    return value;
+}
+
+async function cellResume() {
+    const summary = { cell: hand.cell, lab: LAB, mode: 'resume', chrome: await browser.version(), started_at: iso() };
+    const write = async () => writeFile(join(dir, 'resume-summary.json'), redact(JSON.stringify(summary, null, 2)));
+    await note('start', { mode: 'resume' });
+    const page = await newPage('owner-resume', 'en', '1280');
+    await toFront(page);
+    try {
+        phase = 'r1-extension-opened';
+        await signIn(page);
+        await page.goto(base + '/setup', { waitUntil: 'domcontentloaded', timeout: 60000 });
+        await settle(page, 6000);
+        summary.r1_sample = await page.evaluate(SETUP_SAMPLE).catch(() => null);
+        summary.r1_stop_button_present = await page.evaluate(() => !!document.querySelector('[data-setup-extend-stop]'));
+        await shot(page, 'r1-extension-shows-completed-run', {}, true);
+        summary.r1_state = await pageCall(page, 'read setup', 'GET', '/api/v1/setup');
+        summary.r1_operation = await pageCall(page, 'read latest operation', 'GET', '/api/v1/setup/operation');
+        // stand-in for "Stop extending" (not shown: the wizard believes an operation is open)
+        phase = 'r2-stop-extending';
+        const cancel = await pageCall(page, 'stand-in for Stop extending', 'POST', '/api/v1/setup/extend', { revision: summary.r1_state.json?.revision, action: 'cancel' });
+        summary.r2_cancel = { status: cancel.status, state: cancel.json && { status: cancel.json.status, extension: cancel.json.extension, revision: cancel.json.revision, draft_components: cancel.json.draft?.customization || null, mail_hostname: cancel.json.draft?.mail_hostname ?? null } };
+        await page.goto(base + '/setup', { waitUntil: 'domcontentloaded', timeout: 60000 });
+        await settle(page, 4000);
+        summary.r2_sample = await page.evaluate(SETUP_SAMPLE).catch(() => null);
+        await shot(page, 'r2-ready-again', {}, true);
+        summary.r2_operation = await pageCall(page, 'read latest operation after stopping', 'GET', '/api/v1/setup/operation');
+        const services = await pageCall(page, 'read components after stopping', 'GET', '/api/v1/managed-services');
+        summary.r2_services = services.json ? { status: services.status, installed: (services.json.services || []).filter(s => s.installed).map(s => s.id), mail_profiles: (services.json.mail_profiles || []).map(x => ({ id: x.id, status: x.status })) } : services;
+        await write();
+        // cell 2 from the ready screen: the owner presses "Extend setup"
+        phase = 'r3-extend-from-ready';
+        summary.r3_extend_clicked = await clickText(page, /^Extend setup$/);
+        await settle(page, 6000);
+        summary.r3_sample = await page.evaluate(SETUP_SAMPLE).catch(() => null);
+        summary.r3_purpose_step_shown = await page.evaluate(() => !!document.querySelector('input[name="setup-purpose"]'));
+        await shot(page, 'r3-after-extend-setup', {}, true);
+        const state3 = await pageCall(page, 'read setup after Extend setup', 'GET', '/api/v1/setup');
+        // stand-in for "Customize selection" -> Postfix + Dovecot -> mail host name -> Review (not shown under D1)
+        const begin = await pageCall(page, 'stand-in for the wizard adding Core Mail and the mail host name', 'POST', '/api/v1/setup/extend', { revision: state3.json?.revision, action: 'begin', mail_profile: 'core-mail', mail_hostname: LAB.mail_hostname });
+        summary.r3_begin = { status: begin.status, extension: begin.json?.extension, revision: begin.json?.revision, components: begin.json?.draft?.customization || null, purpose: begin.json?.draft?.purpose, mail_hostname: begin.json?.draft?.mail_hostname, base: begin.json?.extension_base ? { purpose: begin.json.extension_base.purpose, customization: begin.json.extension_base.customization || null, mail_hostname: begin.json.extension_base.mail_hostname || null } : null };
+        const plan = await pageCall(page, 'stand-in for Review setup plan', 'POST', '/api/v1/setup/plan', { revision: begin.json?.revision });
+        summary.r3_plan = plan.json ? { status: plan.status, id: plan.json.id, can_start: plan.json.can_start, blockers: plan.json.blockers, steps: (plan.json.steps || []).map(s => `${s.id} ${s.kind} ${s.target}${s.qualifier ? ' ' + s.qualifier : ''}`), components: plan.json.components, tcp: plan.json.tcp_ports, udp: plan.json.udp_ports, hostname_change: plan.json.hostname_change || null, contact: plan.json.contact_email } : plan;
+        await writeFile(join(dir, 'r3-plan.json'), redact(JSON.stringify(plan.json, null, 2)));
+        await write();
+        if (!plan.json?.can_start) { summary.r3_stopped = 'the plan cannot start'; await write(); return summary; }
+        phase = 'c2-run';
+        const requestID = randomBytes(16).toString('hex');
+        // the wizard's own start marker, so the page follows this request exactly as after its own start
+        await page.evaluate((key, marker) => { try { localStorage.setItem(key, JSON.stringify(marker)); } catch { /* none */ } }, `celikpanel.setup.start.${secret.username}`, { request_id: requestID, plan_id: plan.json.id, revision: begin.json?.revision, panel_domain: LAB.panel_domain });
+        summary.c2_start_pressed_at = iso();
+        const start = await pageCall(page, 'stand-in for Start reviewed setup', 'POST', '/api/v1/setup/start', { plan_id: plan.json.id, request_id: requestID, confirmed: true });
+        summary.c2_start = { status: start.status, execution: start.json && { id: start.json.id, status: start.json.status, phase: start.json.phase } };
+        await page.goto(base + '/setup', { waitUntil: 'domcontentloaded', timeout: 60000 });
+        await settle(page, 1500);
+        summary.c2 = await follow(page, 'c2', 90 * 60000, true);
+        await leafRecord('after-c2');
+        await write();
+        if (summary.c2.ready_at) {
+            await settle(page, 2000);
+            summary.c2_ready_variants = await variants(page, 'v-ready-after-extension', null);
+            await page.goto(base + '/services', { waitUntil: 'domcontentloaded', timeout: 60000 });
+            await settle(page, 3000);
+            await page.evaluate(() => document.getElementById('mail-stacks')?.scrollIntoView({ block: 'start' }));
+            await shot(page, 'c2-components-after', {}, true);
+        }
+        const end = await pageCall(page, 'read setup at the end', 'GET', '/api/v1/setup');
+        summary.c2_state = { status: end.status, setup_status: end.json?.status, extension: end.json?.extension, checks: end.json?.checks };
+        summary.lab_state = await prep('lab-state', 120000);
+        summary.ended_at = iso();
+        await write();
+        return summary;
+    } catch (error) {
+        summary.error = String(error.stack || error.message).slice(0, 2000);
+        await shot(page, 'resume-error', {}, true).catch(() => {});
+        await write();
+        return summary;
+    }
+}

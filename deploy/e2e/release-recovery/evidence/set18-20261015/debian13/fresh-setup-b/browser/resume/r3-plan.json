@@ -1,0 +1,152 @@
+{
+  "server_ip": "192.0.2.10",
+  "id": "be3c80283d439b8680e26b14524e6aa3",
+  "version": 1,
+  "revision": 7,
+  "purpose": "web",
+  "steps": [
+    {
+      "id": "01-dns",
+      "kind": "dns",
+      "target": "external"
+    },
+    {
+      "id": "02-mail_profile",
+      "kind": "mail_profile",
+      "target": "core-mail"
+    },
+    {
+      "id": "03-firewall",
+      "kind": "firewall",
+      "target": "enable_and_persist"
+    },
+    {
+      "id": "04-access_dns",
+      "kind": "access_dns",
+      "target": "panel.set18.test",
+      "qualifier": "192.0.2.10"
+    },
+    {
+      "id": "05-access_dns",
+      "kind": "access_dns",
+      "target": "mail.set18.test",
+      "qualifier": "192.0.2.10"
+    },
+    {
+      "id": "06-mail_certificate",
+      "kind": "mail_certificate",
+      "target": "mail.set18.test"
+    },
+    {
+      "id": "07-mail_enrollment",
+      "kind": "mail_enrollment",
+      "target": "mail-renewal",
+      "qualifier": "d0f44a526bb3cd88c1f0b1ea705e8ba1096954a199179d96ffa02b2269887aba"
+    },
+    {
+      "id": "08-verify",
+      "kind": "verify",
+      "target": "web"
+    }
+  ],
+  "blockers": [],
+  "can_start": true,
+  "tcp_ports": [
+    22,
+    25,
+    80,
+    110,
+    143,
+    443,
+    465,
+    587,
+    993,
+    995,
+    2083
+  ],
+  "udp_ports": [],
+  "preserve_ssh": true,
+  "persist_firewall": true,
+  "draft": {
+    "purpose": "web",
+    "remote_dns_connection_id": "",
+    "panel_domain": "panel.set18.test",
+    "mail_hostname": "mail.set18.test",
+    "dns_mode": "external",
+    "dns_engine": "bind",
+    "dns_role": "primary",
+    "ns1": "",
+    "ns2": "",
+    "local_ip": "192.0.2.10",
+    "peer_ip": "",
+    "peer_ns": "",
+    "node_version": "",
+    "database": "mariadb",
+    "customization": {
+      "components": [
+        "dovecot",
+        "mariadb",
+        "nginx",
+        "php-fpm",
+        "postfix"
+      ]
+    }
+  },
+  "build_commit": "c84ebee347202ae3d647726c9bf096662dcf621e",
+  "contact_email": "labadmin@example.invalid",
+  "actor": {
+    "UserID": 2,
+    "IP": "127.0.0.1",
+    "UserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36"
+  },
+  "components": [
+    {
+      "id": "postfix",
+      "selected": true,
+      "required": false,
+      "installed": false
+    },
+    {
+      "id": "dovecot",
+      "selected": true,
+      "required": false,
+      "installed": false
+    },
+    {
+      "id": "mariadb",
+      "selected": true,
+      "required": false,
+      "installed": true
+    },
+    {
+      "id": "nginx",
+      "selected": true,
+      "required": false,
+      "installed": true
+    },
+    {
+      "id": "php-fpm",
+      "selected": true,
+      "required": false,
+      "installed": true
+    },
+    {
+      "id": "nftables",
+      "selected": false,
+      "required": true,
+      "installed": true
+    },
+    {
+      "id": "certbot",
+      "selected": false,
+      "required": true,
+      "installed": true
+    },
+    {
+      "id": "cron",
+      "selected": false,
+      "required": true,
+      "installed": true
+    }
+  ]
+}

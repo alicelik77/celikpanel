@@ -1,0 +1,59 @@
+Prepare your server
+
+Choose what this server will do. CelikPanel will prepare a plan before making changes.
+
+Review what will change
+
+Only the operations listed below will run. Existing data is preserved; unsupported or conflicting components block the plan.
+
+The Panel restarts once during this setup
+
+At the step “Secure panel access: panel.set18.test”, the Panel gets its certificate and restarts once to start using it. This page then loses its connection for a short time. That is planned: setup continues on the server and this page reconnects by itself. You do not need to do anything.
+
+Once that step has finished, the Panel can also be opened at its secure address: https://panel.set18.test:19319
+
+You sign in again there, and setup shows the same progress. If the browser warns about the certificate at that address, the step has not finished yet, and this page keeps following setup by itself.
+
+Configure DNS: Use an external DNS provider
+
+Prepare component: Nginx
+
+Prepare component: PHP-FPM
+
+Prepare component: MariaDB
+
+Prepare component: Scheduled tasks (cron)
+
+Prepare component: Let’s Encrypt client (certbot)
+
+Apply and save the firewall policy
+
+Verify public DNS before certificate issuance: panel.set18.test
+
+192.0.2.10
+
+Secure panel access: panel.set18.test
+
+The Panel restarts once here.
+
+Verify the prepared server
+
+Permanent firewall policy
+Keep current SSH and panel access, allow the required ports below, and restore the policy after reboot. The server checks management access before applying it.
+TCP
+22, 80, 443, 2083
+UDP
+No additional ports
+Certificate contact email
+labadmin@example.invalid
+
+For each new domain, add the exact DNS records shown by CelikPanel at your provider. A domain is not reported as published until its records are verified.
+
+I reviewed the components, access rules and identity changes, and want to start this plan.
+Back
+Start reviewed setup
+I’ll configure it myself
+
+Your choice is saved for this server, so this prompt will not appear again. You can reopen the wizard in Settings → Server setup. Security and service requirements still apply.
+
+Access and recovery

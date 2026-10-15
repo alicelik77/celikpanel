@@ -1,0 +1,2 @@
+1.2G	/var/tmp/cp-release-drill-s18-a
+2.2G	/var/tmp/cp-release-drill-s18-b

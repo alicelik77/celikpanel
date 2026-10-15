@@ -1,0 +1,6 @@
+0ae79e6318edb77c1384449ff61d4f8a51ae4513dae53565aef214a12f1a1b93  deploy/e2e/release-recovery/set18_fixture.py
+4ec98a4199ee51078330cbde79488487aa65cf9587f8014ab9aae77e90ac4c70  deploy/e2e/release-recovery/build-set18-artifacts.sh
+45f55ad85da15440983bfa8940c943a98b609e5da764bd7669f0b7c8c226655c  deploy/e2e/release-recovery/set18_trial.py
+f079686a3a3140b8a3137e2d354554cb9ea7705a4641fce4dc07b038e2340c94  deploy/e2e/release-recovery/run-set18.sh
+6067948f3c909549196ae24d23fd22090d251133fea81c3e8546237672f57f39  deploy/e2e/release-recovery/guest_set18_lab_dns.py
+e826c83c7984c0eec168e0efe649ed82ee39c7c5588812312f4b640f33416036  web/tools/browser-inspect/cold-load-set18.mjs

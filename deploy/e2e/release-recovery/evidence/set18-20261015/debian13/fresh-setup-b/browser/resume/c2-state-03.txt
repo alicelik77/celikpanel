@@ -1,0 +1,49 @@
+Extend this server’s setup
+
+Follow the setup steps and their recorded results here.
+
+Preparing your server
+What happens at this step
+
+Secure mail access: mail.set18.test
+
+The certificate uses mail.set18.test. At your DNS provider, point this name to this server’s public IP address and allow time for the public record to resolve.
+
+Checks and how to continue
+
+Configure DNS: Use an external DNS provider
+
+Completed
+
+Prepare mail profile: Core Mail
+
+Completed
+
+Apply and save the firewall policy
+
+Completed
+
+Verify public DNS before certificate issuance: panel.set18.test
+
+192.0.2.10
+
+Completed
+
+Verify public DNS before certificate issuance: mail.set18.test
+
+192.0.2.10
+
+Completed
+
+Secure mail access: mail.set18.test
+
+In progress
+
+Prepare independent mail certificate renewal
+
+Waiting
+
+Verify the prepared server
+
+Waiting
+Access and recovery

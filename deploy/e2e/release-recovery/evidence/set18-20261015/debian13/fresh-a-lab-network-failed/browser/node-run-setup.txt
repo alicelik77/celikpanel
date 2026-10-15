@@ -1,0 +1,1 @@
+wait for //wsl.localhost/archlinux/var/tmp/cp-set18/hand/h18a-setup/ready.json start=2026-10-15T22:50:17Z limit=5400s
