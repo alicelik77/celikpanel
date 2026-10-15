@@ -53,7 +53,7 @@ const stub = dataModule(`
   const fill = (text, vars) => Object.entries(vars || {}).reduce((out, [name, value]) => out.split('{' + name + '}').join(String(value)), text);
   const i18n = { t: (key, vars) => (globalThis.batch3Words?.[key] !== undefined ? fill(globalThis.batch3Words[key], vars) : vars ? key + JSON.stringify(vars) : key), locale: 'en' };
   export const useI18n = () => i18n;
-  export const useNavigate = () => () => true;
+  export const useNavigate = () => (path) => { globalThis.batch3Navigated?.push(path); return true; };
   export const Link = (props) => React.createElement('a', null, props.children);
   export const showToast = (...args) => globalThis.currentTest.toasts.push(args);
   export const ServiceShell = (props) => React.createElement('main', null, props.children);
@@ -63,7 +63,8 @@ const stub = dataModule(`
   export const ServerSetupDNSAccess = () => null, ServerSetupDNSManagement = () => null;
   export const dnsEngineText = (locale, key) => key;
   export const dnsEngineIdentityStagesATakeover = () => false, dnsEngineMutationsHeld = () => false, dnsEngineIdentityReviewLocked = () => false;
-  export const Dialog = () => null;
+  // A dialog is drawn only where a test asks for it (2026-10-16).
+  export const Dialog = (props) => (globalThis.batch3Dialogs ? React.createElement('dialog', null, props.title, props.description, props.children, props.footerLead, props.actions) : null);
   // The settings form is mounted on the route that stages the names before an
   // engine is chosen; its first read is what this test withholds.
   export const dnsEngineSettingsFlow = () => 'identityStaging', exactStagedIdentityIsCurrent = () => true;
@@ -85,6 +86,9 @@ const stub = dataModule(`
   export const createPortal = () => null;
   export const scanRefusedBySetup = () => false;
   export const useNavigationBlocker = () => {};
+  // The setup state the Components page reads to add mail through setup
+  // (2026-10-16); none unless a test gives one.
+  export const useServerSetup = () => globalThis.batch3Setup ?? null;
 `);
 const shared = sharedLayer(stub);
 const lib = (path, more = {}) => shared.compile(path, more);
@@ -126,6 +130,7 @@ const ServiceList = await pick(lib('components/ServiceList.tsx', {
   '/lib/componentCensus': lib('lib/componentCensus.ts'),
   '/lib/mailProfileText': lib('lib/mailProfileText.ts'),
   '/lib/componentName': lib('lib/componentName.ts'),
+  '/lib/serverSetup': lib('lib/serverSetup.ts'),
 }), 'ServiceList');
 globalThis.window ??= globalThis;
 // The real DNS engine card, mounted with the real decoder of its state. What
@@ -1125,4 +1130,146 @@ test('the sentence for an unverifiable stored record says the panel checks by it
     assert.match(sentence, /CelikPanel/);
   }
   assert.notEqual(en['err.SERVICE_STATE_UNVERIFIED'], tr['err.SERVICE_STATE_UNVERIFIED']);
+});
+
+
+// --- Second server as a full peer, part 1 (2026-10-16) ----------------------------
+// Gap 7: on a secondary DNS server the mail box says where the record is made
+// (the primary, or the DNS provider) and the exact record, and offers no
+// button to a DNS screen that cannot create one there.
+// Gap 2: on a server whose setup has finished, a mail profile is added through
+// a setup extension and reviewed in setup, so it gets setup's steps and checks.
+// Gap 3: a saved mail host name can be corrected, with what changes said first.
+const secondaryGuidance = { reason: 'dns_secondary', primary_nameserver: 'ns1.example.net', primary_ip: '203.0.113.10', record_name: 'mail.boston.example.net', record_type: 'A', record_value: '198.51.100.7' };
+const secondaryScan = (guidance) => ({ ...freshScan(), dns_identity_ready: false, ...(guidance ? { mail_dns_guidance: guidance } : {}) });
+const readySetup = () => ({ version: 1, revision: 7, origin: 'fresh', status: 'ready', required: false, guidance: 'guided', checks: [],
+  draft: { purpose: 'web', panel_domain: 'boston.example.net', mail_hostname: '', dns_mode: 'external', remote_dns_connection_id: '', dns_engine: 'bind', dns_role: 'primary', ns1: '', ns2: '', local_ip: '', peer_ip: '', peer_ns: '', node_version: '', database: 'mariadb' } });
+const savedNameScan = () => ({ ...freshScan(), mail_hostname: { current: 'server1', hostname: 'mail.example.net', source: 'saved', current_usable: true, will_set_hostname: false } });
+function setupContext(snapshot) {
+  const context = { snapshot, accepted: [], reload: async () => context.snapshot, accept(next) { context.snapshot = next; context.accepted.push(next); } };
+  return context;
+}
+function browserStorage() {
+  // The least of a document a dialog's effects touch.
+  globalThis.document = { addEventListener() {}, removeEventListener() {}, getElementById: () => null, activeElement: null, body: { style: {} } };
+  const kept = new Map();
+  globalThis.sessionStorage = { getItem: (key) => kept.get(key) ?? null, setItem: (key, value) => kept.set(key, String(value)), removeItem: (key) => kept.delete(key) };
+  return kept;
+}
+const hasNode = (marker) => tree.root.findAll((node) => node.props && node.props[marker] !== undefined).length > 0;
+
+test('Components: on a secondary DNS server the mail box names the primary and the exact record, with no DNS-settings dead end', async () => {
+  serve({ '/api/v1/managed-services': secondaryScan(secondaryGuidance) });
+  await mount(React.createElement(ServiceList, {}));
+  try {
+    await settle();
+    const shown = text();
+    assert.ok(shown.includes('services.mailProfiles.secondary.body{"primary":"ns1.example.net (203.0.113.10)"}'), shown.slice(0, 800));
+    const record = tree.root.find((node) => node.props && node.props['data-mail-dns-record'] !== undefined);
+    assert.equal(label(record), 'mail.boston.example.netA198.51.100.7');
+    assert.equal(buttons().filter((node) => label(node).includes('services.mailProfiles.configureDNS')).length, 0, 'the dead-end button is still offered');
+    assert.ok(buttons().some((node) => label(node).includes('services.mailProfiles.secondary.openSetup')));
+    assert.ok(shown.includes('services.mailProfiles.secondary.short'));
+  } finally { await unmount(); }
+  // Control: the same server without the guidance keeps the generic box.
+  serve({ '/api/v1/managed-services': secondaryScan(null) });
+  await mount(React.createElement(ServiceList, {}));
+  try {
+    await settle();
+    assert.ok(buttons().some((node) => label(node).includes('services.mailProfiles.configureDNS')));
+    assert.ok(!text().includes('services.mailProfiles.secondary.body'));
+  } finally { await unmount(); }
+});
+
+test('Components: a server whose setup has finished adds mail through a setup extension and opens setup on its access step', async () => {
+  globalThis.batch3Dialogs = true;
+  globalThis.batch3Navigated = [];
+  const kept = browserStorage();
+  const context = globalThis.batch3Setup = setupContext(readySetup());
+  let sent = null;
+  serve({
+    '/api/v1/managed-services': savedNameScan(),
+    '/api/v1/setup/extend': (init) => {
+      sent = JSON.parse(init.body);
+      const base = readySetup();
+      return answer({ ...base, revision: 8, status: 'draft', extension: true, extension_base: base.draft, draft: { ...base.draft, mail_hostname: 'mail.example.net', customization: { components: ['dovecot', 'mariadb', 'nginx', 'php-fpm', 'postfix'] } } });
+    },
+  });
+  await mount(React.createElement(ServiceList, {}));
+  try {
+    await settle();
+    await press('services.mailProfiles.install');
+    const shown = text();
+    assert.ok(hasNode('data-mail-profile-route') && shown.includes('services.mailProfiles.setupRoute.note'), shown.slice(0, 800));
+    assert.ok(!shown.includes('services.mailProfiles.plan.acknowledgement'), 'nothing starts here, so nothing is acknowledged here');
+    await press('services.mailProfiles.setupRoute.confirm');
+    assert.deepEqual(sent, { revision: 7, action: 'begin', mail_profile: 'core-mail' });
+    assert.equal(requests.filter((line) => line === 'POST /api/v1/setup/extend').length, 1);
+    assert.equal(requests.filter((line) => line.startsWith('POST /api/v1/service/profile/install')).length, 0, 'the weaker direct install ran');
+    assert.equal(context.snapshot.extension, true);
+    assert.deepEqual(globalThis.batch3Navigated, ['/setup']);
+    const editor = JSON.parse(kept.get('celikpanel.setup.editor.admin'));
+    assert.equal(editor.step, 'access');
+    assert.equal(editor.revision, 8);
+  } finally { await unmount(); delete globalThis.batch3Dialogs; delete globalThis.batch3Setup; delete globalThis.batch3Navigated; delete globalThis.sessionStorage; delete globalThis.document; }
+  // Control: without a finished setup the dialog installs directly and says
+  // that its certificate is temporary.
+  globalThis.batch3Dialogs = true;
+  browserStorage();
+  serve({ '/api/v1/managed-services': savedNameScan() });
+  await mount(React.createElement(ServiceList, {}));
+  try {
+    await settle();
+    await press('services.mailProfiles.install');
+    const shown = text();
+    assert.ok(shown.includes('services.mailProfiles.directRoute.note') && shown.includes('services.mailProfiles.plan.acknowledgement'), shown.slice(0, 800));
+    assert.ok(!shown.includes('services.mailProfiles.setupRoute.confirm'));
+  } finally { await unmount(); delete globalThis.batch3Dialogs; delete globalThis.sessionStorage; delete globalThis.document; }
+});
+
+test('Components: a refused setup extension keeps the dialog open with the reason and opens nothing', async () => {
+  globalThis.batch3Dialogs = true;
+  globalThis.batch3Navigated = [];
+  browserStorage();
+  globalThis.batch3Setup = setupContext(readySetup());
+  serve({
+    '/api/v1/managed-services': savedNameScan(),
+    '/api/v1/setup/extend': () => answer({ error: 'busy', code: 'server_setup_busy' }, 409),
+  });
+  await mount(React.createElement(ServiceList, {}));
+  try {
+    await settle();
+    await press('services.mailProfiles.install');
+    await press('services.mailProfiles.setupRoute.confirm');
+    assert.ok(text().includes('services.mailProfiles.setupRoute.busy'), text().slice(0, 800));
+    assert.deepEqual(globalThis.batch3Navigated, []);
+    assert.equal(requests.filter((line) => line === 'POST /api/v1/setup/extend').length, 1, 'the refused request was sent again');
+  } finally { await unmount(); delete globalThis.batch3Dialogs; delete globalThis.batch3Setup; delete globalThis.batch3Navigated; delete globalThis.sessionStorage; delete globalThis.document; }
+});
+
+test('Components: a saved mail host name can be corrected, and what changes is said before it is confirmed', async () => {
+  globalThis.batch3Dialogs = true;
+  globalThis.batch3Navigated = [];
+  browserStorage();
+  globalThis.batch3Setup = setupContext(readySetup());
+  let sent = null;
+  serve({
+    '/api/v1/managed-services': savedNameScan(),
+    '/api/v1/setup/extend': (init) => { sent = JSON.parse(init.body); return answer({ ...readySetup(), revision: 8, status: 'draft', extension: true, extension_base: readySetup().draft }); },
+  });
+  await mount(React.createElement(ServiceList, {}));
+  try {
+    await settle();
+    await press('services.mailProfiles.install');
+    assert.ok(text().includes('services.mailProfiles.hostname.settled'), text().slice(0, 800));
+    assert.ok(!hasNode('data-mail-hostname-effects'), 'effects said before any change');
+    await press('services.mailProfiles.hostname.change');
+    const input = tree.root.find((node) => node.props && node.props.id === 'mail-profile-hostname');
+    assert.equal(input.props.value, 'mail.example.net');
+    await act(async () => { input.props.onChange({ target: { value: 'smtp.example.net' } }); });
+    const effects = tree.root.find((node) => node.props && node.props['data-mail-hostname-effects'] !== undefined);
+    assert.equal(label(effects), 'services.mailProfiles.hostname.changeEffects{"old":"mail.example.net","new":"smtp.example.net"}');
+    await press('services.mailProfiles.setupRoute.confirm');
+    assert.deepEqual(sent, { revision: 7, action: 'begin', mail_profile: 'core-mail', mail_hostname: 'smtp.example.net' });
+  } finally { await unmount(); delete globalThis.batch3Dialogs; delete globalThis.batch3Setup; delete globalThis.batch3Navigated; delete globalThis.sessionStorage; delete globalThis.document; }
 });

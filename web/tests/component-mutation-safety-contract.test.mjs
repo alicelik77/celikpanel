@@ -112,7 +112,11 @@ test('mail profiles stay visible but cannot start before verified DNS identity i
   assert.match(operationSource, /typeof payload\.dns_identity_ready !== 'boolean'/);
   assert.match(serviceSource, /<MailProfileCards/);
   assert.match(serviceSource, /dnsIdentityReady=\{dnsIdentityReady\}/);
-  assert.match(serviceSource, /!dnsIdentityReady && \(/);
+  // On a secondary DNS server the box names where the record is created and
+  // offers no DNS-settings button (2026-10-16); elsewhere it keeps it.
+  assert.match(serviceSource, /!dnsIdentityReady && !secondary && \(/);
+  assert.match(serviceSource, /const secondary = !dnsIdentityReady && dnsGuidance !== null;/);
+  assert.match(serviceSource, /\{secondary && dnsGuidance && \(/);
   assert.match(serviceSource, /disabled=\{disabled \|\| !dnsIdentityReady \|\| !actionable\}/);
   assert.match(serviceSource, /navigate\('\/settings\?section=dns'\)/);
 });
