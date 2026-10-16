@@ -5457,3 +5457,52 @@ değiştirmez. 2026-10-16, içindeki her şeyin saat tarihidir.
 - **Değişiklik.** Tamamlanmış bir posta profili, onun bütün bileşenlerini içeren başka bir profil aynı taramada doğrulanmışsa doğrulanmış sayılır (Webmail ile Spam Korumalı Posta doğrulanmışken Frankfurt'ta Temel Posta Onar istiyordu); yalnız bileşen durumu yine kanıt değildir ve kendi son denemesi süren ya da başarısız olan profil durumunu korur. Bir posta profili yalnız posta bileşenleriyle (Postfix, Dovecot, Rspamd, Roundcube) kurulu sayılır; böylece Boston'da yalnız Nginx artık "Kısmen kurulu" okunmaz. Sayfa "Web postayı onar"ı olağan bir eylem olarak çizer, doğrulanmış postayı düz sözle söyler, Son etkinlikte posta profillerini adıyla anar ve sayıları doğru söyler. **Hiçbir P0 işi kapanmaz ya da ilerlemez**; P0.1–P0.5 kısmi kalır.
 - **Şema ve kurtarma.** Şema 44, geçiş yok; kurtarma davranışı değişmedi; yeni tipli hata ya da uyarı kodu yok. Yönetilen hizmetler yanıtı artık kendi `latest_attempt_status` değeri `none` olan `verified: true` bir posta profili taşıyabilir; paketlenmiş sayfanın kapalı çözücüsü bunu kabul eder ve kendi denemesi süren ya da başarısız olan doğrulanmış profili yine reddeder.
 - **Kanıt ve açık.** Go `./cmd/panel/...`: vet temiz; 1585 üst düzey test geçer, 6 atlanır, 1696 alt test geçer; iki yeni test ve karşı denetimleri (makbuz yok, doğrulanmamış makbuz, Temel Posta'nın süren ya da başarısız kendi denemesi, taramada hazır olmayan büyük profil, tek yönlü ilişki; yalnız web parçaları için denetim olarak Roundcube ve Postfix). Web 1558/1558 (yeni bir test dosyası ve Web postayı onar tonu için bağlanmış bir Bileşenler testi); `tsc --noEmit` ile paket bütçeli üretim derlemesi geçer. Sahibin 16 Ekim 2026 talimatıyla gerçek sistem kaydı yok; kurulu bir sunucuda hiçbir şey ölçülmedi. Düzeltmeler sahip alpha.93'e panelin kendi güncelleme ekranından geçtikten sonra görülür; alpha.88–alpha.92 girdilerinin açık bıraktığı her şey açık kalır. Bkz. [sürüm notları](RELEASE-NOTES-v0.1.0-alpha.93.tr.md).
+
+### v0.1.0-alpha.93'ün yayımlanması (yayımda kod değişikliği yok; ilke 2 ve 6; D-022; D-024; D-025; D-033; 2026-10-16)
+
+D-025 ilke 2 (kanıtın bir anlamı ve yaşam döngüsü vardır: bilinmeyen; yok, boş ya
+da başarılı değildir) ve 6 (hazır olma, ilerleme ve erişim birbirinden bağımsız
+kalır); D-022; D-024; D-033. **Hiçbir P0 işi kapanmaz ya da ilerlemez.**
+P0.1–P0.5 kısmi kalır ve her açık kabul işi açık kalır. Bu girdi tek bir sürümü
+kaydeder; kod, şema ya da kurtarma davranışını değiştirmez. 2026-10-16, içindeki
+her şeyin saat tarihidir.
+
+- **Yayımlama.** Bütün adımları sürümü hazırlayan kişi yaptı, sahibin kalıcı
+  talimatı uyarınca; kurulu panel güncellemelerini yalnız sahip yapar. #224
+  numaralı çekme isteği `0897ee9238bdfee295149adfe8b16968dd6fe0de` olarak
+  birleştirildi; `v0.1.0-alpha.93` açıklamalı etiketi (nesne
+  `c64b60021c3fc6b6bb506e99bdaf6b1354f531cf`, ağaç
+  `7b18e5252045eef74264a946d41efcbbc927b545`); 2026-10-16T22:04:09Z'de altı
+  dosyalı ön sürüm; arşiv SHA-256
+  `887fbe30a29c6fa364bfafc44ec676414c32e41758417738ff4cecc287f9fc39`, 66.240.206
+  bayt; manifest sıra 93 ve doğrulanan bir imza (aynı anahtar); `get.sh` 93'ü
+  sabitler; politika 92'den sonra 93. Portal paketi (SHA-256
+  `b27504acc26d7c291d7e0ec3ebfb051ac04996b27af65e78e99c3a0ea934f83c`, iki kez aynı
+  derlendi) önceki v0.1.0-alpha.92 ile yayımlandı: committed, genel doğrulama 26
+  istekten 26'sı, `CELIKPANEL_DOWNLOAD_PORTAL_PUBLISHED`, ardından dışarıdan
+  okundu. Hazırlayan kişi bir WSL konuğunda bir indirmeden denetledi; hazırlayan
+  kişi bildirdi, burada bir dosyada kayıtlı değil.
+- **Sürüm zincirinde bir olay; hiçbir sürümü etkilemedi.** Zincirin ilk koşusu,
+  çekme isteğinin birleştirmesi çakışma yüzünden reddedildikten sonra betik devam
+  ettiği için yanlış commit'i etiketledi; CI'ın politika koruması etiketi
+  ("tag does not match policy version") henüz hiçbir sürüm ya da dosya yokken
+  reddetti (ilke 2: etiketin yanlış olduğuna betiğin kanaati değil koruma karar
+  verdi). Etiket silindi ve betik artık çekme isteği birleştirilmemişse, `main`
+  onun birleştirme commit'ine eşit değilse ya da `main`'in politika sürümü
+  etiketle aynı değilse durur. Bu, ürüne değil sürüm araçlarına yapılmış bir
+  düzeltmedir ve hiçbir kurulu sunucu hakkında kanıt değildir.
+- **Gerçek sistem kaydı.** Yayım için yok; alpha.93 için de yok, sahibin 16 Ekim
+  2026 talimatıyla. alpha.93'ün kodunu yalnız bileşen ve bağlanmış testler
+  kapsar (yukarıdaki aday girdisine bakın).
+- **Kurulu paneller.** Boston ve Frankfurt bu yazılırken alpha.92'deydi; sahip
+  henüz ikisini de alpha.93'e güncellememişti. Kurulu bir sunucudan hiçbir şey
+  kaydedilmedi ve çıkarılmamalıdır (ilke 6: bir sürümün yayımlanması hiçbir
+  sunucunun durumu değildir).
+- **Şema ya da sürüm geçişi.** Yok: şema 44; sürüm sırası sürüm hazırlığında
+  92'den 93'e geçti. **Kurtarma davranışı.** Yayımla ve alpha.93 ile değişmez.
+- **Açık.** alpha.93 aday girdisinin ve alpha.90–alpha.92 girdilerinin açık
+  bıraktığı her şey; bunlar arasında: altı düzeltme henüz bir kurulu sunucuda
+  görülmedi; sakin "Güncelleme tamamlanıyor" görünümü ilk kez alpha.92'den
+  güncellemede görülür; canlı adım görünümü görüldü diye bildirilmedi;
+  değiştirilen yardımcıları paylaşan geri alma yolları yalnız sözleşme testleriyle
+  denendi.
