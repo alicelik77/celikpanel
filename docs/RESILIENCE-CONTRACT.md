@@ -6021,3 +6021,59 @@ entry.
 - **No code change since alpha.88.** `git diff --stat 1cb3628ff HEAD -- cmd internal web` is empty; the release sequence moves from 88 to 89 (release preparation only). **No P0 item is closed or advanced**; P0.1 to P0.5 stay partial.
 - **Schema and recovery.** Schema 44, no migration; recovery behaviour unchanged. No native evidence, by the owner's instruction of 2026-10-16.
 - **Open.** Everything the alpha.88 entry leaves open stays open; the step view is first observed on the update from alpha.88. See the [release notes](RELEASE-NOTES-v0.1.0-alpha.89.md).
+
+### Publication of v0.1.0-alpha.88 and v0.1.0-alpha.89 (no code change in the publication; invariants 2 and 6; D-024; D-032; D-033; 2026-10-16)
+
+D-025 invariants 2 (evidence has a meaning and a lifecycle: unknown is not
+absent, empty or success) and 6 (readiness, progress and access remain
+independent); D-024; D-032; D-033. **No P0 item is closed or advanced.** P0.1 to
+P0.5 stay partial and every open acceptance item stays open. This entry records
+two publications and the owner's report of the updates; it changes no code,
+schema or recovery behaviour. 2026-10-16 is the clock date of everything in it.
+
+- **Publication.** Both releases were published on 2026-10-16 by the release
+  preparer under the owner's instruction of 2026-10-15 (installed-panel updates
+  remain the owner's only). v0.1.0-alpha.88: pull request #217 squash-merged as
+  `1cb3628ff1969f3fc2e9f0d848b7adf629a815b0` (tree
+  `abc2a0a3ee177f064d6b8af8304d66ae1feb1c63`); main run 38865909812 success, 24
+  jobs (the preparer's chain script first stopped early because `gh run watch`
+  returned before the run completed, safely before any variable or tag step,
+  and was resumed); variable 87 to 88; annotated tag (object
+  `851766854005a2a223edd9e097afd7853a02ff30`) after the main run; tag run
+  38867798325 success; release at 2026-10-16T07:49:41Z; archive SHA-256
+  `feaf77476a100425a2f048b47ece9da85a45585b5b8f3387692b497ad04a45d3`, 66,196,013
+  bytes. v0.1.0-alpha.89: pull request #218 squash-merged as
+  `ac36fccf4e4238a8bc4624356a478ba8dab20b34` (tree
+  `29f08b6bef1ca6e19c4f02890f83cfeb3f678433`); main run success; variable 88 to
+  89; tag run 38874797963 success; release at 2026-10-16T08:57:23Z; archive
+  SHA-256 `58c6911be7a1b640b0bafb595a8c2b54451d70d8238d51b1c726a76bb7f59526`,
+  66,195,105 bytes; its interface bundle is byte-identical to alpha.88's. Assets
+  and portal packages were checked by the preparer from a download and the
+  portal was published by the preparer for each (committed, public verification
+  ok, 26 requests, then read from outside); reported by the preparer, not
+  recorded in a file here. Limits: tag files via `git archive` on Windows, no
+  promoter rehearsal against a copy of the live site, no file-by-file
+  comparison with the previous package, the publisher's own test not run. The
+  "Publication record" of each set of release notes lists them.
+- **Installed panels (the owner's report, two screenshots, about 09:30Z).** The
+  owner started both updates from the panel's own update screen. Both servers
+  went directly from their previous version to alpha.89 (the sequence floor
+  admits it): Frankfurt from alpha.87, Boston from a version not reported
+  (alpha.85 or later). No server ran alpha.88. Both show current version
+  v0.1.0-alpha.89, commit `ac36fccf4e42…` and a card with five completed steps.
+  The update ran on the previous version's page, so the live step view during
+  the restart (invariant 6: progress shown independently of access) was not
+  seen; it is first seen on the next update, from alpha.89. The restart
+  measurement the alpha.88 design records and the Agent's progress read are not
+  confirmed by this report. Not reported: the licence page, the Agent's
+  version, Frankfurt's setup final step, Boston's "Extend this server's setup",
+  `postconf -n`. This entry is not acceptance evidence for any item.
+- **Schema or version transition.** None: schema 44 in both; the release
+  sequence moved 87 to 88 and 88 to 89 in the release preparations (`7231afdbf`
+  and the alpha.89 preparation). **Recovery behaviour.** Unchanged. No native
+  record, by the owner's instruction of 2026-10-16.
+- **Open.** Everything the alpha.88 and alpha.89 candidate entries leave open,
+  among them: the Agent's progress read, the floor timestamp and the restart
+  measurement not observed in a real update; the live step view not yet seen;
+  a retry of the same release reports no verify boundary; the D-033 item that a
+  good "no new update" state is drawn with a warning icon on Frankfurt's page.

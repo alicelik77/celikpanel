@@ -1,9 +1,9 @@
-# v0.1.0-alpha.88 (candidate, not published)
+# v0.1.0-alpha.88 (published 2026-10-16)
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.88.tr.md)
 
-This is the candidate that follows v0.1.0-alpha.87. It is not published (see
-"Publication record" at the end). The number v0.1.0-alpha.88 was chosen by the
+This is the release that follows v0.1.0-alpha.87. It was published on
+2026-10-16 (see "Publication record" at the end). The number v0.1.0-alpha.88 was chosen by the
 release preparer under the owner's standing instruction of 2026-10-13 ("hem
 sürüm numaraları hem de commit işlemleri için bana sormana gerek yok": no need
 to ask the owner about version numbers or commits); it is not a number the
@@ -179,23 +179,101 @@ These are known. They are not hidden defects.
 
 ## Publication record
 
-Not published. Nothing is recorded here until it is published. Open before
-publication:
+Everything below is dated 2026-10-16 (UTC unless a time zone is named). Items
+1 to 3 are the preparation, written before the publication and kept as history.
+The merge, the repository variable, the tag, the checks of the assets and of the
+portal package, the portal publication and the read of the public site were
+done by the person who prepared the release, under the owner's instruction of
+2026-10-15 (the merge, the repository variable, the tag and the portal
+publication are the preparer's; installed-panel updates remain the owner's
+only). This entry stores none of the results below as a file in the repository.
+No native record was made, by the owner's instruction of 2026-10-16.
+
+**What happened.**
 
 1. The release preparation: done in commit `7231afdbf`, which changes no file
    under `cmd/`, `internal/` or `web/`: the release sequence policy 88 after 87
    with `a8cddcb546302daa0f5eb65b18fe6b9566b69e66` as previous, the
    `download-portal/get.sh` pins (sequence 88 and version v0.1.0-alpha.88; the
    public-key pin unchanged), the README version lines and three contract
-   tests. Still open: the repository variable
-   `CELIKPANEL_RELEASE_SEQUENCE=88`, set before the tag. The real archive is
-   built and signed by CI on the tag.
-2. A pull request for the branch and its CI run.
-3. Merge, the run on the main commit, tag, the check of the six signed assets,
-   and the download portal's publication.
-4. After the release is published, the owner of each installed server updates
-   that server from the panel's own update screen. This is a separate step from
-   every step above; no one else starts it.
+   tests.
+2. The number: v0.1.0-alpha.88, chosen by the release preparer under the
+   owner's standing instruction of 2026-10-13; not a number the owner named.
+3. The measurement before publication: component tests and browser batch 17
+   only (see "What was measured, and how").
+4. Pull request #217 was squash-merged by the release preparer into `main`.
+   Main is commit `1cb3628ff1969f3fc2e9f0d848b7adf629a815b0`, tree
+   `abc2a0a3ee177f064d6b8af8304d66ae1feb1c63`.
+5. The run on that main commit (38865909812) concluded success, 24 jobs. The
+   preparer's chain script first stopped early because `gh run watch` returned
+   before the run had completed; it stopped safely before any variable or tag
+   step and was resumed. The tag was pushed only after the run finished.
+6. The preparer set `CELIKPANEL_RELEASE_SEQUENCE` from 87 to 88, then created
+   and pushed the annotated tag `v0.1.0-alpha.88` (tag object
+   `851766854005a2a223edd9e097afd7853a02ff30`). The tag's run (38867798325)
+   concluded success, and the release was published at 2026-10-16T07:49:41Z as
+   a pre-release with six assets.
+7. The assets were checked by the preparer from a download, in the
+   `CelikPanel-S2-Debian` guest (reported by the preparer, not recorded in a
+   file here). The platform archive and the generic archive are byte-identical,
+   66,196,013 bytes, SHA-256
+   `feaf77476a100425a2f048b47ece9da85a45585b5b8f3387692b497ad04a45d3`. The
+   signed manifest is 332 bytes (sequence 88, the main commit above,
+   `published_at` 2026-10-16T07:13:59Z, linux/amd64; SHA-256 begins
+   `c54fb279…`); its signature verifies against the tracked signing key (SHA-256
+   `7eadeb0b…`, the same as before). The archive has 237 members; its
+   `libexec/get.sh` pins 88 (SHA-256
+   `e92526426388a9db629b29be877922c43d6dbd7493ee509966e23d359b6be198`); its
+   `release-sequence-policy` says 88 with previous 87 (`a8cddcb54…`);
+   `release.commit` and `release.tree` equal the tag's. The binaries are
+   go1.26.5, trimpath, CGO_ENABLED=0; the only extra build tag is
+   `celikpanel_mail_renewal` on `mail-renewal-runtime/renew`. The guards
+   returned 0. The interface bundle is `web/dist/assets/app-DAi4coqL.js`
+   (248,222 bytes, SHA-256
+   `64bf049d1b90628826961d086db3f4ec0aa252e5dab5336eaa771480f4b47cfd`).
+8. The download portal package: 132,766,352 bytes, SHA-256
+   `83bfe1327b4802f7c2d9b1ffdbb371227b1418a84c33a36cb8a83b502bfa63b5`, 54
+   members, built twice byte-identical; the promoter's package rules accepted
+   it; the portal contract test, the verifier tests (17) and the promotion
+   tests (14) passed.
+9. The preparer published the portal with `deploy/publish-download-portal.ps1`
+   (previous v0.1.0-alpha.87): status committed, backup
+   `httpdocs.before-v0.1.0-alpha.88.20261016T080028Z…`, public verification ok
+   (26 requests), `CELIKPANEL_DOWNLOAD_PORTAL_PUBLISHED`.
+10. A read from outside at 08:00:37Z: `releases/latest.txt` v0.1.0-alpha.88,
+    `get.sh` pins 88, `releases/latest.json` sequence 88, commit `1cb3628f…`,
+    SHA-256 `feaf7747…`.
+11. Installed servers: see "After the publication" below. Neither went through
+    alpha.88.
+
+**After the publication (the owner's report, 2026-10-16, about 09:30Z).** The
+owner started both updates from the panel's own update screen and reported them
+with two screenshots. Both installed servers went **directly from their
+previous version to v0.1.0-alpha.89** (the owner: "doğrudan 89'a güncelledi");
+the updater's sequence floor admits it. Frankfurt came from alpha.87; Boston's
+previous version was not reported (alpha.85 or later). So neither server ran
+alpha.88, and nothing in this record describes alpha.88 running on an installed
+server. What the screenshots show of alpha.89 is in the
+[alpha.89 notes](RELEASE-NOTES-v0.1.0-alpha.89.md), "Publication record". Because
+each update ran on the previous version's page, the step view of this release
+was not seen live during a restart; it is first seen on the next update, from
+alpha.89.
+
+**Not done, and what publication does not change.**
+
+- The installed servers were not updated by the release preparer.
+- Not reported by the owner and not recorded: the licence page, the Agent's
+  version, Frankfurt's setup final step, Boston's "Extend this server's setup",
+  `postconf -n >/dev/null`.
+- Limits of the checks: the tag's files were taken with `git archive` on
+  Windows; no promoter rehearsal against a copy of the live site; the archive
+  was not compared file by file with alpha.87's; the publisher's own test was
+  not run. The Agent's progress read, the floor timestamp and the restart
+  measurement were not observed during a real update.
+- Publication is not product acceptance. The limits under "Limits of this
+  release" are unchanged. All five foundation items of the
+  [resilience contract](RESILIENCE-CONTRACT.md) remain partial; P0.1 to P0.5
+  stay partial and no P0 item is closed or advanced.
 
 Install this release only through CelikPanel's update interface. Publishing it
 does not update installed servers; only the owner of a server starts its

@@ -1,9 +1,9 @@
-# v0.1.0-alpha.88 (aday, yayımlanmadı)
+# v0.1.0-alpha.88 (16 Ekim 2026'da yayımlandı)
 
 [English](RELEASE-NOTES-v0.1.0-alpha.88.md)
 
-Bu, v0.1.0-alpha.87'yi izleyen adaydır. Yayımlanmadı (sondaki "Yayımlama
-kaydı"na bakın). v0.1.0-alpha.88 numarasını, sahibin 13 Ekim 2026 tarihli
+Bu, v0.1.0-alpha.87'yi izleyen sürümdür. 16 Ekim 2026'da yayımlandı (sondaki
+"Yayımlama kaydı"na bakın). v0.1.0-alpha.88 numarasını, sahibin 13 Ekim 2026 tarihli
 kalıcı talimatı uyarınca ("hem sürüm numaraları hem de commit işlemleri için
 bana sormana gerek yok": sürüm numaraları ve commit'ler için sahibe sorulmaz)
 sürümü hazırlayan seçti; sahibin bu sürüm için adını koyduğu bir numara
@@ -181,23 +181,99 @@ Bunlar bilinir. Gizli kusur değildir.
 
 ## Yayımlama kaydı
 
-Yayımlanmadı. Yayımlanana kadar burada hiçbir şey kaydedilmez. Yayımlamadan
-önce açık olanlar:
+Aşağıdaki her şey 16 Ekim 2026 tarihlidir (saat dilimi belirtilmedikçe UTC). 1'den
+3'e kadar olan maddeler hazırlıktır; yayımlamadan önce yazıldılar ve geçmiş
+olarak korunur. Birleştirmeyi, depo değişkenini, etiketi, dosyaların ve portal
+paketinin denetimlerini, portalın yayımlanmasını ve genel sitenin okunmasını
+sürümü hazırlayan kişi yaptı; sahibin 15 Ekim 2026 tarihli talimatı uyarınca
+(birleştirme, depo değişkeni, etiket ve portal yayımı hazırlayan kişiye aittir;
+kurulu panel güncellemelerini yalnız sahip yapar). Bu girdi, aşağıdaki sonuçların
+hiçbirini depoda bir dosya olarak saklamaz. Sahibin 16 Ekim 2026 talimatıyla
+gerçek sistem kaydı yapılmadı.
+
+**Ne oldu.**
 
 1. Sürüm hazırlığı: `7231afdbf` commit'inde yapıldı; `cmd/`, `internal/` ya da
    `web/` altında hiçbir dosyayı değiştirmez: önceki olarak
    `a8cddcb546302daa0f5eb65b18fe6b9566b69e66` ile 87'den sonra 88 sürüm sırası
    politikası, `download-portal/get.sh` sabitlemeleri (sıra 88 ve sürüm
    v0.1.0-alpha.88; açık anahtar sabitlemesi değişmedi), README sürüm satırları
-   ve üç sözleşme testi. Hâlâ açık: etiketten önce ayarlanan depo değişkeni
-   `CELIKPANEL_RELEASE_SEQUENCE=88`. Gerçek arşivi CI etikette derler ve
-   imzalar.
-2. Dal için bir çekme isteği ve onun CI koşusu.
-3. Birleştirme, ana commit üzerindeki koşu, etiket, altı imzalı varlığın
-   denetimi ve indirme portalının yayımı.
-4. Sürüm yayımlandıktan sonra her kurulu sunucunun sahibi o sunucuyu panelin
-   kendi güncelleme ekranından günceller. Bu, yukarıdaki her adımdan ayrı bir
-   adımdır; başka kimse başlatmaz.
+   ve üç sözleşme testi.
+2. Numara: v0.1.0-alpha.88; sürümü hazırlayan seçti, sahibin 13 Ekim 2026
+   tarihli kalıcı talimatı uyarınca. Sahibin adını koyduğu bir numara değildir.
+3. Yayımlama öncesi ölçüm: yalnız bileşen testleri ve 17. tarayıcı turu
+   ("Ne ölçüldü ve nasıl" bölümüne bakın).
+4. #217 numaralı çekme isteği sürümü hazırlayan kişi tarafından `main`'e squash
+   olarak birleştirildi. `main`, `1cb3628ff1969f3fc2e9f0d848b7adf629a815b0`
+   commit'idir, ağacı `abc2a0a3ee177f064d6b8af8304d66ae1feb1c63`.
+5. O `main` commit'indeki koşu (38865909812) 24 işle başarıyla sonuçlandı.
+   Hazırlayan kişinin zincir betiği önce erken durdu, çünkü `gh run watch` koşu
+   bitmeden döndü; herhangi bir değişken ya da etiket adımından önce güvenle
+   durdu ve devam ettirildi. Etiket ancak koşu bittikten sonra gönderildi.
+6. Hazırlayan kişi `CELIKPANEL_RELEASE_SEQUENCE` değişkenini 87'den 88'e çıkardı,
+   sonra `v0.1.0-alpha.88` açıklamalı etiketini (etiket nesnesi
+   `851766854005a2a223edd9e097afd7853a02ff30`) oluşturup gönderdi. Etiketin
+   koşusu (38867798325) başarıyla sonuçlandı ve sürüm 2026-10-16T07:49:41Z'de
+   ön sürüm olarak altı dosyayla yayımlandı.
+7. Dosyaları hazırlayan kişi bir indirmeden, `CelikPanel-S2-Debian` konuğunda
+   denetledi (hazırlayan kişi bildirdi, burada bir dosyada kayıtlı değil).
+   Platform arşivi ile genel arşiv bayt bayt aynıdır: 66.196.013 bayt, SHA-256
+   `feaf77476a100425a2f048b47ece9da85a45585b5b8f3387692b497ad04a45d3`. İmzalı
+   manifest 332 bayttır (sıra 88, yukarıdaki `main` commit'i, `published_at`
+   2026-10-16T07:13:59Z, linux/amd64; SHA-256 `c54fb279…` ile başlar); imzası
+   izlenen imza anahtarıyla doğrulanır (SHA-256 `7eadeb0b…`, öncekiyle aynı).
+   Arşivde 237 üye var; içindeki `libexec/get.sh` 88'i sabitler (SHA-256
+   `e92526426388a9db629b29be877922c43d6dbd7493ee509966e23d359b6be198`);
+   `release-sequence-policy` 88 der, önceki 87 (`a8cddcb54…`); `release.commit`
+   ve `release.tree` etiketinkilerle eşittir. İkili dosyalar go1.26.5, trimpath,
+   CGO_ENABLED=0 ile derlenmiştir; tek ek derleme etiketi
+   `mail-renewal-runtime/renew` üzerindeki `celikpanel_mail_renewal`'dır.
+   Bekçiler 0 döndürdü. Arayüz paketi `web/dist/assets/app-DAi4coqL.js`'tir
+   (248.222 bayt, SHA-256
+   `64bf049d1b90628826961d086db3f4ec0aa252e5dab5336eaa771480f4b47cfd`).
+8. İndirme portalı paketi: 132.766.352 bayt, SHA-256
+   `83bfe1327b4802f7c2d9b1ffdbb371227b1418a84c33a36cb8a83b502bfa63b5`, 54 üye,
+   iki kez bayt bayt aynı derlendi; terfi aracının paket kuralları kabul etti;
+   portal sözleşme testi, doğrulayıcı testleri (17) ve terfi testleri (14)
+   geçti.
+9. Portalı hazırlayan kişi `deploy/publish-download-portal.ps1` ile yayımladı
+   (önceki v0.1.0-alpha.87): durum committed, yedek
+   `httpdocs.before-v0.1.0-alpha.88.20261016T080028Z…`, genel doğrulama ok (26
+   istek), `CELIKPANEL_DOWNLOAD_PORTAL_PUBLISHED`.
+10. 08:00:37Z'de dışarıdan okuma: `releases/latest.txt` v0.1.0-alpha.88,
+    `get.sh` 88'i sabitliyor, `releases/latest.json` sıra 88, commit
+    `1cb3628f…`, SHA-256 `feaf7747…`.
+11. Kurulu sunucular: aşağıdaki "Yayımdan sonra"ya bakın. İkisi de alpha.88'den
+    geçmedi.
+
+**Yayımdan sonra (sahibin bildirimi, 16 Ekim 2026, yaklaşık 09:30Z).** Sahip
+iki güncellemeyi de panelin kendi güncelleme ekranından başlattı ve iki ekran
+görüntüsüyle bildirdi. İki kurulu sunucu da önceki sürümünden **doğrudan
+v0.1.0-alpha.89'a** güncellendi (sahip: "doğrudan 89'a güncelledi"); güncelleyicinin
+sıra tabanı buna izin verir. Frankfurt alpha.87'den geldi; Boston'un önceki
+sürümü bildirilmedi (alpha.85 ya da sonrası). Yani hiçbir sunucu alpha.88'i
+çalıştırmadı ve bu kayıttaki hiçbir şey alpha.88'in kurulu bir sunucuda
+çalıştığını anlatmaz. Ekran görüntülerinin alpha.89 hakkında gösterdikleri
+[alpha.89 notlarının](RELEASE-NOTES-v0.1.0-alpha.89.tr.md) "Yayımlama
+kaydı"ndadır. Her güncelleme önceki sürümün sayfasında çalıştığı için bu
+sürümün adım görünümü yeniden başlama sırasında canlı olarak görülmedi; ilk kez
+bir sonraki güncellemede, alpha.89'dan görülür.
+
+**Yapılmayanlar ve yayımlamanın değiştirmedikleri.**
+
+- Kurulu sunucuları sürümü hazırlayan kişi güncellemedi.
+- Sahibin bildirmedikleri ve kaydedilmeyenler: lisans sayfası, Agent'ın sürümü,
+  Frankfurt'un kurulum son adımı, Boston'un "Bu sunucunun kurulumunu
+  genişletin" seçeneği, `postconf -n >/dev/null`.
+- Denetimlerin sınırları: etiketin dosyaları Windows'ta `git archive` ile
+  alındı; canlı sitenin bir kopyasında terfi aracı provası yok; arşiv
+  alpha.87'ninkiyle dosya dosya karşılaştırılmadı; yayımlayıcının kendi testi
+  çalıştırılmadı. Agent'ın ilerleme okuması, taban zaman damgası ve yeniden
+  başlama ölçümü gerçek bir güncellemede gözlenmedi.
+- Yayımlanma ürün kabulü değildir. "Bu sürümün sınırları" altındakiler
+  değişmez. [Dayanıklılık sözleşmesinin](RESILIENCE-CONTRACT.tr.md) beş temel
+  işi kısmi kalır; P0.1–P0.5 kısmi kalır ve hiçbir P0 işi kapanmaz ya da
+  ilerlemez.
 
 Bu sürümü yalnız CelikPanel'in güncelleme arayüzünden kurun. Yayımlanması kurulu
 sunucuları güncellemez; bir sunucunun güncellemesini yalnız sahibi, panelin
