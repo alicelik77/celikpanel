@@ -8207,3 +8207,175 @@ yayımı girdisine eklenir; onun (a)'dan (e)'ye maddeleri hâlâ bildirilmedi.
    geçici konuklarda ölçüldü; F1 kilit uzatması ve oturum kapısının
    `PANEL_STARTING` yolu gerçek sistemde ölçülmedi, ikincil DNS kutularına
    ulaşılmadı. Buradakilerin hiçbiri kurulu sunucu gözlemi değildir.
+
+### Güncelleme her adım için bir çubukla, yeniden başlaması planlı bir adım olarak (2026-10-16)
+
+**Sahibin gözlemi.** Sahip 16 Ekim 2026'da ikinci kurulu sunucuyu (Frankfurt)
+v0.1.0-alpha.85'ten v0.1.0-alpha.87'ye güncelledi. Bu güncelleme alpha.85'in
+kendi güncelleme ekranında çalıştı (yukarıdaki girdinin 2. maddesi); o ekran
+bağlantının kesildiğini ve panelin yeniden başlıyor olabileceğini söyleyen eski
+uyarıyı ve yanında köşe bildirimini hâlâ gösteriyordu. Sahibin sözleri, özüyle:
+güncelleme sürerken her işlem için bir ilerleme çubuğu gösterilsin; her biri
+bittikçe bir sonrakinin çubuğu altında belirsin; güncelleme gerçekten bitip
+panel yeniden başladığında güncel durum gösterilsin; "bağlantı kesildi,
+güncelleniyor olabilir" gibi ürkütücü hiçbir şey gösterilmesin; daha kullanıcı
+dostu bir yol olmalı. Aynı gün sahiple üzerinde anlaşılan tasarım bu girdinin
+şartnamesidir. D-024 (mevcut neden, kimin işlem yapacağı, sonraki eylem), D-033
+(bekleme beklediğini gösterir ve biter) ve D-032 (tarayıcı iki saati asla
+karşılaştırmaz) uygulanır; yeni karar kaydedilmedi.
+
+**Tasarım.** (1) Sunucu adımları güncelleme kabul edildiğinde bildirir ve her
+durum yanıtında her adımın durumunu, anlarını ve geçen saniyelerini (sunucu
+saati) verir; eklemeli JSON. (2) Sayfa her adım için bir çubuk çizer: biten
+adımlar onay işaretiyle, geçerli adım çubukla (ölçülmüşse dolu oranıyla, değilse
+kayan bir parçayla), sonraki adımlar altta sessizce; tek metin geçerli adımın
+etiketidir; güncelleme sayfası açıkken köşe bildirimi yoktur; güncelleme düğmesi
+bununla ilgili bir cümle olmadan kapalı kalır. (3) Yeniden başlama planlı bir
+adımdır: güncelleme etkinken sayfa Panel'e ulaşamazsa yeniden başlama çubuğu
+beklenen süreye göre zamanla ilerler ve tek cümle gösterilir: "Panel yeniden
+başlıyor; bu adım birkaç dakika sürebilir. Bu sayfa kendiliğinden yeniden
+bağlanır."; okumalar 3 sn'de bir; `PANEL_STARTING` yeniden başlama sayılır;
+beklenen süre en çok (son ölçülen × 1,5, 90 sn), kesin sınır 6 dakikalık
+penceredir. (4) Yeniden bağlanınca doğrulama adımı biter ve sayfa yeni derleme
+kimliğiyle "{version} sürümüne güncellendi" der, sonra eskisi gibi yeniden
+yüklenir. (5) Tek uyarı dürüst olandır: 6 dakikalık pencere aşılınca ya da
+doğrulanmış hatada alpha.86 metinleri görünür, asla önce değil. (6) Yeniden
+başlama boyunca gezinme kilidi (set17b F1), lisans ve oturum kapılarının
+toleransı (set17 D1), tek bildirim, D-032 ve D-033 korunur.
+
+**Koddan okunan gerçek aşamalar ve adımlar.** Agent'ın kaydı yalnız queued,
+running, succeeded ve failed bilir (`cmd/agent/system_update_worker_linux.go`,
+`RunWorker`); işçi incelenmiş kurucuyu (`/usr/libexec/celikpanel/get.sh`,
+kaynağı `download-portal/get.sh`) tek bir alt süreç olarak çalıştırır, sonra
+tabanı, kurulu derlemeyi ve son durumu denetler. O alt sürecin içinde:
+
+| Adım (kimlik) | Gerçekte olan | Neyden okunur |
+| --- | --- | --- |
+| Güncelleme paketini indirme (`download`) | get.sh imzalı manifestin imzasını doğrular, sonra `curl` arşivi `/var/backups/celikpanel/releases` altında yeni bir `.download.XXXXXXXX` dizinine yazar | arşivin boyutu imzalı boyuta göre (bayt ilerlemesi) ve o boyuta ulaştığında değişiklik zamanı; aday yoksa ya da birden çoksa belirsiz |
+| İmzayı ve sağlama toplamlarını denetleme (`verify`) | get.sh arşivin boyutunu ve SHA-256'sını imzalı manifestle karşılaştırır, listeler ve açar, her dosyayı `SHA256SUMS` ve köken bilgisiyle denetler, sonra sürüm tabanını yayımlar ("ancak arşivin tamamı ve kökeni doğrulandıktan sonra, güncelleyici sistem hizmetlerini değiştirmeden önce") | bu isteğin sırasını ve sürümünü adlandıran, istek oluşturulduktan sonra yazılmış taban: değişiklik zamanı adımı bitirir |
+| Kurmadan önce sunucuyu denetleme (`prepare`) | doğrulanmış arşivdeki `update.sh` Panel hâlâ yanıt verirken sunucuyu denetler (boşta olma kanıtları, BIND ve posta uyumu) | taban ile Panel'in durması arası; daha ayrıntılısı okunamaz |
+| Yeni sürümü kurma ve paneli yeniden başlatma (`restart`) | `update.sh` Panel'i ve Agent'ı dondurup durdurur, anlık görüntü alır, yeni sürümü kurar, taşır ve başlatır | Panel yanıt veremez: sayfada kayıp okumalar; sunucuda yeni Panel'in hedef derleme olması ve yönetiminin açıldığı an |
+| Yeni sürümü doğrulama (`confirm`) | işçi tabanı, kurulu derlemeyi ve sürümün son durumunu denetler, sonra succeeded yazar | kaydın `phase: verifying` değeri, sonra `succeeded` |
+
+Dosyaları kurmak ve yeniden başlatmak tek adımdır, çünkü güncelleyici hiçbir şey
+kurmadan önce Panel'i durdurur: dışarıdan ikisi ayırt edilemez. Sahibin listesi
+onları ayrı saymıştı; sayfanın ayırt edemeyeceği iki adım çizilmek yerine bu
+burada söylenir. Aynı sürümün yeniden denenmesi tabanı yeniden yazmaz (sıra
+değişmediğinde get.sh erken döner); o zaman doğrulama sınırı bildirilmez ve
+yeniden başlamadan önceki adımlar Panel'e ulaşılamadığında ya da yeni derleme
+yanıt verdiğinde tamamlanmış gösterilir.
+
+**Ne değişti.**
+
+- Agent (`cmd/agent/system_update_progress_linux.go`, yeni;
+  `system_update_rpc.go`; `system_update_store_linux.go`): `Progress` tabanı ve
+  indirme dizinini yalnız `Lstat` ile okur, sahibi ve kipi denetler; istekten
+  eski arşivi, bağlantıyı, başkalarına açık dizini, birden çok adayı ve imzalı
+  boyuttan büyüğünü saymaz; durum RPC'si `downloaded_bytes`, `downloaded_at` ve
+  `verified_at` ekler (`internal/transport/system_update_contracts.go`,
+  eklemeli). Salt-okurdur; kabul, kurtarma ya da kaydın durumu için asla girdi
+  değildir.
+- Panel (`cmd/panel/system_update_plan.go`, yeni;
+  `system_update_handlers.go`; `server_lifecycle.go`): `buildPanelUpdatePlan`
+  bir adımı yalnız kanıtla bitmiş sayar (`downloaded_at`, `verified_at`, bu
+  Panel'in hedef derleme olması, `succeeded`) ve bir hatayı yalnız kanıtın
+  gösterdiği adıma koyar (yeni derlemede doğrulama). Başlatma ve durum
+  yanıtları `plan` taşır (`id`, `state`, `started_at`, `finished_at`,
+  `elapsed_seconds`, `progress` içeren `steps`; `expected_restart_seconds`;
+  `restart_bound_seconds`). Açılış kapısı yönetimin açıldığı anı tutar
+  (`OpenedAt`). Yeni Panel güncellemesinin yeniden başlamasını bir kez,
+  `verified_at`'ten o ana kadar ölçer ve `panel_settings` içinde
+  `panel_update_last_restart` anahtarında tutar (`{"request_id", "seconds"}`);
+  bu süre güncelleyicinin Panel'i durdurmadan önceki denetimlerini de içerir,
+  yani en az sayfanın gördüğü kesinti kadardır.
+- Sayfa (`web/src/lib/systemUpdateSteps.ts` ve
+  `web/src/components/SystemUpdateSteps.tsx`, yeni; `SystemUpdateOperation.tsx`;
+  `PanelUpdateCard.tsx`; `lib/systemUpdateTracking.ts`; `index.css`): sağlayıcı
+  izlenen isteğin planını başlatma yanıtından ve yanıt alınan her okumadan
+  alır, kayıp okumalar boyunca tutar; neyin çizileceğine `systemUpdateStepsView`
+  karar verir; iletişim kutusu, kart ve küçük köşe bildirimi onu çizer. Yeniden
+  başlama çubuğu beklenen sürede %90'a kadar doğrusal ilerler, sonra %99'a
+  yaklaşır; kendiliğinden asla bitmez. Pencere aşılınca yeniden başlama adımı
+  yalnız etiketini korur (17. grup, gecikme metninin yanında %98'de durmuş bir
+  çubuk buldu). Yeniden başlama sırasında açılan ve henüz hiçbir şey okumamış
+  bir sayfa artık yeniden başlamayı güncellemenin başlangıcından sayılan pencere
+  içinde çizer (alpha.86 hemen "bilinmiyor" diyordu); kapıların toleransı ve
+  kilit hâlâ sunucunun güncellemenin etkin olduğunu kendisinin söylemesini
+  bekler. Güncelleme sayfasında başarı için de tek bildirim karttır; hata köşe
+  bildirimini ve kendi metnini korur.
+
+**Yeni metinler.** EN / TR, birebir:
+
+| Anahtar | İngilizce | Türkçe |
+| --- | --- | --- |
+| `panelUpdate.steps.label` | Update steps | Güncelleme adımları |
+| `panelUpdate.steps.title` | Updating to {version} | {version} sürümüne güncelleniyor |
+| `panelUpdate.steps.download` | Download the update package | Güncelleme paketini indirme |
+| `panelUpdate.steps.verify` | Check the signature and checksums | İmzayı ve sağlama toplamlarını denetleme |
+| `panelUpdate.steps.prepare` | Check the server before installing | Kurmadan önce sunucuyu denetleme |
+| `panelUpdate.steps.restart` | Install the new version and restart the panel | Yeni sürümü kurma ve paneli yeniden başlatma |
+| `panelUpdate.steps.confirm` | Verify the new version | Yeni sürümü doğrulama |
+| `panelUpdate.steps.restarting` | The panel is restarting; this step can take a few minutes. This page reconnects by itself. | Panel yeniden başlıyor; bu adım birkaç dakika sürebilir. Bu sayfa kendiliğinden yeniden bağlanır. |
+| `panelUpdate.steps.updated` | Updated to {version} | {version} sürümüne güncellendi |
+| `panelUpdate.steps.state.done` | done | tamamlandı |
+| `panelUpdate.steps.state.running` | in progress | sürüyor |
+| `panelUpdate.steps.state.pending` | not started yet | henüz başlamadı |
+
+Üç durum sözcüğü yalnız ekran okuyucular içindir. Var olan hiçbir metin
+değişmedi; "bağlantı kesildi…" ve "şu an okunamadı" metinlerine pencere içinde
+kayıp bir okumayla artık ulaşılmaz, gecikme metinleri aynıdır.
+
+**Dayanıklılık sözleşmesi.** Etkilenen: güncellemenin ilerlemesinin ve
+kanıtının gösterimi (D-024, D-033); yaşam döngüsü değil. Veritabanı şema
+geçişi yok; bir eklemeli `panel_settings` anahtarı; Agent RPC'sinde (gob) ve
+Panel'in başlatma ve durum yanıtlarında eski sayfaların yok saydığı eklemeli
+alanlar. Defter, işaret, işlem ya da kurtarma davranışı değişmedi; durum
+okuması hiçbir şey başlatmaz (tek yazımı güncelleme başına bir kez yapılan
+ölçüm kaydıdır). Hiçbir P0 işi kapanmadı ya da ilerlemedi.
+
+**Ne zaman görülür.** Bir güncelleme, kendinden önce kurulu sürümün ekranında
+çalışır ve plan değiştirilen Panel ile Agent'tan gelir. Bu yüzden alpha.87'den
+alpha.88'e güncelleme hâlâ alpha.87'nin ekranını (alpha.86'nın sakin yeniden
+başlaması ve tek bildirimi) gösterir; adımlar ilk kez alpha.88'den sonraki bir
+sürüme güncellemede görülür. alpha.88'e ilk güncellemenin yeni Panel'i yeniden
+başlamasını zaten ölçebilir (Agent'ı tabanı okur); böylece o sonraki güncelleme
+ölçülmüş bir süre kullanır.
+
+**Kanıt.** Go: `cmd/agent/system_update_progress_linux_test.go` (bu isteğin ve
+başkalarının tabanı, yarım ve tam indirme, bir denetim örneğiyle altı belirsiz
+durum, alanları taşıyan ve dışarıda bırakan RPC, okumanın dayandığı get.sh
+satırlarını sabitleyen bir sözleşme testi); `cmd/panel/system_update_plan_test.go`
+(her tür kanıttan plan, beklenen süre, ölçümü bir kez tutan durum yanıtı,
+kanıtı olmadan ölçüm yapılmaması, başlatma yanıtının planı, bulunamayan kayıtta
+plan olmaması). Web: `tests/update-steps-mounted.test.mjs` (23: çözümleme,
+başlatma yanıtı, zamana dayalı çubuk, plan çizimi ve indirme ilerlemesi, kayıp
+okumalar ve `PANEL_STARTING` ile yeniden başlama, gecikme yolu, yeniden
+bağlanmadan "güncellendi"ye, tekrarlanmayan bildirim, EN ve TR'de bağlı liste,
+küçük bildirim ve kart, adımsız bir denetim kartı); her yeni test, modüllerin ve
+alanların bulunmadığı önceki kaynağa karşı başarısız olur. alpha.86'nın iki
+doğrulaması kuralla birlikte değişti (pencere içinde ilk kayıp okuma; bağlam ve
+köşe bildirimi bağlantısı). Tarayıcı denetimi 17. grup
+(`web/tools/browser-inspect/scenarios-batch17.mjs`), dizüstü 1280 ve telefon
+390, EN ve TR, açık ve koyu, her birinde 9 durum: bir kez incelendi, bir kusur
+düzeltildi (durmuş çubuk), bir kez yeniden çekildi; yeniden çekimde pencereden
+önceki 64 durumun hiçbirinde ürkütücü cümle yok, sonraki 8 durumun hepsinde
+gecikme metni var, yatay taşma yok, kilit yeniden başlama ve doğrulama boyunca
+açık.
+`b63da83e0` noktasında sayılar: `npm test` 1522/1522; `npx tsc --noEmit`
+temiz; `npm run build` paket bütçesiyle geçer (giriş dosyası 242,40 KiB ham,
+74,24 KiB gzip); `go test ./cmd/panel/... ./internal/transport/...` 1602 test
+ve 1695 alt test geçti, 6 atlandı, 0 başarısız (`cmd/panel` 1563 ve 1675);
+`go test ./cmd/agent/...` 1805 test ve 2838 alt test geçti, 29 atlandı, 0
+başarısız; 14 Ekim 2026 denetim girdisindeki temiz bağlama ad alanında. Go
+çalıştırmaları WSL konuğu `CelikPanel-S2-Debian` içindeydi.
+
+**Ölçülmedi.** Sahip 16 Ekim 2026'da bu sürümün gerçek sistem kaydı olmadan
+yayımlanacağını bildirdi. Buradaki hiçbir şey bir QEMU konuğunda ya da kurulu
+bir sunucuda ölçülmedi: Agent'ın get.sh indirme dizinini ve tabanın zamanını
+okuması gerçek bir güncellemede hiç gözlenmedi; `curl -o`'nun arşivi geldikçe
+son yolunda yazdığı curl'den bilinir, burada ölçülmedi; 90 saniyelik varsayılan
+set16'ya dayanır (Panel en çok 32 sn yanıtsız) ve ölçülen süre güncelleyicinin
+Panel'i durdurmadan önceki denetimlerini içerir; `prepare` adımı yalnız birkaç
+saniye sürebilir; aynı sürümün yeniden denenmesi doğrulama sınırı bildirmez.
+Sağlayıcının kendisi hâlâ bir testte bağlanmadı (IndexedDB, Web Locks, kimlik
+doğrulama sinyali); bağlantısı kaynaktan ve sahte tarayıcıda denetlendi.
