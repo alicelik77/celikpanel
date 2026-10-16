@@ -5028,3 +5028,60 @@ yayımlanmamış bir adayı kaydeder; 2026-10-15 girdinin saat tarihidir.
   set15, set16 ve yeniden set17) ve "Kurulum tamamlanıyor"a ve güncelleme kartının meşgul
   durumuna gerçek sistemde ulaşılamaması vardır. Yukarıdaki girdilerin açık
   bıraktığı her şey açık kalır.
+
+### v0.1.0-alpha.86'nın yayımlanması (P0.1/P0.2 alanı; ilke 2 ve 6; D-024; D-032; D-033; 2026-10-15)
+
+D-025 ilke 2 (bilinmeyen; yok, boş ya da başarı değildir) ve ilke 6 (ekran
+doğrulananı söyler); D-024; D-032; D-033. **Hiçbir P0 işi kapanmaz ya da
+ilerlemez.** P0.1–P0.5 kısmi kalır ve her açık kabul işi açık kalır. Bu girdi
+bir yayımı kaydeder; kod, şema ya da kurtarma davranışını değiştirmez.
+2026-10-15, içindeki her şeyin saat tarihidir.
+
+- **Yayımlama.** v0.1.0-alpha.86 15 Ekim 2026'da yayımlandı; hepsini sürümü
+  hazırlayan kişi yaptı, sahibin 15 Ekim 2026 tarihli talimatı uyarınca
+  (birleştirme, depo değişkeni, etiket ve portal yayımı hazırlayan kişiye
+  aittir; kurulu panel güncellemelerini yalnız sahip yapar). #213 numaralı
+  çekme isteği (CI: 24 iş, hepsi başarılı ya da atlandı) `main`'e
+  `8d260f317e58bed7fcd84c6cbb01823c4fe3f166` olarak squash ile birleştirildi
+  (ağacı `5aaee3d01a4c80632ee3e1abec2c11c986da90df`). `main` commit'indeki koşu
+  (38795120470) 24 işle başarıyla sonuçlandı ve etiket ancak koşu bittikten
+  sonra gönderildi; yani "`main`'deki koşu bitti, sonra etiket" sırası
+  izlendi. Hazırlayan kişi `CELIKPANEL_RELEASE_SEQUENCE` depo değişkenini
+  85'ten 86'ya çıkardı ve `v0.1.0-alpha.86` açıklamalı etiketini (etiket nesnesi
+  `8399668a3fc600ed3951c1c3c22739b3f4ffa35d`) oluşturup gönderdi. Etiketin CI
+  koşusu (38797990342), 24 iş, başarılı, 2026-10-15T20:18:29Z'de altı dosyayla
+  ön sürüm yayımladı (platform arşivi SHA-256
+  `5949a0fd36f8a9f9f0308749962ec92c641df0e8cdbce72ed6b6316578a16a7d`,
+  66.159.282 bayt, sıra 86). Hazırlayan kişi indirme portalını
+  `deploy/publish-download-portal.ps1` ile yayımladı (durum `committed`, 26
+  istekten 26'sıyla tek genel doğrulama turu, `status: ok`). Dosyaları ve portal
+  paketini hazırlayan kişi bir indirmeden denetledi ve genel siteyi
+  20:27:35Z'de dışarıdan okudu (hazırlayan kişi bildirdi, burada bir dosyada
+  kayıtlı değil). Sınırlar: etiketin dosyaları bir derleme konuğundaki klondan
+  değil, Windows'ta `git archive` ile alındı; canlı sitenin bir kopyasında terfi
+  aracı provası yapılmadı; arşiv alpha.85'in paketiyle dosya dosya
+  karşılaştırılmadı; yayımlayıcının kendi testi
+  (`deploy/test-download-portal-publisher.ps1`) çalıştırılmadı.
+  [Sürüm notlarının](RELEASE-NOTES-v0.1.0-alpha.86.tr.md) "Yayımlama kaydı"
+  bölümü bunları sayar.
+- **Yayımlama betiği.** Portal betiğin mutlak yoluyla yayımlandı; bu çağrı,
+  adayın yaptığı göreli yol kusuru düzeltmesini denemedi.
+- **Kurulu paneller.** Bu girdi 15 Ekim 2026'da yazıldığında güncellenmemişti.
+  Bunu yalnız sahip, panelin kendi güncelleme ekranından başlatır. Sahibin
+  bildireceği ve o zamana kadar kaydedilmeyecek olanlar: her sunucunun
+  güncelleme sonucu ve güncelleme sayfasının yeniden başlama sırasında
+  gösterdiği (sakin bildirim, kapı iletişim kutusunun olmaması, kilit),
+  güncelleme sırasında tam ekran lisans sayfası, Agent'ın sürümü, Frankfurt'un
+  güncellemeden sonraki kurulum son adımı ve `postconf -n >/dev/null` çıktısı.
+  Bu girdi hiçbir iş için kabul kanıtı değildir.
+- **Şema ya da sürüm geçişi.** Yok: bu sürüm hiçbir şema değişikliği taşımaz
+  (veritabanı şeması 44 kalır); sürüm sırası `313f3eea2` sürüm hazırlığında,
+  önceki olarak alpha.85 sürüm commit'i
+  `36c33c4531ee6c1306d324db7a666403176f3bf7` ile 85'ten 86'ya geçti.
+  **Kurtarma davranışı.** Değişmedi.
+- **Açık.** Yukarıdaki girdilerin açık bıraktığı her şey; bunlar arasında
+  [sürüm notlarında](RELEASE-NOTES-v0.1.0-alpha.86.tr.md) sayılan sınırlar var:
+  hiçbir kurulu sunucunun ölçülmemesi, `7265d3c99`'un F1 kilit uzatmasının ve
+  oturum kapısının `PANEL_STARTING` yolunun gerçek sistemde ölçülmemesi ve yeni
+  güncelleme ekranının kurulu bir sunucuda ancak bundan sonraki güncellemede
+  görülmesi.

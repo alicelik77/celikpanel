@@ -7901,6 +7901,38 @@ başarısız (WSL konuğu `CelikPanel-S2-Debian`). Agent yeniden koşulmadı.
 17. kalemden sonraki sayılar: `npm test` 1483/1483; `npx tsc --noEmit` temiz;
 `npm run build` paket bütçesiyle geçer. Yalnız web; Go yeniden koşulmadı.
 
+### Alpha.86 yayımından sonra kurulu sunucular: sahibin henüz bildirmedikleri (2026-10-15)
+
+Henüz gözlem yok ve değişiklik yok. v0.1.0-alpha.86 15 Ekim 2026'da yayımlandı
+ve bu girdi yazıldığında hiçbir kurulu sunucu güncellenmemişti; bunu yalnız
+sahip, panelin kendi güncelleme ekranından başlatır. Bu girdi için kurulu
+hiçbir sunucuda bir şey ölçülmedi, hiçbir metin ya da ekran değiştirilmedi ve
+kabul kanıtı değildir. D-024'e (mevcut neden, kimin işlem yapacağı, somut
+sonraki eylem ve nasıl devam edileceği uzun listelerden önce gelir), D-033'e
+(sahibi bekleten bir ekran beklediğini gösterir ya da bir şey yapması
+gerekmediğini söyler) ve bilinen-durum kuralına karşı konur.
+
+1. **Sahipten güncellemeden sonra bildirmesi istenenler; o zamana kadar başka
+   hiçbir şey kaydedilmez.** Beş şey: (a) her sunucunun panel içindeki
+   güncelleme sonucu ve güncelleme sayfasının yeniden başlama sırasında
+   gösterdiği (sakin bildirim, kapı iletişim kutusunun olmaması, kilit); (b)
+   güncelleme sırasında tam ekran lisans sayfasının görünüp görünmediği; (c)
+   Agent'ın sürümü; (d) Frankfurt'un güncellemeden sonraki kurulum son adımı;
+   (e) `postconf -n >/dev/null` çıktısı. Sahip bildirene kadar her biri
+   "kaydedilmedi"dir; "çalıştı" da değildir, "başarısız" da.
+2. **Bu sürümün yeniden başlama bildirimi, onu kuran güncellemede görülmez.**
+   alpha.85'ten alpha.86'ya güncelleme alpha.85'in güncelleme ekranında çalışır;
+   sahibin bildirdiği uyarıyı ve köşe bildirimini gösteren ekran odur. Sakin
+   bildirim, tek bildirim ve yeniden başlama boyunca kilit, kurulu bir
+   sunucuda ancak bundan sonraki güncellemede görülür (sürüm notları, "Bu
+   sürümün sınırları"). Bu yüzden alpha.86'ya güncellemede sahibin gördüğü
+   onlar hakkında bir şey söylemez ve söylüyormuş gibi kaydedilmemelidir.
+3. **Gerçek sistemde ölçülen, bir laboratuvar ölçümüdür.** Sakin yeniden başlama,
+   test lisanslı yapılarla geçici konuklarda iki gerçek sistem kaydında (set17
+   ve set17b) ölçüldü; F1 kilit uzatması ve oturum kapısının `PANEL_STARTING`
+   yolu gerçek sistemde ölçülmedi. Buradakilerin hiçbiri kurulu sunucu
+   gözlemi değildir.
+
 ### Tam eş olarak ikinci sunucu, birinci bölüm: sahibin artık panelden yapabildikleri ve açık kalan üç karar (2026-10-16)
 
 Sahip, kurulu ikinci sunucunun (Boston, DNS ikincili) web sitelerini ve postayı
