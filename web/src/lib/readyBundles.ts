@@ -163,8 +163,11 @@ export interface BundleStripModel {
     empty: boolean;
 }
 
+// Containment is within one category: Nginx + PHP-FPM is not hidden because
+// Webmail also runs them.
+// Kapsama yalnız aynı bölüm içindedir.
 const contains = (big: ReadyBundle, small: ReadyBundle) =>
-    big.id !== small.id && small.components.every((id) => big.components.includes(id));
+    big.id !== small.id && big.category === small.category && small.components.every((id) => big.components.includes(id));
 
 // What the strip of one category shows (owner decision, 2026-10-17):
 // - with nothing installed, every top-level bundle is offered;

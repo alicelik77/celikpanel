@@ -111,3 +111,21 @@ test('the repository and version-removal buttons spin while their request runs',
   assert.equal((page.match(/loading=\{repoBusy\}/g) || []).length, 2, 'both repository buttons spin');
   assert.match(page, /onClick=\{\(\) => removeVersion\(removeTarget\)\} disabled=\{removing\} loading=\{removing\}/);
 });
+
+// alpha.94 (D-034): the ready bundles are one line at the head of each
+// category, between its header and its rows; the mail stack cards above the
+// list are gone, so the first component row is no longer below three tall
+// cards on a phone.
+test('the ready bundles strip sits between a category header and its rows', () => {
+  const header = source.indexOf('onClick={() => toggleGroup(cat)}');
+  const strip = source.indexOf('<ReadyBundleStrip', header);
+  const rows = source.indexOf('<ul className="border-t border-border">', header);
+  assert.ok(header > 0 && strip > header && rows > strip, 'header, then the strip, then the rows');
+  assert.match(source.slice(strip - 80, strip), /\{isOpen && hasBundles && \(/);
+  assert.match(source.slice(rows - 80, rows), /\{isOpen && group\.length > 0 && \(/);
+  assert.doesNotMatch(source, /function MailProfileCards|id='mail-stacks'/);
+  const stripSource = readFileSync(new URL('../src/components/ReadyBundleStrip.tsx', import.meta.url), 'utf8');
+  // One line that wraps on a phone: no fixed widths, phone targets of 44 px.
+  assert.match(stripSource, /className='flex flex-wrap items-center gap-x-2\.5 gap-y-2 border-t border-border bg-surface-subtle px-4 py-2\.5'/);
+  assert.ok((stripSource.match(/max-sm:min-h-11/g) || []).length >= 5, 'every strip control is 44 px on a phone');
+});
