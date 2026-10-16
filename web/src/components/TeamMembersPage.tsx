@@ -304,7 +304,7 @@ export function TeamMembersPage() {
 
             {!loading && !loadError && (
                 <div className='mb-3 text-xs text-fg-subtle'>
-                    {t('common.itemsTotal', { n: members.length })}
+                    {(members.length === 1 ? t('common.itemsTotalOne') : t('common.itemsTotal', { n: members.length }))}
                 </div>
             )}
 

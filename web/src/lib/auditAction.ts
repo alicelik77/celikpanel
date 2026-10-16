@@ -64,9 +64,23 @@ export function humaniseAuditAction(action: string): string {
     return event.split(/\s/, 1)[0].replace(/[._:\-/]+/g, ' ').trim() || action.trim();
 }
 
+// Setup prepares a mail profile as one of its steps and writes the profile's
+// id as the target (server.setup.child:protected-mail). The owner saw
+// "prepared protected-mail during setup" on alpha.92 (2026-10-16); a profile
+// is said by its name, and in Turkish as a profile, not as a component.
+// Kurulum bir posta profilini adımlarından biri olarak hazırlar ve hedefe
+// profilin kimliğini yazar; profil adıyla, Türkçede bileşen değil profil
+// olarak söylenir.
+const setupChildProfileSentence: Record<string, TranslationKey> = {
+    'server.setup.child': 'dashboard.audit.setupChildProfile',
+    'server.setup.child.failed': 'dashboard.audit.setupChildProfileFailed',
+};
+
 export function auditActionText(action: string, t: Translate): string {
     const { name, target } = auditActionParts(action);
     if (!/^[a-z0-9_]+(?:[.-][a-z0-9_]+)*$/.test(name)) return humaniseAuditAction(action);
+    const profileSentence = setupChildProfileSentence[name];
+    if (profileSentence && profileNames[target]) return t(profileSentence, { target: t(profileNames[target]) });
     const key = `dashboard.audit.action.${name}` as TranslationKey;
     const said = t(key, { target: targetText(name, target, t) });
     // No words for this name, or words that need a target the action lacks.

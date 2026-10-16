@@ -86,6 +86,20 @@ var mailProfileDefinitions = [...]mailProfileDefinition{
 	},
 }
 
+// mailProfileMailComponents are the components that make a mail profile
+// installed. Nginx and PHP-FPM serve websites too; with only those present a
+// mail profile is "not installed", not "partially installed" (owner
+// observation on Boston, alpha.92, 2026-10-16).
+// mailProfileMailComponents bir posta profilini kurulu yapan bileşenlerdir.
+// Nginx ve PHP-FPM web sitelerine de hizmet eder; yalnız onlar varken posta
+// profili "kısmen kurulu" değil "kurulu değil"dir.
+var mailProfileMailComponents = map[string]bool{
+	"postfix":   true,
+	"dovecot":   true,
+	"rspamd":    true,
+	"roundcube": true,
+}
+
 func mustMailProfileServiceIDs(profileID string) []string {
 	services, ok := core.MailProfileServiceIDs(profileID)
 	if !ok {
@@ -968,11 +982,15 @@ func mailProfilesView(
 		}
 
 		anyInstalled := false
+		anyPresent := false
 		allReady := true
 		for _, id := range definition.Services {
 			service := byID[id]
 			if service.Installed() {
-				anyInstalled = true
+				anyPresent = true
+				if mailProfileMailComponents[id] {
+					anyInstalled = true
+				}
 			}
 			if verifyMailProfileReady(mailProfileDefinition{Services: []string{id}}, services) != nil {
 				allReady = false
@@ -1012,6 +1030,13 @@ func mailProfilesView(
 			}
 		default:
 			view.Status = mailProfileStatusAvailable
+			if anyPresent {
+				// Only web-server parts (Nginx, PHP-FPM) are here: the profile is
+				// not installed, but the note about reusing them stays.
+				// Burada yalnız web sunucusu parçaları var: profil kurulu değil,
+				// ama onları yeniden kullanma notu kalır.
+				view.Warning, view.WarningCode = mailProfilePartlyPresentText, mailProfileWarningPartlyPresent
+			}
 		}
 		profiles = append(profiles, view)
 	}

@@ -90,6 +90,27 @@ test('the ids the owner saw read as sentences', () => {
   }
 });
 
+// alpha.92 Recent activity (2026-10-16): "admin prepared protected-mail during
+// setup". A mail profile prepared by setup is said by its name, as a profile.
+test('a mail profile prepared during setup is said by its name', () => {
+  const cases = [
+    ['server.setup.child:protected-mail', 'prepared Spam-Protected Mail during setup', 'kurulum sırasında Spam Korumalı Posta profilini hazırladı'],
+    ['server.setup.child:webmail', 'prepared Webmail during setup', 'kurulum sırasında Webmail profilini hazırladı'],
+    ['server.setup.child:core-mail', 'prepared Core Mail during setup', 'kurulum sırasında Temel Posta profilini hazırladı'],
+    ['server.setup.child.failed:webmail — Roundcube not ready', 'could not prepare Webmail during setup', 'kurulum sırasında Webmail profilini hazırlayamadı'],
+    // Negative controls: a component stays a component, an unknown id is kept.
+    ['server.setup.child:nginx', 'prepared Nginx during setup', 'kurulum sırasında Nginx bileşenini hazırladı'],
+    ['server.setup.child:future-profile', 'prepared future-profile during setup', 'kurulum sırasında future-profile bileşenini hazırladı'],
+  ];
+  for (const [action, english, turkish] of cases) {
+    assert.equal(lib.auditActionText(action, say('en')), english, action);
+    assert.equal(lib.auditActionText(action, say('tr')), turkish, action);
+  }
+  for (const locale of ['en', 'tr']) {
+    assert.doesNotMatch(lib.auditActionText('server.setup.child:protected-mail', say(locale)), /protected-mail/);
+  }
+});
+
 test('an action this page has no words for is said as words, never as its raw id', () => {
   for (const action of ['from.a_newer:panel', 'something_new_happened', 'brand.new.thing:x — why', 'Odd Action']) {
     const said = lib.auditActionText(action, say('tr'));

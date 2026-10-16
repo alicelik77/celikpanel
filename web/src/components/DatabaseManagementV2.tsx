@@ -292,7 +292,7 @@ export function DatabaseManagementV2() {
                         )}
                         {active.remote.state === 'known' && (
                             <span className="text-xs text-fg-subtle">
-                                {t('common.itemsTotal', { n: active.remote.value.length })}
+                                {(active.remote.value.length === 1 ? t('common.itemsTotalOne') : t('common.itemsTotal', { n: active.remote.value.length }))}
                             </span>
                         )}
                     </div>

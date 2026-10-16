@@ -380,7 +380,7 @@ export function DomainDNSManager({
 
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                 <span className="text-xs text-fg-subtle">
-                    {t('common.itemsTotal', { n: countText(mapRemote(records.remote, (list) => list.length)) })}
+                    {(countText(mapRemote(records.remote, (list) => list.length)) === '1' ? t('common.itemsTotalOne') : t('common.itemsTotal', { n: countText(mapRemote(records.remote, (list) => list.length)) }))}
                 </span>
                 <div className="flex flex-wrap items-center gap-2">
                     {readOnly || externalDNS ? (

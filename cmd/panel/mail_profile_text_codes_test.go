@@ -221,3 +221,49 @@ func TestMailProfileSupersetProofVerifiesCoreMail(t *testing.T) {
 		t.Fatalf("a smaller profile's proof verified a larger one: %+v", larger)
 	}
 }
+
+// Boston on alpha.92 (2026-10-16): only Nginx was installed, and the Dashboard
+// said the mail stack was "Partially installed". Web-server parts alone leave a
+// mail profile "available" (not installed) with the reuse note; one mail
+// component makes it partial, as before.
+func TestMailProfileWithOnlyWebComponentsIsNotInstalled(t *testing.T) {
+	webOnly := catalogView([]serviceObservation{
+		{ID: "nginx", IsInstalled: true, Status: "active (running)"},
+		{ID: "php-fpm", IsInstalled: true, Status: "active (running)"},
+	}, "apt")
+	profiles := mailProfilesView(webOnly, true, "apt", "", false, true, nil)
+	webmail := profileViewByID(t, profiles, "webmail")
+	if webmail.Status != mailProfileStatusAvailable || webmail.WarningCode != mailProfileWarningPartlyPresent || webmail.Warning == "" {
+		t.Fatalf("web parts alone: %+v, want available with the reuse note", webmail)
+	}
+	for _, id := range []string{"core-mail", "protected-mail"} {
+		if view := profileViewByID(t, profiles, id); view.Status != mailProfileStatusAvailable || view.WarningCode != "" {
+			t.Fatalf("%s with no component present: %+v", id, view)
+		}
+	}
+
+	// Negative control: one mail component keeps the real partial state.
+	withRoundcube := catalogView([]serviceObservation{
+		{ID: "nginx", IsInstalled: true, Status: "active (running)"},
+		{ID: "roundcube", IsInstalled: true, Status: "installed"},
+	}, "apt")
+	if view := profileViewByID(t, mailProfilesView(withRoundcube, true, "apt", "", false, true, nil), "webmail"); view.Status != mailProfileStatusPartial || view.WarningCode != mailProfileWarningPartlyPresent {
+		t.Fatalf("Roundcube present: %+v, want partial", view)
+	}
+	withPostfix := catalogView([]serviceObservation{{ID: "postfix", IsInstalled: true, Status: "active (running)"}}, "apt")
+	for _, profile := range mailProfilesView(withPostfix, true, "apt", "", false, true, nil) {
+		if profile.Status != mailProfileStatusPartial {
+			t.Fatalf("%s with Postfix present: %+v, want partial", profile.ID, profile)
+		}
+	}
+
+	// Every profile component is either a mail component or one of the two
+	// shared web-server parts; a new mail component must be counted.
+	for _, definition := range allMailProfiles() {
+		for _, id := range definition.Services {
+			if !mailProfileMailComponents[id] && id != "nginx" && id != "php-fpm" {
+				t.Fatalf("%s: %s is neither a mail component nor a shared web part", definition.ID, id)
+			}
+		}
+	}
+}

@@ -1487,7 +1487,7 @@ function MailStackSummary({ profiles, scanFresh, hostNeverChecked, checking, car
         : needsAttention
             ? 'dashboard.mailStacks.status.attention'
             : availableOnly
-                ? 'dashboard.mailStacks.status.available'
+                ? 'dashboard.mailStacks.status.notInstalled'
                 : 'dashboard.mailStacks.status.ready';
     const detail = hostNeverChecked
         ? t('dashboard.mailStacks.notChecked')

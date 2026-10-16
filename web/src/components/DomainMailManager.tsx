@@ -299,7 +299,7 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                 {/* The total is the server's; while the list is not known
                     there is no total to state.
                     Toplam sunucunundur; liste bilinmezken toplam yoktur. */}
-                <span className="text-xs text-fg-muted">{listed.state === 'known' ? t('common.itemsTotal', { n: listed.value.length }) : ''}</span>
+                <span className="text-xs text-fg-muted">{listed.state === 'known' ? (listed.value.length === 1 ? t('common.itemsTotalOne') : t('common.itemsTotal', { n: listed.value.length })) : ''}</span>
                 {!readOnly && (
                     <Button variant="primary" icon={Plus} disabled={listed.state !== 'known'} onClick={() => setShowForm((s) => !s)}>
                         {activeTab === 'accounts' ? t('mail.addAccount') : t('mail.addForwarder')}
