@@ -16,7 +16,9 @@ test('mail journey requires fresh runtime state and completed profile reconcilia
   assert.match(dashboard, /const serviceScanFresh = freshScanTimestamp\(\s*serviceScan\.scannedAt,\s*serviceScan\.observedAt,\s*serviceScan\.scanAgeSeconds,\s*freshnessNow,\s*\)/);
   assert.match(dashboard, /profile\.status === 'complete'[\s\S]*profile\.verified[\s\S]*!profile\.warning/);
   assert.match(dashboard, /const mailProfileVerified = verifiedMailProfiles\.length > 0/);
-  assert.match(dashboard, /mailProfiles && hasMailActivity\(mailProfiles\)/);
+  // alpha.94: the Mail stacks card gave way to one Ready bundles card,
+  // always shown and read-only.
+  assert.match(dashboard, /<ReadyBundlesCard/);
 });
 
 test('Boston rspamd tuple never produces a false SpamAssassin install alert', () => {

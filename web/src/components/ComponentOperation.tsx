@@ -161,6 +161,10 @@ export interface ManagedServicesSnapshot {
     dns_identity_ready: boolean;
     mail_hostname: MailHostnameIdentity;
     scanned_at?: string | null;
+    // Passed on as the Panel sent it (alpha.94); the Components page decodes
+    // the ready bundles itself, so the fresh scan after an install keeps them.
+    // Panel'in gönderdiği gibi aktarılır; Bileşenler sayfası kendisi çözer.
+    bundles?: unknown;
 }
 
 export interface InstallOperationRequest {
@@ -445,6 +449,7 @@ export function decodeManagedServicesSnapshot(value: unknown): ManagedServicesSn
         dns_identity_ready: payload.dns_identity_ready,
         mail_hostname: mailHostname,
         scanned_at: payload.scanned_at,
+        ...(payload.bundles !== undefined ? { bundles: payload.bundles } : {}),
     };
 }
 

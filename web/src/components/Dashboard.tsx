@@ -2,11 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate, Link } from '../router';
 import { ServerSetupDashboardNotice } from './ServerSetupGate';
 import { LicenseNotice } from './LicenseNotice';
-import { accountStart, hasMailActivity } from '../lib/startGuidance';
+import { accountStart } from '../lib/startGuidance';
 import {
     Cpu, MemoryStick, HardDrive, Server, Globe, Database, Activity, Bell,
     Shield, ShieldOff, Users, Mail, ArrowRight,
-    DownloadCloud, UserPlus, Plus, Lock, Layers, ScanSearch, AlertTriangle,
+    DownloadCloud, UserPlus, Plus, Lock, ScanSearch, AlertTriangle, Check,
 } from 'lucide-react';
 import { api, type SystemStats } from '../lib/api';
 import { useI18n } from '../i18n';
@@ -22,8 +22,7 @@ import { apiErrorText, readApiError } from '../lib/apiError';
 import { countText, decodeList, lastKnown, mapRemote, useRemote, type Observed, type Remote } from '../lib/remote';
 import { decodeFirewallStatus, useFirewallStatus, type FirewallStatus } from '../lib/firewall';
 import { USERS_URL, decodeUsers } from '../lib/accounts';
-import { summarizeDashboardMailTruth } from '../lib/dashboardMailTruth';
-import { mailProfileAttemptError, mailProfileBlocked, mailProfileName, mailProfileWarning } from '../lib/mailProfileText';
+import { bundleName, bundlesSummary, decodeReadyBundles, type ReadyBundle } from '../lib/readyBundles';
 import { publishComponentCensus } from '../lib/componentCensus';
 import {
     decodeManagedMailProfiles,
@@ -125,6 +124,7 @@ function groupAuditEntries(entries: AuditLite[]): AuditGroup[] {
 function decodeDashboardServices(value: unknown): {
     services: SvcLite[];
     profiles: ManagedMailProfile[];
+    bundles: ReadyBundle[];
     scannedAt: string | null;
     scanAgeSeconds: number | null;
     dnsIdentityReady: boolean;
@@ -180,6 +180,9 @@ function decodeDashboardServices(value: unknown): {
     return {
         services,
         profiles,
+        // Ready bundles (alpha.94): an answer that is not the contract shows
+        // the card without them rather than refusing the components.
+        bundles: decodeReadyBundles(payload.bundles, serviceIDs) ?? [],
         scannedAt: scannedAt as string | null,
         scanAgeSeconds: typeof scanAge === 'number' ? scanAge : null,
         dnsIdentityReady: payload.dns_identity_ready,
@@ -317,6 +320,7 @@ function AdminDashboard() {
     const [stats, setStats] = useState<SystemStats | null>(null);
     const [services, setServices] = useState<SvcLite[]>([]);
     const [mailProfiles, setMailProfiles] = useState<ManagedMailProfile[] | null>(null);
+    const [bundles, setBundles] = useState<ReadyBundle[] | null>(null);
     // The firewall is read through the one reader of its address. It is "off"
     // here only for an answer that says so: while it is read, and when it
     // could not be read, `fw` is null, so nothing below says "off" and nothing
@@ -432,6 +436,7 @@ function AdminDashboard() {
                 publishComponentCensus(snapshot.services);
                 setServices(snapshot.services);
                 setMailProfiles(snapshot.profiles);
+                setBundles(snapshot.bundles);
                 const observedAt = Date.now();
                 setServiceScan({ scannedAt: snapshot.scannedAt, scanAgeSeconds: snapshot.scanAgeSeconds, observedAt });
                 setFreshnessNow(observedAt);
@@ -542,6 +547,7 @@ function AdminDashboard() {
             publishComponentCensus(snapshot.services);
             setServices(snapshot.services);
             setMailProfiles(snapshot.profiles);
+            setBundles(snapshot.bundles);
             // The scan is dated from the moment this page received it and the
             // age the server reported (see effectiveScanTime), so a server
             // clock ahead of or behind this browser cannot make the fresh
@@ -1103,17 +1109,17 @@ function AdminDashboard() {
                 )}
             </div>
 
-            {mailProfiles && hasMailActivity(mailProfiles) && (
-                <MailStackSummary
-                    profiles={mailProfiles}
-                    scanFresh={serviceScanFresh}
-                    hostNeverChecked={hostNeverChecked}
-                    checking={componentScanBusy}
-                    card={servicesCard}
-                    onCheck={scanComponents}
-                    onOpen={() => navigate('/services#mail-stacks')}
-                />
-            )}
+            {/* One calm card, always shown: a door to the bundles at the head
+                of each Components category (alpha.94, D-034). It installs
+                nothing and asks for nothing.
+                Tek sakin kart: Bileşenler'deki paketlere bir kapı. */}
+            <ReadyBundlesCard
+                bundles={bundles ?? []}
+                services={services}
+                scanFresh={serviceScanFresh}
+                checking={servicesCard === 'checking'}
+                onOpen={() => navigate('/services#bundles')}
+            />
 
             {/* Needs attention BEFORE the journey: an active problem outranks
                 guidance. Operator feedback (Jul 17): the alert list lived below
@@ -1462,107 +1468,58 @@ function DashboardFirewallConfirmationDialog({
 // the interface language (lib/mailProfileText.ts).
 // D-032'den beri sayfa bileşenleri kendisi kontrol eder; tarama güncel değilken
 // bu kart o kontrolü izler ve sahibi yeniden taramaya göndermez.
-function MailStackSummary({ profiles, scanFresh, hostNeverChecked, checking, card, onCheck, onOpen }: {
-    profiles: ManagedMailProfile[];
+function ReadyBundlesCard({ bundles, services, scanFresh, checking, onOpen }: {
+    bundles: ReadyBundle[];
+    services: SvcLite[];
     scanFresh: boolean;
-    hostNeverChecked: boolean;
     checking: boolean;
-    card: 'known' | 'checking' | 'held' | 'failed' | 'unread' | 'never' | 'stale';
-    onCheck: () => void;
     onOpen: () => void;
 }) {
     const { t } = useI18n();
-    const { complete, problem, partial, needsAttention, availableOnly } =
-        summarizeDashboardMailTruth(profiles, scanFresh);
-    const checkingNow = !hostNeverChecked && !scanFresh && card === 'checking';
-    const problemName = problem ? mailProfileName(problem, t) : '';
-
-    const statusKey: TranslationKey = hostNeverChecked
-        ? 'services.notChecked'
-        : !scanFresh
-        ? checkingNow ? 'dashboard.mailStacks.status.checking'
-            : card === 'stale' ? 'dashboard.mailStacks.status.stale' : 'dashboard.statusUnknown'
-        : partial
-            ? 'dashboard.mailStacks.status.partial'
-        : needsAttention
-            ? 'dashboard.mailStacks.status.attention'
-            : availableOnly
-                ? 'dashboard.mailStacks.status.notInstalled'
-                : 'dashboard.mailStacks.status.ready';
-    const detail = hostNeverChecked
-        ? t('dashboard.mailStacks.notChecked')
-        : !scanFresh
-        ? card === 'held'
-            ? t('dashboard.systemServicesCheckHeld')
-            : card === 'failed' || card === 'unread'
-                ? t('dashboard.mailStacks.checkFailed')
-                : t('dashboard.systemServicesNotRecent')
-        : problem?.latest_attempt_error || problem?.blocked_reason || problem?.warning
-            ? t('dashboard.mailStacks.reason', {
-                name: problemName || t('dashboard.mailStacks.title'),
-                reason: problem?.latest_attempt_error ? mailProfileAttemptError(problem, t) : problem?.blocked_reason ? mailProfileBlocked(problem, t) : problem ? mailProfileWarning(problem, t) : '',
-            })
-            : problem?.latest_attempt_status === 'failed'
-                ? t('dashboard.mailStacks.reconciliationFailed', { name: problemName })
-                : problem?.latest_attempt_status === 'in_progress'
-                    ? t('dashboard.mailStacks.reconciliationInProgress', { name: problemName })
-                    : problem?.latest_attempt_status === 'succeeded' && !problem.verified
-                        ? t('dashboard.mailStacks.reconciliationUnverified', { name: problemName })
-                        : partial
-                            ? t('dashboard.mailStacks.partialHint')
-                            : problem
-                                ? t('dashboard.mailStacks.attentionHint')
-                                : complete
-                                    ? t('dashboard.mailStacks.completeHint')
-                                    : t('dashboard.mailStacks.availableHint');
-    // Neutral for the unknown: a machine nobody has looked at yet is the
-    // normal first state, not a fault, and semantic colour is reserved for
-    // something actually being wrong.
-    // Bilinmeyen için nötr: henüz bakılmamış makine olağan ilk durumdur.
-    const statusClass = !hostNeverChecked && (needsAttention || partial)
-        ? 'bg-warning/15 text-warning'
-        : hostNeverChecked || !scanFresh || availableOnly
-            ? 'bg-surface-2 text-fg-muted'
-            : 'bg-success/15 text-success';
-
+    const summary = bundlesSummary(bundles);
+    const known = scanFresh && summary.known;
+    const nameOf = (id: string) => componentName(services.find((service) => service.id === id) ?? id, t);
+    const categoryKey = (category: string) => `dashboard.bundles.cat.${category}` as TranslationKey;
     return (
-        <section className='mt-6' aria-labelledby='dashboard-mail-stacks-heading'>
-            <div className='rounded-xl border border-border bg-surface p-4 sm:p-5'>
-                <div className='flex flex-col gap-4 lg:flex-row lg:items-center'>
-                    <span className='flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-warning-mark/20 text-warning'>
-                        <Layers className='h-5 w-5' />
-                    </span>
-                    <div className='min-w-0 flex-1'>
-                        <div className='flex flex-wrap items-center gap-2'>
-                            <h2 id='dashboard-mail-stacks-heading' className='font-semibold text-fg'>{t('dashboard.mailStacks.title')}</h2>
-                            <span className={'rounded-full px-2.5 py-1 text-xs font-semibold ' + statusClass}>{t(statusKey)}</span>
-                        </div>
-                        {checkingNow
-                            ? <Checking label={t('dashboard.systemServicesChecking')} className='mt-1' />
-                            : <p className='mt-1 text-sm text-fg-muted'>{detail}</p>}
-                    </div>
-                    {/* The same check the system-services card beside it
-                        offers, run here rather than pointing at another page —
-                        the firewall lesson (Jul 17): an action this central
-                        acts in place.
-                        Yanındaki sistem servisleri kartının sunduğu kontrolün
-                        aynısı, başka sayfayı işaret etmek yerine burada koşar. */}
-                    {hostNeverChecked ? (
-                        <button
-                            type='button'
-                            onClick={onCheck}
-                            disabled={checking}
-                            className='inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-sm font-semibold text-primary-fg transition-colors hover:bg-primary/90 disabled:opacity-50'
-                        >
-                            <ScanSearch className='h-4 w-4' />
-                            {checking ? t('services.scanning') : t('services.scanNow')}
-                        </button>
-                    ) : (
-                        <button type='button' onClick={onOpen} className='inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-sm font-semibold text-primary-fg hover:bg-primary/90'>
-                            {t('dashboard.mailStacks.open')} <ArrowRight className='h-4 w-4' />
-                        </button>
-                    )}
-                </div>
+        <section className='mt-6' aria-labelledby='dashboard-bundles-heading' data-dashboard-bundles=''>
+            <div className='flex flex-col gap-3 rounded-xl border border-border bg-surface p-4 sm:p-5'>
+                <h2 id='dashboard-bundles-heading' className='font-semibold text-fg'>{t('dashboard.bundles.title')}</h2>
+                {!known ? (
+                    checking
+                        ? <Checking label={t('dashboard.systemServicesChecking')} />
+                        : <p className='text-sm text-fg-muted'>{t('dashboard.bundles.notKnown')}</p>
+                ) : summary.installed.length === 0 ? (
+                    <p className='text-sm text-fg-muted'>{t('dashboard.bundles.noneInstalled')}</p>
+                ) : (
+                    <ul className='divide-y divide-border'>
+                        {summary.installed.map((bundle) => (
+                            <li key={bundle.id} className='flex items-center gap-2 py-2.5 text-sm first:pt-0'>
+                                {bundle.status === 'installed_verified'
+                                    ? <Check className='h-4 w-4 shrink-0 text-success' aria-hidden='true' />
+                                    : <span className='inline-block h-2 w-2 shrink-0 rounded-full bg-fg-subtle' aria-hidden='true' />}
+                                <span className='text-fg-muted'>{t(categoryKey(bundle.category))}:</span>
+                                <span className='min-w-0 font-semibold text-fg'>{bundleName(bundle, t, nameOf)}</span>
+                                <span className='ml-auto whitespace-nowrap text-xs text-fg-subtle'>
+                                    {bundle.status === 'installed_verified' ? t('dashboard.bundles.verified') : t('dashboard.bundles.unverified')}
+                                </span>
+                            </li>
+                        ))}
+                    </ul>
+                )}
+                {known && summary.installable > 0 && summary.installed.length > 0 && (
+                    <p className='text-sm text-fg-muted'>
+                        {summary.installable === 1
+                            ? t('dashboard.bundles.installableOne')
+                            : t('dashboard.bundles.installable', { n: summary.installable })}
+                    </p>
+                )}
+                <button
+                    type='button'
+                    onClick={onOpen}
+                    className='inline-flex min-h-8 items-center gap-1.5 self-start font-semibold text-primary underline decoration-1 underline-offset-[3px] hover:decoration-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary max-sm:min-h-11'
+                >
+                    {t('dashboard.bundles.open')} <ArrowRight className='h-4 w-4' aria-hidden='true' />
+                </button>
             </div>
         </section>
     );

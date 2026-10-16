@@ -170,7 +170,7 @@ test('every component row links to its component page, whatever its state', () =
     // The whole row is the target, and every real control still sits above it.
     assert.match(rows.slice(link), /after:absolute after:inset-0/);
     assert.match(rows, /<li key=\{s\.id\} className="relative /);
-    assert.match(rows, /className="relative ml-auto flex min-w-0 items-center justify-end/);
+    assert.match(rows, /className="relative ml-auto flex min-w-0 flex-wrap items-center justify-end/);
 
     // Manage stays the primary action where it exists; the row link is not a
     // replacement for it.
@@ -214,22 +214,19 @@ test('the sidebar badge reads the census every screen publishes, and never fetch
 // 4. The mail card knows unknown from stale
 // ---------------------------------------------------------------------------
 
-test('the dashboard mail card says unknown on a host nobody has checked', () => {
-    // "Older than five minutes" is a claim about a scan. On a host where no
-    // scan has ever run there is no scan to be old, so the card says what is
-    // true and carries the same check as the card beside it.
-    // "Beş dakikadan eski" bir tarama hakkında iddiadır. Hiç tarama koşmamış
-    // makinede eskiyecek tarama yoktur.
-    assert.match(dashboard, /hostNeverChecked=\{hostNeverChecked\}/);
-    assert.match(dashboard, /onCheck=\{scanComponents\}/);
-    const card = dashboard.slice(dashboard.indexOf('function MailStackSummary'));
-    // Unknown is decided before staleness, or the fold comes straight back.
-    assert.match(card, /const statusKey: TranslationKey = hostNeverChecked\s*\n\s*\? 'services\.notChecked'/);
-    assert.match(card, /const detail = hostNeverChecked\s*\n\s*\? t\('dashboard\.mailStacks\.notChecked'\)/);
-    // Neutral, like the system-services card: not yet looked at is not a fault.
-    assert.match(card, /hostNeverChecked \|\| !scanFresh \|\| availableOnly\s*\n\s*\? 'bg-surface-2 text-fg-muted'/);
-    // The check runs here rather than pointing at another page.
-    assert.match(card, /onClick=\{onCheck\}[\s\S]{0,600}t\('services\.scanNow'\)/);
+test('the dashboard bundles card says not known on a host nobody has checked', () => {
+    // alpha.94: the Mail stacks card is replaced by one Ready bundles card.
+    // Without a fresh scan it claims nothing installed or missing: it says
+    // the bundles are shown once the components are checked (the panel checks
+    // by itself, D-032), and moves while a check runs (D-033).
+    // Taze tarama yokken kart kurulu ya da eksik hiçbir şey iddia etmez.
+    const card = dashboard.slice(dashboard.indexOf('function ReadyBundlesCard'));
+    assert.match(dashboard, /scanFresh=\{serviceScanFresh\}/);
+    assert.match(card, /const known = scanFresh && summary\.known;/);
+    assert.match(card, /!known \? \(\s*\n\s*checking\s*\n\s*\? <Checking/);
+    assert.match(card, /t\('dashboard\.bundles\.notKnown'\)/);
+    // Neutral: not yet looked at is not a fault.
+    assert.doesNotMatch(card.slice(0, card.indexOf('\n}\n')), /text-warning|bg-warning/);
 });
 
 // ---------------------------------------------------------------------------
@@ -243,8 +240,8 @@ test('the new copy exists in both locales and claims nothing about the host', ()
             'services.checkingNow',
             'services.showingLastSeen',
             'services.autoCheckFailed',
-            // the mail card's unknown state
-            'dashboard.mailStacks.notChecked',
+            // the bundles card's unknown state
+            'dashboard.bundles.notKnown',
             // the two counts, reconciled
             'dashboard.svcNoneUnitlessOne',
             'dashboard.svcNoneUnitless',
@@ -258,7 +255,7 @@ test('the new copy exists in both locales and claims nothing about the host', ()
     }
     // Neither locale may describe a scan's age on a host that has none.
     assert.doesNotMatch(
-        english.slice(english.indexOf("'dashboard.mailStacks.notChecked'")).split('\n')[0],
+        english.slice(english.indexOf("'dashboard.bundles.notKnown'")).split('\n')[0],
         /five minutes|older/,
     );
 });

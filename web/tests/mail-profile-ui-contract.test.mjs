@@ -16,6 +16,8 @@ const serviceSource = readFileSync(
   new URL('../src/components/ServiceList.tsx', import.meta.url),
   'utf8',
 );
+const bundlesSource = readFileSync(new URL('../src/lib/readyBundles.ts', import.meta.url), 'utf8');
+const stripSource = readFileSync(new URL('../src/components/ReadyBundleStrip.tsx', import.meta.url), 'utf8');
 const enSource = englishCatalogue;
 const trSource = turkishCatalogue;
 
@@ -117,18 +119,22 @@ test('profile success needs fresh complete state and full operation evidence', (
   assert.match(operationSource, /showToast\('warning', t\('services\.mailProfiles\.fallbackWarning'/);
 });
 
-test('profile cards preserve individual services and use server membership', () => {
-  assert.match(serviceSource, /profile\.services\.map\(\(id\)/);
+// alpha.94 (D-034): the mail stack cards became the email strip's ready
+// bundles. The intent is kept: the server names each bundle's components,
+// the page opens the same mail install dialogue for the chosen profile and
+// starts the same kind-bound operation, and only the Panel's closed actions
+// are offered.
+test('mail bundles use server membership, the profile dialogue and closed actions', () => {
+  assert.match(bundlesSource, /const components = stringList\(bundle\.components, serviceIDs\);/);
+  assert.match(bundlesSource, /route === 'mail_profile'\s*\n\s*\? typeof bundle\.profile_id !== 'string' \|\| !MAIL_PROFILE_IDS\.has\(bundle\.profile_id\)/);
+  assert.match(bundlesSource, /available: \['install'\],\s*\n\s*partial: \['continue'\],\s*\n\s*installed_unverified: \['verify'\],\s*\n\s*installed_verified: \['repair', 'none'\],\s*\n\s*blocked: \['none'\],/);
+  assert.match(serviceSource, /const profile = profiles\.find\(\(candidate\) => candidate\.id === bundle\.profile_id\);\s*\n\s*if \(profile\) openProfilePlan\(profile\);/);
   assert.match(serviceSource, /operationKind: 'mail_profile_install'/);
-  assert.match(serviceSource, /profile\.status === 'available'/);
-  assert.match(serviceSource, /profile\.status === 'partial'/);
-  assert.match(serviceSource, /profile\.status === 'complete'/);
-  assert.match(serviceSource, /disabled=\{disabled \|\| !dnsIdentityReady \|\| !actionable\}/);
-  assert.match(serviceSource, /dnsIdentityReady && profile\.available/);
-  assert.match(serviceSource, /navigate\('\/settings\?section=dns'\)/);
-  assert.match(serviceSource, /profile\.status === 'complete' && profile\.warning/);
-  assert.match(serviceSource, /services\.mailProfiles\.profileComponentsNeedRepair/);
   assert.match(serviceSource, /setProfileTarget\(profile\)/);
+  assert.match(stripSource, /else if \(bundle\.action_route === 'mail_profile'\) onMail\(bundle\);/);
+  assert.match(serviceSource, /navigate\('\/settings\?section=dns'\)/);
+  // No hard-coded membership in the strip.
+  assert.doesNotMatch(stripSource, /\['postfix'|\['dovecot'/);
   // Role and modality are the shared Dialog's since R-059, pinned in
   // dialog-shape-contract.test.mjs. / Rol ve kiplik paylasilan Dialog'undur.
   assert.match(serviceSource, /<Dialog\s+id='mail-profile-confirm'/);
@@ -183,33 +189,31 @@ test('the mail install dialog asks for the mail hostname when the server has non
   }
 });
 
-test('complete profile copy claims only component state and localizes repair guidance', () => {
-  const enComplete = enSource.match(/'services\.mailProfiles\.status\.complete': '([^']+)'/);
-  const trComplete = trSource.match(/'services\.mailProfiles\.status\.complete': '([^']+)'/);
-  assert.equal(enComplete?.[1], 'Components running');
-  assert.equal(trComplete?.[1], 'Bileşenler çalışıyor');
-  assert.doesNotMatch(enComplete?.[1] ?? '', /installed|configured|profile ready/i);
-  assert.doesNotMatch(trComplete?.[1] ?? '', /kurulu|yapılandırıldı|profil hazır/i);
+test('an installed bundle without its proof says so, calmly, and offers Verify', () => {
+  // alpha.94: "installed, not verified" replaces "Components running" and
+  // the amber "Partially installed" of the old cards.
+  const enUnverified = enSource.match(/'services\.bundles\.unverified': '([^']+)'/);
+  const trUnverified = trSource.match(/'services\.bundles\.unverified': '([^']+)'/);
+  assert.equal(enUnverified?.[1], '{name}: installed, not verified');
+  assert.equal(trUnverified?.[1], '{name}: Kurulu, doğrulanmadı');
+  assert.match(stripSource, /<StatusDot tone='unknown' \/>/);
+  assert.match(stripSource, /bundle\.action === 'verify' && \(\s*\n\s*<Button variant='secondary'/);
+  for (const key of ['services.mailProfiles.status.partial', 'services.mailProfiles.status.complete', 'services.mailProfiles.profileComponentsNeedRepair']) {
+    assert.ok(!enSource.includes(`'${key}':`), `${key} is gone from EN`);
+    assert.ok(!trSource.includes(`'${key}':`), `${key} is gone from TR`);
+  }
 });
 
 test('mail profile copy stays in EN/TR parity', () => {
   const keys = [
-    'services.mailProfiles.title',
-    'services.mailProfiles.subtitle',
-    'services.mailProfiles.includes',
-    'services.mailProfiles.install',
-    'services.mailProfiles.continue',
-    'services.mailProfiles.repair',
-    'services.mailProfiles.unavailable',
     'services.mailProfiles.configureDNS',
-    'services.mailProfiles.dnsRequired',
     'services.mailProfiles.dnsRequiredShort',
-    'services.mailProfiles.status.unknown',
-    'services.mailProfiles.status.available',
-    'services.mailProfiles.status.partial',
-    'services.mailProfiles.status.complete',
-    'services.mailProfiles.status.blocked',
-    'services.mailProfiles.profileComponentsNeedRepair',
+    'services.bundles.label',
+    'services.bundles.verified',
+    'services.bundles.unverified',
+    'services.bundles.verify',
+    'services.bundles.repair',
+    'services.bundles.continue',
     'services.mailProfiles.fallbackWarning',
     'services.mailProfiles.plan.title.install',
     'services.mailProfiles.plan.title.continue',

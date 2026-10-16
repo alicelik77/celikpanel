@@ -8,8 +8,8 @@ import { RotateCw } from 'lucide-react';
 // Kurulu Roundcube'un yanındaki "Webmail'i onar". Sağlıklı sunucuda olağan bir
 // eylemdir ve satırın diğer ikincil eylemleri (Yönet) gibi çizilir; yalnız
 // sunucu bir webmail sorunu bildirdiğinde sarıdır.
-const neutralClass = 'inline-flex items-center gap-1.5 rounded-lg border border-border-strong bg-surface px-2.5 py-1.5 text-xs font-medium text-fg transition-colors hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-50';
-const warningClass = 'inline-flex items-center gap-1.5 rounded-lg border border-warning-mark/50 bg-warning-mark/20 px-2.5 py-1.5 text-xs font-semibold text-warning disabled:cursor-not-allowed disabled:opacity-50';
+const neutralClass = 'inline-flex items-center gap-1.5 rounded-lg border border-border-strong bg-surface px-2.5 py-1.5 text-xs font-medium text-fg transition-colors hover:bg-surface-2 disabled:cursor-not-allowed disabled:border-dashed disabled:bg-transparent disabled:text-fg-muted max-sm:min-h-11 max-sm:px-3';
+const warningClass = 'inline-flex items-center gap-1.5 rounded-lg border border-warning-mark/50 bg-warning-mark/20 px-2.5 py-1.5 text-xs font-semibold text-warning disabled:cursor-not-allowed disabled:border-dashed disabled:bg-transparent disabled:text-fg-muted max-sm:min-h-11 max-sm:px-3';
 
 export function WebmailRepairButton({ problem, disabled, title, label, onClick }: {
     problem: boolean;

@@ -60,7 +60,8 @@ const textLib = await import(dataModule(compile(read('../src/lib/mailProfileText
 const lucide = dataModule(`import React from '${reactURL}'; export const RotateCw = () => React.createElement('repair-icon');`);
 const { WebmailRepairButton } = await import(dataModule(`import React from '${reactURL}';\n`
   + compile(read('../src/components/WebmailRepairButton.tsx')).replace(/from ['"]lucide-react['"]/, `from '${lucide}'`)));
-const manageClass = /onClick=\{\(\) => onManageService\?\.\(s\.id, s\.versions\)\}\s+className="([^"]+)"/.exec(serviceList)?.[1];
+// alpha.94: every row action shares one outlined recipe (rowButtonClass).
+const manageClass = /const rowButtonClass = '([^']+)'/.exec(serviceList)?.[1];
 
 test('Repair webmail is an ordinary action unless webmail reports a problem', () => {
   assert.ok(manageClass, 'the Manage button class is found');
@@ -70,7 +71,8 @@ test('Repair webmail is an ordinary action unless webmail reports a problem', ()
   };
   const calm = mount(false);
   assert.equal(calm['data-tone'], 'neutral');
-  assert.equal(calm.className, manageClass.replace('ml-1 ', ''), 'drawn like Manage');
+  assert.equal(calm.className, manageClass, 'drawn like Manage');
+  assert.match(serviceList, /onClick=\{\(\) => onManageService\?\.\(s\.id, s\.versions\)\}\s+className=\{`ml-1 \$\{rowButtonClass\}`\}/);
   assert.doesNotMatch(calm.className, /warning/);
   // Negative control: a reported webmail problem keeps the amber.
   const amber = mount(true);
@@ -88,25 +90,29 @@ test('Repair webmail is an ordinary action unless webmail reports a problem', ()
   assert.match(serviceList, /const webmailProblem = webmailReportsProblem\(profiles\);/);
 });
 
-// 3. The Dashboard says verified mail in plain words.
-test('the Mail stacks card says verified mail in plain words', () => {
-  assert.equal(catalogues.en['dashboard.mailStacks.completeHint'], 'Mail is installed and verified on this server.');
-  assert.equal(catalogues.tr['dashboard.mailStacks.completeHint'], 'Posta bu sunucuda kurulu ve doğrulanmış.');
+// 3. The Dashboard says verified mail in plain words. Since alpha.94 the
+// Dashboard's Ready bundles card lists an installed bundle as "verified" or
+// "not verified", and the Components strip says "installed and verified".
+test('the Ready bundles card says verified mail in plain words', () => {
+  assert.equal(catalogues.en['services.bundles.verified'], '{name} installed and verified');
+  assert.equal(catalogues.tr['services.bundles.verified'], '{name} kurulu ve doğrulandı');
+  assert.equal(catalogues.tr['services.bundles.unverified'], '{name}: Kurulu, doğrulanmadı');
   for (const locale of ['en', 'tr']) {
-    assert.doesNotMatch(catalogues[locale]['dashboard.mailStacks.completeHint'], /scan|reconcil|tarama|uzlaştır/i);
+    for (const key of ['services.bundles.verified', 'services.bundles.unverified', 'dashboard.bundles.verified', 'dashboard.bundles.unverified']) {
+      assert.doesNotMatch(catalogues[locale][key], /scan|reconcil|tarama|uzlaştır/i);
+    }
   }
 });
 
-// 4. No mail component installed: "Not installed", neutral; the profile card's
-// reuse note is neutral too. A real partial install keeps its words.
+// 4. No mail component installed: the mail bundles are offered, neutrally;
+// the old "partially installed" words are gone from the page. A real partial
+// install keeps its own line with Continue.
 const truth = await import(dataModule(compile(read('../src/lib/dashboardMailTruth.ts'))));
 const profile = (id, status, extra = {}) => ({ id, status, latest_attempt_status: 'none', verified: false, ...extra });
 
 test('a mail stack with no mail component reads Not installed, neutrally', () => {
-  assert.equal(catalogues.en['dashboard.mailStacks.status.notInstalled'], 'Not installed');
-  assert.equal(catalogues.tr['dashboard.mailStacks.status.notInstalled'], 'Kurulu değil');
-  assert.equal(catalogues.en['dashboard.mailStacks.status.available'], undefined, 'the old "Ready to set up" label is gone');
-  assert.match(dashboard, /availableOnly\s+\? 'dashboard\.mailStacks\.status\.notInstalled'/);
+  assert.equal(catalogues.en['services.mailProfiles.status.partial'], undefined, 'the "Partially installed" label is gone');
+  assert.equal(catalogues.tr['services.mailProfiles.status.partial'], undefined, 'the "Kısmen kurulu" label is gone');
   // Boston after the server change: Webmail is "available" with the reuse note.
   const boston = truth.summarizeDashboardMailTruth([
     profile('core-mail', 'available'),
@@ -122,8 +128,12 @@ test('a mail stack with no mail component reads Not installed, neutrally', () =>
   ], true);
   assert.equal(partial.partial, true);
   assert.equal(partial.availableOnly, false);
-  // The Components card draws a not-installed profile's note in the muted tone.
-  assert.match(serviceList, /profile\.status === 'available' \? 'text-fg-muted' : 'text-warning'/);
+  // The strip draws the reuse note nowhere and uses amber only for a webmail
+  // runtime that is installed but not ready.
+  const strip = read('../src/components/ReadyBundleStrip.tsx');
+  assert.doesNotMatch(strip, /partly_present/);
+  assert.match(strip, /bundle\.warning_code === 'roundcube_not_ready' && \(\s*<span className='ml-1 text-warning'>/);
+  assert.equal((strip.match(/text-warning/g) ?? []).length, 1, 'one amber in the strip');
 });
 
 // 5 is held in tests/audit-actions.test.mjs.

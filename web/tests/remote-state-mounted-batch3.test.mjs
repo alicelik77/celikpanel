@@ -36,7 +36,9 @@ const icons = new Set(['AlertTriangle']);
 // The dashboard is mounted too, for its attention list and the firewall's
 // state. It stays on the ratchet's list (its system figures, audit trail and
 // component read are not moved), so it is not one of `screenFiles`.
-for (const name of [...screenFiles, 'Dashboard', 'DNSEngineCard', 'ServiceList']) {
+// The ready bundles strip and the component icon map (alpha.94) are drawn by
+// the Components page and import their own icons.
+for (const name of [...screenFiles, 'Dashboard', 'DNSEngineCard', 'ServiceList', 'ReadyBundleStrip', '../lib/componentIcons']) {
   for (const match of source(`components/${name}.tsx`).matchAll(/import\s*\{([^}]+)\}\s*from 'lucide-react'/g)) {
     for (const item of match[1].split(',')) {
       const icon = item.replace(/\btype\b/, '').trim().split(/\s+as\s+/)[0];
@@ -80,7 +82,7 @@ const stub = dataModule(`
   export const useLocation = () => ({ hash: '', pathname: '/services' });
   export const ServiceActionNotice = () => null, isServiceActionOutcome = () => false;
   // The mail-stack card is drawn only where a test asks for it.
-  export const accountStart = () => null, hasMailActivity = () => globalThis.batch3MailActivity === true;
+  export const accountStart = () => null;
   // What components/ComponentOperation.tsx imports and never calls here: only
   // its decoder is used, and that is the real one.
   export const createPortal = () => null;
@@ -116,6 +118,7 @@ const Dashboard = await pick(lib('components/Dashboard.tsx', {
   '/lib/mailProfileText': lib('lib/mailProfileText.ts'),
   '/lib/componentName': lib('lib/componentName.ts'),
   '/lib/componentCensus': lib('lib/componentCensus.ts'),
+  '/lib/readyBundles': lib('lib/readyBundles.ts'),
   '/lib/auditAction': lib('lib/auditAction.ts', { '/componentName': lib('lib/componentName.ts') }),
   '/ComponentOperation': operationURL,
 }), 'Dashboard');
@@ -132,6 +135,14 @@ const ServiceList = await pick(lib('components/ServiceList.tsx', {
   '/lib/componentName': lib('lib/componentName.ts'),
   '/lib/serverSetup': lib('lib/serverSetup.ts'),
   '/WebmailRepairButton': lib('components/WebmailRepairButton.tsx'),
+  '/lib/readyBundles': lib('lib/readyBundles.ts'),
+  '/lib/componentIcons': lib('lib/componentIcons.tsx'),
+  '/ReadyBundleStrip': lib('components/ReadyBundleStrip.tsx', {
+    '/lib/mailProfileText': lib('lib/mailProfileText.ts'),
+    '/lib/componentName': lib('lib/componentName.ts'),
+    '/lib/readyBundles': lib('lib/readyBundles.ts'),
+    '/lib/componentIcons': lib('lib/componentIcons.tsx'),
+  }),
 }), 'ServiceList');
 globalThis.window ??= globalThis;
 // The real DNS engine card, mounted with the real decoder of its state. What
@@ -154,7 +165,10 @@ const RealDNSEngineCard = await pick(lib('components/DNSEngineCard.tsx', {
 // --- What the server answers when nothing is wrong ----------------------------
 const component = (id, config_files) => ({ id, name: id, description: `${id} on this server`, icon: '', category: 'dns', status: 'active (running)', is_installed: true, versions: [], config_files });
 const profile = (id) => ({ id, name: id, description: `${id} for this server`, status: 'available', available: true, verified: false, latest_attempt_status: 'none', services: ['postfix'] });
-const scan = (services) => ({ scanned_at: '2026-10-09T09:00:00Z', dns_identity_ready: true, mail_hostname: { current: 'server1', hostname: '', source: '', current_usable: true, will_set_hostname: false }, profiles: [profile('core-mail'), profile('webmail'), profile('protected-mail')], services });
+// The mail ready bundles (alpha.94) the Panel sends beside the profiles.
+const mailBundle = (id, profileId, extra = {}) => ({ id, category: 'email', name_code: id.replace('.', '_'), components: ['postfix'], status: 'available', action: 'install', action_route: 'mail_profile', profile_id: profileId, addons: [], missing_components: ['postfix'], ...extra });
+const mailBundles = (extra = {}) => [mailBundle('mail.core', 'core-mail', extra), mailBundle('mail.webmail', 'webmail', extra), mailBundle('mail.protected', 'protected-mail', extra)];
+const scan = (services) => ({ scanned_at: '2026-10-09T09:00:00Z', dns_identity_ready: true, mail_hostname: { current: 'server1', hostname: '', source: '', current_usable: true, will_set_hostname: false }, profiles: [profile('core-mail'), profile('webmail'), profile('protected-mail')], bundles: mailBundles(), services });
 const good = {
   '/api/v1/fail2ban/jails': [{ name: 'sshd', enabled: true, active: true, banned: 1 }],
   '/api/v1/fail2ban/banned': [{ ip: '198.51.100.23', jail: 'sshd', time: '', country: '' }],
@@ -949,7 +963,8 @@ test('Components: the firewall banner is read again with the page’s scan, so t
     assert.ok(after > before, `the scan did not read the firewall again (${before} → ${after})`);
     const shown = text();
     assert.ok(!shown.includes('firewall.unknown') && !shown.includes(tr['err.AGENT_UNREACHABLE']), `the old Agent error stays: ${shown.slice(0, 400)}`);
-    assert.ok(shown.includes('firewall.on'), shown.slice(0, 400));
+    // alpha.94: a healthy firewall is one calm line.
+    assert.ok(shown.includes('firewall.compact.on'), shown.slice(0, 400));
     assert.equal(requests.filter((line) => line.startsWith('POST ') && !line.startsWith('POST /api/v1/managed-services/scan')).length, 0, `the page changed something: ${requests.join(', ')}`);
   } finally { await unmount(); delete globalThis.batch3Words; }
 });
@@ -983,61 +998,54 @@ const STALE = '2026-10-09T09:00:00Z';
 const mailScan = (scannedAt, profiles) => ({ ...good['/api/v1/managed-services'], scanned_at: scannedAt, profiles });
 const MAIL_STALE_KEYS = ['dashboard.mailStacks.rescan', 'dashboard.mailStacks.scanStale', 'dashboard.mailStacks.status.stale'];
 
-test('Dashboard mail card: while the page checks by itself it says so, with motion, and asks nothing', async () => {
-  globalThis.batch3MailActivity = true;
+test('Dashboard bundles card: while the page checks by itself it says so, with motion, and asks nothing', async () => {
   serve({ '/api/v1/managed-services': mailScan(STALE, [profile('core-mail'), profile('webmail'), profile('protected-mail')]), '/api/v1/managed-services/scan': HANG });
   await mount(dashboard());
   try {
+    const card = tree.root.find((node) => node.props['aria-labelledby'] === 'dashboard-bundles-heading');
+    const labels = card.findAll((node) => node.props.role === 'status' && typeof node.type === 'string').map((node) => node.props['aria-label']);
+    assert.ok(labels.includes('dashboard.systemServicesChecking'), `the card does not say it is checking: ${text().slice(0, 600)}`);
     const shown = text();
-    assert.ok(shown.includes('dashboard.mailStacks.status.checking'), `the card does not say it is checking: ${shown.slice(0, 600)}`);
-    assert.ok(statusLabels().includes('dashboard.systemServicesChecking'), 'the card carries the checking spinner');
     for (const key of MAIL_STALE_KEYS) assert.ok(!shown.includes(key), `"${key}" is on screen while the page checks by itself`);
     assert.equal(requests.filter((line) => line.startsWith('POST /api/v1/managed-services/scan')).length, 1, 'one check, by the page');
-  } finally { await unmount(); delete globalThis.batch3MailActivity; }
+  } finally { await unmount(); }
 });
 
-test('Dashboard mail card: a check that could not run says the status is not known, without sending the owner to rescan', async () => {
-  globalThis.batch3MailActivity = true;
+test('Dashboard bundles card: a check that could not run says nothing is known yet, without sending the owner to rescan', async () => {
   serve({ '/api/v1/managed-services': mailScan(STALE, [profile('core-mail'), profile('webmail'), profile('protected-mail')]), '/api/v1/managed-services/scan': REFUSED });
   await mount(dashboard());
   try {
     await settle();
-    const shown = text();
-    assert.ok(shown.includes('dashboard.mailStacks.checkFailed'), shown.slice(0, 600));
-    const card = tree.root.find((node) => node.props['aria-labelledby'] === 'dashboard-mail-stacks-heading');
-    const cardText = JSON.stringify(card.findAll((node) => typeof node.type === 'string').map((node) => node.children.filter((child) => typeof child === 'string')));
-    assert.ok(cardText.includes('dashboard.statusUnknown'), `the card does not say the status is unknown: ${cardText}`);
-    for (const key of MAIL_STALE_KEYS) assert.ok(!shown.includes(key), `"${key}" is on screen`);
-    assert.ok(shown.includes('dashboard.mailStacks.open'), 'the card still opens the mail stacks');
-  } finally { await unmount(); delete globalThis.batch3MailActivity; }
+    const card = tree.root.find((node) => node.props['aria-labelledby'] === 'dashboard-bundles-heading');
+    const cardText = label(card);
+    assert.ok(cardText.includes('dashboard.bundles.notKnown'), `the card does not say it is not known: ${cardText}`);
+    assert.ok(!cardText.includes('dashboard.bundles.noneInstalled'), 'a stale record is read as "nothing installed"');
+    for (const key of MAIL_STALE_KEYS) assert.ok(!text().includes(key), `"${key}" is on screen`);
+    assert.ok(cardText.includes('dashboard.bundles.open'), 'the card still opens the bundles');
+  } finally { await unmount(); }
 });
 
-test('Dashboard mail card: the profile name and the Panel’s typed sentences are said in the interface language', async () => {
-  globalThis.batch3MailActivity = true;
+test('Dashboard bundles card: an installed bundle is named in the interface language, and the door opens the bundles', async () => {
   globalThis.batch3Words = {
-    'dashboard.audit.profile.coreMail': trScreens['dashboard.audit.profile.coreMail'],
-    'services.mailProfiles.code.partly_present': trServerScreens['services.mailProfiles.code.partly_present'],
-    'services.mailProfiles.attemptError': trServerScreens['services.mailProfiles.attemptError'],
+    'services.bundles.name.mail_webmail': trServerScreens['services.bundles.name.mail_webmail'],
+    'dashboard.bundles.verified': trScreens['dashboard.bundles.verified'],
   };
-  const english = 'Some components are already present. Installing this profile will reconcile the full plan without removing completed services.';
-  const partial = { ...profile('core-mail'), status: 'partial', warning: english, warning_code: 'partly_present' };
-  const shown = async (core) => {
-    serve({ '/api/v1/managed-services': mailScan(new Date().toISOString(), [core, profile('webmail'), profile('protected-mail')]) });
-    await mount(dashboard());
-    try { return text(); } finally { await unmount(); }
-  };
+  globalThis.batch3Navigated = [];
+  const installed = { ...mailScan(new Date().toISOString(), [profile('core-mail'), profile('webmail'), profile('protected-mail')]) };
+  installed.bundles = mailBundles().map((item) => (item.id === 'mail.webmail'
+    ? { ...item, status: 'installed_verified', action: 'repair', missing_components: [] }
+    : item));
+  serve({ '/api/v1/managed-services': installed });
+  await mount(dashboard());
   try {
-    let page = await shown(partial);
-    assert.ok(page.includes('Temel Posta'), `the profile is not named in Turkish: ${page.slice(0, 600)}`);
-    assert.ok(page.includes(trServerScreens['services.mailProfiles.code.partly_present']), 'the typed warning is not said in Turkish');
-    assert.ok(!page.includes(english), 'the English server sentence is shown beside a code');
-    // An older Panel sends no code: its words are shown as it wrote them.
-    page = await shown({ ...partial, warning_code: undefined });
-    assert.ok(page.includes(english), 'the text of a Panel without codes is lost');
-    // The last attempt's error keeps the server's words behind a Turkish lead-in.
-    page = await shown({ ...profile('core-mail'), status: 'partial', latest_attempt_status: 'failed', latest_attempt_error: 'submission verification failed' });
-    assert.ok(page.includes('Son deneme şunu bildirdi: submission verification failed'), page.slice(0, 600));
-  } finally { delete globalThis.batch3MailActivity; delete globalThis.batch3Words; }
+    const card = tree.root.find((node) => node.props['aria-labelledby'] === 'dashboard-bundles-heading');
+    const cardText = label(card);
+    assert.ok(cardText.includes('Web postalı posta') && cardText.includes('doğrulandı'), cardText);
+    assert.ok(cardText.includes('dashboard.bundles.installable{"n":2}'), cardText);
+    await act(async () => { card.findAll((node) => node.type === 'button').find((node) => label(node).includes('dashboard.bundles.open')).props.onClick(); });
+    assert.deepEqual(globalThis.batch3Navigated, ['/services#bundles']);
+    assert.equal(requests.filter((line) => !line.startsWith('GET ')).length, 0, `the card sent a change: ${requests.join(', ')}`);
+  } finally { await unmount(); delete globalThis.batch3Words; delete globalThis.batch3Navigated; }
 });
 
 test('Components: a paused server change says the page lifts it by itself, without asking for a reload', async () => {
@@ -1142,7 +1150,14 @@ test('the sentence for an unverifiable stored record says the panel checks by it
 // a setup extension and reviewed in setup, so it gets setup's steps and checks.
 // Gap 3: a saved mail host name can be corrected, with what changes said first.
 const secondaryGuidance = { reason: 'dns_secondary', primary_nameserver: 'ns1.example.net', primary_ip: '203.0.113.10', record_name: 'mail.boston.example.net', record_type: 'A', record_value: '198.51.100.7' };
-const secondaryScan = (guidance) => ({ ...freshScan(), dns_identity_ready: false, ...(guidance ? { mail_dns_guidance: guidance } : {}) });
+// While the DNS identity is not ready the Panel blocks every mail bundle.
+const secondaryScan = (guidance) => ({ ...freshScan(), dns_identity_ready: false, bundles: mailBundles({ status: 'blocked', action: 'none', blocked_code: 'dns_identity_not_ready' }), ...(guidance ? { mail_dns_guidance: guidance } : {}) });
+// A mail bundle opens the mail install dialogue: its chip, then Install….
+const openMailBundle = async () => {
+  const chip = tree.root.find((node) => node.type === 'button' && node.props['data-bundle'] === 'mail.core');
+  await act(async () => { chip.props.onClick(); });
+  await press('services.bundles.installEllipsis');
+};
 const readySetup = () => ({ version: 1, revision: 7, origin: 'fresh', status: 'ready', required: false, guidance: 'guided', checks: [],
   draft: { purpose: 'web', panel_domain: 'boston.example.net', mail_hostname: '', dns_mode: 'external', remote_dns_connection_id: '', dns_engine: 'bind', dns_role: 'primary', ns1: '', ns2: '', local_ip: '', peer_ip: '', peer_ns: '', node_version: '', database: 'mariadb' } });
 const savedNameScan = () => ({ ...freshScan(), mail_hostname: { current: 'server1', hostname: 'mail.example.net', source: 'saved', current_usable: true, will_set_hostname: false } });
@@ -1171,8 +1186,8 @@ test('Components: on a secondary DNS server the mail box names the primary and t
     assert.equal(buttons().filter((node) => label(node).includes('services.mailProfiles.configureDNS')).length, 0, 'the dead-end button is still offered');
     assert.ok(buttons().some((node) => label(node).includes('services.mailProfiles.secondary.openSetup')));
     assert.ok(shown.includes('services.mailProfiles.secondary.short'));
-    // Its cards do not say "ready to install" beside an action that waits for the record (2026-10-16).
-    assert.ok(shown.includes('services.mailProfiles.status.waitingDNS') && !shown.includes('services.mailProfiles.status.available'), shown.slice(0, 800));
+    // No bundle is offered beside a record that is not there yet (2026-10-16, alpha.94 strip).
+    assert.ok(!hasNode('data-bundle') && !shown.includes('services.bundles.installEllipsis'), shown.slice(0, 800));
   } finally { await unmount(); }
   // Control: the same server without the guidance keeps the generic box.
   serve({ '/api/v1/managed-services': secondaryScan(null) });
@@ -1201,9 +1216,9 @@ test('Components: a server whose setup has finished adds mail through a setup ex
   await mount(React.createElement(ServiceList, {}));
   try {
     await settle();
-    // Control for the secondary server's status: with its DNS identity ready a profile is ready to install.
-    assert.ok(text().includes('services.mailProfiles.status.available') && !text().includes('services.mailProfiles.status.waitingDNS'));
-    await press('services.mailProfiles.install');
+    // Control for the secondary server's strip: with its DNS identity ready the mail bundles are offered.
+    assert.ok(tree.root.findAll((node) => node.type === 'button' && node.props['data-bundle'] === 'mail.core').length === 1 && !hasNode('data-mail-dns-secondary'));
+    await openMailBundle();
     const shown = text();
     assert.ok(hasNode('data-mail-profile-route') && shown.includes('services.mailProfiles.setupRoute.note'), shown.slice(0, 800));
     assert.ok(!shown.includes('services.mailProfiles.plan.acknowledgement'), 'nothing starts here, so nothing is acknowledged here');
@@ -1225,7 +1240,7 @@ test('Components: a server whose setup has finished adds mail through a setup ex
   await mount(React.createElement(ServiceList, {}));
   try {
     await settle();
-    await press('services.mailProfiles.install');
+    await openMailBundle();
     const shown = text();
     assert.ok(shown.includes('services.mailProfiles.directRoute.note') && shown.includes('services.mailProfiles.plan.acknowledgement'), shown.slice(0, 800));
     assert.ok(!shown.includes('services.mailProfiles.setupRoute.confirm'));
@@ -1245,7 +1260,7 @@ test('Components: a refused setup extension keeps the dialog open with the reaso
   await mount(React.createElement(ServiceList, {}));
   try {
     await settle();
-    await press('services.mailProfiles.install');
+    await openMailBundle();
     await press('services.mailProfiles.hostname.change');
     await press('services.mailProfiles.setupRoute.confirm');
     // While setup is asked, nothing in the dialog can change or close what was sent (2026-10-16).
@@ -1277,7 +1292,7 @@ test('Components: a saved mail host name can be corrected, and what changes is s
   await mount(React.createElement(ServiceList, {}));
   try {
     await settle();
-    await press('services.mailProfiles.install');
+    await openMailBundle();
     assert.ok(text().includes('services.mailProfiles.hostname.settled'), text().slice(0, 800));
     assert.ok(!hasNode('data-mail-hostname-effects'), 'effects said before any change');
     await press('services.mailProfiles.hostname.change');

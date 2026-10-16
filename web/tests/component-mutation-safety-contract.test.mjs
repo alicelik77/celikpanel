@@ -11,6 +11,8 @@ const operationSource = readFileSync(
   new URL('../src/components/ComponentOperation.tsx', import.meta.url),
   'utf8',
 );
+const bundlesSource = readFileSync(new URL('../src/lib/readyBundles.ts', import.meta.url), 'utf8');
+const stripSource = readFileSync(new URL('../src/components/ReadyBundleStrip.tsx', import.meta.url), 'utf8');
 const enSource = englishCatalogue;
 const trSource = turkishCatalogue;
 
@@ -107,18 +109,23 @@ test('lifecycle, repair, runtime install and firewall actions require an explici
   assert.doesNotMatch(serviceSource, /!confirm\(/);
 });
 
-test('mail profiles stay visible but cannot start before verified DNS identity is ready', () => {
+test('mail bundles stay visible but cannot start before verified DNS identity is ready', () => {
   assert.match(operationSource, /dns_identity_ready: boolean/);
   assert.match(operationSource, /typeof payload\.dns_identity_ready !== 'boolean'/);
-  assert.match(serviceSource, /<MailProfileCards/);
-  assert.match(serviceSource, /dnsIdentityReady=\{dnsIdentityReady\}/);
-  // On a secondary DNS server the box names where the record is created and
+  // alpha.94: the mail stacks are the email strip's bundles; the DNS
+  // notices are one line each at the head of that strip.
+  assert.match(serviceSource, /<ReadyBundleStrip/);
+  assert.match(serviceSource, /notice=\{cat === 'email' \? mailNotice : undefined\}/);
+  // On a secondary DNS server the line names where the record is created and
   // offers no DNS-settings button (2026-10-16); elsewhere it keeps it.
-  assert.match(serviceSource, /!dnsIdentityReady && !secondary && \(/);
-  assert.match(serviceSource, /const secondary = !dnsIdentityReady && dnsGuidance !== null;/);
-  assert.match(serviceSource, /\{secondary && dnsGuidance && \(/);
-  assert.match(serviceSource, /disabled=\{disabled \|\| !dnsIdentityReady \|\| !actionable\}/);
+  assert.match(serviceSource, /const mailSecondary = !dnsIdentityReady && mailDNSGuidance !== null;/);
+  assert.match(serviceSource, /const mailNotice = mailSecondary && mailDNSGuidance \? \(/);
+  assert.match(serviceSource, /: !dnsIdentityReady && bundles\.some\(/);
   assert.match(serviceSource, /navigate\('\/settings\?section=dns'\)/);
+  // The Panel blocks every mail bundle while the DNS identity is not ready;
+  // a blocked bundle carries no action, so the strip offers none.
+  assert.match(bundlesSource, /blocked: \['none'\]/);
+  assert.match(stripSource, /model\.hostBlocked/);
 });
 
 test('new confirmation, readiness, DNS and firewall copy stays in EN/TR parity', () => {
@@ -154,7 +161,6 @@ test('new confirmation, readiness, DNS and firewall copy stays in EN/TR parity',
     'services.repo.confirm.disable.description',
     'services.repo.confirm.disable.button',
     'services.mailProfiles.configureDNS',
-    'services.mailProfiles.dnsRequired',
     'services.mailProfiles.dnsRequiredShort',
     'firewall.changeFailed',
     'firewall.confirm.enable.title',
