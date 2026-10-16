@@ -158,3 +158,66 @@ func TestMailProfileViewTypesItsSentences(t *testing.T) {
 		t.Fatalf("warning_code present without a warning: %s", body)
 	}
 }
+
+// Frankfurt on alpha.92 (2026-10-16): setup installed and reconciled Webmail
+// and Spam-Protected Mail, yet Core Mail asked for Repair. A verified profile
+// that contains every Core Mail component proves Core Mail's reconciliation
+// on the same scan. The negative controls keep the rule as strict as before.
+func TestMailProfileSupersetProofVerifiesCoreMail(t *testing.T) {
+	protected := catalogView([]serviceObservation{
+		{ID: "postfix", IsInstalled: true, Status: "active (running)"},
+		{ID: "dovecot", IsInstalled: true, Status: "active (running)"},
+		{ID: "rspamd", IsInstalled: true, Status: "active (running)"},
+	}, "apt")
+	core := func(proofs map[string]mailProfileAttemptProof) MailProfileResponse {
+		return profileViewByID(t, mailProfilesView(protected, true, "apt", "", false, true, proofs), "core-mail")
+	}
+
+	inherited := core(map[string]mailProfileAttemptProof{
+		"protected-mail": {Status: mailProfileAttemptSucceeded, Verified: true},
+	})
+	if !inherited.Verified || inherited.Warning != "" || inherited.WarningCode != "" || inherited.Status != mailProfileStatusComplete {
+		t.Fatalf("a verified superset does not verify Core Mail: %+v", inherited)
+	}
+
+	// Negative controls: component state alone, an unverified superset receipt,
+	// and Core Mail's own running or failed attempt keep the warning.
+	for name, proofs := range map[string]map[string]mailProfileAttemptProof{
+		"no receipt":         nil,
+		"unverified receipt": {"protected-mail": {Status: mailProfileAttemptSucceeded}},
+		"own attempt running": {
+			"protected-mail": {Status: mailProfileAttemptSucceeded, Verified: true},
+			"core-mail":      {Status: mailProfileAttemptInProgress},
+		},
+		"own attempt failed": {
+			"protected-mail": {Status: mailProfileAttemptSucceeded, Verified: true},
+			"core-mail":      {Status: mailProfileAttemptFailed, Error: "submission verification failed"},
+		},
+	} {
+		if view := core(proofs); view.Verified || view.WarningCode != mailProfileWarningRepairToVerify {
+			t.Fatalf("%s: Core Mail verified without its own or a bound superset proof: %+v", name, view)
+		}
+	}
+
+	// A superset receipt whose own components are not ready on this scan does
+	// not count: Rspamd stopped means Spam-Protected Mail is not verified now.
+	stopped := catalogView([]serviceObservation{
+		{ID: "postfix", IsInstalled: true, Status: "active (running)"},
+		{ID: "dovecot", IsInstalled: true, Status: "active (running)"},
+		{ID: "rspamd", IsInstalled: true, Status: "inactive (dead)"},
+	}, "apt")
+	view := profileViewByID(t, mailProfilesView(stopped, true, "apt", "", false, true, map[string]mailProfileAttemptProof{
+		"protected-mail": {Status: mailProfileAttemptSucceeded, Verified: true},
+	}), "core-mail")
+	if view.Verified || view.WarningCode != mailProfileWarningRepairToVerify {
+		t.Fatalf("a superset not ready on this scan verified Core Mail: %+v", view)
+	}
+
+	// The relation runs one way: a verified Core Mail never verifies a larger profile.
+	larger := profileViewByID(t, mailProfilesView(protected, true, "apt", "", false, true, map[string]mailProfileAttemptProof{
+		"core-mail": {Status: mailProfileAttemptSucceeded, Verified: true},
+	}), "protected-mail")
+	if larger.Verified || larger.WarningCode != mailProfileWarningRepairToVerify {
+		t.Fatalf("a smaller profile's proof verified a larger one: %+v", larger)
+	}
+}

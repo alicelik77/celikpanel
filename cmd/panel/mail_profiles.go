@@ -1015,5 +1015,56 @@ func mailProfilesView(
 		}
 		profiles = append(profiles, view)
 	}
+	inheritSupersetMailProfileProof(profiles)
 	return profiles
+}
+
+// inheritSupersetMailProfileProof marks a complete but unproven profile as
+// verified when another profile that contains every one of its components is
+// itself verified on the same scan. Webmail and Spam-Protected Mail run the
+// same Postfix and Dovecot reconciliation (MailStack, mail TLS, authenticated
+// submission) as Core Mail; their bound receipt proves that work, so asking
+// the owner to repair Core Mail afterwards was a false alarm (owner
+// observation on Frankfurt, alpha.92). Nothing else is relaxed: component
+// state alone still proves nothing, and a profile whose own latest attempt is
+// running or failed keeps its own state and warning.
+//
+// inheritSupersetMailProfileProof, tamamlanmış ama kanıtı olmayan bir profili,
+// onun bütün bileşenlerini içeren başka bir profil aynı taramada doğrulanmışsa
+// doğrulanmış sayar. Web posta ve Spam Korumalı Posta, Temel Posta ile aynı
+// Postfix ve Dovecot uzlaştırmasını yapar; bağlı makbuzları bu işi kanıtlar.
+// Başka hiçbir kural gevşemez: yalnız bileşen durumu yine kanıt değildir;
+// kendi son denemesi süren ya da başarısız olan profil kendi durumunu korur.
+func inheritSupersetMailProfileProof(profiles []MailProfileResponse) {
+	for i := range profiles {
+		candidate := &profiles[i]
+		if candidate.Status != mailProfileStatusComplete || candidate.Verified ||
+			candidate.WarningCode != mailProfileWarningRepairToVerify {
+			continue
+		}
+		switch candidate.LatestAttemptStatus {
+		case mailProfileAttemptInProgress, mailProfileAttemptFailed:
+			continue
+		}
+		for j := range profiles {
+			superset := profiles[j]
+			if i == j || superset.Status != mailProfileStatusComplete || !superset.Verified ||
+				!mailProfileServicesContain(superset.Services, candidate.Services) {
+				continue
+			}
+			candidate.Verified = true
+			candidate.Warning = ""
+			candidate.WarningCode = ""
+			break
+		}
+	}
+}
+
+func mailProfileServicesContain(superset, subset []string) bool {
+	for _, id := range subset {
+		if !slices.Contains(superset, id) {
+			return false
+		}
+	}
+	return true
 }
