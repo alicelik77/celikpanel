@@ -587,7 +587,14 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 			if !errors.As(infrastructureErr, &reviewError) {
 				return plan, infrastructureErr
 			}
-			addBlocker("server_setup_infrastructure_dns_conflict:" + reviewError.Message)
+			// A typed refusal keeps its own code (the peer's mail host name,
+			// 2026-10-16); every other review error stays the conflict.
+			// Tipli ret kendi kodunu korur; digerleri cakisma olarak kalir.
+			code := "infrastructure_dns_conflict"
+			if strings.HasPrefix(reviewError.Code, "infrastructure_dns_peer_mail_") {
+				code = reviewError.Code
+			}
+			addBlocker("server_setup_" + code + ":" + reviewError.Message)
 		}
 		if plan.InfrastructureDNS != nil {
 			addStep("infrastructure_dns", plan.InfrastructureDNS.Zone, "")

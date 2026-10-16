@@ -1670,3 +1670,47 @@ test('a pressed mail enrollment continuation stays single-flight until the opera
         assert.ok(findButton('setup.mailEnrollment.continue') && !findButton('setup.mailEnrollment.continue').props.disabled);
     } finally { await cleanup(); }
 });
+
+// Second server as a full peer, part 2 (2026-10-16).
+test('the primary’s plan carries the other server’s mail host name beside its panel host name', async () => {
+    init('admin', {status:'draft', draft:{...fresh().draft, purpose:'web', panel_domain:'frankfurt.example.com', ns1:'ns1.example.com', ns2:'ns2.example.com', peer_ns:'ns2.example.com', local_ip:'192.0.2.10', peer_ip:'192.0.2.20', infrastructure_dns:{zone:'example.com', peer_panel_domain:'boston.example.com'}}});
+    try {
+        await mount();
+        const field = () => tree.root.findAllByProps({id:'setup-peer_mail_hostname'});
+        assert.equal(field().length, 1, 'the field is not offered with the infrastructure zone');
+        assert.ok(JSON.stringify(tree.toJSON()).includes('setup.infrastructure.peerMailHelp'));
+        await act(async () => field()[0].props.onChange({target:{value:'mail.boston.example.com'}}));
+        await submit();
+        assert.equal(state.draft.infrastructure_dns.peer_mail_hostname, 'mail.boston.example.com');
+        assert.equal(state.draft.infrastructure_dns.peer_panel_domain, 'boston.example.com');
+    } finally { await cleanup(); }
+    // Control: without the infrastructure zone there is no such field.
+    init('admin', {status:'draft', draft:{...fresh().draft, purpose:'web', panel_domain:'frankfurt.example.com', ns1:'ns1.example.com', ns2:'ns2.example.com', peer_ns:'ns2.example.com', local_ip:'192.0.2.10', peer_ip:'192.0.2.20'}});
+    try {
+        await mount();
+        assert.equal(tree.root.findAllByProps({id:'setup-prepare-infrastructure-dns'}).length, 1);
+        assert.equal(tree.root.findAllByProps({id:'setup-peer_mail_hostname'}).length, 0);
+    } finally { await cleanup(); }
+});
+
+test('the draft decoder accepts the peer’s mail host name and refuses one that is not the contract', () => {
+    const draft = (infrastructure) => ({...fresh(), draft:{...fresh().draft, infrastructure_dns:infrastructure}});
+    assert.ok(setup.decodeServerSetup(draft({zone:'example.com', peer_mail_hostname:'mail.boston.example.com'})));
+    assert.equal(setup.decodeServerSetup(draft({zone:'example.com', peer_mail_hostname:7})), null);
+    assert.equal(setup.decodeServerSetup(draft({zone:'example.com', peer_mail_hostname:'a'.repeat(254)})), null);
+});
+
+test('the execution context keeps a valid record request outcome and drops only an invalid one', () => {
+    const run = (peer) => ({id:'c'.repeat(32), plan_id:'a'.repeat(32), request_id:'b'.repeat(32), status:'waiting', phase:'access_dns',
+        steps:[{id:'05-access_dns', kind:'access_dns', target:'mail.boston.example.com', qualifier:'192.0.2.10', status:'running'}],
+        context:{dns_mode:'local', dns_role:'secondary', dns_engine:'bind', local_nameserver:'ns2.example.com', local_ip:'192.0.2.10', peer_nameserver:'ns1.example.com', peer_ip:'192.0.2.20', panel_domain:'boston.example.com', mail_hostname:'mail.boston.example.com', dns_hosting_management:'panel', peer_host_record:peer}});
+    const good = operations.decodeSetupExecution(run({channel:true, outcome:{status:'applied', result:'created', zone:'example.com', name:'mail.boston.example.com', type:'A', content:'192.0.2.10', at:'2026-10-16T00:00:00Z', attempts:1, request_id:'b'.repeat(32)}}));
+    assert.equal(good.context.peer_host_record.outcome.status, 'applied');
+    assert.equal(good.context.peer_host_record.outcome.zone, 'example.com');
+    const bad = operations.decodeSetupExecution(run({channel:'yes'}));
+    assert.ok(bad.context, 'an invalid additive field dropped the whole context');
+    assert.equal(bad.context.peer_host_record, undefined);
+    assert.equal(bad.context.peer_nameserver, 'ns1.example.com');
+    const strange = operations.decodeSetupExecution(run({channel:true, outcome:{status:'exploded', name:'x', content:'y'}}));
+    assert.deepEqual(strange.context.peer_host_record, {channel:true});
+});

@@ -267,7 +267,28 @@ export function setupExecutionGuidance(execution: ServerSetupExecution, componen
         if (execution.error?.code === 'server_setup_access_dns_mismatch') result.messages.push(text('setup.guide.accessDNSMismatch'));
         else if (execution.status === 'waiting') result.messages.push(text('setup.guide.accessDNSUnknown'));
         if (context?.dns_mode === 'local' && context.dns_role === 'secondary') {
-            result.messages.push(text('setup.guide.accessDNSSecondary', { primary: context.peer_nameserver, primaryIP: context.peer_ip }));
+            // The record requested from the primary over the DNS connection
+            // (2026-10-16): what happened first, then the manual record when
+            // the owner still has to act. Applied: nothing to do but wait.
+            // Birincilden istenen kayit: once ne oldugu, sonra gerekirse elle kayit.
+            const peer = context.peer_host_record;
+            const outcome = peer?.outcome;
+            const primary = context.peer_nameserver || context.peer_ip;
+            if (outcome?.status === 'applied') {
+                result.messages.push(text(outcome.result === 'present' ? 'setup.guide.peerRecordPresent' : 'setup.guide.peerRecordApplied', { primary, zone: outcome.zone || '' }));
+            } else if (outcome?.status === 'refused') {
+                const reason = ['REMOTE_DNS_HOST_RECORD_CONFLICT', 'REMOTE_DNS_HOST_RECORD_OUTSIDE_ZONE', 'REMOTE_DNS_HOST_RECORD_ADDRESS'].includes(outcome.code || '') ? outcome.code! : 'other';
+                result.messages.push(text(`setup.guide.peerRecordRefused.${reason}` as TranslationKey, { primary }));
+            } else if (outcome?.status === 'unsupported') {
+                result.messages.push(text('setup.guide.peerRecordUnsupported', { primary }));
+            } else if (outcome?.status === 'unknown') {
+                result.messages.push(text('setup.guide.peerRecordUnknown', { primary }));
+            } else if (peer && !peer.channel) {
+                result.messages.push(text('setup.guide.peerRecordNoChannel', { primary }));
+            } else if (peer?.channel) {
+                result.messages.push(text('setup.guide.peerRecordAsking', { primary }));
+            }
+            if (outcome?.status !== 'applied') result.messages.push(text('setup.guide.accessDNSSecondary', { primary: context.peer_nameserver, primaryIP: context.peer_ip }));
             if (domain === context.panel_domain) result.details.push(text('setup.guide.accessDNSPeerPanel'));
         } else if (context?.infrastructure_dns) {
             result.messages.push(text('setup.guide.accessDNSPrepared', { zone: context.infrastructure_dns.zone, primary: context.local_nameserver, secondary: context.peer_nameserver }));

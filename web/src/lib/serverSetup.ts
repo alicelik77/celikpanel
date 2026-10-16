@@ -4,7 +4,7 @@ export type SetupDNSMode = 'local' | 'existing' | 'external';
 export interface ServerSetupDraft {
     purpose: SetupPurpose;
     customization?: { components: string[] };
-    infrastructure_dns?: { zone: string; peer_panel_domain?: string };
+    infrastructure_dns?: { zone: string; peer_panel_domain?: string; peer_mail_hostname?: string };
     panel_domain: string;
     mail_hostname: string;
     dns_mode: SetupDNSMode;
@@ -58,7 +58,8 @@ function validDraft(draft: unknown): draft is Record<string, unknown> {
     const infrastructure = draft.infrastructure_dns;
     if (infrastructure !== undefined && (!record(infrastructure)
         || typeof infrastructure.zone !== 'string' || infrastructure.zone.length > 253
-        || (infrastructure.peer_panel_domain !== undefined && (typeof infrastructure.peer_panel_domain !== 'string' || infrastructure.peer_panel_domain.length > 253)))) return false;
+        || (infrastructure.peer_panel_domain !== undefined && (typeof infrastructure.peer_panel_domain !== 'string' || infrastructure.peer_panel_domain.length > 253))
+        || (infrastructure.peer_mail_hostname !== undefined && (typeof infrastructure.peer_mail_hostname !== 'string' || infrastructure.peer_mail_hostname.length > 253)))) return false;
     if (draft.dns_hosting_management !== undefined && !['manual', 'panel'].includes(String(draft.dns_hosting_management))) return false;
     if (draft.dns_publisher_endpoint !== undefined && typeof draft.dns_publisher_endpoint !== 'string') return false;
     const customization = draft.customization;

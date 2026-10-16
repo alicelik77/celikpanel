@@ -977,8 +977,15 @@ is the existing reviewed runner. This applies the decision's own rules:
   says that the mail host name's record is made on the primary or at the DNS
   provider and shows the exact record; it creates none. Whether the primary
   should publish a peer's records itself, an editor for the infrastructure zone
-  and automatic transfer of host records over the remote DNS connection are
-  three open owner decisions (OPERATION-GUIDANCE, entry of 2026-10-16).
+  and automatic transfer of host records over the remote DNS connection were
+  three open owner decisions (OPERATION-GUIDANCE, entry of 2026-10-16). The
+  owner decided all three the same day ("as proposed"): the primary's plan
+  can carry the peer's mail host name, the infrastructure zone is a DNS-only
+  entry of Domains with the existing editor, and the secondary asks the
+  primary for its host records over the authorized connection, with manual
+  entry still possible; replication stays the native zone transfer (D-022).
+  In source on branch `feat/alpha91-second-server-part2`, not measured
+  natively by the owner's instruction (OPERATION-GUIDANCE, part 2).
 
 Status of the note: in source with component tests and a mock browser (batch
 16); measured in a lab with its own DNS and ACME in the native records set18

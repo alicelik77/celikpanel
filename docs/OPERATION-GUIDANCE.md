@@ -8126,6 +8126,9 @@ Until they are decided, on Boston the mail host name's record is made by the
 owner on Frankfurt (or at the DNS provider), and the extension's public DNS
 step waits for it with its guidance.
 
+*Added 2026-10-16:* the owner decided all three the same day; they are in
+source in part 2 below.
+
 **Counts.** `npm test` 1494 of 1494; `npx tsc --noEmit` clean; `npm run build`
 passes with its bundle budget. `go test ./cmd/panel` in the WSL guest: 1557
 top-level tests pass, 6 skip, 1675 subtests pass (at `60ea75c1c`; when this
@@ -8204,6 +8207,183 @@ Counts after these corrections: `npm test` 1499 of 1499 (22 s); `npx tsc
 blocks and the access step's secondary-DNS box have not been seen rendered on
 a native server; O2 (no-SNI certificate) and O4 (the lab port in the handover
 address) are not judged.
+
+### Second server as a full peer, part 2: the owner's three decisions in source (2026-10-16)
+
+On 2026-10-16 the owner decided the three questions left open by part 1 above,
+in the words "önerin gibi olacak" (it will be as you proposed):
+
+1. **The second server can be a full web and mail peer** of the first.
+2. **The infrastructure zone is shown on the primary as a normal entry of
+   Domains** (for example `celikhost.com`, the panels' own zone), with the
+   existing DNS record editor, marked "Infrastructure zone · DNS only" and
+   without hosting actions until a website is added for that name. Records that
+   setup created stay managed by setup; the owner's own records are preserved
+   (detected, never silently overwritten).
+3. **The second server's host records travel to the primary automatically**
+   over the existing authorized remote DNS connection, and manual entry stays
+   possible: when the secondary adds its mail host or its panel host, it asks
+   the primary to create the A/AAAA record in the infrastructure zone; the
+   primary applies it to its own zone, which reaches the secondary by the
+   standard zone transfer (replication never depends on this channel); with no
+   channel or a refusal the secondary's guidance shows the exact record for
+   manual entry (part 1). The primary's plan also gains a field for the peer's
+   mail host name, so the record can be prepared from either side.
+
+Corrected in source on branch `feat/alpha91-second-server-part2` (from main
+`d93517081`). D-022 holds: replication is the native primary/secondary
+transfer and needs no remote CelikPanel; the record request is the separate,
+optional, authorized record-management automation. D-024 and D-033: every new
+state names the reason, who acts and how work resumes; a state in which the
+owner has nothing to do says so. **No native record was made, by the owner's
+instruction of 2026-10-16** (quick, no long lab runs): the evidence is
+component, mounted and Go tests and one mock browser batch. Nothing was
+measured on an installed server; no installed panel was updated or contacted;
+no P0 item is closed or advanced.
+
+**Schema and version transition.** None. No migration: the schema stays at 44.
+The infrastructure zone is identified by the ownership record setup already
+writes (`server_setup_infrastructure_zone:<zone>` in `panel_settings`,
+matching the zone's `pdns_domains` id), so no tenant `domains` row and no
+`kind` column were added. New `panel_settings` keys:
+`remote_dns_host_record:<zone>:<name>:<type>` (on the primary, the record a
+request created, so a later request can tell it from an owner's change) and
+`server_setup_peer_host_record:<request id>` (on the secondary, the outcome of
+the request for one access DNS step; no credential). Additive JSON fields:
+`infrastructure_dns.peer_mail_hostname` in the setup draft (an older plan has
+none and keeps its identity), `managed_by` on DNS records of an infrastructure
+zone, `peer_host_record` in the setup operation's context,
+`peer_record_channel` in the Components mail DNS guidance. The remote DNS
+transport now keeps the typed `code` of a refusal (additive). An older primary
+answers the new request with a plain refusal; the secondary records
+"unsupported" and shows the manual record.
+
+**Gap 4: the peer's mail host name in the primary's plan.** The infrastructure
+DNS selection has `peer_mail_hostname` beside `peer_panel_domain`; it is
+canonicalized like the other names and prepared as an A record to the
+reviewed peer address, so it appears in the plan review like the other
+records. Typed refusals as plan blockers:
+`server_setup_infrastructure_dns_peer_mail_own_name` (this server's panel,
+mail or nameserver name, or the zone apex) and
+`server_setup_infrastructure_dns_peer_mail_outside_zone`. Code:
+`cmd/panel/server_setup.go`, `server_setup_infrastructure_dns.go`
+(`serverSetupInfrastructureDNSDesired`), `server_setup_operations.go`;
+`web/src/components/ServerSetup.tsx`, `web/src/lib/serverSetup.ts`. Tests:
+`cmd/panel/server_setup_peer_mail_test.go` (three);
+`web/tests/server-setup-runtime.test.mjs` (the field and its control, the
+draft decoder).
+
+**Gap 5: the infrastructure zone in Domains and its editor.** Administrator
+only (`/api/v1/dns/` prefix): `GET /api/v1/dns/infrastructure-zones` lists the
+zones setup created (zone, records, the peer's records, and the website's id
+when one was added for the name); `GET …/{zone}/zone` and
+`GET|POST|PUT|DELETE …/{zone}/records` reuse the domain record handlers. In
+an infrastructure zone each record says who keeps it (`managed_by`: `setup`
+for the address records setup prepares, from the current draft, the
+completed draft an extension started from and the latest run's plan; `peer`
+for a record the other server asked for). Changing or removing a setup record
+is refused with `INFRASTRUCTURE_DNS_RECORD_MANAGED_BY_SETUP` (the action is
+Settings → Server setup: extending the setup reviews the change first), on
+this route and on a website's DNS route alike; the owner's records are edited
+as before; an owner who changed a setup address keeps it (it is no longer
+setup's, and setup's next review reports the difference). Adding a website
+for the zone's own name goes through Add domain, which adopts the existing
+zone untouched; removing that website keeps the zone
+(`removeDomainDNSForDeletion`). The web: an administrator's Domains list shows
+the zone as a row with "Infrastructure zone · DNS only", "DNS records only",
+no selection, visit or removal and one action, "Manage DNS records"; a zone a
+website now uses is that website with an "Infrastructure zone" badge; an
+unreadable zone list is one line with Retry and never hides the domains. The
+zone's page (`/domains/infrastructure/:zone`) first says what the zone is,
+which records setup keeps and where they are changed, that the rest are the
+owner's and what the peer's records are, then the existing editor on the
+zone's own endpoints, without DNSSEC and republish. Code:
+`cmd/panel/infrastructure_dns_zone.go`, `domain_dns_handlers.go`,
+`domain_delete_saga.go`, `main.go`; `web/src/components/Domains.tsx`,
+`InfrastructureZone.tsx`, `DomainDNSManager.tsx`,
+`web/src/lib/infrastructureZones.ts`, `web/src/App.tsx`. Tests:
+`cmd/panel/infrastructure_dns_zone_test.go` (five);
+`web/tests/remote-state-mounted.test.mjs` (five, each with a control).
+
+**Gap 6: host records over the remote DNS connection.** The primary accepts
+`POST /api/v1/dns/remote/receiver/host-record` with the existing machine
+credential of the connection: one name strictly inside an infrastructure zone
+(not the apex), type A with the DNS pair's verified peer address or AAAA with
+the address the request came from. It never overwrites: another record at the
+name, an alias or delegation above it, a disabled record or a record the
+owner changed after this channel wrote it is refused
+(`REMOTE_DNS_HOST_RECORD_CONFLICT`); the channel's own unchanged record is
+updated; an existing equal record is answered "present". Other typed
+refusals: `REMOTE_DNS_HOST_RECORD_INVALID`, `…_OUTSIDE_ZONE`, `…_ADDRESS`,
+`…_PENDING` (saved, publication not verified; the same request may be sent
+again). It runs under the same locks as every DNS publication, publishes the
+zone like any change of it and is audited (`dns.remote.host_record.*`). The
+secondary sends the request from its setup's public DNS step (`access_dns`) on
+a DNS secondary, which is also the path of the Components mail flow and of an
+extension: once per step identity after a definite answer, an unknown result
+again after two minutes, five times at most; a read of the page sends nothing
+(audited as `server.setup.peer_host_record.*`). The check itself stays the
+public one, so the step passes by itself once the primary has published the
+record and it is visible. The connection is the saved default, or before it is
+saved the one ready connection to the reviewed primary endpoint. The setup
+page says what happened: asking; applied or already present ("nothing more is
+needed from you", no manual instruction); refused, with the reason; the
+primary does not accept such requests; not answered yet (asked again); no
+connection (add by hand). The Components mail box on a secondary says whether
+setup asks the primary or the record is added by hand. Code:
+`cmd/panel/remote_dns_host_record.go`, `server_setup_access_dns.go`,
+`server_setup_execution_context.go`, `setup_dns_remote.go`,
+`setup_dns_remote_transport.go`, `remote_dns_auth.go`, `mail_dns_identity.go`,
+`audit_actions.go`; `web/src/lib/serverSetupGuidance.ts`,
+`serverSetupOperation.ts`, `web/src/components/ServiceList.tsx`,
+`ServerSetup.tsx`. Tests: `cmd/panel/remote_dns_host_record_test.go` (ten,
+among them the zone working with no connection at all), the extended
+`TestMailProfileDNSGuidanceOnASecondaryNamesThePrimaryAndTheRecord`;
+`web/tests/server-setup-guidance.test.mjs` (two),
+`server-setup-runtime.test.mjs` (the context decoder),
+`remote-state-mounted-batch3.test.mjs` (one).
+
+**Decisions the implementer made (to be confirmed).**
+
+- No schema change: the infrastructure zone is not a tenant `domains` row (a
+  domain belongs to a subscription, and deleting it removes its zone); it is
+  listed from setup's ownership record and edited through its own
+  administrator route. Its Domains row and page are the owner's "normal
+  entry".
+- A website removed from the infrastructure zone's own name keeps the zone.
+- "Managed by setup" means the A/AAAA records setup prepares with their exact
+  value; SOA and the apex NS stay "managed by DNS settings" as for every zone.
+  A record the owner changed is no longer setup's.
+- The peer's records can be changed or removed by the owner; the channel then
+  refuses to overwrite or recreate them.
+- The primary accepts an A record only with the DNS pair's peer address, and
+  an AAAA only with the request's own source address; the secondary sends the
+  A record only.
+- The request is sent from the setup's access DNS step, not from a separate
+  step or button, so existing plans keep their steps.
+- An unknown result is asked again after two minutes, five times at most; a
+  refusal is not sent again for the same step (a revised plan is a new step).
+- Once the primary applied the record, the setup page no longer draws the
+  generic "follow the record instructions" line.
+
+**Counts.** `npm test` 1534 of 1534 (it was 1494 at part 1; the new tests are listed above); `npx tsc --noEmit` clean; `npm run build` passes with its bundle budget. `go test ./cmd/panel` in the WSL guest at `5a749b5c6`: 1581 top-level tests pass, 6 skip, 1687 subtests pass; gofmt and vet clean. Eighteen new Go tests (three for gap 4, five for gap 5, ten for gap 6) and one extended; eleven new web tests. Negative controls: the setup-record refusal, the never-overwrite rule of the channel, the once-per-step rule of the secondary and the peer mail record were each switched off once in Go, and the Domains row, the editor's setup marker, the guidance outcome and the Components channel flag once in the web; each time the matching test failed. The Agent was not touched and not run.
+
+**Mock browser, batch 18.** `web/tools/browser-inspect/scenarios-batch18.mjs`,
+eight configurations (desktop 1440 and phone 390, EN and TR, light and dark),
+nine states each: Domains with the zone, Domains with the zone list
+unreadable, the zone's page, the plan field, the setup page with the record
+applied, refused and without a connection, the Components box with and
+without a connection. The scan of every state found no English in Turkish,
+no raw key and no horizontal overflow. The inspection found two interface
+defects, corrected in the same branch and re-shot once: the zone-list failure
+sentence spoke of "the domains below" also on the zone's page, and once the
+primary had applied the record the setup page still drew the generic "follow
+the record instructions" line under "nothing more is needed from you" (the
+second correction is checked by the source and the guidance tests; the
+re-shot setup states were taken before it). The Components box with and
+without a connection was not drawn by the script's mock (its scan answer was
+not served); that state rests on the mounted test. On a phone the record
+table scrolls sideways, as for every domain.
 
 ### Installed servers after the alpha.87 publication: what the owner has not yet reported (2026-10-16)
 

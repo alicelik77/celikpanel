@@ -34,6 +34,27 @@ export interface SetupExecutionContext {
     dns_engine: string; local_nameserver: string; local_ip: string; peer_nameserver: string; peer_ip: string;
     panel_domain: string; mail_hostname: string; dns_hosting_management: string;
     access_dns_ip?: string; infrastructure_dns?: SetupInfrastructureDNSPlan;
+    /** On a DNS secondary whose public DNS check waits (2026-10-16): whether this
+     *  server can ask the primary for the record, and what that request got. */
+    peer_host_record?: SetupPeerHostRecord;
+}
+export interface SetupPeerHostRecord {
+    channel: boolean;
+    outcome?: { status: 'applied' | 'refused' | 'unknown' | 'unsupported' | 'none'; code?: string; result?: string; zone?: string; name: string; content: string };
+}
+// An additive field that is not the contract is dropped on its own; the rest of
+// the context stays. Ek alan sozlesme degilse yalniz o alan dusurulur.
+function decodePeerHostRecord(value: unknown): SetupPeerHostRecord | undefined {
+    if (!isRecord(value) || typeof value.channel !== 'boolean') return undefined;
+    const outcome = value.outcome;
+    if (outcome === undefined) return { channel: value.channel };
+    if (!isRecord(outcome) || !['applied', 'refused', 'unknown', 'unsupported', 'none'].includes(String(outcome.status))
+        || typeof outcome.name !== 'string' || typeof outcome.content !== 'string'
+        || ['code', 'result', 'zone'].some(key => outcome[key] !== undefined && (typeof outcome[key] !== 'string' || (outcome[key] as string).length > 253))) return { channel: value.channel };
+    return { channel: value.channel, outcome: {
+        status: outcome.status as NonNullable<SetupPeerHostRecord['outcome']>['status'], name: outcome.name, content: outcome.content,
+        ...(outcome.code ? { code: outcome.code as string } : {}), ...(outcome.result ? { result: outcome.result as string } : {}), ...(outcome.zone ? { zone: outcome.zone as string } : {}),
+    } };
 }
 const kinds = ['infrastructure_dns', 'access_dns', 'dns', 'dns_publisher', 'dns_readiness', 'service', 'runtime', 'mail_profile', 'mail_enrollment', 'firewall', 'panel_certificate', 'mail_certificate', 'verify'];
 const isRecord = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
@@ -108,6 +129,11 @@ export function decodeSetupExecution(value: unknown, marker?: SetupStartMarker |
             .some(key => typeof context[key] !== 'string' || (context[key] as string).length > 1024))) {
         const { context: _invalid, ...execution } = value;
         return execution as unknown as ServerSetupExecution;
+    }
+    if (context !== undefined && context.peer_host_record !== undefined) {
+        const peer = decodePeerHostRecord(context.peer_host_record);
+        const { peer_host_record: _peer, ...rest } = context;
+        value = { ...value, context: peer ? { ...rest, peer_host_record: peer } : rest };
     }
     return value as unknown as ServerSetupExecution;
 }

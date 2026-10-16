@@ -149,3 +149,47 @@ test('mail enrollment guidance distinguishes recorded forward, inverse, unknown 
         assert.ok(!keys(guide).includes('setup.guide.component'));
     }
 });
+
+// Second server as a full peer, part 2 (2026-10-16): on a DNS secondary whose
+// public DNS check waits, the guidance says first what the request to the
+// primary got. Applied: nothing to do, and no instruction to add the record
+// by hand. Every other outcome keeps the manual record instruction.
+const peerWait = (peer) => execution({status:'waiting',phase:'access_dns',
+    steps:[{id:'05-access_dns',kind:'access_dns',target:'mail.boston.example.com',qualifier:'192.0.2.10',status:'running'}],
+    context:context({dns_role:'secondary',peer_host_record:peer})});
+test('a secondary waiting for its host record says what the primary answered, and the manual record only when the owner must act',()=>{
+    const applied=setupExecutionGuidance(peerWait({channel:true,outcome:{status:'applied',result:'created',zone:'example.com',name:'mail.boston.example.com',content:'192.0.2.10'}}));
+    assert.ok(keys(applied).includes('setup.guide.peerRecordApplied'));
+    assert.ok(!keys(applied).includes('setup.guide.accessDNSSecondary'),'an applied record still asks the owner to add it');
+    assert.equal(applied.messages.find(item=>item.key==='setup.guide.peerRecordApplied').values.zone,'example.com');
+    const present=setupExecutionGuidance(peerWait({channel:true,outcome:{status:'applied',result:'present',zone:'example.com',name:'x',content:'y'}}));
+    assert.ok(keys(present).includes('setup.guide.peerRecordPresent'));
+    for(const [outcome,key] of [
+        [{status:'refused',code:'REMOTE_DNS_HOST_RECORD_CONFLICT'},'setup.guide.peerRecordRefused.REMOTE_DNS_HOST_RECORD_CONFLICT'],
+        [{status:'refused',code:'REMOTE_DNS_HOST_RECORD_OUTSIDE_ZONE'},'setup.guide.peerRecordRefused.REMOTE_DNS_HOST_RECORD_OUTSIDE_ZONE'],
+        [{status:'refused',code:'SOMETHING_NEW'},'setup.guide.peerRecordRefused.other'],
+        [{status:'unsupported'},'setup.guide.peerRecordUnsupported'],
+        [{status:'unknown'},'setup.guide.peerRecordUnknown'],
+    ]){
+        const guide=setupExecutionGuidance(peerWait({channel:true,outcome:{name:'n',content:'c',...outcome}}));
+        assert.ok(keys(guide).includes(key),key);
+        assert.ok(keys(guide).includes('setup.guide.accessDNSSecondary'),`${key} drops the manual record`);
+    }
+    const none=setupExecutionGuidance(peerWait({channel:false}));
+    assert.ok(keys(none).includes('setup.guide.peerRecordNoChannel'));
+    assert.ok(keys(none).includes('setup.guide.accessDNSSecondary'));
+    const asking=setupExecutionGuidance(peerWait({channel:true}));
+    assert.ok(keys(asking).includes('setup.guide.peerRecordAsking'));
+    // Control: a primary and an older server without the field say what they said before.
+    const older=setupExecutionGuidance(peerWait(undefined));
+    assert.ok(!keys(older).some(key=>key.startsWith('setup.guide.peerRecord')));
+    assert.ok(keys(older).includes('setup.guide.accessDNSSecondary'));
+});
+test('every sentence about the record requested from the primary exists in both languages and names the primary',()=>{
+    const peerKeys=Object.keys(enSetupDNS).filter(key=>key.startsWith('setup.guide.peerRecord'));
+    assert.equal(peerKeys.length,10);
+    for(const key of peerKeys){
+        assert.ok(trScreens[key]&&trScreens[key]!==enScreens[key],`${key} has no Turkish text`);
+        for(const table of [enScreens,trScreens]) assert.ok(table[key].includes('{primary}'),`${key} does not name the primary`);
+    }
+});

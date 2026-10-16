@@ -8090,6 +8090,9 @@ Bunlara karar verilene kadar Boston'da posta sunucusu adının kaydını sahip
 Frankfurt'ta (ya da DNS sağlayıcısında) yapar; genişletmenin genel DNS adımı
 yönlendirmesiyle onu bekler.
 
+*16 Ekim 2026 eki:* sahip üçüne de aynı gün karar verdi; aşağıdaki ikinci
+bölümde kaynaktadırlar.
+
 **Sayılar.** `npm test` 1494'te 1494; `npx tsc --noEmit` temiz; `npm run build`
 paket bütçesiyle geçiyor. WSL konuğunda `go test ./cmd/panel`: 1557 üst düzey
 test geçti, 6 atlandı, 1675 alt test geçti (`60ea75c1c`'de; bu kayıt ilk yazıldığında
@@ -8167,6 +8170,178 @@ konuğunda `go test -run Setup ./cmd/panel`: 181 üst düzey test geçti (29 sn)
 blokları ve erişim adımının ikincil DNS kutusu doğal bir sunucuda çizilmiş
 görülmedi; O2 (SNI'sız sertifika) ve O4 (devir adresindeki laboratuvar bağlantı
 noktası) değerlendirilmedi.
+
+### Tam eş olarak ikinci sunucu, ikinci bölüm: sahibin üç kararı kaynakta (2026-10-16)
+
+Sahip 16 Ekim 2026'da yukarıdaki birinci bölümün açık bıraktığı üç soruya
+"önerin gibi olacak" diyerek karar verdi:
+
+1. **İkinci sunucu birincinin tam web ve posta eşi olabilir.**
+2. **Altyapı bölgesi birincilde Alan adları listesinde olağan bir girdi olarak
+   görünür** (örneğin panellerin kendi bölgesi `celikhost.com`): mevcut DNS
+   kayıt düzenleyicisiyle, "Altyapı bölgesi · yalnız DNS" işaretiyle ve o ad
+   için site eklenene kadar barındırma eylemi olmadan. Kurulumun oluşturduğu
+   kayıtları kurulum yönetmeye devam eder; sahibin kendi kayıtları korunur
+   (fark edilir, sessizce üzerine yazılmaz).
+3. **İkinci sunucunun ad kayıtları birincile kendiliğinden gider**, mevcut
+   yetkili uzak DNS bağlantısı üzerinden; elle giriş de mümkün kalır: ikincil
+   posta sunucusu adını ya da panel adını eklediğinde altyapı bölgesindeki
+   A/AAAA kaydını birincilden ister; birincil kaydı kendi bölgesine uygular ve
+   kayıt standart bölge aktarımıyla ikincile ulaşır (kopyalama bu kanala asla
+   bağlı değildir); kanal yoksa ya da ret varsa ikincilin yönlendirmesi elle
+   girilecek tam kaydı gösterir (birinci bölüm). Birincilin planı da eşin
+   posta sunucusu adı için bir alan kazanır; kayıt iki taraftan da
+   hazırlanabilir.
+
+Kaynakta `feat/alpha91-second-server-part2` dalında düzeltildi (main
+`d93517081`'den). D-022 geçerlidir: kopyalama yerel birincil/ikincil
+aktarımdır ve uzak bir CelikPanel gerektirmez; kayıt isteği ayrı, isteğe
+bağlı, yetkili kayıt yönetimi otomasyonudur. D-024 ve D-033: her yeni durum
+nedeni, kimin işlem yapacağını ve işin nasıl süreceğini söyler; sahibin
+yapacağı bir şey olmayan durum bunu söyler. **Sahibin 16 Ekim 2026 talimatıyla
+(hızlı, uzun laboratuvar koşusu yok) gerçek sistem kaydı yapılmadı**: kanıt
+bileşen, bağlı (mounted) ve Go testleri ile bir taklit tarayıcı grubudur.
+Kurulu bir sunucuda hiçbir şey ölçülmedi; kurulu panel güncellenmedi ya da
+çağrılmadı; hiçbir P0 işi kapanmadı ya da ilerlemedi.
+
+**Şema ve sürüm geçişi.** Yok. Göç yok: şema 44'te kalır. Altyapı bölgesi
+kurulumun zaten yazdığı sahiplik kaydıyla tanınır (`panel_settings` içinde
+`server_setup_infrastructure_zone:<bölge>`, bölgenin `pdns_domains`
+kimliğiyle eşleşen); kiracı `domains` satırı ve `kind` sütunu eklenmedi. Yeni
+`panel_settings` anahtarları: `remote_dns_host_record:<bölge>:<ad>:<tür>`
+(birincilde, bir isteğin oluşturduğu kayıt; sonraki istek onu sahibin
+değişikliğinden ayırabilsin diye) ve `server_setup_peer_host_record:<istek
+kimliği>` (ikincilde, bir genel DNS adımı için isteğin sonucu; kimlik bilgisi
+yok). Ek JSON alanları: kurulum taslağında
+`infrastructure_dns.peer_mail_hostname` (eski planda yoktur, kimliği
+değişmez), altyapı bölgesi kayıtlarında `managed_by`, kurulum işleminin
+bağlamında `peer_host_record`, Bileşenler posta DNS yönlendirmesinde
+`peer_record_channel`. Uzak DNS taşıması artık bir retin tipli `code`
+değerini korur (ek). Eski bir birincil yeni isteği düz bir retle yanıtlar;
+ikincil "desteklenmiyor" kaydeder ve elle girilecek kaydı gösterir.
+
+**Boşluk 4: birincilin planında eşin posta sunucusu adı.** Altyapı DNS
+seçiminde `peer_panel_domain`'in yanında `peer_mail_hostname` vardır; diğer
+adlar gibi kanonikleştirilir ve incelenen eş adresine A kaydı olarak
+hazırlanır, böylece plan incelemesinde diğer kayıtlar gibi görünür. Plan
+engeli olarak tipli retler:
+`server_setup_infrastructure_dns_peer_mail_own_name` (bu sunucunun panel,
+posta ya da ad sunucusu adı veya bölgenin kendisi) ve
+`server_setup_infrastructure_dns_peer_mail_outside_zone`. Kod:
+`cmd/panel/server_setup.go`, `server_setup_infrastructure_dns.go`
+(`serverSetupInfrastructureDNSDesired`), `server_setup_operations.go`;
+`web/src/components/ServerSetup.tsx`, `web/src/lib/serverSetup.ts`. Testler:
+`cmd/panel/server_setup_peer_mail_test.go` (üç);
+`web/tests/server-setup-runtime.test.mjs` (alan ve denetimi, taslak çözücü).
+
+**Boşluk 5: Alan adlarında altyapı bölgesi ve düzenleyicisi.** Yalnız yönetici
+(`/api/v1/dns/` öneki): `GET /api/v1/dns/infrastructure-zones` kurulumun
+oluşturduğu bölgeleri listeler (bölge, kayıt sayısı, eşin kayıtları ve o ad
+için site eklendiyse sitenin kimliği); `GET …/{bölge}/zone` ve
+`GET|POST|PUT|DELETE …/{bölge}/records` alan adı kayıt işleyicilerini
+kullanır. Altyapı bölgesinde her kayıt kimin elinde olduğunu söyler
+(`managed_by`: kurulumun hazırladığı adres kayıtları için `setup` — güncel
+taslak, genişletmenin başladığı tamamlanmış taslak ve son çalışmanın planı;
+diğer sunucunun istediği kayıt için `peer`). Bir kurulum kaydını değiştirmek
+ya da silmek `INFRASTRUCTURE_DNS_RECORD_MANAGED_BY_SETUP` ile reddedilir
+(eylem Ayarlar → Sunucu kurulumu: kurulumu genişletmek değişikliği önce
+incelemeye sunar); bu hem bu yolda hem bir sitenin DNS yolunda geçerlidir;
+sahibin kayıtları önceki gibi düzenlenir; bir kurulum adresini değiştiren
+sahip onu korur (artık kurulumun değildir; kurulumun sonraki incelemesi farkı
+bildirir). Bölgenin kendi adı için site eklemek Alan adı ekle yolundan geçer
+ve mevcut bölgeyi dokunmadan benimser; o siteyi kaldırmak bölgeyi korur
+(`removeDomainDNSForDeletion`). Web: yöneticinin Alan adları listesi bölgeyi
+"Altyapı bölgesi · yalnız DNS", "Yalnız DNS kayıtları" ile, seçim, ziyaret
+ve silme olmadan ve tek eylemle ("DNS kayıtlarını yönet") bir satır olarak
+gösterir; artık bir sitenin kullandığı bölge o sitedir ve "Altyapı bölgesi"
+rozeti taşır; okunamayan bölge listesi Tekrar dene ile tek satırdır ve alan
+adlarını hiç gizlemez. Bölgenin sayfası (`/domains/infrastructure/:zone`)
+önce bölgenin ne olduğunu, hangi kayıtları kurulumun koruduğunu ve nerede
+değiştirildiğini, kalanların sahibin olduğunu ve eşin kayıtlarının ne olduğunu
+söyler; sonra bölgenin kendi uçlarında mevcut düzenleyici gelir, DNSSEC ve
+yeniden yayımlama olmadan. Kod: `cmd/panel/infrastructure_dns_zone.go`,
+`domain_dns_handlers.go`, `domain_delete_saga.go`, `main.go`;
+`web/src/components/Domains.tsx`, `InfrastructureZone.tsx`,
+`DomainDNSManager.tsx`, `web/src/lib/infrastructureZones.ts`,
+`web/src/App.tsx`. Testler: `cmd/panel/infrastructure_dns_zone_test.go`
+(beş); `web/tests/remote-state-mounted.test.mjs` (beş, her biri denetimli).
+
+**Boşluk 6: uzak DNS bağlantısı üzerinden ad kayıtları.** Birincil,
+bağlantının mevcut makine kimlik bilgisiyle
+`POST /api/v1/dns/remote/receiver/host-record` kabul eder: bir altyapı
+bölgesinin kesinlikle içinde (kendisi değil) tek bir ad; DNS çiftinin
+doğrulanmış eş adresiyle A ya da isteğin geldiği adresle AAAA. Asla üzerine
+yazmaz: addaki başka bir kayıt, üstünde bir takma ad ya da yetki devri, devre
+dışı bir kayıt ya da bu kanal yazdıktan sonra sahibin değiştirdiği bir kayıt
+reddedilir (`REMOTE_DNS_HOST_RECORD_CONFLICT`); kanalın kendi değişmemiş kaydı
+güncellenir; eşit bir kayıt "zaten var" yanıtını alır. Diğer tipli retler:
+`REMOTE_DNS_HOST_RECORD_INVALID`, `…_OUTSIDE_ZONE`, `…_ADDRESS`, `…_PENDING`
+(kaydedildi, yayımlanması doğrulanmadı; aynı istek yeniden gönderilebilir).
+Her DNS yayımıyla aynı kilitler altında çalışır, bölgeyi her değişiklikte
+olduğu gibi yayımlar ve denetlenir (`dns.remote.host_record.*`). İkincil
+isteği DNS ikincilindeki kurulumun genel DNS adımından (`access_dns`)
+gönderir; bu aynı zamanda Bileşenler posta akışının ve genişletmenin yoludur:
+kesin bir yanıttan sonra adım kimliği başına bir kez, bilinmeyen sonuç iki
+dakika sonra yeniden, en çok beş kez; sayfanın okunması hiçbir şey göndermez
+(`server.setup.peer_host_record.*` olarak denetlenir). Denetimin kendisi
+genel kalır; adım, birincil kaydı yayımlayıp kayıt görünür olunca kendiliğinden
+geçer. Bağlantı kaydedilmiş varsayılan bağlantıdır; o kaydedilmeden önce de
+incelenen birincil uç noktasına giden tek hazır bağlantı. Kurulum sayfası ne
+olduğunu söyler: isteniyor; uygulandı ya da zaten var ("sizin yapmanız
+gereken bir şey yok", elle yönerge yok); nedeniyle reddedildi; birincil bu
+istekleri kabul etmiyor; henüz yanıt yok (yeniden sorulur); bağlantı yok
+(elle ekleyin). Bir ikincildeki Bileşenler posta kutusu kurulumun kaydı
+birincilden isteyip istemeyeceğini ya da kaydın elle mi ekleneceğini söyler.
+Kod: `cmd/panel/remote_dns_host_record.go`, `server_setup_access_dns.go`,
+`server_setup_execution_context.go`, `setup_dns_remote.go`,
+`setup_dns_remote_transport.go`, `remote_dns_auth.go`, `mail_dns_identity.go`,
+`audit_actions.go`; `web/src/lib/serverSetupGuidance.ts`,
+`serverSetupOperation.ts`, `web/src/components/ServiceList.tsx`,
+`ServerSetup.tsx`. Testler: `cmd/panel/remote_dns_host_record_test.go` (on;
+aralarında hiç bağlantı yokken bölgenin çalışması), genişletilmiş
+`TestMailProfileDNSGuidanceOnASecondaryNamesThePrimaryAndTheRecord`;
+`web/tests/server-setup-guidance.test.mjs` (iki),
+`server-setup-runtime.test.mjs` (bağlam çözücü),
+`remote-state-mounted-batch3.test.mjs` (bir).
+
+**Uygulayıcının verdiği kararlar (onaylanmak üzere).**
+
+- Şema değişikliği yok: altyapı bölgesi bir kiracı `domains` satırı değildir
+  (alan adı bir aboneliğe aittir ve silinince bölgesi de silinir); kurulumun
+  sahiplik kaydından listelenir ve kendi yönetici yoluyla düzenlenir. Alan
+  adlarındaki satırı ve sayfası sahibin "olağan girdi"sidir.
+- Altyapı bölgesinin kendi adından kaldırılan site bölgeyi korur.
+- "Kurulum yönetiyor", kurulumun tam değeriyle hazırladığı A/AAAA kayıtları
+  demektir; SOA ve tepe NS her bölgede olduğu gibi "DNS ayarlarınca
+  yönetilir" kalır. Sahibin değiştirdiği kayıt artık kurulumun değildir.
+- Eşin kayıtlarını sahip değiştirebilir ya da silebilir; kanal o zaman
+  üzerine yazmayı ya da yeniden oluşturmayı reddeder.
+- Birincil A kaydını yalnız DNS çiftinin eş adresiyle, AAAA'yı yalnız isteğin
+  kendi kaynak adresiyle kabul eder; ikincil yalnız A kaydını gönderir.
+- İstek ayrı bir adım ya da düğmeden değil kurulumun genel DNS adımından
+  gönderilir; mevcut planlar adımlarını korur.
+- Bilinmeyen sonuç iki dakika sonra, en çok beş kez yeniden sorulur; aynı adım
+  için ret yeniden gönderilmez (düzeltilmiş plan yeni bir adımdır).
+- Birincil kaydı uyguladıktan sonra kurulum sayfası genel "kayıt yönergesini
+  izleyin" satırını artık çizmez.
+
+**Sayılar.** `npm test` 1534'te 1534 (birinci bölümde 1494'tü; yeni testler yukarıda listelendi); `npx tsc --noEmit` temiz; `npm run build` paket bütçesiyle geçiyor. WSL konuğunda `5a749b5c6`'de `go test ./cmd/panel`: 1581 üst düzey test geçti, 6 atlandı, 1687 alt test geçti; gofmt ve vet temiz. On sekiz yeni Go testi (boşluk 4 için üç, boşluk 5 için beş, boşluk 6 için on) ve bir genişletilmiş test; on bir yeni web testi. Ters denetimler: kurulum kaydı reddi, kanalın asla üzerine yazmama kuralı, ikincilin adım başına bir kez kuralı ve eşin posta kaydı Go'da, Alan adları satırı, düzenleyicinin kurulum işareti, yönlendirme sonucu ve Bileşenler kanal bayrağı web'de birer kez kapatıldı; her seferinde ilgili test başarısız oldu. Ajana dokunulmadı ve ajan çalıştırılmadı.
+
+**Taklit tarayıcı, 18. grup.** `web/tools/browser-inspect/scenarios-batch18.mjs`,
+sekiz yapılandırma (masaüstü 1440 ve telefon 390, EN ve TR, açık ve koyu),
+her birinde dokuz durum: bölgeyle Alan adları, bölge listesi okunamazken Alan
+adları, bölgenin sayfası, plan alanı, kayıt uygulanmış, reddedilmiş ve
+bağlantısız kurulum sayfası, bağlantılı ve bağlantısız Bileşenler kutusu. Her
+durumun taraması Türkçede İngilizce, ham anahtar ya da yatay taşma bulmadı.
+İnceleme iki arayüz kusuru buldu; aynı dalda düzeltildi ve bir kez yeniden
+çekildi: bölge listesi hata cümlesi bölgenin sayfasında da "aşağıdaki alan
+adları"ndan söz ediyordu; birincil kaydı uyguladıktan sonra kurulum sayfası
+"sizin yapmanız gereken bir şey yok" altında genel "kayıt yönergesini izleyin"
+satırını hâlâ çiziyordu (ikinci düzeltme kaynak ve yönlendirme testleriyle
+denetlendi; yeniden çekilen kurulum durumları ondan önce alındı). Bağlantılı
+ve bağlantısız Bileşenler kutusu betiğin taklidinde çizilmedi (tarama yanıtı
+sunulmadı); o durum bağlı teste dayanır. Telefonda kayıt tablosu, her alan
+adında olduğu gibi yana kayar.
 
 ### Alpha.87 yayımından sonra kurulu sunucular: sahibin henüz bildirmedikleri (2026-10-16)
 

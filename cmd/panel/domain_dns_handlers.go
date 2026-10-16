@@ -37,6 +37,13 @@ type DNSRecord struct {
 	TTL      int    `json:"ttl"`
 	Prio     int    `json:"prio,omitempty"`
 	Disabled bool   `json:"disabled"`
+	// ManagedBy is additive (2026-10-16) and set only in an infrastructure
+	// zone: "setup" for an address record server setup prepares (changed
+	// through setup, never here), "peer" for a host record the other server
+	// asked for over the DNS connection (the owner may still change it).
+	// Remote publications never carry it (canonicalRemoteDNSRecords).
+	// Yalniz altyapi bolgesinde: kurulumun ya da esin istedigi kayit.
+	ManagedBy string `json:"managed_by,omitempty"`
 }
 
 type DNSZone struct {
@@ -238,6 +245,21 @@ func (p *Panel) handleListDNSRecords(w http.ResponseWriter, r *http.Request, dom
 	if err := rows.Err(); err != nil {
 		writeServerError(w, fmt.Errorf("read DNS records for %s: %w", domainName, err))
 		return
+	}
+	// In an infrastructure zone each record says who manages it.
+	// Altyapi bolgesinde her kayit kimin yonettigini soyler.
+	if infrastructure, err := p.isInfrastructureDNSZone(r.Context(), domainName); err != nil {
+		writeServerError(w, fmt.Errorf("read infrastructure DNS ownership for %s: %w", domainName, err))
+		return
+	} else if infrastructure {
+		managed, err := p.infrastructureDNSManagedRecords(r.Context(), domainName)
+		if err != nil {
+			writeServerError(w, fmt.Errorf("read managed infrastructure DNS records for %s: %w", domainName, err))
+			return
+		}
+		for index := range records {
+			records[index].ManagedBy = managed[infrastructureDNSRecordKey(records[index].Name, records[index].Type, records[index].Content)]
+		}
 	}
 	if err := json.NewEncoder(w).Encode(map[string]interface{}{"records": records}); err != nil {
 		log.Printf("encode DNS records for %s: %v", domainName, err)
@@ -489,33 +511,33 @@ func (p *Panel) publishDNSMutation(w http.ResponseWriter, ctx context.Context, d
 	return true
 }
 
-func (p *Panel) handleAddDNSRecord(w http.ResponseWriter, r *http.Request, domainName string) {
+func (p *Panel) handleAddDNSRecord(w http.ResponseWriter, r *http.Request, domainName string) bool {
 	var request dnsRecordCreateRequest
 	if !decodeDNSRequest(w, r, &request) {
-		return
+		return false
 	}
 	ownerName, err := normalizeDNSOwner(request.Name, domainName)
 	if err != nil {
 		writeClientError(w, http.StatusBadRequest, err.Error())
-		return
+		return false
 	}
 	recordType, content, priority, err := normalizeDNSRecord(
 		request.Type, ownerName, request.Content, request.TTL, request.Prio, domainName,
 	)
 	if err != nil {
 		writeClientError(w, http.StatusBadRequest, err.Error())
-		return
+		return false
 	}
 
 	zoneID, err := p.dnsZoneID(r.Context(), domainName)
 	if err != nil {
 		writeDNSZoneLookupError(w, err)
-		return
+		return false
 	}
 	tx, err := p.db.GetDB().BeginTx(r.Context(), nil)
 	if err != nil {
 		writeServerError(w, err)
-		return
+		return false
 	}
 	defer tx.Rollback()
 
@@ -533,11 +555,11 @@ func (p *Panel) handleAddDNSRecord(w http.ResponseWriter, r *http.Request, domai
 	}
 	if err != nil {
 		writeServerError(w, fmt.Errorf("check DNS record conflicts: %w", err))
-		return
+		return false
 	}
 	if conflictCount != 0 {
 		writeClientError(w, http.StatusConflict, "CNAME records cannot coexist with other records at the same name")
-		return
+		return false
 	}
 
 	var duplicateCount int
@@ -548,11 +570,11 @@ func (p *Panel) handleAddDNSRecord(w http.ResponseWriter, r *http.Request, domai
 		zoneID, ownerName, recordType, content, priority,
 	).Scan(&duplicateCount); err != nil {
 		writeServerError(w, fmt.Errorf("check duplicate DNS record: %w", err))
-		return
+		return false
 	}
 	if duplicateCount != 0 {
 		writeClientError(w, http.StatusConflict, "this DNS record already exists")
-		return
+		return false
 	}
 
 	result, err := tx.ExecContext(r.Context(), `
@@ -562,131 +584,147 @@ func (p *Panel) handleAddDNSRecord(w http.ResponseWriter, r *http.Request, domai
 	)
 	if err != nil {
 		writeServerError(w, fmt.Errorf("insert DNS record: %w", err))
-		return
+		return false
 	}
 	recordID, err := result.LastInsertId()
 	if err != nil {
 		writeServerError(w, fmt.Errorf("read inserted DNS record identity: %w", err))
-		return
+		return false
 	}
 	if err := tx.Commit(); err != nil {
 		writeServerError(w, fmt.Errorf("commit DNS record: %w", err))
-		return
+		return false
 	}
 	if !p.publishDNSMutation(w, r.Context(), domainName) {
-		return
+		return false
 	}
 	if err := json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "id": recordID}); err != nil {
 		log.Printf("encode DNS record creation for %s: %v", domainName, err)
 	}
+	return true
 }
 
-func (p *Panel) handleDeleteDNSRecord(w http.ResponseWriter, r *http.Request, domainName string) {
+func (p *Panel) handleDeleteDNSRecord(w http.ResponseWriter, r *http.Request, domainName string) bool {
 	recordID, err := strconv.Atoi(r.URL.Query().Get("id"))
 	if err != nil || recordID <= 0 {
 		writeClientError(w, http.StatusBadRequest, "invalid DNS record ID")
-		return
+		return false
 	}
 	zoneID, err := p.dnsZoneID(r.Context(), domainName)
 	if err != nil {
 		writeDNSZoneLookupError(w, err)
-		return
+		return false
 	}
 
 	tx, err := p.db.GetDB().BeginTx(r.Context(), nil)
 	if err != nil {
 		writeServerError(w, err)
-		return
+		return false
 	}
 	defer tx.Rollback()
-	var ownerName, recordType string
+	var ownerName, recordType, storedContent string
 	err = tx.QueryRowContext(r.Context(), `
-		SELECT name, type FROM pdns_records WHERE id = ? AND domain_id = ?`,
+		SELECT name, type, content FROM pdns_records WHERE id = ? AND domain_id = ?`,
 		recordID, zoneID,
-	).Scan(&ownerName, &recordType)
+	).Scan(&ownerName, &recordType, &storedContent)
 	if errors.Is(err, sql.ErrNoRows) {
 		writeClientError(w, http.StatusNotFound, "DNS record not found")
-		return
+		return false
 	}
 	if err != nil {
 		writeServerError(w, fmt.Errorf("load DNS record: %w", err))
-		return
+		return false
 	}
 	if managedDNSRecord(domainName, ownerName, recordType) {
 		writeClientError(w, http.StatusConflict, "SOA and apex nameserver records are managed by DNS settings")
-		return
+		return false
+	}
+	if bySetup, err := p.infrastructureDNSRecordManagedBySetup(r.Context(), domainName, ownerName, recordType, storedContent); err != nil {
+		writeServerError(w, fmt.Errorf("read managed infrastructure DNS records: %w", err))
+		return false
+	} else if bySetup {
+		writeInfrastructureDNSRecordManagedBySetup(w)
+		return false
 	}
 	result, err := tx.ExecContext(r.Context(),
 		`DELETE FROM pdns_records WHERE id = ? AND domain_id = ?`, recordID, zoneID)
 	if err != nil {
 		writeServerError(w, fmt.Errorf("delete DNS record: %w", err))
-		return
+		return false
 	}
 	affected, err := result.RowsAffected()
 	if err != nil {
 		writeServerError(w, fmt.Errorf("verify DNS record deletion: %w", err))
-		return
+		return false
 	}
 	if affected != 1 {
 		writeServerError(w, fmt.Errorf("delete DNS record: expected one affected row, got %d", affected))
-		return
+		return false
 	}
 	if err := tx.Commit(); err != nil {
 		writeServerError(w, fmt.Errorf("commit DNS record deletion: %w", err))
-		return
+		return false
 	}
 	if !p.publishDNSMutation(w, r.Context(), domainName) {
-		return
+		return false
 	}
 	if err := json.NewEncoder(w).Encode(map[string]bool{"success": true}); err != nil {
 		log.Printf("encode DNS record deletion for %s: %v", domainName, err)
 	}
+	return true
 }
 
-func (p *Panel) handleUpdateDNSRecord(w http.ResponseWriter, r *http.Request, domainName string) {
+func (p *Panel) handleUpdateDNSRecord(w http.ResponseWriter, r *http.Request, domainName string) bool {
 	var request dnsRecordUpdateRequest
 	if !decodeDNSRequest(w, r, &request) {
-		return
+		return false
 	}
 	if request.ID <= 0 {
 		writeClientError(w, http.StatusBadRequest, "invalid DNS record ID")
-		return
+		return false
 	}
 	zoneID, err := p.dnsZoneID(r.Context(), domainName)
 	if err != nil {
 		writeDNSZoneLookupError(w, err)
-		return
+		return false
 	}
 
 	tx, err := p.db.GetDB().BeginTx(r.Context(), nil)
 	if err != nil {
 		writeServerError(w, err)
-		return
+		return false
 	}
 	defer tx.Rollback()
-	var ownerName, recordType string
+	var ownerName, recordType, storedContent string
 	err = tx.QueryRowContext(r.Context(), `
-		SELECT name, type FROM pdns_records WHERE id = ? AND domain_id = ?`,
+		SELECT name, type, content FROM pdns_records WHERE id = ? AND domain_id = ?`,
 		request.ID, zoneID,
-	).Scan(&ownerName, &recordType)
+	).Scan(&ownerName, &recordType, &storedContent)
 	if errors.Is(err, sql.ErrNoRows) {
 		writeClientError(w, http.StatusNotFound, "DNS record not found")
-		return
+		return false
 	}
 	if err != nil {
 		writeServerError(w, fmt.Errorf("load DNS record: %w", err))
-		return
+		return false
 	}
 	if managedDNSRecord(domainName, ownerName, recordType) {
 		writeClientError(w, http.StatusConflict, "SOA and apex nameserver records are managed by DNS settings")
-		return
+		return false
+	}
+	if bySetup, err := p.infrastructureDNSRecordManagedBySetup(r.Context(), domainName, ownerName, recordType, storedContent); err != nil {
+		writeServerError(w, fmt.Errorf("read managed infrastructure DNS records: %w", err))
+		return false
+	} else if bySetup {
+		writeInfrastructureDNSRecordManagedBySetup(w)
+		return false
 	}
 	_, content, priority, err := normalizeDNSRecord(
 		recordType, ownerName, request.Content, request.TTL, request.Prio, domainName,
 	)
 	if err != nil {
 		writeClientError(w, http.StatusBadRequest, err.Error())
-		return
+		return false
 	}
 	result, err := tx.ExecContext(r.Context(), `
 		UPDATE pdns_records
@@ -696,25 +734,26 @@ func (p *Panel) handleUpdateDNSRecord(w http.ResponseWriter, r *http.Request, do
 	)
 	if err != nil {
 		writeServerError(w, fmt.Errorf("update DNS record: %w", err))
-		return
+		return false
 	}
 	affected, err := result.RowsAffected()
 	if err != nil {
 		writeServerError(w, fmt.Errorf("verify DNS record update: %w", err))
-		return
+		return false
 	}
 	if affected != 1 {
 		writeServerError(w, fmt.Errorf("update DNS record: expected one affected row, got %d", affected))
-		return
+		return false
 	}
 	if err := tx.Commit(); err != nil {
 		writeServerError(w, fmt.Errorf("commit DNS record update: %w", err))
-		return
+		return false
 	}
 	if !p.publishDNSMutation(w, r.Context(), domainName) {
-		return
+		return false
 	}
 	if err := json.NewEncoder(w).Encode(map[string]bool{"success": true}); err != nil {
 		log.Printf("encode DNS record update for %s: %v", domainName, err)
 	}
+	return true
 }

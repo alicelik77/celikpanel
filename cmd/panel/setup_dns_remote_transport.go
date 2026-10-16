@@ -24,7 +24,33 @@ const remoteDNSJSONLimit = 1 << 20
 
 // Remote responses are never reflected into logs or browser errors: they may
 // contain submitted credentials, private DNS data or untrusted HTML.
-type remoteDNSHTTPError struct{ StatusCode int }
+// Code is additive (2026-10-16): the typed refusal code of the answer's JSON
+// body ({"code": ...}), when it has one, so a caller can say which refusal it
+// was. The body is otherwise not used.
+// Yanitin tipli ret kodu; govdenin geri kalani kullanilmaz.
+type remoteDNSHTTPError struct {
+	StatusCode int
+	Code       string
+}
+
+func remoteDNSRefusalCode(body io.Reader) string {
+	raw, err := io.ReadAll(io.LimitReader(body, 16<<10))
+	if err != nil {
+		return ""
+	}
+	var answer struct {
+		Code string `json:"code"`
+	}
+	if json.Unmarshal(raw, &answer) != nil || len(answer.Code) == 0 || len(answer.Code) > 64 {
+		return ""
+	}
+	for _, c := range answer.Code {
+		if !((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_') {
+			return ""
+		}
+	}
+	return answer.Code
+}
 
 func (e *remoteDNSHTTPError) Error() string { return "remote DNS request was rejected" }
 
@@ -182,7 +208,7 @@ func remoteDNSHTTPJSONWith(ctx context.Context, endpoint, path, secret string, r
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return &remoteDNSHTTPError{StatusCode: resp.StatusCode}
+		return &remoteDNSHTTPError{StatusCode: resp.StatusCode, Code: remoteDNSRefusalCode(resp.Body)}
 	}
 	mediaType, _, err := mime.ParseMediaType(resp.Header.Get("Content-Type"))
 	if err != nil || mediaType != "application/json" || resp.Header.Get("Content-Encoding") != "" {
