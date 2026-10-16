@@ -443,3 +443,26 @@ indeterminate; its fill), whether the restart sentence is shown, the dialog,
 the card and the corner notice, alarming sentences found on the page (past the
 window the overdue wording is expected there), warning marks, the navigation
 lock and sideways scrolling.
+
+## Scenarios of the nineteenth batch (ready bundles and the Components colours, 2026-10-17)
+
+`scenarios-batch19.mjs`, with a small server answered by `mock-batch19.mjs`
+while `state.b19` is set: its components, the ready bundles derived from them as
+`cmd/panel/bundles.go` derives them, `POST /api/v1/service/install` and the
+operation reads. An install the page asks for is a mock operation that runs for
+1.5 s and then succeeds; a component listed in `hold` keeps running. Nothing is
+installed anywhere. Run it with `desktop` and `phone`, Turkish, both themes
+(about 20 seconds each); each state is also copied to `BROWSER_INSPECT_SHOTS` as
+`<state>-<lang>-<theme>-<width>.png`.
+
+| Name | States |
+| --- | --- |
+| `y19boston` | Components on a server with only its DNS engine installed: every category's strip offers its bundles (`components-boston`, the whole page) |
+| `y19frankfurt` | webmail verified (one line with Repair, spam protection as the one add-on), MariaDB installed (phpMyAdmin offered), Nginx + PHP-FPM installed, the firewall active as one line and, as mock data, a stopped Fail2ban with its red dot (`components-frankfurt`, the whole page); the phpMyAdmin offer opened (`components-frankfurt-offer`) |
+| `y19running` | the phpMyAdmin add-on installed through the page: Nginx's operation ends, PHP-FPM's keeps running, the strip and the operation say 2/3 (`components-bundle-running`) |
+| `y19dashboard` | the Dashboard's Ready bundles card on the Frankfurt mock (`dashboard-bundles-card`) |
+
+Each record adds the text of every strip, raw codes (`rawTokens`), English on
+the Turkish page (`englishLeaks`), the filled buttons in `<main>`, the leaf
+text drawn in Amber Ink, phone targets under 44 px and sideways scrolling. The
+screenshots are the inspection; these scenarios do not fail on a finding.

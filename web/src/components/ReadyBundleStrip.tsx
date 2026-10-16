@@ -10,7 +10,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Check, DownloadCloud, Layers, Plus } from 'lucide-react';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
-import { Button, Checking, Dialog, StatusDot } from './ui';
+import { Button, Checking, Dialog, KeepWords, StatusDot } from './ui';
 import { componentName } from '../lib/componentName';
 import { mailProfileBlocked, mailProfileWarning } from '../lib/mailProfileText';
 import {
@@ -259,16 +259,21 @@ export function ReadyBundleStrip({
                         {add ? bundleAddLabel(bundle, t, nameOf) : name(bundle)}
                     </button>
                 ))}
-                {model.offers.length > 0 && (
+                {/* The hint stands only while nothing is installed; beside an
+                    installed bundle the line stays one line until an offer
+                    is chosen (browser batch 19).
+                    İpucu yalnız hiçbir şey kurulu değilken durur. */}
+                {model.offers.length > 0 && (opened || model.installed.length === 0) && (
                     <div id={`bundle-detail-${category}`} aria-live='polite' className='flex min-h-[30px] basis-full flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-fg-subtle'>
                         {opened ? (
                             <>
                                 <span className='max-w-[75ch] text-[13px] text-fg'>
-                                    {bundleDescription(opened.bundle, t, nameOf)}
+                                    {/* A name such as PHP-FPM never breaks at its hyphen. */}
+                                    <KeepWords text={bundleDescription(opened.bundle, t, nameOf)} />
                                     {opened.bundle.missing_components.length < opened.bundle.components.length && (
-                                        <> {t('services.bundles.skips', {
+                                        <> <KeepWords text={t('services.bundles.skips', {
                                             components: opened.bundle.components.filter((id) => !opened.bundle.missing_components.includes(id)).map(nameOf).join(', '),
-                                        })}</>
+                                        })} /></>
                                     )}
                                 </span>
                                 <span className='inline-flex gap-2'>
