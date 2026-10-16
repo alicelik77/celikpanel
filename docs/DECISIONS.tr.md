@@ -973,7 +973,14 @@ neyin kurulacağını ve neyin kaldığını söyler ve çalıştırma var olan 
   kaydı gösterir; hiçbir kayıt oluşturmaz. Birincilin bir eşin kayıtlarını
   kendisinin yayımlayıp yayımlamayacağı, altyapı bölgesi için bir düzenleyici
   ve ana makine kayıtlarının uzak DNS bağlantısıyla kendiliğinden aktarılması,
-  sahibin açık üç kararıdır (İŞLEM YÖNLENDİRMESİ, 16 Ekim 2026 girdisi).
+  sahibin açık üç kararıydı (İŞLEM YÖNLENDİRMESİ, 16 Ekim 2026 girdisi). Sahip
+  üçüne de aynı gün karar verdi ("önerin gibi olacak"): birincilin planı eşin
+  posta sunucusu adını taşıyabilir, altyapı bölgesi mevcut düzenleyiciyle
+  Alan adlarında yalnız DNS girdisidir ve ikincil ad kayıtlarını yetkili
+  bağlantı üzerinden birincilden ister, elle giriş de mümkün kalır; kopyalama
+  yerel bölge aktarımı olarak kalır (D-022). Kaynakta
+  `feat/alpha91-second-server-part2` dalında; sahibin talimatıyla gerçek
+  sistemde ölçülmedi (İŞLEM YÖNLENDİRMESİ, ikinci bölüm).
 
 Notun durumu: kaynakta, bileşen testleri ve taklit tarayıcıyla (16. tur);
 `deploy/e2e/release-recovery/evidence/` altındaki set18 (`5d54aba1e`'de;
