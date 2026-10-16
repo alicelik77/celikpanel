@@ -24,6 +24,13 @@ var errServerSetupConflict = errors.New("server setup changed; reload the curren
 type serverSetupInfrastructureDNSDraft struct {
 	Zone            string `json:"zone"`
 	PeerPanelDomain string `json:"peer_panel_domain,omitempty"`
+	// PeerMailHostname is additive (2026-10-16, the owner's decision that the
+	// second server can be a full web and mail peer): the other server's mail
+	// host name inside this zone, prepared as an A record to the peer address.
+	// An older plan has no such field and keeps its identity.
+	// Diger sunucunun posta adi; bu bolgede esin adresine A kaydi olarak
+	// hazirlanir. Eski planda alan yoktur, kimligi degismez.
+	PeerMailHostname string `json:"peer_mail_hostname,omitempty"`
 }
 
 type serverSetupDraft struct {
@@ -95,7 +102,8 @@ func canonicalServerSetupDraft(d serverSetupDraft) (serverSetupDraft, error) {
 		selection := *d.InfrastructureDNS
 		selection.Zone = strings.TrimSpace(selection.Zone)
 		selection.PeerPanelDomain = strings.TrimSpace(selection.PeerPanelDomain)
-		for _, value := range []*string{&selection.Zone, &selection.PeerPanelDomain} {
+		selection.PeerMailHostname = strings.TrimSpace(selection.PeerMailHostname)
+		for _, value := range []*string{&selection.Zone, &selection.PeerPanelDomain, &selection.PeerMailHostname} {
 			if *value == "" {
 				continue
 			}

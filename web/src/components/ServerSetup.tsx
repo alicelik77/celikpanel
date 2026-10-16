@@ -78,6 +78,8 @@ const codeKey: Record<string, TranslationKey> = {
     server_setup_infrastructure_dns_invalid: 'setup.infrastructure.invalid',
     server_setup_infrastructure_dns_conflict: 'setup.infrastructure.conflict',
     server_setup_infrastructure_dns_changed: 'setup.infrastructure.conflict',
+    server_setup_infrastructure_dns_peer_mail_own_name: 'setup.infrastructure.peerMailOwnName',
+    server_setup_infrastructure_dns_peer_mail_outside_zone: 'setup.infrastructure.peerMailOutsideZone',
     server_setup_infrastructure_dns_failed: 'setup.blocker.dnsIdentity',
     server_setup_access_dns_failed: 'setup.infrastructure.accessRequired',
     server_setup_panel_certificate_failed: 'setup.blocker.panelTLS',
@@ -813,6 +815,8 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                                 <p className="text-sm leading-6 text-fg-muted">{t('setup.infrastructure.zoneHelp')}</p>
                                 <SetupInput name="peer_panel_domain" label={t('setup.infrastructure.peerPanel')} value={draft.infrastructure_dns.peer_panel_domain || ''} onChange={value => change('infrastructure_dns', { ...draft.infrastructure_dns!, peer_panel_domain: value })} placeholder="secondary.example.com" />
                                 <p className="text-sm leading-6 text-fg-muted">{t('setup.infrastructure.peerHelp', { ip: draft.peer_ip || '—' })}</p>
+                                <SetupInput name="peer_mail_hostname" label={t('setup.infrastructure.peerMail')} value={draft.infrastructure_dns.peer_mail_hostname || ''} onChange={value => change('infrastructure_dns', { ...draft.infrastructure_dns!, peer_mail_hostname: value })} placeholder="mail.secondary.example.com" />
+                                <p className="text-sm leading-6 text-fg-muted">{t('setup.infrastructure.peerMailHelp', { ip: draft.peer_ip || '—' })}</p>
                             </div> : <p className="text-sm leading-6 text-fg-muted">{t('setup.infrastructure.externalHelp')}</p>}
                         </fieldset>}
                         {draft.dns_mode === 'local' && draft.dns_role === 'secondary' && <div className="space-y-2 border-t border-border pt-5 text-sm leading-6"><h3 className="font-semibold">{t('setup.infrastructure.title')}</h3><p className="text-fg-muted">{t('setup.infrastructure.secondaryHelp', { name: draft.panel_domain || '—', ip: draft.local_ip || '—', primary: draft.ns1 || '—' })}</p></div>}

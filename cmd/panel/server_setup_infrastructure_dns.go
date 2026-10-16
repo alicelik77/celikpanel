@@ -279,6 +279,22 @@ func serverSetupInfrastructureDNSDesired(d serverSetupDraft) ([]serverSetupInfra
 			return nil, err
 		}
 	}
+	// The peer's mail host name (2026-10-16): optional, inside the zone, never
+	// one of this server's own names, and an A record to the reviewed peer
+	// address like the peer's panel host name.
+	// Esin posta adi: istege bagli, bolgenin icinde, bu sunucunun kendi adi
+	// degil; esin panel adi gibi esin adresine A kaydi.
+	if peerMail := d.InfrastructureDNS.PeerMailHostname; peerMail != "" {
+		if peerMail == zone || peerMail == d.PanelDomain || peerMail == d.MailHostname || peerMail == d.NS1 || peerMail == d.NS2 {
+			return nil, &serverSetupInfrastructureDNSPlanError{Code: "infrastructure_dns_peer_mail_own_name", Message: "the other server's mail host name must not be this server's own panel, mail or nameserver name or the zone apex"}
+		}
+		if !serverSetupDNSNameWithin(peerMail, zone) {
+			return nil, &serverSetupInfrastructureDNSPlanError{Code: "infrastructure_dns_peer_mail_outside_zone", Message: "the other server's mail host name must belong to the selected infrastructure zone"}
+		}
+		if err := addAddress(peerMail, d.PeerIP); err != nil {
+			return nil, err
+		}
+	}
 	return records, nil
 }
 
