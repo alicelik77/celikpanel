@@ -36,7 +36,7 @@ const jsxRuntimeURL = pathToFileURL(require.resolve('react/jsx-runtime')).href;
 const catalogues = { en: { ...en, ...enServerScreens }, tr: { ...tr, ...trServerScreens } };
 const fill = (text, vars) => String(text).replace(/\{(\w+)\}/g, (all, name) => vars?.[name] ?? all);
 const iconsURL = moduleURL(`import React from '${reactURL}'; const Icon = props => React.createElement('i', props);
-export const AlertTriangle = Icon, DownloadCloud = Icon, Loader2 = Icon, RefreshCw = Icon;`);
+export const AlertTriangle = Icon, CheckCircle2 = Icon, DownloadCloud = Icon, Loader2 = Icon, RefreshCw = Icon;`);
 const uiURL = moduleURL(`import React from '${reactURL}'; export function Button({ children, ...props }) { return React.createElement('button', props, children); }`);
 const i18nURL = moduleURL(`const fill = (text, vars) => String(text).replace(/\\{(\\w+)\\}/g, (all, name) => vars && vars[name] !== undefined ? String(vars[name]) : all);
 export function useI18n() { const c = globalThis.__trackingCatalogue; return { t: (key, vars) => fill(c.strings[key] ?? key, vars), locale: c.locale }; }`);

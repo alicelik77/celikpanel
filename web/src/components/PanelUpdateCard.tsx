@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { AlertTriangle, DownloadCloud, Loader2, RefreshCw } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, DownloadCloud, Loader2, RefreshCw } from 'lucide-react';
 import { Button } from './ui';
 import { useI18n } from '../i18n';
 import { apiErrorText, readApiError } from '../lib/apiError';
@@ -32,6 +32,13 @@ type UpdateCheck = {
     /** Additive: the last failed or rolled-back attempt to this exact target on this server. */
     previous_attempt?: PreviousUpdateAttempt;
 };
+
+// The bottom message's tone (D-033, 2026-10-16): a check that found nothing
+// is a good state and is drawn with a check mark; a found update is neutral
+// information; only a check or start that failed keeps the warning mark.
+// Alttaki iletinin tonu: yeni guncelleme yoksa onay, bulunduysa notr bilgi;
+// uyari isareti yalniz okunamayan kontrol veya baslatilamayan guncellemede.
+type MessageTone = 'latest' | 'available' | 'warning';
 
 type PanelBuild = {
     version: string;
@@ -132,6 +139,7 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
     const [readiness, setReadiness] = useState<HostMutationReadiness | null>(null);
     const [starting, setStarting] = useState(false);
     const [message, setMessage] = useState('');
+    const [messageTone, setMessageTone] = useState<MessageTone>('warning');
     const actionInFlight = useRef(false);
     const lifecycleGeneration = useRef(0);
     const readinessAbort = useRef<AbortController | null>(null);
@@ -283,10 +291,12 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
             if (lifecycleGeneration.current !== generation || controller.signal.aborted) return;
             setCheck(payload);
             setCurrentBuild({ version: payload.current_version, commit: payload.current_commit });
+            setMessageTone(payload.available ? 'available' : 'latest');
             setMessage(payload.available ? t('panelUpdate.available') : t('panelUpdate.none'));
             if (payload.available) await refreshHostMutationReadiness();
         } catch (error) {
             if (lifecycleGeneration.current === generation && !controller.signal.aborted) {
+                setMessageTone('warning');
                 setMessage(error instanceof Error ? error.message : t('panelUpdate.checkFailed'));
             }
         } finally {
@@ -315,6 +325,7 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
                 // the full-page tracker) until the bounded preflight proves idle.
                 const requestID = createSystemUpdateRequestID();
                 if (!requestID) {
+                    setMessageTone('warning');
                     setMessage(t('panelUpdate.randomFailed'));
                     return;
                 }
@@ -331,6 +342,7 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
                 // routing, so navigation cannot unmount the tracker.
                 const result = await systemUpdate.start(exactMarker);
                 if (lifecycleGeneration.current === generation && result.kind === 'failed') {
+                    setMessageTone('warning');
                     setMessage(result.message);
                 }
             });
@@ -490,7 +502,10 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
                     <div
                         className={`rounded-lg border p-3 text-sm ${readiness?.ready === true
                             ? 'border-success/40 bg-success/10'
-                            : 'border-warning-mark/60 bg-warning-mark/20'}`}
+                            : readiness?.ready === false && !readinessChecking
+                                ? 'border-warning-mark/60 bg-warning-mark/20'
+                                : 'border-border bg-surface-subtle'}`}
+                        data-readiness-tone={readiness?.ready === true ? 'ready' : readiness?.ready === false && !readinessChecking ? 'warning' : 'neutral'}
                         role="status"
                         aria-live="polite"
                     >
@@ -535,8 +550,12 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
             )}
 
             {message && (
-                <div className="mt-4 flex items-start gap-2 rounded-lg border border-border p-3 text-sm text-fg" role="status" aria-live="polite">
-                    <AlertTriangle className="h-5 w-5 shrink-0 text-warning" />
+                <div className="mt-4 flex items-start gap-2 rounded-lg border border-border p-3 text-sm text-fg" role="status" aria-live="polite" data-message-tone={messageTone}>
+                    {messageTone === 'latest'
+                        ? <CheckCircle2 className="h-5 w-5 shrink-0 text-success" aria-hidden="true" />
+                        : messageTone === 'available'
+                            ? <DownloadCloud className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+                            : <AlertTriangle className="h-5 w-5 shrink-0 text-warning" aria-hidden="true" />}
                     <p>{message}</p>
                 </div>
             )}

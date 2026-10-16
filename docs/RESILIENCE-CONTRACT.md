@@ -6077,3 +6077,9 @@ schema or recovery behaviour. 2026-10-16 is the clock date of everything in it.
   measurement not observed in a real update; the live step view not yet seen;
   a retry of the same release reports no verify boundary; the D-033 item that a
   good "no new update" state is drawn with a warning icon on Frankfurt's page.
+
+### Candidate v0.1.0-alpha.90 (one D-033 interface correction since alpha.89; D-024; D-033; 2026-10-16)
+
+- **Change.** The update card draws a check that found no new update as a confirmation ("You are on the latest version.", check mark) and a found update or a readiness read in progress as neutral; the warning mark stays for a check that could not be read, a server that is not ready, a failed start and an earlier failed attempt. Interface only; the release sequence moves from 89 to 90. **No P0 item is closed or advanced**; P0.1 to P0.5 stay partial.
+- **Schema and recovery.** Schema 44, no migration; recovery behaviour unchanged. No native evidence, by the owner's instruction of 2026-10-16.
+- **Open.** Everything the alpha.88 and alpha.89 entries leave open stays open; the live step view and the restart measurement are first observed on the update from alpha.89. See the [release notes](RELEASE-NOTES-v0.1.0-alpha.90.md).

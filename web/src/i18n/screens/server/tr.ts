@@ -1084,7 +1084,7 @@ export const trServerScreens: Record<ServerScreenKey, string> = {
     'panelUpdate.identityMismatch': 'Agent farklı ve etkin bir işlem kimliği bildirdi. Bu ekran açılmadan önce işlem terminal duruma kadar izlenecek.',
     'panelUpdate.unsupported': 'Bu build çifti imzalı güncelleme kanalını desteklemiyor.',
     'panelUpdate.available': 'İmzalı bir güncelleme bulundu.',
-    'panelUpdate.none': 'Bu kanal için yeni güncelleme yok.',
+    'panelUpdate.none': 'En son sürümü kullanıyorsunuz.',
     'panelUpdate.previousAttempt.title': 'Bu sürüm bu sunucuda daha önce başarısız oldu',
     'panelUpdate.previousAttempt.rolledBackTitle': 'Bu sürüm bu sunucuda daha önce denendi ve geri alındı',
     // {time}, denemenin bittiği andır (API'deki finished_at); sunucu deneme

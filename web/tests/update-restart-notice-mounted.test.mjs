@@ -50,7 +50,7 @@ const catalogues = { en: { ...en, ...enServerScreens }, tr: { ...tr, ...trServer
 const fill = (text, vars) => String(text).replace(/\{(\w+)\}/g, (all, name) => vars?.[name] ?? all);
 const iconsURL = moduleURL(`import React from '${reactURL}';
 const icon = name => props => React.createElement('i', { ...props, 'data-icon': name });
-export const AlertTriangle = icon('AlertTriangle'), DownloadCloud = icon('DownloadCloud'), Loader2 = icon('Loader2'), RefreshCw = icon('RefreshCw');`);
+export const AlertTriangle = icon('AlertTriangle'), CheckCircle2 = icon('CheckCircle2'), DownloadCloud = icon('DownloadCloud'), Loader2 = icon('Loader2'), RefreshCw = icon('RefreshCw');`);
 const uiURL = moduleURL(`import React from '${reactURL}'; export function Button({ children, ...props }) { return React.createElement('button', props, children); }`);
 const i18nURL = moduleURL(`const fill = (text, vars) => String(text).replace(/\\{(\\w+)\\}/g, (all, name) => vars && vars[name] !== undefined ? String(vars[name]) : all);
 export function useI18n() { const c = globalThis.__restartCatalogue; return { t: (key, vars) => fill(c.strings[key] ?? key, vars), locale: c.locale }; }`);
