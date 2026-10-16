@@ -36,6 +36,7 @@ const iconsURL = moduleURL(`
     import React from '${reactURL}';
     const Icon = (props) => React.createElement('i', props);
     export const AlertTriangle = Icon;
+    export const CheckCircle2 = Icon;
     export const DownloadCloud = Icon;
     export const Loader2 = Icon;
     export const RefreshCw = Icon;
