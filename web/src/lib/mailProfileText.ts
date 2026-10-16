@@ -125,3 +125,15 @@ export function mailProfileAttemptError(profile: ProfileText, t: Translate): str
     const error = profile.latest_attempt_error?.trim();
     return error ? t('services.mailProfiles.attemptError', { error }) : '';
 }
+
+// "Repair webmail" on an installed Roundcube is a routine action; it is drawn
+// as a warning only when the server reports a webmail problem (owner
+// observation on alpha.92, 2026-10-16). The two codes are the Webmail
+// profile's own: Roundcube not proven through the web server, or not ready.
+// Kurulu Roundcube'daki "Webmail'i onar" olağan bir eylemdir; yalnız sunucu
+// bir webmail sorunu bildirdiğinde uyarı olarak çizilir.
+const webmailProblemCodes: ReadonlySet<unknown> = new Set(['webmail_unverified', 'roundcube_not_ready']);
+
+export function webmailReportsProblem(profiles: readonly ProfileText[]): boolean {
+    return profiles.some((profile) => profile.id === 'webmail' && webmailProblemCodes.has(profile.warning_code));
+}

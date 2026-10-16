@@ -174,7 +174,7 @@ function AccountsTab({ isAdmin }: { isAdmin: boolean }) {
     return (
         <div>
             <div className="mb-3 flex items-center justify-between">
-                <span className="text-xs text-fg-subtle">{t('common.itemsTotal', { n: countText(mapRemote(users.remote, (rows) => rows.length)) })}</span>
+                <span className="text-xs text-fg-subtle">{(countText(mapRemote(users.remote, (rows) => rows.length)) === '1' ? t('common.itemsTotalOne') : t('common.itemsTotal', { n: countText(mapRemote(users.remote, (rows) => rows.length)) }))}</span>
                 <Button variant="primary" icon={Plus} disabled={!usersKnown || !plansKnown} onClick={() => setShowForm((s) => !s)}>
                     {t('users.add')}
                 </Button>
@@ -396,7 +396,7 @@ function PlansTab() {
     return (
         <div>
             <div className="mb-3 flex items-center justify-between">
-                <span className="text-xs text-fg-subtle">{t('common.itemsTotal', { n: countText(mapRemote(plans.remote, (rows) => rows.length)) })}</span>
+                <span className="text-xs text-fg-subtle">{(countText(mapRemote(plans.remote, (rows) => rows.length)) === '1' ? t('common.itemsTotalOne') : t('common.itemsTotal', { n: countText(mapRemote(plans.remote, (rows) => rows.length)) }))}</span>
                 <Button variant="primary" icon={Plus} disabled={!plansKnown} onClick={() => setEditing({ ...emptyPlan })}>
                     {t('plans.add')}
                 </Button>

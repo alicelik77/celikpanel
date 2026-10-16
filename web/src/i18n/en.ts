@@ -388,7 +388,9 @@ export const en = {
     'common.cancel': 'Cancel',
     'common.close': 'Close',
     'common.back': 'Back',
-    'common.itemsTotal': '{n} items total',
+    // Plural by the count: '1 item', '{n} items' (alpha.92 Domains: "1 items total").
+    'common.itemsTotalOne': '1 item',
+    'common.itemsTotal': '{n} items',
     'common.perPage': 'Entries per page',
     'common.search': 'Search…',
     'common.remove': 'Remove',

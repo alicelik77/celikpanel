@@ -379,7 +379,7 @@ export function Domains() {
                     </div>
 
                     <p className="px-4 pt-3 text-xs text-fg-subtle">
-                        {t('common.itemsTotal', { n: listedCount })}
+                        {(listedCount === 1 ? t('common.itemsTotalOne') : t('common.itemsTotal', { n: listedCount }))}
                     </p>
                     {(() => {
                         // The first state after an update from a release that
@@ -576,7 +576,7 @@ export function Domains() {
                     </div>
 
                     <div className="border-t border-border px-4 py-2.5 text-xs text-fg-subtle">
-                        {t('common.itemsTotal', { n: listedCount })}
+                        {(listedCount === 1 ? t('common.itemsTotalOne') : t('common.itemsTotal', { n: listedCount }))}
                     </div>
                 </div>
                 ))}

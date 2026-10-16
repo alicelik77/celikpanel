@@ -268,7 +268,9 @@ export const tr: Record<ShellKey, string> = {
     'common.checkAgain': 'Tekrar kontrol et',
     'common.close': 'Kapat',
     'common.back': 'Geri',
-    'common.itemsTotal': 'Toplam {n} öğe',
+    // Türkçe sayıdan sonra çoğul eki almaz: '1 öğe', '{n} öğe'.
+    'common.itemsTotalOne': '1 öğe',
+    'common.itemsTotal': '{n} öğe',
     'common.perPage': 'Sayfa başına',
     'common.search': 'Ara…',
     'common.remove': 'Kaldır',

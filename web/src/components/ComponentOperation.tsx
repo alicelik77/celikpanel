@@ -278,7 +278,14 @@ export function decodeManagedMailProfiles(
                 && latestAttemptStatus !== 'succeeded'
                 && latestAttemptStatus !== 'failed'
             )
-            || (profile.verified && latestAttemptStatus !== 'succeeded')
+            // A profile may be verified by its own receipt or, since alpha.93, by
+            // a verified larger profile on the same scan (its own latest attempt
+            // then reads "none" or "succeeded"). A running or failed own attempt
+            // is never verified.
+            // Profil kendi makbuzuyla ya da alpha.93'ten beri aynı taramada
+            // doğrulanmış daha büyük bir profille doğrulanabilir; süren ya da
+            // başarısız kendi denemesi hiçbir zaman doğrulanmış sayılmaz.
+            || (profile.verified && latestAttemptStatus !== 'succeeded' && latestAttemptStatus !== 'none')
             || (
                 profile.latest_attempt_error !== undefined
                 && (

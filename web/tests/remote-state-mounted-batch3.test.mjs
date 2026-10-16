@@ -131,6 +131,7 @@ const ServiceList = await pick(lib('components/ServiceList.tsx', {
   '/lib/mailProfileText': lib('lib/mailProfileText.ts'),
   '/lib/componentName': lib('lib/componentName.ts'),
   '/lib/serverSetup': lib('lib/serverSetup.ts'),
+  '/WebmailRepairButton': lib('components/WebmailRepairButton.tsx'),
 }), 'ServiceList');
 globalThis.window ??= globalThis;
 // The real DNS engine card, mounted with the real decoder of its state. What
@@ -1315,6 +1316,37 @@ test('Components: on a secondary the mail box says whether setup asks the primar
       const shown = text();
       assert.ok(shown.includes('services.mailProfiles.secondary.noChannel'));
       assert.ok(!shown.includes('services.mailProfiles.secondary.channel"'));
+    } finally { await unmount(); }
+  }
+});
+
+// alpha.92 (2026-10-16): "Repair webmail" beside an installed Roundcube was
+// amber on every server. It is drawn like Manage; amber only when the Webmail
+// profile reports a webmail problem.
+// Kurulu Roundcube'un "Webmail'i onar" düğmesi her sunucuda sarıydı; yalnız
+// Webmail profili bir sorun bildirdiğinde sarıdır.
+test('Components: Repair webmail is an ordinary action unless webmail reports a problem', async () => {
+  const roundcubeScan = (warningCode) => {
+    const base = scan([
+      { ...component('postfix', []), category: 'mail' },
+      { ...component('roundcube', []), category: 'mail', kind: 'tool', status: 'installed', repair_available: true },
+    ]);
+    base.profiles = base.profiles.map((item) => (item.id === 'webmail' && warningCode
+      ? { ...item, warning: 'Roundcube is not ready.', warning_code: warningCode }
+      : item));
+    return base;
+  };
+  const repairButton = () => tree.root.findAll((node) => node.type === 'button' && node.props['data-tone'] !== undefined)[0];
+  for (const [code, tone] of [[undefined, 'neutral'], ['roundcube_not_ready', 'warning'], ['webmail_unverified', 'warning']]) {
+    serve({ '/api/v1/managed-services': roundcubeScan(code) });
+    await mount(React.createElement(ServiceList, {}));
+    try {
+      await settle();
+      const button = repairButton();
+      assert.ok(button, `no Repair webmail button (${code}): ${text().slice(0, 600)}`);
+      assert.ok(label(button).includes('services.repairWebmail'));
+      assert.equal(button.props['data-tone'], tone, `warning code ${code}`);
+      assert.equal(/warning/.test(button.props.className), tone === 'warning', button.props.className);
     } finally { await unmount(); }
   }
 });

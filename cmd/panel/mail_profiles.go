@@ -86,6 +86,20 @@ var mailProfileDefinitions = [...]mailProfileDefinition{
 	},
 }
 
+// mailProfileMailComponents are the components that make a mail profile
+// installed. Nginx and PHP-FPM serve websites too; with only those present a
+// mail profile is "not installed", not "partially installed" (owner
+// observation on Boston, alpha.92, 2026-10-16).
+// mailProfileMailComponents bir posta profilini kurulu yapan bileşenlerdir.
+// Nginx ve PHP-FPM web sitelerine de hizmet eder; yalnız onlar varken posta
+// profili "kısmen kurulu" değil "kurulu değil"dir.
+var mailProfileMailComponents = map[string]bool{
+	"postfix":   true,
+	"dovecot":   true,
+	"rspamd":    true,
+	"roundcube": true,
+}
+
 func mustMailProfileServiceIDs(profileID string) []string {
 	services, ok := core.MailProfileServiceIDs(profileID)
 	if !ok {
@@ -968,11 +982,15 @@ func mailProfilesView(
 		}
 
 		anyInstalled := false
+		anyPresent := false
 		allReady := true
 		for _, id := range definition.Services {
 			service := byID[id]
 			if service.Installed() {
-				anyInstalled = true
+				anyPresent = true
+				if mailProfileMailComponents[id] {
+					anyInstalled = true
+				}
 			}
 			if verifyMailProfileReady(mailProfileDefinition{Services: []string{id}}, services) != nil {
 				allReady = false
@@ -1012,8 +1030,66 @@ func mailProfilesView(
 			}
 		default:
 			view.Status = mailProfileStatusAvailable
+			if anyPresent {
+				// Only web-server parts (Nginx, PHP-FPM) are here: the profile is
+				// not installed, but the note about reusing them stays.
+				// Burada yalnız web sunucusu parçaları var: profil kurulu değil,
+				// ama onları yeniden kullanma notu kalır.
+				view.Warning, view.WarningCode = mailProfilePartlyPresentText, mailProfileWarningPartlyPresent
+			}
 		}
 		profiles = append(profiles, view)
 	}
+	inheritSupersetMailProfileProof(profiles)
 	return profiles
+}
+
+// inheritSupersetMailProfileProof marks a complete but unproven profile as
+// verified when another profile that contains every one of its components is
+// itself verified on the same scan. Webmail and Spam-Protected Mail run the
+// same Postfix and Dovecot reconciliation (MailStack, mail TLS, authenticated
+// submission) as Core Mail; their bound receipt proves that work, so asking
+// the owner to repair Core Mail afterwards was a false alarm (owner
+// observation on Frankfurt, alpha.92). Nothing else is relaxed: component
+// state alone still proves nothing, and a profile whose own latest attempt is
+// running or failed keeps its own state and warning.
+//
+// inheritSupersetMailProfileProof, tamamlanmış ama kanıtı olmayan bir profili,
+// onun bütün bileşenlerini içeren başka bir profil aynı taramada doğrulanmışsa
+// doğrulanmış sayar. Web posta ve Spam Korumalı Posta, Temel Posta ile aynı
+// Postfix ve Dovecot uzlaştırmasını yapar; bağlı makbuzları bu işi kanıtlar.
+// Başka hiçbir kural gevşemez: yalnız bileşen durumu yine kanıt değildir;
+// kendi son denemesi süren ya da başarısız olan profil kendi durumunu korur.
+func inheritSupersetMailProfileProof(profiles []MailProfileResponse) {
+	for i := range profiles {
+		candidate := &profiles[i]
+		if candidate.Status != mailProfileStatusComplete || candidate.Verified ||
+			candidate.WarningCode != mailProfileWarningRepairToVerify {
+			continue
+		}
+		switch candidate.LatestAttemptStatus {
+		case mailProfileAttemptInProgress, mailProfileAttemptFailed:
+			continue
+		}
+		for j := range profiles {
+			superset := profiles[j]
+			if i == j || superset.Status != mailProfileStatusComplete || !superset.Verified ||
+				!mailProfileServicesContain(superset.Services, candidate.Services) {
+				continue
+			}
+			candidate.Verified = true
+			candidate.Warning = ""
+			candidate.WarningCode = ""
+			break
+		}
+	}
+}
+
+func mailProfileServicesContain(superset, subset []string) bool {
+	for _, id := range subset {
+		if !slices.Contains(superset, id) {
+			return false
+		}
+	}
+	return true
 }

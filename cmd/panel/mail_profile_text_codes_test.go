@@ -158,3 +158,112 @@ func TestMailProfileViewTypesItsSentences(t *testing.T) {
 		t.Fatalf("warning_code present without a warning: %s", body)
 	}
 }
+
+// Frankfurt on alpha.92 (2026-10-16): setup installed and reconciled Webmail
+// and Spam-Protected Mail, yet Core Mail asked for Repair. A verified profile
+// that contains every Core Mail component proves Core Mail's reconciliation
+// on the same scan. The negative controls keep the rule as strict as before.
+func TestMailProfileSupersetProofVerifiesCoreMail(t *testing.T) {
+	protected := catalogView([]serviceObservation{
+		{ID: "postfix", IsInstalled: true, Status: "active (running)"},
+		{ID: "dovecot", IsInstalled: true, Status: "active (running)"},
+		{ID: "rspamd", IsInstalled: true, Status: "active (running)"},
+	}, "apt")
+	core := func(proofs map[string]mailProfileAttemptProof) MailProfileResponse {
+		return profileViewByID(t, mailProfilesView(protected, true, "apt", "", false, true, proofs), "core-mail")
+	}
+
+	inherited := core(map[string]mailProfileAttemptProof{
+		"protected-mail": {Status: mailProfileAttemptSucceeded, Verified: true},
+	})
+	if !inherited.Verified || inherited.Warning != "" || inherited.WarningCode != "" || inherited.Status != mailProfileStatusComplete {
+		t.Fatalf("a verified superset does not verify Core Mail: %+v", inherited)
+	}
+
+	// Negative controls: component state alone, an unverified superset receipt,
+	// and Core Mail's own running or failed attempt keep the warning.
+	for name, proofs := range map[string]map[string]mailProfileAttemptProof{
+		"no receipt":         nil,
+		"unverified receipt": {"protected-mail": {Status: mailProfileAttemptSucceeded}},
+		"own attempt running": {
+			"protected-mail": {Status: mailProfileAttemptSucceeded, Verified: true},
+			"core-mail":      {Status: mailProfileAttemptInProgress},
+		},
+		"own attempt failed": {
+			"protected-mail": {Status: mailProfileAttemptSucceeded, Verified: true},
+			"core-mail":      {Status: mailProfileAttemptFailed, Error: "submission verification failed"},
+		},
+	} {
+		if view := core(proofs); view.Verified || view.WarningCode != mailProfileWarningRepairToVerify {
+			t.Fatalf("%s: Core Mail verified without its own or a bound superset proof: %+v", name, view)
+		}
+	}
+
+	// A superset receipt whose own components are not ready on this scan does
+	// not count: Rspamd stopped means Spam-Protected Mail is not verified now.
+	stopped := catalogView([]serviceObservation{
+		{ID: "postfix", IsInstalled: true, Status: "active (running)"},
+		{ID: "dovecot", IsInstalled: true, Status: "active (running)"},
+		{ID: "rspamd", IsInstalled: true, Status: "inactive (dead)"},
+	}, "apt")
+	view := profileViewByID(t, mailProfilesView(stopped, true, "apt", "", false, true, map[string]mailProfileAttemptProof{
+		"protected-mail": {Status: mailProfileAttemptSucceeded, Verified: true},
+	}), "core-mail")
+	if view.Verified || view.WarningCode != mailProfileWarningRepairToVerify {
+		t.Fatalf("a superset not ready on this scan verified Core Mail: %+v", view)
+	}
+
+	// The relation runs one way: a verified Core Mail never verifies a larger profile.
+	larger := profileViewByID(t, mailProfilesView(protected, true, "apt", "", false, true, map[string]mailProfileAttemptProof{
+		"core-mail": {Status: mailProfileAttemptSucceeded, Verified: true},
+	}), "protected-mail")
+	if larger.Verified || larger.WarningCode != mailProfileWarningRepairToVerify {
+		t.Fatalf("a smaller profile's proof verified a larger one: %+v", larger)
+	}
+}
+
+// Boston on alpha.92 (2026-10-16): only Nginx was installed, and the Dashboard
+// said the mail stack was "Partially installed". Web-server parts alone leave a
+// mail profile "available" (not installed) with the reuse note; one mail
+// component makes it partial, as before.
+func TestMailProfileWithOnlyWebComponentsIsNotInstalled(t *testing.T) {
+	webOnly := catalogView([]serviceObservation{
+		{ID: "nginx", IsInstalled: true, Status: "active (running)"},
+		{ID: "php-fpm", IsInstalled: true, Status: "active (running)"},
+	}, "apt")
+	profiles := mailProfilesView(webOnly, true, "apt", "", false, true, nil)
+	webmail := profileViewByID(t, profiles, "webmail")
+	if webmail.Status != mailProfileStatusAvailable || webmail.WarningCode != mailProfileWarningPartlyPresent || webmail.Warning == "" {
+		t.Fatalf("web parts alone: %+v, want available with the reuse note", webmail)
+	}
+	for _, id := range []string{"core-mail", "protected-mail"} {
+		if view := profileViewByID(t, profiles, id); view.Status != mailProfileStatusAvailable || view.WarningCode != "" {
+			t.Fatalf("%s with no component present: %+v", id, view)
+		}
+	}
+
+	// Negative control: one mail component keeps the real partial state.
+	withRoundcube := catalogView([]serviceObservation{
+		{ID: "nginx", IsInstalled: true, Status: "active (running)"},
+		{ID: "roundcube", IsInstalled: true, Status: "installed"},
+	}, "apt")
+	if view := profileViewByID(t, mailProfilesView(withRoundcube, true, "apt", "", false, true, nil), "webmail"); view.Status != mailProfileStatusPartial || view.WarningCode != mailProfileWarningPartlyPresent {
+		t.Fatalf("Roundcube present: %+v, want partial", view)
+	}
+	withPostfix := catalogView([]serviceObservation{{ID: "postfix", IsInstalled: true, Status: "active (running)"}}, "apt")
+	for _, profile := range mailProfilesView(withPostfix, true, "apt", "", false, true, nil) {
+		if profile.Status != mailProfileStatusPartial {
+			t.Fatalf("%s with Postfix present: %+v, want partial", profile.ID, profile)
+		}
+	}
+
+	// Every profile component is either a mail component or one of the two
+	// shared web-server parts; a new mail component must be counted.
+	for _, definition := range allMailProfiles() {
+		for _, id := range definition.Services {
+			if !mailProfileMailComponents[id] && id != "nginx" && id != "php-fpm" {
+				t.Fatalf("%s: %s is neither a mail component nor a shared web part", definition.ID, id)
+			}
+		}
+	}
+}

@@ -35,7 +35,7 @@ test('dashboard mail copy stays in EN/TR parity', () => {
   for (const key of [
     'dashboard.mailStacks.title',
     'dashboard.mailStacks.status.ready',
-    'dashboard.mailStacks.status.available',
+    'dashboard.mailStacks.status.notInstalled',
     'dashboard.mailStacks.status.partial',
     'dashboard.mailStacks.status.attention',
     'dashboard.mailStacks.status.stale',

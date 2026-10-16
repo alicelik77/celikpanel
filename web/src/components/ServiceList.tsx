@@ -29,7 +29,8 @@ import { useServerSetup } from './ServerSetupGate';
 import { decodeServerSetup, setupEditorKey, type ServerSetupSnapshot } from '../lib/serverSetup';
 import { publishComponentCensus } from '../lib/componentCensus';
 import { componentDescription, componentName } from '../lib/componentName';
-import { mailProfileBlocked, mailProfileDescription, mailProfileName, mailProfileWarning } from '../lib/mailProfileText';
+import { mailProfileBlocked, mailProfileDescription, mailProfileName, mailProfileWarning, webmailReportsProblem } from '../lib/mailProfileText';
+import { WebmailRepairButton } from './WebmailRepairButton';
 
 // One installed copy of a runtime (B3b): php8.3-fpm is an instance, a Node
 // tree under /opt/celikpanel/runtimes is an instance. `unit` empty means the
@@ -445,6 +446,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
     const { startInstall, catalogSnapshot } = useComponentOperation();
     const [services, setServices] = useState<ManagedService[]>([]);
     const [profiles, setProfiles] = useState<ManagedMailProfile[]>([]);
+    const webmailProblem = webmailReportsProblem(profiles);
     const [scannedAt, setScannedAt] = useState<string | null>(null);
     // Counts the scans this page has received. The firewall banner reads its
     // state again with each, so it does not keep an Agent error the scan no
@@ -1504,7 +1506,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                 <>
                 <p className="mb-2 text-xs text-fg-subtle">
                     {filtered.length === services.length
-                        ? t('common.itemsTotal', { n: services.length })
+                        ? (services.length === 1 ? t('common.itemsTotalOne') : t('common.itemsTotal', { n: services.length }))
                         : t('services.matchCount', { shown: filtered.length, total: services.length })}
                 </p>
                 {filtered.length === 0 ? (
@@ -1857,18 +1859,19 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                         <RotateCw className="h-4 w-4" />
                                                     </ActionIcon>
                                                     ))}
-                                                    {/* Roundcube repair reuses the durable install operation. */}
+                                                    {/* Roundcube repair reuses the durable install operation. It is
+                                                        an ordinary action, drawn like Manage; amber only when the
+                                                        server reports a webmail problem (2026-10-16).
+                                                        Roundcube onarımı olağan bir eylemdir; yalnız sunucu webmail
+                                                        sorunu bildirdiğinde sarı çizilir. */}
                                                     {s.kind === 'tool' && s.id === 'roundcube' && (
-                                                    <button
-                                                        type={'button'}
+                                                    <WebmailRepairButton
+                                                        problem={webmailProblem}
                                                         onClick={() => requestComponentAction({ kind: 'repair', service: s })}
                                                         disabled={mutationControlsDisabled || busy === s.id || !s.repair_available}
                                                         title={s.repair_available ? t('services.repairWebmail') : t('services.repairUnavailable')}
-                                                        className={'inline-flex items-center gap-1.5 rounded-lg border border-warning-mark/50 bg-warning-mark/20 px-2.5 py-1.5 text-xs font-semibold text-warning disabled:opacity-50'}
-                                                    >
-                                                        <RotateCw className={'h-3.5 w-3.5'} />
-                                                        {t('services.repairWebmail')}
-                                                    </button>
+                                                        label={t('services.repairWebmail')}
+                                                    />
                                                     )}
                                                     {/* The version drawer is where a runtime's per-version
                                                         state and controls live (B3b) — and, for a tarball
@@ -2177,7 +2180,11 @@ function MailProfileCards({ profiles, services, disabled, dnsIdentityReady, dnsG
                                 ))}
                             </div>
                             {detail && (
-                                <p className={`mt-3 text-xs leading-5 ${profile.status === 'blocked' ? 'text-danger' : 'text-warning'}`}>
+                                // A not-installed profile whose web-server parts are already
+                                // here carries a note, not a problem: neutral (2026-10-16).
+                                // Web sunucusu parçaları hazır olan kurulu olmayan profil bir
+                                // not taşır, sorun değil: nötr.
+                                <p className={`mt-3 text-xs leading-5 ${profile.status === 'blocked' ? 'text-danger' : dnsIdentityReady && !secondary && profile.status === 'available' ? 'text-fg-muted' : 'text-warning'}`}>
                                     {detail}
                                 </p>
                             )}
