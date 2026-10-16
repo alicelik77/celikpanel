@@ -7941,8 +7941,10 @@ istiyor. Main `e3c8f735a` üzerindeki kaynağın salt-okur incelemesi, panelin
 sahibi oraya götüremediği sekiz yer buldu. Beşi sahip kararı gerektirmiyor ve
 `feat/alpha87-second-server` dalında kaynakta düzeltildi; üçü sahibin kararını
 bekliyor ve aşağıda açık bırakıldı. Yazılış: 2026-10-16. Buradaki hiçbir şey
-kurulu bir sunucuda ya da doğal bir kayıtta ölçülmedi, hiçbir kurulu panel
-güncellenmedi ya da ona bağlanılmadı, hiçbir P0 işi kapanmadı ya da ilerlemedi.
+kurulu bir sunucuda ölçülmedi; aşağıdaki beş kalem bu kayıt ilk yazıldığında
+doğal bir kayıtta da ölçülmemişti (set18 ve set18b bunu sonradan laboratuvarda
+yaptı; aşağıya bakın). Hiçbir kurulu panel güncellenmedi ya da ona
+bağlanılmadı, hiçbir P0 işi kapanmadı ya da ilerlemedi.
 D-021 (kurulu olanı hiç kaldırmayan, amaca göre kurulum), D-024 (şimdiki neden,
 kimin işlem yapacağı, sonraki eylem ve işin nasıl süreceği; bilinmeyen sonuç
 hata değildir), D-032 (panel okuyabildiği durumu kendisi okur) ve D-033 (ekran
@@ -8046,6 +8048,11 @@ yapılandırmasını kullanır.
 
 **Sürüm hazırlayıcının verdiği kararlar (onaylanacak)**
 
+Bunların hiçbiri sahibin kararı değildir. Sürüm hazırlayıcı bunları D-021 ve
+D-033 altında ve sahibin 2026-10-13 tarihli genel talimatıyla (sürüm numaraları
+ve commit'ler için sahibe sorulmasına gerek yok) verdi; sahibin onaylaması ya da
+değiştirmesi için listelendi.
+
 - Genişletme, PUT üzerinde bir bayrak değil, yeni bir uç noktadır:
   `POST /api/v1/setup/extend`. Başlatma ve vazgeçme, durum satırını ve bir
   ayarı mevcut tek seferlik kuralla tek işlemde değiştirir. Mevcut PUT, plan ve
@@ -8064,6 +8071,9 @@ yapılandırmasını kullanır.
 - İkincilde kaydın değeri önce kurulumun incelenmiş adresi, sonra sunucunun
   algılanan adresidir.
 - Kayıtlar, onları yazan modelin adını taşır.
+- set18b'den sonra eklendi: Web barındırmaya "Seçimi özelleştir" ile posta
+  eklemek amaç etiketini "Özel kurulum" yapar (set18b O5; etiket doğrudur ve
+  Başlat'tan önce söylenir); sürüm hazırlayıcı etiketi olduğu gibi bıraktı.
 
 **Açık kalan üç karar (sahibin)**
 
@@ -8080,8 +8090,9 @@ yönlendirmesiyle onu bekler.
 
 **Sayılar.** `npm test` 1494'te 1494; `npx tsc --noEmit` temiz; `npm run build`
 paket bütçesiyle geçiyor. WSL konuğunda `go test ./cmd/panel`: 1557 üst düzey
-test geçti, 6 atlandı, 1675 alt test geçti (`60ea75c1c`'de; ondan sonra Go
-değişmedi); gofmt ve vet temiz. Agent'a dokunulmadı ve çalıştırılmadı. Döngü
+test geçti, 6 atlandı, 1675 alt test geçti (`60ea75c1c`'de; bu kayıt ilk yazıldığında
+ondan sonra Go değişmemişti, `6b363ac46` sonradan değiştirdi, aşağıya bakın);
+gofmt ve vet temiz. Agent'a dokunulmadı ve çalıştırılmadı. Döngü
 adresindeki sahte API ile tarayıcı incelemesi (masaüstü EN açık, telefon TR
 koyu): hazır ekranı, genişletme incelemesi, ikincil kutusu ve ad değişikliğiyle
 pencere; yeni adın iki kez söylendiğini buldu, `32f0a3766`'da düzeltildi. Doğal
@@ -8122,7 +8133,7 @@ sunucuda ölçülmedi.
   sihirbaz ve "Genişletmeden vazgeç", alansız D1 ekranı (denetim); başlatınca yeni
   çalışma; "Genişletmeden vazgeç" hazır ekranına döner; çözücü. Sayfa alanı yok
   sayınca iki takılı D1 testi de kalıyor.
-- **O1 (ifade): "İncelenen kurulumu başlat"tan sonra yaklaşık bir saniye
+- **O1 (ifade): "İncelenen kurulumu başlat"tan sonra yaklaşık üç saniye
   yönlendirme "Bu adım için daha belirli bir gereksinim henüz doğrulanmadı…
   yalnızca beklemek eksik bir gereksinimi gidermeyebilir." diyordu.** Neden:
   başlatma yanıtı, bütün adımları bekleyen `queued` evresindeki kabul edilmiş
@@ -8136,8 +8147,8 @@ sunucuda ölçülmedi.
   `setupExecutionGuidance`, sihirbazda `guidanceStepItem`). Takılı test
   (bu cümle olmadan kalıyor).
 - **O3: posta yenileme kaydı çalışırken "Kayıtlı işleme devam et" yaklaşık 4
-  saniye etkin kaldı; araç üç kez bastı** (aynı istek kimliği, ikinci kayıt
-  yok). Neden: sayfa yalnız kendi isteği ve ardındaki okuma sürerken tek
+  saniye etkin kaldı; araç dört örnekte bastı ve Panel'e üç POST ulaştı** (tek
+  istek kimliği, ikinci kayıt yok). Neden: sayfa yalnız kendi isteği ve ardındaki okuma sürerken tek
   uçuşluydu; sonraki okuma adımı hâlâ devam ettirilebilir gösterince düğme geri
   geliyordu. Artık basış, bir okuma o işlemin ilerlediğini gösterene (başka
   çalışma, başka durum kodu ya da adım artık çalışmıyor) kadar hatırlanır:

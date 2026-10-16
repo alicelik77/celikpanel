@@ -5121,8 +5121,8 @@ yayımlanmamış bir adayı kaydeder; 2026-10-16 girdinin saat tarihidir.
 - **Dokunulan ilkeler.** İlke 1: genişletme kurulu bir bileşeni asla
   kaldırmaz, durdurmaz ya da değiştirmez ve ondan vazgeçmek kısmen çalışmış bir
   genişletmenin kurduğu hiçbir şeyi kaldırmaz. İlke 2: yerini almış tamamlanmış
-  bir çalışma, hazır bir sunucuda "Tamamlanma doğrulanamadı" olarak
-  gösterilmez; alan yalnız başarılı çalışmada tutulur, böylece süren bir
+  bir çalışma, kurulumu genişletilen bir sunucuda "Tamamlanma doğrulanamadı"
+  olarak gösterilmez; alan yalnız başarılı çalışmada tutulur, böylece süren bir
   çalışmayı ya da bir hatayı gizleyemez; inceleme her ayarı önce ve sonra ve
   kalanları gösterir ve meşgul bir sunucunun reddettiği posta sunucusu adı
   kaydedilmez. İlke 6: genişletme tamamlanma kaydını korur; böylece
@@ -5141,7 +5141,9 @@ yayımlanmamış bir adayı kaydeder; 2026-10-16 girdinin saat tarihidir.
   çalışmasıdır; bir genişletmeden vazgeçmek yalnız kurulum kaydını değiştirir.
 - **Kanıt.** Bileşen testleri: `go test -count=1 -v ./cmd/panel/...` 1558 üst
   düzey test geçti, 6 atlandı, 0 kaldı, 1675 alt test geçti (`bef12820e`'de,
-  `6b363ac46` ile aynı Go kodu); `npm test` 1499'da 1499. Agent koşulmadı
+  `6b363ac46` ile aynı Go kodu; sürümü hazırlayanın WSL konuğundaki ölçümü, bir
+  dosyada kayıtlı değil); `npm test` 1499'da 1499, bu belgelerin gerçeklik
+  denetimi de `b6c43a4b5`'te yeniden koştu. Agent koşulmadı
   (değişmedi). Taklide karşı 16. tarayıcı inceleme turu (8 yapılandırmada 36
   durum; yedi kusur düzeltildi). Gerçek sistem kayıtları (Debian 13 QEMU/KVM
   konukları, test lisanslı derlemeler, konuğun içinde bir laboratuvar DNS
@@ -5149,7 +5151,7 @@ yayımlanmamış bir adayı kaydeder; 2026-10-16 girdinin saat tarihidir.
   `5d54aba1e`'de `deploy/e2e/release-recovery/evidence/set18-20261015/README.md`
   ve `6b363ac46`'da
   `deploy/e2e/release-recovery/evidence/set18b-20261016/README.md`; ikisi de
-  `90b3fe2f2`'deki kabul düzeltmeleriyle. Sonuç: kurulum ve Core Mail ekleyen
+  `90b3fe2f2`'deki teslim alma düzeltmeleriyle. Sonuç: kurulum ve Core Mail ekleyen
   bir genişletme, bu kanıt klasöründe ilk kez genel DNS denetimi, güvenilir
   sertifikalar ve "Kurulum tamamlanıyor" üzerinden gerçek sistemde hazır
   duruma ulaştı; set18 D1'i kaydetti, set18b D1, O1 ve O3'ün düzeldiğini ve
@@ -5165,6 +5167,9 @@ yayımlanmamış bir adayı kaydeder; 2026-10-16 girdinin saat tarihidir.
   güvenilir posta sertifikası ardından gelirken kendinden imzalı yedek
   bildirimi ve kurulumun kendi planlı yeniden başlaması çevresinde lisans
   kapısının erişim şeridi (alpha.86'nın yeniden başlama payı yalnız
-  güncellemenin yeniden başlamasını kapsar); O2, O4 ve O5 değerlendirilmedi;
-  hiçbir kurulu sunucu ölçülmedi. Yukarıdaki girdilerin açık bıraktığı her şey
+  güncellemenin yeniden başlamasını kapsar); O2 ve O4 değerlendirilmedi, O5
+  ("Özel kurulum" etiketi) D-021 ve D-033 altında sürümü hazırlayanın kararıyla
+  olduğu gibi bırakıldı; sürümü hazırlayanın birinci bölüm için verdiği her karar
+  sahibin onayına açıktır, hiçbiri sahibin kararı değildir; hiçbir kurulu sunucu
+  ölçülmedi. Yukarıdaki girdilerin açık bıraktığı her şey
   açık kalır.

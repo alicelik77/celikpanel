@@ -104,16 +104,16 @@ known-state rule is why the bound ends in "not known yet" and not in a negative
 state. D-022 (the owner operates the server) is why the bounded notices say how
 the owner checks the panel on the server rather than restarting anything.
 
-Status. In source on the branch of the v0.1.0-alpha.85 candidate (not
-published), with mounted tests. The Components firewall banner, the Dashboard's
+Status. In source on the branch of the v0.1.0-alpha.85 candidate (written
+before its publication on 2026-10-15), with mounted tests. The Components firewall banner, the Dashboard's
 attention notice and Mail stacks card and the sidebar build id were measured in
 the eighteenth native record. Setup finishing, the update card's busy state,
 the component lock's reconnect and the spreading-domain checks were not reached
 natively. Open for a native run, for an installed server and for the
 visibility gating of the install dialog's and setup's reads.
 
-*Note of 2026-10-15 (clock date): applied in the v0.1.0-alpha.86 candidate (not
-published).* No new decision is recorded for that candidate; what it does
+*Note of 2026-10-15 (clock date): applied in v0.1.0-alpha.86 (written while it
+was a candidate; published 2026-10-15).* No new decision is recorded for that candidate; what it does
 follows this decision and D-032, and the text above is unchanged.
 
 - Rules 1 and 3, after the owner's observation of 2026-10-15 during the real
@@ -174,7 +174,8 @@ unchanged.
   operation" until a read shows the operation moved on, at most 15 s (O3; reads
   only, the server answers a repeat of the same request without a second
   operation); an extension in draft is no longer shown as the completed run's
-  "Completion could not be verified" (D1, a false "not known").
+  "Completion could not be verified" (D1, a false alarm on a server that was
+  ready).
 - Rule 5 for a DNS secondary: the mail box names what it waits for (the record
   on the primary or at the DNS provider, with the exact record) instead of
   sending the owner to a DNS page that cannot create it, and the profile cards

@@ -10,8 +10,9 @@ commits); it is not a number the owner named for this release. The owner's own
 part in this release is the goal it starts on (the second installed server as a
 full peer of the first) and the reply "devam. sorun yok." of 2026-10-15, which
 put that work after alpha.86. Every choice listed under "Decisions the release
-preparer made" below is the release preparer's and is open for the owner to
-confirm. The release preparation is commit `471377d60` (sequence 87 after 86,
+preparer made" below is the release preparer's, made under D-021 and D-033 and
+that standing instruction, and is open for the owner to confirm or change; none
+of them is an owner decision. The release preparation is commit `471377d60` (sequence 87 after 86,
 with the alpha.86 release commit `8d260f317e58bed7fcd84c6cbb01823c4fe3f166` as
 the previous one). Nothing of it is published, and this draft records no
 installed server running it. This draft was written on 2026-10-16 (UTC), after
@@ -20,7 +21,9 @@ the native records set18 and set18b; the candidate's last product commit is
 
 The owner wants the second installed server (Boston, the DNS secondary of the
 pair) to host websites and mail as a full peer of the first (Frankfurt, the DNS
-primary). A read-only investigation of the source at main `e3c8f735a` found
+primary). A read-only investigation of the source at main `e3c8f735a` (the main of
+2026-10-13, before alpha.85 and alpha.86; the investigation is not recorded as
+a file in the repository) found
 eight places where the panel could not take the owner there. Five of them need
 no decision from the owner, and this release corrects them: this is **part 1**.
 The other three need the owner's decision and are not in this release; they
@@ -50,7 +53,9 @@ limits say what was never run.
 
 ## What you will see
 
-Plain words first, for the server owner. After the update, reload every
+Plain words first, for the server owner, on what the screens will show once a
+server is updated to this release (it is installed nowhere yet). After the
+update, reload every
 CelikPanel page that was open; a page loaded before the update still has the
 old screens. When a server's setup is finished, the "Your server is ready"
 screen and Settings → Server setup now offer **"Extend this server's setup"**.
@@ -68,7 +73,9 @@ dialog now says that this ends with a temporary self-signed certificate. A
 saved mail server name can be changed with "Change", and the note under the
 field says what the change means before you confirm.
 
-**Boston can now be extended with mail from the panel.** One thing still has
+**Once Boston is updated to this release, it can be extended with mail from the
+panel.** (This rests on component tests and the mock: no native record reached
+a DNS secondary, and nothing ran on Boston.) One thing still has
 to be done by hand until part 2: the DNS record of Boston's mail server name
 (for example `mail.example.com`, type A, Boston's public address) must be made
 on Frankfurt or at your DNS provider, because Boston is the DNS secondary and
@@ -277,8 +284,8 @@ corrected in `6b363ac46`; set18b then observed all three fixed.
   (`setup.guide.queued`, `setupExecutionGuidance`). Mounted test (fails
   without the sentence).
 - **O3: "Continue recorded operation" stayed enabled for about 4 s while the
-  mail enrollment was running; the tool pressed it three times** (same request
-  id, no second enrollment). The press is now remembered until a read shows
+  mail enrollment was running; the tool pressed it on four samples and three
+  POSTs reached the Panel** (one request id, no second enrollment). The press is now remembered until a read shows
   that the operation moved on: the button stays disabled with its spinner and
   reads "Checking the same operation" (`setup.mailEnrollment.sent`); a press
   no read confirms is offered again after 15 s. The server already answered a
@@ -384,7 +391,9 @@ preparation `471377d60` and these documents.
 - Web: `npm test` 1499 of 1499, recorded after the set18 corrections at
   `6b363ac46` in [OPERATION-GUIDANCE](OPERATION-GUIDANCE.md) (with `npx tsc
   --noEmit` clean and `npm run build` within its bundle budget), and run again
-  on 2026-10-16 at `bef12820e` with the same count (21.7 s). The web count was
+  on 2026-10-16 at `bef12820e` with the same count (21.7 s), and again by the fact-check of these documents at
+  `b6c43a4b5` (1499 of 1499; `npm run build`, which runs `tsc` first, within its
+  bundle budget). The web count was
   1483 at alpha.86, 1494 when part 1 was first written (OPERATION-GUIDANCE
   entry of 2026-10-16) and 1499 after the set18 corrections.
 - Go, in the WSL guest `CelikPanel-S2-Debian` (Go 1.26.5): `go test
@@ -396,18 +405,25 @@ preparation `471377d60` and these documents.
   (the same Go code as `6b363ac46`): `go test -count=1 -v ./cmd/panel/...`
   passed 1558 top-level tests, skipped 6, failed 0, and passed 1675
   subtests (272.7 s for the package, 288 s with the build), with `go vet
-  ./cmd/panel/...` and gofmt clean. `./cmd/panel/...` is the single package
+  ./cmd/panel/...` and gofmt clean. This run is the release preparer's
+  measurement in the WSL guest; no file in the repository records it, and the
+  fact-check of these documents, without a WSL guest, did not repeat it. The
+  fact-check confirmed that `git diff --stat 6b363ac46 HEAD -- cmd internal
+  go.mod go.sum` is empty. `./cmd/panel/...` is the single package
   `./cmd/panel`; the one top-level test more than at `60ea75c1c` is the D1
   test of `6b363ac46`.
 - The Agent (`cmd/agent/`) and `internal/` were not changed on this branch and
   were not run again; their counts are alpha.86's.
 - The release preparation's contract test passes: the sequence-policy contract
   in the Windows Git Bash checkout, which has the `v0.1.0-alpha.86` tag it
-  reads ("86 -> 87; historical bootstrap sequence 86"). The download-portal and
+  reads ("86 -> 87; historical bootstrap sequence 86"; run again by the fact-check of
+  these documents with the same output). The download-portal and
   signed-manifest contracts refuse in the Windows checkout, where the key-file
   checks fail (as for alpha.86); in the WSL guest, on a `git archive` of
   `471377d60`, both pass ("download portal contract passed", "signed release
-  manifest contract passed", for v0.1.0-alpha.87).
+  manifest contract passed", for v0.1.0-alpha.87), as the release preparer
+  reported (not recorded in a file, and not re-run by the fact-check, which had
+  no WSL guest).
 
 **The sixteenth browser-inspection batch** (`x16*`,
 `web/tools/browser-inspect/scenarios-batch16.mjs` and `mock-batch16.mjs`,
@@ -557,8 +573,11 @@ answered 200 (H2 fixed).
   setup", in the review before Start and on the ready screen after. It is
   truthful (the selection is no longer the Web hosting preset) and stated
   before Start; the release preparer leaves the label as it is and records it
-  here. Whether a web server with mail added should keep "Web hosting" or read
-  "Web and mail hosting" is the owner's to decide.
+  here. The release preparer's decision to leave the label as it is rests on D-021
+  and D-033 and the owner's standing instruction of 2026-10-13; it is not an
+  owner decision. Whether a web server with mail added should instead keep
+  "Web hosting" or read "Web and mail hosting" is open for the owner to change;
+  no owner decision on it exists.
 
 **Harness and lab-tool changes on this branch.**
 
@@ -573,8 +592,9 @@ answered 200 (H2 fixed).
 
 ## Decisions the release preparer made
 
-Under the owner's standing instruction of 2026-10-13 and recorded in the
-operation guidance for the owner to confirm; none is an owner decision.
+Made by the release preparer under D-021 and D-033 and the owner's standing
+instruction of 2026-10-13, and recorded in the operation guidance for the owner
+to confirm; none is an owner decision.
 
 - The extension is a new endpoint, `POST /api/v1/setup/extend`, rather than a
   flag on the existing PUT.
@@ -593,6 +613,8 @@ operation guidance for the owner to confirm; none is an owner decision.
   as it is).
 - On a secondary, the record's value is setup's reviewed address, then the
   server's detected address.
+- The "Custom setup" label that Web hosting reads after mail is added through
+  "Customize selection" (set18b O5) is left as it is.
 - The commits of the branch before the release documents carry the attribution
   of the model that wrote them.
 
@@ -636,9 +658,11 @@ These are known. They are not hidden defects.
      22:57:19Z, `certificate startup reconcile: certificate dependents:
      publish full mail SNI snapshot: mail server hostname is not a valid FQDN:
      invalid hostname "dns-debian13"`, on a web-only setup with no mail host
-     name saved.
+     name saved (set18b's journal has the same line at each of its three Panel
+     starts).
   2. The same journal logs `(CRON) DEATH (can't lock /var/run/crond.pid,
-     otherpid may be 15418 …)` at 22:56:58Z, 22:56:59Z and 22:57:19Z.
+     otherpid may be 15418 …)` 128 times, from 22:56:58Z (then 22:56:59Z,
+     22:57:19Z and on) to 23:27:27Z; set18b's journal holds 23 such lines.
   3. During set18's extension, while it waited for the mail A record, a
      warning toast "core-mail installed with a self-signed fallback
      certificate. Mail clients will show a trust warning until a matching
@@ -662,7 +686,8 @@ These are known. They are not hidden defects.
   recorded API answers (set18b H6).
 - **O2, O4 and O5 not judged.** O2: a client without SNI gets the Panel's
   original self-signed certificate after the handover. O4: a lab artifact in
-  the handover address. O5: the "Custom setup" label after adding mail.
+  the handover address. O5: the "Custom setup" label after adding mail, left as it is by the release
+  preparer's decision (the wording is open for the owner).
 - **The Agent is unchanged.** Nothing under `cmd/agent/` or `internal/`
   changed; the Agent's limits of alpha.86 (the resolver sentence needs an Agent
   update) stand as they were.

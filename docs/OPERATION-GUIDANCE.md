@@ -7976,8 +7976,9 @@ read-only investigation of the source at main `e3c8f735a` found eight places
 where the panel could not take the owner there. Five need no owner decision and
 are corrected in source on branch `feat/alpha87-second-server`; three need the
 owner's decision and are left open below. Written 2026-10-16. Nothing here was
-measured on an installed server or in a native record, no installed panel was
-updated or contacted, and no P0 item is closed or advanced. It is set against
+measured on an installed server, and the five items below were not measured in
+a native record when this entry was first written (set18 and set18b did so
+later, in a lab; see below). No installed panel was updated or contacted, and no P0 item is closed or advanced. It is set against
 D-021 (purpose-led setup that never removes what is installed), D-024 (the
 current reason, who acts, the next action and how work resumes; an unknown
 result is not a failure), D-032 (the panel reads a state it can read) and D-033
@@ -8081,6 +8082,11 @@ step below uses the native service configuration the setup path already used.
 
 **Decisions the release preparer made (to be confirmed)**
 
+None of these is an owner decision. The release preparer made them under D-021
+and D-033 and the owner's standing instruction of 2026-10-13 (no need to ask
+the owner about version numbers or commits); they are listed for the owner to
+confirm or change.
+
 - The extension is a new endpoint, `POST /api/v1/setup/extend`, rather than a
   flag on PUT: begin and stop each change the state row and one setting in one
   transaction, with the existing single flight. The existing PUT, plan and
@@ -8100,6 +8106,9 @@ step below uses the native service configuration the setup path already used.
 - On a secondary, the record's value is the setup's reviewed address, then the
   server's detected address.
 - The commits carry the attribution of the model that wrote them.
+- Added after set18b: adding mail to Web hosting through "Customize selection"
+  turns the purpose label into "Custom setup" (set18b O5, truthful and stated
+  before Start); the release preparer left the label as it is.
 
 **The three decisions still open (the owner's)**
 
@@ -8117,8 +8126,9 @@ step waits for it with its guidance.
 
 **Counts.** `npm test` 1494 of 1494; `npx tsc --noEmit` clean; `npm run build`
 passes with its bundle budget. `go test ./cmd/panel` in the WSL guest: 1557
-top-level tests pass, 6 skip, 1675 subtests pass (at `60ea75c1c`; no Go change
-after it); gofmt and vet clean. The Agent was not touched and not run. Browser
+top-level tests pass, 6 skip, 1675 subtests pass (at `60ea75c1c`; when this
+entry was first written there was no Go change after it, and `6b363ac46`
+changed Go later, see below); gofmt and vet clean. The Agent was not touched and not run. Browser
 inspection with the loopback mock (desktop EN light, phone TR dark): the ready
 screen, the extension review, the secondary box and the dialog with a name
 change; it found the rename sentence said twice, corrected in `32f0a3766`. Not
@@ -8160,7 +8170,7 @@ server.
   without it (control); start shows the new run; "Stop extending" returns to
   the ready screen; the decoder. Both mounted D1 tests fail when the page
   ignores the flag.
-- **O1 (wording): for about one second after "Start reviewed setup" the
+- **O1 (wording): for about three seconds after "Start reviewed setup" the
   guidance said "No more specific requirement has been confirmed for this
   step… waiting alone may not resolve a missing requirement."** Cause: the
   start answer is the accepted run in phase `queued` with every step pending,
@@ -8174,8 +8184,8 @@ server.
   `web/src/lib/serverSetupGuidance.ts`, `guidanceStepItem` in the wizard).
   Mounted test (fails without the queued sentence).
 - **O3: "Continue recorded operation" stayed enabled for about 4 s while the
-  mail enrollment was running; the tool pressed it three times** (same request
-  id, no second enrollment). Cause: the page was single-flight only while its
+  mail enrollment was running; the tool pressed it on four samples and three
+  POSTs reached the Panel** (one request id, no second enrollment). Cause: the page was single-flight only while its
   own request and the read after it were in flight; the next read still showed
   the step continuable, so the button came back. Now the press is remembered
   until a read shows that operation moved on (another run, another state code,

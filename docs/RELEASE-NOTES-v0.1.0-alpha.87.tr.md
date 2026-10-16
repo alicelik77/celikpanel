@@ -10,7 +10,8 @@ adını koyduğu bir numara değildir. Sahibin bu sürümdeki kendi payı, üzer
 çalışılan hedeftir (ikinci kurulu sunucunun birincinin tam eşi olması) ve bu
 işi alpha.86'nın sonrasına bırakan 15 Ekim 2026 tarihli "devam. sorun yok."
 yanıtıdır. Aşağıda "Sürümü hazırlayanın verdiği kararlar" altında sayılan her
-seçim sürümü hazırlayanındır ve sahibin onayına açıktır. Sürüm hazırlığı
+seçim sürümü hazırlayanındır; D-021, D-033 ve bu kalıcı talimat altında verildi,
+sahibin onayına ya da değiştirmesine açıktır ve hiçbiri sahibin kararı değildir. Sürüm hazırlığı
 `471377d60` commit'idir (86'dan sonra sıra 87; önceki olarak alpha.86 sürüm
 commit'i `8d260f317e58bed7fcd84c6cbb01823c4fe3f166`). Hiçbir parçası
 yayımlanmadı ve bu taslak onu çalıştıran hiçbir kurulu sunucu kaydetmez. Bu
@@ -19,8 +20,9 @@ yazıldı; adayın son ürün commit'i `6b363ac46`'dır.
 
 Sahip, ikinci kurulu sunucunun (Boston, çiftin ikincil DNS sunucusu) web
 sitelerini ve postayı birincinin (Frankfurt, birincil DNS sunucusu) tam eşi
-olarak barındırmasını istiyor. Kaynağın main `e3c8f735a` üzerinde salt-okur
-incelenmesi, panelin sahibi oraya götüremediği sekiz yer buldu. Bunlardan beşi
+olarak barındırmasını istiyor. Kaynağın main `e3c8f735a` (13 Ekim 2026 tarihli main; alpha.85 ve
+alpha.86'dan önce) üzerinde salt-okur incelenmesi (inceleme depoda bir dosya
+olarak kayıtlı değildir), panelin sahibi oraya götüremediği sekiz yer buldu. Bunlardan beşi
 sahibin kararını gerektirmiyor ve bu sürüm onları düzeltiyor: bu **birinci
 bölümdür**. Kalan üçü sahibin kararını gerektiriyor ve bu sürümde yok; onlar
 **ikinci bölümdür** ve düz sözlerle şunlardır:
@@ -49,7 +51,9 @@ söyler.
 
 ## Ne göreceksiniz
 
-Önce düz sözlerle, sunucu sahibi için. Güncellemeden sonra açık olan her
+Önce düz sözlerle, sunucu sahibi için; bir sunucu bu sürüme güncellendiğinde
+ekranların neyi göstereceği (şimdilik hiçbir yerde kurulu değil).
+Güncellemeden sonra açık olan her
 CelikPanel sayfasını yeniden yükleyin; güncellemeden önce yüklenmiş bir sayfada
 hâlâ eski ekranlar vardır. Bir sunucunun kurulumu bittiğinde "Sunucunuz hazır"
 ekranı ve Ayarlar → Sunucu kurulumu artık **"Bu sunucunun kurulumunu
@@ -68,7 +72,9 @@ bunun geçici, kendinden imzalı bir sertifikayla bittiğini söyler. Kayıtlı 
 posta sunucusu adı "Değiştir" ile değiştirilebilir; alanın altındaki not, siz
 onaylamadan önce değişikliğin ne anlama geldiğini söyler.
 
-**Boston artık panelden posta ile genişletilebilir.** İkinci bölüme kadar bir
+**Boston bu sürüme güncellendiğinde panelden posta ile genişletilebilir.** (Bu,
+bileşen testlerine ve taklide dayanır: hiçbir gerçek sistem kaydı bir ikincil
+DNS sunucusuna ulaşmadı ve Boston'da hiçbir şey koşmadı.) İkinci bölüme kadar bir
 şey hâlâ elle yapılmalıdır: Boston'un posta sunucusu adının DNS kaydı (örneğin
 `mail.example.com`, A türü, Boston'un genel adresi) Frankfurt'ta ya da DNS
 sağlayıcınızda oluşturulmalıdır; çünkü Boston ikincil DNS sunucusudur ve
@@ -274,8 +280,8 @@ düzeldiğini gözledi.
   gerekmiyor." der (`setup.guide.queued`, `setupExecutionGuidance`). Takılı test
   (cümle olmadan kalıyor).
 - **O3: posta yenileme kaydı çalışırken "Kayıtlı işleme devam et" yaklaşık 4
-  saniye etkin kaldı; araç üç kez bastı** (aynı istek kimliği, ikinci kayıt
-  yok). Basış artık bir okuma işlemin ilerlediğini gösterene kadar hatırlanır:
+  saniye etkin kaldı; araç dört örnekte bastı ve Panel'e üç POST ulaştı** (tek istek
+  kimliği, ikinci kayıt yok). Basış artık bir okuma işlemin ilerlediğini gösterene kadar hatırlanır:
   düğme dönen işaretiyle kapalı kalır ve "Aynı işlem denetleniyor" der
   (`setup.mailEnrollment.sent`); hiçbir okumanın doğrulamadığı bir basış 15
   saniye sonra yeniden sunulur. Sunucu aynı isteğin tekrarını zaten ikinci işlem
@@ -372,14 +378,16 @@ Yönetilen hizmetler yanıtında, posta DNS kaydı bu sunucuda yapılamadığın
 **Bileşen testleri.** Bu adayın ürün kodu `6b363ac46`'nınkidir. Ondan sonraki
 commit'ler `web/src`, `cmd/` ya da `internal/` altında hiçbir dosyayı
 değiştirmez: `0be5c8e5a` (set18b'nin kaydı ve düzeneği), `90b3fe2f2` (set18 ve
-set18b README'lerinin kabul düzeltmeleri), `main`'in birleştirilmesi
+set18b README'lerinin teslim alma düzeltmeleri), `main`'in birleştirilmesi
 (`bef12820e`, alpha.86 yayımlama kaydı, yalnız belgeler), sürüm hazırlığı
 `471377d60` ve bu belgeler.
 
 - Web: `npm test` 1499'da 1499, set18 düzeltmelerinden (`6b363ac46`) sonra
   [İŞLEM YÖNLENDİRMESİ](OPERATION-GUIDANCE.tr.md) içinde kaydedildi (`npx tsc
   --noEmit` temiz ve `npm run build` paket bütçesi içinde) ve 16 Ekim 2026'da
-  `bef12820e`'de aynı sayıyla yeniden koşuldu (21,7 sn). Web sayısı alpha.86'da
+  `bef12820e`'de aynı sayıyla yeniden koşuldu (21,7 sn), bu belgelerin gerçeklik denetimi de onu
+  `b6c43a4b5`'te yeniden koştu (1499'da 1499; önce `tsc` koşan `npm run build`
+  paket bütçesi içinde). Web sayısı alpha.86'da
   1483, birinci bölüm ilk yazıldığında 1494 (16 Ekim 2026 tarihli yönlendirme
   girdisi) ve set18 düzeltmelerinden sonra 1499 idi.
 - Go, WSL konuğu `CelikPanel-S2-Debian`'da (Go 1.26.5): `go test ./cmd/panel`
@@ -390,18 +398,24 @@ set18b README'lerinin kabul düzeltmeleri), `main`'in birleştirilmesi
   yüzden onlar için 16 Ekim 2026'da `bef12820e`'de (`6b363ac46` ile aynı Go
   kodu) yapıldı: `go test -count=1 -v ./cmd/panel/...` 1558 üst düzey testi
   geçirdi, 6'sını atladı, 0 kaldı ve 1675 alt testi geçirdi (paket için 272,7
-  sn, derlemeyle 288 sn); `go vet ./cmd/panel/...` ve gofmt temiz.
-  `./cmd/panel/...` tek paket `./cmd/panel`'dir; `60ea75c1c`'dekinden bir fazla
+  sn, derlemeyle 288 sn); `go vet ./cmd/panel/...` ve gofmt temiz. Bu koşu sürümü
+  hazırlayanın WSL konuğundaki ölçümüdür; depodaki hiçbir dosya onu kaydetmez ve
+  bu belgelerin gerçeklik denetimi, WSL konuğu olmadan, onu yinelemedi. Denetim
+  `git diff --stat 6b363ac46 HEAD -- cmd internal go.mod go.sum` çıktısının boş
+  olduğunu doğruladı. `./cmd/panel/...` tek paket `./cmd/panel`'dir; `60ea75c1c`'dekinden bir fazla
   üst düzey test, `6b363ac46`'nın D1 testidir.
 - Agent (`cmd/agent/`) ve `internal/` bu dalda değişmedi ve yeniden
   koşulmadı; sayıları alpha.86'nınkilerdir.
 - Sürüm hazırlığının sözleşme testi geçiyor: okuduğu `v0.1.0-alpha.86`
   etiketine sahip Windows Git Bash kopyasında sıra politikası sözleşmesi ("86
-  -> 87; historical bootstrap sequence 86"). İndirme portalı ve imzalı bildirim
+  -> 87; historical bootstrap sequence 86"; bu belgelerin gerçeklik denetimi de
+  yeniden koştu, çıktı aynı). İndirme portalı ve imzalı bildirim
   sözleşmeleri, anahtar dosyası denetimlerinin kaldığı Windows kopyasında
   reddeder (alpha.86'da olduğu gibi); WSL konuğunda `471377d60`'ın bir
   `git archive`'i üzerinde ikisi de geçer ("download portal contract passed",
-  "signed release manifest contract passed", v0.1.0-alpha.87 için).
+  "signed release manifest contract passed", v0.1.0-alpha.87 için), sürümü
+  hazırlayanın bildirdiği gibi (bir dosyada kayıtlı değildir ve WSL konuğu
+  olmayan gerçeklik denetimi yeniden koşmadı).
 
 **On altıncı tarayıcı inceleme turu** (`x16*`,
 `web/tools/browser-inspect/scenarios-batch16.mjs` ve `mock-batch16.mjs`,
@@ -431,7 +445,7 @@ sertifika yetkilisine gidilmedi ve celikpanel.net ile bağlantı kurulmadı; sü
 kaynağının adı ve sertifika yetkilisi adları ilk sürücü adımı olarak konuğun
 döngü adresine sabitlendi ve sonunda geri okundu (iki kayıtta da geçti). Hiçbir
 P0 satırını kapatmazlar. Aşağıdaki rakamlar README'lerin `90b3fe2f2`'deki
-kabul düzeltmelerinden sonraki hâlini izler (hiçbir ham dosya değişmedi).
+teslim alma düzeltmelerinden sonraki hâlini izler (hiçbir ham dosya değişmedi).
 
 **Laboratuvar (ürün değişikliği değil, laboratuvar değişiklikleri;
 `guest_set18_lab_dns.py`).** Bu kanıt klasöründe ilk kez bir laboratuvar,
@@ -557,9 +571,12 @@ okumaları 200 ile yanıtlandı (H2 düzeldi).
   Core Mail'i "Seçimi özelleştir" ile eklemek amaç etiketini "Özel kurulum"
   yapar; Başlat'tan önce incelemede ve sonra hazır ekranında. Doğrudur (seçim
   artık Web barındırma hazır seçimi değil) ve Başlat'tan önce söylenir; sürümü
-  hazırlayan etiketi olduğu gibi bırakır ve burada kaydeder. Posta eklenmiş bir
-  web sunucusunun "Web barındırma" mı kalacağı yoksa "Web ve posta barındırma" mı
-  okuyacağı sahibin kararıdır.
+  hazırlayan etiketi olduğu gibi bırakır ve burada kaydeder. Etiketi olduğu gibi
+  bırakma kararı, D-021 ve D-033 ile sahibin 13 Ekim 2026 tarihli kalıcı
+  talimatına dayanan sürüm hazırlayanın kararıdır; sahibin kararı değildir.
+  Posta eklenmiş bir web sunucusunun bunun yerine "Web barındırma" mı kalacağı
+  yoksa "Web ve posta barındırma" mı okuyacağı sahibin değiştirmesine açıktır;
+  bu konuda sahibin verdiği bir karar yoktur.
 
 **Bu daldaki düzenek ve laboratuvar aracı değişiklikleri.**
 
@@ -574,8 +591,9 @@ okumaları 200 ile yanıtlandı (H2 düzeldi).
 
 ## Sürümü hazırlayanın verdiği kararlar
 
-Sahibin 13 Ekim 2026 tarihli kalıcı talimatı altında verildi ve sahibin onayı
-için işlem yönlendirmesinde kaydedildi; hiçbiri sahibin kararı değildir.
+Sürümü hazırlayan tarafından D-021 ve D-033 altında ve sahibin 13 Ekim 2026
+tarihli kalıcı talimatıyla verildi ve sahibin onayı için işlem
+yönlendirmesinde kaydedildi; hiçbiri sahibin kararı değildir.
 
 - Genişletme, var olan PUT üzerinde bir bayrak değil, yeni bir uç noktadır:
   `POST /api/v1/setup/extend`.
@@ -594,6 +612,8 @@ için işlem yönlendirmesinde kaydedildi; hiçbiri sahibin kararı değildir.
   posta eklemek "Özel kurulum" okur (O5, olduğu gibi bırakıldı).
 - İkincil bir sunucuda kaydın değeri kurulumun incelenmiş adresi, yoksa
   sunucunun algılanan adresidir.
+- Web barındırmanın, "Seçimi özelleştir" ile posta eklendikten sonra okuduğu
+  "Özel kurulum" etiketi (set18b O5) olduğu gibi bırakılır.
 - Dalın sürüm belgelerinden önceki commit'leri onları yazan modelin atfını
   taşır.
 
@@ -631,7 +651,7 @@ Bunlar bilinir. Gizli kusur değildir.
 - **Platformlar.** Yalnız Debian 13. Ubuntu 24.04 ve Arch koşulmadı.
 - **Doğrudan Bileşenler kurulumu**, kurulumu bitmemiş bir sunucuda hâlâ kendinden
   imzalı biter; pencere bunu söyler.
-- **Kabulde ham dosyalarda gözlendi, değerlendirilmedi** (`90b3fe2f2`;
+- **Teslim alma sırasında ham dosyalarda gözlendi, değerlendirilmedi** (`90b3fe2f2`;
   hiçbiri sayfa metni örneklerinde yok ve hiçbiri bu sürüm için
   araştırılmadı):
   1. set18'de Panel'in günlüğü
@@ -640,9 +660,12 @@ Bunlar bilinir. Gizli kusur değildir.
      başlangıcında, posta sunucusu adı kaydedilmemiş yalnız web kurulumunda,
      `certificate startup reconcile: certificate dependents: publish full mail
      SNI snapshot: mail server hostname is not a valid FQDN: invalid hostname
-     "dns-debian13"` yazar.
-  2. Aynı günlük 22:56:58Z, 22:56:59Z ve 22:57:19Z'de `(CRON) DEATH (can't lock
-     /var/run/crond.pid, otherpid may be 15418 …)` yazar.
+     "dns-debian13"` yazar (set18b'nin günlüğünde aynı satır üç Panel
+     başlangıcının her birinde vardır).
+  2. Aynı günlük `(CRON) DEATH (can't lock
+     /var/run/crond.pid, otherpid may be 15418 …)` satırını 22:56:58Z'den
+     (sonra 22:56:59Z, 22:57:19Z ve devamı) 23:27:27Z'ye kadar 128 kez yazar;
+     set18b'nin günlüğünde 23 böyle satır vardır.
   3. set18'in genişletmesi posta A kaydını beklerken ekranda "core-mail
      installed with a self-signed fallback certificate. Mail clients will show
      a trust warning until a matching trusted certificate is configured."
@@ -667,7 +690,8 @@ Bunlar bilinir. Gizli kusur değildir.
   (set18b H6).
 - **O2, O4 ve O5 değerlendirilmedi.** O2: devirden sonra SNI'sız bir istemci
   Panel'in özgün kendinden imzalı sertifikasını alır. O4: devir adresinde bir
-  laboratuvar izi. O5: posta eklendikten sonra "Özel kurulum" etiketi.
+  laboratuvar izi. O5: posta eklendikten sonra "Özel kurulum" etiketi; sürümü hazırlayanın
+  kararıyla olduğu gibi bırakıldı (sözcük sahibin değiştirmesine açıktır).
 - **Agent değişmedi.** `cmd/agent/` ya da `internal/` altında hiçbir şey
   değişmedi; Agent'ın alpha.86 sınırları (çözümleyici cümlesi bir Agent
   güncellemesi gerektirir) olduğu gibi durur.

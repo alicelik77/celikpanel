@@ -1152,14 +1152,18 @@ above and below stays open.
   part 1 of the owner's goal that the second installed server (Boston, the DNS
   secondary) host websites and mail as a full peer of the first (Frankfurt,
   the DNS primary); the owner's reply "devam. sorun yok." of 2026-10-15 put
-  this work after alpha.86. A read-only investigation at main `e3c8f735a` found
+  this work after alpha.86. A read-only investigation at main `e3c8f735a` (the main of 2026-10-13) found
   eight gaps; the five that need no owner decision are corrected, and three
   owner decisions stay open for part 2: whether the primary's own setup
   carries the peer's mail host name, an editor for the infrastructure zone on
   the primary, and whether host records travel over the remote DNS connection
   automatically. Until then the record of Boston's mail host name is made by
   the owner on Frankfurt or at the DNS provider. D-021 and D-033 apply; no new
-  decision is recorded (dated notes under both). The candidate is the branch
+  decision is recorded (dated notes under both). The choices the release preparer
+  made for part 1 (listed in the release notes, among them the "Custom setup"
+  label of set18b O5) were made under D-021, D-033 and the owner's standing
+  instruction of 2026-10-13; none is an owner decision, and the owner may confirm
+  or change them. The candidate is the branch
   `feat/alpha87-second-server` (pull request #215, draft), from `main` at the
   alpha.86 release commit `8d260f317`. Its product commits: `99e90ac74`
   (`POST /api/v1/setup/extend`, the extension marker and base, the state
@@ -1199,11 +1203,13 @@ above and below stays open.
   - *Component tests:* `npm test` 1499 of 1499 (after the set18 corrections,
     and again at `bef12820e`); `go test -count=1 -v ./cmd/panel/...` 1558
     top-level tests passed, 6 skipped, 0 failed, 1675 subtests passed, at
-    `bef12820e` (the same Go code as `6b363ac46`), `go vet` and gofmt clean;
+    `bef12820e` (the same Go code as `6b363ac46`; the release preparer's measurement in the WSL
+    guest, not recorded in a file), `go vet` and gofmt clean;
     the Agent was not run (unchanged). Browser batch 16: 36 states in 8
     configurations against the mock, seven defects corrected. The release
     preparation's sequence-policy contract passes ("86 -> 87"); the portal and
-    signed-manifest contracts pass in the WSL guest.
+    signed-manifest contracts pass in the WSL guest (the release preparer's report,
+    not recorded in a file).
   - *Open for the next release, with this release's limits as the release
     notes list them:* part 2 (three owner decisions); the secondary-DNS boxes
     not reached natively; the resolvers-disagree sentence and the slow
@@ -1213,8 +1219,9 @@ above and below stays open.
     `cron DEATH` lines, a "self-signed fallback" toast while a trusted mail
     certificate followed (a candidate D-033 item), and the licence gate's
     "latest access check failed" banner around setup's own planned restart
-    (not covered by alpha.86's update-restart grace); O2, O4 and O5 not
-    judged; no installed server measured; and every limit of the alpha.86
+    (not covered by alpha.86's update-restart grace); O2 and O4 not judged,
+    O5 left as it is by the release preparer's decision; no installed server
+    measured; and every limit of the alpha.86
     release above that this release does not address.
   - No P0 item is closed or advanced by this candidate. P0.1–P0.5 stay
     **partial**. Nothing of it is published, and publishing it would not update

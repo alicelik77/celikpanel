@@ -5851,7 +5851,8 @@ clock date of the entry.
 - **Invariants touched.** Invariant 1: an extension never removes, stops or
   replaces an installed component, and stopping it removes nothing a partly
   run extension installed. Invariant 2: a superseded completed run is not
-  shown as "Completion could not be verified" on a ready server; the flag is
+  shown as "Completion could not be verified" on a server whose completed setup
+  is being extended; the flag is
   kept only on a succeeded run, so it cannot hide a run in progress or a
   failure; the review shows each setting before and after and what is kept,
   and a mail host name refused by a busy server is not saved. Invariant 6: an
@@ -5872,7 +5873,9 @@ clock date of the entry.
   only the setup record.
 - **Evidence.** Component tests: `go test -count=1 -v ./cmd/panel/...` 1558
   top-level tests passed, 6 skipped, 0 failed, 1675 subtests passed (at
-  `bef12820e`, the same Go code as `6b363ac46`); `npm test` 1499 of 1499. The
+  `bef12820e`, the same Go code as `6b363ac46`; the release preparer's
+  measurement in the WSL guest, not recorded in a file); `npm test` 1499 of
+  1499, re-run by the fact-check of these documents at `b6c43a4b5`. The
   Agent was not run (unchanged). Browser inspection batch 16 against the mock
   (36 states in 8 configurations; seven defects corrected). Native records
   (QEMU/KVM guests on Debian 13, test-licence builds, a lab DNS responder and
@@ -5894,5 +5897,8 @@ clock date of the entry.
   `cron DEATH` lines, a self-signed-fallback toast while a trusted mail
   certificate followed, and the licence gate's access banner around setup's
   own planned restart (alpha.86's restart grace covers the update's restart
-  only); O2, O4 and O5 not judged; no installed server measured. Everything the
+  only); O2 and O4 not judged, O5 (the "Custom setup" label) left as it is by the
+  release preparer's decision under D-021 and D-033; every choice the release
+  preparer made for part 1 is for the owner to confirm, none is an owner
+  decision; no installed server measured. Everything the
   entries above leave open stays open.

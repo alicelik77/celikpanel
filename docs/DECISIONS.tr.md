@@ -106,8 +106,8 @@ bilinmiyor" ile bitmesinin nedenidir. D-022 (sunucuyu sahibi işletir), sınırl
 bildirimlerin bir şeyi yeniden başlatmak yerine sahibe paneli sunucuda nasıl
 denetleyeceğini söylemesinin nedenidir.
 
-Durum. v0.1.0-alpha.85 adayının dalında (yayımlanmadı) kaynakta, bağlanan
-testlerle. Bileşenler güvenlik duvarı şeridi, Dashboard'ın ilgi bildirimi ve
+Durum. v0.1.0-alpha.85 adayının dalında (15 Ekim 2026'daki yayımından önce
+yazıldı) kaynakta, bağlanan testlerle. Bileşenler güvenlik duvarı şeridi, Dashboard'ın ilgi bildirimi ve
 Posta paketleri kartı ile kenar çubuğundaki yapı kimliği on sekizinci gerçek
 sistem kaydında ölçüldü. Kurulumun tamamlanmasına, güncelleme kartının meşgul
 durumuna, bileşen kilidinin yeniden bağlanmasına ve yayılan alan adı
@@ -115,8 +115,8 @@ kontrollerine gerçek sistemde ulaşılamadı. Bir gerçek sistem çalıştırma
 bir sunucu ve kurulum penceresinin ile kurulum sayfasının okumalarının
 görünürlüğe bağlanması için açık.
 
-*15 Ekim 2026 tarihli not (saat tarihi): v0.1.0-alpha.86 adayında (yayımlanmadı)
-uygulandı.* O aday için yeni bir karar kaydedilmez; yaptıkları bu kararı ve
+*15 Ekim 2026 tarihli not (saat tarihi): v0.1.0-alpha.86'da uygulandı (aday
+iken yazıldı; 15 Ekim 2026'da yayımlandı).* O aday için yeni bir karar kaydedilmez; yaptıkları bu kararı ve
 D-032'yi izler ve yukarıdaki metin değişmedi.
 
 - 1. ve 3. kurallar, sahibin 15 Ekim 2026'da ikinci kurulu sunucunun alpha.85'e
@@ -178,7 +178,7 @@ uygulandı.* O aday için yeni bir karar kaydedilmez; yukarıdaki metin değişm
   denetleniyor" olarak kapalı kalır (O3; yalnız okuma, sunucu aynı isteğin
   tekrarını ikinci işlem başlatmadan yanıtlar); taslaktaki bir genişletme artık
   tamamlanmış çalışmanın "Tamamlanma doğrulanamadı" ekranı olarak gösterilmez
-  (D1, yanlış bir "bilinmiyor").
+  (D1, hazır olan bir sunucuda yanlış alarm).
 - İkincil DNS sunucusu için 5. kural: posta kutusu, sahibi kaydı oluşturamayan
   bir DNS sayfasına göndermek yerine neyi beklediğini (birincildeki ya da DNS
   sağlayıcısındaki kayıt, tam kaydıyla) adlandırır ve profil kartları "Posta DNS
