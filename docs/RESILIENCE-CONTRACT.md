@@ -6181,3 +6181,51 @@ schema or recovery behaviour. 2026-10-16 is the clock date of everything in it.
 - **Change.** A complete mail profile is verified when another profile that contains all of its components is verified on the same scan (Frankfurt's Core Mail asked for Repair while Webmail and Spam-Protected Mail were verified); component state alone still proves nothing, and a profile whose own latest attempt is running or failed keeps its state. A mail profile is installed only through its mail components (Postfix, Dovecot, Rspamd, Roundcube), so Boston's Nginx alone no longer reads "Partially installed". The page draws "Repair webmail" as an ordinary action, says verified mail plainly, names mail profiles in Recent activity and pluralises counts. **No P0 item is closed or advanced**; P0.1 to P0.5 stay partial.
 - **Schema and recovery.** Schema 44, no migration; recovery behaviour unchanged; no new typed failure or warning code. The managed-services payload may now carry a mail profile with `verified: true` and its own `latest_attempt_status: none`; the bundled page's closed decoder accepts it and still refuses a verified profile whose own attempt is running or failed.
 - **Evidence and open.** Go `./cmd/panel/...`: vet clean; 1585 top-level tests pass, 6 skip, 1696 subtests pass, with two new tests and their negative controls (no receipt, an unverified receipt, Core Mail's own running or failed attempt, a larger profile not ready on the scan, the one-way relation; Roundcube and Postfix as controls for web-only parts). Web 1558 of 1558 (a new test file and a mounted Components test for the Repair webmail tone); `tsc --noEmit` and the production build with the bundle budget pass. No native record, by the owner's instruction of 2026-10-16; nothing measured on an installed server. The corrections are first seen after the owner updates to alpha.93 from the panel's own update screen; everything the alpha.88 to alpha.92 entries leave open stays open. See the [release notes](RELEASE-NOTES-v0.1.0-alpha.93.md).
+
+### Publication of v0.1.0-alpha.93 (no code change in the publication; invariants 2 and 6; D-022; D-024; D-025; D-033; 2026-10-16)
+
+D-025 invariants 2 (evidence has a meaning and a lifecycle: unknown is not
+absent, empty or success) and 6 (readiness, progress and access remain
+independent); D-022; D-024; D-033. **No P0 item is closed or advanced.** P0.1 to
+P0.5 stay partial and every open acceptance item stays open. This entry records
+one release; it changes no code, schema or recovery behaviour. 2026-10-16 is the
+clock date of everything in it.
+
+- **Publication.** All steps were done by the release preparer under the owner's
+  standing instruction; installed-panel updates are the owner's only. Pull
+  request #224 merged as `0897ee9238bdfee295149adfe8b16968dd6fe0de`; annotated
+  tag `v0.1.0-alpha.93` (object `c64b60021c3fc6b6bb506e99bdaf6b1354f531cf`, tree
+  `7b18e5252045eef74264a946d41efcbbc927b545`); pre-release at
+  2026-10-16T22:04:09Z with six assets; archive SHA-256
+  `887fbe30a29c6fa364bfafc44ec676414c32e41758417738ff4cecc287f9fc39`, 66,240,206
+  bytes; manifest sequence 93 with a verifying signature (the same key);
+  `get.sh` pins 93; policy 93 after 92. The portal package (SHA-256
+  `b27504acc26d7c291d7e0ec3ebfb051ac04996b27af65e78e99c3a0ea934f83c`, built twice
+  identical) was published with previous v0.1.0-alpha.92: committed, public
+  verification 26 of 26, `CELIKPANEL_DOWNLOAD_PORTAL_PUBLISHED`, and read from
+  outside afterwards. Checked by the preparer from a download in a WSL guest;
+  reported by the preparer, not recorded in a file here.
+- **A release-chain incident, with no effect on a release.** The chain's first
+  run tagged the wrong commit after the pull request's merge was refused for
+  conflicts and the script carried on; CI's policy guard rejected the tag
+  ("tag does not match policy version") before any release or asset existed
+  (invariant 2: the guard, not the script's belief, decided that the tag was
+  wrong). The tag was deleted and the script now aborts unless the pull request
+  is merged, `main` equals its merge commit and `main`'s policy version equals
+  the tag. This is a correction to release tooling, not to the product, and it
+  is not evidence about any installed server.
+- **Native record.** None for the publication, and none for alpha.93, by the
+  owner's instruction of 2026-10-16. alpha.93's code is covered by component
+  and mounted tests only (see its candidate entry above).
+- **Installed panels.** Boston and Frankfurt were on alpha.92 when this was
+  written; the owner had not yet updated either to alpha.93. Nothing from an
+  installed server is recorded, and none should be inferred (invariant 6: the
+  publication of a release is not the state of any server).
+- **Schema or version transition.** None: schema 44; the release sequence moved
+  92 to 93 in the release preparation. **Recovery behaviour.** Unchanged by the
+  publication and by alpha.93.
+- **Open.** Everything the alpha.93 candidate entry and the alpha.90 to alpha.92
+  entries leave open, among them: the six corrections not yet seen on an
+  installed server; the calm "Finishing the update" view first seen on an update
+  from alpha.92; the live step view not reported as seen; the rollback paths
+  that share the changed helpers exercised by contract tests only.

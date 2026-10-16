@@ -8824,3 +8824,16 @@ olarak bir bileşen ve bilinmeyen bir kimlikle kurulum denetim cümleleri; her
 çağrı yerinde çoğul anahtarları. **Açık:** düzeltmeler sahip alpha.93'e panelin
 kendi güncelleme ekranından geçtikten sonra görülür; kurulu bir sunucuda hiçbir
 şey ölçülmedi; P0.1-P0.5 **kısmi** kalır.
+
+### Alpha.93 yayımından sonra kurulu sunucular: henüz gözlem yok (2026-10-16)
+
+v0.1.0-alpha.93 16 Ekim 2026'da yayımlandı (sürüm 22:04:09Z'de, ardından indirme
+portalı). Bu yazılırken Boston ve Frankfurt hâlâ alpha.92'deydi ve sahip
+ikisini de güncellememişti; o güncellemeyi yalnız sahip, panelin kendi güncelleme
+ekranından başlatır. Bu yüzden kaydedilecek sahip gözlemi **yoktur**: yukarıdaki
+"alpha.92'deki kurulu sunucular: altı küçük düzeltme" girdisindeki altı düzeltme
+yayımlanan sürümdedir ama bir kurulu sunucuda görülmedi; bu girdi için hiçbir
+metin ya da ekran değiştirilmedi. Sakin "Güncelleme tamamlanıyor" görünümü
+(D-024, D-033) de ilk kez alpha.92'den yapılacak ilk güncellemede görülebilir.
+Sahip bildirene kadar hiçbir şey "çalıştı" ya da "başarısız" değildir.
+P0.1-P0.5 **kısmi** kalır; bu girdi hiçbir şeyi kapatmaz ya da ilerletmez.
