@@ -1,4 +1,4 @@
-# v0.1.0-alpha.92 (aday, yayımlanmadı)
+# v0.1.0-alpha.92 (16 Ekim 2026'da yayımlandı)
 
 [English](RELEASE-NOTES-v0.1.0-alpha.92.md)
 
@@ -81,8 +81,77 @@ yapılar, dışa giden 443 reddedildi): güncellemenin kendi zamanlayıcı açı
 
 ## Yayım kaydı
 
-Yayımlanmadı.
+Aşağıdaki her şey 16 Ekim 2026 tarihlidir (saat dilimi belirtilmedikçe UTC).
+Birleştirmeyi, depo değişkenini, etiketi, denetimleri, portal yayımını ve genel
+sitenin okunmasını sürümü hazırlayan kişi yaptı, sahibin 15 Ekim 2026 tarihli
+talimatı uyarınca; kurulu panel güncellemelerini sahip, panelin kendi güncelleme
+ekranından başlattı. Yayım için sahibin talimatıyla gerçek sistem kaydı yok
+(alpha.92'nin kendi kodunu yukarıdaki set19 ölçtü). Bu girdi, aşağıdaki
+sonuçların hiçbirini depoda bir dosya olarak saklamaz.
 
-Bu sürümü yalnız CelikPanel'in güncelleme arayüzünden kurun. Yayımlamak kurulu
-sunucuları güncellemez; bir sunucunun güncellemesini yalnız sahibi, panelin
-kendi güncelleme ekranından başlatır.
+**Ne oldu.**
+
+1. #222 numaralı çekme isteği hazırlayan kişi tarafından `main`'e squash olarak
+   birleştirildi: commit `961f2cb2fcaeb48c08fc58828d15fe0b231e1e1a`, ağaç
+   `091d5fb23cb16cbd217c8c1191033185a7d50b81`. Çekme isteğindeki ilk CI koşusu
+   "Verify offline release-recovery fixture contracts (no VM)" işinde başarısız
+   oldu: koşum düzeneğinin yansıtılmış kod listelerinde yeni
+   `update_finishing_scheduler` kodu yoktu. `5f662635f` ile düzeltildi ve CI
+   sonra geçti, 24 işin 24'ü. `main` üzerindeki koşu başarıyla sonuçlandı.
+2. Hazırlayan kişi `CELIKPANEL_RELEASE_SEQUENCE` değişkenini 91'den 92'ye
+   çıkardı ve `v0.1.0-alpha.92` açıklamalı etiketini gönderdi (nesne
+   `16a8a961aa9f06948902e4c972c4ce6603cc50fc`). Etiketin koşusu başarıyla
+   sonuçlandı; sürüm 2026-10-16T18:51:22Z'de altı dosyayla yayımlandı.
+3. Bir indirmeden denetlendi (hazırlayan kişi; burada bir dosyada kayıtlı
+   değil): arşivler bayt bayt aynı, 66.240.132 bayt, SHA-256
+   `3e243da119a252988df80745d77f3e500b6856c60717fa4b2b8f94e1e54e4795`; manifest
+   sıra 92, `published_at` 2026-10-16T18:09:41Z der (SHA-256 `d5824856…`), imzası
+   doğrulanır (aynı anahtar); 241 üye; `libexec/get.sh` 92'yi sabitler (SHA-256
+   `6c5a7b8e8145b14cd75506ab801775fad7c893c85210937243d32c9f2aeb8575`); politika
+   92 der, önceki 91 (`356109b53…`); `release.commit` ve `release.tree`
+   etiketinkilerle eşittir. Arşivin `deploy/panel-tls-snapshot.sh` dosyasında
+   `_panel_tls_wait_service_idle` ve `_panel_tls_note_owner_failed_renewal`,
+   `update.sh` dosyasında `update_finishing_scheduler` vardır. Arayüz paketi
+   `app-DomwK8kh.js`, 248.892 bayt, SHA-256
+   `92709cadaed9e3dfcf48b55956e0282c61eebf785a0b117c8f229a9fbacfd491`.
+4. Portal paketi: 132.855.924 bayt, SHA-256
+   `809e4f501a020ee54a847c580406f8698d1eb0809aa287be27316f00dd72ffcd`, 54 üye,
+   iki kez aynı derlendi; terfi aracı kabul etti; testler geçti. Hazırlayan kişi
+   `-PreviousVersion v0.1.0-alpha.90` ile yayımladı (canlı portal alpha.91'i hiç
+   sunmadı): committed, yedek
+   `httpdocs.before-v0.1.0-alpha.92.20261016T185901Z…`, doğrulama ok (26 istek),
+   `CELIKPANEL_DOWNLOAD_PORTAL_PUBLISHED`.
+5. 18:59:09Z'de dışarıdan okuma: `releases/latest.txt` v0.1.0-alpha.92, `get.sh`
+   92'yi sabitliyor, `releases/latest.json` sıra 92, commit `961f2cb2…`, SHA-256
+   `3e243da1…`.
+
+**Sahibin bildirdikleri (16 Ekim 2026, iki ekran görüntüsü, yaklaşık 19:10Z;
+alpha.90'dan güncelleme).** Sahip iki güncellemeyi de panelin kendi güncelleme
+ekranından başlattı. İki sunucuda da Ayarlar, CelikPanel güncellemeleri
+"Geçerli sürüm v0.1.0-alpha.92" ve "Geçerli commit
+961f2cb2fcaeb48c08fc58828d15fe0b231e1e1a" der; kenar çubuğu "CelikPanel ·
+v0.1.0-alpha.92 · build 961f2cb2fcae" der; ve "v0.1.0-alpha.92 sürümüne
+güncellendi — build 961f2cb2fcae" kartı beş tamamlanmış adım sayar. Bu,
+**Frankfurt için de** geçerlidir: bu kez hata yok, kurtarma yok. Bu, her
+sunucuda bir güncellemedir ve Certbot düzeltmesinin kabulü değildir:
+Frankfurt'un güncellemesi sırasında bir telafi yenilemesinin başlayıp
+başlamadığı bildirilmedi. Güncelleme sırasında sayfanın gösterdiği (alpha.90'ın
+sayfasının çizdiği canlı adım görünümü) bir ekran görüntüsüyle bildirilmedi.
+
+**Yapılmayanlar ve yayımlamanın değiştirmedikleri.**
+
+- Kurulu sunucuları sürümü hazırlayan kişi güncellemedi.
+- Bildirilmeyen ve kaydedilmeyenler: Frankfurt'un Alan adları'ndaki "Altyapı
+  bölgesi" satırı, Boston'un eş sunucu kaydıyla posta genişletmesi, lisans
+  sayfası, Agent'ın sürümü, `postconf -n >/dev/null`. Her biri "kaydedilmedi"dir;
+  "çalıştı" da değildir, "başarısız" da.
+- Sakin "Güncelleme tamamlanıyor" görünümü ilk kez bir sunucu alpha.92'**den**
+  güncellenirken görülür.
+- Önceki yayımlama kayıtlarının sınırları ([alpha.88
+  notları](RELEASE-NOTES-v0.1.0-alpha.88.tr.md)) kalkmış olarak bildirilmedi.
+- Yayımlanma kabul değildir. P0.1–P0.5 kısmi kalır; hiçbir P0 işi kapanmaz ya da
+  ilerlemez.
+
+Bu sürümü yalnız CelikPanel'in güncelleme arayüzünden kurun. Yayımlanması
+kurulu sunucuları güncellemez; bir sunucunun güncellemesini yalnız sahibi,
+panelin kendi güncelleme ekranından başlatır.

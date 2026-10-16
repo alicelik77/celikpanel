@@ -1,4 +1,4 @@
-# v0.1.0-alpha.91 (candidate, not published)
+# v0.1.0-alpha.91 (tagged 2026-10-16, not on the download portal)
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.91.tr.md)
 
@@ -154,7 +154,36 @@ none is an owner decision.
 
 ## Publication record
 
-Not published.
+Everything below is dated 2026-10-16 (UTC). The merge, the repository variable
+and the tag were done by the release preparer under the owner's instruction of
+2026-10-15. **This release was deliberately not put on the download portal.**
+No native record, by the owner's instruction. This entry stores none of the
+results below as a file in the repository.
+
+**What happened.**
+
+1. Pull request #221 was squash-merged by the preparer into `main`: commit
+   `356109b532b9d0d0df5dd31fc19e9932918a9648`. The run on it concluded success.
+2. The preparer set `CELIKPANEL_RELEASE_SEQUENCE` from 90 to 91 and pushed the
+   annotated tag `v0.1.0-alpha.91`. The tag's run concluded success; the GitHub
+   release was published at 2026-10-16T15:48:29Z with six assets.
+3. **Why it is not on the portal.** The Frankfurt update from alpha.89 to
+   alpha.90 (see the [alpha.90 notes](RELEASE-NOTES-v0.1.0-alpha.90.md)) showed
+   an updater defect that is also in alpha.91. Putting alpha.91 on the portal
+   would have offered the owner an update that could fail the same way. Its
+   second-server work was delivered in alpha.92 instead, which carries the
+   updater correction.
+
+**Not done, and what this record does not claim.**
+
+- No asset verification and no portal package were made for alpha.91, and the
+  public site never served it; the live portal went from alpha.90 to alpha.92.
+- No installed server ran alpha.91: the owner's updates went from alpha.90 to
+  alpha.92 (see the [alpha.92 notes](RELEASE-NOTES-v0.1.0-alpha.92.md)).
+- Frankfurt's Domains "Infrastructure zone" row and Boston's mail extension with
+  the peer host record, this release's work, were not reported.
+- Publication is not acceptance. P0.1 to P0.5 stay partial; no P0 item is closed
+  or advanced.
 
 Install this release only through CelikPanel's update interface. Publishing it
 does not update installed servers; only the owner of a server starts its

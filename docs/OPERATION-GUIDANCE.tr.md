@@ -8561,6 +8561,8 @@ doğrulama sinyali); bağlantısı kaynaktan ve sahte tarayıcıda denetlendi.
 
 ### Alpha.88 ve alpha.89 yayımından sonra kurulu sunucular: sahibin gözlemledikleri (2026-10-16)
 
+*Sonra: sahibin alpha.90 ve alpha.92 güncellemelerine ilişkin bildirimi bu dosyanın sonundaki "Alpha.90, alpha.91 ve alpha.92 yayımından sonra kurulu sunucular" girdisindedir; bu girdi geçmiş olarak kalır.*
+
 Sahip 16 Ekim 2026'da yaklaşık 09:30Z'de iki ekran görüntüsü bildirdi. Bunlar
 kurulu sunucuların gözlemidir, kabul kanıtı değildir ve bu girdi için hiçbir metin
 ya da ekran değiştirilmedi. D-024'e (mevcut neden, kimin işlem yapacağı, somut
@@ -8699,3 +8701,63 @@ görünüm yok) ile karşılaştırılır.
    Frankfurt güncellemesinin kaydı kapatılmış bir tarayıcı onun için
    "güncellendi" kartı tutmaz. P0.1-P0.5 **kısmi** kalır; burada hiçbir P0 işi
    kapanmaz ya da ilerlemez.
+
+### Alpha.90, alpha.91 ve alpha.92 yayımından sonra kurulu sunucular: sahibin gözlemledikleri (2026-10-16)
+
+Sahip 16 Ekim 2026'da iki güncellemenin ekran görüntülerini bildirdi: iki
+sunucuda alpha.89'dan alpha.90'a ve iki sunucuda alpha.90'dan alpha.92'ye
+(yaklaşık 19:10Z). Bunlar kurulu sunucuların gözlemidir, kabul kanıtı değildir
+ve bu girdi için hiçbir metin ya da ekran değiştirilmedi. D-024'e (mevcut neden,
+kimin işlem yapacağı, somut sonraki eylem ve nasıl devam edileceği), D-033'e
+(sahibi bekleten bir ekran beklediğini gösterir; iyi bir durum uyarı gibi
+çizilmez) ve bilinen-durum kuralına karşı konur. Bu girdi, bildirilen maddeler
+için yukarıdaki alpha.88 ve alpha.89 girdisine yanıt verir; onun bildirilmeyen
+maddeleri, aşağıda anılmadıkça bildirilmemiş kalır.
+
+1. **Ne oldu.** Sahip her güncellemeyi panelin kendi güncelleme ekranından
+   başlattı. İki sunucu da önce alpha.89'dan alpha.90'a, sonra alpha.90'dan
+   alpha.92'ye geçti. Hiçbir sunucu alpha.91'i çalıştırmadı: etiketlendi ama
+   indirme portalına bilerek konmadı, çünkü aşağıdaki Frankfurt güncellemesi
+   paylaştığı güncelleyici kusurunu gösterdi.
+2. **Alpha.89'dan alpha.90'a, Boston.** Temiz bir güncelleme: "v0.1.0-alpha.90
+   sürümüne güncellendi" kartı, build `1743ac69edb0`, beş adım tamam;
+   "Güncellemeyi kontrol et"ten sonra yeşil "En son sürümü kullanıyorsunuz." Bu,
+   bu sürümün yaptığı D-033 düzeltmesidir, bir sunucuda görüldü. Sahibin kartı
+   kopyalaması yapı satırını "build 1743ac69edb01743ac69edb0e5723…" olarak
+   yapıştırdı: kısa ve tam kimlik birbirine yapışık (alpha.92'de düzeltildi; bir
+   sunucuda yeniden denetlenmedi).
+3. **Alpha.89'dan alpha.90'a, Frankfurt.** T+01:23'te sayfa kırmızı çarpı,
+   "Son kaydedilen adım: kurtarma sürüyor" ve sunucunun ham İngilizce satırı
+   "reviewed updater failed: exit status 1: Certbot renewal scheduler state
+   could not be restored" gösterdi; T+01:39'da aynı işlem için "Güncelleme
+   doğrulandı". 16 saniye boyunca sayfa "başarısız" derken sunucu güncellemeyi
+   kendisi bitiriyordu ve bildirildiği kadarıyla sayfadaki hiçbir şey sahibe işlem gerekmediğini
+   söylemedi.
+   alpha.92'nin değiştirdiği budur: güncelleme sahibin yenileme çalışmasına hiç
+   dokunmaz, kurtarma işlemi sahiplenirken sayfa sakin bir "Güncelleme
+   tamamlanıyor" görünümü tutar ve kurtarmayla gelen başarıyı "güncellendi"
+   olarak çizer. Bu görünümü çalışan sürümün sayfası çizer; bu yüzden ilk kez bir
+   sunucu alpha.92'**den** güncellenirken görülür. İki gözlem burada açık ve
+   açıklanmamış kalır: tarayıcı, sahip Ctrl+Shift+R'ye basana kadar alpha.89
+   arayüzünü korudu (kenar çubuğu alpha.89, "Geçerli sürüm" alpha.90 yazıyordu;
+   eski uyarı üçgenli satır da oradaydı) ve yeniden yüklemeden sonra sayfa "En
+   son sürümü kullanıyorsunuz." dedi ama güncelleme kurtarma kaydı üzerinden
+   bittiği için "güncellendi" kartı göstermedi. Sunucudan farklı bir sürüm
+   gösteren ve bunun hakkında tek cümle söylemeyen bir sayfa, D-024 uyarınca
+   sonraki bir sürüm için maddedir; burada bunun için hiçbir şey değiştirilmedi.
+4. **Alpha.90'dan alpha.92'ye, iki sunucu.** Ayarlar, CelikPanel güncellemeleri
+   "Geçerli sürüm v0.1.0-alpha.92" ve "Geçerli commit
+   961f2cb2fcaeb48c08fc58828d15fe0b231e1e1a" der; kenar çubuğu "CelikPanel ·
+   v0.1.0-alpha.92 · build 961f2cb2fcae" der; ve "v0.1.0-alpha.92 sürümüne
+   güncellendi — build 961f2cb2fcae" kartı beş tamamlanmış adım sayar.
+   Frankfurt'ta da: bu kez hata yok, kurtarma yok. Her sunucuda bir güncellemedir;
+   Frankfurt'un güncellemesi sırasında bir telafi yenilemesinin başlayıp
+   başlamadığı bildirilmedi, bu yüzden yenileme düzeltmesinin kabulü değildir.
+5. **Görülmeyen.** İki güncelleme sırasındaki canlı adım görünümü (alpha.89'un
+   ve alpha.90'ın sayfasının çizdiği) bir ekran görüntüsüyle bildirilmedi; sahibin
+   gördüğü onun hakkında bir şey söylemez ve söylüyormuş gibi kaydedilmemelidir.
+6. **Bildirilmedi, bu yüzden kaydedilmedi.** Frankfurt'un Alan adları'ndaki
+   "Altyapı bölgesi" satırı, Boston'un eş sunucu kaydıyla posta genişletmesi
+   (alpha.91'in işi, alpha.92 ile teslim), lisans sayfası, Agent'ın sürümü ve
+   `postconf -n` çıktısı. Her biri "kaydedilmedi"dir; "çalıştı" da değildir,
+   "başarısız" da.
