@@ -29,7 +29,7 @@ func bundleViewByID(t *testing.T, bundles []BundleResponse, id string) BundleRes
 func bundlesFor(observations []serviceObservation, family string, attempts map[string]mailProfileAttemptProof, webmailReady, webmailProven bool) []BundleResponse {
 	services := catalogView(observations, family)
 	profiles := mailProfilesView(services, true, family, "", webmailReady, webmailProven, attempts)
-	return bundlesView(services, true, family, profiles)
+	return bundlesView(services, true, family, profiles, profiles)
 }
 
 func bundleRunning(id string) serviceObservation {
@@ -149,7 +149,7 @@ func TestBundleTextCodesAreListed(t *testing.T) {
 func TestBundlesAreUnknownUntilAFreshScan(t *testing.T) {
 	services := catalogView(nil, "apt")
 	profiles := mailProfilesView(services, false, "apt", "", false, false, nil)
-	for _, bundle := range bundlesView(services, false, "apt", profiles) {
+	for _, bundle := range bundlesView(services, false, "apt", profiles, profiles) {
 		if bundle.Status != bundleStatusUnknown || bundle.Action != bundleActionNone {
 			t.Fatalf("unscanned bundle %s = %+v", bundle.ID, bundle)
 		}
@@ -188,7 +188,7 @@ func TestBundlesOnAnEmptyServer(t *testing.T) {
 func TestMailBundlesFollowTheMailProfiles(t *testing.T) {
 	coreMail := []serviceObservation{bundleRunning("postfix"), bundleRunning("dovecot")}
 	bundles := bundlesFor(coreMail, "apt", nil, false, true)
-	if bundle := bundleViewByID(t, bundles, "mail.core"); bundle.Status != bundleStatusInstalledUnverified || bundle.Action != bundleActionVerify || len(bundle.MissingComponents) != 0 {
+	if bundle := bundleViewByID(t, bundles, "mail.core"); bundle.Status != bundleStatusInstalledUnverified || bundle.Action != bundleActionRepair || len(bundle.MissingComponents) != 0 {
 		t.Fatalf("unproven core mail = %+v", bundle)
 	}
 	bundles = bundlesFor(coreMail, "apt", map[string]mailProfileAttemptProof{
@@ -207,7 +207,8 @@ func TestMailBundlesFollowTheMailProfiles(t *testing.T) {
 	webmail := append(coreMail, bundleRunning("nginx"), bundleRunning("php-fpm"), serviceObservation{ID: "roundcube", IsInstalled: true, Status: "installed"})
 	bundles = bundlesFor(webmail, "apt", nil, false, false)
 	bundle := bundleViewByID(t, bundles, "mail.webmail")
-	if bundle.Status != bundleStatusInstalledUnverified || bundle.Action != bundleActionVerify || bundle.WarningCode != mailProfileWarningWebmailUnverified {
+	// Only the profile install proves a mail setup, so the action is Repair.
+	if bundle.Status != bundleStatusInstalledUnverified || bundle.Action != bundleActionRepair || bundle.WarningCode != mailProfileWarningWebmailUnverified {
 		t.Fatalf("webmail without its proof = %+v", bundle)
 	}
 	bundles = bundlesFor(webmail, "apt", map[string]mailProfileAttemptProof{
@@ -244,9 +245,10 @@ func TestComponentBundlesVerifyOnAFreshScanOnly(t *testing.T) {
 		t.Fatalf("stopped MariaDB = %+v", bundle)
 	}
 
-	// Nginx alone: the web bundle was started and continues with PHP-FPM.
+	// Nginx alone: a component bundle is never partial; Install installs
+	// only PHP-FPM, and Nginx is listed as kept.
 	bundles = bundlesFor([]serviceObservation{bundleRunning("nginx")}, "apt", nil, false, true)
-	if bundle := bundleViewByID(t, bundles, "web.nginx_php"); bundle.Status != bundleStatusPartial || bundle.Action != bundleActionContinue ||
+	if bundle := bundleViewByID(t, bundles, "web.nginx_php"); bundle.Status != bundleStatusAvailable || bundle.Action != bundleActionInstall ||
 		!reflect.DeepEqual(bundle.MissingComponents, []string{"php-fpm"}) {
 		t.Fatalf("web bundle with Nginx only = %+v", bundle)
 	}
@@ -346,5 +348,28 @@ func TestManagedServicesPayloadCarriesBundles(t *testing.T) {
 	}
 	if bundle := bundleViewByID(t, cached.Bundles, "db.mariadb"); bundle.Status != bundleStatusInstalledVerified {
 		t.Fatalf("conditional scan cache bundle = %+v", bundle)
+	}
+}
+
+// A mail setup installed before the DNS identity stopped being ready stays
+// installed beside the host-wide refusal; nothing can be started.
+func TestInstalledMailBundleStaysInstalledBesideAHostWideRefusal(t *testing.T) {
+	webmail := []serviceObservation{bundleRunning("postfix"), bundleRunning("dovecot"), bundleRunning("nginx"), bundleRunning("php-fpm"),
+		{ID: "roundcube", IsInstalled: true, Status: "installed"}}
+	services := catalogView(webmail, "apt")
+	attempts := map[string]mailProfileAttemptProof{"webmail": {Status: mailProfileAttemptSucceeded, Verified: true}}
+	blocked := mailProfilesView(services, true, "apt", mailProfileDNSIdentityMessage, true, true, attempts)
+	unblocked := mailProfilesView(services, true, "apt", "", true, true, attempts)
+	bundles := bundlesView(services, true, "apt", blocked, unblocked)
+	if bundle := bundleViewByID(t, bundles, "mail.webmail"); bundle.Status != bundleStatusInstalledVerified || bundle.Action != bundleActionNone ||
+		bundle.BlockedCode != mailProfileBlockedDNSIdentity {
+		t.Fatalf("installed webmail beside the DNS refusal = %+v", bundle)
+	}
+	if bundle := bundleViewByID(t, bundles, "mail.protected"); bundle.Status != bundleStatusBlocked || bundle.Action != bundleActionNone {
+		t.Fatalf("an offer beside the DNS refusal = %+v", bundle)
+	}
+	// Control: without the refusal the same webmail offers Repair.
+	if bundle := bundleViewByID(t, bundlesView(services, true, "apt", unblocked, unblocked), "mail.webmail"); bundle.Action != bundleActionRepair {
+		t.Fatalf("webmail without the refusal = %+v", bundle)
 	}
 }

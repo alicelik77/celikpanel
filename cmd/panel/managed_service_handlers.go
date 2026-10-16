@@ -627,7 +627,7 @@ func (p *Panel) handleManagedServices(w http.ResponseWriter, r *http.Request) {
 		MailHostname:     p.mailHostnameIdentity(r.Context()),
 		MailDNSGuidance:  p.mailProfileDNSGuidanceFor(r.Context(), dnsIdentityReady),
 	}
-	payload.Bundles = bundlesView(payload.Services, false, packageFamily, payload.Profiles)
+	payload.Bundles = bundlesView(payload.Services, false, packageFamily, payload.Profiles, payload.Profiles)
 
 	var data string
 	var scannedAt string
@@ -663,7 +663,8 @@ func (p *Panel) handleManagedServices(w http.ResponseWriter, r *http.Request) {
 			snapshot.WebmailProven,
 			profileAttempts,
 		)
-		payload.Bundles = bundlesView(payload.Services, profilesVerified, packageFamily, payload.Profiles)
+		payload.Bundles = bundlesView(payload.Services, profilesVerified, packageFamily, payload.Profiles,
+			mailProfilesView(payload.Services, profilesVerified, packageFamily, "", snapshot.WebmailReady, snapshot.WebmailProven, profileAttempts))
 	} else if !errors.Is(err, sql.ErrNoRows) {
 		writeServerError(w, fmt.Errorf("read service scan cache: %w", err))
 		return
@@ -770,7 +771,8 @@ func (p *Panel) handleManagedServicesScan(w http.ResponseWriter, r *http.Request
 		MailHostname:     p.mailHostnameIdentity(r.Context()),
 		MailDNSGuidance:  p.mailProfileDNSGuidanceFor(r.Context(), dnsIdentityReady),
 	}
-	payload.Bundles = bundlesView(payload.Services, true, p.packageFamily(), payload.Profiles)
+	payload.Bundles = bundlesView(payload.Services, true, p.packageFamily(), payload.Profiles,
+		mailProfilesView(services, true, p.packageFamily(), "", webmailReady, webmailProven, profileAttempts))
 	payload.stampScanAge(time.Now())
 	json.NewEncoder(w).Encode(payload)
 }
@@ -841,10 +843,11 @@ func (p *Panel) managedServicesCacheWithin(ctx context.Context, maxAge time.Dura
 	}
 	profiles := mailProfilesView(services, true, packageFamily, mailProfileCatalogBlockedReason(mailProfileHostBlockedReason(), dnsIdentityReady), snapshot.WebmailReady, snapshot.WebmailProven, profileAttempts)
 	return managedServicesPayload{
-		ScannedAt:        &scanned,
-		Services:         services,
-		Profiles:         profiles,
-		Bundles:          bundlesView(services, true, packageFamily, profiles),
+		ScannedAt: &scanned,
+		Services:  services,
+		Profiles:  profiles,
+		Bundles: bundlesView(services, true, packageFamily, profiles,
+			mailProfilesView(services, true, packageFamily, "", snapshot.WebmailReady, snapshot.WebmailProven, profileAttempts)),
 		DNSIdentityReady: dnsIdentityReady,
 		MailHostname:     p.mailHostnameIdentity(ctx),
 		MailDNSGuidance:  p.mailProfileDNSGuidanceFor(ctx, dnsIdentityReady),

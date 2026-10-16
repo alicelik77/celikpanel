@@ -81,11 +81,6 @@ type bundleDefinition struct {
 	ProfileID string
 	// Components are the catalogue components, in install order.
 	Components []string
-	// Anchors are the components whose presence means this bundle was
-	// started. Without one of them present the bundle is "available" even
-	// when shared parts (Nginx, PHP-FPM) are already on the server; those are
-	// then skipped, not counted as a half-installed bundle.
-	Anchors []string
 	// Parent marks a bundle that is offered only after its parent bundle is
 	// installed (an add-on). A top-level bundle has none.
 	Parent string
@@ -111,27 +106,27 @@ var bundleDefinitions = [...]bundleDefinition{
 	},
 	{
 		ID: "db.postgresql", Category: "database", NameCode: bundleTextDBPostgreSQL, Kind: bundleKindComponents,
-		Components: []string{"postgresql"}, Anchors: []string{"postgresql"},
-		Addons: []string{"db.postgresql.admin"},
+		Components: []string{"postgresql"},
+		Addons:     []string{"db.postgresql.admin"},
 	},
 	{
 		ID: "db.mariadb", Category: "database", NameCode: bundleTextDBMariaDB, Kind: bundleKindComponents,
-		Components: []string{"mariadb"}, Anchors: []string{"mariadb"},
-		Addons: []string{"db.mariadb.admin"},
+		Components: []string{"mariadb"},
+		Addons:     []string{"db.mariadb.admin"},
 	},
 	{
 		ID: "db.postgresql.admin", Category: "database", NameCode: bundleTextDBPostgreSQLAdmin, Kind: bundleKindComponents,
-		Components: []string{"nginx", "php-fpm", "phppgadmin"}, Anchors: []string{"phppgadmin"},
-		Parent: "db.postgresql",
+		Components: []string{"nginx", "php-fpm", "phppgadmin"},
+		Parent:     "db.postgresql",
 	},
 	{
 		ID: "db.mariadb.admin", Category: "database", NameCode: bundleTextDBMariaDBAdmin, Kind: bundleKindComponents,
-		Components: []string{"nginx", "php-fpm", "phpmyadmin"}, Anchors: []string{"phpmyadmin"},
-		Parent: "db.mariadb",
+		Components: []string{"nginx", "php-fpm", "phpmyadmin"},
+		Parent:     "db.mariadb",
 	},
 	{
 		ID: "web.nginx_php", Category: "web", NameCode: bundleTextWebNginxPHP, Kind: bundleKindComponents,
-		Components: []string{"nginx", "php-fpm"}, Anchors: []string{"nginx", "php-fpm"},
+		Components: []string{"nginx", "php-fpm"},
 	},
 }
 
@@ -166,11 +161,17 @@ type BundleResponse struct {
 // the mail profiles (the same scan, the same proofs); database and web
 // bundles are verified when every component is ready on a fresh scan.
 // bundlesView her paketin durumunu söyler.
+//
+// unblocked are the same mail profiles derived without the host-wide refusal
+// (the DNS identity, the host name): an installed mail bundle stays visible
+// as installed beside that refusal instead of turning into a blocked offer.
+// unblocked, sunucu geneli ret olmadan türetilen aynı posta profilleridir.
 func bundlesView(
 	services []ManagedServiceResponse,
 	verified bool,
 	packageFamily string,
 	profiles []MailProfileResponse,
+	unblocked []MailProfileResponse,
 ) []BundleResponse {
 	byID := make(map[string]ManagedServiceResponse, len(services))
 	installed := make(map[string]bool, len(services))
@@ -183,6 +184,10 @@ func bundlesView(
 	profileByID := make(map[string]MailProfileResponse, len(profiles))
 	for _, profile := range profiles {
 		profileByID[profile.ID] = profile
+	}
+	unblockedByID := make(map[string]MailProfileResponse, len(unblocked))
+	for _, profile := range unblocked {
+		unblockedByID[profile.ID] = profile
 	}
 
 	bundles := make([]BundleResponse, 0, len(bundleDefinitions))
@@ -206,7 +211,7 @@ func bundlesView(
 			}
 		}
 		if definition.Kind == bundleKindMailProfile {
-			mailBundleState(&view, profileByID[definition.ProfileID])
+			mailBundleState(&view, profileByID[definition.ProfileID], unblockedByID[definition.ProfileID])
 		} else {
 			componentBundleState(&view, definition, byID, installed, verified, packageFamily, services)
 		}
@@ -230,13 +235,29 @@ func bundleComponentPresent(definition bundleDefinition, id string, installed ma
 	return managed != nil && managed.ConflictGroup != "" && core.SeatTakenBy(managed, installed) != ""
 }
 
-func mailBundleState(view *BundleResponse, profile MailProfileResponse) {
+// mailBundleState takes a mail bundle's state from its mail profile. A mail
+// profile that is installed but not proven is repaired, not "verified": the
+// only operation that proves a mail setup is the profile install, which
+// completes what is missing and reconciles it without removing anything.
+// Bir posta paketinin durumu profilinden gelir; kanıtlanmamış kurulu profil
+// "onarılır": kanıtı veren tek işlem profil kurulumudur.
+func mailBundleState(view *BundleResponse, profile, unblocked MailProfileResponse) {
 	view.LatestAttemptStatus = profile.LatestAttemptStatus
 	view.WarningCode = profile.WarningCode
 	switch profile.Status {
 	case mailProfileStatusBlocked:
 		view.Status = bundleStatusBlocked
 		view.BlockedCode, view.BlockedVars = profile.BlockedCode, profile.BlockedVars
+		if mailProfileHostWideCode(profile.BlockedCode) && unblocked.Status == mailProfileStatusComplete {
+			// Installed before the host-wide refusal: it stays installed.
+			// Nothing can be started while the refusal stands.
+			// Sunucu geneli retten önce kurulmuş: kurulu kalır.
+			view.Status = bundleStatusInstalledUnverified
+			if unblocked.Verified {
+				view.Status = bundleStatusInstalledVerified
+			}
+			view.WarningCode = unblocked.WarningCode
+		}
 	case mailProfileStatusAvailable:
 		view.Status, view.Action = bundleStatusAvailable, bundleActionInstall
 	case mailProfileStatusPartial:
@@ -245,7 +266,7 @@ func mailBundleState(view *BundleResponse, profile MailProfileResponse) {
 			// webmail runtime check). That is "installed, not verified", not
 			// a half-installed bundle (owner-reported false alarm, alpha.92).
 			// Her bileşen var; eksik olan kanıttır: "kurulu, doğrulanmadı".
-			view.Status, view.Action = bundleStatusInstalledUnverified, bundleActionVerify
+			view.Status, view.Action = bundleStatusInstalledUnverified, bundleActionRepair
 		} else {
 			view.Status, view.Action = bundleStatusPartial, bundleActionContinue
 		}
@@ -253,12 +274,16 @@ func mailBundleState(view *BundleResponse, profile MailProfileResponse) {
 		if profile.Verified {
 			view.Status, view.Action = bundleStatusInstalledVerified, bundleActionRepair
 		} else {
-			view.Status, view.Action = bundleStatusInstalledUnverified, bundleActionVerify
+			view.Status, view.Action = bundleStatusInstalledUnverified, bundleActionRepair
 		}
 	default:
 		view.Status = bundleStatusUnknown
 		view.BlockedCode, view.BlockedVars = profile.BlockedCode, profile.BlockedVars
 	}
+}
+
+func mailProfileHostWideCode(code mailProfileTextCode) bool {
+	return code == mailProfileBlockedDNSIdentity || code == mailProfileBlockedHostnameUnknown
 }
 
 func componentBundleState(
@@ -305,16 +330,9 @@ func componentBundleState(
 		view.BlockedCode, view.BlockedVars = code, vars
 		return
 	}
-	started := false
-	for _, id := range definition.Anchors {
-		if installed[id] {
-			started = true
-		}
-	}
-	if started {
-		view.Status, view.Action = bundleStatusPartial, bundleActionContinue
-		return
-	}
+	// A component bundle is never "partial": the parts already present are
+	// listed as kept, and Install installs only what is missing.
+	// Bileşen paketi hiçbir zaman "kısmen" değildir; Kur yalnız eksikleri kurar.
 	view.Status, view.Action = bundleStatusAvailable, bundleActionInstall
 }
 
