@@ -8733,3 +8733,68 @@ and recovery evidence) and D-033 (nothing alarming for what is being handled).
    browser whose record of the Frankfurt update was already closed keeps no
    "Updated to" card for it. P0.1-P0.5 stay **partial**; nothing here closes or
    advances a P0 item.
+
+### Installed servers on alpha.92: six small corrections (2026-10-16)
+
+The owner sent screenshots of both installed servers on v0.1.0-alpha.92 on
+2026-10-16 and decided each correction the same day. They are observations of
+installed servers, not acceptance evidence. Each is set against D-024 (the
+current reason, who acts, the next action), D-032 (the panel reads what it can
+read) and D-033 (a good state is not drawn as a warning). The corrections are
+in source for v0.1.0-alpha.93; nothing was changed on an installed server.
+
+1. **Core Mail asked for Repair although mail was verified (Frankfurt).** The
+   Core Mail card on Components read "Components are running. Run Repair to
+   verify and reconcile…" in amber, while setup had installed and reconciled
+   Webmail and Spam-Protected Mail and the Dashboard said mail was Ready. Both
+   larger profiles contain Postfix and Dovecot and run the same mail stack, mail
+   TLS and authenticated-submission reconciliation. **Fix:** a complete profile
+   is verified when another profile that contains all of its components is
+   verified on the same scan. Nothing else is relaxed: component state alone
+   still proves nothing, a larger profile not ready on this scan does not count,
+   and a profile whose own latest attempt is running or failed keeps its own
+   state and warning. The page's profile decoder accepts a verified profile
+   whose own attempt reads "none". **Who acts:** nobody; the card turns calm by
+   itself after the update.
+2. **"Repair webmail" was drawn as a warning (both servers).** The button beside
+   an installed Roundcube had an amber border and background on every server.
+   **Fix:** it is drawn like Manage, an ordinary secondary action; it is amber
+   only when the Webmail profile reports a webmail problem
+   (`webmail_unverified`, `roundcube_not_ready`). The per-row repair icon was
+   checked: it appears only on a stopped service, where amber is correct, so it
+   is unchanged.
+3. **Jargon on the Dashboard (Frankfurt).** The Mail stacks card said "At least
+   one mail profile has a fresh component scan and completed reconciliation."
+   **Fix:** "Mail is installed and verified on this server." / "Posta bu
+   sunucuda kurulu ve doğrulanmış." The meaning is unchanged.
+4. **"Partially installed" with no mail component (Boston).** Only Nginx was
+   installed, and the Mail stacks card said "Partially installed" with
+   "Webmail: Some components are already present…". **Fix:** a mail profile is
+   installed only through its mail components (Postfix, Dovecot, Rspamd,
+   Roundcube). With only web-server parts present it is "not installed": the
+   Dashboard card says "Not installed" / "Kurulu değil" in the neutral tone, and
+   the Webmail card on Components keeps its "Some components are already
+   present…" note in the muted tone with its Install action. One mail component
+   still makes a profile partial, with "Continue".
+5. **Raw profile ids in Recent activity (both servers).** "admin prepared
+   protected-mail during setup", "admin prepared webmail during setup".
+   **Fix:** a mail profile prepared during setup is said by its name: "prepared
+   Spam-Protected Mail during setup" / "kurulum sırasında Spam Korumalı Posta
+   profilini hazırladı". Components keep their own sentence.
+6. **"1 items total" (Domains).** **Fix:** counts are pluralised: "1 item" /
+   "{n} items"; Turkish does not pluralise after a number: "1 öğe" / "{n} öğe".
+   The same line on Components, Databases, DNS records, mail accounts, team
+   members, users and plans follows.
+
+**Tests.** Go: the superset proof with four negative controls (no receipt, an
+unverified receipt, Core Mail's own running or failed attempt), a larger
+profile not ready on the scan, and the one-way relation; web-only components
+with Roundcube and Postfix as controls, and a guard that every profile
+component is a mail component or a shared web part. Web: the decoder with
+running and failed controls; the Repair webmail button mounted alone and on the
+mounted Components page (neutral, then amber for each webmail code); the
+Dashboard words and states; the setup audit sentences with a component and an
+unknown id as controls; the plural keys at every call site. **Open:** the
+corrections are first seen after the owner updates to alpha.93 from the panel's
+own update screen; nothing was measured on an installed server; P0.1-P0.5 stay
+**partial**.

@@ -8699,3 +8699,66 @@ görünüm yok) ile karşılaştırılır.
    Frankfurt güncellemesinin kaydı kapatılmış bir tarayıcı onun için
    "güncellendi" kartı tutmaz. P0.1-P0.5 **kısmi** kalır; burada hiçbir P0 işi
    kapanmaz ya da ilerlemez.
+
+### alpha.92'deki kurulu sunucular: altı küçük düzeltme (2026-10-16)
+
+Sahip 2026-10-16'da v0.1.0-alpha.92 çalıştıran iki kurulu sunucunun ekran
+görüntülerini gönderdi ve her düzeltmeye aynı gün karar verdi. Bunlar kurulu
+sunuculardaki gözlemlerdir, kabul kanıtı değildir. Her biri D-024 (mevcut neden,
+kimin işlem yapacağı, sonraki eylem), D-032 (panel okuyabildiğini kendisi okur)
+ve D-033 (iyi bir durum uyarı gibi çizilmez) ile karşılaştırıldı. Düzeltmeler
+v0.1.0-alpha.93 için kaynaktadır; kurulu bir sunucuda hiçbir şey değiştirilmedi.
+
+1. **Posta doğrulanmışken Temel Posta Onar istiyordu (Frankfurt).** Bileşenler
+   sayfasındaki Temel Posta kartı sarı renkte "Bileşenler çalışıyor. TLS, kimlik
+   doğrulamalı gönderim ve posta profilinin tamamını doğrulayıp uzlaştırmak için
+   Onar işlemini çalıştırın." diyordu; oysa kurulum Webmail ile Spam
+   Korumalı Posta'yı kurup uzlaştırmıştı ve Pano postayı Hazır gösteriyordu. İki
+   büyük profil de Postfix ile Dovecot'u içerir ve aynı posta yığını, posta TLS
+   ve kimlikli gönderim uzlaştırmasını yapar. **Düzeltme:** tamamlanmış bir
+   profil, onun bütün bileşenlerini içeren başka bir profil aynı taramada
+   doğrulanmışsa doğrulanmış sayılır. Başka hiçbir kural gevşemez: yalnız
+   bileşen durumu yine kanıt değildir, bu taramada hazır olmayan büyük profil
+   sayılmaz ve kendi son denemesi süren ya da başarısız olan profil kendi
+   durumunu ve uyarısını korur. Sayfanın profil çözücüsü, kendi denemesi "yok"
+   olan doğrulanmış profili kabul eder. **Kim işlem yapar:** kimse; kart
+   güncellemeden sonra kendiliğinden sakinleşir.
+2. **"Web postayı onar" uyarı gibi çiziliyordu (iki sunucu).** Kurulu
+   Roundcube'un yanındaki düğme her sunucuda sarı kenarlı ve sarı zeminliydi.
+   **Düzeltme:** Yönet gibi, olağan bir ikincil eylem olarak çizilir; yalnız
+   Webmail profili bir webmail sorunu bildirdiğinde (`webmail_unverified`,
+   `roundcube_not_ready`) sarıdır. Satırdaki onarım simgesine de bakıldı: yalnız
+   durmuş bir hizmette görünür, orada sarı doğrudur; değiştirilmedi.
+3. **Panoda teknik dil (Frankfurt).** Posta paketleri kartı "En az bir posta
+   profilinin taze bileşen taraması ve tamamlanmış uzlaştırması var." diyordu.
+   **Düzeltme:** "Posta bu sunucuda kurulu ve doğrulanmış." / "Mail is installed
+   and verified on this server." Anlam değişmedi.
+4. **Hiç posta bileşeni yokken "Kısmen kurulu" (Boston).** Yalnız Nginx
+   kuruluydu ve Posta paketleri kartı "Webmail: Bazı bileşenler zaten kurulu…"
+   ile "Kısmen kurulu" diyordu. **Düzeltme:** bir posta profili yalnız posta
+   bileşenleriyle (Postfix, Dovecot, Rspamd, Roundcube) kurulu sayılır. Yalnız
+   web sunucusu parçaları varken "kurulu değil"dir: Pano kartı nötr tonda
+   "Kurulu değil" / "Not installed" der; Bileşenler'deki Webmail kartı "Bazı
+   bileşenler zaten kurulu…" notunu soluk tonda ve Kur eylemiyle tutar. Tek bir
+   posta bileşeni profili yine "Devam et" ile kısmen kurulu yapar.
+5. **Son etkinlikte ham profil kimlikleri (iki sunucu).** "admin prepared
+   protected-mail during setup", "admin prepared webmail during setup".
+   **Düzeltme:** kurulumun hazırladığı posta profili adıyla söylenir: "kurulum
+   sırasında Spam Korumalı Posta profilini hazırladı" / "prepared Spam-Protected
+   Mail during setup". Bileşenler kendi cümlesini korur.
+6. **"1 items total" (Alan adları).** **Düzeltme:** sayılar çoğul kuralına
+   uyar: "1 item" / "{n} items"; Türkçede sayıdan sonra çoğul eki gelmez: "1
+   öğe" / "{n} öğe". Bileşenler, Veritabanları, DNS kayıtları, posta hesapları,
+   ekip üyeleri, kullanıcılar ve planlardaki aynı satır da buna uyar.
+
+**Testler.** Go: dört karşı denetimle (makbuz yok, doğrulanmamış makbuz, Temel
+Posta'nın süren ya da başarısız kendi denemesi) üst küme kanıtı, taramada hazır
+olmayan büyük profil ve tek yönlü ilişki; denetim olarak Roundcube ve Postfix ile
+yalnız web bileşenleri ve her profil bileşeninin posta bileşeni ya da ortak web
+parçası olduğunu tutan koruma. Web: süren ve başarısız denetimleriyle çözücü;
+tek başına ve bağlanmış Bileşenler sayfasında bağlanan Web postayı onar düğmesi
+(nötr, sonra her webmail kodu için sarı); Pano sözcükleri ve durumları; denetim
+olarak bir bileşen ve bilinmeyen bir kimlikle kurulum denetim cümleleri; her
+çağrı yerinde çoğul anahtarları. **Açık:** düzeltmeler sahip alpha.93'e panelin
+kendi güncelleme ekranından geçtikten sonra görülür; kurulu bir sunucuda hiçbir
+şey ölçülmedi; P0.1-P0.5 **kısmi** kalır.
