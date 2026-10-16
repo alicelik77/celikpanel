@@ -176,7 +176,7 @@ release_observation_publish_initial() {
 release_observation_publish_failure() (
     local id=$1 commit=$2 code=$3
     case "$code" in
-        candidate_panel_startup_check_failed|panel_start_unverified|recovery_runtime_preflight_failed|update_preflight_refused) ;;
+        candidate_panel_startup_check_failed|panel_start_unverified|recovery_runtime_preflight_failed|update_preflight_refused|update_finishing_scheduler) ;;
         *) return 1 ;;
     esac
     _release_observation_publish_fact "$id" "$commit" failure celikpanel-recovery-failure/v1 "failure_code=$code"

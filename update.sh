@@ -270,6 +270,16 @@ report_update_failure() {
         # whose abort failed, or a resumed active phase, keeps update_failed.
         update_preflight_refused) [[ $state != unchanged ]] || code=$update_failure_code ;;
     esac
+    # The new version is installed and verified; only turning the owner's
+    # Certbot renewal scheduler back on is left, and the durable scheduler
+    # marker makes automatic recovery repeat exactly that step. Typed so the
+    # panel says "installed; finishing" instead of an update failure.
+    # Yeni sürüm kurulu ve doğrulandı; yalnız sahibin Certbot yenileme
+    # zamanlayıcısını yeniden açmak kaldı ve kurtarma bu adımı kendisi tekrarlar.
+    if [[ "$marker_phase" == scheduler && ${transaction_completion_verified:-0} -eq 1 &&
+          ${scheduler_restore_verified:-0} -eq 0 ]]; then
+        code=update_finishing_scheduler
+    fi
     # An interrupted kit preparation may have changed the independent launcher
     # or selector even though no application transaction was created.
     # Kit hazırlığı kesilirse ürün işlemi başlamadan başlatıcı/seçici değişmiş olabilir.
@@ -314,7 +324,7 @@ report_update_failure() {
     # A preflight stop is recorded even when its summary names the host package
     # manager: both mean the request ended before changing anything.
     case "$code" in
-        candidate_panel_startup_check_failed|panel_start_unverified)
+        candidate_panel_startup_check_failed|panel_start_unverified|update_finishing_scheduler)
             publish_update_failure_observation "$code" >/dev/null 2>&1 || true
             ;;
         recovery_runtime_preflight_failed|update_preflight_refused|package_manager_busy)

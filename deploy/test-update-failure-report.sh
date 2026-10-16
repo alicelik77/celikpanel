@@ -247,4 +247,39 @@ initial_case no 0 1 >/dev/null 2>&1 || true
 grep -Fq 'sudo journalctl -u celikpanel-release-recovery.service --no-pager -n 50' "$candidate" ||
     fail 'unbound update does not name the recovery journal'
 
-echo 'PASS: causal failure survives cleanup; legacy worker bound; busy/unsafe outcomes; typed preflight stop; initial record for a historical worker; no retry or host mutation'
+# Frankfurt 2026-10-16: the new version is installed and verified, and only
+# turning Certbot renewal back on did not confirm. The durable scheduler marker
+# makes recovery repeat that step, so the summary is typed as "finishing", the
+# sidecar names it for the exact request and target, and the state stays
+# recovery_required (recovery still owns the request).
+# Yalnız yenileme zamanlayıcısını yeniden açma adımı kaldıysa kod tiplidir.
+scheduler_case() (
+    set -euo pipefail
+    completion=$1 restored=$2
+    mutation_started=0 transaction_started=0 quiesce_abort_failed=0
+    transaction_completion_verified=$completion scheduler_restore_verified=$restored
+    update_failure_code= update_failure_detail=
+    update_failure_reason='Certbot renewal scheduler state could not be restored'
+    snapshot_name=20261016T150000Z-from-1111111111111111111111111111111111111111-to-3333333333333333333333333333333333333333-55555555555555555555555555555555
+    release_observation_worker_request() { printf '%s\n' 44444444444444444444444444444444; }
+    release_observation_publish_failure() { printf 'sidecar %s %s %s\n' "$1" "$2" "$3" >> "$bind_fixture/sidecar"; }
+    report_update_failure 1 scheduler
+)
+: > "$bind_fixture/sidecar"
+output=$(scheduler_case 1 0 2>&1)
+[[ ${output##*$'\n'} == '!! CELIKPANEL_UPDATE_FAILURE code=update_finishing_scheduler state=recovery_required reason=Certbot renewal scheduler state could not be restored detail=' ]] ||
+    fail "installed update finishing its scheduler step was not typed: $output"
+[[ $(cat "$bind_fixture/sidecar") == 'sidecar 44444444444444444444444444444444 3333333333333333333333333333333333333333 update_finishing_scheduler' ]] ||
+    fail "finishing step not recorded for the exact request and target: $(cat "$bind_fixture/sidecar")"
+# Negative controls: before completion was verified (or after the scheduler was
+# verified) the same phase keeps the plain failure and writes no sidecar.
+for pair in '0 0' '1 1'; do
+    : > "$bind_fixture/sidecar"
+    output=$(scheduler_case ${pair% *} ${pair#* } 2>&1)
+    [[ $output == *'code=update_failed state=recovery_required'* && ! -s "$bind_fixture/sidecar" ]] ||
+        fail "scheduler phase typed without a verified installation ($pair): $output"
+done
+grep -Fq 'candidate_panel_startup_check_failed|panel_start_unverified|recovery_runtime_preflight_failed|update_preflight_refused|update_finishing_scheduler) ;;' \
+    "$repo_root/deploy/release-recovery-observation.sh" || fail 'observation library refuses the finishing code'
+
+echo 'PASS: causal failure survives cleanup; legacy worker bound; busy/unsafe outcomes; typed preflight stop; initial record for a historical worker; typed scheduler finishing step; no retry or host mutation'
