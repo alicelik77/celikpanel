@@ -8861,6 +8861,20 @@ corrections are first seen after the owner updates to alpha.93 from the panel's
 own update screen; nothing was measured on an installed server; P0.1-P0.5 stay
 **partial**.
 
+### Installed servers after the alpha.93 publication: nothing observed yet (2026-10-16)
+
+v0.1.0-alpha.93 was published on 2026-10-16 (release at 22:04:09Z, then the
+download portal). When this was written, Boston and Frankfurt were still on
+alpha.92 and the owner had not updated either of them; only the owner starts
+that update, from the panel's own update screen. So there is **no** owner
+observation to record: the six corrections in "Installed servers on alpha.92:
+six small corrections" above are in the published release but have not been seen
+on an installed server, and no text or screen was changed for this entry. The
+first update from alpha.92 is also where the calm "Finishing the update" view
+(D-024, D-033) could first be seen. Nothing is "worked" or "failed" until the
+owner reports it. P0.1-P0.5 stay **partial**; this entry closes and advances
+nothing.
+
 ### Ready bundles: installing a group of components, one at a time (D-034, 2026-10-17)
 
 A ready bundle (D-034) is a shortcut over the catalogue's own components, shown
