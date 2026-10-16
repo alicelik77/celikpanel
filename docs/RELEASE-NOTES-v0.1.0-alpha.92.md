@@ -1,4 +1,4 @@
-# v0.1.0-alpha.92 (candidate, not published)
+# v0.1.0-alpha.92 (published 2026-10-16)
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.92.tr.md)
 
@@ -77,7 +77,78 @@ the update's own timer start began the renewal and the update ended `update_veri
 
 ## Publication record
 
-Not published.
+Everything below is dated 2026-10-16 (UTC unless a time zone is named). The
+merge, the repository variable, the tag, the checks, the portal publication and
+the read of the public site were done by the release preparer under the owner's
+instruction of 2026-10-15; the installed-panel updates were started by the
+owner from the panel's own update screen. No native record for the publication,
+by the owner's instruction (alpha.92's own code was measured by set19, above).
+This entry stores none of the results below as a file in the repository.
+
+**What happened.**
+
+1. Pull request #222 was squash-merged by the preparer into `main`: commit
+   `961f2cb2fcaeb48c08fc58828d15fe0b231e1e1a`, tree
+   `091d5fb23cb16cbd217c8c1191033185a7d50b81`. The first CI run on the pull
+   request failed in "Verify offline release-recovery fixture contracts (no
+   VM)": the harness's mirrored code lists lacked the new
+   `update_finishing_scheduler` code. It was corrected in `5f662635f` and CI then
+   passed, 24 of 24. The run on `main` concluded success.
+2. The preparer set `CELIKPANEL_RELEASE_SEQUENCE` from 91 to 92 and pushed the
+   annotated tag `v0.1.0-alpha.92` (object
+   `16a8a961aa9f06948902e4c972c4ce6603cc50fc`). The tag's run concluded
+   success; the release was published at 2026-10-16T18:51:22Z with six assets.
+3. Checked from a download (preparer; not recorded in a file here): the archives
+   are byte-identical, 66,240,132 bytes, SHA-256
+   `3e243da119a252988df80745d77f3e500b6856c60717fa4b2b8f94e1e54e4795`; the
+   manifest says sequence 92, `published_at` 2026-10-16T18:09:41Z (SHA-256
+   `d5824856…`), and its signature verifies (same key); 241 members;
+   `libexec/get.sh` pins 92 (SHA-256
+   `6c5a7b8e8145b14cd75506ab801775fad7c893c85210937243d32c9f2aeb8575`); the
+   policy says 92 with previous 91 (`356109b53…`); `release.commit` and
+   `release.tree` equal the tag's. The archive's `deploy/panel-tls-snapshot.sh`
+   contains `_panel_tls_wait_service_idle` and
+   `_panel_tls_note_owner_failed_renewal`, and `update.sh` contains
+   `update_finishing_scheduler`. The interface bundle is `app-DomwK8kh.js`,
+   248,892 bytes, SHA-256
+   `92709cadaed9e3dfcf48b55956e0282c61eebf785a0b117c8f229a9fbacfd491`.
+4. The portal package: 132,855,924 bytes, SHA-256
+   `809e4f501a020ee54a847c580406f8698d1eb0809aa287be27316f00dd72ffcd`, 54
+   members, built twice identical; the promoter accepted it; the tests passed.
+   The preparer published it with `-PreviousVersion v0.1.0-alpha.90` (the live
+   portal never served alpha.91): committed, backup
+   `httpdocs.before-v0.1.0-alpha.92.20261016T185901Z…`, verification ok (26
+   requests), `CELIKPANEL_DOWNLOAD_PORTAL_PUBLISHED`.
+5. A read from outside at 18:59:09Z: `releases/latest.txt` v0.1.0-alpha.92,
+   `get.sh` pins 92, `releases/latest.json` sequence 92, commit `961f2cb2…`,
+   SHA-256 `3e243da1…`.
+
+**What the owner reported (2026-10-16, two screenshots, about 19:10Z; the
+update from alpha.90).** The owner started both updates from the panel's own
+update screen. On both servers, Settings, CelikPanel updates reads "Current
+version v0.1.0-alpha.92" and "Current commit
+961f2cb2fcaeb48c08fc58828d15fe0b231e1e1a"; the sidebar reads "CelikPanel ·
+v0.1.0-alpha.92 · build 961f2cb2fcae"; and a card "Updated to v0.1.0-alpha.92
+— build 961f2cb2fcae" lists five completed steps. This holds for **Frankfurt
+too**: no failure and no recovery this time. That is one update on each server
+and it is not acceptance of the Certbot correction: whether a catch-up renewal
+began during Frankfurt's update was not reported. What the page showed during
+the update (the live step view, drawn by alpha.90's page) was not reported in a
+screenshot.
+
+**Not done, and what publication does not change.**
+
+- The installed servers were not updated by the release preparer.
+- Not reported and not recorded: Frankfurt's Domains "Infrastructure zone" row,
+  Boston's mail extension with the peer host record, the licence page, the
+  Agent's version, `postconf -n >/dev/null`. Each is "not recorded", not
+  "worked" and not "failed".
+- The calm "Finishing the update" view is first seen when a server updates
+  **from** alpha.92.
+- The limits of the earlier publication records (see the
+  [alpha.88 notes](RELEASE-NOTES-v0.1.0-alpha.88.md)) are not reported as lifted.
+- Publication is not acceptance. P0.1 to P0.5 stay partial; no P0 item is closed
+  or advanced.
 
 Install this release only through CelikPanel's update interface. Publishing it
 does not update installed servers; only the owner of a server starts its

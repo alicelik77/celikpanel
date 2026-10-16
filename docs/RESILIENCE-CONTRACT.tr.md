@@ -5372,3 +5372,82 @@ davranışını değiştirmez. 2026-10-16, içindeki her şeyin saat tarihidir.
 - **Şema ve kurtarma.** Şema 44, geçiş yok; güncelleme anlık görüntü biçimi değişmedi (başarısız yenileme hizmeti `inactive`, yani çalışmıyor olarak kaydedilir). Zamanlayıcı geri yüklemesini tekrarlayan bir kurtarma denemesi, önceki denemenin zamanlayıcı açılışıyla başlayan yenilemeyi durdurmak yerine bitmesini bekler; başarısız bir yenileme hizmeti artık her denemeyi başarısız kılmaz. 180 sn sınırını aşan bir yenileme duraklatmayı reddeder (güncelleme bir şey değiştirmeden durur ya da kurtarma yeniden dener); asla kesilmez.
 - **Kanıt.** systemctl yerine geçen yerel birimlere benzer işlevle ve negatif kontrollerle sözleşme testleri (önceki yardımcı Frankfurt'un satırını yeniden üretir): `deploy/test-panel-tls-snapshot-contract.sh`, `deploy/test-recovery-renewal-pause-contract.sh`, `deploy/test-update-failure-report.sh`. Değişen betikleri okuyan 38 kabuk sözleşmesinden 34'ü Windows çalışma ağacı bağlamasında geçer; üçü aynı commit'in LF dışa aktarımından geçer (çalışma ağacının CRLF kopyası ve bağlamanın hızı orada başarısızlığa ya da zaman aşımına yol açtı) ve biri önce `make dns-owner-tools` gerektirir. Go: `./cmd/panel` 1583 üst düzey test geçti, 6 atlandı; `./cmd/recovery` 185 geçti; `./internal/recoveryobs` 22 geçti, 1 atlandı (1911 alt test); `./cmd/agent/...` 1805 geçti, 29 atlandı, 2838 alt test (temiz bağlama ad alanı). Web 1551 / 1551; üretim yapısı ve paket bütçesi geçer. Yerel laboratuvar kaydı [set19](../deploy/e2e/release-recovery/evidence/set19-20261016/README.md): güncellemenin kendi zamanlayıcı açılışı yenilemeyi başlattı ve güncelleme `previous_failure=none` ile `update_verified` bitti; yenileme hizmeti güncellemeden önce başarısızken güncelleme aynı biçimde bitti ve hizmet başarısız kaldı; sayfa hiçbir zaman uyarı ya da kırmızı çizmedi. Kurulu bir sunucuda hiçbir şey ölçülmedi.
 - **Açık.** Sakin görünümü çalışan sürümün sayfası çizer; ilk kez alpha.92'den başlayan güncellemelerde görülür; yardımcıları paylaşan geri alma yolları yalnız sözleşme testleriyle sınandı; Frankfurt güncellemesinin kaydı kapatılmış bir tarayıcı onun için "güncellendi" kartı tutmaz; alpha.88–alpha.91 girdilerinin açık bıraktığı her şey açık kalır. Bkz. [sürüm notları](RELEASE-NOTES-v0.1.0-alpha.92.tr.md).
+
+### v0.1.0-alpha.90, v0.1.0-alpha.91 (etiketlendi, portalda yok) ve v0.1.0-alpha.92'nin yayımlanması (yayımda kod değişikliği yok; ilke 2 ve 6; D-022; D-024; D-025 yerel hizmet sahipliği; D-033; 2026-10-16)
+
+D-025 ilke 2 (kanıtın bir anlamı ve yaşam döngüsü vardır: bilinmeyen; yok, boş ya
+da başarılı değildir) ve 6 (hazır olma, ilerleme ve erişim birbirinden bağımsız
+kalır), ve alpha.92 aday girdisinin andığı yerel hizmet sahipliği ilkesi; D-022;
+D-024; D-033. **Hiçbir P0 işi kapanmaz ya da ilerlemez.** P0.1–P0.5 kısmi kalır
+ve her açık kabul işi açık kalır. Bu girdi üç sürümü ve sahibin iki güncellemeye
+ilişkin bildirimlerini kaydeder; kod, şema ya da kurtarma davranışını
+değiştirmez. 2026-10-16, içindeki her şeyin saat tarihidir.
+
+- **Yayımlama.** Bütün adımları sürümü hazırlayan kişi yaptı, sahibin 15 Ekim
+  2026 talimatı uyarınca; kurulu panel güncellemelerini yalnız sahip yaptı.
+  v0.1.0-alpha.90: #220 numaralı çekme isteği
+  `1743ac69edb0e5723dc60d992b53094dcc4b1431` olarak squash ile birleştirildi
+  (ağaç `bbfa5305cc8c5b6bb4a34a2e640633582dc7534b`); `main` koşusu başarılı;
+  değişken 89'dan 90'a; açıklamalı etiket (nesne
+  `9c98483d71b4a747f522f87c476f22125868bca7`); etiket koşusu başarılı; sürüm
+  2026-10-16T14:42:18Z; arşiv SHA-256
+  `3719aba4f60b3eb3da0762b2d1c57302b628cdb6c958d72c2a5ac0430e2ff3e1`, 66.194.918
+  bayt; portal yayımlandı ve 14:51:50Z'de dışarıdan okundu.
+  v0.1.0-alpha.91: #221 numaralı çekme isteği
+  `356109b532b9d0d0df5dd31fc19e9932918a9648` olarak squash ile birleştirildi;
+  `main` koşusu başarılı; değişken 90'dan 91'e; etiket; etiket koşusu başarılı;
+  sürüm 2026-10-16T15:48:29Z; **bilerek portala konmadı**, çünkü aşağıdaki
+  Frankfurt olayı güncelleyici kusurunun onda da olduğunu gösterdi; dosya
+  denetimi ve portal paketi yok. v0.1.0-alpha.92: #222 numaralı çekme isteği
+  `961f2cb2fcaeb48c08fc58828d15fe0b231e1e1a` olarak squash ile birleştirildi
+  (ağaç `091d5fb23cb16cbd217c8c1191033185a7d50b81`; ilk CI koşusu, çevrimdışı
+  deneme düzeneğinin yansıtılmış kod listelerinde `update_finishing_scheduler`
+  olmadığı için başarısız oldu, `5f662635f` ile düzeltildi, sonra 24 işin 24'ü);
+  `main` koşusu başarılı; değişken 91'den 92'ye; açıklamalı etiket (nesne
+  `16a8a961aa9f06948902e4c972c4ce6603cc50fc`); etiket koşusu başarılı; sürüm
+  2026-10-16T18:51:22Z; arşiv SHA-256
+  `3e243da119a252988df80745d77f3e500b6856c60717fa4b2b8f94e1e54e4795`, 66.240.132
+  bayt; `update.sh` ve `deploy/panel-tls-snapshot.sh` yeni kodu içerir; portal
+  `-PreviousVersion v0.1.0-alpha.90` ile yayımlandı (canlı portal alpha.91'i hiç
+  sunmadı) ve 18:59:09Z'de dışarıdan okundu. Dosyaları ve portal paketlerini
+  hazırlayan kişi bir indirmeden denetledi; hazırlayan kişi bildirdi, burada bir
+  dosyada kayıtlı değil. Önceki yayımlama sınırları kalkmış olarak
+  bildirilmedi. Her sürüm notlarının "Yayımlama kaydı" bunları sayar.
+- **Kurulu paneller, alpha.89'dan alpha.90'a (sahibin ekran görüntüleri).**
+  Boston temiz güncellendi. Frankfurt'un güncellemesi T+01:23'te kırmızı çarpı
+  ve sunucunun ham satırı "Certbot renewal scheduler state could not be
+  restored" gösterdi, T+01:39'da aynı işlem için "Güncelleme doğrulandı":
+  güncelleyici öldükten 16 sn sonra sunucunun kendi kurtarması güncellemeyi
+  bitirdi (ilke 2: hatayı sayfa değil sunucu doğruladı ve son duruma sahip
+  hiçbir işlem yapmadan ulaşıldı). Bu, alpha.92 aday girdisinin düzelttiği olaydır
+  (D-025 yerel hizmet sahipliği: güncelleme, geri yüklenen zamanlayıcının
+  başlattığı bir yenilemeyi kendi hatası saymamalıdır). Yanında gözlenenler:
+  tarayıcı sert yeniden yüklemeye kadar alpha.89 arayüzünü korudu (neden
+  araştırılmadı); yeniden yüklemeden sonra güncelleme kurtarma kaydı üzerinden
+  bittiği için "güncellendi" kartı yoktu; kart kopyalanınca kısa ve tam yapı
+  kimliği yapışık yapıştı. Canlı adım görünümü görüldü diye bildirilmedi
+  (ilke 6).
+- **Kurulu paneller, alpha.90'dan alpha.92'ye (sahibin ekran görüntüleri,
+  yaklaşık 19:10Z).** İki sunucu da sürümü, commit `961f2cb2fcae…`'yi, kenar
+  çubuğundaki build'i ve beş tamamlanmış adımlı "v0.1.0-alpha.92 sürümüne
+  güncellendi" kartını gösterir; Frankfurt da, hata ve kurtarma olmadan. Her
+  sunucuda bir güncelleme: yenileme düzeltmesinin kabulü değildir (Frankfurt'ta
+  bir telafi yenilemesinin başlayıp başlamadığı bildirilmedi) ve sakin
+  "Güncelleme tamamlanıyor" görünümü ilk kez bir sunucu alpha.92'den
+  güncellenirken görülür. Bildirilmeyen: güncelleme sırasındaki canlı adım
+  görünümü, Frankfurt'un Alan adları'ndaki altyapı bölgesi satırı, Boston'un eş
+  sunucu kaydıyla posta genişletmesi, lisans sayfası, Agent'ın sürümü,
+  `postconf -n`. Bu girdi hiçbir iş için kabul kanıtı değildir.
+- **Şema ya da sürüm geçişi.** Yok: üçünde de şema 44; sürüm sırası sürüm
+  hazırlıklarında 89'dan 90'a, 90'dan 91'e ve 91'den 92'ye geçti. **Kurtarma
+  davranışı.** Yayımla değişmez. Sahibin 16 Ekim 2026 talimatıyla alpha.90 ve
+  alpha.91 için gerçek sistem kaydı yok; alpha.92'nin kendi kodunu set19 (bir
+  laboratuvar kaydı) ölçtü.
+- **Açık.** alpha.90, alpha.91 ve alpha.92 aday girdilerinin açık bıraktığı her
+  şey; bunlar arasında: canlı adım görünümü henüz görüldü diye bildirilmedi;
+  sakin "Güncelleme tamamlanıyor" görünümü ilk kez alpha.92'den güncellemede
+  görülür; bir güncellemeden sonra önceki arayüzü koruyan tarayıcı ve kaydı
+  kapanmış bir tarayıcıda kurtarmayla biten güncellemeden sonra eksik kart;
+  değiştirilen yardımcıları paylaşan geri alma yolları yalnız sözleşme testleriyle
+  denendi; ikinci sunucu işi (alpha.91 kodu, alpha.92 ile teslim) kurulu bir
+  sunucudan bildirilmedi.

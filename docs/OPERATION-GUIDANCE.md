@@ -8603,6 +8603,8 @@ the mock browser.
 
 ### Installed servers after the alpha.88 and alpha.89 publication: what the owner observed (2026-10-16)
 
+*Later: the owner's report of the alpha.90 and alpha.92 updates is in "Installed servers after the alpha.90, alpha.91 and alpha.92 publication" at the end of this file; this entry stays as history.*
+
 The owner reported two screenshots at about 09:30Z on 2026-10-16. They are
 observations of installed servers, not acceptance evidence, and no text or
 screen was changed for this entry. They are set against D-024 (the current
@@ -8733,3 +8735,63 @@ and recovery evidence) and D-033 (nothing alarming for what is being handled).
    browser whose record of the Frankfurt update was already closed keeps no
    "Updated to" card for it. P0.1-P0.5 stay **partial**; nothing here closes or
    advances a P0 item.
+
+### Installed servers after the alpha.90, alpha.91 and alpha.92 publication: what the owner observed (2026-10-16)
+
+The owner reported screenshots of two updates on 2026-10-16: alpha.89 to
+alpha.90 on both servers, and alpha.90 to alpha.92 on both servers (about
+19:10Z). They are observations of installed servers, not acceptance evidence,
+and no text or screen was changed for this entry. They are set against D-024
+(the current reason, who must act, the next action and how work resumes), D-033
+(a screen that makes the owner wait shows that it waits; a good state is not
+drawn as a warning) and the known-state rule. This entry answers the alpha.88
+and alpha.89 entry above for the items reported; its unreported items stay
+unreported unless named below.
+
+1. **What happened.** The owner started every update from the panel's own
+   update screen. Both servers went from alpha.89 to alpha.90, then both from
+   alpha.90 to alpha.92. No server ran alpha.91: it was tagged but deliberately
+   not put on the download portal, because the Frankfurt update below showed the
+   updater defect it shares.
+2. **Alpha.89 to alpha.90, Boston.** A clean update: the card "Updated to
+   v0.1.0-alpha.90", build `1743ac69edb0`, five steps done; after "Check for
+   updates" a green "You are on the latest version." That is the D-033
+   correction this release made, seen on a server. The owner's copy of the card
+   pasted the build line as "build 1743ac69edb01743ac69edb0e5723…": the short
+   and the full id run together (corrected in alpha.92; not re-checked on a
+   server).
+3. **Alpha.89 to alpha.90, Frankfurt.** At T+01:23 the page showed a red cross,
+   "Last recorded step: recovery in progress" and the server's raw English line
+   "reviewed updater failed: exit status 1: Certbot renewal scheduler state
+   could not be restored"; at T+01:39 "Update verified" for the same request. For
+   16 seconds the page said "failed" while the server was finishing the update
+   itself, and, as reported, nothing on the page told the owner that no action
+   was needed. This is what
+   alpha.92 changes: the update never touches the owner's renewal run, and
+   while recovery owns the request the page keeps a calm "Finishing the update"
+   view and draws a recovered success as "Updated to". That view is drawn by the
+   page of the running version, so it is first seen when a server updates
+   **from** alpha.92. Two observations stay open and unexplained here: the
+   browser kept alpha.89's interface until the owner pressed Ctrl+Shift+R (the
+   sidebar read alpha.89 while "Current version" read alpha.90, with the old
+   warning-triangle line), and after the reload the page said "You are on the
+   latest version." but showed no "Updated to" card, because the update had
+   finished through the recovery record. A page that shows a version different
+   from the server's, with no sentence about it, is an item for a later release
+   under D-024; nothing was changed for it here.
+4. **Alpha.90 to alpha.92, both servers.** Settings, CelikPanel updates reads
+   "Current version v0.1.0-alpha.92" and "Current commit
+   961f2cb2fcaeb48c08fc58828d15fe0b231e1e1a"; the sidebar reads "CelikPanel ·
+   v0.1.0-alpha.92 · build 961f2cb2fcae"; and a card "Updated to v0.1.0-alpha.92
+   — build 961f2cb2fcae" lists five completed steps. On Frankfurt too: no
+   failure and no recovery this time. It is one update on each server; whether a
+   catch-up renewal began during Frankfurt's update was not reported, so this
+   is not acceptance of the renewal correction.
+5. **What was not seen.** The live step view during the two updates (drawn by
+   alpha.89's page and by alpha.90's page) was not reported in a screenshot;
+   what the owner saw says nothing about it and must not be recorded as if it
+   did.
+6. **Not reported, so not recorded.** Frankfurt's Domains "Infrastructure zone"
+   row, Boston's mail extension with the peer host record (alpha.91's work,
+   delivered in alpha.92), the licence page, the Agent's version and the output
+   of `postconf -n`. Each is "not recorded", not "worked" and not "failed".
