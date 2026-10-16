@@ -1,0 +1,16 @@
+{"at":"2026-10-16T17:20:17.347Z","ev":"start","mode":"update-page","target":"v0.1.0-alpha.92","baseline":"v0.1.0-alpha.90","chrome":"Chrome/155.0.8059.40"}
+{"at":"2026-10-16T17:20:18.476Z","ev":"sign-in-page","shown":"form"}
+{"at":"2026-10-16T17:20:23.926Z","ev":"shot","name":"page-opened"}
+{"at":"2026-10-16T17:20:23.950Z","ev":"prep-requested","name":"page-ready","phase":"update-page"}
+{"at":"2026-10-16T17:20:24.023Z","ev":"shot","name":"state-01","kind":{"dialog":null,"corner":null,"card":null,"card_text":null,"other_dialogs":[],"holds":[]},"t_plus":null}
+{"at":"2026-10-16T17:20:25.489Z","ev":"prep-done","name":"page-ready","phase":"update-page","record":{"at":"2026-10-16T17:20:25Z","prep":"page-ready","result":{"current_version":"v0.1.0-alpha.90","ok":true,"target":{"archive_sha256":"502c945adae41c3c2a659ddf8cbe010655a3f5203a1ff525941c4e3ad0fc3970","commit":"16cbfc877bd46608f8ff37e2a37905a21941db29","sequence":"92","version":"v0.1.0-alpha.92"}},"host_asked_ms":1792171223933,"host_got_ms":1792171225489}}
+{"at":"2026-10-16T17:20:26.093Z","ev":"shot","name":"before-start"}
+{"at":"2026-10-16T17:20:26.170Z","ev":"prep-requested","name":"arm_623ca70c7be8b0757280aac9a9cc6667","phase":"update-page"}
+{"at":"2026-10-16T17:20:26.606Z","ev":"shot","name":"state-02","kind":{"dialog":"other","corner":null,"card":"reading","card_text":"reading","other_dialogs":[],"holds":[]},"t_plus":"00:00"}
+{"at":"2026-10-16T17:20:27.159Z","ev":"prep-done","name":"arm_623ca70c7be8b0757280aac9a9cc6667","phase":"update-page","record":{"at":"2026-10-16T17:20:27Z","prep":"arm_623ca70c7be8b0757280aac9a9cc6667","result":{"armed":true,"request_id":"623ca70c7be8b0757280aac9a9cc6667","seconds":0.6},"host_asked_ms":1792171226167,"host_got_ms":1792171227159}}
+{"at":"2026-10-16T17:20:27.618Z","ev":"shot","name":"state-03","kind":{"dialog":"accepted","corner":null,"card":"reading","card_text":"reading","other_dialogs":[],"holds":[]},"t_plus":"00:01"}
+{"at":"2026-10-16T17:20:28.133Z","ev":"shot","name":"state-04","kind":{"dialog":"other","corner":null,"card":null,"card_text":null,"other_dialogs":[],"holds":[]},"t_plus":"00:01"}
+{"at":"2026-10-16T17:22:11.233Z","ev":"shot","name":"state-05","kind":{"dialog":"reloading","corner":null,"card":null,"card_text":null,"other_dialogs":[],"holds":[]},"t_plus":"01:44"}
+{"at":"2026-10-16T17:22:12.711Z","ev":"shot","name":"state-06","kind":{"dialog":null,"corner":null,"card":null,"card_text":null,"other_dialogs":[],"holds":[]},"t_plus":null}
+{"at":"2026-10-16T17:22:13.202Z","ev":"shot","name":"state-07","kind":{"dialog":null,"corner":null,"card":null,"card_text":null,"other_dialogs":[],"holds":[]},"t_plus":null}
+{"at":"2026-10-16T17:22:33.757Z","ev":"shot","name":"end"}

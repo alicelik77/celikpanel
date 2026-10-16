@@ -1,0 +1,6 @@
+qemu: QEMU emulator version 11.1.1
+kernel (WSL): 6.18.33.2-microsoft-standard-WSL2
+python: Python 3.14.7
+node: v26.8.1
+/dev/kvm: crw-rw-rw- 1 root kvm 10, 232 Oct 16 19:16 /dev/kvm
+go version go1.26.5 linux/amd64

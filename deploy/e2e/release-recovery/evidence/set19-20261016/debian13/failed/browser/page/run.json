@@ -1,0 +1,29 @@
+{
+  "cell": "page",
+  "chrome": "Chrome/155.0.8059.40",
+  "handover": {
+    "at": "2026-10-16T17:20:14Z",
+    "base": "https://127.0.0.1:19420",
+    "baseline_version": "v0.1.0-alpha.90",
+    "browser": {
+      "lang": "en",
+      "viewport": "desktop"
+    },
+    "cell": "set19-failed-debian13",
+    "local_port": 19420,
+    "mode": "update-page",
+    "password_file": "(root-only file, not copied)",
+    "preps": [
+      "page-ready",
+      "arm_<request id>"
+    ],
+    "schema": "celikpanel/set12-handover/v1",
+    "target_version": "v0.1.0-alpha.92",
+    "tls_leaf_sha256": "796227638e42a6cca658fcf07a2a7826333c7c2b77e552e5ab878fc5d67da66a",
+    "username": "labadmin",
+    "window": "page"
+  },
+  "started": "2026-10-16T17:20:17.346Z",
+  "ended": "2026-10-16T17:22:33.900Z",
+  "ok": true
+}

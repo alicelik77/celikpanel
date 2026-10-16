@@ -1,0 +1,21 @@
+== baseline celikpanel-v0.1.0-alpha.90-acceptance-license.tar.gz sha256=f60537727fb83a065deeaf532687154f0db2a17c5ae57237673d1a6c6ccb9872
+format=celikpanel-release-sequence-policy-v1
+version=v0.1.0-alpha.90
+current=90
+previous=89
+previous_version=v0.1.0-alpha.89
+previous_commit=ac36fccf4e4238a8bc4624356a478ba8dab20b34
+== good celikpanel-v0.1.0-alpha.92-acceptance-license.tar.gz sha256=502c945adae41c3c2a659ddf8cbe010655a3f5203a1ff525941c4e3ad0fc3970
+format=celikpanel-release-sequence-policy-v1
+version=v0.1.0-alpha.92
+current=92
+previous=90
+previous_version=v0.1.0-alpha.90
+previous_commit=1743ac69edb0e5723dc60d992b53094dcc4b1431
+== defective celikpanel-v0.1.0-alpha.92-acceptance-license.tar.gz sha256=149450675ae4c297a23ef3f55290bd91eba43af5db62d55f6c81b2654c76061a
+format=celikpanel-release-sequence-policy-v1
+version=v0.1.0-alpha.92
+current=92
+previous=90
+previous_version=v0.1.0-alpha.90
+previous_commit=1743ac69edb0e5723dc60d992b53094dcc4b1431

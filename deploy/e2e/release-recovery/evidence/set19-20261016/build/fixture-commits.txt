@@ -1,0 +1,3 @@
+refs/upd1/baseline 1743ac69edb0e5723dc60d992b53094dcc4b1431 tree=bbfa5305cc8c5b6bb4a34a2e640633582dc7534b Release v0.1.0-alpha.90: the update check's good result is a calm check, and the live step view is seen on the next update (#220)
+refs/upd1/defective 967f5ff24942782289e05fbc9b9b83e0072e2b90 tree=f5f3ac5339afd3f6c711d73bb183d309c1ff5538 test(fixture): set19 defective candidate - migrate-only fails (unpublished, disposable)
+refs/upd1/good 16cbfc877bd46608f8ff37e2a37905a21941db29 tree=df64d9a13b1f4ff67d80603593ae2e46de0b17b2 test(fixture): set19 candidate labelled v0.1.0-alpha.92 after the alpha.90 tag (release policy only; unpublished, disposable)

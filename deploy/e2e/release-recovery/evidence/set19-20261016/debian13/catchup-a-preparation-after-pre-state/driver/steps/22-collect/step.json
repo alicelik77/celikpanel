@@ -1,0 +1,43 @@
+{
+  "checks": {
+    "attempts": {
+      "automatic": [],
+      "automatic_count": 0,
+      "journal_admissions": [],
+      "owner": [],
+      "owner_count": 0
+    },
+    "guest_samples": 55,
+    "host_samples": 56,
+    "journals": [
+      "lab",
+      "product",
+      "setup-services"
+    ],
+    "observer": [
+      "armed",
+      "timeline",
+      "timeline",
+      "timeline",
+      "timeline",
+      "timeline",
+      "timeline",
+      "timeline",
+      "timeline",
+      "timeline",
+      "timeline",
+      "timeline",
+      "timeline",
+      "timeline",
+      "released"
+    ],
+    "stopped_after": [
+      "terminal"
+    ],
+    "unavailable": {}
+  },
+  "finished_at": "2026-10-16T16:37:17Z",
+  "name": "collect",
+  "started_at": "2026-10-16T16:37:16Z",
+  "verdict": "passed"
+}

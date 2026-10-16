@@ -1,0 +1,36 @@
+{
+  "browser_done": {
+    "at": "2026-10-16T17:06:28.328Z",
+    "by": "cold-load-set19.mjs",
+    "started": true
+  },
+  "ended_at": "2026-10-16T17:06:29Z",
+  "hand": "/var/tmp/cp-set19/hand/h19cc-page",
+  "password_file_removed": true,
+  "requests": [
+    {
+      "at": "2026-10-16T17:06:26Z",
+      "prep": "page-ready",
+      "result": {
+        "current_version": "v0.1.0-alpha.90",
+        "ok": true,
+        "target": {
+          "archive_sha256": "502c945adae41c3c2a659ddf8cbe010655a3f5203a1ff525941c4e3ad0fc3970",
+          "commit": "16cbfc877bd46608f8ff37e2a37905a21941db29",
+          "sequence": "92",
+          "version": "v0.1.0-alpha.92"
+        }
+      }
+    },
+    {
+      "at": "2026-10-16T17:06:28Z",
+      "prep": "arm_b790753066763eabc9d68aa03160b1ee",
+      "result": {
+        "armed": true,
+        "request_id": "b790753066763eabc9d68aa03160b1ee",
+        "seconds": 0.54
+      }
+    }
+  ],
+  "window": "page"
+}

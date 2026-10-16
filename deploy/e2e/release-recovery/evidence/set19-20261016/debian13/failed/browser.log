@@ -1,0 +1,5 @@
+wait for //wsl.localhost/archlinux/var/tmp/cp-set19/hand/h19f-page/ready.json start=2026-10-16T17:09:22Z limit=5400s
+handover after 639s at 2026-10-16T17:20:16Z tool_sha256=5e8e0bf3fb04be2f799268512104a52b55513a2e43ecb87e4d61950f9a1e8788
+browser profile: C:\Users\alice\AppData\Local\Temp\cpb\25222fcd (46 characters, limit 120)
+{"cell":"page","started":"2026-10-16T17:20:17.346Z","ended":"2026-10-16T17:22:33.900Z","ok":true}
+rc=0 end=2026-10-16T17:22:34Z

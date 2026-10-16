@@ -1,0 +1,7 @@
+== /usr/libexec/celikpanel/get.sh
+-rwxr-xr-x 1 root root 72233 Oct 16 17:07 /usr/libexec/celikpanel/get.sh
+6c5a7b8e8145b14cd75506ab801775fad7c893c85210937243d32c9f2aeb8575  /usr/libexec/celikpanel/get.sh
+6:bootstrap_release_sequence=92
+7:bootstrap_release_version=v0.1.0-alpha.92
+8:bootstrap_release_public_key_sha256=7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb
+== end

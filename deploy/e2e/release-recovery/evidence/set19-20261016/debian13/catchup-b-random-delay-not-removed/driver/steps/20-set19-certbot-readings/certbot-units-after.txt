@@ -1,0 +1,27 @@
+== certbot.timer
+NextElapseUSecRealtime=Fri 2026-10-16 21:51:52 UTC
+LastTriggerUSec=Tue 2026-10-13 16:48:39 UTC
+Result=success
+LoadState=loaded
+ActiveState=active
+SubState=waiting
+DropInPaths=
+UnitFileState=enabled
+InvocationID=ca6d07d6bd064e0aa46a9da443729051
+== certbot.service
+Result=success
+NRestarts=0
+ExecMainStartTimestamp=
+ExecMainExitTimestamp=
+ExecMainStatus=0
+LoadState=loaded
+ActiveState=inactive
+SubState=dead
+DropInPaths=
+UnitFileState=static
+InvocationID=
+== stamp
+/var/lib/systemd/timers/stamp-certbot.timer mtime=2026-10-13 16:48:39.661984580 +0000 (1791910119)
+== now
+2026-10-16T16:52:47Z
+1792169567

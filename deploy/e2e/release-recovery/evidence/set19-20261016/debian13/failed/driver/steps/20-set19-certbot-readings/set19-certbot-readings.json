@@ -1,0 +1,23 @@
+{
+  "failure_sidecar": false,
+  "reject_counter_line": "tcp dport 443 counter packets 12 bytes 720 log prefix \"cp-set19-443 \" reject with tcp reset",
+  "renewal_started_after_preparation": true,
+  "request_id": "623ca70c7be8b0757280aac9a9cc6667",
+  "service": {
+    "ActiveState": "failed",
+    "ExecMainExitTimestamp": "Fri 2026-10-16 17:21:48 UTC",
+    "ExecMainStartTimestamp": "Fri 2026-10-16 17:21:48 UTC",
+    "ExecMainStatus": "1",
+    "InvocationID": "9af8d46734a842daa4265d3cde188038",
+    "Result": "exit-code",
+    "SubState": "failed"
+  },
+  "timer": {
+    "ActiveState": "active",
+    "LastTriggerUSec": "Fri 2026-10-16 17:21:48 UTC",
+    "NextElapseUSecRealtime": "Sat 2026-10-17 00:00:00 UTC",
+    "UnitFileState": "enabled"
+  },
+  "timer_enabled_and_active": true,
+  "update_failure_line": false
+}

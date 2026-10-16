@@ -1,0 +1,27 @@
+== certbot.timer
+NextElapseUSecRealtime=Sat 2026-10-17 00:00:00 UTC
+LastTriggerUSec=Fri 2026-10-16 17:21:48 UTC
+Result=success
+LoadState=loaded
+ActiveState=active
+SubState=waiting
+DropInPaths=/etc/systemd/system/certbot.timer.d/50-set19-lab-no-random-delay.conf
+UnitFileState=enabled
+InvocationID=a8183cf90a5348c3bb3553f1e3cbb9cb
+== certbot.service
+Result=exit-code
+NRestarts=0
+ExecMainStartTimestamp=Fri 2026-10-16 17:21:48 UTC
+ExecMainExitTimestamp=Fri 2026-10-16 17:21:48 UTC
+ExecMainStatus=1
+LoadState=loaded
+ActiveState=failed
+SubState=failed
+DropInPaths=/etc/systemd/system/certbot.service.d/50-set19-lab-fail.conf
+UnitFileState=static
+InvocationID=9af8d46734a842daa4265d3cde188038
+== stamp
+/var/lib/systemd/timers/stamp-certbot.timer mtime=2026-10-16 17:21:48.583034000 +0000 (1792171308)
+== now
+2026-10-16T17:23:21Z
+1792171401

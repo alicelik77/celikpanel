@@ -1,0 +1,16 @@
+2026-10-16T16:16:04Z set19 run directory created
+2026-10-16T16:16:22Z repository clone, source check and run copy made
+2026-10-16T16:16:32Z local branch set19-source made in the run repository
+2026-10-16T16:20:58Z build rc=0
+2026-10-16T16:21:41Z prove and dry runs
+2026-10-16T16:21:49Z cell set19-catchup-debian13 start
+2026-10-16T16:37:19Z cell set19-catchup-debian13 end rc=1
+2026-10-16T16:38:51Z run copy b: set19_trial.py of f1fe0685c overlaid (lab preparation before the pre-update state)
+2026-10-16T16:38:58Z cell set19-catchup-debian13 start
+2026-10-16T16:52:50Z cell set19-catchup-debian13 end rc=0
+2026-10-16T16:54:34Z run copy c: set19_trial.py with the RandomizedDelaySec=0 lab drop-in overlaid
+2026-10-16T16:54:47Z run copy c dry runs
+2026-10-16T16:54:54Z cell set19-catchup-debian13 start
+2026-10-16T17:09:06Z cell set19-catchup-debian13 end rc=0
+2026-10-16T17:09:22Z cell set19-failed-debian13 start
+2026-10-16T17:23:24Z cell set19-failed-debian13 end rc=0

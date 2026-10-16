@@ -1,0 +1,70 @@
+== before
+== certbot.timer
+NextElapseUSecRealtime=Sat 2026-10-17 06:46:38 UTC
+LastTriggerUSec=
+Result=success
+LoadState=loaded
+ActiveState=active
+SubState=waiting
+DropInPaths=
+UnitFileState=enabled
+InvocationID=c605b3852821421a8ae63602ecb6efdc
+== certbot.service
+Result=success
+NRestarts=0
+ExecMainStartTimestamp=
+ExecMainExitTimestamp=
+ExecMainStatus=0
+LoadState=loaded
+ActiveState=inactive
+SubState=dead
+DropInPaths=
+UnitFileState=static
+InvocationID=
+== stamp
+/var/lib/systemd/timers/stamp-certbot.timer mtime=2026-10-16 16:46:29.126847808 +0000 (1792169189)
+== now
+2026-10-16T16:48:39Z
+1792169319
+== age the persistent stamp (lab)
+touch_rc=0
+== after
+== certbot.timer
+NextElapseUSecRealtime=Sat 2026-10-17 06:46:38 UTC
+LastTriggerUSec=
+Result=success
+LoadState=loaded
+ActiveState=active
+SubState=waiting
+DropInPaths=
+UnitFileState=enabled
+InvocationID=c605b3852821421a8ae63602ecb6efdc
+== certbot.service
+Result=success
+NRestarts=0
+ExecMainStartTimestamp=
+ExecMainExitTimestamp=
+ExecMainStatus=0
+LoadState=loaded
+ActiveState=inactive
+SubState=dead
+DropInPaths=
+UnitFileState=static
+InvocationID=
+== stamp
+/var/lib/systemd/timers/stamp-certbot.timer mtime=2026-10-13 16:48:39.661984580 +0000 (1791910119)
+== now
+2026-10-16T16:48:39Z
+1792169319
+== timer definition
+# /usr/lib/systemd/system/certbot.timer
+[Unit]
+Description=Run certbot twice daily
+
+[Timer]
+OnCalendar=*-*-* 00,12:00:00
+RandomizedDelaySec=43200
+Persistent=true
+
+[Install]
+WantedBy=timers.target
