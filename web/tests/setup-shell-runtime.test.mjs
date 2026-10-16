@@ -35,6 +35,7 @@ const stubURL = moduleURL(`
     const Icon = props => React.createElement('i', props);
     export const LogOut = Icon, ChevronDown = Icon, Menu = Icon, KeyRound = Icon, UserCheck = Icon;
     export const BrandMark = Icon;
+    export const BuildCommit = ({ commit }) => 'build ' + commit.slice(0, 12);
     export const ThemeSwitcher = () => React.createElement('button', null, 'Theme');
     export const SkinSwitcher = () => React.createElement('button', null, 'Skin');
     export const LanguageSwitcher = () => React.createElement('button', null, 'Language');
@@ -63,7 +64,7 @@ const stubURL = moduleURL(`
     export const useComponentCensus = () => 1;
 `);
 const layoutURL = compileURL('../src/components/Layout.tsx', Object.fromEntries([
-    './BrandMark', 'lucide-react', '../lib/api', '../auth/AuthContext', '../i18n',
+    './BrandMark', './BuildCommit', 'lucide-react', '../lib/api', '../auth/AuthContext', '../i18n',
     '../nav', '../lib/componentCensus', './ThemeSwitcher', './SkinSwitcher',
     './LanguageSwitcher', './ChangePasswordModal', './pageHeaderSlot',
 // The shell reads the domain list through the real shared layer.

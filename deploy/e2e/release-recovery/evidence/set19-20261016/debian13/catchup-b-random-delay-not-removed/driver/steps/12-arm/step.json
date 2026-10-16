@@ -1,0 +1,173 @@
+{
+  "checks": {
+    "check": {
+      "body": {
+        "available": true,
+        "current_commit": "1743ac69edb0e5723dc60d992b53094dcc4b1431",
+        "current_version": "v0.1.0-alpha.90",
+        "supported": true,
+        "target": {
+          "arch": "amd64",
+          "archive_sha256": "502c945adae41c3c2a659ddf8cbe010655a3f5203a1ff525941c4e3ad0fc3970",
+          "archive_size": "66250724",
+          "commit": "16cbfc877bd46608f8ff37e2a37905a21941db29",
+          "os": "linux",
+          "published_at": "2026-10-16T16:40:12Z",
+          "sequence": "92",
+          "version": "v0.1.0-alpha.92"
+        }
+      },
+      "http": 200
+    },
+    "observer_armed": {
+      "at": "2026-10-16T16:50:20Z",
+      "seconds": 0.57
+    },
+    "observer_intent": {
+      "baseline": {
+        "agent_sha256": "694c4a18e0d64dcab70caae9925cc71983e485ca6b7f93beece4fa1bb042f692",
+        "commit": "1743ac69edb0e5723dc60d992b53094dcc4b1431",
+        "panel_sha256": "3d05de1311898e40c7d984c0ea26a12b04b7020ddae789114c2702087d8a2b96",
+        "version": "v0.1.0-alpha.90"
+      },
+      "identity": {
+        "cell_id": "release-recovery__27b110f8d12f0310",
+        "node": "debian13",
+        "nonce": "27b110f8d12f03103e9bef8c17ad8eb729b63f582c5efa72e8d29c937d8223f5",
+        "vm_uuid": "815fd5a1-2ad8-5bde-bee7-7c738a39eb0a"
+      },
+      "mode": "watch",
+      "operation_id": "1cbe7127c85970addfbfce447e333ed1",
+      "recovery_fault": null,
+      "schema": "celikpanel/owner-update-observer-intent/v1",
+      "target": {
+        "agent_sha256": "abcfd30e6a8cbb04fe332a0cb3950321c33bf6db3a1a4ffcf90f866da2991edb",
+        "commit": "16cbfc877bd46608f8ff37e2a37905a21941db29",
+        "panel_sha256": "50a086532c4659537a4b89fae0b30660b952df0a411ea06dd21a5314f714c634",
+        "version": "v0.1.0-alpha.92"
+      }
+    },
+    "observer_unit": "celikpanel-lab-owner-update-observer-1cbe7127c85970addfbfce447e333ed1.service",
+    "origin_check": {
+      "addresses": [
+        "127.0.0.1"
+      ],
+      "boot_id": "6f732827-aeb9-4d54-8217-98afa5f642c5",
+      "getent_outcome": "found",
+      "getent_returncode": 0,
+      "getent_status": "ok",
+      "getent_stdout": "127.0.0.1       celikpanel.net\n",
+      "http": "200",
+      "loopback_only": true,
+      "ok": true,
+      "unit": {
+        "ActiveState": "active",
+        "NRestarts": "0",
+        "UnitFileState": "enabled"
+      }
+    },
+    "page_window": {
+      "browser_done": {
+        "at": "2026-10-16T16:50:21.095Z",
+        "by": "cold-load-set19.mjs",
+        "started": true
+      },
+      "ended_at": "2026-10-16T16:50:21Z",
+      "hand": "/var/tmp/cp-set19/hand/h19cb-page",
+      "password_file_removed": true,
+      "window": "page"
+    },
+    "page_window_preps": [
+      {
+        "at": "2026-10-16T16:50:19Z",
+        "prep": "page-ready",
+        "result": {
+          "current_version": "v0.1.0-alpha.90",
+          "ok": true,
+          "target": {
+            "archive_sha256": "502c945adae41c3c2a659ddf8cbe010655a3f5203a1ff525941c4e3ad0fc3970",
+            "commit": "16cbfc877bd46608f8ff37e2a37905a21941db29",
+            "sequence": "92",
+            "version": "v0.1.0-alpha.92"
+          }
+        }
+      },
+      {
+        "at": "2026-10-16T16:50:20Z",
+        "prep": "arm_1cbe7127c85970addfbfce447e333ed1",
+        "result": {
+          "armed": true,
+          "request_id": "1cbe7127c85970addfbfce447e333ed1",
+          "seconds": 0.57
+        }
+      }
+    ],
+    "request_id": "1cbe7127c85970addfbfce447e333ed1",
+    "start_answer": {
+      "answer_seen_by_the_browser": true,
+      "answered_ms": 1792169421089,
+      "armed": {
+        "armed": true,
+        "request_id": "1cbe7127c85970addfbfce447e333ed1",
+        "seconds": 0.57
+      },
+      "body": {
+        "accepted": true,
+        "plan": {
+          "expected_restart_seconds": 90,
+          "restart_bound_seconds": 360,
+          "steps": [
+            {
+              "elapsed_seconds": 0,
+              "id": "download",
+              "started_at": "2026-10-16T16:50:21Z",
+              "state": "running"
+            },
+            {
+              "id": "verify",
+              "state": "pending"
+            },
+            {
+              "id": "prepare",
+              "state": "pending"
+            },
+            {
+              "id": "restart",
+              "state": "pending"
+            },
+            {
+              "id": "confirm",
+              "state": "pending"
+            }
+          ]
+        },
+        "request_id": "1cbe7127c85970addfbfce447e333ed1",
+        "status": "queued",
+        "target": {
+          "arch": "amd64",
+          "archive_sha256": "502c945adae41c3c2a659ddf8cbe010655a3f5203a1ff525941c4e3ad0fc3970",
+          "archive_size": "66250724",
+          "commit": "16cbfc877bd46608f8ff37e2a37905a21941db29",
+          "os": "linux",
+          "published_at": "2026-10-16T16:40:12Z",
+          "sequence": "92",
+          "version": "v0.1.0-alpha.92"
+        }
+      },
+      "failed": null,
+      "held_ms": 1792169420074,
+      "note": "the page's own POST, held unchanged until the observer was armed, then released",
+      "page_dialog_line_after_release": "The request was accepted; secure status tracking started.",
+      "pressed_ms": 1792169420006,
+      "released_ms": 1792169420962,
+      "request_id": "1cbe7127c85970addfbfce447e333ed1",
+      "schema": "celikpanel/set17-start-answer/v1",
+      "status": 202,
+      "tool": "cold-load-set19.mjs"
+    }
+  },
+  "finished_at": "2026-10-16T16:50:21Z",
+  "name": "arm",
+  "started_at": "2026-10-16T16:50:07Z",
+  "verdict": "passed"
+}

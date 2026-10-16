@@ -69,6 +69,7 @@ const { PanelUpdateCard } = await import(compileURL('../src/components/PanelUpda
     [/from ['"]\.\.\/lib\/panelUpdateAdmission['"]/g, `from '${admissionURL}'`],
     [/from ['"]\.\/SystemUpdateOperation['"]/g, `from '${operationURL}'`],
     [/from ['"]\.\/SystemUpdateSteps['"]/g, `from 'data:text/javascript,export function SystemUpdateSteps() { return null; } export function systemUpdateStepsAnnouncement() { return ""; }'`],
+    [/from ['"]\.\/BuildCommit['"]/g, `from '${compileURL('../src/components/BuildCommit.tsx', [[/from ['"]react\/jsx-runtime['"]/g, `from '${jsxRuntimeURL}'`], [/from ['"]\.\.\/i18n['"]/g, `from '${i18nURL}'`]])}'`],
 ]));
 
 const flush = async () => { for (let i = 0; i < 6; i += 1) await Promise.resolve(); };

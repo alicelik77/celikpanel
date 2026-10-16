@@ -1,0 +1,104 @@
+{
+  "checks": {
+    "guest_fresh": true,
+    "helpers": {
+      "guest_bound_worker.py": "1ebff5e14d87761e72dbb3ca30c6f1aaad5a2aa5df7971f23ab81ae305bc3ea1",
+      "guest_bound_worker.py (set19 generated copy)": "30f521634ccce0191c67799444f97d0724bff2cb65a03039dd48493248beae7f",
+      "guest_owner_port_hold.py": "81c3ccc9ed21edaa3429546a3abcbef81ac8a738c182bee752bb7486490a8bde",
+      "guest_owner_update_observer.py": "263ed14c59f24956aaf0e21ece5b74b9f81dbfe19ad652d89a87ea6e25f731af",
+      "guest_port_fault.py": "be8eb7008d50b343c1194bef8c32c14335fa750cd7be61c43a7c1e52b2d6efc6",
+      "guest_probe.py": "417dcfc2ad32c399aa43bc33d886f64eee9eae88707556ff22cf0ea6b3a008a2",
+      "guest_recovery_fault.py": "4d9ae59bcbc2fdb4a6f42ade529c1b6b1f6366b726f92ba37058957b7696da50",
+      "guest_recovery_handoff.py": "21dfaa3bc76b56f463a706f50f8b6413a5325ebba978b113a0b4a59d2be4c0cf",
+      "guest_request_identity_native.py": "5300f7398b81a0126765d49db8c070eb35a472daa1260074f5f25b1745242349",
+      "guest_set10_native.py": "562b857fa64bb950d8a34704f60fc5b682b665b117a03eba387d6493899b181b",
+      "guest_set11_native.py": "5471d8ce8c10657697d540a5fb8d3ca067ecccace6339fdc3a37ef26242d348c",
+      "guest_set12_native.py": "19e93626f3ef5c0434514c83fd33962c2afc729b398d3abc88c756cab56faa0d",
+      "guest_set13_native.py": "302e45f1ca7fe33f66fe280b823d10e652e330b649c53120edafee142f0d03c1",
+      "guest_set14_native.py": "eebc8a4f358e052753e182b020546569bf47ecb19f6bf454550be0edfa28d624",
+      "guest_set4_native.py": "3d601a1cb544abd7a244d9015804e6acfd584c079691b56bf7c7af0f94017c12",
+      "guest_set8_native.py": "8c58a8a6485d8eea9a3020666cfdcb4ef230cd2be1a8a141b4e9242082d6172b",
+      "guest_upd1_workload.py": "3d2f218f298b3ded3228b0089155b45e1e81c8dce9a8b8783e5face05287b8cf",
+      "guest_update_kill.py": "f996f1cedf3777ef12b1f44282dcb3208c61400f76f27c4ed3fe4e290f95cd26"
+    },
+    "origin_name_before": {
+      "hosts_mappings": [],
+      "nsswitch_hosts": "hosts:          files myhostname resolve [!UNAVAIL=return] dns",
+      "resolver_queried": false
+    },
+    "proofs": {
+      "baseline": {
+        "agent_sha256": "694c4a18e0d64dcab70caae9925cc71983e485ca6b7f93beece4fa1bb042f692",
+        "commit": "1743ac69edb0e5723dc60d992b53094dcc4b1431",
+        "dns_owner_tools": [
+          "dns-owner-tools/README.md",
+          "dns-owner-tools/bind-peer-inspect",
+          "dns-owner-tools/dns-peer-enroll",
+          "dns-owner-tools/pdns-peer-inspect"
+        ],
+        "files": 214,
+        "panel_sha256": "3d05de1311898e40c7d984c0ea26a12b04b7020ddae789114c2702087d8a2b96",
+        "release_policy": {
+          "current": 90,
+          "format": "celikpanel-release-sequence-policy-v1",
+          "previous": 89,
+          "previous_commit": "ac36fccf4e4238a8bc4624356a478ba8dab20b34",
+          "previous_version": "v0.1.0-alpha.89",
+          "sha256": "3033b823003dea1841ba5edf62e48f56db8f60f245aa628f0f57cd8ddcf1b2db",
+          "version": "v0.1.0-alpha.90"
+        },
+        "source_proof": {
+          "acceptance_notice_sha256": "57b2249196aadf4ca1e86ea2b70fc73b67a34a9b5fb943c2c456e1b58617b0e1",
+          "commit": "1743ac69edb0e5723dc60d992b53094dcc4b1431",
+          "exempted_from_git_proof": [
+            "ACCEPTANCE-LICENSE-BUILD.txt"
+          ],
+          "method": "real Git commit/tree and every packaged static source blob",
+          "tree": "bbfa5305cc8c5b6bb4a34a2e640633582dc7534b",
+          "verified_static_files": 62
+        },
+        "tree": "bbfa5305cc8c5b6bb4a34a2e640633582dc7534b"
+      },
+      "good": {
+        "agent_sha256": "abcfd30e6a8cbb04fe332a0cb3950321c33bf6db3a1a4ffcf90f866da2991edb",
+        "commit": "16cbfc877bd46608f8ff37e2a37905a21941db29",
+        "dns_owner_tools": [
+          "dns-owner-tools/README.md",
+          "dns-owner-tools/bind-peer-inspect",
+          "dns-owner-tools/dns-peer-enroll",
+          "dns-owner-tools/pdns-peer-inspect"
+        ],
+        "files": 218,
+        "panel_sha256": "50a086532c4659537a4b89fae0b30660b952df0a411ea06dd21a5314f714c634",
+        "release_policy": {
+          "current": 92,
+          "format": "celikpanel-release-sequence-policy-v1",
+          "previous": 90,
+          "previous_commit": "1743ac69edb0e5723dc60d992b53094dcc4b1431",
+          "previous_version": "v0.1.0-alpha.90",
+          "sha256": "548d15941e44910180051d22e0297f62c0d0f6d8f34714db42ca598cc7db6018",
+          "version": "v0.1.0-alpha.92"
+        },
+        "source_proof": {
+          "acceptance_notice_sha256": "2bd0d0575eee9e08f2236b19be7c56561158390028b7e4af0e6bde82b09fd44f",
+          "commit": "16cbfc877bd46608f8ff37e2a37905a21941db29",
+          "exempted_from_git_proof": [
+            "ACCEPTANCE-LICENSE-BUILD.txt"
+          ],
+          "method": "real Git commit/tree and every packaged static source blob",
+          "tree": "df64d9a13b1f4ff67d80603593ae2e46de0b17b2",
+          "verified_static_files": 62
+        },
+        "tree": "df64d9a13b1f4ff67d80603593ae2e46de0b17b2"
+      }
+    },
+    "set6_note": "`origin_name_before.hosts_mappings` is empty when the only line that maps the name is the lab's own pin of the first step; the lines as read are in the field above",
+    "set6_origin_name_lines_in_the_hosts_file": [
+      "127.0.0.1 celikpanel.net # disposable CelikPanel lab pin before provisioning"
+    ]
+  },
+  "finished_at": "2026-10-16T16:56:03Z",
+  "name": "preflight",
+  "started_at": "2026-10-16T16:55:58Z",
+  "verdict": "passed"
+}

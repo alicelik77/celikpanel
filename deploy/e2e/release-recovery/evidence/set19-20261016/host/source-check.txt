@@ -1,0 +1,19 @@
+source f9198bdc1905b969ee04d0b95c455d7a309fb28e tree 7ff365080278a21b706beadaef15e5bb0e277a7f
+tag v0.1.0-alpha.90 = 1743ac69edb0e5723dc60d992b53094dcc4b1431
+tag v0.1.0-alpha.91 = 356109b532b9d0d0df5dd31fc19e9932918a9648
+git log --oneline v0.1.0-alpha.91..f9198bdc1905b969ee04d0b95c455d7a309fb28e:
+f9198bdc1 set19 harness: the owner's update 90 -> 92 with Certbot renewal as a moving workload
+d1be19aea Prepare v0.1.0-alpha.92: sequence 92, bootstrap pins, pinned tests
+816c4207a Keep the update page calm while recovery finishes it, and show the success it is
+4406f4e5c Say an installed update that repeats its renewal step as finishing, not failed
+6696897ad Never stop or misread the owner's Certbot renewal when the update turns it back on
+(end)
+git diff --stat v0.1.0-alpha.90 f9198bdc1905b969ee04d0b95c455d7a309fb28e -- internal/db/migrations:
+(end; empty = no migration)
+release policy at f9198bdc1905b969ee04d0b95c455d7a309fb28e:
+format=celikpanel-release-sequence-policy-v1
+version=v0.1.0-alpha.92
+current=92
+previous=91
+previous_version=v0.1.0-alpha.91
+previous_commit=356109b532b9d0d0df5dd31fc19e9932918a9648

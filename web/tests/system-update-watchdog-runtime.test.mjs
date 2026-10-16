@@ -124,7 +124,8 @@ test('background watchdog visibly reports target, elapsed time, and exact reques
     assert.match(component, /exactMarker\.target\.version/);
     assert.match(component, /formatElapsed\(exactMarker\.created_at, now\)/);
     assert.match(component, /exactMarker\.request_id/);
-    assert.match(component, /role=\{terminalKind === 'failed' \? 'alert' : 'status'\}/);
+    // An alert only for a failure the owner must act on (Frankfurt 2026-10-16).
+    assert.match(component, /role=\{markTone === 'danger' \? 'alert' : 'status'\}/);
     assert.match(en, /'panelUpdate\.accepted': 'The request was accepted/);
     assert.match(en, /'panelUpdate\.watch': 'Navigate;/);
     assert.match(tr, /'panelUpdate\.accepted': 'İstek kabul edildi/);

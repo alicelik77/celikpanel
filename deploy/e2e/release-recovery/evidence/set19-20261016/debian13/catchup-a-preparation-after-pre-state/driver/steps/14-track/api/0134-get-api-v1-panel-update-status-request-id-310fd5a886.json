@@ -1,0 +1,113 @@
+{
+  "outcome": "response",
+  "panel": "owner",
+  "purpose": "SystemUpdateOperation status (read-only poll)",
+  "request": {
+    "body": null,
+    "headers": [
+      [
+        "Accept",
+        "application/json"
+      ],
+      [
+        "Host",
+        "127.0.0.1:19419"
+      ],
+      [
+        "Cookie",
+        "[REDACTED]"
+      ]
+    ],
+    "method": "GET",
+    "path": "/api/v1/panel/update/status?request_id=310fd5a8862eaa368816d1677b8df9e2"
+  },
+  "response": {
+    "elapsed_seconds": 0.032,
+    "headers": [
+      [
+        "Cache-Control",
+        "no-store"
+      ],
+      [
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+      ],
+      [
+        "Content-Type",
+        "application/json"
+      ],
+      [
+        "Referrer-Policy",
+        "no-referrer"
+      ],
+      [
+        "Strict-Transport-Security",
+        "max-age=31536000"
+      ],
+      [
+        "X-Content-Type-Options",
+        "nosniff"
+      ],
+      [
+        "X-Frame-Options",
+        "DENY"
+      ],
+      [
+        "Date",
+        "Fri, 16 Oct 2026 16:34:36 GMT"
+      ],
+      [
+        "Content-Length",
+        "794"
+      ]
+    ],
+    "json": {
+      "created_at": "2026-10-16T16:34:27.253158285Z",
+      "found": true,
+      "plan": {
+        "expected_restart_seconds": 90,
+        "restart_bound_seconds": 360,
+        "steps": [
+          {
+            "id": "download",
+            "started_at": "2026-10-16T16:34:27Z",
+            "state": "done"
+          },
+          {
+            "finished_at": "2026-10-16T16:34:32Z",
+            "id": "verify",
+            "state": "done"
+          },
+          {
+            "elapsed_seconds": 4,
+            "id": "prepare",
+            "started_at": "2026-10-16T16:34:32Z",
+            "state": "running"
+          },
+          {
+            "id": "restart",
+            "state": "pending"
+          },
+          {
+            "id": "confirm",
+            "state": "pending"
+          }
+        ]
+      },
+      "request_id": "310fd5a8862eaa368816d1677b8df9e2",
+      "status": "running",
+      "target": {
+        "arch": "amd64",
+        "archive_sha256": "502c945adae41c3c2a659ddf8cbe010655a3f5203a1ff525941c4e3ad0fc3970",
+        "archive_size": "66250724",
+        "commit": "16cbfc877bd46608f8ff37e2a37905a21941db29",
+        "os": "linux",
+        "sequence": "92",
+        "version": "v0.1.0-alpha.92"
+      },
+      "updated_at": "2026-10-16T16:34:27.399105499Z"
+    },
+    "status": 200,
+    "text": null
+  }
+}

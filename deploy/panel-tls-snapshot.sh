@@ -490,6 +490,92 @@ _panel_tls_systemctl_active_state() {
     esac
 }
 
+# A Certbot renewal service is the server owner's workload (D-022). Its oneshot
+# run reads "activating" while it works, and "failed" keeps the owner's last
+# renewal result. The updater never stops, starts or resets it: it only waits,
+# bounded and read-only, for a run to finish, and records "inactive" for both
+# idle results because the snapshot describes whether a run is in progress.
+# Certbot yenileme hizmeti sahibin iş yüküdür. Güncelleyici onu durdurmaz,
+# başlatmaz, sıfırlamaz; yalnız çalışan bir yenilemenin bitmesini sınırlı ve
+# salt-okur bekler. "failed", sahibin son yenileme sonucudur; güncelleme hatası değildir.
+_panel_tls_service_run_state() {
+    local unit=${1:?unit required} value rc=0
+    if value=$(systemctl is-active "$unit" 2>/dev/null); then
+        rc=0
+    else
+        rc=$?
+    fi
+    case "$value" in
+        inactive|failed|activating|active|deactivating|reloading|refreshing) printf '%s\n' "$value" ;;
+        *) _panel_tls_fail "cannot read the run state of $unit (rc=$rc): ${value:-empty}"; return 1 ;;
+    esac
+}
+
+_panel_tls_service_run_is_idle() {
+    case "${1:-}" in inactive|failed) return 0 ;; *) return 1 ;; esac
+}
+
+# The current invocation of a service, or empty when systemd reports none or
+# cannot be read. Used only to say whether a run started after a timer restart.
+_panel_tls_service_invocation() {
+    local value
+    value=$(systemctl show --property=InvocationID --value -- "${1:?unit required}" 2>/dev/null) || value=
+    [[ $value =~ ^[0-9a-f]{32}$ ]] || value=
+    printf '%s\n' "$value"
+}
+
+_panel_tls_service_run_wait_seconds() {
+    local value=${CELIKPANEL_CERTBOT_RUN_WAIT_SECONDS:-180}
+    [[ $value =~ ^[0-9]{1,4}$ ]] || value=180
+    printf '%s\n' "$value"
+}
+
+# Waits, bounded and read-only, until a running renewal finishes; prints the
+# final run state (inactive or failed). It never interrupts the run.
+# Çalışan bir yenilemenin bitmesini sınırlı ve salt-okur bekler; kesmez.
+_panel_tls_wait_service_idle() {
+    local unit=${1:?unit required} limit waited=0 state announced=0
+    limit=$(_panel_tls_service_run_wait_seconds)
+    while :; do
+        state=$(_panel_tls_service_run_state "$unit") || return 1
+        if _panel_tls_service_run_is_idle "$state"; then
+            printf '%s\n' "$state"
+            return 0
+        fi
+        if (( waited >= limit )); then
+            _panel_tls_fail "Certbot renewal ($unit) is still running after ${limit}s; it was not interrupted. Retry after it finishes."
+            return 1
+        fi
+        if (( announced == 0 )); then
+            printf 'Certbot renewal (%s) is running; waiting up to %ss for it to finish without interrupting it.\n' "$unit" "$limit" >&2
+            printf 'Certbot yenilemesi (%s) çalışıyor; kesilmeden bitmesi için en çok %s sn bekleniyor.\n' "$unit" "$limit" >&2
+            announced=1
+        fi
+        sleep 1
+        waited=$((waited + 1))
+    done
+}
+
+_panel_tls_note_owner_failed_renewal() {
+    local unit=${1:?unit required} when=${2:?context required}
+    case "$when" in
+        before)
+            printf "Certbot renewal (%s) reports that its last run, before this update, failed. That is the server owner's renewal result, not an update failure; the update leaves it as it is. To see why: sudo journalctl -u %s -n 50\n" "$unit" "$unit" >&2
+            printf 'Certbot yenilemesi (%s), bu güncellemeden önceki son çalışmasının başarısız olduğunu bildiriyor. Bu, sunucu sahibinin yenileme sonucudur, güncelleme hatası değildir; güncelleme ona dokunmaz. Nedenini görmek için: sudo journalctl -u %s -n 50\n' "$unit" "$unit" >&2
+            ;;
+        earlier)
+            printf "Certbot renewal (%s) reports that its last run, before its timer was turned back on, failed. That is the server owner's renewal result, not an update failure; the update leaves it as it is. To see why: sudo journalctl -u %s -n 50
+" "$unit" "$unit" >&2
+            printf 'Certbot yenilemesi (%s), zamanlayıcısı yeniden açılmadan önceki son çalışmasının başarısız olduğunu bildiriyor. Bu, sunucu sahibinin yenileme sonucudur, güncelleme hatası değildir; güncelleme ona dokunmaz. Nedenini görmek için: sudo journalctl -u %s -n 50
+' "$unit" "$unit" >&2
+            ;;
+        after)
+            printf "Certbot renewal (%s) ran when its timer was turned back on and reported a failure. That is the server owner's renewal result, not an update failure; the update leaves it as it is. To see why: sudo journalctl -u %s -n 50\n" "$unit" "$unit" >&2
+            printf 'Certbot yenilemesi (%s), zamanlayıcısı yeniden açıldığında çalıştı ve başarısız olduğunu bildirdi. Bu, sunucu sahibinin yenileme sonucudur, güncelleme hatası değildir; güncelleme ona dokunmaz. Nedenini görmek için: sudo journalctl -u %s -n 50\n' "$unit" "$unit" >&2
+            ;;
+    esac
+}
+
 _panel_tls_validate_unit_state_tuple() {
     local kind=${1:?kind required} unit=${2:?unit required}
     local load=${3:?load state required} enabled=${4:?enabled state required}
@@ -654,12 +740,19 @@ _panel_tls_snapshot_regular() {
 }
 
 _panel_tls_capture_service() {
-    local root=${1:?snapshot root required} unit=${2:?unit required} load enabled active
+    local root=${1:?snapshot root required} unit=${2:?unit required} load enabled active run
     load=$(_panel_tls_systemctl_load_state "$unit") || return 1
     enabled=$(_panel_tls_systemctl_enabled_state "$unit") || return 1
-    active=$(_panel_tls_systemctl_active_state "$unit") || return 1
+    run=$(_panel_tls_service_run_state "$unit") || return 1
+    # A running renewal is waited for, never interrupted; a failed last run is
+    # the owner's result and is recorded as "not running".
+    # Çalışan yenileme beklenir, kesilmez; başarısız son çalışma sahibin sonucudur.
+    if ! _panel_tls_service_run_is_idle "$run"; then
+        run=$(_panel_tls_wait_service_idle "$unit") || return 1
+    fi
+    [[ $run != failed ]] || _panel_tls_note_owner_failed_renewal "$unit" before
+    active=inactive
     _panel_tls_validate_unit_state_tuple service "$unit" "$load" "$enabled" "$active" || return 1
-    [[ $active == inactive ]] || { _panel_tls_fail "Certbot service is currently running; retry after it becomes idle: $unit"; return 1; }
     printf '%s\t%s\t%s\t%s\n' "$unit" "$load" "$enabled" "$active" >>"$root/certbot-services.tsv" ||
         { _panel_tls_fail "cannot record Certbot service state"; return 1; }
 }
@@ -917,8 +1010,13 @@ _panel_tls_external_file_matches() {
     [[ $saved_metadata == "$live_metadata" ]] || { _panel_tls_fail "transaction-owned file metadata changed: $live"; return 1; }
 }
 
+# Timers must be stopped. A renewal service must not be running in the
+# default mode; "restore" mode accepts a running renewal because restoring the
+# timers does not touch the certificate files (and never stops the owner's run).
+# Zamanlayıcılar durmuş olmalı; yenileme hizmeti varsayılan kipte çalışmıyor
+# olmalı. "restore" kipi çalışan yenilemeyi kabul eder ve onu durdurmaz.
 _panel_tls_assert_scheduler_quiesced() {
-    local root=${1:?snapshot root required} unit load saved enabled active
+    local root=${1:?snapshot root required} mode=${2:-quiesced} unit load saved enabled active run
     local current_load current_enabled current_active
     for unit in certbot.timer certbot-renew.timer; do _panel_tls_assert_timer_definition "$root" "$unit" || return 1; done
     for unit in certbot.timer certbot-renew.timer certbot.service certbot-renew.service; do
@@ -927,7 +1025,14 @@ _panel_tls_assert_scheduler_quiesced() {
         IFS=$'\t' read -r load enabled active <<<"$saved"
         current_load=$(_panel_tls_systemctl_load_state "$unit") || return 1
         current_enabled=$(_panel_tls_systemctl_enabled_state "$unit") || return 1
-        current_active=$(_panel_tls_systemctl_active_state "$unit") || return 1
+        if [[ $unit == *.timer ]]; then
+            current_active=$(_panel_tls_systemctl_active_state "$unit") || return 1
+        else
+            run=$(_panel_tls_service_run_state "$unit") || return 1
+            current_active=inactive
+            _panel_tls_service_run_is_idle "$run" || current_active=active
+            [[ $mode != restore ]] || current_active=inactive
+        fi
         _panel_tls_validate_unit_state_tuple scheduler "$unit" "$current_load" "$current_enabled" "$current_active" || return 1
         [[ $current_load == "$load" ]] || { _panel_tls_fail "scheduler LoadState changed while quiescing: $unit"; return 1; }
         [[ $current_enabled == "$enabled" ]] || { _panel_tls_fail "scheduler enable state changed while quiescing: $unit"; return 1; }
@@ -935,6 +1040,12 @@ _panel_tls_assert_scheduler_quiesced() {
     done
 }
 
+# Pauses renewal for a transaction: stops the timers so no new run starts, then
+# waits, bounded and read-only, for a run already in progress to finish. The
+# renewal services themselves are never stopped (an interrupted renewal is the
+# owner's loss), and a failed last run is accepted as the owner's result.
+# Yenilemeyi duraklatır: zamanlayıcıları durdurur, süren bir çalışmanın bitmesini
+# sınırlı ve salt-okur bekler. Yenileme hizmetleri asla durdurulmaz.
 panel_tls_quiesce_certbot_scheduler() {
     local root=${1:?snapshot root required} unit saved load enabled active
     panel_tls_snapshot_validate "$root" || return 1
@@ -947,7 +1058,7 @@ panel_tls_quiesce_certbot_scheduler() {
     for unit in certbot.service certbot-renew.service; do
         saved=$(_panel_tls_saved_unit_state "$root/certbot-services.tsv" "$unit") || return 1
         IFS=$'\t' read -r load enabled active <<<"$saved"
-        [[ $load == not-found || $load == masked ]] || systemctl stop "$unit" || { _panel_tls_fail "cannot stop $unit"; return 1; }
+        [[ $load == not-found || $load == masked ]] || _panel_tls_wait_service_idle "$unit" >/dev/null || return 1
     done
     _panel_tls_assert_scheduler_quiesced "$root"
 }
@@ -1210,8 +1321,12 @@ _panel_tls_restore_active_state() {
 }
 
 # Read-only: succeeds only when every Certbot unit already has exactly its
-# recorded load, enable and active state (and each timer its definition).
-# Salt-okur: her Certbot birimi kayıtlı durumundaysa başarılı olur.
+# recorded load and enable state, each timer its recorded active state and
+# definition. A renewal service's run (running, finished or failed) is the
+# owner's workload and is not compared.
+# Salt-okur: her Certbot birimi kayıtlı yükleme/etkinleştirme durumunda, her
+# zamanlayıcı kayıtlı etkinlik ve tanımındaysa başarılı olur; yenileme
+# çalışmasının kendisi sahibin iş yüküdür ve karşılaştırılmaz.
 panel_tls_certbot_scheduler_matches_snapshot() {
     local root=${1:?snapshot required} file unit load enabled active extra
     local actual_load actual_enabled actual_active
@@ -1220,38 +1335,89 @@ panel_tls_certbot_scheduler_matches_snapshot() {
         while IFS=$'\t' read -r unit load enabled active extra || [[ -n ${unit}${load}${enabled}${active}${extra} ]]; do
             actual_load=$(_panel_tls_systemctl_load_state "$unit") || return 1
             actual_enabled=$(_panel_tls_systemctl_enabled_state "$unit") || return 1
-            actual_active=$(_panel_tls_systemctl_active_state "$unit") || return 1
-            [[ $actual_load == "$load" && $actual_enabled == "$enabled" && $actual_active == "$active" ]] || return 1
-            [[ $unit != *.timer ]] || _panel_tls_assert_timer_definition "$root" "$unit" || return 1
+            [[ $actual_load == "$load" && $actual_enabled == "$enabled" ]] || return 1
+            if [[ $unit == *.timer ]]; then
+                actual_active=$(_panel_tls_systemctl_active_state "$unit") || return 1
+                [[ $actual_active == "$active" ]] || return 1
+                _panel_tls_assert_timer_definition "$root" "$unit" || return 1
+            else
+                # A renewal run (running, finished or failed) is the owner's
+                # workload, not part of the recorded scheduler state.
+                _panel_tls_service_run_state "$unit" >/dev/null || return 1
+            fi
         done <"$root/$file"
     done
 }
 
 panel_tls_restore_certbot_scheduler() {
     local root=${1:?snapshot required} unit file saved load enabled active
-    local actual_load actual_enabled actual_active extra
+    local actual_load actual_enabled actual_active extra run before_certbot before_renew before now
     panel_tls_snapshot_validate "$root" || return 1
-    _panel_tls_assert_scheduler_quiesced "$root" || return 1
-    # Services first; timers last. Caller must hold the durable scheduler-restore
-    # marker and already have released the mutation lock.
+    _panel_tls_assert_scheduler_quiesced "$root" restore || return 1
+    # Caller must hold the durable scheduler-restore marker and already have
+    # released the mutation lock. Services get back only their enable state:
+    # the updater never starts, stops or resets a renewal run. Timers come last.
+    # Turning a Persistent= timer back on may start its renewal at once (a
+    # catch-up run); that run is the owner's renewal and is not an update error.
+    # Hizmetler yalnız etkinleştirme durumlarını geri alır; güncelleyici bir
+    # yenileme çalışmasını başlatmaz, durdurmaz, sıfırlamaz. Zamanlayıcı yeniden
+    # açılınca hemen başlayan telafi çalışması sahibin yenilemesidir, hata değildir.
+    while IFS=$'	' read -r unit load enabled active extra || [[ -n ${unit}${load}${enabled}${active}${extra} ]]; do
+        [[ $load == not-found || $load == masked ]] || _panel_tls_restore_enabled_state "$unit" "$enabled" || return 1
+    done <"$root/certbot-services.tsv"
+    before_certbot=$(_panel_tls_service_invocation certbot.service)
+    before_renew=$(_panel_tls_service_invocation certbot-renew.service)
+    while IFS=$'	' read -r unit load enabled active extra || [[ -n ${unit}${load}${enabled}${active}${extra} ]]; do
+        [[ $load == not-found || $load == masked ]] || {
+            _panel_tls_restore_enabled_state "$unit" "$enabled" || return 1
+            _panel_tls_restore_active_state "$unit" "$active" || return 1
+        }
+    done <"$root/certbot-timers.tsv"
     for file in certbot-services.tsv certbot-timers.tsv; do
-        while IFS=$'\t' read -r unit load enabled active extra || [[ -n ${unit}${load}${enabled}${active}${extra} ]]; do
-            [[ $load == not-found || $load == masked ]] || {
-                _panel_tls_restore_enabled_state "$unit" "$enabled" || return 1
-                _panel_tls_restore_active_state "$unit" "$active" || return 1
-            }
-        done <"$root/$file"
-    done
-    for file in certbot-services.tsv certbot-timers.tsv; do
-        while IFS=$'\t' read -r unit load enabled active extra || [[ -n ${unit}${load}${enabled}${active}${extra} ]]; do
+        while IFS=$'	' read -r unit load enabled active extra || [[ -n ${unit}${load}${enabled}${active}${extra} ]]; do
             actual_load=$(_panel_tls_systemctl_load_state "$unit") || return 1
             actual_enabled=$(_panel_tls_systemctl_enabled_state "$unit") || return 1
-            actual_active=$(_panel_tls_systemctl_active_state "$unit") || return 1
+            if [[ $unit == *.timer ]]; then
+                actual_active=$(_panel_tls_systemctl_active_state "$unit") || return 1
+            else
+                run=$(_panel_tls_service_run_state "$unit") || return 1
+                actual_active=inactive
+            fi
             _panel_tls_validate_unit_state_tuple scheduler "$unit" "$actual_load" "$actual_enabled" "$actual_active" || return 1
             [[ $actual_load == "$load" ]] || { _panel_tls_fail "LoadState not restored for $unit"; return 1; }
             [[ $actual_enabled == "$enabled" ]] || { _panel_tls_fail "enabled state not restored for $unit"; return 1; }
-            [[ $actual_active == "$active" ]] || { _panel_tls_fail "active state not restored for $unit"; return 1; }
-            [[ $unit != *.timer ]] || _panel_tls_assert_timer_definition "$root" "$unit" || return 1
+            if [[ $unit == *.timer ]]; then
+                [[ $actual_active == "$active" ]] || { _panel_tls_fail "active state not restored for $unit"; return 1; }
+                _panel_tls_assert_timer_definition "$root" "$unit" || return 1
+                continue
+            fi
+            [[ $load == loaded ]] || continue
+            before=$before_certbot
+            [[ $unit == certbot.service ]] || before=$before_renew
+            now=$(_panel_tls_service_invocation "$unit")
+            case "$run" in
+                inactive)
+                    if [[ -n $now && $now != "$before" ]]; then
+                        printf 'Certbot renewal (%s) ran when its timer was turned back on and finished.
+' "$unit" >&2
+                        printf 'Certbot yenilemesi (%s), zamanlayıcısı yeniden açılınca çalıştı ve bitti.
+' "$unit" >&2
+                    fi
+                    ;;
+                failed)
+                    if [[ -n $now && $now != "$before" ]]; then
+                        _panel_tls_note_owner_failed_renewal "$unit" after
+                    else
+                        _panel_tls_note_owner_failed_renewal "$unit" earlier
+                    fi
+                    ;;
+                *)
+                    printf "Certbot renewal (%s) started when its timer was turned back on and is running now; it is the server owner's renewal and is left to finish.
+" "$unit" >&2
+                    printf 'Certbot yenilemesi (%s), zamanlayıcısı yeniden açılınca başladı ve şu an çalışıyor; sunucu sahibinin yenilemesidir ve bitmesine bırakılır.
+' "$unit" >&2
+                    ;;
+            esac
         done <"$root/$file"
     done
 }

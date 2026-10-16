@@ -189,6 +189,14 @@ func failureCodeGuidance(status recoveryobs.Status) (string, string, bool) {
 			return "The new version's panel failed its start check before anything was switched on. The server is being returned to the previous version automatically; nothing needs to be done on the server. Check this same request again for the verified result; do not start another update.",
 				"Yeni sürümün paneli, hiçbir şey devreye alınmadan önce başlangıç denetiminden geçemedi. Sunucu otomatik olarak önceki sürüme döndürülüyor; sunucuda yapmanız gereken bir şey yok. Doğrulanmış sonuç için aynı işlemi yeniden sorgulayın; başka güncelleme başlatmayın.", true
 		}
+	case "update_finishing_scheduler":
+		// Frankfurt 2026-10-16: the new version is installed and verified; only
+		// turning the owner's Certbot renewal back on did not confirm, and
+		// automatic recovery repeats exactly that step.
+		if status.TerminalProof == "none" && (status.Phase == "failed" || status.Phase == "recovering") {
+			return "The new version is installed and running. One final step, turning automatic certificate renewal (Certbot) back on, did not confirm on the first try, and the server is repeating it by itself. Nothing needs to be done: check this same request again in a minute and do not start another update.",
+				"Yeni sürüm kuruldu ve çalışıyor. Son adım olan otomatik sertifika yenilemeyi (Certbot) yeniden açma ilk denemede doğrulanmadı; sunucu bu adımı kendiliğinden yineliyor. Yapmanız gereken bir şey yok: bir dakika sonra aynı işlemi yeniden sorgulayın ve başka güncelleme başlatmayın.", true
+		}
 	case "panel_start_unverified":
 		if status.TerminalProof == "none" && (status.Phase == "failed" || status.Phase == "recovering") {
 			return "The update was applied, but the new version's panel did not come up. The server owner should read the panel log on the server: sudo journalctl -u celikpanel-panel -n 50. The update's completion is retried automatically up to its limit; after that, sudo journalctl -u celikpanel-release-recovery.service --no-pager -n 50 shows a one-time retry command for this operation. There is no supported return to the previous version from this point.",
@@ -361,6 +369,9 @@ func pausedCauseGuidance(code string) (string, string, bool) {
 	case "panel_start_unverified":
 		return "The update was applied, but the new version's panel did not come up, and completing the update was retried to its limit. Read the panel log on the server: sudo journalctl -u celikpanel-panel -n 50. Retrying repeats the same start until that cause is fixed. There is no supported return to the previous version from this point.",
 			"Güncelleme uygulandı, ancak yeni sürümün paneli açılmadı ve güncellemenin tamamlanması sınırına kadar yeniden denendi. Sunucudaki panel günlüğünü okuyun: sudo journalctl -u celikpanel-panel -n 50. Bu neden giderilene kadar yeniden deneme aynı başlatmayı tekrarlar. Bu noktadan önceki sürüme desteklenen bir dönüş yok.", true
+	case "update_finishing_scheduler":
+		return "The new version is installed and running, but turning automatic certificate renewal (Certbot) back on did not confirm after the automatic attempts. Certificate renewal may be off until this finishes. The recovery journal names what stopped it, for example a change made to certbot.timer while the update ran.",
+			"Yeni sürüm kuruldu ve çalışıyor, ancak otomatik sertifika yenilemeyi (Certbot) yeniden açma otomatik denemelerden sonra da doğrulanmadı. Bu tamamlanana kadar sertifika yenileme kapalı olabilir. Kurtarma günlüğü neyin durdurduğunu söyler; örneğin güncelleme sürerken certbot.timer üzerinde yapılan bir değişiklik.", true
 	case "candidate_panel_startup_check_failed":
 		return "The new version's panel failed its start check before anything was switched on, and the automatic return to the previous version did not finish. The recovery journal shows what stopped it; retrying continues the same return to the previous version.",
 			"Yeni sürümün paneli, hiçbir şey devreye alınmadan önce başlangıç denetiminden geçemedi ve önceki sürüme otomatik dönüş tamamlanmadı. Kurtarma günlüğü neyin durdurduğunu gösterir; yeniden deneme önceki sürüme aynı dönüşü sürdürür.", true

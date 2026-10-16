@@ -1,0 +1,16 @@
+nft_install_rc=0
+/usr/sbin/nft
+nft_rc=0
+table inet cp_set19_lab {
+	chain out {
+		type filter hook output priority filter; policy accept;
+		oifname "lo" accept
+		ip daddr 127.0.0.0/8 accept
+		tcp dport 443 counter packets 0 bytes 0 log prefix "cp-set19-443 " reject with tcp reset
+		udp dport 443 counter packets 0 bytes 0 reject
+	}
+}
+== self-test
+bash: connect: Connection refused
+bash: line 1: /dev/tcp/203.0.113.1/443: Connection refused
+self_test_rc=1

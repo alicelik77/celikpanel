@@ -1,0 +1,72 @@
+--- a/deploy/e2e/release-recovery/set19_trial.py
++++ b/deploy/e2e/release-recovery/set19_trial.py
+@@ -56,6 +56,18 @@
+     t17.BROWSER[_name] = {"lang": "en", "viewport": "desktop"}
+ STAMP = "/var/lib/systemd/timers/stamp-certbot.timer"
+ DROP_IN = "/etc/systemd/system/certbot.service.d/50-set19-lab-fail.conf"
++# set19 run b: with the stamp aged, systemd moved the missed elapse to the boot time and added the timer's
++# RandomizedDelaySec (up to 12 h); on a guest booted minutes earlier that lands in the future, so the update's timer
++# start did not start the renewal. On a server that has run for days the moved elapse is often already past (the
++# production race). The lab removes the random delay with a timer drop-in written BEFORE the update, so it is part
++# of the timer definition the update captures and must keep.
++TIMER_DROP_IN = "/etc/systemd/system/certbot.timer.d/50-set19-lab-no-random-delay.conf"
++CATCHUP = ("echo '== timer drop-in without the random delay (lab)'; "
++           f"mkdir -p {shlex.quote(str(Path(TIMER_DROP_IN).parent))}; "
++           f"printf '[Timer]\nRandomizedDelaySec=0\n' > {TIMER_DROP_IN}; echo \"timer_drop_in_rc=$?\"; cat {TIMER_DROP_IN}; "
++           "systemctl daemon-reload; echo \"reload_rc=$?\"; "
++           "echo '== age the persistent stamp (lab)'; "
++           f"mkdir -p {shlex.quote(str(Path(STAMP).parent))}; touch -d '3 days ago' {STAMP}; echo \"touch_rc=$?\"; ")
+ NFT_TABLE = "cp_set19_lab"
+ READ_UNITS = ("set +e; for u in certbot.timer certbot.service; do echo \"== $u\"; systemctl show \"$u\" --no-pager "
+               "-p LoadState -p UnitFileState -p ActiveState -p SubState -p Result -p InvocationID -p LastTriggerUSec "
+@@ -72,14 +84,14 @@
+            f"nft list table inet {NFT_TABLE}; echo '== self-test'; timeout 8 bash -c 'exec 3<>/dev/tcp/203.0.113.1/443' 2>&1; "
+            "echo \"self_test_rc=$?\"; true")
+ PREPARATIONS = {
+-    "catchup": ("set +e; echo '== before'; " + READ_UNITS + "; echo '== age the persistent stamp (lab)'; "
+-                f"mkdir -p {shlex.quote(str(Path(STAMP).parent))}; touch -d '3 days ago' {STAMP}; echo \"touch_rc=$?\"; "
++    "catchup": ("set +e; echo '== before'; " + READ_UNITS + "; " + CATCHUP +
+                 "echo '== after'; " + READ_UNITS + "; echo '== timer definition'; systemctl cat certbot.timer 2>&1; true"),
+     "failed": ("set +e; echo '== before'; " + READ_UNITS + "; echo '== failing ExecStart drop-in (lab)'; "
+                f"mkdir -p {shlex.quote(str(Path(DROP_IN).parent))}; "
+                f"printf '[Service]\\nExecStart=\\nExecStart=/bin/false\\n' > {DROP_IN}; echo \"write_rc=$?\"; cat {DROP_IN}; "
+                "systemctl daemon-reload; echo \"reload_rc=$?\"; timeout 60 systemctl start certbot.service; "
+-               "echo \"start_rc=$? (expected non-zero)\"; echo '== after'; " + READ_UNITS + "; true"),
++               "echo \"start_rc=$? (expected non-zero)\"; " + CATCHUP +
++               "echo '== after'; " + READ_UNITS + "; echo '== timer definition'; systemctl cat certbot.timer 2>&1; true"),
+ }
+ 
+ 
+@@ -110,18 +122,22 @@
+                       self_test_refused="self_test_rc=0" not in (network.stdout or ""),
+                       preparation_returncode=prepared.returncode,
+                       what=("lab preparation (not a product change): outbound 443 refused except loopback; " +
+-                            ("the persistent stamp of certbot.timer dated three days back, the timer left active"
+-                             if self.kind == "catchup" else
+-                             "certbot.service given a failing ExecStart drop-in and started once (failed)")))
+-        if self.kind == "catchup":
+-            checks["stamp_aged"] = "touch_rc=0" in text
+-            checks["timer_active_after"] = "ActiveState=active" in after.split("== certbot.service")[0]
+-            ok = checks["stamp_aged"] and checks["timer_active_after"]
+-        else:
+-            service = after.split("== certbot.service", 1)[-1]
++                            ("" if self.kind == "catchup" else
++                             "certbot.service given a failing ExecStart drop-in and started once (failed); ") +
++                            "certbot.timer given a RandomizedDelaySec=0 drop-in (daemon-reload) and its persistent stamp "
++                            "dated three days back, the timer left active"))
++        timer = after.split("== certbot.service")[0]
++        service = after.split("== certbot.service", 1)[-1].split("== stamp")[0]
++        checks["stamp_aged"] = "touch_rc=0" in text
++        checks["timer_active_after"] = "ActiveState=active" in timer
++        checks["timer_drop_in_loaded"] = TIMER_DROP_IN in timer
++        checks["service_state_after"] = next((line for line in service.splitlines() if line.startswith("ActiveState=")), None)
++        checks["service_invocation_after"] = next((line for line in service.splitlines() if line.startswith("InvocationID=")), None)
++        ok = checks["stamp_aged"] and checks["timer_active_after"] and checks["timer_drop_in_loaded"]
++        if self.kind == "failed":
+             checks["service_failed_before_update"] = "ActiveState=failed" in service
+             checks["drop_in_loaded"] = DROP_IN in service
+-            ok = checks["service_failed_before_update"] and checks["drop_in_loaded"]
++            ok = ok and checks["service_failed_before_update"] and checks["drop_in_loaded"]
+         self.s19["preparation"] = checks
+         self.record_json("set19-certbot-preparation.json", checks)
+         if not (ok and checks["reject_rule"]):

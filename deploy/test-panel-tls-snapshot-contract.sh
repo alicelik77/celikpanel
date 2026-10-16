@@ -451,4 +451,105 @@ panel_tls_restore_snapshot "$ABSENT_TLS_SNAPSHOT" "$TLS_DIR" "$PENDING" "$HOOK" 
 panel_tls_restore_certbot_scheduler "$ABSENT_TLS_SNAPSHOT" \
     || fail 'absent-state scheduler restore failed'
 
+# Frankfurt 2026-10-16: the owner's native renewal units, not a fixed idle
+# picture. Turning certbot.timer (Persistent=true, randomized delay) back on
+# may start certbot.service at once; a renewal may also be running or have
+# failed before the update. None of these is an update failure, and the
+# updater never stops, starts or resets the owner's renewal run (D-022, D-025).
+# Frankfurt 2026-10-16: zamanlayıcı yeniden açılınca hemen başlayan yenileme,
+# önceden başarısız ya da süren yenileme güncelleme hatası değildir.
+# shellcheck source=deploy/test-fixture-certbot-renewal.sh
+source "$ROOT/deploy/test-fixture-certbot-renewal.sh"
+export CELIKPANEL_CERTBOT_RUN_WAIT_SECONDS=3
+RENEWAL_ERR=$TEST_ROOT/renewal.err
+expect_no_renewal_violation() {
+    [[ -z $(certbot_fixture_violations) ]] || fail "$1: the owner's renewal was touched: $(certbot_fixture_violations)"
+}
+
+for trigger in activating active finished-ok finished-failed; do
+    certbot_fixture_init "$TEST_ROOT/renewal-fixture"
+    certbot_fixture_set trigger "$trigger"
+    snap=$(certbot_fixture_capture "$TEST_ROOT" "trigger-$trigger") || fail "capture before a triggering timer ($trigger) failed"
+    panel_tls_quiesce_certbot_scheduler "$snap" || fail "quiesce before a triggering timer ($trigger) failed"
+    [[ $(certbot_fixture_get timer-active) == inactive ]] || fail "timer stayed active while paused ($trigger)"
+    invocation_before=$(certbot_fixture_get invocation)
+    panel_tls_restore_certbot_scheduler "$snap" 2>"$RENEWAL_ERR" ||
+        { cat -- "$RENEWAL_ERR" >&2; fail "a timer start that starts its renewal ($trigger) failed the scheduler restore"; }
+    [[ $(certbot_fixture_get invocation) != "$invocation_before" ]] || fail "fixture: the timer start did not start its renewal ($trigger)"
+    [[ $(certbot_fixture_get timer-active) == active && $(certbot_fixture_get timer-enabled) == enabled ]] ||
+        fail "timer not restored when its renewal started ($trigger)"
+    case "$trigger" in
+        activating|active) expected_run=$trigger; expected_note='is running now' ;;
+        finished-ok) expected_run=inactive; expected_note='ran when its timer was turned back on and finished' ;;
+        finished-failed) expected_run=failed; expected_note='not an update failure' ;;
+    esac
+    [[ $(certbot_fixture_get run) == "$expected_run" ]] || fail "restore changed the renewal run ($trigger)"
+    grep -Fq -- "$expected_note" "$RENEWAL_ERR" || fail "renewal run after the timer start not explained ($trigger)"
+    expect_no_renewal_violation "timer start ($trigger)"
+    panel_tls_certbot_scheduler_matches_snapshot "$snap" ||
+        fail "restored scheduler with a started renewal ($trigger) was not recognised as its recorded state"
+    # A recovery attempt that repeats the restore pauses again first: it waits
+    # for the started renewal instead of stopping it.
+    if [[ $trigger == activating ]]; then
+        certbot_fixture_set finish-after 2
+        certbot_fixture_set finish-state inactive
+        panel_tls_quiesce_certbot_scheduler "$snap" 2>"$RENEWAL_ERR" || fail 'repeated pause did not wait for the started renewal'
+        grep -Fq 'waiting up to 3s' "$RENEWAL_ERR" || fail 'waiting for a running renewal is not explained'
+        [[ $(certbot_fixture_get run) == inactive ]] || fail 'repeated pause did not let the renewal finish by itself'
+        certbot_fixture_set trigger none
+        panel_tls_restore_certbot_scheduler "$snap" 2>/dev/null || fail 'repeated restore failed'
+        expect_no_renewal_violation 'repeated pause'
+    fi
+done
+
+# The renewal's last run failed before the update: capture, pause and restore
+# all accept it as the owner's state and leave it failed.
+certbot_fixture_init "$TEST_ROOT/renewal-fixture"
+certbot_fixture_set run failed
+snap=$(certbot_fixture_capture "$TEST_ROOT" failed-before 2>"$RENEWAL_ERR") ||
+    { cat -- "$RENEWAL_ERR" >&2; fail 'a failed renewal before the update stopped the TLS capture'; }
+grep -Fq 'before this update, failed' "$RENEWAL_ERR" || fail 'failed renewal before the update not reported as the owner result'
+grep -Fqx "$(printf 'certbot.service\tloaded\tstatic\tinactive')" "$snap/certbot-services.tsv" ||
+    fail 'failed renewal was not recorded as a renewal that is not running'
+panel_tls_quiesce_certbot_scheduler "$snap" || fail 'a failed renewal before the update stopped the pause'
+panel_tls_snapshot_assert_source_unchanged "$snap" "$TLS_DIR" "$PENDING" "$HOOK" quiesced ||
+    fail 'a failed renewal made the paused source proof fail'
+panel_tls_restore_certbot_scheduler "$snap" 2>"$RENEWAL_ERR" ||
+    { cat -- "$RENEWAL_ERR" >&2; fail 'a failed renewal before the update stopped the scheduler restore'; }
+[[ $(certbot_fixture_get run) == failed ]] || fail "the owner's failed renewal result was reset"
+grep -Fq 'not an update failure' "$RENEWAL_ERR" || fail 'failed renewal at restore not explained as the owner result'
+panel_tls_certbot_scheduler_matches_snapshot "$snap" || fail 'failed renewal hid the restored scheduler state'
+expect_no_renewal_violation 'failed before the update'
+
+# A renewal is running when the update captures and pauses: both wait for it,
+# bounded and read-only; one that outlasts the bound is refused, not stopped.
+certbot_fixture_init "$TEST_ROOT/renewal-fixture"
+certbot_fixture_running activating 2 inactive
+snap=$(certbot_fixture_capture "$TEST_ROOT" running-at-capture 2>"$RENEWAL_ERR") ||
+    { cat -- "$RENEWAL_ERR" >&2; fail 'capture did not wait for a running renewal'; }
+[[ $(certbot_fixture_get run) == inactive ]] || fail 'capture changed the running renewal'
+certbot_fixture_running activating 2 failed
+panel_tls_quiesce_certbot_scheduler "$snap" 2>"$RENEWAL_ERR" || fail 'pause did not wait for a running renewal'
+[[ $(certbot_fixture_get run) == failed ]] || fail 'pause interrupted the running renewal'
+certbot_fixture_running activating 0 inactive
+if panel_tls_quiesce_certbot_scheduler "$snap" 2>"$RENEWAL_ERR"; then
+    fail 'pause accepted a renewal that was still running after its bound'
+fi
+grep -Fq 'it was not interrupted' "$RENEWAL_ERR" || fail 'refused pause did not say the renewal was left running'
+[[ $(certbot_fixture_get run) == activating ]] || fail 'refused pause stopped the running renewal'
+panel_tls_restore_certbot_scheduler "$snap" 2>"$RENEWAL_ERR" ||
+    { cat -- "$RENEWAL_ERR" >&2; fail 'restore refused while the owner renewal was still running'; }
+[[ $(certbot_fixture_get run) == activating && $(certbot_fixture_get timer-active) == active ]] ||
+    fail 'restore did not turn the timer back on beside the running renewal'
+expect_no_renewal_violation 'running renewal'
+# Owner changes stay refused: a disabled timer is not overwritten.
+certbot_fixture_set run inactive
+panel_tls_quiesce_certbot_scheduler "$snap" 2>/dev/null || fail 'pause before owner change failed'
+certbot_fixture_set timer-enabled disabled
+if panel_tls_restore_certbot_scheduler "$snap" 2>/dev/null; then
+    fail 'restore overwrote an owner change of the timer enablement'
+fi
+[[ $(certbot_fixture_get timer-enabled) == disabled ]] || fail 'refused restore changed the owner timer enablement'
+unset CELIKPANEL_CERTBOT_RUN_WAIT_SECONDS
+
 printf 'PASS: panel TLS snapshot/rollback contract\n'

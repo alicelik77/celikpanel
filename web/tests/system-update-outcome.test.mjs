@@ -378,3 +378,46 @@ test('the server line drops internal tokens in every state and is labelled as En
     const tracker = readFileSync(new URL('../src/components/SystemUpdateOperation.tsx', import.meta.url), 'utf8');
     assert.match(tracker, /value\.fallback && !screensReady \? value\.fallback : value\.key/);
 });
+
+// Frankfurt 2026-10-16: red only when the owner must act; what the server
+// handles by itself is progress; the renewal step being repeated is said as
+// "Finishing the update" with the attempt when it is known.
+test('the outcome tone is red only when the owner must act; the repeated renewal step is finishing', () => {
+    const finishing = failedUpdateGuidance(observed('recovering', { failure_code: 'update_finishing_scheduler' }), input());
+    assert.equal(finishing.tone, 'progress');
+    assert.deepEqual(finishing.title, { key: 'panelUpdate.finishing.title' });
+    assert.deepEqual(finishing.finishing, { attempt: { current: 1, max: 3 } });
+    // Before the runner's first attempt and between attempts: finishing, attempt not known.
+    assert.deepEqual(failedUpdateGuidance(observed('failed', { failure_code: 'update_finishing_scheduler' }), input()).finishing, { attempt: null });
+    const between = failedUpdateGuidance(observed('recovery_required', { reason: 'recovery_failed', previous_failure: 'recovery_failed',
+        automatic_recovery: 'retry_scheduled', first_failure_code: 'update_finishing_scheduler' }), input());
+    assert.equal(between.tone, 'progress');
+    assert.deepEqual(between.finishing, { attempt: null });
+    // Other recovering causes stay progress with their own wording, no finishing steps.
+    const other = failedUpdateGuidance(observed('recovering', { failure_code: 'panel_start_unverified' }), input());
+    assert.equal(other.tone, 'progress');
+    assert.equal(other.finishing, undefined);
+    // The owner must act: paused, or a recovery that could not finish.
+    assert.equal(failedUpdateGuidance(observed('recovery_required', { previous_failure: 'recovery_failed',
+        automatic_recovery: 'paused_retry_limit', first_failure_code: 'update_finishing_scheduler' }), input()).tone, 'danger');
+    assert.equal(failedUpdateGuidance(observed('recovery_required', { previous_failure: 'recovery_failed' }), input()).tone, 'danger');
+    // Verified outcomes and the read-only stop.
+    assert.equal(failedUpdateGuidance(observed('succeeded', { failure_code: 'update_finishing_scheduler' }), input()).tone, 'success');
+    assert.equal(failedUpdateGuidance(observed('recovered'), input()).tone, 'warning');
+    assert.equal(failedUpdateGuidance(observed('failed', { failure_code: 'update_preflight_refused' }), input()).tone, 'neutral');
+    // An unreadable outcome is being checked inside its limit, the owner's after it.
+    const reading = failedUpdateGuidance(null, input({ reading: true }));
+    assert.equal(reading.tone, 'progress');
+    assert.deepEqual(reading.title, { key: 'panelUpdate.outcome.checkingTitle' });
+    assert.equal(failedUpdateGuidance(null, input({ reading: false, withinLimit: true })).tone, 'progress');
+    const late = failedUpdateGuidance(null, input({ reading: false, withinLimit: false }));
+    assert.equal(late.tone, 'danger');
+    assert.deepEqual(late.title, { key: 'panelUpdate.failed' });
+    assert.deepEqual(late.lines, [{ key: 'panelUpdate.outcome.unknownResult' }]);
+    // The new code is typed in the record and its guidance key exists in both languages.
+    assert.equal(recoveryFailureGuidanceKey(observed('recovering', { failure_code: 'update_finishing_scheduler' })), 'recovery.failure.update_finishing_scheduler.pending');
+    for (const key of ['panelUpdate.finishing.title', 'panelUpdate.finishing.body', 'panelUpdate.outcome.checkingTitle']) {
+        assert.equal(typeof enAll[key], 'string', key);
+        assert.equal(typeof trAll[key], 'string', key);
+    }
+});

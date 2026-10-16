@@ -3657,7 +3657,9 @@ class Upd5ProductCodeTests(unittest.TestCase):
         body = re.search(r"func ValidFailureCode\(value string\) bool \{(.*?)\n}", record, re.S).group(1)
         self.assertEqual(set(re.findall(r'value == "([a-z_]+)"', body)), set(t.FAILURE_CODES))
         writer = (REPO / "deploy/release-recovery-observation.sh").read_text(encoding="utf-8")
-        self.assertIn("|update_preflight_refused)", writer)
+        # The writer's case list accepts exactly the product's codes (order is not significant).
+        case_list = re.search(r'case "\$code" in\s*([a-z_|]+)\)', writer).group(1)
+        self.assertEqual(set(case_list.split("|")), set(t.FAILURE_CODES))
         for code in t.PREFLIGHT_STOP_CODES:
             with self.subTest(code=code):
                 self.assertEqual(t.parse_failure_sidecar(Upd3SidecarAndTextTests.sidecar(None, code), RID,

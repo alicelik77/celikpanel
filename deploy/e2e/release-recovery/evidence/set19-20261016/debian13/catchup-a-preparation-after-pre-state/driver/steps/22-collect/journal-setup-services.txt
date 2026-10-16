@@ -1,0 +1,299 @@
+2026-10-16T16:24:19.928235+00:00 dns-debian13 systemd[1]: Starting nginx.service - A high performance web server and a reverse proxy server...
+2026-10-16T16:24:19.992163+00:00 dns-debian13 systemd[1]: Started nginx.service - A high performance web server and a reverse proxy server.
+2026-10-16T16:24:48.614143+00:00 dns-debian13 systemd[1]: Starting php8.4-fpm.service - The PHP 8.4 FastCGI Process Manager...
+2026-10-16T16:24:48.749641+00:00 dns-debian13 systemd[1]: Started php8.4-fpm.service - The PHP 8.4 FastCGI Process Manager.
+2026-10-16T16:24:49.538998+00:00 dns-debian13 systemd[1]: Stopping php8.4-fpm.service - The PHP 8.4 FastCGI Process Manager...
+2026-10-16T16:24:49.574378+00:00 dns-debian13 systemd[1]: php8.4-fpm.service: Deactivated successfully.
+2026-10-16T16:24:49.574702+00:00 dns-debian13 systemd[1]: Stopped php8.4-fpm.service - The PHP 8.4 FastCGI Process Manager.
+2026-10-16T16:24:49.577896+00:00 dns-debian13 systemd[1]: Starting php8.4-fpm.service - The PHP 8.4 FastCGI Process Manager...
+2026-10-16T16:24:49.705739+00:00 dns-debian13 systemd[1]: Started php8.4-fpm.service - The PHP 8.4 FastCGI Process Manager.
+2026-10-16T16:25:57.468219+00:00 dns-debian13 systemd[1]: Starting mariadb.service - MariaDB 11.8.6 database server...
+2026-10-16T16:25:57.562566+00:00 dns-debian13 (mariadbd)[13485]: mariadb.service: Referenced but unset environment variable evaluates to an empty string: MYSQLD_OPTS, _WSREP_NEW_CLUSTER
+2026-10-16T16:25:57.617479+00:00 dns-debian13 mariadbd[13485]: 2026-10-16 16:25:57 0 [Note] Starting MariaDB 11.8.6-MariaDB-0+deb13u1 from Debian source revision 9bfea48ce1214cc4470f6f6f8a4e30352cef84e7 server_uid ewHC0iXTbxcy4rWctYmifQ9FJtc= as process 13485
+2026-10-16T16:25:57.666804+00:00 dns-debian13 mariadbd[13485]: 2026-10-16 16:25:57 0 [Note] InnoDB: Compressed tables use zlib 1.3.1
+2026-10-16T16:25:57.674229+00:00 dns-debian13 mariadbd[13485]: 2026-10-16 16:25:57 0 [Note] InnoDB: Number of transaction pools: 1
+2026-10-16T16:25:57.674354+00:00 dns-debian13 mariadbd[13485]: 2026-10-16 16:25:57 0 [Note] InnoDB: Using crc32 + pclmulqdq instructions
+2026-10-16T16:25:57.674706+00:00 dns-debian13 mariadbd[13485]: 2026-10-16 16:25:57 0 [Note] InnoDB: Using io_uring
+2026-10-16T16:25:57.675189+00:00 dns-debian13 mariadbd[13485]: 2026-10-16 16:25:57 0 [Note] InnoDB: innodb_buffer_pool_size_max=128m, innodb_buffer_pool_size=128m
+2026-10-16T16:25:57.702142+00:00 dns-debian13 mariadbd[13485]: 2026-10-16 16:25:57 0 [Note] InnoDB: Initialized memory pressure event listener
+2026-10-16T16:25:57.702142+00:00 dns-debian13 mariadbd[13485]: 2026-10-16 16:25:57 0 [Note] InnoDB: Completed initialization of buffer pool
+2026-10-16T16:25:57.703536+00:00 dns-debian13 mariadbd[13485]: 2026-10-16 16:25:57 0 [Note] InnoDB: File system buffers for log disabled (block size=512 bytes)
+2026-10-16T16:25:57.720713+00:00 dns-debian13 mariadbd[13485]: 2026-10-16 16:25:57 0 [Note] InnoDB: End of log at LSN=45616
+2026-10-16T16:25:57.792156+00:00 dns-debian13 mariadbd[13485]: 2026-10-16 16:25:57 0 [Note] InnoDB: Opened 3 undo tablespaces
+2026-10-16T16:25:57.792156+00:00 dns-debian13 mariadbd[13485]: 2026-10-16 16:25:57 0 [Note] InnoDB: 128 rollback segments in 3 undo tablespaces are active.
+2026-10-16T16:25:57.792691+00:00 dns-debian13 mariadbd[13485]: 2026-10-16 16:25:57 0 [Note] InnoDB: Setting file './ibtmp1' size to 12.000MiB. Physically writing the file full; Please wait ...
+2026-10-16T16:25:57.792691+00:00 dns-debian13 mariadbd[13485]: 2026-10-16 16:25:57 0 [Note] InnoDB: File './ibtmp1' size is now 12.000MiB.
+2026-10-16T16:25:57.794178+00:00 dns-debian13 mariadbd[13485]: 2026-10-16 16:25:57 0 [Note] InnoDB: log sequence number 45616; transaction id 14
+2026-10-16T16:25:57.794316+00:00 dns-debian13 mariadbd[13485]: 2026-10-16 16:25:57 0 [Note] Plugin 'FEEDBACK' is disabled.
+2026-10-16T16:25:57.794593+00:00 dns-debian13 mariadbd[13485]: 2026-10-16 16:25:57 0 [Note] Plugin 'wsrep-provider' is disabled.
+2026-10-16T16:25:57.794593+00:00 dns-debian13 mariadbd[13485]: 2026-10-16 16:25:57 0 [Note] InnoDB: Loading buffer pool(s) from /var/lib/mysql/ib_buffer_pool
+2026-10-16T16:25:57.798764+00:00 dns-debian13 mariadbd[13485]: 2026-10-16 16:25:57 0 [Note] InnoDB: Buffer pool(s) load completed at 261016 16:25:57
+2026-10-16T16:25:58.522647+00:00 dns-debian13 mariadbd[13485]: 2026-10-16 16:25:58 0 [Note] Server socket created on IP: '127.0.0.1', port: '3306'.
+2026-10-16T16:25:58.530249+00:00 dns-debian13 mariadbd[13485]: 2026-10-16 16:25:58 0 [Note] mariadbd: Event Scheduler: Loaded 0 events
+2026-10-16T16:25:58.534852+00:00 dns-debian13 mariadbd[13485]: 2026-10-16 16:25:58 0 [Note] /usr/sbin/mariadbd: ready for connections.
+2026-10-16T16:25:58.534852+00:00 dns-debian13 mariadbd[13485]: Version: '11.8.6-MariaDB-0+deb13u1 from Debian'  socket: '/run/mysqld/mysqld.sock'  port: 3306  -- Please help get to 10k stars at https://github.com/MariaDB/Server
+2026-10-16T16:25:58.624137+00:00 dns-debian13 systemd[1]: Started mariadb.service - MariaDB 11.8.6 database server.
+2026-10-16T16:25:58.627991+00:00 dns-debian13 /etc/mysql/debian-start[13503]: Upgrading MariaDB tables if necessary.
+2026-10-16T16:26:23.566306+00:00 dns-debian13 systemd[1]: Starting postfix.service - Postfix Mail Transport Agent (main/default instance)...
+2026-10-16T16:26:23.963564+00:00 dns-debian13 postfix[14192]: updating /etc/localtime => /var/spool/postfix//etc/localtime
+2026-10-16T16:26:23.963564+00:00 dns-debian13 postfix[14192]: updating /etc/services => /var/spool/postfix//etc/services
+2026-10-16T16:26:23.963564+00:00 dns-debian13 postfix[14192]: updating /etc/resolv.conf => /var/spool/postfix//etc/resolv.conf
+2026-10-16T16:26:23.963564+00:00 dns-debian13 postfix[14192]: updating /etc/hosts => /var/spool/postfix//etc/hosts
+2026-10-16T16:26:23.963564+00:00 dns-debian13 postfix[14192]: updating /etc/host.conf => /var/spool/postfix//etc/host.conf
+2026-10-16T16:26:23.963564+00:00 dns-debian13 postfix[14192]: updating /etc/nsswitch.conf => /var/spool/postfix//etc/nsswitch.conf
+2026-10-16T16:26:23.970832+00:00 dns-debian13 postfix[14195]: '/usr/lib/x86_64-linux-gnu/libnss_resolve.so.2' -> 'lib/libnss_resolve.so.2'
+2026-10-16T16:26:23.970832+00:00 dns-debian13 postfix[14195]: '/usr/lib/x86_64-linux-gnu/libnss_myhostname.so.2' -> 'lib/libnss_myhostname.so.2'
+2026-10-16T16:26:24.057102+00:00 dns-debian13 postfix[14224]: postfix/postlog: warning: not owned by root: /var/spool/postfix/etc/resolv.conf
+2026-10-16T16:26:24.057068+00:00 dns-debian13 postfix/postfix-script[14224]: warning: not owned by root: /var/spool/postfix/etc/resolv.conf
+2026-10-16T16:26:24.182083+00:00 dns-debian13 postfix/master[14250]: daemon started -- version 3.10.13, configuration /etc/postfix
+2026-10-16T16:26:24.184466+00:00 dns-debian13 systemd[1]: Started postfix.service - Postfix Mail Transport Agent (main/default instance).
+2026-10-16T16:26:32.178442+00:00 dns-debian13 postfix/master[14250]: reload -- version 3.10.13, configuration /etc/postfix
+2026-10-16T16:26:54.309238+00:00 dns-debian13 systemd[1]: Starting dovecot.service - Dovecot IMAP/POP3 email server...
+2026-10-16T16:26:54.378153+00:00 dns-debian13 dovecot[17230]: master: Dovecot v2.4.1-4 (7d8c0e5759) starting up without any protocols (core dumps disabled)
+2026-10-16T16:26:54.398553+00:00 dns-debian13 systemd[1]: Started dovecot.service - Dovecot IMAP/POP3 email server.
+2026-10-16T16:26:59.124299+00:00 dns-debian13 systemd[1]: Stopping dovecot.service - Dovecot IMAP/POP3 email server...
+2026-10-16T16:26:59.209213+00:00 dns-debian13 dovecot[17230]: master: Warning: Killed with signal 15 (by pid=17766 uid=0 code=kill)
+2026-10-16T16:26:59.279365+00:00 dns-debian13 systemd[1]: dovecot.service: Deactivated successfully.
+2026-10-16T16:26:59.280226+00:00 dns-debian13 systemd[1]: Stopped dovecot.service - Dovecot IMAP/POP3 email server.
+2026-10-16T16:26:59.292084+00:00 dns-debian13 systemd[1]: Starting dovecot.service - Dovecot IMAP/POP3 email server...
+2026-10-16T16:26:59.369034+00:00 dns-debian13 dovecot[17771]: master: Dovecot v2.4.1-4 (7d8c0e5759) starting up for imap, lmtp, pop3 (core dumps disabled)
+2026-10-16T16:26:59.384744+00:00 dns-debian13 systemd[1]: Started dovecot.service - Dovecot IMAP/POP3 email server.
+2026-10-16T16:27:07.037697+00:00 dns-debian13 postfix/master[14250]: reload -- version 3.10.13, configuration /etc/postfix
+2026-10-16T16:27:07.712417+00:00 dns-debian13 systemd[1]: Stopping dovecot.service - Dovecot IMAP/POP3 email server...
+2026-10-16T16:27:07.756461+00:00 dns-debian13 dovecot[17771]: master: Warning: Killed with signal 15 (by pid=18229 uid=0 code=kill)
+2026-10-16T16:27:07.790189+00:00 dns-debian13 systemd[1]: dovecot.service: Deactivated successfully.
+2026-10-16T16:27:07.790622+00:00 dns-debian13 systemd[1]: Stopped dovecot.service - Dovecot IMAP/POP3 email server.
+2026-10-16T16:27:07.798030+00:00 dns-debian13 systemd[1]: Starting dovecot.service - Dovecot IMAP/POP3 email server...
+2026-10-16T16:27:07.866814+00:00 dns-debian13 dovecot[18234]: master: Dovecot v2.4.1-4 (7d8c0e5759) starting up for imap, lmtp, pop3 (core dumps disabled)
+2026-10-16T16:27:07.884411+00:00 dns-debian13 systemd[1]: Started dovecot.service - Dovecot IMAP/POP3 email server.
+2026-10-16T16:27:30.899702+00:00 dns-debian13 systemd[1]: Stopping php8.4-fpm.service - The PHP 8.4 FastCGI Process Manager...
+2026-10-16T16:27:30.936129+00:00 dns-debian13 systemd[1]: php8.4-fpm.service: Deactivated successfully.
+2026-10-16T16:27:30.936420+00:00 dns-debian13 systemd[1]: Stopped php8.4-fpm.service - The PHP 8.4 FastCGI Process Manager.
+2026-10-16T16:27:30.938903+00:00 dns-debian13 systemd[1]: Starting php8.4-fpm.service - The PHP 8.4 FastCGI Process Manager...
+2026-10-16T16:27:31.037684+00:00 dns-debian13 systemd[1]: Started php8.4-fpm.service - The PHP 8.4 FastCGI Process Manager.
+2026-10-16T16:27:31.355790+00:00 dns-debian13 systemd[1]: Reloading php8.4-fpm.service - The PHP 8.4 FastCGI Process Manager...
+2026-10-16T16:27:31.376834+00:00 dns-debian13 systemd[1]: Reloaded php8.4-fpm.service - The PHP 8.4 FastCGI Process Manager.
+2026-10-16T16:27:31.429795+00:00 dns-debian13 php-fpm8.4[21458]: [16-Oct-2026 16:27:31] NOTICE: using inherited socket fd=8, "/run/php/php8.4-fpm.sock"
+2026-10-16T16:27:37.374973+00:00 dns-debian13 systemd[1]: Reloading nginx.service - A high performance web server and a reverse proxy server...
+2026-10-16T16:27:37.411155+00:00 dns-debian13 nginx[21521]: 2026/10/16 16:27:37 [notice] 21521#21521: signal process started
+2026-10-16T16:27:37.413662+00:00 dns-debian13 systemd[1]: Reloaded nginx.service - A high performance web server and a reverse proxy server.
+2026-10-16T16:27:44.041327+00:00 dns-debian13 postfix/master[14250]: reload -- version 3.10.13, configuration /etc/postfix
+2026-10-16T16:27:44.682822+00:00 dns-debian13 systemd[1]: Stopping dovecot.service - Dovecot IMAP/POP3 email server...
+2026-10-16T16:27:44.723860+00:00 dns-debian13 dovecot[18234]: master: Warning: Killed with signal 15 (by pid=21843 uid=0 code=kill)
+2026-10-16T16:27:44.757208+00:00 dns-debian13 systemd[1]: dovecot.service: Deactivated successfully.
+2026-10-16T16:27:44.757559+00:00 dns-debian13 systemd[1]: Stopped dovecot.service - Dovecot IMAP/POP3 email server.
+2026-10-16T16:27:44.762171+00:00 dns-debian13 systemd[1]: Starting dovecot.service - Dovecot IMAP/POP3 email server...
+2026-10-16T16:27:44.806569+00:00 dns-debian13 dovecot[21848]: master: Dovecot v2.4.1-4 (7d8c0e5759) starting up for imap, lmtp, pop3 (core dumps disabled)
+2026-10-16T16:27:44.822503+00:00 dns-debian13 systemd[1]: Started dovecot.service - Dovecot IMAP/POP3 email server.
+2026-10-16T16:27:47.037444+00:00 dns-debian13 systemd[1]: Stopping dovecot.service - Dovecot IMAP/POP3 email server...
+2026-10-16T16:27:47.073373+00:00 dns-debian13 dovecot[21848]: master: Warning: Killed with signal 15 (by pid=22013 uid=0 code=kill)
+2026-10-16T16:27:47.090796+00:00 dns-debian13 systemd[1]: dovecot.service: Deactivated successfully.
+2026-10-16T16:27:47.091625+00:00 dns-debian13 systemd[1]: Stopped dovecot.service - Dovecot IMAP/POP3 email server.
+2026-10-16T16:27:47.096509+00:00 dns-debian13 systemd[1]: Starting dovecot.service - Dovecot IMAP/POP3 email server...
+2026-10-16T16:27:47.152901+00:00 dns-debian13 dovecot[22018]: master: Dovecot v2.4.1-4 (7d8c0e5759) starting up for imap, lmtp, pop3 (core dumps disabled)
+2026-10-16T16:27:47.166682+00:00 dns-debian13 systemd[1]: Started dovecot.service - Dovecot IMAP/POP3 email server.
+2026-10-16T16:27:48.802565+00:00 dns-debian13 systemd[1]: Stopping postfix.service - Postfix Mail Transport Agent (main/default instance)...
+2026-10-16T16:27:48.918938+00:00 dns-debian13 postfix[22196]: postfix/postlog: stopping the Postfix mail system
+2026-10-16T16:27:48.918899+00:00 dns-debian13 postfix/postfix-script[22196]: stopping the Postfix mail system
+2026-10-16T16:27:48.920982+00:00 dns-debian13 postfix/master[14250]: terminating on signal 15
+2026-10-16T16:27:48.927607+00:00 dns-debian13 systemd[1]: postfix.service: Deactivated successfully.
+2026-10-16T16:27:48.927975+00:00 dns-debian13 systemd[1]: Stopped postfix.service - Postfix Mail Transport Agent (main/default instance).
+2026-10-16T16:27:48.931146+00:00 dns-debian13 systemd[1]: Starting postfix.service - Postfix Mail Transport Agent (main/default instance)...
+2026-10-16T16:27:49.329468+00:00 dns-debian13 postfix[22288]: postfix/postlog: warning: not owned by root: /var/spool/postfix/etc/resolv.conf
+2026-10-16T16:27:49.329432+00:00 dns-debian13 postfix/postfix-script[22288]: warning: not owned by root: /var/spool/postfix/etc/resolv.conf
+2026-10-16T16:27:49.464106+00:00 dns-debian13 postfix/master[22314]: daemon started -- version 3.10.13, configuration /etc/postfix
+2026-10-16T16:27:49.465775+00:00 dns-debian13 systemd[1]: Started postfix.service - Postfix Mail Transport Agent (main/default instance).
+2026-10-16T16:27:55.666734+00:00 dns-debian13 postfix/master[22314]: reload -- version 3.10.13, configuration /etc/postfix
+2026-10-16T16:27:56.373189+00:00 dns-debian13 systemd[1]: Reloading dovecot.service - Dovecot IMAP/POP3 email server...
+2026-10-16T16:27:56.418562+00:00 dns-debian13 dovecot[22018]: master: Warning: SIGHUP received - reloading configuration
+2026-10-16T16:27:56.433920+00:00 dns-debian13 systemd[1]: Reloaded dovecot.service - Dovecot IMAP/POP3 email server.
+2026-10-16T16:28:12.123233+00:00 dns-debian13 postfix/master[22314]: reload -- version 3.10.13, configuration /etc/postfix
+2026-10-16T16:28:12.769185+00:00 dns-debian13 systemd[1]: Stopping dovecot.service - Dovecot IMAP/POP3 email server...
+2026-10-16T16:28:12.823165+00:00 dns-debian13 dovecot[22018]: master: Warning: Killed with signal 15 (by pid=23584 uid=0 code=kill)
+2026-10-16T16:28:12.857574+00:00 dns-debian13 systemd[1]: dovecot.service: Deactivated successfully.
+2026-10-16T16:28:12.857976+00:00 dns-debian13 systemd[1]: Stopped dovecot.service - Dovecot IMAP/POP3 email server.
+2026-10-16T16:28:12.863382+00:00 dns-debian13 systemd[1]: Starting dovecot.service - Dovecot IMAP/POP3 email server...
+2026-10-16T16:28:12.932785+00:00 dns-debian13 dovecot[23590]: master: Dovecot v2.4.1-4 (7d8c0e5759) starting up for imap, lmtp, pop3 (core dumps disabled)
+2026-10-16T16:28:12.947362+00:00 dns-debian13 systemd[1]: Started dovecot.service - Dovecot IMAP/POP3 email server.
+2026-10-16T16:28:26.023291+00:00 dns-debian13 postfix/master[22314]: reload -- version 3.10.13, configuration /etc/postfix
+2026-10-16T16:28:26.689504+00:00 dns-debian13 systemd[1]: Stopping dovecot.service - Dovecot IMAP/POP3 email server...
+2026-10-16T16:28:26.733889+00:00 dns-debian13 dovecot[23590]: master: Warning: Killed with signal 15 (by pid=24278 uid=0 code=kill)
+2026-10-16T16:28:26.768092+00:00 dns-debian13 systemd[1]: dovecot.service: Deactivated successfully.
+2026-10-16T16:28:26.768437+00:00 dns-debian13 systemd[1]: Stopped dovecot.service - Dovecot IMAP/POP3 email server.
+2026-10-16T16:28:26.773265+00:00 dns-debian13 systemd[1]: Starting dovecot.service - Dovecot IMAP/POP3 email server...
+2026-10-16T16:28:26.835782+00:00 dns-debian13 dovecot[24283]: master: Dovecot v2.4.1-4 (7d8c0e5759) starting up for imap, lmtp, pop3 (core dumps disabled)
+2026-10-16T16:28:26.848161+00:00 dns-debian13 systemd[1]: Started dovecot.service - Dovecot IMAP/POP3 email server.
+2026-10-16T16:29:11.624111+00:00 dns-debian13 systemd[1]: Started rspamd.service - rapid spam filtering system.
+2026-10-16T16:29:11.681781+00:00 dns-debian13 rspamd[24868]: 2026-10-16 16:29:11 #24868(main) <809440>; main; main: rspamd 3.12.1 is loading configuration, build id: release
+2026-10-16T16:29:21.753846+00:00 dns-debian13 postfix/master[22314]: reload -- version 3.10.13, configuration /etc/postfix
+2026-10-16T16:29:28.999550+00:00 dns-debian13 postfix/master[22314]: reload -- version 3.10.13, configuration /etc/postfix
+2026-10-16T16:29:29.605817+00:00 dns-debian13 systemd[1]: Stopping dovecot.service - Dovecot IMAP/POP3 email server...
+2026-10-16T16:29:29.647362+00:00 dns-debian13 dovecot[24283]: master: Warning: Killed with signal 15 (by pid=25625 uid=0 code=kill)
+2026-10-16T16:29:29.680416+00:00 dns-debian13 systemd[1]: dovecot.service: Deactivated successfully.
+2026-10-16T16:29:29.680744+00:00 dns-debian13 systemd[1]: Stopped dovecot.service - Dovecot IMAP/POP3 email server.
+2026-10-16T16:29:29.684917+00:00 dns-debian13 systemd[1]: Starting dovecot.service - Dovecot IMAP/POP3 email server...
+2026-10-16T16:29:29.735251+00:00 dns-debian13 dovecot[25630]: master: Dovecot v2.4.1-4 (7d8c0e5759) starting up for imap, lmtp, pop3 (core dumps disabled)
+2026-10-16T16:29:29.748495+00:00 dns-debian13 systemd[1]: Started dovecot.service - Dovecot IMAP/POP3 email server.
+2026-10-16T16:29:31.961571+00:00 dns-debian13 systemd[1]: Stopping dovecot.service - Dovecot IMAP/POP3 email server...
+2026-10-16T16:29:32.001338+00:00 dns-debian13 dovecot[25630]: master: Warning: Killed with signal 15 (by pid=25796 uid=0 code=kill)
+2026-10-16T16:29:32.019150+00:00 dns-debian13 systemd[1]: dovecot.service: Deactivated successfully.
+2026-10-16T16:29:32.019469+00:00 dns-debian13 systemd[1]: Stopped dovecot.service - Dovecot IMAP/POP3 email server.
+2026-10-16T16:29:32.024247+00:00 dns-debian13 systemd[1]: Starting dovecot.service - Dovecot IMAP/POP3 email server...
+2026-10-16T16:29:32.087777+00:00 dns-debian13 dovecot[25801]: master: Dovecot v2.4.1-4 (7d8c0e5759) starting up for imap, lmtp, pop3 (core dumps disabled)
+2026-10-16T16:29:32.100320+00:00 dns-debian13 systemd[1]: Started dovecot.service - Dovecot IMAP/POP3 email server.
+2026-10-16T16:29:33.928176+00:00 dns-debian13 systemd[1]: Stopping postfix.service - Postfix Mail Transport Agent (main/default instance)...
+2026-10-16T16:29:34.022911+00:00 dns-debian13 postfix[25964]: postfix/postlog: stopping the Postfix mail system
+2026-10-16T16:29:34.022793+00:00 dns-debian13 postfix/postfix-script[25964]: stopping the Postfix mail system
+2026-10-16T16:29:34.026422+00:00 dns-debian13 postfix/master[22314]: terminating on signal 15
+2026-10-16T16:29:34.037558+00:00 dns-debian13 systemd[1]: postfix.service: Deactivated successfully.
+2026-10-16T16:29:34.037937+00:00 dns-debian13 systemd[1]: Stopped postfix.service - Postfix Mail Transport Agent (main/default instance).
+2026-10-16T16:29:34.040890+00:00 dns-debian13 systemd[1]: Starting postfix.service - Postfix Mail Transport Agent (main/default instance)...
+2026-10-16T16:29:34.479068+00:00 dns-debian13 postfix[26085]: postfix/postlog: warning: not owned by root: /var/spool/postfix/etc/resolv.conf
+2026-10-16T16:29:34.479016+00:00 dns-debian13 postfix/postfix-script[26085]: warning: not owned by root: /var/spool/postfix/etc/resolv.conf
+2026-10-16T16:29:34.597707+00:00 dns-debian13 postfix/master[26111]: daemon started -- version 3.10.13, configuration /etc/postfix
+2026-10-16T16:29:34.600040+00:00 dns-debian13 systemd[1]: Started postfix.service - Postfix Mail Transport Agent (main/default instance).
+2026-10-16T16:29:40.311318+00:00 dns-debian13 postfix/master[26111]: reload -- version 3.10.13, configuration /etc/postfix
+2026-10-16T16:29:40.937296+00:00 dns-debian13 systemd[1]: Reloading dovecot.service - Dovecot IMAP/POP3 email server...
+2026-10-16T16:29:40.978276+00:00 dns-debian13 dovecot[25801]: master: Warning: SIGHUP received - reloading configuration
+2026-10-16T16:29:40.998753+00:00 dns-debian13 systemd[1]: Reloaded dovecot.service - Dovecot IMAP/POP3 email server.
+2026-10-16T16:29:53.532321+00:00 dns-debian13 systemd[1]: Started cron.service - Regular background program processing daemon.
+2026-10-16T16:29:53.554135+00:00 dns-debian13 cron[27133]: (CRON) INFO (pidfile fd = 3)
+2026-10-16T16:29:53.557079+00:00 dns-debian13 cron[27133]: (CRON) INFO (Running @reboot jobs)
+2026-10-16T16:32:32.273444+00:00 dns-debian13 systemd[1]: Reloading nginx.service - A high performance web server and a reverse proxy server...
+2026-10-16T16:32:32.303634+00:00 dns-debian13 nginx[28148]: 2026/10/16 16:32:32 [notice] 28148#28148: signal process started
+2026-10-16T16:32:32.305257+00:00 dns-debian13 systemd[1]: Reloaded nginx.service - A high performance web server and a reverse proxy server.
+2026-10-16T16:32:38.142977+00:00 dns-debian13 postfix/submission/smtpd[28259]: connect from localhost[127.0.0.1]
+2026-10-16T16:32:38.144272+00:00 dns-debian13 postfix/submission/smtpd[28259]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:32:43.362854+00:00 dns-debian13 postfix/submission/smtpd[28259]: connect from localhost[127.0.0.1]
+2026-10-16T16:32:43.365378+00:00 dns-debian13 postfix/submission/smtpd[28259]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:32:48.364605+00:00 dns-debian13 postfix/submission/smtpd[28259]: connect from localhost[127.0.0.1]
+2026-10-16T16:32:48.365832+00:00 dns-debian13 postfix/submission/smtpd[28259]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:32:53.366102+00:00 dns-debian13 postfix/submission/smtpd[28259]: connect from localhost[127.0.0.1]
+2026-10-16T16:32:53.367395+00:00 dns-debian13 postfix/submission/smtpd[28259]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:32:58.365822+00:00 dns-debian13 postfix/submission/smtpd[28259]: connect from localhost[127.0.0.1]
+2026-10-16T16:32:58.367240+00:00 dns-debian13 postfix/submission/smtpd[28259]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:33:01.571187+00:00 dns-debian13 CRON[28539]: pam_unix(cron:session): session opened for user upd1_owner_test(uid=5001) by upd1_owner_test(uid=0)
+2026-10-16T16:33:01.571731+00:00 dns-debian13 CRON[28541]: (upd1_owner_test) CMD (/bin/date -u -Iseconds > "$HOME/upd1-cron-stamp.txt")
+2026-10-16T16:33:01.574909+00:00 dns-debian13 CRON[28539]: pam_unix(cron:session): session closed for user upd1_owner_test
+2026-10-16T16:33:03.365146+00:00 dns-debian13 postfix/submission/smtpd[28259]: connect from localhost[127.0.0.1]
+2026-10-16T16:33:03.366538+00:00 dns-debian13 postfix/submission/smtpd[28259]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:33:08.366602+00:00 dns-debian13 postfix/submission/smtpd[28259]: connect from localhost[127.0.0.1]
+2026-10-16T16:33:08.367946+00:00 dns-debian13 postfix/submission/smtpd[28259]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:33:13.364154+00:00 dns-debian13 postfix/submission/smtpd[28259]: connect from localhost[127.0.0.1]
+2026-10-16T16:33:13.365723+00:00 dns-debian13 postfix/submission/smtpd[28259]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:33:18.366501+00:00 dns-debian13 postfix/submission/smtpd[28259]: connect from localhost[127.0.0.1]
+2026-10-16T16:33:18.367759+00:00 dns-debian13 postfix/submission/smtpd[28259]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:33:23.367329+00:00 dns-debian13 postfix/submission/smtpd[28259]: connect from localhost[127.0.0.1]
+2026-10-16T16:33:23.376086+00:00 dns-debian13 postfix/submission/smtpd[28259]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:33:28.371989+00:00 dns-debian13 postfix/submission/smtpd[28259]: connect from localhost[127.0.0.1]
+2026-10-16T16:33:28.374851+00:00 dns-debian13 postfix/submission/smtpd[28259]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:33:33.368482+00:00 dns-debian13 postfix/submission/smtpd[28259]: connect from localhost[127.0.0.1]
+2026-10-16T16:33:33.370270+00:00 dns-debian13 postfix/submission/smtpd[28259]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:33:38.368367+00:00 dns-debian13 postfix/submission/smtpd[28259]: connect from localhost[127.0.0.1]
+2026-10-16T16:33:38.372318+00:00 dns-debian13 postfix/submission/smtpd[28259]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:33:43.366679+00:00 dns-debian13 postfix/submission/smtpd[28259]: connect from localhost[127.0.0.1]
+2026-10-16T16:33:43.367963+00:00 dns-debian13 postfix/submission/smtpd[28259]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:33:48.369970+00:00 dns-debian13 postfix/submission/smtpd[28259]: connect from localhost[127.0.0.1]
+2026-10-16T16:33:48.371154+00:00 dns-debian13 postfix/submission/smtpd[28259]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:33:53.370129+00:00 dns-debian13 postfix/submission/smtpd[28259]: connect from localhost[127.0.0.1]
+2026-10-16T16:33:53.371503+00:00 dns-debian13 postfix/submission/smtpd[28259]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:33:58.370517+00:00 dns-debian13 postfix/submission/smtpd[28259]: connect from localhost[127.0.0.1]
+2026-10-16T16:33:58.371715+00:00 dns-debian13 postfix/submission/smtpd[28259]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:34:01.586545+00:00 dns-debian13 CRON[28817]: pam_unix(cron:session): session opened for user upd1_owner_test(uid=5001) by upd1_owner_test(uid=0)
+2026-10-16T16:34:01.587695+00:00 dns-debian13 CRON[28819]: (upd1_owner_test) CMD (/bin/date -u -Iseconds > "$HOME/upd1-cron-stamp.txt")
+2026-10-16T16:34:01.596685+00:00 dns-debian13 CRON[28817]: pam_unix(cron:session): session closed for user upd1_owner_test
+2026-10-16T16:34:03.368880+00:00 dns-debian13 postfix/submission/smtpd[28259]: connect from localhost[127.0.0.1]
+2026-10-16T16:34:03.370148+00:00 dns-debian13 postfix/submission/smtpd[28259]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:34:08.372041+00:00 dns-debian13 postfix/submission/smtpd[28259]: connect from localhost[127.0.0.1]
+2026-10-16T16:34:08.373305+00:00 dns-debian13 postfix/submission/smtpd[28259]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:34:13.369618+00:00 dns-debian13 postfix/submission/smtpd[28259]: connect from localhost[127.0.0.1]
+2026-10-16T16:34:13.371418+00:00 dns-debian13 postfix/submission/smtpd[28259]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:34:18.371977+00:00 dns-debian13 postfix/submission/smtpd[28259]: connect from localhost[127.0.0.1]
+2026-10-16T16:34:18.373822+00:00 dns-debian13 postfix/submission/smtpd[28259]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:34:23.373839+00:00 dns-debian13 postfix/submission/smtpd[28259]: connect from localhost[127.0.0.1]
+2026-10-16T16:34:23.374691+00:00 dns-debian13 postfix/submission/smtpd[28259]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:34:28.369108+00:00 dns-debian13 postfix/submission/smtpd[28259]: connect from localhost[127.0.0.1]
+2026-10-16T16:34:28.376267+00:00 dns-debian13 postfix/submission/smtpd[28259]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:34:33.372009+00:00 dns-debian13 postfix/submission/smtpd[28259]: connect from localhost[127.0.0.1]
+2026-10-16T16:34:33.376815+00:00 dns-debian13 postfix/submission/smtpd[28259]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:34:38.429031+00:00 dns-debian13 postfix/submission/smtpd[28259]: connect from localhost[127.0.0.1]
+2026-10-16T16:34:38.432986+00:00 dns-debian13 postfix/submission/smtpd[28259]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:34:43.438654+00:00 dns-debian13 postfix/submission/smtpd[28259]: connect from localhost[127.0.0.1]
+2026-10-16T16:34:43.531562+00:00 dns-debian13 postfix/submission/smtpd[28259]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:34:48.548276+00:00 dns-debian13 postfix/submission/smtpd[28259]: connect from localhost[127.0.0.1]
+2026-10-16T16:34:48.549093+00:00 dns-debian13 postfix/submission/smtpd[28259]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:34:53.385554+00:00 dns-debian13 postfix/submission/smtpd[28259]: connect from localhost[127.0.0.1]
+2026-10-16T16:34:53.396062+00:00 dns-debian13 postfix/submission/smtpd[28259]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:34:58.383974+00:00 dns-debian13 postfix/submission/smtpd[28259]: connect from localhost[127.0.0.1]
+2026-10-16T16:34:58.388173+00:00 dns-debian13 postfix/submission/smtpd[28259]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:35:01.612387+00:00 dns-debian13 CRON[34790]: pam_unix(cron:session): session opened for user upd1_owner_test(uid=5001) by upd1_owner_test(uid=0)
+2026-10-16T16:35:01.614253+00:00 dns-debian13 CRON[34793]: (upd1_owner_test) CMD (/bin/date -u -Iseconds > "$HOME/upd1-cron-stamp.txt")
+2026-10-16T16:35:01.630187+00:00 dns-debian13 CRON[34790]: pam_unix(cron:session): session closed for user upd1_owner_test
+2026-10-16T16:35:03.391919+00:00 dns-debian13 postfix/submission/smtpd[28259]: connect from localhost[127.0.0.1]
+2026-10-16T16:35:03.397148+00:00 dns-debian13 postfix/submission/smtpd[28259]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:35:08.384365+00:00 dns-debian13 postfix/submission/smtpd[28259]: connect from localhost[127.0.0.1]
+2026-10-16T16:35:08.385215+00:00 dns-debian13 postfix/submission/smtpd[28259]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:35:13.384743+00:00 dns-debian13 postfix/submission/smtpd[28259]: connect from localhost[127.0.0.1]
+2026-10-16T16:35:13.392145+00:00 dns-debian13 postfix/submission/smtpd[28259]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:35:18.389202+00:00 dns-debian13 postfix/submission/smtpd[28259]: connect from localhost[127.0.0.1]
+2026-10-16T16:35:18.397684+00:00 dns-debian13 postfix/submission/smtpd[28259]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:35:23.384655+00:00 dns-debian13 postfix/submission/smtpd[28259]: connect from localhost[127.0.0.1]
+2026-10-16T16:35:23.388867+00:00 dns-debian13 postfix/submission/smtpd[28259]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:35:28.392006+00:00 dns-debian13 postfix/submission/smtpd[28259]: connect from localhost[127.0.0.1]
+2026-10-16T16:35:28.396272+00:00 dns-debian13 postfix/submission/smtpd[28259]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:35:33.396276+00:00 dns-debian13 postfix/submission/smtpd[28259]: connect from localhost[127.0.0.1]
+2026-10-16T16:35:33.400139+00:00 dns-debian13 postfix/submission/smtpd[28259]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:35:38.389274+00:00 dns-debian13 postfix/submission/smtpd[28259]: connect from localhost[127.0.0.1]
+2026-10-16T16:35:38.390528+00:00 dns-debian13 postfix/submission/smtpd[28259]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:35:43.392194+00:00 dns-debian13 postfix/submission/smtpd[28259]: connect from localhost[127.0.0.1]
+2026-10-16T16:35:43.396112+00:00 dns-debian13 postfix/submission/smtpd[28259]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:35:48.393479+00:00 dns-debian13 postfix/submission/smtpd[28259]: connect from localhost[127.0.0.1]
+2026-10-16T16:35:48.398264+00:00 dns-debian13 postfix/submission/smtpd[28259]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:35:53.389094+00:00 dns-debian13 postfix/submission/smtpd[28259]: connect from localhost[127.0.0.1]
+2026-10-16T16:35:53.390460+00:00 dns-debian13 postfix/submission/smtpd[28259]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:35:55.896674+00:00 dns-debian13 postfix/submission/smtpd[28259]: connect from localhost[127.0.0.1]
+2026-10-16T16:35:55.897922+00:00 dns-debian13 postfix/submission/smtpd[28259]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:35:58.393247+00:00 dns-debian13 postfix/submission/smtpd[28259]: connect from localhost[127.0.0.1]
+2026-10-16T16:35:58.394664+00:00 dns-debian13 postfix/submission/smtpd[28259]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:36:01.639062+00:00 dns-debian13 CRON[42894]: pam_unix(cron:session): session opened for user upd1_owner_test(uid=5001) by upd1_owner_test(uid=0)
+2026-10-16T16:36:01.639612+00:00 dns-debian13 CRON[42896]: (upd1_owner_test) CMD (/bin/date -u -Iseconds > "$HOME/upd1-cron-stamp.txt")
+2026-10-16T16:36:01.642581+00:00 dns-debian13 CRON[42894]: pam_unix(cron:session): session closed for user upd1_owner_test
+2026-10-16T16:36:03.392039+00:00 dns-debian13 postfix/submission/smtpd[28259]: connect from localhost[127.0.0.1]
+2026-10-16T16:36:03.393979+00:00 dns-debian13 postfix/submission/smtpd[28259]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:36:08.389158+00:00 dns-debian13 postfix/submission/smtpd[28259]: connect from localhost[127.0.0.1]
+2026-10-16T16:36:08.390462+00:00 dns-debian13 postfix/submission/smtpd[28259]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:36:11.523595+00:00 dns-debian13 postfix/master[26111]: reload -- version 3.10.13, configuration /etc/postfix
+2026-10-16T16:36:12.150806+00:00 dns-debian13 systemd[1]: Reloading dovecot.service - Dovecot IMAP/POP3 email server...
+2026-10-16T16:36:12.184655+00:00 dns-debian13 dovecot[25801]: master: Warning: SIGHUP received - reloading configuration
+2026-10-16T16:36:12.198250+00:00 dns-debian13 systemd[1]: Reloaded dovecot.service - Dovecot IMAP/POP3 email server.
+2026-10-16T16:36:13.422027+00:00 dns-debian13 postfix/submission/smtpd[43449]: connect from localhost[127.0.0.1]
+2026-10-16T16:36:13.423157+00:00 dns-debian13 postfix/submission/smtpd[43449]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:36:20.236868+00:00 dns-debian13 postfix/submission/smtpd[43449]: table hash:/etc/postfix/vmailbox(0,lock|fold_fix|utf8_request) has changed -- restarting
+2026-10-16T16:36:21.455041+00:00 dns-debian13 postfix/submission/smtpd[43744]: connect from localhost[127.0.0.1]
+2026-10-16T16:36:21.456118+00:00 dns-debian13 postfix/submission/smtpd[43744]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:36:22.104017+00:00 dns-debian13 postfix/master[26111]: reload -- version 3.10.13, configuration /etc/postfix
+2026-10-16T16:36:24.858540+00:00 dns-debian13 postfix/submission/smtpd[43933]: connect from localhost[127.0.0.1]
+2026-10-16T16:36:24.860242+00:00 dns-debian13 postfix/submission/smtpd[43933]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:36:29.689664+00:00 dns-debian13 postfix/submission/smtpd[43933]: connect from localhost[127.0.0.1]
+2026-10-16T16:36:29.691744+00:00 dns-debian13 postfix/submission/smtpd[43933]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:36:34.695143+00:00 dns-debian13 postfix/submission/smtpd[43933]: connect from localhost[127.0.0.1]
+2026-10-16T16:36:34.698025+00:00 dns-debian13 postfix/submission/smtpd[43933]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:36:39.694408+00:00 dns-debian13 postfix/submission/smtpd[43933]: connect from localhost[127.0.0.1]
+2026-10-16T16:36:39.696526+00:00 dns-debian13 postfix/submission/smtpd[43933]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:36:44.691794+00:00 dns-debian13 postfix/submission/smtpd[43933]: connect from localhost[127.0.0.1]
+2026-10-16T16:36:44.694071+00:00 dns-debian13 postfix/submission/smtpd[43933]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:36:49.693453+00:00 dns-debian13 postfix/submission/smtpd[43933]: connect from localhost[127.0.0.1]
+2026-10-16T16:36:49.695404+00:00 dns-debian13 postfix/submission/smtpd[43933]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:36:54.696045+00:00 dns-debian13 postfix/submission/smtpd[43933]: connect from localhost[127.0.0.1]
+2026-10-16T16:36:54.697998+00:00 dns-debian13 postfix/submission/smtpd[43933]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:36:59.693967+00:00 dns-debian13 postfix/submission/smtpd[43933]: connect from localhost[127.0.0.1]
+2026-10-16T16:36:59.695841+00:00 dns-debian13 postfix/submission/smtpd[43933]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:37:01.649928+00:00 dns-debian13 CRON[44109]: pam_unix(cron:session): session opened for user upd1_owner_test(uid=5001) by upd1_owner_test(uid=0)
+2026-10-16T16:37:01.650530+00:00 dns-debian13 CRON[44111]: (upd1_owner_test) CMD (/bin/date -u -Iseconds > "$HOME/upd1-cron-stamp.txt")
+2026-10-16T16:37:01.653500+00:00 dns-debian13 CRON[44109]: pam_unix(cron:session): session closed for user upd1_owner_test
+2026-10-16T16:37:04.695354+00:00 dns-debian13 postfix/submission/smtpd[43933]: connect from localhost[127.0.0.1]
+2026-10-16T16:37:04.698054+00:00 dns-debian13 postfix/submission/smtpd[43933]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:37:09.699613+00:00 dns-debian13 postfix/submission/smtpd[43933]: connect from localhost[127.0.0.1]
+2026-10-16T16:37:09.701808+00:00 dns-debian13 postfix/submission/smtpd[43933]: disconnect from localhost[127.0.0.1] quit=1 commands=1
+2026-10-16T16:37:14.696304+00:00 dns-debian13 postfix/submission/smtpd[43933]: connect from localhost[127.0.0.1]
+2026-10-16T16:37:14.700553+00:00 dns-debian13 postfix/submission/smtpd[43933]: disconnect from localhost[127.0.0.1] quit=1 commands=1

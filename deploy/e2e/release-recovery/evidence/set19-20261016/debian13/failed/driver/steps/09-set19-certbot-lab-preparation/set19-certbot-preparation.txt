@@ -1,0 +1,88 @@
+== before
+== certbot.timer
+NextElapseUSecRealtime=Sat 2026-10-17 00:57:28 UTC
+LastTriggerUSec=
+Result=success
+LoadState=loaded
+ActiveState=active
+SubState=waiting
+DropInPaths=
+UnitFileState=enabled
+InvocationID=d1bfa1faacf14e6cba577a26f94c0fc5
+== certbot.service
+Result=success
+NRestarts=0
+ExecMainStartTimestamp=
+ExecMainExitTimestamp=
+ExecMainStatus=0
+LoadState=loaded
+ActiveState=inactive
+SubState=dead
+DropInPaths=
+UnitFileState=static
+InvocationID=
+== stamp
+/var/lib/systemd/timers/stamp-certbot.timer mtime=2026-10-16 17:16:05.995827553 +0000 (1792170965)
+== now
+2026-10-16T17:18:14Z
+1792171094
+== failing ExecStart drop-in (lab)
+write_rc=0
+[Service]
+ExecStart=
+ExecStart=/bin/false
+reload_rc=0
+start_rc=1 (expected non-zero)
+== timer drop-in without the random delay (lab)
+timer_drop_in_rc=0
+[Timer]
+RandomizedDelaySec=0
+reload_rc=0
+== age the persistent stamp (lab)
+touch_rc=0
+== after
+== certbot.timer
+NextElapseUSecRealtime=Sat 2026-10-17 00:00:00 UTC
+LastTriggerUSec=
+Result=success
+LoadState=loaded
+ActiveState=active
+SubState=waiting
+DropInPaths=/etc/systemd/system/certbot.timer.d/50-set19-lab-no-random-delay.conf
+UnitFileState=enabled
+InvocationID=d1bfa1faacf14e6cba577a26f94c0fc5
+== certbot.service
+Result=exit-code
+NRestarts=0
+ExecMainStartTimestamp=Fri 2026-10-16 17:18:15 UTC
+ExecMainExitTimestamp=Fri 2026-10-16 17:18:15 UTC
+ExecMainStatus=1
+LoadState=loaded
+ActiveState=failed
+SubState=failed
+DropInPaths=/etc/systemd/system/certbot.service.d/50-set19-lab-fail.conf
+UnitFileState=static
+InvocationID=5b5525ca4683405ab914aaa3097c3a3c
+== stamp
+/var/lib/systemd/timers/stamp-certbot.timer mtime=2026-10-13 17:18:15.410987431 +0000 (1791911895)
+== now
+2026-10-16T17:18:15Z
+1792171095
+== timer definition
+# /usr/lib/systemd/system/certbot.timer
+[Unit]
+Description=Run certbot twice daily
+
+[Timer]
+OnCalendar=*-*-* 00,12:00:00
+RandomizedDelaySec=43200
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+
+# /etc/systemd/system/certbot.timer.d/50-set19-lab-no-random-delay.conf
+[Timer]
+RandomizedDelaySec=0
+Job for certbot.service failed because the control process exited with error code.
+See "systemctl status certbot.service" and "journalctl -xeu certbot.service" for details.

@@ -1,0 +1,10 @@
+cleanup at 2026-10-16T17:24:58Z; qemu processes: 0
+removed /var/tmp/cp-release-drill-s19-catchup (2.6G) rc=0 exists_after=no
+removed /var/tmp/cp-release-drill-s19-catchup-b (2.6G) rc=0 exists_after=no
+removed /var/tmp/cp-release-drill-s19-catchup-c (2.6G) rc=0 exists_after=no
+removed /var/tmp/cp-release-drill-s19-failed (2.6G) rc=0 exists_after=no
+removed /var/tmp/cp-pair-accept/dist/1743ac69edb0e5723dc60d992b53094dcc4b1431-acceptance-license (1.5G) rc=0 exists_after=no
+removed /var/tmp/cp-pair-accept/dist/16cbfc877bd46608f8ff37e2a37905a21941db29-acceptance-license (1.5G) rc=0 exists_after=no
+removed /var/tmp/cp-pair-accept/dist/967f5ff24942782289e05fbc9b9b83e0072e2b90-acceptance-license (1.5G) rc=0 exists_after=no
+removed /var/tmp/cp-set19 (2.8G) rc=0 exists_after=no
+/dev/sdd       1007G   13G  943G   2% /

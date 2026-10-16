@@ -1,0 +1,29 @@
+{
+  "checks": {
+    "failure_sidecar": false,
+    "reject_counter_line": "tcp dport 443 counter packets 12 bytes 720 log prefix \"cp-set19-443 \" reject with tcp reset",
+    "renewal_started_after_preparation": false,
+    "request_id": "1cbe7127c85970addfbfce447e333ed1",
+    "service": {
+      "ActiveState": "inactive",
+      "ExecMainExitTimestamp": "",
+      "ExecMainStartTimestamp": "",
+      "ExecMainStatus": "0",
+      "InvocationID": "",
+      "Result": "success",
+      "SubState": "dead"
+    },
+    "timer": {
+      "ActiveState": "active",
+      "LastTriggerUSec": "Tue 2026-10-13 16:48:39 UTC",
+      "NextElapseUSecRealtime": "Fri 2026-10-16 21:51:52 UTC",
+      "UnitFileState": "enabled"
+    },
+    "timer_enabled_and_active": true,
+    "update_failure_line": false
+  },
+  "finished_at": "2026-10-16T16:52:46Z",
+  "name": "set19-certbot-readings",
+  "started_at": "2026-10-16T16:52:46Z",
+  "verdict": "observed"
+}

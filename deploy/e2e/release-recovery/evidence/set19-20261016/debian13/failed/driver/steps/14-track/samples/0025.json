@@ -1,0 +1,91 @@
+{
+  "agreement": {
+    "known_sources": [
+      "cli"
+    ],
+    "phase": {
+      "cli": "succeeded"
+    },
+    "reasons": [],
+    "sources": [
+      "cli",
+      "shell"
+    ],
+    "verdict": "single-source"
+  },
+  "cli": {
+    "boot_id": "b4f50cb9-3113-4d4a-9e41-885db257e22a",
+    "captured_at": "2026-10-16T17:22:07.555951Z",
+    "en": {
+      "returncode": 0,
+      "status": "ok",
+      "stderr": "",
+      "stdout": "The update completed and the new version was verified when it finished. Nothing else is needed on the server. Open the panel to check that everything works now.\nRequest: 623ca70c7be8b0757280aac9a9cc6667\nRecorded at: 2026-10-16T17:21:58Z\nThis is a recorded observation; current service health was not checked.\nRecorded state (for support): phase=succeeded reason=update_verified proof=update_verified\n"
+    },
+    "json": {
+      "returncode": 0,
+      "status": "ok",
+      "stderr": "",
+      "stdout": "{\"schema\":\"celikpanel-recovery-status/v1\",\"request_id\":\"623ca70c7be8b0757280aac9a9cc6667\",\"observation\":\"known\",\"phase\":\"succeeded\",\"terminal_proof\":\"update_verified\",\"reason\":\"update_verified\",\"observed_at\":\"2026-10-16T17:21:58Z\"}\n"
+    },
+    "tr": {
+      "returncode": 0,
+      "status": "ok",
+      "stderr": "",
+      "stdout": "Güncelleme tamamlandı ve yeni sürüm bittiği anda doğrulandı. Sunucuda başka bir işlem gerekmiyor. Her şeyin şu an çalıştığını görmek için paneli açın.\nİşlem: 623ca70c7be8b0757280aac9a9cc6667\nKayıt zamanı: 2026-10-16T17:21:58Z\nBu kaydedilmiş bir gözlemdir; güncel hizmet sağlığı kontrol edilmedi.\nKayıtlı durum (destek için): phase=succeeded reason=update_verified proof=update_verified\n"
+    }
+  },
+  "guidance_api": null,
+  "guidance_cli": {
+    "actionable": true,
+    "keys": [
+      "recovery.phase.succeeded",
+      "recovery.next.succeeded"
+    ],
+    "missing_keys": [],
+    "no_actor_or_action": false,
+    "observation": {
+      "automatic_recovery": null,
+      "failure_code": null,
+      "first_failure_code": null,
+      "observation": "known",
+      "observed_at": "2026-10-16T17:21:58Z",
+      "panel_state": "ready",
+      "phase": "succeeded",
+      "previous_failure": null,
+      "reason": "update_verified",
+      "renewal_before_update": null,
+      "request_id": "623ca70c7be8b0757280aac9a9cc6667",
+      "terminal_proof": "update_verified",
+      "waiting_for": null
+    },
+    "observation_unavailable": false,
+    "texts": {
+      "en": [
+        "Update verified",
+        "The server verified this update. Reload CelikPanel to load the installed interface."
+      ],
+      "tr": [
+        "Güncelleme doğrulandı",
+        "Sunucu bu güncellemeyi doğruladı. Kurulu arayüzü yüklemek için CelikPanel’i yeniden yükleyin."
+      ]
+    }
+  },
+  "index": 24,
+  "observed": {
+    "observation": "known",
+    "observed_at": "2026-10-16T17:21:58Z",
+    "phase": "succeeded",
+    "reason": "update_verified",
+    "request_id": "623ca70c7be8b0757280aac9a9cc6667",
+    "schema": "celikpanel-recovery-status/v1",
+    "terminal_proof": "update_verified"
+  },
+  "panel_error": "PanelError",
+  "shell_fetch": {
+    "http": 200
+  },
+  "t": 1792171315.4471111,
+  "update_card": null,
+  "utc": "2026-10-16T17:21:55Z"
+}

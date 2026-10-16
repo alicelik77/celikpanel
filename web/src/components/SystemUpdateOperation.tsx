@@ -1,6 +1,6 @@
 import { prepareRecoveryShell } from '../lib/recoveryShell';
 import { systemUpdateFailureMessage } from '../lib/systemUpdateFailure';
-import { failedUpdateGuidance, type OutcomeText } from '../lib/systemUpdateOutcome';
+import { failedUpdateGuidance, SYSTEM_UPDATE_UNKNOWN_OUTCOME_LIMIT_MS, type OutcomeText, type SystemUpdateOutcomeTone } from '../lib/systemUpdateOutcome';
 import { isPreflightStop, parseRecoveryObservation, reconcileRecoveryObservation, UPDATE_MARKER_KEY, type RecoveryObservation } from '../lib/recoveryObservation';
 import {
     createContext,
@@ -13,7 +13,7 @@ import {
     type ReactNode,
 } from 'react';
 import { flushSync } from 'react-dom';
-import { CheckCircle2, DownloadCloud, Loader2, WifiOff, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, DownloadCloud, Info, Loader2, RefreshCw, WifiOff, XCircle } from 'lucide-react';
 import { Button } from './ui';
 import { useI18n } from '../i18n';
 import { replaceCurrentRouterURL, useNavigationBlocker } from '../router';
@@ -60,6 +60,7 @@ import {
     type SystemUpdateStepsView,
 } from '../lib/systemUpdateSteps';
 import { SystemUpdateSteps, systemUpdateStepsAnnouncement } from './SystemUpdateSteps';
+import { BuildCommit } from './BuildCommit';
 
 type Translate = ReturnType<typeof useI18n>['t'];
 
@@ -129,6 +130,10 @@ type TerminalResult = {
     marker: UpdateMarker;
     message: string;
     reloadScheduled: boolean;
+    // A success the server's recovery verified after repeating a step.
+    recovered?: boolean;
+    // This browser's clock when the outcome was recorded.
+    completedAt?: number;
 };
 
 type ActiveUpdateRecord = {
@@ -150,6 +155,9 @@ type TerminalUpdateRecord = {
     reload_scheduled: boolean;
     completed_at: number;
     required_reload?: UpdateMarker;
+    // Additive (2026-10-16), succeeded only: the server's recovery verified the
+    // update after repeating a step, so the page says so in one quiet line.
+    recovered?: true;
 };
 
 type ReloadUpdateRecord = {
@@ -192,8 +200,9 @@ type SystemUpdateOperationContextValue = {
     // Additive (2026-10-16): the update's steps as drawn now, while it is
     // followed or once it succeeded; null otherwise.
     steps?: SystemUpdateStepsView | null;
-    // The version and build the update installed, once it succeeded.
-    updated?: { version: string; commit: string } | null;
+    // The version and build the update installed, once it succeeded;
+    // repeated when the server's recovery repeated a step before verifying it.
+    updated?: { version: string; commit: string; repeated?: boolean } | null;
 };
 
 type PendingRenderCommit = {
@@ -375,6 +384,7 @@ function decodeStoredRecord(raw: string): StoredUpdateRecord | null {
             reload_scheduled: value.reload_scheduled,
             completed_at: value.completed_at,
             ...(requiredReload ? { required_reload: requiredReload } : {}),
+            ...(value.outcome === 'succeeded' && value.recovered === true ? { recovered: true as const } : {}),
         };
     } catch {
         return null;
@@ -458,6 +468,7 @@ function recordMatches(left: StoredUpdateRecord | null, right: StoredUpdateRecor
         && left.message === right.message
         && left.reload_scheduled === right.reload_scheduled
         && left.completed_at === right.completed_at
+        && left.recovered === right.recovered
         && optionalMarkerMatches(left.required_reload, right.required_reload);
 }
 
@@ -662,6 +673,8 @@ function terminalResultFromRecord(record: TerminalUpdateRecord): TerminalResult 
         marker: record.marker,
         message: record.message,
         reloadScheduled: record.reload_scheduled,
+        recovered: record.recovered === true,
+        completedAt: record.completed_at,
     };
 }
 
@@ -1363,6 +1376,61 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
         return result.result;
     }, [adoptCanonicalSnapshot, reconcileCanonicalRecord, tabOwnerID]);
 
+    // A verified recovery of this exact failed request is the update's success
+    // (Frankfurt 2026-10-16): the stored outcome becomes a succeeded update with
+    // the same post-update reload, so this page and the update card say
+    // "Updated to" and one quiet line that a step was repeated. It writes only
+    // this browser's record; it starts nothing on the server.
+    // Dogrulanmis kurtarma guncellemenin basarisidir; yalniz tarayici kaydi degisir.
+    const commitRecoveredSuccess = useCallback(async (record: TerminalUpdateRecord): Promise<boolean> => {
+        if (record.outcome !== 'failed') return false;
+        const ownerID = tabOwnerID;
+        if (!ownerID) return false;
+        const shouldReload = new URL(window.location.href).searchParams.get(POST_UPDATE_RELOAD_PARAM)
+            !== record.marker.request_id;
+        const result = await transactStoredRecord<boolean>(
+            ownerID,
+            (current) => recordMatches(current, record)
+                ? {
+                    kind: 'write',
+                    record: {
+                        state_version: 1,
+                        phase: 'terminal',
+                        marker: record.marker,
+                        outcome: 'succeeded',
+                        message: '',
+                        reload_scheduled: shouldReload,
+                        completed_at: Date.now(),
+                        required_reload: record.marker,
+                        recovered: true,
+                    },
+                    result: true,
+                }
+                : { kind: 'keep', result: false },
+            false,
+        );
+        if (result.kind !== 'committed') {
+            await reconcileCanonicalRecord();
+            return false;
+        }
+        adoptCanonicalSnapshot(result.snapshot);
+        return result.result;
+    }, [adoptCanonicalSnapshot, reconcileCanonicalRecord, tabOwnerID]);
+
+    // Reload now instead of after the short automatic delay.
+    const reloadNow = useCallback(() => {
+        const target = pendingReloadRef.current;
+        if (!target) return;
+        if (reloadTimerRef.current !== null) {
+            window.clearTimeout(reloadTimerRef.current);
+            reloadTimerRef.current = null;
+        }
+        const next = new URL(window.location.href);
+        next.searchParams.set(POST_UPDATE_RELOAD_PARAM, target.request_id);
+        programmaticReloadRef.current = true;
+        window.location.replace(next.toString());
+    }, []);
+
     useEffect(() => {
         markerRef.current = marker;
     }, [marker]);
@@ -2012,15 +2080,37 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
                 productMessages: [t('panelUpdate.notAccepted'), t('panelUpdate.identityMismatchCleared')],
                 typedMessage: typed !== displayedTerminal.message ? typed : undefined,
                 reading: !observed?.settled,
+                // Read on every render (the recovery reads re-render): an
+                // unreadable outcome becomes the owner's to look at after its limit.
+                withinLimit: displayedTerminal.completedAt !== undefined
+                    && Date.now() - displayedTerminal.completedAt < SYSTEM_UPDATE_UNKNOWN_OUTCOME_LIMIT_MS,
             });
         })()
         : null;
+    // The server's recovery verified this failed request: it is the success
+    // path, recorded as such once (commitRecoveredSuccess).
+    const recoveredRequestID = failureGuidance?.state === 'succeeded' && displayedTerminal?.kind === 'failed'
+        ? displayedTerminal.marker.request_id : null;
+    useEffect(() => {
+        if (!recoveredRequestID || authPaused || !canonicalReady) return;
+        const stored = terminalRecordRef.current;
+        if (!stored || stored.outcome !== 'failed' || stored.marker.request_id !== recoveredRequestID) return;
+        void commitRecoveredSuccess(stored);
+    }, [authPaused, canonicalReady, commitRecoveredSuccess, recoveredRequestID]);
+    // A failure the owner must read and close; everything the server still
+    // handles by itself keeps the calm view without a close button.
+    const failureTone: SystemUpdateOutcomeTone | null = failureGuidance?.tone ?? null;
+    const realFailure = displayedTerminal?.kind === 'failed'
+        && (failureTone === 'danger' || failureTone === 'warning' || failureTone === 'neutral');
     // A line whose text lives in a screen catalogue shows its boot-catalogue
     // fallback until that catalogue has arrived; a key never renders as its name.
     const outcomeText = (value: OutcomeText) => ('text' in value ? value.text
         : t(value.fallback && !screensReady ? value.fallback : value.key, value.vars));
     const terminalKind = pendingReload || requiredReloadMarker ? 'succeeded'
         : failureGuidance?.state === 'succeeded' ? 'succeeded' : displayedTerminal?.kind;
+    // How the mark is drawn: red only for a failure the owner must act on.
+    const markTone: SystemUpdateOutcomeTone | null = terminalKind === 'succeeded' ? 'success'
+        : displayedTerminal?.kind === 'failed' ? failureTone ?? 'progress' : null;
     // The update's own restart, inside its window, is progress: no warning
     // icon, no "not known" (owner report 2026-10-15, D-033). After the window
     // the same state is said as unknown, by itself, on the next second.
@@ -2053,16 +2143,26 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
         now,
         succeeded: false,
     }) : null;
-    const updatedMarker = !failureGuidance && terminalKind === 'succeeded' ? exactMarker : null;
+    // A success verified by the server's recovery is the success path too.
+    const recoveredSuccess = failureGuidance?.state === 'succeeded';
+    const updatedMarker = (!failureGuidance || recoveredSuccess) && terminalKind === 'succeeded' ? exactMarker : null;
+    // Installed; the server repeats the last step by itself (Frankfurt 2026-10-16).
+    const finishing = failureGuidance?.finishing ?? null;
     const stepsView: SystemUpdateStepsView | null = followedSteps ?? (updatedMarker ? systemUpdateStepsView({
         plan: null, phase: 'unknown', overdue: false, lostSince: null, now, succeeded: true,
+    }) : finishing ? systemUpdateStepsView({
+        plan: null, phase: 'unknown', overdue: false, lostSince: null, now, succeeded: false, finishing,
     }) : null);
+    const repeated = recoveredSuccess
+        || (terminal?.recovered === true && updatedMarker !== null && markerMatches(terminal.marker, updatedMarker));
     const updated = updatedMarker && stepsView?.completed
-        ? { version: updatedMarker.target.version, commit: updatedMarker.target.commit } : null;
+        ? { version: updatedMarker.target.version, commit: updatedMarker.target.commit, ...(repeated ? { repeated: true } : {}) }
+        : null;
     const stepsVersion = (followed ?? updatedMarker)?.target.version ?? '';
     // The status line is the current step while the steps are drawn; it is
     // visible again for the result and past the restart window.
-    const stepsStatusHidden = stepsView !== null && !stepsView.completed && !restartOverdue;
+    // While the server repeats the last step the body says why, beside the steps.
+    const stepsStatusHidden = stepsView !== null && !stepsView.completed && !restartOverdue && !finishing;
     // The licence gate keeps its last positive decision through this update's
     // planned restart (set17 D1, lib/systemUpdateRestartSignal.ts): published
     // once the server has said the followed request is active, with the first
@@ -2077,10 +2177,10 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
             : { requestID: restartRequestID, startedAt: restartStartedAt, lostSince: restartLostSince });
     }, [restartRequestID, restartStartedAt, restartLostSince]);
     useEffect(() => () => publishSystemUpdateRestart(null), []);
-    const title = failureGuidance
-        ? outcomeText(failureGuidance.title)
-        : updated
-            ? t('panelUpdate.steps.updated', { version: updated.version })
+    const title = updated
+        ? t('panelUpdate.steps.updated', { version: updated.version })
+        : failureGuidance
+            ? outcomeText(failureGuidance.title)
             : terminalKind === 'succeeded'
                 ? t('panelUpdate.succeeded')
                 : stepsView
@@ -2088,12 +2188,16 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
                     : trackingText?.title ?? t('panelUpdate.title');
     const message = pendingReload || requiredReloadMarker
         ? t('panelUpdate.reloading', { version: (pendingReload ?? requiredReloadMarker)!.target.version })
-        : failureGuidance
-            ? outcomeText(failureGuidance.lines[0])
-            : trackingText?.message ?? displayedTerminal?.message ?? view.message;
+        : updated && failureGuidance
+            ? t('panelUpdate.succeeded')
+            : failureGuidance
+                ? outcomeText(failureGuidance.lines[0])
+                : trackingText?.message ?? displayedTerminal?.message ?? view.message;
     // Why the read failed (connection, restart, refusal), under the unknown line.
     const trackingHint = trackingText?.hint ?? null;
-    const failureDetails = failureGuidance && (
+    // The server's own line is kept behind a closed "Details" disclosure; the
+    // owner reads the typed wording first (owner direction 2026-10-16).
+    const failureDetails = failureGuidance && !updated && (
         <>
             {failureGuidance.lines.slice(1).map((line, index) => (
                 <p key={index} className="mt-2 text-sm text-fg-muted">{outcomeText(line)}</p>
@@ -2104,12 +2208,21 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
                 </code>
             )}
             {failureGuidance.serverMessage && (
-                <p className="mt-2 break-words text-xs text-fg-subtle">
-                    {t('panelUpdate.outcome.serverMessage', { message: failureGuidance.serverMessage })}
-                </p>
+                <details className="mt-3 text-left text-xs text-fg-subtle" data-update-details="">
+                    <summary className="cursor-pointer select-none font-medium text-fg-muted">{t('panelUpdate.details')}</summary>
+                    <p className="mt-2 break-words">
+                        {t('panelUpdate.outcome.serverMessage', { message: failureGuidance.serverMessage })}
+                    </p>
+                </details>
             )}
         </>
     );
+    const repeatedLine = updated?.repeated
+        ? <p className="mt-2 text-sm text-fg-muted" data-update-repeated="">{t('panelUpdate.steps.repeated')}</p>
+        : null;
+    // The close button and its sentence belong to a failure the owner reads.
+    const acknowledgementKey = realFailure ? 'panelUpdate.failureAcknowledgement'
+        : stepsView ? 'panelUpdate.steps.locked' : 'panelUpdate.interactionLocked';
     // One notice, not two (lib/systemUpdateTracking.ts).
     // The card also carries "Updated to" (owner design 2026-10-16: no corner
     // notice while the update page is open); a failure keeps the corner notice.
@@ -2145,20 +2258,21 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
                         </div>
                     )}
                     <p
-                        role={terminalKind === 'failed' ? 'alert' : 'status'}
-                        aria-live={terminalKind === 'failed' ? 'assertive' : 'polite'}
+                        role={markTone === 'danger' ? 'alert' : 'status'}
+                        aria-live={markTone === 'danger' ? 'assertive' : 'polite'}
                         className={compactSteps ? 'sr-only' : 'mt-1 text-sm text-fg-muted'}
                     >
                         {compactSteps ? stepsAnnouncement : message}
                     </p>
                     {trackingHint && <p className={'mt-1 text-sm text-fg-muted'}>{trackingHint}</p>}
+                    {repeatedLine}
                     {failureDetails}
-                    <p className={'mt-2 text-xs text-fg-subtle'}>{t(displayedTerminal?.kind === 'failed' ? 'panelUpdate.failureAcknowledgement' : 'panelUpdate.watch')}</p>
+                    <p className={'mt-2 text-xs text-fg-subtle'}>{t(realFailure ? 'panelUpdate.failureAcknowledgement' : 'panelUpdate.watch')}</p>
                     <p className={'mt-3 font-mono text-xs text-fg'}>
                         {exactMarker.target.version} · T+{formatElapsed(exactMarker.created_at, now)}
                     </p>
                     <p className={'mt-1 break-all text-xs text-fg-subtle'}>ID {exactMarker.request_id}</p>
-                    {displayedTerminal?.kind === 'failed' && (
+                    {realFailure && (
                         <div className={'mt-3 flex justify-end'}>
                             <Button type={'button'} onClick={() => void dismissTerminal()}>
                                 {t('panelUpdate.dismissFailure')}
@@ -2194,27 +2308,35 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
                     className="fixed inset-0 z-[110] flex items-center justify-center bg-scrim/80 p-4 backdrop-blur-sm outline-none"
                 >
                     <div className="w-full max-w-lg rounded-2xl border border-border-strong bg-surface p-6 text-center shadow-2xl">
-                        <span className={`mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl ${
-                            terminalKind === 'failed'
-                                ? 'bg-danger/10 text-danger'
-                                : terminalKind === 'succeeded'
-                                    ? 'bg-success/10 text-success'
-                                    : disconnected
-                                        ? 'bg-warning-mark/20 text-warning'
-                                        : 'bg-primary/10 text-primary'
-                        }`}>
-                            {terminalKind === 'failed' ? <XCircle className="h-7 w-7" />
-                                : terminalKind === 'succeeded' ? <CheckCircle2 className="h-7 w-7" />
-                                    : disconnected ? <WifiOff className="h-7 w-7" />
-                                        // The steps carry the motion; the mark stays still.
-                                        : stepsView ? <DownloadCloud className="h-7 w-7" />
-                                            : <Loader2 className="h-7 w-7 animate-spin" />}
+                        <span data-update-mark={markTone ?? (disconnected ? 'disconnected' : 'progress')}
+                            className={`mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl ${
+                                markTone === 'danger'
+                                    ? 'bg-danger/10 text-danger'
+                                    : markTone === 'success'
+                                        ? 'bg-success/10 text-success'
+                                        : markTone === 'warning' || (markTone === null && disconnected)
+                                            ? 'bg-warning-mark/20 text-warning'
+                                            : markTone === 'neutral'
+                                                ? 'bg-surface-2 text-fg-muted'
+                                                : 'bg-primary/10 text-primary'
+                            }`}>
+                            {/* Red only for a failure the owner must act on; what the
+                                server is handling by itself stays progress (D-033). */}
+                            {markTone === 'danger' ? <XCircle className="h-7 w-7" />
+                                : markTone === 'success' ? <CheckCircle2 className="h-7 w-7" />
+                                    : markTone === 'warning' ? <AlertTriangle className="h-7 w-7" />
+                                        : markTone === 'neutral' ? <Info className="h-7 w-7" />
+                                            : markTone === null && disconnected ? <WifiOff className="h-7 w-7" />
+                                                // The steps carry the motion; the mark stays still.
+                                                : finishing ? <RefreshCw className="h-7 w-7" />
+                                                    : stepsView ? <DownloadCloud className="h-7 w-7" />
+                                                        : <Loader2 className="h-7 w-7 animate-spin" />}
                         </span>
                         <h2 id="system-update-operation-title" className="text-xl font-semibold text-fg">{title}</h2>
                         {updated && (
-                            <p className="mt-1 font-mono text-xs text-fg-subtle" data-update-build="">
-                                build <span aria-hidden="true">{updated.commit.slice(0, 12)}</span>
-                                <span className="sr-only">{updated.commit}</span>
+                            <p className="mt-1 font-mono text-xs text-fg-subtle" data-update-build=""
+                                title={t('common.fullCommit', { commit: updated.commit })}>
+                                <BuildCommit commit={updated.commit} />
                             </p>
                         )}
                         {stepsView && (
@@ -2231,12 +2353,12 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
                             {stepsStatusHidden ? stepsAnnouncement : message}
                         </p>
                         {trackingHint && <p className="mt-2 text-sm text-fg-muted">{trackingHint}</p>}
+                        {repeatedLine}
                         {failureDetails}
                         <p className="mt-4 rounded-lg border border-border bg-surface-2 px-4 py-3 text-xs leading-5 text-fg-subtle">
                             {/* Beside the step bars, one short neutral sentence (owner
                                 2026-10-16); the bounded-lock detail stays for pages without a plan. */}
-                            {t(displayedTerminal?.kind === 'failed' ? 'panelUpdate.failureAcknowledgement'
-                                : stepsView ? 'panelUpdate.steps.locked' : 'panelUpdate.interactionLocked')}
+                            {t(acknowledgementKey)}
                         </p>
                         <dl className="mt-4 grid grid-cols-2 gap-3 rounded-lg border border-border bg-surface-subtle p-3 text-left text-xs">
                             <div>
@@ -2258,10 +2380,18 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
                                 </div>
                             )}
                         </dl>
-                        {displayedTerminal?.kind === 'failed' && (
+                        {realFailure && (
                             <div className="mt-5 flex justify-center">
                                 <Button type="button" onClick={() => void dismissTerminal()}>
                                     {t('panelUpdate.dismissFailure')}
+                                </Button>
+                            </div>
+                        )}
+                        {updated && pendingReload && (
+                            <div className="mt-5 flex justify-center">
+                                <Button type="button" onClick={reloadNow} data-update-reload="">
+                                    <RefreshCw className="h-4 w-4" aria-hidden="true" />
+                                    {t('app.reload')}
                                 </Button>
                             </div>
                         )}

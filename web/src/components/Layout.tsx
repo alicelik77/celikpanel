@@ -1,4 +1,5 @@
 import { BrandMark } from './BrandMark';
+import { BuildCommit } from './BuildCommit';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LogOut, ChevronDown, Menu, KeyRound, UserCheck } from 'lucide-react';
 import { api } from '../lib/api';
@@ -585,14 +586,12 @@ export function BuildStamp({ runtime }: { runtime: PanelRuntime | null }) {
     // the title and for screen readers.
     // "build" ve kısa kimlik içinden bölünmeyen tek birimdir; satır yalnız
     // birimden önce kırılır, tam kimlik başlıkta ve ekran okuyucuda kalır.
-    const shortCommit = v.commit.slice(0, 12);
 
     return (
         <>
             {t('app.name')} · {v.version} ·{' '}
             <span className="inline-block whitespace-nowrap font-mono" data-build-stamp="" title={`${t('common.buildHint')} — ${v.commit}`}>
-                build <span aria-hidden="true">{shortCommit}</span>
-                <span className="sr-only">{v.commit}</span>
+                <BuildCommit commit={v.commit} />
             </span>
             {!v.agent_matches && v.agent_commit !== '' && (
                 <span className="ml-1.5 rounded bg-warning/15 px-1.5 py-0.5 text-warning" title={t('common.agentMismatchHint', { commit: v.agent_commit })}>

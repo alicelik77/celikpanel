@@ -1,0 +1,29 @@
+{
+  "cell": "page",
+  "chrome": "Chrome/155.0.8059.40",
+  "handover": {
+    "at": "2026-10-16T17:06:14Z",
+    "base": "https://127.0.0.1:19419",
+    "baseline_version": "v0.1.0-alpha.90",
+    "browser": {
+      "lang": "en",
+      "viewport": "desktop"
+    },
+    "cell": "set19-catchup-debian13",
+    "local_port": 19419,
+    "mode": "update-page",
+    "password_file": "(root-only file, not copied)",
+    "preps": [
+      "page-ready",
+      "arm_<request id>"
+    ],
+    "schema": "celikpanel/set12-handover/v1",
+    "target_version": "v0.1.0-alpha.92",
+    "tls_leaf_sha256": "064c60d04f446912fe4e10553295715adc85f884986862af83e8055c12c509d6",
+    "username": "labadmin",
+    "window": "page"
+  },
+  "started": "2026-10-16T17:06:18.168Z",
+  "ended": "2026-10-16T17:08:06.582Z",
+  "ok": true
+}

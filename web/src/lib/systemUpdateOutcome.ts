@@ -1,4 +1,4 @@
-import { isPreflightStop, preflightStopCodes, recoveryFailureCodes, recoveryFailureGuidanceKey, retryingCauseKey, type PausedCauseCode, type RecoveryFailureCode, type RecoveryObservation } from './recoveryObservation';
+import { isFinishingStep, isPreflightStop, preflightStopCodes, recoveryFailureCodes, recoveryFailureGuidanceKey, retryingCauseKey, type PausedCauseCode, type RecoveryFailureCode, type RecoveryObservation } from './recoveryObservation';
 import { systemUpdatePreflightStop, withoutInternalTokens } from './systemUpdateFailure';
 
 /** Preflight steps with reviewed owner wording; any other step uses the generic line. */
@@ -25,6 +25,9 @@ export type OutcomeKey =
     | 'panelUpdate.outcome.rolledBack'
     | 'panelUpdate.outcome.cause.candidate_panel_startup_check_failed'
     | 'panelUpdate.outcome.cause.panel_start_unverified'
+    | 'panelUpdate.outcome.cause.update_finishing_scheduler'
+    | 'panelUpdate.finishing.title'
+    | 'panelUpdate.finishing.body'
     | 'panelUpdate.outcome.cause.recovery_runtime_preflight_failed'
     | 'panelUpdate.outcome.stoppedTitle'
     | 'panelUpdate.outcome.stopped'
@@ -39,6 +42,7 @@ export type OutcomeKey =
     | 'panelUpdate.outcome.followsRecovery'
     | 'panelUpdate.outcome.unknownResult'
     | 'panelUpdate.outcome.checking'
+    | 'panelUpdate.outcome.checkingTitle'
     | `recovery.phase.${NonNullable<RecoveryObservation['phase']>}`
     | `recovery.next.${NonNullable<RecoveryObservation['phase']>}`
     | `recovery.wait.${NonNullable<RecoveryObservation['waiting_for']>}`
@@ -62,12 +66,29 @@ export type OutcomeKey =
  */
 export type OutcomeText = { key: OutcomeKey; vars?: Record<string, string>; fallback?: OutcomeKey } | { text: string };
 
+/**
+ * How the outcome is drawn (owner direction 2026-10-16, D-024/D-033): nothing
+ * alarming for what the server is handling by itself. progress: recovery owns
+ * the request (or the first read is still due); success: verified update;
+ * warning: verified return to the previous version; neutral: stopped before
+ * changing anything; danger: the owner must act (recovery_required, a paused
+ * recovery) or the outcome stayed unreadable past its limit.
+ */
+export type SystemUpdateOutcomeTone = 'progress' | 'success' | 'warning' | 'neutral' | 'danger';
+
 export type FailedUpdateGuidance = {
     /**
      * rolled_back: verified; unchanged: stopped in the read-only preflight, final;
      * recovery: the server's recovery is the source; unknown: no usable observation yet.
      */
     state: 'rolled_back' | 'unchanged' | 'recovery' | 'succeeded' | 'unknown';
+    tone: SystemUpdateOutcomeTone;
+    /**
+     * The new version is installed and the server repeats the update's last
+     * step by itself (Frankfurt 2026-10-16): the page draws the steps with the
+     * confirmation retrying, and the attempt when it is known.
+     */
+    finishing?: { attempt: { current: number; max: number } | null };
     title: OutcomeText;
     lines: OutcomeText[];
     /** A fixed owner command to show as code, never server-supplied text. */
@@ -92,7 +113,18 @@ type Input = {
     typedMessage?: string;
     /** True until the first observation read for this request has settled. */
     reading: boolean;
+    /**
+     * True while an unreadable outcome is still inside its limit (the page's
+     * own clock since the failure was recorded); afterwards it is said as a
+     * failure the owner looks at.
+     */
+    withinLimit?: boolean;
 };
+
+/** How long an unreadable outcome is still said as "being checked". */
+export const SYSTEM_UPDATE_UNKNOWN_OUTCOME_LIMIT_MS = 2 * 60 * 1000;
+/** The native recovery timer admits at most three automatic attempts. */
+const RECOVERY_MAX_ATTEMPTS = 3;
 
 // A refused update check never rolls back or pauses, so it has no cause text
 // of its own there; the generic cause is shown if a record ever says so.
@@ -133,6 +165,7 @@ export function failedUpdateGuidance(observation: RecoveryObservation | null, in
         const translated = !!preflight?.reasonClass && (preflightReasonClasses as readonly string[]).includes(preflight.reasonClass);
         return {
             state: 'unchanged',
+            tone: 'neutral',
             title: { key: 'panelUpdate.outcome.stoppedTitle' },
             lines: [
                 { key: 'panelUpdate.outcome.stopped', vars: versions },
@@ -148,6 +181,7 @@ export function failedUpdateGuidance(observation: RecoveryObservation | null, in
         // The secondary line keeps the server's words without internal tokens.
         return {
             state: 'rolled_back',
+            tone: 'warning',
             title: { key: 'panelUpdate.outcome.rolledBackTitle' },
             lines: [
                 { key: 'panelUpdate.outcome.rolledBack', vars: versions },
@@ -155,6 +189,19 @@ export function failedUpdateGuidance(observation: RecoveryObservation | null, in
                 { key: 'panelUpdate.outcome.rolledBackNext', vars: versions },
                 { key: 'panelUpdate.outcome.rolledBackResume', vars: versions },
             ],
+            serverMessage,
+        };
+    }
+    if (isFinishingStep(observation)) {
+        // Installed and running; only the last step is being repeated. The
+        // server's line stays behind the page's "Details" disclosure.
+        const first = observation!.phase === 'recovering' && observation!.previous_failure === 'update_failed';
+        return {
+            state: 'recovery',
+            tone: 'progress',
+            title: { key: 'panelUpdate.finishing.title' },
+            lines: [{ key: 'panelUpdate.finishing.body', vars: { version: input.targetVersion } }],
+            finishing: { attempt: first ? { current: 1, max: RECOVERY_MAX_ATTEMPTS } : null },
             serverMessage,
         };
     }
@@ -190,13 +237,29 @@ export function failedUpdateGuidance(observation: RecoveryObservation | null, in
         // upd4 O9: a verified update shows no failure, and the server's
         // failure line of the earlier attempt is not shown.
         if (!succeeded) lines.push({ key: 'panelUpdate.outcome.followsRecovery' });
-        return { state: succeeded ? 'succeeded' : 'recovery', title, lines, command, serverMessage: succeeded ? undefined : serverMessage };
+        // Red only when the owner must act: a paused recovery or a recovery
+        // that could not finish. Everything the server still handles is progress.
+        const tone: SystemUpdateOutcomeTone = succeeded ? 'success'
+            : observation.automatic_recovery === 'paused_retry_limit'
+                || (phase === 'recovery_required' && !observation.automatic_recovery) ? 'danger'
+                : phase === 'recovered' ? 'warning' : 'progress';
+        return { state: succeeded ? 'succeeded' : 'recovery', tone, title, lines, command, serverMessage: succeeded ? undefined : serverMessage };
     }
     const lines: OutcomeText[] = [];
     if (input.typedMessage) lines.push({ text: input.typedMessage });
     else if (product) lines.push({ text: input.message });
-    else lines.push({ key: input.reading ? 'panelUpdate.outcome.checking' : 'panelUpdate.outcome.unknownResult' });
-    return { state: 'unknown', title: { key: 'panelUpdate.failed' }, lines, serverMessage };
+    else lines.push({ key: input.reading || input.withinLimit === true ? 'panelUpdate.outcome.checking' : 'panelUpdate.outcome.unknownResult' });
+    // The first read, and an unreadable outcome inside its limit, are still
+    // being checked; past the limit the owner is told it is not known.
+    // A reviewed summary (typed or product text) keeps its failure wording.
+    const checking = !input.typedMessage && !product && (input.reading || input.withinLimit === true);
+    return {
+        state: 'unknown',
+        tone: checking ? 'progress' : 'danger',
+        title: { key: checking ? 'panelUpdate.outcome.checkingTitle' : 'panelUpdate.failed' },
+        lines,
+        serverMessage,
+    };
 }
 
 /** The update check's optional previous_attempt, for the exact offered target. */

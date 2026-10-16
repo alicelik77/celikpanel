@@ -198,4 +198,48 @@ awk '/^if \[\[ \$child_status -ne 0 \]\] && ! markers_still_present; then$/ { pr
 [[ $(cat "$work/branch") == $'if [[ $child_status -ne 0 ]] && ! markers_still_present; then\n    end_after_failed_child_without_marker\nfi\nif [[ $child_status -ne 0 ]]; then' ]] ||
     fail "no-marker end is not wired before the retry handling: $(cat "$work/branch")"
 
+# Frankfurt 2026-10-16: the runner's real restore with the real Certbot helpers
+# against native-like renewal units. Turning the timer back on may start the
+# renewal at once, and the renewal may have failed before the update; both are
+# the owner's renewal, so the runner reports the scheduler as returned and the
+# next check finds it in its recorded state. Needs root (root-owned snapshot).
+# Zamanlayıcı yeniden açılınca başlayan ya da önceden başarısız yenileme
+# sahibin yenilemesidir; çalıştırıcı zamanlayıcıyı geri döndürülmüş bildirir.
+if [[ $(id -u) -eq 0 ]]; then
+    (
+        set -euo pipefail
+        # shellcheck source=deploy/panel-tls-snapshot.sh
+        source "$repo_root/deploy/panel-tls-snapshot.sh"
+        # shellcheck source=deploy/test-fixture-certbot-renewal.sh
+        source "$repo_root/deploy/test-fixture-certbot-renewal.sh"
+        native_root=$(mktemp -d /tmp/celikpanel-renewal-pause.XXXXXXXX)
+        trap 'rm -rf -- "$native_root"' EXIT
+        chmod 0700 -- "$native_root"
+        install -d -m 0700 -- "$native_root/agent"
+        export CELIKPANEL_TLS_SNAPSHOT_TEST_ROOT=$native_root CELIKPANEL_CERTBOT_RUN_WAIT_SECONDS=2
+        for case_name in timer-starts-renewal timer-starts-failing-renewal failed-before-update; do
+            certbot_fixture_init "$native_root/fixture"
+            case "$case_name" in
+                timer-starts-renewal) certbot_fixture_set trigger activating ;;
+                timer-starts-failing-renewal) certbot_fixture_set trigger finished-failed ;;
+                failed-before-update) certbot_fixture_set run failed ;;
+            esac
+            snap=$(certbot_fixture_capture "$native_root" "$case_name" 2>/dev/null) || fail "$case_name: capture failed"
+            panel_tls_quiesce_certbot_scheduler "$snap" 2>/dev/null || fail "$case_name: pause failed"
+            RECOVERY_SNAPSHOT_DIR=${snap%/panel-tls} MARKER_OPERATION=update TRANSACTION_PHASE=scheduler
+            restore_renewal_after_final_attempt 2>"$native_root/stderr"
+            grep -F 'was returned to its state from before the update' "$native_root/stderr" >/dev/null ||
+                fail "$case_name: runner did not return renewal: $(cat "$native_root/stderr")"
+            [[ $(certbot_fixture_get timer-active) == active && $(certbot_fixture_get timer-enabled) == enabled ]] ||
+                fail "$case_name: timer not turned back on"
+            [[ -z $(certbot_fixture_violations) ]] || fail "$case_name: owner renewal touched: $(certbot_fixture_violations)"
+            restore_renewal_after_final_attempt 2>"$native_root/stderr"
+            grep -F 'is already in its state from before the update' "$native_root/stderr" >/dev/null ||
+                fail "$case_name: the owner's renewal run hid the restored scheduler state"
+        done
+    ) || exit 1
+else
+    printf 'SKIP: native-like renewal cases require root\n'
+fi
+
 echo 'PASS: renewal restored once after a failed final forward attempt, kept paused for rollbacks, re-paused by the retry; pause_pending recorded until the pause; early owner retry keeps the normal retry; a failed child without a marker ends without retry hints'

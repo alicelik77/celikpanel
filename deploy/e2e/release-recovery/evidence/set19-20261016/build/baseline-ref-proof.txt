@@ -1,0 +1,27 @@
+baseline-ref v0.1.0-alpha.90 tag_commit=1743ac69edb0e5723dc60d992b53094dcc4b1431 baseline=1743ac69edb0e5723dc60d992b53094dcc4b1431 (the tag commit itself) source=f9198bdc1905b969ee04d0b95c455d7a309fb28e good=16cbfc877bd46608f8ff37e2a37905a21941db29 (policy-only fixture over the source) defective=967f5ff24942782289e05fbc9b9b83e0072e2b90
+== release policy at the tag
+format=celikpanel-release-sequence-policy-v1
+version=v0.1.0-alpha.90
+current=90
+previous=89
+previous_version=v0.1.0-alpha.89
+previous_commit=ac36fccf4e4238a8bc4624356a478ba8dab20b34
+== release policy at the source (its own; previous_commit is the alpha.91 tag commit)
+format=celikpanel-release-sequence-policy-v1
+version=v0.1.0-alpha.92
+current=92
+previous=91
+previous_version=v0.1.0-alpha.91
+previous_commit=356109b532b9d0d0df5dd31fc19e9932918a9648
+== release policy of the good fixture (previous_commit is the alpha.90 tag commit)
+format=celikpanel-release-sequence-policy-v1
+version=v0.1.0-alpha.92
+current=92
+previous=90
+previous_version=v0.1.0-alpha.90
+previous_commit=1743ac69edb0e5723dc60d992b53094dcc4b1431
+== the defective fixture commit changes: cmd/panel/main.go 
+== git diff --stat 1743ac69edb0e5723dc60d992b53094dcc4b1431 f9198bdc1905b969ee04d0b95c455d7a309fb28e -- internal/db/migrations (empty = no migration between them):
+== (end)
+== Agent package closure at the baseline (go list -deps ./cmd/agent, 317 packages): licensing packages
+0

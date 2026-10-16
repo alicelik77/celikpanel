@@ -448,9 +448,13 @@ FAILURE_SIDECAR_SCHEMA = "celikpanel-recovery-failure/v1"
 PREFLIGHT_REFUSED_CODE = "update_preflight_refused"
 RUNTIME_PREFLIGHT_CODE = "recovery_runtime_preflight_failed"
 PREFLIGHT_STOP_CODES = (PREFLIGHT_REFUSED_CODE, RUNTIME_PREFLIGHT_CODE)
-FAILURE_CODES = (START_CHECK_CODE, REAL_START_CODE) + PREFLIGHT_STOP_CODES
+# update.sh report_update_failure: the update is installed and verified; only re-enabling the renewal
+# scheduler did not confirm, and automatic recovery completes it forward (alpha.92).
+FINISHING_SCHEDULER_CODE = "update_finishing_scheduler"
+FAILURE_CODES = (START_CHECK_CODE, REAL_START_CODE, FINISHING_SCHEDULER_CODE) + PREFLIGHT_STOP_CODES
 # Phases in which cmd/recovery failureCodeGuidance prints each code's pending text (the preflight stops: failed only).
 CLI_PENDING_PHASES = {START_CHECK_CODE: ("failed", "recovering"), REAL_START_CODE: ("failed", "recovering"),
+                      FINISHING_SCHEDULER_CODE: ("failed", "recovering"),
                       PREFLIGHT_REFUSED_CODE: ("failed",), RUNTIME_PREFLIGHT_CODE: ("failed",)}
 # upd5: automatic recovery values that are still recovery in progress: neither the pause nor an owner action.
 # pause_pending: the last admitted attempt failed and the next timer run records the pause (keeps first_failure_code).

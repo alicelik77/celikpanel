@@ -1,0 +1,11 @@
+{
+  "at": "2026-10-16T16:48:39Z",
+  "kind": "catchup",
+  "network_returncode": 0,
+  "preparation_returncode": 0,
+  "reject_rule": true,
+  "self_test_refused": true,
+  "stamp_aged": true,
+  "timer_active_after": true,
+  "what": "lab preparation (not a product change): outbound 443 refused except loopback; the persistent stamp of certbot.timer dated three days back, the timer left active"
+}

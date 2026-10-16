@@ -70,9 +70,15 @@ const FailureSchema = "celikpanel-recovery-failure/v1"
 // safely aborted (state=unchanged).
 // update_preflight_refused aynı anlamdadır: dondurmadan önce salt-okur denetim
 // reddetti ve quiesce güvenle geri alındı.
+// update_finishing_scheduler is written when the new version is installed and
+// verified and only turning the owner's Certbot renewal scheduler back on did
+// not confirm; automatic recovery repeats that step (Frankfurt 2026-10-16).
+// update_finishing_scheduler: yeni sürüm kurulu ve doğrulandı; yalnız sahibin
+// Certbot yenileme zamanlayıcısını yeniden açma adımı tekrarlanıyor.
 func ValidFailureCode(value string) bool {
 	return value == "candidate_panel_startup_check_failed" || value == "panel_start_unverified" ||
-		value == "recovery_runtime_preflight_failed" || value == "update_preflight_refused"
+		value == "recovery_runtime_preflight_failed" || value == "update_preflight_refused" ||
+		value == "update_finishing_scheduler"
 }
 
 // ValidAutomatic accepts the optional celikpanel-recovery-automatic/v1 hint:

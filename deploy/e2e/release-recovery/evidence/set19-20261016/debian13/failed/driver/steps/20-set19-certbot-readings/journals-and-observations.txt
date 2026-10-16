@@ -1,0 +1,80 @@
+== certbot.service since the preparation
+2026-10-16T17:18:15+00:00 dns-debian13 systemd[1]: Starting certbot.service - Certbot...
+2026-10-16T17:18:15+00:00 dns-debian13 systemd[1]: certbot.service: Main process exited, code=exited, status=1/FAILURE
+2026-10-16T17:18:15+00:00 dns-debian13 systemd[1]: certbot.service: Failed with result 'exit-code'.
+2026-10-16T17:18:15+00:00 dns-debian13 systemd[1]: Failed to start certbot.service - Certbot.
+2026-10-16T17:21:48+00:00 dns-debian13 systemd[1]: Starting certbot.service - Certbot...
+2026-10-16T17:21:48+00:00 dns-debian13 systemd[1]: certbot.service: Main process exited, code=exited, status=1/FAILURE
+2026-10-16T17:21:48+00:00 dns-debian13 systemd[1]: certbot.service: Failed with result 'exit-code'.
+2026-10-16T17:21:48+00:00 dns-debian13 systemd[1]: Failed to start certbot.service - Certbot.
+== update worker (celikpanel-self-update-623ca70c7be8b0757280aac9a9cc6667)
+2026-10-16T17:20:27+00:00 dns-debian13 systemd[1]: Starting celikpanel-self-update-623ca70c7be8b0757280aac9a9cc6667.service - [systemd-run] /opt/celikpanel/bin/agent --self-update-worker 623ca70c7be8b0757280aac9a9cc6667...
+2026-10-16T17:20:27+00:00 dns-debian13 systemd[1]: Started celikpanel-self-update-623ca70c7be8b0757280aac9a9cc6667.service - [systemd-run] /opt/celikpanel/bin/agent --self-update-worker 623ca70c7be8b0757280aac9a9cc6667.
+2026-10-16T17:21:20+00:00 dns-debian13 sudo[39523]:     root : PWD=/var/backups/celikpanel/releases/16cbfc877bd4-61ae39364208cdc76a4b25a4 ; USER=celikpanel ; COMMAND=/usr/bin/env -i PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin HOME=/var/lib/celikpanel LC_ALL=C CELIKPANEL_DATA_DIR=/var/lib/celikpanel/.release-db-migrations/[REDACTED-SHA256]/work /opt/celikpanel/bin/panel --migrate-only
+2026-10-16T17:21:20+00:00 dns-debian13 sudo[39523]: pam_unix(sudo:session): session opened for user celikpanel(uid=999) by (uid=0)
+2026-10-16T17:21:20+00:00 dns-debian13 sudo[39523]: pam_unix(sudo:session): session closed for user celikpanel
+2026-10-16T17:21:25+00:00 dns-debian13 sudo[39930]:     root : PWD=/var/backups/celikpanel/releases/16cbfc877bd4-61ae39364208cdc76a4b25a4 ; USER=celikpanel ; COMMAND=/usr/bin/env -i PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin HOME=/var/lib/celikpanel LC_ALL=C CELIKPANEL_DATA_DIR=/var/lib/celikpanel CELIKPANEL_LISTEN=:2083 CELIKPANEL_TLS=1 CELIKPANEL_PANEL_DEMO_FLAG= CELIKPANEL_WEB_DIR=/opt/celikpanel/web CELIKPANEL_PANEL_INSECURE_COOKIES_FLAG= /opt/celikpanel/bin/panel --check-startup-readiness
+2026-10-16T17:21:25+00:00 dns-debian13 sudo[39930]: pam_unix(sudo:session): session opened for user celikpanel(uid=999) by (uid=0)
+2026-10-16T17:21:26+00:00 dns-debian13 sudo[39930]: pam_unix(sudo:session): session closed for user celikpanel
+2026-10-16T17:21:58+00:00 dns-debian13 systemd[1]: celikpanel-self-update-623ca70c7be8b0757280aac9a9cc6667.service: Deactivated successfully.
+2026-10-16T17:21:58+00:00 dns-debian13 systemd[1]: celikpanel-self-update-623ca70c7be8b0757280aac9a9cc6667.service: Consumed 1min 6.859s CPU time, 494.5M memory peak.
+2026-10-16T17:21:58+00:00 dns-debian13 systemd[1]: celikpanel-self-update-623ca70c7be8b0757280aac9a9cc6667.service: Failed to open /run/systemd/transient/celikpanel-self-update-623ca70c7be8b0757280aac9a9cc6667.service: No such file or directory
+2026-10-16T17:21:58+00:00 dns-debian13 systemd[1]: celikpanel-self-update-623ca70c7be8b0757280aac9a9cc6667.service: Failed to open /run/systemd/transient/celikpanel-self-update-623ca70c7be8b0757280aac9a9cc6667.service: No such file or directory
+== recovery runner since the preparation
+2026-10-16T17:18:33+00:00 dns-debian13 systemd[1]: Starting celikpanel-release-recovery.service - CelikPanel verified release transaction recovery...
+2026-10-16T17:18:34+00:00 dns-debian13 systemd[1]: celikpanel-release-recovery.service: Deactivated successfully.
+2026-10-16T17:18:34+00:00 dns-debian13 systemd[1]: Finished celikpanel-release-recovery.service - CelikPanel verified release transaction recovery.
+2026-10-16T17:19:04+00:00 dns-debian13 systemd[1]: Starting celikpanel-release-recovery.service - CelikPanel verified release transaction recovery...
+2026-10-16T17:19:05+00:00 dns-debian13 systemd[1]: celikpanel-release-recovery.service: Deactivated successfully.
+2026-10-16T17:19:05+00:00 dns-debian13 systemd[1]: Finished celikpanel-release-recovery.service - CelikPanel verified release transaction recovery.
+2026-10-16T17:19:35+00:00 dns-debian13 systemd[1]: Starting celikpanel-release-recovery.service - CelikPanel verified release transaction recovery...
+2026-10-16T17:19:36+00:00 dns-debian13 systemd[1]: celikpanel-release-recovery.service: Deactivated successfully.
+2026-10-16T17:19:36+00:00 dns-debian13 systemd[1]: Finished celikpanel-release-recovery.service - CelikPanel verified release transaction recovery.
+2026-10-16T17:20:06+00:00 dns-debian13 systemd[1]: Starting celikpanel-release-recovery.service - CelikPanel verified release transaction recovery...
+2026-10-16T17:20:06+00:00 dns-debian13 systemd[1]: celikpanel-release-recovery.service: Deactivated successfully.
+2026-10-16T17:20:06+00:00 dns-debian13 systemd[1]: Finished celikpanel-release-recovery.service - CelikPanel verified release transaction recovery.
+2026-10-16T17:20:36+00:00 dns-debian13 systemd[1]: Starting celikpanel-release-recovery.service - CelikPanel verified release transaction recovery...
+2026-10-16T17:20:38+00:00 dns-debian13 systemd[1]: celikpanel-release-recovery.service: Deactivated successfully.
+2026-10-16T17:20:38+00:00 dns-debian13 systemd[1]: Finished celikpanel-release-recovery.service - CelikPanel verified release transaction recovery.
+2026-10-16T17:20:38+00:00 dns-debian13 systemd[1]: celikpanel-release-recovery.service: Consumed 1.005s CPU time, 9.8M memory peak.
+2026-10-16T17:20:51+00:00 dns-debian13 systemd[1]: Starting celikpanel-release-recovery.service - CelikPanel verified release transaction recovery...
+2026-10-16T17:20:52+00:00 dns-debian13 systemd[1]: celikpanel-release-recovery.service: Deactivated successfully.
+2026-10-16T17:20:52+00:00 dns-debian13 systemd[1]: Finished celikpanel-release-recovery.service - CelikPanel verified release transaction recovery.
+2026-10-16T17:21:22+00:00 dns-debian13 systemd[1]: Starting celikpanel-release-recovery.service - CelikPanel verified release transaction recovery...
+2026-10-16T17:21:23+00:00 dns-debian13 systemd[1]: celikpanel-release-recovery.service: Deactivated successfully.
+2026-10-16T17:21:23+00:00 dns-debian13 systemd[1]: Finished celikpanel-release-recovery.service - CelikPanel verified release transaction recovery.
+2026-10-16T17:21:53+00:00 dns-debian13 systemd[1]: Starting celikpanel-release-recovery.service - CelikPanel verified release transaction recovery...
+2026-10-16T17:21:55+00:00 dns-debian13 systemd[1]: celikpanel-release-recovery.service: Deactivated successfully.
+2026-10-16T17:21:55+00:00 dns-debian13 systemd[1]: Finished celikpanel-release-recovery.service - CelikPanel verified release transaction recovery.
+2026-10-16T17:21:55+00:00 dns-debian13 systemd[1]: celikpanel-release-recovery.service: Consumed 1.194s CPU time, 9.8M memory peak.
+2026-10-16T17:22:26+00:00 dns-debian13 systemd[1]: Starting celikpanel-release-recovery.service - CelikPanel verified release transaction recovery...
+2026-10-16T17:22:26+00:00 dns-debian13 systemd[1]: celikpanel-release-recovery.service: Deactivated successfully.
+2026-10-16T17:22:26+00:00 dns-debian13 systemd[1]: Finished celikpanel-release-recovery.service - CelikPanel verified release transaction recovery.
+2026-10-16T17:22:57+00:00 dns-debian13 systemd[1]: Starting celikpanel-release-recovery.service - CelikPanel verified release transaction recovery...
+2026-10-16T17:22:57+00:00 dns-debian13 systemd[1]: celikpanel-release-recovery.service: Deactivated successfully.
+2026-10-16T17:22:57+00:00 dns-debian13 systemd[1]: Finished celikpanel-release-recovery.service - CelikPanel verified release transaction recovery.
+== recovery observations of the request
+-- /var/lib/celikpanel-recovery-observations/623ca70c7be8b0757280aac9a9cc6667.renewal
+schema=celikpanel-recovery-renewal/v1
+request_id=623ca70c7be8b0757280aac9a9cc6667
+target_commit=16cbfc877bd46608f8ff37e2a37905a21941db29
+renewal_before_update=on
+-- /var/lib/celikpanel-recovery-observations/623ca70c7be8b0757280aac9a9cc6667.status
+schema=celikpanel-recovery-observation/v1
+request_id=623ca70c7be8b0757280aac9a9cc6667
+target_commit=16cbfc877bd46608f8ff37e2a37905a21941db29
+phase=succeeded
+terminal_proof=update_verified
+reason=update_verified
+observed_at=2026-10-16T17:21:58Z
+previous_failure=none
+== 443 reject counters
+table inet cp_set19_lab {
+	chain out {
+		type filter hook output priority filter; policy accept;
+		oifname "lo" accept
+		ip daddr 127.0.0.0/8 accept
+		tcp dport 443 counter packets 12 bytes 720 log prefix "cp-set19-443 " reject with tcp reset
+		udp dport 443 counter packets 0 bytes 0 reject
+	}
+}
