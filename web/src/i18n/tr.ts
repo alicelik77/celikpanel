@@ -379,6 +379,7 @@ export const tr: Record<ShellKey, string> = {
     'panelUpdate.steps.restart': 'Yeni sürümü kurma ve paneli yeniden başlatma',
     'panelUpdate.steps.confirm': 'Yeni sürümü doğrulama',
     'panelUpdate.steps.restarting': 'Panel yeniden başlıyor; bu adım birkaç dakika sürebilir. Bu sayfa kendiliğinden yeniden bağlanır.',
+    'panelUpdate.steps.locked': 'Güncelleme sürerken diğer sayfalar kilitli kalır.',
     'panelUpdate.steps.updated': '{version} sürümüne güncellendi',
     'panelUpdate.steps.state.done': 'tamamlandı',
     'panelUpdate.steps.state.running': 'sürüyor',

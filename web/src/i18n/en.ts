@@ -171,6 +171,7 @@ export const en = {
     'panelUpdate.steps.restart': 'Install the new version and restart the panel',
     'panelUpdate.steps.confirm': 'Verify the new version',
     'panelUpdate.steps.restarting': 'The panel is restarting; this step can take a few minutes. This page reconnects by itself.',
+    'panelUpdate.steps.locked': 'Other pages stay locked while the update runs.',
     'panelUpdate.steps.updated': 'Updated to {version}',
     'panelUpdate.steps.state.done': 'done',
     'panelUpdate.steps.state.running': 'in progress',

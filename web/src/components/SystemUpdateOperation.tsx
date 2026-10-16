@@ -2233,7 +2233,10 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
                         {trackingHint && <p className="mt-2 text-sm text-fg-muted">{trackingHint}</p>}
                         {failureDetails}
                         <p className="mt-4 rounded-lg border border-border bg-surface-2 px-4 py-3 text-xs leading-5 text-fg-subtle">
-                            {t(displayedTerminal?.kind === 'failed' ? 'panelUpdate.failureAcknowledgement' : 'panelUpdate.interactionLocked')}
+                            {/* Beside the step bars, one short neutral sentence (owner
+                                2026-10-16); the bounded-lock detail stays for pages without a plan. */}
+                            {t(displayedTerminal?.kind === 'failed' ? 'panelUpdate.failureAcknowledgement'
+                                : stepsView ? 'panelUpdate.steps.locked' : 'panelUpdate.interactionLocked')}
                         </p>
                         <dl className="mt-4 grid grid-cols-2 gap-3 rounded-lg border border-border bg-surface-subtle p-3 text-left text-xs">
                             <div>

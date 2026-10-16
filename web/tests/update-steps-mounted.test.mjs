@@ -240,6 +240,18 @@ test('no toast on the update page: the corner notice repeats neither the steps n
     assert.match(tracker, /disconnected: response\.status >= 500,/);
 });
 
+test('beside the step bars the dialog says the lock in one short sentence; without a plan the bounded detail stays', () => {
+    // Owner 2026-10-16: the two-minute/six-minute lock sentence was the longest,
+    // most technical text next to the calm bars.
+    assert.equal(en['panelUpdate.steps.locked'], 'Other pages stay locked while the update runs.');
+    assert.equal(tr['panelUpdate.steps.locked'], 'Güncelleme sürerken diğer sayfalar kilitli kalır.');
+    assert.doesNotMatch(en['panelUpdate.steps.locked'], /minute|restart/i);
+    const tracker = readFileSync(new URL('../src/components/SystemUpdateOperation.tsx', import.meta.url), 'utf8');
+    assert.match(tracker, /t\(displayedTerminal\?\.kind === 'failed' \? 'panelUpdate\.failureAcknowledgement'\n\s+: stepsView \? 'panelUpdate\.steps\.locked' : 'panelUpdate\.interactionLocked'\)/);
+    // Control: the bounded wording is kept for a page without a plan.
+    assert.match(en['panelUpdate.interactionLocked'], /after two minutes/);
+});
+
 for (const locale of ['en', 'tr']) {
     const c = catalogues[locale];
 
@@ -384,7 +396,7 @@ for (const locale of ['en', 'tr']) {
 
 test('every step string exists in English and Turkish, and the Turkish is not the English', () => {
     const keys = Object.keys(en).filter(key => key.startsWith('panelUpdate.steps.'));
-    assert.equal(keys.length, 12);
+    assert.equal(keys.length, 13);
     for (const key of keys) {
         assert.equal(typeof tr[key], 'string', key);
         assert.notEqual(tr[key], en[key], key);
