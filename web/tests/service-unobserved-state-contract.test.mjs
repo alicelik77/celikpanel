@@ -61,7 +61,8 @@ test('the browser decodes the three-state answer instead of failing the payload'
 test('an unchecked component reads "not checked yet", never "not installed"', () => {
   assert.match(serviceList, /const notChecked = \(s: ManagedService\) => s\.is_installed === null;/);
 
-  const statusStart = serviceList.indexOf('<StatusDot ok={s.is_installed === true');
+  // alpha.94: the dot has four tones and the unknown answer has its own.
+  const statusStart = serviceList.indexOf("<StatusDot tone={notChecked(s) ? 'unknown' : !s.is_installed ? 'idle'");
   assert.ok(statusStart >= 0, 'the status dot must not treat an unknown answer as installed');
   const statusCell = serviceList.slice(statusStart, serviceList.indexOf('</span>', statusStart));
   const uncheckedCopy = statusCell.indexOf(`t('services.notChecked')`);

@@ -40,7 +40,7 @@ export function StartGuide({ dnsReady, scanFresh, scanning, onScan, panelSecured
                     <p className="mt-1 text-sm text-fg-muted">{t('start.next.hint')}</p>
                     <div className="mt-3 flex flex-wrap gap-4 text-sm font-semibold text-primary">
                         <Link to="/domains">{t('start.next.web')}</Link>
-                        <Link to="/services#mail-stacks">{t('start.next.mail')}</Link>
+                        <Link to="/services#bundles">{t('start.next.mail')}</Link>
                     </div>
                 </div>}
             </div>

@@ -135,28 +135,81 @@ func TestMailProfileFrontendRecoveryAndFallbackStayKindBound(t *testing.T) {
 	}
 }
 
-func TestMailProfileCardsUseServerMembershipAndClosedActions(t *testing.T) {
-	source := serviceListSource(t)
-	cards := sourceSection(t, source, `function MailProfileCards(`, `function InstallServiceDialog(`)
-	for _, required := range []string{
-		`profile.services.map((id)`,
-		`profile.status === 'available'`,
-		`profile.status === 'partial'`,
-		`profile.status === 'complete'`,
-		`dnsIdentityReady && profile.available`,
-		`disabled={disabled || !dnsIdentityReady || !actionable}`,
-		`navigate('/settings?section=dns')`,
-		`profile.status === 'complete' && profile.warning`,
-		`services.mailProfiles.profileComponentsNeedRepair`,
-	} {
-		if !strings.Contains(cards, required) {
-			t.Fatalf(`mail-profile cards are missing %q`, required)
+// webSource reads one file of the web interface for a source contract.
+func webSource(t *testing.T, parts ...string) string {
+	t.Helper()
+	_, testFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal(`resolve web source path`)
+	}
+	path := filepath.Clean(filepath.Join(append([]string{filepath.Dir(testFile), `..`, `..`, `web`, `src`}, parts...)...))
+	content, err := os.ReadFile(path)
+	if err != nil {
+		content, err = os.ReadFile(filepath.Clean(filepath.Join(append([]string{`..`, `..`, `web`, `src`}, parts...)...)))
+		if err != nil {
+			t.Fatalf(`read %v: %v`, parts, err)
 		}
 	}
-	if strings.Contains(cards, `['postfix'`) || strings.Contains(cards, `['dovecot'`) {
-		t.Fatal(`mail-profile cards must not hard-code server membership`)
+	return string(content)
+}
+
+// alpha.94 (D-034): the mail stack cards became the email strip's ready
+// bundles. The intent stays: the server names each bundle's components and
+// its one action, the page decodes a closed set of states and actions, a mail
+// bundle opens the profile's own install dialogue and starts the kind-bound
+// operation, and nothing hard-codes which components a bundle has.
+func TestReadyBundleStripUsesServerMembershipAndClosedActions(t *testing.T) {
+	decoder := webSource(t, `lib`, `readyBundles.ts`)
+	for _, required := range []string{
+		`const components = stringList(bundle.components, serviceIDs);`,
+		`!missing.every((id) => components.includes(id))`,
+		`installed_verified: ['repair', 'none'],`,
+		`blocked: ['none'],`,
+		`!MAIL_PROFILE_IDS.has(bundle.profile_id)`,
+		`bundle.profile_id !== undefined || action === 'repair'`,
+	} {
+		if !strings.Contains(decoder, required) {
+			t.Fatalf(`ready bundle decoder is missing %q`, required)
+		}
 	}
-	if !strings.Contains(source, `operationKind: 'mail_profile_install'`) {
-		t.Fatal(`mail-profile action must start a kind-bound durable operation`)
+	strip := webSource(t, `components`, `ReadyBundleStrip.tsx`)
+	for _, required := range []string{
+		`else if (bundle.action_route === 'mail_profile') onMail(bundle);`,
+		`bundle.action === 'verify' && bundle.action_route === 'components'`,
+		// One step at a time, only for this step's own operation.
+		`if (operation.service_id !== step || operation.kind !== 'service_install') stop(run, 'foreign');`,
+		`if (tracker.locked) return;`,
+		`if (tracker.failure) {`,
+		`if (tracker.catalogSnapshot === baselineRef.current) return;`,
+		`if (sentRef.current === key) return;`,
+		`const closed = await gate();`,
+	} {
+		if !strings.Contains(strip, required) {
+			t.Fatalf(`ready bundle strip is missing %q`, required)
+		}
+	}
+	for _, forbidden := range []string{`['postfix'`, `['dovecot'`, `['nginx'`} {
+		if strings.Contains(strip, forbidden) {
+			t.Fatalf(`ready bundle strip must not hard-code %q`, forbidden)
+		}
+	}
+	source := serviceListSource(t)
+	for _, required := range []string{
+		`openProfilePlan(profile);`,
+		`operationKind: 'mail_profile_install'`,
+		`navigate('/settings?section=dns')`,
+		`bundleSequence.begin(bundle);`,
+		// The client gate of the mail actions before the DNS identity is
+		// ready, beside the Panel's own refusal (the cards' former
+		// "disabled={disabled || !dnsIdentityReady || !actionable}").
+		`if (!dnsIdentityReady) return;`,
+		`disabled={mutationControlsDisabled || componentOperation.locked || (cat === 'email' && !dnsIdentityReady)}`,
+	} {
+		if !strings.Contains(source, required) {
+			t.Fatalf(`Components page is missing %q`, required)
+		}
+	}
+	if strings.Contains(source, `function MailProfileCards(`) {
+		t.Fatal(`the mail stack cards must be gone from the Components page`)
 	}
 }

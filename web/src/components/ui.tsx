@@ -108,8 +108,24 @@ export function Spinner({
     );
 }
 
-export function StatusDot({ ok }: { ok: boolean }) {
-    return <span className={`inline-block h-2 w-2 rounded-full ${ok ? 'bg-success' : 'bg-fg-subtle'}`} />;
+// StatusDot: four tones, always beside a word that says the same thing
+// (alpha.94, critique item 3). success = running; danger = installed but
+// stopped or failed, the one state on the Components page that must stand
+// out; idle = not installed, a hollow ring, so absence is not drawn like a
+// fault; unknown = not known yet, solid grey. `ok` stays for the screens
+// that only tell running from not running.
+// Dört ton, her zaman aynı şeyi söyleyen bir sözcüğün yanında: çalışıyor,
+// durdu (kurulu ama durmuş), kurulu değil (içi boş halka), bilinmiyor.
+export type StatusDotTone = 'success' | 'danger' | 'idle' | 'unknown';
+const statusDotTones: Record<StatusDotTone, string> = {
+    success: 'bg-success',
+    danger: 'bg-danger',
+    idle: 'border border-fg-subtle bg-transparent',
+    unknown: 'bg-fg-subtle',
+};
+export function StatusDot({ ok, tone }: { ok?: boolean; tone?: StatusDotTone }) {
+    const chosen: StatusDotTone = tone ?? (ok ? 'success' : 'unknown');
+    return <span className={`inline-block h-2 w-2 shrink-0 rounded-full ${statusDotTones[chosen]}`} data-tone={chosen} />;
 }
 
 // Button: one primary (filled blue) call to action per view; everything

@@ -396,6 +396,14 @@ License access uses the existing navy and white panel controls in a focused page
 
 UsageBar stays navy until the recorded danger threshold, with no yellow range; print the value beside it. SecurityAuditCard gives a tinted field to failure while pass and warning share neutral surfaces and distinct symbols. Dashboard attention items rank failures above warnings with a divider and gap at the severity boundary. These panel-specific implementations retain the No-Adjacency Rule without imposing the public site's composition on operating screens.
 
+### Status dots, row actions and component icons (alpha.94)
+
+`StatusDot` in `web/src/components/ui.tsx` has four tones, always beside a word that says the same thing (the State Colour Rule): `success` for running, `danger` for a component that is installed but stopped or failed (its word is "Stopped" and is drawn in Red Ink), `idle` for not installed (a hollow ring in the third ink, so absence is not drawn like a fault) and `unknown` for not checked or not verified (solid third ink). The older `ok` prop maps to `success` and `unknown`.
+
+Row action icons (restart, stop, start, repair) are neutral ink at rest and take their tone only under the pointer or the keyboard focus; a running row therefore never shows amber beside red (the No-Adjacency Rule), and Stop's red stays in its confirmation dialogue. Row actions share one outlined recipe; on a phone they are 44 px tall and their names are written. A page keeps one filled primary button; the ready bundles strip, row Install and Verify are outlined.
+
+Component icons come from one map, `web/src/lib/componentIcons.tsx`, as Lucide line icons; a component without an entry takes its category's icon. The server's emoji `icon` field is kept in the API for older pages and is drawn nowhere. A row that is not installed keeps the muted tint.
+
 ### Remote state in the panel: checking, could not check, known
 
 Rule of 2026-10-09: **no negative UI unless known.** Anything a panel screen reads from the server is drawn in one of three states, and the three never look alike. The components are `Checking`, `CouldNotCheck`, `RemoteGate` and `KnownEmpty` in `web/src/components/ui.tsx`; the reads go through `web/src/lib/remote.ts`. The sentences and the migration steps are in [the operation guidance](docs/OPERATION-GUIDANCE.md#no-negative-state-unless-it-is-known-checking-could-not-check-known-2026-10-09).

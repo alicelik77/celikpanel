@@ -33,14 +33,13 @@ test('DNS completion requires fresh evidence, configured identity and a running 
   }
 });
 
-test('unused unavailable mail is optional; attempted and partial mail remains visible', () => {
-  const profile = {status: 'blocked', latest_attempt_status: 'none', verified: false};
-  assert.equal(policy.hasMailActivity([profile]), false);
-  assert.equal(policy.hasMailActivity([{...profile, status: 'available'}]), false);
-  assert.equal(policy.hasMailActivity([{...profile, status: 'partial'}]), true);
-  for (const status of ['failed', 'in_progress', 'succeeded']) {
-    assert.equal(policy.hasMailActivity([{...profile, latest_attempt_status: status}]), true);
-  }
+// alpha.94: the Mail stacks card and its activity gate are gone; the Ready
+// bundles card is always shown and says a failed or running mail attempt
+// again (tests/dashboard-mail-stack-card-contract.test.mjs mounts it).
+test('the mail activity gate is gone; attempted mail stays visible on the always-shown bundles card', () => {
+  assert.equal(policy.hasMailActivity, undefined);
+  const dashboard = readFileSync(new URL('../src/components/Dashboard.tsx', import.meta.url), 'utf8');
+  assert.match(dashboard, /profile\.latest_attempt_status === 'failed' \|\| profile\.latest_attempt_status === 'in_progress'/);
 });
 
 test('panel HTTPS cannot be completed by site SSL, an expired certificate or an unknown response', () => {
@@ -72,7 +71,7 @@ test('DNS is first; security remains accessible while DNS is incomplete; actions
   const links = tree.root.findAllByType('a').map((a) => a.props.href);
   assert.equal(links[0], '/settings?section=dns');
   for (const section of ['panel', 'account', 'security']) assert.ok(links.includes(`/settings?section=${section}`));
-  assert.ok(!links.includes('/services#mail-stacks'));
+  assert.ok(!links.includes('/services#bundles'));
   assert.equal(confirmations, 0);
   tree.root.findAllByType('button').find((b) => b.children.includes('firewall.turnOn')).props.onClick();
   tree.root.findAllByType('button').find((b) => b.children.includes('start.scan.action')).props.onClick();
@@ -89,7 +88,7 @@ test('ready DNS exposes optional hosting choices without counting mail as mandat
   }));
   const links = tree.root.findAllByType('a').map((a) => a.props.href);
   assert.ok(links.includes('/domains'));
-  assert.ok(links.includes('/services#mail-stacks'));
+  assert.ok(links.includes('/services#bundles'));
   assert.equal(tree.root.findAllByType('button').length, 0);
   tree.unmount();
 });

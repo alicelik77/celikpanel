@@ -21,6 +21,96 @@ Code decisions live in git; this file is for strategy. Newest first.
 
 ---
 
+## D-034 · Ready bundles are shortcuts, not products: a general registry, shown at the head of each Components category, one door on the Dashboard
+
+*October 17, 2026 (clock date) · Owner decision after the design review of the Components page (alpha.92 source, 2026-10-16) and the owner's mockup of 2026-10-16; in source for the v0.1.0-alpha.94 candidate; nothing measured on an installed server*
+
+The three "One-click mail stacks" cards stood at the top of Components, above
+every component row. On a phone the first row came after about 1,300 px of
+cards; the cards drew a verified Webmail as "Partially installed" in amber; and
+the idea behind them, installing a known-good group of components in one go,
+existed only for mail. The owner asked for the same thing to be general: like
+the one-click stacks, but for mail, databases and web alike, and in the place
+where the components themselves are. WordPress and other site applications are
+a separate, later topic. The Store stays the place for what is acquired or
+licensed (D-015 item 2 is upheld: the catalogue is the single install address).
+
+The rules adopted:
+
+1. **A ready bundle is a shortcut over existing catalogue components.** It is
+   not a store product, not a component of its own and not a page. A general
+   registry in the Panel (`cmd/panel/bundles.go`) names each bundle, its
+   category, its components in install order and the bundles offered after it.
+   The first entries: Core mail, Webmail and Spam-protected mail (through the
+   existing mail profiles); a PostgreSQL bundle and a MariaDB bundle, each with
+   one optional add-on (phpPgAdmin, phpMyAdmin, with the Nginx and PHP-FPM they
+   need); Nginx + PHP-FPM.
+2. **Where.** Each Components category draws one line, "Ready bundles",
+   between its header and its rows. An installed and verified bundle collapses
+   to "… installed and verified" (Repair, where it exists, is a text link);
+   installed but not verified reads "installed, not verified" in grey with
+   Repair (mail) or Verify (database and web); a bundle installed contains the
+   smaller ones it covers (Webmail covers Core Mail), and at most one more
+   offer follows (the registry's add-on first). A blocked bundle says why, in
+   grey, with no button; a host-wide mail refusal (the DNS identity) is one
+   line for the category, and an installed mail bundle stays visible beside it.
+   A mail bundle's last failed or running attempt and the Panel's warning are
+   said again under it (D-024). Mail bundles carry the product's own mail
+   profile names. The Dashboard has one calm "Ready bundles" card, always
+   shown, that lists what is installed, how many bundles can be installed and
+   any failed or running mail attempt with its reason, says "not checked",
+   "could not check", "held" and "not recent" each in its own words (with the
+   check itself on a host never checked), and is a door to
+   `/services#bundles`; it installs nothing.
+3. **States and actions are the Panel's.** Unknown (no fresh scan), available,
+   partial, installed and not verified, installed and verified, blocked, with
+   the mail profiles' typed reasons. Actions: install, continue, verify, repair,
+   none. Mail bundles take their state from the mail profiles; a mail profile
+   whose components are all present but whose proof is missing is "installed,
+   not verified", not partial. **Repair and Verify mean different things per
+   route.** There is no read-only verification of a mail setup: for a mail
+   bundle the action is Repair, which runs the profile install; it completes
+   what is missing and verifies the setup, and nothing installed is removed
+   (the dialogue says so before it is pressed). For a database or web bundle
+   Verify only reads the components again and changes nothing, so it stays
+   usable while the page holds its changes. A database or web bundle is never
+   partial: it is verified when all its components are ready on a fresh scan,
+   and otherwise offered with Install, which installs only the missing parts
+   (the parts present are listed as kept, and a part whose role is already
+   filled, such as Nginx where Apache serves the web, as not needed).
+4. **How it installs.** A mail bundle opens the existing mail install dialogue
+   and runs exactly today's route (setup extension or the profile install). A
+   database or web bundle asks once and then sends one ordinary component
+   install per missing component, in order, each only after the previous
+   operation, this step's own component install, has ended with a fresh scan
+   (one active operation per host), and only after the page's change gate (an
+   unverified page state, a host not ready for changes) has been read again.
+   The first failure, an operation that was not this step's, or a closed gate
+   stops the sequence with its reason and a Continue that installs only what
+   is missing; a failed component's own guidance (D-024) stays on screen. That
+   Continue lives in the page: a poll never sends an install, and after a
+   reload the bundle is simply offered again. No schema change (schema 44) and
+   no new Agent job kind.
+
+Consequences. The Components colour corrections of the same review are applied
+as existing DESIGN.md rules, not new ones: row action icons are neutral at rest
+and take their tone only under the pointer or focus (State Colour Rule,
+No-Adjacency Rule); the status dot has four tones, so a stopped service is red
+with its word and "not installed" is a hollow ring (State Colour Rule); the
+amber Layers tile and the amber "partial" sentences went with the cards, and
+the strip uses Amber Ink only for a webmail runtime that is installed but not
+ready (Two Yellows Rule); "Repair webmail" stays neutral unless the server
+reports a webmail problem; a healthy firewall is one line; component icons come
+from one map of line icons instead of emoji; the row is a fixed-column grid,
+and on a phone row actions are 44 px with their names written.
+
+What this does not authorise: no installed-server change, no new store item,
+no licence-policy change, and no WordPress or site-application bundle. Installed
+panels are still updated only by their owner from the panel's own update
+screen.
+
+---
+
 ## D-033 · A screen that makes the owner wait shows that it waits, or says that nothing needs to be done
 
 *October 14, 2026 (clock date) · Owner decision after the final setup step on the second installed server (Frankfurt, v0.1.0-alpha.84); applied in source to every waiting state found by a read of the web interface (37 states), with mounted tests and a mock browser (2026-10-14); partly measured in the eighteenth native record (set16, 2026-10-14 UTC: the Dashboard's Mail stacks card and the sidebar build id on Debian 13 and Ubuntu 24.04; the Components firewall banner and the "Needs attention" box with the Agent stopped on Debian 13 only); setup finishing and the update card's busy state not reached natively; nothing measured on an installed server*

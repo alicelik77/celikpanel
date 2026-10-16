@@ -29,7 +29,10 @@ import { useServerSetup } from './ServerSetupGate';
 import { decodeServerSetup, setupEditorKey, type ServerSetupSnapshot } from '../lib/serverSetup';
 import { publishComponentCensus } from '../lib/componentCensus';
 import { componentDescription, componentName } from '../lib/componentName';
-import { mailProfileBlocked, mailProfileDescription, mailProfileName, mailProfileWarning, webmailReportsProblem } from '../lib/mailProfileText';
+import { mailProfileName, webmailReportsProblem } from '../lib/mailProfileText';
+import { decodeReadyBundles, bundleName, type ReadyBundle } from '../lib/readyBundles';
+import { componentIcon } from '../lib/componentIcons';
+import { BundleInstallDialog, ReadyBundleStrip, useBundleSequence } from './ReadyBundleStrip';
 import { WebmailRepairButton } from './WebmailRepairButton';
 
 // One installed copy of a runtime (B3b): php8.3-fpm is an instance, a Node
@@ -95,6 +98,10 @@ interface ManagedService {
 interface ManagedServicesSnapshot {
     services: ManagedService[];
     profiles: ManagedMailProfile[];
+    // The ready bundles (alpha.94); an empty list from an older Panel or an
+    // answer that is not the contract, so no strip offers an action then.
+    // Hazır paketler; eski Panel'de ya da sözleşme dışı yanıtta boş liste.
+    bundles: ReadyBundle[];
     scannedAt: string | null;
     // The scan's age on the server's clock at the answer; null from an older
     // server or with no scan. / Taramanın yanıt anında sunucu saatiyle yaşı;
@@ -250,6 +257,7 @@ function parseManagedServicesSnapshot(value: unknown): ManagedServicesSnapshot |
     return {
         services: payload.services,
         profiles,
+        bundles: decodeReadyBundles(payload.bundles, serviceIDs) ?? [],
         scannedAt: typeof payload.scanned_at === 'string' ? payload.scanned_at : null,
         scanAgeSeconds: typeof payload.scan_age_seconds === 'number' ? payload.scan_age_seconds : null,
         dnsIdentityReady: payload.dns_identity_ready,
@@ -443,9 +451,13 @@ export function ServiceList({ onManageService }: ServiceListProps) {
     const { t } = useI18n();
     const navigate = useNavigate();
     const location = useLocation();
-    const { startInstall, catalogSnapshot } = useComponentOperation();
+    const componentOperation = useComponentOperation();
+    const { startInstall, catalogSnapshot } = componentOperation;
     const [services, setServices] = useState<ManagedService[]>([]);
     const [profiles, setProfiles] = useState<ManagedMailProfile[]>([]);
+    const [bundles, setBundles] = useState<ReadyBundle[]>([]);
+    const [bundleTarget, setBundleTarget] = useState<ReadyBundle | null>(null);
+    const [profileRepair, setProfileRepair] = useState(false);
     const webmailProblem = webmailReportsProblem(profiles);
     const [scannedAt, setScannedAt] = useState<string | null>(null);
     // Counts the scans this page has received. The firewall banner reads its
@@ -545,6 +557,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
         publishComponentCensus(snapshot.services);
         setServices(snapshot.services);
         setProfiles(snapshot.profiles);
+        setBundles(snapshot.bundles);
         setScannedAt(snapshot.scannedAt);
         setDNSIdentityReady(snapshot.dnsIdentityReady);
         setMailHostname(snapshot.mailHostname);
@@ -672,13 +685,26 @@ export function ServiceList({ onManageService }: ServiceListProps) {
         setLoading(false);
     }, [catalogSnapshot]);
 
+    // The Dashboard's Ready bundles card opens this page at its bundles
+    // (alpha.94): every category is opened so each strip is visible, and the
+    // list is scrolled to and focused once.
+    // Panel'in Hazır paketler kartı bu sayfayı paketlerde açar.
+    // The old address of the mail stacks (#mail-stacks, in bookmarks and
+    // older links) is an alias: it scrolls to the email strip.
+    // Eski posta yığınları adresi bir takma addır: e-posta şeridine kaydırır.
+    const bundlesFocusedRef = useRef(false);
     useLayoutEffect(() => {
-        if (location.hash !== '#mail-stacks' || loading || profiles.length === 0) return;
-        const target = document.getElementById('mail-stacks');
-        if (!target) return;
+        if ((location.hash !== '#bundles' && location.hash !== '#mail-stacks') || loading || bundles.length === 0 || bundlesFocusedRef.current) return;
+        const list = document.getElementById('bundles');
+        if (!list) return;
+        bundlesFocusedRef.current = true;
+        setCollapsed(new Set());
+        const target = location.hash === '#mail-stacks'
+            ? (document.querySelector('[data-bundle-strip="email"]') as HTMLElement | null) ?? list
+            : list;
         target.scrollIntoView({ block: 'start' });
-        target.focus({ preventScroll: true });
-    }, [loading, location.hash, profiles.length]);
+        list.focus({ preventScroll: true });
+    }, [loading, location.hash, bundles.length]);
 
     // Client-side filter: text search over name/description/id plus the
     // "hide not installed" switch. A live search overrides collapse so
@@ -1146,6 +1172,9 @@ export function ServiceList({ onManageService }: ServiceListProps) {
     };
 
     const isRunning = (s: ManagedService) => s.status?.toLowerCase().includes('running');
+    // Installed, with a unit of its own, and not running: the row's one red.
+    // Kurulu, kendi unit'i var ve çalışmıyor: satırın tek kırmızısı.
+    const rowStopped = (s: ManagedService) => s.is_installed === true && s.kind !== 'tool' && s.status !== 'installed' && !isRunning(s);
 
     // A requirement token is either a ROLE (seat name: any member satisfies
     // it — "smtp-server" after the operator's "maybe I'll install a different
@@ -1228,6 +1257,103 @@ export function ServiceList({ onManageService }: ServiceListProps) {
             ...(chosenHostname ? { mailHostname: chosenHostname } : {}),
         });
     };
+
+    // Ready bundles (alpha.94, D-034). A mail bundle opens the mail install
+    // dialogue of its profile, unchanged; a database or web bundle asks once
+    // and then installs its missing components in order, one component
+    // install at a time; "Verify" of such a bundle reads the components again.
+    // Hazır paketler: posta paketi kendi profilinin penceresini açar; veritabanı
+    // ve web paketi bir kez sorar ve eksik bileşenleri sırayla kurar.
+    // Before every step the page's change gate is read again: an unverified
+    // page state, or a host that is not ready for changes (read afresh, not
+    // the last poll), stops the sequence with Continue.
+    // Her adımdan önce sayfanın değişiklik kapısı yeniden okunur.
+    const bundleGate = async (): Promise<string | null> => {
+        if (stateUnverified) return t('services.stateUnverifiedHint');
+        if (!(await loadHostMutationReadiness())) return t('services.bundles.gatedReadiness');
+        return null;
+    };
+    const installedNow = () => new Set(services.filter((service) => service.is_installed === true).map((service) => service.id));
+    const bundleSequence = useBundleSequence(componentOperation, installedNow, (bundleId, componentId, index, total) => {
+        const bundle = bundles.find((candidate) => candidate.id === bundleId);
+        const component = componentName(services.find((service) => service.id === componentId) ?? componentId, t);
+        const nameOf = (id: string) => componentName(services.find((service) => service.id === id) ?? id, t);
+        return t('services.bundles.operationLabel', {
+            component,
+            bundle: bundle ? bundleName(bundle, t, nameOf) : component,
+            n: index + 1,
+            total,
+        });
+    }, bundleGate);
+    // A mail bundle cannot start before the server's DNS identity is ready;
+    // the Panel blocks it too, and the page does not offer it (D-021).
+    // Repair opens the dialogue in its repair form whatever the profile's
+    // state: it completes what is missing and proves the setup.
+    // Posta paketi DNS kimliği hazır olmadan başlayamaz; Onar diyaloğu onarım
+    // biçiminde açar.
+    const openMailBundle = (bundle: ReadyBundle) => {
+        if (!dnsIdentityReady) return;
+        const profile = profiles.find((candidate) => candidate.id === bundle.profile_id);
+        if (!profile) return;
+        setProfileRepair(bundle.action === 'repair');
+        openProfilePlan(profile);
+    };
+    const openComponentBundle = (bundle: ReadyBundle) => {
+        if (mutationControlsDisabled) {
+            showToast('warning', stateUnverified ? t('services.stateUnverifiedHint') : readinessMessage);
+            return;
+        }
+        setBundleTarget(bundle);
+    };
+    const confirmComponentBundle = () => {
+        const bundle = bundleTarget;
+        setBundleTarget(null);
+        if (!bundle || mutationControlsDisabled) return;
+        bundleSequence.begin(bundle);
+    };
+    // The mail strip's one-line notices, in place of the boxes that stood
+    // above the mail stack cards: why mail cannot be installed yet, who acts
+    // and where (owner decision, 2026-10-17).
+    // Posta şeridinin tek satırlık notları: posta neden henüz kurulamaz, kim
+    // ve nerede işlem yapar.
+    const mailSecondary = !dnsIdentityReady && mailDNSGuidance !== null;
+    const setupReady = setupSnapshot?.status === 'ready' || setupSnapshot?.extension === true;
+    const mailNotice = mailSecondary && mailDNSGuidance ? (
+        <div role='status' className='min-w-0 basis-full text-sm text-fg' data-mail-dns-secondary=''>
+            <p className='flex flex-wrap items-baseline gap-x-2 gap-y-1'>
+                <span>{t('services.mailProfiles.secondary.short')}</span>
+                <span className='inline-flex flex-wrap gap-x-2 break-all rounded-md border border-border bg-surface px-2 py-0.5 text-xs' data-mail-dns-record=''>
+                    <span className={mailDNSGuidance.recordName ? 'font-mono' : 'text-fg-muted'}>{mailDNSGuidance.recordName || t('services.mailProfiles.secondary.nameUnknown')}</span>
+                    <span className='font-mono'>A</span>
+                    <span className={mailDNSGuidance.recordValue ? 'font-mono' : 'text-fg-muted'}>{mailDNSGuidance.recordValue || t('services.mailProfiles.secondary.valueUnknown')}</span>
+                </span>
+                <span className='text-fg-subtle' aria-hidden='true'>·</span>
+                <button type='button' onClick={() => navigate('/setup')} className='font-semibold text-primary underline decoration-1 underline-offset-[3px] hover:decoration-2 max-sm:min-h-11'>
+                    {t(setupReady ? 'services.mailProfiles.secondary.extend' : 'services.mailProfiles.secondary.openSetup')}
+                </button>
+            </p>
+            <details className='mt-1 text-xs text-fg-muted'>
+                <summary className='cursor-pointer font-medium text-fg-muted max-sm:min-h-11'>{t('services.bundles.mailWhy')}</summary>
+                <p className='mt-1 max-w-[75ch] leading-5'>
+                    {mailDNSGuidance.primaryNameserver
+                        ? t('services.mailProfiles.secondary.body', { primary: mailDNSGuidance.primaryIP ? `${mailDNSGuidance.primaryNameserver} (${mailDNSGuidance.primaryIP})` : mailDNSGuidance.primaryNameserver })
+                        : t('services.mailProfiles.secondary.bodyUnnamed')}
+                </p>
+                <p className='mt-1 max-w-[75ch] leading-5' data-mail-dns-channel={mailDNSGuidance.peerRecordChannel ? 'yes' : 'no'}>
+                    {t(mailDNSGuidance.peerRecordChannel ? 'services.mailProfiles.secondary.channel' : 'services.mailProfiles.secondary.noChannel')}
+                </p>
+                <p className='mt-1 max-w-[75ch] leading-5'>{t('services.mailProfiles.secondary.next')}</p>
+            </details>
+        </div>
+    ) : !dnsIdentityReady && bundles.some((bundle) => bundle.category === 'email' && bundle.status !== 'unknown') ? (
+        <p role='status' className='flex min-w-0 basis-full flex-wrap items-baseline gap-x-2 text-sm text-fg' data-mail-dns-required=''>
+            <span>{t('services.mailProfiles.dnsRequiredShort')}</span>
+            <span className='text-fg-subtle' aria-hidden='true'>·</span>
+            <button type='button' onClick={() => navigate('/settings?section=dns')} className='font-semibold text-primary underline decoration-1 underline-offset-[3px] hover:decoration-2 max-sm:min-h-11'>
+                {t('services.mailProfiles.configureDNS')}
+            </button>
+        </p>
+    ) : undefined;
 
     const requestComponentAction = (action: PendingComponentAction) => {
         if (mutationControlsDisabled) {
@@ -1479,17 +1605,6 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                 </section>
             )}
 
-            {!loading && profiles.length > 0 && (
-                <MailProfileCards
-                    profiles={profiles}
-                    services={services}
-                    disabled={mutationControlsDisabled}
-                    dnsIdentityReady={dnsIdentityReady}
-                    dnsGuidance={mailDNSGuidance}
-                    setupReady={setupSnapshot?.status === 'ready' || setupSnapshot?.extension === true}
-                    onInstall={openProfilePlan}
-                />
-            )}
 
             {loading ? (
                 <div className="flex flex-col items-center justify-center gap-3 py-16 text-sm text-fg-muted">
@@ -1509,8 +1624,8 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                         ? (services.length === 1 ? t('common.itemsTotalOne') : t('common.itemsTotal', { n: services.length }))
                         : t('services.matchCount', { shown: filtered.length, total: services.length })}
                 </p>
-                {filtered.length === 0 ? (
-                    <div className="rounded-xl border border-border bg-surface p-8 text-center text-sm text-fg-muted">
+                {filtered.length === 0 && (
+                    <div className="mb-4 rounded-xl border border-border bg-surface p-8 text-center text-sm text-fg-muted">
                         {/* A fresh server's installed view is legitimately
                             empty — that is a starting point, not a failed
                             search, so it offers the next step instead of
@@ -1529,8 +1644,13 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                             t('services.noMatches')
                         )}
                     </div>
-                ) : (
-                <div className="space-y-4">
+                )}
+                {/* With nothing installed the installed view still draws each
+                    category's ready bundles strip: the strip is the offer
+                    (alpha.94 review).
+                    Hiçbir şey kurulu değilken de kurulu görünüm şeritleri çizer. */}
+                {(filtered.length > 0 || (q === '' && bundles.length > 0)) && (
+                <div id='bundles' tabIndex={-1} className="space-y-4 scroll-mt-24 outline-none">
                     {/* A component whose category is not in categoryOrder used to
                         render NOWHERE: the map only walks known categories and
                         there was no leftover bucket — so a newly added component
@@ -1548,12 +1668,18 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                         sayfanın bütün vaadi de budur. */}
                     {[...categoryOrder, ...unknownCategories(filtered)].map(({ id: cat, labelKey, icon: CatIcon, tint }) => {
                         const group = filtered.filter((s) => s.category === cat);
-                        if (group.length === 0) return null;
-                        const installedCount = group.filter((s) => s.is_installed).length;
+                        // A category whose rows the installed view hides
+                        // still shows its ready bundles strip (alpha.94).
+                        // Kurulu görünümün satırlarını gizlediği bölüm de
+                        // hazır paket şeridini gösterir.
+                        const hasBundles = q === '' && bundles.some((bundle) => bundle.category === cat);
+                        if (group.length === 0 && !hasBundles) return null;
+                        const counted = group.length > 0 ? group : services.filter((s) => s.category === cat);
+                        const installedCount = counted.filter((s) => s.is_installed).length;
                         // "0/6" would be a count of a census nobody took.
                         // A group nothing is known about shows a dash.
                         // "0/6", kimsenin yapmadığı bir sayımın sonucu olurdu.
-                        const groupChecked = group.some((s) => !notChecked(s));
+                        const groupChecked = counted.some((s) => !notChecked(s));
                         const isOpen = q !== '' || !collapsed.has(cat);
                         return (
                             <section key={cat} className="overflow-hidden rounded-xl border border-border-strong bg-surface">
@@ -1567,18 +1693,34 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                     </span>
                                     <span className="text-lg font-semibold text-fg">{t(labelKey as Parameters<typeof t>[0])}</span>
                                     <span className="text-sm text-fg-subtle tabular-nums">
-                                        {groupChecked ? `${installedCount}/${group.length}` : '—'}
+                                        {groupChecked ? `${installedCount}/${counted.length}` : '—'}
                                     </span>
                                     <span className="ml-auto text-fg-subtle">
                                         {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                                     </span>
                                 </button>
-                                {isOpen && (
+                                {isOpen && hasBundles && (
+                                    <ReadyBundleStrip
+                                        category={cat}
+                                        bundles={bundles}
+                                        services={services}
+                                        profiles={profiles}
+                                        run={bundleSequence.run}
+                                        disabled={mutationControlsDisabled || componentOperation.locked || (cat === 'email' && !dnsIdentityReady)}
+                                        readDisabled={scanning}
+                                        scanning={scanning}
+                                        notice={cat === 'email' ? mailNotice : undefined}
+                                        onMail={openMailBundle}
+                                        onComponents={openComponentBundle}
+                                        onVerify={() => void scan()}
+                                    />
+                                )}
+                                {isOpen && group.length > 0 && (
                                     <ul className="border-t border-border">
                                         {group.map((s) => {
                                             const running = isRunning(s);
                                             return (
-                                                <li key={s.id} className="relative flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border px-4 py-3.5 last:border-0 hover:bg-surface-2/40">
+                                                <li key={s.id} className="relative flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border px-4 py-3.5 last:border-0 hover:bg-surface-2/40 md:grid md:grid-cols-[minmax(0,1fr)_7rem_8rem_17rem]">
                                                     {/* Selective dimming, not block opacity: the name stays
                                                         readable in the light theme; state is carried by the
                                                         muted tone + status text + Install button.
@@ -1586,7 +1728,11 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                         da okunur kalır; durumu soluk ton + durum yazısı +
                                                         Kur düğmesi anlatır. */}
                                                     <div className="flex min-w-0 flex-1 basis-52 items-center gap-3">
-                                                        <span className={`text-2xl leading-none ${s.is_installed ? '' : 'opacity-60 grayscale'}`}>{s.icon}</span>
+                                                        {/* One line icon per component, from one map (alpha.94);
+                                                            the Panel's emoji is not drawn. A row that is not
+                                                            installed keeps the muted tint.
+                                                            Bileşen başına tek çizgi ikon, tek eşlemden. */}
+                                                        <RowIcon id={s.id} category={s.category} installed={s.is_installed === true} />
                                                         <div className="min-w-0">
                                                             {/* Every row is a door to its own page. Manage used
                                                                 to be the only one, and it is drawn for an
@@ -1617,9 +1763,15 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                                 {componentName(s, t)}
                                                             </Link>
                                                             <div className="text-pretty text-xs text-fg-subtle">{componentDescription(s, t)}</div>
+                                                            {/* On a phone the version column is not drawn; the
+                                                                version is said here instead of hidden.
+                                                                Telefonda sürüm burada söylenir, gizlenmez. */}
+                                                            {s.is_installed && s.versions.length > 0 && (
+                                                                <div className="font-mono text-xs text-fg-subtle sm:hidden" data-row-version="">{s.versions.join(', ')}</div>
+                                                            )}
                                                         </div>
                                                     </div>
-                                                    <div className="hidden w-28 shrink-0 sm:block">
+                                                    <div className="hidden w-28 shrink-0 sm:block md:w-auto">
                                                         {!s.is_installed ? (
                                                             <span className="font-mono text-sm text-fg-muted">—</span>
                                                         ) : s.versions.length > 1 ? (
@@ -1640,7 +1792,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                             </span>
                                                         )}
                                                     </div>
-                                                    <div className="w-32 shrink-0">
+                                                    <div className="w-32 shrink-0 md:w-auto">
                                                         {/* "Not checked yet" is information the operator
                                                             acts on, so it is fg-muted like a real status —
                                                             fg-subtle is for disabled and placeholder text
@@ -1649,7 +1801,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                             "Henüz bakılmadı" operatörün üzerine hareket
                                                             ettiği bir bilgidir; bu yüzden gerçek bir durum
                                                             gibi fg-muted'tır. */}
-                                                        <span className={`inline-flex items-center gap-1.5 text-sm ${s.is_installed === false ? 'text-fg-subtle' : 'text-fg-muted'}`}>
+                                                        <span className={`inline-flex items-center gap-1.5 text-sm ${s.is_installed === false ? 'text-fg-subtle' : rowStopped(s) ? 'font-medium text-danger' : 'text-fg-muted'}`}>
                                                             {/* A tool has no daemon of ours; a runtime whose
                                                                 copies have no units either (node — executed
                                                                 only by per-site apps) reports status
@@ -1664,7 +1816,11 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                                 gerçektir. php-fpm'in unit'leri VARDIR ve
                                                                 çalışıyor/durdu kalır: ölü php-fpm yine alarm
                                                                 vermelidir (D-010/B3b). */}
-                                                            <StatusDot ok={s.is_installed === true && (running || s.kind === 'tool' || s.status === 'installed')} />
+                                                            {/* Four tones (alpha.94): running, stopped (the one
+                                                                state that must stand out), not installed (a
+                                                                hollow ring) and not checked.
+                                                                Dört ton: çalışıyor, durdu, kurulu değil, bakılmadı. */}
+                                                            <StatusDot tone={notChecked(s) ? 'unknown' : !s.is_installed ? 'idle' : (running || s.kind === 'tool' || s.status === 'installed') ? 'success' : 'danger'} />
                                                             {notChecked(s)
                                                                 ? t('services.notChecked')
                                                                 : !s.is_installed
@@ -1685,7 +1841,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                            relative: satır bağlantısı sözde-elemanını bütün
                                                            satıra yayar; gerçek denetimler onun üstünde
                                                            durmalıdır, yoksa tıklanamazlar. */
-                                                        className="relative ml-auto flex min-w-0 items-center justify-end gap-1 border-0 p-0"
+                                                        className="relative ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1 border-0 p-0 max-sm:ml-0 max-sm:w-full max-sm:justify-start"
                                                     >
                                                     {!s.is_installed ? (
                                                     <>
@@ -1708,10 +1864,10 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                                 type="button"
                                                                 onClick={() => navigate('/settings?section=dns')}
                                                                 title={t('services.manageDNSEngineHint')}
-                                                                className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/15 disabled:cursor-not-allowed disabled:opacity-50"
+                                                                className={rowButtonClass}
                                                             >
+                                                                <Settings className="h-3.5 w-3.5" />
                                                                 {t('services.manageDNSEngine')}
-                                                                <ChevronRight className="h-3.5 w-3.5" />
                                                             </button>
                                                         ) : s.conflict_with ? (
                                                             <span
@@ -1766,7 +1922,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                                gelir. */
                                                             onClick={() => (isTarballRuntime(s) ? toggleDrawer(s.id) : setInstallTarget(s))}
                                                             disabled={busy === s.id}
-                                                            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-fg transition-colors hover:bg-primary/90 disabled:opacity-50"
+                                                            className={rowButtonClass}
                                                         >
                                                             <DownloadCloud className="h-3.5 w-3.5" />
                                                             {busy === s.id ? t('services.installing') : t('services.install')}
@@ -1791,7 +1947,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                         type="button"
                                                         onClick={() => navigate('/settings?section=dns')}
                                                         title={t('services.manageDNSEngineHint')}
-                                                        className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/15 disabled:cursor-not-allowed disabled:opacity-50"
+                                                        className={rowButtonClass}
                                                     >
                                                         <Settings className="h-3.5 w-3.5" />
                                                         {t('services.manageDNSEngine')}
@@ -1830,7 +1986,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                         disabled={busy === s.id}
                                                         tone="danger"
                                                     >
-                                                        <Square className="h-4 w-4" fill="currentColor" />
+                                                        <Square className="h-4 w-4" aria-hidden="true" />
                                                     </ActionIcon>
                                                     </>
                                                     ) : s.not_offered ? (
@@ -1843,7 +1999,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                         disabled={busy === s.id}
                                                         tone="success"
                                                     >
-                                                        <Play className="h-4 w-4" fill="currentColor" />
+                                                        <Play className="h-4 w-4" aria-hidden="true" />
                                                     </ActionIcon>
                                                     ) : (
                                                     /* A stopped supported service may be a partial install.
@@ -1882,7 +2038,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                     {s.kind === 'runtime' && (
                                                     <button
                                                         onClick={() => toggleDrawer(s.id)}
-                                                        className="ml-1 inline-flex items-center gap-1.5 rounded-lg border border-border-strong bg-surface px-2.5 py-1.5 text-xs font-medium text-fg transition-colors hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                                        className={`ml-1 ${rowButtonClass}`}
                                                     >
                                                         {openDrawers.has(s.id) ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                                                         {t('services.versionsToggle')}
@@ -1895,7 +2051,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                     {s.kind !== 'tool' && (
                                                     <button
                                                         onClick={() => onManageService?.(s.id, s.versions)}
-                                                        className="ml-1 inline-flex items-center gap-1.5 rounded-lg border border-border-strong bg-surface px-2.5 py-1.5 text-xs font-medium text-fg transition-colors hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                                        className={`ml-1 ${rowButtonClass}`}
                                                     >
                                                         <Settings className="h-3.5 w-3.5" />
                                                         {t('services.manage')}
@@ -1913,15 +2069,17 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                     <button
                                                         onClick={() => openUninstallDialog(s)}
                                                         title={t('services.uninstall')}
-                                                        className="inline-flex items-center rounded-lg border border-border-strong bg-surface p-1.5 text-fg-muted transition-colors hover:bg-danger/10 hover:text-danger disabled:cursor-not-allowed disabled:opacity-50"
+                                                        className="inline-flex items-center gap-1.5 rounded-lg border border-border-strong bg-surface p-1.5 text-xs font-medium text-fg-muted transition-colors hover:bg-danger/10 hover:text-danger focus-visible:text-danger disabled:cursor-not-allowed disabled:border-dashed disabled:hover:bg-transparent max-sm:min-h-11 max-sm:px-3"
                                                     >
-                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                        <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                                                        <span className="sm:sr-only">{t('services.uninstall')}</span>
                                                     </button>
                                                     )}
                                                     </>
                                                     )}
                                                     </fieldset>
                                                     {s.kind === 'runtime' && openDrawers.has(s.id) && (
+                                                        <div className="basis-full md:col-span-4">
                                                         <VersionDrawer
                                                             service={s}
                                                             busy={busy}
@@ -1941,6 +2099,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                                 return Promise.resolve(false);
                                                             }}
                                                         />
+                                                        </div>
                                                     )}
                                                 </li>
                                             );
@@ -1973,9 +2132,19 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                         profile={profileTarget}
                         services={services}
                         mailHostname={mailHostname}
+                        repair={profileRepair}
                         onCancel={() => setProfileTarget(null)}
                         onConfirm={(chosen) => void installProfile(chosen)}
                         throughSetup={mailThroughSetup ? addProfileThroughSetup : undefined}
+                    />
+                )}
+                {bundleTarget && (
+                    <BundleInstallDialog
+                        bundle={bundleTarget}
+                        services={services}
+                        continuing={bundleSequence.run?.bundleId === bundleTarget.id && bundleSequence.run.phase === 'stopped'}
+                        onCancel={() => setBundleTarget(null)}
+                        onConfirm={confirmComponentBundle}
                     />
                 )}
                 {uninstallTarget && (
@@ -2073,152 +2242,11 @@ function ComponentActionConfirmationDialog({
     );
 }
 
-function MailProfileCards({ profiles, services, disabled, dnsIdentityReady, dnsGuidance, setupReady, onInstall }: {
-    profiles: ManagedMailProfile[];
-    services: ManagedService[];
-    disabled: boolean;
-    dnsIdentityReady: boolean;
-    dnsGuidance: MailDNSGuidance | null;
-    setupReady: boolean;
-    onInstall: (profile: ManagedMailProfile) => void;
-}) {
-    const { t } = useI18n();
-    const navigate = useNavigate();
-    // On a secondary DNS server "Configure DNS" cannot create the record, so
-    // the box names where it is created and the exact record (2026-10-16).
-    // Ikincil DNS sunucusunda kayit birincilde ya da saglayicida olusturulur.
-    const secondary = !dnsIdentityReady && dnsGuidance !== null;
-    const actionLabel = (profile: ManagedMailProfile) => {
-        if (secondary) return t('services.mailProfiles.unavailable');
-        if (!dnsIdentityReady) return t('services.mailProfiles.configureDNS');
-        if (profile.status === 'available') return t('services.mailProfiles.install');
-        if (profile.status === 'partial') return t('services.mailProfiles.continue');
-        if (profile.status === 'complete') return t('services.mailProfiles.repair');
-        return t('services.mailProfiles.unavailable');
-    };
-    const serviceName = (id: string) => componentName(services.find((service) => service.id === id) ?? id, t);
-    return (
-        <section id='mail-stacks' tabIndex={-1} aria-labelledby='mail-profile-heading' className='mb-6 scroll-mt-24'>
-            <div className='mb-3 flex items-start gap-3'>
-                <span className='flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-warning-mark/20 text-warning'>
-                    <Layers className='h-5 w-5' />
-                </span>
-                <div>
-                    <h2 id='mail-profile-heading' className='text-lg font-semibold text-fg'>
-                        {t('services.mailProfiles.title')}
-                    </h2>
-                    <p className='text-sm text-fg-muted'>{t('services.mailProfiles.subtitle')}</p>
-                </div>
-            </div>
-            {secondary && dnsGuidance && (
-                <div role='status' className='mb-3 rounded-xl border border-warning-mark/60 bg-warning-mark/20 p-4' data-mail-dns-secondary=''>
-                    <p className='max-w-3xl text-sm leading-6 text-fg'>
-                        {dnsGuidance.primaryNameserver
-                            ? t('services.mailProfiles.secondary.body', { primary: dnsGuidance.primaryIP ? `${dnsGuidance.primaryNameserver} (${dnsGuidance.primaryIP})` : dnsGuidance.primaryNameserver })
-                            : t('services.mailProfiles.secondary.bodyUnnamed')}
-                    </p>
-                    <p className='mt-3 text-xs font-semibold text-fg'>{t('services.mailProfiles.secondary.record')}</p>
-                    <p className='mt-1 flex flex-wrap gap-x-4 gap-y-1 break-all rounded-lg border border-border bg-surface px-3 py-2 text-sm' data-mail-dns-record=''>
-                        <span className={dnsGuidance.recordName ? 'font-mono' : 'text-fg-muted'}>{dnsGuidance.recordName || t('services.mailProfiles.secondary.nameUnknown')}</span>
-                        <span className='font-mono'>A</span>
-                        <span className={dnsGuidance.recordValue ? 'font-mono' : 'text-fg-muted'}>{dnsGuidance.recordValue || t('services.mailProfiles.secondary.valueUnknown')}</span>
-                    </p>
-                    <p className='mt-3 max-w-3xl text-sm leading-6 text-fg' data-mail-dns-channel={dnsGuidance.peerRecordChannel ? 'yes' : 'no'}>
-                        {t(dnsGuidance.peerRecordChannel ? 'services.mailProfiles.secondary.channel' : 'services.mailProfiles.secondary.noChannel')}
-                    </p>
-                    <p className='mt-3 max-w-3xl text-sm leading-6 text-fg'>{t('services.mailProfiles.secondary.next')}</p>
-                    <Button variant='secondary' className='mt-3' onClick={() => navigate('/setup')}>
-                        {t(setupReady ? 'services.mailProfiles.secondary.extend' : 'services.mailProfiles.secondary.openSetup')}
-                    </Button>
-                </div>
-            )}
-            {!dnsIdentityReady && !secondary && (
-                <div role='status' className='mb-3 flex flex-wrap items-center gap-3 rounded-xl border border-warning-mark/60 bg-warning-mark/20 p-3'>
-                    <p className='min-w-0 flex-1 text-sm text-fg'>
-                        {t('services.mailProfiles.dnsRequired')}
-                    </p>
-                    <Button variant='secondary' onClick={() => navigate('/settings?section=dns')}>
-                        {t('services.mailProfiles.configureDNS')}
-                    </Button>
-                </div>
-            )}
-            <div className='grid gap-3 lg:grid-cols-3'>
-                {profiles.map((profile) => {
-                    const actionable = dnsIdentityReady && profile.available && (
-                        profile.status === 'available'
-                        || profile.status === 'partial'
-                        || profile.status === 'complete'
-                    );
-                    const detail = secondary
-                        ? t('services.mailProfiles.secondary.short')
-                        : !dnsIdentityReady
-                        ? t('services.mailProfiles.dnsRequiredShort')
-                        : profile.status === 'complete' && profile.warning
-                        ? t('services.mailProfiles.profileComponentsNeedRepair')
-                        : profile.status === 'blocked'
-                            ? mailProfileBlocked(profile, t)
-                            : mailProfileWarning(profile, t);
-                    const ActionIcon = profile.status === 'available' ? DownloadCloud : RotateCw;
-                    return (
-                        <article key={profile.id} className='flex min-w-0 flex-col rounded-xl border border-border bg-surface p-4'>
-                            <div className='flex items-start gap-3'>
-                                <span className='flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary'>
-                                    {profile.id === 'protected-mail'
-                                        ? <ShieldCheck className='h-5 w-5' />
-                                        : <Mail className='h-5 w-5' />}
-                                </span>
-                                <div className='min-w-0'>
-                                    <h3 className='font-semibold text-fg'>{mailProfileName(profile, t)}</h3>
-                                    <p className='mt-1 text-xs leading-5 text-fg-muted'>{mailProfileDescription(profile, t)}</p>
-                                </div>
-                            </div>
-                            <div className='mt-4 flex flex-wrap gap-1.5' aria-label={t('services.mailProfiles.includes')}>
-                                {profile.services.map((id) => (
-                                    <span key={id} className='rounded-md bg-surface-2 px-2 py-1 text-xs font-medium text-fg-muted'>
-                                        {serviceName(id)}
-                                    </span>
-                                ))}
-                            </div>
-                            {detail && (
-                                // A not-installed profile whose web-server parts are already
-                                // here carries a note, not a problem: neutral (2026-10-16).
-                                // Web sunucusu parçaları hazır olan kurulu olmayan profil bir
-                                // not taşır, sorun değil: nötr.
-                                <p className={`mt-3 text-xs leading-5 ${profile.status === 'blocked' ? 'text-danger' : dnsIdentityReady && !secondary && profile.status === 'available' ? 'text-fg-muted' : 'text-warning'}`}>
-                                    {detail}
-                                </p>
-                            )}
-                            <div className='mt-auto flex items-center justify-between gap-3 pt-4'>
-                                <span className='inline-flex items-center gap-1.5 text-xs font-medium text-fg-muted'>
-                                    <StatusDot ok={profile.status === 'complete'} />
-                                    {/* Not "ready to install" while its action waits for the mail record (2026-10-16). */}
-                                    {!dnsIdentityReady && profile.status === 'available'
-                                        ? t('services.mailProfiles.status.waitingDNS')
-                                        : t(`services.mailProfiles.status.${profile.status}` as Parameters<typeof t>[0])}
-                                </span>
-                                <button
-                                    type='button'
-                                    onClick={() => onInstall(profile)}
-                                    disabled={disabled || !dnsIdentityReady || !actionable}
-                                    title={detail || actionLabel(profile)}
-                                    className='inline-flex items-center gap-1.5 rounded-lg border border-transparent bg-primary px-3 py-1.5 text-xs font-semibold text-primary-fg hover:bg-primary/90 disabled:cursor-not-allowed disabled:border-dashed disabled:border-current disabled:bg-transparent disabled:text-fg-muted'
-                                >
-                                    <ActionIcon className='h-3.5 w-3.5' />
-                                    {actionLabel(profile)}
-                                </button>
-                            </div>
-                        </article>
-                    );
-                })}
-            </div>
-        </section>
-    );
-}
-
 function MailProfileInstallDialog({
     profile,
     services,
     mailHostname,
+    repair = false,
     onCancel,
     onConfirm,
     throughSetup,
@@ -2228,6 +2256,8 @@ function MailProfileInstallDialog({
     mailHostname: MailHostnameIdentity | null;
     onCancel: () => void;
     onConfirm: (mailHostname: string) => void;
+    /** Opened from a bundle's Repair: the repair form, whatever the state. */
+    repair?: boolean;
     // Present on a server whose guided setup has finished: the profile is
     // added to an extension of that setup and reviewed there (2026-10-16).
     throughSetup?: (mailHostname: string) => Promise<TranslationKey | null>;
@@ -2284,7 +2314,7 @@ function MailProfileInstallDialog({
     const components = profile.services
         .map((id) => services.find((service) => service.id === id))
         .filter((service): service is ManagedService => Boolean(service));
-    const mode = profile.status === 'available'
+    const mode = repair ? 'repair' : profile.status === 'available'
         ? 'install'
         : profile.status === 'partial'
             ? 'continue'
@@ -2444,6 +2474,12 @@ function MailProfileInstallDialog({
                         </div>
                     </div>
 
+                    {mode === 'repair' && (
+                        // What Repair does, said before it is pressed: there is
+                        // no read-only verification of a mail setup.
+                        // Onar'ın ne yaptığı basılmadan söylenir.
+                        <p className='mb-3 text-sm leading-6 text-fg' data-mail-profile-repair-hint=''>{t('services.mailProfiles.plan.repairHint')}</p>
+                    )}
                     {throughSetup ? (
                         <div className='mb-4 rounded-lg border border-border bg-surface-2/50 p-3 text-xs leading-5 text-fg' data-mail-profile-route='setup'>
                             <p>{t('services.mailProfiles.setupRoute.note')}</p>
@@ -2648,7 +2684,7 @@ function InstallServiceDialog({
         <>
             <Dialog
                 id="service-install"
-                iconSlot={<span className="text-3xl leading-none">{service.icon}</span>}
+                icon={componentIcon(service.id, service.category)}
                 title={t('services.installTitle', { name: componentName(service, t) })}
                 description={componentDescription(service, t)}
                 busy={busy || repoBusy}
@@ -2800,6 +2836,21 @@ function InstallServiceDialog({
     );
 }
 
+// The one outlined recipe of the row actions (alpha.94, critique item 6):
+// Install, Manage, Versions and the DNS engine look alike, are 44 px tall on
+// a phone, and say "unavailable" with a dashed outline, as Button does.
+// Satır eylemlerinin tek çerçeveli tarifi.
+const rowButtonClass = 'inline-flex items-center gap-1.5 rounded-lg border border-border-strong bg-surface px-2.5 py-1.5 text-xs font-medium text-fg transition-colors hover:bg-surface-2 disabled:cursor-not-allowed disabled:border-dashed disabled:bg-transparent disabled:text-fg-muted max-sm:min-h-11 max-sm:px-3';
+
+function RowIcon({ id, category, installed }: { id: string; category: string; installed: boolean }) {
+    const Icon = componentIcon(id, category);
+    return (
+        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${installed ? 'bg-surface-2 text-fg-muted' : 'bg-surface-subtle text-fg-subtle'}`} aria-hidden="true">
+            <Icon className="h-4 w-4" />
+        </span>
+    );
+}
+
 function ActionIcon({
     children,
     title,
@@ -2813,25 +2864,30 @@ function ActionIcon({
     disabled?: boolean;
     tone: 'success' | 'danger' | 'warning';
 }) {
-    // Quiet ghost buttons in the row, but tone-colored at rest and with the
-    // GLYPH solid — the icon reads 'full' without turning the row into a
-    // color block (user feedback, twice refined).
-    // Satırda sessiz hayalet düğmeler ama duruşta ton renkli ve GLİF dolu —
-    // ikon 'dolu' okunur, satır renk bloğuna dönüşmez (iki kez rafine
-    // edilen kullanıcı geri bildirimi).
+    // Neutral at rest, its tone only under the pointer or the keyboard focus
+    // (alpha.94, critique item 1): a healthy server no longer reads as a list
+    // of faults, and amber never stands beside red on a running row
+    // (DESIGN.md, State Colour and No-Adjacency rules). Stop's red stays in
+    // its confirmation dialogue. On a phone the name is written and the
+    // target is 44 px tall.
+    // Dururken nötr; ton yalnız işaretçi ya da klavye odağında. Telefonda ad
+    // yazılır ve hedef 44 piksel yüksekliğindedir.
     const toneCls = {
-        success: 'text-success hover:bg-success/10',
-        danger: 'text-danger hover:bg-danger/10',
-        warning: 'text-warning hover:bg-warning-mark/20',
+        success: 'hover:bg-success/10 hover:text-success focus-visible:text-success',
+        danger: 'hover:bg-danger/10 hover:text-danger focus-visible:text-danger',
+        warning: 'hover:bg-warning-mark/20 hover:text-warning focus-visible:text-warning',
     }[tone];
     return (
         <button
+            type="button"
             title={title}
+            aria-label={title}
             onClick={onClick}
             disabled={disabled}
-            className={`rounded-md p-1.5 transition-colors disabled:opacity-40 ${toneCls}`}
+            className={`inline-flex items-center gap-1.5 rounded-md p-1.5 text-xs font-medium text-fg-muted transition-colors disabled:cursor-not-allowed disabled:text-fg-subtle disabled:hover:bg-transparent max-sm:min-h-11 max-sm:border max-sm:border-border-strong max-sm:px-3 ${toneCls}`}
         >
             {children}
+            <span className="sm:sr-only">{title}</span>
         </button>
     );
 }
@@ -3081,7 +3137,7 @@ function VersionDrawer({
                                 )}
                                 {inst.unit ? (
                                     <span className="inline-flex w-28 items-center gap-1.5 text-sm text-fg-muted">
-                                        <StatusDot ok={instRunning} />
+                                        <StatusDot tone={instRunning ? 'success' : 'danger'} />
                                         {instRunning ? t('services.running') : t('services.stopped')}
                                     </span>
                                 ) : (
@@ -3112,7 +3168,7 @@ function VersionDrawer({
                                                     disabled={instBusy}
                                                     tone="danger"
                                                 >
-                                                    <Square className="h-4 w-4" fill="currentColor" />
+                                                    <Square className="h-4 w-4" aria-hidden="true" />
                                                 </ActionIcon>
                                             </>
                                         ) : (
@@ -3122,7 +3178,7 @@ function VersionDrawer({
                                                 disabled={instBusy}
                                                 tone="success"
                                             >
-                                                <Play className="h-4 w-4" fill="currentColor" />
+                                                <Play className="h-4 w-4" aria-hidden="true" />
                                             </ActionIcon>
                                         ))}
                                         {canRemove(inst) && (
@@ -3467,6 +3523,9 @@ function FirewallBar({
     const [busy, setBusy] = useState(false);
     const [pendingAction, setPendingAction] = useState<'enable' | 'disable' | 'save' | null>(null);
     const [noSSHAcknowledged, setNoSSHAcknowledged] = useState(false);
+    // A healthy firewall is one calm line; its box opens on request.
+    // Sağlıklı güvenlik duvarı tek sakin satırdır; kutusu istenince açılır.
+    const [expanded, setExpanded] = useState(false);
     const sshReason = readFirewallSSHReason(st?.ssh_discovery_reason);
 
     // A failed status read is neither "on" nor "off". Preserve that distinction
@@ -3689,11 +3748,41 @@ function FirewallBar({
     // whole banner turns amber. On earns a quiet green tint.
     // Kapalı hal sakin GÖRÜNMEMESİ gereken haldir: tüm portlar açıktır, bu
     // yüzden bandın tamamı ambere döner. Açık hal sessiz yeşil tondadır.
+    // Active, readable, saved for a reboot and nothing to say about SSH: one
+    // calm line (alpha.94, critique item 7). The box stays for a firewall
+    // that is off, unreadable, without an engine or needing attention, and
+    // opens here when the owner asks for its settings.
+    // Açık, okunabilir, yeniden başlatma için kayıtlı ve SSH hakkında
+    // söylenecek bir şey yok: tek sakin satır. Kutu kapalı, okunamayan,
+    // motoru olmayan ya da ilgi isteyen duvar için kalır.
+    const healthy = st.enabled
+        && (st.persistence_state === undefined || st.persistence_state === '' || st.persistence_state === 'ready')
+        && !sshReason;
+    if (healthy && !expanded) {
+        return (
+            <section className="mb-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-fg-muted" data-firewall-compact="">
+                <ShieldCheck className="h-4 w-4 shrink-0 text-success" aria-hidden="true" />
+                <span className="font-medium text-fg">{t('firewall.compact.on')}</span>
+                <span className="text-fg-subtle" aria-hidden="true">·</span>
+                <span>{t('firewall.compact.ports', { n: openTcp.length + openUdp.length })}</span>
+                <span className="text-fg-subtle" aria-hidden="true">·</span>
+                <button
+                    type="button"
+                    aria-expanded={false}
+                    onClick={() => setExpanded(true)}
+                    className="font-semibold text-primary underline decoration-1 underline-offset-[3px] hover:decoration-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary max-sm:min-h-11"
+                >
+                    {t('firewall.compact.settings')}
+                </button>
+            </section>
+        );
+    }
+
     return (
         <>
         <section
             className={`mb-4 rounded-xl border p-4 ${
-                st.enabled ? 'border-success/30 bg-success/5' : 'border-warning/50 bg-warning-mark/20'
+                st.enabled ? 'border-border bg-surface' : 'border-warning/50 bg-warning-mark/20'
             }`}
         >
             <div className="flex flex-wrap items-center gap-3">
@@ -3739,6 +3828,16 @@ function FirewallBar({
                 >
                     {st.enabled ? t('firewall.turnOff') : t('firewall.turnOn')}
                 </button>
+                {healthy && (
+                    <button
+                        type="button"
+                        aria-expanded={true}
+                        onClick={() => setExpanded(false)}
+                        className="text-xs font-semibold text-fg-muted underline decoration-1 underline-offset-[3px] hover:text-fg max-sm:min-h-11"
+                    >
+                        {t('firewall.compact.less')}
+                    </button>
+                )}
             </div>
             {st.enabled && (openTcp.length > 0 || openUdp.length > 0) && (
                 <div className="mt-3 flex flex-wrap gap-1.5">

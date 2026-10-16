@@ -8837,3 +8837,84 @@ metin ya da ekran değiştirilmedi. Sakin "Güncelleme tamamlanıyor" görünüm
 (D-024, D-033) de ilk kez alpha.92'den yapılacak ilk güncellemede görülebilir.
 Sahip bildirene kadar hiçbir şey "çalıştı" ya da "başarısız" değildir.
 P0.1-P0.5 **kısmi** kalır; bu girdi hiçbir şeyi kapatmaz ya da ilerletmez.
+
+### Hazır paketler: bir bileşen grubunu birer birer kurmak (D-034, 17 Ekim 2026)
+
+Hazır paket (D-034), katalogdaki bileşenlerin üzerinde bir kısayoldur ve bir
+Bileşenler kategorisinin başında tek satır olarak gösterilir. v0.1.0-alpha.94
+adayı için kaynakta; kurulu bir sunucuda hiçbir şey çalıştırılmadı.
+
+**Sahibin gördüğü ve kimin işlem yaptığı.**
+
+- **Sunuldu.** Şerit paketleri adıyla söyler; birini seçmek neyi kuracağını,
+  hangi parçaların zaten kurulu olup korunacağını ve rolü zaten dolu olduğu için
+  hangilerinin gerekmediğini söyler (Apache altında bir eklenti Nginx'e gerek
+  duymaz). Sahip işlem yapar: Kur….
+- **Bir posta paketi** mevcut posta kurulum penceresini açar (sunucu adı, DNS
+  bildirimleri, hazırlanmış sunucuda kurulum yolu). Bu pencerenin ve posta profili
+  işleminin söylediği her şey değişmeden geçerlidir. DNS kimliği hazır olmadan
+  önce e-posta şeridi tek satır söyler (ikincil bir DNS sunucusunda kaydın nerede
+  oluşturulduğu) ve posta kurulumu sunmaz; kurulu bir posta paketi onun yanında
+  görünür kalır.
+- **Bir veritabanı ya da web paketi** bir kez sorar; nelerin kurulacağını, nelerin
+  zaten kurulu olduğunu ve nelerin gerekmediğini sıralar, nasıl çalıştığını
+  söyler. Sonra panel işlem yapar: Panel'in sırasıyla, eksik her bileşen için tek
+  bir olağan bileşen kurulumu. İşlem ekranı adımı adıyla söyler ("PHP-FPM (2/3,
+  phpMyAdmin web aracı)") ve şerit hareket eden bir çubukla "2/3 · PHP-FPM
+  kuruluyor" der (D-033). Çalışırken kimsenin bir şey yapması gerekmez.
+- **Birer birer, yalnız kendi işlemi.** Sonraki kurulum, ancak önceki işlem, yani
+  bu adımın kendi bileşen kurulumu bittikten ve işlem izleyici bileşenleri yeniden
+  okuduktan sonra gönderilir; sunucuda tek etkin işlem bulunur. Bir yoklama asla
+  kurulum göndermez. Her adımdan önce sayfa değişiklik kapısını yeniden okur
+  (doğrulanmamış bir sayfa durumu, değişikliğe hazır olmayan bir ana makine).
+- **Durduğunda** şerit ne kadar ilerlediğini ve nedenini söyler ve Devam et sunar;
+  bu yalnız hâlâ eksik olanı kurar:
+  - başarısız bir bileşen: kendi yönlendirmesi (D-024), satırından yapılan bir
+    kurulumdaki gibi, işlem ekranında gösterilir; kurulu hiçbir şey kaldırılmaz;
+  - bu adımın yerine başka bir işlem (başka yerde başlatılmış) çalıştı: "Bu
+    sunucuda başka bir işlem sürüyor; o bitince devam edin.";
+  - değişiklikler duraklatıldı (neden sayfanın en üstündedir): yeniden izin
+    verildiğinde devam edin;
+  - kurulum başlatılmadı: bildirim nedenini söyler.
+- **Nasıl sürer.** Devam et sayfada yaşar. Yeniden yüklemeden sonra hiçbir şey
+  kendiliğinden sürmez: paket yeniden sunulur ve Kur yalnız eksik parçaları kurar
+  (bir veritabanı ya da web paketi asla "kısmi" değildir).
+- **Kurulu.** Yeşil bir onayla "… kurulu ve doğrulandı", ya da gri renkle
+  "kurulu, doğrulanmadı". Bir posta paketinde eylem Onar'dır (doğrulandığında bir
+  metin bağlantısı, doğrulanmadığında bir düğme): posta penceresini açar; pencere,
+  Onar'ın eksik olanı tamamladığını ve kurulumu doğruladığını, kurulu hiçbir
+  şeyin kaldırılmadığını söyler; bir posta kurulumunun salt okunur doğrulaması
+  yoktur. Bir veritabanı ya da web paketinde Doğrula bileşenleri yeniden okur,
+  hiçbir şeyi değiştirmez ve değişiklikler tutulurken de kullanılabilir kalır;
+  durmuş bir bileşen satırında kendi kırmızı "Durdu" ifadesini gösterir.
+- **Nedenler yeniden söylenir.** Bir posta paketinin son başarısız denemesi
+  (Panel'in hatasıyla), süren bir deneme ya da Panel'in uyarısı (webmail henüz
+  doğrulanmadı, doğrulamak için Onar, zaten var olan parçalar, hazır olmayan bir
+  webmail çalışma ortamı; sonuncusu Kehribar Mürekkep ile) şeritte altında
+  söylenir; başarısız ya da süren bir posta denemesi ayrıca Pano'nun Hazır
+  paketler kartının bir satırıdır.
+- **Engelli.** Neden gri renkle, düğme olmadan: çakışan bir bileşen, paketin
+  dışında kalan bir önkoşul ya da bu platformda sunulmayan bir bileşen (bir
+  eklenti tek başına engellenir, ana paketi asla).
+- **Bilinmiyor.** Taze bir bileşen denetimi yokken şerit hiçbir şey iddia etmez:
+  bileşenler denetlendikten sonra paketlerin gösterileceğini söyler ve Bileşenler
+  sayfası bunu kendiliğinden denetler (D-032). Pano kartı "henüz denetlenmedi"
+  (denetimle birlikte), "denetleniyor", "bir değişiklik tarafından tutuluyor",
+  "denetlenemedi" ya da "son 5 dakikada denetlenmedi" der; her biri kendi
+  sözleriyle.
+
+**Testler.** Go: kayıt; boş bir sunucuda, Boston benzeri ve Frankfurt benzeri
+taramalarda her paketin durumları; kanıtsız bir posta paketi için Onar; durmuş
+bir bileşen; parçaları mevcut bir bileşen paketi sunulur, asla kısmi değildir;
+bir eklenti için web sunucusu rolünü dolduran Apache; pacman'de sunulmayan bir
+eklenti; DNS reddinin yanındaki kurulu bir posta paketi; yük, doldurma
+noktalarında. Posta profili görünümü testleri değişmeden geçer; engelleme ve
+hazırlık denetimleri ortak yardımcılara taşındı ve eski kartların ön yüz kaynak
+sözleşmesi şerit için yeniden yazıldı (istemcinin DNS kapısı korunarak). Web:
+çözücünün yola göre kapalı durumları ve eylemleri, şeridin iki sunucudaki
+seçimleri, yeniden söylenen nedenler ve bağlanmış testler: üç durum, posta için
+Onar ve salt okunur bir Doğrula, Apache ayrımı, kurulu görünüm ve bir yedek işlem
+izleyici üzerinden sıra (birer birer, taze tarama olmadan adım yok, bir hata,
+adımın olmayan bir işlem, kapalı bir kapı, yeniden yüklemeden sonra devam yok).
+**Açık:** kurulu bir sunucuda hiçbir şey ölçülmedi; sıra gerçek bir Agent'a karşı
+çalışmadı; P0.1-P0.5 **kısmi** kalır.

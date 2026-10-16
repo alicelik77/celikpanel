@@ -184,10 +184,15 @@ type managedServicesPayload struct {
 	// şeyi söyler. Eksi değer, damganın bu sunucunun saatinden sonra olduğu
 	// anlamına gelir (saat geri gitti); koşullu tarama gibi sayfa da onu taze
 	// saymaz.
-	ScanAgeSeconds   *float64                 `json:"scan_age_seconds"`
-	Services         []ManagedServiceResponse `json:"services"`
-	Profiles         []MailProfileResponse    `json:"profiles"`
-	DNSIdentityReady bool                     `json:"dns_identity_ready"`
+	ScanAgeSeconds *float64                 `json:"scan_age_seconds"`
+	Services       []ManagedServiceResponse `json:"services"`
+	Profiles       []MailProfileResponse    `json:"profiles"`
+	// Bundles are the ready bundles (alpha.94, D-034): shortcuts over the
+	// components above, derived from the same scan and mail profiles.
+	// Additive; an older page ignores it.
+	// Hazır paketler: yukarıdaki bileşenler üzerinde kısayollar.
+	Bundles          []BundleResponse `json:"bundles"`
+	DNSIdentityReady bool             `json:"dns_identity_ready"`
 	// MailHostname is what the mail install screen needs to know before it
 	// asks: the name this server carries now, the name the install would use,
 	// and where that name came from.
@@ -622,6 +627,7 @@ func (p *Panel) handleManagedServices(w http.ResponseWriter, r *http.Request) {
 		MailHostname:     p.mailHostnameIdentity(r.Context()),
 		MailDNSGuidance:  p.mailProfileDNSGuidanceFor(r.Context(), dnsIdentityReady),
 	}
+	payload.Bundles = bundlesView(payload.Services, false, packageFamily, payload.Profiles, payload.Profiles)
 
 	var data string
 	var scannedAt string
@@ -657,6 +663,8 @@ func (p *Panel) handleManagedServices(w http.ResponseWriter, r *http.Request) {
 			snapshot.WebmailProven,
 			profileAttempts,
 		)
+		payload.Bundles = bundlesView(payload.Services, profilesVerified, packageFamily, payload.Profiles,
+			mailProfilesView(payload.Services, profilesVerified, packageFamily, "", snapshot.WebmailReady, snapshot.WebmailProven, profileAttempts))
 	} else if !errors.Is(err, sql.ErrNoRows) {
 		writeServerError(w, fmt.Errorf("read service scan cache: %w", err))
 		return
@@ -763,6 +771,8 @@ func (p *Panel) handleManagedServicesScan(w http.ResponseWriter, r *http.Request
 		MailHostname:     p.mailHostnameIdentity(r.Context()),
 		MailDNSGuidance:  p.mailProfileDNSGuidanceFor(r.Context(), dnsIdentityReady),
 	}
+	payload.Bundles = bundlesView(payload.Services, true, p.packageFamily(), payload.Profiles,
+		mailProfilesView(services, true, p.packageFamily(), "", webmailReady, webmailProven, profileAttempts))
 	payload.stampScanAge(time.Now())
 	json.NewEncoder(w).Encode(payload)
 }
@@ -831,10 +841,13 @@ func (p *Panel) managedServicesCacheWithin(ctx context.Context, maxAge time.Dura
 	if err != nil {
 		return managedServicesPayload{}, false, err
 	}
+	profiles := mailProfilesView(services, true, packageFamily, mailProfileCatalogBlockedReason(mailProfileHostBlockedReason(), dnsIdentityReady), snapshot.WebmailReady, snapshot.WebmailProven, profileAttempts)
 	return managedServicesPayload{
-		ScannedAt:        &scanned,
-		Services:         services,
-		Profiles:         mailProfilesView(services, true, packageFamily, mailProfileCatalogBlockedReason(mailProfileHostBlockedReason(), dnsIdentityReady), snapshot.WebmailReady, snapshot.WebmailProven, profileAttempts),
+		ScannedAt: &scanned,
+		Services:  services,
+		Profiles:  profiles,
+		Bundles: bundlesView(services, true, packageFamily, profiles,
+			mailProfilesView(services, true, packageFamily, "", snapshot.WebmailReady, snapshot.WebmailProven, profileAttempts)),
 		DNSIdentityReady: dnsIdentityReady,
 		MailHostname:     p.mailHostnameIdentity(ctx),
 		MailDNSGuidance:  p.mailProfileDNSGuidanceFor(ctx, dnsIdentityReady),

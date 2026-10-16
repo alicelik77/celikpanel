@@ -1774,6 +1774,10 @@ const scenarios = {
 (await import('./scenarios-batch18.mjs')).default(scenarios, { base, vp, locale, theme, out, viewport, ctl, reset, drainLog, newPage, closePage, shot, into, clickByText, waitFor, pause, quiet });
 // --- end of batch 18 ---
 
+// --- batch 19 (2026-10-17): the ready bundles and the Components colour corrections ---
+(await import('./scenarios-batch19.mjs')).default(scenarios, { base, vp, locale, theme, out, viewport, ctl, reset, drainLog, newPage, closePage, shot, into, clickByText, waitFor, pause, quiet });
+// --- end of batch 19 ---
+
 for (const [name, run] of Object.entries(scenarios)) {
     if (wanted && !wanted.includes(name)) continue;
     const started = Date.now();

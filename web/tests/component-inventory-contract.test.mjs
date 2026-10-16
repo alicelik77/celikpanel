@@ -170,7 +170,7 @@ test('every component row links to its component page, whatever its state', () =
     // The whole row is the target, and every real control still sits above it.
     assert.match(rows.slice(link), /after:absolute after:inset-0/);
     assert.match(rows, /<li key=\{s\.id\} className="relative /);
-    assert.match(rows, /className="relative ml-auto flex min-w-0 items-center justify-end/);
+    assert.match(rows, /className="relative ml-auto flex min-w-0 flex-wrap items-center justify-end/);
 
     // Manage stays the primary action where it exists; the row link is not a
     // replacement for it.
@@ -214,22 +214,25 @@ test('the sidebar badge reads the census every screen publishes, and never fetch
 // 4. The mail card knows unknown from stale
 // ---------------------------------------------------------------------------
 
-test('the dashboard mail card says unknown on a host nobody has checked', () => {
+test('the dashboard bundles card says unknown on a host nobody has checked, and carries the check', () => {
     // "Older than five minutes" is a claim about a scan. On a host where no
     // scan has ever run there is no scan to be old, so the card says what is
-    // true and carries the same check as the card beside it.
-    // "Beş dakikadan eski" bir tarama hakkında iddiadır. Hiç tarama koşmamış
-    // makinede eskiyecek tarama yoktur.
+    // true and carries the same check as the card beside it (the Mail stacks
+    // card's rule, kept by the Ready bundles card of alpha.94).
+    // Hiç tarama koşmamış makinede eskiyecek tarama yoktur.
     assert.match(dashboard, /hostNeverChecked=\{hostNeverChecked\}/);
     assert.match(dashboard, /onCheck=\{scanComponents\}/);
-    const card = dashboard.slice(dashboard.indexOf('function MailStackSummary'));
+    const card = dashboard.slice(dashboard.indexOf('function ReadyBundlesCard'));
+    const body = card.slice(0, card.indexOf('\n}\n'));
     // Unknown is decided before staleness, or the fold comes straight back.
-    assert.match(card, /const statusKey: TranslationKey = hostNeverChecked\s*\n\s*\? 'services\.notChecked'/);
-    assert.match(card, /const detail = hostNeverChecked\s*\n\s*\? t\('dashboard\.mailStacks\.notChecked'\)/);
-    // Neutral, like the system-services card: not yet looked at is not a fault.
-    assert.match(card, /hostNeverChecked \|\| !scanFresh \|\| availableOnly\s*\n\s*\? 'bg-surface-2 text-fg-muted'/);
-    // The check runs here rather than pointing at another page.
-    assert.match(card, /onClick=\{onCheck\}[\s\S]{0,600}t\('services\.scanNow'\)/);
+    assert.match(body, /const state = hostNeverChecked\s*\n\s*\? \(/);
+    assert.match(body, /t\('dashboard\.bundles\.notChecked'\)[\s\S]{0,300}onClick=\{onCheck\}[\s\S]{0,120}t\('services\.scanNow'\)/);
+    // Held, failed and stale each have their own sentence.
+    assert.match(body, /card === 'held'\s*\n\s*\? t\('dashboard\.systemServicesCheckHeld'\)/);
+    assert.match(body, /card === 'failed' \|\| card === 'unread'\s*\n\s*\? t\('dashboard\.bundles\.checkFailed'\)/);
+    assert.match(body, /: t\('dashboard\.systemServicesNotRecent'\)/);
+    // Neutral: not yet looked at is not a fault.
+    assert.doesNotMatch(body, /text-warning|bg-warning/);
 });
 
 // ---------------------------------------------------------------------------
@@ -243,8 +246,9 @@ test('the new copy exists in both locales and claims nothing about the host', ()
             'services.checkingNow',
             'services.showingLastSeen',
             'services.autoCheckFailed',
-            // the mail card's unknown state
-            'dashboard.mailStacks.notChecked',
+            // the bundles card's unknown and failed states
+            'dashboard.bundles.notChecked',
+            'dashboard.bundles.checkFailed',
             // the two counts, reconciled
             'dashboard.svcNoneUnitlessOne',
             'dashboard.svcNoneUnitless',
@@ -258,7 +262,7 @@ test('the new copy exists in both locales and claims nothing about the host', ()
     }
     // Neither locale may describe a scan's age on a host that has none.
     assert.doesNotMatch(
-        english.slice(english.indexOf("'dashboard.mailStacks.notChecked'")).split('\n')[0],
+        english.slice(english.indexOf("'dashboard.bundles.notChecked'")).split('\n')[0],
         /five minutes|older/,
     );
 });

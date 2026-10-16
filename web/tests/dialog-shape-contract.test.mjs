@@ -165,6 +165,8 @@ test('every dialogue in the product is the shared one', () => {
     'Dashboard.tsx': 1,
     'DatabaseAccountStrip.tsx': 1,
     'DomainMailManager.tsx': 1,
+    // alpha.94: the confirmation of a database or web ready bundle.
+    'ReadyBundleStrip.tsx': 1,
     'ServiceList.tsx': 7,
     'ServiceShell.tsx': 1,
   });
