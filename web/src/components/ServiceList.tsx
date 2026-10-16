@@ -457,6 +457,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
     const [profiles, setProfiles] = useState<ManagedMailProfile[]>([]);
     const [bundles, setBundles] = useState<ReadyBundle[]>([]);
     const [bundleTarget, setBundleTarget] = useState<ReadyBundle | null>(null);
+    const [profileRepair, setProfileRepair] = useState(false);
     const webmailProblem = webmailReportsProblem(profiles);
     const [scannedAt, setScannedAt] = useState<string | null>(null);
     // Counts the scans this page has received. The firewall banner reads its
@@ -688,24 +689,22 @@ export function ServiceList({ onManageService }: ServiceListProps) {
     // (alpha.94): every category is opened so each strip is visible, and the
     // list is scrolled to and focused once.
     // Panel'in Hazır paketler kartı bu sayfayı paketlerde açar.
+    // The old address of the mail stacks (#mail-stacks, in bookmarks and
+    // older links) is an alias: it scrolls to the email strip.
+    // Eski posta yığınları adresi bir takma addır: e-posta şeridine kaydırır.
     const bundlesFocusedRef = useRef(false);
     useLayoutEffect(() => {
-        if (location.hash !== '#bundles' || loading || bundles.length === 0 || bundlesFocusedRef.current) return;
-        const target = document.getElementById('bundles');
-        if (!target) {
-            // The installed view of a server with nothing installed draws no
-            // category: the bundles are shown in the catalogue view, for
-            // this visit only (the remembered view is not changed).
-            // Hiçbir şeyin kurulu olmadığı sunucunun kurulu görünümü bölüm
-            // çizmez: paketler bu ziyaret için katalog görünümünde gösterilir.
-            if (hideNotInstalled) setHideNotInstalled(false);
-            return;
-        }
+        if ((location.hash !== '#bundles' && location.hash !== '#mail-stacks') || loading || bundles.length === 0 || bundlesFocusedRef.current) return;
+        const list = document.getElementById('bundles');
+        if (!list) return;
         bundlesFocusedRef.current = true;
         setCollapsed(new Set());
+        const target = location.hash === '#mail-stacks'
+            ? (document.querySelector('[data-bundle-strip="email"]') as HTMLElement | null) ?? list
+            : list;
         target.scrollIntoView({ block: 'start' });
-        target.focus({ preventScroll: true });
-    }, [loading, location.hash, bundles.length, hideNotInstalled]);
+        list.focus({ preventScroll: true });
+    }, [loading, location.hash, bundles.length]);
 
     // Client-side filter: text search over name/description/id plus the
     // "hide not installed" switch. A live search overrides collapse so
@@ -1265,7 +1264,17 @@ export function ServiceList({ onManageService }: ServiceListProps) {
     // install at a time; "Verify" of such a bundle reads the components again.
     // Hazır paketler: posta paketi kendi profilinin penceresini açar; veritabanı
     // ve web paketi bir kez sorar ve eksik bileşenleri sırayla kurar.
-    const bundleSequence = useBundleSequence(componentOperation, services, (bundleId, componentId, index, total) => {
+    // Before every step the page's change gate is read again: an unverified
+    // page state, or a host that is not ready for changes (read afresh, not
+    // the last poll), stops the sequence with Continue.
+    // Her adımdan önce sayfanın değişiklik kapısı yeniden okunur.
+    const bundleGate = async (): Promise<string | null> => {
+        if (stateUnverified) return t('services.stateUnverifiedHint');
+        if (!(await loadHostMutationReadiness())) return t('services.bundles.gatedReadiness');
+        return null;
+    };
+    const installedNow = () => new Set(services.filter((service) => service.is_installed === true).map((service) => service.id));
+    const bundleSequence = useBundleSequence(componentOperation, installedNow, (bundleId, componentId, index, total) => {
         const bundle = bundles.find((candidate) => candidate.id === bundleId);
         const component = componentName(services.find((service) => service.id === componentId) ?? componentId, t);
         const nameOf = (id: string) => componentName(services.find((service) => service.id === id) ?? id, t);
@@ -1275,10 +1284,19 @@ export function ServiceList({ onManageService }: ServiceListProps) {
             n: index + 1,
             total,
         });
-    });
+    }, bundleGate);
+    // A mail bundle cannot start before the server's DNS identity is ready;
+    // the Panel blocks it too, and the page does not offer it (D-021).
+    // Repair opens the dialogue in its repair form whatever the profile's
+    // state: it completes what is missing and proves the setup.
+    // Posta paketi DNS kimliği hazır olmadan başlayamaz; Onar diyaloğu onarım
+    // biçiminde açar.
     const openMailBundle = (bundle: ReadyBundle) => {
+        if (!dnsIdentityReady) return;
         const profile = profiles.find((candidate) => candidate.id === bundle.profile_id);
-        if (profile) openProfilePlan(profile);
+        if (!profile) return;
+        setProfileRepair(bundle.action === 'repair');
+        openProfilePlan(profile);
     };
     const openComponentBundle = (bundle: ReadyBundle) => {
         if (mutationControlsDisabled) {
@@ -1301,7 +1319,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
     const mailSecondary = !dnsIdentityReady && mailDNSGuidance !== null;
     const setupReady = setupSnapshot?.status === 'ready' || setupSnapshot?.extension === true;
     const mailNotice = mailSecondary && mailDNSGuidance ? (
-        <div className='min-w-0 flex-1 text-sm text-fg' data-mail-dns-secondary=''>
+        <div role='status' className='min-w-0 basis-full text-sm text-fg' data-mail-dns-secondary=''>
             <p className='flex flex-wrap items-baseline gap-x-2 gap-y-1'>
                 <span>{t('services.mailProfiles.secondary.short')}</span>
                 <span className='inline-flex flex-wrap gap-x-2 break-all rounded-md border border-border bg-surface px-2 py-0.5 text-xs' data-mail-dns-record=''>
@@ -1328,7 +1346,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
             </details>
         </div>
     ) : !dnsIdentityReady && bundles.some((bundle) => bundle.category === 'email' && bundle.status !== 'unknown') ? (
-        <p className='flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 text-sm text-fg' data-mail-dns-required=''>
+        <p role='status' className='flex min-w-0 basis-full flex-wrap items-baseline gap-x-2 text-sm text-fg' data-mail-dns-required=''>
             <span>{t('services.mailProfiles.dnsRequiredShort')}</span>
             <span className='text-fg-subtle' aria-hidden='true'>·</span>
             <button type='button' onClick={() => navigate('/settings?section=dns')} className='font-semibold text-primary underline decoration-1 underline-offset-[3px] hover:decoration-2 max-sm:min-h-11'>
@@ -1606,8 +1624,8 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                         ? (services.length === 1 ? t('common.itemsTotalOne') : t('common.itemsTotal', { n: services.length }))
                         : t('services.matchCount', { shown: filtered.length, total: services.length })}
                 </p>
-                {filtered.length === 0 ? (
-                    <div className="rounded-xl border border-border bg-surface p-8 text-center text-sm text-fg-muted">
+                {filtered.length === 0 && (
+                    <div className="mb-4 rounded-xl border border-border bg-surface p-8 text-center text-sm text-fg-muted">
                         {/* A fresh server's installed view is legitimately
                             empty — that is a starting point, not a failed
                             search, so it offers the next step instead of
@@ -1626,7 +1644,12 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                             t('services.noMatches')
                         )}
                     </div>
-                ) : (
+                )}
+                {/* With nothing installed the installed view still draws each
+                    category's ready bundles strip: the strip is the offer
+                    (alpha.94 review).
+                    Hiçbir şey kurulu değilken de kurulu görünüm şeritleri çizer. */}
+                {(filtered.length > 0 || (q === '' && bundles.length > 0)) && (
                 <div id='bundles' tabIndex={-1} className="space-y-4 scroll-mt-24 outline-none">
                     {/* A component whose category is not in categoryOrder used to
                         render NOWHERE: the map only walks known categories and
@@ -1681,8 +1704,10 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                         category={cat}
                                         bundles={bundles}
                                         services={services}
+                                        profiles={profiles}
                                         run={bundleSequence.run}
-                                        disabled={mutationControlsDisabled || componentOperation.locked}
+                                        disabled={mutationControlsDisabled || componentOperation.locked || (cat === 'email' && !dnsIdentityReady)}
+                                        readDisabled={scanning}
                                         scanning={scanning}
                                         notice={cat === 'email' ? mailNotice : undefined}
                                         onMail={openMailBundle}
@@ -2107,6 +2132,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                         profile={profileTarget}
                         services={services}
                         mailHostname={mailHostname}
+                        repair={profileRepair}
                         onCancel={() => setProfileTarget(null)}
                         onConfirm={(chosen) => void installProfile(chosen)}
                         throughSetup={mailThroughSetup ? addProfileThroughSetup : undefined}
@@ -2116,6 +2142,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                     <BundleInstallDialog
                         bundle={bundleTarget}
                         services={services}
+                        continuing={bundleSequence.run?.bundleId === bundleTarget.id && bundleSequence.run.phase === 'stopped'}
                         onCancel={() => setBundleTarget(null)}
                         onConfirm={confirmComponentBundle}
                     />
@@ -2219,6 +2246,7 @@ function MailProfileInstallDialog({
     profile,
     services,
     mailHostname,
+    repair = false,
     onCancel,
     onConfirm,
     throughSetup,
@@ -2228,6 +2256,8 @@ function MailProfileInstallDialog({
     mailHostname: MailHostnameIdentity | null;
     onCancel: () => void;
     onConfirm: (mailHostname: string) => void;
+    /** Opened from a bundle's Repair: the repair form, whatever the state. */
+    repair?: boolean;
     // Present on a server whose guided setup has finished: the profile is
     // added to an extension of that setup and reviewed there (2026-10-16).
     throughSetup?: (mailHostname: string) => Promise<TranslationKey | null>;
@@ -2284,7 +2314,7 @@ function MailProfileInstallDialog({
     const components = profile.services
         .map((id) => services.find((service) => service.id === id))
         .filter((service): service is ManagedService => Boolean(service));
-    const mode = profile.status === 'available'
+    const mode = repair ? 'repair' : profile.status === 'available'
         ? 'install'
         : profile.status === 'partial'
             ? 'continue'
@@ -2444,6 +2474,12 @@ function MailProfileInstallDialog({
                         </div>
                     </div>
 
+                    {mode === 'repair' && (
+                        // What Repair does, said before it is pressed: there is
+                        // no read-only verification of a mail setup.
+                        // Onar'ın ne yaptığı basılmadan söylenir.
+                        <p className='mb-3 text-sm leading-6 text-fg' data-mail-profile-repair-hint=''>{t('services.mailProfiles.plan.repairHint')}</p>
+                    )}
                     {throughSetup ? (
                         <div className='mb-4 rounded-lg border border-border bg-surface-2/50 p-3 text-xs leading-5 text-fg' data-mail-profile-route='setup'>
                             <p>{t('services.mailProfiles.setupRoute.note')}</p>

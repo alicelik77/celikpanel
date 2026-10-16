@@ -114,11 +114,10 @@ const { decodeFirewallStatus, useFirewallStatus } = await import(firewallURL);
 const Dashboard = await pick(lib('components/Dashboard.tsx', {
   '/lib/firewall': firewallURL,
   '/lib/accounts': lib('lib/accounts.ts', { '/remote': remoteURL }),
-  '/lib/dashboardMailTruth': lib('lib/dashboardMailTruth.ts'),
   '/lib/mailProfileText': lib('lib/mailProfileText.ts'),
   '/lib/componentName': lib('lib/componentName.ts'),
   '/lib/componentCensus': lib('lib/componentCensus.ts'),
-  '/lib/readyBundles': lib('lib/readyBundles.ts'),
+  '/lib/readyBundles': lib('lib/readyBundles.ts', { '/mailProfileText': lib('lib/mailProfileText.ts') }),
   '/lib/auditAction': lib('lib/auditAction.ts', { '/componentName': lib('lib/componentName.ts') }),
   '/ComponentOperation': operationURL,
 }), 'Dashboard');
@@ -135,12 +134,12 @@ const ServiceList = await pick(lib('components/ServiceList.tsx', {
   '/lib/componentName': lib('lib/componentName.ts'),
   '/lib/serverSetup': lib('lib/serverSetup.ts'),
   '/WebmailRepairButton': lib('components/WebmailRepairButton.tsx'),
-  '/lib/readyBundles': lib('lib/readyBundles.ts'),
+  '/lib/readyBundles': lib('lib/readyBundles.ts', { '/mailProfileText': lib('lib/mailProfileText.ts') }),
   '/lib/componentIcons': lib('lib/componentIcons.tsx'),
   '/ReadyBundleStrip': lib('components/ReadyBundleStrip.tsx', {
     '/lib/mailProfileText': lib('lib/mailProfileText.ts'),
     '/lib/componentName': lib('lib/componentName.ts'),
-    '/lib/readyBundles': lib('lib/readyBundles.ts'),
+    '/lib/readyBundles': lib('lib/readyBundles.ts', { '/mailProfileText': lib('lib/mailProfileText.ts') }),
     '/lib/componentIcons': lib('lib/componentIcons.tsx'),
   }),
 }), 'ServiceList');
@@ -1011,14 +1010,14 @@ test('Dashboard bundles card: while the page checks by itself it says so, with m
   } finally { await unmount(); }
 });
 
-test('Dashboard bundles card: a check that could not run says nothing is known yet, without sending the owner to rescan', async () => {
+test('Dashboard bundles card: a check that could not run says so, without sending the owner to rescan', async () => {
   serve({ '/api/v1/managed-services': mailScan(STALE, [profile('core-mail'), profile('webmail'), profile('protected-mail')]), '/api/v1/managed-services/scan': REFUSED });
   await mount(dashboard());
   try {
     await settle();
     const card = tree.root.find((node) => node.props['aria-labelledby'] === 'dashboard-bundles-heading');
     const cardText = label(card);
-    assert.ok(cardText.includes('dashboard.bundles.notKnown'), `the card does not say it is not known: ${cardText}`);
+    assert.ok(cardText.includes('dashboard.bundles.checkFailed'), `the card does not say the check failed: ${cardText}`);
     assert.ok(!cardText.includes('dashboard.bundles.noneInstalled'), 'a stale record is read as "nothing installed"');
     for (const key of MAIL_STALE_KEYS) assert.ok(!text().includes(key), `"${key}" is on screen`);
     assert.ok(cardText.includes('dashboard.bundles.open'), 'the card still opens the bundles');
@@ -1027,7 +1026,7 @@ test('Dashboard bundles card: a check that could not run says nothing is known y
 
 test('Dashboard bundles card: an installed bundle is named in the interface language, and the door opens the bundles', async () => {
   globalThis.batch3Words = {
-    'services.bundles.name.mail_webmail': trServerScreens['services.bundles.name.mail_webmail'],
+    'dashboard.audit.profile.webmail': trScreens['dashboard.audit.profile.webmail'],
     'dashboard.bundles.verified': trScreens['dashboard.bundles.verified'],
   };
   globalThis.batch3Navigated = [];
@@ -1040,7 +1039,8 @@ test('Dashboard bundles card: an installed bundle is named in the interface lang
   try {
     const card = tree.root.find((node) => node.props['aria-labelledby'] === 'dashboard-bundles-heading');
     const cardText = label(card);
-    assert.ok(cardText.includes('Web postalı posta') && cardText.includes('doğrulandı'), cardText);
+    // A mail bundle is named as the product names its mail profile.
+    assert.ok(cardText.includes(trScreens['dashboard.audit.profile.webmail']) && cardText.includes('doğrulandı'), cardText);
     assert.ok(cardText.includes('dashboard.bundles.installable{"n":2}'), cardText);
     await act(async () => { card.findAll((node) => node.type === 'button').find((node) => label(node).includes('dashboard.bundles.open')).props.onClick(); });
     assert.deepEqual(globalThis.batch3Navigated, ['/services#bundles']);
@@ -1364,4 +1364,31 @@ test('Components: Repair webmail is an ordinary action unless webmail reports a 
       assert.equal(/warning/.test(button.props.className), tone === 'warning', button.props.className);
     } finally { await unmount(); }
   }
+});
+
+// D-024 (alpha.94 review): a failed mail attempt is said again on the
+// Dashboard's Ready bundles card, with the Panel's own error, in the interface
+// language; a running one says that it runs. Nothing is sent.
+test('Dashboard bundles card: a failed mail attempt is said with its error, a running one says it runs', async () => {
+  globalThis.batch3Words = {
+    'dashboard.audit.profile.coreMail': trScreens['dashboard.audit.profile.coreMail'],
+    'dashboard.audit.profile.webmail': trScreens['dashboard.audit.profile.webmail'],
+    'services.mailProfiles.attemptError': trServerScreens['services.mailProfiles.attemptError'],
+    'dashboard.bundles.attemptFailed': trScreens['dashboard.bundles.attemptFailed'],
+    'dashboard.bundles.attemptRunning': trScreens['dashboard.bundles.attemptRunning'],
+  };
+  const answer = mailScan(new Date().toISOString(), [
+    { ...profile('core-mail'), status: 'partial', latest_attempt_status: 'failed', latest_attempt_error: 'submission verification failed' },
+    { ...profile('webmail'), latest_attempt_status: 'in_progress' },
+    profile('protected-mail'),
+  ]);
+  serve({ '/api/v1/managed-services': answer });
+  await mount(dashboard());
+  try {
+    const card = tree.root.find((node) => node.props['aria-labelledby'] === 'dashboard-bundles-heading');
+    const cardText = label(card);
+    assert.ok(cardText.includes('Temel Posta: Son deneme şunu bildirdi: submission verification failed'), cardText);
+    assert.ok(cardText.includes(trScreens['dashboard.bundles.attemptRunning'].replace('{name}', trScreens['dashboard.audit.profile.webmail'])), cardText);
+    assert.equal(requests.filter((line) => !line.startsWith('GET ')).length, 0, requests.join(', '));
+  } finally { await unmount(); delete globalThis.batch3Words; }
 });

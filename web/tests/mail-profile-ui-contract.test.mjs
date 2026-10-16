@@ -126,9 +126,17 @@ test('profile success needs fresh complete state and full operation evidence', (
 // are offered.
 test('mail bundles use server membership, the profile dialogue and closed actions', () => {
   assert.match(bundlesSource, /const components = stringList\(bundle\.components, serviceIDs\);/);
-  assert.match(bundlesSource, /route === 'mail_profile'\s*\n\s*\? typeof bundle\.profile_id !== 'string' \|\| !MAIL_PROFILE_IDS\.has\(bundle\.profile_id\)/);
-  assert.match(bundlesSource, /available: \['install'\],\s*\n\s*partial: \['continue'\],\s*\n\s*installed_unverified: \['verify'\],\s*\n\s*installed_verified: \['repair', 'none'\],\s*\n\s*blocked: \['none'\],/);
-  assert.match(serviceSource, /const profile = profiles\.find\(\(candidate\) => candidate\.id === bundle\.profile_id\);\s*\n\s*if \(profile\) openProfilePlan\(profile\);/);
+  // Repair is the mail route's (the profile install proves a mail setup);
+  // Verify, a read, the components route's; "partial" is mail only.
+  assert.match(bundlesSource, /route === 'mail_profile'\s*\n\s*\? typeof bundle\.profile_id !== 'string' \|\| !MAIL_PROFILE_IDS\.has\(bundle\.profile_id\) \|\| action === 'verify'\s*\n\s*: bundle\.profile_id !== undefined \|\| action === 'repair' \|\| status === 'partial'/);
+  assert.match(bundlesSource, /available: \['install'\],\s*\n\s*partial: \['continue'\],\s*\n\s*installed_unverified: \['verify', 'repair', 'none'\],\s*\n\s*installed_verified: \['repair', 'none'\],\s*\n\s*blocked: \['none'\],/);
+  assert.match(serviceSource, /const profile = profiles\.find\(\(candidate\) => candidate\.id === bundle\.profile_id\);\s*\n\s*if \(!profile\) return;\s*\n\s*setProfileRepair\(bundle\.action === 'repair'\);\s*\n\s*openProfilePlan\(profile\);/);
+  // Repair says what it does before it is pressed.
+  assert.match(serviceSource, /const mode = repair \? 'repair' :/);
+  assert.match(serviceSource, /\{mode === 'repair' && \(/);
+  assert.match(serviceSource, /t\('services\.mailProfiles\.plan\.repairHint'\)/);
+  assert.equal(enSource.includes("'services.mailProfiles.plan.repairHint': 'Repair completes what is missing and verifies the setup; nothing installed is removed.'"), true);
+  assert.equal(trSource.includes("'services.mailProfiles.plan.repairHint': 'Onar, eksik olanı tamamlar ve kurulumu doğrular; kurulu olan kaldırılmaz.'"), true);
   assert.match(serviceSource, /operationKind: 'mail_profile_install'/);
   assert.match(serviceSource, /setProfileTarget\(profile\)/);
   assert.match(stripSource, /else if \(bundle\.action_route === 'mail_profile'\) onMail\(bundle\);/);
@@ -189,15 +197,16 @@ test('the mail install dialog asks for the mail hostname when the server has non
   }
 });
 
-test('an installed bundle without its proof says so, calmly, and offers Verify', () => {
+test('an installed bundle without its proof says so, calmly, and offers Repair (mail) or Verify (components)', () => {
   // alpha.94: "installed, not verified" replaces "Components running" and
   // the amber "Partially installed" of the old cards.
   const enUnverified = enSource.match(/'services\.bundles\.unverified': '([^']+)'/);
   const trUnverified = trSource.match(/'services\.bundles\.unverified': '([^']+)'/);
   assert.equal(enUnverified?.[1], '{name}: installed, not verified');
-  assert.equal(trUnverified?.[1], '{name}: Kurulu, doğrulanmadı');
+  assert.equal(trUnverified?.[1], '{name}: kurulu, doğrulanmadı');
   assert.match(stripSource, /<StatusDot tone='unknown' \/>/);
-  assert.match(stripSource, /bundle\.action === 'verify' && \(\s*\n\s*<Button variant='secondary'/);
+  assert.match(stripSource, /bundle\.status === 'installed_unverified' && bundle\.action === 'verify' && \(\s*\n\s*<Button variant='secondary' className='ml-auto shrink-0 max-sm:min-h-11' disabled=\{readDisabled\}/);
+  assert.match(stripSource, /bundle\.status === 'installed_unverified' && bundle\.action === 'repair' && \(\s*\n\s*<Button variant='secondary' className='ml-auto shrink-0 max-sm:min-h-11' disabled=\{disabled\}/);
   for (const key of ['services.mailProfiles.status.partial', 'services.mailProfiles.status.complete', 'services.mailProfiles.profileComponentsNeedRepair']) {
     assert.ok(!enSource.includes(`'${key}':`), `${key} is gone from EN`);
     assert.ok(!trSource.includes(`'${key}':`), `${key} is gone from TR`);

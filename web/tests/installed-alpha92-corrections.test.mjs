@@ -96,7 +96,7 @@ test('Repair webmail is an ordinary action unless webmail reports a problem', ()
 test('the Ready bundles card says verified mail in plain words', () => {
   assert.equal(catalogues.en['services.bundles.verified'], '{name} installed and verified');
   assert.equal(catalogues.tr['services.bundles.verified'], '{name} kurulu ve doğrulandı');
-  assert.equal(catalogues.tr['services.bundles.unverified'], '{name}: Kurulu, doğrulanmadı');
+  assert.equal(catalogues.tr['services.bundles.unverified'], '{name}: kurulu, doğrulanmadı');
   for (const locale of ['en', 'tr']) {
     for (const key of ['services.bundles.verified', 'services.bundles.unverified', 'dashboard.bundles.verified', 'dashboard.bundles.unverified']) {
       assert.doesNotMatch(catalogues[locale][key], /scan|reconcil|tarama|uzlaştır/i);
@@ -105,34 +105,17 @@ test('the Ready bundles card says verified mail in plain words', () => {
 });
 
 // 4. No mail component installed: the mail bundles are offered, neutrally;
-// the old "partially installed" words are gone from the page. A real partial
-// install keeps its own line with Continue.
-const truth = await import(dataModule(compile(read('../src/lib/dashboardMailTruth.ts'))));
-const profile = (id, status, extra = {}) => ({ id, status, latest_attempt_status: 'none', verified: false, ...extra });
-
+// the old "partially installed" words are gone from the page. Whether a
+// profile is partial is the Panel's (mailProfilesView, Go tests with Nginx
+// alone and one mail component as controls); a real partial mail bundle keeps
+// its own line with Continue and its reason.
 test('a mail stack with no mail component reads Not installed, neutrally', () => {
   assert.equal(catalogues.en['services.mailProfiles.status.partial'], undefined, 'the "Partially installed" label is gone');
   assert.equal(catalogues.tr['services.mailProfiles.status.partial'], undefined, 'the "Kısmen kurulu" label is gone');
-  // Boston after the server change: Webmail is "available" with the reuse note.
-  const boston = truth.summarizeDashboardMailTruth([
-    profile('core-mail', 'available'),
-    profile('webmail', 'available', { warning: 'Some components are already present.', warning_code: 'partly_present' }),
-    profile('protected-mail', 'available'),
-  ], true);
-  assert.equal(boston.availableOnly, true);
-  assert.equal(boston.partial, false);
-  assert.equal(boston.needsAttention, false);
-  // Negative control: one mail component present keeps the partial state.
-  const partial = truth.summarizeDashboardMailTruth([
-    profile('core-mail', 'partial'), profile('webmail', 'partial'), profile('protected-mail', 'partial'),
-  ], true);
-  assert.equal(partial.partial, true);
-  assert.equal(partial.availableOnly, false);
-  // The strip draws the reuse note nowhere and uses amber only for a webmail
-  // runtime that is installed but not ready.
+  // The strip uses amber only for a webmail runtime that is installed but
+  // not ready, and never while an attempt is the reason said.
   const strip = read('../src/components/ReadyBundleStrip.tsx');
-  assert.doesNotMatch(strip, /partly_present/);
-  assert.match(strip, /bundle\.warning_code === 'roundcube_not_ready' && \(\s*<span className='ml-1 text-warning'>/);
+  assert.match(strip, /bundle\.warning_code === 'roundcube_not_ready' && !bundle\.latest_attempt_status\?\.match\(\/failed\|in_progress\/\) \? 'text-warning' : 'text-fg-muted'/);
   assert.equal((strip.match(/text-warning/g) ?? []).length, 1, 'one amber in the strip');
 });
 

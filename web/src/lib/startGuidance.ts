@@ -1,11 +1,5 @@
 import type { Role } from '../auth/AuthContext';
 import type { TranslationKey } from '../i18n/en';
-import type { DashboardMailTruthProfile } from './dashboardMailTruth';
-
-export function hasMailActivity(profiles: DashboardMailTruthProfile[]): boolean {
-    return profiles.some((p) => p.latest_attempt_status !== 'none'
-        || p.status === 'partial' || p.status === 'complete');
-}
 
 export function dnsStartReady(fresh: boolean, identity: boolean, running: boolean): boolean {
     return fresh && identity && running;

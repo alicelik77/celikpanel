@@ -176,25 +176,34 @@ func TestReadyBundleStripUsesServerMembershipAndClosedActions(t *testing.T) {
 	for _, required := range []string{
 		`else if (bundle.action_route === 'mail_profile') onMail(bundle);`,
 		`bundle.action === 'verify' && bundle.action_route === 'components'`,
-		`if (tracker.operation !== null || tracker.locked) return;`,
+		// One step at a time, only for this step's own operation.
+		`if (operation.service_id !== step || operation.kind !== 'service_install') stop(run, 'foreign');`,
+		`if (tracker.locked) return;`,
 		`if (tracker.failure) {`,
+		`if (tracker.catalogSnapshot === baselineRef.current) return;`,
 		`if (sentRef.current === key) return;`,
+		`const closed = await gate();`,
 	} {
 		if !strings.Contains(strip, required) {
 			t.Fatalf(`ready bundle strip is missing %q`, required)
 		}
 	}
-	for _, forbidden := range []string{`['postfix'`, `['dovecot'`, `['nginx'`, `'service_install'`} {
+	for _, forbidden := range []string{`['postfix'`, `['dovecot'`, `['nginx'`} {
 		if strings.Contains(strip, forbidden) {
 			t.Fatalf(`ready bundle strip must not hard-code %q`, forbidden)
 		}
 	}
 	source := serviceListSource(t)
 	for _, required := range []string{
-		`if (profile) openProfilePlan(profile);`,
+		`openProfilePlan(profile);`,
 		`operationKind: 'mail_profile_install'`,
 		`navigate('/settings?section=dns')`,
 		`bundleSequence.begin(bundle);`,
+		// The client gate of the mail actions before the DNS identity is
+		// ready, beside the Panel's own refusal (the cards' former
+		// "disabled={disabled || !dnsIdentityReady || !actionable}").
+		`if (!dnsIdentityReady) return;`,
+		`disabled={mutationControlsDisabled || componentOperation.locked || (cat === 'email' && !dnsIdentityReady)}`,
 	} {
 		if !strings.Contains(source, required) {
 			t.Fatalf(`Components page is missing %q`, required)

@@ -8,6 +8,7 @@
 // Panel türetir; bu dosya biçimi denetler, paketleri sayfanın dilinde
 // adlandırır ve bir bölümün şeridinin neyi göstereceğine karar verir.
 import type { TranslationKey } from '../i18n/en';
+import { mailProfileName } from './mailProfileText';
 
 type Translate = (key: TranslationKey, vars?: Record<string, string | number>) => string;
 
@@ -35,15 +36,18 @@ export interface ReadyBundle {
 
 const STATUSES: ReadonlySet<string> = new Set(['unknown', 'available', 'partial', 'installed_unverified', 'installed_verified', 'blocked']);
 const MAIL_PROFILE_IDS: ReadonlySet<string> = new Set(['core-mail', 'webmail', 'protected-mail']);
-// The one action each state may carry. A pair outside this table is not the
+// The actions each state may carry. A pair outside this table is not the
 // contract, and the whole list is dropped: no strip offers an action the
-// Panel did not mean.
-// Her durumun taşıyabileceği tek eylem; tablo dışı bir çift sözleşme değildir.
+// Panel did not mean. Repair belongs to the mail route (the profile install
+// completes and proves a mail setup); Verify to the components route (it only
+// reads the components again); "partial" only to mail, which has attempts.
+// Her durumun taşıyabileceği eylemler; Onar posta yoluna, Doğrula bileşen
+// yoluna aittir; "kısmen" yalnız postadadır.
 const ACTIONS: Record<BundleStatus, readonly BundleAction[]> = {
     unknown: ['none'],
     available: ['install'],
     partial: ['continue'],
-    installed_unverified: ['verify'],
+    installed_unverified: ['verify', 'repair', 'none'],
     installed_verified: ['repair', 'none'],
     blocked: ['none'],
 };
@@ -89,8 +93,8 @@ export function decodeReadyBundles(value: unknown, serviceIDs: ReadonlySet<strin
             || typeof action !== 'string' || !ACTIONS[status as BundleStatus].includes(action as BundleAction)
             || (route !== 'mail_profile' && route !== 'components')
             || (route === 'mail_profile'
-                ? typeof bundle.profile_id !== 'string' || !MAIL_PROFILE_IDS.has(bundle.profile_id)
-                : bundle.profile_id !== undefined || action === 'repair')
+                ? typeof bundle.profile_id !== 'string' || !MAIL_PROFILE_IDS.has(bundle.profile_id) || action === 'verify'
+                : bundle.profile_id !== undefined || action === 'repair' || status === 'partial')
             || (bundle.parent !== undefined && (typeof bundle.parent !== 'string' || bundle.parent === ''))
             || (bundle.blocked_code !== undefined && (typeof bundle.blocked_code !== 'string' || !CODE.test(bundle.blocked_code)))
             || (bundle.warning_code !== undefined && (typeof bundle.warning_code !== 'string' || !CODE.test(bundle.warning_code)))
@@ -122,11 +126,20 @@ const said = (t: Translate, key: string, vars?: Record<string, string | number>)
 };
 
 // A bundle's name in the page language; a code this page has no words for
-// is named by its components, never by the code.
-// Bu sayfanın sözü olmayan bir kod, kodla değil bileşenleriyle adlandırılır.
+// is named by its components, never by the code. A mail bundle is named as
+// the product names its mail profile everywhere else (mailProfileName).
+// Bu sayfanın sözü olmayan bir kod bileşenleriyle adlandırılır; posta paketi
+// ürünün her yerde kullandığı profil adıyla anılır.
 export function bundleName(bundle: ReadyBundle, t: Translate, componentName: (id: string) => string): string {
-    return said(t, `services.bundles.name.${bundle.name_code}`) ?? bundle.components.map(componentName).join(' + ');
+    const own = said(t, `services.bundles.name.${bundle.name_code}`) ?? bundle.components.map(componentName).join(' + ');
+    if (bundle.action_route === 'mail_profile' && bundle.profile_id) return mailProfileName({ id: bundle.profile_id, name: own }, t);
+    return own;
 }
+
+// A known attempt of a mail bundle: one that failed, or one that is running.
+// Its reason is said again wherever the bundle is drawn (D-024).
+// Bir posta paketinin bilinen denemesi: başarısız ya da süren.
+export const bundleAttempted = (bundle: ReadyBundle) => bundle.latest_attempt_status === 'failed' || bundle.latest_attempt_status === 'in_progress';
 
 export function bundleDescription(bundle: ReadyBundle, t: Translate, componentName: (id: string) => string): string {
     return said(t, `services.bundles.description.${bundle.name_code}`)
@@ -148,6 +161,8 @@ export const bundleInstalled = (bundle: ReadyBundle) => bundle.status === 'insta
 export const HOST_WIDE_BLOCKS: ReadonlySet<string> = new Set(['dns_identity_not_ready', 'hostname_unknown']);
 
 export interface BundleStripModel {
+    /** Offers whose last attempt failed or is running: their reason is said. */
+    noted: ReadyBundle[];
     /** Installed bundles, without those another installed bundle contains. */
     installed: ReadyBundle[];
     /** Started but not finished bundles that are not merely shared parts. */
@@ -183,21 +198,25 @@ const contains = (big: ReadyBundle, small: ReadyBundle) =>
 // şey kurulduktan sonra en fazla bir öneri daha gösterilir.
 export function bundleStripModel(all: readonly ReadyBundle[], category: string): BundleStripModel {
     const own = all.filter((bundle) => bundle.category === category);
-    const model: BundleStripModel = { installed: [], partial: [], offers: [], blocked: [], hostBlocked: null, unknown: false, empty: own.length === 0 };
+    const model: BundleStripModel = { installed: [], partial: [], offers: [], blocked: [], noted: [], hostBlocked: null, unknown: false, empty: own.length === 0 };
     if (own.length === 0) return model;
     if (own.every((bundle) => bundle.status === 'unknown')) {
         model.unknown = true;
         return model;
     }
     const top = own.filter((bundle) => bundle.parent === undefined);
-    const hostCodes = new Set(top.map((bundle) => bundle.blocked_code));
-    if (top.length > 0 && top.every((bundle) => bundle.status === 'blocked' && HOST_WIDE_BLOCKS.has(bundle.blocked_code ?? ''))
-        && hostCodes.size === 1) {
-        model.hostBlocked = top[0].blocked_code ?? null;
-        return model;
-    }
     const installed = own.filter(bundleInstalled);
     model.installed = installed.filter((bundle) => !installed.some((other) => contains(other, bundle)));
+    // A host-wide refusal (the DNS identity, the host name) is said once for
+    // the category; what is installed stays visible beside it.
+    // Sunucu geneli ret bölüm için bir kez söylenir; kurulu olan görünür kalır.
+    const waiting = top.filter((bundle) => !bundleInstalled(bundle));
+    const hostCodes = new Set(waiting.map((bundle) => bundle.blocked_code));
+    if (waiting.length > 0 && hostCodes.size === 1
+        && waiting.every((bundle) => bundle.status === 'blocked' && HOST_WIDE_BLOCKS.has(bundle.blocked_code ?? ''))) {
+        model.hostBlocked = waiting[0].blocked_code ?? null;
+        return model;
+    }
     const covered = (bundle: ReadyBundle) => installed.some((other) => contains(other, bundle));
     // A bundle whose present parts all belong to an installed bundle was not
     // started on its own: it is an offer to add, not a half-finished install.
@@ -206,11 +225,15 @@ export function bundleStripModel(all: readonly ReadyBundle[], category: string):
         return installed.length > 0 && present.every((id) => installed.some((other) => other.components.includes(id)));
     };
     const open = top.filter((bundle) => !bundleInstalled(bundle) && !covered(bundle));
-    model.partial = open.filter((bundle) => bundle.status === 'partial' && !sharedOnly(bundle));
+    model.partial = open.filter((bundle) => bundle.status === 'partial' && (!sharedOnly(bundle) || bundleAttempted(bundle)));
+    const finish = () => {
+        model.noted = model.offers.map((offer) => offer.bundle).filter(bundleAttempted);
+        return model;
+    };
     if (installed.length === 0) {
         model.offers = open.filter((bundle) => bundle.status === 'available').map((bundle) => ({ bundle, add: false }));
         model.blocked = open.filter((bundle) => bundle.status === 'blocked');
-        return model;
+        return finish();
     }
     const byID = new Map(own.map((bundle) => [bundle.id, bundle]));
     const shown = new Set([...model.installed, ...model.partial].map((bundle) => bundle.id));
@@ -221,11 +244,11 @@ export function bundleStripModel(all: readonly ReadyBundle[], category: string):
     if (addon) {
         if (addon.status === 'blocked') model.blocked = [addon];
         else if (addon.status === 'available' || addon.status === 'partial') model.offers = [{ bundle: addon, add: true }];
-        return model;
+        return finish();
     }
     const next = open.find((bundle) => !shown.has(bundle.id) && (bundle.status === 'available' || bundle.status === 'partial'));
     if (next) model.offers = [{ bundle: next, add: true }];
-    return model;
+    return finish();
 }
 
 // The Dashboard card's summary: what is installed (no contained bundle twice)

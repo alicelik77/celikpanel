@@ -23,6 +23,7 @@ import { countText, decodeList, lastKnown, mapRemote, useRemote, type Observed, 
 import { decodeFirewallStatus, useFirewallStatus, type FirewallStatus } from '../lib/firewall';
 import { USERS_URL, decodeUsers } from '../lib/accounts';
 import { bundleName, bundlesSummary, decodeReadyBundles, type ReadyBundle } from '../lib/readyBundles';
+import { mailProfileAttemptError, mailProfileName } from '../lib/mailProfileText';
 import { publishComponentCensus } from '../lib/componentCensus';
 import {
     decodeManagedMailProfiles,
@@ -843,7 +844,7 @@ function AdminDashboard() {
     const mailProfileVerified = verifiedMailProfiles.length > 0;
     // This suppresses only the "install a spam filter" suggestion. It does
     // not claim filter wiring or a verified protected profile; that separate
-    // truth stays visible in the mail-stack summary.
+    // truth stays visible in the Ready bundles card and on Components.
     const hasSpam = serviceRunning('spamassassin') || serviceRunning('rspamd');
     // "Content to scan" means a hosted site — a DNS-only domain serves
     // records, not files, so it must not trigger the antivirus nag.
@@ -1116,8 +1117,12 @@ function AdminDashboard() {
             <ReadyBundlesCard
                 bundles={bundles ?? []}
                 services={services}
+                profiles={mailProfiles ?? []}
                 scanFresh={serviceScanFresh}
-                checking={servicesCard === 'checking'}
+                hostNeverChecked={hostNeverChecked}
+                card={servicesCard}
+                checking={componentScanBusy}
+                onCheck={scanComponents}
                 onOpen={() => navigate('/services#bundles')}
             />
 
@@ -1468,11 +1473,15 @@ function DashboardFirewallConfirmationDialog({
 // the interface language (lib/mailProfileText.ts).
 // D-032'den beri sayfa bileşenleri kendisi kontrol eder; tarama güncel değilken
 // bu kart o kontrolü izler ve sahibi yeniden taramaya göndermez.
-function ReadyBundlesCard({ bundles, services, scanFresh, checking, onOpen }: {
+function ReadyBundlesCard({ bundles, services, profiles, scanFresh, hostNeverChecked, card, checking, onCheck, onOpen }: {
     bundles: ReadyBundle[];
     services: SvcLite[];
+    profiles: ManagedMailProfile[];
     scanFresh: boolean;
+    hostNeverChecked: boolean;
+    card: 'known' | 'checking' | 'held' | 'failed' | 'unread' | 'never' | 'stale';
     checking: boolean;
+    onCheck: () => void;
     onOpen: () => void;
 }) {
     const { t } = useI18n();
@@ -1480,15 +1489,38 @@ function ReadyBundlesCard({ bundles, services, scanFresh, checking, onOpen }: {
     const known = scanFresh && summary.known;
     const nameOf = (id: string) => componentName(services.find((service) => service.id === id) ?? id, t);
     const categoryKey = (category: string) => `dashboard.bundles.cat.${category}` as TranslationKey;
+    // A mail attempt that failed or is running is said again here, with its
+    // reason (D-024); it is a record of the Panel, known without a fresh scan.
+    // Başarısız ya da süren posta denemesi nedeniyle burada yeniden söylenir.
+    const attempts = profiles.filter((profile) => profile.latest_attempt_status === 'failed' || profile.latest_attempt_status === 'in_progress');
+    // Each state its own sentence: never checked (with the check itself, as
+    // the Dashboard's other cards), checking, held by a change, a check that
+    // failed, and a record older than the window.
+    // Her durumun kendi cümlesi: hiç bakılmadı, bakılıyor, değişiklik sürüyor,
+    // bakılamadı, kayıt eski.
+    const state = hostNeverChecked
+        ? (
+            <div className='flex flex-wrap items-center gap-3' data-bundles-state='never'>
+                <p className='min-w-0 flex-1 basis-56 text-sm text-fg-muted'>{t('dashboard.bundles.notChecked')}</p>
+                <Button variant='secondary' icon={ScanSearch} loading={checking} onClick={onCheck}>
+                    {checking ? t('services.scanning') : t('services.scanNow')}
+                </Button>
+            </div>
+        )
+        : card === 'checking'
+            ? <Checking label={t('dashboard.systemServicesChecking')} />
+            : <p className='text-sm text-fg-muted' data-bundles-state={card}>
+                {card === 'held'
+                    ? t('dashboard.systemServicesCheckHeld')
+                    : card === 'failed' || card === 'unread'
+                        ? t('dashboard.bundles.checkFailed')
+                        : t('dashboard.systemServicesNotRecent')}
+            </p>;
     return (
         <section className='mt-6' aria-labelledby='dashboard-bundles-heading' data-dashboard-bundles=''>
             <div className='flex flex-col gap-3 rounded-xl border border-border bg-surface p-4 sm:p-5'>
                 <h2 id='dashboard-bundles-heading' className='font-semibold text-fg'>{t('dashboard.bundles.title')}</h2>
-                {!known ? (
-                    checking
-                        ? <Checking label={t('dashboard.systemServicesChecking')} />
-                        : <p className='text-sm text-fg-muted'>{t('dashboard.bundles.notKnown')}</p>
-                ) : summary.installed.length === 0 ? (
+                {!known ? state : summary.installed.length === 0 ? (
                     <p className='text-sm text-fg-muted'>{t('dashboard.bundles.noneInstalled')}</p>
                 ) : (
                     <ul className='divide-y divide-border'>
@@ -1506,6 +1538,16 @@ function ReadyBundlesCard({ bundles, services, scanFresh, checking, onOpen }: {
                         ))}
                     </ul>
                 )}
+                {attempts.map((profile) => (
+                    <p key={`attempt-${profile.id}`} className='text-sm text-fg' data-bundle-attempt={profile.latest_attempt_status}>
+                        {profile.latest_attempt_status === 'in_progress'
+                            ? t('dashboard.bundles.attemptRunning', { name: mailProfileName(profile, t) })
+                            : t('dashboard.bundles.attemptFailed', {
+                                name: mailProfileName(profile, t),
+                                reason: mailProfileAttemptError(profile, t) || t('services.bundles.lastAttemptFailed'),
+                            })}
+                    </p>
+                ))}
                 {known && summary.installable > 0 && summary.installed.length > 0 && (
                     <p className='text-sm text-fg-muted'>
                         {summary.installable === 1
@@ -1525,7 +1567,7 @@ function ReadyBundlesCard({ bundles, services, scanFresh, checking, onOpen }: {
     );
 }
 
-// Dashboard mail-stack summary remains read-only; installation stays in Components.
+// The Dashboard's Ready bundles card is read-only; installation stays in Components.
 // Additional users get no server telemetry or account-level actions here.
 function AdditionalUserDashboard() {
     const { t } = useI18n();

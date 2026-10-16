@@ -29,7 +29,18 @@ test('the bundles card is read-only, always shown and uses the closed bundle dec
   assert.match(bundlesLib, /installed\.filter\(\(bundle\) => !installed\.some\(\(other\) => contains\(other, bundle\)\)\)/);
   assert.match(bundlesLib, /bundle\.parent === undefined && \(bundle\.status === 'available' \|\| bundle\.status === 'partial'\)/);
   // The old card and its gate are gone.
-  assert.doesNotMatch(dashboard, /MailStackSummary|hasMailActivity|dashboard\.mailStacks/);
+  assert.doesNotMatch(dashboard, /MailStackSummary|hasMailActivity|dashboard\.mailStacks|dashboardMailTruth/);
+});
+
+// D-024: a known mail failure is said again. The card names a failed or a
+// running mail attempt with the Panel's own error (latest_attempt_error),
+// whatever the scan's age; the mounted test in remote-state-mounted-batch3
+// draws it.
+test('a failed or running mail attempt is said again on the card, with its error', () => {
+  assert.match(card, /profiles\.filter\(\(profile\) => profile\.latest_attempt_status === 'failed' \|\| profile\.latest_attempt_status === 'in_progress'\)/);
+  assert.match(card, /t\('dashboard\.bundles\.attemptRunning', \{ name: mailProfileName\(profile, t\) \}\)/);
+  assert.match(card, /reason: mailProfileAttemptError\(profile, t\) \|\| t\('services\.bundles\.lastAttemptFailed'\)/);
+  assert.match(dashboard, /profiles=\{mailProfiles \?\? \[\]\}/);
 });
 
 test('the card is calm: no warning colour, one quiet door instead of a filled button', () => {
@@ -45,7 +56,8 @@ test('the bundles destination scrolls and focuses the list once', () => {
   assert.match(services, /scrollIntoView\(\{ block: 'start' \}\)/);
   assert.match(services, /focus\(\{ preventScroll: true \}\)/);
   assert.match(services, /id='bundles' tabIndex=\{-1\}/);
-  assert.doesNotMatch(services, /mail-stacks/);
+  // The old address is an alias that scrolls to the email strip.
+  assert.match(services, /location\.hash === '#mail-stacks'\s*\n\s*\? \(document\.querySelector\('\[data-bundle-strip="email"\]'\)/);
 });
 
 test('dashboard bundles copy stays in EN/TR parity', () => {
@@ -56,7 +68,10 @@ test('dashboard bundles copy stays in EN/TR parity', () => {
     'dashboard.bundles.installableOne',
     'dashboard.bundles.installable',
     'dashboard.bundles.noneInstalled',
-    'dashboard.bundles.notKnown',
+    'dashboard.bundles.notChecked',
+    'dashboard.bundles.checkFailed',
+    'dashboard.bundles.attemptRunning',
+    'dashboard.bundles.attemptFailed',
     'dashboard.bundles.open',
     'dashboard.bundles.cat.email',
     'dashboard.bundles.cat.database',

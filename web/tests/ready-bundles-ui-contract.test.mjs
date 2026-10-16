@@ -18,8 +18,11 @@ import { enServerScreens } from '../src/i18n/screens/server/en.ts';
 import { trServerScreens } from '../src/i18n/screens/server/tr.ts';
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
-const compiled = ts.transpileModule(read('../src/lib/readyBundles.ts'), { compilerOptions: { module: ts.ModuleKind.ES2022, target: ts.ScriptTarget.ES2020 } }).outputText;
-const lib = await import('data:text/javascript;base64,' + Buffer.from(compiled).toString('base64'));
+const transpile = (path) => ts.transpileModule(read(path), { compilerOptions: { module: ts.ModuleKind.ES2022, target: ts.ScriptTarget.ES2020 } }).outputText;
+const asModule = (code) => 'data:text/javascript;base64,' + Buffer.from(code).toString('base64');
+// readyBundles names a mail bundle through the product's mail profile names.
+const mailTextURL = asModule(transpile('../src/lib/mailProfileText.ts'));
+const lib = await import(asModule(transpile('../src/lib/readyBundles.ts').replace(/from ['"]\.\/mailProfileText['"]/, `from '${mailTextURL}'`)));
 const server = read('../../cmd/panel/bundles.go');
 const strip = read('../src/components/ReadyBundleStrip.tsx');
 const services = read('../src/components/ServiceList.tsx');
@@ -49,9 +52,16 @@ test('every bundle the Panel can name has English and Turkish words, plain and w
   }
   // The owner's Turkish names.
   assert.equal(catalogues.tr['services.bundles.label'], 'Hazır paketler:');
-  assert.equal(catalogues.tr['services.bundles.name.mail_core'], 'Temel posta');
-  assert.equal(catalogues.tr['services.bundles.name.mail_webmail'], 'Web postalı posta');
-  assert.equal(catalogues.tr['services.bundles.name.mail_protected'], 'Spam korumalı posta');
+  // The mail bundles carry the product's own mail profile names.
+  for (const [code, key] of [['mail_core', 'coreMail'], ['mail_webmail', 'webmail'], ['mail_protected', 'protectedMail']]) {
+    for (const locale of ['en', 'tr']) {
+      assert.equal(catalogues[locale][`services.bundles.name.${code}`], catalogues[locale][`dashboard.audit.profile.${key}`], `${locale} ${code}`);
+    }
+  }
+  const t = (key, vars = {}) => Object.entries(vars).reduce((out, [k, v]) => out.split(`{${k}}`).join(String(v)), catalogues.tr[key] ?? key);
+  assert.equal(lib.bundleName({ id: 'mail.webmail', name_code: 'mail_webmail', components: ['postfix'], action_route: 'mail_profile', profile_id: 'webmail' }, t, (id) => id), 'Webmail');
+  assert.equal(lib.bundleName({ id: 'mail.core', name_code: 'mail_core', components: ['postfix'], action_route: 'mail_profile', profile_id: 'core-mail' }, t, (id) => id), 'Temel Posta');
+  assert.equal(catalogues.tr['services.bundles.unverified'], '{name}: kurulu, doğrulanmadı');
   assert.equal(catalogues.tr['services.bundles.name.db_postgresql'], 'PostgreSQL paketi');
   assert.equal(catalogues.tr['services.bundles.name.db_mariadb'], 'MariaDB paketi');
   assert.equal(catalogues.tr['services.bundles.name.web_nginx_php'], 'Nginx + PHP-FPM');
@@ -88,6 +98,8 @@ test('the decoder takes only the contract and drops the list rather than offer w
     ['a missing component outside the bundle', [make('web.nginx_php', 'web', ['nginx'], { missing_components: ['mariadb'] })]],
     ['a mail bundle without its profile', [mail('mail.core', 'exchange', ['postfix'])]],
     ['a component bundle that repairs', [make('db.mariadb', 'database', ['mariadb'], { status: 'installed_verified', action: 'repair', missing_components: [] })]],
+    ['a component bundle that is partial', [make('web.nginx_php', 'web', ['nginx', 'php-fpm'], { status: 'partial', action: 'continue', missing_components: ['php-fpm'] })]],
+    ['a mail bundle that only verifies', [mail('mail.core', 'core-mail', ['postfix'], { status: 'installed_unverified', action: 'verify', missing_components: [] })]],
     ['an add-on of an unknown bundle', [make('db.mariadb', 'database', ['mariadb'], { addons: ['db.mariadb.admin'] })]],
     ['an offer with nothing to install', [make('db.mariadb', 'database', ['mariadb'], { missing_components: [] })]],
     ['a duplicate', [...good, ...good]],
@@ -220,4 +232,27 @@ test('a healthy firewall is one calm line; the box stays for every other state',
   assert.match(bar, /t\('firewall\.compact\.settings'\)/);
   // The box keeps "off" in the attention colour and is no longer green when on.
   assert.doesNotMatch(bar, /border-success\/30 bg-success\/5/);
+});
+
+test('an installed mail bundle stays visible beside a host-wide refusal; only what waits is folded into it', () => {
+  const dns = boston.map((bundle) => {
+    if (bundle.id === 'mail.webmail') return { ...bundle, status: 'installed_verified', action: 'none', missing_components: [], blocked_code: 'dns_identity_not_ready' };
+    if (bundle.category === 'email') return { ...bundle, status: 'blocked', action: 'none', blocked_code: 'dns_identity_not_ready' };
+    return bundle;
+  });
+  assert.equal(lib.decodeReadyBundles(dns, ids).length, 8);
+  const email = lib.bundleStripModel(dns, 'email');
+  assert.equal(email.hostBlocked, 'dns_identity_not_ready');
+  assert.deepEqual(email.installed.map((bundle) => bundle.id), ['mail.webmail']);
+  assert.deepEqual(email.offers, []);
+});
+
+test('a failed or running mail attempt is said again in the strip (D-024)', () => {
+  const failed = boston.map((bundle) => (bundle.id === 'mail.webmail' ? { ...bundle, latest_attempt_status: 'failed' } : bundle));
+  const model = lib.bundleStripModel(failed, 'email');
+  assert.deepEqual(model.noted.map((bundle) => bundle.id), ['mail.webmail']);
+  const strip = read('../src/components/ReadyBundleStrip.tsx');
+  assert.match(strip, /if \(bundle\.latest_attempt_status === 'in_progress'\) text = t\('services\.bundles\.attemptRunning'\);/);
+  assert.match(strip, /else if \(bundle\.latest_attempt_status === 'failed'\) text = \(profile \? mailProfileAttemptError\(profile, t\) : ''\) \|\| t\('services\.bundles\.lastAttemptFailed'\);/);
+  assert.match(strip, /else if \(bundle\.warning_code\) text = mailProfileWarning\(/);
 });
