@@ -20,6 +20,9 @@ type panelHTTPStartupGate struct {
 	ready    atomic.Bool
 	next     http.Handler
 	recovery http.Handler
+	// openedAt is when management opened (Unix nanoseconds, server clock);
+	// the update plan dates the end of the update's restart by it.
+	openedAt atomic.Int64
 }
 
 func newPanelHTTPStartupGate(next http.Handler) *panelHTTPStartupGate {
@@ -31,8 +34,20 @@ func newPanelHTTPStartupGate(next http.Handler) *panelHTTPStartupGate {
 
 func (gate *panelHTTPStartupGate) Open() {
 	if gate != nil {
+		gate.openedAt.CompareAndSwap(0, time.Now().UnixNano())
 		gate.ready.Store(true)
 	}
+}
+
+// OpenedAt is when management opened, zero while it has not.
+func (gate *panelHTTPStartupGate) OpenedAt() time.Time {
+	if gate == nil {
+		return time.Time{}
+	}
+	if opened := gate.openedAt.Load(); opened > 0 {
+		return time.Unix(0, opened).UTC()
+	}
+	return time.Time{}
 }
 
 func (gate *panelHTTPStartupGate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
