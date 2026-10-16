@@ -458,6 +458,7 @@ installed anywhere. Run it with `desktop` and `phone`, Turkish, both themes
 | Name | States |
 | --- | --- |
 | `y19boston` | Components on a server with only its DNS engine installed: every category's strip offers its bundles (`components-boston`, the whole page) |
+| `y19bostondns` | Components on a Boston-like PowerDNS secondary with Nginx installed and its DNS identity not ready: the email strip says the DNS line once; Nginx + PHP-FPM is offered and installs only PHP-FPM (`components-boston-dns`, the whole page) |
 | `y19frankfurt` | webmail verified (one line with Repair, spam protection as the one add-on), MariaDB installed (phpMyAdmin offered), Nginx + PHP-FPM installed, the firewall active as one line and, as mock data, a stopped Fail2ban with its red dot (`components-frankfurt`, the whole page); the phpMyAdmin offer opened (`components-frankfurt-offer`) |
 | `y19running` | the phpMyAdmin add-on installed through the page: Nginx's operation ends, PHP-FPM's keeps running, the strip and the operation say 2/3 (`components-bundle-running`) |
 | `y19dashboard` | the Dashboard's Ready bundles card on the Frankfurt mock (`dashboard-bundles-card`) |

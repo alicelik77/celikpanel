@@ -7,6 +7,9 @@
 //
 //   y19boston     Components on a server with nothing installed but its DNS
 //                 engine: every category's strip offers its bundles
+//   y19bostondns  Components on a Boston-like PowerDNS secondary with Nginx
+//                 installed and its DNS identity not ready: the email strip
+//                 says the DNS line; Nginx + PHP-FPM offers only PHP-FPM
 //   y19frankfurt  Components with webmail verified (one line, spam protection
 //                 as the one add-on), MariaDB installed (phpMyAdmin offered),
 //                 the firewall active (one line) and, as mock data, a stopped
@@ -80,6 +83,16 @@ export default function batch19(scenarios, { base, locale, theme, out, viewport,
         const page = await open('/services');
         await waitFor(page, () => document.querySelectorAll('[data-bundle-strip]').length >= 3, 15000).catch(() => {});
         await whole(page, 'components-boston');
+        await closePage(page);
+        await clean();
+    };
+
+    scenarios.y19bostondns = async () => {
+        await reset(); await clean();
+        await ctl({ b19: batch19State('boston-dns') });
+        const page = await open('/services');
+        await waitFor(page, () => !!document.querySelector('[data-mail-dns-required], [data-mail-dns-secondary]'), 15000).catch(() => {});
+        await whole(page, 'components-boston-dns');
         await closePage(page);
         await clean();
     };

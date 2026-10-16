@@ -6,7 +6,9 @@
 // The bundles' states are derived here as the Panel derives them
 // (cmd/panel/bundles.go), for the few bundles the scenarios draw.
 //
-//   b19.server   'boston' | 'frankfurt' | 'running'
+//   b19.server   'boston' (only its DNS engine) | 'boston-dns' (PowerDNS
+//                secondary with Nginx, its DNS identity not ready) |
+//                'frankfurt' | 'running'
 //   b19.hold     component ids whose install keeps running
 //
 // On dokuzuncu grup: alpha.94'ün hazır paketleri; kurulumlar sahte işlemdir.
@@ -21,12 +23,13 @@ const component = (id, name, category, installed, extra = {}) => ({
 function catalogue(server) {
     const frankfurt = server === 'frankfurt';
     const running = server === 'running';
+    const boston = server === 'boston' || server === 'boston-dns';
     const list = [
-        component('bind', 'BIND', 'dns', !(server === 'boston'), { versions: ['9.20.11'] }),
-        component('pdns', 'PowerDNS', 'dns', server === 'boston', { versions: ['4.9.4'] }),
+        component('bind', 'BIND', 'dns', !boston, { versions: ['9.20.11'] }),
+        component('pdns', 'PowerDNS', 'dns', boston, { versions: ['4.9.4'] }),
         component('php-fpm', 'PHP-FPM', 'web', frankfurt, { kind: 'runtime', versions: frankfurt ? ['8.4'] : [] }),
         component('node', 'Node.js', 'web', false, { kind: 'runtime', packages: [] }),
-        component('nginx', 'Nginx', 'web', frankfurt, { versions: frankfurt ? ['1.26.3'] : [] }),
+        component('nginx', 'Nginx', 'web', frankfurt || server === 'boston-dns', { versions: frankfurt || server === 'boston-dns' ? ['1.26.3'] : [] }),
         component('apache', 'Apache', 'web', false),
         component('postgresql', 'PostgreSQL', 'database', false),
         component('mariadb', 'MariaDB', 'database', frankfurt || running, { versions: ['11.8.3'] }),
@@ -62,22 +65,33 @@ const BUNDLES = [
 // The Panel's derivation, reduced to what these servers need: the mail
 // bundles are verified once all their parts are present (the mock's
 // Frankfurt has its proofs); an add-on waits for its parent.
-function bundles(services) {
+// A component bundle is never partial (alpha.94 review): the parts present
+// are kept and Install installs the rest. Without a DNS identity every mail
+// bundle that is not installed is blocked; an installed one stays installed.
+function bundles(services, dnsReady) {
     const installed = new Set(services.filter((item) => item.is_installed).map((item) => item.id));
     return BUNDLES.map(({ anchors, ...bundle }) => {
         const missing = bundle.components.filter((id) => !installed.has(id));
         const out = { ...bundle, missing_components: missing };
+        const mail = bundle.action_route === 'mail_profile';
+        if (mail && !dnsReady) {
+            return missing.length === 0
+                ? { ...out, status: 'installed_verified', action: 'none', blocked_code: 'dns_identity_not_ready' }
+                : { ...out, status: 'blocked', action: 'none', blocked_code: 'dns_identity_not_ready' };
+        }
         const parent = bundle.parent && BUNDLES.find((item) => item.id === bundle.parent);
         if (parent && !parent.components.every((id) => installed.has(id))) {
             return { ...out, status: 'blocked', action: 'none', blocked_code: 'component_requires', blocked_vars: { component: bundle.components[bundle.components.length - 1], required: parent.components[0] } };
         }
         if (missing.length === 0) return { ...out, status: 'installed_verified', action: bundle.action_route === 'mail_profile' ? 'repair' : 'none' };
-        if (anchors.some((id) => installed.has(id))) return { ...out, status: 'partial', action: 'continue' };
+        if (mail && anchors.some((id) => installed.has(id))) return { ...out, status: 'partial', action: 'continue' };
         return { ...out, status: 'available', action: 'install' };
     });
 }
 
-const profile = (id, name, services, installedSet) => {
+const DNS_REFUSAL = 'DNS identity is not ready. Install a supported DNS server and save the shared nameserver names and operating mode in Settings before installing a mail profile.';
+const profile = (id, name, services, installedSet, dnsReady) => {
+    if (!dnsReady) return { id, name, description: `${name} for this server`, status: 'blocked', available: false, verified: false, latest_attempt_status: 'none', services, blocked_reason: DNS_REFUSAL, blocked_code: 'dns_identity_not_ready' };
     const complete = services.every((item) => installedSet.has(item));
     const any = services.some((item) => installedSet.has(item) && ['postfix', 'dovecot', 'rspamd', 'roundcube'].includes(item));
     const status = complete ? 'complete' : any ? 'partial' : 'available';
@@ -85,21 +99,21 @@ const profile = (id, name, services, installedSet) => {
 };
 
 export function batch19State(server, hold = []) {
-    return { server, hold, services: catalogue(server), operations: [] };
+    return { server, hold, dnsReady: server !== 'boston-dns', services: catalogue(server), operations: [] };
 }
 
 function payload(b19) {
     const installedSet = new Set(b19.services.filter((item) => item.is_installed).map((item) => item.id));
     return {
-        scanned_at: now(), scan_age_seconds: 0, dns_identity_ready: true,
+        scanned_at: now(), scan_age_seconds: 0, dns_identity_ready: b19.dnsReady !== false,
         mail_hostname: { current: 'mail.example.net', hostname: 'mail.example.net', source: 'saved', current_usable: true, will_set_hostname: false },
         services: b19.services,
         profiles: [
-            profile('core-mail', 'Core Mail', ['postfix', 'dovecot'], installedSet),
-            profile('webmail', 'Webmail', ['postfix', 'dovecot', 'nginx', 'php-fpm', 'roundcube'], installedSet),
-            profile('protected-mail', 'Spam-Protected Mail', ['postfix', 'dovecot', 'rspamd'], installedSet),
+            profile('core-mail', 'Core Mail', ['postfix', 'dovecot'], installedSet, b19.dnsReady !== false),
+            profile('webmail', 'Webmail', ['postfix', 'dovecot', 'nginx', 'php-fpm', 'roundcube'], installedSet, b19.dnsReady !== false),
+            profile('protected-mail', 'Spam-Protected Mail', ['postfix', 'dovecot', 'rspamd'], installedSet, b19.dnsReady !== false),
         ],
-        bundles: bundles(b19.services),
+        bundles: bundles(b19.services, b19.dnsReady !== false),
     };
 }
 
