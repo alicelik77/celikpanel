@@ -349,8 +349,11 @@ for (const locale of ['en', 'tr']) {
             const row = renderer.root.find(node => node.props?.['data-update-phase'] === 'unknown');
             assert.ok(textOf(row).includes(c['panelUpdate.tracking.restartOverdue']));
             assert.ok(textOf(row).includes(fill(c['panelUpdate.card.unknown'], { version: 'v0.1.0-alpha.88' })));
-            const bar = renderer.root.find(node => node.props?.role === 'progressbar');
-            assert.match(String(bar.props.className), /update-step-still/, 'the motion stops');
+            // The motion stops: no bar near its end and no "can take a few minutes" beside the overdue wording.
+            assert.equal(renderer.root.findAll(node => node.props?.role === 'progressbar').length, 0);
+            assert.equal(renderer.root.findAll(node => node.props?.['data-update-restart-note'] !== undefined).length, 0);
+            const restartStep = renderer.root.find(node => node.props?.['data-update-step'] === 'restart');
+            assert.equal(restartStep.props['data-step-state'], 'running');
         } finally { restore(); await act(async () => renderer.unmount()); }
     });
 

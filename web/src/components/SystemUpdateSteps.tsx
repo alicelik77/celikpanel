@@ -43,7 +43,7 @@ function StepBar({ step, label }: { step: SystemUpdateStepView; label: string })
                 aria-valuemin={0}
                 aria-valuemax={100}
                 aria-valuenow={measured && percent !== null ? percent : undefined}
-                className={`update-step-track relative h-1.5 flex-1 overflow-hidden rounded-full bg-surface-3${step.still ? ' update-step-still' : ''}`}
+                className="update-step-track relative h-1.5 flex-1 overflow-hidden rounded-full bg-surface-3"
                 data-step-progress={determinate ? (step.restarting ? 'time' : 'measured') : 'indeterminate'}
             >
                 {determinate
@@ -84,8 +84,11 @@ export function SystemUpdateSteps({ view, compact = false }: { view: SystemUpdat
                                 {label}
                                 <span className="sr-only">{` (${t(STATE_KEYS[step.state])})`}</span>
                             </p>
-                            {step.state === 'running' && <StepBar step={step} label={label} />}
-                            {step.restarting && (
+                            {/* Past the restart window the bar and its sentence give way
+                                to the overdue wording: a stilled bar near its end would
+                                read as almost done (batch 17). */}
+                            {step.state === 'running' && !step.still && <StepBar step={step} label={label} />}
+                            {step.restarting && !step.still && (
                                 <p className="mt-2 text-sm text-fg-muted" data-update-restart-note="">{t('panelUpdate.steps.restarting')}</p>
                             )}
                         </div>
