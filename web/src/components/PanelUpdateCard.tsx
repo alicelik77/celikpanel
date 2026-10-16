@@ -19,6 +19,7 @@ import {
     type UpdateTarget,
 } from './SystemUpdateOperation';
 import { decodePreviousUpdateAttempt, previousAttemptStopped, type PreviousUpdateAttempt } from '../lib/systemUpdateOutcome';
+import { SystemUpdateSteps, systemUpdateStepsAnnouncement } from './SystemUpdateSteps';
 
 type Translate = ReturnType<typeof useI18n>['t'];
 
@@ -147,6 +148,10 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
     // The update this browser follows (SystemUpdateOperation): the card says
     // what the notice says (owner report 2026-10-10).
     const tracking = systemUpdate.tracking ?? null;
+    // The update's steps (owner design 2026-10-16): drawn while the update is
+    // followed and once it succeeded; the overdue wording keeps its own row.
+    const steps = systemUpdate.steps ?? null;
+    const updated = systemUpdate.updated ?? null;
     const verifying = tracking?.phase === 'verifying';
     // This card is the one notice for the followed update while it is on
     // screen; the corner notice does not repeat it (owner report 2026-10-15).
@@ -386,7 +391,36 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
                 </dl>
             )}
 
-            {tracking && (
+            {steps && (tracking || updated) && (
+                <div className="mt-4 rounded-lg border border-border bg-surface-subtle p-4 text-sm text-fg" data-update-steps-card="">
+                    <p className="font-semibold text-fg">
+                        {updated
+                            ? t('panelUpdate.steps.updated', { version: updated.version })
+                            : t('panelUpdate.steps.title', { version: tracking?.version ?? '' })}
+                    </p>
+                    {updated && (
+                        <p className="mt-1 font-mono text-xs text-fg-subtle" data-update-build="">
+                            build <span aria-hidden="true">{updated.commit.slice(0, 12)}</span>
+                            <span className="sr-only">{updated.commit}</span>
+                        </p>
+                    )}
+                    <div className="mt-4">
+                        <SystemUpdateSteps view={steps} />
+                    </div>
+                    <p className="sr-only" role="status" aria-live="polite">
+                        {systemUpdateStepsAnnouncement(steps, t, updated?.version ?? tracking?.version ?? '')}
+                    </p>
+                    {tracking?.elapsed && tracking.requestID && tracking.phase !== 'unknown' && (
+                        <p className="mt-4 flex flex-wrap gap-x-2 font-mono text-xs text-fg-subtle" data-update-elapsed="true">
+                            <span>{`T+${tracking.elapsed}`}</span>
+                            <span aria-hidden="true">·</span>
+                            <span className="break-all">{`ID ${tracking.requestID}`}</span>
+                        </p>
+                    )}
+                </div>
+            )}
+
+            {tracking && (!steps || tracking.phase === 'unknown') && (
                 <div className="mt-4 flex items-start gap-2 rounded-lg border border-border bg-surface-subtle p-3 text-sm text-fg" role="status" aria-live="polite" data-update-phase={tracking.phase}>
                     {/* The update's own restart is progress, drawn as such;
                         the warning mark is for a state that is not known

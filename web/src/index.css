@@ -491,3 +491,30 @@ html {
         white-space: nowrap;
     }
 }
+
+/* The update's step bars (owner design 2026-10-16). A measured or time-based
+   fill eases to its new width; a step whose progress nobody measures shows a
+   segment that slides along its track. Past the restart window the bar is
+   not drawn (D-033: a bounded wait stops its motion). With reduced motion the
+   segment stands still at a lighter tone and the label carries the state.
+   Güncelleme adım çubukları: ölçülen doluluk yumuşakça ilerler; ölçülemeyen
+   adımda bir parça kayar; pencere aşılınca çubuk çizilmez. */
+.update-step-fill {
+    transition: width 700ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.update-step-indeterminate {
+    animation: update-step-slide 1.8s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+    will-change: transform;
+}
+@keyframes update-step-slide {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(300%); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .update-step-fill { transition: none; }
+    .update-step-indeterminate {
+        animation: none;
+        width: 100%;
+        opacity: 0.35;
+    }
+}

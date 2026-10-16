@@ -162,6 +162,21 @@ export const en = {
     'panelUpdate.tracking.restartOverdue': "The panel has not answered for longer than an update normally needs to restart it. This does not mean the update failed: the server keeps the update's record, and this notice keeps reading it by itself. If the panel still does not answer, check on the server whether it is running: sudo systemctl status celikpanel-panel.",
     'panelUpdate.lastRead': 'Last read',
     // --- end of the update notice block ---
+    // --- update steps: one bar per step (owner design 2026-10-16) ---
+    'panelUpdate.steps.label': 'Update steps',
+    'panelUpdate.steps.title': 'Updating to {version}',
+    'panelUpdate.steps.download': 'Download the update package',
+    'panelUpdate.steps.verify': 'Check the signature and checksums',
+    'panelUpdate.steps.prepare': 'Check the server before installing',
+    'panelUpdate.steps.restart': 'Install the new version and restart the panel',
+    'panelUpdate.steps.confirm': 'Verify the new version',
+    'panelUpdate.steps.restarting': 'The panel is restarting; this step can take a few minutes. This page reconnects by itself.',
+    'panelUpdate.steps.locked': 'Other pages stay locked while the update runs.',
+    'panelUpdate.steps.updated': 'Updated to {version}',
+    'panelUpdate.steps.state.done': 'done',
+    'panelUpdate.steps.state.running': 'in progress',
+    'panelUpdate.steps.state.pending': 'not started yet',
+    // --- end of the update steps block ---
     'panelUpdate.canonicalChecking': 'Checking unfinished updates...',
     'panelUpdate.interactionLocked': 'Navigation is temporarily locked while this update is checked. It unlocks by itself after two minutes; if the panel is still restarting then, once it answers again, at the latest six minutes after the start. Tracking continues.',
     'panelUpdate.ambiguous': 'The start response is uncertain. This request will not be repeated; its exact server status will be tracked.',

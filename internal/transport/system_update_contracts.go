@@ -78,4 +78,18 @@ type SystemUpdateStatusResponse struct {
 	CreatedAt           string `json:"created_at,omitempty"`
 	UpdatedAt           string `json:"updated_at,omitempty"`
 	Error               string `json:"error,omitempty"`
+	// Additive (2026-10-16): where the reviewed updater is, read by the Agent
+	// from what the updater already writes (cmd/agent
+	// system_update_progress_linux.go). Best effort and never an input to
+	// admission, recovery or the status above; empty when it was not read.
+	// DownloadedBytes is the size of the archive the installer is writing,
+	// DownloadedAt the moment it reached the signed size, and VerifiedAt the
+	// moment the installer published this request's release floor, which it
+	// does only after the signature, the archive's size and SHA-256 and the
+	// extracted files' checksums were verified. Times are RFC 3339 UTC on the
+	// server's clock.
+	// Eklemeli: guncelleyicinin yazdiklarindan okunan ilerleme; karar girdisi degildir.
+	DownloadedBytes string `json:"downloaded_bytes,omitempty"`
+	DownloadedAt    string `json:"downloaded_at,omitempty"`
+	VerifiedAt      string `json:"verified_at,omitempty"`
 }

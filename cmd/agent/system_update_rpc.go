@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -329,6 +330,42 @@ func systemUpdateStatusResponse(state *systemUpdateState) transport.SystemUpdate
 	}
 }
 
+// systemUpdateProgress is where the reviewed updater is, read from what it
+// already writes (owner design 2026-10-16: the update page draws one bar per
+// step). It is best effort and read-only, and never an input to admission,
+// recovery or the record's status. A value that cannot be read exactly is
+// left out; the Panel's plan then names fewer finished steps, never more than
+// this evidence shows.
+// Guncelleyicinin zaten yazdiklarindan okunan ilerleme; salt-okur, karar
+// girdisi degildir; tam okunamayan deger birakilir.
+type systemUpdateProgress struct {
+	DownloadedBytes uint64
+	HaveBytes       bool
+	DownloadedAt    time.Time
+	VerifiedAt      time.Time
+}
+
+// systemUpdateProgressReader is optional: a backend that cannot observe the
+// updater's own files reports nothing.
+type systemUpdateProgressReader interface {
+	Progress(*systemUpdateState) systemUpdateProgress
+}
+
+func applySystemUpdateProgress(reply *transport.SystemUpdateStatusResponse, progress systemUpdateProgress) {
+	if reply == nil || !reply.Found {
+		return
+	}
+	if progress.HaveBytes {
+		reply.DownloadedBytes = strconv.FormatUint(progress.DownloadedBytes, 10)
+	}
+	if !progress.DownloadedAt.IsZero() {
+		reply.DownloadedAt = progress.DownloadedAt.UTC().Format(time.RFC3339)
+	}
+	if !progress.VerifiedAt.IsZero() {
+		reply.VerifiedAt = progress.VerifiedAt.UTC().Format(time.RFC3339)
+	}
+}
+
 var (
 	globalSystemUpdateMu       sync.Mutex
 	globalSystemUpdateService  *systemUpdateService
@@ -419,6 +456,9 @@ func (a *Agent) SystemUpdateStatus(request *transport.SystemUpdateStatusRequest,
 			err = nil
 		} else if err == nil {
 			*reply = systemUpdateStatusResponse(state)
+			if reader, ok := service.backend.(systemUpdateProgressReader); ok {
+				applySystemUpdateProgress(reply, reader.Progress(state))
+			}
 		}
 	} else if err == nil {
 		err = errors.New("system update status storage is unavailable on this platform")

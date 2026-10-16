@@ -422,3 +422,24 @@ Each record adds the document language, English text on a Turkish page
 buttons, links and dialog fields with their disabled and busy state, and
 sideways scrolling of the page, `<main>` and an open dialog. The screenshots
 are the inspection; these scenarios do not fail on a finding.
+
+## Scenarios of the seventeenth batch (the update's steps, 2026-10-16)
+
+`scenarios-batch17.mjs`, no mock routes of its own: the status answer carries
+the plan as `cmd/panel/system_update_plan.go` writes it (`update.plan`), with
+`mode: 'down'`, `mode: 'starting'`, a dropped status read and an override of
+`/api/v1/panel/version`. Run it with `laptop` and `phone`, both languages and
+both themes (about 75 seconds each, the outage is not shortened); each state
+is also copied to `BROWSER_INSPECT_SHOTS` as `<state>-<lang>-<theme>-<width>.png`.
+
+| Name | States |
+| --- | --- |
+| `steps88` | an update this browser started (its stored record 10 s old, inside the navigation lock): the download with 42 % measured (`download`); the Panel down for 25 s, the restart step time-based (`restart`); 9 s of `PANEL_STARTING` (`starting`); the new version answering, "verify the new version" (`confirm`); succeeded, "Updated to" with the build id before the page's own reload (`updated`) |
+| `steps88card` | past the lock (record 170 s old): the update card with the steps (`card`); the status read dropped, the restart on the card (`card-restart`); the same page with `Date.now` moved 7 minutes ahead, the overdue wording under the restart step, whose bar and sentence are no longer drawn (`overdue`) |
+| `steps88corner` | Domains during the restart: the compact corner notice with the restart step (`corner`) |
+
+Each record adds the running step and every bar (its kind: measured, time,
+indeterminate; its fill), whether the restart sentence is shown, the dialog,
+the card and the corner notice, alarming sentences found on the page (past the
+window the overdue wording is expected there), warning marks, the navigation
+lock and sideways scrolling.

@@ -5967,3 +5967,51 @@ everything in it.
   owner decisions) is not in the release, no installed server was measured, the
   secondary-DNS boxes were not reached natively, and the public ACME and DNS
   path, Ubuntu and Arch were not run.
+
+### Candidate v0.1.0-alpha.88 (P0.1/P0.2 area; invariants 2 and 6; D-024; D-032; D-033; 2026-10-16)
+
+D-025 invariants 2 (evidence has a meaning and a lifecycle: unknown is not
+absent, empty or success) and 6 (readiness, progress and access remain
+independent); D-024; D-032; D-033. **No P0 item is closed or advanced.** P0.1
+to P0.5 stay partial and every open acceptance item stays open. This entry
+records a candidate that is not published; 2026-10-16 is the clock date of the
+entry.
+
+- **What the candidate changes.** How the update's progress is presented, not
+  its lifecycle (the owner's design of 2026-10-16): the Agent reads the
+  updater's download and verification progress (read-only, `Lstat` only,
+  never an input to admission, recovery or the record's status); the Panel
+  declares five steps on the start and status answers (additive `plan`), names
+  a step finished only on evidence, and measures its update's restart once;
+  the page draws one bar per step, the restart as a planned step, and the
+  overdue or failure wording only after the 6-minute window or on a verified
+  failure. The [release notes](RELEASE-NOTES-v0.1.0-alpha.88.md) say which
+  check rests on which code.
+- **Invariants touched.** Invariant 2: a step is drawn done only on the
+  server's evidence; a lost read inside the window is the planned restart, an
+  unknown read past it keeps the overdue wording. Invariant 6: the navigation
+  lock, the licence and session gates' grace and the single notice are
+  unchanged. Polling starts nothing; the status read's one write is the
+  bookkeeping measurement, once per update (D-024).
+- **Schema or version transition.** None: no migration between the alpha.87
+  tag and the candidate (`git diff --name-only a8cddcb5..HEAD` names no
+  migration file; the database schema stays 44). One additive `panel_settings`
+  key, `panel_update_last_restart` (`{"request_id", "seconds"}`); additive
+  fields on the Agent RPC and on the Panel's start and status answers, ignored
+  by older pages. The release sequence moves from 87 to 88 in the release
+  preparation `7231afdbf`, with the alpha.87 release commit
+  `a8cddcb546302daa0f5eb65b18fe6b9566b69e66` as previous; the transition rules
+  are unchanged. **Recovery behaviour.** Unchanged: no ledger, marker,
+  transaction, release floor or recovery runner changed.
+- **Evidence.** Component tests: `npm test` 1523 of 1523 at `07aaa50d5`;
+  `go test ./cmd/panel/... ./internal/transport/...` 1602 tests and 1695
+  subtests passed, 6 skipped, and `go test ./cmd/agent/...` 1805 tests and
+  2838 subtests passed, 29 skipped, both at `b63da83e0` in the WSL guest (the
+  Agent in the clean mount namespace); browser batch 17 against the mock (9
+  states in 8 configurations, one defect fixed). **No native evidence, by the
+  owner's instruction of 2026-10-16.**
+- **Open.** The Agent's progress read, the floor timestamp and the restart
+  measurement have not been observed during a real update; the steps are first
+  seen on the update from alpha.88; a retry of the same release reports no
+  verify boundary; no installed server measured. Everything the entries above
+  leave open stays open.

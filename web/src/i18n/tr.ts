@@ -370,6 +370,21 @@ export const tr: Record<ShellKey, string> = {
     'panelUpdate.tracking.restarting': 'Panel, güncellemenin bir parçası olarak yeniden başlıyor. Bu sayfa kendiliğinden yeniden bağlanır; hiçbir şeye basmanız gerekmiyor.',
     'panelUpdate.tracking.restartOverdue': 'Panel, bir güncellemenin onu yeniden başlatması için normalde gereken süreden daha uzun süredir yanıt vermiyor. Bu, güncellemenin başarısız olduğu anlamına gelmez: sunucu güncellemenin kaydını tutar ve bu bildirim onu kendiliğinden okumayı sürdürür. Panel yine yanıt vermezse çalışıp çalışmadığını sunucuda denetleyin: sudo systemctl status celikpanel-panel.',
     'panelUpdate.lastRead': 'Son okuma',
+    // --- güncelleme adımları: her adım için bir çubuk (sahibin tasarımı, 16 Ekim 2026) ---
+    'panelUpdate.steps.label': 'Güncelleme adımları',
+    'panelUpdate.steps.title': '{version} sürümüne güncelleniyor',
+    'panelUpdate.steps.download': 'Güncelleme paketini indirme',
+    'panelUpdate.steps.verify': 'İmzayı ve sağlama toplamlarını denetleme',
+    'panelUpdate.steps.prepare': 'Kurmadan önce sunucuyu denetleme',
+    'panelUpdate.steps.restart': 'Yeni sürümü kurma ve paneli yeniden başlatma',
+    'panelUpdate.steps.confirm': 'Yeni sürümü doğrulama',
+    'panelUpdate.steps.restarting': 'Panel yeniden başlıyor; bu adım birkaç dakika sürebilir. Bu sayfa kendiliğinden yeniden bağlanır.',
+    'panelUpdate.steps.locked': 'Güncelleme sürerken diğer sayfalar kilitli kalır.',
+    'panelUpdate.steps.updated': '{version} sürümüne güncellendi',
+    'panelUpdate.steps.state.done': 'tamamlandı',
+    'panelUpdate.steps.state.running': 'sürüyor',
+    'panelUpdate.steps.state.pending': 'henüz başlamadı',
+    // --- güncelleme adımları bloğunun sonu ---
     // --- güncelleme bildirimi bloğunun sonu ---
     'panelUpdate.canonicalChecking': 'Tamamlanmamış güncelleme denetleniyor...',
     'panelUpdate.interactionLocked': 'Bu güncelleme denetlenirken gezinme geçici olarak kilitlidir. İki dakika sonra kendiliğinden açılır; panel o sırada hâlâ yeniden başlıyorsa yeniden yanıt verdiğinde, en geç başlangıçtan altı dakika sonra açılır. İşlem arka planda izlenmeye devam eder.',

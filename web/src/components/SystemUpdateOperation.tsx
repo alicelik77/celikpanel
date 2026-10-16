@@ -13,7 +13,7 @@ import {
     type ReactNode,
 } from 'react';
 import { flushSync } from 'react-dom';
-import { CheckCircle2, Loader2, WifiOff, XCircle } from 'lucide-react';
+import { CheckCircle2, DownloadCloud, Loader2, WifiOff, XCircle } from 'lucide-react';
 import { Button } from './ui';
 import { useI18n } from '../i18n';
 import { replaceCurrentRouterURL, useNavigationBlocker } from '../router';
@@ -52,6 +52,14 @@ import {
     type SystemUpdateTracking,
     type SystemUpdateTrackingPhase,
 } from '../lib/systemUpdateTracking';
+import {
+    admittedSystemUpdatePlan,
+    decodeSystemUpdatePlan,
+    systemUpdateStepsView,
+    type SystemUpdatePlan,
+    type SystemUpdateStepsView,
+} from '../lib/systemUpdateSteps';
+import { SystemUpdateSteps, systemUpdateStepsAnnouncement } from './SystemUpdateSteps';
 
 type Translate = ReturnType<typeof useI18n>['t'];
 
@@ -100,6 +108,8 @@ type UpdateStatus = {
     summary?: string;
     // Additive: 'verifying' while running on the already installed target.
     phase?: 'verifying';
+    // Additive (2026-10-16): the server's steps of this update.
+    plan?: SystemUpdatePlan;
 };
 
 type TrackingView = {
@@ -179,6 +189,11 @@ type SystemUpdateOperationContextValue = {
     // A page that shows the followed update itself (the update card)
     // registers while mounted, so the corner notice does not repeat it.
     registerInlineNotice?: () => () => void;
+    // Additive (2026-10-16): the update's steps as drawn now, while it is
+    // followed or once it succeeded; null otherwise.
+    steps?: SystemUpdateStepsView | null;
+    // The version and build the update installed, once it succeeded.
+    updated?: { version: string; commit: string } | null;
 };
 
 type PendingRenderCommit = {
@@ -241,6 +256,7 @@ function decodeUpdateStatus(payload: unknown): UpdateStatus | null {
         && value.status !== 'succeeded' && value.status !== 'failed') return null;
     if (!validUpdateTarget(value.target)) return null;
     if (value.summary !== undefined && !validSummary(value.summary)) return null;
+    const plan = decodeSystemUpdatePlan(value.plan);
     return {
         found: true,
         request_id: value.request_id,
@@ -248,6 +264,7 @@ function decodeUpdateStatus(payload: unknown): UpdateStatus | null {
         target: value.target,
         ...(value.summary ? { summary: value.summary } : {}),
         ...(decodeSystemUpdatePhase(value.phase) ? { phase: 'verifying' as const } : {}),
+        ...(plan ? { plan } : {}),
     };
 }
 
@@ -714,6 +731,10 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
     const readMemory = useCallback((requestID: string): SystemUpdateReadMemory => (
         readMemoryRef.current?.requestID === requestID ? readMemoryRef.current.memory : SYSTEM_UPDATE_READ_MEMORY
     ), []);
+    // The server's steps of the followed request, from its start answer and
+    // every read that answered; kept through lost reads (owner design
+    // 2026-10-16, lib/systemUpdateSteps.ts).
+    const [planState, setPlanState] = useState<{ requestID: string; plan: SystemUpdatePlan } | null>(null);
     const authSignalGenerationRef = useRef(0);
     // Dispatch authority belongs to this live document only. sessionStorage is
     // deliberately not used: duplicated/opener tabs can inherit its values and
@@ -1155,6 +1176,10 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
                     requestID: exactMarker.request_id,
                     memory: { ...readMemory(exactMarker.request_id), lastKnownActive: true },
                 };
+                // The steps the server declared on admission (additive; an
+                // unreadable body changes nothing).
+                const admitted = await admittedSystemUpdatePlan(response);
+                if (admitted) setPlanState({ requestID: exactMarker.request_id, plan: admitted });
                 if (markerMatches(markerRef.current, exactMarker)) {
                     setView((current) => ({
                         ...current,
@@ -1662,6 +1687,8 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
                 exactMarker.created_at,
             );
             readMemoryRef.current = { requestID: exactMarker.request_id, memory };
+            const readPlan = outcome.operation?.plan;
+            if (readPlan) setPlanState({ requestID: exactMarker.request_id, plan: readPlan });
             setView({
                 operation: outcome.operation ?? null,
                 message: outcome.message,
@@ -2014,6 +2041,28 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
         ...(restartOverdue ? { overdue: true } : {}),
     } : null;
     const trackingText = tracking ? systemUpdateTrackingText(tracking, view.message, t) : null;
+    // The update's steps (owner design 2026-10-16, lib/systemUpdateSteps.ts):
+    // while the update is followed, from the server's plan and what this page
+    // saw itself (a lost Panel is the restart); once it succeeded, every step
+    // done with "Updated to". A failure keeps its own wording and no steps.
+    const followedSteps = followed ? systemUpdateStepsView({
+        plan: planState?.requestID === followed.request_id ? planState.plan : null,
+        phase: displayedPhase,
+        overdue: restartOverdue,
+        lostSince: readMemory(followed.request_id).lostSince,
+        now,
+        succeeded: false,
+    }) : null;
+    const updatedMarker = !failureGuidance && terminalKind === 'succeeded' ? exactMarker : null;
+    const stepsView: SystemUpdateStepsView | null = followedSteps ?? (updatedMarker ? systemUpdateStepsView({
+        plan: null, phase: 'unknown', overdue: false, lostSince: null, now, succeeded: true,
+    }) : null);
+    const updated = updatedMarker && stepsView?.completed
+        ? { version: updatedMarker.target.version, commit: updatedMarker.target.commit } : null;
+    const stepsVersion = (followed ?? updatedMarker)?.target.version ?? '';
+    // The status line is the current step while the steps are drawn; it is
+    // visible again for the result and past the restart window.
+    const stepsStatusHidden = stepsView !== null && !stepsView.completed && !restartOverdue;
     // The licence gate keeps its last positive decision through this update's
     // planned restart (set17 D1, lib/systemUpdateRestartSignal.ts): published
     // once the server has said the followed request is active, with the first
@@ -2030,9 +2079,13 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
     useEffect(() => () => publishSystemUpdateRestart(null), []);
     const title = failureGuidance
         ? outcomeText(failureGuidance.title)
-        : terminalKind === 'succeeded'
-            ? t('panelUpdate.succeeded')
-            : trackingText?.title ?? t('panelUpdate.title');
+        : updated
+            ? t('panelUpdate.steps.updated', { version: updated.version })
+            : terminalKind === 'succeeded'
+                ? t('panelUpdate.succeeded')
+                : stepsView
+                    ? t('panelUpdate.steps.title', { version: stepsVersion })
+                    : trackingText?.title ?? t('panelUpdate.title');
     const message = pendingReload || requiredReloadMarker
         ? t('panelUpdate.reloading', { version: (pendingReload ?? requiredReloadMarker)!.target.version })
         : failureGuidance
@@ -2058,7 +2111,11 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
         </>
     );
     // One notice, not two (lib/systemUpdateTracking.ts).
-    const inlineNoticeCarriesTracking = systemUpdateCornerNoticeRepeats(inlineNotices, tracking !== null);
+    // The card also carries "Updated to" (owner design 2026-10-16: no corner
+    // notice while the update page is open); a failure keeps the corner notice.
+    const inlineNoticeCarriesTracking = systemUpdateCornerNoticeRepeats(inlineNotices, tracking !== null || updated !== null);
+    const stepsAnnouncement = stepsView ? systemUpdateStepsAnnouncement(stepsView, t, stepsVersion) : '';
+    const compactSteps = stepsView && stepsStatusHidden ? stepsView : null;
     const backgroundVisible = navigationLease.released && !authPaused && !blocking && exactMarker !== null
         && !inlineNoticeCarriesTracking
         && (provisional !== null || marker !== null || pendingReload !== null
@@ -2070,6 +2127,8 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
             start,
             tracking,
             registerInlineNotice,
+            steps: stepsView,
+            updated,
         }}>
             <div ref={applicationRef} className="contents" aria-hidden={blocking ? true : undefined}>
                 {children}
@@ -2080,12 +2139,17 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
                     className={'fixed bottom-4 right-4 z-50 max-w-sm rounded-xl border bg-surface p-4 shadow-lg'}
                 >
                     <p id={'system-update-background-title'} className={'font-semibold'}>{title}</p>
+                    {compactSteps && (
+                        <div className={'mt-2'}>
+                            <SystemUpdateSteps view={compactSteps} compact />
+                        </div>
+                    )}
                     <p
                         role={terminalKind === 'failed' ? 'alert' : 'status'}
                         aria-live={terminalKind === 'failed' ? 'assertive' : 'polite'}
-                        className={'mt-1 text-sm text-fg-muted'}
+                        className={compactSteps ? 'sr-only' : 'mt-1 text-sm text-fg-muted'}
                     >
-                        {message}
+                        {compactSteps ? stepsAnnouncement : message}
                     </p>
                     {trackingHint && <p className={'mt-1 text-sm text-fg-muted'}>{trackingHint}</p>}
                     {failureDetails}
@@ -2142,21 +2206,37 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
                             {terminalKind === 'failed' ? <XCircle className="h-7 w-7" />
                                 : terminalKind === 'succeeded' ? <CheckCircle2 className="h-7 w-7" />
                                     : disconnected ? <WifiOff className="h-7 w-7" />
-                                        : <Loader2 className="h-7 w-7 animate-spin" />}
+                                        // The steps carry the motion; the mark stays still.
+                                        : stepsView ? <DownloadCloud className="h-7 w-7" />
+                                            : <Loader2 className="h-7 w-7 animate-spin" />}
                         </span>
                         <h2 id="system-update-operation-title" className="text-xl font-semibold text-fg">{title}</h2>
+                        {updated && (
+                            <p className="mt-1 font-mono text-xs text-fg-subtle" data-update-build="">
+                                build <span aria-hidden="true">{updated.commit.slice(0, 12)}</span>
+                                <span className="sr-only">{updated.commit}</span>
+                            </p>
+                        )}
+                        {stepsView && (
+                            <div className="mt-5 rounded-lg border border-border bg-surface-subtle p-4">
+                                <SystemUpdateSteps view={stepsView} />
+                            </div>
+                        )}
                         <p
                             id="system-update-operation-status"
                             role="status"
                             aria-live="polite"
-                            className="mt-2 text-sm font-medium text-fg-muted"
+                            className={stepsStatusHidden ? 'sr-only' : `${stepsView ? 'mt-4' : 'mt-2'} text-sm font-medium text-fg-muted`}
                         >
-                            {message}
+                            {stepsStatusHidden ? stepsAnnouncement : message}
                         </p>
                         {trackingHint && <p className="mt-2 text-sm text-fg-muted">{trackingHint}</p>}
                         {failureDetails}
                         <p className="mt-4 rounded-lg border border-border bg-surface-2 px-4 py-3 text-xs leading-5 text-fg-subtle">
-                            {t(displayedTerminal?.kind === 'failed' ? 'panelUpdate.failureAcknowledgement' : 'panelUpdate.interactionLocked')}
+                            {/* Beside the step bars, one short neutral sentence (owner
+                                2026-10-16); the bounded-lock detail stays for pages without a plan. */}
+                            {t(displayedTerminal?.kind === 'failed' ? 'panelUpdate.failureAcknowledgement'
+                                : stepsView ? 'panelUpdate.steps.locked' : 'panelUpdate.interactionLocked')}
                         </p>
                         <dl className="mt-4 grid grid-cols-2 gap-3 rounded-lg border border-border bg-surface-subtle p-3 text-left text-xs">
                             <div>

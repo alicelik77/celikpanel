@@ -96,6 +96,9 @@ const panelURL = compileURL('../src/components/PanelUpdateCard.tsx', [
     [/from ['"]\.\.\/lib\/apiError['"]/g, `from '${apiErrorURL}'`],
     [/from ['"]\.\.\/lib\/panelUpdateAdmission['"]/g, `from '${admissionURL}'`],
     [/from ['"]\.\/SystemUpdateOperation['"]/g, `from '${operationURL}'`],
+    // The step bars (2026-10-16) are drawn only from the context's steps,
+    // which this harness does not provide; tests/update-steps-mounted.test.mjs mounts them.
+    [/from ['"]\.\/SystemUpdateSteps['"]/g, `from 'data:text/javascript,export function SystemUpdateSteps() { return null; } export function systemUpdateStepsAnnouncement() { return ""; }'`],
 ]);
 const { PANEL_UPDATE_CHECK_TIMEOUT_MS, PanelUpdateCard, fetchPanelUpdateCheck } = await import(panelURL);
 

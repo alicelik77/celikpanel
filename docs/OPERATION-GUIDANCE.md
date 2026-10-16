@@ -8243,3 +8243,176 @@ publication above, whose items (a) to (e) are still unreported.
    ACME; the F1 lock extension and the session gate's `PANEL_STARTING` path
    were not measured natively, and the secondary-DNS boxes were not reached.
    Nothing here is an installed-server observation.
+
+### The update drawn as one bar per step, and its restart as a planned step (2026-10-16)
+
+**Observed by the owner.** On 2026-10-16 the owner updated the second installed
+server (Frankfurt) from v0.1.0-alpha.85 to v0.1.0-alpha.87. That update ran on
+alpha.85's own update screen (item 2 of the entry above), which still showed the
+old warning that the connection was interrupted and the panel may be restarting,
+and the corner notice beside it. In substance, the owner's words: while the
+update runs, show a progress bar for each operation; as each completes, the next
+bar appears below; when the update has really finished and the panel has
+restarted, show the current state; show nothing alarming like "connection
+interrupted, it may be updating"; there must be a more user-friendly way. The
+design agreed with the owner the same day is the specification of this entry.
+D-024 (current reason, who acts, next action), D-033 (a wait shows that it
+waits, and ends) and D-032 (the browser never compares two clocks) apply; no
+new decision is recorded.
+
+**The design.** (1) The server declares the steps when the update is admitted
+and reports each one's state, moments and elapsed seconds (server clock) with
+every status answer; additive JSON. (2) The page draws one bar per step: done
+steps with a check, the current step with a bar (determinate when measured,
+otherwise a sliding segment), the next steps quiet below; the current step's
+label is the only text; no corner notice while the update page is open; the
+update button stays disabled without a sentence about it. (3) The restart is a
+planned step: when the page loses the Panel after the update was active, the
+restart bar runs on time against an expected length, with the one sentence "The
+panel is restarting; this step can take a few minutes. This page reconnects by
+itself."; reads every 3 s; `PANEL_STARTING` counts as restarting; the expected
+length is max(last measured × 1.5, 90 s) with the 6-minute window as the hard
+bound. (4) After reconnection the confirmation step completes and the page says
+"Updated to {version}" with the new build id, then reloads as before. (5) The
+only alarm is the honest one: past the 6-minute window, or on a verified
+failure, the alpha.86 wordings appear, never before. (6) The navigation lock
+through the restart (set17b F1), the licence and session gates' grace (set17
+D1), the single notice, D-032 and D-033 are kept.
+
+**The real phases, read from the code, and the steps.** The Agent's record
+knows only queued, running, succeeded and failed
+(`cmd/agent/system_update_worker_linux.go`, `RunWorker`); the worker runs the
+reviewed installer (`/usr/libexec/celikpanel/get.sh`, from
+`download-portal/get.sh`) as one child and then checks the floor, the installed
+build and the final state. Inside that child:
+
+| Step (id) | What really happens | What it is read from |
+| --- | --- | --- |
+| Download the update package (`download`) | get.sh verifies the signed manifest's signature, then `curl` writes the archive into a fresh `.download.XXXXXXXX` directory under `/var/backups/celikpanel/releases` | the archive's size against the signed size (byte progress), and its modification time once it reaches that size; no candidate or more than one: indeterminate |
+| Check the signature and checksums (`verify`) | get.sh checks the archive's size and SHA-256 against the signed manifest, lists and extracts it, checks every file against `SHA256SUMS` and the provenance, then publishes the release floor ("only after the entire archive and its provenance are verified, but before the updater can mutate host services") | the floor naming this request's sequence and version, written at or after the request was created: its modification time ends the step |
+| Check the server before installing (`prepare`) | `update.sh` from the verified archive checks the server (idle proofs, BIND and mail compatibility) while the Panel still answers | between the floor and the Panel stopping; nothing finer can be read |
+| Install the new version and restart the panel (`restart`) | `update.sh` freezes and stops the Panel and the Agent, snapshots, installs, migrates and starts the new release | the Panel cannot answer: on the page, the lost reads; on the server, the new Panel being the target build, with the moment its management opened |
+| Verify the new version (`confirm`) | the worker checks the floor, the installed build and the release's final state, then writes succeeded | the record's `phase: verifying`, then `succeeded` |
+
+Installing the files and restarting are one step because the updater stops the
+Panel before it installs anything: from outside they cannot be told apart. The
+owner's list named them separately; this is said here rather than drawn as two
+steps the page could not tell apart. A retry of the same release does not
+rewrite the floor (get.sh returns early when the sequence is unchanged), so the
+verify boundary is then not reported; the steps before the restart are shown
+done when the Panel is lost or the new build answers.
+
+**What changed.**
+
+- Agent (`cmd/agent/system_update_progress_linux.go`, new;
+  `system_update_rpc.go`; `system_update_store_linux.go`): `Progress` reads the
+  floor and the download directory with `Lstat` only, checks owner and mode,
+  ignores an archive older than the request, a link, a directory open to
+  others, more than one candidate and more than the signed size; the status RPC
+  adds `downloaded_bytes`, `downloaded_at` and `verified_at`
+  (`internal/transport/system_update_contracts.go`, additive). Read-only and
+  never an input to admission, recovery or the record's status.
+- Panel (`cmd/panel/system_update_plan.go`, new;
+  `system_update_handlers.go`; `server_lifecycle.go`): `buildPanelUpdatePlan`
+  names a step finished only on evidence (`downloaded_at`, `verified_at`, this
+  Panel being the target build, `succeeded`) and places a failure on a step
+  only where the evidence places it (the confirmation, on the new build). The
+  start and status answers carry `plan` (`steps` with `id`, `state`,
+  `started_at`, `finished_at`, `elapsed_seconds`, `progress`;
+  `expected_restart_seconds`; `restart_bound_seconds`). The startup gate keeps
+  when management opened (`OpenedAt`). The new Panel measures its update's
+  restart once, from `verified_at` to that moment, and keeps it in
+  `panel_settings` under `panel_update_last_restart` (`{"request_id", "seconds"}`);
+  the span includes the updater's own checks before it stops the Panel, so it
+  is at least the outage the page sees.
+- Page (`web/src/lib/systemUpdateSteps.ts` and
+  `web/src/components/SystemUpdateSteps.tsx`, new; `SystemUpdateOperation.tsx`;
+  `PanelUpdateCard.tsx`; `lib/systemUpdateTracking.ts`; `index.css`): the
+  provider keeps the plan of the followed request from the start answer and
+  every answered read, through lost reads; `systemUpdateStepsView` decides what
+  is drawn; the dialog, the card and the compact corner notice draw it. The
+  restart bar is linear to 90 % at the expected length and then approaches 99 %;
+  it never ends by itself. Past the window the restart step keeps its label
+  only (batch 17 found a stilled bar at 98 % beside the overdue wording). A page
+  opened during the restart, with nothing read yet, now draws the restart inside
+  the window counted from the update's start (alpha.86 said "not known" at
+  once); the gates' grace and the lock still need the server's own word that the
+  update is active. The card is the one notice on the update page for the
+  success too; a failure keeps the corner notice and its own wording.
+
+**New strings.** EN / TR, verbatim:
+
+| Key | English | Turkish |
+| --- | --- | --- |
+| `panelUpdate.steps.label` | Update steps | Güncelleme adımları |
+| `panelUpdate.steps.title` | Updating to {version} | {version} sürümüne güncelleniyor |
+| `panelUpdate.steps.download` | Download the update package | Güncelleme paketini indirme |
+| `panelUpdate.steps.verify` | Check the signature and checksums | İmzayı ve sağlama toplamlarını denetleme |
+| `panelUpdate.steps.prepare` | Check the server before installing | Kurmadan önce sunucuyu denetleme |
+| `panelUpdate.steps.restart` | Install the new version and restart the panel | Yeni sürümü kurma ve paneli yeniden başlatma |
+| `panelUpdate.steps.confirm` | Verify the new version | Yeni sürümü doğrulama |
+| `panelUpdate.steps.restarting` | The panel is restarting; this step can take a few minutes. This page reconnects by itself. | Panel yeniden başlıyor; bu adım birkaç dakika sürebilir. Bu sayfa kendiliğinden yeniden bağlanır. |
+| `panelUpdate.steps.updated` | Updated to {version} | {version} sürümüne güncellendi |
+| `panelUpdate.steps.state.done` | done | tamamlandı |
+| `panelUpdate.steps.state.running` | in progress | sürüyor |
+| `panelUpdate.steps.state.pending` | not started yet | henüz başlamadı |
+
+The three state words are for screen readers only. No existing string changed;
+"The connection was interrupted…" and "could not be read just now" are no longer
+reached inside the window by a lost read, and the overdue texts are unchanged.
+
+**Resilience contract.** Affected: the update's progress and evidence
+presentation (D-024, D-033), not its lifecycle. No database schema migration;
+one additive `panel_settings` key; additive fields on the Agent RPC (gob) and on
+the Panel's start and status answers, ignored by older pages. No ledger, marker,
+transaction or recovery behaviour changed; the status read starts nothing (its
+one write is the bookkeeping measurement, once per update). No P0 item is
+closed or advanced.
+
+**When it is seen.** An update runs on the screen of the version installed
+before it, and the plan comes from the Panel and Agent being replaced. An update
+from alpha.87 to alpha.88 therefore still shows alpha.87's screen (alpha.86's
+calm restart and single notice); the steps are first seen on an update from
+alpha.88 to a later version. The new Panel of the first update to alpha.88 can
+already measure its restart (its Agent reads the floor), so that later update
+uses a measured length.
+
+**Evidence.** Go: `cmd/agent/system_update_progress_linux_test.go` (the floor of
+this request and of others, a partial and a complete download, six ambiguous
+cases with a control, the RPC carrying and leaving out the fields, and a
+contract test that pins the get.sh lines the read rests on);
+`cmd/panel/system_update_plan_test.go` (the plan from each kind of evidence,
+the expected length, the status answer with a measurement kept once, no
+measurement without its evidence, the start answer's plan, no plan when not
+found). Web: `tests/update-steps-mounted.test.mjs` (23: decoding, the start
+answer, the time-based bar, plan rendering and download progress, the restart
+with lost reads and `PANEL_STARTING`, the overdue path, reconnection to
+"Updated to", no repeated notice, the mounted list, compact notice and card in
+EN and TR, a control card without steps); every new test fails against the
+previous source, where the modules and fields did not exist. Two alpha.86
+assertions changed with the rule (a cold lost read inside the window; the
+context and corner-notice wiring). Browser inspection batch 17
+(`web/tools/browser-inspect/scenarios-batch17.mjs`), laptop 1280 and phone 390,
+EN and TR, light and dark, 9 states each: inspected once, one defect fixed (the
+stilled bar), re-shot once; in the re-shot run no alarming sentence in any of
+the 64 states before the window, the overdue wording in all 8 after it, no
+horizontal overflow, the lock on through the restart and the confirmation.
+Counts at `b63da83e0`: `npm test` 1522 of 1522; `npx tsc --noEmit` clean;
+`npm run build` passes with its bundle budget (entry file 242.40 KiB raw, 74.24
+KiB gzip); `go test ./cmd/panel/... ./internal/transport/...` 1602 tests and
+1695 subtests passed, 6 skipped, 0 failed (`cmd/panel` 1563 and 1675);
+`go test ./cmd/agent/...` 1805 tests and 2838 subtests passed, 29 skipped, 0
+failed, in the clean mount namespace of the 2026-10-14 audit entry. The Go runs
+were in the WSL guest `CelikPanel-S2-Debian`.
+
+**Not measured.** The owner instructed on 2026-10-16 that this release ships
+without a native record. Nothing here was measured on a QEMU guest or on an
+installed server: the Agent's read of get.sh's download directory and of the
+floor's time was never observed during a real update; that `curl -o` writes the
+archive at its final path as it arrives is known from curl, not measured here;
+the 90-second default rests on set16 (Panel unanswered for at most 32 s) and the
+measured length includes the updater's checks before it stops the Panel; the
+`prepare` step may last only seconds; a retry of the same release reports no
+verify boundary. The provider itself is still not mounted in a test (IndexedDB,
+Web Locks, the authentication signal); its wiring is checked from source and in
+the mock browser.

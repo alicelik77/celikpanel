@@ -90,7 +90,13 @@ type panelUpdateStartResponse struct {
 	RequestID string            `json:"request_id"`
 	Status    string            `json:"status"`
 	Target    panelUpdateTarget `json:"target"`
+	// Plan is additive (2026-10-16): the steps of the update, declared when
+	// it is admitted (system_update_plan.go). Older pages ignore it.
+	Plan *panelUpdatePlan `json:"plan,omitempty"`
 }
+
+// panelUpdateNow is the server clock of the update plan; tests replace it.
+var panelUpdateNow = time.Now
 
 type panelUpdateStatusResponse struct {
 	Found     bool               `json:"found"`
@@ -107,6 +113,11 @@ type panelUpdateStatusResponse struct {
 	// Phase eklemedir: kayit hala calisirken yanit veren Panel hedef surumse
 	// "verifying"; yeni surum kurulu, guncelleyici denetimlerini bitiriyor.
 	Phase string `json:"phase,omitempty"`
+	// Plan is additive (2026-10-16): each step's state, moments and elapsed
+	// seconds on the server's clock (system_update_plan.go). Absent for a
+	// record that was not found. Older pages ignore it.
+	// Plan eklemelidir: adimlarin durumu, anlari ve sunucuda olculen sureleri.
+	Plan *panelUpdatePlan `json:"plan,omitempty"`
 }
 
 // panelUpdateStatusPhase reads the one phase the status can show beside
@@ -495,6 +506,7 @@ func (p *Panel) handlePanelUpdateStart(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(status)
 		_ = json.NewEncoder(w).Encode(panelUpdateStartResponse{
 			Accepted: true, RequestID: request.RequestID, Status: existing.Status, Target: target,
+			Plan: p.panelUpdatePlanFromStatus(r.Context(), existing, target, panelUpdateNow()),
 		})
 		return
 	}
@@ -555,6 +567,7 @@ func (p *Panel) handlePanelUpdateStart(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusAccepted)
 	_ = json.NewEncoder(w).Encode(panelUpdateStartResponse{
 		Accepted: true, RequestID: request.RequestID, Status: reply.Status, Target: request.panelUpdateTarget,
+		Plan: p.admittedPanelUpdatePlan(r.Context(), panelUpdateNow()),
 	})
 }
 
@@ -664,5 +677,6 @@ func (p *Panel) handlePanelUpdateStatus(w http.ResponseWriter, r *http.Request) 
 		CreatedAt: reply.CreatedAt, UpdatedAt: reply.UpdatedAt,
 		Summary: sanitizePanelUpdateSummary(reply.Error),
 		Phase:   panelUpdateStatusPhase(reply.Status, target),
+		Plan:    p.panelUpdatePlanFromStatus(r.Context(), reply, target, panelUpdateNow()),
 	})
 }
