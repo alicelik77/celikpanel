@@ -867,6 +867,58 @@ func (p *Panel) reconstructSucceededMailProfileResult(
 	return result, nil
 }
 
+// componentPlanBlock is the blocking decision shared by the mail profiles and
+// the ready bundles (alpha.94): each component in check, in order, must be
+// installable on this package family, must not take a seat that another
+// component of the projected set holds, and must find its requirements in
+// that projected set (what is installed plus the whole plan). The first
+// refusal wins and is returned as the English sentence, its typed code and
+// values. Empty means nothing blocks. The mail profiles check every component
+// of their plan, exactly as before; a bundle checks only what it would install.
+// componentPlanBlock, posta profilleri ile hazır paketlerin ortak engel
+// kararıdır; ilk ret kazanır, boş sonuç engel yok demektir.
+func componentPlanBlock(check []string, projected map[string]bool, packageFamily string) (string, mailProfileTextCode, map[string]string) {
+	for _, id := range check {
+		managed := core.GetManagedServiceByID(id)
+		if managed == nil {
+			return mailProfileCatalogueIncompleteText, mailProfileBlockedCatalogueIncomplete, nil
+		}
+		if kind, reason := core.ManagedServiceInstallBlock(managed, packageFamily); reason != "" {
+			vars := map[string]string{"component": managed.Name, "kind": string(kind)}
+			// The old text named the platform through its reason; the typed
+			// sentence names it by a value both languages can show.
+			// Eski metin platformu gerekçesiyle anıyordu; türlü cümle onu
+			// iki dilin de gösterebileceği bir değerle adlandırır.
+			if platform := mailProfilePlatformName(packageFamily); platform != "" {
+				vars["platform"] = platform
+			}
+			return managed.Name + ": " + reason, mailProfileBlockedNotInstallable, vars
+		}
+		if taken := core.SeatTakenBy(managed, projected); taken != "" {
+			return fmt.Sprintf("%s conflicts with installed %s.", managed.Name, taken),
+				mailProfileBlockedConflict,
+				map[string]string{"component": managed.Name, "conflicting": taken}
+		}
+		if missing := core.RequirementsMissing(managed, projected); len(missing) > 0 {
+			names := make([]string, 0, len(missing))
+			for _, token := range missing {
+				names = append(names, mailProfileServiceName(token))
+			}
+			return fmt.Sprintf("%s requires %s outside this profile.", managed.Name, strings.Join(missing, ", ")),
+				mailProfileBlockedRequires,
+				map[string]string{"component": managed.Name, "required": strings.Join(names, ", ")}
+		}
+	}
+	return "", "", nil
+}
+
+// componentReady is one component's readiness on a scan, as the final check
+// of a mail profile reads it: installed, and active unless it is a tool.
+// componentReady, bir bileşenin taramadaki hazır oluşudur.
+func componentReady(id string, services []ManagedServiceResponse) bool {
+	return verifyMailProfileReady(mailProfileDefinition{Services: []string{id}}, services) == nil
+}
+
 func mailProfilesView(
 	services []ManagedServiceResponse,
 	verified bool,
@@ -933,45 +985,7 @@ func mailProfilesView(
 			continue
 		}
 
-		blockedReason := ""
-		var blockedCode mailProfileTextCode
-		var blockedVars map[string]string
-		for _, id := range definition.Services {
-			managed := core.GetManagedServiceByID(id)
-			if managed == nil {
-				blockedReason, blockedCode = mailProfileCatalogueIncompleteText, mailProfileBlockedCatalogueIncomplete
-				break
-			}
-			if kind, reason := core.ManagedServiceInstallBlock(managed, packageFamily); reason != "" {
-				blockedReason = managed.Name + ": " + reason
-				blockedCode = mailProfileBlockedNotInstallable
-				blockedVars = map[string]string{"component": managed.Name, "kind": string(kind)}
-				// The old text named the platform through its reason; the typed
-				// sentence names it by a value both languages can show.
-				// Eski metin platformu gerekçesiyle anıyordu; türlü cümle onu
-				// iki dilin de gösterebileceği bir değerle adlandırır.
-				if platform := mailProfilePlatformName(packageFamily); platform != "" {
-					blockedVars["platform"] = platform
-				}
-				break
-			}
-			if taken := core.SeatTakenBy(managed, projected); taken != "" {
-				blockedReason = fmt.Sprintf("%s conflicts with installed %s.", managed.Name, taken)
-				blockedCode = mailProfileBlockedConflict
-				blockedVars = map[string]string{"component": managed.Name, "conflicting": taken}
-				break
-			}
-			if missing := core.RequirementsMissing(managed, projected); len(missing) > 0 {
-				names := make([]string, 0, len(missing))
-				for _, token := range missing {
-					names = append(names, mailProfileServiceName(token))
-				}
-				blockedReason = fmt.Sprintf("%s requires %s outside this profile.", managed.Name, strings.Join(missing, ", "))
-				blockedCode = mailProfileBlockedRequires
-				blockedVars = map[string]string{"component": managed.Name, "required": strings.Join(names, ", ")}
-				break
-			}
-		}
+		blockedReason, blockedCode, blockedVars := componentPlanBlock(definition.Services, projected, packageFamily)
 		if blockedReason != "" {
 			view.Status = mailProfileStatusBlocked
 			view.BlockedReason = blockedReason
@@ -992,7 +1006,7 @@ func mailProfilesView(
 					anyInstalled = true
 				}
 			}
-			if verifyMailProfileReady(mailProfileDefinition{Services: []string{id}}, services) != nil {
+			if !componentReady(id, services) {
 				allReady = false
 			}
 		}
