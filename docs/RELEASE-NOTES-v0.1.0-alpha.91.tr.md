@@ -1,4 +1,4 @@
-# v0.1.0-alpha.91 (aday, yayımlanmadı)
+# v0.1.0-alpha.91 (16 Ekim 2026'da etiketlendi, indirme portalında yok)
 
 [English](RELEASE-NOTES-v0.1.0-alpha.91.md)
 
@@ -150,7 +150,39 @@ hiçbiri sahibin kararı değildir.
 
 ## Yayımlama kaydı
 
-Yayımlanmadı.
+Aşağıdaki her şey 16 Ekim 2026 tarihlidir (UTC). Birleştirmeyi, depo
+değişkenini ve etiketi sürümü hazırlayan kişi yaptı, sahibin 15 Ekim 2026
+talimatı uyarınca. **Bu sürüm bilerek indirme portalına konmadı.** Sahibin
+talimatıyla gerçek sistem kaydı yok. Bu girdi, aşağıdaki sonuçların hiçbirini
+depoda bir dosya olarak saklamaz.
+
+**Ne oldu.**
+
+1. #221 numaralı çekme isteği hazırlayan kişi tarafından `main`'e squash olarak
+   birleştirildi: commit `356109b532b9d0d0df5dd31fc19e9932918a9648`. Üzerindeki
+   koşu başarıyla sonuçlandı.
+2. Hazırlayan kişi `CELIKPANEL_RELEASE_SEQUENCE` değişkenini 90'dan 91'e
+   çıkardı ve `v0.1.0-alpha.91` açıklamalı etiketini gönderdi. Etiketin koşusu
+   başarıyla sonuçlandı; GitHub sürümü 2026-10-16T15:48:29Z'de altı dosyayla
+   yayımlandı.
+3. **Neden portalda değil.** Frankfurt'un alpha.89'dan alpha.90'a güncellemesi
+   ([alpha.90 notları](RELEASE-NOTES-v0.1.0-alpha.90.tr.md)) alpha.91'de de
+   bulunan bir güncelleyici kusurunu gösterdi. alpha.91'i portala koymak sahibe
+   aynı biçimde başarısız olabilecek bir güncelleme sunmak olurdu. İkinci
+   sunucu işi bunun yerine güncelleyici düzeltmesini taşıyan alpha.92 ile
+   teslim edildi.
+
+**Yapılmayanlar ve bu kaydın iddia etmedikleri.**
+
+- alpha.91 için dosya denetimi ve portal paketi yapılmadı, genel site onu hiç
+  sunmadı; canlı portal alpha.90'dan alpha.92'ye geçti.
+- Hiçbir kurulu sunucu alpha.91'i çalıştırmadı: sahibin güncellemeleri
+  alpha.90'dan alpha.92'ye gitti ([alpha.92
+  notları](RELEASE-NOTES-v0.1.0-alpha.92.tr.md)).
+- Frankfurt'un Alan adları'ndaki "Altyapı bölgesi" satırı ve Boston'un eş
+  sunucu kaydıyla posta genişletmesi, yani bu sürümün işi, bildirilmedi.
+- Yayımlanma kabul değildir. P0.1–P0.5 kısmi kalır; hiçbir P0 işi kapanmaz ya da
+  ilerlemez.
 
 Bu sürümü yalnız CelikPanel'in güncelleme arayüzünden kurun. Yayımlanması
 kurulu sunucuları güncellemez; bir sunucunun güncellemesini yalnız sahibi,

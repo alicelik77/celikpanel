@@ -6099,6 +6099,83 @@ schema or recovery behaviour. 2026-10-16 is the clock date of everything in it.
 - **Evidence.** Contract tests with a native-like stand-in for systemctl and negative controls (the previous helper reproduces Frankfurt's line): `deploy/test-panel-tls-snapshot-contract.sh`, `deploy/test-recovery-renewal-pause-contract.sh`, `deploy/test-update-failure-report.sh`. Of the 38 shell contracts that read the changed scripts, 34 pass in the Windows worktree mount; three more pass from an LF export of the same commit (the worktree's CRLF checkout and the mount's speed made them fail or time out there) and one needs `make dns-owner-tools` first. Go: `./cmd/panel` 1583 top-level tests pass, 6 skip; `./cmd/recovery` 185 pass; `./internal/recoveryobs` 22 pass, 1 skip (1911 subtests); `./cmd/agent/...` 1805 pass, 29 skip, 2838 subtests (clean mount namespace). Web 1551 of 1551; the production build and bundle budget pass. Native lab record [set19](../deploy/e2e/release-recovery/evidence/set19-20261016/README.md): the update's own timer start began the renewal and the update ended `update_verified` with `previous_failure=none`; with the renewal service failed before the update the update ended the same way and the service stayed failed; the page never drew an alert or red. Nothing measured on an installed server.
 - **Open.** The calm view is drawn by the page of the running version, so it is first seen on updates from alpha.92; the rollback paths that share the helpers were exercised by contract tests only; a browser whose record of the Frankfurt update was closed keeps no "Updated to" card for it; everything the alpha.88 to alpha.91 entries leave open stays open. See the [release notes](RELEASE-NOTES-v0.1.0-alpha.92.md).
 
+### Publication of v0.1.0-alpha.90, v0.1.0-alpha.91 (tagged, not on the portal) and v0.1.0-alpha.92 (no code change in the publication; invariants 2 and 6; D-022; D-024; D-025 native service ownership; D-033; 2026-10-16)
+
+D-025 invariants 2 (evidence has a meaning and a lifecycle: unknown is not
+absent, empty or success) and 6 (readiness, progress and access remain
+independent), and the native-service-ownership invariant the alpha.92 candidate
+entry names; D-022; D-024; D-033. **No P0 item is closed or advanced.** P0.1 to
+P0.5 stay partial and every open acceptance item stays open. This entry records
+three releases and the owner's reports of two updates; it changes no code,
+schema or recovery behaviour. 2026-10-16 is the clock date of everything in it.
+
+- **Publication.** All steps were done by the release preparer under the owner's
+  instruction of 2026-10-15; installed-panel updates were the owner's only.
+  v0.1.0-alpha.90: pull request #220 squash-merged as
+  `1743ac69edb0e5723dc60d992b53094dcc4b1431` (tree
+  `bbfa5305cc8c5b6bb4a34a2e640633582dc7534b`); main run success; variable 89 to
+  90; annotated tag (object `9c98483d71b4a747f522f87c476f22125868bca7`); tag run
+  success; release at 2026-10-16T14:42:18Z; archive SHA-256
+  `3719aba4f60b3eb3da0762b2d1c57302b628cdb6c958d72c2a5ac0430e2ff3e1`, 66,194,918
+  bytes; portal published and read from outside at 14:51:50Z.
+  v0.1.0-alpha.91: pull request #221 squash-merged as
+  `356109b532b9d0d0df5dd31fc19e9932918a9648`; main run success; variable 90 to
+  91; tag; tag run success; release at 2026-10-16T15:48:29Z; **deliberately not
+  put on the portal**, because the Frankfurt incident below showed the updater
+  defect is also in it; no asset verification, no portal package.
+  v0.1.0-alpha.92: pull request #222 squash-merged as
+  `961f2cb2fcaeb48c08fc58828d15fe0b231e1e1a` (tree
+  `091d5fb23cb16cbd217c8c1191033185a7d50b81`; the first CI run failed because
+  the offline fixture harness's mirrored code lists lacked
+  `update_finishing_scheduler`, corrected in `5f662635f`, then 24 of 24); main
+  run success; variable 91 to 92; annotated tag (object
+  `16a8a961aa9f06948902e4c972c4ce6603cc50fc`); tag run success; release at
+  2026-10-16T18:51:22Z; archive SHA-256
+  `3e243da119a252988df80745d77f3e500b6856c60717fa4b2b8f94e1e54e4795`, 66,240,132
+  bytes, whose `update.sh` and `deploy/panel-tls-snapshot.sh` contain the new
+  code; portal published with `-PreviousVersion v0.1.0-alpha.90` (the live
+  portal never served alpha.91) and read from outside at 18:59:09Z. Assets and
+  portal packages were checked by the preparer from a download; reported by the
+  preparer, not recorded in a file here. The earlier publication limits are not
+  reported as lifted. The "Publication record" of each set of release notes
+  lists them.
+- **Installed panels, alpha.89 to alpha.90 (the owner's screenshots).** Boston
+  updated cleanly. Frankfurt's update showed a red cross at T+01:23 with the
+  server's raw line "Certbot renewal scheduler state could not be restored" and
+  "Update verified" at T+01:39 for the same request: the server's own recovery
+  finished the update 16 s after the updater died (invariant 2: the failure was
+  verified by the server, not by the page, and the final state was reached
+  without the owner acting). That is the incident the alpha.92 candidate entry
+  corrects (D-025 native service ownership: the update must not treat a renewal
+  the restored timer starts as its own failure). Observed beside it: the browser
+  kept alpha.89's interface until a hard reload (cause not investigated); after
+  the reload there was no "Updated to" card, because the update finished through
+  the recovery record; copying the card pasted the short and the full build id
+  run together. The live step view was not reported as seen (invariant 6).
+- **Installed panels, alpha.90 to alpha.92 (the owner's screenshots, about
+  19:10Z).** Both servers show version, commit `961f2cb2fcae…`, sidebar build
+  and a card "Updated to v0.1.0-alpha.92" with five completed steps; Frankfurt
+  too, without a failure or a recovery. One update on each server: it is not
+  acceptance of the renewal correction (whether a catch-up renewal began on
+  Frankfurt was not reported), and the calm "Finishing the update" view is only
+  first seen when a server updates from alpha.92. Not reported: the live step
+  view during the update, Frankfurt's Domains infrastructure-zone row, Boston's
+  mail extension with the peer host record, the licence page, the Agent's
+  version, `postconf -n`. This entry is not acceptance evidence for any item.
+- **Schema or version transition.** None: schema 44 in all three; the release
+  sequence moved 89 to 90, 90 to 91 and 91 to 92 in the release preparations.
+  **Recovery behaviour.** Unchanged by the publication. No native record for
+  alpha.90 or alpha.91, by the owner's instruction of 2026-10-16; alpha.92's own
+  code was measured by set19 (a lab record).
+- **Open.** Everything the alpha.90, alpha.91 and alpha.92 candidate entries
+  leave open, among them: the live step view not yet reported as seen; the calm
+  "Finishing the update" view first seen on an update from alpha.92; a browser
+  that keeps the previous interface after an update and a card missing after a
+  recovery-finished update on a browser whose record was closed; the rollback
+  paths that share the changed helpers exercised by contract tests only; the
+  second-server work (alpha.91's code, delivered in alpha.92) not reported from
+  an installed server.
+
 ### Candidate v0.1.0-alpha.93 (six small corrections from the installed servers on alpha.92; D-024; D-032; D-033; 2026-10-16)
 
 - **Change.** A complete mail profile is verified when another profile that contains all of its components is verified on the same scan (Frankfurt's Core Mail asked for Repair while Webmail and Spam-Protected Mail were verified); component state alone still proves nothing, and a profile whose own latest attempt is running or failed keeps its state. A mail profile is installed only through its mail components (Postfix, Dovecot, Rspamd, Roundcube), so Boston's Nginx alone no longer reads "Partially installed". The page draws "Repair webmail" as an ordinary action, says verified mail plainly, names mail profiles in Recent activity and pluralises counts. **No P0 item is closed or advanced**; P0.1 to P0.5 stay partial.
