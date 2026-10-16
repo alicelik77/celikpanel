@@ -107,7 +107,7 @@ interface ManagedServicesSnapshot {
 // server (cmd/panel mailProfileDNSGuidance, additive 2026-10-16). Every value
 // is re-checked; anything unexpected drops only the guidance, never the page.
 // Ikincil DNS sunucusunda posta kaydinin olusturulacagi yer.
-interface MailDNSGuidance { primaryNameserver: string; primaryIP: string; recordName: string; recordValue: string }
+interface MailDNSGuidance { primaryNameserver: string; primaryIP: string; recordName: string; recordValue: string; peerRecordChannel: boolean }
 const guidanceName = (value: unknown) => typeof value === 'string' && value.length <= 253 && /^([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z0-9-]+$/i.test(value) ? value : '';
 const guidanceIPv4 = (value: unknown) => typeof value === 'string' && /^(\d{1,3}\.){3}\d{1,3}$/.test(value) ? value : '';
 function decodeMailDNSGuidance(value: unknown): MailDNSGuidance | null {
@@ -119,6 +119,9 @@ function decodeMailDNSGuidance(value: unknown): MailDNSGuidance | null {
         primaryIP: guidanceIPv4(payload.primary_ip),
         recordName: guidanceName(payload.record_name),
         recordValue: guidanceIPv4(payload.record_value),
+        // Additive (2026-10-16): an older server does not say, which reads as
+        // no channel - the record is then added by hand, as before.
+        peerRecordChannel: payload.peer_record_channel === true,
     };
 }
 type ServiceLifecycleAction = 'start' | 'stop' | 'restart';
@@ -2116,6 +2119,9 @@ function MailProfileCards({ profiles, services, disabled, dnsIdentityReady, dnsG
                         <span className={dnsGuidance.recordName ? 'font-mono' : 'text-fg-muted'}>{dnsGuidance.recordName || t('services.mailProfiles.secondary.nameUnknown')}</span>
                         <span className='font-mono'>A</span>
                         <span className={dnsGuidance.recordValue ? 'font-mono' : 'text-fg-muted'}>{dnsGuidance.recordValue || t('services.mailProfiles.secondary.valueUnknown')}</span>
+                    </p>
+                    <p className='mt-3 max-w-3xl text-sm leading-6 text-fg' data-mail-dns-channel={dnsGuidance.peerRecordChannel ? 'yes' : 'no'}>
+                        {t(dnsGuidance.peerRecordChannel ? 'services.mailProfiles.secondary.channel' : 'services.mailProfiles.secondary.noChannel')}
                     </p>
                     <p className='mt-3 max-w-3xl text-sm leading-6 text-fg'>{t('services.mailProfiles.secondary.next')}</p>
                     <Button variant='secondary' className='mt-3' onClick={() => navigate('/setup')}>

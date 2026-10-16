@@ -47,6 +47,7 @@ const ServerSetup = lazyNamed(() => import('./components/ServerSetup'), 'ServerS
 const Dashboard = lazyNamed(() => import('./components/Dashboard'), 'Dashboard');
 const Domains = lazyNamed(() => import('./components/Domains'), 'Domains');
 const DomainDetailByName = lazyNamed(() => import('./components/DomainDetail'), 'DomainDetailByName');
+const InfrastructureZonePage = lazyNamed(() => import('./components/InfrastructureZone'), 'InfrastructureZonePage');
 const DatabaseManagementV2 = lazyNamed(() => import('./components/DatabaseManagementV2'), 'DatabaseManagementV2');
 const ServiceList = lazyNamed(() => import('./components/ServiceList'), 'ServiceList');
 const MonitoringPage = lazyNamed(() => import('./components/MonitoringPage'), 'MonitoringPage');
@@ -84,6 +85,17 @@ function DomainDetailPage() {
   return (
     <PageWithLayout>
       <DomainDetailByName domainName={domainName ?? ''} onBack={() => navigate('/domains')} />
+    </PageWithLayout>
+  );
+}
+
+// The infrastructure DNS zone's page, addressed by the zone's name (2026-10-16).
+// Altyapi DNS bolgesinin sayfasi, bolge adiyla adreslenir.
+function InfrastructureZoneRoute() {
+  const { zone } = useParams();
+  return (
+    <PageWithLayout>
+      <InfrastructureZonePage zone={zone ?? ''} />
     </PageWithLayout>
   );
 }
@@ -348,6 +360,7 @@ function AppRoutes() {
         {/* Domains */}
         <Route path="/domains" element={<PageWithLayout><Domains /></PageWithLayout>} />
         <Route path="/domains/:domainName" element={<DomainDetailPage />} />  {/* Layout handled inside DomainDetailPage */}
+        <Route path="/domains/infrastructure/:zone" element={<InfrastructureZoneRoute />} />
 
         {/* Databases */}
         <Route path="/databases" element={<PageWithLayout><DatabaseManagementV2 /></PageWithLayout>} />

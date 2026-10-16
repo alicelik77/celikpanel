@@ -1289,3 +1289,32 @@ test('Components: a saved mail host name can be corrected, and what changes is s
     assert.deepEqual(sent, { revision: 7, action: 'begin', mail_profile: 'core-mail', mail_hostname: 'smtp.example.net' });
   } finally { await unmount(); delete globalThis.batch3Dialogs; delete globalThis.batch3Setup; delete globalThis.batch3Navigated; delete globalThis.sessionStorage; delete globalThis.document; }
 });
+
+
+// Second server as a full peer, part 2 (2026-10-16): the box says whether this
+// secondary has an authorized DNS connection to the primary, so setup asks for
+// the record by itself, or has none, so the record is added by hand.
+test('Components: on a secondary the mail box says whether setup asks the primary for the record or the owner adds it', async () => {
+  serve({ '/api/v1/managed-services': secondaryScan({ ...secondaryGuidance, peer_record_channel: true }) });
+  await mount(React.createElement(ServiceList, {}));
+  try {
+    await settle();
+    const shown = text();
+    assert.ok(shown.includes('services.mailProfiles.secondary.channel'), shown.slice(0, 800));
+    assert.ok(!shown.includes('services.mailProfiles.secondary.noChannel'));
+    assert.ok(tree.root.findAll((node) => node.props && node.props['data-mail-dns-channel'] === 'yes').length === 1);
+    // The exact record stays visible: it is still the manual route if the primary refuses.
+    assert.ok(hasNode('data-mail-dns-record'));
+  } finally { await unmount(); }
+  // Control: no channel (and an older server that does not say) reads as manual.
+  for (const guidance of [{ ...secondaryGuidance, peer_record_channel: false }, secondaryGuidance]) {
+    serve({ '/api/v1/managed-services': secondaryScan(guidance) });
+    await mount(React.createElement(ServiceList, {}));
+    try {
+      await settle();
+      const shown = text();
+      assert.ok(shown.includes('services.mailProfiles.secondary.noChannel'));
+      assert.ok(!shown.includes('services.mailProfiles.secondary.channel"'));
+    } finally { await unmount(); }
+  }
+});

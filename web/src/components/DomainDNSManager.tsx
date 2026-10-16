@@ -17,6 +17,8 @@ interface DNSRecord {
     ttl: number;
     prio?: number;
     disabled: boolean;
+    /** Only in an infrastructure zone: who manages the record (2026-10-16). */
+    managed_by?: 'setup' | 'peer';
 }
 
 interface DomainDNSManagerProps {
@@ -24,6 +26,13 @@ interface DomainDNSManagerProps {
     domainName: string;
     readOnly?: boolean;
     isAdditionalUser?: boolean;
+    /**
+     * The infrastructure zone on the primary (2026-10-16): the same editor on
+     * the zone's own endpoints, without DNSSEC or republishing, which belong
+     * to the DNS settings and to server setup.
+     * Birincildeki altyapi bolgesi: ayni duzenleyici, bolgenin kendi uclari.
+     */
+    infrastructureZone?: boolean;
 }
 
 // What the server says about a domain's zone, its records and its signing.
@@ -114,8 +123,12 @@ export function DomainDNSManager({
     domainName,
     readOnly = false,
     isAdditionalUser = false,
+    infrastructureZone = false,
 }: DomainDNSManagerProps) {
     const { t } = useI18n();
+    const api = infrastructureZone
+        ? `/api/v1/dns/infrastructure-zones/${encodeURIComponent(domainName)}`
+        : `/api/v1/domains/${domainId}/dns`;
     const [showAddForm, setShowAddForm] = useState(false);
     const [newType, setNewType] = useState('A');
     const [newName, setNewName] = useState('@');
@@ -155,7 +168,7 @@ export function DomainDNSManager({
     // adının bölgesi yok. Diğer her ret, kopan bağlantı ve sözleşme olmayan
     // yanıt "kontrol edilemedi"dir, asla "bölge yok" değil. Kayıtlar yalnız
     // sunucunun var dediği bölge için okunur.
-    const zone = useRemote(`/api/v1/domains/${domainId}/dns/zone`, decodeZone);
+    const zone = useRemote(`${api}/zone`, decodeZone);
     const zoneRemote = useMemo<Remote<Zone | null>>(() => (
         zone.remote.state === 'unknown' && zone.remote.status === 404
             ? { state: 'known', value: null, observedAt: Date.now() }
@@ -163,7 +176,7 @@ export function DomainDNSManager({
     ), [zone.remote]);
     const zoneShown = lastKnown(zoneRemote);
     const zoneValue = zoneShown?.value ?? null;
-    const records = useRemote(zoneValue ? `/api/v1/domains/${domainId}/dns/records` : null, decodeRecords);
+    const records = useRemote(zoneValue ? `${api}/records` : null, decodeRecords);
     const externalDNS = zoneValue?.external === true;
     const remoteDNS = zoneValue?.remote === true;
 
@@ -191,7 +204,7 @@ export function DomainDNSManager({
         if (!canChange) return;
         setPublishing(true);
         try {
-            const res = await answer.send(`/api/v1/domains/${domainId}/dns/zone`, { method: 'POST' });
+            const res = await answer.send(`${api}/zone`, { method: 'POST' });
             if (!res) return;
             if (!res.ok) {
                 await refused(res, 'dns.zonePublishFailed');
@@ -226,7 +239,7 @@ export function DomainDNSManager({
             const sent = { name: newName, type: newType, content: newContent, ttl: newTTL, prio: newPrio };
             const before = records.remote.value;
             const form = typed.current;
-            const res = await answer.send(`/api/v1/domains/${domainId}/dns/records`, {
+            const res = await answer.send(`${api}/records`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(sent),
@@ -258,7 +271,7 @@ export function DomainDNSManager({
         if (!confirm(t('dns.confirmDelete'))) return;
         setMutatingRecord(true);
         try {
-            const res = await answer.send(`/api/v1/domains/${domainId}/dns/records?id=${id}`, { method: 'DELETE' });
+            const res = await answer.send(`${api}/records?id=${id}`, { method: 'DELETE' });
             if (!res) return;
             if (!res.ok) {
                 await refused(res, 'dns.recordDeleteFailed');
@@ -361,7 +374,7 @@ export function DomainDNSManager({
                     busy={capabilities.reading}
                 />
             )}
-            {!externalDNS && !remoteDNS && (isAdditionalUser || (dnsServer !== null && dnsServer !== '')) && (
+            {!externalDNS && !remoteDNS && !infrastructureZone && (isAdditionalUser || (dnsServer !== null && dnsServer !== '')) && (
                 <DNSSECSection domainId={domainId} domainName={domainName} readOnly={readOnly} />
             )}
 
@@ -376,7 +389,7 @@ export function DomainDNSManager({
                         </Button>
                     ) : (
                         <>
-                            <Button
+                            {!infrastructureZone && <Button
                                 variant="secondary"
                                 icon={RefreshCw}
                                 disabled={publishing || !canChange || (!remoteDNS && dnsServer === '')}
@@ -384,7 +397,7 @@ export function DomainDNSManager({
                                 onClick={publishZone}
                             >
                                 {publishing ? t('dns.publishing') : t('dns.republish')}
-                            </Button>
+                            </Button>}
                             <Button
                                 variant="primary"
                                 icon={Plus}
@@ -466,7 +479,8 @@ export function DomainDNSManager({
                             </thead>
                             <tbody>
                                 {shown.value.map((rec) => {
-                                    const managedRecord = rec.type === 'SOA' || (rec.type === 'NS' && rec.name === domainName);
+                                    const bySetup = rec.managed_by === 'setup';
+                                    const managedRecord = bySetup || rec.type === 'SOA' || (rec.type === 'NS' && rec.name === domainName);
                                     return (
                                     <tr key={rec.id} className="border-b border-border last:border-0 hover:bg-surface-2/60">
                                         <td className="px-4 py-2.5">
@@ -474,7 +488,17 @@ export function DomainDNSManager({
                                                 {rec.type}
                                             </span>
                                         </td>
-                                        <td className="px-4 py-2.5 font-medium text-fg">{rec.name}</td>
+                                        <td className="px-4 py-2.5 font-medium text-fg">
+                                            {rec.name}
+                                            {/* Who manages a record of the infrastructure zone, in words
+                                                beside its name, not only as a disabled button.
+                                                Altyapi bolgesinde kaydi kimin yonettigi, adin yaninda. */}
+                                            {rec.managed_by && (
+                                                <span className="mt-1 block text-xs font-normal text-fg-muted" data-managed-by={rec.managed_by}>
+                                                    {t(rec.managed_by === 'setup' ? 'dns.managedBySetup' : 'dns.requestedByPeer')}
+                                                </span>
+                                            )}
+                                        </td>
                                         {/* A least width: without it a phone squeezes
                                             a long value to one character a line and
                                             the row grows to two screens. The table
@@ -493,7 +517,7 @@ export function DomainDNSManager({
                                                     onClick={() => deleteRecord(rec.id)}
                                                     disabled={managedRecord || mutatingRecord || shown.stale || !recordsKnown || !canChange}
                                                     aria-label={t('dns.confirmDelete')}
-                                                    title={managedRecord ? t('dns.managedRecord') : t('dns.confirmDelete')}
+                                                    title={bySetup ? t('dns.managedBySetupHint') : managedRecord ? t('dns.managedRecord') : t('dns.confirmDelete')}
                                                     className="rounded-md p-1.5 text-fg-subtle transition-colors hover:bg-surface-2 hover:text-danger disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-fg-subtle"
                                                 >
                                                     <Trash2 className="h-4 w-4" />

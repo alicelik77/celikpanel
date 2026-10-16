@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from '../router';
-import { Globe, Plus, Trash2, ExternalLink, Settings, Lock, HardDrive } from 'lucide-react';
+import { Globe, Plus, Trash2, ExternalLink, Settings, Lock, HardDrive, Network } from 'lucide-react';
 import { AddDomainModal } from './AddDomainModal';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
@@ -10,6 +10,7 @@ import { apiErrorText, readApiError } from '../lib/apiError';
 import { domainDeletionDetailKey, domainDeletionReasonKey, readDomainDeletionOutcome, readSavedDomainDeletion } from '../lib/domainDeletionPending';
 import { decodeList, gateOn, lastKnown, useRemote } from '../lib/remote';
 import { SUBSCRIPTIONS_URL, decodeSubscriptions } from '../lib/subscriptions';
+import { INFRASTRUCTURE_ZONES_URL, decodeInfrastructureZones, infrastructureZonePath } from '../lib/infrastructureZones';
 import { dnsBlocker, useHostingCapabilities } from '../lib/hostingCapabilities';
 import type { TranslationKey } from '../i18n/en';
 import { useAuth } from '../auth/AuthContext';
@@ -148,6 +149,15 @@ export function Domains() {
         [listed?.value, isTeamMember],
     );
     const listCurrent = list.remote.state === 'known';
+    // The infrastructure zone (2026-10-16): an administrator also sees the
+    // zone server setup created for the panels' own names, as a DNS-only
+    // entry of this list. Its own read; a failure says so in one line and
+    // never hides or changes the domains.
+    // Altyapi bolgesi: yonetici kurulumun olusturdugu bolgeyi bu listede
+    // yalniz DNS girdisi olarak gorur. Okunamazsa tek satirda soylenir.
+    const isAdmin = role === 'admin';
+    const infrastructure = useRemote(isAdmin ? INFRASTRUCTURE_ZONES_URL : null, decodeInfrastructureZones);
+    const infrastructureZones = lastKnown(infrastructure.remote)?.value ?? [];
 
     // D-009 on the page itself, not only inside the dialog: when this server is
     // KNOWN to be unable to publish a website's DNS, the Add buttons are
@@ -261,6 +271,10 @@ export function Domains() {
     };
 
     const filtered = domains.filter((d) => d.domain_name.toLowerCase().includes(query.toLowerCase()));
+    // A zone a website now uses is listed as that website, with a badge.
+    const infrastructureRows = infrastructureZones.filter((zone) => zone.domainId === null && zone.zone.includes(query.toLowerCase()));
+    const infrastructureNames = new Set(infrastructureZones.map((zone) => zone.zone));
+    const listedCount = filtered.length + infrastructureRows.length;
     const allSelected = !isTeamMember && filtered.length > 0 && selected.length === filtered.length;
     const canView = (domain: Domain, capability: DomainCapability) =>
         !isTeamMember || Boolean(domain.access && hasDomainAccess(domain.access, capability, 'view'));
@@ -308,7 +322,7 @@ export function Domains() {
                 busy={list.reading}
                 className="py-1"
             >
-                {(shown) => (domains.length === 0 ? (
+                {(shown) => (domains.length === 0 && infrastructureZones.every((zone) => zone.domainId !== null) ? (
                 <KnownEmpty
                     of={shown}
                     icon={Globe}
@@ -334,6 +348,14 @@ export function Domains() {
                 />
             ) : (
                 <div className="rounded-xl border border-border-strong bg-surface">
+                    {isAdmin && infrastructure.remote.state === 'unknown' && (
+                        <CouldNotCheck
+                            className="m-3"
+                            text={t('domains.infrastructure.unknown')}
+                            onRetry={() => void infrastructure.retry()}
+                            busy={infrastructure.reading}
+                        />
+                    )}
                     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-3">
                         {!isTeamMember && <div className="flex items-center gap-2">
                             {addButton}
@@ -357,7 +379,7 @@ export function Domains() {
                     </div>
 
                     <p className="px-4 pt-3 text-xs text-fg-subtle">
-                        {t('common.itemsTotal', { n: filtered.length })}
+                        {t('common.itemsTotal', { n: listedCount })}
                     </p>
                     {(() => {
                         // The first state after an update from a release that
@@ -439,6 +461,11 @@ export function Domains() {
                                                         {d.domain_name}
                                                     </button>
                                                 </span>
+                                                {infrastructureNames.has(d.domain_name) && (
+                                                    <span className="rounded-md bg-surface-2 px-1.5 py-0.5 text-xs font-medium text-fg-muted" data-infrastructure-site="">
+                                                        {t('domains.infrastructure.siteBadge')}
+                                                    </span>
+                                                )}
                                                 {d.parent_id ? (
                                                     <span className="rounded-md bg-surface-2 px-1.5 py-0.5 text-xs font-medium text-fg-subtle">
                                                         {t('domains.subdomain')}
@@ -506,12 +533,50 @@ export function Domains() {
                                         </td>
                                     </tr>
                                 ))}
+                                {/* The infrastructure zone: DNS only. No selection, no
+                                    visit, no removal; its one action opens the records.
+                                    Altyapi bolgesi: yalniz DNS; tek eylemi kayitlari acar. */}
+                                {infrastructureRows.map((zone) => (
+                                    <tr key={`infrastructure-${zone.zone}`} className="border-b border-border last:border-0 hover:bg-surface-2/60" data-infrastructure-zone={zone.zone}>
+                                        {!isTeamMember && <td className="px-4 py-3" />}
+                                        <td className="px-4 py-3">
+                                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                                <span className="inline-flex min-w-0 items-center gap-2">
+                                                    <Network className="h-4 w-4 shrink-0 text-fg-subtle" aria-hidden="true" />
+                                                    <button
+                                                        onClick={() => navigate(infrastructureZonePath(zone.zone))}
+                                                        className="text-left text-base font-medium text-primary hover:underline"
+                                                    >
+                                                        {zone.zone}
+                                                    </button>
+                                                </span>
+                                                <span className="rounded-md border border-border bg-surface-2 px-1.5 py-0.5 text-xs font-medium text-fg-muted">
+                                                    {t('domains.infrastructure.badge')}
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td className="px-4 py-3 text-fg-subtle">—</td>
+                                        <td className="px-4 py-3 text-right text-fg-subtle">—</td>
+                                        <td className="px-4 py-3 text-right text-fg-subtle">—</td>
+                                        <td className="px-4 py-3 text-fg-muted">{t('domains.infrastructure.status')}</td>
+                                        <td className="row-actions px-4 py-3">
+                                            <div className="flex items-center justify-end gap-0.5">
+                                                <IconAction
+                                                    onClick={() => navigate(infrastructureZonePath(zone.zone))}
+                                                    title={t('domains.infrastructure.manage')}
+                                                >
+                                                    <Settings className="h-4 w-4" />
+                                                </IconAction>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
                             </tbody>
                         </table>
                     </div>
 
                     <div className="border-t border-border px-4 py-2.5 text-xs text-fg-subtle">
-                        {t('common.itemsTotal', { n: filtered.length })}
+                        {t('common.itemsTotal', { n: listedCount })}
                     </div>
                 </div>
                 ))}

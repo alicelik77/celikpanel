@@ -27,6 +27,8 @@ const screenFiles = [
   // The second batch.
   'Settings', 'UsersPage', 'DomainFileManager', 'DomainSSLSettings', 'ImportPage', 'LicenseNotice', 'MonitoringPage',
   'ComponentDetail', 'ServiceRecordLookup', 'ServiceShell', 'DomainDetail',
+  // The infrastructure zone's page (2026-10-16).
+  'InfrastructureZone',
 ];
 const icons = new Set(['AlertTriangle', 'XCircle']);
 // Children of the screens under test that are not under test themselves.
@@ -83,6 +85,8 @@ const own = {
   '/lib/visibleReads': compileSource('lib/visibleReads.ts', () => stub),
   // Component names in the interface language (2026-10-15).
   '/lib/componentName': compileSource('lib/componentName.ts', () => stub),
+  // The infrastructure DNS zones beside the domains (2026-10-16).
+  '/lib/infrastructureZones': compileSource('lib/infrastructureZones.ts', besideRemote),
 };
 // The two notices of 10 Oct 2026 are the shipped ones: what a service action
 // ended with, and a change whose one-time result is not kept.
@@ -147,6 +151,8 @@ const healthy = {
   '/api/v1/hosting/capabilities': json(caps()),
   '/api/v1/domains': json([domainRow]),
   '/api/v1/subscriptions': json({ subscriptions: [] }),
+  // An administrator's Domains page also reads the infrastructure zones (2026-10-16).
+  '/api/v1/dns/infrastructure-zones': json({ zones: [] }),
   '/api/v1/database-servers': json([engine]),
   '/api/v1/database-servers/1/databases': json([{ id: 5, name: 'shop', users: ['shop'], created_at: '' }]),
   '/api/v1/database-servers/1/users': json([{ id: 7, username: 'shop', databases: ['shop'], created_at: '' }]),
@@ -1884,4 +1890,133 @@ test('a component page whose stored record is refused for another reason does no
     assert.equal(scanCalls().length, 0, 'the check ran for an unrelated refusal');
     assert.ok(has('component.unknown'));
   } finally { await cleanup(); }
+});
+
+
+// --- Second server as a full peer, part 2 (2026-10-16) -------------------------
+// The infrastructure zone on the primary: a DNS-only entry of Domains whose one
+// action opens the existing record editor; setup's records say they are
+// setup's, the other server's say so, the owner's are the owner's.
+const InfrastructureZonePage = (await import(shared.compile('components/InfrastructureZone.tsx', {
+  ...own, '/DomainDNSManager': shared.compile('components/DomainDNSManager.tsx', own),
+}))).InfrastructureZonePage;
+const infraZone = (overrides = {}) => ({ zone: 'celikhost.com', kind: 'infrastructure', records: 9, peer_records: 1, ...overrides });
+const infraRecords = [
+  { id: 1, domain_id: 4, name: 'frankfurt.celikhost.com', type: 'A', content: '192.0.2.1', ttl: 300, disabled: false, managed_by: 'setup' },
+  { id: 2, domain_id: 4, name: 'mail.boston.celikhost.com', type: 'A', content: '192.0.2.2', ttl: 300, disabled: false, managed_by: 'peer' },
+  { id: 3, domain_id: 4, name: 'celikhost.com', type: 'TXT', content: '"owner"', ttl: 300, disabled: false },
+];
+const infraBase = '/api/v1/dns/infrastructure-zones/celikhost.com';
+const infraServed = {
+  '/api/v1/dns/infrastructure-zones': json({ zones: [infraZone()] }),
+  [`${infraBase}/zone`]: json({ id: 4, name: 'celikhost.com', type: 'MASTER' }),
+  [`${infraBase}/records`]: json({ records: infraRecords }),
+};
+
+test('Domains: an administrator sees the infrastructure zone as a DNS-only entry whose one action opens its records', async () => {
+  serve(infraServed);
+  try {
+    await mount(Domains);
+    assert.ok(has('celikhost.com') && has('domains.infrastructure.badge') && has('domains.infrastructure.status'));
+    assert.equal(buttons('domains.action.delete').length, 1, 'the infrastructure zone can be removed from the list');
+    assert.equal(buttons('domains.infrastructure.manage').length, 1);
+    await press(buttons('domains.infrastructure.manage')[0]);
+    assert.deepEqual(globalThis.currentTest.navigated, ['/domains/infrastructure/celikhost.com']);
+  } finally {
+    await cleanup();
+  }
+  // Control: a reseller is never asked for it and never shown it.
+  serve(infraServed, 'reseller');
+  try {
+    await mount(Domains);
+    assert.equal(reads('/api/v1/dns/infrastructure-zones'), 0);
+    assert.ok(!has('domains.infrastructure.badge'));
+  } finally {
+    await cleanup();
+  }
+});
+
+test('Domains: the zone a website now uses is that website, marked; an unreadable zone list is said in one line', async () => {
+  serve({ '/api/v1/dns/infrastructure-zones': json({ zones: [infraZone({ zone: 'example.com', domain_id: 1 })] }) });
+  try {
+    await mount(Domains);
+    assert.ok(has('domains.infrastructure.siteBadge'));
+    assert.ok(!has('domains.infrastructure.badge'), 'the website is listed twice');
+    assert.equal(buttons('domains.infrastructure.manage').length, 0);
+  } finally {
+    await cleanup();
+  }
+  serve({ '/api/v1/dns/infrastructure-zones': failures['refused by the server'] });
+  try {
+    await mount(Domains);
+    assert.ok(has('domains.infrastructure.unknown'));
+    assert.ok(has('example.com'), 'the domains were hidden by the zone read');
+    assert.ok(!has('domains.empty'));
+  } finally {
+    await cleanup();
+  }
+});
+
+test('Infrastructure zone records: setup’s are setup’s and cannot be removed here, the peer’s and the owner’s can', async () => {
+  serve(infraServed);
+  try {
+    await mount(DomainDNSManager, { domainId: 0, domainName: 'celikhost.com', infrastructureZone: true });
+    assert.equal(reads(`${infraBase}/zone`), 1);
+    assert.equal(reads('/api/v1/domains/0/dns/zone'), 0, 'the editor read a domain that does not exist');
+    assert.equal(reads('/api/v1/domains/0/dnssec'), 0, 'DNSSEC is offered for the infrastructure zone');
+    assert.ok(has('dns.managedBySetup') && has('dns.requestedByPeer'));
+    assert.equal(buttons('dns.republish').length, 0);
+    const trash = tree.root.findAll((node) => node.type === 'button' && node.props['aria-label'] === 'dns.confirmDelete');
+    assert.equal(trash.length, 3);
+    // The rows are drawn in the order the server listed them.
+    assert.equal(trash[0].props.disabled, true, 'setup’s record can be removed');
+    assert.equal(trash[0].props.title, 'dns.managedBySetupHint');
+    assert.equal(Boolean(trash[1].props.disabled), false, 'the peer’s record cannot be removed by the owner');
+    assert.equal(Boolean(trash[2].props.disabled), false, 'the owner’s record cannot be removed');
+    globalThis.confirm = () => true;
+    await press(trash[2]);
+    assert.ok(calls.some((call) => call.method === 'DELETE' && call.url === `${infraBase}/records?id=3`), 'the delete did not go to the zone’s own endpoint');
+  } finally {
+    await cleanup();
+  }
+  // Control: an ordinary domain's records carry no ownership words.
+  serve();
+  try {
+    await mount(DomainDNSManager, domain);
+    assert.ok(!has('dns.managedBySetup') && !has('dns.requestedByPeer'));
+  } finally {
+    await cleanup();
+  }
+});
+
+test('Infrastructure zone page: what the zone is and who keeps which record come before the editor; an unknown zone is said', async () => {
+  serve(infraServed);
+  try {
+    await mount(InfrastructureZonePage, { zone: 'celikhost.com' });
+    const page = text();
+    for (const key of ['domains.infrastructure.what', 'domains.infrastructure.managed', 'domains.infrastructure.yours', 'domains.infrastructure.peer', 'domains.infrastructure.openSetup']) {
+      assert.ok(page.includes(key), key);
+    }
+    assert.ok(page.indexOf('domains.infrastructure.what') < page.indexOf('frankfurt.celikhost.com'));
+    assert.ok(!page.includes('domains.infrastructure.openSite'), 'a website is claimed for the zone');
+  } finally {
+    await cleanup();
+  }
+  serve({ ...infraServed, '/api/v1/dns/infrastructure-zones': json({ zones: [] }) });
+  try {
+    await mount(InfrastructureZonePage, { zone: 'celikhost.com' });
+    assert.ok(has('domains.infrastructure.missing'));
+    assert.equal(reads(`${infraBase}/records`), 0);
+  } finally {
+    await cleanup();
+  }
+});
+
+test('every infrastructure zone text exists in both languages', () => {
+  const catalogue = (lang) => readFileSync(new URL(`../src/i18n/screens/${lang}.ts`, import.meta.url), 'utf8');
+  const keysIn = (text) => [...text.matchAll(/^\s*'((?:domains\.infrastructure\.[A-Za-z]+)|dns\.managedBySetup(?:Hint)?|dns\.requestedByPeer)':\s*'(.*)',\s*$/gm)].map((m) => [m[1], m[2]]);
+  const en = new Map(keysIn(catalogue('en')));
+  const tr = new Map(keysIn(catalogue('tr')));
+  assert.equal(en.size, 20);
+  for (const [key, value] of en) assert.ok(tr.has(key) && tr.get(key) !== value, key);
 });

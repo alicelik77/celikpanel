@@ -1052,6 +1052,8 @@ export const trServerScreens: Record<ServerScreenKey, string> = {
     'services.mailProfiles.secondary.record': 'Oluşturulacak kayıt',
     'services.mailProfiles.secondary.nameUnknown': 'posta sunucusu adı',
     'services.mailProfiles.secondary.valueUnknown': 'bu sunucunun genel IPv4 adresi',
+    'services.mailProfiles.secondary.channel': 'Bu sunucunun birincile yetkili bir DNS bağlantısı var. Kurulum posta sunucusu adını denetlerken bu kaydı birincilden kendisi ister; kaydı elle yalnız birincil reddederse ya da ulaşılamazsa eklersiniz ve kurulum nedenini söyler.',
+    'services.mailProfiles.secondary.noChannel': 'Bu sunucunun birincile yetkili bir DNS bağlantısı yok; bu kaydı hiçbir şey kendiliğinden oluşturmaz. Kaydı elle ekleyin: birincilde Alan adları sayfasındaki altyapı bölgesinde ya da DNS sağlayıcınızda.',
     'services.mailProfiles.secondary.next': 'Ardından bu panele, bu sunucunun kayıtlarının nerede oluşturulduğunu söyleyin: sunucu kurulumunda, burada barındırılan sitelerin DNS kayıtlarının nasıl yönetileceğini seçin. Posta profilleri bundan sonra kullanılabilir olur.',
     'services.mailProfiles.secondary.extend': 'Bu sunucunun kurulumunu genişletin',
     'services.mailProfiles.secondary.openSetup': 'Sunucu kurulumunu açın',

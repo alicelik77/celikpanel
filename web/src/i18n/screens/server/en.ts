@@ -1117,6 +1117,8 @@ export const enServerScreens = {
     'services.mailProfiles.secondary.record': 'Record to create',
     'services.mailProfiles.secondary.nameUnknown': 'the mail host name',
     'services.mailProfiles.secondary.valueUnknown': 'this server’s public IPv4 address',
+    'services.mailProfiles.secondary.channel': 'This server has an authorized DNS connection to the primary. While setup checks the mail host name, it asks the primary to create this record by itself; you add it by hand only if the primary refuses or cannot be reached, and setup then says why.',
+    'services.mailProfiles.secondary.noChannel': 'This server has no authorized DNS connection to the primary, so nothing creates this record automatically. Add it by hand: on the primary under Domains, in its infrastructure zone, or at your DNS provider.',
     'services.mailProfiles.secondary.next': 'Then tell this panel where this server’s records are created: in server setup, choose how DNS records for websites hosted here are managed. The mail profiles become available after that.',
     'services.mailProfiles.secondary.extend': 'Extend this server’s setup',
     'services.mailProfiles.secondary.openSetup': 'Open server setup',
