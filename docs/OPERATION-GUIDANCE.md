@@ -8202,3 +8202,44 @@ Counts after these corrections: `npm test` 1499 of 1499 (22 s); `npx tsc
 blocks and the access step's secondary-DNS box have not been seen rendered on
 a native server; O2 (no-SNI certificate) and O4 (the lab port in the handover
 address) are not judged.
+
+### Installed servers after the alpha.87 publication: what the owner has not yet reported (2026-10-16)
+
+No observation yet, and no change. v0.1.0-alpha.87 was published on 2026-10-16,
+about 5.5 hours after v0.1.0-alpha.86, and no installed server had been
+reported updated to either when this entry was written; only the owner starts
+that, from the panel's own update screen. Nothing was measured on an installed
+server for this entry, no text or screen was changed for it, and it is not
+acceptance evidence. It is set against D-024 (the current reason, who must act,
+the next action and how work resumes come before long lists), D-033 (a screen
+that makes the owner wait shows that it waits, or says that nothing needs to be
+done) and the known-state rule. It adds to the entry for the alpha.86
+publication above, whose items (a) to (e) are still unreported.
+
+1. **What the owner is asked to report after the update, and nothing else is
+   recorded until then.** Six things: (a) each server's update result inside
+   the panel, from whichever version it was updated; (b) what the update page
+   showed during the restart; (c) whether the full-screen licence page
+   appeared during the update; (d) the Agent's version; (e) Frankfurt's setup
+   final step after the update, and the output of `postconf -n >/dev/null`;
+   (f) whether "Extend this server's setup" appears on Boston's ready screen.
+   Until the owner reports them, each is "not recorded", not "worked" and not
+   "failed".
+2. **Which update page the owner sees depends on where the update starts.** The
+   updater's sequence floor admits an update from alpha.85 or from alpha.86
+   straight to alpha.87 (the policy's `previous_commit` is a build-contract pin,
+   not an install precondition; stated from reading
+   `cmd/agent/system_update_contract.go` and from the absence of a
+   `previous_commit` check under `cmd/`, not from a measured update). An update
+   from alpha.85 runs on alpha.85's update screen, which is the one that showed
+   the warning and the toast the owner reported. An update from alpha.86 runs on
+   alpha.86's screen: there the calm restart notice, the single notice and the
+   lock through the restart should be seen on an installed server for the first
+   time. What the owner sees on an update from alpha.85 therefore says nothing
+   about them, and must not be recorded as if it did.
+3. **What was measured natively is a lab.** The calm restart (set17 and
+   set17b) and the extension of a completed setup (set18 and set18b) were
+   measured on disposable guests with test-licence builds and a lab DNS and
+   ACME; the F1 lock extension and the session gate's `PANEL_STARTING` path
+   were not measured natively, and the secondary-DNS boxes were not reached.
+   Nothing here is an installed-server observation.
