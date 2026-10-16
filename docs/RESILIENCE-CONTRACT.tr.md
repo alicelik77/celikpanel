@@ -5291,3 +5291,63 @@ bir adayı kaydeder; 16 Ekim 2026 girdinin saat tarihidir.
 - **alpha.88'den beri kod değişikliği yok.** `git diff --stat 1cb3628ff HEAD -- cmd internal web` boştur; sürüm sırası 88'den 89'a geçer (yalnız sürüm hazırlığı). **Hiçbir P0 işi kapanmaz ya da ilerlemez**; P0.1 ile P0.5 kısmi kalır.
 - **Şema ve kurtarma.** Şema 44, geçiş yok; kurtarma davranışı değişmez. Sahibin 16 Ekim 2026 talimatıyla gerçek sistem kanıtı yok.
 - **Açık.** alpha.88 girdisinin açık bıraktığı her şey açık kalır; adım görünümü ilk kez alpha.88'den güncellemede gözlenir. Bkz. [sürüm notları](RELEASE-NOTES-v0.1.0-alpha.89.tr.md).
+
+### v0.1.0-alpha.88 ve v0.1.0-alpha.89'un yayımlanması (yayımda kod değişikliği yok; ilke 2 ve 6; D-024; D-032; D-033; 2026-10-16)
+
+D-025 ilke 2 (kanıtın bir anlamı ve yaşam döngüsü vardır: bilinmeyen; yok, boş ya
+da başarılı değildir) ve 6 (hazır olma, ilerleme ve erişim birbirinden bağımsız
+kalır); D-024; D-032; D-033. **Hiçbir P0 işi kapanmaz ya da ilerlemez.**
+P0.1–P0.5 kısmi kalır ve her açık kabul işi açık kalır. Bu girdi iki yayımı ve
+sahibin güncellemelere ilişkin bildirimini kaydeder; kod, şema ya da kurtarma
+davranışını değiştirmez. 2026-10-16, içindeki her şeyin saat tarihidir.
+
+- **Yayımlama.** İki sürüm de 16 Ekim 2026'da sürümü hazırlayan kişi tarafından
+  yayımlandı, sahibin 15 Ekim 2026 talimatı uyarınca (kurulu panel
+  güncellemelerini yalnız sahip yapar). v0.1.0-alpha.88: #217 numaralı çekme
+  isteği `1cb3628ff1969f3fc2e9f0d848b7adf629a815b0` olarak squash ile
+  birleştirildi (ağaç `abc2a0a3ee177f064d6b8af8304d66ae1feb1c63`); `main` koşusu
+  38865909812 başarılı, 24 iş (hazırlayan kişinin zincir betiği önce erken durdu,
+  çünkü `gh run watch` koşu bitmeden döndü; herhangi bir değişken ya da etiket
+  adımından önce güvenle durdu ve devam ettirildi); değişken 87'den 88'e;
+  açıklamalı etiket (nesne `851766854005a2a223edd9e097afd7853a02ff30`) `main`
+  koşusundan sonra; etiket koşusu 38867798325 başarılı; sürüm
+  2026-10-16T07:49:41Z; arşiv SHA-256
+  `feaf77476a100425a2f048b47ece9da85a45585b5b8f3387692b497ad04a45d3`, 66.196.013
+  bayt. v0.1.0-alpha.89: #218 numaralı çekme isteği
+  `ac36fccf4e4238a8bc4624356a478ba8dab20b34` olarak squash ile birleştirildi
+  (ağaç `29f08b6bef1ca6e19c4f02890f83cfeb3f678433`); `main` koşusu başarılı;
+  değişken 88'den 89'a; etiket koşusu 38874797963 başarılı; sürüm
+  2026-10-16T08:57:23Z; arşiv SHA-256
+  `58c6911be7a1b640b0bafb595a8c2b54451d70d8238d51b1c726a76bb7f59526`, 66.195.105
+  bayt; arayüz paketi alpha.88'inkiyle bayt bayt aynı. Dosyaları ve portal
+  paketlerini hazırlayan kişi bir indirmeden denetledi ve portalı her biri için
+  hazırlayan kişi yayımladı (committed, genel doğrulama ok, 26 istek, sonra
+  dışarıdan okuma); hazırlayan kişi bildirdi, burada bir dosyada kayıtlı değil.
+  Sınırlar: etiket dosyaları Windows'ta `git archive` ile, canlı sitenin
+  kopyasında terfi aracı provası yok, önceki paketle dosya dosya karşılaştırma
+  yok, yayımlayıcının kendi testi çalıştırılmadı. Her sürüm notlarının
+  "Yayımlama kaydı" bunları sayar.
+- **Kurulu paneller (sahibin bildirimi, iki ekran görüntüsü, yaklaşık 09:30Z).**
+  Sahip iki güncellemeyi de panelin kendi güncelleme ekranından başlattı. İki
+  sunucu da önceki sürümünden doğrudan alpha.89'a geçti (sıra tabanı buna izin
+  verir): Frankfurt alpha.87'den, Boston bildirilmeyen bir sürümden (alpha.85 ya
+  da sonrası). Hiçbir sunucu alpha.88'i çalıştırmadı. İkisi de geçerli sürüm
+  v0.1.0-alpha.89'u, `ac36fccf4e42…` commit'ini ve beş tamamlanmış adımlı bir
+  kartı gösterir. Güncelleme önceki sürümün sayfasında çalıştığı için yeniden
+  başlama sırasındaki canlı adım görünümü (ilke 6: ilerleme erişimden bağımsız
+  gösterilir) görülmedi; ilk kez bir sonraki güncellemede, alpha.89'dan görülür.
+  alpha.88 tasarımının kaydettiği yeniden başlama ölçümü ve Agent'ın ilerleme
+  okuması bu bildirimle doğrulanmış değildir. Bildirilmeyen: lisans sayfası,
+  Agent'ın sürümü, Frankfurt'un kurulum son adımı, Boston'un "Bu sunucunun
+  kurulumunu genişletin" seçeneği, `postconf -n`. Bu girdi hiçbir iş için kabul
+  kanıtı değildir.
+- **Şema ya da sürüm geçişi.** Yok: ikisinde de şema 44; sürüm sırası 87'den
+  88'e ve 88'den 89'a sürüm hazırlıklarında (`7231afdbf` ve alpha.89 hazırlığı)
+  geçti. **Kurtarma davranışı.** Değişmez. Sahibin 16 Ekim 2026 talimatıyla
+  gerçek sistem kaydı yok.
+- **Açık.** alpha.88 ve alpha.89 aday girdilerinin açık bıraktığı her şey; bunlar
+  arasında: Agent'ın ilerleme okuması, taban zaman damgası ve yeniden başlama
+  ölçümü gerçek bir güncellemede gözlenmedi; canlı adım görünümü henüz
+  görülmedi; aynı sürümün yeniden denenmesi doğrulama sınırını bildirmez; ve
+  Frankfurt'un sayfasında iyi bir "yeni güncelleme yok" durumunun uyarı
+  simgesiyle çizilmesi D-033 maddesi.

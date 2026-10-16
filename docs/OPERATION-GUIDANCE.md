@@ -7938,6 +7938,8 @@ Counts after item 17: `npm test` 1483 of 1483; `npx tsc --noEmit` clean;
 
 ### Installed servers after the alpha.86 publication: what the owner has not yet reported (2026-10-15)
 
+*Later: the owner's report of 2026-10-16 is in "Installed servers after the alpha.88 and alpha.89 publication" at the end of this file; this entry stays as history.*
+
 No observation yet, and no change. v0.1.0-alpha.86 was published on 2026-10-15
 and no installed server had been updated when this entry was written; only the
 owner starts that, from the panel's own update screen. Nothing was measured on
@@ -8205,6 +8207,8 @@ address) are not judged.
 
 ### Installed servers after the alpha.87 publication: what the owner has not yet reported (2026-10-16)
 
+*Later: the owner's report of 2026-10-16 is in "Installed servers after the alpha.88 and alpha.89 publication" at the end of this file; this entry stays as history.*
+
 No observation yet, and no change. v0.1.0-alpha.87 was published on 2026-10-16,
 about 5.5 hours after v0.1.0-alpha.86, and no installed server had been
 reported updated to either when this entry was written; only the owner starts
@@ -8416,3 +8420,43 @@ measured length includes the updater's checks before it stops the Panel; the
 verify boundary. The provider itself is still not mounted in a test (IndexedDB,
 Web Locks, the authentication signal); its wiring is checked from source and in
 the mock browser.
+
+### Installed servers after the alpha.88 and alpha.89 publication: what the owner observed (2026-10-16)
+
+The owner reported two screenshots at about 09:30Z on 2026-10-16. They are
+observations of installed servers, not acceptance evidence, and no text or
+screen was changed for this entry. They are set against D-024 (the current
+reason, who must act, the next action and how work resumes), D-033 (a screen
+that makes the owner wait shows that it waits; a good state is not drawn as a
+warning) and the known-state rule. This entry answers the alpha.86 and alpha.87
+entries above for the items reported; their unreported items stay unreported.
+
+1. **What happened.** The owner started both updates from the panel's own update
+   screen. Both servers went **directly from their previous version to
+   v0.1.0-alpha.89**: Frankfurt from alpha.87, Boston from the version it ran
+   (not reported; alpha.85 or later). The updater's sequence floor admits it. No
+   server ran alpha.88, so alpha.88 was published but never installed.
+2. **What the screenshots show.** On both servers, Settings, CelikPanel updates
+   reads "Current version v0.1.0-alpha.89" and "Current commit
+   ac36fccf4e4238a8bc4624356a478ba8dab20b34"; the sidebar reads "CelikPanel ·
+   v0.1.0-alpha.89 · build ac36fccf4e42"; and a card "Updated to v0.1.0-alpha.89
+   — build ac36fccf4e42" lists five completed steps: download the update
+   package; check the signature and checksums; check the server before
+   installing; install the new version and restart the panel; verify the new
+   version. The alpha.89 interface therefore renders the server's step plan of
+   the completed update after the reload.
+3. **What was not seen.** Each update ran on the previous version's page, so the
+   live step view during the restart (one bar per step, the restart as a planned
+   step with one calm sentence) was **not** seen. It is first seen on the next
+   update, from alpha.89. What the owner saw on these updates says nothing about
+   it and must not be recorded as if it did.
+4. **A defect found in what was seen (D-033, for the next release).**
+   Frankfurt's page shows "There is no new update on this channel." with a
+   warning-triangle icon. That is a good state drawn with a warning icon; it
+   should read as confirmation, for example "You are on the latest version", with
+   a neutral or success icon. It is recorded as an item for the next release;
+   nothing was changed here.
+5. **Not reported, so not recorded.** The licence page, the Agent's version,
+   Frankfurt's setup final step, Boston's "Extend this server's setup" and the
+   output of `postconf -n`. Each is "not recorded", not "worked" and not
+   "failed".

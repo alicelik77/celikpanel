@@ -7903,6 +7903,8 @@ başarısız (WSL konuğu `CelikPanel-S2-Debian`). Agent yeniden koşulmadı.
 
 ### Alpha.86 yayımından sonra kurulu sunucular: sahibin henüz bildirmedikleri (2026-10-15)
 
+*Sonra: sahibin 16 Ekim 2026 tarihli bildirimi bu dosyanın sonundaki "Alpha.88 ve alpha.89 yayımından sonra kurulu sunucular" girdisindedir; bu girdi geçmiş olarak kalır.*
+
 Henüz gözlem yok ve değişiklik yok. v0.1.0-alpha.86 15 Ekim 2026'da yayımlandı
 ve bu girdi yazıldığında hiçbir kurulu sunucu güncellenmemişti; bunu yalnız
 sahip, panelin kendi güncelleme ekranından başlatır. Bu girdi için kurulu
@@ -8168,6 +8170,8 @@ noktası) değerlendirilmedi.
 
 ### Alpha.87 yayımından sonra kurulu sunucular: sahibin henüz bildirmedikleri (2026-10-16)
 
+*Sonra: sahibin 16 Ekim 2026 tarihli bildirimi bu dosyanın sonundaki "Alpha.88 ve alpha.89 yayımından sonra kurulu sunucular" girdisindedir; bu girdi geçmiş olarak kalır.*
+
 Henüz gözlem yok ve değişiklik yok. v0.1.0-alpha.87, v0.1.0-alpha.86'dan
 yaklaşık 5,5 saat sonra 16 Ekim 2026'da yayımlandı ve bu girdi yazıldığında
 hiçbir kurulu sunucunun ikisinden birine güncellendiği bildirilmemişti; bunu
@@ -8379,3 +8383,44 @@ Panel'i durdurmadan önceki denetimlerini içerir; `prepare` adımı yalnız bir
 saniye sürebilir; aynı sürümün yeniden denenmesi doğrulama sınırı bildirmez.
 Sağlayıcının kendisi hâlâ bir testte bağlanmadı (IndexedDB, Web Locks, kimlik
 doğrulama sinyali); bağlantısı kaynaktan ve sahte tarayıcıda denetlendi.
+
+### Alpha.88 ve alpha.89 yayımından sonra kurulu sunucular: sahibin gözlemledikleri (2026-10-16)
+
+Sahip 16 Ekim 2026'da yaklaşık 09:30Z'de iki ekran görüntüsü bildirdi. Bunlar
+kurulu sunucuların gözlemidir, kabul kanıtı değildir ve bu girdi için hiçbir metin
+ya da ekran değiştirilmedi. D-024'e (mevcut neden, kimin işlem yapacağı, somut
+sonraki eylem ve nasıl devam edileceği), D-033'e (sahibi bekleten bir ekran
+beklediğini gösterir; iyi bir durum uyarı gibi çizilmez) ve bilinen-durum
+kuralına karşı konur. Bu girdi, bildirilen maddeler için yukarıdaki alpha.86 ve
+alpha.87 girdilerine yanıt verir; onların bildirilmeyen maddeleri bildirilmemiş
+kalır.
+
+1. **Ne oldu.** Sahip iki güncellemeyi de panelin kendi güncelleme ekranından
+   başlattı. İki sunucu da önceki sürümünden **doğrudan v0.1.0-alpha.89'a**
+   geçti: Frankfurt alpha.87'den, Boston çalıştırdığı sürümden (bildirilmedi;
+   alpha.85 ya da sonrası). Güncelleyicinin sıra tabanı buna izin verir. Hiçbir
+   sunucu alpha.88'i çalıştırmadı; yani alpha.88 yayımlandı ama hiç kurulmadı.
+2. **Ekran görüntülerinin gösterdiği.** İki sunucuda da Ayarlar, CelikPanel
+   güncellemeleri "Geçerli sürüm v0.1.0-alpha.89" ve "Geçerli commit
+   ac36fccf4e4238a8bc4624356a478ba8dab20b34" der; kenar çubuğu "CelikPanel ·
+   v0.1.0-alpha.89 · build ac36fccf4e42" der; ve "v0.1.0-alpha.89 sürümüne
+   güncellendi — build ac36fccf4e42" kartı beş tamamlanmış adım sayar: güncelleme
+   paketini indir; imzayı ve sağlama toplamlarını denetle; kurmadan önce sunucuyu
+   denetle; yeni sürümü kur ve paneli yeniden başlat; yeni sürümü doğrula. Yani
+   alpha.89 arayüzü, yeniden yüklemeden sonra tamamlanan güncellemenin
+   sunucudaki adım planını çizer.
+3. **Görülmeyen.** Her güncelleme önceki sürümün sayfasında çalıştığı için
+   yeniden başlama sırasındaki canlı adım görünümü (her adım için bir çubuk,
+   yeniden başlama tek sakin cümleli planlı bir adım) **görülmedi**. İlk kez bir
+   sonraki güncellemede, alpha.89'dan görülür. Sahibin bu güncellemelerde
+   gördüğü onun hakkında bir şey söylemez ve söylüyormuş gibi kaydedilmemelidir.
+4. **Görülenlerde bulunan kusur (D-033, sonraki sürüm için).** Frankfurt'un
+   sayfası "Bu kanalda yeni güncelleme yok." metnini bir uyarı üçgeni
+   simgesiyle gösterir. Bu, iyi bir durumun uyarı simgesiyle çizilmesidir; bir
+   onay gibi okunmalı, örneğin "En son sürümdesiniz", nötr ya da başarı
+   simgesiyle. Sonraki sürüm için madde olarak kaydedildi; burada hiçbir şey
+   değiştirilmedi.
+5. **Bildirilmedi, bu yüzden kaydedilmedi.** Lisans sayfası, Agent'ın sürümü,
+   Frankfurt'un kurulum son adımı, Boston'un "Bu sunucunun kurulumunu
+   genişletin" seçeneği ve `postconf -n` çıktısı. Her biri "kaydedilmedi"dir;
+   "çalıştı" da değildir, "başarısız" da.
