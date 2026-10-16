@@ -397,7 +397,7 @@ export const enScreens = {
     'domains.infrastructure.manage': 'Manage DNS records',
     'domains.infrastructure.siteBadge': 'Infrastructure zone',
     'domains.infrastructure.checking': 'Checking the infrastructure DNS zone…',
-    'domains.infrastructure.unknown': 'Could not check whether this server has an infrastructure DNS zone. The domains below are shown as read; the zone itself is unchanged.',
+    'domains.infrastructure.unknown': 'Could not check this server’s infrastructure DNS zone. Nothing was changed; Retry reads it again.',
     'domains.infrastructure.title': 'Infrastructure zone {zone}',
     'domains.infrastructure.subtitle': 'DNS records for the panels’ own names',
     'domains.infrastructure.what': 'Server setup created this zone for the servers’ own names: the panel addresses, the mail hosts and the nameservers. It is served by this server and copied to the secondary by zone transfer, with or without CelikPanel on either side. It has no website, mailboxes or files until you add a site for this name in Domains.',

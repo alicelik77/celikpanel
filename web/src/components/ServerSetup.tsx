@@ -653,6 +653,10 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     // A server that was busy is a typed wait, not a failure: its reason leads the
     // screen, with the action beside it, and the generic paragraphs stay out.
     const hostBusy = execution?.status === 'failed' && !reconnecting ? setupHostBusyGuidance(execution.error) : null;
+    // The primary created this server's record (2026-10-16): the guidance above says
+    // that nothing is needed; the generic 'follow the record instructions' line is not drawn.
+    // Birincil kaydi olusturdu: genel 'kaydi izleyin' satiri cizilmez.
+    const peerRecordApplied = execution?.phase === 'access_dns' && execution.context?.peer_host_record?.outcome?.status === 'applied';
     // One heading per state. A stopped, waiting or confirming run is named by its
     // guidance, so the block under it does not repeat that as a second heading;
     // only a run in progress keeps "what happens at this step" as the block's label.
@@ -720,7 +724,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                         {guidance.details.length > 0 && <details className="mt-3 text-sm leading-6"><summary className="cursor-pointer font-medium text-primary">{t('setup.guide.more')}</summary><ul className="mt-2 list-disc space-y-2 pl-5 text-fg-muted">{guidance.details.map((message, index) => <li key={index}>{say(message)}</li>)}</ul></details>}
                     </aside>}
                     {/* The failure colour is for a verified failure only: a busy server, an unmet prerequisite and a result still being confirmed are not one. */}
-                    {execution?.error && !['dns_publisher', 'dns_readiness'].includes(execution.phase) && <div role={hostBusy ? undefined : confirmingPrevious || waitingDNSPrerequisite || observingMailEnrollment || planReopened ? 'status' : 'alert'} className={`${hostBusy ? 'mt-3' : 'mt-5'} space-y-2 text-sm`}>{!hostBusy && (!(confirmingPrevious || observingMailEnrollment || planReopened) || !guidance) && <p className={execution.status === 'failed' ? 'text-danger' : confirmingPrevious || waitingDNSPrerequisite ? 'text-fg-muted' : 'text-fg'}>{failureText(execution.error.code, execution.error.message, execution.error.reason)}</p>}<details><summary className="cursor-pointer text-primary">{t('setup.details')}</summary><p className="mt-2 break-words text-fg-muted">{execution.error.message}</p></details></div>}
+                    {execution?.error && !['dns_publisher', 'dns_readiness'].includes(execution.phase) && <div role={hostBusy ? undefined : confirmingPrevious || waitingDNSPrerequisite || observingMailEnrollment || planReopened ? 'status' : 'alert'} className={`${hostBusy ? 'mt-3' : 'mt-5'} space-y-2 text-sm`}>{!hostBusy && !peerRecordApplied && (!(confirmingPrevious || observingMailEnrollment || planReopened) || !guidance) && <p className={execution.status === 'failed' ? 'text-danger' : confirmingPrevious || waitingDNSPrerequisite ? 'text-fg-muted' : 'text-fg'}>{failureText(execution.error.code, execution.error.message, execution.error.reason)}</p>}<details><summary className="cursor-pointer text-primary">{t('setup.details')}</summary><p className="mt-2 break-words text-fg-muted">{execution.error.message}</p></details></div>}
                     {/* The action a stopped run names sits with its reason, above the step list. */}
                     {execution?.status === 'failed' && guidance && !hostBusy && <div className="mt-5"><Button variant="primary" onClick={editPlan}>{t('setup.revise')}</Button></div>}
                     {progressChecks.length > 0 && waitingVerification && !guidance?.checks && <ul className="mt-5 list-disc space-y-2 pl-5 text-sm text-fg-muted">{progressChecks.map(check => <li key={check.id} className="break-words">{checkSentence(check)}</li>)}</ul>}

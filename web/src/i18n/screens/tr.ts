@@ -380,7 +380,7 @@ export const trScreens: Record<ScreenKey, string> = {
     'domains.infrastructure.manage': 'DNS kayıtlarını yönet',
     'domains.infrastructure.siteBadge': 'Altyapı bölgesi',
     'domains.infrastructure.checking': 'Altyapı DNS bölgesi denetleniyor…',
-    'domains.infrastructure.unknown': 'Bu sunucunun bir altyapı DNS bölgesi olup olmadığı denetlenemedi. Aşağıdaki alan adları okunduğu gibi gösteriliyor; bölgenin kendisi değişmedi.',
+    'domains.infrastructure.unknown': 'Bu sunucunun altyapı DNS bölgesi denetlenemedi. Hiçbir şey değiştirilmedi; Tekrar dene yeniden okur.',
     'domains.infrastructure.title': 'Altyapı bölgesi {zone}',
     'domains.infrastructure.subtitle': 'Panellerin kendi adlarının DNS kayıtları',
     'domains.infrastructure.what': 'Bu bölgeyi sunucu kurulumu sunucuların kendi adları için oluşturdu: panel adresleri, posta sunucuları ve ad sunucuları. Bölgeyi bu sunucu sunar ve ikincile bölge aktarımıyla kopyalanır; iki tarafta CelikPanel olsa da olmasa da çalışır. Bu ad için Alan adları sayfasından site ekleyene kadar web sitesi, posta kutusu ya da dosyası yoktur.',

@@ -48,6 +48,7 @@ const state = {
     served: '',            // hostname reported by /panel/access-address
     overrides: {},         // path -> { status, body, delay, drop, hang, after, times }
     domains: [],
+    infrastructureZones: [], // GET /dns/infrastructure-zones (batch 18)
     host: '',              // another panel host name for the certificate step (default panel.example.com)
     componentOperation: null, // a running component operation, as /service/operation reports it
     update: null,          // a running panel update, as /panel/update/status reports it
@@ -170,6 +171,8 @@ async function api(req, res, path, query) {
         send(res, 200, state.execution); return;
     }
     if (key === 'GET /api/v1/domains') { send(res, 200, state.domains); return; }
+    // The infrastructure DNS zones beside the domains (2026-10-16); none unless a scenario sets them.
+    if (key === 'GET /api/v1/dns/infrastructure-zones') { send(res, 200, { zones: state.infrastructureZones }); return; }
     if (key === 'GET /api/v1/hosting/capabilities') { send(res, 200, state.capabilities); return; }
     if (key === 'GET /api/v1/subscriptions') { send(res, 200, { subscriptions: state.subscriptions }); return; }
     if (key === 'GET /api/v1/database-servers') { send(res, 200, state.dbServers); return; }
