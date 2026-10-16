@@ -162,6 +162,36 @@ sakin yeniden başlamayı ölçtü; onlardan sonra yapılan kilit değişikliği
 dayandığını [alpha.86 sürüm notları](RELEASE-NOTES-v0.1.0-alpha.86.tr.md)
 söyler. Hiçbir P0 işi kapanmaz ya da ilerlemez.
 
+*16 Ekim 2026 tarihli not (saat tarihi): v0.1.0-alpha.87 adayında (yayımlanmadı)
+uygulandı.* O aday için yeni bir karar kaydedilmez; yukarıdaki metin değişmedi.
+
+- Kurulum genişletmesi için 1. kural ve D-024: hazır ekranı ve Ayarlar, bir şeye
+  basılmadan önce "Bu sunucunun kurulumunu genişletin"in neyi yapıp neyi
+  yapmadığını söyler ve incelemeden önce hiçbir şey başlamaz; bir genişletme
+  çalışırken Dashboard ve Ayarlar, "Genişletmeye devam et"in yanında "bir şey
+  yapmanız gerekmiyor" demek yerine ilerlemesine bağlantı verir ("İlerlemesini
+  göster").
+- set18 gerçek sistem kaydından sonra 1. ve 4. kurallar: başlayan bir kurulum
+  çalışması kendi ilk adımını adlandırır ve sayfanın kendiliğinden
+  güncellendiğini söyler (O1); basılan "Kayıtlı işleme devam et", bir okuma
+  işlemin ilerlediğini gösterene kadar, en çok 15 saniye, "Aynı işlem
+  denetleniyor" olarak kapalı kalır (O3; yalnız okuma, sunucu aynı isteğin
+  tekrarını ikinci işlem başlatmadan yanıtlar); taslaktaki bir genişletme artık
+  tamamlanmış çalışmanın "Tamamlanma doğrulanamadı" ekranı olarak gösterilmez
+  (D1, yanlış bir "bilinmiyor").
+- İkincil DNS sunucusu için 5. kural: posta kutusu, sahibi kaydı oluşturamayan
+  bir DNS sayfasına göndermek yerine neyi beklediğini (birincildeki ya da DNS
+  sağlayıcısındaki kayıt, tam kaydıyla) adlandırır ve profil kartları "Posta DNS
+  kaydı bekleniyor" der. "Gereksinimleri tekrar kontrol et" yanıtı yönlendirmeyle
+  aynı türlü nedeni söyler.
+- Bileşenler posta penceresi kurulum sorulurken kilitlidir (sessiz çıkış yok, 1.
+  kural) ve bir reddi görünür alanda tutar.
+
+Notun durumu: kaynakta, bileşen testleri ve taklit tarayıcıyla (16. tur);
+set18b (`6b363ac46`'da) bir laboratuvarda D1, O1 ve O3'ün düzeldiğini gözledi;
+ikincil DNS kutularına gerçek sistemde ulaşılmadı; kurulu bir sunucuda hiçbir şey
+ölçülmedi. Hiçbir P0 işi kapanmaz ya da ilerlemez.
+
 ---
 
 ## D-032 · Panel kendiliğinden bakar; okuyabileceği bir durumu öğrenmek için sahibe bir düğmeye basmasını asla söylemez
@@ -913,6 +943,46 @@ kullanıcı panelin içinden başlatır.
 uygulama sırası [Yönlendirmeli sunucu kurulumu](SERVER-SETUP-PLAN.tr.md) belgesindedir.
 Bu karar ürün niyetini kaydeder; yeni sihirbazın veya harici DNS modunun bugün
 kullanılabildiği anlamına gelmez.
+
+*16 Ekim 2026 tarihli not (saat tarihi): v0.1.0-alpha.87 adayında (yayımlanmadı)
+uygulandı.* O aday için yeni bir karar kaydedilmez; yukarıdaki metin değişmedi.
+Tamamlanmış bir kurulum artık genişletilebilir (`POST /api/v1/setup/extend`):
+sihirbaz tamamlanmış değerlerle yeniden açılır, inceleme neyin değiştiğini,
+neyin kurulacağını ve neyin kaldığını söyler ve çalıştırma var olan incelenmiş
+çalıştırıcıdır. Bu, kararın kendi kurallarını uygular:
+
+- **Mevcut işler korunur.** Bir genişletme yalnız ekleneni kurar ve
+  yapılandırır; kurulu bir bileşeni asla kaldırmaz, durdurmaz ya da
+  değiştirmez (bir seçimi temizlemenin kurulu bir hizmeti asla kaldırmadığı
+  özelleştirme kuralı genişletme için de geçerlidir) ve "Genişletmeden vazgeç",
+  kısmen çalışmış bir genişletmenin kurduğu hiçbir şeyi kaldırmadan tamamlanmış
+  taslağı geri getirir.
+- **Kurulum geçmişi ve güncel sağlık bağımsız kalır.** Bir genişletme tamamlanma
+  kaydını (`completed_at`) korur ve zorunlu değildir; böylece hazırlanmış bir
+  sunucu asla kuruluma geri yönlendirilmez; Dashboard sunucunun genişletildiğini
+  ve çalışmaya devam ettiğini söyler.
+- **Posta açıkça seçilir, kurulumun denetimleriyle.** Kurulumu bitmiş bir
+  sunucuda Bileşenler sayfasından posta profili eklemek kurulumu yeniden
+  kullanır: profil bir genişletmeye eklenir ve kurulumun incelemesinden ve
+  adımlarından geçer (posta sunucusu adının genel DNS'i, güvenilir sertifika ve
+  yenilenmesi, ters DNS, 25 numaralı bağlantı noktası). Kurulumu bitmemiş bir
+  sunucu, geçici kendinden imzalı bir sertifikayla bittiğini söyleyen doğrudan
+  kurulumu korur.
+- **DNS sahipliği değişmez.** Bir DNS çiftinin ikincilinde panel, posta sunucusu
+  adının kaydının birincilde ya da DNS sağlayıcısında yapıldığını söyler ve tam
+  kaydı gösterir; hiçbir kayıt oluşturmaz. Birincilin bir eşin kayıtlarını
+  kendisinin yayımlayıp yayımlamayacağı, altyapı bölgesi için bir düzenleyici
+  ve ana makine kayıtlarının uzak DNS bağlantısıyla kendiliğinden aktarılması,
+  sahibin açık üç kararıdır (İŞLEM YÖNLENDİRMESİ, 16 Ekim 2026 girdisi).
+
+Notun durumu: kaynakta, bileşen testleri ve taklit tarayıcıyla (16. tur);
+`deploy/e2e/release-recovery/evidence/` altındaki set18 (`5d54aba1e`'de;
+genişletme tamamlanmış çalışmayla açıldı, D1) ve set18b (`6b363ac46`'da; D1'in
+düzeldiği gözlendi, genişletme hazır duruma ulaştı) gerçek sistem kayıtlarında,
+kendi DNS'i ve ACME'si olan bir laboratuvarda ölçüldü; yalnız Debian 13; kurulu
+bir sunucuda hiçbir şey ölçülmedi. Hangi kontrolün hangi koda dayandığını
+[alpha.87 sürüm notları](RELEASE-NOTES-v0.1.0-alpha.87.tr.md) söyler. Hiçbir P0
+işi kapanmaz ya da ilerlemez.
 
 ---
 
