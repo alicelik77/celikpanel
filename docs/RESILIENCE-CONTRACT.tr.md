@@ -5239,3 +5239,49 @@ tarihidir.
   ikinci bölümün (sahibin üç kararı) sürümde olmaması, hiçbir kurulu sunucunun
   ölçülmemesi, ikincil DNS kutularına gerçek sistemde ulaşılmaması ve genel
   ACME ve DNS yolunun, Ubuntu'nun ve Arch'ın koşulmamış olması.
+
+### v0.1.0-alpha.88 adayı (P0.1/P0.2 alanı; ilke 2 ve 6; D-024; D-032; D-033; 2026-10-16)
+
+D-025 ilke 2 (kanıtın anlamı ve yaşam döngüsü vardır: bilinmeyen; yok, boş ya
+da başarı değildir) ve 6 (hazırlık, ilerleme ve erişim birbirinden bağımsız
+kalır); D-024; D-032; D-033. **Hiçbir P0 işi kapanmaz ya da ilerlemez.** P0.1
+ile P0.5 kısmi kalır ve her açık kabul işi açık kalır. Bu girdi yayımlanmamış
+bir adayı kaydeder; 16 Ekim 2026 girdinin saat tarihidir.
+
+- **Adayın değiştirdiği.** Güncellemenin yaşam döngüsü değil, ilerlemesinin
+  nasıl gösterildiği (sahibin 16 Ekim 2026 tasarımı): Agent güncelleyicinin
+  indirme ve doğrulama ilerlemesini okur (salt okur, yalnız `Lstat`; kabulün,
+  kurtarmanın ya da kaydın durumunun girdisi asla değildir); Panel başlatma ve
+  durum yanıtlarında beş adım bildirir (eklemeli `plan`), bir adımı yalnız
+  kanıtla bitmiş sayar ve güncellemesinin yeniden başlamasını bir kez ölçer;
+  sayfa her adım için bir çubuk, planlı bir adım olarak yeniden başlamayı ve
+  gecikme ya da hata metnini yalnız 6 dakikalık pencereden sonra ya da
+  doğrulanmış hatada çizer. [Sürüm notları](RELEASE-NOTES-v0.1.0-alpha.88.tr.md)
+  hangi denetimin hangi koda dayandığını söyler.
+- **Dokunulan ilkeler.** İlke 2: bir adım yalnız sunucunun kanıtıyla bitmiş
+  çizilir; pencere içindeki kayıp okuma planlı yeniden başlamadır, pencereden
+  sonraki bilinmeyen okuma gecikme metnini korur. İlke 6: gezinme kilidi,
+  lisans ve oturum kapılarının toleransı ve tek bildirim değişmedi. Durum
+  sorgusu hiçbir şey başlatmaz; durum okumasının tek yazımı, güncelleme başına
+  bir kez yapılan kayıt amaçlı ölçümdür (D-024).
+- **Şema ya da sürüm geçişi.** Yok: alpha.87 etiketi ile aday arasında taşıma
+  yok (`git diff --name-only a8cddcb5..HEAD` hiçbir taşıma dosyası adlandırmaz;
+  veritabanı şeması 44 kalır). Bir eklemeli `panel_settings` anahtarı,
+  `panel_update_last_restart` (`{"request_id", "seconds"}`); Agent RPC'sinde ve
+  Panel'in başlatma ve durum yanıtlarında eski sayfaların yok saydığı eklemeli
+  alanlar. Sürüm sırası `7231afdbf` sürüm hazırlığında, önceki olarak alpha.87
+  sürüm commit'i `a8cddcb546302daa0f5eb65b18fe6b9566b69e66` ile 87'den 88'e
+  geçer; geçiş kuralları değişmedi. **Kurtarma davranışı.** Değişmedi: hiçbir
+  defter, işaret, işlem, sürüm tabanı ya da kurtarma çalıştırıcısı değişmedi.
+- **Kanıt.** Bileşen testleri: `07aaa50d5`'te `npm test` 1523'te 1523;
+  `go test ./cmd/panel/... ./internal/transport/...` 1602 test ve 1695 alt
+  test geçti, 6 atlandı, ve `go test ./cmd/agent/...` 1805 test ve 2838 alt
+  test geçti, 29 atlandı; ikisi de `b63da83e0`'da WSL konuğunda (Agent temiz
+  bağlama ad alanında); sahte sunucuya karşı tarayıcı turu 17 (8
+  yapılandırmada 9 durum, bir kusur düzeltildi). **Sahibin 16 Ekim 2026
+  talimatıyla gerçek sistem kanıtı yok.**
+- **Açık.** Agent'ın ilerleme okuması, taban zaman damgası ve yeniden başlama
+  ölçümü gerçek bir güncelleme sırasında gözlenmedi; adımlar ilk kez
+  alpha.88'den güncellemede görülür; aynı sürümün yeniden denenmesi doğrulama
+  sınırını bildirmez; hiçbir kurulu sunucu ölçülmedi. Yukarıdaki girdilerin
+  açık bıraktığı her şey açık kalır.
