@@ -6015,3 +6015,9 @@ entry.
   seen on the update from alpha.88; a retry of the same release reports no
   verify boundary; no installed server measured. Everything the entries above
   leave open stays open.
+
+### Candidate v0.1.0-alpha.89 (no code change since alpha.88; D-024; D-032; D-033; 2026-10-16)
+
+- **No code change since alpha.88.** `git diff --stat 1cb3628ff HEAD -- cmd internal web` is empty; the release sequence moves from 88 to 89 (release preparation only). **No P0 item is closed or advanced**; P0.1 to P0.5 stay partial.
+- **Schema and recovery.** Schema 44, no migration; recovery behaviour unchanged. No native evidence, by the owner's instruction of 2026-10-16.
+- **Open.** Everything the alpha.88 entry leaves open stays open; the step view is first observed on the update from alpha.88. See the [release notes](RELEASE-NOTES-v0.1.0-alpha.89.md).

@@ -5285,3 +5285,9 @@ bir adayı kaydeder; 16 Ekim 2026 girdinin saat tarihidir.
   alpha.88'den güncellemede görülür; aynı sürümün yeniden denenmesi doğrulama
   sınırını bildirmez; hiçbir kurulu sunucu ölçülmedi. Yukarıdaki girdilerin
   açık bıraktığı her şey açık kalır.
+
+### v0.1.0-alpha.89 adayı (alpha.88'den beri kod değişikliği yok; D-024; D-032; D-033; 2026-10-16)
+
+- **alpha.88'den beri kod değişikliği yok.** `git diff --stat 1cb3628ff HEAD -- cmd internal web` boştur; sürüm sırası 88'den 89'a geçer (yalnız sürüm hazırlığı). **Hiçbir P0 işi kapanmaz ya da ilerlemez**; P0.1 ile P0.5 kısmi kalır.
+- **Şema ve kurtarma.** Şema 44, geçiş yok; kurtarma davranışı değişmez. Sahibin 16 Ekim 2026 talimatıyla gerçek sistem kanıtı yok.
+- **Açık.** alpha.88 girdisinin açık bıraktığı her şey açık kalır; adım görünümü ilk kez alpha.88'den güncellemede gözlenir. Bkz. [sürüm notları](RELEASE-NOTES-v0.1.0-alpha.89.tr.md).
