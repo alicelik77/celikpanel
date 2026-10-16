@@ -5173,3 +5173,69 @@ yayımlanmamış bir adayı kaydeder; 2026-10-16 girdinin saat tarihidir.
   sahibin onayına açıktır, hiçbiri sahibin kararı değildir; hiçbir kurulu sunucu
   ölçülmedi. Yukarıdaki girdilerin açık bıraktığı her şey
   açık kalır.
+
+### v0.1.0-alpha.87'nin yayımlanması (P0.2 alanı; ilke 1, 2 ve 6; D-021; D-024; D-033; 2026-10-16)
+
+D-025 ilke 1 (sunucu sahibi yetkisini ve çalışan hizmetlerini korur), 2 (kanıtın
+bir anlamı ve yaşam döngüsü vardır: bilinmeyen; yok, boş ya da başarılı
+değildir) ve 6 (hazır olma, ilerleme ve erişim birbirinden bağımsız kalır);
+D-021; D-024; D-033. **Hiçbir P0 işi kapanmaz ya da ilerlemez.** P0.1–P0.5
+kısmi kalır ve her açık kabul işi açık kalır. Bu girdi bir yayımı kaydeder; kod,
+şema ya da kurtarma davranışını değiştirmez. 2026-10-16, içindeki her şeyin saat
+tarihidir.
+
+- **Yayımlama.** v0.1.0-alpha.87 16 Ekim 2026'da yayımlandı; hepsini sürümü
+  hazırlayan kişi yaptı, sahibin 15 Ekim 2026 tarihli talimatı uyarınca
+  (birleştirme, depo değişkeni, etiket ve portal yayımı hazırlayan kişiye
+  aittir; kurulu panel güncellemelerini yalnız sahip yapar). #215 numaralı
+  çekme isteği (CI: 24 iş, hepsi başarılı ya da atlandı) `main`'e
+  `a8cddcb546302daa0f5eb65b18fe6b9566b69e66` olarak squash ile birleştirildi
+  (ağacı `c63a9600572cba0dc6bd19ecb0388acb45b395c4`). `main` commit'indeki koşu
+  (38834849023) 24 işle başarıyla sonuçlandı ve etiket ancak koşu bittikten
+  sonra gönderildi; yani "`main`'deki koşu bitti, sonra etiket" sırası
+  izlendi. Hazırlayan kişi `CELIKPANEL_RELEASE_SEQUENCE` depo değişkenini
+  86'dan 87'ye çıkardı ve `v0.1.0-alpha.87` açıklamalı etiketini (etiket nesnesi
+  `f277e0b469acd3a33b9fb87c3327566ef1c2ba04`) oluşturup gönderdi. Etiketin CI
+  koşusu (38836331003), 24 iş, başarılı, 2026-10-16T01:57:38Z'de altı dosyayla
+  ön sürüm yayımladı (platform arşivi SHA-256
+  `d7b33548d431c05f99e2d98d3052692647a3c662c9cb57d60fb03bf5e5a91d60`,
+  66.182.207 bayt, sıra 87). Hazırlayan kişi indirme portalını
+  `deploy/publish-download-portal.ps1` ile yayımladı (durum `committed`, 26
+  istekle tek genel doğrulama turu, `status: ok`). Dosyaları ve portal paketini
+  hazırlayan kişi bir indirmeden denetledi ve genel siteyi 02:04:42Z'de
+  dışarıdan okudu (hazırlayan kişi bildirdi, burada bir dosyada kayıtlı değil).
+  Sınırlar: etiketin dosyaları bir derleme konuğundaki klondan değil,
+  Windows'ta `git archive` ile alındı; canlı sitenin bir kopyasında terfi aracı
+  provası yapılmadı; arşiv alpha.86'nın paketiyle dosya dosya
+  karşılaştırılmadı; yayımlayıcının kendi testi
+  (`deploy/test-download-portal-publisher.ps1`) çalıştırılmadı.
+  [Sürüm notlarının](RELEASE-NOTES-v0.1.0-alpha.87.tr.md) "Yayımlama kaydı"
+  bölümü bunları sayar.
+- **Kurulu paneller.** Bu girdi 16 Ekim 2026'da yazıldığında güncellendiği
+  bildirilmemişti ve sahip alpha.86 güncellemelerini de henüz bildirmedi:
+  alpha.87, alpha.86'dan yaklaşık 5,5 saat sonra yayımlandı. Güncellemeyi yalnız
+  sahip, panelin kendi güncelleme ekranından başlatır. Güncelleyicinin sıra
+  tabanı alpha.85'ten ya da alpha.86'dan doğrudan alpha.87'ye güncellemeye izin
+  verir (politikanın `previous_commit` değeri bir derleme sözleşmesi
+  sabitlemesidir, kurulum önkoşulu değildir); bu,
+  `cmd/agent/system_update_contract.go` dosyasının okunmasından ve `cmd/` altında
+  `previous_commit` denetiminin bulunmamasından çıkarılmıştır, ölçülmemiştir.
+  Sahibin bildireceği ve o zamana kadar kaydedilmeyecek olanlar: her sunucunun
+  güncelleme sonucu (hangi sürümden olursa olsun), güncelleme sayfasının
+  yeniden başlama sırasında gösterdiği (alpha.86'dan güncellemede sakin
+  yeniden başlama bildirimi kurulu bir sunucuda ilk kez görülmelidir;
+  alpha.85'ten güncellemede görünen sayfa alpha.85'inkidir), tam ekran lisans
+  sayfası, Agent'ın sürümü, Frankfurt'un kurulum son adımı, `postconf -n
+  >/dev/null` çıktısı ve Boston'un hazır ekranında "Bu sunucunun kurulumunu
+  genişletin" seçeneğinin görünüp görünmediği. Bu girdi hiçbir iş için kabul
+  kanıtı değildir.
+- **Şema ya da sürüm geçişi.** Yok: bu sürüm hiçbir şema değişikliği taşımaz
+  (veritabanı şeması 44 kalır; genişletme tabanı tek bir `panel_settings`
+  satırıdır); sürüm sırası `471377d60` sürüm hazırlığında, önceki olarak alpha.86
+  sürüm commit'i `8d260f317e58bed7fcd84c6cbb01823c4fe3f166` ile 86'dan 87'ye
+  geçti. **Kurtarma davranışı.** Değişmedi.
+- **Açık.** Yukarıdaki girdilerin açık bıraktığı her şey; bunlar arasında
+  [sürüm notlarında](RELEASE-NOTES-v0.1.0-alpha.87.tr.md) sayılan sınırlar var:
+  ikinci bölümün (sahibin üç kararı) sürümde olmaması, hiçbir kurulu sunucunun
+  ölçülmemesi, ikincil DNS kutularına gerçek sistemde ulaşılmaması ve genel
+  ACME ve DNS yolunun, Ubuntu'nun ve Arch'ın koşulmamış olması.

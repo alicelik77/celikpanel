@@ -1,8 +1,9 @@
-# v0.1.0-alpha.87 (taslak, yayımlanmadı)
+# v0.1.0-alpha.87 (16 Ekim 2026'da yayımlandı)
 
 [English](RELEASE-NOTES-v0.1.0-alpha.87.md)
 
-Bu, v0.1.0-alpha.86'yı izleyen sürümün taslağıdır. v0.1.0-alpha.87 numarasını,
+Bu, v0.1.0-alpha.86'yı izleyen sürümdür. 16 Ekim 2026'da yayımlandı (sondaki
+"Yayımlama kaydı"na bakın). v0.1.0-alpha.87 numarasını,
 sahibin 13 Ekim 2026 tarihli kalıcı talimatı uyarınca ("hem sürüm numaraları
 hem de commit işlemleri için bana sormana gerek yok": sürüm numaraları ve
 commit'ler için sahibe sorulmaz) sürümü hazırlayan seçti; sahibin bu sürüm için
@@ -13,10 +14,12 @@ yanıtıdır. Aşağıda "Sürümü hazırlayanın verdiği kararlar" altında s
 seçim sürümü hazırlayanındır; D-021, D-033 ve bu kalıcı talimat altında verildi,
 sahibin onayına ya da değiştirmesine açıktır ve hiçbiri sahibin kararı değildir. Sürüm hazırlığı
 `471377d60` commit'idir (86'dan sonra sıra 87; önceki olarak alpha.86 sürüm
-commit'i `8d260f317e58bed7fcd84c6cbb01823c4fe3f166`). Hiçbir parçası
-yayımlanmadı ve bu taslak onu çalıştıran hiçbir kurulu sunucu kaydetmez. Bu
-taslak 16 Ekim 2026'da (UTC), set18 ve set18b gerçek sistem kayıtlarından sonra
-yazıldı; adayın son ürün commit'i `6b363ac46`'dır.
+commit'i `8d260f317e58bed7fcd84c6cbb01823c4fe3f166`). Yayımlama kaydı 16 Ekim
+2026'da yazıldığında hiçbir kurulu sunucunun onu çalıştırdığı bildirilmemişti;
+her birinin güncellemesini sahibi panelin kendi güncelleme ekranından başlatır.
+Bu notlar 16 Ekim 2026'da (UTC), set18 ve set18b gerçek sistem kayıtlarından
+sonra taslak olarak yazıldı ve aynı gün yayımlanma için güncellendi; adayın son
+ürün commit'i `6b363ac46`'dır.
 
 Sahip, ikinci kurulu sunucunun (Boston, çiftin ikincil DNS sunucusu) web
 sitelerini ve postayı birincinin (Frankfurt, birincil DNS sunucusu) tam eşi
@@ -724,28 +727,135 @@ v0.1.0-alpha.86'nın bu sürümün ele almadığı sınırları (her biri hâlâ
 
 ## Yayımlama kaydı
 
-Yayımlanmadı. Yayımlanana dek burada hiçbir şey kaydedilmez. Yayımlamadan önce
-açık olanlar:
+Aşağıdaki her şey 16 Ekim 2026 tarihlidir (saat tarihi; saat dilimi
+belirtilmedikçe UTC). 1'den 3'e kadar olan maddeler hazırlıktır; yayımlamadan
+önce yazıldılar ve geçmiş olarak korunur. Birleştirmeyi (4. madde), depo
+değişkenini ve etiketi (6. madde), dosyaların, portal paketinin ve genel sitenin
+denetimlerini ve portalın yayımlanmasını (9. madde) sürümü hazırlayan kişi yaptı;
+sahibin alpha.85 notlarında kayıtlı 15 Ekim 2026 tarihli talimatı uyarınca
+("bunları neden sen yapmıyorsun… benden istiyorsun"): birleştirme, depo
+değişkeni, etiket ve portal yayımı sürümü hazırlayan kişiye aittir; kurulu panel
+güncellemelerini yalnız sahip yapar. Bu girdi, aşağıdaki sonuçların hiçbirini
+depoda bir dosya olarak saklamaz.
+
+**Ne oldu.**
 
 1. Yayımlama öncesi ölçüm: yapıldı. `5d54aba1e`'de set18 ve `6b363ac46`'da
-   set18b; README'lerinden yukarıdaki "Gerçek sistem kayıtları set18 ve set18b"
-   bölümünde özetlendi. Adayın ürün kodu, set18b'nin ölçtüğü `6b363ac46`'nınkidir.
-2. Sürüm hazırlığı: `471377d60` commit'inde yapıldı (numarayı sahibin 13 Ekim
-   2026 tarihli kalıcı talimatı uyarınca sürümü hazırlayan seçti); `cmd/`,
-   `internal/` ya da `web/` altında hiçbir dosyayı değiştirmez: önceki olarak
-   alpha.86 sürüm commit'i `8d260f317e58bed7fcd84c6cbb01823c4fe3f166` ile 86'dan
-   sonra 87 sürüm sırası politikası, `download-portal/get.sh` sabitlemeleri
-   (sıra 87 ve sürüm v0.1.0-alpha.87; açık anahtar sabitlemesi değişmedi), README
-   sürüm satırları ve üç sözleşme testi. Hâlâ açık: etiketten önce ayarlanan depo
-   değişkeni `CELIKPANEL_RELEASE_SEQUENCE=87`. Gerçek arşivi CI etikette derler ve
-   imzalar.
-3. #215 numaralı çekme isteğinin son başı kendi CI koşusunu alır.
-4. Birleştirme, ana commit üzerindeki koşu, etiket, altı imzalı varlığın imzalı
-   sürüm sözleşmesinin anlattığı biçimde denetimi ve indirme portalının yayımı.
-   Sahibin 15 Ekim 2026 tarihli talimatıyla bunlar sürümü hazırlayanın işidir.
-5. Sürüm yayımlandıktan sonra her kurulu sunucunun sahibi o sunucuyu panelin
-   kendi güncelleme ekranından günceller. Bu, yukarıdaki her adımdan ayrı bir
-   adımdır; başka kimse başlatmaz.
+   set18b; README'lerinden yukarıdaki "Gerçek sistem kayıtları set18 ve
+   set18b" bölümünde özetlendi. Adayın ürün kodu, set18b'nin ölçtüğü
+   `6b363ac46`'nınkidir.
+2. Sürüm hazırlığı: `471377d60` commit'inde yapıldı; `cmd/`, `internal/` ya da
+   `web/` altında hiçbir dosyayı değiştirmez: önceki olarak alpha.86 sürüm
+   commit'i `8d260f317e58bed7fcd84c6cbb01823c4fe3f166` ile 86'dan sonra 87
+   sürüm sırası politikası, `download-portal/get.sh` sabitlemeleri (sıra 87 ve
+   sürüm v0.1.0-alpha.87; açık anahtar sabitlemesi değişmedi), README sürüm
+   satırları ve üç sözleşme testi. Depo değişkeni 6. maddededir. Gerçek arşivi
+   etikette CI derledi ve imzaladı.
+3. Numara: v0.1.0-alpha.87; sürümü hazırlayan seçti, sahibin 13 Ekim 2026
+   tarihli kalıcı talimatı uyarınca. Sahibin adını koyduğu bir numara değildir.
+4. #215 numaralı çekme isteği (sürüm adayı; CI: 24 iş, hepsi başarılı ya da
+   atlandı) 16 Ekim 2026'da sürümü hazırlayan kişi tarafından `main`'e squash
+   olarak birleştirildi. `main`, `a8cddcb546302daa0f5eb65b18fe6b9566b69e66`
+   commit'idir, ağacı `c63a9600572cba0dc6bd19ecb0388acb45b395c4`.
+5. O `main` commit'indeki sürekli tümleştirme koşusu (koşu 38834849023) 24 işle
+   başarıyla sonuçlandı. Etiket ancak koşu bittikten sonra gönderildi; yani
+   "`main`'deki koşu bitti, sonra etiket" sırası izlendi.
+6. Sürümü hazırlayan kişi `CELIKPANEL_RELEASE_SEQUENCE` depo değişkenini 86'dan
+   87'ye çıkardı, sonra yukarıdaki `main` commit'inde `v0.1.0-alpha.87`
+   açıklamalı etiketini (etiket nesnesi
+   `f277e0b469acd3a33b9fb87c3327566ef1c2ba04`) oluşturdu ve gönderdi. Etiketin CI
+   koşusu (38836331003) 24 işle başarıyla tamamlandı ve sürüm
+   2026-10-16T01:57:38Z'de ön sürüm olarak altı dosyayla yayımlandı: iki arşiv,
+   iki sağlama toplamı dosyası, imzalı manifest ve imzası.
+7. Dosyaları sürümü hazırlayan kişi bir indirmeden denetledi (`gh release
+   download`; denetimler `CelikPanel-S2-Debian` konuğunda; hazırlayan kişi
+   bildirdi, burada bir dosyada kayıtlı değil). Platform arşivi ile genel arşiv
+   bayt bayt aynıdır: 66.182.207 bayt, SHA-256
+   `d7b33548d431c05f99e2d98d3052692647a3c662c9cb57d60fb03bf5e5a91d60`. İki
+   `.sha256` dosyası da doğrulanır. İmzalı manifest 332 bayttır; biçim v2, sıra
+   87, sürüm v0.1.0-alpha.87, yukarıdaki `main` commit'i (`a8cddcb5…`),
+   `published_at` 2026-10-16T01:23:21Z, linux/amd64 der; arşivin SHA-256'sı ve
+   boyutu eşleşir. 64 baytlık Ed25519 imzası, izlenen
+   `deploy/release-signing-ed25519.pem` ile `openssl pkeyutl -verify -rawin
+   -pubin` kullanılarak doğrulanır (anahtarın SHA-256'sı
+   `7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb`;
+   alpha.85 ve alpha.86'nınkiyle aynı). Arşivde 237 üye var. İçindeki
+   `libexec/get.sh` sıra 87'yi ve v0.1.0-alpha.87'yi sabitler (SHA-256
+   `7c8823849cb2fb310b4a58d178364c9ed4d89c4d94908f0cf0856df3fb577b5d`);
+   `release-sequence-policy` 87 der, önceki 86,
+   `8d260f317e58bed7fcd84c6cbb01823c4fe3f166`; `release.commit` ve
+   `release.tree` etiketinkilerle eşittir. İkili dosyalar go1.26.5, trimpath,
+   CGO_ENABLED=0 ile derlenmiştir, kabul etiketi yoktur. İçerik bekçisi ve
+   kabul-lisansı bekçisi ikisi de 0 döndürdü. Arayüz paketi
+   `web/dist/assets/app-D8EjyWzW.js`'tir (248.119 bayt, SHA-256
+   `b86955f5b8d4f1b3f0af15612c983b118037390e1cc01615cafa1ace4a184cb1`;
+   alpha.86'nınki `app-DAGE4avW.js` idi). Sınırlar: etiketin dosyaları bir
+   derleme konuğundaki klondan değil, Windows'ta `git archive` ile alındı ve
+   arşiv alpha.86'nın paketiyle dosya dosya karşılaştırılmadı.
+8. İndirme portalı paketi `deploy/build-download-portal.sh` ile imza öncesi
+   kipte derlendi (özel anahtar kullanılmadı): 132.735.450 bayt, SHA-256
+   `d7ec2b4940457d0b9bbe717d50506fd343ebed869b1f441348d670f35dbcf88c`, 54 üye,
+   iki kez bayt bayt aynı derlendi. `releases/latest.txt` v0.1.0-alpha.87 der.
+   Terfi aracının paket kuralları paketi kabul etti. Etikette portal sözleşme
+   testi 0 döndürdü, genel doğrulayıcı testleri 17'de 17, terfi testleri 14'te
+   14 geçti. Dört portal betiği alpha.86'dan beri değişmedi. Sınırlar: canlı
+   sitenin bir kopyasında terfi aracı provası yapılmadı ve
+   `deploy/test-download-portal-publisher.ps1` çalıştırılmadı.
+9. Portalı sürümü hazırlayan kişi `deploy/publish-download-portal.ps1` ile,
+   betiğin mutlak yoluyla ve açık `-Promoter` ile `-PublicVerifier` ile,
+   `-PreviousVersion v0.1.0-alpha.86 -TargetVersion v0.1.0-alpha.87
+   -TransferTimeoutSeconds 1800` ile yayımladı. Çıktı:
+   `CELIKPANEL_PORTAL_UPLOAD_READY`, `CELIKPANEL_PORTAL_UPLOAD_PINNED`, terfi
+   aracının sonucu `status: committed`, previous_version v0.1.0-alpha.86, yedek
+   `httpdocs.before-v0.1.0-alpha.87.20261016T020434Z…`, genel doğrulama
+   `status: ok` (26 istek), sonra `CELIKPANEL_DOWNLOAD_PORTAL_PUBLISHED`.
+10. 16 Ekim 2026 02:04:42Z'de dışarıdan okuma (salt-okunur; sürümü hazırlayan
+    kişi): `releases/latest.txt` v0.1.0-alpha.87'dir (yayımdan önce 02:02:54Z'de
+    v0.1.0-alpha.86 okunuyordu); `get.sh`
+    `Strict-Transport-Security: max-age=15768000; includeSubDomains` ile
+    sunuluyor ve sıra 87'yi sabitliyor; `releases/latest.json` sıra 87'yi,
+    `a8cddcb5…` commit'ini ve `d7b33548…` SHA-256'sını söyler. Bildirilmeyen:
+    yayımlanan diğer dosyaların GitHub dosyalarıyla bayt karşılaştırması.
+11. Kurulu sunucular, bu kayıt yazılırken: güncellendiği bildirilmedi. Bunu yalnız
+    sahip, panelin kendi güncelleme ekranından başlatır. Sonuç ayrıca
+    kaydedilecek.
+
+**Yapılmayanlar ve yayımlamanın değiştirmedikleri.**
+
+- Kurulu sunucuları sürümü hazırlayan kişi güncellemedi ve bu kayıt yazılırken
+  ikisinin de güncellendiği bildirilmemişti. Her birinin güncellemesini sahibi
+  panelin kendi güncelleme ekranından, yukarıdaki her adımdan ayrı bir adım
+  olarak başlatır; başka kimse başlatmaz. Sahibin bildirmedikleri, ve bildirene
+  kadar kaydedilmeyecek olanlar: iki sunucunun güncelleme sonucu (hangi sürümden
+  olursa olsun); güncelleme sayfasının yeniden başlama sırasında gösterdiği;
+  güncelleme sırasında tam ekran lisans sayfasının görünüp görünmediği; Agent'ın
+  sürümü; Frankfurt'un güncellemeden sonraki kurulum son adımı; `postconf -n
+  >/dev/null` çıktısı; ve Boston'un hazır ekranında "Bu sunucunun kurulumunu
+  genişletin" seçeneğinin görünüp görünmediği. Bu kayıttaki hiçbir şey, kurulu bir
+  sunucunun bu sürümle ya da alpha.86 ile ne yaptığını anlatmaz.
+- alpha.87, alpha.86'dan yaklaşık 5,5 saat sonra ve sahip herhangi bir kurulu
+  sunucuyu alpha.86'ya güncellediğini bildirmeden önce yayımlandı; bu yüzden
+  sahibin alpha.86 gözlemleri (alpha.86 notlarında sayılan) de hâlâ açıktır.
+  Güncelleyicinin sıra tabanı alpha.85'ten ya da alpha.86'dan doğrudan
+  alpha.87'ye güncellemeye izin verir; sürüm sırası politikasının
+  `previous_commit` değeri bir derleme sözleşmesi sabitlemesidir, kurulum önkoşulu
+  değildir. Bu, `cmd/agent/system_update_contract.go` dosyasının okunmasından ve
+  `cmd/` altında `previous_commit` denetiminin bulunmamasından çıkarılmıştır; kodun
+  okunmasıdır, ölçülmüş bir güncelleme değildir. alpha.86'dan güncellemede
+  alpha.86'nın sakin yeniden başlama bildirimi kurulu bir sunucuda ilk kez
+  görülmelidir; alpha.85'ten güncellemede görünen güncelleme sayfası alpha.85'in
+  kendi sayfasıdır.
+- Yukarıdaki denetimlerin sınırları: dosyalar bir derleme konuğundaki klondan
+  değil, Windows'ta `git archive` ile alındı ve arşiv alpha.86'nın paketiyle
+  dosya dosya karşılaştırılmadı (7. madde); canlı sitenin bir kopyasında terfi
+  aracı provası yapılmadı ve yayımlayıcının kendi testi çalıştırılmadı (8.
+  madde).
+- Yayımlanma ürün kabulü değildir. "Bu sürümün sınırları" altında sayılanlar
+  ondan etkilenmez; bunların arasında ikinci bölümün sürümde olmaması ve hiçbir
+  kurulu sunucunun ölçülmemiş olması var.
+  [Dayanıklılık sözleşmesinin](RESILIENCE-CONTRACT.tr.md) beş temel işi kısmi
+  kalır; P0.1–P0.5 kısmi kalır ve hiçbir P0 işi sürümle ya da yayımlanmasıyla
+  kapanmaz ya da ilerlemez.
 
 Bu sürümü yalnız CelikPanel'in güncelleme arayüzünden kurun. Yayımlanması kurulu
 sunucuları güncellemez; bir sunucunun güncellemesini yalnız sahibi, panelin

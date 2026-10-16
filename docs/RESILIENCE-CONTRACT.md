@@ -5902,3 +5902,68 @@ clock date of the entry.
   preparer made for part 1 is for the owner to confirm, none is an owner
   decision; no installed server measured. Everything the
   entries above leave open stays open.
+
+### Publication of v0.1.0-alpha.87 (P0.2 area; invariants 1, 2 and 6; D-021; D-024; D-033; 2026-10-16)
+
+D-025 invariants 1 (the owner retains authority and working services), 2
+(evidence has a meaning and a lifecycle: unknown is not absent, empty or
+success) and 6 (readiness, progress and access remain independent); D-021;
+D-024; D-033. **No P0 item is closed or advanced.** P0.1 to P0.5 stay partial
+and every open acceptance item stays open. This entry records a publication; it
+changes no code, schema or recovery behaviour. 2026-10-16 is the clock date of
+everything in it.
+
+- **Publication.** v0.1.0-alpha.87 was published on 2026-10-16, all of it by
+  the release preparer under the owner's instruction of 2026-10-15 (the merge,
+  the repository variable, the tag and the portal publication are the
+  preparer's; installed-panel updates remain the owner's only). Pull request
+  #215 (CI: 24 jobs, all success or skipped) was squash-merged into `main` as
+  `a8cddcb546302daa0f5eb65b18fe6b9566b69e66` (tree
+  `c63a9600572cba0dc6bd19ecb0388acb45b395c4`). The run on the main commit
+  (38834849023) concluded success, 24 jobs, and the tag was pushed only after
+  it finished, so the order "the run on main finished, then the tag" was
+  followed. The preparer set the repository variable
+  `CELIKPANEL_RELEASE_SEQUENCE` from 86 to 87 and created and pushed the
+  annotated tag `v0.1.0-alpha.87` (tag object
+  `f277e0b469acd3a33b9fb87c3327566ef1c2ba04`). The tag's CI run
+  (38836331003), 24 jobs, successful, published a pre-release at 2026-10-16T01:57:38Z with six
+  assets (platform archive SHA-256
+  `d7b33548d431c05f99e2d98d3052692647a3c662c9cb57d60fb03bf5e5a91d60`,
+  66,182,207 bytes, sequence 87). The preparer published the download portal
+  with `deploy/publish-download-portal.ps1` (status `committed`, one public
+  verification pass `status: ok` with 26 requests). The assets and the portal
+  package were checked by the preparer from a download and the public site was
+  read from outside at 02:04:42Z (reported by the preparer, not recorded in a
+  file here). Limits: the tag's files were taken with `git archive` on Windows,
+  not from a clone in a build guest; no promoter rehearsal against a copy of
+  the live site was made; the archive was not compared file by file with
+  alpha.86's package; the publisher's own test
+  (`deploy/test-download-portal-publisher.ps1`) was not run. The "Publication
+  record" of the [release notes](RELEASE-NOTES-v0.1.0-alpha.87.md) lists them.
+- **Installed panels.** Not reported updated when this entry was written on
+  2026-10-16, and the owner has not yet reported the alpha.86 updates either:
+  alpha.87 was published about 5.5 hours after alpha.86. Only the owner starts
+  an update, from the panel's own update screen. The updater's sequence floor
+  admits an update from alpha.85 or alpha.86 straight to alpha.87 (the policy's
+  `previous_commit` is a build-contract pin, not an install precondition),
+  which is read from `cmd/agent/system_update_contract.go` and from the absence
+  of a `previous_commit` check under `cmd/`, not measured. To be reported by the
+  owner and not recorded until then: each server's update result (from
+  whichever version), what the update page showed during the restart (on an
+  update from alpha.86 the calm restart notice should be seen for the first
+  time on an installed server; on an update from alpha.85 the page shown is
+  alpha.85's), the full-screen licence page, the Agent's version, Frankfurt's
+  setup final step, the output of `postconf -n >/dev/null`, and whether
+  "Extend this server's setup" appears on Boston's ready screen. This entry is
+  not acceptance evidence for any item.
+- **Schema or version transition.** None: this release carries no schema
+  change (the database schema stays 44; the extension base is one
+  `panel_settings` row); the release sequence moved from 86 to 87 in the
+  release preparation `471377d60`, with the alpha.86 release commit
+  `8d260f317e58bed7fcd84c6cbb01823c4fe3f166` as previous. **Recovery
+  behaviour.** Unchanged.
+- **Open.** Everything the entries above leave open, among them the limits
+  listed in the [release notes](RELEASE-NOTES-v0.1.0-alpha.87.md): part 2 (three
+  owner decisions) is not in the release, no installed server was measured, the
+  secondary-DNS boxes were not reached natively, and the public ACME and DNS
+  path, Ubuntu and Arch were not run.

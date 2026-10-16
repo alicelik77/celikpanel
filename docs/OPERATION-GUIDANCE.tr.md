@@ -8165,3 +8165,45 @@ konuğunda `go test -run Setup ./cmd/panel`: 181 üst düzey test geçti (29 sn)
 blokları ve erişim adımının ikincil DNS kutusu doğal bir sunucuda çizilmiş
 görülmedi; O2 (SNI'sız sertifika) ve O4 (devir adresindeki laboratuvar bağlantı
 noktası) değerlendirilmedi.
+
+### Alpha.87 yayımından sonra kurulu sunucular: sahibin henüz bildirmedikleri (2026-10-16)
+
+Henüz gözlem yok ve değişiklik yok. v0.1.0-alpha.87, v0.1.0-alpha.86'dan
+yaklaşık 5,5 saat sonra 16 Ekim 2026'da yayımlandı ve bu girdi yazıldığında
+hiçbir kurulu sunucunun ikisinden birine güncellendiği bildirilmemişti; bunu
+yalnız sahip, panelin kendi güncelleme ekranından başlatır. Bu girdi için kurulu
+hiçbir sunucuda bir şey ölçülmedi, hiçbir metin ya da ekran değiştirilmedi ve
+kabul kanıtı değildir. D-024'e (mevcut neden, kimin işlem yapacağı, somut
+sonraki eylem ve nasıl devam edileceği uzun listelerden önce gelir), D-033'e
+(sahibi bekleten bir ekran beklediğini gösterir ya da bir şey yapması
+gerekmediğini söyler) ve bilinen-durum kuralına karşı konur. Yukarıdaki alpha.86
+yayımı girdisine eklenir; onun (a)'dan (e)'ye maddeleri hâlâ bildirilmedi.
+
+1. **Sahipten güncellemeden sonra bildirmesi istenenler; o zamana kadar başka
+   hiçbir şey kaydedilmez.** Altı şey: (a) her sunucunun panel içindeki
+   güncelleme sonucu, hangi sürümden güncellenmiş olursa olsun; (b) güncelleme
+   sayfasının yeniden başlama sırasında gösterdiği; (c) güncelleme sırasında
+   tam ekran lisans sayfasının görünüp görünmediği; (d) Agent'ın sürümü; (e)
+   Frankfurt'un güncellemeden sonraki kurulum son adımı ve `postconf -n
+   >/dev/null` çıktısı; (f) Boston'un hazır ekranında "Bu sunucunun kurulumunu
+   genişletin" seçeneğinin görünüp görünmediği. Sahip bildirene kadar her biri
+   "kaydedilmedi"dir; "çalıştı" da değildir, "başarısız" da.
+2. **Sahibin göreceği güncelleme sayfası, güncellemenin nereden başladığına
+   bağlıdır.** Güncelleyicinin sıra tabanı alpha.85'ten ya da alpha.86'dan
+   doğrudan alpha.87'ye güncellemeye izin verir (politikanın `previous_commit`
+   değeri bir derleme sözleşmesi sabitlemesidir, kurulum önkoşulu değildir;
+   `cmd/agent/system_update_contract.go` dosyasının okunmasından ve `cmd/`
+   altında `previous_commit` denetiminin bulunmamasından çıkarılmıştır, ölçülmüş
+   bir güncellemeden değil). alpha.85'ten güncelleme alpha.85'in güncelleme
+   ekranında çalışır; sahibin bildirdiği uyarıyı ve köşe bildirimini gösteren
+   ekran odur. alpha.86'dan güncelleme alpha.86'nın ekranında çalışır: sakin
+   yeniden başlama bildirimi, tek bildirim ve yeniden başlama boyunca kilit
+   orada kurulu bir sunucuda ilk kez görülmelidir. Bu yüzden alpha.85'ten
+   güncellemede sahibin gördüğü onlar hakkında bir şey söylemez ve söylüyormuş
+   gibi kaydedilmemelidir.
+3. **Gerçek sistemde ölçülen, bir laboratuvar ölçümüdür.** Sakin yeniden başlama
+   (set17 ve set17b) ve tamamlanmış bir kurulumun genişletilmesi (set18 ve
+   set18b), test lisanslı yapılarla ve bir laboratuvar DNS'i ile ACME'siyle
+   geçici konuklarda ölçüldü; F1 kilit uzatması ve oturum kapısının
+   `PANEL_STARTING` yolu gerçek sistemde ölçülmedi, ikincil DNS kutularına
+   ulaşılmadı. Buradakilerin hiçbiri kurulu sunucu gözlemi değildir.
