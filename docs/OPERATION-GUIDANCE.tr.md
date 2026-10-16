@@ -8599,3 +8599,103 @@ kalır.
    Frankfurt'un kurulum son adımı, Boston'un "Bu sunucunun kurulumunu
    genişletin" seçeneği ve `postconf -n` çıktısı. Her biri "kaydedilmedi"dir;
    "çalıştı" da değildir, "başarısız" da.
+
+### Frankfurt'un 2026-10-16 güncellemesi: yenileme zamanlayıcısının telafi çalışması ve kurtarma ekranı (2026-10-16)
+
+Sahip, 2026-10-16'da yaklaşık 15:00Z'de Frankfurt'u (Debian 13) alpha.89'dan
+alpha.90'a güncelledi (işlem `13193201ba7a3d832bb64cc6d972f8a5`). Boston
+(Ubuntu) aynı güncellemeden sorunsuz geçti. Bu kayıt ne olduğunu, nedenini,
+v0.1.0-alpha.92 için neyin değiştiğini ve neyin açık kaldığını yazar. D-022
+(Certbot yenilemesi sahibin iş yüküdür), D-024 (şimdiki neden, kimin işlem
+yapacağı, sonraki eylem, işin nasıl süreceği), D-025 (yerel hizmet sahipliği ve
+kurtarma kanıtı) ve D-033 (kendiliğinden yürütülen bir şey için ürkütücü bir
+görünüm yok) ile karşılaştırılır.
+
+1. **Sahibin gördüğü.** Güncelleme son adımında "reviewed updater failed: exit
+   status 1: Certbot renewal scheduler state could not be restored" satırıyla
+   durdu. Sayfa kırmızı bir çarpı, "Son kaydedilen adım: kurtarma sürüyor" ve
+   ham satırı gösterdi. On altı saniye sonra sunucunun otomatik kurtarması
+   güncellemeyi ileri doğru tamamladı ve sayfa eski bildirim biçiminde
+   "Güncelleme doğrulandı" dedi: adım görünümü yok, "Bildirimi kapat" düğmesi,
+   hata onayı cümlesi ve yeniden yükleme eylemi olmayan "CelikPanel'i yeniden
+   yükle" metni. alpha.90 kurulu ve çalışıyor. Ctrl+Shift+R'den sonra güncelleme
+   kartı yalnız "En son sürümü kullanıyorsunuz." gösterdi: Boston'da görülen
+   "v0.1.0-alpha.90 sürümüne güncellendi" kartı yoktu, çünkü o güncelleme
+   kurtarma kaydı üzerinden tamamlanmıştı.
+2. **Neden (kaynağın salt-okur incelemesi).** Debian'ın ve Ubuntu'nun
+   `certbot.timer` birimi `OnCalendar=00,12:00`, `RandomizedDelaySec=43200` ve
+   `Persistent=true` taşır. Güncelleme işlem boyunca zamanlayıcıyı durdurur ve
+   sonunda yeniden açar. Arada bir çalışma zamanı kaçırıldıysa (zamanlayıcının
+   damga dosyasına göre), zamanlayıcı açılır açılmaz `certbot.service`
+   başlar. Zamanlayıcıyı geri yükleme (`deploy/panel-tls-snapshot.sh`) sonra
+   her birimi yeniden okuyup `certbot.service`'in tam olarak `inactive`
+   olmasını istiyordu; `activating` okudu ve güncelleme başarısız oldu. Saate
+   göre aşağı yukarı dört beş güncellemeden biri buna denk gelir. Yerel kayıtlar
+   buna hiç denk gelmedi: taze konuklar zamanlayıcıyı hiç tetiklememişti ve
+   sözleşme testindeki systemctl yerine geçen işlev, zamanlayıcı açılınca
+   hizmetinin başlamasını hiç taklit etmiyordu. İlgili gizli kusurlar:
+   duraklatma çalışan bir yenilemeyi durduruyordu (`systemctl stop
+   certbot.service`); `failed` durumdaki bir `certbot.service` her duraklatma ve
+   geri yüklemeyi başarısız kılıyordu (`reset-failed` yok, doğru olarak; bu
+   yüzden her kurtarma denemesi de başarısız olur ve tam güncellenmiş bir sunucu
+   "kurtarma gerekiyor" durumunda kalırdı); `certbot.service` `failed` iken
+   başlayan bir güncelleme TLS kaydında duruyordu.
+3. **alpha.92'nin güncelleyicide değiştirdiği.** Yenileme hizmetleri güncelleme
+   tarafından asla durdurulmaz, başlatılmaz ya da sıfırlanmaz. Duraklatma
+   zamanlayıcıları durdurur, sonra çalışan bir yenilemenin bitmesini salt-okur
+   olarak ve hizmet başına en çok 180 saniye bekler; başarısız son çalışma
+   sahibin sonucu olarak kabul edilir. Geri yükleme zamanlayıcılara yükleme,
+   etkinleştirme ve etkinlik durumlarını geri verir ve tanımlarını denetler;
+   hizmetler yalnız etkinleştirme durumlarını geri alır ve yükleme ile
+   etkinleştirmeden denetlenir. Zamanlayıcının başlattığı bir yenileme
+   (çalışıyor, bitti ya da başarısız oldu) sahibin yenilemesidir, güncelleme
+   hatası değildir; güncellemenin günlüğü, hizmetin zamanlayıcı açılmadan önceki
+   ve sonraki çalışma kimliğinden hangisinin olduğunu yazar. TLS kaydı başarısız
+   bir yenileme hizmetini kabul eder ve "çalışmıyor" olarak kaydeder. Anlık
+   görüntü biçimi değişmedi.
+4. **Sayfanın şimdi söylediği (alpha.92'den itibaren).** İleri yöndeki
+   zamanlayıcı adımının kendi hata kodu var: `update_finishing_scheduler`.
+   Kurtarma işleme sahipken sayfa izlemeyi sürdürür: başlık **"Güncelleme
+   tamamlanıyor"**, metin "{version} kuruldu ve çalışıyor. Son adım olan
+   otomatik sertifika yenilemeyi yeniden açma ilk denemede doğrulanmadı. Sunucu
+   bu adımı kendiliğinden yineliyor. Yapmanız gereken bir şey yok; bu sayfa
+   kendiliğinden güncellenir.", beş adım ve sonuncusunda **"Kendiliğinden
+   yineleniyor (deneme 1/3)"**, kırmızı işaret yok, kapatma düğmesi yok;
+   sunucunun satırı kapalı bir "Ayrıntılar" bölümünün içinde. Kurtarma
+   güncellemeyi doğruladığında sayfa ve güncelleme kartı **"{version} sürümüne
+   güncellendi"** der; yapı satırı, tamamlanmış beş adım, tek bir sakin satır
+   "Bir adım kendiliğinden yinelendi; yapmanız gereken bir şey yok." ve bir
+   yeniden yükleme düğmesi görünür. Kırmızı yalnız `recovery_required`,
+   deneme sınırında duraklamış bir kurtarma ya da iki dakikayı geçip hâlâ
+   okunamayan bir sonuç için kalır; doğrulanmış önceki sürüme dönüş uyarı
+   rengiyle, salt-okur ön denetimde durma nötr çizilir. Güncelleme planı eski
+   sayfaların yok saydığı ek bir adım durumu kazanır: `retrying`. Kurtarma
+   aracının durum metni (`cmd/recovery`) aynısını EN ve TR söyler. Karttaki,
+   penceredeki ve kenar çubuğundaki yapı satırı artık göründüğü gibi kopyalanır
+   ("build 1743ac69edb0"); tam commit başlıkta ve ekran okuyucular için kalır.
+5. **Kim işlem yapar, iş nasıl sürer.** Sunucu adımı yinelerken sahipten bir
+   şey istenmez. Sahip yalnız duraklamada (bütün otomatik denemeler bittiğinde)
+   işlem yapar; kurtarma günlüğü komutu sayfada gösterilir.
+6. **Testler.** Yerel birimlere benzeyen bir systemctl yerine geçen işlevle
+   (`deploy/test-fixture-certbot-renewal.sh`) sözleşme testleri: zamanlayıcı
+   açılınca yenilemesinin başlaması (activating, active, bitti, başarısız),
+   güncellemeden önce başarısız olmuş yenileme, kayıt ve duraklatma sırasında
+   çalışan yenileme (beklenir, asla durdurulmaz; sınır aşılınca reddedilir),
+   sahibin zamanlayıcı değişikliğinin hâlâ reddedilmesi; kurtarma
+   çalıştırıcısının gerçek yardımcılarla geri yüklemesi. Negatif kontroller:
+   önceki yardımcı Frankfurt'un satırını yeniden üretir ("scheduler is not in a
+   stable state for certbot.service (rc=3): activating"); hizmeti durduran bir
+   duraklatma ve başarısız hizmeti reddeden bir kayıt ayrı ayrı başarısız olur.
+   Go: her kurtarma kaydı için planın `retrying` durumu, tipli kodun kabuk
+   yayımlayıcısından okuyucuya geçişi, sahip metni. Web: gerçek güncelleme
+   sağlayıcısı bağlanarak (kurtarma sürüyor, sonra başarılı, sonra duraklamış
+   kontrol) ve önceki bileşene karşı negatif kontrolle; kartın tekrar satırı ve
+   temiz kopyalanan yapı satırı.
+7. **Yerel kayıt set19.** [set19](../deploy/e2e/release-recovery/evidence/set19-20261016/README.md): Debian 13'te dört laboratuvar (QEMU/KVM, test lisanslı yapılar, dışa giden 443 reddedildi, laboratuvarın Certbot birimlerindeki değişiklikleri kaydedildi); gerçek başsız Chrome'da sahibin alpha.90'dan bu daldan yapılmış bir adaya güncellemesi. `certbot.timer` güncelleme onu yeniden açtığında telafi edecek biçimde hazırlanınca (c koşusu) `certbot.service` güncellemenin son adımında 17:07:37Z'de başladı ve güncelleme iki saniye sonra `previous_failure=none` ile `update_verified` bitti (hata yok, kurtarma yok). `certbot.service` güncellemeden önce başarısızken ve zamanlayıcı açılışında yine başarısız olunca (failed hücresi) güncelleme aynı biçimde bitti ve hizmet başarısız kaldı. alpha.90'ın sayfası adımları ve "v0.1.0-alpha.92 sürümüne güncellendi" metnini hiçbir uyarı ve kırmızı olmadan çizdi; yeniden yüklemeden sonra adayın kartı yapı satırını tam olarak `build 16cbfc877bd4` olarak kopyaladı. Koşular arasında iki düzenek bulgusu düzeltildi (laboratuvar hazırlığı güncelleme öncesi durum okunmadan önce yapılmalı; birkaç dakika önce açılmış bir konukta zamanlayıcının rastgele gecikmesi telafiyi saatlerce ileri itiyor, bu yüzden laboratuvar onu kayıtlı bir drop-in ile kaldırdı). Sakin "Güncelleme tamamlanıyor" görünümü orada çizilmedi, çünkü düzeltilmiş güncelleyiciyle adım başarısız olmadı; bağlı web testlerine dayanır.
+8. **Açık kalanlar.** Sakin görünümü güncelleme sırasında çalışan sürümün
+   sayfası çizer; bu yüzden ilk kez bir sunucu alpha.92'**den** güncellenirken
+   görülür. alpha.90 ya da alpha.91'den alpha.92'ye güncellemeyi eski sayfa
+   çizer (düzeltilmiş güncelleyiciyle bu adımın hatasına ulaşmaması beklenir).
+   Frankfurt güncellemesinin kaydı kapatılmış bir tarayıcı onun için
+   "güncellendi" kartı tutmaz. P0.1-P0.5 **kısmi** kalır; burada hiçbir P0 işi
+   kapanmaz ya da ilerlemez.

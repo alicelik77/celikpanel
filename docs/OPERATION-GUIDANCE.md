@@ -8640,3 +8640,96 @@ entries above for the items reported; their unreported items stay unreported.
    Frankfurt's setup final step, Boston's "Extend this server's setup" and the
    output of `postconf -n`. Each is "not recorded", not "worked" and not
    "failed".
+
+### The Frankfurt update of 2026-10-16: the renewal timer's catch-up run and the recovery screen (2026-10-16)
+
+The owner updated Frankfurt (Debian 13) from alpha.89 to alpha.90 at about
+15:00Z on 2026-10-16 (request `13193201ba7a3d832bb64cc6d972f8a5`). Boston
+(Ubuntu) passed the same update. This entry records what happened, why, what
+was changed for v0.1.0-alpha.92 and what is still open. It is set against
+D-022 (Certbot renewal is the owner's workload), D-024 (the current reason, who
+must act, the next action, how work resumes), D-025 (native service ownership
+and recovery evidence) and D-033 (nothing alarming for what is being handled).
+
+1. **What the owner saw.** The update died at its very last step with "reviewed
+   updater failed: exit status 1: Certbot renewal scheduler state could not be
+   restored". The page drew a red cross, "Last recorded step: recovery in
+   progress" and the raw line. Sixteen seconds later the server's automatic
+   recovery finished the update forward and the page said "Update verified" in
+   the old notice form: no step view, a "Close notification" button, the
+   failure acknowledgement, and "Reload CelikPanel" as text without a reload
+   action. alpha.90 is installed and runs. After Ctrl+Shift+R the update card
+   showed only "You are on the latest version.": the "Updated to
+   v0.1.0-alpha.90" card that Boston shows was missing, because that update
+   finished through the recovery record.
+2. **Why (read-only investigation of the source).** Debian's and Ubuntu's
+   `certbot.timer` has `OnCalendar=00,12:00`, `RandomizedDelaySec=43200` and
+   `Persistent=true`. The update stops the timer for its whole transaction and
+   turns it back on at the end. When an elapse was missed meanwhile (judged from
+   the timer's stamp file), starting the timer starts `certbot.service` at once.
+   The scheduler restore (`deploy/panel-tls-snapshot.sh`) then re-read every
+   unit and required `certbot.service` to be exactly `inactive`; it read
+   `activating` and the update failed. Depending on the hour, roughly one update
+   in four or five meets this. Native records never did: their fresh guests had
+   never triggered the timer, and the contract test's stand-in for systemctl
+   never modelled a timer start that starts its service. Related latent defects:
+   the pause stopped a running renewal (`systemctl stop certbot.service`); a
+   `failed` `certbot.service` made every pause and restore fail (no
+   `reset-failed`, rightly, so every recovery attempt failed too and a fully
+   updated server would end at "recovery required"); and an update started
+   while `certbot.service` was `failed` stopped at the TLS capture.
+3. **What alpha.92 changes in the updater.** The renewal services are never
+   stopped, started or reset by the update. Pausing stops the timers and then
+   waits, read-only and at most 180 seconds per service, for a running renewal
+   to finish; a failed last run is accepted as the owner's result. Restoring
+   gives the timers back their load, enable and active state and checks their
+   definitions; the services get back only their enable state and are checked on
+   load and enable. A renewal that the timer starts (running, finished or
+   failed) is the owner's renewal, not an update failure; the update's log says
+   which, from the service's invocation before and after the timer start. The
+   TLS capture accepts a failed renewal service and records it as "not
+   running". The snapshot format is unchanged.
+4. **What the page says now (from alpha.92 on).** The forward scheduler step
+   has its own failure code, `update_finishing_scheduler`. While recovery owns
+   the request the page keeps following: title **"Finishing the update"**, body
+   "{version} is installed and running. One final step, turning automatic
+   certificate renewal back on, did not confirm on the first try. The server is
+   repeating it by itself. Nothing needs to be done; this page updates by
+   itself.", the five steps with the last one **"Repeating automatically
+   (attempt 1 of 3)"**, no red mark, no close button; the server's line sits
+   behind a closed "Details" disclosure. When recovery verifies the update the
+   page and the update card say **"Updated to {version}"** with the build line,
+   the five steps done, one quiet line "One step was repeated automatically;
+   nothing needs to be done." and a Reload button. Red is kept for
+   `recovery_required`, a recovery paused at its retry limit, or an outcome that
+   stays unreadable past two minutes; a verified return to the previous version
+   is drawn as a warning and a read-only preflight stop as neutral. The update
+   plan gains an additive step state, `retrying`, that older pages ignore. The
+   recovery tool's status text (`cmd/recovery`) says the same in EN and TR. The build line on the card, in the dialog and in the sidebar now copies as
+   it reads ("build 1743ac69edb0"); the full commit stays in the title and for
+   screen readers.
+5. **Who acts and how it resumes.** Nothing is asked of the owner while the
+   server repeats the step. Only at a pause (all automatic attempts used) does
+   the owner act, with the recovery journal command shown on the page.
+6. **Tests.** Contract tests with a native-like stand-in for systemctl
+   (`deploy/test-fixture-certbot-renewal.sh`): a timer start that starts its
+   renewal (activating, active, finished, failed), a renewal failed before the
+   update, a renewal running during capture and pause (waited for, never
+   stopped; refused past the bound), an owner change of the timer still
+   refused; the recovery runner's restore with the real helpers. Negative
+   controls: the previous helper reproduces Frankfurt's line ("scheduler is not
+   in a stable state for certbot.service (rc=3): activating"); a pause that
+   stops the service and a capture that refuses a failed service each fail.
+   Go: the plan's `retrying` state for each recovery record, the typed code
+   through the shell publisher and the reader, the owner text. Web: the real
+   update provider mounted (recovering, then succeeded, then a paused control),
+   negative-controlled against the previous component; the card's repeated line
+   and copy-clean build line.
+7. **Native record set19.** [set19](../deploy/e2e/release-recovery/evidence/set19-20261016/README.md): four labs on Debian 13 (QEMU/KVM, test-licence builds, outbound 443 refused, the lab's changes to Certbot's units recorded), the owner's update in a real headless Chrome from alpha.90 to a candidate built from this branch. With `certbot.timer` made to catch up when the update turns it back on (run c), `certbot.service` started at 17:07:37Z during the update's last step and the update ended `update_verified` two seconds later, with `previous_failure=none` (no failure, no recovery). With `certbot.service` failed before the update and failing again at the timer start (cell failed), the update ended the same way and the service stayed failed. alpha.90's page drew the steps and "Updated to v0.1.0-alpha.92" with no alert and no red; after the reload the candidate's card copied its build line as exactly `build 16cbfc877bd4`. Two harness findings were corrected between runs (the lab preparation must come before the pre-update state is read; on a guest booted minutes earlier the timer's random delay pushes the catch-up hours ahead, so the lab removed it with a recorded drop-in). The calm "Finishing the update" view was not drawn there, because with the corrected updater the step did not fail; it rests on the mounted web tests.
+8. **What stays open.** The calm view is drawn by the page of the version that
+   runs during the update, so it is first seen when a server updates **from**
+   alpha.92; an update from alpha.90 or alpha.91 to alpha.92 is drawn by the old
+   page (with the fixed updater it should not reach this step's failure). A
+   browser whose record of the Frankfurt update was already closed keeps no
+   "Updated to" card for it. P0.1-P0.5 stay **partial**; nothing here closes or
+   advances a P0 item.
