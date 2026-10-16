@@ -1,0 +1,35 @@
+Extend this server’s setup
+
+Choose what to add. Components already installed stay as they are, the review shows what changes, and nothing starts until you confirm it.
+
+Set the panel address and DNS method
+Panel address
+
+Point this address to the server. Setup requires a trusted HTTPS certificate with automatic renewal.
+
+Required public A record before the panel certificate: panel.set18.test → 192.0.2.10.
+
+Mail server name
+
+This address identifies the mail service and its certificate. The system hostname and panel address are preserved. Reverse DNS must match this mail address.
+
+Where will DNS records be managed?
+
+This chooses the default for new domains. Existing domains keep their DNS ownership.
+
+This server
+Use this server together with a second DNS server.
+External DNS provider
+Keep DNS at your provider. Add the records CelikPanel shows.
+Existing CelikPanel DNS
+Connect to a CelikPanel DNS server you already use.
+
+Create the required server address records at the provider or primary that already manages them. Setup checks public DNS before requesting certificates; you can return to this same operation while records become available.
+
+Back
+Review setup plan
+Stop extending
+
+Stopping returns this server to its setup as it was completed. Nothing installed is removed.
+
+Access and recovery

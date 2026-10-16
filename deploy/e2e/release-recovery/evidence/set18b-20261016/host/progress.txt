@@ -1,0 +1,10 @@
+2026-10-15T23:59:16Z set18b run directory created
+2026-10-15T23:59:35Z made run copy b
+2026-10-15T23:59:40Z start build (limit 3600s)
+2026-10-16T00:03:04Z end build rc=0
+2026-10-16T00:03:14Z made run copy c
+2026-10-16T00:03:45Z coordinator wrote artifacts.path from build-set18b.out (job-build.sh grep named build-set18.out)
+2026-10-16T00:03:56Z start b (limit 10800s)
+2026-10-16T00:17:33Z end b rc=0
+2026-10-16T00:17:47Z coordinator native reading after-c2 not taken: the lab had already stopped at 00:17:33Z (file removed)
+2026-10-16T00:19:04Z evidence name set18b-20261016

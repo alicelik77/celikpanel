@@ -1,0 +1,176 @@
+{
+  "at": "2026-10-16T00:10:49Z",
+  "prep": "setup-read",
+  "result": {
+    "operation": {
+      "body": {
+        "checks": [
+          {
+            "code": "ready",
+            "id": "panel_https",
+            "state": "ready"
+          },
+          {
+            "code": "ready",
+            "id": "panel_renewal",
+            "state": "ready"
+          },
+          {
+            "code": "ready",
+            "id": "dns",
+            "state": "ready"
+          },
+          {
+            "code": "ready",
+            "id": "firewall",
+            "state": "ready"
+          },
+          {
+            "code": "ready",
+            "id": "services",
+            "state": "ready"
+          }
+        ],
+        "context": {
+          "access_dns_ip": "192.0.2.10",
+          "dns_engine": "",
+          "dns_hosting_management": "",
+          "dns_mode": "external",
+          "dns_role": "",
+          "local_ip": "",
+          "local_nameserver": "",
+          "mail_hostname": "",
+          "panel_domain": "panel.set18.test",
+          "peer_ip": "",
+          "peer_nameserver": ""
+        },
+        "id": "576f64fcef503148477280d1f4a9ef3b",
+        "panel_url": "https://panel.set18.test:2083/",
+        "phase": "complete",
+        "plan_id": "02a99acc97bec1c5471904fe7e75c544",
+        "request_id": "576f64fcef503148477280d1f4a9ef3b",
+        "status": "succeeded",
+        "steps": [
+          {
+            "id": "01-dns",
+            "kind": "dns",
+            "owner_id": "62f8ab01e2a77fc7e31c8a54a5a3617e",
+            "request_id": "a620865f6b355954a45b5faa9ed3c9e7",
+            "status": "succeeded",
+            "target": "external"
+          },
+          {
+            "id": "02-service",
+            "kind": "service",
+            "operation_id": "75720699303582efe346058bf3b91045",
+            "owner_id": "e0416dcf481334941f13e58b8ac233ba",
+            "request_id": "0bad140bdfc4d01369274a00d76bb3ed",
+            "status": "succeeded",
+            "target": "nginx"
+          },
+          {
+            "id": "03-service",
+            "kind": "service",
+            "operation_id": "a3186e225cee54f656c8834c01986ad4",
+            "owner_id": "5409127d9894135cf33234cd29c0485f",
+            "request_id": "c9db28157ccd249bd15935f6fc9521d3",
+            "status": "succeeded",
+            "target": "php-fpm"
+          },
+          {
+            "id": "04-service",
+            "kind": "service",
+            "operation_id": "be5b84152cbb9ad9385e29f5041c6d67",
+            "owner_id": "eff45ee43c2947e6c8c9b7e8de4ea85d",
+            "request_id": "0c03865f5d5eaa6f1258951803060696",
+            "status": "succeeded",
+            "target": "mariadb"
+          },
+          {
+            "id": "05-service",
+            "kind": "service",
+            "operation_id": "2974d4754fbd28da2e6a0ee7dfa2cdf1",
+            "owner_id": "bb69bbd42e75ebd98bb865915c088077",
+            "request_id": "78e4a98623b9a624ece5a6055114be3a",
+            "status": "succeeded",
+            "target": "cron"
+          },
+          {
+            "id": "06-service",
+            "kind": "service",
+            "operation_id": "a2cf0f2f4d82d399da6c7673b2daa331",
+            "owner_id": "0ead7f705c7859c508a10f2325683ff4",
+            "request_id": "fb76c1a3fa7bfd74fcb14d82aadb1046",
+            "status": "succeeded",
+            "target": "certbot"
+          },
+          {
+            "id": "07-firewall",
+            "kind": "firewall",
+            "owner_id": "8a57c75feba3fb2d3cb738cce715ab6f",
+            "request_id": "f4cce2109d44850efe93b9cc97992734",
+            "status": "succeeded",
+            "target": "enable_and_persist"
+          },
+          {
+            "id": "08-access_dns",
+            "kind": "access_dns",
+            "owner_id": "0bffbd46ebbc53fcde0531e98edd1b93",
+            "qualifier": "192.0.2.10",
+            "request_id": "209e5f40a168f1372e44e7aec357050f",
+            "status": "succeeded",
+            "target": "panel.set18.test"
+          },
+          {
+            "id": "09-panel_certificate",
+            "kind": "panel_certificate",
+            "operation_id": "110bed5ce05016ca648266f56d3b29af",
+            "owner_id": "e5249c13ee6c350098e4708608ee299f",
+            "request_id": "ce263640eeeba4d5c18003d55abd1849",
+            "status": "succeeded",
+            "target": "panel.set18.test"
+          },
+          {
+            "id": "10-verify",
+            "kind": "verify",
+            "owner_id": "048ca6970c8f0f93f6e95f8ab4f034dc",
+            "request_id": "c818286093c1822f3cfddda442102dc1",
+            "status": "succeeded",
+            "target": "web"
+          }
+        ]
+      },
+      "status": 200
+    },
+    "setup": {
+      "body": {
+        "checks": [],
+        "completed_at": "2026-10-16T00:08:30Z",
+        "draft": {
+          "database": "mariadb",
+          "dns_engine": "bind",
+          "dns_mode": "external",
+          "dns_role": "primary",
+          "local_ip": "192.0.2.10",
+          "mail_hostname": "",
+          "node_version": "",
+          "ns1": "",
+          "ns2": "",
+          "panel_domain": "panel.set18.test",
+          "peer_ip": "",
+          "peer_ns": "",
+          "purpose": "web",
+          "remote_dns_connection_id": ""
+        },
+        "guidance": "guided",
+        "origin": "fresh",
+        "required": false,
+        "revision": 5,
+        "server_ip": "192.0.2.10",
+        "status": "ready",
+        "version": 1
+      },
+      "status": 200
+    }
+  }
+}

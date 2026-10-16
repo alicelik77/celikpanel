@@ -1,0 +1,2 @@
+/var/tmp/cp-set18b/cp-upd1-build/20261015t235941z/upd1-artifacts.json
+SET18B-ARTIFACTS-OK

@@ -1,0 +1,4 @@
+wait for //wsl.localhost/archlinux/var/tmp/cp-set18b/hand/h18ba-setup/ready.json start=2026-10-16T00:04:03Z limit=5400s
+handover after 129s at 2026-10-16T00:06:15Z tool_sha256=4615db6ab5c5f626b044da9db8097f1031abb3bdf29fab328e6269ce49c27f57
+browser profile: <redacted> (46 characters, limit 120)
+rc=0 end=2026-10-16T00:17:29Z

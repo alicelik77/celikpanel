@@ -1,0 +1,31 @@
+{
+  "at": "2026-10-16T00:06:13Z",
+  "base": "https://127.0.0.1:19320",
+  "browser": {
+    "lang": "en",
+    "viewport": "1280"
+  },
+  "cell": "set18-debian13",
+  "lab": {
+    "mail_hostname": "mail.set18.test",
+    "mail_profile": "core-mail",
+    "panel_domain": "panel.set18.test",
+    "server_ip": "192.0.2.10"
+  },
+  "local_port": 19320,
+  "mode": "set18",
+  "password_file": "/var/tmp/cp-set18b/secret/h18ba-setup.json",
+  "preps": [
+    "probe",
+    "journal",
+    "lab-state",
+    "lab-mail-a",
+    "lab-ptr-mail",
+    "refresh-pin",
+    "setup-read"
+  ],
+  "schema": "celikpanel/set12-handover/v1",
+  "tls_leaf_sha256": "65fe0f66bf050252db6241919819906f9d9a881233192526b91190f788ead52c",
+  "username": "labadmin",
+  "window": "setup"
+}

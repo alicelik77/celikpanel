@@ -1,0 +1,87 @@
+Bu sunucunun kurulumunu genişletin
+
+Eklemek istediğinizi seçin. Kurulu bileşenler olduğu gibi kalır, inceleme neyin değiştiğini gösterir ve siz onaylamadan hiçbir şey başlamaz.
+
+İnceleme
+4 / 5
+
+1
+Kullanım amacı
+2
+Bileşenler
+3
+Erişim ve DNS
+4
+İnceleme
+5
+Kurulum ve doğrulama
+Yapılacak değişiklikleri inceleyin
+
+Yalnızca aşağıdaki işlemler çalıştırılır. Mevcut veriler korunur; desteklenmeyen veya çakışan bileşenler planı durdurur.
+
+Neler değişiyor
+Sunucunun kullanım amacı
+Web barındırma
+→
+Özel kurulum
+Posta sunucusu adı
+yok
+→
+mail.set18.test
+Kurulacaklar
+E-posta profilini hazırla: Temel Posta
+Zaten kurulu, olduğu gibi kalanlar (6)
+MariaDB
+Mevcut kurulum korunur
+Nginx
+Mevcut kurulum korunur
+PHP-FPM
+Mevcut kurulum korunur
+Güvenlik duvarı motoru
+Mevcut kurulum korunur
+Let’s Encrypt istemcisi (certbot)
+Mevcut kurulum korunur
+Zamanlanmış görevler (cron)
+Mevcut kurulum korunur
+
+DNS’i yapılandır: Harici DNS sağlayıcısı kullan
+
+E-posta profilini hazırla: Temel Posta
+
+Güvenlik duvarı politikasını uygula ve kaydet
+
+Sertifikadan önce genel DNS’i doğrula: panel.set18.test
+
+192.0.2.10
+
+Sertifikadan önce genel DNS’i doğrula: mail.set18.test
+
+192.0.2.10
+
+Posta erişimini güvenli hâle getir: mail.set18.test
+
+Bağımsız e-posta sertifikası yenilemeyi hazırla
+
+Hazırlanan sunucuyu doğrula
+
+Kalıcı güvenlik duvarı politikası
+Mevcut SSH ve panel erişimini koruyun, aşağıdaki gerekli portlara izin verin ve yeniden başlatmadan sonra politikayı geri yükleyin. Sunucu, uygulamadan önce yönetim erişimini kontrol eder.
+TCP
+22, 25, 80, 110, 143, 443, 465, 587, 993, 995, 2083
+UDP
+Ek port yok
+Sertifika iletişim e-postası
+labadmin@example.invalid
+
+Her yeni alan adı için CelikPanel’in gösterdiği DNS kayıtlarını sağlayıcınıza ekleyin. Kayıtlar doğrulanmadan alan adı yayında sayılmaz.
+
+Posta alan adlarının SPF, DKIM, DMARC ve TLS kayıtları ayrıca doğrulanmalıdır. Sunucu sağlayıcısındaki PTR değişikliği ayrı bir gerekli işlem olarak kalır.
+
+Bileşenleri, erişim kurallarını ve kimlik değişikliklerini inceledim; bu planı başlatmak istiyorum.
+Geri
+İncelenen kurulumu başlat
+Genişletmeden vazgeç
+
+Vazgeçerseniz sunucunun kurulumu tamamlandığı hâline döner. Kurulu hiçbir şey kaldırılmaz.
+
+Erişim ve kurtarma

@@ -1,0 +1,78 @@
+{
+  "checks": {
+    "browser_done": {
+      "at": "2026-10-16T00:17:29.173Z",
+      "by": "cold-load-set18b.mjs"
+    },
+    "ended_at": "2026-10-16T00:17:29Z",
+    "hand": "/var/tmp/cp-set18b/hand/h18ba-setup",
+    "password_file_removed": true,
+    "pin_after_the_window": {
+      "after": "bb44ad7203265f88bad411c43a4c9d840228e4f59c5bf85cfc8717903fc1714e",
+      "before": "bb44ad7203265f88bad411c43a4c9d840228e4f59c5bf85cfc8717903fc1714e",
+      "changed": false
+    },
+    "prep_count": 7,
+    "probe_before_the_window": {
+      "at": "2026-10-16T00:06:13Z",
+      "cgroup_cpu": {
+        "agent": {
+          "system_usec": 22578,
+          "usage_usec": 67736,
+          "user_usec": 45157
+        },
+        "panel": {
+          "system_usec": 581961,
+          "usage_usec": 945696,
+          "user_usec": 363734
+        }
+      },
+      "epoch": 1792109173.6238875,
+      "file": "steps/08-set18-browser-window/native/001-probe-before-the-window.json",
+      "loadavg": "0.94 0.30 0.10 1/125 7104",
+      "nginx_dropin": false,
+      "proc_cpu": {
+        "agent": {
+          "clk_tck": 100,
+          "cstime": 0,
+          "cutime": 0,
+          "stime": 1,
+          "utime": 2
+        },
+        "panel": {
+          "clk_tck": 100,
+          "cstime": 0,
+          "cutime": 0,
+          "stime": 56,
+          "utime": 35
+        }
+      },
+      "scan_cache": {
+        "database": "/var/lib/celikpanel/celikpanel.db",
+        "exists": false
+      },
+      "units": {
+        "agent": {
+          "ActiveState": "active",
+          "CPUUsageNSec": "67736000",
+          "MainPID": "6527",
+          "NRestarts": "0"
+        },
+        "panel": {
+          "ActiveState": "active",
+          "CPUUsageNSec": "945696000",
+          "MainPID": "6723",
+          "NRestarts": "0"
+        }
+      }
+    },
+    "session": {
+      "status": 200
+    },
+    "window": "setup"
+  },
+  "finished_at": "2026-10-16T00:17:30Z",
+  "name": "set18-browser-window",
+  "started_at": "2026-10-16T00:06:13Z",
+  "verdict": "observed"
+}

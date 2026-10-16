@@ -1,0 +1,15 @@
+Your server is ready
+
+Setup passed the required checks. You can now use the prepared infrastructure.
+
+Custom setup
+
+Panel access, firewall and the selected infrastructure have been verified. Each website or mail domain is checked separately when you add it.
+
+Add your first website
+Extend this server’s setup
+
+Add what this server should also do, such as mail, or correct a host name. Extending installs and configures only what you add. It never removes, stops or replaces anything already installed, and your websites keep running. You review every change before it starts.
+
+Extend setup
+Access and recovery

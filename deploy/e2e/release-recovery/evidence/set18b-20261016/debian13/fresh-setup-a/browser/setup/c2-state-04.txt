@@ -1,0 +1,49 @@
+Extend this server’s setup
+
+Follow the setup steps and their recorded results here.
+
+Preparing your server
+What happens at this step
+
+Apply and save the firewall policy
+
+The reviewed firewall rules must keep SSH and panel access available. If verification fails, check the reported access or firewall requirement before applying another plan.
+
+Checks and how to continue
+
+Configure DNS: Use an external DNS provider
+
+Completed
+
+Prepare mail profile: Core Mail
+
+Completed
+
+Apply and save the firewall policy
+
+In progress
+
+Verify public DNS before certificate issuance: panel.set18.test
+
+192.0.2.10
+
+Waiting
+
+Verify public DNS before certificate issuance: mail.set18.test
+
+192.0.2.10
+
+Waiting
+
+Secure mail access: mail.set18.test
+
+Waiting
+
+Prepare independent mail certificate renewal
+
+Waiting
+
+Verify the prepared server
+
+Waiting
+Access and recovery

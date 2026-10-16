@@ -1,0 +1,94 @@
+{
+  "outcome": "response",
+  "panel": "owner",
+  "purpose": "set18: setup (/api/v1/setup)",
+  "request": {
+    "body": null,
+    "headers": [
+      [
+        "Accept",
+        "application/json"
+      ],
+      [
+        "Host",
+        "127.0.0.1:19320"
+      ],
+      [
+        "Cookie",
+        "[REDACTED]"
+      ]
+    ],
+    "method": "GET",
+    "path": "/api/v1/setup"
+  },
+  "response": {
+    "elapsed_seconds": 0.005,
+    "headers": [
+      [
+        "Cache-Control",
+        "no-store"
+      ],
+      [
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+      ],
+      [
+        "Content-Type",
+        "application/json"
+      ],
+      [
+        "Referrer-Policy",
+        "no-referrer"
+      ],
+      [
+        "Strict-Transport-Security",
+        "max-age=31536000"
+      ],
+      [
+        "X-Content-Type-Options",
+        "nosniff"
+      ],
+      [
+        "X-Frame-Options",
+        "DENY"
+      ],
+      [
+        "Date",
+        "Fri, 16 Oct 2026 00:09:28 GMT"
+      ],
+      [
+        "Content-Length",
+        "452"
+      ]
+    ],
+    "json": {
+      "checks": [],
+      "completed_at": "2026-10-16T00:08:30Z",
+      "draft": {
+        "database": "mariadb",
+        "dns_engine": "bind",
+        "dns_mode": "external",
+        "dns_role": "primary",
+        "local_ip": "192.0.2.10",
+        "mail_hostname": "",
+        "node_version": "",
+        "ns1": "",
+        "ns2": "",
+        "panel_domain": "panel.set18.test",
+        "peer_ip": "",
+        "peer_ns": "",
+        "purpose": "web",
+        "remote_dns_connection_id": ""
+      },
+      "guidance": "guided",
+      "origin": "fresh",
+      "required": false,
+      "revision": 3,
+      "server_ip": "192.0.2.10",
+      "status": "ready",
+      "version": 1
+    },
+    "status": 200,
+    "text": null
+  }
+}

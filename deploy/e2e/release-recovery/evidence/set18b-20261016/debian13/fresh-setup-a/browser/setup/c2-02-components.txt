@@ -1,0 +1,58 @@
+Extend this server’s setup
+
+Choose what to add. Components already installed stay as they are, the review shows what changes, and nothing starts until you confirm it.
+
+Choose your components
+
+Select what to prepare on this server. Required dependencies are included and conflicting choices are blocked.
+
+Existing components and data are preserved. Clearing a selection does not uninstall anything.
+
+Web and applications
+Nginx
+Installed
+Keep existing installation
+PHP-FPM
+Installed
+Keep existing installation
+Node.js
+Includes required components: Nginx.
+Databases and tools
+MariaDB
+Installed
+Keep existing installation
+PostgreSQL
+Optional component
+phpMyAdmin
+Includes required components: MariaDB, Nginx, PHP-FPM.
+phpPgAdmin
+Includes required components: Nginx, PHP-FPM, PostgreSQL.
+Email
+Postfix + Dovecot
+These services are prepared together as one supported mail setup.
+Rspamd
+Includes required components: Postfix.
+Roundcube
+Includes required components: Dovecot, Nginx, PHP-FPM, Postfix.
+Cache
+Redis
+Optional component
+Valkey
+Optional component
+Memcached
+Optional component
+Security
+Fail2ban
+Optional component
+
+DNS and secure access come next
+
+Choose the DNS method and engine in the next step. Panel HTTPS, certificate renewal and a firewall that preserves access are required for every setup.
+
+Back
+Continue
+Stop extending
+
+Stopping returns this server to its setup as it was completed. Nothing installed is removed.
+
+Access and recovery

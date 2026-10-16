@@ -1,0 +1,970 @@
+--- /dev/null
++++ b/deploy/e2e/release-recovery/set18b_fixture.py
+@@ -0,0 +1,33 @@
++#!/usr/bin/env python3
++"""set18b: set18_fixture with the source of the twenty-second native record (HEAD 6b363ac46 of
++feat/alpha87-second-server, the set18 D1/O1/O3 fix). The release profile is set18's unchanged (installed: a
++policy-only fixture commit labelled v0.1.0-alpha.87 / 87, previous 86 = the v0.1.0-alpha.86 tag commit 8d260f31;
++the origin's never-installed candidate labelled v0.1.0-alpha.88 / 88); only the source named in the provenance text
++differs. Nothing of set18_fixture.py or the earlier fixture modules is changed on disk.
++
++  set18b_fixture.py fixture-source ...   (build-set18b-artifacts.sh; the same arguments as owner_update_trial.py)
++  set18b_fixture.py prove --artifacts A.json
++
++set18b: set18 surum profili, kaynak olarak 6b363ac46; diskte hicbir dosyayi degistirmez.
++"""
++from __future__ import annotations
++
++from pathlib import Path
++import sys
++
++HERE = Path(__file__).resolve().parent
++if str(HERE) not in sys.path:
++    sys.path.insert(0, str(HERE))
++import set18_fixture as fx18  # noqa: E402  (registers set18's alpha.87 profile and its 88 origin copy)
++
++SOURCE_COMMIT = "6b363ac4680146f856642cffdab0b57662f6159c"   # set18b (2026-10-16): HEAD of feat/alpha87-second-server
++fx18.SOURCE_COMMIT = SOURCE_COMMIT   # read at call time by set18's provenance text
++out, configure, THIRD_REF = fx18.out, fx18.configure, fx18.THIRD_REF
++
++
++def main(argv: list[str] | None = None) -> int:
++    return fx18.main(argv)
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+--- /dev/null
++++ b/deploy/e2e/release-recovery/build-set18b-artifacts.sh
+@@ -0,0 +1,148 @@
++#!/usr/bin/env bash
++# set18b: the archives of the twenty-second native record (the alpha.87 candidate at the set18 D1 fix, installed fresh),
++# built from one exact source commit in a disposable clone, with build-set18-artifacts.sh's steps (that script is not
++# changed):
++#
++#   build-set18b-artifacts.sh SOURCE
++#     B  baseline    SOURCE + a fixture commit that changes ONLY the release policy to v0.1.0-alpha.87 / 87, previous
++#                    86 = the v0.1.0-alpha.86 tag commit (8d260f31): the installed candidate
++#     G  good        B + a fixture commit that changes ONLY the release policy to v0.1.0-alpha.88 / 88 (previous = B):
++#                    the origin's candidate; never installed (set18b starts no update)
++#     D  defective   G + set5's fixture defect (never installed; the artifacts document needs it)
++#
++# The fixture driver is set18b_fixture.py. Each commit is built with dns-pair-acceptance/scripts/build-dist.sh
++# --acceptance-license and CELIKPANEL_DIST_VERSION set to the committed policy's version. The disposable clone lives
++# under ${SET18B_BUILD_ROOT:-/var/tmp/cp-set18b/cp-upd1-build}/<stamp>; build-dist.sh writes its dist under
++# /var/tmp/cp-pair-accept/dist/ as before. Output: <stamp>/upd1-artifacts.json. None of these archives is a release.
++set -euo pipefail
++shopt -s inherit_errexit
++umask 022
++
++HERE=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
++REPO=${CELIKPANEL_REPO:-'/mnt/c/CELIKBROS PROJECTS/celikpanel'}
++usage() { echo "usage: build-set18b-artifacts.sh SOURCE_COMMIT" >&2; exit 2; }
++[[ $# -eq 1 ]] || usage
++SOURCE=$1
++BUILD_DIST="$HERE/../dns-pair-acceptance/scripts/build-dist.sh"
++DRIVER="$HERE/set18b_fixture.py"
++GUARD="$HERE/../../../deploy/release-acceptance-license-guard.sh"
++GO=${CELIKPANEL_GO:-/opt/celikpanel-test-toolchains/go1.26.5/go/bin/go}
++TAG86=8d260f317e58bed7fcd84c6cbb01823c4fe3f166
++[[ -f $BUILD_DIST && -f $DRIVER ]] || { echo "harness files missing" >&2; exit 2; }
++
++source_commit=$(git -c safe.directory='*' -C "$REPO" rev-parse "${SOURCE}^{commit}")
++stamp=$(date -u +%Y%m%dt%H%M%Sz)
++work=${SET18B_BUILD_ROOT:-/var/tmp/cp-set18b/cp-upd1-build}/$stamp
++[[ ! -e $work ]] || { echo "refusing to reuse $work" >&2; exit 2; }
++mkdir -p "$work"
++clone=$work/repo
++git -c safe.directory='*' clone --quiet --no-hardlinks "$REPO" "$clone"
++git -C "$clone" checkout --quiet --detach "$source_commit"
++git -C "$clone" config user.name "upd1 disposable fixture"
++git -C "$clone" config user.email "upd1-fixture@example.invalid"
++
++commit_fixture() {   # kind message baseline_ref [previous]
++    local kind=$1 message=$2 ref=$3 previous=${4:-} commit
++    python3 "$DRIVER" fixture-source --repo "$clone" --kind "$kind" ${previous:+--previous-commit "$previous"} \
++        --baseline-ref "$ref" >&2
++    git -C "$clone" commit --quiet --allow-empty -am "$message"
++    commit=$(git -C "$clone" rev-parse HEAD)
++    git -C "$clone" update-ref "refs/upd1/$kind" "$commit"
++    echo "$commit"
++}
++
++build_web() {
++    ( cd "$clone/web" && rm -rf dist && npm ci --no-audit --no-fund && npm run build ) >&2
++    [[ -f $clone/web/dist/index.html ]] || { echo "web build produced no index.html" >&2; exit 1; }
++    rm -rf -- "$1"
++    cp -a "$clone/web/dist" "$1"
++}
++
++use_web() {
++    rm -rf -- "$clone/web/dist"
++    cp -a "$1" "$clone/web/dist"
++}
++
++build() {
++    local commit=$1 version=$2 dist_json
++    dist_json=/var/tmp/cp-pair-accept/dist/$commit-acceptance-license/dist.json
++    if ! CELIKPANEL_REPO=$clone CELIKPANEL_DIST_VERSION=$version CELIKPANEL_ACCEPTANCE_GUARD=$GUARD \
++        bash "$BUILD_DIST" --acceptance-license "$commit" >&2; then
++        echo "BUILD-SET18B-FAILED: the dist build of $commit ($version) failed or was refused." >&2
++        return 1
++    fi
++    [[ -s $dist_json ]] || { echo "BUILD-SET18B-FAILED: the dist build of $commit ($version) wrote no $dist_json" >&2; return 1; }
++    echo "$dist_json"
++}
++
++expected_policy() {   # version current previous previous_version previous_commit
++    printf 'format=celikpanel-release-sequence-policy-v1\nversion=%s\ncurrent=%s\nprevious=%s\nprevious_version=%s\nprevious_commit=%s\n' "$@"
++}
++
++only_policy_changed() {
++    [[ "$(git -C "$clone" diff --name-only "$1" "$2")" == deploy/release-sequence-policy ]]
++}
++
++git -C "$clone" merge-base --is-ancestor "$TAG86" "$source_commit" \
++    || { echo "the v0.1.0-alpha.86 tag commit is not an ancestor of the source; refusing" >&2; exit 1; }
++[[ $(git -C "$clone" rev-parse 'v0.1.0-alpha.86^{commit}') == "$TAG86" ]] || { echo "v0.1.0-alpha.86 is not 8d260f31" >&2; exit 1; }
++build_web "$work/web-dist-candidate"
++# The installed candidate: SOURCE + policy 87 (previous 86 = the alpha.86 tag commit), through set17's alpha.86 label
++# profile, whose candidate is v0.1.0-alpha.87 / 87 after v0.1.0-alpha.86 / 86.
++baseline=$(commit_fixture good "test(fixture): set18b candidate labelled v0.1.0-alpha.87 (release policy only; unpublished, disposable)" v0.1.0-alpha.86 "$TAG86")
++git -C "$clone" update-ref refs/upd1/baseline "$baseline"
++only_policy_changed "$source_commit" "$baseline" || { echo "the baseline fixture changed more than the release policy" >&2; exit 1; }
++[[ "$(git -C "$clone" show "$baseline:deploy/release-sequence-policy")" == \
++   "$(expected_policy v0.1.0-alpha.87 87 86 v0.1.0-alpha.86 "$TAG86")" ]] \
++    || { echo "the baseline fixture's policy is not v0.1.0-alpha.87 / 87 after the alpha.86 tag" >&2; exit 1; }
++good=$(commit_fixture good "test(fixture): set18b origin candidate labelled v0.1.0-alpha.88 (release policy only; never installed)" v0.1.0-alpha.87 "$baseline")
++only_policy_changed "$baseline" "$good" || { echo "the good fixture changed more than the release policy" >&2; exit 1; }
++[[ "$(git -C "$clone" show "$good:deploy/release-sequence-policy")" == \
++   "$(expected_policy v0.1.0-alpha.88 88 87 v0.1.0-alpha.87 "$baseline")" ]] \
++    || { echo "the good fixture's policy is not v0.1.0-alpha.88 / 88 after the baseline" >&2; exit 1; }
++defective=$(commit_fixture defective "test(fixture): set18b defective over the alpha.88 label - migrate-only fails (never installed)" v0.1.0-alpha.87)
++[[ -z $(git -C "$clone" diff --stat "$source_commit" "$defective" -- web) ]] || { echo "fixture commit changed web/" >&2; exit 1; }
++proof=$work/baseline-ref-proof.txt
++{
++    echo "set18b: source=$source_commit baseline=$baseline (source + policy 87) good=$good (policy 88) defective=$defective"
++    echo "== release policy at the source"; git -C "$clone" show "$source_commit:deploy/release-sequence-policy"
++    echo "== release policy at the baseline (installed)"; git -C "$clone" show "$baseline:deploy/release-sequence-policy"
++    echo "== release policy at the good fixture (never installed)"; git -C "$clone" show "$good:deploy/release-sequence-policy"
++    echo "== git diff --stat $TAG86 $source_commit -- internal/db/migrations (empty = no migration since the alpha.86 tag):"
++    git -C "$clone" diff --stat "$TAG86" "$source_commit" -- internal/db/migrations
++    echo "== (end)"
++    git -C "$clone" checkout --quiet --detach "$baseline"
++    ( cd "$clone" && GOTOOLCHAIN=local GOFLAGS=-mod=readonly "$GO" list -deps ./cmd/agent ) > "$work/agent-deps.txt"
++    echo "== Agent package closure at the baseline ($(wc -l < "$work/agent-deps.txt") packages): licensing packages"
++    grep -c '/internal/licensing' "$work/agent-deps.txt" || true
++} > "$proof"
++[[ $(tail -n 1 "$proof") == 0 ]] || { echo "the Agent package closure includes the licensing seam; see $proof" >&2; exit 1; }
++use_web "$work/web-dist-candidate"
++b_json=$(build "$baseline" v0.1.0-alpha.87)
++g_json=$(build "$good" v0.1.0-alpha.88)
++d_json=$(build "$defective" v0.1.0-alpha.88)
++
++python3 - "$work/upd1-artifacts.json" "$source_commit" "$clone" "$b_json" "$g_json" "$d_json" "$baseline" "$good" "$proof" <<'PY'
++import json, sys
++out, head, clone, b, g, d, baseline, good, proof = sys.argv[1:]
++def item(path, sequence, parent=None):
++    value = json.load(open(path))
++    entry = {k: value[k] for k in ("archive", "sha256", "commit", "tree", "version", "product_web_src")}
++    entry.update(sequence=sequence, license_mode=value.get("license_mode"), dist_json=path)
++    if parent:
++        entry["parent"] = parent
++    return entry
++document = {"schema": "celikpanel/upd1-artifacts/v1", "source_head": head, "clone": clone,
++            "baseline": item(b, 87), "good": item(g, 88, baseline), "defective": item(d, 88, good)}
++document["defective"]["defect"] = "cmd/panel/main.go --migrate-only exits 1 after migrating the isolated copy"
++document["baseline_ref"] = {"ref": "v0.1.0-alpha.87", "tag_commit": baseline, "patched_files": [], "proof": proof}
++document["provenance"] = (f"set18b: baseline (installed) an unpublished fixture commit {baseline} over the source {head} "
++                          "that changes only the release policy to v0.1.0-alpha.87 / 87 (previous the alpha.86 tag); "
++                          "good/defective: unpublished disposable fixture commits labelled v0.1.0-alpha.88, served by the "
++                          "origin, never installed; acceptance-license panels; not a release")
++with open(out, "x") as handle:
++    json.dump(document, handle, indent=2, sort_keys=True)
++    handle.write("\n")
++print(out)
++PY
++echo SET18B-ARTIFACTS-OK
+--- /dev/null
++++ b/deploy/e2e/release-recovery/set18b_trial.py
+@@ -0,0 +1,89 @@
++#!/usr/bin/env python3
++"""set18b: the twenty-second native record. set18_trial (unchanged on disk) with the source of the set18 D1/O1/O3 fix
++(HEAD 6b363ac46 of feat/alpha87-second-server plus set18's policy-only fixture commit labelled v0.1.0-alpha.87 / 87),
++installed fresh on a disposable Debian 13 guest with set18's lab DNS and ACME (guest_set18_lab_dns.py, unchanged),
++the owner's setup and its extension followed in a real headless Chrome (web/tools/browser-inspect/cold-load-set18b.mjs).
++
++One harness change against set18 (its run note H2): the driver's pinned API client sends the TLS server name
++``localhost``. set18's client connected to 127.0.0.1 without a server name, while the pin is read on the guest with
++the server name ``localhost`` (guest_upd1_workload.py ``tls-leaf``). After the certificate handover the Panel serves
++its lab-CA certificate for any server name but its first self-signed certificate to a client that sends none (set18
++O2), so every driver read after the handover failed with ``PinMismatch``. ``SNIPinnedHTTPSTransport`` reads and pins
++the same certificate the guest reports; the pin itself is unchanged (the exact leaf digest).
++
++  set18b_trial.py plan --cell set18-debian13 --artifacts A.json --work-root /var/tmp/cp-release-drill-X [--dry-run]
++  set18b_trial.py run  --cell set18-debian13 --artifacts A.json --work-root /var/tmp/cp-release-drill-X --execute
++"""
++from __future__ import annotations
++
++import hashlib
++import http.client
++from pathlib import Path
++import ssl
++import sys
++import time
++
++HERE = Path(__file__).resolve().parent
++if str(HERE) not in sys.path:
++    sys.path.insert(0, str(HERE))
++import set18b_fixture as fx18b  # noqa: E402  (set18's profile; the source named is 6b363ac46)
++import set18_trial as t18  # noqa: E402
++
++base = t18.base
++SNI_NAME = "localhost"   # the name guest_upd1_workload.tls_leaf sends when it reads the pin on the guest
++
++
++class _SNIConnection(http.client.HTTPSConnection):
++    """An HTTPS connection to the loopback forward that sends SNI_NAME (the Host header stays 127.0.0.1:port)."""
++
++    def connect(self) -> None:
++        http.client.HTTPConnection.connect(self)
++        self.sock = self._context.wrap_socket(self.sock, server_hostname=SNI_NAME)
++
++
++def sni_transport_class(panel_api):
++    class SNIPinnedHTTPSTransport(panel_api.PinnedHTTPSTransport):
++        """panel_api.PinnedHTTPSTransport with the server name SNI_NAME; the exact leaf pin is unchanged."""
++
++        sni = SNI_NAME
++
++        def __call__(self, method, path, headers, body, timeout):
++            context = ssl.create_default_context()
++            context.check_hostname = False
++            context.verify_mode = ssl.CERT_NONE  # replaced by the exact leaf pin below
++            connection = _SNIConnection(self.host, self.port, timeout=timeout, context=context)
++            started = time.monotonic()
++            try:
++                connection.connect()
++                der = connection.sock.getpeercert(binary_form=True)
++                if hashlib.sha256(der or b"").hexdigest() != self.leaf_sha256:
++                    raise panel_api.PinMismatch("panel TLS leaf differs from the guest-reported certificate")
++                connection.request(method, path, body=body, headers=headers)
++                response = connection.getresponse()
++                payload = response.read(8 << 20)
++                return panel_api.Response(response.status, list(response.getheaders()), payload, time.monotonic() - started)
++            finally:
++                connection.close()
++    return SNIPinnedHTTPSTransport
++
++
++class Set18bTrial(t18.Set18Trial):
++    def refresh_pin(self) -> str:
++        """owner_update_trial.refresh_pin with set18b's transport (H2); a changed leaf is recorded as before."""
++        leaf = self.workload("tls-leaf")["leaf_sha256"]
++        if self.transport is None:
++            self.transport = sni_transport_class(self.p["panel_api"])("127.0.0.1", self.local_port, leaf)
++        elif self.transport.leaf_sha256 != leaf:
++            self.state.setdefault("pin_changes", []).append({"at": base.utc_now(), "from": self.transport.leaf_sha256,
++                                                             "to": leaf, "sni": SNI_NAME})
++            self.transport.leaf_sha256 = leaf
++        return leaf
++
++
++# set18's main() builds the trial and names the cell kind from these module globals (read at call time).
++t18.Set18Trial = Set18bTrial
++t18.CELL_KIND = "set18b-fresh-setup-to-ready-extension"
++main = t18.main
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+--- /dev/null
++++ b/deploy/e2e/release-recovery/run-set18b.sh
+@@ -0,0 +1,55 @@
++#!/usr/bin/env bash
++# set18b wrapper for the Linux QEMU host (archlinux), run as root: the alpha.87 candidate at the set18 D1 fix
++# (6b363ac46) installed fresh on a disposable Debian 13 guest whose lab has its own DNS and ACME server (set18's lab
++# preparation guest_set18_lab_dns.py), the owner's setup run to ready and extended in a real headless Chrome.
++#
++#   run-set18b.sh dry-run CELL ARTIFACTS_JSON LAB_NAME
++#       Validate the plan without any guest (no lab is created).
++#   run-set18b.sh cell CELL ARTIFACTS_JSON LAB_NAME SSH_PORT [LOCAL_PORT]
++#       Prepare and start a NEW lab /var/tmp/cp-release-drill-LAB_NAME (lab.py accepts no other place), run the one
++#       cell on its node, then stop the lab (disks and evidence retained).
++#
++# CELL: set18-debian13   (ARTIFACTS_JSON from `build-set18b-artifacts.sh SOURCE`)
++# One cell per new lab. SET17_NEIGHBOUR_GATE and then SET17_DISK_GATE, when set, are programs that must exit 0
++# immediately before the guests are started; otherwise no guest is started. SET12_HAND opens the browser window
++# "setup" (required; under $SET12_RUN_ROOT/hand).
++set -euo pipefail
++HERE=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
++IMAGES=${UPD1_IMAGE_CACHE:-/var/tmp/cp-v3n28/images}
++LAB=(python3 "$HERE/lab.py")
++DRIVER=(python3 "$HERE/set18b_trial.py")
++
++usage() { sed -n '2,15p' "${BASH_SOURCE[0]}" >&2; exit 2; }
++[[ $# -ge 1 ]] || usage
++command=$1; shift
++case $command in
++    dry-run)
++        [[ $# -eq 3 ]] || usage
++        exec "${DRIVER[@]}" plan --cell "$1" --artifacts "$2" --work-root "/var/tmp/cp-release-drill-$3" --dry-run
++        ;;
++    cell)
++        [[ $# -ge 4 && $# -le 5 ]] || usage
++        cell=$1 artifacts=$2 name=$3 port=$4 local_port=${5:-18443}
++        [[ $EUID -eq 0 ]] || { echo "run as root (fixture signing keys are root-only)" >&2; exit 2; }
++        [[ -n ${SET12_HAND:-} ]] || { echo "set18b cells need the browser window (SET12_HAND)" >&2; exit 2; }
++        root=/var/tmp/cp-release-drill-$name
++        [[ ! -e $root ]] || { echo "lab $root exists; every cell needs a NEW lab" >&2; exit 2; }
++        "${DRIVER[@]}" plan --cell "$cell" --artifacts "$artifacts" --work-root "$root" > /dev/null
++        "${LAB[@]}" prepare --work-root "$root" --image-cache "$IMAGES" --ssh-port "$port" --platform debian13-arch --execute
++        if [[ -n ${SET17_NEIGHBOUR_GATE:-} ]]; then
++            bash "$SET17_NEIGHBOUR_GATE" "$cell $name" || { echo "SET18B cell=$cell lab=$root NOT STARTED: another measurement's guest is running" >&2; exit 75; }
++        fi
++        if [[ -n ${SET17_DISK_GATE:-} ]]; then
++            bash "$SET17_DISK_GATE" "$cell $name (guest start)" || { echo "SET18B cell=$cell lab=$root NOT STARTED: the disk gate refused the guest start" >&2; exit 75; }
++        fi
++        "${LAB[@]}" start --work-root "$root" --execute
++        "${LAB[@]}" status --work-root "$root"
++        status=0
++        "${DRIVER[@]}" run --cell "$cell" --artifacts "$artifacts" --work-root "$root" --local-port "$local_port" \
++            --execute || status=$?
++        "${LAB[@]}" stop --work-root "$root" --execute || true
++        echo "SET18B cell=$cell lab=$root driver_exit=$status evidence=$root/evidence/*/upd1"
++        exit "$status"
++        ;;
++    *) usage ;;
++esac
+--- /dev/null
++++ b/web/tools/browser-inspect/cold-load-set18b.mjs
+@@ -0,0 +1,630 @@
++// node cold-load-set18b.mjs <handover-dir> <out-dir> [setup,done]
++// set18b (2026-10-16): the twenty-second native record. cold-load-set18.mjs (unchanged on disk) adapted to the
++// candidate at the set18 D1/O1/O3 fix (6b363ac46): the owner's guided setup run to READY and the extension flow on
++// screen, in a real headless Chrome against a REAL CelikPanel on a disposable lab guest whose lab has its own DNS and
++// ACME server (deploy/e2e/release-recovery/guest_set18_lab_dns.py, a lab preparation; set18b_trial.py, set12's browser
++// window protocol, window "setup"). Nothing but the loopback address of the driver's forward is opened.
++//
++//   cell "setup":
++//     1  setup to ready (English, 1280x800): sign-in, "Set up with the wizard", purpose Web hosting, panel address
++//        hand.lab.panel_domain, DNS external, review, confirm, start; the run is followed (the page sampled every
++//        500 ms, every new state pictured) to "Your server is ready". The ready screen again in Turkish at 390x844.
++//     3  the Components mail route: Components -> Core Mail -> Install -> the dialog's setup route, the mail host name
++//        hand.lab.mail_hostname, "Review in server setup" -> where the wizard lands (D1: it must be the extension's
++//        access step with the profile prefilled and "Stop extending"; nothing of the completed run) -> the
++//        access step's secondary-DNS box (local DNS, role secondary; UI state only, set back to external, never
++//        saved) -> "Stop extending" -> the ready screen; the driver reads the setup and its latest operation.
++//     2  the extension from the ready screen: "Extend this server's setup" -> the purpose step (prefilled purpose
++//        recorded) -> "Customize selection" -> the components step (each row's installed/kept text recorded) ->
++//        Postfix + Dovecot -> the access step (mail host name) -> review ("What changes / To be installed / Already
++//        installed" recorded; again in Turkish at 390x844) -> confirm, Start -> followed to ready: the queued
++//        sentence (setup.guide.queued, O1), the mail host's public-DNS wait (the owner adds the A record by the
++//        tool's own trigger when the run waits at that step: H3 fixed), the mail certificate, the mail enrollment
++//        ("Continue recorded operation": each press and the button's state afterwards recorded; O3), the reverse DNS
++//        wait (the owner sets it at the provider, then "Check requirements again"), "Finishing setup", ready.
++//   cell "done": writes done.json
++//
++// set18 harness note H3 (fixed here): set18's trigger for the mail record compared the run's phase with the step id,
++// but a waiting run reports the step's kind ("access_dns"); the trigger now takes the mail host's access_dns step
++// while it is the running step of a waiting run, whatever the phase names.
++//
++//   BROWSER_INSPECT_MODULES  directory whose node_modules holds puppeteer-core (required; outside the repository)
++//   CHROME_PATH              the installed Chrome (default: the usual Windows/Linux places)
++//
++// The owner's password is read from the root-only file the driver names and typed into the sign-in form; every text
++// this script writes is passed through the redaction list of that file first. Cookies are never read.
++import { createHash } from 'node:crypto';
++import { existsSync, readFileSync } from 'node:fs';
++import { appendFile, mkdir, writeFile } from 'node:fs/promises';
++import { createRequire } from 'node:module';
++import { join, resolve } from 'node:path';
++import { connect as tlsConnect } from 'node:tls';
++import { pathToFileURL } from 'node:url';
++import { shortProfileDir } from './profile-dir.mjs';
++
++if (!process.env.BROWSER_INSPECT_MODULES) { console.error('Set BROWSER_INSPECT_MODULES (see README.md).'); process.exit(2); }
++const requireFrom = createRequire(pathToFileURL(join(resolve(process.env.BROWSER_INSPECT_MODULES), 'package.json')));
++const loaded = await import(pathToFileURL(requireFrom.resolve('puppeteer-core')).href);
++const puppeteer = [loaded.default?.default, loaded.default, loaded].find(item => typeof item?.launch === 'function');
++const chrome = process.env.CHROME_PATH || ['C:/Program Files/Google/Chrome/Application/chrome.exe', '/usr/bin/google-chrome', '/usr/bin/chromium'].find(candidate => existsSync(candidate));
++if (!chrome) { console.error('No installed Chrome found. Set CHROME_PATH.'); process.exit(2); }
++
++const [handDir, outRoot, cellsArg = 'setup,done'] = process.argv.slice(2);
++if (!handDir || !outRoot) { console.error('usage: node cold-load-set18b.mjs <handover-dir> <out-dir> <cells>'); process.exit(2); }
++const cells = cellsArg.split(',');
++const hand = JSON.parse(readFileSync(join(handDir, 'ready.json'), 'utf8'));
++const port = Number(hand.local_port);
++if (!(port > 1024 && port < 65536)) throw new Error('bad port in the handover file');
++const LAB = hand.lab || {};
++if (!/^[a-z0-9.-]+\.test$/.test(LAB.panel_domain || '') || !/^[a-z0-9.-]+\.test$/.test(LAB.mail_hostname || '')) throw new Error('the handover names no lab host names');
++const base = `https://127.0.0.1:${port}`;
++const wslShare = process.env.LIVE_WSL_SHARE || '//wsl.localhost/archlinux';
++const secretPath = process.platform === 'win32' ? wslShare + hand.password_file : hand.password_file;
++const pause = ms => new Promise(done => setTimeout(done, ms));
++const iso = (ms = Date.now()) => new Date(ms).toISOString();
++const VIEWPORTS = { '1280': { width: 1280, height: 800, deviceScaleFactor: 1 }, phone: { width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true } };
++
++let secret = null;
++const redactions = () => [secret?.password, ...(secret?.redact || [])].filter(value => typeof value === 'string' && value.length >= 6);
++const redact = text => { let out = String(text ?? ''); for (const value of redactions()) out = out.split(value).join('[REDACTED]'); return out; };
++const jsonl = async (file, value) => appendFile(file, redact(JSON.stringify(value)) + '\n');
++
++// servername null: no SNI (an IP address in the URL), set18 O2.
++function leafOf(servername = 'localhost') {
++    return new Promise((done, fail) => {
++        const socket = tlsConnect({ host: '127.0.0.1', port, rejectUnauthorized: false, ...(servername ? { servername } : {}) }, () => {
++            const cert = socket.getPeerX509Certificate();
++            socket.end();
++            if (!cert) return fail(new Error('no peer certificate'));
++            done({ leaf_sha256: createHash('sha256').update(cert.raw).digest('hex'), subject: cert.subject, issuer: cert.issuer, valid_to: cert.validTo, san: cert.subjectAltName });
++        });
++        socket.setTimeout(8000, () => { socket.destroy(); fail(new Error('timeout')); });
++        socket.on('error', fail);
++    });
++}
++
++await mkdir(outRoot, { recursive: true });
++const dir = outRoot;
++const events = join(dir, 'events.jsonl');
++const leafRecord = async (label, servername = 'localhost') => { try { const leaf = await leafOf(servername); await jsonl(join(dir, 'leaf.jsonl'), { at: iso(), label, sni: servername, ...leaf, handover_leaf_sha256: hand.tls_leaf_sha256 }); return leaf; } catch (error) { await jsonl(join(dir, 'leaf.jsonl'), { at: iso(), label, error: String(error.message).slice(0, 120) }); return null; } };
++await leafRecord('start'); await leafRecord('start-no-sni', null);
++secret = JSON.parse(readFileSync(secretPath, 'utf8'));
++const profile = shortProfileDir(outRoot);
++const browser = await puppeteer.launch({
++    executablePath: chrome, headless: true, userDataDir: profile,
++    // The Panel's certificate changes during setup (lab pebble CA, not trusted by Chrome); only the loopback forward is opened.
++    args: ['--no-first-run', '--no-default-browser-check', '--disable-background-networking', '--disable-component-update',
++        '--disable-sync', '--disable-domain-reliability', '--force-color-profile=srgb', '--ignore-certificate-errors'],
++});
++
++// -- recording -----------------------------------------------------------------------------------------------------
++
++let phase = 'start';
++const front = { page: null };
++const latest = { operation: null, setup: null };
++// Every POST of the mail enrollment continuation the page sends (set18 O3): counted from the page's own requests.
++const enrollPosts = [];
++const BODY_PREFIXES = ['/api/v1/setup', '/api/v1/panel/version'];
++
++async function newPage(label, lang = 'en', vp = '1280') {
++    const page = await browser.newPage();
++    page.__label = label;
++    await page.setViewport(VIEWPORTS[vp]);
++    await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'light' }]);
++    // The language follows a per-tab value (sessionStorage) so that a reload can switch it.
++    await page.evaluateOnNewDocument(value => { try { const chosen = sessionStorage.getItem('set18b.lang') || value; localStorage.setItem('celikpanel.lang', chosen); localStorage.setItem('celikpanel.theme', 'light'); } catch { /* none */ } }, lang);
++    const started = new Map();
++    page.on('request', req => { if (req.url().includes('/api/')) started.set(req, Date.now()); });
++    const finish = async (req, failed) => {
++        if (!req.url().includes('/api/')) return;
++        const t0 = started.get(req) ?? Date.now();
++        started.delete(req);
++        const res = failed ? null : req.response();
++        const entry = { page: label, phase, method: req.method(), url: req.url().replace(base, ''), status: res ? res.status() : null, start: iso(t0), ms: Date.now() - t0 };
++        if (failed) entry.error = req.failure()?.errorText;
++        const path0 = entry.url.split('?')[0];
++        if (res && BODY_PREFIXES.some(prefix => path0.startsWith(prefix))) {
++            try {
++                const text = await res.text();
++                entry.body = text.slice(0, 20000);
++                const value = JSON.parse(text);
++                if (path0 === '/api/v1/setup/operation' && value && typeof value === 'object') latest.operation = { at: Date.now(), value };
++                if (path0 === '/api/v1/setup' && value && typeof value === 'object' && req.method() === 'GET') latest.setup = { at: Date.now(), value };
++            } catch (error) { entry.body_unreadable = String(error.message).slice(0, 120); }
++            if (['POST', 'PUT'].includes(req.method())) { try { entry.request_body = (req.postData() || '').slice(0, 4000); } catch { /* none */ } }
++        } else if (res && res.status() >= 400) {
++            try { const code = (JSON.parse(await res.text()) || {}).code; if (typeof code === 'string') entry.code = code.slice(0, 80); } catch { /* not JSON */ }
++        }
++        if (entry.method === 'POST' && path0.startsWith('/api/v1/setup/mail-enrollment/')) enrollPosts.push({ at: entry.start, url: entry.url, status: entry.status, body: entry.body ? entry.body.slice(0, 600) : null, request_body: entry.request_body || null });
++        await jsonl(join(dir, 'requests.jsonl'), entry);
++    };
++    page.on('requestfinished', req => void finish(req, false));
++    page.on('requestfailed', req => void finish(req, true));
++    page.on('console', message => { if (['error', 'warn', 'warning'].includes(message.type())) void jsonl(join(dir, 'console.jsonl'), { at: iso(), page: label, phase, type: message.type(), text: message.text().slice(0, 400) }); });
++    return page;
++}
++
++async function toFront(page) { await page.bringToFront(); front.page = page; await pause(300); }
++async function pageText(page) {
++    return page.evaluate(() => (document.querySelector('main') || document.body).innerText.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim().slice(0, 16000)).catch(() => '');
++}
++const shotNames = new Set();
++async function shot(page, name, extra = {}, full = false) {
++    if (front.page !== page) { await jsonl(events, { at: iso(), ev: 'shot-skipped', name }); return null; }
++    let n = name; let i = 2; while (shotNames.has(n)) n = `${name}-${i++}`; shotNames.add(n);
++    try {
++        await page.screenshot({ path: join(dir, `${n}-viewport.png`), fullPage: false });
++        if (full) await page.screenshot({ path: join(dir, `${n}-full.png`), fullPage: true });
++    } catch (error) { await jsonl(events, { at: iso(), ev: 'shot-failed', name: n, error: String(error.message).slice(0, 160) }); return null; }
++    await writeFile(join(dir, `${n}.txt`), redact(await pageText(page)));
++    await jsonl(events, { at: iso(), ev: 'shot', name: n, phase, ...extra });
++    return n;
++}
++async function prep(name, limitMs = 900000) {
++    const key = `${name}-${Date.now()}`;
++    const asked = Date.now();
++    await writeFile(join(handDir, `prep-request-${key}`), iso() + '\n');
++    await jsonl(events, { at: iso(), ev: 'prep-requested', name, phase });
++    const file = join(handDir, `prep-done-${key}.json`);
++    while (Date.now() - asked < limitMs && !existsSync(file)) await pause(200);
++    const record = existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : { missing: true, waited_ms: Date.now() - asked };
++    const out = { ...record, host_asked_ms: asked, host_got_ms: Date.now() };
++    await jsonl(events, { at: iso(), ev: 'prep-done', name, phase, record: out });
++    return out;
++}
++const note = async (ev, extra = {}) => jsonl(events, { at: iso(), ev, phase, ...extra });
++
++async function signIn(page) {
++    await page.goto(base + '/', { waitUntil: 'networkidle2', timeout: 60000 });
++    const shown = await page.waitForFunction(() => document.getElementById('username') ? 'form' : document.querySelector('main, nav, aside') ? 'signed-in' : null, { timeout: 60000 }).then(handle => handle.jsonValue());
++    await note('sign-in-page', { shown });
++    if (shown === 'signed-in') return;
++    await page.type('#username', secret.username);
++    await page.type('#password', secret.password);
++    await Promise.all([page.keyboard.press('Enter'), pause(500)]);
++    await page.waitForFunction(() => !document.getElementById('password'), { timeout: 60000 });
++    await pause(2500);
++}
++
++// -- page helpers --------------------------------------------------------------------------------------------------
++
++async function clickText(page, pattern, scope = 'main', tags = 'button, a') {
++    const source = pattern.source; const flags = pattern.flags;
++    const clicked = await page.evaluate((scopeSel, tagSel, src, fl) => {
++        const re = new RegExp(src, fl);
++        const root = document.querySelector(scopeSel) || document.body;
++        const el = Array.from(root.querySelectorAll(tagSel)).find(x => re.test((x.innerText || x.textContent || '').trim()) && !x.disabled && x.getClientRects().length);
++        if (!el) return null;
++        el.scrollIntoView({ block: 'center' }); el.click();
++        return (el.innerText || '').trim().slice(0, 120);
++    }, scope, tags, source, flags).catch(() => null);
++    await note('click', { pattern: String(pattern), clicked });
++    return clicked;
++}
++async function waitFor(page, fn, timeout = 60000, arg = null) {
++    try { await page.waitForFunction(fn, { timeout, polling: 500 }, arg); return true; } catch { return false; }
++}
++async function fill(page, selector, value) {
++    await page.waitForSelector(selector, { timeout: 30000 });
++    await page.click(selector, { clickCount: 3 });
++    await page.keyboard.down('Control'); await page.keyboard.press('KeyA'); await page.keyboard.up('Control');
++    await page.keyboard.press('Backspace');
++    await page.type(selector, value, { delay: 20 });
++    const now = await page.$eval(selector, el => el.value);
++    await note('fill', { selector, value, now });
++    return now === value;
++}
++async function settle(page, ms = 1500) { await page.waitForNetworkIdle({ idleTime: 600, timeout: 15000 }).catch(() => {}); await pause(ms); }
++
++const SETUP_SAMPLE = () => {
++    const txt = el => el ? (el.innerText || '').replace(/\s+/g, ' ').trim() : null;
++    const main = document.querySelector('main') || document.body;
++    const guidance = document.querySelector('aside[aria-labelledby="setup-guidance-title"], aside[aria-labelledby="setup-progress-title"]');
++    return {
++        t: Date.now(), path: location.pathname, vis: document.visibilityState, lang: document.documentElement.lang || null,
++        h1: txt(main.querySelector('h1')), progress_title: txt(document.getElementById('setup-progress-title')),
++        guidance_title: txt(document.getElementById('setup-guidance-title')), guidance: guidance ? txt(guidance).slice(0, 3000) : null,
++        checks: Array.from(document.querySelectorAll('[data-check]')).map(li => ({ id: li.getAttribute('data-check'), state: li.getAttribute('data-state'), text: txt(li) })),
++        steps: Array.from(document.querySelectorAll('[data-step-state]')).map(li => ({ state: li.getAttribute('data-step-state'), text: txt(li) })),
++        finishing: txt(document.querySelector('[data-setup-finishing]')),
++        reconnecting: txt(document.querySelector('[data-setup-reconnecting]')), reconnect_slow: txt(document.querySelector('[data-setup-reconnect-slow]')),
++        handover: txt(document.querySelector('aside[aria-labelledby="setup-handover-title"]')),
++        alerts: Array.from(document.querySelectorAll('[role="alert"]')).filter(a => a.getClientRects().length).map(a => txt(a).slice(0, 800)),
++        statuses: Array.from(main.querySelectorAll('[role="status"]')).filter(a => a.getClientRects().length).map(a => txt(a).slice(0, 800)).slice(0, 8),
++        buttons: Array.from(main.querySelectorAll('button, a')).filter(b => b.getClientRects().length).map(b => ({ text: txt(b), disabled: !!b.disabled })).filter(b => b.text).slice(0, 30),
++        extend_section: txt(document.querySelector('[data-setup-extend]')), extend_stop: txt(document.querySelector('[data-setup-extend-stop]')),
++        overflow_x: document.documentElement.scrollWidth > document.documentElement.clientWidth,
++    };
++};
++const ENROLL_BUTTON = /Continue recorded operation|Retry reviewed handoff|Checking the same operation|Kayıtlı işleme devam et|Aynı işlem denetleniyor/;
++const enrollButtons = s => (s.buttons || []).filter(b => ENROLL_BUTTON.test(b.text));
++const signature = s => JSON.stringify([s.h1, s.progress_title, s.guidance_title, !!s.finishing, s.steps.map(x => x.state), s.checks.map(x => `${x.id}:${x.state}`), !!s.reconnecting, !!s.reconnect_slow, s.alerts.length, (s.guidance || '').slice(0, 160), enrollButtons(s).map(b => `${b.text}:${b.disabled}`)]);
++const op = () => latest.operation?.value || null;
++const opStep = (execution, kind, target) => (execution?.steps || []).find(x => x.kind === kind && (!target || x.target === target));
++const QUEUED = /Setup has started with the step shown here|Kurulum burada gösterilen adımla başladı/;
++const UNKNOWN = /No more specific requirement has been confirmed for this step|daha belirli bir gereksinim henüz doğrulanmadı/;
++
++// Follow a started run until the server is ready (or failed, or the bound). The page is sampled every 500 ms.
++async function follow(page, label, limitMs, mail) {
++    const started = Date.now();
++    const result = { label, started_at: iso(started), sample_ms: 500, states: 0, pictures: [], owner_actions: [], lab: [], enrollment_presses: [], enrollment_button_samples: 0, unknown_sentence_samples: [], enroll_posts_before: enrollPosts.length };
++    let lastSig = null; let shots = 0; let lastHeartbeat = 0;
++    let mailWaitSince = null; let ptrSeenAt = null; let lastVerifyPress = 0; let waitingVerifySince = null; let slowSince = null;
++    let done = false;
++    while (!done && Date.now() - started < limitMs) {
++        const t0 = Date.now();
++        let s;
++        try { s = await page.evaluate(SETUP_SAMPLE); } catch (error) { s = { t: t0, error: String(error.message).slice(0, 160) }; }
++        const execution = op();
++        if (!s.error) {
++            s.operation = execution ? { status: execution.status, phase: execution.phase, error: execution.error?.code || null, superseded: execution.superseded ?? null, steps: (execution.steps || []).map(x => `${x.id}:${x.status}`) } : null;
++            s.enroll_buttons = enrollButtons(s);
++            if (s.enroll_buttons.length) result.enrollment_button_samples++;
++            const sig = signature(s);
++            if (sig !== lastSig || Date.now() - lastHeartbeat > 30000) {
++                lastHeartbeat = Date.now();
++                if (sig !== lastSig) { result.states++; s.new_state = true; }
++                if (sig !== lastSig && shots < 90 && s.vis === 'visible') { shots++; s.picture = await shot(page, `${label}-state-${String(shots).padStart(2, '0')}`, { t_plus_s: Math.round((Date.now() - started) / 1000) }); if (s.picture) result.pictures.push(s.picture); }
++                lastSig = sig;
++                await jsonl(join(dir, `${label}-samples.jsonl`), s);
++            }
++            if (QUEUED.test(s.guidance || '') && !result.queued_seen) result.queued_seen = { at: iso(), guidance_title: s.guidance_title, guidance: s.guidance, operation: s.operation };
++            if (UNKNOWN.test(s.guidance || '') && result.unknown_sentence_samples.length < 20) result.unknown_sentence_samples.push({ at: iso(), operation: s.operation });
++            if (s.finishing && !result.finishing_seen) { result.finishing_seen = { at: iso(), text: s.finishing }; }
++            if (/ready|hazır/i.test(s.h1 || '') && s.extend_section) { result.ready_at = iso(); done = true; break; }
++            if (execution?.status === 'failed') { result.failed = { at: iso(), error: execution.error }; if (!result.failed_picture) result.failed_picture = await shot(page, `${label}-failed`, {}, true); done = true; break; }
++            // the reconnect has been slow for a minute: the owner reloads the page, as it offers
++            if (s.reconnect_slow) { slowSince = slowSince || Date.now(); if (Date.now() - slowSince > 60000) { result.owner_actions.push({ at: iso(), action: 'reload (Reload this page)' }); await clickText(page, /Reload this page|Sayfayı yeniden yükle/); slowSince = null; await settle(page); } } else slowSince = null;
++            // a recorded mail enrollment wait offers the owner's explicit action: pressed whenever it is enabled (O3:
++            // after one press it must be disabled and say "Checking the same operation"); the state after each press
++            // is read 300 ms and 2 s later.
++            if (s.buttons.some(b => /Continue recorded operation|Retry reviewed handoff/.test(b.text) && !b.disabled)) {
++                const before = s.enroll_buttons;
++                const c = await clickText(page, /^(Continue recorded operation|Retry reviewed handoff)$/);
++                const press = { at: iso(), clicked: c, before, operation: s.operation, posts_before: enrollPosts.length };
++                await pause(300);
++                press.after_300ms = enrollButtons(await page.evaluate(SETUP_SAMPLE).catch(() => ({ buttons: [] })));
++                await pause(1700);
++                press.after_2s = enrollButtons(await page.evaluate(SETUP_SAMPLE).catch(() => ({ buttons: [] })));
++                press.posts_after_2s = enrollPosts.length;
++                result.enrollment_presses.push(press);
++                result.owner_actions.push({ at: press.at, action: c });
++                await shot(page, `${label}-enrollment-after-press`, { press: result.enrollment_presses.length });
++            }
++            if (mail && execution) {
++                // H3 fixed: the mail host's access_dns step while it is the running step of a waiting run
++                const mailDNS = opStep(execution, 'access_dns', LAB.mail_hostname);
++                const atMailDNS = execution.status === 'waiting' && mailDNS && mailDNS.status === 'running' && [mailDNS.id, mailDNS.kind].includes(execution.phase);
++                if (atMailDNS && !result.lab.some(x => x.what === 'lab-mail-a')) {
++                    mailWaitSince = mailWaitSince || Date.now();
++                    result.mail_dns_wait_seen = result.mail_dns_wait_seen || { at: iso(), phase: execution.phase, step: mailDNS, guidance_title: s.guidance_title, guidance: s.guidance };
++                    if (Date.now() - mailWaitSince > 50000) {
++                        await shot(page, `${label}-mail-dns-waiting`, {}, true);
++                        const r = await prep('lab-mail-a', 120000);
++                        result.lab.push({ at: iso(), what: 'lab-mail-a', ok: !r.result?.error && !r.missing, trigger: 'tool (H3 fixed)', waited_s: Math.round((Date.now() - mailWaitSince) / 1000) });
++                    }
++                }
++                const identity = (execution.checks || []).find(c => c.id === 'mail_identity');
++                if (execution.status === 'waiting' && execution.phase === 'verification' && identity && identity.state !== 'ready' && !result.lab.some(x => x.what === 'lab-ptr-mail')) {
++                    ptrSeenAt = ptrSeenAt || Date.now();
++                    result.mail_identity_seen = result.mail_identity_seen || { at: iso(), check: identity, page_lines: s.checks };
++                    if (Date.now() - ptrSeenAt > 45000) {
++                        await shot(page, `${label}-reverse-dns`, {}, true);
++                        // the owner also asks for the check once, so the result box names it too
++                        await clickText(page, /^Check requirements again$/); result.owner_actions.push({ at: iso(), action: 'Check requirements again (before the PTR change)' });
++                        await pause(6000); await shot(page, `${label}-reverse-dns-checked`, {}, true);
++                        await jsonl(join(dir, `${label}-samples.jsonl`), { ...(await page.evaluate(SETUP_SAMPLE).catch(() => ({}))), marker: 'after the owner check, before the PTR change' });
++                        const r = await prep('lab-ptr-mail', 120000);
++                        result.lab.push({ at: iso(), what: 'lab-ptr-mail', ok: !r.result?.error && !r.missing });
++                        await pause(3000);
++                        await clickText(page, /^Check requirements again$/); lastVerifyPress = Date.now();
++                        result.owner_actions.push({ at: iso(), action: 'Check requirements again (after the PTR change)' });
++                    }
++                }
++            }
++            // waiting at the final check with no lab change pending: the owner checks again, at most once a minute
++            if (execution?.status === 'waiting' && execution.phase === 'verification') {
++                waitingVerifySince = waitingVerifySince || Date.now();
++                const pending = mail && !result.lab.some(x => x.what === 'lab-ptr-mail');
++                if (!pending && Date.now() - waitingVerifySince > 25000 && Date.now() - lastVerifyPress > 60000) {
++                    if (await clickText(page, /^Check requirements again$/)) { lastVerifyPress = Date.now(); result.owner_actions.push({ at: iso(), action: 'Check requirements again' }); }
++                }
++            } else waitingVerifySince = null;
++        } else {
++            await jsonl(join(dir, `${label}-samples.jsonl`), s);
++        }
++        await pause(Math.max(0, 500 - (Date.now() - t0)));
++    }
++    result.ended_at = iso();
++    result.duration_s = Math.round((Date.now() - started) / 1000);
++    result.final_operation = op();
++    result.enroll_posts = enrollPosts.slice(result.enroll_posts_before);
++    result.final_picture = await shot(page, `${label}-final`, {}, true);
++    if (!result.ready_at && !result.failed) result.not_finished = `not ready within ${Math.round(limitMs / 60000)} min`;
++    await writeFile(join(dir, `${label}-summary.json`), redact(JSON.stringify(result, null, 2)));
++    return result;
++}
++
++// One picture per language and viewport (default: Turkish at 390x844); reopen() brings the page back after a reload.
++async function variants(page, name, reopen, combos = [['tr', 'phone']]) {
++    const out = [];
++    for (const [lang, vp] of combos) {
++        try {
++            await page.setViewport(VIEWPORTS[vp]);
++            await page.evaluate(value => sessionStorage.setItem('set18b.lang', value), lang);
++            await page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 });
++            await settle(page, 2000);
++            if (reopen) await reopen(lang);
++            await settle(page, 1200);
++            const facts = await page.evaluate(() => ({ lang: document.documentElement.lang || null, overflow_x: document.documentElement.scrollWidth > document.documentElement.clientWidth, width: document.documentElement.clientWidth })).catch(() => ({}));
++            const picture = await shot(page, `${name}-${lang}-${vp}`, { lang, vp, facts }, true);
++            out.push({ lang, vp, picture, ...facts });
++        } catch (error) { out.push({ lang, vp, error: String(error.message).slice(0, 200) }); }
++    }
++    await page.setViewport(VIEWPORTS['1280']);
++    await page.evaluate(() => sessionStorage.setItem('set18b.lang', 'en')).catch(() => {});
++    await page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 }).catch(() => {});
++    await settle(page, 2000);
++    if (reopen) await reopen('en');
++    await jsonl(join(dir, 'variants.jsonl'), { at: iso(), name, out });
++    return out;
++}
++async function reviewBlocks(page) {
++    return page.evaluate(() => {
++        const txt = el => el ? (el.innerText || '').replace(/\s+/g, ' ').trim() : null;
++        const review = document.querySelector('[data-setup-extension-review]');
++        const changes = Array.from(document.querySelectorAll('[data-change]')).map(x => ({ key: x.getAttribute('data-change'), text: txt(x) }));
++        const installs = Array.from(document.querySelectorAll('[data-install]')).map(x => ({ target: x.getAttribute('data-install'), text: txt(x) }));
++        const kept = review ? review.querySelector('details') : null;
++        if (kept) kept.open = true;
++        const steps = Array.from(document.querySelectorAll('section[aria-labelledby="setup-plan-title"] ol > li')).map(txt);
++        const dl = Array.from(document.querySelectorAll('section[aria-labelledby="setup-plan-title"] dl > div')).map(txt);
++        const blockers = txt(document.querySelector('section[aria-labelledby="setup-plan-title"] [role="alert"]'));
++        return { extension_review: txt(review), changes, installs, kept: kept ? txt(kept) : null, steps, facts: dl, blockers, handover: txt(document.querySelector('aside[aria-labelledby="setup-handover-title"]')) };
++    });
++}
++
++// -- the cell ------------------------------------------------------------------------------------------------------
++
++// What the wizard shows now: which step, the extension marks, and the set18 D1 screen's marks.
++const WIZARD_VIEW = () => {
++    const txt = el => el ? (el.innerText || '').replace(/\s+/g, ' ').trim() : null;
++    const main = document.querySelector('main') || document.body;
++    return {
++        at: Date.now(), path: location.pathname, h1: txt(main.querySelector('h1')), intro: txt(main.querySelector('h1')?.nextElementSibling),
++        step: document.getElementById('setup-plan-title') ? 'review' : document.getElementById('setup-panel_domain') ? 'access'
++            : document.querySelector('input[id^="setup-component-"]') ? 'components' : document.querySelector('input[name="setup-purpose"]') ? 'purpose'
++                : document.getElementById('setup-progress-title') ? 'progress' : document.querySelector('[data-setup-extend]') ? 'ready' : 'other',
++        purpose_checked: document.querySelector('input[name="setup-purpose"]:checked')?.value ?? null,
++        values: { panel_domain: document.getElementById('setup-panel_domain')?.value ?? null, mail_hostname: document.getElementById('setup-mail_hostname')?.value ?? null, dns: document.querySelector('input[name="setup-dns"]:checked')?.value ?? null },
++        extend_stop: txt(document.querySelector('[data-setup-extend-stop]')), extend_section: txt(document.querySelector('[data-setup-extend]')),
++        progress_title: txt(document.getElementById('setup-progress-title')),
++        completed_run_marks: /Completion could not be verified|Reconnect to this operation|Verifying the result/.test(main.innerText || ''),
++        alerts: Array.from(document.querySelectorAll('[role="alert"]')).filter(a => a.getClientRects().length).map(a => txt(a).slice(0, 600)),
++        buttons: Array.from(main.querySelectorAll('button, a')).filter(b => b.getClientRects().length).map(b => ({ text: txt(b), disabled: !!b.disabled })).filter(b => b.text).slice(0, 30),
++        overflow_x: document.documentElement.scrollWidth > document.documentElement.clientWidth,
++    };
++};
++const COMPONENT_ROWS = () => Array.from(document.querySelectorAll('input[id^="setup-component-"]')).map(x => ({ id: x.id, checked: x.checked, disabled: x.disabled, text: (x.closest('label')?.innerText || '').replace(/\s+/g, ' ').trim() }));
++const view = async (page, label) => { const value = await page.evaluate(WIZARD_VIEW).catch(error => ({ error: String(error.message).slice(0, 160) })); await note('view', { label, view: value }); return value; };
++// The page's own read (GET only), recorded in full.
++async function pageRead(page, label, path) {
++    const value = await page.evaluate(async p => {
++        const response = await fetch(p, { cache: 'no-store' });
++        const text = await response.text();
++        let json = null; try { json = JSON.parse(text); } catch { /* not JSON */ }
++        return { status: response.status, json, text: json ? null : text.slice(0, 600) };
++    }, path).catch(error => ({ error: String(error.message).slice(0, 300) }));
++    await note('page-read', { label, path, status: value.status, answer: value.json ?? value.text ?? value.error });
++    return value;
++}
++const installedOf = services => services.json ? { status: services.status, installed: (services.json.services || []).filter(s => s.installed).map(s => s.id), mail_profiles: (services.json.mail_profiles || []).map(x => ({ id: x.id, status: x.status })) } : services;
++
++async function cellSetup() {
++    const summary = { cell: hand.cell, lab: LAB, chrome: await browser.version(), started_at: iso() };
++    const write = async () => writeFile(join(dir, 'setup-summary.json'), redact(JSON.stringify(summary, null, 2)));
++    await note('start', { chrome: summary.chrome });
++    const page = await newPage('owner', 'en', '1280');
++    await toFront(page);
++    try {
++        // ---- 1. the owner's guided setup, purpose web, to ready
++        phase = 'c1-wizard';
++        await signIn(page);
++        await page.goto(base + '/setup', { waitUntil: 'domcontentloaded', timeout: 60000 });
++        await settle(page, 2500);
++        await shot(page, 'c1-01-opened', {}, true);
++        if (await clickText(page, /^Set up with the wizard$/)) { await settle(page); await shot(page, 'c1-02-wizard'); }
++        await page.waitForSelector('input[name="setup-purpose"][value="web"]', { timeout: 60000 });
++        await page.click('input[name="setup-purpose"][value="web"]');
++        await pause(500);
++        await shot(page, 'c1-03-purpose');
++        await clickText(page, /^Continue/, 'main', 'button[type="submit"]');
++        await page.waitForSelector('#setup-panel_domain', { timeout: 60000 });
++        await fill(page, '#setup-panel_domain', LAB.panel_domain);
++        await page.click('input[name="setup-dns"][value="external"]');
++        await pause(800);
++        await shot(page, 'c1-04-access', {}, true);
++        await clickText(page, /^Review setup plan/, 'main', 'button[type="submit"]');
++        const reviewed = await waitFor(page, () => !!document.getElementById('setup-plan-title'), 90000);
++        await settle(page);
++        summary.c1_review = reviewed ? await reviewBlocks(page) : { not_shown: true };
++        await shot(page, 'c1-05-review', {}, true);
++        if (!reviewed || summary.c1_review.blockers) { summary.c1_stopped = 'the review did not show a plan that can start'; await write(); return summary; }
++        await page.click('section[aria-labelledby="setup-plan-title"] input[type="checkbox"]');
++        await pause(500);
++        phase = 'c1-run';
++        summary.c1_start_pressed_at = iso();
++        await clickText(page, /^Start reviewed setup$/);
++        summary.c1 = await follow(page, 'c1', 75 * 60000, false);
++        await leafRecord('after-c1', 'localhost'); await leafRecord('after-c1-no-sni', null);
++        summary.c1_pin = await prep('refresh-pin', 120000);
++        await write();
++        if (!summary.c1.ready_at) return summary;
++        await settle(page, 2000);
++        await shot(page, 'c1-ready', {}, true);
++        summary.c1_ready_variants = await variants(page, 'v-ready', null);
++        summary.c1_setup_read = await prep('setup-read', 120000);
++        await write();
++
++        // ---- 3. the Components mail route: where the wizard lands (D1), then "Stop extending"
++        phase = 'c3-components';
++        await page.goto(base + '/services', { waitUntil: 'domcontentloaded', timeout: 60000 });
++        await settle(page, 3000);
++        // Core Mail's card: the one whose component chips are Postfix and Dovecot only (the same names in EN and TR).
++        const openDialog = async () => {
++            const opened = await page.evaluate(() => {
++                const card = Array.from(document.querySelectorAll('#mail-stacks article')).find(a => {
++                    const chips = Array.from(a.querySelectorAll('span.rounded-md')).map(x => (x.innerText || '').trim()).join(' ');
++                    return /Postfix/.test(chips) && /Dovecot/.test(chips) && !/Roundcube|Rspamd/i.test(chips);
++                });
++                const button = card ? Array.from(card.querySelectorAll('button')).find(b => !b.disabled) : null;
++                if (!button) return null;
++                button.scrollIntoView({ block: 'center' }); button.click();
++                return { card: (card.querySelector('h3')?.innerText || '').trim(), button: (button.innerText || '').trim() };
++            }).catch(() => null);
++            await waitFor(page, () => !!document.querySelector('[data-mail-profile-route]'), 20000);
++            return opened;
++        };
++        await page.waitForSelector('#mail-stacks', { timeout: 60000 }).catch(() => {});
++        await shot(page, 'c3-01-components', {}, true);
++        summary.c3_card_button = await openDialog();
++        await settle(page, 1000);
++        summary.c3_dialog = await page.evaluate(() => {
++            const txt = el => el ? (el.innerText || '').replace(/\s+/g, ' ').trim() : null;
++            const dialog = document.querySelector('[data-mail-profile-route]')?.closest('[role="dialog"]') || document.querySelector('[role="dialog"]');
++            return { route: document.querySelector('[data-mail-profile-route]')?.getAttribute('data-mail-profile-route') || null, text: txt(dialog)?.slice(0, 4000),
++                hostname_value: document.getElementById('mail-profile-hostname')?.value ?? null, buttons: Array.from(dialog?.querySelectorAll('button') || []).map(b => ({ text: txt(b), disabled: b.disabled })) };
++        });
++        await shot(page, 'c3-02-dialog', {}, true);
++        if (await page.$('#mail-profile-hostname')) await fill(page, '#mail-profile-hostname', LAB.mail_hostname);
++        else if (await clickText(page, /^Change$/, '[role="dialog"]')) { await pause(500); await fill(page, '#mail-profile-hostname', LAB.mail_hostname); }
++        await pause(800);
++        await shot(page, 'c3-03-dialog-filled', {}, true);
++        summary.c3_review_in_setup_pressed_at = iso();
++        await clickText(page, /^Review in server setup$/, '[role="dialog"]');
++        await waitFor(page, () => location.pathname === '/setup' && !!(document.getElementById('setup-panel_domain') || document.getElementById('setup-progress-title') || document.querySelector('input[name="setup-purpose"]')), 60000);
++        await settle(page, 2500);
++        // Sampled for 6 s at 500 ms: the landing must stay on the access step (D1 put the completed run here).
++        summary.c3_landing_samples = [];
++        for (let i = 0; i < 12; i++) { summary.c3_landing_samples.push(await page.evaluate(WIZARD_VIEW).catch(() => null)); await pause(500); }
++        summary.c3_landed = await view(page, 'c3 landed after Review in server setup');
++        summary.c3_d1 = { access_step: summary.c3_landed.step === 'access', mail_hostname_prefilled: summary.c3_landed.values?.mail_hostname === LAB.mail_hostname,
++            stop_extending_shown: !!summary.c3_landed.extend_stop, completed_run_marks: summary.c3_landing_samples.some(x => x?.completed_run_marks),
++            steps_seen: [...new Set(summary.c3_landing_samples.map(x => x?.step))] };
++        await shot(page, 'c3-04-access-step', {}, true);
++        // the access step's secondary-DNS box: local DNS, role secondary (UI state only), then back to external
++        phase = 'c4-secondary-box';
++        if (summary.c3_landed.step === 'access') {
++            summary.c4_dns_before = summary.c3_landed.values?.dns;
++            await page.click('input[name="setup-dns"][value="local"]').catch(error => note('c4-local-refused', { error: String(error.message).slice(0, 160) }));
++            await pause(600);
++            await page.select('#setup-dns_role', 'secondary').catch(() => {});
++            await pause(800);
++            summary.c4_secondary_box = await page.evaluate(() => {
++                const txt = el => el ? (el.innerText || '').replace(/\s+/g, ' ').trim() : null;
++                const box = Array.from(document.querySelectorAll('main div')).find(d => /This secondary receives its DNS zones from/.test(d.innerText || '') && d.children.length <= 3);
++                if (box) box.scrollIntoView({ block: 'center' });
++                return { text: txt(box), dns: document.querySelector('input[name="setup-dns"]:checked')?.value ?? null, role: document.getElementById('setup-dns_role')?.value ?? null };
++            });
++            await shot(page, 'c4-secondary-box', {}, true);
++            if (summary.c4_dns_before) await page.click(`input[name="setup-dns"][value="${summary.c4_dns_before}"]`).catch(() => {});
++            await pause(600);
++            summary.c4_dns_after = await page.evaluate(() => document.querySelector('input[name="setup-dns"]:checked')?.value ?? null);
++        } else summary.c4_secondary_box = { not_reached: `the wizard landed on ${summary.c3_landed.step}` };
++        // stop extending: the ready screen comes back and nothing was installed
++        phase = 'c3-stop';
++        summary.c3_stop_pressed_at = iso();
++        summary.c3_stop_clicked = await clickText(page, /^Stop extending$/);
++        const restored = await waitFor(page, () => !!document.querySelector('[data-setup-extend]'), 60000);
++        await settle(page, 1500);
++        summary.c3_stopped = { ready_screen: restored, at: iso(), view: await view(page, 'c3 after Stop extending') };
++        await shot(page, 'c3-05-ready-again', {}, true);
++        summary.c3_setup_read = await prep('setup-read', 120000);
++        summary.c3_components_after_stop = installedOf(await pageRead(page, 'components after Stop extending', '/api/v1/managed-services'));
++        await write();
++
++        // ---- 2. the extension from the ready screen: Core Mail
++        phase = 'c2-wizard';
++        summary.c2_extend_clicked = await clickText(page, /^Extend setup$/);
++        await waitFor(page, () => !!document.querySelector('input[name="setup-purpose"]') || !!document.getElementById('setup-panel_domain') || !!document.getElementById('setup-progress-title'), 60000);
++        await settle(page, 1500);
++        summary.c2_purpose = await view(page, 'c2 after Extend setup');
++        await shot(page, 'c2-01-purpose', {}, true);
++        if (summary.c2_purpose.step !== 'purpose') { summary.c2_stopped = `Extend setup opened ${summary.c2_purpose.step}, not the purpose step`; await write(); return summary; }
++        summary.c2_customize_clicked = await clickText(page, /^Customize selection$/);
++        await waitFor(page, () => !!document.querySelector('input[id^="setup-component-"]'), 60000);
++        await settle(page, 1000);
++        summary.c2_components = { view: await view(page, 'c2 components step'), rows: await page.evaluate(COMPONENT_ROWS) };
++        await shot(page, 'c2-02-components', {}, true);
++        const mailGroup = await page.evaluate(() => {
++            const rows = Array.from(document.querySelectorAll('input[id^="setup-component-"]'));
++            const row = rows.find(x => /Postfix/i.test(x.closest('label')?.innerText || '') && /Dovecot/i.test(x.closest('label')?.innerText || '') && !/Roundcube|Rspamd/i.test(x.closest('label')?.innerText || ''))
++                || rows.find(x => /Postfix/i.test(x.closest('label')?.innerText || ''));
++            if (!row) return null;
++            if (!row.checked) row.click();
++            return { id: row.id, label: (row.closest('label')?.innerText || '').replace(/\s+/g, ' ').trim(), checked_now: row.checked };
++        });
++        summary.c2_mail_component = mailGroup;
++        await pause(800);
++        summary.c2_components_after = await page.evaluate(COMPONENT_ROWS);
++        await shot(page, 'c2-03-components-mail', {}, true);
++        await clickText(page, /^Continue/, 'main', 'button[type="submit"]');
++        await page.waitForSelector('#setup-mail_hostname', { timeout: 60000 });
++        summary.c2_access_before_fill = await view(page, 'c2 access step');
++        await fill(page, '#setup-mail_hostname', LAB.mail_hostname);
++        await pause(600);
++        summary.c2_access = await view(page, 'c2 access step filled');
++        await shot(page, 'c2-04-access', {}, true);
++        await clickText(page, /^Review setup plan/, 'main', 'button[type="submit"]');
++        const reviewed2 = await waitFor(page, () => !!document.getElementById('setup-plan-title'), 90000);
++        await settle(page);
++        summary.c2_review = reviewed2 ? await reviewBlocks(page) : { not_shown: true, view: await view(page, 'c2 review not shown') };
++        await shot(page, 'c2-05-review', {}, true);
++        if (!reviewed2 || summary.c2_review.blockers) { summary.c2_stopped = 'the review did not show a plan that can start'; await write(); return summary; }
++        const backToReview = async () => {
++            if (!(await waitFor(page, () => !!document.getElementById('setup-plan-title'), 15000))) {
++                await note('review-not-restored-after-reload');
++                if (await page.$('#setup-panel_domain')) { await clickText(page, /^(Review setup plan|Kurulum planını incele)/, 'main', 'button[type="submit"]'); await waitFor(page, () => !!document.getElementById('setup-plan-title'), 90000); }
++            }
++            await page.evaluate(() => { const d = document.querySelector('[data-setup-extension-review] details'); if (d) d.open = true; });
++        };
++        summary.c2_review_variants = await variants(page, 'v-ext-review', backToReview);
++        summary.c2_review_after_variants = await view(page, 'c2 review after the Turkish picture');
++        if (summary.c2_review_after_variants.step !== 'review') { summary.c2_stopped = 'the review did not come back after the Turkish picture'; await write(); return summary; }
++        await page.click('section[aria-labelledby="setup-plan-title"] input[type="checkbox"]');
++        await pause(500);
++        phase = 'c2-run';
++        summary.c2_start_pressed_at = iso();
++        summary.c2_start_clicked = await clickText(page, /^Start reviewed setup$/);
++        summary.c2 = await follow(page, 'c2', 90 * 60000, true);
++        await leafRecord('after-c2', 'localhost'); await leafRecord('after-c2-no-sni', null);
++        await write();
++        if (summary.c2.ready_at) {
++            await settle(page, 2000);
++            await shot(page, 'c2-ready', {}, true);
++            summary.c2_ready_variants = await variants(page, 'v-ready-after-extension', null);
++            await page.goto(base + '/services', { waitUntil: 'domcontentloaded', timeout: 60000 });
++            await settle(page, 3000);
++            await page.evaluate(() => document.getElementById('mail-stacks')?.scrollIntoView({ block: 'start' }));
++            await shot(page, 'c2-components-after', {}, true);
++            summary.c2_components_after_run = installedOf(await pageRead(page, 'components after the extension', '/api/v1/managed-services'));
++        }
++        summary.c2_setup_read = await prep('setup-read', 120000);
++        summary.lab_state = await prep('lab-state', 120000);
++        summary.enroll_posts_total = enrollPosts.length;
++        summary.ended_at = iso();
++        await write();
++        return summary;
++    } catch (error) {
++        summary.error = String(error.stack || error.message).slice(0, 2000);
++        await shot(page, 'error', {}, true).catch(() => {});
++        await write();
++        return summary;
++    }
++}
++
++for (const cell of cells) {
++    if (cell === 'setup') await cellSetup();
++    else if (cell === 'done') { if (!existsSync(join(handDir, 'done.json'))) await writeFile(join(handDir, 'done.json'), JSON.stringify({ at: iso(), by: 'cold-load-set18b.mjs' }) + '\n'); }
++}
++await browser.close();
