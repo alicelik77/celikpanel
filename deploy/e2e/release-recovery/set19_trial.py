@@ -14,11 +14,11 @@ renewal at once (Debian's RandomizedDelaySec is at most 12 h).
 ``set19-failed-debian13``: certbot.service is given a lab drop-in whose ExecStart fails and is started once, so the
 renewal service is ``failed`` before the update (the owner's last renewal result).
 
-LAB PREPARATION (not a product change), step ``set19-certbot-lab-preparation`` after the pre-update state and before
-the owner's press: outbound TCP/UDP 443 is refused except to loopback (nftables, as set18; the release origin is the
+LAB PREPARATION (not a product change), step ``set19-certbot-lab-preparation`` before the pre-update state is read
+(so that the lab's nftables table is part of the state the update is compared against) and before the owner's press: outbound TCP/UDP 443 is refused except to loopback (nftables, as set18; the release origin is the
 guest's loopback and the certificate-authority names are pinned to loopback by set6's first step), then the cell's
 preparation above. Every command and every reading before and after is recorded. Step ``set19-certbot-readings``
-after the terminal state reads the renewal units, the stamp, certbot.service's journal since the preparation, the
+after the update (it needs only the owner's start) reads the renewal units, the stamp, certbot.service's journal since the preparation, the
 update worker's and the recovery runner's journals, the request's recovery observation files and the reject
 counters.
 
@@ -173,14 +173,17 @@ class Set19UpdateTrial(t17.Set17UpdateTrial):
         return "observed"
 
     def step(self, name: str, function, *, needs: tuple = ()) -> str:
-        if name == "arm":
-            base.Trial.step(self, "set19-certbot-lab-preparation", self.lab_preparation, needs=("pre-state",))
+        # set19 run a: the preparation ran after the pre-update state, so its nftables table made the terminal
+        # comparison report "firewall ruleset changed"; it now runs before the pre-update state is read.
+        if name == "pre-state":
+            base.Trial.step(self, "set19-certbot-lab-preparation", self.lab_preparation, needs=("seed",))
             needs = tuple(needs) + ("set19-certbot-lab-preparation",)
         if name == "collect":
             label = "after-the-update" if self.cell.variant == "good" else "after-the-return"
             base.Trial.step(self, f"set17-readings-{label}", lambda checks: self.readings17(checks, label),
                             needs=("terminal",))
-            base.Trial.step(self, "set19-certbot-readings", self.certbot_readings, needs=("terminal",))
+            # Read-only; read whatever the terminal verdict says (set19 run a skipped it after a lab-made verdict).
+            base.Trial.step(self, "set19-certbot-readings", self.certbot_readings, needs=("owner-start",))
         # set17's post-update browser window ("ui") is not opened in set19.
         return super(s16.Set16UpdateTrial, self).step(name, function, needs=needs)
 
