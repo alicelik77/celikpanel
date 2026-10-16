@@ -20,6 +20,7 @@ import {
 } from './SystemUpdateOperation';
 import { decodePreviousUpdateAttempt, previousAttemptStopped, type PreviousUpdateAttempt } from '../lib/systemUpdateOutcome';
 import { SystemUpdateSteps, systemUpdateStepsAnnouncement } from './SystemUpdateSteps';
+import { BuildCommit } from './BuildCommit';
 
 type Translate = ReturnType<typeof useI18n>['t'];
 
@@ -411,10 +412,13 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
                             : t('panelUpdate.steps.title', { version: tracking?.version ?? '' })}
                     </p>
                     {updated && (
-                        <p className="mt-1 font-mono text-xs text-fg-subtle" data-update-build="">
-                            build <span aria-hidden="true">{updated.commit.slice(0, 12)}</span>
-                            <span className="sr-only">{updated.commit}</span>
+                        <p className="mt-1 font-mono text-xs text-fg-subtle" data-update-build=""
+                            title={t('common.fullCommit', { commit: updated.commit })}>
+                            <BuildCommit commit={updated.commit} />
                         </p>
+                    )}
+                    {updated?.repeated && (
+                        <p className="mt-1 text-sm text-fg-muted" data-update-repeated="">{t('panelUpdate.steps.repeated')}</p>
                     )}
                     <div className="mt-4">
                         <SystemUpdateSteps view={steps} />

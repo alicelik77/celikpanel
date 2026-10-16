@@ -63,6 +63,7 @@ const eagerModules = [
   'src/components/RecoveryAccess.tsx',
   'src/components/AccessHold.tsx',
   'src/components/UpdateReloadNotice.tsx',
+  'src/components/BuildCommit.tsx',
   'src/lib/accessGuidance.ts',
   'src/lib/accessObservation.ts',
   'src/lib/recoveryObservation.ts',

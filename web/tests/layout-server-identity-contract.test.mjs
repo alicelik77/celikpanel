@@ -82,11 +82,16 @@ test('the sidebar build id wraps only before "build", never inside the id, and k
     for (const item of match[1].split(',')) { const name = item.replace(/\btype\b/, '').trim(); if (name && !/^type\s/.test(item.trim())) names.add(name); }
   }
   names.delete('useI18n');
+  names.delete('BuildCommit');
   const stub = data(`import React from '${reactURL}';
     ${[...names].map((name) => `export const ${name} = () => null;`).join('\n')}
-    export const useI18n = () => ({ t: (key) => key, locale: 'en' });`);
-  const compiled = ts.transpileModule(layout, { compilerOptions: { jsx: ts.JsxEmit.React, module: ts.ModuleKind.ES2022, target: ts.ScriptTarget.ES2020 } }).outputText
-    .replace(/from ['"]([^'"]+)['"]/g, (_, specifier) => `from '${specifier === 'react' ? reactURL : stub}'`);
+    export const useI18n = () => ({ t: (key, vars) => vars ? key + ' ' + Object.values(vars).join(' ') : key, locale: 'en' });`);
+  const jsx = { compilerOptions: { jsx: ts.JsxEmit.React, module: ts.ModuleKind.ES2022, target: ts.ScriptTarget.ES2020 } };
+  // The stamp's build line is the shared, copy-clean one (2026-10-16).
+  const buildCommit = data(`import React from '${reactURL}';\n${ts.transpileModule(readFileSync(new URL('../src/components/BuildCommit.tsx', import.meta.url), 'utf8'), jsx).outputText
+    .replace(/from ['"]([^'"]+)['"]/g, (_, specifier) => `from '${specifier === 'react' ? reactURL : stub}'`)}`);
+  const compiled = ts.transpileModule(layout, jsx).outputText
+    .replace(/from ['"]([^'"]+)['"]/g, (_, specifier) => `from '${specifier === 'react' ? reactURL : specifier === './BuildCommit' ? buildCommit : stub}'`);
   const { BuildStamp } = await import(data(`import React from '${reactURL}';\n${compiled}`));
   const commit = 'f0157e6c8f16a1b2c3d4e5f60718293a4b5c6d7e';
   const tree = Renderer.create(React.createElement(BuildStamp, { runtime: { version: 'v0.1.0-alpha.84', commit, agent_commit: commit, agent_matches: true } }));
@@ -97,4 +102,8 @@ test('the sidebar build id wraps only before "build", never inside the id, and k
   const walk = (node) => (typeof node === 'string' ? node : (node.children || []).map(walk).join(' '));
   const shown = walk(unit);
   assert.ok(shown.includes('f0157e6c8f16') && shown.includes(commit), 'the short id is shown and the full id is kept for screen readers');
+  // Owner 2026-10-16: copying the stamp gives what is seen, "build f0157e6c8f16".
+  const copied = (node) => (typeof node === 'string' ? node
+    : String(node.props?.className ?? '').split(/\s+/).includes('select-none') ? '' : (node.children || []).map(copied).join(''));
+  assert.equal(copied(unit), 'build f0157e6c8f16');
 });

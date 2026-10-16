@@ -92,6 +92,7 @@ const { PanelUpdateCard } = await import(compileURL('../src/components/PanelUpda
     [/from ['"]\.\.\/lib\/panelUpdateAdmission['"]/g, `from '${admissionURL}'`],
     [/from ['"]\.\/SystemUpdateOperation['"]/g, `from '${operationURL}'`],
     [/from ['"]\.\/SystemUpdateSteps['"]/g, `from '${stepsComponentURL}'`],
+    [/from ['"]\.\/BuildCommit['"]/g, `from '${compileURL('../src/components/BuildCommit.tsx', [[/from ['"]react\/jsx-runtime['"]/g, `from '${jsxRuntimeURL}'`], [/from ['"]\.\.\/i18n['"]/g, `from '${i18nURL}'`]])}'`],
 ]));
 
 const flush = async () => { for (let i = 0; i < 4; i += 1) await Promise.resolve(); };
@@ -230,7 +231,8 @@ test('no toast on the update page: the corner notice repeats neither the steps n
     assert.equal(systemUpdateCornerNoticeRepeats(0, true), false, 'another page: the corner notice shows the compact step');
     const tracker = readFileSync(new URL('../src/components/SystemUpdateOperation.tsx', import.meta.url), 'utf8');
     assert.match(tracker, /systemUpdateCornerNoticeRepeats\(inlineNotices, tracking !== null \|\| updated !== null\)/);
-    assert.match(tracker, /const updatedMarker = !failureGuidance && terminalKind === 'succeeded' \? exactMarker : null;/);
+    // Frankfurt 2026-10-16: a success the server's recovery verified is the success path too.
+    assert.match(tracker, /const updatedMarker = \(!failureGuidance \|\| recoveredSuccess\) && terminalKind === 'succeeded' \? exactMarker : null;/);
     assert.match(tracker, /<SystemUpdateSteps view=\{compactSteps\} compact \/>/);
     // The plan is kept through lost reads and taken from every answered read.
     assert.match(tracker, /const readPlan = outcome\.operation\?\.plan;\n\s+if \(readPlan\) setPlanState\(\{ requestID: exactMarker\.request_id, plan: readPlan \}\);/);
@@ -247,7 +249,9 @@ test('beside the step bars the dialog says the lock in one short sentence; witho
     assert.equal(tr['panelUpdate.steps.locked'], 'Güncelleme sürerken diğer sayfalar kilitli kalır.');
     assert.doesNotMatch(en['panelUpdate.steps.locked'], /minute|restart/i);
     const tracker = readFileSync(new URL('../src/components/SystemUpdateOperation.tsx', import.meta.url), 'utf8');
-    assert.match(tracker, /t\(displayedTerminal\?\.kind === 'failed' \? 'panelUpdate\.failureAcknowledgement'\n\s+: stepsView \? 'panelUpdate\.steps\.locked' : 'panelUpdate\.interactionLocked'\)/);
+    // The close sentence belongs only to a failure the owner reads (Frankfurt 2026-10-16).
+    assert.match(tracker, /const acknowledgementKey = realFailure \? 'panelUpdate\.failureAcknowledgement'\n\s+: stepsView \? 'panelUpdate\.steps\.locked' : 'panelUpdate\.interactionLocked';/);
+    assert.match(tracker, /\{t\(acknowledgementKey\)\}/);
     // Control: the bounded wording is kept for a page without a plan.
     assert.match(en['panelUpdate.interactionLocked'], /after two minutes/);
 });
@@ -383,6 +387,42 @@ for (const locale of ['en', 'tr']) {
         } finally { restore(); await act(async () => renderer.unmount()); }
     });
 
+    // Frankfurt 2026-10-16 (owner): an update the server's recovery finished
+    // showed only "You are on the latest version." on the card. The card treats
+    // it as the success it is, with one quiet line; the build line copies as
+    // it reads ("build 1743ac69edb0"), the full id stays for screen readers.
+    test(`${locale}: an update finished by the server's recovery keeps "Updated to" on the card, with one quiet line`, async () => {
+        const steps = view({ plan: null, phase: 'unknown', succeeded: true });
+        const { renderer, restore } = await mountCard({ active: true, tracking: null, steps, updated: { version: 'v0.1.0-alpha.92', commit: COMMIT, repeated: true } });
+        try {
+            const box = renderer.root.find(node => node.props?.['data-update-steps-card'] !== undefined);
+            assert.ok(textOf(box).includes(fill(c['panelUpdate.steps.updated'], { version: 'v0.1.0-alpha.92' })));
+            assert.equal(box.findAll(node => node.props?.['data-step-state'] === 'done').length, 5);
+            assert.equal(textOf(box.find(node => node.props?.['data-update-repeated'] !== undefined)), c['panelUpdate.steps.repeated']);
+            const build = box.find(node => node.props?.['data-update-build'] !== undefined);
+            const copied = (node) => {
+                if (node === null || node === undefined || typeof node === 'boolean') return '';
+                if (typeof node === 'string' || typeof node === 'number') return String(node);
+                if (Array.isArray(node)) return node.map(copied).join('');
+                if (String(node.props?.className ?? '').split(/\s+/).includes('select-none')) return '';
+                return copied(node.children);
+            };
+            assert.equal(copied(build), `build ${COMMIT.slice(0, 12)}`, 'copied text is exactly what is seen');
+            const hidden = build.find(node => node.props?.['data-build-full'] !== undefined);
+            assert.ok(String(hidden.props.className).includes('sr-only') && String(hidden.props.className).includes('select-none'));
+            assert.ok(textOf(hidden).startsWith(' ('), 'a copy that ignores user-select still reads with a space');
+            assert.ok(textOf(hidden).includes(COMMIT));
+        } finally { restore(); await act(async () => renderer.unmount()); }
+    });
+
+    test(`${locale}: control: an ordinary success has no repeated-step line`, async () => {
+        const steps = view({ plan: null, phase: 'unknown', succeeded: true });
+        const { renderer, restore } = await mountCard({ active: true, tracking: null, steps, updated: { version: 'v0.1.0-alpha.92', commit: COMMIT } });
+        try {
+            assert.equal(renderer.root.findAll(node => node.props?.['data-update-repeated'] !== undefined).length, 0);
+        } finally { restore(); await act(async () => renderer.unmount()); }
+    });
+
     test(`${locale}: control: a card without steps keeps the previous calm line`, async () => {
         const tracking = { version: 'v0.1.0-alpha.88', phase: 'restarting', elapsed: '01:15', requestID: REQUEST };
         const { renderer, restore } = await mountCard({ active: true, tracking });
@@ -396,7 +436,8 @@ for (const locale of ['en', 'tr']) {
 
 test('every step string exists in English and Turkish, and the Turkish is not the English', () => {
     const keys = Object.keys(en).filter(key => key.startsWith('panelUpdate.steps.'));
-    assert.equal(keys.length, 13);
+    // 13 + retrying state, its two notes and the repeated-step line (2026-10-16).
+    assert.equal(keys.length, 17);
     for (const key of keys) {
         assert.equal(typeof tr[key], 'string', key);
         assert.notEqual(tr[key], en[key], key);

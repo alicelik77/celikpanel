@@ -24,13 +24,20 @@ import type { SystemUpdateTrackingPhase } from './systemUpdateTracking';
 
 export const SYSTEM_UPDATE_STEP_IDS = ['download', 'verify', 'prepare', 'restart', 'confirm'] as const;
 export type SystemUpdateStepID = typeof SYSTEM_UPDATE_STEP_IDS[number];
-export type SystemUpdateStepState = 'pending' | 'running' | 'done' | 'failed';
+// retrying (additive, 2026-10-16): the update's last step did not confirm
+// and the server's automatic recovery is repeating it (Frankfurt, the Certbot
+// renewal step). It is progress, never a failure.
+export type SystemUpdateStepState = 'pending' | 'running' | 'retrying' | 'done' | 'failed';
+
+// The automatic attempt in progress, when the server knows it.
+export type SystemUpdateRetryAttempt = { current: number; max: number };
 
 export type SystemUpdatePlanStep = {
     id: SystemUpdateStepID;
     state: SystemUpdateStepState;
     // 0..1 when the server measured it (the download's bytes); absent otherwise.
     progress?: number;
+    attempt?: SystemUpdateRetryAttempt;
 };
 
 export type SystemUpdatePlan = {
@@ -55,11 +62,14 @@ export function decodeSystemUpdatePlan(value: unknown): SystemUpdatePlan | null 
     for (let index = 0; index < SYSTEM_UPDATE_STEP_IDS.length; index += 1) {
         const step = raw.steps[index] as Record<string, unknown> | null;
         if (!step || typeof step !== 'object' || step.id !== SYSTEM_UPDATE_STEP_IDS[index]) return null;
-        if (step.state !== 'pending' && step.state !== 'running' && step.state !== 'done' && step.state !== 'failed') return null;
+        if (step.state !== 'pending' && step.state !== 'running' && step.state !== 'retrying'
+            && step.state !== 'done' && step.state !== 'failed') return null;
         const decoded: SystemUpdatePlanStep = { id: SYSTEM_UPDATE_STEP_IDS[index], state: step.state };
         if (typeof step.progress === 'number' && Number.isFinite(step.progress) && step.progress >= 0 && step.progress <= 1) {
             decoded.progress = step.progress;
         }
+        const attempt = decodeSystemUpdateRetryAttempt(step.attempt, step.max_attempts);
+        if (step.state === 'retrying' && attempt) decoded.attempt = attempt;
         steps.push(decoded);
     }
     const expected = raw.expected_restart_seconds;
@@ -67,6 +77,12 @@ export function decodeSystemUpdatePlan(value: unknown): SystemUpdatePlan | null 
         && expected >= 1 && expected <= SYSTEM_UPDATE_RESTART_BOUND_SECONDS
         ? expected : SYSTEM_UPDATE_DEFAULT_RESTART_SECONDS;
     return { steps, expectedRestartSeconds };
+}
+
+// An attempt the server named: 1 <= current <= max <= 10, integers only.
+export function decodeSystemUpdateRetryAttempt(current: unknown, max: unknown): SystemUpdateRetryAttempt | null {
+    return typeof current === 'number' && typeof max === 'number' && Number.isInteger(current) && Number.isInteger(max)
+        && current >= 1 && current <= max && max <= 10 ? { current, max } : null;
 }
 
 // The restart bar's fill after elapsedMs against an expected length: linear to
@@ -90,6 +106,8 @@ export type SystemUpdateStepView = {
     restarting: boolean;
     // True when the bar must stop moving (past the restart window).
     still: boolean;
+    // For a retrying step: the automatic attempt, when it is known.
+    attempt: SystemUpdateRetryAttempt | null;
 };
 
 export type SystemUpdateStepsView = {
@@ -110,6 +128,9 @@ export type SystemUpdateStepsInput = {
     now: number;
     // The update's outcome when it succeeded (then every step is done).
     succeeded: boolean;
+    // The update is installed and the server's recovery is repeating its
+    // last step (lib/systemUpdateOutcome.ts): every step before it is done.
+    finishing?: { attempt: SystemUpdateRetryAttempt | null } | null;
 };
 
 function stepsFrom(states: SystemUpdateStepState[], plan: SystemUpdatePlan | null): SystemUpdateStepView[] {
@@ -121,6 +142,7 @@ function stepsFrom(states: SystemUpdateStepState[], plan: SystemUpdatePlan | nul
             progress: states[index] === 'running' && typeof progress === 'number' ? progress : null,
             restarting: false,
             still: false,
+            attempt: states[index] === 'retrying' ? plan?.steps[index]?.attempt ?? null : null,
         };
     });
 }
@@ -131,6 +153,12 @@ export function systemUpdateStepsView(input: SystemUpdateStepsInput): SystemUpda
     const { plan } = input;
     if (input.succeeded) {
         return { steps: stepsFrom(SYSTEM_UPDATE_STEP_IDS.map(() => 'done'), plan), completed: true };
+    }
+    if (input.finishing) {
+        const states = SYSTEM_UPDATE_STEP_IDS.map((id): SystemUpdateStepState => (id === 'confirm' ? 'retrying' : 'done'));
+        const steps = stepsFrom(states, null);
+        steps[steps.length - 1] = { ...steps[steps.length - 1], attempt: input.finishing.attempt };
+        return { steps, completed: false };
     }
     if (plan?.steps.some((step) => step.state === 'failed')) return null;
     const restartIndex = SYSTEM_UPDATE_STEP_IDS.indexOf('restart');
@@ -168,9 +196,9 @@ export function systemUpdateStepsView(input: SystemUpdateStepsInput): SystemUpda
     return null;
 }
 
-// The step the page names: the running one, else none.
+// The step the page names: the running or retrying one, else none.
 export function systemUpdateCurrentStep(view: SystemUpdateStepsView | null): SystemUpdateStepView | null {
-    return view?.steps.find((step) => step.state === 'running') ?? null;
+    return view?.steps.find((step) => step.state === 'running' || step.state === 'retrying') ?? null;
 }
 
 // The steps the start answer declared, or null. The start was accepted

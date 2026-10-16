@@ -3,7 +3,7 @@ export const recoveryPhases = ['accepted', 'running', 'recovering', 'recovered',
 export const recoveryReasons = ['operation_accepted', 'update_running', 'update_failed', 'recovery_running', 'recovery_failed', 'recovery_incomplete', 'update_verified', 'rollback_verified', 'observation_unavailable'] as const;
 export const recoveryWaitReasons = ['initializing', 'starting', 'stopping'] as const;
 /** Optional typed cause of the update's own failure. Unknown values are ignored (generic text). */
-export const recoveryFailureCodes = ['candidate_panel_startup_check_failed', 'panel_start_unverified', 'recovery_runtime_preflight_failed', 'update_preflight_refused'] as const;
+export const recoveryFailureCodes = ['candidate_panel_startup_check_failed', 'panel_start_unverified', 'recovery_runtime_preflight_failed', 'update_preflight_refused', 'update_finishing_scheduler'] as const;
 /** Causes written only for a request that stopped before changing the installed version. */
 export const preflightStopCodes = ['recovery_runtime_preflight_failed', 'update_preflight_refused'] as const;
 export type RecoveryFailureCode = typeof recoveryFailureCodes[number];
@@ -131,7 +131,7 @@ export function reconcileRecoveryObservation(previous: RecoveryObservation | nul
  */
 export type RecoveryFailureGuidanceKey = 'recovery.failure.candidate_panel_startup_check_failed.returning'
     | 'recovery.failure.candidate_panel_startup_check_failed.recovered' | 'recovery.failure.panel_start_unverified.pending'
-    | 'recovery.failure.recovery_runtime_preflight_failed.stopped';
+    | 'recovery.failure.recovery_runtime_preflight_failed.stopped' | 'recovery.failure.update_finishing_scheduler.pending';
 export function recoveryFailureGuidanceKey(observation: RecoveryObservation): RecoveryFailureGuidanceKey | undefined {
     if (observation.observation !== 'known' || observation.waiting_for || observation.automatic_recovery) return undefined;
     // The next automatic attempt runs after an earlier one failed: keep the
@@ -150,6 +150,7 @@ export function recoveryFailureGuidanceKey(observation: RecoveryObservation): Re
         if (pending) return 'recovery.failure.candidate_panel_startup_check_failed.returning';
     }
     if (observation.failure_code === 'panel_start_unverified' && pending) return 'recovery.failure.panel_start_unverified.pending';
+    if (observation.failure_code === 'update_finishing_scheduler' && pending) return 'recovery.failure.update_finishing_scheduler.pending';
     return undefined;
 }
 
@@ -157,7 +158,22 @@ export function recoveryFailureGuidanceKey(observation: RecoveryObservation): Re
 export function retryingCauseKey(code: RecoveryFailureCode | undefined): RecoveryFailureGuidanceKey | undefined {
     if (code === 'candidate_panel_startup_check_failed') return 'recovery.failure.candidate_panel_startup_check_failed.returning';
     if (code === 'panel_start_unverified') return 'recovery.failure.panel_start_unverified.pending';
+    if (code === 'update_finishing_scheduler') return 'recovery.failure.update_finishing_scheduler.pending';
     return undefined;
+}
+
+/**
+ * The new version is installed and the server's recovery is repeating the
+ * update's last step (turning Certbot renewal back on) by itself: the record
+ * names that cause and recovery still owns the request. Frankfurt 2026-10-16.
+ */
+export function isFinishingStep(observation: RecoveryObservation | null): boolean {
+    if (observation?.observation !== 'known' || observation.terminal_proof !== 'none') return false;
+    const code = observation.failure_code ?? observation.first_failure_code;
+    if (code !== 'update_finishing_scheduler') return false;
+    return observation.phase === 'recovering' || observation.phase === 'failed'
+        || (observation.phase === 'recovery_required'
+            && (observation.automatic_recovery === 'retry_scheduled' || observation.automatic_recovery === 'pause_pending'));
 }
 
 /** A failed record whose typed cause says the update stopped in a read-only check before changing anything. */

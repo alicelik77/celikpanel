@@ -473,7 +473,8 @@ test('a successful release remains a per-tab reload barrier across every success
     assert.match(tracker, /current\.required_reload[\s\S]*required_reload: current\.required_reload/);
     assert.match(tracker, /record\.required_reload \? reloadRecord\(record\.required_reload\) : null/);
     assert.match(tracker, /requiredReloadFromRecord\(current\) \?\? undefined/);
-    assert.match(tracker, /terminalKind === 'failed' \? <XCircle/);
+    // Red only for a failure the owner must act on (Frankfurt 2026-10-16).
+    assert.match(tracker, /markTone === 'danger' \? <XCircle/);
     assert.match(tracker, /markerMatches\(provisionalRef\.current, exactMarker\)[\s\S]*&& !markerRef\.current\)/);
 });
 
