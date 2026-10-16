@@ -396,3 +396,29 @@ page (`englishLeaks`), raw action ids, codes and tokens (`rawTokens`), visible
 toasts, the buttons with their disabled state (a button in a disabled fieldset
 counts as disabled) and sideways scrolling of the page and of `<main>`. The
 screenshots are the inspection; these scenarios do not fail on a finding.
+
+## Scenarios of the sixteenth batch (second server as a full peer, part 1, 2026-10-16)
+
+`scenarios-batch16.mjs`, with the setup record of an extension and
+`POST /api/v1/setup/extend` answered by `mock-batch16.mjs` while `state.b16` is
+set (status, guidance, draft, the completed base, a typed refusal of the
+extension and a delay before its answer, the setup component catalogue and the
+plan built from the draft). The owner's explicit check stays with
+`mock-batch12.mjs`, the running extension's operation is an override. Run it
+with `laptop` and `phone`, both languages and both themes (about a minute each);
+each state is also copied to `BROWSER_INSPECT_SHOTS` as
+`<state>-<lang>-<theme>-<width>.png`.
+
+| Name | States |
+| --- | --- |
+| `x16extend` | the ready screen with "Extend this server's setup", a begin refused with `server_setup_busy`, the begin held 1.5 s, the extension wizard (purpose prefilled, "Customize selection" with installed components kept, access with a new mail host name, the review's what-changes / to-be-installed / kept blocks, opened and whole), "Stop extending" and the ready screen it returns to |
+| `x16notice` | Settings → Server setup for a completed setup; the Dashboard notice and Settings while an extension is in draft and while its run is active; the setup page of that run |
+| `x16mail` | the Components mail cards; the profile dialog on a prepared server (the setup route and its note), "Change" with the effects note, the request held 2.5 s (what is locked) then refused as busy, the admitted route into setup's access step and its review; on a server without a finished setup the direct route with the self-signed note, and "Change" there |
+| `x16secondary` | the DNS-secondary box with the primary named and the exact record, the cards under it, where its button leads; the box with no primary name on a server whose setup has not finished |
+| `x16check` | the setup final step after "Check requirements again": the typed reverse DNS sentence with its resolver and a check that was not read; the record keeps where the button and the answer's box were before and after (`where`) |
+
+Each record adds the document language, English text on a Turkish page
+(`englishLeaks`), raw ids and tokens (`rawTokens`), visible alerts, the
+buttons, links and dialog fields with their disabled and busy state, and
+sideways scrolling of the page, `<main>` and an open dialog. The screenshots
+are the inspection; these scenarios do not fail on a finding.

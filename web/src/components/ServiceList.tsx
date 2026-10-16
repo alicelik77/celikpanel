@@ -23,6 +23,10 @@ import {
     readFirewallSSHReason,
 } from './FirewallSSHNotice';
 import { Link, useLocation, useNavigate } from '../router';
+import { useAuth } from '../auth/AuthContext';
+import type { TranslationKey } from '../i18n/en';
+import { useServerSetup } from './ServerSetupGate';
+import { decodeServerSetup, setupEditorKey, type ServerSetupSnapshot } from '../lib/serverSetup';
 import { publishComponentCensus } from '../lib/componentCensus';
 import { componentDescription, componentName } from '../lib/componentName';
 import { mailProfileBlocked, mailProfileDescription, mailProfileName, mailProfileWarning } from '../lib/mailProfileText';
@@ -97,8 +101,26 @@ interface ManagedServicesSnapshot {
     scanAgeSeconds: number | null;
     dnsIdentityReady: boolean;
     mailHostname: MailHostnameIdentity;
+    mailDNSGuidance: MailDNSGuidance | null;
 }
-
+// Where the mail record is created when this server is the secondary DNS
+// server (cmd/panel mailProfileDNSGuidance, additive 2026-10-16). Every value
+// is re-checked; anything unexpected drops only the guidance, never the page.
+// Ikincil DNS sunucusunda posta kaydinin olusturulacagi yer.
+interface MailDNSGuidance { primaryNameserver: string; primaryIP: string; recordName: string; recordValue: string }
+const guidanceName = (value: unknown) => typeof value === 'string' && value.length <= 253 && /^([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z0-9-]+$/i.test(value) ? value : '';
+const guidanceIPv4 = (value: unknown) => typeof value === 'string' && /^(\d{1,3}\.){3}\d{1,3}$/.test(value) ? value : '';
+function decodeMailDNSGuidance(value: unknown): MailDNSGuidance | null {
+    if (!value || typeof value !== 'object') return null;
+    const payload = value as Record<string, unknown>;
+    if (payload.reason !== 'dns_secondary' || payload.record_type !== 'A') return null;
+    return {
+        primaryNameserver: guidanceName(payload.primary_nameserver),
+        primaryIP: guidanceIPv4(payload.primary_ip),
+        recordName: guidanceName(payload.record_name),
+        recordValue: guidanceIPv4(payload.record_value),
+    };
+}
 type ServiceLifecycleAction = 'start' | 'stop' | 'restart';
 
 interface HostMutationReadiness {
@@ -228,6 +250,7 @@ function parseManagedServicesSnapshot(value: unknown): ManagedServicesSnapshot |
         scanAgeSeconds: typeof payload.scan_age_seconds === 'number' ? payload.scan_age_seconds : null,
         dnsIdentityReady: payload.dns_identity_ready,
         mailHostname,
+        mailDNSGuidance: payload.dns_identity_ready ? null : decodeMailDNSGuidance(payload.mail_dns_guidance),
     };
 }
 
@@ -428,6 +451,17 @@ export function ServiceList({ onManageService }: ServiceListProps) {
     const [scanRound, setScanRound] = useState(0);
     const [dnsIdentityReady, setDNSIdentityReady] = useState(false);
     const [mailHostname, setMailHostname] = useState<MailHostnameIdentity | null>(null);
+    const [mailDNSGuidance, setMailDNSGuidance] = useState<MailDNSGuidance | null>(null);
+    const serverSetup = useServerSetup();
+    const { user } = useAuth();
+    // A server whose guided setup has finished (or is being extended, with no
+    // run active) adds mail through setup, so mail gets setup's steps and
+    // checks: public DNS of the mail host name, the trusted certificate and its
+    // renewal, reverse DNS and port 25 (2026-10-16).
+    // Kurulumu bitmis sunucuda posta kurulum uzerinden eklenir.
+    const setupSnapshot = serverSetup?.snapshot ?? null;
+    const mailThroughSetup = !!setupSnapshot && !['running', 'waiting'].includes(setupSnapshot.status)
+        && (setupSnapshot.status === 'ready' || setupSnapshot.extension === true);
     const [hostMutationReadiness, setHostMutationReadiness] = useState<HostMutationReadiness | null>(null);
     const [loading, setLoading] = useState(true);
     const [scanning, setScanning] = useState(false);
@@ -509,6 +543,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
         setScannedAt(snapshot.scannedAt);
         setDNSIdentityReady(snapshot.dnsIdentityReady);
         setMailHostname(snapshot.mailHostname);
+        setMailDNSGuidance(snapshot.mailDNSGuidance);
 
         // A cached load may still be the exact pre-mutation snapshot retained
         // after an atomic scan failure. Only a fresh scan, or a load carrying
@@ -1136,6 +1171,47 @@ export function ServiceList({ onManageService }: ServiceListProps) {
         if (stateUnverified || !profile.available) return;
         setProfileTarget(profile);
     };
+    // Adds the profile to an extension of the completed setup and opens the
+    // wizard on its access step; the owner reviews and starts it there. Only
+    // the setup record changes here. A lost answer is settled by reading the
+    // setup again, never by sending the request twice.
+    // Profili kurulum genisletmesine ekler; inceleme ve baslatma kurulumdadir.
+    const addProfileThroughSetup = async (chosenHostname: string): Promise<TranslationKey | null> => {
+        const profile = profileTarget;
+        if (!profile || !setupSnapshot || !serverSetup) return 'services.mailProfiles.setupRoute.failed';
+        // code: the server's typed refusal; 'unanswered' when no answer came.
+        let code = 'unanswered';
+        let next: ServerSetupSnapshot | null = null;
+        try {
+            const response = await fetch('/api/v1/setup/extend', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ revision: setupSnapshot.revision, action: 'begin', mail_profile: profile.id, ...(chosenHostname ? { mail_hostname: chosenHostname } : {}) }),
+            });
+            if (!response.ok) {
+                code = (await readApiError(response)).code || 'refused';
+            } else {
+                next = decodeServerSetup(await response.json());
+                code = '';
+            }
+        } catch { code = 'unanswered'; next = null; }
+        if (!next?.extension) {
+            let latest: ServerSetupSnapshot | null = null;
+            try { latest = await serverSetup.reload(); } catch { latest = null; }
+            if (code === 'server_setup_busy') return 'services.mailProfiles.setupRoute.busy';
+            if (code === 'mail_profile_server_hostname_invalid' || code === 'mail_profile_server_hostname_required') return 'services.mailProfiles.hostname.invalid';
+            // Without a confirmed answer the profile is not known to be in the
+            // extension; the owner sees the setup as it is now and can retry.
+            if (!latest?.extension || code !== 'unanswered') return 'services.mailProfiles.setupRoute.failed';
+            next = latest;
+        }
+        serverSetup.accept(next);
+        try {
+            sessionStorage.setItem(setupEditorKey(user.username), JSON.stringify({ version: 1, revision: next.revision, step: 'access', draft: next.draft }));
+        } catch { /* the wizard then opens on its first step */ }
+        setProfileTarget(null);
+        navigate('/setup');
+        return null;
+    };
     const installProfile = async (chosenHostname: string) => {
         const profile = profileTarget;
         if (!profile || stateUnverified || !profile.available) return;
@@ -1404,6 +1480,8 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                     services={services}
                     disabled={mutationControlsDisabled}
                     dnsIdentityReady={dnsIdentityReady}
+                    dnsGuidance={mailDNSGuidance}
+                    setupReady={setupSnapshot?.status === 'ready' || setupSnapshot?.extension === true}
                     onInstall={openProfilePlan}
                 />
             )}
@@ -1891,6 +1969,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                         mailHostname={mailHostname}
                         onCancel={() => setProfileTarget(null)}
                         onConfirm={(chosen) => void installProfile(chosen)}
+                        throughSetup={mailThroughSetup ? addProfileThroughSetup : undefined}
                     />
                 )}
                 {uninstallTarget && (
@@ -1988,16 +2067,23 @@ function ComponentActionConfirmationDialog({
     );
 }
 
-function MailProfileCards({ profiles, services, disabled, dnsIdentityReady, onInstall }: {
+function MailProfileCards({ profiles, services, disabled, dnsIdentityReady, dnsGuidance, setupReady, onInstall }: {
     profiles: ManagedMailProfile[];
     services: ManagedService[];
     disabled: boolean;
     dnsIdentityReady: boolean;
+    dnsGuidance: MailDNSGuidance | null;
+    setupReady: boolean;
     onInstall: (profile: ManagedMailProfile) => void;
 }) {
     const { t } = useI18n();
     const navigate = useNavigate();
+    // On a secondary DNS server "Configure DNS" cannot create the record, so
+    // the box names where it is created and the exact record (2026-10-16).
+    // Ikincil DNS sunucusunda kayit birincilde ya da saglayicida olusturulur.
+    const secondary = !dnsIdentityReady && dnsGuidance !== null;
     const actionLabel = (profile: ManagedMailProfile) => {
+        if (secondary) return t('services.mailProfiles.unavailable');
         if (!dnsIdentityReady) return t('services.mailProfiles.configureDNS');
         if (profile.status === 'available') return t('services.mailProfiles.install');
         if (profile.status === 'partial') return t('services.mailProfiles.continue');
@@ -2018,7 +2104,26 @@ function MailProfileCards({ profiles, services, disabled, dnsIdentityReady, onIn
                     <p className='text-sm text-fg-muted'>{t('services.mailProfiles.subtitle')}</p>
                 </div>
             </div>
-            {!dnsIdentityReady && (
+            {secondary && dnsGuidance && (
+                <div role='status' className='mb-3 rounded-xl border border-warning-mark/60 bg-warning-mark/20 p-4' data-mail-dns-secondary=''>
+                    <p className='max-w-3xl text-sm leading-6 text-fg'>
+                        {dnsGuidance.primaryNameserver
+                            ? t('services.mailProfiles.secondary.body', { primary: dnsGuidance.primaryIP ? `${dnsGuidance.primaryNameserver} (${dnsGuidance.primaryIP})` : dnsGuidance.primaryNameserver })
+                            : t('services.mailProfiles.secondary.bodyUnnamed')}
+                    </p>
+                    <p className='mt-3 text-xs font-semibold text-fg'>{t('services.mailProfiles.secondary.record')}</p>
+                    <p className='mt-1 flex flex-wrap gap-x-4 gap-y-1 break-all rounded-lg border border-border bg-surface px-3 py-2 text-sm' data-mail-dns-record=''>
+                        <span className={dnsGuidance.recordName ? 'font-mono' : 'text-fg-muted'}>{dnsGuidance.recordName || t('services.mailProfiles.secondary.nameUnknown')}</span>
+                        <span className='font-mono'>A</span>
+                        <span className={dnsGuidance.recordValue ? 'font-mono' : 'text-fg-muted'}>{dnsGuidance.recordValue || t('services.mailProfiles.secondary.valueUnknown')}</span>
+                    </p>
+                    <p className='mt-3 max-w-3xl text-sm leading-6 text-fg'>{t('services.mailProfiles.secondary.next')}</p>
+                    <Button variant='secondary' className='mt-3' onClick={() => navigate('/setup')}>
+                        {t(setupReady ? 'services.mailProfiles.secondary.extend' : 'services.mailProfiles.secondary.openSetup')}
+                    </Button>
+                </div>
+            )}
+            {!dnsIdentityReady && !secondary && (
                 <div role='status' className='mb-3 flex flex-wrap items-center gap-3 rounded-xl border border-warning-mark/60 bg-warning-mark/20 p-3'>
                     <p className='min-w-0 flex-1 text-sm text-fg'>
                         {t('services.mailProfiles.dnsRequired')}
@@ -2035,7 +2140,9 @@ function MailProfileCards({ profiles, services, disabled, dnsIdentityReady, onIn
                         || profile.status === 'partial'
                         || profile.status === 'complete'
                     );
-                    const detail = !dnsIdentityReady
+                    const detail = secondary
+                        ? t('services.mailProfiles.secondary.short')
+                        : !dnsIdentityReady
                         ? t('services.mailProfiles.dnsRequiredShort')
                         : profile.status === 'complete' && profile.warning
                         ? t('services.mailProfiles.profileComponentsNeedRepair')
@@ -2071,14 +2178,17 @@ function MailProfileCards({ profiles, services, disabled, dnsIdentityReady, onIn
                             <div className='mt-auto flex items-center justify-between gap-3 pt-4'>
                                 <span className='inline-flex items-center gap-1.5 text-xs font-medium text-fg-muted'>
                                     <StatusDot ok={profile.status === 'complete'} />
-                                    {t(`services.mailProfiles.status.${profile.status}` as Parameters<typeof t>[0])}
+                                    {/* Not "ready to install" while its action waits for the mail record (2026-10-16). */}
+                                    {!dnsIdentityReady && profile.status === 'available'
+                                        ? t('services.mailProfiles.status.waitingDNS')
+                                        : t(`services.mailProfiles.status.${profile.status}` as Parameters<typeof t>[0])}
                                 </span>
                                 <button
                                     type='button'
                                     onClick={() => onInstall(profile)}
                                     disabled={disabled || !dnsIdentityReady || !actionable}
                                     title={detail || actionLabel(profile)}
-                                    className='inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-fg hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50'
+                                    className='inline-flex items-center gap-1.5 rounded-lg border border-transparent bg-primary px-3 py-1.5 text-xs font-semibold text-primary-fg hover:bg-primary/90 disabled:cursor-not-allowed disabled:border-dashed disabled:border-current disabled:bg-transparent disabled:text-fg-muted'
                                 >
                                     <ActionIcon className='h-3.5 w-3.5' />
                                     {actionLabel(profile)}
@@ -2098,15 +2208,32 @@ function MailProfileInstallDialog({
     mailHostname,
     onCancel,
     onConfirm,
+    throughSetup,
 }: {
     profile: ManagedMailProfile;
     services: ManagedService[];
     mailHostname: MailHostnameIdentity | null;
     onCancel: () => void;
     onConfirm: (mailHostname: string) => void;
+    // Present on a server whose guided setup has finished: the profile is
+    // added to an extension of that setup and reviewed there (2026-10-16).
+    throughSetup?: (mailHostname: string) => Promise<TranslationKey | null>;
 }) {
     const { t } = useI18n();
     const [acknowledged, setAcknowledged] = useState(false);
+    // A saved name can be corrected here (2026-10-16). What changes with it is
+    // said before anything is confirmed.
+    // Kayitli ad burada duzeltilebilir; neyin degisecegi onaydan once soylenir.
+    const [editingName, setEditingName] = useState(false);
+    const [routeBusy, setRouteBusy] = useState(false);
+    const [routeError, setRouteError] = useState<TranslationKey | null>(null);
+    // A refusal is said under the name, at the end of the dialog's scrolling
+    // body; on a phone that is below what is shown, so it is brought into view
+    // (2026-10-16). / Ret nedeni gorunur alana alinir.
+    const routeErrorRef = useRef<HTMLParagraphElement>(null);
+    useEffect(() => {
+        if (routeError) routeErrorRef.current?.scrollIntoView?.({ block: 'nearest' });
+    }, [routeError]);
     // The server is only asked for a name when it does not already carry a
     // fully qualified one. A server that does is stated as a fact and left
     // alone. / Sunucudan bir ad yalniz zaten tam nitelikli bir ad tasimiyorsa
@@ -2116,7 +2243,18 @@ function MailProfileInstallDialog({
     const [hostnameTouched, setHostnameTouched] = useState(false);
     const canonicalHostname = canonicalMailHostname(hostnameDraft);
     const hostnameInvalid = hostnameDraft.trim() !== '' && canonicalHostname === null;
-    const hostnameReady = hostnameSettled || canonicalHostname !== null;
+    const nameFixed = hostnameSettled && !editingName;
+    const hostnameReady = nameFixed || canonicalHostname !== null;
+    const savedName = hostnameSettled ? mailHostname?.hostname ?? '' : '';
+    const renaming = hostnameSettled && editingName && canonicalHostname !== null && canonicalHostname !== savedName;
+    const chosenName = nameFixed ? '' : canonicalHostname ?? '';
+    const reviewInSetup = async () => {
+        if (!throughSetup || routeBusy || !hostnameReady) return;
+        setRouteBusy(true); setRouteError(null);
+        const problem = await throughSetup(chosenName === savedName ? '' : chosenName);
+        setRouteBusy(false);
+        if (problem) setRouteError(problem);
+    };
     // Only a name the panel derived is worth attributing; a name that simply
     // came from the operating system is not a suggestion.
     // Yalniz panelin turettigi bir ad kaynagiyla anilmaya deger; isletim
@@ -2212,7 +2350,10 @@ function MailProfileInstallDialog({
             title={t(`services.mailProfiles.plan.title.${mode}` as Parameters<typeof t>[0], { name: mailProfileName(profile, t) })}
             description={t('services.mailProfiles.plan.description')}
             onDismiss={onCancel}
-            footerLead={
+            // While setup is asked to take the profile, the dialog stays and
+            // nothing in it can change what was sent (2026-10-16).
+            busy={routeBusy}
+            footerLead={throughSetup ? undefined :
                 <label className='flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3'>
                     <input
                         ref={acknowledgementRef}
@@ -2228,17 +2369,28 @@ function MailProfileInstallDialog({
             }
             actions={
                 <>
-                    <Button variant='secondary' onClick={onCancel}>
+                    <Button variant='secondary' disabled={routeBusy} onClick={onCancel}>
                         {t('common.cancel')}
                     </Button>
-                    <Button
-                        variant='primary'
-                        icon={mode === 'install' ? DownloadCloud : RotateCw}
-                        disabled={!acknowledged || !hostnameReady}
-                        onClick={() => onConfirm(hostnameSettled ? '' : canonicalHostname ?? '')}
-                    >
-                        {t(`services.mailProfiles.plan.confirm.${mode}` as Parameters<typeof t>[0], { name: mailProfileName(profile, t) })}
-                    </Button>
+                    {throughSetup ? (
+                        <Button
+                            variant='primary'
+                            disabled={!hostnameReady || routeBusy}
+                            loading={routeBusy}
+                            onClick={() => void reviewInSetup()}
+                        >
+                            {t('services.mailProfiles.setupRoute.confirm')}
+                        </Button>
+                    ) : (
+                        <Button
+                            variant='primary'
+                            icon={mode === 'install' ? DownloadCloud : RotateCw}
+                            disabled={!acknowledged || !hostnameReady}
+                            onClick={() => onConfirm(chosenName === savedName ? '' : chosenName)}
+                        >
+                            {t(`services.mailProfiles.plan.confirm.${mode}` as Parameters<typeof t>[0], { name: mailProfileName(profile, t) })}
+                        </Button>
+                    )}
                 </>
             }
         >
@@ -2279,21 +2431,39 @@ function MailProfileInstallDialog({
                         </div>
                     </div>
 
-                    <div className='mb-4 rounded-lg border border-warning-mark/60 bg-warning-mark/10 p-3 text-xs leading-5 text-fg-muted'>
-                        <p>{t('services.mailProfiles.plan.tls')}</p>
-                        <p className='mt-1'>{t('services.mailProfiles.plan.partialProgress')}</p>
-                    </div>
+                    {throughSetup ? (
+                        <div className='mb-4 rounded-lg border border-border bg-surface-2/50 p-3 text-xs leading-5 text-fg' data-mail-profile-route='setup'>
+                            <p>{t('services.mailProfiles.setupRoute.note')}</p>
+                        </div>
+                    ) : (
+                        <div className='mb-4 rounded-lg border border-warning-mark/60 bg-warning-mark/10 p-3 text-xs leading-5 text-fg-muted' data-mail-profile-route='direct'>
+                            <p>{t('services.mailProfiles.plan.tls')}</p>
+                            <p className='mt-1'>{t('services.mailProfiles.plan.partialProgress')}</p>
+                            <p className='mt-1'>{t('services.mailProfiles.directRoute.note')}</p>
+                        </div>
+                    )}
 
                     <section className='mb-4 rounded-lg border border-border p-3'>
                         <p className='text-xs font-semibold text-fg'>
                             {t('services.mailProfiles.hostname.title')}
                         </p>
-                        {hostnameSettled ? (
-                            <p className='mt-1 text-xs leading-5 text-fg-muted'>
-                                {t('services.mailProfiles.hostname.settled', {
-                                    hostname: mailHostname?.hostname ?? '',
-                                })}
-                            </p>
+                        {nameFixed ? (
+                            <div className='mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1'>
+                                <p className='min-w-0 flex-1 text-xs leading-5 text-fg-muted'>
+                                    {t('services.mailProfiles.hostname.settled', {
+                                        hostname: mailHostname?.hostname ?? '',
+                                    })}
+                                </p>
+                                <button
+                                    type='button'
+                                    data-mail-hostname-change=''
+                                    disabled={routeBusy}
+                                    onClick={() => { setHostnameDraft(savedName); setEditingName(true); }}
+                                    className='min-h-9 text-xs font-medium text-primary underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-60'
+                                >
+                                    {t('services.mailProfiles.hostname.change')}
+                                </button>
+                            </div>
                         ) : (
                             <>
                                 <p id='mail-profile-hostname-hint' className='mt-1 text-xs leading-5 text-fg-muted'>
@@ -2317,6 +2487,7 @@ function MailProfileInstallDialog({
                                     autoComplete='off'
                                     spellCheck={false}
                                     value={hostnameDraft}
+                                    disabled={routeBusy}
                                     placeholder={t('services.mailProfiles.hostname.placeholder')}
                                     aria-describedby='mail-profile-hostname-hint mail-profile-hostname-note'
                                     aria-invalid={hostnameInvalid || undefined}
@@ -2330,21 +2501,37 @@ function MailProfileInstallDialog({
                                             : 'border-border-strong focus:border-primary'
                                     }`}
                                 />
+                                {/* While a saved name is being changed, the note under the field
+                                    says what the change does, so the field's description is that
+                                    sentence (2026-10-16). / Ad degisirken alanin aciklamasi etkidir. */}
                                 <p
                                     id='mail-profile-hostname-note'
+                                    {...(renaming ? { 'data-mail-hostname-effects': '' } : {})}
                                     className={`mt-1 text-xs leading-5 ${
-                                        hostnameInvalid && hostnameTouched ? 'text-danger' : 'text-fg-muted'
+                                        hostnameInvalid && hostnameTouched ? 'text-danger' : renaming ? 'text-fg' : 'text-fg-muted'
                                     }`}
                                 >
                                     {hostnameInvalid && hostnameTouched
                                         ? t('services.mailProfiles.hostname.invalid')
-                                        : canonicalHostname
-                                            ? t('services.mailProfiles.hostname.rename', {
-                                                hostname: canonicalHostname,
-                                            })
-                                            : t('services.mailProfiles.hostname.invalid')}
+                                        : renaming
+                                            ? t('services.mailProfiles.hostname.changeEffects', { old: savedName, new: canonicalHostname ?? '' })
+                                            : canonicalHostname
+                                                ? t('services.mailProfiles.hostname.rename', {
+                                                    hostname: canonicalHostname,
+                                                })
+                                                : t('services.mailProfiles.hostname.invalid')}
                                 </p>
-                                {suggestionSource && canonicalHostname === mailHostname?.hostname && (
+                                {hostnameSettled && editingName && (
+                                    <button
+                                        type='button'
+                                        disabled={routeBusy}
+                                        onClick={() => { setEditingName(false); setHostnameDraft(savedName); setHostnameTouched(false); }}
+                                        className='mt-2 min-h-9 text-xs font-medium text-primary underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-60'
+                                    >
+                                        {t('services.mailProfiles.hostname.keep', { hostname: savedName })}
+                                    </button>
+                                )}
+                                {suggestionSource && !editingName && canonicalHostname === mailHostname?.hostname && (
                                     // fg-subtle is the placeholder colour and carries no
                                     // meaning; where the name came from is information.
                                     // fg-subtle yer tutucu rengidir ve bir anlam taşımaz;
@@ -2356,6 +2543,9 @@ function MailProfileInstallDialog({
                             </>
                         )}
                     </section>
+                    {routeError && (
+                        <p ref={routeErrorRef} role='alert' className='mb-2 text-sm leading-6 text-fg' data-mail-profile-route-error=''>{t(routeError)}</p>
+                    )}
         </Dialog>
     );
 }

@@ -1,0 +1,205 @@
+2026-10-16T00:06:40.296673+00:00 dns-debian13 systemd[1]: Starting nginx.service - A high performance web server and a reverse proxy server...
+2026-10-16T00:06:40.358567+00:00 dns-debian13 systemd[1]: Started nginx.service - A high performance web server and a reverse proxy server.
+2026-10-16T00:07:57.744415+00:00 dns-debian13 systemd[1]: Starting mariadb.service - MariaDB 11.8.6 database server...
+2026-10-16T00:07:57.831508+00:00 dns-debian13 (mariadbd)[14907]: mariadb.service: Referenced but unset environment variable evaluates to an empty string: MYSQLD_OPTS, _WSREP_NEW_CLUSTER
+2026-10-16T00:07:57.884496+00:00 dns-debian13 mariadbd[14907]: 2026-10-16  0:07:57 0 [Note] Starting MariaDB 11.8.6-MariaDB-0+deb13u1 from Debian source revision 9bfea48ce1214cc4470f6f6f8a4e30352cef84e7 server_uid ewHC0iXTbxcy4rWctYmifQ9FJtc= as process 14907
+2026-10-16T00:07:57.909530+00:00 dns-debian13 mariadbd[14907]: 2026-10-16  0:07:57 0 [Note] InnoDB: Compressed tables use zlib 1.3.1
+2026-10-16T00:07:57.912166+00:00 dns-debian13 mariadbd[14907]: 2026-10-16  0:07:57 0 [Note] InnoDB: Number of transaction pools: 1
+2026-10-16T00:07:57.912268+00:00 dns-debian13 mariadbd[14907]: 2026-10-16  0:07:57 0 [Note] InnoDB: Using crc32 + pclmulqdq instructions
+2026-10-16T00:07:57.912582+00:00 dns-debian13 mariadbd[14907]: 2026-10-16  0:07:57 0 [Note] InnoDB: Using io_uring
+2026-10-16T00:07:57.913196+00:00 dns-debian13 mariadbd[14907]: 2026-10-16  0:07:57 0 [Note] InnoDB: innodb_buffer_pool_size_max=128m, innodb_buffer_pool_size=128m
+2026-10-16T00:07:57.919359+00:00 dns-debian13 mariadbd[14907]: 2026-10-16  0:07:57 0 [Note] InnoDB: Initialized memory pressure event listener
+2026-10-16T00:07:57.919359+00:00 dns-debian13 mariadbd[14907]: 2026-10-16  0:07:57 0 [Note] InnoDB: Completed initialization of buffer pool
+2026-10-16T00:07:57.920572+00:00 dns-debian13 mariadbd[14907]: 2026-10-16  0:07:57 0 [Note] InnoDB: File system buffers for log disabled (block size=512 bytes)
+2026-10-16T00:07:57.939306+00:00 dns-debian13 mariadbd[14907]: 2026-10-16  0:07:57 0 [Note] InnoDB: End of log at LSN=45482
+2026-10-16T00:07:58.012855+00:00 dns-debian13 mariadbd[14907]: 2026-10-16  0:07:58 0 [Note] InnoDB: Opened 3 undo tablespaces
+2026-10-16T00:07:58.012855+00:00 dns-debian13 mariadbd[14907]: 2026-10-16  0:07:58 0 [Note] InnoDB: 128 rollback segments in 3 undo tablespaces are active.
+2026-10-16T00:07:58.013337+00:00 dns-debian13 mariadbd[14907]: 2026-10-16  0:07:58 0 [Note] InnoDB: Setting file './ibtmp1' size to 12.000MiB. Physically writing the file full; Please wait ...
+2026-10-16T00:07:58.013425+00:00 dns-debian13 mariadbd[14907]: 2026-10-16  0:07:58 0 [Note] InnoDB: File './ibtmp1' size is now 12.000MiB.
+2026-10-16T00:07:58.016194+00:00 dns-debian13 mariadbd[14907]: 2026-10-16  0:07:58 0 [Note] InnoDB: log sequence number 45482; transaction id 14
+2026-10-16T00:07:58.016414+00:00 dns-debian13 mariadbd[14907]: 2026-10-16  0:07:58 0 [Note] InnoDB: Loading buffer pool(s) from /var/lib/mysql/ib_buffer_pool
+2026-10-16T00:07:58.017073+00:00 dns-debian13 mariadbd[14907]: 2026-10-16  0:07:58 0 [Note] Plugin 'FEEDBACK' is disabled.
+2026-10-16T00:07:58.017073+00:00 dns-debian13 mariadbd[14907]: 2026-10-16  0:07:58 0 [Note] Plugin 'wsrep-provider' is disabled.
+2026-10-16T00:07:58.020785+00:00 dns-debian13 mariadbd[14907]: 2026-10-16  0:07:58 0 [Note] InnoDB: Buffer pool(s) load completed at 261016  0:07:58
+2026-10-16T00:07:59.628568+00:00 dns-debian13 mariadbd[14907]: 2026-10-16  0:07:59 0 [Note] Server socket created on IP: '127.0.0.1', port: '3306'.
+2026-10-16T00:07:59.636853+00:00 dns-debian13 mariadbd[14907]: 2026-10-16  0:07:59 0 [Note] mariadbd: Event Scheduler: Loaded 0 events
+2026-10-16T00:07:59.644172+00:00 dns-debian13 mariadbd[14907]: 2026-10-16  0:07:59 0 [Note] /usr/sbin/mariadbd: ready for connections.
+2026-10-16T00:07:59.644172+00:00 dns-debian13 mariadbd[14907]: Version: '11.8.6-MariaDB-0+deb13u1 from Debian'  socket: '/run/mysqld/mysqld.sock'  port: 3306  -- Please help get to 10k stars at https://github.com/MariaDB/Server
+2026-10-16T00:07:59.716669+00:00 dns-debian13 systemd[1]: Started mariadb.service - MariaDB 11.8.6 database server.
+2026-10-16T00:07:59.718321+00:00 dns-debian13 /etc/mysql/debian-start[14928]: Upgrading MariaDB tables if necessary.
+2026-10-16T00:07:59.769734+00:00 dns-debian13 /etc/mysql/debian-start[14939]: Checking for insecure root accounts.
+2026-10-16T00:07:59.800216+00:00 dns-debian13 /etc/mysql/debian-start[14945]: Triggering myisam-recover for all MyISAM tables and aria-recover for all Aria tables
+2026-10-16T00:08:08.654622+00:00 dns-debian13 systemd[1]: Started cron.service - Regular background program processing daemon.
+2026-10-16T00:08:08.674446+00:00 dns-debian13 cron[15433]: (CRON) INFO (pidfile fd = 3)
+2026-10-16T00:08:08.676172+00:00 dns-debian13 cron[15433]: (CRON) INFO (Running @reboot jobs)
+2026-10-16T00:08:24.047569+00:00 dns-debian13 systemd[1]: Reloading nginx.service - A high performance web server and a reverse proxy server...
+2026-10-16T00:08:24.080096+00:00 dns-debian13 nginx[16153]: 2026/10/16 00:08:24 [notice] 16153#16153: signal process started
+2026-10-16T00:08:24.083583+00:00 dns-debian13 systemd[1]: Reloaded nginx.service - A high performance web server and a reverse proxy server.
+2026-10-16T00:09:01.681036+00:00 dns-debian13 CRON[16506]: pam_unix(cron:session): session opened for user root(uid=0) by root(uid=0)
+2026-10-16T00:09:01.681503+00:00 dns-debian13 CRON[16508]: (root) CMD (  [ -x /usr/lib/php/sessionclean ] && if [ ! -d /run/systemd/system ]; then /usr/lib/php/sessionclean; fi)
+2026-10-16T00:09:01.682796+00:00 dns-debian13 CRON[16506]: pam_unix(cron:session): session closed for user root
+2026-10-16T00:12:49.940682+00:00 dns-debian13 systemd[1]: Starting postfix.service - Postfix Mail Transport Agent (main/default instance)...
+2026-10-16T00:12:50.261846+00:00 dns-debian13 postfix[17942]: updating /etc/localtime => /var/spool/postfix//etc/localtime
+2026-10-16T00:12:50.261846+00:00 dns-debian13 postfix[17942]: updating /etc/services => /var/spool/postfix//etc/services
+2026-10-16T00:12:50.261846+00:00 dns-debian13 postfix[17942]: updating /etc/resolv.conf => /var/spool/postfix//etc/resolv.conf
+2026-10-16T00:12:50.261846+00:00 dns-debian13 postfix[17942]: updating /etc/hosts => /var/spool/postfix//etc/hosts
+2026-10-16T00:12:50.261846+00:00 dns-debian13 postfix[17942]: updating /etc/host.conf => /var/spool/postfix//etc/host.conf
+2026-10-16T00:12:50.261846+00:00 dns-debian13 postfix[17942]: updating /etc/nsswitch.conf => /var/spool/postfix//etc/nsswitch.conf
+2026-10-16T00:12:50.268027+00:00 dns-debian13 postfix[17945]: '/usr/lib/x86_64-linux-gnu/libnss_resolve.so.2' -> 'lib/libnss_resolve.so.2'
+2026-10-16T00:12:50.268027+00:00 dns-debian13 postfix[17945]: '/usr/lib/x86_64-linux-gnu/libnss_myhostname.so.2' -> 'lib/libnss_myhostname.so.2'
+2026-10-16T00:12:50.333434+00:00 dns-debian13 postfix[17974]: postfix/postlog: warning: not owned by root: /var/spool/postfix/etc/resolv.conf
+2026-10-16T00:12:50.333407+00:00 dns-debian13 postfix/postfix-script[17974]: warning: not owned by root: /var/spool/postfix/etc/resolv.conf
+2026-10-16T00:12:50.450317+00:00 dns-debian13 postfix/master[18000]: daemon started -- version 3.10.13, configuration /etc/postfix
+2026-10-16T00:12:50.451743+00:00 dns-debian13 systemd[1]: Started postfix.service - Postfix Mail Transport Agent (main/default instance).
+2026-10-16T00:12:56.950937+00:00 dns-debian13 postfix/master[18000]: reload -- version 3.10.13, configuration /etc/postfix
+2026-10-16T00:13:09.710337+00:00 dns-debian13 systemd[1]: Starting dovecot.service - Dovecot IMAP/POP3 email server...
+2026-10-16T00:13:09.763149+00:00 dns-debian13 dovecot[20992]: master: Dovecot v2.4.1-4 (7d8c0e5759) starting up without any protocols (core dumps disabled)
+2026-10-16T00:13:09.769328+00:00 dns-debian13 systemd[1]: Started dovecot.service - Dovecot IMAP/POP3 email server.
+2026-10-16T00:13:11.840553+00:00 dns-debian13 systemd[1]: Stopping dovecot.service - Dovecot IMAP/POP3 email server...
+2026-10-16T00:13:11.874788+00:00 dns-debian13 dovecot[20992]: master: Warning: Killed with signal 15 (by pid=21561 uid=0 code=kill)
+2026-10-16T00:13:11.883662+00:00 dns-debian13 systemd[1]: dovecot.service: Deactivated successfully.
+2026-10-16T00:13:11.883954+00:00 dns-debian13 systemd[1]: Stopped dovecot.service - Dovecot IMAP/POP3 email server.
+2026-10-16T00:13:11.888038+00:00 dns-debian13 systemd[1]: Starting dovecot.service - Dovecot IMAP/POP3 email server...
+2026-10-16T00:13:11.932207+00:00 dns-debian13 dovecot[21566]: master: Dovecot v2.4.1-4 (7d8c0e5759) starting up for imap, lmtp, pop3 (core dumps disabled)
+2026-10-16T00:13:11.940627+00:00 dns-debian13 systemd[1]: Started dovecot.service - Dovecot IMAP/POP3 email server.
+2026-10-16T00:13:18.010463+00:00 dns-debian13 postfix/master[18000]: reload -- version 3.10.13, configuration /etc/postfix
+2026-10-16T00:13:18.559143+00:00 dns-debian13 systemd[1]: Stopping dovecot.service - Dovecot IMAP/POP3 email server...
+2026-10-16T00:13:18.589470+00:00 dns-debian13 dovecot[21566]: master: Warning: Killed with signal 15 (by pid=22019 uid=0 code=kill)
+2026-10-16T00:13:18.623286+00:00 dns-debian13 systemd[1]: dovecot.service: Deactivated successfully.
+2026-10-16T00:13:18.623572+00:00 dns-debian13 systemd[1]: Stopped dovecot.service - Dovecot IMAP/POP3 email server.
+2026-10-16T00:13:18.627858+00:00 dns-debian13 systemd[1]: Starting dovecot.service - Dovecot IMAP/POP3 email server...
+2026-10-16T00:13:18.689844+00:00 dns-debian13 dovecot[22024]: master: Dovecot v2.4.1-4 (7d8c0e5759) starting up for imap, lmtp, pop3 (core dumps disabled)
+2026-10-16T00:13:18.698505+00:00 dns-debian13 systemd[1]: Started dovecot.service - Dovecot IMAP/POP3 email server.
+2026-10-16T00:13:25.794666+00:00 dns-debian13 postfix/master[18000]: reload -- version 3.10.13, configuration /etc/postfix
+2026-10-16T00:13:26.357488+00:00 dns-debian13 systemd[1]: Stopping dovecot.service - Dovecot IMAP/POP3 email server...
+2026-10-16T00:13:26.389584+00:00 dns-debian13 dovecot[22024]: master: Warning: Killed with signal 15 (by pid=22398 uid=0 code=kill)
+2026-10-16T00:13:26.398477+00:00 dns-debian13 systemd[1]: dovecot.service: Deactivated successfully.
+2026-10-16T00:13:26.398854+00:00 dns-debian13 systemd[1]: Stopped dovecot.service - Dovecot IMAP/POP3 email server.
+2026-10-16T00:13:26.402659+00:00 dns-debian13 systemd[1]: Starting dovecot.service - Dovecot IMAP/POP3 email server...
+2026-10-16T00:13:26.469548+00:00 dns-debian13 dovecot[22403]: master: Dovecot v2.4.1-4 (7d8c0e5759) starting up for imap, lmtp, pop3 (core dumps disabled)
+2026-10-16T00:13:26.474288+00:00 dns-debian13 systemd[1]: Started dovecot.service - Dovecot IMAP/POP3 email server.
+2026-10-16T00:13:28.091466+00:00 dns-debian13 systemd[1]: Stopping dovecot.service - Dovecot IMAP/POP3 email server...
+2026-10-16T00:13:28.130261+00:00 dns-debian13 dovecot[22403]: master: Warning: Killed with signal 15 (by pid=22568 uid=0 code=kill)
+2026-10-16T00:13:28.139398+00:00 dns-debian13 systemd[1]: dovecot.service: Deactivated successfully.
+2026-10-16T00:13:28.139722+00:00 dns-debian13 systemd[1]: Stopped dovecot.service - Dovecot IMAP/POP3 email server.
+2026-10-16T00:13:28.144676+00:00 dns-debian13 systemd[1]: Starting dovecot.service - Dovecot IMAP/POP3 email server...
+2026-10-16T00:13:28.191497+00:00 dns-debian13 dovecot[22573]: master: Dovecot v2.4.1-4 (7d8c0e5759) starting up for imap, lmtp, pop3 (core dumps disabled)
+2026-10-16T00:13:28.196698+00:00 dns-debian13 systemd[1]: Started dovecot.service - Dovecot IMAP/POP3 email server.
+2026-10-16T00:13:29.690397+00:00 dns-debian13 systemd[1]: Stopping postfix.service - Postfix Mail Transport Agent (main/default instance)...
+2026-10-16T00:13:29.778723+00:00 dns-debian13 postfix[22737]: postfix/postlog: stopping the Postfix mail system
+2026-10-16T00:13:29.778699+00:00 dns-debian13 postfix/postfix-script[22737]: stopping the Postfix mail system
+2026-10-16T00:13:29.780739+00:00 dns-debian13 postfix/master[18000]: terminating on signal 15
+2026-10-16T00:13:29.787405+00:00 dns-debian13 systemd[1]: postfix.service: Deactivated successfully.
+2026-10-16T00:13:29.787763+00:00 dns-debian13 systemd[1]: Stopped postfix.service - Postfix Mail Transport Agent (main/default instance).
+2026-10-16T00:13:29.789868+00:00 dns-debian13 systemd[1]: Starting postfix.service - Postfix Mail Transport Agent (main/default instance)...
+2026-10-16T00:13:30.130971+00:00 dns-debian13 postfix[22829]: postfix/postlog: warning: not owned by root: /var/spool/postfix/etc/resolv.conf
+2026-10-16T00:13:30.130941+00:00 dns-debian13 postfix/postfix-script[22829]: warning: not owned by root: /var/spool/postfix/etc/resolv.conf
+2026-10-16T00:13:30.218456+00:00 dns-debian13 postfix/master[22855]: daemon started -- version 3.10.13, configuration /etc/postfix
+2026-10-16T00:13:30.219758+00:00 dns-debian13 systemd[1]: Started postfix.service - Postfix Mail Transport Agent (main/default instance).
+2026-10-16T00:13:35.063538+00:00 dns-debian13 postfix/master[22855]: reload -- version 3.10.13, configuration /etc/postfix
+2026-10-16T00:13:35.614443+00:00 dns-debian13 systemd[1]: Reloading dovecot.service - Dovecot IMAP/POP3 email server...
+2026-10-16T00:13:35.653549+00:00 dns-debian13 dovecot[22573]: master: Warning: SIGHUP received - reloading configuration
+2026-10-16T00:13:35.665036+00:00 dns-debian13 systemd[1]: Reloaded dovecot.service - Dovecot IMAP/POP3 email server.
+2026-10-16T00:14:39.688683+00:00 dns-debian13 systemd[1]: Reloading nginx.service - A high performance web server and a reverse proxy server...
+2026-10-16T00:14:39.716650+00:00 dns-debian13 nginx[24010]: 2026/10/16 00:14:39 [notice] 24010#24010: signal process started
+2026-10-16T00:14:39.718115+00:00 dns-debian13 systemd[1]: Reloaded nginx.service - A high performance web server and a reverse proxy server.
+2026-10-16T00:14:46.207355+00:00 dns-debian13 postfix/master[22855]: reload -- version 3.10.13, configuration /etc/postfix
+2026-10-16T00:14:46.767807+00:00 dns-debian13 systemd[1]: Reloading dovecot.service - Dovecot IMAP/POP3 email server...
+2026-10-16T00:14:46.822781+00:00 dns-debian13 dovecot[22573]: master: Warning: SIGHUP received - reloading configuration
+2026-10-16T00:14:46.833873+00:00 dns-debian13 systemd[1]: Reloaded dovecot.service - Dovecot IMAP/POP3 email server.
+2026-10-16T00:14:57.614328+00:00 dns-debian13 postfix/submission/smtpd[24931]: connect from localhost[127.0.0.1]
+2026-10-16T00:14:57.616833+00:00 dns-debian13 postfix/submission/smtpd[24931]: Anonymous TLS connection established from localhost[127.0.0.1]: TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits) key-exchange x25519 server-signature ECDSA (prime256v1) server-digest SHA256
+2026-10-16T00:14:57.660742+00:00 dns-debian13 postfix/submission/smtpd[24931]: NOQUEUE: lost connection after EHLO from localhost[127.0.0.1]
+2026-10-16T00:14:57.660802+00:00 dns-debian13 postfix/submission/smtpd[24931]: disconnect from localhost[127.0.0.1] ehlo=2 starttls=1 commands=3
+2026-10-16T00:14:57.675690+00:00 dns-debian13 dovecot[24593]: imap-login: Login aborted: Connection closed (no auth attempts in 0 secs) (no_auth_attempts): user=<>, rip=127.0.0.1, lip=127.0.0.1, TLS, session=[REDACTED]
+2026-10-16T00:14:57.729486+00:00 dns-debian13 postfix/smtpd[24941]: connect from dns-debian13[10.0.2.15]
+2026-10-16T00:14:57.734928+00:00 dns-debian13 postfix/smtpd[24941]: NOQUEUE: lost connection after CONNECT from dns-debian13[10.0.2.15]
+2026-10-16T00:14:57.734946+00:00 dns-debian13 postfix/smtpd[24941]: disconnect from dns-debian13[10.0.2.15] commands=0/0
+2026-10-16T00:15:18.465907+00:00 dns-debian13 postfix/submission/smtpd[24931]: connect from localhost[127.0.0.1]
+2026-10-16T00:15:18.467539+00:00 dns-debian13 postfix/submission/smtpd[24931]: Anonymous TLS connection established from localhost[127.0.0.1]: TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits) key-exchange x25519 server-signature ECDSA (prime256v1) server-digest SHA256
+2026-10-16T00:15:18.508752+00:00 dns-debian13 postfix/submission/smtpd[24931]: NOQUEUE: lost connection after EHLO from localhost[127.0.0.1]
+2026-10-16T00:15:18.508794+00:00 dns-debian13 postfix/submission/smtpd[24931]: disconnect from localhost[127.0.0.1] ehlo=2 starttls=1 commands=3
+2026-10-16T00:15:18.520728+00:00 dns-debian13 dovecot[24593]: imap-login: Login aborted: Connection closed (no auth attempts in 0 secs) (no_auth_attempts): user=<>, rip=127.0.0.1, lip=127.0.0.1, TLS, session=[REDACTED]
+2026-10-16T00:15:18.550418+00:00 dns-debian13 postfix/smtpd[24941]: connect from dns-debian13[10.0.2.15]
+2026-10-16T00:15:18.550749+00:00 dns-debian13 postfix/smtpd[24941]: NOQUEUE: lost connection after CONNECT from dns-debian13[10.0.2.15]
+2026-10-16T00:15:18.550754+00:00 dns-debian13 postfix/smtpd[24941]: disconnect from dns-debian13[10.0.2.15] commands=0/0
+2026-10-16T00:15:39.313840+00:00 dns-debian13 postfix/submission/smtpd[24931]: connect from localhost[127.0.0.1]
+2026-10-16T00:15:39.315267+00:00 dns-debian13 postfix/submission/smtpd[24931]: Anonymous TLS connection established from localhost[127.0.0.1]: TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits) key-exchange x25519 server-signature ECDSA (prime256v1) server-digest SHA256
+2026-10-16T00:15:39.356724+00:00 dns-debian13 postfix/submission/smtpd[24931]: NOQUEUE: lost connection after EHLO from localhost[127.0.0.1]
+2026-10-16T00:15:39.356801+00:00 dns-debian13 postfix/submission/smtpd[24931]: disconnect from localhost[127.0.0.1] ehlo=2 starttls=1 commands=3
+2026-10-16T00:15:39.367739+00:00 dns-debian13 dovecot[24593]: imap-login: Login aborted: Connection closed (no auth attempts in 0 secs) (no_auth_attempts): user=<>, rip=127.0.0.1, lip=127.0.0.1, TLS, session=[REDACTED]
+2026-10-16T00:15:39.634574+00:00 dns-debian13 postfix/smtpd[24941]: connect from dns-debian13[10.0.2.15]
+2026-10-16T00:15:39.634842+00:00 dns-debian13 postfix/smtpd[24941]: NOQUEUE: lost connection after CONNECT from dns-debian13[10.0.2.15]
+2026-10-16T00:15:39.634848+00:00 dns-debian13 postfix/smtpd[24941]: disconnect from dns-debian13[10.0.2.15] commands=0/0
+2026-10-16T00:15:45.216904+00:00 dns-debian13 postfix/submission/smtpd[24931]: connect from localhost[127.0.0.1]
+2026-10-16T00:15:45.218481+00:00 dns-debian13 postfix/submission/smtpd[24931]: Anonymous TLS connection established from localhost[127.0.0.1]: TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits) key-exchange x25519 server-signature ECDSA (prime256v1) server-digest SHA256
+2026-10-16T00:15:45.260708+00:00 dns-debian13 postfix/submission/smtpd[24931]: NOQUEUE: lost connection after EHLO from localhost[127.0.0.1]
+2026-10-16T00:15:45.260754+00:00 dns-debian13 postfix/submission/smtpd[24931]: disconnect from localhost[127.0.0.1] ehlo=2 starttls=1 commands=3
+2026-10-16T00:15:45.273200+00:00 dns-debian13 dovecot[24593]: imap-login: Login aborted: Connection closed (no auth attempts in 0 secs) (no_auth_attempts): user=<>, rip=127.0.0.1, lip=127.0.0.1, TLS, session=[REDACTED]
+2026-10-16T00:15:45.463978+00:00 dns-debian13 postfix/smtpd[24941]: connect from dns-debian13[10.0.2.15]
+2026-10-16T00:15:45.464395+00:00 dns-debian13 postfix/smtpd[24941]: NOQUEUE: lost connection after CONNECT from dns-debian13[10.0.2.15]
+2026-10-16T00:15:45.464402+00:00 dns-debian13 postfix/smtpd[24941]: disconnect from dns-debian13[10.0.2.15] commands=0/0
+2026-10-16T00:15:55.463706+00:00 dns-debian13 postfix/submission/smtpd[24931]: connect from localhost[127.0.0.1]
+2026-10-16T00:15:55.466018+00:00 dns-debian13 postfix/submission/smtpd[24931]: Anonymous TLS connection established from localhost[127.0.0.1]: TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits) key-exchange x25519 server-signature ECDSA (prime256v1) server-digest SHA256
+2026-10-16T00:15:55.508793+00:00 dns-debian13 postfix/submission/smtpd[24931]: NOQUEUE: lost connection after EHLO from localhost[127.0.0.1]
+2026-10-16T00:15:55.508850+00:00 dns-debian13 postfix/submission/smtpd[24931]: disconnect from localhost[127.0.0.1] ehlo=2 starttls=1 commands=3
+2026-10-16T00:15:55.519460+00:00 dns-debian13 dovecot[24593]: imap-login: Login aborted: Connection closed (no auth attempts in 0 secs) (no_auth_attempts): user=<>, rip=127.0.0.1, lip=127.0.0.1, TLS, session=[REDACTED]
+2026-10-16T00:15:55.896402+00:00 dns-debian13 postfix/smtpd[24941]: connect from dns-debian13[10.0.2.15]
+2026-10-16T00:15:55.898018+00:00 dns-debian13 postfix/smtpd[24941]: NOQUEUE: lost connection after CONNECT from dns-debian13[10.0.2.15]
+2026-10-16T00:15:55.898029+00:00 dns-debian13 postfix/smtpd[24941]: disconnect from dns-debian13[10.0.2.15] commands=0/0
+2026-10-16T00:15:56.681139+00:00 dns-debian13 postfix/submission/smtpd[24931]: connect from localhost[127.0.0.1]
+2026-10-16T00:15:56.682746+00:00 dns-debian13 postfix/submission/smtpd[24931]: Anonymous TLS connection established from localhost[127.0.0.1]: TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits) key-exchange x25519 server-signature ECDSA (prime256v1) server-digest SHA256
+2026-10-16T00:15:56.724760+00:00 dns-debian13 postfix/submission/smtpd[24931]: NOQUEUE: lost connection after EHLO from localhost[127.0.0.1]
+2026-10-16T00:15:56.724811+00:00 dns-debian13 postfix/submission/smtpd[24931]: disconnect from localhost[127.0.0.1] ehlo=2 starttls=1 commands=3
+2026-10-16T00:15:56.736859+00:00 dns-debian13 dovecot[24593]: imap-login: Login aborted: Connection closed (no auth attempts in 0 secs) (no_auth_attempts): user=<>, rip=127.0.0.1, lip=127.0.0.1, TLS, session=[REDACTED]
+2026-10-16T00:15:56.765400+00:00 dns-debian13 postfix/smtpd[24941]: connect from dns-debian13[10.0.2.15]
+2026-10-16T00:15:56.765897+00:00 dns-debian13 postfix/smtpd[24941]: NOQUEUE: lost connection after CONNECT from dns-debian13[10.0.2.15]
+2026-10-16T00:15:56.766022+00:00 dns-debian13 postfix/smtpd[24941]: disconnect from dns-debian13[10.0.2.15] commands=0/0
+2026-10-16T00:15:57.827425+00:00 dns-debian13 postfix/submission/smtpd[24931]: connect from localhost[127.0.0.1]
+2026-10-16T00:15:57.828807+00:00 dns-debian13 postfix/submission/smtpd[24931]: Anonymous TLS connection established from localhost[127.0.0.1]: TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits) key-exchange x25519 server-signature ECDSA (prime256v1) server-digest SHA256
+2026-10-16T00:15:57.828950+00:00 dns-debian13 postfix/submission/smtpd[24931]: NOQUEUE: lost connection after EHLO from localhost[127.0.0.1]
+2026-10-16T00:15:57.828980+00:00 dns-debian13 postfix/submission/smtpd[24931]: disconnect from localhost[127.0.0.1] ehlo=2 starttls=1 commands=3
+2026-10-16T00:15:57.840375+00:00 dns-debian13 dovecot[24593]: imap-login: Login aborted: Connection closed (no auth attempts in 0 secs) (no_auth_attempts): user=<>, rip=127.0.0.1, lip=127.0.0.1, TLS, session=[REDACTED]
+2026-10-16T00:15:57.866123+00:00 dns-debian13 postfix/smtpd[24941]: connect from dns-debian13[10.0.2.15]
+2026-10-16T00:15:57.866376+00:00 dns-debian13 postfix/smtpd[24941]: NOQUEUE: lost connection after CONNECT from dns-debian13[10.0.2.15]
+2026-10-16T00:15:57.866381+00:00 dns-debian13 postfix/smtpd[24941]: disconnect from dns-debian13[10.0.2.15] commands=0/0
+2026-10-16T00:16:00.120039+00:00 dns-debian13 postfix/submission/smtpd[24931]: connect from localhost[127.0.0.1]
+2026-10-16T00:16:00.121926+00:00 dns-debian13 postfix/submission/smtpd[24931]: Anonymous TLS connection established from localhost[127.0.0.1]: TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits) key-exchange x25519 server-signature ECDSA (prime256v1) server-digest SHA256
+2026-10-16T00:16:00.164755+00:00 dns-debian13 postfix/submission/smtpd[24931]: NOQUEUE: lost connection after EHLO from localhost[127.0.0.1]
+2026-10-16T00:16:00.164801+00:00 dns-debian13 postfix/submission/smtpd[24931]: disconnect from localhost[127.0.0.1] ehlo=2 starttls=1 commands=3
+2026-10-16T00:16:00.179070+00:00 dns-debian13 dovecot[24593]: imap-login: Login aborted: Connection closed (no auth attempts in 0 secs) (no_auth_attempts): user=<>, rip=127.0.0.1, lip=127.0.0.1, TLS, session=[REDACTED]
+2026-10-16T00:16:00.205830+00:00 dns-debian13 postfix/smtpd[24941]: connect from dns-debian13[10.0.2.15]
+2026-10-16T00:16:00.206060+00:00 dns-debian13 postfix/smtpd[24941]: NOQUEUE: lost connection after CONNECT from dns-debian13[10.0.2.15]
+2026-10-16T00:16:00.206065+00:00 dns-debian13 postfix/smtpd[24941]: disconnect from dns-debian13[10.0.2.15] commands=0/0
+2026-10-16T00:16:01.027666+00:00 dns-debian13 postfix/submission/smtpd[24931]: connect from localhost[127.0.0.1]
+2026-10-16T00:16:01.029113+00:00 dns-debian13 postfix/submission/smtpd[24931]: Anonymous TLS connection established from localhost[127.0.0.1]: TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits) key-exchange x25519 server-signature ECDSA (prime256v1) server-digest SHA256
+2026-10-16T00:16:01.072768+00:00 dns-debian13 postfix/submission/smtpd[24931]: NOQUEUE: lost connection after EHLO from localhost[127.0.0.1]
+2026-10-16T00:16:01.072819+00:00 dns-debian13 postfix/submission/smtpd[24931]: disconnect from localhost[127.0.0.1] ehlo=2 starttls=1 commands=3
+2026-10-16T00:16:01.083466+00:00 dns-debian13 dovecot[24593]: imap-login: Login aborted: Connection closed (no auth attempts in 0 secs) (no_auth_attempts): user=<>, rip=127.0.0.1, lip=127.0.0.1, TLS, session=[REDACTED]
+2026-10-16T00:16:01.109328+00:00 dns-debian13 postfix/smtpd[24941]: connect from dns-debian13[10.0.2.15]
+2026-10-16T00:16:01.109630+00:00 dns-debian13 postfix/smtpd[24941]: NOQUEUE: lost connection after CONNECT from dns-debian13[10.0.2.15]
+2026-10-16T00:16:01.109643+00:00 dns-debian13 postfix/smtpd[24941]: disconnect from dns-debian13[10.0.2.15] commands=0/0
+2026-10-16T00:16:18.787745+00:00 dns-debian13 postfix/submission/smtpd[24931]: connect from localhost[127.0.0.1]
+2026-10-16T00:16:18.789822+00:00 dns-debian13 postfix/submission/smtpd[24931]: Anonymous TLS connection established from localhost[127.0.0.1]: TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits) key-exchange x25519 server-signature ECDSA (prime256v1) server-digest SHA256
+2026-10-16T00:16:18.832654+00:00 dns-debian13 postfix/submission/smtpd[24931]: NOQUEUE: lost connection after EHLO from localhost[127.0.0.1]
+2026-10-16T00:16:18.832765+00:00 dns-debian13 postfix/submission/smtpd[24931]: disconnect from localhost[127.0.0.1] ehlo=2 starttls=1 commands=3
+2026-10-16T00:16:18.844659+00:00 dns-debian13 dovecot[24593]: imap-login: Login aborted: Connection closed (no auth attempts in 0 secs) (no_auth_attempts): user=<>, rip=127.0.0.1, lip=127.0.0.1, TLS, session=[REDACTED]
+2026-10-16T00:16:18.874496+00:00 dns-debian13 postfix/smtpd[24941]: connect from dns-debian13[10.0.2.15]
+2026-10-16T00:16:18.874730+00:00 dns-debian13 postfix/smtpd[24941]: NOQUEUE: lost connection after CONNECT from dns-debian13[10.0.2.15]
+2026-10-16T00:16:18.874735+00:00 dns-debian13 postfix/smtpd[24941]: disconnect from dns-debian13[10.0.2.15] commands=0/0
+2026-10-16T00:16:52.346756+00:00 dns-debian13 postfix/submission/smtpd[24931]: connect from localhost[127.0.0.1]
+2026-10-16T00:16:52.348529+00:00 dns-debian13 postfix/submission/smtpd[24931]: Anonymous TLS connection established from localhost[127.0.0.1]: TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits) key-exchange x25519 server-signature ECDSA (prime256v1) server-digest SHA256
+2026-10-16T00:16:52.392694+00:00 dns-debian13 postfix/submission/smtpd[24931]: NOQUEUE: lost connection after EHLO from localhost[127.0.0.1]
+2026-10-16T00:16:52.392751+00:00 dns-debian13 postfix/submission/smtpd[24931]: disconnect from localhost[127.0.0.1] ehlo=2 starttls=1 commands=3
+2026-10-16T00:16:52.403419+00:00 dns-debian13 dovecot[24593]: imap-login: Login aborted: Connection closed (no auth attempts in 0 secs) (no_auth_attempts): user=<>, rip=127.0.0.1, lip=127.0.0.1, TLS, session=[REDACTED]
+2026-10-16T00:16:52.443935+00:00 dns-debian13 postfix/smtpd[24941]: connect from dns-debian13[10.0.2.15]
+2026-10-16T00:16:52.444195+00:00 dns-debian13 postfix/smtpd[24941]: NOQUEUE: lost connection after CONNECT from dns-debian13[10.0.2.15]
+2026-10-16T00:16:52.444200+00:00 dns-debian13 postfix/smtpd[24941]: disconnect from dns-debian13[10.0.2.15] commands=0/0
+2026-10-16T00:17:01.690482+00:00 dns-debian13 CRON[25684]: pam_unix(cron:session): session opened for user root(uid=0) by root(uid=0)
+2026-10-16T00:17:01.690906+00:00 dns-debian13 CRON[25686]: (root) CMD (cd / && run-parts --report /etc/cron.hourly)
+2026-10-16T00:17:01.693224+00:00 dns-debian13 CRON[25684]: pam_unix(cron:session): session closed for user root
+2026-10-16T00:17:31.220516+00:00 dns-debian13 postfix/submission/smtpd[24931]: connect from localhost[127.0.0.1]
+2026-10-16T00:17:31.222791+00:00 dns-debian13 postfix/submission/smtpd[24931]: Anonymous TLS connection established from localhost[127.0.0.1]: TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits) key-exchange x25519 server-signature ECDSA (prime256v1) server-digest SHA256
+2026-10-16T00:17:31.222946+00:00 dns-debian13 postfix/submission/smtpd[24931]: NOQUEUE: lost connection after UNKNOWN from localhost[127.0.0.1]
+2026-10-16T00:17:31.222967+00:00 dns-debian13 postfix/submission/smtpd[24931]: disconnect from localhost[127.0.0.1] ehlo=1 starttls=1 unknown=0/1 commands=2/3
+2026-10-16T00:17:31.251808+00:00 dns-debian13 dovecot[24593]: imap-login: Login aborted: Connection closed (no auth attempts in 0 secs) (no_auth_attempts): user=<>, rip=127.0.0.1, lip=127.0.0.1, TLS, session=[REDACTED]

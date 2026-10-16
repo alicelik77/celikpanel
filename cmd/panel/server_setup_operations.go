@@ -787,8 +787,27 @@ func (p *Panel) handleServerSetupOperation(w http.ResponseWriter, r *http.Reques
 		writeServerError(w, err)
 		return
 	}
+	response := p.serverSetupOperationResponse(r.Context(), execution)
+	if response != nil && execution.Status == "succeeded" {
+		// An unreadable setup state leaves the flag out: the page then
+		// reads the setup itself, as it did before the flag existed.
+		if state, err := p.loadServerSetup(r.Context()); err == nil && serverSetupRunSuperseded(state, *execution) {
+			response.Superseded = true
+		}
+	}
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(p.serverSetupOperationResponse(r.Context(), execution))
+	_ = json.NewEncoder(w).Encode(response)
+}
+
+// serverSetupRunSuperseded: a succeeded run while the completed setup is being
+// extended and the extension has not started (set18 D1, 2026-10-16). The run
+// belongs to the setup that was completed; it is neither the extension's run
+// nor a completion still to be verified. Starting the extension moves the
+// state to running, so the flag never covers the extension's own run.
+// Genisletilen tamamlanmis kurulumun basarili calismasi: genisletmenin degil,
+// tamamlanmis kurulumun calismasidir; dogrulanacak bir tamamlanma degildir.
+func serverSetupRunSuperseded(state serverSetupState, execution serverSetupExecution) bool {
+	return execution.Status == "succeeded" && state.Extension && state.Status == "draft"
 }
 
 func (p *Panel) persistServerSetupExecution(ctx context.Context, execution serverSetupExecution) error {

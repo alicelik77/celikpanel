@@ -1,0 +1,83 @@
+== hostname
+dns-debian13
+dns-debian13
+== panel TLS (127.0.0.1:2083, SNI panel.set18.test)
+subject=
+issuer=CN=Pebble Intermediate CA 388603
+notBefore=Oct 16 00:08:25 2026 GMT
+notAfter=Oct 16 00:08:24 2031 GMT
+X509v3 Subject Alternative Name: critical
+    DNS:panel.set18.test
+== submission TLS (127.0.0.1:587)
+subject=
+issuer=CN=Pebble Intermediate CA 388603
+notBefore=Oct 16 00:14:41 2026 GMT
+notAfter=Oct 16 00:14:40 2031 GMT
+== imaps TLS (127.0.0.1:993)
+subject=
+issuer=CN=Pebble Intermediate CA 388603
+notBefore=Oct 16 00:14:41 2026 GMT
+notAfter=Oct 16 00:14:40 2031 GMT
+== certbot lineages
+total 20
+drwx------ 4 root root 4096 Oct 16 00:14 .
+drwxr-xr-x 7 root root 4096 Oct 16 00:14 ..
+-rw-r----- 1 root root  740 Oct 16 00:08 README
+drwxr-x--- 2 root root 4096 Oct 16 00:14 celikpanel-mail-d1f1f42a0d6e147093b16151
+drwxr-x--- 2 root root 4096 Oct 16 00:08 celikpanel-panel-8fd6660f0018afe910870f38
+-- /etc/letsencrypt/renewal/celikpanel-mail-d1f1f42a0d6e147093b16151.conf
+account = 875cffcd240b6274ffcca9328e745bf3
+server = https://127.0.0.1:14000/dir
+authenticator = webroot
+webroot_path = /var/lib/celikpanel-agent/acme-http-01/panel,
+-- /etc/letsencrypt/renewal/celikpanel-panel-8fd6660f0018afe910870f38.conf
+account = 875cffcd240b6274ffcca9328e745bf3
+server = https://127.0.0.1:14000/dir
+authenticator = webroot
+webroot_path = /var/lib/celikpanel-agent/acme-http-01/panel,
+== certbot timer
+enabled
+active
+== postfix
+mail.set18.test
+may
+/etc/ssl/celikpanel/_mail/host/current/fullchain.pem
+== units
+active active active active active active
+== listeners
+*:2083 users:(("panel",pid=16240,fd=8))
+0.0.0.0:110 users:(("dovecot",pid=22573,fd=37))
+0.0.0.0:143 users:(("dovecot",pid=22573,fd=33))
+0.0.0.0:22 users:(("sshd",pid=802,fd=6))
+0.0.0.0:25 users:(("smtpd",pid=24941,fd=6),("master",pid=22855,fd=13))
+0.0.0.0:465 users:(("master",pid=22855,fd=96))
+0.0.0.0:5355 users:(("systemd-resolve",pid=368,fd=12))
+0.0.0.0:587 users:(("smtpd",pid=24931,fd=6),("master",pid=22855,fd=92))
+0.0.0.0:80 users:(("nginx",pid=24013,fd=5),("nginx",pid=24012,fd=5),("nginx",pid=7478,fd=5))
+0.0.0.0:993 users:(("dovecot",pid=22573,fd=35))
+0.0.0.0:995 users:(("dovecot",pid=22573,fd=39))
+127.0.0.1:14000 users:(("pebble",pid=2952,fd=5))
+127.0.0.1:15000 users:(("pebble",pid=2952,fd=6))
+127.0.0.1:3306 users:(("mariadbd",pid=14907,fd=28))
+127.0.0.1:443 users:(("python3",pid=2716,fd=3))
+127.0.0.1:5300 users:(("python3",pid=2887,fd=5))
+127.0.0.1:5301 users:(("python3",pid=2887,fd=7))
+127.0.0.1:5302 users:(("python3",pid=2887,fd=9))
+127.0.0.1:5303 users:(("python3",pid=2887,fd=11))
+127.0.0.1:5304 users:(("python3",pid=2887,fd=13))
+127.0.0.53%lo:53 users:(("systemd-resolve",pid=368,fd=19))
+127.0.0.54:53 users:(("systemd-resolve",pid=368,fd=21))
+[::]:110 users:(("dovecot",pid=22573,fd=38))
+[::]:143 users:(("dovecot",pid=22573,fd=34))
+[::]:22 users:(("sshd",pid=802,fd=7))
+[::]:25 users:(("smtpd",pid=24941,fd=7),("master",pid=22855,fd=14))
+[::]:465 users:(("master",pid=22855,fd=97))
+[::]:5355 users:(("systemd-resolve",pid=368,fd=14))
+[::]:587 users:(("smtpd",pid=24931,fd=7),("master",pid=22855,fd=93))
+[::]:80 users:(("nginx",pid=24013,fd=6),("nginx",pid=24012,fd=6),("nginx",pid=7478,fd=6))
+[::]:993 users:(("dovecot",pid=22573,fd=36))
+[::]:995 users:(("dovecot",pid=22573,fd=40))
+== celikpanel firewall table
+table ip set18lab
+table ip6 set18lab6
+table inet celikpanel_fw

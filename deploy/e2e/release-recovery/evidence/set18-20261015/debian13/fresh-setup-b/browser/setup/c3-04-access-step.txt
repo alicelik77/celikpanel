@@ -1,0 +1,54 @@
+Extend this server’s setup
+
+Follow the setup steps and their recorded results here.
+
+Verifying the result
+
+Configure DNS: Use an external DNS provider
+
+Completed
+
+Prepare component: Nginx
+
+Completed
+
+Prepare component: PHP-FPM
+
+Completed
+
+Prepare component: MariaDB
+
+Completed
+
+Prepare component: Scheduled tasks (cron)
+
+Completed
+
+Prepare component: Let’s Encrypt client (certbot)
+
+Completed
+
+Apply and save the firewall policy
+
+Completed
+
+Verify public DNS before certificate issuance: panel.set18.test
+
+192.0.2.10
+
+Completed
+
+Secure panel access: panel.set18.test
+
+Completed
+
+Verify the prepared server
+
+In progress
+
+Completion could not be verified. Reconnect to obtain fresh evidence; the server has not been declared ready.
+
+Continue at the secure panel address
+
+Reconnect to this operation
+Access and recovery

@@ -1,0 +1,64 @@
+Prepare your server
+
+Follow the setup steps and their recorded results here.
+
+Preparing your server
+What happens at this step
+
+Prepare component: Nginx
+
+The current component is shown below. If preparation stops, the reported error determines the next action. Selecting a component does not replace a required credential or license; follow a verified request if one is reported.
+
+Checks and how to continue
+The Panel restarts once during this setup
+
+At the step “Secure panel access: panel.set18.test”, the Panel gets its certificate and restarts once to start using it. This page then loses its connection for a short time. That is planned: setup continues on the server and this page reconnects by itself. You do not need to do anything.
+
+Once that step has finished, the Panel can also be opened at its secure address: https://panel.set18.test:2083
+
+You sign in again there, and setup shows the same progress. If the browser warns about the certificate at that address, the step has not finished yet, and this page keeps following setup by itself.
+
+Configure DNS: Use an external DNS provider
+
+Completed
+
+Prepare component: Nginx
+
+In progress
+
+Prepare component: PHP-FPM
+
+Waiting
+
+Prepare component: MariaDB
+
+Waiting
+
+Prepare component: Scheduled tasks (cron)
+
+Waiting
+
+Prepare component: Let’s Encrypt client (certbot)
+
+Waiting
+
+Apply and save the firewall policy
+
+Waiting
+
+Verify public DNS before certificate issuance: panel.set18.test
+
+192.0.2.10
+
+Waiting
+
+Secure panel access: panel.set18.test
+
+The Panel restarts once here.
+
+Waiting
+
+Verify the prepared server
+
+Waiting
+Access and recovery

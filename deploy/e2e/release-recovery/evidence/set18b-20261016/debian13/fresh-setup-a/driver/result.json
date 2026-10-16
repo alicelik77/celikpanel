@@ -1,0 +1,128 @@
+{
+  "artifacts": {
+    "baseline": {
+      "commit": "a97050d41d0e0e01f46887c56b83938ed120edcd",
+      "sha256": "6d645d8def2316853d7b1c191b4771c48d51fc65c925d3b0aae3e3312ad0464b",
+      "version": "v0.1.0-alpha.87"
+    }
+  },
+  "browser": {
+    "lang": "en",
+    "viewport": "1280"
+  },
+  "cell": {
+    "components": [
+      "nginx",
+      "php-fpm",
+      "mariadb"
+    ],
+    "mail": false,
+    "name": "set18-debian13",
+    "node": "debian13",
+    "purpose": "web"
+  },
+  "cell_kind": "set18b-fresh-setup-to-ready-extension",
+  "findings": [],
+  "identity": {
+    "cell_id": "release-recovery__8944427f5d21ddd3",
+    "node": "debian13",
+    "vm_uuid": "1e191010-395c-5c16-9449-154d2b88a1f9"
+  },
+  "lab": {
+    "mail_hostname": "mail.set18.test",
+    "panel_domain": "panel.set18.test",
+    "preparation": "guest_set18_lab_dns.py (lab-only DNS, DNAT, outbound 443 block, pebble)",
+    "server_ip": "192.0.2.10"
+  },
+  "native_evidence": false,
+  "note": "set18: a measurement on the fresh install; the owner's setup and its extension run in the browser; no update is started and no P0 row is judged.",
+  "outcome": {
+    "classification": "set18-measured",
+    "final_status": null
+  },
+  "overall": "complete-for-review",
+  "provenance": {
+    "what": "set18: a policy-only fixture over the source 6b363ac46 labelled v0.1.0-alpha.87, installed fresh on a lab with its own DNS and ACME; no update"
+  },
+  "request_id": null,
+  "schema": "celikpanel/upd1-owner-update-result/v1",
+  "steps": [
+    {
+      "finished_at": "2026-10-16T00:05:05Z",
+      "name": "set6-name-pinning",
+      "reason": null,
+      "started_at": "2026-10-16T00:05:01Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-16T00:05:12Z",
+      "name": "preflight",
+      "reason": null,
+      "started_at": "2026-10-16T00:05:05Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-16T00:05:21Z",
+      "name": "origin",
+      "reason": null,
+      "started_at": "2026-10-16T00:05:12Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-16T00:05:37Z",
+      "name": "set18-lab-network",
+      "reason": null,
+      "started_at": "2026-10-16T00:05:21Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-16T00:06:11Z",
+      "name": "baseline-install",
+      "reason": null,
+      "started_at": "2026-10-16T00:05:37Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-16T00:06:13Z",
+      "name": "owner-login",
+      "reason": null,
+      "started_at": "2026-10-16T00:06:11Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-16T00:06:13Z",
+      "name": "license",
+      "reason": null,
+      "started_at": "2026-10-16T00:06:13Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-16T00:17:30Z",
+      "name": "set18-browser-window",
+      "reason": null,
+      "started_at": "2026-10-16T00:06:13Z",
+      "verdict": "observed"
+    },
+    {
+      "finished_at": "2026-10-16T00:17:31Z",
+      "name": "set18-readings",
+      "reason": null,
+      "started_at": "2026-10-16T00:17:30Z",
+      "verdict": "observed"
+    },
+    {
+      "finished_at": "2026-10-16T00:17:32Z",
+      "name": "set6-name-pinning-at-the-end",
+      "reason": null,
+      "started_at": "2026-10-16T00:17:31Z",
+      "verdict": "passed"
+    },
+    {
+      "finished_at": "2026-10-16T00:17:32Z",
+      "name": "collect",
+      "reason": null,
+      "started_at": "2026-10-16T00:17:32Z",
+      "verdict": "passed"
+    }
+  ]
+}

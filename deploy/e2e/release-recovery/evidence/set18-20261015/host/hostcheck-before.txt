@@ -1,0 +1,29 @@
+date_utc=2026-10-15T22:38:28Z uid=0
+qemu=0
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/sdd       1007G   16G  941G   2% /
+/dev/sdd       1007G   16G  941G   2% /
+Mem:           15697         672       14799           3         421       15025
+16
+crw-rw-rw- 1 root kvm 10, 232 Oct 16 01:38 /dev/kvm
+svm/vmx processors: 16 of 16
+/var/tmp/cp-pair-accept
+/var/tmp/cp-set18
+/var/tmp/cp-v3n28
+0
+Arch-Linux-x86_64-cloudimg-20260815.573966.qcow2
+debian-13-genericcloud-amd64-20260826-2582.qcow2
+ubuntu-24.04-server-cloudimg-amd64-20260826.img
+go version go1.26.5 linux/amd64
+/usr/sbin/node
+/usr/sbin/npm
+/usr/sbin/python3
+/usr/sbin/qemu-system-x86_64
+/usr/sbin/ssh
+2.0G	/var/tmp/cp-v3n28
+12M	/var/tmp/cp-pair-accept
+/var/tmp/cp-set18:
+build
+host
+logs
+progress.txt

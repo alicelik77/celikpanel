@@ -1,0 +1,14 @@
+{
+  "checks": {
+    "journals": [
+      "install",
+      "product",
+      "services"
+    ],
+    "unavailable": {}
+  },
+  "finished_at": "2026-10-16T00:17:32Z",
+  "name": "collect",
+  "started_at": "2026-10-16T00:17:32Z",
+  "verdict": "passed"
+}

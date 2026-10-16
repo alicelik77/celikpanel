@@ -1,0 +1,214 @@
+{
+  "label": "c2",
+  "started_at": "2026-10-15T23:13:10.405Z",
+  "states": 10,
+  "pictures": [
+    "c2-state-01",
+    "c2-state-02",
+    "c2-state-03",
+    "c2-state-04",
+    "c2-state-05",
+    "c2-state-06",
+    "c2-state-07",
+    "c2-state-08",
+    "c2-state-09",
+    "c2-state-10"
+  ],
+  "owner_actions": [
+    {
+      "at": "2026-10-15T23:23:31.753Z",
+      "action": "Continue recorded operation"
+    },
+    {
+      "at": "2026-10-15T23:23:32.646Z",
+      "action": "Continue recorded operation"
+    },
+    {
+      "at": "2026-10-15T23:23:33.657Z",
+      "action": "Continue recorded operation"
+    },
+    {
+      "at": "2026-10-15T23:23:34.666Z",
+      "action": "Continue recorded operation"
+    },
+    {
+      "at": "2026-10-15T23:24:23.953Z",
+      "action": "Check requirements again (before the PTR change)"
+    },
+    {
+      "at": "2026-10-15T23:24:33.606Z",
+      "action": "Check requirements again (after the PTR change)"
+    }
+  ],
+  "lab": [
+    {
+      "at": "2026-10-15T23:24:30.588Z",
+      "what": "lab-ptr-mail",
+      "ok": true
+    }
+  ],
+  "mail_identity_seen": {
+    "at": "2026-10-15T23:23:38.321Z",
+    "check": {
+      "id": "mail_identity",
+      "state": "action_required",
+      "code": "mail_identity_required",
+      "reason": "reverse_dns_mismatch",
+      "vars": {
+        "hostname": "mail.set18.test",
+        "ip": "192.0.2.10",
+        "ptr": "host-192-0-2-10.provider.set18.test",
+        "resolver": "1.1.1.1"
+      }
+    },
+    "page_lines": [
+      {
+        "id": "mail_identity",
+        "state": "action_required",
+        "text": "The public resolver 1.1.1.1 reports host-192-0-2-10.provider.set18.test as the reverse DNS (PTR) name of this server’s address 192.0.2.10; mail servers expect mail.set18.test. You set this at your server provider, not in CelikPanel: in the provider’s control panel, or by asking its support to set the reverse DNS of 192.0.2.10 to mail.set18.test."
+      }
+    ]
+  },
+  "finishing_seen": {
+    "at": "2026-10-15T23:24:34.874Z",
+    "text": "Every check passed. The panel is completing setup now, and you do not need to do anything. This page updates by itself when it is done."
+  },
+  "ready_at": "2026-10-15T23:24:39.125Z",
+  "ended_at": "2026-10-15T23:24:39.125Z",
+  "duration_s": 689,
+  "final_operation": {
+    "id": "49fc52bbb1934eddc8cbd62fac688354",
+    "request_id": "49fc52bbb1934eddc8cbd62fac688354",
+    "plan_id": "be3c80283d439b8680e26b14524e6aa3",
+    "status": "succeeded",
+    "phase": "complete",
+    "steps": [
+      {
+        "id": "01-dns",
+        "kind": "dns",
+        "target": "external",
+        "status": "succeeded",
+        "request_id": "5df896e19d914e09f30082ab3438984e",
+        "owner_id": "4e6cbba756baf37274c5efdd36530d59"
+      },
+      {
+        "id": "02-mail_profile",
+        "kind": "mail_profile",
+        "target": "core-mail",
+        "status": "succeeded",
+        "request_id": "91945706a21b67e21a1fc850cb470958",
+        "owner_id": "72c7c0f94994f441a2d424b612a79c90",
+        "operation_id": "4a675199eb50ddb9247f047cfe00287f"
+      },
+      {
+        "id": "03-firewall",
+        "kind": "firewall",
+        "target": "enable_and_persist",
+        "status": "succeeded",
+        "request_id": "edf0afe26279db33a3faf25757b59d26",
+        "owner_id": "e43e5202420d0f47271d27162b93a17d"
+      },
+      {
+        "id": "04-access_dns",
+        "kind": "access_dns",
+        "target": "panel.set18.test",
+        "qualifier": "192.0.2.10",
+        "status": "succeeded",
+        "request_id": "38fea58babc29fa341a0b5b95ec1a703",
+        "owner_id": "c927ef3bf1ad21db9b3a4492a0fbd8a4"
+      },
+      {
+        "id": "05-access_dns",
+        "kind": "access_dns",
+        "target": "mail.set18.test",
+        "qualifier": "192.0.2.10",
+        "status": "succeeded",
+        "request_id": "757c0b89eb0f143dd339f7fc9ca090f2",
+        "owner_id": "dada709ede1a076c10958d8e4b907626"
+      },
+      {
+        "id": "06-mail_certificate",
+        "kind": "mail_certificate",
+        "target": "mail.set18.test",
+        "status": "succeeded",
+        "request_id": "31b20476b45b7816933ffa860e247040",
+        "owner_id": "a29e35cc2fff7bd5e57578d23b9f8d98"
+      },
+      {
+        "id": "07-mail_enrollment",
+        "kind": "mail_enrollment",
+        "target": "mail-renewal",
+        "qualifier": "d0f44a526bb3cd88c1f0b1ea705e8ba1096954a199179d96ffa02b2269887aba",
+        "status": "succeeded",
+        "request_id": "1ef445f70f22423d89605126de0f8a08",
+        "owner_id": "70c54cf8f5a4af28b2030b2ed3413410",
+        "enrollment_dispatch_attempted": true
+      },
+      {
+        "id": "08-verify",
+        "kind": "verify",
+        "target": "web",
+        "status": "succeeded",
+        "request_id": "bebc6c8674cac913589d6d9334f75ee4",
+        "owner_id": "e2048c65b43b314ec827836ff886813b"
+      }
+    ],
+    "checks": [
+      {
+        "id": "panel_https",
+        "state": "ready",
+        "code": "ready"
+      },
+      {
+        "id": "panel_renewal",
+        "state": "ready",
+        "code": "ready"
+      },
+      {
+        "id": "dns",
+        "state": "ready",
+        "code": "ready"
+      },
+      {
+        "id": "firewall",
+        "state": "ready",
+        "code": "ready"
+      },
+      {
+        "id": "services",
+        "state": "ready",
+        "code": "ready"
+      },
+      {
+        "id": "mail_tls",
+        "state": "ready",
+        "code": "ready"
+      },
+      {
+        "id": "mail_identity",
+        "state": "ready",
+        "code": "ready"
+      },
+      {
+        "id": "mail_delivery",
+        "state": "ready",
+        "code": "ready"
+      }
+    ],
+    "panel_url": "https://panel.set18.test:2083/",
+    "context": {
+      "access_dns_ip": "192.0.2.10",
+      "dns_mode": "external",
+      "dns_role": "",
+      "dns_engine": "",
+      "local_nameserver": "",
+      "local_ip": "",
+      "peer_nameserver": "",
+      "peer_ip": "",
+      "panel_domain": "panel.set18.test",
+      "mail_hostname": "mail.set18.test",
+      "dns_hosting_management": ""
+    }
+  },
+  "final_picture": "c2-final"
+}

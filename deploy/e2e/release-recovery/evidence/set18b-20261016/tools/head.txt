@@ -1,0 +1,35 @@
+// node cold-load-set18b.mjs <handover-dir> <out-dir> [setup,done]
+// set18b (2026-10-16): the twenty-second native record. cold-load-set18.mjs (unchanged on disk) adapted to the
+// candidate at the set18 D1/O1/O3 fix (6b363ac46): the owner's guided setup run to READY and the extension flow on
+// screen, in a real headless Chrome against a REAL CelikPanel on a disposable lab guest whose lab has its own DNS and
+// ACME server (deploy/e2e/release-recovery/guest_set18_lab_dns.py, a lab preparation; set18b_trial.py, set12's browser
+// window protocol, window "setup"). Nothing but the loopback address of the driver's forward is opened.
+//
+//   cell "setup":
+//     1  setup to ready (English, 1280x800): sign-in, "Set up with the wizard", purpose Web hosting, panel address
+//        hand.lab.panel_domain, DNS external, review, confirm, start; the run is followed (the page sampled every
+//        500 ms, every new state pictured) to "Your server is ready". The ready screen again in Turkish at 390x844.
+//     3  the Components mail route: Components -> Core Mail -> Install -> the dialog's setup route, the mail host name
+//        hand.lab.mail_hostname, "Review in server setup" -> where the wizard lands (D1: it must be the extension's
+//        access step with the profile prefilled and "Stop extending"; nothing of the completed run) -> the
+//        access step's secondary-DNS box (local DNS, role secondary; UI state only, set back to external, never
+//        saved) -> "Stop extending" -> the ready screen; the driver reads the setup and its latest operation.
+//     2  the extension from the ready screen: "Extend this server's setup" -> the purpose step (prefilled purpose
+//        recorded) -> "Customize selection" -> the components step (each row's installed/kept text recorded) ->
+//        Postfix + Dovecot -> the access step (mail host name) -> review ("What changes / To be installed / Already
+//        installed" recorded; again in Turkish at 390x844) -> confirm, Start -> followed to ready: the queued
+//        sentence (setup.guide.queued, O1), the mail host's public-DNS wait (the owner adds the A record by the
+//        tool's own trigger when the run waits at that step: H3 fixed), the mail certificate, the mail enrollment
+//        ("Continue recorded operation": each press and the button's state afterwards recorded; O3), the reverse DNS
+//        wait (the owner sets it at the provider, then "Check requirements again"), "Finishing setup", ready.
+//   cell "done": writes done.json
+//
+// set18 harness note H3 (fixed here): set18's trigger for the mail record compared the run's phase with the step id,
+// but a waiting run reports the step's kind ("access_dns"); the trigger now takes the mail host's access_dns step
+// while it is the running step of a waiting run, whatever the phase names.
+//
+//   BROWSER_INSPECT_MODULES  directory whose node_modules holds puppeteer-core (required; outside the repository)
+//   CHROME_PATH              the installed Chrome (default: the usual Windows/Linux places)
+//
+// The owner's password is read from the root-only file the driver names and typed into the sign-in form; every text
+// this script writes is passed through the redaction list of that file first. Cookies are never read.

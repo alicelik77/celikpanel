@@ -1,0 +1,74 @@
+Extend this server’s setup
+
+Choose what to add. Components already installed stay as they are, the review shows what changes, and nothing starts until you confirm it.
+
+Review what will change
+
+Only the operations listed below will run. Existing data is preserved; unsupported or conflicting components block the plan.
+
+What changes
+Server purpose
+Web hosting
+→
+Custom setup
+Mail server name
+none
+→
+mail.set18.test
+To be installed
+Prepare mail profile: Core Mail
+Already installed, kept as they are (6)
+MariaDB
+Keep existing installation
+Nginx
+Keep existing installation
+PHP-FPM
+Keep existing installation
+Firewall engine
+Keep existing installation
+Let’s Encrypt client (certbot)
+Keep existing installation
+Scheduled tasks (cron)
+Keep existing installation
+
+Configure DNS: Use an external DNS provider
+
+Prepare mail profile: Core Mail
+
+Apply and save the firewall policy
+
+Verify public DNS before certificate issuance: panel.set18.test
+
+192.0.2.10
+
+Verify public DNS before certificate issuance: mail.set18.test
+
+192.0.2.10
+
+Secure mail access: mail.set18.test
+
+Prepare independent mail certificate renewal
+
+Verify the prepared server
+
+Permanent firewall policy
+Keep current SSH and panel access, allow the required ports below, and restore the policy after reboot. The server checks management access before applying it.
+TCP
+22, 25, 80, 110, 143, 443, 465, 587, 993, 995, 2083
+UDP
+No additional ports
+Certificate contact email
+labadmin@example.invalid
+
+For each new domain, add the exact DNS records shown by CelikPanel at your provider. A domain is not reported as published until its records are verified.
+
+Mail domains need their own verified SPF, DKIM, DMARC and TLS records. Any PTR change at your server provider remains a separate required task.
+
+I reviewed the components, access rules and identity changes, and want to start this plan.
+Back
+Start reviewed setup
+Stop extending
+
+Stopping returns this server to its setup as it was completed. Nothing installed is removed.
+
+Access and recovery

@@ -1,0 +1,20 @@
+Formatting '/var/tmp/cp-release-drill-s18-b/cells/3fb08ed294e47132a0d2a13d/debian13/overlay.qcow2', fmt=qcow2 cluster_size=65536 extended_l2=off compression_type=zlib size=25769803776 backing_file=/var/tmp/cp-release-drill-s18-b/images/debian-13-genericcloud-amd64-20260826-2582.qcow2 backing_fmt=qcow2 lazy_refcounts=off refcount_bits=16
+Formatting '/var/tmp/cp-release-drill-s18-b/cells/3fb08ed294e47132a0d2a13d/arch/overlay.qcow2', fmt=qcow2 cluster_size=65536 extended_l2=off compression_type=zlib size=25769803776 backing_file=/var/tmp/cp-release-drill-s18-b/images/Arch-Linux-x86_64-cloudimg-20260815.573966.qcow2 backing_fmt=qcow2 lazy_refcounts=off refcount_bits=16
+{"action": "prepared", "root": "/var/tmp/cp-release-drill-s18-b", "cell_id": "release-recovery__48039281abefb57f", "ssh_ports": [5319, 5320]}
+{"action": "ready", "root": "/var/tmp/cp-release-drill-s18-b", "nodes": {"arch": "verified-disposable-systemd-guest", "debian13": "verified-disposable-systemd-guest"}}
+{"action": "ready", "root": "/var/tmp/cp-release-drill-s18-b", "nodes": {"arch": "verified-disposable-systemd-guest", "debian13": "verified-disposable-systemd-guest"}}
+{"step": "set6-name-pinning", "verdict": "passed", "reason": null}
+{"step": "preflight", "verdict": "passed", "reason": null}
+{"step": "origin", "verdict": "passed", "reason": null}
+{"step": "set18-lab-network", "verdict": "passed", "reason": null}
+{"step": "baseline-install", "verdict": "passed", "reason": null}
+{"step": "owner-login", "verdict": "passed", "reason": null}
+{"step": "license", "verdict": "passed", "reason": null}
+{"set12": "ready", "window": "setup", "hand": "/var/tmp/cp-set18/hand/h18b-setup", "port": 19319}
+{"step": "set18-browser-window", "verdict": "observed", "reason": null}
+{"step": "set18-readings", "verdict": "inconclusive", "reason": "PinMismatch: panel TLS leaf differs from the guest-reported certificate"}
+{"step": "set6-name-pinning-at-the-end", "verdict": "passed", "reason": null}
+{"step": "collect", "verdict": "passed", "reason": null}
+{"outcome": "set18-measured", "overall": "inconclusive", "steps": {"baseline-install": "passed", "collect": "passed", "license": "passed", "origin": "passed", "owner-login": "passed", "preflight": "passed", "set18-browser-window": "observed", "set18-lab-network": "passed", "set18-readings": "inconclusive", "set6-name-pinning": "passed", "set6-name-pinning-at-the-end": "passed"}}
+{"action": "stopped", "root": "/var/tmp/cp-release-drill-s18-b", "evidence_retained": true}
+SET18 cell=set18-debian13 lab=/var/tmp/cp-release-drill-s18-b driver_exit=0 evidence=/var/tmp/cp-release-drill-s18-b/evidence/*/upd1

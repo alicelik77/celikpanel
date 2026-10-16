@@ -1,0 +1,2 @@
+2026-10-15T22:50:18Z before set18-debian13 s18-a (guest start) free_GiB=353 free_bytes=379060674560 (Get-PSDrive C reading of 2026-10-15T22:50:16Z, 2s old) allowed=yes
+2026-10-15T22:52:55Z before set18-debian13 s18-b (guest start) free_GiB=352 free_bytes=378993827840 (Get-PSDrive C reading of 2026-10-15T22:52:16Z, 39s old) allowed=yes

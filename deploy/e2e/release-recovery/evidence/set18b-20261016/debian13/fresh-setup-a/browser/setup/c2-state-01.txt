@@ -1,0 +1,6 @@
+Extend this server’s setup
+
+Follow the setup steps and their recorded results here.
+
+Preparing your server
+Access and recovery

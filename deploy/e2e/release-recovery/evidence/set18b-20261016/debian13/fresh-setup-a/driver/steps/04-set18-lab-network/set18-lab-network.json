@@ -1,0 +1,353 @@
+{
+  "apt_sources": "URIs: mirror+file:///etc/apt/mirrors/debian.list\nURIs: mirror+file:///etc/apt/mirrors/debian-security.list\n",
+  "at": "2026-10-16T00:05:21Z.988",
+  "block_check_203_0_113_1_443": "bash: connect: Connection refused\nbash: line 1: /dev/tcp/203.0.113.1/443: Connection refused\nrc=1",
+  "certbot_cli_ini": {
+    "path": "/root/.config/letsencrypt/cli.ini",
+    "text": "# set18 lab only (disposable guest): certbot uses the lab's own ACME server inside this guest.\nserver = https://127.0.0.1:14000/dir\nno-verify-ssl = true\n"
+  },
+  "directory": "{\n   \"keyChange\": \"https://127.0.0.1:14000/rollover-account-key\",\n   \"meta\": {\n      \"externalAccountRequired\": false,\n      \"termsOfService\": \"data:text/plain,Do%20what%20thou%20wilt\"\n   },\n   \"newAccount\": \"https://127.0.0.1:14000/sign-me-up\",\n   \"newNonce\": \"https://127.0.0.1:14000/nonce-plz\",\n   \"newOrder\": \"https://127.0.0.1:14000/order-plz\",\n   \"renewalInfo\": \"https://127.0.0.1:14000/draft-ietf-acme-ari-03/renewalInfo\",\n   \"revokeCert\": \"https://127.0.0.1:14000/revoke-cert\"\n}",
+  "dns_checks": [
+    {
+      "answers": 1,
+      "name": "panel.set18.test",
+      "proto": "udp",
+      "qtype": 1,
+      "rcode": 0,
+      "resolver": "1.1.1.1"
+    },
+    {
+      "answers": 1,
+      "name": "panel.set18.test",
+      "proto": "tcp",
+      "qtype": 1,
+      "rcode": 0,
+      "resolver": "1.1.1.1"
+    },
+    {
+      "answers": 1,
+      "name": "panel.set18.test",
+      "proto": "udp",
+      "qtype": 1,
+      "rcode": 0,
+      "resolver": "8.8.8.8"
+    },
+    {
+      "answers": 1,
+      "name": "panel.set18.test",
+      "proto": "tcp",
+      "qtype": 1,
+      "rcode": 0,
+      "resolver": "8.8.8.8"
+    },
+    {
+      "answers": 1,
+      "name": "panel.set18.test",
+      "proto": "udp",
+      "qtype": 1,
+      "rcode": 0,
+      "resolver": "9.9.9.9"
+    },
+    {
+      "answers": 1,
+      "name": "panel.set18.test",
+      "proto": "tcp",
+      "qtype": 1,
+      "rcode": 0,
+      "resolver": "9.9.9.9"
+    },
+    {
+      "answers": 1,
+      "name": "panel.set18.test",
+      "proto": "udp",
+      "qtype": 1,
+      "rcode": 0,
+      "resolver": "208.67.222.222"
+    },
+    {
+      "answers": 1,
+      "name": "panel.set18.test",
+      "proto": "tcp",
+      "qtype": 1,
+      "rcode": 0,
+      "resolver": "208.67.222.222"
+    },
+    {
+      "answers": 1,
+      "name": "10.2.0.192.in-addr.arpa",
+      "proto": "tcp",
+      "qtype": 12,
+      "rcode": 0,
+      "resolver": "1.1.1.1"
+    },
+    {
+      "answers": 0,
+      "name": "mail.set18.test",
+      "proto": "tcp",
+      "qtype": 1,
+      "rcode": 3,
+      "resolver": "8.8.8.8"
+    },
+    {
+      "answers": 0,
+      "name": "example.com",
+      "proto": "udp",
+      "qtype": 1,
+      "rcode": 5,
+      "resolver": "1.1.1.1"
+    }
+  ],
+  "finished_at": "2026-10-16T00:05:37Z.665",
+  "guard_unit": {
+    "argv": [
+      "systemd-run",
+      "--unit=set18-lab-guard.service",
+      "--property=Restart=on-failure",
+      "--property=RestartSec=2",
+      "--property=UMask=0077",
+      "python3",
+      "-I",
+      "/root/celikpanel-release-recovery-lab/guest_set18_lab_dns.py",
+      "guard"
+    ],
+    "returncode": 0,
+    "stderr": "Running as unit: set18-lab-guard.service; invocation ID: 9d11d7f608f845a09cf57e552d976224\n",
+    "stdout": ""
+  },
+  "packages_install": {
+    "install_rc": 0,
+    "install_tail": " (6970 kB/s)\nSelecting previously unselected package libjansson4:amd64.\n(Reading database ... \n(Reading database ... 5%\n(Reading database ... 10%\n(Reading database ... 15%\n(Reading database ... 20%\n(Reading database ... 25%\n(Reading database ... 30%\n(Reading database ... 35%\n(Reading database ... 40%\n(Reading database ... 45%\n(Reading database ... 50%\n(Reading database ... 55%\n(Reading database ... 60%\n(Reading database ... 65%\n(Reading database ... 70%\n(Reading database ... 75%\n(Reading database ... 80%\n(Reading database ... 85%\n(Reading database ... 90%\n(Reading database ... 95%\n(Reading database ... 100%\n(Reading database ... 20625 files and directories currently installed.)\nPreparing to unpack .../libjansson4_2.14-2+b3_amd64.deb ...\nUnpacking libjansson4:amd64 (2.14-2+b3) ...\nSelecting previously unselected package libnftables1:amd64.\nPreparing to unpack .../libnftables1_1.1.3-1_amd64.deb ...\nUnpacking libnftables1:amd64 (1.1.3-1) ...\nSelecting previously unselected package nftables.\nPreparing to unpack .../nftables_1.1.3-1_amd64.deb ...\nUnpacking nftables (1.1.3-1) ...\nSelecting previously unselected package pebble.\nPreparing to unpack .../pebble_2.6.0+ds1-1+b7_amd64.deb ...\nUnpacking pebble (2.6.0+ds1-1+b7) ...\nSetting up libjansson4:amd64 (2.14-2+b3) ...\nSetting up pebble (2.6.0+ds1-1+b7) ...\nSetting up libnftables1:amd64 (1.1.3-1) ...\nSetting up nftables (1.1.3-1) ...\nProcessing triggers for man-db (2.13.1-1) ...\nProcessing triggers for libc-bin (2.41-12+deb13u3) ...\n",
+    "nftables_service": "disabled\ninactive\n",
+    "packages": [
+      "nftables",
+      "pebble"
+    ],
+    "stderr_tail": "",
+    "update_rc": 0
+  },
+  "pebble_config": {
+    "pebble": {
+      "certificate": "/root/celikpanel-release-recovery-lab/set18-lab/pebble/listener-cert.pem",
+      "externalAccountBindingRequired": false,
+      "httpPort": 80,
+      "listenAddress": "127.0.0.1:14000",
+      "managementListenAddress": "127.0.0.1:15000",
+      "ocspResponderURL": "",
+      "privateKey": "[REDACTED]",
+      "tlsPort": 443
+    }
+  },
+  "pebble_environment": {
+    "PEBBLE_VA_NOSLEEP": "1",
+    "PEBBLE_WFE_NONCEREJECT": "0"
+  },
+  "pebble_install": {
+    "install_rc": 0,
+    "install_tail": " (6970 kB/s)\nSelecting previously unselected package libjansson4:amd64.\n(Reading database ... \n(Reading database ... 5%\n(Reading database ... 10%\n(Reading database ... 15%\n(Reading database ... 20%\n(Reading database ... 25%\n(Reading database ... 30%\n(Reading database ... 35%\n(Reading database ... 40%\n(Reading database ... 45%\n(Reading database ... 50%\n(Reading database ... 55%\n(Reading database ... 60%\n(Reading database ... 65%\n(Reading database ... 70%\n(Reading database ... 75%\n(Reading database ... 80%\n(Reading database ... 85%\n(Reading database ... 90%\n(Reading database ... 95%\n(Reading database ... 100%\n(Reading database ... 20625 files and directories currently installed.)\nPreparing to unpack .../libjansson4_2.14-2+b3_amd64.deb ...\nUnpacking libjansson4:amd64 (2.14-2+b3) ...\nSelecting previously unselected package libnftables1:amd64.\nPreparing to unpack .../libnftables1_1.1.3-1_amd64.deb ...\nUnpacking libnftables1:amd64 (1.1.3-1) ...\nSelecting previously unselected package nftables.\nPreparing to unpack .../nftables_1.1.3-1_amd64.deb ...\nUnpacking nftables (1.1.3-1) ...\nSelecting previously unselected package pebble.\nPreparing to unpack .../pebble_2.6.0+ds1-1+b7_amd64.deb ...\nUnpacking pebble (2.6.0+ds1-1+b7) ...\nSetting up libjansson4:amd64 (2.14-2+b3) ...\nSetting up pebble (2.6.0+ds1-1+b7) ...\nSetting up libnftables1:amd64 (1.1.3-1) ...\nSetting up nftables (1.1.3-1) ...\nProcessing triggers for man-db (2.13.1-1) ...\nProcessing triggers for libc-bin (2.41-12+deb13u3) ...\n",
+    "nftables_service": "disabled\ninactive\n",
+    "packages": [
+      "nftables",
+      "pebble"
+    ],
+    "stderr_tail": "",
+    "update_rc": 0
+  },
+  "pebble_packaged_units": "UNIT FILE STATE PRESET\n\n0 unit files listed.\ninactive\n",
+  "pebble_root": "subject=CN=Pebble Root CA 674d30\nsha256 Fingerprint=4B:84:FF:77:4F:2B:3A:DF:2D:C9:F9:FA:A0:A0:3C:72:C8:66:26:4B:DD:4B:37:F7:5D:E8:09:D2:02:AA:F6:FD\n",
+  "pebble_unit": {
+    "argv": [
+      "systemd-run",
+      "--unit=set18-lab-pebble.service",
+      "--property=Restart=on-failure",
+      "--property=RestartSec=2",
+      "--property=UMask=0077",
+      "--setenv=PEBBLE_VA_NOSLEEP=1",
+      "--setenv=PEBBLE_WFE_NONCEREJECT=0",
+      "/usr/bin/pebble",
+      "-config",
+      "/root/celikpanel-release-recovery-lab/set18-lab/pebble/pebble-config.json",
+      "-dnsserver",
+      "127.0.0.1:5300"
+    ],
+    "returncode": 0,
+    "stderr": "Running as unit: set18-lab-pebble.service; invocation ID: 87cf121e14d74252a1efa922a1c2eb87\n",
+    "stdout": ""
+  },
+  "pebble_version": "pebble\t2.6.0+ds1-1+b7\n/usr/bin/pebble\n",
+  "records_initial": {
+    "A": {
+      "host-192-0-2-10.provider.set18.test": [
+        "192.0.2.10"
+      ],
+      "panel.set18.test": [
+        "192.0.2.10"
+      ]
+    },
+    "PTR": {
+      "10.2.0.192.in-addr.arpa": "host-192-0-2-10.provider.set18.test"
+    },
+    "note": "panel.set18.test prepared before setup; mail.set18.test absent until the owner adds it; PTR at the provider's default name"
+  },
+  "resolver_unit": {
+    "argv": [
+      "systemd-run",
+      "--unit=set18-lab-resolver.service",
+      "--property=Restart=on-failure",
+      "--property=RestartSec=2",
+      "--property=UMask=0077",
+      "python3",
+      "-I",
+      "/root/celikpanel-release-recovery-lab/guest_set18_lab_dns.py",
+      "serve"
+    ],
+    "returncode": 0,
+    "stderr": "Running as unit: set18-lab-resolver.service; invocation ID: b653d23340aa4644a49aca75fd770a02\n",
+    "stdout": ""
+  },
+  "route_get_1_1_1_1": "1.1.1.1 via 10.0.2.2 dev mgmt0 src 192.0.2.10 uid 0 \n    cache",
+  "route_to_192_0_2_1": "192.0.2.1 dev peer0 src 192.0.2.10 uid 0 \n    cache",
+  "routes": [
+    {
+      "argv": [
+        "ip",
+        "route",
+        "replace",
+        "1.1.1.1/32",
+        "via",
+        "10.0.2.2",
+        "dev",
+        "mgmt0",
+        "src",
+        "192.0.2.10"
+      ],
+      "returncode": 0,
+      "stderr": "",
+      "stdout": ""
+    },
+    {
+      "argv": [
+        "ip",
+        "route",
+        "replace",
+        "8.8.8.8/32",
+        "via",
+        "10.0.2.2",
+        "dev",
+        "mgmt0",
+        "src",
+        "192.0.2.10"
+      ],
+      "returncode": 0,
+      "stderr": "",
+      "stdout": ""
+    },
+    {
+      "argv": [
+        "ip",
+        "route",
+        "replace",
+        "9.9.9.9/32",
+        "via",
+        "10.0.2.2",
+        "dev",
+        "mgmt0",
+        "src",
+        "192.0.2.10"
+      ],
+      "returncode": 0,
+      "stderr": "",
+      "stdout": ""
+    },
+    {
+      "argv": [
+        "ip",
+        "route",
+        "replace",
+        "208.67.222.222/32",
+        "via",
+        "10.0.2.2",
+        "dev",
+        "mgmt0",
+        "src",
+        "192.0.2.10"
+      ],
+      "returncode": 0,
+      "stderr": "",
+      "stdout": ""
+    }
+  ],
+  "server_ip": "192.0.2.10",
+  "tables": {
+    "add_elements": [
+      {
+        "argv": [
+          "nft",
+          "add",
+          "element",
+          "ip",
+          "set18lab",
+          "allow443",
+          "{ 146.75.122.132, 146.75.123.52, 151.101.130.132, 151.101.194.132, 151.101.2.132, 151.101.66.132 }"
+        ],
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      },
+      {
+        "argv": [
+          "nft",
+          "add",
+          "element",
+          "ip6",
+          "set18lab6",
+          "allow443",
+          "{ 2a04:4e42:200::644, 2a04:4e42:400::644, 2a04:4e42:600::644, 2a04:4e42:8e::644, 2a04:4e42:8e::820, 2a04:4e42::644 }"
+        ],
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    ],
+    "allowed_hosts": [
+      "deb.debian.org",
+      "packages.sury.org",
+      "security.debian.org"
+    ],
+    "allowed_v4": [
+      "146.75.122.132",
+      "146.75.123.52",
+      "151.101.130.132",
+      "151.101.194.132",
+      "151.101.2.132",
+      "151.101.66.132"
+    ],
+    "allowed_v6": [
+      "2a04:4e42:200::644",
+      "2a04:4e42:400::644",
+      "2a04:4e42:600::644",
+      "2a04:4e42:8e::644",
+      "2a04:4e42:8e::820",
+      "2a04:4e42::644"
+    ],
+    "nft_f": {
+      "argv": [
+        "nft",
+        "-f",
+        "/root/celikpanel-release-recovery-lab/set18-lab/set18lab.nft"
+      ],
+      "returncode": 0,
+      "stderr": "",
+      "stdout": ""
+    },
+    "ruleset": "table ip set18lab {\n    set allow443 { type ipv4_addr; }\n    chain out_nat {\n        type nat hook output priority -100; policy accept;\n        ip daddr 1.1.1.1 udp dport 53 counter dnat to 127.0.0.1:5301\n        ip daddr 1.1.1.1 tcp dport 53 counter dnat to 127.0.0.1:5301\n        ip daddr 8.8.8.8 udp dport 53 counter dnat to 127.0.0.1:5302\n        ip daddr 8.8.8.8 tcp dport 53 counter dnat to 127.0.0.1:5302\n        ip daddr 9.9.9.9 udp dport 53 counter dnat to 127.0.0.1:5303\n        ip daddr 9.9.9.9 tcp dport 53 counter dnat to 127.0.0.1:5303\n        ip daddr 208.67.222.222 udp dport 53 counter dnat to 127.0.0.1:5304\n        ip daddr 208.67.222.222 tcp dport 53 counter dnat to 127.0.0.1:5304\n        tcp dport 25 ip daddr != { 127.0.0.0/8, 192.0.2.10, 10.0.2.0/24 } counter dnat to 127.0.0.1:25\n    }\n    chain out_filter {\n        type filter hook output priority 0; policy accept;\n        tcp dport 443 ip daddr { 127.0.0.0/8, 192.0.2.0/24, 10.0.2.0/24 } counter accept\n        tcp dport 443 ip daddr @allow443 counter accept\n        tcp dport 443 counter log prefix \"set18-lab-443-block \" reject with tcp reset\n        udp dport 443 counter reject\n    }\n}\ntable ip6 set18lab6 {\n    set allow443 { type ipv6_addr; }\n    chain out_filter {\n        type filter hook output priority 0; policy accept;\n        tcp dport 443 ip6 daddr ::1 counter accept\n        tcp dport 443 ip6 daddr @allow443 counter accept\n        tcp dport 443 counter log prefix \"set18-lab-443-block6 \" reject with tcp reset\n        udp dport 443 counter reject\n    }\n}\n"
+  },
+  "update_ca_certificates": {
+    "argv": [
+      "update-ca-certificates"
+    ],
+    "returncode": 0,
+    "stderr": "rehash: warning: skipping ca-certificates.crt, it does not contain exactly one certificate or CRL\n",
+    "stdout": "Updating certificates in /etc/ssl/certs...\n1 added, 0 removed; done.\nRunning hooks in /etc/ca-certificates/update.d...\ndone.\n"
+  },
+  "what": "set18 lab preparation (not a product change): lab-only DNS, ACME and outbound rules"
+}

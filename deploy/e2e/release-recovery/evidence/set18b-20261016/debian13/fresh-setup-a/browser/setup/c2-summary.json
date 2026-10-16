@@ -1,0 +1,305 @@
+{
+  "label": "c2",
+  "started_at": "2026-10-16T00:12:35.080Z",
+  "sample_ms": 500,
+  "states": 13,
+  "pictures": [
+    "c2-state-01",
+    "c2-state-02",
+    "c2-state-03",
+    "c2-state-04",
+    "c2-state-05",
+    "c2-state-06",
+    "c2-state-07",
+    "c2-state-08",
+    "c2-state-09",
+    "c2-state-10",
+    "c2-state-11",
+    "c2-state-12",
+    "c2-state-13"
+  ],
+  "owner_actions": [
+    {
+      "at": "2026-10-16T00:14:51.815Z",
+      "action": "Continue recorded operation"
+    },
+    {
+      "at": "2026-10-16T00:15:44.265Z",
+      "action": "Check requirements again (before the PTR change)"
+    },
+    {
+      "at": "2026-10-16T00:15:54.518Z",
+      "action": "Check requirements again (after the PTR change)"
+    }
+  ],
+  "lab": [
+    {
+      "at": "2026-10-16T00:14:33.133Z",
+      "what": "lab-mail-a",
+      "ok": true,
+      "trigger": "tool (H3 fixed)",
+      "waited_s": 51
+    },
+    {
+      "at": "2026-10-16T00:15:51.503Z",
+      "what": "lab-ptr-mail",
+      "ok": true
+    }
+  ],
+  "enrollment_presses": [
+    {
+      "at": "2026-10-16T00:14:51.815Z",
+      "clicked": "Continue recorded operation",
+      "before": [
+        {
+          "text": "Continue recorded operation",
+          "disabled": false
+        }
+      ],
+      "operation": {
+        "status": "running",
+        "phase": "07-mail_enrollment",
+        "error": "server_setup_mail_enrollment_running",
+        "superseded": null,
+        "steps": [
+          "01-dns:succeeded",
+          "02-mail_profile:succeeded",
+          "03-firewall:succeeded",
+          "04-access_dns:succeeded",
+          "05-access_dns:succeeded",
+          "06-mail_certificate:succeeded",
+          "07-mail_enrollment:running",
+          "08-verify:pending"
+        ]
+      },
+      "posts_before": 0,
+      "after_300ms": [
+        {
+          "text": "Checking the same operation",
+          "disabled": true
+        }
+      ],
+      "after_2s": [
+        {
+          "text": "Checking the same operation",
+          "disabled": true
+        }
+      ],
+      "posts_after_2s": 1
+    }
+  ],
+  "enrollment_button_samples": 10,
+  "unknown_sentence_samples": [],
+  "enroll_posts_before": 0,
+  "queued_seen": {
+    "at": "2026-10-16T00:12:36.646Z",
+    "guidance_title": "What happens at this step",
+    "guidance": "What happens at this step Configure DNS: Use an external DNS provider Setup has started with the step shown here. The panel begins it in a moment and this page updates by itself; you do not need to do anything. Checks and how to continue",
+    "operation": {
+      "status": "succeeded",
+      "phase": "complete",
+      "error": null,
+      "superseded": true,
+      "steps": [
+        "01-dns:succeeded",
+        "02-service:succeeded",
+        "03-service:succeeded",
+        "04-service:succeeded",
+        "05-service:succeeded",
+        "06-service:succeeded",
+        "07-firewall:succeeded",
+        "08-access_dns:succeeded",
+        "09-panel_certificate:succeeded",
+        "10-verify:succeeded"
+      ]
+    }
+  },
+  "mail_dns_wait_seen": {
+    "at": "2026-10-16T00:13:42.395Z",
+    "phase": "access_dns",
+    "step": {
+      "id": "05-access_dns",
+      "kind": "access_dns",
+      "target": "mail.set18.test",
+      "qualifier": "192.0.2.10",
+      "status": "running",
+      "request_id": "068ca6f94b72c6898a6ec381e92060d4",
+      "owner_id": "abd1c68a2d2fe008453d114dad743613"
+    },
+    "guidance_title": "Verify public DNS before certificate issuance: mail.set18.test",
+    "guidance": "Verify public DNS before certificate issuance: mail.set18.test Certificate issuance requires this public A record: mail.set18.test → 192.0.2.10. The public record has not been verified yet. This result alone does not establish whether the record is absent or a DNS server is unreachable. Create or correct this record at the DNS provider or primary that manages it. You do not need to create a website in Domains. This prerequisite is checked automatically. After it passes, the same setup continues. To change the reviewed names or addresses, use Edit plan below. Edit plan Checks and how to continue"
+  },
+  "mail_identity_seen": {
+    "at": "2026-10-16T00:14:58.582Z",
+    "check": {
+      "id": "mail_identity",
+      "state": "action_required",
+      "code": "mail_identity_required",
+      "reason": "reverse_dns_mismatch",
+      "vars": {
+        "hostname": "mail.set18.test",
+        "ip": "192.0.2.10",
+        "ptr": "host-192-0-2-10.provider.set18.test",
+        "resolver": "1.1.1.1"
+      }
+    },
+    "page_lines": [
+      {
+        "id": "mail_identity",
+        "state": "action_required",
+        "text": "The public resolver 1.1.1.1 reports host-192-0-2-10.provider.set18.test as the reverse DNS (PTR) name of this server’s address 192.0.2.10; mail servers expect mail.set18.test. You set this at your server provider, not in CelikPanel: in the provider’s control panel, or by asking its support to set the reverse DNS of 192.0.2.10 to mail.set18.test."
+      }
+    ]
+  },
+  "finishing_seen": {
+    "at": "2026-10-16T00:15:56.139Z",
+    "text": "Every check passed. The panel is completing setup now, and you do not need to do anything. This page updates by itself when it is done."
+  },
+  "ready_at": "2026-10-16T00:16:00.207Z",
+  "ended_at": "2026-10-16T00:16:00.207Z",
+  "duration_s": 205,
+  "final_operation": {
+    "id": "07b147cb5f99ed05abed126437483bd4",
+    "request_id": "07b147cb5f99ed05abed126437483bd4",
+    "plan_id": "5abab1ac19ecbdbcfc2f70c1f175d771",
+    "status": "succeeded",
+    "phase": "complete",
+    "steps": [
+      {
+        "id": "01-dns",
+        "kind": "dns",
+        "target": "external",
+        "status": "succeeded",
+        "request_id": "7444176cfaaaa7b13b065117c81d9c60",
+        "owner_id": "fd53d889f84ece6d8f0843aec87ee26a"
+      },
+      {
+        "id": "02-mail_profile",
+        "kind": "mail_profile",
+        "target": "core-mail",
+        "status": "succeeded",
+        "request_id": "8316294f1a55995f0799a4097ea66776",
+        "owner_id": "db083fdb1cfa39c624bc772c75579c8e",
+        "operation_id": "d820956fbba32655fce0cf3113900024"
+      },
+      {
+        "id": "03-firewall",
+        "kind": "firewall",
+        "target": "enable_and_persist",
+        "status": "succeeded",
+        "request_id": "76295684cccc91e24dd76fcf49558abb",
+        "owner_id": "9ffe8923adc00b8a84196c42aaff8588"
+      },
+      {
+        "id": "04-access_dns",
+        "kind": "access_dns",
+        "target": "panel.set18.test",
+        "qualifier": "192.0.2.10",
+        "status": "succeeded",
+        "request_id": "d77e9b665e43538cef2f6fd172b00b11",
+        "owner_id": "12b3bc44fb900da81f5baed6ca4c948a"
+      },
+      {
+        "id": "05-access_dns",
+        "kind": "access_dns",
+        "target": "mail.set18.test",
+        "qualifier": "192.0.2.10",
+        "status": "succeeded",
+        "request_id": "068ca6f94b72c6898a6ec381e92060d4",
+        "owner_id": "abd1c68a2d2fe008453d114dad743613"
+      },
+      {
+        "id": "06-mail_certificate",
+        "kind": "mail_certificate",
+        "target": "mail.set18.test",
+        "status": "succeeded",
+        "request_id": "59f6625050cac6c2c3d4a13f7a803884",
+        "owner_id": "380a98a03905db0030169a49e1ac0ccb"
+      },
+      {
+        "id": "07-mail_enrollment",
+        "kind": "mail_enrollment",
+        "target": "mail-renewal",
+        "qualifier": "287d8ee59e30fe1c70ad0e5f8b3b0a8e3a848b52d6baf55169d1fcb73bb2a078",
+        "status": "succeeded",
+        "request_id": "7c82cfdd6b7aed43abbed330fbc89276",
+        "owner_id": "c6bd613ea0557112e9829d63f920037a",
+        "enrollment_dispatch_attempted": true
+      },
+      {
+        "id": "08-verify",
+        "kind": "verify",
+        "target": "web",
+        "status": "succeeded",
+        "request_id": "9168ef94ccd60b86b73dce9f6450b9bd",
+        "owner_id": "cda37f8da1fd135b00f4a0e2479c50a2"
+      }
+    ],
+    "checks": [
+      {
+        "id": "panel_https",
+        "state": "ready",
+        "code": "ready"
+      },
+      {
+        "id": "panel_renewal",
+        "state": "ready",
+        "code": "ready"
+      },
+      {
+        "id": "dns",
+        "state": "ready",
+        "code": "ready"
+      },
+      {
+        "id": "firewall",
+        "state": "ready",
+        "code": "ready"
+      },
+      {
+        "id": "services",
+        "state": "ready",
+        "code": "ready"
+      },
+      {
+        "id": "mail_tls",
+        "state": "ready",
+        "code": "ready"
+      },
+      {
+        "id": "mail_identity",
+        "state": "ready",
+        "code": "ready"
+      },
+      {
+        "id": "mail_delivery",
+        "state": "ready",
+        "code": "ready"
+      }
+    ],
+    "panel_url": "https://panel.set18.test:2083/",
+    "context": {
+      "access_dns_ip": "192.0.2.10",
+      "dns_mode": "external",
+      "dns_role": "",
+      "dns_engine": "",
+      "local_nameserver": "",
+      "local_ip": "",
+      "peer_nameserver": "",
+      "peer_ip": "",
+      "panel_domain": "panel.set18.test",
+      "mail_hostname": "mail.set18.test",
+      "dns_hosting_management": ""
+    }
+  },
+  "enroll_posts": [
+    {
+      "at": "2026-10-16T00:14:51.802Z",
+      "url": "/api/v1/setup/mail-enrollment/continue",
+      "status": 202,
+      "body": "{\"request_id\":\"7c82cfdd6b7aed43abbed330fbc89276\",\"handoff\":\"unknown\",\"reason\":\"mail_enrollment_handoff_unknown\"}\n",
+      "request_body": "{\"execution_id\":\"07b147cb5f99ed05abed126437483bd4\",\"step_id\":\"07-mail_enrollment\"}"
+    }
+  ],
+  "final_picture": "c2-final"
+}

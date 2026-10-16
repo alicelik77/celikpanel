@@ -5815,3 +5815,90 @@ behaviour. 2026-10-15 is the clock date of everything in it.
   the session gate's `PANEL_STARTING` path were not measured natively, and that
   the new update screen is seen on an installed server only from the update
   after this one.
+
+### Candidate v0.1.0-alpha.87 (P0.2 area; invariants 1, 2 and 6; D-021; D-024; D-033; 2026-10-16)
+
+D-025 invariants 1 (the owner retains authority and working services), 2
+(evidence has a meaning and a lifecycle: unknown is not absent, empty or
+success) and 6 (readiness, progress and access remain independent); D-021; D-024; D-033. **No P0 item is closed or
+advanced.** P0.1 to P0.5 stay partial and every open acceptance item stays
+open. This entry records a candidate that is not published; 2026-10-16 is the
+clock date of the entry.
+
+- **What the candidate changes.** Part 1 of the second installed server as a
+  full peer. A completed setup can be extended
+  (`POST /api/v1/setup/extend`, actions `begin` and `cancel`): the wizard
+  reopens with the completed values, the review says what changes, what is
+  installed and what is kept, and the run is the existing reviewed runner with
+  its single flight; an extension keeps the completion record and is not
+  required, so a prepared server is never routed back into setup; "Stop
+  extending" restores the completed draft and removes nothing. On a prepared
+  server the Components mail dialog adds the profile to an extension, so mail
+  gets setup's public DNS check, trusted certificate and renewal, reverse DNS
+  and port 25 checks; a server without a finished setup keeps the direct
+  install, which now says that it ends self-signed. A corrected mail host name
+  is saved only once its operation is admitted. On the secondary of a DNS pair
+  the mail box names the primary and the exact record (`mail_dns_guidance`)
+  instead of a DNS page that cannot create it; the panel creates no record.
+  After set18: the setup operation answer carries the additive `superseded`
+  for the completed run while an extension is in draft (D1), a started run
+  names its first step (O1), and a pressed "Continue recorded operation" stays
+  single-flight until a read shows the operation moved on (O3; reads only).
+  Nothing under `internal/` or `cmd/agent/` changed; no change to the update
+  path, the recovery runner, the release floor or the native services. The
+  [release notes](RELEASE-NOTES-v0.1.0-alpha.87.md) say which check rests on
+  which code.
+- **Invariants touched.** Invariant 1: an extension never removes, stops or
+  replaces an installed component, and stopping it removes nothing a partly
+  run extension installed. Invariant 2: a superseded completed run is not
+  shown as "Completion could not be verified" on a server whose completed setup
+  is being extended; the flag is
+  kept only on a succeeded run, so it cannot hide a run in progress or a
+  failure; the review shows each setting before and after and what is kept,
+  and a mail host name refused by a busy server is not saved. Invariant 6: an
+  extension keeps the completion record, so a prepared server's readiness is
+  not withdrawn and the owner is not routed into setup while it is extended or
+  runs.
+  Polling never starts or admits a mutation (D-024).
+- **Schema or version transition.** None: no migration between the alpha.86
+  tag and the candidate (`git diff --stat 8d260f317..HEAD -- internal/ cmd/`
+  names no migration file; the database schema stays 44). The extension base
+  is one `panel_settings` row (`server_setup_extension_base`), written and
+  removed in the same transaction as the setup state row. The release
+  sequence moves from 86 to 87 in the release preparation `471377d60`, with
+  the alpha.86 release commit `8d260f317e58bed7fcd84c6cbb01823c4fe3f166` as
+  previous; the transition rules are unchanged. **Recovery behaviour.**
+  Unchanged. An extension is a normal reviewed setup run with the existing
+  runner, its single flight and its recovery; stopping an extension changes
+  only the setup record.
+- **Evidence.** Component tests: `go test -count=1 -v ./cmd/panel/...` 1558
+  top-level tests passed, 6 skipped, 0 failed, 1675 subtests passed (at
+  `bef12820e`, the same Go code as `6b363ac46`; the release preparer's
+  measurement in the WSL guest, not recorded in a file); `npm test` 1499 of
+  1499, re-run by the fact-check of these documents at `b6c43a4b5`. The
+  Agent was not run (unchanged). Browser inspection batch 16 against the mock
+  (36 states in 8 configurations; seven defects corrected). Native records
+  (QEMU/KVM guests on Debian 13, test-licence builds, a lab DNS responder and
+  a lab ACME server inside the guest; measurements, not acceptance):
+  `deploy/e2e/release-recovery/evidence/set18-20261015/README.md` at
+  `5d54aba1e` and `deploy/e2e/release-recovery/evidence/set18b-20261016/README.md`
+  at `6b363ac46`, both as corrected at intake in `90b3fe2f2`. Outcome: setup
+  and an extension adding Core Mail reached ready natively, for the first time
+  in this evidence folder through the public DNS check, the trusted
+  certificates and "Finishing setup"; set18 recorded D1, set18b observed D1,
+  O1 and O3 fixed and no new defect.
+- **Open.** Part 2 (three owner decisions: the primary carrying a peer's mail
+  host name, an editor for the infrastructure zone, automatic transfer of host
+  records over the remote DNS connection); the secondary-DNS boxes not reached
+  natively; the resolvers-disagree sentence and the slow "Finishing setup"
+  variant not produced; the public ACME and DNS path not measured (lab only);
+  Ubuntu 24.04 and Arch not run; observed in the raw files and not judged: a
+  "not a valid FQDN" journal line at each Panel start on a web-only setup,
+  `cron DEATH` lines, a self-signed-fallback toast while a trusted mail
+  certificate followed, and the licence gate's access banner around setup's
+  own planned restart (alpha.86's restart grace covers the update's restart
+  only); O2 and O4 not judged, O5 (the "Custom setup" label) left as it is by the
+  release preparer's decision under D-021 and D-033; every choice the release
+  preparer made for part 1 is for the owner to confirm, none is an owner
+  decision; no installed server measured. Everything the
+  entries above leave open stays open.

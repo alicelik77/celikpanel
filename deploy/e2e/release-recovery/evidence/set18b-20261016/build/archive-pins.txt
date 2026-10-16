@@ -1,0 +1,9 @@
+== baseline celikpanel-v0.1.0-alpha.87-acceptance-license.tar.gz
+version=v0.1.0-alpha.87
+current=87
+== good celikpanel-v0.1.0-alpha.88-acceptance-license.tar.gz
+version=v0.1.0-alpha.88
+current=88
+== defective celikpanel-v0.1.0-alpha.88-acceptance-license.tar.gz
+version=v0.1.0-alpha.88
+current=88

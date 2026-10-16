@@ -1,0 +1,58 @@
+Extend this server’s setup
+
+Follow the setup steps and their recorded results here.
+
+Setup is waiting for a requirement
+Verify public DNS before certificate issuance: mail.set18.test
+
+Certificate issuance requires this public A record: mail.set18.test → 192.0.2.10.
+
+The public record has not been verified yet. This result alone does not establish whether the record is absent or a DNS server is unreachable.
+
+Create or correct this record at the DNS provider or primary that manages it. You do not need to create a website in Domains.
+
+This prerequisite is checked automatically. After it passes, the same setup continues. To change the reviewed names or addresses, use Edit plan below.
+
+Edit plan
+Checks and how to continue
+
+The required public DNS record has not been verified. Follow the record and DNS management instructions above; certificate requests wait for this check.
+
+Technical details
+
+Configure DNS: Use an external DNS provider
+
+Completed
+
+Prepare mail profile: Core Mail
+
+Completed
+
+Apply and save the firewall policy
+
+Completed
+
+Verify public DNS before certificate issuance: panel.set18.test
+
+192.0.2.10
+
+Completed
+
+Verify public DNS before certificate issuance: mail.set18.test
+
+192.0.2.10
+
+In progress
+
+Secure mail access: mail.set18.test
+
+Waiting
+
+Prepare independent mail certificate renewal
+
+Waiting
+
+Verify the prepared server
+
+Waiting
+Access and recovery

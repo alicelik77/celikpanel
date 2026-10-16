@@ -1,0 +1,134 @@
+const ENROLL_BUTTON = /Continue recorded operation|Retry reviewed handoff|Checking the same operation|Kayıtlı işleme devam et|Aynı işlem denetleniyor/;
+const enrollButtons = s => (s.buttons || []).filter(b => ENROLL_BUTTON.test(b.text));
+const signature = s => JSON.stringify([s.h1, s.progress_title, s.guidance_title, !!s.finishing, s.steps.map(x => x.state), s.checks.map(x => `${x.id}:${x.state}`), !!s.reconnecting, !!s.reconnect_slow, s.alerts.length, (s.guidance || '').slice(0, 160), enrollButtons(s).map(b => `${b.text}:${b.disabled}`)]);
+const op = () => latest.operation?.value || null;
+const opStep = (execution, kind, target) => (execution?.steps || []).find(x => x.kind === kind && (!target || x.target === target));
+const QUEUED = /Setup has started with the step shown here|Kurulum burada gösterilen adımla başladı/;
+const UNKNOWN = /No more specific requirement has been confirmed for this step|daha belirli bir gereksinim henüz doğrulanmadı/;
+
+// Follow a started run until the server is ready (or failed, or the bound). The page is sampled every 500 ms.
+async function follow(page, label, limitMs, mail) {
+    const started = Date.now();
+    const result = { label, started_at: iso(started), sample_ms: 500, states: 0, pictures: [], owner_actions: [], lab: [], enrollment_presses: [], enrollment_button_samples: 0, unknown_sentence_samples: [], enroll_posts_before: enrollPosts.length };
+    let lastSig = null; let shots = 0; let lastHeartbeat = 0;
+    let mailWaitSince = null; let ptrSeenAt = null; let lastVerifyPress = 0; let waitingVerifySince = null; let slowSince = null;
+    let done = false;
+    while (!done && Date.now() - started < limitMs) {
+        const t0 = Date.now();
+        let s;
+        try { s = await page.evaluate(SETUP_SAMPLE); } catch (error) { s = { t: t0, error: String(error.message).slice(0, 160) }; }
+        const execution = op();
+        if (!s.error) {
+            s.operation = execution ? { status: execution.status, phase: execution.phase, error: execution.error?.code || null, superseded: execution.superseded ?? null, steps: (execution.steps || []).map(x => `${x.id}:${x.status}`) } : null;
+            s.enroll_buttons = enrollButtons(s);
+            if (s.enroll_buttons.length) result.enrollment_button_samples++;
+            const sig = signature(s);
+            if (sig !== lastSig || Date.now() - lastHeartbeat > 30000) {
+                lastHeartbeat = Date.now();
+                if (sig !== lastSig) { result.states++; s.new_state = true; }
+                if (sig !== lastSig && shots < 90 && s.vis === 'visible') { shots++; s.picture = await shot(page, `${label}-state-${String(shots).padStart(2, '0')}`, { t_plus_s: Math.round((Date.now() - started) / 1000) }); if (s.picture) result.pictures.push(s.picture); }
+                lastSig = sig;
+                await jsonl(join(dir, `${label}-samples.jsonl`), s);
+            }
+            if (QUEUED.test(s.guidance || '') && !result.queued_seen) result.queued_seen = { at: iso(), guidance_title: s.guidance_title, guidance: s.guidance, operation: s.operation };
+            if (UNKNOWN.test(s.guidance || '') && result.unknown_sentence_samples.length < 20) result.unknown_sentence_samples.push({ at: iso(), operation: s.operation });
+            if (s.finishing && !result.finishing_seen) { result.finishing_seen = { at: iso(), text: s.finishing }; }
+            if (/ready|hazır/i.test(s.h1 || '') && s.extend_section) { result.ready_at = iso(); done = true; break; }
+            if (execution?.status === 'failed') { result.failed = { at: iso(), error: execution.error }; if (!result.failed_picture) result.failed_picture = await shot(page, `${label}-failed`, {}, true); done = true; break; }
+            // the reconnect has been slow for a minute: the owner reloads the page, as it offers
+            if (s.reconnect_slow) { slowSince = slowSince || Date.now(); if (Date.now() - slowSince > 60000) { result.owner_actions.push({ at: iso(), action: 'reload (Reload this page)' }); await clickText(page, /Reload this page|Sayfayı yeniden yükle/); slowSince = null; await settle(page); } } else slowSince = null;
+            // a recorded mail enrollment wait offers the owner's explicit action: pressed whenever it is enabled (O3:
+            // after one press it must be disabled and say "Checking the same operation"); the state after each press
+            // is read 300 ms and 2 s later.
+            if (s.buttons.some(b => /Continue recorded operation|Retry reviewed handoff/.test(b.text) && !b.disabled)) {
+                const before = s.enroll_buttons;
+                const c = await clickText(page, /^(Continue recorded operation|Retry reviewed handoff)$/);
+                const press = { at: iso(), clicked: c, before, operation: s.operation, posts_before: enrollPosts.length };
+                await pause(300);
+                press.after_300ms = enrollButtons(await page.evaluate(SETUP_SAMPLE).catch(() => ({ buttons: [] })));
+                await pause(1700);
+                press.after_2s = enrollButtons(await page.evaluate(SETUP_SAMPLE).catch(() => ({ buttons: [] })));
+                press.posts_after_2s = enrollPosts.length;
+                result.enrollment_presses.push(press);
+                result.owner_actions.push({ at: press.at, action: c });
+                await shot(page, `${label}-enrollment-after-press`, { press: result.enrollment_presses.length });
+            }
+            if (mail && execution) {
+                // H3 fixed: the mail host's access_dns step while it is the running step of a waiting run
+                const mailDNS = opStep(execution, 'access_dns', LAB.mail_hostname);
+                const atMailDNS = execution.status === 'waiting' && mailDNS && mailDNS.status === 'running' && [mailDNS.id, mailDNS.kind].includes(execution.phase);
+                if (atMailDNS && !result.lab.some(x => x.what === 'lab-mail-a')) {
+                    mailWaitSince = mailWaitSince || Date.now();
+                    result.mail_dns_wait_seen = result.mail_dns_wait_seen || { at: iso(), phase: execution.phase, step: mailDNS, guidance_title: s.guidance_title, guidance: s.guidance };
+                    if (Date.now() - mailWaitSince > 50000) {
+                        await shot(page, `${label}-mail-dns-waiting`, {}, true);
+                        const r = await prep('lab-mail-a', 120000);
+                        result.lab.push({ at: iso(), what: 'lab-mail-a', ok: !r.result?.error && !r.missing, trigger: 'tool (H3 fixed)', waited_s: Math.round((Date.now() - mailWaitSince) / 1000) });
+                    }
+                }
+                const identity = (execution.checks || []).find(c => c.id === 'mail_identity');
+                if (execution.status === 'waiting' && execution.phase === 'verification' && identity && identity.state !== 'ready' && !result.lab.some(x => x.what === 'lab-ptr-mail')) {
+                    ptrSeenAt = ptrSeenAt || Date.now();
+                    result.mail_identity_seen = result.mail_identity_seen || { at: iso(), check: identity, page_lines: s.checks };
+                    if (Date.now() - ptrSeenAt > 45000) {
+                        await shot(page, `${label}-reverse-dns`, {}, true);
+                        // the owner also asks for the check once, so the result box names it too
+                        await clickText(page, /^Check requirements again$/); result.owner_actions.push({ at: iso(), action: 'Check requirements again (before the PTR change)' });
+                        await pause(6000); await shot(page, `${label}-reverse-dns-checked`, {}, true);
+                        await jsonl(join(dir, `${label}-samples.jsonl`), { ...(await page.evaluate(SETUP_SAMPLE).catch(() => ({}))), marker: 'after the owner check, before the PTR change' });
+                        const r = await prep('lab-ptr-mail', 120000);
+                        result.lab.push({ at: iso(), what: 'lab-ptr-mail', ok: !r.result?.error && !r.missing });
+                        await pause(3000);
+                        await clickText(page, /^Check requirements again$/); lastVerifyPress = Date.now();
+                        result.owner_actions.push({ at: iso(), action: 'Check requirements again (after the PTR change)' });
+                    }
+                }
+            }
+            // waiting at the final check with no lab change pending: the owner checks again, at most once a minute
+            if (execution?.status === 'waiting' && execution.phase === 'verification') {
+                waitingVerifySince = waitingVerifySince || Date.now();
+                const pending = mail && !result.lab.some(x => x.what === 'lab-ptr-mail');
+                if (!pending && Date.now() - waitingVerifySince > 25000 && Date.now() - lastVerifyPress > 60000) {
+                    if (await clickText(page, /^Check requirements again$/)) { lastVerifyPress = Date.now(); result.owner_actions.push({ at: iso(), action: 'Check requirements again' }); }
+                }
+            } else waitingVerifySince = null;
+        } else {
+            await jsonl(join(dir, `${label}-samples.jsonl`), s);
+        }
+        await pause(Math.max(0, 500 - (Date.now() - t0)));
+    }
+    result.ended_at = iso();
+    result.duration_s = Math.round((Date.now() - started) / 1000);
+    result.final_operation = op();
+    result.enroll_posts = enrollPosts.slice(result.enroll_posts_before);
+    result.final_picture = await shot(page, `${label}-final`, {}, true);
+    if (!result.ready_at && !result.failed) result.not_finished = `not ready within ${Math.round(limitMs / 60000)} min`;
+    await writeFile(join(dir, `${label}-summary.json`), redact(JSON.stringify(result, null, 2)));
+    return result;
+}
+
+// One picture per language and viewport (default: Turkish at 390x844); reopen() brings the page back after a reload.
+async function variants(page, name, reopen, combos = [['tr', 'phone']]) {
+    const out = [];
+    for (const [lang, vp] of combos) {
+        try {
+            await page.setViewport(VIEWPORTS[vp]);
+            await page.evaluate(value => sessionStorage.setItem('set18b.lang', value), lang);
+            await page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 });
+            await settle(page, 2000);
+            if (reopen) await reopen(lang);
+            await settle(page, 1200);
+            const facts = await page.evaluate(() => ({ lang: document.documentElement.lang || null, overflow_x: document.documentElement.scrollWidth > document.documentElement.clientWidth, width: document.documentElement.clientWidth })).catch(() => ({}));
+            const picture = await shot(page, `${name}-${lang}-${vp}`, { lang, vp, facts }, true);
+            out.push({ lang, vp, picture, ...facts });
+        } catch (error) { out.push({ lang, vp, error: String(error.message).slice(0, 200) }); }
+    }
+    await page.setViewport(VIEWPORTS['1280']);
+    await page.evaluate(() => sessionStorage.setItem('set18b.lang', 'en')).catch(() => {});
+    await page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 }).catch(() => {});
+    await settle(page, 2000);
+    if (reopen) await reopen('en');
+    await jsonl(join(dir, 'variants.jsonl'), { at: iso(), name, out });
+    return out;
+}
+

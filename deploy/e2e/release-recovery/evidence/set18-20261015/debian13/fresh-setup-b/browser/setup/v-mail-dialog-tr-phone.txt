@@ -1,0 +1,255 @@
+Ana sayfa
+/
+Bileşenler
+Bileşenler
+
+Bu sunucuda kurulu her şey — servisler, çalışma ortamları ve araçlar
+
+Güvenlik duvarı: Açık
+
+Yalnız bu portlara erişilebilir; gerisi engelli.
+
+Kapat
+22/tcp (SSH)
+80/tcp
+443/tcp
+2083/tcp
+Yeniden tara
+Son tarama: 16.10.2026 02:02:35
+Kurulu (6)
+Katalog (27)
+Tümünü aç
+Tümünü kapat
+Tek tıkla posta paketleri
+
+Doğrulanmış bir posta paketini kurtarılabilir tek işlemle kurun. Servisleri aşağıdan ayrı ayrı kurmaya devam edebilirsiniz.
+
+Temel Posta
+
+Kimlik doğrulamalı gönderimle Postfix SMTP ve Dovecot IMAP/POP3.
+
+Postfix
+Dovecot
+Kuruluma hazır
+Kur
+Webmail
+
+Temel postaya ek olarak Nginx, PHP-FPM ve Roundcube webmail.
+
+Postfix
+Dovecot
+Nginx
+PHP-FPM
+Roundcube
+
+Bazı bileşenler zaten kurulu. Bu profili kurmak, yerinde olan hizmetleri kaldırmadan planın tamamını tamamlar.
+
+Kısmen kurulu
+Devam et
+Spam Korumalı Posta
+
+Rspamd spam filtrelemeli temel posta.
+
+Postfix
+Dovecot
+Rspamd
+Kuruluma hazır
+Kur
+
+Toplam 27 öğe
+
+DNS
+0/2
+🌐
+BIND
+DNS sunucusu
+Kurulu değil
+DNS motorunu yönet
+⚡
+PowerDNS
+DNS sunucusu
+Kurulu değil
+DNS motorunu yönet
+Web sunucuları
+2/4
+🐘
+PHP-FPM
+PHP FastCGI Süreç Yöneticisi
+Çalışıyor
+Sürümler
+1
+Yönet
+🟩
+Node.js
+JavaScript çalışma ortamı
+Kurulu değil
+Kur
+🔄
+Nginx
+Ters vekil sunucu
+Çalışıyor
+Yönet
+🪶
+Apache
+Web sunucusu
+Kurulu değil
+Nginx ile çakışır
+Veritabanları
+1/4
+🐘
+PostgreSQL
+Veritabanı sunucusu
+Kurulu değil
+Kur
+🦭
+MariaDB
+Veritabanı sunucusu
+Çalışıyor
+Yönet
+🐬
+phpMyAdmin
+MariaDB/MySQL web yönetim aracı
+Kurulu değil
+Kur
+🐘
+phpPgAdmin
+PostgreSQL web yönetim aracı
+Kurulu değil
+PostgreSQL gerekir
+E-posta
+0/6
+📧
+Postfix
+SMTP sunucusu
+Kurulu değil
+Kur
+📮
+Exim
+SMTP sunucusu
+Kurulu değil
+Panel entegrasyonu bekliyor
+🧹
+Rspamd
+Spam filtresi ve DKIM
+Kurulu değil
+bir SMTP sunucusu gerekir
+📬
+Dovecot
+IMAP/POP3 sunucusu
+Kurulu değil
+Kur
+✉️
+Roundcube
+Webmail
+Kurulu değil
+bir SMTP sunucusu, bir IMAP sunucusu gerekir
+Kalıntıları temizle
+🛡️
+SpamAssassin
+Spam filtresi
+Kurulu değil
+bir SMTP sunucusu gerekir
+Güvenlik
+2/5
+🔐
+WireGuard VPN
+Yerleşik VPN sunucusu
+Kurulu değil
+Kur
+🔐
+Let’s Encrypt istemcisi (certbot)
+SSL sertifikası sağlayıcısı
+Kurulu
+🚫
+Fail2ban
+Saldırı önleme
+Kurulu değil
+Kur
+🧱
+Güvenlik duvarı motoru
+nftables — panel güvenlik duvarının paket süzme motoru
+Kurulu
+🦠
+ClamAV
+Antivirüs / zararlı yazılım tarayıcısı
+Kurulu değil
+Kur
+Önbellek
+0/3
+⚡
+Redis
+Önbellek sunucusu
+Kurulu değil
+Kur
+🗝️
+Valkey
+Önbellek sunucusu
+Kurulu değil
+Kur
+💾
+Memcached
+Önbellek sunucusu
+Kurulu değil
+Kur
+FTP
+0/1
+📂
+vsftpd
+FTP sunucusu
+Kurulu değil
+Yerleşik SFTP’yi kullanın
+İzleme
+0/1
+📈
+Netdata
+Gerçek zamanlı ölçüm aracısı
+Kurulu değil
+Kur
+Sistem
+1/1
+⏰
+Zamanlanmış görevler (cron)
+Zamanlanmış görevleri çalıştıran yerel cron hizmeti
+Çalışıyor
+Yönet
+Temel Posta kur
+
+Başlatmadan önce sunucunun çözdüğü planı inceleyin. Siz onaylayana kadar hiçbir şey değişmez.
+
+Bileşen ve paketler
+Sürüm
+
+Postfix
+
+postfix
+
+3.10.13
+
+Dovecot
+
+dovecot-imapd, dovecot-pop3d, dovecot-lmtpd
+
+2.4.1
+
+Servis etkisi
+
+Bu servisler yeniden başlayabilir veya yeniden yüklenebilir: Postfix, Dovecot.
+
+Güvenlik duvarı etkisi
+
+Profil şu gelen bağlantı portlarını gerektirir: 110/tcp, 143/tcp, 25/tcp, 465/tcp, 587/tcp, 993/tcp, 995/tcp.
+
+Bu sunucuda posta, sunucu kurulumu üzerinden eklenir; böylece kurulumdaki adımların ve denetimlerin aynısından geçer: posta sunucusu adının genel DNS kaydı, güvenilir bir sertifika ve yenilenmesi, ters DNS (PTR) ve dışarı giden 25 numaralı bağlantı noktası. Hiçbir şey başlamadan önce değişiklikleri orada gözden geçirirsiniz.
+
+Posta ana bilgisayar adı
+
+Sistem hostname’i: dns-debian13. Posta hizmetleri ve sertifikaları için bir adres seçin; sunucunun adı değişmez.
+
+Posta sunucusunun yanıt vereceği ad
+
+Posta hizmetleri panel.set18.test adresini kullanacak. Sistem hostname’i korunur.
+
+Bu panele erişilen sertifikadan öneriliyor.
+
+İptal
+Sunucu kurulumunda incele

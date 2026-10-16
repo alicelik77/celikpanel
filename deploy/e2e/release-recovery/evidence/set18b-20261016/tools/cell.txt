@@ -1,0 +1,245 @@
+// -- the cell ------------------------------------------------------------------------------------------------------
+
+// What the wizard shows now: which step, the extension marks, and the set18 D1 screen's marks.
+const WIZARD_VIEW = () => {
+    const txt = el => el ? (el.innerText || '').replace(/\s+/g, ' ').trim() : null;
+    const main = document.querySelector('main') || document.body;
+    return {
+        at: Date.now(), path: location.pathname, h1: txt(main.querySelector('h1')), intro: txt(main.querySelector('h1')?.nextElementSibling),
+        step: document.getElementById('setup-plan-title') ? 'review' : document.getElementById('setup-panel_domain') ? 'access'
+            : document.querySelector('input[id^="setup-component-"]') ? 'components' : document.querySelector('input[name="setup-purpose"]') ? 'purpose'
+                : document.getElementById('setup-progress-title') ? 'progress' : document.querySelector('[data-setup-extend]') ? 'ready' : 'other',
+        purpose_checked: document.querySelector('input[name="setup-purpose"]:checked')?.value ?? null,
+        values: { panel_domain: document.getElementById('setup-panel_domain')?.value ?? null, mail_hostname: document.getElementById('setup-mail_hostname')?.value ?? null, dns: document.querySelector('input[name="setup-dns"]:checked')?.value ?? null },
+        extend_stop: txt(document.querySelector('[data-setup-extend-stop]')), extend_section: txt(document.querySelector('[data-setup-extend]')),
+        progress_title: txt(document.getElementById('setup-progress-title')),
+        completed_run_marks: /Completion could not be verified|Reconnect to this operation|Verifying the result/.test(main.innerText || ''),
+        alerts: Array.from(document.querySelectorAll('[role="alert"]')).filter(a => a.getClientRects().length).map(a => txt(a).slice(0, 600)),
+        buttons: Array.from(main.querySelectorAll('button, a')).filter(b => b.getClientRects().length).map(b => ({ text: txt(b), disabled: !!b.disabled })).filter(b => b.text).slice(0, 30),
+        overflow_x: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+    };
+};
+const COMPONENT_ROWS = () => Array.from(document.querySelectorAll('input[id^="setup-component-"]')).map(x => ({ id: x.id, checked: x.checked, disabled: x.disabled, text: (x.closest('label')?.innerText || '').replace(/\s+/g, ' ').trim() }));
+const view = async (page, label) => { const value = await page.evaluate(WIZARD_VIEW).catch(error => ({ error: String(error.message).slice(0, 160) })); await note('view', { label, view: value }); return value; };
+// The page's own read (GET only), recorded in full.
+async function pageRead(page, label, path) {
+    const value = await page.evaluate(async p => {
+        const response = await fetch(p, { cache: 'no-store' });
+        const text = await response.text();
+        let json = null; try { json = JSON.parse(text); } catch { /* not JSON */ }
+        return { status: response.status, json, text: json ? null : text.slice(0, 600) };
+    }, path).catch(error => ({ error: String(error.message).slice(0, 300) }));
+    await note('page-read', { label, path, status: value.status, answer: value.json ?? value.text ?? value.error });
+    return value;
+}
+const installedOf = services => services.json ? { status: services.status, installed: (services.json.services || []).filter(s => s.installed).map(s => s.id), mail_profiles: (services.json.mail_profiles || []).map(x => ({ id: x.id, status: x.status })) } : services;
+
+async function cellSetup() {
+    const summary = { cell: hand.cell, lab: LAB, chrome: await browser.version(), started_at: iso() };
+    const write = async () => writeFile(join(dir, 'setup-summary.json'), redact(JSON.stringify(summary, null, 2)));
+    await note('start', { chrome: summary.chrome });
+    const page = await newPage('owner', 'en', '1280');
+    await toFront(page);
+    try {
+        // ---- 1. the owner's guided setup, purpose web, to ready
+        phase = 'c1-wizard';
+        await signIn(page);
+        await page.goto(base + '/setup', { waitUntil: 'domcontentloaded', timeout: 60000 });
+        await settle(page, 2500);
+        await shot(page, 'c1-01-opened', {}, true);
+        if (await clickText(page, /^Set up with the wizard$/)) { await settle(page); await shot(page, 'c1-02-wizard'); }
+        await page.waitForSelector('input[name="setup-purpose"][value="web"]', { timeout: 60000 });
+        await page.click('input[name="setup-purpose"][value="web"]');
+        await pause(500);
+        await shot(page, 'c1-03-purpose');
+        await clickText(page, /^Continue/, 'main', 'button[type="submit"]');
+        await page.waitForSelector('#setup-panel_domain', { timeout: 60000 });
+        await fill(page, '#setup-panel_domain', LAB.panel_domain);
+        await page.click('input[name="setup-dns"][value="external"]');
+        await pause(800);
+        await shot(page, 'c1-04-access', {}, true);
+        await clickText(page, /^Review setup plan/, 'main', 'button[type="submit"]');
+        const reviewed = await waitFor(page, () => !!document.getElementById('setup-plan-title'), 90000);
+        await settle(page);
+        summary.c1_review = reviewed ? await reviewBlocks(page) : { not_shown: true };
+        await shot(page, 'c1-05-review', {}, true);
+        if (!reviewed || summary.c1_review.blockers) { summary.c1_stopped = 'the review did not show a plan that can start'; await write(); return summary; }
+        await page.click('section[aria-labelledby="setup-plan-title"] input[type="checkbox"]');
+        await pause(500);
+        phase = 'c1-run';
+        summary.c1_start_pressed_at = iso();
+        await clickText(page, /^Start reviewed setup$/);
+        summary.c1 = await follow(page, 'c1', 75 * 60000, false);
+        await leafRecord('after-c1', 'localhost'); await leafRecord('after-c1-no-sni', null);
+        summary.c1_pin = await prep('refresh-pin', 120000);
+        await write();
+        if (!summary.c1.ready_at) return summary;
+        await settle(page, 2000);
+        await shot(page, 'c1-ready', {}, true);
+        summary.c1_ready_variants = await variants(page, 'v-ready', null);
+        summary.c1_setup_read = await prep('setup-read', 120000);
+        await write();
+
+        // ---- 3. the Components mail route: where the wizard lands (D1), then "Stop extending"
+        phase = 'c3-components';
+        await page.goto(base + '/services', { waitUntil: 'domcontentloaded', timeout: 60000 });
+        await settle(page, 3000);
+        // Core Mail's card: the one whose component chips are Postfix and Dovecot only (the same names in EN and TR).
+        const openDialog = async () => {
+            const opened = await page.evaluate(() => {
+                const card = Array.from(document.querySelectorAll('#mail-stacks article')).find(a => {
+                    const chips = Array.from(a.querySelectorAll('span.rounded-md')).map(x => (x.innerText || '').trim()).join(' ');
+                    return /Postfix/.test(chips) && /Dovecot/.test(chips) && !/Roundcube|Rspamd/i.test(chips);
+                });
+                const button = card ? Array.from(card.querySelectorAll('button')).find(b => !b.disabled) : null;
+                if (!button) return null;
+                button.scrollIntoView({ block: 'center' }); button.click();
+                return { card: (card.querySelector('h3')?.innerText || '').trim(), button: (button.innerText || '').trim() };
+            }).catch(() => null);
+            await waitFor(page, () => !!document.querySelector('[data-mail-profile-route]'), 20000);
+            return opened;
+        };
+        await page.waitForSelector('#mail-stacks', { timeout: 60000 }).catch(() => {});
+        await shot(page, 'c3-01-components', {}, true);
+        summary.c3_card_button = await openDialog();
+        await settle(page, 1000);
+        summary.c3_dialog = await page.evaluate(() => {
+            const txt = el => el ? (el.innerText || '').replace(/\s+/g, ' ').trim() : null;
+            const dialog = document.querySelector('[data-mail-profile-route]')?.closest('[role="dialog"]') || document.querySelector('[role="dialog"]');
+            return { route: document.querySelector('[data-mail-profile-route]')?.getAttribute('data-mail-profile-route') || null, text: txt(dialog)?.slice(0, 4000),
+                hostname_value: document.getElementById('mail-profile-hostname')?.value ?? null, buttons: Array.from(dialog?.querySelectorAll('button') || []).map(b => ({ text: txt(b), disabled: b.disabled })) };
+        });
+        await shot(page, 'c3-02-dialog', {}, true);
+        if (await page.$('#mail-profile-hostname')) await fill(page, '#mail-profile-hostname', LAB.mail_hostname);
+        else if (await clickText(page, /^Change$/, '[role="dialog"]')) { await pause(500); await fill(page, '#mail-profile-hostname', LAB.mail_hostname); }
+        await pause(800);
+        await shot(page, 'c3-03-dialog-filled', {}, true);
+        summary.c3_review_in_setup_pressed_at = iso();
+        await clickText(page, /^Review in server setup$/, '[role="dialog"]');
+        await waitFor(page, () => location.pathname === '/setup' && !!(document.getElementById('setup-panel_domain') || document.getElementById('setup-progress-title') || document.querySelector('input[name="setup-purpose"]')), 60000);
+        await settle(page, 2500);
+        // Sampled for 6 s at 500 ms: the landing must stay on the access step (D1 put the completed run here).
+        summary.c3_landing_samples = [];
+        for (let i = 0; i < 12; i++) { summary.c3_landing_samples.push(await page.evaluate(WIZARD_VIEW).catch(() => null)); await pause(500); }
+        summary.c3_landed = await view(page, 'c3 landed after Review in server setup');
+        summary.c3_d1 = { access_step: summary.c3_landed.step === 'access', mail_hostname_prefilled: summary.c3_landed.values?.mail_hostname === LAB.mail_hostname,
+            stop_extending_shown: !!summary.c3_landed.extend_stop, completed_run_marks: summary.c3_landing_samples.some(x => x?.completed_run_marks),
+            steps_seen: [...new Set(summary.c3_landing_samples.map(x => x?.step))] };
+        await shot(page, 'c3-04-access-step', {}, true);
+        // the access step's secondary-DNS box: local DNS, role secondary (UI state only), then back to external
+        phase = 'c4-secondary-box';
+        if (summary.c3_landed.step === 'access') {
+            summary.c4_dns_before = summary.c3_landed.values?.dns;
+            await page.click('input[name="setup-dns"][value="local"]').catch(error => note('c4-local-refused', { error: String(error.message).slice(0, 160) }));
+            await pause(600);
+            await page.select('#setup-dns_role', 'secondary').catch(() => {});
+            await pause(800);
+            summary.c4_secondary_box = await page.evaluate(() => {
+                const txt = el => el ? (el.innerText || '').replace(/\s+/g, ' ').trim() : null;
+                const box = Array.from(document.querySelectorAll('main div')).find(d => /This secondary receives its DNS zones from/.test(d.innerText || '') && d.children.length <= 3);
+                if (box) box.scrollIntoView({ block: 'center' });
+                return { text: txt(box), dns: document.querySelector('input[name="setup-dns"]:checked')?.value ?? null, role: document.getElementById('setup-dns_role')?.value ?? null };
+            });
+            await shot(page, 'c4-secondary-box', {}, true);
+            if (summary.c4_dns_before) await page.click(`input[name="setup-dns"][value="${summary.c4_dns_before}"]`).catch(() => {});
+            await pause(600);
+            summary.c4_dns_after = await page.evaluate(() => document.querySelector('input[name="setup-dns"]:checked')?.value ?? null);
+        } else summary.c4_secondary_box = { not_reached: `the wizard landed on ${summary.c3_landed.step}` };
+        // stop extending: the ready screen comes back and nothing was installed
+        phase = 'c3-stop';
+        summary.c3_stop_pressed_at = iso();
+        summary.c3_stop_clicked = await clickText(page, /^Stop extending$/);
+        const restored = await waitFor(page, () => !!document.querySelector('[data-setup-extend]'), 60000);
+        await settle(page, 1500);
+        summary.c3_stopped = { ready_screen: restored, at: iso(), view: await view(page, 'c3 after Stop extending') };
+        await shot(page, 'c3-05-ready-again', {}, true);
+        summary.c3_setup_read = await prep('setup-read', 120000);
+        summary.c3_components_after_stop = installedOf(await pageRead(page, 'components after Stop extending', '/api/v1/managed-services'));
+        await write();
+
+        // ---- 2. the extension from the ready screen: Core Mail
+        phase = 'c2-wizard';
+        summary.c2_extend_clicked = await clickText(page, /^Extend setup$/);
+        await waitFor(page, () => !!document.querySelector('input[name="setup-purpose"]') || !!document.getElementById('setup-panel_domain') || !!document.getElementById('setup-progress-title'), 60000);
+        await settle(page, 1500);
+        summary.c2_purpose = await view(page, 'c2 after Extend setup');
+        await shot(page, 'c2-01-purpose', {}, true);
+        if (summary.c2_purpose.step !== 'purpose') { summary.c2_stopped = `Extend setup opened ${summary.c2_purpose.step}, not the purpose step`; await write(); return summary; }
+        summary.c2_customize_clicked = await clickText(page, /^Customize selection$/);
+        await waitFor(page, () => !!document.querySelector('input[id^="setup-component-"]'), 60000);
+        await settle(page, 1000);
+        summary.c2_components = { view: await view(page, 'c2 components step'), rows: await page.evaluate(COMPONENT_ROWS) };
+        await shot(page, 'c2-02-components', {}, true);
+        const mailGroup = await page.evaluate(() => {
+            const rows = Array.from(document.querySelectorAll('input[id^="setup-component-"]'));
+            const row = rows.find(x => /Postfix/i.test(x.closest('label')?.innerText || '') && /Dovecot/i.test(x.closest('label')?.innerText || '') && !/Roundcube|Rspamd/i.test(x.closest('label')?.innerText || ''))
+                || rows.find(x => /Postfix/i.test(x.closest('label')?.innerText || ''));
+            if (!row) return null;
+            if (!row.checked) row.click();
+            return { id: row.id, label: (row.closest('label')?.innerText || '').replace(/\s+/g, ' ').trim(), checked_now: row.checked };
+        });
+        summary.c2_mail_component = mailGroup;
+        await pause(800);
+        summary.c2_components_after = await page.evaluate(COMPONENT_ROWS);
+        await shot(page, 'c2-03-components-mail', {}, true);
+        await clickText(page, /^Continue/, 'main', 'button[type="submit"]');
+        await page.waitForSelector('#setup-mail_hostname', { timeout: 60000 });
+        summary.c2_access_before_fill = await view(page, 'c2 access step');
+        await fill(page, '#setup-mail_hostname', LAB.mail_hostname);
+        await pause(600);
+        summary.c2_access = await view(page, 'c2 access step filled');
+        await shot(page, 'c2-04-access', {}, true);
+        await clickText(page, /^Review setup plan/, 'main', 'button[type="submit"]');
+        const reviewed2 = await waitFor(page, () => !!document.getElementById('setup-plan-title'), 90000);
+        await settle(page);
+        summary.c2_review = reviewed2 ? await reviewBlocks(page) : { not_shown: true, view: await view(page, 'c2 review not shown') };
+        await shot(page, 'c2-05-review', {}, true);
+        if (!reviewed2 || summary.c2_review.blockers) { summary.c2_stopped = 'the review did not show a plan that can start'; await write(); return summary; }
+        const backToReview = async () => {
+            if (!(await waitFor(page, () => !!document.getElementById('setup-plan-title'), 15000))) {
+                await note('review-not-restored-after-reload');
+                if (await page.$('#setup-panel_domain')) { await clickText(page, /^(Review setup plan|Kurulum planını incele)/, 'main', 'button[type="submit"]'); await waitFor(page, () => !!document.getElementById('setup-plan-title'), 90000); }
+            }
+            await page.evaluate(() => { const d = document.querySelector('[data-setup-extension-review] details'); if (d) d.open = true; });
+        };
+        summary.c2_review_variants = await variants(page, 'v-ext-review', backToReview);
+        summary.c2_review_tr = await page.evaluate(() => null);
+        summary.c2_review_after_variants = await view(page, 'c2 review after the Turkish picture');
+        if (summary.c2_review_after_variants.step !== 'review') { summary.c2_stopped = 'the review did not come back after the Turkish picture'; await write(); return summary; }
+        await page.click('section[aria-labelledby="setup-plan-title"] input[type="checkbox"]');
+        await pause(500);
+        phase = 'c2-run';
+        summary.c2_start_pressed_at = iso();
+        summary.c2_start_clicked = await clickText(page, /^Start reviewed setup$/);
+        summary.c2 = await follow(page, 'c2', 90 * 60000, true);
+        await leafRecord('after-c2', 'localhost'); await leafRecord('after-c2-no-sni', null);
+        await write();
+        if (summary.c2.ready_at) {
+            await settle(page, 2000);
+            await shot(page, 'c2-ready', {}, true);
+            summary.c2_ready_variants = await variants(page, 'v-ready-after-extension', null);
+            await page.goto(base + '/services', { waitUntil: 'domcontentloaded', timeout: 60000 });
+            await settle(page, 3000);
+            await page.evaluate(() => document.getElementById('mail-stacks')?.scrollIntoView({ block: 'start' }));
+            await shot(page, 'c2-components-after', {}, true);
+            summary.c2_components_after_run = installedOf(await pageRead(page, 'components after the extension', '/api/v1/managed-services'));
+        }
+        summary.c2_setup_read = await prep('setup-read', 120000);
+        summary.lab_state = await prep('lab-state', 120000);
+        summary.enroll_posts_total = enrollPosts.length;
+        summary.ended_at = iso();
+        await write();
+        return summary;
+    } catch (error) {
+        summary.error = String(error.stack || error.message).slice(0, 2000);
+        await shot(page, 'error', {}, true).catch(() => {});
+        await write();
+        return summary;
+    }
+}
+
+for (const cell of cells) {
+    if (cell === 'setup') await cellSetup();
+    else if (cell === 'done') { if (!existsSync(join(handDir, 'done.json'))) await writeFile(join(handDir, 'done.json'), JSON.stringify({ at: iso(), by: 'cold-load-set18b.mjs' }) + '\n'); }
+}
+await browser.close();

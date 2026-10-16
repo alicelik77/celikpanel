@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"strings"
@@ -71,6 +72,16 @@ type serverSetupState struct {
 	Guidance    string             `json:"guidance"`
 	Checks      []serverSetupCheck `json:"checks"`
 	ServerIP    string             `json:"server_ip,omitempty"`
+	// Extension and ExtensionBase are additive (2026-10-16). A completed setup
+	// that the owner extends keeps its completion record (completed_at) while
+	// the new draft is reviewed and run: the server stays prepared, nothing
+	// forces the owner back into setup, and ExtensionBase is the draft as it
+	// was completed, so the review can show only what changes and stopping the
+	// extension restores it. An older page ignores both fields.
+	// Tamamlanmis kurulumu genisletme: tamamlanma kaydi korunur; taban taslak
+	// yalniz degisenleri gostermek ve genisletmeyi durdurmak icin tutulur.
+	Extension     bool              `json:"extension,omitempty"`
+	ExtensionBase *serverSetupDraft `json:"extension_base,omitempty"`
 }
 
 func defaultServerSetupDraft() serverSetupDraft {
@@ -187,7 +198,11 @@ func (p *Panel) loadServerSetup(ctx context.Context) (serverSetupState, error) {
 	if err != nil {
 		return s, err
 	}
-	s.Required = s.Status != "legacy" && s.Status != "ready"
+	s.Extension = s.CompletedAt != "" && stringIn(s.Status, "draft", "running", "waiting", "failed")
+	s.Required = s.Status != "legacy" && s.Status != "ready" && !s.Extension
+	if s.Extension {
+		s.ExtensionBase = p.serverSetupExtensionBase(ctx)
+	}
 	if s.Guidance == "" {
 		s.Guidance = "guided"
 		if stringIn(s.Status, "new", "legacy") {
@@ -219,9 +234,29 @@ func (p *Panel) saveServerSetupDraft(ctx context.Context, revision int, draft se
 	if err != nil {
 		return serverSetupState{}, err
 	}
+	tx, err := p.db.GetDB().BeginTx(ctx, nil)
+	if err != nil {
+		return serverSetupState{}, err
+	}
+	defer tx.Rollback()
+	// A draft saved over a completed setup extends it: the completed draft is
+	// kept, as stored, as the extension's base (see handleServerSetupExtend).
+	// Tamamlanmis kurulumun uzerine kaydedilen taslak onu genisletir.
+	var currentStatus, currentDraft string
+	if err := tx.QueryRowContext(ctx, `SELECT status,draft_json FROM server_setup_state WHERE id=1 AND revision=?`, revision).Scan(&currentStatus, &currentDraft); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return serverSetupState{}, errServerSetupConflict
+		}
+		return serverSetupState{}, err
+	}
+	if currentStatus == "ready" {
+		if err := saveServerSetupExtensionBase(ctx, tx, currentDraft); err != nil {
+			return serverSetupState{}, err
+		}
+	}
 	// The state CAS also protects against another panel process starting the
 	// reviewed plan. / CAS baska panel isleminin ayni plani baslatmasini da korur.
-	result, err := p.db.GetDB().ExecContext(ctx, `UPDATE server_setup_state SET draft_json=?,revision=revision+1,status='draft',updated_at=datetime('now') WHERE id=1 AND revision=? AND status IN ('new','legacy','draft','failed','ready')`, string(raw), revision)
+	result, err := tx.ExecContext(ctx, `UPDATE server_setup_state SET draft_json=?,revision=revision+1,status='draft',updated_at=datetime('now') WHERE id=1 AND revision=? AND status IN ('new','legacy','draft','failed','ready')`, string(raw), revision)
 	if err != nil {
 		return serverSetupState{}, err
 	}
@@ -231,6 +266,9 @@ func (p *Panel) saveServerSetupDraft(ctx context.Context, revision int, draft se
 	}
 	if count != 1 {
 		return serverSetupState{}, errServerSetupConflict
+	}
+	if err := tx.Commit(); err != nil {
+		return serverSetupState{}, err
 	}
 	return p.loadServerSetup(ctx)
 }
@@ -316,6 +354,12 @@ func (p *Panel) completeServerSetupOwned(ctx context.Context, revision int, exec
 	}
 	if count != 1 {
 		return errServerSetupConflict
+	}
+	// A finished extension has no base any more. A leftover row is harmless
+	// (the next extension replaces it), so a failed delete is only logged.
+	// Biten genisletmenin tabani silinir; kalan satir zararsizdir.
+	if _, err := p.db.GetDB().ExecContext(ctx, `DELETE FROM panel_settings WHERE key=?`, settingServerSetupExtensionBase); err != nil {
+		log.Printf("server setup extension base not cleared: %v", err)
 	}
 	return nil
 }

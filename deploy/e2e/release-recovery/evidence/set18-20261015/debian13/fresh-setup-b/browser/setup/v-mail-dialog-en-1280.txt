@@ -1,0 +1,275 @@
+Firewall: On
+
+Only these ports are reachable; everything else is blocked.
+
+Turn off
+22/tcp (SSH)
+80/tcp
+443/tcp
+2083/tcp
+Rescan
+Last scan: 16.10.2026 01:57:08
+Installed (6)
+Catalog (27)
+Expand all
+Collapse all
+One-click mail stacks
+
+Install a known-good mail stack as one recoverable operation. Individual services remain available below.
+
+Core Mail
+
+Postfix SMTP and Dovecot IMAP/POP3 with authenticated submission.
+
+Postfix
+Dovecot
+Ready to install
+Install
+Webmail
+
+Core mail plus Nginx, PHP-FPM and Roundcube webmail.
+
+Postfix
+Dovecot
+Nginx
+PHP-FPM
+Roundcube
+
+Some components are already present. Installing this profile completes the full plan without removing the services already in place.
+
+Partially installed
+Continue
+Spam-Protected Mail
+
+Core mail with Rspamd spam filtering.
+
+Postfix
+Dovecot
+Rspamd
+Ready to install
+Install
+
+27 items total
+
+DNS
+0/2
+🌐
+BIND
+DNS Server
+—
+Not installed
+Manage DNS engine
+⚡
+PowerDNS
+DNS Server
+—
+Not installed
+Manage DNS engine
+Web servers
+2/4
+🐘
+PHP-FPM
+PHP FastCGI Process Manager
+8.4
+Running
+Versions
+1
+Manage
+🟩
+Node.js
+JavaScript Runtime
+—
+Not installed
+Install
+🔄
+Nginx
+Reverse Proxy Server
+—
+Running
+Manage
+🪶
+Apache
+Web Server
+—
+Not installed
+Conflicts with Nginx
+Databases
+1/4
+🐘
+PostgreSQL
+Database Server
+—
+Not installed
+Install
+🦭
+MariaDB
+Database Server
+—
+Running
+Manage
+🐬
+phpMyAdmin
+MariaDB/MySQL web admin tool
+—
+Not installed
+Install
+🐘
+phpPgAdmin
+PostgreSQL web admin tool
+—
+Not installed
+Needs PostgreSQL
+Email
+0/6
+📧
+Postfix
+SMTP Server
+—
+Not installed
+Install
+📮
+Exim
+SMTP Server
+—
+Not installed
+Panel integration pending
+🧹
+Rspamd
+Spam Filter & DKIM
+—
+Not installed
+Needs an SMTP server
+📬
+Dovecot
+IMAP/POP3 Server
+—
+Not installed
+Install
+✉️
+Roundcube
+Webmail
+—
+Not installed
+Needs an SMTP server, an IMAP server
+Clean up leftovers
+🛡️
+SpamAssassin
+Spam Filter
+—
+Not installed
+Needs an SMTP server
+Security
+2/5
+🔐
+WireGuard VPN
+Built-in VPN server
+—
+Not installed
+Install
+🔐
+Let’s Encrypt client (certbot)
+SSL certificate provider
+—
+Installed
+🚫
+Fail2ban
+Intrusion Prevention
+—
+Not installed
+Install
+🧱
+Firewall engine
+nftables — the panel firewall’s packet-filtering engine
+—
+Installed
+🦠
+ClamAV
+Antivirus / malware scanner
+—
+Not installed
+Install
+Cache
+0/3
+⚡
+Redis
+Cache Server
+—
+Not installed
+Install
+🗝️
+Valkey
+Cache Server
+—
+Not installed
+Install
+💾
+Memcached
+Cache Server
+—
+Not installed
+Install
+FTP
+0/1
+📂
+vsftpd
+FTP Server
+—
+Not installed
+Use built-in SFTP
+Monitoring
+0/1
+📈
+Netdata
+Real-time metrics agent
+—
+Not installed
+Install
+System
+1/1
+⏰
+Scheduled tasks (cron)
+Native cron daemon that runs scheduled tasks
+—
+Running
+Manage
+Install Core Mail
+
+Review the server-resolved plan before starting. Nothing changes until you confirm.
+
+Component and packages
+Version
+
+Postfix
+
+postfix
+
+3.10.13
+
+Dovecot
+
+dovecot-imapd, dovecot-pop3d, dovecot-lmtpd
+
+2.4.1
+
+Service impact
+
+These services may restart or reload: Postfix, Dovecot.
+
+Firewall impact
+
+The profile requires these inbound ports: 110/tcp, 143/tcp, 25/tcp, 465/tcp, 587/tcp, 993/tcp, 995/tcp.
+
+On this server mail is added through server setup, so it gets the same steps and checks as setup: the public DNS record of the mail host name, a trusted certificate and its renewal, reverse DNS (PTR) and outgoing port 25. You review the changes there before anything starts.
+
+Mail hostname
+
+System hostname: dns-debian13. Choose the address for mail services and their certificate; this does not rename the server.
+
+Name the mail server answers as
+
+Mail services will use panel.set18.test. The system hostname is preserved.
+
+Suggested from the certificate this panel is reached at.
+
+Cancel
+Review in server setup

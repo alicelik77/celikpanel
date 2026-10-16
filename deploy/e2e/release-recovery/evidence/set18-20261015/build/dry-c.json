@@ -1,0 +1,60 @@
+{
+  "browser": {
+    "lang": "en",
+    "viewport": "1280"
+  },
+  "candidate": {
+    "commit": "c84ebee347202ae3d647726c9bf096662dcf621e",
+    "sha256": "708e2030d5c46b9074c94a1ced72cc122d96beb5ba77419e8f9df64e6e87b0a6",
+    "version": "v0.1.0-alpha.87"
+  },
+  "cell": "set18-debian13",
+  "cell_kind": "set18-fresh-setup-to-ready",
+  "lab": {
+    "helper": "guest_set18_lab_dns.py",
+    "server_ip": "192.0.2.10"
+  },
+  "local_port": 18443,
+  "native_evidence": false,
+  "pinned_names": [
+    "celikpanel.net",
+    "acme-v02.api.letsencrypt.org",
+    "acme-staging-v02.api.letsencrypt.org",
+    "acme.zerossl.com",
+    "dv.acme-v02.api.pki.goog"
+  ],
+  "preparations": [
+    "probe",
+    "journal",
+    "lab-state",
+    "lab-mail-a",
+    "lab-ptr-mail",
+    "refresh-pin",
+    "setup-read"
+  ],
+  "rule": "the driver calls only the Panel's HTTP API as the logged-in owner; every native fact is an SSH reading; owner actions and lab preparation on the guest are recorded as such; no certificate authority and no licence service is contacted; outbound 443 from the guest is refused except to the package hosts",
+  "schema": "celikpanel/set18-plan/v1",
+  "setup": {
+    "dns_mode": "external",
+    "extension": {
+      "mail_hostname": "mail.set18.test",
+      "mail_profile": "core-mail"
+    },
+    "panel_domain": "panel.set18.test",
+    "purpose": "web"
+  },
+  "steps": [
+    "set6-name-pinning",
+    "preflight",
+    "origin",
+    "set18-lab-network",
+    "baseline-install",
+    "owner-login",
+    "license",
+    "set18-browser-window",
+    "set18-readings",
+    "set6-name-pinning-at-the-end",
+    "collect"
+  ],
+  "work_root": "/var/tmp/cp-release-drill-s18-a"
+}

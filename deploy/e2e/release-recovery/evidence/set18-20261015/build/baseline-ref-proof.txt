@@ -1,0 +1,26 @@
+set18: source=5d54aba1e9c93357fa0c19d3b0487e27384acd01 baseline=c84ebee347202ae3d647726c9bf096662dcf621e (source + policy 87) good=1a1f50a956498e30a5810492331245a2e3e5c496 (policy 88) defective=149378b2a5dedf5dfc9a6300a6a3723e4cb42b2f
+== release policy at the source
+format=celikpanel-release-sequence-policy-v1
+version=v0.1.0-alpha.86
+current=86
+previous=85
+previous_version=v0.1.0-alpha.85
+previous_commit=36c33c4531ee6c1306d324db7a666403176f3bf7
+== release policy at the baseline (installed)
+format=celikpanel-release-sequence-policy-v1
+version=v0.1.0-alpha.87
+current=87
+previous=86
+previous_version=v0.1.0-alpha.86
+previous_commit=8d260f317e58bed7fcd84c6cbb01823c4fe3f166
+== release policy at the good fixture (never installed)
+format=celikpanel-release-sequence-policy-v1
+version=v0.1.0-alpha.88
+current=88
+previous=87
+previous_version=v0.1.0-alpha.87
+previous_commit=c84ebee347202ae3d647726c9bf096662dcf621e
+== git diff --stat 8d260f317e58bed7fcd84c6cbb01823c4fe3f166 5d54aba1e9c93357fa0c19d3b0487e27384acd01 -- internal/db/migrations (empty = no migration since the alpha.86 tag):
+== (end)
+== Agent package closure at the baseline (317 packages): licensing packages
+0

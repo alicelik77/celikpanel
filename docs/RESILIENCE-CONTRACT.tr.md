@@ -5085,3 +5085,91 @@ bir yayımı kaydeder; kod, şema ya da kurtarma davranışını değiştirmez.
   oturum kapısının `PANEL_STARTING` yolunun gerçek sistemde ölçülmemesi ve yeni
   güncelleme ekranının kurulu bir sunucuda ancak bundan sonraki güncellemede
   görülmesi.
+
+### v0.1.0-alpha.87 adayı (P0.2 alanı; ilke 1, 2 ve 6; D-021; D-024; D-033; 2026-10-16)
+
+D-025 ilke 1 (sunucu sahibi yetkisini ve çalışan hizmetlerini korur), 2 (kanıtın
+bir anlamı ve yaşam döngüsü vardır: bilinmeyen; yok, boş ya da başarılı
+değildir) ve 6 (hazır olma, ilerleme ve erişim birbirinden bağımsız kalır); D-021; D-024; D-033. **Hiçbir P0 işi kapanmaz ya da
+ilerlemez.** P0.1–P0.5 kısmi kalır ve her açık kabul işi açık kalır. Bu girdi
+yayımlanmamış bir adayı kaydeder; 2026-10-16 girdinin saat tarihidir.
+
+- **Adayın değiştirdikleri.** Tam eş olarak ikinci kurulu sunucunun birinci
+  bölümü. Tamamlanmış bir kurulum genişletilebilir
+  (`POST /api/v1/setup/extend`, `begin` ve `cancel` eylemleri): sihirbaz
+  tamamlanmış değerlerle yeniden açılır, inceleme neyin değiştiğini, neyin
+  kurulacağını ve neyin kaldığını söyler ve çalıştırma, tek uçuşuyla var olan
+  incelenmiş çalıştırıcıdır; genişletme tamamlanma kaydını korur ve zorunlu
+  değildir, böylece hazırlanmış bir sunucu asla kuruluma geri yönlendirilmez;
+  "Genişletmeden vazgeç" tamamlanmış taslağı geri getirir ve hiçbir şey
+  kaldırmaz. Hazırlanmış bir sunucuda Bileşenler posta penceresi profili bir
+  genişletmeye ekler; böylece posta kurulumun genel DNS denetiminden, güvenilir
+  sertifikasından ve yenilemesinden, ters DNS ve 25 numaralı bağlantı noktası
+  denetimlerinden geçer; kurulumu bitmemiş bir sunucu, artık kendinden imzalı
+  bittiğini söyleyen doğrudan kurulumu korur. Düzeltilen posta sunucusu adı
+  yalnız işlemi kabul edilince kaydedilir. Bir DNS çiftinin ikincilinde posta
+  kutusu, kaydı oluşturamayan bir DNS sayfası yerine birincili ve tam kaydı
+  adlandırır (`mail_dns_guidance`); panel hiçbir kayıt oluşturmaz. set18'den
+  sonra: taslakta bir genişletme varken kurulum işlemi yanıtı tamamlanmış
+  çalışma için ek alan `superseded` taşır (D1), başlayan çalışma ilk adımını
+  adlandırır (O1) ve basılan "Kayıtlı işleme devam et", bir okuma işlemin
+  ilerlediğini gösterene kadar tek uçuşlu kalır (O3; yalnız okuma).
+  `internal/` ya da `cmd/agent/` altında hiçbir şey değişmedi; güncelleme
+  yolunda, kurtarma çalıştırıcısında, sürüm tabanında ya da yerel hizmetlerde
+  değişiklik yok. Hangi kontrolün hangi koda dayandığını
+  [sürüm notları](RELEASE-NOTES-v0.1.0-alpha.87.tr.md) söyler.
+- **Dokunulan ilkeler.** İlke 1: genişletme kurulu bir bileşeni asla
+  kaldırmaz, durdurmaz ya da değiştirmez ve ondan vazgeçmek kısmen çalışmış bir
+  genişletmenin kurduğu hiçbir şeyi kaldırmaz. İlke 2: yerini almış tamamlanmış
+  bir çalışma, kurulumu genişletilen bir sunucuda "Tamamlanma doğrulanamadı"
+  olarak gösterilmez; alan yalnız başarılı çalışmada tutulur, böylece süren bir
+  çalışmayı ya da bir hatayı gizleyemez; inceleme her ayarı önce ve sonra ve
+  kalanları gösterir ve meşgul bir sunucunun reddettiği posta sunucusu adı
+  kaydedilmez. İlke 6: genişletme tamamlanma kaydını korur; böylece
+  hazırlanmış bir sunucunun hazır olma durumu geri alınmaz ve sunucu
+  genişletilirken ya da genişletme çalışırken sahip kuruluma yönlendirilmez. Durum sorgusu asla bir değişiklik başlatmaz ya da kabul
+  ettirmez (D-024).
+- **Şema ya da sürüm geçişi.** Yok: alpha.86 etiketi ile aday arasında taşıma
+  yok (`git diff --stat 8d260f317..HEAD -- internal/ cmd/` hiçbir taşıma
+  dosyası adlandırmaz; veritabanı şeması 44'te kalır). Genişletme tabanı,
+  kurulum durum satırıyla aynı işlemde yazılıp silinen bir `panel_settings`
+  satırıdır (`server_setup_extension_base`). Sürüm sırası, sürüm hazırlığı
+  `471377d60`'da önceki olarak alpha.86 sürüm commit'i
+  `8d260f317e58bed7fcd84c6cbb01823c4fe3f166` ile 86'dan 87'ye çıkar; geçiş
+  kuralları değişmedi. **Kurtarma davranışı.** Değişmedi. Genişletme, var olan
+  çalıştırıcı, tek uçuşu ve kurtarmasıyla olağan incelenmiş bir kurulum
+  çalışmasıdır; bir genişletmeden vazgeçmek yalnız kurulum kaydını değiştirir.
+- **Kanıt.** Bileşen testleri: `go test -count=1 -v ./cmd/panel/...` 1558 üst
+  düzey test geçti, 6 atlandı, 0 kaldı, 1675 alt test geçti (`bef12820e`'de,
+  `6b363ac46` ile aynı Go kodu; sürümü hazırlayanın WSL konuğundaki ölçümü, bir
+  dosyada kayıtlı değil); `npm test` 1499'da 1499, bu belgelerin gerçeklik
+  denetimi de `b6c43a4b5`'te yeniden koştu. Agent koşulmadı
+  (değişmedi). Taklide karşı 16. tarayıcı inceleme turu (8 yapılandırmada 36
+  durum; yedi kusur düzeltildi). Gerçek sistem kayıtları (Debian 13 QEMU/KVM
+  konukları, test lisanslı derlemeler, konuğun içinde bir laboratuvar DNS
+  yanıtlayıcısı ve bir laboratuvar ACME sunucusu; ölçümdür, kabul değildir):
+  `5d54aba1e`'de `deploy/e2e/release-recovery/evidence/set18-20261015/README.md`
+  ve `6b363ac46`'da
+  `deploy/e2e/release-recovery/evidence/set18b-20261016/README.md`; ikisi de
+  `90b3fe2f2`'deki teslim alma düzeltmeleriyle. Sonuç: kurulum ve Core Mail ekleyen
+  bir genişletme, bu kanıt klasöründe ilk kez genel DNS denetimi, güvenilir
+  sertifikalar ve "Kurulum tamamlanıyor" üzerinden gerçek sistemde hazır
+  duruma ulaştı; set18 D1'i kaydetti, set18b D1, O1 ve O3'ün düzeldiğini ve
+  yeni kusur olmadığını gözledi.
+- **Açık.** İkinci bölüm (sahibin üç kararı: birincilin bir eşin posta sunucusu
+  adını taşıması, altyapı bölgesi için bir düzenleyici, ana makine
+  kayıtlarının uzak DNS bağlantısıyla kendiliğinden aktarılması); ikincil DNS
+  kutularına gerçek sistemde ulaşılmadı; çözümleyicilerin ayrıştığı cümle ve
+  yavaş "Kurulum tamamlanıyor" çeşidi üretilmedi; genel ACME ve DNS yolu
+  ölçülmedi (yalnız laboratuvar); Ubuntu 24.04 ve Arch koşulmadı; ham
+  dosyalarda gözlenen ve değerlendirilmeyenler: yalnız web kurulumunda her
+  Panel başlangıcında "not a valid FQDN" günlük satırı, `cron DEATH` satırları,
+  güvenilir posta sertifikası ardından gelirken kendinden imzalı yedek
+  bildirimi ve kurulumun kendi planlı yeniden başlaması çevresinde lisans
+  kapısının erişim şeridi (alpha.86'nın yeniden başlama payı yalnız
+  güncellemenin yeniden başlamasını kapsar); O2 ve O4 değerlendirilmedi, O5
+  ("Özel kurulum" etiketi) D-021 ve D-033 altında sürümü hazırlayanın kararıyla
+  olduğu gibi bırakıldı; sürümü hazırlayanın birinci bölüm için verdiği her karar
+  sahibin onayına açıktır, hiçbiri sahibin kararı değildir; hiçbir kurulu sunucu
+  ölçülmedi. Yukarıdaki girdilerin açık bıraktığı her şey
+  açık kalır.

@@ -1,0 +1,44 @@
+{
+  "at": "2026-10-15T23:24:30Z",
+  "prep": "lab-ptr-mail",
+  "result": {
+    "after": {
+      "A": {
+        "host-192-0-2-10.provider.set18.test": [
+          "192.0.2.10"
+        ],
+        "mail.set18.test": [
+          "192.0.2.10"
+        ],
+        "panel.set18.test": [
+          "192.0.2.10"
+        ]
+      },
+      "PTR": {
+        "10.2.0.192.in-addr.arpa": "mail.set18.test"
+      },
+      "note": "panel.set18.test prepared before setup; mail.set18.test absent until the owner adds it; PTR at the provider's default name"
+    },
+    "at": "2026-10-15T23:24:30Z.646",
+    "checks": [
+      {
+        "answers": 1,
+        "name": "mail.set18.test",
+        "proto": "tcp",
+        "qtype": 1,
+        "rcode": 0,
+        "resolver": "1.1.1.1"
+      },
+      {
+        "answers": 1,
+        "name": "10.2.0.192.in-addr.arpa",
+        "proto": "tcp",
+        "qtype": 12,
+        "rcode": 0,
+        "resolver": "8.8.8.8"
+      }
+    ],
+    "meaning": "the owner sets the reverse DNS of 192.0.2.10 to mail.set18.test at the server provider (lab record table)",
+    "what": "ptr-mail"
+  }
+}

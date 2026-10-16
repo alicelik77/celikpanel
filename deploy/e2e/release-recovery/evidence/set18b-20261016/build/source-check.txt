@@ -1,0 +1,55 @@
+HEAD 6b363ac4680146f856642cffdab0b57662f6159c
+source 6b363ac4680146f856642cffdab0b57662f6159c tree 41ec5ad6e6ef0761e517c98135dec3aa2f6835cb
+tag v0.1.0-alpha.86 = 8d260f317e58bed7fcd84c6cbb01823c4fe3f166
+git log --oneline v0.1.0-alpha.86..6b363ac4680146f856642cffdab0b57662f6159c:
+6b363ac46 Server setup: an extension opens its wizard, not the completed run; a started run names its first step; a pressed continuation stays single-flight
+ddea67344 Native record set18: setup to ready and its extension with a lab DNS and ACME
+5d54aba1e Browser inspection batch 16: the second server as a full peer, part 1
+b67987865 Server setup: show a check's answer, a running extension's progress link, whole hyphenated words
+c40f14f87 Components mail: lock the dialog while setup is asked, show a refusal, say a profile waits for its record
+343d3eb9e Operation guidance: second server as a full peer, part 1 (EN and TR)
+32f0a3766 Say a mail host name change in the field's own note
+450af0d88 Components: mail through setup on a prepared server, mail host name correction, secondary DNS truth
+f51d98e4b Extend a completed setup from the ready screen and Settings; one sentence per open check
+60ea75c1c Name the primary and the exact record when mail waits on a secondary DNS server
+eddc11610 Save a corrected mail host name only once its operation is admitted
+99e90ac74 Extend a completed setup: POST /api/v1/setup/extend and the extension marker
+(end)
+git diff --stat v0.1.0-alpha.86 6b363ac4680146f856642cffdab0b57662f6159c -- cmd internal web/src:
+ cmd/panel/audit_actions.go                   |   2 +
+ cmd/panel/mail_dns_identity.go               |  61 +++++
+ cmd/panel/mail_hostname_edit_test.go         |  93 ++++++++
+ cmd/panel/mail_profiles.go                   |  34 ++-
+ cmd/panel/main.go                            |   1 +
+ cmd/panel/managed_service_handlers.go        |   9 +
+ cmd/panel/server_setup.go                    |  48 +++-
+ cmd/panel/server_setup_execution_context.go  |   5 +
+ cmd/panel/server_setup_extend.go             | 329 +++++++++++++++++++++++++++
+ cmd/panel/server_setup_extend_test.go        | 329 +++++++++++++++++++++++++++
+ cmd/panel/server_setup_operations.go         |  21 +-
+ cmd/panel/server_setup_revise.go             |   5 +-
+ web/src/components/ServerSetup.tsx           | 183 +++++++++++++--
+ web/src/components/ServerSetupChoice.tsx     |  14 +-
+ web/src/components/ServerSetupComponents.tsx |   7 +-
+ web/src/components/ServerSetupGate.tsx       |  11 +
+ web/src/components/ServiceList.tsx           | 258 ++++++++++++++++++---
+ web/src/i18n/screens/en.ts                   |  24 ++
+ web/src/i18n/screens/server/en.ts            |  20 ++
+ web/src/i18n/screens/server/tr.ts            |  20 ++
+ web/src/i18n/screens/tr.ts                   |  24 ++
+ web/src/lib/serverSetup.ts                   |  61 +++--
+ web/src/lib/serverSetupGuidance.ts           |  14 +-
+ web/src/lib/serverSetupOperation.ts          |  11 +
+ 24 files changed, 1494 insertions(+), 90 deletions(-)
+(end)
+git diff --stat v0.1.0-alpha.86 6b363ac4680146f856642cffdab0b57662f6159c -- internal/db/migrations:
+(end; empty = no migration)
+git status --short -- cmd internal web/src deploy/release-sequence-policy update.sh install.sh:
+(end; empty = no uncommitted product change)
+release policy at 6b363ac4680146f856642cffdab0b57662f6159c:
+format=celikpanel-release-sequence-policy-v1
+version=v0.1.0-alpha.86
+current=86
+previous=85
+previous_version=v0.1.0-alpha.85
+previous_commit=36c33c4531ee6c1306d324db7a666403176f3bf7

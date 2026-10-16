@@ -26,6 +26,11 @@ type serverSetupExecutionContext struct {
 type serverSetupOperationResponse struct {
 	*serverSetupExecution
 	Context *serverSetupExecutionContext `json:"context,omitempty"`
+	// Superseded is additive and presentation only (set18 D1, 2026-10-16):
+	// the run succeeded and belongs to a completed setup that is now being
+	// extended, so it is not the current operation (serverSetupRunSuperseded).
+	// Genisletilen tamamlanmis kurulumun calismasi; guncel islem degildir.
+	Superseded bool `json:"superseded,omitempty"`
 }
 
 func (p *Panel) serverSetupOperationResponse(ctx context.Context, execution *serverSetupExecution) *serverSetupOperationResponse {

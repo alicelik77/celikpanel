@@ -50,12 +50,12 @@ const stepsURL = dataURL(`import React from '${reactURL}';\n` + compile('../src/
 const choiceURL = dataURL(`import React from '${reactURL}';\n` + compile('../src/components/ServerSetupChoice.tsx').replace(/from ['"]([^'"]+)['"]/g, (_, path) => `from '${path === 'react' ? reactURL : path.endsWith('/serverSetup') ? setupURL : stub}'`));
 const componentUIURL = dataURL(`import React from '${reactURL}';\n` + compile('../src/components/ServerSetupComponents.tsx').replace(/from ['"]([^'"]+)['"]/g, (_, path) => `from '${path === 'react' ? reactURL : path.endsWith('/componentName') ? componentNameURL : path.endsWith('/serverSetupComponents') ? componentLibURL : stub}'`));
 const { ServerSetupComponents: ComponentPicker } = await import(componentUIURL);
-async function loadComponent(name) {
+async function loadComponent(name, exported = name) {
     const source = compile(`../src/components/${name}.tsx`).replace(/from ['"]([^'"]+)['"]/g, (_, path) => {
         const url = path === 'react' ? reactURL : path.endsWith('/ServerSetupSteps') ? stepsURL : path.endsWith('/remoteDNS') ? remoteURL : path.endsWith('/ServerSetupComponents') ? componentUIURL : path.endsWith('/componentName') ? componentNameURL : path.endsWith('/serverSetupComponents') ? componentLibURL : path.endsWith('/ServerSetupChoice') ? choiceURL : path.endsWith('/setupDNS') ? dnsCopyURL : path.endsWith('/visibleReads') ? visibleReadsURL : path.endsWith('/panelHandover') ? handoverURL : path.endsWith('/serverSetupGuidance') ? guidanceURL : path.endsWith('/serverSetupOperation') ? operationURL : path.endsWith('/serverSetup') ? setupURL : stub;
         return `from '${url}'`;
     });
-    return (await import(dataURL(`import React from '${reactURL}';\n${source}`)))[name];
+    return (await import(dataURL(`import React from '${reactURL}';\n${source}`)))[exported];
 }
 const Gate = await loadComponent('ServerSetupGate');
 const Wizard = await loadComponent('ServerSetup');
@@ -1105,7 +1105,10 @@ test('final verification stays waiting and manual checks report unchanged, unkno
             const result=tree.root.findAllByProps({role:'status'}).find(item=>item.props['aria-atomic']==='true');
             const said=[...result.findAllByType('p'),...result.findAllByType('span'),...result.findAllByType('li')].flatMap(item=>[item.props.children].flat()).filter(child=>typeof child==='string');
             assert.ok(said.includes(message),outcome);
-            if(outcome==='unknown'||outcome==='action_required')assert.ok(said.includes('setup.blocker.mailIdentity'));
+            // The box says each open check as the run's guidance does (2026-10-16):
+            // a check that could not be read is said as not read, not as missing.
+            if(outcome==='action_required')assert.ok(said.includes('setup.blocker.mailIdentity'));
+            if(outcome==='unknown')assert.ok(said.includes('setup.check.notRead')&&!said.includes('setup.blocker.mailIdentity'));
             assert.ok(!JSON.stringify(tree.toJSON()).includes('setup.completeTitle'));
             assert.ok(calls.every(call=>!call.options?.method||call.options.method==='GET'));
             assert.equal(store.size,1);
@@ -1113,6 +1116,58 @@ test('final verification stays waiting and manual checks report unchanged, unkno
     }
 });
 
+
+// Gap 8 of the second-server work (2026-10-16): after "Check requirements
+// again" the box under the button says the typed reason of an open check, the
+// same sentence the run's guidance uses, instead of the generic one.
+test('the manual re-check box says the typed reason sentence the guidance uses',async()=>{
+    init('admin',{status:'waiting'});
+    const marker={plan_id:'a'.repeat(32),request_id:'b'.repeat(32),panel_domain:'panel.example.com'};
+    store.set('celikpanel.setup.start.admin',JSON.stringify(marker));
+    const typed={id:'mail_identity',state:'action_required',code:'mail_identity_required',reason:'reverse_dns_mismatch',vars:{hostname:'mail.example.com',ip:'203.0.113.7',ptr:'old.example.net',resolver:'1.1.1.1'}};
+    const waiting={...execution(marker,'waiting'),phase:'verification',steps:[{id:'verify',kind:'verify',target:'web',status:'succeeded'}],checks:[typed]};
+    const read=fetch;
+    globalThis.fetch=async(url,options)=>url.includes('/setup/operation')?Response.json(waiting):read(url,options);
+    let finish, manual=false;
+    fixture.context.reload=()=>manual?new Promise(resolve=>{finish=resolve;}):Promise.resolve(state);
+    try{
+        await mount();
+        manual=true;
+        await act(async()=>{void findButton('setup.verify').props.onClick();});
+        await act(async()=>{finish({...state,checks:[typed]});});
+        const result=tree.root.findAllByProps({role:'status'}).find(item=>item.props['aria-atomic']==='true');
+        const items=result.findAllByType('li').flatMap(item=>[item.props.children].flat()).filter(child=>typeof child==='string');
+        assert.ok(items.includes('setup.check.mailIdentity.reverseDNSFrom'),JSON.stringify(items));
+        // Negative control: the generic sentence is not said for a typed reason.
+        assert.ok(!items.includes('setup.blocker.mailIdentity'),JSON.stringify(items));
+        const guidance=JSON.stringify(tree.root.findAllByProps({'data-setup-checks':''}).map(list=>list.findAllByType('li').flatMap(item=>[item.props.children].flat()).filter(child=>typeof child==='string')));
+        assert.ok(guidance.includes('setup.check.mailIdentity.reverseDNSFrom'),guidance);
+    }finally{await cleanup();}
+});
+
+test('the answer to the manual re-check is brought into view when it arrives, not while it is read',async()=>{
+    init('admin',{status:'waiting'});
+    const marker={plan_id:'a'.repeat(32),request_id:'b'.repeat(32),panel_domain:'panel.example.com'};
+    store.set('celikpanel.setup.start.admin',JSON.stringify(marker));
+    const typed={id:'mail_identity',state:'action_required',code:'mail_identity_required',reason:'reverse_dns_mismatch',vars:{hostname:'mail.example.com',ip:'203.0.113.7',ptr:'old.example.net',resolver:'1.1.1.1'}};
+    const waiting={...execution(marker,'waiting'),phase:'verification',steps:[{id:'verify',kind:'verify',target:'web',status:'succeeded'}],checks:[typed]};
+    const read=fetch;
+    globalThis.fetch=async(url,options)=>url.includes('/setup/operation')?Response.json(waiting):read(url,options);
+    let finish, manual=false;
+    fixture.context.reload=()=>manual?new Promise(resolve=>{finish=resolve;}):Promise.resolve(state);
+    // Each host node gets the least a ref is asked for; scrolls are recorded.
+    const scrolled=[];
+    const createNodeMock=element=>({focus(){},scrollIntoView(options){scrolled.push({type:element.type,className:String(element.props.className||''),options});}});
+    try{
+        await act(async()=>{tree=Renderer.create(React.createElement(Wizard,null,React.createElement('section',{'data-management':true})),{createNodeMock});});
+        manual=true;
+        await act(async()=>{void findButton('setup.verify').props.onClick();});
+        const box=()=>scrolled.filter(item=>item.type==='div'&&item.className.includes('scroll-mb-6'));
+        assert.equal(box().length,0,'the box was scrolled to while the check was still being read');
+        await act(async()=>{finish({...state,checks:[typed]});});
+        assert.deepEqual(box().map(item=>item.options),[{block:'nearest'}]);
+    }finally{await cleanup();}
+});
 
 test('recorded mail enrollment survives reload and continues only by explicit click with the same step', async()=>{
     for (const outcome of ['accepted','lost','refused']) {
@@ -1278,4 +1333,340 @@ test('a reviewed plan with the certificate step states the restart before setup 
         assert.ok(content.includes('setup.handover.title')&&content.includes('setup.handover.address'),content.slice(0,400));
         assert.ok(tree.root.findAllByType('a').some(link=>link.props.href==='https://panel.example.com/setup'));
     }finally{await cleanup();}
+});
+
+
+// --- Extending a completed setup (2026-10-16, second server as a full peer) ---
+// The ready screen and Settings offer the extension and say what it does and
+// does not do; beginning it sends one request and reopens the wizard on the
+// purpose step; the review says what changes; stopping restores the completed
+// setup; an extension never routes the owner into setup.
+const Notice = await loadComponent('ServerSetupGate', 'ServerSetupDashboardNotice');
+const { ServerSetupSettings } = await import(choiceURL);
+const NoticeInGate = () => React.createElement(Gate, null, React.createElement(Notice));
+const readyDraft = () => ({ ...fresh().draft, panel_domain: 'panel.example.com', dns_mode: 'external' });
+const writes = () => calls.filter(call => call.options?.method && call.options.method !== 'GET');
+const textOf = () => JSON.stringify(tree.toJSON());
+
+test('extension state decoder: an extension is never ready or required, and a base needs an extension', () => {
+    const base = readyDraft();
+    const extending = { ...fresh(), status: 'draft', required: false, extension: true, extension_base: base };
+    assert.equal(setup.decodeServerSetup(extending).extension, true);
+    assert.equal(setup.decodeServerSetup({ ...extending, status: 'ready' }), null);
+    assert.equal(setup.decodeServerSetup({ ...extending, required: true }), null);
+    assert.equal(setup.decodeServerSetup({ ...fresh(), extension_base: base }), null);
+    assert.equal(setup.decodeServerSetup({ ...extending, extension_base: { purpose: 'nothing' } }), null);
+    // Routing: an extension stays out of setup; the same draft as a first setup does not.
+    assert.equal(setup.shouldOpenServerSetup(extending, '/domains'), false);
+    assert.equal(setup.shouldOpenServerSetup({ ...extending, extension: undefined, extension_base: undefined, required: true }, '/domains'), true);
+    assert.deepEqual(setup.setupExtensionChanges(base, { ...base, mail_hostname: 'mail.example.com', customization: { components: ['postfix'] } }).map(change => [change.key, change.before, change.after]),
+        [['purpose', 'web', 'custom'], ['mail_hostname', '', 'mail.example.com']]);
+    assert.deepEqual(setup.setupExtensionChanges(undefined, base), []);
+});
+
+test('a completed setup offers its extension, says what it does not do, and begins it with one request', async () => {
+    init('admin', { status: 'ready', required: false, draft: readyDraft() });
+    const base = state.draft; const read = fetch; const posted = [];
+    globalThis.fetch = async (url, options) => {
+        if (url === '/api/v1/setup/extend') {
+            calls.push({ url, options }); posted.push(JSON.parse(options.body));
+            state = { ...state, status: 'draft', extension: true, extension_base: base, revision: state.revision + 1 };
+            return Response.json(state);
+        }
+        return read(url, options);
+    };
+    try {
+        await mount();
+        const section = tree.root.findByProps({ 'data-setup-extend': '' });
+        assert.ok(JSON.stringify(section.findAllByType('p').map(item => item.props.children)).includes('setup.extend.help'));
+        assert.equal(writes().length, 0, 'the ready screen changed something by itself');
+        await act(async () => { await findButton('setup.extend.action').props.onClick(); });
+        assert.deepEqual(posted, [{ revision: 1, action: 'begin' }]);
+        // The gate draws the accepted state: the wizard reopens as an extension.
+        await act(async () => { tree.update(React.createElement(Wizard, null)); await new Promise(resolve => setTimeout(resolve, 0)); });
+        const shown = textOf();
+        assert.ok(shown.includes('setup.extend.title') && shown.includes('setup.extend.intro'), shown.slice(0, 400));
+        assert.ok(tree.root.findAllByProps({ name: 'setup-purpose' }).length > 0, 'the extension opens on the purpose step');
+        assert.ok(findButton('setup.extend.stop'));
+        assert.ok(!shown.includes('setup.manualHelp'), 'the manual-setup choice is offered to an extension');
+        assert.ok(writes().every(call => call.url === '/api/v1/setup/extend'));
+    } finally { await cleanup(); }
+    // Control: a first setup in progress has no extension section.
+    init('admin', { status: 'draft' });
+    try { await mount(); assert.equal(tree.root.findAllByProps({ 'data-setup-extend': '' }).length, 0); } finally { await cleanup(); }
+});
+
+test('a refused extension says why, leaves the setup as it was and is not sent again', async () => {
+    init('admin', { status: 'ready', required: false, draft: readyDraft() });
+    const read = fetch;
+    globalThis.fetch = async (url, options) => {
+        if (url === '/api/v1/setup/extend') { calls.push({ url, options }); return Response.json({ error: 'busy', code: 'server_setup_busy' }, { status: 409 }); }
+        return read(url, options);
+    };
+    try {
+        await mount();
+        await act(async () => { await findButton('setup.extend.action').props.onClick(); });
+        const alert = tree.root.findAllByProps({ role: 'alert' }).map(item => item.props.children);
+        assert.ok(alert.includes('setup.extend.busy'), JSON.stringify(alert));
+        assert.equal(writes().length, 1);
+        assert.equal(state.status, 'ready');
+        assert.ok(textOf().includes('setup.completeTitle'));
+    } finally { await cleanup(); }
+});
+
+test('the review of an extension says what changes, what is installed and what is kept', async () => {
+    const base = readyDraft();
+    const draft = { ...base, mail_hostname: 'mail.example.com', customization: { components: ['dovecot', 'mariadb', 'nginx', 'php-fpm', 'postfix'] } };
+    init('admin', { status: 'draft', required: false, extension: true, extension_base: base, draft });
+    globalThis.sessionStorage.setItem('celikpanel.setup.editor.admin', JSON.stringify({ version: 1, revision: state.revision, step: 'review', draft }));
+    const read = fetch;
+    globalThis.fetch = async (url, options) => url === '/api/v1/setup/plan'
+        ? Response.json(plan({ steps: [{ id: '01-mail_profile', kind: 'mail_profile', target: 'core-mail' }, { id: '02-verify', kind: 'verify', target: 'custom' }],
+            components: [{ id: 'nginx', selected: true, required: false, installed: true }, { id: 'postfix', selected: true, required: false, installed: false }] }))
+        : read(url, options);
+    try {
+        await mount();
+        const review = tree.root.findByProps({ 'data-setup-extension-review': '' });
+        const said = JSON.stringify(review.findAll(node => typeof node.props?.children === 'string').map(node => node.props.children));
+        const mailRow = review.findByProps({ 'data-change': 'mail_hostname' });
+        assert.ok(JSON.stringify(mailRow.findAllByType('span').map(item => item.props.children)).includes('mail.example.com'));
+        assert.ok(JSON.stringify(mailRow.findAllByType('span').map(item => item.props.children)).includes('setup.extend.none'));
+        // A literal keeps the mono face; "none" is a word (2026-10-16).
+        const face = value => String(mailRow.findAllByType('span').find(item => item.props.children === value).props.className || '').includes('font-mono');
+        assert.deepEqual([face('setup.extend.none'), face('mail.example.com')], [false, true]);
+        assert.ok(review.findAllByProps({ 'data-change': 'purpose' }).length === 1);
+        assert.equal(review.findAllByProps({ 'data-change': 'panel_domain' }).length, 0, 'an unchanged setting is listed as a change');
+        assert.equal(review.findAllByProps({ 'data-install': 'core-mail' }).length, 1, said);
+        assert.ok(said.includes('setup.extend.keptTitle'), said);
+        assert.ok(!textOf().includes('setup.components.reviewTitle'), 'the whole component list replaces what changes');
+    } finally { await cleanup(); }
+    // Control: the same review as a first setup keeps the whole component list.
+    init('admin', { status: 'draft', draft });
+    globalThis.sessionStorage.setItem('celikpanel.setup.editor.admin', JSON.stringify({ version: 1, revision: state.revision, step: 'review', draft }));
+    const again = fetch;
+    globalThis.fetch = async (url, options) => url === '/api/v1/setup/plan' ? Response.json(plan({ components: [{ id: 'nginx', selected: true, required: false, installed: true }] })) : again(url, options);
+    try {
+        await mount();
+        assert.equal(tree.root.findAllByProps({ 'data-setup-extension-review': '' }).length, 0);
+        assert.ok(textOf().includes('setup.components.reviewTitle'));
+    } finally { await cleanup(); }
+});
+
+test('stopping an extension restores the completed setup with one request', async () => {
+    const base = readyDraft();
+    init('admin', { status: 'draft', required: false, extension: true, extension_base: base, draft: { ...base, mail_hostname: 'mail.example.com' } });
+    const read = fetch; const posted = [];
+    globalThis.fetch = async (url, options) => {
+        if (url === '/api/v1/setup/extend') {
+            calls.push({ url, options }); posted.push(JSON.parse(options.body));
+            state = { ...fresh(), status: 'ready', required: false, draft: base, revision: state.revision + 1 };
+            return Response.json(state);
+        }
+        return read(url, options);
+    };
+    try {
+        await mount();
+        assert.ok(textOf().includes('setup.extend.stopHelp'));
+        await act(async () => { await findButton('setup.extend.stop').props.onClick(); });
+        assert.deepEqual(posted, [{ revision: 1, action: 'cancel' }]);
+        await act(async () => { tree.update(React.createElement(Wizard, null)); await new Promise(resolve => setTimeout(resolve, 0)); });
+        assert.ok(textOf().includes('setup.completeTitle'));
+    } finally { await cleanup(); }
+});
+
+test('the Dashboard and Settings say an extension is not a setup to resume, and the gate keeps management open', async () => {
+    const base = readyDraft();
+    for (const status of ['draft', 'running']) {
+        init('admin', { status, required: false, extension: true, extension_base: base, draft: base });
+        // The notice reads the gate's own context: it is mounted inside the
+        // gate, on a page the gate always draws.
+        fixture.path = '/settings';
+        try {
+            await mount(NoticeInGate);
+            const shown = textOf();
+            assert.ok(shown.includes('setup.extend.dashboardTitle') && shown.includes(status === 'running' ? 'setup.extend.dashboardRunning' : 'setup.extend.dashboardDraft'), shown);
+            // A running extension needs nothing from the owner: its link shows the progress (2026-10-16).
+            assert.ok(shown.includes(status === 'running' ? 'setup.extend.showProgress' : 'setup.extend.continue') && !shown.includes('setup.resume'), shown);
+            assert.ok(!shown.includes(status === 'running' ? 'setup.extend.continue' : 'setup.extend.showProgress'), shown);
+        } finally { await cleanup(); }
+        init('admin', { status, required: false, extension: true, extension_base: base, draft: base });
+        try {
+            await mount(ServerSetupSettings);
+            const shown = textOf();
+            assert.ok(shown.includes(status === 'running' ? 'setup.extend.showProgress' : 'setup.extend.continue'), shown);
+        } finally { await cleanup(); }
+        init('admin', { status, required: false, extension: true, extension_base: base, draft: base });
+        fixture.path = '/domains';
+        try {
+            await mount(Gate);
+            assert.equal(tree.root.findAllByType('redirect').length, 0, 'an extension routed the owner into setup');
+            assert.equal(tree.root.findAllByProps({ 'data-management': true }).length, 1);
+        } finally { await cleanup(); }
+    }
+    init('admin', { status: 'ready', required: false, draft: base });
+    try {
+        await mount(ServerSetupSettings);
+        const shown = textOf();
+        assert.ok(shown.includes('setup.extend.help') && shown.includes('setup.extend.title'), shown);
+    } finally { await cleanup(); }
+    // Control: a first setup in progress is still resumed from the Dashboard.
+    init('admin', { status: 'draft' });
+    fixture.path = '/settings';
+    try { await mount(NoticeInGate); assert.ok(textOf().includes('setup.resume')); } finally { await cleanup(); }
+});
+
+// set18 D1 (2026-10-16): while a completed setup is being extended, the latest
+// run is the completed setup's own succeeded run. The operation read marks it
+// superseded; the page shows the extension's wizard and "Stop extending", not
+// "Verifying the result" and "Completion could not be verified".
+const completedRun = (extra = {}) => ({ id: 'd'.repeat(32), request_id: 'd'.repeat(32), plan_id: 'e'.repeat(32), status: 'succeeded', phase: 'complete',
+    steps: [{ id: '01-verify', kind: 'verify', target: 'web', status: 'succeeded' }], ...extra });
+function extensionFixture({ flag = true, step } = {}) {
+    const base = readyDraft();
+    init('admin', { status: 'draft', required: false, extension: true, extension_base: base, completed_at: '2026-10-15T22:57:21Z', draft: { ...base, mail_hostname: 'mail.example.com' } });
+    if (step) globalThis.sessionStorage.setItem('celikpanel.setup.editor.admin', JSON.stringify({ version: 1, revision: state.revision, step, draft: state.draft }));
+    const read = fetch; const run = { started: null, posted: [] };
+    globalThis.fetch = async (url, options) => {
+        if (url.includes('/setup/operation')) {
+            calls.push({ url, options });
+            if (run.started && url.endsWith('request_id=' + run.started.request_id)) return Response.json(execution(run.started));
+            // The server flags the completed run only while the extension is a draft.
+            return Response.json(completedRun(flag && state.extension && state.status === 'draft' ? { superseded: true } : {}));
+        }
+        if (url === '/api/v1/setup/start') {
+            calls.push({ url, options }); run.started = JSON.parse(options.body);
+            state = { ...state, status: 'running' };
+            return Response.json(execution(run.started), { status: 202 });
+        }
+        if (url === '/api/v1/setup/extend') {
+            calls.push({ url, options }); run.posted.push(JSON.parse(options.body));
+            state = { ...fresh(), status: 'ready', required: false, completed_at: '2026-10-15T22:57:21Z', draft: base, revision: state.revision + 1 };
+            return Response.json(state);
+        }
+        return read(url, options);
+    };
+    return run;
+}
+const settle = () => act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
+
+test('an extension of a completed setup opens its wizard, not the completed run (set18 D1)', async () => {
+    extensionFixture();
+    try {
+        await mount(); await settle();
+        const shown = textOf();
+        assert.ok(calls.some(call => call.url.includes('/setup/operation')), 'the operation was not read');
+        assert.ok(!shown.includes('setup.verificationFailed') && !shown.includes('setup.verifying') && !shown.includes('setup.reconnect'), shown.slice(0, 600));
+        assert.ok(tree.root.findAllByProps({ name: 'setup-purpose' }).length > 0, 'the extension does not open on the purpose step');
+        assert.ok(findButton('setup.extend.stop'), 'Stop extending is not reachable');
+        assert.equal(tree.root.findAllByProps({ 'data-setup-extend-stop': '' }).length, 1);
+        assert.equal(writes().length, 0);
+    } finally { await cleanup(); }
+    // The Components route lands on the access step with the mail host name.
+    extensionFixture({ step: 'access' });
+    try {
+        await mount(); await settle();
+        assert.equal(tree.root.findByProps({ id: 'setup-panel_domain' }).props.value, 'panel.example.com');
+        assert.ok(findButton('setup.extend.stop'));
+        assert.ok(!textOf().includes('setup.verificationFailed'));
+    } finally { await cleanup(); }
+    // A start marker left from the completed run is dropped, not reconciled.
+    extensionFixture();
+    store.set('celikpanel.setup.start.admin', JSON.stringify({ request_id: 'd'.repeat(32), plan_id: 'e'.repeat(32), panel_domain: 'panel.example.com' }));
+    try {
+        await mount(); await settle();
+        assert.ok(calls.some(call => call.url.endsWith('request_id=' + 'd'.repeat(32))));
+        assert.equal(store.has('celikpanel.setup.start.admin'), false, 'the finished run marker was kept');
+        assert.ok(findButton('setup.extend.stop') && !textOf().includes('setup.verificationFailed'));
+    } finally { await cleanup(); }
+    // Negative control: the same state without the server's flag is the D1 screen.
+    extensionFixture({ flag: false });
+    try {
+        await mount(); await settle();
+        assert.ok(textOf().includes('setup.verificationFailed'), 'the control no longer reproduces D1');
+        assert.equal(findButton('setup.extend.stop'), undefined);
+    } finally { await cleanup(); }
+});
+
+test('a started extension shows its own run and first step; stopping returns to the ready screen (set18 D1, O1)', async () => {
+    const run = extensionFixture();
+    try {
+        await mount(); await settle();
+        await toReview();
+        await act(async () => tree.root.findByProps({ type: 'checkbox' }).props.onChange({ target: { checked: true } }));
+        await act(async () => { await findButton('setup.start').props.onClick(); });
+        await settle();
+        assert.equal(calls.filter(call => call.url === '/api/v1/setup/start').length, 1);
+        const shown = textOf();
+        assert.ok(shown.includes('setup.installing') && shown.includes('setup.kind.verify'), shown.slice(0, 600));
+        // O1: the accepted run names its first step, not the generic sentence.
+        assert.ok(shown.includes('setup.guide.queued') && !shown.includes('setup.guide.unknown'), shown.slice(0, 800));
+        assert.ok(!shown.includes('setup.verificationFailed'));
+        assert.equal(findButton('setup.extend.stop'), undefined, 'Stop extending offered while the extension runs');
+        assert.ok(run.started && JSON.parse(store.get('celikpanel.setup.start.admin')).request_id === run.started.request_id);
+    } finally { await cleanup(); }
+    const stopped = extensionFixture();
+    try {
+        await mount(); await settle();
+        await act(async () => { await findButton('setup.extend.stop').props.onClick(); });
+        assert.deepEqual(stopped.posted, [{ revision: 1, action: 'cancel' }]);
+        await act(async () => { tree.update(React.createElement(Wizard, null)); await new Promise(resolve => setTimeout(resolve, 0)); });
+        await settle();
+        const shown = textOf();
+        assert.ok(shown.includes('setup.completeTitle') && !shown.includes('setup.verificationFailed'), shown.slice(0, 600));
+    } finally { await cleanup(); }
+});
+
+test('operation decoder keeps the superseded flag only on a succeeded run', () => {
+    assert.equal(operations.decodeSetupExecution(completedRun({ superseded: true })).superseded, true);
+    const running = operations.decodeSetupExecution({ ...completedRun({ superseded: true }), status: 'running', steps: [{ id: '01-verify', kind: 'verify', target: 'web', status: 'running' }] });
+    assert.ok(running && running.superseded === undefined, 'a flag hid a run in progress');
+    const odd = operations.decodeSetupExecution(completedRun({ superseded: 'yes' }));
+    assert.ok(odd && odd.superseded === undefined);
+});
+
+// set18 O3: "Continue recorded operation" stays disabled and says it is
+// checking from the first press until a read shows the operation moved on.
+test('a pressed mail enrollment continuation stays single-flight until the operation moves (set18 O3)', async () => {
+    init('admin', { status: 'running' });
+    const saved = { plan_id: 'a'.repeat(32), request_id: 'b'.repeat(32), panel_domain: 'panel.example.com' };
+    store.set('celikpanel.setup.start.admin', JSON.stringify(saved));
+    let current = { ...execution(saved), phase: 'mail-renewal', steps: [{ id: 'mail-renewal', kind: 'mail_enrollment', target: 'mail-renewal', qualifier: 'c'.repeat(64), status: 'running' }], error: { code: 'server_setup_mail_enrollment_running', message: 'recorded' } };
+    const ticks = []; const settleTimers = [];
+    globalThis.window.setInterval = callback => { ticks.push(callback); return ticks.length; };
+    globalThis.window.clearInterval = () => {};
+    globalThis.window.setTimeout = (callback, ms) => { if (ms === 15000) { settleTimers.push(callback); return 0; } return setTimeout(callback, ms); };
+    globalThis.window.clearTimeout = id => { if (id) clearTimeout(id); };
+    const read = fetch; let posted = 0;
+    globalThis.fetch = async (url, options) => {
+        if (url === '/api/v1/setup/mail-enrollment/continue') { posted++; return Response.json({ handoff: 'unknown' }); }
+        if (url.includes('/setup/operation')) return Response.json(current);
+        return read(url, options);
+    };
+    const tick = () => act(async () => { await ticks[ticks.length - 1](); await new Promise(resolve => setTimeout(resolve, 0)); });
+    try {
+        await mount();
+        const button = findButton('setup.mailEnrollment.continue');
+        await act(async () => { void button.props.onClick(); void button.props.onClick(); });
+        let sent = findButton('setup.mailEnrollment.sent');
+        assert.ok(sent && sent.props.disabled === true && sent.props.loading === true, 'the pressed button is offered again');
+        assert.equal(findButton('setup.mailEnrollment.continue'), undefined);
+        await act(async () => { await sent.props.onClick(); });
+        // The same state read again does not confirm anything.
+        await tick();
+        sent = findButton('setup.mailEnrollment.sent');
+        assert.ok(sent && sent.props.disabled === true);
+        await act(async () => { await sent.props.onClick(); });
+        assert.equal(posted, 1, 'the continuation was sent again while in flight');
+        // A read showing the operation moved settles the press.
+        current = { ...current, error: { code: 'server_setup_mail_enrollment_rollback', message: 'recorded' } };
+        await tick();
+        const again = findButton('setup.mailEnrollment.continue');
+        assert.ok(again && !again.props.disabled, 'a moved operation keeps the button disabled');
+        // Unconfirmed: after the bound the button is offered again.
+        await act(async () => { await again.props.onClick(); });
+        assert.equal(posted, 2);
+        assert.ok(findButton('setup.mailEnrollment.sent'));
+        await act(async () => { settleTimers[settleTimers.length - 1](); });
+        assert.ok(findButton('setup.mailEnrollment.continue') && !findButton('setup.mailEnrollment.continue').props.disabled);
+    } finally { await cleanup(); }
 });

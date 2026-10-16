@@ -1,0 +1,26 @@
+Prepare your server
+
+Choose what this server will do. CelikPanel will prepare a plan before making changes.
+
+What will you use this server for?
+Web hosting
+Recommended
+Host websites with PHP and MariaDB. Mail services are not included.
+Customize selection
+Web and mail hosting
+Host websites, mailboxes and webmail with mail protection.
+Application server
+Prepare a Node.js runtime, web access and the database your application needs.
+DNS server
+Manage authoritative DNS or serve a verified secondary copy.
+Custom setup
+Choose the components you need. CelikPanel adds their dependencies and checks the complete plan.
+
+Profiles prepare infrastructure. Add your first website or application after setup is verified.
+
+Continue
+I’ll configure it myself
+
+Your choice is saved for this server, so this prompt will not appear again. You can reopen the wizard in Settings → Server setup. Security and service requirements still apply.
+
+Access and recovery

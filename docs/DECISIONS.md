@@ -104,16 +104,16 @@ known-state rule is why the bound ends in "not known yet" and not in a negative
 state. D-022 (the owner operates the server) is why the bounded notices say how
 the owner checks the panel on the server rather than restarting anything.
 
-Status. In source on the branch of the v0.1.0-alpha.85 candidate (not
-published), with mounted tests. The Components firewall banner, the Dashboard's
+Status. In source on the branch of the v0.1.0-alpha.85 candidate (written
+before its publication on 2026-10-15), with mounted tests. The Components firewall banner, the Dashboard's
 attention notice and Mail stacks card and the sidebar build id were measured in
 the eighteenth native record. Setup finishing, the update card's busy state,
 the component lock's reconnect and the spreading-domain checks were not reached
 natively. Open for a native run, for an installed server and for the
 visibility gating of the install dialog's and setup's reads.
 
-*Note of 2026-10-15 (clock date): applied in the v0.1.0-alpha.86 candidate (not
-published).* No new decision is recorded for that candidate; what it does
+*Note of 2026-10-15 (clock date): applied in v0.1.0-alpha.86 (written while it
+was a candidate; published 2026-10-15).* No new decision is recorded for that candidate; what it does
 follows this decision and D-032, and the text above is unchanged.
 
 - Rules 1 and 3, after the owner's observation of 2026-10-15 during the real
@@ -158,6 +158,36 @@ the session gate's `PANEL_STARTING` path were not measured natively, and
 nothing was measured on an installed server. The
 [alpha.86 release notes](RELEASE-NOTES-v0.1.0-alpha.86.md) say which check rests
 on which code. No P0 item is closed or advanced.
+
+*Note of 2026-10-16 (clock date): applied in the v0.1.0-alpha.87 candidate (not
+published).* No new decision is recorded for that candidate; the text above is
+unchanged.
+
+- Rule 1 and D-024 for the setup extension: the ready screen and Settings say
+  what "Extend this server's setup" does and does not do before anything is
+  pressed, and nothing starts before the review; while an extension runs, the
+  Dashboard and Settings link to its progress ("Show its progress") instead of
+  saying "nothing needs to be done" beside "Continue extending".
+- Rules 1 and 4 after the native record set18: a started setup run names its
+  own first step and says that the page updates by itself (O1); a pressed
+  "Continue recorded operation" stays disabled as "Checking the same
+  operation" until a read shows the operation moved on, at most 15 s (O3; reads
+  only, the server answers a repeat of the same request without a second
+  operation); an extension in draft is no longer shown as the completed run's
+  "Completion could not be verified" (D1, a false alarm on a server that was
+  ready).
+- Rule 5 for a DNS secondary: the mail box names what it waits for (the record
+  on the primary or at the DNS provider, with the exact record) instead of
+  sending the owner to a DNS page that cannot create it, and the profile cards
+  say "Waiting for the mail DNS record". The answer to "Check requirements
+  again" says the same typed reason as the guidance.
+- The Components mail dialog is locked while setup is asked (no silent exit,
+  rule 1) and keeps a refusal in view.
+
+Status of the note: in source with component tests and a mock browser (batch
+16); set18b (at `6b363ac46`) observed D1, O1 and O3 fixed in a lab; the
+secondary-DNS boxes were not reached natively; nothing measured on an installed
+server. No P0 item is closed or advanced.
 
 ---
 
@@ -920,6 +950,43 @@ evidence](SERVER-SETUP-CUSTOMIZATION.md).
 acceptance cases and implementation order are in
 [Guided server setup](SERVER-SETUP-PLAN.md). This decision records product intent,
 not a claim that the new wizard or external DNS mode is already available.
+
+*Note of 2026-10-16 (clock date): applied in the v0.1.0-alpha.87 candidate (not
+published).* No new decision is recorded for that candidate; the text above is
+unchanged. A completed setup can now be extended
+(`POST /api/v1/setup/extend`): the wizard reopens with the completed values,
+the review says what changes, what is installed and what is kept, and the run
+is the existing reviewed runner. This applies the decision's own rules:
+
+- **Existing workloads are preserved.** An extension installs and configures
+  only what is added; it never removes, stops or replaces an installed
+  component (the customization rule that clearing a selection never removes an
+  installed service holds for an extension), and "Stop extending" restores the
+  completed draft without removing anything a partly run extension installed.
+- **Setup history and current health stay independent.** An extension keeps the
+  completion record (`completed_at`) and is not required, so a prepared server
+  is never routed back into setup; the Dashboard says that the server is being
+  extended and keeps working.
+- **Mail is explicitly selected, with setup's checks.** On a server whose setup
+  has finished, adding a mail profile from the Components page reuses setup: the
+  profile is added to an extension and goes through setup's review and steps
+  (public DNS of the mail host name, trusted certificate and renewal, reverse
+  DNS, port 25). A server without a finished setup keeps the direct install,
+  which says that it ends with a temporary self-signed certificate.
+- **DNS ownership is not changed.** On the secondary of a DNS pair the panel
+  says that the mail host name's record is made on the primary or at the DNS
+  provider and shows the exact record; it creates none. Whether the primary
+  should publish a peer's records itself, an editor for the infrastructure zone
+  and automatic transfer of host records over the remote DNS connection are
+  three open owner decisions (OPERATION-GUIDANCE, entry of 2026-10-16).
+
+Status of the note: in source with component tests and a mock browser (batch
+16); measured in a lab with its own DNS and ACME in the native records set18
+(at `5d54aba1e`, where the extension opened on the completed run, D1) and
+set18b (at `6b363ac46`, D1 observed fixed, the extension reached ready) under
+`deploy/e2e/release-recovery/evidence/`; Debian 13 only; nothing measured on an
+installed server. The [alpha.87 release notes](RELEASE-NOTES-v0.1.0-alpha.87.md)
+say which check rests on which code. No P0 item is closed or advanced.
 
 ---
 

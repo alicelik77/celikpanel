@@ -1,0 +1,54 @@
+Bu sunucunun kurulumunu genişletin
+
+Kurulum adımlarını ve kaydedilen sonuçları buradan takip edin.
+
+Sonuç doğrulanıyor
+
+DNS’i yapılandır: Harici DNS sağlayıcısı kullan
+
+Tamamlandı
+
+Bileşeni hazırla: Nginx
+
+Tamamlandı
+
+Bileşeni hazırla: PHP-FPM
+
+Tamamlandı
+
+Bileşeni hazırla: MariaDB
+
+Tamamlandı
+
+Bileşeni hazırla: Zamanlanmış görevler (cron)
+
+Tamamlandı
+
+Bileşeni hazırla: Let’s Encrypt istemcisi (certbot)
+
+Tamamlandı
+
+Güvenlik duvarı politikasını uygula ve kaydet
+
+Tamamlandı
+
+Sertifikadan önce genel DNS’i doğrula: panel.set18.test
+
+192.0.2.10
+
+Tamamlandı
+
+Panel erişimini güvenceye al: panel.set18.test
+
+Tamamlandı
+
+Hazırlanan sunucuyu doğrula
+
+Devam ediyor
+
+Tamamlanma doğrulanamadı. Güncel kontrol sonucu için yeniden bağlanın; sunucu hazır olarak işaretlenmedi.
+
+Güvenli panel adresinden devam et
+
+Bu işleme yeniden bağlan
+Erişim ve kurtarma

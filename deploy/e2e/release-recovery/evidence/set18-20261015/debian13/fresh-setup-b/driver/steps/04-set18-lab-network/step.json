@@ -1,0 +1,126 @@
+{
+  "checks": {
+    "allowed_hosts": [
+      "deb.debian.org",
+      "packages.sury.org",
+      "security.debian.org"
+    ],
+    "block_check": "bash: connect: Connection refused\nbash: line 1: /dev/tcp/203.0.113.1/443: Connection refused\nrc=1",
+    "certbot_cli_ini": {
+      "path": "/root/.config/letsencrypt/cli.ini",
+      "text": "# set18 lab only (disposable guest): certbot uses the lab's own ACME server inside this guest.\nserver = https://127.0.0.1:14000/dir\nno-verify-ssl = true\n"
+    },
+    "directory": "{\n   \"keyChange\": \"https://127.0.0.1:14000/rollover-account-key\",\n   \"meta\": {\n      \"externalAccountRequired\": false,\n      \"termsOfService\": \"data:text/plain,Do%20what%20thou%20wilt\"\n   },\n   \"newAccount\": \"https://127.0.0.1:14000/sign-me-up\",\n   \"newNonce\": \"https://127.0.0.1:14000/nonce-plz\",\n  ",
+    "dns_checks": [
+      {
+        "answers": 1,
+        "name": "panel.set18.test",
+        "proto": "udp",
+        "qtype": 1,
+        "rcode": 0,
+        "resolver": "1.1.1.1"
+      },
+      {
+        "answers": 1,
+        "name": "panel.set18.test",
+        "proto": "tcp",
+        "qtype": 1,
+        "rcode": 0,
+        "resolver": "1.1.1.1"
+      },
+      {
+        "answers": 1,
+        "name": "panel.set18.test",
+        "proto": "udp",
+        "qtype": 1,
+        "rcode": 0,
+        "resolver": "8.8.8.8"
+      },
+      {
+        "answers": 1,
+        "name": "panel.set18.test",
+        "proto": "tcp",
+        "qtype": 1,
+        "rcode": 0,
+        "resolver": "8.8.8.8"
+      },
+      {
+        "answers": 1,
+        "name": "panel.set18.test",
+        "proto": "udp",
+        "qtype": 1,
+        "rcode": 0,
+        "resolver": "9.9.9.9"
+      },
+      {
+        "answers": 1,
+        "name": "panel.set18.test",
+        "proto": "tcp",
+        "qtype": 1,
+        "rcode": 0,
+        "resolver": "9.9.9.9"
+      },
+      {
+        "answers": 1,
+        "name": "panel.set18.test",
+        "proto": "udp",
+        "qtype": 1,
+        "rcode": 0,
+        "resolver": "208.67.222.222"
+      },
+      {
+        "answers": 1,
+        "name": "panel.set18.test",
+        "proto": "tcp",
+        "qtype": 1,
+        "rcode": 0,
+        "resolver": "208.67.222.222"
+      },
+      {
+        "answers": 1,
+        "name": "10.2.0.192.in-addr.arpa",
+        "proto": "tcp",
+        "qtype": 12,
+        "rcode": 0,
+        "resolver": "1.1.1.1"
+      },
+      {
+        "answers": 0,
+        "name": "mail.set18.test",
+        "proto": "tcp",
+        "qtype": 1,
+        "rcode": 3,
+        "resolver": "8.8.8.8"
+      },
+      {
+        "answers": 0,
+        "name": "example.com",
+        "proto": "udp",
+        "qtype": 1,
+        "rcode": 5,
+        "resolver": "1.1.1.1"
+      }
+    ],
+    "error": null,
+    "pebble_install": {
+      "install_rc": 0,
+      "install_tail": " (5755 kB/s)\nSelecting previously unselected package libjansson4:amd64.\n(Reading database ... \n(Reading database ... 5%\n(Reading database ... 10%\n(Reading database ... 15%\n(Reading database ... 20%\n(Reading database ... 25%\n(Reading database ... 30%\n(Reading database ... 35%\n(Reading database ... 40%\n(Reading database ... 45%\n(Reading database ... 50%\n(Reading database ... 55%\n(Reading database ... 60%\n(Reading database ... 65%\n(Reading database ... 70%\n(Reading database ... 75%\n(Reading database ... 80%\n(Reading database ... 85%\n(Reading database ... 90%\n(Reading database ... 95%\n(Reading database ... 100%\n(Reading database ... 20625 files and directories currently installed.)\nPreparing to unpack .../libjansson4_2.14-2+b3_amd64.deb ...\nUnpacking libjansson4:amd64 (2.14-2+b3) ...\nSelecting previously unselected package libnftables1:amd64.\nPreparing to unpack .../libnftables1_1.1.3-1_amd64.deb ...\nUnpacking libnftables1:amd64 (1.1.3-1) ...\nSelecting previously unselected package nftables.\nPreparing to unpack .../nftables_1.1.3-1_amd64.deb ...\nUnpacking nftables (1.1.3-1) ...\nSelecting previously unselected package pebble.\nPreparing to unpack .../pebble_2.6.0+ds1-1+b7_amd64.deb ...\nUnpacking pebble (2.6.0+ds1-1+b7) ...\nSetting up libjansson4:amd64 (2.14-2+b3) ...\nSetting up pebble (2.6.0+ds1-1+b7) ...\nSetting up libnftables1:amd64 (1.1.3-1) ...\nSetting up nftables (1.1.3-1) ...\nProcessing triggers for man-db (2.13.1-1) ...\nProcessing triggers for libc-bin (2.41-12+deb13u3) ...\n",
+      "nftables_service": "disabled\ninactive\n",
+      "packages": [
+        "nftables",
+        "pebble"
+      ],
+      "stderr_tail": "",
+      "update_rc": 0
+    },
+    "pebble_root": "subject=CN=Pebble Root CA 3a4c96\nsha256 Fingerprint=55:22:C5:F7:FF:73:F1:58:F0:23:3A:E9:62:9D:19:7B:35:7B:9E:CD:EC:61:A5:7C:D3:2B:FC:E5:37:BE:F6:F9\n",
+    "pebble_version": "pebble\t2.6.0+ds1-1+b7\n/usr/bin/pebble\n",
+    "route_get_1_1_1_1": "1.1.1.1 via 10.0.2.2 dev mgmt0 src 192.0.2.10 uid 0 \n    cache",
+    "server_ip": "192.0.2.10",
+    "what": "set18 lab preparation (not a product change): lab-only DNS, ACME and outbound rules"
+  },
+  "finished_at": "2026-10-15T22:54:28Z",
+  "name": "set18-lab-network",
+  "started_at": "2026-10-15T22:54:15Z",
+  "verdict": "passed"
+}

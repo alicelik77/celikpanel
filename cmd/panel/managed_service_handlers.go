@@ -195,6 +195,11 @@ type managedServicesPayload struct {
 	// bu sunucunun şu an taşıdığı ad, kurulumun kullanacağı ad ve o adın
 	// nereden geldiği.
 	MailHostname MailHostnameIdentity `json:"mail_hostname"`
+	// MailDNSGuidance is additive (2026-10-16): present only when the mail
+	// profiles wait for a DNS identity on a secondary DNS server, where the
+	// record has to be created on the primary or at the DNS provider.
+	// Ikincil DNS sunucusunda posta kaydinin nerede olusturulacagi.
+	MailDNSGuidance *mailProfileDNSGuidance `json:"mail_dns_guidance,omitempty"`
 }
 
 // stampScanAge sets ScanAgeSeconds from ScannedAt on this server's clock at
@@ -615,6 +620,7 @@ func (p *Panel) handleManagedServices(w http.ResponseWriter, r *http.Request) {
 		Profiles:         mailProfilesView(nil, false, packageFamily, mailProfileCatalogBlockedReason(mailProfileHostBlockedReason(), dnsIdentityReady), false, false, profileAttempts),
 		DNSIdentityReady: dnsIdentityReady,
 		MailHostname:     p.mailHostnameIdentity(r.Context()),
+		MailDNSGuidance:  p.mailProfileDNSGuidanceFor(r.Context(), dnsIdentityReady),
 	}
 
 	var data string
@@ -755,6 +761,7 @@ func (p *Panel) handleManagedServicesScan(w http.ResponseWriter, r *http.Request
 		Profiles:         mailProfilesView(services, true, p.packageFamily(), mailProfileCatalogBlockedReason(mailProfileHostBlockedReason(), dnsIdentityReady), webmailReady, webmailProven, profileAttempts),
 		DNSIdentityReady: dnsIdentityReady,
 		MailHostname:     p.mailHostnameIdentity(r.Context()),
+		MailDNSGuidance:  p.mailProfileDNSGuidanceFor(r.Context(), dnsIdentityReady),
 	}
 	payload.stampScanAge(time.Now())
 	json.NewEncoder(w).Encode(payload)
@@ -829,6 +836,8 @@ func (p *Panel) managedServicesCacheWithin(ctx context.Context, maxAge time.Dura
 		Services:         services,
 		Profiles:         mailProfilesView(services, true, packageFamily, mailProfileCatalogBlockedReason(mailProfileHostBlockedReason(), dnsIdentityReady), snapshot.WebmailReady, snapshot.WebmailProven, profileAttempts),
 		DNSIdentityReady: dnsIdentityReady,
+		MailHostname:     p.mailHostnameIdentity(ctx),
+		MailDNSGuidance:  p.mailProfileDNSGuidanceFor(ctx, dnsIdentityReady),
 	}, true, nil
 }
 

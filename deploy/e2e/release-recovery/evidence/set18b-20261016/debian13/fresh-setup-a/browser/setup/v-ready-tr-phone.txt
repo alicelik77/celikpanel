@@ -1,0 +1,15 @@
+Sunucunuz hazır
+
+Kurulum gerekli kontrollerden geçti. Hazırlanan altyapıyı kullanmaya başlayabilirsiniz.
+
+Web barındırma
+
+Panel erişimi, güvenlik duvarı ve seçilen altyapı doğrulandı. Eklediğiniz her site veya posta alan adı ayrıca kontrol edilir.
+
+İlk web sitenizi ekleyin
+Bu sunucunun kurulumunu genişletin
+
+Bu sunucunun ayrıca yapmasını istediğiniz şeyi, örneğin postayı ekleyin ya da bir sunucu adını düzeltin. Genişletme yalnızca eklediğinizi kurar ve yapılandırır. Kurulu hiçbir şeyi kaldırmaz, durdurmaz ya da değiştirmez; siteleriniz çalışmaya devam eder. Her değişikliği başlamadan önce gözden geçirirsiniz.
+
+Kurulumu genişlet
+Erişim ve kurtarma

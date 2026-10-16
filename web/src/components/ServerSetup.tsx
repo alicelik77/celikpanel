@@ -5,7 +5,7 @@ import { useI18n } from '../i18n';
 import { setupDNSTranslation } from '../i18n/setupDNS';
 import type { TranslationKey } from '../i18n/en';
 import { Link, Navigate } from '../router';
-import { decodeSetupEditorCheckpoint, setupInfrastructureZoneCandidate, changeSetupDNSRole, setupDNSNames, setupDetectedIPv4, chooseSetupPurpose, decodeServerSetup, setupNextPath, setupPurposes, type ServerSetupCheck, type ServerSetupDraft, type ServerSetupSnapshot } from '../lib/serverSetup';
+import { decodeSetupEditorCheckpoint, setupInfrastructureZoneCandidate, changeSetupDNSRole, setupDNSNames, setupDetectedIPv4, chooseSetupPurpose, decodeServerSetup, setupEditorKey, setupExtensionChanges, setupNextPath, setupPurposes, type ServerSetupCheck, type ServerSetupDraft, type ServerSetupSnapshot, type SetupExtensionChangeKey } from '../lib/serverSetup';
 import { retryableMailEnrollmentHandoff, continuableMailEnrollment, decodeSetupExecution, decodeSetupMarker, decodeSetupPlan, newSetupRequestID, safeSetupPanelURL, type ServerSetupExecution, type SetupInfrastructureDNSPlan, type ServerSetupPlan, type SetupStartMarker } from '../lib/serverSetupOperation';
 import { ServerSetupShell, useServerSetup } from './ServerSetupGate';
 import { ServerSetupSteps } from './ServerSetupSteps';
@@ -15,7 +15,7 @@ import { ServerSetupChoice, ServerSetupManualAction } from './ServerSetupChoice'
 import { Button, inputClass, KeepWords, Spinner } from './ui';
 import { AddressLink } from './AddressLink';
 import { ServerSetupComponents, useSetupComponentCatalog } from './ServerSetupComponents';
-import { setupComponentName, setupExecutionGuidance, setupHostBusyGuidance, setupHostingRootBlockerValues, setupPlanReopened, setupStepState, setupStepStateLabel, type SetupGuidanceText } from '../lib/serverSetupGuidance';
+import { setupCheckLine, setupComponentName, setupExecutionGuidance, setupHostBusyGuidance, setupHostingRootBlockerValues, setupPlanReopened, setupStepState, setupStepStateLabel, type SetupGuidanceText } from '../lib/serverSetupGuidance';
 import { setupEffectiveComponents, setupPresetComponents } from '../lib/serverSetupComponents';
 import { componentName } from '../lib/componentName';
 import { handoverAddress, handoverSettled, plannedHandoverDrop, setupHandover, setupStartMarkerKey } from '../lib/panelHandover';
@@ -34,7 +34,7 @@ async function setupFetch(url: string, options?: RequestInit) {
     try { return await fetch(url, { ...options, signal: controller.signal }); }
     finally { window.clearTimeout(timeout); }
 }
-const editorKey = (username: string) => `celikpanel.setup.editor.${username}`;
+const editorKey = setupEditorKey;
 const markerKey = setupStartMarkerKey;
 // A mail component this distribution cannot install gets the mail-specific
 // refusal: what is missing, who acts and the two ways forward (upd1 P2).
@@ -148,13 +148,23 @@ export function ServerSetup() {
     if (!setup?.snapshot) return <ServerSetupShell><Spinner /></ServerSetupShell>;
     if (manual) return <Navigate to="/" replace />;
     const snapshot = chosen || setup.snapshot;
-    if (['undecided', 'manual'].includes(snapshot.guidance || '') && !['running', 'waiting', 'ready'].includes(snapshot.status)) {
+    if (['undecided', 'manual'].includes(snapshot.guidance || '') && !['running', 'waiting', 'ready'].includes(snapshot.status) && !snapshot.extension) {
         return <ServerSetupShell><ServerSetupChoice snapshot={snapshot} onChosen={next => {
             setup.accept(next); setChosen(next); setManual(next.guidance === 'manual');
         }} /></ServerSetupShell>;
     }
-    return <SetupWizard initial={snapshot} />;
+    // Beginning or ending an extension of a completed setup remounts the
+    // wizard: it opens on the purpose step, or returns to the ready screen.
+    // Genisletmenin baslamasi ya da bitmesi sihirbazi yeniden kurar.
+    return <SetupWizard key={snapshot.extension ? 'extension' : 'setup'} initial={snapshot} />;
 }
+
+const extensionLabels: Record<SetupExtensionChangeKey, TranslationKey> = {
+    purpose: 'setup.dashboardReady', panel_domain: 'setup.panelDomain', mail_hostname: 'setup.mailHostname',
+    dns_mode: 'setup.extend.field.dnsMode', node_version: 'setup.nodeVersion', database: 'setup.database',
+    dns_hosting_management: 'setup.publisher.management',
+};
+const extensionLiteral = (key: SetupExtensionChangeKey) => ['panel_domain', 'mail_hostname', 'node_version'].includes(key);
 
 // After the owner's check saw every check pass, the server completes setup on
 // its next pass, normally within seconds. Past this bound the page stops
@@ -167,6 +177,11 @@ const setupFinishingLimit = 60_000;
 // not known and what the owner can check (D-024, owner rule 2026-10-14).
 // Ulasilamayan kurulum okunmaya devam eder; bu sureden sonra sonuc bilinmiyor denir.
 const setupReconnectLimit = 60_000;
+// A continuation that no read has confirmed stops being shown as in flight
+// after this bound; the button is offered again (the server answers a repeat
+// for the same request without starting a second operation).
+// Dogrulanmayan devam istegi bu sureden sonra yeniden sunulur.
+const enrollmentSettleLimit = 15_000;
 const setupChecksPassed = (checks: ServerSetupCheck[]) => checks.length > 0 && checks.every(check => check.state === 'ready');
 
 function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
@@ -189,7 +204,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
         setDraft(previous => previous.local_ip ? previous : { ...previous, local_ip: detectedIP });
     }, [detectedIP, snapshot.status]);
     const dnsNames = setupDNSNames(draft);
-    const [step, setStep] = useState<Step>(restoredEditor?.step || (initial.status === 'new' || initial.status === 'legacy' ? 'purpose' : initial.draft.customization ? 'components' : 'access'));
+    const [step, setStep] = useState<Step>(restoredEditor?.step || (initial.status === 'new' || initial.status === 'legacy' || (initial.extension && initial.status === 'draft') ? 'purpose' : initial.draft.customization ? 'components' : 'access'));
     const [plan, setPlan] = useState<ServerSetupPlan | null>(null);
     const [execution, setExecution] = useState<ServerSetupExecution | null>(null);
     const [marker, setMarker] = useState<SetupStartMarker | null>(() => {
@@ -203,9 +218,21 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     const [reconnecting, setReconnecting] = useState(false);
     const [reconnectSlow, setReconnectSlow] = useState(false);
     const [enrollmentNotice, setEnrollmentNotice] = useState<'checking' | 'unknown' | null>(null);
+    // The mail enrollment continuation the owner pressed, from the press until
+    // a read shows that operation moved on (set18 O3): the button stays
+    // disabled and says it is checking, so it is not pressed again meanwhile.
+    // Basilan devam istegi, islem ilerleyene dek; dugme bu surede kapalidir.
+    const [enrollmentSent, setEnrollmentSent] = useState<{ execution: string; step: string; code: string } | null>(null);
     const [completionFailed, setCompletionFailed] = useState(false);
     const [verificationResult, setVerificationResult] = useState<{ checks: ServerSetupCheck[]; failed: boolean } | null>(null);
     const [verifyingRequirements, setVerifyingRequirements] = useState(false);
+    // The answer to "Check requirements again" opens under the button, which
+    // can be the last thing on the screen: it is brought into view when it
+    // arrives (2026-10-16). / Kontrolun cevabi geldiginde gorunur alana alinir.
+    const verificationBox = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        if (verificationResult && !verifyingRequirements) verificationBox.current?.scrollIntoView?.({ block: 'nearest' });
+    }, [verificationResult, verifyingRequirements]);
     // checks: the run's own last recorded checks when the owner's check passed.
     // A newer unmet result from the run itself ends the finishing state.
     const [finishingRun, setFinishingRun] = useState<{ checks: string } | null>(null);
@@ -213,6 +240,8 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     // Every check passed on the owner's check; the server is completing setup.
     const finishing = !!finishingRun && !finishingSlow && execution?.status === 'waiting' && execution.phase === 'verification';
     const [manualExit, setManualExit] = useState(false);
+    const [extendBusy, setExtendBusy] = useState(false);
+    const [extendError, setExtendError] = useState<TranslationKey | null>(null);
     const pendingRef = useRef(false);
     const pollingRef = useRef(false);
     const pollEpoch = useRef(0);
@@ -230,6 +259,8 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     };
     // A guidance line, with the check it names translated into {check}.
     const say = (message: SetupGuidanceText) => t(message.key, message.name ? { ...message.values, check: t(message.name) } : message.values);
+    // An open check in the same typed sentence the run's guidance uses (2026-10-16).
+    const checkSentence = (check: ServerSetupCheck) => { const line = setupCheckLine(check); return line.text ? say(line.text) : failureText(check.code); };
     // One localized name per component, shared by the step list and the
     // install-failure guidance so both sentences name the same thing.
     // Adım listesi ve kurulum hatası yönlendirmesi aynı yerel adı kullanır.
@@ -271,6 +302,18 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
         }
         const next = decodeSetupExecution(value, current);
         if (!next) throw new Error('operation identity');
+        // The completed setup's own run while that setup is being extended
+        // (set18 D1): not this wizard's operation, and not a completion to
+        // verify. The extension's wizard is shown; a start marker left from
+        // that finished run is dropped. Once the extension starts, its own run
+        // is read. / Genisletilen kurulumun eski calismasi gosterilmez.
+        if (next.superseded) {
+            if (current && markerRef.current === current) {
+                try { localStorage.removeItem(markerKey(user.username)); } catch { /* the marker only selects what to read */ }
+                markerRef.current = null; setMarker(null);
+            }
+            return null;
+        }
         return next;
     }
     const reconcile = useCallback(async () => {
@@ -349,6 +392,20 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
         const timer = window.setTimeout(() => setFinishingSlow(true), setupFinishingLimit);
         return () => window.clearTimeout(timer);
     }, [finishingRun]);
+    // The press is settled by the operation itself: another run, another state
+    // of the same step, or the step no longer running (set18 O3).
+    // Devam istegi islemin kendi yeni durumuyla sonuclanir.
+    useEffect(() => {
+        if (!enrollmentSent) return;
+        const same = !!execution && execution.id === enrollmentSent.execution && (execution.error?.code || '') === enrollmentSent.code
+            && execution.steps.some(item => item.id === enrollmentSent.step && item.status === 'running');
+        if (!same) setEnrollmentSent(null);
+    }, [execution, enrollmentSent]);
+    useEffect(() => {
+        if (!enrollmentSent) return;
+        const timer = window.setTimeout(() => setEnrollmentSent(null), enrollmentSettleLimit);
+        return () => window.clearTimeout(timer);
+    }, [enrollmentSent]);
     // Reconnecting is shown as active for a bounded time; the reads go on after it.
     // Yeniden baglanma sinirli sure etkin gosterilir; okumalar sonra da surer.
     useEffect(() => {
@@ -465,8 +522,9 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     }
     async function continueMailEnrollment(initialRetry = false) {
         const current = initialRetry ? retryableMailEnrollmentHandoff(execution) : continuableMailEnrollment(execution);
-        if (!current || !execution || reconnecting || pendingRef.current) return;
+        if (!current || !execution || reconnecting || enrollmentSent || pendingRef.current) return;
         pendingRef.current = true; setBusy(true); setError(''); setEnrollmentNotice(null);
+        setEnrollmentSent({ execution: execution.id, step: current.id, code: execution.error?.code || '' });
         try {
             const response = await setupFetch(`/api/v1/setup/mail-enrollment/${initialRetry ? 'retry' : 'continue'}`, requestOptions({ execution_id: execution.id, step_id: current.id }));
             const result: unknown = response.ok ? await response.json() : null;
@@ -478,6 +536,38 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
             await reconcile();
             pendingRef.current = false; if (alive.current) setBusy(false);
         }
+    }
+    // Begin or stop extending a completed setup (POST /api/v1/setup/extend).
+    // Only the setup record changes; nothing on the server is installed until
+    // the reviewed plan is started. A lost answer is settled by reading the
+    // setup again, never by sending the request a second time.
+    // Genisletmeyi baslat ya da birak; kayip yanit yeniden okumayla cozulur.
+    async function extendSetup(action: 'begin' | 'cancel') {
+        if (pendingRef.current) return;
+        pendingRef.current = true; setExtendBusy(true); setExtendError(null);
+        const settled = (value: ServerSetupSnapshot | null): value is ServerSetupSnapshot => !!value && (action === 'begin' ? value.extension === true : value.status === 'ready' && !value.extension);
+        // code: the server's typed refusal; 'unanswered' when no answer came.
+        let code = 'unanswered';
+        try {
+            const response = await setupFetch('/api/v1/setup/extend', requestOptions({ revision: snapshot.revision, action }));
+            if (!response.ok) {
+                const problem: unknown = await response.json();
+                code = problem && typeof problem === 'object' && typeof (problem as { code?: unknown }).code === 'string' ? (problem as { code: string }).code : 'refused';
+            } else {
+                const next = decodeServerSetup(await response.json());
+                // An extension opens on the purpose step, whatever this screen showed.
+                if (settled(next)) { pendingRef.current = false; if (action === 'begin') setStep('purpose'); accept(next); return; }
+            }
+        } catch { code = 'unanswered'; }
+        let latest: ServerSetupSnapshot | null = null;
+        try { latest = await setup.reload(); } catch { latest = null; }
+        pendingRef.current = false;
+        if (!alive.current) return;
+        setExtendBusy(false);
+        if (settled(latest) && action === 'begin') setStep('purpose');
+        if (latest) accept(latest);
+        if (settled(latest)) return;
+        setExtendError(code === 'server_setup_busy' ? 'setup.extend.busy' : code === 'server_setup_extend_not_ready' ? 'setup.extend.notReady' : action === 'cancel' ? 'setup.extend.stopFailed' : 'setup.extend.failed');
     }
     function editPlan() {
         if (execution && execution.status !== 'failed') return;
@@ -512,6 +602,13 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     // Stopped because its plan was reopened: a known end, not a failure.
     const planReopened = setupPlanReopened(execution);
     const completed = snapshot.status === 'ready';
+    const extending = snapshot.extension === true;
+    const extensionChanges = extending ? setupExtensionChanges(snapshot.extension_base, draft) : [];
+    const extensionValue = (key: SetupExtensionChangeKey, value: string) => !value ? t('setup.extend.none')
+        : key === 'purpose' ? t(`setup.purpose.${value}` as TranslationKey)
+            : key === 'dns_mode' ? t(`setup.dns.${value}` as TranslationKey)
+                : key === 'dns_hosting_management' ? t(value === 'manual' ? 'setup.publisher.manual' : 'setup.publisher.automatic')
+                    : key === 'database' ? (value === 'postgresql' ? 'PostgreSQL' : value === 'mariadb' ? 'MariaDB' : value) : value;
     const hasOperation = resolving || !!execution || !!marker || reconnecting;
     const certificateReady = execution?.steps.some(item => item.kind === 'panel_certificate' && item.status === 'succeeded') || execution?.status === 'succeeded';
     const panelURL = certificateReady ? safeSetupPanelURL(execution?.panel_url, marker?.panel_domain || draft.panel_domain) : null;
@@ -558,7 +655,10 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     // guidance, so the block under it does not repeat that as a second heading;
     // only a run in progress keeps "what happens at this step" as the block's label.
     const stateTitle = hostBusy ? hostBusy.title : guidance && (execution?.status !== 'running' || confirmingPrevious) ? guidance.title : null;
-    const guidanceStep = progressCurrentStep && !waitingLicense ? t(`setup.kind.${progressCurrentStep.kind}`, { target: stepTarget(progressCurrentStep.kind, progressCurrentStep.target) }) : '';
+    // A run accepted but not yet at its first step names that first step (set18 O1).
+    // Kabul edilmis, henuz baslamamis calisma ilk adimini adlandirir.
+    const guidanceStepItem = progressCurrentStep || (execution?.status === 'running' && execution.phase === 'queued' ? execution.steps.find(item => item.status === 'pending') : undefined);
+    const guidanceStep = guidanceStepItem && !waitingLicense ? t(`setup.kind.${guidanceStepItem.kind}`, { target: stepTarget(guidanceStepItem.kind, guidanceStepItem.target) }) : '';
     const progressChecks = (verificationResult && !verificationResult.failed ? verificationResult.checks : execution?.checks || snapshot.checks).filter(check => check.state !== 'ready');
     const verifiedBlockers = verificationResult?.checks.filter(check => check.state !== 'ready') || [];
     const verificationMessage = verifyingRequirements ? 'setup.verifyChecking'
@@ -571,12 +671,19 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     if (manualExit) return <Navigate to="/" replace />;
     return <ServerSetupShell navigation={!completed ? <ServerSetupSteps steps={steps} current={hasOperation ? 'progress' : step} /> : undefined}>
         <div className="max-w-3xl">
-            <h1 ref={heading} tabIndex={-1} className="text-2xl font-semibold leading-tight outline-none focus-visible:outline-none sm:text-3xl">{t(completed ? 'setup.completeTitle' : 'setup.title')}</h1>
-            <p className="mt-3 max-w-2xl text-fg-muted">{t(completed ? 'setup.completeHelp' : hasOperation ? 'setup.guide.progressIntro' : 'setup.intro')}</p>
+            <h1 ref={heading} tabIndex={-1} className="text-2xl font-semibold leading-tight outline-none focus-visible:outline-none sm:text-3xl">{t(completed ? 'setup.completeTitle' : extending ? 'setup.extend.title' : 'setup.title')}</h1>
+            <p className="mt-3 max-w-2xl text-fg-muted">{t(completed ? 'setup.completeHelp' : hasOperation ? 'setup.guide.progressIntro' : extending ? 'setup.extend.intro' : 'setup.intro')}</p>
         </div>
         {completed ? <section className="mt-8 max-w-3xl space-y-6" aria-labelledby="setup-ready-title">
             <div className="flex items-start gap-3"><Check className="mt-1 h-5 w-5 shrink-0 text-success" aria-hidden="true" /><div><h2 id="setup-ready-title" className="text-lg font-semibold">{t(customized ? 'setup.purpose.custom' : `setup.purpose.${snapshot.draft.purpose}`)}</h2><p className="mt-1 text-sm text-fg-muted">{t('setup.completeServices')}</p></div></div>
             <Link to={nextPath} className="inline-flex items-center gap-3 rounded-lg bg-primary px-5 py-3 font-semibold text-primary-fg hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">{t(nextLabel)}<ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>
+            {/* What extending does and does not do, said before the action (D-033). */}
+            <section aria-labelledby="setup-extend-title" className="border-t border-border pt-6" data-setup-extend="">
+                <h2 id="setup-extend-title" className="text-lg font-semibold">{t('setup.extend.title')}</h2>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-fg-muted">{t('setup.extend.help')}</p>
+                {extendError && <p role="alert" className="mt-3 max-w-2xl text-sm leading-6 text-fg">{t(extendError)}</p>}
+                <Button variant="secondary" className="mt-4" disabled={extendBusy} loading={extendBusy} onClick={() => void extendSetup('begin')}>{t('setup.extend.action')}</Button>
+            </section>
         </section> : <div className="mt-6 space-y-6">
             <div className="md:hidden"><ServerSetupSteps steps={steps} current={hasOperation ? 'progress' : step} mobile /></div>
             <div className="min-w-0">
@@ -604,8 +711,8 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                             {index === (guidance.checksAt ?? 0) && guidance.checks && guidance.checks.length > 0 && <ul className="space-y-2 rounded-md border border-border bg-surface-2 px-4 py-3 text-fg" data-setup-checks="">{guidance.checks.map(line => <li key={line.check.id} className="break-words" data-check={line.check.id} data-state={line.check.state}>{line.text ? say(line.text) : failureText(line.check.code)}</li>)}</ul>}
                         </div>)}</div>
                         {canReviseWaiting && <Button variant="secondary" disabled={busy} className="mt-3" onClick={() => void reviseWaiting()}>{t('setup.editPlan')}</Button>}
-                        {mailEnrollmentToContinue && <Button variant="secondary" disabled={busy} className="mt-3" onClick={() => void continueMailEnrollment()}>{t('setup.mailEnrollment.continue')}</Button>}
-                        {mailEnrollmentToRetry && <Button variant="secondary" disabled={busy} className="mt-3" onClick={() => void continueMailEnrollment(true)}>{t('setup.mailEnrollment.retry')}</Button>}
+                        {mailEnrollmentToContinue && <Button variant="secondary" disabled={busy || !!enrollmentSent} loading={!!enrollmentSent} className="mt-3" onClick={() => void continueMailEnrollment()}>{t(enrollmentSent ? 'setup.mailEnrollment.sent' : 'setup.mailEnrollment.continue')}</Button>}
+                        {mailEnrollmentToRetry && <Button variant="secondary" disabled={busy || !!enrollmentSent} loading={!!enrollmentSent} className="mt-3" onClick={() => void continueMailEnrollment(true)}>{t(enrollmentSent ? 'setup.mailEnrollment.sent' : 'setup.mailEnrollment.retry')}</Button>}
                         {enrollmentNotice && progressCurrentStep?.kind === 'mail_enrollment' && <p role="status" className="mt-3 text-sm">{t(`setup.mailEnrollment.${enrollmentNotice}`)}</p>}
                         {execution?.context?.infrastructure_dns && ['infrastructure_dns', 'access_dns'].includes(progressCurrentStep?.kind || execution?.phase || '') && <details className="mt-3 text-sm"><summary className="cursor-pointer font-medium text-primary">{t('setup.infrastructure.reviewTitle')}</summary><SetupInfrastructureDNSReview value={execution.context.infrastructure_dns} compact /></details>}
                         {guidance.details.length > 0 && <details className="mt-3 text-sm leading-6"><summary className="cursor-pointer font-medium text-primary">{t('setup.guide.more')}</summary><ul className="mt-2 list-disc space-y-2 pl-5 text-fg-muted">{guidance.details.map((message, index) => <li key={index}>{say(message)}</li>)}</ul></details>}
@@ -614,7 +721,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                     {execution?.error && !['dns_publisher', 'dns_readiness'].includes(execution.phase) && <div role={hostBusy ? undefined : confirmingPrevious || waitingDNSPrerequisite || observingMailEnrollment || planReopened ? 'status' : 'alert'} className={`${hostBusy ? 'mt-3' : 'mt-5'} space-y-2 text-sm`}>{!hostBusy && (!(confirmingPrevious || observingMailEnrollment || planReopened) || !guidance) && <p className={execution.status === 'failed' ? 'text-danger' : confirmingPrevious || waitingDNSPrerequisite ? 'text-fg-muted' : 'text-fg'}>{failureText(execution.error.code, execution.error.message, execution.error.reason)}</p>}<details><summary className="cursor-pointer text-primary">{t('setup.details')}</summary><p className="mt-2 break-words text-fg-muted">{execution.error.message}</p></details></div>}
                     {/* The action a stopped run names sits with its reason, above the step list. */}
                     {execution?.status === 'failed' && guidance && !hostBusy && <div className="mt-5"><Button variant="primary" onClick={editPlan}>{t('setup.revise')}</Button></div>}
-                    {progressChecks.length > 0 && waitingVerification && !guidance?.checks && <ul className="mt-5 list-disc space-y-2 pl-5 text-sm text-fg-muted">{progressChecks.map(check => <li key={check.id}>{failureText(check.code)}</li>)}</ul>}
+                    {progressChecks.length > 0 && waitingVerification && !guidance?.checks && <ul className="mt-5 list-disc space-y-2 pl-5 text-sm text-fg-muted">{progressChecks.map(check => <li key={check.id} className="break-words">{checkSentence(check)}</li>)}</ul>}
                     {/* After everything that explains the current state, and still above the step list. */}
                     {handoverNotice && <SetupHandoverNotice host={handoverNotice.host} url={handoverURL} />}
                     <ol className="mt-6 divide-y divide-border" aria-live="polite">
@@ -641,10 +748,10 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                                 : (reconnecting || completionFailed) && <Button variant={handoverDrop ? 'secondary' : 'primary'} disabled={busy} onClick={() => void (marker && !execution ? resumeUnconfirmed() : reconcile())}>{t(marker && !execution ? 'setup.resumeConfirmed' : 'setup.reconnect')}</Button>}
                     </div>
                     {waitingVerification && <div role="status" aria-live="polite" aria-atomic="true" className="mt-4 text-sm">
-                        {verificationMessage && <div className="rounded-lg border border-border bg-surface p-4">
+                        {verificationMessage && <div ref={verificationBox} className="scroll-mb-6 rounded-lg border border-border bg-surface p-4">
                             {finishing ? <p className="flex items-start gap-3 font-medium" data-setup-finishing=""><Loader2 className="mt-0.5 h-4 w-4 shrink-0 text-primary motion-safe:animate-spin" aria-hidden="true" /><span>{t(verificationMessage)}</span></p>
                                 : <p className={verificationMessage === 'setup.finishingSlow' ? 'max-w-3xl break-words leading-6' : 'font-medium'}>{verificationMessage === 'setup.finishingSlow' ? <KeepWords text={t(verificationMessage)} /> : t(verificationMessage)}</p>}
-                            {!verifyingRequirements && verifiedBlockers.length > 0 && <ul className="mt-2 list-disc space-y-2 pl-5 text-fg-muted">{verifiedBlockers.map(check => <li key={check.id}>{failureText(check.code)}</li>)}</ul>}
+                            {!verifyingRequirements && verifiedBlockers.length > 0 && <ul className="mt-2 list-disc space-y-2 pl-5 text-fg-muted">{verifiedBlockers.map(check => <li key={check.id} className="break-words" data-check={check.id}>{checkSentence(check)}</li>)}</ul>}
                             {verificationMessage === 'setup.finishingSlow' && <Button variant="secondary" className="mt-3" onClick={() => window.location.reload()}>{t('setup.reloadPage')}</Button>}
                         </div>}
                     </div>}
@@ -653,7 +760,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                         <legend className="text-xl font-semibold">{t('setup.purposeTitle')}</legend>
                         <div className="mt-4 divide-y divide-border rounded-xl border border-border bg-surface">
                             {setupPurposes.map(purpose => <div key={purpose} className={`first:rounded-t-xl last:rounded-b-xl ${draft.purpose === purpose ? 'bg-surface-2' : 'hover:bg-surface-subtle'}`}>
-                                <label className="flex cursor-pointer items-start gap-4 px-4 py-4 sm:px-5"><input type="radio" name="setup-purpose" value={purpose} checked={draft.purpose === purpose} onChange={() => { setDraft(previous => chooseSetupPurpose(previous, purpose)); setPlan(null); }} className="mt-1 h-4 w-4 shrink-0 accent-primary" /><span className="grid min-w-0 flex-1 gap-1 xl:grid-cols-3 xl:gap-5"><span className="font-semibold"><span id={`setup-purpose-title-${purpose}`}>{t(`setup.purpose.${purpose}`)}</span>{purpose === 'web' && <span className="mt-1 block text-xs font-normal text-fg-muted">{t('setup.recommended')}</span>}</span><span className="text-sm leading-6 text-fg-muted xl:col-span-2">{t(`setup.purpose.${purpose}.help`)}</span></span></label>
+                                <label className="flex cursor-pointer items-start gap-4 px-4 py-4 sm:px-5"><input type="radio" name="setup-purpose" value={purpose} checked={draft.purpose === purpose} onChange={() => { setDraft(previous => chooseSetupPurpose(previous, purpose)); setPlan(null); }} className="mt-1 h-4 w-4 shrink-0 accent-primary" /><span className="grid min-w-0 flex-1 gap-1 xl:grid-cols-3 xl:gap-5"><span className="font-semibold"><span id={`setup-purpose-title-${purpose}`}>{t(`setup.purpose.${purpose}`)}</span>{purpose === 'web' && <span className="mt-1 block text-xs font-normal text-fg-muted">{t('setup.recommended')}</span>}</span><span className="text-sm leading-6 text-fg-muted xl:col-span-2"><KeepWords text={t(`setup.purpose.${purpose}.help`)} /></span></span></label>
                                 {draft.purpose === purpose && purpose !== 'custom' && <button type="button" disabled={!catalog || busy} aria-describedby={`setup-purpose-title-${purpose}`} className="mb-3 ml-12 inline-flex min-h-9 items-center text-sm font-medium text-primary underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-60 sm:ml-[3.25rem]" onClick={() => { if (!catalog) return; change('customization', { components: draft.customization?.components || setupPresetComponents(draft, catalog) }); setStep('components'); }}>{t('setup.components.customize')}</button>}
                             </div>)}
                         </div>
@@ -727,7 +834,8 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                         <h2 id="setup-plan-title" className="text-xl font-semibold">{t('setup.reviewTitle')}</h2><p className="mt-3 text-sm leading-6 text-fg-muted">{t('setup.reviewHelp')}</p>
                         {handoverNotice && <SetupHandoverNotice host={handoverNotice.host} url={handoverURL} />}
                         {plan.infrastructure_dns && <SetupInfrastructureDNSReview value={plan.infrastructure_dns} />}
-                        {plan.components && <div className="mt-5"><h3 className="font-semibold">{t('setup.components.reviewTitle')}</h3><ul className="mt-2 divide-y divide-border">{plan.components.map(item => <li key={item.id} className="flex flex-wrap items-baseline justify-between gap-2 py-2 text-sm"><span>{componentName(catalog?.components.find(row => row.id === item.id) ?? { id: item.id, name: stepTarget('service', item.id) }, t)}</span><span className="text-fg-muted">{t(item.installed ? 'setup.components.keep' : item.required ? 'setup.components.dependency' : 'setup.components.toInstall')}</span></li>)}</ul><p className="mt-3 text-sm text-fg-muted">{t('setup.components.preserve')}</p></div>}
+                        {extending && <SetupExtensionReview plan={plan} changes={extensionChanges.map(change => ({ key: change.key, label: t(extensionLabels[change.key]), before: extensionValue(change.key, change.before), after: extensionValue(change.key, change.after), beforeLiteral: extensionLiteral(change.key) && change.before !== '', afterLiteral: extensionLiteral(change.key) && change.after !== '' }))} name={(kind, target) => kind === 'service' ? componentName(catalog?.components.find(row => row.id === target) ?? { id: target, name: stepTarget('service', target) }, t) : t(`setup.kind.${kind}` as TranslationKey, { target: stepTarget(kind, target) })} />}
+                        {plan.components && !extending && <div className="mt-5"><h3 className="font-semibold">{t('setup.components.reviewTitle')}</h3><ul className="mt-2 divide-y divide-border">{plan.components.map(item => <li key={item.id} className="flex flex-wrap items-baseline justify-between gap-2 py-2 text-sm"><span>{componentName(catalog?.components.find(row => row.id === item.id) ?? { id: item.id, name: stepTarget('service', item.id) }, t)}</span><span className="text-fg-muted">{t(item.installed ? 'setup.components.keep' : item.required ? 'setup.components.dependency' : 'setup.components.toInstall')}</span></li>)}</ul><p className="mt-3 text-sm text-fg-muted">{t('setup.components.preserve')}</p></div>}
                         <ol className="mt-5 divide-y divide-border">{plan.steps.map(item => <li key={item.id} className="py-4"><p className="font-medium">{t(`setup.kind.${item.kind}`, { target: stepTarget(item.kind, item.target) })}</p>{item.qualifier && item.kind !== 'mail_enrollment' && <p className="mt-1 text-sm text-fg-muted">{item.qualifier}</p>}{handoverNotice && item.kind === 'panel_certificate' && <p className="mt-1 text-sm text-fg-muted">{t('setup.handover.stepNote')}</p>}</li>)}</ol>
                         <dl className="mt-5 space-y-3 rounded-lg bg-surface-2 p-4 text-sm"><div><dt className="font-semibold">{t('setup.firewallReview')}</dt><dd className="mt-1 leading-6 text-fg-muted">{t('setup.firewallHelp')}</dd></div><div><dt className="font-semibold">TCP</dt><dd className="mt-1 break-words tabular-nums">{plan.tcp_ports.join(', ') || t('setup.noPorts')}</dd></div><div><dt className="font-semibold">UDP</dt><dd className="mt-1 break-words tabular-nums">{plan.udp_ports.join(', ') || t('setup.noPorts')}</dd></div><div><dt className="font-semibold">{t('setup.certificateContact')}</dt><dd className="mt-1 break-all">{plan.contact_email}</dd></div>{plan.hostname_change && <div><dt className="font-semibold">{t('setup.hostnameChange')}</dt><dd className="mt-1 break-all">{plan.hostname_change}</dd></div>}</dl>
                         {automaticPublisher && publisherEndpoint && <div className="mt-5 space-y-2 border-t border-border pt-4 text-sm"><p className="font-semibold">{t('setup.publisher.reviewTitle')}</p><p className="break-all">{publisherEndpoint}</p><p className="leading-6 text-fg-muted">{t('setup.publisher.setupHelp')}</p></div>}
@@ -745,10 +853,49 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                         </div>
                     </div>
                 </form>}
-            {!completed && !hasOperation && <ServerSetupManualAction compact snapshot={snapshot} onChosen={next => { accept(next); setManualExit(true); }} />}
+            {!completed && !hasOperation && (extending
+                ? <div className="mt-4 flex flex-wrap items-start gap-x-6 gap-y-3" data-setup-extend-stop="">
+                    <button type="button" disabled={extendBusy || busy} onClick={() => void extendSetup('cancel')} className="min-h-11 py-2 text-sm font-medium text-primary underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-60">{t('setup.extend.stop')}</button>
+                    <p className="min-w-0 flex-1 basis-80 py-2 text-sm leading-6 text-fg-muted">{t('setup.extend.stopHelp')}</p>
+                    {extendError && <p role="alert" className="w-full max-w-2xl text-sm leading-6 text-fg">{t(extendError)}</p>}
+                </div>
+                : <ServerSetupManualAction compact snapshot={snapshot} onChosen={next => { accept(next); setManualExit(true); }} />)}
             </div>
         </div>}
     </ServerSetupShell>;
+}
+
+// The review of an extension says what changes against the completed setup:
+// the settings that differ, what will be installed, and (folded) what is
+// already installed and kept. The step list below it stays complete: those
+// are the steps the run takes, checks included.
+// Genisletme incelemesi degiseni one koyar; adim listesi eksiksiz kalir.
+function SetupExtensionReview({ plan, changes, name }: {
+    plan: ServerSetupPlan;
+    // A literal value keeps the mono face; "none" is a word and does not (2026-10-16).
+    changes: { key: string; label: string; before: string; after: string; beforeLiteral: boolean; afterLiteral: boolean }[];
+    name: (kind: string, target: string) => string;
+}) {
+    const { t } = useSetupI18n();
+    const installs = plan.steps.filter(item => ['service', 'runtime', 'mail_profile'].includes(item.kind));
+    const kept = (plan.components || []).filter(item => item.installed);
+    return <div className="mt-5 space-y-5" data-setup-extension-review="">
+        <section aria-labelledby="setup-extension-changes">
+            <h3 id="setup-extension-changes" className="font-semibold">{t('setup.extend.changesTitle')}</h3>
+            {changes.length > 0 ? <dl className="mt-2 divide-y divide-border border-y border-border">{changes.map(change => <div key={change.key} className="grid gap-1 py-3 text-sm sm:grid-cols-[minmax(0,13rem)_minmax(0,1fr)] sm:gap-4" data-change={change.key}>
+                <dt className="text-fg-muted">{change.label}</dt>
+                <dd className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1"><span className={`break-all text-fg-muted ${change.beforeLiteral ? 'font-mono' : ''}`}>{change.before}</span><ArrowRight className="h-3.5 w-3.5 shrink-0 text-fg-muted" aria-hidden="true" /><span className="sr-only">→</span><span className={`break-all font-medium text-fg ${change.afterLiteral ? 'font-mono' : ''}`}>{change.after}</span></dd>
+            </div>)}</dl> : <p className="mt-2 text-sm leading-6 text-fg-muted">{t('setup.extend.noChanges')}</p>}
+        </section>
+        <section aria-labelledby="setup-extension-installs">
+            <h3 id="setup-extension-installs" className="font-semibold">{t('setup.extend.installTitle')}</h3>
+            {installs.length > 0 ? <ul className="mt-2 divide-y divide-border border-y border-border">{installs.map(item => <li key={item.id} className="py-2 text-sm" data-install={item.target}>{name(item.kind, item.target)}</li>)}</ul> : <p className="mt-2 text-sm text-fg-muted">{t('setup.extend.nothingToInstall')}</p>}
+        </section>
+        {kept.length > 0 && <details className="text-sm">
+            <summary className="cursor-pointer font-medium text-primary">{t('setup.extend.keptTitle', { count: kept.length })}</summary>
+            <ul className="mt-2 divide-y divide-border">{kept.map(item => <li key={item.id} className="flex flex-wrap items-baseline justify-between gap-2 py-2"><span>{name('service', item.id)}</span><span className="text-fg-muted">{t('setup.components.keep')}</span></li>)}</ul>
+        </details>}
+    </div>;
 }
 
 // The Panel's secure address as a real link, with what to expect there. In the

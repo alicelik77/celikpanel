@@ -1,0 +1,51 @@
+Extend this server’s setup
+
+Follow the setup steps and their recorded results here.
+
+Preparing your server
+What happens at this step
+
+Prepare independent mail certificate renewal
+
+Mail renewal preparation is recorded; its final result is not yet verified. Checks continue automatically. If progress has stopped, the server administrator can resolve the reported cause and continue this recorded operation below.
+
+Continue recorded operation
+Checks and how to continue
+Technical details
+
+Configure DNS: Use an external DNS provider
+
+Completed
+
+Prepare mail profile: Core Mail
+
+Completed
+
+Apply and save the firewall policy
+
+Completed
+
+Verify public DNS before certificate issuance: panel.set18.test
+
+192.0.2.10
+
+Completed
+
+Verify public DNS before certificate issuance: mail.set18.test
+
+192.0.2.10
+
+Completed
+
+Secure mail access: mail.set18.test
+
+Completed
+
+Prepare independent mail certificate renewal
+
+In progress
+
+Verify the prepared server
+
+Waiting
+Access and recovery

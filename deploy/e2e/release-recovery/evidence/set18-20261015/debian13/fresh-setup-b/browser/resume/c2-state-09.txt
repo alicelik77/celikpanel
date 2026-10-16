@@ -1,0 +1,45 @@
+Extend this server’s setup
+
+Follow the setup steps and their recorded results here.
+
+Verifying the result
+
+Configure DNS: Use an external DNS provider
+
+Completed
+
+Prepare mail profile: Core Mail
+
+Completed
+
+Apply and save the firewall policy
+
+Completed
+
+Verify public DNS before certificate issuance: panel.set18.test
+
+192.0.2.10
+
+Completed
+
+Verify public DNS before certificate issuance: mail.set18.test
+
+192.0.2.10
+
+Completed
+
+Secure mail access: mail.set18.test
+
+Completed
+
+Prepare independent mail certificate renewal
+
+Completed
+
+Verify the prepared server
+
+In progress
+
+Continue at the secure panel address
+
+Access and recovery

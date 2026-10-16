@@ -1,0 +1,3 @@
+2026-10-15T23:49:48Z coordinator date -u at the start of the work
+2026-10-16T00:03:45Z H5: job-build.sh's last grep named set18's build log (build-set18.out), so artifacts.path was empty after a successful build (rc 0); the coordinator wrote it from build-set18b.out (suite2.sh) and ran prove and the dry run on run copy c; job-build.sh in tools/ is the corrected text (the job that ran is host/../job-build as copied to the run directory)
+2026-10-16T00:17:36Z coordinator native reading (native.sh after-c2) not taken: the driver had already stopped the lab at 00:17:33Z (ssh refused); the driver's own readings (H2 fixed) carry the native reading and the lab state

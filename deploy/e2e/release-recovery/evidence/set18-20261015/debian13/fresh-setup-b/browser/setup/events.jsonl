@@ -1,0 +1,52 @@
+{"at":"2026-10-15T22:55:08.097Z","ev":"start","phase":"start","chrome":"Chrome/155.0.8059.40"}
+{"at":"2026-10-15T22:55:09.252Z","ev":"sign-in-page","phase":"c1-wizard","shown":"form"}
+{"at":"2026-10-15T22:55:16.023Z","ev":"shot","name":"c1-01-opened","phase":"c1-wizard"}
+{"at":"2026-10-15T22:55:16.030Z","ev":"click","phase":"c1-wizard","pattern":"/^Set up with the wizard$/","clicked":"Set up with the wizard"}
+{"at":"2026-10-15T22:55:20.184Z","ev":"shot","name":"c1-02-wizard","phase":"c1-wizard"}
+{"at":"2026-10-15T22:55:21.045Z","ev":"shot","name":"c1-03-purpose","phase":"c1-wizard"}
+{"at":"2026-10-15T22:55:21.060Z","ev":"click","phase":"c1-wizard","pattern":"/^Continue/","clicked":"Continue"}
+{"at":"2026-10-15T22:55:21.670Z","ev":"fill","phase":"c1-wizard","selector":"#setup-panel_domain","value":"panel.set18.test","now":"panel.set18.test"}
+{"at":"2026-10-15T22:55:22.657Z","ev":"shot","name":"c1-04-access","phase":"c1-wizard"}
+{"at":"2026-10-15T22:55:22.674Z","ev":"click","phase":"c1-wizard","pattern":"/^Review setup plan/","clicked":"Review setup plan"}
+{"at":"2026-10-15T22:55:26.016Z","ev":"shot","name":"c1-05-review","phase":"c1-wizard"}
+{"at":"2026-10-15T22:55:26.560Z","ev":"click","phase":"c1-run","pattern":"/^Start reviewed setup$/","clicked":"Start reviewed setup"}
+{"at":"2026-10-15T22:55:26.648Z","ev":"shot","name":"c1-state-01","phase":"c1-run","t_plus_s":0}
+{"at":"2026-10-15T22:55:27.658Z","ev":"shot","name":"c1-state-02","phase":"c1-run","t_plus_s":1}
+{"at":"2026-10-15T22:55:30.684Z","ev":"shot","name":"c1-state-03","phase":"c1-run","t_plus_s":4}
+{"at":"2026-10-15T22:55:40.032Z","ev":"shot","name":"c1-state-04","phase":"c1-run","t_plus_s":13}
+{"at":"2026-10-15T22:56:03.125Z","ev":"shot","name":"c1-state-05","phase":"c1-run","t_plus_s":36}
+{"at":"2026-10-15T22:56:54.707Z","ev":"shot","name":"c1-state-06","phase":"c1-run","t_plus_s":88}
+{"at":"2026-10-15T22:57:03.298Z","ev":"shot","name":"c1-state-07","phase":"c1-run","t_plus_s":97}
+{"at":"2026-10-15T22:57:12.552Z","ev":"shot","name":"c1-state-08","phase":"c1-run","t_plus_s":106}
+{"at":"2026-10-15T22:57:15.664Z","ev":"shot","name":"c1-state-09","phase":"c1-run","t_plus_s":109}
+{"at":"2026-10-15T22:57:18.419Z","ev":"shot","name":"c1-state-10","phase":"c1-run","t_plus_s":112}
+{"at":"2026-10-15T22:57:21.432Z","ev":"shot","name":"c1-state-11","phase":"c1-run","t_plus_s":115}
+{"at":"2026-10-15T22:57:21.599Z","ev":"shot","name":"c1-final","phase":"c1-run"}
+{"at":"2026-10-15T22:57:21.643Z","ev":"prep-requested","name":"refresh-pin","phase":"c1-run"}
+{"at":"2026-10-15T22:57:22.918Z","ev":"prep-done","name":"refresh-pin","phase":"c1-run","record":{"at":"2026-10-15T22:57:22Z","prep":"refresh-pin","result":{"after":"9409a263b9766ae113282ab54498a6d1ea9360f5104e6767949eb9e49d1955d3","before":"85306a7abcd37ac214fe231aaab9e0fe2862913bc664361520c62ed20270e3c5","changed":true},"host_asked_ms":1792105041641,"host_got_ms":1792105042918}}
+{"at":"2026-10-15T22:57:25.729Z","ev":"shot","name":"c1-ready","phase":"c1-run"}
+{"at":"2026-10-15T22:57:31.180Z","ev":"shot","name":"v-ready-en-1280","phase":"c1-run","lang":"en","vp":"1280","facts":{"lang":"en","overflow_x":false,"width":1280}}
+{"at":"2026-10-15T22:58:04.728Z","ev":"shot","name":"v-ready-en-phone","phase":"c1-run","lang":"en","vp":"phone","facts":{"lang":"en","overflow_x":false,"width":390}}
+{"at":"2026-10-15T22:58:38.227Z","ev":"shot","name":"v-ready-tr-1280","phase":"c1-run","lang":"tr","vp":"1280","facts":{"lang":"tr","overflow_x":false,"width":1280}}
+{"at":"2026-10-15T22:59:11.754Z","ev":"shot","name":"v-ready-tr-phone","phase":"c1-run","lang":"tr","vp":"phone","facts":{"lang":"tr","overflow_x":false,"width":390}}
+{"at":"2026-10-15T22:59:28.878Z","ev":"prep-requested","name":"setup-read","phase":"c1-run"}
+{"at":"2026-10-15T22:59:29.508Z","ev":"prep-done","name":"setup-read","phase":"c1-run","record":{"at":"2026-10-15T22:59:29Z","prep":"setup-read","result":{"error":"PinMismatch: panel TLS leaf differs from the guest-reported certificate"},"host_asked_ms":1792105168876,"host_got_ms":1792105169508}}
+{"at":"2026-10-15T22:59:47.747Z","ev":"shot","name":"c3-01-components","phase":"c3-components"}
+{"at":"2026-10-15T23:00:04.098Z","ev":"shot","name":"c3-02-dialog","phase":"c3-components"}
+{"at":"2026-10-15T23:00:54.188Z","ev":"shot","name":"v-mail-dialog-en-1280","phase":"c3-components","lang":"en","vp":"1280","facts":{"lang":"en","overflow_x":false,"width":1280}}
+{"at":"2026-10-15T23:01:44.382Z","ev":"shot","name":"v-mail-dialog-en-phone","phase":"c3-components","lang":"en","vp":"phone","facts":{"lang":"en","overflow_x":false,"width":390}}
+{"at":"2026-10-15T23:02:34.528Z","ev":"shot","name":"v-mail-dialog-tr-1280","phase":"c3-components","lang":"tr","vp":"1280","facts":{"lang":"tr","overflow_x":false,"width":1280}}
+{"at":"2026-10-15T23:03:24.689Z","ev":"shot","name":"v-mail-dialog-tr-phone","phase":"c3-components","lang":"tr","vp":"phone","facts":{"lang":"tr","overflow_x":false,"width":390}}
+{"at":"2026-10-15T23:03:58.953Z","ev":"fill","phase":"c3-components","selector":"#mail-profile-hostname","value":"mail.set18.test","now":"mail.set18.test"}
+{"at":"2026-10-15T23:04:00.144Z","ev":"shot","name":"c3-03-dialog-filled","phase":"c3-components"}
+{"at":"2026-10-15T23:04:00.155Z","ev":"click","phase":"c3-components","pattern":"/^Review in server setup$/","clicked":"Review in server setup"}
+{"at":"2026-10-15T23:05:17.378Z","ev":"shot","name":"c3-04-access-step","phase":"c3-components"}
+{"at":"2026-10-15T23:05:50.856Z","ev":"shot","name":"v-ext-access-en-1280","phase":"c3-components","lang":"en","vp":"1280","facts":{"lang":"en","overflow_x":false,"width":1280}}
+{"at":"2026-10-15T23:06:24.464Z","ev":"shot","name":"v-ext-access-en-phone","phase":"c3-components","lang":"en","vp":"phone","facts":{"lang":"en","overflow_x":false,"width":390}}
+{"at":"2026-10-15T23:06:58.842Z","ev":"shot","name":"v-ext-access-tr-1280","phase":"c3-components","lang":"tr","vp":"1280","facts":{"lang":"tr","overflow_x":false,"width":1280}}
+{"at":"2026-10-15T23:07:32.358Z","ev":"shot","name":"v-ext-access-tr-phone","phase":"c3-components","lang":"tr","vp":"phone","facts":{"lang":"tr","overflow_x":false,"width":390}}
+{"at":"2026-10-15T23:07:49.491Z","ev":"click","phase":"c3-components","pattern":"/^Review setup plan/","clicked":null}
+{"at":"2026-10-15T23:09:36.188Z","ev":"shot","name":"c3-05-review","phase":"c3-components"}
+{"at":"2026-10-15T23:09:36.198Z","ev":"click","phase":"c3-components","pattern":"/^Back$/","clicked":null}
+{"at":"2026-10-15T23:10:08.421Z","ev":"shot","name":"c4-secondary-box","phase":"c4-secondary-box"}
+{"at":"2026-10-15T23:10:08.436Z","ev":"click","phase":"c3-stop","pattern":"/^Stop extending$/","clicked":null}

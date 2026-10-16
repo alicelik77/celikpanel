@@ -7967,3 +7967,238 @@ needs to be done) and the known-state rule.
    two native records (set17 and set17b) on disposable guests with test-licence
    builds; the F1 lock extension and the session gate's `PANEL_STARTING` path
    were not measured natively. Nothing here is an installed-server observation.
+
+### Second server as a full peer, part 1: what the owner can do from the panel now, and the three decisions still open (2026-10-16)
+
+The owner wants the second installed server (Boston, the DNS secondary) to host
+websites and mail as a full peer of the first (Frankfurt, the DNS primary). A
+read-only investigation of the source at main `e3c8f735a` found eight places
+where the panel could not take the owner there. Five need no owner decision and
+are corrected in source on branch `feat/alpha87-second-server`; three need the
+owner's decision and are left open below. Written 2026-10-16. Nothing here was
+measured on an installed server, and the five items below were not measured in
+a native record when this entry was first written (set18 and set18b did so
+later, in a lab; see below). No installed panel was updated or contacted, and no P0 item is closed or advanced. It is set against
+D-021 (purpose-led setup that never removes what is installed), D-024 (the
+current reason, who acts, the next action and how work resumes; an unknown
+result is not a failure), D-032 (the panel reads a state it can read) and D-033
+(a screen says what it does and what it waits for). D-022 is unchanged: every
+step below uses the native service configuration the setup path already used.
+
+**What the owner can do now**
+
+1. **Extend a completed setup.** Before: once setup was ready, the setup page
+   and Settings → Server setup showed only "Your server is ready"; adding mail
+   meant the Components page (item 2). Now the ready screen and Settings offer
+   "Extend this server's setup", and say first what it does and does not do: it
+   installs and configures only what is added, never removes, stops or replaces
+   anything installed, the websites keep running, and nothing starts before the
+   review. The wizard reopens with the completed values; components already
+   installed are kept ("Keep existing installation"); the review of an extension
+   says what changes (each setting before and after, what will be installed, and
+   folded, what is kept), and the run is the existing runner with its single
+   flight and its "setup in progress" refusals. "Stop extending" returns to the
+   setup as it was completed. An extension never routes the owner into setup;
+   the Dashboard says it is an extension and that the server keeps working.
+   Code: `cmd/panel/server_setup_extend.go` (`POST /api/v1/setup/extend`,
+   actions `begin` and `cancel`; typed refusals `server_setup_busy`,
+   `server_setup_extend_not_ready`, `server_setup_extend_not_active`,
+   `setup_conflict`), `cmd/panel/server_setup.go` (the state answers
+   `extension` and `extension_base`, both additive; an extension is not
+   `required`; a draft saved over a ready setup keeps the completed draft as the
+   base; completing clears it), `cmd/panel/server_setup_revise.go` (reopening an
+   extension run's plan keeps its completion record);
+   `web/src/components/ServerSetup.tsx`, `ServerSetupChoice.tsx`,
+   `ServerSetupGate.tsx`, `web/src/lib/serverSetup.ts`. Tests:
+   `cmd/panel/server_setup_extend_test.go` (six, each with a control or a
+   refusal; the extension marker and the revise rule were each broken once to
+   see the tests fail); `web/tests/server-setup-runtime.test.mjs`, six mounted
+   or decoder tests with controls (four fail when the extension is switched off
+   in the wizard and the routing rule is removed).
+
+2. **Mail from the Components page gets setup's steps.** Before:
+   `POST /api/v1/service/profile/install` installed the profile and ended with
+   the self-signed fallback certificate: no public DNS check of the mail host
+   name, no trusted mail certificate, no renewal enrolment, no reverse DNS or
+   port 25 check. Now, on a server whose setup has finished (or is being
+   extended with no run active), the Components dialog adds the profile to a
+   setup extension and opens setup on its access step; the review and the run
+   are setup's own, so the steps and the guidance are the same (the public DNS
+   wait, the trusted certificate and its renewal, and at the final check the
+   reverse DNS wait at the provider with the propagation sentence and the
+   resolver named, and an honest "not read"). Nothing starts in the dialog; a
+   refusal (for example a setup run in progress) keeps the dialog open with its
+   reason; a lost answer is settled by reading the setup again. If no mail host
+   name is saved, the dialog asks for it. On a server without a finished setup
+   the dialog installs directly as before and now says that this ends with a
+   temporary self-signed certificate and that the full checks are setup's.
+   Code: `serverSetupDraftWithMailProfile` in `server_setup_extend.go`;
+   `addProfileThroughSetup` and `MailProfileInstallDialog` in
+   `web/src/components/ServiceList.tsx`. Tests:
+   `TestServerSetupExtendAddsAMailProfileWithItsHostName`,
+   `TestServerSetupDraftWithMailProfile`;
+   `web/tests/remote-state-mounted-batch3.test.mjs`, two mounted tests (the
+   setup route and its control, a refused extension).
+
+3. **A saved mail host name can be corrected.** Before: once a name was saved,
+   the dialog only stated it. Now "Change" opens the field with the saved name;
+   before anything is confirmed the note under the field says what the change
+   does: the mail certificate is made for the new name, Postfix answers as the
+   new name, and the reverse DNS (PTR) of the server's address must point to it,
+   set at the provider. The name is validated as in setup. On a prepared server
+   the correction goes through the setup extension (the review shows the old
+   and the new name); on the direct path the name is saved only once the
+   operation is admitted, so a refusal because a setup run or another
+   operation holds the server leaves the saved name unchanged (before, the name
+   was saved first). Code: `handleMailProfileInstall` in
+   `cmd/panel/mail_profiles.go`; `MailProfileInstallDialog`. Tests:
+   `TestMailHostnameCorrectionIsSavedOnlyWhenAdmitted` (fails on the previous
+   order); one mounted test in batch 3.
+
+4. **No "Configure DNS" dead end on a secondary DNS server.** Before: on a
+   server whose DNS engine is the secondary of a pair (local mode), the mail
+   box sent the owner to "Configure DNS", where a secondary cannot create a
+   record. Now the box says that this server keeps copies of the primary's zones
+   and cannot create records, names the primary DNS server and its address from
+   the saved DNS settings, says that the record is made there or at the DNS
+   provider, shows the exact record (the mail host name, A, this server's
+   reviewed address), and offers "Extend this server's setup" (or "Open server
+   setup" before setup has finished) to choose how this server's hosting
+   records are managed; no DNS-settings button. Code:
+   `mailProfileDNSGuidanceFor` in `cmd/panel/mail_dns_identity.go` and the
+   additive `mail_dns_guidance` field of the Components payload;
+   `MailProfileCards`. Tests: two Go tests (the secondary with its controls: a
+   ready identity, external mode, a standalone server); one mounted test with a
+   control.
+
+5. **"Check requirements again" says the typed reason.** Before: after the
+   owner's check the box under the button said the generic sentence for each
+   open check while the guidance above said the typed one (for a reverse DNS
+   wait: the address, the name found, the resolver). Now both use the same
+   sentence (`setupCheckLine` in `web/src/lib/serverSetupGuidance.ts`); a check
+   that could not be read is said as not read. Test:
+   `web/tests/server-setup-runtime.test.mjs`, one new test and one updated
+   (both fail with the previous box).
+
+**Decisions the release preparer made (to be confirmed)**
+
+None of these is an owner decision. The release preparer made them under D-021
+and D-033 and the owner's standing instruction of 2026-10-13 (no need to ask
+the owner about version numbers or commits); they are listed for the owner to
+confirm or change.
+
+- The extension is a new endpoint, `POST /api/v1/setup/extend`, rather than a
+  flag on PUT: begin and stop each change the state row and one setting in one
+  transaction, with the existing single flight. The existing PUT, plan and
+  start already accepted a ready setup; the PUT now also keeps the base.
+- An extension keeps `completed_at` and is not `required`: it never sends the
+  owner back into setup, and the Dashboard links to it.
+- "Stop extending" exists and restores the completed draft; whatever a partly
+  run extension installed stays installed and is managed from Components.
+- The extension opens on the purpose step; one started from Components opens on
+  the access step.
+- On a prepared server the Components dialog no longer installs mail directly;
+  it routes to setup ("the same operation overlay and guidance" read as setup's
+  own progress screen). A server without a finished setup keeps the direct
+  install, with the self-signed sentence.
+- Adding a profile to a draft without components turns it into the matching
+  component selection; a DNS-only purpose becomes "Custom setup".
+- On a secondary, the record's value is the setup's reviewed address, then the
+  server's detected address.
+- The commits carry the attribution of the model that wrote them.
+- Added after set18b: adding mail to Web hosting through "Customize selection"
+  turns the purpose label into "Custom setup" (set18b O5, truthful and stated
+  before Start); the release preparer left the label as it is.
+
+**The three decisions still open (the owner's)**
+
+- Whether the primary's own setup should carry the second server's mail host
+  name, so the primary publishes that record itself.
+- Whether the panel should have an editor for the infrastructure zone on the
+  primary (today it prepares its minimal records once, in setup).
+- Whether host records for the second server should travel over the remote DNS
+  connection to the primary automatically, or stay a step the owner takes by
+  hand.
+
+Until they are decided, on Boston the mail host name's record is made by the
+owner on Frankfurt (or at the DNS provider), and the extension's public DNS
+step waits for it with its guidance.
+
+**Counts.** `npm test` 1494 of 1494; `npx tsc --noEmit` clean; `npm run build`
+passes with its bundle budget. `go test ./cmd/panel` in the WSL guest: 1557
+top-level tests pass, 6 skip, 1675 subtests pass (at `60ea75c1c`; when this
+entry was first written there was no Go change after it, and `6b363ac46`
+changed Go later, see below); gofmt and vet clean. The Agent was not touched and not run. Browser
+inspection with the loopback mock (desktop EN light, phone TR dark): the ready
+screen, the extension review, the secondary box and the dialog with a name
+change; it found the rename sentence said twice, corrected in `32f0a3766`. Not
+measured natively or on an installed server.
+
+**What set18 found in the browser, and the corrections (2026-10-16).** The
+native record `deploy/e2e/release-recovery/evidence/set18-20261015/README.md`
+(lab DNS and lab ACME, Debian 13, candidate `5d54aba1e`) followed a fresh setup
+and an extension adding Core Mail to ready. Three of its findings are corrected
+in source; none of the corrections was measured natively or on an installed
+server.
+
+- **D1 (verified failure in the lab, both routes, two browsers): an extension
+  opened on the completed run.** Cause: `GET /api/v1/setup/operation` without a
+  request id answers the latest run, which during an extension in draft is the
+  completed setup's own succeeded run; the page then reloaded the setup, saw
+  `status: draft` and showed "Verifying the result" and "Completion could not
+  be verified… the server has not been declared ready", polling every 3 s, with
+  the access step, the review, Start and "Stop extending" out of reach. The
+  server now says the truth: the operation answer carries the additive field
+  `superseded: true` when the run succeeded and the setup is an extension in
+  draft (`serverSetupRunSuperseded` in `cmd/panel/server_setup_operations.go`,
+  the field on `serverSetupOperationResponse`); an older page ignores it, and
+  the run itself is still answered. The page treats a superseded run as no
+  current operation (`readExecution` in `web/src/components/ServerSetup.tsx`):
+  the extension's wizard shows on its purpose step (or the access step from
+  Components) with "Stop extending"; a start marker left from that finished run
+  is dropped. The decoder keeps the flag only on a succeeded run, so it can
+  never hide a run in progress or a failure. Starting the extension moves the
+  state to running, so the extension's own run is never flagged and the page
+  shows its steps; a first setup whose run succeeded without the state becoming
+  ready still says "Completion could not be verified"; a revised extension
+  still shows its reopened run. Tests:
+  `TestServerSetupOperationMarksTheCompletedRunSupersededByAnExtension`
+  (first setup not ready, ready, extension in draft by both read routes,
+  stopped, again, running; fails when the flag is switched off);
+  `web/tests/server-setup-runtime.test.mjs`: the wizard and "Stop extending"
+  with the flag on both routes and with a stale marker, and the D1 screen
+  without it (control); start shows the new run; "Stop extending" returns to
+  the ready screen; the decoder. Both mounted D1 tests fail when the page
+  ignores the flag.
+- **O1 (wording): for about three seconds after "Start reviewed setup" the
+  guidance said "No more specific requirement has been confirmed for this
+  step… waiting alone may not resolve a missing requirement."** Cause: the
+  start answer is the accepted run in phase `queued` with every step pending,
+  and the guidance had no sentence for it, so it fell through to the generic
+  one. Now the guidance block names the run's own first step and says
+  "Setup has started with the step shown here. The panel begins it in a moment
+  and this page updates by itself; you do not need to do anything." (TR "Kurulum
+  burada gösterilen adımla başladı. Panel bu adımı birazdan başlatır ve bu sayfa
+  kendiliğinden güncellenir; bir şey yapmanız gerekmiyor.";
+  `setup.guide.queued`, `setupExecutionGuidance` in
+  `web/src/lib/serverSetupGuidance.ts`, `guidanceStepItem` in the wizard).
+  Mounted test (fails without the queued sentence).
+- **O3: "Continue recorded operation" stayed enabled for about 4 s while the
+  mail enrollment was running; the tool pressed it on four samples and three
+  POSTs reached the Panel** (one request id, no second enrollment). Cause: the page was single-flight only while its
+  own request and the read after it were in flight; the next read still showed
+  the step continuable, so the button came back. Now the press is remembered
+  until a read shows that operation moved on (another run, another state code,
+  or the step no longer running): the button stays disabled with its spinner
+  and reads "Checking the same operation" (TR "Aynı işlem denetleniyor";
+  `setup.mailEnrollment.sent`). A press no read confirms is offered again after
+  15 s; the server answers a repeat for the same request without a second
+  operation. Mounted test (fails when the press is not remembered).
+
+Counts after these corrections: `npm test` 1499 of 1499 (22 s); `npx tsc
+--noEmit` clean (17 s); `npm run build` passes with its bundle budget (20 s);
+`go test -run Setup ./cmd/panel` in the WSL guest: 181 top-level tests pass
+(29 s), `go vet` and gofmt clean. Still open from set18: the extension review
+blocks and the access step's secondary-DNS box have not been seen rendered on
+a native server; O2 (no-SNI certificate) and O4 (the lab port in the handover
+address) are not judged.

@@ -7932,3 +7932,236 @@ gerekmediğini söyler) ve bilinen-durum kuralına karşı konur.
    ve set17b) ölçüldü; F1 kilit uzatması ve oturum kapısının `PANEL_STARTING`
    yolu gerçek sistemde ölçülmedi. Buradakilerin hiçbiri kurulu sunucu
    gözlemi değildir.
+
+### Tam eş olarak ikinci sunucu, birinci bölüm: sahibin artık panelden yapabildikleri ve açık kalan üç karar (2026-10-16)
+
+Sahip, kurulu ikinci sunucunun (Boston, DNS ikincili) web sitelerini ve postayı
+birinci sunucunun (Frankfurt, DNS birincili) tam eşi olarak barındırmasını
+istiyor. Main `e3c8f735a` üzerindeki kaynağın salt-okur incelemesi, panelin
+sahibi oraya götüremediği sekiz yer buldu. Beşi sahip kararı gerektirmiyor ve
+`feat/alpha87-second-server` dalında kaynakta düzeltildi; üçü sahibin kararını
+bekliyor ve aşağıda açık bırakıldı. Yazılış: 2026-10-16. Buradaki hiçbir şey
+kurulu bir sunucuda ölçülmedi; aşağıdaki beş kalem bu kayıt ilk yazıldığında
+doğal bir kayıtta da ölçülmemişti (set18 ve set18b bunu sonradan laboratuvarda
+yaptı; aşağıya bakın). Hiçbir kurulu panel güncellenmedi ya da ona
+bağlanılmadı, hiçbir P0 işi kapanmadı ya da ilerlemedi.
+D-021 (kurulu olanı hiç kaldırmayan, amaca göre kurulum), D-024 (şimdiki neden,
+kimin işlem yapacağı, sonraki eylem ve işin nasıl süreceği; bilinmeyen sonuç
+hata değildir), D-032 (panel okuyabildiği durumu kendisi okur) ve D-033 (ekran
+ne yaptığını ve neyi beklediğini söyler) karşısında yazıldı. D-022 değişmedi:
+aşağıdaki her adım, kurulum yolunun zaten kullandığı yerel hizmet
+yapılandırmasını kullanır.
+
+**Sahibin artık yapabildikleri**
+
+1. **Tamamlanmış kurulumu genişletmek.** Önce: kurulum hazır olunca kurulum
+   sayfası ve Ayarlar → Sunucu kurulumu yalnızca "Sunucunuz hazır" diyordu;
+   posta eklemek Bileşenler sayfası demekti (madde 2). Şimdi hazır ekranı ve
+   Ayarlar "Bu sunucunun kurulumunu genişletin" seçeneğini sunuyor ve önce ne
+   yaptığını ve ne yapmadığını söylüyor: yalnızca ekleneni kurar ve yapılandırır;
+   kurulu hiçbir şeyi kaldırmaz, durdurmaz ya da değiştirmez; siteler çalışmaya
+   devam eder; incelemeden önce hiçbir şey başlamaz. Sihirbaz tamamlanmış
+   değerlerle yeniden açılır; kurulu bileşenler korunur ("Mevcut kurulum
+   korunur"); genişletmenin incelemesi neyin değiştiğini söyler (her ayarın
+   önceki ve sonraki hâli, kurulacaklar ve katlanmış olarak korunanlar);
+   çalıştırma, tek seferlik kuralı ve "kurulum sürüyor" retleriyle mevcut
+   çalıştırıcıdır. "Genişletmeden vazgeç" kurulumu tamamlandığı hâline döndürür.
+   Genişletme sahibi hiçbir zaman kuruluma yönlendirmez; Pano bunun bir
+   genişletme olduğunu ve sunucunun çalışmaya devam ettiğini söyler. Kod:
+   `cmd/panel/server_setup_extend.go` (`POST /api/v1/setup/extend`, `begin` ve
+   `cancel` eylemleri; tipli retler `server_setup_busy`,
+   `server_setup_extend_not_ready`, `server_setup_extend_not_active`,
+   `setup_conflict`), `cmd/panel/server_setup.go` (durum yanıtı ekleme alanları
+   `extension` ve `extension_base`'i taşır; genişletme `required` değildir; hazır
+   kurulumun üzerine kaydedilen taslak tamamlanmış taslağı taban olarak tutar;
+   tamamlanma tabanı siler), `cmd/panel/server_setup_revise.go` (genişletme
+   çalışmasının planı yeniden açılınca tamamlanma kaydı korunur);
+   `web/src/components/ServerSetup.tsx`, `ServerSetupChoice.tsx`,
+   `ServerSetupGate.tsx`, `web/src/lib/serverSetup.ts`. Testler:
+   `cmd/panel/server_setup_extend_test.go` (altı test, her biri bir denetim ya
+   da bir retle; genişletme işareti ve yeniden açma kuralı birer kez bozularak
+   testlerin düştüğü görüldü); `web/tests/server-setup-runtime.test.mjs`,
+   denetimli altı bağlanmış ya da çözücü testi (sihirbazda genişletme kapatılıp
+   yönlendirme kuralı kaldırılınca dördü düşer).
+
+2. **Bileşenler sayfasından posta, kurulumun adımlarından geçer.** Önce:
+   `POST /api/v1/service/profile/install` profili kurup kendinden imzalı yedek
+   sertifikayla bitiyordu: posta sunucusu adının genel DNS denetimi, güvenilir
+   posta sertifikası, yenileme kaydı, ters DNS ve 25 numaralı bağlantı noktası
+   denetimi yoktu. Şimdi kurulumu bitmiş (ya da çalışan bir işlem olmadan
+   genişletilen) bir sunucuda Bileşenler penceresi profili bir kurulum
+   genişletmesine ekler ve kurulumu erişim adımında açar; inceleme ve
+   çalıştırma kurulumun kendisidir, bu yüzden adımlar ve yönlendirme aynıdır
+   (genel DNS beklemesi, güvenilir sertifika ve yenilenmesi, son denetimde
+   sağlayıcıdaki ters DNS beklemesi, yayılma cümlesi ve adı verilen
+   çözümleyiciyle, ve dürüst bir "okunamadı"). Pencerede hiçbir şey başlamaz;
+   bir ret (örneğin süren bir kurulum) pencereyi nedeniyle açık tutar; kaybolan
+   bir yanıt kurulum yeniden okunarak çözülür. Kayıtlı posta sunucusu adı yoksa
+   pencere onu sorar. Kurulumu bitmemiş bir sunucuda pencere eskisi gibi
+   doğrudan kurar ve artık bunun geçici, kendinden imzalı bir sertifikayla
+   bittiğini, tam denetimlerin kurulumun işi olduğunu söyler. Kod:
+   `server_setup_extend.go` içinde `serverSetupDraftWithMailProfile`;
+   `web/src/components/ServiceList.tsx` içinde `addProfileThroughSetup` ve
+   `MailProfileInstallDialog`. Testler:
+   `TestServerSetupExtendAddsAMailProfileWithItsHostName`,
+   `TestServerSetupDraftWithMailProfile`;
+   `web/tests/remote-state-mounted-batch3.test.mjs`, iki bağlanmış test (kurulum
+   yolu ve denetimi, reddedilen genişletme).
+
+3. **Kayıtlı posta sunucusu adı düzeltilebilir.** Önce: bir ad kaydedilince
+   pencere yalnızca onu söylüyordu. Şimdi "Değiştir" alanı kayıtlı adla açar;
+   hiçbir şey onaylanmadan önce alanın altındaki not değişikliğin ne yaptığını
+   söyler: posta sertifikası yeni ad için alınır, Postfix kendini yeni adla
+   tanıtır ve sunucu adresinin ters DNS (PTR) kaydı, sağlayıcıda ayarlanarak, o
+   adı göstermelidir. Ad kurulumdaki gibi doğrulanır. Hazırlanmış bir sunucuda
+   düzeltme kurulum genişletmesinden geçer (inceleme eski ve yeni adı gösterir);
+   doğrudan yolda ad ancak işlem kabul edildikten sonra kaydedilir, bu yüzden
+   sunucuyu bir kurulumun ya da başka bir işlemin tutması nedeniyle gelen ret
+   kayıtlı adı değiştirmez (önceden ad önce kaydediliyordu). Kod:
+   `cmd/panel/mail_profiles.go` içinde `handleMailProfileInstall`;
+   `MailProfileInstallDialog`. Testler:
+   `TestMailHostnameCorrectionIsSavedOnlyWhenAdmitted` (önceki sırada düşer);
+   üçüncü gruptaki bir bağlanmış test.
+
+4. **İkincil DNS sunucusunda "DNS'i yapılandır" çıkmazı yok.** Önce: DNS motoru
+   bir çiftin ikincili olan (yerel kipte) sunucuda posta kutusu sahibi "DNS'i
+   yapılandır"a gönderiyordu; ikincil orada kayıt oluşturamaz. Şimdi kutu, bu
+   sunucunun birincilin bölgelerinin kopyalarını tuttuğunu ve kayıt
+   oluşturamadığını söyler, kayıtlı DNS ayarlarından birincil DNS sunucusunun
+   adını ve adresini verir, kaydın orada ya da DNS sağlayıcısında yapıldığını
+   söyler, kaydın tamını gösterir (posta sunucusu adı, A, bu sunucunun
+   incelenmiş adresi) ve bu sunucunun barındırma kayıtlarının nasıl
+   yönetileceğini seçmek için "Bu sunucunun kurulumunu genişletin"i (kurulum
+   bitmemişse "Sunucu kurulumunu açın"ı) sunar; DNS ayarları düğmesi yoktur.
+   Kod: `cmd/panel/mail_dns_identity.go` içinde `mailProfileDNSGuidanceFor` ve
+   Bileşenler yanıtının ekleme alanı `mail_dns_guidance`; `MailProfileCards`.
+   Testler: iki Go testi (denetimleriyle ikincil: hazır kimlik, harici kip, tek
+   başına sunucu); denetimli bir bağlanmış test.
+
+5. **"Gereksinimleri yeniden denetle" tipli nedeni söyler.** Önce: sahibin
+   denetiminden sonra düğmenin altındaki kutu her açık denetim için genel cümleyi
+   söylerken üstteki yönlendirme tipli cümleyi söylüyordu (ters DNS beklemesinde
+   adres, bulunan ad, çözümleyici). Şimdi ikisi aynı cümleyi kullanır
+   (`web/src/lib/serverSetupGuidance.ts` içinde `setupCheckLine`); okunamayan bir
+   denetim okunamadı diye söylenir. Test: `web/tests/server-setup-runtime.test.mjs`,
+   bir yeni ve bir güncellenmiş test (ikisi de önceki kutuyla düşer).
+
+**Sürüm hazırlayıcının verdiği kararlar (onaylanacak)**
+
+Bunların hiçbiri sahibin kararı değildir. Sürüm hazırlayıcı bunları D-021 ve
+D-033 altında ve sahibin 2026-10-13 tarihli genel talimatıyla (sürüm numaraları
+ve commit'ler için sahibe sorulmasına gerek yok) verdi; sahibin onaylaması ya da
+değiştirmesi için listelendi.
+
+- Genişletme, PUT üzerinde bir bayrak değil, yeni bir uç noktadır:
+  `POST /api/v1/setup/extend`. Başlatma ve vazgeçme, durum satırını ve bir
+  ayarı mevcut tek seferlik kuralla tek işlemde değiştirir. Mevcut PUT, plan ve
+  başlatma hazır kurulumu zaten kabul ediyordu; PUT artık tabanı da tutar.
+- Genişletme `completed_at`'i korur ve `required` değildir: sahibi kuruluma
+  geri göndermez; Pano ona bağlantı verir.
+- "Genişletmeden vazgeç" vardır ve tamamlanmış taslağı geri yükler; yarıda
+  kalan bir genişletmenin kurduğu şey kurulu kalır ve Bileşenler'den yönetilir.
+- Genişletme amaç adımında açılır; Bileşenler'den başlayan erişim adımında.
+- Hazırlanmış sunucuda Bileşenler penceresi postayı artık doğrudan kurmaz;
+  kuruluma yönlendirir ("aynı işlem katmanı ve yönlendirme", kurulumun kendi
+  ilerleme ekranı olarak okundu). Kurulumu bitmemiş sunucu doğrudan kurulumu,
+  kendinden imzalı sertifika cümlesiyle tutar.
+- Bileşen seçimi olmayan bir taslağa profil eklemek onu eşleşen bileşen
+  seçimine çevirir; yalnız DNS amacı "Özel kurulum" olur.
+- İkincilde kaydın değeri önce kurulumun incelenmiş adresi, sonra sunucunun
+  algılanan adresidir.
+- Kayıtlar, onları yazan modelin adını taşır.
+- set18b'den sonra eklendi: Web barındırmaya "Seçimi özelleştir" ile posta
+  eklemek amaç etiketini "Özel kurulum" yapar (set18b O5; etiket doğrudur ve
+  Başlat'tan önce söylenir); sürüm hazırlayıcı etiketi olduğu gibi bıraktı.
+
+**Açık kalan üç karar (sahibin)**
+
+- Birincilin kendi kurulumu ikinci sunucunun posta sunucusu adını taşısın mı;
+  böylece o kaydı birincil kendisi yayımlasın mı.
+- Panelde birincildeki altyapı bölgesi için bir düzenleyici olsun mu (bugün en
+  küçük kayıtlarını kurulumda bir kez hazırlıyor).
+- İkinci sunucunun kayıtları uzak DNS bağlantısıyla birincile kendiliğinden mi
+  gitsin, yoksa sahibin elle attığı bir adım olarak mı kalsın.
+
+Bunlara karar verilene kadar Boston'da posta sunucusu adının kaydını sahip
+Frankfurt'ta (ya da DNS sağlayıcısında) yapar; genişletmenin genel DNS adımı
+yönlendirmesiyle onu bekler.
+
+**Sayılar.** `npm test` 1494'te 1494; `npx tsc --noEmit` temiz; `npm run build`
+paket bütçesiyle geçiyor. WSL konuğunda `go test ./cmd/panel`: 1557 üst düzey
+test geçti, 6 atlandı, 1675 alt test geçti (`60ea75c1c`'de; bu kayıt ilk yazıldığında
+ondan sonra Go değişmemişti, `6b363ac46` sonradan değiştirdi, aşağıya bakın);
+gofmt ve vet temiz. Agent'a dokunulmadı ve çalıştırılmadı. Döngü
+adresindeki sahte API ile tarayıcı incelemesi (masaüstü EN açık, telefon TR
+koyu): hazır ekranı, genişletme incelemesi, ikincil kutusu ve ad değişikliğiyle
+pencere; yeni adın iki kez söylendiğini buldu, `32f0a3766`'da düzeltildi. Doğal
+olarak ya da kurulu bir sunucuda ölçülmedi.
+
+**set18'in tarayıcıda bulduğu ve düzeltilenler (2026-10-16).** Doğal kayıt
+`deploy/e2e/release-recovery/evidence/set18-20261015/README.md` (laboratuvar
+DNS'i ve laboratuvar ACME'si, Debian 13, aday `5d54aba1e`) temiz bir kurulumu ve
+Core Mail ekleyen bir genişletmeyi hazır duruma kadar izledi. Bulgularından üçü
+kaynakta düzeltildi; düzeltmelerin hiçbiri doğal olarak ya da kurulu bir
+sunucuda ölçülmedi.
+
+- **D1 (laboratuvarda doğrulanmış hata, iki yol, iki tarayıcı): genişletme
+  tamamlanmış çalışmayla açılıyordu.** Neden: istek kimliği olmadan
+  `GET /api/v1/setup/operation` son çalışmayı yanıtlar; taslaktaki bir
+  genişletme sırasında bu, tamamlanmış kurulumun kendi başarılı çalışmasıdır.
+  Sayfa kurulumu yeniden okuyup `status: draft` görünce "Sonuç doğrulanıyor" ve
+  "Tamamlanma doğrulanamadı… sunucu hazır olarak işaretlenmedi" gösteriyor, 3 saniyede
+  bir okuyordu; erişim adımı, inceleme, Başlat ve "Genişletmeden vazgeç"
+  ulaşılamazdı. Artık sunucu doğruyu söylüyor: çalışma başarılıysa ve kurulum
+  taslaktaki bir genişletmeyse işlem yanıtı ek alan `superseded: true` taşır
+  (`cmd/panel/server_setup_operations.go` içinde `serverSetupRunSuperseded`,
+  alan `serverSetupOperationResponse` üzerinde); eski sayfa bunu yok sayar ve
+  çalışmanın kendisi yine yanıtlanır. Sayfa yerini almış çalışmayı güncel işlem
+  saymaz (`web/src/components/ServerSetup.tsx` içinde `readExecution`):
+  genişletmenin sihirbazı amaç adımında (Bileşenler'den gelince erişim
+  adımında) "Genişletmeden vazgeç" ile görünür; o bitmiş çalışmadan kalan başlatma
+  işareti silinir. Çözücü alanı yalnız başarılı çalışmada tutar; böylece süren
+  bir çalışmayı ya da bir hatayı asla gizleyemez. Genişletme başlayınca durum
+  çalışıyor olur; genişletmenin kendi çalışması hiç işaretlenmez ve sayfa onun
+  adımlarını gösterir. Çalışması başarılı olup durumu hazır olmayan ilk kurulum
+  yine "Tamamlanma doğrulanamadı" der; düzenlemeye açılmış genişletme yine
+  yeniden açılan çalışmasını gösterir. Testler:
+  `TestServerSetupOperationMarksTheCompletedRunSupersededByAnExtension` (hazır
+  olmayan ilk kurulum, hazır, iki okuma yolundan taslaktaki genişletme,
+  bırakılmış, yeniden, çalışıyor; alan kapatılınca kalıyor);
+  `web/tests/server-setup-runtime.test.mjs`: alanla iki yolda ve eski işaretle
+  sihirbaz ve "Genişletmeden vazgeç", alansız D1 ekranı (denetim); başlatınca yeni
+  çalışma; "Genişletmeden vazgeç" hazır ekranına döner; çözücü. Sayfa alanı yok
+  sayınca iki takılı D1 testi de kalıyor.
+- **O1 (ifade): "İncelenen kurulumu başlat"tan sonra yaklaşık üç saniye
+  yönlendirme "Bu adım için daha belirli bir gereksinim henüz doğrulanmadı…
+  yalnızca beklemek eksik bir gereksinimi gidermeyebilir." diyordu.** Neden:
+  başlatma yanıtı, bütün adımları bekleyen `queued` evresindeki kabul edilmiş
+  çalışmadır ve yönlendirmede bunun cümlesi yoktu; genel cümleye düşüyordu.
+  Artık yönlendirme kutusu çalışmanın kendi ilk adımını adlandırır ve "Kurulum
+  burada gösterilen adımla başladı. Panel bu adımı birazdan başlatır ve bu sayfa
+  kendiliğinden güncellenir; bir şey yapmanız gerekmiyor." der (EN "Setup has
+  started with the step shown here. The panel begins it in a moment and this
+  page updates by itself; you do not need to do anything.";
+  `setup.guide.queued`, `web/src/lib/serverSetupGuidance.ts` içinde
+  `setupExecutionGuidance`, sihirbazda `guidanceStepItem`). Takılı test
+  (bu cümle olmadan kalıyor).
+- **O3: posta yenileme kaydı çalışırken "Kayıtlı işleme devam et" yaklaşık 4
+  saniye etkin kaldı; araç dört örnekte bastı ve Panel'e üç POST ulaştı** (tek
+  istek kimliği, ikinci kayıt yok). Neden: sayfa yalnız kendi isteği ve ardındaki okuma sürerken tek
+  uçuşluydu; sonraki okuma adımı hâlâ devam ettirilebilir gösterince düğme geri
+  geliyordu. Artık basış, bir okuma o işlemin ilerlediğini gösterene (başka
+  çalışma, başka durum kodu ya da adım artık çalışmıyor) kadar hatırlanır:
+  düğme dönen işaretiyle kapalı kalır ve "Aynı işlem denetleniyor" der (EN
+  "Checking the same operation"; `setup.mailEnrollment.sent`). Hiçbir okumanın
+  doğrulamadığı basış 15 saniye sonra yeniden sunulur; sunucu aynı isteğin
+  tekrarını ikinci işlem başlatmadan yanıtlar. Takılı test (basış
+  hatırlanmayınca kalıyor).
+
+Bu düzeltmelerden sonra sayılar: `npm test` 1499'da 1499 (22 sn); `npx tsc
+--noEmit` temiz (17 sn); `npm run build` paket bütçesiyle geçiyor (20 sn); WSL
+konuğunda `go test -run Setup ./cmd/panel`: 181 üst düzey test geçti (29 sn),
+`go vet` ve gofmt temiz. set18'den açık kalanlar: genişletme incelemesinin
+blokları ve erişim adımının ikincil DNS kutusu doğal bir sunucuda çizilmiş
+görülmedi; O2 (SNI'sız sertifika) ve O4 (devir adresindeki laboratuvar bağlantı
+noktası) değerlendirilmedi.

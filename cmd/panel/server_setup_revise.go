@@ -102,7 +102,10 @@ func (p *Panel) handleServerSetupRevise(w http.ResponseWriter, r *http.Request) 
 		conflict()
 		return
 	}
-	result, err = tx.ExecContext(r.Context(), `UPDATE server_setup_state SET status='draft',revision=revision+1,completed_at='',updated_at=datetime('now') WHERE id=1 AND revision=? AND status!='ready'`, request.Revision)
+	// completed_at is kept: a first setup has none, and an extension of a
+	// completed setup stays an extension when its plan is reopened (2026-10-16).
+	// Ilk kurulumda bos; genisletme plani yeniden acilinca genisletme kalir.
+	result, err = tx.ExecContext(r.Context(), `UPDATE server_setup_state SET status='draft',revision=revision+1,updated_at=datetime('now') WHERE id=1 AND revision=? AND status!='ready'`, request.Revision)
 	if err != nil {
 		writeServerError(w, err)
 		return

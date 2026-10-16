@@ -1,0 +1,8 @@
+{
+  "checks": {},
+  "finished_at": "2026-10-15T23:27:47Z",
+  "name": "set18-readings",
+  "reason": "PinMismatch: panel TLS leaf differs from the guest-reported certificate",
+  "started_at": "2026-10-15T23:27:47Z",
+  "verdict": "inconclusive"
+}

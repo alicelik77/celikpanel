@@ -1,0 +1,10 @@
+How would you like to prepare this server?
+
+Use the wizard to choose a purpose and review the required services, DNS and secure access together. You can also configure them yourself from the panel.
+
+Set up with the wizard
+I’ll configure it myself
+
+Your choice is saved for this server, so this prompt will not appear again. You can reopen the wizard in Settings → Server setup. Security and service requirements still apply.
+
+Access and recovery

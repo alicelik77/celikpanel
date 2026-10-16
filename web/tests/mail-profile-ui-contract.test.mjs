@@ -159,9 +159,11 @@ test('the mail install dialog asks for the mail hostname when the server has non
   assert.match(serviceSource, /services\.mailProfiles\.hostname\.rename/);
   assert.match(serviceSource, /services\.mailProfiles\.hostname\.invalid/);
   assert.match(serviceSource, /hostname\.source\.\$\{suggestionSource\}/);
-  assert.match(serviceSource, /suggestionSource && canonicalHostname === mailHostname\?\.hostname/);
+  assert.match(serviceSource, /suggestionSource && !editingName && canonicalHostname === mailHostname\?\.hostname/);
   assert.match(serviceSource, /mailHostname: chosenHostname/);
-  assert.match(serviceSource, /onConfirm\(hostnameSettled \? '' : canonicalHostname \?\? ''\)/);
+  // A saved name is sent only when the owner changed it (2026-10-16).
+  assert.match(serviceSource, /const chosenName = nameFixed \? '' : canonicalHostname \?\? '';/);
+  assert.match(serviceSource, /onConfirm\(chosenName === savedName \? '' : chosenName\)/);
 
   for (const key of [
     'services.mailProfiles.hostname.title',
