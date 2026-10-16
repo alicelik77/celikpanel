@@ -41,37 +41,56 @@ Benimsenen kurallar:
    Mağaza ürünü değildir, kendi başına bir bileşen değildir ve bir sayfa
    değildir. Panel'deki genel bir kayıt (`cmd/panel/bundles.go`) her paketin
    adını, kategorisini, bileşenlerini kurulum sırasıyla ve ondan sonra sunulan
-   paketleri belirtir. İlk girdiler: Temel posta, Web postalı posta ve Spam
-   korumalı posta (mevcut posta profilleri üzerinden); her biri isteğe bağlı bir
-   eklentili PostgreSQL paketi ve MariaDB paketi (phpPgAdmin, phpMyAdmin; ikisinin
-   de gerek duyduğu Nginx ve PHP-FPM ile); Nginx + PHP-FPM.
+   paketleri belirtir. İlk girdiler: Temel Posta, Webmail ve Spam Korumalı Posta
+   (mevcut posta profilleri üzerinden); her biri isteğe bağlı bir eklentili
+   PostgreSQL paketi ve MariaDB paketi (phpPgAdmin, phpMyAdmin; ikisinin de gerek
+   duyduğu Nginx ve PHP-FPM ile); Nginx + PHP-FPM.
 2. **Nerede.** Her Bileşenler kategorisi, başlığı ile satırları arasına "Hazır
    paketler" adlı tek bir satır çizer. Kurulu ve doğrulanmış paket "… kurulu ve
    doğrulandı" satırına daralır (Onar, varsa, bir metin bağlantısıdır); kurulu
-   ama doğrulanmamış olan gri renkle "Kurulu, doğrulanmadı" der ve Doğrula
-   düğmesini taşır; kurulu bir paket kapsadığı daha küçük paketleri içerir (Web
-   postalı posta Temel postayı kapsar) ve en çok bir öneri daha izler (önce
-   kaydın eklentisi). Engellenen paket nedenini gri renkle söyler, düğmesi
-   yoktur. Pano'da her zaman gösterilen, neyin kurulu olduğunu ve kaç paketin
-   kurulabileceğini sıralayan tek bir sakin "Hazır paketler" kartı vardır;
-   `/services#bundles` adresine açılan bir kapıdır; hiçbir şey kurmaz.
+   ama doğrulanmamış olan gri renkle "kurulu, doğrulanmadı" der ve Onar (posta)
+   ya da Doğrula (veritabanı ve web) düğmesini taşır; kurulu bir paket kapsadığı
+   daha küçük paketleri içerir (Webmail, Temel Posta'yı kapsar) ve en çok bir
+   öneri daha izler (önce kaydın eklentisi). Engellenen paket nedenini gri
+   renkle söyler, düğmesi yoktur; ana makine genelindeki bir posta reddi (DNS
+   kimliği) kategori için tek satırdır ve kurulu bir posta paketi onun yanında
+   görünür kalır. Bir posta paketinin son başarısız ya da süren denemesi ve
+   Panel'in uyarısı altında yeniden söylenir (D-024). Posta paketleri ürünün
+   kendi posta profili adlarını taşır. Pano'da her zaman gösterilen tek bir
+   sakin "Hazır paketler" kartı vardır: neyin kurulu olduğunu, kaç paketin
+   kurulabileceğini ve başarısız ya da süren her posta denemesini nedeniyle
+   birlikte sıralar; "denetlenmedi", "denetlenemedi", "tutuluyor" ve "yakın
+   zamanda değil" durumlarının her birini kendi sözleriyle söyler (hiç
+   denetlenmemiş bir ana makinede denetimin kendisiyle birlikte); `/services#bundles`
+   adresine açılan bir kapıdır; hiçbir şey kurmaz.
 3. **Durumlar ve eylemler Panel'indir.** Bilinmiyor (taze tarama yok), kurulabilir,
    kısmi, kurulu ve doğrulanmadı, kurulu ve doğrulandı, engelli; posta
    profillerinin tipli nedenleriyle. Eylemler: kur, devam et, doğrula, onar,
    hiçbiri. Posta paketleri durumlarını posta profillerinden alır; bütün
    bileşenleri var ama kanıtı eksik olan bir posta profili kısmi değil, "kurulu,
-   doğrulanmadı"dır. Bir veritabanı ya da web paketi, bütün bileşenleri taze
-   taramada hazırsa doğrulanmıştır; Doğrula düğmesi bileşenleri yeniden okur ve
-   hiçbir şeyi değiştirmez.
+   doğrulanmadı"dır. **Onar ve Doğrula, yola göre farklı şeyler anlatır.** Bir
+   posta kurulumunun salt okunur doğrulaması yoktur: posta paketinde eylem
+   Onar'dır ve profil kurulumunu çalıştırır; eksik olanı tamamlar ve kurulumu
+   doğrular, kurulu hiçbir şey kaldırılmaz (pencere bunu, düğmeye basılmadan önce
+   söyler). Bir veritabanı ya da web paketinde Doğrula yalnız bileşenleri yeniden
+   okur ve hiçbir şeyi değiştirmez; bu yüzden sayfa değişikliklerini tutarken de
+   kullanılabilir kalır. Bir veritabanı ya da web paketi asla kısmi değildir:
+   bütün bileşenleri taze taramada hazırsa doğrulanmıştır, değilse Kur ile sunulur
+   ve Kur yalnız eksik parçaları kurar (var olan parçalar korunan olarak,
+   rolü zaten dolu olan bir parça, örneğin web'e Apache hizmet ederken Nginx,
+   gerekmeyen olarak sıralanır).
 4. **Nasıl kurulur.** Bir posta paketi mevcut posta kurulum penceresini açar ve
    bugünkü yolu aynen çalıştırır (kurulum uzantısı ya da profil kurulumu). Bir
    veritabanı ya da web paketi bir kez sorar, sonra eksik her bileşen için sırayla
-   tek bir olağan bileşen kurulumu gönderir; her biri, öncekinin işlemi taze bir
-   taramayla bittikten sonra gönderilir (sunucu başına tek etkin işlem). İlk
-   hata sırayı durdurur ve o bileşenin kendi yönlendirmesini (D-024) ekranda
-   bırakır; paket bundan sonra kısmi okunur ve Devam et düğmesi yalnız eksik olanı
-   kurar. Bir yoklama asla kurulum göndermez, bir yeniden yükleme de sırayı
-   kendiliğinden sürdürmez. Şema değişikliği yok (şema 44) ve yeni Agent iş türü
+   tek bir olağan bileşen kurulumu gönderir; her biri, ancak öncekinin işlemi,
+   yani bu adımın kendi bileşen kurulumu taze bir taramayla bittikten sonra
+   (sunucu başına tek etkin işlem) ve ancak sayfanın değişiklik kapısı (doğrulanmamış
+   bir sayfa durumu, değişikliğe hazır olmayan bir ana makine) yeniden okunduktan
+   sonra gönderilir. İlk hata, bu adımın kendisi olmayan bir işlem ya da kapalı
+   bir kapı sırayı nedeniyle durdurur ve yalnız eksik olanı kuran bir Devam et
+   sunar; başarısız bileşenin kendi yönlendirmesi (D-024) ekranda kalır. Bu Devam et sayfada
+   yaşar: bir yoklama asla kurulum göndermez ve yeniden yüklemeden sonra paket
+   yalnızca yeniden sunulur. Şema değişikliği yok (şema 44) ve yeni Agent iş türü
    yok.
 
 Sonuçlar. Aynı incelemenin Bileşenler renk düzeltmeleri yeni kurallar olarak

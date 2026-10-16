@@ -48,31 +48,49 @@ The rules adopted:
 2. **Where.** Each Components category draws one line, "Ready bundles",
    between its header and its rows. An installed and verified bundle collapses
    to "… installed and verified" (Repair, where it exists, is a text link);
-   installed but not verified reads "Installed, not verified" in grey with
-   Verify; a bundle installed contains the smaller ones it covers (Webmail
-   covers Core mail), and at most one more offer follows (the registry's
-   add-on first). A blocked bundle says why, in grey, with no button. The
-   Dashboard has one calm "Ready bundles" card, always shown, that lists what is
-   installed and how many bundles can be installed, and is a door to
+   installed but not verified reads "installed, not verified" in grey with
+   Repair (mail) or Verify (database and web); a bundle installed contains the
+   smaller ones it covers (Webmail covers Core Mail), and at most one more
+   offer follows (the registry's add-on first). A blocked bundle says why, in
+   grey, with no button; a host-wide mail refusal (the DNS identity) is one
+   line for the category, and an installed mail bundle stays visible beside it.
+   A mail bundle's last failed or running attempt and the Panel's warning are
+   said again under it (D-024). Mail bundles carry the product's own mail
+   profile names. The Dashboard has one calm "Ready bundles" card, always
+   shown, that lists what is installed, how many bundles can be installed and
+   any failed or running mail attempt with its reason, says "not checked",
+   "could not check", "held" and "not recent" each in its own words (with the
+   check itself on a host never checked), and is a door to
    `/services#bundles`; it installs nothing.
 3. **States and actions are the Panel's.** Unknown (no fresh scan), available,
    partial, installed and not verified, installed and verified, blocked, with
    the mail profiles' typed reasons. Actions: install, continue, verify, repair,
    none. Mail bundles take their state from the mail profiles; a mail profile
    whose components are all present but whose proof is missing is "installed,
-   not verified", not partial. A database or web bundle is verified when all
-   its components are ready on a fresh scan; its Verify reads the components
-   again and changes nothing.
+   not verified", not partial. **Repair and Verify mean different things per
+   route.** There is no read-only verification of a mail setup: for a mail
+   bundle the action is Repair, which runs the profile install; it completes
+   what is missing and verifies the setup, and nothing installed is removed
+   (the dialogue says so before it is pressed). For a database or web bundle
+   Verify only reads the components again and changes nothing, so it stays
+   usable while the page holds its changes. A database or web bundle is never
+   partial: it is verified when all its components are ready on a fresh scan,
+   and otherwise offered with Install, which installs only the missing parts
+   (the parts present are listed as kept, and a part whose role is already
+   filled, such as Nginx where Apache serves the web, as not needed).
 4. **How it installs.** A mail bundle opens the existing mail install dialogue
    and runs exactly today's route (setup extension or the profile install). A
    database or web bundle asks once and then sends one ordinary component
    install per missing component, in order, each only after the previous
-   operation has ended with a fresh scan (one active operation per host). The
-   first failure stops the sequence and leaves that component's own guidance
-   (D-024) on screen; the bundle then reads partial with Continue, which
-   installs only what is missing. A poll never sends an install, and a reload
-   never continues a sequence by itself. No schema change (schema 44) and no new
-   Agent job kind.
+   operation, this step's own component install, has ended with a fresh scan
+   (one active operation per host), and only after the page's change gate (an
+   unverified page state, a host not ready for changes) has been read again.
+   The first failure, an operation that was not this step's, or a closed gate
+   stops the sequence with its reason and a Continue that installs only what
+   is missing; a failed component's own guidance (D-024) stays on screen. That
+   Continue lives in the page: a poll never sends an install, and after a
+   reload the bundle is simply offered again. No schema change (schema 44) and
+   no new Agent job kind.
 
 Consequences. The Components colour corrections of the same review are applied
 as existing DESIGN.md rules, not new ones: row action icons are neutral at rest

@@ -13,8 +13,8 @@ kaydından (`0897ee9238bdfee295149adfe8b16968dd6fe0de`) yazıldı.
 üstündeki üç "Tek tıkla posta paketleri" kartı kalktı. Yerlerinde her kategorinin
 başlığı ile satırları arasında "Hazır paketler" adlı tek bir satır var:
 
-- **Posta:** Temel posta, Web postalı posta, Spam korumalı posta. Mevcut posta
-  kurulum penceresi üzerinden, eskisi gibi kurulurlar.
+- **Posta:** Temel Posta, Webmail, Spam Korumalı Posta (ürünün zaten kullandığı
+  adlar). Mevcut posta kurulum penceresi üzerinden, eskisi gibi kurulurlar.
 - **Veritabanları:** bir PostgreSQL paketi ve bir MariaDB paketi; biri
   kurulunca tarayıcı aracı (phpPgAdmin, phpMyAdmin) "phpPgAdmin ekle" ve
   "phpMyAdmin ekle" olarak sunulur.
@@ -23,12 +23,20 @@ başlığı ile satırları arasında "Hazır paketler" adlı tek bir satır var
 Paket, altında sıralanan bileşenlerin üzerinde bir kısayoldur, ayrı bir ürün
 değildir: bir veritabanı ya da web paketi eksik bileşenlerini olağan bileşen
 kurulumuyla art arda kurar, her biri kendi ilerlemesiyle ("2/3 · PHP-FPM
-kuruluyor"). Biri başarısız olursa kendi yönlendirmesi gösterilir ve gerisi
-bekler; paket o zaman Devam et düğmesini sunar, bu yalnız eksik olanı kurar.
-Kurulu bir paket tek satıra daralır: "… kurulu ve doğrulandı" (posta için küçük
-bir bağlantı olarak Onar) ya da Doğrula düğmeli "Kurulu, doğrulanmadı". Panonun
-Posta paketleri kartı, neyin kurulu olduğunu sıralayan ve Bileşenler'deki
-paketleri açan tek bir sakin "Hazır paketler" kartıyla değişti.
+kuruluyor") ve ancak öncekinin, yani kendi işleminin bitmesinden sonra. Biri
+başarısız olursa kendi yönlendirmesi gösterilir ve gerisi bekler; paket o zaman
+Devam et düğmesini sunar, bu yalnız eksik olanı kurar. Bunun yerine başka bir
+işlem çalışırsa ya da sunucuda değişiklikler duraklatılmışsa durur ve bunu
+söyler. Yeniden yüklemeden sonra hiçbir şey kendiliğinden sürmez: paket yeniden
+sunulur ve yalnız eksik olanı kurar. Kurulu bir paket tek satıra daralır: "…
+kurulu ve doğrulandı" (posta için küçük bir bağlantı olarak Onar) ya da "kurulu,
+doğrulanmadı"; posta için Onar (eksik olanı tamamlar ve kurulumu doğrular;
+kurulu hiçbir şey kaldırılmaz), veritabanı ya da web paketi için Doğrula
+(bileşenleri yalnız yeniden okur). Bir posta paketinin son başarısız ya da süren
+denemesi altında yeniden söylenir. Panonun Posta paketleri kartı, neyin kurulu
+olduğunu ve başarısız ya da süren her posta denemesini nedeniyle birlikte
+sıralayan ve Bileşenler'deki paketleri açan tek bir sakin "Hazır paketler"
+kartıyla değişti.
 
 **Daha sakin Bileşenler sayfası** (16 Ekim 2026 tasarım incelemesi):
 
@@ -46,18 +54,22 @@ paketleri açan tek bir sakin "Hazır paketler" kartıyla değişti.
 
 ## alpha.94'e güncelledikten sonra ne göreceksiniz
 
-- Boston (DNS motorundan başka bir şey kurulu değil): Web sunucuları,
-  Veritabanları ve E-posta kategorilerinin her biri paketleriyle başlar.
-- Frankfurt: "Web postalı posta kurulu ve doğrulandı · Onar" ve "Spam koruması
-  ekle"; "MariaDB paketi kurulu ve doğrulandı" ve "phpMyAdmin ekle"; güvenlik
-  duvarı tek satır olarak; Panoda Hazır paketler kartı.
+- Boston (Nginx kurulu bir PowerDNS ikincil sunucusu): Web sunucuları, yalnız
+  PHP-FPM'i kuracak olan Nginx + PHP-FPM paketini sunar; Veritabanları
+  paketlerini sunar. DNS kimliği hazır değilse E-posta, posta paketleri yerine
+  bunu söyleyen tek bir satır gösterir (ikincil sunucuda: posta kaydının nerede
+  oluşturulduğu); hazırsa E-posta Temel Posta, Webmail ve Spam Korumalı Posta'yı
+  sunar.
+- Frankfurt: "Webmail kurulu ve doğrulandı · Onar" ve "Spam koruması ekle";
+  "MariaDB paketi kurulu ve doğrulandı" ve "phpMyAdmin ekle" (Nginx ve PHP-FPM'i
+  zaten kurulu olarak sıralar ve phpMyAdmin'i kurar); güvenlik duvarı tek satır
+  olarak; Panoda Hazır paketler kartı.
 
 ## Sınırlar
 
-- Sahibin 2026-10-16 talimatıyla (hızlı sürümler) gerçek sistem kaydı yok.
-  Yalnız Go, bileşen, bağlanmış bileşen ve taklit tarayıcı denetimleri; kurulu
-  bir sunucuda hiçbir şey ölçülmedi; paket sırası gerçek bir Agent'a karşı
-  çalışmadı.
+- Sahibin 2026-10-16 talimatıyla (hızlı sürümler) yerel kayıt yok. Yalnız Go,
+  bileşen, bağlanmış bileşen ve taklit tarayıcı denetimleri; kurulu bir sunucuda
+  hiçbir şey ölçülmedi; paket sırası gerçek bir Agent'a karşı çalışmadı.
 - Şema 44, geçiş yok; yeni Agent iş türü yok; kurtarma davranışı değişmedi.
   Yönetilen hizmetler yanıtı eklemeli bir `bundles` alanı kazanır; eski bir Panel
   göndermezse sayfa şerit göstermez.
@@ -66,13 +78,13 @@ paketleri açan tek bir sakin "Hazır paketler" kartıyla değişti.
 
 ## Kanıt
 
-Go `./cmd/panel/` ve `./internal/...` (66 paket): vet ve gofmt temiz; 2843 üst düzey test geçer, 42 atlanır, 4278 alt test geçer, hiçbiri başarısız değil; `./cmd/panel/` içinde 1593 üst düzey test geçer, 6 atlanır (sekiz yeni hazır paket testi; posta profili testleri değişmedi). Web: `npm test` 1575/1575; `tsc --noEmit` ve paket
-bütçeli üretim derlemesi geçer. Tarayıcı turu 19 (yalnız taklit): Boston benzeri
-ve Frankfurt benzeri taklitlerde Bileşenler, 2/3 adımında bir veritabanı paketi
-ve Pano kartı; 1440 ve 390 piksel genişlikte, iki temada, Türkçe; bir düzeltme
-turu (kurulu bir paketin yanındaki ipucu satırı, telefonda PHP-FPM'nin bütün
-kalması). Sürüm sözleşmeleri geçer: sıra politikası (93 -> 94), indirme portalı,
-imzalı bildirim.
+Go `./cmd/panel/` ve `./internal/...` (66 paket): vet ve gofmt temiz; 2844 üst düzey test geçer, 42 atlanır, 4278 alt test geçer, hiçbiri başarısız değil; `./cmd/panel/` içinde 1594 üst düzey test geçer, 6 atlanır (dokuz yeni hazır paket testi; posta profili görünüm testleri değişmeden geçer). Web: `npm test` 1582 / 1582; `tsc --noEmit` ve paket
+bütçeli üretim derlemesi geçer. Tarayıcı turu 19 (yalnız taklit): DNS kimliği
+hazır ve hazır olmayan Boston benzeri taklitlerde ve Frankfurt benzeri bir
+taklitte Bileşenler, 2/3 adımında bir veritabanı paketi ve Pano kartı; 1440 ve
+390 piksel genişlikte, iki temada, Türkçe; bir düzeltme turu (kurulu bir paketin
+yanındaki ipucu satırı, telefonda PHP-FPM'nin bütün kalması). Sürüm sözleşmeleri
+geçer: sıra politikası (93 -> 94), indirme portalı, imzalı bildirim.
 
 ## Yayım kaydı
 
