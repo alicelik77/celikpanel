@@ -8860,3 +8860,56 @@ unknown id as controls; the plural keys at every call site. **Open:** the
 corrections are first seen after the owner updates to alpha.93 from the panel's
 own update screen; nothing was measured on an installed server; P0.1-P0.5 stay
 **partial**.
+
+### Ready bundles: installing a group of components, one at a time (D-034, 2026-10-17)
+
+A ready bundle (D-034) is a shortcut over the catalogue's own components, shown
+as one line at the head of a Components category. In source for the
+v0.1.0-alpha.94 candidate; nothing was run on an installed server.
+
+**What the owner sees and who acts.**
+
+- **Offered.** The strip names the bundles; choosing one says what it installs
+  and which parts are already installed and kept. The owner acts: Install….
+- **A mail bundle** opens the existing mail install dialogue (host name, DNS
+  notices, the setup route on a prepared server). Everything that dialogue and
+  the mail profile operation already say applies unchanged.
+- **A database or web bundle** asks once, listing what will be installed and
+  what is already installed, and says how it runs. Then the panel acts: one
+  ordinary component install per missing component, in the Panel's order. The
+  operation screen names the step ("PHP-FPM (2/3, phpMyAdmin web tool)") and the
+  strip says "2/3 · installing PHP-FPM" with a moving bar (D-033). Nobody needs
+  to do anything while it runs.
+- **One at a time.** The next install is sent only after the previous operation
+  has ended and the operation tracker has read the components again; the host
+  keeps one active operation. A poll never sends an install.
+- **A failure** stops the sequence. The failed component's own guidance (D-024)
+  is shown by the operation screen, as for an install from its row: the reason,
+  who acts and what to do. Nothing already installed is removed.
+- **How it resumes.** After a failure or a reload the strip reads "{name}: n of
+  m components installed" with Continue. The owner presses Continue; it installs
+  only what is still missing. A reload never continues a sequence by itself.
+- **Installed.** "… installed and verified" with a green check, or "Installed,
+  not verified" in grey with Verify. For a mail bundle Verify and Repair open
+  the mail dialogue (the profile operation reconciles and proves it); for a
+  database or web bundle Verify reads the components again and changes nothing,
+  and a stopped component shows its own red "Stopped" in its row.
+- **Blocked.** The reason in grey, with no button: a conflicting component, a
+  requirement outside the bundle, a component not offered on this platform (an
+  add-on is blocked alone, never its parent), or, for mail, the DNS identity,
+  said once for the category as one line (on a secondary DNS server, where the
+  record is created and the exact record).
+- **Not known.** Without a fresh component check the strip claims nothing: it
+  says that the bundles are shown once the components have been checked, and
+  the page checks by itself (D-032).
+
+**Tests.** Go: the registry, the states of every bundle on an empty server,
+Boston-like and Frankfurt-like scans, a stopped component, Apache filling the
+web-server role for an add-on, an add-on not offered on pacman, and the payload
+at its fill points; the mail profiles' tests unchanged. Web: the decoder's
+closed states and actions, the strip's choices on both servers, three states
+mounted from a fetch map, and the sequence through a stand-in operation
+tracker: the second install is not asked for before the first operation ended
+with a fresh scan, a failure stops it, Continue installs only what is missing.
+**Open:** nothing was measured on an installed server; the sequence has not run
+against a real Agent; P0.1-P0.5 stay **partial**.

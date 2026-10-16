@@ -21,6 +21,79 @@ git'te yaşar; bu dosya strateji içindir. En yeni en üstte.
 
 ---
 
+## D-034 · Hazır paketler birer kısayoldur, ürün değildir: genel bir kayıt, her Bileşenler kategorisinin başında gösterilir, Pano'da tek bir kapı
+
+*17 Ekim 2026 (saat tarihi) · Bileşenler sayfasının tasarım incelemesinden (alpha.92 kaynağı, 16 Ekim 2026) ve sahibin 16 Ekim 2026 tarihli taslağından sonra sahip kararı; v0.1.0-alpha.94 adayı için kaynakta; kurulu bir sunucuda hiçbir şey ölçülmedi*
+
+"Tek tıkla posta paketleri" başlıklı üç kart Bileşenler'in en üstünde, bütün
+bileşen satırlarının üstünde duruyordu. Telefonda ilk satır yaklaşık 1.300
+pikselik kartlardan sonra geliyordu; kartlar doğrulanmış bir Webmail'i sarı
+renkle "Kısmen kurulu" diye çiziyordu; ve arkasındaki fikir, bilinen sağlam bir
+bileşen grubunu tek seferde kurmak, yalnız posta için vardı. Sahip aynısının
+genel olmasını istedi: tek tıkla paketler gibi, ama posta, veritabanı ve web için
+aynı biçimde ve bileşenlerin kendisinin durduğu yerde. WordPress ve diğer site
+uygulamaları ayrı, daha sonraki bir konudur. Mağaza, edinilen ya da lisanslanan
+şeylerin yeri olarak kalır (D-015 2. madde korunur: katalog tek kurulum adresidir).
+
+Benimsenen kurallar:
+
+1. **Hazır paket, katalogdaki mevcut bileşenlerin üzerinde bir kısayoldur.**
+   Mağaza ürünü değildir, kendi başına bir bileşen değildir ve bir sayfa
+   değildir. Panel'deki genel bir kayıt (`cmd/panel/bundles.go`) her paketin
+   adını, kategorisini, bileşenlerini kurulum sırasıyla ve ondan sonra sunulan
+   paketleri belirtir. İlk girdiler: Temel posta, Web postalı posta ve Spam
+   korumalı posta (mevcut posta profilleri üzerinden); her biri isteğe bağlı bir
+   eklentili PostgreSQL paketi ve MariaDB paketi (phpPgAdmin, phpMyAdmin; ikisinin
+   de gerek duyduğu Nginx ve PHP-FPM ile); Nginx + PHP-FPM.
+2. **Nerede.** Her Bileşenler kategorisi, başlığı ile satırları arasına "Hazır
+   paketler" adlı tek bir satır çizer. Kurulu ve doğrulanmış paket "… kurulu ve
+   doğrulandı" satırına daralır (Onar, varsa, bir metin bağlantısıdır); kurulu
+   ama doğrulanmamış olan gri renkle "Kurulu, doğrulanmadı" der ve Doğrula
+   düğmesini taşır; kurulu bir paket kapsadığı daha küçük paketleri içerir (Web
+   postalı posta Temel postayı kapsar) ve en çok bir öneri daha izler (önce
+   kaydın eklentisi). Engellenen paket nedenini gri renkle söyler, düğmesi
+   yoktur. Pano'da her zaman gösterilen, neyin kurulu olduğunu ve kaç paketin
+   kurulabileceğini sıralayan tek bir sakin "Hazır paketler" kartı vardır;
+   `/services#bundles` adresine açılan bir kapıdır; hiçbir şey kurmaz.
+3. **Durumlar ve eylemler Panel'indir.** Bilinmiyor (taze tarama yok), kurulabilir,
+   kısmi, kurulu ve doğrulanmadı, kurulu ve doğrulandı, engelli; posta
+   profillerinin tipli nedenleriyle. Eylemler: kur, devam et, doğrula, onar,
+   hiçbiri. Posta paketleri durumlarını posta profillerinden alır; bütün
+   bileşenleri var ama kanıtı eksik olan bir posta profili kısmi değil, "kurulu,
+   doğrulanmadı"dır. Bir veritabanı ya da web paketi, bütün bileşenleri taze
+   taramada hazırsa doğrulanmıştır; Doğrula düğmesi bileşenleri yeniden okur ve
+   hiçbir şeyi değiştirmez.
+4. **Nasıl kurulur.** Bir posta paketi mevcut posta kurulum penceresini açar ve
+   bugünkü yolu aynen çalıştırır (kurulum uzantısı ya da profil kurulumu). Bir
+   veritabanı ya da web paketi bir kez sorar, sonra eksik her bileşen için sırayla
+   tek bir olağan bileşen kurulumu gönderir; her biri, öncekinin işlemi taze bir
+   taramayla bittikten sonra gönderilir (sunucu başına tek etkin işlem). İlk
+   hata sırayı durdurur ve o bileşenin kendi yönlendirmesini (D-024) ekranda
+   bırakır; paket bundan sonra kısmi okunur ve Devam et düğmesi yalnız eksik olanı
+   kurar. Bir yoklama asla kurulum göndermez, bir yeniden yükleme de sırayı
+   kendiliğinden sürdürmez. Şema değişikliği yok (şema 44) ve yeni Agent iş türü
+   yok.
+
+Sonuçlar. Aynı incelemenin Bileşenler renk düzeltmeleri yeni kurallar olarak
+değil, mevcut DESIGN.md kuralları olarak uygulandı: satır eylem simgeleri
+dinlenirken nötrdür ve tonlarını yalnız imleç ya da odak altında alır (Durum
+Rengi Kuralı, Bitişik Olmama Kuralı); durum noktasının dört tonu vardır, durmuş
+bir hizmet sözüyle birlikte kırmızıdır ve "kurulu değil" içi boş bir halkadır
+(Durum Rengi Kuralı); sarı Katmanlar karosu ve sarı "kısmi" cümleleri kartlarla
+birlikte gitti, şerit Kehribar Mürekkep'i yalnız kurulu ama hazır olmayan bir
+webmail çalışma ortamı için kullanır (İki Sarı Kuralı); "Webmail'i onar" sunucu
+bir webmail sorunu bildirmedikçe nötr kalır; sağlıklı bir güvenlik duvarı tek
+satırdır; bileşen simgeleri emoji yerine tek bir çizgi simgeleri haritasından
+gelir; satır sabit sütunlu bir ızgaradır ve telefonda satır eylemleri 44 piksel
+olup adları yazılıdır.
+
+Bunun izin vermediği şeyler: kurulu bir sunucuda değişiklik, yeni mağaza
+öğesi, lisans politikası değişikliği, WordPress ya da site uygulaması paketi
+yok. Kurulu panelleri yine yalnız sahipleri, panelin kendi güncelleme
+ekranından günceller.
+
+---
+
 ## D-033 · Sahibi bekleten bir ekran beklediğini gösterir ya da yapılacak bir şey olmadığını söyler
 
 *14 Ekim 2026 (saat tarihi) · Kurulu ikinci sunucudaki (Frankfurt, v0.1.0-alpha.84) kurulumun son adımından sonra sahip kararı; web arayüzünün okunmasıyla bulunan her bekleme durumuna (37 durum) kaynakta, bağlanan testler ve API taklidine karşı tarayıcıyla uygulandı (14 Ekim 2026); kısmen on sekizinci gerçek sistem kaydında ölçüldü (set16, 14 Ekim 2026 UTC: Dashboard'ın Posta paketleri kartı ve kenar çubuğundaki yapı kimliği Debian 13 ve Ubuntu 24.04'te; Agent durmuşken Bileşenler güvenlik duvarı şeridi ve "İlgi istiyor" kutusu yalnız Debian 13'te); kurulumun tamamlanmasına ve güncelleme kartının meşgul durumuna gerçek sistemde ulaşılamadı; kurulu bir sunucuda hiçbir şey ölçülmedi*

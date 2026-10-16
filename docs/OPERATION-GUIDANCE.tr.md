@@ -8824,3 +8824,57 @@ olarak bir bileşen ve bilinmeyen bir kimlikle kurulum denetim cümleleri; her
 çağrı yerinde çoğul anahtarları. **Açık:** düzeltmeler sahip alpha.93'e panelin
 kendi güncelleme ekranından geçtikten sonra görülür; kurulu bir sunucuda hiçbir
 şey ölçülmedi; P0.1-P0.5 **kısmi** kalır.
+
+### Hazır paketler: bir bileşen grubunu birer birer kurmak (D-034, 17 Ekim 2026)
+
+Hazır paket (D-034), katalogdaki bileşenlerin üzerinde bir kısayoldur ve bir
+Bileşenler kategorisinin başında tek satır olarak gösterilir. v0.1.0-alpha.94
+adayı için kaynakta; kurulu bir sunucuda hiçbir şey çalıştırılmadı.
+
+**Sahibin gördüğü ve kimin işlem yaptığı.**
+
+- **Sunuldu.** Şerit paketleri adıyla söyler; birini seçmek neyi kuracağını ve
+  hangi parçaların zaten kurulu olup korunacağını söyler. Sahip işlem yapar:
+  Kur….
+- **Bir posta paketi** mevcut posta kurulum penceresini açar (sunucu adı, DNS
+  bildirimleri, hazırlanmış sunucuda kurulum yolu). Bu pencerenin ve posta profili
+  işleminin söylediği her şey değişmeden geçerlidir.
+- **Bir veritabanı ya da web paketi** bir kez sorar; nelerin kurulacağını ve nelerin
+  zaten kurulu olduğunu sıralar, nasıl çalıştığını söyler. Sonra panel işlem yapar:
+  Panel'in sırasıyla, eksik her bileşen için tek bir olağan bileşen kurulumu.
+  İşlem ekranı adımı adıyla söyler ("PHP-FPM (2/3, phpMyAdmin web aracı)") ve şerit
+  hareket eden bir çubukla "2/3 · PHP-FPM kuruluyor" der (D-033). Çalışırken
+  kimsenin bir şey yapması gerekmez.
+- **Birer birer.** Sonraki kurulum, ancak önceki işlem bittikten ve işlem izleyici
+  bileşenleri yeniden okuduktan sonra gönderilir; sunucuda tek etkin işlem
+  bulunur. Bir yoklama asla kurulum göndermez.
+- **Bir hata** sırayı durdurur. Başarısız bileşenin kendi yönlendirmesi (D-024),
+  satırından yapılan bir kurulumdaki gibi, işlem ekranında gösterilir: neden, kimin
+  işlem yapacağı ve ne yapılacağı. Zaten kurulu olan hiçbir şey kaldırılmaz.
+- **Nasıl sürer.** Bir hatadan ya da yeniden yüklemeden sonra şerit "{ad}: n/m
+  bileşen kurulu" der ve Devam et düğmesi görünür. Sahip Devam et'e basar;
+  bu yalnız hâlâ eksik olanı kurar. Yeniden yükleme sırayı asla kendiliğinden
+  sürdürmez.
+- **Kurulu.** Yeşil bir onayla "… kurulu ve doğrulandı", ya da gri renkle "Kurulu,
+  doğrulanmadı" ve Doğrula. Bir posta paketinde Doğrula ve Onar posta penceresini
+  açar (profil işlemi uzlaştırır ve kanıtlar); bir veritabanı ya da web paketinde
+  Doğrula bileşenleri yeniden okur ve hiçbir şeyi değiştirmez, durmuş bir bileşen
+  de satırında kendi kırmızı "Durdu" ifadesini gösterir.
+- **Engelli.** Neden gri renkle, düğme olmadan: çakışan bir bileşen, paketin
+  dışında kalan bir önkoşul, bu platformda sunulmayan bir bileşen (bir eklenti
+  tek başına engellenir, ana paketi asla) ya da posta için DNS kimliği; kategori
+  için tek satır olarak bir kez söylenir (ikincil DNS sunucusunda kaydın nerede
+  oluşturulduğu ve tam kayıt).
+- **Bilinmiyor.** Taze bir bileşen denetimi yokken şerit hiçbir şey iddia etmez:
+  bileşenler denetlendikten sonra paketlerin gösterileceğini söyler ve sayfa bunu
+  kendiliğinden denetler (D-032).
+
+**Testler.** Go: kayıt, boş bir sunucuda her paketin durumları, Boston benzeri
+ve Frankfurt benzeri taramalar, durmuş bir bileşen, bir eklenti için web sunucusu
+rolünü dolduran Apache, pacman'de sunulmayan bir eklenti ve yük, doldurma
+noktalarında; posta profillerinin testleri değişmeden. Web: çözücünün kapalı
+durumları ve eylemleri, şeridin iki sunucudaki seçimleri, bir getirme eşlemesinden
+bağlanan üç durum ve bir yedek işlem izleyici üzerinden sıra: ikinci kurulum,
+birincinin işlemi taze bir taramayla bitmeden istenmez, bir hata sırayı durdurur,
+Devam et yalnız eksik olanı kurar. **Açık:** kurulu bir sunucuda hiçbir şey
+ölçülmedi; sıra gerçek bir Agent'a karşı çalışmadı; P0.1-P0.5 **kısmi** kalır.
