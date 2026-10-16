@@ -150,6 +150,12 @@ type mailProfileDNSGuidance struct {
 	RecordName        string `json:"record_name,omitempty"`
 	RecordType        string `json:"record_type"`
 	RecordValue       string `json:"record_value,omitempty"`
+	// PeerRecordChannel is additive (2026-10-16): this server has an
+	// authorized DNS connection to the primary, so setup asks the primary
+	// for the record by itself while it checks public DNS; without it the
+	// record above is added by hand.
+	// Birincile yetkili DNS baglantisi var: kurulum kaydi kendisi ister.
+	PeerRecordChannel bool `json:"peer_record_channel"`
 }
 
 const mailProfileDNSGuidanceSecondary = "dns_secondary"
@@ -180,6 +186,7 @@ func (p *Panel) mailProfileDNSGuidanceFor(ctx context.Context, dnsIdentityReady 
 	candidates := []string{}
 	if state, err := p.loadServerSetup(ctx); err == nil {
 		candidates = append(candidates, state.Draft.LocalIP)
+		_, guidance.PeerRecordChannel = p.serverSetupPeerHostRecordConnection(ctx, state.Draft)
 	}
 	candidates = append(candidates, serverPrimaryIP())
 	for _, candidate := range candidates {

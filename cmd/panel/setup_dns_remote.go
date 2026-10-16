@@ -273,6 +273,8 @@ func (p *Panel) handleRemoteDNSMachine(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(proof)
 	case "/api/v1/dns/remote/receiver/publish":
 		p.handleRemoteDNSReceivePublication(w, r, claim)
+	case remoteDNSHostRecordPath:
+		p.handleRemoteDNSHostRecord(w, r, claim)
 	default:
 		http.NotFound(w, r)
 	}

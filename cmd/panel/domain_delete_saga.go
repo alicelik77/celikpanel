@@ -267,6 +267,15 @@ func (p *Panel) removeDomainDNSForDeletion(
 		_, err := p.removeSubdomainFromParentZone(ctx, parentDomain, domain)
 		return err
 	}
+	// A website added later for the infrastructure zone's own name is removed
+	// without its zone, which holds the panels' own address records
+	// (2026-10-16). The zone returns to Domains as "DNS only".
+	// Altyapi bolgesiyle ayni adli site kaldirilir; bolge kalir.
+	if infrastructure, err := p.isInfrastructureDNSZone(ctx, domain); err != nil {
+		return fmt.Errorf("check infrastructure DNS zone: %w", err)
+	} else if infrastructure {
+		return nil
+	}
 	p.serviceMutationMu.Lock()
 	defer p.serviceMutationMu.Unlock()
 	dnsPublicationMu.Lock()

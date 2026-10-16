@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/alicelik/celikpanel/internal/core"
@@ -71,6 +72,25 @@ func TestMailProfileDNSGuidanceOnASecondaryNamesThePrimaryAndTheRecord(t *testin
 	// The value is this server's address as reviewed in setup (LocalIP).
 	if guidance.RecordValue != "192.0.2.2" {
 		t.Fatalf("record value: %+v", guidance)
+	}
+	// No authorized DNS connection to the primary: the record is added by
+	// hand. With one to the reviewed primary endpoint, setup asks for it
+	// (2026-10-16, decision 3).
+	if !guidance.PeerRecordChannel {
+		t.Fatalf("the fixture's connection to the primary not seen: %+v", guidance)
+	}
+	if _, err := panel.db.GetDB().Exec(`DELETE FROM remote_dns_connections`); err != nil {
+		t.Fatal(err)
+	}
+	if guidance = panel.mailProfileDNSGuidanceFor(ctx, false); guidance == nil || guidance.PeerRecordChannel {
+		t.Fatalf("channel without a connection: %+v", guidance)
+	}
+	if _, err := panel.db.GetDB().Exec(`INSERT INTO remote_dns_connections(id,endpoint,label,status,nameservers_json,created_at,credential,enrollment_code) VALUES(?,?,?,?,?,?,?,?)`,
+		strings.Repeat("e", 32), f.plan.Draft.DNSPublisherEndpoint, "primary", "ready", "[]", "2026-10-16T00:00:00Z", strings.Repeat("f", 64), ""); err != nil {
+		t.Fatal(err)
+	}
+	if guidance = panel.mailProfileDNSGuidanceFor(ctx, false); guidance == nil || !guidance.PeerRecordChannel {
+		t.Fatalf("channel not seen: %+v", guidance)
 	}
 	// Controls: a ready identity has no guidance, and neither has a server
 	// whose hosting records are made elsewhere (external mode).

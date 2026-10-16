@@ -9,7 +9,7 @@ import (
 // Administrative pairing and revocation retain session authentication and CSRF.
 func remoteDNSMachinePath(path string) bool {
 	switch path {
-	case "/api/v1/dns/remote/accept", "/api/v1/dns/remote/receiver/status", "/api/v1/dns/remote/receiver/publish":
+	case "/api/v1/dns/remote/accept", "/api/v1/dns/remote/receiver/status", "/api/v1/dns/remote/receiver/publish", remoteDNSHostRecordPath:
 		return true
 	default:
 		return false

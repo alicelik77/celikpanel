@@ -23,7 +23,16 @@ func (p *Panel) runServerSetupAccessDNS(ctx context.Context, plan serverSetupPla
 	if !valid || actual != plan.ServerIP || step.Qualifier != plan.ServerIP {
 		return false, &serverSetupChildFailure{Code: "server_setup_access_dns_address_changed", Message: "This server's address changed after review. Review a new plan before preparing DNS or certificates."}
 	}
-	return serverSetupAccessDNSWithResolvers(ctx, step.Target, plan.ServerIP, serverPrimaryIPv6(), setupDNSPublicResolvers())
+	ready, err := serverSetupAccessDNSWithResolvers(ctx, step.Target, plan.ServerIP, serverPrimaryIPv6(), setupDNSPublicResolvers())
+	if !ready && errors.Is(err, errServerSetupAccessDNSRequired) {
+		// On a DNS secondary: ask the primary for the record over the
+		// authorized DNS connection (2026-10-16, decision 3); the check
+		// itself stays the public one, so the step passes only once the
+		// primary has published the record and it is visible.
+		// Ikincilde kaydi birincilden iste; kontrol yine genel DNS'tir.
+		p.requestServerSetupPeerHostRecord(ctx, plan, step)
+	}
+	return ready, err
 }
 
 func serverSetupAccessDNSWithResolvers(ctx context.Context, domain, ipv4, ipv6 string, resolvers []hostResolver) (bool, error) {

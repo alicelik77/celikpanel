@@ -21,6 +21,11 @@ type serverSetupExecutionContext struct {
 	PanelDomain          string                            `json:"panel_domain"`
 	MailHostname         string                            `json:"mail_hostname"`
 	DNSHostingManagement string                            `json:"dns_hosting_management"`
+	// PeerHostRecord is additive (2026-10-16): on a DNS secondary whose
+	// public DNS check waits, whether this server can ask the primary for the
+	// record over the authorized DNS connection and what that request got.
+	// Ikincilde bekleyen genel DNS kontrolu icin birincilden istenen kayit.
+	PeerHostRecord *serverSetupPeerHostRecordContext `json:"peer_host_record,omitempty"`
 }
 
 type serverSetupOperationResponse struct {
@@ -74,6 +79,12 @@ func (p *Panel) serverSetupOperationResponse(ctx context.Context, execution *ser
 			// Empty in legacy plans means the original panel connector flow.
 			// Eski plandaki bos alan ilk panel baglanti akisini belirtir.
 			response.Context.DNSHostingManagement = "panel"
+		}
+	}
+	for _, step := range execution.Steps {
+		if step.Kind == "access_dns" && step.Status == "running" {
+			response.Context.PeerHostRecord = p.serverSetupPeerHostRecordContextFor(ctx, plan, step)
+			break
 		}
 	}
 	// External/existing DNS drafts do not prove a local address or DNS role.
