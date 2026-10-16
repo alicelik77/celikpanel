@@ -72,7 +72,7 @@ test('DNS is first; security remains accessible while DNS is incomplete; actions
   const links = tree.root.findAllByType('a').map((a) => a.props.href);
   assert.equal(links[0], '/settings?section=dns');
   for (const section of ['panel', 'account', 'security']) assert.ok(links.includes(`/settings?section=${section}`));
-  assert.ok(!links.includes('/services#mail-stacks'));
+  assert.ok(!links.includes('/services#bundles'));
   assert.equal(confirmations, 0);
   tree.root.findAllByType('button').find((b) => b.children.includes('firewall.turnOn')).props.onClick();
   tree.root.findAllByType('button').find((b) => b.children.includes('start.scan.action')).props.onClick();
@@ -89,7 +89,7 @@ test('ready DNS exposes optional hosting choices without counting mail as mandat
   }));
   const links = tree.root.findAllByType('a').map((a) => a.props.href);
   assert.ok(links.includes('/domains'));
-  assert.ok(links.includes('/services#mail-stacks'));
+  assert.ok(links.includes('/services#bundles'));
   assert.equal(tree.root.findAllByType('button').length, 0);
   tree.unmount();
 });
