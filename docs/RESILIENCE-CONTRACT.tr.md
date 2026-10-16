@@ -5351,3 +5351,9 @@ davranışını değiştirmez. 2026-10-16, içindeki her şeyin saat tarihidir.
   görülmedi; aynı sürümün yeniden denenmesi doğrulama sınırını bildirmez; ve
   Frankfurt'un sayfasında iyi bir "yeni güncelleme yok" durumunun uyarı
   simgesiyle çizilmesi D-033 maddesi.
+
+### v0.1.0-alpha.90 adayı (alpha.89'dan beri bir D-033 arayüz düzeltmesi; D-024; D-033; 2026-10-16)
+
+- **Değişiklik.** Güncelleme kartı, yeni güncelleme bulamayan denetimi onay olarak ("En son sürümü kullanıyorsunuz.", onay işareti), bulunan güncellemeyi ve süren hazırlık okumasını nötr olarak çizer; uyarı işareti okunamayan denetim, hazır olmayan sunucu, başlatılamayan güncelleme ve daha önce başarısız olan deneme için kalır. Yalnız arayüz; sürüm sırası 89'dan 90'a geçer. **Hiçbir P0 işi kapanmaz ya da ilerlemez**; P0.1 ile P0.5 kısmi kalır.
+- **Şema ve kurtarma.** Şema 44, geçiş yok; kurtarma davranışı değişmez. Sahibin 16 Ekim 2026 talimatıyla gerçek sistem kanıtı yok.
+- **Açık.** alpha.88 ve alpha.89 girdilerinin açık bıraktığı her şey açık kalır; canlı adım görünümü ve yeniden başlama ölçümü ilk kez alpha.89'dan güncellemede gözlenir. Bkz. [sürüm notları](RELEASE-NOTES-v0.1.0-alpha.90.tr.md).

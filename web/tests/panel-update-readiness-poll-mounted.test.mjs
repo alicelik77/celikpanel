@@ -34,7 +34,7 @@ const reactURL = pathToFileURL(require.resolve('react')).href;
 const jsxRuntimeURL = pathToFileURL(require.resolve('react/jsx-runtime')).href;
 const iconsURL = moduleURL(`import React from '${reactURL}';
     const Icon = (name) => (props) => React.createElement('i', { ...props, 'data-icon': name });
-    export const AlertTriangle = Icon('alert'); export const DownloadCloud = Icon('download');
+    export const AlertTriangle = Icon('alert'); export const CheckCircle2 = Icon('check'); export const DownloadCloud = Icon('download');
     export const Loader2 = Icon('spinner'); export const RefreshCw = Icon('refresh');`);
 const uiURL = moduleURL(`import React from '${reactURL}';
     export function Button({ children, ...props }) { return React.createElement('button', props, children); }`);

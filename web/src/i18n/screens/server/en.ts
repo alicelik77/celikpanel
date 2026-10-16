@@ -260,7 +260,7 @@ export const enServerScreens = {
     'panelUpdate.identityMismatch': 'The agent reported a different active operation identity. It will be monitored until terminal before this screen is released.',
     'panelUpdate.unsupported': 'This build pair does not support the signed update channel.',
     'panelUpdate.available': 'A signed update is available.',
-    'panelUpdate.none': 'There is no new update on this channel.',
+    'panelUpdate.none': 'You are on the latest version.',
     'panelUpdate.previousAttempt.title': 'This version already failed on this server',
     // The offered version was already tried here and rolled back (12 Oct 2026):
     // what happened and what runs now, the recorded cause or that none was
