@@ -65,6 +65,9 @@ const { PanelUpdateCard } = await import(compileURL('../src/components/PanelUpda
     [/from ['"]\.\.\/lib\/apiError['"]/g, `from '${apiErrorURL}'`],
     [/from ['"]\.\.\/lib\/panelUpdateAdmission['"]/g, `from '${admissionURL}'`],
     [/from ['"]\.\/SystemUpdateOperation['"]/g, `from '${operationURL}'`],
+    // The step bars (2026-10-16) are drawn only from the context's steps,
+    // which this harness does not provide; tests/update-steps-mounted.test.mjs mounts them.
+    [/from ['"]\.\/SystemUpdateSteps['"]/g, `from 'data:text/javascript,export function SystemUpdateSteps() { return null; } export function systemUpdateStepsAnnouncement() { return ""; }'`],
 ]));
 
 const flush = async () => { for (let i = 0; i < 4; i += 1) await Promise.resolve(); };

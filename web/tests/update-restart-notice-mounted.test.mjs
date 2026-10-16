@@ -79,6 +79,9 @@ const { PanelUpdateCard } = await import(compileURL('../src/components/PanelUpda
     [/from ['"]\.\.\/lib\/apiError['"]/g, `from '${apiErrorURL}'`],
     [/from ['"]\.\.\/lib\/panelUpdateAdmission['"]/g, `from '${admissionURL}'`],
     [/from ['"]\.\/SystemUpdateOperation['"]/g, `from '${operationURL}'`],
+    // The step bars (2026-10-16) are drawn only from the context's steps,
+    // which this harness does not provide; tests/update-steps-mounted.test.mjs mounts them.
+    [/from ['"]\.\/SystemUpdateSteps['"]/g, `from 'data:text/javascript,export function SystemUpdateSteps() { return null; } export function systemUpdateStepsAnnouncement() { return ""; }'`],
 ]));
 
 const flush = async () => { for (let i = 0; i < 4; i += 1) await Promise.resolve(); };
@@ -128,7 +131,7 @@ test('the restart window: 6 minutes from the start, and at least 2 minutes from 
     assert.equal(systemUpdateRestartDeadline(Number.NaN, at(20)), at(140));
 });
 
-test('a lost read after the server said the update is running is the restart; without that it is unknown', () => {
+test('a lost read after the server said the update is running is the restart; without that, only inside the window from the start', () => {
     let step = systemUpdateFollowRead(SYSTEM_UPDATE_READ_MEMORY, { operation: { status: 'running' }, disconnected: false, at: at(5) }, START);
     assert.equal(step.phase, 'applying');
     assert.deepEqual(step.memory, { lastKnownActive: true, lostSince: null });
@@ -145,10 +148,19 @@ test('a lost read after the server said the update is running is the restart; wi
     // Queued counts as active: the worker may begin at any moment.
     const queued = systemUpdateFollowRead(SYSTEM_UPDATE_READ_MEMORY, { operation: { status: 'queued' }, disconnected: false, at: at(1) }, START);
     assert.equal(systemUpdateFollowRead(queued.memory, { operation: null, disconnected: true, at: at(3) }, START).phase, 'restarting');
-    // Nothing read yet in this document: a lost read is not known.
+    // Nothing read yet in this document (a page opened during the restart;
+    // owner design 2026-10-16): inside the window counted from the start it
+    // is the restart, bounded by that window only; after it, not known. The
+    // server's word that the update is active is still not assumed.
     const cold = systemUpdateFollowRead(SYSTEM_UPDATE_READ_MEMORY, { operation: null, disconnected: true, at: at(3) }, START);
-    assert.equal(cold.phase, 'unknown');
-    assert.equal(cold.restartDeadline, null);
+    assert.equal(cold.phase, 'restarting');
+    assert.equal(cold.restartDeadline, at(360));
+    assert.equal(cold.memory.lastKnownActive, false);
+    const coldLate = systemUpdateFollowRead(SYSTEM_UPDATE_READ_MEMORY, { operation: null, disconnected: true, at: at(360) }, START);
+    assert.equal(coldLate.phase, 'unknown');
+    assert.equal(coldLate.restartDeadline, null);
+    assert.equal(systemUpdateFollowRead(SYSTEM_UPDATE_READ_MEMORY, { operation: null, disconnected: true, at: at(3) }, Number.NaN).phase, 'unknown',
+        'no valid start: never calm');
     // An answer that could not be verified is not a restart.
     assert.equal(systemUpdateFollowRead({ lastKnownActive: true, lostSince: null }, { operation: null, disconnected: false, at: at(3) }, START).phase, 'unknown');
 });
@@ -243,9 +255,10 @@ test('the provider: restart from the read, warning only off the restart, a failu
     // The dialog's warning icon (WifiOff) is not drawn during the restart.
     assert.match(tracker, /const disconnected = !pendingReload && !requiredReloadMarker && marker !== null && view\.disconnected\n\s+&& displayedPhase !== 'restarting';/);
     // The corner notice is not drawn while the card carries the same state.
-    assert.match(tracker, /const inlineNoticeCarriesTracking = systemUpdateCornerNoticeRepeats\(inlineNotices, tracking !== null\);/);
+    // Since 2026-10-16 the card also carries "Updated to", so a success is not repeated either.
+    assert.match(tracker, /const inlineNoticeCarriesTracking = systemUpdateCornerNoticeRepeats\(inlineNotices, tracking !== null \|\| updated !== null\);/);
     assert.match(tracker, /const backgroundVisible = navigationLease\.released && !authPaused && !blocking && exactMarker !== null\n\s+&& !inlineNoticeCarriesTracking/);
-    assert.match(tracker, /registerInlineNotice,\n\s+\}\}>/);
+    assert.match(tracker, /registerInlineNotice,\n\s+steps: stepsView,\n\s+updated,\n\s+\}\}>/);
     // The do-not-start-another-update lock is untouched: mutation stays occupied.
     assert.match(tracker, /const occupied = systemUpdateMutationLocked\(/);
 });

@@ -93,7 +93,20 @@ export function systemUpdateFollowRead(
     if (!read.disconnected) return { phase: 'unknown', restartDeadline: null, memory };
     const lostSince = memory.lostSince ?? read.at;
     const next = { lastKnownActive: memory.lastKnownActive, lostSince };
-    if (!memory.lastKnownActive) return { phase: 'unknown', restartDeadline: null, memory: next };
+    if (!memory.lastKnownActive) {
+        // Nothing read yet in this document (a page opened or reloaded while
+        // the Panel restarts; owner design 2026-10-16: no "connection
+        // interrupted" and no "not known" inside the window). The update this
+        // browser recorded is drawn as its restart only inside the window
+        // counted from its start, never from this read, so an old record is
+        // unknown at once. The gates' grace (lib/systemUpdateRestartSignal.ts)
+        // still needs the server's own word that the update is active.
+        // Bu belgede henuz okuma yok: kayitli guncelleme yalniz baslangictan
+        // sayilan pencere icinde yeniden baslama olarak cizilir.
+        const fromStart = Number.isFinite(startedAt) && startedAt > 0 ? startedAt + SYSTEM_UPDATE_EXPECTED_RESTART_MS : 0;
+        if (!(read.at < fromStart)) return { phase: 'unknown', restartDeadline: null, memory: next };
+        return { phase: 'restarting', restartDeadline: fromStart, memory: next };
+    }
     return { phase: 'restarting', restartDeadline: systemUpdateRestartDeadline(startedAt, lostSince), memory: next };
 }
 
