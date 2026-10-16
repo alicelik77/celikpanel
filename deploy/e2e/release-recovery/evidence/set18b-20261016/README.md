@@ -1,8 +1,8 @@
 # set18b, 2026-10-16 (UTC): the alpha.87 candidate at the set18 D1 fix (HEAD 6b363ac46) installed fresh on Debian 13 in set18's lab DNS and ACME, the owner's setup to READY, the Components mail route, "Stop extending", and the extension adding Core Mail followed on screen to READY in a real headless Chrome
 
 A measurement record, the twenty-second native record. Host `date -u` at the start of the work: `Thu Oct 15 23:49:48 UTC
-2026`; the run directory was made at 23:58Z, the build ran 23:59:40Z–00:03:04Z and the lab 00:03:56Z–00:17:33Z
-(`host/progress.txt`); `date -u` at the end of the work is in the commit message. Page text and pictures show the host's
+2026`; the run directory was made at 23:59:16Z, the build ran 23:59:40Z–00:03:04Z and the lab 00:03:56Z–00:17:33Z
+(`host/progress.txt`); no `date -u` at the end of the work is recorded in this folder (the commit message gives only the commit date, 2026-10-16 UTC); the start reading is in `tools/run-notes.txt`. Page text and pictures show the host's
 local time (UTC+3); times here are UTC.
 
 The harness addressed no installed server, no licence service and no certificate authority, and did not contact
@@ -76,11 +76,11 @@ confirm, "Start reviewed setup" 00:06:34.23Z. States (`c1-samples.jsonl`, 11 pic
 | **00:06:34.75** | "What happens at this step": **"Configure DNS: Use an external DNS provider" — "Setup has started with the step shown here. The panel begins it in a moment and this page updates by itself; you do not need to do anything."** (O1 fixed) | accepted, queued |
 | 00:06:37–00:08:14 | "Preparing your server", components Nginx, PHP-FPM, MariaDB, cron, certbot | 02–06 |
 | 00:08:23 | "Secure panel access: panel.set18.test" | 09 (pebble order; the Panel's restart was not caught as its own state at 500 ms) |
-| 00:08:29 | final check running | verification |
+| 00:08:29 | final check running; the picture `c1-state-09-viewport.png` also shows a banner above the header, "The latest access check failed. Retrying automatically; the current page is preserved while the last verified access remains valid.", with "Check again" and "Reload page" (not in the page-text samples) | verification |
 | 00:08:32 | "Verifying the result" | `succeeded / complete` |
 | 00:08:33.30 | **"Your server is ready"** (Web hosting, "Extend this server's setup") | – |
 
-Run 119 s; "Finishing setup" did not appear (the final check passed at its first pass, as in set18). The ready screen in
+Run 119 s; "Finishing setup" did not appear (no waiting state was sampled at the final check, as in set18). The ready screen in
 Turkish at 390×844: `v-ready-tr-phone` ("Sunucunuz hazır", "Web barındırma", "Bu sunucunun kurulumunu genişletin",
 "Kurulumu genişlet"; no horizontal overflow).
 
@@ -115,8 +115,8 @@ page's own read of Components: Postfix and Dovecot `is_installed: false`, `not_i
 | 00:11:07 | **purpose step** (`c2-01-purpose*`) | "Extend this server's setup", intro as above; "What will you use this server for?" with **Web hosting checked** (Recommended) and "Customize selection" under it; Continue; "Stop extending" |
 | 00:11:07–23 | **components step** (`c2-02-components*`) | Nginx, PHP-FPM, MariaDB checked and marked **"Installed" / "Keep existing installation"**; Node.js "Includes required components: Nginx."; "Postfix + Dovecot — These services are prepared together as one supported mail setup." unchecked; the owner checks it (`c2-03-components-mail*`) |
 | 00:11:24 | **access step** (`c2-04-access*`) | panel address `panel.set18.test`, DNS external, Mail server name empty → typed `mail.set18.test` |
-| 00:11:26 | **review** (`c2-05-review*`, `setup-summary.json c2_review`) | **What changes:** "Server purpose: Web hosting → Custom setup", "Mail server name: none → mail.set18.test"; **To be installed:** "Prepare mail profile: Core Mail"; **Already installed, kept as they are (6):** MariaDB, Nginx, PHP-FPM, Firewall engine, Let's Encrypt client (certbot), Scheduled tasks (cron), each "Keep existing installation"; steps DNS external → mail profile Core Mail → firewall → public DNS panel.set18.test 192.0.2.10 → public DNS mail.set18.test 192.0.2.10 → secure mail access → independent mail renewal → verify; TCP 22, 25, 80, 110, 143, 443, 465, 587, 993, 995, 2083; UDP none |
-| 00:12:17 | review in Turkish at 390×844 (`v-ext-review-tr-phone*`) | "Neler değişiyor: Sunucunun kullanım amacı Web barındırma → Özel kurulum; Posta sunucusu adı yok → mail.set18.test", "Kurulacaklar: E-posta profilini hazırla: Temel Posta", "Zaten kurulu, olduğu gibi kalanlar (6)", "Mevcut kurulum korunur"; no horizontal overflow; after the reload the review came back with the acknowledgement unchecked |
+| 00:11:26 | **review** (`c2-05-review*`, `setup-summary.json c2_review`) | **What changes:** "Server purpose: Web hosting → Custom setup", "Mail server name: none → mail.set18.test"; **To be installed:** "Prepare mail profile: Core Mail"; **Already installed, kept as they are (6):** MariaDB, Nginx, PHP-FPM, Firewall engine, Let's Encrypt client (certbot), Scheduled tasks (cron), each "Keep existing installation"; steps DNS external → mail profile Core Mail → firewall → public DNS panel.set18.test 192.0.2.10 → public DNS mail.set18.test 192.0.2.10 → secure mail access → independent mail renewal → verify; TCP 22, 25, 80, 110, 143, 443, 465, 587, 993, 995, 2083; UDP "No additional ports" |
+| 00:12:17 | review in Turkish at 390×844 (`v-ext-review-tr-phone*`) | "Neler değişiyor: Sunucunun kullanım amacı Web barındırma → Özel kurulum; Posta sunucusu adı yok → mail.set18.test", "Kurulacaklar: E-posta profilini hazırla: Temel Posta", "Zaten kurulu, olduğu gibi kalanlar (6)", "Mevcut kurulum korunur"; no horizontal overflow; the view read at 00:12:34.5Z, after that picture, had "Start reviewed setup" disabled |
 | 00:12:35.07 | confirm, "Start reviewed setup" | – |
 
 The run (`c2-samples.jsonl`, 13 pictures `c2-state-*`, `c2-summary.json`):
@@ -186,7 +186,7 @@ web server with mail added should keep "Web hosting" (or read "Web and mail host
 **H2 (harness, fixed in this run):** `set18b_trial.py` `SNIPinnedHTTPSTransport` sends SNI `localhost` (the name the
 guest's pin reading sends), the exact leaf pin unchanged. Offline check (`build/snitest-c.json`): against a server with a
 named and a default certificate, the set18b transport sent SNI `localhost` with Host `127.0.0.1:port` and got 200; set18's
-transport (negative control) sent none and got `PinMismatch`. In the lab: `setup-read` at 00:09:28, 00:10:49 and 00:17:28
+transport (negative control) sent none and got `PinMismatch`. In the lab: `setup-read` at 00:09:28, 00:10:49 and 00:17:27
 and the readings at 00:17:30 answered 200; `pin_after_the_window` unchanged.
 
 **H3 (harness, fixed in this run):** `cold-load-set18b.mjs` asks for the mail record when the mail host's `access_dns`
@@ -222,5 +222,5 @@ browser tool was assembled from set18's by `tools/assemble.py` with `tools/head.
 Redacted at collection by the harness (owner password, session, fixture keys); set6's digest sweep over the staged lab
 changed 0 files; driver `SHA256SUMS` verified on the staged copy (46 files) before and after the sweep. `tools/scrub.py`
 replaced host paths in 23 text files (`host/scrub.txt`). C: (Get-PSDrive) 352.88 GiB free at 23:59:12Z, lowest 344.61 GiB,
-344.70 GiB at 00:18:13Z (`host/c-drive-watch.txt`); WSL `/` 941 GB free at 23:53Z. The lab, the run directory, the dist
+344.70 GiB at 00:18:13Z (`host/c-drive-watch.txt`); WSL `/` 941 GB free at 23:59:16Z (`host/hostcheck-before.txt`). The lab, the run directory, the dist
 folders, the browser profile and the scratch browser output are removed after this record is committed.

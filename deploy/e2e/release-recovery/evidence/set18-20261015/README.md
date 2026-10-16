@@ -1,7 +1,7 @@
 # set18, 2026-10-15 (UTC): the alpha.87 candidate (HEAD 5d54aba1e) installed fresh on Debian 13 in a lab with its own DNS and its own ACME server, the owner's guided setup run to READY in a real headless Chrome, the Components mail route, and an extension adding Core Mail followed to READY (through the reverse DNS check and "Finishing setup")
 
 A measurement record, the twenty-first native record. Host `date -u` at the start of the work: `Thu Oct 15 22:24:14 UTC
-2026` (reported by the run coordinator; the folder's earliest reading is 22:38:15Z, `host/c-drive-watch.txt`); the run
+2026` (reported by the run coordinator; not recorded in this folder; the folder's earliest reading is 22:38:15Z, `host/c-drive-watch.txt`); the run
 directory was made at 22:38:28Z and the last lab ended at 23:27:49Z (`host/progress.txt`). Page text and pictures show
 the host's local time (UTC+3); times here are UTC.
 
@@ -11,13 +11,13 @@ first driver step and read back at its end (`*/driver/steps/01-set6-name-pinning
 in both labs). **No ACME request left the guest**: every certificate came from the lab's own pebble inside the guest;
 outbound TCP/UDP 443 from the guest was refused except to loopback, the lab networks and the package hosts, and the
 only refused 443 connection in the whole run is the lab's own self-test to 203.0.113.1 (`host/native-after-c2.txt`,
-"443 block log" and the reject counter `packets 1`). Every archive is a test-licence (`acceptance_license`) build with
+"443 block log" and the reject counter `packets 1`; the same at the lab's last reading, 23:27:45Z,
+`browser/handover-setup/prep-done-lab-state-1792106865548.json`). Every archive is a test-licence (`acceptance_license`) build with
 `release: false`; none is a release. Every `result.json` carries `native_evidence: false`; this record closes no P0 row.
 No product file was changed. This is a measurement, not acceptance evidence: QEMU/KVM guests, test-licence builds, a
 lab-only DNS and ACME fixture, nothing judged.
 
-**Outcome in one line (observed in this lab; not acceptance evidence).** With a lab DNS and a lab ACME server, a fresh
-candidate reached "Your server is ready" through every setup step natively for the first time, including "Verify public
+**Outcome in one line (observed in this lab; not acceptance evidence).** With a lab DNS and a lab ACME server, a fresh candidate reached "Your server is ready" through every setup step, for the first time in this evidence folder (no earlier README here records "Your server is ready"; the earlier READMEs that describe a setup say it waited at `access_dns` or was set up by hand), including "Verify public
 DNS before certificate issuance" and "Secure panel access" (a trusted certificate from the lab CA and the planned Panel
 restart), in 115 s; the extension adding Core Mail ran natively through the mail host's public-DNS wait, the mail
 profile, the mail certificate, the mail renewal enrollment, the reverse DNS check with the resolver named, **"Finishing
@@ -35,7 +35,7 @@ CA with the system trust); its full record, every command and the rule text verb
 `debian13/fresh-setup-b/driver/steps/04-set18-lab-network/set18-lab-network.json`.
 
 * **Server address.** The Panel reads this server's address from the route to 192.0.2.1: `192.0.2.10` (the guest's
-  second NIC, TEST-NET-1; set17 saw the same). The Agent reads it from the route to 1.1.1.1. The lab adds
+  second NIC, TEST-NET-1; set17's raw browser files contain the same address). The Agent reads it from the route to 1.1.1.1. The lab adds
   `ip route replace <resolver>/32 via 10.0.2.2 dev mgmt0 src 192.0.2.10` for 1.1.1.1, 8.8.8.8, 9.9.9.9 and
   208.67.222.222, so both read the same address (`route_get_1_1_1_1`: `1.1.1.1 via 10.0.2.2 dev mgmt0 src 192.0.2.10`),
   as on a server with one public address. 192.0.2.10 is "public" to the product (`IsPrivate` false).
@@ -91,7 +91,7 @@ table ip6 set18lab6 {
   `packages.sury.org`, plus any `https://` host in the apt sources; refreshed every 10 s by the guard unit
   `set18-lab-guard.service`, which also re-applies a missing table; it never had to). Port 25: the product's
   outbound-25 check (`cmd/agent/mail_health_rpc.go`, a TCP connect to gmail-smtp-in.l.google.com:25) is answered by the
-  guest's own Postfix (counter 148 packets), so **"Outgoing mail (port 25)" passing is a property of the lab**, not a
+  guest's own Postfix (counter 148 packets at the 23:25:16Z reading, 152 at 23:27:45Z), so **"Outgoing mail (port 25)" passing is a property of the lab**, not a
   measurement of any network; no SMTP left the guest. Self-checks at preparation: the panel name answered 8 of 8 times
   through the four redirected resolvers (UDP and TCP), the PTR through 1.1.1.1/TCP, `mail.set18.test` NXDOMAIN,
   `example.com` REFUSED; `bash /dev/tcp/203.0.113.1/443` → "Connection refused", logged by the reject rule.
@@ -152,13 +152,12 @@ setup", 10 steps, TCP 22, 80, 443, 2083, contact `labadmin@example.invalid`), co
 | 22:55:26–27 | "Preparing your server" | queued; first guidance block (O1) |
 | 22:55:30–57:03 | "Preparing your server" | 02–06 components (Nginx, PHP-FPM, MariaDB, cron, certbot) |
 | 22:57:12 | same | 07 firewall |
-| (≤ 3 s) | – | **08 "Verify public DNS before certificate issuance: panel.set18.test / 192.0.2.10" succeeded at its first check** |
+| (≤ 3 s) | – | **08 "Verify public DNS before certificate issuance: panel.set18.test / 192.0.2.10" succeeded between the 22:57:12 and 22:57:15 samples (never sampled as its own state; "at its first check" is not recorded in this folder)** |
 | 22:57:15 | same | **09 "Secure panel access: panel.set18.test"** running (pebble order 22:57:14–16Z) |
-| 22:57:18 | **"The Panel restarts at this step"**, "This page lost its connection while setup was securing panel access…" (the planned handover) | 09 running |
+| 22:57:18 | **"The Panel restarts at this step"**, "This page lost its connection while setup was securing panel access…" (the planned handover); the picture `setup/c1-state-10-viewport.png` also shows a banner above the header, "The latest access check failed. Retrying automatically; the current page is preserved while the last verified access remains valid.", with "Check again" and "Reload page" (not in the page-text samples) | 09 running |
 | 22:57:21 | **"Your server is ready"** (Web hosting; "Add your first website"; the "Extend this server's setup" section) | `succeeded / complete` |
 
-The final verification passed at its first pass, so **"Finishing setup" did not appear in cell 1** (it appears only
-after the owner's own "Check requirements again" while the run waits at the final check; seen in cell 2). Run 115 s.
+No waiting state was sampled at the final check, so **"Finishing setup" did not appear in cell 1**; in cell 2 it appeared 1.3 s after the owner's second "Check requirements again" while the run waited at the final check (whether it can appear without that press is not shown). Run 115 s.
 The Panel's certificate after the run: `DNS:panel.set18.test`, issuer `CN=Pebble Intermediate CA 7c74ac`, valid to
 2031-10-15 (`setup/leaf.jsonl`, `host/native-after-c1.txt`); certbot.timer enabled and active; renewal lineage
 `celikpanel-panel-8fd6660f…` with `authenticator = webroot`.
@@ -175,8 +174,7 @@ before anything starts.") and the button "Review in server setup" (TR "Sunucu ku
 page went to `/setup`.
 
 **It did not land on the access step (D1).** `/setup` showed the first run's progress (`setup/c3-04-access-step.txt`):
-"Extend this server's setup" / "Verifying the result", the ten steps of the completed run "Completed", "Verify the
-prepared server — In progress", and the alert "Completion could not be verified. Reconnect to obtain fresh evidence;
+"Extend this server's setup" / "Verifying the result", the completed run's first nine steps "Completed", "Verify the prepared server — In progress", and the alert "Completion could not be verified. Reconnect to obtain fresh evidence;
 the server has not been declared ready.", buttons "Continue at the secure panel address", "Reconnect to this
 operation"; it read `GET /api/v1/setup/operation` (→ the completed run 38545bfb…) and `GET /api/v1/setup?check=1` every
 3 s. No access step, no review, no "Stop extending" (`[data-setup-extend-stop]` absent). The same screen in EN/TR at
@@ -210,7 +208,7 @@ The run, followed in the page (`resume/c2-samples.jsonl`, pictures `c2-state-*`)
 | UTC | Page | Run / owner |
 | --- | --- | --- |
 | 23:13:10 | "Preparing your server", "Prepare mail profile: Core Mail" | 02 running |
-| 23:13:58–23:23:09 | **"Setup is waiting for a requirement"**, "Verify public DNS before certificate issuance: mail.set18.test": "Certificate issuance requires this public A record: mail.set18.test → 192.0.2.10. The public record has not been verified yet. This result alone does not establish whether the record is absent or a DNS server is unreachable. Create or correct this record at the DNS provider or primary that manages it. … This prerequisite is checked automatically. After it passes, the same setup continues. …" with "Edit plan" | waiting `access_dns`, `server_setup_access_dns_required`, re-checked every ~20 s (NXDOMAIN at both resolvers, resolver log) |
+| 23:13:58–23:23:09 | **"Setup is waiting for a requirement"**, "Verify public DNS before certificate issuance: mail.set18.test": "Certificate issuance requires this public A record: mail.set18.test → 192.0.2.10. The public record has not been verified yet. This result alone does not establish whether the record is absent or a DNS server is unreachable. Create or correct this record at the DNS provider or primary that manages it. … This prerequisite is checked automatically. After it passes, the same setup continues. …" with "Edit plan" | waiting `access_dns`, `server_setup_access_dns_required`, re-checked every ~20 s (NXDOMAIN at both resolvers, resolver log); the picture `resume/c2-state-02-viewport.png` also shows a warning toast, "core-mail installed with a self-signed fallback certificate. Mail clients will show a trust warning until a matching trusted certificate is configured." (not in the page-text samples) |
 | 23:23:09 | – | the owner adds the A record at the provider (`lab-mail-a`; asked by the coordinator, H3) |
 | 23:23:19 | "Preparing your server" | 05 passed at the next check; 06 mail certificate (pebble 23:23:18–19Z) |
 | 23:23:28–35 | "The mail renewal result cannot yet be verified. Checks continue for the same request…" with "Continue recorded operation" | 07 mail enrollment (`server_setup_mail_enrollment_handoff`, then `_running`); the tool pressed the button (O3) |
@@ -220,10 +218,10 @@ The run, followed in the page (`resume/c2-samples.jsonl`, pictures `c2-state-*`)
 | 23:24:37 | "Verifying the result" | `succeeded / complete` |
 | 23:24:39 | **"Your server is ready"** | – |
 
-Run 689 s (of it 9 min 11 s waiting for the mail record and 56 s at the reverse DNS check). The resolver named in the
+Followed for 689 s (the tool's samples, 23:13:10Z to ready at 23:24:39Z; the start request was answered at 23:12:53.85Z, 705 s before ready), of it 9 min 11 s waiting for the mail record (first seen 23:13:58Z) and 56 s at the reverse DNS check. The resolver named in the
 PTR sentence is the address the Agent dialled, 1.1.1.1 (DNAT-ed to the lab responder's port 5301); the responders'
 "disagree" variant was not produced (both answered the same). After the run (`host/native-after-c2.txt`): Postfix
-`myhostname = mail.set18.test`, `smtpd_tls_security_level = may`, the certificate on 587 and 993 `DNS:mail.set18.test`
+`myhostname = mail.set18.test`, `smtpd_tls_security_level = may`, the certificate on 587 `DNS:mail.set18.test` (993: the same issuer and validity; its SAN line is not recorded)
 from the lab CA, lineage `celikpanel-mail-d1f1f42a…` (`server = https://127.0.0.1:14000/dir`), postfix and dovecot
 active, the system hostname kept (`dns-debian13`).
 
@@ -246,7 +244,7 @@ made unreachable (`setup/c4-secondary-box*` shows the D1 screen, not the box).
 | Extension access step (`setup/v-ext-access-*`) and extension review | **not reachable (D1)**; the four `v-ext-access-*` pictures show the D1 screen |
 | Components after the extension (`resume/c2-components-after`) | EN 1280 only |
 
-Console and requests: `*/console.jsonl`, `*/requests.jsonl` (bodies of every `/api/v1/setup*` answer).
+Console and requests: `*/console.jsonl`, `*/requests.jsonl` (bodies of the `/api/v1/setup*` answers that completed; 21 requests recorded without a status, 12 in `setup` and 9 in `resume`, have none).
 
 ## Defects, observations, harness notes
 
@@ -263,18 +261,15 @@ state, sees `status: draft` (the extension) and sets `completionFailed`; "Stop e
 side of extend/plan/start/cancel answered correctly to the same requests). Also a false alarm: "has not been declared
 ready" is shown on a server that is ready and whose status the owner just saw as ready.
 
-**O1 (observation):** for about one second after "Start reviewed setup" (before the first operation read), the guidance
-reads "No more specific requirement has been confirmed for this step. … waiting alone may not resolve a missing
-requirement." (`setup/c1-state-01/02`); the next read replaced it.
+**O1 (observation):** for about three seconds after "Start reviewed setup" (22:55:27.6Z until the next recorded change at 22:55:30.6Z, before the first operation read), the guidance reads "No more specific requirement has been confirmed for this step. … waiting alone may not resolve a missing
+requirement." (`setup/c1-state-01/02`); the next recorded state replaced it.
 
-**O2 (observation):** after the certificate handover the Panel serves the lab CA certificate for any SNI (`localhost`,
-`panel.set18.test`) but its original self-signed certificate (`O=CelikPanel, CN=dns-debian13`) to a client that sends
-no SNI (an IP address in the URL) (`host/native-after-c*.txt`). Not judged.
+**O2 (observation):** after the certificate handover the Panel serves the lab CA certificate for SNI `panel.set18.test` (`host/native-after-c*.txt`; SNI `localhost` gets it too per set18b's `leaf.jsonl` and H2 below, set18's own `leaf.jsonl` does not record the SNI it used) but its original self-signed certificate (`O=CelikPanel, CN=dns-debian13`) to a client that sends
+no SNI (`host/native-after-c*.txt`; an IP address in the URL is the reading's premise, not recorded). Not judged.
 
 **O3 (observation):** during the mail enrollment step the page offered "Continue recorded operation" for about 4 s while
 the enrollment was already running; the tool pressed it on each of four samples (its rule for that button); three POSTs
-reached the Panel and each answered the same request id (`1ef445f7…`: `handoff unknown`, then
-`already_terminal`); no second enrollment started. The button stayed enabled between presses.
+reached the Panel and each answered the same request id (`1ef445f7…`: `handoff unknown` twice, then `accepted` with reason `mail_enrollment_already_terminal`); no second enrollment started. The button stayed enabled between presses.
 
 **O4 (observation, lab artifact):** the handover notice offers "https://panel.set18.test:19319" — the port of the lab's
 loopback forward the page was opened on, not the Panel's 2083 (`lib/panelHandover.ts handoverAddress` uses the current
@@ -294,8 +289,7 @@ reports the kind (`access_dns`), so the tool never asked; after 9 minutes of rec
 same preparation request into the handover directory (23:23:08Z, `host/progress.txt`, `tools/askmail.sh`). The
 committed tool is the text that ran (not corrected).
 
-**H4 (harness):** the browser tool's first run (`browser/setup`) was stopped by the coordinator at 23:10:45Z after D1
-(before it wrote `done.json`, so the driver's window and the lab stayed open); the cell `resume` was added to the tool
+**H4 (harness):** the browser tool's first run (`browser/setup`) was stopped by the coordinator after D1 (the tool's run ended `rc=127` at 23:10:45Z, `browser/node-run-setup.txt`; the coordinator's note is stamped 23:10:56Z, `tools/run-notes.txt`) (before it wrote `done.json`, so the driver's window and the lab stayed open); the cell `resume` was added to the tool
 and run 2 (`browser/resume`, tool SHA-256 `07283c83…`; run 1 `9faaa131…`) continued on the same window
 (`tools/run-notes.txt`). The lab helper's `at` stamps put the fraction after the `Z` (cosmetic).
 
