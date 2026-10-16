@@ -40,6 +40,7 @@ type linuxSystemUpdateBackend struct {
 	mu             sync.Mutex
 	stateRoot      string
 	floorPath      string
+	downloadRoot   string
 	checkIdle      func() error
 	acquireIdle    func() (systemUpdateIdleLease, error)
 	launch         func(context.Context, string) error
@@ -166,7 +167,7 @@ func (lock *systemUpdateStateLock) Close() error {
 
 func newLinuxSystemUpdateBackend() *linuxSystemUpdateBackend {
 	backend := &linuxSystemUpdateBackend{
-		stateRoot: systemUpdateStateRoot, floorPath: systemUpdateFloorPath,
+		stateRoot: systemUpdateStateRoot, floorPath: systemUpdateFloorPath, downloadRoot: systemUpdateDownloadRoot,
 		checkIdle:   func() error { return checkServiceMutationIdle("", "") },
 		acquireIdle: func() (systemUpdateIdleLease, error) { return acquireSystemUpdateServiceMutationIdleLock() },
 		now:         func() time.Time { return time.Now().UTC() },
