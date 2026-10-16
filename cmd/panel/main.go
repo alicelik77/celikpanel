@@ -79,6 +79,9 @@ type Panel struct {
 	// lastUpdateAttempt is injectable only for handler tests. Production leaves
 	// it nil and reads the native recovery observations directly.
 	lastUpdateAttempt func(commit string) (recoveryobs.Attempt, bool)
+	// recoveryStatus is injectable only for handler tests. Production leaves
+	// it nil and reads the native recovery observation of a failed update.
+	recoveryStatus func(requestID string) recoveryobs.Status
 	// pkgFamily caches the host's package-manager family ("apt", "pacman").
 	// It is a property of the machine and never changes while the panel runs,
 	// so it is asked once instead of being persisted with the service scan —

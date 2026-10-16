@@ -300,6 +300,7 @@ var panelUpdateFailureCodes = map[string]bool{
 	"package_manager_busy": true, "candidate_panel_startup_check_failed": true, "panel_start_unverified": true,
 	"unit_start_limit_hit": true, "recovery_runtime_preparation_unconfirmed": true,
 	"firewall_runtime_preparation_unconfirmed": true, "mail_runtime_preparation_unconfirmed": true,
+	"update_finishing_scheduler": true,
 }
 
 var (

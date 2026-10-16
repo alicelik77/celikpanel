@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/alicelik/celikpanel/internal/recoveryobs"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -58,6 +59,14 @@ const (
 	panelUpdateStepRunning = "running"
 	panelUpdateStepDone    = "done"
 	panelUpdateStepFailed  = "failed"
+	// retrying (additive, 2026-10-16): the update's own last step did not
+	// confirm and the server's automatic recovery owns the request and is
+	// repeating it (a forward completion). An older page does not know it and
+	// ignores the plan, keeping its previous wording.
+	panelUpdateStepRetrying = "retrying"
+
+	// The native recovery timer admits at most three automatic attempts.
+	panelUpdateRecoveryMaxAttempts = 3
 
 	// The restart step's expected length when no update was measured on this
 	// server: the eighteenth native record (set16) measured the Panel's API
@@ -84,6 +93,10 @@ type panelUpdateStep struct {
 	FinishedAt     string   `json:"finished_at,omitempty"`
 	ElapsedSeconds *int64   `json:"elapsed_seconds,omitempty"`
 	Progress       *float64 `json:"progress,omitempty"`
+	// Attempt and MaxAttempts accompany a retrying step only when the attempt
+	// is known from the recovery record (the first automatic attempt).
+	Attempt     int `json:"attempt,omitempty"`
+	MaxAttempts int `json:"max_attempts,omitempty"`
 }
 
 type panelUpdatePlan struct {
@@ -109,6 +122,13 @@ type panelUpdatePlanInput struct {
 	PanelOpenedAt time.Time
 	Now           time.Time
 	Expected      int
+	// From the native recovery record of a failed update record (zero when
+	// none was read): recovery owns the request and repeats its last step, or
+	// it verified the update.
+	RecoveryOwns     bool
+	RecoveryAttempt  int
+	RecoveryVerified bool
+	RecoveryAt       time.Time
 }
 
 func panelUpdateExpectedRestartSeconds(measured int) int {
@@ -135,7 +155,10 @@ func panelUpdateExpectedRestartSeconds(measured int) int {
 // A failed record marks a step failed only where the evidence places the
 // failure: on this Panel being the target build, the confirmation. Otherwise
 // the failure is not placed on a step (the page shows the failure's own
-// wording) and the steps not proven stay pending.
+// wording) and the steps not proven stay pending. While the server's own
+// recovery owns that failed request and repeats the last step, the
+// confirmation is retrying, not failed; a recovery that verified the update
+// makes every step done (Frankfurt 2026-10-16).
 func buildPanelUpdatePlan(in panelUpdatePlanInput) panelUpdatePlan {
 	steps := make([]panelUpdateStep, len(panelUpdateStepOrder))
 	for index, id := range panelUpdateStepOrder {
@@ -168,7 +191,18 @@ func buildPanelUpdatePlan(in panelUpdatePlanInput) panelUpdatePlan {
 			finish[panelUpdateStepConfirm] = in.UpdatedAt
 		}
 	case "failed":
-		if in.RunningTarget {
+		switch {
+		case in.RunningTarget && in.RecoveryVerified:
+			reached = len(steps)
+			if !in.RecoveryAt.IsZero() {
+				finish[panelUpdateStepConfirm] = in.RecoveryAt
+			}
+		case in.RunningTarget && in.RecoveryOwns:
+			steps[4].State = panelUpdateStepRetrying
+			if in.RecoveryAttempt > 0 {
+				steps[4].Attempt, steps[4].MaxAttempts = in.RecoveryAttempt, panelUpdateRecoveryMaxAttempts
+			}
+		case in.RunningTarget:
 			steps[4].State = panelUpdateStepFailed
 		}
 	}
@@ -195,7 +229,7 @@ func buildPanelUpdatePlan(in panelUpdatePlanInput) panelUpdatePlan {
 		}
 		var end time.Time
 		switch {
-		case step.State == panelUpdateStepRunning:
+		case step.State == panelUpdateStepRunning || step.State == panelUpdateStepRetrying:
 			end = in.Now
 		case hasFinish:
 			end = finished
@@ -253,6 +287,9 @@ func (p *Panel) panelUpdatePlanFromStatus(ctx context.Context, reply transport.S
 			in.Downloaded, in.HaveBytes = downloaded, true
 		}
 	}
+	if reply.Status == "failed" && in.RunningTarget {
+		applyPanelUpdateRecovery(&in, p.readPanelUpdateRecovery(reply.RequestID))
+	}
 	last := p.lastPanelUpdateRestart(ctx)
 	if in.RunningTarget && (in.Status == "running" || in.Status == "succeeded") {
 		last = p.recordPanelUpdateRestart(ctx, reply.RequestID, in, last)
@@ -260,6 +297,51 @@ func (p *Panel) panelUpdatePlanFromStatus(ctx context.Context, reply transport.S
 	in.Expected = panelUpdateExpectedRestartSeconds(last.Seconds)
 	plan := buildPanelUpdatePlan(in)
 	return &plan
+}
+
+// readPanelUpdateRecovery reads the request's native recovery record
+// read-only; it never starts, retries or unlocks anything.
+func (p *Panel) readPanelUpdateRecovery(requestID string) recoveryobs.Status {
+	read := recoveryobs.Read
+	if p != nil && p.recoveryStatus != nil {
+		read = p.recoveryStatus
+	}
+	if !recoveryobs.ValidRequestID(requestID) {
+		return recoveryobs.Status{}
+	}
+	return read(requestID)
+}
+
+// applyPanelUpdateRecovery derives the plan's view of a failed update from its
+// recovery record. Recovery owns the request while the record is recovering or
+// failed without a terminal proof (a read-only preflight stop excepted: it is
+// final), or while it waits between automatic attempts. The attempt is known
+// only for the first one (recovering right after the update's own failure).
+func applyPanelUpdateRecovery(in *panelUpdatePlanInput, status recoveryobs.Status) {
+	if status.Observation != "known" {
+		return
+	}
+	if status.Phase == "succeeded" && status.TerminalProof == "update_verified" {
+		in.RecoveryVerified = true
+		in.RecoveryAt = parsePanelUpdateTime(status.ObservedAt)
+		return
+	}
+	if status.TerminalProof != "none" {
+		return
+	}
+	preflight := status.PreviousFailure == "update_failed" &&
+		(status.FailureCode == "recovery_runtime_preflight_failed" || status.FailureCode == "update_preflight_refused")
+	switch {
+	case preflight:
+	case status.Phase == "recovering" || status.Phase == "failed":
+		in.RecoveryOwns = true
+		if status.Phase == "recovering" && status.PreviousFailure == "update_failed" {
+			in.RecoveryAttempt = 1
+		}
+	case status.Phase == "recovery_required" &&
+		(status.AutomaticRecovery == "retry_scheduled" || status.AutomaticRecovery == "pause_pending"):
+		in.RecoveryOwns = true
+	}
 }
 
 func parsePanelUpdateTime(value string) time.Time {
