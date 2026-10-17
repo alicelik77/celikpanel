@@ -184,11 +184,11 @@ tek fiili var: "Güncellemeleri denetle" (düğme, "Güncellemeleri otomatik den
 Aşağıdakilerin hepsi 2026-10-17'de bir geliştirme ortamında aday ağacında
 çalıştırıldı; hiçbiri kurulu bir sunucuda çalıştırılmadı.
 
-- Go: `[[GO_COUNTS]]`
-- Web: `[[WEB_COUNTS]]`
-- Tarayıcı grubu 21 (taklit sunucu; 20. grubun yerini alır): `[[BROWSER_BATCH_21]]`
+- Go: `./cmd/panel/` ve `./internal/...` 7141 geçti, 0 başarısız, 43 atlandı (`-timeout 45m` ile; yalnız panel paketi WSL konuğunda yaklaşık 16 dakika sürer); `go vet ./cmd/panel/` ve gofmt temiz
+- Web: `npm test` 1617 geçti, 0 başarısız; `npm run build` paket bütçesi değiştirilmeden başarılı (Türkçe sunucu ekran bölümü 160,25 KiB'nin 159,96 KiB'ı, Türkçe genel ekran bölümü 160,25 KiB'nin 159,18 KiB'ı)
+- Tarayıcı grubu 21 (taklit sunucu; 20. grubun yerini alır): altı senaryo (en son sürüm, güncelleme var, daha önce duran bir deneme, başarısız otomatik denetim, kapalı, "Sonra hatırlat" öncesi ve sonrası Pano satırı) İngilizce ve Türkçe, açık ve koyu temada, 1440 ve 390 px'te: 8 yapılandırma, 100 ekran görüntüsü. İlk bakış telefonda Ayarlar sayfasını yaklaşık 730 px genişliğinde, Pano satırında sürümü tireden bölünmüş, koyu temada seçili Ayarlar simgesini neredeyse görünmez, telefonda menü düğmesini 44 px'in altında ve elle denetim için iki ayrı Türkçe fiil buldu; hepsi düzeltildi (yukarıya bakın). Son derlemedeki ikinci bakış: yatay taşma yok, telefonda 44 px'ten küçük hedef yok, bu ekranlarda sarı ya da kırmızı yok, çevrilmemiş anahtar ve Türkçe sayfada İngilizce yok, sürüm bütün, tek dolu eylem düğmesi, başarısız denetimden sonra kart dışında güncelleme bildirimi yok
 - Sürüm sözleşmeleri (sıra ilkesi 96, 95'ten sonra; indirme portalı; imzalı
-  bildirim): `[[RELEASE_CONTRACTS]]`
+  bildirim): sıra ilkesi (Git Bash) "95 -> 96" geçti; indirme portalı ve imzalı bildirim (WSL konuğu) geçti
 
 Keşif döngüsünün Go testleri taklit bir Agent kullanır ve şunları kapsar: sapma
 sınırları, 1, 3 ve 12 saatlik geri çekilme, atlanma nedenleri (atlanma ağ okuması

@@ -186,11 +186,11 @@ where the button used to say "Güncellemeyi kontrol et".
 Everything below was run on the candidate tree on 2026-10-17 in a development
 environment; none of it was run on an installed server.
 
-- Go: `[[GO_COUNTS]]`
-- Web: `[[WEB_COUNTS]]`
-- Browser batch 21 (mock server; replaces batch 20): `[[BROWSER_BATCH_21]]`
+- Go: `./cmd/panel/` and `./internal/...` 7141 passed, 0 failed, 43 skipped (run with `-timeout 45m`; the panel package alone takes about 16 minutes in the WSL guest); `go vet ./cmd/panel/` and gofmt clean
+- Web: `npm test` 1617 passed, 0 failed; `npm run build` succeeded with the bundle budget unchanged (Turkish server screen part 159.96 of 160.25 KiB, Turkish general screen part 159.18 of 160.25 KiB)
+- Browser batch 21 (mock server; replaces batch 20): six scenarios (current, available, an earlier attempt that stopped, a failed automatic check, switched off, the Dashboard row before and after "Remind me later") in English and Turkish, light and dark, at 1440 and 390 px: 8 configurations, 100 screenshots. The first look found the phone Settings page about 730 px wide, the version broken at its hyphen in the Dashboard row, the selected Settings icon nearly invisible in the dark theme, a phone menu button under 44 px and two Turkish verbs for the manual check; all fixed (see above). The second look, on the final build: no horizontal overflow, no phone target under 44 px, no amber or red on these screens, no untranslated key and no English on a Turkish page, the version whole, one filled action button, no update notice outside the card after a failed check
 - Release contracts (sequence policy 96 after 95, download portal, signed
-  manifest): `[[RELEASE_CONTRACTS]]`
+  manifest): sequence policy (Git Bash) "95 -> 96" passed; download portal and signed manifest (WSL guest) passed
 
 Go tests of the discovery loop use a faked Agent and cover the jitter bounds, the
 back-off of 1, 3 and 12 hours, the skip reasons (a skip makes no network read, and
