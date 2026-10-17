@@ -9001,21 +9001,33 @@ v0.1.0-alpha.95 candidate. This entry replaces "nothing observed yet" above.
   order on every server; only the state on each chip changes (words and form,
   never colour alone):
   - a check mark and the name: installed and verified (nothing to do);
-  - "Core Mail · included": a verified mail bundle contains it (nothing to do);
+  - "Core Mail · included": a verified mail bundle contains it and the contained
+    bundle is itself installed and verified with no failed or running attempt of its
+    own (nothing to do; otherwise it reads "not verified" with its reason);
   - a grey dot and "not verified": the owner opens the chip and chooses Repair
     (mail) or Verify (components);
   - outlined "Name · Install" or, for add-ons, "· Add": the owner acts;
-  - "n of m · Continue": a mail attempt is partly done; the owner continues;
-  - muted text with a short reason and no button ("phpMyAdmin · needs MariaDB"):
-    the owner first installs what the reason names; nothing else can be pressed on
-    that chip;
+  - "n of m installed · Continue": a mail attempt is partly done; the owner
+    continues. A mail chip that says "Install" (Spam-Protected Mail beside an
+    installed Webmail, which the Panel calls partial only because the parts are
+    shared) opens the mail dialogue in its install form, not "continue";
+  - muted text with a short reason ("phpMyAdmin · needs MariaDB"), a quiet button:
+    pressing it, by keyboard or touch, shows the full reason on a line under the
+    chips (the tooltip stays but is no longer the only way); the owner first installs
+    what the reason names, and nothing else can be done on that chip;
+  - under the chips, with the reason, only attempts that failed or are running and
+    typed warnings on chips that are not verified or only partly installed (never
+    the "some parts are already present" note);
   - a stale scan is one muted line, and the Components page checks by itself
     (D-032).
 - **The Dashboard card** is one summary line ("7 installed and verified · 1 can be
   installed"), then only the problem lines, then "Open in Components". It counts
   exactly as the chips are drawn: every registry entry, add-ons included; "can be
   installed" is available or partial, blocked is not counted; "included" counts as
-  installed and verified. The never-checked, checking, held, could-not-check and
+  installed and verified, but a bundle whose own last attempt failed or runs is
+  never counted as installed and verified, and a bundle that is not verified and
+  also has such an attempt is one line, with the reason. The never-checked,
+  checking, held, could-not-check and
   not-recent sentences are unchanged. It installs nothing, and a poll never starts
   a change.
 - **Installing a database or web bundle.** The sequence semantics are unchanged
@@ -9024,8 +9036,8 @@ v0.1.0-alpha.95 candidate. This entry replaces "nothing observed yet" above.
   or a closed gate stops it; Continue installs only what is missing; nothing
   continues after a reload). New wording: while the page reads the change gate and
   the install request is not yet accepted the chip says "Checking the server before
-  installing X…"; only after the request is accepted does it say "2/3 · X
-  installing" with a moving indicator. Nobody needs to do anything while it runs,
+  installing X…"; only after the request is accepted does it say "2/3 · installing
+  X" with a moving indicator. Nobody needs to do anything while it runs,
   and the other chips are disabled. The gate between steps reads the
   state-unverified flag through a reference set at the moment the flag changes
   (read before and after the readiness read), so a flag that changes between steps
@@ -9036,15 +9048,26 @@ v0.1.0-alpha.95 candidate. This entry replaces "nothing observed yet" above.
   sequence is active, or the host reports `panel_operation_active` or
   `agent_mutation_active`). The owner waits for the operation to end and presses
   Verify again. It stays usable while changes are held for other reasons, because it
-  changes nothing.
+  changes nothing: also on `host_lock_busy` and `package_manager_active`, because
+  the rescan endpoint refuses only for a running server setup, an active service
+  operation or an active Agent mutation.
 - **Repair of a mail bundle** lives in the installed chip's dialogue (it completes
   what is missing and verifies the setup; nothing installed is removed). There are
   no Repair links on the strip. Roundcube's "Repair webmail" stands on the
   component row only when the server reports a webmail problem.
-- **Roundcube leftovers.** The Panel cannot tell whether leftovers exist (it has no
-  scan field for it), so the Roundcube row carries a muted note ("Files from an
-  interrupted Roundcube install or removal may still be on this server.") and a
-  neutral secondary "Clean up leftovers…" button. The owner decides; the
+- **Roundcube leftovers.** The Roundcube row carries a muted note ("An earlier
+  Roundcube install did not finish; its files may still be on this server." or "…
+  removal did not finish; …") and a neutral secondary "Clean up leftovers…" button
+  only when the Panel's own record shows an unfinished Roundcube install or removal
+  (the newest Roundcube install or removal entry in the Panel's audit log is a
+  failed install or a partial or failed removal, sent as the additive payload field
+  `webmail_cleanup`) or the webmail profile's last attempt failed. A later clean
+  install or removal ends the offer; without a record the row says nothing (Boston
+  has no such record, so its row shows no leftovers offer). Roundcube's own
+  component page always has a "Clean up leftovers…" link that opens the same
+  confirmation on the Components page (`/services?cleanup=roundcube`). The Panel
+  still cannot see whether files are actually left on disk; it relies on its own
+  record. The owner decides; the
   confirmation lists exactly what the Agent removes: `/var/lib/celikpanel-webmail`
   (Roundcube's files, its own settings and address-book database),
   `/var/lib/.celikpanel-webmail.stage`, `/var/lib/.celikpanel-webmail.retired*`,
@@ -9061,9 +9084,14 @@ v0.1.0-alpha.95 candidate. This entry replaces "nothing observed yet" above.
   start, repair and delete share one outlined icon button (neutral at rest, tone
   only on hover or focus); requirement badges and chips keep component names whole;
   sidebar counts are plain muted numbers (a count nobody took is a dash, never 0);
-  the Dashboard's Domains count adds the standalone infrastructure DNS zones the
-  Domains page lists. The sidebar Domains badge still counts only domains, a small
-  remaining difference. The Dashboard's "nothing needs your attention" sentence is
+  the Dashboard Domains tile and the sidebar Domains badge use one helper
+  (`domainsCount`): domains plus the DNS-only infrastructure zones the Domains page
+  lists (a zone that became a website counts once, as that website), so tile,
+  badge and page agree. It is a number only when both reads answered; while either
+  is read the tile shows the loading mark; when one could not be read it is
+  unknown, never "domains + 0" (an earlier number is kept only when both reads had
+  one); non-administrators, who have no zone read, count domains alone. The
+  Dashboard's "nothing needs your attention" sentence is
   now "Nothing needs your attention. CelikPanel checked the certificates, the
   firewall and the installed components."; it still appears only when every read
   was answered and the components scan is fresh.
@@ -9073,11 +9101,35 @@ strip's choices; mounted tests on a Boston-shaped and a Frankfurt-shaped payload
 (the same chips; MariaDB visible on Boston; Core Mail included on Frankfurt; an
 add-on blocked with its reason; the Dashboard count equal to the installable chips;
 no Repair link on the strip; the installed chip's dialogue with Repair or Verify);
-the three review items; the leftovers dialogue and its path list; the row actions,
+the three review items; the leftovers dialogue, its path list and the record rule
+(record, no record, deep link); the row actions,
 version rule, sidebar counts and Dashboard card contracts. Go: an add-on is always listed;
 before its parent is installed it is blocked and names the parent it needs (MariaDB
 or PostgreSQL); and the mail profile frontend contract. **Open:** nothing was measured on an installed server; the
 bundle sequence has not run against a real Agent; installed package versions for
 every component are not read (a new Agent read would be needed); whether Roundcube
-leftovers exist cannot be shown; P0.1-P0.5 stay **partial**; this entry closes and
-advances nothing.
+leftovers are actually on disk cannot be seen (the Panel relies on its own record);
+P0.1-P0.5 stay **partial**; this entry closes and advances nothing.
+
+**Independent review of the candidate (2026-10-17).** An independent review found
+ten problems; they are fixed (commit `0ee982af2`) and the entry above describes the
+corrected behaviour. What changed: (1) Roundcube leftovers are offered on the row
+only with the Panel's own record (or a failed webmail attempt), and always on
+Roundcube's own page; (2) the installed bundle dialogue describes the bundle
+("PostgreSQL for your sites' databases.") instead of "Installs …"; (3) the lines
+under the chips are only failed or running attempts and typed warnings on chips
+that are not verified or only partly installed; (4) "included" only for a contained
+bundle that is itself installed and verified with no failed or running attempt;
+(5) one Domains count for tile, sidebar badge and page; (6) one Dashboard line per
+bundle that is not verified and has an attempt; (7) a blocked chip is a quiet button
+that shows its full reason under the chips; (8) Verify stays usable on
+`host_lock_busy` and `package_manager_active`; (9) wording "2/3 · installing
+PHP-FPM" and "n of m installed"; (10) a mail chip that says "Install" opens the mail
+dialogue in its install form. Evidence on the tree at `0ee982af2`: web `npm test`
+1599 passed, 0 failed, `npm run build` succeeded; Go `./cmd/panel/` and
+`./internal/...` 7123 passed, 0 failed, 44 skipped, `go vet ./cmd/panel/` and
+gofmt clean; the new Go test is webmail_cleanup_record_test. Browser batch 20 was
+looked at twice before the review fixes; after the review its Boston scenario
+opens the cleanup through `/services?cleanup=roundcube`, and **it was not re-run
+after the review fixes.** No schema change (44), no Agent change, no native record,
+P0 stays partial.

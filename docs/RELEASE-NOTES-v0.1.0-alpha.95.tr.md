@@ -27,28 +27,41 @@ Temel Posta Boston'da bir çip, Frankfurt'ta yoktu.
 Bir çip durumunu sözle ve biçimle söyler, asla yalnız renkle:
 
 - onay işareti ve ad: kurulu ve doğrulandı;
-- "Temel Posta · içinde": doğrulanmış bir posta paketi onu içerir;
+- "Temel Posta · içinde": doğrulanmış bir posta paketi onu içerir ve içerilen
+  paketin kendisi de kurulu ve doğrulanmıştır, kendi başarısız ya da süren bir
+  denemesi yoktur (aksi halde nedeniyle "doğrulanmadı" der);
 - gri nokta ve "doğrulanmadı": kurulu, henüz kanıtlanmadı;
 - çerçeveli "Ad · Kur" (eklentilerde "· Ekle"): kurulabilir;
-- "m bileşenden n · Devam et": bir posta kurulumu başlatıldı ve tamamlanmadı;
-- kısa bir nedenle soluk metin ve düğme yok ("phpMyAdmin · MariaDB gerekli"):
-  henüz kurulamaz; eklentiler her zaman görünür;
+- "n/m bileşen kurulu · Devam et": bir posta kurulumu başlatıldı ve tamamlanmadı.
+  "Kur" diyen bir posta çipi (kurulu bir Webmail'in yanında Spam Korumalı Posta;
+  Panel onu yalnız parçalar paylaşıldığı için kısmi sayar) posta penceresini "devam
+  et" değil, kurulum biçiminde açar;
+- kısa bir nedenle soluk metin ("phpMyAdmin · MariaDB gerekli"), sessiz bir
+  düğmede: basınca (klavye ya da dokunmayla) tam neden çiplerin altındaki bir
+  satırda görünür (ipucu kalır ama tek yol değildir). Henüz kurulamaz; eklentiler
+  her zaman görünür;
 - bir paket kurulurken hareket eden bir göstergeyle "2/3 · PHP-FPM kuruluyor";
   bu sırada diğer çipler devre dışıdır.
 
 Kurulu bir çipe basmak bir pencere açar: posta paketi için **Onar** (eksik olanı
 tamamlar ve kurulumu doğrular; kurulu hiçbir şey kaldırılmaz), bileşen paketi için
-**Doğrula** (bileşenleri yeniden okur ve hiçbir şeyi değiştirmez). Şeritte Onar
-bağlantısı ve ipucu cümlesi yoktur. Bileşenler yakın zamanda denetlenmediyse şerit
-tek bir soluk satırdır ve sayfa kendiliğinden denetler.
+**Doğrula** (bileşenleri yeniden okur ve hiçbir şeyi değiştirmez). Pencere paketi
+betimler ("Sitelerin veritabanları için PostgreSQL."), emir kipinde değildir.
+Şeritte Onar bağlantısı ve ipucu cümlesi yoktur. Bileşenler yakın zamanda
+denetlenmediyse şerit tek bir soluk satırdır ve sayfa kendiliğinden denetler.
+Çiplerin altında şerit, nedeniyle yalnız başarısız ya da süren denemeleri ve
+doğrulanmamış ya da kısmen kurulu çiplerdeki tipli uyarıları söyler; "bazı parçalar
+zaten var" notu orada asla görünmez.
 
 **Pano kartı** tek bir özet satırdır ("7 kurulu ve doğrulandı · 1 kurulabilir"),
 sonra yalnız sorun satırları (nedeniyle başarısız ya da süren bir posta denemesi,
 kurulu ama doğrulanmamış bir paket), sonra "Bileşenler'de aç". Çiplerin çizildiği
 gibi sayar: eklentiler dahil her paket; "kurulabilir" kurulabilir ya da kısmi
-demektir, engelli sayılmaz; "içinde" kurulu ve doğrulanmış sayılır. Hiç
-denetlenmedi, denetleniyor, tutuluyor, denetlenemedi ve yakın zamanda değil
-cümleleri korunur.
+demektir, engelli sayılmaz; "içinde" kurulu ve doğrulanmış sayılır, ama kendi son
+denemesi başarısız olan ya da süren bir paket asla kurulu ve doğrulanmış sayılmaz.
+Doğrulanmamış ve ayrıca başarısız ya da süren denemesi olan paket, nedenle tek
+satırdır. Hiç denetlenmedi, denetleniyor, tutuluyor, denetlenemedi ve yakın zamanda
+değil cümleleri korunur.
 
 **alpha.94'ün üç inceleme maddesi kapandı.**
 
@@ -56,7 +69,10 @@ cümleleri korunur.
    bayrağını değiştiği anda okur; böylece bir ekran yenilemesi onu kaçıramaz.
 2. Bir bileşen paketinin Doğrula'sı, sunucuda bir bileşen işlemi sürerken nedeni
    gösterilerek tutulur; işlem bitince yeniden basarsınız. Değişiklikler başka
-   nedenlerle tutulurken yalnız okuduğu için kullanılabilir kalır.
+   nedenlerle tutulurken (meşgul bir ana makine kilidi ya da çalışan bir paket yöneticisi
+   dahil) yalnız okuduğu için kullanılabilir kalır: yeniden tarama ucu yalnız
+   çalışan bir sunucu kurulumunda, etkin bir hizmet işleminde ya da etkin bir Agent
+   değişikliğinde reddeder.
 3. Sayfa bir kurulumdan önce sunucuyu denetlerken ve istek henüz kabul
    edilmemişken çip "X kurulmadan önce sunucu denetleniyor…" der; "X kuruluyor"
    yalnız kurulum kabul edildikten sonra söylenir.
@@ -74,9 +90,17 @@ cümleleri korunur.
 - "PHP-FPM" önkoşul rozetlerinde ve çiplerde tire yerinden bölünmez.
 - "Webmail'i onar" Roundcube satırında yalnız sunucu bir webmail sorunu
   bildirdiğinde durur; aksi halde onarım Webmail çipinin penceresindedir.
-- **Roundcube kalıntıları.** Panel, yarıda kalmış bir Roundcube kurulumunun ya da
-  kaldırmasının dosyalarının sunucuda olup olmadığını söyleyemez; bu yüzden satırda
-  soluk bir not ve nötr bir "Kalıntıları temizle…" düğmesi durur. Onay penceresi
+- **Roundcube kalıntıları.** Roundcube satırında soluk bir not ("Önceki bir
+  Roundcube kurulumu tamamlanmadı; dosyaları bu sunucuda kalmış olabilir." ya da
+  "… kaldırması tamamlanmadı; …") ve nötr bir "Kalıntıları temizle…" düğmesi yalnız
+  Panel'in kendi kaydı yarım kalmış bir Roundcube kurulumu ya da kaldırması
+  gösterdiğinde durur: Panel denetim kaydındaki en yeni Roundcube kurulum ya da
+  kaldırma girdisi başarısız bir kurulum ya da kısmi ya da başarısız bir kaldırmadır,
+  ya da webmail profilinin son denemesi başarısız olmuştur. Sonraki temiz bir
+  kurulum ya da kaldırma sunumu bitirir; kayıt yoksa satır bir şey söylemez (böyle
+  bir kaydı olmayan Boston'da satırda kalıntı sunumu görünmez). Roundcube'un kendi
+  bileşen sayfasında aynı onayı Bileşenler sayfasında açan bir "Kalıntıları
+  temizle…" bağlantısı her zaman vardır. Onay penceresi
   Agent'ın neyi sildiğini sıralar: `/var/lib/celikpanel-webmail` (Roundcube
   dosyaları, kendi ayarları ve adres defteri veritabanı),
   `/var/lib/.celikpanel-webmail.stage`, `/var/lib/.celikpanel-webmail.retired*`,
@@ -88,8 +112,14 @@ cümleleri korunur.
 
 **Sayılar.** Bileşenler ve Alan adları için kenar çubuğu sayıları dolu hap yerine
 sade soluk sayılardır (bilinmeyen bir sayı yine çizgidir, asla 0 değil). Pano'nun
-Alan adları sayısı artık Alan adları sayfasının listelediği altyapı DNS bölgesini
-içerir (Frankfurt'ta Pano 0 diyordu, sayfa ise bölgeyi listeliyordu). Hiçbir şey
+Alan adları kutusu ve kenar çubuğundaki Alan adları rozeti artık tek bir sayı
+kullanır: alan adları artı Alan adları sayfasının listelediği yalnız DNS altyapı
+bölgeleri (siteye dönüşen bir bölge, o site olarak bir kez sayılır); böylece kutu,
+rozet ve sayfa uyuşur (Frankfurt'ta Pano 0 diyordu, sayfa ise bölgeyi
+listeliyordu). Sayı yalnız iki okuma da yanıtlandığında görünür; biri okunurken
+kutu yükleme işaretini gösterir; biri okunamadığında bilinmeyendir, asla "alan
+adları + 0" değil (önceki sayı yalnız iki okumanın da sayısı varsa korunur); bölge
+okuması olmayan yönetici olmayanlar yalnız alan adlarını sayar. Hiçbir şey
 dikkat gerektirmediğinde Pano cümlesi artık "Dikkat gerektiren bir şey yok.
 CelikPanel sertifikaları, güvenlik duvarını ve kurulu bileşenleri denetledi."
 şeklindedir ve eskisi gibi yalnız her okuma yanıtlandığında ve bileşen taraması
@@ -116,31 +146,64 @@ tazeyken görünür.
   PostgreSQL) ve birimi olmayan araçları (Certbot) kapsamaz. Gerçek paket sürümleri
   yeni bir Agent okuması ister; bu sürüm eklemez. Açık yol haritası işi: her bileşen
   için kurulu paket sürümünü okumak.
-- **Kenar çubuğundaki Alan adları rozeti** hâlâ yalnız alan adlarını sayar; Pano ve
-  Alan adları sayfası ise artık altyapı DNS bölgesini içerir. Küçük bir kalan fark
-  (rozet 0 için sayı göstermez).
-- **Roundcube kalıntıları saptanamaz.** Panel'de kalıntıların var olup olmadığını
-  söyleyen bir alan yok; bu yüzden düğme Roundcube satırında her zaman sunulur ve not
-  "kalmış olabilir" der.
+- **Roundcube kalıntıları diskte görülmez.** Panel, dosyaların sunucuda gerçekten
+  kalıp kalmadığını hâlâ göremez (bunun için bir Agent okuması yok); yarım kalmış
+  kurulum ya da kaldırmaya dair kendi kaydına dayanır. Hiçbir Panel kaydının
+  göstermediği bir kalıntıya yalnız Roundcube'un kendi sayfasındaki bağlantıyla
+  ulaşılır.
 - Kurulu bir sunucuda hiçbir şey ölçülmedi; paket sırası gerçek bir Agent'a karşı
   çalışmadı. P0.1-P0.5 **kısmi** kalır; hiçbir P0 işi kapanmaz ya da ilerlemez; aday
   kabul değildir.
 
+## Adayın bağımsız incelemesi (17 Ekim 2026)
+
+Adayın bağımsız incelemesi on sorun buldu. Hepsi düzeltildi (`0ee982af2`
+işlemesi) ve yukarıdaki metin düzeltilmiş davranışı anlatır:
+
+1. Roundcube kalıntıları Bileşenler satırında yalnız Panel'in kendi kaydı yarım
+   kalmış bir kurulum ya da kaldırma gösterdiğinde (ek yük alanı `webmail_cleanup`,
+   var olan denetim kaydından okunur) ya da webmail denemesi başarısız olduğunda
+   sunulur; Roundcube'un kendi sayfasında bağlantı her zaman vardır
+   (`/services?cleanup=roundcube`).
+2. Kurulu paket penceresi "… kurar" yerine paketi betimler.
+3. Çiplerin altındaki satırlar: yalnız başarısız ya da süren denemeler ve
+   doğrulanmamış ya da kısmen kurulu çiplerdeki tipli uyarılar; asla "parçalar zaten
+   var".
+4. "içinde" yalnız, kendisi de kurulu ve doğrulanmış olan ve başarısız ya da süren
+   denemesi bulunmayan içerilen paket için; aksi halde nedeniyle "doğrulanmadı" ve
+   Pano onu saymaz.
+5. Pano kutusu ve kenar çubuğu rozeti için tek Alan adları sayısı (`domainsCount`).
+6. Doğrulanmamış ve başarısız ya da süren denemesi olan paket için nedenle tek Pano
+   satırı.
+7. Engelli çip sessiz bir düğmedir; basınca tam neden çiplerin altında görünür.
+8. Doğrula, meşgul ana makine kilidinde ya da çalışan paket yöneticisinde
+   kullanılabilir kalır.
+9. İfade: EN "2/3 · installing PHP-FPM"; "n of m installed" (Türkçe "2/3 bileşen
+   kurulu").
+10. "Kur" diyen bir posta çipi posta penceresini kurulum biçiminde açar.
+
 ## Kanıt
 
 Web: değişen ve yeni sözleşme ve bağlanmış testler (Boston ve Frankfurt biçimli
-yüklerde ready-bundles-ui-contract ve ready-bundles-mounted; installed-alpha94-
-corrections; Pano kartı, satır düzeni, uzak durum, posta profili ve hizmet
-kullanılabilirliği sözleşmeleri); Go: bundles testi (ana paketinden önce bir eklenti
-MariaDB ya da PostgreSQL ister) ve posta profili ön yüz sözleşmesi. Sürüm
-sözleşmeleri (sıra politikası 94 -> 95, indirme portalı, imzalı manifest) geçer.
-Aday ağacındaki kesin sayılar (17 Ekim 2026): web `npm test` 1594 geçti, 0 başarısız,
-`npm run build` başarılı; Go `./cmd/panel/` ve `./internal/...` 7122 geçti, 0
-başarısız, 44 atlandı. Tarayıcı 20. grubu (Boston ve Frankfurt benzeri taklitler,
-Türkçe ve İngilizce, açık ve koyu, 1440 ve 390 piksel) iki kez incelendi; ilk bakış
-iki pencerede kısa çizgisinden bölünen PHP-FPM'i, telefonda 44 pikselden küçük
-Bileşenler denetimlerini ve başıboş bir ayraç noktasını buldu; hepsi düzeltildi.
-Yalnız tarayıcı taklidi; kurulu bir sunucuda hiçbir şey yok.
+yüklerde ready-bundles-ui-contract ve ready-bundles-mounted; kalıntılar için kayıt,
+kayıtsız ve doğrudan bağlantı, engelli neden ve kurulu paket açıklaması dahil;
+installed-alpha94-corrections, Alan adları sayısı durumları ve kalıntı kuralı dahil;
+Pano kartı, satır düzeni, uzak durum, posta profili ve hizmet kullanılabilirliği
+sözleşmeleri); Go: yeni webmail_cleanup_record_test, bundles testi (ana paketinden
+önce bir eklenti MariaDB ya da PostgreSQL ister) ve posta profili ön yüz
+sözleşmesi. Sürüm sözleşmeleri (sıra politikası 94 -> 95, indirme portalı, imzalı
+manifest) önceki ağaçta geçti ve girdileri değişmedi. `0ee982af2` ağacındaki kesin
+sayılar (17 Ekim 2026): web `npm test` 1599 geçti, 0 başarısız, `npm run build`
+başarılı; Go `./cmd/panel/` ve `./internal/...` 7123 geçti, 0 başarısız, 44 atlandı;
+`go vet ./cmd/panel/` ve gofmt temiz. Tarayıcı 20. grubu (Boston ve Frankfurt
+benzeri taklitler, Türkçe ve İngilizce, açık ve koyu, 1440 ve 390 piksel) inceleme
+düzeltmelerinden önce iki kez incelendi; ilk bakış iki pencerede kısa çizgisinden
+bölünen PHP-FPM'i, telefonda 44 pikselden küçük Bileşenler denetimlerini ve başıboş
+bir ayraç noktasını buldu; hepsi düzeltildi. İncelemeden sonra Boston senaryosu
+kalıntı onayını `/services?cleanup=roundcube` ile açar; **20. grup inceleme
+düzeltmelerinden sonra yeniden çalıştırılmadı.** Yalnız tarayıcı taklidi; kurulu bir
+sunucuda hiçbir şey yok. Şema değişikliği yok (44; yeni yük alanı eklemeli JSON),
+Agent değişikliği yok, gerçek sistem kaydı yok.
 
 Bu sürümü yalnız CelikPanel'in güncelleme arayüzü üzerinden kurun. Yayımlamak kurulu
 sunucuları güncellemez; bir sunucunun güncellemesini yalnız sahibi, panelin kendi

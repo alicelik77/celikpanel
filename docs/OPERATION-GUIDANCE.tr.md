@@ -8966,21 +8966,33 @@ ekranlarından gelir; burada dosya olarak saklanmaz ve kurulu bir sunucuda hiçb
 - **Şerit.** Her Bileşenler kategorisi, her sunucuda aynı paketleri aynı sırayla
   gösterir; yalnız her çipin durumu değişir (sözle ve biçimle, asla yalnız renkle):
   - onay işareti ve ad: kurulu ve doğrulandı (yapılacak bir şey yok);
-  - "Temel Posta · içinde": doğrulanmış bir posta paketi onu içerir (yapılacak bir
-    şey yok);
+  - "Temel Posta · içinde": doğrulanmış bir posta paketi onu içerir ve içerilen
+    paketin kendisi de kurulu ve doğrulanmıştır, kendi başarısız ya da süren bir
+    denemesi yoktur (yapılacak bir şey yok; aksi halde nedeniyle "doğrulanmadı"
+    der);
   - gri nokta ve "doğrulanmadı": sahip çipi açar ve Onar (posta) ya da Doğrula
     (bileşenler) seçer;
   - çerçeveli "Ad · Kur" ya da eklentilerde "· Ekle": sahip işlem yapar;
-  - "m bileşenden n · Devam et": bir posta denemesi kısmen yapıldı; sahip devam eder;
-  - kısa bir nedenle soluk metin ve düğme yok ("phpMyAdmin · MariaDB gerekli"):
-    sahip önce nedenin adını verdiğini kurar; o çipte başka bir şeye basılamaz;
+  - "n/m bileşen kurulu · Devam et": bir posta denemesi kısmen yapıldı; sahip devam
+    eder. "Kur" diyen bir posta çipi (kurulu bir Webmail'in yanında Spam Korumalı
+    Posta; Panel onu yalnız parçalar paylaşıldığı için kısmi sayar) posta penceresini
+    "devam et" değil, kurulum biçiminde açar;
+  - kısa bir nedenle soluk metin ("phpMyAdmin · MariaDB gerekli"), sessiz bir
+    düğmede: basınca (klavye ya da dokunmayla) tam neden çiplerin altındaki bir
+    satırda görünür (ipucu kalır ama tek yol değildir); sahip önce nedenin adını
+    verdiğini kurar; o çipte başka bir şey yapılamaz;
+  - çiplerin altında, nedeniyle yalnız başarısız ya da süren denemeler ve
+    doğrulanmamış ya da kısmen kurulu çiplerdeki tipli uyarılar (asla "bazı parçalar
+    zaten var" notu);
   - eski bir tarama tek soluk satırdır ve Bileşenler sayfası kendiliğinden denetler
     (D-032).
 - **Pano kartı** tek bir özet satırdır ("7 kurulu ve doğrulandı · 1 kurulabilir"),
   sonra yalnız sorun satırları, sonra "Bileşenler'de aç". Çiplerin çizildiği gibi
   sayar: eklentiler dahil kaydın her girdisi; "kurulabilir" kurulabilir ya da kısmi
-  demektir, engelli sayılmaz; "dahil" kurulu ve doğrulanmış sayılır. Hiç
-  denetlenmedi, denetleniyor, tutuluyor, denetlenemedi ve yakın zamanda değil
+  demektir, engelli sayılmaz; "dahil" kurulu ve doğrulanmış sayılır, ama kendi son
+  denemesi başarısız olan ya da süren bir paket asla kurulu ve doğrulanmış sayılmaz
+  ve doğrulanmamış olup ayrıca böyle bir denemesi olan paket, nedenle tek satırdır.
+  Hiç denetlenmedi, denetleniyor, tutuluyor, denetlenemedi ve yakın zamanda değil
   cümleleri değişmedi. Hiçbir şey kurmaz ve bir yoklama asla değişiklik başlatmaz.
 - **Bir veritabanı ya da web paketini kurmak.** Sıranın anlamı değişmedi (birer
   birer olağan bileşen kurulumu, her biri ancak öncekinin, yani bu adımın kendisinin
@@ -8998,16 +9010,28 @@ ekranlarından gelir; burada dosya olarak saklanmaz ve kurulu bir sunucuda hiçb
   veya `agent_mutation_active` bildiriyor) nedeni gösterilerek tutulur ("Bu
   sunucuda bir bileşen işlemi sürüyor; o bitince doğrulayın."). Sahip işlemin bitmesini
   bekler ve Doğrula'ya yeniden basar. Değişiklikler başka nedenlerle tutulurken
-  kullanılabilir kalır, çünkü hiçbir şeyi değiştirmez.
+  kullanılabilir kalır, çünkü hiçbir şeyi değiştirmez: `host_lock_busy` ve
+  `package_manager_active` durumunda da, çünkü yeniden tarama ucu yalnız çalışan bir
+  sunucu kurulumunda, etkin bir hizmet işleminde ya da etkin bir Agent
+  değişikliğinde reddeder.
 - **Bir posta paketinin Onar'ı** kurulu çipin penceresindedir (eksik olanı tamamlar
   ve kurulumu doğrular; kurulu hiçbir şey kaldırılmaz). Şeritte Onar bağlantısı
   yoktur. Roundcube'un "Webmail'i onar" düğmesi, bileşen satırında yalnız sunucu bir
   webmail sorunu bildirdiğinde durur.
-- **Roundcube kalıntıları.** Panel kalıntıların var olup olmadığını söyleyemez (bunun
-  için bir tarama alanı yoktur); bu yüzden Roundcube satırında soluk bir not
-  ("Yarıda kalmış bir Roundcube kurulumunun ya da kaldırmasının dosyaları bu
-  sunucuda kalmış olabilir.") ve nötr ikincil bir "Kalıntıları temizle…" düğmesi durur.
-  Sahip karar verir; onay penceresi Agent'ın tam olarak neyi sildiğini sıralar:
+- **Roundcube kalıntıları.** Roundcube satırında soluk bir not ("Önceki bir
+  Roundcube kurulumu tamamlanmadı; dosyaları bu sunucuda kalmış olabilir." ya da
+  "… kaldırması tamamlanmadı; …") ve nötr ikincil bir "Kalıntıları temizle…"
+  düğmesi yalnız Panel'in kendi kaydı yarım kalmış bir Roundcube kurulumu ya da
+  kaldırması gösterdiğinde durur (Panel denetim kaydındaki en yeni Roundcube kurulum
+  ya da kaldırma girdisi başarısız bir kurulum ya da kısmi ya da başarısız bir
+  kaldırmadır; ek yük alanı `webmail_cleanup` ile gönderilir) ya da webmail
+  profilinin son denemesi başarısız olmuştur. Sonraki temiz bir kurulum ya da
+  kaldırma sunumu bitirir; kayıt yoksa satır bir şey söylemez (Boston'da böyle bir
+  kayıt yoktur, bu yüzden satırında kalıntı sunumu görünmez). Roundcube'un kendi
+  bileşen sayfasında aynı onayı Bileşenler sayfasında açan
+  (`/services?cleanup=roundcube`) bir "Kalıntıları temizle…" bağlantısı her zaman
+  vardır. Panel dosyaların diskte gerçekten kalıp kalmadığını hâlâ göremez; kendi
+  kaydına dayanır. Sahip karar verir; onay penceresi Agent'ın tam olarak neyi sildiğini sıralar:
   `/var/lib/celikpanel-webmail` (Roundcube dosyaları, kendi ayarları ve adres defteri
   veritabanı), `/var/lib/.celikpanel-webmail.stage`,
   `/var/lib/.celikpanel-webmail.retired*`,
@@ -9025,9 +9049,15 @@ ekranlarından gelir; burada dosya olarak saklanmaz ve kurulu bir sunucuda hiçb
   (dinlenirken nötr, ton yalnız üzerine gelince ya da odakta); önkoşul rozetleri ve
   çipler bileşen adlarını bölmez; kenar çubuğu sayıları sade soluk sayılardır
   (kimsenin almadığı bir sayı çizgidir, asla 0 değil); Pano'nun Alan adları sayısı,
-  Alan adları sayfasının listelediği bağımsız altyapı DNS bölgelerini ekler.
-  Kenar çubuğundaki Alan adları rozeti hâlâ yalnız alan adlarını sayar; küçük bir
-  kalan fark. Pano'nun "dikkat gerektiren bir şey yok" cümlesi artık "Dikkat
+  Alan adları sayfasının listelediği bağımsız altyapı DNS bölgelerini ekler: Pano
+  kutusu ve kenar çubuğundaki Alan adları rozeti tek bir yardımcıyı kullanır
+  (`domainsCount`): alan adları artı Alan adları sayfasının listelediği yalnız DNS
+  altyapı bölgeleri (siteye dönüşen bir bölge, o site olarak bir kez sayılır);
+  böylece kutu, rozet ve sayfa uyuşur. Sayı yalnız iki okuma da yanıtlandığında
+  görünür; biri okunurken kutu yükleme işaretini gösterir; biri okunamadığında
+  bilinmeyendir, asla "alan adları + 0" değil (önceki sayı yalnız iki okumanın da
+  sayısı varsa korunur); bölge okuması olmayan yönetici olmayanlar yalnız alan
+  adlarını sayar. Pano'nun "dikkat gerektiren bir şey yok" cümlesi artık "Dikkat
   gerektiren bir şey yok. CelikPanel sertifikaları, güvenlik duvarını ve kurulu
   bileşenleri denetledi." şeklindedir; yine yalnız her okuma yanıtlandığında ve
   bileşen taraması tazeyken görünür.
@@ -9037,11 +9067,35 @@ seçimleri; Boston biçimli ve Frankfurt biçimli bir yük üzerinde bağlanmı�
 (aynı çipler; Boston'da görünen MariaDB; Frankfurt'ta dahil Temel Posta; nedeniyle
 engelli bir eklenti; kurulabilir çiplere eşit Pano sayısı; şeritte Onar bağlantısı
 yok; kurulu çipin Onar ya da Doğrula'lı penceresi); üç inceleme maddesi; kalıntılar
-penceresi ve yol listesi; satır eylemi, sürüm kuralı, kenar çubuğu sayısı ve Pano
+penceresi, yol listesi ve kayıt kuralı (kayıt, kayıtsız, doğrudan bağlantı); satır
+eylemi, sürüm kuralı, kenar çubuğu sayısı ve Pano
 kartı sözleşmeleri. Go: bir eklenti her zaman listelenir; ana paketi kurulmadan
 önce engellidir ve ihtiyaç duyduğu ana bileşeni (MariaDB ya da PostgreSQL) söyler;
 ve posta profili ön yüz sözleşmesi. **Açık:** kurulu bir sunucuda hiçbir şey
 ölçülmedi; paket sırası gerçek bir Agent'a karşı çalışmadı; her bileşen için kurulu
 paket sürümleri okunmuyor (yeni bir Agent okuması gerekir); Roundcube kalıntılarının
-var olup olmadığı gösterilemez; P0.1-P0.5 **kısmi** kalır; bu girdi hiçbir şeyi
-kapatmaz ya da ilerletmez.
+diskte gerçekten olup olmadığı görülemez (Panel kendi kaydına dayanır); P0.1-P0.5
+**kısmi** kalır; bu girdi hiçbir şeyi kapatmaz ya da ilerletmez.
+
+**Adayın bağımsız incelemesi (17 Ekim 2026).** Bağımsız bir inceleme on sorun
+buldu; hepsi düzeltildi (`0ee982af2` işlemesi) ve yukarıdaki girdi düzeltilmiş
+davranışı anlatır. Ne değişti: (1) Roundcube kalıntıları satırda yalnız Panel'in
+kendi kaydıyla (ya da başarısız bir webmail denemesiyle) sunulur, Roundcube'un kendi
+sayfasında ise her zaman; (2) kurulu paket penceresi "… kurar" yerine paketi
+betimler ("Sitelerin veritabanları için PostgreSQL."); (3) çiplerin altındaki
+satırlar yalnız başarısız ya da süren denemeler ve doğrulanmamış ya da kısmen kurulu
+çiplerdeki tipli uyarılardır; (4) "dahil" yalnız, kendisi de kurulu ve doğrulanmış
+olan ve başarısız ya da süren denemesi bulunmayan içerilen paket için; (5) kutu,
+kenar çubuğu rozeti ve sayfa için tek Alan adları sayısı; (6) doğrulanmamış ve
+denemesi olan her paket için tek Pano satırı; (7) engelli çip, tam nedenini
+çiplerin altında gösteren sessiz bir düğmedir; (8) Doğrula, `host_lock_busy` ve
+`package_manager_active` durumunda kullanılabilir kalır; (9) EN ifadesi "2/3 ·
+installing PHP-FPM", Türkçe ilerleme "n/m bileşen kurulu"; (10) "Kur" diyen bir
+posta çipi posta penceresini kurulum biçiminde açar. `0ee982af2` ağacındaki kanıt:
+web `npm test` 1599 geçti, 0 başarısız, `npm run build` başarılı; Go
+`./cmd/panel/` ve `./internal/...` 7123 geçti, 0 başarısız, 44 atlandı,
+`go vet ./cmd/panel/` ve gofmt temiz; yeni Go testi webmail_cleanup_record_test.
+Tarayıcı 20. grubu inceleme düzeltmelerinden önce iki kez incelendi; incelemeden
+sonra Boston senaryosu kalıntı onayını `/services?cleanup=roundcube` ile açar ve
+**inceleme düzeltmelerinden sonra yeniden çalıştırılmadı.** Şema değişikliği yok
+(44), Agent değişikliği yok, gerçek sistem kaydı yok, P0 kısmi kalır.
