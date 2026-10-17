@@ -151,7 +151,7 @@ func (p *Panel) requireSystemUpdateAgent(ctx context.Context) error {
 	}
 	var agent transport.AgentVersionResponse
 	if err := p.callAgentContext(ctx, "Agent.Version", &transport.Empty{}, &agent); err != nil {
-		return fmt.Errorf("verify update agent identity: %w", err)
+		return fmt.Errorf("verify update agent identity: %w: %w", errPanelUpdateAgentUnreachable, err)
 	}
 	if strings.TrimSpace(agent.Version) != panelVersion || strings.TrimSpace(agent.Commit) != panelCommit {
 		return errors.New("panel and agent build identities do not match")
@@ -403,49 +403,23 @@ func (p *Panel) handlePanelUpdateCheck(w http.ResponseWriter, r *http.Request) {
 	if !requirePanelUpdateAdmin(w, r) {
 		return
 	}
-	if err := p.requireSystemUpdateAgent(r.Context()); err != nil {
-		writePanelUpdateUnavailable(w, err)
-		return
+	// The same discovery the scheduled check runs (system_update_discovery.go);
+	// its result is kept as the last check, made by hand.
+	response, failure := p.discoverPanelUpdate(r.Context())
+	// It is written only while no update is admitted or running; otherwise it
+	// is kept in memory until the server is idle (system_update_discovery.go).
+	if r.Context().Err() == nil {
+		now := panelUpdateNow()
+		p.savePanelUpdateDiscovery(r.Context(), now, false, response, failure)
+		p.updateDiscovery.NoteChecked(now)
 	}
-	// Discovery must prove that this host could authorize the eventual
-	// privileged start. Read-only Check is allowed on every platform, while
-	// Start remains deliberately closed on unreviewed package families.
-	if err := p.authorizeAgentRPCContext(r.Context(), "Agent.StartSystemUpdate"); err != nil {
-		writePanelUpdateUnavailable(w, err)
-		return
-	}
-	var reply transport.SystemUpdateCheckResponse
-	if err := p.callAgentContext(r.Context(), "Agent.CheckSystemUpdate", &transport.Empty{}, &reply); err != nil {
-		writePanelUpdateAgentFailure(w, err)
-		return
-	}
-	if !reply.Supported {
-		writePanelUpdateUnavailable(w, errors.New("agent reported updater unsupported"))
-		return
-	}
-	if strings.TrimSpace(reply.Error) != "" {
-		log.Printf("[panel-update] discovery refused: %s", sanitizePanelUpdateSummary(reply.Error))
-		writePanelUpdateUnavailable(w, errors.New("agent reported update discovery failure"))
-		return
-	}
-	if reply.CurrentVersion != buildVersion || reply.CurrentCommit != buildCommit {
-		writePanelUpdateUnavailable(w, errors.New("update discovery current identity does not match panel"))
-		return
-	}
-	response := panelUpdateCheckResponse{
-		Supported: true, Available: reply.Available,
-		CurrentVersion: buildVersion, CurrentCommit: buildCommit,
-	}
-	if reply.Available {
-		target := panelUpdateTargetFromCheck(reply)
-		if !validPanelUpdateTarget(target) {
-			writePanelUpdateUnavailable(w, errors.New("agent returned an invalid signed update identity"))
-			return
+	if failure != nil {
+		if failure.agent {
+			writePanelUpdateAgentFailure(w, failure.err)
+		} else {
+			writePanelUpdateUnavailable(w, failure.err)
 		}
-		response.Target = &target
-		if target.Commit != buildCommit {
-			response.PreviousAttempt = p.previousPanelUpdateAttempt(target.Commit)
-		}
+		return
 	}
 	_ = json.NewEncoder(w).Encode(response)
 }
@@ -565,6 +539,8 @@ func (p *Panel) handlePanelUpdateStart(w http.ResponseWriter, r *http.Request) {
 		writeCodedError(w, http.StatusConflict, "PANEL_UPDATE_START_REFUSED", "the update service did not accept this request", "")
 		return
 	}
+	// The scheduled update check stays away from an admitted update.
+	p.markPanelUpdateAdmitted(panelUpdateNow())
 	w.WriteHeader(http.StatusAccepted)
 	_ = json.NewEncoder(w).Encode(panelUpdateStartResponse{
 		Accepted: true, RequestID: request.RequestID, Status: reply.Status, Target: request.panelUpdateTarget,

@@ -1,8 +1,10 @@
 import { BrandMark } from './BrandMark';
 import { BuildCommit } from './BuildCommit';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { LogOut, ChevronDown, Menu, KeyRound, UserCheck } from 'lucide-react';
+import { LogOut, ChevronDown, Menu, KeyRound, UserCheck, DownloadCloud } from 'lucide-react';
 import { api } from '../lib/api';
+import { Link } from '../router';
+import { availablePanelUpdate, usePanelUpdateDiscovery, wholeVersion, type DiscoveredTarget } from '../lib/panelUpdateDiscovery';
 import { useAuth } from '../auth/AuthContext';
 import { useI18n } from '../i18n';
 import { navItemsForRole, navGroups, type NavAccessContext, type NavItem } from '../nav';
@@ -180,6 +182,14 @@ export function Layout({ children, currentPage = '', onPageChange, mode = 'panel
         };
     }, [role]);
 
+    // The Panel's stored update check (D-035): an administrator sees a small
+    // link beside the version when a newer signed release was found. It is a
+    // stored read with no network call; nobody else sees anything.
+    // Yöneticiye, daha yeni imzalı sürüm bulunduysa sürüm satırının yanında
+    // küçük bir bağlantı gösterilir; başka kimse bir şey görmez.
+    const discovery = usePanelUpdateDiscovery(role === 'admin' && !setupMode);
+    const updateTarget = role === 'admin' && !setupMode ? availablePanelUpdate(discovery.value) : null;
+
     const serverIdentity: ServerIdentity | null = panelRuntime
         && (panelRuntime.hostname || panelRuntime.ipv4)
         ? { hostname: panelRuntime.hostname, ipv4: panelRuntime.ipv4 }
@@ -204,6 +214,7 @@ export function Layout({ children, currentPage = '', onPageChange, mode = 'panel
                     setupNavigation={setupNavigation}
                     serverIdentity={serverIdentity}
                     panelRuntime={panelRuntime}
+                    updateTarget={updateTarget}
                 />
 
                 <div className="flex min-w-0 flex-1 flex-col">
@@ -213,7 +224,7 @@ export function Layout({ children, currentPage = '', onPageChange, mode = 'panel
                             (hasDesktopPageHeader || setupMode ? 'xl:h-auto xl:min-h-[90px] xl:py-2' : '')}
                     >
                         {!setupMode && <button
-                            className="rounded-lg p-1.5 text-fg-muted hover:bg-surface-2 md:hidden"
+                            className="flex h-11 w-11 items-center justify-center rounded-lg text-fg-muted hover:bg-surface-2 md:hidden"
                             onClick={() => setMobileOpen(true)}
                             aria-label={t('nav.menu')}
                         >
@@ -260,6 +271,7 @@ function Sidebar({
     setupNavigation,
     serverIdentity,
     panelRuntime,
+    updateTarget,
 }: {
     role: ReturnType<typeof useAuth>['role'];
     access: NavAccessContext;
@@ -273,6 +285,7 @@ function Sidebar({
     setupNavigation?: React.ReactNode;
     serverIdentity: ServerIdentity | null;
     panelRuntime: PanelRuntime | null;
+    updateTarget: DiscoveredTarget | null;
 }) {
     const { t } = useI18n();
     const items = navItemsForRole(role, access);
@@ -324,6 +337,20 @@ function Sidebar({
                 )}
                 <div className={serverIdentity ? 'border-t border-sidebar-border pt-3' : ''}>
                     <BuildStamp runtime={panelRuntime} />
+                    {/* An available update is not a warning: plain rail ink,
+                        an icon and words, no badge colour (D-035, DESIGN.md).
+                        Güncelleme uyarı değildir: rengi yok, ikon ve sözcük. */}
+                    {updateTarget && (
+                        <Link
+                            to="/settings?section=updates"
+                            onClick={onCloseMobile}
+                            data-update-available={updateTarget.version}
+                            className="mt-2 inline-flex min-h-6 items-center gap-1.5 font-medium text-sidebar-fg underline decoration-sidebar-border underline-offset-4 hover:text-white hover:decoration-current focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 max-md:min-h-11"
+                        >
+                            <DownloadCloud className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                            <span>{wholeVersion(t('panelUpdate.notice.sidebar', { version: updateTarget.version }), updateTarget.version)}</span>
+                        </Link>
+                    )}
                 </div>
             </div>
         </div>

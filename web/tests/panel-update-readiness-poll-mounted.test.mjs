@@ -6,6 +6,7 @@ import test from 'node:test';
 import React from 'react';
 import TestRenderer, { act } from 'react-test-renderer';
 import ts from 'typescript';
+import { panelUpdateDiscoveryStubSource } from './panelUpdateDiscoveryStub.mjs';
 
 // The panel update card while the server is busy (owner rule 2026-10-14,
 // audit row 25). The card is mounted with the real readiness reader
@@ -35,7 +36,7 @@ const jsxRuntimeURL = pathToFileURL(require.resolve('react/jsx-runtime')).href;
 const iconsURL = moduleURL(`import React from '${reactURL}';
     const Icon = (name) => (props) => React.createElement('i', { ...props, 'data-icon': name });
     export const AlertTriangle = Icon('alert'); export const CheckCircle2 = Icon('check'); export const DownloadCloud = Icon('download');
-    export const Loader2 = Icon('spinner'); export const RefreshCw = Icon('refresh');`);
+    export const Loader2 = Icon('spinner'); export const RefreshCw = Icon('refresh'); export const Info = Icon('info');`);
 const uiURL = moduleURL(`import React from '${reactURL}';
     export function Button({ children, ...props }) { return React.createElement('button', props, children); }`);
 const i18nURL = moduleURL(`export function useI18n() { return { t: (key, params) => params ? key + ' ' + JSON.stringify(params) : key, locale: 'en' }; }`);
@@ -58,6 +59,7 @@ const panelURL = compileURL('../src/components/PanelUpdateCard.tsx', [
     [/from ['"]react['"]/g, `from '${reactURL}'`],
     [/from ['"]react\/jsx-runtime['"]/g, `from '${jsxRuntimeURL}'`],
     [/from ['"]lucide-react['"]/g, `from '${iconsURL}'`],
+    [/from ['"]\.\.\/lib\/panelUpdateDiscovery['"]/g, `from '${moduleURL(panelUpdateDiscoveryStubSource())}'`],
     [/from ['"]\.\/ui['"]/g, `from '${uiURL}'`],
     [/from ['"]\.\.\/i18n['"]/g, `from '${i18nURL}'`],
     [/from ['"]\.\.\/lib\/apiError['"]/g, `from '${apiErrorURL}'`],

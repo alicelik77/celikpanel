@@ -21,6 +21,7 @@ import { en } from '../src/i18n/en.ts';
 import { tr } from '../src/i18n/tr.ts';
 import { enServerScreens } from '../src/i18n/screens/server/en.ts';
 import { trServerScreens } from '../src/i18n/screens/server/tr.ts';
+import { panelUpdateDiscoveryStubSource } from './panelUpdateDiscoveryStub.mjs';
 import {
     SYSTEM_UPDATE_EXPECTED_RESTART_MS,
     SYSTEM_UPDATE_READ_MEMORY,
@@ -50,7 +51,7 @@ const catalogues = { en: { ...en, ...enServerScreens }, tr: { ...tr, ...trServer
 const fill = (text, vars) => String(text).replace(/\{(\w+)\}/g, (all, name) => vars?.[name] ?? all);
 const iconsURL = moduleURL(`import React from '${reactURL}';
 const icon = name => props => React.createElement('i', { ...props, 'data-icon': name });
-export const AlertTriangle = icon('AlertTriangle'), CheckCircle2 = icon('CheckCircle2'), DownloadCloud = icon('DownloadCloud'), Loader2 = icon('Loader2'), RefreshCw = icon('RefreshCw');`);
+export const AlertTriangle = icon('AlertTriangle'), CheckCircle2 = icon('CheckCircle2'), DownloadCloud = icon('DownloadCloud'), Loader2 = icon('Loader2'), RefreshCw = icon('RefreshCw'), Info = icon('Info');`);
 const uiURL = moduleURL(`import React from '${reactURL}'; export function Button({ children, ...props }) { return React.createElement('button', props, children); }`);
 const i18nURL = moduleURL(`const fill = (text, vars) => String(text).replace(/\\{(\\w+)\\}/g, (all, name) => vars && vars[name] !== undefined ? String(vars[name]) : all);
 export function useI18n() { const c = globalThis.__restartCatalogue; return { t: (key, vars) => fill(c.strings[key] ?? key, vars), locale: c.locale }; }`);
@@ -74,6 +75,7 @@ const { PanelUpdateCard } = await import(compileURL('../src/components/PanelUpda
     [/from ['"]react['"]/g, `from '${reactURL}'`],
     [/from ['"]react\/jsx-runtime['"]/g, `from '${jsxRuntimeURL}'`],
     [/from ['"]lucide-react['"]/g, `from '${iconsURL}'`],
+    [/from ['"]\.\.\/lib\/panelUpdateDiscovery['"]/g, `from '${moduleURL(panelUpdateDiscoveryStubSource())}'`],
     [/from ['"]\.\/ui['"]/g, `from '${uiURL}'`],
     [/from ['"]\.\.\/i18n['"]/g, `from '${i18nURL}'`],
     [/from ['"]\.\.\/lib\/apiError['"]/g, `from '${apiErrorURL}'`],

@@ -21,6 +21,143 @@ git'te yaşar; bu dosya strateji içindir. En yeni en üstte.
 
 ---
 
+## D-035 · Panel güncellemeleri kendiliğinden arar ve bunu sakin bir dille söyler; güncellemeyi yalnız bir yönetici başlatır
+
+*17 Ekim 2026 (saat tarihi) · v0.1.0-alpha.95'e güncellenirken sahibin isteği; v0.1.0-alpha.96 adayı için kaynakta; kurulu bir sunucuda hiçbir şey ölçülmedi*
+
+Sahip kurulu sunucuları v0.1.0-alpha.95'e güncellerken güncelleme ekranında iki
+şey buldu. Panel daha yeni bir sürümün var olduğunu yalnız biri "Güncellemeyi
+kontrol et"e bastığında öğreniyordu; bu yüzden bir sunucu kimse uyarılmadan eski
+sürümde kalabiliyordu. Ayrıca güncelleme kartının kendisi zor okunuyordu: iki
+sarı kutu (alfa uyarısı ve "Bu sürüme yapılan önceki güncelleme…"), yeşil bir
+"İmzalı bir güncelleme bulundu." ve Başlat düğmesinin altında aynısının ikinci bir satırı.
+Sahibin sözleriyle: "belirli periodlarda güncellemeleri kontrol etmeli ve
+güncelleme var diye uyarmalı. güncelleme konusunda yardımcı olmalı."
+
+Benimsenen kurallar:
+
+1. **Panelin kendisi zamanlanmış olarak bakar ve yalnız okur.** Panel
+   işleminde (tarayıcıda değil) çalışan bir döngü, "Güncellemeleri denetle"
+   düğmesiyle aynı salt-okur keşfi tek bir ortak işlev üzerinden yapar: Agent'ın
+   erişilebilirliği ve yapı çifti, güncellemeyi başlatmak için sunucunun kendi
+   yetkisi, Agent'ın celikpanel.net'teki imzalı sürümü denetlemesi, kimlik
+   eşleşmesi ve hedefin doğrulanması. İlk denetim Panel başladıktan yaklaşık 2
+   dakika sonra (artı eksi 30 saniye), sonra her 12 saatte bir (artı eksi 30
+   dakika) yapılır. Bir denetim 40 saniyeyle sınırlıdır. Sunucuda hiçbir şeyi
+   değiştirmez ve güncelleme kaydı yazmaz. Hazır olma okuması, hazır olma
+   uç noktasınınkiyle aynıdır: Panel'in kendi değişiklik kilidini `TryLock` ile
+   yalnız süren bir işlemin süreç içi denetimi için alır ve danışma Agent
+   okumasından önce bırakır.
+2. **Başarısız denetim geri çekilir, yeniden deneme fırtınası çıkarmaz.**
+   Başarısızlıktan sonra bir sonraki deneme 1 saat, sonra 3 saat sonradır; sonra
+   yine 12 saatlik dönem gelir. Başarılı bir denetim bunu sıfırlar.
+3. **Bazı durumlar denetimi atlatır; atlanma bir başarısızlık değildir.**
+   Denetim yapılmaz ve 1 saat sonra yeniden denenir: Panel son bir saat içinde
+   bir güncelleme başlatmayı kabul ettiyse, Agent'ın danışma niteliğindeki
+   hazır olma okuması süren bir değişiklik ya da doğrulayamadığı bir durum
+   bildiriyorsa, bir sunucu kurulumu sunucuyu değiştiriyorsa (bir DNS kaydı
+   bekleyen kurulum denetimi tutmaz) ve Agent yanıt vermiyorsa. Meşgul bir paket
+   yöneticisi denetimi atlatmaz, çünkü sürüm okuması paketlere dokunmaz. Atlanma
+   yalnız bellekte tutulur: asla yazılmaz ve bilinen bir sonucun yerini almaz;
+   kart onu o sonucun yanında söyler. Denetim, Panel kapanırken asla çalışmaz;
+   yarıda kalan bir denetim hiçbir şey tutmaz. Yeniden açılan zamanlama, iki
+   dakika sonra değil, son tamamlanan denetimden 12 saat sonra sürer.
+4. **Sahip kapatabilir.** Ayarlar → CelikPanel güncellemeleri içinde
+   "Güncellemeleri otomatik denetle" vardır; varsayılan olarak açıktır ve
+   şunu söyler: "Panel 12 saatte bir celikpanel.net'e daha yeni imzalı bir sürüm
+   olup olmadığını sorar. Hiçbir şey kendiliğinden kurulmaz." Kapalı olması,
+   zamanlamanın hiçbir ağ okuması yapmaması demektir; elle denetim yine çalışır.
+5. **Sonuç saklanır ve kuralla temizlenir; güncelleme sırasında asla.** Son
+   tamamlanan sonuç (çıktı, zaman, otomatik olup olmadığı, başarısızlık için bir
+   neden kodu ve bulunan sürüm ile bulunma zamanı) Panel'in ayarlar tablosunda
+   tutulur; şema değişmez. Başarısız bir denetim ondan önce bulunan sürümü
+   korur; böylece geçici bir kesinti hâlâ bekleyen bir güncellemeyi gizlemez.
+   **Zamanlanmış denetim, bir güncelleme kabul edilmiş ya da sürüyorken asla
+   yazmaz**; düğme de yazmaz: yazmadan hemen önce Panel, hiçbir kilit tutmadan
+   Agent'ın hazır olma durumunu okur; sonra değişiklik kilidini `TryLock` ile
+   yalnız kendi tuttuğu bilgileri yeniden okumak (kabul edilmiş güncelleme yok,
+   süren Panel işlemi yok) ve ayarı yazmak için alır; aksi hâlde sonuç bellekte
+   tutulur, gösterilir ve bir sonraki boşta geçişte yazılır. (Güncelleyicinin sabitlenmiş salt-okur ön
+   denetimi sırasında Panel veritabanına yazmak o denetimi durdurur.) Aynı
+   sürümün başka commit'li yeniden derlemesi, Agent'ın imzalı yanıtı ne diyorsa
+   odur. Başlangıçta, yönetim açılmadan önce, başka bir yapının yazdığı ya da bu
+   yapının zaten olduğu ya da ondan eski olan bir sürümü adlandıran kayıt
+   temizlenir; güncellemeden sonra bildirim kaybolur.
+6. **Sahip nerede görür, nerede görmez.** Yalnız yöneticiler: kenar çubuğunda
+   sürüm satırının altında küçük bir bağlantı ("Güncelleme var · v0.1.0-alpha.96");
+   Pano içeriğinin en üstünde tek, sessiz bir satır ("İlgi istiyor" kutusunun
+   içinde değil, çünkü güncelleme bir sorun değildir); "İncele ve güncelle" ve
+   "Sonra hatırlat" ile (o sürüm için bu tarayıcıda 24 saat gizlenir); Ayarlar
+   gezinmesinde küçük bir nokta ve aynı sözler. Güncelleme kartı, kayıtlı sonucu
+   bilerek açılır. Başarısız ya da bilinmeyen bir otomatik denetim, güncelleme
+   kartının dışında hiçbir şey göstermez.
+7. **Asla alarm değil.** Bulunan bir güncellemenin sinyal rengi yoktur: sarı yok,
+   kırmızı yok, rozet rengi yok. Başarısız denetim sakindir; neyin bilindiğini
+   ve bilinmediğini, kimin işlem yapacağını (kimse ya da sahip şimdi
+   denetleyebilir), sonraki denetimin ne zaman yapılacağını ve panelle barındırılan
+   hizmetlerin eskisi gibi çalıştığını söyler.
+8. **Güncelleme asla kendiliğinden başlamaz.** Güncellemeyi yalnız bir yönetici,
+   panelin kendi güncelleme ekranından, tek dolu düğme "<sürüm> sürümüne güncelle"
+   ile başlatır. Başlat, keşfi yeniden çalıştırır ve aynı hedefi ister. Kart,
+   sahibe basmadan önce ne olacağını söyler (yaklaşık N saniyelik bir yeniden
+   başlatma, barındırılan web siteleri, posta, DNS ve veritabanları çalışmaya
+   devam eder, alfa sürümü için güncel bir yedek önerilir, hiçbir şey kendiliğinden
+   başlamaz).
+
+Sonuçları. Yeni bir okuma, `GET /api/v1/panel/update/discovery` (yalnız
+yöneticiler; Agent çağrısı ve ağ okuması yok), kayıtlı sonucu, anahtarı,
+zamanlanmış sonraki denetime kalan süreyi ve sunucunun saatiyle ölçülen yaşları
+döndürür; anahtar aynı yola `PUT` ile kaydedilir. İlk plan bu okuma için
+`/api/v1/panel/update/status` yolunu adlandırmıştı, ama o yol zaten tek bir güncelleme
+isteğinin durumunu istek kimliğiyle yanıtlıyor; bu yüzden ayrı bir yol
+kullanıldı. Mevcut `/update/check`, `/update/start` ve `/update/status` biçimlerini
+korur; denetim artık sonucunu da kaydeder. Agent değişikliği yok, şema değişikliği
+yok (44), geçiş yok. Güncelleyicinin değiştirme yolu değişmedi. Tarayıcı, kendi
+kopyası 5 dakikadan eskiyse kayıtlı sonucu okur, sonra her 30 dakikada bir ve
+sekme o kadar süre sonra gösterildiğinde yeniden okur; yalnız görünürken.
+Sözler, durumlar ve başarısız bir denetimin nasıl sürdüğü
+[OPERATION-GUIDANCE](OPERATION-GUIDANCE.tr.md) içinde, "Güncelleme keşfi ve
+güncelleme ekranı" bölümündedir.
+
+Bunun yetkilendirmediği şeyler:
+
+- Otomatik güncelleme yok. Panel bulur ve söyler; asla kurmaz, hiçbir zamanlama,
+  yoklama ya da bildirim güncelleme başlatmaz.
+- Değişiklik başlatan yoklama yok. Zamanlanmış denetim ve tarayıcının her yeniden
+  okuması okumadır; okuma ikinci bir değişiklik başlatmaz.
+- Bulunan güncelleme için alarm rengi yok, bağlantısında rozet rengi yok.
+- Başarısız bir denetim için güncelleme kartının dışında bildirim yok. Başarısız
+  ya da bilinmeyen bir denetim Pano'da, kenar çubuğunda ya da Ayarlar
+  gezinmesinde gösterilmez.
+- Kurulu bir sunucuda ölçülmüş iddia yok. Zamanlanmış denetim gerçek bir Agent'a
+  ya da gerçek sürüm sunucusuna karşı çalışmadı; Go testleri Agent'ı taklit eder,
+  tarayıcı turu loopback üzerinde bir taklit kullanır.
+- Hiçbir P0 işi kapanmaz ya da ilerlemez.
+- Kurulu panelleri kimin güncelleyeceği değişmez: yalnız sahipleri, panelin kendi
+  güncelleme ekranından.
+
+Gerisiyle ilişkisi. D-022 (panel portal olmadan çalışır; hiçbir şey denetime
+bağlı değildir), başarısız bir denetimin sakin olmasının ve hiçbir şeyi
+engellememesinin nedenidir. D-024 nedeni, kimin işlem yapacağını, sonraki eylemi
+ve işin nasıl süreceğini; doğrulanmış başarısızlık, karşılanmamış önkoşul ve
+bilinmeyen sonuç ayrımını ister: durum satırı bir başarısızlığı (doğrulanmış
+yanıt yok), bilinmeyen bir sonucu (zaman aşımı) ve bir atlanmayı (karşılanmamış
+koşul) ayrı tutar. D-032 panelin kendiliğinden baktığını ve kimse bakmıyorken
+çalışan bir arka plan zamanlayıcısı olmadığını söylemişti; bunu bileşen
+taramasına uygulamıştı. D-035, güncelleme keşfi için sahibin açık ve dar
+istisnasıdır: sunucuda 12 saatte bir tek salt-okur sürüm okuması, sınırlı,
+kapatılabilir, asla değiştirme değil. D-032'nin saat kuralı korunur: tarayıcı
+saatleri asla karşılaştırmaz, yaşları sunucu söyler. D-033: kartın bekleme
+durumları görünürdür (düğmenin denetimi sürerken hareketli bir "denetleniyor"
+satırı) ya da yapılacak bir şey olmadığını söyler.
+
+*Aynı gün, adayın bağımsız incelemesinden sonra düzeltildi:* 5. kuralın ilk
+biçimi atlanmayı yazıyordu ve bir güncelleme kabul edilirken bir sonuç
+yazabiliyordu; bir DNS kaydı bekleyen kurulum denetimi tutuyordu; kabul penceresi
+6 dakikaydı. Yukarıdaki kurallar düzeltilmiş olanlardır.
+
+---
+
 ## D-034 · Hazır paketler birer kısayoldur, ürün değildir: genel bir kayıt, her Bileşenler kategorisinin başında gösterilir, Pano'da tek bir kapı
 
 *17 Ekim 2026 (saat tarihi) · Bileşenler sayfasının tasarım incelemesinden (alpha.92 kaynağı, 16 Ekim 2026) ve sahibin 16 Ekim 2026 tarihli taslağından sonra sahip kararı; v0.1.0-alpha.94 adayı için kaynakta; kurulu bir sunucuda hiçbir şey ölçülmedi*

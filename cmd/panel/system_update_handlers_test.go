@@ -48,6 +48,14 @@ type systemUpdateTestAgent struct {
 	lastAbandon   transport.SystemUpdateAbandonRequest
 	lastStatusID  string
 	packageFamily string
+	// Update discovery (system_update_discovery_test.go).
+	versionCalls   int
+	versionErr     error
+	readiness      transport.HostMutationReadinessResponse
+	readinessCalls int
+	// readinessEntered/readinessGate, when set, hold a readiness read open.
+	readinessEntered chan struct{}
+	readinessGate    chan struct{}
 }
 
 func newSystemUpdateTestAgent() *systemUpdateTestAgent {
@@ -77,13 +85,32 @@ func newSystemUpdateTestAgent() *systemUpdateTestAgent {
 			Error: "system update start was authoritatively abandoned before acceptance",
 		},
 		packageFamily: "apt",
+		readiness:     transport.HostMutationReadinessResponse{Ready: true},
 	}
 }
 
 func (a *systemUpdateTestAgent) Version(_ *transport.Empty, reply *transport.AgentVersionResponse) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
+	a.versionCalls++
 	*reply = a.version
+	return a.versionErr
+}
+
+func (a *systemUpdateTestAgent) ServiceMutationReadiness(_ *transport.Empty, reply *transport.HostMutationReadinessResponse) error {
+	a.mu.Lock()
+	entered, gate := a.readinessEntered, a.readinessGate
+	a.mu.Unlock()
+	if entered != nil {
+		entered <- struct{}{}
+	}
+	if gate != nil {
+		<-gate
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.readinessCalls++
+	*reply = a.readiness
 	return nil
 }
 

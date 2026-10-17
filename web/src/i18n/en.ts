@@ -128,6 +128,8 @@ export const en = {
     'login.verify': 'Verify',
     'err.panel_certificate_activation_pending': 'A previous panel certificate activation is still being finalized. Wait briefly, then retry. No certificate state was overwritten.',
     'panelUpdate.title': 'CelikPanel updates',
+    // The sidebar's quiet link when the Panel found a newer signed release (D-035).
+    'panelUpdate.notice.sidebar': 'Update available · {version}',
     'panelUpdate.targetVersion': 'Target version',
     'panelUpdate.sessionExpired': 'The session ended. After you sign in again, the same operation will continue to be tracked.',
     'panelUpdate.sessionExpiredBeforeStart': 'The session ended before the update was accepted. Sign in again and check for updates.',
@@ -206,6 +208,10 @@ export const en = {
     'panelUpdate.outcome.cause.recovery_runtime_preflight_failed': "Cause: the update stopped in its read-only check, before the installed version was changed.",
     'panelUpdate.outcome.stoppedTitle': "Update stopped before changing the installed version",
     'panelUpdate.outcome.stopped': "The update to {target} stopped in its read-only check, before the installed version was changed or any service was stopped. The server is running {previous} as before.",
+    // The recovery tool's first two checks (cmd/recovery/compatibility.go):
+    // mode, the kind of check the updater asked for; owner, that it runs as root.
+    'panelUpdate.outcome.preflightStep.mode': "Reason: the recovery tool was asked for a kind of check it does not know, so it did not check the installation.",
+    'panelUpdate.outcome.preflightStep.owner': "Reason: the read-only check was not running with the server's administrator (root) rights, so it could not read the installation.",
     'panelUpdate.outcome.preflightStep.panel_database_check': "Reason: the read-only check of the panel database did not pass.",
     'panelUpdate.outcome.preflightStep.agent_ledger_check': "Reason: the read-only check of the Agent's operation record did not pass; another operation may still be in progress.",
     'panelUpdate.outcome.preflightStep.owner_metadata_probe': "Reason: the ownership or permissions of installed CelikPanel files could not be verified.",

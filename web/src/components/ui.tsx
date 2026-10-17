@@ -382,9 +382,14 @@ export function Dialog({
                     thumb reaches, row-end above it. The caller's DOM order
                     decides which control leads, at both widths at once.
                     sm altında ters sütun: birincil denetim, parmağın ulaştığı
-                    ilk denetimdir; üstünde satır sonu hizası. */}
+                    ilk denetimdir; üstünde satır sonu hizası.
+                    On a phone (below sm, 639px and narrower) every footer
+                    control is at least 44px tall and centred, a thumb's target
+                    (alpha.96; they measured 34px). Wider screens are unchanged.
+                    Telefonda (sm altı) her altbilgi denetimi en az 44px'tir. */}
                 <div
-                    className={`flex flex-col-reverse gap-2 sm:flex-row sm:justify-end ${
+                    data-dialog-actions=""
+                    className={`flex flex-col-reverse gap-2 sm:flex-row sm:justify-end max-sm:[&>*]:min-h-11 max-sm:[&>*]:justify-center ${
                         footerLead === undefined ? '' : 'mt-4'
                     }`}
                 >

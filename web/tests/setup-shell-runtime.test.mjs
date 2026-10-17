@@ -33,7 +33,11 @@ function compileURL(relativePath, imports) {
 const stubURL = moduleURL(`
     import React from '${reactURL}';
     const Icon = props => React.createElement('i', props);
-    export const LogOut = Icon, ChevronDown = Icon, Menu = Icon, KeyRound = Icon, UserCheck = Icon;
+    export const LogOut = Icon, ChevronDown = Icon, Menu = Icon, KeyRound = Icon, UserCheck = Icon, DownloadCloud = Icon;
+    // The Panel's stored update check (alpha.96): the setup shell reads nothing.
+    export const availablePanelUpdate = () => null;
+    export const wholeVersion = (text) => text;
+    export const usePanelUpdateDiscovery = (enabled) => { globalThis.setupShellFixture.discoveryEnabled = enabled; return { status: 'idle', value: null, readAt: 0 }; };
     export const BrandMark = Icon;
     export const BuildCommit = ({ commit }) => 'build ' + commit.slice(0, 12);
     export const ThemeSwitcher = () => React.createElement('button', null, 'Theme');
@@ -66,7 +70,7 @@ const stubURL = moduleURL(`
 const layoutURL = compileURL('../src/components/Layout.tsx', Object.fromEntries([
     './BrandMark', './BuildCommit', 'lucide-react', '../lib/api', '../auth/AuthContext', '../i18n',
     '../nav', '../lib/componentCensus', './ThemeSwitcher', './SkinSwitcher',
-    './LanguageSwitcher', './ChangePasswordModal', './pageHeaderSlot',
+    './LanguageSwitcher', './ChangePasswordModal', './pageHeaderSlot', '../router', '../lib/panelUpdateDiscovery',
 // The shell reads the domain list through the real shared layer.
 ].map(path => [path, stubURL]).concat([['../lib/remote', remoteURL], ['../lib/infrastructureZones', compileURL('../src/lib/infrastructureZones.ts', {})]])));
 const setupModelURL = compileURL('../src/lib/serverSetup.ts', {});

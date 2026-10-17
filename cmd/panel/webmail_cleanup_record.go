@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log"
 	"strings"
+	"time"
 )
 
 // The Panel's own record of a Roundcube install or removal that did not
@@ -16,10 +17,13 @@ import (
 // installed"), so without a record the cleanup stays on the component's own
 // page and the row says nothing.
 //
-// The record is the newest Roundcube install or removal entry the Panel wrote
-// to its audit log: an install that failed, or a removal that was partial or
-// failed, leaves the cleanup offered until a later install or a clean removal
-// is recorded. Nothing here changes the host.
+// The record is the newest of two things the Panel wrote: its newest Roundcube
+// install or removal entry in the audit log, and the webmail profile's newest
+// attempt. An install that failed, a removal that was partial or failed, or a
+// failed webmail attempt leaves the cleanup offered until a later install, a
+// clean removal or a webmail attempt that did not fail is recorded (alpha.96:
+// before, a failed webmail attempt kept the offer even after a later clean
+// removal). Nothing here changes the host.
 //
 // Panel'in, bitmeyen bir Roundcube kurulumu ya da kaldırması hakkındaki kendi
 // kaydı. Bileşenler satırı "Kalıntıları temizle"yi yalnız bu kayıt varken
@@ -79,19 +83,71 @@ func (p *Panel) webmailCleanupRecord(ctx context.Context) string {
 	// anahtar aralığı); daha eski bir kayıt satırda sunulmaz, temizlik
 	// bileşenin kendi sayfasında kalır.
 	args = append([]any{webmailCleanupAuditWindow}, args...)
-	var action string
+	var action, recordedAt string
 	err := p.db.GetDB().QueryRowContext(ctx,
-		`SELECT action FROM audit_logs
+		`SELECT action, COALESCE(created_at, '') FROM audit_logs
 		  WHERE id > (SELECT COALESCE(MAX(id), 0) FROM audit_logs) - ?
 		    AND (`+strings.Join(clauses, " OR ")+`)
 		  ORDER BY id DESC LIMIT 1`,
 		args...,
-	).Scan(&action)
-	if err != nil {
-		if !errors.Is(err, sql.ErrNoRows) {
-			log.Printf("read the Roundcube cleanup record: %v", err)
-		}
+	).Scan(&action, &recordedAt)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		log.Printf("read the Roundcube cleanup record: %v", err)
 		return ""
 	}
-	return webmailCleanupFromAudit(action)
+	audited := err == nil
+	// The webmail profile's newest attempt, read as the mail profiles read it.
+	var status, attemptedAt string
+	attemptErr := p.db.GetDB().QueryRowContext(ctx, `
+		SELECT status, COALESCE(NULLIF(finished_at, ''), NULLIF(updated_at, ''), started_at, '')
+		  FROM service_operations
+		 WHERE kind = ? AND service_id = 'webmail'
+		 ORDER BY started_at DESC, updated_at DESC, created_at DESC, id DESC
+		 LIMIT 1`,
+		serviceOperationKindMailProfileInstall,
+	).Scan(&status, &attemptedAt)
+	if attemptErr != nil && !errors.Is(attemptErr, sql.ErrNoRows) {
+		log.Printf("read the webmail attempt for the Roundcube cleanup record: %v", attemptErr)
+	}
+	attempted := attemptErr == nil
+	switch {
+	case attempted && audited:
+		// The newer of the two decides; at an equal second the Roundcube
+		// entry, the more specific one, decides.
+		if webmailAttemptAfter(attemptedAt, recordedAt) {
+			return webmailCleanupFromAttempt(status)
+		}
+		return webmailCleanupFromAudit(action)
+	case attempted:
+		return webmailCleanupFromAttempt(status)
+	case audited:
+		return webmailCleanupFromAudit(action)
+	}
+	return ""
+}
+
+// webmailCleanupFromAttempt: a failed webmail attempt may have left Roundcube
+// files; any other state records nothing to clean up.
+func webmailCleanupFromAttempt(status string) string {
+	if status == serviceOperationFailed {
+		return webmailCleanupInstallFailed
+	}
+	return ""
+}
+
+// webmailAttemptAfter compares the attempt's moment (RFC 3339, the Panel's
+// clock) with the audit entry's (SQLite datetime('now'), UTC, whole seconds).
+// A moment that cannot be read is not newer.
+func webmailAttemptAfter(attemptedAt, recordedAt string) bool {
+	attempt, err := time.Parse(time.RFC3339Nano, attemptedAt)
+	if err != nil {
+		return false
+	}
+	recorded, err := time.Parse("2006-01-02 15:04:05", recordedAt)
+	if err != nil {
+		if recorded, err = time.Parse(time.RFC3339Nano, recordedAt); err != nil {
+			return true
+		}
+	}
+	return attempt.UTC().Truncate(time.Second).After(recorded.UTC())
 }

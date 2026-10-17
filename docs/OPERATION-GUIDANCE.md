@@ -9153,3 +9153,172 @@ browser screen check was not re-run after the last review fixes; and installed
 package versions for every component are still not read. Nothing is "worked" or
 "failed" until the owner reports it. P0.1-P0.5 stay **partial**; this entry
 closes and advances nothing.
+
+### Update discovery and the update screen (D-035, 2026-10-17)
+
+The owner asked, while updating to alpha.95, that the panel check for updates at
+regular intervals, warn that an update exists, and help with the update (the
+owner's words are in D-035). In source for the v0.1.0-alpha.96 candidate; nothing
+measured on an installed server; no native record, because the updater's mutation
+path is unchanged.
+
+**Who acts.** The panel looks by itself; nobody has to press anything to learn
+that a release exists. The owner acts only to start an update, from the panel's own
+update screen (Settings → CelikPanel updates). Nothing installs by itself, and an
+available update is information, never an alarm.
+
+**What the panel does by itself.**
+
+- A read-only check of the signed release at celikpanel.net, made by the panel
+  process, about 2 minutes after the panel starts and then every 12 hours (with a
+  random spread of 30 seconds at the start and 30 minutes afterwards). It is the
+  same check as the "Check for updates" button. One check is bounded at 40 seconds.
+  It changes nothing on the server and writes no update record. (Its readiness
+  read is the readiness check's: it takes the panel's own change lease only for a
+  quick in-process check and releases it before asking the Agent. Writing a
+  result holds the lease only for that check and the write itself.)
+- After a failed check the next try is in 1 hour, then in 3 hours, then the
+  12-hour period again; a successful check resets this. There is no retry storm.
+- It is skipped, and tried again in 1 hour, when a check cannot be made safely:
+  the panel accepted an update start in the last hour; the Agent reports another
+  change in progress or a state it cannot verify; server setup is changing the
+  server (setup waiting for a DNS record does not stop it); or the Agent does not
+  answer. A skip is an unmet condition, not a failure. A busy package manager does
+  not skip it, because reading the release does not touch packages. A skip is kept
+  in memory only: it never replaces the known result, and the card says it beside
+  that result.
+- It never runs while the panel is shutting down; an interrupted check keeps
+  nothing. Switched on again, the schedule continues 12 hours after the last
+  completed check.
+- The owner can switch it off in Settings → CelikPanel updates, "Check for updates
+  automatically" (on by default): "Once every 12 hours the panel asks
+  celikpanel.net whether a newer signed release exists. Nothing is installed by
+  itself." Off means the schedule makes no network read at all; the "Check for
+  updates" button still works. If saving the setting fails: "The setting could not
+  be saved and is unchanged. Try again."
+- The result is stored, but never while an update is admitted or running: right
+  before writing, the panel reads again that no update was admitted and that the
+  server reports no change in progress; otherwise it keeps the result in memory,
+  shows it, and writes it on the next idle pass. (A write during the updater's
+  read-only check would make that check stop.) A failed check keeps the release
+  that was found before it, so a passing outage does not hide an update that is
+  still waiting. After an update, a stored release that the panel already is (or
+  that is older than it) is cleared, and the notice disappears.
+
+**What the owner sees in each state.** Only administrators see or read any of it.
+The update card opens already knowing the stored result, without a button press
+and without a call to the release server. It has one status line:
+
+| State | What the status line says |
+|---|---|
+| Never checked | "This panel has not checked for updates yet." |
+| Current | "You are on the latest version (checked 2 hours ago, automatically)." (after a manual check: "You are on the latest version (checked 2 hours ago).") |
+| Update available | "v0.1.0-alpha.96 is available (found 2 hours ago)." |
+| Earlier attempt stopped | One notice above "Before you update", neutral because nothing was changed: "An earlier update to this version stopped before changing the installed version", then "{version} was tried on this server on {time} and stopped before changing the installed version or its data; this server runs {current} as before. Starting it again is safe; if the reason recorded for that attempt names a condition on this server, resolve it first." An attempt that was rolled back or failed keeps the attention mark and its own words. |
+| Automatic check failed | "Last automatic check: 2 hours ago — could not get a verified answer from the release server (celikpanel.net)." then "The next check runs by itself at 15:30; you can also check now." |
+| Result not known (timeout) | "Last automatic check: 2 hours ago — the check did not finish in time, so its result is not known." then the same next-check line |
+| Skipped | Said under the known result, which stays: "The last automatic check was skipped 2 hours ago: another change was in progress on the server." Other reasons in the same place: "an update was in progress"; "server setup was changing the server"; "the server's change state could not be read"; "the panel's Agent did not answer". |
+| Switched off | "Automatic checks are off. Press "Check for updates" to look now." |
+| Reading | "Reading the last update check…"; if the stored result cannot be read: "The result of the last update check could not be read. Nothing was changed; you can check now." |
+
+Other reasons a failed check can give, in the same sentence: "this panel and its
+Agent cannot use signed updates as they are installed"; "the Agent reported a
+different running version than the panel"; "the answer was not a valid signed
+release for this server"; "the panel's Agent did not answer" (a manual check only:
+an unanswered automatic check is skipped instead).
+
+When an update is available, the card shows "Before you update": "The panel and
+its Agent restart once, for about N seconds." (N comes from the last measured
+restart, at least 90); "Hosted websites, mail, DNS and databases keep running
+during the update."; "This is an alpha release: a current backup of important data
+is recommended before you update." (plain muted text, not an amber box); "Nothing
+starts by itself: the update begins only when you press the button below."; "You
+can follow every step on this page; it reconnects by itself after the restart."
+Then the readiness result ("The server is ready for the update." with a check
+mark; a busy server keeps its attention box and reason) and one filled button,
+"Update to v0.1.0-alpha.96". "Check for updates" is outlined. The version, commit,
+platform, sequence, package size and SHA-256 are in a collapsed "Technical
+details". While the button's own check runs the card says "Asking celikpanel.net
+for a newer signed release…" with motion.
+
+Outside the card, when a release is available (and only then): a small link under
+the version line in the sidebar, "Update available · v0.1.0-alpha.96"; one quiet
+row at the top of the Dashboard, "A new CelikPanel version is available:
+v0.1.0-alpha.96", with "Review and update" and "Remind me later" (hides the row for
+24 hours in this browser for that version; the sidebar link stays); and, in
+Settings, a small dot and "Update available · v0.1.0-alpha.96" beside "CelikPanel
+updates". The Dashboard row is not part of "Needs attention", because an update is
+not a problem. **A failed, unknown or skipped automatic check shows nothing outside
+the update card.** The browser reads the stored result once per screen when its
+copy is older than 5 minutes, and again every 30 minutes and when the tab is shown
+after that long, only while visible (reads only).
+
+**How a failed check resumes.** Nothing needs to be done. The panel and the hosted
+services work as before. The next try is in 1 hour, then in 3 hours, then at the
+12-hour period; the status line gives the time of the next check. The owner can
+press "Check for updates" at any time. A release found earlier stays offered
+through a failed check.
+
+**Three states that are kept apart** (D-024):
+
+- *Verified failure.* The panel asked and got no verified answer ("could not get a
+  verified answer from the release server"; "the answer was not a valid signed
+  release for this server"; "the Agent reported a different running version than
+  the panel"). Who acts: nobody, or the owner may check now.
+- *Not known.* The check did not finish in time (the 40-second bound): the result
+  is not known, which is not a failure and not "no update".
+- *Skipped.* A condition was not met (an update, setup or another change is in
+  progress; the Agent did not answer). The check was not made, so nothing is known
+  from it; it is tried again in 1 hour and is not counted as a failure.
+
+**Start is unchanged.** The panel runs the discovery again and requires the exact
+same target before any start. An update never starts by itself, from a schedule, a
+poll or a notice; only an administrator starts it, from the panel's own update
+screen. Installed panels are updated only by their owners.
+
+**API (administrators only).** `GET /api/v1/panel/update/discovery` returns the
+stored result and the switch without calling the Agent or the network; `PUT` on the
+same path saves the switch. The existing `/update/status` answers one update
+request's status by its request id and kept its shape, so the new read has its own
+path.
+
+**Open.** Nothing is measured on an installed server. The scheduled check has not
+run against a real Agent or the real release server (Go tests fake the Agent; the
+browser batch uses a loopback mock). P0.1-P0.5 stay **partial**; this entry closes
+and advances nothing.
+
+### Frankfurt's update to alpha.95 stopped in the read-only check (2026-10-17)
+
+**Observed by the owner.** The update of Frankfurt to v0.1.0-alpha.95, started from
+the panel's own update screen, stopped in its read-only check. This is the owner's
+report and screen as the release preparer understood them; nothing was run on
+Frankfurt, and nothing from it is stored as a file here. Boston: nothing about its
+alpha.95 update is recorded here.
+
+**What is known now.**
+
+- Frankfurt stayed on alpha.94. A stop in the read-only check happens before the
+  installed version is changed or any service is stopped, so nothing installed was
+  changed.
+- The stop dialog showed only the generic reason: "Reason: a read-only check could
+  not verify the current installation."
+- The concrete cause is **not known**. The Details text of that dialog is pending
+  from the owner. No cause is guessed here.
+
+**What the alpha.96 candidate changes about it (in source).** Two steps of the
+recovery tool's read-only check had no words and fell back to the generic reason;
+they now say what they mean. `mode`: "Reason: the recovery tool was asked for a
+kind of check it does not know, so it did not check the installation." `owner`:
+"Reason: the read-only check was not running with the server's administrator (root)
+rights, so it could not read the installation." For any other step the page has no
+words for, the server's own first diagnostic line is now shown under the generic
+reason ("The server reported: …", sanitized), instead of only inside the collapsed
+Details. These texts do not say that either of these steps is what stopped
+Frankfurt. Whether it was one of them, or something else, is decided by the owner's
+Details text, not by this entry.
+
+**Next action.** The owner sends the Details text of the stop dialog. When it
+arrives, this entry is completed with the verified cause and, if the cause is on
+the server, the owner's next step in the panel or with a short terminal command.
+Until then nothing is guessed, and the owner decides when to start the update
+again. P0.1-P0.5 stay **partial**; this entry closes and advances nothing.

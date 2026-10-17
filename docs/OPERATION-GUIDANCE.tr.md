@@ -279,7 +279,7 @@ eski sürüme döndüğü upd2 Debian 13 denemesinden (bulgular O1-O4).
     neden kaydedilmedi". Kim: sunucuda kimse. Sonraki eylem: düzeltilmiş sürüm
     yayımlanana kadar aynı sürümü yeniden başlatmayın; sunucunun iletisi bu
     sunucudaki bir sorunu belirtiyorsa önce onu giderin. Devam: hiçbir şey
-    kendiliğinden sürmez; daha yeni sürüm "Güncellemeyi kontrol et" ile görünür.
+    kendiliğinden sürmez; daha yeni sürüm "Güncellemeleri denetle" ile görünür.
   - Kurtarma sürüyor, bekliyor, duraklatıldı ya da işlem gerekiyor: kurtarma
     ekranının o durumdaki metinleri; bildirim aynı kaydı okumayı sürdürür.
   - Henüz kayıt yok: önce "okunuyor", sonra "hangi sürümün çalıştığı
@@ -9121,3 +9121,173 @@ düzeltmelerinden sonra yeniden çalıştırılmadı; ve her bileşen için kuru
 sürümleri hâlâ okunmuyor. Sahip bildirene kadar hiçbir şey "çalıştı" ya da
 "başarısız" değildir. P0.1-P0.5 **kısmi** kalır; bu girdi hiçbir şeyi kapatmaz ya
 da ilerletmez.
+
+### Güncelleme keşfi ve güncelleme ekranı (D-035, 17 Ekim 2026)
+
+Sahip, alpha.95'e güncellerken panelin güncellemeleri düzenli aralıklarla
+denetlemesini, güncelleme var diye uyarmasını ve güncellemede yardımcı olmasını
+istedi (sahibin sözleri D-035'tedir). v0.1.0-alpha.96 adayı için kaynakta; kurulu
+bir sunucuda hiçbir şey ölçülmedi; güncelleyicinin değiştirme yolu değişmediği
+için gerçek sistem kaydı yok.
+
+**Kim işlem yapar.** Panel kendiliğinden bakar; bir sürümün var olduğunu öğrenmek
+için kimsenin bir şeye basması gerekmez. Sahip yalnız güncellemeyi başlatmak için
+işlem yapar, panelin kendi güncelleme ekranından (Ayarlar → CelikPanel
+güncellemeleri). Hiçbir şey kendiliğinden kurulmaz ve bulunan bir güncelleme
+bilgidir, asla alarm değildir.
+
+**Panelin kendiliğinden yaptığı.**
+
+- celikpanel.net'teki imzalı sürümün salt-okur denetimi; panel işlemi yapar,
+  panel başladıktan yaklaşık 2 dakika sonra ve ardından her 12 saatte bir
+  (başlangıçta 30 saniye, sonra 30 dakikalık rastgele sapmayla). "Güncellemeleri
+  denetle" düğmesiyle aynı denetimdir. Bir denetim 40 saniyeyle sınırlıdır.
+  Sunucuda hiçbir şeyi değiştirmez ve güncelleme kaydı yazmaz. (Hazır olma
+  okuması hazır olma denetiminkidir: panelin kendi değişiklik kilidini yalnız kısa
+  bir süreç içi denetim için alır ve Agent'a sormadan önce bırakır. Bir sonucu
+  yazmak kilidi yalnız o denetim ve yazmanın kendisi için tutar.)
+- Başarısız bir denetimden sonra bir sonraki deneme 1 saat, sonra 3 saat sonradır;
+  sonra yine 12 saatlik dönem gelir; başarılı bir denetim bunu sıfırlar. Yeniden
+  deneme fırtınası yoktur.
+- Güvenle yapılamadığında atlanır ve 1 saat sonra yeniden denenir: panel son bir
+  saat içinde bir güncelleme başlatmayı kabul ettiyse; Agent süren başka bir
+  değişiklik ya da doğrulayamadığı bir durum bildiriyorsa; sunucu kurulumu
+  sunucuyu değiştiriyorsa (bir DNS kaydı bekleyen kurulum onu durdurmaz); ya da
+  Agent yanıt vermiyorsa. Atlanma karşılanmamış bir koşuldur, başarısızlık
+  değildir. Meşgul bir paket yöneticisi denetimi atlatmaz, çünkü sürümü okumak
+  paketlere dokunmaz. Atlanma yalnız bellekte tutulur: bilinen sonucun yerini
+  asla almaz ve kart onu o sonucun yanında söyler.
+- Panel kapanırken asla çalışmaz; yarıda kalan bir denetim hiçbir şey tutmaz.
+  Yeniden açılan zamanlama son tamamlanan denetimden 12 saat sonra sürer.
+- Sahip bunu Ayarlar → CelikPanel güncellemeleri içindeki "Güncellemeleri
+  otomatik denetle" ile kapatabilir (varsayılan açık): "Panel 12 saatte bir
+  celikpanel.net'e daha yeni imzalı bir sürüm olup olmadığını sorar. Hiçbir şey
+  kendiliğinden kurulmaz." Kapalı olması, zamanlamanın hiçbir ağ okuması
+  yapmaması demektir; "Güncellemeleri denetle" düğmesi yine çalışır. Ayar
+  kaydedilemezse: "Ayar kaydedilemedi ve değişmedi. Yeniden deneyin."
+- Sonuç saklanır, ama bir güncelleme kabul edilmiş ya da sürüyorken asla: yazmadan
+  hemen önce panel, hiçbir güncellemenin kabul edilmediğini ve sunucunun süren bir
+  değişiklik bildirmediğini yeniden okur; aksi hâlde sonucu bellekte tutar,
+  gösterir ve bir sonraki boşta geçişte yazar. (Güncelleyicinin salt-okur denetimi
+  sırasında yazmak o denetimi durdururdu.) Başarısız bir denetim ondan önce bulunan
+  sürümü korur; böylece geçici bir kesinti hâlâ bekleyen bir güncellemeyi gizlemez.
+  Güncellemeden sonra, panelin zaten olduğu (ya da ondan eski olan) saklı bir
+  sürüm temizlenir ve bildirim kaybolur.
+
+**Sahip her durumda ne görür.** Bunların hiçbirini yöneticiler dışında kimse
+görmez ya da okumaz. Güncelleme kartı, bir düğmeye basılmadan ve sürüm sunucusuna
+çağrı yapılmadan, kayıtlı sonucu bilerek açılır. Tek bir durum satırı vardır:
+
+| Durum | Durum satırı ne der |
+|---|---|
+| Hiç denetlenmedi | "Bu panel henüz güncelleme denetimi yapmadı." |
+| Güncel | "En son sürümü kullanıyorsunuz (2 saat önce otomatik olarak denetlendi)." (elle denetimden sonra: "En son sürümü kullanıyorsunuz (2 saat önce denetlendi).") |
+| Güncelleme var | "v0.1.0-alpha.96 sürümü var (2 saat önce bulundu)." |
+| Önceki deneme durdu | "Güncellemeden önce"nin üstünde tek bir bildirim; hiçbir şey değişmediği için nötr: "Bu sürüme yapılan önceki güncelleme kurulu sürümü değiştirmeden durdu", ardından "{version} bu sunucuda {time} tarihinde denendi ve kurulu sürümü ve verilerini değiştirmeden durdu; bu sunucu {current} sürümünü eskisi gibi çalıştırıyor. Yeniden başlatmak güvenlidir; o deneme için kaydedilen neden bu sunucudaki bir durumu belirtiyorsa önce onu giderin." Geri alınan ya da başarısız olan bir deneme kendi dikkat işaretini ve sözlerini korur. |
+| Otomatik denetim başarısız | "Son otomatik denetim: 2 saat önce — sürüm sunucusundan (celikpanel.net) doğrulanmış bir yanıt alınamadı." ardından "Sonraki denetim 15:30 saatinde kendiliğinden yapılır; isterseniz şimdi de denetleyebilirsiniz." |
+| Sonuç bilinmiyor (zaman aşımı) | "Son otomatik denetim: 2 saat önce — denetim zamanında bitmedi, bu yüzden sonucu bilinmiyor." ardından aynı sonraki denetim satırı |
+| Atlandı | Yerinde kalan bilinen sonucun altında söylenir: "Son otomatik denetim 2 saat önce atlandı: sunucuda başka bir değişiklik sürüyordu." Aynı yerdeki diğer nedenler: "bir güncelleme sürüyordu"; "sunucu kurulumu sunucuyu değiştiriyordu"; "sunucunun değişiklik durumu okunamadı"; "panelin Agent'ı yanıt vermedi". |
+| Kapalı | "Otomatik denetim kapalı. Şimdi bakmak için "Güncellemeleri denetle"ye basın." |
+| Okunuyor | "Son güncelleme denetimi okunuyor…"; kayıtlı sonuç okunamazsa: "Son güncelleme denetiminin sonucu okunamadı. Hiçbir şey değiştirilmedi; şimdi denetleyebilirsiniz." |
+
+Başarısız bir denetimin aynı cümlede verebileceği diğer nedenler: "bu panel ve
+Agent'ı kuruldukları hâliyle imzalı güncellemeleri kullanamıyor"; "Agent, panelden
+farklı bir çalışan sürüm bildirdi"; "yanıt, bu sunucu için geçerli bir imzalı sürüm
+değildi"; "panelin Agent'ı yanıt vermedi" (yalnız elle denetimde: yanıtsız bir
+otomatik denetim bunun yerine atlanır).
+
+Güncelleme varken kart "Güncellemeden önce"yi gösterir: "Panel ve Agent'ı bir kez,
+yaklaşık N saniyeliğine yeniden başlar." (N son ölçülen yeniden başlatmadan gelir,
+en az 90); "Barındırılan web siteleri, posta, DNS ve veritabanları güncelleme
+sırasında çalışmaya devam eder."; "Bu bir alfa sürümüdür: güncellemeden önce
+önemli verilerin güncel bir yedeği önerilir." (sade soluk metin, sarı kutu
+değil); "Hiçbir şey kendiliğinden başlamaz: güncelleme yalnız aşağıdaki düğmeye
+bastığınızda başlar."; "Her adımı bu sayfada izleyebilirsiniz; sayfa yeniden
+başlatmadan sonra kendiliğinden yeniden bağlanır." Ardından hazır olma sonucu
+("Sunucu güncellemeye hazır." onay işaretiyle; meşgul bir sunucu dikkat kutusunu
+ve nedenini korur) ve tek dolu düğme, "v0.1.0-alpha.96 sürümüne güncelle".
+"Güncellemeleri denetle" çerçevelidir. Sürüm, commit, platform, sıra, paket
+boyutu ve SHA-256 daralmış bir "Teknik ayrıntılar" içindedir. Düğmenin kendi
+denetimi sürerken kart hareketle "celikpanel.net’e daha yeni imzalı bir sürüm
+olup olmadığı soruluyor…" der.
+
+Kartın dışında, bir sürüm varken (ve yalnız o zaman): kenar çubuğunda sürüm
+satırının altında küçük bir bağlantı, "Güncelleme var · v0.1.0-alpha.96"; Pano'nun
+en üstünde tek sessiz bir satır, "Yeni bir CelikPanel sürümü var: v0.1.0-alpha.96",
+"İncele ve güncelle" ve "Sonra hatırlat" ile (satırı o sürüm için bu tarayıcıda 24
+saat gizler; kenar çubuğu bağlantısı kalır); ve Ayarlar'da "CelikPanel
+güncellemeleri"nin yanında küçük bir nokta ve "Güncelleme var · v0.1.0-alpha.96".
+Pano satırı "İlgi istiyor"un parçası değildir, çünkü güncelleme bir sorun değildir.
+**Başarısız, bilinmeyen ya da atlanan bir otomatik denetim güncelleme kartının
+dışında hiçbir şey göstermez.** Tarayıcı, kayıtlı sonucu her ekranda bir kez, kendi
+kopyası 5 dakikadan eskiyse okur; sonra her 30 dakikada bir ve sekme o kadar süre
+sonra gösterildiğinde yeniden okur, yalnız görünürken (yalnız okuma).
+
+**Başarısız bir denetim nasıl sürer.** Yapılacak bir şey yoktur. Panel ve
+barındırılan hizmetler eskisi gibi çalışır. Bir sonraki deneme 1 saat, sonra 3
+saat sonradır, sonra 12 saatlik dönemde; durum satırı sonraki denetimin saatini
+verir. Sahip istediği zaman "Güncellemeleri denetle"ye basabilir. Daha önce
+bulunan bir sürüm, başarısız bir denetim boyunca sunulmaya devam eder.
+
+**Ayrı tutulan üç durum** (D-024):
+
+- *Doğrulanmış başarısızlık.* Panel sordu ve doğrulanmış bir yanıt alamadı
+  ("sürüm sunucusundan doğrulanmış bir yanıt alınamadı"; "yanıt, bu sunucu için
+  geçerli bir imzalı sürüm değildi"; "Agent, panelden farklı bir çalışan sürüm
+  bildirdi"). Kim işlem yapar: kimse ya da sahip şimdi denetleyebilir.
+- *Bilinmiyor.* Denetim zamanında bitmedi (40 saniyelik sınır): sonuç bilinmiyor;
+  bu bir başarısızlık değildir ve "güncelleme yok" da demek değildir.
+- *Atlandı.* Bir koşul karşılanmadı (bir güncelleme, kurulum ya da başka bir
+  değişiklik sürüyor; Agent yanıt vermedi). Denetim yapılmadı, bu yüzden ondan
+  hiçbir şey bilinmez; 1 saat sonra yeniden denenir ve başarısızlık sayılmaz.
+
+**Başlatma değişmedi.** Panel keşfi yeniden çalıştırır ve herhangi bir başlatmadan
+önce tam olarak aynı hedefi ister. Bir güncelleme asla kendiliğinden, bir
+zamanlamayla, yoklamayla ya da bildirimle başlamaz; onu yalnız bir yönetici,
+panelin kendi güncelleme ekranından başlatır. Kurulu panelleri yalnız sahipleri
+günceller.
+
+**API (yalnız yöneticiler).** `GET /api/v1/panel/update/discovery`, Agent'ı ya da
+ağı çağırmadan kayıtlı sonucu ve anahtarı döndürür; aynı yola `PUT` anahtarı
+kaydeder. Mevcut `/update/status` tek bir güncelleme isteğinin durumunu istek
+kimliğiyle yanıtlar ve biçimini korudu; bu yüzden yeni okumanın kendi yolu var.
+
+**Açık.** Kurulu bir sunucuda hiçbir şey ölçülmedi. Zamanlanmış denetim gerçek bir
+Agent'a ya da gerçek sürüm sunucusuna karşı çalışmadı (Go testleri Agent'ı taklit
+eder; tarayıcı turu loopback üzerinde bir taklit kullanır). P0.1-P0.5 **kısmi**
+kalır; bu girdi hiçbir şeyi kapatmaz ya da ilerletmez.
+
+### Frankfurt'un alpha.95 güncellemesi salt-okur denetimde durdu (17 Ekim 2026)
+
+**Sahibin gözlemi.** Frankfurt'un v0.1.0-alpha.95'e güncellemesi, panelin kendi
+güncelleme ekranından başlatıldı ve salt-okur denetiminde durdu. Bu, sürümü
+hazırlayan kişinin anladığı kadarıyla sahibin bildirimi ve ekranıdır; Frankfurt'ta
+hiçbir şey çalıştırılmadı ve ondan hiçbir şey burada dosya olarak saklı değildir.
+Boston: alpha.95 güncellemesine dair burada hiçbir şey kayıtlı değildir.
+
+**Şimdi bilinenler.**
+
+- Frankfurt alpha.94'te kaldı. Salt-okur denetimdeki bir duruş, kurulu sürüm
+  değiştirilmeden ve hiçbir hizmet durdurulmadan önce olur; bu yüzden kurulu hiçbir
+  şey değişmedi.
+- Durma penceresi yalnız genel nedeni gösterdi: "Neden: salt-okur bir denetim
+  mevcut kurulumu doğrulayamadı."
+- Somut neden **bilinmiyor**. O pencerenin Ayrıntılar metni sahipten bekleniyor.
+  Burada hiçbir neden tahmin edilmez.
+
+**alpha.96 adayının bunda değiştirdiği (kaynakta).** Kurtarma aracının salt-okur
+denetiminin iki adımının sözü yoktu ve genel nedene düşüyordu; artık ne
+anlama geldiklerini söylüyorlar. `mode`: "Neden: kurtarma aracından bilmediği türde
+bir denetim istendi, bu yüzden kurulumu denetlemedi." `owner`: "Neden: salt-okur
+denetim sunucunun yönetici (root) yetkileriyle çalışmıyordu, bu yüzden kurulumu
+okuyamadı." Sayfanın sözünün olmadığı başka her adım için, sunucunun kendi ilk tanı
+satırı artık yalnız daralmış Ayrıntılar'ın içinde değil, genel nedenin altında da
+gösterilir ("Sunucunun İngilizce günlük satırı: …", temizlenmiş). Bu metinler,
+Frankfurt'u bu adımlardan birinin durdurduğunu söylemez. Birinin mi, başka bir
+şeyin mi olduğuna bu girdi değil, sahibin Ayrıntılar metni karar verir.
+
+**Sonraki eylem.** Sahip durma penceresinin Ayrıntılar metnini gönderir. Geldiğinde
+bu girdi doğrulanmış nedenle ve neden sunucudaysa sahibin panelden ya da kısa bir
+terminal komutuyla atacağı sonraki adımla tamamlanır. O zamana kadar hiçbir şey
+tahmin edilmez; güncellemeyi yeniden ne zaman başlatacağına sahip karar verir.
+P0.1-P0.5 **kısmi** kalır; bu girdi hiçbir şeyi kapatmaz ya da ilerletmez.

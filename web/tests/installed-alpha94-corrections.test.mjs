@@ -53,7 +53,13 @@ test('the Roundcube cleanup lists the paths the Agent removes, and says what it 
 // shows an unfinished Roundcube install or removal (or a failed webmail
 // attempt); Roundcube's own page always reaches it.
 test('the leftovers cleanup is offered on the row only with a record, and always from Roundcube\'s page', () => {
-  assert.match(services, /const webmailCleanupOffered = webmailCleanup !== null \|\| webmailAttemptFailed;/);
+  // alpha.96: the Panel folds the webmail attempt into the record (the newer
+  // of the Roundcube entry and the webmail attempt decides), so the page
+  // offers the cleanup from the record alone, and the deep link removes its
+  // ?cleanup with a replace so a reload does not reopen the confirmation.
+  assert.match(services, /const webmailCleanupOffered = webmailCleanup !== null;/);
+  assert.doesNotMatch(services, /webmailAttemptFailed/);
+  assert.match(services, /remaining\.delete\('cleanup'\);[\s\S]{0,200}navigate\(location\.pathname \+ \(query \? `\?\$\{query\}` : ''\) \+ location\.hash, \{ replace: true \}\);/);
   assert.match(services, /\{s\.id === 'roundcube' && s\.is_installed === false && webmailCleanupOffered && \(/);
   assert.match(services, /\{s\.id === 'roundcube' && webmailCleanupOffered && \(/);
   assert.match(services, /const decodeWebmailCleanup = \(value: unknown\): WebmailCleanupRecord \| null => \(value === 'install_failed' \|\| value === 'removal_incomplete' \? value : null\);/);
@@ -63,6 +69,7 @@ test('the leftovers cleanup is offered on the row only with a record, and always
   const record = read('../../cmd/panel/webmail_cleanup_record.go');
   assert.match(record, /webmailCleanupInstallFailed\s+= "install_failed"/);
   assert.match(record, /webmailCleanupRemovalIncomplete = "removal_incomplete"/);
+  assert.match(record, /func webmailCleanupFromAttempt\(status string\) string/);
 });
 
 test('a sidebar count is a plain muted number, not a filled pill; null is still a dash, not zero', () => {

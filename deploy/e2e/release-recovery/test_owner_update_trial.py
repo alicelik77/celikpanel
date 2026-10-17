@@ -2137,7 +2137,7 @@ UPD3_SC_CARD = {
           "gereken bir şey yok. Düzeltilmiş bir sürüm yayımlanana kadar v0.1.0-alpha.82 güncellemesini yeniden "
           "başlatmayın. Sunucunun iletisi bu sunucudaki bir sorunu belirtiyorsa önce onu giderin. || Hiçbir işlem "
           "kendiliğinden sürmez: sunucu v0.1.0-alpha.81 sürümünü çalıştırmaya devam eder. Daha yeni bir sürüm "
-          "yayımlandığında “Güncellemeyi kontrol et” onu gösterir."}
+          "yayımlandığında “Güncellemeleri denetle” onu gösterir."}
 UPD3_DEF_SUMMARY = ("reviewed updater failed: exit status 1: !! CELIKPANEL_UPDATE_FAILURE code=update_failed "
                     "state=recovery_required reason=offline panel database migration failed; its original database "
                     "and work evidence are preserved detail=")

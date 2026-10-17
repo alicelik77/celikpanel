@@ -42,7 +42,7 @@ const stub = dataModule(`
   const fill = (text, vars) => Object.entries(vars || {}).reduce((out, [name, value]) => out.split('{' + name + '}').join(String(value)), text);
   const i18n = { t: (key, vars) => (globalThis.bundleWords?.[key] !== undefined ? fill(globalThis.bundleWords[key], vars) : vars ? key + JSON.stringify(vars) : key), locale: 'en' };
   export const useI18n = () => i18n;
-  export const useNavigate = () => (path) => { globalThis.bundleNavigated?.push(path); return true; };
+  export const useNavigate = () => (path, options) => { globalThis.bundleNavigated?.push(path); globalThis.bundleNavigateOptions?.push(options ?? null); return true; };
   export const useLocation = () => ({ hash: '', pathname: '/services', search: globalThis.bundleSearch ?? '' });
   export const useNavigationBlocker = () => {};
   export const Link = (props) => React.createElement('a', null, props.children);
@@ -250,22 +250,39 @@ test('an installed mail bundle opens a dialogue with Repair…, never Verify; on
   } finally { await unmount(); }
 });
 
-test('Verify of a component bundle only reads: usable while the host holds changes for another reason, held with its reason while an operation runs', async () => {
+test('Verify of a component bundle only reads: held with the server’s own reason while readiness says the server is not ready, and while an operation runs', async () => {
   const stopped = payload({ bundles: [webBundle(), dbBundle({ status: 'installed_unverified', action: 'verify' })] });
   stopped.services = stopped.services.map((item) => (item.id === 'mariadb' ? { ...item, status: 'inactive (dead)' } : item));
-  readiness = { ready: false, code: 'HOST_MUTATION_BUSY', reason: 'package_manager_active' };
+  // alpha.96: a busy package manager or host lock holds Verify too, with the
+  // readiness reason, because a rescan could get a "busy" answer then.
+  for (const reason of ['package_manager_active', 'host_lock_busy']) {
+    readiness = { ready: false, code: 'HOST_MUTATION_BUSY', reason };
+    await mount(stopped);
+    try {
+      assert.equal(bundleNode('db.mariadb').props['data-bundle-state'], 'unverified');
+      await press(bundleNode('db.mariadb'));
+      const verify = tree.root.findAll((node) => node.type === 'button' && label(node) === say('services.bundles.verify'))[0];
+      assert.equal(verify.props.disabled, true, `Verify is usable while ${reason}`);
+      assert.equal(verify.props.title, say(`services.mutationReadiness.${reason}`));
+      assert.ok(dialogText().includes(say(`services.mutationReadiness.${reason}`)), dialogText());
+      const before = requests.filter((line) => line === 'POST /api/v1/managed-services/scan').length;
+      await act(async () => { await verify.props.onClick?.(); });
+      assert.equal(requests.filter((line) => line === 'POST /api/v1/managed-services/scan').length, before, 'a held Verify read again');
+      // An install is held: the offer is off.
+      assert.equal(bundleNode('web.nginx_php').props.disabled, true);
+    } finally { await unmount(); readiness = { ready: true }; }
+  }
+
+  // Ready again: Verify reads.
   await mount(stopped);
   try {
-    assert.equal(bundleNode('db.mariadb').props['data-bundle-state'], 'unverified');
     await press(bundleNode('db.mariadb'));
     const verify = tree.root.findAll((node) => node.type === 'button' && label(node) === say('services.bundles.verify'))[0];
-    assert.ok(verify && !verify.props.disabled, 'Verify is off while changes are held');
+    assert.ok(verify && !verify.props.disabled, 'Verify is off on a ready server');
     const before = requests.filter((line) => line === 'POST /api/v1/managed-services/scan').length;
     await press(verify);
     assert.equal(requests.filter((line) => line === 'POST /api/v1/managed-services/scan').length, before + 1, 'Verify did not read again');
-    // An install is held: the offer is off.
-    assert.equal(bundleNode('web.nginx_php').props.disabled, true);
-  } finally { await unmount(); readiness = { ready: true }; }
+  } finally { await unmount(); }
 
   // While a component operation runs, a rescan would be refused as busy:
   // Verify is not offered, and says why (alpha.94 review item 2).
@@ -418,22 +435,35 @@ test('Roundcube leftovers: without the Panel\'s record of an unfinished install 
     assert.equal(leftoversNote(), undefined);
     assert.equal(leftoversButton(), undefined);
   } finally { await unmount(); }
-  // A failed webmail attempt is such a record: an install did not finish.
+  // alpha.96: the Panel folds the webmail attempt into its record (the newer
+  // of the Roundcube entry and the webmail attempt decides). A failed attempt
+  // that a later clean removal followed arrives without a record: nothing.
   const failed = withRoundcube();
   failed.profiles = failed.profiles.map((item) => (item.id === 'webmail' ? { ...item, latest_attempt_status: 'failed', latest_attempt_error: 'roundcube download failed' } : item));
   await mount(failed);
+  try {
+    assert.equal(leftoversNote(), undefined, 'a failed attempt alone still offers the cleanup');
+    assert.equal(leftoversButton(), undefined);
+  } finally { await unmount(); }
+  // The Panel's record of that failed attempt is the offer.
+  await mount({ ...failed, webmail_cleanup: 'install_failed' });
   try {
     assert.equal(label(leftoversNote()), say('services.cleanupWebmailRowNote.install'));
     assert.ok(leftoversButton());
   } finally { await unmount(); }
   // Roundcube's own page opens this page with ?cleanup=roundcube: the dialogue
-  // opens once, whatever the row offers.
+  // opens once, whatever the row offers, and the address loses ?cleanup with
+  // a replace so a reload does not open it again.
   globalThis.bundleSearch = '?cleanup=roundcube';
+  globalThis.bundleNavigated = [];
+  globalThis.bundleNavigateOptions = [];
   await mount(withRoundcube());
   try {
     assert.ok(tree.root.findAll((node) => node.props && node.props['data-webmail-cleanup-list'] !== undefined).length === 1, 'the cleanup link did not open the dialogue');
     assert.equal(leftoversButton(), undefined);
-  } finally { await unmount(); delete globalThis.bundleSearch; }
+    assert.deepEqual(globalThis.bundleNavigated, ['/services']);
+    assert.deepEqual(globalThis.bundleNavigateOptions, [{ replace: true }]);
+  } finally { await unmount(); delete globalThis.bundleSearch; delete globalThis.bundleNavigated; delete globalThis.bundleNavigateOptions; }
 });
 
 test('Roundcube leftovers: with the Panel\'s record, a muted line on the row, a neutral button, and a confirmation that lists what is removed and what is not', async () => {

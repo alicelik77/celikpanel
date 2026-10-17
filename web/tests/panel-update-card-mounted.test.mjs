@@ -6,6 +6,7 @@ import test from 'node:test';
 import React from 'react';
 import TestRenderer, { act } from 'react-test-renderer';
 import ts from 'typescript';
+import { panelUpdateDiscoveryStubSource } from './panelUpdateDiscoveryStub.mjs';
 
 const require = createRequire(import.meta.url);
 // The card re-reads readiness by itself while it says the server is busy; these
@@ -39,7 +40,7 @@ const iconsURL = moduleURL(`
     export const CheckCircle2 = Icon;
     export const DownloadCloud = Icon;
     export const Loader2 = Icon;
-    export const RefreshCw = Icon;
+    export const RefreshCw = Icon, Info = Icon;
 `);
 const uiURL = moduleURL(`
     import React from '${reactURL}';
@@ -92,6 +93,7 @@ const panelURL = compileURL('../src/components/PanelUpdateCard.tsx', [
     [/from ['"]react['"]/g, `from '${reactURL}'`],
     [/from ['"]react\/jsx-runtime['"]/g, `from '${jsxRuntimeURL}'`],
     [/from ['"]lucide-react['"]/g, `from '${iconsURL}'`],
+    [/from ['"]\.\.\/lib\/panelUpdateDiscovery['"]/g, `from '${moduleURL(panelUpdateDiscoveryStubSource())}'`],
     [/from ['"]\.\/ui['"]/g, `from '${uiURL}'`],
     [/from ['"]\.\.\/i18n['"]/g, `from '${i18nURL}'`],
     [/from ['"]\.\.\/lib\/apiError['"]/g, `from '${apiErrorURL}'`],

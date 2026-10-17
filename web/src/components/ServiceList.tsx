@@ -967,14 +967,16 @@ export function ServiceList({ onManageService }: ServiceListProps) {
         setRetryCleanup(true);
         setCleanupAttempt(null);
     };
-    // When the row offers the leftovers cleanup: the Panel recorded a
-    // Roundcube install or removal that did not finish, or the webmail
-    // profile's last attempt failed. Otherwise the cleanup is reached from
-    // Roundcube's own page, which opens this page with ?cleanup=roundcube.
-    // Satır temizliği yalnız kayıt varken sunar; yoksa Roundcube'un kendi
-    // sayfası bu sayfayı ?cleanup=roundcube ile açar.
-    const webmailAttemptFailed = profiles.some((profile) => profile.id === 'webmail' && profile.latest_attempt_status === 'failed');
-    const webmailCleanupOffered = webmailCleanup !== null || webmailAttemptFailed;
+    // When the row offers the leftovers cleanup: the Panel's record says so.
+    // Since alpha.96 the Panel folds the webmail profile's last attempt into
+    // that record (the newer of the Roundcube entry and the webmail attempt
+    // decides), so a later clean removal ends an offer a failed webmail
+    // attempt raised. Otherwise the cleanup is reached from Roundcube's own
+    // page, which opens this page with ?cleanup=roundcube.
+    // Satır temizliği yalnız Panel kaydı varken sunar; kayıt Roundcube girdisi
+    // ile webmail denemesinin yenisidir. Yoksa Roundcube'un kendi sayfası bu
+    // sayfayı ?cleanup=roundcube ile açar.
+    const webmailCleanupOffered = webmailCleanup !== null;
     const webmailCleanupNote: 'removal' | 'install' = webmailCleanup === 'removal_incomplete' ? 'removal' : 'install';
     const cleanupLinkRef = useRef(false);
     useEffect(() => {
@@ -984,6 +986,14 @@ export function ServiceList({ onManageService }: ServiceListProps) {
         if (!roundcube || roundcube.is_installed !== false) return;
         cleanupLinkRef.current = true;
         openWebmailCleanupDialog(roundcube);
+        // The link has done its work: the address loses ?cleanup so a reload
+        // does not open the confirmation again (alpha.96). Replace, not push.
+        // Bağlantı işini yaptı: yeniden yükleme onayı tekrar açmasın diye
+        // adresten ?cleanup kaldırılır.
+        const remaining = new URLSearchParams(location.search);
+        remaining.delete('cleanup');
+        const query = remaining.toString();
+        navigate(location.pathname + (query ? `?${query}` : '') + location.hash, { replace: true });
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [loading, location.search, services]);
     const closeUninstallDialog = () => {
@@ -1352,20 +1362,29 @@ export function ServiceList({ onManageService }: ServiceListProps) {
         }
         setBundleTarget(bundle);
     };
-    // Verify of a component bundle is a rescan. It only reads, so it stays
-    // usable while the host holds changes for another reason; but while a
-    // component operation runs (this page's, a bundle's, or one the server
-    // reports active) a rescan is refused as busy, so it is not offered and
-    // says why (alpha.94 review item 2).
+    // Verify of a component bundle is a rescan. While a component operation
+    // runs (this page's, a bundle's, or one the server reports active) a
+    // rescan is refused as busy, so it is not offered and says why (alpha.94
+    // review item 2). Since alpha.96 it is also held, with the server's own
+    // reason, while the readiness read says the server is not ready for any
+    // other reason (a busy host lock, a running package manager, a state that
+    // could not be verified): the rescan could get a "busy" answer then, and
+    // the page re-reads readiness by itself, so Verify comes back on its own.
     // Bileşen paketinin Doğrula'sı yeniden taramadır; bir bileşen işlemi
-    // sürerken sunulmaz ve nedenini söyler.
+    // sürerken ya da hazırlık okuması sunucunun hazır olmadığını söylerken
+    // sunulmaz ve nedenini söyler.
     const hostOperationActive = hostMutationReadiness?.ready === false
         && (hostMutationReadiness.reason === 'panel_operation_active' || hostMutationReadiness.reason === 'agent_mutation_active');
+    const hostNotReadyReason = hostMutationReadiness?.ready === false && !hostOperationActive
+        ? t(`services.mutationReadiness.${hostMutationReadiness.reason ?? 'state_unverified'}` as Parameters<typeof t>[0])
+        : null;
     const bundleVerifyHeld = componentOperation.locked || hostOperationActive || (bundleSequence.run !== null && bundleSequence.run.phase !== 'stopped')
         ? t('services.bundles.verifyBusy')
-        : scanning
-            ? t('services.bundles.verifyScanning')
-            : null;
+        : hostNotReadyReason
+            ? hostNotReadyReason
+            : scanning
+                ? t('services.bundles.verifyScanning')
+                : null;
     const confirmComponentBundle = () => {
         const bundle = bundleTarget;
         setBundleTarget(null);

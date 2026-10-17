@@ -2,7 +2,7 @@ import { isFinishingStep, isPreflightStop, preflightStopCodes, recoveryFailureCo
 import { systemUpdatePreflightStop, withoutInternalTokens } from './systemUpdateFailure';
 
 /** Preflight steps with reviewed owner wording; any other step uses the generic line. */
-export const preflightSteps = ['panel_database_check', 'agent_ledger_check', 'owner_metadata_probe', 'runtime_selection',
+export const preflightSteps = ['mode', 'owner', 'panel_database_check', 'agent_ledger_check', 'owner_metadata_probe', 'runtime_selection',
     'runtime_revalidation', 'release_boundary', 'material_support', 'database_support', 'database_metadata',
     'idle_probe', 'agent_idle', 'bind_compatibility', 'application_compatibility', 'bootstrap_state'] as const;
 type PreflightStep = typeof preflightSteps[number];
@@ -34,6 +34,7 @@ export type OutcomeKey =
     | `panelUpdate.outcome.preflightStep.${PreflightStep}`
     | 'panelUpdate.outcome.preflightStep.generic'
     | `panelUpdate.outcome.preflightClass.${PreflightReasonClass}`
+    | 'panelUpdate.outcome.serverMessage'
     | 'panelUpdate.outcome.stoppedNext'
     | 'panelUpdate.outcome.stoppedResume'
     | 'panelUpdate.outcome.cause.generic'
@@ -137,7 +138,7 @@ function causeKey(code: RecoveryFailureCode | undefined): OutcomeKey {
 // The refused-check steps and the reason classes live in the server screen
 // catalogue (the boot catalogue stays small); until it has arrived the notice
 // shows the boot catalogue's generic reason.
-function preflightReasonLine(preflight: { step: string; reasonClass?: string } | undefined): OutcomeText {
+function preflightReasonLine(preflight: { step: string; reasonClass?: string } | undefined): { key: OutcomeKey; fallback?: OutcomeKey } {
     const generic: OutcomeKey = 'panelUpdate.outcome.preflightStep.generic';
     if (preflight?.reasonClass && (preflightReasonClasses as readonly string[]).includes(preflight.reasonClass)) {
         return { key: `panelUpdate.outcome.preflightClass.${preflight.reasonClass as PreflightReasonClass}`, fallback: generic };
@@ -163,17 +164,31 @@ export function failedUpdateGuidance(observation: RecoveryObservation | null, in
         // A translated reason class says what happened and what to do: the
         // server's line is then not shown (upd4 O7).
         const translated = !!preflight?.reasonClass && (preflightReasonClasses as readonly string[]).includes(preflight.reasonClass);
+        const reason = preflightReasonLine(preflight);
+        // A step this page has no words for gets only the generic reason, so
+        // the server's own first line follows it in view rather than inside
+        // the closed Details (alpha.96: Frankfurt's update to alpha.95 stopped
+        // here and the cause was hidden). It is already sanitized and short.
+        // Sözcüğü olmayan adımda sunucunun ilk satırı nedenin altında görünür.
+        const generic = reason.key === 'panelUpdate.outcome.preflightStep.generic' && !translated;
+        // The first line, cut at 240 characters with an ellipsis; when it is not
+        // the whole message, the whole message stays behind Details too.
+        const lineOne = !product && reported ? reported.split(/\r?\n/)[0] : '';
+        const firstLine = lineOne.length > 240 ? `${lineOne.slice(0, 239).trimEnd()}…` : lineOne;
+        const inline = generic && firstLine !== '';
+        const complete = inline && firstLine === reported;
         return {
             state: 'unchanged',
             tone: 'neutral',
             title: { key: 'panelUpdate.outcome.stoppedTitle' },
             lines: [
                 { key: 'panelUpdate.outcome.stopped', vars: versions },
-                preflightReasonLine(preflight),
+                reason,
+                ...(inline ? [{ key: 'panelUpdate.outcome.serverMessage' as const, vars: { message: firstLine } }] : []),
                 { key: 'panelUpdate.outcome.stoppedNext' },
                 { key: 'panelUpdate.outcome.stoppedResume', vars: versions },
             ],
-            serverMessage: !product && !translated && reported ? reported : undefined,
+            serverMessage: !product && !translated && !complete && reported ? reported : undefined,
         };
     }
     if (observation?.observation === 'known' && observation.phase === 'recovered'

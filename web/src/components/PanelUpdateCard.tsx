@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { AlertTriangle, CheckCircle2, DownloadCloud, Loader2, RefreshCw } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, DownloadCloud, Info, Loader2, RefreshCw } from 'lucide-react';
 import { Button } from './ui';
 import { useI18n } from '../i18n';
 import { apiErrorText, readApiError } from '../lib/apiError';
@@ -21,6 +21,16 @@ import {
 import { decodePreviousUpdateAttempt, previousAttemptStopped, type PreviousUpdateAttempt } from '../lib/systemUpdateOutcome';
 import { SystemUpdateSteps, systemUpdateStepsAnnouncement } from './SystemUpdateSteps';
 import { BuildCommit } from './BuildCommit';
+import {
+    PANEL_UPDATE_DISCOVERY_URL,
+    clockTime,
+    decodePanelUpdateDiscovery,
+    publishPanelUpdateDiscovery,
+    refreshPanelUpdateDiscovery,
+    relativeAge,
+    usePanelUpdateDiscovery,
+    type PanelUpdateDiscovery,
+} from '../lib/panelUpdateDiscovery';
 
 type Translate = ReturnType<typeof useI18n>['t'];
 
@@ -34,12 +44,13 @@ type UpdateCheck = {
     previous_attempt?: PreviousUpdateAttempt;
 };
 
-// The bottom message's tone (D-033, 2026-10-16): a check that found nothing
-// is a good state and is drawn with a check mark; a found update is neutral
-// information; only a check or start that failed keeps the warning mark.
-// Alttaki iletinin tonu: yeni guncelleme yoksa onay, bulunduysa notr bilgi;
-// uyari isareti yalniz okunamayan kontrol veya baslatilamayan guncellemede.
-type MessageTone = 'latest' | 'available' | 'warning';
+// The bottom message is kept for what the owner's own press could not do: a
+// check or a start that failed (warning mark). What the panel knows about
+// updates is the one status line at the top (alpha.96, D-035), so a found
+// update or the latest version is never said a second time.
+// Alttaki ileti yalniz basarisiz kontrol ya da baslatma icindir; bilinen durum
+// ustteki tek durum satiridir.
+type MessageTone = 'warning';
 
 type PanelBuild = {
     version: string;
@@ -54,6 +65,8 @@ export const PANEL_UPDATE_CHECK_TIMEOUT_MS = 8000;
 // Kart sunucu mesgul derken hazirligi kendisi yeniden okur: yalniz GET, ayni
 // anda tek okuma, yalniz sekme gorunurken. Guncellemeyi asla baslatmaz.
 export const PANEL_UPDATE_READINESS_POLL_MS = 5000;
+/** How often the card redraws its ages ("2 hours ago") while visible. */
+export const PANEL_UPDATE_AGE_TICK_MS = 60_000;
 
 export type PanelUpdateCheckRuntime = {
     fetch: typeof fetch;
@@ -134,6 +147,7 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
     const { t, locale } = useI18n();
     const systemUpdate = useSystemUpdateOperation();
     const [currentBuild, setCurrentBuild] = useState<PanelBuild | null>(null);
+    // The result of this card's own "Check for updates" press, if any.
     const [check, setCheck] = useState<UpdateCheck | null>(null);
     const [checking, setChecking] = useState(false);
     const [readinessChecking, setReadinessChecking] = useState(false);
@@ -141,10 +155,43 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
     const [starting, setStarting] = useState(false);
     const [message, setMessage] = useState('');
     const [messageTone, setMessageTone] = useState<MessageTone>('warning');
+    const [savingAuto, setSavingAuto] = useState(false);
+    const [autoError, setAutoError] = useState(false);
     const actionInFlight = useRef(false);
     const lifecycleGeneration = useRef(0);
     const readinessAbort = useRef<AbortController | null>(null);
     const updateCheckAbort = useRef<AbortController | null>(null);
+    const readinessForTarget = useRef('');
+    // The ages on the status line ("2 hours ago") follow the clock while the
+    // card is visible: one re-render a minute, none while the tab is hidden,
+    // one at once when it is shown again. It reads nothing.
+    // Yaslar kart gorunurken dakikada bir yenilenir; hicbir sey okunmaz.
+    const [, setAgeTick] = useState(0);
+    useEffect(() => {
+        let timer: ReturnType<typeof globalThis.setInterval> | undefined;
+        const visible = () => typeof document === 'undefined' || document.visibilityState === 'visible';
+        const start = () => {
+            if (timer === undefined && visible()) timer = globalThis.setInterval(() => setAgeTick((tick) => tick + 1), PANEL_UPDATE_AGE_TICK_MS);
+        };
+        const stop = () => {
+            if (timer !== undefined) globalThis.clearInterval(timer);
+            timer = undefined;
+        };
+        const onVisibility = () => {
+            if (visible()) {
+                setAgeTick((tick) => tick + 1);
+                start();
+            } else {
+                stop();
+            }
+        };
+        start();
+        if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVisibility);
+        return () => {
+            stop();
+            if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onVisibility);
+        };
+    }, []);
 
     useEffect(() => () => {
         lifecycleGeneration.current += 1;
@@ -153,6 +200,14 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
         updateCheckAbort.current?.abort();
         updateCheckAbort.current = null;
     }, []);
+
+    // The stored result of the Panel's last check, manual or automatic
+    // (D-035): the card opens already knowing it, with no button press and
+    // no call to the release server. Read again once when the card opens.
+    // Panelin son kontrolunun saklanan sonucu: kart dugmeye basilmadan bilir.
+    const discovery = usePanelUpdateDiscovery(true);
+    useEffect(() => { void refreshPanelUpdateDiscovery(); }, []);
+    const stored: PanelUpdateDiscovery | null = discovery.value;
 
     // The update this browser follows (SystemUpdateOperation): the card says
     // what the notice says (owner report 2026-10-10).
@@ -183,6 +238,22 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
         return () => { cancelled = true; };
     }, [verifying]);
 
+    // What is offered: this card's own check when it ran, otherwise the
+    // stored one. The server checks the exact target again before any start.
+    // Sunulan: kartin kendi kontrolu, yoksa saklanan sonuc.
+    const storedTarget = stored?.target && validUpdateTarget(stored.target) ? stored.target as UpdateTarget : undefined;
+    const storedPrevious = stored ? decodePreviousUpdateAttempt(stored.previousAttempt) : undefined;
+    const offer: UpdateCheck | null = check
+        ? check
+        : storedTarget && stored && validUpdateVersion(stored.currentVersion) && commitPattern.test(stored.currentCommit)
+            ? {
+                supported: true, available: true,
+                current_version: stored.currentVersion, current_commit: stored.currentCommit,
+                target: storedTarget,
+                ...(storedPrevious ? { previous_attempt: storedPrevious } : {}),
+            }
+            : null;
+
     async function refreshHostMutationReadiness(): Promise<HostMutationReadiness> {
         const generation = lifecycleGeneration.current;
         readinessAbort.current?.abort();
@@ -207,14 +278,25 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
         }
     }
 
+    const target = offer?.target;
+    const active = systemUpdate.active;
+    // A stored update is followed by the readiness read at once, as a found
+    // one always was; once per offered target.
+    // Saklanan guncelleme icin hazirlik bir kez hemen okunur.
+    const offeredKey = target && offer?.available && !active ? `${target.version}:${target.commit}` : '';
+    useEffect(() => {
+        if (!offeredKey || readinessForTarget.current === offeredKey || actionInFlight.current) return;
+        readinessForTarget.current = offeredKey;
+        void refreshHostMutationReadiness();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [offeredKey]);
+
     // The quiet re-read. It does not draw the card's "checking" look: the busy
     // text stays until a read says ready, then the card returns to its normal
     // state. A read that could not verify keeps what is shown.
     // Sessiz yeniden okuma: "denetleniyor" gorunumu cizilmez; hazir denene
     // kadar mesgul metni kalir. Dogrulanamayan okuma gosterileni degistirmez.
-    const target = check?.target;
-    const active = systemUpdate.active;
-    const quietReadinessPoll = Boolean(target && check?.available) && !active && !starting
+    const quietReadinessPoll = Boolean(target && offer?.available) && !active && !starting
         && !checking && !readinessChecking && readiness?.ready === false;
     useEffect(() => {
         if (!quietReadinessPoll) return;
@@ -276,6 +358,10 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
         }
     }
 
+    // The owner's press: the only place the browser asks the release server
+    // (through the Panel). The Panel keeps its result as the last check; the
+    // shared copy is read again so the sidebar and the Dashboard follow.
+    // Sahibin basisi: tarayicinin surum sunucusuna sordugu tek yer.
     async function checkForUpdate() {
         if (actionInFlight.current || systemUpdate.active) return;
         const generation = lifecycleGeneration.current;
@@ -285,31 +371,41 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
         actionInFlight.current = true;
         setChecking(true);
         setMessage('');
-        setCheck(null);
         setReadiness(null);
+        let found: UpdateCheck | null = null;
         try {
             const payload = await fetchPanelUpdateCheck(t, undefined, controller.signal);
             if (lifecycleGeneration.current !== generation || controller.signal.aborted) return;
             setCheck(payload);
             setCurrentBuild({ version: payload.current_version, commit: payload.current_commit });
-            setMessageTone(payload.available ? 'available' : 'latest');
-            setMessage(payload.available ? t('panelUpdate.available') : t('panelUpdate.none'));
-            if (payload.available) await refreshHostMutationReadiness();
+            found = payload;
         } catch (error) {
             if (lifecycleGeneration.current === generation && !controller.signal.aborted) {
+                setCheck(null);
                 setMessageTone('warning');
                 setMessage(error instanceof Error ? error.message : t('panelUpdate.checkFailed'));
             }
         } finally {
             if (updateCheckAbort.current === controller) updateCheckAbort.current = null;
             if (lifecycleGeneration.current === generation) setChecking(false);
+            if (!found) actionInFlight.current = false;
+        }
+        // The Panel kept this press's result; the shared copy follows it.
+        if (lifecycleGeneration.current === generation && !controller.signal.aborted) void refreshPanelUpdateDiscovery();
+        if (!found) return;
+        try {
+            if (found.available && found.target) {
+                readinessForTarget.current = `${found.target.version}:${found.target.commit}`;
+                await refreshHostMutationReadiness();
+            }
+        } finally {
             actionInFlight.current = false;
         }
     }
 
     async function startUpdate() {
-        const target = check?.target;
-        if (actionInFlight.current || systemUpdate.active || !check?.available || !target) return;
+        const target = offer?.target;
+        if (actionInFlight.current || systemUpdate.active || !offer?.available || !target) return;
         const generation = lifecycleGeneration.current;
         actionInFlight.current = true;
         setStarting(true);
@@ -333,8 +429,8 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
                 const exactMarker: UpdateMarker = {
                     marker_version: 1,
                     request_id: requestID,
-                    current_version: check.current_version,
-                    current_commit: check.current_commit,
+                    current_version: offer.current_version,
+                    current_commit: offer.current_commit,
                     target,
                     created_at: Date.now(),
                 };
@@ -353,19 +449,114 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
         }
     }
 
-    const currentVersion = check?.current_version ?? currentBuild?.version;
-    const currentCommit = check?.current_commit ?? currentBuild?.commit;
+    // The owner's switch for the automatic check. Saving it changes this
+    // setting only; the answer is the stored result again.
+    // Sahibin otomatik kontrol anahtari; yalniz bu ayari degistirir.
+    async function saveAutoCheck(next: boolean) {
+        if (savingAuto) return;
+        const generation = lifecycleGeneration.current;
+        setSavingAuto(true);
+        setAutoError(false);
+        try {
+            const response = await fetch(PANEL_UPDATE_DISCOVERY_URL, {
+                method: 'PUT', cache: 'no-store', credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ auto_check: next }),
+            });
+            if (!response.ok) throw new Error(String(response.status));
+            const value = decodePanelUpdateDiscovery(await response.json(), Date.now());
+            if (!value) throw new Error('invalid');
+            publishPanelUpdateDiscovery(value);
+            // The Panel sets the next check right after saving; one read
+            // shortly after shows its time.
+            if (next) window.setTimeout(() => { void refreshPanelUpdateDiscovery(); }, 1500);
+        } catch {
+            if (lifecycleGeneration.current === generation) setAutoError(true);
+        } finally {
+            if (lifecycleGeneration.current === generation) setSavingAuto(false);
+        }
+    }
+
+    const currentVersion = offer?.current_version ?? currentBuild?.version ?? stored?.currentVersion;
+    const currentCommit = offer?.current_commit ?? currentBuild?.commit ?? stored?.currentCommit;
     const readinessReason = readiness?.ready === false
         ? t(`services.mutationReadiness.${readiness.reason}`)
         : '';
-    const previousAttempt = target ? check?.previous_attempt : undefined;
+    const previousAttempt = target ? offer?.previous_attempt : undefined;
     // Either typed cause means it stopped before changing anything installed.
     const previousStopped = previousAttemptStopped(previousAttempt);
     const readinessTitle = readinessChecking
         ? t('services.mutationReadiness.checking')
         : readiness?.ready === true
-            ? t('panelUpdate.available')
+            ? t('panelUpdate.ready')
             : t('services.mutationReadiness.title');
+
+    // The one status line (D-024: what is known, since when, and what happens
+    // next). A failed or skipped automatic check is information here and
+    // nothing anywhere else.
+    // Tek durum satiri: bilinen, ne zamandan beri ve sonra ne olacagi.
+    const now = Date.now();
+    const age = (moment: number) => relativeAge(moment, now, locale, t('panelUpdate.status.justNow'));
+    const nextLine = stored?.autoCheck && stored.nextCheckAt !== null
+        ? t('panelUpdate.status.next', { time: clockTime(stored.nextCheckAt, now, locale) })
+        : stored && !stored.autoCheck ? t('panelUpdate.status.off') : '';
+    type StatusLine = { tone: 'reading' | 'latest' | 'available' | 'info' | 'unread'; text: string; details?: string[] };
+    const last = stored?.last ?? null;
+    const reasonText = last?.reason ? t(`panelUpdate.discoveryReason.${last.reason}`) : t('panelUpdate.discoveryReason.unknown');
+    const lastProblem = last && last.outcome === 'failed'
+        ? t(last.automatic ? 'panelUpdate.status.lastFailed' : 'panelUpdate.status.lastFailedManual',
+            { age: age(last.checkedAt), reason: reasonText })
+        : '';
+    // A skipped scheduled attempt never replaces what is known: it is said
+    // beside it, only while it is newer than the result (the Panel keeps a
+    // skip in memory only).
+    // Atlanan deneme bilineni degistirmez; yaninda soylenir.
+    const skipLine = stored?.lastSkip
+        ? t('panelUpdate.status.lastSkipped', {
+            age: age(stored.lastSkip.at),
+            reason: stored.lastSkip.reason ? t(`panelUpdate.discoveryReason.${stored.lastSkip.reason}`) : t('panelUpdate.discoveryReason.unknown'),
+        })
+        : '';
+    // A press that failed says so in its own words below; the stored record of
+    // that same failure is not said a second time.
+    const manualFailureShown = message !== '' && last?.outcome === 'failed' && !last.automatic;
+    const withDetails = (line: StatusLine, details: string[]): StatusLine => {
+        const shown = details.filter(Boolean);
+        return shown.length > 0 ? { ...line, details: shown } : line;
+    };
+    let status: StatusLine | null;
+    if (checking) {
+        status = { tone: 'reading', text: t('panelUpdate.status.checkingNow') };
+    } else if (check && !check.available) {
+        status = { tone: 'latest', text: t('panelUpdate.status.currentManual', { age: last && !last.automatic && last.outcome === 'current' ? age(last.checkedAt) : t('panelUpdate.status.justNow') }) };
+    } else if (offer?.available && target) {
+        const foundAt = stored?.target && stored.target.commit === target.commit && stored.foundAt !== null ? stored.foundAt : now;
+        status = withDetails({
+            tone: 'available',
+            text: t('panelUpdate.status.available', { version: target.version, age: age(foundAt) }),
+        }, check ? [] : [manualFailureShown ? '' : lastProblem, skipLine]);
+    } else if (!stored) {
+        status = discovery.status === 'failed'
+            ? { tone: 'unread', text: t('panelUpdate.status.readFailed') }
+            : { tone: 'reading', text: t('panelUpdate.status.reading') };
+    } else if (!last) {
+        status = withDetails({ tone: 'info', text: t('panelUpdate.status.never') }, [skipLine]);
+    } else if (last.outcome === 'current') {
+        status = withDetails({ tone: 'latest', text: t(last.automatic ? 'panelUpdate.status.current' : 'panelUpdate.status.currentManual', { age: age(last.checkedAt) }) }, [skipLine]);
+    } else {
+        status = manualFailureShown ? null : withDetails({ tone: 'info', text: lastProblem }, [skipLine]);
+    }
+    const showNext = !checking && status?.tone !== 'reading' && status?.tone !== 'unread' && nextLine !== '';
+    const statusIcon = !status ? null : status.tone === 'reading'
+        ? <Loader2 className="mt-0.5 h-5 w-5 shrink-0 motion-safe:animate-spin text-primary" aria-hidden="true" />
+        : status.tone === 'latest'
+            ? <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-success" aria-hidden="true" />
+            : status.tone === 'available'
+                ? <DownloadCloud className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+                : status.tone === 'unread'
+                    ? <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-warning" aria-hidden="true" />
+                    : <Info className="mt-0.5 h-5 w-5 shrink-0 text-fg-muted" aria-hidden="true" />;
+    const expectedRestart = stored?.expectedRestartSeconds ?? 90;
     return (
         <section className="rounded-xl border border-border bg-surface p-5" aria-labelledby="panel-update-title">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -378,30 +569,35 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
                         <p className="mt-1 text-sm text-fg-muted">{t(activation ? 'license.updateHelp' : 'panelUpdate.description')}</p>
                     </div>
                 </div>
-                <Button type="button" className="shrink-0" onClick={() => void checkForUpdate()} disabled={checking || active || starting || readinessChecking}>
+                {/* Outlined: the one filled button of this card is the update
+                    itself (DESIGN.md, one primary per view). */}
+                <Button type="button" variant="secondary" className="shrink-0 max-sm:min-h-11" onClick={() => void checkForUpdate()} disabled={checking || active || starting || readinessChecking}>
                     {checking ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                     {checking ? t('panelUpdate.checking') : t('panelUpdate.check')}
                 </Button>
             </div>
 
-            <div className="mt-4 rounded-lg border border-warning-mark/60 bg-warning-mark/20 p-4 text-sm text-fg" role="note">
-                <div className="flex items-start gap-2"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
-                    <p>{t('panelUpdate.alphaNotice')}</p>
+            {!active && !tracking && !updated && status && (
+                <div className="mt-4 flex items-start gap-2 text-sm text-fg" role="status" aria-live="polite" data-update-status={status.tone}>
+                    {statusIcon}
+                    <div className="min-w-0">
+                        <p className="font-medium">{status.text}</p>
+                        {status.details?.map((detail) => <p key={detail} className="mt-1 text-fg-muted" data-update-status-detail="">{detail}</p>)}
+                        {showNext && <p className="mt-1 text-fg-muted" data-update-next="">{nextLine}</p>}
+                    </div>
                 </div>
-            </div>
+            )}
+            {!active && !tracking && !updated && !status && showNext && (
+                <p className="mt-4 text-sm text-fg-muted" data-update-next="">{nextLine}</p>
+            )}
 
-            {currentVersion && currentCommit && (
-                <dl className="mt-4 grid gap-3 rounded-lg border border-border bg-surface-subtle p-4 text-sm sm:grid-cols-2">
-                    <div><dt className="text-fg-muted">{t('panelUpdate.currentVersion')}</dt><dd className="font-mono text-fg">{currentVersion}{verifying && tracking?.version === currentVersion && <span className="ml-2 font-sans text-xs font-medium text-fg-muted" data-update-state="verifying">({t('panelUpdate.card.installedVerifying')})</span>}</dd></div>
-                    <div><dt className="text-fg-muted">{t('panelUpdate.currentCommit')}</dt><dd className="break-all font-mono text-fg">{currentCommit}</dd></div>
-                    {target && <>
-                        <div><dt className="text-fg-muted">{t('panelUpdate.targetVersion')}</dt><dd className="font-mono font-semibold text-fg">{target.version}</dd></div>
-                        <div><dt className="text-fg-muted">{t('panelUpdate.targetPlatform')}</dt><dd className="font-mono text-fg">{target.os}/{target.arch}</dd></div>
-                        <div><dt className="text-fg-muted">{t('panelUpdate.sequence')}</dt><dd className="font-mono text-fg">{target.sequence}</dd></div>
-                        <div><dt className="text-fg-muted">{t('panelUpdate.archiveSize')}</dt><dd className="font-mono text-fg">{t('panelUpdate.bytes', { size: target.archive_size })}</dd></div>
-                        <div className="sm:col-span-2"><dt className="text-fg-muted">{t('panelUpdate.sha256')}</dt><dd className="break-all font-mono text-xs text-fg">{target.archive_sha256}</dd></div>
-                    </>}
-                </dl>
+            {currentVersion && (
+                <p className="mt-3 text-sm text-fg-muted" data-update-installed="">
+                    {t('panelUpdate.installed')}{' '}
+                    <span className="font-mono text-fg">{currentVersion}</span>
+                    {currentCommit && <>{' · '}<span className="font-mono" title={t('common.fullCommit', { commit: currentCommit })}><BuildCommit commit={currentCommit} /></span></>}
+                    {verifying && tracking?.version === currentVersion && <span className="ml-2 font-sans text-xs font-medium text-fg-muted" data-update-state="verifying">({t('panelUpdate.card.installedVerifying')})</span>}
+                </p>
             )}
 
             {steps && (tracking || updated) && (
@@ -463,12 +659,25 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
                 </div>
             )}
 
-            {target && check?.available && !active && (
-                <div className="mt-4 space-y-3">
+            {target && offer?.available && !active && (
+                <div className="mt-4 space-y-4">
                     {previousAttempt && (
-                        <div className="rounded-lg border border-warning-mark/60 bg-warning-mark/20 p-3 text-sm text-fg" role="note">
+                        // At most one notice for an earlier attempt. One that
+                        // stopped before changing anything is information, not
+                        // a problem on this server (alpha.96); a rolled-back or
+                        // failed attempt keeps the attention mark. Its words
+                        // are kept.
+                        // Hicbir seyi degistirmeden duran deneme bilgidir;
+                        // geri alinan ya da basarisiz olan dikkat isaretini korur.
+                        <div
+                            className={`rounded-lg border p-3 text-sm text-fg ${previousStopped ? 'border-border bg-surface-subtle' : 'border-warning-mark/60 bg-warning-mark/20'}`}
+                            role="note"
+                            data-previous-attempt={previousStopped ? 'stopped' : previousAttempt.phase}
+                        >
                             <div className="flex items-start gap-2">
-                                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
+                                {previousStopped
+                                    ? <Info className="mt-0.5 h-4 w-4 shrink-0 text-fg-muted" aria-hidden="true" />
+                                    : <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />}
                                 <div>
                                     {/* The offered version already ended here
                                         (12 Oct 2026). Said before Start, in
@@ -503,12 +712,23 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
                             </div>
                         </div>
                     )}
+                    {/* "Before you update", from what the panel knows: the
+                        measured restart, what keeps running, the alpha note
+                        as plain text, that nothing starts by itself. */}
+                    <div data-update-before="">
+                        <h4 className="text-sm font-semibold text-fg">{t('panelUpdate.before.title')}</h4>
+                        <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-fg-muted">
+                            <li>{t('panelUpdate.before.restart', { seconds: expectedRestart })}</li>
+                            <li>{t('panelUpdate.before.services')}</li>
+                            <li data-update-alpha-note="">{t('panelUpdate.before.backup')}</li>
+                            <li>{t('panelUpdate.before.manual')}</li>
+                            <li>{t('panelUpdate.before.follow')}</li>
+                        </ul>
+                    </div>
                     <div
-                        className={`rounded-lg border p-3 text-sm ${readiness?.ready === true
-                            ? 'border-success/40 bg-success/10'
-                            : readiness?.ready === false && !readinessChecking
-                                ? 'border-warning-mark/60 bg-warning-mark/20'
-                                : 'border-border bg-surface-subtle'}`}
+                        className={`rounded-lg border p-3 text-sm ${readiness?.ready === false && !readinessChecking
+                            ? 'border-warning-mark/60 bg-warning-mark/20'
+                            : 'border-border bg-surface-subtle'}`}
                         data-readiness-tone={readiness?.ready === true ? 'ready' : readiness?.ready === false && !readinessChecking ? 'warning' : 'neutral'}
                         role="status"
                         aria-live="polite"
@@ -519,7 +739,9 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
                                     ? <Loader2 className="h-4 w-4 animate-spin text-primary" aria-hidden="true" />
                                     : readiness?.ready === false
                                         ? <AlertTriangle className="h-4 w-4 text-warning" aria-hidden="true" />
-                                        : null}
+                                        : readiness?.ready === true
+                                            ? <CheckCircle2 className="h-4 w-4 text-success" aria-hidden="true" />
+                                            : null}
                                 <div>
                                     <p className="font-semibold text-fg">{readinessTitle}</p>
                                     {!readinessChecking && readinessReason && <p className="mt-1 text-fg-muted">{readinessReason}</p>}
@@ -544,6 +766,8 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
                     <Button
                         id="panel-update-start-button"
                         type="button"
+                        variant="primary"
+                        className="max-sm:min-h-11"
                         onClick={() => void startUpdate()}
                         disabled={starting || readinessChecking || readiness?.ready !== true}
                     >
@@ -555,14 +779,53 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
 
             {message && (
                 <div className="mt-4 flex items-start gap-2 rounded-lg border border-border p-3 text-sm text-fg" role="status" aria-live="polite" data-message-tone={messageTone}>
-                    {messageTone === 'latest'
-                        ? <CheckCircle2 className="h-5 w-5 shrink-0 text-success" aria-hidden="true" />
-                        : messageTone === 'available'
-                            ? <DownloadCloud className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
-                            : <AlertTriangle className="h-5 w-5 shrink-0 text-warning" aria-hidden="true" />}
+                    <AlertTriangle className="h-5 w-5 shrink-0 text-warning" aria-hidden="true" />
                     <p>{message}</p>
                 </div>
             )}
+
+            {currentVersion && currentCommit && (
+                <details className="mt-4 text-sm" data-update-technical="">
+                    <summary className="cursor-pointer select-none font-medium text-fg-muted hover:text-fg max-sm:min-h-11 max-sm:py-2.5">{t('panelUpdate.technical')}</summary>
+                    <dl className="mt-3 grid gap-3 rounded-lg border border-border bg-surface-subtle p-4 sm:grid-cols-2">
+                        <div><dt className="text-fg-muted">{t('panelUpdate.currentVersion')}</dt><dd className="font-mono text-fg">{currentVersion}</dd></div>
+                        <div><dt className="text-fg-muted">{t('panelUpdate.currentCommit')}</dt><dd className="break-all font-mono text-fg">{currentCommit}</dd></div>
+                        {target && offer?.available && <>
+                            <div><dt className="text-fg-muted">{t('panelUpdate.targetVersion')}</dt><dd className="font-mono font-semibold text-fg">{target.version}</dd></div>
+                            <div><dt className="text-fg-muted">{t('panelUpdate.targetCommit')}</dt><dd className="break-all font-mono text-fg">{target.commit}</dd></div>
+                            <div><dt className="text-fg-muted">{t('panelUpdate.targetPlatform')}</dt><dd className="font-mono text-fg">{target.os}/{target.arch}</dd></div>
+                            <div><dt className="text-fg-muted">{t('panelUpdate.sequence')}</dt><dd className="font-mono text-fg">{target.sequence}</dd></div>
+                            <div><dt className="text-fg-muted">{t('panelUpdate.archiveSize')}</dt><dd className="font-mono text-fg">{t('panelUpdate.bytes', { size: target.archive_size })}</dd></div>
+                            <div className="sm:col-span-2"><dt className="text-fg-muted">{t('panelUpdate.sha256')}</dt><dd className="break-all font-mono text-xs text-fg">{target.archive_sha256}</dd></div>
+                        </>}
+                    </dl>
+                </details>
+            )}
+
+            {/* The owner's switch lives in Settings; the licence page offers
+                the update only (a locked panel accepts no setting change).
+                Anahtar Ayarlar'dadir; lisans sayfasi yalniz guncellemeyi sunar. */}
+            {!activation && <div className="mt-5 border-t border-border pt-4" data-update-auto="">
+                <label className="flex cursor-pointer items-start gap-3">
+                    <input
+                        type="checkbox"
+                        role="switch"
+                        className="mt-1 h-4 w-4 shrink-0 accent-primary"
+                        checked={stored?.autoCheck === true}
+                        disabled={!stored || savingAuto}
+                        aria-checked={stored ? stored.autoCheck : false}
+                        onChange={(event) => void saveAutoCheck(event.currentTarget.checked)}
+                    />
+                    <span className="min-w-0">
+                        <span className="block text-sm font-medium text-fg">{t('panelUpdate.auto.label')}</span>
+                        <span className="mt-0.5 block text-sm text-fg-muted">{t('panelUpdate.auto.help')}</span>
+                        {/* Not "on" before the setting was read: unknown is said as unknown. */}
+                        {!stored && <span className="mt-0.5 block text-sm text-fg-muted" data-update-auto-unknown="">{t('panelUpdate.auto.unknown')}</span>}
+                    </span>
+                </label>
+                {savingAuto && <p className="mt-2 flex items-center gap-2 text-sm text-fg-muted" role="status"><Loader2 className="h-4 w-4 motion-safe:animate-spin" aria-hidden="true" />{t('panelUpdate.auto.saving')}</p>}
+                {autoError && !savingAuto && <p className="mt-2 text-sm text-fg" role="alert" data-update-auto-error="">{t('panelUpdate.auto.failed')}</p>}
+            </div>}
         </section>
     );
 }
