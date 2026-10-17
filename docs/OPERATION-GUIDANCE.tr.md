@@ -8918,3 +8918,20 @@ izleyici üzerinden sıra (birer birer, taze tarama olmadan adım yok, bir hata,
 adımın olmayan bir işlem, kapalı bir kapı, yeniden yüklemeden sonra devam yok).
 **Açık:** kurulu bir sunucuda hiçbir şey ölçülmedi; sıra gerçek bir Agent'a karşı
 çalışmadı; P0.1-P0.5 **kısmi** kalır.
+
+### Alpha.94 yayımından sonra kurulu sunucular: henüz gözlem yok (2026-10-17)
+
+v0.1.0-alpha.94 17 Ekim 2026'da yayımlandı (sürüm 00:30:13Z'de, ardından indirme
+portalı yaklaşık 00:48Z'de). Bu yazılırken Boston ve Frankfurt hâlâ alpha.92'deydi;
+sahip ikisini de güncellememişti ve alpha.93'e güncellediğini de bildirmemişti.
+O güncellemeyi yalnız sahip, panelin kendi güncelleme ekranından başlatır. Bu
+yüzden kaydedilecek sahip gözlemi **yoktur**: yukarıdaki hazır paketler
+yayımlanan sürümdedir ama bir kurulu sunucuda görülmedi; bu girdi için hiçbir
+metin ya da ekran değiştirilmedi. İncelemede bulunan üç küçük iş sonraki bir
+sürüme açık kalır: bir paketin kurulum adımları arasındaki kapı, durumun
+doğrulanamadığını bildiren bir işareti bir çizim boyunca kaçırabilir (sunucu yine
+taze okunur ve reddetmesi gerekeni reddeder); Doğrula bir kurulum sürerken
+basılabilir ve "meşgul" reddi alır; şerit, henüz hiçbir şey gönderilmeden kısa
+süre "kuruluyor" der. Sahip bildirene kadar hiçbir şey "çalıştı" ya da
+"başarısız" değildir. P0.1-P0.5 **kısmi** kalır; bu girdi hiçbir şeyi kapatmaz ya
+da ilerletmez.

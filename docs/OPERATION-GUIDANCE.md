@@ -8953,3 +8953,19 @@ through a stand-in tracker (one at a time, no step without a fresh scan, a
 failure, an operation that was not the step's, a closed gate, no continuation
 after a reload). **Open:** nothing was measured on an installed server; the
 sequence has not run against a real Agent; P0.1-P0.5 stay **partial**.
+
+### Installed servers after the alpha.94 publication: nothing observed yet (2026-10-17)
+
+v0.1.0-alpha.94 was published on 2026-10-17 (release at 00:30:13Z, then the
+download portal at about 00:48Z). When this was written, Boston and Frankfurt
+were still on alpha.92; the owner had not updated either of them, and had not
+reported updating to alpha.93 either. Only the owner starts that update, from the
+panel's own update screen. So there is **no** owner observation to record: the
+ready bundles above are in the published release but have not been seen on an
+installed server, and no text or screen was changed for this entry. Three small
+items found in review stay open for a later release: the gate between a
+bundle's install steps can miss a state-unverified flag for one render (the
+server is still read fresh and refuses what it must); Verify can be pressed while
+an install runs and then gets a busy refusal; and the strip says "installing"
+briefly before anything is sent. Nothing is "worked" or "failed" until the owner
+reports it. P0.1-P0.5 stay **partial**; this entry closes and advances nothing.
