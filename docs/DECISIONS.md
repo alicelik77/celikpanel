@@ -205,7 +205,7 @@ when one could not be read (an earlier number is kept only when both reads had
 one); non-administrators, who have no zone read, count domains alone.
 
 **Independent review of the candidate (2026-10-17).** An independent review found
-ten problems; they are fixed in the candidate (commit `0ee982af2`), and this
+ten problems; they are fixed in the candidate, and this
 amendment was corrected to match. (1) Roundcube leftovers: the Components row shows
 the muted note and the neutral "Clean up leftovers…" button only when the Panel's
 own record shows an unfinished Roundcube install or removal (the newest Roundcube

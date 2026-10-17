@@ -157,8 +157,7 @@ components scan is fresh.
 
 ## Independent review of the candidate (2026-10-17)
 
-An independent review of the candidate found ten problems. They are fixed (commit
-`0ee982af2`), and the text above describes the corrected behaviour:
+An independent review of the candidate found ten problems. They are fixed, and the text above describes the corrected behaviour:
 
 1. Roundcube leftovers are offered on the Components row only when the Panel's own
    record shows an unfinished install or removal (additive payload field
@@ -192,7 +191,7 @@ service availability contracts); Go: the new webmail_cleanup_record_test, the
 bundles test (an add-on before its parent needs MariaDB or PostgreSQL) and the mail
 profile frontend contract. The release contracts (sequence policy 94 -> 95,
 download portal, signed manifest) passed on the earlier tree and their inputs are
-unchanged. Final counts on the candidate tree at `0ee982af2` (2026-10-17): web
+unchanged. Final counts on the final candidate tree (2026-10-17): web
 `npm test` 1599 passed, 0 failed, and `npm run build` succeeded; Go `./cmd/panel/`
 and `./internal/...` 7123 passed, 0 failed, 44 skipped; `go vet ./cmd/panel/` and
 gofmt clean. Browser batch 20 (Boston- and Frankfurt-like mocks, Turkish and

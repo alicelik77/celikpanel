@@ -9078,7 +9078,7 @@ diskte gerçekten olup olmadığı görülemez (Panel kendi kaydına dayanır); 
 **kısmi** kalır; bu girdi hiçbir şeyi kapatmaz ya da ilerletmez.
 
 **Adayın bağımsız incelemesi (17 Ekim 2026).** Bağımsız bir inceleme on sorun
-buldu; hepsi düzeltildi (`0ee982af2` işlemesi) ve yukarıdaki girdi düzeltilmiş
+buldu; hepsi düzeltildi ve yukarıdaki girdi düzeltilmiş
 davranışı anlatır. Ne değişti: (1) Roundcube kalıntıları satırda yalnız Panel'in
 kendi kaydıyla (ya da başarısız bir webmail denemesiyle) sunulur, Roundcube'un kendi
 sayfasında ise her zaman; (2) kurulu paket penceresi "… kurar" yerine paketi
@@ -9091,7 +9091,7 @@ denemesi olan her paket için tek Pano satırı; (7) engelli çip, tam nedenini
 çiplerin altında gösteren sessiz bir düğmedir; (8) Doğrula, `host_lock_busy` ve
 `package_manager_active` durumunda kullanılabilir kalır; (9) EN ifadesi "2/3 ·
 installing PHP-FPM", Türkçe ilerleme "n/m bileşen kurulu"; (10) "Kur" diyen bir
-posta çipi posta penceresini kurulum biçiminde açar. `0ee982af2` ağacındaki kanıt:
+posta çipi posta penceresini kurulum biçiminde açar. Son aday ağacındaki kanıt:
 web `npm test` 1599 geçti, 0 başarısız, `npm run build` başarılı; Go
 `./cmd/panel/` ve `./internal/...` 7123 geçti, 0 başarısız, 44 atlandı,
 `go vet ./cmd/panel/` ve gofmt temiz; yeni Go testi webmail_cleanup_record_test.

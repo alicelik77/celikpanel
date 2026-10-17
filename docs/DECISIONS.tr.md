@@ -210,7 +210,7 @@ iki okumanın da sayısı varsa korunur); bölge okuması olmayan yönetici olma
 yalnız alan adlarını sayar.
 
 **Adayın bağımsız incelemesi (17 Ekim 2026).** Bağımsız bir inceleme on sorun
-buldu; aday içinde düzeltildi (`0ee982af2` işlemesi) ve bu değişiklik buna göre
+buldu; aday içinde düzeltildi ve bu değişiklik buna göre
 düzeltildi. (1) Roundcube kalıntıları: Bileşenler satırı soluk notu ve nötr
 "Kalıntıları temizle…" düğmesini yalnız Panel'in kendi kaydı yarım kalmış bir
 Roundcube kurulumu ya da kaldırması gösterdiğinde (Panel denetim kaydındaki en yeni

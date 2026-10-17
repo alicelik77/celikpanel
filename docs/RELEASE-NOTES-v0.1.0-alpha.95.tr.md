@@ -157,8 +157,7 @@ tazeyken görünür.
 
 ## Adayın bağımsız incelemesi (17 Ekim 2026)
 
-Adayın bağımsız incelemesi on sorun buldu. Hepsi düzeltildi (`0ee982af2`
-işlemesi) ve yukarıdaki metin düzeltilmiş davranışı anlatır:
+Adayın bağımsız incelemesi on sorun buldu. Hepsi düzeltildi ve yukarıdaki metin düzeltilmiş davranışı anlatır:
 
 1. Roundcube kalıntıları Bileşenler satırında yalnız Panel'in kendi kaydı yarım
    kalmış bir kurulum ya da kaldırma gösterdiğinde (ek yük alanı `webmail_cleanup`,
@@ -192,7 +191,7 @@ Pano kartı, satır düzeni, uzak durum, posta profili ve hizmet kullanılabilir
 sözleşmeleri); Go: yeni webmail_cleanup_record_test, bundles testi (ana paketinden
 önce bir eklenti MariaDB ya da PostgreSQL ister) ve posta profili ön yüz
 sözleşmesi. Sürüm sözleşmeleri (sıra politikası 94 -> 95, indirme portalı, imzalı
-manifest) önceki ağaçta geçti ve girdileri değişmedi. `0ee982af2` ağacındaki kesin
+manifest) önceki ağaçta geçti ve girdileri değişmedi. Son aday ağacındaki kesin
 sayılar (17 Ekim 2026): web `npm test` 1599 geçti, 0 başarısız, `npm run build`
 başarılı; Go `./cmd/panel/` ve `./internal/...` 7123 geçti, 0 başarısız, 44 atlandı;
 `go vet ./cmd/panel/` ve gofmt temiz. Tarayıcı 20. grubu (Boston ve Frankfurt

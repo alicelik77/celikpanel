@@ -9112,7 +9112,7 @@ leftovers are actually on disk cannot be seen (the Panel relies on its own recor
 P0.1-P0.5 stay **partial**; this entry closes and advances nothing.
 
 **Independent review of the candidate (2026-10-17).** An independent review found
-ten problems; they are fixed (commit `0ee982af2`) and the entry above describes the
+ten problems; they are fixed and the entry above describes the
 corrected behaviour. What changed: (1) Roundcube leftovers are offered on the row
 only with the Panel's own record (or a failed webmail attempt), and always on
 Roundcube's own page; (2) the installed bundle dialogue describes the bundle
@@ -9125,7 +9125,7 @@ bundle that is not verified and has an attempt; (7) a blocked chip is a quiet bu
 that shows its full reason under the chips; (8) Verify stays usable on
 `host_lock_busy` and `package_manager_active`; (9) wording "2/3 · installing
 PHP-FPM" and "n of m installed"; (10) a mail chip that says "Install" opens the mail
-dialogue in its install form. Evidence on the tree at `0ee982af2`: web `npm test`
+dialogue in its install form. Evidence on the final candidate tree: web `npm test`
 1599 passed, 0 failed, `npm run build` succeeded; Go `./cmd/panel/` and
 `./internal/...` 7123 passed, 0 failed, 44 skipped, `go vet ./cmd/panel/` and
 gofmt clean; the new Go test is webmail_cleanup_record_test. Browser batch 20 was
