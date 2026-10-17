@@ -1,9 +1,10 @@
-# v0.1.0-alpha.96 (aday, yayımlanmadı)
+# v0.1.0-alpha.96 (17 Ekim 2026'da yayımlandı)
 
 [English](RELEASE-NOTES-v0.1.0-alpha.96.md)
 
-Bu sürüm v0.1.0-alpha.95'in ardından gelir. Bir adaydır: etiketlenmedi ve
-yayımlanmadı, hiçbir kurulu sunucu ona güncellenmedi. 2026-10-17'de,
+Bu sürüm v0.1.0-alpha.95'in ardından gelir. 17 Ekim 2026'da yayımlandı (sonda
+"Yayım kaydı"na bakın); hiçbir kurulu sunucu ona güncellenmedi. Numarayı, sahibin
+13 Ekim 2026 tarihli kalıcı talimatıyla sürümü hazırlayan seçti. 2026-10-17'de,
 `feat/alpha96-update-notice` dalında, alpha.95'in yayım kaydından sonraki `main`
 üzerinden yazıldı (alpha.95 sürüm kaydı
 `5f3cb1a2fa336c529740a20e9a543b8ac086dc8d`).
@@ -224,3 +225,116 @@ denetimin aynı kaydı yazması, yapı hedefe ulaşınca kaydın temizlenmesi ve
 çağrısı yapmayan yalnız yöneticilere açık okuma. Web sözleşme ve bağlanmış testleri
 güncelleme kartını, bildirimleri ve İngilizce ile Türkçe metinleri kapsar. Bileşen,
 bağlanmış ve taklit tarayıcı testleri gerçek sistem davranışını kanıtlamaz.
+
+## Yayım kaydı
+
+Aşağıdaki her şey 17 Ekim 2026 tarihlidir (saat dilimi belirtilmedikçe UTC).
+Birleştirmeyi, etiketi, denetimleri, portal yayımını ve genel sitenin okunmasını
+sürümü hazırlayan kişi yaptı, önceki sürümlerde olduğu gibi sahibin kalıcı
+talimatı uyarınca; kurulu panel güncellemelerini yalnız sahip, panelin kendi
+güncelleme ekranından başlatır. Yayım için sahibin talimatıyla gerçek sistem
+kaydı yok. Bu girdi, aşağıdaki sonuçların hiçbirini depoda bir dosya olarak
+saklamaz.
+
+**Ne oldu.**
+
+1. Sürümden önce iki bağımsız inceleme yapıldı. Birincisi 12 sorun buldu;
+   aralarında, zamanlanmış denetimin bir güncellemenin salt-okur denetimi
+   sırasında panel veritabanına yazması vardı (düzeltildi, yukarıda anlatıldı);
+   ikincisi sürümü yayıma hazır buldu ve önerdiği iki temizlik yapıldı.
+2. "Release v0.1.0-alpha.96: the panel looks for updates by itself, says so
+   calmly, and helps with the update" başlıklı #230 numaralı çekme isteği
+   `main`'e `08faa91e5a8c6622072b40f0f87c9c388035c9a3` commit'i olarak
+   birleştirildi. Sürüm sırası değişkeni etiket yapılmadan önce 95'ten 96'ya
+   geçirildi. `main` koşusu ve etiket koşusu başarılı oldu.
+3. Sürüm zincirinde iki olay oldu; hiçbiri bir sürümü etkilemedi. Birincisi: ilk
+   CI koşusu iki sürüm-kurtarma deneme düzeneği testinde başarısız oldu; düzenek
+   güncelleme kartının Türkçe metnini ve sonuç mantığını yansıtır, yeni "denetle"
+   ifadesi ve değişen bir ifade orada yansıtılmamıştı. Bu dalda düzeltildi.
+   İkincisi: bir yardımcının deneme düzeneği çalışması, ortak deponun git
+   yapılandırmasında başıboş bir çalışma-ağacı ayarı bıraktı; bu, sürümü
+   hazırlayanın makinesinde git'i kullanılmaz kıldı ve zincir zaman aşımına
+   uğradı. O tek satır kaldırıldı ve zincir yeniden çalıştırıldı.
+4. `v0.1.0-alpha.96` açıklamalı etiketi (nesne
+   `61eb922045079c0828e4872ad90d1b76d39007c2`, ağaç
+   `aa73450d100c10e2a8fccdc45862e8da0deb5a9e`) sürüm commit'ini gösterir. Sürüm
+   bir ön sürümdür (pre-release); 2026-10-17T18:03:34Z'de altı dosyayla
+   yayımlandı.
+5. 17 Ekim 2026'da `CelikPanel-S2-Debian` WSL konuğunda bir indirmeden
+   denetlendi (hazırlayan kişi; burada bir dosyada kayıtlı değil): arşivler bayt
+   bayt aynı, her biri 66.291.958 bayt, SHA-256
+   `eeb14706f7dc57f1824ff2f22f3794d0e65adbb7d456000e978f6b3ebc5fac02`; manifest
+   sıra 96, `published_at` 2026-10-17T17:22:53Z der (SHA-256
+   `fa03ccbcefd6255a2e6fe02d1c3517007e69127ec62cc084154d72c2d671b406`); imzası
+   (SHA-256 `c45707199bc8bb7515abfe4218d2fb4217d3622f80b466abc9343eb8c979553a`),
+   imza anahtarına (SHA-256
+   `7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb`, öncekiyle
+   aynı anahtar) karşı `openssl pkeyutl -verify -rawin -pubin` ile doğrulanır;
+   iki içerik koruması da 0 döndürdü; derleme Go go1.26.5, CGO kapalı,
+   `-trimpath` ile yapıldı. `libexec/get.sh` 96'yı sabitler (SHA-256
+   `3e8d1aef71aaf114126fb0024ccb53e3d4d886eb06e6df231a9dfe3b6238c159`); içindeki
+   politika şimdiki 96, önceki 95, önceki commit
+   `5f3cb1a2fa336c529740a20e9a543b8ac086dc8d` der. Arşivde 243 üye var. Arayüz
+   paketi `web/dist/assets/app-BNx0yp-r.js`, 256.533 bayt, SHA-256
+   `3a551a4098d223914bbe8b586be835670905b72ba64066461ddb00868a960d5d`.
+6. Portal paketi: `portal.tar.gz`, 132.959.242 bayt, SHA-256
+   `890ef8f1c90b960b9935b5207ef4d5ec624d368b800b525e372fc1b80868b730`, 54 girdi;
+   etiketin `deploy/build-download-portal.sh` betiğiyle (önceden imzalı kip) iki
+   kez bayt bayt aynı derlendi. Sözleşme testi 0 döndürdü; genel doğrulayıcının
+   17 testi ve terfi aracının 14 testi geçti.
+7. Yaklaşık 18:10Z'de hazırlayan kişi onu kendi bilgisayarından
+   `deploy/publish-download-portal.ps1` ile yayımladı: önceki sürüm
+   v0.1.0-alpha.95, hedef v0.1.0-alpha.96; durum `committed`, genel doğrulama 26
+   istekten 26'sı, `CELIKPANEL_DOWNLOAD_PORTAL_PUBLISHED`.
+8. Önceki sitenin yedeği
+   `/var/www/vhosts/celikpanel.net/portal-backups/httpdocs.before-v0.1.0-alpha.96.20261017T181008Z.854640.d00eee2822700c9f`;
+   yüklenen paket
+   `/var/www/vhosts/celikpanel.net/.upload-portal-20261017T180924Z-v0.1.0-alpha.96-e8a05cb81963c14f`
+   altında saklandı.
+9. Yayımdan sonra dışarıdan okuma: `https://celikpanel.net/releases/latest.txt`
+   v0.1.0-alpha.96 der; `latest.json` sıra 96'yı, yukarıdaki commit ve SHA-256'yı
+   gösterir.
+
+**Sahibin bildirdikleri.** 17 Ekim 2026'da sahip Boston ve Frankfurt'un alpha.95'e
+güncellemesini panelin kendi güncelleme ekranından başlattı. Frankfurt'un
+güncellemesi hiçbir şeyi değiştirmeden salt-okur denetimde durdu (salt-okur bir
+denetim mevcut kurulumu doğrulayamadı); sunucu alpha.94'te kaldı ve sahipten
+Ayrıntılar metni istendi; bu yazılırken gelmemişti. Neden bilinmiyor ve burada
+tahmin edilmez. Boston'un sonucu bildirilmemişti. Sahip ayrıca düzenli güncelleme
+denetimi, bir güncelleme bildirimi ve güncellemede yardım istedi; bu sürüm o
+işi yapar (yukarıdaki "Kim güncellemeli ve neden" ve "Ekranda ne değişir"
+bölümlerine bakın; burada yinelenmez). Kurulu bir sunucuda alpha.96'dan henüz
+hiçbir şey bildirilmedi ve çıkarılmamalıdır.
+
+**Yapılmayanlar ve yayımlamanın değiştirmedikleri.**
+
+- Kurulu sunucuları sürümü hazırlayan kişi alpha.96'ya güncellemedi. Bildirildiği
+  kadarıyla Frankfurt alpha.94'tedir; Boston'un sonucu bildirilmedi. Onları yalnız
+  sahip, panelin kendi güncelleme ekranından günceller.
+- alpha.96, hâlâ alpha.95'te olan bir panele kendini duyuramaz: zamanlanmış
+  denetim yalnız alpha.96'dan itibaren vardır. Bir panel alpha.96'ya geçene kadar
+  sahibi güncellemeyi güncelleme ekranında kendisi aramalıdır.
+- Frankfurt'un alpha.95 güncellemesinin durmasının nedeni hâlâ bilinmiyor
+  (Ayrıntılar metni sahipten bekleniyor).
+- Bu sürümün açık bıraktığı işler:
+  1. Türkçe ekran katalogları neredeyse dolu; daha fazla metin eklenmeden
+     bölünmelidir.
+  2. Sunucu meşgulken bellekte tutulan elle denetim sonucu, Panel yeniden
+     başlayınca kaybolur.
+  3. Kurulu bir sunucuda ya da gerçek sürüm sunucusuna karşı hiçbir şey
+     ölçülmedi.
+  4. Tarayıcı 21. grubu son inceleme düzeltmelerinden sonra yeniden
+     çalıştırılmadı.
+- Her bileşen için kurulu paket sürümlerinin okunması açıktır ("Bilinen
+  açıklar"a bakın).
+- Bildirilmeyen ve kaydedilmeyenler: Boston ya da Frankfurt'tan alpha.96'ya dair
+  her şey, Boston'un alpha.95 sonucu ve önceki notların bildirilmedi diye saydığı
+  her şey. Her biri "kaydedilmedi"dir; "çalıştı" da değildir, "başarısız" da.
+- Önceki yayımlama kayıtlarının sınırları ([alpha.88
+  notları](RELEASE-NOTES-v0.1.0-alpha.88.tr.md)) kalkmış olarak bildirilmedi.
+- Yayımlanma kabul değildir. P0.1–P0.5 kısmi kalır; hiçbir P0 işi kapanmaz ya da
+  ilerlemez.
+
+Bu sürümü yalnız CelikPanel'in güncelleme arayüzü üzerinden kurun. Yayımlamak kurulu
+sunucuları güncellemez; bir sunucunun güncellemesini yalnız sahibi, panelin kendi
+güncelleme ekranından başlatır.

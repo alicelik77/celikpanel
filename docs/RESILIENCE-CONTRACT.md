@@ -6450,3 +6450,71 @@ clock date of everything in it.
   remains open; everything the alpha.88 to alpha.95 entries leave open stays open.
   Installed panels are updated only by their owners, from the panel's own update
   screen. P0.1 to P0.5 stay partial.
+
+### Publication of v0.1.0-alpha.96 (no code change in the publication; invariants 2 and 6; D-022; D-024; D-025; D-035; 2026-10-17)
+
+D-025 invariants 2 (evidence has a meaning and a lifecycle: unknown is not
+absent, empty or success) and 6 (readiness, progress and access remain
+independent); D-022; D-024; D-035. **No P0 item is closed or advanced.** P0.1 to
+P0.5 stay partial and every open acceptance item stays open. This entry records
+one release; it changes no code, schema or recovery behaviour. 2026-10-17 is the
+clock date of everything in it.
+
+- **Publication.** All steps were done by the release preparer under the owner's
+  standing instruction; installed-panel updates are the owner's only. Two
+  independent reviews came first (twelve problems found by the first, among them
+  that the scheduled check wrote the panel database during an update's read-only
+  check, all fixed; the second found the release ready and two cleanups were
+  done). Pull request #230 merged as
+  `08faa91e5a8c6622072b40f0f87c9c388035c9a3`; the release sequence variable moved
+  95 to 96 before tagging; the main run and the tag run succeeded; annotated tag
+  `v0.1.0-alpha.96` (object `61eb922045079c0828e4872ad90d1b76d39007c2`, tree
+  `aa73450d100c10e2a8fccdc45862e8da0deb5a9e`); pre-release at
+  2026-10-17T18:03:34Z with six assets; archive SHA-256
+  `eeb14706f7dc57f1824ff2f22f3794d0e65adbb7d456000e978f6b3ebc5fac02`, 66,291,958
+  bytes; manifest sequence 96 with a verifying signature (the same key); `get.sh`
+  pins 96; policy 96 after 95. The portal package (SHA-256
+  `890ef8f1c90b960b9935b5207ef4d5ec624d368b800b525e372fc1b80868b730`, built twice
+  identical) was published at about 18:10Z with previous v0.1.0-alpha.95:
+  committed, public verification 26 of 26, `CELIKPANEL_DOWNLOAD_PORTAL_PUBLISHED`,
+  and read from outside afterwards. Checked by the preparer from a download in a
+  WSL guest; reported by the preparer, not recorded in a file here.
+- **Release chain incidents.** Two, neither affecting a release. The first CI run
+  failed two release-recovery harness tests because the harness mirrors the
+  update card's Turkish text and outcome logic and the new wording and a changed
+  expression had not been mirrored; fixed on the branch. A helper's harness run
+  then left a stray working-tree setting in the shared repository's git
+  configuration, which made git unusable on the preparer's machine and timed the
+  chain out; that one line was removed and the chain run again. The harness is a
+  copy of the card's logic, so it can drift from the card; it is not a check of
+  the card itself.
+- **Native record.** None for the publication, and none for alpha.96, by the
+  owner's instruction of 2026-10-16 and because the updater's mutation path is
+  unchanged. alpha.96's code is covered by component, mounted and mock-browser
+  tests only (see its candidate entry above).
+- **Installed panels.** On 2026-10-17 the owner started the updates of Boston and
+  Frankfurt to alpha.95 from the panel's own update screen. Frankfurt's update
+  stopped in the read-only check before changing anything ("a read-only check
+  could not verify the current installation"); the server stayed on alpha.94 and
+  the cause is **not known** (the Details text had not arrived; invariant 2:
+  unknown is not a verified failure of any particular step). Boston's result had
+  not been reported. Nothing from alpha.96 on an installed server is recorded,
+  and none should be inferred (invariant 6: the publication of a release is not
+  the state of any server). alpha.96 cannot announce itself to a panel still on
+  alpha.95, because the scheduled check exists only from alpha.96 on; that owner
+  has to look on the update screen.
+- **Schema or version transition.** None: schema 44; the release sequence moved
+  95 to 96 in the release preparation. **Recovery behaviour.** Unchanged by the
+  publication and by alpha.96.
+- **Open, left for a later release.** (1) The Turkish screen catalogues are nearly
+  full and must be split before more text is added. (2) A manual check result
+  held in memory while the server is busy is lost on a restart. (3) Nothing
+  measured on an installed server or against the real release server. (4) Browser
+  batch 21 was not re-run after the last review corrections. (5) The cause of
+  Frankfurt's alpha.95 stop. (6) Reading installed package versions for every
+  component remains open. None of them changes a P0 item.
+- **Open, carried over.** Everything the alpha.96 candidate entry and the
+  alpha.90 to alpha.95 entries leave open, among them: the scheduled check not run
+  against a real Agent or the real release server; the new update card and
+  notices not yet seen on an installed server; the rollback paths that share the
+  changed helpers exercised by contract tests only.

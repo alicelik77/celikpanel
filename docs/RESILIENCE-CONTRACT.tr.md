@@ -5729,3 +5729,72 @@ tarihidir.
   paket sürümlerinin okunması açık kalır; alpha.88–alpha.95 girdilerinin açık
   bıraktığı her şey açık kalır. Kurulu panelleri yalnız sahipleri, panelin kendi
   güncelleme ekranından günceller. P0.1–P0.5 kısmi kalır.
+
+### v0.1.0-alpha.96'nın yayımlanması (yayımda kod değişikliği yok; ilke 2 ve 6; D-022; D-024; D-025; D-035; 2026-10-17)
+
+D-025 ilke 2 (kanıtın bir anlamı ve yaşam döngüsü vardır: bilinmeyen; yok, boş ya
+da başarılı değildir) ve 6 (hazır olma, ilerleme ve erişim birbirinden bağımsız
+kalır); D-022; D-024; D-035. **Hiçbir P0 işi kapanmaz ya da ilerlemez.**
+P0.1–P0.5 kısmi kalır ve her açık kabul işi açık kalır. Bu girdi tek bir sürümü
+kaydeder; kod, şema ya da kurtarma davranışını değiştirmez. 2026-10-17, içindeki
+her şeyin saat tarihidir.
+
+- **Yayımlama.** Bütün adımları sürümü hazırlayan kişi yaptı, sahibin kalıcı
+  talimatı uyarınca; kurulu panel güncellemelerini yalnız sahip yapar. Önce iki
+  bağımsız inceleme yapıldı (birincisi on iki sorun buldu; aralarında,
+  zamanlanmış denetimin bir güncellemenin salt-okur denetimi sırasında panel
+  veritabanına yazması vardı, hepsi düzeltildi; ikincisi sürümü yayıma hazır buldu
+  ve iki temizlik yapıldı). #230 numaralı çekme isteği
+  `08faa91e5a8c6622072b40f0f87c9c388035c9a3` olarak birleştirildi; sürüm sırası
+  değişkeni etiketlemeden önce 95'ten 96'ya geçti; `main` koşusu ve etiket koşusu
+  başarılı oldu; `v0.1.0-alpha.96` açıklamalı etiketi (nesne
+  `61eb922045079c0828e4872ad90d1b76d39007c2`, ağaç
+  `aa73450d100c10e2a8fccdc45862e8da0deb5a9e`); 2026-10-17T18:03:34Z'de altı
+  dosyalı ön sürüm; arşiv SHA-256
+  `eeb14706f7dc57f1824ff2f22f3794d0e65adbb7d456000e978f6b3ebc5fac02`, 66.291.958
+  bayt; manifest sıra 96 ve doğrulanan bir imza (aynı anahtar); `get.sh` 96'yı
+  sabitler; politika 95'ten sonra 96. Portal paketi (SHA-256
+  `890ef8f1c90b960b9935b5207ef4d5ec624d368b800b525e372fc1b80868b730`, iki kez aynı
+  derlendi) yaklaşık 18:10Z'de önceki v0.1.0-alpha.95 ile yayımlandı: committed,
+  genel doğrulama 26 istekten 26'sı, `CELIKPANEL_DOWNLOAD_PORTAL_PUBLISHED`,
+  ardından dışarıdan okundu. Hazırlayan kişi bir WSL konuğunda bir indirmeden
+  denetledi; hazırlayan kişi bildirdi, burada bir dosyada kayıtlı değil.
+- **Sürüm zinciri olayları.** İki tane, hiçbiri bir sürümü etkilemedi. İlk CI
+  koşusu iki sürüm-kurtarma deneme düzeneği testinde başarısız oldu, çünkü
+  düzenek güncelleme kartının Türkçe metnini ve sonuç mantığını yansıtır; yeni
+  ifade ve değişen bir ifade yansıtılmamıştı; dalda düzeltildi. Ardından bir
+  yardımcının deneme düzeneği çalışması, ortak deponun git yapılandırmasında
+  başıboş bir çalışma-ağacı ayarı bıraktı; bu, sürümü hazırlayanın makinesinde
+  git'i kullanılmaz kıldı ve zinciri zaman aşımına uğrattı; o tek satır
+  kaldırıldı ve zincir yeniden çalıştırıldı. Düzenek kartın mantığının bir
+  kopyasıdır, bu yüzden karttan ayrışabilir; kartın kendisinin bir denetimi
+  değildir.
+- **Gerçek sistem kaydı.** Yayım için yok; alpha.96 için de yok, sahibin 16 Ekim
+  2026 talimatıyla ve güncelleyicinin değiştirme yolu değişmediği için.
+  alpha.96'nın kodunu yalnız bileşen, bağlanmış ve taklit tarayıcı testleri
+  kapsar (yukarıdaki aday girdisine bakın).
+- **Kurulu paneller.** Sahip 17 Ekim 2026'da Boston ve Frankfurt'un alpha.95'e
+  güncellemesini panelin kendi güncelleme ekranından başlattı. Frankfurt'un
+  güncellemesi hiçbir şeyi değiştirmeden salt-okur denetimde durdu (salt-okur bir
+  denetim mevcut kurulumu doğrulayamadı); sunucu alpha.94'te kaldı ve neden
+  **bilinmiyor** (Ayrıntılar metni gelmemişti; ilke 2: bilinmeyen, belirli bir
+  adımın doğrulanmış hatası değildir). Boston'un sonucu bildirilmemişti. Kurulu
+  bir sunucuda alpha.96'dan hiçbir şey kaydedilmedi ve çıkarılmamalıdır (ilke 6:
+  bir sürümün yayımlanması hiçbir sunucunun durumu değildir). alpha.96, hâlâ
+  alpha.95'te olan bir panele kendini duyuramaz, çünkü zamanlanmış denetim yalnız
+  alpha.96'dan itibaren vardır; o panelin sahibi güncelleme ekranına kendisi
+  bakmalıdır.
+- **Şema ya da sürüm geçişi.** Yok: şema 44; sürüm sırası sürüm hazırlığında
+  95'ten 96'ya geçti. **Kurtarma davranışı.** Yayımla ve alpha.96 ile değişmez.
+- **Açık; sonraki bir sürüme bırakıldı.** (1) Türkçe ekran katalogları neredeyse
+  dolu; daha fazla metin eklenmeden bölünmelidir. (2) Sunucu meşgulken bellekte
+  tutulan elle denetim sonucu yeniden başlatmada kaybolur. (3) Kurulu bir
+  sunucuda ya da gerçek sürüm sunucusuna karşı hiçbir şey ölçülmedi. (4) Tarayıcı
+  21. grubu son inceleme düzeltmelerinden sonra yeniden çalıştırılmadı. (5)
+  Frankfurt'un alpha.95 durmasının nedeni. (6) Her bileşen için kurulu paket
+  sürümlerinin okunması açıktır. Hiçbiri bir P0 işini değiştirmez.
+- **Açık; devreden.** alpha.96 aday girdisinin ve alpha.90–alpha.95 girdilerinin
+  açık bıraktığı her şey; bunlar arasında: zamanlanmış denetim gerçek bir Agent'a
+  ya da gerçek sürüm sunucusuna karşı çalışmadı; yeni güncelleme kartı ve
+  bildirimler henüz bir kurulu sunucuda görülmedi; değiştirilen yardımcıları
+  paylaşan geri alma yolları yalnız sözleşme testleriyle denendi.

@@ -9291,3 +9291,27 @@ bu girdi doğrulanmış nedenle ve neden sunucudaysa sahibin panelden ya da kıs
 terminal komutuyla atacağı sonraki adımla tamamlanır. O zamana kadar hiçbir şey
 tahmin edilmez; güncellemeyi yeniden ne zaman başlatacağına sahip karar verir.
 P0.1-P0.5 **kısmi** kalır; bu girdi hiçbir şeyi kapatmaz ya da ilerletmez.
+
+### Alpha.96 yayımından sonra kurulu sunucular: Frankfurt'un alpha.95 durması hâlâ açıklanmadı (2026-10-17)
+
+v0.1.0-alpha.96 17 Ekim 2026'da yayımlandı (sürüm 18:03:34Z'de, ardından indirme
+portalı yaklaşık 18:10Z'de). Sahip o gün Boston ve Frankfurt'un alpha.95'e
+güncellemesini panelin kendi güncelleme ekranından başlattı. Frankfurt'un
+güncellemesi hiçbir şeyi değiştirmeden salt-okur denetimde durdu (salt-okur bir
+denetim mevcut kurulumu doğrulayamadı); sunucu alpha.94'te kaldı. Boston'un
+sonucu bildirilmemişti. **Kim işlem yapar:** sahip, durma penceresinin Ayrıntılar
+metnini göndererek; **sonraki eylem** o metindir ve o gelene kadar hiçbir şey
+tahmin edilmez. Güncellemeyi yeniden başlatmak sahibin kararıdır ve panelin kendi
+güncelleme ekranından yapılır. alpha.96, sahibin düzenli güncelleme denetimi,
+güncelleme bildirimi ve güncellemede yardım isteğinin karşılığıdır (yukarıdaki
+girdilere bakın); ama hâlâ alpha.95'te olan bir panele kendini duyuramaz, çünkü
+zamanlanmış denetim yalnız alpha.96'dan itibaren vardır: o panellerde sahip
+güncelleme ekranına kendisi bakar. Kurulu bir sunucuda alpha.96'ya dair kaydedilecek
+gözlem **yoktur** ve bu girdi için hiçbir metin ya da ekran değiştirilmedi. Açık:
+Frankfurt'un durmasının nedeni; Türkçe ekran katalogları neredeyse dolu; sunucu
+meşgulken bellekte tutulan elle denetim sonucu yeniden başlatmada kaybolur; kurulu
+bir sunucuda ya da gerçek sürüm sunucusuna karşı hiçbir şey ölçülmedi; tarayıcı
+21. grubu son inceleme düzeltmelerinden sonra yeniden çalıştırılmadı; her bileşen
+için kurulu paket sürümleri hâlâ okunmuyor. Sahip bildirene kadar hiçbir şey
+"çalıştı" ya da "başarısız" değildir. P0.1-P0.5 **kısmi** kalır; bu girdi hiçbir
+şeyi kapatmaz ya da ilerletmez.
