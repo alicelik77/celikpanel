@@ -141,6 +141,14 @@ export function bundleName(bundle: ReadyBundle, t: Translate, componentName: (id
 // Bir posta paketinin bilinen denemesi: başarısız ya da süren.
 export const bundleAttempted = (bundle: ReadyBundle) => bundle.latest_attempt_status === 'failed' || bundle.latest_attempt_status === 'in_progress';
 
+// What an installed bundle is, in a descriptive sentence ("PostgreSQL for
+// your sites' databases."), for its dialogue; the install description is an
+// imperative ("Installs …") that would misread there. Null without words.
+// Kurulu paketin ne olduğu, betimleyen bir cümleyle; söz yoksa null.
+export function bundleAbout(bundle: ReadyBundle, t: Translate): string | null {
+    return said(t, `services.bundles.about.${bundle.name_code}`);
+}
+
 export function bundleDescription(bundle: ReadyBundle, t: Translate, componentName: (id: string) => string): string {
     return said(t, `services.bundles.description.${bundle.name_code}`)
         ?? t('services.bundles.descriptionFallback', { components: bundle.components.map(componentName).join(', ') });
@@ -179,7 +187,12 @@ export function bundleIncludedIn(bundle: ReadyBundle, all: readonly ReadyBundle[
 // same bundles in the same order on every server; only the state on each
 // changes). The Dashboard counts with the same function, so its numbers are
 // the chips the owner sees.
-// - included: a verified bundle contains it (Core Mail under Webmail);
+// - included: a verified bundle contains it (Core Mail under Webmail), and
+//   it is itself installed and verified with no attempt of its own that
+//   failed or runs; such an attempt is never hidden under "included";
+// - a bundle whose own last attempt failed or runs is never counted or drawn
+//   as verified: it reads "not verified", and its reason is said under the
+//   chips (alpha.95 review);
 // - available also covers a mail bundle the Panel calls partial only because
 //   an installed bundle shares its parts (Spam-Protected Mail beside Webmail
 //   has Postfix and Dovecot and nothing of its own yet); one that was
@@ -189,9 +202,10 @@ export type BundleChipState = 'verified' | 'included' | 'unverified' | 'availabl
 
 export function bundleChipState(bundle: ReadyBundle, all: readonly ReadyBundle[]): BundleChipState {
     if (bundle.status === 'unknown') return 'unknown';
-    if (bundleIncludedIn(bundle, all)) return 'included';
+    const attempted = bundleAttempted(bundle);
+    if (!attempted && bundle.status === 'installed_verified' && bundleIncludedIn(bundle, all)) return 'included';
     switch (bundle.status) {
-    case 'installed_verified': return 'verified';
+    case 'installed_verified': return attempted ? 'unverified' : 'verified';
     case 'installed_unverified': return 'unverified';
     case 'available': return 'available';
     case 'blocked': return 'blocked';
@@ -243,8 +257,9 @@ export function bundleStripModel(all: readonly ReadyBundle[], category: string):
         return model;
     }
     model.chips = own.map((bundle) => {
-        const includedIn = bundleIncludedIn(bundle, all);
-        return { bundle, state: bundleChipState(bundle, all), ...(includedIn ? { includedIn } : {}) };
+        const state = bundleChipState(bundle, all);
+        const includedIn = state === 'included' ? bundleIncludedIn(bundle, all) : undefined;
+        return { bundle, state, ...(includedIn ? { includedIn } : {}) };
     });
     // A host-wide refusal (the DNS identity, the host name) is said once for
     // the category; what is installed stays visible beside it.
@@ -255,12 +270,19 @@ export function bundleStripModel(all: readonly ReadyBundle[], category: string):
         && waiting.every((bundle) => bundle.status === 'blocked' && HOST_WIDE_BLOCKS.has(bundle.blocked_code ?? ''))) {
         model.hostBlocked = waiting[0].blocked_code ?? null;
     }
-    // A failed or running mail attempt, or a typed warning on a bundle that
-    // is not verified, is said again under the chips with its reason.
-    // Başarısız ya da süren deneme ya da doğrulanmamış paketin uyarısı yeniden söylenir.
+    // Said again under the chips (D-024): a mail attempt that failed or runs,
+    // and a typed warning on a chip that is not verified or only partly
+    // installed. The "some parts are already present" note is never said
+    // here: beside an offer it is a reuse remark, not a problem (alpha.95
+    // review).
+    // Çiplerin altında yeniden söylenen: başarısız ya da süren deneme ve
+    // doğrulanmamış ya da kısmen kurulu çipin uyarısı; "parçalar zaten var"
+    // notu burada söylenmez.
     model.noted = model.chips
-        .filter((chip) => chip.state !== 'included' && chip.state !== 'unknown'
-            && (bundleAttempted(chip.bundle) || (chip.state !== 'verified' && chip.bundle.warning_code !== undefined)))
+        .filter((chip) => chip.state !== 'unknown'
+            && (bundleAttempted(chip.bundle)
+                || ((chip.state === 'unverified' || chip.state === 'partial')
+                    && chip.bundle.warning_code !== undefined && chip.bundle.warning_code !== 'partly_present')))
         .map((chip) => chip.bundle);
     return model;
 }

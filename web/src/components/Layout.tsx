@@ -8,6 +8,7 @@ import { useI18n } from '../i18n';
 import { navItemsForRole, navGroups, type NavAccessContext, type NavItem } from '../nav';
 import { publishComponentCensus, useComponentCensus } from '../lib/componentCensus';
 import { decodeList, lastKnown, useRemote } from '../lib/remote';
+import { INFRASTRUCTURE_ZONES_URL, decodeInfrastructureZones, domainsCount } from '../lib/infrastructureZones';
 import { ThemeSwitcher } from './ThemeSwitcher';
 import { SkinSwitcher } from './SkinSwitcher';
 import { LanguageSwitcher } from './LanguageSwitcher';
@@ -90,7 +91,15 @@ export function Layout({ children, currentPage = '', onPageChange, mode = 'panel
     // sunucunun verdiği yanıt için sayıdır. Okunurken ve okunamadığında rozet
     // yoktur; başarısız yenileme önceki sayıyı korur.
     const domainList = useRemote(setupMode ? null : '/api/v1/domains', decodeList<unknown>);
-    const domainCount = setupMode ? undefined : lastKnown(domainList.remote)?.value.length;
+    // The badge counts what the Domains page lists: the domains and, for an
+    // administrator, the DNS-only infrastructure zone beside them, read from
+    // the same address the Domains page and the Dashboard read (alpha.95
+    // review). A number only when both answered; a failed refresh keeps the
+    // earlier count only when both had one.
+    // Rozet Alan adları sayfasının listelediğini sayar: alan adları ve
+    // yöneticide yalnız-DNS altyapı bölgesi. İki okuma da yanıtladığında sayıdır.
+    const zoneList = useRemote(setupMode || role !== 'admin' ? null : INFRASTRUCTURE_ZONES_URL, decodeInfrastructureZones);
+    const domainCount = setupMode ? undefined : lastKnown(domainsCount(domainList.remote, role === 'admin' ? zoneList.remote : null))?.value;
     const [panelRuntime, setPanelRuntime] = useState<PanelRuntime | null>(null);
     const [mobileOpen, setMobileOpen] = useState(false);
     const [desktopPageHeaderTarget, setDesktopPageHeaderTarget] = useState<HTMLDivElement | null>(null);

@@ -130,7 +130,9 @@ test('mail bundles use server membership, the profile dialogue and closed action
   // Verify, a read, the components route's; "partial" is mail only.
   assert.match(bundlesSource, /route === 'mail_profile'\s*\n\s*\? typeof bundle\.profile_id !== 'string' \|\| !MAIL_PROFILE_IDS\.has\(bundle\.profile_id\) \|\| action === 'verify'\s*\n\s*: bundle\.profile_id !== undefined \|\| action === 'repair' \|\| status === 'partial'/);
   assert.match(bundlesSource, /available: \['install'\],\s*\n\s*partial: \['continue'\],\s*\n\s*installed_unverified: \['verify', 'repair', 'none'\],\s*\n\s*installed_verified: \['repair', 'none'\],\s*\n\s*blocked: \['none'\],/);
-  assert.match(serviceSource, /const profile = profiles\.find\(\(candidate\) => candidate\.id === bundle\.profile_id\);\s*\n\s*if \(!profile\) return;\s*\n\s*setProfileRepair\(bundle\.action === 'repair'\);\s*\n\s*openProfilePlan\(profile\);/);
+  assert.match(serviceSource, /const profile = profiles\.find\(\(candidate\) => candidate\.id === bundle\.profile_id\);\s*\n\s*if \(!profile\) return;\s*\n\s*setProfileRepair\(bundle\.action === 'repair'\);\s*\n\s*setProfileFreshInstall\(bundle\.action !== 'repair' && bundleChipState\(bundle, bundles\) === 'available'\);\s*\n\s*openProfilePlan\(profile\);/);
+  // A chip that says Install opens the install form (alpha.95 review).
+  assert.match(serviceSource, /const mode = repair \? 'repair' : freshInstall \|\| profile\.status === 'available'/);
   // Repair says what it does before it is pressed.
   assert.match(serviceSource, /const mode = repair \? 'repair' :/);
   assert.match(serviceSource, /\{mode === 'repair' && \(/);

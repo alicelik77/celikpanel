@@ -1193,7 +1193,7 @@ test('Components: on a secondary DNS server the mail box names the primary and t
     // the chips stay, blocked, with the short reason and no button (alpha.95).
     const chips = tree.root.findAll((node) => node.props && node.props['data-bundle'] !== undefined && node.props['data-bundle-state'] !== undefined);
     assert.equal(chips.length, 3, shown.slice(0, 800));
-    assert.ok(chips.every((node) => node.type !== 'button' && node.props['data-bundle-state'] === 'blocked'), shown.slice(0, 800));
+    assert.ok(chips.every((node) => node.props['data-bundle-state'] === 'blocked' && node.props['aria-expanded'] === false), shown.slice(0, 800));
     assert.ok(chips.every((node) => label(node).includes('services.bundles.short.dns_identity_not_ready')), shown.slice(0, 800));
   } finally { await unmount(); }
   // Control: the same server without the guidance keeps the generic box.

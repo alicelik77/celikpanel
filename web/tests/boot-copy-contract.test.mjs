@@ -83,6 +83,7 @@ const eagerModules = [
   'src/lib/remote.ts',
   'src/lib/requestIdentity.ts',
   'src/lib/componentCensus.ts',
+  'src/lib/infrastructureZones.ts',
   'src/lib/systemUpdateAuthSignal.ts',
   'src/lib/systemUpdateLease.ts',
   'src/lib/systemUpdateWatchdog.ts',

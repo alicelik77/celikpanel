@@ -23,7 +23,7 @@ import { countText, decodeList, lastKnown, mapRemote, useRemote, type Observed, 
 import { decodeFirewallStatus, useFirewallStatus, type FirewallStatus } from '../lib/firewall';
 import { USERS_URL, decodeUsers } from '../lib/accounts';
 import { bundleName, bundlesSummary, decodeReadyBundles, type ReadyBundle } from '../lib/readyBundles';
-import { INFRASTRUCTURE_ZONES_URL, decodeInfrastructureZones } from '../lib/infrastructureZones';
+import { INFRASTRUCTURE_ZONES_URL, decodeInfrastructureZones, domainsCount } from '../lib/infrastructureZones';
 import { mailProfileAttemptError, mailProfileName } from '../lib/mailProfileText';
 import { publishComponentCensus } from '../lib/componentCensus';
 import {
@@ -1265,7 +1265,7 @@ function AdminDashboard() {
                     <section>
                         <SectionTitle icon={Globe} tint="bg-surface-2 text-fg-muted" title={t('dashboard.hosting')} />
                         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                            <CountCard icon={Globe} n={mapRemote(domainList.remote, (rows) => rows.length + standaloneZones)} label={t('dashboard.domains')} to="/domains" />
+                            <CountCard icon={Globe} n={domainsCount(domainList.remote, infrastructureRead.remote)} label={t('dashboard.domains')} to="/domains" />
                             <CountCard icon={Database} n={mapRemote(extrasRead.remote, (value) => value.databases)} label={t('dashboard.databases')} to="/databases" />
                             <CountCard icon={Users} n={mapRemote(usersRead.remote, (rows) => rows.length)} label={t('nav.users')} to="/users" />
                             <CountCard icon={Mail} n={mapRemote(extrasRead.remote, (value) => value.mail_accounts)} label={t('dashboard.mailAccounts')} to="/domains" />
@@ -1501,6 +1501,11 @@ function ReadyBundlesCard({ bundles, services, profiles, scanFresh, hostNeverChe
     // reason (D-024); it is a record of the Panel, known without a fresh scan.
     // Başarısız ya da süren posta denemesi nedeniyle burada yeniden söylenir.
     const attempts = profiles.filter((profile) => profile.latest_attempt_status === 'failed' || profile.latest_attempt_status === 'in_progress');
+    // A bundle that is not verified and has such an attempt is said once,
+    // with the attempt's reason; its "installed but not verified" line is not
+    // drawn beside it (alpha.95 review).
+    // Doğrulanmamış ve denemesi olan paket bir kez, denemenin nedeniyle söylenir.
+    const attempted = new Set<string>(attempts.map((profile) => profile.id));
     // Each state its own sentence: never checked (with the check itself, as
     // the Dashboard's other cards), checking, held by a change, a check that
     // failed, and a record older than the window.
@@ -1555,7 +1560,7 @@ function ReadyBundlesCard({ bundles, services, profiles, scanFresh, hostNeverChe
                         {summaryText}
                     </p>
                 )}
-                {known && summary.unverified.map((bundle) => (
+                {known && summary.unverified.filter((bundle) => !(bundle.profile_id !== undefined && attempted.has(bundle.profile_id))).map((bundle) => (
                     <p key={`unverified-${bundle.id}`} className='flex items-center gap-2 text-sm text-fg' data-bundle-unverified={bundle.id}>
                         <span className='inline-block h-2 w-2 shrink-0 rounded-full bg-fg-subtle' aria-hidden='true' />
                         {t('dashboard.bundles.unverifiedLine', { category: t(categoryKey(bundle.category)), name: bundleName(bundle, t, nameOf) })}

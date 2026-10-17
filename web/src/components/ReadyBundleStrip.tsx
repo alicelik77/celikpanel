@@ -15,6 +15,7 @@ import { Button, Checking, Dialog, KeepWords, StatusDot } from './ui';
 import { componentName } from '../lib/componentName';
 import { mailProfileAttemptError, mailProfileBlocked, mailProfileWarning, requirementText } from '../lib/mailProfileText';
 import {
+    bundleAbout,
     bundleChipName,
     bundleDescription,
     bundleInstalled,
@@ -234,6 +235,11 @@ export function ReadyBundleStrip({
 }) {
     const { t } = useI18n();
     const [details, setDetails] = useState<string | null>(null);
+    // The blocked chip whose full reason is said under the chips: a chip is
+    // a button, so the reason is reachable by keyboard and touch, not only by
+    // a pointer's tooltip (alpha.95 review).
+    // Tam nedeni çiplerin altında söylenen engelli çip.
+    const [reasonShown, setReasonShown] = useState<string | null>(null);
     const model = bundleStripModel(bundles, category);
     if (model.empty) return null;
     const nameOf = (id: string) => componentName(services.find((service) => service.id === id) ?? id, t);
@@ -372,11 +378,20 @@ export function ReadyBundleStrip({
             );
         case 'blocked':
             return (
-                <span key={key} className={quietChip} title={blockedSentence(bundle)} {...common}>
+                <button
+                    key={key}
+                    type='button'
+                    className={`${quietChip} ${chipFocus} rounded-lg underline decoration-dotted decoration-1 underline-offset-[3px] hover:text-fg`}
+                    title={blockedSentence(bundle)}
+                    aria-expanded={reasonShown === bundle.id}
+                    aria-controls={`bundle-reason-${bundle.id.replace(/\./g, '-')}`}
+                    onClick={() => setReasonShown(reasonShown === bundle.id ? null : bundle.id)}
+                    {...common}
+                >
                     <span className='font-medium'>{label}</span>
                     <Dot />
                     <KeepWords text={blockedShort(bundle)} />
-                </span>
+                </button>
             );
         default:
             return (
@@ -400,6 +415,15 @@ export function ReadyBundleStrip({
         else if (model.hostBlocked) {
             const sample = bundles.find((bundle) => bundle.category === category && bundle.blocked_code === model.hostBlocked);
             if (sample) lines.push(<p key='host' role='status' className='min-w-0 basis-full text-sm text-fg-muted'>{blockedSentence(sample)}</p>);
+        }
+        const shown = reasonShown ? model.chips.find((chip) => chip.bundle.id === reasonShown && chip.state === 'blocked') : undefined;
+        if (shown) {
+            lines.push(
+                <p key='blocked-reason' id={`bundle-reason-${shown.bundle.id.replace(/\./g, '-')}`} role='status' className='min-w-0 basis-full text-xs leading-5 text-fg-muted' data-bundle-blocked-reason={shown.bundle.id}>
+                    <span className='font-medium text-fg'>{name(shown.bundle)}:</span>{' '}
+                    <KeepWords text={blockedSentence(shown.bundle)} />
+                </p>,
+            );
         }
         if (stopped && run) {
             lines.push(
@@ -499,7 +523,7 @@ export function BundleInstalledDialog({
             id='bundle-installed'
             icon={Layers}
             title={name}
-            description={<KeepWords text={bundleDescription(bundle, t, nameOf)} />}
+            description={bundleAbout(bundle, t) ? <KeepWords text={bundleAbout(bundle, t) ?? ''} /> : undefined}
             onDismiss={onClose}
             actions={
                 <>

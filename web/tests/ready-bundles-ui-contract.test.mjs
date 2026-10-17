@@ -43,7 +43,7 @@ test('every bundle the Panel can name has English and Turkish words, plain and w
   assert.equal(codes.length, 8, `read ${codes.length} codes from the Panel`);
   assert.ok(codes.every(Boolean), JSON.stringify(codes));
   for (const code of codes) {
-    for (const part of ['name', 'description', 'chip']) {
+    for (const part of ['name', 'description', 'chip', 'about']) {
       const key = `services.bundles.${part}.${code}`;
       assert.ok(catalogues.en[key], `no English ${part} for ${code}`);
       assert.ok(catalogues.tr[key], `no Turkish ${part} for ${code}`);
@@ -74,7 +74,12 @@ test('every bundle the Panel can name has English and Turkish words, plain and w
     assert.equal(catalogues.tr[`services.bundles.${key}`], word);
   }
   assert.equal(catalogues.en['services.bundles.chip.verifiedLabel'], '{name}, installed and verified');
-  assert.equal(catalogues.en['services.bundles.step'], '{n}/{total} · {component} installing');
+  // Natural word order (alpha.95 review).
+  assert.equal(catalogues.en['services.bundles.step'], '{n}/{total} · installing {component}');
+  assert.equal(catalogues.tr['services.bundles.chip.progress'], '{n}/{total} bileşen kurulu');
+  // An installed bundle is described, not told to install (alpha.95 review).
+  assert.equal(catalogues.en['services.bundles.about.db_postgresql'], 'PostgreSQL for your sites’ databases.');
+  for (const code of codes) for (const locale of ['en', 'tr']) assert.doesNotMatch(catalogues[locale][`services.bundles.about.${code}`], /^(Installs|Adds)\b|kurar\.$|ekler\.$/, `${locale} ${code}`);
   assert.equal(catalogues.tr['services.stopped'], 'Durdu');
   // Every services.bundles / dashboard.bundles key is in both languages.
   for (const prefix of ['services.bundles.', 'dashboard.bundles.', 'firewall.compact.']) {
@@ -166,8 +171,16 @@ test('an add-on always appears; without its parent it is blocked with the short 
   assert.match(strip, /if \(bundle\.blocked_code === 'component_requires' && vars\.required\) return t\('services\.bundles\.short\.component_requires', \{ required: requirementText\(vars\.required, t\) \}\);/);
   assert.equal(t('services.bundles.short.component_requires', { required: blocked.blocked_vars.required }), 'needs MariaDB');
   assert.equal(t('services.bundles.chip.db_mariadb_admin'), 'phpMyAdmin');
-  // A blocked chip is quiet text, never a button, with the full sentence as its title.
-  assert.match(strip, /case 'blocked':\s*\n\s*return \(\s*\n\s*<span key=\{key\} className=\{quietChip\} title=\{blockedSentence\(bundle\)\}/);
+  // A blocked chip installs nothing; it is a quiet button whose press shows
+  // the full reason under the chips, so keyboard and touch reach it, not only
+  // a tooltip (alpha.95 review).
+  const blockedCase = strip.slice(strip.indexOf("case 'blocked':"), strip.indexOf('default:', strip.indexOf("case 'blocked':")));
+  assert.match(blockedCase, /className=\{`\$\{quietChip\} \$\{chipFocus\}/);
+  assert.match(blockedCase, /aria-expanded=\{reasonShown === bundle\.id\}/);
+  assert.match(blockedCase, /aria-controls=\{`bundle-reason-/);
+  assert.match(blockedCase, /onClick=\{\(\) => setReasonShown\(reasonShown === bundle\.id \? null : bundle\.id\)\}/);
+  assert.doesNotMatch(blockedCase, /onMail|onComponents|act\(/);
+  assert.match(strip, /data-bundle-blocked-reason=\{shown\.bundle\.id\}/);
   // An add-on says Add, a top-level bundle Install.
   assert.match(strip, /t\(bundle\.parent !== undefined \? 'services\.bundles\.chip\.add' : 'services\.bundles\.chip\.install'\)/);
 });
@@ -214,8 +227,10 @@ test('a host-wide refusal is said once for the category, and a stale scan claims
 });
 
 test('an installed mail bundle stays visible beside a host-wide refusal', () => {
+  // As the Panel derives it: Core Mail's parts are Webmail's, so it is
+  // installed and verified beside the refusal too.
   const dns = boston.map((bundle) => {
-    if (bundle.id === 'mail.webmail') return { ...bundle, status: 'installed_verified', action: 'none', missing_components: [], blocked_code: 'dns_identity_not_ready' };
+    if (bundle.id === 'mail.webmail' || bundle.id === 'mail.core') return { ...bundle, status: 'installed_verified', action: 'none', missing_components: [] };
     if (bundle.category === 'email') return { ...bundle, status: 'blocked', action: 'none', blocked_code: 'dns_identity_not_ready' };
     return bundle;
   });
@@ -223,6 +238,36 @@ test('an installed mail bundle stays visible beside a host-wide refusal', () => 
   const email = lib.bundleStripModel(dns, 'email');
   assert.equal(email.hostBlocked, 'dns_identity_not_ready');
   assert.deepEqual(email.chips.map((chip) => [chip.bundle.id, chip.state]), [['mail.core', 'included'], ['mail.webmail', 'verified'], ['mail.protected', 'blocked']]);
+});
+
+test('"included" never hides a bundle\'s own failed or running attempt, and the Dashboard does not count it verified', () => {
+  for (const attempt of ['failed', 'in_progress']) {
+    const own = frankfurt.map((bundle) => (bundle.id === 'mail.core' ? { ...bundle, latest_attempt_status: attempt } : bundle));
+    const chip = lib.bundleStripModel(own, 'email').chips.find((item) => item.bundle.id === 'mail.core');
+    assert.equal(chip.state, 'unverified', attempt);
+    assert.equal(chip.includedIn, undefined);
+    assert.deepEqual(lib.bundleStripModel(own, 'email').noted.map((bundle) => bundle.id), ['mail.core'], attempt);
+    const summary = lib.bundlesSummary(own);
+    assert.equal(summary.verified, 7, attempt);
+    assert.deepEqual(summary.unverified.map((bundle) => bundle.id), ['mail.core'], attempt);
+  }
+  // A contained bundle that is not itself installed and verified is not "included".
+  const notOwn = frankfurt.map((bundle) => (bundle.id === 'mail.core' ? { ...bundle, status: 'installed_unverified', action: 'repair' } : bundle));
+  assert.equal(lib.bundleChipState(notOwn.find((bundle) => bundle.id === 'mail.core'), notOwn), 'unverified');
+});
+
+test('the "some parts are already present" note is never said under the chips; warnings only on unverified or partial chips', () => {
+  const present = boston.map((bundle) => (bundle.id === 'mail.webmail' ? { ...bundle, warning_code: 'partly_present' } : bundle));
+  assert.deepEqual(lib.bundleStripModel(present, 'email').noted, []);
+  const partial = registry.map((bundle) => (bundle.id === 'mail.protected'
+    ? { ...bundle, status: 'partial', action: 'continue', missing_components: ['rspamd'], warning_code: 'partly_present' }
+    : bundle));
+  assert.equal(lib.bundleChipState(partial.find((bundle) => bundle.id === 'mail.protected'), partial), 'partial');
+  assert.deepEqual(lib.bundleStripModel(partial, 'email').noted, [], 'partly_present is not a problem line');
+  const unverifiedWarn = frankfurt.map((bundle) => (bundle.id === 'mail.webmail' ? { ...bundle, status: 'installed_unverified', warning_code: 'roundcube_not_ready' } : bundle));
+  assert.deepEqual(lib.bundleStripModel(unverifiedWarn, 'email').noted.map((bundle) => bundle.id), ['mail.webmail']);
+  const verifiedWarn = frankfurt.map((bundle) => (bundle.id === 'mail.webmail' ? { ...bundle, warning_code: 'repair_to_verify' } : bundle));
+  assert.deepEqual(lib.bundleStripModel(verifiedWarn, 'email').noted, [], 'a verified chip carries no warning line');
 });
 
 test('a failed or running mail attempt is said again under the chips (D-024)', () => {
@@ -251,6 +296,10 @@ test('the strip is chips only: no filled button, no Repair link on the strip, no
   assert.match(stripOnly, /update-step-indeterminate/);
   assert.match(stripOnly, /role='status' aria-live='polite'/);
   assert.match(stripOnly, /run\.phase === 'running'\s*\n\s*\? t\('services\.bundles\.step'/);
+  // The installed dialogue describes the bundle; it never says "Installs …".
+  const installedDialog = strip.slice(strip.indexOf('export function BundleInstalledDialog'), strip.indexOf('export function BundleInstallDialog'));
+  assert.match(installedDialog, /description=\{bundleAbout\(bundle, t\)/);
+  assert.doesNotMatch(installedDialog, /bundleDescription/);
   assert.match(stripOnly, /: t\('services\.bundles\.checkingBefore', \{ component \}\)/);
   // The one-line notices replaced the mail boxes.
   assert.doesNotMatch(services, /data-mail-dns-secondary=''[^>]*rounded-xl border border-warning/);

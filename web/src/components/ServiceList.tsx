@@ -30,7 +30,7 @@ import { decodeServerSetup, setupEditorKey, type ServerSetupSnapshot } from '../
 import { publishComponentCensus } from '../lib/componentCensus';
 import { componentDescription, componentName } from '../lib/componentName';
 import { mailProfileName, webmailReportsProblem } from '../lib/mailProfileText';
-import { decodeReadyBundles, bundleName, type ReadyBundle } from '../lib/readyBundles';
+import { decodeReadyBundles, bundleChipState, bundleName, type ReadyBundle } from '../lib/readyBundles';
 import { componentIcon } from '../lib/componentIcons';
 import { BundleInstallDialog, ReadyBundleStrip, useBundleSequence } from './ReadyBundleStrip';
 import { WebmailRepairButton } from './WebmailRepairButton';
@@ -110,7 +110,14 @@ interface ManagedServicesSnapshot {
     dnsIdentityReady: boolean;
     mailHostname: MailHostnameIdentity;
     mailDNSGuidance: MailDNSGuidance | null;
+    // The Panel's record of a Roundcube install or removal that did not
+    // finish (alpha.95, additive); null when there is none or from an older
+    // Panel. Only then does the row offer the leftovers cleanup.
+    // Bitmeyen Roundcube kurulumu ya da kaldırması kaydı; yoksa null.
+    webmailCleanup: WebmailCleanupRecord | null;
 }
+type WebmailCleanupRecord = 'install_failed' | 'removal_incomplete';
+const decodeWebmailCleanup = (value: unknown): WebmailCleanupRecord | null => (value === 'install_failed' || value === 'removal_incomplete' ? value : null);
 // Where the mail record is created when this server is the secondary DNS
 // server (cmd/panel mailProfileDNSGuidance, additive 2026-10-16). Every value
 // is re-checked; anything unexpected drops only the guidance, never the page.
@@ -263,6 +270,7 @@ function parseManagedServicesSnapshot(value: unknown): ManagedServicesSnapshot |
         dnsIdentityReady: payload.dns_identity_ready,
         mailHostname,
         mailDNSGuidance: payload.dns_identity_ready ? null : decodeMailDNSGuidance(payload.mail_dns_guidance),
+        webmailCleanup: decodeWebmailCleanup(payload.webmail_cleanup),
     };
 }
 
@@ -457,7 +465,13 @@ export function ServiceList({ onManageService }: ServiceListProps) {
     const [profiles, setProfiles] = useState<ManagedMailProfile[]>([]);
     const [bundles, setBundles] = useState<ReadyBundle[]>([]);
     const [bundleTarget, setBundleTarget] = useState<ReadyBundle | null>(null);
+    const [webmailCleanup, setWebmailCleanup] = useState<WebmailCleanupRecord | null>(null);
     const [profileRepair, setProfileRepair] = useState(false);
+    // A mail bundle whose chip says Install opens the dialogue in its install
+    // form, even when the Panel calls the profile partial only because an
+    // installed bundle shares its parts (alpha.95 review).
+    // Kur diyen posta çipi pencereyi kurulum biçiminde açar.
+    const [profileFreshInstall, setProfileFreshInstall] = useState(false);
     const webmailProblem = webmailReportsProblem(profiles);
     const [scannedAt, setScannedAt] = useState<string | null>(null);
     // Counts the scans this page has received. The firewall banner reads its
@@ -565,6 +579,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
         setServices(snapshot.services);
         setProfiles(snapshot.profiles);
         setBundles(snapshot.bundles);
+        setWebmailCleanup(snapshot.webmailCleanup);
         setScannedAt(snapshot.scannedAt);
         setDNSIdentityReady(snapshot.dnsIdentityReady);
         setMailHostname(snapshot.mailHostname);
@@ -952,6 +967,25 @@ export function ServiceList({ onManageService }: ServiceListProps) {
         setRetryCleanup(true);
         setCleanupAttempt(null);
     };
+    // When the row offers the leftovers cleanup: the Panel recorded a
+    // Roundcube install or removal that did not finish, or the webmail
+    // profile's last attempt failed. Otherwise the cleanup is reached from
+    // Roundcube's own page, which opens this page with ?cleanup=roundcube.
+    // Satır temizliği yalnız kayıt varken sunar; yoksa Roundcube'un kendi
+    // sayfası bu sayfayı ?cleanup=roundcube ile açar.
+    const webmailAttemptFailed = profiles.some((profile) => profile.id === 'webmail' && profile.latest_attempt_status === 'failed');
+    const webmailCleanupOffered = webmailCleanup !== null || webmailAttemptFailed;
+    const webmailCleanupNote: 'removal' | 'install' = webmailCleanup === 'removal_incomplete' ? 'removal' : 'install';
+    const cleanupLinkRef = useRef(false);
+    useEffect(() => {
+        if (cleanupLinkRef.current || loading || !new URLSearchParams(location.search).has('cleanup')) return;
+        if (new URLSearchParams(location.search).get('cleanup') !== 'roundcube') return;
+        const roundcube = services.find((service) => service.id === 'roundcube');
+        if (!roundcube || roundcube.is_installed !== false) return;
+        cleanupLinkRef.current = true;
+        openWebmailCleanupDialog(roundcube);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [loading, location.search, services]);
     const closeUninstallDialog = () => {
         setUninstallTarget(null);
         setUninstallError(null);
@@ -1308,6 +1342,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
         const profile = profiles.find((candidate) => candidate.id === bundle.profile_id);
         if (!profile) return;
         setProfileRepair(bundle.action === 'repair');
+        setProfileFreshInstall(bundle.action !== 'repair' && bundleChipState(bundle, bundles) === 'available');
         openProfilePlan(profile);
     };
     const openComponentBundle = (bundle: ReadyBundle) => {
@@ -1789,13 +1824,20 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                                 {componentName(s, t)}
                                                             </Link>
                                                             <div className="text-pretty text-xs text-fg-subtle">{componentDescription(s, t)}</div>
-                                                            {/* What "Clean up leftovers" is about, said once on
-                                                                the row. The scan cannot tell whether such files
-                                                                exist, so the line says "may" (alpha.95).
-                                                                "Artıkları temizle"nin neyle ilgili olduğu; tarama
-                                                                böyle dosyaların varlığını bilemez, satır "olabilir" der. */}
-                                                            {s.id === 'roundcube' && s.is_installed === false && (
-                                                                <div className="text-pretty text-xs text-fg-muted" data-webmail-leftovers="">{t('services.cleanupWebmailRowNote')}</div>
+                                                            {/* What "Clean up leftovers" is about, said on the
+                                                                row only when the Panel's own record shows a
+                                                                Roundcube install or removal that did not finish
+                                                                (or a failed webmail attempt). The scan cannot tell
+                                                                whether files are left, so the line says "may";
+                                                                without a record the row says nothing and the
+                                                                cleanup stays on the component's page (alpha.95
+                                                                review).
+                                                                Yalnız Panel'in kaydı bitmeyen bir kurulum ya da
+                                                                kaldırma gösterdiğinde; kayıt yoksa satır susar. */}
+                                                            {s.id === 'roundcube' && s.is_installed === false && webmailCleanupOffered && (
+                                                                <div className="text-pretty text-xs text-fg-muted" data-webmail-leftovers={webmailCleanupNote}>
+                                                                    {t(webmailCleanupNote === 'removal' ? 'services.cleanupWebmailRowNote.removal' : 'services.cleanupWebmailRowNote.install')}
+                                                                </div>
                                                             )}
                                                             {/* The version is said under the description, only
                                                                 where the scan knows it. The scan reads the
@@ -1957,7 +1999,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                         removed.
                                                         Nötr ikincil düğme; kırmızı, neyin silineceğini
                                                         sayan onaydadır. */}
-                                                    {s.id === 'roundcube' && (
+                                                    {s.id === 'roundcube' && webmailCleanupOffered && (
                                                     <button
                                                         type={'button'}
                                                         onClick={() => openWebmailCleanupDialog(s)}
@@ -2171,6 +2213,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                         services={services}
                         mailHostname={mailHostname}
                         repair={profileRepair}
+                        freshInstall={profileFreshInstall}
                         onCancel={() => setProfileTarget(null)}
                         onConfirm={(chosen) => void installProfile(chosen)}
                         throughSetup={mailThroughSetup ? addProfileThroughSetup : undefined}
@@ -2285,6 +2328,7 @@ function MailProfileInstallDialog({
     services,
     mailHostname,
     repair = false,
+    freshInstall = false,
     onCancel,
     onConfirm,
     throughSetup,
@@ -2296,6 +2340,8 @@ function MailProfileInstallDialog({
     onConfirm: (mailHostname: string) => void;
     /** Opened from a bundle's Repair: the repair form, whatever the state. */
     repair?: boolean;
+    /** Opened from a bundle chip that says Install: the install form. */
+    freshInstall?: boolean;
     // Present on a server whose guided setup has finished: the profile is
     // added to an extension of that setup and reviewed there (2026-10-16).
     throughSetup?: (mailHostname: string) => Promise<TranslationKey | null>;
@@ -2352,7 +2398,7 @@ function MailProfileInstallDialog({
     const components = profile.services
         .map((id) => services.find((service) => service.id === id))
         .filter((service): service is ManagedService => Boolean(service));
-    const mode = repair ? 'repair' : profile.status === 'available'
+    const mode = repair ? 'repair' : freshInstall || profile.status === 'available'
         ? 'install'
         : profile.status === 'partial'
             ? 'continue'

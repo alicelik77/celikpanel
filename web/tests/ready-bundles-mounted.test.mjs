@@ -43,7 +43,7 @@ const stub = dataModule(`
   const i18n = { t: (key, vars) => (globalThis.bundleWords?.[key] !== undefined ? fill(globalThis.bundleWords[key], vars) : vars ? key + JSON.stringify(vars) : key), locale: 'en' };
   export const useI18n = () => i18n;
   export const useNavigate = () => (path) => { globalThis.bundleNavigated?.push(path); return true; };
-  export const useLocation = () => ({ hash: '', pathname: '/services' });
+  export const useLocation = () => ({ hash: '', pathname: '/services', search: globalThis.bundleSearch ?? '' });
   export const useNavigationBlocker = () => {};
   export const Link = (props) => React.createElement('a', null, props.children);
   export const showToast = (...args) => globalThis.bundleToasts.push(args);
@@ -212,6 +212,9 @@ test('an installed and verified component bundle is a check-mark chip; its dialo
     await press(chip);
     assert.equal(installedState(), 'verified');
     assert.ok(dialogText().includes(say('services.bundles.installed.verified', { name: 'MariaDB bundle' })), dialogText());
+    // Described, not told to install (alpha.95 review).
+    assert.ok(dialogText().includes(say('services.bundles.about.db_mariadb')), dialogText());
+    assert.ok(!dialogText().includes(say('services.bundles.description.db_mariadb')), dialogText());
     const buttons = tree.root.findAll((node) => node.type === 'button' && node.props && node.props.role !== 'dialog').map(label);
     assert.ok(buttons.includes(say('services.bundles.verify')), buttons.join(', '));
     assert.ok(!buttons.includes(say('services.bundles.repairEllipsis')), 'a component bundle offers Repair');
@@ -376,6 +379,20 @@ test('Boston and Frankfurt draw the same chips in the same order; MariaDB is off
     ['mail.webmail', 'verified', 'Webmail'],
     ['mail.protected', 'verified', 'Spam-Protected Mail'],
   ]);
+  // A blocked chip says its full reason on press (keyboard and touch), and installs nothing.
+  await mount(server('boston'));
+  try {
+    const blocked = bundleNode('db.mariadb.admin');
+    assert.equal(blocked.type, 'button');
+    assert.equal(blocked.props['aria-expanded'], false);
+    await press(blocked);
+    const reason = tree.root.find((node) => node.props && node.props['data-bundle-blocked-reason'] === 'db.mariadb.admin');
+    assert.equal(reason.props.id, blocked.props['aria-controls']);
+    assert.ok(label(reason).includes(say('services.mailProfiles.code.component_requires', { component: 'phpMyAdmin', required: 'MariaDB' })), label(reason));
+    assert.equal(bundleNode('db.mariadb.admin').props['aria-expanded'], true);
+    assert.equal(globalThis.bundleTracker.calls.length, 0);
+    assert.equal(tree.root.findAll((node) => node.props && node.props.role === 'dialog').length, 0, 'a blocked chip opened a dialogue');
+  } finally { await unmount(); }
   // The included chip's dialogue names the bundle that contains it and offers no Repair of its own.
   await mount(server('frankfurt'));
   try {
@@ -387,15 +404,46 @@ test('Boston and Frankfurt draw the same chips in the same order; MariaDB is off
 });
 
 // --- Roundcube leftovers ------------------------------------------------------------
-test('Roundcube leftovers: a muted line on the row, a neutral button, and a confirmation that lists what is removed and what is not', async () => {
+const withRoundcube = (extra = {}) => {
   const answer = payload({ bundles: [webBundle(), dbBundle()] });
   answer.services.push(component('roundcube', 'email', false, { kind: 'tool' }));
-  await mount(answer);
+  return { ...answer, ...extra };
+};
+const leftoversNote = () => tree.root.findAll((node) => node.props && node.props['data-webmail-leftovers'] !== undefined)[0];
+const leftoversButton = () => tree.root.findAll((node) => node.type === 'button' && node.props['data-webmail-cleanup'] !== undefined)[0];
+
+test('Roundcube leftovers: without the Panel\'s record of an unfinished install or removal the row says nothing and offers nothing', async () => {
+  await mount(withRoundcube());
   try {
-    const note = tree.root.find((node) => node.props && node.props['data-webmail-leftovers'] !== undefined);
-    assert.equal(label(note), say('services.cleanupWebmailRowNote'));
+    assert.equal(leftoversNote(), undefined);
+    assert.equal(leftoversButton(), undefined);
+  } finally { await unmount(); }
+  // A failed webmail attempt is such a record: an install did not finish.
+  const failed = withRoundcube();
+  failed.profiles = failed.profiles.map((item) => (item.id === 'webmail' ? { ...item, latest_attempt_status: 'failed', latest_attempt_error: 'roundcube download failed' } : item));
+  await mount(failed);
+  try {
+    assert.equal(label(leftoversNote()), say('services.cleanupWebmailRowNote.install'));
+    assert.ok(leftoversButton());
+  } finally { await unmount(); }
+  // Roundcube's own page opens this page with ?cleanup=roundcube: the dialogue
+  // opens once, whatever the row offers.
+  globalThis.bundleSearch = '?cleanup=roundcube';
+  await mount(withRoundcube());
+  try {
+    assert.ok(tree.root.findAll((node) => node.props && node.props['data-webmail-cleanup-list'] !== undefined).length === 1, 'the cleanup link did not open the dialogue');
+    assert.equal(leftoversButton(), undefined);
+  } finally { await unmount(); delete globalThis.bundleSearch; }
+});
+
+test('Roundcube leftovers: with the Panel\'s record, a muted line on the row, a neutral button, and a confirmation that lists what is removed and what is not', async () => {
+  await mount(withRoundcube({ webmail_cleanup: 'removal_incomplete' }));
+  try {
+    const note = leftoversNote();
+    assert.equal(note.props['data-webmail-leftovers'], 'removal');
+    assert.equal(label(note), say('services.cleanupWebmailRowNote.removal'));
     assert.match(note.props.className, /text-fg-muted/);
-    const button = tree.root.find((node) => node.type === 'button' && node.props['data-webmail-cleanup'] !== undefined);
+    const button = leftoversButton();
     assert.equal(label(button), say('services.cleanupWebmailRow'));
     assert.doesNotMatch(button.props.className, /danger/);
     await press(button);

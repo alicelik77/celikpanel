@@ -205,6 +205,13 @@ type managedServicesPayload struct {
 	// record has to be created on the primary or at the DNS provider.
 	// Ikincil DNS sunucusunda posta kaydinin nerede olusturulacagi.
 	MailDNSGuidance *mailProfileDNSGuidance `json:"mail_dns_guidance,omitempty"`
+	// WebmailCleanup is additive (alpha.95): present only when the Panel's
+	// own record shows a Roundcube install or removal that did not finish
+	// ("install_failed" or "removal_incomplete"; webmail_cleanup_record.go).
+	// The Components row offers the leftovers cleanup only then.
+	// Panel'in kaydı bitmeyen bir Roundcube kurulumu ya da kaldırması
+	// gösterdiğinde vardır; satır temizliği yalnız o zaman sunar.
+	WebmailCleanup string `json:"webmail_cleanup,omitempty"`
 }
 
 // stampScanAge sets ScanAgeSeconds from ScannedAt on this server's clock at
@@ -626,6 +633,7 @@ func (p *Panel) handleManagedServices(w http.ResponseWriter, r *http.Request) {
 		DNSIdentityReady: dnsIdentityReady,
 		MailHostname:     p.mailHostnameIdentity(r.Context()),
 		MailDNSGuidance:  p.mailProfileDNSGuidanceFor(r.Context(), dnsIdentityReady),
+		WebmailCleanup:   p.webmailCleanupRecord(r.Context()),
 	}
 	payload.Bundles = bundlesView(payload.Services, false, packageFamily, payload.Profiles, payload.Profiles)
 
@@ -770,6 +778,7 @@ func (p *Panel) handleManagedServicesScan(w http.ResponseWriter, r *http.Request
 		DNSIdentityReady: dnsIdentityReady,
 		MailHostname:     p.mailHostnameIdentity(r.Context()),
 		MailDNSGuidance:  p.mailProfileDNSGuidanceFor(r.Context(), dnsIdentityReady),
+		WebmailCleanup:   p.webmailCleanupRecord(r.Context()),
 	}
 	payload.Bundles = bundlesView(payload.Services, true, p.packageFamily(), payload.Profiles,
 		mailProfilesView(services, true, p.packageFamily(), "", webmailReady, webmailProven, profileAttempts))
@@ -851,6 +860,7 @@ func (p *Panel) managedServicesCacheWithin(ctx context.Context, maxAge time.Dura
 		DNSIdentityReady: dnsIdentityReady,
 		MailHostname:     p.mailHostnameIdentity(ctx),
 		MailDNSGuidance:  p.mailProfileDNSGuidanceFor(ctx, dnsIdentityReady),
+		WebmailCleanup:   p.webmailCleanupRecord(ctx),
 	}, true, nil
 }
 

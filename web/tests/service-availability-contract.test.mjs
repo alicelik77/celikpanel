@@ -186,7 +186,9 @@ test('partial webmail uninstall keeps an idempotent cleanup retry reachable', ()
 
 test('not-installed Roundcube keeps a fail-closed cleanup path across reloads', () => {
   const notInstalledStart = serviceList.indexOf('{!s.is_installed ? (');
-  const cleanupStart = serviceList.indexOf(`{s.id === 'roundcube' && (`, notInstalledStart);
+  // alpha.95 review: offered on the row only with the Panel's record of an
+  // unfinished install or removal; always reachable from Roundcube's page.
+  const cleanupStart = serviceList.indexOf(`{s.id === 'roundcube' && webmailCleanupOffered && (`, notInstalledStart);
   const installedStart = serviceList.indexOf('\n                                                    ) : (\n                                                    <>', cleanupStart);
   const cleanupAction = serviceList.slice(cleanupStart, serviceList.indexOf('</button>', cleanupStart));
 

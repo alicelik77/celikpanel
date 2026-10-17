@@ -13,7 +13,8 @@
 //                     Email Install x3, Databases "PostgreSQL verified,
 //                     MariaDB Install, phpPgAdmin Add, phpMyAdmin needs
 //                     MariaDB", Web "Nginx + PHP-FPM Install"; Roundcube not
-//                     installed (leftovers note + "Clean up leftovers...");
+//                     installed (no leftovers note: Boston has no record of an
+//                     unfinished Roundcube install or removal);
 //                     then the Roundcube cleanup dialogue and the PostgreSQL
 //                     installed dialogue
 //   y20bostondns      the same server with its DNS identity not ready: the
@@ -144,8 +145,11 @@ export default function batch20(scenarios, { base, locale, theme, out, viewport,
     };
 
     scenarios.y20boston = () => components('components-boston', 'boston', {}, async (page) => {
-        // The Roundcube row: not installed, the leftovers note and the neutral button; then its dialogue.
-        await click(page, 'button[data-webmail-cleanup]');
+        // Boston has no record of an unfinished Roundcube install or removal,
+        // so its row offers no cleanup (alpha.95 review); Roundcube's own page
+        // reaches the dialogue through /services?cleanup=roundcube.
+        await page.goto(`${base}/services?cleanup=roundcube`, { waitUntil: 'domcontentloaded' });
+        await page.waitForSelector('[data-webmail-cleanup-list]', { timeout: 20000 });
         await pause(500);
         await snap(page, 'components-boston-leftovers');
         await closeDialog(page);

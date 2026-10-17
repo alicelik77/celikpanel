@@ -37,7 +37,8 @@ test('the bundles card is read-only, always shown and uses the closed bundle dec
   // A compact door: one summary line, then only what needs a look; no row
   // per verified bundle.
   assert.match(card, /data-bundles-summary=''/);
-  assert.match(card, /summary\.unverified\.map\(/);
+  // A bundle not verified with a failed or running attempt is one line, with the reason.
+  assert.match(card, /summary\.unverified\.filter\(\(bundle\) => !\(bundle\.profile_id !== undefined && attempted\.has\(bundle\.profile_id\)\)\)\.map\(/);
   assert.doesNotMatch(card, /<ul|<li|summary\.installed/);
   // The old card and its gate are gone.
   assert.doesNotMatch(dashboard, /MailStackSummary|hasMailActivity|dashboard\.mailStacks|dashboardMailTruth/);

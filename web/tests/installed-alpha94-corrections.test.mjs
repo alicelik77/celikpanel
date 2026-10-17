@@ -6,6 +6,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import ts from 'typescript';
 import { en } from '../src/i18n/en.ts';
 import { tr } from '../src/i18n/tr.ts';
 import { enScreens } from '../src/i18n/screens/en.ts';
@@ -42,8 +43,26 @@ test('the Roundcube cleanup lists the paths the Agent removes, and says what it 
   for (const locale of ['en', 'tr']) {
     assert.ok(catalogues[locale]['services.cleanupWebmailUntouched'].includes('Maildir'), locale);
     // The scan cannot tell whether such files exist: the row says "may".
-    assert.match(catalogues[locale]['services.cleanupWebmailRowNote'], locale === 'en' ? /may still be/ : /kalmış olabilir/);
+    for (const kind of ['install', 'removal']) {
+      assert.match(catalogues[locale][`services.cleanupWebmailRowNote.${kind}`], locale === 'en' ? /may still be/ : /kalmış olabilir/);
+    }
   }
+});
+
+// alpha.95 review: the row offers the cleanup only when the Panel's own record
+// shows an unfinished Roundcube install or removal (or a failed webmail
+// attempt); Roundcube's own page always reaches it.
+test('the leftovers cleanup is offered on the row only with a record, and always from Roundcube\'s page', () => {
+  assert.match(services, /const webmailCleanupOffered = webmailCleanup !== null \|\| webmailAttemptFailed;/);
+  assert.match(services, /\{s\.id === 'roundcube' && s\.is_installed === false && webmailCleanupOffered && \(/);
+  assert.match(services, /\{s\.id === 'roundcube' && webmailCleanupOffered && \(/);
+  assert.match(services, /const decodeWebmailCleanup = \(value: unknown\): WebmailCleanupRecord \| null => \(value === 'install_failed' \|\| value === 'removal_incomplete' \? value : null\);/);
+  assert.match(services, /get\('cleanup'\) !== 'roundcube'/);
+  const shell = read('../src/components/ServiceShell.tsx');
+  assert.match(shell, /\{serviceId === 'roundcube' && \(\s*\n\s*<button\s*\n\s*type="button"\s*\n\s*onClick=\{\(\) => navigate\('\/services\?cleanup=roundcube'\)\}/);
+  const record = read('../../cmd/panel/webmail_cleanup_record.go');
+  assert.match(record, /webmailCleanupInstallFailed\s+= "install_failed"/);
+  assert.match(record, /webmailCleanupRemovalIncomplete = "removal_incomplete"/);
 });
 
 test('a sidebar count is a plain muted number, not a filled pill; null is still a dash, not zero', () => {
@@ -62,10 +81,29 @@ test('the Dashboard says "nothing needs your attention" in plain words, with wha
   assert.match(dashboard, /t\(serviceScanFresh \? 'dashboard\.attentionNone' : attentionComponentsKey\)/);
 });
 
+const zonesLib = await import('data:text/javascript;base64,' + Buffer.from(ts.transpileModule(read('../src/lib/infrastructureZones.ts'), { compilerOptions: { module: ts.ModuleKind.ES2022, target: ts.ScriptTarget.ES2020 } }).outputText).toString('base64'));
+
+test('the Domains count is a number only when both reads answered; it is never domains + 0 for an unread zone list', () => {
+  const known = (value, observedAt = 1) => ({ state: 'known', value, observedAt });
+  const failed = (previous) => ({ state: 'unknown', reason: { code: 'X', message: 'x' }, ...(previous ? { previous } : {}) });
+  const zone = (name, domainId = null) => ({ zone: name, domainId, records: 3, peerRecords: 0 });
+  const count = zonesLib.domainsCount;
+  assert.deepEqual(count(known([]), known([zone('example.net')])), { state: 'known', value: 1, observedAt: 1 });
+  assert.deepEqual(count(known([{}]), known([zone('example.net', 7)])), { state: 'known', value: 1, observedAt: 1 }, 'a zone that became a website is that website');
+  assert.equal(count(known([{}]), { state: 'loading' }).state, 'loading');
+  const unread = count(known([{}]), failed());
+  assert.equal(unread.state, 'unknown');
+  assert.equal(unread.previous, undefined, 'an unread zone list is not counted as none');
+  assert.deepEqual(count(known([{}], 5), failed({ value: [zone('a.example')], observedAt: 3 })).previous, { value: 2, observedAt: 3 });
+  assert.deepEqual(count(known([{}, {}]), null), { state: 'known', value: 2, observedAt: 1 }, 'without the zone read (not an administrator) it is the domains');
+  assert.equal(count({ state: 'loading' }, null).state, 'loading');
+});
+
 test('the Domains count includes the infrastructure DNS zone the Domains page lists', () => {
   assert.match(dashboard, /const infrastructureRead = useRemote\(INFRASTRUCTURE_ZONES_URL, decodeInfrastructureZones\);/);
-  assert.match(dashboard, /filter\(\(zone\) => zone\.domainId === null\)\.length/);
-  assert.match(dashboard, /n=\{mapRemote\(domainList\.remote, \(rows\) => rows\.length \+ standaloneZones\)\} label=\{t\('dashboard\.domains'\)\}/);
+  assert.match(dashboard, /n=\{domainsCount\(domainList\.remote, infrastructureRead\.remote\)\} label=\{t\('dashboard\.domains'\)\}/);
+  // The sidebar badge counts the same, with the same rule.
+  assert.match(layout, /lastKnown\(domainsCount\(domainList\.remote, role === 'admin' \? zoneList\.remote : null\)\)\?\.value/);
   // The Domains page lists the same zones the same way.
   const domains = read('../src/components/Domains.tsx');
   assert.match(domains, /infrastructureZones\.filter\(\(zone\) => zone\.domainId === null/);

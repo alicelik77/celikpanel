@@ -68,7 +68,7 @@ const layoutURL = compileURL('../src/components/Layout.tsx', Object.fromEntries(
     '../nav', '../lib/componentCensus', './ThemeSwitcher', './SkinSwitcher',
     './LanguageSwitcher', './ChangePasswordModal', './pageHeaderSlot',
 // The shell reads the domain list through the real shared layer.
-].map(path => [path, stubURL]).concat([['../lib/remote', remoteURL]])));
+].map(path => [path, stubURL]).concat([['../lib/remote', remoteURL], ['../lib/infrastructureZones', compileURL('../src/lib/infrastructureZones.ts', {})]])));
 const setupModelURL = compileURL('../src/lib/serverSetup.ts', {});
 const setupGateURL = compileURL('../src/components/ServerSetupGate.tsx', {
     '../auth/AuthContext': stubURL,
@@ -112,6 +112,9 @@ async function withMounted(element, check, response = runtime) {
         fixture.requests.push({ path, options });
         if (path === '/api/v1/panel/version') return Response.json(response);
         if (path === '/api/v1/domains') return Response.json([{ name: 'one.example' }, { name: 'two.example' }]);
+        // The administrator's badge also counts the DNS-only infrastructure
+        // zone the Domains page lists (alpha.95); none here.
+        if (path === '/api/v1/dns/infrastructure-zones') return Response.json({ zones: [] });
         throw new Error('unexpected shell request: ' + path);
     };
     let renderer;
@@ -185,7 +188,7 @@ test('mounted regular shell retains domain and component navigation and census l
         assert.equal(fixture.serviceReads, 1);
         assert.equal(fixture.censusPublished.length, 1);
         assert.deepEqual(fixture.requests.map(request => request.path).sort(), [
-            '/api/v1/domains', '/api/v1/panel/version',
+            '/api/v1/dns/infrastructure-zones', '/api/v1/domains', '/api/v1/panel/version',
         ]);
         assert.equal(renderer.root.findAllByProps({ 'data-setup-build': true }).length, 0);
         assert.equal(renderer.root.findAllByProps({ 'data-setup-navigation': true }).length, 0);
