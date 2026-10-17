@@ -6235,3 +6235,56 @@ clock date of everything in it.
 - **Change.** Ready bundles (D-034): a registry in the Panel (`cmd/panel/bundles.go`) derives each bundle's state from the same component scan and mail profiles and adds it to the managed-services answer as the additive `bundles` field. Components draws one strip per category; a database or web bundle installs its missing components through the ordinary component install, one operation at a time, each sent only after the previous operation, this step's own, ended with a fresh scan and after the page's change gate was read again; a failure, an operation that was not the step's or a closed gate stops the sequence with its reason, and only the owner's Continue resumes it. A mail bundle's action is Repair (the profile install, unchanged); a database or web bundle's Verify only reads. Mail failures and warnings are said again in the strip and on the Dashboard's read-only Ready bundles card, which replaced the Mail stacks card. The Components colour corrections change only drawing. **No P0 item is closed or advanced**; P0.1 to P0.5 stay partial.
 - **Schema and recovery.** Schema 44, no migration; no new Agent job kind, operation kind or typed failure code; the updater, rollback and recovery paths are untouched, so no native record is needed for this release (and none was made, by the owner's instruction of 2026-10-16). The blocking checks and readiness of the mail profiles moved into shared helpers with no change of behaviour (the mail profile view tests pass unchanged; the frontend source contract of the former mail cards was rewritten for the strip). A sequence lives in the page's memory only: a reload or a lost page leaves the components as the operations left them, and the bundle is then offered again with only the missing parts to install; the operation tracker's own recovery of an in-flight operation is unchanged.
 - **Evidence and open.** Go `./cmd/panel/` and `./internal/...` (66 packages): vet and gofmt clean; 2844 top-level tests pass, 42 skip, 4278 subtests pass, none fail; in `./cmd/panel/` 1594 top-level tests pass and 6 skip (nine new ready-bundle tests; the mail profile view tests pass unchanged). Web 1582 of 1582, with a contract test of the bundle words against the Panel's code list, the decoder per route and the strip's choices, and mounted tests of the states, Repair and Verify, the Apache split, the installed view and the sequence through a stand-in tracker (one step at a time; no step without a fresh scan; a failure, another screen's operation and a closed gate each stop it; no continuation after a reload); `tsc --noEmit` and the production build with the bundle budget pass. Browser batch 19 on the mock only. Nothing measured on an installed server; the sequence has not run against a real Agent; everything the alpha.88 to alpha.93 entries leave open stays open. See the [release notes](RELEASE-NOTES-v0.1.0-alpha.94.md).
+
+### Publication of v0.1.0-alpha.94 (no code change in the publication; invariants 2 and 6; D-022; D-024; D-025; D-034; 2026-10-17)
+
+D-025 invariants 2 (evidence has a meaning and a lifecycle: unknown is not
+absent, empty or success) and 6 (readiness, progress and access remain
+independent); D-022; D-024; D-034. **No P0 item is closed or advanced.** P0.1 to
+P0.5 stay partial and every open acceptance item stays open. This entry records
+one release; it changes no code, schema or recovery behaviour. 2026-10-17 is the
+clock date of everything in it.
+
+- **Publication.** All steps were done by the release preparer under the owner's
+  standing instruction; installed-panel updates are the owner's only. Pull
+  request #226 merged as `d506a05e8c003dffee8de2e1268402865520bd6b`; the release
+  sequence variable moved 93 to 94 before tagging; the main run and the tag run
+  succeeded; annotated tag `v0.1.0-alpha.94` (object
+  `d17aa39f13568a6254eeb5f1ab271eccff5eb5be`, tree
+  `7c1fd69a4dd1c43953037a344f7850dc150922b6`); pre-release at
+  2026-10-17T00:30:13Z with six assets; archive SHA-256
+  `bec3c015317fecc226d0a282ecf7e30547e305a621e7fa70943947c6ef0a6788`, 66,259,323
+  bytes; manifest sequence 94 with a verifying signature (the same key);
+  `get.sh` pins 94; policy 94 after 93. The portal package (SHA-256
+  `b493b72b09e49301fdce059a52ad2d0b92f892dd0e82c1ce1f1550c4b6dcf215`, built twice
+  identical) was published at about 00:48Z with previous v0.1.0-alpha.93:
+  committed, public verification 26 of 26, `CELIKPANEL_DOWNLOAD_PORTAL_PUBLISHED`,
+  and read from outside afterwards. Checked by the preparer from a download in a
+  WSL guest; reported by the preparer, not recorded in a file here. The release
+  chain ran cleanly; there was no incident.
+- **Native record.** None for the publication, and none for alpha.94, by the
+  owner's instruction of 2026-10-16. alpha.94's code is covered by component and
+  mounted tests only (see its candidate entry above).
+- **Installed panels.** Boston and Frankfurt were on alpha.92 when this was
+  written; the owner had not yet updated either, and had not reported updating
+  to alpha.93 either. Nothing from an installed server is recorded for alpha.93
+  or alpha.94, and none should be inferred (invariant 6: the publication of a
+  release is not the state of any server).
+- **Schema or version transition.** None: schema 44; the release sequence moved
+  93 to 94 in the release preparation. **Recovery behaviour.** Unchanged by the
+  publication and by alpha.94.
+- **Open, found in review and left for a later release.** (1) The page's gate
+  between the install steps of a bundle can miss a state-unverified flag for one
+  render; the host's readiness is still read fresh before each step and the
+  server refuses a change it must not accept (invariant 2: the unverified flag
+  is not read as absent for that render). (2) On the Components route, Verify (a
+  rescan) can be pressed while an install is running and then receives a busy
+  refusal. (3) While the gate is being read, the strip already says "installing"
+  before anything is sent (brief). None of the three changes a P0 item.
+- **Open, carried over.** Everything the alpha.94 candidate entry and the
+  alpha.90 to alpha.93 entries leave open, among them: the bundle sequence not
+  run against a real Agent; the ready bundles, the Dashboard card and the
+  colours not yet seen on an installed server; the calm "Finishing the update"
+  view first seen on an update from alpha.92; the live step view not reported as
+  seen; the rollback paths that share the changed helpers exercised by contract
+  tests only.

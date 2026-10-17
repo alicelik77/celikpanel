@@ -5512,3 +5512,56 @@ her şeyin saat tarihidir.
 - **Değişiklik.** Hazır paketler (D-034): Panel'deki bir kayıt (`cmd/panel/bundles.go`) her paketin durumunu aynı bileşen taramasından ve posta profillerinden türetir ve yönetilen hizmetler yanıtına eklemeli `bundles` alanı olarak ekler. Bileşenler her kategori için bir şerit çizer; bir veritabanı ya da web paketi eksik bileşenlerini olağan bileşen kurulumuyla, birer işlem olarak kurar; her biri, ancak öncekinin işlemi, yani bu adımın kendi işlemi taze bir taramayla bittikten sonra ve sayfanın değişiklik kapısı yeniden okunduktan sonra gönderilir; bir hata, bu adımın olmayan bir işlem ya da kapalı bir kapı sırayı nedeniyle durdurur ve yalnız sahibin Devam et'i sürdürür. Bir posta paketinin eylemi Onar'dır (profil kurulumu, değişmeden); bir veritabanı ya da web paketinin Doğrula'sı yalnız okur. Posta hataları ve uyarıları şeritte ve Posta paketleri kartının yerini alan Pano'nun salt okunur Hazır paketler kartında yeniden söylenir. Bileşenler renk düzeltmeleri yalnız çizimi değiştirir. **Hiçbir P0 işi kapanmaz ya da ilerlemez**; P0.1–P0.5 kısmi kalır.
 - **Şema ve kurtarma.** Şema 44, geçiş yok; yeni Agent iş türü, işlem türü ya da tipli hata kodu yok; güncelleyici, geri alma ve kurtarma yollarına dokunulmadı, bu yüzden bu sürüm için yerel kayıt gerekmez (ve sahibin 16 Ekim 2026 talimatıyla yapılmadı). Posta profillerinin engelleyen denetimleri ve hazırlığı davranış değişikliği olmadan ortak yardımcılara taşındı (posta profili görünümü testleri değişmeden geçer; eski posta kartlarının ön yüz kaynak sözleşmesi şerit için yeniden yazıldı). Bir sıra yalnız sayfanın belleğinde yaşar: yeniden yükleme ya da kaybolan bir sayfa bileşenleri işlemlerin bıraktığı gibi bırakır ve paket o zaman yalnız kurulacak eksik parçalarla yeniden sunulur; işlem izleyicinin uçuştaki bir işlemi kendi kurtarması değişmedi.
 - **Kanıt ve açık.** Go `./cmd/panel/` ve `./internal/...` (66 paket): vet ve gofmt temiz; 2844 üst düzey test geçer, 42 atlanır, 4278 alt test geçer, hiçbiri başarısız değil; `./cmd/panel/` içinde 1594 üst düzey test geçer, 6 atlanır (dokuz yeni hazır paket testi; posta profili görünüm testleri değişmeden geçer). Web 1582 / 1582; paket sözlerinin Panel'in kod listesine karşı bir sözleşme testi, yola göre çözücü ve şeridin seçimleri, ve durumların, Onar ile Doğrula'nın, Apache ayrımının, kurulu görünümün ve bir yedek izleyici üzerinden sıranın bağlanmış testleri (birer birer adım; taze tarama olmadan adım yok; bir hata, başka bir ekranın işlemi ve kapalı bir kapı sırayı ayrı ayrı durdurur; yeniden yüklemeden sonra devam yok); `tsc --noEmit` ile paket bütçeli üretim derlemesi geçer. Tarayıcı turu 19 yalnız taklit üzerinde. Kurulu bir sunucuda hiçbir şey ölçülmedi; sıra gerçek bir Agent'a karşı çalışmadı; alpha.88–alpha.93 girdilerinin açık bıraktığı her şey açık kalır. Bkz. [sürüm notları](RELEASE-NOTES-v0.1.0-alpha.94.tr.md).
+
+### v0.1.0-alpha.94'ün yayımlanması (yayımda kod değişikliği yok; ilke 2 ve 6; D-022; D-024; D-025; D-034; 2026-10-17)
+
+D-025 ilke 2 (kanıtın bir anlamı ve yaşam döngüsü vardır: bilinmeyen; yok, boş ya
+da başarılı değildir) ve 6 (hazır olma, ilerleme ve erişim birbirinden bağımsız
+kalır); D-022; D-024; D-034. **Hiçbir P0 işi kapanmaz ya da ilerlemez.**
+P0.1–P0.5 kısmi kalır ve her açık kabul işi açık kalır. Bu girdi tek bir sürümü
+kaydeder; kod, şema ya da kurtarma davranışını değiştirmez. 2026-10-17, içindeki
+her şeyin saat tarihidir.
+
+- **Yayımlama.** Bütün adımları sürümü hazırlayan kişi yaptı, sahibin kalıcı
+  talimatı uyarınca; kurulu panel güncellemelerini yalnız sahip yapar. #226
+  numaralı çekme isteği `d506a05e8c003dffee8de2e1268402865520bd6b` olarak
+  birleştirildi; sürüm sırası değişkeni etiketlemeden önce 93'ten 94'e geçti;
+  `main` koşusu ve etiket koşusu başarılı oldu; `v0.1.0-alpha.94` açıklamalı
+  etiketi (nesne `d17aa39f13568a6254eeb5f1ab271eccff5eb5be`, ağaç
+  `7c1fd69a4dd1c43953037a344f7850dc150922b6`); 2026-10-17T00:30:13Z'de altı
+  dosyalı ön sürüm; arşiv SHA-256
+  `bec3c015317fecc226d0a282ecf7e30547e305a621e7fa70943947c6ef0a6788`, 66.259.323
+  bayt; manifest sıra 94 ve doğrulanan bir imza (aynı anahtar); `get.sh` 94'ü
+  sabitler; politika 93'ten sonra 94. Portal paketi (SHA-256
+  `b493b72b09e49301fdce059a52ad2d0b92f892dd0e82c1ce1f1550c4b6dcf215`, iki kez aynı
+  derlendi) yaklaşık 00:48Z'de önceki v0.1.0-alpha.93 ile yayımlandı: committed,
+  genel doğrulama 26 istekten 26'sı, `CELIKPANEL_DOWNLOAD_PORTAL_PUBLISHED`,
+  ardından dışarıdan okundu. Hazırlayan kişi bir WSL konuğunda bir indirmeden
+  denetledi; hazırlayan kişi bildirdi, burada bir dosyada kayıtlı değil. Sürüm
+  zinciri temiz çalıştı; olay yok.
+- **Gerçek sistem kaydı.** Yayım için yok; alpha.94 için de yok, sahibin 16 Ekim
+  2026 talimatıyla. alpha.94'ün kodunu yalnız bileşen ve bağlanmış testler
+  kapsar (yukarıdaki aday girdisine bakın).
+- **Kurulu paneller.** Boston ve Frankfurt bu yazılırken alpha.92'deydi; sahip
+  henüz ikisini de güncellememişti ve alpha.93'e güncellediğini de bildirmemişti.
+  alpha.93 ya da alpha.94 için kurulu bir sunucudan hiçbir şey kaydedilmedi ve
+  çıkarılmamalıdır (ilke 6: bir sürümün yayımlanması hiçbir sunucunun durumu
+  değildir).
+- **Şema ya da sürüm geçişi.** Yok: şema 44; sürüm sırası sürüm hazırlığında
+  93'ten 94'e geçti. **Kurtarma davranışı.** Yayımla ve alpha.94 ile değişmez.
+- **Açık; incelemede bulundu ve sonraki bir sürüme bırakıldı.** (1) Sayfanın bir
+  paketin kurulum adımları arasındaki kapısı, durumun doğrulanamadığını bildiren
+  bir işareti bir çizim boyunca kaçırabilir; ana makinenin hazır olma durumu her
+  adımdan önce yine taze okunur ve sunucu kabul etmemesi gereken değişikliği
+  reddeder (ilke 2: doğrulanmamış işaret o çizim için yok sayılmış olur).
+  (2) Bileşenler yolunda Doğrula (bir yeniden tarama) bir kurulum sürerken
+  basılabilir ve o zaman "meşgul" reddi alır. (3) Kapı okunurken şerit, henüz
+  hiçbir şey gönderilmeden "kuruluyor" der (kısa süre). Üçü de bir P0 işini
+  değiştirmez.
+- **Açık; devreden.** alpha.94 aday girdisinin ve alpha.90–alpha.93 girdilerinin
+  açık bıraktığı her şey; bunlar arasında: paket sırası gerçek bir Agent'a karşı
+  çalışmadı; hazır paketler, Pano kartı ve renkler henüz bir kurulu sunucuda
+  görülmedi; sakin "Güncelleme tamamlanıyor" görünümü ilk kez alpha.92'den
+  güncellemede görülür; canlı adım görünümü görüldü diye bildirilmedi;
+  değiştirilen yardımcıları paylaşan geri alma yolları yalnız sözleşme testleriyle
+  denendi.
