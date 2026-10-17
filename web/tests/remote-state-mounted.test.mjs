@@ -65,6 +65,7 @@ const stub = dataModule(`
   export const publishComponentCensus = () => {};
   // The Panel's stored update check (alpha.96): nothing found here.
   export const availablePanelUpdate = () => null;
+  export const wholeVersion = (text) => text;
   export const usePanelUpdateDiscovery = () => ({ status: 'idle', value: null, readAt: 0 });
   ${stubbedComponents.filter((name) => !icons.has(name)).map((name) => `export const ${name} = (props) => props.children ?? null;`).join('\n')}
 `);

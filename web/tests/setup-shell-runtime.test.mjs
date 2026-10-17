@@ -36,6 +36,7 @@ const stubURL = moduleURL(`
     export const LogOut = Icon, ChevronDown = Icon, Menu = Icon, KeyRound = Icon, UserCheck = Icon, DownloadCloud = Icon;
     // The Panel's stored update check (alpha.96): the setup shell reads nothing.
     export const availablePanelUpdate = () => null;
+    export const wholeVersion = (text) => text;
     export const usePanelUpdateDiscovery = (enabled) => { globalThis.setupShellFixture.discoveryEnabled = enabled; return { status: 'idle', value: null, readAt: 0 }; };
     export const BrandMark = Icon;
     export const BuildCommit = ({ commit }) => 'build ' + commit.slice(0, 12);

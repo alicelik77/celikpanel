@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { createElement, Fragment, useEffect, useState, type ReactNode } from 'react';
 
 // The Panel's stored update check (D-035, owner request 2026-10-17): the
 // Panel looks for a newer signed release by itself every 12 hours and keeps
@@ -276,4 +276,19 @@ export function clockTime(moment: number, now: number, locale: string): string {
     return date.toLocaleString(tag, sameDay
         ? { hour: '2-digit', minute: '2-digit' }
         : { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
+/**
+ * A sentence with the version kept whole: "v0.1.0-alpha.96" never breaks at
+ * its hyphen on a phone (owner's rule: nothing breaks inside a word). The
+ * text is unchanged; the line still wraps at spaces.
+ * Sürüm tirede bölünmez; metin aynı kalır.
+ */
+export function wholeVersion(text: string, version: string): ReactNode {
+    const at = version === '' ? -1 : text.indexOf(version);
+    if (at < 0) return text;
+    return createElement(Fragment, null,
+        text.slice(0, at),
+        createElement('span', { className: 'whitespace-nowrap', 'data-version': '' }, version),
+        text.slice(at + version.length));
 }

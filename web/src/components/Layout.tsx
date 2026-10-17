@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LogOut, ChevronDown, Menu, KeyRound, UserCheck, DownloadCloud } from 'lucide-react';
 import { api } from '../lib/api';
 import { Link } from '../router';
-import { availablePanelUpdate, usePanelUpdateDiscovery, type DiscoveredTarget } from '../lib/panelUpdateDiscovery';
+import { availablePanelUpdate, usePanelUpdateDiscovery, wholeVersion, type DiscoveredTarget } from '../lib/panelUpdateDiscovery';
 import { useAuth } from '../auth/AuthContext';
 import { useI18n } from '../i18n';
 import { navItemsForRole, navGroups, type NavAccessContext, type NavItem } from '../nav';
@@ -224,7 +224,7 @@ export function Layout({ children, currentPage = '', onPageChange, mode = 'panel
                             (hasDesktopPageHeader || setupMode ? 'xl:h-auto xl:min-h-[90px] xl:py-2' : '')}
                     >
                         {!setupMode && <button
-                            className="rounded-lg p-1.5 text-fg-muted hover:bg-surface-2 md:hidden"
+                            className="flex h-11 w-11 items-center justify-center rounded-lg text-fg-muted hover:bg-surface-2 md:hidden"
                             onClick={() => setMobileOpen(true)}
                             aria-label={t('nav.menu')}
                         >
@@ -348,7 +348,7 @@ function Sidebar({
                             className="mt-2 inline-flex min-h-6 items-center gap-1.5 font-medium text-sidebar-fg underline decoration-sidebar-border underline-offset-4 hover:text-white hover:decoration-current focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 max-md:min-h-11"
                         >
                             <DownloadCloud className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                            <span>{t('panelUpdate.notice.sidebar', { version: updateTarget.version })}</span>
+                            <span>{wholeVersion(t('panelUpdate.notice.sidebar', { version: updateTarget.version }), updateTarget.version)}</span>
                         </Link>
                     )}
                 </div>

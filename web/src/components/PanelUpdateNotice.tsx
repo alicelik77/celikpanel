@@ -7,6 +7,7 @@ import {
     snoozeUpdateNotice,
     updateNoticeSnoozed,
     usePanelUpdateDiscovery,
+    wholeVersion,
 } from '../lib/panelUpdateDiscovery';
 
 // The Dashboard's one quiet row when the Panel found a newer signed release
@@ -37,7 +38,7 @@ export function DashboardUpdateNotice({ admin }: { admin: boolean }) {
         >
             <p className="flex min-w-0 flex-1 basis-64 items-center gap-2 text-fg">
                 <DownloadCloud className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
-                <span>{t('panelUpdate.notice.dashboard', { version: target.version })}</span>
+                <span>{wholeVersion(t('panelUpdate.notice.dashboard', { version: target.version }), target.version)}</span>
             </p>
             <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
                 <Link

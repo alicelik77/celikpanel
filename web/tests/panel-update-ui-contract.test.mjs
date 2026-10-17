@@ -295,7 +295,8 @@ test('host-readiness payloads fail closed and busy or unavailable states remain 
 });
 
 test('card carries alpha disclosure and safe response handling while tracking stays visible', () => {
-    for (const phrase of ['Alpha sürüm', 'yedek', 'yeniden başlatır', 'hiçbir zaman otomatik başlamaz']) {
+    // alpha.96: the alpha note is a line of "Before you update" (D-035).
+    for (const phrase of ['alfa sürümüdür', 'yedeği önerilir', 'yeniden başlar', 'Hiçbir şey kendiliğinden başlamaz']) {
         assert.ok(tr.includes(phrase), `missing disclosure: ${phrase}`);
     }
     for (const status of [401, 403, 408, 409, 429, 500]) {

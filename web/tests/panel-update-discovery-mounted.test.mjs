@@ -318,7 +318,7 @@ for (const locale of ['en', 'tr']) {
             assert.equal(textOf(primaries(renderer)[0]).trim(), say('panelUpdate.start', { version: TARGET.version }, locale));
             assert.equal(primaries(renderer)[0].props.disabled, false, 'a ready server cannot start');
             const whole = textOf(renderer.toJSON());
-            assert.ok(!whole.includes(say('panelUpdate.available', {}, locale)), 'the old second "available" line is back');
+            assert.ok(!whole.includes('A signed update is available.') && !whole.includes('İmzalı bir güncelleme bulundu.'), 'the old second "available" line is back');
             assert.equal(whole.split(TARGET.version + ' ').length - 1 <= 3, true);
             // The alpha note is plain text in "Before you update", not an amber box.
             const before = renderer.root.find(node => node.props && node.props['data-update-before'] !== undefined);
@@ -490,4 +490,30 @@ test('on the licence page the card offers the update but not the switch, which b
         assert.equal(primaries(renderer).length, 1);
         assert.equal(fixture.requests.filter(line => line.startsWith('PUT ')).length, 0);
     });
+});
+
+// Batch 21's first look (2026-10-17): fixes kept by contract.
+test('a version is never broken at its hyphen in the row, the sidebar link or the Settings note', async () => {
+    const whole = (node) => node.findAll(child => child.type === 'span' && child.props['data-version'] !== undefined);
+    await withMounted(React.createElement(React.Fragment, null, shell(), React.createElement(DashboardUpdateNotice, { admin: true })), {}, async (renderer) => {
+        const row = renderer.root.find(node => node.type === 'section' && node.props['data-dashboard-update'] !== undefined);
+        const link = sidebarLinks(renderer)[0];
+        for (const node of [row, link]) {
+            const spans = whole(node);
+            assert.equal(spans.length, 1);
+            assert.equal(textOf(spans[0]), TARGET.version);
+            assert.match(spans[0].props.className, /whitespace-nowrap/);
+        }
+    });
+    assert.equal(discovery.wholeVersion('no version here', TARGET.version), 'no version here');
+    assert.match(source('components/Settings.tsx'), /section\.note \? wholeVersion\(section\.note, section\.noteVersion \?\? ''\) : section\.description/);
+});
+
+test('phone layout: the Settings tab anchors its screen-reader note, the selected icon keeps contrast in dark mode, the menu button is 44 px', () => {
+    const settings = source('components/Settings.tsx');
+    assert.match(settings, /className=\{`group relative flex min-h-11 shrink-0 items-center/);
+    assert.match(settings, /active \? 'bg-primary text-primary-fg' :/);
+    assert.doesNotMatch(settings, /bg-primary text-white/);
+    const layout = source('components/Layout.tsx');
+    assert.match(layout, /className="flex h-11 w-11 items-center justify-center rounded-lg text-fg-muted hover:bg-surface-2 md:hidden"\s*\n\s*onClick=\{\(\) => setMobileOpen\(true\)\}/);
 });
