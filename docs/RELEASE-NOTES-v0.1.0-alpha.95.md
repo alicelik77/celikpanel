@@ -137,8 +137,13 @@ corrections; the Dashboard card, row layout, remote-state, mail profile and serv
 availability contracts); Go: the bundles test (an add-on before its parent needs
 MariaDB or PostgreSQL) and the mail profile frontend contract. The release
 contracts (sequence policy 94 -> 95, download portal, signed manifest) pass. Final
-test counts are recorded by the release preparer when the candidate is merged.
-Browser mock only; nothing on an installed server.
+counts on the candidate tree (2026-10-17): web `npm test` 1594 passed, 0 failed, and
+`npm run build` succeeded; Go `./cmd/panel/` and `./internal/...` 7122 passed, 0
+failed, 44 skipped. Browser batch 20 (Boston- and Frankfurt-like mocks, Turkish and
+English, light and dark, 1440 and 390 px) was looked at twice; the first look found
+PHP-FPM broken at its hyphen in two dialogues, Components controls under 44 px on a
+phone and a stray separator dot, all fixed. Browser mock only; nothing on an
+installed server.
 
 Install this release only through CelikPanel's update interface. Publishing it does
 not update installed servers; only the owner of a server starts its update, from

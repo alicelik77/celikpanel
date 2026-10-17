@@ -134,8 +134,13 @@ corrections; Pano kartı, satır düzeni, uzak durum, posta profili ve hizmet
 kullanılabilirliği sözleşmeleri); Go: bundles testi (ana paketinden önce bir eklenti
 MariaDB ya da PostgreSQL ister) ve posta profili ön yüz sözleşmesi. Sürüm
 sözleşmeleri (sıra politikası 94 -> 95, indirme portalı, imzalı manifest) geçer.
-Kesin test sayılarını sürümü hazırlayan, aday birleştirilirken kaydeder. Yalnız
-tarayıcı taklidi; kurulu bir sunucuda hiçbir şey yok.
+Aday ağacındaki kesin sayılar (17 Ekim 2026): web `npm test` 1594 geçti, 0 başarısız,
+`npm run build` başarılı; Go `./cmd/panel/` ve `./internal/...` 7122 geçti, 0
+başarısız, 44 atlandı. Tarayıcı 20. grubu (Boston ve Frankfurt benzeri taklitler,
+Türkçe ve İngilizce, açık ve koyu, 1440 ve 390 piksel) iki kez incelendi; ilk bakış
+iki pencerede kısa çizgisinden bölünen PHP-FPM'i, telefonda 44 pikselden küçük
+Bileşenler denetimlerini ve başıboş bir ayraç noktasını buldu; hepsi düzeltildi.
+Yalnız tarayıcı taklidi; kurulu bir sunucuda hiçbir şey yok.
 
 Bu sürümü yalnız CelikPanel'in güncelleme arayüzü üzerinden kurun. Yayımlamak kurulu
 sunucuları güncellemez; bir sunucunun güncellemesini yalnız sahibi, panelin kendi
