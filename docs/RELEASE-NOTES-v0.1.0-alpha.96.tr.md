@@ -25,13 +25,22 @@ günceller.
 her 12 saatte bir, panel celikpanel.net'e daha yeni imzalı bir sürüm olup
 olmadığını sorar. Bu, "Güncellemeleri denetle" düğmesiyle aynı salt-okur
 denetimdir; tarayıcı değil panel yapar. Hiçbir şey kurmaz, sunucuda hiçbir şeyi
-değiştirmez ve kilit almaz. Bir denetim 40 saniye sonra kesilir. Başarısız bir
-denetimden sonra bir sonraki deneme 1 saat, sonra 3 saat sonradır, sonra yine 12
-saatlik döneme dönülür; böylece geçici bir kesinti bir istek yağmuruna dönüşmez.
-Son 6 dakika içinde bir güncelleme başlatıldıysa, sunucu başka bir değişikliğin
-sürdüğünü ya da bu durumu doğrulayamadığını bildiriyorsa, sunucu kurulumu
-çalışıyorsa ya da Agent yanıt vermiyorsa denetim atlanır ve 1 saat sonra yeniden
-denenir; atlanma başarısızlık sayılmaz. Meşgul bir paket yöneticisi onu atlatmaz.
+değiştirmez. Bir denetim 40 saniye sonra kesilir. Başarısız bir denetimden sonra
+bir sonraki deneme 1 saat, sonra 3 saat sonradır, sonra yine 12 saatlik döneme
+dönülür; böylece geçici bir kesinti bir istek yağmuruna dönüşmez. Son bir saat
+içinde bir güncelleme başlatıldıysa, sunucu başka bir değişikliğin sürdüğünü ya da
+bu durumu doğrulayamadığını bildiriyorsa, sunucu kurulumu sunucuyu
+değiştiriyorsa (bir DNS kaydı beklerken değil) ya da Agent yanıt vermiyorsa
+denetim atlanır ve 1 saat sonra yeniden denenir; atlanma başarısızlık sayılmaz,
+yalnız bellekte tutulur ve bilinen sonucun yerini asla almaz. Meşgul bir paket
+yöneticisi onu atlatmaz. **Panel, bir güncelleme kabul edilmiş ya da sürüyorken
+sonucu asla yazmaz:** yazmadan hemen önce hiçbir güncellemenin kabul edilmediğini
+ve sunucunun süren bir değişiklik bildirmediğini yeniden okur; aksi hâlde sonucu
+bir sonraki boşta geçişe kadar bellekte tutar, çünkü güncelleyicinin salt-okur
+denetimi sırasında panel veritabanına yazmak o denetimi durdurur. Hazır olma
+okuması, hazır olma denetimi gibi, kısa bir okuma süresince panelin kendi
+değişiklik kilidini tutar; o anda basılan Başlat "meşgul" yanıtı alır ve yeniden
+basılabilir.
 
 **Sahip kapatabilir.** Ayarlar → CelikPanel güncellemeleri içinde "Güncellemeleri
 otomatik denetle" vardır, varsayılan olarak açıktır: "Panel 12 saatte bir
@@ -131,6 +140,23 @@ renk çiftini kullanır; menü düğmesi 44 px'tir. Türkçede elle denetimin he
 tek fiili var: "Güncellemeleri denetle" (düğme, "Güncellemeleri otomatik denetle",
 "denetlendi" ve ilgili iletiler); düğme önceden "Güncellemeyi kontrol et" diyordu.
 
+**Adayın bağımsız incelemesinin düzelttikleri (17 Ekim 2026).** Adayın ilk biçimi
+atlanan bir denetimi panelin ayarlarına yazıyordu ve bir güncelleme kabul
+edilirken bir sonuç yazabiliyordu; bu, güncelleyicinin salt-okur denetimini
+durdurabilirdi; bir DNS kaydı bekleyen kurulumu çalışan kurulum sayıyordu;
+zamanlayıcıyı yönetim açıldıktan sonra atıyordu. Artık: atlanma yalnız bellektedir
+ve bilinen sonucun yanında söylenir ("Son otomatik denetim … atlandı"); sonuç yalnız
+hiçbir güncelleme kabul edilmemiş ya da sürmüyorken yazılır; denetimi yalnız
+sunucuyu değiştiren bir kurulum tutar; zamanlayıcı hazırlanır ve eski kayıt
+yönetim açılmadan önce temizlenir; yeniden açılan denetim son tamamlanan
+denetimden 12 saat sonra sürer; aynı sürümün başka commit'li yeniden derlemesi
+Agent'ın imzalı yanıtına göre saklanır; durma penceresi, gösterilen satır
+kesildiğinde (üç noktayla) ya da farklı olduğunda sunucunun tam iletisini
+Ayrıntılar'da tutar; ertelenmiş Pano satırı bir kare bile çizilmez; anahtar,
+ayarı okunmadan önce "açık" yerine "henüz bilinmiyor" der; kart yaşları görünürken
+dakikada bir yeniler; Türkçe meşgul ve yeniden başlama iletileri "denetle" ve "bu
+yaklaşık N saniye sürer" der.
+
 ## Ne değişmez
 
 - Agent değişikliği yok (`cmd/agent`'a dokunulmadı), yeni Agent RPC'si ve yeni Agent
@@ -184,9 +210,9 @@ tek fiili var: "Güncellemeleri denetle" (düğme, "Güncellemeleri otomatik den
 Aşağıdakilerin hepsi 2026-10-17'de bir geliştirme ortamında aday ağacında
 çalıştırıldı; hiçbiri kurulu bir sunucuda çalıştırılmadı.
 
-- Go: `./cmd/panel/` ve `./internal/...` 7141 geçti, 0 başarısız, 43 atlandı (`-timeout 45m` ile; yalnız panel paketi WSL konuğunda yaklaşık 16 dakika sürer); `go vet ./cmd/panel/` ve gofmt temiz
-- Web: `npm test` 1617 geçti, 0 başarısız; `npm run build` paket bütçesi değiştirilmeden başarılı (Türkçe sunucu ekran bölümü 160,25 KiB'nin 159,96 KiB'ı, Türkçe genel ekran bölümü 160,25 KiB'nin 159,18 KiB'ı)
-- Tarayıcı grubu 21 (taklit sunucu; 20. grubun yerini alır): altı senaryo (en son sürüm, güncelleme var, daha önce duran bir deneme, başarısız otomatik denetim, kapalı, "Sonra hatırlat" öncesi ve sonrası Pano satırı) İngilizce ve Türkçe, açık ve koyu temada, 1440 ve 390 px'te: 8 yapılandırma, 100 ekran görüntüsü. İlk bakış telefonda Ayarlar sayfasını yaklaşık 730 px genişliğinde, Pano satırında sürümü tireden bölünmüş, koyu temada seçili Ayarlar simgesini neredeyse görünmez, telefonda menü düğmesini 44 px'in altında ve elle denetim için iki ayrı Türkçe fiil buldu; hepsi düzeltildi (yukarıya bakın). Son derlemedeki ikinci bakış: yatay taşma yok, telefonda 44 px'ten küçük hedef yok, bu ekranlarda sarı ya da kırmızı yok, çevrilmemiş anahtar ve Türkçe sayfada İngilizce yok, sürüm bütün, tek dolu eylem düğmesi, başarısız denetimden sonra kart dışında güncelleme bildirimi yok
+- Go: `./cmd/panel/` ve `./internal/...` inceleme düzeltmelerinden sonraki son ağaçta 7146 geçti, 0 başarısız, 43 atlandı (`-timeout 45m` ile; yalnız panel paketi WSL konuğunda yaklaşık 16 dakika sürer); `go vet ./cmd/panel/` ve gofmt temiz; keşif testleri `-race` altında da geçti (C derleyicisi olan `archlinux` WSL konuğunda Go 1.27; Debian konuğunda derleyici yok)
+- Web: `npm test` son ağaçta 1623 geçti, 0 başarısız; `npm run build` paket bütçesi değiştirilmeden başarılı (Türkçe sunucu ekran bölümü 160,25 KiB'nin 159,96 KiB'ı, Türkçe genel ekran bölümü 160,25 KiB'nin 159,25 KiB'ı)
+- Tarayıcı grubu 21 (taklit sunucu; 20. grubun yerini alır): altı senaryo (en son sürüm, güncelleme var, daha önce duran bir deneme, başarısız otomatik denetim, kapalı, "Sonra hatırlat" öncesi ve sonrası Pano satırı) İngilizce ve Türkçe, açık ve koyu temada, 1440 ve 390 px'te: 8 yapılandırma, 100 ekran görüntüsü. İlk bakış telefonda Ayarlar sayfasını yaklaşık 730 px genişliğinde, Pano satırında sürümü tireden bölünmüş, koyu temada seçili Ayarlar simgesini neredeyse görünmez, telefonda menü düğmesini 44 px'in altında ve elle denetim için iki ayrı Türkçe fiil buldu; hepsi düzeltildi (yukarıya bakın). Son derlemedeki ikinci bakış: yatay taşma yok, telefonda 44 px'ten küçük hedef yok, bu ekranlarda sarı ya da kırmızı yok, çevrilmemiş anahtar ve Türkçe sayfada İngilizce yok, sürüm bütün, tek dolu eylem düğmesi, başarısız denetimden sonra kart dışında güncelleme bildirimi yok. 21. grup inceleme düzeltmelerinden sonra yeniden çalıştırılmadı; düzeltmeleri bileşen ve bağlı testler kapsar
 - Sürüm sözleşmeleri (sıra ilkesi 96, 95'ten sonra; indirme portalı; imzalı
   bildirim): sıra ilkesi (Git Bash) "95 -> 96" geçti; indirme portalı ve imzalı bildirim (WSL konuğu) geçti
 

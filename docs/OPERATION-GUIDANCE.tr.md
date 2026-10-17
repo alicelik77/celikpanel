@@ -9140,28 +9140,38 @@ bilgidir, asla alarm değildir.
 
 - celikpanel.net'teki imzalı sürümün salt-okur denetimi; panel işlemi yapar,
   panel başladıktan yaklaşık 2 dakika sonra ve ardından her 12 saatte bir
-  (başlangıçta 30 saniye, sonra 30 dakikalık rastgele sapmayla). "Güncellemeyi
-  kontrol et" düğmesiyle aynı denetimdir. Bir denetim 40 saniyeyle sınırlıdır.
-  Kilit almaz, sunucuda hiçbir şeyi değiştirmez ve güncelleme kaydı yazmaz.
+  (başlangıçta 30 saniye, sonra 30 dakikalık rastgele sapmayla). "Güncellemeleri
+  denetle" düğmesiyle aynı denetimdir. Bir denetim 40 saniyeyle sınırlıdır.
+  Sunucuda hiçbir şeyi değiştirmez ve güncelleme kaydı yazmaz. (Hazır olma
+  okuması, hazır olma denetimi gibi, kısa bir okuma süresince panelin kendi
+  değişiklik kilidini tutar; o anda basılan Başlat "meşgul" yanıtı alır ve
+  yeniden basılabilir.)
 - Başarısız bir denetimden sonra bir sonraki deneme 1 saat, sonra 3 saat sonradır;
   sonra yine 12 saatlik dönem gelir; başarılı bir denetim bunu sıfırlar. Yeniden
   deneme fırtınası yoktur.
-- Güvenle yapılamadığında atlanır ve 1 saat sonra yeniden denenir: panel son 6
-  dakika içinde bir güncelleme başlatmayı kabul ettiyse; Agent süren başka bir
+- Güvenle yapılamadığında atlanır ve 1 saat sonra yeniden denenir: panel son bir
+  saat içinde bir güncelleme başlatmayı kabul ettiyse; Agent süren başka bir
   değişiklik ya da doğrulayamadığı bir durum bildiriyorsa; sunucu kurulumu
-  çalışıyor ya da bekliyorsa; ya da Agent yanıt vermiyorsa. Atlanma karşılanmamış
-  bir koşuldur, başarısızlık değildir. Meşgul bir paket yöneticisi denetimi
-  atlatmaz, çünkü sürümü okumak paketlere dokunmaz.
-- Panel kapanırken asla çalışmaz; yarıda kalan bir denetim hiçbir şey kaydetmez.
+  sunucuyu değiştiriyorsa (bir DNS kaydı bekleyen kurulum onu durdurmaz); ya da
+  Agent yanıt vermiyorsa. Atlanma karşılanmamış bir koşuldur, başarısızlık
+  değildir. Meşgul bir paket yöneticisi denetimi atlatmaz, çünkü sürümü okumak
+  paketlere dokunmaz. Atlanma yalnız bellekte tutulur: bilinen sonucun yerini
+  asla almaz ve kart onu o sonucun yanında söyler.
+- Panel kapanırken asla çalışmaz; yarıda kalan bir denetim hiçbir şey tutmaz.
+  Yeniden açılan zamanlama son tamamlanan denetimden 12 saat sonra sürer.
 - Sahip bunu Ayarlar → CelikPanel güncellemeleri içindeki "Güncellemeleri
   otomatik denetle" ile kapatabilir (varsayılan açık): "Panel 12 saatte bir
   celikpanel.net'e daha yeni imzalı bir sürüm olup olmadığını sorar. Hiçbir şey
   kendiliğinden kurulmaz." Kapalı olması, zamanlamanın hiçbir ağ okuması
   yapmaması demektir; "Güncellemeleri denetle" düğmesi yine çalışır. Ayar
   kaydedilemezse: "Ayar kaydedilemedi ve değişmedi. Yeniden deneyin."
-- Sonuç saklanır. Başarısız ya da atlanan bir denetim ondan önce bulunan sürümü
-  korur; böylece geçici bir kesinti hâlâ bekleyen bir güncellemeyi gizlemez.
-  Güncellemeden sonra, panelin zaten olduğu (ya da ondan daha yeni olan) saklı bir
+- Sonuç saklanır, ama bir güncelleme kabul edilmiş ya da sürüyorken asla: yazmadan
+  hemen önce panel, hiçbir güncellemenin kabul edilmediğini ve sunucunun süren bir
+  değişiklik bildirmediğini yeniden okur; aksi hâlde sonucu bellekte tutar,
+  gösterir ve bir sonraki boşta geçişte yazar. (Güncelleyicinin salt-okur denetimi
+  sırasında yazmak o denetimi durdururdu.) Başarısız bir denetim ondan önce bulunan
+  sürümü korur; böylece geçici bir kesinti hâlâ bekleyen bir güncellemeyi gizlemez.
+  Güncellemeden sonra, panelin zaten olduğu (ya da ondan eski olan) saklı bir
   sürüm temizlenir ve bildirim kaybolur.
 
 **Sahip her durumda ne görür.** Bunların hiçbirini yöneticiler dışında kimse
@@ -9176,7 +9186,7 @@ görmez ya da okumaz. Güncelleme kartı, bir düğmeye basılmadan ve sürüm s
 | Önceki deneme durdu | "Güncellemeden önce"nin üstünde tek bir bildirim; hiçbir şey değişmediği için nötr: "Bu sürüme yapılan önceki güncelleme kurulu sürümü değiştirmeden durdu", ardından "{version} bu sunucuda {time} tarihinde denendi ve kurulu sürümü ve verilerini değiştirmeden durdu; bu sunucu {current} sürümünü eskisi gibi çalıştırıyor. Yeniden başlatmak güvenlidir; o deneme için kaydedilen neden bu sunucudaki bir durumu belirtiyorsa önce onu giderin." Geri alınan ya da başarısız olan bir deneme kendi dikkat işaretini ve sözlerini korur. |
 | Otomatik denetim başarısız | "Son otomatik denetim: 2 saat önce — sürüm sunucusundan (celikpanel.net) doğrulanmış bir yanıt alınamadı." ardından "Sonraki denetim 15:30 saatinde kendiliğinden yapılır; isterseniz şimdi de denetleyebilirsiniz." |
 | Sonuç bilinmiyor (zaman aşımı) | "Son otomatik denetim: 2 saat önce — denetim zamanında bitmedi, bu yüzden sonucu bilinmiyor." ardından aynı sonraki denetim satırı |
-| Atlandı | "Son otomatik denetim 2 saat önce atlandı: sunucuda başka bir değişiklik sürüyordu." Aynı yerdeki diğer nedenler: "bir güncelleme sürüyordu"; "sunucu kurulumu çalışıyordu"; "sunucunun değişiklik durumu okunamadı"; "panelin Agent'ı yanıt vermedi". |
+| Atlandı | Yerinde kalan bilinen sonucun altında söylenir: "Son otomatik denetim 2 saat önce atlandı: sunucuda başka bir değişiklik sürüyordu." Aynı yerdeki diğer nedenler: "bir güncelleme sürüyordu"; "sunucu kurulumu sunucuyu değiştiriyordu"; "sunucunun değişiklik durumu okunamadı"; "panelin Agent'ı yanıt vermedi". |
 | Kapalı | "Otomatik denetim kapalı. Şimdi bakmak için "Güncellemeleri denetle"ye basın." |
 | Okunuyor | "Son güncelleme denetimi okunuyor…"; kayıtlı sonuç okunamazsa: "Son güncelleme denetiminin sonucu okunamadı. Hiçbir şey değiştirilmedi; şimdi denetleyebilirsiniz." |
 

@@ -27,14 +27,21 @@ update screen.
 every 12 hours, the panel asks celikpanel.net whether a newer signed release
 exists. It is the same read-only check as the "Check for updates" button, made by
 the panel and not by the browser. It installs nothing, changes nothing on the
-server and takes no lock. One check is cut off after 40 seconds. After a failed
-check the next try is in 1 hour, then in 3 hours, then back to the 12-hour
-period, so a passing outage does not become a stream of requests. The check is
-skipped, and tried again in 1 hour, while an update was started in the last 6
-minutes, while the server reports that another change is in progress or that it
-cannot verify that state, while server setup is running, or when the Agent does
-not answer; a skip is not counted as a failure. A busy package manager does not
-skip it.
+server. One check is cut off after 40 seconds. After a failed check the next try
+is in 1 hour, then in 3 hours, then back to the 12-hour period, so a passing
+outage does not become a stream of requests. The check is skipped, and tried
+again in 1 hour, while an update was started in the last hour, while the server
+reports that another change is in progress or that it cannot verify that state,
+while server setup is changing the server (not while it waits for a DNS record),
+or when the Agent does not answer; a skip is not counted as a failure, is kept in
+memory only and never replaces the known result. A busy package manager does not
+skip it. **The panel never writes the result while an update is admitted or
+running:** right before writing it reads again that no update was admitted and
+that the server reports no change in progress, and otherwise keeps the result in
+memory until the next idle pass, because a write to the panel's database during
+the updater's read-only check makes that check stop. Its readiness read holds the
+panel's own change lease for one short read, as the readiness check does; a Start
+pressed at that moment is answered "busy" and can be pressed again.
 
 **The owner can switch it off.** Settings → CelikPanel updates has "Check for
 updates automatically", on by default: "Once every 12 hours the panel asks
@@ -133,6 +140,23 @@ Turkish the manual check has one verb everywhere: "Güncellemeleri denetle" (the
 button, "Güncellemeleri otomatik denetle", "denetlendi" and the related messages),
 where the button used to say "Güncellemeyi kontrol et".
 
+**What the independent review of the candidate corrected (2026-10-17).** The
+first form of the candidate wrote a skipped check to the panel's settings and
+could write a result while an update was being admitted, which could stop the
+updater's read-only check; it treated a setup waiting for a DNS record as a
+running setup; it assigned the scheduler after management opened. Now: a skip is
+memory only and is said beside the known result ("The last automatic check was
+skipped …"); a result is written only when no update is admitted or running; only
+a setup that changes the server holds the check; the scheduler is prepared and a
+stale record cleared before management opens; switching the check on again
+continues 12 hours after the last completed check; a rebuild with the same version
+and another commit is stored as the Agent's signed answer says; the stop dialog
+keeps the whole server message behind Details when the line shown is cut (with an
+ellipsis) or differs; a snoozed Dashboard row is never painted for a frame; the
+switch says "not known yet" instead of "on" before its setting was read; the card
+redraws its ages every minute while visible; and the Turkish busy and restart
+messages use "denetle" and "bu yaklaşık N saniye sürer".
+
 ## What does not change
 
 - No Agent change (`cmd/agent` is untouched), no new Agent RPC and no new Agent job
@@ -186,9 +210,9 @@ where the button used to say "Güncellemeyi kontrol et".
 Everything below was run on the candidate tree on 2026-10-17 in a development
 environment; none of it was run on an installed server.
 
-- Go: `./cmd/panel/` and `./internal/...` 7141 passed, 0 failed, 43 skipped (run with `-timeout 45m`; the panel package alone takes about 16 minutes in the WSL guest); `go vet ./cmd/panel/` and gofmt clean
-- Web: `npm test` 1617 passed, 0 failed; `npm run build` succeeded with the bundle budget unchanged (Turkish server screen part 159.96 of 160.25 KiB, Turkish general screen part 159.18 of 160.25 KiB)
-- Browser batch 21 (mock server; replaces batch 20): six scenarios (current, available, an earlier attempt that stopped, a failed automatic check, switched off, the Dashboard row before and after "Remind me later") in English and Turkish, light and dark, at 1440 and 390 px: 8 configurations, 100 screenshots. The first look found the phone Settings page about 730 px wide, the version broken at its hyphen in the Dashboard row, the selected Settings icon nearly invisible in the dark theme, a phone menu button under 44 px and two Turkish verbs for the manual check; all fixed (see above). The second look, on the final build: no horizontal overflow, no phone target under 44 px, no amber or red on these screens, no untranslated key and no English on a Turkish page, the version whole, one filled action button, no update notice outside the card after a failed check
+- Go: `./cmd/panel/` and `./internal/...` 7146 passed, 0 failed, 43 skipped on the final tree after the review corrections (run with `-timeout 45m`; the panel package alone takes about 16 minutes in the WSL guest); `go vet ./cmd/panel/` and gofmt clean; the discovery tests also passed under `-race` (Go 1.27 in the `archlinux` WSL guest, which has a C compiler; the Debian guest has none)
+- Web: `npm test` 1623 passed, 0 failed on the final tree; `npm run build` succeeded with the bundle budget unchanged (Turkish server screen part 159.96 of 160.25 KiB, Turkish general screen part 159.25 of 160.25 KiB)
+- Browser batch 21 (mock server; replaces batch 20): six scenarios (current, available, an earlier attempt that stopped, a failed automatic check, switched off, the Dashboard row before and after "Remind me later") in English and Turkish, light and dark, at 1440 and 390 px: 8 configurations, 100 screenshots. The first look found the phone Settings page about 730 px wide, the version broken at its hyphen in the Dashboard row, the selected Settings icon nearly invisible in the dark theme, a phone menu button under 44 px and two Turkish verbs for the manual check; all fixed (see above). The second look, on the final build: no horizontal overflow, no phone target under 44 px, no amber or red on these screens, no untranslated key and no English on a Turkish page, the version whole, one filled action button, no update notice outside the card after a failed check. Batch 21 was not run again after the review corrections; they are covered by component and mounted tests
 - Release contracts (sequence policy 96 after 95, download portal, signed
   manifest): sequence policy (Git Bash) "95 -> 96" passed; download portal and signed manifest (WSL guest) passed
 

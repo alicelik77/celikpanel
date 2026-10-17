@@ -43,32 +43,45 @@ Benimsenen kurallar:
    yetkisi, Agent'ın celikpanel.net'teki imzalı sürümü denetlemesi, kimlik
    eşleşmesi ve hedefin doğrulanması. İlk denetim Panel başladıktan yaklaşık 2
    dakika sonra (artı eksi 30 saniye), sonra her 12 saatte bir (artı eksi 30
-   dakika) yapılır. Bir denetim 40 saniyeyle sınırlıdır. Kilit almaz, sunucuda
-   hiçbir şeyi değiştirmez ve güncelleme kaydı yazmaz.
+   dakika) yapılır. Bir denetim 40 saniyeyle sınırlıdır. Sunucuda hiçbir şeyi
+   değiştirmez ve güncelleme kaydı yazmaz. Hazır olma okuması, hazır olma
+   uç noktası gibi, bir danışma Agent okuması süresince Panel'in kendi
+   değişiklik kilidini `TryLock` ile tutar; o anda basılan bir başlatma
+   "meşgul" yanıtı alır ve yeniden basılabilir.
 2. **Başarısız denetim geri çekilir, yeniden deneme fırtınası çıkarmaz.**
    Başarısızlıktan sonra bir sonraki deneme 1 saat, sonra 3 saat sonradır; sonra
    yine 12 saatlik dönem gelir. Başarılı bir denetim bunu sıfırlar.
 3. **Bazı durumlar denetimi atlatır; atlanma bir başarısızlık değildir.**
-   Denetim yapılmaz ve 1 saat sonra yeniden denenir: Panel son 6 dakika içinde
+   Denetim yapılmaz ve 1 saat sonra yeniden denenir: Panel son bir saat içinde
    bir güncelleme başlatmayı kabul ettiyse, Agent'ın danışma niteliğindeki
    hazır olma okuması süren bir değişiklik ya da doğrulayamadığı bir durum
-   bildiriyorsa, bir sunucu kurulumu çalışıyor ya da bekliyorsa ve Agent yanıt
-   vermiyorsa. Meşgul bir paket yöneticisi denetimi atlatmaz, çünkü sürüm okuması
-   paketlere dokunmaz. Denetim, Panel kapanırken asla çalışmaz; yarıda kalan bir
-   denetim hiçbir şey kaydetmez.
+   bildiriyorsa, bir sunucu kurulumu sunucuyu değiştiriyorsa (bir DNS kaydı
+   bekleyen kurulum denetimi tutmaz) ve Agent yanıt vermiyorsa. Meşgul bir paket
+   yöneticisi denetimi atlatmaz, çünkü sürüm okuması paketlere dokunmaz. Atlanma
+   yalnız bellekte tutulur: asla yazılmaz ve bilinen bir sonucun yerini almaz;
+   kart onu o sonucun yanında söyler. Denetim, Panel kapanırken asla çalışmaz;
+   yarıda kalan bir denetim hiçbir şey tutmaz. Yeniden açılan zamanlama, iki
+   dakika sonra değil, son tamamlanan denetimden 12 saat sonra sürer.
 4. **Sahip kapatabilir.** Ayarlar → CelikPanel güncellemeleri içinde
    "Güncellemeleri otomatik denetle" vardır; varsayılan olarak açıktır ve
    şunu söyler: "Panel 12 saatte bir celikpanel.net'e daha yeni imzalı bir sürüm
    olup olmadığını sorar. Hiçbir şey kendiliğinden kurulmaz." Kapalı olması,
    zamanlamanın hiçbir ağ okuması yapmaması demektir; elle denetim yine çalışır.
-5. **Sonuç saklanır ve kuralla temizlenir.** Son sonuç (çıktı, zaman, otomatik
-   olup olmadığı, başarısızlık ya da atlanma için bir neden kodu ve bulunan
-   sürüm ile bulunma zamanı) Panel'in ayarlar tablosunda tutulur; şema
-   değişmez. Başarısız ya da atlanan bir denetim ondan önce bulunan sürümü
+5. **Sonuç saklanır ve kuralla temizlenir; güncelleme sırasında asla.** Son
+   tamamlanan sonuç (çıktı, zaman, otomatik olup olmadığı, başarısızlık için bir
+   neden kodu ve bulunan sürüm ile bulunma zamanı) Panel'in ayarlar tablosunda
+   tutulur; şema değişmez. Başarısız bir denetim ondan önce bulunan sürümü
    korur; böylece geçici bir kesinti hâlâ bekleyen bir güncellemeyi gizlemez.
-   Başlangıçta, başka bir yapının yazdığı ya da bu yapının zaten olduğu ya da
-   ondan daha yeni olan bir sürümü adlandıran kayıt temizlenir; güncellemeden
-   sonra bildirim kaybolur.
+   **Zamanlanmış denetim, bir güncelleme kabul edilmiş ya da sürüyorken asla
+   yazmaz**; düğme de yazmaz: yazmadan hemen önce Panel değişiklik kilidini alır
+   ve hiçbir güncellemenin kabul edilmediğini ve sunucunun süren bir değişiklik
+   bildirmediğini yeniden okur; aksi hâlde sonuç bellekte tutulur, gösterilir ve
+   bir sonraki boşta geçişte yazılır. (Güncelleyicinin sabitlenmiş salt-okur ön
+   denetimi sırasında Panel veritabanına yazmak o denetimi durdurur.) Aynı
+   sürümün başka commit'li yeniden derlemesi, Agent'ın imzalı yanıtı ne diyorsa
+   odur. Başlangıçta, yönetim açılmadan önce, başka bir yapının yazdığı ya da bu
+   yapının zaten olduğu ya da ondan eski olan bir sürümü adlandıran kayıt
+   temizlenir; güncellemeden sonra bildirim kaybolur.
 6. **Sahip nerede görür, nerede görmez.** Yalnız yöneticiler: kenar çubuğunda
    sürüm satırının altında küçük bir bağlantı ("Güncelleme var · v0.1.0-alpha.96");
    Pano içeriğinin en üstünde tek, sessiz bir satır ("İlgi istiyor" kutusunun
@@ -136,6 +149,11 @@ kapatılabilir, asla değiştirme değil. D-032'nin saat kuralı korunur: taray�
 saatleri asla karşılaştırmaz, yaşları sunucu söyler. D-033: kartın bekleme
 durumları görünürdür (düğmenin denetimi sürerken hareketli bir "denetleniyor"
 satırı) ya da yapılacak bir şey olmadığını söyler.
+
+*Aynı gün, adayın bağımsız incelemesinden sonra düzeltildi:* 5. kuralın ilk
+biçimi atlanmayı yazıyordu ve bir güncelleme kabul edilirken bir sonuç
+yazabiliyordu; bir DNS kaydı bekleyen kurulum denetimi tutuyordu; kabul penceresi
+6 dakikaydı. Yukarıdaki kurallar düzeltilmiş olanlardır.
 
 ---
 

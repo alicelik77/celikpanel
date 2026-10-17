@@ -45,32 +45,45 @@ The rules adopted:
    the Agent's check of the signed release at celikpanel.net, the identity match
    and the validation of the target. The first check runs about 2 minutes after
    the Panel starts (plus or minus 30 seconds), then every 12 hours (plus or
-   minus 30 minutes). One check is bounded at 40 seconds. It takes no lock,
-   changes nothing on the host and writes no update record.
+   minus 30 minutes). One check is bounded at 40 seconds. It changes nothing
+   on the host and writes no update record. Its readiness read, like the
+   readiness endpoint, holds the Panel's own mutation lease with `TryLock` for
+   the length of one advisory Agent read; a start pressed in that moment is
+   answered "busy" and can be pressed again.
 2. **A failed check backs off, it does not retry in a storm.** After a failure
    the next try is in 1 hour, then in 3 hours, then the 12-hour period again. A
    successful check resets this.
 3. **Some conditions skip the check; a skip is not a failure.** The check is not
    run, and tried again in 1 hour, while the Panel admitted an update start in
-   the last 6 minutes, while the Agent's advisory readiness read reports a
-   change in progress or a state it cannot verify, while a server setup run is
-   running or waiting, and when the Agent does not answer. A busy package
-   manager does not skip it, because the release read does not touch packages.
-   The check never runs while the Panel shuts down; an interrupted check records
-   nothing.
+   the last hour, while the Agent's advisory readiness read reports a change in
+   progress or a state it cannot verify, while a server setup run is changing
+   the server (a run waiting for a DNS record does not hold it), and when the
+   Agent does not answer. A busy package manager does not skip it, because the
+   release read does not touch packages. A skip is kept in memory only: it is
+   never written and never replaces a known result; the card says it beside
+   that result. The check never runs while the Panel shuts down; an interrupted
+   check keeps nothing. Turned on again, the schedule continues 12 hours after
+   the last completed check, not two minutes later.
 4. **The owner can switch it off.** Settings → CelikPanel updates has "Check for
    updates automatically", on by default, with the text "Once every 12 hours the
    panel asks celikpanel.net whether a newer signed release exists. Nothing is
    installed by itself." Off means no network read by the schedule at all; the
    manual check still works.
-5. **The result is stored and cleared by rule.** The latest result (outcome,
-   time, whether it was automatic, a reason code for a failure or a skip, and the
-   release found with the time it was found) is kept in the Panel's settings
-   table; no schema change. A failed or skipped check keeps the release found
-   before it, so a passing outage does not hide an update that is still waiting.
-   At start, a record made by another build, or naming a release this build
-   already is or is newer than, is cleared; after an update the notice
-   disappears.
+5. **The result is stored and cleared by rule; never during an update.** The
+   latest completed result (outcome, time, whether it was automatic, a reason
+   code for a failure, and the release found with the time it was found) is kept
+   in the Panel's settings table; no schema change. A failed check keeps the
+   release found before it, so a passing outage does not hide an update that is
+   still waiting. **The scheduled check never writes while an update is
+   admitted or running**, and neither does the button: right before a write the
+   Panel takes its mutation lease and reads again that no update was admitted
+   and that the server reports no change in progress; otherwise the result is
+   kept in memory, shown, and written on the next idle pass. (A write to the
+   Panel's database during the updater's pinned read-only preflight makes that
+   preflight stop.) A rebuild with the same version and another commit is what
+   the Agent's signed answer says it is. At start, before management opens, a
+   record made by another build, or naming a release this build already is or
+   is older than this build, is cleared; after an update the notice disappears.
 6. **Where the owner sees it, and where not.** Administrators only: a small link
    under the version line in the sidebar ("Update available · v0.1.0-alpha.96");
    one quiet row at the top of the Dashboard content, not inside "Needs
@@ -136,6 +149,11 @@ bounded, switchable, never a mutation. D-032's clock rule is kept: the browser
 never compares clocks, the server states the ages. D-033: the card's waiting
 states are visible (a checking line with motion while the button's check runs)
 or say that nothing needs to be done.
+
+*Corrected the same day after an independent review of the candidate:* the
+first form of rule 5 wrote a skip and could write a result while an update was
+being admitted; a setup run waiting for a DNS record held the check; the
+admission window was 6 minutes. The rules above are the corrected ones.
 
 ---
 

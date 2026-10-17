@@ -6381,21 +6381,33 @@ clock date of everything in it.
 - **Change.** (1) A loop in the Panel process makes the same read-only discovery
   as the "Check for updates" button, through one shared function: about 2 minutes
   after the Panel starts, then every 12 hours (jitter 30 seconds at the start, 30
-  minutes afterwards); one check bounded at 40 seconds; no host mutation, no lock,
-  no update record. After a failure the next try is in 1 hour, then 3 hours, then
-  the 12-hour period; a success resets this. It is skipped, not counted as a
-  failure, and tried again in 1 hour while the Panel admitted an update start in
-  the last 6 minutes, while the Agent's advisory readiness read reports a change in
-  progress or a state it cannot verify, while a server setup run is running or
-  waiting, and when the Agent does not answer; a busy package manager does not skip
-  it. It never runs while the Panel shuts down; an interrupted check records
-  nothing. The owner can switch it off ("Check for updates automatically", on by
+  minutes afterwards); one check bounded at 40 seconds; no host mutation, no update
+  record (its readiness read holds the Panel's mutation lease with `TryLock` for
+  one advisory Agent read, as the readiness endpoint does). After a failure the
+  next try is in 1 hour, then 3 hours, then the 12-hour period; a success resets
+  this. It is skipped, not counted as a failure, and tried again in 1 hour while
+  the Panel admitted an update start in the last hour, while the Agent's advisory
+  readiness read reports a change in progress or a state it cannot verify, while a
+  server setup run is changing the server (not while one waits for a DNS record),
+  and when the Agent does not answer; a busy package manager does not skip it. A
+  skip is kept in memory only. It never runs while the Panel shuts down; an
+  interrupted check keeps nothing. The owner can switch it off ("Check for updates automatically", on by
   default); off means no network read by the schedule. (2) The result is stored in
   the Panel's settings table (key `panel_update_discovery`, the mechanism of
-  `panel_update_last_restart`; no schema change). A failed or skipped check keeps
-  the release found before it. At start, a record made by another build, or naming
-  a release this build already is or is newer than, is cleared. Reason codes keep a
-  verified failure, an unknown result (timeout) and a skip apart (invariant 2).
+  `panel_update_last_restart`; no schema change). **The scheduled check never
+  writes while an update is admitted or running**, and neither does the button:
+  right before a write the Panel takes its mutation lease and reads again that no
+  update was admitted and that the server reports no change in progress;
+  otherwise the result is kept in memory, shown, and written on the next idle
+  pass, because a write to the Panel's database during the updater's pinned
+  read-only preflight makes that preflight stop (invariants 2 and 3). A skip is
+  never written and never replaces a known result. A failed check keeps the
+  release found before it. At start, before management opens, a record made by
+  another build, or naming a release this build already is or is older than this
+  build, is cleared. Reason codes keep a verified failure, an unknown result
+  (timeout) and a skip apart (invariant 2). These rules are the ones corrected
+  after an independent review of the candidate (2026-10-17): its first form wrote
+  skips and could write while an update was being admitted.
   (3) New read `GET /api/v1/panel/update/discovery` (administrators; no Agent call,
   no network read; also readable while the licence is locked, like the other update
   reads) and `PUT` for the switch (not allowed through the licence lock); ages are
@@ -6421,8 +6433,12 @@ clock date of everything in it.
   update. Recovery behaviour is unchanged: nothing in this release is part of an
   update, a rollback or a recovery, and no hosted workload depends on the check
   (D-022).
-- **Evidence and open.** The Go and web test counts, the browser batch (21) and
-  the release contract tests are in the [release notes](RELEASE-NOTES-v0.1.0-alpha.96.md).
+- **Evidence and open.** On the final tree after the review corrections: Go
+  `./cmd/panel/` and `./internal/...` 7146 passed, 0 failed, 43 skipped (the
+  discovery tests also under `-race`); web `npm test` 1623 passed, 0 failed, and
+  the build within its budget. The browser batch (21, not re-run after the review
+  corrections) and the release contract tests are in the
+  [release notes](RELEASE-NOTES-v0.1.0-alpha.96.md).
   Component, mounted and mock-browser tests do not establish native behaviour.
   **Nothing was measured on an installed server**; the scheduled check has not run
   against a real Agent or the real release server (the Agent is faked in Go tests;

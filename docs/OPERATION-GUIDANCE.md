@@ -9173,27 +9173,37 @@ available update is information, never an alarm.
   process, about 2 minutes after the panel starts and then every 12 hours (with a
   random spread of 30 seconds at the start and 30 minutes afterwards). It is the
   same check as the "Check for updates" button. One check is bounded at 40 seconds.
-  It takes no lock, changes nothing on the server and writes no update record.
+  It changes nothing on the server and writes no update record. (Its readiness
+  read holds the panel's own change lease for one short read, as the readiness
+  check does; a Start pressed at that moment is answered "busy" and can be pressed
+  again.)
 - After a failed check the next try is in 1 hour, then in 3 hours, then the
   12-hour period again; a successful check resets this. There is no retry storm.
 - It is skipped, and tried again in 1 hour, when a check cannot be made safely:
-  the panel accepted an update start in the last 6 minutes; the Agent reports
-  another change in progress or a state it cannot verify; server setup is running
-  or waiting; or the Agent does not answer. A skip is an unmet condition, not a
-  failure. A busy package manager does not skip it, because reading the release
-  does not touch packages.
-- It never runs while the panel is shutting down; an interrupted check records
-  nothing.
+  the panel accepted an update start in the last hour; the Agent reports another
+  change in progress or a state it cannot verify; server setup is changing the
+  server (setup waiting for a DNS record does not stop it); or the Agent does not
+  answer. A skip is an unmet condition, not a failure. A busy package manager does
+  not skip it, because reading the release does not touch packages. A skip is kept
+  in memory only: it never replaces the known result, and the card says it beside
+  that result.
+- It never runs while the panel is shutting down; an interrupted check keeps
+  nothing. Switched on again, the schedule continues 12 hours after the last
+  completed check.
 - The owner can switch it off in Settings → CelikPanel updates, "Check for updates
   automatically" (on by default): "Once every 12 hours the panel asks
   celikpanel.net whether a newer signed release exists. Nothing is installed by
   itself." Off means the schedule makes no network read at all; the "Check for
   updates" button still works. If saving the setting fails: "The setting could not
   be saved and is unchanged. Try again."
-- The result is stored. A failed or skipped check keeps the release that was found
-  before it, so a passing outage does not hide an update that is still waiting.
-  After an update, a stored release that the panel already is (or is newer than)
-  is cleared, and the notice disappears.
+- The result is stored, but never while an update is admitted or running: right
+  before writing, the panel reads again that no update was admitted and that the
+  server reports no change in progress; otherwise it keeps the result in memory,
+  shows it, and writes it on the next idle pass. (A write during the updater's
+  read-only check would make that check stop.) A failed check keeps the release
+  that was found before it, so a passing outage does not hide an update that is
+  still waiting. After an update, a stored release that the panel already is (or
+  that is older than it) is cleared, and the notice disappears.
 
 **What the owner sees in each state.** Only administrators see or read any of it.
 The update card opens already knowing the stored result, without a button press
@@ -9207,7 +9217,7 @@ and without a call to the release server. It has one status line:
 | Earlier attempt stopped | One notice above "Before you update", neutral because nothing was changed: "An earlier update to this version stopped before changing the installed version", then "{version} was tried on this server on {time} and stopped before changing the installed version or its data; this server runs {current} as before. Starting it again is safe; if the reason recorded for that attempt names a condition on this server, resolve it first." An attempt that was rolled back or failed keeps the attention mark and its own words. |
 | Automatic check failed | "Last automatic check: 2 hours ago — could not get a verified answer from the release server (celikpanel.net)." then "The next check runs by itself at 15:30; you can also check now." |
 | Result not known (timeout) | "Last automatic check: 2 hours ago — the check did not finish in time, so its result is not known." then the same next-check line |
-| Skipped | "The last automatic check was skipped 2 hours ago: another change was in progress on the server." Other reasons in the same place: "an update was in progress"; "server setup was running"; "the server's change state could not be read"; "the panel's Agent did not answer". |
+| Skipped | Said under the known result, which stays: "The last automatic check was skipped 2 hours ago: another change was in progress on the server." Other reasons in the same place: "an update was in progress"; "server setup was changing the server"; "the server's change state could not be read"; "the panel's Agent did not answer". |
 | Switched off | "Automatic checks are off. Press "Check for updates" to look now." |
 | Reading | "Reading the last update check…"; if the stored result cannot be read: "The result of the last update check could not be read. Nothing was changed; you can check now." |
 
