@@ -6296,3 +6296,64 @@ clock date of everything in it.
 - **Schema, Agent and recovery.** Schema 44, no migration; no Agent change; no new Agent job kind, operation kind or typed failure code; the updater, rollback and recovery paths are untouched, so **no native record** is needed for this release (and none was made, by the owner's instruction of 2026-10-16). A sequence still lives in the page's memory only; a reload leaves the components as the operations left them and the bundle is offered again with only the missing parts. The browser mock no longer invents versions.
 - **Evidence and open.** Web tests: ready-bundles-ui-contract and ready-bundles-mounted (a Boston-shaped and a Frankfurt-shaped payload with the same chips, MariaDB visible on Boston, Core Mail included on Frankfurt, an add-on blocked with its reason, the Dashboard count equal to the installable chips, no Repair link on the strip, the installed chip's dialogue with Repair or Verify, the three review items, the leftovers dialogue), installed-alpha94-corrections, dashboard-mail-stack-card-contract, service-list-layout-contract, remote-state-mounted-batch3, mail-profile-ui-contract and service-availability-contract; Go: the bundles test (an add-on before its parent needs MariaDB or PostgreSQL) and the mail profile frontend contract. Component and mounted tests do not establish native behaviour. Nothing measured on an installed server; the sequence has not run against a real Agent; installed package versions for every component are not read (open roadmap item); whether Roundcube files are left on disk cannot be seen by the Panel (it relies on its own audit record); everything the alpha.88 to alpha.94 entries leave open stays open. See the [release notes](RELEASE-NOTES-v0.1.0-alpha.95.md).
 - **Independent review of the candidate (2026-10-17).** An independent review found ten problems; they are fixed in the candidate, and the entry above describes the corrected behaviour. Invariant 2 (unknown is not installed, absent or zero): "included" is drawn and counted only for a contained bundle that is itself installed and verified with no failed or running attempt of its own, otherwise "not verified" with its reason; the Domains count is never "domains + 0" for an unread zone list. Invariant 3 (the unsafe action is stopped at its actual boundary, the safe one is not): Verify stays held while a component operation runs and stays usable on `host_lock_busy` and `package_manager_active`, because the rescan endpoint refuses only for a running server setup, an active service operation or an active Agent mutation. Invariant 6 (progress is not claimed before it exists): the Roundcube leftovers offer rests on the Panel's own record, not on a guess. The ten changes: (1) leftovers offered only with a Panel record or a failed webmail attempt, always on Roundcube's own page; (2) the installed bundle dialogue describes the bundle; (3) lines under the chips are failed or running attempts and warnings on chips that are not verified or only partly installed, never "parts already present"; (4) "included" as above; (5) one Domains count; (6) one Dashboard line per bundle that is not verified and has an attempt; (7) a blocked chip is a quiet button that shows its full reason under the chips; (8) Verify as above; (9) wording "2/3 · installing PHP-FPM" and "n of m installed"; (10) a mail chip that says "Install" opens the mail dialogue in its install form. Schema and version transition: none (schema 44; the payload field is additive JSON read from the existing audit log); no Agent change; no native record; recovery behaviour unchanged. Evidence on the final candidate tree: web `npm test` 1599 passed, 0 failed, `npm run build` succeeded; Go `./cmd/panel/` and `./internal/...` 7124 passed, 0 failed, 44 skipped, `go vet ./cmd/panel/` and gofmt clean (new Go test webmail_cleanup_record_test); release contracts passed on the earlier tree and their inputs are unchanged. Browser batch 20 was looked at twice before the review fixes and **was not re-run after them**. Still open: the Panel cannot see leftovers on disk; nothing measured on an installed server; P0.1 to P0.5 stay partial.
+
+### Publication of v0.1.0-alpha.95 (no code change in the publication; invariants 2 and 6; D-022; D-024; D-025; D-034; 2026-10-17)
+
+D-025 invariants 2 (evidence has a meaning and a lifecycle: unknown is not
+absent, empty or success) and 6 (readiness, progress and access remain
+independent); D-022; D-024; D-034. **No P0 item is closed or advanced.** P0.1 to
+P0.5 stay partial and every open acceptance item stays open. This entry records
+one release; it changes no code, schema or recovery behaviour. 2026-10-17 is the
+clock date of everything in it.
+
+- **Publication.** All steps were done by the release preparer under the owner's
+  standing instruction; installed-panel updates are the owner's only. Two
+  independent reviews came first (ten problems found by the first, all fixed; the
+  second found the release ready). Pull request #228 merged as
+  `5f3cb1a2fa336c529740a20e9a543b8ac086dc8d`; the release sequence variable
+  moved 94 to 95 before tagging; the main run and the tag run succeeded;
+  annotated tag `v0.1.0-alpha.95` (object
+  `44764f09aa74546bb5b5704fabde8bf1930fc803`, tree
+  `0e9d3c486cae7250c4d4c4d525d50fd37c56920a`); pre-release at
+  2026-10-17T11:01:22Z with six assets; archive SHA-256
+  `9d9116f3199f453c508a605403cf4e6c63c099145dbef0b98cc402abc0852ef5`, 66,259,462
+  bytes; manifest sequence 95 with a verifying signature (the same key); `get.sh`
+  pins 95; policy 95 after 94. The portal package (SHA-256
+  `4f11dc01376626e6db9160f4716b65fa044b4084bd9b24991bced6b5a9985ca1`, built twice
+  identical) was published at about 11:09Z with previous v0.1.0-alpha.94:
+  committed, public verification 26 of 26, `CELIKPANEL_DOWNLOAD_PORTAL_PUBLISHED`,
+  and read from outside afterwards. Checked by the preparer from a download in a
+  WSL guest; reported by the preparer, not recorded in a file here. The release
+  chain ran cleanly; there was no incident.
+- **Native record.** None for the publication, and none for alpha.95, by the
+  owner's instruction of 2026-10-16 and because the updater is unchanged.
+  alpha.95's code is covered by component and mounted tests only (see its
+  candidate entry above).
+- **Installed panels.** The owner updated Boston and Frankfurt to alpha.94 on
+  2026-10-17 from the panel's own update screen and sent Dashboard and Components
+  screenshots (both build `d506a05e8c00`); those are what alpha.95 corrects (see
+  its candidate entry). One screenshot of Boston's Components page was a stitched
+  full-page capture with repeated headings and is not read as a page defect.
+  Nothing from alpha.95 on an installed server is recorded, and none should be
+  inferred (invariant 6: the publication of a release is not the state of any
+  server).
+- **Schema or version transition.** None: schema 44; the release sequence moved
+  94 to 95 in the release preparation. **Recovery behaviour.** Unchanged by the
+  publication and by alpha.95. The release preparer bounded the new Roundcube
+  record read to the newest 20,000 audit entries, so a very old unfinished
+  install or removal beyond that window is not seen by that read (invariant 2:
+  not seen is not absent; the link on Roundcube's own page stays).
+- **Open, found in review and left for a later release.** (1) Verify (a rescan)
+  can still get a busy answer while the host's package manager or host lock is
+  busy. (2) A failed Webmail attempt keeps the Roundcube cleanup offer on the row
+  even after a later clean removal. (3) The cleanup link from Roundcube's page
+  reopens the confirmation if the page is reloaded. (4) Dialog buttons are 34 px
+  on a phone. (5) The browser screen check (batch 20) was not re-run after the
+  last review fixes. (6) Reading installed package versions for every component
+  remains open. None of them changes a P0 item.
+- **Open, carried over.** Everything the alpha.95 candidate entry and the
+  alpha.90 to alpha.94 entries leave open, among them: the bundle sequence not
+  run against a real Agent; the corrected ready bundle list, the Dashboard card,
+  the cleanup offer and the Domains count not yet seen on an installed server;
+  the live step view not reported as seen; the rollback paths that share the
+  changed helpers exercised by contract tests only.

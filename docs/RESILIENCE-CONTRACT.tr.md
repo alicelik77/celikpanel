@@ -5573,3 +5573,64 @@ her şeyin saat tarihidir.
 - **Şema, Agent ve kurtarma.** Şema 44, geçiş yok; Agent değişikliği yok; yeni Agent iş türü, işlem türü ya da tipli hata kodu yok; güncelleyici, geri alma ve kurtarma yollarına dokunulmadı, bu yüzden bu sürüm için **gerçek sistem kaydı** gerekmez (ve sahibin 16 Ekim 2026 talimatıyla yapılmadı). Bir sıra yine yalnız sayfanın belleğinde yaşar; yeniden yükleme bileşenleri işlemlerin bıraktığı gibi bırakır ve paket yalnız eksik parçalarla yeniden sunulur. Tarayıcı sahtesi artık sürüm uydurmaz.
 - **Kanıt ve açık.** Web testleri: ready-bundles-ui-contract ve ready-bundles-mounted (Boston biçimli ve Frankfurt biçimli bir yük, aynı çipler, Boston'da görünen MariaDB, Frankfurt'ta içinde görünen Temel Posta, nedeniyle engelli bir eklenti, kurulabilir çiplere eşit Pano sayısı, şeritte Onar bağlantısı yok, kurulu çipin Onar ya da Doğrula'lı penceresi, üç inceleme maddesi, kalıntılar penceresi), installed-alpha94-corrections, dashboard-mail-stack-card-contract, service-list-layout-contract, remote-state-mounted-batch3, mail-profile-ui-contract ve service-availability-contract; Go: bundles testi (ana paketinden önce bir eklenti MariaDB ya da PostgreSQL ister) ve posta profili ön yüz sözleşmesi. Bileşen ve bağlanmış testler gerçek sistem davranışını kanıtlamaz. Kurulu bir sunucuda hiçbir şey ölçülmedi; sıra gerçek bir Agent'a karşı çalışmadı; her bileşen için kurulu paket sürümleri okunmuyor (açık yol haritası işi); Roundcube dosyalarının diskte kalıp kalmadığını Panel göremez (kendi denetim kaydına dayanır); alpha.88–alpha.94 girdilerinin açık bıraktığı her şey açık kalır. Bkz. [sürüm notları](RELEASE-NOTES-v0.1.0-alpha.95.tr.md).
 - **Adayın bağımsız incelemesi (17 Ekim 2026).** Bağımsız bir inceleme on sorun buldu; adayda düzeltildiler ve yukarıdaki girdi düzeltilmiş davranışı anlatır. İlke 2 (bilinmeyen, kurulu değil, yok ya da sıfır değildir): "içinde" yalnız, kendisi de kurulu ve doğrulanmış olan ve başarısız ya da süren denemesi bulunmayan içerilen paket için çizilir ve sayılır, aksi halde nedeniyle "doğrulanmadı"; Alan adları sayısı okunmayan bir bölge listesi için asla "alan adları + 0" değildir. İlke 3 (güvensiz eylem gerçek sınırında durdurulur, güvenli olan durdurulmaz): Doğrula, bir bileşen işlemi sürerken tutulur ve `host_lock_busy` ile `package_manager_active` durumunda kullanılabilir kalır, çünkü yeniden tarama ucu yalnız çalışan bir sunucu kurulumunda, etkin bir hizmet işleminde ya da etkin bir Agent değişikliğinde reddeder. İlke 6 (ilerleme var olmadan iddia edilmez): Roundcube kalıntıları sunumu bir tahmine değil, Panel'in kendi kaydına dayanır. On değişiklik: (1) kalıntılar yalnız Panel kaydı ya da başarısız bir webmail denemesiyle sunulur, Roundcube'un kendi sayfasında her zaman; (2) kurulu paket penceresi paketi betimler; (3) çiplerin altındaki satırlar başarısız ya da süren denemeler ve doğrulanmamış ya da kısmen kurulu çiplerdeki uyarılardır, asla "parçalar zaten var"; (4) "içinde" yukarıdaki gibi; (5) tek Alan adları sayısı; (6) doğrulanmamış ve denemesi olan her paket için tek Pano satırı; (7) engelli çip, tam nedenini çiplerin altında gösteren sessiz bir düğmedir; (8) Doğrula yukarıdaki gibi; (9) EN ifadesi "2/3 · installing PHP-FPM", Türkçe ilerleme "n/m bileşen kurulu"; (10) "Kur" diyen bir posta çipi posta penceresini kurulum biçiminde açar. Şema ve sürüm geçişi: yok (şema 44; yük alanı var olan denetim kaydından okunan eklemeli JSON); Agent değişikliği yok; gerçek sistem kaydı yok; kurtarma davranışı değişmedi. son aday ağacındaki kanıt: web `npm test` 1599 geçti, 0 başarısız, `npm run build` başarılı; Go `./cmd/panel/` ve `./internal/...` 7124 geçti, 0 başarısız, 44 atlandı, `go vet ./cmd/panel/` ve gofmt temiz (yeni Go testi webmail_cleanup_record_test); sürüm sözleşmeleri önceki ağaçta geçti ve girdileri değişmedi. Tarayıcı 20. grubu inceleme düzeltmelerinden önce iki kez incelendi ve **onlardan sonra yeniden çalıştırılmadı**. Hâlâ açık: Panel diskteki kalıntıları göremez; kurulu bir sunucuda hiçbir şey ölçülmedi; P0.1–P0.5 kısmi kalır.
+
+### v0.1.0-alpha.95'in yayımlanması (yayımda kod değişikliği yok; ilke 2 ve 6; D-022; D-024; D-025; D-034; 2026-10-17)
+
+D-025 ilke 2 (kanıtın bir anlamı ve yaşam döngüsü vardır: bilinmeyen; yok, boş ya
+da başarılı değildir) ve 6 (hazır olma, ilerleme ve erişim birbirinden bağımsız
+kalır); D-022; D-024; D-034. **Hiçbir P0 işi kapanmaz ya da ilerlemez.**
+P0.1–P0.5 kısmi kalır ve her açık kabul işi açık kalır. Bu girdi tek bir sürümü
+kaydeder; kod, şema ya da kurtarma davranışını değiştirmez. 2026-10-17, içindeki
+her şeyin saat tarihidir.
+
+- **Yayımlama.** Bütün adımları sürümü hazırlayan kişi yaptı, sahibin kalıcı
+  talimatı uyarınca; kurulu panel güncellemelerini yalnız sahip yapar. Önce iki
+  bağımsız inceleme yapıldı (birincisi on sorun buldu, hepsi düzeltildi;
+  ikincisi sürümü yayıma hazır buldu). #228 numaralı çekme isteği
+  `5f3cb1a2fa336c529740a20e9a543b8ac086dc8d` olarak birleştirildi; sürüm sırası
+  değişkeni etiketlemeden önce 94'ten 95'e geçti; `main` koşusu ve etiket koşusu
+  başarılı oldu; `v0.1.0-alpha.95` açıklamalı etiketi (nesne
+  `44764f09aa74546bb5b5704fabde8bf1930fc803`, ağaç
+  `0e9d3c486cae7250c4d4c4d525d50fd37c56920a`); 2026-10-17T11:01:22Z'de altı
+  dosyalı ön sürüm; arşiv SHA-256
+  `9d9116f3199f453c508a605403cf4e6c63c099145dbef0b98cc402abc0852ef5`, 66.259.462
+  bayt; manifest sıra 95 ve doğrulanan bir imza (aynı anahtar); `get.sh` 95'i
+  sabitler; politika 94'ten sonra 95. Portal paketi (SHA-256
+  `4f11dc01376626e6db9160f4716b65fa044b4084bd9b24991bced6b5a9985ca1`, iki kez aynı
+  derlendi) yaklaşık 11:09Z'de önceki v0.1.0-alpha.94 ile yayımlandı: committed,
+  genel doğrulama 26 istekten 26'sı, `CELIKPANEL_DOWNLOAD_PORTAL_PUBLISHED`,
+  ardından dışarıdan okundu. Hazırlayan kişi bir WSL konuğunda bir indirmeden
+  denetledi; hazırlayan kişi bildirdi, burada bir dosyada kayıtlı değil. Sürüm
+  zinciri temiz çalıştı; olay yok.
+- **Gerçek sistem kaydı.** Yayım için yok; alpha.95 için de yok, sahibin 16 Ekim
+  2026 talimatıyla ve güncelleyici değişmediği için. alpha.95'in kodunu yalnız
+  bileşen ve bağlanmış testler kapsar (yukarıdaki aday girdisine bakın).
+- **Kurulu paneller.** Sahip 17 Ekim 2026'da Boston ve Frankfurt'u panelin kendi
+  güncelleme ekranından alpha.94'e güncelledi ve Pano ile Bileşenler ekran
+  görüntülerini gönderdi (ikisi de yapı `d506a05e8c00`); alpha.95'in düzelttiği
+  şey bunlardır (aday girdisine bakın). Boston'un Bileşenler sayfasının bir ekran
+  görüntüsü, başlıkları tekrarlanan, birleştirilmiş tam sayfa bir yakalamaydı ve
+  sayfa kusuru olarak okunmaz. Kurulu bir sunucuda alpha.95'ten hiçbir şey
+  kaydedilmedi ve çıkarılmamalıdır (ilke 6: bir sürümün yayımlanması hiçbir
+  sunucunun durumu değildir).
+- **Şema ya da sürüm geçişi.** Yok: şema 44; sürüm sırası sürüm hazırlığında
+  94'ten 95'e geçti. **Kurtarma davranışı.** Yayımla ve alpha.95 ile değişmez.
+  Sürümü hazırlayan kişi yeni Roundcube kaydı okumasını denetim kaydının en yeni
+  20.000 girdisiyle sınırladı; bu yüzden bu pencerenin ötesindeki çok eski yarım
+  bir kurulum ya da kaldırma o okumayla görülmez (ilke 2: görülmeyen, yok
+  demek değildir; Roundcube'un kendi sayfasındaki bağlantı durur).
+- **Açık; incelemede bulundu ve sonraki bir sürüme bırakıldı.** (1) Doğrula (bir
+  yeniden tarama), ana makinenin paket yöneticisi ya da ana makine kilidi
+  meşgulken hâlâ "meşgul" yanıtı alabilir. (2) Başarısız bir Webmail denemesi,
+  sonradan temiz bir kaldırma yapılsa bile Roundcube temizleme önerisini satırda
+  tutar. (3) Roundcube sayfasındaki temizleme bağlantısı, sayfa yeniden
+  yüklenirse onayı yeniden açar. (4) Telefonda pencere düğmeleri 34 piksel
+  yüksekliğindedir. (5) Tarayıcı ekran denetimi (20. grup) son inceleme
+  düzeltmelerinden sonra yeniden çalıştırılmadı. (6) Her bileşen için kurulu
+  paket sürümlerinin okunması açıktır. Hiçbiri bir P0 işini değiştirmez.
+- **Açık; devreden.** alpha.95 aday girdisinin ve alpha.90–alpha.94 girdilerinin
+  açık bıraktığı her şey; bunlar arasında: paket sırası gerçek bir Agent'a karşı
+  çalışmadı; düzeltilmiş hazır paket listesi, Pano kartı, temizleme önerisi ve
+  Alan adları sayısı henüz bir kurulu sunucuda görülmedi; canlı adım görünümü
+  görüldü diye bildirilmedi; değiştirilen yardımcıları paylaşan geri alma yolları
+  yalnız sözleşme testleriyle denendi.

@@ -9099,3 +9099,25 @@ Tarayıcı 20. grubu inceleme düzeltmelerinden önce iki kez incelendi; incelem
 sonra Boston senaryosu kalıntı onayını `/services?cleanup=roundcube` ile açar ve
 **inceleme düzeltmelerinden sonra yeniden çalıştırılmadı.** Şema değişikliği yok
 (44), Agent değişikliği yok, gerçek sistem kaydı yok, P0 kısmi kalır.
+
+### Alpha.95 yayımından sonra kurulu sunucular: alpha.95'ten henüz gözlem yok (2026-10-17)
+
+v0.1.0-alpha.95 17 Ekim 2026'da yayımlandı (sürüm 11:01:22Z'de, ardından indirme
+portalı yaklaşık 11:09Z'de). Sahip o gün Boston ve Frankfurt'u panelin kendi
+güncelleme ekranından alpha.94'e güncelledi ve Pano ile Bileşenler ekran
+görüntülerini gönderdi; alpha.95, o ekranların gösterdiklerinin düzeltmesidir
+(yukarıdaki girdiye bakın). Boston'daki bir Bileşenler ekran görüntüsü,
+başlıkları tekrarlanan birleştirilmiş tam sayfa bir yakalamaydı, sayfa kusuru
+değildi. Boston ve Frankfurt, sahip güncelleyene kadar alpha.94'tedir ve o
+güncellemeyi yalnız sahip başlatır. Bu yüzden kurulu bir sunucuda alpha.95'e dair
+kaydedilecek gözlem **yoktur** ve bu girdi için hiçbir metin ya da ekran
+değiştirilmedi. Küçük işler sonraki bir sürüme açık kalır: Doğrula, ana
+makinenin paket yöneticisi ya da ana makine kilidi meşgulken hâlâ "meşgul"
+yanıtı alabilir; başarısız bir Webmail denemesi, sonradan temiz bir kaldırmadan
+sonra da Roundcube temizleme önerisini satırda tutar; Roundcube sayfasındaki
+temizleme bağlantısı yeniden yüklemede onayı yeniden açar; telefonda pencere
+düğmeleri 34 piksel yüksekliğindedir; tarayıcı ekran denetimi son inceleme
+düzeltmelerinden sonra yeniden çalıştırılmadı; ve her bileşen için kurulu paket
+sürümleri hâlâ okunmuyor. Sahip bildirene kadar hiçbir şey "çalıştı" ya da
+"başarısız" değildir. P0.1-P0.5 **kısmi** kalır; bu girdi hiçbir şeyi kapatmaz ya
+da ilerletmez.

@@ -1,4 +1,4 @@
-# v0.1.0-alpha.95 (candidate, not published)
+# v0.1.0-alpha.95 (published 2026-10-17)
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.95.tr.md)
 
@@ -202,6 +202,103 @@ After the review its Boston scenario opens the cleanup through
 `/services?cleanup=roundcube`; **batch 20 was not re-run after the review fixes.**
 Browser mock only; nothing on an installed server. No schema change (44; the new
 payload field is additive JSON), no Agent change, no native record.
+
+## Publication record
+
+Everything below is dated 2026-10-17 (UTC unless a time zone is named). The
+merge, the tag, the checks, the portal publication and the read of the public
+site were done by the release preparer under the owner's standing instruction,
+as for the earlier releases; installed-panel updates are the owner's alone, from
+the panel's own update screen. No native record for the publication, by the
+owner's instruction. This entry stores none of the results below as a file in the
+repository.
+
+**What happened.**
+
+1. Two independent reviews came before the release. The first found ten problems
+   (all fixed, listed above); the second found the release ready. The release
+   preparer also bounded the new Roundcube-record read to the newest 20,000
+   audit entries.
+2. Pull request #228, "Release v0.1.0-alpha.95: the same ready bundle list on
+   every server, and the owner's alpha.94 screen findings", was merged into
+   `main` as commit `5f3cb1a2fa336c529740a20e9a543b8ac086dc8d`. The release
+   sequence variable was moved from 94 to 95 before the tag was made. The main
+   run and the tag run both succeeded, and the release chain ran cleanly (no
+   incident).
+3. The annotated tag `v0.1.0-alpha.95` (object
+   `44764f09aa74546bb5b5704fabde8bf1930fc803`, tree
+   `0e9d3c486cae7250c4d4c4d525d50fd37c56920a`) points at the release commit. The
+   release is a pre-release, published at 2026-10-17T11:01:22Z with six assets.
+4. Checked from a download in the WSL guest `CelikPanel-S2-Debian` on 2026-10-17
+   (preparer; not recorded in a file here): the archives are byte-identical,
+   66,259,462 bytes each, SHA-256
+   `9d9116f3199f453c508a605403cf4e6c63c099145dbef0b98cc402abc0852ef5`; the
+   manifest says sequence 95, `published_at` 2026-10-17T10:22:04Z (SHA-256
+   `a3720afcf1230eb4f7ed76c514fd1a81fa65bd0e3033951bd24835bb45ec5b10`), and its
+   signature (SHA-256
+   `026029ba235720f708999d79b2700f20873c6cc3b9de20d008b78fc30872e69b`) verifies
+   with `openssl pkeyutl -verify -rawin -pubin` against the signing key (SHA-256
+   `7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb`, the same
+   key as before); both content guards returned 0; the build used Go go1.26.5,
+   CGO off, `-trimpath`. `libexec/get.sh` pins 95 (SHA-256
+   `f1846dacedbee5ab860d7765242dc6a979481be95c25ba69f4f48a1d78ce1a02`); the
+   policy inside says current 95, previous 94, previous commit
+   `d506a05e8c003dffee8de2e1268402865520bd6b`. The archive has 243 members. The
+   interface bundle is `web/dist/assets/app-DU840jYm.js`, 250,651 bytes, SHA-256
+   `f48f3c54869b6c45e7160c1fe49fd6a92c2f90799385f3a76024bbe86a61acf0`.
+5. The portal package: `portal.tar.gz`, 132,890,919 bytes, SHA-256
+   `4f11dc01376626e6db9160f4716b65fa044b4084bd9b24991bced6b5a9985ca1`, 54
+   entries, built twice byte-identical with the tag's
+   `deploy/build-download-portal.sh` (pre-signed mode). The contract test
+   returned 0; the public verifier's 17 tests and the promotion's 14 tests
+   passed.
+6. At about 11:09Z the preparer published it with
+   `deploy/publish-download-portal.ps1` from the preparer's machine, previous
+   version v0.1.0-alpha.94, target v0.1.0-alpha.95: status `committed`, public
+   verification 26 of 26 requests, `CELIKPANEL_DOWNLOAD_PORTAL_PUBLISHED`.
+7. The backup of the previous site is
+   `/var/www/vhosts/celikpanel.net/portal-backups/httpdocs.before-v0.1.0-alpha.95.20261017T110941Z.763371.3e1141ace6970b30`;
+   the upload was retained in
+   `/var/www/vhosts/celikpanel.net/.upload-portal-20261017T110857Z-v0.1.0-alpha.95-c4ef6772d072445a`.
+8. A read from outside after the publication:
+   `https://celikpanel.net/releases/latest.txt` says v0.1.0-alpha.95;
+   `latest.json` says sequence 95, with the commit and the SHA-256 above.
+
+**What the owner reported.** On 2026-10-17 the owner updated Boston and
+Frankfurt to alpha.94 from the panel's own update screen and sent screenshots of
+the Dashboard and of Components; both showed build `d506a05e8c00`. Those
+screenshots are what this release corrects (see "Who should update, and why" and
+"What changes on screen" above; not repeated here). One screenshot of Boston's
+Components page was a stitched full-page capture with repeated headings; normal
+screenshots showed the page intact, so it is not recorded as a page defect.
+Nothing from alpha.95 on an installed server has been reported yet, and none
+should be inferred.
+
+**Not done, and what publication does not change.**
+
+- The installed servers were not updated to alpha.95 by the release preparer.
+  Boston and Frankfurt are on alpha.94 until the owner updates them.
+- Small items found in review were deliberately left for a later release and are
+  open:
+  1. Verify (which only reads the components again) can still get a "busy"
+     answer while the host's package manager or host lock is busy.
+  2. A failed Webmail attempt keeps the Roundcube cleanup offer on the row, even
+     after a later clean removal.
+  3. The cleanup link on Roundcube's own page reopens the confirmation if the
+     page is reloaded.
+  4. The buttons in the dialogs are 34 px high on a phone.
+  5. The browser screen check (batch 20) was not run again after the last review
+     fixes.
+- Reading installed package versions for every component remains open (see
+  "Known gaps").
+- Not reported and not recorded: anything from Boston or Frankfurt on alpha.95,
+  and everything the earlier notes list as not reported. Each is "not recorded",
+  not "worked" and not "failed". The bundle sequence has not run against a real
+  Agent.
+- The limits of the earlier publication records (see the
+  [alpha.88 notes](RELEASE-NOTES-v0.1.0-alpha.88.md)) are not reported as lifted.
+- Publication is not acceptance. P0.1 to P0.5 stay partial; no P0 item is closed
+  or advanced.
 
 Install this release only through CelikPanel's update interface. Publishing it does
 not update installed servers; only the owner of a server starts its update, from
