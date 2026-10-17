@@ -1,4 +1,4 @@
-# v0.1.0-alpha.95 (aday, yayımlanmadı)
+# v0.1.0-alpha.95 (17 Ekim 2026'da yayımlandı)
 
 [English](RELEASE-NOTES-v0.1.0-alpha.95.md)
 
@@ -203,6 +203,104 @@ kalıntı onayını `/services?cleanup=roundcube` ile açar; **20. grup inceleme
 düzeltmelerinden sonra yeniden çalıştırılmadı.** Yalnız tarayıcı taklidi; kurulu bir
 sunucuda hiçbir şey yok. Şema değişikliği yok (44; yeni yük alanı eklemeli JSON),
 Agent değişikliği yok, gerçek sistem kaydı yok.
+
+## Yayım kaydı
+
+Aşağıdaki her şey 17 Ekim 2026 tarihlidir (saat dilimi belirtilmedikçe UTC).
+Birleştirmeyi, etiketi, denetimleri, portal yayımını ve genel sitenin okunmasını
+sürümü hazırlayan kişi yaptı, önceki sürümlerde olduğu gibi sahibin kalıcı
+talimatı uyarınca; kurulu panel güncellemelerini yalnız sahip, panelin kendi
+güncelleme ekranından başlatır. Yayım için sahibin talimatıyla gerçek sistem
+kaydı yok. Bu girdi, aşağıdaki sonuçların hiçbirini depoda bir dosya olarak
+saklamaz.
+
+**Ne oldu.**
+
+1. Sürümden önce iki bağımsız inceleme yapıldı. Birincisi on sorun buldu (hepsi
+   düzeltildi, yukarıda sıralı); ikincisi sürümü yayıma hazır buldu. Sürümü
+   hazırlayan kişi ayrıca yeni Roundcube kaydı okumasını denetim kaydının en yeni
+   20.000 girdisiyle sınırladı.
+2. "Release v0.1.0-alpha.95: the same ready bundle list on every server, and the
+   owner's alpha.94 screen findings" başlıklı #228 numaralı çekme isteği
+   `main`'e `5f3cb1a2fa336c529740a20e9a543b8ac086dc8d` commit'i olarak
+   birleştirildi. Sürüm sırası değişkeni etiket yapılmadan önce 94'ten 95'e
+   geçirildi. `main` koşusu ve etiket koşusu başarılı oldu; sürüm zinciri temiz
+   çalıştı (olay yok).
+3. `v0.1.0-alpha.95` açıklamalı etiketi (nesne
+   `44764f09aa74546bb5b5704fabde8bf1930fc803`, ağaç
+   `0e9d3c486cae7250c4d4c4d525d50fd37c56920a`) sürüm commit'ini gösterir. Sürüm
+   bir ön sürümdür (pre-release); 2026-10-17T11:01:22Z'de altı dosyayla
+   yayımlandı.
+4. 17 Ekim 2026'da `CelikPanel-S2-Debian` WSL konuğunda bir indirmeden
+   denetlendi (hazırlayan kişi; burada bir dosyada kayıtlı değil): arşivler bayt
+   bayt aynı, her biri 66.259.462 bayt, SHA-256
+   `9d9116f3199f453c508a605403cf4e6c63c099145dbef0b98cc402abc0852ef5`; manifest
+   sıra 95, `published_at` 2026-10-17T10:22:04Z der (SHA-256
+   `a3720afcf1230eb4f7ed76c514fd1a81fa65bd0e3033951bd24835bb45ec5b10`); imzası
+   (SHA-256 `026029ba235720f708999d79b2700f20873c6cc3b9de20d008b78fc30872e69b`),
+   imza anahtarına (SHA-256
+   `7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb`, öncekiyle
+   aynı anahtar) karşı `openssl pkeyutl -verify -rawin -pubin` ile doğrulanır;
+   iki içerik koruması da 0 döndürdü; derleme Go go1.26.5, CGO kapalı,
+   `-trimpath` ile yapıldı. `libexec/get.sh` 95'i sabitler (SHA-256
+   `f1846dacedbee5ab860d7765242dc6a979481be95c25ba69f4f48a1d78ce1a02`); içindeki
+   politika şimdiki 95, önceki 94, önceki commit
+   `d506a05e8c003dffee8de2e1268402865520bd6b` der. Arşivde 243 üye var. Arayüz
+   paketi `web/dist/assets/app-DU840jYm.js`, 250.651 bayt, SHA-256
+   `f48f3c54869b6c45e7160c1fe49fd6a92c2f90799385f3a76024bbe86a61acf0`.
+5. Portal paketi: `portal.tar.gz`, 132.890.919 bayt, SHA-256
+   `4f11dc01376626e6db9160f4716b65fa044b4084bd9b24991bced6b5a9985ca1`, 54 girdi;
+   etiketin `deploy/build-download-portal.sh` betiğiyle (önceden imzalı kip) iki
+   kez bayt bayt aynı derlendi. Sözleşme testi 0 döndürdü; genel doğrulayıcının
+   17 testi ve terfi aracının 14 testi geçti.
+6. Yaklaşık 11:09Z'de hazırlayan kişi onu kendi bilgisayarından
+   `deploy/publish-download-portal.ps1` ile yayımladı: önceki sürüm
+   v0.1.0-alpha.94, hedef v0.1.0-alpha.95; durum `committed`, genel doğrulama 26
+   istekten 26'sı, `CELIKPANEL_DOWNLOAD_PORTAL_PUBLISHED`.
+7. Önceki sitenin yedeği
+   `/var/www/vhosts/celikpanel.net/portal-backups/httpdocs.before-v0.1.0-alpha.95.20261017T110941Z.763371.3e1141ace6970b30`;
+   yüklenen paket
+   `/var/www/vhosts/celikpanel.net/.upload-portal-20261017T110857Z-v0.1.0-alpha.95-c4ef6772d072445a`
+   altında saklandı.
+8. Yayımdan sonra dışarıdan okuma: `https://celikpanel.net/releases/latest.txt`
+   v0.1.0-alpha.95 der; `latest.json` sıra 95'i, yukarıdaki commit ve SHA-256'yı
+   gösterir.
+
+**Sahibin bildirdikleri.** 17 Ekim 2026'da sahip Boston ve Frankfurt'u panelin
+kendi güncelleme ekranından alpha.94'e güncelledi ve Pano ile Bileşenler ekran
+görüntülerini gönderdi; ikisi de `d506a05e8c00` yapısını gösteriyordu. Bu sürümün
+düzelttiği şey bu ekran görüntüleridir (yukarıdaki "Kim güncellemeli ve neden" ve
+"Ekranda ne değişir" bölümlerine bakın; burada yinelenmez). Boston'un Bileşenler
+sayfasının bir ekran görüntüsü, başlıkları tekrarlanan, birleştirilmiş tam sayfa
+bir yakalamaydı; normal ekran görüntülerinde sayfa sağlamdı, bu yüzden sayfa
+kusuru olarak kaydedilmedi. Kurulu bir sunucuda alpha.95'ten henüz hiçbir şey
+bildirilmedi ve çıkarılmamalıdır.
+
+**Yapılmayanlar ve yayımlamanın değiştirmedikleri.**
+
+- Kurulu sunucuları sürümü hazırlayan kişi alpha.95'e güncellemedi. Boston ve
+  Frankfurt, sahip güncelleyene kadar alpha.94'tedir.
+- İncelemede bulunan küçük işler bilerek sonraki bir sürüme bırakıldı ve
+  açıktır:
+  1. Doğrula (bileşenleri yalnız yeniden okur), ana makinenin paket yöneticisi ya
+     da ana makine kilidi meşgulken hâlâ "meşgul" yanıtı alabilir.
+  2. Başarısız bir Webmail denemesi, sonradan temiz bir kaldırma yapılsa bile
+     Roundcube temizleme önerisini satırda tutar.
+  3. Roundcube'un kendi sayfasındaki temizleme bağlantısı, sayfa yeniden
+     yüklenirse onayı yeniden açar.
+  4. Telefonda pencerelerdeki düğmeler 34 piksel yüksekliğindedir.
+  5. Tarayıcı ekran denetimi (20. grup) son inceleme düzeltmelerinden sonra
+     yeniden çalıştırılmadı.
+- Her bileşen için kurulu paket sürümlerinin okunması açıktır ("Bilinen
+  açıklar"a bakın).
+- Bildirilmeyen ve kaydedilmeyenler: Boston ya da Frankfurt'tan alpha.95'e dair
+  her şey ve önceki notların bildirilmedi diye saydığı her şey. Her biri
+  "kaydedilmedi"dir; "çalıştı" da değildir, "başarısız" da. Paket sırası gerçek
+  bir Agent'a karşı çalışmadı.
+- Önceki yayımlama kayıtlarının sınırları ([alpha.88
+  notları](RELEASE-NOTES-v0.1.0-alpha.88.tr.md)) kalkmış olarak bildirilmedi.
+- Yayımlanma kabul değildir. P0.1–P0.5 kısmi kalır; hiçbir P0 işi kapanmaz ya da
+  ilerlemez.
 
 Bu sürümü yalnız CelikPanel'in güncelleme arayüzü üzerinden kurun. Yayımlamak kurulu
 sunucuları güncellemez; bir sunucunun güncellemesini yalnız sahibi, panelin kendi

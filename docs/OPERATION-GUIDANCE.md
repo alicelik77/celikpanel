@@ -9133,3 +9133,23 @@ looked at twice before the review fixes; after the review its Boston scenario
 opens the cleanup through `/services?cleanup=roundcube`, and **it was not re-run
 after the review fixes.** No schema change (44), no Agent change, no native record,
 P0 stays partial.
+
+### Installed servers after the alpha.95 publication: nothing from alpha.95 observed yet (2026-10-17)
+
+v0.1.0-alpha.95 was published on 2026-10-17 (release at 11:01:22Z, then the
+download portal at about 11:09Z). The owner updated Boston and Frankfurt to
+alpha.94 that day from the panel's own update screen and sent Dashboard and
+Components screenshots; alpha.95 is the correction of what those screens showed
+(see the entry above). One Boston Components screenshot was a stitched full-page
+capture with repeated headings, not a page defect. Boston and Frankfurt are on
+alpha.94 until the owner updates them, and only the owner starts that update. So
+there is **no** observation of alpha.95 on an installed server to record, and no
+text or screen was changed for this entry. Small items stay open for a later
+release: Verify can still get a busy answer while the host's package manager or
+host lock is busy; a failed Webmail attempt keeps the Roundcube cleanup offer on
+the row after a later clean removal; the cleanup link from Roundcube's page
+reopens the confirmation on a reload; dialog buttons are 34 px on a phone; the
+browser screen check was not re-run after the last review fixes; and installed
+package versions for every component are still not read. Nothing is "worked" or
+"failed" until the owner reports it. P0.1-P0.5 stay **partial**; this entry
+closes and advances nothing.
