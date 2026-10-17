@@ -63,6 +63,9 @@ const stub = dataModule(`
   export const decodeManagedServicesSnapshot = (value) => (value && typeof value === 'object' && Array.isArray(value.services) ? value : null);
   export const useComponentOperation = () => globalThis.currentTest.operation ?? { startInstall: async () => true, locked: false, checking: false, catalogSnapshot: null };
   export const publishComponentCensus = () => {};
+  // The Panel's stored update check (alpha.96): nothing found here.
+  export const availablePanelUpdate = () => null;
+  export const usePanelUpdateDiscovery = () => ({ status: 'idle', value: null, readAt: 0 });
   ${stubbedComponents.filter((name) => !icons.has(name)).map((name) => `export const ${name} = (props) => props.children ?? null;`).join('\n')}
 `);
 const shared = sharedLayer(stub);

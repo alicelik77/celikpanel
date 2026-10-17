@@ -2,7 +2,7 @@ import { isFinishingStep, isPreflightStop, preflightStopCodes, recoveryFailureCo
 import { systemUpdatePreflightStop, withoutInternalTokens } from './systemUpdateFailure';
 
 /** Preflight steps with reviewed owner wording; any other step uses the generic line. */
-export const preflightSteps = ['panel_database_check', 'agent_ledger_check', 'owner_metadata_probe', 'runtime_selection',
+export const preflightSteps = ['mode', 'owner', 'panel_database_check', 'agent_ledger_check', 'owner_metadata_probe', 'runtime_selection',
     'runtime_revalidation', 'release_boundary', 'material_support', 'database_support', 'database_metadata',
     'idle_probe', 'agent_idle', 'bind_compatibility', 'application_compatibility', 'bootstrap_state'] as const;
 type PreflightStep = typeof preflightSteps[number];
@@ -34,6 +34,7 @@ export type OutcomeKey =
     | `panelUpdate.outcome.preflightStep.${PreflightStep}`
     | 'panelUpdate.outcome.preflightStep.generic'
     | `panelUpdate.outcome.preflightClass.${PreflightReasonClass}`
+    | 'panelUpdate.outcome.serverMessage'
     | 'panelUpdate.outcome.stoppedNext'
     | 'panelUpdate.outcome.stoppedResume'
     | 'panelUpdate.outcome.cause.generic'
@@ -163,17 +164,27 @@ export function failedUpdateGuidance(observation: RecoveryObservation | null, in
         // A translated reason class says what happened and what to do: the
         // server's line is then not shown (upd4 O7).
         const translated = !!preflight?.reasonClass && (preflightReasonClasses as readonly string[]).includes(preflight.reasonClass);
+        const reason = preflightReasonLine(preflight);
+        // A step this page has no words for gets only the generic reason, so
+        // the server's own first line follows it in view rather than inside
+        // the closed Details (alpha.96: Frankfurt's update to alpha.95 stopped
+        // here and the cause was hidden). It is already sanitized and short.
+        // Sözcüğü olmayan adımda sunucunun ilk satırı nedenin altında görünür.
+        const generic = 'key' in reason && reason.key === 'panelUpdate.outcome.preflightStep.generic' && !translated;
+        const firstLine = !product && reported ? reported.split(/\r?\n/)[0].slice(0, 240) : '';
+        const inline = generic && firstLine !== '';
         return {
             state: 'unchanged',
             tone: 'neutral',
             title: { key: 'panelUpdate.outcome.stoppedTitle' },
             lines: [
                 { key: 'panelUpdate.outcome.stopped', vars: versions },
-                preflightReasonLine(preflight),
+                reason,
+                ...(inline ? [{ key: 'panelUpdate.outcome.serverMessage' as const, vars: { message: firstLine } }] : []),
                 { key: 'panelUpdate.outcome.stoppedNext' },
                 { key: 'panelUpdate.outcome.stoppedResume', vars: versions },
             ],
-            serverMessage: !product && !translated && reported ? reported : undefined,
+            serverMessage: !product && !translated && !inline && reported ? reported : undefined,
         };
     }
     if (observation?.observation === 'known' && observation.phase === 'recovered'

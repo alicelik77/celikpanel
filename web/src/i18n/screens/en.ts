@@ -142,6 +142,12 @@ export const enScreens = {
     'settings.section.panel.desc': 'Panel domain and HTTPS certificate.',
     'settings.section.updates': 'CelikPanel updates',
     'settings.section.updates.desc': 'Check signed releases and install them only after explicit confirmation.',
+    // D-035: the Panel found a newer signed release (stored check, no alarm).
+    'settings.section.updates.available': 'Update available · {version}',
+    'panelUpdate.notice.region': 'CelikPanel update',
+    'panelUpdate.notice.dashboard': 'A new CelikPanel version is available: {version}',
+    'panelUpdate.notice.review': 'Review and update',
+    'panelUpdate.notice.later': 'Remind me later',
     'settings.section.security': 'Server security',
     'settings.section.security.desc': 'Read-only audit of exposed services and access controls.',
     'settings.section.dns': 'DNS infrastructure',

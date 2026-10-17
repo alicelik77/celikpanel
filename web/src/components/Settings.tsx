@@ -11,6 +11,7 @@ import { readRemote, useRemote } from '../lib/remote';
 import { DNSServerSettings } from './DNSServerSettings';
 import { SecurityAuditCard } from './SecurityAuditCard';
 import { ServerSetupSettings } from './ServerSetupChoice';
+import { availablePanelUpdate, usePanelUpdateDiscovery } from '../lib/panelUpdateDiscovery';
 
 const LicensePanel = lazy(() => import('./LicensePanel').then((module) => ({ default: module.LicensePanel })));
 const PanelUpdateCard = lazy(() => import('./PanelUpdateCard').then((module) => ({ default: module.PanelUpdateCard })));
@@ -26,6 +27,8 @@ type SettingsSection = {
     icon: React.ComponentType<{ className?: string }>;
     title: string;
     description: string;
+    /** A quiet note in place of the description, with a dot (D-035). */
+    note?: string;
 };
 
 // Each operational concern has its own URL-addressable section so navigation
@@ -36,7 +39,10 @@ export function Settings() {
     const { t } = useI18n();
     const { role } = useAuth();
     const [searchParams, setSearchParams] = useSearchParams();
-    const sections = [
+    // The Panel's stored update check: the updates item says "Update
+    // available" when a newer signed release was found (D-035). A read only.
+    const updateTarget = availablePanelUpdate(usePanelUpdateDiscovery(role === 'admin').value);
+    const sections: SettingsSection[] = [
         {
             id: 'account' as const,
             icon: ShieldCheck,
@@ -63,6 +69,7 @@ export function Settings() {
                     icon: DownloadCloud,
                     title: t('settings.section.updates'),
                     description: t('settings.section.updates.desc'),
+                    ...(updateTarget ? { note: t('settings.section.updates.available', { version: updateTarget.version }) } : {}),
                 },
                 {
                     id: 'security' as const,
@@ -268,8 +275,16 @@ function SettingsSectionTabs({
                             <Icon className="h-4 w-4" />
                         </span>
                         <span className="min-w-0">
-                            <span className="block whitespace-nowrap text-sm font-semibold lg:whitespace-normal">{section.title}</span>
-                            <span className="mt-0.5 hidden text-xs font-normal leading-5 text-fg-muted lg:block">{section.description}</span>
+                            <span className="flex items-center gap-1.5 whitespace-nowrap text-sm font-semibold lg:whitespace-normal">
+                                {section.title}
+                                {/* The note's dot is primary ink, not a signal
+                                    colour: a found update is not a warning. */}
+                                {section.note && <span className="h-2 w-2 shrink-0 rounded-full bg-primary" data-settings-note-dot="" aria-hidden="true" />}
+                                {section.note && <span className="sr-only lg:hidden">{section.note}</span>}
+                            </span>
+                            <span className="mt-0.5 hidden text-xs font-normal leading-5 text-fg-muted lg:block" data-settings-note={section.note ? '' : undefined}>
+                                {section.note ?? section.description}
+                            </span>
                         </span>
                     </button>
                 );

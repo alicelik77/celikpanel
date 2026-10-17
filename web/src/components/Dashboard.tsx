@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate, Link } from '../router';
 import { ServerSetupDashboardNotice } from './ServerSetupGate';
 import { LicenseNotice } from './LicenseNotice';
+import { DashboardUpdateNotice } from './PanelUpdateNotice';
 import { accountStart } from '../lib/startGuidance';
 import {
     Cpu, MemoryStick, HardDrive, Server, Globe, Database, Activity, Bell,
@@ -934,6 +935,11 @@ function AdminDashboard() {
                 title={t('dashboard.title')}
                 subtitle={stats ? `${stats.hostname} · ${t('dashboard.uptimeFor', { time: fmtUptime(stats.uptime_seconds, t) })}` : undefined}
             />
+
+            {/* A newer signed release, when the Panel found one: one quiet row
+                at the top, not an attention item (D-035).
+                Yeni imzali surum: ustte tek sakin satir, dikkat kalemi degil. */}
+            <DashboardUpdateNotice admin />
 
             {/* Health strip: only living numbers. Firewall state earned no
                 card (operator call, Jul 17): OFF is an alert with a button,

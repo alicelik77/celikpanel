@@ -342,6 +342,7 @@ export const tr: Record<ShellKey, string> = {
 
     'nav.import': 'İçe aktar',
     'panelUpdate.title': 'CelikPanel güncellemeleri',
+    'panelUpdate.notice.sidebar': 'Güncelleme var · {version}',
     'panelUpdate.targetVersion': 'Hedef sürüm',
     'panelUpdate.sessionExpired': 'Oturum sona erdi. Yeniden giriş yaptıktan sonra aynı işlem izlenecek.',
     'panelUpdate.sessionExpiredBeforeStart': 'Oturum güncelleme kabul edilmeden sona erdi. Yeniden giriş yapıp güncellemeleri kontrol edin.',
@@ -420,6 +421,8 @@ export const tr: Record<ShellKey, string> = {
     'panelUpdate.outcome.cause.recovery_runtime_preflight_failed': "Neden: güncelleme, kurulu sürüm değiştirilmeden salt-okur denetimde durdu.",
     'panelUpdate.outcome.stoppedTitle': "Güncelleme kurulu sürümü değiştirmeden durdu",
     'panelUpdate.outcome.stopped': "{target} sürümüne güncelleme, kurulu sürüm değiştirilmeden ve hiçbir hizmet durdurulmadan salt-okur denetimde durdu. Sunucu {previous} sürümünü eskisi gibi çalıştırıyor.",
+    'panelUpdate.outcome.preflightStep.mode': "Neden: kurtarma aracından bilmediği türde bir denetim istendi, bu yüzden kurulumu denetlemedi.",
+    'panelUpdate.outcome.preflightStep.owner': "Neden: salt-okur denetim sunucunun yönetici (root) yetkileriyle çalışmıyordu, bu yüzden kurulumu okuyamadı.",
     'panelUpdate.outcome.preflightStep.panel_database_check': "Neden: panel veritabanının salt-okur denetimi geçmedi.",
     'panelUpdate.outcome.preflightStep.agent_ledger_check': "Neden: Agent işlem kaydının salt-okur denetimi geçmedi; başka bir işlem hâlâ sürüyor olabilir.",
     'panelUpdate.outcome.preflightStep.owner_metadata_probe': "Neden: kurulu CelikPanel dosyalarının sahipliği veya izinleri doğrulanamadı.",

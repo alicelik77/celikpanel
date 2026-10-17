@@ -21,6 +21,7 @@ import { en } from '../src/i18n/en.ts';
 import { tr } from '../src/i18n/tr.ts';
 import { enServerScreens } from '../src/i18n/screens/server/en.ts';
 import { trServerScreens } from '../src/i18n/screens/server/tr.ts';
+import { panelUpdateDiscoveryStubSource } from './panelUpdateDiscoveryStub.mjs';
 
 globalThis.document ??= Object.assign(new EventTarget(), { visibilityState: 'visible' });
 globalThis.window ??= { setTimeout: () => 0, clearTimeout: () => {} };
@@ -39,7 +40,7 @@ const jsxRuntimeURL = pathToFileURL(require.resolve('react/jsx-runtime')).href;
 const catalogues = { en: { ...en, ...enServerScreens }, tr: { ...tr, ...trServerScreens } };
 const iconsURL = moduleURL(`import React from '${reactURL}';
 const icon = name => props => React.createElement('i', { ...props, 'data-icon': name });
-export const AlertTriangle = icon('AlertTriangle'), CheckCircle2 = icon('CheckCircle2'), DownloadCloud = icon('DownloadCloud'), Loader2 = icon('Loader2'), RefreshCw = icon('RefreshCw');`);
+export const AlertTriangle = icon('AlertTriangle'), CheckCircle2 = icon('CheckCircle2'), DownloadCloud = icon('DownloadCloud'), Loader2 = icon('Loader2'), RefreshCw = icon('RefreshCw'), Info = icon('Info');`);
 const uiURL = moduleURL(`import React from '${reactURL}'; export function Button({ children, ...props }) { return React.createElement('button', props, children); }`);
 const i18nURL = moduleURL(`const fill = (text, vars) => String(text).replace(/\\{(\\w+)\\}/g, (all, name) => vars && vars[name] !== undefined ? String(vars[name]) : all);
 export function useI18n() { const c = globalThis.__checkCatalogue; return { t: (key, vars) => fill(c.strings[key] ?? key, vars), locale: c.locale }; }`);
@@ -63,6 +64,7 @@ const { PanelUpdateCard } = await import(compileURL('../src/components/PanelUpda
     [/from ['"]react['"]/g, `from '${reactURL}'`],
     [/from ['"]react\/jsx-runtime['"]/g, `from '${jsxRuntimeURL}'`],
     [/from ['"]lucide-react['"]/g, `from '${iconsURL}'`],
+    [/from ['"]\.\.\/lib\/panelUpdateDiscovery['"]/g, `from '${moduleURL(panelUpdateDiscoveryStubSource())}'`],
     [/from ['"]\.\/ui['"]/g, `from '${uiURL}'`],
     [/from ['"]\.\.\/i18n['"]/g, `from '${i18nURL}'`],
     [/from ['"]\.\.\/lib\/apiError['"]/g, `from '${apiErrorURL}'`],
@@ -105,15 +107,20 @@ const messageOf = renderer => renderer.root.find(node => node.type === 'div' && 
 const noUpdate = () => ({ ok: true, json: async () => ({ supported: true, available: false, current_version: CURRENT.version, current_commit: CURRENT.commit }) });
 const anUpdate = () => ({ ok: true, json: async () => ({ supported: true, available: true, current_version: CURRENT.version, current_commit: CURRENT.commit, target: TARGET }) });
 
-for (const [locale, sentence] of [['en', 'You are on the latest version.'], ['tr', 'En son sürümü kullanıyorsunuz.']]) {
+// alpha.96 (D-035): what the card knows is said once, on the status line at
+// the top; the bottom message is only for a press that failed.
+const statusOf = renderer => renderer.root.find(node => node.type === 'div' && node.props['data-update-status'] !== undefined);
+const messages = renderer => renderer.root.findAll(node => node.type === 'div' && node.props['data-message-tone'] !== undefined);
+for (const [locale, sentence] of [['en', 'You are on the latest version (checked just now).'], ['tr', 'En son sürümü kullanıyorsunuz (az önce denetlendi).']]) {
     test(`${locale}: a check that found nothing is a calm confirmation, not a warning`, async () => {
         const renderer = await checkWith(locale, noUpdate);
-        const message = messageOf(renderer);
-        assert.equal(textOf(message.children).trim(), sentence);
-        assert.equal(message.props['data-message-tone'], 'latest');
-        assert.deepEqual(icons(message), ['CheckCircle2']);
-        assert.ok(!/warning/.test(message.props.className), message.props.className);
-        assert.ok(!/kanal|channel/i.test(textOf(message.children).trim()), 'the card does not speak of a channel it does not distinguish');
+        const status = statusOf(renderer);
+        assert.equal(textOf(status.findAllByType('p')[0].children).trim(), sentence);
+        assert.equal(status.props['data-update-status'], 'latest');
+        assert.deepEqual(icons(status), ['CheckCircle2']);
+        assert.ok(!/warning/.test(status.props.className), status.props.className);
+        assert.ok(!/kanal|channel/i.test(textOf(status.children)), 'the card does not speak of a channel it does not distinguish');
+        assert.equal(messages(renderer).length, 0, 'the result is said a second time');
         renderer.unmount();
     });
 }
@@ -128,20 +135,29 @@ test('a check that could not be read keeps the warning mark', async () => {
     renderer.unmount();
 });
 
-test('a found update is neutral information; a readiness read in progress is neutral; a refused readiness is a warning', async () => {
+test('a found update is neutral information said once; a readiness read in progress is neutral; a refused readiness is a warning', async () => {
     let release;
     const renderer = await checkWith('en', anUpdate, () => new Promise((resolve) => { release = resolve; }));
-    const message = messageOf(renderer);
-    assert.equal(textOf(message.children).trim(), 'A signed update is available.');
-    assert.equal(message.props['data-message-tone'], 'available');
-    assert.deepEqual(icons(message), ['DownloadCloud']);
+    const status = statusOf(renderer);
+    assert.equal(textOf(status.findAllByType('p')[0].children).trim(), `${TARGET.version} is available (found just now).`);
+    assert.equal(status.props['data-update-status'], 'available');
+    assert.deepEqual(icons(status), ['DownloadCloud']);
+    assert.equal(messages(renderer).length, 0);
+    // No second "available" line anywhere on the card (owner screenshot, Frankfurt 2026-10-17).
+    assert.ok(!textOf(renderer.toJSON()).includes('A signed update is available.'));
     const box = () => renderer.root.find(node => node.type === 'div' && node.props['data-readiness-tone'] !== undefined);
     assert.equal(box().props['data-readiness-tone'], 'neutral');
     assert.ok(!/warning/.test(box().props.className), box().props.className);
     assert.deepEqual(icons(box()), ['Loader2']);
-    await act(async () => { release({ ready: false, code: 'HOST_MUTATION_BUSY', reason: 'operation_active' }); await flush(); });
-    assert.equal(box().props['data-readiness-tone'], 'warning');
-    assert.match(box().props.className, /warning/);
-    assert.ok(icons(box()).includes('AlertTriangle'));
+    await act(async () => { release({ ready: true }); await flush(); });
+    assert.equal(box().props['data-readiness-tone'], 'ready');
+    assert.ok(!/warning|success/.test(box().props.className), 'a ready server is not a coloured box');
+    assert.ok(textOf(box().children).includes('The server is ready for the update.'));
     renderer.unmount();
+    const busy = await checkWith('en', anUpdate, () => Promise.resolve({ ready: false, code: 'HOST_MUTATION_BUSY', reason: 'host_lock_busy' }));
+    const busyBox = busy.root.find(node => node.type === 'div' && node.props['data-readiness-tone'] !== undefined);
+    assert.equal(busyBox.props['data-readiness-tone'], 'warning');
+    assert.match(busyBox.props.className, /warning/);
+    assert.ok(icons(busyBox).includes('AlertTriangle'));
+    busy.unmount();
 });
