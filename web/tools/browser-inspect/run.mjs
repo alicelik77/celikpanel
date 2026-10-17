@@ -1782,6 +1782,10 @@ const scenarios = {
 (await import('./scenarios-batch20.mjs')).default(scenarios, { base, vp, locale, theme, out, viewport, ctl, reset, drainLog, newPage, closePage, shot, into, clickByText, waitFor, pause, quiet });
 // --- end of batch 20 ---
 
+// --- batch 21 (2026-10-17): the Panel's stored update check of alpha.96 ---
+(await import('./scenarios-batch21.mjs')).default(scenarios, { base, vp, locale, theme, out, viewport, ctl, reset, drainLog, newPage, closePage, shot, into, clickByText, waitFor, pause, quiet });
+// --- end of batch 21 ---
+
 for (const [name, run] of Object.entries(scenarios)) {
     if (wanted && !wanted.includes(name)) continue;
     const started = Date.now();

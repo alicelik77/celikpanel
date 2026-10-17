@@ -501,3 +501,32 @@ codes, English on the Turkish page, the filled buttons in `<main>`, leaf text in
 Amber Ink and in the failure colour, phone targets under 44 px, sideways
 scrolling, and on the Dashboard the card text and the Domains tile. The
 screenshots are the inspection; these scenarios do not fail on a finding.
+
+## Scenarios of the twenty-first batch (the stored update check, 2026-10-17)
+
+`scenarios-batch21.mjs`, with a small server answered by `mock-batch21.mjs`
+while `state.b21` is set: `GET/PUT /api/v1/panel/update/discovery` in the exact
+shape `decodePanelUpdateDiscovery` reads (the stored result, the owner's switch,
+the ages measured on the server's clock, `previous_attempt`), `/panel/version`
+for the running build (v0.1.0-alpha.95), `/panel/update/check` and the
+readiness read. The release it "finds" (v0.1.0-alpha.96, a made-up commit and
+SHA-256) is never downloaded or verified; nothing is started. Run it with
+`desktop` and `phone`, Turkish and English, both themes (about 40 seconds
+each); each state is also copied to `BROWSER_INSPECT_SHOTS` as
+`<state>-<lang>-<theme>-<width>.png`.
+
+| Name | States |
+| --- | --- |
+| `y21current` | Settings, CelikPanel updates: the stored result "current" (automatic, 2 hours ago), the switch on (`settings-current`) |
+| `y21available` | the card with an update found and the server ready: one status line, "Before you update", the readiness box, one filled button, collapsed Technical details (`settings-available`); the sidebar link (`settings-available-sidebar`, the menu opened on a phone) |
+| `y21stopped` | the same with an earlier attempt that stopped before changing anything: one neutral notice (`settings-stopped`) |
+| `y21failed` | a failed automatic check with no release found: the calm line and the next check time on the card (`settings-failed`); the Dashboard and the sidebar say nothing (`dashboard-failed`, `dashboard-failed-sidebar`) |
+| `y21off` | automatic checks switched off: the card says so, the switch is off (`settings-off`) |
+| `y21dashboard` | the Dashboard's quiet row at the top (`dashboard-available`, `-top`, the sidebar on a phone), then after "Remind me later": the row gone, the sidebar link kept (`dashboard-later-top`, `dashboard-later-sidebar`) |
+
+Each record adds the main text, raw keys (`rawKeys`), English on the Turkish
+page (`englishLeaks`), the filled buttons, the text and surfaces drawn in
+amber, the failure colour and green (`amberUsed`, `redUsed`, `greenUsed`),
+phone targets under 44 px, sideways scrolling, the switch, the sidebar link and
+the Dashboard row with their places. The screenshots are the inspection; these
+scenarios do not fail on a finding.
