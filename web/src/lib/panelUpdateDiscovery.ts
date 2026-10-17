@@ -45,7 +45,7 @@ export type PanelUpdateDiscovery = {
     /** Browser time of the next automatic check, from the server's wait (D-032). */
     nextCheckAt: number | null;
     last: null | {
-        outcome: 'available' | 'current' | 'failed' | 'skipped';
+        outcome: 'available' | 'current' | 'failed';
         automatic: boolean;
         reason: DiscoveryReason | null;
         /** Browser time of the check: the moment of receipt minus the server's age. */
@@ -56,6 +56,11 @@ export type PanelUpdateDiscovery = {
     foundAt: number | null;
     /** The update check's previous_attempt, decoded by the update card. */
     previousAttempt: unknown;
+    /**
+     * The last scheduled attempt, when it was skipped after the result above
+     * (the Panel keeps a skip in memory only; it never replaces a result).
+     */
+    lastSkip: null | { reason: DiscoveryReason | null; at: number };
     expectedRestartSeconds: number;
 };
 
@@ -100,7 +105,7 @@ export function decodePanelUpdateDiscovery(payload: unknown, receivedAt: number)
         const record = raw.last as Record<string, unknown>;
         const age = seconds(raw.checked_age_seconds);
         if (age === null || (record.outcome !== 'available' && record.outcome !== 'current'
-            && record.outcome !== 'failed' && record.outcome !== 'skipped')
+            && record.outcome !== 'failed')
             || typeof record.automatic !== 'boolean') return null;
         const reason = (discoveryReasons as readonly unknown[]).includes(record.reason_code)
             ? record.reason_code as DiscoveryReason : null;
@@ -111,6 +116,15 @@ export function decodePanelUpdateDiscovery(payload: unknown, receivedAt: number)
             if (!target || foundAge === null || raw.available !== true) return null;
             foundAt = receivedAt - foundAge * 1000;
         }
+    }
+    let lastSkip: PanelUpdateDiscovery['lastSkip'] = null;
+    if (raw.last_skip !== undefined && raw.last_skip !== null) {
+        if (typeof raw.last_skip !== 'object') return null;
+        const skip = raw.last_skip as Record<string, unknown>;
+        const age = seconds(skip.age_seconds);
+        if (age === null) return null;
+        const reason = (discoveryReasons as readonly unknown[]).includes(skip.reason_code) ? skip.reason_code as DiscoveryReason : null;
+        lastSkip = { reason, at: receivedAt - age * 1000 };
     }
     const interval = typeof raw.interval_hours === 'number' && Number.isInteger(raw.interval_hours) && raw.interval_hours > 0
         ? raw.interval_hours : 12;
@@ -127,6 +141,7 @@ export function decodePanelUpdateDiscovery(payload: unknown, receivedAt: number)
         foundAt,
         previousAttempt: target ? raw.previous_attempt : undefined,
         expectedRestartSeconds: restart,
+        lastSkip,
     };
 }
 

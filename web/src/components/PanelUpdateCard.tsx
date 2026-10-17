@@ -65,6 +65,8 @@ export const PANEL_UPDATE_CHECK_TIMEOUT_MS = 8000;
 // Kart sunucu mesgul derken hazirligi kendisi yeniden okur: yalniz GET, ayni
 // anda tek okuma, yalniz sekme gorunurken. Guncellemeyi asla baslatmaz.
 export const PANEL_UPDATE_READINESS_POLL_MS = 5000;
+/** How often the card redraws its ages ("2 hours ago") while visible. */
+export const PANEL_UPDATE_AGE_TICK_MS = 60_000;
 
 export type PanelUpdateCheckRuntime = {
     fetch: typeof fetch;
@@ -160,6 +162,36 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
     const readinessAbort = useRef<AbortController | null>(null);
     const updateCheckAbort = useRef<AbortController | null>(null);
     const readinessForTarget = useRef('');
+    // The ages on the status line ("2 hours ago") follow the clock while the
+    // card is visible: one re-render a minute, none while the tab is hidden,
+    // one at once when it is shown again. It reads nothing.
+    // Yaslar kart gorunurken dakikada bir yenilenir; hicbir sey okunmaz.
+    const [, setAgeTick] = useState(0);
+    useEffect(() => {
+        let timer: ReturnType<typeof globalThis.setInterval> | undefined;
+        const visible = () => typeof document === 'undefined' || document.visibilityState === 'visible';
+        const start = () => {
+            if (timer === undefined && visible()) timer = globalThis.setInterval(() => setAgeTick((tick) => tick + 1), PANEL_UPDATE_AGE_TICK_MS);
+        };
+        const stop = () => {
+            if (timer !== undefined) globalThis.clearInterval(timer);
+            timer = undefined;
+        };
+        const onVisibility = () => {
+            if (visible()) {
+                setAgeTick((tick) => tick + 1);
+                start();
+            } else {
+                stop();
+            }
+        };
+        start();
+        if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVisibility);
+        return () => {
+            stop();
+            if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onVisibility);
+        };
+    }, []);
 
     useEffect(() => () => {
         lifecycleGeneration.current += 1;
@@ -468,17 +500,30 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
     const nextLine = stored?.autoCheck && stored.nextCheckAt !== null
         ? t('panelUpdate.status.next', { time: clockTime(stored.nextCheckAt, now, locale) })
         : stored && !stored.autoCheck ? t('panelUpdate.status.off') : '';
-    type StatusLine = { tone: 'reading' | 'latest' | 'available' | 'info' | 'unread'; text: string; detail?: string };
+    type StatusLine = { tone: 'reading' | 'latest' | 'available' | 'info' | 'unread'; text: string; details?: string[] };
     const last = stored?.last ?? null;
     const reasonText = last?.reason ? t(`panelUpdate.discoveryReason.${last.reason}`) : t('panelUpdate.discoveryReason.unknown');
-    const lastProblem = last && (last.outcome === 'failed' || last.outcome === 'skipped')
-        ? t(last.outcome === 'skipped' ? 'panelUpdate.status.lastSkipped'
-            : last.automatic ? 'panelUpdate.status.lastFailed' : 'panelUpdate.status.lastFailedManual',
-        { age: age(last.checkedAt), reason: reasonText })
+    const lastProblem = last && last.outcome === 'failed'
+        ? t(last.automatic ? 'panelUpdate.status.lastFailed' : 'panelUpdate.status.lastFailedManual',
+            { age: age(last.checkedAt), reason: reasonText })
+        : '';
+    // A skipped scheduled attempt never replaces what is known: it is said
+    // beside it, only while it is newer than the result (the Panel keeps a
+    // skip in memory only).
+    // Atlanan deneme bilineni degistirmez; yaninda soylenir.
+    const skipLine = stored?.lastSkip
+        ? t('panelUpdate.status.lastSkipped', {
+            age: age(stored.lastSkip.at),
+            reason: stored.lastSkip.reason ? t(`panelUpdate.discoveryReason.${stored.lastSkip.reason}`) : t('panelUpdate.discoveryReason.unknown'),
+        })
         : '';
     // A press that failed says so in its own words below; the stored record of
     // that same failure is not said a second time.
     const manualFailureShown = message !== '' && last?.outcome === 'failed' && !last.automatic;
+    const withDetails = (line: StatusLine, details: string[]): StatusLine => {
+        const shown = details.filter(Boolean);
+        return shown.length > 0 ? { ...line, details: shown } : line;
+    };
     let status: StatusLine | null;
     if (checking) {
         status = { tone: 'reading', text: t('panelUpdate.status.checkingNow') };
@@ -486,21 +531,20 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
         status = { tone: 'latest', text: t('panelUpdate.status.currentManual', { age: last && !last.automatic && last.outcome === 'current' ? age(last.checkedAt) : t('panelUpdate.status.justNow') }) };
     } else if (offer?.available && target) {
         const foundAt = stored?.target && stored.target.commit === target.commit && stored.foundAt !== null ? stored.foundAt : now;
-        status = {
+        status = withDetails({
             tone: 'available',
             text: t('panelUpdate.status.available', { version: target.version, age: age(foundAt) }),
-            ...(!check && lastProblem && !manualFailureShown ? { detail: lastProblem } : {}),
-        };
+        }, check ? [] : [manualFailureShown ? '' : lastProblem, skipLine]);
     } else if (!stored) {
         status = discovery.status === 'failed'
             ? { tone: 'unread', text: t('panelUpdate.status.readFailed') }
             : { tone: 'reading', text: t('panelUpdate.status.reading') };
     } else if (!last) {
-        status = { tone: 'info', text: t('panelUpdate.status.never') };
+        status = withDetails({ tone: 'info', text: t('panelUpdate.status.never') }, [skipLine]);
     } else if (last.outcome === 'current') {
-        status = { tone: 'latest', text: t(last.automatic ? 'panelUpdate.status.current' : 'panelUpdate.status.currentManual', { age: age(last.checkedAt) }) };
+        status = withDetails({ tone: 'latest', text: t(last.automatic ? 'panelUpdate.status.current' : 'panelUpdate.status.currentManual', { age: age(last.checkedAt) }) }, [skipLine]);
     } else {
-        status = manualFailureShown ? null : { tone: 'info', text: lastProblem };
+        status = manualFailureShown ? null : withDetails({ tone: 'info', text: lastProblem }, [skipLine]);
     }
     const showNext = !checking && status?.tone !== 'reading' && status?.tone !== 'unread' && nextLine !== '';
     const statusIcon = !status ? null : status.tone === 'reading'
@@ -538,7 +582,7 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
                     {statusIcon}
                     <div className="min-w-0">
                         <p className="font-medium">{status.text}</p>
-                        {status.detail && <p className="mt-1 text-fg-muted" data-update-status-detail="">{status.detail}</p>}
+                        {status.details?.map((detail) => <p key={detail} className="mt-1 text-fg-muted" data-update-status-detail="">{detail}</p>)}
                         {showNext && <p className="mt-1 text-fg-muted" data-update-next="">{nextLine}</p>}
                     </div>
                 </div>
@@ -767,14 +811,16 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
                         type="checkbox"
                         role="switch"
                         className="mt-1 h-4 w-4 shrink-0 accent-primary"
-                        checked={stored?.autoCheck ?? true}
+                        checked={stored?.autoCheck === true}
                         disabled={!stored || savingAuto}
-                        aria-checked={stored?.autoCheck ?? true}
+                        aria-checked={stored ? stored.autoCheck : false}
                         onChange={(event) => void saveAutoCheck(event.currentTarget.checked)}
                     />
                     <span className="min-w-0">
                         <span className="block text-sm font-medium text-fg">{t('panelUpdate.auto.label')}</span>
                         <span className="mt-0.5 block text-sm text-fg-muted">{t('panelUpdate.auto.help')}</span>
+                        {/* Not "on" before the setting was read: unknown is said as unknown. */}
+                        {!stored && <span className="mt-0.5 block text-sm text-fg-muted" data-update-auto-unknown="">{t('panelUpdate.auto.unknown')}</span>}
                     </span>
                 </label>
                 {savingAuto && <p className="mt-2 flex items-center gap-2 text-sm text-fg-muted" role="status"><Loader2 className="h-4 w-4 motion-safe:animate-spin" aria-hidden="true" />{t('panelUpdate.auto.saving')}</p>}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { DownloadCloud } from 'lucide-react';
 import { Link } from '../router';
 import { useI18n } from '../i18n';
@@ -25,10 +25,12 @@ export function DashboardUpdateNotice({ admin }: { admin: boolean }) {
     const discovery = usePanelUpdateDiscovery(admin);
     const target = admin ? availablePanelUpdate(discovery.value) : null;
     const version = target?.version ?? '';
-    const [snoozed, setSnoozed] = useState(() => version !== '' && updateNoticeSnoozed(version, Date.now()));
-    useEffect(() => {
-        setSnoozed(version !== '' && updateNoticeSnoozed(version, Date.now()));
-    }, [version]);
+    // Decided while rendering, so a row snoozed in this browser never paints
+    // for a frame; "Remind me later" on this page is remembered here too, for
+    // blocked storage.
+    // Ertelenmiş satır bir kare bile çizilmez; karar çizim sırasında verilir.
+    const [dismissed, setDismissed] = useState('');
+    const snoozed = version !== '' && (dismissed === version || updateNoticeSnoozed(version, Date.now()));
     if (!target || snoozed) return null;
     return (
         <section
@@ -52,7 +54,7 @@ export function DashboardUpdateNotice({ admin }: { admin: boolean }) {
                     data-update-later=""
                     onClick={() => {
                         snoozeUpdateNotice(target.version, Date.now());
-                        setSnoozed(true);
+                        setDismissed(target.version);
                     }}
                     className="inline-flex items-center text-fg-muted underline-offset-4 hover:text-fg hover:underline max-sm:min-h-11"
                 >

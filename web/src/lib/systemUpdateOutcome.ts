@@ -171,8 +171,12 @@ export function failedUpdateGuidance(observation: RecoveryObservation | null, in
         // here and the cause was hidden). It is already sanitized and short.
         // Sözcüğü olmayan adımda sunucunun ilk satırı nedenin altında görünür.
         const generic = 'key' in reason && reason.key === 'panelUpdate.outcome.preflightStep.generic' && !translated;
-        const firstLine = !product && reported ? reported.split(/\r?\n/)[0].slice(0, 240) : '';
+        // The first line, cut at 240 characters with an ellipsis; when it is not
+        // the whole message, the whole message stays behind Details too.
+        const lineOne = !product && reported ? reported.split(/\r?\n/)[0] : '';
+        const firstLine = lineOne.length > 240 ? `${lineOne.slice(0, 239).trimEnd()}…` : lineOne;
         const inline = generic && firstLine !== '';
+        const complete = inline && firstLine === reported;
         return {
             state: 'unchanged',
             tone: 'neutral',
@@ -184,7 +188,7 @@ export function failedUpdateGuidance(observation: RecoveryObservation | null, in
                 { key: 'panelUpdate.outcome.stoppedNext' },
                 { key: 'panelUpdate.outcome.stoppedResume', vars: versions },
             ],
-            serverMessage: !product && !translated && !inline && reported ? reported : undefined,
+            serverMessage: !product && !translated && !complete && reported ? reported : undefined,
         };
     }
     if (observation?.observation === 'known' && observation.phase === 'recovered'

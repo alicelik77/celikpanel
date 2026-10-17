@@ -173,6 +173,7 @@ async function withMounted(element, { role = 'admin', stored = storedAvailable()
                 const body = JSON.parse(options.body);
                 return Response.json({ ...stored, auto_check: body.auto_check, ...(body.auto_check ? {} : { next_check_in_seconds: undefined }) });
             }
+            if (stored === null) return new Response("{}", { status: 500 });
             return Response.json(stored);
         }
         if (path === '/api/v1/panel/update/check' && check) return check();
@@ -516,4 +517,103 @@ test('phone layout: the Settings tab anchors its screen-reader note, the selecte
     assert.doesNotMatch(settings, /bg-primary text-white/);
     const layout = source('components/Layout.tsx');
     assert.match(layout, /className="flex h-11 w-11 items-center justify-center rounded-lg text-fg-muted hover:bg-surface-2 md:hidden"\s*\n\s*onClick=\{\(\) => setMobileOpen\(true\)\}/);
+});
+
+// --- Independent review of the candidate (2026-10-17) ----------------------------------
+
+test('a skipped scheduled attempt is said beside the known result and never replaces it', async () => {
+    const now = Date.parse('2026-10-17T12:00:00Z');
+    const decoded = discovery.decodePanelUpdateDiscovery({ ...storedCurrent(), last_skip: { reason_code: 'update_active', age_seconds: 600 } }, now);
+    assert.deepEqual(decoded.lastSkip, { reason: 'update_active', at: now - 600 * 1000 });
+    assert.equal(discovery.decodePanelUpdateDiscovery({ ...storedCurrent(), last: { ...storedCurrent().last, outcome: 'skipped', reason_code: 'server_busy' } }, now), null,
+        'a stored "skipped" outcome is not a result');
+    await withMounted(React.createElement(PanelUpdateCard), { stored: storedCurrent({ last_skip: { reason_code: 'server_busy', age_seconds: 600 } }) }, async (renderer) => {
+        assert.equal(statusOf(renderer).props['data-update-status'], 'latest', 'a skip replaced the known result');
+        const details = renderer.root.findAll(node => node.props && node.props['data-update-status-detail'] !== undefined).map(textOf);
+        assert.deepEqual(details, [say('panelUpdate.status.lastSkipped', { age: discovery.relativeAge(Date.now() - 600_000, Date.now(), 'en', 'just now'), reason: say('panelUpdate.discoveryReason.server_busy') })]);
+    });
+    await withMounted(React.createElement(PanelUpdateCard), { stored: storedAvailable({ last_skip: { reason_code: 'setup_running', age_seconds: 60 } }) }, async (renderer) => {
+        assert.equal(statusOf(renderer).props['data-update-status'], 'available');
+        assert.ok(statusText(renderer).includes(say('panelUpdate.discoveryReason.setup_running')));
+        assert.equal(primaries(renderer).length, 1);
+    });
+    assert.equal(catalogues.en['panelUpdate.discoveryReason.setup_running'], 'server setup was changing the server');
+});
+
+test('the switch is not "on" before its setting was read: it is disabled, unchecked and says it is not known', async () => {
+    await withMounted(React.createElement(PanelUpdateCard), { stored: null }, async (renderer) => {
+        const input = renderer.root.find(node => node.type === 'input' && node.props.role === 'switch');
+        assert.equal(input.props.checked, false);
+        assert.equal(input.props.disabled, true);
+        assert.equal(input.props['aria-checked'], false);
+        assert.ok(textOf(renderer.root.find(node => node.props && node.props['data-update-auto-unknown'] !== undefined)).includes(say('panelUpdate.auto.unknown')));
+        assert.equal(statusOf(renderer).props['data-update-status'], 'unread');
+    });
+    await withMounted(React.createElement(PanelUpdateCard), { stored: storedCurrent() }, async (renderer) => {
+        assert.equal(renderer.root.findAll(node => node.props && node.props['data-update-auto-unknown'] !== undefined).length, 0);
+    });
+});
+
+test('the stop dialog keeps the whole server message behind Details when the inline first line is cut', () => {
+    const input = (message) => ({ targetVersion: 'v0.1.0-alpha.95', previousVersion: 'v0.1.0-alpha.94', message, productMessages: [], reading: false });
+    const long = 'x'.repeat(230) + ' the end of a long checker line';
+    const cut = outcome.failedUpdateGuidance(null, input(`!! CELIKPANEL_UPDATE_FAILURE code=recovery_runtime_preflight_failed state=unchanged reason=recovery runtime preflight step=brand_new_step: ${long} detail=`));
+    const inline = cut.lines.find(line => line.key === 'panelUpdate.outcome.serverMessage');
+    assert.ok(inline.vars.message.endsWith('…'));
+    assert.ok(inline.vars.message.length <= 240);
+    assert.equal(cut.serverMessage, long, 'the whole line left Details');
+    const short = outcome.failedUpdateGuidance(null, input('!! CELIKPANEL_UPDATE_FAILURE code=recovery_runtime_preflight_failed state=unchanged reason=recovery runtime preflight step=brand_new_step: short line detail='));
+    assert.equal(short.serverMessage, undefined, 'a complete line is said twice');
+});
+
+test('a Dashboard row snoozed in this browser is decided while rendering, never painted for a frame', async () => {
+    storage.clear();
+    storage.set(discovery.UPDATE_NOTICE_SNOOZE_KEY, JSON.stringify({ version: TARGET.version, until: Date.now() + HOUR * 1000 }));
+    // The shared copy is already known when the row mounts: its first render
+    // must be empty.
+    discovery.resetPanelUpdateDiscoveryForTests();
+    discovery.publishPanelUpdateDiscovery(discovery.decodePanelUpdateDiscovery(storedAvailable(), Date.now()));
+    globalThis.discoveryFixture = { auth: { role: 'admin' }, strings: catalogues.en, locale: 'en' };
+    const renders = [];
+    const Probe = () => { const element = React.createElement(DashboardUpdateNotice, { admin: true }); renders.push(element); return element; };
+    let renderer;
+    TestRenderer.act(() => { renderer = TestRenderer.create(React.createElement(Probe)); });
+    assert.equal(renderer.toJSON(), null, 'a snoozed row was painted');
+    TestRenderer.act(() => renderer.unmount());
+    storage.clear();
+    assert.doesNotMatch(source('components/PanelUpdateNotice.tsx'), /useEffect/);
+});
+
+test('the card redraws its ages once a minute while visible, and stops while hidden and when it leaves', async () => {
+    const realSet = globalThis.setInterval;
+    const realClear = globalThis.clearInterval;
+    const live = new Map();
+    let next = 1;
+    globalThis.setInterval = (fn, ms) => { const id = next++; live.set(id, ms); return id; };
+    globalThis.clearInterval = (id) => { live.delete(id); };
+    try {
+        await withMounted(React.createElement(PanelUpdateCard), { stored: storedCurrent() }, async () => {
+            assert.ok([...live.values()].includes(60_000), 'no minute redraw while visible');
+            const hidden = Object.getOwnPropertyDescriptor(document, 'visibilityState');
+            Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' });
+            await act(async () => { document.dispatchEvent(new Event('visibilitychange')); });
+            assert.ok(![...live.values()].includes(60_000), 'the minute redraw runs while hidden');
+            if (hidden) Object.defineProperty(document, 'visibilityState', hidden); else Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
+            await act(async () => { document.dispatchEvent(new Event('visibilitychange')); });
+            assert.ok([...live.values()].includes(60_000), 'the minute redraw did not resume when shown');
+        });
+        assert.ok(![...live.values()].includes(60_000), 'the minute redraw outlived the card');
+    } finally {
+        globalThis.setInterval = realSet;
+        globalThis.clearInterval = realClear;
+    }
+});
+
+test('Turkish: the manual check is "denetle" in the busy and cleared messages, and the restart line says how long it takes', () => {
+    assert.equal(tr['err.PANEL_UPDATE_BUSY'], 'Başka bir sunucu işlemi çalışıyor. Tamamlanmasını bekleyip güncellemeleri yeniden denetleyin.');
+    assert.match(tr['panelUpdate.identityMismatchCleared'], /güncellemeleri yeniden denetleyin\.$/);
+    assert.equal(catalogues.tr['panelUpdate.before.restart'], 'Panel ve Agent bir kez yeniden başlar; bu yaklaşık {seconds} saniye sürer.');
+    for (const [key, text] of Object.entries(catalogues.tr)) {
+        if (/^(panelUpdate\.|err\.PANEL_UPDATE|start\.updates)/.test(key)) assert.doesNotMatch(text, /kontrol et/i, key);
+    }
 });
