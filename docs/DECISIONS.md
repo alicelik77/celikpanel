@@ -21,6 +21,124 @@ Code decisions live in git; this file is for strategy. Newest first.
 
 ---
 
+## D-035 · The panel looks for updates by itself and says so calmly; only an administrator starts an update
+
+*October 17, 2026 (clock date) · Owner request while updating to v0.1.0-alpha.95; in source for the v0.1.0-alpha.96 candidate; nothing measured on an installed server*
+
+While updating the installed servers to v0.1.0-alpha.95 the owner found two
+things in the update screen. The panel learned that a newer release existed only
+when someone pressed "Check for updates", so a server could stay on an old
+version without anyone being told. And the update card itself was hard to read:
+two amber boxes (the alpha warning and "An earlier update to this version
+stopped…"), a green "A signed update is available." and a second identical row
+below the Start button. In the owner's words: "belirli periodlarda güncellemeleri
+kontrol etmeli ve güncelleme var diye uyarmalı. güncelleme konusunda yardımcı
+olmalı." In English: it should check for updates at regular intervals and warn
+that an update exists; it should help with the update.
+
+The rules adopted:
+
+1. **The panel itself looks, on a schedule, and only reads.** A loop in the
+   Panel process (not in the browser) makes the same read-only discovery as the
+   "Check for updates" button, through one shared function: the Agent's
+   availability and build pair, the host's own authority for starting an update,
+   the Agent's check of the signed release at celikpanel.net, the identity match
+   and the validation of the target. The first check runs about 2 minutes after
+   the Panel starts (plus or minus 30 seconds), then every 12 hours (plus or
+   minus 30 minutes). One check is bounded at 40 seconds. It takes no lock,
+   changes nothing on the host and writes no update record.
+2. **A failed check backs off, it does not retry in a storm.** After a failure
+   the next try is in 1 hour, then in 3 hours, then the 12-hour period again. A
+   successful check resets this.
+3. **Some conditions skip the check; a skip is not a failure.** The check is not
+   run, and tried again in 1 hour, while the Panel admitted an update start in
+   the last 6 minutes, while the Agent's advisory readiness read reports a
+   change in progress or a state it cannot verify, while a server setup run is
+   running or waiting, and when the Agent does not answer. A busy package
+   manager does not skip it, because the release read does not touch packages.
+   The check never runs while the Panel shuts down; an interrupted check records
+   nothing.
+4. **The owner can switch it off.** Settings → CelikPanel updates has "Check for
+   updates automatically", on by default, with the text "Once every 12 hours the
+   panel asks celikpanel.net whether a newer signed release exists. Nothing is
+   installed by itself." Off means no network read by the schedule at all; the
+   manual check still works.
+5. **The result is stored and cleared by rule.** The latest result (outcome,
+   time, whether it was automatic, a reason code for a failure or a skip, and the
+   release found with the time it was found) is kept in the Panel's settings
+   table; no schema change. A failed or skipped check keeps the release found
+   before it, so a passing outage does not hide an update that is still waiting.
+   At start, a record made by another build, or naming a release this build
+   already is or is newer than, is cleared; after an update the notice
+   disappears.
+6. **Where the owner sees it, and where not.** Administrators only: a small link
+   under the version line in the sidebar ("Update available · v0.1.0-alpha.96");
+   one quiet row at the top of the Dashboard content, not inside "Needs
+   attention", because an update is not a problem, with "Review and update" and
+   "Remind me later" (hidden for 24 hours in this browser for that version);
+   a small dot and the same words in the Settings navigation. The update card
+   opens already knowing the stored result. A failed or unknown automatic check
+   shows nothing outside the update card.
+7. **Never an alarm.** An available update has no signal colour: no amber, no
+   red, no badge colour. A failed check is calm, says what is and is not known,
+   who acts (nobody, or the owner may check now), when the next check runs and
+   that the panel and the hosted services work as before.
+8. **An update never starts by itself.** Only an administrator starts an
+   update, from the panel's own update screen, with the one filled button
+   "Update to <version>". Start re-runs discovery and requires the exact same
+   target. The card tells the owner what happens before they press (one restart
+   of about N seconds, hosted websites, mail, DNS and databases keep running, a
+   current backup is recommended for an alpha release, nothing starts by
+   itself).
+
+Consequences. A new read, `GET /api/v1/panel/update/discovery` (administrators
+only; no Agent call and no network read), returns the stored result, the switch,
+the wait to the next scheduled check and ages measured on the server's clock; the
+switch is saved with `PUT` on the same path. The first plan named
+`/api/v1/panel/update/status` for this read, but that path already answers one
+update request's status by its request id, so a separate path was used. The
+existing `/update/check`, `/update/start` and `/update/status` keep their shape;
+the check now also records its result. No Agent change, no schema change (44),
+no migration. The updater's mutation path is unchanged. The browser reads the
+stored result when its copy is older than 5 minutes, again every 30 minutes and
+when the tab is shown after that long, only while visible. The wording, the
+states and how a failed check resumes are in
+[OPERATION-GUIDANCE](OPERATION-GUIDANCE.md), "Update discovery and the update
+screen".
+
+What this does not authorise:
+
+- No automatic update. The panel finds and says; it never installs, and no
+  schedule, poll or notice starts an update.
+- No polling that starts a mutation. The scheduled check and every browser
+  re-read are reads; a read never starts a second change.
+- No alarm colour for an available update, and no badge colour on its link.
+- No notice for a failed check outside the update card. A failed or unknown
+  check is not shown on the Dashboard, in the sidebar or in the Settings
+  navigation.
+- No claim measured on an installed server. The scheduled check has not run
+  against a real Agent or the real release server; Go tests fake the Agent and
+  the browser batch uses a loopback mock.
+- No P0 item is closed or advanced.
+- No change to who updates installed panels: only their owner, from the panel's
+  own update screen.
+
+Relation to the rest. D-022 (the panel works without the portal; nothing
+depends on the check) is why a failed check is calm and never blocks anything.
+D-024 requires the reason, who acts, the next action and how work resumes, and a
+distinction between a verified failure, an unmet prerequisite and an unknown
+result: the status line keeps a failure (no verified answer), an unknown result
+(a timeout) and a skip (an unmet condition) apart. D-032 said that the panel
+looks by itself and that no background timer runs when nobody is looking, which
+it applied to the component scan; D-035 is the owner's explicit, narrow exception
+for update discovery: one read-only release read every 12 hours on the server,
+bounded, switchable, never a mutation. D-032's clock rule is kept: the browser
+never compares clocks, the server states the ages. D-033: the card's waiting
+states are visible (a checking line with motion while the button's check runs)
+or say that nothing needs to be done.
+
+---
+
 ## D-034 · Ready bundles are shortcuts, not products: a general registry, shown at the head of each Components category, one door on the Dashboard
 
 *October 17, 2026 (clock date) · Owner decision after the design review of the Components page (alpha.92 source, 2026-10-16) and the owner's mockup of 2026-10-16; in source for the v0.1.0-alpha.94 candidate; nothing measured on an installed server*

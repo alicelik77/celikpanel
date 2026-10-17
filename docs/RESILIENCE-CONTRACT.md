@@ -6357,3 +6357,78 @@ clock date of everything in it.
   the cleanup offer and the Domains count not yet seen on an installed server;
   the live step view not reported as seen; the rollback paths that share the
   changed helpers exercised by contract tests only.
+
+### Candidate v0.1.0-alpha.96 (update discovery, read-only, and the update screen; invariants 2, 3 and 6; D-035; D-022; D-024; D-032; D-033; 2026-10-17)
+
+D-025 invariants 2 (evidence has a meaning and a lifecycle: a stored discovery
+result is cleared by rule, and unknown is not absent, empty or success), 3 (the
+unsafe action is stopped at its actual boundary: Start still re-runs discovery and
+requires the exact same target, and nothing starts from a schedule, a poll or a
+notice) and 6 (readiness, progress and access remain independent: the scheduled
+check is skipped, not failed, while a change is in progress, and a poll never
+starts a change). The P0.1/P0.2 area (truthful, actionable state) is touched only
+in what the owner sees before an update. **No P0 item is closed or advanced**; P0.1
+to P0.5 stay partial and every open acceptance item stays open. 2026-10-17 is the
+clock date of everything in it.
+
+- **What this release touches.** Update discovery (read-only) and the update
+  screen. It does **not** touch the updater's mutation path: `update.sh`, the
+  behaviour of `get.sh`, the Agent's system update worker, rollback and recovery
+  are unchanged, and there is no Agent change and no new Agent RPC or job kind.
+  Therefore **no native record is made** for this release, by the owner's
+  instruction of 2026-10-16 (no native record unless the updater's mutation path
+  changes).
+- **Change.** (1) A loop in the Panel process makes the same read-only discovery
+  as the "Check for updates" button, through one shared function: about 2 minutes
+  after the Panel starts, then every 12 hours (jitter 30 seconds at the start, 30
+  minutes afterwards); one check bounded at 40 seconds; no host mutation, no lock,
+  no update record. After a failure the next try is in 1 hour, then 3 hours, then
+  the 12-hour period; a success resets this. It is skipped, not counted as a
+  failure, and tried again in 1 hour while the Panel admitted an update start in
+  the last 6 minutes, while the Agent's advisory readiness read reports a change in
+  progress or a state it cannot verify, while a server setup run is running or
+  waiting, and when the Agent does not answer; a busy package manager does not skip
+  it. It never runs while the Panel shuts down; an interrupted check records
+  nothing. The owner can switch it off ("Check for updates automatically", on by
+  default); off means no network read by the schedule. (2) The result is stored in
+  the Panel's settings table (key `panel_update_discovery`, the mechanism of
+  `panel_update_last_restart`; no schema change). A failed or skipped check keeps
+  the release found before it. At start, a record made by another build, or naming
+  a release this build already is or is newer than, is cleared. Reason codes keep a
+  verified failure, an unknown result (timeout) and a skip apart (invariant 2).
+  (3) New read `GET /api/v1/panel/update/discovery` (administrators; no Agent call,
+  no network read; also readable while the licence is locked, like the other update
+  reads) and `PUT` for the switch (not allowed through the licence lock); ages are
+  measured on the server's clock (the D-032 clock rule). `/update/status` already
+  exists and answers one update request by its request id, so the read has its own
+  path. (4) Administrators see a sidebar link, one quiet Dashboard row with
+  "Remind me later" (24 hours in that browser, localStorage with try/catch) and a
+  Settings dot only when a release is available; a failed or unknown automatic
+  check shows nothing outside the update card; no alarm colour. (5) The update card
+  opens knowing the stored result: one status line, at most one notice, a plain
+  "Before you update" list, the readiness result, one filled button. (6) Texts for
+  the recovery tool's `mode` and `owner` steps, and the server's first diagnostic
+  line under a generic preflight reason. (7) Four alpha.95 open items: Verify held
+  with the server's readiness reason while the host is not ready for any reason (it
+  reverses the alpha.95 note that Verify stayed usable on a busy host lock or
+  package manager; invariant 3); the Roundcube cleanup record as the newer of the
+  Panel's audit entry and the webmail profile's last attempt (invariant 2);
+  `?cleanup=roundcube` removed from the address after the confirmation opens; dialog
+  footer buttons at least 44 px on phones.
+- **Schema, version transition and recovery.** Schema 44, no migration; the release
+  sequence moves 95 to 96 in the release preparation. A discovery record made by an
+  older or different build is cleared at start, so the notice cannot outlive an
+  update. Recovery behaviour is unchanged: nothing in this release is part of an
+  update, a rollback or a recovery, and no hosted workload depends on the check
+  (D-022).
+- **Evidence and open.** The Go and web test counts, the browser batch (21) and
+  the release contract tests are in the [release notes](RELEASE-NOTES-v0.1.0-alpha.96.md).
+  Component, mounted and mock-browser tests do not establish native behaviour.
+  **Nothing was measured on an installed server**; the scheduled check has not run
+  against a real Agent or the real release server (the Agent is faked in Go tests;
+  the browser batch uses a loopback mock); the cause of the stop of Frankfurt's
+  update to alpha.95 in its read-only check is **not known** (the Details text is
+  pending from the owner); reading installed package versions for every component
+  remains open; everything the alpha.88 to alpha.95 entries leave open stays open.
+  Installed panels are updated only by their owners, from the panel's own update
+  screen. P0.1 to P0.5 stay partial.

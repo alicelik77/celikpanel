@@ -5634,3 +5634,81 @@ her şeyin saat tarihidir.
   Alan adları sayısı henüz bir kurulu sunucuda görülmedi; canlı adım görünümü
   görüldü diye bildirilmedi; değiştirilen yardımcıları paylaşan geri alma yolları
   yalnız sözleşme testleriyle denendi.
+
+### v0.1.0-alpha.96 adayı (güncelleme keşfi, salt-okur, ve güncelleme ekranı; ilke 2, 3 ve 6; D-035; D-022; D-024; D-032; D-033; 17 Ekim 2026)
+
+D-025'in 2. ilkesi (kanıtın bir anlamı ve bir yaşam döngüsü vardır: saklı bir
+keşif sonucu kuralla temizlenir ve bilinmeyen; yok, boş ya da başarı değildir),
+3. ilkesi (güvensiz eylem gerçek sınırında durdurulur: Başlat hâlâ keşfi yeniden
+çalıştırır ve tam olarak aynı hedefi ister, ve hiçbir şey bir zamanlamadan,
+yoklamadan ya da bildirimden başlamaz) ve 6. ilkesi (hazır olma, ilerleme ve
+erişim birbirinden bağımsız kalır: zamanlanmış denetim, bir değişiklik sürerken
+başarısız sayılmaz, atlanır; ve yoklama asla değişiklik başlatmaz). P0.1/P0.2
+alanına (doğru, uygulanabilir durum) yalnız sahibin güncellemeden önce gördüğü
+kadarıyla dokunulur. **Hiçbir P0 işi kapanmaz ya da ilerlemez**; P0.1–P0.5 kısmi
+kalır ve her açık kabul işi açık kalır. 17 Ekim 2026, içindeki her şeyin saat
+tarihidir.
+
+- **Bu sürümün dokunduğu.** Güncelleme keşfi (salt-okur) ve güncelleme ekranı.
+  Güncelleyicinin değiştirme yoluna **dokunmaz**: `update.sh`, `get.sh`'ın
+  davranışı, Agent'ın sistem güncelleme işçisi, geri alma ve kurtarma
+  değişmedi; Agent değişikliği, yeni Agent RPC'si ya da iş türü yok. Bu yüzden
+  bu sürüm için sahibin 16 Ekim 2026 talimatıyla **gerçek sistem kaydı yapılmaz**
+  (güncelleyicinin değiştirme yolu değişmedikçe gerçek sistem kaydı yok).
+- **Değişiklik.** (1) Panel işlemindeki bir döngü, "Güncellemeleri denetle"
+  düğmesiyle aynı salt-okur keşfi tek bir ortak işlev üzerinden yapar: Panel
+  başladıktan yaklaşık 2 dakika sonra, sonra her 12 saatte bir (başlangıçta 30
+  saniye, sonra 30 dakika sapma); bir denetim 40 saniyeyle sınırlı; sunucuda
+  değişiklik yok, kilit yok, güncelleme kaydı yok. Başarısızlıktan sonra bir
+  sonraki deneme 1 saat, sonra 3 saat, sonra 12 saatlik dönemdir; başarı bunu
+  sıfırlar. Panel son 6 dakika içinde bir güncelleme başlatmayı kabul ettiyse,
+  Agent'ın danışma niteliğindeki hazır olma okuması süren bir değişiklik ya da
+  doğrulayamadığı bir durum bildiriyorsa, bir sunucu kurulumu çalışıyor ya da
+  bekliyorsa ve Agent yanıt vermiyorsa atlanır, başarısızlık sayılmaz ve 1 saat
+  sonra yeniden denenir; meşgul bir paket yöneticisi onu atlatmaz. Panel
+  kapanırken asla çalışmaz; yarıda kalan bir denetim hiçbir şey kaydetmez. Sahip
+  kapatabilir ("Güncellemeleri otomatik denetle", varsayılan açık); kapalı olması,
+  zamanlamanın ağ okuması yapmaması demektir. (2) Sonuç Panel'in ayarlar
+  tablosunda saklanır (`panel_update_discovery` anahtarı, `panel_update_last_restart`
+  mekanizması; şema değişikliği yok). Başarısız ya da atlanan bir denetim ondan
+  önce bulunan sürümü korur. Başlangıçta, başka bir yapının yazdığı ya da bu
+  yapının zaten olduğu ya da ondan daha yeni olan bir sürümü adlandıran kayıt
+  temizlenir. Neden kodları, doğrulanmış bir başarısızlığı, bilinmeyen bir sonucu
+  (zaman aşımı) ve bir atlanmayı ayrı tutar (ilke 2). (3) Yeni okuma
+  `GET /api/v1/panel/update/discovery` (yöneticiler; Agent çağrısı yok, ağ okuması
+  yok; diğer güncelleme okumaları gibi lisans kilitliyken de okunabilir) ve anahtar
+  için `PUT` (lisans kilidinden geçmez); yaşlar sunucunun saatiyle ölçülür (D-032
+  saat kuralı). `/update/status` zaten var ve tek bir güncelleme isteğini istek
+  kimliğiyle yanıtlıyor; bu yüzden okumanın kendi yolu var. (4) Yöneticiler, yalnız
+  bir sürüm varken, bir kenar çubuğu bağlantısı, "Sonra hatırlat" olan tek sessiz
+  Pano satırı (o tarayıcıda 24 saat, try/catch'li localStorage) ve bir Ayarlar
+  noktası görür; başarısız ya da bilinmeyen bir otomatik denetim güncelleme
+  kartının dışında hiçbir şey göstermez; alarm rengi yok. (5) Güncelleme kartı
+  kayıtlı sonucu bilerek açılır: tek durum satırı, en çok tek bildirim, sade bir
+  "Güncellemeden önce" listesi, hazır olma sonucu, tek dolu düğme. (6) Kurtarma
+  aracının `mode` ve `owner` adımları için metinler ve genel bir salt-okur denetim
+  nedeninin altında sunucunun ilk tanı satırı. (7) alpha.95'in dört açık işi:
+  ana makine herhangi bir nedenle hazır değilken, sunucunun hazır olma nedeniyle
+  tutulan Doğrula (meşgul bir ana makine kilidinde ya da paket yöneticisinde
+  Doğrula'nın kullanılabilir kaldığı alpha.95 notunu tersine çevirir; ilke 3);
+  Roundcube temizleme kaydı, Panel'in denetim girdisi ile posta profilinin son
+  denemesinden yenisi (ilke 2); onay penceresi açıldıktan sonra
+  `?cleanup=roundcube`'ün adresten kaldırılması; telefonlarda pencere alt
+  düğmelerinin en az 44 px olması.
+- **Şema, sürüm geçişi ve kurtarma.** Şema 44, geçiş yok; sürüm sırası 95'ten 96'ya
+  sürüm hazırlığında geçer. Başka ya da eski bir yapının yazdığı keşif kaydı
+  başlangıçta temizlenir; böylece bildirim bir güncellemeden sonra yaşayamaz.
+  Kurtarma davranışı değişmedi: bu sürümdeki hiçbir şey bir güncellemenin, geri
+  almanın ya da kurtarmanın parçası değildir ve hiçbir barındırılan iş yükü
+  denetime bağlı değildir (D-022).
+- **Kanıt ve açık.** Go ve web test sayıları, tarayıcı grubu (21) ve sürüm
+  sözleşmesi testleri [sürüm notlarındadır](RELEASE-NOTES-v0.1.0-alpha.96.tr.md).
+  Bileşen, bağlanmış ve taklit tarayıcı testleri gerçek sistem davranışını
+  kanıtlamaz. **Kurulu bir sunucuda hiçbir şey ölçülmedi**; zamanlanmış denetim
+  gerçek bir Agent'a ya da gerçek sürüm sunucusuna karşı çalışmadı (Go testlerinde
+  Agent taklittir; tarayıcı turu loopback üzerinde bir taklit kullanır);
+  Frankfurt'un alpha.95 güncellemesinin salt-okur denetiminde durmasının nedeni
+  **bilinmiyor** (Ayrıntılar metni sahipten bekleniyor); her bileşen için kurulu
+  paket sürümlerinin okunması açık kalır; alpha.88–alpha.95 girdilerinin açık
+  bıraktığı her şey açık kalır. Kurulu panelleri yalnız sahipleri, panelin kendi
+  güncelleme ekranından günceller. P0.1–P0.5 kısmi kalır.
