@@ -9174,9 +9174,9 @@ available update is information, never an alarm.
   random spread of 30 seconds at the start and 30 minutes afterwards). It is the
   same check as the "Check for updates" button. One check is bounded at 40 seconds.
   It changes nothing on the server and writes no update record. (Its readiness
-  read holds the panel's own change lease for one short read, as the readiness
-  check does; a Start pressed at that moment is answered "busy" and can be pressed
-  again.)
+  read is the readiness check's: it takes the panel's own change lease only for a
+  quick in-process check and releases it before asking the Agent. Writing a
+  result holds the lease only for that check and the write itself.)
 - After a failed check the next try is in 1 hour, then in 3 hours, then the
   12-hour period again; a successful check resets this. There is no retry storm.
 - It is skipped, and tried again in 1 hour, when a check cannot be made safely:

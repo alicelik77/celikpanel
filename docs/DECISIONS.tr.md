@@ -45,9 +45,9 @@ Benimsenen kurallar:
    dakika sonra (artı eksi 30 saniye), sonra her 12 saatte bir (artı eksi 30
    dakika) yapılır. Bir denetim 40 saniyeyle sınırlıdır. Sunucuda hiçbir şeyi
    değiştirmez ve güncelleme kaydı yazmaz. Hazır olma okuması, hazır olma
-   uç noktası gibi, bir danışma Agent okuması süresince Panel'in kendi
-   değişiklik kilidini `TryLock` ile tutar; o anda basılan bir başlatma
-   "meşgul" yanıtı alır ve yeniden basılabilir.
+   uç noktasınınkiyle aynıdır: Panel'in kendi değişiklik kilidini `TryLock` ile
+   yalnız süren bir işlemin süreç içi denetimi için alır ve danışma Agent
+   okumasından önce bırakır.
 2. **Başarısız denetim geri çekilir, yeniden deneme fırtınası çıkarmaz.**
    Başarısızlıktan sonra bir sonraki deneme 1 saat, sonra 3 saat sonradır; sonra
    yine 12 saatlik dönem gelir. Başarılı bir denetim bunu sıfırlar.
@@ -73,10 +73,11 @@ Benimsenen kurallar:
    tutulur; şema değişmez. Başarısız bir denetim ondan önce bulunan sürümü
    korur; böylece geçici bir kesinti hâlâ bekleyen bir güncellemeyi gizlemez.
    **Zamanlanmış denetim, bir güncelleme kabul edilmiş ya da sürüyorken asla
-   yazmaz**; düğme de yazmaz: yazmadan hemen önce Panel değişiklik kilidini alır
-   ve hiçbir güncellemenin kabul edilmediğini ve sunucunun süren bir değişiklik
-   bildirmediğini yeniden okur; aksi hâlde sonuç bellekte tutulur, gösterilir ve
-   bir sonraki boşta geçişte yazılır. (Güncelleyicinin sabitlenmiş salt-okur ön
+   yazmaz**; düğme de yazmaz: yazmadan hemen önce Panel, hiçbir kilit tutmadan
+   Agent'ın hazır olma durumunu okur; sonra değişiklik kilidini `TryLock` ile
+   yalnız kendi tuttuğu bilgileri yeniden okumak (kabul edilmiş güncelleme yok,
+   süren Panel işlemi yok) ve ayarı yazmak için alır; aksi hâlde sonuç bellekte
+   tutulur, gösterilir ve bir sonraki boşta geçişte yazılır. (Güncelleyicinin sabitlenmiş salt-okur ön
    denetimi sırasında Panel veritabanına yazmak o denetimi durdurur.) Aynı
    sürümün başka commit'li yeniden derlemesi, Agent'ın imzalı yanıtı ne diyorsa
    odur. Başlangıçta, yönetim açılmadan önce, başka bir yapının yazdığı ya da bu

@@ -34,10 +34,12 @@ import (
 //
 // It never writes while an update is admitted or running: a write to the
 // Panel's database while the updater's read-only preflight holds its pinned
-// copy makes that preflight stop. A skip is kept in memory only, and a result
-// is saved only after admission and readiness are read again right before
-// the write, under the Panel's own mutation lease; otherwise it is kept in
-// memory and saved on the next idle pass.
+// copy makes that preflight stop. A skip is kept in memory only. Before a
+// result is written the Agent's readiness is read with no lock held; then,
+// under the Panel's own mutation lease (TryLock), only the in-process facts
+// are read again (no update admitted, no Panel operation active) and the
+// setting is written. Otherwise the result is kept in memory and written on
+// the next idle pass.
 //
 // Guncelleme kesfi: Panel imzali yeni surumu kendisi arar, buldugunu saklar
 // ve panel bunu sakin bicimde soyler. Guncellemeyi asla baslatmaz. Bir
@@ -332,14 +334,30 @@ func buildPanelUpdateDiscoveryRecord(previous *panelUpdateDiscoveryRecord, now t
 	return record, validPanelUpdateDiscoveryRecord(record)
 }
 
-// writablePanelUpdateDiscovery holds the Panel's mutation lease and reads
-// again, right before a write, that no update was admitted and that the
-// server reports no change in progress; it returns the release of the lease,
-// or nil when the write must wait. The lease is taken with TryLock for the
-// length of one advisory Agent read (as the readiness endpoint does): a start
-// request arriving then is answered "busy" and can be pressed again.
-func (p *Panel) writablePanelUpdateDiscovery(ctx context.Context, now time.Time) func() {
-	if p == nil || p.db == nil || p.agentClient == nil || p.panelUpdateRecentlyAdmitted(now) {
+// panelUpdateDiscoveryHostIdle is the one advisory Agent read before a write:
+// the server reports no change in progress (a busy package manager does not
+// count). It is made with no lock held, so neither the read of the result nor
+// a start request waits for it.
+func (p *Panel) panelUpdateDiscoveryHostIdle(ctx context.Context) bool {
+	if p == nil || p.agentClient == nil {
+		return false
+	}
+	var readiness transport.HostMutationReadinessResponse
+	if err := p.callAgentContext(ctx, "Agent.ServiceMutationReadiness", &transport.Empty{}, &readiness); err != nil {
+		return false
+	}
+	readiness = verifiedAgentMutationReadiness(readiness)
+	return readiness.Ready || readiness.Reason == transport.HostMutationReasonPackageManager
+}
+
+// writablePanelUpdateDiscoveryLocked takes the Panel's mutation lease with
+// TryLock and re-checks only the facts this process holds: that no update was
+// admitted and that no Panel operation is active. It makes no Agent call; it
+// returns the release of the lease, or nil when the write must wait. The
+// lease is held only for this re-check and the settings write. The caller
+// holds updateDiscoveryMu.
+func (p *Panel) writablePanelUpdateDiscoveryLocked(ctx context.Context, now time.Time) func() {
+	if p == nil || p.db == nil || p.panelUpdateRecentlyAdmitted(now) {
 		return nil
 	}
 	if !p.serviceMutationMu.TryLock() {
@@ -355,27 +373,19 @@ func (p *Panel) writablePanelUpdateDiscovery(ctx context.Context, now time.Time)
 		release()
 		return nil
 	}
-	var readiness transport.HostMutationReadinessResponse
-	if err := p.callAgentContext(ctx, "Agent.ServiceMutationReadiness", &transport.Empty{}, &readiness); err != nil {
-		release()
-		return nil
-	}
-	readiness = verifiedAgentMutationReadiness(readiness)
-	if !readiness.Ready && readiness.Reason != transport.HostMutationReasonPackageManager {
-		release()
-		return nil
-	}
 	return release
 }
 
 // savePanelUpdateDiscovery keeps the result of one completed check, manual
 // or automatic: written when the server is idle, otherwise kept in memory
 // until the next idle pass. It returns the record and whether it was written.
+// The Agent read comes first, with no lock held.
 func (p *Panel) savePanelUpdateDiscovery(ctx context.Context, now time.Time, automatic bool, response panelUpdateCheckResponse, failure *panelUpdateDiscoveryFailure) (panelUpdateDiscoveryRecord, bool) {
 	if p == nil || p.db == nil {
 		record, _ := buildPanelUpdateDiscoveryRecord(nil, now, automatic, response, failure)
 		return record, false
 	}
+	hostIdle := p.panelUpdateDiscoveryHostIdle(ctx)
 	p.updateDiscoveryMu.Lock()
 	defer p.updateDiscoveryMu.Unlock()
 	var previous *panelUpdateDiscoveryRecord
@@ -387,21 +397,32 @@ func (p *Panel) savePanelUpdateDiscovery(ctx context.Context, now time.Time, aut
 		return record, false
 	}
 	p.updateDiscoveryPending = &record
-	return record, p.flushPanelUpdateDiscoveryLocked(ctx, now)
+	return record, p.flushPanelUpdateDiscoveryLocked(ctx, now, hostIdle)
 }
 
 // flushPanelUpdateDiscovery writes a result kept in memory, when the server
-// is idle now. The caller of the Locked form holds updateDiscoveryMu.
+// is idle now. The Agent read is made only when something is kept, and with
+// no lock held.
 func (p *Panel) flushPanelUpdateDiscovery(ctx context.Context, now time.Time) bool {
 	if p == nil || p.db == nil {
 		return false
 	}
 	p.updateDiscoveryMu.Lock()
+	kept := p.updateDiscoveryPending != nil
+	p.updateDiscoveryMu.Unlock()
+	if !kept {
+		return false
+	}
+	hostIdle := p.panelUpdateDiscoveryHostIdle(ctx)
+	p.updateDiscoveryMu.Lock()
 	defer p.updateDiscoveryMu.Unlock()
-	return p.flushPanelUpdateDiscoveryLocked(ctx, now)
+	return p.flushPanelUpdateDiscoveryLocked(ctx, now, hostIdle)
 }
 
-func (p *Panel) flushPanelUpdateDiscoveryLocked(ctx context.Context, now time.Time) bool {
+// flushPanelUpdateDiscoveryLocked writes the kept result when the Agent read
+// made just before said the host is idle and the in-process re-check under
+// the lease passes. The caller holds updateDiscoveryMu.
+func (p *Panel) flushPanelUpdateDiscoveryLocked(ctx context.Context, now time.Time, hostIdle bool) bool {
 	if p.updateDiscoveryPending == nil {
 		return false
 	}
@@ -410,7 +431,10 @@ func (p *Panel) flushPanelUpdateDiscoveryLocked(ctx context.Context, now time.Ti
 		p.updateDiscoveryPending = nil
 		return false
 	}
-	release := p.writablePanelUpdateDiscovery(ctx, now)
+	if !hostIdle {
+		return false
+	}
+	release := p.writablePanelUpdateDiscoveryLocked(ctx, now)
 	if release == nil {
 		return false
 	}
@@ -445,8 +469,10 @@ func (p *Panel) panelUpdateRecentlyAdmitted(now time.Time) bool {
 }
 
 // panelUpdateDiscoverySkipReason names why a scheduled check must not run
-// now, or "" when it may. Reads only; its readiness read takes the Panel's
-// mutation lease with TryLock for a moment, as the readiness endpoint does.
+// now, or "" when it may. Reads only; its readiness read, like the readiness
+// endpoint, takes the Panel's mutation lease with TryLock only for the
+// in-process check of an active operation and releases it before its Agent
+// read.
 func (p *Panel) panelUpdateDiscoverySkipReason(ctx context.Context, now time.Time) string {
 	if p.panelUpdateRecentlyAdmitted(now) {
 		return panelUpdateReasonUpdateActive

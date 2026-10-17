@@ -752,3 +752,48 @@ func TestPanelUpdateDiscoverySameVersionRebuildFollowsTheAgent(t *testing.T) {
 		t.Fatalf("stored=%+v ok=%v", record, ok)
 	}
 }
+
+// The Agent read before a write is made with no lock held: while it is on its
+// way, the stored result can be read and the mutation lease taken (a start
+// request is not held up behind it).
+func TestPanelUpdateDiscoveryAgentReadHoldsNoLock(t *testing.T) {
+	withSystemUpdateBuild(t)
+	fixture := newSystemUpdateTestFixture(t)
+	ctx := context.Background()
+	entered, gate := make(chan struct{}, 1), make(chan struct{})
+	fixture.agent.mu.Lock()
+	fixture.agent.readinessEntered, fixture.agent.readinessGate = entered, gate
+	fixture.agent.mu.Unlock()
+	done := make(chan bool, 1)
+	go func() {
+		_, written := fixture.panel.savePanelUpdateDiscovery(ctx, discoveryTestNow, false, availableCheck(), nil)
+		done <- written
+	}()
+	select {
+	case <-entered:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the readiness read was not made")
+	}
+	read := make(chan struct{})
+	go func() { fixture.panel.currentPanelUpdateDiscovery(ctx); close(read) }()
+	select {
+	case <-read:
+	case <-time.After(2 * time.Second):
+		close(gate)
+		t.Fatal("reading the result waited for the Agent read")
+	}
+	if !fixture.panel.serviceMutationMu.TryLock() {
+		close(gate)
+		t.Fatal("the mutation lease was held across the Agent read")
+	}
+	fixture.panel.serviceMutationMu.Unlock()
+	close(gate)
+	select {
+	case written := <-done:
+		if !written {
+			t.Fatal("an idle result was not written")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the save did not finish")
+	}
+}

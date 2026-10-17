@@ -39,9 +39,9 @@ skip it. **The panel never writes the result while an update is admitted or
 running:** right before writing it reads again that no update was admitted and
 that the server reports no change in progress, and otherwise keeps the result in
 memory until the next idle pass, because a write to the panel's database during
-the updater's read-only check makes that check stop. Its readiness read holds the
-panel's own change lease for one short read, as the readiness check does; a Start
-pressed at that moment is answered "busy" and can be pressed again.
+the updater's read-only check makes that check stop. The Agent is asked with no
+lock held; the panel's own change lease is held only for a quick in-process
+re-check and the write itself.
 
 **The owner can switch it off.** Settings → CelikPanel updates has "Check for
 updates automatically", on by default: "Once every 12 hours the panel asks
@@ -210,7 +210,7 @@ messages use "denetle" and "bu yaklaşık N saniye sürer".
 Everything below was run on the candidate tree on 2026-10-17 in a development
 environment; none of it was run on an installed server.
 
-- Go: `./cmd/panel/` and `./internal/...` 7146 passed, 0 failed, 43 skipped on the final tree after the review corrections (run with `-timeout 45m`; the panel package alone takes about 16 minutes in the WSL guest); `go vet ./cmd/panel/` and gofmt clean; the discovery tests also passed under `-race` (Go 1.27 in the `archlinux` WSL guest, which has a C compiler; the Debian guest has none)
+- Go: `./cmd/panel/` and `./internal/...` 7147 passed, 0 failed, 43 skipped on the final tree after the review corrections (run with `-timeout 45m`; the panel package alone takes about 16 minutes in the WSL guest); `go vet ./cmd/panel/` and gofmt clean; the discovery tests also passed under `-race` (Go 1.27 in the `archlinux` WSL guest, which has a C compiler; the Debian guest has none)
 - Web: `npm test` 1623 passed, 0 failed on the final tree; `npm run build` succeeded with the bundle budget unchanged (Turkish server screen part 159.96 of 160.25 KiB, Turkish general screen part 159.25 of 160.25 KiB)
 - Browser batch 21 (mock server; replaces batch 20): six scenarios (current, available, an earlier attempt that stopped, a failed automatic check, switched off, the Dashboard row before and after "Remind me later") in English and Turkish, light and dark, at 1440 and 390 px: 8 configurations, 100 screenshots. The first look found the phone Settings page about 730 px wide, the version broken at its hyphen in the Dashboard row, the selected Settings icon nearly invisible in the dark theme, a phone menu button under 44 px and two Turkish verbs for the manual check; all fixed (see above). The second look, on the final build: no horizontal overflow, no phone target under 44 px, no amber or red on these screens, no untranslated key and no English on a Turkish page, the version whole, one filled action button, no update notice outside the card after a failed check. Batch 21 was not run again after the review corrections; they are covered by component and mounted tests
 - Release contracts (sequence policy 96 after 95, download portal, signed

@@ -9143,9 +9143,9 @@ bilgidir, asla alarm değildir.
   (başlangıçta 30 saniye, sonra 30 dakikalık rastgele sapmayla). "Güncellemeleri
   denetle" düğmesiyle aynı denetimdir. Bir denetim 40 saniyeyle sınırlıdır.
   Sunucuda hiçbir şeyi değiştirmez ve güncelleme kaydı yazmaz. (Hazır olma
-  okuması, hazır olma denetimi gibi, kısa bir okuma süresince panelin kendi
-  değişiklik kilidini tutar; o anda basılan Başlat "meşgul" yanıtı alır ve
-  yeniden basılabilir.)
+  okuması hazır olma denetiminkidir: panelin kendi değişiklik kilidini yalnız kısa
+  bir süreç içi denetim için alır ve Agent'a sormadan önce bırakır. Bir sonucu
+  yazmak kilidi yalnız o denetim ve yazmanın kendisi için tutar.)
 - Başarısız bir denetimden sonra bir sonraki deneme 1 saat, sonra 3 saat sonradır;
   sonra yine 12 saatlik dönem gelir; başarılı bir denetim bunu sıfırlar. Yeniden
   deneme fırtınası yoktur.

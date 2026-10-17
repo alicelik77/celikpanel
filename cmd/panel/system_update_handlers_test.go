@@ -53,6 +53,9 @@ type systemUpdateTestAgent struct {
 	versionErr     error
 	readiness      transport.HostMutationReadinessResponse
 	readinessCalls int
+	// readinessEntered/readinessGate, when set, hold a readiness read open.
+	readinessEntered chan struct{}
+	readinessGate    chan struct{}
 }
 
 func newSystemUpdateTestAgent() *systemUpdateTestAgent {
@@ -95,6 +98,15 @@ func (a *systemUpdateTestAgent) Version(_ *transport.Empty, reply *transport.Age
 }
 
 func (a *systemUpdateTestAgent) ServiceMutationReadiness(_ *transport.Empty, reply *transport.HostMutationReadinessResponse) error {
+	a.mu.Lock()
+	entered, gate := a.readinessEntered, a.readinessGate
+	a.mu.Unlock()
+	if entered != nil {
+		entered <- struct{}{}
+	}
+	if gate != nil {
+		<-gate
+	}
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.readinessCalls++

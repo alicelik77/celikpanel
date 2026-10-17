@@ -5659,9 +5659,10 @@ tarihidir.
   düğmesiyle aynı salt-okur keşfi tek bir ortak işlev üzerinden yapar: Panel
   başladıktan yaklaşık 2 dakika sonra, sonra her 12 saatte bir (başlangıçta 30
   saniye, sonra 30 dakika sapma); bir denetim 40 saniyeyle sınırlı; sunucuda
-  değişiklik yok, güncelleme kaydı yok (hazır olma okuması, hazır olma uç noktası
-  gibi, bir danışma Agent okuması süresince Panel'in değişiklik kilidini `TryLock`
-  ile tutar). Başarısızlıktan sonra bir sonraki deneme 1 saat, sonra 3 saat, sonra
+  değişiklik yok, güncelleme kaydı yok (hazır olma okuması hazır olma uç
+  noktasınınkidir: Panel'in değişiklik kilidi `TryLock` ile yalnız süren bir
+  işlemin süreç içi denetimi için alınır ve danışma Agent okumasından önce
+  bırakılır). Başarısızlıktan sonra bir sonraki deneme 1 saat, sonra 3 saat, sonra
   12 saatlik dönemdir; başarı bunu sıfırlar. Panel son bir saat içinde bir
   güncelleme başlatmayı kabul ettiyse, Agent'ın danışma niteliğindeki hazır olma
   okuması süren bir değişiklik ya da doğrulayamadığı bir durum bildiriyorsa, bir
@@ -5674,8 +5675,9 @@ tarihidir.
   tablosunda saklanır (`panel_update_discovery` anahtarı, `panel_update_last_restart`
   mekanizması; şema değişikliği yok). **Zamanlanmış denetim, bir güncelleme kabul
   edilmiş ya da sürüyorken asla yazmaz**; düğme de yazmaz: yazmadan hemen önce
-  Panel değişiklik kilidini alır ve hiçbir güncellemenin kabul edilmediğini ve
-  sunucunun süren bir değişiklik bildirmediğini yeniden okur; aksi hâlde sonuç
+  Panel hiçbir kilit tutmadan Agent'ın hazır olma durumunu okur, sonra değişiklik
+  kilidini (`TryLock`) yalnız hiçbir güncellemenin kabul edilmediğini ve süren
+  Panel işlemi olmadığını yeniden okumak ve ayarı yazmak için tutar; aksi hâlde sonuç
   bellekte tutulur, gösterilir ve bir sonraki boşta geçişte yazılır, çünkü
   güncelleyicinin sabitlenmiş salt-okur ön denetimi sırasında Panel veritabanına
   yazmak o denetimi durdurur (ilke 2 ve 3). Atlanma asla yazılmaz ve bilinen bir
@@ -5713,7 +5715,7 @@ tarihidir.
   almanın ya da kurtarmanın parçası değildir ve hiçbir barındırılan iş yükü
   denetime bağlı değildir (D-022).
 - **Kanıt ve açık.** İnceleme düzeltmelerinden sonraki son ağaçta: Go
-  `./cmd/panel/` ve `./internal/...` 7146 geçti, 0 başarısız, 43 atlandı (keşif
+  `./cmd/panel/` ve `./internal/...` 7147 geçti, 0 başarısız, 43 atlandı (keşif
   testleri `-race` altında da); web `npm test` 1623 geçti, 0 başarısız ve derleme
   bütçesi içinde. Tarayıcı grubu (21, inceleme düzeltmelerinden sonra yeniden
   çalıştırılmadı) ve sürüm sözleşmesi testleri

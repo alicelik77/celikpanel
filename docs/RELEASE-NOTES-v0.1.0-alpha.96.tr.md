@@ -37,10 +37,9 @@ yöneticisi onu atlatmaz. **Panel, bir güncelleme kabul edilmiş ya da sürüyo
 sonucu asla yazmaz:** yazmadan hemen önce hiçbir güncellemenin kabul edilmediğini
 ve sunucunun süren bir değişiklik bildirmediğini yeniden okur; aksi hâlde sonucu
 bir sonraki boşta geçişe kadar bellekte tutar, çünkü güncelleyicinin salt-okur
-denetimi sırasında panel veritabanına yazmak o denetimi durdurur. Hazır olma
-okuması, hazır olma denetimi gibi, kısa bir okuma süresince panelin kendi
-değişiklik kilidini tutar; o anda basılan Başlat "meşgul" yanıtı alır ve yeniden
-basılabilir.
+denetimi sırasında panel veritabanına yazmak o denetimi durdurur. Agent'a hiçbir
+kilit tutulmadan sorulur; panelin kendi değişiklik kilidi yalnız kısa bir süreç
+içi yeniden denetim ve yazmanın kendisi için tutulur.
 
 **Sahip kapatabilir.** Ayarlar → CelikPanel güncellemeleri içinde "Güncellemeleri
 otomatik denetle" vardır, varsayılan olarak açıktır: "Panel 12 saatte bir
@@ -210,7 +209,7 @@ yaklaşık N saniye sürer" der.
 Aşağıdakilerin hepsi 2026-10-17'de bir geliştirme ortamında aday ağacında
 çalıştırıldı; hiçbiri kurulu bir sunucuda çalıştırılmadı.
 
-- Go: `./cmd/panel/` ve `./internal/...` inceleme düzeltmelerinden sonraki son ağaçta 7146 geçti, 0 başarısız, 43 atlandı (`-timeout 45m` ile; yalnız panel paketi WSL konuğunda yaklaşık 16 dakika sürer); `go vet ./cmd/panel/` ve gofmt temiz; keşif testleri `-race` altında da geçti (C derleyicisi olan `archlinux` WSL konuğunda Go 1.27; Debian konuğunda derleyici yok)
+- Go: `./cmd/panel/` ve `./internal/...` inceleme düzeltmelerinden sonraki son ağaçta 7147 geçti, 0 başarısız, 43 atlandı (`-timeout 45m` ile; yalnız panel paketi WSL konuğunda yaklaşık 16 dakika sürer); `go vet ./cmd/panel/` ve gofmt temiz; keşif testleri `-race` altında da geçti (C derleyicisi olan `archlinux` WSL konuğunda Go 1.27; Debian konuğunda derleyici yok)
 - Web: `npm test` son ağaçta 1623 geçti, 0 başarısız; `npm run build` paket bütçesi değiştirilmeden başarılı (Türkçe sunucu ekran bölümü 160,25 KiB'nin 159,96 KiB'ı, Türkçe genel ekran bölümü 160,25 KiB'nin 159,25 KiB'ı)
 - Tarayıcı grubu 21 (taklit sunucu; 20. grubun yerini alır): altı senaryo (en son sürüm, güncelleme var, daha önce duran bir deneme, başarısız otomatik denetim, kapalı, "Sonra hatırlat" öncesi ve sonrası Pano satırı) İngilizce ve Türkçe, açık ve koyu temada, 1440 ve 390 px'te: 8 yapılandırma, 100 ekran görüntüsü. İlk bakış telefonda Ayarlar sayfasını yaklaşık 730 px genişliğinde, Pano satırında sürümü tireden bölünmüş, koyu temada seçili Ayarlar simgesini neredeyse görünmez, telefonda menü düğmesini 44 px'in altında ve elle denetim için iki ayrı Türkçe fiil buldu; hepsi düzeltildi (yukarıya bakın). Son derlemedeki ikinci bakış: yatay taşma yok, telefonda 44 px'ten küçük hedef yok, bu ekranlarda sarı ya da kırmızı yok, çevrilmemiş anahtar ve Türkçe sayfada İngilizce yok, sürüm bütün, tek dolu eylem düğmesi, başarısız denetimden sonra kart dışında güncelleme bildirimi yok. 21. grup inceleme düzeltmelerinden sonra yeniden çalıştırılmadı; düzeltmeleri bileşen ve bağlı testler kapsar
 - Sürüm sözleşmeleri (sıra ilkesi 96, 95'ten sonra; indirme portalı; imzalı

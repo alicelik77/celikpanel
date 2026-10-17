@@ -6382,8 +6382,9 @@ clock date of everything in it.
   as the "Check for updates" button, through one shared function: about 2 minutes
   after the Panel starts, then every 12 hours (jitter 30 seconds at the start, 30
   minutes afterwards); one check bounded at 40 seconds; no host mutation, no update
-  record (its readiness read holds the Panel's mutation lease with `TryLock` for
-  one advisory Agent read, as the readiness endpoint does). After a failure the
+  record (its readiness read is the readiness endpoint's: the Panel's mutation
+  lease is taken with `TryLock` only for the in-process check of an active
+  operation and released before the advisory Agent read). After a failure the
   next try is in 1 hour, then 3 hours, then the 12-hour period; a success resets
   this. It is skipped, not counted as a failure, and tried again in 1 hour while
   the Panel admitted an update start in the last hour, while the Agent's advisory
@@ -6396,8 +6397,9 @@ clock date of everything in it.
   the Panel's settings table (key `panel_update_discovery`, the mechanism of
   `panel_update_last_restart`; no schema change). **The scheduled check never
   writes while an update is admitted or running**, and neither does the button:
-  right before a write the Panel takes its mutation lease and reads again that no
-  update was admitted and that the server reports no change in progress;
+  right before a write the Panel reads the Agent's readiness with no lock held,
+  then holds its mutation lease (`TryLock`) only to read again that no update was
+  admitted and no Panel operation is active and to write the setting;
   otherwise the result is kept in memory, shown, and written on the next idle
   pass, because a write to the Panel's database during the updater's pinned
   read-only preflight makes that preflight stop (invariants 2 and 3). A skip is
@@ -6434,7 +6436,7 @@ clock date of everything in it.
   update, a rollback or a recovery, and no hosted workload depends on the check
   (D-022).
 - **Evidence and open.** On the final tree after the review corrections: Go
-  `./cmd/panel/` and `./internal/...` 7146 passed, 0 failed, 43 skipped (the
+  `./cmd/panel/` and `./internal/...` 7147 passed, 0 failed, 43 skipped (the
   discovery tests also under `-race`); web `npm test` 1623 passed, 0 failed, and
   the build within its budget. The browser batch (21, not re-run after the review
   corrections) and the release contract tests are in the

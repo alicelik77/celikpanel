@@ -46,10 +46,10 @@ The rules adopted:
    and the validation of the target. The first check runs about 2 minutes after
    the Panel starts (plus or minus 30 seconds), then every 12 hours (plus or
    minus 30 minutes). One check is bounded at 40 seconds. It changes nothing
-   on the host and writes no update record. Its readiness read, like the
-   readiness endpoint, holds the Panel's own mutation lease with `TryLock` for
-   the length of one advisory Agent read; a start pressed in that moment is
-   answered "busy" and can be pressed again.
+   on the host and writes no update record. Its readiness read is the readiness
+   endpoint's: it takes the Panel's own mutation lease with `TryLock` only for
+   the in-process check of an active operation and releases it before its
+   advisory Agent read.
 2. **A failed check backs off, it does not retry in a storm.** After a failure
    the next try is in 1 hour, then in 3 hours, then the 12-hour period again. A
    successful check resets this.
@@ -76,9 +76,10 @@ The rules adopted:
    release found before it, so a passing outage does not hide an update that is
    still waiting. **The scheduled check never writes while an update is
    admitted or running**, and neither does the button: right before a write the
-   Panel takes its mutation lease and reads again that no update was admitted
-   and that the server reports no change in progress; otherwise the result is
-   kept in memory, shown, and written on the next idle pass. (A write to the
+   Panel reads the Agent's readiness with no lock held, then takes its mutation
+   lease with `TryLock` only to read again the facts it holds itself (no update
+   admitted, no Panel operation active) and to write the setting; otherwise the
+   result is kept in memory, shown, and written on the next idle pass. (A write to the
    Panel's database during the updater's pinned read-only preflight makes that
    preflight stop.) A rebuild with the same version and another commit is what
    the Agent's signed answer says it is. At start, before management opens, a
