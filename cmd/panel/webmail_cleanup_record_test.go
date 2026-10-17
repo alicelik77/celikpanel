@@ -91,3 +91,45 @@ func TestWebmailCleanupRecordReadIsBoundedToTheNewestEntries(t *testing.T) {
 		t.Fatalf("older than the window = %q", got)
 	}
 }
+
+// alpha.96: the record is the newest of the Roundcube audit entry and the
+// webmail profile's attempt, so a later clean removal ends the offer that a
+// failed webmail attempt raised, and a later failed attempt raises it again.
+func TestWebmailCleanupRecordIsTheNewestOfAuditAndWebmailAttempt(t *testing.T) {
+	panel := newManagedServiceCachePanel(t)
+	db := panel.db.GetDB()
+	audit := func(action, at string) {
+		t.Helper()
+		if _, err := db.Exec(`INSERT INTO audit_logs (action, resource_type, created_at) VALUES (?, 'service', ?)`, action, at); err != nil {
+			t.Fatal(err)
+		}
+	}
+	attempt := func(id, status, at string) {
+		t.Helper()
+		if _, err := db.Exec(`INSERT INTO service_operations (id, kind, service_id, status, phase, started_at, created_at, updated_at, finished_at)
+			VALUES (?, ?, 'webmail', ?, 'done', ?, ?, ?, ?)`, id, serviceOperationKindMailProfileInstall, status, at, at, at, at); err != nil {
+			t.Fatal(err)
+		}
+	}
+	ctx := context.Background()
+	attempt("w1", serviceOperationFailed, "2026-10-17T10:00:00.5Z")
+	if got := panel.webmailCleanupRecord(ctx); got != webmailCleanupInstallFailed {
+		t.Fatalf("failed webmail attempt alone = %q", got)
+	}
+	audit("service.uninstall:roundcube", "2026-10-17 10:05:00")
+	if got := panel.webmailCleanupRecord(ctx); got != "" {
+		t.Fatalf("a later clean removal kept the offer: %q", got)
+	}
+	attempt("w2", serviceOperationFailed, "2026-10-17T11:00:00Z")
+	if got := panel.webmailCleanupRecord(ctx); got != webmailCleanupInstallFailed {
+		t.Fatalf("a later failed attempt = %q", got)
+	}
+	attempt("w3", serviceOperationSucceeded, "2026-10-17T12:00:00Z")
+	if got := panel.webmailCleanupRecord(ctx); got != "" {
+		t.Fatalf("a later attempt that did not fail = %q", got)
+	}
+	audit("service.uninstall.partial:roundcube — x", "2026-10-17 12:00:00")
+	if got := panel.webmailCleanupRecord(ctx); got != webmailCleanupRemovalIncomplete {
+		t.Fatalf("at an equal second the Roundcube entry decides: %q", got)
+	}
+}
