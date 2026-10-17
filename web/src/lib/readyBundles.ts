@@ -2,11 +2,11 @@
 // components, shown at the head of each Components category and summarised by
 // one Dashboard card. The Panel derives every field (cmd/panel/bundles.go);
 // this file checks the shape, names the bundles in the page's language and
-// decides which bundles a category's strip shows. It never invents a
+// says what each chip of a category shows. It never invents a
 // component list: what is installed is always what the Panel sent.
 // Hazır paketler: kataloğun kendi bileşenleri üzerinde kısayollar. Her alanı
 // Panel türetir; bu dosya biçimi denetler, paketleri sayfanın dilinde
-// adlandırır ve bir bölümün şeridinin neyi göstereceğine karar verir.
+// adlandırır ve bir bölümün her çipinin ne söylediğini belirler.
 import type { TranslationKey } from '../i18n/en';
 import { mailProfileName } from './mailProfileText';
 
@@ -146,11 +146,12 @@ export function bundleDescription(bundle: ReadyBundle, t: Translate, componentNa
         ?? t('services.bundles.descriptionFallback', { components: bundle.components.map(componentName).join(', ') });
 }
 
-// The label of a bundle offered after another one is installed ("Add spam
-// protection").
-export function bundleAddLabel(bundle: ReadyBundle, t: Translate, componentName: (id: string) => string): string {
-    return said(t, `services.bundles.addon.${bundle.name_code}`)
-        ?? t('services.bundles.addGeneric', { name: bundleName(bundle, t, componentName) });
+// The short name a chip carries ("PostgreSQL", not "PostgreSQL bundle"): the
+// strip's label already says these are bundles. A code without a short name
+// falls back to the full name.
+// Çipin taşıdığı kısa ad; şeridin etiketi bunların paket olduğunu zaten söyler.
+export function bundleChipName(bundle: ReadyBundle, t: Translate, componentName: (id: string) => string): string {
+    return said(t, `services.bundles.chip.${bundle.name_code}`) ?? bundleName(bundle, t, componentName);
 }
 
 export const bundleInstalled = (bundle: ReadyBundle) => bundle.status === 'installed_verified' || bundle.status === 'installed_unverified';
@@ -160,106 +161,122 @@ export const bundleInstalled = (bundle: ReadyBundle) => bundle.status === 'insta
 // Posta paketlerinin sunucu geneli retleri bölüm için bir kez söylenir.
 export const HOST_WIDE_BLOCKS: ReadonlySet<string> = new Set(['dns_identity_not_ready', 'hostname_unknown']);
 
+// Containment is within one category: Nginx + PHP-FPM is not contained in
+// Webmail although Webmail also runs them.
+// Kapsama yalnız aynı bölüm içindedir.
+const contains = (big: ReadyBundle, small: ReadyBundle) =>
+    big.id !== small.id && big.category === small.category
+    && big.components.length > small.components.length
+    && small.components.every((id) => big.components.includes(id));
+
+// The verified bundle that contains this one (Webmail contains Core Mail).
+// Bunu kapsayan doğrulanmış paket.
+export function bundleIncludedIn(bundle: ReadyBundle, all: readonly ReadyBundle[]): ReadyBundle | undefined {
+    return all.find((other) => other.status === 'installed_verified' && contains(other, bundle));
+}
+
+// What one chip says (owner decision, 2026-10-17: every category shows the
+// same bundles in the same order on every server; only the state on each
+// changes). The Dashboard counts with the same function, so its numbers are
+// the chips the owner sees.
+// - included: a verified bundle contains it (Core Mail under Webmail);
+// - available also covers a mail bundle the Panel calls partial only because
+//   an installed bundle shares its parts (Spam-Protected Mail beside Webmail
+//   has Postfix and Dovecot and nothing of its own yet); one that was
+//   attempted on its own keeps "n of m · Continue".
+// Bir çipin söylediği; Pano da aynı işlevle sayar.
+export type BundleChipState = 'verified' | 'included' | 'unverified' | 'available' | 'partial' | 'blocked' | 'unknown';
+
+export function bundleChipState(bundle: ReadyBundle, all: readonly ReadyBundle[]): BundleChipState {
+    if (bundle.status === 'unknown') return 'unknown';
+    if (bundleIncludedIn(bundle, all)) return 'included';
+    switch (bundle.status) {
+    case 'installed_verified': return 'verified';
+    case 'installed_unverified': return 'unverified';
+    case 'available': return 'available';
+    case 'blocked': return 'blocked';
+    case 'partial': {
+        const installed = all.filter((other) => other.category === bundle.category && bundleInstalled(other));
+        const present = bundle.components.filter((id) => !bundle.missing_components.includes(id));
+        const sharedOnly = installed.length > 0 && present.every((id) => installed.some((other) => other.components.includes(id)));
+        return sharedOnly && !bundleAttempted(bundle) ? 'available' : 'partial';
+    }
+    default: return 'unknown';
+    }
+}
+
+// A state the owner can install from: the chips that carry Install, Add or
+// Continue.
+// Sahibin kurabileceği durum: Kur, Ekle ya da Devam et taşıyan çipler.
+export const bundleInstallable = (state: BundleChipState) => state === 'available' || state === 'partial';
+
+export interface BundleChip {
+    bundle: ReadyBundle;
+    state: BundleChipState;
+    /** For "included": the verified bundle that contains it. */
+    includedIn?: ReadyBundle;
+}
+
 export interface BundleStripModel {
-    /** Offers whose last attempt failed or is running: their reason is said. */
+    /** Every bundle of the category, in the Panel's (registry) order. */
+    chips: BundleChip[];
+    /** Bundles whose reason is said on the line under the chips (D-024). */
     noted: ReadyBundle[];
-    /** Installed bundles, without those another installed bundle contains. */
-    installed: ReadyBundle[];
-    /** Started but not finished bundles that are not merely shared parts. */
-    partial: ReadyBundle[];
-    /** Offers: [bundle, shown as an "add …" offer]. */
-    offers: { bundle: ReadyBundle; add: boolean }[];
-    /** Refusals said one per bundle. */
-    blocked: ReadyBundle[];
-    /** A host-wide refusal shared by every bundle of the category. */
+    /** A host-wide refusal shared by every bundle that waits. */
     hostBlocked: string | null;
-    /** Nothing in this category is known yet. */
+    /** The scan is not fresh: no chip may act on a stale state. */
     unknown: boolean;
     empty: boolean;
 }
 
-// Containment is within one category: Nginx + PHP-FPM is not hidden because
-// Webmail also runs them.
-// Kapsama yalnız aynı bölüm içindedir.
-const contains = (big: ReadyBundle, small: ReadyBundle) =>
-    big.id !== small.id && big.category === small.category && small.components.every((id) => big.components.includes(id));
+// The scan is stale when any bundle says so; then nothing in the category is
+// known, and the whole strip says one muted line instead of chips.
+// Tarama bayatsa bölümde hiçbir şey bilinmez; şerit tek soluk satır söyler.
+const stale = (bundle: ReadyBundle) => bundle.status === 'unknown' && bundle.blocked_code === 'state_unverified';
 
-// What the strip of one category shows (owner decision, 2026-10-17):
-// - with nothing installed, every top-level bundle is offered;
-// - an installed bundle collapses to one line, and a bundle it contains is
-//   not shown (Spam-Protected Mail contains Core Mail);
-// - after something is installed, at most one more offer is shown: the
-//   registry's add-on first, otherwise the first bundle still offered, as an
-//   "add …" offer;
-// - a bundle that was started on its own (not only through parts it shares
-//   with an installed bundle) says how far it got and continues.
-// Bir bölümün şeridi ne gösterir: hiçbir şey kurulu değilken bütün paketler
-// sunulur; kurulu paket tek satıra iner ve kapsadığı paket gösterilmez; bir
-// şey kurulduktan sonra en fazla bir öneri daha gösterilir.
 export function bundleStripModel(all: readonly ReadyBundle[], category: string): BundleStripModel {
     const own = all.filter((bundle) => bundle.category === category);
-    const model: BundleStripModel = { installed: [], partial: [], offers: [], blocked: [], noted: [], hostBlocked: null, unknown: false, empty: own.length === 0 };
+    const model: BundleStripModel = { chips: [], noted: [], hostBlocked: null, unknown: false, empty: own.length === 0 };
     if (own.length === 0) return model;
-    if (own.every((bundle) => bundle.status === 'unknown')) {
+    if (own.every((bundle) => bundle.status === 'unknown') || own.some(stale)) {
         model.unknown = true;
         return model;
     }
-    const top = own.filter((bundle) => bundle.parent === undefined);
-    const installed = own.filter(bundleInstalled);
-    model.installed = installed.filter((bundle) => !installed.some((other) => contains(other, bundle)));
+    model.chips = own.map((bundle) => {
+        const includedIn = bundleIncludedIn(bundle, all);
+        return { bundle, state: bundleChipState(bundle, all), ...(includedIn ? { includedIn } : {}) };
+    });
     // A host-wide refusal (the DNS identity, the host name) is said once for
     // the category; what is installed stays visible beside it.
-    // Sunucu geneli ret bölüm için bir kez söylenir; kurulu olan görünür kalır.
-    const waiting = top.filter((bundle) => !bundleInstalled(bundle));
+    // Sunucu geneli ret bölüm için bir kez söylenir.
+    const waiting = model.chips.filter((chip) => chip.state === 'blocked' || bundleInstallable(chip.state)).map((chip) => chip.bundle);
     const hostCodes = new Set(waiting.map((bundle) => bundle.blocked_code));
     if (waiting.length > 0 && hostCodes.size === 1
         && waiting.every((bundle) => bundle.status === 'blocked' && HOST_WIDE_BLOCKS.has(bundle.blocked_code ?? ''))) {
         model.hostBlocked = waiting[0].blocked_code ?? null;
-        return model;
     }
-    const covered = (bundle: ReadyBundle) => installed.some((other) => contains(other, bundle));
-    // A bundle whose present parts all belong to an installed bundle was not
-    // started on its own: it is an offer to add, not a half-finished install.
-    const sharedOnly = (bundle: ReadyBundle) => {
-        const present = bundle.components.filter((id) => !bundle.missing_components.includes(id));
-        return installed.length > 0 && present.every((id) => installed.some((other) => other.components.includes(id)));
-    };
-    const open = top.filter((bundle) => !bundleInstalled(bundle) && !covered(bundle));
-    model.partial = open.filter((bundle) => bundle.status === 'partial' && (!sharedOnly(bundle) || bundleAttempted(bundle)));
-    const finish = () => {
-        model.noted = model.offers.map((offer) => offer.bundle).filter(bundleAttempted);
-        return model;
-    };
-    if (installed.length === 0) {
-        model.offers = open.filter((bundle) => bundle.status === 'available').map((bundle) => ({ bundle, add: false }));
-        model.blocked = open.filter((bundle) => bundle.status === 'blocked');
-        return finish();
-    }
-    const byID = new Map(own.map((bundle) => [bundle.id, bundle]));
-    const shown = new Set([...model.installed, ...model.partial].map((bundle) => bundle.id));
-    const addonIDs = model.installed.flatMap((bundle) => bundle.addons);
-    const addon = addonIDs.map((id) => byID.get(id)).find((bundle): bundle is ReadyBundle => (
-        bundle !== undefined && !bundleInstalled(bundle) && !covered(bundle) && !shown.has(bundle.id)
-    ));
-    if (addon) {
-        if (addon.status === 'blocked') model.blocked = [addon];
-        else if (addon.status === 'available' || addon.status === 'partial') model.offers = [{ bundle: addon, add: true }];
-        return finish();
-    }
-    const next = open.find((bundle) => !shown.has(bundle.id) && (bundle.status === 'available' || bundle.status === 'partial'));
-    if (next) model.offers = [{ bundle: next, add: true }];
-    return finish();
+    // A failed or running mail attempt, or a typed warning on a bundle that
+    // is not verified, is said again under the chips with its reason.
+    // Başarısız ya da süren deneme ya da doğrulanmamış paketin uyarısı yeniden söylenir.
+    model.noted = model.chips
+        .filter((chip) => chip.state !== 'included' && chip.state !== 'unknown'
+            && (bundleAttempted(chip.bundle) || (chip.state !== 'verified' && chip.bundle.warning_code !== undefined)))
+        .map((chip) => chip.bundle);
+    return model;
 }
 
-// The Dashboard card's summary: what is installed (no contained bundle twice)
-// and how many bundles can be installed now.
-// Panel kartının özeti: ne kurulu ve şimdi kaç paket kurulabilir.
-export function bundlesSummary(all: readonly ReadyBundle[]): { installed: ReadyBundle[]; installable: number; known: boolean } {
-    const known = all.some((bundle) => bundle.status !== 'unknown');
-    const installed = all.filter(bundleInstalled);
+// The Dashboard card's numbers, counted as the chips are drawn: every bundle
+// of the registry, add-ons included; "installed and verified" are the
+// verified and included chips, "can be installed" those that carry Install,
+// Add or Continue (a blocked bundle is not counted).
+// Panel kartının sayıları, çiplerin çizildiği gibi sayılır.
+export function bundlesSummary(all: readonly ReadyBundle[]): { known: boolean; verified: number; installable: number; unverified: ReadyBundle[] } {
+    const known = all.some((bundle) => bundle.status !== 'unknown') && !all.some(stale);
+    const states = all.map((bundle) => ({ bundle, state: bundleChipState(bundle, all) }));
     return {
         known,
-        installed: installed.filter((bundle) => !installed.some((other) => contains(other, bundle))),
-        installable: all.filter((bundle) => bundle.parent === undefined && (bundle.status === 'available' || bundle.status === 'partial')).length,
+        verified: states.filter(({ state }) => state === 'verified' || state === 'included').length,
+        installable: states.filter(({ state }) => bundleInstallable(state)).length,
+        unverified: states.filter(({ state }) => state === 'unverified').map(({ bundle }) => bundle),
     };
 }

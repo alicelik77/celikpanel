@@ -174,88 +174,111 @@ async function pressLabel(text) {
   await press(node);
 }
 
-// --- Three states -------------------------------------------------------------------
-test('an offered bundle is a quiet chip; choosing it says what it installs and offers Install… as an outlined button', async () => {
+// --- The chips ----------------------------------------------------------------------
+const chips = (category) => strip(category).findAll((node) => node.props && node.props['data-bundle-state'] !== undefined);
+const dialogText = () => {
+  const dialogs = tree.root.findAll((node) => node.props && node.props.role === 'dialog');
+  return dialogs.map(label).join(' | ');
+};
+const installedState = () => tree.root.findAll((node) => node.props && node.props['data-bundle-installed-state'] !== undefined)[0]?.props['data-bundle-installed-state'];
+
+test('an offered bundle is an outlined chip that says Install; pressing it opens the confirmation, and nothing is sent', async () => {
   await mount(payload({ bundles: [webBundle(), dbBundle()] }));
   try {
     const chip = bundleNode('web.nginx_php');
     assert.equal(chip.type, 'button');
-    assert.equal(chip.props['data-bundle-status'], 'available');
-    assert.equal(chip.props['aria-expanded'], false);
+    assert.equal(chip.props['data-bundle-state'], 'available');
     assert.ok(stripText('web').includes(say('services.bundles.label')), stripText('web'));
-    assert.ok(label(chip).includes('Nginx + PHP-FPM'), label(chip));
-    assert.ok(stripText('web').includes(say('services.bundles.hint')));
+    assert.equal(label(chip), `Nginx + PHP-FPM·${say('services.bundles.chip.install')}`);
+    assert.doesNotMatch(chip.props.className, /bg-primary\b/, 'the strip has no filled button');
+    // No permanent hint under the strip.
+    assert.ok(!stripText('web').includes('A ready bundle installs'), stripText('web'));
     await press(chip);
-    const text = stripText('web');
-    assert.ok(text.includes(say('services.bundles.description.web_nginx_php')), text);
-    const install = buttonsIn(strip('web')).find((node) => label(node).includes(say('services.bundles.installEllipsis')));
-    assert.ok(install, 'no Install… in the strip');
-    assert.doesNotMatch(install.props.className, /bg-primary\b/, 'the strip has no filled button');
+    assert.ok(dialogText().includes(say('services.bundles.dialog.title', { name: say('services.bundles.name.web_nginx_php') })), dialogText());
     assert.equal(requests.filter((line) => !line.startsWith('GET ') && !line.startsWith('POST /api/v1/managed-services/scan')).length, 0, requests.join(', '));
     assert.equal(globalThis.bundleTracker.calls.length, 0);
   } finally { await unmount(); }
 });
 
-test('an installed and verified bundle collapses to one line with a green check and no button', async () => {
+test('an installed and verified component bundle is a check-mark chip; its dialogue says so and offers Verify, never Repair', async () => {
   await mount(payload({ nginx: true, phpfpm: true, bundles: [webBundle({ status: 'installed_verified', action: 'none', missing_components: [] }), dbBundle()] }));
   try {
-    const line = bundleNode('db.mariadb');
-    assert.equal(line.props['data-bundle-status'], 'installed_verified');
-    assert.ok(label(line).includes('MariaDB bundle installed and verified'), label(line));
-    assert.equal(buttonsIn(line).length, 0, 'a verified database bundle has nothing to press');
+    const chip = bundleNode('db.mariadb');
+    assert.equal(chip.props['data-bundle-state'], 'verified');
+    assert.equal(label(chip), 'MariaDB');
+    assert.equal(chip.props['aria-label'], 'MariaDB bundle, installed and verified');
+    // No Repair link on the strip.
+    assert.ok(!stripText('database').includes(say('services.bundles.repairEllipsis')) && !stripText('database').includes('Repair'), stripText('database'));
+    await press(chip);
+    assert.equal(installedState(), 'verified');
+    assert.ok(dialogText().includes(say('services.bundles.installed.verified', { name: 'MariaDB bundle' })), dialogText());
+    const buttons = tree.root.findAll((node) => node.type === 'button' && node.props && node.props.role !== 'dialog').map(label);
+    assert.ok(buttons.includes(say('services.bundles.verify')), buttons.join(', '));
+    assert.ok(!buttons.includes(say('services.bundles.repairEllipsis')), 'a component bundle offers Repair');
   } finally { await unmount(); }
 });
 
 const mail = (id, profileId, extra) => ({ ...bundle(id, 'email', ['postfix'], extra), action_route: 'mail_profile', profile_id: profileId });
 const withPostfix = (answer) => ({ ...answer, services: answer.services.map((item) => (item.id === 'postfix' ? { ...item, is_installed: true, status: 'active (running)' } : item)) });
 
-test('an installed mail bundle offers Repair (a text link when verified, a button when not); never "Verify"', async () => {
-  await mount(withPostfix(payload({ bundles: [
-    mail('mail.core', 'core-mail', { status: 'installed_verified', action: 'repair', missing_components: [], addons: ['mail.protected'] }),
-    { ...mail('mail.protected', 'protected-mail', { status: 'partial', action: 'continue', missing_components: ['rspamd'] }), components: ['postfix', 'rspamd'] },
-  ] })));
+test('an installed mail bundle opens a dialogue with Repair…, never Verify; one not verified says so with a grey dot and its reason under the strip', async () => {
+  await mount(withPostfix(payload({ bundles: [mail('mail.core', 'core-mail', { status: 'installed_verified', action: 'repair', missing_components: [] })] })));
   try {
-    const line = bundleNode('mail.core');
-    // Named as the product names the mail profile.
-    assert.ok(label(line).includes('Core Mail installed and verified'), label(line));
-    const repair = buttonsIn(line).find((node) => label(node) === say('services.bundles.repair'));
-    assert.ok(repair, label(line));
-    assert.match(repair.props.className, /underline/, 'Repair is a text link');
-    assert.ok(label(bundleNode('mail.protected')).includes('Add spam protection'));
+    const chip = bundleNode('mail.core');
+    assert.equal(label(chip), 'Core Mail');
+    await press(chip);
+    const buttons = tree.root.findAll((node) => node.type === 'button').map(label);
+    assert.ok(buttons.includes(say('services.bundles.repairEllipsis')), buttons.join(', '));
+    assert.ok(!buttons.includes(say('services.bundles.verify')), 'a mail bundle offers Verify');
+    assert.ok(dialogText().includes(say('services.bundles.installed.repairHow')), dialogText());
   } finally { await unmount(); }
 
-  const unproven = withPostfix(payload({ bundles: [mail('mail.core', 'core-mail', { status: 'installed_unverified', action: 'repair', missing_components: [], warning_code: 'repair_to_verify' })] }));
-  await mount(unproven);
+  await mount(withPostfix(payload({ bundles: [mail('mail.core', 'core-mail', { status: 'installed_unverified', action: 'repair', missing_components: [], warning_code: 'repair_to_verify' })] })));
   try {
-    const line = bundleNode('mail.core');
-    assert.ok(label(line).includes('Core Mail: installed, not verified'), label(line));
-    assert.ok(buttonsIn(line).some((node) => label(node) === say('services.bundles.repair')), 'no Repair');
-    assert.ok(!buttonsIn(line).some((node) => label(node) === say('services.bundles.verify')), 'a mail bundle offers Verify');
-    // The Panel's reason is said again, calmly.
-    const reason = line.find((node) => node.props && node.props['data-bundle-reason'] === 'mail.core');
+    const chip = bundleNode('mail.core');
+    assert.equal(chip.props['data-bundle-state'], 'unverified');
+    assert.equal(label(chip), `Core Mail·${say('services.bundles.chip.notVerified')}`);
+    const dot = chip.find((node) => node.props && node.props['data-tone'] !== undefined);
+    assert.equal(dot.props['data-tone'], 'unknown');
+    // The Panel's reason is said again under the chips, calmly.
+    const reason = strip('email').find((node) => node.props && node.props['data-bundle-reason'] === 'mail.core');
     assert.equal(label(reason), say('services.mailProfiles.code.repair_to_verify'));
     assert.match(reason.props.className, /text-fg-muted/);
-    const dot = line.find((node) => node.props && node.props['data-tone'] !== undefined);
-    assert.equal(dot.props['data-tone'], 'unknown');
   } finally { await unmount(); }
 });
 
-test('Verify of a component bundle only reads: it stays usable while the page holds its changes', async () => {
+test('Verify of a component bundle only reads: usable while the host holds changes for another reason, held with its reason while an operation runs', async () => {
   const stopped = payload({ bundles: [webBundle(), dbBundle({ status: 'installed_unverified', action: 'verify' })] });
   stopped.services = stopped.services.map((item) => (item.id === 'mariadb' ? { ...item, status: 'inactive (dead)' } : item));
   readiness = { ready: false, code: 'HOST_MUTATION_BUSY', reason: 'package_manager_active' };
   await mount(stopped);
   try {
-    const verify = buttonsIn(bundleNode('db.mariadb')).find((node) => label(node) === say('services.bundles.verify'));
+    assert.equal(bundleNode('db.mariadb').props['data-bundle-state'], 'unverified');
+    await press(bundleNode('db.mariadb'));
+    const verify = tree.root.findAll((node) => node.type === 'button' && label(node) === say('services.bundles.verify'))[0];
     assert.ok(verify && !verify.props.disabled, 'Verify is off while changes are held');
     const before = requests.filter((line) => line === 'POST /api/v1/managed-services/scan').length;
     await press(verify);
     assert.equal(requests.filter((line) => line === 'POST /api/v1/managed-services/scan').length, before + 1, 'Verify did not read again');
-    // An install is held: the offer's Install… is off.
-    await press(bundleNode('web.nginx_php'));
-    const install = buttonsIn(strip('web')).find((node) => label(node).includes(say('services.bundles.installEllipsis')));
-    assert.equal(install.props.disabled, true);
+    // An install is held: the offer is off.
+    assert.equal(bundleNode('web.nginx_php').props.disabled, true);
   } finally { await unmount(); readiness = { ready: true }; }
+
+  // While a component operation runs, a rescan would be refused as busy:
+  // Verify is not offered, and says why (alpha.94 review item 2).
+  await mount(stopped);
+  try {
+    globalThis.bundleTracker.set({ operation: ours('nginx', 9), locked: true });
+    await settle();
+    await press(bundleNode('db.mariadb'));
+    const verify = tree.root.findAll((node) => node.type === 'button' && label(node) === say('services.bundles.verify'))[0];
+    assert.equal(verify.props.disabled, true);
+    assert.equal(verify.props.title, say('services.bundles.verifyBusy'));
+    assert.ok(dialogText().includes(say('services.bundles.verifyBusy')), dialogText());
+    const before = requests.filter((line) => line === 'POST /api/v1/managed-services/scan').length;
+    await act(async () => { await verify.props.onClick?.(); });
+    assert.equal(requests.filter((line) => line === 'POST /api/v1/managed-services/scan').length, before, 'a held Verify read again');
+  } finally { await unmount(); }
 });
 
 test('under Apache the add-on says what it installs, what is installed and what is not needed, and never calls Nginx installed', async () => {
@@ -266,11 +289,8 @@ test('under Apache the add-on says what it installs, what is installed and what 
   apache.services.push(component('apache', 'web', true), component('phpmyadmin', 'database', false, { kind: 'tool' }));
   await mount(apache);
   try {
+    assert.equal(label(bundleNode('db.mariadb.admin')), `phpMyAdmin·${say('services.bundles.chip.add')}`);
     await press(bundleNode('db.mariadb.admin'));
-    const detail = stripText('database');
-    assert.ok(detail.includes(say('services.bundles.skips', { components: nameOf('php-fpm') })), detail);
-    assert.ok(detail.includes(say('services.bundles.notNeeded', { components: nameOf('nginx') })), detail);
-    await pressLabel(say('services.bundles.installEllipsis'));
     const parts = Object.fromEntries(tree.root.findAll((node) => node.props && node.props['data-bundle-part'] !== undefined)
       .map((node) => [label(node).replace(/(Will be installed|Already installed|Not needed)$/, ''), node.props['data-bundle-part']]));
     assert.deepEqual(parts, { [nameOf('nginx')]: 'notNeeded', [nameOf('php-fpm')]: 'installed', [nameOf('phpmyadmin')]: 'install' });
@@ -289,15 +309,118 @@ test('the installed view of a server with nothing installed still draws the stri
   } finally { await unmount(); delete globalThis.localStorage; }
 });
 
+// --- The owner's two servers ----------------------------------------------------------
+// Payloads shaped like the owner's screens of 2026-10-17: the same registry on
+// both, different states. Boston: PostgreSQL and Nginx, no mail, no MariaDB,
+// no PHP-FPM. Frankfurt: everything installed and verified.
+const registry = () => [
+  { ...bundle('mail.core', 'email', ['postfix', 'dovecot'], { addons: ['mail.protected'] }), action_route: 'mail_profile', profile_id: 'core-mail' },
+  { ...bundle('mail.webmail', 'email', ['postfix', 'dovecot', 'nginx', 'php-fpm', 'roundcube'], { addons: ['mail.protected'] }), action_route: 'mail_profile', profile_id: 'webmail' },
+  { ...bundle('mail.protected', 'email', ['postfix', 'dovecot', 'rspamd']), action_route: 'mail_profile', profile_id: 'protected-mail' },
+  bundle('db.postgresql', 'database', ['postgresql'], { addons: ['db.postgresql.admin'] }),
+  bundle('db.mariadb', 'database', ['mariadb'], { addons: ['db.mariadb.admin'] }),
+  bundle('db.postgresql.admin', 'database', ['nginx', 'php-fpm', 'phppgadmin'], { parent: 'db.postgresql' }),
+  bundle('db.mariadb.admin', 'database', ['nginx', 'php-fpm', 'phpmyadmin'], { parent: 'db.mariadb' }),
+  bundle('web.nginx_php', 'web', ['nginx', 'php-fpm']),
+];
+const verifiedBundle = (item) => ({ ...item, status: 'installed_verified', action: item.action_route === 'mail_profile' ? 'repair' : 'none', missing_components: [] });
+function server(name) {
+  const installed = name === 'boston'
+    ? new Set(['nginx', 'postgresql'])
+    : new Set(['postfix', 'dovecot', 'rspamd', 'nginx', 'php-fpm', 'roundcube', 'postgresql', 'mariadb', 'phppgadmin', 'phpmyadmin']);
+  const services = [
+    ['postfix', 'email'], ['dovecot', 'email'], ['rspamd', 'email'], ['roundcube', 'email', { kind: 'tool' }],
+    ['nginx', 'web'], ['php-fpm', 'web', { kind: 'runtime' }],
+    ['postgresql', 'database'], ['mariadb', 'database'], ['phppgadmin', 'database', { kind: 'tool' }], ['phpmyadmin', 'database', { kind: 'tool' }],
+  ].map(([id, category, extra]) => component(id, category, installed.has(id), extra));
+  const bundles = registry().map((item) => {
+    if (name === 'frankfurt') return verifiedBundle(item);
+    switch (item.id) {
+    case 'db.postgresql': return verifiedBundle(item);
+    case 'db.postgresql.admin': return { ...item, missing_components: ['php-fpm', 'phppgadmin'] };
+    case 'db.mariadb.admin': return { ...item, status: 'blocked', action: 'none', missing_components: ['php-fpm', 'phpmyadmin'], blocked_code: 'component_requires', blocked_vars: { component: 'phpMyAdmin', required: 'MariaDB' } };
+    case 'web.nginx_php': return { ...item, missing_components: ['php-fpm'] };
+    default: return item;
+    }
+  });
+  return { ...payload({ bundles }), services };
+}
+
+test('Boston and Frankfurt draw the same chips in the same order; MariaDB is offered on Boston, Core Mail is included on Frankfurt', async () => {
+  const seen = {};
+  for (const name of ['boston', 'frankfurt']) {
+    await mount(server(name));
+    try {
+      seen[name] = Object.fromEntries(['email', 'database', 'web'].map((category) => [category, chips(category).map((node) => [node.props['data-bundle'], node.props['data-bundle-state'], label(node)])]));
+      // No Repair link and no "installed and verified" sentence on any strip.
+      for (const category of ['email', 'database', 'web']) {
+        assert.ok(!stripText(category).includes('Repair'), stripText(category));
+        assert.ok(!stripText(category).includes('installed and verified'), stripText(category));
+      }
+      // The Dashboard's count is the number of chips that install.
+      const installable = ['email', 'database', 'web'].flatMap(chips).filter((node) => ['available', 'partial'].includes(node.props['data-bundle-state'])).length;
+      assert.equal(installable, name === 'boston' ? 6 : 0, name);
+    } finally { await unmount(); }
+  }
+  for (const category of ['email', 'database', 'web']) {
+    assert.deepEqual(seen.boston[category].map(([id]) => id), seen.frankfurt[category].map(([id]) => id), category);
+  }
+  assert.deepEqual(seen.boston.database, [
+    ['db.postgresql', 'verified', 'PostgreSQL'],
+    ['db.mariadb', 'available', `MariaDB·${say('services.bundles.chip.install')}`],
+    ['db.postgresql.admin', 'available', `phpPgAdmin·${say('services.bundles.chip.add')}`],
+    ['db.mariadb.admin', 'blocked', 'phpMyAdmin·needs MariaDB'],
+  ]);
+  assert.deepEqual(seen.frankfurt.email, [
+    ['mail.core', 'included', `Core Mail·${say('services.bundles.chip.included')}`],
+    ['mail.webmail', 'verified', 'Webmail'],
+    ['mail.protected', 'verified', 'Spam-Protected Mail'],
+  ]);
+  // The included chip's dialogue names the bundle that contains it and offers no Repair of its own.
+  await mount(server('frankfurt'));
+  try {
+    await press(bundleNode('mail.core'));
+    assert.equal(installedState(), 'included');
+    assert.ok(dialogText().includes(say('services.bundles.installed.included', { name: 'Core Mail', other: 'Webmail' })), dialogText());
+    assert.ok(!tree.root.findAll((node) => node.type === 'button').map(label).includes(say('services.bundles.repairEllipsis')));
+  } finally { await unmount(); }
+});
+
+// --- Roundcube leftovers ------------------------------------------------------------
+test('Roundcube leftovers: a muted line on the row, a neutral button, and a confirmation that lists what is removed and what is not', async () => {
+  const answer = payload({ bundles: [webBundle(), dbBundle()] });
+  answer.services.push(component('roundcube', 'email', false, { kind: 'tool' }));
+  await mount(answer);
+  try {
+    const note = tree.root.find((node) => node.props && node.props['data-webmail-leftovers'] !== undefined);
+    assert.equal(label(note), say('services.cleanupWebmailRowNote'));
+    assert.match(note.props.className, /text-fg-muted/);
+    const button = tree.root.find((node) => node.type === 'button' && node.props['data-webmail-cleanup'] !== undefined);
+    assert.equal(label(button), say('services.cleanupWebmailRow'));
+    assert.doesNotMatch(button.props.className, /danger/);
+    await press(button);
+    const list = tree.root.find((node) => node.props && node.props['data-webmail-cleanup-list'] !== undefined);
+    const listed = label(list);
+    for (const path of ['/var/lib/celikpanel-webmail', '/etc/nginx/conf.d/celikpanel-webmail.conf', '/run/celikpanel-webmail.sock', '/var/lib/.celikpanel-webmail.stage']) {
+      assert.ok(listed.includes(path), listed);
+    }
+    assert.ok(dialogText().includes(say('services.cleanupWebmailUntouched')), dialogText());
+    const confirm = tree.root.findAll((node) => node.type === 'button' && label(node) === say('services.cleanupWebmail'))[0];
+    assert.ok(confirm, 'no confirm button');
+    assert.match(confirm.props.className, /danger/, 'the danger style stays on the confirmation');
+    assert.equal(requests.filter((line) => line.startsWith('POST /api/v1/service/uninstall')).length, 0, 'opening the dialogue removed something');
+  } finally { await unmount(); }
+});
+
 // --- The sequence -------------------------------------------------------------------
-async function startWebBundle() {
+async function startWebBundle(n = 2) {
   await press(bundleNode('web.nginx_php'));
-  await pressLabel(say('services.bundles.installEllipsis'));
-  await pressLabel(say('services.bundles.dialog.confirm', { n: 2 }));
+  await pressLabel(say('services.bundles.dialog.confirm', { n }));
 }
 const fresh = (extra) => payload(extra);
 const running = () => tree.root.findAll((node) => node.props && node.props['data-bundle-running'] !== undefined).length;
-const stoppedLine = () => tree.root.findAll((node) => node.props && node.props['data-bundle-status'] === 'stopped')[0];
+const stoppedChip = () => tree.root.findAll((node) => node.props && node.props['data-bundle-status'] === 'stopped')[0];
+const stoppedReason = () => tree.root.findAll((node) => node.props && node.props['data-bundle-stopped-reason'] !== undefined)[0];
 const ours = (serviceId, n) => ({ id: 'op' + n, service_id: serviceId, kind: 'service_install', status: 'running' });
 
 test('a web bundle installs its components one at a time: the second only after the first operation, its own, ended with a fresh scan', async () => {
@@ -308,6 +431,8 @@ test('a web bundle installs its components one at a time: the second only after 
     assert.deepEqual(tracker.calls.map((call) => call.serviceId), ['nginx'], 'the first install');
     assert.ok(stripText('web').includes(say('services.bundles.step', { n: 1, total: 2, component: nameOf('nginx') })), stripText('web'));
     assert.equal(running(), 1);
+    // The other chips wait while a bundle installs.
+    assert.equal(bundleNode('db.mariadb').props.disabled, true);
     for (let i = 0; i < 4; i += 1) await settle();
     tracker.set({ operation: { ...tracker.state.operation, phase: 'installing' } });
     await settle();
@@ -328,6 +453,44 @@ test('a web bundle installs its components one at a time: the second only after 
   } finally { await unmount(); }
 });
 
+test('while the gate is read the chip says it checks the server; "installing" only once the install was accepted', async () => {
+  const tracker = globalThis.bundleTracker;
+  await mount(payload({ bundles: [webBundle(), dbBundle()] }));
+  // The readiness read waits until the test lets it answer; the install is
+  // accepted only when the test says so.
+  let release;
+  const held = new Promise((resolve) => { release = resolve; });
+  const plain = globalThis.fetch;
+  globalThis.fetch = async (input, init) => {
+    if (String(input).split('?')[0] === '/api/v1/host-mutation-readiness') await held;
+    return plain(input, init);
+  };
+  let accept;
+  tracker.state.startInstall = (request) => new Promise((resolve) => {
+    tracker.calls.push(request);
+    accept = () => { tracker.set({ operation: ours(request.serviceId, tracker.calls.length), locked: true }); resolve(true); };
+  });
+  try {
+    await press(bundleNode('web.nginx_php'));
+    await act(async () => {
+      tree.root.findAll((node) => node.type === 'button' && label(node) === say('services.bundles.dialog.confirm', { n: 2 }))[0].props.onClick();
+    });
+    await settle();
+    const checking = say('services.bundles.checkingBefore', { component: nameOf('nginx') });
+    const installing = say('services.bundles.step', { n: 1, total: 2, component: nameOf('nginx') });
+    assert.ok(stripText('web').includes(checking), stripText('web'));
+    assert.ok(!stripText('web').includes(installing), 'it said installing before anything was sent');
+    assert.equal(tracker.calls.length, 0);
+    await act(async () => { release(); });
+    await settle();
+    assert.equal(tracker.calls.length, 1);
+    assert.ok(stripText('web').includes(checking) && !stripText('web').includes(installing), 'it said installing before the server accepted');
+    await act(async () => { accept(); });
+    await settle();
+    assert.ok(stripText('web').includes(installing), stripText('web'));
+  } finally { await unmount(); restoreTracker(); }
+});
+
 test('an operation that ends without a fresh scan from the tracker sends nothing more, even with the host released', async () => {
   const tracker = globalThis.bundleTracker;
   await mount(payload({ bundles: [webBundle(), dbBundle()] }));
@@ -342,7 +505,7 @@ test('an operation that ends without a fresh scan from the tracker sends nothing
   } finally { await unmount(); }
 });
 
-test('a failed step stops the sequence with Continue; a reload offers Install, which installs only what is missing', async () => {
+test('a failed step stops the sequence with Continue on its chip and the reason under the strip; a reload offers Install, which installs only what is missing', async () => {
   const tracker = globalThis.bundleTracker;
   await mount(payload({ bundles: [webBundle(), dbBundle()] }));
   try {
@@ -353,10 +516,10 @@ test('a failed step stops the sequence with Continue; a reload offers Install, w
     for (let i = 0; i < 4; i += 1) await settle();
     assert.equal(tracker.calls.length, 1, 'the next component was installed after a failure');
     assert.equal(running(), 0);
-    const line = stoppedLine();
-    assert.equal(line.props['data-bundle-stop'], 'failed');
-    assert.ok(label(line).includes(say('services.bundles.stopped.failed', { component: nameOf('nginx') })), label(line));
-    assert.ok(buttonsIn(line).some((node) => label(node) === say('services.bundles.continue')));
+    const chip = stoppedChip();
+    assert.equal(chip.props['data-bundle-stop'], 'failed');
+    assert.ok(label(chip).includes(say('services.bundles.continue')), label(chip));
+    assert.ok(label(stoppedReason()).includes(say('services.bundles.stopped.failed', { component: nameOf('nginx') })), label(stoppedReason()));
   } finally { await unmount(); }
 
   // After a reload: Nginx is there, PHP-FPM is not. The bundle is offered;
@@ -366,9 +529,7 @@ test('a failed step stops the sequence with Continue; a reload offers Install, w
     for (let i = 0; i < 3; i += 1) await settle();
     assert.equal(bundleNode('web.nginx_php').props['data-bundle-status'], 'available');
     assert.equal(tracker.calls.length, 0, 'the page continued by itself');
-    await press(bundleNode('web.nginx_php'));
-    await pressLabel(say('services.bundles.installEllipsis'));
-    await pressLabel(say('services.bundles.dialog.confirm', { n: 1 }));
+    await startWebBundle(1);
     assert.deepEqual(tracker.calls.map((call) => call.serviceId), ['php-fpm']);
   } finally { await unmount(); }
 });
@@ -385,16 +546,16 @@ test('an operation that is not this step\'s (another screen\'s, adopted on a bus
     };
     await startWebBundle();
     await settle();
-    let line = stoppedLine();
-    assert.ok(line, 'the strip still says it installs Nginx');
-    assert.equal(line.props['data-bundle-stop'], 'foreign');
-    assert.ok(label(line).includes(say('services.bundles.stopped.foreign')), label(line));
+    let chip = stoppedChip();
+    assert.ok(chip, 'the strip still says it installs Nginx');
+    assert.equal(chip.props['data-bundle-stop'], 'foreign');
+    assert.ok(label(stoppedReason()).includes(say('services.bundles.stopped.foreign')), label(stoppedReason()));
     // That operation ends with a fresh scan: nothing more is sent.
     tracker.set({ operation: null, locked: false, catalogSnapshot: fresh({ nginx: true, bundles: [webBundle({ missing_components: ['php-fpm'] }), dbBundle()] }) });
     for (let i = 0; i < 3; i += 1) await settle();
     assert.equal(tracker.calls.length, 1, 'the next step was sent on another operation\'s end');
-    line = stoppedLine();
-    assert.ok(buttonsIn(line).some((node) => label(node) === say('services.bundles.continue')), 'no Continue');
+    chip = stoppedChip();
+    assert.ok(label(chip).includes(say('services.bundles.continue')), 'no Continue');
   } finally { await unmount(); restoreTracker(); }
 });
 
@@ -411,9 +572,8 @@ test('the change gate is read again before each step: a host that is not ready s
     tracker.set({ operation: null, locked: false, catalogSnapshot: fresh({ nginx: true, bundles: [webBundle({ missing_components: ['php-fpm'] }), dbBundle()] }) });
     for (let i = 0; i < 4; i += 1) await settle();
     assert.equal(tracker.calls.length, 1, 'the next step was sent through a closed gate');
-    const line = stoppedLine();
-    assert.equal(line.props['data-bundle-stop'], 'gated');
-    assert.ok(label(line).includes(say('services.bundles.stopped.gated', { reason: say('services.bundles.gatedReadiness') })), label(line));
+    assert.equal(stoppedChip().props['data-bundle-stop'], 'gated');
+    assert.ok(label(stoppedReason()).includes(say('services.bundles.stopped.gated', { reason: say('services.bundles.gatedReadiness') })), label(stoppedReason()));
     assert.ok(requests.filter((entry) => entry === 'GET /api/v1/host-mutation-readiness').length >= 2, 'the gate was not read again');
   } finally { await unmount(); readiness = { ready: true }; }
 });

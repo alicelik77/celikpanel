@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FileCode, Files, Hexagon, ArrowLeftRight, ExternalLink, Play, Square, RotateCw, type LucideIcon } from 'lucide-react';
+import { FileCode, Files, Hexagon, ArrowLeftRight, ExternalLink, Play, StopCircle, RotateCw, type LucideIcon } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
@@ -449,7 +449,7 @@ function AppPanel({ domainId }: { domainId: number }) {
                     <Button icon={Play} onClick={() => act('start')} disabled={!canAct || running}>
                         {t('services.start')}
                     </Button>
-                    <Button icon={Square} onClick={() => act('stop')} disabled={!canAct || !running}>
+                    <Button icon={StopCircle} onClick={() => act('stop')} disabled={!canAct || !running}>
                         {t('services.stop')}
                     </Button>
                     <Button icon={RotateCw} onClick={() => act('restart')} disabled={!canAct}>

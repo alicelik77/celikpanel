@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { ArrowLeft, Play, Square, RotateCw, Download, ScanSearch, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, Play, StopCircle, RotateCw, Download, ScanSearch, type LucideIcon } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import { useAuth } from '../auth/AuthContext';
@@ -473,7 +473,7 @@ export function ServiceShell({
                     {installed && unit && (
                         <>
                             <CtrlButton icon={Play} label={t('services.start')} tone="success" solid disabled={busy || stale || rereading || running} onClick={() => act('start')} />
-                            <CtrlButton icon={Square} label={t('services.stop')} tone="danger" solid disabled={busy || stale || rereading || !running} onClick={() => act('stop')} />
+                            <CtrlButton icon={StopCircle} label={t('services.stop')} tone="danger" solid disabled={busy || stale || rereading || !running} onClick={() => act('stop')} />
                             <CtrlButton icon={RotateCw} label={t('services.restart')} tone="warning" disabled={busy || stale || rereading} onClick={() => act('restart')} />
                         </>
                     )}

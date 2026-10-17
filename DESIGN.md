@@ -404,6 +404,16 @@ Row action icons (restart, stop, start, repair) are neutral ink at rest and take
 
 Component icons come from one map, `web/src/lib/componentIcons.tsx`, as Lucide line icons; a component without an entry takes its category's icon. The server's emoji `icon` field is kept in the API for older pages and is drawn nowhere. A row that is not installed keeps the muted tint.
 
+### Ready bundle chips, row actions and versions (alpha.95)
+
+Owner decision of 2026-10-17: every Components category shows the same ready bundles in the same order on every server; only the state on each chip changes. The strip is the label and then one chip per bundle, left-aligned and wrapping on a phone, each 44 px tall there. A chip says its state in words and in form, never by colour alone: installed and verified is a check mark and the name (accessible name "…, installed and verified"); a bundle a verified one contains reads "✓ Core Mail · included"; installed but not verified is a grey `StatusDot` and "· not verified"; an offer is an outlined chip "Name · Install" ("· Add" for an add-on); a mail bundle started on its own reads "· n of m · Continue"; a bundle that cannot be installed is quiet muted text with its short reason ("phpMyAdmin · needs MariaDB"), never a button. An installed chip opens its dialogue, where Repair (mail) or Verify (component bundles) lives; the strip carries no Repair link and no permanent hint sentence. While a bundle installs, its chip moves (D-033) and the other chips wait. A stale scan turns the whole strip into one muted line. The Dashboard card is a compact door: one summary line counted exactly as the chips are drawn, then only the lines that need a look.
+
+Row actions (restart, stop, start, repair, delete) share one outlined icon button: the same size, the same border, neutral at rest, tone only under the pointer or the keyboard focus. Stop is Lucide `StopCircle`, a stop sign in a circle; an empty square read as a checkbox on the owner's screens.
+
+Component names never break at their hyphen ("PHP-FPM"): requirement badges and chips render them through `KeepWords`. Navigation counts are plain muted numbers, not filled pills, and a count nobody took is still a dash.
+
+The scan knows installed versions only for the multi-version runtimes (PHP-FPM, Node.js). The Components rows therefore have no desktop version column of dashes; a version is said as small mono text under the description wherever it is known. Reading installed package versions for every component is an open roadmap item. Browser mocks may show only versions the real scan produces.
+
 ### Remote state in the panel: checking, could not check, known
 
 Rule of 2026-10-09: **no negative UI unless known.** Anything a panel screen reads from the server is drawn in one of three states, and the three never look alike. The components are `Checking`, `CouldNotCheck`, `RemoteGate` and `KnownEmpty` in `web/src/components/ui.tsx`; the reads go through `web/src/lib/remote.ts`. The sentences and the migration steps are in [the operation guidance](docs/OPERATION-GUIDANCE.md#no-negative-state-unless-it-is-known-checking-could-not-check-known-2026-10-09).

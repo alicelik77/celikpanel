@@ -126,6 +126,8 @@ test('the ready bundles strip sits between a category header and its rows', () =
   assert.doesNotMatch(source, /function MailProfileCards|id='mail-stacks'/);
   const stripSource = readFileSync(new URL('../src/components/ReadyBundleStrip.tsx', import.meta.url), 'utf8');
   // One line that wraps on a phone: no fixed widths, phone targets of 44 px.
-  assert.match(stripSource, /className='flex flex-wrap items-center gap-x-2\.5 gap-y-2 border-t border-border bg-surface-subtle px-4 py-2\.5'/);
-  assert.ok((stripSource.match(/max-sm:min-h-11/g) || []).length >= 5, 'every strip control is 44 px on a phone');
+  assert.match(stripSource, /className='flex flex-wrap items-center gap-x-2 gap-y-2 border-t border-border bg-surface-subtle px-4 py-2\.5'/);
+  // Every chip is drawn from one base that is 44 px on a phone (alpha.95).
+  assert.match(stripSource, /const chipBase = '[^']*max-sm:min-h-11[^']*';/);
+  for (const chip of ['installedChip', 'actionChip', 'quietChip']) assert.match(stripSource, new RegExp(`const ${chip} = \`\\$\\{chipBase\\}`));
 });

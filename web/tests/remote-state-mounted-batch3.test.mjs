@@ -118,6 +118,7 @@ const Dashboard = await pick(lib('components/Dashboard.tsx', {
   '/lib/componentName': lib('lib/componentName.ts'),
   '/lib/componentCensus': lib('lib/componentCensus.ts'),
   '/lib/readyBundles': lib('lib/readyBundles.ts', { '/mailProfileText': lib('lib/mailProfileText.ts') }),
+  '/lib/infrastructureZones': lib('lib/infrastructureZones.ts'),
   '/lib/auditAction': lib('lib/auditAction.ts', { '/componentName': lib('lib/componentName.ts') }),
   '/ComponentOperation': operationURL,
 }), 'Dashboard');
@@ -1018,16 +1019,16 @@ test('Dashboard bundles card: a check that could not run says so, without sendin
     const card = tree.root.find((node) => node.props['aria-labelledby'] === 'dashboard-bundles-heading');
     const cardText = label(card);
     assert.ok(cardText.includes('dashboard.bundles.checkFailed'), `the card does not say the check failed: ${cardText}`);
-    assert.ok(!cardText.includes('dashboard.bundles.noneInstalled'), 'a stale record is read as "nothing installed"');
+    assert.ok(!cardText.includes('dashboard.bundles.summary'), 'a stale record is read as a count');
     for (const key of MAIL_STALE_KEYS) assert.ok(!text().includes(key), `"${key}" is on screen`);
     assert.ok(cardText.includes('dashboard.bundles.open'), 'the card still opens the bundles');
   } finally { await unmount(); }
 });
 
-test('Dashboard bundles card: an installed bundle is named in the interface language, and the door opens the bundles', async () => {
+test('Dashboard bundles card: what is installed is counted in the interface language, and the door opens the bundles', async () => {
   globalThis.batch3Words = {
     'dashboard.audit.profile.webmail': trScreens['dashboard.audit.profile.webmail'],
-    'dashboard.bundles.verified': trScreens['dashboard.bundles.verified'],
+    'dashboard.bundles.summary': trScreens['dashboard.bundles.summary'],
   };
   globalThis.batch3Navigated = [];
   const installed = { ...mailScan(new Date().toISOString(), [profile('core-mail'), profile('webmail'), profile('protected-mail')]) };
@@ -1039,9 +1040,10 @@ test('Dashboard bundles card: an installed bundle is named in the interface lang
   try {
     const card = tree.root.find((node) => node.props['aria-labelledby'] === 'dashboard-bundles-heading');
     const cardText = label(card);
-    // A mail bundle is named as the product names its mail profile.
-    assert.ok(cardText.includes(trScreens['dashboard.audit.profile.webmail']) && cardText.includes('doğrulandı'), cardText);
-    assert.ok(cardText.includes('dashboard.bundles.installable{"n":2}'), cardText);
+    // alpha.95: one summary line, counted as the Components chips are drawn;
+    // a verified bundle has no row of its own.
+    assert.ok(cardText.includes('1 kurulu ve doğrulandı · 2 kurulabilir'), cardText);
+    assert.ok(!cardText.includes(trScreens['dashboard.audit.profile.webmail']), cardText);
     await act(async () => { card.findAll((node) => node.type === 'button').find((node) => label(node).includes('dashboard.bundles.open')).props.onClick(); });
     assert.deepEqual(globalThis.batch3Navigated, ['/services#bundles']);
     assert.equal(requests.filter((line) => !line.startsWith('GET ')).length, 0, `the card sent a change: ${requests.join(', ')}`);
@@ -1152,11 +1154,12 @@ test('the sentence for an unverifiable stored record says the panel checks by it
 const secondaryGuidance = { reason: 'dns_secondary', primary_nameserver: 'ns1.example.net', primary_ip: '203.0.113.10', record_name: 'mail.boston.example.net', record_type: 'A', record_value: '198.51.100.7' };
 // While the DNS identity is not ready the Panel blocks every mail bundle.
 const secondaryScan = (guidance) => ({ ...freshScan(), dns_identity_ready: false, bundles: mailBundles({ status: 'blocked', action: 'none', blocked_code: 'dns_identity_not_ready' }), ...(guidance ? { mail_dns_guidance: guidance } : {}) });
-// A mail bundle opens the mail install dialogue: its chip, then Install….
+// A mail bundle opens the mail install dialogue: its chip says Install and
+// opens it directly (alpha.95).
 const openMailBundle = async () => {
   const chip = tree.root.find((node) => node.type === 'button' && node.props['data-bundle'] === 'mail.core');
   await act(async () => { chip.props.onClick(); });
-  await press('services.bundles.installEllipsis');
+  await settle();
 };
 const readySetup = () => ({ version: 1, revision: 7, origin: 'fresh', status: 'ready', required: false, guidance: 'guided', checks: [],
   draft: { purpose: 'web', panel_domain: 'boston.example.net', mail_hostname: '', dns_mode: 'external', remote_dns_connection_id: '', dns_engine: 'bind', dns_role: 'primary', ns1: '', ns2: '', local_ip: '', peer_ip: '', peer_ns: '', node_version: '', database: 'mariadb' } });
@@ -1186,8 +1189,12 @@ test('Components: on a secondary DNS server the mail box names the primary and t
     assert.equal(buttons().filter((node) => label(node).includes('services.mailProfiles.configureDNS')).length, 0, 'the dead-end button is still offered');
     assert.ok(buttons().some((node) => label(node).includes('services.mailProfiles.secondary.openSetup')));
     assert.ok(shown.includes('services.mailProfiles.secondary.short'));
-    // No bundle is offered beside a record that is not there yet (2026-10-16, alpha.94 strip).
-    assert.ok(!hasNode('data-bundle') && !shown.includes('services.bundles.installEllipsis'), shown.slice(0, 800));
+    // No bundle is offered beside a record that is not there yet (2026-10-16):
+    // the chips stay, blocked, with the short reason and no button (alpha.95).
+    const chips = tree.root.findAll((node) => node.props && node.props['data-bundle'] !== undefined && node.props['data-bundle-state'] !== undefined);
+    assert.equal(chips.length, 3, shown.slice(0, 800));
+    assert.ok(chips.every((node) => node.type !== 'button' && node.props['data-bundle-state'] === 'blocked'), shown.slice(0, 800));
+    assert.ok(chips.every((node) => label(node).includes('services.bundles.short.dns_identity_not_ready')), shown.slice(0, 800));
   } finally { await unmount(); }
   // Control: the same server without the guidance keeps the generic box.
   serve({ '/api/v1/managed-services': secondaryScan(null) });
@@ -1340,7 +1347,11 @@ test('Components: on a secondary the mail box says whether setup asks the primar
 // profile reports a webmail problem.
 // Kurulu Roundcube'un "Webmail'i onar" düğmesi her sunucuda sarıydı; yalnız
 // Webmail profili bir sorun bildirdiğinde sarıdır.
-test('Components: Repair webmail is an ordinary action unless webmail reports a problem', async () => {
+// alpha.95 (owner's Frankfurt screen, 2026-10-17): without a reported problem
+// the row carries no Repair webmail at all; webmail repair lives in the
+// Webmail bundle's dialogue.
+// Sorun bildirilmediğinde satırda Webmail'i onar yoktur.
+test('Components: Repair webmail stands on the Roundcube row only when webmail reports a problem', async () => {
   const roundcubeScan = (warningCode) => {
     const base = scan([
       { ...component('postfix', []), category: 'mail' },
@@ -1352,7 +1363,14 @@ test('Components: Repair webmail is an ordinary action unless webmail reports a 
     return base;
   };
   const repairButton = () => tree.root.findAll((node) => node.type === 'button' && node.props['data-tone'] !== undefined)[0];
-  for (const [code, tone] of [[undefined, 'neutral'], ['roundcube_not_ready', 'warning'], ['webmail_unverified', 'warning']]) {
+  serve({ '/api/v1/managed-services': roundcubeScan(undefined) });
+  await mount(React.createElement(ServiceList, {}));
+  try {
+    await settle();
+    assert.equal(repairButton(), undefined, 'Repair webmail stands on the row without a problem');
+    assert.ok(!text().includes('services.repairWebmail'), text().slice(0, 600));
+  } finally { await unmount(); }
+  for (const [code, tone] of [['roundcube_not_ready', 'warning'], ['webmail_unverified', 'warning']]) {
     serve({ '/api/v1/managed-services': roundcubeScan(code) });
     await mount(React.createElement(ServiceList, {}));
     try {

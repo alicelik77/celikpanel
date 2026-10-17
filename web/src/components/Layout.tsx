@@ -369,28 +369,29 @@ function SidebarItem({
                 Sahip olunmayan bir sayının dürüst rozeti tiredir — Bileşenler
                 sayfasının, hakkında hiçbir şey bilinmeyen grup için kullandığı
                 işaretin aynısı. */}
+            {/* A count is a plain muted number, not a filled pill: on the
+                owner's screens the pill read as a notification count
+                (alpha.95, 2026-10-17). Null is still not zero.
+                Sayı dolu hap değil, sade soluk bir sayıdır; null yine sıfır değildir. */}
             {count === null ? (
                 <span
                     title={t('services.notChecked')}
-                    className={`rounded-full px-1.5 py-0.5 text-xs font-semibold ${
-                        active ? 'bg-white/20 text-white' : 'bg-sidebar-hover text-sidebar-muted'
-                    }`}
+                    className={`text-xs font-medium ${navCountTone(active)}`}
+                    data-nav-count="unknown"
                 >
                     <span aria-hidden="true">—</span>
                     <span className="sr-only">{t('services.notChecked')}</span>
                 </span>
             ) : count !== undefined && count > 0 ? (
-                <span
-                    className={`rounded-full px-1.5 py-0.5 text-xs font-semibold tabular-nums ${
-                        active ? 'bg-white/20 text-white' : 'bg-sidebar-hover text-sidebar-muted'
-                    }`}
-                >
+                <span className={`text-xs font-medium tabular-nums ${navCountTone(active)}`} data-nav-count="">
                     {count}
                 </span>
             ) : null}
         </button>
     );
 }
+
+const navCountTone = (active: boolean) => (active ? 'text-white/80' : 'text-sidebar-muted');
 
 function ServerIdentityLabel({ identity, placement }: {
     identity: ServerIdentity;

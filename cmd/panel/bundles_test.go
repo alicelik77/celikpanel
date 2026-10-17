@@ -181,6 +181,15 @@ func TestBundlesOnAnEmptyServer(t *testing.T) {
 	if admin.Status != bundleStatusBlocked || admin.BlockedCode != mailProfileBlockedRequires || admin.Parent != "db.mariadb" {
 		t.Fatalf("add-on before its parent = %+v", admin)
 	}
+	// alpha.95: an add-on is always listed; before its parent it names the
+	// parent's component as what it needs ("phpMyAdmin · needs MariaDB").
+	// Bir ek her zaman listelenir; ebeveyninden önce ona ihtiyaç duyduğunu söyler.
+	for id, required := range map[string]string{"db.mariadb.admin": "MariaDB", "db.postgresql.admin": "PostgreSQL"} {
+		addon := bundleViewByID(t, bundles, id)
+		if addon.Status != bundleStatusBlocked || addon.BlockedCode != mailProfileBlockedRequires || addon.BlockedVars["required"] != required {
+			t.Fatalf("%s before its parent = %+v, want it to need %s", id, addon, required)
+		}
+	}
 }
 
 // Mail bundles say what the mail profiles say: verified, installed but not
