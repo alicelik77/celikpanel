@@ -8935,3 +8935,113 @@ basılabilir ve "meşgul" reddi alır; şerit, henüz hiçbir şey gönderilmede
 süre "kuruluyor" der. Sahip bildirene kadar hiçbir şey "çalıştı" ya da
 "başarısız" değildir. P0.1-P0.5 **kısmi** kalır; bu girdi hiçbir şeyi kapatmaz ya
 da ilerletmez.
+
+### Alpha.94'teki kurulu sunucular: her sunucuda aynı paket listesi (D-034 değişikliği, 2026-10-17)
+
+Sahip, alpha.94 güncellemesinden sonra Boston ve Frankfurt'ta Bileşenler ve
+Pano'ya baktı ve "ok. sorunları tekrar değerlendir ve düzelt" dedi. Aşağıdaki
+gözlemler, sürümü hazırlayanın anladığı kadarıyla sahibin sözlerinden ve
+ekranlarından gelir; burada dosya olarak saklanmaz ve kurulu bir sunucuda hiçbir
+şey çalıştırılmadı. v0.1.0-alpha.95 adayı için kaynakta. Bu girdi, yukarıdaki
+"henüz gözlem yok" girdisinin yerini alır.
+
+**Sahibin bildirdikleri.**
+
+- **İki sunucu, iki liste.** Boston'da MariaDB paketi kurulabilir olduğu halde
+  gösterilmiyordu ve Pano onu yine de sayıyordu ("5 paket daha kurulabilir"); görünen
+  phpPgAdmin eklentisini ise saymıyordu. Temel Posta Boston'da bir çipti,
+  Frankfurt'ta yoktu. Nedeni alpha.94'ün "kurulu satır ve en çok bir öneri daha"
+  kuralıydı; kardeş paketleri gizliyordu. Kural, sahibin değil sürümü hazırlayanın
+  hatasıydı ve geri çekildi.
+- **Satır eylemleri ve sütunlar.** Durdur, onay kutusu gibi okunan boş bir kareydi;
+  yeniden başlat, durdur ve sil tek bir aile gibi görünmüyordu; masaüstü sürüm
+  sütunu çizgiler gösteriyordu; bir önkoşul rozetinde "PHP-FPM" tire yerinden
+  bölünüyordu; "Webmail'i onar", sorun bildirmeyen bir Roundcube satırında duruyordu.
+- **Boston'da Roundcube kalıntıları**; satırda onları temizleyecek bir şey yoktu.
+- **Sayılar.** Kenar çubuğu sayıları dolu hapladı; Pano Frankfurt'ta "Alan adları 0"
+  diyordu, oysa Alan adları sayfası altyapı DNS bölgesini listeliyor.
+
+**Bu aday neyi değiştirir ve kim işlem yapar.**
+
+- **Şerit.** Her Bileşenler kategorisi, her sunucuda aynı paketleri aynı sırayla
+  gösterir; yalnız her çipin durumu değişir (sözle ve biçimle, asla yalnız renkle):
+  - onay işareti ve ad: kurulu ve doğrulandı (yapılacak bir şey yok);
+  - "Temel Posta · içinde": doğrulanmış bir posta paketi onu içerir (yapılacak bir
+    şey yok);
+  - gri nokta ve "doğrulanmadı": sahip çipi açar ve Onar (posta) ya da Doğrula
+    (bileşenler) seçer;
+  - çerçeveli "Ad · Kur" ya da eklentilerde "· Ekle": sahip işlem yapar;
+  - "m bileşenden n · Devam et": bir posta denemesi kısmen yapıldı; sahip devam eder;
+  - kısa bir nedenle soluk metin ve düğme yok ("phpMyAdmin · MariaDB gerekli"):
+    sahip önce nedenin adını verdiğini kurar; o çipte başka bir şeye basılamaz;
+  - eski bir tarama tek soluk satırdır ve Bileşenler sayfası kendiliğinden denetler
+    (D-032).
+- **Pano kartı** tek bir özet satırdır ("7 kurulu ve doğrulandı · 1 kurulabilir"),
+  sonra yalnız sorun satırları, sonra "Bileşenler'de aç". Çiplerin çizildiği gibi
+  sayar: eklentiler dahil kaydın her girdisi; "kurulabilir" kurulabilir ya da kısmi
+  demektir, engelli sayılmaz; "dahil" kurulu ve doğrulanmış sayılır. Hiç
+  denetlenmedi, denetleniyor, tutuluyor, denetlenemedi ve yakın zamanda değil
+  cümleleri değişmedi. Hiçbir şey kurmaz ve bir yoklama asla değişiklik başlatmaz.
+- **Bir veritabanı ya da web paketini kurmak.** Sıranın anlamı değişmedi (birer
+  birer olağan bileşen kurulumu, her biri ancak öncekinin, yani bu adımın kendisinin
+  taze taramayla bitmesinden sonra; ilk hata, başka bir işlem ya da kapalı bir kapı
+  durdurur; Devam et yalnız eksik olanı kurar; yeniden yüklemeden sonra hiçbir şey
+  kendiliğinden sürmez). Yeni ifade: sayfa değişiklik kapısını okurken ve kurulum
+  isteği henüz kabul edilmemişken çip "X kurulmadan önce sunucu denetleniyor…" der;
+  istek kabul edildikten sonra hareket eden bir göstergeyle "2/3 · X kuruluyor" der.
+  Çalışırken kimsenin bir şey yapması gerekmez ve diğer çipler devre dışıdır.
+  Adımlar arasındaki kapı, doğrulanmamış durum bayrağını değiştiği anda ayarlanan
+  bir referans üzerinden (hazırlık okumasından önce ve sonra) okur; adımlar arasında
+  değişen bir bayrak kaçırılmaz.
+- **Bir bileşen paketinin Doğrula'sı** yalnız okur. Bir bileşen işlemi sürerken
+  (izleyici kilitli, bir paket sırası etkin ya da ana makine `panel_operation_active`
+  veya `agent_mutation_active` bildiriyor) nedeni gösterilerek tutulur ("Bu
+  sunucuda bir bileşen işlemi sürüyor; o bitince doğrulayın."). Sahip işlemin bitmesini
+  bekler ve Doğrula'ya yeniden basar. Değişiklikler başka nedenlerle tutulurken
+  kullanılabilir kalır, çünkü hiçbir şeyi değiştirmez.
+- **Bir posta paketinin Onar'ı** kurulu çipin penceresindedir (eksik olanı tamamlar
+  ve kurulumu doğrular; kurulu hiçbir şey kaldırılmaz). Şeritte Onar bağlantısı
+  yoktur. Roundcube'un "Webmail'i onar" düğmesi, bileşen satırında yalnız sunucu bir
+  webmail sorunu bildirdiğinde durur.
+- **Roundcube kalıntıları.** Panel kalıntıların var olup olmadığını söyleyemez (bunun
+  için bir tarama alanı yoktur); bu yüzden Roundcube satırında soluk bir not
+  ("Yarıda kalmış bir Roundcube kurulumunun ya da kaldırmasının dosyaları bu
+  sunucuda kalmış olabilir.") ve nötr ikincil bir "Kalıntıları temizle…" düğmesi durur.
+  Sahip karar verir; onay penceresi Agent'ın tam olarak neyi sildiğini sıralar:
+  `/var/lib/celikpanel-webmail` (Roundcube dosyaları, kendi ayarları ve adres defteri
+  veritabanı), `/var/lib/.celikpanel-webmail.stage`,
+  `/var/lib/.celikpanel-webmail.retired*`,
+  `/var/lib/..celikpanel-webmail.stage.retired*` (yarım kalan kurulum ya da
+  kaldırmadan kalan kopyalar), `/etc/nginx/conf.d/celikpanel-webmail.conf` (sonra
+  Nginx yeniden yüklenir) ve `/run/celikpanel-webmail.sock`; ayrıca posta kutularına
+  ve Maildir verisine, diğer sitelere, Nginx'e, PHP-FPM'e ve paketlere dokunulmadığını
+  söyler. Tehlike biçimi yalnız pencerenin onay düğmesinde kalır. Bir web testi,
+  sıralanan yolları Agent'ın sabitleriyle eşit tutar.
+- **Sürümler.** Bir sürüm yalnız tarama onu bildiği yerde (PHP-FPM, Node.js)
+  açıklamanın altında küçük tek aralıklı metin olarak gösterilir. Çizgilerden oluşan
+  masaüstü sütunu gitti. Bu bir çözüm değil, bir sınırdır: aşağıdaki açık işe bakın.
+- **Satır eylemleri ve sayılar.** Durdur, daire içinde bir dur işaretidir; yeniden
+  başlat, durdur, başlat, onar ve sil tek bir çerçeveli simge düğmesini paylaşır
+  (dinlenirken nötr, ton yalnız üzerine gelince ya da odakta); önkoşul rozetleri ve
+  çipler bileşen adlarını bölmez; kenar çubuğu sayıları sade soluk sayılardır
+  (kimsenin almadığı bir sayı çizgidir, asla 0 değil); Pano'nun Alan adları sayısı,
+  Alan adları sayfasının listelediği bağımsız altyapı DNS bölgelerini ekler.
+  Kenar çubuğundaki Alan adları rozeti hâlâ yalnız alan adlarını sayar; küçük bir
+  kalan fark. Pano'nun "dikkat gerektiren bir şey yok" cümlesi artık "Dikkat
+  gerektiren bir şey yok. CelikPanel sertifikaları, güvenlik duvarını ve kurulu
+  bileşenleri denetledi." şeklindedir; yine yalnız her okuma yanıtlandığında ve
+  bileşen taraması tazeyken görünür.
+
+**Testler.** Web: paket sözleri Panel'in kod listesine karşı, çözücü ve şeridin
+seçimleri; Boston biçimli ve Frankfurt biçimli bir yük üzerinde bağlanmış testler
+(aynı çipler; Boston'da görünen MariaDB; Frankfurt'ta dahil Temel Posta; nedeniyle
+engelli bir eklenti; kurulabilir çiplere eşit Pano sayısı; şeritte Onar bağlantısı
+yok; kurulu çipin Onar ya da Doğrula'lı penceresi); üç inceleme maddesi; kalıntılar
+penceresi ve yol listesi; satır eylemi, sürüm kuralı, kenar çubuğu sayısı ve Pano
+kartı sözleşmeleri. Go: bir eklenti her zaman listelenir; ana paketi kurulmadan
+önce engellidir ve ihtiyaç duyduğu ana bileşeni (MariaDB ya da PostgreSQL) söyler;
+ve posta profili ön yüz sözleşmesi. **Açık:** kurulu bir sunucuda hiçbir şey
+ölçülmedi; paket sırası gerçek bir Agent'a karşı çalışmadı; her bileşen için kurulu
+paket sürümleri okunmuyor (yeni bir Agent okuması gerekir); Roundcube kalıntılarının
+var olup olmadığı gösterilemez; P0.1-P0.5 **kısmi** kalır; bu girdi hiçbir şeyi
+kapatmaz ya da ilerletmez.

@@ -111,6 +111,95 @@ Bunun izin vermediği şeyler: kurulu bir sunucuda değişiklik, yeni mağaza
 yok. Kurulu panelleri yine yalnız sahipleri, panelin kendi güncelleme
 ekranından günceller.
 
+### Değişiklik 17 Ekim 2026 (alpha.95): her sunucuda aynı liste, her öğede durum
+
+*Sahibin Boston ve Frankfurt'ta (alpha.94) Bileşenler ve Pano'ya baktıktan sonraki 17 Ekim 2026 kararı: "ok. sorunları tekrar değerlendir ve düzelt"; v0.1.0-alpha.95 adayı için kaynakta; kurulu bir sunucuda hiçbir şey ölçülmedi*
+
+Sahibin gördüğü. Boston'da MariaDB paketi kurulabilir olduğu halde hiç
+çizilmiyordu ve Pano onu yine de sayıyordu ("5 paket daha kurulabilir"); görünen
+phpPgAdmin eklentisini ise saymıyordu. Temel Posta Boston'da bir öğeydi,
+Frankfurt'ta yoktu. İki sunucu iki ayrı liste gösteriyordu ve Pano'daki sayı
+altındaki listeyle uyuşmuyordu. Nedeni yukarıdaki 2. maddeydi: "kurulu satır ve
+en çok bir öneri daha" kardeş paketleri gizliyordu. Bu kural **geri çekildi**.
+Sahibin bir gereksinimi değil, sürümü hazırlayanın hatasıydı.
+
+Yerine geçen kural:
+
+1. **Tek liste.** Her Bileşenler kategorisi, her sunucuda aynı hazır paketleri
+   aynı kayıt sırasıyla gösterir. Yalnız her çipin durumu değişir. Şerit, kurulu bir
+   satır artı bir öneri değil, sola yaslı ve satır kıran bir çip dizisidir.
+   Eklentiler her zaman görünür.
+2. **Durum sözle ve biçimle söylenir, asla yalnız renkle.** Kurulu ve doğrulanmış:
+   bir onay işareti ve ad (erişilebilir ad "…, kurulu ve doğrulandı"); doğrulanmış
+   bir posta paketi onu içeriyorsa "Temel Posta · dahil"; gri bir nokta ve
+   "doğrulanmadı"; çerçeveli "Ad · Kur" (eklentilerde "· Ekle"); denemesi olan
+   posta için "n / m · Devam et"; engelli: kısa bir nedenle soluk metin
+   ("phpMyAdmin · MariaDB gerekiyor") ve düğme yok; çalışan paket hareket eden bir
+   göstergeyle "2/3 · PHP-FPM kuruluyor" ve diğer çipler devre dışıdır. Eski bir
+   tarama tek bir soluk satırdır.
+3. **Tek sayma kuralı.** Pano kartı ve çipler aynı biçimde sayar: eklentiler dahil
+   kaydın her girdisi; "kurulabilir" kurulabilir ya da kısmi demektir (engelli
+   hariç); "dahil" kurulu ve doğrulanmış sayılır. Kart tek bir özet satırdır
+   ("7 kurulu ve doğrulandı · 1 kurulabilir"), sonra yalnız sorun satırları
+   (nedeniyle başarısız ya da süren bir posta denemesi, kurulu ama doğrulanmamış
+   bir paket), sonra "Bileşenler'de aç". Hiç denetlenmedi, denetleniyor, tutuluyor,
+   denetlenemedi ve yakın zamanda değil cümleleri korunur.
+4. **Kurulu çip Onar ve Doğrula'yı taşır.** Kurulu bir çipe basmak bir pencere
+   açar: posta paketi için Onar (profil kurulumu; eksik olanı tamamlar ve kurulumu
+   doğrular, kurulu hiçbir şey kaldırılmaz), bileşen paketi için Doğrula
+   (bileşenleri yeniden okur, hiçbir şeyi değiştirmez). Şeritte Onar bağlantısı ve
+   ipucu cümlesi yoktur. Roundcube'un "Webmail'i onar" düğmesi, bileşen satırında
+   yalnız sunucu bir webmail sorunu bildirdiğinde durur; aksi halde onarım Webmail
+   çipinin penceresindedir.
+5. **alpha.94'ün üç inceleme maddesi kapandı.** Bir paketin adımları arasındaki
+   kapı, doğrulanmamış durum bayrağını değiştiği anda ayarlanan bir referans
+   üzerinden, hazırlık okumasından önce ve sonra okur. Bir bileşen paketinin
+   Doğrula'sı, bir bileşen işlemi sürerken (kilitli izleyici, etkin bir paket sırası
+   ya da ana makinenin `panel_operation_active` / `agent_mutation_active`
+   bildirmesi) nedeni gösterilerek tutulur; değişiklikler başka nedenlerle
+   tutulduğunda kullanılabilir kalır, çünkü yalnız okur. Çip, kurulum isteği kabul
+   edilene kadar "X kurulmadan önce sunucu denetleniyor…", kabulden sonra yalnızca
+   "X kuruluyor" der.
+
+Şema değişikliği yok (44), Agent değişikliği yok, yeni Agent iş türü yok. D-034'ün
+geri kalanı (katalog bileşenleri üzerinde kısayollar, birer birer sıra, Devam et
+yalnız sahibin eylemiyle, yeniden yüklemeden sonra devam yok) geçerli kalır.
+
+**Sürümler: bu sürümde yeni Agent RPC'si yok.** Sahibin ekranları çizgilerden
+oluşan bir sürüm sütunu gösteriyordu. İnceleme: Panel, yönetilen bir hizmetin
+`Versions` alanını yalnız çalışma ortamı örneklerinden doldurur
+(`Agent.ListServiceInstances`, yani yalnız PHP-FPM ve Node.js). `Agent.GetServices`
+her systemd birimi için bir ikili yoklama `Version` döndürür
+(`internal/services/version_detector.go`); Panel bunu yok sayar. Bu bir paket
+sürümü değildir, birkaç birim için güvenilmezdir (Apache, `named` ve PostgreSQL
+birim adını ikili olarak çalıştırır) ve birimi olmayan araçları (Certbot) kapsamaz.
+Gerçek paket sürümleri yeni bir Agent RPC'si ya da genişletilmiş `dpkg`/`pacman`
+sorguları gerektirir; bu sürüm bunları eklemez. Karar: masaüstü sürüm sütunu
+kaldırıldı; sürüm yalnız bilindiği yerde açıklamanın altında küçük tek aralıklı
+metin olarak gösterilir; tarayıcı sahtesi artık sürüm uydurmaz. **Açık yol haritası
+işi:** her bileşen için kurulu paket sürümünü okumak.
+
+**Durdur simgesi.** Durdur düğmesi boş bir kareydi ve bir onay kutusu gibi
+okunuyordu. Bileşenler satırlarında, bileşen sayfasında ve barındırma türü
+panelinde Lucide `StopCircle` (daire içinde bir dur işareti) kullanılır; yeniden
+başlat, durdur, başlat, onar ve sil tek bir çerçeveli simge düğmesini paylaşır.
+Görünümler DESIGN.md'de, "Ready bundle chips, row actions and versions (alpha.95)"
+bölümündedir.
+
+Aynı incelemenin sahibin istediği temizlikleri, yeni kural değil: kenar çubuğu
+sayıları (Bileşenler, Alan adları) dolu hap değil, sade soluk sayılardır (kimsenin
+almadığı bir sayı yine çizgidir, asla 0 değil); Pano'nun "dikkat gerektiren bir şey
+yok" cümlesi sade dildir ve hâlâ her okumanın yanıtlanmasını ve taze bir bileşen
+taramasını ister; Pano'nun Alan adları sayısı, Alan adları sayfasının listelediği
+bağımsız altyapı DNS bölgelerini ekler (sahibin 16 Ekim 2026 tarihli alpha.91
+kararı), kenar çubuğundaki Alan adları rozeti ise hâlâ yalnız `/api/v1/domains`
+sayar; küçük bir kalan fark.
+
+Bunun izin vermediği şeyler: kurulu bir sunucuda değişiklik ve lisans politikası
+değişikliği yok. Kurulu panelleri yine yalnız sahipleri, panelin kendi güncelleme
+ekranından günceller.
+
+
 ---
 
 ## D-033 · Sahibi bekleten bir ekran beklediğini gösterir ya da yapılacak bir şey olmadığını söyler

@@ -8969,3 +8969,115 @@ server is still read fresh and refuses what it must); Verify can be pressed whil
 an install runs and then gets a busy refusal; and the strip says "installing"
 briefly before anything is sent. Nothing is "worked" or "failed" until the owner
 reports it. P0.1-P0.5 stay **partial**; this entry closes and advances nothing.
+
+### Installed servers on alpha.94: one bundle list on every server (D-034 amendment, 2026-10-17)
+
+The owner looked at Components and the Dashboard on Boston and Frankfurt after the
+alpha.94 update and said "ok. sorunları tekrar değerlendir ve düzelt" (evaluate
+the problems again and fix them). The observations below come from the owner's
+words and screens as the release preparer understood them; they are not stored as
+files here, and nothing was run on an installed server. In source for the
+v0.1.0-alpha.95 candidate. This entry replaces "nothing observed yet" above.
+
+**What the owner reported.**
+
+- **Two servers, two lists.** On Boston the MariaDB bundle was not shown although
+  it could be installed, and the Dashboard still counted it ("5 more bundles can be
+  installed") while not counting the visible phpPgAdmin add-on. Core Mail was a
+  chip on Boston and missing on Frankfurt. The cause was alpha.94's rule "the
+  installed line plus at most one more offer", which hid sibling bundles. The rule
+  was the release preparer's mistake, not the owner's, and it is withdrawn.
+- **Row actions and columns.** Stop was an empty square that read as a checkbox;
+  restart, stop and delete did not look like one family; the desktop version
+  column showed dashes; "PHP-FPM" broke at its hyphen in a requirement badge;
+  "Repair webmail" stood on a Roundcube row that reported no problem.
+- **Roundcube leftovers on Boston** with nothing on the row to clean them up.
+- **Counts.** The sidebar counts were filled pills; the Dashboard said "Domains 0"
+  on Frankfurt while the Domains page lists the infrastructure DNS zone.
+
+**What this candidate changes, and who acts.**
+
+- **The strip.** Every Components category shows the same bundles in the same
+  order on every server; only the state on each chip changes (words and form,
+  never colour alone):
+  - a check mark and the name: installed and verified (nothing to do);
+  - "Core Mail · included": a verified mail bundle contains it (nothing to do);
+  - a grey dot and "not verified": the owner opens the chip and chooses Repair
+    (mail) or Verify (components);
+  - outlined "Name · Install" or, for add-ons, "· Add": the owner acts;
+  - "n of m · Continue": a mail attempt is partly done; the owner continues;
+  - muted text with a short reason and no button ("phpMyAdmin · needs MariaDB"):
+    the owner first installs what the reason names; nothing else can be pressed on
+    that chip;
+  - a stale scan is one muted line, and the Components page checks by itself
+    (D-032).
+- **The Dashboard card** is one summary line ("7 installed and verified · 1 can be
+  installed"), then only the problem lines, then "Open in Components". It counts
+  exactly as the chips are drawn: every registry entry, add-ons included; "can be
+  installed" is available or partial, blocked is not counted; "included" counts as
+  installed and verified. The never-checked, checking, held, could-not-check and
+  not-recent sentences are unchanged. It installs nothing, and a poll never starts
+  a change.
+- **Installing a database or web bundle.** The sequence semantics are unchanged
+  (one ordinary component install at a time, each only after the previous one, this
+  step's own, has ended with a fresh scan; the first failure, a foreign operation
+  or a closed gate stops it; Continue installs only what is missing; nothing
+  continues after a reload). New wording: while the page reads the change gate and
+  the install request is not yet accepted the chip says "Checking the server before
+  installing X…"; only after the request is accepted does it say "2/3 · X
+  installing" with a moving indicator. Nobody needs to do anything while it runs,
+  and the other chips are disabled. The gate between steps reads the
+  state-unverified flag through a reference set at the moment the flag changes
+  (read before and after the readiness read), so a flag that changes between steps
+  is not missed.
+- **Verify of a component bundle** only reads. It is held, with its reason shown
+  ("A component operation is running on this server; verify once it has
+  finished."), while a component operation runs (the tracker is locked, a bundle
+  sequence is active, or the host reports `panel_operation_active` or
+  `agent_mutation_active`). The owner waits for the operation to end and presses
+  Verify again. It stays usable while changes are held for other reasons, because it
+  changes nothing.
+- **Repair of a mail bundle** lives in the installed chip's dialogue (it completes
+  what is missing and verifies the setup; nothing installed is removed). There are
+  no Repair links on the strip. Roundcube's "Repair webmail" stands on the
+  component row only when the server reports a webmail problem.
+- **Roundcube leftovers.** The Panel cannot tell whether leftovers exist (it has no
+  scan field for it), so the Roundcube row carries a muted note ("Files from an
+  interrupted Roundcube install or removal may still be on this server.") and a
+  neutral secondary "Clean up leftovers…" button. The owner decides; the
+  confirmation lists exactly what the Agent removes: `/var/lib/celikpanel-webmail`
+  (Roundcube's files, its own settings and address-book database),
+  `/var/lib/.celikpanel-webmail.stage`, `/var/lib/.celikpanel-webmail.retired*`,
+  `/var/lib/..celikpanel-webmail.stage.retired*` (copies from an interrupted
+  install or removal), `/etc/nginx/conf.d/celikpanel-webmail.conf` (then Nginx is
+  reloaded) and `/run/celikpanel-webmail.sock`; and that mailboxes and Maildir
+  data, other sites, Nginx, PHP-FPM and packages are not touched. Danger style stays
+  on the dialogue's confirm button only. A web test keeps the listed paths equal to
+  the Agent's constants.
+- **Versions.** A version is shown only where the scan knows it (PHP-FPM, Node.js)
+  as small monospaced text under the description. The desktop column of dashes is
+  gone. This is a limit, not a fix: see the open item below.
+- **Row actions and counts.** Stop is a stop sign in a circle; restart, stop,
+  start, repair and delete share one outlined icon button (neutral at rest, tone
+  only on hover or focus); requirement badges and chips keep component names whole;
+  sidebar counts are plain muted numbers (a count nobody took is a dash, never 0);
+  the Dashboard's Domains count adds the standalone infrastructure DNS zones the
+  Domains page lists. The sidebar Domains badge still counts only domains, a small
+  remaining difference. The Dashboard's "nothing needs your attention" sentence is
+  now "Nothing needs your attention. CelikPanel checked the certificates, the
+  firewall and the installed components."; it still appears only when every read
+  was answered and the components scan is fresh.
+
+**Tests.** Web: the bundle words against the Panel's code list, the decoder and the
+strip's choices; mounted tests on a Boston-shaped and a Frankfurt-shaped payload
+(the same chips; MariaDB visible on Boston; Core Mail included on Frankfurt; an
+add-on blocked with its reason; the Dashboard count equal to the installable chips;
+no Repair link on the strip; the installed chip's dialogue with Repair or Verify);
+the three review items; the leftovers dialogue and its path list; the row actions,
+version rule, sidebar counts and Dashboard card contracts. Go: an add-on is always listed;
+before its parent is installed it is blocked and names the parent it needs (MariaDB
+or PostgreSQL); and the mail profile frontend contract. **Open:** nothing was measured on an installed server; the
+bundle sequence has not run against a real Agent; installed package versions for
+every component are not read (a new Agent read would be needed); whether Roundcube
+leftovers exist cannot be shown; P0.1-P0.5 stay **partial**; this entry closes and
+advances nothing.

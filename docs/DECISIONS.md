@@ -109,6 +109,94 @@ no licence-policy change, and no WordPress or site-application bundle. Installed
 panels are still updated only by their owner from the panel's own update
 screen.
 
+### Amendment 2026-10-17 (alpha.95): the same list on every server, with the state on each item
+
+*Owner decision of 2026-10-17 after looking at Components and the Dashboard on Boston and Frankfurt (alpha.94): "ok. sorunları tekrar değerlendir ve düzelt" ("ok, evaluate the problems again and fix them"); in source for the v0.1.0-alpha.95 candidate; nothing measured on an installed server*
+
+What the owner saw. On Boston the MariaDB bundle was not drawn at all although it
+could be installed, and the Dashboard still counted it ("5 more bundles can be
+installed") while it did not count the phpPgAdmin add-on that was visible. Core
+Mail was an item on Boston and absent on Frankfurt. Two servers showed two
+different lists, and the number on the Dashboard did not match the list below it.
+The cause was rule 2 above: "installed line plus at most one more offer" hid
+sibling bundles. That rule is **withdrawn**. It was the release preparer's
+mistake, not an owner requirement.
+
+The rule that replaces it:
+
+1. **One list.** Every Components category shows the same ready bundles in the
+   same registry order on every server. Only the state on each chip changes. The
+   strip is a left-aligned, wrapping row of chips, not an installed line plus an
+   offer. Add-ons always appear.
+2. **State in words and in form, never by colour alone.** Installed and verified
+   is a check mark and the name (accessible name "…, installed and verified");
+   "Core Mail · included" when a verified mail bundle contains it; a grey dot and
+   "not verified"; an outlined "Name · Install" (add-ons: "· Add"); mail with an
+   attempt "n of m · Continue"; blocked is muted text with a short reason
+   ("phpMyAdmin · needs MariaDB") and no button; a running bundle is
+   "2/3 · PHP-FPM installing" with a moving indicator and the other chips
+   disabled. A stale scan is one muted line.
+3. **One counting rule.** The Dashboard card and the chips count the same way:
+   every registry entry, add-ons included; "can be installed" means available or
+   partial (blocked is excluded); "included" counts as installed and verified.
+   The card is one summary line ("7 installed and verified · 1 can be installed"),
+   then only the problem lines (a failed or running mail attempt with its reason,
+   a bundle installed but not verified), then "Open in Components". The
+   never-checked, checking, held, could-not-check and not-recent sentences are
+   kept.
+4. **The installed chip holds Repair and Verify.** Pressing an installed chip
+   opens a dialogue: Repair for a mail bundle (the profile install; it completes
+   what is missing and verifies the setup, nothing installed is removed), Verify
+   for a component bundle (it reads the components again and changes nothing).
+   The strip carries no Repair links and no hint sentence. Roundcube's "Repair
+   webmail" stays on the component row only when the server reports a webmail
+   problem; otherwise repair lives in the Webmail chip's dialogue.
+5. **Three review items of alpha.94 are closed.** The gate between a bundle's
+   steps reads the state-unverified flag through a reference set at the moment it
+   changes, before and after the readiness read. Verify of a component bundle is
+   held, with its reason, while a component operation runs (a locked tracker, an
+   active bundle sequence, or the host reporting `panel_operation_active` or
+   `agent_mutation_active`); it stays usable when changes are held for other
+   reasons, because it only reads. The chip says "Checking the server before
+   installing X…" until the install request is accepted, and "installing X" only
+   afterwards.
+
+No schema change (44), no Agent change, no new Agent job kind. The rest of D-034
+(shortcuts over catalogue components, one sequence at a time, Continue only on the
+owner's action, no continuation after a reload) stands.
+
+**Versions: no new Agent RPC in this release.** The owner's screens showed a
+version column of dashes. Investigation: the Panel fills `Versions` of a managed
+service only from runtime instances (`Agent.ListServiceInstances`, so only PHP-FPM
+and Node.js). `Agent.GetServices` returns a binary-probe `Version` per systemd
+unit (`internal/services/version_detector.go`) that the Panel ignores. It is not a
+package version, it is unreliable for several units (Apache, `named` and
+PostgreSQL run the unit name as a binary) and it does not cover tools without a
+unit (Certbot). Real package versions would need a new Agent RPC or extended
+`dpkg`/`pacman` queries, which this release does not add. Decision: the desktop
+version column is removed; a version is shown as small monospaced text under the
+description only where it is known; the browser mock no longer invents versions.
+**Open roadmap item:** read installed package versions for every component.
+
+**Stop icon.** The stop button was an empty square, which read as a checkbox. It is
+Lucide `StopCircle` (a stop sign in a circle) on the Components rows, the component
+page and the hosting type panel, and restart, stop, start, repair and delete share
+one outlined icon button. The visuals are in DESIGN.md, "Ready bundle chips, row
+actions and versions (alpha.95)".
+
+Owner-requested cleanups of the same review, no new rule: sidebar counts
+(Components, Domains) are plain muted numbers, not filled pills (a count nobody took
+is still a dash, never 0); the Dashboard's "nothing needs your attention" sentence
+is plain language and still requires every read answered and a fresh components
+scan; the Dashboard's Domains count adds the standalone infrastructure DNS zones
+the Domains page lists (the alpha.91 owner decision of 2026-10-16), while the sidebar
+Domains badge still counts only `/api/v1/domains`, a small remaining difference.
+
+What this does not authorise: no installed-server change and no licence-policy
+change. Installed panels are still updated only by their owner from the panel's own
+update screen.
+
+
 ---
 
 ## D-033 · A screen that makes the owner wait shows that it waits, or says that nothing needs to be done
