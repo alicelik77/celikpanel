@@ -31,7 +31,8 @@ func withDiscoveryClock(t *testing.T, now time.Time) {
 
 func discoveryRecordOf(t *testing.T, fixture systemUpdateTestFixture) (panelUpdateDiscoveryRecord, bool) {
 	t.Helper()
-	return fixture.panel.loadPanelUpdateDiscovery(context.Background())
+	// What is written to panel_settings, not a result kept in memory.
+	return fixture.panel.storedPanelUpdateDiscovery(context.Background())
 }
 
 func availableCheck() panelUpdateCheckResponse {
@@ -55,6 +56,7 @@ type fakeDiscoveryScheduler struct {
 	results   []*panelUpdateDiscoveryFailure
 	discovers int
 	records   []string
+	flushes   int
 	logs      []string
 }
 
@@ -86,12 +88,10 @@ func newFakeDiscoveryScheduler() *fakeDiscoveryScheduler {
 			}
 			return availableCheck(), nil
 		},
-		record: func(_ context.Context, _ time.Time, response panelUpdateCheckResponse, failure *panelUpdateDiscoveryFailure, skipped string) {
+		save: func(_ context.Context, _ time.Time, response panelUpdateCheckResponse, failure *panelUpdateDiscoveryFailure) {
 			fake.mu.Lock()
 			defer fake.mu.Unlock()
 			switch {
-			case skipped != "":
-				fake.records = append(fake.records, "skipped:"+skipped)
 			case failure != nil:
 				fake.records = append(fake.records, "failed:"+failure.reason)
 			case response.Available:
@@ -99,6 +99,11 @@ func newFakeDiscoveryScheduler() *fakeDiscoveryScheduler {
 			default:
 				fake.records = append(fake.records, "current")
 			}
+		},
+		flush: func(context.Context, time.Time) {
+			fake.mu.Lock()
+			defer fake.mu.Unlock()
+			fake.flushes++
 		},
 		logf: func(format string, args ...any) {
 			fake.mu.Lock()
@@ -158,8 +163,12 @@ func TestPanelUpdateDiscoverySkipsWithoutNetworkRead(t *testing.T) {
 		if fake.discovers != 0 {
 			t.Fatalf("%s: a skipped check reached the release read", reason)
 		}
-		if len(fake.records) != 1 || fake.records[0] != "skipped:"+reason {
-			t.Fatalf("%s: records=%q", reason, fake.records)
+		// A skip is kept in memory only: nothing is saved, nothing flushed.
+		if len(fake.records) != 0 || fake.flushes != 0 {
+			t.Fatalf("%s: records=%q flushes=%d", reason, fake.records, fake.flushes)
+		}
+		if _, got := fake.LastSkip(); got != reason {
+			t.Fatalf("%s: last skip %q", reason, got)
 		}
 	}
 }
@@ -173,8 +182,8 @@ func TestPanelUpdateDiscoveryAgentNotAnsweringIsSkippedNotFailed(t *testing.T) {
 			t.Fatalf("delay %s", got)
 		}
 	}
-	if fake.failures != 0 || strings.Join(fake.records, ",") != "skipped:agent_unavailable,skipped:agent_unavailable" {
-		t.Fatalf("failures=%d records=%q", fake.failures, fake.records)
+	if _, reason := fake.LastSkip(); fake.failures != 0 || len(fake.records) != 0 || reason != panelUpdateReasonAgentUnavailable {
+		t.Fatalf("failures=%d records=%q skip=%q", fake.failures, fake.records, reason)
 	}
 }
 
@@ -263,7 +272,9 @@ func TestPanelUpdateDiscoveryLoopFollowsTimerSwitchAndShutdown(t *testing.T) {
 	fake.enabledOn = true
 	fake.mu.Unlock()
 	fake.Wake()
-	if again := wait(); again.delay != 150*time.Second {
+	// Switched on again right after a check: the next read is a period after
+	// that check, not two minutes later (review item 9).
+	if again := wait(); again.delay != 12*time.Hour+30*time.Minute {
 		t.Fatalf("delay after switching on %s", again.delay)
 	}
 	cancel()
@@ -288,8 +299,8 @@ func TestPanelUpdateDiscoverySkipReasonsOnThePanel(t *testing.T) {
 	if reason := fixture.panel.panelUpdateDiscoverySkipReason(ctx, discoveryTestNow.Add(time.Minute)); reason != panelUpdateReasonUpdateActive {
 		t.Fatalf("admitted update: %q", reason)
 	}
-	if reason := fixture.panel.panelUpdateDiscoverySkipReason(ctx, discoveryTestNow.Add(7*time.Minute)); reason != "" {
-		t.Fatalf("after the restart window: %q", reason)
+	if reason := fixture.panel.panelUpdateDiscoverySkipReason(ctx, discoveryTestNow.Add(61*time.Minute)); reason != "" {
+		t.Fatalf("after the admission window: %q", reason)
 	}
 	for readiness, want := range map[string]string{
 		transport.HostMutationReasonHostLock:        panelUpdateReasonServerBusy,
@@ -317,7 +328,17 @@ func TestPanelUpdateDiscoverySkipReasonsOnThePanel(t *testing.T) {
 	if _, err := database.Exec(`INSERT INTO server_setup_plans(id,revision,plan_json,requested_by,created_at) VALUES('plan-d',1,'{}',7,'now')`); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := database.Exec(`INSERT INTO server_setup_executions(id,request_id,plan_id,status,execution_json,created_at,updated_at) VALUES('exec-d','exec-d','plan-d','waiting','{}','now','now')`); err != nil {
+	// A setup run waiting for a DNS record does not hold discovery; one that
+	// changes the server does (serverSetupExecutionMutating).
+	waiting, _ := json.Marshal(serverSetupExecution{ID: "exec-d", Status: "waiting", Steps: []serverSetupExecutionStep{busyRuleStep("dns", "primary_dns", "waiting")}})
+	if _, err := database.Exec(`INSERT INTO server_setup_executions(id,request_id,plan_id,status,execution_json,created_at,updated_at) VALUES('exec-d','exec-d','plan-d','waiting',?,'now','now')`, string(waiting)); err != nil {
+		t.Fatal(err)
+	}
+	if reason := fixture.panel.panelUpdateDiscoverySkipReason(ctx, discoveryTestNow.Add(time.Hour)); reason != "" {
+		t.Fatalf("a waiting setup run held discovery: %q", reason)
+	}
+	running, _ := json.Marshal(serverSetupExecution{ID: "exec-d", Status: "running", Steps: []serverSetupExecutionStep{busyRuleStep("web", "components", "running")}})
+	if _, err := database.Exec(`UPDATE server_setup_executions SET status='running', execution_json=? WHERE id='exec-d'`, string(running)); err != nil {
 		t.Fatal(err)
 	}
 	if reason := fixture.panel.panelUpdateDiscoverySkipReason(ctx, discoveryTestNow.Add(time.Hour)); reason != panelUpdateReasonSetupRunning {
@@ -417,7 +438,7 @@ func TestPanelUpdateDiscoveryRecordIsClearedWhenTheBuildReachesTheTarget(t *test
 	withSystemUpdateBuild(t)
 	fixture := newSystemUpdateTestFixture(t)
 	ctx := context.Background()
-	fixture.panel.recordPanelUpdateDiscovery(ctx, discoveryTestNow, true, availableCheck(), nil, "")
+	fixture.panel.savePanelUpdateDiscovery(ctx, discoveryTestNow, true, availableCheck(), nil)
 	fixture.panel.clearStalePanelUpdateDiscovery(ctx)
 	if _, ok := discoveryRecordOf(t, fixture); !ok {
 		t.Fatal("a record of this build was cleared")
@@ -432,7 +453,7 @@ func TestPanelUpdateDiscoveryRecordIsClearedWhenTheBuildReachesTheTarget(t *test
 	buildVersion, buildCommit = "v0.1.0-alpha.15", strings.Repeat("e", 40)
 	older := availableCheck()
 	older.CurrentVersion, older.CurrentCommit = buildVersion, buildCommit
-	fixture.panel.recordPanelUpdateDiscovery(ctx, discoveryTestNow, true, older, nil, "")
+	fixture.panel.savePanelUpdateDiscovery(ctx, discoveryTestNow, true, older, nil)
 	record, ok := discoveryRecordOf(t, fixture)
 	if !ok || record.Outcome != panelUpdateOutcomeCurrent || record.Target != nil {
 		t.Fatalf("an older release was kept as available: %+v", record)
@@ -444,7 +465,7 @@ func TestPanelUpdateDiscoveryStatusIsAdminOnlyAndMakesNoAgentCall(t *testing.T) 
 	withDiscoveryClock(t, discoveryTestNow.Add(2*time.Hour))
 	fixture := newSystemUpdateTestFixture(t)
 	fixture.panel.lastUpdateAttempt = func(commit string) (recoveryobs.Attempt, bool) { return recoveryobs.Attempt{}, false }
-	fixture.panel.recordPanelUpdateDiscovery(context.Background(), discoveryTestNow, true, availableCheck(), nil, "")
+	fixture.panel.savePanelUpdateDiscovery(context.Background(), discoveryTestNow, true, availableCheck(), nil)
 	fixture.panel.updateDiscovery = newPanelUpdateDiscoveryScheduler(fixture.panel)
 	fixture.panel.updateDiscovery.setNext(discoveryTestNow.Add(2*time.Hour + 90*time.Minute))
 	fixture.agent.mu.Lock()
@@ -547,6 +568,14 @@ func TestPanelUpdateDiscoveryRouteIsRegistered(t *testing.T) {
 			t.Fatalf("main.go lacks %q", line)
 		}
 	}
+	// The scheduler is assigned and the stale record cleared before
+	// management opens (no request reads them while they are set).
+	text := string(source)
+	prepare := strings.Index(text, "panel.preparePanelUpdateDiscovery(discoveryCtx)")
+	open := strings.Index(text, "startupGate.Open()")
+	if prepare < 0 || open < 0 || prepare > open {
+		t.Fatalf("the scheduler is prepared after management opens: prepare=%d open=%d", prepare, open)
+	}
 }
 
 func TestComparePanelUpdateVersions(t *testing.T) {
@@ -570,5 +599,156 @@ func TestComparePanelUpdateVersions(t *testing.T) {
 	}
 	if _, ok := comparePanelUpdateVersions("dev", "v0.1.0"); ok {
 		t.Fatal("dev compared as a release")
+	}
+}
+
+// The updater's read-only preflight stops if the Panel's database is written
+// while it holds its pinned copy (independent review of the alpha.96
+// candidate). Discovery never writes while an update is admitted or the
+// server reports a change in progress: the result is kept in memory and
+// written on the next idle pass.
+func TestPanelUpdateDiscoveryNeverWritesWhileAnUpdateIsAdmittedOrRunning(t *testing.T) {
+	withSystemUpdateBuild(t)
+	fixture := newSystemUpdateTestFixture(t)
+	ctx := context.Background()
+	fixture.panel.updateDiscovery = newPanelUpdateDiscoveryScheduler(fixture.panel)
+	stored := func() string {
+		var raw string
+		_ = fixture.database.GetDB().QueryRow(`SELECT COALESCE(MAX(value), '') FROM panel_settings WHERE key = ?`, panelUpdateDiscoveryKey).Scan(&raw)
+		return raw
+	}
+	// Admitted: kept in memory, shown, not written.
+	fixture.panel.markPanelUpdateAdmitted(discoveryTestNow)
+	if _, written := fixture.panel.savePanelUpdateDiscovery(ctx, discoveryTestNow.Add(time.Minute), false, availableCheck(), nil); written || stored() != "" {
+		t.Fatal("a result was written while an update was admitted")
+	}
+	if record, ok := fixture.panel.currentPanelUpdateDiscovery(ctx); !ok || record.Outcome != panelUpdateOutcomeAvailable {
+		t.Fatalf("the result kept in memory is not shown: %+v", record)
+	}
+	// The server reports the host lock (the updater holds it): still not written.
+	fixture.panel.updateAdmittedAt.Store(0)
+	fixture.agent.mu.Lock()
+	fixture.agent.readiness = transport.HostMutationReadinessResponse{Code: transport.HostMutationBusy, Reason: transport.HostMutationReasonHostLock}
+	fixture.agent.mu.Unlock()
+	if fixture.panel.flushPanelUpdateDiscovery(ctx, discoveryTestNow.Add(2*time.Hour)) || stored() != "" {
+		t.Fatal("a result was written while the server held its lock")
+	}
+	// A Panel operation holds the mutation lease: not written either.
+	fixture.agent.mu.Lock()
+	fixture.agent.readiness = transport.HostMutationReadinessResponse{Ready: true}
+	fixture.agent.mu.Unlock()
+	fixture.panel.serviceMutationMu.Lock()
+	if fixture.panel.flushPanelUpdateDiscovery(ctx, discoveryTestNow.Add(2*time.Hour)) || stored() != "" {
+		fixture.panel.serviceMutationMu.Unlock()
+		t.Fatal("a result was written while the mutation lease was held")
+	}
+	fixture.panel.serviceMutationMu.Unlock()
+	// Idle: the next pass writes it.
+	if !fixture.panel.flushPanelUpdateDiscovery(ctx, discoveryTestNow.Add(2*time.Hour)) {
+		t.Fatal("the kept result was not written on an idle pass")
+	}
+	if record, ok := discoveryRecordOf(t, fixture); !ok || record.Outcome != panelUpdateOutcomeAvailable || record.Automatic {
+		t.Fatalf("written=%+v", record)
+	}
+	if fixture.panel.updateDiscoveryPending != nil {
+		t.Fatal("the written result is still kept in memory")
+	}
+}
+
+// A check that completes after an update was admitted while it ran keeps its
+// result in memory: admission is read again right before the write.
+func TestPanelUpdateDiscoveryReadsAdmissionAgainBeforeWriting(t *testing.T) {
+	withSystemUpdateBuild(t)
+	fixture := newSystemUpdateTestFixture(t)
+	scheduler := newPanelUpdateDiscoveryScheduler(fixture.panel)
+	fixture.panel.updateDiscovery = scheduler
+	scheduler.now = func() time.Time { return discoveryTestNow }
+	scheduler.logf = func(string, ...any) {}
+	inner := scheduler.discover
+	scheduler.discover = func(ctx context.Context) (panelUpdateCheckResponse, *panelUpdateDiscoveryFailure) {
+		response, failure := inner(ctx)
+		fixture.panel.markPanelUpdateAdmitted(discoveryTestNow) // a start admitted meanwhile
+		return response, failure
+	}
+	scheduler.runOnce(context.Background())
+	if _, ok := discoveryRecordOf(t, fixture); ok {
+		t.Fatal("the check wrote its result after an update was admitted")
+	}
+	if record, ok := fixture.panel.currentPanelUpdateDiscovery(context.Background()); !ok || record.Outcome != panelUpdateOutcomeAvailable {
+		t.Fatalf("kept=%+v ok=%v", record, ok)
+	}
+}
+
+// A skip is never written and never replaces a known result; the view says
+// it separately.
+func TestPanelUpdateDiscoverySkipKeepsTheKnownResult(t *testing.T) {
+	withSystemUpdateBuild(t)
+	withDiscoveryClock(t, discoveryTestNow.Add(3*time.Hour))
+	fixture := newSystemUpdateTestFixture(t)
+	ctx := context.Background()
+	scheduler := newPanelUpdateDiscoveryScheduler(fixture.panel)
+	fixture.panel.updateDiscovery = scheduler
+	current := availableCheck()
+	current.Available, current.Target = false, nil
+	if _, written := fixture.panel.savePanelUpdateDiscovery(ctx, discoveryTestNow, true, current, nil); !written {
+		t.Fatal("an idle result was not written")
+	}
+	before, _ := discoveryRecordOf(t, fixture)
+	scheduler.now = func() time.Time { return discoveryTestNow.Add(2 * time.Hour) }
+	scheduler.logf = func(string, ...any) {}
+	fixture.panel.markPanelUpdateAdmitted(discoveryTestNow.Add(2 * time.Hour))
+	if delay := scheduler.runOnce(ctx); delay != panelUpdateDiscoverySkipDelay {
+		t.Fatalf("delay %s", delay)
+	}
+	after, ok := discoveryRecordOf(t, fixture)
+	if !ok || after != before {
+		t.Fatalf("a skip changed the stored result: %+v -> %+v", before, after)
+	}
+	view := fixture.panel.panelUpdateDiscoveryView(ctx, discoveryTestNow.Add(3*time.Hour))
+	if view.Last == nil || view.Last.Outcome != panelUpdateOutcomeCurrent || view.LastSkip == nil ||
+		view.LastSkip.ReasonCode != panelUpdateReasonUpdateActive || view.LastSkip.AgeSeconds != 3600 {
+		t.Fatalf("view=%+v skip=%+v", view, view.LastSkip)
+	}
+	// A completed check later ends the skip.
+	scheduler.NoteChecked(discoveryTestNow.Add(150 * time.Minute))
+	if view := fixture.panel.panelUpdateDiscoveryView(ctx, discoveryTestNow.Add(3*time.Hour)); view.LastSkip != nil {
+		t.Fatalf("an old skip is still said: %+v", view.LastSkip)
+	}
+}
+
+// Switching on resumes from the last completed check, not two minutes later.
+func TestPanelUpdateDiscoveryResumeFollowsTheLastCheck(t *testing.T) {
+	fake := newFakeDiscoveryScheduler()
+	if got := fake.resumeDelay(); got != panelUpdateDiscoveryFirstDelay {
+		t.Fatalf("no check yet: %s", got)
+	}
+	fake.NoteChecked(discoveryTestNow.Add(-time.Hour))
+	if got := fake.resumeDelay(); got != 11*time.Hour {
+		t.Fatalf("an hour after a check: %s", got)
+	}
+	fake.NoteChecked(discoveryTestNow.Add(-13 * time.Hour))
+	if got := fake.resumeDelay(); got != panelUpdateDiscoveryFirstDelay {
+		t.Fatalf("a check older than the period: %s", got)
+	}
+}
+
+// A rebuild with the same version and another commit is what the Agent says
+// it is: the stored outcome matches the manual answer.
+func TestPanelUpdateDiscoverySameVersionRebuildFollowsTheAgent(t *testing.T) {
+	withSystemUpdateBuild(t)
+	withDiscoveryClock(t, discoveryTestNow)
+	fixture := newSystemUpdateTestFixture(t)
+	fixture.agent.mu.Lock()
+	fixture.agent.check.TargetVersion = updateTestCurrentVersion
+	fixture.agent.mu.Unlock()
+	recorder := httptest.NewRecorder()
+	fixture.panel.handlePanelUpdateCheck(recorder, systemUpdateRequest(http.MethodGet, panelUpdateCheckPath, "", roleAdmin))
+	var answer panelUpdateCheckResponse
+	if err := json.Unmarshal(recorder.Body.Bytes(), &answer); err != nil || !answer.Available {
+		t.Fatalf("manual answer=%s", recorder.Body.String())
+	}
+	record, ok := discoveryRecordOf(t, fixture)
+	if !ok || record.Outcome != panelUpdateOutcomeAvailable || record.Target == nil || record.Target.Commit != updateTestTargetCommit {
+		t.Fatalf("stored=%+v ok=%v", record, ok)
 	}
 }

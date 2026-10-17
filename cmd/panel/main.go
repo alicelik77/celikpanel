@@ -142,6 +142,10 @@ type Panel struct {
 	updateDiscovery   *panelUpdateDiscoveryScheduler
 	updateDiscoveryMu sync.Mutex
 	updateAdmittedAt  atomic.Int64
+	// A completed check's result kept in memory while an update or another
+	// change held the server; written on the next idle pass. Guarded by
+	// updateDiscoveryMu.
+	updateDiscoveryPending *panelUpdateDiscoveryRecord
 }
 
 type domainSubroute struct {
@@ -1437,6 +1441,13 @@ func main() {
 	webRoot := webDir()
 	http.Handle("/", frontendHandler(webRoot))
 
+	// The scheduled update check (D-035) is prepared before management opens:
+	// its stale record is cleared and its scheduler assigned before any
+	// request can read them. It is read-only on the host and never an update,
+	// and it ends with the process's own stop signal.
+	discoveryCtx, stopDiscovery := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stopDiscovery()
+	panel.preparePanelUpdateDiscovery(discoveryCtx)
 	startupGate.Open()
 	panel.resumeServerSetupExecutions()
 	// Immediate background host mutators are started only after recovery,
@@ -1447,10 +1458,6 @@ func main() {
 	// upd11 F2: startup mail work refused only because an update or rollback
 	// still held the host is retried, bounded, once the host is idle.
 	panel.startDeferredStartupMailWork(certificateDeferral, milterWiringDeferred)
-	// The scheduled update check (D-035): read-only, never an update. It ends
-	// with the process's own stop signal.
-	discoveryCtx, stopDiscovery := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stopDiscovery()
 	panel.startPanelUpdateDiscovery(discoveryCtx)
 	protocol := "HTTP"
 	if tlsOn {

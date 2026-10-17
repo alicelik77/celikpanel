@@ -406,8 +406,12 @@ func (p *Panel) handlePanelUpdateCheck(w http.ResponseWriter, r *http.Request) {
 	// The same discovery the scheduled check runs (system_update_discovery.go);
 	// its result is kept as the last check, made by hand.
 	response, failure := p.discoverPanelUpdate(r.Context())
+	// It is written only while no update is admitted or running; otherwise it
+	// is kept in memory until the server is idle (system_update_discovery.go).
 	if r.Context().Err() == nil {
-		p.recordPanelUpdateDiscovery(r.Context(), panelUpdateNow(), false, response, failure, "")
+		now := panelUpdateNow()
+		p.savePanelUpdateDiscovery(r.Context(), now, false, response, failure)
+		p.updateDiscovery.NoteChecked(now)
 	}
 	if failure != nil {
 		if failure.agent {

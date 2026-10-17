@@ -23,19 +23,26 @@ import (
 //
 // The scheduled check is the same read the "Check for updates" button runs
 // (discoverPanelUpdate): the Agent asks the release server for the signed
-// manifest. It is read-only: no host change, no lock, no update record. It
-// runs about two minutes after the Panel starts, then every 12 hours with
-// half an hour of jitter; after a failure the next try is in 1 hour, then 3,
-// then back to 12. It never runs while an update was just admitted by this
-// Panel or while the server is busy with a change (an update holds the host
-// lock), during a server setup run, while the Panel shuts down, or while the
-// owner has switched it off; it is skipped, not queued, when the Agent does
-// not answer.
+// manifest. It changes nothing on the host. It runs about two minutes after
+// the Panel starts, then every 12 hours with half an hour of jitter; after a
+// failure the next try is in 1 hour, then 3, then back to 12. It is skipped
+// (next try in an hour, never queued) while this Panel admitted an update in
+// the last hour, while the server reports a change in progress (an update
+// holds the host lock), while a server setup run is changing the server, when
+// the Agent does not answer, and while the owner has switched it off; it ends
+// with the process.
+//
+// It never writes while an update is admitted or running: a write to the
+// Panel's database while the updater's read-only preflight holds its pinned
+// copy makes that preflight stop. A skip is kept in memory only, and a result
+// is saved only after admission and readiness are read again right before
+// the write, under the Panel's own mutation lease; otherwise it is kept in
+// memory and saved on the next idle pass.
 //
 // Guncelleme kesfi: Panel imzali yeni surumu kendisi arar, buldugunu saklar
-// ve panel bunu sakin bicimde soyler. Guncellemeyi asla baslatmaz; yalniz
-// yonetici, panelin kendi guncelleme ekranindan baslatir. Zamanli kontrol
-// "Guncellemeleri denetle" dugmesinin yaptigi salt-okur okumanin aynisidir.
+// ve panel bunu sakin bicimde soyler. Guncellemeyi asla baslatmaz. Bir
+// guncelleme kabul edilmis ya da suruyorken veritabanina yazmaz: atlama
+// yalniz bellekte tutulur, sonuc bosta bir gecisde kaydedilir.
 
 const (
 	panelUpdateDiscoveryPath = "/api/v1/panel/update/discovery"
@@ -54,15 +61,15 @@ const (
 	// The bound of one check: the Agent's own bound of the release read (30 s,
 	// cmd/agent system_update_rpc.go) plus the identity reads before it.
 	panelUpdateDiscoveryTimeout = 40 * time.Second
-	// How long a start this Panel admitted counts as an active update: the
-	// update's restart bound (system_update_plan.go). The update's host lock
-	// covers the rest of it.
-	panelUpdateActiveWindow = panelUpdateRestartBoundSeconds * time.Second
+	// How long a start this Panel admitted counts as an update in progress
+	// for discovery: an hour covers a slow download before the updater's
+	// preflight; the update's host lock covers the updater itself, and a
+	// successful update restarts the Panel, which forgets it.
+	panelUpdateActiveWindow = time.Hour
 
 	panelUpdateOutcomeAvailable = "available"
 	panelUpdateOutcomeCurrent   = "current"
 	panelUpdateOutcomeFailed    = "failed"
-	panelUpdateOutcomeSkipped   = "skipped"
 )
 
 // The backoff after consecutive failed checks: 1 hour, then 3, then the
@@ -173,9 +180,9 @@ func (p *Panel) discoverPanelUpdate(ctx context.Context) (panelUpdateCheckRespon
 }
 
 // panelUpdateDiscoveryRecord is the last check's result, kept in
-// panel_settings. Target is the found release; after a failed or skipped
-// check the last found target is kept with the moment it was found, so a
-// passing outage does not hide an update that is still waiting.
+// panel_settings. Target is the found release; after a failed check the last
+// found target is kept with the moment it was found, so a passing outage does
+// not hide an update that is still waiting. A skipped check is never a record.
 type panelUpdateDiscoveryRecord struct {
 	CheckedAt  string             `json:"checked_at"`
 	Outcome    string             `json:"outcome"`
@@ -201,7 +208,7 @@ func validPanelUpdateDiscoveryRecord(record panelUpdateDiscoveryRecord) bool {
 		if record.Target != nil || record.ReasonCode != "" {
 			return false
 		}
-	case panelUpdateOutcomeFailed, panelUpdateOutcomeSkipped:
+	case panelUpdateOutcomeFailed:
 		if !panelUpdateDiscoveryReasons[record.ReasonCode] {
 			return false
 		}
@@ -219,8 +226,10 @@ func validPanelUpdateDiscoveryRecord(record panelUpdateDiscoveryRecord) bool {
 	return validPanelUpdateVersion(record.CurrentVersion) && panelUpdateCommitPattern.MatchString(record.CurrentCommit)
 }
 
-// relevantPanelUpdateDiscovery says whether a stored record still describes
-// this build: made by it, and any target newer than it.
+// relevantPanelUpdateDiscovery says whether a record still describes this
+// build: made by it, and any target not this build and not older than it. A
+// rebuild with the same version and another commit is the Agent's to call
+// available (its signed sequence decides), so equal versions are kept.
 func relevantPanelUpdateDiscovery(record panelUpdateDiscoveryRecord) bool {
 	if record.CurrentVersion != buildVersion || record.CurrentCommit != buildCommit {
 		return false
@@ -229,14 +238,14 @@ func relevantPanelUpdateDiscovery(record panelUpdateDiscoveryRecord) bool {
 		if record.Target.Commit == buildCommit {
 			return false
 		}
-		if order, ok := comparePanelUpdateVersions(record.Target.Version, buildVersion); !ok || order <= 0 {
+		if order, ok := comparePanelUpdateVersions(record.Target.Version, buildVersion); !ok || order < 0 {
 			return false
 		}
 	}
 	return true
 }
 
-func (p *Panel) loadPanelUpdateDiscovery(ctx context.Context) (panelUpdateDiscoveryRecord, bool) {
+func (p *Panel) storedPanelUpdateDiscovery(ctx context.Context) (panelUpdateDiscoveryRecord, bool) {
 	var record panelUpdateDiscoveryRecord
 	if p == nil || p.db == nil {
 		return record, false
@@ -249,14 +258,38 @@ func (p *Panel) loadPanelUpdateDiscovery(ctx context.Context) (panelUpdateDiscov
 	return record, true
 }
 
-// clearStalePanelUpdateDiscovery removes, at start, a record made by another
-// build or naming a release this build already is or is newer than (after
-// an update). A bookkeeping write only.
+// loadPanelUpdateDiscovery is the newest known result: one kept in memory
+// while the server was busy, else the stored one. The caller holds
+// updateDiscoveryMu or accepts a read that may be a moment old.
+func (p *Panel) loadPanelUpdateDiscovery(ctx context.Context) (panelUpdateDiscoveryRecord, bool) {
+	if p != nil && p.updateDiscoveryPending != nil && relevantPanelUpdateDiscovery(*p.updateDiscoveryPending) {
+		return *p.updateDiscoveryPending, true
+	}
+	return p.storedPanelUpdateDiscovery(ctx)
+}
+
+func (p *Panel) currentPanelUpdateDiscovery(ctx context.Context) (panelUpdateDiscoveryRecord, bool) {
+	if p == nil {
+		return panelUpdateDiscoveryRecord{}, false
+	}
+	p.updateDiscoveryMu.Lock()
+	defer p.updateDiscoveryMu.Unlock()
+	return p.loadPanelUpdateDiscovery(ctx)
+}
+
+// clearStalePanelUpdateDiscovery removes, at start and before management
+// opens, a record made by another build or naming a release this build
+// already is or is newer than (after an update). A bookkeeping write only.
 func (p *Panel) clearStalePanelUpdateDiscovery(ctx context.Context) {
-	if p == nil || p.db == nil || p.setting(ctx, panelUpdateDiscoveryKey) == "" {
+	if p == nil || p.db == nil {
 		return
 	}
-	if _, ok := p.loadPanelUpdateDiscovery(ctx); ok {
+	p.updateDiscoveryMu.Lock()
+	defer p.updateDiscoveryMu.Unlock()
+	if p.setting(ctx, panelUpdateDiscoveryKey) == "" {
+		return
+	}
+	if _, ok := p.storedPanelUpdateDiscovery(ctx); ok {
 		return
 	}
 	if _, err := p.db.GetDB().ExecContext(ctx, `DELETE FROM panel_settings WHERE key = ?`, panelUpdateDiscoveryKey); err != nil {
@@ -264,59 +297,134 @@ func (p *Panel) clearStalePanelUpdateDiscovery(ctx context.Context) {
 	}
 }
 
-// recordPanelUpdateDiscovery writes the result of one check, manual or
-// automatic. A failed or skipped check keeps the last found target.
-func (p *Panel) recordPanelUpdateDiscovery(ctx context.Context, now time.Time, automatic bool, response panelUpdateCheckResponse, failure *panelUpdateDiscoveryFailure, skipped string) panelUpdateDiscoveryRecord {
+// buildPanelUpdateDiscoveryRecord derives the record of one completed check
+// from the earlier one. Pure; nothing is written.
+func buildPanelUpdateDiscoveryRecord(previous *panelUpdateDiscoveryRecord, now time.Time, automatic bool, response panelUpdateCheckResponse, failure *panelUpdateDiscoveryFailure) (panelUpdateDiscoveryRecord, bool) {
 	record := panelUpdateDiscoveryRecord{
 		CheckedAt: now.UTC().Format(time.RFC3339), Automatic: automatic,
 		CurrentVersion: buildVersion, CurrentCommit: buildCommit,
 	}
-	if p == nil || p.db == nil {
-		return record
-	}
-	p.updateDiscoveryMu.Lock()
-	defer p.updateDiscoveryMu.Unlock()
-	previous, havePrevious := p.loadPanelUpdateDiscovery(ctx)
 	switch {
-	case skipped != "":
-		record.Outcome, record.ReasonCode = panelUpdateOutcomeSkipped, skipped
 	case failure != nil:
 		record.Outcome, record.ReasonCode = panelUpdateOutcomeFailed, failure.reason
+		if previous != nil && previous.Target != nil {
+			target := *previous.Target
+			record.Target, record.FoundAt = &target, previous.FoundAt
+		}
 	case response.Available && response.Target != nil:
 		target := *response.Target
 		record.Outcome, record.Target, record.FoundAt = panelUpdateOutcomeAvailable, &target, record.CheckedAt
 		// The same release found again keeps the moment it was first found.
-		if havePrevious && previous.Target != nil && samePanelUpdateTarget(*previous.Target, target) {
+		if previous != nil && previous.Target != nil && samePanelUpdateTarget(*previous.Target, target) {
 			record.FoundAt = previous.FoundAt
 		}
 	default:
 		record.Outcome = panelUpdateOutcomeCurrent
 	}
-	if record.Outcome == panelUpdateOutcomeFailed || record.Outcome == panelUpdateOutcomeSkipped {
-		if havePrevious && previous.Target != nil {
-			target := *previous.Target
-			record.Target, record.FoundAt = &target, previous.FoundAt
-		}
-	}
 	if !validPanelUpdateDiscoveryRecord(record) || !relevantPanelUpdateDiscovery(record) {
-		// A target that is not newer than this build is not an update.
+		// A target that is this build or older is not an update.
 		if record.Outcome == panelUpdateOutcomeAvailable {
 			record.Outcome, record.Target, record.FoundAt = panelUpdateOutcomeCurrent, nil, ""
 		} else {
 			record.Target, record.FoundAt = nil, ""
 		}
-		if !validPanelUpdateDiscoveryRecord(record) {
-			return record
-		}
 	}
+	return record, validPanelUpdateDiscoveryRecord(record)
+}
+
+// writablePanelUpdateDiscovery holds the Panel's mutation lease and reads
+// again, right before a write, that no update was admitted and that the
+// server reports no change in progress; it returns the release of the lease,
+// or nil when the write must wait. The lease is taken with TryLock for the
+// length of one advisory Agent read (as the readiness endpoint does): a start
+// request arriving then is answered "busy" and can be pressed again.
+func (p *Panel) writablePanelUpdateDiscovery(ctx context.Context, now time.Time) func() {
+	if p == nil || p.db == nil || p.agentClient == nil || p.panelUpdateRecentlyAdmitted(now) {
+		return nil
+	}
+	if !p.serviceMutationMu.TryLock() {
+		return nil
+	}
+	release := p.serviceMutationMu.Unlock
+	if p.panelUpdateRecentlyAdmitted(now) {
+		release()
+		return nil
+	}
+	operation, err := p.activeServiceOperation(ctx)
+	if err != nil || operation != nil {
+		release()
+		return nil
+	}
+	var readiness transport.HostMutationReadinessResponse
+	if err := p.callAgentContext(ctx, "Agent.ServiceMutationReadiness", &transport.Empty{}, &readiness); err != nil {
+		release()
+		return nil
+	}
+	readiness = verifiedAgentMutationReadiness(readiness)
+	if !readiness.Ready && readiness.Reason != transport.HostMutationReasonPackageManager {
+		release()
+		return nil
+	}
+	return release
+}
+
+// savePanelUpdateDiscovery keeps the result of one completed check, manual
+// or automatic: written when the server is idle, otherwise kept in memory
+// until the next idle pass. It returns the record and whether it was written.
+func (p *Panel) savePanelUpdateDiscovery(ctx context.Context, now time.Time, automatic bool, response panelUpdateCheckResponse, failure *panelUpdateDiscoveryFailure) (panelUpdateDiscoveryRecord, bool) {
+	if p == nil || p.db == nil {
+		record, _ := buildPanelUpdateDiscoveryRecord(nil, now, automatic, response, failure)
+		return record, false
+	}
+	p.updateDiscoveryMu.Lock()
+	defer p.updateDiscoveryMu.Unlock()
+	var previous *panelUpdateDiscoveryRecord
+	if earlier, ok := p.loadPanelUpdateDiscovery(ctx); ok {
+		previous = &earlier
+	}
+	record, ok := buildPanelUpdateDiscoveryRecord(previous, now, automatic, response, failure)
+	if !ok {
+		return record, false
+	}
+	p.updateDiscoveryPending = &record
+	return record, p.flushPanelUpdateDiscoveryLocked(ctx, now)
+}
+
+// flushPanelUpdateDiscovery writes a result kept in memory, when the server
+// is idle now. The caller of the Locked form holds updateDiscoveryMu.
+func (p *Panel) flushPanelUpdateDiscovery(ctx context.Context, now time.Time) bool {
+	if p == nil || p.db == nil {
+		return false
+	}
+	p.updateDiscoveryMu.Lock()
+	defer p.updateDiscoveryMu.Unlock()
+	return p.flushPanelUpdateDiscoveryLocked(ctx, now)
+}
+
+func (p *Panel) flushPanelUpdateDiscoveryLocked(ctx context.Context, now time.Time) bool {
+	if p.updateDiscoveryPending == nil {
+		return false
+	}
+	record := *p.updateDiscoveryPending
+	if !relevantPanelUpdateDiscovery(record) {
+		p.updateDiscoveryPending = nil
+		return false
+	}
+	release := p.writablePanelUpdateDiscovery(ctx, now)
+	if release == nil {
+		return false
+	}
+	defer release()
 	raw, err := json.Marshal(record)
 	if err == nil {
 		err = p.setSetting(ctx, panelUpdateDiscoveryKey, string(raw))
 	}
 	if err != nil {
 		log.Printf("[panel-update] update check result not recorded: %v", err)
+		return false
 	}
-	return record
+	p.updateDiscoveryPending = nil
+	return true
 }
 
 func (p *Panel) panelUpdateAutoCheck(ctx context.Context) bool {
@@ -337,7 +445,8 @@ func (p *Panel) panelUpdateRecentlyAdmitted(now time.Time) bool {
 }
 
 // panelUpdateDiscoverySkipReason names why a scheduled check must not run
-// now, or "" when it may. Reads only.
+// now, or "" when it may. Reads only; its readiness read takes the Panel's
+// mutation lease with TryLock for a moment, as the readiness endpoint does.
 func (p *Panel) panelUpdateDiscoverySkipReason(ctx context.Context, now time.Time) string {
 	if p.panelUpdateRecentlyAdmitted(now) {
 		return panelUpdateReasonUpdateActive
@@ -346,11 +455,13 @@ func (p *Panel) panelUpdateDiscoverySkipReason(ctx context.Context, now time.Tim
 		return panelUpdateReasonAgentUnavailable
 	}
 	if p.db != nil {
-		active, err := p.serverSetupExecutionActive(ctx)
+		// Only a setup run that is changing the server holds discovery; one
+		// waiting for a DNS record does not (serverSetupExecutionMutating).
+		mutating, err := p.serverSetupExecutionMutating(ctx)
 		if err != nil {
 			return panelUpdateReasonStateUnverified
 		}
-		if active {
+		if mutating {
 			return panelUpdateReasonSetupRunning
 		}
 	}
@@ -370,6 +481,12 @@ func (p *Panel) panelUpdateDiscoverySkipReason(ctx context.Context, now time.Tim
 	}
 }
 
+// panelUpdateDiscoverySkip is the last skipped scheduled check, kept in memory.
+type panelUpdateDiscoverySkip struct {
+	at     time.Time
+	reason string
+}
+
 // panelUpdateDiscoveryScheduler runs the scheduled check. Its clock, jitter,
 // timer and dependencies are fields so tests drive it without waiting.
 type panelUpdateDiscoveryScheduler struct {
@@ -379,15 +496,18 @@ type panelUpdateDiscoveryScheduler struct {
 	enabled  func(context.Context) bool
 	skip     func(context.Context, time.Time) string
 	discover func(context.Context) (panelUpdateCheckResponse, *panelUpdateDiscoveryFailure)
-	record   func(context.Context, time.Time, panelUpdateCheckResponse, *panelUpdateDiscoveryFailure, string)
+	save     func(context.Context, time.Time, panelUpdateCheckResponse, *panelUpdateDiscoveryFailure)
+	flush    func(context.Context, time.Time)
 	logf     func(string, ...any)
 
 	wake chan struct{}
 
-	mu       sync.Mutex
-	next     time.Time // zero while switched off or not scheduled
-	failures int
-	logged   string
+	mu        sync.Mutex
+	next      time.Time // zero while switched off or not scheduled
+	failures  int
+	logged    string
+	lastCheck time.Time // the last completed check, manual or automatic
+	lastSkip  panelUpdateDiscoverySkip
 }
 
 func newPanelUpdateDiscoveryScheduler(p *Panel) *panelUpdateDiscoveryScheduler {
@@ -410,11 +530,12 @@ func newPanelUpdateDiscoveryScheduler(p *Panel) *panelUpdateDiscoveryScheduler {
 		enabled:  p.panelUpdateAutoCheck,
 		skip:     p.panelUpdateDiscoverySkipReason,
 		discover: p.discoverPanelUpdate,
-		record: func(ctx context.Context, now time.Time, response panelUpdateCheckResponse, failure *panelUpdateDiscoveryFailure, skipped string) {
-			p.recordPanelUpdateDiscovery(ctx, now, true, response, failure, skipped)
+		save: func(ctx context.Context, now time.Time, response panelUpdateCheckResponse, failure *panelUpdateDiscoveryFailure) {
+			p.savePanelUpdateDiscovery(ctx, now, true, response, failure)
 		},
-		logf: log.Printf,
-		wake: make(chan struct{}, 1),
+		flush: func(ctx context.Context, now time.Time) { p.flushPanelUpdateDiscovery(ctx, now) },
+		logf:  log.Printf,
+		wake:  make(chan struct{}, 1),
 	}
 }
 
@@ -434,6 +555,20 @@ func (s *panelUpdateDiscoveryScheduler) failureDelay(failures int) time.Duration
 	return s.periodDelay()
 }
 
+// resumeDelay is the wait when the switch is turned on: the period from the
+// last completed check when that is still ahead, otherwise the first delay.
+func (s *panelUpdateDiscoveryScheduler) resumeDelay() time.Duration {
+	s.mu.Lock()
+	last := s.lastCheck
+	s.mu.Unlock()
+	if !last.IsZero() {
+		if remaining := last.Add(s.periodDelay()).Sub(s.now()); remaining > 0 {
+			return remaining
+		}
+	}
+	return s.firstDelay()
+}
+
 // Next is when the next scheduled check runs; zero while switched off.
 func (s *panelUpdateDiscoveryScheduler) Next() time.Time {
 	if s == nil {
@@ -442,6 +577,34 @@ func (s *panelUpdateDiscoveryScheduler) Next() time.Time {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.next
+}
+
+// LastSkip is the last skipped scheduled check, if the last attempt was one.
+func (s *panelUpdateDiscoveryScheduler) LastSkip() (time.Time, string) {
+	if s == nil {
+		return time.Time{}, ""
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.lastSkip.at, s.lastSkip.reason
+}
+
+// NoteChecked records a completed check (the button's too): it is the base
+// of the next period when the switch is turned on, and it ends a skip.
+func (s *panelUpdateDiscoveryScheduler) NoteChecked(at time.Time) {
+	if s == nil {
+		return
+	}
+	s.mu.Lock()
+	s.lastCheck = at
+	s.lastSkip = panelUpdateDiscoverySkip{}
+	s.mu.Unlock()
+}
+
+func (s *panelUpdateDiscoveryScheduler) noteSkip(at time.Time, reason string) {
+	s.mu.Lock()
+	s.lastSkip = panelUpdateDiscoverySkip{at: at, reason: reason}
+	s.mu.Unlock()
 }
 
 func (s *panelUpdateDiscoveryScheduler) setNext(next time.Time) {
@@ -472,7 +635,8 @@ func (s *panelUpdateDiscoveryScheduler) logState(state, format string, args ...a
 	}
 }
 
-// runOnce runs one due check and returns the wait before the next one.
+// runOnce runs one due check and returns the wait before the next one. A
+// skip is kept in memory only; it never writes.
 func (s *panelUpdateDiscoveryScheduler) runOnce(ctx context.Context) time.Duration {
 	if !s.enabled(ctx) {
 		return s.periodDelay()
@@ -482,28 +646,33 @@ func (s *panelUpdateDiscoveryScheduler) runOnce(ctx context.Context) time.Durati
 		if ctx.Err() != nil {
 			return s.periodDelay()
 		}
-		s.record(ctx, now, panelUpdateCheckResponse{}, nil, reason)
+		s.noteSkip(now, reason)
 		s.logState("skipped:"+reason, "[panel-update] automatic update check skipped (%s); next try in 1 hour", reason)
 		return panelUpdateDiscoverySkipDelay
 	}
+	// The server is idle: a result kept in memory while it was busy is
+	// written now, before this check.
+	s.flush(ctx, now)
 	checkCtx, cancel := context.WithTimeout(ctx, panelUpdateDiscoveryTimeout)
 	response, failure := s.discover(checkCtx)
 	cancel()
 	if ctx.Err() != nil {
-		// Shutting down: nothing is recorded for an interrupted check.
+		// Shutting down: nothing is kept for an interrupted check.
 		return s.periodDelay()
 	}
 	if failure != nil && failure.reason == panelUpdateReasonAgentUnavailable {
-		s.record(ctx, now, panelUpdateCheckResponse{}, nil, panelUpdateReasonAgentUnavailable)
+		s.noteSkip(now, panelUpdateReasonAgentUnavailable)
 		s.logState("skipped:"+panelUpdateReasonAgentUnavailable, "[panel-update] automatic update check skipped: the Agent did not answer; next try in 1 hour")
 		return panelUpdateDiscoverySkipDelay
 	}
+	s.NoteChecked(now)
 	if failure != nil {
 		s.mu.Lock()
 		s.failures++
 		failures := s.failures
 		s.mu.Unlock()
-		s.record(ctx, now, panelUpdateCheckResponse{}, failure, "")
+		// save reads admission and readiness again right before the write.
+		s.save(ctx, s.now(), panelUpdateCheckResponse{}, failure)
 		delay := s.failureDelay(failures)
 		s.logState("failed:"+failure.reason, "[panel-update] automatic update check failed (%s): %v; next try in %s", failure.reason, failure.err, delay.Round(time.Minute))
 		return delay
@@ -511,7 +680,7 @@ func (s *panelUpdateDiscoveryScheduler) runOnce(ctx context.Context) time.Durati
 	s.mu.Lock()
 	s.failures = 0
 	s.mu.Unlock()
-	s.record(ctx, now, response, nil, "")
+	s.save(ctx, s.now(), response, nil)
 	if response.Available && response.Target != nil {
 		s.logState("available:"+response.Target.Version, "[panel-update] a newer signed release is available: %s (nothing is installed by itself)", response.Target.Version)
 	} else {
@@ -536,7 +705,7 @@ func (s *panelUpdateDiscoveryScheduler) loop(ctx context.Context) {
 			case <-ctx.Done():
 				return
 			case <-s.wake:
-				delay = s.firstDelay()
+				delay = s.resumeDelay()
 				continue
 			}
 		}
@@ -553,7 +722,7 @@ func (s *panelUpdateDiscoveryScheduler) loop(ctx context.Context) {
 			if remaining := next.Sub(s.now()); remaining > 0 {
 				delay = remaining
 			} else {
-				delay = s.firstDelay()
+				delay = s.resumeDelay()
 			}
 		case <-fired:
 			delay = s.runOnce(ctx)
@@ -561,15 +730,23 @@ func (s *panelUpdateDiscoveryScheduler) loop(ctx context.Context) {
 	}
 }
 
-// startPanelUpdateDiscovery clears a stale record and starts the loop.
-func (p *Panel) startPanelUpdateDiscovery(ctx context.Context) {
+// preparePanelUpdateDiscovery clears a stale record and creates the
+// scheduler. It runs before management opens, so no request reads the
+// scheduler while it is assigned.
+func (p *Panel) preparePanelUpdateDiscovery(ctx context.Context) {
 	p.clearStalePanelUpdateDiscovery(ctx)
-	scheduler := newPanelUpdateDiscoveryScheduler(p)
-	p.updateDiscovery = scheduler
-	go scheduler.loop(ctx)
+	p.updateDiscovery = newPanelUpdateDiscoveryScheduler(p)
 }
 
-// panelUpdateDiscoveryResponse is the stored result, read without any Agent
+// startPanelUpdateDiscovery starts the prepared loop.
+func (p *Panel) startPanelUpdateDiscovery(ctx context.Context) {
+	if p.updateDiscovery == nil {
+		p.preparePanelUpdateDiscovery(ctx)
+	}
+	go p.updateDiscovery.loop(ctx)
+}
+
+// panelUpdateDiscoveryResponse is the known result, read without any Agent
 // call. Ages and the wait to the next check are measured on the server's
 // clock when the answer is written, so the browser never compares two clocks
 // (D-032).
@@ -585,6 +762,14 @@ type panelUpdateDiscoveryResponse struct {
 	Available              bool                        `json:"available"`
 	PreviousAttempt        *recoveryobs.Attempt        `json:"previous_attempt,omitempty"`
 	ExpectedRestartSeconds int                         `json:"expected_restart_seconds"`
+	// The last scheduled attempt, when it was skipped after the result above
+	// (memory only; never stored).
+	LastSkip *panelUpdateDiscoverySkipView `json:"last_skip,omitempty"`
+}
+
+type panelUpdateDiscoverySkipView struct {
+	ReasonCode string `json:"reason_code"`
+	AgeSeconds int64  `json:"age_seconds"`
 }
 
 func panelUpdateAgeSeconds(now time.Time, value string) *int64 {
@@ -615,13 +800,24 @@ func (p *Panel) panelUpdateDiscoveryView(ctx context.Context, now time.Time) pan
 			response.NextCheckInSeconds = &wait
 		}
 	}
-	if record, ok := p.loadPanelUpdateDiscovery(ctx); ok {
+	record, ok := p.currentPanelUpdateDiscovery(ctx)
+	if ok {
 		response.Last = &record
 		response.CheckedAgeSeconds = panelUpdateAgeSeconds(now, record.CheckedAt)
 		if record.Target != nil {
 			response.Available = true
 			response.FoundAgeSeconds = panelUpdateAgeSeconds(now, record.FoundAt)
 			response.PreviousAttempt = p.previousPanelUpdateAttempt(record.Target.Commit)
+		}
+	}
+	if at, reason := p.updateDiscovery.LastSkip(); reason != "" {
+		checked, err := time.Parse(time.RFC3339, record.CheckedAt)
+		if !ok || err != nil || at.After(checked) {
+			age := int64(now.Sub(at) / time.Second)
+			if age < 0 {
+				age = 0
+			}
+			response.LastSkip = &panelUpdateDiscoverySkipView{ReasonCode: reason, AgeSeconds: age}
 		}
 	}
 	return response
@@ -631,7 +827,7 @@ type panelUpdateDiscoverySettingRequest struct {
 	AutoCheck *bool `json:"auto_check"`
 }
 
-// handlePanelUpdateDiscovery answers GET with the stored result (no Agent
+// handlePanelUpdateDiscovery answers GET with the known result (no Agent
 // call, no network read) and PUT with the owner's switch.
 func (p *Panel) handlePanelUpdateDiscovery(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
