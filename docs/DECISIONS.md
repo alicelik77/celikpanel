@@ -109,6 +109,136 @@ no licence-policy change, and no WordPress or site-application bundle. Installed
 panels are still updated only by their owner from the panel's own update
 screen.
 
+### Amendment 2026-10-17 (alpha.95): the same list on every server, with the state on each item
+
+*Owner decision of 2026-10-17 after looking at Components and the Dashboard on Boston and Frankfurt (alpha.94): "ok. sorunları tekrar değerlendir ve düzelt" ("ok, evaluate the problems again and fix them"); in source for the v0.1.0-alpha.95 candidate; nothing measured on an installed server*
+
+What the owner saw. On Boston the MariaDB bundle was not drawn at all although it
+could be installed, and the Dashboard still counted it ("5 more bundles can be
+installed") while it did not count the phpPgAdmin add-on that was visible. Core
+Mail was an item on Boston and absent on Frankfurt. Two servers showed two
+different lists, and the number on the Dashboard did not match the list below it.
+The cause was rule 2 above: "installed line plus at most one more offer" hid
+sibling bundles. That rule is **withdrawn**. It was the release preparer's
+mistake, not an owner requirement.
+
+The rule that replaces it:
+
+1. **One list.** Every Components category shows the same ready bundles in the
+   same registry order on every server. Only the state on each chip changes. The
+   strip is a left-aligned, wrapping row of chips, not an installed line plus an
+   offer. Add-ons always appear.
+2. **State in words and in form, never by colour alone.** Installed and verified
+   is a check mark and the name (accessible name "…, installed and verified");
+   "Core Mail · included" when a verified mail bundle contains it and the contained
+   bundle is itself installed and verified with no failed or running attempt of its
+   own (otherwise it reads "not verified" with its reason); a grey dot and
+   "not verified"; an outlined "Name · Install" (add-ons: "· Add"); mail with an
+   attempt "n of m installed · Continue"; blocked is muted text with a short reason
+   ("phpMyAdmin · needs MariaDB") on a quiet button: pressing it, by keyboard or
+   touch, says the full reason on a line under the chips (the tooltip stays but is
+   no longer the only way); a running bundle is "2/3 · installing PHP-FPM" with a
+   moving indicator and the other chips disabled. A stale scan is one muted line.
+3. **One counting rule.** The Dashboard card and the chips count the same way:
+   every registry entry, add-ons included; "can be installed" means available or
+   partial (blocked is excluded); "included" counts as installed and verified.
+   The card is one summary line ("7 installed and verified · 1 can be installed"),
+   then only the problem lines (a failed or running mail attempt with its reason,
+   a bundle installed but not verified; a bundle that is both is one line, with the
+   reason), then "Open in Components". A bundle whose own last attempt failed or
+   runs is never counted as installed and verified. The never-checked, checking,
+   held, could-not-check and not-recent sentences are kept.
+4. **The installed chip holds Repair and Verify.** Pressing an installed chip
+   opens a dialogue: Repair for a mail bundle (the profile install; it completes
+   what is missing and verifies the setup, nothing installed is removed), Verify
+   for a component bundle (it reads the components again and changes nothing).
+   The strip carries no Repair links and no hint sentence. Roundcube's "Repair
+   webmail" stays on the component row only when the server reports a webmail
+   problem; otherwise repair lives in the Webmail chip's dialogue.
+5. **Three review items of alpha.94 are closed.** The gate between a bundle's
+   steps reads the state-unverified flag through a reference set at the moment it
+   changes, before and after the readiness read. Verify of a component bundle is
+   held, with its reason, while a component operation runs (a locked tracker, an
+   active bundle sequence, or the host reporting `panel_operation_active` or
+   `agent_mutation_active`); it stays usable when changes are held for other
+   reasons, because it only reads (`host_lock_busy` and `package_manager_active`
+   among them: the rescan endpoint refuses only for a running server setup, an
+   active service operation or an active Agent mutation). The chip says "Checking the server before
+   installing X…" until the install request is accepted, and "installing X" only
+   afterwards.
+
+No schema change (44), no Agent change, no new Agent job kind. The rest of D-034
+(shortcuts over catalogue components, one sequence at a time, Continue only on the
+owner's action, no continuation after a reload) stands.
+
+**Versions: no new Agent RPC in this release.** The owner's screens showed a
+version column of dashes. Investigation: the Panel fills `Versions` of a managed
+service only from runtime instances (`Agent.ListServiceInstances`, so only PHP-FPM
+and Node.js). `Agent.GetServices` returns a binary-probe `Version` per systemd
+unit (`internal/services/version_detector.go`) that the Panel ignores. It is not a
+package version, it is unreliable for several units (Apache, `named` and
+PostgreSQL run the unit name as a binary) and it does not cover tools without a
+unit (Certbot). Real package versions would need a new Agent RPC or extended
+`dpkg`/`pacman` queries, which this release does not add. Decision: the desktop
+version column is removed; a version is shown as small monospaced text under the
+description only where it is known; the browser mock no longer invents versions.
+**Open roadmap item:** read installed package versions for every component.
+
+**Stop icon.** The stop button was an empty square, which read as a checkbox. It is
+Lucide `StopCircle` (a stop sign in a circle) on the Components rows, the component
+page and the hosting type panel, and restart, stop, start, repair and delete share
+one outlined icon button. The visuals are in DESIGN.md, "Ready bundle chips, row
+actions and versions (alpha.95)".
+
+Owner-requested cleanups of the same review, no new rule: sidebar counts
+(Components, Domains) are plain muted numbers, not filled pills (a count nobody took
+is still a dash, never 0); the Dashboard's "nothing needs your attention" sentence
+is plain language and still requires every read answered and a fresh components
+scan; the Dashboard's Domains count adds the standalone infrastructure DNS zones
+the Domains page lists (the alpha.91 owner decision of 2026-10-16); the Dashboard
+tile, the sidebar Domains badge and the Domains page now agree, because the tile
+and the badge use one helper (`domainsCount`, `web/src/lib/infrastructureZones.ts`):
+domains plus the DNS-only infrastructure zones the Domains page lists (a zone that
+became a website counts once, as that website); a number only when both reads
+answered; the loading mark while either is read; unknown, never "domains + 0",
+when one could not be read (an earlier number is kept only when both reads had
+one); non-administrators, who have no zone read, count domains alone.
+
+**Independent review of the candidate (2026-10-17).** An independent review found
+ten problems; they are fixed in the candidate, and this
+amendment was corrected to match. (1) Roundcube leftovers: the Components row shows
+the muted note and the neutral "Clean up leftovers…" button only when the Panel's
+own record shows an unfinished Roundcube install or removal (the newest Roundcube
+install or removal entry in the Panel's audit log is a failed install or a partial
+or failed removal, sent as the additive payload field `webmail_cleanup`) or when
+the webmail profile's last attempt failed; a later clean install or removal ends
+the offer, and without a record the row says nothing. Roundcube's own component
+page always has a "Clean up leftovers…" link that opens the same confirmation
+(`/services?cleanup=roundcube`). The confirmation is unchanged. Known gap that
+remains: the Panel still cannot see whether files are left on disk (no Agent
+read); it relies on its own record. (2) The installed bundle dialogue describes the
+bundle ("PostgreSQL for your sites' databases.") instead of "Installs …". (3) Under
+the chips: only attempts that failed or run, and typed warnings on chips that are
+not verified or only partly installed; never the "some parts are already present"
+note. (4) "included" only for a contained bundle that is itself installed and
+verified with no failed or running attempt of its own; otherwise "not verified"
+with its reason, and the Dashboard does not count it. (5) One Domains count for
+tile and badge (above). (6) A bundle that is not verified and has a failed or
+running attempt is one Dashboard line. (7) A blocked chip is a quiet button that
+shows the full reason under the chips. (8) Verify stays usable on
+`host_lock_busy` and `package_manager_active` (above). (9) Wording: "2/3 ·
+installing PHP-FPM"; "n of m installed" (Turkish "2/3 bileşen kurulu"). (10) A mail
+chip that says "Install" (Spam-Protected Mail beside an installed Webmail, which
+the Panel calls partial only because the parts are shared) opens the mail
+dialogue in its install form, not "continue". No schema change (44), no Agent
+change, no native record: the new payload field is additive JSON read from the
+existing audit log.
+
+What this does not authorise: no installed-server change and no licence-policy
+change. Installed panels are still updated only by their owner from the panel's own
+update screen.
+
+
 ---
 
 ## D-033 · A screen that makes the owner wait shows that it waits, or says that nothing needs to be done

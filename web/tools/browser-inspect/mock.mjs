@@ -131,6 +131,9 @@ async function api(req, res, path, query) {
     // --- batch 19 (17 Oct 2026): the ready bundles; answers only while `state.b19` is set ---
     if (await (await import('./mock-batch19.mjs')).batch19(req, res, path, query, { state, send, coded, readBody })) return;
     // --- end of batch 19 ---
+    // --- batch 20 (17 Oct 2026): the one ready-bundle list; answers only while `state.b20` is set ---
+    if (await (await import('./mock-batch20.mjs')).batch20(req, res, path, query, { state, send, coded, readBody })) return;
+    // --- end of batch 20 ---
     // --- batch 5 (10 Oct 2026): the request identity, service actions, VPN ---
     // Before the routes below, because it answers some of the same addresses
     // through the guard's contract; it answers only while `state.b5` is set.

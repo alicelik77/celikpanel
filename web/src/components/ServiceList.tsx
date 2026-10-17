@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Settings, Play, Square, RotateCw, RefreshCw, ScanSearch, DownloadCloud, ChevronDown, ChevronRight, Trash2, ShieldCheck, ShieldOff, Layers, Globe, Database, Mail, Network, Shield, Zap, FolderUp, Activity, Boxes, Clock } from 'lucide-react';
+import { Settings, Play, StopCircle, RotateCw, RefreshCw, ScanSearch, DownloadCloud, ChevronDown, ChevronRight, Trash2, ShieldCheck, ShieldOff, Layers, Globe, Database, Mail, Network, Shield, Zap, FolderUp, Activity, Boxes, Clock } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
@@ -30,7 +30,7 @@ import { decodeServerSetup, setupEditorKey, type ServerSetupSnapshot } from '../
 import { publishComponentCensus } from '../lib/componentCensus';
 import { componentDescription, componentName } from '../lib/componentName';
 import { mailProfileName, webmailReportsProblem } from '../lib/mailProfileText';
-import { decodeReadyBundles, bundleName, type ReadyBundle } from '../lib/readyBundles';
+import { decodeReadyBundles, bundleChipState, bundleName, type ReadyBundle } from '../lib/readyBundles';
 import { componentIcon } from '../lib/componentIcons';
 import { BundleInstallDialog, ReadyBundleStrip, useBundleSequence } from './ReadyBundleStrip';
 import { WebmailRepairButton } from './WebmailRepairButton';
@@ -110,7 +110,14 @@ interface ManagedServicesSnapshot {
     dnsIdentityReady: boolean;
     mailHostname: MailHostnameIdentity;
     mailDNSGuidance: MailDNSGuidance | null;
+    // The Panel's record of a Roundcube install or removal that did not
+    // finish (alpha.95, additive); null when there is none or from an older
+    // Panel. Only then does the row offer the leftovers cleanup.
+    // Bitmeyen Roundcube kurulumu ya da kaldırması kaydı; yoksa null.
+    webmailCleanup: WebmailCleanupRecord | null;
 }
+type WebmailCleanupRecord = 'install_failed' | 'removal_incomplete';
+const decodeWebmailCleanup = (value: unknown): WebmailCleanupRecord | null => (value === 'install_failed' || value === 'removal_incomplete' ? value : null);
 // Where the mail record is created when this server is the secondary DNS
 // server (cmd/panel mailProfileDNSGuidance, additive 2026-10-16). Every value
 // is re-checked; anything unexpected drops only the guidance, never the page.
@@ -263,6 +270,7 @@ function parseManagedServicesSnapshot(value: unknown): ManagedServicesSnapshot |
         dnsIdentityReady: payload.dns_identity_ready,
         mailHostname,
         mailDNSGuidance: payload.dns_identity_ready ? null : decodeMailDNSGuidance(payload.mail_dns_guidance),
+        webmailCleanup: decodeWebmailCleanup(payload.webmail_cleanup),
     };
 }
 
@@ -457,7 +465,13 @@ export function ServiceList({ onManageService }: ServiceListProps) {
     const [profiles, setProfiles] = useState<ManagedMailProfile[]>([]);
     const [bundles, setBundles] = useState<ReadyBundle[]>([]);
     const [bundleTarget, setBundleTarget] = useState<ReadyBundle | null>(null);
+    const [webmailCleanup, setWebmailCleanup] = useState<WebmailCleanupRecord | null>(null);
     const [profileRepair, setProfileRepair] = useState(false);
+    // A mail bundle whose chip says Install opens the dialogue in its install
+    // form, even when the Panel calls the profile partial only because an
+    // installed bundle shares its parts (alpha.95 review).
+    // Kur diyen posta çipi pencereyi kurulum biçiminde açar.
+    const [profileFreshInstall, setProfileFreshInstall] = useState(false);
     const webmailProblem = webmailReportsProblem(profiles);
     const [scannedAt, setScannedAt] = useState<string | null>(null);
     // Counts the scans this page has received. The firewall banner reads its
@@ -509,8 +523,14 @@ export function ServiceList({ onManageService }: ServiceListProps) {
     const [verification, setVerification] = useState<ServiceVerificationState>(readServiceVerificationState);
     const latestScannedAtRef = useRef<string | null>(null);
     const stateUnverified = verification.unverified;
+    // The same flag, set the moment it changes rather than on the next
+    // render: a gate read between two bundle steps sees a flag set a moment
+    // ago (alpha.94 review item 1).
+    // Aynı bayrak, bir sonraki çizimde değil değiştiği anda kurulur.
+    const stateUnverifiedRef = useRef(verification.unverified);
 
     const markStateUnverified = (cause: UnverifiedCause = unverifiedByAction) => {
+        stateUnverifiedRef.current = true;
         setVerification((previous) => {
             const next: ServiceVerificationState = {
                 unverified: true,
@@ -524,6 +544,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
 
     const clearStateUnverified = () => {
         const next: ServiceVerificationState = { unverified: false, baselineScannedAt: null, cause: unverifiedByAction };
+        stateUnverifiedRef.current = false;
         persistServiceVerificationState(next);
         setVerification(next);
     };
@@ -558,6 +579,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
         setServices(snapshot.services);
         setProfiles(snapshot.profiles);
         setBundles(snapshot.bundles);
+        setWebmailCleanup(snapshot.webmailCleanup);
         setScannedAt(snapshot.scannedAt);
         setDNSIdentityReady(snapshot.dnsIdentityReady);
         setMailHostname(snapshot.mailHostname);
@@ -945,6 +967,25 @@ export function ServiceList({ onManageService }: ServiceListProps) {
         setRetryCleanup(true);
         setCleanupAttempt(null);
     };
+    // When the row offers the leftovers cleanup: the Panel recorded a
+    // Roundcube install or removal that did not finish, or the webmail
+    // profile's last attempt failed. Otherwise the cleanup is reached from
+    // Roundcube's own page, which opens this page with ?cleanup=roundcube.
+    // Satır temizliği yalnız kayıt varken sunar; yoksa Roundcube'un kendi
+    // sayfası bu sayfayı ?cleanup=roundcube ile açar.
+    const webmailAttemptFailed = profiles.some((profile) => profile.id === 'webmail' && profile.latest_attempt_status === 'failed');
+    const webmailCleanupOffered = webmailCleanup !== null || webmailAttemptFailed;
+    const webmailCleanupNote: 'removal' | 'install' = webmailCleanup === 'removal_incomplete' ? 'removal' : 'install';
+    const cleanupLinkRef = useRef(false);
+    useEffect(() => {
+        if (cleanupLinkRef.current || loading || !new URLSearchParams(location.search).has('cleanup')) return;
+        if (new URLSearchParams(location.search).get('cleanup') !== 'roundcube') return;
+        const roundcube = services.find((service) => service.id === 'roundcube');
+        if (!roundcube || roundcube.is_installed !== false) return;
+        cleanupLinkRef.current = true;
+        openWebmailCleanupDialog(roundcube);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [loading, location.search, services]);
     const closeUninstallDialog = () => {
         setUninstallTarget(null);
         setUninstallError(null);
@@ -1268,9 +1309,14 @@ export function ServiceList({ onManageService }: ServiceListProps) {
     // page state, or a host that is not ready for changes (read afresh, not
     // the last poll), stops the sequence with Continue.
     // Her adımdan önce sayfanın değişiklik kapısı yeniden okunur.
+    // The gate runs inside the effect of the step that just ended, with the
+    // closure of an earlier render: it reads the flag through the ref, which
+    // is set synchronously, and again after the readiness read.
+    // Kapı bayrağı ref üzerinden okur; ref eşzamanlı kurulur.
     const bundleGate = async (): Promise<string | null> => {
-        if (stateUnverified) return t('services.stateUnverifiedHint');
+        if (stateUnverifiedRef.current) return t('services.stateUnverifiedHint');
         if (!(await loadHostMutationReadiness())) return t('services.bundles.gatedReadiness');
+        if (stateUnverifiedRef.current) return t('services.stateUnverifiedHint');
         return null;
     };
     const installedNow = () => new Set(services.filter((service) => service.is_installed === true).map((service) => service.id));
@@ -1296,6 +1342,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
         const profile = profiles.find((candidate) => candidate.id === bundle.profile_id);
         if (!profile) return;
         setProfileRepair(bundle.action === 'repair');
+        setProfileFreshInstall(bundle.action !== 'repair' && bundleChipState(bundle, bundles) === 'available');
         openProfilePlan(profile);
     };
     const openComponentBundle = (bundle: ReadyBundle) => {
@@ -1305,6 +1352,20 @@ export function ServiceList({ onManageService }: ServiceListProps) {
         }
         setBundleTarget(bundle);
     };
+    // Verify of a component bundle is a rescan. It only reads, so it stays
+    // usable while the host holds changes for another reason; but while a
+    // component operation runs (this page's, a bundle's, or one the server
+    // reports active) a rescan is refused as busy, so it is not offered and
+    // says why (alpha.94 review item 2).
+    // Bileşen paketinin Doğrula'sı yeniden taramadır; bir bileşen işlemi
+    // sürerken sunulmaz ve nedenini söyler.
+    const hostOperationActive = hostMutationReadiness?.ready === false
+        && (hostMutationReadiness.reason === 'panel_operation_active' || hostMutationReadiness.reason === 'agent_mutation_active');
+    const bundleVerifyHeld = componentOperation.locked || hostOperationActive || (bundleSequence.run !== null && bundleSequence.run.phase !== 'stopped')
+        ? t('services.bundles.verifyBusy')
+        : scanning
+            ? t('services.bundles.verifyScanning')
+            : null;
     const confirmComponentBundle = () => {
         const bundle = bundleTarget;
         setBundleTarget(null);
@@ -1348,7 +1409,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
     ) : !dnsIdentityReady && bundles.some((bundle) => bundle.category === 'email' && bundle.status !== 'unknown') ? (
         <p role='status' className='flex min-w-0 basis-full flex-wrap items-baseline gap-x-2 text-sm text-fg' data-mail-dns-required=''>
             <span>{t('services.mailProfiles.dnsRequiredShort')}</span>
-            <span className='text-fg-subtle' aria-hidden='true'>·</span>
+            <span className='text-fg-subtle max-sm:hidden' aria-hidden='true'>·</span>
             <button type='button' onClick={() => navigate('/settings?section=dns')} className='font-semibold text-primary underline decoration-1 underline-offset-[3px] hover:decoration-2 max-sm:min-h-11'>
                 {t('services.mailProfiles.configureDNS')}
             </button>
@@ -1427,7 +1488,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                 <button
                     onClick={scan}
                     disabled={pageControlsBusy}
-                    className="inline-flex items-center gap-2 rounded-lg border border-border-strong bg-surface px-3 py-1.5 text-sm font-medium text-fg transition-colors hover:bg-surface-2 disabled:opacity-50"
+                    className="inline-flex items-center gap-2 rounded-lg border border-border-strong bg-surface px-3 py-1.5 text-sm font-medium text-fg transition-colors hover:bg-surface-2 disabled:opacity-50 max-sm:min-h-11"
                 >
                     <RefreshCw className={`h-4 w-4 ${scanning ? 'animate-spin' : ''}`} />
                     {scanning ? t('services.scanning') : scannedAt ? t('services.rescan') : t('services.scanNow')}
@@ -1490,7 +1551,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                             <div className="inline-flex overflow-hidden rounded-lg border border-border-strong">
                                 <button
                                     onClick={() => setView(true)}
-                                    className={`whitespace-nowrap px-3 py-1.5 text-xs font-medium transition-colors ${
+                                    className={`whitespace-nowrap px-3 py-1.5 text-xs font-medium transition-colors max-sm:min-h-11 ${
                                         hideNotInstalled ? 'bg-primary text-primary-fg' : 'bg-surface text-fg-muted hover:bg-surface-2'
                                     }`}
                                 >
@@ -1498,7 +1559,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                 </button>
                                 <button
                                     onClick={() => setView(false)}
-                                    className={`whitespace-nowrap border-l border-border-strong px-3 py-1.5 text-xs font-medium transition-colors ${
+                                    className={`whitespace-nowrap border-l border-border-strong px-3 py-1.5 text-xs font-medium transition-colors max-sm:min-h-11 ${
                                         hideNotInstalled ? 'bg-surface text-fg-muted hover:bg-surface-2' : 'bg-primary text-primary-fg'
                                     }`}
                                 >
@@ -1506,10 +1567,10 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                 </button>
                             </div>
                             <div className="flex gap-1 text-xs">
-                                <button onClick={expandAll} className="whitespace-nowrap rounded-md px-2 py-1 text-fg-muted hover:bg-surface-2 hover:text-fg">
+                                <button onClick={expandAll} className="whitespace-nowrap rounded-md px-2 py-1 max-sm:min-h-11 text-fg-muted hover:bg-surface-2 hover:text-fg">
                                     {t('services.expandAll')}
                                 </button>
-                                <button onClick={collapseAll} className="whitespace-nowrap rounded-md px-2 py-1 text-fg-muted hover:bg-surface-2 hover:text-fg">
+                                <button onClick={collapseAll} className="whitespace-nowrap rounded-md px-2 py-1 max-sm:min-h-11 text-fg-muted hover:bg-surface-2 hover:text-fg">
                                     {t('services.collapseAll')}
                                 </button>
                             </div>
@@ -1707,8 +1768,8 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                         profiles={profiles}
                                         run={bundleSequence.run}
                                         disabled={mutationControlsDisabled || componentOperation.locked || (cat === 'email' && !dnsIdentityReady)}
-                                        readDisabled={scanning}
                                         scanning={scanning}
+                                        verifyHeld={bundleVerifyHeld}
                                         notice={cat === 'email' ? mailNotice : undefined}
                                         onMail={openMailBundle}
                                         onComponents={openComponentBundle}
@@ -1720,7 +1781,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                         {group.map((s) => {
                                             const running = isRunning(s);
                                             return (
-                                                <li key={s.id} className="relative flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border px-4 py-3.5 last:border-0 hover:bg-surface-2/40 md:grid md:grid-cols-[minmax(0,1fr)_7rem_8rem_17rem]">
+                                                <li key={s.id} className="relative flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border px-4 py-3.5 last:border-0 hover:bg-surface-2/40 md:grid md:grid-cols-[minmax(0,1fr)_8rem_17rem]">
                                                     {/* Selective dimming, not block opacity: the name stays
                                                         readable in the light theme; state is carried by the
                                                         muted tone + status text + Install button.
@@ -1763,34 +1824,35 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                                 {componentName(s, t)}
                                                             </Link>
                                                             <div className="text-pretty text-xs text-fg-subtle">{componentDescription(s, t)}</div>
-                                                            {/* On a phone the version column is not drawn; the
-                                                                version is said here instead of hidden.
-                                                                Telefonda sürüm burada söylenir, gizlenmez. */}
+                                                            {/* What "Clean up leftovers" is about, said on the
+                                                                row only when the Panel's own record shows a
+                                                                Roundcube install or removal that did not finish
+                                                                (or a failed webmail attempt). The scan cannot tell
+                                                                whether files are left, so the line says "may";
+                                                                without a record the row says nothing and the
+                                                                cleanup stays on the component's page (alpha.95
+                                                                review).
+                                                                Yalnız Panel'in kaydı bitmeyen bir kurulum ya da
+                                                                kaldırma gösterdiğinde; kayıt yoksa satır susar. */}
+                                                            {s.id === 'roundcube' && s.is_installed === false && webmailCleanupOffered && (
+                                                                <div className="text-pretty text-xs text-fg-muted" data-webmail-leftovers={webmailCleanupNote}>
+                                                                    {t(webmailCleanupNote === 'removal' ? 'services.cleanupWebmailRowNote.removal' : 'services.cleanupWebmailRowNote.install')}
+                                                                </div>
+                                                            )}
+                                                            {/* The version is said under the description, only
+                                                                where the scan knows it. The scan reads the
+                                                                versions of the multi-version runtimes alone
+                                                                (PHP-FPM, Node.js); a column of dashes for every
+                                                                other component said nothing (owner's screens,
+                                                                2026-10-17), so the desktop column is gone until
+                                                                the installed package versions are read (open
+                                                                roadmap item).
+                                                                Sürüm, yalnız tarama bildiğinde açıklamanın altında
+                                                                söylenir; masaüstü sütunu kaldırıldı. */}
                                                             {s.is_installed && s.versions.length > 0 && (
-                                                                <div className="font-mono text-xs text-fg-subtle sm:hidden" data-row-version="">{s.versions.join(', ')}</div>
+                                                                <div className="font-mono text-xs text-fg-subtle" data-row-version="">{s.versions.join(', ')}</div>
                                                             )}
                                                         </div>
-                                                    </div>
-                                                    <div className="hidden w-28 shrink-0 sm:block md:w-auto">
-                                                        {!s.is_installed ? (
-                                                            <span className="font-mono text-sm text-fg-muted">—</span>
-                                                        ) : s.versions.length > 1 ? (
-                                                            <div className="flex flex-wrap gap-1">
-                                                                {s.versions.map((v) => (
-                                                                    <span key={v} className="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-xs text-fg-muted">{v}</span>
-                                                                ))}
-                                                            </div>
-                                                        ) : (
-                                                            /* Empty means "version unknown" and renders as an
-                                                               honest dash. The "default" sentinel that used to
-                                                               stand here is dead (B3b).
-                                                               Boş, "sürüm bilinmiyor" demektir ve dürüst bir
-                                                               tireyle çizilir. Eskiden burada duran "default"
-                                                               sentinel'i öldü (B3b). */
-                                                            <span className="font-mono text-sm text-fg-muted">
-                                                                {s.versions[0] ?? '—'}
-                                                            </span>
-                                                        )}
                                                     </div>
                                                     <div className="w-32 shrink-0 md:w-auto">
                                                         {/* "Not checked yet" is information the operator
@@ -1874,7 +1936,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                                 title={t('services.conflictHint', { name: s.conflict_with })}
                                                                 className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface-2 px-3 py-1.5 text-xs font-medium text-fg-subtle"
                                                             >
-                                                                {t('services.conflictWith', { name: s.conflict_with })}
+                                                                <span><KeepWords text={t('services.conflictWith', { name: s.conflict_with })} /></span>
                                                             </span>
                                                         ) : s.not_offered_kind === 'integration' && s.id === 'vsftpd' ? (
                                                             <button
@@ -1910,7 +1972,10 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                                 title={t('services.requiresHint', { names: reqNames(s.requires_missing) })}
                                                                 className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface-2 px-3 py-1.5 text-xs font-medium text-fg-subtle"
                                                             >
-                                                                {t('services.requiresLabel', { names: reqNames(s.requires_missing) })}
+                                                                {/* A name such as PHP-FPM never breaks at its
+                                                                    hyphen (owner's screens, 2026-10-17).
+                                                                    PHP-FPM gibi bir ad kısa çizgisinden bölünmez. */}
+                                                                <span><KeepWords text={t('services.requiresLabel', { names: reqNames(s.requires_missing) })} /></span>
                                                             </span>
                                                         ) : (
                                                         <button
@@ -1929,16 +1994,22 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                         </button>
                                                         )
                                                     }
-                                                    {s.id === 'roundcube' && (
+                                                    {/* A neutral secondary button (alpha.95): the red
+                                                        stays on the confirmation, which lists what is
+                                                        removed.
+                                                        Nötr ikincil düğme; kırmızı, neyin silineceğini
+                                                        sayan onaydadır. */}
+                                                    {s.id === 'roundcube' && webmailCleanupOffered && (
                                                     <button
                                                         type={'button'}
                                                         onClick={() => openWebmailCleanupDialog(s)}
                                                         disabled={mutationControlsDisabled || busy === s.id}
                                                         title={t('services.cleanupWebmailHint')}
-                                                        className={'inline-flex items-center gap-1.5 rounded-lg border border-danger/30 bg-danger/5 px-2.5 py-1.5 text-xs font-semibold text-danger transition-colors hover:bg-danger/10 disabled:opacity-50'}
+                                                        className={rowButtonClass}
+                                                        data-webmail-cleanup=""
                                                     >
-                                                        <Trash2 className={'h-3.5 w-3.5'} />
-                                                        {t('services.cleanupWebmail')}
+                                                        <Trash2 className={'h-3.5 w-3.5'} aria-hidden="true" />
+                                                        {t('services.cleanupWebmailRow')}
                                                     </button>
                                                     )}
                                                     </>
@@ -1986,7 +2057,12 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                         disabled={busy === s.id}
                                                         tone="danger"
                                                     >
-                                                        <Square className="h-4 w-4" aria-hidden="true" />
+                                                        {/* A stop sign in a circle: the empty square of
+                                                            alpha.94 read as a checkbox on the owner's
+                                                            screens (2026-10-17).
+                                                            Daire içinde dur işareti; boş kare onay kutusu
+                                                            gibi okunuyordu. */}
+                                                        <StopCircle className="h-4 w-4" aria-hidden="true" />
                                                     </ActionIcon>
                                                     </>
                                                     ) : s.not_offered ? (
@@ -2020,7 +2096,12 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                         server reports a webmail problem (2026-10-16).
                                                         Roundcube onarımı olağan bir eylemdir; yalnız sunucu webmail
                                                         sorunu bildirdiğinde sarı çizilir. */}
-                                                    {s.kind === 'tool' && s.id === 'roundcube' && (
+                                                    {/* Only when the server reports a webmail problem;
+                                                        otherwise webmail repair lives in the Webmail
+                                                        bundle's dialogue (alpha.95).
+                                                        Yalnız sunucu webmail sorunu bildirdiğinde;
+                                                        yoksa onarım Web postası paketinin penceresindedir. */}
+                                                    {s.kind === 'tool' && s.id === 'roundcube' && webmailProblem && (
                                                     <WebmailRepairButton
                                                         problem={webmailProblem}
                                                         onClick={() => requestComponentAction({ kind: 'repair', service: s })}
@@ -2066,20 +2147,19 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                         gelir (B3d) — "3 site kullanıyor" diye reddedemeyen
                                                         silme sunulmaz. */}
                                                     {!isTarballRuntime(s) && (
-                                                    <button
-                                                        onClick={() => openUninstallDialog(s)}
+                                                    <ActionIcon
                                                         title={t('services.uninstall')}
-                                                        className="inline-flex items-center gap-1.5 rounded-lg border border-border-strong bg-surface p-1.5 text-xs font-medium text-fg-muted transition-colors hover:bg-danger/10 hover:text-danger focus-visible:text-danger disabled:cursor-not-allowed disabled:border-dashed disabled:hover:bg-transparent max-sm:min-h-11 max-sm:px-3"
+                                                        onClick={() => openUninstallDialog(s)}
+                                                        tone="danger"
                                                     >
-                                                        <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                                                        <span className="sm:sr-only">{t('services.uninstall')}</span>
-                                                    </button>
+                                                        <Trash2 className="h-4 w-4" aria-hidden="true" />
+                                                    </ActionIcon>
                                                     )}
                                                     </>
                                                     )}
                                                     </fieldset>
                                                     {s.kind === 'runtime' && openDrawers.has(s.id) && (
-                                                        <div className="basis-full md:col-span-4">
+                                                        <div className="basis-full md:col-span-3">
                                                         <VersionDrawer
                                                             service={s}
                                                             busy={busy}
@@ -2133,6 +2213,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                         services={services}
                         mailHostname={mailHostname}
                         repair={profileRepair}
+                        freshInstall={profileFreshInstall}
                         onCancel={() => setProfileTarget(null)}
                         onConfirm={(chosen) => void installProfile(chosen)}
                         throughSetup={mailThroughSetup ? addProfileThroughSetup : undefined}
@@ -2204,7 +2285,7 @@ function ComponentActionConfirmationDialog({
     const icon = actionName === 'start'
         ? Play
         : actionName === 'stop'
-            ? Square
+            ? StopCircle
             : actionName === 'install'
                 ? DownloadCloud
                 : RotateCw;
@@ -2247,6 +2328,7 @@ function MailProfileInstallDialog({
     services,
     mailHostname,
     repair = false,
+    freshInstall = false,
     onCancel,
     onConfirm,
     throughSetup,
@@ -2258,6 +2340,8 @@ function MailProfileInstallDialog({
     onConfirm: (mailHostname: string) => void;
     /** Opened from a bundle's Repair: the repair form, whatever the state. */
     repair?: boolean;
+    /** Opened from a bundle chip that says Install: the install form. */
+    freshInstall?: boolean;
     // Present on a server whose guided setup has finished: the profile is
     // added to an extension of that setup and reviewed there (2026-10-16).
     throughSetup?: (mailHostname: string) => Promise<TranslationKey | null>;
@@ -2314,7 +2398,7 @@ function MailProfileInstallDialog({
     const components = profile.services
         .map((id) => services.find((service) => service.id === id))
         .filter((service): service is ManagedService => Boolean(service));
-    const mode = repair ? 'repair' : profile.status === 'available'
+    const mode = repair ? 'repair' : freshInstall || profile.status === 'available'
         ? 'install'
         : profile.status === 'partial'
             ? 'continue'
@@ -2872,6 +2956,10 @@ function ActionIcon({
     // target is 44 px tall.
     // Dururken nötr; ton yalnız işaretçi ya da klavye odağında. Telefonda ad
     // yazılır ve hedef 44 piksel yüksekliğindedir.
+    // Restart, Stop, Repair, Start and Delete share this one shape (alpha.95,
+    // owner's screens: restart and stop were borderless beside a bordered
+    // delete): the same size, the same outline, neutral at rest.
+    // Yeniden başlat, Durdur, Onar, Başlat ve Sil aynı biçimi paylaşır.
     const toneCls = {
         success: 'hover:bg-success/10 hover:text-success focus-visible:text-success',
         danger: 'hover:bg-danger/10 hover:text-danger focus-visible:text-danger',
@@ -2884,7 +2972,7 @@ function ActionIcon({
             aria-label={title}
             onClick={onClick}
             disabled={disabled}
-            className={`inline-flex items-center gap-1.5 rounded-md p-1.5 text-xs font-medium text-fg-muted transition-colors disabled:cursor-not-allowed disabled:text-fg-subtle disabled:hover:bg-transparent max-sm:min-h-11 max-sm:border max-sm:border-border-strong max-sm:px-3 ${toneCls}`}
+            className={`inline-flex items-center gap-1.5 rounded-lg border border-border-strong bg-surface p-1.5 text-xs font-medium text-fg-muted transition-colors disabled:cursor-not-allowed disabled:border-dashed disabled:bg-transparent disabled:text-fg-subtle disabled:hover:bg-transparent max-sm:min-h-11 max-sm:px-3 ${toneCls}`}
         >
             {children}
             <span className="sm:sr-only">{title}</span>
@@ -3168,7 +3256,7 @@ function VersionDrawer({
                                                     disabled={instBusy}
                                                     tone="danger"
                                                 >
-                                                    <Square className="h-4 w-4" aria-hidden="true" />
+                                                    <StopCircle className="h-4 w-4" aria-hidden="true" />
                                                 </ActionIcon>
                                             </>
                                         ) : (
@@ -3413,6 +3501,18 @@ function RepositoryActionConfirmationDialog({
     );
 }
 
+// What the webmail cleanup removes, as the Agent names it: the Roundcube tree
+// (webmailBaseDir), the copies an interrupted install or removal leaves beside
+// it (roundcubeStageName / roundcubeRetirementName), the Nginx entry
+// (webmailConfPath) and the inactive webmail socket (WebmailSocketPath).
+// Web postası temizliğinin sildikleri, Agent'ın adlandırdığı gibi.
+const WEBMAIL_CLEANUP_PATHS: { paths: string[]; key: Parameters<ReturnType<typeof useI18n>['t']>[0] }[] = [
+    { paths: ['/var/lib/celikpanel-webmail'], key: 'services.cleanupWebmailPath.tree' },
+    { paths: ['/var/lib/.celikpanel-webmail.stage', '/var/lib/.celikpanel-webmail.retired*', '/var/lib/..celikpanel-webmail.stage.retired*'], key: 'services.cleanupWebmailPath.copies' },
+    { paths: ['/etc/nginx/conf.d/celikpanel-webmail.conf'], key: 'services.cleanupWebmailPath.nginx' },
+    { paths: ['/run/celikpanel-webmail.sock'], key: 'services.cleanupWebmailPath.socket' },
+];
+
 // Themed uninstall confirmation — a destructive action, so it states plainly
 // what will be purged and that dependent sites/mail may break. Removing a
 // service is how the operator shrinks the attack surface back down.
@@ -3467,9 +3567,27 @@ function UninstallServiceDialog({
             }
         >
                 <div className="mb-4 rounded-lg border border-danger/30 bg-danger/5 p-3 text-sm text-fg-muted">
-                    <p className={retryCleanup ? '' : 'mb-2'}>
+                    <p className="mb-2">
                         {t(retryCleanup ? 'services.cleanupWebmailWarn' : 'services.uninstallWarn')}
                     </p>
+                    {/* The concrete list the cleanup removes, as the Agent
+                        names them (cmd/agent/webmail_rpc.go,
+                        webmail_files_linux.go; a test keeps them equal), and
+                        what it never touches.
+                        Temizliğin sildiği somut liste ve asla dokunmadığı şeyler. */}
+                    {retryCleanup && (
+                        <>
+                            <ul className="mb-2 space-y-1.5" data-webmail-cleanup-list="">
+                                {WEBMAIL_CLEANUP_PATHS.map(({ paths, key }) => (
+                                    <li key={key} className="flex flex-col gap-0.5">
+                                        {paths.map((path) => <span key={path} className="break-all font-mono text-xs text-fg">{path}</span>)}
+                                        <span className="text-xs">{t(key)}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                            <p data-webmail-cleanup-untouched=""><KeepWords text={t('services.cleanupWebmailUntouched')} /></p>
+                        </>
+                    )}
                     {!retryCleanup && (
                         <div className="flex flex-wrap gap-1.5">
                             {(service.packages && service.packages.length > 0 ? service.packages : [service.id]).map((pkg) => (

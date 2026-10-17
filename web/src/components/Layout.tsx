@@ -8,6 +8,7 @@ import { useI18n } from '../i18n';
 import { navItemsForRole, navGroups, type NavAccessContext, type NavItem } from '../nav';
 import { publishComponentCensus, useComponentCensus } from '../lib/componentCensus';
 import { decodeList, lastKnown, useRemote } from '../lib/remote';
+import { INFRASTRUCTURE_ZONES_URL, decodeInfrastructureZones, domainsCount } from '../lib/infrastructureZones';
 import { ThemeSwitcher } from './ThemeSwitcher';
 import { SkinSwitcher } from './SkinSwitcher';
 import { LanguageSwitcher } from './LanguageSwitcher';
@@ -90,7 +91,15 @@ export function Layout({ children, currentPage = '', onPageChange, mode = 'panel
     // sunucunun verdiği yanıt için sayıdır. Okunurken ve okunamadığında rozet
     // yoktur; başarısız yenileme önceki sayıyı korur.
     const domainList = useRemote(setupMode ? null : '/api/v1/domains', decodeList<unknown>);
-    const domainCount = setupMode ? undefined : lastKnown(domainList.remote)?.value.length;
+    // The badge counts what the Domains page lists: the domains and, for an
+    // administrator, the DNS-only infrastructure zone beside them, read from
+    // the same address the Domains page and the Dashboard read (alpha.95
+    // review). A number only when both answered; a failed refresh keeps the
+    // earlier count only when both had one.
+    // Rozet Alan adları sayfasının listelediğini sayar: alan adları ve
+    // yöneticide yalnız-DNS altyapı bölgesi. İki okuma da yanıtladığında sayıdır.
+    const zoneList = useRemote(setupMode || role !== 'admin' ? null : INFRASTRUCTURE_ZONES_URL, decodeInfrastructureZones);
+    const domainCount = setupMode ? undefined : lastKnown(domainsCount(domainList.remote, role === 'admin' ? zoneList.remote : null))?.value;
     const [panelRuntime, setPanelRuntime] = useState<PanelRuntime | null>(null);
     const [mobileOpen, setMobileOpen] = useState(false);
     const [desktopPageHeaderTarget, setDesktopPageHeaderTarget] = useState<HTMLDivElement | null>(null);
@@ -369,28 +378,29 @@ function SidebarItem({
                 Sahip olunmayan bir sayının dürüst rozeti tiredir — Bileşenler
                 sayfasının, hakkında hiçbir şey bilinmeyen grup için kullandığı
                 işaretin aynısı. */}
+            {/* A count is a plain muted number, not a filled pill: on the
+                owner's screens the pill read as a notification count
+                (alpha.95, 2026-10-17). Null is still not zero.
+                Sayı dolu hap değil, sade soluk bir sayıdır; null yine sıfır değildir. */}
             {count === null ? (
                 <span
                     title={t('services.notChecked')}
-                    className={`rounded-full px-1.5 py-0.5 text-xs font-semibold ${
-                        active ? 'bg-white/20 text-white' : 'bg-sidebar-hover text-sidebar-muted'
-                    }`}
+                    className={`text-xs font-medium ${navCountTone(active)}`}
+                    data-nav-count="unknown"
                 >
                     <span aria-hidden="true">—</span>
                     <span className="sr-only">{t('services.notChecked')}</span>
                 </span>
             ) : count !== undefined && count > 0 ? (
-                <span
-                    className={`rounded-full px-1.5 py-0.5 text-xs font-semibold tabular-nums ${
-                        active ? 'bg-white/20 text-white' : 'bg-sidebar-hover text-sidebar-muted'
-                    }`}
-                >
+                <span className={`text-xs font-medium tabular-nums ${navCountTone(active)}`} data-nav-count="">
                     {count}
                 </span>
             ) : null}
         </button>
     );
 }
+
+const navCountTone = (active: boolean) => (active ? 'text-white/80' : 'text-sidebar-muted');
 
 function ServerIdentityLabel({ identity, placement }: {
     identity: ServerIdentity;

@@ -94,11 +94,13 @@ test('Repair webmail is an ordinary action unless webmail reports a problem', ()
 // Dashboard's Ready bundles card lists an installed bundle as "verified" or
 // "not verified", and the Components strip says "installed and verified".
 test('the Ready bundles card says verified mail in plain words', () => {
-  assert.equal(catalogues.en['services.bundles.verified'], '{name} installed and verified');
-  assert.equal(catalogues.tr['services.bundles.verified'], '{name} kurulu ve doğrulandı');
-  assert.equal(catalogues.tr['services.bundles.unverified'], '{name}: kurulu, doğrulanmadı');
+  // alpha.95: the strip's chip and the installed dialogue carry the words;
+  // the Dashboard card counts them.
+  assert.equal(catalogues.en['services.bundles.installed.verified'], '{name} is installed and verified.');
+  assert.equal(catalogues.tr['services.bundles.installed.verified'], '{name} kurulu ve doğrulandı.');
+  assert.equal(catalogues.tr['services.bundles.chip.notVerified'], 'doğrulanmadı');
   for (const locale of ['en', 'tr']) {
-    for (const key of ['services.bundles.verified', 'services.bundles.unverified', 'dashboard.bundles.verified', 'dashboard.bundles.unverified']) {
+    for (const key of ['services.bundles.installed.verified', 'services.bundles.installed.unverified', 'services.bundles.chip.verifiedLabel', 'dashboard.bundles.summary', 'dashboard.bundles.unverifiedLine']) {
       assert.doesNotMatch(catalogues[locale][key], /scan|reconcil|tarama|uzlaştır/i);
     }
   }

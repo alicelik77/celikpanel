@@ -186,7 +186,9 @@ test('partial webmail uninstall keeps an idempotent cleanup retry reachable', ()
 
 test('not-installed Roundcube keeps a fail-closed cleanup path across reloads', () => {
   const notInstalledStart = serviceList.indexOf('{!s.is_installed ? (');
-  const cleanupStart = serviceList.indexOf(`{s.id === 'roundcube' && (`, notInstalledStart);
+  // alpha.95 review: offered on the row only with the Panel's record of an
+  // unfinished install or removal; always reachable from Roundcube's page.
+  const cleanupStart = serviceList.indexOf(`{s.id === 'roundcube' && webmailCleanupOffered && (`, notInstalledStart);
   const installedStart = serviceList.indexOf('\n                                                    ) : (\n                                                    <>', cleanupStart);
   const cleanupAction = serviceList.slice(cleanupStart, serviceList.indexOf('</button>', cleanupStart));
 
@@ -195,7 +197,10 @@ test('not-installed Roundcube keeps a fail-closed cleanup path across reloads', 
   assert.ok(installedStart > cleanupStart, 'cleanup must live in the not-installed branch');
   assert.match(cleanupAction, /openWebmailCleanupDialog\(s\)/);
   assert.match(cleanupAction, /disabled=\{mutationControlsDisabled \|\| busy === s\.id\}/);
-  assert.match(cleanupAction, /t\('services\.cleanupWebmail'\)/);
+  assert.match(cleanupAction, /t\('services\.cleanupWebmailRow'\)/);
+  // A neutral secondary button; the red stays on the confirmation (alpha.95).
+  assert.match(cleanupAction, /className=\{rowButtonClass\}/);
+  assert.doesNotMatch(cleanupAction, /text-danger|bg-danger/);
   assert.doesNotMatch(cleanupAction, /repair_available|not_offered|requires_missing|conflict_with|startInstall|setInstallTarget/);
 
   const helperStart = serviceList.indexOf('const openWebmailCleanupDialog');

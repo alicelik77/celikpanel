@@ -157,7 +157,9 @@ func webSource(t *testing.T, parts ...string) string {
 // bundles. The intent stays: the server names each bundle's components and
 // its one action, the page decodes a closed set of states and actions, a mail
 // bundle opens the profile's own install dialogue and starts the kind-bound
-// operation, and nothing hard-codes which components a bundle has.
+// operation, and nothing hard-codes which components a bundle has. alpha.95:
+// the strip is a fixed chip list; Verify of a component bundle lives in the
+// installed bundle's dialogue.
 func TestReadyBundleStripUsesServerMembershipAndClosedActions(t *testing.T) {
 	decoder := webSource(t, `lib`, `readyBundles.ts`)
 	for _, required := range []string{
@@ -174,8 +176,9 @@ func TestReadyBundleStripUsesServerMembershipAndClosedActions(t *testing.T) {
 	}
 	strip := webSource(t, `components`, `ReadyBundleStrip.tsx`)
 	for _, required := range []string{
-		`else if (bundle.action_route === 'mail_profile') onMail(bundle);`,
-		`bundle.action === 'verify' && bundle.action_route === 'components'`,
+		`if (bundle.action_route === 'mail_profile') onMail(bundle);`,
+		`else onComponents(bundle);`,
+		`onVerify={() => { if (verifyHeld !== null) return; setDetails(null); onVerify(open.bundle); }}`,
 		// One step at a time, only for this step's own operation.
 		`if (operation.service_id !== step || operation.kind !== 'service_install') stop(run, 'foreign');`,
 		`if (tracker.locked) return;`,

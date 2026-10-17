@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { ArrowLeft, Play, Square, RotateCw, Download, ScanSearch, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, Play, StopCircle, RotateCw, Download, ScanSearch, type LucideIcon } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import { useAuth } from '../auth/AuthContext';
@@ -12,6 +12,7 @@ import { decodeManagedServicesSnapshot, useComponentOperation } from './Componen
 import { publishComponentCensus } from '../lib/componentCensus';
 import { runStoredRecordCheck } from '../lib/managedServices';
 import { startVisibleReads } from '../lib/visibleReads';
+import { useNavigate } from '../router';
 
 interface ManagedService {
     id: string;
@@ -139,6 +140,7 @@ export function ServiceShell({
     children: ReactNode;
 }) {
     const { t } = useI18n();
+    const navigate = useNavigate();
     const { role } = useAuth();
     const { startInstall, locked: installLocked, checking: installChecking, catalogSnapshot } = useComponentOperation();
     const [svc, setSvc] = useState<ManagedService | null>(null);
@@ -473,7 +475,7 @@ export function ServiceShell({
                     {installed && unit && (
                         <>
                             <CtrlButton icon={Play} label={t('services.start')} tone="success" solid disabled={busy || stale || rereading || running} onClick={() => act('start')} />
-                            <CtrlButton icon={Square} label={t('services.stop')} tone="danger" solid disabled={busy || stale || rereading || !running} onClick={() => act('stop')} />
+                            <CtrlButton icon={StopCircle} label={t('services.stop')} tone="danger" solid disabled={busy || stale || rereading || !running} onClick={() => act('stop')} />
                             <CtrlButton icon={RotateCw} label={t('services.restart')} tone="warning" disabled={busy || stale || rereading} onClick={() => act('restart')} />
                         </>
                     )}
@@ -532,13 +534,32 @@ export function ServiceShell({
                     hint={t('svc.notInstalledHint', { name })}
                     action={
                         role === 'admin' ? (
-                            <CtrlButton
-                                icon={Download}
-                                label={installChecking ? t('svc.installChecking') : installLocked ? t('svc.installing') : t('svc.install', { name })}
-                                tone="success"
-                                disabled={installLocked}
-                                onClick={requestInstall}
-                            />
+                            <div className="flex flex-col items-center gap-2">
+                                <CtrlButton
+                                    icon={Download}
+                                    label={installChecking ? t('svc.installChecking') : installLocked ? t('svc.installing') : t('svc.install', { name })}
+                                    tone="success"
+                                    disabled={installLocked}
+                                    onClick={requestInstall}
+                                />
+                                {/* Roundcube's leftovers cleanup is always reachable
+                                    here; the Components row offers it only when the
+                                    Panel recorded an unfinished install or removal
+                                    (alpha.95). It opens the one cleanup dialogue on
+                                    the Components page.
+                                    Roundcube kalıntı temizliği burada her zaman
+                                    ulaşılabilir; tek temizlik penceresini açar. */}
+                                {serviceId === 'roundcube' && (
+                                    <button
+                                        type="button"
+                                        onClick={() => navigate('/services?cleanup=roundcube')}
+                                        className="text-sm font-semibold text-primary underline decoration-1 underline-offset-[3px] hover:decoration-2 max-sm:min-h-11"
+                                        data-webmail-cleanup-link=""
+                                    >
+                                        {t('services.cleanupWebmailRow')}
+                                    </button>
+                                )}
+                            </div>
                         ) : undefined
                     }
                 />

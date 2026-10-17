@@ -467,3 +467,37 @@ Each record adds the text of every strip, raw codes (`rawTokens`), English on
 the Turkish page (`englishLeaks`), the filled buttons in `<main>`, the leaf
 text drawn in Amber Ink, phone targets under 44 px and sideways scrolling. The
 screenshots are the inspection; these scenarios do not fail on a finding.
+
+## Scenarios of the twentieth batch (one bundle list on every server, 2026-10-17)
+
+`scenarios-batch20.mjs`, with a small server answered by `mock-batch20.mjs`
+while `state.b20` is set. It is the batch-19 mock made honest for alpha.95:
+managed services carry `versions` only for the runtimes (PHP-FPM, Node.js);
+every other component has `versions: []`, as the real scan reports. The bundles
+are derived as `cmd/panel/bundles.go` and `cmd/panel/mail_profiles.go` derive
+them: a mail bundle is installed once all its parts are ready, partial only when
+a mail component is present (Nginx or PHP-FPM alone leave it available, with the
+partly-present note), an add-on whose database is missing is `blocked` with
+`component_requires` (phpMyAdmin needs MariaDB, phpPgAdmin needs PostgreSQL),
+and a component bundle's missing components skip the installed ones. An install
+the page asks for is a mock operation that runs for 1.5 s and then succeeds; a
+component listed in `hold` keeps running. Nothing is installed anywhere. Run it
+with `desktop` and `phone`, Turkish and English, both themes; each state is also
+copied to `BROWSER_INSPECT_SHOTS` as `<state>-<lang>-<theme>-<width>.png`.
+
+| Name | States |
+| --- | --- |
+| `y20boston` | Components on a Boston-like PowerDNS secondary (Nginx, Node.js, PostgreSQL, Fail2ban, certbot, firewall engine, cron installed; no PHP-FPM, MariaDB or mail): Email Install x3, Databases "PostgreSQL verified, MariaDB Install, phpPgAdmin Add, phpMyAdmin needs MariaDB", Web "Nginx + PHP-FPM Install", the Roundcube row without a leftovers offer, since Boston has no record of an unfinished Roundcube install or removal (`components-boston`, the whole page); the cleanup dialogue opened as Roundcube's own page opens it, `/services?cleanup=roundcube` (`components-boston-leftovers`); the PostgreSQL installed dialogue with Verify (`components-boston-installed-dialog`) |
+| `y20bostondns` | the same server with its DNS identity not ready: the email strip says the DNS line once (`components-boston-dns`) |
+| `y20frankfurt` | everything installed and verified: Core Mail included, Webmail and Spam-Protected Mail verified, both databases with their admin tool, Nginx + PHP-FPM, firewall active (`components-frankfurt`); the Webmail chip's dialogue with Repair (`components-frankfurt-webmail-dialog`) |
+| `y20running` | phpPgAdmin added on the Boston mock: the install plan (`components-bundle-plan`), then step 2 of 2 while every other chip is disabled (`components-bundle-running`; the operation dialogue stands over the strip) |
+| `y20dashboard-boston` | the Dashboard: Ready bundles card "1 installed and verified, 6 can be installed", the attention-none sentence (`dashboard-boston`) |
+| `y20dashboard-frankfurt` | the Dashboard: "8 installed and verified"; `/api/v1/domains` is empty and `/api/v1/dns/infrastructure-zones` answers one zone, so the Domains tile shows 1 (`dashboard-frankfurt`) |
+
+Each record adds the text and chip state of every strip (`strips`, `chipStates`),
+chips drawn past the right edge (`chipsOutside`), product names broken across
+two lines (`brokenWords`), the versions shown under rows (`rowVersions`), raw
+codes, English on the Turkish page, the filled buttons in `<main>`, leaf text in
+Amber Ink and in the failure colour, phone targets under 44 px, sideways
+scrolling, and on the Dashboard the card text and the Domains tile. The
+screenshots are the inspection; these scenarios do not fail on a finding.

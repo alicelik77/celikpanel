@@ -111,6 +111,138 @@ Bunun izin vermediği şeyler: kurulu bir sunucuda değişiklik, yeni mağaza
 yok. Kurulu panelleri yine yalnız sahipleri, panelin kendi güncelleme
 ekranından günceller.
 
+### Değişiklik 17 Ekim 2026 (alpha.95): her sunucuda aynı liste, her öğede durum
+
+*Sahibin Boston ve Frankfurt'ta (alpha.94) Bileşenler ve Pano'ya baktıktan sonraki 17 Ekim 2026 kararı: "ok. sorunları tekrar değerlendir ve düzelt"; v0.1.0-alpha.95 adayı için kaynakta; kurulu bir sunucuda hiçbir şey ölçülmedi*
+
+Sahibin gördüğü. Boston'da MariaDB paketi kurulabilir olduğu halde hiç
+çizilmiyordu ve Pano onu yine de sayıyordu ("5 paket daha kurulabilir"); görünen
+phpPgAdmin eklentisini ise saymıyordu. Temel Posta Boston'da bir öğeydi,
+Frankfurt'ta yoktu. İki sunucu iki ayrı liste gösteriyordu ve Pano'daki sayı
+altındaki listeyle uyuşmuyordu. Nedeni yukarıdaki 2. maddeydi: "kurulu satır ve
+en çok bir öneri daha" kardeş paketleri gizliyordu. Bu kural **geri çekildi**.
+Sahibin bir gereksinimi değil, sürümü hazırlayanın hatasıydı.
+
+Yerine geçen kural:
+
+1. **Tek liste.** Her Bileşenler kategorisi, her sunucuda aynı hazır paketleri
+   aynı kayıt sırasıyla gösterir. Yalnız her çipin durumu değişir. Şerit, kurulu bir
+   satır artı bir öneri değil, sola yaslı ve satır kıran bir çip dizisidir.
+   Eklentiler her zaman görünür.
+2. **Durum sözle ve biçimle söylenir, asla yalnız renkle.** Kurulu ve doğrulanmış:
+   bir onay işareti ve ad (erişilebilir ad "…, kurulu ve doğrulandı"); doğrulanmış
+   bir posta paketi onu içeriyorsa ve içerilen paketin kendisi de kurulu ve
+   doğrulanmışsa, kendi başarısız ya da süren bir denemesi yoksa "Temel Posta ·
+   dahil" (aksi halde nedeniyle "doğrulanmadı"); gri bir nokta ve
+   "doğrulanmadı"; çerçeveli "Ad · Kur" (eklentilerde "· Ekle"); denemesi olan
+   posta için "n/m bileşen kurulu · Devam et"; engelli: kısa bir nedenle soluk
+   metin ("phpMyAdmin · MariaDB gerekiyor"), sessiz bir düğmede: basınca (klavye ya
+   da dokunmayla) tam neden çiplerin altındaki bir satırda söylenir (ipucu kalır
+   ama tek yol değildir); çalışan paket hareket eden bir göstergeyle "2/3 · PHP-FPM
+   kuruluyor" ve diğer çipler devre dışıdır. Eski bir tarama tek bir soluk satırdır.
+3. **Tek sayma kuralı.** Pano kartı ve çipler aynı biçimde sayar: eklentiler dahil
+   kaydın her girdisi; "kurulabilir" kurulabilir ya da kısmi demektir (engelli
+   hariç); "içinde" kurulu ve doğrulanmış sayılır. Kart tek bir özet satırdır
+   ("7 kurulu ve doğrulandı · 1 kurulabilir"), sonra yalnız sorun satırları
+   (nedeniyle başarısız ya da süren bir posta denemesi, kurulu ama doğrulanmamış
+   bir paket; ikisi birden olan paket, nedenle tek satırdır), sonra "Bileşenler'de
+   aç". Kendi son denemesi başarısız olan ya da süren bir paket asla kurulu ve
+   doğrulanmış sayılmaz. Hiç denetlenmedi, denetleniyor, tutuluyor, denetlenemedi ve
+   yakın zamanda değil cümleleri korunur.
+4. **Kurulu çip Onar ve Doğrula'yı taşır.** Kurulu bir çipe basmak bir pencere
+   açar: posta paketi için Onar (profil kurulumu; eksik olanı tamamlar ve kurulumu
+   doğrular, kurulu hiçbir şey kaldırılmaz), bileşen paketi için Doğrula
+   (bileşenleri yeniden okur, hiçbir şeyi değiştirmez). Şeritte Onar bağlantısı ve
+   ipucu cümlesi yoktur. Roundcube'un "Webmail'i onar" düğmesi, bileşen satırında
+   yalnız sunucu bir webmail sorunu bildirdiğinde durur; aksi halde onarım Webmail
+   çipinin penceresindedir.
+5. **alpha.94'ün üç inceleme maddesi kapandı.** Bir paketin adımları arasındaki
+   kapı, doğrulanmamış durum bayrağını değiştiği anda ayarlanan bir referans
+   üzerinden, hazırlık okumasından önce ve sonra okur. Bir bileşen paketinin
+   Doğrula'sı, bir bileşen işlemi sürerken (kilitli izleyici, etkin bir paket sırası
+   ya da ana makinenin `panel_operation_active` / `agent_mutation_active`
+   bildirmesi) nedeni gösterilerek tutulur; değişiklikler başka nedenlerle
+   tutulduğunda kullanılabilir kalır, çünkü yalnız okur (`host_lock_busy` ve
+   `package_manager_active` dahil: yeniden tarama ucu yalnız çalışan bir sunucu
+   kurulumunda, etkin bir hizmet işleminde ya da etkin bir Agent değişikliğinde
+   reddeder). Çip, kurulum isteği kabul
+   edilene kadar "X kurulmadan önce sunucu denetleniyor…", kabulden sonra yalnızca
+   "X kuruluyor" der.
+
+Şema değişikliği yok (44), Agent değişikliği yok, yeni Agent iş türü yok. D-034'ün
+geri kalanı (katalog bileşenleri üzerinde kısayollar, birer birer sıra, Devam et
+yalnız sahibin eylemiyle, yeniden yüklemeden sonra devam yok) geçerli kalır.
+
+**Sürümler: bu sürümde yeni Agent RPC'si yok.** Sahibin ekranları çizgilerden
+oluşan bir sürüm sütunu gösteriyordu. İnceleme: Panel, yönetilen bir hizmetin
+`Versions` alanını yalnız çalışma ortamı örneklerinden doldurur
+(`Agent.ListServiceInstances`, yani yalnız PHP-FPM ve Node.js). `Agent.GetServices`
+her systemd birimi için bir ikili yoklama `Version` döndürür
+(`internal/services/version_detector.go`); Panel bunu yok sayar. Bu bir paket
+sürümü değildir, birkaç birim için güvenilmezdir (Apache, `named` ve PostgreSQL
+birim adını ikili olarak çalıştırır) ve birimi olmayan araçları (Certbot) kapsamaz.
+Gerçek paket sürümleri yeni bir Agent RPC'si ya da genişletilmiş `dpkg`/`pacman`
+sorguları gerektirir; bu sürüm bunları eklemez. Karar: masaüstü sürüm sütunu
+kaldırıldı; sürüm yalnız bilindiği yerde açıklamanın altında küçük tek aralıklı
+metin olarak gösterilir; tarayıcı sahtesi artık sürüm uydurmaz. **Açık yol haritası
+işi:** her bileşen için kurulu paket sürümünü okumak.
+
+**Durdur simgesi.** Durdur düğmesi boş bir kareydi ve bir onay kutusu gibi
+okunuyordu. Bileşenler satırlarında, bileşen sayfasında ve barındırma türü
+panelinde Lucide `StopCircle` (daire içinde bir dur işareti) kullanılır; yeniden
+başlat, durdur, başlat, onar ve sil tek bir çerçeveli simge düğmesini paylaşır.
+Görünümler DESIGN.md'de, "Ready bundle chips, row actions and versions (alpha.95)"
+bölümündedir.
+
+Aynı incelemenin sahibin istediği temizlikleri, yeni kural değil: kenar çubuğu
+sayıları (Bileşenler, Alan adları) dolu hap değil, sade soluk sayılardır (kimsenin
+almadığı bir sayı yine çizgidir, asla 0 değil); Pano'nun "dikkat gerektiren bir şey
+yok" cümlesi sade dildir ve hâlâ her okumanın yanıtlanmasını ve taze bir bileşen
+taramasını ister; Pano'nun Alan adları sayısı, Alan adları sayfasının listelediği
+bağımsız altyapı DNS bölgelerini ekler (sahibin 16 Ekim 2026 tarihli alpha.91
+kararı); Pano kutusu, kenar çubuğundaki Alan adları rozeti ve Alan adları sayfası
+artık uyuşur, çünkü kutu ve rozet tek bir yardımcıyı kullanır (`domainsCount`,
+`web/src/lib/infrastructureZones.ts`): alan adları artı Alan adları sayfasının
+listelediği yalnız DNS altyapı bölgeleri (siteye dönüşen bir bölge, o site olarak
+bir kez sayılır); sayı yalnız iki okuma da yanıtlandığında; biri okunurken yükleme
+işareti; biri okunamadığında bilinmeyen, asla "alan adları + 0" (önceki sayı yalnız
+iki okumanın da sayısı varsa korunur); bölge okuması olmayan yönetici olmayanlar
+yalnız alan adlarını sayar.
+
+**Adayın bağımsız incelemesi (17 Ekim 2026).** Bağımsız bir inceleme on sorun
+buldu; aday içinde düzeltildi ve bu değişiklik buna göre
+düzeltildi. (1) Roundcube kalıntıları: Bileşenler satırı soluk notu ve nötr
+"Kalıntıları temizle…" düğmesini yalnız Panel'in kendi kaydı yarım kalmış bir
+Roundcube kurulumu ya da kaldırması gösterdiğinde (Panel denetim kaydındaki en yeni
+Roundcube kurulum ya da kaldırma girdisi başarısız bir kurulum ya da kısmi ya da
+başarısız bir kaldırma; ek yük alanı `webmail_cleanup` ile gönderilir) ya da webmail
+profilinin son denemesi başarısız olduğunda gösterir; sonraki temiz bir kurulum ya
+da kaldırma sunumu bitirir; kayıt yoksa satır bir şey söylemez. Roundcube'un kendi
+bileşen sayfasında aynı onayı açan (`/services?cleanup=roundcube`) bir
+"Kalıntıları temizle…" bağlantısı her zaman vardır. Onay değişmedi. Kalan bilinen
+açık: Panel dosyaların diskte kalıp kalmadığını hâlâ göremez (Agent okuması yok);
+kendi kaydına dayanır. (2) Kurulu paket penceresi "… kurar" yerine paketi betimler
+("Sitelerin veritabanları için PostgreSQL."). (3) Çiplerin altında: yalnız
+başarısız ya da süren denemeler ve doğrulanmamış ya da kısmen kurulu çiplerdeki
+tipli uyarılar; "bazı parçalar zaten var" notu asla. (4) "içinde" yalnız, kendisi de
+kurulu ve doğrulanmış olan ve kendi başarısız ya da süren denemesi bulunmayan içerilen
+paket için; aksi halde nedeniyle "doğrulanmadı" ve Pano onu saymaz. (5) Kutu ve rozet
+için tek Alan adları sayısı (yukarıda). (6) Doğrulanmamış ve başarısız ya da süren
+denemesi olan paket tek Pano satırıdır. (7) Engelli çip, tam nedeni çiplerin altında
+gösteren sessiz bir düğmedir. (8) Doğrula, `host_lock_busy` ve
+`package_manager_active` durumunda kullanılabilir kalır (yukarıda). (9) İfade: EN
+"2/3 · installing PHP-FPM"; "n of m installed" (Türkçe "2/3 bileşen kurulu"). (10)
+"Kur" diyen bir posta çipi (kurulu bir Webmail'in yanında Spam Korumalı Posta; Panel
+onu yalnız parçalar paylaşıldığı için kısmi sayar) posta penceresini "devam et"
+değil, kurulum biçiminde açar. Şema değişikliği yok (44), Agent değişikliği yok,
+gerçek sistem kaydı yok: yeni yük alanı, var olan denetim kaydından okunan eklemeli
+bir JSON alanıdır.
+
+Bunun izin vermediği şeyler: kurulu bir sunucuda değişiklik ve lisans politikası
+değişikliği yok. Kurulu panelleri yine yalnız sahipleri, panelin kendi güncelleme
+ekranından günceller.
+
+
 ---
 
 ## D-033 · Sahibi bekleten bir ekran beklediğini gösterir ya da yapılacak bir şey olmadığını söyler

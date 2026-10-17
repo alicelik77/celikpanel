@@ -1,7 +1,8 @@
 // The Dashboard's Ready bundles card (alpha.94, D-034). It replaced the Mail
-// stacks card: one calm card, always shown, that lists what is installed and
-// how many bundles can be installed, and is a door to the bundles on the
-// Components page. It installs nothing, scans nothing by itself and asks the
+// stacks card: one calm card, always shown, and a door to the bundles on the
+// Components page. Since alpha.95 (owner decision, 2026-10-17) it is a compact
+// door: one summary line counted as the Components chips are drawn, then only
+// the lines that need a look. It installs nothing, scans nothing by itself and asks the
 // owner for nothing (D-032).
 // Panel'in Hazır paketler kartı: tek sakin kart, her zaman görünür; Bileşenler
 // sayfasındaki paketlere bir kapı. Hiçbir şey kurmaz.
@@ -25,9 +26,20 @@ test('the bundles card is read-only, always shown and uses the closed bundle dec
   assert.match(dashboard, /navigate\('\/services#bundles'\)/);
   assert.doesNotMatch(dashboard, /service\/profile\/install|startInstall|service\/install/);
   assert.match(card, /bundlesSummary\(bundles\)/);
-  // A contained bundle is not listed twice; add-ons are not counted as offers.
-  assert.match(bundlesLib, /installed\.filter\(\(bundle\) => !installed\.some\(\(other\) => contains\(other, bundle\)\)\)/);
-  assert.match(bundlesLib, /bundle\.parent === undefined && \(bundle\.status === 'available' \|\| bundle\.status === 'partial'\)/);
+  // One counting rule for the card and the chips: every registry entry,
+  // add-ons included; "can be installed" is available or partial, a blocked
+  // bundle is not counted; "installed and verified" includes a bundle a
+  // verified bundle contains (Core Mail under Webmail).
+  assert.match(bundlesLib, /export const bundleInstallable = \(state: BundleChipState\) => state === 'available' \|\| state === 'partial';/);
+  assert.match(bundlesLib, /installable: states\.filter\(\(\{ state \}\) => bundleInstallable\(state\)\)\.length/);
+  assert.match(bundlesLib, /verified: states\.filter\(\(\{ state \}\) => state === 'verified' \|\| state === 'included'\)\.length/);
+  assert.match(bundlesLib, /const states = all\.map\(\(bundle\) => \(\{ bundle, state: bundleChipState\(bundle, all\) \}\)\);/);
+  // A compact door: one summary line, then only what needs a look; no row
+  // per verified bundle.
+  assert.match(card, /data-bundles-summary=''/);
+  // A bundle not verified with a failed or running attempt is one line, with the reason.
+  assert.match(card, /summary\.unverified\.filter\(\(bundle\) => !\(bundle\.profile_id !== undefined && attempted\.has\(bundle\.profile_id\)\)\)\.map\(/);
+  assert.doesNotMatch(card, /<ul|<li|summary\.installed/);
   // The old card and its gate are gone.
   assert.doesNotMatch(dashboard, /MailStackSummary|hasMailActivity|dashboard\.mailStacks|dashboardMailTruth/);
 });
@@ -47,7 +59,8 @@ test('the card is calm: no warning colour, one quiet door instead of a filled bu
   assert.doesNotMatch(card, /warning/);
   assert.doesNotMatch(card, /bg-primary/);
   assert.match(card, /t\('dashboard\.bundles\.open'\)/);
-  assert.match(card, /text-success/);
+  // No far-right "verified" label per row any more (owner's Frankfurt screen).
+  assert.doesNotMatch(card, /ml-auto/);
 });
 
 test('the bundles destination scrolls and focuses the list once', () => {
@@ -63,11 +76,11 @@ test('the bundles destination scrolls and focuses the list once', () => {
 test('dashboard bundles copy stays in EN/TR parity', () => {
   for (const key of [
     'dashboard.bundles.title',
-    'dashboard.bundles.verified',
-    'dashboard.bundles.unverified',
-    'dashboard.bundles.installableOne',
-    'dashboard.bundles.installable',
-    'dashboard.bundles.noneInstalled',
+    'dashboard.bundles.summary',
+    'dashboard.bundles.summaryVerified',
+    'dashboard.bundles.summaryInstallable',
+    'dashboard.bundles.summaryNone',
+    'dashboard.bundles.unverifiedLine',
     'dashboard.bundles.notChecked',
     'dashboard.bundles.checkFailed',
     'dashboard.bundles.attemptRunning',

@@ -1420,7 +1420,9 @@ test('the install dialogue, the navigation badge, the dashboard counts and the h
 
   // The domain badge is a number only for an answer, and keeps the earlier one.
   const layout = source('components/Layout.tsx');
-  assert.match(layout, /const domainCount = setupMode \? undefined : lastKnown\(domainList\.remote\)\?\.value\.length;/);
+  // alpha.95: the badge counts the domains and the DNS-only infrastructure
+  // zone, as the Domains page lists them, still a number only for answers.
+  assert.match(layout, /const domainCount = setupMode \? undefined : lastKnown\(domainsCount\(domainList\.remote, role === 'admin' \? zoneList\.remote : null\)\)\?\.value;/);
   assert.doesNotMatch(layout, /domains: Array\.isArray\(d\) \? d\.length : 0/);
 
   // A count on the dashboard is "…" or "–" until it is a number.
