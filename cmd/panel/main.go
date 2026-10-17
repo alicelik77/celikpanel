@@ -11,10 +11,13 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
+	"syscall"
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/auth"
@@ -132,6 +135,13 @@ type Panel struct {
 	// dnsEnginePreviews holds short-lived, one-use authorizations for the
 	// separately confirmed DNS engine cutover endpoint.
 	dnsEnginePreviews dnsEnginePreviewCache
+	// Update discovery (D-035, system_update_discovery.go): the scheduled
+	// read-only check, the lock of its stored result, and when this Panel last
+	// admitted an update start (Unix nanoseconds), which the check stays away
+	// from. Nil and zero in handler tests.
+	updateDiscovery   *panelUpdateDiscoveryScheduler
+	updateDiscoveryMu sync.Mutex
+	updateAdmittedAt  atomic.Int64
 }
 
 type domainSubroute struct {
@@ -1303,6 +1313,7 @@ func main() {
 	http.HandleFunc(panelUpdateStartPath, panel.handlePanelUpdateStart)
 	http.HandleFunc(panelUpdateAbandonPath, panel.handlePanelUpdateAbandon)
 	http.HandleFunc(panelUpdateStatusPath, panel.handlePanelUpdateStatus)
+	http.HandleFunc(panelUpdateDiscoveryPath, panel.handlePanelUpdateDiscovery)
 	http.HandleFunc("/api/v1/service/status", panel.handleServiceStatus)
 	http.HandleFunc("/api/v1/service/install", panel.handleServiceInstall)
 	http.HandleFunc(mailProfileInstallPath, panel.handleMailProfileInstall)
@@ -1436,6 +1447,11 @@ func main() {
 	// upd11 F2: startup mail work refused only because an update or rollback
 	// still held the host is retried, bounded, once the host is idle.
 	panel.startDeferredStartupMailWork(certificateDeferral, milterWiringDeferred)
+	// The scheduled update check (D-035): read-only, never an update. It ends
+	// with the process's own stop signal.
+	discoveryCtx, stopDiscovery := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stopDiscovery()
+	panel.startPanelUpdateDiscovery(discoveryCtx)
 	protocol := "HTTP"
 	if tlsOn {
 		protocol = "HTTPS"

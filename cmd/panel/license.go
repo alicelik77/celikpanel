@@ -189,7 +189,7 @@ func licenseRecoveryRequest(r *http.Request) bool {
 	// or relaxes the updater's signed-target, host admission and rollback checks.
 	if caller := currentCaller(r); caller != nil && caller.hasAccountRole(roleAdmin) {
 		switch r.URL.Path {
-		case panelUpdateCheckPath, panelUpdateStatusPath, "/api/v1/panel/version", hostMutationReadinessPath, panelRecoveryStatusPath:
+		case panelUpdateCheckPath, panelUpdateStatusPath, panelUpdateDiscoveryPath, "/api/v1/panel/version", hostMutationReadinessPath, panelRecoveryStatusPath:
 			return r.Method == http.MethodGet
 		case panelUpdateStartPath, panelUpdateAbandonPath:
 			return r.Method == http.MethodPost
