@@ -499,7 +499,7 @@ export function BundleInstalledDialog({
             id='bundle-installed'
             icon={Layers}
             title={name}
-            description={bundleDescription(bundle, t, nameOf)}
+            description={<KeepWords text={bundleDescription(bundle, t, nameOf)} />}
             onDismiss={onClose}
             actions={
                 <>
@@ -578,7 +578,7 @@ export function BundleInstallDialog({
             id='bundle-install-confirm'
             icon={Layers}
             title={t(title, { name: bundleName(bundle, t, nameOf) })}
-            description={bundleDescription(bundle, t, nameOf)}
+            description={<KeepWords text={bundleDescription(bundle, t, nameOf)} />}
             onDismiss={onCancel}
             actions={
                 <>

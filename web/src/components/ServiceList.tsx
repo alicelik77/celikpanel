@@ -1374,7 +1374,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
     ) : !dnsIdentityReady && bundles.some((bundle) => bundle.category === 'email' && bundle.status !== 'unknown') ? (
         <p role='status' className='flex min-w-0 basis-full flex-wrap items-baseline gap-x-2 text-sm text-fg' data-mail-dns-required=''>
             <span>{t('services.mailProfiles.dnsRequiredShort')}</span>
-            <span className='text-fg-subtle' aria-hidden='true'>·</span>
+            <span className='text-fg-subtle max-sm:hidden' aria-hidden='true'>·</span>
             <button type='button' onClick={() => navigate('/settings?section=dns')} className='font-semibold text-primary underline decoration-1 underline-offset-[3px] hover:decoration-2 max-sm:min-h-11'>
                 {t('services.mailProfiles.configureDNS')}
             </button>
@@ -1453,7 +1453,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                 <button
                     onClick={scan}
                     disabled={pageControlsBusy}
-                    className="inline-flex items-center gap-2 rounded-lg border border-border-strong bg-surface px-3 py-1.5 text-sm font-medium text-fg transition-colors hover:bg-surface-2 disabled:opacity-50"
+                    className="inline-flex items-center gap-2 rounded-lg border border-border-strong bg-surface px-3 py-1.5 text-sm font-medium text-fg transition-colors hover:bg-surface-2 disabled:opacity-50 max-sm:min-h-11"
                 >
                     <RefreshCw className={`h-4 w-4 ${scanning ? 'animate-spin' : ''}`} />
                     {scanning ? t('services.scanning') : scannedAt ? t('services.rescan') : t('services.scanNow')}
@@ -1516,7 +1516,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                             <div className="inline-flex overflow-hidden rounded-lg border border-border-strong">
                                 <button
                                     onClick={() => setView(true)}
-                                    className={`whitespace-nowrap px-3 py-1.5 text-xs font-medium transition-colors ${
+                                    className={`whitespace-nowrap px-3 py-1.5 text-xs font-medium transition-colors max-sm:min-h-11 ${
                                         hideNotInstalled ? 'bg-primary text-primary-fg' : 'bg-surface text-fg-muted hover:bg-surface-2'
                                     }`}
                                 >
@@ -1524,7 +1524,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                 </button>
                                 <button
                                     onClick={() => setView(false)}
-                                    className={`whitespace-nowrap border-l border-border-strong px-3 py-1.5 text-xs font-medium transition-colors ${
+                                    className={`whitespace-nowrap border-l border-border-strong px-3 py-1.5 text-xs font-medium transition-colors max-sm:min-h-11 ${
                                         hideNotInstalled ? 'bg-surface text-fg-muted hover:bg-surface-2' : 'bg-primary text-primary-fg'
                                     }`}
                                 >
@@ -1532,10 +1532,10 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                 </button>
                             </div>
                             <div className="flex gap-1 text-xs">
-                                <button onClick={expandAll} className="whitespace-nowrap rounded-md px-2 py-1 text-fg-muted hover:bg-surface-2 hover:text-fg">
+                                <button onClick={expandAll} className="whitespace-nowrap rounded-md px-2 py-1 max-sm:min-h-11 text-fg-muted hover:bg-surface-2 hover:text-fg">
                                     {t('services.expandAll')}
                                 </button>
-                                <button onClick={collapseAll} className="whitespace-nowrap rounded-md px-2 py-1 text-fg-muted hover:bg-surface-2 hover:text-fg">
+                                <button onClick={collapseAll} className="whitespace-nowrap rounded-md px-2 py-1 max-sm:min-h-11 text-fg-muted hover:bg-surface-2 hover:text-fg">
                                     {t('services.collapseAll')}
                                 </button>
                             </div>
@@ -3539,7 +3539,7 @@ function UninstallServiceDialog({
                                     </li>
                                 ))}
                             </ul>
-                            <p data-webmail-cleanup-untouched="">{t('services.cleanupWebmailUntouched')}</p>
+                            <p data-webmail-cleanup-untouched=""><KeepWords text={t('services.cleanupWebmailUntouched')} /></p>
                         </>
                     )}
                     {!retryCleanup && (
