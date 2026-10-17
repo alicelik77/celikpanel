@@ -16,7 +16,7 @@ const now = () => new Date().toISOString();
 const hex = (n) => n.toString(16).padStart(32, '0');
 
 const component = (id, name, category, installed, extra = {}) => ({
-    id, name, description: `${name}`, icon: '', category, kind: 'service', versions: installed ? ['1.0'] : [], config_files: [], packages: [id], ports: [],
+    id, name, description: `${name}`, icon: '', category, kind: 'service', versions: [], config_files: [], packages: [id], ports: [],
     is_installed: installed, status: installed ? 'active (running)' : 'not_installed', repair_available: true, ...(installed ? { unit: id } : {}), ...extra,
 });
 
@@ -25,28 +25,28 @@ function catalogue(server) {
     const running = server === 'running';
     const boston = server === 'boston' || server === 'boston-dns';
     const list = [
-        component('bind', 'BIND', 'dns', !boston, { versions: ['9.20.11'] }),
-        component('pdns', 'PowerDNS', 'dns', boston, { versions: ['4.9.4'] }),
+        component('bind', 'BIND', 'dns', !boston),
+        component('pdns', 'PowerDNS', 'dns', boston),
         component('php-fpm', 'PHP-FPM', 'web', frankfurt, { kind: 'runtime', versions: frankfurt ? ['8.4'] : [] }),
         component('node', 'Node.js', 'web', false, { kind: 'runtime', packages: [] }),
-        component('nginx', 'Nginx', 'web', frankfurt || server === 'boston-dns', { versions: frankfurt || server === 'boston-dns' ? ['1.26.3'] : [] }),
+        component('nginx', 'Nginx', 'web', frankfurt || server === 'boston-dns'),
         component('apache', 'Apache', 'web', false),
         component('postgresql', 'PostgreSQL', 'database', false),
-        component('mariadb', 'MariaDB', 'database', frankfurt || running, { versions: ['11.8.3'] }),
+        component('mariadb', 'MariaDB', 'database', frankfurt || running),
         component('phpmyadmin', 'phpMyAdmin', 'database', false, { kind: 'tool', requires_missing: frankfurt || running ? undefined : ['mariadb', 'web-server', 'php-fpm'] }),
         component('phppgadmin', 'phpPgAdmin', 'database', false, { kind: 'tool', requires_missing: ['postgresql', 'web-server', 'php-fpm'] }),
-        component('postfix', 'Postfix', 'email', frankfurt, { versions: frankfurt ? ['3.10.5'] : [] }),
+        component('postfix', 'Postfix', 'email', frankfurt),
         component('exim', 'Exim', 'email', false, frankfurt ? { conflict_with: 'Postfix' } : {}),
         component('rspamd', 'Rspamd', 'email', false),
-        component('dovecot', 'Dovecot', 'email', frankfurt, { versions: frankfurt ? ['2.4.1'] : [] }),
-        component('roundcube', 'Roundcube', 'email', frankfurt, { kind: 'tool', status: frankfurt ? 'installed' : 'not_installed', versions: frankfurt ? ['1.6.15'] : [] }),
+        component('dovecot', 'Dovecot', 'email', frankfurt),
+        component('roundcube', 'Roundcube', 'email', frankfurt, { kind: 'tool', status: frankfurt ? 'installed' : 'not_installed' }),
         component('spamassassin', 'SpamAssassin', 'email', false),
-        component('certbot', 'certbot', 'security', true, { kind: 'tool', status: 'installed', versions: ['4.0.0'] }),
+        component('certbot', 'certbot', 'security', true, { kind: 'tool', status: 'installed' }),
         // Mock data: a stopped service, to show the red dot and its word.
-        component('fail2ban', 'Fail2ban', 'security', true, frankfurt ? { status: 'inactive (dead)', versions: ['1.1.0'] } : { versions: ['1.1.0'] }),
+        component('fail2ban', 'Fail2ban', 'security', true, frankfurt ? { status: 'inactive (dead)' } : {}),
         component('clamav', 'ClamAV', 'security', false),
         component('redis', 'Redis', 'cache', false),
-        component('cron', 'cron', 'system', true, { versions: ['3.0'] }),
+        component('cron', 'cron', 'system', true),
     ];
     return list;
 }
@@ -123,7 +123,7 @@ function view(b19, op) {
         op.phase = 'succeeded';
         op.finished_at = now();
         const service = b19.services.find((item) => item.id === op.service_id);
-        if (service) Object.assign(service, { is_installed: true, status: service.kind === 'tool' ? 'installed' : 'active (running)', versions: ['1.0'], unit: service.id });
+        if (service) Object.assign(service, { is_installed: true, status: service.kind === 'tool' ? 'installed' : 'active (running)', versions: service.kind === 'runtime' ? ['8.4'] : [], unit: service.id });
     }
     const { at, ...rest } = op;
     return rest;
