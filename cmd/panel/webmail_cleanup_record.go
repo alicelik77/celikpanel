@@ -25,6 +25,7 @@ import (
 // kaydı. Bileşenler satırı "Kalıntıları temizle"yi yalnız bu kayıt varken
 // sunar; kayıt yoksa temizlik bileşenin kendi sayfasında kalır.
 const (
+	webmailCleanupAuditWindow       = 20000
 	webmailCleanupInstallFailed     = "install_failed"
 	webmailCleanupRemovalIncomplete = "removal_incomplete"
 )
@@ -69,9 +70,21 @@ func (p *Panel) webmailCleanupRecord(ctx context.Context) string {
 		clauses = append(clauses, "action = ?", "action LIKE ?")
 		args = append(args, known.action, known.action+" %")
 	}
+	// The read is bounded to the newest webmailCleanupAuditWindow entries, a
+	// range on the primary key: audit_logs has no index on action and is never
+	// pruned, and this read runs on every managed-services answer. An older
+	// unfinished operation is no longer offered on the row; the cleanup stays
+	// on the component's own page.
+	// Okuma en yeni webmailCleanupAuditWindow girdiyle sınırlıdır (birincil
+	// anahtar aralığı); daha eski bir kayıt satırda sunulmaz, temizlik
+	// bileşenin kendi sayfasında kalır.
+	args = append([]any{webmailCleanupAuditWindow}, args...)
 	var action string
 	err := p.db.GetDB().QueryRowContext(ctx,
-		`SELECT action FROM audit_logs WHERE `+strings.Join(clauses, " OR ")+` ORDER BY id DESC LIMIT 1`,
+		`SELECT action FROM audit_logs
+		  WHERE id > (SELECT COALESCE(MAX(id), 0) FROM audit_logs) - ?
+		    AND (`+strings.Join(clauses, " OR ")+`)
+		  ORDER BY id DESC LIMIT 1`,
 		args...,
 	).Scan(&action)
 	if err != nil {

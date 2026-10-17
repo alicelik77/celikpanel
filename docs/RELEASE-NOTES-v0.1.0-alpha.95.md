@@ -193,7 +193,7 @@ profile frontend contract. The release contracts (sequence policy 94 -> 95,
 download portal, signed manifest) passed on the earlier tree and their inputs are
 unchanged. Final counts on the final candidate tree (2026-10-17): web
 `npm test` 1599 passed, 0 failed, and `npm run build` succeeded; Go `./cmd/panel/`
-and `./internal/...` 7123 passed, 0 failed, 44 skipped; `go vet ./cmd/panel/` and
+and `./internal/...` 7124 passed, 0 failed, 44 skipped; `go vet ./cmd/panel/` and
 gofmt clean. Browser batch 20 (Boston- and Frankfurt-like mocks, Turkish and
 English, light and dark, 1440 and 390 px) was looked at twice before the review
 fixes; the first look found PHP-FPM broken at its hyphen in two dialogues,

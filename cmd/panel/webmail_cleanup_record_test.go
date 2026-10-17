@@ -66,3 +66,28 @@ func TestWebmailCleanupRecordFollowsTheNewestRoundcubeEntry(t *testing.T) {
 		t.Fatalf("after a failed install = %q", got)
 	}
 }
+
+// The record read is bounded to the newest webmailCleanupAuditWindow audit
+// entries (a primary-key range), so a long audit log is never scanned whole;
+// an unfinished operation older than the window is no longer offered on the row.
+func TestWebmailCleanupRecordReadIsBoundedToTheNewestEntries(t *testing.T) {
+	panel := newManagedServiceCachePanel(t)
+	db := panel.db.GetDB()
+	if _, err := db.Exec(`INSERT INTO audit_logs (action, resource_type) VALUES ('service.install.failed:roundcube — x', 'service')`); err != nil {
+		t.Fatal(err)
+	}
+	if got := panel.webmailCleanupRecord(context.Background()); got != webmailCleanupInstallFailed {
+		t.Fatalf("inside the window = %q", got)
+	}
+	var last int64
+	if err := db.QueryRow(`SELECT MAX(id) FROM audit_logs`).Scan(&last); err != nil {
+		t.Fatal(err)
+	}
+	// Move the id sequence past the window with one row instead of 20000 inserts.
+	if _, err := db.Exec(`INSERT INTO audit_logs (id, action, resource_type) VALUES (?, 'auth.login', 'user')`, last+webmailCleanupAuditWindow); err != nil {
+		t.Fatal(err)
+	}
+	if got := panel.webmailCleanupRecord(context.Background()); got != "" {
+		t.Fatalf("older than the window = %q", got)
+	}
+}

@@ -193,7 +193,7 @@ sözleşmeleri); Go: yeni webmail_cleanup_record_test, bundles testi (ana paketi
 sözleşmesi. Sürüm sözleşmeleri (sıra politikası 94 -> 95, indirme portalı, imzalı
 manifest) önceki ağaçta geçti ve girdileri değişmedi. Son aday ağacındaki kesin
 sayılar (17 Ekim 2026): web `npm test` 1599 geçti, 0 başarısız, `npm run build`
-başarılı; Go `./cmd/panel/` ve `./internal/...` 7123 geçti, 0 başarısız, 44 atlandı;
+başarılı; Go `./cmd/panel/` ve `./internal/...` 7124 geçti, 0 başarısız, 44 atlandı;
 `go vet ./cmd/panel/` ve gofmt temiz. Tarayıcı 20. grubu (Boston ve Frankfurt
 benzeri taklitler, Türkçe ve İngilizce, açık ve koyu, 1440 ve 390 piksel) inceleme
 düzeltmelerinden önce iki kez incelendi; ilk bakış iki pencerede kısa çizgisinden
