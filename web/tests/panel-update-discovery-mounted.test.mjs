@@ -483,3 +483,11 @@ test('every new string exists in English and Turkish, and the Turkish is not the
     assert.equal(catalogues.en['panelUpdate.notice.sidebar'], 'Update available · {version}');
     assert.equal(catalogues.tr['panelUpdate.notice.sidebar'], 'Güncelleme var · {version}');
 });
+
+test('on the licence page the card offers the update but not the switch, which belongs to Settings', async () => {
+    await withMounted(React.createElement(PanelUpdateCard, { activation: true }), {}, async (renderer, fixture) => {
+        assert.equal(renderer.root.findAll(node => node.props && node.props['data-update-auto'] !== undefined).length, 0);
+        assert.equal(primaries(renderer).length, 1);
+        assert.equal(fixture.requests.filter(line => line.startsWith('PUT ')).length, 0);
+    });
+});

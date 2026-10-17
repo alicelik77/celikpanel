@@ -414,6 +414,12 @@ Component names never break at their hyphen ("PHP-FPM"): requirement badges and 
 
 The scan knows installed versions only for the multi-version runtimes (PHP-FPM, Node.js). The Components rows therefore have no desktop version column of dashes; a version is said as small mono text under the description wherever it is known. Reading installed package versions for every component is an open roadmap item. Browser mocks may show only versions the real scan produces.
 
+### Update notices and the update card (alpha.96)
+
+Owner request of 2026-10-17 (D-035): the panel looks for a newer signed release by itself and says so calmly. An available update is not a problem and never takes a signal colour: the sidebar link under the version line is rail ink with a download icon and the words "Update available · version"; the Dashboard row is one line on the neutral surface at the top of the content, a primary-ink link "Review and update" and a muted "Remind me later"; the Settings item carries a small primary-ink dot and the words in its description line. It is never in "Needs attention". A check that failed or whose result is not known is said only inside the update card, with the neutral information mark.
+
+The update card reads top-down: one status line (a green check mark only for "You are on the latest version", a primary download mark for a found version, the neutral information mark for a failed, skipped or switched-off check), at most one notice for an earlier attempt (neutral when it stopped before changing anything, the attention surface for a rolled-back or failed one), "Before you update" as a plain muted list (the alpha note is one of its lines, not a box), the readiness result (neutral surface; a ready server has a check mark, a busy one the attention surface) and one filled button, "Update to version". "Check for updates" is outlined; technical identity is in a collapsed "Technical details". Dialog footer controls are at least 44 px tall below `sm`.
+
 ### Remote state in the panel: checking, could not check, known
 
 Rule of 2026-10-09: **no negative UI unless known.** Anything a panel screen reads from the server is drawn in one of three states, and the three never look alike. The components are `Checking`, `CouldNotCheck`, `RemoteGate` and `KnownEmpty` in `web/src/components/ui.tsx`; the reads go through `web/src/lib/remote.ts`. The sentences and the migration steps are in [the operation guidance](docs/OPERATION-GUIDANCE.md#no-negative-state-unless-it-is-known-checking-could-not-check-known-2026-10-09).

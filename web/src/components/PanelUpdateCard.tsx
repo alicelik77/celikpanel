@@ -758,7 +758,10 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
                 </details>
             )}
 
-            <div className="mt-5 border-t border-border pt-4" data-update-auto="">
+            {/* The owner's switch lives in Settings; the licence page offers
+                the update only (a locked panel accepts no setting change).
+                Anahtar Ayarlar'dadir; lisans sayfasi yalniz guncellemeyi sunar. */}
+            {!activation && <div className="mt-5 border-t border-border pt-4" data-update-auto="">
                 <label className="flex cursor-pointer items-start gap-3">
                     <input
                         type="checkbox"
@@ -776,7 +779,7 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
                 </label>
                 {savingAuto && <p className="mt-2 flex items-center gap-2 text-sm text-fg-muted" role="status"><Loader2 className="h-4 w-4 motion-safe:animate-spin" aria-hidden="true" />{t('panelUpdate.auto.saving')}</p>}
                 {autoError && !savingAuto && <p className="mt-2 text-sm text-fg" role="alert" data-update-auto-error="">{t('panelUpdate.auto.failed')}</p>}
-            </div>
+            </div>}
         </section>
     );
 }
