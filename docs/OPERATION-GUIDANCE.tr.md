@@ -8989,7 +8989,7 @@ ekranlarından gelir; burada dosya olarak saklanmaz ve kurulu bir sunucuda hiçb
 - **Pano kartı** tek bir özet satırdır ("7 kurulu ve doğrulandı · 1 kurulabilir"),
   sonra yalnız sorun satırları, sonra "Bileşenler'de aç". Çiplerin çizildiği gibi
   sayar: eklentiler dahil kaydın her girdisi; "kurulabilir" kurulabilir ya da kısmi
-  demektir, engelli sayılmaz; "dahil" kurulu ve doğrulanmış sayılır, ama kendi son
+  demektir, engelli sayılmaz; "içinde" kurulu ve doğrulanmış sayılır, ama kendi son
   denemesi başarısız olan ya da süren bir paket asla kurulu ve doğrulanmış sayılmaz
   ve doğrulanmamış olup ayrıca böyle bir denemesi olan paket, nedenle tek satırdır.
   Hiç denetlenmedi, denetleniyor, tutuluyor, denetlenemedi ve yakın zamanda değil
@@ -9084,7 +9084,7 @@ kendi kaydıyla (ya da başarısız bir webmail denemesiyle) sunulur, Roundcube'
 sayfasında ise her zaman; (2) kurulu paket penceresi "… kurar" yerine paketi
 betimler ("Sitelerin veritabanları için PostgreSQL."); (3) çiplerin altındaki
 satırlar yalnız başarısız ya da süren denemeler ve doğrulanmamış ya da kısmen kurulu
-çiplerdeki tipli uyarılardır; (4) "dahil" yalnız, kendisi de kurulu ve doğrulanmış
+çiplerdeki tipli uyarılardır; (4) "içinde" yalnız, kendisi de kurulu ve doğrulanmış
 olan ve başarısız ya da süren denemesi bulunmayan içerilen paket için; (5) kutu,
 kenar çubuğu rozeti ve sayfa için tek Alan adları sayısı; (6) doğrulanmamış ve
 denemesi olan her paket için tek Pano satırı; (7) engelli çip, tam nedenini

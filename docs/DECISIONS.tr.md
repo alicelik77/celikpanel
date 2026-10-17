@@ -142,7 +142,7 @@ Yerine geçen kural:
    kuruluyor" ve diğer çipler devre dışıdır. Eski bir tarama tek bir soluk satırdır.
 3. **Tek sayma kuralı.** Pano kartı ve çipler aynı biçimde sayar: eklentiler dahil
    kaydın her girdisi; "kurulabilir" kurulabilir ya da kısmi demektir (engelli
-   hariç); "dahil" kurulu ve doğrulanmış sayılır. Kart tek bir özet satırdır
+   hariç); "içinde" kurulu ve doğrulanmış sayılır. Kart tek bir özet satırdır
    ("7 kurulu ve doğrulandı · 1 kurulabilir"), sonra yalnız sorun satırları
    (nedeniyle başarısız ya da süren bir posta denemesi, kurulu ama doğrulanmamış
    bir paket; ikisi birden olan paket, nedenle tek satırdır), sonra "Bileşenler'de
@@ -224,7 +224,7 @@ açık: Panel dosyaların diskte kalıp kalmadığını hâlâ göremez (Agent o
 kendi kaydına dayanır. (2) Kurulu paket penceresi "… kurar" yerine paketi betimler
 ("Sitelerin veritabanları için PostgreSQL."). (3) Çiplerin altında: yalnız
 başarısız ya da süren denemeler ve doğrulanmamış ya da kısmen kurulu çiplerdeki
-tipli uyarılar; "bazı parçalar zaten var" notu asla. (4) "dahil" yalnız, kendisi de
+tipli uyarılar; "bazı parçalar zaten var" notu asla. (4) "içinde" yalnız, kendisi de
 kurulu ve doğrulanmış olan ve kendi başarısız ya da süren denemesi bulunmayan içerilen
 paket için; aksi halde nedeniyle "doğrulanmadı" ve Pano onu saymaz. (5) Kutu ve rozet
 için tek Alan adları sayısı (yukarıda). (6) Doğrulanmamış ve başarısız ya da süren
