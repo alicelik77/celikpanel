@@ -9322,3 +9322,27 @@ arrives, this entry is completed with the verified cause and, if the cause is on
 the server, the owner's next step in the panel or with a short terminal command.
 Until then nothing is guessed, and the owner decides when to start the update
 again. P0.1-P0.5 stay **partial**; this entry closes and advances nothing.
+
+### Installed servers after the alpha.96 publication: Frankfurt's alpha.95 stop still unexplained (2026-10-17)
+
+v0.1.0-alpha.96 was published on 2026-10-17 (release at 18:03:34Z, then the
+download portal at about 18:10Z). That day the owner started the updates of
+Boston and Frankfurt to alpha.95 from the panel's own update screen. Frankfurt's
+update stopped in the read-only check before changing anything ("a read-only
+check could not verify the current installation"); the server stayed on alpha.94.
+Boston's result had not been reported. **Who must act:** the owner, by sending the
+Details text of the stop dialog; **the next action** is that text, and nothing is
+guessed before it arrives. Starting the update again is the owner's decision, from
+the panel's own update screen. alpha.96 is the answer to the owner's request for
+periodic update checks, an update notice and help with updating (see the entries
+above), but it cannot announce itself to a panel still on alpha.95, because the
+scheduled check exists only from alpha.96 on: on those panels the owner looks on
+the update screen. There is **no** observation of alpha.96 on an installed server
+to record, and no text or screen was changed for this entry. Open: the cause of
+Frankfurt's stop; the Turkish screen catalogues are nearly full; a manual check
+result held in memory while the server is busy is lost on a restart; nothing
+measured on an installed server or against the real release server; browser batch
+21 was not re-run after the last review corrections; installed package versions
+for every component are still not read. Nothing is "worked" or "failed" until the
+owner reports it. P0.1-P0.5 stay **partial**; this entry closes and advances
+nothing.

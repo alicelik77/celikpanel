@@ -1,12 +1,13 @@
-# v0.1.0-alpha.96 (candidate, not published)
+# v0.1.0-alpha.96 (published 2026-10-17)
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.96.tr.md)
 
-This is the release that follows v0.1.0-alpha.95. It is a candidate: it has not
-been tagged or published, and no installed server has been updated to it. Written
-on 2026-10-17, on the branch `feat/alpha96-update-notice`, from `main` after the
-publication record of alpha.95 (the alpha.95 release commit is
-`5f3cb1a2fa336c529740a20e9a543b8ac086dc8d`).
+This is the release that follows v0.1.0-alpha.95. It was published on 2026-10-17
+(see "Publication record" at the end); no installed server has been updated to
+it. The number was chosen by the release preparer under the owner's standing
+instruction of 2026-10-13. Written on 2026-10-17, on the branch
+`feat/alpha96-update-notice`, from `main` after the publication record of alpha.95
+(the alpha.95 release commit is `5f3cb1a2fa336c529740a20e9a543b8ac086dc8d`).
 
 ## Who should update, and why
 
@@ -225,3 +226,115 @@ when the build reaches the target, and the administrators-only read that makes n
 Agent call. Web contract and mounted tests cover the update card, the notices and
 the English and Turkish texts. Component, mounted and mock-browser tests do not
 establish native behaviour.
+
+## Publication record
+
+Everything below is dated 2026-10-17 (UTC unless a time zone is named). The
+merge, the tag, the checks, the portal publication and the read of the public
+site were done by the release preparer under the owner's standing instruction,
+as for the earlier releases; installed-panel updates are the owner's alone, from
+the panel's own update screen. No native record for the publication, by the
+owner's instruction. This entry stores none of the results below as a file in the
+repository.
+
+**What happened.**
+
+1. Two independent reviews came before the release. The first found 12 problems,
+   among them that the scheduled check wrote to the panel's database during an
+   update's read-only check (fixed, described above); the second found the
+   release ready, and the two cleanups it suggested were done.
+2. Pull request #230, "Release v0.1.0-alpha.96: the panel looks for updates by
+   itself, says so calmly, and helps with the update", was merged into `main` as
+   commit `08faa91e5a8c6622072b40f0f87c9c388035c9a3`. The release sequence
+   variable was moved from 95 to 96 before the tag was made. The main run and the
+   tag run both succeeded.
+3. The release chain had two incidents; neither affected a release. First, the
+   first CI run failed two release-recovery harness tests: the harness mirrors the
+   update card's Turkish text and outcome logic, and the new "denetle" wording and
+   a changed expression had not been mirrored there. That was fixed on the
+   branch. Second, a helper's harness run left a stray working-tree setting in
+   the shared repository's git configuration; it made git unusable on the
+   preparer's machine and the chain timed out. That one line was removed and the
+   chain was run again.
+4. The annotated tag `v0.1.0-alpha.96` (object
+   `61eb922045079c0828e4872ad90d1b76d39007c2`, tree
+   `aa73450d100c10e2a8fccdc45862e8da0deb5a9e`) points at the release commit. The
+   release is a pre-release, published at 2026-10-17T18:03:34Z with six assets.
+5. Checked from a download in the WSL guest `CelikPanel-S2-Debian` on 2026-10-17
+   (preparer; not recorded in a file here): the archives are byte-identical,
+   66,291,958 bytes each, SHA-256
+   `eeb14706f7dc57f1824ff2f22f3794d0e65adbb7d456000e978f6b3ebc5fac02`; the
+   manifest says sequence 96, `published_at` 2026-10-17T17:22:53Z (SHA-256
+   `fa03ccbcefd6255a2e6fe02d1c3517007e69127ec62cc084154d72c2d671b406`), and its
+   signature (SHA-256
+   `c45707199bc8bb7515abfe4218d2fb4217d3622f80b466abc9343eb8c979553a`) verifies
+   with `openssl pkeyutl -verify -rawin -pubin` against the signing key (SHA-256
+   `7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb`, the same
+   key as before); both content guards returned 0; the build used Go go1.26.5,
+   CGO off, `-trimpath`. `libexec/get.sh` pins 96 (SHA-256
+   `3e8d1aef71aaf114126fb0024ccb53e3d4d886eb06e6df231a9dfe3b6238c159`); the
+   policy inside says current 96, previous 95, previous commit
+   `5f3cb1a2fa336c529740a20e9a543b8ac086dc8d`. The archive has 243 members. The
+   interface bundle is `web/dist/assets/app-BNx0yp-r.js`, 256,533 bytes, SHA-256
+   `3a551a4098d223914bbe8b586be835670905b72ba64066461ddb00868a960d5d`.
+6. The portal package: `portal.tar.gz`, 132,959,242 bytes, SHA-256
+   `890ef8f1c90b960b9935b5207ef4d5ec624d368b800b525e372fc1b80868b730`, 54
+   entries, built twice byte-identical with the tag's
+   `deploy/build-download-portal.sh` (pre-signed mode). The contract test
+   returned 0; the public verifier's 17 tests and the promotion's 14 tests
+   passed.
+7. At about 18:10Z the preparer published it with
+   `deploy/publish-download-portal.ps1` from the preparer's machine, previous
+   version v0.1.0-alpha.95, target v0.1.0-alpha.96: status `committed`, public
+   verification 26 of 26 requests, `CELIKPANEL_DOWNLOAD_PORTAL_PUBLISHED`.
+8. The backup of the previous site is
+   `/var/www/vhosts/celikpanel.net/portal-backups/httpdocs.before-v0.1.0-alpha.96.20261017T181008Z.854640.d00eee2822700c9f`;
+   the upload was retained in
+   `/var/www/vhosts/celikpanel.net/.upload-portal-20261017T180924Z-v0.1.0-alpha.96-e8a05cb81963c14f`.
+9. A read from outside after the publication:
+   `https://celikpanel.net/releases/latest.txt` says v0.1.0-alpha.96;
+   `latest.json` says sequence 96, with the commit and the SHA-256 above.
+
+**What the owner reported.** On 2026-10-17 the owner started the updates of Boston
+and Frankfurt to alpha.95 from the panel's own update screen. Frankfurt's update
+stopped in the read-only check before changing anything ("a read-only check could
+not verify the current installation"); the server stayed on alpha.94, and the
+owner was asked for the Details text, which had not arrived when this was
+written. The cause is not known and none is guessed here. Boston's result had not
+been reported. The owner also asked for periodic update checks, an update notice
+and help with updating; this release is that work (see "Who should update, and
+why" and "What changes on screen" above; not repeated here). Nothing from
+alpha.96 on an installed server has been reported yet, and none should be
+inferred.
+
+**Not done, and what publication does not change.**
+
+- The installed servers were not updated to alpha.96 by the release preparer.
+  Frankfurt is on alpha.94 as far as reported; Boston's result is not reported.
+  Only the owner updates them, from the panel's own update screen.
+- alpha.96 cannot announce itself to a panel that is still on alpha.95: the
+  scheduled check exists only from alpha.96 on. Until a panel runs alpha.96, its
+  owner has to look for the update on the update screen.
+- The cause of the stop of Frankfurt's update to alpha.95 is still unknown (the
+  Details text is pending from the owner).
+- Open items left by this release:
+  1. The Turkish screen catalogues are nearly full and must be split before more
+     text is added.
+  2. A manual check result held in memory while the server is busy is lost when
+     the Panel restarts.
+  3. Nothing was measured on an installed server or against the real release
+     server.
+  4. Browser batch 21 was not run again after the last review corrections.
+- Reading installed package versions for every component remains open (see
+  "Known gaps").
+- Not reported and not recorded: anything from Boston or Frankfurt on alpha.96,
+  Boston's result for alpha.95, and everything the earlier notes list as not
+  reported. Each is "not recorded", not "worked" and not "failed".
+- The limits of the earlier publication records (see the
+  [alpha.88 notes](RELEASE-NOTES-v0.1.0-alpha.88.md)) are not reported as lifted.
+- Publication is not acceptance. P0.1 to P0.5 stay partial; no P0 item is closed
+  or advanced.
+
+Install this release only through CelikPanel's update interface. Publishing it does
+not update installed servers; only the owner of a server starts its update, from
+the panel's own update screen.
