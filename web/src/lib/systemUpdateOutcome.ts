@@ -138,7 +138,7 @@ function causeKey(code: RecoveryFailureCode | undefined): OutcomeKey {
 // The refused-check steps and the reason classes live in the server screen
 // catalogue (the boot catalogue stays small); until it has arrived the notice
 // shows the boot catalogue's generic reason.
-function preflightReasonLine(preflight: { step: string; reasonClass?: string } | undefined): OutcomeText {
+function preflightReasonLine(preflight: { step: string; reasonClass?: string } | undefined): { key: OutcomeKey; fallback?: OutcomeKey } {
     const generic: OutcomeKey = 'panelUpdate.outcome.preflightStep.generic';
     if (preflight?.reasonClass && (preflightReasonClasses as readonly string[]).includes(preflight.reasonClass)) {
         return { key: `panelUpdate.outcome.preflightClass.${preflight.reasonClass as PreflightReasonClass}`, fallback: generic };
@@ -170,7 +170,7 @@ export function failedUpdateGuidance(observation: RecoveryObservation | null, in
         // the closed Details (alpha.96: Frankfurt's update to alpha.95 stopped
         // here and the cause was hidden). It is already sanitized and short.
         // Sözcüğü olmayan adımda sunucunun ilk satırı nedenin altında görünür.
-        const generic = 'key' in reason && reason.key === 'panelUpdate.outcome.preflightStep.generic' && !translated;
+        const generic = reason.key === 'panelUpdate.outcome.preflightStep.generic' && !translated;
         // The first line, cut at 240 characters with an ellipsis; when it is not
         // the whole message, the whole message stays behind Details too.
         const lineOne = !product && reported ? reported.split(/\r?\n/)[0] : '';
