@@ -89,6 +89,32 @@ token-like strings. While a step's words are still loading, the reason line says
   13 strings for Frankfurt-shaped data and Ubuntu 24.04 strings for Boston-shaped
   data, labelled as sample data.
 
+## What the independent review corrected (2026-10-21)
+
+- Every package dpkg reports as installed counts (current state "i", no error
+  flag), also a held one or one marked for removal; the first form counted only
+  "ii". A package that needs reinstalling still shows no version.
+- The version query runs with a fixed environment (`LC_ALL=C`, `LANG=C`, a fixed
+  `PATH`) in its own process group; an answer over the 8 MiB ceiling kills the
+  query at once and is reported as "larger than the read ceiling", no longer as a
+  generic failure after the query ran to its end.
+- The busy check reads at most 1 MiB of the kernel's lock table and skips locks
+  without an inode; a pacman lock file left by a killed pacman, with no pacman
+  running, no longer keeps every later check "busy".
+- A reading kept for more than a day adds: "The package manager has been busy at
+  every check for more than a day. If no installation or update is running on the
+  server, the server administrator checks whether a package operation is stuck."
+- The Components page's own scan reads the versions before it takes the panel's
+  change lease, so the lease is not held while the package database answers.
+- The stop dialog never waits for ever: a reason already in the loaded copy is shown
+  at once, others say "Reading the reason…" for at most 10 seconds and then the
+  boot copy's own sentence. The new reasons of this release moved from the boot copy
+  to the settings screen part (critical boot path 359.20 of 361 KiB).
+- The server's line also treats a path after `:`, `,`, `;`, a backtick or `@` as a
+  path, hides a base64-like value split by `/`, and keeps `mode=0775` readable.
+- Turkish: the `compatibility` reason says "… aşağıdaki sunucu iletisine bakarak bunu
+  denetlemeli"; packages that differ read "Paketlerinin sürümleri farklı:".
+
 ## What does not change
 
 - The updater's mutation path: `update.sh`, the behaviour of `get.sh`, the Agent's
@@ -109,13 +135,21 @@ token-like strings. While a step's words are still loading, the reason line says
   the browser batch; the real `dpkg-query`/`pacman` answer on Boston and Frankfurt
   is not yet seen. The open item "read installed package versions for every
   component" is closed only when the owner sees the versions there.
-- **The critical boot path has about 1 KiB of its budget left.** The update dialog
-  is mounted above the pages, so its new texts are boot copy. The limit was not
-  raised.
+- **The critical boot path has 1.8 KiB of its budget left** (359.20 of 361 KiB;
+  2.99 KiB were left before this release). Only the line that waits for a reason is
+  new boot copy; the reasons are screen copy. The limit was not raised.
 - **Boston's result of its alpha.95 update** has not been reported.
 - On a desktop the component page header is a little taller with the version line,
   so the action buttons sit slightly below the title line; on a phone a long kept
   sentence takes three lines. Readable; not changed.
+- **Two components read differently from the others, by design.** SpamAssassin
+  always reads "several versions": its catalogue packages include
+  `spamass-milter`, which comes from another source and has its own version. The
+  WireGuard row shows the version of the `wireguard` meta-package on Debian and
+  Ubuntu (on Arch, `wireguard-tools`), not of the kernel module.
+- **alpha.97 back to alpha.96** without the database snapshot: alpha.96 ignores the
+  new cache fields (a Go test decodes such a row with alpha.96's shape) and its
+  next scan writes the row again without them.
 - P0.1-P0.5 stay **partial**; no P0 item is closed or advanced; a candidate is not
   acceptance.
 
@@ -124,8 +158,8 @@ token-like strings. While a step's words are still loading, the reason line says
 Everything below was run on the candidate tree on 2026-10-21 in a development
 environment; none of it was run on an installed server.
 
-- Go: `./cmd/panel/` and `./internal/...` 7153 passed, 0 failed, 44 skipped; the
-  Agent `./cmd/agent/` 4652 passed, 0 failed, 29 skipped, run in a clean mount
+- Go: `./cmd/panel/` and `./internal/...` 7156 passed, 0 failed, 44 skipped; the
+  Agent `./cmd/agent/` 4657 passed, 0 failed, 29 skipped, run in a clean mount
   namespace in the `CelikPanel-S2-Debian` WSL guest (empty agent state, no
   `celikpanel` group) as earlier Agent runs were; `go vet` and gofmt clean
   (`-timeout 45m`). New Agent tests cover the dpkg and pacman parsers (normal,
@@ -133,14 +167,18 @@ environment; none of it was run on an installed server.
   odd characters, overlong text, epoch), the catalogue mapping (meta-package versus
   versioned package, several packages, absent components), the one fixed query,
   the timeout, the busy and unreadable probe (no query is made), the lock-table
-  reading, and failures carrying no output. New Panel tests cover the RPC policy
+  reading, and failures carrying no output; after the review also held, removal
+  and reinstall-required dpkg states, a real process run past a small output
+  ceiling and past a small timeout (its process group is gone, the answer is "too
+  large"), the fixed environment, a lock without an inode and an over-long lock
+  table. New Panel tests cover the RPC policy
   (a read on every family; no similar mutation admitted), the short form, several
   versions, unknown, the busy keep, old cache rows, and the version passing through
   the scan, the cache and both managed-services answers; and the bounded,
   sanitized update diagnostic.
-- Web: `npm test` 1671 passed, 0 failed; `npm run build` succeeded within the
+- Web: `npm test` 1675 passed, 0 failed; `npm run build` succeeded within the
   budgets: the largest Turkish screen part (setup) 55.84 of 80 KiB, components
-  44.26 of 64 KiB, settings 31.24 of 44 KiB; critical boot path 359.89 of 361 KiB.
+  44.49 of 64 KiB, settings 31.93 of 44 KiB; critical boot path 359.20 of 361 KiB.
   Mounted tests cover the version column appearing only when a version is known, the
   short and full forms, several versions, unknown showing nothing, the component
   page header, the busy package manager stop (with the record shape Frankfurt had),

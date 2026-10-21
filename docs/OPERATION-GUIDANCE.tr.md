@@ -9333,8 +9333,8 @@ Her bileşen sayfasında, adının ve durumunun altında, "Kurulu sürüm:
 
 - Bilinen: satırda kısa biçim, sayfada tam biçim, kaynak satırı.
 - Birden çok sürüm: bileşenin paketleri farklı sürümler bildiriyor (örneğin
-  SpamAssassin ve milter'i). Satır "birden çok sürüm" der; sayfa "Paketleri farklı
-  sürümler bildiriyor:" der ve her paketi sürümüyle adlandırır. Tek bir sürüm
+  SpamAssassin ve milter'i). Satır "birden çok sürüm" der; sayfa "Paketlerinin sürümleri
+  farklı:" der ve her paketi sürümüyle adlandırır. Tek bir sürüm
   seçilmez.
 - Korunan: son denetimde sunucunun paket yöneticisi meşguldü, bu yüzden sürüm
   yeniden okunmadı; önceki okuma gösterilir ve öyle söylenir: "Sistemin paket
@@ -9427,8 +9427,8 @@ hepsi nedenin sayfaya nasıl ulaştığındaydı, hiçbiri güncellemenin kendis
   yollarının dışındaki URL'ler ve yollar değiştirilmiş, atama değerleri ve uzun
   belirteç benzeri diziler gizlenmiş.
 - `compatibility` adımının sözleri var: "Neden: sunucunun kurtarma aracı başlatılamadı
-  ya da kurulumu doğrulanamadı. Sunucu yöneticisi aşağıdaki sunucu satırıyla bunu
-  denetler; düzeltildikten sonra güncellemeyi yeniden başlatmak güvenlidir." Sunucunun
+  ya da kurulumu doğrulanamadı. Sunucu yöneticisi aşağıdaki sunucu iletisine bakarak bunu
+  denetlemeli; düzeltildikten sonra güncellemeyi yeniden başlatmak güvenlidir." Sunucunun
   ilk satırı bunun altında gösterilir.
 - Ekran kataloğu hâlâ yüklenirken bir adımın neden satırı genel neden yerine "Neden
   okunuyor…" der; genel neden yalnız ekran metni hiç yüklenemediğinde kalır.
@@ -9438,3 +9438,32 @@ yolu değişmedi. Sürümü hazırlayan kişi Frankfurt'ta ya da Boston'da hiçb
 çalıştırmadı; sahibin komutları salt-okurdu. Boston'un alpha.95 güncellemesinin
 sonucu bildirilmedi. P0.1-P0.5 **kısmi** kalır; bu girdi hiçbir şeyi kapatmaz ya da
 ilerletmez.
+
+### Bağımsız incelemesinden sonra alpha.97: bu iki girdide ne değişti (2026-10-21)
+
+v0.1.0-alpha.97 adayı için kaynakta; kurulu bir sunucuda hiçbir şey ölçülmedi.
+
+- **Kurulu durumlar.** Bir Debian ya da Ubuntu paketi dpkg kurulu dediği her durumda
+  (mevcut durum "i", hata bayrağı yok), tutulmuş ya da kaldırma için işaretlenmiş
+  olsa da kurulu sayılır; yeniden kurulması gereken bir paketin sürümü gösterilmez.
+- **Korunup duran bir okuma.** Paket yöneticisi bir günden uzun süredir her
+  denetimde meşgulse bileşen sayfası şunu ekler: "Paket yöneticisi bir günden uzun
+  süredir her denetimde meşgul. Sunucuda bir kurulum ya da güncelleme çalışmıyorsa
+  sunucu yöneticisi takılı kalmış bir paket işlemi olup olmadığına bakmalı." Kim
+  işlem yapar: yalnız hiçbir şey çalışmıyorsa sunucu yöneticisi. Öldürülmüş bir
+  pacman'in bıraktığı kilit dosyası, pacman süreci yoksa artık meşgul sayılmaz.
+- **Durma nedeni sonsuza dek beklemez.** Sözcükleri yüklü kopyada olan neden hemen
+  gösterilir (kurtarma aracının on bir adımı ve genel neden açılış kopyasındadır).
+  Sözcükleri ekran kopyasının ayarlar parçasında olan neden (meşgul paket yöneticisi,
+  `compatibility` adımı, reddedilen denetimin adımları) o parça yüklenirken "Neden
+  okunuyor…" der; 10 saniye sonra ya da ekran kopyası yüklenemediyse açılış
+  kopyasının kendi cümlesini gösterir (meşgul paket yöneticisi için açılış
+  katalogunun meşgul cümlesi, diğerlerinde genel neden).
+- **Sunucunun satırı.** `:`, `,`, `;`, ters tırnak ya da `@` sonrasındaki bir yol yol
+  sayılır; `/` ile bölünmüş base64 benzeri bir değer tek belirteç olarak gizlenir;
+  `mode=` sonrasındaki dosya kipi okunur kalır (`mode=0775`).
+- **Türkçe sözler.** `compatibility` nedeni artık "Sunucu yöneticisi aşağıdaki sunucu
+  iletisine bakarak bunu denetlemeli" der; sürümleri farklı paketler "Paketlerinin
+  sürümleri farklı:" diye okunur.
+
+P0.1-P0.5 **kısmi** kalır; bu girdi hiçbir şeyi kapatmaz ve ilerletmez.

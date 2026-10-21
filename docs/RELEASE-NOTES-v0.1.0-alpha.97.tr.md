@@ -57,7 +57,7 @@ olma denetimi, paket yöneticisi boşaldığında "Paket yöneticisi işini biti
 Güncelleme yeniden başlatılabilir." der. Sunucunun kurtarma aracının başlatılamadığı
 ya da doğrulanamadığı bir durmanın artık kendi nedeni vardır ("Neden: sunucunun
 kurtarma aracı başlatılamadı ya da kurulumu doğrulanamadı. Sunucu yöneticisi
-aşağıdaki sunucu satırıyla bunu denetler; …") ve sunucunun ilk satırı bunun
+aşağıdaki sunucu iletisine bakarak bunu denetlemeli; …") ve sunucunun ilk satırı bunun
 altındadır. Uzun bir tanı satırı artık atılmaz: panel ilk satırını, en çok 240
 karakter olarak, ürünün kendi yollarının dışındaki yollar, adresler, atama değerleri
 ya da belirteç benzeri diziler olmadan tutar. Bir adımın sözleri hâlâ yüklenirken
@@ -90,6 +90,34 @@ neden satırı genel neden yerine "Neden okunuyor…" der.
   bildirir; Frankfurt biçimli veriler için örnek Debian 13 metinleri, Boston biçimli
   veriler için Ubuntu 24.04 metinleri kullanılır ve örnek veri olarak etiketlenir.
 
+## Bağımsız incelemenin düzelttikleri (2026-10-21)
+
+- dpkg'nin kurulu dediği her paket sayılır (mevcut durum "i", hata bayrağı yok),
+  tutulan ya da kaldırma için işaretlenen de; ilk biçim yalnız "ii" sayıyordu.
+  Yeniden kurulması gereken bir paketin sürümü yine gösterilmez.
+- Sürüm sorgusu sabit bir ortamla (`LC_ALL=C`, `LANG=C`, sabit bir `PATH`) kendi
+  süreç grubunda çalışır; 8 MiB tavanını aşan bir yanıt sorguyu hemen durdurur ve
+  "okuma tavanından büyük" diye bildirilir; artık sorgu sonuna dek çalıştıktan sonra
+  genel bir hata olarak bildirilmez.
+- Meşguliyet denetimi çekirdeğin kilit tablosundan en çok 1 MiB okur ve inode'u
+  olmayan kilitleri atlar; öldürülmüş bir pacman'in bıraktığı kilit dosyası, çalışan
+  pacman yoksa sonraki her denetimi artık "meşgul" tutmaz.
+- Bir günden uzun korunan okuma şunu ekler: "Paket yöneticisi bir günden uzun
+  süredir her denetimde meşgul. Sunucuda bir kurulum ya da güncelleme çalışmıyorsa
+  sunucu yöneticisi takılı kalmış bir paket işlemi olup olmadığına bakmalı."
+- Bileşenler sayfasının kendi taraması sürümleri panelin değişiklik kirasını almadan
+  önce okur; paket veritabanı yanıt verirken kira tutulmaz.
+- Durma penceresi sonsuza dek beklemez: yüklü kopyada olan neden hemen gösterilir,
+  diğerleri en çok 10 saniye "Neden okunuyor…" der, sonra açılış kopyasının kendi
+  cümlesini gösterir. Bu sürümün yeni neden metinleri açılış kopyasından ayarlar
+  ekran parçasına taşındı (kritik açılış yolu 361 KiB'ın 359,20'si).
+- Sunucunun satırı `:`, `,`, `;`, ters tırnak ya da `@` sonrasındaki yolu da yol
+  sayar, `/` ile bölünmüş base64 benzeri bir değeri gizler ve `mode=0775`'i okunur
+  bırakır.
+- Türkçe: `compatibility` nedeni "… aşağıdaki sunucu iletisine bakarak bunu
+  denetlemeli" der; sürümleri farklı paketler "Paketlerinin sürümleri farklı:" diye
+  okunur.
+
 ## Ne değişmez
 
 - Güncelleyicinin değiştirme yolu: `update.sh`, `get.sh`'ın davranışı, Agent'ın
@@ -110,13 +138,21 @@ neden satırı genel neden yerine "Neden okunuyor…" der.
   bir taklit sunucuya karşı çalıştı; Boston ve Frankfurt'ta gerçek
   `dpkg-query`/`pacman` yanıtı henüz görülmedi. "Her bileşen için kurulu paket
   sürümlerini oku" açık işi ancak sahip sürümleri orada gördüğünde kapanır.
-- **Kritik açılış yolunda bütçeden yaklaşık 1 KiB kaldı.** Güncelleme penceresi
-  sayfaların üstünde bağlandığından yeni metinleri açılış metnidir. Sınır
-  yükseltilmedi.
+- **Kritik açılış yolunda bütçeden 1,8 KiB kaldı** (361 KiB'ın 359,20'si; bu sürümden
+  önce 2,99 KiB kalmıştı). Yalnız bir nedeni bekleyen satır yeni açılış metnidir;
+  nedenler ekran metnidir. Sınır yükseltilmedi.
 - **Boston'un alpha.95 güncellemesinin sonucu** bildirilmedi.
 - Masaüstünde bileşen sayfası başlığı sürüm satırıyla biraz daha yüksektir, bu
   yüzden eylem düğmeleri başlık satırının biraz altında durur; telefonda uzun bir
   korunan cümle üç satır tutar. Okunabilir; değiştirilmedi.
+- **İki bileşen, tasarım gereği diğerlerinden farklı okunur.** SpamAssassin her
+  zaman "birden çok sürüm" der: katalog paketleri arasında başka bir kaynaktan gelen
+  ve kendi sürümü olan `spamass-milter` vardır. WireGuard satırı Debian ve Ubuntu'da
+  `wireguard` üst paketinin (Arch'ta `wireguard-tools`) sürümünü gösterir, çekirdek
+  modülününkini değil.
+- **Veritabanı anlık görüntüsü olmadan alpha.97'den alpha.96'ya dönüş:** alpha.96
+  yeni önbellek alanlarını yok sayar (bir Go testi böyle bir satırı alpha.96'nın
+  biçimiyle çözer) ve sonraki taraması satırı bu alanlar olmadan yeniden yazar.
 - P0.1-P0.5 **kısmi** kalır; hiçbir P0 işi kapanmaz ya da ilerlemez; aday kabul
   değildir.
 
@@ -125,8 +161,8 @@ neden satırı genel neden yerine "Neden okunuyor…" der.
 Aşağıdakilerin hepsi 2026-10-21'de aday ağacında bir geliştirme ortamında çalıştırıldı;
 hiçbiri kurulu bir sunucuda çalıştırılmadı.
 
-- Go: `./cmd/panel/` ve `./internal/...` 7153 geçti, 0 başarısız, 44 atlandı; Agent
-  `./cmd/agent/` 4652 geçti, 0 başarısız, 29 atlandı, önceki Agent çalıştırmalarında
+- Go: `./cmd/panel/` ve `./internal/...` 7156 geçti, 0 başarısız, 44 atlandı; Agent
+  `./cmd/agent/` 4657 geçti, 0 başarısız, 29 atlandı, önceki Agent çalıştırmalarında
   olduğu gibi `CelikPanel-S2-Debian` WSL konuğunda temiz bir bağlama ad alanında
   (boş Agent durumu, `celikpanel` grubu yok) çalıştırıldı; `go vet` ve gofmt temiz
   (`-timeout 45m`). Yeni Agent testleri dpkg ve pacman ayrıştırıcılarını (normal,
@@ -134,15 +170,19 @@ hiçbiri kurulu bir sunucuda çalıştırılmadı.
   karakterler, aşırı uzun metin, epoch), katalog eşlemesini (üst paket ile sürümlü
   paket, birkaç paket, bulunmayan bileşenler), tek sabit sorguyu, zaman aşımını,
   meşgul ve okunamayan yoklamayı (sorgu yapılmaz), kilit tablosu okumasını ve çıktı
-  taşımayan hataları kapsar. Yeni Panel testleri RPC politikasını (her ailede bir
+  taşımayan hataları kapsar; incelemeden sonra ayrıca tutulan, kaldırma için
+  işaretlenen ve yeniden kurulum gerektiren dpkg durumlarını, küçük bir çıktı
+  tavanının ve küçük bir zaman aşımının ötesine giden gerçek bir süreci (süreç grubu
+  kalmaz, yanıt "çok büyük"tür), sabit ortamı, inode'u olmayan bir kilidi ve aşırı
+  uzun bir kilit tablosunu kapsar. Yeni Panel testleri RPC politikasını (her ailede bir
   okuma; benzer hiçbir değiştirme kabul edilmez), kısa biçimi, birden çok sürümü,
   bilinmeyeni, meşgul koruma durumunu, eski önbellek satırlarını ve sürümün tarama,
   önbellek ve iki yönetilen hizmet yanıtından geçişini; ve sınırlı, temizlenmiş
   güncelleme tanısını kapsar.
-- Web: `npm test` 1671 geçti, 0 başarısız; `npm run build` bütçeler içinde başarılı
+- Web: `npm test` 1675 geçti, 0 başarısız; `npm run build` bütçeler içinde başarılı
   oldu: en büyük Türkçe ekran parçası (setup) 80 KiB'nin 55,84'ü, components 64
-  KiB'nin 44,26'sı, settings 44 KiB'nin 31,24'ü; kritik açılış yolu 361 KiB'nin
-  359,89'i. Bağlanmış testler sürüm sütununun yalnız bir sürüm biliniyorsa
+  KiB'nin 44,49'u, settings 44 KiB'nin 31,93'ü; kritik açılış yolu 361 KiB'nin
+  359,20'si. Bağlanmış testler sürüm sütununun yalnız bir sürüm biliniyorsa
   görünmesini, kısa ve tam biçimleri, birden çok sürümü, bilinmeyenin hiçbir şey
   göstermemesini, bileşen sayfası başlığını, meşgul paket yöneticisi durmasını
   (Frankfurt'un sahip olduğu kayıt biçimiyle), `compatibility` adımını, sözlerini

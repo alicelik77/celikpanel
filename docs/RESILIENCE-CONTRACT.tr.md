@@ -5865,8 +5865,36 @@ içindeki her şeyin saat tarihidir.
   kanıtlamaz. **Kurulu bir sunucuda hiçbir şey ölçülmedi**: sürüm okuması, sahte bir
   çalıştırıcıyla yapılan birim testleri dışında gerçek bir paket veritabanına karşı
   çalışmadı ve meşgul yoklamasının kilit tablosu okuması düzenek dosyalarına karşı
-  sınanır. Açık: kurulu sunucular ölçülmedi; kritik açılış yolunun bütçesinde yaklaşık
-  1 KiB kaldı (yeni güncelleme metinleri açılış metnidir, çünkü güncelleme penceresi
-  sayfaların üstünde bağlanır); alpha.88'den alpha.96'ya girdilerin açık bıraktığı her
+  sınanır. Açık: kurulu sunucular ölçülmedi; kritik açılış yolunun bütçesinde
+  1,8 KiB kaldı (yalnız bir nedeni bekleyen satır yeni açılış metnidir, çünkü güncelleme
+  penceresi sayfaların üstünde bağlanır); alpha.88'den alpha.96'ya girdilerin açık bıraktığı her
   şey açık kalır. Kurulu paneller yalnız sahipleri tarafından, panelin kendi güncelleme
   ekranından güncellenir. P0.1 ila P0.5 kısmi kalır.
+- **Adayın bağımsız incelemesinden sonra düzeltildi (2026-10-21).** İlke 3: sürüm
+  sorgusu artık kendi süreç grubunda, sabit bir ortamla çalışır (`LC_ALL=C`,
+  `LANG=C`, sabit bir `PATH`, devralınan hiçbir şey; böylece `DPKG_ADMINDIR` ya da
+  benzeri onu başka yere yönlendiremez) ve çıktısı 8 MiB tavanı geçtiği anda grup
+  öldürülür, yanıt "okuma tavanından büyük"tür, asla yarım bir yanıt değil (testler
+  gerçek bir süreci küçük bir tavanın ve küçük bir zaman aşımının ötesine götürür ve
+  alt sürecinin kalmadığını denetler). İlke 2: yalnız "ii" değil, dpkg'nin her
+  kurulu durumu sayılır; kilit tablosu okuması 1 MiB ile sınırlıdır ve inode'u
+  olmayan kilidi atlar; canlı bir pacman olmadan kalan pacman kilit dosyası artık
+  sonsuza dek meşgul demek değildir; bir günden uzun korunan okuma sunucu
+  yöneticisinin neye bakacağını söyleyen kısa bir satır ekler. İlke 6: sayfanın kendi
+  taraması sürümleri Panel'in değişiklik kirasını almadan önce okur (bir işlemin
+  sonundaki taze tarama onları yine o işlemin kirası içinde okur, çünkü taramayı
+  değişiklikten sonraki durum yapan o kiradır). Durma penceresinin nedeni sonsuza dek
+  beklemez: yüklü sözler hemen gösterilir, diğerleri en çok 10 saniye bekler ve
+  alpha.97'nin neden metinleri açılış kopyasından ayarlar ekran parçasına taşındı
+  (açılış yolu 361 KiB'ın 359,20'si).
+- **Ters geçiş, alpha.97'den alpha.96'ya.** Kurulu bir panel veritabanının güncelleme
+  öncesi anlık görüntüsü olmadan alpha.96'ya geri alınırsa bileşen tarama önbelleği
+  ek `package_versions*` alanlarını korur. alpha.96 gözlemlerini Go'nun
+  `encoding/json` çözücüsüyle okur ve bu çözücü bilmediği alanları yok sayar; satır
+  reddedilmez, okunur ve alpha.96'nın sonraki taraması onu bu alanlar olmadan yeniden
+  yazar; bir Go testi alpha.97 satırını alpha.96'nın gözlem biçimiyle çözer. Bağımsız
+  inceleme böyle bir satırın sonraki taramaya dek doğrulanmamış bileşen durumu olarak
+  okunacağını bekliyordu; alpha.96'nın çözücüsü bunu yapmaz, ama ileride bilinmeyen
+  alanları reddeden bir çözücü olursa kurtarma, sayfanın doğrulanmamış durum için zaten
+  yaptığıyla aynıdır: tek bir koşullu tarama. Bu bilinen, kurtarılabilir bir geçiştir;
+  kurulu bir sunucuda ölçülmedi.

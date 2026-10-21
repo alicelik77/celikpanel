@@ -9471,3 +9471,34 @@ These are changes to what the page says. The updater's mutation path is unchange
 Nothing was run on Frankfurt or Boston by the release preparer; the owner's
 commands were read-only. Boston's result of its alpha.95 update has not been
 reported. P0.1-P0.5 stay **partial**; this entry closes and advances nothing.
+
+### alpha.97 after its independent review: what changed in these two entries (2026-10-21)
+
+In source for the v0.1.0-alpha.97 candidate; nothing measured on an installed
+server.
+
+- **Installed states.** A Debian or Ubuntu package counts as installed whenever dpkg
+  says so (current state "i", no error flag), also when it is held or marked for
+  removal; a package that needs reinstalling has no version shown.
+- **A kept reading that stays kept.** When the package manager has been busy at
+  every check for more than a day, the component page adds: "The package manager
+  has been busy at every check for more than a day. If no installation or update is
+  running on the server, the server administrator checks whether a package
+  operation is stuck." Who acts: the server administrator, only if nothing is
+  running. A pacman lock file left by a killed pacman no longer counts as busy
+  without a pacman process.
+- **The stop reason never waits for ever.** A reason whose words are already in the
+  loaded copy is shown at once (the recovery tool's eleven steps and the generic
+  reason are boot copy). One whose words are in the settings part of the screen copy
+  (the busy package manager, the `compatibility` step, the refused-check steps) says
+  "Reading the reason…" while that part loads, and after 10 seconds, or when the
+  screen copy failed, the boot copy's own sentence (for a busy package manager the
+  boot catalogue's busy sentence, otherwise the generic reason).
+- **The server's line.** A path after `:`, `,`, `;`, a backtick or `@` is treated as
+  a path; a base64-like value split by `/` is hidden as one token; a file mode after
+  `mode=` stays readable (`mode=0775`).
+- **Turkish wording.** The `compatibility` reason now says "Sunucu yöneticisi
+  aşağıdaki sunucu iletisine bakarak bunu denetlemeli"; packages that differ read
+  "Paketlerinin sürümleri farklı:".
+
+P0.1-P0.5 stay **partial**; this entry closes and advances nothing.

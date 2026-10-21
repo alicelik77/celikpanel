@@ -46,13 +46,19 @@ Benimsenen kurallar:
    sürümlü paketler, çünkü o zaman katalog adı sürümü sunucunun sürümü olmayan bir
    üst pakettir). Okuma hiçbir paket yöneticisi kilidi almaz.
 2. **Bir paket işlemi sürerken asla.** Sorgudan önce Agent süreç tablosunu ve
-   çekirdeğin kilit tablosunu apt/dpkg kilit dosyaları (ve pacman'in kilit dosyası)
-   için okur; kendisi, bir an için bile, asla kilit almaz. Meşgul bir sunucu ya da
+   (pacman ve apt/dpkg araçları dahil) çekirdeğin kilit tablosunu apt/dpkg kilit
+   dosyaları için okur; kendisi, bir an için bile, asla kilit almaz. Öldürülmüş bir
+   pacman'in geride bıraktığı kilit dosyası, canlı bir pacman süreci yoksa sayılmaz;
+   yoksa sürümler bir daha hiç okunmazdı. Meşgul bir sunucu ya da
    durumu okunamayan bir sunucu "meşgul" yanıtı verir: hiçbir şey sorgulanmaz ve
    Panel önceki taramanın sürümlerini, korunmuş olarak ve okundukları zamanla
    birlikte işaretleyerek tutar.
 3. **Bilinmeyen, bilinmeyen olarak kalır.** Kurulu katalog paketi olmayan bir bileşen
-   listelenmez. Yalnız kurulu bir paket sayılır (dpkg'de "ii"). 64 karakterden
+   listelenmez. Yalnız veritabanının kurulu dediği paket sayılır: dpkg'de, istenen
+   işlem ne olursa olsun ("ii", tutulan "hi", kaldırma ya da temizleme için
+   işaretlenen "ri"/"pi") mevcut durumu "i" ve hata bayrağı boş olan paket; "yeniden
+   kurulum gerekli" ("iiR"), yarım kurulu, açılmış ya da yalnız yapılandırması kalmış
+   ("rc") paketin sürümü yoktur. 64 karakterden
    uzun ya da bir paket veritabanının yazmayacağı karakterler taşıyan bir sürüm
    metni atılır, asla kısaltılmaz; bu durumda bileşenin tüm sürümü bilinmez olur.
    Paketleri farklı sürümler bildiren bir bileşen "birden çok sürüm"dür, asla
@@ -89,6 +95,21 @@ bilinmediği yerde hiçbir şey söylenmez. D-032 (panel kendiliğinden bakar): 
 mevcut koşullu ve elle taramalara biner ve zamanlayıcı eklemez. D-034 değişikliği:
 "her bileşen için kurulu paket sürümünü okumak" açık işi bu kararla kaynakta
 uygulanmıştır; kurulu bir sunucuda ölçülmemiştir.
+
+*Adayın bağımsız incelemesinden sonra aynı gün düzeltildi:* ilk biçim yalnız dpkg'nin
+"ii" durumunu sayıyordu (kural 3 artık her kurulu durumu sayar); çıktı tavanını
+aşan yanıt genel bir hata olarak bildiriliyor ve sorgu çalışmayı sürdürüyordu (artık
+sorgunun süreç grubu tavanda öldürülür ve yanıt "okuma tavanından büyük"tür); sorgu
+Agent'ın ortamını devralıyordu (artık `LC_ALL=C`, `LANG=C` ve sabit bir `PATH`,
+başka hiçbir şey); kilit tablosu okuması sınırsızdı ve inode'u olmayan bir kilidi
+reddediyordu (artık en çok 1 MiB ve böyle bir satır atlanır); bayat bir pacman kilit
+dosyası sonsuza dek meşgul demekti (artık canlı bir pacman süreci gerekir); bir günden
+uzun korunan okumanın yönlendirmesi yoktu (artık sayfa şunu ekler: "Paket yöneticisi
+bir günden uzun süredir her denetimde meşgul. Sunucuda bir kurulum ya da güncelleme
+çalışmıyorsa sunucu yöneticisi takılı kalmış bir paket işlemi olup olmadığına
+bakmalı."); ve sayfanın kendi taraması paket veritabanı yanıt verirken Panel'in
+değişiklik kirasını tutuyordu (artık sürümleri kirayı almadan önce okur; bir
+işlemin sonundaki taze tarama onları yine o işlemin kirası içinde okur).
 
 ---
 

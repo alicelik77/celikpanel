@@ -46,13 +46,19 @@ The rules adopted:
    when any is installed, because the catalogue name is then a meta-package whose
    version is not the server's). The read takes no package-manager lock.
 2. **Never while a package operation runs.** Before the query the Agent reads the
-   process table and the kernel's lock table for the apt/dpkg lock files (and
-   pacman's lock file); it never takes a lock itself, not even for a moment. A busy
+   process table (pacman and the apt/dpkg tools among it) and the kernel's lock
+   table for the apt/dpkg lock files; it never takes a lock itself, not even for a
+   moment. A pacman lock file left behind by a killed pacman, with no pacman
+   process alive, does not count, or the versions would never be read again. A busy
    host, or one whose state cannot be read, answers "busy": nothing is queried, and
    the Panel keeps the previous scan's versions, marked as kept, with the time they
    were read.
 3. **Unknown stays unknown.** A component with no installed catalogue package is
-   not listed. Only an installed package ("ii" in dpkg) counts. A version text that
+   not listed. Only a package the database reports as installed counts: in dpkg,
+   current state "i" with a blank error flag, whatever the wanted action ("ii",
+   "hi" held, "ri"/"pi" marked for removal or purge); a package flagged "reinstall
+   required" ("iiR"), half-installed, unpacked or with only its configuration
+   left ("rc") has no version. A version text that
    is longer than 64 characters or carries characters a package database does not
    print is dropped, never shortened, and the whole component's version is then
    unknown. A component whose packages report different versions is "several
@@ -89,6 +95,22 @@ D-032 (the panel looks by itself): the read rides the existing conditional and
 manual scans and adds no timer. D-034 amendment: its open item "read installed
 package versions for every component" is implemented in source by this decision;
 it is not measured on an installed server.
+
+*Corrected the same day after an independent review of the candidate:* the first
+form counted only dpkg's "ii" (rule 3 now counts every installed state); an answer
+over the output ceiling was reported as a generic failure and the query kept
+running (now the query's process group is killed at the ceiling and the answer is
+"larger than the read ceiling"); the query inherited the Agent's environment (now
+`LC_ALL=C`, `LANG=C` and a fixed `PATH`, nothing else); the lock-table read was
+unbounded and refused a lock without an inode (now at most 1 MiB, and such a line
+is skipped); a stale pacman lock file meant busy for ever (now it needs a live
+pacman process); a reading kept for more than a day had no guidance (now the page
+adds: "The package manager has been busy at every check for more than a day. If no
+installation or update is running on the server, the server administrator checks
+whether a package operation is stuck."); and the page's own scan held the Panel's
+mutation lease while the package database answered (now it reads the versions
+before taking the lease; the fresh scan at the end of an operation still reads
+them inside that operation's lease).
 
 ---
 

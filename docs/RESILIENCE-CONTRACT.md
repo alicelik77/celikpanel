@@ -6587,8 +6587,36 @@ everything in it.
   an installed server**: the version read has not run against a real package
   database outside unit tests with a faked runner, and the busy probe's lock-table
   reading is tested against fixtures. Open: installed servers not measured; the
-  critical boot path has about 1 KiB of its budget left (the new update texts are
-  boot copy because the update dialog is mounted above the routes); everything the
+  critical boot path has 1.8 KiB of its budget left (only the line that waits for a
+  reason is new boot copy, because the update dialog is mounted above the routes); everything the
   alpha.88 to alpha.96 entries leave open stays open. Installed panels are updated
   only by their owners, from the panel's own update screen. P0.1 to P0.5 stay
   partial.
+- **Corrected after an independent review of the candidate (2026-10-21).**
+  Invariant 3: the version query now runs in its own process group with a fixed
+  environment (`LC_ALL=C`, `LANG=C`, a fixed `PATH`, nothing inherited, so no
+  `DPKG_ADMINDIR` or similar can redirect it), and the moment its output passes the
+  8 MiB ceiling the group is killed and the answer is "larger than the read
+  ceiling", never a partial answer (tests run a real process past a small ceiling
+  and past a small timeout and check that its child is gone). Invariant 2: every
+  dpkg installed state counts, not only "ii"; the lock-table read is bounded at
+  1 MiB and skips a lock without an inode; a pacman lock file without a live pacman
+  no longer means busy for ever; a reading kept for more than a day adds a short
+  line on what the server administrator checks. Invariant 6: the page's own scan
+  reads the versions before taking the Panel's mutation lease (the fresh scan at
+  the end of an operation still reads them inside that operation's lease, because
+  that lease is what makes it the state after the change). The stop dialog's
+  reason never waits for ever: words already loaded are shown at once, others wait
+  at most 10 seconds, and the alpha.97 reason texts moved out of the boot copy
+  into the settings screen part (boot path 359.20 of 361 KiB).
+- **The reverse transition, alpha.97 to alpha.96.** Should an installed panel be
+  taken back to alpha.96 without the pre-update snapshot of its database, the
+  component scan cache keeps the additive `package_versions*` fields. alpha.96
+  decodes its observations with Go's `encoding/json`, which ignores fields it does
+  not know, so the row is read, not refused, and the next alpha.96 scan writes it
+  again without them; a Go test decodes an alpha.97 row with alpha.96's observation
+  shape. The independent review expected such a row to read as an unverified
+  component state until the next scan; the decoder of alpha.96 does not do that,
+  but if a future decoder refused unknown fields, the recovery would be the same
+  one the page already performs for an unverified state: one conditional scan.
+  This is a known, recoverable transition, not measured on an installed server.
