@@ -173,7 +173,8 @@ environment; none of it was run on an installed server.
 - Release-recovery harness (it mirrors the update card's texts and outcome logic,
   and reads the catalogue parts this release changed):
   `python3 -m unittest discover -s deploy/e2e/release-recovery -p 'test_*.py'` in a
-  fresh clone in the `archlinux` WSL guest: 1109 tests, OK (1 skipped). In the same
+  fresh clone in the `archlinux` WSL guest: 1109 tests, OK (1 skipped), run again on
+  the final tree after the review round moved the refusals into their own part. In the same
   clone `deploy/test-release-sequence-policy.sh` passed (97 -> 98).
 - Deploy contracts: `deploy/test-download-portal-contract.sh` (with the portal's new
   GitHub links) and `deploy/test-signed-release-manifest-contract.sh` passed in the
@@ -194,7 +195,10 @@ environment; none of it was run on an installed server.
   link reads "Manage on Security"; no "firewall" on a Turkish page; nothing new.
   Left as they were (moved as is, not new): the System databases card's "Open panel
   settings" link, the sideways tab strip of Settings on a phone, and buttons under
-  44 px on a phone in the moved cards.
+  44 px on a phone in the moved cards. After the review round, one more run of the
+  whole batch (32 desktop and 29 phone states, English and Turkish, both themes
+  sampled) was clean: Fail2ban "Running.", the menu closing when focus leaves it,
+  no raw key (`err.*` included), no sideways scrolling.
 
 Component and mounted tests do not establish native behaviour.
 

@@ -176,7 +176,8 @@ hiçbiri bir kurulu sunucuda çalıştırılmadı.
   yansıtır, bu sürümün değiştirdiği katalog parçalarını okur): `archlinux` WSL
   konuğunda taze bir klonda
   `python3 -m unittest discover -s deploy/e2e/release-recovery -p 'test_*.py'`:
-  1109 test, OK (1 atlandı). Aynı klonda `deploy/test-release-sequence-policy.sh`
+  1109 test, OK (1 atlandı); inceleme turu retleri kendi parçalarına taşıdıktan sonra
+  son ağaçta yeniden çalıştırıldı. Aynı klonda `deploy/test-release-sequence-policy.sh`
   geçti (97 -> 98).
 - Dağıtım sözleşmeleri: `deploy/test-download-portal-contract.sh` (portalın yeni
   GitHub bağlantılarıyla) ve `deploy/test-signed-release-manifest-contract.sh`
@@ -197,7 +198,10 @@ hiçbiri bir kurulu sunucuda çalıştırılmadı.
   Türkçe sayfada "firewall" yok; yeni bir şey yok. Olduğu gibi bırakılanlar (taşındı,
   yeni değil): Sistem veritabanları kartındaki "panel ayarlarını aç" bağlantısı,
   telefonda Ayarlar'ın yana kayan sekme şeridi ve taşınan kartlarda telefonda 44
-  px'ten küçük düğmeler.
+  px'ten küçük düğmeler. İnceleme turundan sonra tüm denetimin bir kez daha
+  çalıştırılması (masaüstünde 32, telefonda 29 durum; İngilizce ve Türkçe, iki temadan
+  örnekler) temizdi: Fail2ban "Çalışıyor.", odak çıkınca kapanan menü, ham anahtar
+  yok (`err.*` dahil), yana kaydırma yok.
 
 Bileşen ve bağlanmış testler gerçek sistem davranışını kanıtlamaz.
 
