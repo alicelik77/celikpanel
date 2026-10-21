@@ -2,8 +2,13 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-import { en } from '../src/i18n/en.ts';
-import { tr } from '../src/i18n/tr.ts';
+import { en as enShellHalf } from '../src/i18n/en.ts';
+import { enErrorsScreens as enErrorsPart } from '../src/i18n/screens/errors/en.ts';
+// The coded refusals only screens show are the screen part "errors" since v0.1.0-alpha.98.
+const en = { ...enShellHalf, ...enErrorsPart };
+import { tr as trShellHalf } from '../src/i18n/tr.ts';
+import { trErrorsScreens as trErrorsPart } from '../src/i18n/screens/errors/tr.ts';
+const tr = { ...trShellHalf, ...trErrorsPart };
 import { englishScreens, turkishScreens } from './locale-catalogue.mjs';
 
 // 11 Oct 2026, corrections from the second native measurement that have a

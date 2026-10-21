@@ -1,6 +1,6 @@
 // SCREEN catalogue part "settings": Settings: CelikPanel updates, panel certificate, license, team, users, plans and the Store.
 // Key prefixes kept here: panelUpdate., panelCert., license., settings., team., users., plans., addons.,
-// account., dnsPeers., maintenance.
+// account., dnsPeers. (the pages that left Settings in v0.1.0-alpha.98)
 // One part of the screen copy; ../../index.tsx fetches every part in
 // parallel and no screen renders before all of them have arrived. A new key
 // goes into the part that holds its prefix; how to split a part that grows
@@ -454,21 +454,13 @@ export const enSettingsScreens = {
     'panelUpdate.card.verifying': '{version} is installed and this panel is running it. The update is still being verified; checking for updates is available again when it has finished. You do not need to do anything.',
     'panelUpdate.card.unknown': 'The state of the update to {version} could not be read just now, so it is not known whether it has finished. This page reads it again by itself. Do not start another update.',
     'panelUpdate.card.restarting': 'The panel is restarting as part of the update to {version}. This page reconnects by itself; nothing needs to be pressed.',
-    // --- end of the update card block ---,
+    // --- end of the update card block ---
+    // --- The pages that left Settings in v0.1.0-alpha.98 (D-037) ---
     'account.subtitle': 'Your own sign-in: your password and two-factor authentication.',
     'account.password.title': 'Password',
     'account.password.desc': 'Change the password you sign in with. Your current password is asked first.',
     'dnsPeers.subtitle': "Shared nameservers, this server's role, its peer server and DNS replication.",
-    'maintenance.subtitle': 'Inspect and safely maintain the SQLite files CelikPanel and installed services keep.',
-    // The password dialog, which My account opens (alpha.98, D-037); it is
-    // fetched when opened, so its copy is screen copy. The menu's label stays
-    // profile.changePassword in the shell.
-    'account.password.current': 'Current password',
-    'account.password.new': 'New password',
-    'account.password.new2': 'New password (again)',
-    'account.password.mismatch': 'The new passwords do not match.',
-    'account.password.changed': 'Password changed.',
-    'account.password.wrongCurrent': 'Current password is incorrect.',
+    // --- end of the pages that left Settings ---
 } as const;
 
 export type SettingsScreenKey = keyof typeof enSettingsScreens;

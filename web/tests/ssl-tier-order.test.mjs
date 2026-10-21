@@ -58,8 +58,9 @@ test('customer-reachable sentences name the server administrator as the actor', 
     assert.match(sentence(en, key), /server administrator/, key);
     assert.match(sentence(tr, key), /sunucu yöneticisi/, key);
   }
-  const shellEN = read('../src/i18n/en.ts');
-  const shellTR = read('../src/i18n/tr.ts');
+  // Coded refusals only screens show are the screen part "errors" since alpha.98.
+  const shellEN = read('../src/i18n/en.ts') + read('../src/i18n/screens/errors/en.ts');
+  const shellTR = read('../src/i18n/tr.ts') + read('../src/i18n/screens/errors/tr.ts');
   for (const key of ['err.SITE_CONFIG_OWNER_EDITED.certificate_validation', 'err.CERTIFICATE_VALIDATION_UNKNOWN']) {
     assert.match(sentence(shellEN, key), /server administrator/, key);
     assert.match(sentence(shellTR, key), /(S|s)unucu yöneticisi/, key);

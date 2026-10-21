@@ -437,19 +437,11 @@ export const trSettingsScreens: Record<SettingsScreenKey, string> = {
     'panelUpdate.card.verifying': '{version} kuruldu ve bu panel onu çalıştırıyor. Güncelleme hâlâ doğrulanıyor; güncelleme denetimi, güncelleme bittiğinde yeniden kullanılabilir. Bir şey yapmanız gerekmiyor.',
     'panelUpdate.card.unknown': '{version} güncellemesinin durumu şu an okunamadı; bu yüzden bitip bitmediği bilinmiyor. Bu sayfa onu kendiliğinden yeniden okur. İkinci bir güncelleme başlatmayın.',
     'panelUpdate.card.restarting': 'Panel, {version} güncellemesinin bir parçası olarak yeniden başlıyor. Bu sayfa kendiliğinden yeniden bağlanır; hiçbir şeye basmanız gerekmiyor.',
-    // --- güncelleme kartı bloğunun sonu ---,
+    // --- güncelleme kartı bloğunun sonu ---
+    // --- v0.1.0-alpha.98'de Ayarlar'dan çıkan sayfalar (D-037) ---
     'account.subtitle': 'Kendi girişiniz: parolanız ve iki faktörlü doğrulama.',
     'account.password.title': 'Parola',
     'account.password.desc': 'Giriş yaptığınız parolayı değiştirin. Önce mevcut parolanız sorulur.',
     'dnsPeers.subtitle': 'Ortak ad sunucuları, bu sunucunun rolü, eş sunucusu ve DNS çoğaltması.',
-    'maintenance.subtitle': "CelikPanel'in ve kurulu servislerin tuttuğu SQLite dosyalarını inceleyin ve güvenle bakımını yapın.",
-    // The password dialog, which My account opens (alpha.98, D-037); it is
-    // fetched when opened, so its copy is screen copy. The menu's label stays
-    // profile.changePassword in the shell.
-    'account.password.current': 'Mevcut parola',
-    'account.password.new': 'Yeni parola',
-    'account.password.new2': 'Yeni parola (tekrar)',
-    'account.password.mismatch': 'Yeni parolalar eşleşmiyor.',
-    'account.password.changed': 'Parola değiştirildi.',
-    'account.password.wrongCurrent': 'Mevcut parola yanlış.',
+    // --- Ayarlar'dan çıkan sayfaların sonu ---
 };

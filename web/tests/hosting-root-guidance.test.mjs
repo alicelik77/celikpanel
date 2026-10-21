@@ -3,8 +3,13 @@ import test from 'node:test';
 
 import { apiErrorText, readApiError } from '../src/lib/apiError.ts';
 import { setupHostingRootBlockerValues } from '../src/lib/serverSetupGuidance.ts';
-import { en as enShell } from '../src/i18n/en.ts';
-import { tr as trShell } from '../src/i18n/tr.ts';
+import { en as enShellShellHalf } from '../src/i18n/en.ts';
+import { enErrorsScreens as enShellErrorsPart } from '../src/i18n/screens/errors/en.ts';
+// The coded refusals only screens show are the screen part "errors" since v0.1.0-alpha.98.
+const enShell = { ...enShellShellHalf, ...enShellErrorsPart };
+import { tr as trShellShellHalf } from '../src/i18n/tr.ts';
+import { trErrorsScreens as trShellErrorsPart } from '../src/i18n/screens/errors/tr.ts';
+const trShell = { ...trShellShellHalf, ...trShellErrorsPart };
 import { enScreens } from './locale-catalogue.mjs';
 import { trScreens } from './locale-catalogue.mjs';
 

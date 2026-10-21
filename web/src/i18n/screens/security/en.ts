@@ -1,6 +1,6 @@
 // SCREEN catalogue part "security": Security audit, firewall, Fail2ban, VPN and monitoring.
 // Key prefixes kept here: securityAudit., firewall., f2b., vpn., monitoring.,
-// securityPage.
+// securityPage. (the Security page, v0.1.0-alpha.98)
 // One part of the screen copy; ../../index.tsx fetches every part in
 // parallel and no screen renders before all of them have arrived. A new key
 // goes into the part that holds its prefix; how to split a part that grows

@@ -30,6 +30,7 @@ import type { MailDatabasesScreenKey } from './screens/mailDatabases/en';
 import type { SecurityScreenKey } from './screens/security/en';
 import type { DashboardScreenKey } from './screens/dashboard/en';
 import type { SettingsScreenKey } from './screens/settings/en';
+import type { ErrorsScreenKey } from './screens/errors/en';
 
 export const en = {
     'app.name': 'CelikPanel',
@@ -133,7 +134,6 @@ export const en = {
     'login.totpHint': 'Enter the 6-digit code from your authenticator app.',
     'login.invalidCode': 'Invalid code. Try again.',
     'login.verify': 'Verify',
-    'err.panel_certificate_activation_pending': 'A previous panel certificate activation is still being finalized. Wait briefly, then retry. No certificate state was overwritten.',
     'panelUpdate.title': 'CelikPanel updates',
     // The sidebar's quiet link when the Panel found a newer signed release (D-035).
     'panelUpdate.notice.sidebar': 'Update available · {version}',
@@ -286,87 +286,15 @@ export const en = {
     'err.license_required': "An active server license is required to use the panel. Existing services and scheduled tasks keep running. Your server administrator must activate or renew the license.",
     'err.AUTH_REQUIRED': 'Your session has expired — sign in again.',
     'err.ADMIN_ONLY': 'This action requires an administrator.',
-    'err.USERNAME_RESERVED': 'This username is reserved for CelikPanel’s own actions in the activity log. Nothing was created or changed; choose a different username.',
     'err.ACCOUNT_SUSPENDED': 'This account is suspended.',
-    'err.DOMAIN_DELETION_PENDING': 'This domain is being deleted. Mail settings cannot be changed until deletion finishes or is safely retried.',
-    'err.DOMAIN_DELETION_FAILED.mail_runtime_cleanup_failed': 'Deletion stopped while removing this domain’s mail from this server. The DNS zone and the website are unchanged. The server owner fixes this on this server: the exact error is in the panel log (sudo journalctl -u celikpanel-panel | grep "domain deletion"). Check the mail storage directory it names — normally /var/mail/vhosts, or /var/spool/mail/vhosts where /var/mail is the distribution’s link — and make sure no other symbolic link is in that path. Then use “Retry this deletion” (Delete on this domain) to run this same deletion again: it repeats the mail cleanup and continues with the remaining steps. Nothing retries by itself.',
     'err.INTERNAL': 'The server hit an internal error. Try again; if it persists, check the panel logs.',
     'err.AGENT_UNREACHABLE': 'The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.',
     'err.PLATFORM_CAPABILITY_UNAVAILABLE': 'This operation is not available for the connected server platform.',
     'err.PLATFORM_IDENTITY_UNAVAILABLE': 'The connected server\'s platform identity could not be verified. Try again; if it persists, check the agent connection.',
-    'err.REPO_STATUS_UNAVAILABLE': 'Repository status could not be checked because the server agent is unavailable. Try again.',
-    'err.REPO_PACKAGES_UNAVAILABLE': 'The repository is enabled, but its package list could not be loaded. The distribution default remains available when the repository is optional.',
-    'err.REPO_AGENT_UNAVAILABLE': 'The server agent could not complete the repository operation. Try again and check the audit log if it persists.',
-    'err.REPO_INVALID_REQUEST': 'The repository request is invalid.',
-    'err.REPO_UNSUPPORTED_SYSTEM': 'Managed repositories are not supported on this operating system.',
-    'err.REPO_UNSUPPORTED_DISTRIBUTION': 'This managed repository is not available for the detected distribution or release.',
-    'err.REPO_KEY_UNTRUSTED': 'The repository signing key did not match the pinned publisher fingerprint. Nothing was changed.',
-    'err.REPO_ENABLE_FAILED': 'The repository could not be enabled. The previous source and key were preserved.',
-    'err.REPO_DISABLE_FAILED': 'The repository could not be disabled.',
-    'err.REPO_CONFIGURATION_INVALID': 'The repository configuration has drifted. Use Enable/Repair to validate and publish the trusted recipe again.',
-    'err.REPO_STATUS_FAILED': 'The repository configuration could not be verified.',
-    'err.REPO_PACKAGES_FAILED': 'The repository package list could not be read.',
-    'err.DNS_SERVER_REQUIRED': 'No managed authoritative DNS engine is active. Choose and activate BIND or PowerDNS before publishing domains.',
-	'err.DNS_SERVER_REQUIRED.action': 'Choose a DNS engine',
-	'err.DNS_ENGINE_WORKFLOW_REQUIRED': 'BIND and PowerDNS changes must use the reviewed DNS infrastructure workflow so port 53, every zone and rollback remain protected.',
-	'err.DNS_ENGINE_WORKFLOW_REQUIRED.action': 'Open DNS and peer servers',
-	'err.DNSSEC_ENGINE_UNSUPPORTED': 'DNSSEC management currently requires PowerDNS as the active DNS engine. BIND activation is limited to unsigned zones in this release.',
-	'err.DNSSEC_ENGINE_UNSUPPORTED.action': 'Open DNS and peer servers',
-	'err.DNS_SETTINGS_REQUIRED': 'DNS identity is not ready. Save the shared nameserver names and choose an operating mode in Server → DNS and peer servers before adding a domain.',
-	'err.DNS_SETTINGS_REQUIRED.action': 'Configure the DNS pair',
-	'err.DNS_SETUP_REQUIRED': 'This older action can save only part of the DNS topology. Review the complete DNS setup and publish it in one step.',
-	'err.DNS_SETUP_REQUIRED.action': 'Open DNS setup',
-	'err.DNS_PUBLICATION_FAILED': 'The DNS zone is saved, but the DNS service could not publish it. Check the service and retry.',
-	'err.INFRASTRUCTURE_DNS_RECORD_MANAGED_BY_SETUP': 'Server setup keeps this address record, so it is not changed here. Extend the server setup to change it; the review shows the change first. Other records in this zone are yours to edit.',
-	'err.INFRASTRUCTURE_DNS_ZONE_NOT_FOUND': 'This server has no infrastructure DNS zone with this name. Open Domains to see the zones it has.',
-	'err.DNS_PUBLICATION_FAILED.dns_peer_enrollment_required': 'The DNS change is saved on this server, but the secondary has not been shown to have removed the zone: no inspection access is set up between the two servers. The administrators of both servers set it up once with the dns-peer-enroll owner tool (add --engine pdns to each command when the secondary runs PowerDNS): primary-prepare here, secondary-install and secondary-host-key on the secondary, then primary-activate here. After that, use “Retry this deletion” to retry the same publication; it continues from where it stopped. Nothing retries by itself.',
-	'err.DNS_PUBLICATION_FAILED.dns_peer_enrollment_changed': 'The DNS change is saved, but peer inspection enrollment cannot be trusted. This server\'s administrator must check its peer identity and credential enrollment, then retry the same publication.',
-	'err.DNS_PUBLICATION_FAILED.dns_peer_inspection_unknown': 'The DNS change is saved, but authenticated secondary inspection could not complete. This server\'s administrator and the secondary owner must check the pinned SSH channel and inspector access, then retry the same publication.',
-	'err.DNS_PUBLICATION_FAILED.dns_peer_native_unknown': 'The DNS change is saved, but native secondary DNS inspection did not prove the deleted zone absent. The secondary owner must check its loaded zones and transfer state, then retry the same publication.',
-	'err.DNS_PUBLICATION_FAILED.dns_peer_journal_unknown': 'The DNS change is saved, but the private peer challenge cannot be reconciled. This server\'s administrator reads the Agent log lines for this deletion on this server with sudo journalctl -u celikpanel-agent | grep peer; they name the step that stopped and its reason. A retry is safe because each challenge can be used only once and a retry starts a new one: use “Retry this deletion” to retry the same publication; it continues from where it stopped. Nothing retries by itself.',
-	'err.DNS_PUBLICATION_FAILED.dns_peer_owner_edit_unknown': 'The DNS change is saved, but local or peer evidence changed during verification. This server\'s administrator must reconcile the accepted operation with native DNS configuration: compare the catalog zone and zone serials on both servers, then use “Retry this deletion” to retry the same publication.',
-	'err.DNS_PUBLICATION_FAILED.dns_peer_proof_internal': 'The DNS change is saved on this server, but the deletion is not verified yet: this server could not run its own check of the secondary. No change by either server\'s owner was found, and nothing on either server needs to be undone. The server owner checks the CelikPanel Agent log on this server with sudo journalctl -u celikpanel-agent | grep peer and reports those lines to CelikPanel. Retrying does not help until the CelikPanel Agent is updated with a fix; after that update, use “Retry this deletion” to retry the same publication; it continues from where it stopped. Until then the deletion stays pending and DNS answers are unaffected. Nothing retries by itself.',
-	'err.DNS_PUBLICATION_FAILED.dns_peer_proof_timeout': 'The DNS change is saved on this server, but the deletion is not verified yet: the check of the secondary did not finish within its time. Nothing was changed on either server; the deletion stays pending and DNS answers are unaffected. This server\'s owner can retry now with “Retry this deletion” to retry the same publication; it continues from where it stopped. If it happens again, either server\'s owner checks that this server can reach the secondary\'s SSH port and that neither server is overloaded, then retries. Nothing retries by itself.',
-	'err.DNS_PUBLICATION_FAILED.dns_peer_catalog_transfer_refused': 'The DNS change is saved on this server, but the secondary has not been shown to have removed the zone: the secondary\'s named refused the inspector\'s local transfer of the catalog zone (allow-transfer). The secondary\'s owner allows that transfer from loopback on the secondary. A secondary whose DNS CelikPanel set up with this release already allows it; on one set up by an earlier release it arrives when CelikPanel next writes that server\'s DNS configuration. On a secondary you run without CelikPanel, add 127.0.0.1 and ::1 to the catalog zone\'s allow-transfer in named\'s configuration and reload named. Then use “Retry this deletion” to retry the same publication; it continues from where it stopped. Nothing retries by itself.',
-	'err.DNS_PUBLICATION_FAILED.bind_rndc_unavailable': 'The DNS change is saved, but this server could not prove the zone was removed: named cannot be asked about zone state because no usable rndc key is present. The server owner fixes this on this server: run sudo rndc-confgen -a, then sudo systemctl restart named. The restart briefly interrupts DNS answers from this server; on Debian the unit is also named and the key is /etc/bind/rndc.key. Then use “Retry this deletion” to retry the same publication. Until then the deletion stays pending, nothing else is changed and DNS answers are unaffected.',
-    'err.DNS_ENGINE_PLAN_REJECTED': 'The server agent rejected the reviewed DNS plan. The DNS engine change was not committed. Verify current DNS state before creating a new review; do not retry the old confirmation.',
-    'err.DNS_ENGINE_CHANGE_NOT_COMMITTED': 'The DNS engine change was not committed. The pre-operation serving state was verified; packages or setup files may still have changed. Refresh state before creating a new review.',
-    'err.DNS_ENGINE_STATE_UNVERIFIED': 'The DNS server change outcome could not be verified. Refresh DNS state and inspect the result before creating another change.',
-    'err.DNS_ENGINE_CHANGE_APPLIED_REFRESH_REQUIRED': 'The DNS server change was applied, but panel follow-up is incomplete. Refresh DNS state and inspect the result before another action.',
-    'err.DNS_CLUSTER_PEER_IS_LOCAL': 'The peer server IPv4 address cannot be this server’s address. Enter the other DNS server’s IPv4 address.',
-    'err.WEB_SERVER_REQUIRED': 'No web server is installed. Install Nginx or Apache from Services, or choose the DNS-only type.',
-    'err.WEB_SERVER_REQUIRED.action': 'Install a web server',
-    'err.PHP_REQUIRED': 'PHP-FPM is not installed. Install it from Services, or choose the static or DNS-only type.',
-    'err.PHP_REQUIRED.action': 'Install PHP-FPM',
-    'err.NO_SUBSCRIPTION': 'This account has no subscription yet — ask your provider to assign a plan.',
-    'err.QUOTA_DOMAINS_EXCEEDED': 'Your plan’s domain limit is reached. Remove a domain or upgrade your plan.',
-    'err.QUOTA_DISK_EXCEEDED': 'Your plan’s disk quota is full. Free some space or upgrade your plan.',
-    'err.ENTITLEMENT_REQUIRED': 'This feature requires an add-on your subscription does not include.',
-    'err.ENTITLEMENT_REQUIRED.action': 'View add-ons',
-    'err.FIREWALL_ENGINE_MISSING': 'The firewall engine (nftables) is not installed — install “Firewall engine” on the Components page first.',
-    'err.FIREWALL_ENGINE_MISSING.action': 'Go to Components',
     // Scheduled tasks need the server's native cron (upd1, 1 Oct 2026). The
     // base sentence answers a refused change; .read answers the list.
-    'err.CRON_NOT_INSTALLED': 'Scheduled tasks need this server’s cron service, and it is not installed, so nothing was changed. The server owner installs it once: in CelikPanel, open Components and install “Scheduled tasks (cron)”. Or, on the server, run sudo apt-get install cron on Debian/Ubuntu, or sudo pacman -S cronie and then sudo systemctl enable --now cronie on Arch. Then refresh this page and make the change again; nothing retries by itself.',
-    'err.CRON_NOT_INSTALLED.read': 'Scheduled tasks cannot be shown because this server’s cron service is not installed, and no scheduled task runs until it is. The server owner installs it once: in CelikPanel, open Components and install “Scheduled tasks (cron)”. Or, on the server, run sudo apt-get install cron on Debian/Ubuntu, or sudo pacman -S cronie and then sudo systemctl enable --now cronie on Arch. Then refresh this page.',
-    'err.CURRENT_SETTINGS_UNREADABLE': 'CelikPanel could not read what is currently set on the server, so nothing was changed. Reload the page and try again.',
-    'err.CRON_JOB_DUPLICATE': 'A task with the same schedule and command already exists, so nothing was added. Change the existing task instead, or enable it if it is disabled.',
-    'err.MAIL_POLICY_INVALID': 'Nothing was saved: a mail policy value is outside what CelikPanel sets. Correct it and save again.',
-    'err.MAIL_POLICY_INVALID.dnsbl_zone': 'Nothing was saved: a DNSBL zone must be a plain host name such as zen.spamhaus.org, with zones separated by commas. Correct the zones and save again.',
-    'err.NATIVE_CRON_REMOVAL_REFUSED':'CelikPanel does not remove this server’s cron service: it runs every scheduled task on the server, including tasks created outside the panel. Nothing was changed. If removing it is really intended, the server owner does so with the operating system’s package manager.',
     // A directory above the hosting root that CelikPanel did not create blocks
     // the web server or the site users (native finding P3, 1 Oct 2026).
-    'err.HOSTING_ROOT_NOT_TRAVERSABLE': 'The site was not created, and nothing was changed. The directory {directory} (mode {mode}, owner {owner}) does not let the web server or the site users through to /var/www/celikpanel, so a site there would show “not found” and its scheduled tasks would not run. CelikPanel does not change directories it did not create. The server owner decides: to allow access, run {command} on the server. Then create the site again; nothing retries by itself.',
-    'err.FIREWALL_NO_SSH_SERVICE': 'This server has no SSH service, so no SSH port could be proven. Confirm you accept that, then turn the firewall on.',
-    'err.FIREWALL_SSH_NOT_LISTENING': 'This server has an SSH service but no listening SSH port was found. Start SSH, or remove it, then turn the firewall on.',
-    'err.FIREWALL_SSH_DISCOVERY_FAILED': 'Whether this server has a reachable SSH port could not be determined, so the firewall was not changed.',
-    'err.RUNTIME_IN_USE': 'Sites still run on this version. Switch them to another version first.',
-    'err.SERVICE_HAS_DEPENDENTS': 'Things on this server still depend on this component. Remove or move them first.',
-    'err.FIREWALL_SYNC_FAILED': 'The service action completed and its new state was verified, but the active firewall policy could not be synchronized. Review the firewall before continuing.',
-    'err.MAIL_FILTER_SYNC_FAILED': 'The service was removed and its new state was verified, but the Postfix mail-filter chain could not be synchronized. Review mail flow before continuing.',
-    'err.SERVICE_UNINSTALL_PARTIAL': 'The service was stopped or disabled, but package removal did not finish. Its current state was rescanned; review the component before trying again.',
-    'err.WEBMAIL_UNINSTALL_PARTIAL': 'Roundcube is no longer detected, but its uninstall cleanup and finalization could not be fully verified. Use Retry webmail cleanup in this dialog to finish safely.',
-    'err.SERVICE_STATE_REFRESH_FAILED': 'The operation outcome and current service state could not be verified, so the page assumes neither. CelikPanel checks the components again by itself while the Dashboard, the Components page or a component’s page is open; open this page again after that check.',
     'err.SERVICE_STATE_UNVERIFIED': 'The stored record of this server’s components could not be verified, so it is not shown and nothing was changed. CelikPanel checks the components again by itself while the Dashboard, the Components page or a component’s page is open; open this page again after that check.',
     'err.HOST_MUTATION_BUSY': 'Another server change or operating-system package task is still running. Wait for it to finish, then try again.',
     'err.HOST_MUTATION_BUSY.package_manager_active': 'This server\'s package manager is busy — a package task is still running on this server. Wait for it to finish, then try again.',
@@ -380,18 +308,8 @@ export const en = {
     'err.operation_state_persist_failed': 'The package operation state could not be saved. Verify the machine state before another action.',
     'err.operation_start_failed': 'The package operation could not be started.',
     'err.service_install_failed': 'The service could not be installed and verified.',
-    'err.firewall_sync_failed': 'The service changed, but the active firewall policy could not be synchronized.',
     'err.node_runtime_install_failed': 'The Node.js runtime could not be installed and verified.',
     'err.mail_profile_install_failed': 'The mail profile could not be installed and verified.',
-    'err.mail_profile_confirmation_required': 'Review and accept the mail profile plan before starting.',
-    'err.mail_profile_server_hostname_invalid': 'The mail hostname must be a fully qualified domain name, such as mail.example.com.',
-    'err.mail_profile_server_hostname_required': 'This server does not have a fully qualified name yet and CelikPanel has none saved for it. Enter the name the mail server should answer as, such as mail.example.com; the installation gives this server that name.',
-    'err.mail_profile_dns_identity_not_ready': 'DNS identity is not ready. Install a supported DNS server, then configure and publish the nameserver setup in Server → DNS and peer servers before installing a mail stack.',
-    'err.RUNTIME_VERSION_REQUIRED': 'Pick a Node.js version installed by the panel.',
-    'err.RUNTIME_VERSION_REQUIRED.action': 'Install a version',
-    'err.GENERAL_VHOST_APPLY_FAILED': 'The setting was rejected by the web server. The previous database and runtime configuration were restored.',
-    'err.ALIAS_CERTIFICATE_REISSUE_REQUIRED': 'This alias change requires a confirmed replacement of the active ACME certificate.',
-    'err.ALIAS_CERTIFICATE_ACTIVATION_PENDING': 'The alias change is saved, but certificate activation or a dependent service update is pending. Retry after checking the SSL status.',
     'common.buildHint': 'The git revision this panel is running. It comes from the running server, so it changes whenever a new build is actually live.',
     'common.fullCommit': 'full commit {commit}',
     'common.agentMismatch': 'agent mismatch',
@@ -419,7 +337,6 @@ export const en = {
     // catalogue and no observation of it at all.
     // "Henüz bakılmadı", "kurulu değil" demek değildir.
     'services.notChecked': 'Not checked yet',
-    'err.ssl_activation_pending': 'The certificate was issued, but the web server could not activate it yet. The certificate remains recorded; retry saving the HTTPS settings.',
     'common.copy': 'Copy',
 
     'nav.vpn': 'VPN',
@@ -474,19 +391,19 @@ export const en = {
     'imp.return': 'Return to my account',
 
     'profile.changePassword': 'Change password',
+    'profile.current': 'Current password',
+    'profile.new': 'New password',
+    'profile.new2': 'New password (again)',
+    'profile.mismatch': 'The new passwords do not match.',
+    'profile.changed': 'Password changed.',
+    'profile.wrongCurrent': 'Current password is incorrect.',
 
     'nav.import': 'Import',
     // --- batch 2b (9 Oct 2026): database and mail configuration screens: checking,
     // could not be read, known; saves that carry the version of what was read ---
-    'err.MAIL_POLICY_NOT_RELOADED': "The mail policy was saved to /etc/postfix/main.cf, but Postfix could not be reloaded, so Postfix is still running with the previous settings. Nothing was rolled back. On the server, run sudo postfix check to see what Postfix objects to, correct it, then run sudo systemctl reload postfix. The values shown below are the saved ones.",
-    'err.CRON_JOB_AMBIGUOUS': "This task stands twice in the crontab, so CelikPanel cannot tell which line to change and changed nothing. Remove one of the two lines on the server (sudo crontab -u <site user> -e), then reload this list.",
     // --- end of batch 2b ---
     // --- set1 corrections (10 Oct 2026): a reload is verified, never inferred; no cause is
     // named that was not verified; what the server holds after a failed reload ---
-    'err.MAIL_POLICY_NOT_RELOADED.check': "Saved to /etc/postfix/main.cf, but Postfix was not reloaded: its own check refuses the configuration. A running Postfix keeps the settings it had before, so the saved values are not in effect. The line it names is below and may be one this page did not write. Nothing was rolled back. On the server, correct that line, run sudo postfix check until it prints no error, then run sudo postfix reload. The values shown below are the saved ones.",
-    'err.MAIL_POLICY_NOT_RELOADED.reload': "Saved to /etc/postfix/main.cf, and Postfix’s own check accepts the file, but the reload failed, so Postfix has not taken the saved values. Nothing was rolled back. On the server, run sudo postfix reload and read what it prints. The values shown below are the saved ones.",
-    'err.MAIL_POLICY_NOT_RELOADED.verify': "Saved to /etc/postfix/main.cf, but Postfix was no longer running after the reload, so it is not handling mail. Nothing was rolled back. On the server, run sudo postfix check, start Postfix (sudo systemctl start postfix) and confirm with sudo postfix status. The values shown below are the saved ones.",
-    'err.MAIL_POLICY_RELOAD_UNKNOWN': "Saved to /etc/postfix/main.cf, but CelikPanel could not establish whether Postfix took the saved values: a command that checks or reloads Postfix could not be run or did not answer in time. This is not a verified failure; Postfix may already be running with them. Nothing was rolled back. On the server, run sudo postfix status, then sudo postfix reload. The values shown below are the saved ones.",
     // --- end of set1 corrections ---
 
     // A change is sent once and answered once (D-029). Order: what happened,
@@ -497,7 +414,6 @@ export const en = {
     'err.REQUEST_OUTCOME_UNKNOWN': 'CelikPanel restarted or failed while this change was running, so it is not known whether the change was completed. It will not be run again by itself. Reload the page and check the current state; make the change again only if it is missing.',
     'err.REQUEST_COMPLETED_RESULT_NOT_RETAINED': 'This change was already made; it was not made a second time. Its result was shown only once and is not kept. Reload the page to see the current state; if you still need what was shown once (a password or a configuration file), create a new one.',
     'err.REQUEST_COMPLETED_RESULT_NOT_RETAINED.failed': 'This change already ended with an error, and that answer is not kept; it was not tried a second time. Reload the page and check the current state; make the change again only if it is missing.',
-    'err.BACKUP_RESTORE_IN_PROGRESS': 'Another restore of this domain is still running, so this one was not started and changed nothing. Wait for it to finish and check the site; restore again only if it is still needed.',
 
     // A change on a route that carries an identity whose result is not known
     // (D-029 with lib/lostAnswer.ts): the first sentence says what happened, the
@@ -514,46 +430,11 @@ export const en = {
     // Start, Stop, Restart and Reload on the Services page (10 Oct 2026): what the
     // service showed, the one command the server owner runs, how the work resumes.
     // An unknown result is not a failure.
-    'err.SERVICE_ACTION_FAILED': "The action on {unit} did not take effect. On the server, run {command} to see why, correct it, then repeat the action here.",
-    'err.SERVICE_ACTION_FAILED.check': "Nothing was changed: {unit} refuses its own configuration, so the action was not carried out. On the server, run {command} to see what it objects to, correct it, then repeat the action here.",
-    'err.SERVICE_ACTION_FAILED.reload': "{unit} reported that the reload failed. CelikPanel cannot read from {unit} which settings it is running with now, so this page says neither that it kept the settings it had nor that it took the files on disk. On the server, run {command} to see why, correct it, then repeat the action here.",
-    'err.SERVICE_ACTION_FAILED.reload_reread': "The reload of {unit} was reported as failed, but PostgreSQL itself re-read its configuration files after it: the settings in the files on disk are in effect now, except those that need a restart. A step of the unit’s own reload command failed after the server had been signalled. On the server, run {command} to see which step, and correct it so that the next reload is reported as it went. The reload does not need to be repeated for these settings.",
-    'err.SERVICE_ACTION_FAILED.reload_not_reread': "The reload of {unit} failed and PostgreSQL did not re-read its configuration files: it is running with the settings it had before. On the server, run {command} to see why, correct it, then repeat the action here.",
-    'err.SERVICE_ACTION_FAILED.not_running': "{unit} is not running, so there was nothing to reload and nothing was changed. If it should run, use Start here; it reads its configuration files when it starts. To see its state on the server, run {command}.",
-    'err.SERVICE_ACTION_FAILED.start': "{unit} did not start, or did not stay running. On the server, run {command} to see why, correct it, then repeat the action here.",
-    'err.SERVICE_ACTION_FAILED.stop': "{unit} did not stop: it is still running. On the server, run {command} to see its state, then repeat the action here.",
-    'err.SERVICE_ACTION_FAILED.verify': "The action was sent, but {unit} is not in the state that was asked for. On the server, run {command} to see its state, correct the cause, then repeat the action here.",
-    'err.SERVICE_ACTION_FAILED.command': "The server's service manager did not carry out the action on {unit}. On the server, run {command} to see why, correct it, then repeat the action here.",
-    'err.SERVICE_ACTION_UNKNOWN': "The action was sent, but what came of it could not be verified, so it is not shown as done. This is not a verified failure: {unit} may already be in the state you asked for. On the server, run {command} to see its state, and repeat the action here only if it is still needed.",
 
     // --- first page load: the interface is still loading after half a minute (2026-10-10) ---
     'recovery.waitingProlongedLoading': "CelikPanel is still loading; it opens by itself. If this page stays like this, reload it.",
     // --- end of the first page load block ---
     // --- a site configuration file the owner changed: refusals (D-031, 2026-10-10) ---
-    'err.SITE_CONFIG_OWNER_EDITED': 'This site’s nginx configuration file is not CelikPanel’s unchanged text, so CelikPanel kept it and did not apply this change to it. Nothing else was changed. On the domain’s Configuration file page, keep your file, take CelikPanel’s text (your file is kept as a dated copy), or merge the two by hand.',
-    'err.SITE_CONFIG_MISSING': 'This site’s nginx configuration file is missing, so this change was not applied and the file was not recreated. If it was removed on purpose, nothing needs doing; otherwise choose Recreate on the domain’s Configuration file page.',
-    'err.SITE_CONFIG_UNWRITABLE': 'CelikPanel could not read or replace this site’s nginx configuration file (for example, it is a link or it is locked against changes), so it kept the file as it is and did not apply this change. The server administrator checks the file on the server; the reason is on the domain’s Configuration file page.',
-    'err.SITE_CONFIG_EXISTS': 'A configuration file for this name already exists on the server and was not written by CelikPanel, so CelikPanel kept it and did not create the site. Nothing was left behind. Move or rename that file on the server if it is no longer used, then create the site again.',
-    'err.SITE_CONFIG_CHANGED': 'The configuration file or CelikPanel’s text changed after the page showed them, so nothing was done. The page reads the file again; look at it, then choose again.',
-    'err.SITE_CONFIG_NOT_APPLICABLE': 'This choice does not apply to the file as it is now, so nothing was done. The page reads the file again; choose again if you still want it.',
-    'err.SITE_CONFIG_NOT_READ': 'CelikPanel could not read the state of this site’s configuration file just now. This does not mean anything is wrong with the file, and nothing was changed. Try again.',
-    'err.SITE_CONFIG_NGINX_REFUSED': 'nginx did not accept CelikPanel’s text (it refused the configuration or could not reload), so your file was put back and nginx keeps running with it. nginx checks every site together, so the cause may be another file; fix what nginx reported, then choose again.',
-    'err.SITE_CONFIG_NGINX_REFUSED.unconfirmed': 'nginx did not accept CelikPanel’s text (it refused the configuration or could not reload). CelikPanel tried to put the previous file back; whether it is in place is not confirmed — the server administrator checks the file on the server. nginx checks every site together, so the cause may be another file; fix what nginx reported, then choose again.',
-    'err.SITE_CONFIG_OWNER_EDITED.certificate_validation': 'This site’s nginx configuration file was changed outside CelikPanel and does not let CelikPanel publish the certificate validation without changing the file, so no certificate was requested and nothing was changed. The server administrator chooses on the domain’s Configuration file page: take CelikPanel’s text, or add what that page shows to the file and reload nginx; then request the certificate again.',
-    'err.SITE_CONFIG_OWNER_EDITED.php_pool': 'This site’s PHP-FPM pool file is not CelikPanel’s unchanged text, so CelikPanel kept it, with your lines, and did not apply this change. Nothing else was changed. On the domain’s Configuration file page, keep your file, take CelikPanel’s text (your file is kept as a dated copy), or merge the two by hand.',
-    'err.SITE_CONFIG_OWNER_EDITED.app_unit': 'This site’s application unit file is not CelikPanel’s unchanged text, so CelikPanel kept it and did not apply this change; the application keeps running with it. Nothing else was changed. On the domain’s Configuration file page, keep your file, take CelikPanel’s text (your file is kept as a dated copy), or merge the two by hand.',
-    'err.SITE_CONFIG_MISSING.php_pool': 'This site’s PHP-FPM pool file is missing, so this change was not applied and the file was not recreated. If it was removed on purpose, nothing needs doing; otherwise choose Recreate on the domain’s Configuration file page.',
-    'err.SITE_CONFIG_MISSING.app_unit': 'This site’s application unit file is missing, so this change was not applied and the file was not recreated. If it was removed on purpose, nothing needs doing; otherwise choose Recreate on the domain’s Configuration file page.',
-    'err.SITE_CONFIG_UNWRITABLE.php_pool': 'CelikPanel could not read or replace this site’s PHP-FPM pool file (for example, it is a link or it is locked against changes), so it kept the file as it is and did not apply this change. The server administrator checks the file on the server; the reason is on the domain’s Configuration file page.',
-    'err.SITE_CONFIG_UNWRITABLE.app_unit': 'CelikPanel could not read or replace this site’s application unit file (for example, it is a link or it is locked against changes), so it kept the file as it is and did not apply this change. The server administrator checks the file on the server; the reason is on the domain’s Configuration file page.',
-    'err.SITE_CONFIG_EXISTS.php_pool': 'A PHP-FPM pool file for this site already exists for the PHP version you chose, so CelikPanel kept it and did not switch. Nothing was changed. Move or rename that file on the server if it is no longer used, then switch again.',
-    'err.SITE_CONFIG_EXISTS.app_unit': 'An application unit file for this site already exists and was not written by CelikPanel, so CelikPanel kept it and did not apply this change. Nothing was changed. Open the domain’s Configuration file page.',
-    'err.SITE_CONFIG_SERVICE_REFUSED': 'The service did not accept CelikPanel’s text, so the previous file was put back and nothing else was changed. The server administrator reads the service’s message in the panel log, fixes the cause, then tries again.',
-    'err.SITE_CONFIG_SERVICE_REFUSED.php_pool': 'PHP-FPM did not accept CelikPanel’s pool text (its configuration check or reload failed), so the previous pool file was put back and PHP-FPM keeps running with it. Nothing else was changed. The server administrator reads PHP-FPM’s message in the panel log (sudo journalctl -u celikpanel-panel | grep "site configuration"), fixes the cause, then tries again.',
-    'err.SITE_CONFIG_SERVICE_REFUSED.app_unit': 'systemd did not take CelikPanel’s unit text (its reload failed), so the previous unit file was put back. Nothing else was changed. The server administrator reads systemd’s message in the panel log (sudo journalctl -u celikpanel-panel | grep "site configuration"), fixes the cause, then tries again.',
-    'err.SITE_CONFIG_SERVICE_REFUSED.php_pool.unconfirmed': 'PHP-FPM did not accept CelikPanel’s pool text (its configuration check or reload failed). CelikPanel tried to put the previous file back; whether it is in place is not confirmed — the server administrator checks the file on the server. PHP-FPM’s message and what failed while putting the file back are in the panel log (sudo journalctl -u celikpanel-panel | grep "site configuration"); fix the cause, then try again.',
-    'err.SITE_CONFIG_SERVICE_REFUSED.app_unit.unconfirmed': 'systemd did not take CelikPanel’s unit text (its reload failed). CelikPanel tried to put the previous file back; whether it is in place is not confirmed — the server administrator checks the file on the server. systemd’s message and what failed while putting the file back are in the panel log (sudo journalctl -u celikpanel-panel | grep "site configuration"); fix the cause, then try again.',
-    'err.CERTIFICATE_VALIDATION_UNKNOWN': 'CelikPanel could not check whether this site’s nginx configuration file lets the certificate validation run, because nginx on this server did not answer, so no certificate was requested and nothing was changed. The server administrator checks that nginx is running; then request the certificate again.',
     // --- end of the site configuration refusals block ---
     // --- an access read that has not answered, and one that answered with a failure (ninth native record, 2026-10-10) ---
     'recovery.waitingLong': "The Panel has not answered for a while. CelikPanel keeps checking by itself; you can also check now.",
@@ -576,5 +457,6 @@ export type ScreenKey =
     | MailDatabasesScreenKey
     | SecurityScreenKey
     | DashboardScreenKey
-    | SettingsScreenKey;
+    | SettingsScreenKey
+    | ErrorsScreenKey;
 export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey;

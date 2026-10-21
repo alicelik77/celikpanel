@@ -21,7 +21,7 @@ const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 // Ekran yarısının her parçası; index.tsx her birini yüklemelidir.
 export const screenParts = [
   'setup', 'sites', 'siteConfig', 'dnsCertificates', 'components',
-  'mailDatabases', 'security', 'dashboard', 'settings',
+  'mailDatabases', 'security', 'dashboard', 'settings', 'errors',
 ];
 
 const capitalised = (part) => part[0].toUpperCase() + part.slice(1);

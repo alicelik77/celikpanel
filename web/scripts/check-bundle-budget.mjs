@@ -75,6 +75,10 @@ const screenPartBudgets = {
   dashboard: kib(41, 9),
   dnsCertificates: kib(41, 12),
   security: kib(28, 9),
+  // v0.1.0-alpha.98: the coded refusals only screens show moved out of the
+  // shell (the boot path had 0.25 KiB left; it is 329.16 KiB after). Set with
+  // at least 25% headroom from its Turkish file: 32.40 / 8.24 KiB.
+  errors: kib(44, 11.5),
 }
 
 // Translation chunks, named by source. The shell halves are held to the
