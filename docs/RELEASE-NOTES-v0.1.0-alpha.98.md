@@ -82,13 +82,20 @@ temporarily unavailable.") and lifts it by itself, with nothing to reload.
   sections, the redirects, and the links and texts that named the old places. The
   icons come from the lucide set already in the boot bundle. The personal menu is a
   disclosure: `aria-expanded`, Escape closes it and returns focus to its button.
-- **The password dialog** is fetched when it is opened, not on every page load, and
-  its field texts moved from the shell catalogue to the settings screen part
-  (`account.password.*`).
+- **The password dialog** is fetched when it is opened, not on every page load; its
+  words stay in the shell catalogue, so it never shows raw keys.
+- **The coded refusals that only screens show** moved from the shell catalogue into
+  a screen part "errors", loaded with the other parts before any screen renders;
+  what the shell can show before then stays in the shell, and a refusal whose words
+  have not arrived shows the server's sentence or the generic error, never its key.
+- **The firewall box has its own module**, and **one rule says whether a component
+  is running** everywhere: "running", or a status that says "(running)"; "active
+  (exited)" is not running.
 - **Guidance action addresses on the server.** Every guidance action that pointed at
   `/settings?section=dns` (the DNS engine workflow, DNSSEC, DNS-only children,
   import, remote DNS authority, DNS setup) now points at `/dns-infrastructure`; the
-  panel certificate's missing-contact-email action points at `/account`. Two English
+  panel certificate's missing contact email has no action any more (no screen
+  changes the administrator's own email yet; see Known gaps). Two English
   fallback messages that named Settings or DNS infrastructure settings now name
   Server → DNS and peer servers. These are strings in answers; an older Panel's
   links still work because the browser redirects them.
@@ -132,9 +139,12 @@ manager have not been seen on a real server.
 - **Nothing was measured on an installed server.** The new layout has been exercised
   by component and mounted tests only; the owner has not yet seen it on Boston or
   Frankfurt.
-- **The critical boot path has 0.25 KiB of its budget left** (360.75 of 361 KiB raw;
-  1.8 KiB were left after alpha.97). The ceiling was not raised. The next addition to
-  the boot path must move something out of it first.
+- **No screen changes the administrator's own email.** The panel certificate needs
+  it as the contact; it is the address given when the administrator was created on
+  the server. The refusal says so; a way to change one's own email from My account
+  is an open item.
+- **"Open sessions"** from the mockup's description of My account is not built; the
+  product has no session list.
 - **alpha.98 back to alpha.97.** The new addresses (`/security`, `/maintenance`,
   `/dns-infrastructure`, `/account`) are unknown to alpha.97, so a bookmark to one of
   them lands on alpha.97's Dashboard. Nothing is lost and nothing needs repairing;
@@ -151,13 +161,15 @@ environment; none of it was run on an installed server.
 
 - Go: `go test ./cmd/panel/ ./internal/...` (-timeout 45m) in the
   `CelikPanel-S2-Debian` WSL guest: 7156 passed, 0 failed, 44 skipped.
-- Web: `npm test` 1691 passed (1675 on alpha.97). The new tests are in
+- Web: `npm test` 1697 passed (1675 on alpha.97). The new tests are in
   `web/tests/menu-layout-alpha98.test.mjs`: the rail per role, the redirects, every
   web link and every Go guidance action resolving to a route and to an existing
   Settings section, the personal menu mounted, Fail2ban's states, the new labels in
   English and Turkish, and each new page with its header and the content it
-  received. `npm run build` is within its budgets: the critical boot path 360.75 of
-  361 KiB raw and 107.68 of 110 KiB gzip (359.20 raw on alpha.97).
+  received. `npm run build` is within its budgets: the critical boot path 329.16 of
+  361 KiB raw and 100.37 of 110 KiB gzip (359.20 raw on alpha.97; 360.75 in this
+  candidate's first draft, before the screen-only refusals moved to their own part;
+  the "errors" part is 32.40 of 44 KiB for Turkish).
 - Release-recovery harness (it mirrors the update card's texts and outcome logic,
   and reads the catalogue parts this release changed):
   `python3 -m unittest discover -s deploy/e2e/release-recovery -p 'test_*.py'` in a

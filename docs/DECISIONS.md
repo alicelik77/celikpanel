@@ -120,12 +120,11 @@ mistaken for owner decisions):
   was invented.
 - **The password change moved into My account**, opening the same dialog. The menu
   no longer repeats it for roles that have My account; additional users keep it in
-  the menu. The dialog is fetched when it is opened, not on every page load, and
-  its field texts moved from the shell catalogue to the settings screen part under
-  `account.password.*`.
-- **Icons** come from the lucide set already in the boot bundle: DNS and peer
-  servers a network, Security a shield with a check, Maintenance a wrench, My
-  account a person.
+  the menu. The dialog is fetched when it is opened, not on every page load; its
+  words stay in the shell catalogue (`profile.*`), so it never shows raw keys.
+- **Icons** come from the lucide set: DNS and peer servers a network, Security a
+  shield with a check, Maintenance a wrench, My account a person with a check
+  (UserCheck, already in the boot bundle).
 - **The firewall box still shows on Components when it needs attention** (off,
   unreadable, no engine, an SSH note, persistence), because that is where the owner
   is when it matters; only the healthy state is the one calm line, whose link
@@ -147,8 +146,9 @@ mistaken for owner decisions):
   Settings" for the DNS pair now say "Server → DNS and peer servers" or "Server →
   Security". On the server side, every guidance action that pointed at
   `/settings?section=dns` (DNS engine workflow, DNSSEC, DNS-only children, import,
-  remote DNS authority, DNS setup) now points at `/dns-infrastructure`, and the
-  panel certificate's missing-contact-email action points at `/account`.
+  remote DNS authority, DNS setup) now points at `/dns-infrastructure`; the panel
+  certificate's missing contact email carries no action (see the review corrections
+  below).
 - **The setup gate keeps the four addresses reachable** while setup is required
   (`/account`, `/security`, `/dns-infrastructure`, `/maintenance`), as `/settings`
   was, and the offline recovery shell's route list includes them.
@@ -170,10 +170,47 @@ D-033 (a screen that makes the owner wait says so): the Security page's readines
 read is the visible, bounded one Components already has. D-035: CelikPanel updates
 stays in Settings, where the update card and its dot in the navigation are.
 
-Not done: nothing is measured on an installed server. The
-critical boot path has 0.25 KiB of its budget left (360.75 of 361 KiB); the ceiling
-was not raised, so the next addition to the boot path must move something out
-first.
+**Review corrections (2026-10-22, before any publication).** An independent review
+of the candidate asked for these; they are in source:
+
+- **The boot path.** The coded refusals that only screens show (126 per language:
+  DNS, mail, domains, sites, components, repositories, quotas, the firewall) moved
+  from the shell catalogue into a screen part "errors", loaded with the other parts
+  before any screen renders. The codes the shell can show before then (sign-in and
+  access, the licence, the update tracker, the operation overlay, request identity)
+  stay in the shell. A refusal whose words have not arrived shows the server's own
+  sentence or the generic error, never its key. The critical boot path went from
+  360.75 to 329.16 of 361 KiB; the new part has its own ceiling with at least 25%
+  headroom. The password dialog's words stay in the shell (`profile.*`), so the
+  dialog the menu opens for an additional user never shows raw keys.
+- **The firewall box has its own module** (`FirewallPanel.tsx`): the Security page no
+  longer loads the Components page to draw it. The remote-state ratchet records the
+  move; its totals did not change.
+- **One running rule** (`lib/serviceStatus.ts`) for the Dashboard, Components, a
+  component's page and Security: "running", or a status that says "(running)".
+  "active (exited)" is a finished one-shot unit, not running; before, the Dashboard
+  and a copy's row counted every "active ..." as running. A known component list
+  without a Fail2ban record says "not installed".
+- **Old place names in the remaining texts** now name the new place: a domain's
+  nameserver step, a managed DNS record, the start guide's DNS step, the setup
+  migration blocker, "Connect to the DNS server", "Panel address and HTTPS" in the
+  setup recovery link and renewal blocker, and two setup messages of the Panel.
+- **The certificate's contact email.** The refusal pointed at Settings → Account
+  security, and in the first draft of this release at My account; neither can
+  change it. No screen edits the administrator's own email (the administrator is
+  managed only when created on the server), so the refusal has no action now and
+  says there is no screen for it yet. **Open item:** a way to change one's own email
+  from My account.
+- **"Open sessions"**, named in the mockup's description of My account, is not
+  built: the product has no session list (the roadmap keeps "Active sessions" as a
+  later item). As with the administrator rules, nothing was invented.
+- The personal menu closes when focus leaves it and names its panel only while it
+  is open; Maintenance keeps one subtitle (its card's); the settings catalogue
+  part's block markers are fixed; two browser-inspection scripts use addresses that
+  still exist.
+
+Not done: nothing is measured on an installed server; no screen changes the
+administrator's own email yet (open item above); open sessions are not built.
 
 ---
 

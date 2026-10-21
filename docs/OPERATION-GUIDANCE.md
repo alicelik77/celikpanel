@@ -9598,10 +9598,22 @@ Components, because that is where the owner is when it matters.
 
 **Where the texts are.** `nav.dnsPeers`, `nav.security`, `nav.maintenance` and
 `nav.account` in `web/src/i18n/`; the page subtitles and Fail2ban words under
-`securityPage.*`, `dnsPeers.*`, `maintenance.*` and `account.*` in
-`web/src/i18n/screens/security/`, `screens/settings/`. The password dialog's field
-words moved from the shell catalogue to `account.password.*` in the settings screen
-part.
+`securityPage.*`, `dnsPeers.*` and `account.*` in
+`web/src/i18n/screens/security/`, `screens/settings/`. The password dialog's words
+stay in the shell catalogue (`profile.*`). The coded refusals that only screens
+show are in the screen part `web/src/i18n/screens/errors/` since the review round;
+a refusal whose words have not arrived shows the server's sentence or the generic
+error, never its key.
+
+**Review round (2026-10-22).** The panel certificate's missing contact email: the
+refusal now says "The administrator account has no valid email address, which the
+certificate authority needs as a contact. There is no screen to change it yet: it
+is the address given when the administrator was created on the server." It carries
+no action, because no screen can change it. **Who must act:** the server owner;
+there is no in-panel fix yet (open item in D-037). The Security page's Fail2ban
+line follows one running rule shared with the Dashboard and Components ("active
+(exited)" is not running), and a component list without a Fail2ban record says
+"Not installed".
 
 P0.1-P0.5 stay **partial**; this entry closes and advances nothing.
 
@@ -9613,7 +9625,5 @@ v0.1.0-alpha.97. It shows real versions: PowerDNS 4.8.3, Nginx 1.24.0, PostgreSQ
 24.21.0. This is the first time the versions of D-036 were seen on an installed
 server. **Who must act:** nobody for this; it is an observation. **Open:**
 Frankfurt's alpha.97 state was not reported; one screenshot is not a check of a
-kept reading or of a busy package manager on a real server; the critical boot path
-has 0.25 KiB of budget left (the next addition to it must move something out
-first). No text or screen was changed for this entry. P0.1-P0.5 stay **partial**;
+kept reading or of a busy package manager on a real server. No text or screen was changed for this entry. P0.1-P0.5 stay **partial**;
 this entry closes and advances nothing.

@@ -6711,8 +6711,9 @@ everything in it.
   four sections, the redirects from the old addresses, and the texts and links that
   named the old places (D-037). On the server side, only strings: the action
   addresses carried by guidance answers (`/settings?section=dns` became
-  `/dns-infrastructure`; the panel certificate's missing-contact-email action
-  `/settings?section=account` became `/account`) and two English fallback messages.
+  `/dns-infrastructure`; the panel certificate's missing contact email no longer
+  carries an action, because no screen can change it) and two English fallback
+  messages.
   It does **not** touch the Agent, the updater (`update.sh`, `get.sh`, the system
   update worker, rollback and recovery), any API, role, schema, polling or component
   behaviour. Therefore **no native record is made** for this release, by the owner's
@@ -6747,18 +6748,22 @@ everything in it.
   record keeps a guidance action address was not audited here; if one did, following
   it on alpha.97 would end on the Dashboard in the same way. Not measured on an
   installed server.
-- **Evidence and open.** On the candidate tree: web `npm test` 1691 passed (1675 on
+- **Evidence and open.** On the candidate tree: web `npm test` 1697 passed (1675 on
   alpha.97), with the new tests in `web/tests/menu-layout-alpha98.test.mjs` (the
   rail per role, the redirects, every web link and every Go guidance action
   resolving, the personal menu mounted, Fail2ban's states, the new labels in both
   languages, each new page with its header and moved content); Go 7156 passed, 0 failed; the
-  build within its budgets, with the critical boot path at 360.75 of 361 KiB raw and
-  107.68 of 110 KiB gzip. The numbers are in the
+  build within its budgets, with the critical boot path at 329.16 of 361 KiB raw and
+  100.37 of 110 KiB gzip after the review round moved the coded refusals only screens
+  show into the screen part "errors" (360.75 before; the ceiling was not raised). A
+  refusal whose words have not arrived shows the server's sentence or the generic
+  error, never its key; the codes the shell shows before any screen loads (access,
+  licence, update tracker, operation overlay, request identity) stay in the shell. The numbers are in the
   [release notes](RELEASE-NOTES-v0.1.0-alpha.98.md). Component and mounted tests do
   not establish native behaviour. **Nothing was measured on an installed server**:
-  the new layout has not been seen on one. Open: the critical boot path has 0.25 KiB
-  of its budget left, so the next addition to the boot path must move something out
-  first (the ceiling is not raised); everything the alpha.88 to alpha.97 entries
+  the new layout has not been seen on one. Open: no screen changes the administrator's
+  own email, which the panel certificate needs as its contact (the refusal says so
+  and carries no action); everything the alpha.88 to alpha.97 entries
   leave open stays open. Installed panels are updated only by their owners, from the
   panel's own update screen. P0.1 to P0.5 stay partial.
 - **What the owner saw of alpha.97 (2026-10-22).** The owner's screenshot shows
