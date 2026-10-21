@@ -21,6 +21,162 @@ Code decisions live in git; this file is for strategy. Newest first.
 
 ---
 
+## D-037 · Every page is where its name says it is: Settings holds settings; tools, security and maintenance live under Server; the person's own account lives in the personal menu
+
+*October 22, 2026 (clock date) · Owner request of 2026-10-21 and approval of 2026-10-22; in source for the v0.1.0-alpha.98 candidate; nothing measured on an installed server*
+
+On 2026-10-21 the owner asked: "ayarlardaki bu alt
+menüdeki her şey ayarlar ile mi ilgili?" (In English: is everything in this
+submenu of Settings really about settings?) and went on: "her işlemin yeri doğru
+olmalı. saçma sapan alakasız yerlerde olmamalılar. user friendly yaklaşım önemli.
+herkes aradığını kolayca bulsun." (In English: every operation's place must be
+right; they must not sit in senseless, unrelated places; a user-friendly approach
+matters; everyone should find what they look for easily.) A mockup of the new
+layout was shown, then revised after a second thought (below), and on 2026-10-22
+the owner answered: "menu düzeni taslağı ok." (In English: the menu layout draft
+is OK.)
+
+The question was fair. Settings had eight sections: Server setup, Account
+security, Panel HTTPS, License, CelikPanel updates, Server security, DNS
+infrastructure and System databases. Four of them were not settings of the panel:
+the exposed-services audit is about the server's safety, DNS infrastructure is the
+server's DNS role and its peer, System databases is maintenance of SQLite files,
+and Account security is the signed-in person's own two-factor panel. A reseller or
+a customer, who has no panel to set, saw a Settings whose only section was their
+own account. D-019 already says empty management pages are forbidden; a Settings
+that exists only to hold someone's own account is the same fault seen from the
+menu.
+
+The rules adopted:
+
+1. **A page goes where its name says.** Settings is for choices made once that
+   decide how the panel behaves. Tools, the server's security and its maintenance
+   belong under Server. What belongs to the person and not to the server (their
+   password and their two-factor authentication) belongs in the personal menu.
+2. **The final layout (administrator).**
+   - Panel (the Dashboard), unchanged.
+   - **Hosting:** Domains, Databases, Users, Store, VPN, unchanged.
+   - **Server:** Components · **DNS and peer servers** (moved from Settings → DNS
+     infrastructure) · Monitoring · **Security** (new page) · **Maintenance** (new
+     page) · Import · Audit log.
+   - **Settings** (last in the rail) keeps four things: **Panel address and HTTPS**
+     (the item was labelled "Panel HTTPS"), License, CelikPanel updates and Server
+     setup.
+   - **Personal menu** (the user name at the top right): **My account** first, the
+     language switcher on a phone (as before), Sign out. Theme and language stay in
+     the top bar.
+3. **What each moved thing is, and why it is there.**
+   - *DNS and peer servers* (`/dns-infrastructure`): today's DNS infrastructure
+     content, unchanged: the shared nameservers, this server's role, its peer
+     server and DNS replication. It is the server's DNS role, not a panel choice.
+   - *Security* (`/security`): answers "is this server safe?" in one place. (1) The
+     firewall with its settings (turn on or off, save for reboot, open ports, the
+     SSH line), the full box that used to open from the Components page's one-line
+     firewall bar. (2) Fail2ban's state, read from the stored component record
+     (running; installed but not running; installed, running state not read yet;
+     not installed; not checked yet; a failed read is "could not be read" with
+     Retry), with a link "Manage Fail2ban" to its component page, or "Open
+     Components" when it is not installed. (3) The read-only exposed-services audit
+     that was Settings → Server security, moved as is.
+   - *Maintenance* (`/maintenance`): Settings → System databases, moved as is
+     (inspect and safely maintain the SQLite files CelikPanel and installed
+     services keep). The page promises no future feature, such as backup.
+   - *My account* (`/account`): the two-factor authentication panel that was
+     Settings → Account security, moved as is, and a Password card that opens the
+     same password dialog the menu used to open. Roles: administrator, reseller and
+     customer, exactly the roles that had Settings → Account security.
+   - *Settings* keeps what decides how the panel behaves and is changed rarely:
+     the address and HTTPS certificate it is served on, its licence, its own
+     updates, and the server's purpose with its setup.
+4. **Second thoughts taken before the approval.** The first draft moved Import to
+   Hosting and Server setup out of Settings; both were reversed. *Import* stays
+   under Server: it is a tool used rarely, and it is looked for among server tools.
+   *Server setup* stays in Settings: it is run once and then rarely, for "extend";
+   the server's purpose is a configuration choice; a thing done about once a year
+   deserves no permanent place of its own in the rail. *Store* and *VPN* stay under
+   Hosting because resellers and customers use them.
+5. **Old addresses keep working.** Every old `/settings?section=` address is
+   replaced (a replace-redirect, so no extra history entry) by its new page:
+   `?section=account` to `/account`, `?section=security` to `/security`,
+   `?section=dns` to `/dns-infrastructure`, `?section=system-databases` to
+   `/maintenance`. `/settings` for a reseller or a customer, whose Settings would
+   be empty, goes to `/account` whatever section the address names (as Settings
+   used to open their account section for any section it could not show them), and
+   they no longer see Settings in the rail. An additional user (team member) never
+   had Settings or the account section: the route guard still sends them home, and
+   they keep "Change password" in the personal menu. Bookmarks, old guidance links
+   and the links of an older Panel (which the browser redirects) therefore reach
+   the right place.
+6. **Roles do not change.** The role that could see a page or call an API before
+   can still; only the place moved. No API, Agent, updater, schema, polling or
+   component behaviour changed. Nothing hosted depends on where a page is (D-022).
+
+Implementation decisions taken while building this (stated so they are not
+mistaken for owner decisions):
+
+- **Settings has four sections.** The brief allowed a fifth, administrator security
+  rules, only if all-administrator policy settings existed. None exist (Settings →
+  Account security held only the signed-in person's own two-factor panel), so none
+  was invented.
+- **The password change moved into My account**, opening the same dialog. The menu
+  no longer repeats it for roles that have My account; additional users keep it in
+  the menu. The dialog is fetched when it is opened, not on every page load, and
+  its field texts moved from the shell catalogue to the settings screen part under
+  `account.password.*`.
+- **Icons** come from the lucide set already in the boot bundle: DNS and peer
+  servers a network, Security a shield with a check, Maintenance a wrench, My
+  account a person.
+- **The firewall box still shows on Components when it needs attention** (off,
+  unreadable, no engine, an SSH note, persistence), because that is where the owner
+  is when it matters; only the healthy state is the one calm line, whose link
+  opens `/security#firewall` and says so ("Manage on Security"; it said
+  "Settings" before, which now names a place that holds no firewall setting).
+  Browser batch 23 found that label, and a running Fail2ban drawn as "installed
+  but not running" because the stored record says systemd's "active (running)";
+  both were corrected before this was recorded, and an optional Fail2ban that is
+  not installed is drawn calm, not amber.
+- **The Security page reads Fail2ban from the stored record only**; managing it
+  stays on its component page. It reads host-mutation readiness every 5 seconds
+  while open, as Components does, and shows the same "changes are held" line ("Server changes are temporarily
+  unavailable.") when the server is busy (D-024; D-033).
+- **Every in-product link points to the new place directly:** the Dashboard start
+  guide and account card, Domains' "DNS needed", the Add domain dialog, Components'
+  DNS buttons and firewall line, the server setup's next step ("Open DNS and peer
+  servers"), the setup recovery links and the start guide. Guidance texts that
+  named "Settings > DNS infrastructure", "Settings > Server security" or "in
+  Settings" for the DNS pair now say "Server → DNS and peer servers" or "Server →
+  Security". On the server side, every guidance action that pointed at
+  `/settings?section=dns` (DNS engine workflow, DNSSEC, DNS-only children, import,
+  remote DNS authority, DNS setup) now points at `/dns-infrastructure`, and the
+  panel certificate's missing-contact-email action points at `/account`.
+- **The setup gate keeps the four addresses reachable** while setup is required
+  (`/account`, `/security`, `/dns-infrastructure`, `/maintenance`), as `/settings`
+  was, and the offline recovery shell's route list includes them.
+- **The personal menu is a disclosure:** `aria-expanded`, Escape closes it and
+  returns focus to its button.
+
+What this does not authorise: no new feature, no change of who may see or do what,
+no policy setting invented for the sake of filling a page, and no claim about
+installed servers before the owner sees them there. Installed panels are still
+updated only by their owners from the panel's own update screen.
+
+Relation to the rest. D-019 (empty management pages are forbidden): a Settings
+with nothing for a reseller or a customer is gone. D-022 (the owner's
+infrastructure does not depend on the panel): only the place of a screen moved;
+nothing the server runs depends on it. D-024 (every operation explains the current
+state and next action): the Security page's Fail2ban states and its "changes are
+held" line follow it, and the guidance texts and action links name the new place.
+D-033 (a screen that makes the owner wait says so): the Security page's readiness
+read is the visible, bounded one Components already has. D-035: CelikPanel updates
+stays in Settings, where the update card and its dot in the navigation are.
+
+Not done: nothing is measured on an installed server. The
+critical boot path has 0.25 KiB of its budget left (360.75 of 361 KiB); the ceiling
+was not raised, so the next addition to the boot path must move something out
+first.
+
+---
+
 ## D-036 · A version shown is the package database's own answer; unknown stays unknown
 
 *October 21, 2026 (clock date) · Follows the owner's alpha.94 screens of 2026-10-17 and the open item of the D-034 amendment; in source for the v0.1.0-alpha.97 candidate; nothing measured on an installed server*
