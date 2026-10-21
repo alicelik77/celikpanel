@@ -1437,7 +1437,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
         <p role='status' className='flex min-w-0 basis-full flex-wrap items-baseline gap-x-2 text-sm text-fg' data-mail-dns-required=''>
             <span>{t('services.mailProfiles.dnsRequiredShort')}</span>
             <span className='text-fg-subtle max-sm:hidden' aria-hidden='true'>·</span>
-            <button type='button' onClick={() => navigate('/settings?section=dns')} className='font-semibold text-primary underline decoration-1 underline-offset-[3px] hover:decoration-2 max-sm:min-h-11'>
+            <button type='button' onClick={() => navigate('/dns-infrastructure')} className='font-semibold text-primary underline decoration-1 underline-offset-[3px] hover:decoration-2 max-sm:min-h-11'>
                 {t('services.mailProfiles.configureDNS')}
             </button>
         </p>
@@ -1496,6 +1496,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
             />
 
             <FirewallBar
+                place="components"
                 readiness={hostMutationReadiness}
                 readinessMessage={readinessMessage}
                 onRefreshReadiness={loadHostMutationReadiness}
@@ -1958,7 +1959,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                     {notChecked(s) ? null : (s.id === 'pdns' || s.id === 'bind') ? (
                                                             <button
                                                                 type="button"
-                                                                onClick={() => navigate('/settings?section=dns')}
+                                                                onClick={() => navigate('/dns-infrastructure')}
                                                                 title={t('services.manageDNSEngineHint')}
                                                                 className={rowButtonClass}
                                                             >
@@ -2050,7 +2051,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                     ) : (s.id === 'pdns' || s.id === 'bind') ? (
                                                     <button
                                                         type="button"
-                                                        onClick={() => navigate('/settings?section=dns')}
+                                                        onClick={() => navigate('/dns-infrastructure')}
                                                         title={t('services.manageDNSEngineHint')}
                                                         className={rowButtonClass}
                                                     >
@@ -3694,13 +3695,25 @@ function UninstallServiceDialog({
 // Güvenlik duvarı durumu + anahtar. Varsayılan-reddet gelen: yalnız panel
 // portu, SSH (otomatik tespit, asla kapatılamaz) ve kurulu servis portları
 // açık. Açık küme koşan servisleri izler; kutu yalnız koşturduğunu açar.
-function FirewallBar({
+//
+// Its place is Server → Security (D-037, v0.1.0-alpha.98): there the box is
+// always open with its settings. Components keeps the one calm line of a
+// healthy firewall, whose Settings link opens /security#firewall; a firewall
+// that is off, unreadable, without an engine or needing attention still shows
+// its box here too, where the owner is when it matters.
+// Yeri Sunucu → Güvenlik'tir; orada kutu ayarlarıyla hep açıktır. Bileşenler
+// sağlıklı duvarın tek sakin satırını tutar; Ayarlar bağlantısı
+// /security#firewall'u açar. Kapalı, okunamayan, motorsuz ya da ilgi isteyen
+// duvar kutusunu burada da gösterir.
+export function FirewallBar({
+    place,
     readiness,
     readinessMessage,
     onRefreshReadiness,
     refreshKey,
 }: {
-    readiness: HostMutationReadiness | null;
+    place: 'components' | 'security';
+    readiness: { ready: boolean } | null;
     readinessMessage: string;
     onRefreshReadiness: () => Promise<boolean>;
     // Changes with each scan the page receives; the state is read again then.
@@ -3723,9 +3736,6 @@ function FirewallBar({
     const [busy, setBusy] = useState(false);
     const [pendingAction, setPendingAction] = useState<'enable' | 'disable' | 'save' | null>(null);
     const [noSSHAcknowledged, setNoSSHAcknowledged] = useState(false);
-    // A healthy firewall is one calm line; its box opens on request.
-    // Sağlıklı güvenlik duvarı tek sakin satırdır; kutusu istenince açılır.
-    const [expanded, setExpanded] = useState(false);
     const sshReason = readFirewallSSHReason(st?.ssh_discovery_reason);
 
     // A failed status read is neither "on" nor "off". Preserve that distinction
@@ -3950,15 +3960,15 @@ function FirewallBar({
     // yüzden bandın tamamı ambere döner. Açık hal sessiz yeşil tondadır.
     // Active, readable, saved for a reboot and nothing to say about SSH: one
     // calm line (alpha.94, critique item 7). The box stays for a firewall
-    // that is off, unreadable, without an engine or needing attention, and
-    // opens here when the owner asks for its settings.
+    // that is off, unreadable, without an engine or needing attention; its
+    // settings are on the Security page (alpha.98), where the box is open.
     // Açık, okunabilir, yeniden başlatma için kayıtlı ve SSH hakkında
     // söylenecek bir şey yok: tek sakin satır. Kutu kapalı, okunamayan,
     // motoru olmayan ya da ilgi isteyen duvar için kalır.
     const healthy = st.enabled
         && (st.persistence_state === undefined || st.persistence_state === '' || st.persistence_state === 'ready')
         && !sshReason;
-    if (healthy && !expanded) {
+    if (healthy && place === 'components') {
         return (
             <section className="mb-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-fg-muted" data-firewall-compact="">
                 <ShieldCheck className="h-4 w-4 shrink-0 text-success" aria-hidden="true" />
@@ -3966,14 +3976,13 @@ function FirewallBar({
                 <span className="text-fg-subtle" aria-hidden="true">·</span>
                 <span>{t('firewall.compact.ports', { n: openTcp.length + openUdp.length })}</span>
                 <span className="text-fg-subtle" aria-hidden="true">·</span>
-                <button
-                    type="button"
-                    aria-expanded={false}
-                    onClick={() => setExpanded(true)}
-                    className="font-semibold text-primary underline decoration-1 underline-offset-[3px] hover:decoration-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary max-sm:min-h-11"
+                <Link
+                    to="/security#firewall"
+                    className="font-semibold text-primary underline decoration-1 underline-offset-[3px] hover:decoration-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary max-sm:inline-flex max-sm:min-h-11 max-sm:items-center"
+                    data-firewall-settings-link=""
                 >
                     {t('firewall.compact.settings')}
-                </button>
+                </Link>
             </section>
         );
     }
@@ -4028,16 +4037,6 @@ function FirewallBar({
                 >
                     {st.enabled ? t('firewall.turnOff') : t('firewall.turnOn')}
                 </button>
-                {healthy && (
-                    <button
-                        type="button"
-                        aria-expanded={true}
-                        onClick={() => setExpanded(false)}
-                        className="text-xs font-semibold text-fg-muted underline decoration-1 underline-offset-[3px] hover:text-fg max-sm:min-h-11"
-                    >
-                        {t('firewall.compact.less')}
-                    </button>
-                )}
             </div>
             {st.enabled && (openTcp.length > 0 || openUdp.length > 0) && (
                 <div className="mt-3 flex flex-wrap gap-1.5">

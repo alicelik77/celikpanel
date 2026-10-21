@@ -31,7 +31,7 @@ export const trSitesScreens: Record<SitesScreenKey, string> = {
     'domains.add.sslHint': 'Sertifika otomatik alınır ve yenilenir. Alan adı bu sunucuya çözülüyor olmalı.',
     'domains.add.dnsServed': 'DNS bölgesi bu sunucudan yayınlanacak ({server}).',
     'domains.goServices': 'Servisler sayfasına git',
-    'domains.add.needsDns': 'Alan adı eklemeden önce panel tarafından yönetilen etkin bir DNS sunucusu gerekir. Ayarlar > DNS altyapısı bölümünden BIND veya PowerDNS seçip etkinleştirin.',
+    'domains.add.needsDns': 'Alan adı eklemeden önce panel tarafından yönetilen etkin bir DNS sunucusu gerekir. Sunucu → DNS ve eş sunucular sayfasından BIND veya PowerDNS seçip etkinleştirin.',
     'domains.add.create': 'Alan adı oluştur',
     'domains.add.creating': 'Oluşturuluyor…',
     'domains.add.created': '{name} alan adı oluşturuldu.',

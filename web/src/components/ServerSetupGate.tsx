@@ -28,7 +28,7 @@ export function ServerSetupShell({ children, navigation }: { children: ReactNode
                 <summary className="cursor-pointer font-semibold text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary">{t('setup.recovery')}</summary>
                 <div className="mt-4 flex flex-wrap items-center gap-5">
                     <Link to="/settings?section=panel" className="text-primary underline underline-offset-4">{t('setup.recoveryAccess')}</Link>
-                    <Link to="/settings?section=dns" className="text-primary underline underline-offset-4">{t('setup.recoveryDNS')}</Link>
+                    <Link to="/dns-infrastructure" className="text-primary underline underline-offset-4">{t('setup.recoveryDNS')}</Link>
                     <Link to="/settings?section=updates" className="text-primary underline underline-offset-4">{t('start.updates.action')}</Link>
                     <Button variant="secondary" onClick={() => setPassword(true)}>{t('profile.changePassword')}</Button>
                 </div>

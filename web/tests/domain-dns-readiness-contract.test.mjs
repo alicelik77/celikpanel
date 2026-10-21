@@ -102,7 +102,7 @@ test('the Domains page disables Add, and names the fix, only when DNS is known t
   assert.match(domains, /disabled=\{dnsBlocked !== null\}/);
   assert.equal(domains.split('disabled={dnsBlocked !== null}').length - 1, 1, 'one Add button definition carries the gate');
   assert.match(domains, /dnsBlocked === 'engine' \? t\('domains\.add\.needsDns'\) : t\('err\.DNS_SETTINGS_REQUIRED'\)/);
-  assert.match(domains, /\/settings\?section=dns/);
+  assert.match(domains, /\/dns-infrastructure/);
   assert.match(domains, /err\.DNS_SETTINGS_REQUIRED\.action/);
   // "No domains yet" is a claim about the server: it needs the answer as proof.
   assert.match(domains, /<KnownEmpty\s+of=\{shown\}\s+icon=\{Globe\}\s+title=\{t\('domains\.empty'\)\}/);

@@ -84,8 +84,14 @@ export function decodeServerSetup(value: unknown): ServerSetupSnapshot | null {
     if (value.guidance !== undefined && !['undecided', 'guided', 'manual'].includes(String(value.guidance))) return null;
     return value as unknown as ServerSetupSnapshot;
 }
+// Pages that stay open while setup is required, so the owner can reach what
+// fixes it. The four pages that were Settings sections until v0.1.0-alpha.98
+// (D-037) stay reachable as they were under /settings.
+// Kurulum gerekirken açık kalan sayfalar. alpha.98'e dek Ayarlar bölümü olan
+// dört sayfa, /settings altındayken olduğu gibi ulaşılabilir kalır.
+const SETUP_RECOVERY_PAGES = new Set(['/settings', '/account', '/security', '/dns-infrastructure', '/maintenance', '/services']);
 export function isSetupRecoveryPath(pathname: string): boolean {
-    return pathname === '/settings' || pathname === '/services' || pathname.startsWith('/services/');
+    return SETUP_RECOVERY_PAGES.has(pathname) || pathname.startsWith('/services/');
 }
 export function shouldOpenServerSetup(snapshot: ServerSetupSnapshot, pathname: string): boolean {
     // Extending a completed setup never routes the owner into setup: the
@@ -99,10 +105,10 @@ export function shouldOpenServerSetup(snapshot: ServerSetupSnapshot, pathname: s
 export function setupNextPath(purpose: SetupPurpose, selected?: ReadonlySet<string>): string {
     if (selected) {
         if (['nginx', 'node', 'phpmyadmin', 'phppgadmin', 'roundcube'].some(id => selected.has(id))) return '/domains';
-        if (selected.size === 0) return '/settings?section=dns';
+        if (selected.size === 0) return '/dns-infrastructure';
         return '/services';
     }
-    return purpose === 'dns' ? '/settings?section=dns' : purpose === 'custom' ? '/services' : '/domains';
+    return purpose === 'dns' ? '/dns-infrastructure' : purpose === 'custom' ? '/services' : '/domains';
 }
 export function chooseSetupPurpose(draft: ServerSetupDraft, purpose: SetupPurpose): ServerSetupDraft {
     return {

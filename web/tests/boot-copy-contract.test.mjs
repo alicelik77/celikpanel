@@ -100,7 +100,8 @@ const eagerModules = [
   'src/components/Layout.tsx',
   'src/components/PageHeader.tsx',
   'src/components/pageHeaderSlot.ts',
-  'src/components/ChangePasswordModal.tsx',
+  // ChangePasswordModal is fetched when it is opened since v0.1.0-alpha.98
+  // (D-037): My account opens it, and the menu only for a role without that page.
   'src/components/ThemeSwitcher.tsx',
   'src/components/SkinSwitcher.tsx',
   'src/components/LanguageSwitcher.tsx',

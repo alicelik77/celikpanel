@@ -9,7 +9,7 @@
 // eklenir; büyüyen parçanın bölünmesi check-bundle-budget.mjs başlığında.
 
 export const enDnsCertificatesScreens = {
-    'dns.notServed': 'These records are NOT being served: no managed authoritative DNS engine is active. Choose and activate BIND or PowerDNS in Settings > DNS infrastructure.',
+    'dns.notServed': 'These records are NOT being served: no managed authoritative DNS engine is active. Choose and activate BIND or PowerDNS in Server → DNS and peer servers.',
 
     'ssl.status.valid': 'Valid',
     'ssl.status.expiring': 'Expiring soon',

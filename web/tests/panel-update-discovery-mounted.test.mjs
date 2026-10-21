@@ -59,7 +59,7 @@ const discovery = await import(discoveryURL);
 const stubURL = moduleURL(`
     import React from '${reactURL}';
     const Icon = name => props => React.createElement('i', { ...props, 'data-icon': name });
-    export const LogOut = Icon('LogOut'), ChevronDown = Icon('ChevronDown'), Menu = Icon('Menu'), KeyRound = Icon('KeyRound'), UserCheck = Icon('UserCheck');
+    export const LogOut = Icon('LogOut'), ChevronDown = Icon('ChevronDown'), Menu = Icon('Menu'), KeyRound = Icon('KeyRound'), UserCheck = Icon('UserCheck'), CircleUser = Icon('CircleUser'), User = Icon('User');
     export const DownloadCloud = Icon('DownloadCloud'), AlertTriangle = Icon('AlertTriangle'), CheckCircle2 = Icon('CheckCircle2'), Loader2 = Icon('Loader2'), RefreshCw = Icon('RefreshCw'), Info = Icon('Info');
     export const BrandMark = Icon('BrandMark');
     export const BuildCommit = ({ commit }) => 'build ' + commit.slice(0, 12);

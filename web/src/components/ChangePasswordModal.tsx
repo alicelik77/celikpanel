@@ -18,7 +18,7 @@ export function ChangePasswordModal({ onClose }: { onClose: () => void }) {
 
     const submit = async () => {
         if (next !== next2) {
-            showToast('error', t('profile.mismatch'));
+            showToast('error', t('account.password.mismatch'));
             return;
         }
         setSaving(true);
@@ -29,14 +29,14 @@ export function ChangePasswordModal({ onClose }: { onClose: () => void }) {
                 body: JSON.stringify({ current_password: current, new_password: next }),
             });
             if (res.status === 403) {
-                showToast('error', t('profile.wrongCurrent'));
+                showToast('error', t('account.password.wrongCurrent'));
                 return;
             }
             if (!res.ok) {
                 showToast('error', apiErrorText(await readApiError(res), t));
                 return;
             }
-            showToast('success', t('profile.changed'));
+            showToast('success', t('account.password.changed'));
             onClose();
         } catch {
             showToast('error', t('common.error'));
@@ -64,15 +64,15 @@ export function ChangePasswordModal({ onClose }: { onClose: () => void }) {
         >
                 <div className="space-y-3">
                     <label className="block">
-                        <span className="mb-1 block text-xs text-fg-muted">{t('profile.current')}</span>
+                        <span className="mb-1 block text-xs text-fg-muted">{t('account.password.current')}</span>
                         <input type="password" value={current} onChange={(e) => setCurrent(e.target.value)} className={inputClass} autoFocus />
                     </label>
                     <label className="block">
-                        <span className="mb-1 block text-xs text-fg-muted">{t('profile.new')}</span>
+                        <span className="mb-1 block text-xs text-fg-muted">{t('account.password.new')}</span>
                         <input type="password" value={next} onChange={(e) => setNext(e.target.value)} className={inputClass} />
                     </label>
                     <label className="block">
-                        <span className="mb-1 block text-xs text-fg-muted">{t('profile.new2')}</span>
+                        <span className="mb-1 block text-xs text-fg-muted">{t('account.password.new2')}</span>
                         <input
                             type="password"
                             value={next2}

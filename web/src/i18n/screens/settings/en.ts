@@ -1,5 +1,6 @@
 // SCREEN catalogue part "settings": Settings: CelikPanel updates, panel certificate, license, team, users, plans and the Store.
-// Key prefixes kept here: panelUpdate., panelCert., license., settings., team., users., plans., addons.
+// Key prefixes kept here: panelUpdate., panelCert., license., settings., team., users., plans., addons.,
+// account., dnsPeers., maintenance.
 // One part of the screen copy; ../../index.tsx fetches every part in
 // parallel and no screen renders before all of them have arrived. A new key
 // goes into the part that holds its prefix; how to split a part that grows
@@ -52,11 +53,9 @@ export const enSettingsScreens = {
     "license.activate": "Activate license",
     "license.noticeUnverified": "CelikPanel could not verify the license just now. This does not mean your license is missing or expired, and nothing was changed. Existing sites, mail, databases and scheduled tasks keep running. You can check again under License.",
     "license.noticeOpen": "Open License",
-    'settings.subtitle': 'Manage access, security, software updates and server infrastructure.',
+    'settings.subtitle': "The panel's address, its license, its updates and the server setup.",
     'settings.sections': 'Settings sections',
-    'settings.section.account': 'Account security',
-    'settings.section.account.desc': 'Sign-in protection and administrator security.',
-    'settings.section.panel': 'Panel HTTPS',
+    'settings.section.panel': 'Panel address and HTTPS',
     'settings.section.panel.desc': 'Panel domain and HTTPS certificate.',
     'settings.section.updates': 'CelikPanel updates',
     'settings.section.updates.desc': 'Check signed releases and install them only after explicit confirmation.',
@@ -90,12 +89,6 @@ export const enSettingsScreens = {
     'panelUpdate.auto.saving': 'Saving…',
     'panelUpdate.auto.unknown': 'The current setting is not known yet.',
     'panelUpdate.auto.failed': 'The setting could not be saved and is unchanged. Try again.',
-    'settings.section.security': 'Server security',
-    'settings.section.security.desc': 'Read-only audit of exposed services and access controls.',
-    'settings.section.dns': 'DNS infrastructure',
-    'settings.section.dns.desc': 'Shared nameservers, node identity and replication topology.',
-    'settings.section.systemDatabases': 'System databases',
-    'settings.section.systemDatabases.desc': 'Inspect and safely maintain the SQLite files CelikPanel and installed services keep.',
     'settings.2fa.title': 'Two-factor authentication',
     'settings.2fa.on': 'On',
     'settings.2fa.desc': 'Add a second step to sign-in using an authenticator app (Google Authenticator, Authy, 1Password…).',
@@ -461,7 +454,21 @@ export const enSettingsScreens = {
     'panelUpdate.card.verifying': '{version} is installed and this panel is running it. The update is still being verified; checking for updates is available again when it has finished. You do not need to do anything.',
     'panelUpdate.card.unknown': 'The state of the update to {version} could not be read just now, so it is not known whether it has finished. This page reads it again by itself. Do not start another update.',
     'panelUpdate.card.restarting': 'The panel is restarting as part of the update to {version}. This page reconnects by itself; nothing needs to be pressed.',
-    // --- end of the update card block ---
+    // --- end of the update card block ---,
+    'account.subtitle': 'Your own sign-in: your password and two-factor authentication.',
+    'account.password.title': 'Password',
+    'account.password.desc': 'Change the password you sign in with. Your current password is asked first.',
+    'dnsPeers.subtitle': "Shared nameservers, this server's role, its peer server and DNS replication.",
+    'maintenance.subtitle': 'Inspect and safely maintain the SQLite files CelikPanel and installed services keep.',
+    // The password dialog, which My account opens (alpha.98, D-037); it is
+    // fetched when opened, so its copy is screen copy. The menu's label stays
+    // profile.changePassword in the shell.
+    'account.password.current': 'Current password',
+    'account.password.new': 'New password',
+    'account.password.new2': 'New password (again)',
+    'account.password.mismatch': 'The new passwords do not match.',
+    'account.password.changed': 'Password changed.',
+    'account.password.wrongCurrent': 'Current password is incorrect.',
 } as const;
 
 export type SettingsScreenKey = keyof typeof enSettingsScreens;

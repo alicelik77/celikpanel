@@ -21,7 +21,7 @@ import { RecoveryAccess } from './components/RecoveryAccess';
 import { AccessHold } from './components/AccessHold';
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import type { CurrentUser } from './lib/api';
-import { navItems, canAccessPath, type NavAccessContext } from './nav';
+import { navItems, canAccessPath, settingsRedirect, type NavAccessContext } from './nav';
 import { Layout } from './components/Layout';
 import { ComponentOperationProvider } from './components/ComponentOperation';
 import { useI18n } from './i18n';
@@ -53,6 +53,10 @@ const ServiceList = lazyNamed(() => import('./components/ServiceList'), 'Service
 const MonitoringPage = lazyNamed(() => import('./components/MonitoringPage'), 'MonitoringPage');
 const ConfigEditor = lazyNamed(() => import('./components/ConfigEditor'), 'ConfigEditor');
 const Settings = lazyNamed(() => import('./components/Settings'), 'Settings');
+const AccountPage = lazyNamed(() => import('./components/AccountPage'), 'AccountPage');
+const SecurityPage = lazyNamed(() => import('./components/SecurityPage'), 'SecurityPage');
+const MaintenancePage = lazyNamed(() => import('./components/MaintenancePage'), 'MaintenancePage');
+const DNSPeersPage = lazyNamed(() => import('./components/DNSPeersPage'), 'DNSPeersPage');
 const UsersPage = lazyNamed(() => import('./components/UsersPage'), 'UsersPage');
 const ImportPage = lazyNamed(() => import('./components/ImportPage'), 'ImportPage');
 const AuditLogPage = lazyNamed(() => import('./components/AuditLogPage'), 'AuditLogPage');
@@ -350,6 +354,18 @@ function RouteLoadBoundary({ children }: { children: ReactNode }) {
   );
 }
 
+// /settings, and every old address of a section that has its own page now
+// (D-037). The address is replaced, so Back does not return to the old one.
+// /settings ve artık kendi sayfası olan her bölümün eski adresi. Adres
+// değiştirilir; Geri, eski adrese dönmez.
+function SettingsRoute() {
+  const location = useLocation();
+  const { role } = useAuth();
+  const target = settingsRedirect(location.search, role);
+  if (target) return <Navigate to={target} replace />;
+  return <PageWithLayout><Settings /></PageWithLayout>;
+}
+
 function AppRoutes() {
   return (
     <Routes>
@@ -368,7 +384,10 @@ function AppRoutes() {
         {/* Services */}
         <Route path="/services" element={<PageWithLayout><ServicesPage /></PageWithLayout>} />
         <Route path="/services/:serviceId" element={<PageWithLayout><ServiceManagementPage /></PageWithLayout>} />
+        <Route path="/dns-infrastructure" element={<PageWithLayout><DNSPeersPage /></PageWithLayout>} />
         <Route path="/monitoring" element={<PageWithLayout><MonitoringPage /></PageWithLayout>} />
+        <Route path="/security" element={<PageWithLayout><SecurityPage /></PageWithLayout>} />
+        <Route path="/maintenance" element={<PageWithLayout><MaintenancePage /></PageWithLayout>} />
 
         {/* Users (admin + reseller) */}
         <Route path="/users" element={<PageWithLayout><UsersPage /></PageWithLayout>} />
@@ -379,8 +398,9 @@ function AppRoutes() {
         <Route path="/addons" element={<PageWithLayout><AddonsPage /></PageWithLayout>} />
         <Route path="/vpn" element={<PageWithLayout><VPNPage /></PageWithLayout>} />
 
-        {/* Settings */}
-        <Route path="/settings" element={<PageWithLayout><Settings /></PageWithLayout>} />
+        {/* Settings, and the signed-in person's own account (personal menu) */}
+        <Route path="/settings" element={<SettingsRoute />} />
+        <Route path="/account" element={<PageWithLayout><AccountPage /></PageWithLayout>} />
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />

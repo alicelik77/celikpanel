@@ -33,7 +33,7 @@ export const enSitesScreens = {
     'domains.add.sslHint': 'Automatically provision and renew the certificate. The domain must already resolve to this server.',
     'domains.add.dnsServed': 'The DNS zone will be served from this server ({server}).',
     'domains.goServices': 'Go to Services',
-    'domains.add.needsDns': 'An active, panel-managed DNS server is required before adding domains. Choose and activate BIND or PowerDNS in Settings > DNS infrastructure.',
+    'domains.add.needsDns': 'An active, panel-managed DNS server is required before adding domains. Choose and activate BIND or PowerDNS in Server → DNS and peer servers.',
     'domains.add.create': 'Create domain',
     'domains.add.creating': 'Creating…',
     'domains.add.created': 'Domain {name} created.',

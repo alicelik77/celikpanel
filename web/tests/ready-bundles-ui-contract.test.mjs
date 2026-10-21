@@ -383,9 +383,13 @@ test('rows align in three columns, or four when a package version is known; neve
 test('a healthy firewall is one calm line; the box stays for every other state', () => {
   const bar = services.slice(services.indexOf('function FirewallBar('), services.indexOf('function FirewallActionConfirmationDialog('));
   assert.match(bar, /const healthy = st\.enabled\s*\n\s*&& \(st\.persistence_state === undefined \|\| st\.persistence_state === '' \|\| st\.persistence_state === 'ready'\)\s*\n\s*&& !sshReason;/);
-  assert.match(bar, /if \(healthy && !expanded\) \{/);
+  assert.match(bar, /if \(healthy && place === 'components'\) \{/);
   assert.match(bar, /data-firewall-compact=""/);
   assert.match(bar, /t\('firewall\.compact\.settings'\)/);
+  // Its settings are on Server → Security since v0.1.0-alpha.98 (D-037): the
+  // calm line's link goes there and the box no longer opens on Components.
+  assert.match(bar, /to="\/security#firewall"/);
+  assert.doesNotMatch(bar, /setExpanded|firewall\.compact\.less/);
   // The box keeps "off" in the attention colour and is no longer green when on.
   assert.doesNotMatch(bar, /border-success\/30 bg-success\/5/);
 });

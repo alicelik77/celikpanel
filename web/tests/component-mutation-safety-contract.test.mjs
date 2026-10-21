@@ -121,7 +121,7 @@ test('mail bundles stay visible but cannot start before verified DNS identity is
   assert.match(serviceSource, /const mailSecondary = !dnsIdentityReady && mailDNSGuidance !== null;/);
   assert.match(serviceSource, /const mailNotice = mailSecondary && mailDNSGuidance \? \(/);
   assert.match(serviceSource, /: !dnsIdentityReady && bundles\.some\(/);
-  assert.match(serviceSource, /navigate\('\/settings\?section=dns'\)/);
+  assert.match(serviceSource, /navigate\('\/dns-infrastructure'\)/);
   // The Panel blocks every mail bundle while the DNS identity is not ready;
   // a blocked bundle carries no action, so the strip offers none.
   assert.match(bundlesSource, /blocked: \['none'\]/);

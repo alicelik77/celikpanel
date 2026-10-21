@@ -1701,7 +1701,7 @@ function CustomerDashboard() {
                 <p className="mt-2 max-w-3xl text-sm text-fg-muted">{t(guidance.hint)}</p>
                 <div className="mt-4 flex flex-wrap gap-4 text-sm font-semibold text-primary">
                     <Link to={guidance.to}>{t(guidance.action)}</Link>
-                    <Link to="/settings?section=account">{t('start.account.action')}</Link>
+                    <Link to="/account">{t('start.account.action')}</Link>
                 </div>
                 <details className="mt-4 border-t border-border pt-4 text-sm">
                     <summary className="cursor-pointer font-semibold text-fg">{t('start.customer.sequence')}</summary>

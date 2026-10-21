@@ -142,7 +142,7 @@ test('mail bundles use server membership, the profile dialogue and closed action
   assert.match(serviceSource, /operationKind: 'mail_profile_install'/);
   assert.match(serviceSource, /setProfileTarget\(profile\)/);
   assert.match(stripSource, /if \(bundle\.action_route === 'mail_profile'\) onMail\(bundle\);\s*\n\s*else onComponents\(bundle\);/);
-  assert.match(serviceSource, /navigate\('\/settings\?section=dns'\)/);
+  assert.match(serviceSource, /navigate\('\/dns-infrastructure'\)/);
   // No hard-coded membership in the strip.
   assert.doesNotMatch(stripSource, /\['postfix'|\['dovecot'/);
   // Role and modality are the shared Dialog's since R-059, pinned in
