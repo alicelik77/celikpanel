@@ -362,6 +362,10 @@ test('the Security page says Fail2ban\'s state only as the stored record says it
     const { fail2banState } = await import(moduleURL(compiled));
     const record = (fields) => [{ id: 'nginx', is_installed: true, status: 'running' }, { id: 'fail2ban', ...fields }];
     assert.equal(fail2banState(record({ is_installed: true, status: 'running' })), 'running');
+    // The scan's own dialect is systemd's (browser batch 23 found the page
+    // calling a running Fail2ban stopped before this was read like this).
+    assert.equal(fail2banState(record({ is_installed: true, status: 'active (running)' })), 'running');
+    assert.equal(fail2banState(record({ is_installed: true, status: 'inactive (dead)' })), 'notRunning');
     assert.equal(fail2banState(record({ is_installed: true, status: 'stopped' })), 'notRunning');
     assert.equal(fail2banState(record({ is_installed: true, status: 'failed' })), 'notRunning');
     assert.equal(fail2banState(record({ is_installed: true, status: 'unknown' })), 'installedUnknown');

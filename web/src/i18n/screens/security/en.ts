@@ -273,7 +273,7 @@ export const enSecurityScreens = {
     'firewall.ssh.no_ssh_service.confirm': 'Turn on firewall anyway',
     'firewall.compact.on': 'Firewall on',
     'firewall.compact.ports': 'Open ports: {n}',
-    'firewall.compact.settings': 'Settings',
+    'firewall.compact.settings': 'Manage on Security',
     'securityPage.subtitle': 'Is this server safe? Its firewall, Fail2ban and a read-only check of what it exposes, in one place.',
     'securityPage.f2b.desc': 'Blocks addresses that keep failing to sign in to SSH, mail and other services.',
     'securityPage.f2b.checking': 'Reading the component record…',

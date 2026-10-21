@@ -107,8 +107,12 @@ export function fail2banState(services: Record<string, unknown>[]): Fail2banStat
     const record = services.find((service) => service.id === 'fail2ban');
     if (!record || record.is_installed === null || record.is_installed === undefined) return 'notChecked';
     if (record.is_installed === false) return 'notInstalled';
-    if (record.status === 'running') return 'running';
-    if (record.status === 'unknown' || record.status === '') return 'installedUnknown';
+    // The scan writes systemd's words ("active (running)", "inactive (dead)");
+    // running is read the way the Dashboard and Components read it.
+    // Tarama systemd'nin sözcüklerini yazar; çalışıyor, Pano ve Bileşenler gibi okunur.
+    const status = typeof record.status === 'string' ? record.status.trim().toLowerCase() : '';
+    if (status === 'running' || status.startsWith('active')) return 'running';
+    if (status === 'unknown' || status === '') return 'installedUnknown';
     return 'notRunning';
 }
 
@@ -132,7 +136,7 @@ function Fail2banStatus() {
                         : state === 'notChecked' || state === 'installedUnknown' ? ShieldQuestion
                             : state === 'notInstalled' ? ShieldOff : ShieldAlert;
                     const tone = state === 'running' ? 'text-success'
-                        : state === 'notRunning' || state === 'notInstalled' ? 'text-warning' : 'text-fg-subtle';
+                        : state === 'notRunning' ? 'text-warning' : 'text-fg-subtle';
                     const installed = state === 'running' || state === 'installedUnknown' || state === 'notRunning';
                     return (
                         <div className="flex flex-wrap items-start gap-x-3 gap-y-2" data-fail2ban-state={state}>
