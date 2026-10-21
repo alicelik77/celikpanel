@@ -9346,3 +9346,128 @@ measured on an installed server or against the real release server; browser batc
 for every component are still not read. Nothing is "worked" or "failed" until the
 owner reports it. P0.1-P0.5 stay **partial**; this entry closes and advances
 nothing.
+
+### Installed package versions on Components and the component pages (D-036, 2026-10-21)
+
+In source for the v0.1.0-alpha.97 candidate; nothing measured on an installed
+server.
+
+**What the owner sees.** On Components, a row of an installed component says the
+version its package database reports, in its short form (`1.26.3` for
+`1.26.3-3+deb13u1`), in mono; the tooltip has the full version and "from the system
+package database". On a desktop the versions stand in their own column, which is
+drawn only when at least one installed component on the page has a known version;
+on a phone, and when no version is known, the version is under the description.
+PHP-FPM and Node.js keep their installed copies' versions. Every component page has,
+under its name and status, "Installed version: 1:11.8.3-0+deb13u1" and "Read from the
+system package database."
+
+**States and their words.**
+
+- Known: the short form on the row, the full form on the page, the source line.
+- Several versions: the component's packages report different versions (for example
+  SpamAssassin and its milter). The row says "several versions"; the page says "Its
+  packages report different versions:" and names each package with its version. No
+  single version is chosen.
+- Kept: at the last check the server's package manager was busy, so the version was
+  not read again; the earlier reading is shown, and said as such: "Read from the
+  system package database on {time}. At the last check the package manager was
+  busy, so this earlier reading is shown; the next check reads it again." Who acts:
+  nobody; the next component check (opening Components, Rescan, or the conditional
+  check of a component page) reads it again.
+- Unknown: nothing is said. No dash, no "default", no guess. This covers a component
+  that is not installed, a component without packages on this family, a read that
+  failed or timed out (10 seconds), a version text that is not one a package
+  database prints, a record from a Panel before alpha.97, and an Agent that does not
+  have the read yet (during an update the Panel and the Agent can be on different
+  builds for a moment).
+
+**What it never does.** The read is a query of the package database only; it does
+not install, upgrade, lock, refresh lists or reach the network, and it does not run
+while a package operation holds the package manager (the check itself only reads
+the process and lock tables). It adds no timer: it rides the existing component
+scans. Nothing offers an update because of a version shown here.
+
+**Where the texts are.** `services.version*` and `component.packageVersion*` in
+`web/src/i18n/screens/components/` (EN and TR). The screen catalogue is split into
+parts since alpha.97, one directory per group of screens under
+`web/src/i18n/screens/` (setup, sites, siteConfig, dnsCertificates, components,
+mailDatabases, security, dashboard, settings); older entries above that name
+`web/src/i18n/screens/server` or `screens/en.ts` refer to the files before that
+split, and the same keys are now in the part that holds their prefix. Where a new
+key goes and how a part is split again is in the header of
+`web/scripts/check-bundle-budget.mjs`.
+
+P0.1-P0.5 stay **partial**; this entry closes and advances nothing.
+
+### Why the alpha.95 stop on Frankfurt showed no reason (2026-10-21)
+
+**The cause of the stop, confirmed.** The owner ran the read-only commands given on
+2026-10-21 on Frankfurt. The stored line of the stopped request (its record under
+`/var/lib/celikpanel-release-state/self-update/`, request
+`717f77125027d4ad6b284f2d1f1bd3b0`) is
+`!! CELIKPANEL_UPDATE_FAILURE code=package_manager_busy state=unchanged reason=the host package manager is active detail=`,
+at 2026-10-17T12:25:23Z: Debian's automatic package updates were running at that
+moment. The update stopped in its read-only check before anything was changed; the
+server stayed on alpha.94, as recorded on 2026-10-17. Nothing about it needs
+repairing. **Who acts:** the owner, when convenient: start the update again from the
+panel's own update screen once the package manager is idle. Nothing starts by
+itself.
+
+**Why the dialog said only "a read-only check could not verify the current
+installation".** A read-only code investigation of the alpha.94 to alpha.96 source
+found four separate reasons, all in how the reason reached the page, none in the
+update itself:
+
+1. The recovery tool's check reported the busy package manager as a recovery
+   runtime preflight stop, and `update.sh` records that code beside the request
+   (the recovery record's cause), while the summary line it prints says
+   `package_manager_busy`. The page took the record's code as a preflight stop and
+   looked for a step in the summary; a `package_manager_busy` line has none, so the
+   generic reason was drawn (`web/src/lib/systemUpdateOutcome.ts`,
+   `web/src/lib/systemUpdateFailure.ts`).
+2. Any update summary longer than 240 bytes or carrying a path was rebuilt by the
+   Panel from its closed tokens, and the diagnostic was dropped
+   (`cmd/panel/system_update_handlers.go`), so for a stop with a long or path-bearing
+   line the dialog's Details, and alpha.96's "The server reported" line, had nothing
+   to show. (Frankfurt's busy line itself is short and plain and was not cut; this
+   affects other stops.)
+3. A stop that happens before the recovery tool prints a `step=` line, for example
+   when its launcher's metadata check fails, is reported with the step
+   `compatibility` (`update.sh`, `fail_recovery_runtime_preflight compatibility`),
+   for which the page had no words.
+4. alpha.94's dialog showed the generic reason whenever the server screen catalogue
+   had not loaded yet, even for a step it has words for (the five refused-check
+   steps and two reason classes live in the screen catalogue).
+
+**What the alpha.97 candidate changes (in source).**
+
+- A busy package manager is a calm stop with its own words, in the stop dialog
+  ("Reason: the server's package manager was busy, for example with automatic
+  security updates. Nothing was changed." and "Start the update to {target} again
+  when it has finished; the update card in Settings says when the package manager
+  is free. Nothing starts by itself."), whether the record names a preflight stop
+  (Frankfurt's shape) or no cause, and in the update card's notice for that earlier
+  attempt ("… The server's package manager was busy, for example with automatic
+  security updates. Nothing was changed; this server runs {current} as before.
+  Start the update again when it has finished."). The card reads that attempt's own
+  stored summary once (a GET) to know it; its existing quiet readiness re-read then
+  says "The package manager has finished. The update can be started again." or "The
+  package manager is still busy. This card checks again by itself and says when the
+  update can be started; nothing starts by itself."
+- A preflight stop keeps a bounded, sanitized diagnostic: the recovery tool's first
+  line after its step, or the checker's line as the detail; first line only,
+  printable ASCII, at most 240 characters, URLs and paths outside the product's own
+  replaced, assignment values and long token-like runs hidden.
+- `compatibility` has words: "Reason: the server's recovery tool could not be
+  started or its installation could not be verified. The server administrator
+  checks it, using the server's line below; starting the update again is safe once
+  it is corrected." The server's first line is shown under it.
+- While the screen catalogue is still loading, a step's reason line says "Reading
+  the reason…" instead of the generic reason; the generic reason remains only when
+  the screen copy could not be loaded at all.
+
+These are changes to what the page says. The updater's mutation path is unchanged.
+Nothing was run on Frankfurt or Boston by the release preparer; the owner's
+commands were read-only. Boston's result of its alpha.95 update has not been
+reported. P0.1-P0.5 stay **partial**; this entry closes and advances nothing.
