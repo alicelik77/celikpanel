@@ -14,7 +14,10 @@ import test from 'node:test';
 import React from 'react';
 import Renderer, { act } from 'react-test-renderer';
 import { dataModule, reactURL, sharedLayer } from './fixtures/shared-layer.mjs';
-import { en } from '../src/i18n/en.ts';
+import { en as enShellHalf } from '../src/i18n/en.ts';
+import { enErrorsScreens as enErrorsPart } from '../src/i18n/screens/errors/en.ts';
+// The coded refusals only screens show are the screen part "errors" since v0.1.0-alpha.98.
+const en = { ...enShellHalf, ...enErrorsPart };
 import { enScreens } from './locale-catalogue.mjs';
 import { enServerScreens } from './locale-catalogue.mjs';
 
@@ -27,7 +30,7 @@ const nameOf = (id) => words[`services.component.name.${id}`] ?? id;
 
 const source = (path) => readFileSync(new URL('../src/' + path, import.meta.url), 'utf8');
 const icons = new Set(['AlertTriangle']);
-for (const path of ['components/ServiceList.tsx', 'components/ReadyBundleStrip.tsx', 'lib/componentIcons.tsx']) {
+for (const path of ['components/ServiceList.tsx', 'components/FirewallPanel.tsx', 'components/ReadyBundleStrip.tsx', 'lib/componentIcons.tsx']) {
   for (const match of source(path).matchAll(/import\s*\{([^}]+)\}\s*from 'lucide-react'/g)) {
     for (const item of match[1].split(',')) {
       const icon = item.replace(/\btype\b/, '').trim().split(/\s+as\s+/)[0];

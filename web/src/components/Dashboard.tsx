@@ -22,6 +22,7 @@ import { FirewallNoSSHAcknowledgement, readFirewallSSHReason } from './FirewallS
 import { apiErrorText, readApiError } from '../lib/apiError';
 import { countText, decodeList, lastKnown, mapRemote, useRemote, type Observed, type Remote } from '../lib/remote';
 import { decodeFirewallStatus, useFirewallStatus, type FirewallStatus } from '../lib/firewall';
+import { isServiceRunning } from '../lib/serviceStatus';
 import { USERS_URL, decodeUsers } from '../lib/accounts';
 import { bundleName, bundlesSummary, decodeReadyBundles, type ReadyBundle } from '../lib/readyBundles';
 import { INFRASTRUCTURE_ZONES_URL, decodeInfrastructureZones, domainsCount } from '../lib/infrastructureZones';
@@ -268,8 +269,7 @@ const SCAN_HELD_CODES = new Set(['server_setup_busy', 'service_operation_busy'])
 type ScanOutcome = { kind: 'failed'; reason: string } | { kind: 'held' } | null;
 
 function serviceStatusRunning(status: string): boolean {
-    const normalized = status.trim().toLowerCase();
-    return normalized === 'running' || normalized.startsWith('active');
+    return isServiceRunning(status);
 }
 
 function decodeHostMutationReadiness(value: unknown): HostMutationReadiness | null {

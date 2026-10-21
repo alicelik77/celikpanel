@@ -85,6 +85,8 @@ const componentCensusURL = compileSource('lib/componentCensus.ts', unexpected('l
 const visibleReadsURL = compileSource('lib/visibleReads.ts', unexpected('lib/visibleReads.ts'));
 // The installed package version reader (alpha.97) has no imports of its own.
 export const packageVersionURL = compileSource('lib/packageVersion.ts', unexpected('lib/packageVersion.ts'));
+// One running rule for every screen that reads a component's status (alpha.98).
+export const serviceStatusURL = compileSource('lib/serviceStatus.ts', unexpected('lib/serviceStatus.ts'));
 
 export function sharedLayer(stubURL, extra = {}) {
   const uiURL = compileSource('components/ui.tsx', (specifier) => (
@@ -103,6 +105,7 @@ export function sharedLayer(stubURL, extra = {}) {
     '/componentCensus': componentCensusURL,
     '/visibleReads': visibleReadsURL,
     '/lib/packageVersion': packageVersionURL,
+    '/lib/serviceStatus': serviceStatusURL,
     '/ui': uiURL,
     ...extra,
   };
@@ -110,6 +113,9 @@ export function sharedLayer(stubURL, extra = {}) {
     for (const [suffix, url] of Object.entries(table)) if (specifier.endsWith(suffix)) return url;
     return stubURL;
   };
+  // The firewall box left ServiceList.tsx for its own module in alpha.98; a
+  // screen that mounted it inside the Components page still gets the real one.
+  if (!extra['/FirewallPanel']) table['/FirewallPanel'] = compileSource('components/FirewallPanel.tsx', resolve);
   return { uiURL, resolve, compile: (path, more = {}) => compileSource(path, (specifier) => {
     for (const [suffix, url] of Object.entries(more)) if (specifier.endsWith(suffix)) return url;
     return resolve(specifier);

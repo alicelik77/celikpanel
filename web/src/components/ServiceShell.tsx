@@ -14,6 +14,7 @@ import { runStoredRecordCheck } from '../lib/managedServices';
 import { startVisibleReads } from '../lib/visibleReads';
 import { useNavigate } from '../router';
 import { packageVersionFacts } from '../lib/packageVersion';
+import { isServiceRunning } from '../lib/serviceStatus';
 
 interface ManagedService {
     id: string;
@@ -268,7 +269,7 @@ export function ServiceShell({
     const packageVersion = installed ? packageVersionFacts(svc) : null;
     const packageVersionReadAt = packageVersion?.readAt
         ? new Date(packageVersion.readAt).toLocaleString(locale === 'tr' ? 'tr-TR' : 'en-US') : '';
-    const running = installed && (svc?.status?.includes('running') ?? false);
+    const running = installed && isServiceRunning(svc?.status);
     // The record could not be read and there is no earlier one: nothing is
     // known about this component here. With an earlier one, that record stays
     // on screen as the earlier answer and nothing that changes it is offered.

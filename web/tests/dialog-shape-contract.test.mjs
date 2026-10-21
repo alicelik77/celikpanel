@@ -167,7 +167,9 @@ test('every dialogue in the product is the shared one', () => {
     'DomainMailManager.tsx': 1,
     // alpha.94: the confirmation of a database or web ready bundle.
     'ReadyBundleStrip.tsx': 2,
-    'ServiceList.tsx': 7,
+    // alpha.98: the firewall's confirmation moved with the box to FirewallPanel.tsx.
+    'FirewallPanel.tsx': 1,
+    'ServiceList.tsx': 6,
     'ServiceShell.tsx': 1,
   });
 });

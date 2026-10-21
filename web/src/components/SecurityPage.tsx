@@ -4,10 +4,11 @@ import { useI18n } from '../i18n';
 import { Link, useLocation } from '../router';
 import { PageHeader } from './PageHeader';
 import { RemoteGate } from './ui';
-import { FirewallBar } from './ServiceList';
+import { FirewallBar } from './FirewallPanel';
 import { SecurityAuditCard } from './SecurityAuditCard';
 import { fetchHostMutationReadiness, type HostMutationReadiness } from '../lib/panelUpdateAdmission';
 import { useManagedServices } from '../lib/managedServices';
+import { isServiceRunning } from '../lib/serviceStatus';
 
 // Server → Security (D-037, owner 2026-10-22): one page that answers "is my
 // server safe?". Nothing here is new: the firewall box that used to open from
@@ -103,15 +104,19 @@ function useHostMutationReadiness(): { readiness: HostMutationReadiness | null; 
 // bakılmadı"dır. Yönetim kendi bileşen sayfasında kalır.
 type Fail2banState = 'running' | 'installedUnknown' | 'notRunning' | 'notInstalled' | 'notChecked';
 
+// A known snapshot without a Fail2ban record is a known answer: this server's
+// catalogue has no Fail2ban, so it is not installed. "Not checked yet" is only
+// a record whose installed state nobody observed.
+// Fail2ban kaydı olmayan bilinen anlık görüntü bilinen bir yanıttır: kurulu değil.
 export function fail2banState(services: Record<string, unknown>[]): Fail2banState {
     const record = services.find((service) => service.id === 'fail2ban');
-    if (!record || record.is_installed === null || record.is_installed === undefined) return 'notChecked';
+    if (!record) return 'notInstalled';
+    if (record.is_installed === null || record.is_installed === undefined) return 'notChecked';
     if (record.is_installed === false) return 'notInstalled';
-    // The scan writes systemd's words ("active (running)", "inactive (dead)");
-    // running is read the way the Dashboard and Components read it.
-    // Tarama systemd'nin sözcüklerini yazar; çalışıyor, Pano ve Bileşenler gibi okunur.
+    // One running rule with the Dashboard and Components (lib/serviceStatus).
+    // Pano ve Bileşenler ile tek çalışma kuralı.
+    if (isServiceRunning(record.status)) return 'running';
     const status = typeof record.status === 'string' ? record.status.trim().toLowerCase() : '';
-    if (status === 'running' || status.startsWith('active')) return 'running';
     if (status === 'unknown' || status === '') return 'installedUnknown';
     return 'notRunning';
 }

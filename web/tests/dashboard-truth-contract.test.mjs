@@ -30,7 +30,11 @@ test('Boston rspamd tuple never produces a false SpamAssassin install alert', ()
 test('system service truth never promotes tools into running daemons', () => {
   assert.match(dashboard, /if \(!serviceScanFresh\) return false/);
   assert.match(dashboard, /const systemServices = serviceScanFresh[\s\S]*installed\.filter\(\(s\) => s\.kind === 'service'\)/);
-  assert.match(dashboard, /normalized === 'running' \|\| normalized\.startsWith\('active'\)/);
+  // One running rule for every screen since alpha.98 (lib/serviceStatus.ts):
+  // only a status that says running is running; "active (exited)" is not.
+  assert.match(dashboard, /return isServiceRunning\(status\);/);
+  const serviceStatus = readFileSync(new URL('../src/lib/serviceStatus.ts', import.meta.url), 'utf8');
+  assert.match(serviceStatus, /return normalized === 'running' \|\| normalized\.includes\('\(running\)'\);/);
   assert.match(dashboard, /const hostNeverChecked = services\.length > 0 && uncheckedServices\.length === services\.length/);
   assert.match(dashboard, /!serviceScanFresh[\s\S]*dashboard\.statusUnknown/);
   assert.match(dashboard, /serviceScanFresh && hostsContent && !hasClamAV/);

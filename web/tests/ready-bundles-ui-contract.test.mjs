@@ -12,8 +12,13 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import ts from 'typescript';
-import { en } from '../src/i18n/en.ts';
-import { tr } from '../src/i18n/tr.ts';
+import { en as enShellHalf } from '../src/i18n/en.ts';
+import { enErrorsScreens as enErrorsPart } from '../src/i18n/screens/errors/en.ts';
+// The coded refusals only screens show are the screen part "errors" since v0.1.0-alpha.98.
+const en = { ...enShellHalf, ...enErrorsPart };
+import { tr as trShellHalf } from '../src/i18n/tr.ts';
+import { trErrorsScreens as trErrorsPart } from '../src/i18n/screens/errors/tr.ts';
+const tr = { ...trShellHalf, ...trErrorsPart };
 import { enScreens } from './locale-catalogue.mjs';
 import { trScreens } from './locale-catalogue.mjs';
 import { enServerScreens } from './locale-catalogue.mjs';
@@ -381,7 +386,11 @@ test('rows align in three columns, or four when a package version is known; neve
 });
 
 test('a healthy firewall is one calm line; the box stays for every other state', () => {
-  const bar = services.slice(services.indexOf('function FirewallBar('), services.indexOf('function FirewallActionConfirmationDialog('));
+  // The firewall box has its own module since v0.1.0-alpha.98 (D-037).
+  const firewallPanel = read('../src/components/FirewallPanel.tsx');
+  const bar = firewallPanel.slice(firewallPanel.indexOf('function FirewallBar('), firewallPanel.indexOf('function FirewallActionConfirmationDialog('));
+  assert.ok(bar.length > 0);
+  assert.match(services, /import \{ FirewallBar \} from '\.\/FirewallPanel';/);
   assert.match(bar, /const healthy = st\.enabled\s*\n\s*&& \(st\.persistence_state === undefined \|\| st\.persistence_state === '' \|\| st\.persistence_state === 'ready'\)\s*\n\s*&& !sshReason;/);
   assert.match(bar, /if \(healthy && place === 'components'\) \{/);
   assert.match(bar, /data-firewall-compact=""/);
