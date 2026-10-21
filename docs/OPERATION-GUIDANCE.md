@@ -9505,3 +9505,24 @@ server.
   "Paketlerinin sürümleri farklı:".
 
 P0.1-P0.5 stay **partial**; this entry closes and advances nothing.
+
+### Installed servers after the alpha.97 publication: Frankfurt's alpha.95 stop explained (2026-10-21)
+
+v0.1.0-alpha.97 was published on 2026-10-21 (release at 20:24:20Z, then the
+download portal at about 20:36Z). That day the owner sent a screenshot of
+Settings that shows Boston on v0.1.0-alpha.96, and ran the two read-only
+commands for Frankfurt's alpha.95 stop. The stored line (`!!
+CELIKPANEL_UPDATE_FAILURE code=package_manager_busy state=unchanged reason=the
+host package manager is active detail=`, 2026-10-17T12:25:23Z) shows that
+Debian's automatic package updates were running and that nothing changed on the
+server; alpha.97 makes the stop dialog and the update card say so (see the
+entries above). **Who must act:** the owner, who decides when to start the
+update again, from the panel's own update screen, once the package manager is
+free; nothing else is needed from the server. Frankfurt's update after that was
+not reported, and nothing is inferred. **Open:** the versions alpha.97 reads
+have not yet been seen on an installed server; the critical boot path has 1.8
+KiB of budget left; the public portal still links the old `celikbros/...` GitHub
+addresses, which redirect (the account is now `alicelik77`); the Settings
+menu-layout proposal awaits the owner's decision. No text or screen was changed
+for this entry. P0.1-P0.5 stay **partial**; this entry closes and advances
+nothing.

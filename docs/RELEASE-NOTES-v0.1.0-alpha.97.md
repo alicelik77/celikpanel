@@ -1,10 +1,11 @@
-# v0.1.0-alpha.97 (candidate, 2026-10-21)
+# v0.1.0-alpha.97 (published 2026-10-21)
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.97.tr.md)
 
-This is the candidate that follows v0.1.0-alpha.96. It is not published yet, and no
-installed server has been updated to it. The number was chosen by the release
-preparer under the owner's standing instruction of 2026-10-13. Written on
+This is the release that follows v0.1.0-alpha.96. It was published on 2026-10-21
+(see "Publication record" at the end); its versions have not yet been seen on an
+installed server. The number was chosen by the release preparer under the owner's
+standing instruction of 2026-10-13. Written on
 2026-10-21, on the branch `feat/alpha97-component-versions`, from `main` after the
 publication record of alpha.96 (the alpha.96 release commit is
 `08faa91e5a8c6622072b40f0f87c9c388035c9a3`).
@@ -208,3 +209,107 @@ environment; none of it was run on an installed server.
   (WSL guest) passed.
 
 Component, mounted and mock-browser tests do not establish native behaviour.
+
+## Publication record
+
+Everything below is dated 2026-10-21 (UTC unless a time zone is named). The
+merge, the tag, the checks, the portal publication and the read of the public
+site were done by the release preparer under the owner's standing instruction,
+as for the earlier releases; installed-panel updates are the owner's alone, from
+the panel's own update screen. No native record for the publication, by the
+owner's instruction. This entry stores none of the results below as a file in the
+repository.
+
+**What happened.**
+
+1. Three independent review rounds came before the release. Their findings were
+   fixed: the dpkg states that mean a package is held, removed or half-installed
+   now count; the label for the output cap, with tests that run a real process
+   past a small cap; a reason line that could wait for ever; gaps in how the
+   sanitizer handles paths; and the note on how alpha.96's Store reads an
+   alpha.97 record (described above).
+2. Pull request #232, "Release v0.1.0-alpha.97: real versions for every
+   component, a readable reason when an update stops, and room in the
+   catalogues", was merged into `main` as commit
+   `0c1a8917ef3f8141702fa41ae085f64d62a713f0`. The release sequence variable was
+   moved from 96 to 97 before the tag was made. The main run and the tag run
+   both succeeded; the release chain ran cleanly, with no incident.
+3. The annotated tag `v0.1.0-alpha.97` (object
+   `e5c64bcc3569513050ebfc89c01185a69cabbfb0`, tree
+   `67db021959466f61a2defc232194d897c1eb9cb7`) points at the release commit. The
+   release is a pre-release, published at 2026-10-21T20:24:20Z with six assets.
+4. Checked from a download in the WSL guest `CelikPanel-S2-Debian` on 2026-10-21
+   (preparer; not recorded in a file here): the archives are byte-identical,
+   66,312,385 bytes each, SHA-256
+   `3784fa392b016a9fbd18ffc372f7017c8c2aab5d3643bf319c25e53514800aa3`; the
+   manifest says sequence 97, `published_at` 2026-10-21T19:40:33Z (SHA-256
+   `276a972a492beed16524f65f3eb29e2fe590fcbc32a3a9c996ec7063b974c027`), and its
+   signature (SHA-256
+   `5acfb875718e99791bfdf5811a3371ade1f6d1ca92aeac8d63d809a62cf2927d`) verifies
+   with `openssl pkeyutl -verify -rawin -pubin` against the signing key (SHA-256
+   `7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb`, the same
+   key as before); both content guards returned 0; the build used Go go1.26.5,
+   CGO off, `-trimpath`. `libexec/get.sh` pins 97 (SHA-256
+   `08ece9d28b3caba0cb94c8bd3659de138fd357352b8b2a5df82f6c31da6cf5bc`); the
+   policy inside says current 97, previous 96, previous commit
+   `08faa91e5a8c6622072b40f0f87c9c388035c9a3`. The archive has 257 members (233
+   files, 24 directories). The interface bundle is
+   `web/dist/assets/app-Ckmq5jcD.js`, 256,924 bytes, SHA-256
+   `f94433074b4451430875fda814d0dd371df99eae938c6111a41fb609ff719861`.
+   `bin/agent` contains `InstalledPackageVersionsV1`.
+5. The portal package: `portal.tar.gz`, 132,999,066 bytes, SHA-256
+   `61ade15eee9ecd7e136d0eee599534a96c628d6bb38ae2365c0c74f56e339197`, 54
+   entries, built twice byte-identical with the tag's
+   `deploy/build-download-portal.sh` (pre-signed mode). The contract test
+   returned 0; the public verifier's 17 tests and the promotion's 14 tests
+   passed.
+6. At about 20:36Z the preparer published it with
+   `deploy/publish-download-portal.ps1` from the preparer's machine, previous
+   version v0.1.0-alpha.96, target v0.1.0-alpha.97: status `committed`, public
+   verification 26 of 26 requests, `CELIKPANEL_DOWNLOAD_PORTAL_PUBLISHED`.
+7. The backup of the previous site is
+   `/var/www/vhosts/celikpanel.net/portal-backups/httpdocs.before-v0.1.0-alpha.97.20261021T203644Z.2234083.ade8d257d372e677`;
+   the upload was retained in
+   `/var/www/vhosts/celikpanel.net/.upload-portal-20261021T203602Z-v0.1.0-alpha.97-69cbd3f06d952c28`.
+8. A read from outside after the publication:
+   `https://celikpanel.net/releases/latest.txt` says v0.1.0-alpha.97;
+   `latest.json` says sequence 97, with the commit and the SHA-256 above.
+
+**What the owner reported.** On 2026-10-21 the owner sent a screenshot of
+Settings that shows Boston on v0.1.0-alpha.96 (build 08faa91e5a8c). For the stop
+of Frankfurt's update to alpha.95 the owner ran the two read-only commands given
+on 2026-10-21; the stored line was `!! CELIKPANEL_UPDATE_FAILURE
+code=package_manager_busy state=unchanged reason=the host package manager is
+active detail=` (2026-10-17T12:25:23Z). Debian's automatic package updates were
+running; nothing changed on the server. alpha.97 makes the screen say this (see
+"What changes on screen" above; not repeated here). Frankfurt's update after
+that was not reported when this was written. The owner also renamed the GitHub
+account (celikbros to alicelik77). The repository is now
+`alicelik77/celikpanel`; the old `celikbros/celikpanel` name is retired by
+GitHub and redirects permanently. Commits are made under the owner's chosen
+identity.
+
+**Not done, and what publication does not change.**
+
+- The installed servers were not updated to alpha.97 by the release preparer.
+  Only the owner updates them, from the panel's own update screen.
+- The versions this release reads have not yet been seen on an installed server.
+  The open item "read installed package versions for every component" closes
+  only when the owner sees them on Boston and Frankfurt.
+- The critical boot path has 1.8 KiB of its budget left.
+- The public portal still links `celikbros/...` GitHub addresses. They redirect,
+  and are to be updated when the portal next changes.
+- The menu-layout proposal for Settings (its contents) awaits the owner's
+  decision.
+- Not reported and not recorded: Frankfurt's update after its alpha.95 stop, how
+  Boston reached alpha.96, anything from Boston or Frankfurt on alpha.97, and
+  everything the earlier notes list as not reported. Each is "not recorded", not
+  "worked" and not "failed".
+- The limits of the earlier publication records (see the [alpha.88
+  notes](RELEASE-NOTES-v0.1.0-alpha.88.md)) are not reported as lifted.
+- Publication is not acceptance. P0.1 to P0.5 stay partial; no P0 item is closed
+  or advanced.
+
+Install this release only through CelikPanel's update interface. Publishing it does
+not update installed servers; only the owner of a server starts its update, from
+the panel's own update screen.

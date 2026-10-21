@@ -9470,3 +9470,24 @@ v0.1.0-alpha.97 adayı için kaynakta; kurulu bir sunucuda hiçbir şey ölçül
   sürümleri farklı:" diye okunur.
 
 P0.1-P0.5 **kısmi** kalır; bu girdi hiçbir şeyi kapatmaz ve ilerletmez.
+
+### Alpha.97 yayımından sonra kurulu sunucular: Frankfurt'un alpha.95 durması açıklandı (2026-10-21)
+
+v0.1.0-alpha.97 21 Ekim 2026'da yayımlandı (sürüm 20:24:20Z'de, ardından indirme
+portalı yaklaşık 20:36Z'de). Sahip o gün Boston'un v0.1.0-alpha.96'da olduğunu
+gösteren bir Ayarlar ekran görüntüsü gönderdi ve Frankfurt'un alpha.95 durması
+için iki salt-okur komutu çalıştırdı. Saklanan satır (`!!
+CELIKPANEL_UPDATE_FAILURE code=package_manager_busy state=unchanged reason=the
+host package manager is active detail=`, 2026-10-17T12:25:23Z), Debian'ın
+otomatik paket güncellemelerinin çalıştığını ve sunucuda hiçbir şeyin
+değişmediğini gösterir; alpha.97 durdurma penceresinin ve güncelleme kartının
+bunu söylemesini sağlar (yukarıdaki girdilere bakın). **Kim işlem yapar:**
+sahip; güncellemeyi ne zaman yeniden başlatacağına, paket yöneticisi boşaldıktan
+sonra panelin kendi güncelleme ekranından kendisi karar verir; sunucudan başka
+bir şey gerekmez. Frankfurt'un bundan sonraki güncellemesi bildirilmedi ve
+hiçbir şey çıkarılmaz. **Açık:** alpha.97'nin okuduğu sürümler henüz bir kurulu
+sunucuda görülmedi; kritik açılış yolunda 1,8 KiB bütçe kaldı; genel portal hâlâ
+eski `celikbros/...` GitHub adreslerine bağlanıyor, bunlar yönlendirilir (hesap
+artık `alicelik77`); Ayarlar menü düzeni önerisi sahibin kararını bekliyor. Bu
+girdi için hiçbir metin ya da ekran değiştirilmedi. P0.1-P0.5 **kısmi** kalır;
+bu girdi hiçbir şeyi kapatmaz ya da ilerletmez.
