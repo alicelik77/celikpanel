@@ -200,7 +200,7 @@ func TestReadyBundleStripUsesServerMembershipAndClosedActions(t *testing.T) {
 	for _, required := range []string{
 		`openProfilePlan(profile);`,
 		`operationKind: 'mail_profile_install'`,
-		`navigate('/settings?section=dns')`,
+		`navigate('/dns-infrastructure')`,
 		`bundleSequence.begin(bundle);`,
 		// The client gate of the mail actions before the DNS identity is
 		// ready, beside the Panel's own refusal (the cards' former

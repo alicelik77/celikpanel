@@ -310,7 +310,7 @@ func (p *Panel) handleCreateDomain(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.ProjectType == "dnsonly" && parentDNSDomain != "" && caps.DNSManagementMode != setupDNSModeLocal {
-		writeCodedError(w, http.StatusConflict, "DNS_ONLY_REQUIRES_LOCAL_AUTHORITY", "a DNS-only child must retain its parent's local DNS authority", "/settings?section=dns")
+		writeCodedError(w, http.StatusConflict, "DNS_ONLY_REQUIRES_LOCAL_AUTHORITY", "a DNS-only child must retain its parent's local DNS authority", "/dns-infrastructure")
 		return
 	}
 	if caps.DNSManagementMode == setupDNSModeExisting && req.ProjectType != "dnsonly" {
@@ -323,13 +323,13 @@ func (p *Panel) handleCreateDomain(w http.ResponseWriter, r *http.Request) {
 	if (caps.DNSManagementMode == setupDNSModeLocal || req.ProjectType == "dnsonly") && caps.DNSServer == "" {
 		writeCodedError(w, http.StatusConflict, errCodeDNSServerRequired,
 			"no managed authoritative DNS engine is active; choose and activate BIND or PowerDNS first",
-			"/settings?section=dns")
+			"/dns-infrastructure")
 		return
 	}
 	if (caps.DNSManagementMode == setupDNSModeLocal || req.ProjectType == "dnsonly") && !caps.DNSIdentityReady {
 		writeCodedError(w, http.StatusConflict, errCodeDNSSettingsRequired,
 			"DNS identity is not configured — save the shared nameserver names and operating mode under Settings before adding a domain",
-			"/settings?section=dns")
+			"/dns-infrastructure")
 		return
 	}
 	if req.ProjectType == "php" || req.ProjectType == "static" {
@@ -492,7 +492,7 @@ func (p *Panel) handleCreateDomain(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if req.DNSManagement == setupDNSModeLocal && (caps.DNSServer == "" || !caps.DNSIdentityReady) {
-			writeCodedError(w, http.StatusConflict, errCodeDNSServerRequired, "the parent domain retains local DNS ownership; its authoritative DNS must be ready", "/settings?section=dns")
+			writeCodedError(w, http.StatusConflict, errCodeDNSServerRequired, "the parent domain retains local DNS ownership; its authoritative DNS must be ready", "/dns-infrastructure")
 			return
 		}
 		if req.ProjectType == "dnsonly" && req.DNSManagement != setupDNSModeLocal {

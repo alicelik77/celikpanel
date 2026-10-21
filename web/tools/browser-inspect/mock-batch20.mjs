@@ -146,7 +146,7 @@ function bundles(services, dnsReady) {
     });
 }
 
-const DNS_REFUSAL = 'DNS identity is not ready. Install a supported DNS server and save the shared nameserver names and operating mode in Settings before installing a mail profile.';
+const DNS_REFUSAL = 'DNS identity is not ready. Install a supported DNS server and save the shared nameserver names and operating mode in Server → DNS and peer servers before installing a mail profile.';
 const PARTLY = 'Some components are already present. Installing this profile will reconcile the full plan without removing completed services.';
 const PROFILES = [
     { id: 'core-mail', name: 'Core Mail', components: ['postfix', 'dovecot'] },

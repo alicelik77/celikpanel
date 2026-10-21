@@ -619,7 +619,7 @@ func writeDNSPairIdentityLocked(w http.ResponseWriter) {
 		http.StatusConflict,
 		errCodeDNSPairIdentityLocked,
 		"the paired DNS identity is bound to the active engine epoch and cannot be changed from DNS setup",
-		"/settings?section=dns",
+		"/dns-infrastructure",
 	)
 }
 
@@ -1071,7 +1071,7 @@ func writeDNSSetupRequired(w http.ResponseWriter) {
 		http.StatusConflict,
 		errCodeDNSSetupRequired,
 		"legacy DNS settings writes are disabled; submit the complete nameserver pair and operating mode to /api/v1/settings/dns-setup",
-		"/settings?section=dns",
+		"/dns-infrastructure",
 	)
 }
 
@@ -1081,7 +1081,7 @@ func writeDNSTopologyUnsupported(w http.ResponseWriter) {
 		http.StatusConflict,
 		errCodeDNSTopologyUnsupported,
 		"paired DNS topology is not supported by the active DNS engine",
-		"/settings?section=dns",
+		"/dns-infrastructure",
 	)
 }
 

@@ -79,7 +79,7 @@ func writeDNSSECEngineUnsupported(w http.ResponseWriter) {
 	writeCodedError(
 		w, http.StatusConflict, errCodeDNSSECEngineUnsupported,
 		"DNSSEC is unavailable for the active DNS engine",
-		"/settings?section=dns",
+		"/dns-infrastructure",
 	)
 }
 
@@ -87,7 +87,7 @@ func writeDNSSECStatusUnavailable(w http.ResponseWriter, status int) {
 	writeCodedError(
 		w, status, errCodeDNSSECStatusUnavailable,
 		"DNSSEC status could not be verified",
-		"/settings?section=dns",
+		"/dns-infrastructure",
 	)
 }
 
@@ -165,7 +165,7 @@ func (p *Panel) handleDomainDNSSEC(w http.ResponseWriter, r *http.Request, domai
 				http.StatusConflict,
 				errCodeDNSSECEngineUnsupported,
 				"DNSSEC management currently requires PowerDNS as the active engine",
-				"/settings?section=dns",
+				"/dns-infrastructure",
 			)
 			return
 		}

@@ -101,7 +101,7 @@ func (p *Panel) handlePanelCertificateSagaPost(w http.ResponseWriter, r *http.Re
 			http.StatusConflict,
 			"panel_certificate_contact_email_invalid",
 			"set a valid administrator email address before requesting a panel certificate",
-			"/settings?section=account",
+			"/account",
 		)
 		return
 	}

@@ -25,7 +25,7 @@ func assertDNSSetupRequired(t *testing.T, recorder *httptest.ResponseRecorder) {
 	if body.Code != errCodeDNSSetupRequired {
 		t.Fatalf("code = %q, want %q", body.Code, errCodeDNSSetupRequired)
 	}
-	if body.Action != "/settings?section=dns" {
+	if body.Action != "/dns-infrastructure" {
 		t.Fatalf("action = %q, want DNS settings", body.Action)
 	}
 	if !strings.Contains(body.Error, "/api/v1/settings/dns-setup") {
