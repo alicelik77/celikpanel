@@ -43,6 +43,27 @@ type observedPackageVersions struct {
 	Packages []transport.InstalledPackageVersion
 	ReadAt   string
 	Kept     bool
+	// KeptLong: the reading kept is older than packageVersionKeptLongAfter;
+	// the package manager has been busy at every check since then.
+	KeptLong bool
+}
+
+// packageVersionKeptLongAfter is how old a kept reading is before the page
+// adds a short guidance line (the package manager may be stuck).
+const packageVersionKeptLongAfter = 24 * time.Hour
+
+// packageVersionsForScan reads the previous scan's versions from the cache
+// (for a busy answer) and asks the Agent once.
+// Önceki taramanın sürümlerini önbellekten okur ve Agent'a bir kez sorar.
+func (p *Panel) packageVersionsForScan(ctx context.Context) map[string]observedPackageVersions {
+	var previousObservations []serviceObservation
+	var previousData string
+	if err := p.db.GetDB().QueryRowContext(ctx, `SELECT data FROM service_scan_cache WHERE id = 1`).Scan(&previousData); err == nil {
+		if snapshot, decodeErr := decodeScanCacheSnapshot(previousData); decodeErr == nil {
+			previousObservations = snapshot.Observations
+		}
+	}
+	return p.readPackageVersionsForScan(ctx, previousObservations, time.Now())
 }
 
 // readPackageVersionsForScan asks the Agent once. Busy keeps the previous
@@ -77,7 +98,11 @@ func packageVersionsFromReply(reply transport.InstalledPackageVersionsResponse, 
 	case transport.PackageVersionsBusy:
 		for _, o := range previous {
 			if len(o.PackageVersions) > 0 && o.PackageVersionsReadAt != "" {
-				versions[o.ID] = observedPackageVersions{Packages: o.PackageVersions, ReadAt: o.PackageVersionsReadAt, Kept: true}
+				keptLong := false
+				if readAt, err := time.Parse(time.RFC3339, o.PackageVersionsReadAt); err == nil {
+					keptLong = now.Sub(readAt) > packageVersionKeptLongAfter
+				}
+				versions[o.ID] = observedPackageVersions{Packages: o.PackageVersions, ReadAt: o.PackageVersionsReadAt, Kept: true, KeptLong: keptLong}
 			}
 		}
 	default:

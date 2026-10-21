@@ -18,6 +18,12 @@ func (a *serviceOperationTestAgent) InstalledPackageVersionsV1(
 	resp *transport.InstalledPackageVersionsResponse,
 ) error {
 	a.mu.Lock()
+	hook := a.packageVersionsHook
+	a.mu.Unlock()
+	if hook != nil {
+		hook()
+	}
+	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.packageVersionCalls++
 	if a.packageVersions == nil {
@@ -261,5 +267,98 @@ func TestPackageVersionsPassThroughScanCacheAndAnswers(t *testing.T) {
 	}
 	if got := serviceByID(read().Services, "nginx"); got.PackageVersion != "" || got.PackageVersionKept {
 		t.Fatalf("a failed read must leave the version unknown: %+v", got)
+	}
+}
+
+// The page's own scan reads the versions before it takes the Panel's mutation
+// lease: the read is read-only and takes no lock, so the lease is not held
+// while the package database answers (alpha.97 review).
+func TestPageScanReadsPackageVersionsOutsideTheMutationLease(t *testing.T) {
+	f := newServiceOperationTestFixture(t)
+	leaseFree := false
+	f.agent.mu.Lock()
+	f.agent.installed["nginx"] = true
+	f.agent.packageVersions = &transport.InstalledPackageVersionsResponse{Family: "apt", State: transport.PackageVersionsRead,
+		Components: []transport.ComponentPackageVersions{{ServiceID: "nginx", Packages: []transport.InstalledPackageVersion{{Package: "nginx", Version: "1.26.3-3"}}}}}
+	f.agent.packageVersionsHook = func() {
+		if f.panel.serviceMutationMu.TryLock() {
+			f.panel.serviceMutationMu.Unlock()
+			leaseFree = true
+		}
+	}
+	f.agent.mu.Unlock()
+	recorder := httptest.NewRecorder()
+	f.panel.handleManagedServicesScan(recorder, httptest.NewRequest(http.MethodPost, "/api/v1/managed-services/scan", nil))
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("scan = %d %s", recorder.Code, recorder.Body.String())
+	}
+	if !leaseFree {
+		t.Fatal("the mutation lease was held while the package database was asked")
+	}
+	if f.agent.packageVersionCalls != 1 {
+		t.Fatalf("one page scan made %d version reads, want 1", f.agent.packageVersionCalls)
+	}
+	var payload managedServicesPayload
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatal(err)
+	}
+	if got := serviceByID(payload.Services, "nginx"); got.PackageVersion != "1.26.3-3" {
+		t.Fatalf("nginx = %+v", got)
+	}
+}
+
+// A reading kept for more than a day says so; a fresh keep does not.
+func TestKeptReadingOlderThanADayIsMarkedLong(t *testing.T) {
+	now := time.Date(2026, 10, 21, 12, 0, 0, 0, time.UTC)
+	nginx := []transport.InstalledPackageVersion{{Package: "nginx", Version: "1.26.3-3"}}
+	for readAt, want := range map[string]bool{"2026-10-21T08:00:00Z": false, "2026-10-20T11:00:00Z": true} {
+		kept := packageVersionsFromReply(transport.InstalledPackageVersionsResponse{State: transport.PackageVersionsBusy},
+			[]serviceObservation{{ID: "nginx", IsInstalled: true, PackageVersions: nginx, PackageVersionsReadAt: readAt}}, now)
+		if got := kept["nginx"]; !got.Kept || got.KeptLong != want {
+			t.Fatalf("read at %s: %+v, want kept long %v", readAt, got, want)
+		}
+		view := catalogView([]serviceObservation{{ID: "nginx", IsInstalled: true, PackageVersions: nginx, PackageVersionsReadAt: readAt,
+			PackageVersionsKept: true, PackageVersionsKeptLong: want}}, "apt")
+		if got := serviceByID(view, "nginx"); got.PackageVersionKeptLong != want {
+			t.Fatalf("read at %s: view %+v", readAt, got)
+		}
+	}
+}
+
+// alpha.97 -> alpha.96 (a downgrade without the pre-update snapshot): the
+// additive fields stay in the cache row, and alpha.96 decodes its
+// observations with encoding/json, which ignores fields it does not know. The
+// row is read, not refused. This mirrors alpha.96's observation shape.
+func TestAlpha96DecodesACacheRowWrittenByAlpha97(t *testing.T) {
+	type alpha96Observation struct {
+		ID                    string                 `json:"id"`
+		IsInstalled           bool                   `json:"is_installed"`
+		Status                string                 `json:"status"`
+		Unit                  string                 `json:"unit,omitempty"`
+		ConfigFiles           []core.ConfigFile      `json:"config_files,omitempty"`
+		Instances             []core.ServiceInstance `json:"instances,omitempty"`
+		Versions              []string               `json:"versions,omitempty"`
+		InstalledRepoPackages []string               `json:"installed_repo_packages,omitempty"`
+	}
+	row, err := json.Marshal(scanCacheDoc{Observations: []serviceObservation{{
+		ID: "nginx", IsInstalled: true, Status: "active (running)",
+		PackageVersions:       []transport.InstalledPackageVersion{{Package: "nginx", Version: "1.26.3-3"}},
+		PackageVersionsReadAt: "2026-10-21T08:00:00Z", PackageVersionsKept: true, PackageVersionsKeptLong: true,
+	}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var envelope struct {
+		Observations json.RawMessage `json:"observations"`
+	}
+	if err := json.Unmarshal(row, &envelope); err != nil {
+		t.Fatal(err)
+	}
+	var old []alpha96Observation
+	if err := json.Unmarshal(envelope.Observations, &old); err != nil {
+		t.Fatalf("alpha.96 refuses an alpha.97 row: %v", err)
+	}
+	if len(old) != 1 || old[0].ID != "nginx" || !old[0].IsInstalled {
+		t.Fatalf("decoded %+v", old)
 	}
 }

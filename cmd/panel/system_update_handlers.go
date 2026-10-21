@@ -366,13 +366,18 @@ const panelUpdateDiagnosticLimit = 240
 
 var (
 	panelUpdateDiagnosticURL = regexp.MustCompile(`[A-Za-z][A-Za-z0-9+.-]*://\S*`)
-	// A path starts a word (a date such as 2026/10/17 is not one).
-	panelUpdateDiagnosticPath = regexp.MustCompile(`(^|[\s='"(\[<])(/[^\s:;,'"()\[\]<>]*)`)
+	// A path starts a word: at the start, after a space or after one of
+	// = ' " ( [ < : , ; ` @ (a date such as 2026/10/17 is not one).
+	panelUpdateDiagnosticPath = regexp.MustCompile("(^|[\\s='\"(\\[<:,;`@])(/[^\\s:;,'\"()\\[\\]<>`@]*)")
 	// NAME=value as an environment or argument assignment; the value is hidden.
 	panelUpdateDiagnosticAssignment = regexp.MustCompile(`\b([A-Za-z_][A-Za-z0-9_]*)=("[^"]*"|'[^']*'|\S*)`)
-	// A long run of key-, token- or hash-like characters.
-	panelUpdateDiagnosticSecret = regexp.MustCompile(`[A-Za-z0-9+_-]{32,}={0,2}`)
-	panelUpdateDiagnosticSpace  = regexp.MustCompile(`\s+`)
+	// A long run of key-, token- or hash-like characters, "/" included so a
+	// base64 value split by slashes is one run: 32 characters or more with no
+	// space. A run that starts with "/" is a path (a product path is kept).
+	panelUpdateDiagnosticSecret = regexp.MustCompile(`[A-Za-z0-9+/_-]{32,}={0,2}`)
+	// A file mode after "mode=" is readable information, not a secret.
+	panelUpdateDiagnosticMode  = regexp.MustCompile(`^0?[0-7]{3,4}$`)
+	panelUpdateDiagnosticSpace = regexp.MustCompile(`\s+`)
 )
 
 // panelUpdateProductPaths are the product's own locations; a path outside
@@ -425,18 +430,33 @@ func panelUpdateDiagnostic(raw string) string {
 		}
 		return lead + "[path]"
 	})
+	// Token runs first, so a value with "=" padding is one run, not an
+	// assignment.
+	text = panelUpdateDiagnosticSecret.ReplaceAllStringFunc(text, func(run string) string {
+		if strings.HasPrefix(run, "/") {
+			return run
+		}
+		return "[hidden]"
+	})
 	text = panelUpdateDiagnosticAssignment.ReplaceAllStringFunc(text, func(assignment string) string {
 		name := assignment[:strings.IndexByte(assignment, '=')]
+		value := assignment[len(name)+1:]
+		// Sentence punctuation after the value is not part of it.
+		trimmed := strings.TrimRight(value, ",;:.)")
+		tail := value[len(trimmed):]
 		switch strings.ToLower(name) {
 		case "step", "class":
 			// The updater's own closed tokens repeated in its line stay.
-			if panelUpdateClosedToken.MatchString(assignment[len(name)+1:]) {
+			if panelUpdateClosedToken.MatchString(trimmed) {
+				return assignment
+			}
+		case "mode":
+			if panelUpdateDiagnosticMode.MatchString(trimmed) {
 				return assignment
 			}
 		}
-		return name + "=[hidden]"
+		return name + "=[hidden]" + tail
 	})
-	text = panelUpdateDiagnosticSecret.ReplaceAllString(text, "[hidden]")
 	text = strings.TrimSpace(panelUpdateDiagnosticSpace.ReplaceAllString(text, " "))
 	if len(text) > panelUpdateDiagnosticLimit {
 		text = strings.TrimSpace(text[:panelUpdateDiagnosticLimit-3]) + "..."

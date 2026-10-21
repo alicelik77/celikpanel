@@ -61,6 +61,12 @@ func TestParseDpkgVersions(t *testing.T) {
 		"libc6:i386\tii \t2.41-11",              // a second architecture keeps its own version
 		"odd\tii \t1.0$(touch x)",               // characters no package database prints
 		"long\tii \t" + strings.Repeat("1", 65), // longer than the ceiling
+		"redis-server\thi \t5:8.0.2-3",          // held: still installed
+		"fail2ban\tri \t1.1.0-8",                // marked for removal: still installed
+		"bind9\tpi \t1:9.20.11-4+deb13u1",       // marked for purge: still installed
+		"exim4-daemon-light\tiiR\t4.98-1",       // reinstall required: no version
+		"nftables\tiH \t1.1.3-1",                // half-installed: no version
+		"dovecot-core\tii\t1:2.4.1+dfsg1-6",     // the blank error flag lost: installed
 		"short-line",
 		"",
 	}, "\n")
@@ -71,6 +77,10 @@ func TestParseDpkgVersions(t *testing.T) {
 		"libc6":          {"2.41-12", "2.41-11"},
 		"odd":            {""},
 		"long":           {""},
+		"redis-server":   {"5:8.0.2-3"},
+		"fail2ban":       {"1.1.0-8"},
+		"bind9":          {"1:9.20.11-4+deb13u1"},
+		"dovecot-core":   {"1:2.4.1+dfsg1-6"},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("parseDpkgVersions = %#v, want %#v", got, want)
@@ -206,5 +216,15 @@ func TestInstalledPackageVersionsFailuresCarryNoOutput(t *testing.T) {
 	})
 	if answer := readInstalledPackageVersions(context.Background()); answer.State != transport.PackageVersionsUnsupported {
 		t.Fatalf("dnf answer = %+v", answer)
+	}
+}
+
+func TestInstalledPackageVersionsSaysAnAnswerWasTooLarge(t *testing.T) {
+	stubPackageVersionRead(t, hostplatform.PackageManagerAPT, idle, func(context.Context) ([]byte, error) {
+		return nil, errPackageVersionOutputTooLarge
+	})
+	answer := readInstalledPackageVersions(context.Background())
+	if answer.State != transport.PackageVersionsFailed || answer.Error != errPackageVersionOutputTooLarge.Error() || len(answer.Components) != 0 {
+		t.Fatalf("answer = %+v", answer)
 	}
 }

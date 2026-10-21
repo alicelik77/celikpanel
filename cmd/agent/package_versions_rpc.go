@@ -51,12 +51,10 @@ var packageVersionText = regexp.MustCompile(`^[0-9A-Za-z][0-9A-Za-z.+~:_-]*$`)
 var (
 	packageVersionBusyProbe = realPackageDatabaseReadBusy
 	packageVersionQuery     = func(ctx context.Context, executable string, args ...string) ([]byte, error) {
-		return serviceMutationCommand(ctx, executable, args...).OutputLimited(packageVersionOutputLimit)
+		return runPackageVersionCommand(ctx, packageVersionOutputLimit, executable, args...)
 	}
 	packageVersionHostProfile = verifiedHostProfileForAnyFamily
 )
-
-var errPackageVersionOutputTooLarge = errors.New("package database answer is larger than the read ceiling")
 
 // InstalledPackageVersionsV1 reports the installed package versions of the
 // catalogue components. It takes no argument: which packages are asked about
@@ -107,16 +105,13 @@ func readInstalledPackageVersions(parent context.Context) transport.InstalledPac
 	ctx, cancel := context.WithTimeout(parent, packageVersionQueryTimeout)
 	defer cancel()
 	output, err := packageVersionQuery(ctx, executable, args...)
-	if err == nil && len(output) > packageVersionOutputLimit {
-		err = errPackageVersionOutputTooLarge
-	}
 	if err != nil {
 		answer.State = transport.PackageVersionsFailed
 		switch {
+		case errors.Is(err, errPackageVersionOutputTooLarge):
+			answer.Error = errPackageVersionOutputTooLarge.Error()
 		case errors.Is(ctx.Err(), context.DeadlineExceeded):
 			answer.Error = "the package database did not answer in time"
-		case errors.Is(err, errPackageVersionOutputTooLarge):
-			answer.Error = err.Error()
 		default:
 			answer.Error = "the package database query failed"
 		}
@@ -157,14 +152,19 @@ func cleanPackageVersion(raw string) string {
 	return value
 }
 
-// parseDpkgVersions reads "name[:arch]\tstatus\tversion" rows. Only a package
-// whose state is installed ("ii") counts; a half-installed or removed one has
+// parseDpkgVersions reads "name[:arch]\tstatus\tversion" rows. A package
+// counts when dpkg says it is installed: the second character of
+// ${db:Status-Abbrev} is "i" (whatever the wanted action: "ii", "hi" for a
+// held package, "ri"/"pi" for one marked for removal or purge) and the third,
+// the error flag, is blank. A package flagged "reinstall required" ("iiR"),
+// half-installed, unpacked, or removed with its configuration left ("rc") has
 // no version to show. A name seen for two architectures keeps both versions.
+// dpkg'nin "kurulu" dediği paket sayılır: ikinci karakter "i", hata bayrağı boş.
 func parseDpkgVersions(output string) map[string][]string {
 	installed := map[string][]string{}
 	for _, line := range strings.Split(output, "\n") {
 		fields := strings.Split(strings.TrimRight(line, "\r"), "\t")
-		if len(fields) != 3 || strings.TrimSpace(fields[1]) != "ii" {
+		if len(fields) != 3 || !dpkgInstalledState(fields[1]) {
 			continue
 		}
 		name := strings.TrimSpace(fields[0])
@@ -177,6 +177,20 @@ func parseDpkgVersions(output string) map[string][]string {
 		installed[name] = append(installed[name], cleanPackageVersion(fields[2]))
 	}
 	return installed
+}
+
+// dpkgInstalledState reads the three characters of ${db:Status-Abbrev}:
+// wanted action, current state, error flag (blank when there is none).
+func dpkgInstalledState(status string) bool {
+	if len(status) < 2 || len(status) > 3 || status[1] != 'i' {
+		return false
+	}
+	switch status[0] {
+	case 'u', 'i', 'h', 'r', 'p':
+	default:
+		return false
+	}
+	return len(status) == 2 || status[2] == ' '
 }
 
 // parsePacmanVersions reads "name version" rows of `pacman -Q`.

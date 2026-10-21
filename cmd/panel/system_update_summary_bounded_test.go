@@ -74,6 +74,18 @@ func TestPanelUpdateRecoveryPreflightKeepsStepAndDiagnostic(t *testing.T) {
 	if len(diagnosticPart) > 240 || !strings.HasSuffix(diagnosticPart, "...") {
 		t.Fatalf("diagnostic is not bounded at 240 characters: %d %q", len(diagnosticPart), diagnosticPart)
 	}
+	// The whole bounded summary is bounded too: the marker and its closed
+	// tokens (at most 34 + 64 code + 7 + 17 state + 8 + 8 detail label bytes),
+	// the reason prefix and step (32 + 40 + 2) and the 240-character
+	// diagnostic: 452 bytes. Any input, however long, stays within it.
+	const summaryBound = 34 + 64 + 7 + 17 + 8 + 8 + 32 + 40 + 2 + 240
+	for _, input := range []string{long, marker + strings.Repeat("x", 40) + ": " + strings.Repeat("y ", 5000) + " detail=",
+		"!! CELIKPANEL_UPDATE_FAILURE code=update_preflight_refused state=unchanged reason=update preflight step=" +
+			strings.Repeat("a", 40) + " class=" + strings.Repeat("b", 40) + ": z detail=" + strings.Repeat("q ", 5000)} {
+		if got := sanitizePanelUpdateSummary(input); len(got) > summaryBound {
+			t.Fatalf("summary of %d bytes is %d bytes, over the %d-byte bound", len(input), len(got), summaryBound)
+		}
+	}
 
 	for raw, wantDiagnostic := range map[string]string{
 		"TOKEN=abc123 failed":                                 "TOKEN=[hidden] failed",
@@ -87,6 +99,17 @@ func TestPanelUpdateRecoveryPreflightKeepsStepAndDiagnostic(t *testing.T) {
 		"step=database_support class=check_failed still ours": "step=database_support class=check_failed still ours",
 		"escape /var/lib/celikpanel/../../etc/passwd":         "escape [path]",
 		"2026/10/17 12:25:23 check failed":                    "2026/10/17 12:25:23 check failed",
+		// alpha.97 review: a path after : , ; ` or @ is a path too.
+		"read failed:/home/alice/x":                     "read failed:[path]",
+		"paths /etc/a,/root/b;/srv/c":                   "paths [path],[path];[path]",
+		"quoted `/tmp/key.pem` and user@/home/bob/.ssh": "quoted `[path]` and user@[path]",
+		// A base64 value split by slashes is one token run and is hidden.
+		"token AbCdEfGh/IjKlMnOp/QrStUvWx/YzAbCdEf+GhIj== was rejected": "token [hidden] was rejected",
+		// A file mode stays readable; other assignment values do not.
+		"launcher mode=0775, want 0755":      "launcher mode=0775, want 0755",
+		"launcher mode=rwxrwxr-x secret=abc": "launcher mode=[hidden] secret=[hidden]",
+		// A product path longer than 32 characters is kept whole.
+		"check /usr/libexec/celikpanel/recovery-runtime/bin/recovery failed": "check /usr/libexec/celikpanel/recovery-runtime/bin/recovery failed",
 	} {
 		if got := panelUpdateDiagnostic(raw); got != wantDiagnostic {
 			t.Errorf("panelUpdateDiagnostic(%q) = %q, want %q", raw, got, wantDiagnostic)

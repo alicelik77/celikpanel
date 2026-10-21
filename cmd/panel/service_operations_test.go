@@ -214,6 +214,9 @@ type serviceOperationTestAgent struct {
 	// nil answers "unsupported". packageVersionCalls counts the reads.
 	packageVersions     *transport.InstalledPackageVersionsResponse
 	packageVersionCalls int
+	// packageVersionsHook runs inside the version read (alpha.97 review: the
+	// lock the Panel holds while it answers).
+	packageVersionsHook func()
 
 	mutationActive        string
 	mutationJobs          map[string]*ServiceOperationMutationJob

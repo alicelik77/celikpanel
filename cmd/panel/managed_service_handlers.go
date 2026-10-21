@@ -160,6 +160,9 @@ type ManagedServiceResponse struct {
 	PackageVersions       []transport.InstalledPackageVersion `json:"package_versions,omitempty"`
 	PackageVersionKept    bool                                `json:"package_version_kept,omitempty"`
 	PackageVersionReadAt  string                              `json:"package_version_read_at,omitempty"`
+	// PackageVersionKeptLong: the kept reading is more than a day old, so the
+	// page adds a short line on what the server administrator checks.
+	PackageVersionKeptLong bool `json:"package_version_kept_long,omitempty"`
 }
 
 // Installed answers the only question the panel's own logic may ask of a
@@ -320,9 +323,10 @@ type serviceObservation struct {
 	// scan because the package manager was busy. A row written before
 	// alpha.97 has none of the three and reads as unknown.
 	// Paket sürümleri; alpha.97 öncesi satırda yoktur ve bilinmez okunur.
-	PackageVersions       []transport.InstalledPackageVersion `json:"package_versions,omitempty"`
-	PackageVersionsReadAt string                              `json:"package_versions_read_at,omitempty"`
-	PackageVersionsKept   bool                                `json:"package_versions_kept,omitempty"`
+	PackageVersions         []transport.InstalledPackageVersion `json:"package_versions,omitempty"`
+	PackageVersionsReadAt   string                              `json:"package_versions_read_at,omitempty"`
+	PackageVersionsKept     bool                                `json:"package_versions_kept,omitempty"`
+	PackageVersionsKeptLong bool                                `json:"package_versions_kept_long,omitempty"`
 }
 
 // scanCacheDoc is the persisted shape. An object (not a bare array) so the
@@ -608,12 +612,13 @@ func catalogViewForHost(obs []serviceObservation, host core.ManagedServiceHostPr
 		var packageVersion, packageVersionShort string
 		var packageVersionsDiffer bool
 		var packageVersions []transport.InstalledPackageVersion
-		packageVersionReadAt, packageVersionKept := "", false
+		packageVersionReadAt, packageVersionKept, packageVersionKeptLong := "", false, false
 		if isInstalled != nil && *isInstalled && managed.Kind != core.KindRuntime && len(o.PackageVersions) > 0 {
 			packageVersion, packageVersionShort, packageVersionsDiffer = packageVersionView(o.PackageVersions)
 			if packageVersion != "" || packageVersionsDiffer {
 				packageVersions = o.PackageVersions
 				packageVersionReadAt, packageVersionKept = o.PackageVersionsReadAt, o.PackageVersionsKept
+				packageVersionKeptLong = o.PackageVersionsKept && o.PackageVersionsKeptLong
 			}
 		}
 
@@ -641,12 +646,13 @@ func catalogViewForHost(obs []serviceObservation, host core.ManagedServiceHostPr
 			RepairAvailable:   repairAvailable,
 			ConfigFiles:       configFiles,
 
-			PackageVersion:        packageVersion,
-			PackageVersionShort:   packageVersionShort,
-			PackageVersionsDiffer: packageVersionsDiffer,
-			PackageVersions:       packageVersions,
-			PackageVersionKept:    packageVersionKept,
-			PackageVersionReadAt:  packageVersionReadAt,
+			PackageVersion:         packageVersion,
+			PackageVersionShort:    packageVersionShort,
+			PackageVersionsDiffer:  packageVersionsDiffer,
+			PackageVersions:        packageVersions,
+			PackageVersionKept:     packageVersionKept,
+			PackageVersionReadAt:   packageVersionReadAt,
+			PackageVersionKeptLong: packageVersionKeptLong,
 		})
 	}
 	return response
@@ -788,13 +794,19 @@ func (p *Panel) handleManagedServicesScan(w http.ResponseWriter, r *http.Request
 		}
 	}
 
+	// The installed package versions are read before the mutation lease: a
+	// read-only query that takes no lock does not hold the lease while the
+	// package database answers (alpha.97 review).
+	// Sürümler kiradan önce okunur: kilit almayan salt-okur sorgu.
+	packageVersions := p.packageVersionsForScan(r.Context())
+
 	release, busy := p.beginServiceMutation(w, r)
 	if busy {
 		return
 	}
 	defer release()
 
-	services, err := p.scanManagedServices(r.Context())
+	services, err := p.scanManagedServicesWithVersions(r.Context(), packageVersions)
 	if err != nil {
 		// An Agent that cannot be reached is named by writeServerError
 		// (AGENT_UNREACHABLE); every other failure keeps the generic answer.
@@ -914,6 +926,20 @@ func (p *Panel) managedServicesCacheWithin(ctx context.Context, maxAge time.Dura
 // scanManagedServices, agent'tan gerçek sistem durumunu ister, seçili
 // kataloğa işler ve sonucu kalıcılaştırır.
 func (p *Panel) scanManagedServices(ctx context.Context) ([]ManagedServiceResponse, error) {
+	return p.scanManagedServicesWithVersions(ctx, nil)
+}
+
+// scanManagedServicesWithVersions is the scan with the installed package
+// versions already read (nil: read them here). The page's own scan reads them
+// before it takes the Panel's mutation lease (handleManagedServicesScan): the
+// read is read-only and takes no lock, so it does not need to hold the lease
+// while the package database answers (up to 10 s). Every other caller is the
+// fresh scan at the end of an operation that already holds the lease; it
+// reads them here, inside that operation, because the operation's own lease
+// is what makes its scan the state after its change.
+// Sürümler sayfanın kendi taramasında değişiklik kirasından önce okunur;
+// işlemlerin sonundaki taze tarama onları kendi kirası içinde okur.
+func (p *Panel) scanManagedServicesWithVersions(ctx context.Context, packageVersions map[string]observedPackageVersions) ([]ManagedServiceResponse, error) {
 	var allServices []core.Service
 	if err := p.callAgentContext(ctx, "Agent.GetServices", &transport.Empty{}, &allServices); err != nil {
 		return nil, err
@@ -931,19 +957,9 @@ func (p *Panel) scanManagedServices(ctx context.Context) ([]ManagedServiceRespon
 	for _, id := range installedIDs {
 		installedSet[id] = true
 	}
-	// Installed package versions: one bounded read-only query for the whole
-	// catalogue (alpha.97). A busy package manager keeps the previous scan's
-	// versions, so the previous row is read first; a failed read leaves the
-	// versions unknown and never fails the scan.
-	// Kurulu paket sürümleri: tüm katalog için tek salt-okur sorgu.
-	var previousObservations []serviceObservation
-	var previousData string
-	if err := p.db.GetDB().QueryRowContext(ctx, `SELECT data FROM service_scan_cache WHERE id = 1`).Scan(&previousData); err == nil {
-		if snapshot, decodeErr := decodeScanCacheSnapshot(previousData); decodeErr == nil {
-			previousObservations = snapshot.Observations
-		}
+	if packageVersions == nil {
+		packageVersions = p.packageVersionsForScan(ctx)
 	}
-	packageVersions := p.readPackageVersionsForScan(ctx, previousObservations, time.Now())
 	// This loop observes the host and nothing else. What the catalogue says
 	// about each service is added later, on every read, by catalogView.
 	// Bu döngü yalnız makineyi gözler, başka bir şey değil. Kataloğun her
@@ -1112,6 +1128,7 @@ func (p *Panel) scanManagedServices(ctx context.Context) ([]ManagedServiceRespon
 			observation.PackageVersions = read.Packages
 			observation.PackageVersionsReadAt = read.ReadAt
 			observation.PackageVersionsKept = read.Kept
+			observation.PackageVersionsKeptLong = read.KeptLong
 		}
 		observations = append(observations, observation)
 	}

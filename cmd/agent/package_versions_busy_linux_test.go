@@ -5,6 +5,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"golang.org/x/sys/unix"
@@ -19,6 +20,9 @@ func TestLockTableNamesInode(t *testing.T) {
 		"1: POSIX  ADVISORY  WRITE 1234 08:01:999 0 EOF\n" +
 			"1: -> POSIX  ADVISORY  WRITE 4321 08:01:1311 0 EOF\n": true,
 		"2: OFDLCK ADVISORY  READ  -1 00:15:1311 0 EOF\n": true,
+		// A lock on an object without an inode is skipped, not an error.
+		"3: LEASE  ACTIVE    READ  77 <none>:0 0 EOF\n":                                             false,
+		"3: LEASE  ACTIVE    READ  77 <none>:0 0 EOF\n1: FLOCK ADVISORY WRITE 9 08:01:1311 0 EOF\n": true,
 	} {
 		got, err := lockTableNamesInode(table, watched)
 		if err != nil || got != want {
@@ -60,6 +64,15 @@ func TestLinuxLockFilesHeldOnlyReads(t *testing.T) {
 	}
 	if held, err := linuxLockFilesHeld(proc, []string{filepath.Join(dir, "missing")}); err != nil || held {
 		t.Fatalf("no lock files: held = %v, %v", held, err)
+	}
+	// A lock table larger than the read bound is not read further: the probe
+	// cannot say idle, so it is an error (the caller answers busy).
+	big := strings.Repeat("1: POSIX  ADVISORY  WRITE 1 08:01:5 0 EOF\n", packageVersionLockTableLimit/40+10)
+	if err := os.WriteFile(filepath.Join(proc, "locks"), []byte(big), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if held, err := linuxLockFilesHeld(proc, []string{lock}); err == nil {
+		t.Fatalf("an over-long lock table was read as held=%v without an error", held)
 	}
 }
 
