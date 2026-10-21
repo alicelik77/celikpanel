@@ -270,8 +270,11 @@ func validPanelUpdateStatus(status string) bool {
 // A reviewed updater failure line that is too long or carries a path is not
 // dropped: the Panel rebuilds a bounded form from its closed tokens (code,
 // state, the preflight step and reason class) and keeps a free reason only
-// when it is itself short and plain. The agent journal keeps the full line
-// ("System update worker failed: …"); no agent text is copied beyond that.
+// when it is itself short and plain. Since alpha.97 a preflight stop also
+// keeps its diagnostic line (the recovery tool's after the step, the
+// checker's as the detail), made safe by panelUpdateDiagnostic: before that
+// it was dropped and the owner's dialog had no reason to show. The agent
+// journal keeps the full line ("System update worker failed: …").
 // Güncelleyicinin uzun ya da yol içeren hata satırı düşürülmez; Panel kapalı
 // belirteçlerden sınırlı bir biçim kurar. Tam satır agent günlüğünde kalır.
 func sanitizePanelUpdateSummary(raw string) string {
@@ -323,20 +326,32 @@ func boundedPanelUpdateFailure(value string) string {
 		return ""
 	}
 	reason := value[match[1]:]
+	detail := ""
 	if end := strings.LastIndex(reason, " detail="); end >= 0 {
+		detail = reason[end+len(" detail="):]
 		reason = reason[:end]
 	}
 	reason = strings.TrimSpace(reason)
+	original := reason
 	switch {
 	case code == "update_preflight_refused":
+		// The checker's line is the detail; the browser shows it beside
+		// the step's own words (alpha.97).
 		if parts := panelUpdatePreflightReason.FindStringSubmatch(reason); parts != nil {
 			reason = "update preflight step=" + parts[1] + " class=" + parts[2]
-		} else {
-			reason = ""
+			return panelUpdateFailureMarker + " code=" + code + " state=" + state + " reason=" + reason +
+				" detail=" + panelUpdateDiagnostic(detail)
 		}
+		reason = ""
 	case code == "recovery_runtime_preflight_failed":
+		// The recovery tool's first diagnostic line follows the step
+		// (alpha.97: Frankfurt's stop of 2026-10-17 reached the owner with
+		// no reason because this line was dropped here).
 		if parts := panelUpdateRuntimeReason.FindStringSubmatch(reason); parts != nil {
 			reason = "recovery runtime preflight step=" + parts[1]
+			if diagnostic := panelUpdateDiagnostic(strings.TrimPrefix(original[len(parts[0]):], ":")); diagnostic != "" {
+				reason += ": " + diagnostic
+			}
 		} else {
 			reason = ""
 		}
@@ -345,6 +360,91 @@ func boundedPanelUpdateFailure(value string) string {
 	}
 	return panelUpdateFailureMarker + " code=" + code + " state=" + state + " reason=" + reason + " detail="
 }
+
+// panelUpdateDiagnosticLimit bounds the diagnostic line the browser receives.
+const panelUpdateDiagnosticLimit = 240
+
+var (
+	panelUpdateDiagnosticURL = regexp.MustCompile(`[A-Za-z][A-Za-z0-9+.-]*://\S*`)
+	// A path starts a word (a date such as 2026/10/17 is not one).
+	panelUpdateDiagnosticPath = regexp.MustCompile(`(^|[\s='"(\[<])(/[^\s:;,'"()\[\]<>]*)`)
+	// NAME=value as an environment or argument assignment; the value is hidden.
+	panelUpdateDiagnosticAssignment = regexp.MustCompile(`\b([A-Za-z_][A-Za-z0-9_]*)=("[^"]*"|'[^']*'|\S*)`)
+	// A long run of key-, token- or hash-like characters.
+	panelUpdateDiagnosticSecret = regexp.MustCompile(`[A-Za-z0-9+_-]{32,}={0,2}`)
+	panelUpdateDiagnosticSpace  = regexp.MustCompile(`\s+`)
+)
+
+// panelUpdateProductPaths are the product's own locations; a path outside
+// them is replaced by "[path]".
+var panelUpdateProductPaths = []string{
+	"/usr/libexec/celikpanel", "/var/lib/celikpanel", "/etc/celikpanel", "/opt/celikpanel",
+	"/run/celikpanel", "/var/log/celikpanel", "/var/backups/celikpanel", "/usr/local/bin/celikpanel",
+}
+
+// panelUpdateDiagnostic makes the updater's diagnostic safe to show: its
+// first line, printable ASCII only, URLs and paths outside the product's own
+// replaced, assignments' values and long token-like runs hidden, the
+// updater's own markers removed, at most 240 characters. The recovery tool
+// already promises never to print environment, arguments or file contents;
+// this is the Panel's own bound on top of that promise.
+// Güncelleyicinin tanı satırını güvenle gösterilir kılar: ilk satır, yalnız
+// yazdırılabilir ASCII, ürün dışı yollar ve adresler gizli, en çok 240 karakter.
+func panelUpdateDiagnostic(raw string) string {
+	line := raw
+	if end := strings.IndexAny(line, "\r\n"); end >= 0 {
+		line = line[:end]
+	}
+	var printable strings.Builder
+	for _, r := range line {
+		switch {
+		case r == '\t':
+			printable.WriteByte(' ')
+		case r >= 0x20 && r < 0x7f:
+			printable.WriteRune(r)
+		}
+	}
+	text := printable.String()
+	text = strings.ReplaceAll(text, panelUpdateFailureMarker, " ")
+	text = strings.ReplaceAll(text, "CELIKPANEL_UPDATE_FAILURE", " ")
+	text = panelUpdateDiagnosticURL.ReplaceAllString(text, "[address]")
+	text = panelUpdateDiagnosticPath.ReplaceAllStringFunc(text, func(match string) string {
+		lead, path := "", match
+		if match[0] != '/' {
+			lead, path = match[:1], match[1:]
+		}
+		if len(path) == 1 {
+			return match
+		}
+		for _, prefix := range panelUpdateProductPaths {
+			if path == prefix || strings.HasPrefix(path, prefix+"/") || strings.HasPrefix(path, prefix+"-") || strings.HasPrefix(path, prefix+".") {
+				if !strings.Contains(path, "/../") && !strings.HasSuffix(path, "/..") {
+					return match
+				}
+			}
+		}
+		return lead + "[path]"
+	})
+	text = panelUpdateDiagnosticAssignment.ReplaceAllStringFunc(text, func(assignment string) string {
+		name := assignment[:strings.IndexByte(assignment, '=')]
+		switch strings.ToLower(name) {
+		case "step", "class":
+			// The updater's own closed tokens repeated in its line stay.
+			if panelUpdateClosedToken.MatchString(assignment[len(name)+1:]) {
+				return assignment
+			}
+		}
+		return name + "=[hidden]"
+	})
+	text = panelUpdateDiagnosticSecret.ReplaceAllString(text, "[hidden]")
+	text = strings.TrimSpace(panelUpdateDiagnosticSpace.ReplaceAllString(text, " "))
+	if len(text) > panelUpdateDiagnosticLimit {
+		text = strings.TrimSpace(text[:panelUpdateDiagnosticLimit-3]) + "..."
+	}
+	return text
+}
+
+var panelUpdateClosedToken = regexp.MustCompile(`^[a-z_]{1,40}$`)
 
 func writePanelUpdateUnavailable(w http.ResponseWriter, err error) {
 	if err != nil {
