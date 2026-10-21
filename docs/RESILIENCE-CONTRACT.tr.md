@@ -5967,3 +5967,78 @@ tek bir sürümü kaydeder; kod, şema ya da kurtarma davranışını değiştir
   gerçek bir Agent'a ya da gerçek sürüm sunucusuna karşı çalışmadı; güncelleme
   kartı ve bildirimler henüz bir kurulu sunucuda görülmedi; değiştirilen
   yardımcıları paylaşan geri alma yolları yalnız sözleşme testleriyle denendi.
+
+### v0.1.0-alpha.98 adayı (yalnız gezinme: her sayfa adının söylediği yerde; Agent, güncelleyici ya da şema değişikliği yok; ilke 2 ve 6; D-037; D-024; D-025; 2026-10-22)
+
+D-025'in 2. ilkesi (kanıtın bir anlamı ve bir yaşam döngüsü vardır: Güvenlik
+sayfası Fail2ban'ı yalnız saklanan bileşen kaydından okur ve kimsenin almadığı bir
+kayıt "henüz denetlenmedi"dir, asla "kurulu değil") ve 6. ilkesi (hazır olma,
+ilerleme ve erişim birbirinden bağımsız kalır: Güvenlik sayfası açıkken ana makine
+değişiklik hazırlığını her 5 saniyede bir okuma olarak okur ve bir yoklama asla
+değişiklik başlatmaz; kurulum geçidi ve çevrimdışı kurtarma kabuğu taşınan adresleri
+erişilebilir tutar). P0.1/P0.2 alanına (doğru, uygulanabilir durum) yalnız bir
+ekranın ve yönlendirme metninin nerede durduğu kadarıyla dokunulur. **Hiçbir P0 işi
+kapanmaz ya da ilerlemez**; P0.1–P0.5 kısmi kalır ve her açık kabul işi açık kalır.
+Bu girdi, gerçek sistem güncelleme ve otomatik geri alma dayanıklılığının tamamlandığı
+iddiası değildir. 2026-10-22, içindeki her şeyin saat tarihidir.
+
+- **Bu sürümün dokunduğu.** Web arayüzü: menü, Sunucu altındaki üç yeni sayfa (DNS ve
+  eş sunucular, Güvenlik, Bakım), Hesabım, dört bölümlü bir Ayarlar, eski adreslerden
+  yönlendirmeler ve eski yerleri adlandıran metinler ile bağlantılar (D-037). Sunucu
+  tarafında yalnız metinler: yönlendirme yanıtlarının taşıdığı eylem adresleri
+  (`/settings?section=dns` `/dns-infrastructure` oldu; Panel sertifikasının eksik
+  iletişim e-postası eylemi `/settings?section=account` `/account` oldu) ve iki
+  İngilizce yedek ileti. Agent'a, güncelleyiciye (`update.sh`, `get.sh`, sistem
+  güncelleme işçisi, geri alma ve kurtarma), hiçbir API'ye, role, şemaya, yoklamaya ya
+  da bileşen davranışına **dokunmaz**. Bu yüzden bu sürüm için **gerçek sistem kaydı
+  yapılmaz**, sahibin 16 Ekim 2026 talimatı uyarınca (güncelleyicinin değiştirme yolu
+  değişmedikçe gerçek sistem kaydı yok).
+- **Sahibin işlettiği kurtarma yolu: değişmedi.** CelikPanel güncellemeleri, güncelleme
+  kartının ve bildirimlerinin bulunduğu Ayarlar'da kalır; sahip her kurulu panel
+  güncellemesini eskisi gibi panelin kendi güncelleme ekranından başlatır. Çevrimdışı
+  kurtarma kabuğunun rota listesi yeni adresleri kazandı; davranışı bunun dışında
+  aynıdır. Sahibin panel olmadan yapabildiği hiçbir şey bir ekranın nerede olduğuna
+  bağlı değildir (D-022). **Kurulu panel güncelleme yolu: değişmedi.**
+- **Erişim kapıları.** Kurulum geçidi, kurulum gerekirken `/account`, `/security`,
+  `/dns-infrastructure` ve `/maintenance`'ı `/settings` gibi erişilebilir tutar. Her
+  sayfanın ve API'nin rolleri değişmedi: yalnız yer taşındı. Eski bir adresten
+  yönlendirme, hedefin kendi rol korumasına çıkar; hiç Ayarlar'a ya da hesap bölümüne
+  sahip olmamış bir ek kullanıcı (ekip üyesi) hâlâ ana sayfaya gönderilir ve
+  `/settings`'i açan bir bayi ya da müşteri `/account`'a gönderilir. Bir web testi, her
+  ürün içi bağlantının ve her Go yönlendirme eyleminin bir rotaya ve var olan bir
+  Ayarlar bölümüne çözüldüğünü denetler.
+- **Şema, sürüm geçişi ve kurtarma.** Şema 44, geçiş yok; sürüm sırası sürüm
+  hazırlığında 97'den 98'e geçer. alpha.98 yeni bir şey yazmaz ve kalıcı hiçbir şeyi
+  değiştirmez, bu yüzden çevrilecek saklı bir kayıt yoktur. *alpha.97'den alpha.98'e:*
+  alpha.98, alpha.97'nin yazdığı her şeyi okur; bir yer iminden ya da eski bir Panel'in
+  yönlendirme bağlantısından gelen eski bir adres (`/settings?section=account`,
+  `security`, `dns`, `system-databases`) yeni sayfaya ileri yönlendirilir. *alpha.98'den
+  alpha.97'ye geri* (örneğin bir geri almadan sonra): yeni `/security`, `/maintenance`,
+  `/dns-infrastructure` ve `/account` adresleri alpha.97'ye bilinmez; bunlardan birine
+  giden bir yer imi ya da bağlantı alpha.97'nin Panel sayfasına düşer ve alpha.97
+  kendi Ayarlar bölümlerini eski adreslerinde gösterir. **Bilinen, zararsız geri alma
+  davranışı:** hiçbir şey kaybolmaz, hiçbir şeyin onarılması gerekmez ve kişi aynı
+  ekranlara alpha.97'nin kendi menüsünden ulaşır. Herhangi bir saklı kaydın bir
+  yönlendirme eylemi adresi tutup tutmadığı burada denetlenmedi; tutsaydı, alpha.97'de
+  izlenmesi aynı biçimde Panel sayfasında biterdi. Kurulu bir sunucuda ölçülmedi.
+- **Kanıt ve açık.** Aday ağaçta: web `npm test` 1691 geçti (alpha.97'de 1675), yeni
+  testler `web/tests/menu-layout-alpha98.test.mjs` içinde (rol başına menü,
+  yönlendirmeler, çözülen her web bağlantısı ve her Go yönlendirme eylemi, bağlanan
+  kişisel menü, Fail2ban durumları, iki dilde yeni etiketler, her yeni sayfanın başlığı
+  ve taşınan içeriği); Go 7156 geçti, 0 başarısız; yapı bütçelerinin içinde, kritik açılış yolu ham
+  361 KiB'den 360,75 ve sıkıştırılmış 110 KiB'den 107,68. Sayılar [sürüm
+  notlarında](RELEASE-NOTES-v0.1.0-alpha.98.tr.md). Bileşen ve bağlanmış testler
+  gerçek sistem davranışını kanıtlamaz. **Kurulu bir sunucuda hiçbir şey
+  ölçülmedi**: yeni düzen bir tanesinde görülmedi. Açık: kritik açılış yolunda 0,25 KiB
+  bütçe kaldı, bu yüzden açılış yoluna bir sonraki ekleme önce bir şeyi dışarı
+  taşımalıdır (tavan yükseltilmez); alpha.88–alpha.97 girdilerinin açık bıraktığı her
+  şey açık kalır. Kurulu paneller yalnız sahipleri tarafından, panelin kendi güncelleme
+  ekranından güncellenir. P0.1–P0.5 kısmi kalır.
+- **Sahibin alpha.97'den gördüğü (2026-10-22).** Sahibin ekran görüntüsü, Boston'un
+  alpha.97'de olduğunu ve Bileşenler'de gerçek sürümlerin göründüğünü gösterir
+  (PowerDNS 4.8.3, Nginx 1.24.0, PostgreSQL 16.15, certbot 2.9.0, Fail2ban 1.0.2,
+  nftables 1.0.9, cron 3.0pl1, Node.js 24.21.0). Bu, D-036'nın kurulu bir sunucudaki
+  ilk ölçümüdür ve bu bileşenler için "ölçülmedi"yi "bir sunucuda görüldü"ye çevirir
+  (ilke 2: görülen söylenir, fazlası söylenmez). Frankfurt'un alpha.97 durumu
+  bildirilmedi, bu yüzden D-034 değişikliğinin açık işi açık kalır ve gerçek bir
+  sunucuda korunan bir okuma ya da meşgul bir paket yöneticisi hâlâ görülmedi.
