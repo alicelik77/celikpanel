@@ -9315,3 +9315,126 @@ bir sunucuda ya da gerçek sürüm sunucusuna karşı hiçbir şey ölçülmedi;
 için kurulu paket sürümleri hâlâ okunmuyor. Sahip bildirene kadar hiçbir şey
 "çalıştı" ya da "başarısız" değildir. P0.1-P0.5 **kısmi** kalır; bu girdi hiçbir
 şeyi kapatmaz ya da ilerletmez.
+
+### Bileşenlerde ve bileşen sayfalarında kurulu paket sürümleri (D-036, 2026-10-21)
+
+v0.1.0-alpha.97 adayı için kaynakta; kurulu bir sunucuda hiçbir şey ölçülmedi.
+
+**Sahip ne görür.** Bileşenler'de kurulu bir bileşenin satırı, paket veritabanının
+bildirdiği sürümü kısa biçimiyle, mono yazı tipinde söyler (`1.26.3-3+deb13u1` için
+`1.26.3`); ipucunda tam sürüm ve "sistemin paket veritabanından" vardır. Masaüstünde
+sürümler kendi sütunlarında durur; bu sütun yalnız sayfadaki kurulu bileşenlerden en
+az birinin sürümü biliniyorsa çizilir; telefonda ve hiçbir sürüm bilinmiyorsa sürüm
+açıklamanın altındadır. PHP-FPM ve Node.js kurulu kopyalarının sürümlerini korur.
+Her bileşen sayfasında, adının ve durumunun altında, "Kurulu sürüm:
+1:11.8.3-0+deb13u1" ve "Sistemin paket veritabanından okundu." vardır.
+
+**Durumlar ve sözleri.**
+
+- Bilinen: satırda kısa biçim, sayfada tam biçim, kaynak satırı.
+- Birden çok sürüm: bileşenin paketleri farklı sürümler bildiriyor (örneğin
+  SpamAssassin ve milter'i). Satır "birden çok sürüm" der; sayfa "Paketleri farklı
+  sürümler bildiriyor:" der ve her paketi sürümüyle adlandırır. Tek bir sürüm
+  seçilmez.
+- Korunan: son denetimde sunucunun paket yöneticisi meşguldü, bu yüzden sürüm
+  yeniden okunmadı; önceki okuma gösterilir ve öyle söylenir: "Sistemin paket
+  veritabanından {time} tarihinde okundu. Son denetimde paket yöneticisi meşguldü,
+  bu yüzden bu önceki okuma gösteriliyor; sonraki denetim yeniden okur." Kim işlem
+  yapar: kimse; sonraki bileşen denetimi (Bileşenler'i açmak, Yeniden tara ya da bir
+  bileşen sayfasının koşullu denetimi) yeniden okur.
+- Bilinmeyen: hiçbir şey söylenmez. Çizgi yok, "varsayılan" yok, tahmin yok. Bu,
+  kurulu olmayan bir bileşeni, bu ailede paketi olmayan bir bileşeni, başarısız
+  olan ya da zaman aşımına uğrayan (10 saniye) bir okumayı, bir paket veritabanının
+  yazmayacağı bir sürüm metnini, alpha.97'den önceki bir Panel'in kaydını ve henüz
+  okumaya sahip olmayan bir Agent'ı kapsar (bir güncelleme sırasında Panel ve Agent
+  bir an için farklı yapılarda olabilir).
+
+**Asla yapmadığı.** Okuma yalnız paket veritabanının sorgusudur; kurmaz, yükseltmez,
+kilitlemez, listeleri yenilemez ve ağa ulaşmaz, ve paket yöneticisini bir paket
+işlemi tutarken çalışmaz (denetimin kendisi yalnız süreç ve kilit tablolarını okur).
+Zamanlayıcı eklemez: mevcut bileşen taramalarına biner. Burada gösterilen bir sürüm
+yüzünden hiçbir şey güncelleme önermez.
+
+**Metinler nerede.** `web/src/i18n/screens/components/` içinde `services.version*`
+ve `component.packageVersion*` (EN ve TR). Ekran kataloğu alpha.97'den beri
+parçalara bölünmüştür: `web/src/i18n/screens/` altında her ekran grubu için bir dizin
+(setup, sites, siteConfig, dnsCertificates, components, mailDatabases, security,
+dashboard, settings); yukarıdaki, `web/src/i18n/screens/server` ya da
+`screens/en.ts` adını veren eski girdiler bölünmeden önceki dosyaları anar, aynı
+anahtarlar artık önekini tutan parçadadır. Yeni bir anahtarın nereye gideceği ve bir
+parçanın yeniden nasıl bölüneceği `web/scripts/check-bundle-budget.mjs` başlığındadır.
+
+P0.1-P0.5 **kısmi** kalır; bu girdi hiçbir şeyi kapatmaz ya da ilerletmez.
+
+### Frankfurt'taki alpha.95 duruşu neden gerekçesiz göründü (2026-10-21)
+
+**Durmanın nedeni, doğrulandı.** Sahip 2026-10-21'de verilen salt-okur komutları
+Frankfurt'ta çalıştırdı. Durdurulan isteğin saklanan satırı (kaydı
+`/var/lib/celikpanel-release-state/self-update/` altında, istek
+`717f77125027d4ad6b284f2d1f1bd3b0`)
+`!! CELIKPANEL_UPDATE_FAILURE code=package_manager_busy state=unchanged reason=the host package manager is active detail=`
+şeklindedir, 2026-10-17T12:25:23Z'de: o anda Debian'ın otomatik paket güncellemeleri
+çalışıyordu. Güncelleme herhangi bir şey değiştirilmeden salt-okur denetiminde
+durdu; sunucu, 2026-10-17'de kaydedildiği gibi alpha.94'te kaldı. Bununla ilgili
+onarılacak bir şey yok. **Kim işlem yapar:** sahip, uygun olduğunda: paket yöneticisi
+boşta olduğunda güncellemeyi panelin kendi güncelleme ekranından yeniden başlatır.
+Hiçbir şey kendiliğinden başlamaz.
+
+**Pencere neden yalnız "salt-okur bir denetim mevcut kurulumu doğrulayamadı" dedi.**
+alpha.94'ten alpha.96'ya kaynağın salt-okur bir kod incelemesi dört ayrı sebep buldu;
+hepsi nedenin sayfaya nasıl ulaştığındaydı, hiçbiri güncellemenin kendisinde değil:
+
+1. Kurtarma aracının denetimi meşgul paket yöneticisini bir kurtarma çalışma zamanı
+   ön denetim durması olarak bildirdi ve `update.sh` bu kodu isteğin yanına kaydeder
+   (kurtarma kaydının nedeni), yazdığı özet satırı ise `package_manager_busy`
+   der. Sayfa kaydın kodunu bir ön denetim durması olarak aldı ve özette bir adım
+   aradı; `package_manager_busy` satırında adım yoktur, bu yüzden genel neden çizildi
+   (`web/src/lib/systemUpdateOutcome.ts`, `web/src/lib/systemUpdateFailure.ts`).
+2. 240 bayttan uzun ya da bir yol taşıyan her güncelleme özeti Panel tarafından
+   kapalı belirteçlerinden yeniden kuruldu ve tanı atıldı
+   (`cmd/panel/system_update_handlers.go`); bu yüzden uzun ya da yol taşıyan satırlı
+   bir durma için pencerenin Ayrıntılar'ında ve alpha.96'nın "Sunucunun İngilizce
+   günlük satırı" satırında gösterilecek bir şey yoktu. (Frankfurt'un meşgul satırı
+   kısa ve sade olduğundan kesilmedi; bu başka durmaları etkiler.)
+3. Kurtarma aracı bir `step=` satırı yazmadan önce olan bir durma, örneğin
+   başlatıcısının üst veri denetimi başarısız olduğunda, `compatibility` adımıyla
+   bildirilir (`update.sh`, `fail_recovery_runtime_preflight compatibility`); sayfanın
+   bunun için sözü yoktu.
+4. alpha.94'ün penceresi, sunucu ekran kataloğu henüz yüklenmemişse, sözü olan bir
+   adım için bile genel nedeni gösterdi (reddedilen denetimin beş adımı ve iki neden
+   sınıfı ekran kataloğundadır).
+
+**alpha.97 adayı neyi değiştirir (kaynakta).**
+
+- Meşgul bir paket yöneticisi, kendi sözleri olan sakin bir durmadır; durdurma
+  penceresinde ("Neden: sunucunun paket yöneticisi meşguldü, örneğin otomatik
+  güvenlik güncellemeleri çalışıyordu. Hiçbir şey değiştirilmedi." ve "Paket
+  yöneticisi işini bitirince {target} güncellemesini yeniden başlatın; Ayarlar'daki
+  güncelleme kartı paket yöneticisinin ne zaman boşaldığını söyler. Hiçbir işlem
+  kendiliğinden başlamaz."), kayıt bir ön denetim durması adlandırsa da
+  (Frankfurt'un biçimi) hiçbir neden adlandırmasa da, ve güncelleme kartının o önceki
+  deneme için bildiriminde ("… Sunucunun paket yöneticisi meşguldü, örneğin otomatik
+  güvenlik güncellemeleri çalışıyordu. Hiçbir şey değiştirilmedi; sunucu eskisi gibi
+  {current} sürümünü çalıştırıyor. Paket yöneticisi işini bitirince güncellemeyi
+  yeniden başlatın."). Kart bunu bilmek için o denemenin kendi saklanan özetini bir
+  kez okur (bir GET); mevcut sessiz hazır olma yeniden okuması sonra "Paket
+  yöneticisi işini bitirdi. Güncelleme yeniden başlatılabilir." ya da "Paket
+  yöneticisi hâlâ meşgul. Bu kart kendiliğinden yeniden denetler ve güncellemenin ne
+  zaman başlatılabileceğini söyler; hiçbir işlem kendiliğinden başlamaz." der.
+- Bir ön denetim durması sınırlı, temizlenmiş bir tanı satırı tutar: kurtarma
+  aracının adımından sonraki ilk satırı ya da denetleyicinin satırını ayrıntı olarak;
+  yalnız ilk satır, yazdırılabilir ASCII, en çok 240 karakter, ürünün kendi
+  yollarının dışındaki URL'ler ve yollar değiştirilmiş, atama değerleri ve uzun
+  belirteç benzeri diziler gizlenmiş.
+- `compatibility` adımının sözleri var: "Neden: sunucunun kurtarma aracı başlatılamadı
+  ya da kurulumu doğrulanamadı. Sunucu yöneticisi aşağıdaki sunucu satırıyla bunu
+  denetler; düzeltildikten sonra güncellemeyi yeniden başlatmak güvenlidir." Sunucunun
+  ilk satırı bunun altında gösterilir.
+- Ekran kataloğu hâlâ yüklenirken bir adımın neden satırı genel neden yerine "Neden
+  okunuyor…" der; genel neden yalnız ekran metni hiç yüklenemediğinde kalır.
+
+Bunlar sayfanın ne söylediğine ilişkin değişikliklerdir. Güncelleyicinin değiştirme
+yolu değişmedi. Sürümü hazırlayan kişi Frankfurt'ta ya da Boston'da hiçbir şey
+çalıştırmadı; sahibin komutları salt-okurdu. Boston'un alpha.95 güncellemesinin
+sonucu bildirilmedi. P0.1-P0.5 **kısmi** kalır; bu girdi hiçbir şeyi kapatmaz ya da
+ilerletmez.

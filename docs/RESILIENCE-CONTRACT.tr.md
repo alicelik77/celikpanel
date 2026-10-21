@@ -2751,7 +2751,7 @@ dökümüyle bulundu; kurulu bir sunucuda gözlenmedi.
     SHA-256'sı) satırdan yanıtlanır. İlki sürerken en çok 20 saniye bekler,
     sonra aynı kimlikle `409 REQUEST_IN_PROGRESS` alır. Aynı kimlik başka bir
     şey için gelirse `409 REQUEST_ID_REUSED`.
-  - *Bilinmeyen bilinmeyen kalır.* Önceki sürecin ya da beklenmedik biçimde
+  - *Bilinmeyen, bilinmeyen olarak kalır.* Önceki sürecin ya da beklenmedik biçimde
     duran bir işleyicinin `running` bıraktığı satır `interrupted` olur;
     yinelemesi `409 REQUEST_OUTCOME_UNKNOWN` alır ve istek o kimlikle bir daha
     asla çalıştırılmaz.
@@ -3954,7 +3954,7 @@ arayüzü değişmedi). 2026-10-10 saat tarihidir.
   ve kayıt karakter sayısı vermez. 2026-10-11 tarihli kayıttan beri canlı
   tarayıcı araçları kısa profiller oluşturur ve 120 karakteri aşan yolu
   reddeder (`web/tools/browser-inspect/profile-dir.mjs`).
-- **Önceki bir yanıttan sonra bilinmeyen bilinmeyen kalır (ilke 2; ikinci tur,
+- **Önceki bir yanıttan sonra bilinmeyen, bilinmeyen olarak kalır (ilke 2; ikinci tur,
   2026-10-10; açıktı).** Önceden herhangi bir okuma yanıt verdikten sonra
   kendi 15 sn sınırına ulaşan sonraki okuma, son okunan nedenle bilinen olumsuz
   sonuç olarak çiziliyordu. **Değişiklik:** sınıra ulaşmak her zaman
@@ -5798,3 +5798,75 @@ her şeyin saat tarihidir.
   ya da gerçek sürüm sunucusuna karşı çalışmadı; yeni güncelleme kartı ve
   bildirimler henüz bir kurulu sunucuda görülmedi; değiştirilen yardımcıları
   paylaşan geri alma yolları yalnız sözleşme testleriyle denendi.
+
+### v0.1.0-alpha.97 adayı (kurulu paket sürümleri, salt-okur bir Agent yeteneği; ekran kataloğunun bölünmesi; bir güncellemenin neden durduğu; ilke 2, 3 ve 6; D-036; D-024; D-034 değişikliği; D-035; 2026-10-21)
+
+D-025'in 2. ilkesi (kanıtın bir anlamı ve bir yaşam döngüsü vardır: gösterilen sürüm
+paket veritabanının yanıtıdır, korunan bir okuma ne zaman okunduğuyla işaretlenir ve
+bilinmeyen asla bir çizgi, bir varsayılan ya da bir tahmin değildir), 3. ilkesi
+(güvensiz eylem gerçek sınırında durdurulur: sürüm okuması paket yöneticisini bir
+paket işlemi tutarken asla çalışmaz ve kendisi kilit almaz) ve 6. ilkesi (hazır olma,
+ilerleme ve erişim birbirinden bağımsız kalır: meşgul bir paket yöneticisi taramayı
+başarısız kılmadan okumayı atlar ve bir yoklama asla değişiklik başlatmaz). P0.1/P0.2
+alanına (doğru, uygulanabilir durum) sahibin Bileşenler'de, bileşen sayfalarında ve
+durdurulmuş bir güncellemede gördüğü kadarıyla dokunulur. **Hiçbir P0 işi kapanmaz ya
+da ilerlemez**; P0.1–P0.5 kısmi kalır ve her açık kabul işi açık kalır. 2026-10-21,
+içindeki her şeyin saat tarihidir.
+
+- **Bu sürümün dokunduğu.** (1) **Bir Agent değişikliği**: yeni bir salt-okur
+  yetenek, `Agent.InstalledPackageVersionsV1` (D-036). Sabit argv (Debian/Ubuntu'da
+  `dpkg-query -W -f=…`, Arch'ta `pacman -Q`), kabuk yok, ağ yok, 10 saniyelik zaman
+  aşımı, 8 MiB çıktı sınırı, bileşen taraması başına tüm katalog için bir sorgu;
+  sorulan paketler çağıranın değil Agent'ın kendi kataloğundandır. Sorgudan önce
+  süreç tablosunu ve çekirdeğin kilit tablosunu apt/dpkg kilit dosyaları ve
+  pacman'in kilit dosyası için okur; asla kilit almaz, değiştirme hazır olma
+  denetiminin kullandığı anlık yoklamayı bile. Meşgul ya da okunamayan bir durum
+  "meşgul" yanıtı verir ve hiçbir şey sorgulanmaz. (2) Panel'in RPC politikası
+  yöntemi bir okuma olarak kabul eder (hızlı okuma zaman aşımı, ana makine yetkisi
+  yok), diğer bileşen tarama okumaları gibi; hiçbir şeyi değiştirmediği için her
+  paket ailesinde kabul edilir. (3) Panel yanıtı mevcut tarama önbelleğiyle birlikte
+  eklemeli bir JSON alanı olarak saklar ve Agent meşgul yanıtı verdiğinde önceki
+  sürümleri, korunmuş olarak işaretleyerek tutar. (4) Bileşenler satırları ve
+  paylaşılan bileşen sayfası başlığı sürümleri gösterir (D-036). (5) Ekran kataloğu,
+  her dilde kendi paket bütçeleri olan dokuz parçaya bölünür. (6) Durdurulmuş bir
+  güncellemenin söylediği: meşgul bir paket yöneticisi, `compatibility` adımı,
+  sınırlı temizlenmiş bir tanı, bir adımın sözleri yüklenirken genel neden yok.
+  Güncelleyicinin değiştirme yoluna **dokunmaz**: `update.sh`, `get.sh`'ın
+  davranışı, Agent'ın sistem güncelleme işçisi, geri alma ve kurtarma
+  değişmedi ve yeni bir Agent iş türü yok. Bu yüzden bu sürüm için sahibin 16 Ekim
+  2026 talimatıyla (güncelleyicinin değiştirme yolu değişmedikçe gerçek sistem
+  kaydı yok) **gerçek sistem kaydı yapılmaz**.
+- **Frankfurt'un alpha.95 durmasının doğrulanan nedeni.** Sahibin Frankfurt'taki
+  salt-okur komutları (2026-10-21) saklanan
+  `code=package_manager_busy state=unchanged reason=the host package manager is active`
+  satırını döndürdü (2026-10-17T12:25:23Z; Debian'ın otomatik paket güncellemeleri
+  çalışıyordu). Güncelleme hiçbir şeyi değiştirmeden bitti (ilke 3 tuttu:
+  güncelleyici kendi sınırında durdu). Sayfa yalnız genel nedeni gösterdi, çünkü
+  kaydın nedeni (bir kurtarma çalışma zamanı ön denetim durması) ile özetin kodu
+  farklıydı, Panel uzun özetlerin tanılarını atıyordu, `compatibility` adımının sözü
+  yoktu ve alpha.94 ekran kataloğu yüklenene kadar genel nedeni gösterdi (ilke 2:
+  sahibe ulaşan, bilinenden azdı). Aday bunun nasıl söylendiğini düzeltir;
+  güncelleyici değişmedi. Ayrıntılar [OPERATION-GUIDANCE](OPERATION-GUIDANCE.tr.md)
+  içinde, "Frankfurt'taki alpha.95 duruşu neden gerekçesiz göründü".
+- **Şema, sürüm geçişi ve kurtarma.** Şema 44, geçiş yok; sürüm sırası sürüm
+  hazırlığında 96'dan 97'ye geçer. alpha.97'den önce yazılmış bir tarama önbelleği
+  satırı her sürümü bilinmeyen olarak çözülür. Bir güncelleme sırasında Panel ve
+  Agent bir an için farklı yapılarda olabilir; okumaya sahip olmayan bir Agent'ı
+  çağıran bir Panel bir hata alır ve hiçbir sürüm göstermez, tarama sürer. Kurtarma
+  davranışı değişmez: bu sürümdeki hiçbir şey bir güncellemenin, bir geri almanın ya
+  da bir kurtarmanın parçası değildir ve hiçbir barındırılan iş yükü sürüm okumasına
+  bağlı değildir (D-022).
+- **Kanıt ve açık.** Aday ağacında: Go `./cmd/panel/` ve `./internal/...` ve Agent
+  `./cmd/agent/` (Agent, WSL notlarının istediği gibi temiz bir bağlama ad alanında),
+  `go vet` ve gofmt temiz; web `npm test` ve derleme yeni parça başına bütçeler
+  içinde; temiz bir klonda sürüm-kurtarma düzeneği; tarayıcı 22. grubu (taklit
+  sunucu). Sayılar [sürüm notlarındadır](RELEASE-NOTES-v0.1.0-alpha.97.tr.md).
+  Bileşen, bağlanmış ve taklit tarayıcı testleri gerçek sistem davranışını
+  kanıtlamaz. **Kurulu bir sunucuda hiçbir şey ölçülmedi**: sürüm okuması, sahte bir
+  çalıştırıcıyla yapılan birim testleri dışında gerçek bir paket veritabanına karşı
+  çalışmadı ve meşgul yoklamasının kilit tablosu okuması düzenek dosyalarına karşı
+  sınanır. Açık: kurulu sunucular ölçülmedi; kritik açılış yolunun bütçesinde yaklaşık
+  1 KiB kaldı (yeni güncelleme metinleri açılış metnidir, çünkü güncelleme penceresi
+  sayfaların üstünde bağlanır); alpha.88'den alpha.96'ya girdilerin açık bıraktığı her
+  şey açık kalır. Kurulu paneller yalnız sahipleri tarafından, panelin kendi güncelleme
+  ekranından güncellenir. P0.1 ila P0.5 kısmi kalır.
