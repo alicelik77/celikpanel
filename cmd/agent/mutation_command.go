@@ -62,6 +62,12 @@ func (c *serviceMutationCmd) Output() ([]byte, error) {
 	return c.execute(false, 0)
 }
 
+// OutputLimited is Output with a ceiling on what is kept; a larger answer is
+// an error. OutputLimited, tutulan çıktıya tavan koyar; aşan yanıt hatadır.
+func (c *serviceMutationCmd) OutputLimited(maximumBytes int) ([]byte, error) {
+	return c.execute(false, maximumBytes)
+}
+
 func (c *serviceMutationCmd) Run() error {
 	_, err := c.execute(true, 0)
 	return err

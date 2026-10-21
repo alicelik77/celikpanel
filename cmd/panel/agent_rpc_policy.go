@@ -124,7 +124,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.GetMailQuotaStatus Agent.GetMySQLConfig Agent.GetPHPConfig Agent.GetPHPConfiguration
 		Agent.GetPHPExtensions Agent.GetPHPLogs Agent.GetPHPPoolConfig Agent.GetPHPPools
 		Agent.GetServices Agent.HostPlatform Agent.InspectBackup Agent.InspectCpmove
-		Agent.InspectInstalledCertificate Agent.InstalledRepoPackages Agent.InstalledServiceIDs
+		Agent.InspectInstalledCertificate Agent.InstalledPackageVersionsV1 Agent.InstalledRepoPackages Agent.InstalledServiceIDs
 		Agent.InstalledServiceIDsStrict Agent.ListBackups Agent.ListCronJobs Agent.ListFiles
 		Agent.ListNodeLTS Agent.ListNodeVersions Agent.ListServiceInstances
 		Agent.ListSystemSQLiteDatabases Agent.MailFilterWiringState Agent.MailHealth
@@ -274,10 +274,13 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.CheckSystemSQLiteDatabase":   agentRPCQuickReadTimeout,
 	"Agent.InspectInstalledCertificate": agentRPCQuickReadTimeout,
 	"Agent.InstalledRepoPackages":       agentRPCQuickReadTimeout,
-	"Agent.InstalledServiceIDs":         agentRPCQuickReadTimeout,
-	"Agent.ListNodeVersions":            agentRPCQuickReadTimeout,
-	"Agent.ListSystemSQLiteDatabases":   agentRPCQuickReadTimeout,
-	"Agent.ServiceMutationReadiness":    agentRPCQuickReadTimeout,
+	// One bounded read-only package database query per component scan
+	// (alpha.97, D-036); the Agent bounds it at 10 s itself.
+	"Agent.InstalledPackageVersionsV1": agentRPCQuickReadTimeout,
+	"Agent.InstalledServiceIDs":        agentRPCQuickReadTimeout,
+	"Agent.ListNodeVersions":           agentRPCQuickReadTimeout,
+	"Agent.ListSystemSQLiteDatabases":  agentRPCQuickReadTimeout,
+	"Agent.ServiceMutationReadiness":   agentRPCQuickReadTimeout,
 
 	// Bounded disk/log reads.
 	"Agent.AppUnitLogs":                   agentRPCStandardReadTimeout,
