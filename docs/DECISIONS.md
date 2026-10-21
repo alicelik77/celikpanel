@@ -21,6 +21,99 @@ Code decisions live in git; this file is for strategy. Newest first.
 
 ---
 
+## D-036 · A version shown is the package database's own answer; unknown stays unknown
+
+*October 21, 2026 (clock date) · Follows the owner's alpha.94 screens of 2026-10-17 and the open item of the D-034 amendment; in source for the v0.1.0-alpha.97 candidate; nothing measured on an installed server*
+
+The owner's alpha.94 screenshots showed a version column of dashes on the
+Components page for every component with a single version (Nginx, PostgreSQL,
+MariaDB, Postfix, Dovecot, Certbot, Redis…). alpha.95 removed the column and
+recorded "read installed package versions for every component" as an open item
+(D-034 amendment): the Panel knew versions only for the multi-version runtimes
+(PHP-FPM, Node.js), the Agent's per-unit binary probe is not a package version and
+is unreliable, and tools such as Certbot have no unit at all.
+
+The rules adopted:
+
+1. **The source is the system package database, asked read-only.** A new Agent
+   read, `Agent.InstalledPackageVersionsV1`, runs during the existing component
+   scan, once per scan, one query for the whole catalogue: `dpkg-query -W` with a
+   fixed format (package, state, version) on Debian and Ubuntu, `pacman -Q` on Arch.
+   Fixed argv, no shell, no network, a 10-second timeout and an 8 MiB output
+   ceiling. Which packages count is the Agent's own compiled catalogue (the
+   component's packages for this family; for a component with a versioned
+   repository pattern such as PostgreSQL's `postgresql-17`, the versioned packages
+   when any is installed, because the catalogue name is then a meta-package whose
+   version is not the server's). The read takes no package-manager lock.
+2. **Never while a package operation runs.** Before the query the Agent reads the
+   process table (pacman and the apt/dpkg tools among it) and the kernel's lock
+   table for the apt/dpkg lock files; it never takes a lock itself, not even for a
+   moment. A pacman lock file left behind by a killed pacman, with no pacman
+   process alive, does not count, or the versions would never be read again. A busy
+   host, or one whose state cannot be read, answers "busy": nothing is queried, and
+   the Panel keeps the previous scan's versions, marked as kept, with the time they
+   were read.
+3. **Unknown stays unknown.** A component with no installed catalogue package is
+   not listed. Only a package the database reports as installed counts: in dpkg,
+   current state "i" with a blank error flag, whatever the wanted action ("ii",
+   "hi" held, "ri"/"pi" marked for removal or purge); a package flagged "reinstall
+   required" ("iiR"), half-installed, unpacked or with only its configuration
+   left ("rc") has no version. A version text that
+   is longer than 64 characters or carries characters a package database does not
+   print is dropped, never shortened, and the whole component's version is then
+   unknown. A component whose packages report different versions is "several
+   versions", never one of them. A failed or unsupported read leaves every version
+   unknown. No guessed version, no dash, no "default".
+4. **What is shown.** The full version exactly as printed, epoch and revision kept
+   (`1:11.8.3-0+deb13u1`), on the component's own page with its source ("Read from
+   the system package database."; for a kept reading, when it was read and that the
+   package manager was busy at the last check), in the header shared by every
+   component page. On the Components rows the Panel's short form, the upstream part
+   (`11.8.3`: the epoch, the packaging revision after the last hyphen and a
+   `+dfsg`/`~deb` style suffix removed), in mono, with the full version and its
+   source in the tooltip. The desktop version column comes back only when at least
+   one installed component on the page has a known package version; otherwise
+   alpha.95's line under the description stays. On a phone the version is under the
+   description. PHP-FPM and Node.js keep their per-copy versions and are not given
+   a package version.
+5. **Authorisation and storage follow the existing scan.** The Panel admits the
+   method as a read (quick read timeout, no host capability), like the other scan
+   reads; it calls it once per scan and a failure never fails the scan. The answer
+   travels with the existing scan cache as an additive JSON field of each
+   observation; a cache row written before alpha.97 has none and reads as unknown.
+   No schema change (44).
+
+What this does not authorise: no package operation of any kind, no version read
+outside the scan, no network read for versions, no "latest available" or update
+offer from these versions, and no claim about installed servers before the owner
+sees them there. Installed panels are still updated only by their owner from the
+panel's own update screen.
+
+Relation to the rest. D-024 (unknown is not absent; say who acts and how it
+resumes): a kept reading says so, and nothing is said where nothing is known.
+D-032 (the panel looks by itself): the read rides the existing conditional and
+manual scans and adds no timer. D-034 amendment: its open item "read installed
+package versions for every component" is implemented in source by this decision;
+it is not measured on an installed server.
+
+*Corrected the same day after an independent review of the candidate:* the first
+form counted only dpkg's "ii" (rule 3 now counts every installed state); an answer
+over the output ceiling was reported as a generic failure and the query kept
+running (now the query's process group is killed at the ceiling and the answer is
+"larger than the read ceiling"); the query inherited the Agent's environment (now
+`LC_ALL=C`, `LANG=C` and a fixed `PATH`, nothing else); the lock-table read was
+unbounded and refused a lock without an inode (now at most 1 MiB, and such a line
+is skipped); a stale pacman lock file meant busy for ever (now it needs a live
+pacman process); a reading kept for more than a day had no guidance (now the page
+adds: "The package manager has been busy at every check for more than a day. If no
+installation or update is running on the server, the server administrator checks
+whether a package operation is stuck."); and the page's own scan held the Panel's
+mutation lease while the package database answered (now it reads the versions
+before taking the lease; the fresh scan at the end of an operation still reads
+them inside that operation's lease).
+
+---
+
 ## D-035 · The panel looks for updates by itself and says so calmly; only an administrator starts an update
 
 *October 17, 2026 (clock date) · Owner request while updating to v0.1.0-alpha.95; in source for the v0.1.0-alpha.96 candidate; nothing measured on an installed server*

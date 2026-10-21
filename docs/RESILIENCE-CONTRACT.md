@@ -6518,3 +6518,110 @@ clock date of everything in it.
   against a real Agent or the real release server; the new update card and
   notices not yet seen on an installed server; the rollback paths that share the
   changed helpers exercised by contract tests only.
+
+### Candidate v0.1.0-alpha.97 (installed package versions, a read-only Agent capability; the screen catalogue split; why an update stopped; invariants 2, 3 and 6; D-036; D-024; D-034 amendment; D-035; 2026-10-21)
+
+D-025 invariants 2 (evidence has a meaning and a lifecycle: a version shown is the
+package database's answer, a kept reading is marked with when it was read, and
+unknown is never a dash, a default or a guess), 3 (the unsafe action is stopped at
+its actual boundary: the version read never runs while a package operation holds
+the package manager, and takes no lock itself) and 6 (readiness, progress and
+access remain independent: a busy package manager skips the read without failing
+the scan, and a poll never starts a change). The P0.1/P0.2 area (truthful,
+actionable state) is touched in what the owner sees on Components, the component
+pages and a stopped update. **No P0 item is closed or advanced**; P0.1 to P0.5 stay
+partial and every open acceptance item stays open. 2026-10-21 is the clock date of
+everything in it.
+
+- **What this release touches.** (1) **An Agent change**: a new read-only
+  capability, `Agent.InstalledPackageVersionsV1` (D-036). Fixed argv
+  (`dpkg-query -W -f=…` on Debian/Ubuntu, `pacman -Q` on Arch), no shell, no
+  network, 10-second timeout, 8 MiB output ceiling, one query per component scan
+  for the whole catalogue; the packages asked about come from the Agent's own
+  catalogue, never from the caller. Before the query it reads the process table
+  and the kernel lock table for the apt/dpkg lock files and pacman's lock file;
+  it never takes a lock, not even the momentary probe the mutation readiness check
+  uses. A busy or unreadable state answers "busy" and nothing is queried. (2) The
+  Panel's RPC policy admits the method as a read (quick read timeout, no host
+  capability), like the other component scan reads; it is admitted on every
+  package family because it changes nothing. (3) The Panel stores the answer with
+  the existing scan cache as an additive JSON field and keeps the previous
+  versions, marked as kept, when the Agent answers busy. (4) Components rows and
+  the shared component page header show the versions (D-036). (5) The screen
+  catalogue is split into nine parts per locale with their own bundle budgets.
+  (6) What a stopped update says: a busy package manager, the `compatibility`
+  step, a bounded sanitized diagnostic, no generic reason while a step's words
+  load. It does **not** touch the updater's mutation path: `update.sh`, the
+  behaviour of `get.sh`, the Agent's system update worker, rollback and recovery
+  are unchanged, and there is no new Agent job kind. Therefore **no native record
+  is made** for this release, by the owner's instruction of 2026-10-16 (no native
+  record unless the updater's mutation path changes).
+- **The confirmed cause of Frankfurt's alpha.95 stop.** The owner's read-only
+  commands on Frankfurt (2026-10-21) returned the stored line
+  `code=package_manager_busy state=unchanged reason=the host package manager is active`
+  (2026-10-17T12:25:23Z; Debian's automatic package updates were running). The
+  update ended before changing anything (invariant 3 held: the updater stopped at
+  its own boundary). The page showed only the generic reason because the record's
+  cause (a recovery runtime preflight stop) and the summary's code differed, the
+  Panel dropped diagnostics of long summaries, the `compatibility` step had no
+  words, and alpha.94 showed the generic reason until the screen catalogue loaded
+  (invariant 2: what reached the owner was less than what was known). The
+  candidate corrects how that is said; the updater is unchanged. Details are in
+  [OPERATION-GUIDANCE](OPERATION-GUIDANCE.md), "Why the alpha.95 stop on Frankfurt
+  showed no reason".
+- **Schema, version transition and recovery.** Schema 44, no migration; the
+  release sequence moves 96 to 97 in the release preparation. A scan cache row
+  written before alpha.97 decodes with every version unknown. During an update the
+  Panel and the Agent may briefly be on different builds; a Panel that calls an
+  Agent without the read gets an error and shows no versions, and the scan goes
+  on. Recovery behaviour is unchanged: nothing in this release is part of an
+  update, a rollback or a recovery, and no hosted workload depends on the version
+  read (D-022).
+- **Evidence and open.** On the candidate tree: Go `./cmd/panel/` and
+  `./internal/...` and the Agent `./cmd/agent/` (the Agent in a clean mount
+  namespace, as the WSL notes require), `go vet` and gofmt clean; web `npm test`
+  and the build within the new per-part budgets; the release-recovery harness in a
+  fresh clone; browser batch 22 (mock server). The numbers are in the
+  [release notes](RELEASE-NOTES-v0.1.0-alpha.97.md). Component, mounted and
+  mock-browser tests do not establish native behaviour. **Nothing was measured on
+  an installed server**: the version read has not run against a real package
+  database outside unit tests with a faked runner, and the busy probe's lock-table
+  reading is tested against fixtures. Open: installed servers not measured; the
+  critical boot path has 1.8 KiB of its budget left (only the line that waits for a
+  reason is new boot copy, because the update dialog is mounted above the routes); everything the
+  alpha.88 to alpha.96 entries leave open stays open. Installed panels are updated
+  only by their owners, from the panel's own update screen. P0.1 to P0.5 stay
+  partial.
+- **Corrected after an independent review of the candidate (2026-10-21).**
+  Invariant 3: the version query now runs in its own process group with a fixed
+  environment (`LC_ALL=C`, `LANG=C`, a fixed `PATH`, nothing inherited, so no
+  `DPKG_ADMINDIR` or similar can redirect it), and the moment its output passes the
+  8 MiB ceiling the group is killed and the answer is "larger than the read
+  ceiling", never a partial answer (tests run a real process past a small ceiling
+  and past a small timeout and check that its child is gone). Invariant 2: every
+  dpkg installed state counts, not only "ii"; the lock-table read is bounded at
+  1 MiB and skips a lock without an inode; a pacman lock file without a live pacman
+  no longer means busy for ever; a reading kept for more than a day adds a short
+  line on what the server administrator checks. Invariant 6: the page's own scan
+  reads the versions before taking the Panel's mutation lease (the fresh scan at
+  the end of an operation still reads them inside that operation's lease, because
+  that lease is what makes it the state after the change). The stop dialog's
+  reason never waits for ever: words already loaded are shown at once, others wait
+  at most 10 seconds, and the alpha.97 reason texts moved out of the boot copy
+  into the settings screen part (boot path 359.20 of 361 KiB).
+- **The reverse transition, alpha.97 to alpha.96.** Should an installed panel be
+  taken back to alpha.96 without the pre-update snapshot of its database, the
+  component scan cache keeps the additive `package_versions*` fields, and alpha.96
+  reads that row in two ways. Its Components page, Dashboard and component pages
+  decode it with Go's lenient `encoding/json`, which ignores unknown fields, so they
+  read it. Its Store does not: `strictScanObservations` (`cmd/panel/store_backend.go`
+  in alpha.96) refuses unknown fields, so alpha.96's Store says
+  `component_state_invalid` ("The stored record of this server's components could
+  not be read …") until alpha.96's next component scan writes the row again
+  without the fields. That scan comes by itself while an administrator has the
+  Dashboard, Components or a component page open (the Store also needs a scan no
+  older than its 15-minute freshness window). **Known, recoverable gap**: nothing
+  is lost and nothing needs repairing; it heals with the next scan. A Go test
+  decodes an alpha.97 row with mirrors of both alpha.96 decoders and checks that
+  the lenient one reads it and the strict one refuses it. Not measured on an
+  installed server.

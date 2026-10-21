@@ -7,6 +7,7 @@ import { tr } from '../src/i18n/tr.ts';
 import { apiErrorText } from '../src/lib/apiError.ts';
 import { readServiceActionNote } from '../src/lib/serviceActionNote.ts';
 import { isSiteWebServerRefused, siteWebServerRefusedIn } from '../src/lib/siteWebServerRefused.ts';
+import { englishScreens, turkishScreens } from './locale-catalogue.mjs';
 
 // 12 Oct 2026, corrections from the final native round that have a screen:
 //
@@ -24,8 +25,8 @@ import { isSiteWebServerRefused, siteWebServerRefusedIn } from '../src/lib/siteW
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 const flat = (text) => text.replace(/\s+/g, ' ');
-const screens = { en: read('../src/i18n/screens/en.ts'), tr: read('../src/i18n/screens/tr.ts') };
-const server = { en: read('../src/i18n/screens/server/en.ts'), tr: read('../src/i18n/screens/server/tr.ts') };
+const screens = { en: englishScreens, tr: turkishScreens };
+const server = { en: englishScreens, tr: turkishScreens };
 const valueOf = (source, key) => {
   const match = source.match(new RegExp(`^ {4}'${key.replace(/\./g, '\\.')}': ("(?:[^"\\\\]|\\\\.)*"|'(?:[^'\\\\]|\\\\.)*'),$`, 'm'));
   assert.ok(match, `${key} is not in the catalogue`);

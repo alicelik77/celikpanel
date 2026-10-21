@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { englishScreens, turkishScreens } from './locale-catalogue.mjs';
 
 // 9 Oct 2026, corrections after the set4 native measurement that have a screen:
 //
@@ -18,8 +19,8 @@ import test from 'node:test';
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 const flat = (text) => text.replace(/\s+/g, ' ');
-const screens = { en: read('../src/i18n/screens/en.ts'), tr: read('../src/i18n/screens/tr.ts') };
-const server = { en: read('../src/i18n/screens/server/en.ts'), tr: read('../src/i18n/screens/server/tr.ts') };
+const screens = { en: englishScreens, tr: turkishScreens };
+const server = { en: englishScreens, tr: turkishScreens };
 const guidance = { en: flat(read('../../docs/OPERATION-GUIDANCE.md')), tr: flat(read('../../docs/OPERATION-GUIDANCE.tr.md')) };
 const importPage = read('../src/components/ImportPage.tsx');
 const placeholders = (text) => [...text.matchAll(/\{(\w+)\}/g)].map((match) => match[1]).sort().filter((name, index, all) => all.indexOf(name) === index).join(',');

@@ -12,6 +12,7 @@
 //   b19.hold     component ids whose install keeps running
 //
 // On dokuzuncu grup: alpha.94'ün hazır paketleri; kurulumlar sahte işlemdir.
+import { withSamplePackageVersions } from './sample-package-versions.mjs';
 const now = () => new Date().toISOString();
 const hex = (n) => n.toString(16).padStart(32, '0');
 
@@ -107,7 +108,9 @@ function payload(b19) {
     return {
         scanned_at: now(), scan_age_seconds: 0, dns_identity_ready: b19.dnsReady !== false,
         mail_hostname: { current: 'mail.example.net', hostname: 'mail.example.net', source: 'saved', current_usable: true, will_set_hostname: false },
-        services: b19.services,
+        // Package versions (alpha.97) are SAMPLE data, not measured: Ubuntu 24.04 strings for the Boston-like
+        // servers, Debian 13 for the Frankfurt-like ones; a component the sample does not know carries none.
+        services: b19.services.map((item) => withSamplePackageVersions(item, b19.server === 'boston' || b19.server === 'boston-dns' ? 'ubuntu2404' : 'debian13')),
         profiles: [
             profile('core-mail', 'Core Mail', ['postfix', 'dovecot'], installedSet, b19.dnsReady !== false),
             profile('webmail', 'Webmail', ['postfix', 'dovecot', 'nginx', 'php-fpm', 'roundcube'], installedSet, b19.dnsReady !== false),

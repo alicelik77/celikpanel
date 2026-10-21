@@ -15,8 +15,8 @@ import React from 'react';
 import Renderer, { act } from 'react-test-renderer';
 import { dataModule, reactURL, sharedLayer } from './fixtures/shared-layer.mjs';
 import { en } from '../src/i18n/en.ts';
-import { enScreens } from '../src/i18n/screens/en.ts';
-import { enServerScreens } from '../src/i18n/screens/server/en.ts';
+import { enScreens } from './locale-catalogue.mjs';
+import { enServerScreens } from './locale-catalogue.mjs';
 
 // The page speaks English from the real catalogue, so a bundle is named by
 // its words and never by a fallback.

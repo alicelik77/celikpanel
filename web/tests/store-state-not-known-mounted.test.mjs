@@ -8,8 +8,8 @@ import Renderer, { act } from 'react-test-renderer';
 import ts from 'typescript';
 import { en } from '../src/i18n/en.ts';
 import { tr } from '../src/i18n/tr.ts';
-import { enServerScreens } from '../src/i18n/screens/server/en.ts';
-import { trServerScreens } from '../src/i18n/screens/server/tr.ts';
+import { enServerScreens } from './locale-catalogue.mjs';
+import { trServerScreens } from './locale-catalogue.mjs';
 
 // The Store's badge when the server has no usable record of this server's
 // components (browser batch 14, 2026-10-15). The Panel marks such an offering

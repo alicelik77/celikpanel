@@ -4,6 +4,7 @@ import test from 'node:test';
 
 import { en } from '../src/i18n/en.ts';
 import { tr } from '../src/i18n/tr.ts';
+import { englishScreens, turkishScreens } from './locale-catalogue.mjs';
 
 // 11 Oct 2026, corrections from the second native measurement that have a
 // screen:
@@ -22,7 +23,7 @@ import { tr } from '../src/i18n/tr.ts';
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 const flat = (text) => text.replace(/\s+/g, ' ');
-const screens = { en: read('../src/i18n/screens/en.ts'), tr: read('../src/i18n/screens/tr.ts') };
+const screens = { en: englishScreens, tr: turkishScreens };
 const valueOf = (source, key) => {
   const match = source.match(new RegExp(`^ {4}'${key.replace(/\./g, '\\.')}': ("(?:[^"\\\\]|\\\\.)*"),$`, 'm'));
   assert.ok(match, `${key} is not in the catalogue`);

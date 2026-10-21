@@ -18,7 +18,7 @@ import {
     type UpdateMarker,
     type UpdateTarget,
 } from './SystemUpdateOperation';
-import { decodePreviousUpdateAttempt, previousAttemptStopped, type PreviousUpdateAttempt } from '../lib/systemUpdateOutcome';
+import { decodePreviousUpdateAttempt, previousAttemptPackageManagerBusy, previousAttemptStopped, type PreviousUpdateAttempt } from '../lib/systemUpdateOutcome';
 import { SystemUpdateSteps, systemUpdateStepsAnnouncement } from './SystemUpdateSteps';
 import { BuildCommit } from './BuildCommit';
 import {
@@ -26,6 +26,7 @@ import {
     clockTime,
     decodePanelUpdateDiscovery,
     publishPanelUpdateDiscovery,
+    readPanelUpdateAttemptSummary,
     refreshPanelUpdateDiscovery,
     relativeAge,
     usePanelUpdateDiscovery,
@@ -348,6 +349,30 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
         };
     }, [quietReadinessPoll]);
 
+    // An earlier attempt the server recorded without a cause, or as a
+    // preflight stop, may have stopped because the package manager was busy (Frankfurt, 2026-10-17: Debian's
+    // automatic package updates were running). Its own stored summary says
+    // so; it is read once per attempt, a GET that never starts anything.
+    // Nedeni kaydedilmemis onceki deneme paket yoneticisi mesgul oldugu icin
+    // durmus olabilir; kendi ozeti deneme basina bir kez okunur.
+    const [previousSummary, setPreviousSummary] = useState<{ requestID: string; busy: boolean } | null>(null);
+    // Read for an attempt with no recorded cause and for a preflight stop: the
+    // updater records a busy package manager that its recovery tool's check
+    // reported as a recovery runtime preflight stop (Frankfurt's case).
+    const uncausedAttempt = target && offer?.previous_attempt?.phase === 'failed'
+        && (!offer.previous_attempt.failure_code || previousAttemptStopped(offer.previous_attempt))
+        ? offer.previous_attempt.request_id : '';
+    useEffect(() => {
+        if (!uncausedAttempt) return;
+        const controller = new AbortController();
+        void readPanelUpdateAttemptSummary(uncausedAttempt, controller.signal).then((result) => {
+            // Unread: the notice keeps its general words.
+            if (controller.signal.aborted || !result.read) return;
+            setPreviousSummary({ requestID: uncausedAttempt, busy: result.summary !== null && previousAttemptPackageManagerBusy(result.summary) });
+        });
+        return () => controller.abort();
+    }, [uncausedAttempt]);
+
     async function retryHostMutationReadiness() {
         if (actionInFlight.current || systemUpdate.active) return;
         actionInFlight.current = true;
@@ -483,8 +508,10 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
         ? t(`services.mutationReadiness.${readiness.reason}`)
         : '';
     const previousAttempt = target ? offer?.previous_attempt : undefined;
-    // Either typed cause means it stopped before changing anything installed.
-    const previousStopped = previousAttemptStopped(previousAttempt);
+    // Either typed cause means it stopped before changing anything installed;
+    // so does a stop its own summary says was a busy package manager.
+    const previousBusy = !!previousAttempt && previousSummary?.requestID === previousAttempt.request_id && previousSummary.busy;
+    const previousStopped = previousAttemptStopped(previousAttempt) || previousBusy;
     const readinessTitle = readinessChecking
         ? t('services.mutationReadiness.checking')
         : readiness?.ready === true
@@ -689,10 +716,11 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
                                     <p className="font-semibold text-fg">{t(previousAttempt.phase === 'failed' && previousStopped ? 'panelUpdate.previousAttempt.stoppedTitle'
                                         : previousAttempt.phase === 'recovered' ? 'panelUpdate.previousAttempt.rolledBackTitle'
                                             : 'panelUpdate.previousAttempt.title')}</p>
-                                    <p className="mt-1 text-fg-muted">
+                                    <p className="mt-1 text-fg-muted" data-previous-attempt-cause={previousBusy ? 'package_manager_busy' : undefined}>
                                         {t(previousAttempt.phase === 'recovered' ? 'panelUpdate.previousAttempt.recovered'
-                                            : previousStopped ? 'panelUpdate.previousAttempt.stopped'
-                                                : 'panelUpdate.previousAttempt.failed', {
+                                            : previousBusy ? 'panelUpdate.previousAttempt.packageManagerBusy'
+                                                : previousStopped ? 'panelUpdate.previousAttempt.stopped'
+                                                    : 'panelUpdate.previousAttempt.failed', {
                                             version: target.version,
                                             current: currentVersion ?? '',
                                             time: new Date(previousAttempt.finished_at).toLocaleString(locale === 'tr' ? 'tr-TR' : 'en-US'),
@@ -707,6 +735,18 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
                                     )}
                                     {previousAttempt.phase === 'recovered' && (
                                         <p className="mt-1 text-fg-muted">{t('panelUpdate.previousAttempt.again', { version: target.version })}</p>
+                                    )}
+                                    {/* The card's own readiness read (and its quiet
+                                        re-read while the server is busy) says when the
+                                        package manager is free again. It never starts
+                                        the update. / Kartin hazirlik okumasi paket
+                                        yoneticisinin bosaldigini soyler; guncellemeyi
+                                        asla baslatmaz. */}
+                                    {previousBusy && !readinessChecking && readiness?.ready === true && (
+                                        <p className="mt-1 text-fg" data-previous-attempt-package-manager="free">{t('panelUpdate.previousAttempt.packageManagerFree')}</p>
+                                    )}
+                                    {previousBusy && !readinessChecking && readiness?.ready === false && readiness.reason === 'package_manager_active' && (
+                                        <p className="mt-1 text-fg-muted" data-previous-attempt-package-manager="busy">{t('panelUpdate.previousAttempt.packageManagerStillBusy')}</p>
                                     )}
                                 </div>
                             </div>

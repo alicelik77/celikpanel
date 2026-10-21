@@ -3,8 +3,8 @@ import test from 'node:test';
 import { domainDeletionDetailKey, readDomainDeletionPending, readDomainDeletionOutcome, readSavedDomainDeletionStatus, readSavedDomainDeletionState } from '../src/lib/domainDeletionPending.ts';
 import { en } from '../src/i18n/en.ts';
 import { tr } from '../src/i18n/tr.ts';
-import { enScreens } from '../src/i18n/screens/en.ts';
-import { trScreens } from '../src/i18n/screens/tr.ts';
+import { enScreens } from './locale-catalogue.mjs';
+import { trScreens } from './locale-catalogue.mjs';
 
 function response(status, body) {
   return new Response(JSON.stringify(body), {

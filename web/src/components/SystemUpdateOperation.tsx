@@ -75,6 +75,9 @@ const RESTART_POLL_MAX_MS = 3000;
 const POLL_REQUEST_TIMEOUT_MS = 10000;
 const START_REQUEST_TIMEOUT_MS = 15000;
 const NOT_FOUND_GRACE_MS = 120000;
+// How long a stop reason whose words are in a screen catalogue part waits for
+// that part before it shows its boot-catalogue fallback (alpha.97 review).
+export const SYSTEM_UPDATE_REASON_WAIT_MS = 10_000;
 const SYSTEM_UPDATE_STATE_DB = 'celikpanel-system-update-state-v1';
 const SYSTEM_UPDATE_STATE_STORE = 'records';
 const CANONICAL_RECORD_KEY = 'system-update-record';
@@ -679,7 +682,7 @@ function terminalResultFromRecord(record: TerminalUpdateRecord): TerminalResult 
 }
 
 export function SystemUpdateOperationProvider({ children }: { children: ReactNode }) {
-    const { t, screensReady, locale } = useI18n();
+    const { t, screensReady, screensFailed, locale } = useI18n();
     const [initialRecord] = useState<StoredUpdateRecord | null>(() => readStoredRecord());
     const [canonicalReady, setCanonicalReady] = useState(false);
     const canonicalReadyRef = useRef(false);
@@ -2102,10 +2105,29 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
     const failureTone: SystemUpdateOutcomeTone | null = failureGuidance?.tone ?? null;
     const realFailure = displayedTerminal?.kind === 'failed'
         && (failureTone === 'danger' || failureTone === 'warning' || failureTone === 'neutral');
-    // A line whose text lives in a screen catalogue shows its boot-catalogue
-    // fallback until that catalogue has arrived; a key never renders as its name.
+    // A line whose text lives in a screen catalogue part shows its own words
+    // as soon as they are in the loaded copy (the eleven recovery-tool steps
+    // and the generic reason are boot copy, so at once); otherwise it says
+    // "Reading the reason…" while that part loads, and its boot-catalogue
+    // fallback once the screen copy failed or after SYSTEM_UPDATE_REASON_WAIT_MS
+    // (a part that neither arrives nor fails never leaves the line waiting).
+    // A known step never shows the generic reason while its words are on their
+    // way, and a key never renders as its name (alpha.97).
+    // Satir kendi sozcukleri yuklu kopyadaysa hemen, degilse parca gelene dek
+    // "Neden okunuyor" der; parca yuklenemezse ya da sure dolarsa yedegini.
+    const wordsLoaded = (value: OutcomeText) => 'text' in value || !value.fallback || screensReady || t(value.key) !== value.key;
+    const waitingForWords = !screensReady && !screensFailed && failureGuidance !== null
+        && [failureGuidance.title, ...failureGuidance.lines].some((value) => !wordsLoaded(value));
+    const [reasonWaitOver, setReasonWaitOver] = useState(false);
+    useEffect(() => {
+        if (!waitingForWords) return;
+        const timer = window.setTimeout(() => setReasonWaitOver(true), SYSTEM_UPDATE_REASON_WAIT_MS);
+        return () => window.clearTimeout(timer);
+    }, [waitingForWords]);
     const outcomeText = (value: OutcomeText) => ('text' in value ? value.text
-        : t(value.fallback && !screensReady ? value.fallback : value.key, value.vars));
+        : wordsLoaded(value) || !value.fallback
+            ? t(value.key, value.vars)
+            : screensFailed || reasonWaitOver ? t(value.fallback, value.vars) : t('panelUpdate.outcome.reasonLoading'));
     const terminalKind = pendingReload || requiredReloadMarker ? 'succeeded'
         : failureGuidance?.state === 'succeeded' ? 'succeeded' : displayedTerminal?.kind;
     // How the mark is drawn: red only for a failure the owner must act on.

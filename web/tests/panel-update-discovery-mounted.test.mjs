@@ -22,10 +22,10 @@ import ts from 'typescript';
 import { remoteURL } from './fixtures/shared-layer.mjs';
 import { en } from '../src/i18n/en.ts';
 import { tr } from '../src/i18n/tr.ts';
-import { enScreens } from '../src/i18n/screens/en.ts';
-import { trScreens } from '../src/i18n/screens/tr.ts';
-import { enServerScreens } from '../src/i18n/screens/server/en.ts';
-import { trServerScreens } from '../src/i18n/screens/server/tr.ts';
+import { enScreens } from './locale-catalogue.mjs';
+import { trScreens } from './locale-catalogue.mjs';
+import { enServerScreens } from './locale-catalogue.mjs';
+import { trServerScreens } from './locale-catalogue.mjs';
 
 globalThis.document ??= Object.assign(new EventTarget(), { visibilityState: 'visible' });
 globalThis.window ??= { setTimeout: (fn, ms) => globalThis.setTimeout(fn, ms), clearTimeout: (id) => globalThis.clearTimeout(id) };

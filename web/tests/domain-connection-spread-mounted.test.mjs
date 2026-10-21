@@ -7,8 +7,8 @@ import Renderer, { act } from 'react-test-renderer';
 import { sharedLayer } from './fixtures/shared-layer.mjs';
 import { en } from '../src/i18n/en.ts';
 import { tr } from '../src/i18n/tr.ts';
-import { enScreens } from '../src/i18n/screens/en.ts';
-import { trScreens } from '../src/i18n/screens/tr.ts';
+import { enScreens } from './locale-catalogue.mjs';
+import { trScreens } from './locale-catalogue.mjs';
 
 // A domain's "DNS update is spreading" (owner rule 2026-10-14, audit row 35).
 // The card is mounted with the real shared remote-state layer; only fetch, the

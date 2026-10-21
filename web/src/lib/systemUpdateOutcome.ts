@@ -1,8 +1,8 @@
 import { isFinishingStep, isPreflightStop, preflightStopCodes, recoveryFailureCodes, recoveryFailureGuidanceKey, retryingCauseKey, type PausedCauseCode, type RecoveryFailureCode, type RecoveryObservation } from './recoveryObservation';
-import { systemUpdatePreflightStop, withoutInternalTokens } from './systemUpdateFailure';
+import { systemUpdatePackageManagerBusy, systemUpdatePreflightStop, withoutInternalTokens } from './systemUpdateFailure';
 
 /** Preflight steps with reviewed owner wording; any other step uses the generic line. */
-export const preflightSteps = ['mode', 'owner', 'panel_database_check', 'agent_ledger_check', 'owner_metadata_probe', 'runtime_selection',
+export const preflightSteps = ['mode', 'owner', 'compatibility', 'panel_database_check', 'agent_ledger_check', 'owner_metadata_probe', 'runtime_selection',
     'runtime_revalidation', 'release_boundary', 'material_support', 'database_support', 'database_metadata',
     'idle_probe', 'agent_idle', 'bind_compatibility', 'application_compatibility', 'bootstrap_state'] as const;
 type PreflightStep = typeof preflightSteps[number];
@@ -35,6 +35,9 @@ export type OutcomeKey =
     | 'panelUpdate.outcome.preflightStep.generic'
     | `panelUpdate.outcome.preflightClass.${PreflightReasonClass}`
     | 'panelUpdate.outcome.serverMessage'
+    | 'panelUpdate.outcome.packageManagerBusy'
+    | 'panelUpdate.packageManagerBusy'
+    | 'panelUpdate.outcome.packageManagerBusyNext'
     | 'panelUpdate.outcome.stoppedNext'
     | 'panelUpdate.outcome.stoppedResume'
     | 'panelUpdate.outcome.cause.generic'
@@ -159,6 +162,28 @@ export function failedUpdateGuidance(observation: RecoveryObservation | null, in
     const preflight = systemUpdatePreflightStop(input.message);
     const uncontradicted = !observation || observation.observation !== 'known'
         || (observation.phase === 'failed' && observation.terminal_proof === 'none' && !observation.failure_code);
+    // The package manager was busy (Frankfurt, 2026-10-17: Debian's automatic
+    // package updates were running). A transient, typed stop before anything
+    // changed: its own words, no server line, nothing to repair. The updater
+    // records such a stop that its recovery tool's check reported as a
+    // recovery runtime preflight stop (update.sh publishes that code beside
+    // the package_manager_busy summary), so a typed preflight stop is the same
+    // request ending unchanged, not a contradiction.
+    // Paket yöneticisi meşguldü: geçici, tipli bir duruş; kendi sözleri.
+    if (systemUpdatePackageManagerBusy(input.message) && (uncontradicted || isPreflightStop(observation))) {
+        return {
+            state: 'unchanged',
+            tone: 'neutral',
+            title: { key: 'panelUpdate.outcome.stoppedTitle' },
+            lines: [
+                { key: 'panelUpdate.outcome.stopped', vars: versions },
+                // Screen copy (settings part); until it arrives, the boot
+                // catalogue's own busy and resume sentences.
+                { key: 'panelUpdate.outcome.packageManagerBusy', fallback: 'panelUpdate.packageManagerBusy' },
+                { key: 'panelUpdate.outcome.packageManagerBusyNext', vars: versions, fallback: 'panelUpdate.outcome.stoppedResume' },
+            ],
+        };
+    }
     if (isPreflightStop(observation) || (preflight && uncontradicted)) {
         const reported = withoutInternalTokens(preflight ? preflight.diagnostic : input.message);
         // A translated reason class says what happened and what to do: the
@@ -170,7 +195,10 @@ export function failedUpdateGuidance(observation: RecoveryObservation | null, in
         // the closed Details (alpha.96: Frankfurt's update to alpha.95 stopped
         // here and the cause was hidden). It is already sanitized and short.
         // Sözcüğü olmayan adımda sunucunun ilk satırı nedenin altında görünür.
-        const generic = reason.key === 'panelUpdate.outcome.preflightStep.generic' && !translated;
+        // The recovery tool that could not be started or verified
+        // ('compatibility', alpha.97) is a broad reason: its line follows too.
+        const generic = (reason.key === 'panelUpdate.outcome.preflightStep.generic'
+            || reason.key === 'panelUpdate.outcome.preflightStep.compatibility') && !translated;
         // The first line, cut at 240 characters with an ellipsis; when it is not
         // the whole message, the whole message stays behind Details too.
         const lineOne = !product && reported ? reported.split(/\r?\n/)[0] : '';
@@ -284,6 +312,15 @@ export type PreviousUpdateAttempt = {
     failure_code?: RecoveryFailureCode;
     finished_at: string;
 };
+
+/**
+ * An earlier attempt's own stored summary says the package manager was busy
+ * (alpha.97): the card then names that cause, calmly, for an attempt the
+ * recovery record kept without one.
+ */
+export function previousAttemptPackageManagerBusy(summary: string): boolean {
+    return systemUpdatePackageManagerBusy(summary);
+}
 
 /** The attempt stopped before changing anything installed (either typed preflight stop). */
 export function previousAttemptStopped(attempt: PreviousUpdateAttempt | undefined): boolean {

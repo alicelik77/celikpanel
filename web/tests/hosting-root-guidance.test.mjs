@@ -5,8 +5,8 @@ import { apiErrorText, readApiError } from '../src/lib/apiError.ts';
 import { setupHostingRootBlockerValues } from '../src/lib/serverSetupGuidance.ts';
 import { en as enShell } from '../src/i18n/en.ts';
 import { tr as trShell } from '../src/i18n/tr.ts';
-import { enScreens } from '../src/i18n/screens/en.ts';
-import { trScreens } from '../src/i18n/screens/tr.ts';
+import { enScreens } from './locale-catalogue.mjs';
+import { trScreens } from './locale-catalogue.mjs';
 
 // Native finding P3 (1 Oct 2026): an owner's directory above the hosting root
 // that the web server or the site users cannot pass. Both the domain-create

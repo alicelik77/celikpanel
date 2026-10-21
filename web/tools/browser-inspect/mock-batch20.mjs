@@ -6,8 +6,12 @@
 // bundle's step).
 //
 // Honest by construction (the owner's alpha.94 screens): the scan reads
-// versions only for the multi-version runtimes (PHP-FPM, Node.js); every other
-// component carries `versions: []`. The bundles are derived as the Panel
+// `versions` only for the multi-version runtimes (PHP-FPM, Node.js); every other
+// component carries `versions: []`. Since alpha.97 an installed component that
+// is not a runtime may also carry the package_version* fields (the system
+// package database's reading). They are SAMPLE data here, not measured
+// (sample-package-versions.mjs: Debian 13 strings for Frankfurt, Ubuntu 24.04
+// strings for Boston); a component the sample does not know carries none. The bundles are derived as the Panel
 // derives them (cmd/panel/bundles.go, mail_profiles.go): a mail bundle takes
 // its state from its mail profile (installed once all parts are ready; partial
 // only when a mail component is present; Nginx or PHP-FPM alone leave it
@@ -21,8 +25,12 @@
 //                installed and verified)
 //   b20.dnsReady false: the DNS identity is not ready (host-wide mail refusal)
 //   b20.hold     component ids whose install keeps running
+//   b20.versions 'sample' (default) | 'none': whether package versions are known
+//   b20.kept     component ids whose reading is an earlier one (batch 22)
+//   b20.extra    component ids installed on top of the server's own set (batch 22)
 //
 // On yirminci grup: alpha.95 tek paket listesi; kurulumlar sahte islemdir.
+import { withSamplePackageVersions } from './sample-package-versions.mjs';
 const now = () => new Date().toISOString();
 const hex = (n) => n.toString(16).padStart(32, '0');
 
@@ -155,16 +163,21 @@ const profile = (def, services, dnsReady) => {
     };
 };
 
-export function batch20State(server, { hold = [], dnsReady = true } = {}) {
-    return { server, hold, dnsReady, services: catalogue(server), operations: [] };
+export function batch20State(server, { hold = [], dnsReady = true, versions = 'sample', kept = [], extra = [] } = {}) {
+    const services = catalogue(server).map((item) => (extra.includes(item.id) && !item.is_installed
+        ? { ...item, is_installed: true, status: item.kind === 'tool' ? 'installed' : 'active (running)', ...(item.kind === 'tool' ? {} : { unit: item.id }) } : item));
+    return { server, hold, dnsReady, versions, kept, services, operations: [] };
 }
 
 function payload(b20) {
     const ok = b20.dnsReady !== false;
     // The tools' unmet requirements, as the scan lists them (the tokens the page names).
     const have = new Set(b20.services.filter((item) => item.is_installed).map((item) => item.id));
+    // Sample package versions (not measured) for what is installed and is not a runtime.
+    const distro = b20.server === 'frankfurt' ? 'debian13' : 'ubuntu2404';
     const services = b20.services.map((item) => {
-        if (item.is_installed || !NEEDS[item.id]) return item;
+        if (item.is_installed) return b20.versions === 'none' ? item : withSamplePackageVersions(item, distro, { kept: b20.kept ?? [] });
+        if (!NEEDS[item.id]) return item;
         const missing = [NEEDS[item.id], ...(have.has('nginx') || have.has('apache') ? [] : ['web-server']), ...(have.has('php-fpm') ? [] : ['php-fpm'])].filter((id) => !have.has(id));
         return missing.length > 0 ? { ...item, requires_missing: missing } : item;
     });

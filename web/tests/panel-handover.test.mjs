@@ -7,8 +7,8 @@ import {
 } from '../src/lib/panelHandover.ts';
 import { en } from '../src/i18n/en.ts';
 import { tr } from '../src/i18n/tr.ts';
-import { enScreens } from '../src/i18n/screens/en.ts';
-import { trScreens } from '../src/i18n/screens/tr.ts';
+import { enScreens } from './locale-catalogue.mjs';
+import { trScreens } from './locale-catalogue.mjs';
 
 // 2026-10-08, installed Ubuntu server, v0.1.0-alpha.81: during setup the Panel
 // obtained its certificate and was restarted once to serve it. The owner, on

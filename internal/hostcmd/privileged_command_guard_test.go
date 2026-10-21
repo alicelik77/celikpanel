@@ -139,6 +139,7 @@ var privilegedCommandAllowlist = map[string]string{
 	"internal/services/php_manager.go:<computed>":      "reads or lists PHP extensions",
 	"internal/services/user_manager.go:id":             "asks whether a system user exists",
 	"cmd/agent/instance_rpc.go:<computed>":             "reads a runtime binary's version string",
+	"cmd/agent/package_versions_runner.go:<computed>":  "the installed package version read (alpha.97, D-036): only the host profile's verified dpkg-query or pacman, fixed read-only argv, fixed environment (LC_ALL=C, fixed PATH), its own process group killed at the 10-second deadline or the moment its output passes the 8 MiB ceiling (the tracked launcher keeps writing past its limit), standard error discarded and never returned",
 
 	// Privileged mutations that are not read through this package yet. Each
 	// one is the same shape the three fixes found, and each is written down as

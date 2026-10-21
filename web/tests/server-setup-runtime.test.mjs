@@ -7,6 +7,7 @@ import React from 'react';
 import Renderer, { act } from 'react-test-renderer';
 import ts from 'typescript';
 import { setupCatalogFixture } from './fixtures/server-setup-components.mjs';
+import { enScreens, trScreens } from './locale-catalogue.mjs';
 
 const require = createRequire(import.meta.url);
 const reactURL = pathToFileURL(require.resolve('react')).href;
@@ -246,7 +247,7 @@ test('remote DNS review rejects a plan bound to a different saved connection',as
 
 test('paired DNS guidance keeps both roles out of the final-verification dependency loop',async()=>{
     for(const lang of ['en','tr']){
-        const catalogue=(await import(dataURL(compile(`../src/i18n/screens/${lang}.ts`))))[`${lang}Screens`];
+        const catalogue=(lang === 'en' ? enScreens : trScreens);
         init();fixture.translations=catalogue;
         try{
             await mount();

@@ -4,7 +4,7 @@ import test from 'node:test';
 import React from 'react';
 import Renderer, { act } from 'react-test-renderer';
 import { compileSource, dataModule, reactURL, remoteURL, sharedLayer } from './fixtures/shared-layer.mjs';
-import { englishCatalogue, turkishCatalogue } from './locale-catalogue.mjs';
+import { englishCatalogue, englishScreens, turkishCatalogue, turkishScreens } from './locale-catalogue.mjs';
 
 // NO NEGATIVE UI UNLESS KNOWN, on the mounted screens (9 Oct 2026, D-024).
 //
@@ -2019,10 +2019,53 @@ test('Infrastructure zone page: what the zone is and who keeps which record come
 });
 
 test('every infrastructure zone text exists in both languages', () => {
-  const catalogue = (lang) => readFileSync(new URL(`../src/i18n/screens/${lang}.ts`, import.meta.url), 'utf8');
+  const catalogue = (lang) => (lang === 'en' ? englishScreens : turkishScreens);
   const keysIn = (text) => [...text.matchAll(/^\s*'((?:domains\.infrastructure\.[A-Za-z]+)|dns\.managedBySetup(?:Hint)?|dns\.requestedByPeer)':\s*'(.*)',\s*$/gm)].map((m) => [m[1], m[2]]);
   const en = new Map(keysIn(catalogue('en')));
   const tr = new Map(keysIn(catalogue('tr')));
   assert.equal(en.size, 20);
   for (const [key, value] of en) assert.ok(tr.has(key) && tr.get(key) !== value, key);
+});
+
+// alpha.97 (D-036): every component page (the generic one and the specialised
+// ones, which share this shell) shows the installed package version in its
+// header in full, as the package database printed it, and where it came from;
+// packages that differ are each named; a kept reading says when it was read;
+// a record without one says nothing about versions.
+// Her bileşen sayfasının başlığı kurulu paket sürümünü tam hâliyle ve
+// kaynağıyla gösterir.
+test('a component page shows the full package version and its source in its header; unknown says nothing', async () => {
+  const page = async (extra) => {
+    await freshCheck();
+    serve({ '/api/v1/managed-services': () => Response.json({ services: [{ ...redisRecord, versions: [], ...extra }], scanned_at: new Date().toISOString(), scan_age_seconds: 0 }) });
+    await mount(ServiceShell, shell);
+    await spin(3);
+  };
+  const versionNode = () => tree.root.findAll((node) => node.props && node.props['data-package-version'] !== undefined)[0];
+  const sourceNode = () => tree.root.findAll((node) => node.props && node.props['data-package-version-source'] !== undefined)[0];
+  try {
+    await page({ package_version: '5:7.0.15-3+deb13u1', package_version_short: '7.0.15', package_versions: [{ package: 'redis-server', version: '5:7.0.15-3+deb13u1' }], package_version_read_at: '2026-10-21T08:00:00Z' });
+    assert.equal(versionNode()?.props['data-package-version'], '5:7.0.15-3+deb13u1');
+    assert.ok(has('component.packageVersion'), 'the row label is missing');
+    assert.ok(has('5:7.0.15-3+deb13u1'), 'the full version is not shown');
+    assert.equal(sourceNode().props['data-package-version-source'], 'read');
+    assert.equal(tree.root.findAll((node) => node.props && node.props['data-package-version-kept-long'] !== undefined).length, 0, 'a fresh reading has no stuck line');
+    assert.ok(has('component.packageVersionSource'));
+  } finally { await cleanup(); }
+  try {
+    await page({ package_versions_differ: true, package_versions: [{ package: 'redis-server', version: '5:7.0.15-3' }, { package: 'redis-tools', version: '5:7.0.14-1' }], package_version_kept: true, package_version_kept_long: true, package_version_read_at: '2026-10-21T08:00:00Z' });
+    assert.equal(versionNode()?.props['data-package-version'], 'several');
+    assert.ok(has('component.packageVersionSeveral'));
+    assert.ok(has('redis-server 5:7.0.15-3') && has('redis-tools 5:7.0.14-1'), 'each package is named with its own version');
+    assert.equal(sourceNode().props['data-package-version-source'], 'kept');
+    assert.ok(has('component.packageVersionKept'), 'a kept reading is not said as such');
+    // Busy at every check for more than a day: one short line on what to check.
+    assert.equal(tree.root.findAll((node) => node.props && node.props['data-package-version-kept-long'] !== undefined).length, 1);
+    assert.ok(has('component.packageVersionKeptLong'));
+  } finally { await cleanup(); }
+  try {
+    await page({});
+    assert.equal(versionNode(), undefined, 'a record without a version shows one');
+    assert.ok(!has('component.packageVersion'));
+  } finally { await cleanup(); }
 });

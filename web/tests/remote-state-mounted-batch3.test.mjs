@@ -8,8 +8,8 @@ import { readAllowList, scanTree } from './remote-state-ratchet.mjs';
 import { fileURLToPath } from 'node:url';
 import { en } from '../src/i18n/en.ts';
 import { tr } from '../src/i18n/tr.ts';
-import { trScreens } from '../src/i18n/screens/tr.ts';
-import { trServerScreens } from '../src/i18n/screens/server/tr.ts';
+import { trScreens } from './locale-catalogue.mjs';
+import { trServerScreens } from './locale-catalogue.mjs';
 
 // NO NEGATIVE UI UNLESS KNOWN, third batch (9 Oct 2026, D-024): the Fail2ban,
 // Nginx, PHP and Dovecot pages, the PowerDNS page's file list, and the DNS

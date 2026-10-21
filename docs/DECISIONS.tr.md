@@ -21,6 +21,98 @@ git'te yaşar; bu dosya strateji içindir. En yeni en üstte.
 
 ---
 
+## D-036 · Gösterilen sürüm paket veritabanının kendi yanıtıdır; bilinmeyen, bilinmeyen olarak kalır
+
+*21 Ekim 2026 (saat tarihi) · Sahibin 17 Ekim 2026 tarihli alpha.94 ekranlarının ve D-034 değişikliğindeki açık işin ardından; v0.1.0-alpha.97 adayı için kaynakta; kurulu bir sunucuda hiçbir şey ölçülmedi*
+
+Sahibin alpha.94 ekran görüntüleri, Bileşenler sayfasında tek sürümlü her bileşen
+için (Nginx, PostgreSQL, MariaDB, Postfix, Dovecot, Certbot, Redis…) çizgilerden
+oluşan bir sürüm sütunu gösteriyordu. alpha.95 sütunu kaldırdı ve "her bileşen için
+kurulu paket sürümünü okumak"ı açık iş olarak kaydetti (D-034 değişikliği): Panel
+sürümleri yalnız çok sürümlü çalışma ortamları (PHP-FPM, Node.js) için biliyordu,
+Agent'ın birim başına ikili yoklaması bir paket sürümü değildir ve güvenilmezdir,
+Certbot gibi araçların ise hiç birimi yoktur.
+
+Benimsenen kurallar:
+
+1. **Kaynak, salt-okur sorulan sistem paket veritabanıdır.** Yeni bir Agent
+   okuması, `Agent.InstalledPackageVersionsV1`, mevcut bileşen taraması sırasında,
+   tarama başına bir kez, tüm katalog için tek bir sorgu olarak çalışır: Debian ve
+   Ubuntu'da sabit biçimli (paket, durum, sürüm) `dpkg-query -W`, Arch'ta
+   `pacman -Q`. Sabit argv, kabuk yok, ağ yok, 10 saniyelik zaman aşımı ve 8 MiB
+   çıktı sınırı. Hangi paketlerin sayılacağı Agent'ın kendi derlenmiş
+   kataloğudur (bu ailede bileşenin paketleri; PostgreSQL'in `postgresql-17`
+   gibi sürümlü bir depo kalıbı olan bir bileşen için, herhangi biri kuruluysa
+   sürümlü paketler, çünkü o zaman katalog adı sürümü sunucunun sürümü olmayan bir
+   üst pakettir). Okuma hiçbir paket yöneticisi kilidi almaz.
+2. **Bir paket işlemi sürerken asla.** Sorgudan önce Agent süreç tablosunu ve
+   (pacman ve apt/dpkg araçları dahil) çekirdeğin kilit tablosunu apt/dpkg kilit
+   dosyaları için okur; kendisi, bir an için bile, asla kilit almaz. Öldürülmüş bir
+   pacman'in geride bıraktığı kilit dosyası, canlı bir pacman süreci yoksa sayılmaz;
+   yoksa sürümler bir daha hiç okunmazdı. Meşgul bir sunucu ya da
+   durumu okunamayan bir sunucu "meşgul" yanıtı verir: hiçbir şey sorgulanmaz ve
+   Panel önceki taramanın sürümlerini, korunmuş olarak ve okundukları zamanla
+   birlikte işaretleyerek tutar.
+3. **Bilinmeyen, bilinmeyen olarak kalır.** Kurulu katalog paketi olmayan bir bileşen
+   listelenmez. Yalnız veritabanının kurulu dediği paket sayılır: dpkg'de, istenen
+   işlem ne olursa olsun ("ii", tutulan "hi", kaldırma ya da temizleme için
+   işaretlenen "ri"/"pi") mevcut durumu "i" ve hata bayrağı boş olan paket; "yeniden
+   kurulum gerekli" ("iiR"), yarım kurulu, açılmış ya da yalnız yapılandırması kalmış
+   ("rc") paketin sürümü yoktur. 64 karakterden
+   uzun ya da bir paket veritabanının yazmayacağı karakterler taşıyan bir sürüm
+   metni atılır, asla kısaltılmaz; bu durumda bileşenin tüm sürümü bilinmez olur.
+   Paketleri farklı sürümler bildiren bir bileşen "birden çok sürüm"dür, asla
+   bunlardan biri değildir. Başarısız ya da desteklenmeyen bir okuma her sürümü
+   bilinmez bırakır. Tahmin edilmiş sürüm yok, çizgi yok, "varsayılan" yok.
+4. **Ne gösterilir.** Basıldığı gibi tam sürüm, epoch ve revizyon korunarak
+   (`1:11.8.3-0+deb13u1`), bileşenin kendi sayfasında kaynağıyla birlikte
+   ("Sistemin paket veritabanından okundu."; korunan bir okuma için, ne zaman
+   okunduğu ve son denetimde paket yöneticisinin meşgul olduğu), her bileşen
+   sayfasının paylaştığı başlıkta. Bileşenler satırlarında Panel'in kısa biçimi,
+   yani yukarı akış kısmı (`11.8.3`: epoch, son tireden sonraki paketleme
+   revizyonu ve `+dfsg`/`~deb` gibi bir sonek çıkarılmış), mono yazı tipinde,
+   ipucunda tam sürüm ve kaynağıyla. Masaüstü sürüm sütunu yalnız sayfadaki kurulu
+   bileşenlerden en az birinin paket sürümü biliniyorsa geri gelir; aksi hâlde
+   alpha.95'in açıklamanın altındaki satırı kalır. Telefonda sürüm açıklamanın
+   altındadır. PHP-FPM ve Node.js kopya başına sürümlerini korur ve onlara bir
+   paket sürümü verilmez.
+5. **Yetkilendirme ve depolama mevcut taramayı izler.** Panel yöntemi bir okuma
+   olarak kabul eder (hızlı okuma zaman aşımı, ana makine yetkisi yok), diğer
+   tarama okumaları gibi; tarama başına bir kez çağırır ve bir hata taramayı asla
+   başarısız kılmaz. Yanıt, mevcut tarama önbelleğiyle birlikte her gözlemin
+   eklemeli bir JSON alanı olarak taşınır; alpha.97'den önce yazılmış bir önbellek
+   satırında bu alan yoktur ve bilinmeyen olarak okunur. Şema değişikliği yok (44).
+
+Bunun yetkilendirmediği: hiçbir türden paket işlemi, tarama dışında sürüm
+okuması, sürümler için ağ okuması, bu sürümlerden "en yeni sunulan" ya da güncelleme
+önerisi ve sahibin kurulu sunucularda görmesinden önce onlar hakkında hiçbir
+iddia. Kurulu paneller hâlâ yalnız sahipleri tarafından, panelin kendi güncelleme
+ekranından güncellenir.
+
+Geri kalanla ilişkisi. D-024 (bilinmeyen yok demek değildir; kimin işlem yaptığını
+ve nasıl devam edildiğini söyle): korunan bir okuma bunu söyler, hiçbir şeyin
+bilinmediği yerde hiçbir şey söylenmez. D-032 (panel kendiliğinden bakar): okuma
+mevcut koşullu ve elle taramalara biner ve zamanlayıcı eklemez. D-034 değişikliği:
+"her bileşen için kurulu paket sürümünü okumak" açık işi bu kararla kaynakta
+uygulanmıştır; kurulu bir sunucuda ölçülmemiştir.
+
+*Adayın bağımsız incelemesinden sonra aynı gün düzeltildi:* ilk biçim yalnız dpkg'nin
+"ii" durumunu sayıyordu (kural 3 artık her kurulu durumu sayar); çıktı tavanını
+aşan yanıt genel bir hata olarak bildiriliyor ve sorgu çalışmayı sürdürüyordu (artık
+sorgunun süreç grubu tavanda öldürülür ve yanıt "okuma tavanından büyük"tür); sorgu
+Agent'ın ortamını devralıyordu (artık `LC_ALL=C`, `LANG=C` ve sabit bir `PATH`,
+başka hiçbir şey); kilit tablosu okuması sınırsızdı ve inode'u olmayan bir kilidi
+reddediyordu (artık en çok 1 MiB ve böyle bir satır atlanır); bayat bir pacman kilit
+dosyası sonsuza dek meşgul demekti (artık canlı bir pacman süreci gerekir); bir günden
+uzun korunan okumanın yönlendirmesi yoktu (artık sayfa şunu ekler: "Paket yöneticisi
+bir günden uzun süredir her denetimde meşgul. Sunucuda bir kurulum ya da güncelleme
+çalışmıyorsa sunucu yöneticisi takılı kalmış bir paket işlemi olup olmadığına
+bakmalı."); ve sayfanın kendi taraması paket veritabanı yanıt verirken Panel'in
+değişiklik kirasını tutuyordu (artık sürümleri kirayı almadan önce okur; bir
+işlemin sonundaki taze tarama onları yine o işlemin kirası içinde okur).
+
+---
+
 ## D-035 · Panel güncellemeleri kendiliğinden arar ve bunu sakin bir dille söyler; güncellemeyi yalnız bir yönetici başlatır
 
 *17 Ekim 2026 (saat tarihi) · v0.1.0-alpha.95'e güncellenirken sahibin isteği; v0.1.0-alpha.96 adayı için kaynakta; kurulu bir sunucuda hiçbir şey ölçülmedi*

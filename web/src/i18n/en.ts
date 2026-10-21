@@ -21,8 +21,15 @@ import type { SetupDNSKey } from './setupDNS/en';
 // duydugu metin - giris ekrani, gezinme rayi, profil menusu, suren bir islem ve
 // bunlarin hepsinin dusebilecegi ret sozlugu. Gerisi ./screens icindedir ve
 // ihtiyaci olan ekranla birlikte getirilir (defter R-060).
-import type { ScreenKey } from './screens/en';
-import type { ServerScreenKey } from './screens/server/en';
+import type { SetupScreenKey } from './screens/setup/en';
+import type { SitesScreenKey } from './screens/sites/en';
+import type { SiteConfigScreenKey } from './screens/siteConfig/en';
+import type { DnsCertificatesScreenKey } from './screens/dnsCertificates/en';
+import type { ComponentsScreenKey } from './screens/components/en';
+import type { MailDatabasesScreenKey } from './screens/mailDatabases/en';
+import type { SecurityScreenKey } from './screens/security/en';
+import type { DashboardScreenKey } from './screens/dashboard/en';
+import type { SettingsScreenKey } from './screens/settings/en';
 
 export const en = {
     'app.name': 'CelikPanel',
@@ -221,6 +228,8 @@ export const en = {
     'panelUpdate.outcome.preflightStep.material_support': "Reason: the selected recovery runtime does not support this update's recovery data.",
     'panelUpdate.outcome.preflightStep.database_support': "Reason: the selected recovery runtime does not support this update's database migration.",
     'panelUpdate.outcome.preflightStep.database_metadata': "Reason: the panel database's metadata is not supported for this update's migration.",
+    // alpha.97: the reason line while a step's words load (the step texts of alpha.97 are in the settings screen part).
+    'panelUpdate.outcome.reasonLoading': "Reading the reason…",
     'panelUpdate.outcome.preflightStep.generic': "Reason: a read-only check could not verify the current installation.",
     'panelUpdate.outcome.stoppedNext': "Nothing needs to be done on the server, unless the server's message below names a condition on this server, such as another operation still running or the package manager busy: then let it finish or fix it first.",
     'panelUpdate.outcome.stoppedResume': "Nothing resumes by itself. Starting the update to {target} again is safe.",
@@ -559,4 +568,15 @@ export const en = {
 } as const;
 
 export type ShellKey = keyof typeof en;
-export type TranslationKey = ShellKey | ScreenKey | ServerScreenKey | SetupDNSKey;
+// Every screen part's keys; a part missing here would make its keys untyped.
+export type ScreenKey =
+    | SetupScreenKey
+    | SitesScreenKey
+    | SiteConfigScreenKey
+    | DnsCertificatesScreenKey
+    | ComponentsScreenKey
+    | MailDatabasesScreenKey
+    | SecurityScreenKey
+    | DashboardScreenKey
+    | SettingsScreenKey;
+export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey;

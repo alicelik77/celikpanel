@@ -4,8 +4,8 @@ import test from 'node:test';
 import ts from 'typescript';
 import { en } from '../src/i18n/en.ts';
 import { tr } from '../src/i18n/tr.ts';
-import { enServerScreens } from '../src/i18n/screens/server/en.ts';
-import { trServerScreens } from '../src/i18n/screens/server/tr.ts';
+import { enServerScreens } from './locale-catalogue.mjs';
+import { trServerScreens } from './locale-catalogue.mjs';
 
 // The failed-update notice takes its primary text from the exact request's
 // recovery observation and typed cause. The worker's raw summary is only ever a
@@ -376,7 +376,12 @@ test('the server line drops internal tokens in every state and is labelled as En
     assert.match(tr['panelUpdate.outcome.serverMessage'], /^Sunucunun İngilizce günlük satırı: \{message\}$/);
     assert.match(en['panelUpdate.outcome.serverMessage'], /\{message\}/);
     const tracker = readFileSync(new URL('../src/components/SystemUpdateOperation.tsx', import.meta.url), 'utf8');
-    assert.match(tracker, /value\.fallback && !screensReady \? value\.fallback : value\.key/);
+    // alpha.97: while the screen copy loads the line waits ("Reading the
+    // reason…"); the boot fallback only when the screen copy failed.
+    // A key already in the loaded copy is shown at once; the wait is bounded.
+    assert.match(tracker, /const wordsLoaded = \(value: OutcomeText\) => 'text' in value \|\| !value\.fallback \|\| screensReady \|\| t\(value\.key\) !== value\.key;/);
+    assert.match(tracker, /screensFailed \|\| reasonWaitOver \? t\(value\.fallback, value\.vars\) : t\('panelUpdate\.outcome\.reasonLoading'\)/);
+    assert.match(tracker, /window\.setTimeout\(\(\) => setReasonWaitOver\(true\), SYSTEM_UPDATE_REASON_WAIT_MS\)/);
 });
 
 // Frankfurt 2026-10-16: red only when the owner must act; what the server

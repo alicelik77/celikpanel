@@ -5,6 +5,7 @@ import test from 'node:test';
 import { apiErrorText } from '../src/lib/apiError.ts';
 import { en } from '../src/i18n/en.ts';
 import { tr } from '../src/i18n/tr.ts';
+import { englishScreens, turkishScreens } from './locale-catalogue.mjs';
 
 // 10 Oct 2026. Three things that were said wrongly or not at all:
 //
@@ -27,8 +28,8 @@ const say = (catalogue) => (key, vars) => {
   const text = catalogue[key];
   return text === undefined ? key : text.replace(/\{(\w+)\}/g, (_, name) => String(vars?.[name] ?? `{${name}}`));
 };
-const screens = { en: read('../src/i18n/screens/en.ts'), tr: read('../src/i18n/screens/tr.ts') };
-const server = { en: read('../src/i18n/screens/server/en.ts'), tr: read('../src/i18n/screens/server/tr.ts') };
+const screens = { en: englishScreens, tr: turkishScreens };
+const server = { en: englishScreens, tr: turkishScreens };
 const valueOf = (source, key) => {
   const match = source.match(new RegExp(`^ {4}'${key.replace(/\./g, '\\.')}': ("(?:[^"\\\\]|\\\\.)*"),$`, 'm'));
   assert.ok(match, `${key} is not in the catalogue`);

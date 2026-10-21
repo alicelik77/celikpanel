@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import test from 'node:test';
+import { englishScreens, turkishScreens } from './locale-catalogue.mjs';
 
 // R-065. R-057 gave the panel an account of its own on a database engine so it
 // never has to touch the operator's root. That is only true for the operator
@@ -24,8 +25,8 @@ const screen = readFileSync(
   new URL('../src/components/DatabaseManagementV2.tsx', import.meta.url),
   'utf8',
 );
-const en = readFileSync(new URL('../src/i18n/screens/en.ts', import.meta.url), 'utf8');
-const tr = readFileSync(new URL('../src/i18n/screens/tr.ts', import.meta.url), 'utf8');
+const en = englishScreens;
+const tr = turkishScreens;
 
 // A tenant has nothing to do with the account the panel connects as, and the
 // server list does not even tell them its name. The screen must not render a
@@ -202,8 +203,8 @@ test('the doubly-encoded matcher knows the real mistakes from Turkish', () => {
 test('no catalogue carries text that was encoded twice', () => {
   const files = catalogueFiles(new URL('../src/i18n/', import.meta.url));
   assert.ok(
-    files.some((file) => file.pathname.endsWith('/screens/server/en.ts')),
-    'the catalogue walk no longer reaches screens/server',
+    files.some((file) => file.pathname.endsWith('/screens/settings/en.ts')),
+    'the catalogue walk no longer reaches the screen parts',
   );
   for (const file of files) {
     const catalogue = readFileSync(file, 'utf8');

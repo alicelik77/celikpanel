@@ -345,3 +345,46 @@ type ServiceJournalResponse struct {
 	Lines []string `json:"lines"`
 	Error string   `json:"error,omitempty"`
 }
+
+// InstalledPackageVersionsResponse answers Agent.InstalledPackageVersionsV1
+// (v0.1.0-alpha.97): the installed package versions of the catalogue
+// components, read from the system package database in one bounded read-only
+// query. State says what the read established:
+//   - "read": the database answered; Components lists every component with at
+//     least one installed catalogue package (a component that is absent is
+//     not listed, so its version is unknown, never guessed);
+//   - "busy": a package operation was running, so nothing was read and the
+//     caller keeps its previous answer, marked as such;
+//   - "unsupported": this package family has no version read;
+//   - "failed": the query did not complete; Error says why, without output.
+//
+// InstalledPackageVersionsResponse, katalog bileşenlerinin kurulu paket
+// sürümlerini sistemin paket veritabanından tek salt-okur sorguyla bildirir.
+type InstalledPackageVersionsResponse struct {
+	Family     string                     `json:"family"`
+	State      string                     `json:"state"`
+	Error      string                     `json:"error,omitempty"`
+	Components []ComponentPackageVersions `json:"components"`
+}
+
+// Installed package version read states.
+const (
+	PackageVersionsRead        = "read"
+	PackageVersionsBusy        = "busy"
+	PackageVersionsUnsupported = "unsupported"
+	PackageVersionsFailed      = "failed"
+)
+
+// ComponentPackageVersions is one catalogue component's installed packages,
+// each with the version string exactly as the package database prints it
+// (epoch and revision kept, for example 1:10.11.13-0+deb13u1).
+type ComponentPackageVersions struct {
+	ServiceID string                    `json:"service_id"`
+	Packages  []InstalledPackageVersion `json:"packages"`
+}
+
+// InstalledPackageVersion is one installed package and its version.
+type InstalledPackageVersion struct {
+	Package string `json:"package"`
+	Version string `json:"version"`
+}

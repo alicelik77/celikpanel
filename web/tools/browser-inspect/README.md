@@ -530,3 +530,33 @@ amber, the failure colour and green (`amberUsed`, `redUsed`, `greenUsed`),
 phone targets under 44 px, sideways scrolling, the switch, the sidebar link and
 the Dashboard row with their places. The screenshots are the inspection; these
 scenarios do not fail on a finding.
+
+## Scenarios of the twenty-second batch (the installed package versions, 2026-10-21)
+
+`scenarios-batch22.mjs`, with a small server answered by `mock-batch22.mjs`
+while `state.b22` is set: it is the batch-20 server asked through its own state
+key, with the package versions of alpha.97 (`package_version`,
+`package_version_short`, `package_versions_differ`, `package_versions`,
+`package_version_kept`, `package_version_read_at`) added by
+`sample-package-versions.mjs` (batches 19 and 20 use the same helper). **Every
+version string is sample data, not measured**: Debian 13 strings for the
+Frankfurt-shaped server, Ubuntu 24.04 strings for the Boston-shaped one. A
+component the sample does not know (tools such as phpMyAdmin and Roundcube, cron,
+Rspamd) carries no field, which the interface reads as unknown. Run it with
+`desktop` and `phone`, Turkish and English, both themes (about 40 seconds each);
+each state is also copied to `BROWSER_INSPECT_SHOTS` as
+`<state>-<lang>-<theme>-<width>.png`.
+
+| Name | States |
+| --- | --- |
+| `y22boston` | Components on the Boston-shaped server: the version column, the upstream part in mono (`components-boston`, the whole page) |
+| `y22frankfurt` | the Frankfurt-shaped server with SpamAssassin installed ("several versions") and Postfix's reading kept from an earlier scan (`components-frankfurt`) |
+| `y22none` | both servers with no package version known: no column, no dash, nothing (`components-boston-none`, `components-frankfurt-none`) |
+| `y22component` | one component's page, whose header says the installed version once under the name and status line on every page, generic and specialised: Nginx, MariaDB (the full version with its epoch), SpamAssassin (two packages, two versions), BIND (an earlier reading) and phpMyAdmin (a tool without a version: no line) (`component-nginx`, `-mariadb`, `-spamassassin`, `-bind-kept`, `-phpmyadmin-unknown`) |
+
+Each record adds the version cells (`rowVersions`: the text shown, the full
+version, the tooltip, whether it is drawn in mono and its colour), the number of
+column cells and how many are visible, the header's version line (`detailVersion`), raw
+keys, English on the Turkish page, amber, failure and green text, text past the
+right edge and sideways scrolling. The screenshots are the inspection; these
+scenarios do not fail on a finding.

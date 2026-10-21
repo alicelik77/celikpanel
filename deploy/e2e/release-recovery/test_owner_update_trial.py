@@ -2240,8 +2240,13 @@ class H10CardModelTests(unittest.TestCase):
         busy = self.card({"found": True, "request_id": RID, "status": "failed",
                           "summary": "x: !! CELIKPANEL_UPDATE_FAILURE code=package_manager_busy state=unchanged "
                                      "reason=apt lock"}, None)
-        self.assertEqual(busy["keys"][0], "panelUpdate.failed")
-        self.assertEqual(busy["texts"]["tr"][1], self.translator.text("panelUpdate.packageManagerBusy", language="tr"))
+        # alpha.97 (Frankfurt, 2026-10-17): a busy package manager is a calm stop before
+        # anything changed, with its own reason and when to start again, not a failure.
+        self.assertEqual(busy["keys"][:4], ["panelUpdate.outcome.stoppedTitle", "panelUpdate.outcome.stopped",
+                                            "panelUpdate.outcome.packageManagerBusy",
+                                            "panelUpdate.outcome.packageManagerBusyNext"])
+        self.assertEqual(busy["texts"]["tr"][2],
+                         self.translator.text("panelUpdate.outcome.packageManagerBusy", language="tr"))
         unread = self.card({"found": True, "request_id": RID, "status": "failed"}, {"schema": "other"})
         self.assertEqual(unread["state"], "unknown")
         self.assertTrue(unread["observation_error"])

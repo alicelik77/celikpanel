@@ -143,6 +143,26 @@ type ManagedServiceResponse struct {
 	// göstermek, "bu sunucumda neyi açtı?" sorusunu, genel port şeridini okuyup
 	// hangisinin kime ait olduğunu tahmin etmeden yanıtlar.
 	Ports []string `json:"ports,omitempty"`
+	// Installed package version (alpha.97, D-036; additive, see
+	// managed_service_package_versions.go). Set only for an observed,
+	// installed component that is not a multi-version runtime. PackageVersion
+	// is the full version as the package database prints it, only when every
+	// installed package of the component agrees; PackageVersionShort is its
+	// upstream part for the row; PackageVersionsDiffer says the packages
+	// report different versions; PackageVersions lists them for the
+	// component's page; PackageVersionKept says the package manager was busy
+	// at the last scan and these are the versions read at
+	// PackageVersionReadAt.
+	// Kurulu paket sürümü: paket veritabanının kendi yanıtı; bilinmeyen boş kalır.
+	PackageVersion        string                              `json:"package_version,omitempty"`
+	PackageVersionShort   string                              `json:"package_version_short,omitempty"`
+	PackageVersionsDiffer bool                                `json:"package_versions_differ,omitempty"`
+	PackageVersions       []transport.InstalledPackageVersion `json:"package_versions,omitempty"`
+	PackageVersionKept    bool                                `json:"package_version_kept,omitempty"`
+	PackageVersionReadAt  string                              `json:"package_version_read_at,omitempty"`
+	// PackageVersionKeptLong: the kept reading is more than a day old, so the
+	// page adds a short line on what the server administrator checks.
+	PackageVersionKeptLong bool `json:"package_version_kept_long,omitempty"`
 }
 
 // Installed answers the only question the panel's own logic may ask of a
@@ -297,6 +317,16 @@ type serviceObservation struct {
 	// durumu olarak saklanır; eski önbellek satırları boş dilime çözülür ve sürüme
 	// özel Onarım için güvenli biçimde kapalı kalır.
 	InstalledRepoPackages []string `json:"installed_repo_packages,omitempty"`
+	// PackageVersions are the component's installed packages and versions
+	// from Agent.InstalledPackageVersionsV1 (alpha.97), read at
+	// PackageVersionsReadAt; Kept marks versions carried over from an earlier
+	// scan because the package manager was busy. A row written before
+	// alpha.97 has none of the three and reads as unknown.
+	// Paket sürümleri; alpha.97 öncesi satırda yoktur ve bilinmez okunur.
+	PackageVersions         []transport.InstalledPackageVersion `json:"package_versions,omitempty"`
+	PackageVersionsReadAt   string                              `json:"package_versions_read_at,omitempty"`
+	PackageVersionsKept     bool                                `json:"package_versions_kept,omitempty"`
+	PackageVersionsKeptLong bool                                `json:"package_versions_kept_long,omitempty"`
 }
 
 // scanCacheDoc is the persisted shape. An object (not a bare array) so the
@@ -579,6 +609,19 @@ func catalogViewForHost(obs []serviceObservation, host core.ManagedServiceHostPr
 			isInstalled = &installedTrue
 		}
 
+		var packageVersion, packageVersionShort string
+		var packageVersionsDiffer bool
+		var packageVersions []transport.InstalledPackageVersion
+		packageVersionReadAt, packageVersionKept, packageVersionKeptLong := "", false, false
+		if isInstalled != nil && *isInstalled && managed.Kind != core.KindRuntime && len(o.PackageVersions) > 0 {
+			packageVersion, packageVersionShort, packageVersionsDiffer = packageVersionView(o.PackageVersions)
+			if packageVersion != "" || packageVersionsDiffer {
+				packageVersions = o.PackageVersions
+				packageVersionReadAt, packageVersionKept = o.PackageVersionsReadAt, o.PackageVersionsKept
+				packageVersionKeptLong = o.PackageVersionsKept && o.PackageVersionsKeptLong
+			}
+		}
+
 		response = append(response, ManagedServiceResponse{
 			ID:                managed.ID,
 			Unit:              o.Unit,
@@ -602,6 +645,14 @@ func catalogViewForHost(obs []serviceObservation, host core.ManagedServiceHostPr
 			RepairPackage:     repairPackage,
 			RepairAvailable:   repairAvailable,
 			ConfigFiles:       configFiles,
+
+			PackageVersion:         packageVersion,
+			PackageVersionShort:    packageVersionShort,
+			PackageVersionsDiffer:  packageVersionsDiffer,
+			PackageVersions:        packageVersions,
+			PackageVersionKept:     packageVersionKept,
+			PackageVersionReadAt:   packageVersionReadAt,
+			PackageVersionKeptLong: packageVersionKeptLong,
 		})
 	}
 	return response
@@ -743,13 +794,19 @@ func (p *Panel) handleManagedServicesScan(w http.ResponseWriter, r *http.Request
 		}
 	}
 
+	// The installed package versions are read before the mutation lease: a
+	// read-only query that takes no lock does not hold the lease while the
+	// package database answers (alpha.97 review).
+	// Sürümler kiradan önce okunur: kilit almayan salt-okur sorgu.
+	packageVersions := p.packageVersionsForScan(r.Context())
+
 	release, busy := p.beginServiceMutation(w, r)
 	if busy {
 		return
 	}
 	defer release()
 
-	services, err := p.scanManagedServices(r.Context())
+	services, err := p.scanManagedServicesWithVersions(r.Context(), packageVersions)
 	if err != nil {
 		// An Agent that cannot be reached is named by writeServerError
 		// (AGENT_UNREACHABLE); every other failure keeps the generic answer.
@@ -869,6 +926,20 @@ func (p *Panel) managedServicesCacheWithin(ctx context.Context, maxAge time.Dura
 // scanManagedServices, agent'tan gerçek sistem durumunu ister, seçili
 // kataloğa işler ve sonucu kalıcılaştırır.
 func (p *Panel) scanManagedServices(ctx context.Context) ([]ManagedServiceResponse, error) {
+	return p.scanManagedServicesWithVersions(ctx, nil)
+}
+
+// scanManagedServicesWithVersions is the scan with the installed package
+// versions already read (nil: read them here). The page's own scan reads them
+// before it takes the Panel's mutation lease (handleManagedServicesScan): the
+// read is read-only and takes no lock, so it does not need to hold the lease
+// while the package database answers (up to 10 s). Every other caller is the
+// fresh scan at the end of an operation that already holds the lease; it
+// reads them here, inside that operation, because the operation's own lease
+// is what makes its scan the state after its change.
+// Sürümler sayfanın kendi taramasında değişiklik kirasından önce okunur;
+// işlemlerin sonundaki taze tarama onları kendi kirası içinde okur.
+func (p *Panel) scanManagedServicesWithVersions(ctx context.Context, packageVersions map[string]observedPackageVersions) ([]ManagedServiceResponse, error) {
 	var allServices []core.Service
 	if err := p.callAgentContext(ctx, "Agent.GetServices", &transport.Empty{}, &allServices); err != nil {
 		return nil, err
@@ -885,6 +956,9 @@ func (p *Panel) scanManagedServices(ctx context.Context) ([]ManagedServiceRespon
 	installedSet := map[string]bool{}
 	for _, id := range installedIDs {
 		installedSet[id] = true
+	}
+	if packageVersions == nil {
+		packageVersions = p.packageVersionsForScan(ctx)
 	}
 	// This loop observes the host and nothing else. What the catalogue says
 	// about each service is added later, on every read, by catalogView.
@@ -1041,7 +1115,7 @@ func (p *Panel) scanManagedServices(ctx context.Context) ([]ManagedServiceRespon
 			}
 		}
 
-		observations = append(observations, serviceObservation{
+		observation := serviceObservation{
 			ID:                    managed.ID,
 			IsInstalled:           isInstalled,
 			Status:                status,
@@ -1049,7 +1123,14 @@ func (p *Panel) scanManagedServices(ctx context.Context) ([]ManagedServiceRespon
 			Instances:             instances,
 			ConfigFiles:           uniqueConfigFiles(configFiles),
 			InstalledRepoPackages: installedRepoPackages,
-		})
+		}
+		if read, ok := packageVersions[managed.ID]; ok && isInstalled {
+			observation.PackageVersions = read.Packages
+			observation.PackageVersionsReadAt = read.ReadAt
+			observation.PackageVersionsKept = read.Kept
+			observation.PackageVersionsKeptLong = read.KeptLong
+		}
+		observations = append(observations, observation)
 	}
 
 	webmailReady := false

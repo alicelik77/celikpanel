@@ -307,3 +307,27 @@ export function wholeVersion(text: string, version: string): ReactNode {
         createElement('span', { className: 'whitespace-nowrap', 'data-version': '' }, version),
         text.slice(at + version.length));
 }
+
+/**
+ * The stored summary of one earlier update request, read once by the update
+ * card when the recovery record kept no cause for it (alpha.97: Frankfurt's
+ * stop of 2026-10-17, a busy package manager). A GET that never starts
+ * anything. An unread answer is said as unread, never as "no summary".
+ * Önceki bir güncelleme isteğinin saklı özeti; okunamayan yanıt okunamadı denir.
+ */
+export type PanelUpdateAttemptSummary = { read: true; summary: string | null } | { read: false };
+
+export async function readPanelUpdateAttemptSummary(requestID: string, signal: AbortSignal): Promise<PanelUpdateAttemptSummary> {
+    if (!/^[a-f0-9]{32}$/.test(requestID)) return { read: false };
+    try {
+        const response = await fetch(`/api/v1/panel/update/status?request_id=${requestID}`, {
+            cache: 'no-store', credentials: 'same-origin', signal,
+        });
+        if (!response.ok) return { read: false };
+        const body = await response.json() as { found?: unknown; request_id?: unknown; status?: unknown; summary?: unknown };
+        const failed = body.found === true && body.request_id === requestID && body.status === 'failed' && typeof body.summary === 'string';
+        return { read: true, summary: failed ? String(body.summary) : null };
+    } catch {
+        return { read: false };
+    }
+}

@@ -13,5 +13,6 @@ export function decodePanelUpdateDiscovery() { return null; }
 export function availablePanelUpdate(value) { return value?.target ?? null; }
 export function relativeAge(moment, now, _locale, justNow) { return now - moment < 60000 ? justNow : '2 hours ago'; }
 export function clockTime() { return '15:30'; }
+export async function readPanelUpdateAttemptSummary(id) { const summary = globalThis.__panelUpdateAttemptSummary?.(id); return summary === undefined ? { read: false } : { read: true, summary }; }
 `;
 }
