@@ -13,6 +13,7 @@ import { publishComponentCensus } from '../lib/componentCensus';
 import { runStoredRecordCheck } from '../lib/managedServices';
 import { startVisibleReads } from '../lib/visibleReads';
 import { useNavigate } from '../router';
+import { packageVersionFacts } from '../lib/packageVersion';
 
 interface ManagedService {
     id: string;
@@ -139,7 +140,7 @@ export function ServiceShell({
     onServiceRefreshed?: () => void;
     children: ReactNode;
 }) {
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
     const navigate = useNavigate();
     const { role } = useAuth();
     const { startInstall, locked: installLocked, checking: installChecking, catalogSnapshot } = useComponentOperation();
@@ -258,6 +259,15 @@ export function ServiceShell({
 
     const observed = observedStateOf(svc);
     const installed = observed === 'present';
+    // The installed package version in full, as the system package database
+    // printed it, and where it came from (alpha.97, D-036): in the header of
+    // every component page, the generic one and the specialised ones alike.
+    // Unknown says nothing.
+    // Kurulu paket sürümü tam hâliyle ve kaynağıyla, her bileşen sayfasının
+    // başlığında; bilinmeyen susar.
+    const packageVersion = installed ? packageVersionFacts(svc) : null;
+    const packageVersionReadAt = packageVersion?.readAt
+        ? new Date(packageVersion.readAt).toLocaleString(locale === 'tr' ? 'tr-TR' : 'en-US') : '';
     const running = installed && (svc?.status?.includes('running') ?? false);
     // The record could not be read and there is no earlier one: nothing is
     // known about this component here. With an earlier one, that record stays
@@ -461,6 +471,28 @@ export function ServiceShell({
                             </>
                         )}
                     </p>
+                    {packageVersion && (
+                        <div className="mt-1 max-w-prose text-xs text-fg-muted" data-package-version={packageVersion.several ? 'several' : packageVersion.full}>
+                            {packageVersion.several ? (
+                                <p>
+                                    {t('component.packageVersionSeveral')}{' '}
+                                    {packageVersion.packages.map((pkg, index) => (
+                                        <span key={`${pkg.package}:${pkg.version}`} className="font-mono text-fg">{`${index > 0 ? ', ' : ''}${pkg.package} ${pkg.version}`}</span>
+                                    ))}
+                                </p>
+                            ) : (
+                                <p>
+                                    {`${t('component.packageVersion')}: `}
+                                    <span className="break-all font-mono text-fg">{packageVersion.full}</span>
+                                </p>
+                            )}
+                            <p data-package-version-source={packageVersion.kept ? 'kept' : 'read'}>
+                                {packageVersion.kept && packageVersionReadAt
+                                    ? t('component.packageVersionKept', { time: packageVersionReadAt })
+                                    : t('component.packageVersionSource')}
+                            </p>
+                        </div>
+                    )}
                 </div>
 
                 {/* Help is ALWAYS reachable — installed or not, running or

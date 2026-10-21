@@ -2027,16 +2027,18 @@ test('every infrastructure zone text exists in both languages', () => {
   for (const [key, value] of en) assert.ok(tr.has(key) && tr.get(key) !== value, key);
 });
 
-// alpha.97 (D-036): a component's page shows its installed package version in
-// full, as the package database printed it, and where it came from; packages
-// that differ are each named; a kept reading says when it was read; a record
-// without one says nothing about versions.
-// Bileşen sayfası kurulu paket sürümünü tam hâliyle ve kaynağıyla gösterir.
-test('a component page shows the full package version and its source; unknown says nothing', async () => {
+// alpha.97 (D-036): every component page (the generic one and the specialised
+// ones, which share this shell) shows the installed package version in its
+// header in full, as the package database printed it, and where it came from;
+// packages that differ are each named; a kept reading says when it was read;
+// a record without one says nothing about versions.
+// Her bileşen sayfasının başlığı kurulu paket sürümünü tam hâliyle ve
+// kaynağıyla gösterir.
+test('a component page shows the full package version and its source in its header; unknown says nothing', async () => {
   const page = async (extra) => {
     await freshCheck();
     serve({ '/api/v1/managed-services': () => Response.json({ services: [{ ...redisRecord, versions: [], ...extra }], scanned_at: new Date().toISOString(), scan_age_seconds: 0 }) });
-    await mount(ComponentDetail, { serviceId: 'redis', onBack() {} });
+    await mount(ServiceShell, shell);
     await spin(3);
   };
   const versionNode = () => tree.root.findAll((node) => node.props && node.props['data-package-version'] !== undefined)[0];
