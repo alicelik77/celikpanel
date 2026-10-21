@@ -99,7 +99,7 @@ const SYSTEM_DATABASES = {
 // English words that must not appear on a Turkish page (whole-page scan, rail and header included).
 const ENGLISH_PHRASES = ['Is this server safe', 'Manage Fail2ban', 'Open Components', 'Sign out', 'My account', 'Inspect and safely', 'Your own sign-in', 'Shared nameservers', 'Panel address and HTTPS', 'DNS and peer servers', 'Maintenance', 'Read-only', 'Two-factor', 'Retry', 'Refresh', 'Settings', 'Security', 'Server setup', 'Not checked', 'Change password', 'Password', 'Firewall', 'Dashboard', 'Hosting'];
 const STOPWORDS = /\b(the|and|your|this|with|for|of|is|are|has|have|not|yet|from|you|can|will)\b/i;
-const RAW = /\b(nav|securityPage|settings|account|systemDb|dnsPeers|maintenance|services|securityAudit|profile|user|common)\.[a-zA-Z][a-zA-Z0-9.]*\b|\{[a-zA-Z]+\}/;
+const RAW = /\b(nav|securityPage|settings|account|systemDb|dnsPeers|maintenance|services|securityAudit|profile|user|common|err|errors|setup|dns|firewall|recovery|panelUpdate|license|dashboard|domains)\.[a-zA-Z][a-zA-Z0-9.]*\b|\{[a-zA-Z]+\}/;
 
 const facts = (page, locale) => page.evaluate((english, stop, rawSource, locale) => {
     const visible = (node) => node.getClientRects().length > 0 && getComputedStyle(node).visibility !== 'hidden';
@@ -305,9 +305,15 @@ export default function batch23(scenarios, { base, locale, theme, out, viewport,
             await reset(); await clean();
             await as(role);
             const page = await open('/', null);
-            await page.click('button[aria-controls="personal-menu"]').catch(() => {});
+            // aria-controls is present only while the menu is open, so the button is the last aria-expanded button of the top bar (the style and theme switchers come before it).
+            const ariaBefore = await page.evaluate(() => Array.from(document.querySelectorAll('header button[aria-expanded]')).pop()?.getAttribute('aria-controls') ?? null);
+            await (await page.$$('header button[aria-expanded]')).pop()?.click();
             await pause(600);
-            await snap(page, `menu-${role}`);
+            await snap(page, `menu-${role}`, { ariaControlsBeforeOpen: ariaBefore });
+            // Focus leaves the menu: it must close, and aria-controls must go.
+            await page.evaluate(() => document.getElementById('celikpanel-main-content')?.focus());
+            await pause(500);
+            await snap(page, `menu-${role}-after-focus-left`, { menuStillOpen: await page.evaluate(() => !!document.querySelector('[data-personal-menu]')), ariaControlsAfter: await page.evaluate(() => Array.from(document.querySelectorAll('header button[aria-expanded]')).pop()?.getAttribute('aria-controls') ?? null) });
             await closePage(page);
             await clean();
         }
