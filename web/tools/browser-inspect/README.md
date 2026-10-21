@@ -560,3 +560,40 @@ column cells and how many are visible, the header's version line (`detailVersion
 keys, English on the Turkish page, amber, failure and green text, text past the
 right edge and sideways scrolling. The screenshots are the inspection; these
 scenarios do not fail on a finding.
+
+## Scenarios of the twenty-third batch (the menu layout, 2026-10-22)
+
+`scenarios-batch23.mjs`, with no mock of its own: the audit
+(`/api/v1/security/audit`, in the closed shape `SecurityAuditCard` reads), the
+system SQLite list (`/api/v1/system-databases`) and the three roles
+(`/api/v1/auth/me` as administrator, reseller and customer) are constants set
+through the mock's overrides; the firewall comes from `mock-batch3.mjs`
+(`state.b3`), the components, Fail2ban's stored record included, from
+`mock-batch20.mjs` (a Boston-shaped scan, whose status strings are the scan's
+real dialect "active (running)" and "inactive (dead)"), the Settings update card
+from `mock-batch21.mjs`. Nothing is installed, changed or contacted; every
+value is sample data. Run it with `desktop` and `phone`, Turkish and English,
+both themes (about 2 minutes each); each state is also copied to
+`BROWSER_INSPECT_SHOTS` as `<state>-<lang>-<theme>-<width>.png`.
+
+| Name | States |
+| --- | --- |
+| `y23sidebar` | the rail as administrator (on `/security`, so the active item shows), reseller and customer; on a phone the drawer opened with the Menu button (`sidebar-admin`, `sidebar-reseller`, `sidebar-customer`; on a wide screen also the whole page, `sidebar-<role>-page`) |
+| `y23security` | `/security` with the healthy firewall and Fail2ban "active (running)" (`security`); Fail2ban "inactive (dead)" (`security-f2b-stopped`); the firewall off and Fail2ban not installed, so the box shows its warning (`security-off`); `/security#firewall` at the window's own size, to see where the page lands (`security-hash`) |
+| `y23maintenance` | `/maintenance`: four system SQLite files, two of them not present (`maintenance`) |
+| `y23dns` | `/dns-infrastructure`: the DNS infrastructure content that moved from Settings (`dns-infrastructure`) |
+| `y23account` | `/account` as administrator, reseller (two-factor off) and customer (two-factor on) (`account-admin`, `account-reseller`, `account-customer`) |
+| `y23settings` | `/settings` as administrator and its four sections: Panel address and HTTPS, License, CelikPanel updates, Server setup (`settings`, `settings-license`, `settings-updates`, `settings-setup`) |
+| `y23menu` | the personal menu open, administrator and customer: My account first, the language switcher on a phone, Sign out (`menu-admin`, `menu-customer`) |
+| `y23redirects` | an old address opened cold: `/settings?section=account`, `?section=security`, `?section=dns`, `?section=system-databases` as administrator, `/settings` as customer, `/settings?section=updates` as reseller (`redirect-account`, `redirect-security`, `redirect-dns`, `redirect-system-databases`, `redirect-customer-settings`, `redirect-reseller-settings`); each record carries the final `location` (path, search, hash, `historyLength`) beside `baselineHistoryLength` of a page opened without a redirect, so a redirect that added a history entry shows |
+| `y23components` | Components with the healthy firewall as one calm line, whose Settings link must be `/security#firewall` (`components-firewall-line`); the link pressed (`components-firewall-line-followed`); the firewall off, whose box stays on Components (`components-firewall-off`) |
+
+Each record adds the headings, the rail (its group headings and every link with
+its address, the current one marked), the personal menu's items, raw keys
+(`rawKeys`), English on the Turkish page (`englishLeaks`: known phrases;
+`englishLines`: lines with common English words, a heuristic), the filled
+buttons, the text and surfaces drawn in amber, the failure colour and green
+(`amberUsed`, `redUsed`, `greenUsed`), phone targets under 44 px (rail, top bar,
+personal menu and page), sideways scrolling, elements past the right edge, the
+firewall line's link, Fail2ban's state and the Security page's sections. The
+screenshots are the inspection; these scenarios do not fail on a finding.
