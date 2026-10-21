@@ -1,10 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { englishScreens, turkishScreens } from './locale-catalogue.mjs';
 
 const setup = readFileSync(new URL('../src/components/ServerSetup.tsx', import.meta.url), 'utf8');
-const en = readFileSync(new URL('../src/i18n/screens/en.ts', import.meta.url), 'utf8');
-const tr = readFileSync(new URL('../src/i18n/screens/tr.ts', import.meta.url), 'utf8');
+const en = englishScreens;
+const tr = turkishScreens;
 
 const mapped = (code) => {
   const match = setup.match(new RegExp(String.raw`\n\s*${code}: '([^']+)'`));

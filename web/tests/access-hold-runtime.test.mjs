@@ -165,37 +165,37 @@ test('the wording exists in both languages, in the screen half, and says reason,
   const keys = ['licenseTitle', 'licenseHelp', 'availabilityTitle', 'availabilityHelp', 'authTitle', 'authHelp', 'waitingHelp', 'resume', 'prolonged', 'sessionEnded', 'updateReload', 'updateReloadTitle', 'updateTitle', 'updateHelp'].map(name => `accessHold.${name}`);
   const value = (file, key) => source(`../src/i18n/${file}.ts`).match(new RegExp(`'${key.replace('.', '\\.')}': "([^"]+)",`))?.[1];
   for (const key of keys) {
-    assert.ok(value('screens/en', key) && value('screens/tr', key), `${key} is missing from the screen half`);
+    assert.ok(value('screens/setup/en', key) && value('screens/setup/tr', key), `${key} is missing from the screen half`);
     for (const shell of ['en', 'tr']) assert.equal(value(shell, key), undefined, `${key} must not grow the boot payload`);
   }
   // Unknown is not a verdict on the license or the session.
-  assert.match(value('screens/en', 'accessHold.licenseHelp'), /does not mean your license is missing or expired/);
-  assert.match(value('screens/tr', 'accessHold.licenseHelp'), /lisansınızın eksik veya süresinin dolmuş olduğu anlamına gelmez/);
-  assert.match(value('screens/en', 'accessHold.authHelp'), /does not mean you were signed out/);
-  assert.match(value('screens/tr', 'accessHold.authHelp'), /oturumunuzun kapatıldığı anlamına gelmez/);
+  assert.match(value('screens/setup/en', 'accessHold.licenseHelp'), /does not mean your license is missing or expired/);
+  assert.match(value('screens/setup/tr', 'accessHold.licenseHelp'), /lisansınızın eksik veya süresinin dolmuş olduğu anlamına gelmez/);
+  assert.match(value('screens/setup/en', 'accessHold.authHelp'), /does not mean you were signed out/);
+  assert.match(value('screens/setup/tr', 'accessHold.authHelp'), /oturumunuzun kapatıldığı anlamına gelmez/);
   // Who acts (nobody yet), what happens by itself, how work resumes, what is blocked meanwhile.
-  assert.match(value('screens/en', 'accessHold.resume'), /do not need to do anything yet.*checks again by itself.*continues where it was, with what you typed.*nothing on this page can be changed/s);
-  assert.match(value('screens/tr', 'accessHold.resume'), /bir şey yapmanız gerekmiyor.*kendiliğinden yeniden kontrol eder.*yazdıklarınızla birlikte kaldığı yerden devam eder.*değişiklik yapılamaz/s);
+  assert.match(value('screens/setup/en', 'accessHold.resume'), /do not need to do anything yet.*checks again by itself.*continues where it was, with what you typed.*nothing on this page can be changed/s);
+  assert.match(value('screens/setup/tr', 'accessHold.resume'), /bir şey yapmanız gerekmiyor.*kendiliğinden yeniden kontrol eder.*yazdıklarınızla birlikte kaldığı yerden devam eder.*değişiklik yapılamaz/s);
   // The re-check runs every 5 s for a license read and every 10 s for the session, so no interval is stated.
-  for (const file of ['screens/en', 'screens/tr']) assert.doesNotMatch(value(file, 'accessHold.resume'), /\d|every few|saniye/, file);
+  for (const file of ['screens/setup/en', 'screens/setup/tr']) assert.doesNotMatch(value(file, 'accessHold.resume'), /\d|every few|saniye/, file);
   // Reload is offered with its cost.
-  assert.match(value('screens/en', 'accessHold.prolonged'), /keep waiting.*reload CelikPanel.*discards anything you typed/s);
-  assert.match(value('screens/tr', 'accessHold.prolonged'), /Beklemeyi sürdürebilirsiniz.*yeniden yükleyebilirsiniz.*yazıp kaydetmediğiniz her şeyi siler/s);
-  assert.match(value('screens/en', 'accessHold.sessionEnded'), /session ended.*Sign in to return to the page you were on.*not kept/s);
-  assert.match(value('screens/tr', 'accessHold.sessionEnded'), /Oturumunuz sona erdi.*dönmek için giriş yapın.*korunmadı/s);
+  assert.match(value('screens/setup/en', 'accessHold.prolonged'), /keep waiting.*reload CelikPanel.*discards anything you typed/s);
+  assert.match(value('screens/setup/tr', 'accessHold.prolonged'), /Beklemeyi sürdürebilirsiniz.*yeniden yükleyebilirsiniz.*yazıp kaydetmediğiniz her şeyi siler/s);
+  assert.match(value('screens/setup/en', 'accessHold.sessionEnded'), /session ended.*Sign in to return to the page you were on.*not kept/s);
+  assert.match(value('screens/setup/tr', 'accessHold.sessionEnded'), /Oturumunuz sona erdi.*dönmek için giriş yapın.*korunmadı/s);
   // The update restart is a possibility, and the license is undecided, not declared fine (2026-10-10).
-  assert.equal(value('screens/en', 'accessHold.updateTitle'), 'The Panel is not answering; an update may be restarting it');
-  assert.equal(value('screens/tr', 'accessHold.updateTitle'), 'Panel yanıt vermiyor; bir güncelleme onu yeniden başlatıyor olabilir');
-  assert.match(value('screens/en', 'accessHold.updateHelp'), /Whether the license is valid is not known until the Panel answers; nothing about it has been decided\.$/);
-  assert.match(value('screens/tr', 'accessHold.updateHelp'), /Lisansın geçerli olup olmadığı Panel yanıt verene kadar bilinmiyor; bu konuda hiçbir karar verilmedi\.$/);
-  for (const file of ['screens/en', 'screens/tr']) assert.doesNotMatch(value(file, 'accessHold.updateHelp'), /not a license problem|lisans sorunu değil/, file);
-  assert.match(value('screens/en', 'accessHold.updateReload'), /most likely because CelikPanel was updated.*reloads in a moment/s);
-  assert.match(value('screens/tr', 'accessHold.updateReload'), /büyük olasılıkla.*güncellendi.*birazdan yeniden yüklenir/s);
+  assert.equal(value('screens/setup/en', 'accessHold.updateTitle'), 'The Panel is not answering; an update may be restarting it');
+  assert.equal(value('screens/setup/tr', 'accessHold.updateTitle'), 'Panel yanıt vermiyor; bir güncelleme onu yeniden başlatıyor olabilir');
+  assert.match(value('screens/setup/en', 'accessHold.updateHelp'), /Whether the license is valid is not known until the Panel answers; nothing about it has been decided\.$/);
+  assert.match(value('screens/setup/tr', 'accessHold.updateHelp'), /Lisansın geçerli olup olmadığı Panel yanıt verene kadar bilinmiyor; bu konuda hiçbir karar verilmedi\.$/);
+  for (const file of ['screens/setup/en', 'screens/setup/tr']) assert.doesNotMatch(value(file, 'accessHold.updateHelp'), /not a license problem|lisans sorunu değil/, file);
+  assert.match(value('screens/setup/en', 'accessHold.updateReload'), /most likely because CelikPanel was updated.*reloads in a moment/s);
+  assert.match(value('screens/setup/tr', 'accessHold.updateReload'), /büyük olasılıkla.*güncellendi.*birazdan yeniden yüklenir/s);
   // The reload says what it costs.
-  assert.match(value('screens/en', 'accessHold.updateReload'), /Anything you typed on this page and did not save is lost\.$/);
-  assert.match(value('screens/tr', 'accessHold.updateReload'), /yazıp kaydetmediğiniz her şey kaybolur\.$/);
+  assert.match(value('screens/setup/en', 'accessHold.updateReload'), /Anything you typed on this page and did not save is lost\.$/);
+  assert.match(value('screens/setup/tr', 'accessHold.updateReload'), /yazıp kaydetmediğiniz her şey kaybolur\.$/);
   // No state borrows a verdict it does not have.
-  for (const key of keys.slice(0, 9)) for (const file of ['screens/en', 'screens/tr']) assert.doesNotMatch(value(file, key), /activate|renew|etkinleştir|yenileyin/i, key);
+  for (const key of keys.slice(0, 9)) for (const file of ['screens/setup/en', 'screens/setup/tr']) assert.doesNotMatch(value(file, key), /activate|renew|etkinleştir|yenileyin/i, key);
   // The copy function maps each cause to its own reason and keeps "starting" on the shell's reviewed text.
   const t = key => key;
   assert.deepEqual(guidance.accessHoldCopy(t, 'license', false), { title: 'accessHold.licenseTitle', help: 'accessHold.licenseHelp', resume: 'accessHold.resume', prolonged: 'accessHold.prolonged' });

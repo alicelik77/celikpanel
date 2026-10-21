@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import ts from 'typescript';
+import { englishScreens, turkishScreens } from './locale-catalogue.mjs';
 
 // The certificate tier (D-031 step 1b, second round, 2026-10-10): a verified
 // failure of the certificate in use (expired, invalid, untrusted) is shown as
@@ -36,8 +37,7 @@ test('the waiting label names its cause when the answer says it', () => {
   assert.equal(sslTierLabelFor('waitingForOwner', { ...base, waiting_for_owner_reason: 'certificate_validation' }), 'ssl.status.waitingForOwner.certificate_validation');
   assert.equal(sslTierLabelFor('waitingForOwner', base), 'ssl.status.waitingForOwner');
   assert.equal(sslTierLabelFor('expired', { ...base, waiting_for_owner_reason: 'certificate' }), 'ssl.status.expired');
-  for (const path of ['../src/i18n/screens/en.ts', '../src/i18n/screens/tr.ts']) {
-    const catalogue = readFileSync(new URL(path, import.meta.url), 'utf8');
+  for (const [path, catalogue] of [['en', englishScreens], ['tr', turkishScreens]]) {
     for (const key of ['ssl.status.waitingForOwner', 'ssl.status.waitingForOwner.certificate', 'ssl.status.waitingForOwner.certificate_validation',
       'ssl.waitingForOwner', 'ssl.waitingForOwner.validation', 'ssl.issuedWaitingForOwner', 'dashboard.certWaitingOwnerExpired']) {
       assert.ok(catalogue.includes(`'${key}':`), `${path} ${key}`);
@@ -52,8 +52,8 @@ test('customer-reachable sentences name the server administrator as the actor', 
     assert.ok(match, key);
     return match[1];
   };
-  const en = read('../src/i18n/screens/en.ts');
-  const tr = read('../src/i18n/screens/tr.ts');
+  const en = englishScreens;
+  const tr = turkishScreens;
   for (const key of ['ssl.waitingForOwner', 'ssl.waitingForOwner.validation', 'ssl.issuedWaitingForOwner']) {
     assert.match(sentence(en, key), /server administrator/, key);
     assert.match(sentence(tr, key), /sunucu yöneticisi/, key);

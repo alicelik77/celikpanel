@@ -6,18 +6,22 @@ import test from 'node:test';
 import React from 'react';
 import TestRenderer, { act } from 'react-test-renderer';
 import ts from 'typescript';
+import { enScreens, screenParts } from './locale-catalogue.mjs';
 
-// The screen copy is stored in two files per locale (screens/ and
-// screens/server/) because one file outgrew the per-chunk bundle budget. The
-// split must not open a window in which a screen renders with only one of them:
-// the provider's screen flag may turn true only once every part has arrived,
-// and a part that fails must fail the screen copy as a whole. This mounts the
-// real provider over the real catalogue files, holds the server part back, and
-// records every render.
+// The screen copy is stored in several parts per locale (src/i18n/screens/<part>,
+// since v0.1.0-alpha.97; two files before) because one file outgrew the
+// per-chunk bundle budget. The split must not open a window in which a screen
+// renders with only some of them: the provider's screen flag may turn true only
+// once every part has arrived, and a part that fails must fail the screen copy
+// as a whole. This mounts the real provider over the real catalogue files,
+// holds each part back in turn, and records every render. A last test reads
+// every key of every part through the real provider in both languages: none
+// may render as its own name once the screen copy is ready.
 //
-// Ekran metni dil başına iki dosyadadır. Bölünme, bir ekranın yalnız bir parça
-// ile çizildiği bir an açmamalıdır: ekran bayrağı ancak her parça geldiğinde
-// doğru olur; bir parçanın hatası ekran metninin tamamını başarısız sayar.
+// Ekran metni dil başına birkaç parçadadır. Bölünme, bir ekranın parçaların
+// yalnız bir kısmıyla çizildiği bir an açmamalıdır: ekran bayrağı ancak her
+// parça geldiğinde doğru olur; bir parçanın hatası ekran metninin tamamını
+// başarısız sayar. Son test her parçanın her anahtarını iki dilde okur.
 const require = createRequire(import.meta.url);
 const reactURL = pathToFileURL(require.resolve('react')).href;
 const jsxRuntimeURL = pathToFileURL(require.resolve('react/jsx-runtime')).href;
@@ -29,10 +33,9 @@ const compile = (path) => ts.transpileModule(readFileSync(new URL(path, import.m
 const catalogueURL = {
     './en': moduleURL(compile('../src/i18n/en.ts')),
     './tr': moduleURL(compile('../src/i18n/tr.ts')),
-    './screens/en': moduleURL(compile('../src/i18n/screens/en.ts')),
-    './screens/tr': moduleURL(compile('../src/i18n/screens/tr.ts')),
-    './screens/server/en': moduleURL(compile('../src/i18n/screens/server/en.ts')),
-    './screens/server/tr': moduleURL(compile('../src/i18n/screens/server/tr.ts')),
+    ...Object.fromEntries(screenParts.flatMap((part) => ['en', 'tr'].map((locale) => [
+        `./screens/${part}/${locale}`, moduleURL(compile(`../src/i18n/screens/${part}/${locale}.ts`)),
+    ]))),
 };
 
 let scenario = 0;
@@ -88,7 +91,7 @@ for (const [locale, expected] of [
     ['en', ['CelikPanel', 'Checks and how to continue', 'Not installed']],
     ['tr', ['CelikPanel', 'Kontroller ve devam etme yolu', 'Kurulu değil']],
 ]) {
-    for (const held of [`./screens/${locale}`, `./screens/server/${locale}`]) {
+    for (const held of screenParts.map((part) => `./screens/${part}/${locale}`)) {
         test(`${locale}: no screen copy is ready while ${held} is still loading`, async () => {
             const { open } = gate();
             const i18n = await loadProvider(held);
@@ -124,4 +127,36 @@ for (const [locale, expected] of [
             await view.unmount();
         });
     }
+}
+
+// Every key of every part resolves in both languages once the screen copy is
+// ready: nothing renders as its own name after a screen loads. A part the
+// provider forgot to load, or a Turkish key that exists only in English, fails.
+// Her parçanın her anahtarı ekran metni hazır olunca iki dilde de çözülür.
+for (const locale of ['en', 'tr']) {
+    test(`${locale}: every key of every screen part resolves through the provider`, async () => {
+        const { open } = gate();
+        open();
+        const i18n = await loadProvider(`./screens/${screenParts[0]}/${locale}`);
+        globalThis.window = { localStorage: { getItem: () => locale, setItem: () => {} } };
+        let api = null;
+        function Reader() {
+            api = i18n.useI18n();
+            return React.createElement('p', null, api.screensReady ? 'ready' : 'waiting');
+        }
+        let renderer;
+        await act(async () => {
+            renderer = TestRenderer.create(React.createElement(i18n.I18nProvider, null, React.createElement(Reader)));
+        });
+        for (let i = 0; i < 40 && !api?.screensReady; i++) {
+            await act(async () => { await new Promise((resolve) => setTimeout(resolve, 5)); });
+        }
+        assert.equal(api?.screensReady, true, 'the screen copy never became ready');
+        assert.equal(api.locale, locale);
+        const keys = Object.keys(enScreens);
+        assert.ok(keys.length > 3000, 'the screen parts were not read');
+        const raw = keys.filter((key) => api.t(key) === key);
+        assert.deepEqual(raw, [], `${locale}: keys that render as their own name`);
+        await act(async () => renderer.unmount());
+    });
 }

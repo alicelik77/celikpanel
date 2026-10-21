@@ -11,10 +11,10 @@ import test from 'node:test';
 import ts from 'typescript';
 import { en } from '../src/i18n/en.ts';
 import { tr } from '../src/i18n/tr.ts';
-import { enScreens } from '../src/i18n/screens/en.ts';
-import { trScreens } from '../src/i18n/screens/tr.ts';
-import { enServerScreens } from '../src/i18n/screens/server/en.ts';
-import { trServerScreens } from '../src/i18n/screens/server/tr.ts';
+import { enScreens } from './locale-catalogue.mjs';
+import { trScreens } from './locale-catalogue.mjs';
+import { enServerScreens } from './locale-catalogue.mjs';
+import { trServerScreens } from './locale-catalogue.mjs';
 
 const source = readFileSync(new URL('../src/lib/mailProfileText.ts', import.meta.url), 'utf8');
 const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ES2022, target: ts.ScriptTarget.ES2020 } }).outputText;

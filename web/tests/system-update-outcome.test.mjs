@@ -4,8 +4,8 @@ import test from 'node:test';
 import ts from 'typescript';
 import { en } from '../src/i18n/en.ts';
 import { tr } from '../src/i18n/tr.ts';
-import { enServerScreens } from '../src/i18n/screens/server/en.ts';
-import { trServerScreens } from '../src/i18n/screens/server/tr.ts';
+import { enServerScreens } from './locale-catalogue.mjs';
+import { trServerScreens } from './locale-catalogue.mjs';
 
 // The failed-update notice takes its primary text from the exact request's
 // recovery observation and typed cause. The worker's raw summary is only ever a

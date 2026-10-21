@@ -4,7 +4,7 @@ import test from 'node:test';
 import React from 'react';
 import Renderer, { act } from 'react-test-renderer';
 import { compileSource, dataModule, reactURL, remoteURL, sharedLayer } from './fixtures/shared-layer.mjs';
-import { englishCatalogue, turkishCatalogue } from './locale-catalogue.mjs';
+import { englishCatalogue, englishScreens, turkishCatalogue, turkishScreens } from './locale-catalogue.mjs';
 
 // NO NEGATIVE UI UNLESS KNOWN, on the mounted screens (9 Oct 2026, D-024).
 //
@@ -2019,7 +2019,7 @@ test('Infrastructure zone page: what the zone is and who keeps which record come
 });
 
 test('every infrastructure zone text exists in both languages', () => {
-  const catalogue = (lang) => readFileSync(new URL(`../src/i18n/screens/${lang}.ts`, import.meta.url), 'utf8');
+  const catalogue = (lang) => (lang === 'en' ? englishScreens : turkishScreens);
   const keysIn = (text) => [...text.matchAll(/^\s*'((?:domains\.infrastructure\.[A-Za-z]+)|dns\.managedBySetup(?:Hint)?|dns\.requestedByPeer)':\s*'(.*)',\s*$/gm)].map((m) => [m[1], m[2]]);
   const en = new Map(keysIn(catalogue('en')));
   const tr = new Map(keysIn(catalogue('tr')));

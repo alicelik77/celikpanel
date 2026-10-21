@@ -4,6 +4,7 @@ import test from 'node:test';
 import React from 'react';
 import Renderer, { act } from 'react-test-renderer';
 import { dataModule, reactURL, sharedLayer } from './fixtures/shared-layer.mjs';
+import { englishScreens, turkishScreens } from './locale-catalogue.mjs';
 
 // A site configuration file the owner changed is kept and named (D-031,
 // 2026-10-10). The domain's Configuration file page is mounted with the real
@@ -501,8 +502,8 @@ test('an answer that is not the contract is refused by the decoder', () => {
 test('every siteConfig and SITE_CONFIG key is in both languages', () => {
   const read = (path) => readFileSync(new URL('../src/' + path, import.meta.url), 'utf8');
   const keys = (source, prefix) => new Set([...source.matchAll(new RegExp(`'(${prefix}[^']*)':`, 'g'))].map((match) => match[1]));
-  const screenEN = keys(read('i18n/screens/server/en.ts'), 'siteConfig\\.');
-  const screenTR = keys(read('i18n/screens/server/tr.ts'), 'siteConfig\\.');
+  const screenEN = keys(englishScreens, 'siteConfig\\.');
+  const screenTR = keys(turkishScreens, 'siteConfig\\.');
   const errEN = keys(read('i18n/en.ts'), 'err\\.SITE_CONFIG_');
   const errTR = keys(read('i18n/tr.ts'), 'err\\.SITE_CONFIG_');
   assert.deepEqual([...screenTR].sort(), [...screenEN].sort());

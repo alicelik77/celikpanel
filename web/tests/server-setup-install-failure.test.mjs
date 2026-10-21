@@ -3,8 +3,8 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import ts from 'typescript';
 import { setupExecutionGuidance } from '../src/lib/serverSetupGuidance.ts';
-import { enScreens } from '../src/i18n/screens/en.ts';
-import { trScreens } from '../src/i18n/screens/tr.ts';
+import { enScreens } from './locale-catalogue.mjs';
+import { trScreens } from './locale-catalogue.mjs';
 
 // upd1 finding P2: a failed component install must name the component, what
 // stopped, the host's own line, who acts and how setup continues (D-024).

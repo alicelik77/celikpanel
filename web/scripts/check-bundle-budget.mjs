@@ -1,3 +1,33 @@
+// Bundle budget. Every JavaScript chunk of the build is measured raw and
+// gzipped against a ceiling, and the build fails when one is over it.
+//
+// The product's copy (web/src/i18n) and where a new key goes:
+// - The SHELL catalogue (src/i18n/en.ts, tr.ts) is on the critical boot path:
+//   only copy an eagerly loaded module can reach (login, navigation rail,
+//   profile menu, a running operation, refusal codes). Everything else is
+//   screen copy.
+// - The SCREEN catalogue is split into parts, one directory per group of
+//   screens under src/i18n/screens/<part>/{en,tr}.ts. A new key goes into the
+//   part that already holds its prefix (each part's header lists its
+//   prefixes); a new prefix goes into the part of the screen that uses it.
+//   Every part is fetched in parallel and merged before any screen renders
+//   (src/i18n/index.tsx), so the choice of part never changes what a screen
+//   can show.
+// - Each part has its own ceiling below (screenPartBudgets), set with at least
+//   25% headroom when the part was made (v0.1.0-alpha.97). The ceiling is not
+//   raised to make room. When a part's headroom runs out, split it again along
+//   screen boundaries: move whole prefixes into a new directory with an en.ts
+//   (`export const en<Part>Screens = {…} as const`, `<Part>ScreenKey`) and a
+//   tr.ts (`Record<<Part>ScreenKey, string>`, so a missing Turkish key fails
+//   tsc), then add the part to src/i18n/index.tsx (both lists), to ScreenKey in
+//   src/i18n/en.ts, to screenParts in tests/locale-catalogue.mjs and here,
+//   each with headroom of at least 25% again.
+//
+// Paket bütçesi. Ekran katalogu src/i18n/screens altında parçalara bölünür; yeni
+// anahtar, önekini tutan parçaya girer. Her parçanın kendi tavanı vardır ve
+// tavan yükseltilmez: payı biten parça ekran sınırlarından yeniden bölünür
+// (index.tsx, en.ts ScreenKey, tests/locale-catalogue.mjs ve bu dosya), her
+// yeni parça en az %25 payla.
 import { readFile, readdir } from 'node:fs/promises'
 import { basename, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -24,20 +54,40 @@ const budgets = {
   route: { raw: 280 * 1024, gzip: 80 * 1024 },
 }
 
-// Translation chunks, named by source. Each is an individual async chunk and is
-// held to the same per-chunk async ceiling as every other one; naming them makes
-// the check fail loudly if one disappears or is merged back into another. When a
-// part outgrows the ceiling it is split again, as the screen catalogue was into
-// screens/ and screens/server/; the ceiling is not raised.
-// Çeviri parçaları kaynak adıyla listelenir; her biri aynı async tavanına
-// tabidir. Tavanı aşan parça yeniden bölünür, tavan yükseltilmez.
+// The screen catalogue parts (v0.1.0-alpha.97). One ceiling per part, shared by
+// its English and Turkish files and set from the larger (Turkish) one with at
+// least 25% headroom when the part was made: raw / gzip at the time were
+// setup 55.84 / 14.61, sites 47.81 / 13.17, components 43.64 / 11.71,
+// siteConfig 35.86 / 6.20, settings 30.54 / 9.08, mailDatabases 29.66 / 8.42,
+// dashboard 28.54 / 6.00, dnsCertificates 28.09 / 8.35, security 19.51 / 6.02
+// KiB. Before the split the screen copy was two files per locale, each within
+// 1 KiB of the general async ceiling.
+// Ekran katalogu parçaları; her parçanın kendi tavanı, oluşturulduğunda en az
+// %25 payla.
+const kib = (raw, gzip) => ({ raw: raw * 1024, gzip: gzip * 1024 })
+const screenPartBudgets = {
+  setup: kib(80, 21),
+  sites: kib(68, 19),
+  components: kib(64, 17),
+  siteConfig: kib(52, 9),
+  settings: kib(44, 13),
+  mailDatabases: kib(43, 12),
+  dashboard: kib(41, 9),
+  dnsCertificates: kib(41, 12),
+  security: kib(28, 9),
+}
+
+// Translation chunks, named by source. The shell halves are held to the
+// per-chunk async ceiling, each screen part to its own ceiling; naming them
+// makes the check fail loudly if one disappears or is merged into another.
+// Çeviri parçaları kaynak adıyla listelenir.
 const namedChunkBudgets = {
   'src/i18n/en.ts': budgets.async,
   'src/i18n/tr.ts': budgets.async,
-  'src/i18n/screens/en.ts': budgets.async,
-  'src/i18n/screens/tr.ts': budgets.async,
-  'src/i18n/screens/server/en.ts': budgets.async,
-  'src/i18n/screens/server/tr.ts': budgets.async,
+  ...Object.fromEntries(Object.entries(screenPartBudgets).flatMap(([part, limit]) => [
+    [`src/i18n/screens/${part}/en.ts`, limit],
+    [`src/i18n/screens/${part}/tr.ts`, limit],
+  ])),
   // The help texts are fetched when a help drawer is opened. As a static part
   // of every page that carries the Help button they had brought the Settings
   // route to 0.29 KiB of its limit (2026-10-09).

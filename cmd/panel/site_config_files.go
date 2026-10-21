@@ -76,7 +76,7 @@ const siteConfigRestoreUnconfirmedSuffix = ".unconfirmed"
 // The sentences of a confirmed put-back after which the service was not
 // reloaded (set12 cell RP1), keyed "<service>[.<service_reason>]" per kind;
 // "%s" is the check's line (only an administrator's answer names it). The
-// screens' sentences are in the screen catalogue (web/src/i18n/screens/server,
+// screens' sentences are in the screen catalogue (web/src/i18n/screens/siteConfig,
 // siteConfig.service.<kind>.<service>[.<service_reason>]).
 var siteFileServiceMessages = map[string]map[string]string{
 	transport.SiteFileKindPHPPool: {

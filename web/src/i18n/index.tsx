@@ -82,23 +82,51 @@ async function loadShell(locale: Locale): Promise<Catalog> {
     return (await import('./en')).en;
 }
 
-// The screen part is itself stored in two files per locale: ./screens holds the
-// hosting, domain, mail and setup screens, ./screens/server the server-wide
-// administration screens. That is a size split only - one file had outgrown the
-// per-chunk bundle budget - so both halves are fetched in parallel and merged
-// before `screens` becomes true. No screen can render with only one of them.
+// The screen part is itself stored in several parts per locale, one directory
+// per group of screens under ./screens (setup, sites, siteConfig,
+// dnsCertificates, components, mailDatabases, security, dashboard, settings;
+// v0.1.0-alpha.97). That is a size split only - each part has its own budget
+// in web/scripts/check-bundle-budget.mjs - so every part is fetched in parallel
+// and merged before `screens` becomes true. No screen can render with only
+// some of them, and a part that fails fails the screen copy as a whole.
+// Adding a part means a line in each list below, in en.ts's ScreenKey, in
+// tests/locale-catalogue.mjs and in the budget script.
 //
-// Ekran parçası da her dil için iki dosyadadır: ./screens barındırma, alan
-// adı, posta ve kurulum ekranlarını, ./screens/server sunucu geneli yönetim
-// ekranlarını tutar. Bu yalnızca boyut bölünmesidir; iki yarı paralel getirilir
-// ve `screens` doğru olmadan önce birleştirilir.
+// Ekran parçası da her dil için ./screens altında ekran grubu başına bir
+// dizindedir. Bu yalnızca boyut bölünmesidir; bütün parçalar paralel getirilir
+// ve `screens` doğru olmadan önce birleştirilir. Bir parçanın hatası ekran
+// metninin tamamını başarısız sayar.
+// Each part module exports exactly one value, its catalogue object, so the
+// loaders stay one import each (the list is on the critical boot path).
+// Her parça modülü tek bir değer, katalog nesnesini dışa aktarır.
+const screenParts: Record<Locale, Array<() => Promise<Record<string, unknown>>>> = {
+    en: [
+        () => import('./screens/setup/en'),
+        () => import('./screens/sites/en'),
+        () => import('./screens/siteConfig/en'),
+        () => import('./screens/dnsCertificates/en'),
+        () => import('./screens/components/en'),
+        () => import('./screens/mailDatabases/en'),
+        () => import('./screens/security/en'),
+        () => import('./screens/dashboard/en'),
+        () => import('./screens/settings/en'),
+    ],
+    tr: [
+        () => import('./screens/setup/tr'),
+        () => import('./screens/sites/tr'),
+        () => import('./screens/siteConfig/tr'),
+        () => import('./screens/dnsCertificates/tr'),
+        () => import('./screens/components/tr'),
+        () => import('./screens/mailDatabases/tr'),
+        () => import('./screens/security/tr'),
+        () => import('./screens/dashboard/tr'),
+        () => import('./screens/settings/tr'),
+    ],
+};
+
 async function loadScreens(locale: Locale): Promise<Catalog> {
-    if (locale === 'tr') {
-        const [screens, server] = await Promise.all([import('./screens/tr'), import('./screens/server/tr')]);
-        return { ...screens.trScreens, ...server.trServerScreens };
-    }
-    const [screens, server] = await Promise.all([import('./screens/en'), import('./screens/server/en')]);
-    return { ...screens.enScreens, ...server.enServerScreens };
+    const loaded = await Promise.all(screenParts[locale].map((load) => load()));
+    return Object.assign({}, ...loaded.map((part) => Object.values(part)[0] as Catalog));
 }
 
 interface LoadedCatalog {

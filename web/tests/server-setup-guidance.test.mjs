@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { setupExecutionGuidance } from '../src/lib/serverSetupGuidance.ts';
-import { enScreens as baseEnScreens } from '../src/i18n/screens/en.ts';
-import { trScreens as baseTrScreens } from '../src/i18n/screens/tr.ts';
+import { enScreens as baseEnScreens } from './locale-catalogue.mjs';
+import { trScreens as baseTrScreens } from './locale-catalogue.mjs';
 
 import { enSetupDNS } from '../src/i18n/setupDNS/en.ts';
 import { trSetupDNS } from '../src/i18n/setupDNS/tr.ts';

@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { setupHostBusyGuidance, setupHostBusyKey } from '../src/lib/serverSetupGuidance.ts';
-import { enScreens } from '../src/i18n/screens/en.ts';
-import { trScreens } from '../src/i18n/screens/tr.ts';
+import { enScreens } from './locale-catalogue.mjs';
+import { trScreens } from './locale-catalogue.mjs';
 
 // upd8 F1 follow-up: a setup step refused because the host was busy reaches the
 // wizard as HOST_MUTATION_BUSY. Its headline names the reason, who acts, the

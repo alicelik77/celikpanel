@@ -9,8 +9,8 @@ import {
 } from '../src/lib/domainDeletionPending.ts';
 import { en } from '../src/i18n/en.ts';
 import { tr } from '../src/i18n/tr.ts';
-import { enScreens } from '../src/i18n/screens/en.ts';
-import { trScreens } from '../src/i18n/screens/tr.ts';
+import { enScreens } from './locale-catalogue.mjs';
+import { trScreens } from './locale-catalogue.mjs';
 
 // P4-2 (pair 4 t2): a verified mail-stage failure of a domain deletion.
 const REASON = 'mail_runtime_cleanup_failed';

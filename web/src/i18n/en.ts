@@ -21,8 +21,15 @@ import type { SetupDNSKey } from './setupDNS/en';
 // duydugu metin - giris ekrani, gezinme rayi, profil menusu, suren bir islem ve
 // bunlarin hepsinin dusebilecegi ret sozlugu. Gerisi ./screens icindedir ve
 // ihtiyaci olan ekranla birlikte getirilir (defter R-060).
-import type { ScreenKey } from './screens/en';
-import type { ServerScreenKey } from './screens/server/en';
+import type { SetupScreenKey } from './screens/setup/en';
+import type { SitesScreenKey } from './screens/sites/en';
+import type { SiteConfigScreenKey } from './screens/siteConfig/en';
+import type { DnsCertificatesScreenKey } from './screens/dnsCertificates/en';
+import type { ComponentsScreenKey } from './screens/components/en';
+import type { MailDatabasesScreenKey } from './screens/mailDatabases/en';
+import type { SecurityScreenKey } from './screens/security/en';
+import type { DashboardScreenKey } from './screens/dashboard/en';
+import type { SettingsScreenKey } from './screens/settings/en';
 
 export const en = {
     'app.name': 'CelikPanel',
@@ -559,4 +566,15 @@ export const en = {
 } as const;
 
 export type ShellKey = keyof typeof en;
-export type TranslationKey = ShellKey | ScreenKey | ServerScreenKey | SetupDNSKey;
+// Every screen part's keys; a part missing here would make its keys untyped.
+export type ScreenKey =
+    | SetupScreenKey
+    | SitesScreenKey
+    | SiteConfigScreenKey
+    | DnsCertificatesScreenKey
+    | ComponentsScreenKey
+    | MailDatabasesScreenKey
+    | SecurityScreenKey
+    | DashboardScreenKey
+    | SettingsScreenKey;
+export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey;

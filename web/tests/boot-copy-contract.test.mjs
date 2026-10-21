@@ -220,15 +220,17 @@ test('a route waits for its own copy the way it waits for its own bundle', () =>
   // before the screen flag turns true, so no screen renders with part of its
   // copy. Ekran yarısının her dosyası tek Promise.all ile getirilir ve bayrak
   // doğru olmadan önce birleştirilir.
+  // Since v0.1.0-alpha.97 the parts are listed per locale in `screenParts`
+  // and loaded together; the list must name every part, in order.
   for (const locale of ['en', 'tr']) {
     const expected = screenCatalogueFiles[locale].map((file) => file.replace('../src/i18n/', './').replace(/\.ts$/, ''));
-    const loads = [...i18n.matchAll(/await Promise\.all\(\[([^\]]*)\]\)/g)]
-      .map((m) => [...m[1].matchAll(/import\('([^']+)'\)/g)].map((i) => i[1]))
-      .find((imports) => imports[0] === `./screens/${locale}`);
-    assert.deepEqual(loads, expected, `index.tsx must load every ${locale} screen file together`);
+    const block = i18n.match(new RegExp(`\\n    ${locale}: \\[([\\s\\S]*?)\\n    \\],`));
+    assert.ok(block, `index.tsx lists no ${locale} screen parts`);
+    const loads = [...block[1].matchAll(/import\('([^']+)'\)/g)].map((i) => i[1]);
+    assert.deepEqual(loads, expected, `index.tsx must load every ${locale} screen part`);
   }
-  assert.match(i18n, /return \{ \.\.\.screens\.trScreens, \.\.\.server\.trServerScreens \};/);
-  assert.match(i18n, /return \{ \.\.\.screens\.enScreens, \.\.\.server\.enServerScreens \};/);
+  assert.match(i18n, /await Promise\.all\(screenParts\[locale\]\.map\(\(load\) => load\(\)\)\);/);
+  assert.match(i18n, /return Object\.assign\(\{\}, \.\.\.loaded\.map\(\(part\) => Object\.values\(part\)\[0\] as Catalog\)\);/);
   // The shell is what the application waits for before it renders at all; the
   // screen half is merged in behind it.
   assert.match(i18n, /screensReady: loaded\.screens/);

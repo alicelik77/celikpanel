@@ -6,6 +6,7 @@ import test from 'node:test';
 import React from 'react';
 import TestRenderer, { act } from 'react-test-renderer';
 import ts from 'typescript';
+import { screenParts } from './locale-catalogue.mjs';
 
 // The document's language attribute follows the language the page is drawn in
 // (set16 observation O1: every Turkish page was `lang="en"`, because only
@@ -28,10 +29,9 @@ const compile = (path) => ts.transpileModule(readFileSync(new URL(path, import.m
 const catalogueURL = {
     './en': moduleURL(compile('../src/i18n/en.ts')),
     './tr': moduleURL(compile('../src/i18n/tr.ts')),
-    './screens/en': moduleURL(compile('../src/i18n/screens/en.ts')),
-    './screens/tr': moduleURL(compile('../src/i18n/screens/tr.ts')),
-    './screens/server/en': moduleURL(compile('../src/i18n/screens/server/en.ts')),
-    './screens/server/tr': moduleURL(compile('../src/i18n/screens/server/tr.ts')),
+    ...Object.fromEntries(screenParts.flatMap((part) => ['en', 'tr'].map((locale) => [
+        `./screens/${part}/${locale}`, moduleURL(compile(`../src/i18n/screens/${part}/${locale}.ts`)),
+    ]))),
 };
 
 let scenario = 0;
