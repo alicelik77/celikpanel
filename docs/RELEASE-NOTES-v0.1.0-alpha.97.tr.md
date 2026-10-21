@@ -142,7 +142,7 @@ hiçbiri kurulu bir sunucuda çalıştırılmadı.
 - Web: `npm test` 1671 geçti, 0 başarısız; `npm run build` bütçeler içinde başarılı
   oldu: en büyük Türkçe ekran parçası (setup) 80 KiB'nin 55,84'ü, components 64
   KiB'nin 44,26'sı, settings 44 KiB'nin 31,24'ü; kritik açılış yolu 361 KiB'nin
-  359,95'i. Bağlanmış testler sürüm sütununun yalnız bir sürüm biliniyorsa
+  359,89'i. Bağlanmış testler sürüm sütununun yalnız bir sürüm biliniyorsa
   görünmesini, kısa ve tam biçimleri, birden çok sürümü, bilinmeyenin hiçbir şey
   göstermemesini, bileşen sayfası başlığını, meşgul paket yöneticisi durmasını
   (Frankfurt'un sahip olduğu kayıt biçimiyle), `compatibility` adımını, sözlerini

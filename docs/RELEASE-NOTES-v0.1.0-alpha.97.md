@@ -140,7 +140,7 @@ environment; none of it was run on an installed server.
   sanitized update diagnostic.
 - Web: `npm test` 1671 passed, 0 failed; `npm run build` succeeded within the
   budgets: the largest Turkish screen part (setup) 55.84 of 80 KiB, components
-  44.26 of 64 KiB, settings 31.24 of 44 KiB; critical boot path 359.95 of 361 KiB.
+  44.26 of 64 KiB, settings 31.24 of 44 KiB; critical boot path 359.89 of 361 KiB.
   Mounted tests cover the version column appearing only when a version is known, the
   short and full forms, several versions, unknown showing nothing, the component
   page header, the busy package manager stop (with the record shape Frankfurt had),
