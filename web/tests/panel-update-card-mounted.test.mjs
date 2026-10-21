@@ -440,13 +440,18 @@ test('an earlier stop because the package manager was busy is named calmly, and 
     let renderer;
     let starts = 0;
     try {
-        for (const [readiness, line] of [
-            [{ ready: true }, 'free'],
-            [{ ready: false, code: 'HOST_MUTATION_BUSY', reason: 'package_manager_active' }, 'busy'],
+        // Frankfurt's record names a recovery runtime preflight stop beside the
+        // busy summary; a record with no cause reads the same way.
+        const frankfurt = { ...attempt, failure_code: 'recovery_runtime_preflight_failed' };
+        for (const [readiness, line, earlier] of [
+            [{ ready: true }, 'free', attempt],
+            [{ ready: false, code: 'HOST_MUTATION_BUSY', reason: 'package_manager_active' }, 'busy', attempt],
+            [{ ready: true }, 'free', frankfurt],
+            [{ ready: false, code: 'HOST_MUTATION_BUSY', reason: 'package_manager_active' }, 'busy', frankfurt],
         ]) {
             statusReads.length = 0;
             renderer = await mountCheckedCard(async () => readiness, async () => { starts += 1; return { kind: 'accepted' }; },
-                { ...updateCheck, previous_attempt: attempt });
+                { ...updateCheck, previous_attempt: earlier });
             await act(async () => { await flushMicrotasks(); await flushMicrotasks(); });
             const notice = renderer.root.find((node) => node.type === 'div' && node.props.role === 'note');
             const text = textOf(notice);

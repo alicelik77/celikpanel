@@ -349,14 +349,18 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
         };
     }, [quietReadinessPoll]);
 
-    // An earlier attempt the server recorded without a cause may have stopped
-    // because the package manager was busy (Frankfurt, 2026-10-17: Debian's
+    // An earlier attempt the server recorded without a cause, or as a
+    // preflight stop, may have stopped because the package manager was busy (Frankfurt, 2026-10-17: Debian's
     // automatic package updates were running). Its own stored summary says
     // so; it is read once per attempt, a GET that never starts anything.
     // Nedeni kaydedilmemis onceki deneme paket yoneticisi mesgul oldugu icin
     // durmus olabilir; kendi ozeti deneme basina bir kez okunur.
     const [previousSummary, setPreviousSummary] = useState<{ requestID: string; busy: boolean } | null>(null);
-    const uncausedAttempt = target && offer?.previous_attempt?.phase === 'failed' && !offer.previous_attempt.failure_code
+    // Read for an attempt with no recorded cause and for a preflight stop: the
+    // updater records a busy package manager that its recovery tool's check
+    // reported as a recovery runtime preflight stop (Frankfurt's case).
+    const uncausedAttempt = target && offer?.previous_attempt?.phase === 'failed'
+        && (!offer.previous_attempt.failure_code || previousAttemptStopped(offer.previous_attempt))
         ? offer.previous_attempt.request_id : '';
     useEffect(() => {
         if (!uncausedAttempt) return;

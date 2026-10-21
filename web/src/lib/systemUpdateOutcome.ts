@@ -163,9 +163,13 @@ export function failedUpdateGuidance(observation: RecoveryObservation | null, in
         || (observation.phase === 'failed' && observation.terminal_proof === 'none' && !observation.failure_code);
     // The package manager was busy (Frankfurt, 2026-10-17: Debian's automatic
     // package updates were running). A transient, typed stop before anything
-    // changed: its own words, no server line, nothing to repair.
+    // changed: its own words, no server line, nothing to repair. The updater
+    // records such a stop that its recovery tool's check reported as a
+    // recovery runtime preflight stop (update.sh publishes that code beside
+    // the package_manager_busy summary), so a typed preflight stop is the same
+    // request ending unchanged, not a contradiction.
     // Paket yöneticisi meşguldü: geçici, tipli bir duruş; kendi sözleri.
-    if (systemUpdatePackageManagerBusy(input.message) && uncontradicted) {
+    if (systemUpdatePackageManagerBusy(input.message) && (uncontradicted || isPreflightStop(observation))) {
         return {
             state: 'unchanged',
             tone: 'neutral',

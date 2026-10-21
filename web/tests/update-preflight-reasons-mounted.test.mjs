@@ -182,8 +182,16 @@ for (const locale of ['en', 'tr']) {
     const fill = (key, vars) => String(c[key]).replace(/\{(\w+)\}/g, (all, name) => vars?.[name] ?? all);
     const versions = { target: 'v0.1.0-alpha.92', previous: 'v0.1.0-alpha.91' };
 
-    test(`${locale}: a busy package manager is a calm stop with its own reason and when to start again`, async () => {
-        const { renderer, reads } = await mountWith({ locale, message: BUSY, answer: observation({}) });
+    // Frankfurt's exact shape: the recovery record names a recovery runtime
+    // preflight stop (update.sh publishes that code for a busy package manager
+    // its recovery tool's check reported), the summary package_manager_busy.
+    for (const [shape, answer] of [
+        ['recorded as a preflight stop (Frankfurt)', observation({ failure_code: 'recovery_runtime_preflight_failed' })],
+        ['recorded with no cause', observation({})],
+        ['before the recovery record is read', null],
+    ])
+    test(`${locale}: a busy package manager ${shape} is a calm stop with its own reason and when to start again`, async () => {
+        const { renderer, reads } = await mountWith({ locale, message: BUSY, answer });
         try {
             assert.ok(reads.every(([, method]) => method === 'GET'), 'reading never starts anything');
             assert.equal(titleOf(renderer), c['panelUpdate.outcome.stoppedTitle']);
