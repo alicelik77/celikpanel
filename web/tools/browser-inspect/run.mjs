@@ -1219,7 +1219,8 @@ const scenarios = {
         page = await guarded(panel);
         await request(page);
         await pause(600);
-        await page.click('#settings-account-tab');
+        // Another Settings section (the account section left Settings in alpha.98).
+        await page.click('#settings-license-tab');
         await ctl({ certificateStatus: 'succeeded' });
         await pause(13000);
         await shot(page, '51i-other-section-not-moved', { address: await page.evaluate(() => location.href), moves: moves.slice() });
@@ -1234,7 +1235,7 @@ const scenarios = {
         page = await guarded(panel);
         await request(page);
         await pause(600);
-        const other = await guarded('/settings?section=account', {}, page.__context);
+        const other = await guarded('/settings?section=license', {}, page.__context);
         await ctl({ certificateStatus: 'succeeded' });
         await pause(13000);
         await other.bringToFront();

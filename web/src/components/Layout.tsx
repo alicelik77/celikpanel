@@ -1,7 +1,7 @@
 import { BrandMark } from './BrandMark';
 import { BuildCommit } from './BuildCommit';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { LogOut, ChevronDown, Menu, KeyRound, UserCheck, DownloadCloud, User } from 'lucide-react';
+import { LogOut, ChevronDown, Menu, KeyRound, UserCheck, DownloadCloud } from 'lucide-react';
 import { api } from '../lib/api';
 import { Link } from '../router';
 import { availablePanelUpdate, usePanelUpdateDiscovery, wholeVersion, type DiscoveredTarget } from '../lib/panelUpdateDiscovery';
@@ -524,12 +524,14 @@ function ImpersonationBanner() {
 // first (the person's own password and two-step sign-in, D-037), the language
 // on a phone, and Sign out. A disclosure, not a menu widget: the button says
 // whether it is open, Tab walks its links and buttons, Escape closes it and
-// gives focus back to the button. A role without My account (an additional
+// gives focus back to the button, and it closes when focus leaves it (Tab past
+// its last item). aria-controls names the panel only while it exists. A role without My account (an additional
 // user) keeps the password change here, where it always was.
 // UserMenu kişisel menüdür: kullanıcı ve rol, sonra ilk sırada Hesabım
 // (D-037), telefonda dil ve Çıkış. Açılır-kapanır bir bölmedir: düğme açık
 // olup olmadığını söyler, Tab içinde gezer, Escape kapatıp odağı düğmeye
-// verir. Hesabım'ı olmayan rol (ek kullanıcı) şifre değiştirmeyi burada tutar.
+// verir; odak bölmeden çıkınca (Tab ile son öğeden öteye) kapanır. Hesabım'ı
+// olmayan rol (ek kullanıcı) şifre değiştirmeyi burada tutar.
 function UserMenu({ access }: { access: NavAccessContext }) {
     const { user, role, logout } = useAuth();
     const { t } = useI18n();
@@ -561,12 +563,18 @@ function UserMenu({ access }: { access: NavAccessContext }) {
     const itemClass = 'flex w-full items-center gap-2 px-4 py-2.5 text-sm text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg max-sm:min-h-11';
 
     return (
-        <div className="relative" ref={ref}>
+        <div
+            className="relative"
+            ref={ref}
+            onBlur={(event) => {
+                if (open && !event.currentTarget.contains(event.relatedTarget as Node | null)) setOpen(false);
+            }}
+        >
             <button
                 ref={buttonRef}
                 type="button"
                 aria-expanded={open}
-                aria-controls="personal-menu"
+                aria-controls={open ? 'personal-menu' : undefined}
                 onClick={() => setOpen((o) => !o)}
                 className="flex items-center gap-2 rounded-lg border border-border bg-surface-2 py-1 pl-1 pr-2 text-sm transition-colors hover:border-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
@@ -585,7 +593,7 @@ function UserMenu({ access }: { access: NavAccessContext }) {
                     </div>
                     {hasAccountPage && (
                         <Link to="/account" onClick={() => setOpen(false)} className={itemClass} data-personal-menu-item="account">
-                            <User className="h-4 w-4" aria-hidden="true" />
+                            <UserCheck className="h-4 w-4" aria-hidden="true" />
                             {t('nav.account')}
                         </Link>
                     )}

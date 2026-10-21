@@ -45,7 +45,7 @@ const iconStub = moduleURL(`
     import React from '${reactURL}';
     const Icon = (name) => (props) => React.createElement('i', { ...props, 'data-icon': name });
     ${['LayoutDashboard', 'Globe', 'Database', 'Server', 'Users', 'Settings', 'DownloadCloud', 'ScrollText', 'Package', 'Shield',
-        'Activity', 'Network', 'ShieldCheck', 'Wrench', 'User', 'LogOut', 'ChevronDown', 'Menu', 'KeyRound', 'UserCheck']
+        'Activity', 'Network', 'ShieldCheck', 'Wrench', 'LogOut', 'ChevronDown', 'Menu', 'KeyRound', 'UserCheck']
         .map((name) => `export const ${name} = Icon('${name}');`).join('\n')}
 `);
 const navURL = compileURL('../src/nav.ts', { 'lucide-react': iconStub });
@@ -214,7 +214,7 @@ test('the four new labels exist in English and Turkish', () => {
         assert.equal(en[key], english, key);
         assert.equal(tr[key], turkish, key);
     }
-    for (const key of ['securityPage.subtitle', 'maintenance.subtitle', 'dnsPeers.subtitle', 'account.subtitle', 'account.password.title']) {
+    for (const key of ['securityPage.subtitle', 'dnsPeers.subtitle', 'account.subtitle', 'account.password.title']) {
         assert.ok(englishCatalogue.includes(`'${key}'`), key);
         assert.ok(turkishCatalogue.includes(`'${key}'`), key);
     }
@@ -223,13 +223,14 @@ test('the four new labels exist in English and Turkish', () => {
 test('each new page has a header that says what it is for and moved content, never an empty page', () => {
     const pages = {
         SecurityPage: ['securityPage.subtitle', '<FirewallBar', 'place="security"', '<Fail2banStatus />', '<SecurityAuditCard />', 'id="firewall"'],
-        MaintenancePage: ['maintenance.subtitle', '<SystemSQLiteManager />'],
+        // The card's own heading and subtitle say what the page is for (alpha.98 review: one subtitle, not two).
+        MaintenancePage: ['<SystemSQLiteManager />'],
         DNSPeersPage: ['dnsPeers.subtitle', '<DNSServerSettings />'],
         AccountPage: ['account.subtitle', '<PasswordPanel />', '<TwoFactorPanel />', 'ChangePasswordModal'],
     };
     for (const [page, needles] of Object.entries(pages)) {
         const source = read(`../src/components/${page}.tsx`);
-        assert.match(source, /<PageHeader title=\{t\('nav\.[a-zA-Z]+'\)\} subtitle=/, page);
+        assert.match(source, /<PageHeader title=\{t\('nav\.[a-zA-Z]+'\)\}/, page);
         for (const needle of needles) assert.ok(source.includes(needle), `${page} misses ${needle}`);
     }
     const app = read('../src/App.tsx');
@@ -301,10 +302,10 @@ async function withShell(role, inspect, access = {}) {
     }
 }
 const textOf = (node) => (typeof node === 'string' ? node : node.children.map(textOf).join(' '));
-const menuButton = (renderer) => renderer.root.find((node) => node.type === 'button' && node.props['aria-controls'] === 'personal-menu');
+const menuButton = (renderer) => renderer.root.find((node) => node.type === 'button' && node.props['aria-expanded'] !== undefined);
 const menuItems = (renderer) => renderer.root.find((node) => node.props.id === 'personal-menu')
     .findAll((node) => (node.type === 'a' || node.type === 'button'));
-const railLabels = (renderer) => renderer.root.findAll((node) => node.type === 'button' && node.props.onClick && node.props['aria-controls'] === undefined)
+const railLabels = (renderer) => renderer.root.findAll((node) => node.type === 'button' && node.props.onClick && node.props['aria-expanded'] === undefined)
     .map((node) => node.findAll((child) => child.type === 'span' && typeof child.children[0] === 'string')[0]?.children[0]).filter(Boolean);
 
 test('the personal menu opens with My account first, then Sign out, and closes on Escape', async () => {
@@ -312,8 +313,10 @@ test('the personal menu opens with My account first, then Sign out, and closes o
         await withShell(role, async (renderer, listeners) => {
             const button = menuButton(renderer);
             assert.equal(button.props['aria-expanded'], false);
+            assert.equal(button.props['aria-controls'], undefined, 'aria-controls names the panel only while it exists');
             await act(async () => button.props.onClick());
             assert.equal(menuButton(renderer).props['aria-expanded'], true);
+            assert.equal(menuButton(renderer).props['aria-controls'], 'personal-menu');
             const items = menuItems(renderer);
             assert.equal(items[0].type, 'a', role);
             assert.equal(items[0].props.href, '/account', role);
@@ -323,6 +326,14 @@ test('the personal menu opens with My account first, then Sign out, and closes o
             assert.ok(!items.some((item) => textOf(item).includes('profile.changePassword')), role);
             await act(async () => listeners.get('keydown')({ key: 'Escape' }));
             assert.equal(renderer.root.findAll((node) => node.props.id === 'personal-menu').length, 0, role);
+            // Focus leaving the menu (Tab past its last item) closes it too.
+            await act(async () => menuButton(renderer).props.onClick());
+            const container = menuButton(renderer).parent;
+            const inside = { nodeType: 1 };
+            await act(async () => container.props.onBlur({ currentTarget: { contains: (node) => node === inside }, relatedTarget: inside }));
+            assert.equal(renderer.root.findAll((node) => node.props.id === 'personal-menu').length, 1, `${role}: focus moving inside keeps it open`);
+            await act(async () => container.props.onBlur({ currentTarget: { contains: () => false }, relatedTarget: null }));
+            assert.equal(renderer.root.findAll((node) => node.props.id === 'personal-menu').length, 0, `${role}: focus leaving closes it`);
         });
     }
 });
@@ -356,7 +367,8 @@ test('the Security page says Fail2ban\'s state only as the stored record says it
     const source = read('../src/components/SecurityPage.tsx');
     const start = source.indexOf('type Fail2banState');
     const end = source.indexOf('function Fail2banStatus()');
-    const compiled = ts.transpileModule(source.slice(start, end), {
+    const running = read('../src/lib/serviceStatus.ts');
+    const compiled = ts.transpileModule(running + String.fromCharCode(10) + source.slice(start, end), {
         compilerOptions: { module: ts.ModuleKind.ES2022, target: ts.ScriptTarget.ES2020 },
     }).outputText;
     const { fail2banState } = await import(moduleURL(compiled));
@@ -372,7 +384,9 @@ test('the Security page says Fail2ban\'s state only as the stored record says it
     assert.equal(fail2banState(record({ is_installed: false, status: 'unknown' })), 'notInstalled');
     // A record nobody took is not "not installed".
     assert.equal(fail2banState(record({ is_installed: null, status: 'unknown' })), 'notChecked');
-    assert.equal(fail2banState([]), 'notChecked');
+    // A known snapshot without a Fail2ban record: not installed (it is a known answer).
+    assert.equal(fail2banState([]), 'notInstalled');
+    assert.equal(fail2banState(record({ is_installed: true, status: 'active (exited)' })), 'notRunning');
     for (const state of ['running', 'installedUnknown', 'notRunning', 'notInstalled', 'notChecked', 'checking', 'unknown', 'manage', 'openComponents']) {
         assert.ok(englishCatalogue.includes(`'securityPage.f2b.${state}'`), state);
         assert.ok(turkishCatalogue.includes(`'securityPage.f2b.${state}'`), state);

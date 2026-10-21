@@ -170,7 +170,7 @@ export const enDnsCertificatesScreens = {
     'dns.recordDeleted': 'Record deleted',
     'dns.recordDeleteFailed': 'Could not delete record',
     'dns.confirmDelete': 'Delete this record?',
-    'dns.managedRecord': 'This record is managed by DNS infrastructure settings.',
+    'dns.managedRecord': 'This record is managed in Server → DNS and peer servers.',
     'dns.managedBySetup': 'Managed by server setup',
     'dns.managedBySetupHint': 'Server setup prepared this address record and keeps it. Change it by extending the server setup, which shows the change for review first.',
     'dns.requestedByPeer': 'Requested by the other server over the DNS connection',

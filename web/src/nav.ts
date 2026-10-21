@@ -1,4 +1,4 @@
-import { LayoutDashboard, Globe, Database, Server, Users, Settings, DownloadCloud, ScrollText, Package, Shield, Activity, Network, ShieldCheck, Wrench, User, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, Globe, Database, Server, Users, Settings, DownloadCloud, ScrollText, Package, Shield, Activity, Network, ShieldCheck, Wrench, UserCheck, type LucideIcon } from 'lucide-react';
 import type { TranslationKey } from './i18n/en';
 import type { Role } from './auth/AuthContext';
 
@@ -78,7 +78,7 @@ export const navItems: NavItem[] = [
     // Bayi ve müşteri için Ayarlar'da bir şey kalmadı; /settings onları
     // Hesabım'a götürür.
     { id: 'settings', path: '/settings', labelKey: 'nav.settings', icon: Settings, roles: ['admin'], group: 'server' },
-    { id: 'account', path: '/account', labelKey: 'nav.account', icon: User, roles: ACCOUNT_ROLES, group: 'personal' },
+    { id: 'account', path: '/account', labelKey: 'nav.account', icon: UserCheck, roles: ACCOUNT_ROLES, group: 'personal' },
 ];
 
 // Group order and their heading translation keys. A group with no visible

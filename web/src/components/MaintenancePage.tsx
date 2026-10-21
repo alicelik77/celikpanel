@@ -16,7 +16,9 @@ export function MaintenancePage() {
     const { t } = useI18n();
     return (
         <div className="p-4 sm:p-6 md:p-8">
-            <PageHeader title={t('nav.maintenance')} subtitle={t('maintenance.subtitle')} breadcrumb={[t('common.home'), t('nav.maintenance')]} />
+            {/* The card below says what the page is for (its heading and subtitle);
+                the header does not repeat it (alpha.98 review). */}
+            <PageHeader title={t('nav.maintenance')} breadcrumb={[t('common.home'), t('nav.maintenance')]} />
             <div className="max-w-7xl">
                 <SystemSQLiteManager />
             </div>

@@ -164,7 +164,7 @@ export const trDnsCertificatesScreens: Record<DnsCertificatesScreenKey, string> 
     'dns.recordDeleted': 'Kayıt silindi',
     'dns.recordDeleteFailed': 'Kayıt silinemedi',
     'dns.confirmDelete': 'Bu kayıt silinsin mi?',
-    'dns.managedRecord': 'Bu kayıt DNS altyapı ayarları tarafından yönetilir.',
+    'dns.managedRecord': 'Bu kayıt Sunucu → DNS ve eş sunucular sayfasından yönetilir.',
     'dns.managedBySetup': 'Sunucu kurulumu yönetiyor',
     'dns.managedBySetupHint': 'Bu adres kaydını sunucu kurulumu hazırladı ve korur. Değiştirmek için sunucu kurulumunu genişletin; kurulum değişikliği önce incelemenize sunar.',
     'dns.requestedByPeer': 'Diğer sunucu DNS bağlantısı üzerinden istedi',

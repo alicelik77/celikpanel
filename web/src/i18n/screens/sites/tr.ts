@@ -239,7 +239,7 @@ export const trSitesScreens: Record<SitesScreenKey, string> = {
     'conn.nameserverN': '{n}. ad sunucusu',
     'conn.intro': 'Bu alan adı henüz bu sunucuyu göstermiyor; dolayısıyla burada barındırılan hiçbir şey onun adına cevap veremez. Aşağıdaki iki yoldan birini seçin ve değerleri alan adını aldığınız firmada girin.',
     'conn.nsBroken.title': 'Paylaşılan ad sunucusu kurulumu henüz hazır değil',
-    'conn.nsBroken.desc': 'Tek başına modu iki adın da bu makineyi; Eşlenmiş mod ise bir adın bu makineyi, diğerinin yapılandırılmış eşi göstermesini gerektirir. Alan adını devretmeden önce Ayarlar altında paylaşılan adları ve çalışma modunu tamamlayın — o zamana kadar aşağıdaki B yolunu kullanın.',
+    'conn.nsBroken.desc': 'Tek başına modu iki adın da bu makineyi; Eşlenmiş mod ise bir adın bu makineyi, diğerinin yapılandırılmış eşi göstermesini gerektirir. Alan adını devretmeden önce Sunucu → DNS ve eş sunucular sayfasında paylaşılan adları ve çalışma modunu tamamlayın — o zamana kadar aşağıdaki B yolunu kullanın.',
     'conn.routeA.title': 'A yolu — DNS yönetimini bu ad sunucularına verin (önerilen)',
     'conn.routeA.desc': 'Panelin yetkili DNS’i bu alan adının sorumluluğunu alır: posta kayıtları, güvenlik kayıtları ve sertifikalar sizin için otomatik yönetilir. DNS değişikliklerinin yayılması birkaç saat alabilir.',
     'conn.routeA.step1': '1. Şu alt ad sunucularını kaydedin (glue kaydı da denir):',

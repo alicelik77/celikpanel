@@ -199,8 +199,8 @@ async function sampler(page, dir, label, { every = 2000, until, maxMs, png = () 
 // -- cells ------------------------------------------------------------------------------------------------------
 
 const TARGETS = {
-    // A page every setup state allows (isSetupRecoveryPath): Settings, DNS section; text typed into its first field.
-    'settings-dns': { path: '/settings?section=dns', field: 'input[type="text"],input:not([type]),textarea' },
+    // A page every setup state allows (isSetupRecoveryPath): DNS and peer servers (Settings' DNS section until alpha.98); text typed into its first field.
+    'settings-dns': { path: '/dns-infrastructure', field: 'input[type="text"],input:not([type]),textarea' },
     'settings-panel': { path: '/settings?section=panel', field: '#panel-certificate-domain' },
     'domain': { path: `/domains/${hand.domain}`, field: 'input[type="text"],input:not([type]),textarea' },
 };
