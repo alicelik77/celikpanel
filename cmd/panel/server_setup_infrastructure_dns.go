@@ -543,7 +543,7 @@ func (p *Panel) runServerSetupInfrastructureDNS(ctx context.Context, plan server
 			if _, writeErr := p.db.GetDB().ExecContext(ctx, `UPDATE panel_settings SET value=? WHERE key=?`, string(next), serverSetupInfrastructureDNSReceiptKey(step.RequestID)); writeErr != nil {
 				return false, errServerSetupInfrastructureDNSUnknown
 			}
-			return false, errors.New("infrastructure DNS publication failed; inspect DNS infrastructure and review a revised plan")
+			return false, errors.New("infrastructure DNS publication failed; inspect Server → DNS and peer servers and review a revised plan")
 		}
 		_, ready, readinessErr := p.activeDNSPublisher(ctx)
 		if readinessErr != nil || ready {
