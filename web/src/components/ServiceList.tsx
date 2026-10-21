@@ -32,6 +32,7 @@ import { componentDescription, componentName } from '../lib/componentName';
 import { mailProfileName, webmailReportsProblem } from '../lib/mailProfileText';
 import { decodeReadyBundles, bundleChipState, bundleName, type ReadyBundle } from '../lib/readyBundles';
 import { componentIcon } from '../lib/componentIcons';
+import { packageVersionFacts } from '../lib/packageVersion';
 import { BundleInstallDialog, ReadyBundleStrip, useBundleSequence } from './ReadyBundleStrip';
 import { WebmailRepairButton } from './WebmailRepairButton';
 
@@ -735,6 +736,13 @@ export function ServiceList({ onManageService }: ServiceListProps) {
     // olmayanları gizle" anahtarı. Aktif arama katlamayı geçersiz kılar;
     // eşleşme katlanmış grup içinde saklı kalmaz.
     const q = query.trim().toLowerCase();
+    // The desktop version column comes back only when the package database
+    // gave at least one installed component a version (alpha.97, D-036);
+    // otherwise the version stays under the description, as in alpha.95, and
+    // there is no column of empty cells.
+    // Masaüstü sürüm sütunu yalnız en az bir kurulu bileşenin paket sürümü
+    // biliniyorsa döner; yoksa sürüm açıklamanın altında kalır.
+    const versionColumn = services.some((s) => packageVersionFacts(s) !== null);
     const filtered = services.filter(
         (s) =>
             // The installed view hides what we KNOW is absent. A component
@@ -1800,7 +1808,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                         {group.map((s) => {
                                             const running = isRunning(s);
                                             return (
-                                                <li key={s.id} className="relative flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border px-4 py-3.5 last:border-0 hover:bg-surface-2/40 md:grid md:grid-cols-[minmax(0,1fr)_8rem_17rem]">
+                                                <li key={s.id} className={`relative flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border px-4 py-3.5 last:border-0 hover:bg-surface-2/40 md:grid ${versionColumn ? 'md:grid-cols-[minmax(0,1fr)_7.5rem_8rem_17rem]' : 'md:grid-cols-[minmax(0,1fr)_8rem_17rem]'}`}>
                                                     {/* Selective dimming, not block opacity: the name stays
                                                         readable in the light theme; state is carried by the
                                                         muted tone + status text + Install button.
@@ -1868,11 +1876,18 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                                 roadmap item).
                                                                 Sürüm, yalnız tarama bildiğinde açıklamanın altında
                                                                 söylenir; masaüstü sütunu kaldırıldı. */}
-                                                            {s.is_installed && s.versions.length > 0 && (
-                                                                <div className="font-mono text-xs text-fg-subtle" data-row-version="">{s.versions.join(', ')}</div>
-                                                            )}
+                                                            {/* alpha.97: with the desktop column drawn, this
+                                                                line is the phone's (as before alpha.95);
+                                                                without it, the only place a version is said.
+                                                                Sütun varsa bu satır telefonundur. */}
+                                                            <RowVersion service={s} className={versionColumn ? 'md:hidden' : ''} />
                                                         </div>
                                                     </div>
+                                                    {versionColumn && (
+                                                        <div className="hidden min-w-0 md:block" data-version-column="">
+                                                            <RowVersion service={s} column />
+                                                        </div>
+                                                    )}
                                                     <div className="w-32 shrink-0 md:w-auto">
                                                         {/* "Not checked yet" is information the operator
                                                             acts on, so it is fg-muted like a real status —
@@ -2944,6 +2959,54 @@ function InstallServiceDialog({
 // a phone, and say "unavailable" with a dashed outline, as Button does.
 // Satır eylemlerinin tek çerçeveli tarifi.
 const rowButtonClass = 'inline-flex items-center gap-1.5 rounded-lg border border-border-strong bg-surface px-2.5 py-1.5 text-xs font-medium text-fg transition-colors hover:bg-surface-2 disabled:cursor-not-allowed disabled:border-dashed disabled:bg-transparent disabled:text-fg-muted max-sm:min-h-11 max-sm:px-3';
+
+// The version a row says (alpha.97, D-036): the multi-version runtimes their
+// managed copies' versions; every other installed component the upstream part
+// of its package version, in mono, with the full version as printed by the
+// package database in its tooltip; "several versions" when its packages
+// differ; nothing at all when it is not known.
+// Satırın söylediği sürüm: runtime'lar kopyalarını, diğerleri paket sürümünün
+// kısa biçimini (tam sürüm ipucunda), farklıysa "birden çok sürüm", bilinmiyorsa
+// hiçbir şey.
+function RowVersion({ service, column = false, className = '' }: { service: ManagedService; column?: boolean; className?: string }) {
+    const { t } = useI18n();
+    if (!service.is_installed) return null;
+    if (service.versions.length > 0) {
+        return column && service.versions.length > 1 ? (
+            <div className="flex flex-wrap gap-1" data-row-version="">
+                {service.versions.map((version) => (
+                    <span key={version} className="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-xs text-fg-muted">{version}</span>
+                ))}
+            </div>
+        ) : (
+            <div className={`font-mono text-xs text-fg-muted ${className}`} data-row-version="">{service.versions.join(', ')}</div>
+        );
+    }
+    const facts = packageVersionFacts(service);
+    if (!facts) return null;
+    const source = t(facts.kept ? 'services.versionFromPackagesKept' : 'services.versionFromPackages');
+    if (facts.several) {
+        return (
+            <div
+                className={`text-xs text-fg-muted ${className}`}
+                title={`${facts.packages.map((pkg) => `${pkg.package} ${pkg.version}`).join(', ')} · ${source}`}
+                data-row-version="several"
+            >
+                {t('services.versionSeveral')}
+            </div>
+        );
+    }
+    return (
+        <div
+            className={`truncate font-mono text-xs text-fg-muted ${className}`}
+            title={`${facts.full} · ${source}`}
+            data-row-version={facts.full}
+        >
+            {facts.short}
+            <span className="sr-only">{` (${facts.full}, ${source})`}</span>
+        </div>
+    );
+}
 
 function RowIcon({ id, category, installed }: { id: string; category: string; installed: boolean }) {
     const Icon = componentIcon(id, category);

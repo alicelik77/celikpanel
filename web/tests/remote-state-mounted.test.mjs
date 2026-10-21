@@ -2026,3 +2026,40 @@ test('every infrastructure zone text exists in both languages', () => {
   assert.equal(en.size, 20);
   for (const [key, value] of en) assert.ok(tr.has(key) && tr.get(key) !== value, key);
 });
+
+// alpha.97 (D-036): a component's page shows its installed package version in
+// full, as the package database printed it, and where it came from; packages
+// that differ are each named; a kept reading says when it was read; a record
+// without one says nothing about versions.
+// Bileşen sayfası kurulu paket sürümünü tam hâliyle ve kaynağıyla gösterir.
+test('a component page shows the full package version and its source; unknown says nothing', async () => {
+  const page = async (extra) => {
+    await freshCheck();
+    serve({ '/api/v1/managed-services': () => Response.json({ services: [{ ...redisRecord, versions: [], ...extra }], scanned_at: new Date().toISOString(), scan_age_seconds: 0 }) });
+    await mount(ComponentDetail, { serviceId: 'redis', onBack() {} });
+    await spin(3);
+  };
+  const versionNode = () => tree.root.findAll((node) => node.props && node.props['data-package-version'] !== undefined)[0];
+  const sourceNode = () => tree.root.findAll((node) => node.props && node.props['data-package-version-source'] !== undefined)[0];
+  try {
+    await page({ package_version: '5:7.0.15-3+deb13u1', package_version_short: '7.0.15', package_versions: [{ package: 'redis-server', version: '5:7.0.15-3+deb13u1' }], package_version_read_at: '2026-10-21T08:00:00Z' });
+    assert.equal(versionNode()?.props['data-package-version'], '5:7.0.15-3+deb13u1');
+    assert.ok(has('component.packageVersion'), 'the row label is missing');
+    assert.ok(has('5:7.0.15-3+deb13u1'), 'the full version is not shown');
+    assert.equal(sourceNode().props['data-package-version-source'], 'read');
+    assert.ok(has('component.packageVersionSource'));
+  } finally { await cleanup(); }
+  try {
+    await page({ package_versions_differ: true, package_versions: [{ package: 'redis-server', version: '5:7.0.15-3' }, { package: 'redis-tools', version: '5:7.0.14-1' }], package_version_kept: true, package_version_read_at: '2026-10-21T08:00:00Z' });
+    assert.equal(versionNode()?.props['data-package-version'], 'several');
+    assert.ok(has('component.packageVersionSeveral'));
+    assert.ok(has('redis-server 5:7.0.15-3') && has('redis-tools 5:7.0.14-1'), 'each package is named with its own version');
+    assert.equal(sourceNode().props['data-package-version-source'], 'kept');
+    assert.ok(has('component.packageVersionKept'), 'a kept reading is not said as such');
+  } finally { await cleanup(); }
+  try {
+    await page({});
+    assert.equal(versionNode(), undefined, 'a record without a version shows one');
+    assert.ok(!has('component.packageVersion'));
+  } finally { await cleanup(); }
+});

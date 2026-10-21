@@ -169,7 +169,7 @@ test('every component row links to its component page, whatever its state', () =
 
     // The whole row is the target, and every real control still sits above it.
     assert.match(rows.slice(link), /after:absolute after:inset-0/);
-    assert.match(rows, /<li key=\{s\.id\} className="relative /);
+    assert.match(rows, /<li key=\{s\.id\} className=\{`relative /);
     assert.match(rows, /className="relative ml-auto flex min-w-0 flex-wrap items-center justify-end/);
 
     // Manage stays the primary action where it exists; the row link is not a

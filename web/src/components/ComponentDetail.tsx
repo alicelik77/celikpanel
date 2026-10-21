@@ -7,6 +7,7 @@ import { apiErrorText } from '../lib/apiError';
 import { componentName } from '../lib/componentName';
 import { decodeListIn, lastKnown, mapRemote, useRemote } from '../lib/remote';
 import { useManagedServices, useStoredRecordCheck, type ManagedServicesSnapshot } from '../lib/managedServices';
+import { packageVersionFacts } from '../lib/packageVersion';
 
 interface Instance {
     version: string;
@@ -199,8 +200,13 @@ const Chip = ({ children }: { children: React.ReactNode }) => (
 );
 
 function Facts({ svc }: { svc: Component | null }) {
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
     if (!svc) return null;
+    // The installed package version in full, as the package database printed
+    // it, and where it came from (alpha.97, D-036). Unknown says nothing.
+    // Kurulu paket sürümü tam hâliyle ve nereden geldiği; bilinmeyen susar.
+    const version = packageVersionFacts(svc);
+    const readAt = version?.readAt ? new Date(version.readAt).toLocaleString(locale === 'tr' ? 'tr-TR' : 'en-US') : '';
     const kindLabel =
         svc.kind === 'service' ? t('component.kindService') : svc.kind === 'runtime' ? t('component.kindRuntime') : t('component.kindTool');
     const managed = (svc.instances ?? []).filter((i) => i.managed);
@@ -220,6 +226,25 @@ function Facts({ svc }: { svc: Component | null }) {
                         {managed.map((i) => (
                             <Chip key={i.unit || i.path || i.version}>{i.version || '—'}</Chip>
                         ))}
+                    </Row>
+                )}
+                {version && (
+                    <Row label={t('component.packageVersion')}>
+                        <div data-package-version={version.several ? 'several' : version.full}>
+                            {version.several ? (
+                                <>
+                                    <p className="text-sm text-fg">{t('component.packageVersionSeveral')}</p>
+                                    <div className="mt-1">
+                                        {version.packages.map((pkg) => <Chip key={`${pkg.package}:${pkg.version}`}>{`${pkg.package} ${pkg.version}`}</Chip>)}
+                                    </div>
+                                </>
+                            ) : (
+                                <Chip>{version.full}</Chip>
+                            )}
+                            <p className="mt-1 text-xs text-fg-muted" data-package-version-source={version.kept ? 'kept' : 'read'}>
+                                {version.kept && readAt ? t('component.packageVersionKept', { time: readAt }) : t('component.packageVersionSource')}
+                            </p>
+                        </div>
                     </Row>
                 )}
                 {svc.packages && svc.packages.length > 0 && (

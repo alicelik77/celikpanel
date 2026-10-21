@@ -364,10 +364,16 @@ test('icons come from one map and the emoji is drawn nowhere', () => {
   assert.match(services, /<RowIcon id=\{s\.id\} category=\{s\.category\}/);
 });
 
-test('rows align in three columns; the version is said under the description only where the scan knows it', () => {
-  assert.match(services, /md:grid md:grid-cols-\[minmax\(0,1fr\)_8rem_17rem\]/);
+// alpha.97 (D-036): the desktop version column returns only when the package
+// database gave at least one installed component a version; otherwise the
+// rows keep alpha.95's three columns and the version under the description.
+test('rows align in three columns, or four when a package version is known; never a column of dashes', () => {
+  assert.match(services, /const versionColumn = services\.some\(\(s\) => packageVersionFacts\(s\) !== null\);/);
+  assert.match(services, /versionColumn \? 'md:grid-cols-\[minmax\(0,1fr\)_7\.5rem_8rem_17rem\]' : 'md:grid-cols-\[minmax\(0,1fr\)_8rem_17rem\]'/);
   assert.doesNotMatch(services, /hidden w-28 shrink-0 sm:block/, 'the desktop version column of dashes is gone');
-  assert.match(services, /\{s\.is_installed && s\.versions\.length > 0 && \(\s*\n\s*<div className="font-mono text-xs text-fg-subtle" data-row-version="">/);
+  assert.doesNotMatch(services, /\?\? '—'/, 'an unknown version is never a dash');
+  assert.match(services, /<RowVersion service=\{s\} className=\{versionColumn \? 'md:hidden' : ''\} \/>/);
+  assert.match(services, /\{versionColumn && \(\s*\n\s*<div className="hidden min-w-0 md:block" data-version-column="">/);
   assert.match(services, /const rowButtonClass = '[^']*border border-border-strong bg-surface[^']*max-sm:min-h-11[^']*'/);
   assert.doesNotMatch(services, /rounded-lg bg-primary px-3 py-1\.5 text-xs font-semibold text-primary-fg/);
   // A requirement badge never breaks a name such as PHP-FPM at its hyphen.

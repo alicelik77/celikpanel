@@ -83,6 +83,8 @@ export const serviceActionNoteURL = compileSource('lib/serviceActionNote.ts', un
 const componentCensusURL = compileSource('lib/componentCensus.ts', unexpected('lib/componentCensus.ts'));
 // So is lib/visibleReads.ts, which the held check's resume uses (15 Oct 2026).
 const visibleReadsURL = compileSource('lib/visibleReads.ts', unexpected('lib/visibleReads.ts'));
+// The installed package version reader (alpha.97) has no imports of its own.
+export const packageVersionURL = compileSource('lib/packageVersion.ts', unexpected('lib/packageVersion.ts'));
 
 export function sharedLayer(stubURL, extra = {}) {
   const uiURL = compileSource('components/ui.tsx', (specifier) => (
@@ -100,6 +102,7 @@ export function sharedLayer(stubURL, extra = {}) {
     '/lib/serviceActionNote': serviceActionNoteURL,
     '/componentCensus': componentCensusURL,
     '/visibleReads': visibleReadsURL,
+    '/lib/packageVersion': packageVersionURL,
     '/ui': uiURL,
     ...extra,
   };
