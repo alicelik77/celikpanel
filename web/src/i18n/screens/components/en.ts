@@ -216,6 +216,7 @@ export const enComponentsScreens = {
     'component.packageVersionSource': 'Read from the system package database.',
     'component.packageVersionKept': 'Read from the system package database on {time}. At the last check the package manager was busy, so this earlier reading is shown; the next check reads it again.',
     'component.packageVersionSeveral': 'Its packages report different versions:',
+    'component.packageVersionKeptLong': 'The package manager has been busy at every check for more than a day. If no installation or update is running on the server, the server administrator checks whether a package operation is stuck.',
     'component.packages': 'Packages',
     'component.ports': 'Open ports',
     'component.portsNone': 'None — local only, nothing is exposed to the internet',

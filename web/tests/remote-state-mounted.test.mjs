@@ -2049,15 +2049,19 @@ test('a component page shows the full package version and its source in its head
     assert.ok(has('component.packageVersion'), 'the row label is missing');
     assert.ok(has('5:7.0.15-3+deb13u1'), 'the full version is not shown');
     assert.equal(sourceNode().props['data-package-version-source'], 'read');
+    assert.equal(tree.root.findAll((node) => node.props && node.props['data-package-version-kept-long'] !== undefined).length, 0, 'a fresh reading has no stuck line');
     assert.ok(has('component.packageVersionSource'));
   } finally { await cleanup(); }
   try {
-    await page({ package_versions_differ: true, package_versions: [{ package: 'redis-server', version: '5:7.0.15-3' }, { package: 'redis-tools', version: '5:7.0.14-1' }], package_version_kept: true, package_version_read_at: '2026-10-21T08:00:00Z' });
+    await page({ package_versions_differ: true, package_versions: [{ package: 'redis-server', version: '5:7.0.15-3' }, { package: 'redis-tools', version: '5:7.0.14-1' }], package_version_kept: true, package_version_kept_long: true, package_version_read_at: '2026-10-21T08:00:00Z' });
     assert.equal(versionNode()?.props['data-package-version'], 'several');
     assert.ok(has('component.packageVersionSeveral'));
     assert.ok(has('redis-server 5:7.0.15-3') && has('redis-tools 5:7.0.14-1'), 'each package is named with its own version');
     assert.equal(sourceNode().props['data-package-version-source'], 'kept');
     assert.ok(has('component.packageVersionKept'), 'a kept reading is not said as such');
+    // Busy at every check for more than a day: one short line on what to check.
+    assert.equal(tree.root.findAll((node) => node.props && node.props['data-package-version-kept-long'] !== undefined).length, 1);
+    assert.ok(has('component.packageVersionKeptLong'));
   } finally { await cleanup(); }
   try {
     await page({});

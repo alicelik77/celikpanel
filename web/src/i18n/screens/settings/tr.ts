@@ -420,6 +420,10 @@ export const trSettingsScreens: Record<SettingsScreenKey, string> = {
     'panelUpdate.previousAttempt.stoppedTitle': "Bu sürüme yapılan önceki güncelleme kurulu sürümü değiştirmeden durdu",
     'panelUpdate.previousAttempt.stopped': "{version} bu sunucuda {time} tarihinde denendi ve kurulu sürümü ve verilerini değiştirmeden durdu; bu sunucu {current} sürümünü eskisi gibi çalıştırıyor. Yeniden başlatmak güvenlidir; o deneme için kaydedilen neden bu sunucudaki bir durumu belirtiyorsa önce onu giderin.",
     // alpha.97: önceki deneme paket yöneticisi meşgul olduğu için durdu (Frankfurt, 2026-10-17).
+    // alpha.97: güncelleme neden durdu (açılış katalogundan taşındı; bu parça gelene dek pencere açılış yedeğini gösterir).
+    'panelUpdate.outcome.preflightStep.compatibility': "Neden: sunucunun kurtarma aracı başlatılamadı ya da kurulumu doğrulanamadı. Sunucu yöneticisi aşağıdaki sunucu iletisine bakarak bunu denetlemeli; düzeltildikten sonra güncellemeyi yeniden başlatmak güvenlidir.",
+    'panelUpdate.outcome.packageManagerBusy': "Neden: sunucunun paket yöneticisi meşguldü, örneğin otomatik güvenlik güncellemeleri çalışıyordu. Hiçbir şey değiştirilmedi.",
+    'panelUpdate.outcome.packageManagerBusyNext': "Paket yöneticisi işini bitirince {target} güncellemesini yeniden başlatın; Ayarlar'daki güncelleme kartı paket yöneticisinin ne zaman boşaldığını söyler. Hiçbir işlem kendiliğinden başlamaz.",
     'panelUpdate.previousAttempt.packageManagerBusy': "{version} bu sunucuda {time} tarihinde denendi. Sunucunun paket yöneticisi meşguldü, örneğin otomatik güvenlik güncellemeleri çalışıyordu. Hiçbir şey değiştirilmedi; sunucu eskisi gibi {current} sürümünü çalıştırıyor. Paket yöneticisi işini bitirince güncellemeyi yeniden başlatın.",
     'panelUpdate.previousAttempt.packageManagerFree': "Paket yöneticisi işini bitirdi. Güncelleme yeniden başlatılabilir.",
     'panelUpdate.previousAttempt.packageManagerStillBusy': "Paket yöneticisi hâlâ meşgul. Bu kart kendiliğinden yeniden denetler ve güncellemenin ne zaman başlatılabileceğini söyler; hiçbir işlem kendiliğinden başlamaz.",

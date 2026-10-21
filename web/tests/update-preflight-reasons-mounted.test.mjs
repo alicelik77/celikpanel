@@ -122,7 +122,34 @@ const operationURL = compileURL('../src/components/SystemUpdateOperation.tsx', [
     from('./SystemUpdateSteps', stepsURL),
     from('./BuildCommit', buildURL),
 ]);
+const operationFastURL = compileURL('../src/components/SystemUpdateOperation.tsx', [
+    // The reason wait shortened to 60 ms for the test of its end.
+    [/SYSTEM_UPDATE_REASON_WAIT_MS = 10_?000/, 'SYSTEM_UPDATE_REASON_WAIT_MS = 60'],
+    from('react/jsx-runtime', jsxRuntimeURL),
+    from('react', reactURL),
+    from('react-dom', moduleURL('export function flushSync(fn) { return fn(); }')),
+    from('lucide-react', iconsURL),
+    from('./ui', moduleURL(`import React from '${reactURL}'; export function Button({ children, ...props }) { return React.createElement('button', props, children); }`)),
+    from('../i18n', i18nURL),
+    from('../router', moduleURL('export function replaceCurrentRouterURL() { return true; } export function useNavigationBlocker() {}')),
+    from('../lib/apiError', moduleURL(`export async function readApiError() { return {}; } export function apiErrorText() { return 'api-error'; }`)),
+    from('../lib/recoveryShell', moduleURL('export async function prepareRecoveryShell() {}')),
+    from('../lib/systemUpdateFailure', failureURL),
+    from('../lib/systemUpdateOutcome', outcomeURL),
+    from('../lib/recoveryObservation', recoveryURL),
+    from('../lib/systemUpdateLease', leaseURL),
+    from('../lib/systemUpdateAuthSignal', authURL),
+    from('../lib/systemUpdateWatchdog', compileURL('../src/lib/systemUpdateWatchdog.ts')),
+    from('../lib/useSystemUpdateNavigationLease', moduleURL('export function useSystemUpdateNavigationLease(identity, createdAt, requested) { return { released: false, blocked: requested }; }')),
+    from('../lib/systemUpdateRestartSignal', compileURL('../src/lib/systemUpdateRestartSignal.ts', [from('react', reactURL), from('./systemUpdateTracking', trackingURL)])),
+    from('../lib/systemUpdateTracking', trackingURL),
+    from('../lib/systemUpdateSteps', compileURL('../src/lib/systemUpdateSteps.ts')),
+    from('./SystemUpdateSteps', stepsURL),
+    from('./BuildCommit', buildURL),
+]);
 const { SystemUpdateOperationProvider, useSystemUpdateOperation } = await import(operationURL);
+const { SystemUpdateOperationProvider: FastProvider, useSystemUpdateOperation: useFastOperation } = await import(operationFastURL);
+function FastProbe() { globalThis.__context = useFastOperation(); return null; }
 // What the update card reads from the provider.
 function Probe() { globalThis.__context = useSystemUpdateOperation(); return null; }
 const { publishSystemUpdateAuthentication } = await import(authURL);
@@ -151,7 +178,7 @@ function textOf(node) {
 }
 const settle = async (rounds = 12) => { for (let i = 0; i < rounds; i += 1) await act(async () => { await new Promise(resolve => setTimeout(resolve, 5)); }); };
 
-async function mountWith({ locale, message, answer, screensReady = true, screensFailed = false }) {
+async function mountWith({ locale, message, answer, screensReady = true, screensFailed = false, fast = false }) {
     const shell = locale === 'tr' ? tr : en;
     globalThis.__preflightCatalogue = { locale, shell, all: { ...shell, ...(locale === 'tr' ? trScreens : enScreens) }, screensReady, screensFailed };
     localStorage.clear();
@@ -168,7 +195,9 @@ async function mountWith({ locale, message, answer, screensReady = true, screens
     publishSystemUpdateAuthentication(true);
     let renderer;
     await act(async () => {
-        renderer = TestRenderer.create(React.createElement(SystemUpdateOperationProvider, null, React.createElement('main', null, 'page'), React.createElement(Probe)));
+        renderer = TestRenderer.create(fast
+            ? React.createElement(FastProvider, null, React.createElement('main', null, 'page'), React.createElement(FastProbe))
+            : React.createElement(SystemUpdateOperationProvider, null, React.createElement('main', null, 'page'), React.createElement(Probe)));
     });
     await settle();
     return { renderer, reads };
@@ -238,15 +267,45 @@ for (const locale of ['en', 'tr']) {
             assert.ok(text.includes(c['panelUpdate.outcome.preflightStep.generic']), 'the boot-catalogue reason when the screen copy failed');
         } finally { await act(async () => mounted.renderer.unmount()); }
     });
+
+    // The wait is bounded: a part that neither arrives nor fails gives the
+    // boot-catalogue reason after SYSTEM_UPDATE_REASON_WAIT_MS (60 ms here).
+    test(`${locale}: a reason still waiting for its words after the bounded wait shows the generic reason`, async () => {
+        const mounted = await mountWith({ locale, message: REFUSED, answer: observation({ failure_code: 'update_preflight_refused' }), screensReady: false, fast: true });
+        try {
+            await settle(20);
+            const text = textOf(dialogOf(mounted.renderer));
+            assert.ok(text.includes(c['panelUpdate.outcome.preflightStep.generic']), text);
+            assert.ok(!text.includes(c['panelUpdate.outcome.reasonLoading']), 'still waiting after the bound');
+        } finally { await act(async () => mounted.renderer.unmount()); }
+    });
+
+    // A step whose words are boot copy needs no screen part: shown at once.
+    test(`${locale}: a step with boot-catalogue words is said at once, before the screen copy`, async () => {
+        const message = '!! CELIKPANEL_UPDATE_FAILURE code=recovery_runtime_preflight_failed state=unchanged reason=recovery runtime preflight step=material_support: the material layout is not supported detail=';
+        const mounted = await mountWith({ locale, message, answer: observation({ failure_code: 'recovery_runtime_preflight_failed' }), screensReady: false });
+        try {
+            const text = textOf(dialogOf(mounted.renderer));
+            assert.ok(text.includes(c['panelUpdate.outcome.preflightStep.material_support']), text);
+            assert.ok(!text.includes(c['panelUpdate.outcome.reasonLoading']), 'a boot step waited for the screen copy');
+            assert.ok(!text.includes(c['panelUpdate.outcome.preflightStep.generic']));
+        } finally { await act(async () => mounted.renderer.unmount()); }
+    });
 }
 
-test('the new update texts are in the boot catalogue in both languages, Turkish not English', () => {
+// Only the waiting line is boot copy; the reasons of alpha.97 are screen copy
+// (the boot path had about 1 KiB left), each with a boot-catalogue fallback.
+test('the new update texts exist in both languages, Turkish not English, and only the waiting line is boot copy', () => {
+    assert.equal(typeof en['panelUpdate.outcome.reasonLoading'], 'string');
+    assert.notEqual(tr['panelUpdate.outcome.reasonLoading'], en['panelUpdate.outcome.reasonLoading']);
     for (const key of ['panelUpdate.outcome.preflightStep.compatibility', 'panelUpdate.outcome.packageManagerBusy',
-        'panelUpdate.outcome.packageManagerBusyNext', 'panelUpdate.outcome.reasonLoading']) {
-        assert.equal(typeof en[key], 'string', key);
-        assert.equal(typeof tr[key], 'string', key);
-        assert.notEqual(tr[key], en[key], key);
+        'panelUpdate.outcome.packageManagerBusyNext']) {
+        assert.equal(en[key], undefined, `${key} grows the boot payload`);
+        assert.equal(typeof enScreens[key], 'string', key);
+        assert.equal(typeof trScreens[key], 'string', key);
+        assert.notEqual(trScreens[key], enScreens[key], key);
     }
-    assert.match(en['panelUpdate.outcome.packageManagerBusy'], /package manager was busy, for example with automatic security updates\. Nothing was changed\./);
-    assert.match(tr['panelUpdate.outcome.packageManagerBusy'], /paket yöneticisi meşguldü/);
+    assert.match(enScreens['panelUpdate.outcome.packageManagerBusy'], /package manager was busy, for example with automatic security updates\. Nothing was changed\./);
+    assert.match(trScreens['panelUpdate.outcome.packageManagerBusy'], /paket yöneticisi meşguldü/);
+    assert.match(trScreens['panelUpdate.outcome.preflightStep.compatibility'], /sunucu iletisine bakarak bunu denetlemeli/);
 });

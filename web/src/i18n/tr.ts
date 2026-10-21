@@ -432,10 +432,7 @@ export const tr: Record<ShellKey, string> = {
     'panelUpdate.outcome.preflightStep.material_support': "Neden: seçili kurtarma çalışma ortamı bu güncellemenin kurtarma verisini desteklemiyor.",
     'panelUpdate.outcome.preflightStep.database_support': "Neden: seçili kurtarma çalışma ortamı bu güncellemenin veritabanı geçişini desteklemiyor.",
     'panelUpdate.outcome.preflightStep.database_metadata': "Neden: panel veritabanının üst verisi bu güncellemenin geçişi için desteklenmiyor.",
-    // alpha.97: kurtarma aracı başlatılamadı ya da doğrulanamadı, paket yöneticisi meşguldü, neden metni yüklenirken.
-    'panelUpdate.outcome.preflightStep.compatibility': "Neden: sunucunun kurtarma aracı başlatılamadı ya da kurulumu doğrulanamadı. Sunucu yöneticisi aşağıdaki sunucu satırıyla bunu denetler; düzeltildikten sonra güncellemeyi yeniden başlatmak güvenlidir.",
-    'panelUpdate.outcome.packageManagerBusy': "Neden: sunucunun paket yöneticisi meşguldü, örneğin otomatik güvenlik güncellemeleri çalışıyordu. Hiçbir şey değiştirilmedi.",
-    'panelUpdate.outcome.packageManagerBusyNext': "Paket yöneticisi işini bitirince {target} güncellemesini yeniden başlatın; Ayarlar'daki güncelleme kartı paket yöneticisinin ne zaman boşaldığını söyler. Hiçbir işlem kendiliğinden başlamaz.",
+    // alpha.97: adımın metni yüklenirken neden satırı (alpha.97 adım metinleri ayarlar ekran parçasındadır).
     'panelUpdate.outcome.reasonLoading': "Neden okunuyor…",
     'panelUpdate.outcome.preflightStep.generic': "Neden: salt-okur bir denetim mevcut kurulumu doğrulayamadı.",
     'panelUpdate.outcome.stoppedNext': "Sunucunun aşağıdaki iletisi bu sunucudaki bir durumu (örneğin hâlâ süren başka bir işlemi ya da meşgul paket yöneticisini) belirtmiyorsa sunucuda yapmanız gereken bir şey yok; belirtiyorsa önce bitmesini bekleyin ya da sorunu giderin.",

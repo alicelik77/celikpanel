@@ -34,6 +34,8 @@ export interface PackageVersionFacts {
     kept: boolean;
     /** When the versions were read (RFC 3339), or ''. */
     readAt: string;
+    /** The kept reading is more than a day old: the page adds a short line. */
+    keptLong: boolean;
 }
 
 const versionText = /^[0-9A-Za-z][0-9A-Za-z.+~:_-]{0,63}$/;
@@ -56,13 +58,14 @@ export function packageVersionFacts(service: unknown): PackageVersionFacts | nul
     const readAt = typeof value.package_version_read_at === 'string' && instant.test(value.package_version_read_at)
         ? value.package_version_read_at : '';
     const kept = value.package_version_kept === true;
+    const keptLong = kept && value.package_version_kept_long === true;
     if (value.package_versions_differ === true) {
         if (new Set(packages.map((pkg) => pkg.version)).size < 2) return null;
-        return { full: '', short: '', several: true, packages, kept, readAt };
+        return { full: '', short: '', several: true, packages, kept, readAt, keptLong };
     }
     const full = value.package_version;
     const short = value.package_version_short;
     if (typeof full !== 'string' || !versionText.test(full) || typeof short !== 'string' || !versionText.test(short)) return null;
     if (packages.some((pkg) => pkg.version !== full)) return null;
-    return { full, short, several: false, packages, kept, readAt };
+    return { full, short, several: false, packages, kept, readAt, keptLong };
 }

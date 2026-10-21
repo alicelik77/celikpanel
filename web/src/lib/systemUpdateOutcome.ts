@@ -36,6 +36,7 @@ export type OutcomeKey =
     | `panelUpdate.outcome.preflightClass.${PreflightReasonClass}`
     | 'panelUpdate.outcome.serverMessage'
     | 'panelUpdate.outcome.packageManagerBusy'
+    | 'panelUpdate.packageManagerBusy'
     | 'panelUpdate.outcome.packageManagerBusyNext'
     | 'panelUpdate.outcome.stoppedNext'
     | 'panelUpdate.outcome.stoppedResume'
@@ -176,8 +177,10 @@ export function failedUpdateGuidance(observation: RecoveryObservation | null, in
             title: { key: 'panelUpdate.outcome.stoppedTitle' },
             lines: [
                 { key: 'panelUpdate.outcome.stopped', vars: versions },
-                { key: 'panelUpdate.outcome.packageManagerBusy' },
-                { key: 'panelUpdate.outcome.packageManagerBusyNext', vars: versions },
+                // Screen copy (settings part); until it arrives, the boot
+                // catalogue's own busy and resume sentences.
+                { key: 'panelUpdate.outcome.packageManagerBusy', fallback: 'panelUpdate.packageManagerBusy' },
+                { key: 'panelUpdate.outcome.packageManagerBusyNext', vars: versions, fallback: 'panelUpdate.outcome.stoppedResume' },
             ],
         };
     }

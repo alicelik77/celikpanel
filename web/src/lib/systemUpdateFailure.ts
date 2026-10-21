@@ -5,8 +5,7 @@ export function systemUpdateFailureMessage(
     diagnostic: string,
     t: (key: 'panelUpdate.packageManagerBusy') => string,
 ): string {
-    const summary = /(?:^|: )!! CELIKPANEL_UPDATE_FAILURE code=package_manager_busy state=unchanged reason=/;
-    return summary.test(diagnostic)
+    return systemUpdatePackageManagerBusy(diagnostic)
         ? t('panelUpdate.packageManagerBusy')
         : diagnostic;
 }

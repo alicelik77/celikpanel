@@ -436,6 +436,10 @@ export const enSettingsScreens = {
     'panelUpdate.previousAttempt.stoppedTitle': "An earlier update to this version stopped before changing the installed version",
     'panelUpdate.previousAttempt.stopped': "{version} was tried on this server on {time} and stopped before changing the installed version or its data; this server runs {current} as before. Starting it again is safe; if the reason recorded for that attempt names a condition on this server, resolve it first.",
     // alpha.97: the earlier attempt stopped because the package manager was busy (Frankfurt, 2026-10-17).
+    // alpha.97: why an update stopped (moved out of the boot catalogue; the dialog shows its boot fallback until this part arrives).
+    'panelUpdate.outcome.preflightStep.compatibility': "Reason: the server's recovery tool could not be started or its installation could not be verified. The server administrator checks it, using the server's line below; starting the update again is safe once it is corrected.",
+    'panelUpdate.outcome.packageManagerBusy': "Reason: the server's package manager was busy, for example with automatic security updates. Nothing was changed.",
+    'panelUpdate.outcome.packageManagerBusyNext': "Start the update to {target} again when it has finished; the update card in Settings says when the package manager is free. Nothing starts by itself.",
     'panelUpdate.previousAttempt.packageManagerBusy': "{version} was tried on this server on {time}. The server's package manager was busy, for example with automatic security updates. Nothing was changed; this server runs {current} as before. Start the update again when it has finished.",
     'panelUpdate.previousAttempt.packageManagerFree': "The package manager has finished. The update can be started again.",
     'panelUpdate.previousAttempt.packageManagerStillBusy': "The package manager is still busy. This card checks again by itself and says when the update can be started; nothing starts by itself.",

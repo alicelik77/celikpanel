@@ -491,6 +491,9 @@ export function ServiceShell({
                                     ? t('component.packageVersionKept', { time: packageVersionReadAt })
                                     : t('component.packageVersionSource')}
                             </p>
+                            {packageVersion.keptLong && (
+                                <p data-package-version-kept-long="">{t('component.packageVersionKeptLong')}</p>
+                            )}
                         </div>
                     )}
                 </div>

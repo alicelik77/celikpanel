@@ -378,7 +378,10 @@ test('the server line drops internal tokens in every state and is labelled as En
     const tracker = readFileSync(new URL('../src/components/SystemUpdateOperation.tsx', import.meta.url), 'utf8');
     // alpha.97: while the screen copy loads the line waits ("Reading the
     // reason…"); the boot fallback only when the screen copy failed.
-    assert.match(tracker, /value\.fallback && !screensReady\s+\? screensFailed \? t\(value\.fallback, value\.vars\) : t\('panelUpdate\.outcome\.reasonLoading'\)/);
+    // A key already in the loaded copy is shown at once; the wait is bounded.
+    assert.match(tracker, /const wordsLoaded = \(value: OutcomeText\) => 'text' in value \|\| !value\.fallback \|\| screensReady \|\| t\(value\.key\) !== value\.key;/);
+    assert.match(tracker, /screensFailed \|\| reasonWaitOver \? t\(value\.fallback, value\.vars\) : t\('panelUpdate\.outcome\.reasonLoading'\)/);
+    assert.match(tracker, /window\.setTimeout\(\(\) => setReasonWaitOver\(true\), SYSTEM_UPDATE_REASON_WAIT_MS\)/);
 });
 
 // Frankfurt 2026-10-16: red only when the owner must act; what the server
