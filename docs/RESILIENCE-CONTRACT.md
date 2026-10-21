@@ -6611,12 +6611,17 @@ everything in it.
   into the settings screen part (boot path 359.20 of 361 KiB).
 - **The reverse transition, alpha.97 to alpha.96.** Should an installed panel be
   taken back to alpha.96 without the pre-update snapshot of its database, the
-  component scan cache keeps the additive `package_versions*` fields. alpha.96
-  decodes its observations with Go's `encoding/json`, which ignores fields it does
-  not know, so the row is read, not refused, and the next alpha.96 scan writes it
-  again without them; a Go test decodes an alpha.97 row with alpha.96's observation
-  shape. The independent review expected such a row to read as an unverified
-  component state until the next scan; the decoder of alpha.96 does not do that,
-  but if a future decoder refused unknown fields, the recovery would be the same
-  one the page already performs for an unverified state: one conditional scan.
-  This is a known, recoverable transition, not measured on an installed server.
+  component scan cache keeps the additive `package_versions*` fields, and alpha.96
+  reads that row in two ways. Its Components page, Dashboard and component pages
+  decode it with Go's lenient `encoding/json`, which ignores unknown fields, so they
+  read it. Its Store does not: `strictScanObservations` (`cmd/panel/store_backend.go`
+  in alpha.96) refuses unknown fields, so alpha.96's Store says
+  `component_state_invalid` ("The stored record of this server's components could
+  not be read …") until alpha.96's next component scan writes the row again
+  without the fields. That scan comes by itself while an administrator has the
+  Dashboard, Components or a component page open (the Store also needs a scan no
+  older than its 15-minute freshness window). **Known, recoverable gap**: nothing
+  is lost and nothing needs repairing; it heals with the next scan. A Go test
+  decodes an alpha.97 row with mirrors of both alpha.96 decoders and checks that
+  the lenient one reads it and the strict one refuses it. Not measured on an
+  installed server.

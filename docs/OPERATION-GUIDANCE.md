@@ -9494,9 +9494,12 @@ server.
   "Reading the reason…" while that part loads, and after 10 seconds, or when the
   screen copy failed, the boot copy's own sentence (for a busy package manager the
   boot catalogue's busy sentence, otherwise the generic reason).
-- **The server's line.** A path after `:`, `,`, `;`, a backtick or `@` is treated as
-  a path; a base64-like value split by `/` is hidden as one token; a file mode after
-  `mode=` stays readable (`mode=0775`).
+- **The server's line.** A path after `:`, `,`, `;`, `>`, `|`, a backtick or `@` is
+  treated as a path; a base64-like value split by `/` is hidden as one token, and a
+  `/`-leading run is kept only when it is in the product's own directories
+  (`/usr/libexec/celikpanel`, `/var/lib/celikpanel*`, `/etc/celikpanel*`,
+  `/run/celikpanel*`, `/opt/celikpanel*` and the product's log, backup and binary
+  locations); a file mode after `mode=` stays readable (`mode=0775`).
 - **Turkish wording.** The `compatibility` reason now says "Sunucu yöneticisi
   aşağıdaki sunucu iletisine bakarak bunu denetlemeli"; packages that differ read
   "Paketlerinin sürümleri farklı:".

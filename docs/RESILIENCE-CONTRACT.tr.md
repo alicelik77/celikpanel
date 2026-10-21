@@ -5889,12 +5889,17 @@ içindeki her şeyin saat tarihidir.
   (açılış yolu 361 KiB'ın 359,20'si).
 - **Ters geçiş, alpha.97'den alpha.96'ya.** Kurulu bir panel veritabanının güncelleme
   öncesi anlık görüntüsü olmadan alpha.96'ya geri alınırsa bileşen tarama önbelleği
-  ek `package_versions*` alanlarını korur. alpha.96 gözlemlerini Go'nun
-  `encoding/json` çözücüsüyle okur ve bu çözücü bilmediği alanları yok sayar; satır
-  reddedilmez, okunur ve alpha.96'nın sonraki taraması onu bu alanlar olmadan yeniden
-  yazar; bir Go testi alpha.97 satırını alpha.96'nın gözlem biçimiyle çözer. Bağımsız
-  inceleme böyle bir satırın sonraki taramaya dek doğrulanmamış bileşen durumu olarak
-  okunacağını bekliyordu; alpha.96'nın çözücüsü bunu yapmaz, ama ileride bilinmeyen
-  alanları reddeden bir çözücü olursa kurtarma, sayfanın doğrulanmamış durum için zaten
-  yaptığıyla aynıdır: tek bir koşullu tarama. Bu bilinen, kurtarılabilir bir geçiştir;
-  kurulu bir sunucuda ölçülmedi.
+  ek `package_versions*` alanlarını korur ve alpha.96 bu satırı iki biçimde okur.
+  Bileşenler sayfası, Pano ve bileşen sayfaları onu Go'nun hoşgörülü `encoding/json`
+  çözücüsüyle okur; bu çözücü bilmediği alanları yok sayar, satır okunur. Mağaza ise
+  okumaz: alpha.96'daki `strictScanObservations` (`cmd/panel/store_backend.go`)
+  bilinmeyen alanları reddeder; bu yüzden alpha.96'nın Mağazası, alpha.96'nın sonraki
+  bileşen taraması satırı bu alanlar olmadan yeniden yazana dek
+  `component_state_invalid` der ("Bu sunucunun bileşenleri için saklanan kayıt
+  okunamadı …"). O tarama, bir yönetici Pano'yu, Bileşenler'i ya da bir bileşen
+  sayfasını açık tuttuğunda kendiliğinden gelir (Mağaza ayrıca 15 dakikalık tazelik
+  penceresinden eski olmayan bir tarama ister). **Bilinen, kurtarılabilir açık**:
+  hiçbir şey kaybolmaz ve onarılacak bir şey yoktur; sonraki taramayla kendiliğinden
+  düzelir. Bir Go testi alpha.97 satırını alpha.96'nın iki çözücüsünün eşleriyle çözer
+  ve hoşgörülü olanın okuduğunu, katı olanın reddettiğini denetler. Kurulu bir
+  sunucuda ölçülmedi.

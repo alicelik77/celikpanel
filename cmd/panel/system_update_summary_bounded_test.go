@@ -108,6 +108,12 @@ func TestPanelUpdateRecoveryPreflightKeepsStepAndDiagnostic(t *testing.T) {
 		// A file mode stays readable; other assignment values do not.
 		"launcher mode=0775, want 0755":      "launcher mode=0775, want 0755",
 		"launcher mode=rwxrwxr-x secret=abc": "launcher mode=[hidden] secret=[hidden]",
+		// After > or |, a path is a path; a "/"-leading token run outside the
+		// product's own directories is hidden, never kept as a path.
+		"x>/AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCd":            "x>[path]",
+		"|/home/alice/longsecretfilenamethatgoesonandonandon":    "|[path]",
+		"x/AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCd/more":        "[hidden]",
+		"run~/home/alice/longsecretfilenamethatgoesonandonandon": "run~[hidden]",
 		// A product path longer than 32 characters is kept whole.
 		"check /usr/libexec/celikpanel/recovery-runtime/bin/recovery failed": "check /usr/libexec/celikpanel/recovery-runtime/bin/recovery failed",
 	} {

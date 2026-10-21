@@ -9459,9 +9459,12 @@ v0.1.0-alpha.97 adayı için kaynakta; kurulu bir sunucuda hiçbir şey ölçül
   okunuyor…" der; 10 saniye sonra ya da ekran kopyası yüklenemediyse açılış
   kopyasının kendi cümlesini gösterir (meşgul paket yöneticisi için açılış
   katalogunun meşgul cümlesi, diğerlerinde genel neden).
-- **Sunucunun satırı.** `:`, `,`, `;`, ters tırnak ya da `@` sonrasındaki bir yol yol
-  sayılır; `/` ile bölünmüş base64 benzeri bir değer tek belirteç olarak gizlenir;
-  `mode=` sonrasındaki dosya kipi okunur kalır (`mode=0775`).
+- **Sunucunun satırı.** `:`, `,`, `;`, `>`, `|`, ters tırnak ya da `@` sonrasındaki
+  bir yol yol sayılır; `/` ile bölünmüş base64 benzeri bir değer tek belirteç olarak
+  gizlenir ve `/` ile başlayan bir dizi yalnız ürünün kendi dizinlerindeyse
+  (`/usr/libexec/celikpanel`, `/var/lib/celikpanel*`, `/etc/celikpanel*`,
+  `/run/celikpanel*`, `/opt/celikpanel*` ve ürünün günlük, yedek ve ikili dosya
+  yerleri) korunur; `mode=` sonrasındaki dosya kipi okunur kalır (`mode=0775`).
 - **Türkçe sözler.** `compatibility` nedeni artık "Sunucu yöneticisi aşağıdaki sunucu
   iletisine bakarak bunu denetlemeli" der; sürümleri farklı paketler "Paketlerinin
   sürümleri farklı:" diye okunur.

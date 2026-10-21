@@ -111,8 +111,9 @@ neden satırı genel neden yerine "Neden okunuyor…" der.
   diğerleri en çok 10 saniye "Neden okunuyor…" der, sonra açılış kopyasının kendi
   cümlesini gösterir. Bu sürümün yeni neden metinleri açılış kopyasından ayarlar
   ekran parçasına taşındı (kritik açılış yolu 361 KiB'ın 359,20'si).
-- Sunucunun satırı `:`, `,`, `;`, ters tırnak ya da `@` sonrasındaki yolu da yol
-  sayar, `/` ile bölünmüş base64 benzeri bir değeri gizler ve `mode=0775`'i okunur
+- Sunucunun satırı `:`, `,`, `;`, `>`, `|`, ters tırnak ya da `@` sonrasındaki yolu
+  da yol sayar, `/` ile bölünmüş base64 benzeri bir değeri gizler (`/` ile başlayan
+  bir dizi yalnız ürünün kendi dizinlerindeyse korunur) ve `mode=0775`'i okunur
   bırakır.
 - Türkçe: `compatibility` nedeni "… aşağıdaki sunucu iletisine bakarak bunu
   denetlemeli" der; sürümleri farklı paketler "Paketlerinin sürümleri farklı:" diye
@@ -150,9 +151,14 @@ neden satırı genel neden yerine "Neden okunuyor…" der.
   ve kendi sürümü olan `spamass-milter` vardır. WireGuard satırı Debian ve Ubuntu'da
   `wireguard` üst paketinin (Arch'ta `wireguard-tools`) sürümünü gösterir, çekirdek
   modülününkini değil.
-- **Veritabanı anlık görüntüsü olmadan alpha.97'den alpha.96'ya dönüş:** alpha.96
-  yeni önbellek alanlarını yok sayar (bir Go testi böyle bir satırı alpha.96'nın
-  biçimiyle çözer) ve sonraki taraması satırı bu alanlar olmadan yeniden yazar.
+- **Veritabanı anlık görüntüsü olmadan alpha.97'den alpha.96'ya dönüş:** alpha.96'nın
+  Bileşenler sayfası, Pano'su ve bileşen sayfaları önbellek satırını okur (yeni
+  alanları yok sayar), ama alpha.96'nın Mağazası bilinmeyen alanları reddeder ve
+  alpha.96'nın sonraki bileşen taraması satırı bu alanlar olmadan yeniden yazana dek
+  "Bu sunucunun bileşenleri için saklanan kayıt okunamadı" der (o tarama bir yönetici
+  Pano'yu, Bileşenler'i ya da bir bileşen sayfasını açık tuttuğunda kendiliğinden
+  gelir). Hiçbir şey kaybolmaz; o taramayla düzelir. Bir Go testi alpha.96'nın iki
+  çözücüsünü de yansıtır.
 - P0.1-P0.5 **kısmi** kalır; hiçbir P0 işi kapanmaz ya da ilerlemez; aday kabul
   değildir.
 

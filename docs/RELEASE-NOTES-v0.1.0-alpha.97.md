@@ -110,8 +110,9 @@ token-like strings. While a step's words are still loading, the reason line says
   at once, others say "Reading the reason…" for at most 10 seconds and then the
   boot copy's own sentence. The new reasons of this release moved from the boot copy
   to the settings screen part (critical boot path 359.20 of 361 KiB).
-- The server's line also treats a path after `:`, `,`, `;`, a backtick or `@` as a
-  path, hides a base64-like value split by `/`, and keeps `mode=0775` readable.
+- The server's line also treats a path after `:`, `,`, `;`, `>`, `|`, a backtick or
+  `@` as a path, hides a base64-like value split by `/` (a `/`-leading run is kept
+  only inside the product's own directories), and keeps `mode=0775` readable.
 - Turkish: the `compatibility` reason says "… aşağıdaki sunucu iletisine bakarak bunu
   denetlemeli"; packages that differ read "Paketlerinin sürümleri farklı:".
 
@@ -147,9 +148,13 @@ token-like strings. While a step's words are still loading, the reason line says
   `spamass-milter`, which comes from another source and has its own version. The
   WireGuard row shows the version of the `wireguard` meta-package on Debian and
   Ubuntu (on Arch, `wireguard-tools`), not of the kernel module.
-- **alpha.97 back to alpha.96** without the database snapshot: alpha.96 ignores the
-  new cache fields (a Go test decodes such a row with alpha.96's shape) and its
-  next scan writes the row again without them.
+- **alpha.97 back to alpha.96** without the database snapshot: alpha.96's
+  Components page, Dashboard and component pages read the cache row (they ignore the
+  new fields), but alpha.96's Store refuses unknown fields and says "The stored record
+  of this server's components could not be read" until alpha.96's next component
+  scan writes the row again without them (it comes by itself while an administrator
+  has the Dashboard, Components or a component page open). Nothing is lost; it heals
+  with that scan. A Go test mirrors both alpha.96 decoders.
 - P0.1-P0.5 stay **partial**; no P0 item is closed or advanced; a candidate is not
   acceptance.
 

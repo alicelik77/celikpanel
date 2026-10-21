@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -326,10 +327,14 @@ func TestKeptReadingOlderThanADayIsMarkedLong(t *testing.T) {
 }
 
 // alpha.97 -> alpha.96 (a downgrade without the pre-update snapshot): the
-// additive fields stay in the cache row, and alpha.96 decodes its
-// observations with encoding/json, which ignores fields it does not know. The
-// row is read, not refused. This mirrors alpha.96's observation shape.
-func TestAlpha96DecodesACacheRowWrittenByAlpha97(t *testing.T) {
+// additive fields stay in the cache row. alpha.96 has two decoders of that row
+// and they disagree, so both are mirrored here with alpha.96's observation
+// shape: the Components page's (decodeScanCacheSnapshot, lenient
+// encoding/json) reads it; the Store's (strictScanObservations,
+// DisallowUnknownFields) refuses it, so alpha.96's Store says
+// component_state_invalid until alpha.96's next scan writes the row again
+// without the fields. alpha.97's own strict Store decoder accepts the row.
+func TestAlpha96DecodersAndACacheRowWrittenByAlpha97(t *testing.T) {
 	type alpha96Observation struct {
 		ID                    string                 `json:"id"`
 		IsInstalled           bool                   `json:"is_installed"`
@@ -360,5 +365,21 @@ func TestAlpha96DecodesACacheRowWrittenByAlpha97(t *testing.T) {
 	}
 	if len(old) != 1 || old[0].ID != "nginx" || !old[0].IsInstalled {
 		t.Fatalf("decoded %+v", old)
+	}
+
+	// alpha.96's Store decoder (08faa91e5 cmd/panel/store_backend.go,
+	// strictScanObservations): one document, unknown fields refused.
+	var strict struct {
+		Observations []alpha96Observation `json:"observations"`
+		WebmailReady *bool                `json:"webmail_ready,omitempty"`
+	}
+	decoder := json.NewDecoder(bytes.NewReader(row))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&strict); err == nil {
+		t.Fatal("alpha.96's strict Store decoder accepted an alpha.97 row; the documented component_state_invalid gap would not exist")
+	}
+	// alpha.97's own strict Store decoder knows the fields.
+	if observations, err := strictScanObservations(string(row)); err != nil || len(observations) != 1 {
+		t.Fatalf("alpha.97's Store decoder refused its own row: %v", err)
 	}
 }

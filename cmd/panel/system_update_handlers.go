@@ -367,8 +367,8 @@ const panelUpdateDiagnosticLimit = 240
 var (
 	panelUpdateDiagnosticURL = regexp.MustCompile(`[A-Za-z][A-Za-z0-9+.-]*://\S*`)
 	// A path starts a word: at the start, after a space or after one of
-	// = ' " ( [ < : , ; ` @ (a date such as 2026/10/17 is not one).
-	panelUpdateDiagnosticPath = regexp.MustCompile("(^|[\\s='\"(\\[<:,;`@])(/[^\\s:;,'\"()\\[\\]<>`@]*)")
+	// = ' " ( [ < > | : , ; ` @ (a date such as 2026/10/17 is not one).
+	panelUpdateDiagnosticPath = regexp.MustCompile("(^|[\\s='\"(\\[<>|:,;`@])(/[^\\s:;,'\"()\\[\\]<>|`@]*)")
 	// NAME=value as an environment or argument assignment; the value is hidden.
 	panelUpdateDiagnosticAssignment = regexp.MustCompile(`\b([A-Za-z_][A-Za-z0-9_]*)=("[^"]*"|'[^']*'|\S*)`)
 	// A long run of key-, token- or hash-like characters, "/" included so a
@@ -385,6 +385,21 @@ var (
 var panelUpdateProductPaths = []string{
 	"/usr/libexec/celikpanel", "/var/lib/celikpanel", "/etc/celikpanel", "/opt/celikpanel",
 	"/run/celikpanel", "/var/log/celikpanel", "/var/backups/celikpanel", "/usr/local/bin/celikpanel",
+}
+
+// panelUpdateProductPath reports whether path is in one of the product's own
+// directories (a name directly under a prefix, or a sibling such as
+// /var/lib/celikpanel-release-state), with no ".." segment.
+func panelUpdateProductPath(path string) bool {
+	if strings.Contains(path, "/../") || strings.HasSuffix(path, "/..") {
+		return false
+	}
+	for _, prefix := range panelUpdateProductPaths {
+		if path == prefix || strings.HasPrefix(path, prefix+"/") || strings.HasPrefix(path, prefix+"-") || strings.HasPrefix(path, prefix+".") {
+			return true
+		}
+	}
+	return false
 }
 
 // panelUpdateDiagnostic makes the updater's diagnostic safe to show: its
@@ -418,22 +433,16 @@ func panelUpdateDiagnostic(raw string) string {
 		if match[0] != '/' {
 			lead, path = match[:1], match[1:]
 		}
-		if len(path) == 1 {
+		if len(path) == 1 || panelUpdateProductPath(path) {
 			return match
-		}
-		for _, prefix := range panelUpdateProductPaths {
-			if path == prefix || strings.HasPrefix(path, prefix+"/") || strings.HasPrefix(path, prefix+"-") || strings.HasPrefix(path, prefix+".") {
-				if !strings.Contains(path, "/../") && !strings.HasSuffix(path, "/..") {
-					return match
-				}
-			}
 		}
 		return lead + "[path]"
 	})
 	// Token runs first, so a value with "=" padding is one run, not an
-	// assignment.
+	// assignment. A run is kept only when it is one of the product's own
+	// paths; any other run, a "/"-leading one included, is hidden.
 	text = panelUpdateDiagnosticSecret.ReplaceAllStringFunc(text, func(run string) string {
-		if strings.HasPrefix(run, "/") {
+		if panelUpdateProductPath(run) {
 			return run
 		}
 		return "[hidden]"
