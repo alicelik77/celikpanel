@@ -5903,3 +5903,67 @@ içindeki her şeyin saat tarihidir.
   düzelir. Bir Go testi alpha.97 satırını alpha.96'nın iki çözücüsünün eşleriyle çözer
   ve hoşgörülü olanın okuduğunu, katı olanın reddettiğini denetler. Kurulu bir
   sunucuda ölçülmedi.
+
+### v0.1.0-alpha.97'nin yayımlanması (yayımda kod değişikliği yok; ilke 2 ve 6; D-022; D-024; D-025; D-036; 2026-10-21)
+
+D-025 ilke 2 (kanıtın bir anlamı ve yaşam döngüsü vardır: bilinmeyen; yok, boş
+ya da başarılı değildir) ve 6 (hazır olma, ilerleme ve erişim birbirinden
+bağımsız kalır); D-022; D-024; D-036. **Hiçbir P0 işi kapanmaz ya da
+ilerlemez.** P0.1–P0.5 kısmi kalır ve her açık kabul işi açık kalır. Bu girdi
+tek bir sürümü kaydeder; kod, şema ya da kurtarma davranışını değiştirmez.
+2026-10-21, içindeki her şeyin saat tarihidir.
+
+- **Yayımlama.** Bütün adımları sürümü hazırlayan kişi yaptı, sahibin kalıcı
+  talimatı uyarınca; kurulu panel güncellemelerini yalnız sahip yapar. Önce üç
+  bağımsız inceleme turu yapıldı (bulguların hepsi düzeltildi: tutulan dpkg
+  durumları, çıktı sınırının etiketi ve gerçek süreç testleri, sonsuza dek
+  bekleyebilen bir neden satırı, temizleyicinin yol işlemesindeki boşluklar,
+  alpha.97'den alpha.96'ya Mağaza çözücüsü notu). #232 numaralı çekme isteği
+  `0c1a8917ef3f8141702fa41ae085f64d62a713f0` olarak birleştirildi; sürüm sırası
+  değişkeni etiketlemeden önce 96'dan 97'ye geçti; `main` koşusu ve etiket
+  koşusu başarılı oldu; `v0.1.0-alpha.97` açıklamalı etiketi (nesne
+  `e5c64bcc3569513050ebfc89c01185a69cabbfb0`, ağaç
+  `67db021959466f61a2defc232194d897c1eb9cb7`); 2026-10-21T20:24:20Z'de altı
+  dosyalı ön sürüm; arşiv SHA-256
+  `3784fa392b016a9fbd18ffc372f7017c8c2aab5d3643bf319c25e53514800aa3`, 66.312.385
+  bayt; manifest sıra 97 ve doğrulanan bir imza (aynı anahtar); `get.sh` 97'yi
+  sabitler; politika 96'dan sonra 97; `bin/agent` içinde
+  `InstalledPackageVersionsV1` var. Portal paketi (SHA-256
+  `61ade15eee9ecd7e136d0eee599534a96c628d6bb38ae2365c0c74f56e339197`, iki kez
+  aynı derlendi) yaklaşık 20:36Z'de önceki v0.1.0-alpha.96 ile yayımlandı:
+  committed, genel doğrulama 26 istekten 26'sı,
+  `CELIKPANEL_DOWNLOAD_PORTAL_PUBLISHED`, ardından dışarıdan okundu. Hazırlayan
+  kişi bir WSL konuğunda bir indirmeden denetledi; hazırlayan kişi bildirdi,
+  burada bir dosyada kayıtlı değil. Sürüm zinciri hiçbir olay olmadan çalıştı.
+- **Gerçek sistem kaydı.** Yayım için yok; alpha.97 için de yok, sahibin 16 Ekim
+  2026 talimatıyla ve güncelleyicinin değiştirme yolu değişmediği için.
+  alpha.97'nin kodunu, salt-okur Agent yeteneği dahil, yalnız bileşen,
+  bağlanmış, taklit tarayıcı ve gerçek süreç testleri kapsar (yukarıdaki aday
+  girdisine bakın).
+- **Kurulu paneller.** Sahibin 21 Ekim 2026 tarihli Ayarlar ekran görüntüsü
+  Boston'u v0.1.0-alpha.96'da (yapı 08faa91e5a8c) gösterdi. Sahip, Frankfurt'un
+  alpha.95 durması için iki salt-okur komutu çalıştırdı; saklanan satır `!!
+  CELIKPANEL_UPDATE_FAILURE code=package_manager_busy state=unchanged reason=the
+  host package manager is active detail=` idi (2026-10-17T12:25:23Z). Bu, önceki
+  bilinmeyeni doğrulanmış bir nedene çevirir (ilke 2): Debian'ın otomatik paket
+  güncellemeleri çalışıyordu ve sunucu değişmeden kaldı. Frankfurt'un bundan
+  sonraki güncellemesi bildirilmedi. Kurulu bir sunucuda alpha.97'den hiçbir şey
+  kaydedilmedi ve çıkarılmamalıdır (ilke 6: bir sürümün yayımlanması hiçbir
+  sunucunun durumu değildir). Sahip ayrıca GitHub hesabının adını değiştirdi
+  (celikbros → alicelik77); depo `alicelik77/celikpanel` ve eski ad kalıcı
+  olarak yönlendirilir.
+- **Şema ya da sürüm geçişi.** Yok: şema 44; sürüm sırası sürüm hazırlığında
+  96'dan 97'ye geçti. **Kurtarma davranışı.** Yayımla ve alpha.97 ile değişmez;
+  aday girdisinin anlattığı dışında (alpha.97'nin yazdığı bir kayıt alpha.96
+  tarafından okunursa alpha.96'nın sonraki bileşen taramasıyla düzelir).
+- **Açık; sonraki bir sürüme bırakıldı.** (1) Sürümler henüz bir kurulu sunucuda
+  görülmedi. (2) Kritik açılış yolunda 1,8 KiB bütçe kaldı. (3) Genel portal
+  hâlâ `celikbros/...` GitHub adreslerine bağlanıyor (yönlendirilirler; portal
+  bir sonraki değiştiğinde güncellenecek). (4) Ayarlar için menü düzeni önerisi
+  sahibin kararını bekliyor. (5) Frankfurt'un alpha.95 durmasından sonraki
+  güncellemesi bildirilmedi. Hiçbiri bir P0 işini değiştirmez.
+- **Açık; devreden.** alpha.97 aday girdisinin ve alpha.90–alpha.96 girdilerinin
+  açık bıraktığı her şey; bunlar arasında: zamanlanmış güncelleme denetimi
+  gerçek bir Agent'a ya da gerçek sürüm sunucusuna karşı çalışmadı; güncelleme
+  kartı ve bildirimler henüz bir kurulu sunucuda görülmedi; değiştirilen
+  yardımcıları paylaşan geri alma yolları yalnız sözleşme testleriyle denendi.

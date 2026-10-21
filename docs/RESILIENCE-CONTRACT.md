@@ -6625,3 +6625,69 @@ everything in it.
   decodes an alpha.97 row with mirrors of both alpha.96 decoders and checks that
   the lenient one reads it and the strict one refuses it. Not measured on an
   installed server.
+
+### Publication of v0.1.0-alpha.97 (no code change in the publication; invariants 2 and 6; D-022; D-024; D-025; D-036; 2026-10-21)
+
+D-025 invariants 2 (evidence has a meaning and a lifecycle: unknown is not
+absent, empty or success) and 6 (readiness, progress and access remain
+independent); D-022; D-024; D-036. **No P0 item is closed or advanced.** P0.1 to
+P0.5 stay partial and every open acceptance item stays open. This entry records
+one release; it changes no code, schema or recovery behaviour. 2026-10-21 is the
+clock date of everything in it.
+
+- **Publication.** All steps were done by the release preparer under the owner's
+  standing instruction; installed-panel updates are the owner's only. Three
+  independent review rounds came first (their findings, all fixed: held dpkg
+  states, the output-cap label and real-process tests, a reason line that could
+  wait for ever, gaps in the sanitizer's path handling, the note on the alpha.97
+  to alpha.96 Store decoder). Pull request #232 merged as
+  `0c1a8917ef3f8141702fa41ae085f64d62a713f0`; the release sequence variable
+  moved 96 to 97 before tagging; the main run and the tag run succeeded;
+  annotated tag `v0.1.0-alpha.97` (object
+  `e5c64bcc3569513050ebfc89c01185a69cabbfb0`, tree
+  `67db021959466f61a2defc232194d897c1eb9cb7`); pre-release at
+  2026-10-21T20:24:20Z with six assets; archive SHA-256
+  `3784fa392b016a9fbd18ffc372f7017c8c2aab5d3643bf319c25e53514800aa3`, 66,312,385
+  bytes; manifest sequence 97 with a verifying signature (the same key);
+  `get.sh` pins 97; policy 97 after 96; `bin/agent` contains
+  `InstalledPackageVersionsV1`. The portal package (SHA-256
+  `61ade15eee9ecd7e136d0eee599534a96c628d6bb38ae2365c0c74f56e339197`, built
+  twice identical) was published at about 20:36Z with previous v0.1.0-alpha.96:
+  committed, public verification 26 of 26,
+  `CELIKPANEL_DOWNLOAD_PORTAL_PUBLISHED`, and read from outside afterwards.
+  Checked by the preparer from a download in a WSL guest; reported by the
+  preparer, not recorded in a file here. The release chain ran cleanly, with no
+  incident.
+- **Native record.** None for the publication, and none for alpha.97, by the
+  owner's instruction of 2026-10-16 and because the updater's mutation path is
+  unchanged. alpha.97's code, including the read-only Agent capability, is
+  covered by component, mounted, mock-browser and real-process tests only (see
+  its candidate entry above).
+- **Installed panels.** On 2026-10-21 the owner's screenshot of Settings showed
+  Boston on v0.1.0-alpha.96 (build 08faa91e5a8c). The owner ran the two
+  read-only commands for Frankfurt's alpha.95 stop; the stored line was `!!
+  CELIKPANEL_UPDATE_FAILURE code=package_manager_busy state=unchanged reason=the
+  host package manager is active detail=` (2026-10-17T12:25:23Z). That turns the
+  earlier unknown into a verified reason (invariant 2): Debian's automatic
+  package updates were running, and the server was left unchanged. Frankfurt's
+  update after that was not reported. Nothing from alpha.97 on an installed
+  server is recorded, and none should be inferred (invariant 6: the publication
+  of a release is not the state of any server). The owner also renamed the
+  GitHub account (celikbros to alicelik77); the repository is
+  `alicelik77/celikpanel` and the old name redirects permanently.
+- **Schema or version transition.** None: schema 44; the release sequence moved
+  96 to 97 in the release preparation. **Recovery behaviour.** Unchanged by the
+  publication and by alpha.97, apart from what the candidate entry describes (a
+  record written by alpha.97 and read by alpha.96 heals with alpha.96's next
+  component scan).
+- **Open, left for a later release.** (1) The versions are not yet seen on an
+  installed server. (2) The critical boot path has 1.8 KiB of budget left. (3)
+  The public portal still links `celikbros/...` GitHub addresses (they redirect;
+  to be updated when the portal next changes). (4) The menu-layout proposal for
+  Settings awaits the owner's decision. (5) Frankfurt's update after its
+  alpha.95 stop was not reported. None of them changes a P0 item.
+- **Open, carried over.** Everything the alpha.97 candidate entry and the
+  alpha.90 to alpha.96 entries leave open, among them: the scheduled update
+  check not run against a real Agent or the real release server; the update card
+  and notices not yet seen on an installed server; the rollback paths that share
+  the changed helpers exercised by contract tests only.
