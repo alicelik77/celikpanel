@@ -376,7 +376,9 @@ test('the server line drops internal tokens in every state and is labelled as En
     assert.match(tr['panelUpdate.outcome.serverMessage'], /^Sunucunun İngilizce günlük satırı: \{message\}$/);
     assert.match(en['panelUpdate.outcome.serverMessage'], /\{message\}/);
     const tracker = readFileSync(new URL('../src/components/SystemUpdateOperation.tsx', import.meta.url), 'utf8');
-    assert.match(tracker, /value\.fallback && !screensReady \? value\.fallback : value\.key/);
+    // alpha.97: while the screen copy loads the line waits ("Reading the
+    // reason…"); the boot fallback only when the screen copy failed.
+    assert.match(tracker, /value\.fallback && !screensReady\s+\? screensFailed \? t\(value\.fallback, value\.vars\) : t\('panelUpdate\.outcome\.reasonLoading'\)/);
 });
 
 // Frankfurt 2026-10-16: red only when the owner must act; what the server

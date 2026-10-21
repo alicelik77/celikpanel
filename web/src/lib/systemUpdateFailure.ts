@@ -45,3 +45,14 @@ export function withoutInternalTokens(message: string): string {
         .trim();
     return /[A-Za-z0-9]/.test(cleaned) ? cleaned : '';
 }
+
+/**
+ * The reviewed updater's transient stop: the server's package manager was
+ * busy (for example with automatic security updates), so the update stopped
+ * before changing anything (state=unchanged). Frankfurt's update to alpha.95
+ * stopped this way on 2026-10-17, and the page drew it as a generic failure.
+ * Sunucunun paket yöneticisi meşguldü; güncelleme hiçbir şeyi değiştirmeden durdu.
+ */
+export function systemUpdatePackageManagerBusy(diagnostic: string): boolean {
+    return /(?:^|: )!! CELIKPANEL_UPDATE_FAILURE code=package_manager_busy state=unchanged reason=/.test(diagnostic);
+}

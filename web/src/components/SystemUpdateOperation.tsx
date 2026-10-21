@@ -679,7 +679,7 @@ function terminalResultFromRecord(record: TerminalUpdateRecord): TerminalResult 
 }
 
 export function SystemUpdateOperationProvider({ children }: { children: ReactNode }) {
-    const { t, screensReady, locale } = useI18n();
+    const { t, screensReady, screensFailed, locale } = useI18n();
     const [initialRecord] = useState<StoredUpdateRecord | null>(() => readStoredRecord());
     const [canonicalReady, setCanonicalReady] = useState(false);
     const canonicalReadyRef = useRef(false);
@@ -2102,10 +2102,17 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
     const failureTone: SystemUpdateOutcomeTone | null = failureGuidance?.tone ?? null;
     const realFailure = displayedTerminal?.kind === 'failed'
         && (failureTone === 'danger' || failureTone === 'warning' || failureTone === 'neutral');
-    // A line whose text lives in a screen catalogue shows its boot-catalogue
-    // fallback until that catalogue has arrived; a key never renders as its name.
+    // A line whose text lives in a screen catalogue waits for that catalogue
+    // ("Reading the reason…"), then shows its own words; only when the screen
+    // copy could not be loaded at all does it show its boot-catalogue
+    // fallback (alpha.97: a known step never shows the generic reason while
+    // its words are on their way). A key never renders as its name.
+    // Ekran katalogundaki satir, katalog gelene dek "Neden okunuyor" der;
+    // genel neden yalniz ekran metni hic yuklenemediyse gosterilir.
     const outcomeText = (value: OutcomeText) => ('text' in value ? value.text
-        : t(value.fallback && !screensReady ? value.fallback : value.key, value.vars));
+        : value.fallback && !screensReady
+            ? screensFailed ? t(value.fallback, value.vars) : t('panelUpdate.outcome.reasonLoading')
+            : t(value.key, value.vars));
     const terminalKind = pendingReload || requiredReloadMarker ? 'succeeded'
         : failureGuidance?.state === 'succeeded' ? 'succeeded' : displayedTerminal?.kind;
     // How the mark is drawn: red only for a failure the owner must act on.

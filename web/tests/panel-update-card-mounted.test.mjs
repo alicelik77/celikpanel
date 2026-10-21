@@ -420,3 +420,61 @@ test(`an earlier preflight stop (${code}) is named as unchanged before Start`, a
         delete globalThis.__panelUpdateOperation;
     }
 });
+
+// alpha.97, Frankfurt 2026-10-17: the update to alpha.95 stopped because
+// Debian's automatic package updates held the package manager; the recovery
+// record keeps no cause for that, so the card read it as a failure with no
+// cause. The card now reads that attempt's own summary once (a GET), names the
+// busy package manager calmly, and its readiness read says when the package
+// manager is free; Start stays with the owner.
+test('an earlier stop because the package manager was busy is named calmly, and the card says when it is free', async () => {
+    const originalFetch = globalThis.fetch;
+    const id = 'f'.repeat(32);
+    const attempt = { request_id: id, phase: 'failed', finished_at: '2026-10-17T12:25:23Z' };
+    const statusReads = [];
+    let summary = 'reviewed updater failed: exit status 1: !! CELIKPANEL_UPDATE_FAILURE code=package_manager_busy state=unchanged reason=the host package manager is active detail=';
+    globalThis.__panelUpdateAttemptSummary = (requestID) => {
+        statusReads.push(requestID);
+        return requestID === id ? summary : null;
+    };
+    let renderer;
+    let starts = 0;
+    try {
+        for (const [readiness, line] of [
+            [{ ready: true }, 'free'],
+            [{ ready: false, code: 'HOST_MUTATION_BUSY', reason: 'package_manager_active' }, 'busy'],
+        ]) {
+            statusReads.length = 0;
+            renderer = await mountCheckedCard(async () => readiness, async () => { starts += 1; return { kind: 'accepted' }; },
+                { ...updateCheck, previous_attempt: attempt });
+            await act(async () => { await flushMicrotasks(); await flushMicrotasks(); });
+            const notice = renderer.root.find((node) => node.type === 'div' && node.props.role === 'note');
+            const text = textOf(notice);
+            assert.equal(notice.props['data-previous-attempt'], 'stopped', 'calm, not the attention mark');
+            assert.match(text, /panelUpdate\.previousAttempt\.stoppedTitle/);
+            assert.match(text, /panelUpdate\.previousAttempt\.packageManagerBusy/);
+            assert.doesNotMatch(text, /previousAttempt\.title|previousAttempt\.failed|previousAttempt\.noCause/);
+            const said = renderer.root.findAll((node) => node.props?.['data-previous-attempt-package-manager'] !== undefined);
+            assert.deepEqual(said.map((node) => node.props['data-previous-attempt-package-manager']), [line]);
+            assert.match(textOf(said[0]), line === 'free' ? /packageManagerFree/ : /packageManagerStillBusy/);
+            assert.equal(statusReads.length, 1, 'the attempt summary is read once');
+            assert.equal(starts, 0, 'nothing starts by itself');
+            act(() => renderer.unmount());
+            renderer = null;
+        }
+        // Another cause keeps the general words.
+        summary = 'reviewed updater failed: exit status 1: !! CELIKPANEL_UPDATE_FAILURE code=update_failed state=unchanged reason=offline panel database migration failed detail=';
+        renderer = await mountCheckedCard(async () => ({ ready: true }), async () => ({ kind: 'accepted' }), { ...updateCheck, previous_attempt: attempt });
+        await act(async () => { await flushMicrotasks(); await flushMicrotasks(); });
+        const text = textOf(renderer.root);
+        assert.match(text, /panelUpdate\.previousAttempt\.title/);
+        assert.match(text, /panelUpdate\.previousAttempt\.noCause/);
+        assert.doesNotMatch(text, /packageManager/);
+    } finally {
+        if (renderer) act(() => renderer.unmount());
+        globalThis.fetch = originalFetch;
+        delete globalThis.__panelUpdateAttemptSummary;
+        delete globalThis.__nextPanelReadiness;
+        delete globalThis.__panelUpdateOperation;
+    }
+});

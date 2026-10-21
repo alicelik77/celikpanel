@@ -419,6 +419,10 @@ export const trSettingsScreens: Record<SettingsScreenKey, string> = {
     'panelUpdate.previousAttempt.cause': 'Kaydedilen neden: {cause}.',
     'panelUpdate.previousAttempt.stoppedTitle': "Bu sürüme yapılan önceki güncelleme kurulu sürümü değiştirmeden durdu",
     'panelUpdate.previousAttempt.stopped': "{version} bu sunucuda {time} tarihinde denendi ve kurulu sürümü ve verilerini değiştirmeden durdu; bu sunucu {current} sürümünü eskisi gibi çalıştırıyor. Yeniden başlatmak güvenlidir; o deneme için kaydedilen neden bu sunucudaki bir durumu belirtiyorsa önce onu giderin.",
+    // alpha.97: önceki deneme paket yöneticisi meşgul olduğu için durdu (Frankfurt, 2026-10-17).
+    'panelUpdate.previousAttempt.packageManagerBusy': "{version} bu sunucuda {time} tarihinde denendi. Sunucunun paket yöneticisi meşguldü, örneğin otomatik güvenlik güncellemeleri çalışıyordu. Hiçbir şey değiştirilmedi; sunucu eskisi gibi {current} sürümünü çalıştırıyor. Paket yöneticisi işini bitirince güncellemeyi yeniden başlatın.",
+    'panelUpdate.previousAttempt.packageManagerFree': "Paket yöneticisi işini bitirdi. Güncelleme yeniden başlatılabilir.",
+    'panelUpdate.previousAttempt.packageManagerStillBusy': "Paket yöneticisi hâlâ meşgul. Bu kart kendiliğinden yeniden denetler ve güncellemenin ne zaman başlatılabileceğini söyler; hiçbir işlem kendiliğinden başlamaz.",
     // upd4 F4: the notice's refused-preflight step and reason class; the notice
     // shows the shell's generic reason until this catalogue has arrived.
     'panelUpdate.outcome.preflightStep.idle_probe': "Neden: panelin işlem kuyruğu denetimi geçmedi.",

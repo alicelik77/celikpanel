@@ -435,6 +435,10 @@ export const enSettingsScreens = {
     'panelUpdate.previousAttempt.cause': 'Recorded cause: {cause}.',
     'panelUpdate.previousAttempt.stoppedTitle': "An earlier update to this version stopped before changing the installed version",
     'panelUpdate.previousAttempt.stopped': "{version} was tried on this server on {time} and stopped before changing the installed version or its data; this server runs {current} as before. Starting it again is safe; if the reason recorded for that attempt names a condition on this server, resolve it first.",
+    // alpha.97: the earlier attempt stopped because the package manager was busy (Frankfurt, 2026-10-17).
+    'panelUpdate.previousAttempt.packageManagerBusy': "{version} was tried on this server on {time}. The server's package manager was busy, for example with automatic security updates. Nothing was changed; this server runs {current} as before. Start the update again when it has finished.",
+    'panelUpdate.previousAttempt.packageManagerFree': "The package manager has finished. The update can be started again.",
+    'panelUpdate.previousAttempt.packageManagerStillBusy': "The package manager is still busy. This card checks again by itself and says when the update can be started; nothing starts by itself.",
     // upd4 F4: the notice's refused-preflight step and reason class; the notice
     // shows the shell's generic reason until this catalogue has arrived.
     'panelUpdate.outcome.preflightStep.idle_probe': "Reason: the check of the panel's operation queue did not pass.",

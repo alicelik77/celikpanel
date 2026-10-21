@@ -228,6 +228,11 @@ export const en = {
     'panelUpdate.outcome.preflightStep.material_support': "Reason: the selected recovery runtime does not support this update's recovery data.",
     'panelUpdate.outcome.preflightStep.database_support': "Reason: the selected recovery runtime does not support this update's database migration.",
     'panelUpdate.outcome.preflightStep.database_metadata': "Reason: the panel database's metadata is not supported for this update's migration.",
+    // alpha.97: the recovery tool could not be started or verified (no step line), a busy package manager, and the reason line while its words load.
+    'panelUpdate.outcome.preflightStep.compatibility': "Reason: the server's recovery tool could not be started or its installation could not be verified. The server administrator checks it, using the server's line below; starting the update again is safe once it is corrected.",
+    'panelUpdate.outcome.packageManagerBusy': "Reason: the server's package manager was busy, for example with automatic security updates. Nothing was changed.",
+    'panelUpdate.outcome.packageManagerBusyNext': "Start the update to {target} again when it has finished; the update card in Settings says when the package manager is free. Nothing starts by itself.",
+    'panelUpdate.outcome.reasonLoading': "Reading the reason…",
     'panelUpdate.outcome.preflightStep.generic': "Reason: a read-only check could not verify the current installation.",
     'panelUpdate.outcome.stoppedNext': "Nothing needs to be done on the server, unless the server's message below names a condition on this server, such as another operation still running or the package manager busy: then let it finish or fix it first.",
     'panelUpdate.outcome.stoppedResume': "Nothing resumes by itself. Starting the update to {target} again is safe.",
