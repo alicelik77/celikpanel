@@ -85,12 +85,20 @@ kaldırır; yeniden yüklenecek bir şey yoktur.
   eski yerleri adlandıran bağlantılar ile metinler. Simgeler açılış paketindeki lucide
   kümesinden gelir. Kişisel menü bir açılır bölümdür: `aria-expanded`, Escape onu
   kapatır ve odağı düğmesine geri verir.
-- **Parola penceresi** her sayfa yüklenişinde değil, açıldığında getirilir ve alan
-  metinleri kabuk kataloğundan ayarlar ekran parçasına (`account.password.*`) taşındı.
+- **Parola penceresi** her sayfa yüklenişinde değil, açıldığında getirilir; sözleri
+  kabuk kataloğunda kalır, bu yüzden asla ham anahtar göstermez.
+- **Yalnız ekranların gösterdiği kodlu retler** kabuk kataloğundan "errors" adlı bir
+  ekran parçasına taşındı; bu parça diğerleriyle birlikte, hiçbir ekran çizilmeden
+  önce yüklenir. Kabuğun ondan önce gösterebildikleri kabukta kalır; sözleri henüz
+  gelmemiş bir ret sunucunun cümlesini ya da genel hatayı gösterir, asla anahtarını.
+- **Güvenlik duvarı kutusunun kendi modülü var** ve **bir bileşenin çalışıp
+  çalışmadığını her yerde tek kural söyler**: "running" ya da "(running)" diyen
+  durum; "active (exited)" çalışmıyordur.
 - **Sunucudaki yönlendirme eylemi adresleri.** `/settings?section=dns` gösteren her
   yönlendirme eylemi (DNS motoru iş akışı, DNSSEC, yalnız-DNS çocukları, içe aktarma,
   uzak DNS yetkisi, DNS kurulumu) artık `/dns-infrastructure`'ı gösterir; Panel
-  sertifikasının eksik iletişim e-postası eylemi `/account`'ı gösterir. Ayarlar'ı ya da
+  sertifikasının eksik iletişim e-postası artık eylem taşımaz (yöneticinin kendi
+  e-postasını değiştiren bir ekran henüz yok; Bilinen eksikler'e bakın). Ayarlar'ı ya da
   DNS altyapısı ayarlarını adlandıran iki İngilizce yedek ileti artık Sunucu → DNS ve
   eş sunucular der. Bunlar yanıtlardaki metinlerdir; eski bir Panel'in bağlantıları da
   çalışır, çünkü tarayıcı onları yönlendirir.
@@ -133,9 +141,11 @@ yöneticisi gerçek bir sunucuda görülmedi.
 
 - **Kurulu bir sunucuda hiçbir şey ölçülmedi.** Yeni düzen yalnız bileşen ve bağlanmış
   testlerle denendi; sahip onu henüz Boston'da ya da Frankfurt'ta görmedi.
-- **Kritik açılış yolunda 0,25 KiB bütçe kaldı** (ham 361 KiB'den 360,75; alpha.97'den
-  sonra 1,8 KiB kalmıştı). Tavan yükseltilmedi. Açılış yoluna bir sonraki ekleme önce
-  ondan bir şeyi dışarı taşımalıdır.
+- **Yöneticinin kendi e-postasını değiştiren bir ekran yok.** Panel sertifikası onu
+  iletişim adresi olarak ister; yönetici sunucuda oluşturulurken verilen adrestir.
+  Ret bunu söyler; kendi e-postasını Hesabım'dan değiştirmenin bir yolu açık iştir.
+- Taslağın Hesabım tanımındaki **"açık oturumlar"** yapılmadı; üründe oturum listesi
+  yok.
 - **alpha.98'den alpha.97'ye geri dönüş.** Yeni adresler (`/security`, `/maintenance`,
   `/dns-infrastructure`, `/account`) alpha.97'ye bilinmez; bunlardan birine giden bir
   yer imi alpha.97'nin Panel sayfasına düşer. Hiçbir şey kaybolmaz ve hiçbir şeyin
@@ -153,13 +163,15 @@ hiçbiri bir kurulu sunucuda çalıştırılmadı.
 
 - Go: `CelikPanel-S2-Debian` WSL konuğunda `go test ./cmd/panel/ ./internal/...`
   (-timeout 45m): 7156 geçti, 0 başarısız, 44 atlandı.
-- Web: `npm test` 1691 geçti (alpha.97'de 1675). Yeni testler
+- Web: `npm test` 1697 geçti (alpha.97'de 1675). Yeni testler
   `web/tests/menu-layout-alpha98.test.mjs` içinde: rol başına menü, yönlendirmeler,
   bir rotaya ve var olan bir Ayarlar bölümüne çözülen her web bağlantısı ve her Go
   yönlendirme eylemi, bağlanan kişisel menü, Fail2ban durumları, İngilizce ve
   Türkçe yeni etiketler ve başlığıyla birlikte aldığı içerikle her yeni sayfa.
-  `npm run build` bütçelerinin içinde: kritik açılış yolu ham 361 KiB'den 360,75 ve
-  sıkıştırılmış 110 KiB'den 107,68 (alpha.97'de ham 359,20).
+  `npm run build` bütçelerinin içinde: kritik açılış yolu ham 361 KiB'den 329,16 ve
+  sıkıştırılmış 110 KiB'den 100,37 (alpha.97'de ham 359,20; bu adayın ilk
+  taslağında, yalnız ekranların gösterdiği retler kendi parçalarına taşınmadan önce
+  360,75; "errors" parçası Türkçe için 44 KiB'den 32,40).
 - Sürüm kurtarma düzeneği (güncelleme kartının metinlerini ve sonuç mantığını
   yansıtır, bu sürümün değiştirdiği katalog parçalarını okur): `archlinux` WSL
   konuğunda taze bir klonda

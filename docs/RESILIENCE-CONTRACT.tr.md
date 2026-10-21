@@ -5987,7 +5987,8 @@ iddiası değildir. 2026-10-22, içindeki her şeyin saat tarihidir.
   yönlendirmeler ve eski yerleri adlandıran metinler ile bağlantılar (D-037). Sunucu
   tarafında yalnız metinler: yönlendirme yanıtlarının taşıdığı eylem adresleri
   (`/settings?section=dns` `/dns-infrastructure` oldu; Panel sertifikasının eksik
-  iletişim e-postası eylemi `/settings?section=account` `/account` oldu) ve iki
+  iletişim e-postası reti artık eylem taşımaz, çünkü hiçbir ekran onu değiştiremez)
+  ve iki
   İngilizce yedek ileti. Agent'a, güncelleyiciye (`update.sh`, `get.sh`, sistem
   güncelleme işçisi, geri alma ve kurtarma), hiçbir API'ye, role, şemaya, yoklamaya ya
   da bileşen davranışına **dokunmaz**. Bu yüzden bu sürüm için **gerçek sistem kaydı
@@ -6021,17 +6022,22 @@ iddiası değildir. 2026-10-22, içindeki her şeyin saat tarihidir.
   ekranlara alpha.97'nin kendi menüsünden ulaşır. Herhangi bir saklı kaydın bir
   yönlendirme eylemi adresi tutup tutmadığı burada denetlenmedi; tutsaydı, alpha.97'de
   izlenmesi aynı biçimde Panel sayfasında biterdi. Kurulu bir sunucuda ölçülmedi.
-- **Kanıt ve açık.** Aday ağaçta: web `npm test` 1691 geçti (alpha.97'de 1675), yeni
+- **Kanıt ve açık.** Aday ağaçta: web `npm test` 1697 geçti (alpha.97'de 1675), yeni
   testler `web/tests/menu-layout-alpha98.test.mjs` içinde (rol başına menü,
   yönlendirmeler, çözülen her web bağlantısı ve her Go yönlendirme eylemi, bağlanan
   kişisel menü, Fail2ban durumları, iki dilde yeni etiketler, her yeni sayfanın başlığı
   ve taşınan içeriği); Go 7156 geçti, 0 başarısız; yapı bütçelerinin içinde, kritik açılış yolu ham
-  361 KiB'den 360,75 ve sıkıştırılmış 110 KiB'den 107,68. Sayılar [sürüm
+  361 KiB'den 329,16 ve sıkıştırılmış 110 KiB'den 100,37; inceleme turu yalnız
+  ekranların gösterdiği kodlu retleri "errors" ekran parçasına taşıdı (öncesinde
+  360,75; tavan yükseltilmedi). Sözleri henüz gelmemiş bir ret sunucunun cümlesini ya
+  da genel hatayı gösterir, asla anahtarını; kabuğun ekranlardan önce gösterdiği
+  kodlar (erişim, lisans, güncelleme izleyicisi, işlem katmanı, istek kimliği)
+  kabukta kalır. Sayılar [sürüm
   notlarında](RELEASE-NOTES-v0.1.0-alpha.98.tr.md). Bileşen ve bağlanmış testler
   gerçek sistem davranışını kanıtlamaz. **Kurulu bir sunucuda hiçbir şey
-  ölçülmedi**: yeni düzen bir tanesinde görülmedi. Açık: kritik açılış yolunda 0,25 KiB
-  bütçe kaldı, bu yüzden açılış yoluna bir sonraki ekleme önce bir şeyi dışarı
-  taşımalıdır (tavan yükseltilmez); alpha.88–alpha.97 girdilerinin açık bıraktığı her
+  ölçülmedi**: yeni düzen bir tanesinde görülmedi. Açık: panel sertifikasının iletişim
+  adresi olarak istediği yönetici e-postasını değiştiren bir ekran yok (ret bunu
+  söyler ve eylem taşımaz); alpha.88–alpha.97 girdilerinin açık bıraktığı her
   şey açık kalır. Kurulu paneller yalnız sahipleri tarafından, panelin kendi güncelleme
   ekranından güncellenir. P0.1–P0.5 kısmi kalır.
 - **Sahibin alpha.97'den gördüğü (2026-10-22).** Sahibin ekran görüntüsü, Boston'un

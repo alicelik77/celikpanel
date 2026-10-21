@@ -116,11 +116,11 @@ belirtilir):
   iki faktörlü doğrulama panelini tutuyordu), bu yüzden hiçbiri uydurulmadı.
 - **Parola değiştirme Hesabım'a taşındı**, aynı pencereyi açar. Menü, Hesabım'ı olan
   roller için onu artık yinelemez; ek kullanıcılar onu menüde korur. Pencere her sayfa
-  yüklenişinde değil, açıldığında getirilir ve alan metinleri kabuk kataloğundan
-  ayarlar ekran parçasına, `account.password.*` altına taşındı.
-- **Simgeler** açılış paketindeki lucide kümesinden gelir: DNS ve eş sunucular için
-  ağ, Güvenlik için onay işaretli kalkan, Bakım için bir anahtar, Hesabım için bir
-  kişi.
+  yüklenişinde değil, açıldığında getirilir; sözleri kabuk kataloğunda kalır
+  (`profile.*`), bu yüzden asla ham anahtar göstermez.
+- **Simgeler** lucide kümesinden gelir: DNS ve eş sunucular için ağ, Güvenlik için
+  onay işaretli kalkan, Bakım için bir anahtar, Hesabım için onay işaretli bir kişi
+  (UserCheck, açılış paketinde zaten var).
 - **Güvenlik duvarı kutusu, dikkat gerektirdiğinde Bileşenler'de hâlâ görünür**
   (kapalı, okunamıyor, motor yok, bir SSH notu, kalıcılık), çünkü önemli olduğu anda
   sahip oradadır; yalnız sağlıklı durum tek sakin satırdır ve onun bağlantısı
@@ -142,8 +142,9 @@ belirtilir):
   da "Ayarlar'da" diyen yönlendirme metinleri artık "Sunucu → DNS ve eş sunucular" ya
   da "Sunucu → Güvenlik" der. Sunucu tarafında `/settings?section=dns` gösteren her
   yönlendirme eylemi (DNS motoru iş akışı, DNSSEC, yalnız-DNS çocukları, içe aktarma,
-  uzak DNS yetkisi, DNS kurulumu) artık `/dns-infrastructure`'ı, Panel sertifikasının
-  eksik iletişim e-postası eylemi de `/account`'ı gösterir.
+  uzak DNS yetkisi, DNS kurulumu) artık `/dns-infrastructure`'ı gösterir; Panel
+  sertifikasının eksik iletişim e-postası eylem taşımaz (aşağıdaki inceleme
+  düzeltmelerine bakın).
 - **Kurulum geçidi dört adresi erişilebilir tutar** kurulum gerekirken
   (`/account`, `/security`, `/dns-infrastructure`, `/maintenance`), `/settings`
   gibi; çevrimdışı kurtarma kabuğunun rota listesi de onları içerir.
@@ -165,9 +166,46 @@ bekleten bir ekran bunu söyler): Güvenlik sayfasının hazırlık okuması, Bi
 zaten sahip olduğu görünür ve sınırlı okumadır. D-035: CelikPanel güncellemeleri,
 güncelleme kartının ve menüdeki noktasının bulunduğu Ayarlar'da kalır.
 
-Yapılmadı: kurulu bir sunucuda hiçbir şey ölçülmedi. Kritik açılış yolunun bütçesinden
-0,25 KiB kaldı (361 KiB'den 360,75); tavan yükseltilmedi, bu yüzden açılış yoluna
-bir sonraki ekleme önce bir şeyi dışarı taşımalıdır.
+**İnceleme düzeltmeleri (22 Ekim 2026, herhangi bir yayından önce).** Adayın bağımsız
+incelemesi bunları istedi; kaynaktadırlar:
+
+- **Açılış yolu.** Yalnız ekranların gösterdiği kodlu retler (dil başına 126: DNS,
+  posta, alan adları, siteler, bileşenler, depolar, kotalar, güvenlik duvarı) kabuk
+  kataloğundan "errors" adlı bir ekran parçasına taşındı; bu parça diğerleriyle
+  birlikte, hiçbir ekran çizilmeden önce yüklenir. Kabuğun ondan önce
+  gösterebileceği kodlar (giriş ve erişim, lisans, güncelleme izleyicisi, işlem
+  katmanı, istek kimliği) kabukta kalır. Sözleri henüz gelmemiş bir ret, sunucunun
+  kendi cümlesini ya da genel hatayı gösterir, asla anahtarını. Kritik açılış yolu
+  361 KiB'de 360,75'ten 329,16'ya indi; yeni parçanın en az %25 paylı kendi tavanı
+  var. Parola penceresinin sözleri kabukta kalır (`profile.*`); menünün ek kullanıcı
+  için açtığı pencere asla ham anahtar göstermez.
+- **Güvenlik duvarı kutusunun kendi modülü var** (`FirewallPanel.tsx`): Güvenlik
+  sayfası onu çizmek için artık Bileşenler sayfasını yüklemez. Uzak durum cırcırı
+  taşınmayı kaydeder; toplamları değişmedi.
+- **Tek çalışma kuralı** (`lib/serviceStatus.ts`) Panel, Bileşenler, bir bileşenin
+  sayfası ve Güvenlik için: "running" ya da "(running)" diyen durum. "active
+  (exited)" bitmiş tek seferlik birimdir, çalışmıyordur; önceden Panel ve bir
+  kopyanın satırı her "active ..." durumunu çalışıyor sayıyordu. Fail2ban kaydı
+  olmayan bilinen bir bileşen listesi "kurulu değil" der.
+- **Kalan metinlerdeki eski yer adları** artık yeni yeri adlandırır: bir alan adının
+  ad sunucusu adımı, yönetilen bir DNS kaydı, başlangıç rehberinin DNS adımı,
+  kurulumun geçiş engeli, "DNS sunucusuna bağlan", kurulum kurtarma bağlantısında ve
+  yenileme engelinde "Panel adresi ve HTTPS" ve Panel'in iki kurulum iletisi.
+- **Sertifikanın iletişim e-postası.** Ret Ayarlar → Hesap güvenliği'ni, bu sürümün
+  ilk taslağında da Hesabım'ı gösteriyordu; ikisi de onu değiştiremez. Yöneticinin
+  kendi e-postasını düzenleyen bir ekran yok (yönetici yalnız sunucuda oluşturulurken
+  yönetilir); bu yüzden ret artık eylem taşımaz ve bunun için henüz bir ekran
+  olmadığını söyler. **Açık iş:** kendi e-postasını Hesabım'dan değiştirmenin bir yolu.
+- Taslağın Hesabım tanımında geçen **"açık oturumlar"** yapılmadı: üründe oturum
+  listesi yok (yol haritası "Aktif oturumlar"ı sonraki bir iş olarak tutar).
+  Yönetici kurallarında olduğu gibi hiçbir şey uydurulmadı.
+- Kişisel menü odak ondan çıkınca kapanır ve panelini yalnız açıkken adlandırır;
+  Bakım tek alt başlık tutar (kartınınkini); ayarlar katalog parçasının blok
+  işaretleri düzeltildi; iki tarayıcı denetimi betiği hâlâ var olan adresleri
+  kullanır.
+
+Yapılmadı: kurulu bir sunucuda hiçbir şey ölçülmedi; yöneticinin kendi e-postasını
+değiştiren bir ekran henüz yok (yukarıdaki açık iş); açık oturumlar yapılmadı.
 
 ---
 

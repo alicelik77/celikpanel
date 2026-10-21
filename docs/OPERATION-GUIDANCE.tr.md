@@ -9564,8 +9564,19 @@ anda sahip oradadır.
 **Metinler nerede.** `web/src/i18n/` içinde `nav.dnsPeers`, `nav.security`,
 `nav.maintenance` ve `nav.account`; sayfa alt başlıkları ve Fail2ban sözleri
 `web/src/i18n/screens/security/` ve `screens/settings/` altında `securityPage.*`,
-`dnsPeers.*`, `maintenance.*` ve `account.*`. Parola penceresinin alan sözleri
-kabuk kataloğundan ayarlar ekran parçasındaki `account.password.*` altına taşındı.
+`dnsPeers.*` ve `account.*`. Parola penceresinin sözleri kabuk kataloğunda kalır
+(`profile.*`). Yalnız ekranların gösterdiği kodlu retler inceleme turundan beri
+`web/src/i18n/screens/errors/` ekran parçasındadır; sözleri henüz gelmemiş bir ret
+sunucunun cümlesini ya da genel hatayı gösterir, asla anahtarını.
+
+**İnceleme turu (22 Ekim 2026).** Panel sertifikasının eksik iletişim e-postası: ret
+artık "Yönetici hesabının geçerli bir e-posta adresi yok; sertifika yetkilisi bunu
+iletişim adresi olarak ister. Bunu değiştirecek bir ekran henüz yok: yönetici
+sunucuda oluşturulurken verilen adrestir." der. Hiçbir ekran onu değiştiremediği için
+eylem taşımaz. **Kim işlem yapar:** sunucu sahibi; panel içinde henüz bir çözüm yok
+(D-037'de açık iş). Güvenlik sayfasındaki Fail2ban satırı Panel ve Bileşenler ile
+paylaşılan tek çalışma kuralına uyar ("active (exited)" çalışmıyordur) ve Fail2ban
+kaydı olmayan bileşen listesi "Kurulu değil" der.
 
 P0.1-P0.5 **kısmi** kalır; bu girdi hiçbir şeyi kapatmaz ya da ilerletmez.
 
@@ -9577,7 +9588,5 @@ PostgreSQL 16.15, certbot 2.9.0, Fail2ban 1.0.2, nftables 1.0.9, cron 3.0pl1 ve
 Node.js 24.21.0. D-036'nın sürümlerinin bir kurulu sunucuda ilk kez görülmesidir.
 **Kim işlem yapar:** bunun için kimse; bir gözlemdir. **Açık:** Frankfurt'un
 alpha.97 durumu bildirilmedi; tek bir ekran görüntüsü, gerçek bir sunucuda korunan
-bir okumanın ya da meşgul bir paket yöneticisinin denetimi değildir; kritik açılış
-yolunda 0,25 KiB bütçe kaldı (ona bir sonraki ekleme önce bir şeyi dışarı
-taşımalıdır). Bu girdi için hiçbir metin ya da ekran değiştirilmedi. P0.1-P0.5
+bir okumanın ya da meşgul bir paket yöneticisinin denetimi değildir. Bu girdi için hiçbir metin ya da ekran değiştirilmedi. P0.1-P0.5
 **kısmi** kalır; bu girdi hiçbir şeyi kapatmaz ya da ilerletmez.
