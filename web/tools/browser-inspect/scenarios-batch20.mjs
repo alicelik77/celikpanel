@@ -10,26 +10,32 @@
 //   y20boston         Components on a Boston-like PowerDNS secondary (Nginx,
 //                     Node.js, PostgreSQL, Fail2ban, certbot, firewall engine,
 //                     cron installed; PHP-FPM, MariaDB, mail not): strips
-//                     Email Install x3, Databases "PostgreSQL verified,
-//                     MariaDB Install, phpPgAdmin Add, phpMyAdmin needs
-//                     MariaDB", Web "Nginx + PHP-FPM Install"; Roundcube not
+//                     Email Install x3, Databases "PostgreSQL + phpPgAdmin
+//                     Install, MariaDB + phpMyAdmin Install" (alpha.101),
+//                     Web "Nginx + PHP-FPM Install"; Roundcube not
 //                     installed (no leftovers note: Boston has no record of an
 //                     unfinished Roundcube install or removal);
-//                     then the Roundcube cleanup dialogue and the PostgreSQL
-//                     installed dialogue
+//                     then the Roundcube cleanup dialogue and the PostgreSQL +
+//                     phpPgAdmin plan (kept: PostgreSQL, Nginx; installs
+//                     PHP-FPM, phpPgAdmin)
 //   y20bostondns      the same server with its DNS identity not ready: the
 //                     email strip says the DNS line once
 //   y20frankfurt      everything installed and verified like the owner's real
 //                     Frankfurt: Core Mail included, Webmail and Spam-Protected
 //                     Mail verified, both databases with their admin tool,
 //                     Nginx + PHP-FPM, firewall active; then the Webmail chip's
-//                     dialogue (Repair...)
-//   y20running        phpPgAdmin being added on the Boston mock: the moving chip
-//                     (step 2 of 2) and every other chip disabled
+//                     dialogue (Repair...) and both database bundles'
+//                     installed dialogues (each part's state and version, Close)
+//   y20stopped        Frankfurt with MariaDB stopped: MariaDB + phpMyAdmin
+//                     "not verified", its dialogue with MariaDB "Stopped" and
+//                     the Rescan sentence (alpha.101)
+//   y20running        PostgreSQL + phpPgAdmin being installed on the Boston
+//                     mock: the moving chip (step 2 of 2: phpPgAdmin) and every
+//                     other chip disabled
 //   y20dashboard-boston, y20dashboard-frankfurt
-//                     the Dashboard: the Ready bundles card ("1 installed and
-//                     verified · 6 can be installed" / "8 installed and
-//                     verified"), the attention-none sentence and, on
+//                     the Dashboard: the Ready bundles card ("None installed
+//                     yet · 6 can be installed" / "6 installed and
+//                     verified", alpha.101), the attention-none sentence and, on
 //                     Frankfurt, the Domains tile counting the infrastructure
 //                     zone while /api/v1/domains is empty
 //
@@ -153,10 +159,11 @@ export default function batch20(scenarios, { base, locale, theme, out, viewport,
         await pause(500);
         await snap(page, 'components-boston-leftovers');
         await closeDialog(page);
-        // An installed chip: the PostgreSQL dialogue (Verify).
+        // alpha.101: PostgreSQL alone is not its bundle; the plan keeps
+        // PostgreSQL and Nginx and installs PHP-FPM and phpPgAdmin.
         await click(page, 'button[data-bundle="db.postgresql"]');
         await pause(500);
-        await snap(page, 'components-boston-installed-dialog');
+        await snap(page, 'components-boston-bundle-plan');
         await closeDialog(page);
     });
 
@@ -167,14 +174,28 @@ export default function batch20(scenarios, { base, locale, theme, out, viewport,
         await pause(500);
         await snap(page, 'components-frankfurt-webmail-dialog');
         await closeDialog(page);
+        // alpha.101: each part says its row's state and version; Close only.
+        for (const id of ['db.postgresql', 'db.mariadb']) {
+            await click(page, `button[data-bundle="${id}"]`);
+            await pause(500);
+            await snap(page, `components-frankfurt-${id.replace('.', '-')}-dialog`, { parts: await page.evaluate(() => Array.from(document.querySelectorAll('[data-bundle-part-state]')).map((node) => `${node.getAttribute('data-bundle-part-state')}: ${node.innerText.replace(/\s+/g, ' ').trim()}`)) });
+            await closeDialog(page);
+        }
+    });
+
+    scenarios.y20stopped = () => components('components-frankfurt-stopped', 'frankfurt', { stopped: ['mariadb'] }, async (page) => {
+        await click(page, 'button[data-bundle="db.mariadb"]');
+        await pause(500);
+        await snap(page, 'components-frankfurt-stopped-dialog', { parts: await page.evaluate(() => Array.from(document.querySelectorAll('[data-bundle-part-state]')).map((node) => `${node.getAttribute('data-bundle-part-state')}: ${node.innerText.replace(/\s+/g, ' ').trim()}`)) });
+        await closeDialog(page);
     });
 
     scenarios.y20running = async () => {
         await reset(); await clean();
         await ctl({ b20: batch20State('boston', { hold: ['phppgadmin'] }) });
         const page = await open('/services');
-        await waitFor(page, () => !!document.querySelector('button[data-bundle="db.postgresql.admin"]'), 15000).catch(() => {});
-        await click(page, 'button[data-bundle="db.postgresql.admin"]');
+        await waitFor(page, () => !!document.querySelector('button[data-bundle="db.postgresql"]'), 15000).catch(() => {});
+        await click(page, 'button[data-bundle="db.postgresql"]');
         await pause(600);
         await snap(page, 'components-bundle-plan');
         await page.evaluate(() => { const dialog = document.querySelector('[role="dialog"]'); const buttons = dialog ? Array.from(dialog.querySelectorAll('button')) : []; buttons[buttons.length - 1]?.click(); });

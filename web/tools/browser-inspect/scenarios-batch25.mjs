@@ -30,10 +30,10 @@ const base0 = { removal: 'packages', has_units: true, setup_required: false, pac
 // Sample answers, shaped as cmd/panel/service_removal_impact.go answers.
 const IMPACTS = {
     nginx: { ...base0, service_id: 'nginx', packages: ['nginx'], firewall_ports: ['80/tcp', '443/tcp'], required_by: ['phpmyadmin', 'phppgadmin', 'roundcube'],
-        bundles: [{ id: 'mail.webmail', name_code: 'mail_webmail' }, { id: 'db.postgresql.admin', name_code: 'db_postgresql_admin' }, { id: 'db.mariadb.admin', name_code: 'db_mariadb_admin' }, { id: 'web.nginx_php', name_code: 'web_nginx_php' }],
+        bundles: [{ id: 'mail.webmail', name_code: 'mail_webmail' }, { id: 'db.postgresql', name_code: 'db_postgresql_phppgadmin' }, { id: 'db.mariadb', name_code: 'db_mariadb_phpmyadmin' }, { id: 'web.nginx_php', name_code: 'web_nginx_php' }],
         hosted: { kind: 'sites', count: 8, names: ['blog.example.com (ali)', 'shop.example.com (ali)', 'docs.example.net (veli)', 'api.example.net (veli)', 'www.example.org (ayse)', 'old.example.org (ayse)', 'mail.example.com (ali)', 'test.example.com (ali)'], blocks_removal: true } },
     postgresql: { ...base0, service_id: 'postgresql', packages: ['postgresql'], all_versions: true, required_by: ['phppgadmin'],
-        bundles: [{ id: 'db.postgresql', name_code: 'db_postgresql' }], hosted: { kind: 'databases', count: 0, names: [], blocks_removal: false } },
+        bundles: [{ id: 'db.postgresql', name_code: 'db_postgresql_phppgadmin' }], hosted: { kind: 'databases', count: 0, names: [], blocks_removal: false } },
     postfix: { ...base0, service_id: 'postfix', packages: ['postfix'], firewall_ports: ['25/tcp', '465/tcp', '587/tcp'], required_by: ['rspamd', 'roundcube'],
         bundles: [{ id: 'mail.core', name_code: 'mail_core' }, { id: 'mail.webmail', name_code: 'mail_webmail' }, { id: 'mail.protected', name_code: 'mail_protected' }],
         hosted: { kind: 'mail_addresses', count: 3, names: ['info@example.com', 'sales@example.com', 'hello@example.net'], blocks_removal: true } },

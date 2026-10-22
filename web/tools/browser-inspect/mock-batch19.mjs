@@ -56,33 +56,30 @@ const BUNDLES = [
     { id: 'mail.core', category: 'email', name_code: 'mail_core', components: ['postfix', 'dovecot'], action_route: 'mail_profile', profile_id: 'core-mail', addons: ['mail.protected'], anchors: ['postfix', 'dovecot'] },
     { id: 'mail.webmail', category: 'email', name_code: 'mail_webmail', components: ['postfix', 'dovecot', 'nginx', 'php-fpm', 'roundcube'], action_route: 'mail_profile', profile_id: 'webmail', addons: ['mail.protected'], anchors: ['postfix', 'dovecot', 'roundcube'] },
     { id: 'mail.protected', category: 'email', name_code: 'mail_protected', components: ['postfix', 'dovecot', 'rspamd'], action_route: 'mail_profile', profile_id: 'protected-mail', addons: [], anchors: ['postfix', 'dovecot', 'rspamd'] },
-    { id: 'db.postgresql', category: 'database', name_code: 'db_postgresql', components: ['postgresql'], action_route: 'components', addons: ['db.postgresql.admin'], anchors: ['postgresql'] },
-    { id: 'db.mariadb', category: 'database', name_code: 'db_mariadb', components: ['mariadb'], action_route: 'components', addons: ['db.mariadb.admin'], anchors: ['mariadb'] },
-    { id: 'db.postgresql.admin', category: 'database', name_code: 'db_postgresql_admin', components: ['nginx', 'php-fpm', 'phppgadmin'], action_route: 'components', addons: [], parent: 'db.postgresql', anchors: ['phppgadmin'] },
-    { id: 'db.mariadb.admin', category: 'database', name_code: 'db_mariadb_admin', components: ['nginx', 'php-fpm', 'phpmyadmin'], action_route: 'components', addons: [], parent: 'db.mariadb', anchors: ['phpmyadmin'] },
+    // alpha.101: a database bundle is the database with its browser tool and
+    // the web server and PHP-FPM the tool runs on (prerequisites).
+    { id: 'db.postgresql', category: 'database', name_code: 'db_postgresql_phppgadmin', components: ['postgresql', 'nginx', 'php-fpm', 'phppgadmin'], action_route: 'components', addons: [], anchors: ['postgresql'], prerequisites: ['nginx', 'php-fpm'] },
+    { id: 'db.mariadb', category: 'database', name_code: 'db_mariadb_phpmyadmin', components: ['mariadb', 'nginx', 'php-fpm', 'phpmyadmin'], action_route: 'components', addons: [], anchors: ['mariadb'], prerequisites: ['nginx', 'php-fpm'] },
     { id: 'web.nginx_php', category: 'web', name_code: 'web_nginx_php', components: ['nginx', 'php-fpm'], action_route: 'components', addons: [], anchors: ['nginx', 'php-fpm'] },
 ];
 
 // The Panel's derivation, reduced to what these servers need: the mail
 // bundles are verified once all their parts are present (the mock's
-// Frankfurt has its proofs); an add-on waits for its parent.
+// Frankfurt has its proofs); a prerequisite web server is "not needed" where
+// Apache serves (alpha.101).
 // A component bundle is never partial (alpha.94 review): the parts present
 // are kept and Install installs the rest. Without a DNS identity every mail
 // bundle that is not installed is blocked; an installed one stays installed.
 function bundles(services, dnsReady) {
     const installed = new Set(services.filter((item) => item.is_installed).map((item) => item.id));
-    return BUNDLES.map(({ anchors, ...bundle }) => {
-        const missing = bundle.components.filter((id) => !installed.has(id));
+    return BUNDLES.map(({ anchors, prerequisites = [], ...bundle }) => {
+        const missing = bundle.components.filter((id) => !installed.has(id) && !(id === 'nginx' && prerequisites.includes(id) && installed.has('apache')));
         const out = { ...bundle, missing_components: missing };
         const mail = bundle.action_route === 'mail_profile';
         if (mail && !dnsReady) {
             return missing.length === 0
                 ? { ...out, status: 'installed_verified', action: 'none', blocked_code: 'dns_identity_not_ready' }
                 : { ...out, status: 'blocked', action: 'none', blocked_code: 'dns_identity_not_ready' };
-        }
-        const parent = bundle.parent && BUNDLES.find((item) => item.id === bundle.parent);
-        if (parent && !parent.components.every((id) => installed.has(id))) {
-            return { ...out, status: 'blocked', action: 'none', blocked_code: 'component_requires', blocked_vars: { component: bundle.components[bundle.components.length - 1], required: parent.components[0] } };
         }
         if (missing.length === 0) return { ...out, status: 'installed_verified', action: bundle.action_route === 'mail_profile' ? 'repair' : 'none' };
         if (mail && anchors.some((id) => installed.has(id))) return { ...out, status: 'partial', action: 'continue' };
