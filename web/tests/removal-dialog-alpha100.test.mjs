@@ -102,6 +102,7 @@ const SERVER = [
   component('rspamd', 'email', true),
   component('roundcube', 'email', true, { kind: 'tool', packages: [] }),
   component('certbot', 'security', true, { kind: 'tool' }),
+  component('cron', 'system', true),
   component('redis', 'cache', false),
 ];
 const payload = (services = SERVER) => ({
@@ -129,6 +130,7 @@ const IMPACTS = {
   rspamd: impact({ packages: ['rspamd'], mail_filter_rewired: true, hosted: { kind: 'mail_domains', count: 1, names: ['a.example'], blocks_removal: false } }),
   roundcube: impact({ removal: 'webmail_tree', hosted: { kind: 'mailboxes', count: 0, names: [], blocks_removal: false } }),
   certbot: impact({ packages: ['certbot'], package_family: 'pacman' }),
+  cron: { __status: 409, body: { error: 'CelikPanel does not remove this server’s cron service.', code: 'NATIVE_CRON_REMOVAL_REFUSED' } },
 };
 
 const originalFetch = globalThis.fetch;
@@ -149,6 +151,7 @@ function serve(managed, impacts = IMPACTS) {
       const found = typeof impacts === 'function' ? impacts(id) : impacts[id];
       if (found instanceof Promise) return found;
       if (found === undefined) return answer({ error: 'no' }, 500);
+      if (found.__status) return answer(found.body, found.__status);
       return answer({ ...found, service_id: id });
     }
     return answer({ error: 'no route' }, 404);
@@ -208,6 +211,12 @@ test('Nginx: sites by name with "+N more", the refusal they cause, who needs it,
     assert.equal(said.ports, say('services.removal.ports', { ports: '80/tcp, 443/tcp' }));
     assert.deepEqual(sentenceKeys(), ['services.removal.removed.packages', 'services.removal.kept.packages']);
     assert.ok(label(tree.root).includes('apt-get purge --auto-remove'));
+    // What the server loses comes first; red stays on the Remove button only.
+    const sections = tree.root.findAll((node) => node.props && (node.props['data-removal-affected'] !== undefined || node.props['data-removal-removed'] !== undefined || node.props['data-removal-kept'] !== undefined))
+      .map((node) => Object.keys(node.props).find((key) => key.startsWith('data-removal-')));
+    assert.deepEqual(sections, ['data-removal-affected', 'data-removal-removed', 'data-removal-kept']);
+    const blocks = tree.root.findAll((node) => node.props && node.props['data-removal-line'] === 'blocks')[0];
+    assert.doesNotMatch(blocks.props.className ?? '', /danger/);
     assert.equal(tree.root.findAll((node) => node.props && node.props['data-removal-nothing'] !== undefined).length, 0);
     // One read, no change started by it.
     const reads = requests.filter((request) => request.path === '/api/v1/service/removal-impact');
@@ -275,6 +284,17 @@ test('Roundcube: the webmail tree, not packages; no mailbox yet is "nothing else
     assert.deepEqual(sentenceKeys(), ['services.removal.removed.webmailTree', 'services.removal.kept.webmailTree']);
     assert.ok(!label(tree.root).includes(say('services.removal.command')));
     assert.ok(tree.root.findAll((node) => node.props && node.props['data-removal-nothing'] !== undefined).length === 1);
+  } finally { await unmount(); }
+});
+
+test('a component the Panel never removes answers with its own refusal, said as a refusal and not as "could not be read"', async () => {
+  await mount();
+  try {
+    await openRemoval('cron');
+    assert.equal(dialog().props['data-removal-impact'], 'refused');
+    const text = label(tree.root);
+    assert.ok(text.includes(say('err.NATIVE_CRON_REMOVAL_REFUSED')), text.slice(0, 400));
+    assert.ok(!text.includes(say('services.removal.unknown', { name: nameOf('cron') })));
   } finally { await unmount(); }
 });
 

@@ -3678,7 +3678,11 @@ export function decodeRemovalImpact(value: unknown): RemovalImpact | null {
     };
 }
 
-type RemovalRead = { state: 'checking' } | { state: 'known'; impact: RemovalImpact } | { state: 'unknown' };
+type RemovalRead = { state: 'checking' } | { state: 'known'; impact: RemovalImpact } | { state: 'unknown' } | { state: 'refused'; error: ApiError };
+// A component the Panel never removes from this dialog answers with its own
+// refusal: that is a known answer, said in its own words, not "could not be read".
+// Panel'in bu pencereden hiç kaldırmadığı bileşen kendi reddiyle yanıtlar.
+const REMOVAL_REFUSAL_CODES: ReadonlySet<string> = new Set(['NATIVE_CRON_REMOVAL_REFUSED', 'DNS_ENGINE_WORKFLOW_REQUIRED']);
 
 // One read when the dialog opens, bounded; Retry reads again. A read never
 // starts a change.
@@ -3707,7 +3711,8 @@ function useRemovalImpact(serviceId: string, enabled: boolean): { read: RemovalR
                     ...(controller ? { signal: controller.signal } : {}),
                 });
                 if (!response.ok) {
-                    finish({ state: 'unknown' });
+                    const error = await readApiError(response);
+                    finish(error.code && REMOVAL_REFUSAL_CODES.has(error.code) ? { state: 'refused', error } : { state: 'unknown' });
                     return;
                 }
                 const impact = decodeRemovalImpact(await response.json());
@@ -3780,6 +3785,14 @@ function RemovalImpactSection({
             </div>
         );
     }
+    if (read.state === 'refused') {
+        return (
+            <div className="space-y-3" data-removal-impact="refused">
+                <ErrorBanner error={read.error} />
+                {chips}
+            </div>
+        );
+    }
     if (read.state === 'unknown') {
         return (
             <div className="space-y-3" data-removal-impact="unknown">
@@ -3817,7 +3830,24 @@ function RemovalImpactSection({
         affected.push({ key: 'ports', text: t('services.removal.ports', { ports: impact.firewall_ports.join(', ') }) });
     }
     return (
+        // What this server loses comes first (D-024: the reason before the
+        // details); what the removal does and what stays follow. Red stays on
+        // the Remove button only.
+        // Önce bu sunucunun kaybettikleri; sonra kaldırmanın yaptığı ve kalanlar.
         <div className="space-y-3 text-sm" data-removal-impact="known">
+            <div data-removal-affected="">
+                <p className="font-semibold text-fg">{t('services.removal.affectedTitle')}</p>
+                {nothing && <p className="mt-1 text-fg-muted" data-removal-nothing="">{t('services.removal.nothing', { name })}</p>}
+                {affected.length > 0 && (
+                    <ul className="mt-1 list-disc space-y-1 pl-5 text-fg">
+                        {affected.map((line) => (
+                            <li key={line.key} data-removal-line={line.key} className={line.tone === 'block' ? 'font-semibold' : undefined}>
+                                <KeepWords text={line.text} />
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </div>
             <div data-removal-removed="">
                 <p className="font-semibold text-fg">{t('services.removal.removedTitle')}</p>
                 {sentences.removed.map((key) => <p key={key} className="mt-1 text-fg-muted" data-removal-sentence={key}>{t(key, { name })}</p>)}
@@ -3826,19 +3856,6 @@ function RemovalImpactSection({
                     <p className="mt-1 text-xs text-fg-subtle" data-removal-command="">
                         {t('services.removal.command')} <span className="font-mono">{sentences.command}</span>
                     </p>
-                )}
-            </div>
-            <div data-removal-affected="">
-                <p className="font-semibold text-fg">{t('services.removal.affectedTitle')}</p>
-                {nothing && <p className="mt-1 text-fg-muted" data-removal-nothing="">{t('services.removal.nothing', { name })}</p>}
-                {affected.length > 0 && (
-                    <ul className="mt-1 list-disc space-y-1 pl-5 text-fg">
-                        {affected.map((line) => (
-                            <li key={line.key} data-removal-line={line.key} className={line.tone === 'block' ? 'font-medium text-danger' : undefined}>
-                                <KeepWords text={line.text} />
-                            </li>
-                        ))}
-                    </ul>
                 )}
             </div>
             <div data-removal-kept="">
