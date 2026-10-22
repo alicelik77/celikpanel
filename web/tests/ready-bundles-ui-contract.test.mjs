@@ -155,6 +155,11 @@ test('the decoder ignores ids it does not carry and still reads an older Panel',
   assert.deepEqual(decoded[0].addons, [], 'an add-on reference to an id the answer does not carry is dropped');
   const orphan = make('db.mariadb.admin', 'database', ['nginx', 'php-fpm', 'phpmyadmin'], { parent: 'db.mariadb' });
   assert.deepEqual(lib.decodeReadyBundles([pg, orphan], ids).map((bundle) => bundle.id), ['db.postgresql'], 'an add-on of a bundle that is not there is not drawn');
+  // A bundle that offers that dropped add-on does not keep it in its add-ons.
+  const offering = make('web.nginx_php', 'web', ['nginx', 'php-fpm'], { addons: ['db.mariadb.admin'] });
+  const left = lib.decodeReadyBundles([pg, orphan, offering], ids);
+  assert.deepEqual(left.map((bundle) => bundle.id), ['db.postgresql', 'web.nginx_php']);
+  assert.deepEqual(left.find((bundle) => bundle.id === 'web.nginx_php').addons, [], 'a bundle kept an add-on that was itself left out');
   const older = [
     { ...make('db.mariadb', 'database', ['mariadb'], { addons: ['db.mariadb.admin'] }), name_code: 'db_mariadb', status: 'installed_unverified', action: 'verify', missing_components: [] },
     { ...make('db.mariadb.admin', 'database', ['nginx', 'php-fpm', 'phpmyadmin'], { parent: 'db.mariadb' }), name_code: 'db_mariadb_admin' },

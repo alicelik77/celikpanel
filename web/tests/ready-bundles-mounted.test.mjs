@@ -314,7 +314,19 @@ test('a component bundle with a stopped part says which part and points to Resca
       const maria = parts[nameOf('mariadb')];
       assert.equal(maria.props['data-bundle-part-state'], 'stopped');
       assert.ok(label(maria).endsWith(`${say('services.stopped')} · 11.8.3`), label(maria));
-      assert.ok(maria.findAll((node) => node.props && typeof node.props.className === 'string' && node.props.className.includes('text-danger')).length > 0, 'a stopped part is not drawn as the row draws it');
+      // Only the state word is red; the version stays muted (review of alpha.101).
+      const word = maria.find((node) => node.props && node.props['data-bundle-part-word'] !== undefined);
+      const version = maria.find((node) => node.props && node.props['data-bundle-part-version'] !== undefined);
+      assert.equal(label(word), say('services.stopped'));
+      assert.match(word.props.className, /\btext-danger\b/, 'a stopped part is not drawn as the row draws it');
+      assert.equal(label(version), '11.8.3');
+      assert.doesNotMatch(version.props.className, /text-danger/, 'the version of a stopped part is drawn red');
+      assert.match(version.props.className, /\btext-fg-muted\b/);
+      let up = version.parent;
+      while (up && up !== maria) {
+        assert.ok(!(typeof up.props?.className === 'string' && /text-danger/.test(up.props.className)), 'the version inherits the red of a stopped part');
+        up = up.parent;
+      }
       assert.equal(parts[nameOf('nginx')].props['data-bundle-part-state'], 'running');
       assert.ok(dialogText().includes(say('services.bundles.installed.unverifiedHow', { rescan: say('services.rescan') })), dialogText());
       const buttons = tree.root.findAll((node) => node.props && node.props.role === 'dialog')[0].findAll((node) => node.type === 'button').map(label);
@@ -338,6 +350,30 @@ test('under Apache the MariaDB bundle says what it installs, what is installed a
       .map((node) => [label(node).replace(/(Will be installed|Already installed|Not needed)$/, ''), node.props['data-bundle-part']]));
     assert.deepEqual(parts, { [nameOf('mariadb')]: 'installed', [nameOf('nginx')]: 'notNeeded', [nameOf('php-fpm')]: 'installed', [nameOf('phpmyadmin')]: 'install' });
     assert.ok(tree.root.findAll((node) => node.type === 'button' && label(node) === say('services.bundles.dialog.confirm', { n: 1 })).length === 1);
+    // The install of phpMyAdmin fails: the stopped chip counts Nginx, which
+    // Apache makes "not needed", as present, so "3 of 4" can still complete.
+    await pressLabel(say('services.bundles.dialog.confirm', { n: 1 }));
+    assert.deepEqual(globalThis.bundleTracker.calls.map((call) => call.serviceId), ['phpmyadmin']);
+    globalThis.bundleTracker.set({ operation: null, locked: false, failure: { message: 'phpmyadmin failed', code: 'service_install_failed', component: 'phpmyadmin' }, catalogSnapshot: apache });
+    for (let i = 0; i < 4; i += 1) await settle();
+    const chip = tree.root.findAll((node) => node.props && node.props['data-bundle-status'] === 'stopped')[0];
+    assert.ok(chip, 'the sequence did not stop');
+    assert.ok(label(chip).includes(say('services.bundles.chip.progress', { n: 3, total: 4 })), label(chip));
+  } finally { await unmount(); }
+});
+
+// A part the scan has never observed is "not checked yet", never "not needed".
+test('an installed bundle\'s part that was never observed says "not checked yet"', async () => {
+  const answer = withVersions(payload({ nginx: true, phpfpm: true, bundles: [dbBundle()] }));
+  answer.services = answer.services.map((item) => (item.id === 'phpmyadmin' ? { ...item, is_installed: null, status: 'unknown' } : item));
+  await mount(answer);
+  try {
+    await press(bundleNode('db.mariadb'));
+    const part = partsOf()[nameOf('phpmyadmin')];
+    assert.equal(part.props['data-bundle-part-state'], 'notChecked');
+    assert.equal(part.props['data-bundle-part'], 'notChecked');
+    assert.ok(label(part).endsWith(say('services.notChecked')), label(part));
+    assert.ok(!label(part).includes(say('services.bundles.dialog.notNeeded')), label(part));
   } finally { await unmount(); }
 });
 

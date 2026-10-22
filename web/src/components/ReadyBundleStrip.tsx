@@ -332,7 +332,10 @@ export function ReadyBundleStrip({
         if (stopped && stopped.id === bundle.id && run) {
             // The page's own sequence stopped: how far it got, and Continue,
             // which installs only what is still missing. Why is said below.
-            const done = bundle.components.filter((id) => installedSet.has(id)).length;
+            // Present: what the Panel did not call missing (role-aware: Nginx
+            // where Apache serves is not missing) and what was installed since.
+            // Var olan: Panel'in eksik demediği (rol bilinçli) ve sonradan kurulan.
+            const done = bundle.components.filter((id) => !bundle.missing_components.includes(id) || installedSet.has(id)).length;
             return (
                 <button key={key} type='button' className={actionChip} disabled={disabled || runActive} onClick={() => onComponents(bundle)} {...common} data-bundle-status='stopped' data-bundle-stop={run.stop}>
                     {label}
@@ -537,7 +540,10 @@ export function BundleInstalledDialog({
     // it alone gives way (an ellipsis, the whole text in the tooltip).
     // Sürüm satırdaki gibi ayrılır; yalnız o kısalır, tamamı ipucundadır.
     const partText = (service: ComponentLite | undefined): { word: string; said: string; version?: string; mono?: boolean; title?: string } => {
-        if (!service || service.is_installed !== true) return { word: 'notNeeded', said: t('services.bundles.dialog.notNeeded') };
+        // A part never observed is "not checked yet", never "not needed".
+        // Hiç gözlenmemiş parça "henüz bakılmadı"dır, "gerekmiyor" değil.
+        if (!service || service.is_installed === null) return { word: 'notChecked', said: t('services.notChecked') };
+        if (service.is_installed !== true) return { word: 'notNeeded', said: t('services.bundles.dialog.notNeeded') };
         const word = componentStateWord(service);
         const said = t(COMPONENT_STATE_KEYS[word] as TranslationKey);
         const version = componentVersionText(service);
@@ -578,20 +584,24 @@ export function BundleInstalledDialog({
                         <li
                             key={id}
                             className={`flex items-center gap-3 px-3 py-2 text-sm ${index > 0 ? 'border-t border-border' : ''}`}
-                            data-bundle-part={part.word === 'notNeeded' ? 'notNeeded' : 'installed'}
+                            data-bundle-part={part.word === 'notNeeded' || part.word === 'notChecked' ? part.word : 'installed'}
                             data-bundle-part-state={part.word}
                         >
                             <Icon className='h-4 w-4 shrink-0 text-fg-muted' aria-hidden='true' />
                             <span className='shrink-0 text-fg'>{nameOf(id)}</span>
                             <span
-                                className={`ml-auto flex min-w-0 items-center justify-end gap-1.5 text-xs ${part.word === 'stopped' ? 'font-medium text-danger' : part.word === 'notNeeded' ? 'text-fg-subtle' : 'text-fg-muted'}`}
+                                className={`ml-auto flex min-w-0 items-center justify-end gap-1.5 text-xs ${part.word === 'notNeeded' ? 'text-fg-subtle' : 'text-fg-muted'}`}
                                 title={part.title}
                             >
-                                <span className='shrink-0'>{part.said}</span>
+                                {/* Only the state word carries the red of a stopped
+                                    part; the version stays muted (DESIGN.md: colour
+                                    carries a state, with its word).
+                                    Durdu kırmızısını yalnız durum sözcüğü taşır. */}
+                                <span className={`shrink-0 ${part.word === 'stopped' ? 'font-medium text-danger' : ''}`} data-bundle-part-word=''>{part.said}</span>
                                 {part.version !== undefined && (
                                     <>
                                         {' '}<span className='shrink-0 text-fg-subtle' aria-hidden='true'>·</span>{' '}
-                                        <span className={`min-w-0 truncate ${part.mono ? 'font-mono' : ''}`}>{part.version}</span>
+                                        <span className={`min-w-0 truncate text-fg-muted ${part.mono ? 'font-mono' : ''}`} data-bundle-part-version=''>{part.version}</span>
                                     </>
                                 )}
                             </span>

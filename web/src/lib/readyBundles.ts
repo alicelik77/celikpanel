@@ -120,9 +120,12 @@ export function decodeReadyBundles(value: unknown, serviceIDs: ReadonlySet<strin
     // add-on reference to it is dropped, and an add-on offered after a bundle
     // that is not in the list is not drawn.
     // Yanıtta olmayan bir kimlik yok sayılır; liste reddedilmez.
-    return bundles
-        .filter((bundle) => bundle.parent === undefined || ids.has(bundle.parent))
-        .map((bundle) => (bundle.addons.every((id) => ids.has(id)) ? bundle : { ...bundle, addons: bundle.addons.filter((id) => ids.has(id)) }));
+    // The add-on references are read against the bundles that remain, so no
+    // bundle keeps an add-on that was itself left out.
+    // Ek başvuruları kalan paketlere göre okunur.
+    const kept = bundles.filter((bundle) => bundle.parent === undefined || ids.has(bundle.parent));
+    const keptIDs = new Set(kept.map((bundle) => bundle.id));
+    return kept.map((bundle) => (bundle.addons.every((id) => keptIDs.has(id)) ? bundle : { ...bundle, addons: bundle.addons.filter((id) => keptIDs.has(id)) }));
 }
 
 const said = (t: Translate, key: string, vars?: Record<string, string | number>): string | null => {
