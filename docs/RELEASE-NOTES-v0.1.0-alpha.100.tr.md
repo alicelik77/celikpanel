@@ -1,11 +1,12 @@
-# v0.1.0-alpha.100 (aday, yayımlanmadı)
+# v0.1.0-alpha.100 (22 Ekim 2026'da yayımlandı)
 
 [English](RELEASE-NOTES-v0.1.0-alpha.100.md)
 
-Bu, v0.1.0-alpha.99'dan sonra gelen sürüm adayıdır. Yayımlanmadı; hiçbir parçası
-kurulu bir sunucuda değil. 22 Ekim 2026'da, alpha.99'un yayın kaydından sonra
-`main` üzerinden `feat/alpha100-removal-and-setup` dalında yazıldı. Ön sürüm
-numarası üç basamaklı olan ilk sürümdür.
+Bu sürüm v0.1.0-alpha.99'un ardından gelir. 22 Ekim 2026'da yayımlandı (sonda
+"Yayım kaydı"na bakın); henüz hiçbir parçası bir kurulu sunucuda değil.
+22 Ekim 2026'da, aday olarak, alpha.99'un yayın kaydından sonra `main` üzerinden
+`feat/alpha100-removal-and-setup` dalında yazıldı. Ön sürüm numarası üç basamaklı
+olan ilk sürümdür.
 
 ## Kim güncellemeli ve neden
 
@@ -210,3 +211,105 @@ Aday ağacında:
 Yayımlandığında: sunucunun sahibi tarafından, panelin kendi güncelleme ekranından
 (Ayarlar → CelikPanel güncellemeleri). Öncesinde ya da sonrasında yapılacak bir şey
 yok.
+
+## Yayım kaydı
+
+Aşağıdaki her şey 22 Ekim 2026 tarihlidir (saat dilimi belirtilmedikçe UTC).
+Birleştirmeyi, etiketi, denetimleri, portal yayımını ve genel sitenin okunmasını
+sürümü hazırlayan kişi yaptı, önceki sürümlerde olduğu gibi sahibin kalıcı
+talimatı uyarınca; kurulu panel güncellemelerini yalnız sahip, panelin kendi
+güncelleme ekranından başlatır. Yayım için sahibin talimatıyla gerçek sistem
+kaydı yok. Bu girdi, aşağıdaki sonuçların hiçbirini depoda bir dosya olarak
+saklamaz.
+
+**Ne oldu.**
+
+1. Sürümden önce üç bağımsız inceleme turu yapıldı. Bulgular: kaldırma penceresi
+   certbot, nftables ve WireGuard için "hiçbir şey bağlı değil" diyordu; apt'ın
+   otomatik kaldırmasının ifadesi; veritabanı uyarısının yeri; bilinmeyen
+   güvenlik duvarı durumunun kapalı gösterilmesi; sertifikaların sayılış biçimi;
+   FTP hesaplarının SFTP hesaplarıyla karıştırılması. Hepsi düzeltildi
+   (yukarıdaki "İnceleme düzeltmeleri"ne bakın) ve kaldırmanın kendi
+   davranışının değişmediği doğrulandı.
+2. "Release v0.1.0-alpha.100: an honest removal dialog, the installed view first,
+   Server setup under Server" başlıklı #238 numaralı çekme isteği `main`'e
+   `3eeff24561799fb028c3c14f5da55a5de5bba866` commit'i olarak
+   birleştirildi; yazarı Mehmet Ömer Efe Çelik. Sürüm sırası değişkeni etiket
+   yapılmadan önce 99'dan 100'e geçirildi. `main` koşusu ve etiket koşusu başarılı
+   oldu. **Hiçbir sürümü etkilemeyen bir olay:** ilk CI koşusu Go araç zinciri
+   sözleşmesinde durdu, çünkü kararlar kaydında düz bir test komut satırı vardı ve
+   o sözleşme bunu yasaklar; cümle yeniden yazıldı ve zincir yeniden çalıştırıldı.
+3. `v0.1.0-alpha.100` açıklamalı etiketi (nesne
+   `7fc97f6efbc222d370b3518fa3fbde3fa854601f`, ağaç
+   `ffd7b6b6cbf90e9da0975bf298712d6a7db6268b`, etiketleyen Mehmet Ömer Efe Çelik)
+   sürüm commit'ini gösterir. Sürüm bir ön sürümdür (pre-release);
+   2026-10-22T19:03:06Z'de altı dosyayla yayımlandı.
+4. 22 Ekim 2026'da `CelikPanel-S2-Debian` WSL konuğunda bir indirmeden
+   denetlendi (hazırlayan kişi; burada bir dosyada kayıtlı değil): arşivler bayt
+   bayt aynı, her biri 66.343.534 bayt, SHA-256
+   `2f3855ac9d31b1484b52da681b388b77fbe7ee318560244e9a7d2fcc8e2667b8`; manifest
+   sıra 100, `published_at` 2026-10-22T18:17:33Z der (335 bayt, SHA-256
+   `761186023e57734efd8f7006a39a66d4f46a1ed0b365e19bf2f93cf49ffbe851`); imzası
+   (SHA-256 `4a50a3df77ca4fb4f4be50fff9ab2285506f5414a240215a8ef56b10f43c7058`),
+   imza anahtarına (SHA-256
+   `7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb`, öncekiyle
+   aynı anahtar) karşı `openssl pkeyutl -verify -rawin -pubin` ile doğrulanır;
+   iki içerik koruması da 0 döndürdü; derleme Go go1.26.5, CGO kapalı,
+   `-trimpath` ile yapıldı. `libexec/get.sh` 100'ü sabitler (SHA-256
+   `0d02d0e80ce4f0fefb22abefaf6472b951711d4d9c51dd347caa4c66b38d4771`); içindeki
+   politika şimdiki 100, önceki 99, önceki commit
+   `7ce52a17b416f8ffcf64931e08a2c3234bfa2f51` der. Arşivde 268 üye var (244
+   dosya, 24 dizin). Arayüz paketi `web/dist/assets/app-DBhnHj6L.js`, 260.590
+   bayt, SHA-256
+   `eaac271391e68ea15f2874e941d6e9fbdb0a2149af248047b8febf5c0ac717e2`.
+   `bin/panel` çalıştırılabilir dosyasında `removal-impact` var.
+5. **Üç basamaklı ilk ön sürüm.** Manifest, `get.sh` sabitleri, `latest.txt`,
+   `latest.json`, `index.json` ve sürüm başına yollar v0.1.0-alpha.100 ve sıra
+   100'ü kesilmeden taşır; sürüm sıralaması denetlendi: her yerde sayısaldır
+   (yukarıdaki "Üç basamaklı sürüm denetimi"ne bakın).
+6. Portal paketi: `portal.tar.gz`, 133.059.310 bayt, SHA-256
+   `f59809d953ddd1a61095acc10b8a053bb87e50904a9bafbaf23f61416510198f`, 54 girdi;
+   iki kez bayt bayt aynı derlendi (önceden imzalı kip); terfi aracının kendi
+   açma ve normalleştirme adımı onu kabul etti. Sayfaları yalnız
+   `github.com/alicelik77/...` adresine bağlanır. Sözleşme testi 0 döndürdü;
+   genel doğrulayıcının 17 testi ve terfi aracının 14 testi geçti.
+7. Yaklaşık 19:16Z'de hazırlayan kişi onu yayımladı: önceki sürüm
+   v0.1.0-alpha.99, hedef v0.1.0-alpha.100; durum `committed`, genel doğrulama 26
+   istekten 26'sı, `CELIKPANEL_DOWNLOAD_PORTAL_PUBLISHED`.
+8. Önceki sitenin yedeği
+   `/var/www/vhosts/celikpanel.net/portal-backups/httpdocs.before-v0.1.0-alpha.100.20261022T191552Z.433631.93e26e8f07fc857f`;
+   yüklenen paket
+   `/var/www/vhosts/celikpanel.net/.upload-portal-20261022T191506Z-v0.1.0-alpha.100-3189fdffecf0d9b0`
+   altında saklandı.
+9. Yayımdan sonra dışarıdan okuma: `https://celikpanel.net/releases/latest.txt`
+   v0.1.0-alpha.100 der; `latest.json` sürüm v0.1.0-alpha.100 ve sıra 100'ü,
+   yukarıdaki commit ve SHA-256'yı gösterir.
+
+**Sahibin bildirdikleri.** Bu yazılırken alpha.99 ya da alpha.100'den kurulu bir
+sunucuda hiçbir şey bildirilmemişti. Sahip 22 Ekim 2026'da ayrıca Eylül çekme
+isteklerinin kapatılmasını onayladı. 53'ünün tamamı (#151–#203) #204 numaralı
+çekme isteği (alpha.81) aracılığıyla zaten `main`'de bulundu ve bu kanıtla
+kapatıldı. Açık çekme isteği kalmadı.
+
+**Yapılmayanlar ve yayımlamanın değiştirmedikleri.**
+
+- Kurulu sunucuları sürümü hazırlayan kişi alpha.100'e (ya da alpha.99'a)
+  güncellemedi. Onları yalnız sahip, panelin kendi güncelleme ekranından günceller.
+- alpha.99 ya da alpha.100'den hiçbir şey kurulu bir sunucuda ölçülmedi: ne yeni
+  kaldırma penceresi, ne Kurulu görünümün önce açılması, ne Sunucu kurulumunun
+  yeni yeri, ne de alpha.99'un e-posta değiştirmesi.
+- Bir dağıtım paketinin kendi kaldırma betiğinin sildikleri okunmaz ve panel
+  dışında yapılandırılan bir şey pencerenin listelerinde yoktur (yukarıdaki
+  "Bilinen açıklar"a bakın).
+- Kaldırma penceresindeki pacman `-Rns` ifadesi biraz geniş. Zararsızdır ve olduğu
+  gibi bırakıldı.
+- Kurulum planının iletişim engeli her plan için hâlâ geçerli. Öyle olması gerekip
+  gerekmediği sonraki bir karara bırakıldı.
+- Bildirilmeyen ve kaydedilmeyenler: Boston ya da Frankfurt'tan alpha.99 veya
+  alpha.100'e dair her şey, Frankfurt'un paket sürümleri ve önceki notların
+  bildirilmedi diye saydığı her şey. Her biri "kaydedilmedi"dir; "çalıştı" da
+  değildir, "başarısız" da.
+- Önceki yayımlama kayıtlarının sınırları ([alpha.88
+  notları](RELEASE-NOTES-v0.1.0-alpha.88.tr.md)) kalkmış olarak bildirilmedi.
+- Yayımlanma kabul değildir. P0.1–P0.5 kısmi kalır; hiçbir P0 işi kapanmaz ya da
+  ilerlemez.

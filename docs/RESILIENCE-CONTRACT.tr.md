@@ -6378,3 +6378,64 @@ iddiası değildir. İçindeki her şeyin saat tarihi 22 Ekim 2026'dır.
   (Agent'ın reddettiği gibi) reddedileceğini söyler ve Roundcube'un kalan
   paketlerini tam adlandırır. İkinci bir tur kendi hatasını taşıyan bir güvenlik duvarı yanıtını "bilinmiyor" yaptı, güvenlik duvarı motorunu CelikPanel'in panel güvenlik duvarını artık uygulayamayacağı, değiştiremeyeceği ve geri yükleyemeyeceği (yüklenmiş kurallar sunucu yeniden başlayana dek kalabilir) biçiminde anlatır, WireGuard'ın VPN eşlerini ve vsftpd'nin FTP hesaplarını ekler, certbot listesini Panel'in yenilediği ve kurulumun kaydettiğiyle daraltır, güvenlik duvarı okumasının bir güvenlik duvarı değişikliğini beklemesini önler ve boş durumu "CelikPanel bu sunucuda X bileşenine bağlı başka hiçbir şey kaydetmiyor" diye daraltır. Agent testleri yukarıda kayıtlıdır. Kaldırmanın
   kendisi değişmedi.
+
+### v0.1.0-alpha.100'ün yayımlanması (yayımda kod değişikliği yok; ilke 2 ve 6; D-022; D-024; D-025; D-037; 2026-10-22)
+
+D-025 ilke 2 (kanıtın bir anlamı ve yaşam döngüsü vardır: bilinmeyen; yok, boş
+ya da başarılı değildir) ve 6 (hazır olma, ilerleme ve erişim birbirinden
+bağımsız kalır); D-022; D-024; D-037. **Hiçbir P0 işi kapanmaz ya da
+ilerlemez.** P0.1–P0.5 kısmi kalır ve her açık kabul işi açık kalır. Bu girdi
+tek bir sürümü kaydeder; kod, şema ya da kurtarma davranışını değiştirmez.
+2026-10-22, içindeki her şeyin saat tarihidir.
+
+- **Yayımlama.** Bütün adımları sürümü hazırlayan kişi yaptı, sahibin kalıcı
+  talimatı uyarınca; kurulu panel güncellemelerini yalnız sahip yapar. Önce üç
+  bağımsız inceleme turu yapıldı (kaldırma penceresi certbot, nftables ve
+  WireGuard için "hiçbir şey bağlı değil" diyordu; apt'ın otomatik kaldırmasının
+  ifadesi; veritabanı uyarısının yeri; bilinmeyen güvenlik duvarı durumunun kapalı
+  gösterilmesi; sertifikaların sayılış biçimi; FTP hesaplarının SFTP hesaplarıyla
+  karıştırılması) ve hepsi düzeltildi; kaldırmanın davranışının değişmediği
+  doğrulandı. #238 numaralı çekme isteği
+  `3eeff24561799fb028c3c14f5da55a5de5bba866` olarak
+  birleştirildi; sürüm sırası değişkeni etiketlemeden önce 99'dan 100'e geçti;
+  `main` koşusu ve etiket koşusu başarılı oldu. **Hiçbir sürümü etkilemeyen bir
+  olay:** ilk CI koşusu Go araç zinciri sözleşmesinde durdu, çünkü kararlar
+  kaydında düz bir test komut satırı vardı; cümle yeniden yazıldı ve zincir
+  yeniden çalıştırıldı. `v0.1.0-alpha.100` açıklamalı etiketi (nesne
+  `7fc97f6efbc222d370b3518fa3fbde3fa854601f`, ağaç
+  `ffd7b6b6cbf90e9da0975bf298712d6a7db6268b`); 2026-10-22T19:03:06Z'de altı
+  dosyalı ön sürüm; arşiv SHA-256
+  `2f3855ac9d31b1484b52da681b388b77fbe7ee318560244e9a7d2fcc8e2667b8`, 66.343.534
+  bayt; manifest sıra 100 ve doğrulanan bir imza (aynı anahtar); `get.sh` 100'ü
+  sabitler; politika 99'dan sonra 100. Bu, üç basamaklı ilk ön sürümdür; sürümü
+  taşıyan ya da sıralayan her yer okundu ve hiçbiri onu keser ya da metin olarak
+  sıralamaz. Portal paketi (SHA-256
+  `f59809d953ddd1a61095acc10b8a053bb87e50904a9bafbaf23f61416510198f`, iki kez
+  aynı derlendi) yaklaşık 19:16Z'de önceki v0.1.0-alpha.99 ile yayımlandı:
+  committed, genel doğrulama 26 istekten 26'sı,
+  `CELIKPANEL_DOWNLOAD_PORTAL_PUBLISHED`, ardından dışarıdan okundu. Hazırlayan
+  kişi bir WSL konuğunda bir indirmeden denetledi; hazırlayan kişi bildirdi,
+  burada bir dosyada kayıtlı değil.
+- **Gerçek sistem kaydı.** Yayım için yok; alpha.100 için de yok, sahibin 16 Ekim
+  2026 talimatıyla ve güncelleyicinin değişiklik yolunda ya da şemada hiçbir dosya
+  değişmediği için. alpha.100'ün kodunu yalnız bileşen, bağlanmış ve taklit
+  tarayıcı testleri kapsar (yukarıdaki aday girdisine bakın).
+- **Kurulu paneller.** Bu yazılırken kurulu bir sunucuda alpha.99 ya da
+  alpha.100'den hiçbir şey bildirilmemişti ve çıkarılmamalıdır (ilke 6: bir
+  sürümün yayımlanması hiçbir sunucunun durumu değildir). Aynı gün sahip Eylül
+  çekme isteklerinin kapatılmasını onayladı; 53'ünün tamamı (#151–#203) #204
+  numaralı çekme isteği (alpha.81) aracılığıyla zaten `main`'deydi ve bu kanıtla
+  kapatıldı, açık çekme isteği kalmadı; bu hiçbir kodu ya da P0 işini değiştirmez.
+- **Şema ya da sürüm geçişi.** Yok: şema 44; sürüm sırası sürüm hazırlığında
+  99'dan 100'e geçti. **Kurtarma davranışı.** Yayımla ve alpha.100 ile değişmez;
+  yeni rota salt-okunurdur ve hiçbir değişiklik başlatmaz.
+- **Açık; sonraki bir sürüme bırakıldı.** (1) alpha.99 ve alpha.100'den hiçbiri
+  kurulu bir sunucuda ölçülmedi. (2) Bir dağıtım paketinin kendi kaldırma
+  betiğinin sildikleri okunmaz. (3) Kurulum planının iletişim engeli her plan için
+  hâlâ geçerli; bu sonraki bir karara bırakıldı. (4) Kaldırma penceresindeki
+  pacman `-Rns` ifadesi biraz geniş (zararsız). Hiçbiri bir P0 işini değiştirmez.
+- **Açık; devreden.** alpha.100 aday girdisinin ve alpha.90–alpha.99 girdilerinin
+  açık bıraktığı her şey; bunlar arasında: yeni adres bir iletiyle
+  doğrulanmıyor; açık oturumlar yapılmadı; zamanlanmış güncelleme denetimi gerçek
+  bir Agent'a ya da gerçek sürüm sunucusuna karşı çalışmadı; değiştirilen
+  yardımcıları paylaşan geri alma yolları yalnız sözleşme testleriyle denendi.
