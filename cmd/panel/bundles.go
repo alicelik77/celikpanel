@@ -20,6 +20,20 @@ import (
 // bileşen ya da sayfa değildir. Katalog tek kurulum adresi olarak kalır. Bu
 // dosya sunucuyu değiştirmez; yalnız taramayı ve posta profillerini okuyup her
 // paketin durumunu söyler.
+//
+// Where bundles are defined (owner question, 2026-10-22): here, in
+// bundleDefinitions, compiled into the Panel. They are not read from a file or
+// the database and cannot be changed at run time; changing one is a code
+// change and a release (D-034, amendment 2026-10-22).
+// Paketler burada, bundleDefinitions içinde tanımlıdır ve Panel'e derlenir;
+// çalışırken değiştirilemez; değişiklik bir sürüm gerektirir.
+//
+// A bundle is a service together with its companion tools, never a single
+// component (owner decision, 2026-10-22: PostgreSQL with phpPgAdmin is a
+// bundle, MariaDB with phpMyAdmin is a bundle). A one-component "bundle" only
+// repeats the component's own row; TestBundleRegistryKeepsTheOwnersRule
+// refuses one.
+// Paket, bir hizmet ile ona eşlik eden araçlardır; tek bileşen paket değildir.
 
 const (
 	bundleKindMailProfile = "mail_profile"
@@ -34,9 +48,11 @@ const (
 
 	bundleActionInstall  = "install"
 	bundleActionContinue = "continue"
-	bundleActionVerify   = "verify"
-	bundleActionRepair   = "repair"
-	bundleActionNone     = "none"
+	// "verify" (alpha.94-100) is no longer sent: an installed component
+	// bundle that is not verified is read again by the page's own rescan.
+	// The page still accepts it from an older Panel.
+	bundleActionRepair = "repair"
+	bundleActionNone   = "none"
 )
 
 // bundleTextCode names a bundle's words: its name, its one-sentence
@@ -50,14 +66,18 @@ const (
 type bundleTextCode string
 
 const (
-	bundleTextMailCore          bundleTextCode = "mail_core"
-	bundleTextMailWebmail       bundleTextCode = "mail_webmail"
-	bundleTextMailProtected     bundleTextCode = "mail_protected"
-	bundleTextDBPostgreSQL      bundleTextCode = "db_postgresql"
-	bundleTextDBMariaDB         bundleTextCode = "db_mariadb"
-	bundleTextDBPostgreSQLAdmin bundleTextCode = "db_postgresql_admin"
-	bundleTextDBMariaDBAdmin    bundleTextCode = "db_mariadb_admin"
-	bundleTextWebNginxPHP       bundleTextCode = "web_nginx_php"
+	bundleTextMailCore      bundleTextCode = "mail_core"
+	bundleTextMailWebmail   bundleTextCode = "mail_webmail"
+	bundleTextMailProtected bundleTextCode = "mail_protected"
+	// alpha.101: the database bundles carry their tool in their name code.
+	// The page has no words for the retired one-component codes
+	// ("db_postgresql", "db_mariadb"), so an older Panel's answer is named by
+	// its components, and a name never claims a tool the bundle does not hold.
+	// Veritabanı paketlerinin ad kodu aracını da taşır; eski kodların sözü
+	// yoktur, eski yanıt bileşenleriyle adlandırılır.
+	bundleTextDBPostgreSQLTool bundleTextCode = "db_postgresql_phppgadmin"
+	bundleTextDBMariaDBTool    bundleTextCode = "db_mariadb_phpmyadmin"
+	bundleTextWebNginxPHP      bundleTextCode = "web_nginx_php"
 )
 
 // bundleTextCodes is every code above: the list the web test reads.
@@ -65,10 +85,8 @@ var bundleTextCodes = []bundleTextCode{
 	bundleTextMailCore,
 	bundleTextMailWebmail,
 	bundleTextMailProtected,
-	bundleTextDBPostgreSQL,
-	bundleTextDBMariaDB,
-	bundleTextDBPostgreSQLAdmin,
-	bundleTextDBMariaDBAdmin,
+	bundleTextDBPostgreSQLTool,
+	bundleTextDBMariaDBTool,
 	bundleTextWebNginxPHP,
 }
 
@@ -81,8 +99,17 @@ type bundleDefinition struct {
 	ProfileID string
 	// Components are the catalogue components, in install order.
 	Components []string
+	// Prerequisites are the components a bundle holds only for the role they
+	// fill (the web server and PHP-FPM a browser database tool runs on), not
+	// for themselves. Where another member of that role is installed (Apache
+	// instead of Nginx), it serves, and the component is "not needed"
+	// instead of a conflict. A bundle is never only these.
+	// Önkoşullar, pakette yalnız doldurdukları rol için bulunan bileşenlerdir;
+	// rolü dolduran başka bir üye kuruluysa o kullanılır.
+	Prerequisites []string
 	// Parent marks a bundle that is offered only after its parent bundle is
-	// installed (an add-on). A top-level bundle has none.
+	// installed (an add-on). No bundle has one since alpha.101 (the database
+	// tools are inside the database bundles); the answer keeps the field.
 	Parent string
 	// Addons are the bundles offered after this one is installed, in order;
 	// the page shows at most one.
@@ -104,25 +131,20 @@ var bundleDefinitions = [...]bundleDefinition{
 		ID: "mail.protected", Category: "email", NameCode: bundleTextMailProtected, Kind: bundleKindMailProfile,
 		ProfileID: core.MailProfileProtected, Components: mustMailProfileServiceIDs(core.MailProfileProtected),
 	},
+	// PostgreSQL + phpPgAdmin and MariaDB + phpMyAdmin (alpha.101): the
+	// database, the web server and PHP-FPM its browser tool runs on, then the
+	// tool. The ids are those of the earlier one-component bundles, so a link
+	// to them still lands on the same bundle.
+	// Veritabanı, aracının üzerinde çalıştığı web sunucusu ve PHP-FPM, sonra araç.
 	{
-		ID: "db.postgresql", Category: "database", NameCode: bundleTextDBPostgreSQL, Kind: bundleKindComponents,
-		Components: []string{"postgresql"},
-		Addons:     []string{"db.postgresql.admin"},
+		ID: "db.postgresql", Category: "database", NameCode: bundleTextDBPostgreSQLTool, Kind: bundleKindComponents,
+		Components:    []string{"postgresql", "nginx", "php-fpm", "phppgadmin"},
+		Prerequisites: []string{"nginx", "php-fpm"},
 	},
 	{
-		ID: "db.mariadb", Category: "database", NameCode: bundleTextDBMariaDB, Kind: bundleKindComponents,
-		Components: []string{"mariadb"},
-		Addons:     []string{"db.mariadb.admin"},
-	},
-	{
-		ID: "db.postgresql.admin", Category: "database", NameCode: bundleTextDBPostgreSQLAdmin, Kind: bundleKindComponents,
-		Components: []string{"nginx", "php-fpm", "phppgadmin"},
-		Parent:     "db.postgresql",
-	},
-	{
-		ID: "db.mariadb.admin", Category: "database", NameCode: bundleTextDBMariaDBAdmin, Kind: bundleKindComponents,
-		Components: []string{"nginx", "php-fpm", "phpmyadmin"},
-		Parent:     "db.mariadb",
+		ID: "db.mariadb", Category: "database", NameCode: bundleTextDBMariaDBTool, Kind: bundleKindComponents,
+		Components:    []string{"mariadb", "nginx", "php-fpm", "phpmyadmin"},
+		Prerequisites: []string{"nginx", "php-fpm"},
 	},
 	{
 		ID: "web.nginx_php", Category: "web", NameCode: bundleTextWebNginxPHP, Kind: bundleKindComponents,
@@ -220,15 +242,16 @@ func bundlesView(
 	return bundles
 }
 
-// bundleComponentPresent: an add-on reuses the role a component fills when
+// bundleComponentPresent: a prerequisite reuses the role it fills when
 // another member of that role is installed (phpMyAdmin under Apache needs no
-// Nginx). A top-level bundle installs exactly what it names.
-// Bir ek, rolü dolduran başka bir üye kuruluysa o rolü yeniden kullanır.
+// Nginx). Any other component is installed exactly as named (the Nginx +
+// PHP-FPM bundle names Nginx itself, so beside Apache it is blocked).
+// Bir önkoşul, rolü dolduran başka bir üye kuruluysa o rolü yeniden kullanır.
 func bundleComponentPresent(definition bundleDefinition, id string, installed map[string]bool) bool {
 	if installed[id] {
 		return true
 	}
-	if definition.Parent == "" {
+	if !slices.Contains(definition.Prerequisites, id) {
 		return false
 	}
 	managed := core.GetManagedServiceByID(id)
@@ -308,9 +331,12 @@ func componentBundleState(
 	if len(view.MissingComponents) == 0 {
 		for _, id := range definition.Components {
 			if installed[id] && !componentReady(id, services) {
-				// Installed but not running: the rows below say which one.
-				// "Verify" reads the components again; it changes nothing.
-				view.Status, view.Action = bundleStatusInstalledUnverified, bundleActionVerify
+				// Installed but not running: the bundle's dialogue and the
+				// rows say which one, and the page's own rescan reads them
+				// again (alpha.101: the bundle has no Verify of its own).
+				// Kurulu ama çalışmıyor: hangisi olduğunu pencere ve satırlar
+				// söyler; sayfanın kendi taraması yeniden okur.
+				view.Status, view.Action = bundleStatusInstalledUnverified, bundleActionNone
 				return
 			}
 		}
