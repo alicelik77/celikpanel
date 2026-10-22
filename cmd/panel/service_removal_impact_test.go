@@ -90,12 +90,14 @@ func TestRemovalImpactWebServerNamesSitesRequirersAndBundles(t *testing.T) {
 		t.Fatalf("required_by names a component that does not need a web server: %v", impact.RequiredBy)
 	}
 	bundles := bundleIDs(impact.Bundles)
-	for _, id := range []string{"web.nginx_php", "db.mariadb.admin", "db.postgresql.admin", "mail.webmail"} {
+	// alpha.101: a database bundle holds its browser tool and the web server
+	// the tool runs on, so removing Nginx leaves it incomplete.
+	for _, id := range []string{"web.nginx_php", "db.mariadb", "db.postgresql", "mail.webmail"} {
 		if !slices.Contains(bundles, id) {
 			t.Fatalf("bundles %v lacks %s", bundles, id)
 		}
 	}
-	for _, id := range []string{"db.mariadb", "db.postgresql", "mail.core", "mail.protected"} {
+	for _, id := range []string{"mail.core", "mail.protected"} {
 		if slices.Contains(bundles, id) {
 			t.Fatalf("bundles %v names %s, which keeps every component", bundles, id)
 		}
@@ -358,7 +360,7 @@ func TestRemovalImpactHandlerReadsTheStoredRecordAndChangesNothing(t *testing.T)
 	if impact.ServiceID != "nginx" || impact.PackageFamily != "apt" || !slices.Equal(impact.RequiredBy, []string{"phpmyadmin"}) {
 		t.Fatalf("impact = %+v", impact)
 	}
-	if !slices.Equal(bundleIDs(impact.Bundles), []string{"db.mariadb.admin", "web.nginx_php"}) {
+	if !slices.Equal(bundleIDs(impact.Bundles), []string{"db.mariadb", "web.nginx_php"}) {
 		t.Fatalf("bundles = %v", bundleIDs(impact.Bundles))
 	}
 	// The Panel's real schema: no sites yet, so nothing hosted blocks.

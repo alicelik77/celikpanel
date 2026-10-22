@@ -235,6 +235,34 @@ test('a known package version brings the column back: the short form in the row,
   } finally { await unmount(); delete globalThis.localStorage; }
 });
 
+// alpha.101: Frankfurt's phpMyAdmin read "5.2.2-really…". The Panel now sends
+// the real version after "really" as the short form; the cell never clips
+// silently: it truncates with an ellipsis and the full text is its tooltip.
+test('a Debian "really" version reads as its real version, and no version cell clips silently', async () => {
+  const really = { package_version: '4:5.2.2-really5.2.1-1', package_version_short: '5.2.1', package_versions: [{ package: 'phpmyadmin', version: '4:5.2.2-really5.2.1-1' }], package_version_read_at: '2026-10-22T08:00:00Z' };
+  await mount(payload([
+    component('phpmyadmin', 'database', true, { kind: 'tool', status: 'installed', ...really }),
+    component('nginx', 'web', true, nginxVersion),
+    component('node', 'web', true, { kind: 'runtime', status: 'installed', versions: ['22.11.0'] }),
+  ]));
+  try {
+    const cells = versionsIn(rowOf('phpmyadmin'));
+    assert.equal(cells.length, 2);
+    for (const node of cells) {
+      assert.ok(label(node).startsWith('5.2.1'), label(node));
+      assert.ok(!label(node).startsWith('5.2.2-really'), label(node));
+      assert.match(node.props.className, /\btruncate\b/);
+      assert.equal(node.props.title, `4:5.2.2-really5.2.1-1 · ${say('services.versionFromPackages')}`);
+    }
+    for (const node of versionsIn(rowOf('node'))) {
+      assert.match(node.props.className, /\btruncate\b/);
+      assert.equal(node.props.title, '22.11.0');
+    }
+    const source = readFileSync(new URL('../src/components/ServiceList.tsx', import.meta.url), 'utf8');
+    assert.ok(source.includes('className="hidden min-w-0 md:block" data-version-column=""'), 'the column cell may shrink, so truncate can draw its ellipsis');
+  } finally { await unmount(); }
+});
+
 test('a kept reading says so in its tooltip; a version that is not the contract is not shown', async () => {
   await mount(payload([
     component('nginx', 'web', true, { ...nginxVersion, package_version_kept: true }),

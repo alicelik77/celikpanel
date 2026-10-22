@@ -644,6 +644,24 @@ mutation lease while the package database answered (now it reads the versions
 before taking the lease; the fresh scan at the end of an operation still reads
 them inside that operation's lease).
 
+*Note of 2026-10-22 (alpha.101 candidate), after the owner's Frankfurt screen on
+alpha.100:* the phpMyAdmin row read "5.2.2-really…". A Debian "really" version
+belongs to a package that had to go back to an older upstream: it keeps a higher
+number before "really" so the package manager still sees an upgrade, and the
+version actually shipped follows "really". The short form of rule 4 removed the
+epoch and the packaging revision and then cut only at "+" or "~", so
+"-really5.2.x" stayed in it, and the narrow column clipped it. The short form is
+now the real version after "really", when "really" follows a version separator
+("+", "-", "~" or ".") and is followed by a digit, after the epoch and the
+revision are removed as before (`5.2.2-really5.2.1-1` reads 5.2.1,
+`2:4.1.0+really4.0.9-2` reads 4.0.9; `4:5.2.2+dfsg-1` still reads 5.2.2 and
+`3:7.2` reads 7.2). The full version, in the tooltip and on the component page, is
+unchanged. The short form is derived when the Panel builds its answer, so a stored
+scan reads correctly at once; the Agent and what it reports are unchanged. A
+single runtime version on a row now also ends in an ellipsis with its full text as
+the tooltip, so no version cell is clipped silently. Nothing measured on an
+installed server.
+
 ---
 
 ## D-035 · The panel looks for updates by itself and says so calmly; only an administrator starts an update
@@ -999,6 +1017,116 @@ existing audit log.
 What this does not authorise: no installed-server change and no licence-policy
 change. Installed panels are still updated only by their owner from the panel's own
 update screen.
+
+### Amendment 2026-10-22 (alpha.101): a bundle is a service with its companion tools
+
+*Owner decision of 2026-10-22 after looking at Frankfurt on v0.1.0-alpha.100; in source for the v0.1.0-alpha.101 candidate (the code on 2026-10-22, this record on 2026-10-23, clock dates); nothing measured on an installed server*
+
+What the owner saw. On Frankfurt, on alpha.100, the database category offered a
+"PostgreSQL" bundle and a "MariaDB" bundle that were each one component, the same
+component that has its own row right under the strip, and the browser tools
+phpPgAdmin and phpMyAdmin as separate add-ons. The owner's words: "bundle diyip
+tek servisi kurmak nedir. saçmalık. postgresql ve phpPgAdmin bundle dır mariadb ve
+phpMyAdmin bundle dır. Diğer tüm bundle lar da böyle dir." (In English: what is
+calling it a bundle and installing a single service? Nonsense. PostgreSQL and
+phpPgAdmin is a bundle, MariaDB and phpMyAdmin is a bundle. All the other bundles
+are like this too.) Rule 1 above had listed "a PostgreSQL bundle and a MariaDB
+bundle, each with one optional add-on"; the tool is now part of the bundle.
+
+The rules adopted:
+
+1. **A bundle is a service together with its companion tools.** A one-component
+   bundle only repeats its component's row, so there is none any more. Every
+   component bundle holds at least two components, and at least one of them is
+   there for itself, not only as a prerequisite of another; a mail bundle is
+   exactly its mail profile. A Go registry contract test refuses a registry that
+   breaks this, and refuses the retired ids and name codes.
+2. **The registry, in order.** Names are the same in English and Turkish except
+   where a Turkish name is shown.
+
+   | Id | Category | Name | Components, in install order | Notes |
+   | --- | --- | --- | --- | --- |
+   | `mail.core` | email | Core Mail (Temel Posta) | Postfix, Dovecot | mail profile `core-mail`; offers Spam-Protected Mail after it |
+   | `mail.webmail` | email | Webmail | Postfix, Dovecot, Nginx, PHP-FPM, Roundcube | mail profile `webmail`; offers Spam-Protected Mail after it |
+   | `mail.protected` | email | Spam-Protected Mail (Spam Korumalı Posta) | Postfix, Dovecot, Rspamd | mail profile `protected-mail` |
+   | `db.postgresql` | database | PostgreSQL + phpPgAdmin | PostgreSQL, Nginx, PHP-FPM, phpPgAdmin | Nginx and PHP-FPM are prerequisites (rule 4) |
+   | `db.mariadb` | database | MariaDB + phpMyAdmin | MariaDB, Nginx, PHP-FPM, phpMyAdmin | Nginx and PHP-FPM are prerequisites (rule 4) |
+   | `web.nginx_php` | web | Nginx + PHP-FPM | Nginx, PHP-FPM | |
+
+   The add-on bundles `db.postgresql.admin` and `db.mariadb.admin` are gone;
+   what they installed is inside the database bundles. The mail bundles, their
+   Spam-Protected Mail add-on and Nginx + PHP-FPM are unchanged. Every registry
+   entry is drawn and counted as before (alpha.95 amendment, rules 1 and 3); there
+   are six now.
+3. **Ids kept, names changed.** `db.postgresql` and `db.mariadb` keep their ids, so
+   a link to them still lands on the same bundle. Their name codes changed
+   (`db_postgresql_phppgadmin`, `db_mariadb_phpmyadmin`), so a page never names an
+   older Panel's one-component bundle as one with a tool: the page has no words
+   for the retired codes and names such an answer by its components.
+4. **Prerequisites fill a role.** The web server and PHP-FPM a database tool runs
+   on are in the bundle for the role they fill, not for themselves. Where another
+   installed component fills that role (Apache instead of Nginx), it serves, and
+   the dialogue lists Nginx as "not needed", not as a conflict. Nginx + PHP-FPM
+   names Nginx itself and stays blocked beside Apache, as before.
+5. **A part the system does not offer blocks the whole bundle.** It is blocked with
+   the existing typed reason, and a subset is never installed. phpPgAdmin has no
+   pacman package, so on Arch "PostgreSQL + phpPgAdmin" is blocked and its chip
+   says "phpPgAdmin is not available on this system" ("phpPgAdmin bu sistemde
+   kullanılamıyor"); MariaDB + phpMyAdmin stays installable there.
+6. **The installed bundle's dialogue says each part's own state; Verify is
+   withdrawn.** This amends rules 3 and 4 above and rule 4 of the alpha.95
+   amendment ("The installed chip holds Repair and Verify"). Each part says its
+   row's own state and version ("Running · 1.26.3", "Installed · 5.2.1",
+   "Stopped"; "Çalışıyor · …", "Kurulu · …", "Durdu"), from the same data the rows
+   use, with the full package version as its tooltip, instead of "Already
+   installed". The Verify button and its sentence are gone: it only read the
+   components again, which the page's Rescan does. Close stays. Mail bundles keep
+   Repair, which does real work (the profile install). An installed component
+   bundle that is not verified shows the part that is not running in the row's red
+   and says, in words, to start it from its row or to use Rescan at the top of the
+   page, and that the window changes nothing on the server; it has no button of
+   its own. The Panel no longer sends the `verify` action (it sends `none`); the
+   page still accepts `verify` from an older Panel and draws no button for it.
+   The page's reading of the answer now leaves out an id the answer does not
+   carry (an add-on reference to an unknown bundle is dropped, and an add-on of a
+   bundle that is not present is not drawn) instead of refusing the whole list.
+7. **How a bundle installs is unchanged** (rule 4 above): one ordinary component
+   install per missing part, in order, each after the previous one has ended with
+   a fresh scan; the first failure stops the sequence with its reason and a
+   Continue that installs only what is missing; nothing installed is removed.
+
+What the owner's servers show, as the Panel derives it (from their alpha.100
+screens; not measured on alpha.101). **Boston** (PostgreSQL and Nginx installed,
+no PHP-FPM, no phpPgAdmin): "PostgreSQL + phpPgAdmin · Install"; its dialogue
+keeps PostgreSQL and Nginx and installs PHP-FPM, then phpPgAdmin, one at a time.
+The Dashboard's "Ready bundles" card counts the same chips: "None installed yet ·
+6 can be installed". **Frankfurt** (everything installed): both database bundles
+are installed and verified, and the card says "6 installed and verified".
+
+**Where the bundles are defined.** In code, in `bundleDefinitions` in
+`cmd/panel/bundles.go`, compiled into the Panel. They are not read from a file or
+from the database and cannot be changed while the panel runs; changing a bundle is
+a code change and needs a release. Moving them to a data catalogue later is
+possible if the owner wants it; that is not decided here.
+
+No schema change (44), no Agent change, no new Agent job kind or RPC, no change to
+the updater or release recovery, so no native record.
+
+What this does not authorise: no installed-server change, no licence-policy
+change, no new store item, no WordPress or site-application bundle and no
+run-time editing of bundles. Installed panels are still updated only by their
+owner from the panel's own update screen.
+
+Relation to the rest. D-015 item 2 stands: the catalogue is still the single
+install address and a bundle installs catalogue components only. D-024: a bundle
+that is not verified says which part, who acts (the administrator), the next
+action (start the part from its row, or Rescan) and how it resumes. D-033: the
+install sequence and its visible waiting are unchanged. D-036: the dialogue's
+versions are the rows' versions. The removal dialog of the D-037 amendment names
+the merged bundles (removing Nginx now leaves both database bundles incomplete).
+
+Not done: nothing is measured on an installed server; whether bundles should move
+to a data catalogue is left to the owner.
 
 
 ---

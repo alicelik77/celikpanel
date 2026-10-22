@@ -39,10 +39,12 @@ const MAIL_PROFILE_IDS: ReadonlySet<string> = new Set(['core-mail', 'webmail', '
 // The actions each state may carry. A pair outside this table is not the
 // contract, and the whole list is dropped: no strip offers an action the
 // Panel did not mean. Repair belongs to the mail route (the profile install
-// completes and proves a mail setup); Verify to the components route (it only
-// reads the components again); "partial" only to mail, which has attempts.
-// Her durumun taşıyabileceği eylemler; Onar posta yoluna, Doğrula bileşen
-// yoluna aittir; "kısmen" yalnız postadadır.
+// completes and proves a mail setup); "partial" only to mail, which has
+// attempts. Verify belonged to the components route until alpha.100; a Panel
+// of alpha.101 sends "none" there (the page's Rescan reads the components
+// again), and an older Panel's "verify" is still accepted and draws no button.
+// Her durumun taşıyabileceği eylemler; Onar posta yoluna aittir; "kısmen"
+// yalnız postadadır. Eski Panel'in "verify"ı kabul edilir, düğme çizilmez.
 const ACTIONS: Record<BundleStatus, readonly BundleAction[]> = {
     unknown: ['none'],
     available: ['install'],
@@ -113,11 +115,17 @@ export function decodeReadyBundles(value: unknown, serviceIDs: ReadonlySet<strin
         ids.add(bundle.id);
         bundles.push(bundle as unknown as ReadyBundle);
     }
-    for (const bundle of bundles) {
-        if (bundle.parent !== undefined && !ids.has(bundle.parent)) return null;
-        if (!bundle.addons.every((id) => ids.has(id))) return null;
-    }
-    return bundles;
+    // An id this answer does not carry is ignored, not a reason to refuse the
+    // list (alpha.101 merged the database add-ons into their bundles): an
+    // add-on reference to it is dropped, and an add-on offered after a bundle
+    // that is not in the list is not drawn.
+    // Yanıtta olmayan bir kimlik yok sayılır; liste reddedilmez.
+    // The add-on references are read against the bundles that remain, so no
+    // bundle keeps an add-on that was itself left out.
+    // Ek başvuruları kalan paketlere göre okunur.
+    const kept = bundles.filter((bundle) => bundle.parent === undefined || ids.has(bundle.parent));
+    const keptIDs = new Set(kept.map((bundle) => bundle.id));
+    return kept.map((bundle) => (bundle.addons.every((id) => keptIDs.has(id)) ? bundle : { ...bundle, addons: bundle.addons.filter((id) => keptIDs.has(id)) }));
 }
 
 const said = (t: Translate, key: string, vars?: Record<string, string | number>): string | null => {

@@ -125,9 +125,9 @@ const impact = (extra = {}) => ({
 const sites = ['a.example (ali)', 'b.example (ali)', 'c.example (veli)', 'd.example (veli)', 'e.example (ali)', 'f.example (ali)', 'g.example (ali)'];
 const IMPACTS = {
   nginx: impact({ packages: ['nginx'], firewall_ports: ['80/tcp', '443/tcp'], required_by: ['phpmyadmin', 'roundcube'],
-    bundles: [{ id: 'web.nginx_php', name_code: 'web_nginx_php' }, { id: 'db.mariadb.admin', name_code: 'db_mariadb_admin' }],
+    bundles: [{ id: 'web.nginx_php', name_code: 'web_nginx_php' }, { id: 'db.mariadb', name_code: 'db_mariadb_phpmyadmin' }],
     hosted: { kind: 'sites', count: 7, names: sites, blocks_removal: true } }),
-  postgresql: impact({ packages: ['postgresql'], all_versions: true, bundles: [{ id: 'db.postgresql', name_code: 'db_postgresql' }],
+  postgresql: impact({ packages: ['postgresql'], all_versions: true, bundles: [{ id: 'db.postgresql', name_code: 'db_postgresql_phppgadmin' }],
     hosted: { kind: 'databases', count: 2, names: ['shop', 'blog'], blocks_removal: true } }),
   postfix: impact({ packages: ['postfix'], firewall_ports: ['25/tcp', '587/tcp'], required_by: ['rspamd', 'roundcube'],
     bundles: [{ id: 'mail.core', name_code: 'mail_core' }],
@@ -219,7 +219,7 @@ test('Nginx: sites by name with "+N more", the refusal they cause, who needs it,
     assert.equal(said.blocks, say('services.removal.blocks', { name: 'Nginx' }));
     assert.equal(said.required, say('services.removal.requiredBy', { name: 'Nginx', names: `${nameOf('phpmyadmin')}, ${nameOf('roundcube')}` }));
     assert.equal(said['bundle-web.nginx_php'], say('services.removal.bundle', { bundle: words['services.bundles.name.web_nginx_php'] }));
-    assert.equal(said['bundle-db.mariadb.admin'], say('services.removal.bundle', { bundle: words['services.bundles.name.db_mariadb_admin'] }));
+    assert.equal(said['bundle-db.mariadb'], say('services.removal.bundle', { bundle: words['services.bundles.name.db_mariadb_phpmyadmin'] }));
     assert.equal(said.ports, say('services.removal.ports', { ports: '80/tcp, 443/tcp' }));
     assert.deepEqual(sentenceKeys(), ['services.removal.removed.stopUnits', 'services.removal.removed.apt', 'services.removal.kept.packages']);
     assert.ok(label(tree.root).includes('apt-get purge --auto-remove'));
@@ -250,7 +250,7 @@ test('PostgreSQL: databases by name, every version removed, and the database-fil
     await openRemoval('postgresql');
     const said = lines();
     assert.equal(said.hosted, say('services.removal.hosted.databases', { name: 'PostgreSQL', count: 2, names: 'shop, blog' }));
-    assert.equal(said['bundle-db.postgresql'], say('services.removal.bundle', { bundle: words['services.bundles.name.db_postgresql'] }));
+    assert.equal(said['bundle-db.postgresql'], say('services.removal.bundle', { bundle: words['services.bundles.name.db_postgresql_phppgadmin'] }));
     assert.deepEqual(sentenceKeys(), ['services.removal.removed.stopUnits', 'services.removal.removed.apt', 'services.removal.removed.allVersions',
       'services.removal.kept.packages']);
     // The database files' warning is its own line, not "what stays".

@@ -45,7 +45,7 @@ const listBody = /var bundleTextCodes = \[\]bundleTextCode\{([\s\S]*?)\n\}/.exec
 const codes = [...listBody.matchAll(/\b(bundleText\w+),/g)].map((m) => values[m[1]]);
 
 test('every bundle the Panel can name has English and Turkish words, plain and with the same values', () => {
-  assert.equal(codes.length, 8, `read ${codes.length} codes from the Panel`);
+  assert.equal(codes.length, 6, `read ${codes.length} codes from the Panel`);
   assert.ok(codes.every(Boolean), JSON.stringify(codes));
   for (const code of codes) {
     for (const part of ['name', 'description', 'chip', 'about']) {
@@ -71,19 +71,38 @@ test('every bundle the Panel can name has English and Turkish words, plain and w
   const t = (key, vars = {}) => Object.entries(vars).reduce((out, [k, v]) => out.split(`{${k}}`).join(String(v)), catalogues.tr[key] ?? key);
   assert.equal(lib.bundleName({ id: 'mail.webmail', name_code: 'mail_webmail', components: ['postfix'], action_route: 'mail_profile', profile_id: 'webmail' }, t, (id) => id), 'Webmail');
   assert.equal(lib.bundleName({ id: 'mail.core', name_code: 'mail_core', components: ['postfix'], action_route: 'mail_profile', profile_id: 'core-mail' }, t, (id) => id), 'Temel Posta');
-  assert.equal(lib.bundleChipName({ id: 'db.postgresql', name_code: 'db_postgresql', components: ['postgresql'], action_route: 'components' }, t, (id) => id), 'PostgreSQL');
-  assert.equal(catalogues.tr['services.bundles.name.db_postgresql'], 'PostgreSQL paketi');
-  assert.equal(catalogues.tr['services.bundles.name.db_mariadb'], 'MariaDB paketi');
+  // alpha.101 (owner, 2026-10-22): a bundle is a service with its companion
+  // tools; the database bundles say so in their names.
+  const pgBundle = { id: 'db.postgresql', name_code: 'db_postgresql_phppgadmin', components: ['postgresql', 'nginx', 'php-fpm', 'phppgadmin'], action_route: 'components' };
+  assert.equal(lib.bundleChipName(pgBundle, t, (id) => id), 'PostgreSQL + phpPgAdmin');
+  assert.equal(catalogues.tr['services.bundles.name.db_postgresql_phppgadmin'], 'PostgreSQL + phpPgAdmin');
+  assert.equal(catalogues.tr['services.bundles.name.db_mariadb_phpmyadmin'], 'MariaDB + phpMyAdmin');
+  assert.equal(catalogues.en['services.bundles.chip.db_mariadb_phpmyadmin'], 'MariaDB + phpMyAdmin');
   assert.equal(catalogues.tr['services.bundles.name.web_nginx_php'], 'Nginx + PHP-FPM');
-  for (const [key, word] of [['verify', 'Doğrula'], ['repairEllipsis', 'Onar…'], ['continue', 'Devam et'], ['chip.install', 'Kur'], ['chip.add', 'Ekle'], ['chip.included', 'içinde']]) {
+  // The retired one-component and add-on codes have no words: an older
+  // Panel's answer is named by its components, never as a bundle with a tool.
+  for (const code of ['db_postgresql', 'db_mariadb', 'db_postgresql_admin', 'db_mariadb_admin']) {
+    for (const part of ['name', 'description', 'chip', 'about']) {
+      for (const locale of ['en', 'tr']) assert.equal(catalogues[locale][`services.bundles.${part}.${code}`], undefined, `${locale} ${part} ${code}`);
+    }
+  }
+  assert.equal(lib.bundleChipName({ id: 'db.postgresql', name_code: 'db_postgresql', components: ['postgresql'], action_route: 'components' }, t, (id) => id), 'postgresql');
+  for (const [key, word] of [['repairEllipsis', 'Onar…'], ['continue', 'Devam et'], ['chip.install', 'Kur'], ['chip.add', 'Ekle'], ['chip.included', 'içinde']]) {
     assert.equal(catalogues.tr[`services.bundles.${key}`], word);
   }
+  // Verify went with alpha.101: the page's Rescan reads the components again.
+  for (const key of ['verify', 'verifyBusy', 'verifyScanning', 'installed.verifyHow']) {
+    for (const locale of ['en', 'tr']) assert.equal(catalogues[locale][`services.bundles.${key}`], undefined, `${locale} ${key}`);
+  }
+  // Arch: phpPgAdmin is not offered, and the chip says so plainly.
+  assert.equal(t('services.bundles.short.component_not_installable_named', { component: 'phpPgAdmin' }), 'phpPgAdmin bu sistemde kullanılamıyor');
+  assert.equal(catalogues.en['services.bundles.short.component_not_installable_named'], '{component} is not available on this system');
   assert.equal(catalogues.en['services.bundles.chip.verifiedLabel'], '{name}, installed and verified');
   // Natural word order (alpha.95 review).
   assert.equal(catalogues.en['services.bundles.step'], '{n}/{total} · installing {component}');
   assert.equal(catalogues.tr['services.bundles.chip.progress'], '{n}/{total} bileşen kurulu');
   // An installed bundle is described, not told to install (alpha.95 review).
-  assert.equal(catalogues.en['services.bundles.about.db_postgresql'], 'PostgreSQL for your sites’ databases.');
+  assert.equal(catalogues.en['services.bundles.about.db_postgresql_phppgadmin'], 'PostgreSQL for your sites’ databases, with phpPgAdmin to manage them in a browser.');
   for (const code of codes) for (const locale of ['en', 'tr']) assert.doesNotMatch(catalogues[locale][`services.bundles.about.${code}`], /^(Installs|Adds)\b|kurar\.$|ekler\.$/, `${locale} ${code}`);
   assert.equal(catalogues.tr['services.stopped'], 'Durdu');
   // Every services.bundles / dashboard.bundles key is in both languages.
@@ -99,8 +118,11 @@ test('every bundle the Panel can name has English and Turkish words, plain and w
 
 // --- The decoder ------------------------------------------------------------------
 const ids = new Set(['postfix', 'dovecot', 'rspamd', 'nginx', 'php-fpm', 'roundcube', 'mariadb', 'phpmyadmin', 'postgresql', 'phppgadmin']);
+// The name codes the Panel sends (bundleTextCodes); the database bundles carry
+// their tool in theirs since alpha.101.
+const nameCodes = { 'db.postgresql': 'db_postgresql_phppgadmin', 'db.mariadb': 'db_mariadb_phpmyadmin' };
 const make = (id, category, components, extra = {}) => ({
-  id, category, name_code: id.replace(/\./g, '_'), components, status: 'available', action: 'install', action_route: 'components', addons: [], missing_components: components, ...extra,
+  id, category, name_code: nameCodes[id] ?? id.replace(/\./g, '_'), components, status: 'available', action: 'install', action_route: 'components', addons: [], missing_components: components, ...extra,
 });
 const mail = (id, profile, components, extra = {}) => make(id, 'email', components, { action_route: 'mail_profile', profile_id: profile, ...extra });
 
@@ -116,12 +138,34 @@ test('the decoder takes only the contract and drops the list rather than offer w
     ['a component bundle that repairs', [make('db.mariadb', 'database', ['mariadb'], { status: 'installed_verified', action: 'repair', missing_components: [] })]],
     ['a component bundle that is partial', [make('web.nginx_php', 'web', ['nginx', 'php-fpm'], { status: 'partial', action: 'continue', missing_components: ['php-fpm'] })]],
     ['a mail bundle that only verifies', [mail('mail.core', 'core-mail', ['postfix'], { status: 'installed_unverified', action: 'verify', missing_components: [] })]],
-    ['an add-on of an unknown bundle', [make('db.mariadb', 'database', ['mariadb'], { addons: ['db.mariadb.admin'] })]],
     ['an offer with nothing to install', [make('db.mariadb', 'database', ['mariadb'], { missing_components: [] })]],
     ['a duplicate', [...good, ...good]],
   ]) {
     assert.equal(lib.decodeReadyBundles(broken, ids), null, why);
   }
+});
+
+// alpha.101: an id the answer does not carry is ignored rather than a reason to
+// drop the whole list, and an older Panel's answer (one-component database
+// bundles, add-ons, Verify) is still read.
+test('the decoder ignores ids it does not carry and still reads an older Panel', () => {
+  const pg = make('db.postgresql', 'database', ['postgresql', 'nginx', 'php-fpm', 'phppgadmin'], { addons: ['db.postgresql.admin'] });
+  const decoded = lib.decodeReadyBundles([pg], ids);
+  assert.equal(decoded.length, 1);
+  assert.deepEqual(decoded[0].addons, [], 'an add-on reference to an id the answer does not carry is dropped');
+  const orphan = make('db.mariadb.admin', 'database', ['nginx', 'php-fpm', 'phpmyadmin'], { parent: 'db.mariadb' });
+  assert.deepEqual(lib.decodeReadyBundles([pg, orphan], ids).map((bundle) => bundle.id), ['db.postgresql'], 'an add-on of a bundle that is not there is not drawn');
+  // A bundle that offers that dropped add-on does not keep it in its add-ons.
+  const offering = make('web.nginx_php', 'web', ['nginx', 'php-fpm'], { addons: ['db.mariadb.admin'] });
+  const left = lib.decodeReadyBundles([pg, orphan, offering], ids);
+  assert.deepEqual(left.map((bundle) => bundle.id), ['db.postgresql', 'web.nginx_php']);
+  assert.deepEqual(left.find((bundle) => bundle.id === 'web.nginx_php').addons, [], 'a bundle kept an add-on that was itself left out');
+  const older = [
+    { ...make('db.mariadb', 'database', ['mariadb'], { addons: ['db.mariadb.admin'] }), name_code: 'db_mariadb', status: 'installed_unverified', action: 'verify', missing_components: [] },
+    { ...make('db.mariadb.admin', 'database', ['nginx', 'php-fpm', 'phpmyadmin'], { parent: 'db.mariadb' }), name_code: 'db_mariadb_admin' },
+  ];
+  const read = lib.decodeReadyBundles(older, ids);
+  assert.deepEqual(read.map((bundle) => [bundle.id, bundle.action]), [['db.mariadb', 'verify'], ['db.mariadb.admin', 'install']]);
 });
 
 // --- The owner's two servers (screens of 2026-10-17) ---------------------------------
@@ -130,21 +174,23 @@ test('the decoder takes only the contract and drops the list rather than offer w
 // Frankfurt: every bundle installed and verified (Webmail and Spam-Protected
 // Mail, both databases with their web tools, Nginx + PHP-FPM).
 const verified = (bundle, action = bundle.action_route === 'mail_profile' ? 'repair' : 'none') => ({ ...bundle, status: 'installed_verified', action, missing_components: [] });
+// The registry of alpha.101 (cmd/panel/bundles.go): a database bundle is the
+// database with its browser tool and the web server and PHP-FPM the tool runs on.
 const registry = [
   mail('mail.core', 'core-mail', ['postfix', 'dovecot'], { addons: ['mail.protected'] }),
   mail('mail.webmail', 'webmail', ['postfix', 'dovecot', 'nginx', 'php-fpm', 'roundcube'], { addons: ['mail.protected'] }),
   mail('mail.protected', 'protected-mail', ['postfix', 'dovecot', 'rspamd']),
-  make('db.postgresql', 'database', ['postgresql'], { addons: ['db.postgresql.admin'] }),
-  make('db.mariadb', 'database', ['mariadb'], { addons: ['db.mariadb.admin'] }),
-  make('db.postgresql.admin', 'database', ['nginx', 'php-fpm', 'phppgadmin'], { parent: 'db.postgresql' }),
-  make('db.mariadb.admin', 'database', ['nginx', 'php-fpm', 'phpmyadmin'], { parent: 'db.mariadb' }),
+  make('db.postgresql', 'database', ['postgresql', 'nginx', 'php-fpm', 'phppgadmin']),
+  make('db.mariadb', 'database', ['mariadb', 'nginx', 'php-fpm', 'phpmyadmin']),
   make('web.nginx_php', 'web', ['nginx', 'php-fpm']),
 ];
+// Boston as the Panel derives it (TestBundlesOnABostonShapedServer):
+// PostgreSQL and Nginx are installed, so PostgreSQL + phpPgAdmin is offered
+// and installs only PHP-FPM and phpPgAdmin.
 const boston = registry.map((bundle) => {
   switch (bundle.id) {
-  case 'db.postgresql': return verified(bundle);
-  case 'db.postgresql.admin': return { ...bundle, missing_components: ['php-fpm', 'phppgadmin'] };
-  case 'db.mariadb.admin': return { ...bundle, status: 'blocked', action: 'none', missing_components: ['php-fpm', 'phpmyadmin'], blocked_code: 'component_requires', blocked_vars: { component: 'phpMyAdmin', required: 'MariaDB' } };
+  case 'db.postgresql': return { ...bundle, missing_components: ['php-fpm', 'phppgadmin'] };
+  case 'db.mariadb': return { ...bundle, missing_components: ['mariadb', 'php-fpm', 'phpmyadmin'] };
   case 'web.nginx_php': return { ...bundle, missing_components: ['php-fpm'] };
   default: return bundle;
   }
@@ -154,15 +200,16 @@ const t = (key, vars = {}) => Object.entries(vars).reduce((out, [k, v]) => out.s
 const chipsOf = (all, category) => lib.bundleStripModel(all, category).chips.map((chip) => [chip.bundle.id, chip.state]);
 
 test('every category shows the same bundles in the same order on both servers; only the states differ', () => {
-  for (const all of [boston, frankfurt]) assert.equal(lib.decodeReadyBundles(all, ids).length, 8);
+  for (const all of [boston, frankfurt]) assert.equal(lib.decodeReadyBundles(all, ids).length, 6);
   for (const category of ['email', 'database', 'web']) {
     const order = registry.filter((bundle) => bundle.category === category).map((bundle) => bundle.id);
     assert.deepEqual(chipsOf(boston, category).map(([id]) => id), order, `Boston ${category}`);
     assert.deepEqual(chipsOf(frankfurt, category).map(([id]) => id), order, `Frankfurt ${category}`);
   }
   assert.deepEqual(chipsOf(boston, 'database'), [
-    ['db.postgresql', 'verified'], ['db.mariadb', 'available'], ['db.postgresql.admin', 'available'], ['db.mariadb.admin', 'blocked'],
-  ], 'MariaDB is offered on Boston; its web tool waits for it');
+    ['db.postgresql', 'available'], ['db.mariadb', 'available'],
+  ], 'PostgreSQL alone is not the bundle: PostgreSQL + phpPgAdmin is offered on Boston');
+  assert.deepEqual(chipsOf(frankfurt, 'database'), [['db.postgresql', 'verified'], ['db.mariadb', 'verified']]);
   assert.deepEqual(chipsOf(boston, 'email'), [['mail.core', 'available'], ['mail.webmail', 'available'], ['mail.protected', 'available']]);
   assert.deepEqual(chipsOf(frankfurt, 'email'), [['mail.core', 'included'], ['mail.webmail', 'verified'], ['mail.protected', 'verified']], 'Core Mail is included, not hidden');
   const core = lib.bundleStripModel(frankfurt, 'email').chips[0];
@@ -170,12 +217,19 @@ test('every category shows the same bundles in the same order on both servers; o
   assert.equal(lib.bundleStripModel(boston, 'dns').empty, true);
 });
 
-test('an add-on always appears; without its parent it is blocked with the short reason', () => {
-  const blocked = boston.find((bundle) => bundle.id === 'db.mariadb.admin');
+// Arch (pacman): phpPgAdmin has no package there, so the Panel blocks the
+// whole bundle (TestBundlesOnAnArchShapedServer) and never offers a subset.
+test('a bundle with a part this system does not offer is blocked whole, and its chip names that part', () => {
+  const arch = registry.map((bundle) => (bundle.id === 'db.postgresql'
+    ? { ...bundle, status: 'blocked', action: 'none', blocked_code: 'component_not_installable', blocked_vars: { component: 'phpPgAdmin', kind: 'package', platform: 'Arch Linux (pacman)' } }
+    : bundle));
+  assert.equal(lib.decodeReadyBundles(arch, ids).length, 6);
+  assert.deepEqual(chipsOf(arch, 'database'), [['db.postgresql', 'blocked'], ['db.mariadb', 'available']]);
+  assert.equal(t('services.bundles.short.component_not_installable_named', { component: 'phpPgAdmin' }), 'phpPgAdmin is not available on this system');
+  assert.equal(lib.bundlesSummary(arch).installable, 5, 'a blocked bundle is not counted as installable');
   // The strip's short reason, as the chip draws it.
   assert.match(strip, /if \(bundle\.blocked_code === 'component_requires' && vars\.required\) return t\('services\.bundles\.short\.component_requires', \{ required: requirementText\(vars\.required, t\) \}\);/);
-  assert.equal(t('services.bundles.short.component_requires', { required: blocked.blocked_vars.required }), 'needs MariaDB');
-  assert.equal(t('services.bundles.chip.db_mariadb_admin'), 'phpMyAdmin');
+  assert.match(strip, /\? t\('services\.bundles\.short\.component_not_installable_named', \{ component: vars\.component \}\)/);
   // A blocked chip installs nothing; it is a quiet button whose press shows
   // the full reason under the chips, so keyboard and touch reach it, not only
   // a tooltip (alpha.95 review).
@@ -186,12 +240,14 @@ test('an add-on always appears; without its parent it is blocked with the short 
   assert.match(blockedCase, /onClick=\{\(\) => setReasonShown\(reasonShown === bundle\.id \? null : bundle\.id\)\}/);
   assert.doesNotMatch(blockedCase, /onMail|onComponents|act\(/);
   assert.match(strip, /data-bundle-blocked-reason=\{shown\.bundle\.id\}/);
-  // An add-on says Add, a top-level bundle Install.
+  // An add-on (an older Panel's) says Add, a top-level bundle Install.
   assert.match(strip, /t\(bundle\.parent !== undefined \? 'services\.bundles\.chip\.add' : 'services\.bundles\.chip\.install'\)/);
 });
 
-test('the Dashboard counts what the chips show: every registry entry, add-ons included, blocked not installable', () => {
-  for (const [all, verifiedCount, installable] of [[boston, 1, 6], [frankfurt, 8, 0]]) {
+test('the Dashboard counts what the chips show: every registry entry, blocked not installable', () => {
+  // Boston: nothing installed and verified (PostgreSQL alone is not its
+  // bundle), six can be installed; Frankfurt: all six installed and verified.
+  for (const [all, verifiedCount, installable] of [[boston, 0, 6], [frankfurt, 6, 0]]) {
     const summary = lib.bundlesSummary(all);
     const chips = ['email', 'database', 'web'].flatMap((category) => lib.bundleStripModel(all, category).chips);
     assert.equal(summary.installable, chips.filter((chip) => chip.state === 'available' || chip.state === 'partial').length);
@@ -200,7 +256,9 @@ test('the Dashboard counts what the chips show: every registry entry, add-ons in
     assert.equal(summary.verified, verifiedCount);
     assert.equal(summary.known, true);
   }
-  assert.equal(t('dashboard.bundles.summary', { verified: 8, installable: 0 }), '8 installed and verified · 0 can be installed');
+  assert.equal(t('dashboard.bundles.summary', { verified: 6, installable: 0 }), '6 installed and verified · 0 can be installed');
+  // Boston's card line, from the same count.
+  assert.equal(t('dashboard.bundles.summaryInstallable', { installable: lib.bundlesSummary(boston).installable }), 'None installed yet · 6 can be installed');
 });
 
 test('a mail bundle partial only through parts an installed bundle shares is offered as Install; one attempted keeps Continue', () => {
@@ -239,7 +297,7 @@ test('an installed mail bundle stays visible beside a host-wide refusal', () => 
     if (bundle.category === 'email') return { ...bundle, status: 'blocked', action: 'none', blocked_code: 'dns_identity_not_ready' };
     return bundle;
   });
-  assert.equal(lib.decodeReadyBundles(dns, ids).length, 8);
+  assert.equal(lib.decodeReadyBundles(dns, ids).length, 6);
   const email = lib.bundleStripModel(dns, 'email');
   assert.equal(email.hostBlocked, 'dns_identity_not_ready');
   assert.deepEqual(email.chips.map((chip) => [chip.bundle.id, chip.state]), [['mail.core', 'included'], ['mail.webmail', 'verified'], ['mail.protected', 'blocked']]);
@@ -253,7 +311,7 @@ test('"included" never hides a bundle\'s own failed or running attempt, and the 
     assert.equal(chip.includedIn, undefined);
     assert.deepEqual(lib.bundleStripModel(own, 'email').noted.map((bundle) => bundle.id), ['mail.core'], attempt);
     const summary = lib.bundlesSummary(own);
-    assert.equal(summary.verified, 7, attempt);
+    assert.equal(summary.verified, 5, attempt);
     assert.deepEqual(summary.unverified.map((bundle) => bundle.id), ['mail.core'], attempt);
   }
   // A contained bundle that is not itself installed and verified is not "included".
@@ -312,15 +370,20 @@ test('the strip is chips only: no filled button, no Repair link on the strip, no
   assert.doesNotMatch(stripOnly, /ml-auto/);
 });
 
-test('the installed dialogue offers Repair for a mail bundle and Verify for a component bundle, with the reason when Verify is held', () => {
+// alpha.101 (owner's screens on Frankfurt): each part says its row's state and
+// version; Verify and its sentence are gone (the page's Rescan reads again);
+// a mail bundle keeps Repair, which does real work.
+test('the installed dialogue says each part\'s state and version, offers Repair for a mail bundle and no Verify', () => {
   const dialog = strip.slice(strip.indexOf('export function BundleInstalledDialog'), strip.indexOf('export function BundleInstallDialog'));
   assert.match(dialog, /\{mail && !includedIn && \(/);
-  assert.match(dialog, /\{!mail && \(/);
-  assert.match(dialog, /disabled=\{verifyHeld !== null\} title=\{verifyHeld \?\? undefined\}/);
-  assert.match(dialog, /data-bundle-verify-held=''/);
-  // Verify is held while any component operation runs, with the reason.
-  assert.match(services, /const bundleVerifyHeld = componentOperation\.locked \|\| hostOperationActive \|\| \(bundleSequence\.run !== null && bundleSequence\.run\.phase !== 'stopped'\)\s*\n\s*\? t\('services\.bundles\.verifyBusy'\)/);
-  assert.match(services, /verifyHeld=\{bundleVerifyHeld\}/);
+  assert.doesNotMatch(dialog, /services\.bundles\.verify|verifyHeld|onVerify|ScanSearch/);
+  assert.doesNotMatch(dialog, /services\.bundles\.dialog\.alreadyInstalled/);
+  assert.match(dialog, /const word = componentStateWord\(service\);/);
+  assert.match(dialog, /const version = componentVersionText\(service\);/);
+  assert.match(dialog, /t\('services\.bundles\.installed\.unverifiedHow', \{ rescan: t\('services\.rescan'\) \}\)/);
+  assert.match(dialog, /data-bundle-part-state=\{part\.word\}/);
+  assert.doesNotMatch(strip, /verifyHeld|onVerify/);
+  assert.doesNotMatch(services, /bundleVerifyHeld|verifyHeld=|onVerify=/);
 });
 
 test('the gate between bundle steps reads the unverified flag through a ref set when it changes', () => {

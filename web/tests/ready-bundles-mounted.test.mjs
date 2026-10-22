@@ -107,8 +107,11 @@ const component = (id, category, installed, extra = {}) => ({
   status: installed ? 'active (running)' : 'not_installed', is_installed: installed, versions: installed ? ['1.0'] : [], ...extra,
 });
 const profile = (id) => ({ id, name: id, description: `${id} profile`, status: 'available', available: true, verified: false, latest_attempt_status: 'none', services: ['postfix'] });
+// The name codes the Panel sends; the database bundles carry their tool in
+// theirs since alpha.101.
+const nameCodes = { 'db.postgresql': 'db_postgresql_phppgadmin', 'db.mariadb': 'db_mariadb_phpmyadmin' };
 const bundle = (id, category, components, extra = {}) => ({
-  id, category, name_code: id.replace(/\./g, '_'), components, status: 'available', action: 'install',
+  id, category, name_code: nameCodes[id] ?? id.replace(/\./g, '_'), components, status: 'available', action: 'install',
   action_route: 'components', addons: [], missing_components: components, ...extra,
 });
 function payload({ nginx = false, phpfpm = false, bundles }) {
@@ -121,6 +124,7 @@ function payload({ nginx = false, phpfpm = false, bundles }) {
       component('nginx', 'web', nginx),
       component('php-fpm', 'web', phpfpm, { kind: 'runtime' }),
       component('mariadb', 'database', true),
+      component('phpmyadmin', 'database', true, { kind: 'tool', status: 'installed' }),
       component('postfix', 'email', false),
       component('rspamd', 'email', false),
     ],
@@ -128,7 +132,20 @@ function payload({ nginx = false, phpfpm = false, bundles }) {
   };
 }
 const webBundle = (extra) => bundle('web.nginx_php', 'web', ['nginx', 'php-fpm'], extra);
-const dbBundle = (extra) => bundle('db.mariadb', 'database', ['mariadb'], { status: 'installed_verified', action: 'none', missing_components: [], ...extra });
+// MariaDB + phpMyAdmin (alpha.101): the database with its browser tool and the
+// web server and PHP-FPM the tool runs on.
+const MARIADB_BUNDLE = ['mariadb', 'nginx', 'php-fpm', 'phpmyadmin'];
+const dbBundle = (extra) => bundle('db.mariadb', 'database', MARIADB_BUNDLE, { status: 'installed_verified', action: 'none', missing_components: [], ...extra });
+// Frankfurt-shaped package versions (sample data, Debian 13).
+const versionOf = (full, short, pkg) => ({ versions: [], package_version: full, package_version_short: short, package_versions: [{ package: pkg, version: full }], package_version_read_at: '2026-10-22T08:00:00Z' });
+const withVersions = (answer) => ({ ...answer, services: answer.services.map((item) => ({
+  nginx: { ...item, ...versionOf('1.26.3-3+deb13u1', '1.26.3', 'nginx') },
+  'php-fpm': { ...item, versions: ['8.4'] },
+  mariadb: { ...item, ...versionOf('1:11.8.3-0+deb13u1', '11.8.3', 'mariadb-server') },
+  phpmyadmin: { ...item, ...versionOf('4:5.2.2-really5.2.1-1', '5.2.1', 'phpmyadmin') },
+}[item.id] ?? item)) });
+const partsOf = () => Object.fromEntries(tree.root.findAll((node) => node.props && node.props['data-bundle-part-state'] !== undefined)
+  .map((node) => [node.props['data-bundle-part-state'] === undefined ? '' : label(node.children.find((child) => child.type === 'span' && child.props.className === 'shrink-0 text-fg')), node]));
 
 const originalFetch = globalThis.fetch;
 // What /host-mutation-readiness answers; a test may close it.
@@ -203,24 +220,51 @@ test('an offered bundle is an outlined chip that says Install; pressing it opens
   } finally { await unmount(); }
 });
 
-test('an installed and verified component bundle is a check-mark chip; its dialogue says so and offers Verify, never Repair', async () => {
-  await mount(payload({ nginx: true, phpfpm: true, bundles: [webBundle({ status: 'installed_verified', action: 'none', missing_components: [] }), dbBundle()] }));
+// alpha.101 (owner's screens on Frankfurt): each part says its row's state
+// and version, not "Already installed"; there is no Verify button and no
+// "Verify reads the components again" sentence; Close stays.
+test('an installed and verified component bundle is a check-mark chip; its dialogue says each part\'s state and version, with Close only', async () => {
+  await mount(withVersions(payload({ nginx: true, phpfpm: true, bundles: [webBundle({ status: 'installed_verified', action: 'none', missing_components: [] }), dbBundle()] })));
   try {
     const chip = bundleNode('db.mariadb');
     assert.equal(chip.props['data-bundle-state'], 'verified');
-    assert.equal(label(chip), 'MariaDB');
-    assert.equal(chip.props['aria-label'], 'MariaDB bundle, installed and verified');
+    assert.equal(label(chip), 'MariaDB + phpMyAdmin');
+    assert.equal(chip.props['aria-label'], 'MariaDB + phpMyAdmin, installed and verified');
     // No Repair link on the strip.
     assert.ok(!stripText('database').includes(say('services.bundles.repairEllipsis')) && !stripText('database').includes('Repair'), stripText('database'));
     await press(chip);
     assert.equal(installedState(), 'verified');
-    assert.ok(dialogText().includes(say('services.bundles.installed.verified', { name: 'MariaDB bundle' })), dialogText());
+    assert.ok(dialogText().includes(say('services.bundles.installed.verified', { name: 'MariaDB + phpMyAdmin' })), dialogText());
     // Described, not told to install (alpha.95 review).
-    assert.ok(dialogText().includes(say('services.bundles.about.db_mariadb')), dialogText());
-    assert.ok(!dialogText().includes(say('services.bundles.description.db_mariadb')), dialogText());
-    const buttons = tree.root.findAll((node) => node.type === 'button' && node.props && node.props.role !== 'dialog').map(label);
-    assert.ok(buttons.includes(say('services.bundles.verify')), buttons.join(', '));
-    assert.ok(!buttons.includes(say('services.bundles.repairEllipsis')), 'a component bundle offers Repair');
+    assert.ok(dialogText().includes(say('services.bundles.about.db_mariadb_phpmyadmin')), dialogText());
+    assert.ok(!dialogText().includes(say('services.bundles.description.db_mariadb_phpmyadmin')), dialogText());
+    const parts = partsOf();
+    const said = Object.fromEntries(Object.entries(parts).map(([name, node]) => [name, label(node).slice(name.length)]));
+    assert.deepEqual(said, {
+      [nameOf('mariadb')]: `${say('services.running')} · 11.8.3`,
+      [nameOf('nginx')]: `${say('services.running')} · 1.26.3`,
+      [nameOf('php-fpm')]: `${say('services.running')} · 8.4`,
+      [nameOf('phpmyadmin')]: `${say('services.installedLabel')} · 5.2.1`,
+    });
+    assert.ok(!dialogText().includes('Already installed'), dialogText());
+    // The full version as the package database printed it is the part's tooltip.
+    const versionCell = parts[nameOf('phpmyadmin')].find((node) => node.props && node.props.title === '4:5.2.2-really5.2.1-1');
+    assert.match(versionCell.props.className, /\bmin-w-0\b/);
+    const shortVersion = versionCell.find((node) => node.type === 'span' && typeof node.props.className === 'string' && /\btruncate\b/.test(node.props.className));
+    assert.equal(label(shortVersion), '5.2.1');
+    assert.match(shortVersion.props.className, /font-mono/);
+    // The same word its row says, from the same data.
+    for (const id of MARIADB_BUNDLE) {
+      let row = tree.root.findAll((node) => node.props && node.props.id === id && node.props.category !== undefined && node.props.installed !== undefined)[0];
+      while (row && row.type !== 'li') row = row.parent;
+      if (!row) continue;
+      const word = said[nameOf(id)].split(' · ')[0];
+      assert.ok(label(row).includes(word), `${id}: the row does not say ${word}`);
+    }
+    const buttons = tree.root.findAll((node) => node.props && node.props.role === 'dialog')[0].findAll((node) => node.type === 'button').map(label);
+    assert.deepEqual(buttons.filter((text) => text !== ''), [say('common.close')], buttons.join(', '));
+    assert.ok(!dialogText().includes('Verify'), dialogText());
+    assert.equal(tree.root.findAll((node) => node.props && node.props['data-bundle-installed-how'] !== undefined).length, 0, 'a verified component bundle needs no how-to sentence');
   } finally { await unmount(); }
 });
 
@@ -235,7 +279,7 @@ test('an installed mail bundle opens a dialogue with Repair…, never Verify; on
     await press(chip);
     const buttons = tree.root.findAll((node) => node.type === 'button').map(label);
     assert.ok(buttons.includes(say('services.bundles.repairEllipsis')), buttons.join(', '));
-    assert.ok(!buttons.includes(say('services.bundles.verify')), 'a mail bundle offers Verify');
+    assert.ok(!buttons.includes('Verify'), 'a mail bundle offers Verify');
     assert.ok(dialogText().includes(say('services.bundles.installed.repairHow')), dialogText());
   } finally { await unmount(); }
 
@@ -253,77 +297,89 @@ test('an installed mail bundle opens a dialogue with Repair…, never Verify; on
   } finally { await unmount(); }
 });
 
-test('Verify of a component bundle only reads: held with the server’s own reason while readiness says the server is not ready, and while an operation runs', async () => {
-  const stopped = payload({ bundles: [webBundle(), dbBundle({ status: 'installed_unverified', action: 'verify' })] });
-  stopped.services = stopped.services.map((item) => (item.id === 'mariadb' ? { ...item, status: 'inactive (dead)' } : item));
-  // alpha.96: a busy package manager or host lock holds Verify too, with the
-  // readiness reason, because a rescan could get a "busy" answer then.
-  for (const reason of ['package_manager_active', 'host_lock_busy']) {
-    readiness = { ready: false, code: 'HOST_MUTATION_BUSY', reason };
+// An installed component bundle with a stopped part: the part says Stopped in
+// the row's red, the dialogue points to the page's Rescan in words, and there
+// is no button of its own. An older Panel's "verify" action draws no button
+// either.
+test('a component bundle with a stopped part says which part and points to Rescan; nothing is sent', async () => {
+  for (const action of ['none', 'verify']) {
+    const stopped = withVersions(payload({ nginx: true, phpfpm: true, bundles: [webBundle({ status: 'installed_verified', action: 'none', missing_components: [] }), dbBundle({ status: 'installed_unverified', action })] }));
+    stopped.services = stopped.services.map((item) => (item.id === 'mariadb' ? { ...item, status: 'inactive (dead)' } : item));
     await mount(stopped);
     try {
       assert.equal(bundleNode('db.mariadb').props['data-bundle-state'], 'unverified');
       await press(bundleNode('db.mariadb'));
-      const verify = tree.root.findAll((node) => node.type === 'button' && label(node) === say('services.bundles.verify'))[0];
-      assert.equal(verify.props.disabled, true, `Verify is usable while ${reason}`);
-      assert.equal(verify.props.title, say(`services.mutationReadiness.${reason}`));
-      assert.ok(dialogText().includes(say(`services.mutationReadiness.${reason}`)), dialogText());
-      const before = requests.filter((line) => line === 'POST /api/v1/managed-services/scan').length;
-      await act(async () => { await verify.props.onClick?.(); });
-      assert.equal(requests.filter((line) => line === 'POST /api/v1/managed-services/scan').length, before, 'a held Verify read again');
-      // An install is held: the offer is off.
-      assert.equal(bundleNode('web.nginx_php').props.disabled, true);
-    } finally { await unmount(); readiness = { ready: true }; }
+      assert.equal(installedState(), 'unverified');
+      const parts = partsOf();
+      const maria = parts[nameOf('mariadb')];
+      assert.equal(maria.props['data-bundle-part-state'], 'stopped');
+      assert.ok(label(maria).endsWith(`${say('services.stopped')} · 11.8.3`), label(maria));
+      // Only the state word is red; the version stays muted (review of alpha.101).
+      const word = maria.find((node) => node.props && node.props['data-bundle-part-word'] !== undefined);
+      const version = maria.find((node) => node.props && node.props['data-bundle-part-version'] !== undefined);
+      assert.equal(label(word), say('services.stopped'));
+      assert.match(word.props.className, /\btext-danger\b/, 'a stopped part is not drawn as the row draws it');
+      assert.equal(label(version), '11.8.3');
+      assert.doesNotMatch(version.props.className, /text-danger/, 'the version of a stopped part is drawn red');
+      assert.match(version.props.className, /\btext-fg-muted\b/);
+      let up = version.parent;
+      while (up && up !== maria) {
+        assert.ok(!(typeof up.props?.className === 'string' && /text-danger/.test(up.props.className)), 'the version inherits the red of a stopped part');
+        up = up.parent;
+      }
+      assert.equal(parts[nameOf('nginx')].props['data-bundle-part-state'], 'running');
+      assert.ok(dialogText().includes(say('services.bundles.installed.unverifiedHow', { rescan: say('services.rescan') })), dialogText());
+      const buttons = tree.root.findAll((node) => node.props && node.props.role === 'dialog')[0].findAll((node) => node.type === 'button').map(label);
+      assert.deepEqual(buttons.filter((text) => text !== ''), [say('common.close')], `${action}: ${buttons.join(', ')}`);
+      assert.equal(requests.filter((line) => line.startsWith('POST ')).length, 0, requests.join(', '));
+    } finally { await unmount(); }
   }
+});
 
-  // Ready again: Verify reads.
-  await mount(stopped);
+test('under Apache the MariaDB bundle says what it installs, what is installed and what is not needed, and never calls Nginx installed', async () => {
+  const apache = payload({ bundles: [
+    bundle('db.mariadb', 'database', MARIADB_BUNDLE, { missing_components: ['phpmyadmin'] }),
+  ], phpfpm: true });
+  apache.services = apache.services.map((item) => (item.id === 'phpmyadmin' ? { ...item, is_installed: false, status: 'not_installed', versions: [] } : item));
+  apache.services.push(component('apache', 'web', true));
+  await mount(apache);
   try {
+    assert.equal(label(bundleNode('db.mariadb')), `MariaDB + phpMyAdmin·${say('services.bundles.chip.install')}`);
     await press(bundleNode('db.mariadb'));
-    const verify = tree.root.findAll((node) => node.type === 'button' && label(node) === say('services.bundles.verify'))[0];
-    assert.ok(verify && !verify.props.disabled, 'Verify is off on a ready server');
-    const before = requests.filter((line) => line === 'POST /api/v1/managed-services/scan').length;
-    await press(verify);
-    assert.equal(requests.filter((line) => line === 'POST /api/v1/managed-services/scan').length, before + 1, 'Verify did not read again');
-  } finally { await unmount(); }
-
-  // While a component operation runs, a rescan would be refused as busy:
-  // Verify is not offered, and says why (alpha.94 review item 2).
-  await mount(stopped);
-  try {
-    globalThis.bundleTracker.set({ operation: ours('nginx', 9), locked: true });
-    await settle();
-    await press(bundleNode('db.mariadb'));
-    const verify = tree.root.findAll((node) => node.type === 'button' && label(node) === say('services.bundles.verify'))[0];
-    assert.equal(verify.props.disabled, true);
-    assert.equal(verify.props.title, say('services.bundles.verifyBusy'));
-    assert.ok(dialogText().includes(say('services.bundles.verifyBusy')), dialogText());
-    const before = requests.filter((line) => line === 'POST /api/v1/managed-services/scan').length;
-    await act(async () => { await verify.props.onClick?.(); });
-    assert.equal(requests.filter((line) => line === 'POST /api/v1/managed-services/scan').length, before, 'a held Verify read again');
+    const parts = Object.fromEntries(tree.root.findAll((node) => node.props && node.props['data-bundle-part'] !== undefined)
+      .map((node) => [label(node).replace(/(Will be installed|Already installed|Not needed)$/, ''), node.props['data-bundle-part']]));
+    assert.deepEqual(parts, { [nameOf('mariadb')]: 'installed', [nameOf('nginx')]: 'notNeeded', [nameOf('php-fpm')]: 'installed', [nameOf('phpmyadmin')]: 'install' });
+    assert.ok(tree.root.findAll((node) => node.type === 'button' && label(node) === say('services.bundles.dialog.confirm', { n: 1 })).length === 1);
+    // The install of phpMyAdmin fails: the stopped chip counts Nginx, which
+    // Apache makes "not needed", as present, so "3 of 4" can still complete.
+    await pressLabel(say('services.bundles.dialog.confirm', { n: 1 }));
+    assert.deepEqual(globalThis.bundleTracker.calls.map((call) => call.serviceId), ['phpmyadmin']);
+    globalThis.bundleTracker.set({ operation: null, locked: false, failure: { message: 'phpmyadmin failed', code: 'service_install_failed', component: 'phpmyadmin' }, catalogSnapshot: apache });
+    for (let i = 0; i < 4; i += 1) await settle();
+    const chip = tree.root.findAll((node) => node.props && node.props['data-bundle-status'] === 'stopped')[0];
+    assert.ok(chip, 'the sequence did not stop');
+    assert.ok(label(chip).includes(say('services.bundles.chip.progress', { n: 3, total: 4 })), label(chip));
   } finally { await unmount(); }
 });
 
-test('under Apache the add-on says what it installs, what is installed and what is not needed, and never calls Nginx installed', async () => {
-  const apache = payload({ bundles: [
-    dbBundle({ addons: ['db.mariadb.admin'] }),
-    bundle('db.mariadb.admin', 'database', ['nginx', 'php-fpm', 'phpmyadmin'], { parent: 'db.mariadb', missing_components: ['phpmyadmin'] }),
-  ], phpfpm: true });
-  apache.services.push(component('apache', 'web', true), component('phpmyadmin', 'database', false, { kind: 'tool' }));
-  await mount(apache);
+// A part the scan has never observed is "not checked yet", never "not needed".
+test('an installed bundle\'s part that was never observed says "not checked yet"', async () => {
+  const answer = withVersions(payload({ nginx: true, phpfpm: true, bundles: [dbBundle()] }));
+  answer.services = answer.services.map((item) => (item.id === 'phpmyadmin' ? { ...item, is_installed: null, status: 'unknown' } : item));
+  await mount(answer);
   try {
-    assert.equal(label(bundleNode('db.mariadb.admin')), `phpMyAdmin·${say('services.bundles.chip.add')}`);
-    await press(bundleNode('db.mariadb.admin'));
-    const parts = Object.fromEntries(tree.root.findAll((node) => node.props && node.props['data-bundle-part'] !== undefined)
-      .map((node) => [label(node).replace(/(Will be installed|Already installed|Not needed)$/, ''), node.props['data-bundle-part']]));
-    assert.deepEqual(parts, { [nameOf('nginx')]: 'notNeeded', [nameOf('php-fpm')]: 'installed', [nameOf('phpmyadmin')]: 'install' });
-    assert.ok(tree.root.findAll((node) => node.type === 'button' && label(node) === say('services.bundles.dialog.confirm', { n: 1 })).length === 1);
+    await press(bundleNode('db.mariadb'));
+    const part = partsOf()[nameOf('phpmyadmin')];
+    assert.equal(part.props['data-bundle-part-state'], 'notChecked');
+    assert.equal(part.props['data-bundle-part'], 'notChecked');
+    assert.ok(label(part).endsWith(say('services.notChecked')), label(part));
+    assert.ok(!label(part).includes(say('services.bundles.dialog.notNeeded')), label(part));
   } finally { await unmount(); }
 });
 
 test('the installed view of a server with nothing installed still draws the strips', async () => {
   globalThis.localStorage = { getItem: (key) => (key === 'celikpanel.components.view' ? 'installed' : null), setItem() {}, removeItem() {} };
-  const empty = payload({ bundles: [webBundle(), bundle('db.mariadb', 'database', ['mariadb'])] });
+  const empty = payload({ bundles: [webBundle(), bundle('db.mariadb', 'database', MARIADB_BUNDLE)] });
   empty.services = empty.services.map((item) => ({ ...item, is_installed: false, status: 'not_installed', versions: [] }));
   await mount(empty);
   try {
@@ -333,35 +389,38 @@ test('the installed view of a server with nothing installed still draws the stri
 });
 
 // --- The owner's two servers ----------------------------------------------------------
-// Payloads shaped like the owner's screens of 2026-10-17: the same registry on
-// both, different states. Boston: PostgreSQL and Nginx, no mail, no MariaDB,
-// no PHP-FPM. Frankfurt: everything installed and verified.
+// Payloads shaped like the owner's screens (2026-10-17, and alpha.100 on
+// 2026-10-22): the same registry on both, different states. Boston:
+// PostgreSQL and Nginx, no mail, no MariaDB, no PHP-FPM, no phpPgAdmin.
+// Frankfurt: everything installed and verified. Since alpha.101 a database
+// bundle is the database with its browser tool.
 const registry = () => [
   { ...bundle('mail.core', 'email', ['postfix', 'dovecot'], { addons: ['mail.protected'] }), action_route: 'mail_profile', profile_id: 'core-mail' },
   { ...bundle('mail.webmail', 'email', ['postfix', 'dovecot', 'nginx', 'php-fpm', 'roundcube'], { addons: ['mail.protected'] }), action_route: 'mail_profile', profile_id: 'webmail' },
   { ...bundle('mail.protected', 'email', ['postfix', 'dovecot', 'rspamd']), action_route: 'mail_profile', profile_id: 'protected-mail' },
-  bundle('db.postgresql', 'database', ['postgresql'], { addons: ['db.postgresql.admin'] }),
-  bundle('db.mariadb', 'database', ['mariadb'], { addons: ['db.mariadb.admin'] }),
-  bundle('db.postgresql.admin', 'database', ['nginx', 'php-fpm', 'phppgadmin'], { parent: 'db.postgresql' }),
-  bundle('db.mariadb.admin', 'database', ['nginx', 'php-fpm', 'phpmyadmin'], { parent: 'db.mariadb' }),
+  bundle('db.postgresql', 'database', ['postgresql', 'nginx', 'php-fpm', 'phppgadmin']),
+  bundle('db.mariadb', 'database', MARIADB_BUNDLE),
   bundle('web.nginx_php', 'web', ['nginx', 'php-fpm']),
 ];
 const verifiedBundle = (item) => ({ ...item, status: 'installed_verified', action: item.action_route === 'mail_profile' ? 'repair' : 'none', missing_components: [] });
 function server(name) {
-  const installed = name === 'boston'
-    ? new Set(['nginx', 'postgresql'])
-    : new Set(['postfix', 'dovecot', 'rspamd', 'nginx', 'php-fpm', 'roundcube', 'postgresql', 'mariadb', 'phppgadmin', 'phpmyadmin']);
+  const installed = name === 'frankfurt'
+    ? new Set(['postfix', 'dovecot', 'rspamd', 'nginx', 'php-fpm', 'roundcube', 'postgresql', 'mariadb', 'phppgadmin', 'phpmyadmin'])
+    : new Set(['nginx', 'postgresql']);
   const services = [
     ['postfix', 'email'], ['dovecot', 'email'], ['rspamd', 'email'], ['roundcube', 'email', { kind: 'tool' }],
     ['nginx', 'web'], ['php-fpm', 'web', { kind: 'runtime' }],
-    ['postgresql', 'database'], ['mariadb', 'database'], ['phppgadmin', 'database', { kind: 'tool' }], ['phpmyadmin', 'database', { kind: 'tool' }],
-  ].map(([id, category, extra]) => component(id, category, installed.has(id), extra));
+    ['postgresql', 'database'], ['mariadb', 'database'], ['phppgadmin', 'database', { kind: 'tool', status: 'installed' }], ['phpmyadmin', 'database', { kind: 'tool', status: 'installed' }],
+  ].map(([id, category, extra]) => component(id, category, installed.has(id), installed.has(id) ? extra : { ...extra, status: 'not_installed' }));
+  // As the Panel derives them (TestBundlesOnABostonShapedServer,
+  // TestBundlesOnAnArchShapedServer).
   const bundles = registry().map((item) => {
     if (name === 'frankfurt') return verifiedBundle(item);
     switch (item.id) {
-    case 'db.postgresql': return verifiedBundle(item);
-    case 'db.postgresql.admin': return { ...item, missing_components: ['php-fpm', 'phppgadmin'] };
-    case 'db.mariadb.admin': return { ...item, status: 'blocked', action: 'none', missing_components: ['php-fpm', 'phpmyadmin'], blocked_code: 'component_requires', blocked_vars: { component: 'phpMyAdmin', required: 'MariaDB' } };
+    case 'db.postgresql': return name === 'arch'
+      ? { ...item, status: 'blocked', action: 'none', missing_components: ['php-fpm', 'phppgadmin'], blocked_code: 'component_not_installable', blocked_vars: { component: 'phpPgAdmin', kind: 'package', platform: 'Arch Linux (pacman)' } }
+      : { ...item, missing_components: ['php-fpm', 'phppgadmin'] };
+    case 'db.mariadb': return { ...item, missing_components: ['mariadb', 'php-fpm', 'phpmyadmin'] };
     case 'web.nginx_php': return { ...item, missing_components: ['php-fpm'] };
     default: return item;
     }
@@ -369,7 +428,7 @@ function server(name) {
   return { ...payload({ bundles }), services };
 }
 
-test('Boston and Frankfurt draw the same chips in the same order; MariaDB is offered on Boston, Core Mail is included on Frankfurt', async () => {
+test('Boston and Frankfurt draw the same chips in the same order; PostgreSQL + phpPgAdmin is offered on Boston, Core Mail is included on Frankfurt', async () => {
   const seen = {};
   for (const name of ['boston', 'frankfurt']) {
     await mount(server(name));
@@ -389,30 +448,18 @@ test('Boston and Frankfurt draw the same chips in the same order; MariaDB is off
     assert.deepEqual(seen.boston[category].map(([id]) => id), seen.frankfurt[category].map(([id]) => id), category);
   }
   assert.deepEqual(seen.boston.database, [
-    ['db.postgresql', 'verified', 'PostgreSQL'],
-    ['db.mariadb', 'available', `MariaDB·${say('services.bundles.chip.install')}`],
-    ['db.postgresql.admin', 'available', `phpPgAdmin·${say('services.bundles.chip.add')}`],
-    ['db.mariadb.admin', 'blocked', 'phpMyAdmin·needs MariaDB'],
+    ['db.postgresql', 'available', `PostgreSQL + phpPgAdmin·${say('services.bundles.chip.install')}`],
+    ['db.mariadb', 'available', `MariaDB + phpMyAdmin·${say('services.bundles.chip.install')}`],
+  ]);
+  assert.deepEqual(seen.frankfurt.database, [
+    ['db.postgresql', 'verified', 'PostgreSQL + phpPgAdmin'],
+    ['db.mariadb', 'verified', 'MariaDB + phpMyAdmin'],
   ]);
   assert.deepEqual(seen.frankfurt.email, [
     ['mail.core', 'included', `Core Mail·${say('services.bundles.chip.included')}`],
     ['mail.webmail', 'verified', 'Webmail'],
     ['mail.protected', 'verified', 'Spam-Protected Mail'],
   ]);
-  // A blocked chip says its full reason on press (keyboard and touch), and installs nothing.
-  await mount(server('boston'));
-  try {
-    const blocked = bundleNode('db.mariadb.admin');
-    assert.equal(blocked.type, 'button');
-    assert.equal(blocked.props['aria-expanded'], false);
-    await press(blocked);
-    const reason = tree.root.find((node) => node.props && node.props['data-bundle-blocked-reason'] === 'db.mariadb.admin');
-    assert.equal(reason.props.id, blocked.props['aria-controls']);
-    assert.ok(label(reason).includes(say('services.mailProfiles.code.component_requires', { component: 'phpMyAdmin', required: 'MariaDB' })), label(reason));
-    assert.equal(bundleNode('db.mariadb.admin').props['aria-expanded'], true);
-    assert.equal(globalThis.bundleTracker.calls.length, 0);
-    assert.equal(tree.root.findAll((node) => node.props && node.props.role === 'dialog').length, 0, 'a blocked chip opened a dialogue');
-  } finally { await unmount(); }
   // The included chip's dialogue names the bundle that contains it and offers no Repair of its own.
   await mount(server('frankfurt'));
   try {
@@ -420,6 +467,56 @@ test('Boston and Frankfurt draw the same chips in the same order; MariaDB is off
     assert.equal(installedState(), 'included');
     assert.ok(dialogText().includes(say('services.bundles.installed.included', { name: 'Core Mail', other: 'Webmail' })), dialogText());
     assert.ok(!tree.root.findAll((node) => node.type === 'button').map(label).includes(say('services.bundles.repairEllipsis')));
+  } finally { await unmount(); }
+  // Frankfurt's database bundle: installed and verified, each part with its state.
+  await mount(server('frankfurt'));
+  try {
+    await press(bundleNode('db.postgresql'));
+    assert.equal(installedState(), 'verified');
+    const states = Object.fromEntries(Object.entries(partsOf()).map(([name, node]) => [name, node.props['data-bundle-part-state']]));
+    assert.deepEqual(states, { [nameOf('postgresql')]: 'running', [nameOf('nginx')]: 'running', [nameOf('php-fpm')]: 'running', [nameOf('phppgadmin')]: 'installed' });
+  } finally { await unmount(); }
+});
+
+// Boston (owner's screen on alpha.100): PostgreSQL and Nginx are kept,
+// PHP-FPM and phpPgAdmin are installed, in that order, one at a time.
+test('on Boston, PostgreSQL + phpPgAdmin keeps PostgreSQL and Nginx and installs only PHP-FPM, then phpPgAdmin', async () => {
+  const tracker = globalThis.bundleTracker;
+  await mount(server('boston'));
+  try {
+    await press(bundleNode('db.postgresql'));
+    assert.ok(dialogText().includes(say('services.bundles.dialog.title', { name: 'PostgreSQL + phpPgAdmin' })), dialogText());
+    const parts = Object.fromEntries(tree.root.findAll((node) => node.props && node.props['data-bundle-part'] !== undefined)
+      .map((node) => [label(node).replace(/(Will be installed|Already installed|Not needed)$/, ''), node.props['data-bundle-part']]));
+    assert.deepEqual(parts, { [nameOf('postgresql')]: 'installed', [nameOf('nginx')]: 'installed', [nameOf('php-fpm')]: 'install', [nameOf('phppgadmin')]: 'install' });
+    await pressLabel(say('services.bundles.dialog.confirm', { n: 2 }));
+    assert.deepEqual(tracker.calls.map((call) => call.serviceId), ['php-fpm']);
+    const after = server('boston');
+    after.services = after.services.map((item) => (item.id === 'php-fpm' ? { ...item, is_installed: true, status: 'active (running)' } : item));
+    tracker.set({ operation: null, locked: false, catalogSnapshot: after });
+    for (let i = 0; i < 3; i += 1) await settle();
+    assert.deepEqual(tracker.calls.map((call) => call.serviceId), ['php-fpm', 'phppgadmin']);
+  } finally { await unmount(); }
+});
+
+// Arch: phpPgAdmin has no package there; the whole bundle is blocked, its chip
+// names the part plainly, and a press says the full reason and installs nothing.
+test('on Arch, PostgreSQL + phpPgAdmin is blocked whole and says phpPgAdmin is not available on this system', async () => {
+  await mount(server('arch'));
+  try {
+    const blocked = bundleNode('db.postgresql');
+    assert.equal(blocked.props['data-bundle-state'], 'blocked');
+    assert.equal(label(blocked), `PostgreSQL + phpPgAdmin·${say('services.bundles.short.component_not_installable_named', { component: 'phpPgAdmin' })}`);
+    assert.equal(blocked.type, 'button');
+    assert.equal(blocked.props['aria-expanded'], false);
+    await press(blocked);
+    const reason = tree.root.find((node) => node.props && node.props['data-bundle-blocked-reason'] === 'db.postgresql');
+    assert.equal(reason.props.id, blocked.props['aria-controls']);
+    assert.ok(label(reason).includes(say('services.mailProfiles.code.component_not_installable.platform', { component: 'phpPgAdmin', platform: 'Arch Linux (pacman)' })), label(reason));
+    assert.equal(bundleNode('db.postgresql').props['aria-expanded'], true);
+    assert.equal(globalThis.bundleTracker.calls.length, 0);
+    assert.equal(tree.root.findAll((node) => node.props && node.props.role === 'dialog').length, 0, 'a blocked chip opened a dialogue');
+    assert.equal(bundleNode('db.mariadb').props['data-bundle-state'], 'available');
   } finally { await unmount(); }
 });
 

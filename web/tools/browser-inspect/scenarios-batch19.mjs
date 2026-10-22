@@ -11,11 +11,13 @@
 //                 installed and its DNS identity not ready: the email strip
 //                 says the DNS line; Nginx + PHP-FPM offers only PHP-FPM
 //   y19frankfurt  Components with webmail verified (one line, spam protection
-//                 as the one add-on), MariaDB installed (phpMyAdmin offered),
+//                 as the one add-on), MariaDB installed (MariaDB + phpMyAdmin
+//                 offered: Install adds only phpMyAdmin, alpha.101),
 //                 the firewall active (one line) and, as mock data, a stopped
 //                 Fail2ban (red dot and "Stopped")
 //   y19running    a database bundle being installed: step 2/3 (PHP-FPM) while
-//                 the first component's operation has ended
+//                 the first component's operation has ended (MariaDB + phpMyAdmin
+//                 beside an installed MariaDB: Nginx, PHP-FPM, phpMyAdmin)
 //   y19dashboard  the Dashboard's Ready bundles card on the Frankfurt mock
 //
 // Every answer comes from the mock on 127.0.0.1 (mock.mjs and
@@ -104,7 +106,7 @@ export default function batch19(scenarios, { base, locale, theme, out, viewport,
         await waitFor(page, () => !!document.querySelector('[data-bundle="mail.webmail"]'), 15000).catch(() => {});
         await whole(page, 'components-frankfurt');
         // One offer opened: what it installs, Install… outlined.
-        await page.evaluate(() => document.querySelector('button[data-bundle="db.mariadb.admin"]')?.click());
+        await page.evaluate(() => document.querySelector('button[data-bundle="db.mariadb"]')?.click());
         await pause(400);
         await page.evaluate(() => document.querySelector('[data-bundle-strip="database"]')?.scrollIntoView({ block: 'center' }));
         await pause(300);
@@ -117,8 +119,8 @@ export default function batch19(scenarios, { base, locale, theme, out, viewport,
         await reset(); await clean();
         await ctl({ b19: batch19State('running', ['php-fpm']) });
         const page = await open('/services');
-        await waitFor(page, () => !!document.querySelector('button[data-bundle="db.mariadb.admin"]'), 15000).catch(() => {});
-        await page.evaluate(() => document.querySelector('button[data-bundle="db.mariadb.admin"]')?.click());
+        await waitFor(page, () => !!document.querySelector('button[data-bundle="db.mariadb"]'), 15000).catch(() => {});
+        await page.evaluate(() => document.querySelector('button[data-bundle="db.mariadb"]')?.click());
         await pause(300);
         await page.evaluate(() => Array.from(document.querySelectorAll('[data-bundle-strip="database"] button')).find((node) => node.innerText.includes('…'))?.click());
         await pause(500);

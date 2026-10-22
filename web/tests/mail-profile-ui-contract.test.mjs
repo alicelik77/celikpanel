@@ -199,7 +199,7 @@ test('the mail install dialog asks for the mail hostname when the server has non
   }
 });
 
-test('an installed bundle without its proof says so, calmly, and offers Repair (mail) or Verify (components)', () => {
+test('an installed bundle without its proof says so, calmly, and offers Repair (mail) and no Verify (components)', () => {
   // alpha.94: "installed, not verified" replaces "Components running" and
   // the amber "Partially installed" of the old cards. alpha.95: the chip
   // says it with a grey dot and words; its dialogue offers Repair (mail
@@ -210,7 +210,8 @@ test('an installed bundle without its proof says so, calmly, and offers Repair (
   assert.equal(trUnverified?.[1], 'doğrulanmadı');
   assert.match(stripSource, /<StatusDot tone='unknown' \/>/);
   assert.match(stripSource, /\{mail && !includedIn && \(\s*\n\s*<Button variant='secondary' icon=\{Wrench\} disabled=\{repairDisabled\} onClick=\{onRepair\}>/);
-  assert.match(stripSource, /\{!mail && \(\s*\n\s*<Button variant='secondary' icon=\{ScanSearch\} disabled=\{verifyHeld !== null\} title=\{verifyHeld \?\? undefined\} onClick=\{onVerify\}>/);
+  // alpha.101: Verify is gone; the page's Rescan reads the components again.
+  assert.doesNotMatch(stripSource, /onVerify|verifyHeld|services\.bundles\.verify/);
   for (const key of ['services.mailProfiles.status.partial', 'services.mailProfiles.status.complete', 'services.mailProfiles.profileComponentsNeedRepair']) {
     assert.ok(!enSource.includes(`'${key}':`), `${key} is gone from EN`);
     assert.ok(!trSource.includes(`'${key}':`), `${key} is gone from TR`);
@@ -225,7 +226,7 @@ test('mail profile copy stays in EN/TR parity', () => {
     'services.bundles.installed.verified',
     'services.bundles.installed.unverified',
     'services.bundles.chip.notVerified',
-    'services.bundles.verify',
+    'services.bundles.installed.unverifiedHow',
     'services.bundles.repairEllipsis',
     'services.bundles.continue',
     'services.mailProfiles.fallbackWarning',

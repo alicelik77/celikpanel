@@ -16,9 +16,9 @@
 // its state from its mail profile (installed once all parts are ready; partial
 // only when a mail component is present; Nginx or PHP-FPM alone leave it
 // available, with the partly-present note); a component bundle is available
-// when something is missing and blocked ("component_requires") when an add-on's
-// database is not there, since componentPlanBlock projects only the bundle's
-// own missing parts onto what is installed.
+// when something is missing, installed but not verified (no action of its own)
+// when a part is stopped, and a database bundle's web server is "not needed"
+// where Apache serves (its prerequisites, alpha.101).
 //
 //   b20.server   'boston' (PowerDNS secondary: Nginx, Node.js, PostgreSQL,
 //                Fail2ban, certbot, nftables, cron) | 'frankfurt' (everything
@@ -28,6 +28,8 @@
 //   b20.versions 'sample' (default) | 'none': whether package versions are known
 //   b20.kept     component ids whose reading is an earlier one (batch 22)
 //   b20.extra    component ids installed on top of the server's own set (batch 22)
+//   b20.stopped  component ids installed but stopped (alpha.101: the installed
+//                bundle's dialogue shows the stopped part)
 //
 // On yirminci grup: alpha.95 tek paket listesi; kurulumlar sahte islemdir.
 import { withSamplePackageVersions } from './sample-package-versions.mjs';
@@ -80,10 +82,10 @@ const BUNDLES = [
     { id: 'mail.core', category: 'email', name_code: 'mail_core', components: ['postfix', 'dovecot'], action_route: 'mail_profile', profile_id: 'core-mail', addons: ['mail.protected'] },
     { id: 'mail.webmail', category: 'email', name_code: 'mail_webmail', components: ['postfix', 'dovecot', 'nginx', 'php-fpm', 'roundcube'], action_route: 'mail_profile', profile_id: 'webmail', addons: ['mail.protected'] },
     { id: 'mail.protected', category: 'email', name_code: 'mail_protected', components: ['postfix', 'dovecot', 'rspamd'], action_route: 'mail_profile', profile_id: 'protected-mail', addons: [] },
-    { id: 'db.postgresql', category: 'database', name_code: 'db_postgresql', components: ['postgresql'], action_route: 'components', addons: ['db.postgresql.admin'] },
-    { id: 'db.mariadb', category: 'database', name_code: 'db_mariadb', components: ['mariadb'], action_route: 'components', addons: ['db.mariadb.admin'] },
-    { id: 'db.postgresql.admin', category: 'database', name_code: 'db_postgresql_admin', components: ['nginx', 'php-fpm', 'phppgadmin'], action_route: 'components', addons: [], parent: 'db.postgresql' },
-    { id: 'db.mariadb.admin', category: 'database', name_code: 'db_mariadb_admin', components: ['nginx', 'php-fpm', 'phpmyadmin'], action_route: 'components', addons: [], parent: 'db.mariadb' },
+    // alpha.101 (owner, 2026-10-22): a database bundle is the database with its
+    // browser tool and the web server and PHP-FPM the tool runs on.
+    { id: 'db.postgresql', category: 'database', name_code: 'db_postgresql_phppgadmin', components: ['postgresql', 'nginx', 'php-fpm', 'phppgadmin'], action_route: 'components', addons: [] },
+    { id: 'db.mariadb', category: 'database', name_code: 'db_mariadb_phpmyadmin', components: ['mariadb', 'nginx', 'php-fpm', 'phpmyadmin'], action_route: 'components', addons: [] },
     { id: 'web.nginx_php', category: 'web', name_code: 'web_nginx_php', components: ['nginx', 'php-fpm'], action_route: 'components', addons: [] },
 ];
 const MAIL_COMPONENTS = new Set(['postfix', 'dovecot', 'rspamd', 'roundcube']);
@@ -111,7 +113,7 @@ function bundles(services, dnsReady) {
     const installed = new Set(services.filter((item) => item.is_installed).map((item) => item.id));
     return BUNDLES.map((def) => {
         const mail = def.action_route === 'mail_profile';
-        const present = (id) => installed.has(id) || (!!def.parent && id === 'nginx' && installed.has('apache'));
+        const present = (id) => installed.has(id) || (def.category === 'database' && id === 'nginx' && installed.has('apache'));
         const missing = def.components.filter((id) => !present(id));
         const out = { ...def, missing_components: missing };
         if (mail) {
@@ -131,7 +133,7 @@ function bundles(services, dnsReady) {
         if (missing.length === 0) {
             return def.components.every((id) => ready(id, services))
                 ? { ...out, status: 'installed_verified', action: 'none' }
-                : { ...out, status: 'installed_unverified', action: 'verify' };
+                : { ...out, status: 'installed_unverified', action: 'none' };
         }
         // componentPlanBlock: the bundle's own missing parts are projected onto
         // what is installed; a tool whose database is not there is blocked.
@@ -163,9 +165,10 @@ const profile = (def, services, dnsReady) => {
     };
 };
 
-export function batch20State(server, { hold = [], dnsReady = true, versions = 'sample', kept = [], extra = [] } = {}) {
+export function batch20State(server, { hold = [], dnsReady = true, versions = 'sample', kept = [], extra = [], stopped = [] } = {}) {
     const services = catalogue(server).map((item) => (extra.includes(item.id) && !item.is_installed
-        ? { ...item, is_installed: true, status: item.kind === 'tool' ? 'installed' : 'active (running)', ...(item.kind === 'tool' ? {} : { unit: item.id }) } : item));
+        ? { ...item, is_installed: true, status: item.kind === 'tool' ? 'installed' : 'active (running)', ...(item.kind === 'tool' ? {} : { unit: item.id }) } : item))
+        .map((item) => (stopped.includes(item.id) && item.is_installed ? { ...item, status: 'inactive (dead)' } : item));
     return { server, hold, dnsReady, versions, kept, services, operations: [] };
 }
 

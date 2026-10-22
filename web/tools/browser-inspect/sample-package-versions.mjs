@@ -7,9 +7,11 @@
 //
 // Honest by construction: the fields are added only the way the Panel adds
 // them (an installed component that is not a multi-version runtime and whose
-// packages the table below knows); a component the table does not know (tools
-// such as phpMyAdmin, Roundcube; cron; Rspamd) carries NO field at all, which
-// the interface reads as unknown and draws as nothing.
+// packages the table below knows); a component the table does not know
+// (Roundcube; cron; Rspamd) carries NO field at all, which the interface reads
+// as unknown and draws as nothing. alpha.101: the Debian 13 database tools have
+// samples too, phpMyAdmin's shaped as a Debian "really" version (the owner saw
+// "5.2.2-really…" on Frankfurt); still sample strings, not Frankfurt's own.
 //
 // Fields: package_version, package_version_short, package_versions_differ,
 // package_versions [{package, version}], package_version_kept,
@@ -34,6 +36,8 @@ const SAMPLES = {
         redis: [['redis-server', '5:8.0.2-3']],
         fail2ban: [['fail2ban', '1.1.0-8']],
         nftables: [['nftables', '1.1.3-1']],
+        phpmyadmin: [['phpmyadmin', '4:5.2.2-really5.2.1-1']],
+        phppgadmin: [['phppgadmin', '7.14.7+dfsg-1']],
         // Two packages, two versions: the row says "several versions".
         spamassassin: [['spamassassin', '4.0.1-3'], ['spamass-milter', '0.4.0-2.1']],
     },
@@ -52,12 +56,15 @@ const SAMPLES = {
     },
 };
 
-// The upstream part: drop the epoch ("N:"), drop the last "-revision", cut at
-// the first "+" or "~".
+// The upstream part, as the Panel derives it (upstreamPackageVersion): drop
+// the epoch ("N:"), drop the last "-revision", take the real version after a
+// Debian "really" (alpha.101), cut at the first "+" or "~".
 export function shortVersion(full) {
     let v = full.replace(/^\d+:/, '');
     const dash = v.lastIndexOf('-');
     if (dash > 0) v = v.slice(0, dash);
+    const really = /[+~.-]really(\d.*)$/.exec(v);
+    if (really) v = really[1];
     return v.split(/[+~]/)[0];
 }
 

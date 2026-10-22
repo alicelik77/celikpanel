@@ -154,6 +154,16 @@ func packageVersionView(packages []transport.InstalledPackageVersion) (full, sho
 // "-2ubuntu7.5", Arch's "-1") are removed, then a "+dfsg"/"~bpo" style suffix
 // of the upstream part. When that would not leave a number, the full version
 // is returned unchanged.
+//
+// A Debian "really" version (alpha.101, owner's screen on Frankfurt, where
+// phpMyAdmin read "5.2.2-really…"): a package that had to go back to an older
+// upstream keeps a higher number before "really" so the package manager still
+// sees an upgrade, and the version actually shipped follows "really"
+// ("5.2.2-really5.2.1-1" is 5.2.1; "2:4.1.0+really4.0.9-2" is 4.0.9). The
+// short form is that real version. The short form used to cut only at "+"
+// or "~", so "-really…" stayed in it and the row's narrow column clipped it.
+// Debian "really" sürümünde gerçek sürüm "really" sözcüğünden sonra gelir;
+// kısa biçim odur.
 func upstreamPackageVersion(full string) string {
 	value := full
 	if colon := strings.IndexByte(value, ':'); colon > 0 && allDigits(value[:colon]) {
@@ -162,6 +172,9 @@ func upstreamPackageVersion(full string) string {
 	if dash := strings.LastIndexByte(value, '-'); dash > 0 {
 		value = value[:dash]
 	}
+	if shipped := reallyVersion(value); shipped != "" {
+		value = shipped
+	}
 	if cut := strings.IndexAny(value, "+~"); cut > 0 {
 		value = value[:cut]
 	}
@@ -169,6 +182,24 @@ func upstreamPackageVersion(full string) string {
 		return full
 	}
 	return value
+}
+
+// reallyVersion returns what follows the last "really" of an upstream
+// version when "really" stands after a version separator ("+", "-", "~" or
+// ".") and is followed by a digit; otherwise "".
+// "really" bir ayraçtan sonra gelip ardından rakam geliyorsa ondan sonrasını
+// döndürür.
+func reallyVersion(upstream string) string {
+	const marker = "really"
+	at := strings.LastIndex(upstream, marker)
+	if at <= 0 || !strings.ContainsRune("+-~.", rune(upstream[at-1])) {
+		return ""
+	}
+	shipped := upstream[at+len(marker):]
+	if shipped == "" || shipped[0] < '0' || shipped[0] > '9' {
+		return ""
+	}
+	return shipped
 }
 
 func allDigits(value string) bool {

@@ -494,6 +494,27 @@ copied to `BROWSER_INSPECT_SHOTS` as `<state>-<lang>-<theme>-<width>.png`.
 | `y20dashboard-boston` | the Dashboard: Ready bundles card "1 installed and verified, 6 can be installed", the attention-none sentence (`dashboard-boston`) |
 | `y20dashboard-frankfurt` | the Dashboard: "8 installed and verified"; `/api/v1/domains` is empty and `/api/v1/dns/infrastructure-zones` answers one zone, so the Domains tile shows 1 (`dashboard-frankfurt`) |
 
+Since alpha.101 (owner decision of 2026-10-22, D-034 amendment) the mocks of
+batches 19 and 20 carry the new registry: a database bundle is the database
+with its browser tool and the web server and PHP-FPM the tool runs on
+("PostgreSQL + phpPgAdmin", "MariaDB + phpMyAdmin"); the add-on bundles are
+gone, a database bundle's web server is "not needed" where Apache serves, and
+an installed component bundle with a stopped part has no action of its own.
+The states read accordingly: on Boston both database bundles say Install, and
+PostgreSQL + phpPgAdmin's plan keeps PostgreSQL and Nginx and installs PHP-FPM
+and phpPgAdmin (`components-boston-bundle-plan`, in place of the installed
+PostgreSQL dialogue); `y20running` installs that bundle (step 2 of 2 is
+phpPgAdmin); `y20frankfurt` also opens both database bundles' installed
+dialogues, each part with its row's state and version and Close only
+(`components-frankfurt-db-postgresql-dialog`, `components-frankfurt-db-mariadb-dialog`);
+the new `y20stopped` stops MariaDB on Frankfurt (`b20.stopped`) and opens
+MariaDB + phpMyAdmin's dialogue with MariaDB "Stopped" and the Rescan sentence
+(`components-frankfurt-stopped`, `components-frankfurt-stopped-dialog`). The
+Dashboard reads "None installed yet · 6 can be installed" on Boston and "6
+installed and verified" on Frankfurt. `sample-package-versions.mjs` now has
+Debian 13 samples for phpMyAdmin (shaped as a Debian "really" version) and
+phpPgAdmin; they are sample strings, not Frankfurt's own.
+
 Each record adds the text and chip state of every strip (`strips`, `chipStates`),
 chips drawn past the right edge (`chipsOutside`), product names broken across
 two lines (`brokenWords`), the versions shown under rows (`rowVersions`), raw

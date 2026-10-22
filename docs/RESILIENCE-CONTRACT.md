@@ -7165,3 +7165,77 @@ clock date of everything in it.
   confirmed by a message; open sessions not built; the scheduled update check not
   run against a real Agent or the real release server; the rollback paths that
   share the changed helpers exercised by contract tests only.
+
+### Candidate v0.1.0-alpha.101 (ready bundles are services with their tools; the installed bundle's dialogue; the Debian "really" short form; no Agent, updater or schema change; invariants 2, 3 and 6; D-034 amendment; D-036 note; D-022; D-024; D-033; D-025; 2026-10-23)
+
+D-025 invariants 2 (evidence has a meaning and a lifecycle: the installed bundle's
+dialogue says each part's state and version from the same scan data the rows use,
+a part that is not running is named as such, and a version is shortened only to
+the version the package actually ships), 3 (native service ownership: a bundle
+installs ordinary catalogue components and nothing else; a role another installed
+component fills, such as Apache's, is reused and never replaced; a part the system
+does not offer blocks the whole bundle instead of installing a subset) and 6
+(readiness, progress and access remain independent: the withdrawn Verify was a
+read the page's Rescan already does, and no poll starts an install). The P0.1/P0.2
+area (truthful, actionable state) is touched. **No P0 item is closed or
+advanced**; P0.1 to P0.5 stay partial and every open acceptance item stays open.
+This entry is not a claim that the native update and automatic-rollback resilience
+is complete. The owner's decision and the code are of 2026-10-22; this entry was
+written on 2026-10-23 (clock dates).
+
+- **What this release touches.** The Panel's compiled bundle registry
+  (`bundleDefinitions` in `cmd/panel/bundles.go`): "PostgreSQL + phpPgAdmin" and
+  "MariaDB + phpMyAdmin" replace the one-component database bundles and their
+  add-ons (ids kept, name codes changed); the web server and PHP-FPM a tool runs
+  on are prerequisites that reuse a role; the Panel sends `none` instead of
+  `verify`. The Panel's version short form
+  (`upstreamPackageVersion`, a Debian "really" version), derived when the answer is
+  built. The web interface: the chips' names, the installed bundle's dialogue
+  (each part's state and version, no Verify), the page's reading of the bundle
+  answer (an id the answer does not carry is left out instead of refusing the
+  list; an older Panel's `verify` is accepted and draws no button), a single
+  runtime version that ends in an ellipsis with its full text as the tooltip. The
+  release sequence moves 100 to 101.
+  It does **not** touch the Agent, any Agent job kind or RPC, the updater
+  (`update.sh`, `get.sh` beyond its pins, the system update worker, rollback and
+  recovery), any role, the schema or polling. Therefore **no native record is
+  made** for this release, by the owner's instruction of 2026-10-16.
+- **Owner independence (D-022): unchanged.** Bundles are shortcuts over catalogue
+  components installed through native packages; nothing a bundle installs depends
+  on the panel to keep running, and nothing is removed by a bundle.
+- **Recovery behaviour (D-033, D-024): unchanged.** A bundle install is still one
+  ordinary component install at a time, each after the previous one has ended with
+  a fresh scan; the first failure stops the sequence with its reason, the failed
+  component's own guidance stays on screen, and Continue installs only what is
+  missing. Nothing installed is removed. An installed bundle that is not verified
+  says which part is not running, who acts and how it resumes (start the part from
+  its row, or Rescan). **Installed-panel update path: unchanged**; the owner starts
+  every installed-panel update from the panel's own update screen.
+- **Access gates.** Unchanged: the bundle answer and the component installs keep
+  their existing authorisation; no route was added.
+- **Schema, version transition and recovery.** Schema 44, no migration; nothing new
+  is persisted. *alpha.100 to alpha.101:* stored scans are read as before, and the
+  short form of a "really" version is correct at once because it is derived when
+  the answer is built; a link to `db.postgresql` or `db.mariadb` lands on the same
+  bundle, which now holds its tool. *alpha.101 back to alpha.100* (for example
+  after a rollback): alpha.100's own registry and dialogue return (one-component
+  database bundles, the add-ons, Verify); an alpha.101 page still open in a
+  browser reads alpha.100's answer, names its one-component bundles by their
+  components (it has no words for the retired name codes) and draws no button for
+  `verify`.
+  **Known, harmless downgrade behaviour:** nothing is lost or needs repairing; the
+  components themselves are untouched. Not measured on an installed server.
+- **Evidence and open.** On the candidate tree: the Go tests (the registry
+  contract test enforcing the owner's rule; Boston-, Frankfurt-, Apache- and
+  Arch-shaped bundle tests; the removal-impact test naming the merged bundles;
+  the short-form tests with real Debian and Ubuntu version strings) and the web
+  tests (the ready-bundle mounted and contract tests, the version cell tests, the
+  removal dialog tests with the new names). Results: the Go tests of the Panel and the internal packages in the `CelikPanel-S2-Debian` guest passed on the final tree: 7,199 passed, 44 skipped, 0 failed in 64 packages (gofmt and vet clean; a frontend contract test that still required the withdrawn Verify wiring was corrected first); the web tests passed: 1,745 of 1,745; the build passed with every bundle budget unchanged. Browser inspection (batches 19 and 20 with the alpha.101 registry; 1440 px and 390 px, English and Turkish, light and dark): the Boston- and Frankfurt-shaped strips, Boston's PostgreSQL + phpPgAdmin plan and its install (step 2 of 2 is phpPgAdmin), Frankfurt's installed dialogues and one with MariaDB stopped, and the Dashboard card; one defect was found and fixed (the version ran into the dot after the state word; it is now set apart in mono) and the screens were looked at again; no raw codes, no English on the Turkish page, no horizontal overflow. The screenshots were deleted. The release sequence policy contract passed in Git
+  Bash; the download portal and signed release manifest contracts passed in the
+  `CelikPanel-S2-Debian` guest. Component and mounted tests do not establish
+  native behaviour. **Nothing was measured on an installed server.** Open: whether
+  the bundles move to a data catalogue is left to the owner; the D-036 item stays
+  open for Frankfurt until the corrected short form is seen there; everything the
+  alpha.90 to alpha.100 entries leave open stays open. Installed panels are updated
+  only by their owners, from the panel's own update screen. P0.1 to P0.5 stay
+  partial.
