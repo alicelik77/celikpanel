@@ -9918,3 +9918,17 @@ an installed ready bundle chip:
 
 Installed panels are updated only by their owner, from the panel's own update
 screen. P0.1-P0.5 stay **partial**; this entry closes and advances nothing.
+
+### Installed servers after the alpha.101 publication (2026-10-22)
+
+v0.1.0-alpha.101 was published on 2026-10-22 (release at 23:13:34Z, then the
+download portal at about 23:22Z). **Who must act:** the owner, who decides when to
+update each server, from the panel's own update screen; nothing else is needed.
+The owner had looked at both Boston and Frankfurt on alpha.100; alpha.101 is on no
+installed server yet, so nothing is inferred. **Open:** the renamed database
+bundles, the installed bundle's window and the corrected version on Frankfurt's
+phpMyAdmin row are seen on no installed server; the owner's observation of
+alpha.101 comes after he updates. The setup plan's contact-email requirement
+applies to every server plan; that is left for a decision. No text or screen was
+changed for this entry. P0.1-P0.5 stay **partial**; this entry closes and advances
+nothing.

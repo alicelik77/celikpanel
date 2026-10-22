@@ -6513,3 +6513,49 @@ girdi 23 Ekim 2026'da yazıldı (saat tarihleri).
   açık kalır; alpha.90–alpha.100 girdilerinin açık bıraktığı her şey açık kalır.
   Kurulu paneller yalnız sahiplerince, panelin kendi güncelleme ekranından
   güncellenir. P0.1–P0.5 kısmi kalır.
+
+### v0.1.0-alpha.101'in yayımlanması (yayımda kod değişikliği yok; ilke 2 ve 6; D-022; D-024; D-025; D-034; D-036; 2026-10-22)
+
+D-025 ilke 2 (kanıtın bir anlamı ve yaşam döngüsü vardır: bilinmeyen; yok, boş
+ya da başarılı değildir) ve 6 (hazır olma, ilerleme ve erişim birbirinden
+bağımsız kalır); D-022; D-024; D-034; D-036. **Hiçbir P0 işi kapanmaz ya da
+ilerlemez.** P0.1–P0.5 kısmi kalır ve her açık kabul işi açık kalır. Bu girdi
+tek bir sürümü kaydeder; kod, şema ya da kurtarma davranışını değiştirmez.
+2026-10-22 (UTC), içindeki her şeyin tarihidir; sürüm commit'i
+2026-10-23T01:34:29+03:00 taşır, bu 22:34:29Z ile aynı andır.
+
+- **Yayımlama.** Bütün adımları sürümü hazırlayan kişi yaptı, sahibin kalıcı
+  talimatı uyarınca; kurulu panel güncellemelerini yalnız sahip yapar. #240
+  numaralı çekme isteği `f860053bea4772f008337238e5787c857fbb5efb` olarak
+  birleştirildi (yazar Mehmet Ömer Efe Çelik); `v0.1.0-alpha.101` ön sürümü
+  2026-10-22T23:13:34Z'de yayımlandı. Yayımdan önce hazırlayan kişi dosyaları
+  denetledi: arşiv SHA-256
+  `6de8f594705e22250c56a6c45fe6a2b10c6c1e7db270eeb706878f3069c5f549`,
+  66.346.084 bayt; sağlama toplamları, manifest ve arşiv üyeleri; manifestin yayın
+  anahtarıyla (SHA-256 `7eadeb0b…c68bb`) doğrulanan imzası; içerik korumaları;
+  `get.sh` 101'i sabitler; politika 100'den sonra 101 der; arayüz paketi
+  `app-EnAd5I-6.js`. Portal paketi iki kez bayt bayt aynı derlendi ve terfi
+  aracının açma ve normalleştirme adımı onu kabul etti; portal yaklaşık 23:22Z'de
+  yayımlandı: committed, genel doğrulama 26 istekten 26'sı, ardından dışarıdan
+  okundu (`latest.txt` v0.1.0-alpha.101, `latest.json` sıra 101 ve `f860053…`
+  commit'i). Hazırlayan kişi denetledi ve bildirdi, burada bir dosyada kayıtlı
+  değil.
+- **Gerçek sistem kaydı.** Yayım için yok; alpha.101 için de yok, sahibin 16 Ekim
+  2026 talimatıyla ve güncelleyicinin değişiklik yolunda ya da şemada hiçbir dosya
+  değişmediği için. alpha.101'in kodunu yalnız bileşen, bağlanmış ve taklit
+  tarayıcı testleri kapsar (yukarıdaki aday girdisine bakın).
+- **Kurulu paneller.** Sahip hem Boston'a hem Frankfurt'a alpha.100'de bakmıştı.
+  alpha.101 henüz hiçbir kurulu sunucuda değil; bu yazılırken ondan hiçbir şey
+  bildirilmemişti ve çıkarılmamalıdır (ilke 6: bir sürümün yayımlanması hiçbir
+  sunucunun durumu değildir).
+- **Şema ya da sürüm geçişi.** Yok: şema 44; sürüm sırası sürüm hazırlığında
+  100'den 101'e geçti. **Kurtarma davranışı.** Yayımla ve alpha.101 ile değişmez.
+- **Açık; sonraki bir sürüme bırakıldı.** (1) alpha.101'den hiçbir şey kurulu bir
+  sunucuda ölçülmedi; sahibin güncelledikten sonraki alpha.101 gözlemi henüz
+  gelmedi ve D-036 açık işi, düzeltilmiş kısa biçim Frankfurt'ta görülene dek
+  Frankfurt için açık kalır. (2) Kurulum planının iletişim e-postası gereksinimi
+  her sunucu planı için geçerli; bu bir karara bırakıldı. (3) Paketlerin bir veri
+  kataloğuna taşınıp taşınmayacağı sahibe bırakıldı. Hiçbiri bir P0 işini
+  değiştirmez.
+- **Açık; devreden.** alpha.101 aday girdisinin ve alpha.90–alpha.100
+  girdilerinin açık bıraktığı her şey.
