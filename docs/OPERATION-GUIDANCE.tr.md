@@ -9662,7 +9662,7 @@ oldu, hiçbir şeyin değiştirilmediği, ne yapılacağı.
 
 | Kod | Ekranın söylediği (Türkçe / İngilizce) | Kim işlem yapar ve sonraki eylem | Nasıl sürer |
 | --- | --- | --- | --- |
-| `account_email_invalid` (400) | "Bu, panelin kullanabileceği bir e-posta adresi değil; hiçbir şey değiştirilmedi. name@example.com gibi tek bir adres girin." / "This is not an email address the panel can use, so nothing was changed. Enter one address such as name@example.com." | Kişi: tam bir alan adıyla, görünen adı olmayan, yalnız yazdırılabilir ASCII karakterli tek bir düz adres. | Aynı pencerede düzeltip yeniden kaydedin. |
+| `account_email_invalid` (400) | "Bu, panelin kullanabileceği bir e-posta adresi değil; hiçbir şey değiştirilmedi. name@example.com gibi tek bir adres girin; İngilizce dışı harfler içeren bir alan adı ASCII biçimiyle (xn--…) yazılır." / "This is not an email address the panel can use, so nothing was changed. Enter one address such as name@example.com; a domain with letters outside English goes in its ASCII form (xn--…)." | Kişi: tam bir alan adıyla, görünen adı olmayan, yalnız yazdırılabilir ASCII karakterli tek bir düz adres. | Aynı pencerede düzeltip yeniden kaydedin. |
 | `account_email_unchanged` (409) | "Bu zaten e-posta adresiniz; hiçbir şey değiştirilmedi." / "This is already your email address, so nothing was changed." | Kimse; adres zaten doğru. | Pencereyi kapatın. |
 | `account_email_taken` (409) | "Bu e-posta adresini başka bir hesap kullanıyor; hiçbir şey değiştirilmedi. Başka bir adres girin." / "Another account already uses this email address, so nothing was changed. Enter a different address." | Kişi: başka bir adres (yalnız büyük-küçük harfi farklı olan adres aynı adrestir). | Başka bir adres girip yeniden kaydedin. |
 | `account_email_wrong_password` (403) | "Mevcut parolanız doğru değil; hiçbir şey değiştirilmedi. Giriş yaptığınız parolayı girin." / "Your current password is not correct, so nothing was changed. Enter the password you sign in with." | Kişi: giriş yaptığı parola. Yanlış denemeler sayılır. | Girip yeniden kaydedin. |
@@ -9699,5 +9699,22 @@ adresi istek yapıldığında okur. Değişiklikten önce incelenmiş bir sunucu
 planı başlatıldığında reddedilir ("gereksinimler değişti, güncel planı inceleyin");
 onu yeniden inceleyin, yeni adres içindedir. Zaten çalışan bir kurulum başladığı
 planın adresini korur.
+
+**Alan adına sertifika yetkilisi karar verir.** Panel adresin biçimini denetler
+(ve `admin@localhost`'u, alan adı olmayan bir ana makine adını ve ASCII dışı
+adresleri, hem sertifika isteğinde hem kurulum planında yukarıdaki kodlu retle
+reddeder). Sertifika yetkilisi, `.test`, `.local`, `.internal` ya da `example.com`
+gibi herkese açık olmayan bir alan adındaki adresi yine reddedebilir. **Kim işlem
+yapar:** yönetici. **Sonraki eylem:** herkese açık internette posta alan bir alan
+adında bir adres ayarlamak, sonra sertifikayı yeniden istemek. İngilizce dışı
+harfler içeren bir alan adı ASCII biçimiyle (`xn--…`) yazılır.
+
+**Bu sürümün sınırları.** E-posta değiştirmedeki ve parola değiştirmedeki yanlış
+parolalar tek bir sınırı paylaşır (hesap ve istemci adresi başına 5 dakikada 10);
+sonrasında ikisi de beklemeyi söyler. Yalnız büyük-küçük harfle ayrılan adreslere
+aynı anda yapılan iki değişiklik birlikte geçebilir, çünkü şema adresleri tam
+karşılaştırır; bu sürümde harf gözetmeyen bir dizin eklenmez. Sonucu bilinmeyen bir
+gönderiden sonra pencerenin aynı adres için sonraki Kaydet'i aynı istek kimliğini
+taşır; böylece ilk gönderinin yaptığı bir değişiklik yeniden yapılmaz, yanıtlanır.
 
 P0.1-P0.5 **kısmi** kalır; bu girdi hiçbir şeyi kapatmaz ya da ilerletmez.

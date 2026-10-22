@@ -42,7 +42,8 @@ asked for again.
 **When something is not right, nothing is changed, and the dialog says what to do:**
 
 - "This is not an email address the panel can use, so nothing was changed. Enter one
-  address such as name@example.com."
+  address such as name@example.com; a domain with letters outside English goes in
+  its ASCII form (xn--…)."
 - "This is already your email address, so nothing was changed."
 - "Another account already uses this email address, so nothing was changed. Enter a
   different address."
@@ -75,20 +76,23 @@ everywhere in the panel. Browser batch 24 found it 28 px tall.
 ## What changes underneath
 
 - **One new route,** `PUT /api/v1/auth/email`, beside `POST /api/v1/auth/password`.
-  Body `{"email", "current_password"}`; any other field, or more than one JSON
-  object, is refused. Open to every role that may change its own password:
+  Body `{"email", "current_password"}`, keys spelled exactly so; any other key (a
+  differently spelled one, `user_id`, `id`), or more than one JSON object, is
+  refused. Open to every role that may change its own password:
   administrator, reseller, customer and additional user.
-- **The current password is required.** Wrong passwords count against the same
-  limiter as the password change, under their own action name, per account and
-  client address: `403 account_email_wrong_password`, then `429
+- **The current password is required.** Every attempt counts against one
+  re-authentication limit shared with the password change (`reauth`, per account
+  and client address, 10 per 5 minutes): `403 account_email_wrong_password`, then `429
   account_email_too_many_attempts`.
 - **One identity per action (D-029).** The request-identity guard now protects this
   route; it is the first `PUT` it guards. The same identity is answered from the
   first arrival (`X-CelikPanel-Request-Replayed: 1`) and never changes the address
   twice; the same identity with another address is `409 REQUEST_ID_REUSED`; a
   request without one is `428 REQUEST_ID_REQUIRED`. Time limit 30 seconds. The digest
-  the guard stores leaves the password out, so the stored rows cannot be used to
-  test password guesses.
+  the guard stores is of the new address alone, re-encoded, and the success answer
+  carries no address, so the stored rows hold neither the password nor the address.
+  After an unknown result the dialog's next Save of the same address carries the
+  same identity.
 - **One validator.** `mutationpayload.CanonicalContactEmail` is the panel
   certificate's existing contact check, exported and reused: trimmed, printable ASCII
   only, exactly one `@`, a local part of at most 64 bytes and a whole of at most 254,
@@ -139,6 +143,50 @@ alpha.97). This answers two open items of the alpha.98 publication. Frankfurt's
 package versions on Components were not reported, so the open item "read installed
 package versions for every component" stays open for Frankfurt.
 
+## Security review corrections
+
+An independent security review of the candidate asked for these on 2026-10-22,
+before any publication; they are in source.
+
+- **Both contact gates use the one validator.** The panel certificate request and
+  the setup plan's contact blocker checked the administrator's address with Go's
+  `mail.ParseAddress`, which accepts `admin@localhost`, `root@myhost` or a
+  non-ASCII address that the certificate request's own check refuses. Such an
+  address (possible, because `--create-admin` does not check the address it is
+  given) passed the gate and failed later without the My account guidance. Both
+  gates now use `CanonicalContactEmail`: every address the certificate would
+  refuse gets the coded refusal with `/account#email`, and the setup blocker.
+- **The stored digest holds the new address alone.** Go's JSON decoding matches
+  keys without regard to letter case (and folds `ſ` to `s`), so a body with
+  `"Current_Password"` reached the password field while the digest removed only the
+  exact key `current_password`. The body's keys must now be exactly `email` and
+  `current_password`; any other key (`Current_Password`, `user_id`, `id`, …) is
+  `400 account_email_request_invalid`. The digest is the new address alone,
+  re-encoded; an unreadable body digests to a constant.
+- **The success answer carries no address** (the guard keeps answers for 24
+  hours); the page reads the address again.
+- **One re-authentication limit.** The email change and the password change share
+  one limiter key (`reauth`) per user and client address, so a stolen session gets
+  one budget of guesses across both (10 per 5 minutes), not one per route.
+- **After an unknown result, the next Save of the same address carries the same
+  identity** until a definite answer arrives; another address is a new action.
+- **The refusal for an unusable address** says that a domain with letters outside
+  English goes in its ASCII form (`xn--…`).
+- Tests added: both gates with `admin@localhost`, `root@myhost` and a non-ASCII
+  address; bodies with `Current_Password`, `current_paſsword`, `user_id` and `id`;
+  a wrong password told before "taken" and "already yours"; an administrator
+  impersonating a customer refused without the customer's password; one identity
+  with another password answered from the stored answer; the limit shared by both
+  routes; the same identity after an unknown result (web).
+
+Known limits, recorded: two simultaneous changes to addresses that differ only in
+letter case can both pass the case-insensitive check, because the schema's `UNIQUE`
+constraint compares exactly; no case-insensitive index is added in this release.
+The certificate authority may still refuse an address at a domain that is not
+public (`.test`, `.local`, `.internal`, `example.com`): the panel checks the form,
+the authority judges the domain. `--create-admin` still does not check the address
+it is given; the panel's gates now catch it.
+
 ## Known gaps
 
 - **Nothing was measured on an installed server.** The email change has been
@@ -160,7 +208,7 @@ package versions for every component" stays open for Frankfurt.
 Everything below was run on the candidate tree on 2026-10-22 in a development
 environment; none of it was run on an installed server.
 
-- Go: `go test ./cmd/panel/ ./internal/...` (-timeout 45m, CGO off) in the `CelikPanel-S2-Debian` guest on the candidate tree: 64 packages ok, 2888 top-level tests passed, 42 skipped, 0 failed (4279 subtests passed); gofmt and go vet clean. The new tests are in `cmd/panel/account_email_handler_test.go`
+- Go: `go test ./cmd/panel/ ./internal/...` (-timeout 45m, CGO off) in the `CelikPanel-S2-Debian` guest on the candidate tree: 64 packages ok, 2894 top-level tests passed, 42 skipped, 0 failed (4279 subtests passed); gofmt and go vet clean. The new tests are in `cmd/panel/account_email_handler_test.go`
   and `internal/mutationpayload/panel_certificate_issue_test.go`: the change for all
   four roles (sessions kept, one audit row, no address in it); every refusal
   changing nothing (invalid forms, the same address, a taken one including another
@@ -174,7 +222,7 @@ environment; none of it was run on an installed server.
   gates; and the panel certificate request refused with `/account#email`, then
   carrying the new address after the change, with no certificate requested by the
   change; and the validator.
-- Web: `npm test` 1707 of 1707 passed (the new `tests/own-email-mounted.test.mjs`: 9 tests in English and Turkish; one new mounted test of the certificate refusal's banner on Settings; the additional user's menu item), `npm run build` passed within every budget (critical boot path 329.93 of 361 KiB).
+- Web: `npm test` 1708 of 1708 passed (the new `tests/own-email-mounted.test.mjs`: 10 tests in English and Turkish; one new mounted test of the certificate refusal's banner on Settings; the additional user's menu item), `npm run build` passed within every budget (critical boot path 329.93 of 361 KiB).
 - Release-recovery harness: not run, because no update-related file changed (it
   mirrors the update card's texts and outcome logic, which this release does not
   touch).

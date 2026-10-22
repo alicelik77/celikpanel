@@ -9699,7 +9699,7 @@ what happened, that nothing was changed, what to do.
 
 | Code | What the screen says (English / Turkish) | Who acts and the next action | How it resumes |
 | --- | --- | --- | --- |
-| `account_email_invalid` (400) | "This is not an email address the panel can use, so nothing was changed. Enter one address such as name@example.com." / "Bu, panelin kullanabileceği bir e-posta adresi değil; hiçbir şey değiştirilmedi. name@example.com gibi tek bir adres girin." | The person: one plain address with a full domain name, no display name, printable ASCII only. | Correct it in the same dialog and save again. |
+| `account_email_invalid` (400) | "This is not an email address the panel can use, so nothing was changed. Enter one address such as name@example.com; a domain with letters outside English goes in its ASCII form (xn--…)." / "Bu, panelin kullanabileceği bir e-posta adresi değil; hiçbir şey değiştirilmedi. name@example.com gibi tek bir adres girin; İngilizce dışı harfler içeren bir alan adı ASCII biçimiyle (xn--…) yazılır." | The person: one plain address with a full domain name, no display name, printable ASCII only. | Correct it in the same dialog and save again. |
 | `account_email_unchanged` (409) | "This is already your email address, so nothing was changed." / "Bu zaten e-posta adresiniz; hiçbir şey değiştirilmedi." | Nobody; the address is already right. | Close the dialog. |
 | `account_email_taken` (409) | "Another account already uses this email address, so nothing was changed. Enter a different address." / "Bu e-posta adresini başka bir hesap kullanıyor; hiçbir şey değiştirilmedi. Başka bir adres girin." | The person: another address (a different letter case is the same address). | Enter another address and save again. |
 | `account_email_wrong_password` (403) | "Your current password is not correct, so nothing was changed. Enter the password you sign in with." / "Mevcut parolanız doğru değil; hiçbir şey değiştirilmedi. Giriş yaptığınız parolayı girin." | The person: the password they sign in with. Wrong attempts are counted. | Enter it and save again. |
@@ -9738,5 +9738,22 @@ it is made. A server setup plan that was reviewed before the change is refused w
 started ("requirements changed, review the current plan"); review it again and the
 new address is in it. A setup that is already running keeps the address of the plan
 it started with.
+
+**The certificate authority judges the domain.** The panel checks the form of the
+address (and refuses `admin@localhost`, a host name without a domain and non-ASCII
+addresses with the coded refusal above, at both the certificate request and the
+setup plan). The certificate authority may still refuse an address at a domain
+that is not public, such as `.test`, `.local`, `.internal` or `example.com`.
+**Who must act:** the administrator. **Next action:** set an address at a domain
+that receives mail on the public internet, then request the certificate again. A
+domain with letters outside English is written in its ASCII form (`xn--…`).
+
+**Limits of this release.** Wrong passwords on the email change and the password
+change share one limit (10 per 5 minutes per account and client address); after it,
+both say to wait. Two simultaneous changes to addresses that differ only in letter
+case can both pass, because the schema compares addresses exactly; no
+case-insensitive index is added in this release. After an unknown result the
+dialog's next Save of the same address carries the same request identity, so a
+change the first send did make is answered, not made again.
 
 P0.1-P0.5 stay **partial**; this entry closes and advances nothing.

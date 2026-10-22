@@ -240,9 +240,9 @@ The rules adopted:
    nor in the list of routes refused to additional users.
 2. **The current password is asked again.** The request carries the new address
    and the current password; a body with any other field, or with more than one
-   JSON object, is refused. Wrong passwords count against the same limiter as the
-   password change, under their own action name ("email-change"), per account and
-   client address. A wrong or missing password is `403
+   JSON object, is refused; the keys must be spelled exactly so. Every attempt
+   counts against one re-authentication limit shared with the password change
+   (`reauth`, per account and client address). A wrong or missing password is `403
    account_email_wrong_password`; too many attempts are `429
    account_email_too_many_attempts`.
 3. **One identity per action; a replay never changes twice (D-029).** The
@@ -253,9 +253,9 @@ The rules adopted:
    `X-CelikPanel-Request-Replayed: 1`) and never changes the address a second
    time; the same identity with another address is `409 REQUEST_ID_REUSED`; a
    request without one is `428 REQUEST_ID_REQUIRED`. The route's time limit is
-   30 seconds. The digest the guard stores leaves the password out (a digest hook
-   per route), so the `request_identities` table cannot be used to test password
-   guesses. The handler refuses to run if it is reached without the guard.
+   30 seconds. The digest the guard stores is of the new address alone,
+   re-encoded (a digest hook per route), and the stored answer carries no address,
+   so the `request_identities` table holds neither the password nor the address. The handler refuses to run if it is reached without the guard.
 4. **One validator.** An address is accepted only by
    `mutationpayload.CanonicalContactEmail`, which is the panel certificate's
    existing contact check, exported and reused: surrounding spaces removed;
@@ -333,10 +333,52 @@ their owners from the panel's own update screen.
 
 Relation to the rest. D-024: every refusal says what happened, who acts and what
 to do; an unknown result is not called a failure. D-029: the first `PUT` under the
-request-identity guard, with a digest that leaves the password out. D-033: the
+request-identity guard, with a digest of the new address alone. D-033: the
 dialog's wait is visible and bounded. D-022: the change writes only the panel's
 own user record; no hosted service is reconfigured, and the panel certificate
 reads the address only when someone requests a certificate.
+
+**Security review corrections (2026-10-22, before any publication).** An
+independent security review of the candidate asked for these; they are in source:
+
+- **Both contact gates use the one validator.** The panel certificate request and
+  the setup plan's contact blocker checked the administrator's address with Go's
+  `mail.ParseAddress`, which accepts `admin@localhost`, `root@myhost` or a
+  non-ASCII address that the certificate request's own check refuses. Such an
+  address (possible, because `--create-admin` does not check the address it is
+  given) passed the gate and failed later without the My account guidance. Both
+  gates now use `CanonicalContactEmail`: every address the certificate would
+  refuse gets the coded refusal with `/account#email`, and the setup blocker.
+- **The stored digest holds the new address alone.** Go's JSON decoding matches
+  keys without regard to letter case (and folds `ſ` to `s`), so a body with
+  `"Current_Password"` reached the password field while the digest removed only the
+  exact key `current_password`. The body's keys must now be exactly `email` and
+  `current_password`; any other key (`Current_Password`, `user_id`, `id`, …) is
+  `400 account_email_request_invalid`. The digest is the new address alone,
+  re-encoded; an unreadable body digests to a constant.
+- **The success answer carries no address** (the guard keeps answers for 24
+  hours); the page reads the address again.
+- **One re-authentication limit.** The email change and the password change share
+  one limiter key (`reauth`) per user and client address, so a stolen session gets
+  one budget of guesses across both (10 per 5 minutes), not one per route.
+- **After an unknown result, the next Save of the same address carries the same
+  identity** until a definite answer arrives; another address is a new action.
+- **The refusal for an unusable address** says that a domain with letters outside
+  English goes in its ASCII form (`xn--…`).
+- Tests added: both gates with `admin@localhost`, `root@myhost` and a non-ASCII
+  address; bodies with `Current_Password`, `current_paſsword`, `user_id` and `id`;
+  a wrong password told before "taken" and "already yours"; an administrator
+  impersonating a customer refused without the customer's password; one identity
+  with another password answered from the stored answer; the limit shared by both
+  routes; the same identity after an unknown result (web).
+
+Known limits, recorded: two simultaneous changes to addresses that differ only in
+letter case can both pass the case-insensitive check, because the schema's `UNIQUE`
+constraint compares exactly; no case-insensitive index is added in this release.
+The certificate authority may still refuse an address at a domain that is not
+public (`.test`, `.local`, `.internal`, `example.com`): the panel checks the form,
+the authority judges the domain. `--create-admin` still does not check the address
+it is given; the panel's gates now catch it.
 
 Not done: nothing is measured on an installed server; the new address is not
 confirmed by a message; open sessions are still not built.

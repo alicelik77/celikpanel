@@ -233,9 +233,10 @@ Benimsenen kurallar:
    açıktır: yönetici, bayi, müşteri ve ek kullanıcı (ekip üyesi). Ne yalnız yöneticiye
    özeldir ne de ek kullanıcılara kapalı rotalar listesindedir.
 2. **Mevcut parola yeniden istenir.** İstek yeni adresi ve mevcut parolayı taşır;
-   başka bir alan ya da birden çok JSON nesnesi taşıyan bir gövde reddedilir. Yanlış
-   parolalar, parola değiştirmeyle aynı sınırlayıcıya, kendi eylem adıyla
-   ("email-change"), hesap ve istemci adresi başına sayılır. Yanlış ya da eksik parola
+   başka bir alan ya da birden çok JSON nesnesi taşıyan bir gövde reddedilir;
+   anahtarlar tam olarak böyle yazılmalıdır. Her deneme, parola değiştirmeyle
+   paylaşılan tek bir yeniden kimlik doğrulama sınırına (`reauth`, hesap ve istemci
+   adresi başına) sayılır. Yanlış ya da eksik parola
    `403 account_email_wrong_password`; çok fazla deneme `429
    account_email_too_many_attempts`'tir.
 3. **Her eylemin tek kimliği; bir yineleme asla ikinci kez değiştirmez (D-029).** İstek
@@ -245,8 +246,9 @@ Benimsenen kurallar:
    (`X-CelikPanel-Request-Replayed: 1` ile) yanıtlanır ve adresi asla ikinci kez
    değiştirmez; başka bir adresle aynı kimlik `409 REQUEST_ID_REUSED`; kimliksiz bir
    istek `428 REQUEST_ID_REQUIRED`'dır. Rotanın süre sınırı 30 saniyedir. Korumanın
-   sakladığı özet parolayı dışarıda bırakır (rota başına bir özet kancası); bu yüzden
-   `request_identities` tablosu parola tahminlerini denemek için kullanılamaz. İşleyici,
+   sakladığı özet yalnız yeni adresin yeniden kodlanmış hâlidir (rota başına bir özet
+   kancası) ve saklanan yanıt adres taşımaz; bu yüzden `request_identities` tablosu
+   ne parolayı ne de adresi tutar. İşleyici,
    korumadan geçmeden ulaşılırsa çalışmayı reddeder.
 4. **Tek doğrulayıcı.** Bir adres yalnız `mutationpayload.CanonicalContactEmail` ile
    kabul edilir; bu, panel sertifikasının var olan iletişim denetimidir, dışa açılıp
@@ -322,10 +324,53 @@ yalnız sahipleri tarafından, panelin kendi güncelleme ekranından güncelleni
 
 Geri kalanla ilişkisi. D-024: her ret ne olduğunu, kimin işlem yapacağını ve ne
 yapılacağını söyler; bilinmeyen bir sonuca hata denmez. D-029: istek kimliği
-korumasının altındaki ilk `PUT`, parolayı dışarıda bırakan bir özetle. D-033:
+korumasının altındaki ilk `PUT`, yalnız yeni adresin özetiyle. D-033:
 pencerenin beklemesi görünür ve sınırlıdır. D-022: değişiklik yalnız panelin kendi
 kullanıcı kaydını yazar; barındırılan hiçbir hizmet yeniden yapılandırılmaz ve panel
 sertifikası adresi yalnız biri sertifika istediğinde okur.
+
+**Güvenlik incelemesi düzeltmeleri (22 Ekim 2026, hiçbir yayımdan önce).** Adayın
+bağımsız bir güvenlik incelemesi bunları istedi; kaynaktadırlar:
+
+- **İki iletişim kapısı da tek doğrulayıcıyı kullanır.** Panel sertifikası isteği
+  ve kurulum planının iletişim engeli yöneticinin adresini Go'nun
+  `mail.ParseAddress`'iyle denetliyordu; bu, sertifika isteğinin kendi denetiminin
+  reddettiği `admin@localhost`, `root@myhost` ya da ASCII dışı bir adresi kabul
+  eder. Böyle bir adres (`--create-admin` verilen adresi denetlemediği için
+  mümkündür) kapıdan geçiyor ve sonra Hesabım yönlendirmesi olmadan başarısız
+  oluyordu. İki kapı da artık `CanonicalContactEmail` kullanır: sertifikanın
+  reddedeceği her adres `/account#email` eylemli kodlu reddi ve kurulum engelini alır.
+- **Saklanan özet yalnız yeni adresi tutar.** Go'nun JSON çözümü anahtarları
+  büyük-küçük harf gözetmeden eşler (ve `ſ`'yi `s`'ye katlar); bu yüzden
+  `"Current_Password"` taşıyan bir gövde parola alanına ulaşıyor, özet ise yalnız tam
+  `current_password` anahtarını çıkarıyordu. Gövdenin anahtarları artık tam olarak
+  `email` ve `current_password` olmalıdır; başka her anahtar (`Current_Password`,
+  `user_id`, `id`, …) `400 account_email_request_invalid`'dır. Özet yalnız yeni
+  adresin yeniden kodlanmış hâlidir; okunamayan bir gövde sabit bir özet alır.
+- **Başarı yanıtı adres taşımaz** (koruma yanıtları 24 saat saklar); sayfa adresi
+  yeniden okur.
+- **Tek yeniden kimlik doğrulama sınırı.** E-posta değiştirme ve parola değiştirme,
+  kullanıcı ve istemci adresi başına tek bir sınırlayıcı anahtarını (`reauth`)
+  paylaşır; çalınmış bir oturum ikisi için tek bir tahmin bütçesi alır (5 dakikada
+  10), rota başına bir değil.
+- **Sonucu bilinmeyen bir gönderiden sonra aynı adresin sonraki Kaydet'i aynı
+  kimliği taşır**, kesin bir yanıt gelene dek; başka bir adres yeni bir eylemdir.
+- **Kullanılamayan adres reddi**, İngilizce dışı harfler içeren bir alan adının ASCII
+  biçimiyle (`xn--…`) yazıldığını söyler.
+- Eklenen testler: `admin@localhost`, `root@myhost` ve ASCII dışı bir adresle iki
+  kapı; `Current_Password`, `current_paſsword`, `user_id` ve `id` taşıyan gövdeler;
+  "kullanılıyor" ve "zaten sizin" yanıtlarından önce söylenen yanlış parola; bir
+  müşterinin yerine geçen yöneticinin müşterinin parolası olmadan reddi; başka
+  parolayla gelen aynı kimliğin saklanan yanıtla yanıtlanması; iki rotanın paylaştığı
+  sınır; bilinmeyen sonuçtan sonra aynı kimlik (web).
+
+Kaydedilen bilinen sınırlar: yalnız büyük-küçük harfle ayrılan iki adrese aynı anda
+yapılan iki değişiklik, harf gözetmeyen denetimden birlikte geçebilir, çünkü şemanın
+`UNIQUE` kısıtı tam karşılaştırır; bu sürümde harf gözetmeyen bir dizin eklenmez.
+Sertifika yetkilisi herkese açık olmayan bir alan adındaki (`.test`, `.local`,
+`.internal`, `example.com`) adresi yine reddedebilir: panel biçimi denetler, alan
+adına yetkili karar verir. `--create-admin` verilen adresi hâlâ denetlemez; panelin
+kapıları artık onu yakalar.
 
 Yapılmadı: kurulu bir sunucuda hiçbir şey ölçülmedi; yeni adres bir iletiyle
 doğrulanmaz; açık oturumlar hâlâ yapılmadı.

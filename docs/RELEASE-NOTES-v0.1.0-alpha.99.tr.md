@@ -41,7 +41,8 @@ yeniden istense bile tek bir tıklama adresinizi asla iki kez değiştirmez.
 **Bir şey doğru değilse hiçbir şey değiştirilmez ve pencere ne yapılacağını söyler:**
 
 - "Bu, panelin kullanabileceği bir e-posta adresi değil; hiçbir şey değiştirilmedi.
-  name@example.com gibi tek bir adres girin."
+  name@example.com gibi tek bir adres girin; İngilizce dışı harfler içeren bir alan
+  adı ASCII biçimiyle (xn--…) yazılır."
 - "Bu zaten e-posta adresiniz; hiçbir şey değiştirilmedi."
 - "Bu e-posta adresini başka bir hesap kullanıyor; hiçbir şey değiştirilmedi. Başka
   bir adres girin."
@@ -74,18 +75,22 @@ Tarayıcı denetimi 24 onu 28 px buldu.
 ## Altta ne değişir
 
 - **Tek yeni rota,** `POST /api/v1/auth/password`'ün yanında `PUT
-  /api/v1/auth/email`. Gövde `{"email", "current_password"}`; başka bir alan ya da
+  /api/v1/auth/email`. Gövde `{"email", "current_password"}`, anahtarlar tam olarak
+  böyle yazılır; başka her anahtar (farklı yazılmış biri, `user_id`, `id`) ya da
   birden çok JSON nesnesi reddedilir. Kendi parolasını değiştirebilen her role açık:
   yönetici, bayi, müşteri ve ek kullanıcı.
-- **Mevcut parola gerekir.** Yanlış parolalar, kendi eylem adıyla, hesap ve istemci
-  adresi başına parola değiştirmeyle aynı sınırlayıcıya sayılır: `403
+- **Mevcut parola gerekir.** Her deneme, parola değiştirmeyle paylaşılan tek bir
+  yeniden kimlik doğrulama sınırına (`reauth`, hesap ve istemci adresi başına, 5
+  dakikada 10) sayılır: `403
   account_email_wrong_password`, sonra `429 account_email_too_many_attempts`.
 - **Her eylemin tek kimliği (D-029).** İstek kimliği koruması artık bu rotayı korur;
   koruduğu ilk `PUT`'tur. Aynı kimlik ilk gelişten (`X-CelikPanel-Request-Replayed:
   1`) yanıtlanır ve adresi asla iki kez değiştirmez; başka bir adresle aynı kimlik
   `409 REQUEST_ID_REUSED`; kimliksiz bir istek `428 REQUEST_ID_REQUIRED`'dır. Süre
-  sınırı 30 saniye. Korumanın sakladığı özet parolayı dışarıda bırakır; bu yüzden
-  saklanan satırlar parola tahminlerini denemek için kullanılamaz.
+  sınırı 30 saniye. Korumanın sakladığı özet yalnız yeni adresin yeniden kodlanmış
+  hâlidir ve başarı yanıtı adres taşımaz; bu yüzden saklanan satırlar ne parolayı ne
+  de adresi tutar. Sonucu bilinmeyen bir gönderiden sonra pencerenin aynı adres için
+  sonraki Kaydet'i aynı kimliği taşır.
 - **Tek doğrulayıcı.** `mutationpayload.CanonicalContactEmail`, panel sertifikasının
   var olan iletişim denetimidir, dışa açılıp yeniden kullanıldı: boşluklar atılır,
   yalnız yazdırılabilir ASCII, tam bir `@`, en çok 64 baytlık yerel kısım ve en çok
@@ -138,6 +143,51 @@ maddesini yanıtlar. Frankfurt'un Bileşenler'deki paket sürümleri bildirilmed
 yüzden "her bileşen için kurulu paket sürümlerini oku" açık işi Frankfurt için açık
 kalır.
 
+## Güvenlik incelemesi düzeltmeleri
+
+Adayın bağımsız bir güvenlik incelemesi bunları 22 Ekim 2026'da, hiçbir yayımdan
+önce istedi; kaynaktadırlar.
+
+- **İki iletişim kapısı da tek doğrulayıcıyı kullanır.** Panel sertifikası isteği
+  ve kurulum planının iletişim engeli yöneticinin adresini Go'nun
+  `mail.ParseAddress`'iyle denetliyordu; bu, sertifika isteğinin kendi denetiminin
+  reddettiği `admin@localhost`, `root@myhost` ya da ASCII dışı bir adresi kabul
+  eder. Böyle bir adres (`--create-admin` verilen adresi denetlemediği için
+  mümkündür) kapıdan geçiyor ve sonra Hesabım yönlendirmesi olmadan başarısız
+  oluyordu. İki kapı da artık `CanonicalContactEmail` kullanır: sertifikanın
+  reddedeceği her adres `/account#email` eylemli kodlu reddi ve kurulum engelini alır.
+- **Saklanan özet yalnız yeni adresi tutar.** Go'nun JSON çözümü anahtarları
+  büyük-küçük harf gözetmeden eşler (ve `ſ`'yi `s`'ye katlar); bu yüzden
+  `"Current_Password"` taşıyan bir gövde parola alanına ulaşıyor, özet ise yalnız tam
+  `current_password` anahtarını çıkarıyordu. Gövdenin anahtarları artık tam olarak
+  `email` ve `current_password` olmalıdır; başka her anahtar (`Current_Password`,
+  `user_id`, `id`, …) `400 account_email_request_invalid`'dır. Özet yalnız yeni
+  adresin yeniden kodlanmış hâlidir; okunamayan bir gövde sabit bir özet alır.
+- **Başarı yanıtı adres taşımaz** (koruma yanıtları 24 saat saklar); sayfa adresi
+  yeniden okur.
+- **Tek yeniden kimlik doğrulama sınırı.** E-posta değiştirme ve parola değiştirme,
+  kullanıcı ve istemci adresi başına tek bir sınırlayıcı anahtarını (`reauth`)
+  paylaşır; çalınmış bir oturum ikisi için tek bir tahmin bütçesi alır (5 dakikada
+  10), rota başına bir değil.
+- **Sonucu bilinmeyen bir gönderiden sonra aynı adresin sonraki Kaydet'i aynı
+  kimliği taşır**, kesin bir yanıt gelene dek; başka bir adres yeni bir eylemdir.
+- **Kullanılamayan adres reddi**, İngilizce dışı harfler içeren bir alan adının ASCII
+  biçimiyle (`xn--…`) yazıldığını söyler.
+- Eklenen testler: `admin@localhost`, `root@myhost` ve ASCII dışı bir adresle iki
+  kapı; `Current_Password`, `current_paſsword`, `user_id` ve `id` taşıyan gövdeler;
+  "kullanılıyor" ve "zaten sizin" yanıtlarından önce söylenen yanlış parola; bir
+  müşterinin yerine geçen yöneticinin müşterinin parolası olmadan reddi; başka
+  parolayla gelen aynı kimliğin saklanan yanıtla yanıtlanması; iki rotanın paylaştığı
+  sınır; bilinmeyen sonuçtan sonra aynı kimlik (web).
+
+Kaydedilen bilinen sınırlar: yalnız büyük-küçük harfle ayrılan iki adrese aynı anda
+yapılan iki değişiklik, harf gözetmeyen denetimden birlikte geçebilir, çünkü şemanın
+`UNIQUE` kısıtı tam karşılaştırır; bu sürümde harf gözetmeyen bir dizin eklenmez.
+Sertifika yetkilisi herkese açık olmayan bir alan adındaki (`.test`, `.local`,
+`.internal`, `example.com`) adresi yine reddedebilir: panel biçimi denetler, alan
+adına yetkili karar verir. `--create-admin` verilen adresi hâlâ denetlemez; panelin
+kapıları artık onu yakalar.
+
 ## Bilinen eksikler
 
 - **Kurulu bir sunucuda hiçbir şey ölçülmedi.** E-posta değiştirme yalnız bileşen,
@@ -159,7 +209,7 @@ kalır.
 Aşağıdakilerin hepsi 2026-10-22'de aday ağaçta bir geliştirme ortamında çalıştırıldı;
 hiçbiri bir kurulu sunucuda çalıştırılmadı.
 
-- Go: `CelikPanel-S2-Debian` konuğunda aday ağaçta `go test ./cmd/panel/ ./internal/...` (-timeout 45m, CGO kapalı): 64 paket geçti, 2888 üst düzey test geçti, 42 atlandı, 0 başarısız (4279 alt test geçti); gofmt ve go vet temiz. Yeni testler `cmd/panel/account_email_handler_test.go` ve
+- Go: `CelikPanel-S2-Debian` konuğunda aday ağaçta `go test ./cmd/panel/ ./internal/...` (-timeout 45m, CGO kapalı): 64 paket geçti, 2894 üst düzey test geçti, 42 atlandı, 0 başarısız (4279 alt test geçti); gofmt ve go vet temiz. Yeni testler `cmd/panel/account_email_handler_test.go` ve
   `internal/mutationpayload/panel_certificate_issue_test.go` içinde: dört rol için
   değişiklik (oturumlar sürer, tek denetim satırı, içinde adres yok); hiçbir şeyi
   değiştirmeyen her ret (geçersiz biçimler, aynı adres, başka harf büyüklüğüyle dahil
@@ -173,7 +223,7 @@ hiçbiri bir kurulu sunucuda çalıştırılmadı.
   `/account#email` ile reddedilen, değişiklikten sonra yeni adresi taşıyan ve
   değişikliğin hiçbir sertifika istemediği panel sertifikası isteği; ayrıca
   doğrulayıcı.
-- Web: `npm test` 1707 testin 1707'si geçti (yeni `tests/own-email-mounted.test.mjs`: İngilizce ve Türkçe 9 test; Ayarlar'da sertifika retinin bandı için yeni bir bağlı test; ek kullanıcının menü öğesi), `npm run build` her bütçenin içinde geçti (kritik açılış yolu 361 KiB'nin 329,93'ü).
+- Web: `npm test` 1708 testin 1708'i geçti (yeni `tests/own-email-mounted.test.mjs`: İngilizce ve Türkçe 10 test; Ayarlar'da sertifika retinin bandı için yeni bir bağlı test; ek kullanıcının menü öğesi), `npm run build` her bütçenin içinde geçti (kritik açılış yolu 361 KiB'nin 329,93'ü).
 - Sürüm kurtarma düzeneği: güncellemeyle ilgili hiçbir dosya değişmediği için
   çalıştırılmadı (bu sürümün dokunmadığı güncelleme kartının metinlerini ve sonuç
   mantığını yansıtır).

@@ -6867,21 +6867,25 @@ resilience is complete. 2026-10-22 is the clock date of everything in it.
   without the guard. The same identity is answered from the first arrival's stored
   answer (`X-CelikPanel-Request-Replayed: 1`) and never changes the address a
   second time; the same identity with another address is `409 REQUEST_ID_REUSED`.
-  The route's time limit is 30 seconds. **The stored digest leaves the password
-  out:** a digest hook per route hashes the request without `current_password`, so
-  a row of `request_identities` cannot be used to test password guesses. The
-  stored answer of a successful change carries the new address, as the answer
-  itself does, for the row's 24 hours. The web interface sends one identity per
-  click and asks again once, with the same identity, when the answer was lost (the
-  connection failed or a gateway answered).
+  The route's time limit is 30 seconds. **The stored digest is of the new address
+  alone:** the body's keys must be exactly `email` and `current_password` (Go's
+  JSON decoding matches keys without regard to case, so any other spelling is
+  refused), and a digest hook per route hashes only the new address, re-encoded; an
+  unreadable body hashes to a constant. The success answer carries no address, so
+  a `request_identities` row holds neither the password nor the address. The web
+  interface sends one identity per click, asks again once with the same identity
+  when the answer was lost (the connection failed or a gateway answered), and after
+  an unknown result sends the next Save of the same address under the same
+  identity, until a definite answer.
 - **The write.** One validator (`mutationpayload.CanonicalContactEmail`, the panel
   certificate's own contact check, exported); an address another account uses is
   refused, compared without regard to letter case, and the `UNIQUE` constraint on
   `users.email` (since `001_full_schema.sql`) is the last word; the write is a
   compare-and-set on the verified address and password hash, so a change made
   elsewhere in between is reported (`account_email_changed_elsewhere`), never
-  overwritten. Every refusal changes nothing. Wrong passwords count against the
-  password change's limiter under their own action name. Sessions are not ended.
+  overwritten. Every refusal changes nothing. Every attempt counts against one
+  re-authentication limit shared with the password change (`reauth`, per account
+  and client address, 10 per 5 minutes). Sessions are not ended.
   One audit entry `account.email.changed` names the user, not the address.
 - **Owner-operated recovery path: unchanged.** CelikPanel updates stays where it
   is; the owner starts every installed-panel update from the panel's own update
@@ -6916,7 +6920,7 @@ resilience is complete. 2026-10-22 is the clock date of everything in it.
   again. The person reloads; the card reads the address that is stored and shows
   it; if it is still the old one, a new click (a new identity) changes it. Not
   measured on an installed server.
-- **Evidence and open.** On the candidate tree: Go `go test ./cmd/panel/ ./internal/...` (-timeout 45m, CGO off) in the `CelikPanel-S2-Debian` guest on the candidate tree: 64 packages ok, 2888 top-level tests passed, 42 skipped, 0 failed (4279 subtests passed); gofmt and go vet clean, with handler tests
+- **Evidence and open.** On the candidate tree: Go `go test ./cmd/panel/ ./internal/...` (-timeout 45m, CGO off) in the `CelikPanel-S2-Debian` guest on the candidate tree: 64 packages ok, 2894 top-level tests passed, 42 skipped, 0 failed (4279 subtests passed); gofmt and go vet clean, with handler tests
   for all four roles (sessions kept, one audit row, no address in it), every
   refusal changing nothing (invalid forms, the same address, a taken one including
   another letter case, a wrong or missing password, an unknown field, two JSON
@@ -6929,7 +6933,7 @@ resilience is complete. 2026-10-22 is the clock date of everything in it.
   guard, the route gates, and the panel certificate request refused with
   `/account#email` and then carrying the new address after the change, with no
   certificate requested by the change; a validator test in
-  `internal/mutationpayload`. Web `npm test` 1707 of 1707 passed (the new `tests/own-email-mounted.test.mjs`: 9 tests in English and Turkish; one new mounted test of the certificate refusal's banner on Settings; the additional user's menu item), `npm run build` passed within every budget (critical boot path 329.93 of 361 KiB). Browser batch 24 13 states in each of 8 configurations (104 screenshots), looked at twice: the first look found the refusal banner's button 28 px tall on a phone, now at least 44 px; the second look found nothing else; the language switcher inside the personal menu (28 px on a phone) is older than this release and unchanged; screenshots and the browser driver deleted afterwards. The
+  `internal/mutationpayload`. Web `npm test` 1708 of 1708 passed (the new `tests/own-email-mounted.test.mjs`: 10 tests in English and Turkish; one new mounted test of the certificate refusal's banner on Settings; the additional user's menu item), `npm run build` passed within every budget (critical boot path 329.93 of 361 KiB). Browser batch 24 13 states in each of 8 configurations (104 screenshots), looked at twice: the first look found the refusal banner's button 28 px tall on a phone, now at least 44 px; the second look found nothing else; the language switcher inside the personal menu (28 px on a phone) is older than this release and unchanged; screenshots and the browser driver deleted afterwards. The
   release sequence policy (98 to 99), download portal and signed release manifest
   contracts passed. The numbers are in the [release
   notes](RELEASE-NOTES-v0.1.0-alpha.99.md). Component and mounted tests do not
@@ -6939,6 +6943,20 @@ resilience is complete. 2026-10-22 is the clock date of everything in it.
   alpha.88 to alpha.98 entries leave open stays open. Installed panels are updated
   only by their owners, from the panel's own update screen. P0.1 to P0.5 stay
   partial.
+- **Security review corrections (2026-10-22, before any publication).** The
+  panel certificate's contact gate and the setup plan's contact blocker now use
+  `CanonicalContactEmail` instead of `mail.ParseAddress`, so `admin@localhost`,
+  `root@myhost` or a non-ASCII address (possible through `--create-admin`, which
+  does not check it) get the coded refusal with `/account#email` and the setup
+  blocker instead of failing later without guidance. The body's keys are exact
+  (a `Current_Password` or `current_paſsword` key no longer reaches the password
+  field past the digest); the digest is of the address alone; the success answer
+  carries no address; the email and password changes share one limit; after an
+  unknown result the same identity is reused. Known limits: two simultaneous
+  changes to addresses that differ only in letter case can both pass (the
+  `UNIQUE` constraint compares exactly; no index added in this release); the
+  certificate authority may still refuse a non-public domain (`.test`, `.local`,
+  `example.com`). Tests and evidence above are of the corrected tree.
 - **What the owner saw of alpha.98 (2026-10-22).** The owner reported both
   installed servers on alpha.98: the Dashboards of Boston and Frankfurt show the
   new menu. Frankfurt's update from alpha.94 went through, after its alpha.95 stop
