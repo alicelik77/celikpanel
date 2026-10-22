@@ -414,6 +414,18 @@ func RequirementsMissing(svc *ManagedService, installed map[string]bool) []strin
 	return missing
 }
 
+// UninstallPurgesAllVersions says whether removing the whole component also
+// purges every installed versioned package of it: on apt, a component with a
+// vendor package pattern (php8.3-fpm, postgresql-17…) has each matching
+// installed package and its companions added to the purge. The Agent's
+// uninstall and the Panel's removal dialog both ask this one question.
+// UninstallPurgesAllVersions: bileşenin bütünüyle kaldırılması, apt'ta
+// desene uyan her kurulu sürüm paketini ve yol arkadaşlarını da siler mi?
+// Agent'ın kaldırması ve Panel'in kaldırma penceresi aynı soruyu sorar.
+func UninstallPurgesAllVersions(svc *ManagedService, family string) bool {
+	return svc != nil && family == "apt" && svc.Repo != nil && svc.Repo.PackagePattern != ""
+}
+
 // SeatTakenBy returns the NAME of the installed component already occupying
 // this component's seat, or "". A seat means "same role, same port": installing
 // the second member cannot bind and lands in a failed restart loop.

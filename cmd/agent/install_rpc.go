@@ -774,7 +774,7 @@ func (a *Agent) uninstallServiceWithOps(
 	// Herhangi bir şeyi durdurmadan önce katalogla eşleşen apt paketlerini bul.
 	// Sorgu systemd adı tahmini değil, paket yöneticisi gerçeğidir; özellikle
 	// postgresql@17-main, unit dizgesini değil postgresql-17 paketini eklemelidir.
-	if family == "apt" && svc.Repo != nil && svc.Repo.PackagePattern != "" {
+	if core.UninstallPurgesAllVersions(svc, family) {
 		repoPackages, err := ops.installedRepoPackages(svc)
 		if err != nil {
 			resp.Error = fmt.Sprintf("installed package discovery failed: %v", err)
