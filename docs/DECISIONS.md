@@ -23,7 +23,7 @@ Code decisions live in git; this file is for strategy. Newest first.
 
 ## D-037 · Every page is where its name says it is: Settings holds settings; tools, security and maintenance live under Server; the person's own account lives in the personal menu
 
-*October 22, 2026 (clock date) · Owner request of 2026-10-21 and approval of 2026-10-22; in source for the v0.1.0-alpha.98 candidate; nothing measured on an installed server*
+*October 22, 2026 (clock date) · Owner request of 2026-10-21 and approval of 2026-10-22; in source for the v0.1.0-alpha.98 candidate, published 2026-10-22; on 2026-10-22 the owner's screens showed the new menu on both installed servers after the owner's own update · Amended 2026-10-22: changing one's own email, in source for the v0.1.0-alpha.99 candidate; nothing of the amendment measured on an installed server*
 
 On 2026-10-21 the owner asked: "ayarlardaki bu alt
 menüdeki her şey ayarlar ile mi ilgili?" (In English: is everything in this
@@ -148,7 +148,8 @@ mistaken for owner decisions):
   `/settings?section=dns` (DNS engine workflow, DNSSEC, DNS-only children, import,
   remote DNS authority, DNS setup) now points at `/dns-infrastructure`; the panel
   certificate's missing contact email carries no action (see the review corrections
-  below).
+  below; from the v0.1.0-alpha.99 candidate it points at `/account#email`, see the
+  amendment at the end).
 - **The setup gate keeps the four addresses reachable** while setup is required
   (`/account`, `/security`, `/dns-infrastructure`, `/maintenance`), as `/settings`
   was, and the offline recovery shell's route list includes them.
@@ -199,8 +200,10 @@ of the candidate asked for these; they are in source:
   security, and in the first draft of this release at My account; neither can
   change it. No screen edits the administrator's own email (the administrator is
   managed only when created on the server), so the refusal has no action now and
-  says there is no screen for it yet. **Open item:** a way to change one's own email
-  from My account.
+  says there is no screen for it yet. **Open item** (open in alpha.98): a way to
+  change one's own email from My account. *Now built in source for the
+  v0.1.0-alpha.99 candidate* (amendment below); it was open when alpha.98 was
+  published.
 - **"Open sessions"**, named in the mockup's description of My account, is not
   built: the product has no session list (the roadmap keeps "Active sessions" as a
   later item). As with the administrator rules, nothing was invented.
@@ -209,8 +212,134 @@ of the candidate asked for these; they are in source:
   part's block markers are fixed; two browser-inspection scripts use addresses that
   still exist.
 
-Not done: nothing is measured on an installed server; no screen changes the
-administrator's own email yet (open item above); open sessions are not built.
+Not done in alpha.98: nothing was measured on an installed server when it was
+written (on 2026-10-22, after the owner updated them, the owner's screens of Boston
+and Frankfurt showed the new menu); no screen changed the administrator's own email
+(open item above, open in alpha.98 and built in source for the v0.1.0-alpha.99
+candidate by the amendment below); open sessions are not built.
+
+### Amendment (2026-10-22, clock date): changing one's own email is built in source for the v0.1.0-alpha.99 candidate
+
+*Owner approval of 2026-10-22 ("ok") of the open item alpha.98 left; in source for the v0.1.0-alpha.99 candidate; nothing measured on an installed server*
+
+Why. The panel certificate gives the signed-in administrator's email address to the
+certificate authority as its contact. Until alpha.99 that address was set only when
+the administrator was created on the server, and no screen changed it, so an
+administrator without a usable address could only read, since alpha.98, that there
+was no screen for it yet. alpha.98 recorded "a way to change one's own email from
+My account" as an open item. On 2026-10-22, after the alpha.98 publication, the
+owner approved building it ("ok").
+
+The rules adopted:
+
+1. **Only one's own address, by every role that has a session.** The signed-in
+   person changes their own email address, nobody else's. The route is `PUT
+   /api/v1/auth/email`, beside `POST /api/v1/auth/password`, and it is open to
+   exactly the roles that may change their own password: administrator, reseller,
+   customer and additional user (team member). It is neither administrator-only
+   nor in the list of routes refused to additional users.
+2. **The current password is asked again.** The request carries the new address
+   and the current password; a body with any other field, or with more than one
+   JSON object, is refused. Wrong passwords count against the same limiter as the
+   password change, under their own action name ("email-change"), per account and
+   client address. A wrong or missing password is `403
+   account_email_wrong_password`; too many attempts are `429
+   account_email_too_many_attempts`.
+3. **One identity per action; a replay never changes twice (D-029).** The
+   request-identity guard now protects this route; it is the first `PUT` it
+   guards (it guarded `POST` routes only). The request carries
+   `X-CelikPanel-Request-Id` (32 lowercase hexadecimal characters). The same
+   identity is answered from the first arrival's stored answer (with
+   `X-CelikPanel-Request-Replayed: 1`) and never changes the address a second
+   time; the same identity with another address is `409 REQUEST_ID_REUSED`; a
+   request without one is `428 REQUEST_ID_REQUIRED`. The route's time limit is
+   30 seconds. The digest the guard stores leaves the password out (a digest hook
+   per route), so the `request_identities` table cannot be used to test password
+   guesses. The handler refuses to run if it is reached without the guard.
+4. **One validator.** An address is accepted only by
+   `mutationpayload.CanonicalContactEmail`, which is the panel certificate's
+   existing contact check, exported and reused: surrounding spaces removed;
+   printable ASCII only; exactly one `@`; a local part of at most 64 bytes and a
+   whole of at most 254; a domain that is a fully qualified DNS name, stored in
+   lower case; no display name. An address accepted here is therefore always one
+   the certificate request accepts. Anything else is `400 account_email_invalid`;
+   an unreadable request is `400 account_email_request_invalid`.
+5. **One account per address.** An address another account uses is `409
+   account_email_taken`, compared without regard to letter case. The `UNIQUE`
+   constraint on `users.email`, in the schema since `001_full_schema.sql`, stays
+   the last word. No schema change, no new index. Whether the address is already
+   the person's own (`409 account_email_unchanged`) or another account's is told
+   only after the password has been proven, so the route does not reveal who
+   uses an address.
+6. **A change made elsewhere is reported, never overwritten.** The write is a
+   compare-and-set on the address and password hash that were verified. If either
+   changed in between, nothing is written and the answer is `409
+   account_email_changed_elsewhere`.
+7. **Sessions stay.** Signing in uses the user name; the address is not a
+   credential, so open sessions are not ended.
+8. **The audit trail names the account, not the address.** One entry
+   `account.email.changed` on the user, without the old or the new address (the
+   trail names accounts, never addresses). The Dashboard's "Recent activity" says
+   "changed their own email address" ("kendi e-posta adresini değiştirdi").
+9. **No automatic certificate action.** Changing an address requests, renews or
+   retries nothing about any certificate. The panel certificate request reads the
+   signed-in administrator's address from the database when it is made (no
+   cache). Its refusal `panel_certificate_contact_email_invalid` now carries the
+   action `/account#email` and says to set the email on My account (top-right
+   menu) and then request the certificate again. The server setup plan keeps the
+   contact address it was reviewed with as part of the plan's identity: after an
+   email change, starting an already-reviewed plan is refused as "requirements
+   changed, review the current plan", and the new review picks up the new
+   address; a setup that is already running keeps the address of the plan it
+   started with.
+
+Implementation decisions taken while building this (stated so they are not
+mistaken for owner decisions):
+
+- **The licence gate is unchanged.** The email change is *not* added to the routes
+  a licence-locked panel still accepts (the password change is one of them). While
+  the panel is licence-locked, the email change is refused like the other routes.
+  What a licence-locked panel accepts is licence policy, which this release has no
+  authority to change.
+- **Where it is.** My account gets a third card, "My email" ("E-posta adresim",
+  anchor `id="email"`, so `/account#email` scrolls to it), between Password and
+  Two-step sign-in. It shows the current address read from `/api/v1/auth/me`
+  ("checking" while it reads; "could not be read" with Retry when the read fails).
+  "Change email" opens a small dialog with the new address and the current password.
+  Additional users, who have no My account page, get "Change email" beside "Change
+  password" in the personal menu, opening the same dialog.
+- **The wait is visible and bounded (D-033).** While saving, the button shows a
+  spinner, the fields and buttons are locked, and a line says the change is being
+  saved and nothing else is needed. After 20 seconds the dialog says it is not
+  known whether the change was saved, that this is not a failure, and the card
+  reads the address again.
+- **A lost answer is asked again once.** One identity per click; when the
+  connection failed or a gateway answered, the dialog asks once more with the same
+  identity. A refusal the Panel itself sent is not a lost answer.
+- **Refusals in the D-024 order.** Each code above is shown in the dialog as what
+  happened, that nothing was changed, and what to do next. Success shows "Your
+  email address was changed." and the card shows the new address.
+- **The setup plan's contact blocker and the panel certificate refusal** say "Set
+  your email on My account (top-right menu)" and show an "Open My account" button
+  to `/account#email`.
+- **No message is sent to the old or the new address.** The panel sends no mail to
+  confirm the new address; the person proves who they are with their password.
+
+What this does not authorise: changing another account's address from this route;
+signing in with an email address; any certificate request, renewal or retry; any
+licence-policy, schema, Agent or updater change; and any claim about installed
+servers before the owner sees it there. Installed panels are still updated only by
+their owners from the panel's own update screen.
+
+Relation to the rest. D-024: every refusal says what happened, who acts and what
+to do; an unknown result is not called a failure. D-029: the first `PUT` under the
+request-identity guard, with a digest that leaves the password out. D-033: the
+dialog's wait is visible and bounded. D-022: the change writes only the panel's
+own user record; no hosted service is reconfigured, and the panel certificate
+reads the address only when someone requests a certificate.
+
+Not done: nothing is measured on an installed server; the new address is not
+confirmed by a message; open sessions are still not built.
 
 ---
 

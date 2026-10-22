@@ -9642,3 +9642,101 @@ server; no screen changes the administrator's own email, which the panel
 certificate needs as its contact; open sessions are not built. No text or screen
 was changed for this entry. P0.1-P0.5 stay **partial**; this entry closes and
 advances nothing.
+
+### Installed servers on alpha.98: both updated (2026-10-22)
+
+On 2026-10-22 the owner reported that both installed servers are on
+v0.1.0-alpha.98: the Dashboards of Boston and Frankfurt show the new menu.
+Frankfurt's update from alpha.94 went through; its alpha.95 update had stopped in
+the read-only check because the package manager was busy (Debian's automatic
+package updates; recorded with alpha.97), and nothing had changed on the server
+then. **Who must act:** nobody for this; it is an observation. It answers two
+open items of the alpha.98 publication: the new layout is now seen on both
+installed servers, and Frankfurt's update after its alpha.95 stop is reported.
+**Open:** what was seen is the Dashboard's menu, not every moved page; Frankfurt's
+package versions on Components were not reported, so the D-036 item stays open
+for Frankfurt. The release preparer measured nothing on either server. No text or
+screen was changed for this entry. P0.1-P0.5 stay **partial**; this entry closes
+and advances nothing.
+
+### Changing one's own email (D-037 amendment, 2026-10-22)
+
+In source for the v0.1.0-alpha.99 candidate; nothing measured on an installed
+server. Read this before telling someone how to change the address the panel
+certificate uses as its contact.
+
+**Where.** My account (personal menu, top right) → the card "My email"
+(`/account#email`), between Password and Two-step sign-in. An additional user
+(team member), who has no My account page, uses "Change email" in the personal
+menu, beside "Change password". Every role with a session changes its own
+address there; nobody changes another account's address here.
+
+**The card.** It shows the current address read from the panel. While it reads,
+it says so; if the read fails, it says the address could not be read and offers
+Retry (a read only; nothing was changed). "Change email" opens a dialog: the new address
+and the current password. Enter saves; Escape closes the dialog.
+
+**While saving (D-033).** The button shows a spinner, the fields and buttons are
+locked, and a line says the change is being saved and nothing else is needed.
+**Who must act:** nobody; wait. The wait is bounded: after 20 seconds the dialog
+says:
+
+- "It is not known yet whether your new address was saved. This is not a failure.
+  The address shown on this page was read again; if it is still the old one, try
+  again." / "Yeni adresinizin kaydedilip kaydedilmediği henüz bilinmiyor. Bu bir
+  hata değil. Bu sayfadaki adres yeniden okundu; hâlâ eskisiyse yeniden deneyin."
+
+This is an unknown result, not a failure. **Next action:** look at the address on
+the card; if it is the new one, nothing more is needed; if it is the old one, try
+again (a new click is a new request). Each click carries one request identity
+(D-029): a lost answer (the connection failed, or a gateway answered) is asked
+again once with the same identity, and the Panel answers it from the first
+arrival, so one click never changes the address twice. A refusal the Panel itself
+sent is not a lost answer and is shown as it is.
+
+**Refusals.** Every refusal changes nothing. The screen shows each in this order:
+what happened, that nothing was changed, what to do.
+
+| Code | What the screen says (English / Turkish) | Who acts and the next action | How it resumes |
+| --- | --- | --- | --- |
+| `account_email_invalid` (400) | "This is not an email address the panel can use, so nothing was changed. Enter one address such as name@example.com." / "Bu, panelin kullanabileceği bir e-posta adresi değil; hiçbir şey değiştirilmedi. name@example.com gibi tek bir adres girin." | The person: one plain address with a full domain name, no display name, printable ASCII only. | Correct it in the same dialog and save again. |
+| `account_email_unchanged` (409) | "This is already your email address, so nothing was changed." / "Bu zaten e-posta adresiniz; hiçbir şey değiştirilmedi." | Nobody; the address is already right. | Close the dialog. |
+| `account_email_taken` (409) | "Another account already uses this email address, so nothing was changed. Enter a different address." / "Bu e-posta adresini başka bir hesap kullanıyor; hiçbir şey değiştirilmedi. Başka bir adres girin." | The person: another address (a different letter case is the same address). | Enter another address and save again. |
+| `account_email_wrong_password` (403) | "Your current password is not correct, so nothing was changed. Enter the password you sign in with." / "Mevcut parolanız doğru değil; hiçbir şey değiştirilmedi. Giriş yaptığınız parolayı girin." | The person: the password they sign in with. Wrong attempts are counted. | Enter it and save again. |
+| `account_email_too_many_attempts` (429) | "Too many attempts, so nothing was changed. Wait a few minutes, then try again." / "Çok fazla deneme yapıldı; hiçbir şey değiştirilmedi. Birkaç dakika bekleyip yeniden deneyin." | The person: wait. The limit is the password change's limiter. | Try again after a few minutes. |
+| `account_email_changed_elsewhere` (409) | "Your account was changed somewhere else while this was being saved, so nothing was changed. Reload the page and try again." / "Bu kaydedilirken hesabınız başka bir yerde değiştirildi; hiçbir şey değiştirilmedi. Sayfayı yenileyip yeniden deneyin." | The person: reload, to see the account as it is now (its address or password changed in between). | Try again after the reload. |
+| `account_email_request_invalid` (400) | "The request could not be read, so nothing was changed. Reload the page and try again." / "İstek okunamadı; hiçbir şey değiştirilmedi. Sayfayı yenileyip yeniden deneyin." | The person: reload (an old page or another client sent something the Panel cannot read). | Try again after the reload. |
+
+The request-identity refusals of D-029 keep their own words: a request without an
+identity (`REQUEST_ID_REQUIRED`, for example from a page opened before the
+update) asks for a reload; `REQUEST_OUTCOME_UNKNOWN` says the result of that
+identity is not known, and the card's address, read again after a reload, answers
+it. While the panel is licence-locked, the change is refused with the licence's
+own guidance, like the other routes; the password change stays reachable.
+
+**Success.** "Your email address was changed." / "E-posta adresiniz değiştirildi."
+The card shows the new address. Open sessions stay signed in (sign-in uses the user
+name). The audit log records that the account changed its own address, without
+the address.
+
+**The panel certificate and server setup.** When the administrator has no usable
+address, the panel certificate request and the setup plan's contact requirement
+say:
+
+- "The administrator account has no valid email address, which the certificate
+  authority needs as a contact. Nothing was requested. Set your email on My account
+  (top-right menu), then try again." / "Yönetici hesabının geçerli bir e-posta
+  adresi yok; sertifika yetkilisi bunu iletişim adresi olarak ister. Hiçbir şey
+  istenmedi. E-posta adresinizi Hesabım'da (sağ üst menü) ayarlayın, sonra yeniden
+  deneyin."
+
+with an "Open My account" button to `/account#email`. **Who must act:** the
+administrator. **Next action:** set the address on My account. **How it resumes:**
+request the certificate again; nothing is retried by itself, and an email change
+requests or renews no certificate. The certificate request reads the address when
+it is made. A server setup plan that was reviewed before the change is refused when
+started ("requirements changed, review the current plan"); review it again and the
+new address is in it. A setup that is already running keeps the address of the plan
+it started with.
+
+P0.1-P0.5 stay **partial**; this entry closes and advances nothing.
