@@ -69,3 +69,24 @@ export function packageVersionFacts(service: unknown): PackageVersionFacts | nul
     if (packages.some((pkg) => pkg.version !== full)) return null;
     return { full, short, several: false, packages, kept, readAt, keptLong };
 }
+
+// The short version a row says, as text, from the same data the row uses: a
+// multi-version runtime's copies ("8.4, 8.3"), else the package version's
+// short form with its full form for the tooltip, or "several" when the
+// packages differ. Null when nothing is known (alpha.101: the installed
+// bundle's dialogue says it beside each part).
+// Satırın söylediği kısa sürüm, satırın kullandığı veriden; bilinmiyorsa null.
+export type ComponentVersionText = { kind: 'copies'; text: string } | { kind: 'package'; text: string; full: string } | { kind: 'several' };
+
+export function componentVersionText(service: unknown): ComponentVersionText | null {
+    if (!service || typeof service !== 'object') return null;
+    const value = service as Record<string, unknown>;
+    if (value.is_installed !== true) return null;
+    const copies = value.versions;
+    if (Array.isArray(copies) && copies.length > 0 && copies.every((item) => typeof item === 'string' && versionText.test(item))) {
+        return { kind: 'copies', text: (copies as string[]).join(', ') };
+    }
+    const facts = packageVersionFacts(service);
+    if (!facts) return null;
+    return facts.several ? { kind: 'several' } : { kind: 'package', text: facts.short, full: facts.full };
+}

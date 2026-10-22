@@ -1333,7 +1333,8 @@ export function ServiceList({ onManageService }: ServiceListProps) {
     // Ready bundles (alpha.94, D-034). A mail bundle opens the mail install
     // dialogue of its profile, unchanged; a database or web bundle asks once
     // and then installs its missing components in order, one component
-    // install at a time; "Verify" of such a bundle reads the components again.
+    // install at a time (alpha.101: it has no Verify; the page's Rescan reads
+    // the components again).
     // Hazır paketler: posta paketi kendi profilinin penceresini açar; veritabanı
     // ve web paketi bir kez sorar ve eksik bileşenleri sırayla kurar.
     // Before every step the page's change gate is read again: an unverified
@@ -1383,29 +1384,6 @@ export function ServiceList({ onManageService }: ServiceListProps) {
         }
         setBundleTarget(bundle);
     };
-    // Verify of a component bundle is a rescan. While a component operation
-    // runs (this page's, a bundle's, or one the server reports active) a
-    // rescan is refused as busy, so it is not offered and says why (alpha.94
-    // review item 2). Since alpha.96 it is also held, with the server's own
-    // reason, while the readiness read says the server is not ready for any
-    // other reason (a busy host lock, a running package manager, a state that
-    // could not be verified): the rescan could get a "busy" answer then, and
-    // the page re-reads readiness by itself, so Verify comes back on its own.
-    // Bileşen paketinin Doğrula'sı yeniden taramadır; bir bileşen işlemi
-    // sürerken ya da hazırlık okuması sunucunun hazır olmadığını söylerken
-    // sunulmaz ve nedenini söyler.
-    const hostOperationActive = hostMutationReadiness?.ready === false
-        && (hostMutationReadiness.reason === 'panel_operation_active' || hostMutationReadiness.reason === 'agent_mutation_active');
-    const hostNotReadyReason = hostMutationReadiness?.ready === false && !hostOperationActive
-        ? t(`services.mutationReadiness.${hostMutationReadiness.reason ?? 'state_unverified'}` as Parameters<typeof t>[0])
-        : null;
-    const bundleVerifyHeld = componentOperation.locked || hostOperationActive || (bundleSequence.run !== null && bundleSequence.run.phase !== 'stopped')
-        ? t('services.bundles.verifyBusy')
-        : hostNotReadyReason
-            ? hostNotReadyReason
-            : scanning
-                ? t('services.bundles.verifyScanning')
-                : null;
     const confirmComponentBundle = () => {
         const bundle = bundleTarget;
         setBundleTarget(null);
@@ -1810,11 +1788,9 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                         run={bundleSequence.run}
                                         disabled={mutationControlsDisabled || componentOperation.locked || (cat === 'email' && !dnsIdentityReady)}
                                         scanning={scanning}
-                                        verifyHeld={bundleVerifyHeld}
                                         notice={cat === 'email' ? mailNotice : undefined}
                                         onMail={openMailBundle}
                                         onComponents={openComponentBundle}
-                                        onVerify={() => void scan()}
                                     />
                                 )}
                                 {isOpen && group.length > 0 && (
@@ -1930,6 +1906,11 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                                 state that must stand out), not installed (a
                                                                 hollow ring) and not checked.
                                                                 Dört ton: çalışıyor, durdu, kurulu değil, bakılmadı. */}
+                                                            {/* The installed bundle's dialogue says the same word
+                                                                for each part (componentStateWord in
+                                                                lib/serviceStatus.ts, alpha.101); the two are
+                                                                held equal by ready-bundles-mounted.
+                                                                Kurulu paket penceresi aynı sözü söyler. */}
                                                             <StatusDot tone={notChecked(s) ? 'unknown' : !s.is_installed ? 'idle' : (running || s.kind === 'tool' || s.status === 'installed') ? 'success' : 'danger'} />
                                                             {notChecked(s)
                                                                 ? t('services.notChecked')

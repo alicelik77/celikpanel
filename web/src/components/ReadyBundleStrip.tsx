@@ -8,7 +8,7 @@
 // Hazır paketler şeridi: bir Bileşenler bölümünün başında tek satır. Paket,
 // altındaki satırlar için bir kısayoldur, ikinci bir kurulum adresi değildir.
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Check, DownloadCloud, Layers, ScanSearch, Wrench } from 'lucide-react';
+import { Check, DownloadCloud, Layers, Wrench } from 'lucide-react';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
 import { Button, Checking, Dialog, KeepWords, StatusDot } from './ui';
@@ -25,9 +25,22 @@ import {
     type ReadyBundle,
 } from '../lib/readyBundles';
 import { componentIcon } from '../lib/componentIcons';
+import { COMPONENT_STATE_KEYS, componentStateWord } from '../lib/serviceStatus';
+import { componentVersionText } from '../lib/packageVersion';
 import type { InstallOperationRequest } from './ComponentOperation';
 
-interface ComponentLite { id: string; name: string; category?: string; is_installed: boolean | null }
+// A component as the rows have it: the installed bundle's dialogue says each
+// part's state and version from these same fields (alpha.101).
+// Satırlardaki bileşen; kurulu paket penceresi durumu ve sürümü aynı alanlardan söyler.
+interface ComponentLite {
+    id: string;
+    name: string;
+    category?: string;
+    is_installed: boolean | null;
+    kind?: string;
+    status?: string;
+    versions?: string[];
+}
 interface ProfileLite { id: string; name: string; warning?: string; latest_attempt_error?: string }
 
 // Why a sequence stopped before its last component:
@@ -210,11 +223,9 @@ export function ReadyBundleStrip({
     run,
     disabled,
     scanning,
-    verifyHeld,
     notice,
     onMail,
     onComponents,
-    onVerify,
 }: {
     category: string;
     bundles: readonly ReadyBundle[];
@@ -225,13 +236,10 @@ export function ReadyBundleStrip({
     /** Controls that change the server. */
     disabled: boolean;
     scanning: boolean;
-    /** Why Verify (a rescan) cannot be pressed now, or null when it can. */
-    verifyHeld: string | null;
     /** One line said for the whole category (mail DNS); the chips stay beside it. */
     notice?: ReactNode;
     onMail: (bundle: ReadyBundle) => void;
     onComponents: (bundle: ReadyBundle) => void;
-    onVerify: (bundle: ReadyBundle) => void;
 }) {
     const { t } = useI18n();
     const [details, setDetails] = useState<string | null>(null);
@@ -279,7 +287,14 @@ export function ReadyBundleStrip({
         const vars = bundle.blocked_vars ?? {};
         if (bundle.blocked_code === 'component_requires' && vars.required) return t('services.bundles.short.component_requires', { required: requirementText(vars.required, t) });
         if (bundle.blocked_code === 'component_conflict' && vars.conflicting) return t('services.bundles.short.component_conflict', { conflicting: vars.conflicting });
-        if (bundle.blocked_code === 'component_not_installable') return t('services.bundles.short.component_not_installable');
+        // alpha.101: a bundle is blocked whole when one part is not offered
+        // here (phpPgAdmin on Arch); the chip names that part plainly.
+        // Bir parça burada sunulmuyorsa paketin tamamı engellidir; çip o parçayı adlandırır.
+        if (bundle.blocked_code === 'component_not_installable') {
+            return vars.component
+                ? t('services.bundles.short.component_not_installable_named', { component: vars.component })
+                : t('services.bundles.short.component_not_installable');
+        }
         if (bundle.blocked_code === 'dns_identity_not_ready') return t('services.bundles.short.dns_identity_not_ready');
         if (bundle.blocked_code === 'hostname_unknown') return t('services.bundles.short.hostname_unknown');
         return t('services.bundles.short.other');
@@ -467,24 +482,25 @@ export function ReadyBundleStrip({
                     services={services}
                     reason={reasonText(open.bundle)}
                     repairDisabled={disabled || runActive}
-                    verifyHeld={verifyHeld}
                     onClose={() => setDetails(null)}
                     onRepair={() => { setDetails(null); onMail(open.bundle); }}
-                    onVerify={() => { if (verifyHeld !== null) return; setDetails(null); onVerify(open.bundle); }}
                 />
             )}
         </div>
     );
 }
 
-// An installed bundle's dialogue: what it is made of, that it is installed
-// and verified (or not yet verified, and why), and the one thing that can be
-// done with it: Repair for a mail bundle (the profile install completes and
-// proves a mail setup) or Verify for a component bundle (it reads the
-// components again and changes nothing). This replaces the "· Repair" links
-// that stood on the strip.
-// Kurulu paketin penceresi: neden oluştuğu, kurulu ve doğrulandığı ve onunla
-// yapılabilecek tek şey: posta paketinde Onar, bileşen paketinde Doğrula.
+// An installed bundle's dialogue: what it is made of, each part with the
+// state and version its row says (alpha.101, owner's screens on Frankfurt:
+// "Already installed" beside every part said nothing), that it is installed
+// and verified (or not yet verified, with the part that is not running
+// visible), and the one thing that can be done with it: Repair for a mail
+// bundle (the profile install completes and proves a mail setup). A component
+// bundle has no button of its own: the page's Rescan reads the components
+// again, and a stopped part is started from its row.
+// Kurulu paketin penceresi: her parça satırının söylediği durum ve sürümle;
+// posta paketinde Onar. Bileşen paketinin kendi düğmesi yoktur: sayfanın
+// Yeniden tara'sı bileşenleri yeniden okur.
 export function BundleInstalledDialog({
     bundle,
     includedIn,
@@ -492,10 +508,8 @@ export function BundleInstalledDialog({
     services,
     reason,
     repairDisabled,
-    verifyHeld,
     onClose,
     onRepair,
-    onVerify,
 }: {
     bundle: ReadyBundle;
     includedIn?: ReadyBundle;
@@ -503,21 +517,31 @@ export function BundleInstalledDialog({
     services: readonly ComponentLite[];
     reason: string;
     repairDisabled: boolean;
-    verifyHeld: string | null;
     onClose: () => void;
     onRepair: () => void;
-    onVerify: () => void;
 }) {
     const { t } = useI18n();
     const nameOf = (id: string) => componentName(services.find((service) => service.id === id) ?? id, t);
     const name = bundleName(bundle, t, nameOf);
-    const installed = new Set(services.filter((service) => service.is_installed === true).map((service) => service.id));
     const mail = bundle.action_route === 'mail_profile';
     const state = includedIn
         ? t('services.bundles.installed.included', { name, other: bundleName(includedIn, t, nameOf) })
         : verified
             ? t('services.bundles.installed.verified', { name })
             : t('services.bundles.installed.unverified', { name });
+    // What a part says: its row's own word and version ("Running · 1.26.3",
+    // "Installed · 7.14.7", "Stopped"), or "Not needed" for a part whose role
+    // another installed component fills (Nginx where Apache serves).
+    // Bir parçanın söylediği: satırın kendi sözü ve sürümü ya da "Gerekmiyor".
+    const partText = (service: ComponentLite | undefined): { word: string; text: string; title?: string } => {
+        if (!service || service.is_installed !== true) return { word: 'notNeeded', text: t('services.bundles.dialog.notNeeded') };
+        const word = componentStateWord(service);
+        const said = t(COMPONENT_STATE_KEYS[word] as TranslationKey);
+        const version = componentVersionText(service);
+        if (!version) return { word, text: said };
+        if (version.kind === 'several') return { word, text: `${said} · ${t('services.versionSeveral')}` };
+        return { word, text: `${said} · ${version.text}`, title: version.kind === 'package' ? version.full : version.text };
+    };
     return (
         <Dialog
             id='bundle-installed'
@@ -533,11 +557,6 @@ export function BundleInstalledDialog({
                             {t('services.bundles.repairEllipsis')}
                         </Button>
                     )}
-                    {!mail && (
-                        <Button variant='secondary' icon={ScanSearch} disabled={verifyHeld !== null} title={verifyHeld ?? undefined} onClick={onVerify}>
-                            {t('services.bundles.verify')}
-                        </Button>
-                    )}
                 </>
             }
         >
@@ -547,28 +566,39 @@ export function BundleInstalledDialog({
                     : <span className='mt-1.5'><StatusDot tone='unknown' /></span>}
                 <span>{state}{reason && <span className='mt-0.5 block text-xs leading-5 text-fg-muted'>{reason}</span>}</span>
             </p>
-            <ul className='mb-3 overflow-hidden rounded-lg border border-border'>
+            <ul className='overflow-hidden rounded-lg border border-border'>
                 {bundle.components.map((id, index) => {
                     const service = services.find((candidate) => candidate.id === id);
                     const Icon = componentIcon(id, service?.category ?? bundle.category);
-                    const present = installed.has(id);
+                    const part = partText(service);
                     return (
-                        <li key={id} className={`flex items-center gap-3 px-3 py-2 text-sm ${index > 0 ? 'border-t border-border' : ''}`} data-bundle-part={present ? 'installed' : 'notNeeded'}>
+                        <li
+                            key={id}
+                            className={`flex items-center gap-3 px-3 py-2 text-sm ${index > 0 ? 'border-t border-border' : ''}`}
+                            data-bundle-part={part.word === 'notNeeded' ? 'notNeeded' : 'installed'}
+                            data-bundle-part-state={part.word}
+                        >
                             <Icon className='h-4 w-4 shrink-0 text-fg-muted' aria-hidden='true' />
-                            <span className='text-fg'>{nameOf(id)}</span>
-                            <span className='ml-auto text-xs text-fg-subtle'>
-                                {present ? t('services.bundles.dialog.alreadyInstalled') : t('services.bundles.dialog.notNeeded')}
+                            <span className='shrink-0 text-fg'>{nameOf(id)}</span>
+                            <span
+                                className={`ml-auto min-w-0 truncate text-right text-xs ${part.word === 'stopped' ? 'font-medium text-danger' : part.word === 'notNeeded' ? 'text-fg-subtle' : 'text-fg-muted'}`}
+                                title={part.title}
+                            >
+                                {part.text}
                             </span>
                         </li>
                     );
                 })}
             </ul>
-            <p className='text-sm leading-6 text-fg-muted'>
-                {includedIn
-                    ? t('services.bundles.installed.includedHow', { other: bundleName(includedIn, t, nameOf) })
-                    : mail ? t('services.bundles.installed.repairHow') : t('services.bundles.installed.verifyHow')}
-            </p>
-            {!mail && verifyHeld && <p className='mt-2 text-sm leading-6 text-fg-muted' data-bundle-verify-held=''>{verifyHeld}</p>}
+            {(includedIn || mail || !verified) && (
+                <p className='mt-3 text-sm leading-6 text-fg-muted' data-bundle-installed-how=''>
+                    {includedIn
+                        ? t('services.bundles.installed.includedHow', { other: bundleName(includedIn, t, nameOf) })
+                        : mail
+                            ? t('services.bundles.installed.repairHow')
+                            : t('services.bundles.installed.unverifiedHow', { rescan: t('services.rescan') })}
+                </p>
+            )}
         </Dialog>
     );
 }
