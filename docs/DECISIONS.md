@@ -516,7 +516,7 @@ source:
 - Roundcube's kept sentence names the Nginx and PHP-FPM packages (its `/webmail/`
   entry is removed), and a failed read for Roundcube shows what its removal
   deletes, not the package purge.
-- The Agent tests (`go test ./cmd/agent/...`, in a clean mount namespace) are run
+- The Agent package's own tests (in a clean mount namespace) are run
   and recorded, since the Agent's uninstall and update tests changed.
 
 **Second review round (2026-10-22, before any publication).** A re-check asked for

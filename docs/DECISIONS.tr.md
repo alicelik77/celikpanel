@@ -512,7 +512,7 @@ incelemesi kaldırma davranışını değişmemiş buldu ve şunları istedi; ka
   (`/webmail/` kaydı silinir); Roundcube için başarısız bir okuma, paket purge'ünü
   değil kaldırmanın sildiğini gösterir.
 - Agent'ın kaldırma ve güncelleme testleri değiştiği için Agent testleri
-  (`go test ./cmd/agent/...`, temiz bir mount ad alanında) koşturulur ve kaydedilir.
+  (Agent paketinin kendi testleri, temiz bir mount ad alanında) koşturulur ve kaydedilir.
 
 **İkinci inceleme turu (22 Ekim 2026, her yayından önce).** Yeniden denetim
 şunları istedi; kaynaktadırlar: kendi hatasını ya da hata kodunu taşıyan bir
