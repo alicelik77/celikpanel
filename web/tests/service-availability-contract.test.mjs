@@ -224,7 +224,7 @@ test('not-installed Roundcube keeps a fail-closed cleanup path across reloads', 
   // warning only when that could not be read.
   assert.match(dialog, /t\('services\.cleanupWebmailWarn'\)/);
   assert.match(dialog, /<RemovalImpactSection/);
-  assert.match(serviceList, /t\('services\.uninstallWarn'\)/);
+  assert.match(serviceList, /'services\.uninstallWarn'/);
   assert.match(dialog, /!retryCleanup && \(/);
   assert.match(dialog, /error \? 'services\.retryWebmailCleanup' : 'services\.cleanupWebmail'/);
 

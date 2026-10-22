@@ -103,6 +103,10 @@ const SERVER = [
   component('roundcube', 'email', true, { kind: 'tool', packages: [] }),
   component('certbot', 'security', true, { kind: 'tool' }),
   component('cron', 'system', true),
+  component('fail2ban', 'security', true),
+  component('nftables', 'security', true, { kind: 'tool' }),
+  component('valkey', 'cache', true),
+  component('spamassassin', 'email', true),
   component('redis', 'cache', false),
 ];
 const payload = (services = SERVER) => ({
@@ -114,7 +118,7 @@ const payload = (services = SERVER) => ({
   bundles: [],
 });
 const impact = (extra = {}) => ({
-  service_id: 'x', removal: 'packages', package_family: 'apt', packages: [], all_versions: false, firewall_ports: [],
+  service_id: 'x', removal: 'packages', has_units: true, setup_required: false, package_family: 'apt', packages: [], all_versions: false, firewall_ports: [],
   mail_filter_rewired: false, database_tools_reconfigured: false, required_by: [], bundles: [], hosted: null, ...extra,
 });
 const sites = ['a.example (ali)', 'b.example (ali)', 'c.example (veli)', 'd.example (veli)', 'e.example (ali)', 'f.example (ali)', 'g.example (ali)'];
@@ -129,7 +133,13 @@ const IMPACTS = {
     hosted: { kind: 'mail_addresses', count: 1, names: ['info@a.example'], blocks_removal: true } }),
   rspamd: impact({ packages: ['rspamd'], mail_filter_rewired: true, hosted: { kind: 'mail_domains', count: 1, names: ['a.example'], blocks_removal: false } }),
   roundcube: impact({ removal: 'webmail_tree', hosted: { kind: 'mailboxes', count: 0, names: [], blocks_removal: false } }),
-  certbot: impact({ packages: ['certbot'], package_family: 'pacman' }),
+  certbot: impact({ packages: ['certbot'], package_family: 'pacman', has_units: false, setup_required: true,
+    hosted: { kind: 'certificates', count: 3, names: ['panel.example.com', 'mail.example.com', 'a.example'], blocks_removal: false } }),
+  fail2ban: impact({ packages: ['fail2ban'], package_family: 'pacman' }),
+  nftables: impact({ packages: ['nftables'], has_units: false, setup_required: true,
+    hosted: { kind: 'firewall', count: 0, names: [], blocks_removal: false, firewall: { known: true, enabled: true, open_ports: 4 } } }),
+  valkey: impact({ packages: ['valkey-server'], hosted: { kind: 'unrecorded', count: 0, names: [], blocks_removal: false } }),
+  spamassassin: impact({ removal: 'unsupported', package_family: 'pacman', mail_filter_rewired: true }),
   cron: { __status: 409, body: { error: 'CelikPanel does not remove this server’s cron service.', code: 'NATIVE_CRON_REMOVAL_REFUSED' } },
 };
 
@@ -209,8 +219,10 @@ test('Nginx: sites by name with "+N more", the refusal they cause, who needs it,
     assert.equal(said['bundle-web.nginx_php'], say('services.removal.bundle', { bundle: words['services.bundles.name.web_nginx_php'] }));
     assert.equal(said['bundle-db.mariadb.admin'], say('services.removal.bundle', { bundle: words['services.bundles.name.db_mariadb_admin'] }));
     assert.equal(said.ports, say('services.removal.ports', { ports: '80/tcp, 443/tcp' }));
-    assert.deepEqual(sentenceKeys(), ['services.removal.removed.packages', 'services.removal.kept.packages']);
+    assert.deepEqual(sentenceKeys(), ['services.removal.removed.stopUnits', 'services.removal.removed.apt', 'services.removal.kept.packages']);
     assert.ok(label(tree.root).includes('apt-get purge --auto-remove'));
+    // apt's --auto-remove is system wide, and the dialog says so.
+    assert.match(say('services.removal.removed.apt', { name: 'Nginx' }), /any automatically installed package that nothing needs any more \(not only those installed for Nginx\)/);
     // What the server loses comes first; red stays on the Remove button only.
     const sections = tree.root.findAll((node) => node.props && (node.props['data-removal-affected'] !== undefined || node.props['data-removal-removed'] !== undefined || node.props['data-removal-kept'] !== undefined))
       .map((node) => Object.keys(node.props).find((key) => key.startsWith('data-removal-')));
@@ -237,8 +249,13 @@ test('PostgreSQL: databases by name, every version removed, and the database-fil
     const said = lines();
     assert.equal(said.hosted, say('services.removal.hosted.databases', { name: 'PostgreSQL', count: 2, names: 'shop, blog' }));
     assert.equal(said['bundle-db.postgresql'], say('services.removal.bundle', { bundle: words['services.bundles.name.db_postgresql'] }));
-    assert.deepEqual(sentenceKeys(), ['services.removal.removed.packages', 'services.removal.removed.allVersions',
-      'services.removal.kept.packages', 'services.removal.kept.databaseFiles']);
+    assert.deepEqual(sentenceKeys(), ['services.removal.removed.stopUnits', 'services.removal.removed.apt', 'services.removal.removed.allVersions',
+      'services.removal.kept.packages']);
+    // The database files' warning is its own line, not "what stays".
+    const warning = tree.root.findAll((node) => node.props && node.props['data-removal-warning'] !== undefined);
+    assert.deepEqual(warning.map((node) => node.props['data-removal-warning']), ['services.removal.warn.databaseFiles']);
+    const kept = tree.root.findAll((node) => node.props && node.props['data-removal-kept'] !== undefined)[0];
+    assert.ok(!label(kept).includes(say('services.removal.warn.databaseFiles')));
   } finally { await unmount(); }
 });
 
@@ -265,15 +282,65 @@ test('Rspamd: mail domains whose mail is no longer checked, never a refusal, and
   } finally { await unmount(); }
 });
 
-test('certbot: nothing else depends on it; pacman names its own command', async () => {
+const nothingLine = () => tree.root.findAll((node) => node.props && node.props['data-removal-nothing'] !== undefined);
+
+test('certbot: the certificates whose renewal stops and server setup\'s requirement, never "nothing depends"; no units to stop; pacman names its own command', async () => {
   await mount();
   try {
     await openRemoval('certbot');
-    assert.deepEqual(lines(), {});
-    const nothing = tree.root.findAll((node) => node.props && node.props['data-removal-nothing'] !== undefined)[0];
-    assert.equal(label(nothing), say('services.removal.nothing', { name: nameOf('certbot') }));
+    const said = lines();
+    assert.equal(said.hosted, say('services.removal.hosted.certificates', { count: 3, names: 'panel.example.com, mail.example.com, a.example' }));
+    assert.equal(said.setup, say('services.removal.setupRequired', { name: nameOf('certbot') }));
+    assert.equal(nothingLine().length, 0, 'certbot was said to have nothing depending on it');
+    assert.deepEqual(sentenceKeys(), ['services.removal.removed.pacman', 'services.removal.kept.packages']);
     assert.ok(label(tree.root).includes('pacman -Rns'));
     assert.ok(!label(tree.root).includes('apt-get'));
+  } finally { await unmount(); }
+});
+
+test('the firewall engine: the panel firewall it enforces (on, off, not known) and server setup\'s requirement', async () => {
+  for (const [firewall, key, vars] of [
+    [{ known: true, enabled: true, open_ports: 4 }, 'services.removal.hosted.firewall.on', { n: 4 }],
+    [{ known: true, enabled: false, open_ports: 0 }, 'services.removal.hosted.firewall.off', {}],
+    [{ known: false, enabled: false, open_ports: 0 }, 'services.removal.hosted.firewall.unknown', {}],
+  ]) {
+    await mount({ impacts: { ...IMPACTS, nftables: { ...IMPACTS.nftables, hosted: { ...IMPACTS.nftables.hosted, firewall } } } });
+    try {
+      await openRemoval('nftables');
+      const said = lines();
+      assert.equal(said.firewall, say(key, { name: nameOf('nftables'), ...vars }));
+      assert.ok(said.setup);
+      assert.equal(nothingLine().length, 0);
+      assert.ok(!sentenceKeys().includes('services.removal.removed.stopUnits'), 'a tool without units has nothing to stop');
+    } finally { await unmount(); }
+  }
+});
+
+test('a cache: CelikPanel does not record which sites use it, never "nothing depends on it"', async () => {
+  await mount();
+  try {
+    await openRemoval('valkey');
+    assert.equal(lines().unrecorded, say('services.removal.hosted.unrecorded', { name: nameOf('valkey') }));
+    assert.equal(nothingLine().length, 0);
+  } finally { await unmount(); }
+});
+
+test('without packages for this package manager the dialog says the removal is refused, with no purge and no command', async () => {
+  await mount();
+  try {
+    await openRemoval('spamassassin');
+    assert.deepEqual(sentenceKeys(), ['services.removal.removed.unsupported']);
+    assert.ok(!label(tree.root).includes(say('services.removal.command')));
+    assert.equal(tree.root.findAll((node) => node.props && node.props['data-removal-kept'] !== undefined).length, 0);
+  } finally { await unmount(); }
+});
+
+test('Fail2ban: nothing the Panel records depends on it', async () => {
+  await mount();
+  try {
+    await openRemoval('fail2ban');
+    assert.deepEqual(lines(), {});
+    assert.equal(label(nothingLine()[0]), say('services.removal.nothing', { name: nameOf('fail2ban') }));
   } finally { await unmount(); }
 });
 
@@ -283,6 +350,9 @@ test('Roundcube: the webmail tree, not packages; no mailbox yet is "nothing else
     await openRemoval('roundcube');
     assert.deepEqual(sentenceKeys(), ['services.removal.removed.webmailTree', 'services.removal.kept.webmailTree']);
     assert.ok(!label(tree.root).includes(say('services.removal.command')));
+    // The /webmail/ entry goes; the Nginx and PHP-FPM packages stay.
+    assert.match(say('services.removal.kept.webmailTree'), /Nginx and PHP-FPM packages/);
+    assert.equal(tree.root.findAll((node) => node.props && node.props['data-removal-packages'] !== undefined).length, 0);
     assert.ok(tree.root.findAll((node) => node.props && node.props['data-removal-nothing'] !== undefined).length === 1);
   } finally { await unmount(); }
 });
@@ -295,6 +365,19 @@ test('a component the Panel never removes answers with its own refusal, said as 
     const text = label(tree.root);
     assert.ok(text.includes(say('err.NATIVE_CRON_REMOVAL_REFUSED')), text.slice(0, 400));
     assert.ok(!text.includes(say('services.removal.unknown', { name: nameOf('cron') })));
+  } finally { await unmount(); }
+});
+
+test('a failed read for Roundcube says what its removal deletes, never the package purge', async () => {
+  await mount({ impacts: {} });
+  try {
+    await openRemoval('roundcube');
+    assert.equal(dialog().props['data-removal-impact'], 'unknown');
+    const text = label(tree.root);
+    assert.ok(text.includes(say('services.removal.removed.webmailTree')));
+    assert.ok(!text.includes(say('services.uninstallWarn')));
+    assert.equal(tree.root.findAll((node) => node.props && node.props['data-removal-packages'] !== undefined)
+      .flatMap((node) => node.findAll((child) => child.type === 'span')).length, 0, 'a package chip for Roundcube');
   } finally { await unmount(); }
 });
 
@@ -349,13 +432,20 @@ test('Turkish: the dialog speaks Turkish with no raw key', async () => {
 
 test('the sentence chooser follows the uninstall path for each class', () => {
   const base = decodeRemovalImpact(impact({ packages: ['x'] }));
-  assert.deepEqual(removalSentences(base), { removed: ['services.removal.removed.packages'], kept: ['services.removal.kept.packages'], command: 'apt-get purge --auto-remove' });
-  assert.equal(removalSentences({ ...base, package_family: 'dnf' }).command, null, 'no command is claimed where the uninstall does not run');
-  assert.deepEqual(removalSentences({ ...base, database_tools_reconfigured: true }).removed, ['services.removal.removed.packages', 'services.removal.removed.databaseTools']);
-  assert.deepEqual(removalSentences({ ...base, hosted: { kind: 'databases', count: 0, names: [], blocks_removal: false } }).kept,
-    ['services.removal.kept.packages', 'services.removal.kept.databaseFiles']);
+  assert.deepEqual(removalSentences(base), { removed: ['services.removal.removed.stopUnits', 'services.removal.removed.apt'], kept: ['services.removal.kept.packages'], warnings: [], command: 'apt-get purge --auto-remove' });
+  assert.deepEqual(removalSentences({ ...base, package_family: 'pacman', has_units: false }).removed, ['services.removal.removed.pacman']);
+  const dnf = removalSentences({ ...base, package_family: 'dnf' });
+  assert.equal(dnf.command, null, 'no command is claimed where the uninstall does not run');
+  assert.deepEqual(dnf.removed, ['services.removal.removed.stopUnits', 'services.removal.removed.packages']);
+  assert.deepEqual(removalSentences({ ...base, has_units: false, database_tools_reconfigured: true }).removed, ['services.removal.removed.apt', 'services.removal.removed.databaseTools']);
+  const db = removalSentences({ ...base, hosted: { kind: 'databases', count: 0, names: [], blocks_removal: false } });
+  assert.deepEqual(db.kept, ['services.removal.kept.packages']);
+  assert.deepEqual(db.warnings, ['services.removal.warn.databaseFiles']);
+  assert.deepEqual(removalSentences({ ...base, removal: 'unsupported' }), { removed: ['services.removal.removed.unsupported'], kept: [], warnings: [], command: null });
   assert.deepEqual(removalSentences(decodeRemovalImpact(impact({ removal: 'webmail_tree' }))).removed, ['services.removal.removed.webmailTree']);
-  for (const bad of [null, {}, impact({ hosted: { kind: 'planets', count: 1, names: [], blocks_removal: false } }), impact({ required_by: [1] }), impact({ hosted: { kind: 'sites', count: -1, names: [], blocks_removal: true } })]) {
+  for (const bad of [null, {}, impact({ hosted: { kind: 'planets', count: 1, names: [], blocks_removal: false } }), impact({ required_by: [1] }), impact({ hosted: { kind: 'sites', count: -1, names: [], blocks_removal: true } }),
+    impact({ has_units: 'yes' }), impact({ setup_required: undefined }), impact({ removal: 'maybe' }),
+    impact({ hosted: { kind: 'firewall', count: 0, names: [], blocks_removal: false, firewall: { known: true, enabled: true, open_ports: -1 } } })]) {
     assert.equal(decodeRemovalImpact(bad), null);
   }
 });
@@ -371,7 +461,9 @@ test('every removal text exists in English and Turkish in the components part, T
   // The texts say what the code does: no mockup sentence about kept
   // configuration files survives, and the kept text names who decides.
   assert.ok(!/configuration (files|backups) (stay|are not)/i.test(Object.values(enComponents).join('\n')));
-  assert.match(enComponents['services.removal.removed.packages'], /configuration files/);
+  assert.match(enComponents['services.removal.removed.apt'], /configuration files, and any automatically installed package that nothing needs any more/);
+  assert.match(enComponents['services.removal.removed.pacman'], /dependencies that nothing else needs/);
+  assert.ok(!('services.removal.kept.databaseFiles' in enComponents), 'the database warning is no longer a kept sentence');
   assert.match(enComponents['services.removal.kept.packages'], /decided by your distribution/);
 });
 

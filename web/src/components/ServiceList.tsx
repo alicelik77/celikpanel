@@ -3626,9 +3626,12 @@ const WEBMAIL_CLEANUP_PATHS: { paths: string[]; key: Parameters<ReturnType<typeo
 // Panel's own refusals still apply when Remove is pressed).
 // Kaldırmanın bu sunucuda neyi etkilediği, Panel'in yanıtıyla. Pencere bir
 // kez okur; okunamazsa söyler ve kaldırma yine izinlidir.
-export type RemovalHostedKind = 'sites' | 'php_sites' | 'node_sites' | 'databases' | 'mail_addresses' | 'mail_domains' | 'mailboxes';
+export type RemovalHostedKind = 'sites' | 'php_sites' | 'node_sites' | 'databases' | 'mail_addresses' | 'mail_domains' | 'mailboxes'
+    | 'certificates' | 'firewall' | 'unrecorded';
 export interface RemovalImpact {
-    removal: 'packages' | 'webmail_tree';
+    removal: 'packages' | 'webmail_tree' | 'unsupported';
+    has_units: boolean;
+    setup_required: boolean;
     package_family: string;
     packages: string[];
     all_versions: boolean;
@@ -3637,9 +3640,12 @@ export interface RemovalImpact {
     database_tools_reconfigured: boolean;
     required_by: string[];
     bundles: { id: string; name_code: string }[];
-    hosted: { kind: RemovalHostedKind; count: number; names: string[]; blocks_removal: boolean } | null;
+    hosted: {
+        kind: RemovalHostedKind; count: number; names: string[]; blocks_removal: boolean;
+        firewall?: { known: boolean; enabled: boolean; open_ports: number };
+    } | null;
 }
-const REMOVAL_HOSTED_KINDS: ReadonlySet<string> = new Set(['sites', 'php_sites', 'node_sites', 'databases', 'mail_addresses', 'mail_domains', 'mailboxes']);
+const REMOVAL_HOSTED_KINDS: ReadonlySet<string> = new Set(['sites', 'php_sites', 'node_sites', 'databases', 'mail_addresses', 'mail_domains', 'mailboxes', 'certificates', 'firewall', 'unrecorded']);
 // How long the dialog waits for the read before it says it could not read.
 // Okumanın sınırı; sonra okunamadığını söyler.
 export const REMOVAL_IMPACT_READ_BOUND_MS = 10_000;
@@ -3653,7 +3659,8 @@ const isStrings = (value: unknown): value is string[] => Array.isArray(value) &&
 export function decodeRemovalImpact(value: unknown): RemovalImpact | null {
     if (!value || typeof value !== 'object') return null;
     const v = value as Record<string, unknown>;
-    if (v.removal !== 'packages' && v.removal !== 'webmail_tree') return null;
+    if (v.removal !== 'packages' && v.removal !== 'webmail_tree' && v.removal !== 'unsupported') return null;
+    if (typeof v.has_units !== 'boolean' || typeof v.setup_required !== 'boolean') return null;
     if (typeof v.package_family !== 'string' || !isStrings(v.packages) || !isStrings(v.firewall_ports) || !isStrings(v.required_by)) return null;
     if (typeof v.all_versions !== 'boolean' || typeof v.mail_filter_rewired !== 'boolean' || typeof v.database_tools_reconfigured !== 'boolean') return null;
     if (!Array.isArray(v.bundles) || !v.bundles.every((b) => b && typeof b === 'object' && typeof (b as { id?: unknown }).id === 'string' && typeof (b as { name_code?: unknown }).name_code === 'string')) return null;
@@ -3663,9 +3670,17 @@ export function decodeRemovalImpact(value: unknown): RemovalImpact | null {
         if (!h || typeof h !== 'object' || typeof h.kind !== 'string' || !REMOVAL_HOSTED_KINDS.has(h.kind)) return null;
         if (typeof h.count !== 'number' || !Number.isInteger(h.count) || h.count < 0 || !isStrings(h.names) || typeof h.blocks_removal !== 'boolean') return null;
         hosted = { kind: h.kind as RemovalHostedKind, count: h.count, names: h.names, blocks_removal: h.blocks_removal };
+        if (h.firewall !== undefined) {
+            const f = h.firewall as Record<string, unknown> | null;
+            if (!f || typeof f !== 'object' || typeof f.known !== 'boolean' || typeof f.enabled !== 'boolean'
+                || typeof f.open_ports !== 'number' || !Number.isInteger(f.open_ports) || f.open_ports < 0) return null;
+            hosted.firewall = { known: f.known, enabled: f.enabled, open_ports: f.open_ports };
+        }
     }
     return {
         removal: v.removal,
+        has_units: v.has_units,
+        setup_required: v.setup_required,
         package_family: v.package_family,
         packages: v.packages,
         all_versions: v.all_versions,
@@ -3738,24 +3753,40 @@ function useRemovalImpact(serviceId: string, enabled: boolean): { read: RemovalR
 // removePackagesContext: apt-get purge -y --auto-remove, pacman -Rns
 // --noconfirm). Each key is a sentence this dialog may say.
 // Silinen ve kalan cümleler, kaldırma yolunun bu bileşen için yaptığına göre.
-export function removalSentences(impact: RemovalImpact): { removed: TranslationKey[]; kept: TranslationKey[]; command: string | null } {
+export function removalSentences(impact: RemovalImpact): { removed: TranslationKey[]; kept: TranslationKey[]; warnings: TranslationKey[]; command: string | null } {
     if (impact.removal === 'webmail_tree') {
-        return { removed: ['services.removal.removed.webmailTree'], kept: ['services.removal.kept.webmailTree'], command: null };
+        return { removed: ['services.removal.removed.webmailTree'], kept: ['services.removal.kept.webmailTree'], warnings: [], command: null };
     }
-    const removed: TranslationKey[] = ['services.removal.removed.packages'];
+    // No catalogue packages on this package manager: the Agent refuses, so
+    // nothing is said to be removed (Agent.UninstallService).
+    if (impact.removal === 'unsupported') {
+        return { removed: ['services.removal.removed.unsupported'], kept: [], warnings: [], command: null };
+    }
+    // Units are stopped first only when the catalogue names some; a tool
+    // without units has nothing to stop. apt's purge --auto-remove also takes
+    // every automatically installed package nothing needs any more, system
+    // wide; pacman -Rns takes the dependencies nothing else needs.
+    const removed: TranslationKey[] = impact.has_units ? ['services.removal.removed.stopUnits'] : [];
+    let command: string | null = null;
+    if (impact.package_family === 'apt') {
+        removed.push('services.removal.removed.apt');
+        command = 'apt-get purge --auto-remove';
+    } else if (impact.package_family === 'pacman') {
+        removed.push('services.removal.removed.pacman');
+        command = 'pacman -Rns';
+    } else {
+        removed.push('services.removal.removed.packages');
+    }
     if (impact.all_versions) removed.push('services.removal.removed.allVersions');
     if (impact.mail_filter_rewired) removed.push('services.removal.removed.mailFilter');
     if (impact.database_tools_reconfigured) removed.push('services.removal.removed.databaseTools');
-    const kept: TranslationKey[] = ['services.removal.kept.packages'];
-    if (impact.hosted?.kind === 'databases') kept.push('services.removal.kept.databaseFiles');
-    let command: string | null = null;
-    if (impact.package_family === 'apt') command = 'apt-get purge --auto-remove';
-    if (impact.package_family === 'pacman') command = 'pacman -Rns';
-    return { removed, kept, command };
+    const warnings: TranslationKey[] = impact.hosted?.kind === 'databases' ? ['services.removal.warn.databaseFiles'] : [];
+    return { removed, kept: ['services.removal.kept.packages'], warnings, command };
 }
 
 function RemovalImpactSection({
     name,
+    serviceId,
     read,
     onRetry,
     nameOf,
@@ -3763,6 +3794,7 @@ function RemovalImpactSection({
     packages,
 }: {
     name: string;
+    serviceId: string;
     read: RemovalRead;
     onRetry: () => void;
     nameOf: (id: string) => string;
@@ -3797,14 +3829,17 @@ function RemovalImpactSection({
         return (
             <div className="space-y-3" data-removal-impact="unknown">
                 <CouldNotCheck text={t('services.removal.unknown', { name })} onRetry={onRetry} />
-                <p className="text-sm text-fg-muted">{t('services.uninstallWarn')}</p>
+                {/* Roundcube is not a package: its removal deletes the webmail tree. */}
+                <p className="text-sm text-fg-muted">{t(serviceId === 'roundcube' ? 'services.removal.removed.webmailTree' : 'services.uninstallWarn', { name })}</p>
                 {chips}
             </div>
         );
     }
     const { impact } = read;
     const sentences = removalSentences(impact);
-    const hosted = impact.hosted && impact.hosted.count > 0 ? impact.hosted : null;
+    // The firewall and the unrecorded kinds carry no list; a counted kind
+    // with nothing in it says nothing.
+    const hosted = impact.hosted && impact.hosted.count > 0 && !['firewall', 'unrecorded'].includes(impact.hosted.kind) ? impact.hosted : null;
     const shown = hosted ? hosted.names.slice(0, REMOVAL_IMPACT_NAMES_SHOWN) : [];
     const more = hosted ? hosted.count - shown.length : 0;
     const affected: { key: string; text: string; tone?: 'block' }[] = [];
@@ -3819,6 +3854,19 @@ function RemovalImpactSection({
         });
         if (hosted.blocks_removal) affected.push({ key: 'blocks', text: t('services.removal.blocks', { name }), tone: 'block' });
     }
+    if (impact.hosted?.kind === 'firewall') {
+        const firewall = impact.hosted.firewall;
+        affected.push({
+            key: 'firewall',
+            text: !firewall?.known
+                ? t('services.removal.hosted.firewall.unknown', { name })
+                : firewall.enabled
+                    ? t('services.removal.hosted.firewall.on', { name, n: firewall.open_ports })
+                    : t('services.removal.hosted.firewall.off', { name }),
+        });
+    }
+    if (impact.hosted?.kind === 'unrecorded') affected.push({ key: 'unrecorded', text: t('services.removal.hosted.unrecorded', { name }) });
+    if (impact.setup_required) affected.push({ key: 'setup', text: t('services.removal.setupRequired', { name }) });
     if (impact.required_by.length > 0) {
         affected.push({ key: 'required', text: t('services.removal.requiredBy', { name, names: impact.required_by.map(nameOf).join(', ') }) });
     }
@@ -3857,11 +3905,16 @@ function RemovalImpactSection({
                         {t('services.removal.command')} <span className="font-mono">{sentences.command}</span>
                     </p>
                 )}
+                {sentences.warnings.map((key) => (
+                    <p key={key} className="mt-2 rounded-lg border border-warning-mark/50 bg-warning-mark/20 px-3 py-2 text-fg" data-removal-warning={key}>{t(key, { name })}</p>
+                ))}
             </div>
+            {sentences.kept.length > 0 && (
             <div data-removal-kept="">
                 <p className="font-semibold text-fg">{t('services.removal.keptTitle')}</p>
                 {sentences.kept.map((key) => <p key={key} className="mt-1 text-fg-muted" data-removal-sentence={key}>{t(key, { name })}</p>)}
             </div>
+            )}
         </div>
     );
 }
@@ -3930,11 +3983,12 @@ function UninstallServiceDialog({
                     <div className="mb-4">
                         <RemovalImpactSection
                             name={componentName(service, t)}
+                            serviceId={service.id}
                             read={impact.read}
                             onRetry={impact.retry}
                             nameOf={nameOf}
                             bundleNameOf={bundleNameOf}
-                            packages={service.packages && service.packages.length > 0 ? service.packages : [service.id]}
+                            packages={service.id === 'roundcube' ? [] : service.packages && service.packages.length > 0 ? service.packages : [service.id]}
                         />
                     </div>
                 )}

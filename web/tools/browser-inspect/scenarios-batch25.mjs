@@ -5,8 +5,8 @@
 //
 //   y25firstvisit  /services in a fresh browser (no remembered view: the
 //                  installed view), then with a remembered "catalog"
-//   y25removal     the removal dialog for Nginx, PostgreSQL, Postfix and
-//                  certbot (Frankfurt-shaped server), Nginx while the read is
+//   y25removal     the removal dialog for Nginx, PostgreSQL, Postfix,
+//                  certbot and the firewall engine (Frankfurt-shaped server), Nginx while the read is
 //                  held open, and Nginx when the read fails
 //   y25setup       /server-setup as administrator, the rail with its new item,
 //                  /settings?section=setup (replaced by /server-setup),
@@ -26,7 +26,7 @@ import { batch20State } from './mock-batch20.mjs';
 import { batch21State } from './mock-batch21.mjs';
 
 const IMPACT = '/api/v1/service/removal-impact';
-const base0 = { removal: 'packages', package_family: 'apt', packages: [], all_versions: false, firewall_ports: [], mail_filter_rewired: false, database_tools_reconfigured: false, required_by: [], bundles: [], hosted: null };
+const base0 = { removal: 'packages', has_units: true, setup_required: false, package_family: 'apt', packages: [], all_versions: false, firewall_ports: [], mail_filter_rewired: false, database_tools_reconfigured: false, required_by: [], bundles: [], hosted: null };
 // Sample answers, shaped as cmd/panel/service_removal_impact.go answers.
 const IMPACTS = {
     nginx: { ...base0, service_id: 'nginx', packages: ['nginx'], firewall_ports: ['80/tcp', '443/tcp'], required_by: ['phpmyadmin', 'phppgadmin', 'roundcube'],
@@ -37,9 +37,12 @@ const IMPACTS = {
     postfix: { ...base0, service_id: 'postfix', packages: ['postfix'], firewall_ports: ['25/tcp', '465/tcp', '587/tcp'], required_by: ['rspamd', 'roundcube'],
         bundles: [{ id: 'mail.core', name_code: 'mail_core' }, { id: 'mail.webmail', name_code: 'mail_webmail' }, { id: 'mail.protected', name_code: 'mail_protected' }],
         hosted: { kind: 'mail_addresses', count: 3, names: ['info@example.com', 'sales@example.com', 'hello@example.net'], blocks_removal: true } },
-    certbot: { ...base0, service_id: 'certbot', packages: ['certbot'] },
+    certbot: { ...base0, service_id: 'certbot', packages: ['certbot'], has_units: false, setup_required: true,
+        hosted: { kind: 'certificates', count: 4, names: ['panel.example.com', 'mail.example.com', 'blog.example.com', 'shop.example.com'], blocks_removal: false } },
+    nftables: { ...base0, service_id: 'nftables', packages: ['nftables'], has_units: false, setup_required: true,
+        hosted: { kind: 'firewall', count: 0, names: [], blocks_removal: false, firewall: { known: true, enabled: true, open_ports: 4 } } },
 };
-const NAMES = { nginx: 'Nginx', postgresql: 'PostgreSQL', postfix: 'Postfix', certbot: 'certbot' };
+const NAMES = { nginx: 'Nginx', postgresql: 'PostgreSQL', postfix: 'Postfix', certbot: 'certbot', nftables: 'nftables' };
 const RAW = /\b(services|nav|setup|settings|dashboard|common|err)\.[a-zA-Z][a-zA-Z0-9_.]*\b|\{[a-zA-Z]+\}/;
 const ENGLISH = ['What is removed', 'Affected on this server', 'What stays', 'Nothing else on this server', 'more', 'Server setup', 'Uninstall', 'Cancel', 'Retry', 'could not be read', 'Reading what'];
 
@@ -114,8 +117,9 @@ export default function batch25(scenarios, { base, locale, theme, out, viewport,
             const buttons = Array.from(document.querySelectorAll('main li button[title]')).filter((b) => b.getAttribute('title') === b.getAttribute('aria-label'));
             for (const button of buttons) {
                 const li = button.closest('li');
-                const first = (li?.innerText || '').split('\n')[0];
-                if (first.includes(name) && /Uninstall|Kaldır/.test(button.getAttribute('title'))) { button.click(); return true; }
+                const [first = '', second = ''] = (li?.innerText || '').split('\n');
+                // The firewall engine's name is translated; its description names nftables.
+                if ((first.includes(name) || (name === 'nftables' && second.includes(name))) &&/Uninstall|Kaldır/.test(button.getAttribute('title'))) { button.click(); return true; }
             }
             return false;
         }, name);
@@ -136,7 +140,7 @@ export default function batch25(scenarios, { base, locale, theme, out, viewport,
     };
 
     scenarios.y25removal = async () => {
-        for (const id of ['nginx', 'postgresql', 'postfix', 'certbot']) {
+        for (const id of ['nginx', 'postgresql', 'postfix', 'certbot', 'nftables']) {
             await reset(); await clean();
             await ctl({ b20: batch20State('frankfurt', {}), override: { [IMPACT]: { status: 200, body: IMPACTS[id] } } });
             const page = await open('/services', rowsReady);

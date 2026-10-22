@@ -640,7 +640,7 @@ removed or contacted; every value is sample data. Run it with `desktop` and
 | Name | States |
 | --- | --- |
 | `y25firstvisit` | `/services` in a fresh browser: the installed view (`components-first-visit`); with a remembered "catalog" (`components-stored-catalog`) |
-| `y25removal` | the removal dialog for Nginx, PostgreSQL, Postfix and certbot (`removal-nginx`, `removal-postgresql`, `removal-postfix`, `removal-certbot`); Nginx while the read is held open (`removal-nginx-checking`) and when it is refused (`removal-nginx-unknown`) |
+| `y25removal` | the removal dialog for Nginx, PostgreSQL, Postfix, certbot and the firewall engine (`removal-nginx`, `removal-postgresql`, `removal-postfix`, `removal-certbot`, `removal-nftables`); Nginx while the read is held open (`removal-nginx-checking`) and when it is refused (`removal-nginx-unknown`) |
 | `y25setup` | `/server-setup` (`server-setup-page`), the rail with Server setup under Components (`server-setup-sidebar`, the drawer on a phone), `/settings?section=setup` replaced by `/server-setup` (`settings-section-setup-redirect`), Settings with three sections (`settings-three-sections`), the Dashboard's purpose card and its link (`dashboard-purpose-card`) |
 
 Each record adds raw keys, English on the Turkish page, the view the Components
