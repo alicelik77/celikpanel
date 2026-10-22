@@ -90,7 +90,7 @@ Tarayıcı denetimi 24 onu 28 px buldu.
   sınırı 30 saniye. Korumanın sakladığı özet yalnız yeni adresin yeniden kodlanmış
   hâlidir ve başarı yanıtı adres taşımaz; bu yüzden saklanan satırlar ne parolayı ne
   de adresi tutar. Sonucu bilinmeyen bir gönderiden sonra pencerenin aynı adres için
-  sonraki Kaydet'i aynı kimliği taşır.
+  sonraki Kaydet'i aynı kimliği taşır (Panel'in o kimlik için kesin olan `REQUEST_OUTCOME_UNKNOWN` yanıtından sonra değil: sonraki Kaydet o zaman yeni bir eylemdir).
 - **Tek doğrulayıcı.** `mutationpayload.CanonicalContactEmail`, panel sertifikasının
   var olan iletişim denetimidir, dışa açılıp yeniden kullanıldı: boşluklar atılır,
   yalnız yazdırılabilir ASCII, tam bir `@`, en çok 64 baytlık yerel kısım ve en çok
@@ -170,7 +170,8 @@ Adayın bağımsız bir güvenlik incelemesi bunları 22 Ekim 2026'da, hiçbir y
   paylaşır; çalınmış bir oturum ikisi için tek bir tahmin bütçesi alır (5 dakikada
   10), rota başına bir değil.
 - **Sonucu bilinmeyen bir gönderiden sonra aynı adresin sonraki Kaydet'i aynı
-  kimliği taşır**, kesin bir yanıt gelene dek; başka bir adres yeni bir eylemdir.
+  kimliği taşır**, kesin bir yanıt gelene dek (Panel'in o kimlik için kesin olan `REQUEST_OUTCOME_UNKNOWN` yanıtından sonra değil: sonraki Kaydet o zaman yeni bir eylemdir); başka bir adres
+  yeni bir eylemdir.
 - **Kullanılamayan adres reddi**, İngilizce dışı harfler içeren bir alan adının ASCII
   biçimiyle (`xn--…`) yazıldığını söyler.
 - Eklenen testler: `admin@localhost`, `root@myhost` ve ASCII dışı bir adresle iki
@@ -190,6 +191,10 @@ kapıları artık onu yakalar.
 
 ## Bilinen eksikler
 
+- **Alan adına sertifika yetkilisi karar verir.** Panel adresin biçimini denetler;
+  Let's Encrypt herkese açık olmayan bir alan adındaki (`.test`, `.local`,
+  `.internal`, `example.com`) adresi yine reddedebilir. Herkese açık internette
+  posta alan bir alan adında bir adres kullanın.
 - **Kurulu bir sunucuda hiçbir şey ölçülmedi.** E-posta değiştirme yalnız bileşen,
   bağlanmış ve taklit tarayıcı testleriyle denendi.
 - **Yeni adres bir iletiyle doğrulanmaz.** Panel yeni adrese posta göndermez; kişi kim
@@ -209,7 +214,7 @@ kapıları artık onu yakalar.
 Aşağıdakilerin hepsi 2026-10-22'de aday ağaçta bir geliştirme ortamında çalıştırıldı;
 hiçbiri bir kurulu sunucuda çalıştırılmadı.
 
-- Go: `CelikPanel-S2-Debian` konuğunda aday ağaçta `go test ./cmd/panel/ ./internal/...` (-timeout 45m, CGO kapalı): 64 paket geçti, 2894 üst düzey test geçti, 42 atlandı, 0 başarısız (4279 alt test geçti); gofmt ve go vet temiz. Yeni testler `cmd/panel/account_email_handler_test.go` ve
+- Go: `CelikPanel-S2-Debian` konuğunda aday ağaçta `go test ./cmd/panel/ ./internal/...` (-timeout 45m, CGO kapalı): 64 paket geçti, 2895 üst düzey test geçti, 42 atlandı, 0 başarısız (4279 alt test geçti); gofmt ve go vet temiz. Yeni testler `cmd/panel/account_email_handler_test.go` ve
   `internal/mutationpayload/panel_certificate_issue_test.go` içinde: dört rol için
   değişiklik (oturumlar sürer, tek denetim satırı, içinde adres yok); hiçbir şeyi
   değiştirmeyen her ret (geçersiz biçimler, aynı adres, başka harf büyüklüğüyle dahil
@@ -223,7 +228,7 @@ hiçbiri bir kurulu sunucuda çalıştırılmadı.
   `/account#email` ile reddedilen, değişiklikten sonra yeni adresi taşıyan ve
   değişikliğin hiçbir sertifika istemediği panel sertifikası isteği; ayrıca
   doğrulayıcı.
-- Web: `npm test` 1708 testin 1708'i geçti (yeni `tests/own-email-mounted.test.mjs`: İngilizce ve Türkçe 10 test; Ayarlar'da sertifika retinin bandı için yeni bir bağlı test; ek kullanıcının menü öğesi), `npm run build` her bütçenin içinde geçti (kritik açılış yolu 361 KiB'nin 329,93'ü).
+- Web: `npm test` 1709 testin 1709'u geçti (yeni `tests/own-email-mounted.test.mjs`: İngilizce ve Türkçe 11 test; Ayarlar'da sertifika retinin bandı için yeni bir bağlı test; ek kullanıcının menü öğesi), `npm run build` her bütçenin içinde geçti (kritik açılış yolu 361 KiB'nin 329,93'ü).
 - Sürüm kurtarma düzeneği: güncellemeyle ilgili hiçbir dosya değişmediği için
   çalıştırılmadı (bu sürümün dokunmadığı güncelleme kartının metinlerini ve sonuç
   mantığını yansıtır).

@@ -362,7 +362,9 @@ independent security review of the candidate asked for these; they are in source
   one limiter key (`reauth`) per user and client address, so a stolen session gets
   one budget of guesses across both (10 per 5 minutes), not one per route.
 - **After an unknown result, the next Save of the same address carries the same
-  identity** until a definite answer arrives; another address is a new action.
+  identity** until a definite answer arrives (not after the Panel's `REQUEST_OUTCOME_UNKNOWN`, which is final for that identity: the next Save is then a new action); another address is
+  a new action. A key given twice in the body keeps its last value, in the handler
+  and the digest alike.
 - **The refusal for an unusable address** says that a domain with letters outside
   English goes in its ASCII form (`xn--…`).
 - Tests added: both gates with `admin@localhost`, `root@myhost` and a non-ASCII

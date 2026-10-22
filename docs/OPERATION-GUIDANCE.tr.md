@@ -9716,5 +9716,8 @@ aynı anda yapılan iki değişiklik birlikte geçebilir, çünkü şema adresle
 karşılaştırır; bu sürümde harf gözetmeyen bir dizin eklenmez. Sonucu bilinmeyen bir
 gönderiden sonra pencerenin aynı adres için sonraki Kaydet'i aynı istek kimliğini
 taşır; böylece ilk gönderinin yaptığı bir değişiklik yeniden yapılmaz, yanıtlanır.
+Panel'in `REQUEST_OUTCOME_UNKNOWN` yanıtı o kimlik için kesindir (değişiklik sürerken
+yeniden başladı; kimlik bir daha çalıştırılmaz): pencere sonucun bilinmediğini
+söyler, kart adresi yeniden okur ve sonraki Kaydet yeni kimlikli yeni bir eylemdir.
 
 P0.1-P0.5 **kısmi** kalır; bu girdi hiçbir şeyi kapatmaz ya da ilerletmez.

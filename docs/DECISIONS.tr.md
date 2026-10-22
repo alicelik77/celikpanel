@@ -354,7 +354,9 @@ bağımsız bir güvenlik incelemesi bunları istedi; kaynaktadırlar:
   paylaşır; çalınmış bir oturum ikisi için tek bir tahmin bütçesi alır (5 dakikada
   10), rota başına bir değil.
 - **Sonucu bilinmeyen bir gönderiden sonra aynı adresin sonraki Kaydet'i aynı
-  kimliği taşır**, kesin bir yanıt gelene dek; başka bir adres yeni bir eylemdir.
+  kimliği taşır**, kesin bir yanıt gelene dek (Panel'in o kimlik için kesin olan `REQUEST_OUTCOME_UNKNOWN` yanıtından sonra değil: sonraki Kaydet o zaman yeni bir eylemdir); başka bir adres
+  yeni bir eylemdir. Gövdede iki kez verilen bir anahtar, işleyicide ve özette aynı
+  biçimde son değerini korur.
 - **Kullanılamayan adres reddi**, İngilizce dışı harfler içeren bir alan adının ASCII
   biçimiyle (`xn--…`) yazıldığını söyler.
 - Eklenen testler: `admin@localhost`, `root@myhost` ve ASCII dışı bir adresle iki

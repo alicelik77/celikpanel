@@ -92,7 +92,7 @@ everywhere in the panel. Browser batch 24 found it 28 px tall.
   the guard stores is of the new address alone, re-encoded, and the success answer
   carries no address, so the stored rows hold neither the password nor the address.
   After an unknown result the dialog's next Save of the same address carries the
-  same identity.
+  same identity (not after the Panel's `REQUEST_OUTCOME_UNKNOWN`, which is final for that identity: the next Save is then a new action).
 - **One validator.** `mutationpayload.CanonicalContactEmail` is the panel
   certificate's existing contact check, exported and reused: trimmed, printable ASCII
   only, exactly one `@`, a local part of at most 64 bytes and a whole of at most 254,
@@ -169,7 +169,8 @@ before any publication; they are in source.
   one limiter key (`reauth`) per user and client address, so a stolen session gets
   one budget of guesses across both (10 per 5 minutes), not one per route.
 - **After an unknown result, the next Save of the same address carries the same
-  identity** until a definite answer arrives; another address is a new action.
+  identity** until a definite answer arrives (not after the Panel's `REQUEST_OUTCOME_UNKNOWN`, which is final for that identity: the next Save is then a new action); another address is
+  a new action.
 - **The refusal for an unusable address** says that a domain with letters outside
   English goes in its ASCII form (`xn--…`).
 - Tests added: both gates with `admin@localhost`, `root@myhost` and a non-ASCII
@@ -189,6 +190,10 @@ it is given; the panel's gates now catch it.
 
 ## Known gaps
 
+- **The certificate authority judges the domain.** The panel checks the form of
+  the address; Let's Encrypt may still refuse an address at a domain that is not
+  public (`.test`, `.local`, `.internal`, `example.com`). Use an address at a
+  domain that receives mail on the public internet.
 - **Nothing was measured on an installed server.** The email change has been
   exercised by component, mounted and mock-browser tests only.
 - **The new address is not confirmed by a message.** The panel sends no mail to the
@@ -208,7 +213,7 @@ it is given; the panel's gates now catch it.
 Everything below was run on the candidate tree on 2026-10-22 in a development
 environment; none of it was run on an installed server.
 
-- Go: `go test ./cmd/panel/ ./internal/...` (-timeout 45m, CGO off) in the `CelikPanel-S2-Debian` guest on the candidate tree: 64 packages ok, 2894 top-level tests passed, 42 skipped, 0 failed (4279 subtests passed); gofmt and go vet clean. The new tests are in `cmd/panel/account_email_handler_test.go`
+- Go: `go test ./cmd/panel/ ./internal/...` (-timeout 45m, CGO off) in the `CelikPanel-S2-Debian` guest on the candidate tree: 64 packages ok, 2895 top-level tests passed, 42 skipped, 0 failed (4279 subtests passed); gofmt and go vet clean. The new tests are in `cmd/panel/account_email_handler_test.go`
   and `internal/mutationpayload/panel_certificate_issue_test.go`: the change for all
   four roles (sessions kept, one audit row, no address in it); every refusal
   changing nothing (invalid forms, the same address, a taken one including another
@@ -222,7 +227,7 @@ environment; none of it was run on an installed server.
   gates; and the panel certificate request refused with `/account#email`, then
   carrying the new address after the change, with no certificate requested by the
   change; and the validator.
-- Web: `npm test` 1708 of 1708 passed (the new `tests/own-email-mounted.test.mjs`: 10 tests in English and Turkish; one new mounted test of the certificate refusal's banner on Settings; the additional user's menu item), `npm run build` passed within every budget (critical boot path 329.93 of 361 KiB).
+- Web: `npm test` 1709 of 1709 passed (the new `tests/own-email-mounted.test.mjs`: 11 tests in English and Turkish; one new mounted test of the certificate refusal's banner on Settings; the additional user's menu item), `npm run build` passed within every budget (critical boot path 329.93 of 361 KiB).
 - Release-recovery harness: not run, because no update-related file changed (it
   mirrors the update card's texts and outcome logic, which this release does not
   touch).

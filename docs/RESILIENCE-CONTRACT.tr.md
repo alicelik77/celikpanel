@@ -6149,7 +6149,9 @@ güncelleme ve otomatik geri alma dayanıklılığının tamamlandığı iddias�
   ne de adresi tutar. Web arayüzü her tıklamada tek kimlik gönderir, yanıt
   kaybolduğunda (bağlantı koptu ya da bir ağ geçidi yanıt verdi) aynı kimlikle bir
   kez daha sorar ve sonucu bilinmeyen bir gönderiden sonra aynı adresin sonraki
-  Kaydet'ini, kesin bir yanıt gelene dek aynı kimlikle gönderir.
+  Kaydet'ini, kesin bir yanıt gelene dek aynı kimlikle gönderir; Panel'in o kimlik
+  için kesin olan `REQUEST_OUTCOME_UNKNOWN` yanıtından sonra sonraki Kaydet yeni bir
+  eylemdir.
 - **Yazım.** Tek doğrulayıcı (`mutationpayload.CanonicalContactEmail`, panel
   sertifikasının dışa açılan kendi iletişim denetimi); başka bir hesabın kullandığı
   adres büyük-küçük harf gözetmeden karşılaştırılarak reddedilir ve `users.email`
@@ -6192,7 +6194,7 @@ güncelleme ve otomatik geri alma dayanıklılığının tamamlandığı iddias�
   REQUEST_OUTCOME_UNKNOWN` ile yanıtlanır ve asla yeniden çalıştırılmaz. Kişi sayfayı
   yeniler; kart saklanan adresi okur ve gösterir; hâlâ eskisiyse yeni bir tıklama
   (yeni bir kimlik) onu değiştirir. Kurulu bir sunucuda ölçülmedi.
-- **Kanıt ve açık.** Aday ağaçta: Go `CelikPanel-S2-Debian` konuğunda aday ağaçta `go test ./cmd/panel/ ./internal/...` (-timeout 45m, CGO kapalı): 64 paket geçti, 2894 üst düzey test geçti, 42 atlandı, 0 başarısız (4279 alt test geçti); gofmt ve go vet temiz; dört rolün işleyici testleri
+- **Kanıt ve açık.** Aday ağaçta: Go `CelikPanel-S2-Debian` konuğunda aday ağaçta `go test ./cmd/panel/ ./internal/...` (-timeout 45m, CGO kapalı): 64 paket geçti, 2895 üst düzey test geçti, 42 atlandı, 0 başarısız (4279 alt test geçti); gofmt ve go vet temiz; dört rolün işleyici testleri
   (oturumlar sürer, tek denetim satırı, içinde adres yok), hiçbir şeyi değiştirmeyen
   her ret (geçersiz biçimler, aynı adres, başka harf büyüklüğüyle dahil alınmış bir
   adres, yanlış ya da eksik parola, bilinmeyen alan, iki JSON nesnesi, kimliksiz ya
@@ -6204,7 +6206,7 @@ güncelleme ve otomatik geri alma dayanıklılığının tamamlandığı iddias�
   karşılaştır-ve-yaz, korumasız çalışmayı reddeden işleyici, rota kapıları ve
   `/account#email` ile reddedilen, değişiklikten sonra yeni adresi taşıyan ve
   değişikliğin hiçbir sertifika istemediği panel sertifikası isteği;
-  `internal/mutationpayload` içinde bir doğrulayıcı testi. Web `npm test` 1708 testin 1708'i geçti (yeni `tests/own-email-mounted.test.mjs`: İngilizce ve Türkçe 10 test; Ayarlar'da sertifika retinin bandı için yeni bir bağlı test; ek kullanıcının menü öğesi), `npm run build` her bütçenin içinde geçti (kritik açılış yolu 361 KiB'nin 329,93'ü).
+  `internal/mutationpayload` içinde bir doğrulayıcı testi. Web `npm test` 1709 testin 1709'u geçti (yeni `tests/own-email-mounted.test.mjs`: İngilizce ve Türkçe 11 test; Ayarlar'da sertifika retinin bandı için yeni bir bağlı test; ek kullanıcının menü öğesi), `npm run build` her bütçenin içinde geçti (kritik açılış yolu 361 KiB'nin 329,93'ü).
   Tarayıcı denetimi 24 8 yapılandırmanın her birinde 13 durum (104 ekran görüntüsü), iki kez bakıldı: ilk bakış telefonda ret bandının düğmesini 28 px buldu, artık en az 44 px; ikinci bakış başka bir şey bulmadı; kişisel menüdeki dil seçici (telefonda 28 px) bu sürümden eskidir ve değişmedi; ekran görüntüleri ve tarayıcı sürücüsü sonra silindi. Sürüm sırası politikası (98'den 99'a), indirme
   portalı ve imzalı sürüm manifesti sözleşmeleri geçti. Sayılar [sürüm
   notlarında](RELEASE-NOTES-v0.1.0-alpha.99.tr.md). Bileşen ve bağlanmış testler

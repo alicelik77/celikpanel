@@ -9754,6 +9754,10 @@ both say to wait. Two simultaneous changes to addresses that differ only in lett
 case can both pass, because the schema compares addresses exactly; no
 case-insensitive index is added in this release. After an unknown result the
 dialog's next Save of the same address carries the same request identity, so a
-change the first send did make is answered, not made again.
+change the first send did make is answered, not made again. The Panel's
+`REQUEST_OUTCOME_UNKNOWN` is final for that identity (it restarted while the change
+ran; the identity is never run again): the dialog says the result is not known,
+the card reads the address again, and the next Save is a new action with a new
+identity.
 
 P0.1-P0.5 stay **partial**; this entry closes and advances nothing.

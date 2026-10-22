@@ -6920,7 +6920,7 @@ resilience is complete. 2026-10-22 is the clock date of everything in it.
   again. The person reloads; the card reads the address that is stored and shows
   it; if it is still the old one, a new click (a new identity) changes it. Not
   measured on an installed server.
-- **Evidence and open.** On the candidate tree: Go `go test ./cmd/panel/ ./internal/...` (-timeout 45m, CGO off) in the `CelikPanel-S2-Debian` guest on the candidate tree: 64 packages ok, 2894 top-level tests passed, 42 skipped, 0 failed (4279 subtests passed); gofmt and go vet clean, with handler tests
+- **Evidence and open.** On the candidate tree: Go `go test ./cmd/panel/ ./internal/...` (-timeout 45m, CGO off) in the `CelikPanel-S2-Debian` guest on the candidate tree: 64 packages ok, 2895 top-level tests passed, 42 skipped, 0 failed (4279 subtests passed); gofmt and go vet clean, with handler tests
   for all four roles (sessions kept, one audit row, no address in it), every
   refusal changing nothing (invalid forms, the same address, a taken one including
   another letter case, a wrong or missing password, an unknown field, two JSON
@@ -6933,7 +6933,7 @@ resilience is complete. 2026-10-22 is the clock date of everything in it.
   guard, the route gates, and the panel certificate request refused with
   `/account#email` and then carrying the new address after the change, with no
   certificate requested by the change; a validator test in
-  `internal/mutationpayload`. Web `npm test` 1708 of 1708 passed (the new `tests/own-email-mounted.test.mjs`: 10 tests in English and Turkish; one new mounted test of the certificate refusal's banner on Settings; the additional user's menu item), `npm run build` passed within every budget (critical boot path 329.93 of 361 KiB). Browser batch 24 13 states in each of 8 configurations (104 screenshots), looked at twice: the first look found the refusal banner's button 28 px tall on a phone, now at least 44 px; the second look found nothing else; the language switcher inside the personal menu (28 px on a phone) is older than this release and unchanged; screenshots and the browser driver deleted afterwards. The
+  `internal/mutationpayload`. Web `npm test` 1709 of 1709 passed (the new `tests/own-email-mounted.test.mjs`: 11 tests in English and Turkish; one new mounted test of the certificate refusal's banner on Settings; the additional user's menu item), `npm run build` passed within every budget (critical boot path 329.93 of 361 KiB). Browser batch 24 13 states in each of 8 configurations (104 screenshots), looked at twice: the first look found the refusal banner's button 28 px tall on a phone, now at least 44 px; the second look found nothing else; the language switcher inside the personal menu (28 px on a phone) is older than this release and unchanged; screenshots and the browser driver deleted afterwards. The
   release sequence policy (98 to 99), download portal and signed release manifest
   contracts passed. The numbers are in the [release
   notes](RELEASE-NOTES-v0.1.0-alpha.99.md). Component and mounted tests do not
@@ -6952,7 +6952,9 @@ resilience is complete. 2026-10-22 is the clock date of everything in it.
   (a `Current_Password` or `current_paſsword` key no longer reaches the password
   field past the digest); the digest is of the address alone; the success answer
   carries no address; the email and password changes share one limit; after an
-  unknown result the same identity is reused. Known limits: two simultaneous
+  unknown result the same identity is reused, except after the Panel's final
+  `REQUEST_OUTCOME_UNKNOWN`, after which the next Save is a new action (re-check of
+  2026-10-22). Known limits: two simultaneous
   changes to addresses that differ only in letter case can both pass (the
   `UNIQUE` constraint compares exactly; no index added in this release); the
   certificate authority may still refuse a non-public domain (`.test`, `.local`,
