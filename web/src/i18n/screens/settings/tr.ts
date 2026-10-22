@@ -439,9 +439,25 @@ export const trSettingsScreens: Record<SettingsScreenKey, string> = {
     'panelUpdate.card.restarting': 'Panel, {version} güncellemesinin bir parçası olarak yeniden başlıyor. Bu sayfa kendiliğinden yeniden bağlanır; hiçbir şeye basmanız gerekmiyor.',
     // --- güncelleme kartı bloğunun sonu ---
     // --- v0.1.0-alpha.98'de Ayarlar'dan çıkan sayfalar (D-037) ---
-    'account.subtitle': 'Kendi girişiniz: parolanız ve iki faktörlü doğrulama.',
+    'account.subtitle': 'Kendi girişiniz: parolanız, e-posta adresiniz ve iki faktörlü doğrulama.',
     'account.password.title': 'Parola',
     'account.password.desc': 'Giriş yaptığınız parolayı değiştirin. Önce mevcut parolanız sorulur.',
+    // v0.1.0-alpha.99: kişinin kendi e-posta adresi (D-037 eki).
+    'account.email.title': 'E-posta adresim',
+    'account.email.desc': 'CelikPanel’in hesabınız için tuttuğu adres. Yönetici için, panelin HTTPS sertifikası istenirken sertifika yetkilisine verilen iletişim adresi de budur. Girişte bu adres değil, kullanıcı adınız kullanılır.',
+    'account.email.checking': 'E-posta adresiniz okunuyor…',
+    'account.email.unknown': 'E-posta adresiniz şu an okunamadı. Bu, adresin olmadığı anlamına gelmez.',
+    'account.email.none': 'Ayarlı bir adres yok.',
+    'account.email.change': 'E-postayı değiştir',
+    'account.email.dialogTitle': 'E-posta adresinizi değiştirin',
+    'account.email.current': 'Mevcut adres',
+    'account.email.new': 'Yeni e-posta adresi',
+    'account.email.password': 'Mevcut parola',
+    'account.email.passwordHint': 'Bu adresi yalnızca sizin değiştirebilmeniz için parolanız sorulur.',
+    'account.email.save': 'Adresi kaydet',
+    'account.email.saving': 'Yeni adresiniz kaydediliyor. Başka bir şey yapmanız gerekmiyor; birkaç saniye sürer.',
+    'account.email.outcomeUnknown': 'Yeni adresinizin kaydedilip kaydedilmediği henüz bilinmiyor. Bu bir hata değil. Bu sayfadaki adres yeniden okundu; hâlâ eskisiyse yeniden deneyin.',
+    'account.email.changed': 'E-posta adresiniz değiştirildi.',
     'dnsPeers.subtitle': 'Ortak ad sunucuları, bu sunucunun rolü, eş sunucusu ve DNS çoğaltması.',
     // --- Ayarlar'dan çıkan sayfaların sonu ---
 };

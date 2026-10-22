@@ -6105,3 +6105,137 @@ tek bir sürümü kaydeder; kod, şema ya da kurtarma davranışını değiştir
   gerçek bir Agent'a ya da gerçek sürüm sunucusuna karşı çalışmadı; güncelleme
   kartı ve bildirimler henüz bir kurulu sunucuda görülmedi; değiştirilen
   yardımcıları paylaşan geri alma yolları yalnız sözleşme testleriyle denendi.
+
+### v0.1.0-alpha.99 adayı (durum değiştiren tek yeni rota: kişinin kendi e-postası; Agent, güncelleyici ya da şema değişikliği yok; ilke 2, 4 ve 6; D-037 değişikliği; D-029; D-024; D-025; 2026-10-22)
+
+D-025'in 2. ilkesi (kanıtın bir anlamı ve yaşam döngüsü vardır: gelmeyen bir yanıt
+"bilinmiyor"dur, asla hata ya da başarı değildir; kart saklanan adresi yeniden
+okur), 4. ilkesi (her değişikliğin bir kurtarma sözleşmesi vardır: kaybolan bir
+yanıt ya da bir yineleme asla ikinci bir değişikliğe izin vermez; bu yüzden rota
+D-029 istek kimliği korumasının altındadır) ve 6. ilkesi (hazır olma, ilerleme ve
+erişim birbirinden bağımsız kalır: pencerenin sınırlı beklemesi bir okumayla biter
+ve bir okuma ya da ikinci bir sorma asla ikinci bir değişiklik başlatmaz). P0.1/P0.2
+alanına (doğru, uygulanabilir durum) yeni retler ve panel sertifikasının
+yönlendirmesi kadarıyla dokunulur. **Hiçbir P0 işi kapanmaz ya da ilerlemez**;
+P0.1–P0.5 kısmi kalır ve her açık kabul işi açık kalır. Bu girdi, gerçek sistem
+güncelleme ve otomatik geri alma dayanıklılığının tamamlandığı iddiası değildir.
+2026-10-22, içindeki her şeyin saat tarihidir.
+
+- **Bu sürümün dokunduğu.** Durum değiştiren tek yeni rota, `PUT
+  /api/v1/auth/email`: giriş yapmış kişi mevcut parolasını verdikten sonra Panel'in
+  `users` tablosundaki kendi adresini onunla değiştirir (D-037 değişikliği); artık
+  `/account#email` eylemini taşıyan panel sertifikası eksik iletişim reti; ve web
+  arayüzü (Hesabım'da bir "E-posta adresim" kartı, ek kullanıcının kişisel
+  menüsünde "E-postayı değiştir" öğesi, pencere, yönlendirme metinleri ve Hesabım'ı
+  açan düğmeler). Agent'a, güncelleyiciye (`update.sh`, `get.sh`, sistem güncelleme
+  işçisi, geri alma ve kurtarma), şemaya, yoklamaya, hiçbir bileşene ya da katalog
+  parçalarının bölünmesine **dokunmaz**. Bu yüzden bu sürüm için **gerçek sistem
+  kaydı yapılmaz**, sahibin 16 Ekim 2026 talimatı uyarınca (güncelleyicinin
+  değiştirme yolu değişmedikçe gerçek sistem kaydı yok); güncelleme kartının
+  metinlerini ve sonuç mantığını yansıtan sürüm kurtarma düzeneği de çalıştırılmaz,
+  çünkü güncellemeyle ilgili hiçbir dosya değişmedi.
+- **İstek kimliği (D-029).** Koruma bu rotayı korur: koruduğu ilk `PUT`'tur (önceden
+  yalnız `POST` rotalarını koruyordu). İstek `X-CelikPanel-Request-Id`'yi taşır;
+  kimliksiz bir istek işleyiciden önce `428 REQUEST_ID_REQUIRED` ile reddedilir ve
+  işleyicinin kendisi korumadan geçmeden ulaşılırsa çalışmayı reddeder. Aynı kimlik
+  ilk gelişin saklanan yanıtıyla (`X-CelikPanel-Request-Replayed: 1`) yanıtlanır ve
+  adresi asla ikinci kez değiştirmez; başka bir adresle aynı kimlik `409
+  REQUEST_ID_REUSED`'dır. Rotanın süre sınırı 30 saniyedir. **Saklanan özet
+  yalnız yeni adresindir:** gövdenin anahtarları tam olarak `email` ve
+  `current_password` olmalıdır (Go'nun JSON çözümü anahtarları harf gözetmeden eşler;
+  bu yüzden başka her yazım reddedilir) ve rota başına bir özet kancası yalnız yeni
+  adresi, yeniden kodlanmış olarak özetler; okunamayan bir gövde sabit bir özet alır.
+  Başarı yanıtı adres taşımaz; bu yüzden bir `request_identities` satırı ne parolayı
+  ne de adresi tutar. Web arayüzü her tıklamada tek kimlik gönderir, yanıt
+  kaybolduğunda (bağlantı koptu ya da bir ağ geçidi yanıt verdi) aynı kimlikle bir
+  kez daha sorar ve sonucu bilinmeyen bir gönderiden sonra aynı adresin sonraki
+  Kaydet'ini, kesin bir yanıt gelene dek aynı kimlikle gönderir; Panel'in o kimlik
+  için kesin olan `REQUEST_OUTCOME_UNKNOWN` yanıtından sonra sonraki Kaydet yeni bir
+  eylemdir.
+- **Yazım.** Tek doğrulayıcı (`mutationpayload.CanonicalContactEmail`, panel
+  sertifikasının dışa açılan kendi iletişim denetimi); başka bir hesabın kullandığı
+  adres büyük-küçük harf gözetmeden karşılaştırılarak reddedilir ve `users.email`
+  üzerindeki `UNIQUE` kısıtı (`001_full_schema.sql`'den beri) son sözü söyler;
+  yazım, doğrulanan adres ve parola özeti üzerinde karşılaştır-ve-yaz biçimindedir,
+  bu yüzden arada başka yerde yapılan bir değişiklik bildirilir
+  (`account_email_changed_elsewhere`), asla üstüne yazılmaz. Hiçbir ret bir şey
+  değiştirmez. Her deneme, parola değiştirmeyle paylaşılan tek bir yeniden
+  kimlik doğrulama sınırına (`reauth`, hesap ve istemci adresi başına, 5 dakikada 10)
+  sayılır. Oturumlar sonlandırılmaz. Tek bir `account.email.changed`
+  denetim kaydı adresi değil kullanıcıyı adlandırır.
+- **Sahibin işlettiği kurtarma yolu: değişmedi.** CelikPanel güncellemeleri yerinde
+  kalır; sahip her kurulu panel güncellemesini panelin kendi güncelleme ekranından
+  başlatır. Sahibin panel olmadan yapabildiği hiçbir şey bir panel kullanıcısının
+  adresine bağlı değildir (D-022): barındırılan hiçbir hizmet yeniden
+  yapılandırılmaz ve bir e-posta değişikliği hiçbir sertifika için hiçbir şey
+  istemez, yenilemez ya da yeniden denemez. Panel sertifikası isteği adresi istek
+  yapıldığında okur. Bir sunucu kurulum planı incelendiği adresi kimliğinde tutar;
+  bu yüzden bir değişiklikten sonra zaten incelenmiş bir plan başlatılırken
+  reddedilir ("gereksinimler değişti, güncel planı inceleyin") ve yeni inceleme yeni
+  adresi alır; zaten çalışan bir kurulum başladığı planın adresini korur. **Kurulu
+  panel güncelleme yolu: değişmedi.**
+- **Erişim kapıları.** Rota, kendi parolasını değiştirebilen her role açıktır
+  (yönetici, bayi, müşteri, ek kullanıcı); ne yalnız yöneticiye özeldir ne de ek
+  kullanıcıya kapalı listededir. Başka kökenden ya da kökensiz bir `PUT`, var olan
+  CSRF denetimiyle engellenir. **Lisans kapısı değişmedi:** rota, lisansı kilitli
+  panelin kurtarma listesine eklenmedi (parola değiştirme listededir); panel lisans
+  nedeniyle kilitliyken e-posta değiştirme diğer rotalar gibi reddedilir. O listeyi
+  değiştirmek lisans politikasıdır ve bu sürümün dışındadır.
+- **Şema, sürüm geçişi ve kurtarma.** Şema 44, geçiş yok; yeni dizin yok (`UNIQUE`
+  kısıtı zaten var). Sürüm sırası sürüm hazırlığında 98'den 99'a geçer.
+  *alpha.98'den alpha.99'a:* alpha.99, alpha.98'in yazdığı her şeyi okur; adres
+  sütunu hep olduğu sütundur. *alpha.99'dan alpha.98'e geri* (örneğin bir geri
+  almadan sonra): alpha.98 aynı `users` satırını okur; alpha.99'da değiştirilen bir
+  adres kalır ve alpha.98'in onu yeniden değiştirecek bir ekranı yoktur (sertifika
+  reti bunu söyler). Yeni rota için bir `request_identities` satırı orada
+  zararsızdır: alpha.98 rotayı korumaz ve saatlik süpürme satırı 24 saat sonra
+  kaldırır. **Kurtarma davranışı:** bir değişikliğin satırı `running` iken Panel
+  yeniden başlarsa o satır `interrupted` olur; o kimliğin yinelenmesi `409
+  REQUEST_OUTCOME_UNKNOWN` ile yanıtlanır ve asla yeniden çalıştırılmaz. Kişi sayfayı
+  yeniler; kart saklanan adresi okur ve gösterir; hâlâ eskisiyse yeni bir tıklama
+  (yeni bir kimlik) onu değiştirir. Kurulu bir sunucuda ölçülmedi.
+- **Kanıt ve açık.** Aday ağaçta: Go `CelikPanel-S2-Debian` konuğunda aday ağaçta `go test ./cmd/panel/ ./internal/...` (-timeout 45m, CGO kapalı): 64 paket geçti, 2895 üst düzey test geçti, 42 atlandı, 0 başarısız (4279 alt test geçti); gofmt ve go vet temiz; dört rolün işleyici testleri
+  (oturumlar sürer, tek denetim satırı, içinde adres yok), hiçbir şeyi değiştirmeyen
+  her ret (geçersiz biçimler, aynı adres, başka harf büyüklüğüyle dahil alınmış bir
+  adres, yanlış ya da eksik parola, bilinmeyen alan, iki JSON nesnesi, kimliksiz ya
+  da bozuk kimlikli istek, yanlış yöntem), başka kökenden ve kökensiz `PUT`'un
+  engellenmesi, kilitlenmeye sayılan yanlış parolalar (testin üçüncü denemesi doğru
+  parolayla bile reddedilir; başka bir hesap etkilenmez), tek kimliğin yinelenmesi
+  (aynı yanıt, tek denetim satırı; başka adresle yeniden kullanılan kimlik
+  reddedilir; saklanan özette parola yok), eski bir okumaya karşı
+  karşılaştır-ve-yaz, korumasız çalışmayı reddeden işleyici, rota kapıları ve
+  `/account#email` ile reddedilen, değişiklikten sonra yeni adresi taşıyan ve
+  değişikliğin hiçbir sertifika istemediği panel sertifikası isteği;
+  `internal/mutationpayload` içinde bir doğrulayıcı testi. Web `npm test` 1709 testin 1709'u geçti (yeni `tests/own-email-mounted.test.mjs`: İngilizce ve Türkçe 11 test; Ayarlar'da sertifika retinin bandı için yeni bir bağlı test; ek kullanıcının menü öğesi), `npm run build` her bütçenin içinde geçti (kritik açılış yolu 361 KiB'nin 329,93'ü).
+  Tarayıcı denetimi 24 8 yapılandırmanın her birinde 13 durum (104 ekran görüntüsü), iki kez bakıldı: ilk bakış telefonda ret bandının düğmesini 28 px buldu, artık en az 44 px; ikinci bakış başka bir şey bulmadı; kişisel menüdeki dil seçici (telefonda 28 px) bu sürümden eskidir ve değişmedi; ekran görüntüleri ve tarayıcı sürücüsü sonra silindi. Sürüm sırası politikası (98'den 99'a), indirme
+  portalı ve imzalı sürüm manifesti sözleşmeleri geçti. Sayılar [sürüm
+  notlarında](RELEASE-NOTES-v0.1.0-alpha.99.tr.md). Bileşen ve bağlanmış testler
+  gerçek sistem davranışını kanıtlamaz. **Kurulu bir sunucuda hiçbir şey
+  ölçülmedi.** Açık: e-posta değiştirme hiçbir kurulu sunucuda görülmedi; yeni adres
+  ona gönderilen bir iletiyle doğrulanmaz; açık oturumlar yapılmadı; alpha.88–alpha.98
+  girdilerinin açık bıraktığı her şey açık kalır. Kurulu paneller yalnız sahipleri
+  tarafından, panelin kendi güncelleme ekranından güncellenir. P0.1–P0.5 kısmi kalır.
+- **Güvenlik incelemesi düzeltmeleri (22 Ekim 2026, hiçbir yayımdan önce).**
+  Panel sertifikasının iletişim kapısı ve kurulum planının iletişim engeli artık
+  `mail.ParseAddress` yerine `CanonicalContactEmail` kullanır; böylece
+  `admin@localhost`, `root@myhost` ya da ASCII dışı bir adres (`--create-admin`
+  onu denetlemediği için mümkündür) sonra yönlendirmesiz başarısız olmak yerine
+  `/account#email` eylemli kodlu reddi ve kurulum engelini alır. Gövdenin
+  anahtarları tamdır (`Current_Password` ya da `current_paſsword` anahtarı artık
+  özetin yanından parola alanına ulaşmaz); özet yalnız adrestir; başarı yanıtı adres
+  taşımaz; e-posta ve parola değiştirme tek sınırı paylaşır; bilinmeyen sonuçtan
+  sonra aynı kimlik yeniden kullanılır. Bilinen sınırlar: yalnız harf büyüklüğüyle
+  ayrılan adreslere aynı anda yapılan iki değişiklik birlikte geçebilir (`UNIQUE`
+  kısıtı tam karşılaştırır; bu sürümde dizin eklenmez); sertifika yetkilisi herkese
+  açık olmayan bir alan adını (`.test`, `.local`, `example.com`) yine reddedebilir.
+  Yukarıdaki testler ve kanıt düzeltilmiş ağaca aittir.
+- **Sahibin alpha.98'den gördüğü (2026-10-22).** Sahip iki kurulu sunucunun da
+  alpha.98'de olduğunu bildirdi: Boston'un ve Frankfurt'un Panel sayfaları yeni
+  menüyü gösteriyor. Frankfurt'un alpha.94'ten güncellemesi, meşgul bir paket
+  yöneticisi yüzünden alpha.95'te durmasından sonra tamamlandı. Bu, "yeni düzen
+  hiçbir kurulu sunucuda görülmedi"yi "ikisinde de, Panel sayfasında görüldü"ye
+  çevirir ve "Frankfurt'un alpha.95 durmasından sonraki güncellemesi bildirilmedi"yi
+  yanıtlar (ilke 2: görülen söylenir, fazlası söylenmez). Frankfurt'un paket
+  sürümleri bildirilmedi, bu yüzden D-034 değişikliğinin açık işi Frankfurt için
+  açık kalır; gerçek bir sunucuda korunan bir okuma ya da meşgul bir paket yöneticisi
+  hâlâ görülmedi.

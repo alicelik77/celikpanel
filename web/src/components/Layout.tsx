@@ -1,7 +1,7 @@
 import { BrandMark } from './BrandMark';
 import { BuildCommit } from './BuildCommit';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { LogOut, ChevronDown, Menu, KeyRound, UserCheck, DownloadCloud } from 'lucide-react';
+import { LogOut, ChevronDown, Menu, KeyRound, Mail, UserCheck, DownloadCloud } from 'lucide-react';
 import { api } from '../lib/api';
 import { Link } from '../router';
 import { availablePanelUpdate, usePanelUpdateDiscovery, wholeVersion, type DiscoveredTarget } from '../lib/panelUpdateDiscovery';
@@ -23,6 +23,10 @@ import type { TranslationKey } from '../i18n/en';
 // Parola penceresi alpha.98'den beri Hesabım'dan açılır; menü yalnız o sayfası
 // olmayan rol için açar. Açıldığında getirilir, her sayfa yüklemesinde değil.
 const ChangePasswordModal = lazy(() => import('./ChangePasswordModal').then((module) => ({ default: module.ChangePasswordModal })));
+// v0.1.0-alpha.99: an additional user changes their own email where they change
+// their password. Its words are screen copy, so the item is offered only once
+// that copy has arrived.
+const ChangeEmailModal = lazy(() => import('./ChangeEmailModal').then((module) => ({ default: module.ChangeEmailModal })));
 
 // The single inherited shell: a dark navigation rail (grouped, with live
 // counts) beside a light content column with a top bar. Feature pages
@@ -526,7 +530,8 @@ function ImpersonationBanner() {
 // whether it is open, Tab walks its links and buttons, Escape closes it and
 // gives focus back to the button, and it closes when focus leaves it (Tab past
 // its last item). aria-controls names the panel only while it exists. A role without My account (an additional
-// user) keeps the password change here, where it always was.
+// user) keeps the password change here, where it always was, and since
+// v0.1.0-alpha.99 the email change beside it.
 // UserMenu kişisel menüdür: kullanıcı ve rol, sonra ilk sırada Hesabım
 // (D-037), telefonda dil ve Çıkış. Açılır-kapanır bir bölmedir: düğme açık
 // olup olmadığını söyler, Tab içinde gezer, Escape kapatıp odağı düğmeye
@@ -534,9 +539,10 @@ function ImpersonationBanner() {
 // olmayan rol (ek kullanıcı) şifre değiştirmeyi burada tutar.
 function UserMenu({ access }: { access: NavAccessContext }) {
     const { user, role, logout } = useAuth();
-    const { t } = useI18n();
+    const { t, screensReady, screensFailed } = useI18n();
     const [open, setOpen] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
+    const [showEmail, setShowEmail] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
     const buttonRef = useRef<HTMLButtonElement>(null);
     const roleKey = `role.${role}` as TranslationKey;
@@ -613,6 +619,20 @@ function UserMenu({ access }: { access: NavAccessContext }) {
                             {t('profile.changePassword')}
                         </button>
                     )}
+                    {!hasAccountPage && screensReady && !screensFailed && (
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setOpen(false);
+                                setShowEmail(true);
+                            }}
+                            className={itemClass}
+                            data-personal-menu-item="email"
+                        >
+                            <Mail className="h-4 w-4" aria-hidden="true" />
+                            {t('profile.changeEmail')}
+                        </button>
+                    )}
                     <button
                         type="button"
                         onClick={async () => {
@@ -630,6 +650,7 @@ function UserMenu({ access }: { access: NavAccessContext }) {
             )}
 
             {showPassword && <Suspense fallback={null}><ChangePasswordModal onClose={() => setShowPassword(false)} /></Suspense>}
+            {showEmail && <Suspense fallback={null}><ChangeEmailModal current={null} onClose={() => setShowEmail(false)} /></Suspense>}
         </div>
     );
 }

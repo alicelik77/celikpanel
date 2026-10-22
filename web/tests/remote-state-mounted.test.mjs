@@ -37,7 +37,7 @@ const icons = new Set(['AlertTriangle', 'XCircle']);
 // Children of the screens under test that are not under test themselves.
 const stubbedComponents = [
   'Link', 'TeamMembersPage', 'DNSServerSettings', 'SecurityAuditCard', 'ServerSetupSettings',
-  'DomainGeneralSettings', 'DomainSSLOverviewCard', 'DomainMailManager', 'ChangePasswordModal',
+  'DomainGeneralSettings', 'DomainSSLOverviewCard', 'DomainMailManager', 'ChangePasswordModal', 'ChangeEmailModal',
 ];
 for (const name of screenFiles) {
   for (const match of source(`components/${name}.tsx`).matchAll(/import\s*\{([^}]+)\}\s*from 'lucide-react'/g)) {
@@ -54,6 +54,7 @@ const stub = dataModule(`
   const i18n = { t: (key) => key, locale: 'en' };
   export const useI18n = () => i18n;
   export const useNavigate = () => (path) => { globalThis.currentTest.navigated.push(path); };
+  export const useLocation = () => ({ pathname: '/', search: '', hash: '' });
   export const useAuth = () => ({ role: globalThis.currentTest.role });
   export const showToast = (...args) => globalThis.currentTest.toasts.push(args);
   export const PageHeader = (props) => React.createElement('header', null, props.title, props.subtitle, props.actions);
@@ -177,6 +178,8 @@ const healthy = {
   '/api/v1/runtimes/node': json({ installed: [] }),
   // The second batch.
   '/api/v1/auth/2fa/status': json({ enabled: true }),
+  // My account's email card (alpha.99).
+  '/api/v1/auth/me': json({ username: 'ada', role: 'admin', effective_role: 'admin', account_type: 'account', email: 'ada@example.com', impersonating: false, features: {} }),
   '/api/v1/panel/certificate': json({ https_enabled: true, self_signed: false, issuer: 'R11', expires_at: '2027-01-01T00:00:00Z' }),
   '/api/v1/users': json({ users: [{ id: 7, username: 'ada', email: 'ada@example.com', role: 'customer', status: 'active', subscriptions: 1, domains: 1, created_at: '' }] }),
   '/api/v1/plans': json({ plans: [{ id: 2, name: 'Basic', max_domains: 5, max_databases: 5, max_email_accounts: 5, disk_quota_mb: 1024, bandwidth_quota_mb: 1024 }] }),
@@ -1591,6 +1594,30 @@ test('Panel certificate: while the request runs the button spins', async () => {
     assert.ok(busy, 'the button names the request in flight');
     assert.equal(busy.props['aria-busy'], true, 'the button shows its spinner');
     if (finish) await act(async () => { finish(); await settled(); await settled(); });
+  } finally { await cleanup(); }
+});
+
+// v0.1.0-alpha.99: the missing contact email is fixed on My account; the
+// refusal stays on the card with a button that goes there, not a toast.
+test('Panel certificate: a missing contact email stays on the card with a button to My account', async () => {
+  serve({ '/api/v1/panel/certificate': json({ https_enabled: false, self_signed: true, issuer: '', expires_at: '' }) }, 'admin', {
+    '/api/v1/panel/certificate': () => Response.json({ error: 'server sentence', code: 'panel_certificate_contact_email_invalid', action: '/account#email' }, { status: 409 }),
+  });
+  globalThis.currentTest.section = 'panel';
+  try {
+    await mount(Settings);
+    const field = tree.root.findAllByProps({ placeholder: 'panel.example.com' })[0];
+    await act(async () => { field.props.onChange({ target: { value: 'panel.example.com' } }); await settled(); });
+    await press(buttons('panelCert.issue').find((node) => !node.props.disabled));
+    await act(async () => { await settled(); await settled(); });
+    const refusal = tree.root.findAll((node) => node.props['data-panel-certificate-refusal'] === 'panel_certificate_contact_email_invalid');
+    assert.equal(refusal.length, 1, 'the refusal is not on the card');
+    assert.deepEqual(globalThis.currentTest.toasts.filter(([kind]) => kind === 'error'), [], 'the refusal passed as a toast');
+    const go = refusal[0].findAll((node) => node.type === 'button');
+    assert.equal(go.length, 1, 'no button to the place that fixes it');
+    await act(async () => { go[0].props.onClick(); await settled(); });
+    assert.deepEqual(globalThis.currentTest.navigated, ['/account#email']);
+    assert.equal(calls.filter((call) => call.method === 'POST').length, 1);
   } finally { await cleanup(); }
 });
 

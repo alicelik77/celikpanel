@@ -597,3 +597,32 @@ buttons, the text and surfaces drawn in amber, the failure colour and green
 personal menu and page), sideways scrolling, elements past the right edge, the
 firewall line's link, Fail2ban's state and the Security page's sections. The
 screenshots are the inspection; these scenarios do not fail on a finding.
+
+## Scenarios of the twenty-fourth batch (one's own email, 2026-10-22)
+
+`scenarios-batch24.mjs`, with no mock of its own: the signed-in identity
+(`/api/v1/auth/me`, an administrator or an additional user), the answer to the
+email change (`PUT /api/v1/auth/email`: held open, a coded refusal, a cut
+connection, or a success) and the panel certificate's contact refusal
+(`POST /api/v1/panel/certificate`) are constants set through the mock's
+overrides. Nothing is installed, changed or contacted; every value is sample
+data. Run it with `desktop` and `phone`, Turkish and English, both themes
+(about half a minute each); each state is also copied to
+`BROWSER_INSPECT_SHOTS` as `<state>-<lang>-<theme>-<width>.png`.
+
+| Name | States |
+| --- | --- |
+| `y24account` | `/account` as administrator, the whole page with the three cards (`account`); the email dialog empty, filled, and saving with the answer held open (`dialog-empty`, `dialog-filled`, `dialog-saving`) |
+| `y24refusals` | the dialog after a wrong password, an address another account uses, an address the panel cannot use (`refusal-wrong_password`, `refusal-taken`, `refusal-invalid`) |
+| `y24unknown` | the dialog when the connection is cut on the first send and on the one asking again: the result is not known (`unknown`) |
+| `y24success` | the card after a change: the toast and the new address read again (`success`) |
+| `y24guidance` | Settings → Panel address and HTTPS after the contact refusal: the banner and its button on the card (`certificate-refusal`); the button followed to `/account#email` (`certificate-refusal-followed`) |
+| `y24member` | an additional user's personal menu with "Change email" beside "Change password" (`member-menu`) and its dialog (`member-dialog`) |
+
+Each record adds raw keys, English on the Turkish page, where the email card is
+and whether it is in view, the dialog (its text, `aria-busy`, focus), which
+refusal code it shows, whether it says it is saving or that the result is not
+known, the certificate card's refusal, the personal menu's items, the toasts,
+phone targets under 44 px in the dialog, the card, the menu and the banner, and
+sideways scrolling. The screenshots are the inspection; these scenarios do not
+fail on a finding.

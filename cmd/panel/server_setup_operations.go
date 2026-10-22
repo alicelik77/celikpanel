@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"net/mail"
 	"slices"
 	"strings"
 	"sync"
@@ -334,7 +333,9 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 		return plan, err
 	}
 	plan.ContactEmail = strings.TrimSpace(plan.ContactEmail)
-	if parsed, err := mail.ParseAddress(plan.ContactEmail); err != nil || parsed.Name != "" || parsed.Address != plan.ContactEmail {
+	// The same validator as the certificate request the plan will make
+	// (v0.1.0-alpha.99): what passes here is what the request accepts.
+	if _, err := mutationpayload.CanonicalContactEmail(plan.ContactEmail); err != nil {
 		addBlocker("panel_certificate_contact_email_invalid")
 	}
 	if _, _, blocked := panelCertificateManagementBlocker(); blocked {

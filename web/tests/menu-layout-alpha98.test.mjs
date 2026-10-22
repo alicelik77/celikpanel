@@ -45,7 +45,7 @@ const iconStub = moduleURL(`
     import React from '${reactURL}';
     const Icon = (name) => (props) => React.createElement('i', { ...props, 'data-icon': name });
     ${['LayoutDashboard', 'Globe', 'Database', 'Server', 'Users', 'Settings', 'DownloadCloud', 'ScrollText', 'Package', 'Shield',
-        'Activity', 'Network', 'ShieldCheck', 'Wrench', 'LogOut', 'ChevronDown', 'Menu', 'KeyRound', 'UserCheck']
+        'Activity', 'Network', 'ShieldCheck', 'Wrench', 'LogOut', 'ChevronDown', 'Menu', 'KeyRound', 'Mail', 'UserCheck']
         .map((name) => `export const ${name} = Icon('${name}');`).join('\n')}
 `);
 const navURL = compileURL('../src/nav.ts', { 'lucide-react': iconStub });
@@ -226,7 +226,7 @@ test('each new page has a header that says what it is for and moved content, nev
         // The card's own heading and subtitle say what the page is for (alpha.98 review: one subtitle, not two).
         MaintenancePage: ['<SystemSQLiteManager />'],
         DNSPeersPage: ['dnsPeers.subtitle', '<DNSServerSettings />'],
-        AccountPage: ['account.subtitle', '<PasswordPanel />', '<TwoFactorPanel />', 'ChangePasswordModal'],
+        AccountPage: ['account.subtitle', '<PasswordPanel />', '<EmailPanel />', '<TwoFactorPanel />', 'ChangePasswordModal', 'ChangeEmailModal', 'id="email"'],
     };
     for (const [page, needles] of Object.entries(pages)) {
         const source = read(`../src/components/${page}.tsx`);
@@ -344,7 +344,16 @@ test('an additional user, who has no My account, keeps the password change in th
         const items = menuItems(renderer);
         assert.ok(!items.some((item) => item.props.href === '/account'));
         assert.ok(items.some((item) => textOf(item).includes('profile.changePassword')));
+        // alpha.99: and the email change beside it, where their password change is.
+        assert.ok(items.some((item) => item.props['data-personal-menu-item'] === 'email' && textOf(item).includes('profile.changeEmail')));
     });
+    // The roles with My account change their email there, not in the menu.
+    for (const role of ['admin', 'reseller', 'customer']) {
+        await withShell(role, async (renderer) => {
+            await act(async () => menuButton(renderer).props.onClick());
+            assert.ok(!menuItems(renderer).some((item) => item.props['data-personal-menu-item'] === 'email'), role);
+        });
+    }
 });
 
 test('the drawn rail matches the approved layout, and only an administrator sees Settings', async () => {

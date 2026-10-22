@@ -129,5 +129,14 @@ export const trErrorsScreens: Record<ErrorsScreenKey, string> = {
     'err.SITE_CONFIG_SERVICE_REFUSED.php_pool.unconfirmed': 'PHP-FPM CelikPanel’in havuz metnini kabul etmedi (yapılandırma denetimi ya da yeniden yüklemesi başarısız oldu). CelikPanel önceki dosyayı geri koymayı denedi; yerinde olup olmadığı doğrulanmadı — sunucu yöneticisi dosyayı sunucuda kontrol eder. PHP-FPM’in iletisi ve dosya geri konurken neyin başarısız olduğu panel günlüğünde (sudo journalctl -u celikpanel-panel | grep "site configuration"); nedeni giderin, sonra yeniden deneyin.',
     'err.SITE_CONFIG_SERVICE_REFUSED.app_unit.unconfirmed': 'systemd CelikPanel’in birim metnini almadı (yeniden yükleme başarısız oldu). CelikPanel önceki dosyayı geri koymayı denedi; yerinde olup olmadığı doğrulanmadı — sunucu yöneticisi dosyayı sunucuda kontrol eder. systemd’nin iletisi ve dosya geri konurken neyin başarısız olduğu panel günlüğünde (sudo journalctl -u celikpanel-panel | grep "site configuration"); nedeni giderin, sonra yeniden deneyin.',
     'err.CERTIFICATE_VALIDATION_UNKNOWN': 'Bu sunucudaki nginx yanıt vermediği için CelikPanel, bu sitenin nginx yapılandırma dosyasının sertifika doğrulamasına izin verip vermediğini kontrol edemedi; bu yüzden sertifika istenmedi ve hiçbir şey değiştirilmedi. Sunucu yöneticisi nginx’in çalıştığını denetler; sonra sertifikayı yeniden isteyin.',
-    'err.panel_certificate_contact_email_invalid': 'Yönetici hesabının geçerli bir e-posta adresi yok; sertifika yetkilisi bunu iletişim adresi olarak ister. Bunu değiştirecek bir ekran henüz yok: yönetici sunucuda oluşturulurken verilen adrestir.',
+    'err.panel_certificate_contact_email_invalid': 'Yönetici hesabının geçerli bir e-posta adresi yok; sertifika yetkilisi bunu iletişim adresi olarak ister. Hiçbir şey istenmedi. E-posta adresinizi Hesabım’da (sağ üst menü) ayarlayın, sonra yeniden deneyin.',
+    'err.panel_certificate_contact_email_invalid.action': 'Hesabım’ı aç',
+    // v0.1.0-alpha.99: kişinin kendi e-postasını değiştirmesi.
+    'err.account_email_request_invalid': 'İstek okunamadı; hiçbir şey değiştirilmedi. Sayfayı yenileyip yeniden deneyin.',
+    'err.account_email_invalid': 'Bu, panelin kullanabileceği bir e-posta adresi değil; hiçbir şey değiştirilmedi. name@example.com gibi tek bir adres girin; İngilizce dışı harfler içeren bir alan adı ASCII biçimiyle (xn--…) yazılır.',
+    'err.account_email_unchanged': 'Bu zaten e-posta adresiniz; hiçbir şey değiştirilmedi.',
+    'err.account_email_taken': 'Bu e-posta adresini başka bir hesap kullanıyor; hiçbir şey değiştirilmedi. Başka bir adres girin.',
+    'err.account_email_wrong_password': 'Mevcut parolanız doğru değil; hiçbir şey değiştirilmedi. Giriş yaptığınız parolayı girin.',
+    'err.account_email_too_many_attempts': 'Çok fazla deneme yapıldı; hiçbir şey değiştirilmedi. Birkaç dakika bekleyip yeniden deneyin.',
+    'err.account_email_changed_elsewhere': 'Bu kaydedilirken hesabınız başka bir yerde değiştirildi; hiçbir şey değiştirilmedi. Sayfayı yenileyip yeniden deneyin.',
 };

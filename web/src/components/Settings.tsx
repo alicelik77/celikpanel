@@ -6,7 +6,7 @@ import { useI18n } from '../i18n';
 import { useAuth } from '../auth/AuthContext';
 import { Button, CouldNotCheck, ErrorBanner, RemoteGate, inputClass } from './ui';
 import { PageHeader } from './PageHeader';
-import { apiErrorText, readApiError } from '../lib/apiError';
+import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
 import { readRemote, useRemote } from '../lib/remote';
 import { ServerSetupSettings } from './ServerSetupChoice';
 import { availablePanelUpdate, usePanelUpdateDiscovery, wholeVersion } from '../lib/panelUpdateDiscovery';
@@ -450,6 +450,11 @@ function PanelCertificatePanel({ active }: { active: boolean }) {
     );
     const [busy, setBusy] = useState(false);
     const [outcome, setOutcome] = useState<IssueOutcome>({ state: 'none' });
+    // A refusal that names the place that fixes it (since v0.1.0-alpha.99 the
+    // missing contact email, fixed on My account) stays on the card with its
+    // button instead of passing as a toast.
+    // Çözüldüğü yeri adlandıran ret, düğmesiyle kartta kalır.
+    const [refusal, setRefusal] = useState<ApiError | null>(null);
     const [unconfirmed, setUnconfirmed] = useState(false);
     const [checkNow, setCheckNow] = useState(0);
     const [stay, setStay] = useState(false);
@@ -616,6 +621,7 @@ function PanelCertificatePanel({ active }: { active: boolean }) {
         startedHereRef.current = true;
         unansweredSinceRef.current = null;
         setOutcome({ state: 'none' });
+        setRefusal(null);
         setUnconfirmed(false);
         setStay(false);
         setSecondsLeft(PANEL_CERTIFICATE_REOPEN_SECONDS);
@@ -641,7 +647,9 @@ function PanelCertificatePanel({ active }: { active: boolean }) {
                     clearPanelCertificateMarker();
                     issueInFlightRef.current = false;
                     setPendingOperation(null);
-                    showToast('error', apiErrorText(await readApiError(res), t, 'panelCert.failed'));
+                    const problem = await readApiError(res);
+                    if (problem.code && problem.action) setRefusal(problem);
+                    else showToast('error', apiErrorText(problem, t, 'panelCert.failed'));
                     setBusy(false);
                 }
                 return;
@@ -757,6 +765,11 @@ function PanelCertificatePanel({ active }: { active: boolean }) {
             {outcome.state !== 'issued' && (
                 <>
                     <div ref={noticeRef} className="scroll-mb-24 scroll-mt-24">
+                        {refusal && (
+                            <div role="alert" data-panel-certificate-refusal={refusal.code}>
+                                <ErrorBanner className="mb-4" error={refusal} />
+                            </div>
+                        )}
                         {outcome.state === 'failed' && (
                             <ErrorBanner
                                 className="mb-4"

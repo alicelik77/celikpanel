@@ -9605,3 +9605,119 @@ yeni düzen hiçbir kurulu sunucuda görülmedi; hiçbir ekran, panel sertifikas
 iletişim adresi olarak istediği yönetici e-postasını değiştirmiyor; açık
 oturumlar yapılmadı. Bu girdi için hiçbir metin ya da ekran değiştirilmedi.
 P0.1-P0.5 **kısmi** kalır; bu girdi hiçbir şeyi kapatmaz ya da ilerletmez.
+
+### Alpha.98'de kurulu sunucular: ikisi de güncellendi (2026-10-22)
+
+Sahip 22 Ekim 2026'da iki kurulu sunucunun da v0.1.0-alpha.98'de olduğunu
+bildirdi: Boston'un ve Frankfurt'un Panel sayfaları yeni menüyü gösteriyor.
+Frankfurt'un alpha.94'ten güncellemesi tamamlandı; alpha.95 güncellemesi, paket
+yöneticisi meşgul olduğu için (Debian'ın kendiliğinden paket güncellemeleri;
+alpha.97 ile kaydedildi) salt-okur denetimde durmuştu ve o zaman sunucuda hiçbir
+şey değişmemişti. **Kim işlem yapar:** bunun için kimse; bir gözlemdir. alpha.98
+yayımının iki açık maddesini yanıtlar: yeni düzen artık iki kurulu sunucuda da
+görüldü ve Frankfurt'un alpha.95 durmasından sonraki güncellemesi bildirildi.
+**Açık:** görülen Panel sayfasının menüsüdür, taşınan her sayfa değil; Frankfurt'un
+Bileşenler'deki paket sürümleri bildirilmedi, bu yüzden D-036 maddesi Frankfurt
+için açık kalır. Sürümü hazırlayan kişi iki sunucuda da hiçbir şey ölçmedi. Bu
+girdi için hiçbir metin ya da ekran değiştirilmedi. P0.1-P0.5 **kısmi** kalır; bu
+girdi hiçbir şeyi kapatmaz ya da ilerletmez.
+
+### Kişinin kendi e-postasını değiştirmesi (D-037 değişikliği, 2026-10-22)
+
+v0.1.0-alpha.99 adayı için kaynakta; kurulu bir sunucuda hiçbir şey ölçülmedi.
+Birine panel sertifikasının iletişim adresi olarak kullandığı adresi nasıl
+değiştireceğini söylemeden önce bunu okuyun.
+
+**Nerede.** Hesabım (kişisel menü, sağ üst) → "E-posta adresim" kartı
+(`/account#email`), Parola ile İki adımlı giriş arasında. Hesabım sayfası olmayan
+ek kullanıcı (ekip üyesi), kişisel menüde "Parolayı değiştir"in yanındaki "E-postayı
+değiştir" öğesini kullanır. Oturumu olan her rol kendi adresini orada değiştirir;
+burada kimse başka bir hesabın adresini değiştirmez.
+
+**Kart.** Panelden okunan güncel adresi gösterir. Okurken bunu söyler; okuma
+başarısızsa adresin okunamadığını söyler ve "Tekrar dene" sunar (yalnız okuma;
+hiçbir şey değiştirilmedi). "E-postayı değiştir" düğmesi bir pencere açar: yeni adres ve
+mevcut parola. Enter kaydeder; Escape pencereyi kapatır.
+
+**Kaydederken (D-033).** Düğme döner bir gösterge gösterir, alanlar ve düğmeler
+kilitlenir ve bir satır değişikliğin kaydedildiğini ve başka bir şey gerekmediğini
+söyler. **Kim işlem yapar:** kimse; beklenir. Bekleme sınırlıdır: 20 saniyeden sonra
+pencere şunu söyler:
+
+- "Yeni adresinizin kaydedilip kaydedilmediği henüz bilinmiyor. Bu bir hata değil.
+  Bu sayfadaki adres yeniden okundu; hâlâ eskisiyse yeniden deneyin." / "It is not
+  known yet whether your new address was saved. This is not a failure. The address
+  shown on this page was read again; if it is still the old one, try again."
+
+Bu bilinmeyen bir sonuçtur, hata değildir. **Sonraki eylem:** karttaki adrese
+bakın; yeni adresse başka bir şey gerekmez; eski adresse yeniden deneyin (yeni bir
+tıklama yeni bir istektir). Her tıklama tek bir istek kimliği taşır (D-029):
+kaybolan bir yanıt (bağlantı koptu ya da bir ağ geçidi yanıt verdi) aynı kimlikle
+bir kez daha istenir ve Panel onu ilk gelişten yanıtlar; bu yüzden bir tıklama
+adresi asla iki kez değiştirmez. Panel'in kendisinin gönderdiği bir ret kaybolan
+yanıt değildir ve olduğu gibi gösterilir.
+
+**Retler.** Hiçbir ret bir şey değiştirmez. Ekran her birini şu sırayla gösterir: ne
+oldu, hiçbir şeyin değiştirilmediği, ne yapılacağı.
+
+| Kod | Ekranın söylediği (Türkçe / İngilizce) | Kim işlem yapar ve sonraki eylem | Nasıl sürer |
+| --- | --- | --- | --- |
+| `account_email_invalid` (400) | "Bu, panelin kullanabileceği bir e-posta adresi değil; hiçbir şey değiştirilmedi. name@example.com gibi tek bir adres girin; İngilizce dışı harfler içeren bir alan adı ASCII biçimiyle (xn--…) yazılır." / "This is not an email address the panel can use, so nothing was changed. Enter one address such as name@example.com; a domain with letters outside English goes in its ASCII form (xn--…)." | Kişi: tam bir alan adıyla, görünen adı olmayan, yalnız yazdırılabilir ASCII karakterli tek bir düz adres. | Aynı pencerede düzeltip yeniden kaydedin. |
+| `account_email_unchanged` (409) | "Bu zaten e-posta adresiniz; hiçbir şey değiştirilmedi." / "This is already your email address, so nothing was changed." | Kimse; adres zaten doğru. | Pencereyi kapatın. |
+| `account_email_taken` (409) | "Bu e-posta adresini başka bir hesap kullanıyor; hiçbir şey değiştirilmedi. Başka bir adres girin." / "Another account already uses this email address, so nothing was changed. Enter a different address." | Kişi: başka bir adres (yalnız büyük-küçük harfi farklı olan adres aynı adrestir). | Başka bir adres girip yeniden kaydedin. |
+| `account_email_wrong_password` (403) | "Mevcut parolanız doğru değil; hiçbir şey değiştirilmedi. Giriş yaptığınız parolayı girin." / "Your current password is not correct, so nothing was changed. Enter the password you sign in with." | Kişi: giriş yaptığı parola. Yanlış denemeler sayılır. | Girip yeniden kaydedin. |
+| `account_email_too_many_attempts` (429) | "Çok fazla deneme yapıldı; hiçbir şey değiştirilmedi. Birkaç dakika bekleyip yeniden deneyin." / "Too many attempts, so nothing was changed. Wait a few minutes, then try again." | Kişi: bekler. Sınır, parola değiştirmenin sınırlayıcısıdır. | Birkaç dakika sonra yeniden deneyin. |
+| `account_email_changed_elsewhere` (409) | "Bu kaydedilirken hesabınız başka bir yerde değiştirildi; hiçbir şey değiştirilmedi. Sayfayı yenileyip yeniden deneyin." / "Your account was changed somewhere else while this was being saved, so nothing was changed. Reload the page and try again." | Kişi: hesabı şimdiki hâliyle görmek için yeniler (adresi ya da parolası arada değişti). | Yeniledikten sonra yeniden deneyin. |
+| `account_email_request_invalid` (400) | "İstek okunamadı; hiçbir şey değiştirilmedi. Sayfayı yenileyip yeniden deneyin." / "The request could not be read, so nothing was changed. Reload the page and try again." | Kişi: yeniler (eski bir sayfa ya da başka bir istemci Panel'in okuyamadığı bir şey gönderdi). | Yeniledikten sonra yeniden deneyin. |
+
+D-029'un istek kimliği retleri kendi sözlerini korur: kimliği olmayan bir istek
+(`REQUEST_ID_REQUIRED`, örneğin güncellemeden önce açılmış bir sayfadan) yenilemeyi
+ister; `REQUEST_OUTCOME_UNKNOWN` o kimliğin sonucunun bilinmediğini söyler ve
+yenilemeden sonra yeniden okunan karttaki adres onu yanıtlar. Panel lisans
+nedeniyle kilitliyken değişiklik, diğer rotalar gibi lisansın kendi
+yönlendirmesiyle reddedilir; parola değiştirme erişilebilir kalır.
+
+**Başarı.** "E-posta adresiniz değiştirildi." / "Your email address was changed."
+Kart yeni adresi gösterir. Açık oturumlar sürer (giriş kullanıcı adıyla yapılır).
+Denetim günlüğü hesabın kendi adresini değiştirdiğini, adres olmadan kaydeder.
+
+**Panel sertifikası ve sunucu kurulumu.** Yöneticinin kullanılabilir bir adresi
+yoksa panel sertifikası isteği ve kurulum planının iletişim gereksinimi şunu söyler:
+
+- "Yönetici hesabının geçerli bir e-posta adresi yok; sertifika yetkilisi bunu
+  iletişim adresi olarak ister. Hiçbir şey istenmedi. E-posta adresinizi Hesabım'da
+  (sağ üst menü) ayarlayın, sonra yeniden deneyin." / "The administrator account
+  has no valid email address, which the certificate authority needs as a contact.
+  Nothing was requested. Set your email on My account (top-right menu), then try
+  again."
+
+yanında `/account#email`'e giden, Hesabım'ı açan bir düğmeyle. **Kim işlem yapar:**
+yönetici. **Sonraki eylem:** adresi Hesabım'da ayarlamak. **Nasıl sürer:**
+sertifikayı yeniden isteyin; hiçbir şey kendiliğinden yeniden denenmez ve bir
+e-posta değişikliği hiçbir sertifika istemez ya da yenilemez. Sertifika isteği
+adresi istek yapıldığında okur. Değişiklikten önce incelenmiş bir sunucu kurulum
+planı başlatıldığında reddedilir ("gereksinimler değişti, güncel planı inceleyin");
+onu yeniden inceleyin, yeni adres içindedir. Zaten çalışan bir kurulum başladığı
+planın adresini korur.
+
+**Alan adına sertifika yetkilisi karar verir.** Panel adresin biçimini denetler
+(ve `admin@localhost`'u, alan adı olmayan bir ana makine adını ve ASCII dışı
+adresleri, hem sertifika isteğinde hem kurulum planında yukarıdaki kodlu retle
+reddeder). Sertifika yetkilisi, `.test`, `.local`, `.internal` ya da `example.com`
+gibi herkese açık olmayan bir alan adındaki adresi yine reddedebilir. **Kim işlem
+yapar:** yönetici. **Sonraki eylem:** herkese açık internette posta alan bir alan
+adında bir adres ayarlamak, sonra sertifikayı yeniden istemek. İngilizce dışı
+harfler içeren bir alan adı ASCII biçimiyle (`xn--…`) yazılır.
+
+**Bu sürümün sınırları.** E-posta değiştirmedeki ve parola değiştirmedeki yanlış
+parolalar tek bir sınırı paylaşır (hesap ve istemci adresi başına 5 dakikada 10);
+sonrasında ikisi de beklemeyi söyler. Yalnız büyük-küçük harfle ayrılan adreslere
+aynı anda yapılan iki değişiklik birlikte geçebilir, çünkü şema adresleri tam
+karşılaştırır; bu sürümde harf gözetmeyen bir dizin eklenmez. Sonucu bilinmeyen bir
+gönderiden sonra pencerenin aynı adres için sonraki Kaydet'i aynı istek kimliğini
+taşır; böylece ilk gönderinin yaptığı bir değişiklik yeniden yapılmaz, yanıtlanır.
+Panel'in `REQUEST_OUTCOME_UNKNOWN` yanıtı o kimlik için kesindir (değişiklik sürerken
+yeniden başladı; kimlik bir daha çalıştırılmaz): pencere sonucun bilinmediğini
+söyler, kart adresi yeniden okur ve sonraki Kaydet yeni kimlikli yeni bir eylemdir.
+
+P0.1-P0.5 **kısmi** kalır; bu girdi hiçbir şeyi kapatmaz ya da ilerletmez.

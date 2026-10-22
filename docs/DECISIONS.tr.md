@@ -23,7 +23,7 @@ git'te yaşar; bu dosya strateji içindir. En yeni en üstte.
 
 ## D-037 · Her sayfa adının söylediği yerdedir: Ayarlar ayarları tutar; araçlar, güvenlik ve bakım Sunucu altındadır; kişinin kendi hesabı kişisel menüdedir
 
-*22 Ekim 2026 (saat tarihi) · Sahibin 21 Ekim 2026 tarihli isteği ve 22 Ekim 2026 tarihli onayı; v0.1.0-alpha.98 adayı için kaynakta; kurulu bir sunucuda hiçbir şey ölçülmedi*
+*22 Ekim 2026 (saat tarihi) · Sahibin 21 Ekim 2026 tarihli isteği ve 22 Ekim 2026 tarihli onayı; v0.1.0-alpha.98 adayı için kaynakta, 22 Ekim 2026'da yayımlandı; 22 Ekim 2026'da sahibin kendi güncellemesinden sonra sahibin ekranları yeni menüyü iki kurulu sunucuda da gösterdi · 22 Ekim 2026'da değiştirildi: kişinin kendi e-postasını değiştirmesi, v0.1.0-alpha.99 adayı için kaynakta; değişikliğin hiçbir parçası kurulu bir sunucuda ölçülmedi*
 
 Sahip 21 Ekim 2026'da şunu sordu: "ayarlardaki bu alt
 menüdeki her şey ayarlar ile mi ilgili?" ve sürdürdü: "her işlemin yeri doğru
@@ -144,7 +144,8 @@ belirtilir):
   yönlendirme eylemi (DNS motoru iş akışı, DNSSEC, yalnız-DNS çocukları, içe aktarma,
   uzak DNS yetkisi, DNS kurulumu) artık `/dns-infrastructure`'ı gösterir; Panel
   sertifikasının eksik iletişim e-postası eylem taşımaz (aşağıdaki inceleme
-  düzeltmelerine bakın).
+  düzeltmelerine bakın; v0.1.0-alpha.99 adayından başlayarak `/account#email`'i
+  gösterir, sondaki değişikliğe bakın).
 - **Kurulum geçidi dört adresi erişilebilir tutar** kurulum gerekirken
   (`/account`, `/security`, `/dns-infrastructure`, `/maintenance`), `/settings`
   gibi; çevrimdışı kurtarma kabuğunun rota listesi de onları içerir.
@@ -195,7 +196,9 @@ incelemesi bunları istedi; kaynaktadırlar:
   ilk taslağında da Hesabım'ı gösteriyordu; ikisi de onu değiştiremez. Yöneticinin
   kendi e-postasını düzenleyen bir ekran yok (yönetici yalnız sunucuda oluşturulurken
   yönetilir); bu yüzden ret artık eylem taşımaz ve bunun için henüz bir ekran
-  olmadığını söyler. **Açık iş:** kendi e-postasını Hesabım'dan değiştirmenin bir yolu.
+  olmadığını söyler. **Açık iş** (alpha.98'de açık): kendi e-postasını Hesabım'dan
+  değiştirmenin bir yolu. *Artık v0.1.0-alpha.99 adayı için kaynakta yapıldı*
+  (aşağıdaki değişiklik); alpha.98 yayımlandığında açıktı.
 - Taslağın Hesabım tanımında geçen **"açık oturumlar"** yapılmadı: üründe oturum
   listesi yok (yol haritası "Aktif oturumlar"ı sonraki bir iş olarak tutar).
   Yönetici kurallarında olduğu gibi hiçbir şey uydurulmadı.
@@ -204,8 +207,175 @@ incelemesi bunları istedi; kaynaktadırlar:
   işaretleri düzeltildi; iki tarayıcı denetimi betiği hâlâ var olan adresleri
   kullanır.
 
-Yapılmadı: kurulu bir sunucuda hiçbir şey ölçülmedi; yöneticinin kendi e-postasını
-değiştiren bir ekran henüz yok (yukarıdaki açık iş); açık oturumlar yapılmadı.
+alpha.98'de yapılmadı: yazıldığında kurulu bir sunucuda hiçbir şey ölçülmemişti
+(22 Ekim 2026'da, sahip onları güncelledikten sonra, sahibin Boston ve Frankfurt
+ekranları yeni menüyü gösterdi); yöneticinin kendi e-postasını değiştiren bir ekran
+yoktu (yukarıdaki açık iş; alpha.98'de açıktı, aşağıdaki değişiklikle v0.1.0-alpha.99
+adayı için kaynakta yapıldı); açık oturumlar yapılmadı.
+
+### Değişiklik (22 Ekim 2026, saat tarihi): kişinin kendi e-postasını değiştirmesi v0.1.0-alpha.99 adayı için kaynakta yapıldı
+
+*Sahibin, alpha.98'in bıraktığı açık iş için 22 Ekim 2026 tarihli onayı ("ok"); v0.1.0-alpha.99 adayı için kaynakta; kurulu bir sunucuda hiçbir şey ölçülmedi*
+
+Neden. Panel sertifikası, giriş yapmış yöneticinin e-posta adresini sertifika
+yetkilisine iletişim adresi olarak verir. alpha.99'a kadar bu adres yalnız yönetici
+sunucuda oluşturulurken verilirdi ve hiçbir ekran onu değiştirmezdi; kullanılabilir
+bir adresi olmayan bir yönetici alpha.98'den beri yalnız bunun için henüz bir ekran
+olmadığını okuyabiliyordu. alpha.98, "kendi e-postasını Hesabım'dan değiştirmenin bir
+yolu"nu açık iş olarak kaydetti. 22 Ekim 2026'da, alpha.98 yayımından sonra, sahip
+bunun yapılmasını onayladı ("ok").
+
+Benimsenen kurallar:
+
+1. **Yalnız kişinin kendi adresi; oturumu olan her rol.** Giriş yapmış kişi kendi
+   e-posta adresini değiştirir, başkasınınkini değil. Rota `PUT /api/v1/auth/email`'dir,
+   `POST /api/v1/auth/password`'ün yanında; kendi parolasını değiştirebilen rollere
+   açıktır: yönetici, bayi, müşteri ve ek kullanıcı (ekip üyesi). Ne yalnız yöneticiye
+   özeldir ne de ek kullanıcılara kapalı rotalar listesindedir.
+2. **Mevcut parola yeniden istenir.** İstek yeni adresi ve mevcut parolayı taşır;
+   başka bir alan ya da birden çok JSON nesnesi taşıyan bir gövde reddedilir;
+   anahtarlar tam olarak böyle yazılmalıdır. Her deneme, parola değiştirmeyle
+   paylaşılan tek bir yeniden kimlik doğrulama sınırına (`reauth`, hesap ve istemci
+   adresi başına) sayılır. Yanlış ya da eksik parola
+   `403 account_email_wrong_password`; çok fazla deneme `429
+   account_email_too_many_attempts`'tir.
+3. **Her eylemin tek kimliği; bir yineleme asla ikinci kez değiştirmez (D-029).** İstek
+   kimliği koruması artık bu rotayı korur; koruduğu ilk `PUT`'tur (önceden yalnız
+   `POST` rotalarını koruyordu). İstek `X-CelikPanel-Request-Id`'yi taşır (32 küçük
+   harfli onaltılık karakter). Aynı kimlik, ilk gelişin saklanan yanıtıyla
+   (`X-CelikPanel-Request-Replayed: 1` ile) yanıtlanır ve adresi asla ikinci kez
+   değiştirmez; başka bir adresle aynı kimlik `409 REQUEST_ID_REUSED`; kimliksiz bir
+   istek `428 REQUEST_ID_REQUIRED`'dır. Rotanın süre sınırı 30 saniyedir. Korumanın
+   sakladığı özet yalnız yeni adresin yeniden kodlanmış hâlidir (rota başına bir özet
+   kancası) ve saklanan yanıt adres taşımaz; bu yüzden `request_identities` tablosu
+   ne parolayı ne de adresi tutar. İşleyici,
+   korumadan geçmeden ulaşılırsa çalışmayı reddeder.
+4. **Tek doğrulayıcı.** Bir adres yalnız `mutationpayload.CanonicalContactEmail` ile
+   kabul edilir; bu, panel sertifikasının var olan iletişim denetimidir, dışa açılıp
+   yeniden kullanıldı: baştaki ve sondaki boşluklar atılır; yalnız yazdırılabilir
+   ASCII; tam bir `@`; en çok 64 baytlık bir yerel kısım ve en çok 254 baytlık bir
+   bütün; tam nitelikli bir DNS adı olan, küçük harfle saklanan bir alan adı; görünen ad
+   yok. Burada kabul edilen bir adres bu yüzden sertifika isteğinin de her zaman kabul
+   ettiği bir adrestir. Başka her şey `400 account_email_invalid`; okunamayan bir istek
+   `400 account_email_request_invalid`'dir.
+5. **Bir adres, bir hesap.** Başka bir hesabın kullandığı adres, büyük-küçük harf
+   gözetmeden karşılaştırılarak `409 account_email_taken`'dır. `users.email` üzerindeki,
+   `001_full_schema.sql`'den beri şemada olan `UNIQUE` kısıtı son sözü söyler. Şema
+   değişikliği yok, yeni dizin yok. Adresin zaten kişinin kendisinin mi (`409
+   account_email_unchanged`) yoksa başka bir hesabın mı olduğu ancak parola
+   kanıtlandıktan sonra söylenir; rota bir adresi kimin kullandığını açığa vurmaz.
+6. **Başka yerde yapılan bir değişiklik bildirilir, asla üstüne yazılmaz.** Yazım,
+   doğrulanan adres ve parola özeti üzerinde karşılaştır-ve-yaz biçimindedir. Arada
+   biri değiştiyse hiçbir şey yazılmaz ve yanıt `409 account_email_changed_elsewhere`'dir.
+7. **Oturumlar sürer.** Giriş kullanıcı adıyla yapılır; adres bir giriş bilgisi
+   değildir, bu yüzden açık oturumlar sonlandırılmaz.
+8. **Denetim izi adresi değil hesabı adlandırır.** Kullanıcı üzerinde tek bir
+   `account.email.changed` kaydı, eski ya da yeni adres olmadan (iz hesapları
+   adlandırır, asla adresleri). Panel sayfasındaki "Son etkinlik" "kendi e-posta
+   adresini değiştirdi" ("changed their own email address") der.
+9. **Kendiliğinden sertifika işlemi yok.** Bir adresi değiştirmek hiçbir sertifika için
+   hiçbir şey istemez, yenilemez ya da yeniden denemez. Panel sertifikası isteği giriş
+   yapmış yöneticinin adresini istek yapıldığında veritabanından okur (önbellek yok).
+   `panel_certificate_contact_email_invalid` reti artık `/account#email` eylemini taşır
+   ve e-postanın Hesabım'da (sağ üst menü) ayarlanıp sertifikanın yeniden istenmesini
+   söyler. Sunucu kurulum planı, incelendiği iletişim adresini planın kimliğinin
+   parçası olarak tutar: bir e-posta değişikliğinden sonra zaten incelenmiş bir planı
+   başlatmak "gereksinimler değişti, güncel planı inceleyin" diye reddedilir ve yeni
+   inceleme yeni adresi alır; zaten çalışan bir kurulum, başladığı planın adresini
+   korur.
+
+Bunu kurarken alınan uygulama kararları (sahip kararı sanılmasın diye böyle
+belirtilir):
+
+- **Lisans kapısı değişmedi.** E-posta değiştirme, lisansı kilitli bir panelin hâlâ
+  kabul ettiği rotalara *eklenmedi* (parola değiştirme onlardan biridir). Panel
+  lisans nedeniyle kilitliyken e-posta değiştirme diğer rotalar gibi reddedilir.
+  Lisansı kilitli bir panelin neyi kabul ettiği lisans politikasıdır ve bu sürümün onu
+  değiştirme yetkisi yoktur.
+- **Nerede.** Hesabım, Parola ile İki adımlı giriş arasında üçüncü bir kart kazanır:
+  "E-posta adresim" ("My email", çapa `id="email"`; bu yüzden `/account#email` ona
+  kaydırır). `/api/v1/auth/me`'den okunan güncel adresi gösterir (okurken
+  denetlendiğini söyler; okuma başarısızsa adresin okunamadığını söyler ve "Tekrar
+  dene" sunar). "E-postayı değiştir" düğmesi, yeni adres ve mevcut parola için küçük bir pencere
+  açar. Hesabım sayfası olmayan ek kullanıcılar, kişisel menüde "Parolayı
+  değiştir"in yanında aynı pencereyi açan "E-postayı değiştir" öğesini alır.
+- **Bekleme görünür ve sınırlıdır (D-033).** Kaydederken düğme döner bir gösterge
+  gösterir, alanlar ve düğmeler kilitlenir ve bir satır değişikliğin kaydedildiğini
+  ve başka bir şey gerekmediğini söyler. 20 saniyeden sonra pencere, değişikliğin
+  kaydedilip kaydedilmediğinin bilinmediğini, bunun bir hata olmadığını söyler ve kart
+  adresi yeniden okur.
+- **Kaybolan bir yanıt bir kez daha istenir.** Her tıklama tek kimlik; bağlantı
+  koptuğunda ya da bir ağ geçidi yanıt verdiğinde pencere aynı kimlikle bir kez daha
+  sorar. Panel'in kendisinin gönderdiği bir ret kaybolan yanıt değildir.
+- **Retler D-024 sırasında.** Yukarıdaki her kod pencerede ne olduğu, hiçbir şeyin
+  değiştirilmediği ve sonra ne yapılacağı olarak gösterilir. Başarı "E-posta adresiniz
+  değiştirildi." der ve kart yeni adresi gösterir.
+- **Kurulum planının iletişim engeli ve panel sertifikası reti** "E-posta adresinizi
+  Hesabım'da (sağ üst menü) ayarlayın" der ve `/account#email`'e giden, Hesabım'ı
+  açan bir düğme ("Hesabım’ı aç") gösterir.
+- **Eski ya da yeni adrese ileti gönderilmez.** Panel yeni adresi doğrulamak için
+  posta göndermez; kişi kim olduğunu parolasıyla kanıtlar.
+
+Bunun yetkilendirmediği: bu rotadan başka bir hesabın adresini değiştirmek; e-posta
+adresiyle giriş; herhangi bir sertifika isteği, yenilemesi ya da yeniden denemesi;
+herhangi bir lisans politikası, şema, Agent ya da güncelleyici değişikliği ve sahibin
+orada görmesinden önce kurulu sunucular hakkında hiçbir iddia. Kurulu paneller hâlâ
+yalnız sahipleri tarafından, panelin kendi güncelleme ekranından güncellenir.
+
+Geri kalanla ilişkisi. D-024: her ret ne olduğunu, kimin işlem yapacağını ve ne
+yapılacağını söyler; bilinmeyen bir sonuca hata denmez. D-029: istek kimliği
+korumasının altındaki ilk `PUT`, yalnız yeni adresin özetiyle. D-033:
+pencerenin beklemesi görünür ve sınırlıdır. D-022: değişiklik yalnız panelin kendi
+kullanıcı kaydını yazar; barındırılan hiçbir hizmet yeniden yapılandırılmaz ve panel
+sertifikası adresi yalnız biri sertifika istediğinde okur.
+
+**Güvenlik incelemesi düzeltmeleri (22 Ekim 2026, hiçbir yayımdan önce).** Adayın
+bağımsız bir güvenlik incelemesi bunları istedi; kaynaktadırlar:
+
+- **İki iletişim kapısı da tek doğrulayıcıyı kullanır.** Panel sertifikası isteği
+  ve kurulum planının iletişim engeli yöneticinin adresini Go'nun
+  `mail.ParseAddress`'iyle denetliyordu; bu, sertifika isteğinin kendi denetiminin
+  reddettiği `admin@localhost`, `root@myhost` ya da ASCII dışı bir adresi kabul
+  eder. Böyle bir adres (`--create-admin` verilen adresi denetlemediği için
+  mümkündür) kapıdan geçiyor ve sonra Hesabım yönlendirmesi olmadan başarısız
+  oluyordu. İki kapı da artık `CanonicalContactEmail` kullanır: sertifikanın
+  reddedeceği her adres `/account#email` eylemli kodlu reddi ve kurulum engelini alır.
+- **Saklanan özet yalnız yeni adresi tutar.** Go'nun JSON çözümü anahtarları
+  büyük-küçük harf gözetmeden eşler (ve `ſ`'yi `s`'ye katlar); bu yüzden
+  `"Current_Password"` taşıyan bir gövde parola alanına ulaşıyor, özet ise yalnız tam
+  `current_password` anahtarını çıkarıyordu. Gövdenin anahtarları artık tam olarak
+  `email` ve `current_password` olmalıdır; başka her anahtar (`Current_Password`,
+  `user_id`, `id`, …) `400 account_email_request_invalid`'dır. Özet yalnız yeni
+  adresin yeniden kodlanmış hâlidir; okunamayan bir gövde sabit bir özet alır.
+- **Başarı yanıtı adres taşımaz** (koruma yanıtları 24 saat saklar); sayfa adresi
+  yeniden okur.
+- **Tek yeniden kimlik doğrulama sınırı.** E-posta değiştirme ve parola değiştirme,
+  kullanıcı ve istemci adresi başına tek bir sınırlayıcı anahtarını (`reauth`)
+  paylaşır; çalınmış bir oturum ikisi için tek bir tahmin bütçesi alır (5 dakikada
+  10), rota başına bir değil.
+- **Sonucu bilinmeyen bir gönderiden sonra aynı adresin sonraki Kaydet'i aynı
+  kimliği taşır**, kesin bir yanıt gelene dek (Panel'in o kimlik için kesin olan `REQUEST_OUTCOME_UNKNOWN` yanıtından sonra değil: sonraki Kaydet o zaman yeni bir eylemdir); başka bir adres
+  yeni bir eylemdir. Gövdede iki kez verilen bir anahtar, işleyicide ve özette aynı
+  biçimde son değerini korur.
+- **Kullanılamayan adres reddi**, İngilizce dışı harfler içeren bir alan adının ASCII
+  biçimiyle (`xn--…`) yazıldığını söyler.
+- Eklenen testler: `admin@localhost`, `root@myhost` ve ASCII dışı bir adresle iki
+  kapı; `Current_Password`, `current_paſsword`, `user_id` ve `id` taşıyan gövdeler;
+  "kullanılıyor" ve "zaten sizin" yanıtlarından önce söylenen yanlış parola; bir
+  müşterinin yerine geçen yöneticinin müşterinin parolası olmadan reddi; başka
+  parolayla gelen aynı kimliğin saklanan yanıtla yanıtlanması; iki rotanın paylaştığı
+  sınır; bilinmeyen sonuçtan sonra aynı kimlik (web).
+
+Kaydedilen bilinen sınırlar: yalnız büyük-küçük harfle ayrılan iki adrese aynı anda
+yapılan iki değişiklik, harf gözetmeyen denetimden birlikte geçebilir, çünkü şemanın
+`UNIQUE` kısıtı tam karşılaştırır; bu sürümde harf gözetmeyen bir dizin eklenmez.
+Sertifika yetkilisi herkese açık olmayan bir alan adındaki (`.test`, `.local`,
+`.internal`, `example.com`) adresi yine reddedebilir: panel biçimi denetler, alan
+adına yetkili karar verir. `--create-admin` verilen adresi hâlâ denetlemez; panelin
+kapıları artık onu yakalar.
+
+Yapılmadı: kurulu bir sunucuda hiçbir şey ölçülmedi; yeni adres bir iletiyle
+doğrulanmaz; açık oturumlar hâlâ yapılmadı.
 
 ---
 

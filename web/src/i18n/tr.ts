@@ -253,6 +253,7 @@ export const tr: Record<ShellKey, string> = {
     'imp.return': 'Hesabıma dön',
 
     'profile.changePassword': 'Parolayı değiştir',
+    'profile.changeEmail': 'E-postayı değiştir',
     'profile.current': 'Mevcut parola',
     'profile.new': 'Yeni parola',
     'profile.new2': 'Yeni parola (tekrar)',

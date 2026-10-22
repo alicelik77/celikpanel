@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Shield, ShieldCheck, ShieldOff, Copy, Check, KeyRound } from 'lucide-react';
+import { Shield, ShieldCheck, ShieldOff, Copy, Check, KeyRound, Mail } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import { Button, RemoteGate, inputClass } from './ui';
@@ -7,6 +7,8 @@ import { PageHeader } from './PageHeader';
 import { readApiError } from '../lib/apiError';
 import { useRemote } from '../lib/remote';
 import { ChangePasswordModal } from './ChangePasswordModal';
+import { ChangeEmailModal } from './ChangeEmailModal';
+import { useLocation } from '../router';
 
 // My account: the signed-in person's own sign-in security, opened from the
 // personal menu at the top right (D-037, owner 2026-10-22). It is what
@@ -27,6 +29,7 @@ export function AccountPage() {
             <PageHeader title={t('nav.account')} subtitle={t('account.subtitle')} breadcrumb={[t('common.home'), t('nav.account')]} />
             <div className="grid max-w-3xl gap-5">
                 <PasswordPanel />
+                <EmailPanel />
                 <TwoFactorPanel />
             </div>
         </div>
@@ -46,10 +49,85 @@ function PasswordPanel() {
                 <h2 className="text-base font-semibold text-fg">{t('account.password.title')}</h2>
             </div>
             <p className="mb-4 text-sm text-fg-muted">{t('account.password.desc')}</p>
-            <Button variant="secondary" icon={KeyRound} onClick={() => setOpen(true)}>
+            <Button variant="secondary" icon={KeyRound} className="max-sm:min-h-11" onClick={() => setOpen(true)}>
                 {t('profile.changePassword')}
             </Button>
             {open && <ChangePasswordModal onClose={() => setOpen(false)} />}
+        </section>
+    );
+}
+
+const OWN_IDENTITY_URL = '/api/v1/auth/me';
+
+// The signed-in person's own address, from the identity answer. An answer
+// without the field is not "no address".
+// Oturum açan kişinin kendi adresi; alanı taşımayan yanıt "adres yok" değildir.
+function decodeOwnEmail(raw: unknown): string {
+    if (!raw || typeof raw !== 'object' || typeof (raw as { email?: unknown }).email !== 'string') {
+        throw new Error('shape');
+    }
+    return (raw as { email: string }).email;
+}
+
+// My email (v0.1.0-alpha.99, D-037 amendment): the address CelikPanel keeps
+// for the person, which for an administrator is also the panel certificate's
+// contact. /account#email is where the certificate's and the setup plan's
+// contact refusal send the person. The address is read from the server; the
+// change is offered only on a known answer.
+// E-posta adresim: kişinin adresi; yönetici için panel sertifikasının iletişim
+// adresidir. /account#email, sertifikanın ve kurulum planının iletişim reddinin
+// gönderdiği yerdir. Değişiklik yalnız bilinen bir yanıt üzerinde sunulur.
+function EmailPanel() {
+    const { t } = useI18n();
+    const location = useLocation();
+    const identity = useRemote(OWN_IDENTITY_URL, decodeOwnEmail);
+    const [open, setOpen] = useState(false);
+    const known = identity.remote.state === 'known' ? identity.remote.value : null;
+
+    useEffect(() => {
+        if (location.hash !== '#email') return;
+        document.getElementById('email')?.scrollIntoView?.({ block: 'start' });
+    }, [location.hash]);
+
+    return (
+        <section id="email" className="scroll-mt-24 rounded-xl border border-border bg-surface p-5" data-account-section="email">
+            <div className="mb-1 flex items-center gap-2">
+                <Mail className="h-5 w-5 text-fg-subtle" aria-hidden="true" />
+                <h2 className="text-base font-semibold text-fg">{t('account.email.title')}</h2>
+            </div>
+            <p className="mb-4 text-sm text-fg-muted">{t('account.email.desc')}</p>
+            <div className="mb-4 min-h-[1.5rem]">
+                <RemoteGate
+                    remote={identity.remote}
+                    checking={t('account.email.checking')}
+                    failed={t('account.email.unknown')}
+                    onRetry={() => void identity.retry()}
+                    busy={identity.reading}
+                >
+                    {({ value }) => (
+                        <p className="break-all text-sm font-medium text-fg" data-own-email="">
+                            {value || t('account.email.none')}
+                        </p>
+                    )}
+                </RemoteGate>
+            </div>
+            <Button
+                variant="secondary"
+                icon={Mail}
+                className="max-sm:min-h-11"
+                disabled={known === null || identity.reading}
+                onClick={() => setOpen(true)}
+            >
+                {t('account.email.change')}
+            </Button>
+            {open && (
+                <ChangeEmailModal
+                    current={known}
+                    onClose={() => setOpen(false)}
+                    onChanged={() => void identity.retry()}
+                    onUnknown={() => void identity.retry()}
+                />
+            )}
         </section>
     );
 }

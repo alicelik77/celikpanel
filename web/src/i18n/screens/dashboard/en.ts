@@ -177,6 +177,7 @@ export const enDashboardScreens = {
     'dashboard.audit.action.2fa.disable': 'turned off two-factor authentication',
     'dashboard.audit.action.2fa.enable': 'turned on two-factor authentication',
     'dashboard.audit.action.2fa.setup': 'started setting up two-factor authentication',
+    'dashboard.audit.action.account.email.changed': 'changed their own email address',
     'dashboard.audit.action.app.install': 'installed the application {target}',
     'dashboard.audit.action.auth.login': 'signed in',
     'dashboard.audit.action.auth.login.2fa': 'signed in with two-factor authentication',

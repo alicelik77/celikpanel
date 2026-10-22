@@ -6832,3 +6832,139 @@ clock date of everything in it.
   not run against a real Agent or the real release server; the update card and
   notices not yet seen on an installed server; the rollback paths that share the
   changed helpers exercised by contract tests only.
+
+### Candidate v0.1.0-alpha.99 (one new state-changing route: one's own email; no Agent, updater or schema change; invariants 2, 4 and 6; D-037 amendment; D-029; D-024; D-025; 2026-10-22)
+
+D-025 invariants 2 (evidence has a meaning and a lifecycle: an answer that did not
+arrive is "not known", never failure or success; the card reads the stored address
+again), 4 (every mutation carries a recovery contract: a lost answer or a replay
+never authorises a second change, so the route is under the D-029 request-identity
+guard) and 6 (readiness, progress and access remain independent: the dialog's
+bounded wait ends in a read, and a read or a second asking never starts a second
+change). The P0.1/P0.2 area (truthful, actionable state) is touched by the new
+refusals and the panel certificate's guidance. **No P0 item is closed or
+advanced**; P0.1 to P0.5 stay partial and every open acceptance item stays open.
+This entry is not a claim that the native update and automatic-rollback
+resilience is complete. 2026-10-22 is the clock date of everything in it.
+
+- **What this release touches.** One new state-changing route, `PUT
+  /api/v1/auth/email`, with which the signed-in person changes their own address
+  in the Panel's `users` table after giving the current password (D-037
+  amendment); the panel certificate's missing-contact refusal, which now carries
+  the action `/account#email`; and the web interface (a "My email" card on My
+  account, "Change email" in an additional user's personal menu, the dialog, the
+  guidance texts and "Open My account" buttons). It does **not** touch the Agent,
+  the updater (`update.sh`, `get.sh`, the system update worker, rollback and
+  recovery), the schema, polling, any component, or the split of the catalogue
+  parts. Therefore **no native record is made** for this release, by the owner's
+  instruction of 2026-10-16 (no native record unless the updater's mutation path
+  changes), and the release-recovery harness, which mirrors the update card's
+  texts and outcome logic, is not run, because no update-related file changed.
+- **The request identity (D-029).** The guard protects this route: it is the first
+  `PUT` it guards (it guarded `POST` routes only). The request carries
+  `X-CelikPanel-Request-Id`; a request without one is `428 REQUEST_ID_REQUIRED`
+  before the handler, and the handler itself refuses to run if it is reached
+  without the guard. The same identity is answered from the first arrival's stored
+  answer (`X-CelikPanel-Request-Replayed: 1`) and never changes the address a
+  second time; the same identity with another address is `409 REQUEST_ID_REUSED`.
+  The route's time limit is 30 seconds. **The stored digest is of the new address
+  alone:** the body's keys must be exactly `email` and `current_password` (Go's
+  JSON decoding matches keys without regard to case, so any other spelling is
+  refused), and a digest hook per route hashes only the new address, re-encoded; an
+  unreadable body hashes to a constant. The success answer carries no address, so
+  a `request_identities` row holds neither the password nor the address. The web
+  interface sends one identity per click, asks again once with the same identity
+  when the answer was lost (the connection failed or a gateway answered), and after
+  an unknown result sends the next Save of the same address under the same
+  identity, until a definite answer.
+- **The write.** One validator (`mutationpayload.CanonicalContactEmail`, the panel
+  certificate's own contact check, exported); an address another account uses is
+  refused, compared without regard to letter case, and the `UNIQUE` constraint on
+  `users.email` (since `001_full_schema.sql`) is the last word; the write is a
+  compare-and-set on the verified address and password hash, so a change made
+  elsewhere in between is reported (`account_email_changed_elsewhere`), never
+  overwritten. Every refusal changes nothing. Every attempt counts against one
+  re-authentication limit shared with the password change (`reauth`, per account
+  and client address, 10 per 5 minutes). Sessions are not ended.
+  One audit entry `account.email.changed` names the user, not the address.
+- **Owner-operated recovery path: unchanged.** CelikPanel updates stays where it
+  is; the owner starts every installed-panel update from the panel's own update
+  screen. Nothing the owner can do without the panel depends on a panel user's
+  address (D-022): no hosted service is reconfigured, and nothing about any
+  certificate is requested, renewed or retried by an email change. The panel
+  certificate request reads the address when it is made. A server setup plan keeps
+  the address it was reviewed with in its identity, so after a change an
+  already-reviewed plan is refused at start ("requirements changed, review the
+  current plan") and the new review picks up the new address; a setup that is
+  already running keeps the address of the plan it started with. **Installed-panel
+  update path: unchanged.**
+- **Access gates.** The route is open to every role that may change its own
+  password (administrator, reseller, customer, additional user); it is neither
+  administrator-only nor in the additional-user restricted list. A cross-origin or
+  origin-less `PUT` is blocked by the existing CSRF check. **The licence gate is
+  unchanged:** the route is not added to the licence-locked recovery list (the
+  password change is on it); while the panel is licence-locked, the email change is
+  refused like the other routes. Changing that list is licence policy and outside
+  this release.
+- **Schema, version transition and recovery.** Schema 44, no migration; no new
+  index (the `UNIQUE` constraint already exists). The release sequence moves 98 to
+  99 in the release preparation. *alpha.98 to alpha.99:* alpha.99 reads everything
+  alpha.98 wrote; the address column is the one it always was. *alpha.99 back to
+  alpha.98* (for example after a rollback): alpha.98 reads the same `users` row;
+  an address changed on alpha.99 stays, and alpha.98 simply has no screen for
+  changing it again (its certificate refusal says so). A `request_identities` row
+  for the new route is harmless there: alpha.98 does not guard the route, and the
+  hourly sweep removes the row after 24 hours. **Recovery behaviour:** a Panel
+  restart while a change's row is `running` turns that row `interrupted`; a replay
+  of that identity is answered `409 REQUEST_OUTCOME_UNKNOWN` and is never run
+  again. The person reloads; the card reads the address that is stored and shows
+  it; if it is still the old one, a new click (a new identity) changes it. Not
+  measured on an installed server.
+- **Evidence and open.** On the candidate tree: Go `go test ./cmd/panel/ ./internal/...` (-timeout 45m, CGO off) in the `CelikPanel-S2-Debian` guest on the candidate tree: 64 packages ok, 2895 top-level tests passed, 42 skipped, 0 failed (4279 subtests passed); gofmt and go vet clean, with handler tests
+  for all four roles (sessions kept, one audit row, no address in it), every
+  refusal changing nothing (invalid forms, the same address, a taken one including
+  another letter case, a wrong or missing password, an unknown field, two JSON
+  objects, no or a bad identity, a wrong method), cross-origin and origin-less
+  `PUT` blocked, wrong passwords counted toward the lockout (the test's third
+  attempt is refused even with the right password; another account is unaffected),
+  the replay of one identity (the same answer, one audit row; a reused identity
+  with another address refused; the stored digest without the password), the
+  compare-and-set against a stale read, the handler refusing to run without the
+  guard, the route gates, and the panel certificate request refused with
+  `/account#email` and then carrying the new address after the change, with no
+  certificate requested by the change; a validator test in
+  `internal/mutationpayload`. Web `npm test` 1709 of 1709 passed (the new `tests/own-email-mounted.test.mjs`: 11 tests in English and Turkish; one new mounted test of the certificate refusal's banner on Settings; the additional user's menu item), `npm run build` passed within every budget (critical boot path 329.93 of 361 KiB). Browser batch 24 13 states in each of 8 configurations (104 screenshots), looked at twice: the first look found the refusal banner's button 28 px tall on a phone, now at least 44 px; the second look found nothing else; the language switcher inside the personal menu (28 px on a phone) is older than this release and unchanged; screenshots and the browser driver deleted afterwards. The
+  release sequence policy (98 to 99), download portal and signed release manifest
+  contracts passed. The numbers are in the [release
+  notes](RELEASE-NOTES-v0.1.0-alpha.99.md). Component and mounted tests do not
+  establish native behaviour. **Nothing was measured on an installed server.**
+  Open: the email change is seen on no installed server; the new address is not
+  confirmed by a message to it; open sessions are not built; everything the
+  alpha.88 to alpha.98 entries leave open stays open. Installed panels are updated
+  only by their owners, from the panel's own update screen. P0.1 to P0.5 stay
+  partial.
+- **Security review corrections (2026-10-22, before any publication).** The
+  panel certificate's contact gate and the setup plan's contact blocker now use
+  `CanonicalContactEmail` instead of `mail.ParseAddress`, so `admin@localhost`,
+  `root@myhost` or a non-ASCII address (possible through `--create-admin`, which
+  does not check it) get the coded refusal with `/account#email` and the setup
+  blocker instead of failing later without guidance. The body's keys are exact
+  (a `Current_Password` or `current_paſsword` key no longer reaches the password
+  field past the digest); the digest is of the address alone; the success answer
+  carries no address; the email and password changes share one limit; after an
+  unknown result the same identity is reused, except after the Panel's final
+  `REQUEST_OUTCOME_UNKNOWN`, after which the next Save is a new action (re-check of
+  2026-10-22). Known limits: two simultaneous
+  changes to addresses that differ only in letter case can both pass (the
+  `UNIQUE` constraint compares exactly; no index added in this release); the
+  certificate authority may still refuse a non-public domain (`.test`, `.local`,
+  `example.com`). Tests and evidence above are of the corrected tree.
+- **What the owner saw of alpha.98 (2026-10-22).** The owner reported both
+  installed servers on alpha.98: the Dashboards of Boston and Frankfurt show the
+  new menu. Frankfurt's update from alpha.94 went through, after its alpha.95 stop
+  on a busy package manager. That turns "the new layout is seen on no installed
+  server" into "seen on both, on the Dashboard" and answers "Frankfurt's update
+  after its alpha.95 stop was not reported" (invariant 2: what was seen is said,
+  and no more). Frankfurt's package versions were not reported, so the open item of
+  the D-034 amendment stays open for Frankfurt; a kept reading or a busy package
+  manager on a real server has still not been seen.

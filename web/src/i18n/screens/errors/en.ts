@@ -137,7 +137,16 @@ export const enErrorsScreens = {
     'err.SITE_CONFIG_SERVICE_REFUSED.php_pool.unconfirmed': 'PHP-FPM did not accept CelikPanel’s pool text (its configuration check or reload failed). CelikPanel tried to put the previous file back; whether it is in place is not confirmed — the server administrator checks the file on the server. PHP-FPM’s message and what failed while putting the file back are in the panel log (sudo journalctl -u celikpanel-panel | grep "site configuration"); fix the cause, then try again.',
     'err.SITE_CONFIG_SERVICE_REFUSED.app_unit.unconfirmed': 'systemd did not take CelikPanel’s unit text (its reload failed). CelikPanel tried to put the previous file back; whether it is in place is not confirmed — the server administrator checks the file on the server. systemd’s message and what failed while putting the file back are in the panel log (sudo journalctl -u celikpanel-panel | grep "site configuration"); fix the cause, then try again.',
     'err.CERTIFICATE_VALIDATION_UNKNOWN': 'CelikPanel could not check whether this site’s nginx configuration file lets the certificate validation run, because nginx on this server did not answer, so no certificate was requested and nothing was changed. The server administrator checks that nginx is running; then request the certificate again.',
-    'err.panel_certificate_contact_email_invalid': 'The administrator account has no valid email address, which the certificate authority needs as a contact. There is no screen to change it yet: it is the address given when the administrator was created on the server.',
+    'err.panel_certificate_contact_email_invalid': 'The administrator account has no valid email address, which the certificate authority needs as a contact. Nothing was requested. Set your email on My account (top-right menu), then try again.',
+    'err.panel_certificate_contact_email_invalid.action': 'Open My account',
+    // v0.1.0-alpha.99: changing one's own email (cmd/panel/account_email_handler.go).
+    'err.account_email_request_invalid': 'The request could not be read, so nothing was changed. Reload the page and try again.',
+    'err.account_email_invalid': 'This is not an email address the panel can use, so nothing was changed. Enter one address such as name@example.com; a domain with letters outside English goes in its ASCII form (xn--…).',
+    'err.account_email_unchanged': 'This is already your email address, so nothing was changed.',
+    'err.account_email_taken': 'Another account already uses this email address, so nothing was changed. Enter a different address.',
+    'err.account_email_wrong_password': 'Your current password is not correct, so nothing was changed. Enter the password you sign in with.',
+    'err.account_email_too_many_attempts': 'Too many attempts, so nothing was changed. Wait a few minutes, then try again.',
+    'err.account_email_changed_elsewhere': 'Your account was changed somewhere else while this was being saved, so nothing was changed. Reload the page and try again.',
 } as const;
 
 export type ErrorsScreenKey = keyof typeof enErrorsScreens;
