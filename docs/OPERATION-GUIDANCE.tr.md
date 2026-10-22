@@ -9751,14 +9751,16 @@ etkileyeceğini bir kez okur.
   şeyi değiştirmez.
 - *Gösterdikleri:* önce "Bu sunucuda etkilenecekler" (Panel'in onun üzerinde
   barındırdıkları adıyla, en çok beşi ve ardından "+N tane daha"; certbot için
-  onunla yenilenen ve yenilenmesi duracak sertifikalar — panelin, posta
-  sunucusunun, sitelerin —; güvenlik duvarı motoru için artık uygulanmayacak
-  panel güvenlik duvarı (açık ve N açık port, kapalı ya da bilinmiyor); Redis,
+  onunla yenilenen ve yenilenmesi duracak sertifikalar — sahip kendi
+  sertifikasını sunmuyorsa panelinki, sunucu kurulumunun verildiğini kaydettiği
+  posta sunucusu sertifikaları, otomatik yenilenen site sertifikaları —; güvenlik
+  duvarı motoru için panel güvenlik duvarının durumu (açık ve N açık port, kapalı
+  ya da bilinmiyor) ve CelikPanel panel güvenlik duvarını artık uygulayamaz, değiştiremez ve geri yükleyemez; yüklenmiş kurallar sunucu yeniden başlayana dek kalabilir; WireGuard için artık bağlanamayacak VPN
+  eşleri; vsftpd için Panel'in kaydettiği FTP hesapları; Redis,
   Valkey ve Memcached için CelikPanel'in onları hangi sitelerin kullandığını
   kaydetmediği; sunucu kurulumunun certbot'u ve güvenlik duvarı motorunu
   gerektirdiği; ona ihtiyaç duyan kurulu bileşenler; eksik bıraktığı hazır
-  paketler; güvenlik duvarından istediği portlar; yalnız bunların hiçbiri yoksa
-  "Bu sunucuda başka hiçbir şey X bileşenine bağlı değil"), ardından "Silinenler"
+  paketler; güvenlik duvarından istediği portlar; yalnız bunların hiçbiri yoksa "CelikPanel bu sunucuda X bileşenine bağlı başka hiçbir şey kaydetmiyor"), ardından "Silinenler"
   (kaldırma yolunun bu bileşen için yaptığı, paketler ve apt ile pacman'da paket
   yöneticisi komutu; bir veritabanı motoru için veritabanı dosyalarının paketin
   kaldırma betiğince silinebileceğini ve önce yedek alınmasını söyleyen bir uyarı

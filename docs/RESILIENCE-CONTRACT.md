@@ -7082,8 +7082,8 @@ not a claim that the native update and automatic-rollback resilience is complete
   behaviour:** nothing is lost or needs repairing. The sequence floor ordering of
   100 over 99 is proven by the Agent, Panel, policy and recovery-foundation tests.
   Not measured on an installed server.
-- **Evidence and open.** On the candidate tree: Go `go test ./cmd/panel/ ./internal/...` (-timeout 45m, CGO off) in the `CelikPanel-S2-Debian` guest: 64 packages ok, 2909 top-level tests passed, 42 skipped, 0 failed (4282 subtests passed); `go test ./cmd/agent/...` in a clean mount namespace: 1821 top-level tests passed, 29 skipped, 0 failed (2838 subtests passed); gofmt clean and `go vet ./cmd/... ./internal/...` clean; web `npm test`
-  1739 of 1739 passed; the build within its budgets (critical boot path
+- **Evidence and open.** On the candidate tree: Go `go test ./cmd/panel/ ./internal/...` (-timeout 45m, CGO off) in the `CelikPanel-S2-Debian` guest: 64 packages ok, 2913 top-level tests passed, 42 skipped, 0 failed (4282 subtests passed); `go test ./cmd/agent/...` in a clean mount namespace: 1821 top-level tests passed, 29 skipped, 0 failed (2838 subtests passed); gofmt clean and `go vet ./cmd/... ./internal/...` clean; web `npm test`
+  1740 of 1740 passed; the build within its budgets (critical boot path
   331.08 KiB of 361 KiB; no limit raised); the release sequence policy, download
   portal and signed release manifest contracts and the release-recovery harness
   passed; browser batch 25 looked at twice. The numbers are in the [release
@@ -7102,5 +7102,5 @@ not a claim that the native update and automatic-rollback resilience is complete
   `--auto-remove` and pacman's dependency removal per family, puts the database
   warning on its own line, does not say a unit-less tool is stopped, says a
   family without catalogue packages is refused (as the Agent refuses it), and
-  names Roundcube's kept packages exactly. The Agent tests are recorded above.
+  names Roundcube's kept packages exactly. A second round made a firewall answer that carries its own error "not known", words the firewall engine as CelikPanel no longer able to apply, change or restore the panel firewall (rules already loaded may stay until the server restarts), adds WireGuard's VPN peers and vsftpd's FTP accounts, narrows certbot's list to what the Panel renews and setup recorded, keeps the firewall read from waiting on a firewall change, and narrows the empty case to "CelikPanel records nothing else on this server that depends on X". The Agent tests are recorded above.
   The removal itself is unchanged.

@@ -434,15 +434,18 @@ Kabul edilen kurallar:
      bir motor için veritabanları; Postfix ve Dovecot için e-posta adresleri ve
      yönlendirmeler; bir spam süzgeci için posta alan adları; Roundcube için posta
      kutuları; certbot için Panel'in onunla yenilediği, yenilenmesi duracak
-     sertifikalar — panelin, posta sunucusunun ve her Let's Encrypt site
-     sertifikası —; güvenlik duvarı motoru için artık uygulanmayacak panel
-     güvenlik duvarı: açık ve N açık port, kapalı ya da bilinmiyor; Redis, Valkey
+     sertifikalar — sahip kendi sertifikasını sunmuyorsa panelinki, sunucu kurulumunun verildiğini kaydettiği posta sunucusu sertifikaları ve otomatik yenilemesi açık her Let's Encrypt site
+     sertifikası —; güvenlik duvarı motoru için panel güvenlik duvarının
+     durumu (açık ve N açık port, kapalı ya da bilinmiyor) ve CelikPanel'in onu
+     artık uygulayamayacağı, değiştiremeyeceği ve geri yükleyemeyeceği, yüklenmiş
+     kuralların sunucu yeniden başlayana dek kalabileceği; WireGuard için Panel'in
+     etkin tuttuğu, artık bağlanamayacak VPN eşleri; vsftpd için kaydettiği FTP
+     hesapları; Redis, Valkey
      ve Memcached için yalnız CelikPanel'in onları hangi sitelerin kullandığını
      kaydetmediği), sunucu kurulumunun certbot'u ve güvenlik duvarı motorunu
      hazırladığı her sunucuda gerektirdiği, ona ihtiyaç duyan kurulu bileşenler,
      eksik bıraktığı hazır paketler ve güvenlik duvarından istediği portlar;
-     yalnız bunların hiçbiri yoksa "Bu sunucuda başka hiçbir şey X bileşenine
-     bağlı değil". Barındırılan adlardan en çok beşi, ardından "+N tane daha"
+     yalnız bunların hiçbiri yoksa "CelikPanel bu sunucuda X bileşenine bağlı başka hiçbir şey kaydetmiyor". Barındırılan adlardan en çok beşi, ardından "+N tane daha"
      gösterilir.
    - **Bir kez, görünür biçimde okunur ve asla engel olmaz.** Pencere açılınca
      okur, okuduğunu gösterir; 10 saniye sonra, bir retle ya da okuyamadığı bir
@@ -465,8 +468,8 @@ Kaldırma yolunun yaptığı, pencerenin söylediği biçimde (bu adayın kodund
 | apt'ta PHP-FPM ve PostgreSQL | Yukarıdaki gibi; ayrıca katalogdaki üretici desenine uyan her kurulu sürüm paketi (`php8.3-fpm`, `postgresql-17`, …) ve yol arkadaşları. pacman'da yalnız katalog paketleri. | Yukarıdaki gibi. Bir veritabanı motoru için pencere, silinenlerin altında kendi uyarı satırıyla, veritabanı dosyalarının paketin kaldırma betiğince silinebileceğini ve önce yedek alınmasını söyler. |
 | Spam süzgeci (Rspamd, SpamAssassin) | Paketli bileşen gibi; ayrıca Postfix'in süzgeç zinciri onsuz yeniden kurulur. | Yukarıdaki gibi; posta kalır, artık spam denetiminden geçmez. |
 | phpMyAdmin, phpPgAdmin | Paketli bileşen gibi; ayrıca veritabanı araçlarının sunucusu onsuz yeniden ayarlanır. | Yukarıdaki gibi. |
-| certbot | Paketli bileşen gibi (birimi yok). Panel'in onunla yenilediği sertifikaların (panelin, posta sunucusunun, sitelerin) yenilenmesi durur. | Yukarıdaki gibi. |
-| Güvenlik duvarı motoru (nftables) | Paketli bileşen gibi (birimi yok). Panel güvenlik duvarı artık uygulanmaz. | Yukarıdaki gibi. |
+| certbot | Paketli bileşen gibi (birimi yok). Panel'in onunla yenilediği sertifikaların (sahip kendi sertifikasını sunmuyorsa panelinki, kaydedilmiş posta sunucusu sertifikaları, otomatik yenilenen site sertifikaları) yenilenmesi durur. | Yukarıdaki gibi. |
+| Güvenlik duvarı motoru (nftables) | Paketli bileşen gibi (birimi yok). CelikPanel panel güvenlik duvarını artık uygulayamaz, değiştiremez ve geri yükleyemez; yüklenmiş kurallar sunucu yeniden başlayana dek kalabilir. | Yukarıdaki gibi. |
 | Bu paket yöneticisi için katalog paketi olmayan bileşen (pacman'da Redis, SpamAssassin, phpPgAdmin) | Hiçbir şey: Agent reddeder ("bu sistemde henüz otomatik olarak kaldırılamaz") ve pencere purge yerine bunu söyler. | Her şey. |
 | Roundcube | Paket değildir: `/var/lib/celikpanel-webmail` altındaki uygulama ağacı (ayarları ve adres defteri veritabanı dahil) ve `/webmail/` adresini sunan web sunucusu kaydı. | Posta kutuları ve Maildir verileri, diğer siteler ile Nginx ve PHP-FPM paketleri. |
 | Reddedilen kaldırma (Panel'in bildiği siteler, veritabanları ya da e-posta adresleri) | Hiçbir şey: Panel adlarıyla reddeder. | Her şey. |
@@ -510,6 +513,23 @@ incelemesi kaldırma davranışını değişmemiş buldu ve şunları istedi; ka
   değil kaldırmanın sildiğini gösterir.
 - Agent'ın kaldırma ve güncelleme testleri değiştiği için Agent testleri
   (`go test ./cmd/agent/...`, temiz bir mount ad alanında) koşturulur ve kaydedilir.
+
+**İkinci inceleme turu (22 Ekim 2026, her yayından önce).** Yeniden denetim
+şunları istedi; kaynaktadırlar: kendi hatasını ya da hata kodunu taşıyan bir
+güvenlik duvarı yanıtı ya da okunamayan bir motor "bilinmiyor"dur, asla bir durum
+değildir; güvenlik duvarı motorunun cümlesi `nft -f` ile yüklenmiş bir kural
+kümesi için doğru olanı söyler (CelikPanel panel güvenlik duvarını artık
+uygulayamaz, değiştiremez ve geri yükleyemez; yüklenmiş kurallar sunucu yeniden
+başlayana dek kalabilir); WireGuard, Panel'in etkin tuttuğu ve artık
+bağlanamayacak VPN eşlerini, vsftpd kaydettiği FTP hesaplarını adlandırır;
+certbot listesi yalnız yenileme işinin yenilediği site sertifikalarını sayar
+(`letsencrypt`, `auto_renew = 1`, `status = 'active'`), sahip kendi sertifikasını
+sunuyorsa (`CELIKPANEL_TLS_CERT`/`KEY` ya da yönetilmeyen bir TLS dizini) panel
+sertifikasını dışarıda bırakır ve bir posta sunucusu sertifikasını yalnız sunucu
+kurulumu onun sertifika adımını başarılı olarak kaydettiyse adlandırır; güvenlik
+duvarı okuması bir güvenlik duvarı değişikliğini asla beklemez (kilit tutulurken
+hemen "bilinmiyor" der); boş durum CelikPanel'in kaydettikleriyle daraltıldı:
+"CelikPanel bu sunucuda X bileşenine bağlı başka hiçbir şey kaydetmiyor".
 
 Bunun yetkilendirmedikleri: Bileşenler sayfasında başka hiçbir değişiklik
 (satırlar, düğmeler, şeritler, rozetler ve katlama olduğu gibi kalır), "⋯" menüsü,

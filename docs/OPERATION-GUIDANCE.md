@@ -9790,13 +9790,16 @@ X?". The dialog reads, once, what the removal affects on this server.
   nothing.
 - *What it shows:* "Affected on this server" first (what the Panel hosts on it by
   name, up to five and then "+N more"; for certbot the certificates it renews —
-  the panel's, the mail host's, the sites' — whose renewal stops; for the
-  firewall engine the panel firewall (on with N open ports, off, or not known),
-  which is no longer enforced; for Redis, Valkey and Memcached that CelikPanel
+  the panel's unless the owner serves their own, the mail host certificates
+  server setup recorded as issued, the sites' with automatic renewal — whose
+  renewal stops; for the firewall engine the panel firewall's state (on with N
+  open ports, off, or not known) and that CelikPanel can no longer apply, change or restore the panel firewall; rules already loaded may stay until the server restarts; for WireGuard the VPN
+  peers that can no longer connect; for vsftpd the FTP accounts the Panel
+  records; for Redis, Valkey and Memcached that CelikPanel
   does not record which sites use them; that server setup requires certbot and
   the firewall engine; the installed components that need it; the ready bundles
   it leaves incomplete; the ports it asked the firewall for; only with none of
-  these, "Nothing else on this server depends on X"), then "What is removed"
+  these, "CelikPanel records nothing else on this server that depends on X"), then "What is removed"
   (what the uninstall path does for this component, the packages and, on apt and
   pacman, the package manager command; for a database engine a warning line that
   the database files may be deleted by the package's removal script, so back them

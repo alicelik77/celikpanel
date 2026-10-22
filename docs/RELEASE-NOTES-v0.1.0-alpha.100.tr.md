@@ -37,19 +37,16 @@ okunuyor…" der ve Kaldır kullanılabilir kalır. Ardından üç bölüm göst
   motoru için veritabanları, Postfix ve Dovecot için e-posta adresleri ve
   yönlendirmeler, Rspamd ya da SpamAssassin için postası artık spam denetiminden
   geçmeyecek posta alan adları, Roundcube için web postasını kaybedecek posta
-  kutuları ve certbot için panelin onunla yenilediği sertifikalar (panelin, posta
-  sunucusunun, sitelerin), "Yenilenmeleri durur." cümlesiyle. Bunlar panelin
+  kutuları WireGuard için artık bağlanamayacak VPN eşleri, vsftpd için FTP hesapları ve certbot için panelin onunla yenilediği sertifikalar (kendi sertifikanızı sunmuyorsanız panelinki, sunucu kurulumunun kaydettiği posta sunucusu sertifikaları, otomatik yenilenen site sertifikaları), "Yenilenmeleri durur." cümlesiyle. Bunlar panelin
   kaldırmayı reddetmesine yol açıyorsa kalın bir satır "Bunlar varken CelikPanel X
   bileşenini kaldırmaz: önce taşıyın ya da silin." der. Güvenlik duvarı motoru
-  için: "Panel güvenlik duvarı (açık, N açık port) artık uygulanmaz." (ya da şu an
-  kapalı olduğu ve onsuz açılamayacağı ya da durumunun okunamadığı). Redis, Valkey
+  için: panel güvenlik duvarının durumu (açık ve N açık port, kapalı ya da bilinmiyor) ve "CelikPanel onu artık uygulayamaz, değiştiremez ve geri yükleyemez; yüklenmiş kurallar sunucu yeniden başlayana dek kalabilir."  Redis, Valkey
   ve Memcached için: "CelikPanel, X bileşenini hangi sitelerin kullandığını
   kaydetmez." certbot ve güvenlik duvarı motoru için: "Sunucu kurulumu, hazırladığı
   her sunucuda X bileşenini gerektirir…". Ardından ona ihtiyaç duyan kurulu
   bileşenler ("X bileşenine ihtiyaç duyan ve çalışmayı durduracak bileşenler: …"),
   eksik bıraktığı hazır paketler (""Nginx + PHP-FPM" hazır paketi eksik kalır.")
-  ve güvenlik duvarından istediği portlar. Yalnız bunların hiçbiri yoksa: "Bu
-  sunucuda başka hiçbir şey X bileşenine bağlı değil."
+  ve güvenlik duvarından istediği portlar. Yalnız bunların hiçbiri yoksa: "CelikPanel bu sunucuda X bileşenine bağlı başka hiçbir şey kaydetmiyor." 
 - **Silinenler:** panelin kaldırmasının bu bileşen için gerçekten yaptığı
   (aşağıda), paketler ve apt ile pacman'da paket yöneticisi komutu. Bir veritabanı
   motorunda ardından bir uyarı satırı gelir: veritabanı dosyaları paketin soru
@@ -75,7 +72,8 @@ Pencerenin silinen ve kalan olarak söyledikleri, bu sürümün kodundan:
 | Rspamd, SpamAssassin | Yukarıdaki gibi; Postfix postayı artık ondan geçirmez. | Posta kalır; artık spam denetiminden geçmez. |
 | phpMyAdmin, phpPgAdmin | Yukarıdaki gibi; panel onun sayfalarını artık sunmaz. | Yukarıdaki gibi. |
 | certbot | Yukarıdaki gibi. Panelin onunla yenilediği sertifikaların yenilenmesi durur. | Yukarıdaki gibi. |
-| Güvenlik duvarı motoru (nftables) | Yukarıdaki gibi. Panel güvenlik duvarı artık uygulanmaz. | Yukarıdaki gibi. |
+| WireGuard | Yukarıdaki gibi. Panelin etkin tuttuğu VPN eşleri artık bağlanamaz. | Yukarıdaki gibi. |
+| Güvenlik duvarı motoru (nftables) | Yukarıdaki gibi. CelikPanel panel güvenlik duvarını artık uygulayamaz, değiştiremez ve geri yükleyemez. | Yüklenmiş kurallar sunucu yeniden başlayana dek kalabilir. |
 | Bu paket yöneticisinde katalog paketi yok (pacman'da Redis, SpamAssassin, phpPgAdmin) | Hiçbir şey: Kaldır reddedilir ("bu sistemde henüz otomatik olarak kaldırılamaz"). | Her şey. |
 | Roundcube | Uygulama dosyaları, kendi ayarları ve adres defteri veritabanı ile `/webmail/` kaydı. | Posta kutuları ve Maildir verileri, diğer siteler ile Nginx ve PHP-FPM paketleri. |
 
@@ -158,6 +156,20 @@ PostgreSQL, Postfix, certbot ve güvenlik duvarı motoru için kaldırma pencere
 açık tutulan ve reddedilen okuma; 4 yapılandırma, 28 ekran görüntüsü) başka bir
 şey bulmadı; ekran görüntüleri ve sürücü silindi.
 
+İkinci bir inceleme turu daha fazlasını istedi; bunlar da kaynaktadır: kendi
+hatasını taşıyan bir güvenlik duvarı yanıtı ya da okunamayan bir motor
+"bilinmiyor"dur; güvenlik duvarı motorunun cümlesi CelikPanel'in panel güvenlik
+duvarını artık uygulayamayacağını, değiştiremeyeceğini ve geri yükleyemeyeceğini,
+yüklenmiş kuralların sunucu yeniden başlayana dek kalabileceğini söyler (panel
+onları `nft -f` ile yükler); WireGuard artık bağlanamayacak VPN eşlerini, vsftpd
+panelin kaydettiği FTP hesaplarını adlandırır; certbot yalnız yenileme işinin
+yenilediği site sertifikalarını (Let's Encrypt, otomatik yenileme açık, etkin)
+sayar, sahibin sunduğu panel sertifikasını dışarıda bırakır ve bir posta
+sunucusu sertifikasını yalnız sunucu kurulumu adımını başarılı olarak
+kaydettiyse adlandırır; güvenlik duvarı okuması bir güvenlik duvarı
+değişikliğini asla beklemez; boş durum artık "CelikPanel bu sunucuda X
+bileşenine bağlı başka hiçbir şey kaydetmiyor" der.
+
 ## Bilinen açıklar
 
 - Kurulu bir sunucuda hiçbir şey ölçülmedi.
@@ -175,9 +187,8 @@ açık tutulan ve reddedilen okuma; 4 yapılandırma, 28 ekran görüntüsü) ba
 
 Aday ağacında:
 
-- Go: `CelikPanel-S2-Debian` konuğunda `go test ./cmd/panel/ ./internal/...` (-timeout 45m, CGO kapalı): 64 paket tamam, 2909 üst düzey test geçti, 42 atlandı, 0 başarısız (4282 alt test geçti); temiz bir mount ad alanında `go test ./cmd/agent/...` (`/var/lib/celikpanel-agent-private` ve `/run/celikpanel` üzerine boş bağlamalar, sunucunun `celikpanel` grubu olmadan bir `/etc/group` kopyası; sunucuya dokunulmadı): 1821 üst düzey test geçti, 29 atlandı, 0 başarısız (2838 alt test geçti); gofmt temiz ve `go vet ./cmd/... ./internal/...` temiz.
-- Web: `npm test` 1739 testin 1739'u geçti (yeni: `tests/removal-dialog-alpha100.test.mjs`,
-  19 test; `tests/server-setup-page-alpha100.test.mjs`, 10 test;
+- Go: `CelikPanel-S2-Debian` konuğunda `go test ./cmd/panel/ ./internal/...` (-timeout 45m, CGO kapalı): 64 paket tamam, 2913 üst düzey test geçti, 42 atlandı, 0 başarısız (4282 alt test geçti); temiz bir mount ad alanında `go test ./cmd/agent/...` (`/var/lib/celikpanel-agent-private` ve `/run/celikpanel` üzerine boş bağlamalar, sunucunun `celikpanel` grubu olmadan bir `/etc/group` kopyası; sunucuya dokunulmadı): 1821 üst düzey test geçti, 29 atlandı, 0 başarısız (2838 alt test geçti); gofmt temiz ve `go vet ./cmd/... ./internal/...` temiz.
+- Web: `npm test` 1740 testin 1740'ı geçti (yeni: `tests/removal-dialog-alpha100.test.mjs`, 20 test; `tests/server-setup-page-alpha100.test.mjs`, 10 test;
   `tests/panel-update-discovery-mounted.test.mjs` içinde üç basamaklı sürüm durumu);
   `npm run build` her bütçenin içinde (kritik açılış yolu 361 KiB'nin
   331,08 KiB'i; sınırlar yükseltilmedi).

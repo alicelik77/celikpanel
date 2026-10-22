@@ -36,18 +36,15 @@ stays available. Then it shows three parts:
   sites for a runtime, databases for a database engine, mail addresses and
   forwardings for Postfix and Dovecot, mail domains whose mail is no longer
   checked for spam for Rspamd or SpamAssassin, mailboxes that lose webmail for
-  Roundcube, and for certbot the certificates the panel renews with it (the
-  panel's, the mail host's, the sites') with "Their renewal stops." When those
+  Roundcube, VPN peers that can no longer connect for WireGuard, FTP accounts for vsftpd, and for certbot the certificates the panel renews with it (the panel's unless you serve your own, the mail host certificates server setup recorded, the sites' with automatic renewal) with "Their renewal stops."  When those
   things make the panel refuse the removal, a bold line says "CelikPanel does not
   remove X while these exist: move or delete them first." For the firewall engine:
-  "The panel firewall (on, N open ports) is no longer enforced." (or that it is
-  off now and cannot be turned on without it, or that its state could not be
-  read). For Redis, Valkey and Memcached: "CelikPanel does not record which sites
+  the panel firewall's state (on with N open ports, off, or not known) and "CelikPanel can no longer apply, change or restore it; rules already loaded may stay until the server restarts."  For Redis, Valkey and Memcached: "CelikPanel does not record which sites
   use X." For certbot and the firewall engine: "Server setup requires X on every
   server it prepares…". Then the installed components that need it ("Components
   that need X and stop working: …"), the ready bundles it leaves incomplete ("The
   ready bundle "Nginx + PHP-FPM" becomes incomplete."), and the ports it asked the
-  firewall for. Only with none of these: "Nothing else on this server depends on X."
+  firewall for. Only with none of these: "CelikPanel records nothing else on this server that depends on X." 
 - **What is removed:** what the panel's removal really does for this component
   (below), the packages, and the package manager command on apt and pacman. For a
   database engine a warning line follows: the database files may be deleted by the
@@ -72,7 +69,8 @@ What the dialog says is removed and kept, from the code of this release:
 | Rspamd, SpamAssassin | As above, and Postfix stops passing mail through it. | Mail stays; it is no longer checked for spam. |
 | phpMyAdmin, phpPgAdmin | As above, and the panel stops serving its pages. | As above. |
 | certbot | As above. The certificates the panel renews with it stop being renewed. | As above. |
-| The firewall engine (nftables) | As above. The panel firewall is no longer enforced. | As above. |
+| WireGuard | As above. The VPN peers the panel keeps active can no longer connect. | As above. |
+| The firewall engine (nftables) | As above. CelikPanel can no longer apply, change or restore the panel firewall. | Rules already loaded may stay until the server restarts. |
 | No catalogue packages on this package manager (Redis, SpamAssassin, phpPgAdmin on pacman) | Nothing: Remove is refused ("cannot be removed automatically on this system yet"). | Everything. |
 | Roundcube | Its application files, its own settings and address-book database, and the `/webmail/` entry. | Mailboxes and Maildir data, other sites, and the Nginx and PHP-FPM packages. |
 
@@ -154,6 +152,18 @@ dialog for Nginx, PostgreSQL, Postfix, certbot and the firewall engine, the read
 held open and refused; 4 configurations, 28 screenshots) found nothing more;
 screenshots and the driver deleted.
 
+A second review round asked for more, also in source: a firewall answer with
+its own error or an engine that cannot be read is "not known"; the firewall
+engine's sentence says CelikPanel can no longer apply, change or restore the
+panel firewall and that rules already loaded may stay until the server restarts
+(the panel loads them with `nft -f`); WireGuard names the VPN peers that can no
+longer connect and vsftpd the FTP accounts the panel records; certbot counts only
+the site certificates the renewal job renews (Let's Encrypt, automatic renewal
+on, active), leaves out an owner-served panel certificate and names a mail host
+certificate only when server setup recorded its step as succeeded; the firewall
+read never waits for a firewall change; and the empty case now reads "CelikPanel
+records nothing else on this server that depends on X".
+
 ## Known gaps
 
 - Nothing is measured on an installed server.
@@ -172,9 +182,8 @@ screenshots and the driver deleted.
 
 On the candidate tree:
 
-- Go: `go test ./cmd/panel/ ./internal/...` (-timeout 45m, CGO off) in the `CelikPanel-S2-Debian` guest: 64 packages ok, 2909 top-level tests passed, 42 skipped, 0 failed (4282 subtests passed); `go test ./cmd/agent/...` in a clean mount namespace (empty bind mounts over `/var/lib/celikpanel-agent-private` and `/run/celikpanel`, a copy of `/etc/group` without the host's `celikpanel` group; the host untouched): 1821 top-level tests passed, 29 skipped, 0 failed (2838 subtests passed); gofmt clean and `go vet ./cmd/... ./internal/...` clean.
-- Web: `npm test` 1739 of 1739 passed (new: `tests/removal-dialog-alpha100.test.mjs`,
-  19 tests; `tests/server-setup-page-alpha100.test.mjs`, 10 tests; a three-digit
+- Go: `go test ./cmd/panel/ ./internal/...` (-timeout 45m, CGO off) in the `CelikPanel-S2-Debian` guest: 64 packages ok, 2913 top-level tests passed, 42 skipped, 0 failed (4282 subtests passed); `go test ./cmd/agent/...` in a clean mount namespace (empty bind mounts over `/var/lib/celikpanel-agent-private` and `/run/celikpanel`, a copy of `/etc/group` without the host's `celikpanel` group; the host untouched): 1821 top-level tests passed, 29 skipped, 0 failed (2838 subtests passed); gofmt clean and `go vet ./cmd/... ./internal/...` clean.
+- Web: `npm test` 1740 of 1740 passed (new: `tests/removal-dialog-alpha100.test.mjs`, 20 tests; `tests/server-setup-page-alpha100.test.mjs`, 10 tests; a three-digit
   version case in `tests/panel-update-discovery-mounted.test.mjs`); `npm run build`
   within every budget (critical boot path 331.08 KiB of 361 KiB; the limits were
   not raised).

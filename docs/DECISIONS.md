@@ -440,15 +440,19 @@ The rules adopted:
      the web server; PHP or Node.js sites for a runtime; databases for an engine;
      mail addresses and forwardings for Postfix and Dovecot; mail domains for a
      spam filter; mailboxes for Roundcube; for certbot the certificates the Panel
-     renews with it — the panel's, the mail host's and every Let's Encrypt site
-     certificate — whose renewal stops; for the firewall engine the panel
-     firewall, on with N open ports, off, or not known, which is no longer
-     enforced; for Redis, Valkey and Memcached only that CelikPanel does not
-     record which sites use them), that server setup requires certbot and the
+     renews with it — the panel's unless the owner serves their own, the mail
+     host certificates server setup recorded as issued, and every Let's Encrypt
+     site certificate with automatic renewal on — whose renewal stops; for the
+     firewall engine the panel firewall's state (on with N open ports, off, or
+     not known) and that CelikPanel can no longer apply, change or restore it,
+     while rules already loaded may stay until the server restarts; for WireGuard
+     the VPN peers the Panel keeps active, which can no longer connect; for
+     vsftpd the FTP accounts it records; for Redis, Valkey and Memcached only
+     that CelikPanel does not record which sites use them), that server setup
+     requires certbot and the
      firewall engine on every server it prepares, the installed components that
      need it, the ready bundles it leaves incomplete and the firewall ports it
-     asked for; only with none of these, "Nothing else on this server depends on
-     X". Hosted names are shown up to five, then "+N more".
+     asked for; only with none of these, "CelikPanel records nothing else on this server that depends on X". Hosted names are shown up to five, then "+N more".
    - **Read once, visibly, and never in the way.** The dialog reads when it opens,
      shows that it reads, and after 10 seconds, on a refusal or on an answer it
      cannot read, says that the effects could not be read, that nothing was
@@ -471,8 +475,8 @@ candidate):
 | PHP-FPM and PostgreSQL on apt | As above, plus every installed versioned package matching the catalogue's vendor pattern (`php8.3-fpm`, `postgresql-17`, …) and its companions. On pacman only the catalogue packages. | As above. For a database engine the dialog says, as its own warning line under what is removed, that the database files may be deleted by the package's removal script and to back them up first. |
 | A spam filter (Rspamd, SpamAssassin) | As a package component, and Postfix's filter chain is composed again without it. | As above; mail stays, it is no longer checked for spam. |
 | phpMyAdmin, phpPgAdmin | As a package component, and the database tools' server is set again without it. | As above. |
-| certbot | As a package component (no units). The certificates the Panel renews with it (the panel's, the mail host's, the sites') stop being renewed. | As above. |
-| The firewall engine (nftables) | As a package component (no units). The panel firewall is no longer enforced. | As above. |
+| certbot | As a package component (no units). The certificates the Panel renews with it (the panel's unless the owner serves their own, the recorded mail host certificates, the sites' with automatic renewal) stop being renewed. | As above. |
+| The firewall engine (nftables) | As a package component (no units). CelikPanel can no longer apply, change or restore the panel firewall; rules already loaded may stay until the server restarts. | As above. |
 | A component without catalogue packages for this package manager (Redis, SpamAssassin, phpPgAdmin on pacman) | Nothing: the Agent refuses ("cannot be removed automatically on this system yet"), and the dialog says so instead of a purge. | Everything. |
 | Roundcube | Not a package: its application tree under `/var/lib/celikpanel-webmail` (its settings and address-book database included) and the web server entry that served `/webmail/`. | Mailboxes and Maildir data, other sites, and the Nginx and PHP-FPM packages. |
 | A refused removal (sites, databases or mail addresses the Panel knows of) | Nothing: the Panel refuses with the names. | Everything. |
@@ -514,6 +518,22 @@ source:
   deletes, not the package purge.
 - The Agent tests (`go test ./cmd/agent/...`, in a clean mount namespace) are run
   and recorded, since the Agent's uninstall and update tests changed.
+
+**Second review round (2026-10-22, before any publication).** A re-check asked for
+these; they are in source: a firewall answer that carries its own error or error
+code, or an engine that cannot be read, is "not known", never a state; the firewall
+engine's sentence says what is true of a ruleset loaded with `nft -f` (CelikPanel
+can no longer apply, change or restore the panel firewall; rules already loaded may
+stay until the server restarts); WireGuard names the VPN peers the Panel keeps
+active, which can no longer connect, and vsftpd the FTP accounts it records;
+certbot's list counts only the site certificates the renewal job renews
+(`letsencrypt`, `auto_renew = 1`, `status = 'active'`), leaves out the panel
+certificate when the owner serves their own (`CELIKPANEL_TLS_CERT`/`KEY` or an
+unmanaged TLS directory), and names a mail host certificate only when server setup
+recorded its certificate step as succeeded; the firewall read never waits for a
+firewall change (it answers "not known" at once while one holds the lock); and the
+empty case is narrowed to what CelikPanel records: "CelikPanel records nothing else
+on this server that depends on X".
 
 What this does not authorise: no other change to the Components page (the rows,
 buttons, strips, badges and folding stay as they are), no "⋯" menu, no new Agent

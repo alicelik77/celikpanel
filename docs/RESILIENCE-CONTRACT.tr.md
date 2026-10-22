@@ -6353,8 +6353,8 @@ iddiası değildir. İçindeki her şeyin saat tarihi 22 Ekim 2026'dır.
   dönüş davranışı:** hiçbir şey kaybolmaz ya da onarım gerektirmez. Sıra tabanının
   100'ü 99'un üstünde sıralaması Agent, Panel, ilke ve kurtarma temeli testleriyle
   kanıtlanır. Kurulu bir sunucuda ölçülmedi.
-- **Kanıt ve açık işler.** Aday ağacında: Go `CelikPanel-S2-Debian` konuğunda `go test ./cmd/panel/ ./internal/...` (-timeout 45m, CGO kapalı): 64 paket tamam, 2909 üst düzey test geçti, 42 atlandı, 0 başarısız (4282 alt test geçti); temiz bir mount ad alanında `go test ./cmd/agent/...`: 1821 üst düzey test geçti, 29 atlandı, 0 başarısız (2838 alt test geçti); gofmt temiz ve `go vet ./cmd/... ./internal/...` temiz; web `npm test` 1739
-  testin 1739'u geçti; derleme bütçelerin içinde (kritik açılış yolu 361 KiB'nin
+- **Kanıt ve açık işler.** Aday ağacında: Go `CelikPanel-S2-Debian` konuğunda `go test ./cmd/panel/ ./internal/...` (-timeout 45m, CGO kapalı): 64 paket tamam, 2913 üst düzey test geçti, 42 atlandı, 0 başarısız (4282 alt test geçti); temiz bir mount ad alanında `go test ./cmd/agent/...`: 1821 üst düzey test geçti, 29 atlandı, 0 başarısız (2838 alt test geçti); gofmt temiz ve `go vet ./cmd/... ./internal/...` temiz; web `npm test` 1740
+  testin 1740'ı geçti; derleme bütçelerin içinde (kritik açılış yolu 361 KiB'nin
   331,08 KiB'i; hiçbir sınır yükseltilmedi); sürüm sırası ilkesi, indirme
   portalı ve imzalı sürüm manifesti sözleşmeleri ile sürüm-kurtarma düzeneği geçti;
   tarayıcı grubu 25'e iki kez bakıldı. Sayılar [sürüm
@@ -6376,5 +6376,5 @@ iddiası değildir. İçindeki her şeyin saat tarihi 22 Ekim 2026'dır.
   aileye göre söyler; veritabanı uyarısını kendi satırına koyar; birimi olmayan
   bir aracın durdurulduğunu söylemez; katalog paketi olmayan bir ailede kaldırmanın
   (Agent'ın reddettiği gibi) reddedileceğini söyler ve Roundcube'un kalan
-  paketlerini tam adlandırır. Agent testleri yukarıda kayıtlıdır. Kaldırmanın
+  paketlerini tam adlandırır. İkinci bir tur kendi hatasını taşıyan bir güvenlik duvarı yanıtını "bilinmiyor" yaptı, güvenlik duvarı motorunu CelikPanel'in panel güvenlik duvarını artık uygulayamayacağı, değiştiremeyeceği ve geri yükleyemeyeceği (yüklenmiş kurallar sunucu yeniden başlayana dek kalabilir) biçiminde anlatır, WireGuard'ın VPN eşlerini ve vsftpd'nin FTP hesaplarını ekler, certbot listesini Panel'in yenilediği ve kurulumun kaydettiğiyle daraltır, güvenlik duvarı okumasının bir güvenlik duvarı değişikliğini beklemesini önler ve boş durumu "CelikPanel bu sunucuda X bileşenine bağlı başka hiçbir şey kaydetmiyor" diye daraltır. Agent testleri yukarıda kayıtlıdır. Kaldırmanın
   kendisi değişmedi.
