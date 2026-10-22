@@ -9590,3 +9590,18 @@ Node.js 24.21.0. D-036'nın sürümlerinin bir kurulu sunucuda ilk kez görülme
 alpha.97 durumu bildirilmedi; tek bir ekran görüntüsü, gerçek bir sunucuda korunan
 bir okumanın ya da meşgul bir paket yöneticisinin denetimi değildir. Bu girdi için hiçbir metin ya da ekran değiştirilmedi. P0.1-P0.5
 **kısmi** kalır; bu girdi hiçbir şeyi kapatmaz ya da ilerletmez.
+
+### Alpha.98 yayımından sonra kurulu sunucular (2026-10-22)
+
+v0.1.0-alpha.98 22 Ekim 2026'da yayımlandı (sürüm 01:01:25Z'de, ardından indirme
+portalı yaklaşık 01:11Z'de). Bu sürümden başlayarak sürüm commit'i, etiket ve
+itmeler sahibin kendi GitHub kimliğiyle (Mehmet Ömer Efe Çelik) yapılır; bu,
+yayım adımlarını kimin imzaladığını değiştirir, bir sunucunun neyi gösterdiğini
+değil. **Kim işlem yapar:** sahip; her sunucuyu ne zaman güncelleyeceğine panelin
+kendi güncelleme ekranından kendisi karar verir; başka bir şey gerekmez.
+alpha.98'den henüz hiçbir şey bir kurulu sunucuda değil ve Frankfurt'un alpha.95
+durmasından sonraki güncellemesi bildirilmedi; hiçbir şey çıkarılmaz. **Açık:**
+yeni düzen hiçbir kurulu sunucuda görülmedi; hiçbir ekran, panel sertifikasının
+iletişim adresi olarak istediği yönetici e-postasını değiştirmiyor; açık
+oturumlar yapılmadı. Bu girdi için hiçbir metin ya da ekran değiştirilmedi.
+P0.1-P0.5 **kısmi** kalır; bu girdi hiçbir şeyi kapatmaz ya da ilerletmez.

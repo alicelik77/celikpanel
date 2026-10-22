@@ -6048,3 +6048,60 @@ iddiası değildir. 2026-10-22, içindeki her şeyin saat tarihidir.
   (ilke 2: görülen söylenir, fazlası söylenmez). Frankfurt'un alpha.97 durumu
   bildirilmedi, bu yüzden D-034 değişikliğinin açık işi açık kalır ve gerçek bir
   sunucuda korunan bir okuma ya da meşgul bir paket yöneticisi hâlâ görülmedi.
+
+### v0.1.0-alpha.98'in yayımlanması (yayımda kod değişikliği yok; ilke 2 ve 6; D-022; D-024; D-025; D-037; 2026-10-22)
+
+D-025 ilke 2 (kanıtın bir anlamı ve yaşam döngüsü vardır: bilinmeyen; yok, boş
+ya da başarılı değildir) ve 6 (hazır olma, ilerleme ve erişim birbirinden
+bağımsız kalır); D-022; D-024; D-037. **Hiçbir P0 işi kapanmaz ya da
+ilerlemez.** P0.1–P0.5 kısmi kalır ve her açık kabul işi açık kalır. Bu girdi
+tek bir sürümü kaydeder; kod, şema ya da kurtarma davranışını değiştirmez.
+2026-10-22, içindeki her şeyin saat tarihidir.
+
+- **Yayımlama.** Bütün adımları sürümü hazırlayan kişi yaptı, sahibin kalıcı
+  talimatı uyarınca; kurulu panel güncellemelerini yalnız sahip yapar. Önce bir
+  bağımsız inceleme yapıldı (12 bulgu ve bir bulgu daha, hepsi düzeltildi) ve
+  yeniden yapılan bir denetim sürümü yayıma hazır buldu. #234 numaralı çekme
+  isteği `c249a9ba236212bfcdf6eddb590f55bccc5bac9c` olarak birleştirildi; sürüm
+  sırası değişkeni etiketlemeden önce 97'den 98'e geçti; `main` koşusu ve etiket
+  koşusu başarılı oldu; `v0.1.0-alpha.98` açıklamalı etiketi (nesne
+  `8696ddbc3880bf2fd2cf794f0c1cc03e27065c86`, ağaç
+  `838d69121bf3213d7a71ec6fbf7437f7575413aa`); 2026-10-22T01:01:25Z'de altı
+  dosyalı ön sürüm; arşiv SHA-256
+  `23820e87c8266e8321937ae9a2ea2a4b9864b1fd6fa30dace900836365948279`, 66.317.470
+  bayt; manifest sıra 98 ve doğrulanan bir imza (aynı anahtar); `get.sh` 98'i
+  sabitler; politika 97'den sonra 98. Portal paketi (SHA-256
+  `1cb3374ee47f73f3b45a2b5a9ce12888bda0dd59d9a2ef2bb3a0ef64de416174`, iki kez
+  aynı derlendi) yaklaşık 01:11Z'de önceki v0.1.0-alpha.97 ile yayımlandı:
+  committed, genel doğrulama 26 istekten 26'sı,
+  `CELIKPANEL_DOWNLOAD_PORTAL_PUBLISHED`, ardından dışarıdan okundu. Hazırlayan
+  kişi bir WSL konuğunda bir indirmeden denetledi; hazırlayan kişi bildirdi,
+  burada bir dosyada kayıtlı değil. Sürüm zinciri hiçbir olay olmadan çalıştı.
+- **Kimlik.** alpha.98'den başlayarak `main` üzerindeki sürüm commit'i, açıklamalı
+  etiket ve itmeler Mehmet Ömer Efe Çelik <momerefe@gmail.com> adına yapılır:
+  sahip 21 ve 22 Ekim 2026'da `momerefe` hesabına yazma erişimi verdi ve GitHub
+  CLI'yı o hesapla oturum açtırdı. Bu, yayım adımlarını kimin imzaladığını
+  değiştirir, neyi denetlediklerini değil; imzalı manifest ve anahtarı öncekiyle
+  aynıdır.
+- **Gerçek sistem kaydı.** Yayım için yok; alpha.98 için de yok, sahibin 16 Ekim
+  2026 talimatıyla ve güncelleyicinin değiştirme yolu değişmediği için.
+  alpha.98'in kodunu yalnız bileşen, bağlanmış ve taklit tarayıcı testleri kapsar
+  (yukarıdaki aday girdisine bakın).
+- **Kurulu paneller.** Boston'un alpha.97 sürümleri yukarıdaki girdide kayıtlı.
+  Kurulu bir sunucuda alpha.98'den hiçbir şey kaydedilmedi ve çıkarılmamalıdır
+  (ilke 6: bir sürümün yayımlanması hiçbir sunucunun durumu değildir).
+  Frankfurt'un alpha.95 durmasından sonraki güncellemesi bildirilmedi.
+- **Şema ya da sürüm geçişi.** Yok: şema 44; sürüm sırası sürüm hazırlığında
+  97'den 98'e geçti. **Kurtarma davranışı.** Yayımla ve alpha.98 ile değişmez;
+  aday girdisinin anlattığı dışında (alpha.97'ye dönüşten sonra bir yer iminden
+  gelen eski adres alpha.97'nin Panel sayfasına düşer).
+- **Açık; sonraki bir sürüme bırakıldı.** (1) Yeni düzen hiçbir kurulu sunucuda
+  görülmedi. (2) Hiçbir ekran, panel sertifikasının iletişim adresi olarak
+  istediği yönetici e-postasını değiştirmiyor (D-037). (3) Açık oturumlar
+  yapılmadı. (4) Frankfurt'un alpha.95 durmasından sonraki güncellemesi
+  bildirilmedi. Hiçbiri bir P0 işini değiştirmez.
+- **Açık; devreden.** alpha.98 aday girdisinin ve alpha.90–alpha.97 girdilerinin
+  açık bıraktığı her şey; bunlar arasında: zamanlanmış güncelleme denetimi
+  gerçek bir Agent'a ya da gerçek sürüm sunucusuna karşı çalışmadı; güncelleme
+  kartı ve bildirimler henüz bir kurulu sunucuda görülmedi; değiştirilen
+  yardımcıları paylaşan geri alma yolları yalnız sözleşme testleriyle denendi.

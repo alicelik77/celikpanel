@@ -1,10 +1,10 @@
-# v0.1.0-alpha.98 (aday, 22 Ekim 2026)
+# v0.1.0-alpha.98 (22 Ekim 2026'da yayımlandı)
 
 [English](RELEASE-NOTES-v0.1.0-alpha.98.md)
 
-Bu sürüm v0.1.0-alpha.97'nin ardından gelir. Bir adaydır: bu yazılırken
-etiketlenmemişti ya da yayımlanmamıştı ve hiçbir parçası bir kurulu sunucuda
-değildi. 2026-10-22'de, `feat/alpha98-menu-layout` dalında, alpha.97'nin yayım
+Bu sürüm v0.1.0-alpha.97'nin ardından gelir. 22 Ekim 2026'da yayımlandı (sonda
+"Yayım kaydı"na bakın); henüz hiçbir parçası bir kurulu sunucuda değil.
+2026-10-22'de, aday olarak, `feat/alpha98-menu-layout` dalında, alpha.97'nin yayım
 kaydından sonraki `main` üzerinden yazıldı.
 
 ## Kim güncellemeli ve neden
@@ -210,3 +210,92 @@ Bileşen ve bağlanmış testler gerçek sistem davranışını kanıtlamaz.
 Bu sürümü yalnız CelikPanel'in güncelleme arayüzü (Ayarlar → CelikPanel
 güncellemeleri) üzerinden kurun. Yayımlamak kurulu sunucuları güncellemez; bir
 sunucunun güncellemesini yalnız sahibi, panelin kendi güncelleme ekranından başlatır.
+
+## Yayım kaydı
+
+Aşağıdaki her şey 22 Ekim 2026 tarihlidir (saat dilimi belirtilmedikçe UTC).
+Birleştirmeyi, etiketi, denetimleri, portal yayımını ve genel sitenin okunmasını
+sürümü hazırlayan kişi yaptı, önceki sürümlerde olduğu gibi sahibin kalıcı
+talimatı uyarınca; kurulu panel güncellemelerini yalnız sahip, panelin kendi
+güncelleme ekranından başlatır. Yayım için sahibin talimatıyla gerçek sistem
+kaydı yok. Bu girdi, aşağıdaki sonuçların hiçbirini depoda bir dosya olarak
+saklamaz.
+
+**Ne oldu.**
+
+1. Sürümden önce bir bağımsız inceleme yapıldı: 12 bulgu ve bir bulgu daha,
+   hepsi düzeltildi (düzeltmeler yukarıda anlatıldı). Yeniden yapılan bir
+   denetim sürümü yayıma hazır buldu.
+2. "Release v0.1.0-alpha.98: every page where its name says it is" başlıklı #234
+   numaralı çekme isteği `main`'e `c249a9ba236212bfcdf6eddb590f55bccc5bac9c`
+   commit'i olarak birleştirildi; yazarı Mehmet Ömer Efe Çelik. Sürüm sırası
+   değişkeni etiket yapılmadan önce 97'den 98'e geçirildi. `main` koşusu ve
+   etiket koşusu başarılı oldu; sürüm zinciri hiçbir olay olmadan çalıştı.
+3. `v0.1.0-alpha.98` açıklamalı etiketi (nesne
+   `8696ddbc3880bf2fd2cf794f0c1cc03e27065c86`, ağaç
+   `838d69121bf3213d7a71ec6fbf7437f7575413aa`, etiketleyen Mehmet Ömer Efe Çelik)
+   sürüm commit'ini gösterir. Sürüm bir ön sürümdür (pre-release);
+   2026-10-22T01:01:25Z'de altı dosyayla yayımlandı.
+4. 22 Ekim 2026'da `CelikPanel-S2-Debian` WSL konuğunda bir indirmeden
+   denetlendi (hazırlayan kişi; burada bir dosyada kayıtlı değil): arşivler bayt
+   bayt aynı, her biri 66.317.470 bayt, SHA-256
+   `23820e87c8266e8321937ae9a2ea2a4b9864b1fd6fa30dace900836365948279`; manifest
+   sıra 98, `published_at` 2026-10-22T00:15:48Z der (SHA-256
+   `2e962d44560e36a6d26880a9d6b94090df20fbe7885137abbf7b78cb9c18b2db`); imzası
+   (SHA-256 `3a27af0548c269b65e9c4d3e53b3328170bd7a843be034b1aa53a61c5c956498`),
+   imza anahtarına (SHA-256
+   `7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb`, öncekiyle
+   aynı anahtar) karşı `openssl pkeyutl -verify -rawin -pubin` ile doğrulanır;
+   iki içerik koruması da 0 döndürdü; derleme Go go1.26.5, CGO kapalı,
+   `-trimpath` ile yapıldı. `libexec/get.sh` 98'i sabitler (SHA-256
+   `f2acf8794ff2bc202d193780f03a9229244af462ab5e22f2c682ec928719faeb`); içindeki
+   politika şimdiki 98, önceki 97, önceki commit
+   `0c1a8917ef3f8141702fa41ae085f64d62a713f0` der. Arşivde 267 üye var (243
+   dosya, 24 dizin). Arayüz paketi `web/dist/assets/app-qbukM16Q.js`, 258.759
+   bayt, SHA-256
+   `736a15f2bc0e6ddca1a4189079feafc8cc6afed88eb28c6ebdd325214a6f90aa`.
+5. Portal paketi: `portal.tar.gz`, 133.007.110 bayt, SHA-256
+   `1cb3374ee47f73f3b45a2b5a9ce12888bda0dd59d9a2ef2bb3a0ef64de416174`, 54 girdi;
+   etiketin `deploy/build-download-portal.sh` betiğiyle (önceden imzalı kip) iki
+   kez bayt bayt aynı derlendi. Sayfaları yalnız `github.com/alicelik77/...`
+   adresine bağlanır (ana sayfa 7, teknik sayfa 16, `security.txt` 2; hiçbiri
+   `celikbros`'a değil). Sözleşme testi 0 döndürdü; genel doğrulayıcının 17 testi
+   ve terfi aracının 14 testi geçti.
+6. Yaklaşık 01:11Z'de hazırlayan kişi onu kendi bilgisayarından
+   `deploy/publish-download-portal.ps1` ile yayımladı: önceki sürüm
+   v0.1.0-alpha.97, hedef v0.1.0-alpha.98; durum `committed`, genel doğrulama 26
+   istekten 26'sı, `CELIKPANEL_DOWNLOAD_PORTAL_PUBLISHED`.
+7. Önceki sitenin yedeği
+   `/var/www/vhosts/celikpanel.net/portal-backups/httpdocs.before-v0.1.0-alpha.98.20261022T011052Z.112529.a585ec0704b24049`;
+   yüklenen paket
+   `/var/www/vhosts/celikpanel.net/.upload-portal-20261022T011011Z-v0.1.0-alpha.98-bc69f36337b59bba`
+   altında saklandı.
+8. Yayımdan sonra dışarıdan okuma: `https://celikpanel.net/releases/latest.txt`
+   v0.1.0-alpha.98 der; `latest.json` sıra 98'i, yukarıdaki commit ve SHA-256'yı
+   gösterir; canlı ana sayfa `github.com/alicelik77/` adresine bağlanır (7 kez).
+
+**Sahibin bildirdikleri.** Boston'un alpha.97'de gerçek paket sürümlerini
+göstermesi yukarıda ("Sahibin bildirdiği") kayıtlı; burada yinelenmez. Sahip 21 ve
+22 Ekim 2026'da `momerefe` hesabına depoya yazma erişimi verdi ve GitHub CLI'yı
+`momerefe` olarak oturum açtırdı. alpha.98'den başlayarak `main` üzerindeki sürüm
+commit'i, açıklamalı etiket ve itmeler Mehmet Ömer Efe Çelik
+<momerefe@gmail.com> adına yapılır; alpha.98, tümüyle bu kimlikle yapılan ilk
+sürümdür. alpha.98'den henüz hiçbir şey bir kurulu sunucuda değil. Frankfurt'un
+alpha.95 durmasından sonraki güncellemesi bildirilmedi.
+
+**Yapılmayanlar ve yayımlamanın değiştirmedikleri.**
+
+- Kurulu sunucuları sürümü hazırlayan kişi alpha.98'e güncellemedi. Onları yalnız
+  sahip, panelin kendi güncelleme ekranından günceller.
+- Yeni düzen bir kurulu sunucuda görülmedi.
+- Hiçbir ekran bir yöneticinin kendi e-postasını değiştirmiyor; panel sertifikası
+  onu iletişim adresi olarak ister (D-037'de kayıtlı).
+- "Açık oturumlar" yapılmadı.
+- Bildirilmeyen ve kaydedilmeyenler: Frankfurt'un alpha.95 durmasından sonraki
+  güncellemesi (ve alpha.97 durumu), Boston ya da Frankfurt'tan alpha.98'e dair
+  her şey ve önceki notların bildirilmedi diye saydığı her şey. Her biri
+  "kaydedilmedi"dir; "çalıştı" da değildir, "başarısız" da.
+- Önceki yayımlama kayıtlarının sınırları ([alpha.88
+  notları](RELEASE-NOTES-v0.1.0-alpha.88.tr.md)) kalkmış olarak bildirilmedi.
+- Yayımlanma kabul değildir. P0.1–P0.5 kısmi kalır; hiçbir P0 işi kapanmaz ya da
+  ilerlemez.
