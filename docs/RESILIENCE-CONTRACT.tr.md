@@ -6296,3 +6296,70 @@ tek bir sürümü kaydeder; kod, şema ya da kurtarma davranışını değiştir
   doğrulanmıyor; açık oturumlar yapılmadı; zamanlanmış güncelleme denetimi gerçek
   bir Agent'a ya da gerçek sürüm sunucusuna karşı çalışmadı; değiştirilen
   yardımcıları paylaşan geri alma yolları yalnız sözleşme testleriyle denendi.
+
+### v0.1.0-alpha.100 adayı (kaldırma penceresi için salt-okunur tek yeni rota; Bileşenler'in ilk görünümü; Sunucu kurulumunun yeri; ilk üç basamaklı ön sürüm numarası; güncelleyici ya da şema değişikliği yok; ilke 2, 3 ve 6; D-037 değişikliği; D-010; D-024; D-033; D-025; 2026-10-22)
+
+D-025 ilke 2 (kanıtın bir anlamı ve yaşam döngüsü vardır: kaldırma penceresi
+yalnız koddaki kaldırma yolunun yaptığını ve Panel'in kaydettiğini söyler; bir
+dağıtım paketinin kendi kaldırma betiği, verisi hakkında karar veren olarak
+adlandırılır, asla betimlenmez), 3 (yerel hizmet sahipliği: kaldırmanın yaptığı
+hiçbir şey değişmedi; pencere artık CelikPanel'in kendisinin başka hiçbir şey
+silmediğini söyler) ve 6 (hazırlık, ilerleme ve erişim bağımsız kalır: pencerenin
+okuması kaldırmayı asla tutmayan ve asla değişiklik başlatmayan tek, sınırlı bir
+GET'tir; kurulum kapısı ve çevrimdışı kurtarma kabuğu yeni `/server-setup` adresini
+bilir). P0.1/P0.2 alanına (doğru, eyleme dönük durum) dokunulur. **Hiçbir P0 işi
+kapanmaz ya da ilerlemez**; P0.1–P0.5 kısmi kalır ve her açık kabul işi açık kalır.
+Bu girdi, yerel güncelleme ve otomatik geri alma dayanıklılığının tamamlandığı
+iddiası değildir. İçindeki her şeyin saat tarihi 22 Ekim 2026'dır.
+
+- **Bu sürümün dokunduğu.** Salt-okunur tek Panel rotası,
+  `GET /api/v1/service/removal-impact` (`/api/v1/service/` önekiyle yalnız
+  yöneticiler; `no-store`; kataloğu, saklanan bileşen kaydını ve Panel
+  veritabanını okur; Agent çağrısı, tarama ya da yazma yok; saklı kayıt yoksa
+  `SERVICE_STATE_UNVERIFIED`). Kaldırma işleyicisi ve `Agent.UninstallService`
+  artık rotanın bildirdiği adlandırılmış aynı koşulları sorar
+  (`uninstallRewiresMailFilters`, `uninstallReconfiguresDatabaseTools`,
+  `core.UninstallPurgesAllVersions`); yaptıkları değişmedi. Web arayüzü: kaldırma
+  penceresi, Bileşenler sayfasının ilk görünümü, Sunucu kurulumu sayfası ve
+  bağlantıları, üç bölümlü Ayarlar. Bir yönlendirme eylemi adresi
+  (`/settings?section=setup` yerine `/server-setup`). Sürüm sırası 99'dan ilk üç
+  basamaklı sayı olan 100'e geçer; her sürüm karşılaştırmasının denetimi sürüm
+  notlarındadır ve metin sıralaması bulmadı.
+  Güncelleyiciye (`update.sh`, sabitleri dışında `get.sh`, sistem güncelleme
+  işçisi, geri alma ve kurtarma), hiçbir role, şemaya ya da yoklamaya **dokunmaz**.
+  Bu yüzden sahibin 16 Ekim 2026 talimatıyla bu sürüm için **yerel kayıt
+  yapılmaz**.
+- **Sahibin işlettiği kurtarma yolu: değişmedi.** CelikPanel güncellemeleri
+  Ayarlar'da kalır; sahip her kurulu panel güncellemesini panelin kendi güncelleme
+  ekranından başlatır. Kaldırma penceresi hiçbir kaldırmayı değiştirmez: var olan
+  bekçi (`SERVICE_HAS_DEPENDENTS`), çakışma ve gereksinim retleri, DNS motorlarının
+  kendi akışı ve yerel cron reddi kalır. **Kurulu panel güncelleme yolu:
+  değişmedi.**
+- **Erişim kapıları.** Yeni rota yalnız yöneticiler içindir (yetki matrisi: yönetici
+  izinli, bayi ve müşteri reddedilir, anonim kimlik doğrulanmamış). `/server-setup`,
+  Ayarlar → Sunucu kurulumu gibi yalnız yöneticiler içindir; kurulum kapısı kurulum
+  gerekirken onu ulaşılabilir tutar; bir yönlendirme sayfanın kendi bekçisine
+  götürür.
+- **Şema, sürüm geçişi ve kurtarma.** Şema 44, geçiş yok; yeni hiçbir şey kalıcı
+  yazılmaz (görünüm seçimi önceki gibi tarayıcıda kalır). *alpha.99'dan
+  alpha.100'e:* alpha.100 alpha.99'un yazdığı her şeyi okur; hatırlanan "catalog"
+  ya da "installed" görünümü geçerlidir, olmayan artık Kurulu görünümü açar; eski
+  `/settings?section=setup` bağlantısı yönlendirilir. *alpha.100'den alpha.99'a geri*
+  (örneğin bir geri almadan sonra): `/server-setup` alpha.99'a bilinmez, bu yüzden
+  bir yer imi alpha.99'un Pano'suna düşer ve alpha.99 Sunucu kurulumunu yine
+  Ayarlar'da gösterir; pencere genel uyarısına döner. **Bilinen, zararsız geri
+  dönüş davranışı:** hiçbir şey kaybolmaz ya da onarım gerektirmez. Sıra tabanının
+  100'ü 99'un üstünde sıralaması Agent, Panel, ilke ve kurtarma temeli testleriyle
+  kanıtlanır. Kurulu bir sunucuda ölçülmedi.
+- **Kanıt ve açık işler.** Aday ağacında: Go `CelikPanel-S2-Debian` konuğunda `go test ./cmd/panel/ ./internal/...` (-timeout 45m, CGO kapalı): 64 paket tamam, 2904 üst düzey test geçti, 42 atlandı, 0 başarısız (4282 alt test geçti); gofmt temiz ve `go vet ./cmd/... ./internal/...` temiz; web `npm test` 1734
+  testin 1734'ü geçti; derleme bütçelerin içinde (kritik açılış yolu 361 KiB'nin
+  331,08 KiB'i; hiçbir sınır yükseltilmedi); sürüm sırası ilkesi, indirme
+  portalı ve imzalı sürüm manifesti sözleşmeleri ile sürüm-kurtarma düzeneği geçti;
+  tarayıcı grubu 25'e iki kez bakıldı. Sayılar [sürüm
+  notlarındadır](RELEASE-NOTES-v0.1.0-alpha.100.tr.md). Bileşen ve bağlanmış
+  testler yerel davranışı kanıtlamaz. **Kurulu bir sunucuda hiçbir şey ölçülmedi.**
+  Açık: bir dağıtım paketinin kendi kaldırma betiğinin sildikleri okunmaz;
+  pencerenin listeleri yalnız Panel'in kaydettiklerini tutar; alpha.90–alpha.99
+  girdilerinin açık bıraktığı her şey açık kalır. Kurulu paneller yalnız
+  sahiplerince, panelin kendi güncelleme ekranından güncellenir. P0.1–P0.5 kısmi
+  kalır.

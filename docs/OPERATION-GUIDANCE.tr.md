@@ -9736,3 +9736,65 @@ tasarım geri çekildi. Sahip, nelerin etkileneceğini adıyla söyleyen öneril
 kaldırma penceresini daha iyi buldu; bu, alpha.99'un değil, sonraki sürümün
 adayıdır. Bu girdi için hiçbir metin ya da ekran değiştirilmedi. P0.1-P0.5
 **kısmi** kalır; bu girdi hiçbir şeyi kapatmaz ya da ilerletmez.
+
+### Bir bileşeni kaldırmak, Bileşenler'in ilk ziyareti ve Sunucu kurulumunun yeni yeri (D-037 değişikliği, 22 Ekim 2026)
+
+v0.1.0-alpha.100 adayı için kaynakta; hiçbir şey kurulu bir sunucuda ölçülmedi.
+Bir bileşeni kaldırmanın ne yaptığını birine anlatmadan önce bunu okuyun.
+
+**Kaldırma penceresi.** Bileşenler → bir satırdaki kaldır (çöp kutusu) düğmesi "X
+kaldırılsın mı?" penceresini açar. Pencere kaldırmanın bu sunucuda neyi
+etkileyeceğini bir kez okur.
+
+- *Okurken:* "X kaldırılınca bu sunucuda neyin etkileneceği okunuyor…" ve dönen
+  simge. **Kim hareket eder:** kimse. Kaldır kullanılabilir kalır; okuma hiçbir
+  şeyi değiştirmez.
+- *Gösterdikleri:* "Silinenler" (kaldırma yolunun bu bileşen için yaptığı,
+  paketler ve apt ile pacman'da paket yöneticisi komutu), "Bu sunucuda
+  etkilenecekler" (Panel'in onun üzerinde barındırdıkları adıyla, en çok beşi ve
+  ardından "+N tane daha"; ona ihtiyaç duyan kurulu bileşenler; eksik bıraktığı
+  hazır paketler; güvenlik duvarından istediği portlar; ya da "Bu sunucuda başka
+  hiçbir şey X bileşenine bağlı değil") ve "Yerinde kalanlar".
+- *Barındırılanlar kaldırmayı engellediğinde:* "Bunlar varken CelikPanel X
+  bileşenini kaldırmaz: önce taşıyın ya da silin." **Kim hareket eder:** yönetici.
+  **Sonraki eylem:** adı geçen siteleri, veritabanlarını ya da e-posta adreslerini
+  taşıyın veya silin (Alan Adları, Veritabanları, bir alan adının E-posta sekmesi).
+  **Nasıl sürer:** pencereyi yeniden açın; Kaldır daha önce basılırsa Panel'in
+  reddi (`SERVICE_HAS_DEPENDENTS`) yine onları adlandırır ve hiçbir şey
+  değişmez.
+- *Okuma başarısız olduğunda ya da 10 saniyeyi aştığında:* "X kaldırılınca bu
+  sunucuda neyin etkileneceği okunamadı. Hiçbir şey değiştirilmedi. Yine de
+  kaldırabilirsiniz, ama önce kontrol edin: Alan Adları ve Veritabanları sayfaları
+  bu sunucuda neyin çalıştığını gösterir." ve Tekrar dene. Bu bilinmeyen bir
+  sonuçtur; hata ya da ret değildir. **Kim hareket eder:** listeyi isterse yönetici:
+  Tekrar dene (yalnız okur). Altında eski genel uyarı gösterilir. Panel'in kendi
+  retleri Kaldır'a yine yanıt verir.
+- *Silinen ve kalan olarak söyledikleri (koddan):* paketli bir bileşenin birimleri
+  durdurulur ve devre dışı bırakılır, ardından paketleri yapılandırma dosyalarıyla
+  ve yalnız onlar için kurulmuş paketlerle birlikte kaldırılır (`apt-get purge -y
+  --auto-remove` ya da `pacman -Rns --noconfirm`); apt'ta PHP-FPM ve PostgreSQL
+  kurulu her sürümü de götürür; bir spam süzgeci Postfix'in süzgeç zincirinden
+  çıkarılır; phpMyAdmin ve phpPgAdmin veritabanı araçlarının sunucusundan
+  çıkarılır; Roundcube'un kaldırılması uygulama ağacını (ayarları ve adres defteri
+  veritabanıyla) ve `/webmail/` kaydını siler. CelikPanel kendisi başka hiçbir şey
+  silmez; bir paketin kendi kaldırma betiği o paketin oluşturduğu verileri
+  silebilir ve bir veritabanı motoru için pencere önce yedek alınmasını söyler.
+  Tablonun tamamı D-037 değişikliğindedir.
+- DNS motorları kendi akışlarını korur (Sunucu → DNS ve eş sunucular); yerel cron
+  asla kaldırılmaz; Roundcube kalıntı temizliği kendi listesini korur.
+
+**İlk ziyaret.** Bileşenler ilk seferde ve hatırlanan seçim olmadığında ya da
+okunamadığında Kurulu görünümü açar. Hatırlanan "Katalog" yine kataloğu açar.
+Kurulu olmayan Roundcube satırı, Panel kalıntı temizliğini önerdikçe Kurulu
+görünümde kalır.
+
+**Sunucu kurulumunun yeni yeri.** Sunucu → Sunucu kurulumu (`/server-setup`),
+Bileşenler'in hemen altında: kurulumun durumu, sunucunun kullanım amacı, "Bu
+sunucunun kurulumunu genişletin" ve kurulum sihirbazının bağlantısı. Pano'daki
+"Sunucunun kullanım amacı" kartı oraya bağlanır. Ayarlar → Sunucu kurulumu'na
+(`/settings?section=setup`) giden eski bir bağlantı ya da yer imi yeni sayfaya
+ulaşır; Panel'in sunucu kurulumunun yönettiği bir DNS kaydı için verdiği
+yönlendirme de oraya gösterir. Ayarlar'da Panel adresi ve HTTPS, Lisans ve
+CelikPanel güncellemeleri kalır. Önceki gibi yalnız yöneticiler.
+
+P0.1-P0.5 **kısmi** kalır; bu girdi hiçbir şeyi kapatmaz ya da ilerletmez.
