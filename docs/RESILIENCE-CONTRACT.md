@@ -7239,3 +7239,48 @@ written on 2026-10-23 (clock dates).
   alpha.90 to alpha.100 entries leave open stays open. Installed panels are updated
   only by their owners, from the panel's own update screen. P0.1 to P0.5 stay
   partial.
+
+### Publication of v0.1.0-alpha.101 (no code change in the publication; invariants 2 and 6; D-022; D-024; D-025; D-034; D-036; 2026-10-22)
+
+D-025 invariants 2 (evidence has a meaning and a lifecycle: unknown is not
+absent, empty or success) and 6 (readiness, progress and access remain
+independent); D-022; D-024; D-034; D-036. **No P0 item is closed or advanced.**
+P0.1 to P0.5 stay partial and every open acceptance item stays open. This entry
+records one release; it changes no code, schema or recovery behaviour.
+2026-10-22 (UTC) is the date of everything in it; the release commit carries
+2026-10-23T01:34:29+03:00, the same instant as 22:34:29Z.
+
+- **Publication.** All steps were done by the release preparer under the owner's
+  standing instruction; installed-panel updates are the owner's only. Pull request
+  #240 merged as `f860053bea4772f008337238e5787c857fbb5efb` (author Mehmet Ömer
+  Efe Çelik); the pre-release `v0.1.0-alpha.101` was published at
+  2026-10-22T23:13:34Z. Before the publication the preparer checked the assets:
+  archive SHA-256 `6de8f594705e22250c56a6c45fe6a2b10c6c1e7db270eeb706878f3069c5f549`,
+  66,346,084 bytes; the checksums, the manifest and the archive members; the
+  manifest's signature, verified with the release key (SHA-256 `7eadeb0b…c68bb`);
+  the content guards; `get.sh` pins 101; the policy says 101 after 100; the
+  interface bundle `app-EnAd5I-6.js`. The portal package was built twice
+  byte-identical and accepted by the promoter's extract and normalize step; the
+  portal was published at about 23:22Z: committed, public verification 26 of 26,
+  and read from outside afterwards (`latest.txt` v0.1.0-alpha.101, `latest.json`
+  sequence 101 with commit `f860053…`). Checked by the preparer; reported by the
+  preparer, not recorded in a file here.
+- **Native record.** None for the publication, and none for alpha.101, by the
+  owner's instruction of 2026-10-16 and because no updater mutation path or schema
+  file changed. alpha.101's code is covered by component, mounted and mock-browser
+  tests only (see its candidate entry above).
+- **Installed panels.** The owner had looked at both Boston and Frankfurt on
+  alpha.100. alpha.101 is on no installed server yet and nothing from it had been
+  reported when this was written, and none should be inferred (invariant 6: the
+  publication of a release is not the state of any server).
+- **Schema or version transition.** None: schema 44; the release sequence moved
+  100 to 101 in the release preparation. **Recovery behaviour.** Unchanged by the
+  publication and by alpha.101.
+- **Open, left for a later release.** (1) Nothing from alpha.101 is measured on an
+  installed server; the owner's observation of alpha.101 after he updates is still
+  to come, and the D-036 item stays open for Frankfurt until the corrected short
+  form is seen there. (2) The setup plan's contact-email requirement applies to
+  every server plan; that is left for a decision. (3) Whether the bundles move to a
+  data catalogue is left to the owner. None of them changes a P0 item.
+- **Open, carried over.** Everything the alpha.101 candidate entry and the alpha.90
+  to alpha.100 entries leave open.

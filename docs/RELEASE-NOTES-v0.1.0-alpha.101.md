@@ -1,11 +1,12 @@
-# v0.1.0-alpha.101 (candidate, not published)
+# v0.1.0-alpha.101 (published 2026-10-22)
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.101.tr.md)
 
-This is the release candidate that follows v0.1.0-alpha.100. It is not published;
-nothing from it is on an installed server. Written on 2026-10-23 (the code on
-2026-10-22) on the branch `fix/alpha101-real-bundles`, from `main` after the
-publication record of alpha.100.
+This is the release that follows v0.1.0-alpha.100. It was published on 2026-10-22
+(see "Publication record" at the end); nothing from it is on an installed server
+yet. Written on 2026-10-23 (the code on 2026-10-22), as a candidate, on the branch
+`fix/alpha101-real-bundles`, from `main` after the publication record of
+alpha.100.
 
 ## Who should update, and why
 
@@ -161,3 +162,64 @@ On the candidate tree:
 
 Once published: from the panel's own update screen (Settings → CelikPanel updates),
 by the owner of the server. Nothing needs to be done before or after.
+
+## Publication record
+
+Everything below is dated 2026-10-22 (UTC unless a time zone is named). The release
+commit carries 2026-10-23T01:34:29+03:00, which is the same instant as 22:34:29Z,
+so it appears under both dates in different places. The merge, the checks, the
+portal publication and the read of the public site were done by the release
+preparer under the owner's standing instruction, as for the earlier releases;
+installed-panel updates are the owner's alone, from the panel's own update screen.
+No native record for the publication, by the owner's instruction. This entry
+stores none of the results below as a file in the repository.
+
+**What happened.**
+
+1. Pull request #240, "Release v0.1.0-alpha.101: a bundle is a service with its
+   companion tools", was merged into `main` as commit
+   `f860053bea4772f008337238e5787c857fbb5efb`, authored by
+   Mehmet Ömer Efe Çelik. The manifest's `published_at` is 2026-10-22T22:34:29Z.
+2. The release is a pre-release, `v0.1.0-alpha.101`, published on GitHub at
+   2026-10-22T23:13:34Z.
+3. Checked by the preparer before the publication (not recorded in a file here):
+   the archives are 66,346,084 bytes, SHA-256
+   `6de8f594705e22250c56a6c45fe6a2b10c6c1e7db270eeb706878f3069c5f549`; the
+   checksums, the manifest and the archive members were checked; the manifest's
+   signature verifies with the release key (SHA-256 `7eadeb0b…c68bb`); both content
+   guards passed; `libexec/get.sh` pins 101; the policy inside says 101 after 100;
+   the interface bundle is `web/dist/assets/app-EnAd5I-6.js`.
+4. The portal package was built twice and came out byte-identical; the promoter's
+   own extract and normalize step accepted it.
+5. At about 23:22Z the preparer published the portal: status `committed`, public
+   verification 26 of 26 requests ok.
+6. A read from outside after the publication: `https://celikpanel.net/releases/latest.txt`
+   says v0.1.0-alpha.101; `latest.json` says sequence 101 with commit `f860053…`.
+
+**What the owner reported.** On 2026-10-22 the owner had looked at both installed
+servers, Boston and Frankfurt, on alpha.100; the screens he saw are what this
+release answers (see "Who should update, and why" above). Nothing from alpha.101
+on an installed server had been reported when this was written.
+
+**Not done, and what publication does not change.**
+
+- The installed servers were not updated to alpha.101 by the release preparer.
+  Only the owner updates them, from the panel's own update screen. alpha.101 is
+  on no installed server yet.
+- Nothing from alpha.101 has been measured on an installed server: not the
+  renamed database bundles, not the installed bundle's window, not the corrected
+  version on Frankfurt's phpMyAdmin row, and not Boston's "PostgreSQL +
+  phpPgAdmin" plan. The owner's observation of alpha.101 after he updates is
+  still to come.
+- The setup plan's contact-email requirement applies to every server plan. Whether
+  it should is left for a decision.
+- Whether the bundles move to a data catalogue is left to the owner (see "Known
+  gaps" above).
+- Not reported and not recorded: anything from Boston or Frankfurt on alpha.101,
+  and everything the earlier notes list as not reported. Each is "not recorded",
+  not "worked" and not "failed". What the alpha.100 record leaves open stays open.
+- The limits of the earlier publication records (see the [alpha.88
+  notes](RELEASE-NOTES-v0.1.0-alpha.88.md)) are not reported as lifted.
+- No code, schema (44) or recovery behaviour changed in this record.
+- Publication is not acceptance. P0.1 to P0.5 stay partial; no P0 item is closed
+  or advanced.

@@ -9883,3 +9883,17 @@ kurulu bir hazır paket çipi:
 Kurulu paneller yalnız sahiplerince, panelin kendi güncelleme ekranından
 güncellenir. P0.1-P0.5 **kısmi** kalır; bu girdi hiçbir şeyi kapatmaz ya da
 ilerletmez.
+
+### Alpha.101 yayımından sonra kurulu sunucular (2026-10-22)
+
+v0.1.0-alpha.101 22 Ekim 2026'da yayımlandı (sürüm 23:13:34Z'de, ardından indirme
+portalı yaklaşık 23:22Z'de). **Kim işlem yapar:** sahip; her sunucuyu ne zaman
+güncelleyeceğine panelin kendi güncelleme ekranından kendisi karar verir; başka
+bir şey gerekmez. Sahip hem Boston'a hem Frankfurt'a alpha.100'de bakmıştı;
+alpha.101 henüz hiçbir kurulu sunucuda değil; hiçbir şey çıkarılmaz. **Açık:**
+yeniden adlandırılan veritabanı paketleri, kurulu paketin penceresi ve Frankfurt'un
+phpMyAdmin satırındaki düzeltilmiş sürüm hiçbir kurulu sunucuda görülmedi; sahibin
+alpha.101 gözlemi güncelledikten sonra gelir. Kurulum planının iletişim e-postası
+gereksinimi her sunucu planı için geçerli; bu bir karara bırakıldı. Bu girdi için
+hiçbir metin ya da ekran değiştirilmedi. P0.1-P0.5 **kısmi** kalır; bu girdi
+hiçbir şeyi kapatmaz ya da ilerletmez.

@@ -1,10 +1,11 @@
-# v0.1.0-alpha.101 (aday, yayımlanmadı)
+# v0.1.0-alpha.101 (22 Ekim 2026'da yayımlandı)
 
 [English](RELEASE-NOTES-v0.1.0-alpha.101.md)
 
-Bu, v0.1.0-alpha.100'den sonra gelen sürüm adayıdır. Yayımlanmadı; hiçbir parçası
-kurulu bir sunucuda değil. 23 Ekim 2026'da (kod 22 Ekim 2026'da), alpha.100'ün
-yayın kaydından sonra `main` üzerinden `fix/alpha101-real-bundles` dalında yazıldı.
+Bu sürüm v0.1.0-alpha.100'ün ardından gelir. 22 Ekim 2026'da yayımlandı (sonda
+"Yayım kaydı"na bakın); henüz hiçbir parçası bir kurulu sunucuda değil.
+23 Ekim 2026'da (kod 22 Ekim 2026'da), aday olarak, alpha.100'ün yayın kaydından
+sonra `main` üzerinden `fix/alpha101-real-bundles` dalında yazıldı.
 
 ## Kim güncellemeli ve neden
 
@@ -159,3 +160,66 @@ Aday ağacında:
 Yayımlandığında: sunucunun sahibi tarafından, panelin kendi güncelleme ekranından
 (Ayarlar → CelikPanel güncellemeleri). Öncesinde ya da sonrasında yapılacak bir şey
 yok.
+
+## Yayım kaydı
+
+Aşağıdaki her şey 22 Ekim 2026 tarihlidir (saat dilimi belirtilmedikçe UTC). Sürüm
+commit'i 2026-10-23T01:34:29+03:00 taşır; bu, 22:34:29Z ile aynı andır, bu yüzden
+farklı yerlerde iki tarihle görünür. Birleştirmeyi, denetimleri, portal yayımını ve
+genel sitenin okunmasını sürümü hazırlayan kişi yaptı, önceki sürümlerde olduğu
+gibi sahibin kalıcı talimatı uyarınca; kurulu panel güncellemelerini yalnız sahip,
+panelin kendi güncelleme ekranından başlatır. Yayım için sahibin talimatıyla gerçek
+sistem kaydı yok. Bu girdi, aşağıdaki sonuçların hiçbirini depoda bir dosya olarak
+saklamaz.
+
+**Ne oldu.**
+
+1. "Release v0.1.0-alpha.101: a bundle is a service with its companion tools"
+   başlıklı #240 numaralı çekme isteği `main`'e
+   `f860053bea4772f008337238e5787c857fbb5efb` commit'i olarak birleştirildi;
+   yazarı Mehmet Ömer Efe Çelik. Manifestin `published_at` değeri
+   2026-10-22T22:34:29Z.
+2. Sürüm bir ön sürümdür (pre-release), `v0.1.0-alpha.101`; GitHub'da
+   2026-10-22T23:13:34Z'de yayımlandı.
+3. Hazırlayan kişi yayımdan önce denetledi (burada bir dosyada kayıtlı değil):
+   arşivler 66.346.084 bayt, SHA-256
+   `6de8f594705e22250c56a6c45fe6a2b10c6c1e7db270eeb706878f3069c5f549`; sağlama
+   toplamları, manifest ve arşiv üyeleri denetlendi; manifestin imzası yayın
+   anahtarıyla (SHA-256 `7eadeb0b…c68bb`) doğrulanır; içerik korumaları
+   geçti; `libexec/get.sh` 101'i sabitler; içindeki politika 100'den sonra 101
+   der; arayüz paketi `web/dist/assets/app-EnAd5I-6.js`.
+4. Portal paketi iki kez derlendi ve bayt bayt aynı çıktı; terfi aracının kendi
+   açma ve normalleştirme adımı onu kabul etti.
+5. Yaklaşık 23:22Z'de hazırlayan kişi portalı yayımladı: durum `committed`, genel
+   doğrulama 26 istekten 26'sı tamam.
+6. Yayımdan sonra dışarıdan okuma: `https://celikpanel.net/releases/latest.txt`
+   v0.1.0-alpha.101 der; `latest.json` sıra 101'i ve `f860053…` commit'ini
+   gösterir.
+
+**Sahibin bildirdikleri.** Sahip 22 Ekim 2026'da iki kurulu sunucuya, Boston'a ve
+Frankfurt'a, alpha.100'de bakmıştı; gördüğü ekranlar bu sürümün yanıt verdiği
+şeylerdir (yukarıdaki "Kim güncellemeli ve neden"e bakın). Bu yazılırken
+alpha.101'den kurulu bir sunucuda hiçbir şey bildirilmemişti.
+
+**Yapılmayanlar ve yayımlamanın değiştirmedikleri.**
+
+- Kurulu sunucuları sürümü hazırlayan kişi alpha.101'e güncellemedi. Onları yalnız
+  sahip, panelin kendi güncelleme ekranından günceller. alpha.101 henüz hiçbir
+  kurulu sunucuda değil.
+- alpha.101'den hiçbir şey kurulu bir sunucuda ölçülmedi: ne yeniden adlandırılan
+  veritabanı paketleri, ne kurulu paketin penceresi, ne Frankfurt'un phpMyAdmin
+  satırındaki düzeltilmiş sürüm, ne de Boston'ın "PostgreSQL + phpPgAdmin" planı.
+  Sahibin güncelledikten sonra alpha.101'e ilişkin gözlemi henüz gelmedi.
+- Kurulum planının iletişim e-postası gereksinimi her sunucu planı için geçerli.
+  Öyle olması gerekip gerekmediği bir karara bırakıldı.
+- Paketlerin bir veri kataloğuna taşınıp taşınmayacağı sahibe bırakıldı
+  (yukarıdaki "Bilinen açıklar"a bakın).
+- Bildirilmeyen ve kaydedilmeyenler: Boston ya da Frankfurt'tan alpha.101'e dair
+  her şey ve önceki notların bildirilmedi diye saydığı her şey. Her biri
+  "kaydedilmedi"dir; "çalıştı" da değildir, "başarısız" da. alpha.100 kaydının açık
+  bıraktıkları açık kalır.
+- Önceki yayımlama kayıtlarının sınırları ([alpha.88
+  notları](RELEASE-NOTES-v0.1.0-alpha.88.tr.md)) kalkmış olarak bildirilmedi.
+- Bu kayıtta kod, şema (44) ya da kurtarma davranışı değişmedi.
+- Yayımlanma kabul değildir. P0.1–P0.5 kısmi kalır; hiçbir P0 işi kapanmaz ya da
+  ilerlemez.
