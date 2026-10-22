@@ -168,6 +168,21 @@ sequence_gt 42 41 || die 'fixed-width sequence comparison rejected an increase'
 sequence_gt 9223372036854775807 9223372036854775806 || die 'fixed-width comparison failed at INT64 maximum'
 expect_rejected sequence_gt 41 41
 expect_rejected sequence_gt 40 41
+# alpha.100 is the first three-digit sequence: "100" < "99" as plain strings.
+sequence_gt 100 99 || die 'three-digit sequence did not advance a two-digit one'
+expect_rejected sequence_gt 99 100
+canonical_release_version v0.1.0-alpha.100 || die 'three-digit prerelease version was rejected'
+expect_rejected canonical_release_version v0.1.0-alpha.0100
+# The release-recovery foundation orders sequences by length, then digits:
+# its own helper must also put 100 after 99 (the source-sequence floor of a
+# recovery record).
+(
+  # shellcheck source=deploy/release-recovery-foundation.sh
+  source "$(dirname -- "${BASH_SOURCE[0]}")/release-recovery-foundation.sh"
+  release_recovery_sequence_gt 100 99 || die 'recovery foundation did not put 100 after 99'
+  if release_recovery_sequence_gt 99 100; then die 'recovery foundation put 99 after 100'; fi
+  if release_recovery_sequence_gt 100 100; then die 'recovery foundation put 100 after itself'; fi
+) || die 'recovery foundation three-digit sequence order failed'
 fixed_width=$(fixed_width_sequence 42) || die 'could not normalize a valid sequence'
 [[ ${#fixed_width} == 19 && "$fixed_width" == *42 ]] || die 'sequence normalization is not fixed-width'
 
@@ -178,12 +193,12 @@ policy_previous=$POLICY_PREVIOUS
 policy_previous_version=$POLICY_PREVIOUS_VERSION
 policy_previous_commit=$POLICY_PREVIOUS_COMMIT
 
-[[ "$policy_version" == v0.1.0-alpha.99 ]] || die 'tracked version must be v0.1.0-alpha.99'
-[[ "$policy_current" == 99 ]] || die 'tracked current sequence must be 99'
-[[ "$policy_previous" == 98 ]] || die 'tracked previous sequence must be 98'
-[[ "$policy_previous_version" == v0.1.0-alpha.98 ]] || die 'tracked previous version must be v0.1.0-alpha.98'
-[[ "$policy_previous_commit" == c249a9ba236212bfcdf6eddb590f55bccc5bac9c ]] \
-  || die 'tracked previous commit must be the immutable Alpha98 release commit'
+[[ "$policy_version" == v0.1.0-alpha.100 ]] || die 'tracked version must be v0.1.0-alpha.100'
+[[ "$policy_current" == 100 ]] || die 'tracked current sequence must be 100'
+[[ "$policy_previous" == 99 ]] || die 'tracked previous sequence must be 99'
+[[ "$policy_previous_version" == v0.1.0-alpha.99 ]] || die 'tracked previous version must be v0.1.0-alpha.99'
+[[ "$policy_previous_commit" == 7ce52a17b416f8ffcf64931e08a2c3234bfa2f51 ]] \
+  || die 'tracked previous commit must be the immutable Alpha99 release commit'
 
 fixture_dir=$(mktemp -d "${TMPDIR:-/tmp}/celikpanel-release-policy.XXXXXXXX")
 cleanup() {

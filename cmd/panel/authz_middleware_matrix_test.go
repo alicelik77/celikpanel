@@ -130,6 +130,7 @@ func newAuthzMatrixFixture(t *testing.T) authzMatrixFixture {
 		"/api/v1/auth/me",
 		"/api/v1/system/stats",
 		"/api/v1/service/install",
+		serviceRemovalImpactPath,
 		"/api/v1/system-databases",
 		storeCatalogAdminPath,
 	} {
@@ -197,6 +198,10 @@ func TestRequireAuthRoleEndpointMatrix(t *testing.T) {
 		{name: "admin may install services", method: http.MethodPost, path: "/api/v1/service/install", userID: authzMatrixAdminID, want: http.StatusNoContent},
 		{name: "reseller may not install services", method: http.MethodPost, path: "/api/v1/service/install", userID: authzMatrixResellerID, want: http.StatusForbidden},
 		{name: "customer may not install services", method: http.MethodPost, path: "/api/v1/service/install", userID: authzMatrixCustomerID, want: http.StatusForbidden},
+		{name: "admin may read what a removal affects", method: http.MethodGet, path: serviceRemovalImpactPath + "?service_id=nginx", userID: authzMatrixAdminID, want: http.StatusNoContent},
+		{name: "reseller may not read what a removal affects", method: http.MethodGet, path: serviceRemovalImpactPath + "?service_id=nginx", userID: authzMatrixResellerID, want: http.StatusForbidden},
+		{name: "customer may not read what a removal affects", method: http.MethodGet, path: serviceRemovalImpactPath + "?service_id=nginx", userID: authzMatrixCustomerID, want: http.StatusForbidden},
+		{name: "anonymous may not read what a removal affects", method: http.MethodGet, path: serviceRemovalImpactPath + "?service_id=nginx", want: http.StatusUnauthorized},
 		{name: "reseller may not maintain system SQLite", method: http.MethodGet, path: "/api/v1/system-databases", userID: authzMatrixResellerID, want: http.StatusForbidden},
 		{name: "customer may not edit Store catalog", method: http.MethodGet, path: storeCatalogAdminPath, userID: authzMatrixCustomerID, want: http.StatusForbidden},
 	}

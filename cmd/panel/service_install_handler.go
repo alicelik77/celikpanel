@@ -713,7 +713,7 @@ func (p *Panel) handleServiceUninstall(w http.ResponseWriter, r *http.Request) {
 	// böylece yarın kataloğa eklenen bir spam filtresi bu dosyaya dokunmadan
 	// bağlanır.
 	var mailFilterSyncErr error
-	if svc := core.GetManagedServiceByID(req.ServiceID); svc != nil && svc.ConflictGroup == "spam-filter" {
+	if svc := core.GetManagedServiceByID(req.ServiceID); uninstallRewiresMailFilters(svc) {
 		var wireResp transport.WireMailFiltersResponse
 		err := p.withStandaloneAgentMutation(r.Context(), "mail_filter_wire", req.ServiceID, "", func(callCtx context.Context, binding agentMutationBinding) error {
 			request := transport.ServiceMutationRequest{ServiceMutationBinding: binding}
@@ -736,7 +736,7 @@ func (p *Panel) handleServiceUninstall(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if req.ServiceID == "phpmyadmin" || req.ServiceID == "phppgadmin" {
+	if uninstallReconfiguresDatabaseTools(req.ServiceID) {
 		var dbtResp transport.ConfigureDBToolsResponse
 		err := p.withStandaloneAgentMutation(r.Context(), "dbtools_configure", req.ServiceID, "", func(callCtx context.Context, binding agentMutationBinding) error {
 			request := transport.ServiceMutationRequest{ServiceMutationBinding: binding}

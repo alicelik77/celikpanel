@@ -617,3 +617,14 @@ test('Turkish: the manual check is "denetle" in the busy and cleared messages, a
         if (/^(panelUpdate\.|err\.PANEL_UPDATE|start\.updates)/.test(key)) assert.doesNotMatch(text, /kontrol et/i, key);
     }
 });
+
+// v0.1.0-alpha.100 is the first three-digit prerelease number: the page reads
+// it (and its sequence 100) as any other target. The page never orders
+// versions itself; the Agent and the Panel compare them by number and refuse a
+// leading zero (their Go tests), and the sequence keeps its own pattern here.
+test('a three-digit prerelease target (alpha.100, sequence 100) is read; a sequence with a leading zero is not', () => {
+    const target = { ...TARGET, version: 'v0.1.0-alpha.100', sequence: '100' };
+    assert.deepEqual(discovery.decodeDiscoveredTarget(target)?.version, 'v0.1.0-alpha.100');
+    assert.equal(discovery.decodeDiscoveredTarget(target)?.sequence, '100');
+    assert.equal(discovery.decodeDiscoveredTarget({ ...target, sequence: '0100' }), null);
+});

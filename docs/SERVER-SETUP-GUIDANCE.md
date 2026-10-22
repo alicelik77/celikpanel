@@ -8,7 +8,8 @@ Included in the Alpha66 release source. Installed panels remain user-updated.
 - Fresh or unassessed legacy administrators see a brief guided/manual choice.
   An upgraded host is not inferred to be empty, and nothing is installed on view.
 - Manual mode persists on the server, returns to Dashboard and hides its setup
-  invitation. Settings → Server setup always provides a return path.
+  invitation. Server → Server setup (Settings → Server setup until
+  v0.1.0-alpha.100) always provides a return path.
 - Already started setup resumes; completed setup is not reset. Manual mode is
   available before execution; active or waiting operations cannot be hidden.
 - Choosing manual does not mark setup complete, remove security/service checks,
@@ -41,7 +42,8 @@ independent; routing uses guidance plus active-operation state.
 
 Türkçe: İlk karşılaşmada sihirbaz veya manuel yapılandırma açıkça seçilir.
 Tercih sunucuda hatırlanır; manuel seçim kurulumu tamamlanmış saymaz ve güvenlik
-gereksinimlerini kaldırmaz. Sihirbaza Ayarlar → Sunucu kurulumu ile dönülür.
+gereksinimlerini kaldırmaz. Sihirbaza Sunucu → Sunucu kurulumu ile
+dönülür (v0.1.0-alpha.100'e dek Ayarlar → Sunucu kurulumu).
 
 ## Shared setup shell — September 13, 2026 (Alpha74 release source)
 

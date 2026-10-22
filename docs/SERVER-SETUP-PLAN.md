@@ -19,7 +19,8 @@ This is a short choice, not a claim that an upgraded host is empty. Completed
 installations and existing in-progress operations retain their state.
 
 The choice persists for the server across sessions. Manual mode suppresses the
-automatic wizard and Dashboard invitation; **Settings → Server setup** remains
+automatic wizard and Dashboard invitation; **Server → Server setup** (Settings → Server setup until
+v0.1.0-alpha.100) remains
 available to reopen it. Switching the preference does not complete setup, alter
 its draft, remove readiness checks, change licensing, or run host operations.
 An accepted active/waiting execution must be resolved before changing preference.

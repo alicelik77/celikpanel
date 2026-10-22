@@ -54,15 +54,17 @@ test('panel access owns only the panel certificate while updates own PanelUpdate
 
 test('operational Settings components mount only while their URL section is active', () => {
   const updates = tabPanelSource('updates');
-  const setup = tabPanelSource('setup');
+  const license = tabPanelSource('license');
 
   assert.match(
     updates,
     /hidden=\{activeID !== 'updates'\}[\s\S]*\{activeID === 'updates' && <Suspense[^>]*><PanelUpdateCard \/><\/Suspense>\}/,
   );
   assert.match(
-    setup,
-    /hidden=\{activeID !== 'setup'\}[\s\S]*\{activeID === 'setup' && <ServerSetupSettings \/>\}/,
+    license,
+    // The licence panel's fallback is itself an element (<p role="status">),
+    // so the Suspense opening tag is matched up to the panel, not up to ">".
+    /hidden=\{activeID !== 'license'\}[\s\S]*\{activeID === 'license' && <Suspense fallback=\{[\s\S]*?\}><LicensePanel \/><\/Suspense>\}/,
   );
 });
 
@@ -99,16 +101,17 @@ test('the horizontally scrolling mobile tab list keeps the active section visibl
 // v0.1.0-alpha.98 (D-037, owner 2026-10-22): Settings holds only what is chosen
 // once and decides how the panel behaves. The account, server security, DNS and
 // the system databases have their own pages; no administrator-wide security
-// policy exists, so Settings has four sections, in this order.
-test('Settings shows only the four remaining sections, in the approved order', () => {
+// policy exists. v0.1.0-alpha.100 (owner 2026-10-22): Server setup has its own
+// page under Server, so Settings has three sections, in this order.
+test('Settings shows only the three remaining sections, in the approved order', () => {
   const adminSections = sourceBetween("const sections: SettingsSection[] = role === 'admin'", ': [];');
   const ids = [...adminSections.matchAll(/id:\s*'([a-z-]+)'\s+as const/g)].map((match) => match[1]);
-  assert.deepEqual(ids, ['panel', 'license', 'updates', 'setup']);
-  assert.match(settings, /type SettingsSectionID = 'panel' \| 'license' \| 'updates' \| 'setup';/);
-  for (const moved of ['account', 'security', 'dns', 'system-databases']) {
+  assert.deepEqual(ids, ['panel', 'license', 'updates']);
+  assert.match(settings, /type SettingsSectionID = 'panel' \| 'license' \| 'updates';/);
+  for (const moved of ['account', 'security', 'dns', 'system-databases', 'setup']) {
     assert.ok(!settings.includes(`id="settings-${moved}-panel"`), `Settings still draws the ${moved} section`);
   }
-  for (const gone of ['TwoFactorPanel', 'SecurityAuditCard', 'DNSServerSettings', 'SystemSQLiteManager']) {
+  for (const gone of ['TwoFactorPanel', 'SecurityAuditCard', 'DNSServerSettings', 'SystemSQLiteManager', 'ServerSetupSettings']) {
     assert.ok(!settings.includes(gone), `Settings still mounts ${gone}`);
   }
   for (const catalog of [english, turkish]) {

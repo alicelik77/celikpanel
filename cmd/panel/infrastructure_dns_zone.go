@@ -208,7 +208,7 @@ func (p *Panel) infrastructureDNSRecordManagedBySetup(ctx context.Context, zone,
 
 func writeInfrastructureDNSRecordManagedBySetup(w http.ResponseWriter) {
 	writeCodedError(w, http.StatusConflict, errCodeInfrastructureDNSRecordBySetup,
-		"This address record is managed by server setup. Change it by extending the server setup, which shows the change for review before anything is applied; other records in this zone are yours to edit.", "/settings?section=setup")
+		"This address record is managed by server setup. Change it by extending the server setup, which shows the change for review before anything is applied; other records in this zone are yours to edit.", "/server-setup")
 }
 
 // handleInfrastructureDNSZones answers the list (GET) and, for one zone, the

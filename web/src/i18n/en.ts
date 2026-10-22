@@ -236,6 +236,7 @@ export const en = {
     'nav.settings': 'Settings',
     'nav.menu': 'Menu',
     'nav.monitoring': 'Monitoring',
+    'nav.serverSetup': 'Server setup',
     'nav.dnsPeers': 'DNS and peer servers',
     'nav.security': 'Security',
     'nav.maintenance': 'Maintenance',

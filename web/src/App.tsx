@@ -57,6 +57,7 @@ const AccountPage = lazyNamed(() => import('./components/AccountPage'), 'Account
 const SecurityPage = lazyNamed(() => import('./components/SecurityPage'), 'SecurityPage');
 const MaintenancePage = lazyNamed(() => import('./components/MaintenancePage'), 'MaintenancePage');
 const DNSPeersPage = lazyNamed(() => import('./components/DNSPeersPage'), 'DNSPeersPage');
+const ServerSetupPage = lazyNamed(() => import('./components/ServerSetupPage'), 'ServerSetupPage');
 const UsersPage = lazyNamed(() => import('./components/UsersPage'), 'UsersPage');
 const ImportPage = lazyNamed(() => import('./components/ImportPage'), 'ImportPage');
 const AuditLogPage = lazyNamed(() => import('./components/AuditLogPage'), 'AuditLogPage');
@@ -384,6 +385,7 @@ function AppRoutes() {
         {/* Services */}
         <Route path="/services" element={<PageWithLayout><ServicesPage /></PageWithLayout>} />
         <Route path="/services/:serviceId" element={<PageWithLayout><ServiceManagementPage /></PageWithLayout>} />
+        <Route path="/server-setup" element={<PageWithLayout><ServerSetupPage /></PageWithLayout>} />
         <Route path="/dns-infrastructure" element={<PageWithLayout><DNSPeersPage /></PageWithLayout>} />
         <Route path="/monitoring" element={<PageWithLayout><MonitoringPage /></PageWithLayout>} />
         <Route path="/security" element={<PageWithLayout><SecurityPage /></PageWithLayout>} />

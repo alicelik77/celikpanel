@@ -9736,3 +9736,83 @@ tasarım geri çekildi. Sahip, nelerin etkileneceğini adıyla söyleyen öneril
 kaldırma penceresini daha iyi buldu; bu, alpha.99'un değil, sonraki sürümün
 adayıdır. Bu girdi için hiçbir metin ya da ekran değiştirilmedi. P0.1-P0.5
 **kısmi** kalır; bu girdi hiçbir şeyi kapatmaz ya da ilerletmez.
+
+### Bir bileşeni kaldırmak, Bileşenler'in ilk ziyareti ve Sunucu kurulumunun yeni yeri (D-037 değişikliği, 22 Ekim 2026)
+
+v0.1.0-alpha.100 adayı için kaynakta; hiçbir şey kurulu bir sunucuda ölçülmedi.
+Bir bileşeni kaldırmanın ne yaptığını birine anlatmadan önce bunu okuyun.
+
+**Kaldırma penceresi.** Bileşenler → bir satırdaki kaldır (çöp kutusu) düğmesi "X
+kaldırılsın mı?" penceresini açar. Pencere kaldırmanın bu sunucuda neyi
+etkileyeceğini bir kez okur.
+
+- *Okurken:* "X kaldırılınca bu sunucuda neyin etkileneceği okunuyor…" ve dönen
+  simge. **Kim hareket eder:** kimse. Kaldır kullanılabilir kalır; okuma hiçbir
+  şeyi değiştirmez.
+- *Gösterdikleri:* önce "Bu sunucuda etkilenecekler" (Panel'in onun üzerinde
+  barındırdıkları adıyla, en çok beşi ve ardından "+N tane daha"; certbot için
+  onunla yenilenen ve yenilenmesi duracak sertifikalar — sahip kendi
+  sertifikasını sunmuyorsa panelinki, sunucu kurulumunun verildiğini kaydettiği
+  posta sunucusu sertifikaları, otomatik yenilenen site sertifikaları —; güvenlik
+  duvarı motoru için panel güvenlik duvarının durumu (açık ve N açık port, kapalı
+  ya da bilinmiyor) ve CelikPanel panel güvenlik duvarını artık uygulayamaz, değiştiremez ve geri yükleyemez; yüklenmiş kurallar sunucu yeniden başlayana dek kalabilir; WireGuard için artık bağlanamayacak VPN
+  eşleri; vsftpd için Panel'in kaydettiği FTP hesapları; Redis,
+  Valkey ve Memcached için CelikPanel'in onları hangi sitelerin kullandığını
+  kaydetmediği; sunucu kurulumunun certbot'u ve güvenlik duvarı motorunu
+  gerektirdiği; ona ihtiyaç duyan kurulu bileşenler; eksik bıraktığı hazır
+  paketler; güvenlik duvarından istediği portlar; yalnız bunların hiçbiri yoksa "CelikPanel bu sunucuda X bileşenine bağlı başka hiçbir şey kaydetmiyor"), ardından "Silinenler"
+  (kaldırma yolunun bu bileşen için yaptığı, paketler ve apt ile pacman'da paket
+  yöneticisi komutu; bir veritabanı motoru için veritabanı dosyalarının paketin
+  kaldırma betiğince silinebileceğini ve önce yedek alınmasını söyleyen bir uyarı
+  satırı) ve "Yerinde kalanlar".
+- *Barındırılanlar kaldırmayı engellediğinde:* "Bunlar varken CelikPanel X
+  bileşenini kaldırmaz: önce taşıyın ya da silin." **Kim hareket eder:** yönetici.
+  **Sonraki eylem:** adı geçen siteleri, veritabanlarını ya da e-posta adreslerini
+  taşıyın veya silin (Alan Adları, Veritabanları, bir alan adının E-posta sekmesi).
+  **Nasıl sürer:** pencereyi yeniden açın; Kaldır daha önce basılırsa Panel'in
+  reddi (`SERVICE_HAS_DEPENDENTS`) yine onları adlandırır ve hiçbir şey
+  değişmez.
+- *Okuma başarısız olduğunda ya da 10 saniyeyi aştığında:* "X kaldırılınca bu
+  sunucuda neyin etkileneceği okunamadı. Hiçbir şey değiştirilmedi. Yine de
+  kaldırabilirsiniz, ama önce kontrol edin: Alan Adları ve Veritabanları sayfaları
+  bu sunucuda neyin çalıştığını gösterir." ve Tekrar dene. Bu bilinmeyen bir
+  sonuçtur; hata ya da ret değildir. **Kim hareket eder:** listeyi isterse yönetici:
+  Tekrar dene (yalnız okur). Altında eski genel uyarı gösterilir. Panel'in kendi
+  retleri Kaldır'a yine yanıt verir.
+- *Silinen ve kalan olarak söyledikleri (koddan):* paketli bir bileşenin birimleri,
+  varsa, durdurulur ve devre dışı bırakılır (birimi olmayan bir araçta — certbot,
+  güvenlik duvarı motoru, phpMyAdmin, phpPgAdmin — durdurulacak bir şey yoktur);
+  ardından apt (`apt-get purge -y --auto-remove`) paketlerini yapılandırma
+  dosyalarıyla ve artık hiçbir şeyin ihtiyaç duymadığı, otomatik kurulmuş her
+  paketle — yalnız onun için kurulanlar değil, sistemin tamamında — kaldırır;
+  pacman (`pacman -Rns --noconfirm`) ise yapılandırma dosyaları ve başka hiçbir
+  şeyin ihtiyaç duymadığı bağımlılıklarıyla kaldırır; apt'ta PHP-FPM ve PostgreSQL
+  kurulu her sürümü de götürür; bir spam süzgeci Postfix'in süzgeç zincirinden
+  çıkarılır; phpMyAdmin ve phpPgAdmin veritabanı araçlarının sunucusundan
+  çıkarılır; Roundcube'un kaldırılması uygulama ağacını (ayarları ve adres defteri
+  veritabanıyla) ve `/webmail/` kaydını siler, Nginx ve PHP-FPM paketleri kalır.
+  Bu paket yöneticisinde bileşen için katalog paketi yoksa (pacman'da Redis,
+  SpamAssassin, phpPgAdmin) pencere Kaldır'ın reddedileceğini ("bu sistemde henüz
+  otomatik olarak kaldırılamaz") ve hiçbir şeyin değişmeyeceğini söyler; **kim
+  hareket eder:** bileşen gitmek zorundaysa sunucu sahibi, işletim sisteminin
+  paket yöneticisiyle. CelikPanel kendisi başka hiçbir şey silmez; bir paketin
+  kendi kaldırma betiği o paketin oluşturduğu verileri silebilir. Tablonun
+  tamamı D-037 değişikliğindedir.
+- DNS motorları kendi akışlarını korur (Sunucu → DNS ve eş sunucular); yerel cron
+  asla kaldırılmaz; Roundcube kalıntı temizliği kendi listesini korur.
+
+**İlk ziyaret.** Bileşenler ilk seferde ve hatırlanan seçim olmadığında ya da
+okunamadığında Kurulu görünümü açar. Hatırlanan "Katalog" yine kataloğu açar.
+Kurulu olmayan Roundcube satırı, Panel kalıntı temizliğini önerdikçe Kurulu
+görünümde kalır.
+
+**Sunucu kurulumunun yeni yeri.** Sunucu → Sunucu kurulumu (`/server-setup`),
+Bileşenler'in hemen altında: kurulumun durumu, sunucunun kullanım amacı, "Bu
+sunucunun kurulumunu genişletin" ve kurulum sihirbazının bağlantısı. Pano'daki
+"Sunucunun kullanım amacı" kartı oraya bağlanır. Ayarlar → Sunucu kurulumu'na
+(`/settings?section=setup`) giden eski bir bağlantı ya da yer imi yeni sayfaya
+ulaşır; Panel'in sunucu kurulumunun yönettiği bir DNS kaydı için verdiği
+yönlendirme de oraya gösterir. Ayarlar'da Panel adresi ve HTTPS, Lisans ve
+CelikPanel güncellemeleri kalır. Önceki gibi yalnız yöneticiler.
+
+P0.1-P0.5 **kısmi** kalır; bu girdi hiçbir şeyi kapatmaz ya da ilerletmez.

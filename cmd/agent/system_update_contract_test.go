@@ -85,6 +85,59 @@ func TestSystemUpdateSemverUsesSemVerPrecedence(t *testing.T) {
 	}
 }
 
+// v0.1.0-alpha.100 is the first three-digit prerelease number. As strings
+// "alpha.100" sorts before "alpha.99"; the updater must order it by number,
+// offer it over alpha.99, accept it above an alpha.99 floor, and refuse
+// alpha.99 once the floor is at alpha.100.
+func TestSystemUpdateThreeDigitPrereleaseOrdersAfterTwoDigit(t *testing.T) {
+	for _, test := range []struct {
+		left, right string
+		want        int
+	}{
+		{"v0.1.0-alpha.100", "v0.1.0-alpha.99", 1},
+		{"v0.1.0-alpha.99", "v0.1.0-alpha.100", -1},
+		{"v0.1.0-alpha.100", "v0.1.0-alpha.100", 0},
+		{"v0.1.0-alpha.101", "v0.1.0-alpha.100", 1},
+		{"v0.1.0-alpha.1000", "v0.1.0-alpha.999", 1},
+		{"v0.1.0", "v0.1.0-alpha.100", 1},
+	} {
+		got, err := compareSystemUpdateSemver(test.left, test.right)
+		if err != nil || got != test.want {
+			t.Fatalf("compare(%q,%q) = %d,%v want %d", test.left, test.right, got, err, test.want)
+		}
+	}
+	if _, err := parseSystemUpdateSemver("v0.1.0-alpha.0100"); err == nil {
+		t.Fatal("accepted a leading zero in a three-digit prerelease number")
+	}
+
+	manifest := testSystemUpdateManifest()
+	manifest.Sequence, manifest.Version = "100", "v0.1.0-alpha.100"
+	manifest.Archive = "celikpanel-v0.1.0-alpha.100-linux-amd64.tar.gz"
+	raw, err := canonicalSystemUpdateManifest(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if parsed, err := parseCanonicalSystemUpdateManifest(raw); err != nil || parsed != manifest {
+		t.Fatalf("alpha.100 manifest round trip = %#v, %v", parsed, err)
+	}
+	if err := systemUpdateFloorAllows(&systemUpdateFloor{Sequence: "99", Version: "v0.1.0-alpha.99"}, manifest); err != nil {
+		t.Fatalf("alpha.100 refused above the alpha.99 floor: %v", err)
+	}
+	if err := systemUpdateFloorAllows(&systemUpdateFloor{Sequence: "100", Version: "v0.1.0-alpha.100"}, manifest); err != nil {
+		t.Fatalf("alpha.100 retry refused at its own floor: %v", err)
+	}
+	older := testSystemUpdateManifest()
+	older.Sequence, older.Version = "99", "v0.1.0-alpha.99"
+	older.Archive = "celikpanel-v0.1.0-alpha.99-linux-amd64.tar.gz"
+	if err := systemUpdateFloorAllows(&systemUpdateFloor{Sequence: "100", Version: "v0.1.0-alpha.100"}, older); err == nil {
+		t.Fatal("alpha.99 accepted below the alpha.100 floor")
+	}
+	floorRaw := canonicalSystemUpdateFloor(systemUpdateFloor{Sequence: "100", Version: "v0.1.0-alpha.100"})
+	if floor, err := parseCanonicalSystemUpdateFloor(floorRaw); err != nil || floor.Sequence != "100" || floor.Version != "v0.1.0-alpha.100" {
+		t.Fatalf("alpha.100 floor round trip = %#v, %v", floor, err)
+	}
+}
+
 func TestSystemUpdateDecimalAndFloorFailClosed(t *testing.T) {
 	for _, invalid := range []string{"", "0", "01", "+1", "-1", " 1", "1 ", "9223372036854775808"} {
 		if _, err := parseCanonicalPositiveDecimal(invalid, math.MaxInt64); err == nil {

@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from '../router';
-import { Lock, BadgeCheck, AlertTriangle, Network, DownloadCloud } from 'lucide-react';
+import { Lock, BadgeCheck, AlertTriangle, DownloadCloud } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import { useAuth } from '../auth/AuthContext';
@@ -8,7 +8,6 @@ import { Button, CouldNotCheck, ErrorBanner, RemoteGate, inputClass } from './ui
 import { PageHeader } from './PageHeader';
 import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
 import { readRemote, useRemote } from '../lib/remote';
-import { ServerSetupSettings } from './ServerSetupChoice';
 import { availablePanelUpdate, usePanelUpdateDiscovery, wholeVersion } from '../lib/panelUpdateDiscovery';
 
 const LicensePanel = lazy(() => import('./LicensePanel').then((module) => ({ default: module.LicensePanel })));
@@ -19,12 +18,14 @@ const PanelUpdateCard = lazy(() => import('./PanelUpdateCard').then((module) => 
 // (personal menu); server security, DNS and peer servers and the system
 // databases are pages under Server. Their old addresses still arrive there
 // (nav.ts, settingsRedirect). No administrator-wide security policy exists
-// yet, so there is no section for one.
+// yet, so there is no section for one. Server setup has its own page under
+// Server since v0.1.0-alpha.100 (owner 2026-10-22).
 // Ayarlar, bir kez seçilip panelin davranışını belirleyenleri tutar (D-037).
 // Kişinin hesap güvenliği Hesabım'da; sunucu güvenliği, DNS ve eş sunucular ve
 // sistem veritabanları Sunucu altındaki sayfalardır. Eski adresleri oraya
 // ulaşır. Tüm yöneticiler için bir güvenlik kuralı henüz yok; bölümü de yok.
-type SettingsSectionID = 'panel' | 'license' | 'updates' | 'setup';
+// Sunucu kurulumu alpha.100'den beri Sunucu altında kendi sayfasıdır.
+type SettingsSectionID = 'panel' | 'license' | 'updates';
 type SettingsSection = {
     id: SettingsSectionID;
     icon: React.ComponentType<{ className?: string }>;
@@ -71,7 +72,6 @@ export function Settings() {
                 description: t('settings.section.updates.desc'),
                 ...(updateTarget ? { note: t('settings.section.updates.available', { version: updateTarget.version }), noteVersion: updateTarget.version } : {}),
             },
-            { id: 'setup' as const, icon: Network, title: t('setup.settingsTitle'), description: t('setup.settingsDescription') },
         ]
         : [];
     const requestedSection = searchParams.get('section');
@@ -165,9 +165,6 @@ function SettingsWorkspace({
                         </div>
                         <div id="settings-updates-panel" role="tabpanel" aria-labelledby="settings-updates-tab" hidden={activeID !== 'updates'}>
                             {activeID === 'updates' && <Suspense fallback={null}><PanelUpdateCard /></Suspense>}
-                        </div>
-                        <div id="settings-setup-panel" role="tabpanel" aria-labelledby="settings-setup-tab" hidden={activeID !== 'setup'}>
-                            {activeID === 'setup' && <ServerSetupSettings />}
                         </div>
                     </>
                 )}

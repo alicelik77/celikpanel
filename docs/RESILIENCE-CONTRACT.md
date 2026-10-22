@@ -7025,3 +7025,82 @@ clock date of everything in it.
   confirmed by a message; open sessions not built; the scheduled update check not
   run against a real Agent or the real release server; the rollback paths that
   share the changed helpers exercised by contract tests only.
+
+### Candidate v0.1.0-alpha.100 (one new read-only route for the removal dialog; the first Components view; Server setup's place; the first three-digit prerelease number; no updater or schema change; invariants 2, 3 and 6; D-037 amendment; D-010; D-024; D-033; D-025; 2026-10-22)
+
+D-025 invariants 2 (evidence has a meaning and a lifecycle: the removal dialog says
+only what the uninstall path in the code does and what the Panel records; a
+distribution package's own removal script is named as the one that decides about
+its data, never described), 3 (native service ownership: nothing the uninstall
+does changed; the dialog now says that CelikPanel deletes nothing else itself) and
+6 (readiness, progress and access remain independent: the dialog's read is one
+bounded GET that never holds the removal and never starts a change; the setup gate
+and the offline recovery shell know the new `/server-setup` address). The P0.1/P0.2
+area (truthful, actionable state) is touched. **No P0 item is closed or advanced**;
+P0.1 to P0.5 stay partial and every open acceptance item stays open. This entry is
+not a claim that the native update and automatic-rollback resilience is complete.
+2026-10-22 is the clock date of everything in it.
+
+- **What this release touches.** One read-only Panel route,
+  `GET /api/v1/service/removal-impact` (administrators only through the
+  `/api/v1/service/` prefix; `no-store`; it reads the catalogue, the stored component
+  record, the Panel's database and the panel certificate file; no new Agent call
+  and no mutation: the host profile may come from cached Agent facts, and for the
+  firewall engine the firewall's state is read through the existing read, bounded;
+  no stored record answers `SERVICE_STATE_UNVERIFIED`). The uninstall handler and
+  `Agent.UninstallService` now ask the same named conditions the route reports
+  (`uninstallRewiresMailFilters`, `uninstallReconfiguresDatabaseTools`,
+  `core.UninstallPurgesAllVersions`); what they do is unchanged. The web interface:
+  the removal dialog, the Components page's first view, the Server setup page and
+  its links, and Settings with three sections. One guidance action address
+  (`/settings?section=setup` became `/server-setup`). The release sequence moves 99
+  to 100, the first three-digit number; the audit of every version comparison is in
+  the release notes and found no text ordering.
+  It does **not** touch the updater (`update.sh`, `get.sh` beyond its pins, the
+  system update worker, rollback and recovery), any role, the schema or polling.
+  Therefore **no native record is made** for this release, by the owner's
+  instruction of 2026-10-16.
+- **Owner-operated recovery path: unchanged.** CelikPanel updates stays in
+  Settings; the owner starts every installed-panel update from the panel's own
+  update screen. The removal dialog changes no removal: the existing guard
+  (`SERVICE_HAS_DEPENDENTS`), the conflict and requirement refusals, the DNS
+  engines' own workflow and native cron's refusal stay. **Installed-panel update
+  path: unchanged.**
+- **Access gates.** The new route is administrator-only (authorization matrix:
+  administrator allowed, reseller and customer refused, anonymous unauthenticated).
+  `/server-setup` is administrator-only as Settings → Server setup was; the setup
+  gate keeps it reachable while setup is required; a redirect leads to the page's
+  own guard.
+- **Schema, version transition and recovery.** Schema 44, no migration; nothing new
+  is persisted (the view choice stays in the browser as before). *alpha.99 to
+  alpha.100:* alpha.100 reads everything alpha.99 wrote; a remembered "catalog" or
+  "installed" view is honoured, a missing one now opens the installed view; an old
+  `/settings?section=setup` link is redirected. *alpha.100 back to alpha.99* (for
+  example after a rollback): `/server-setup` is unknown to alpha.99, so a bookmark
+  falls back to alpha.99's Dashboard, and alpha.99 shows Server setup in Settings
+  again; the dialog reverts to its general warning. **Known, harmless downgrade
+  behaviour:** nothing is lost or needs repairing. The sequence floor ordering of
+  100 over 99 is proven by the Agent, Panel, policy and recovery-foundation tests.
+  Not measured on an installed server.
+- **Evidence and open.** On the candidate tree: Go `go test ./cmd/panel/ ./internal/...` (-timeout 45m, CGO off) in the `CelikPanel-S2-Debian` guest: 64 packages ok, 2913 top-level tests passed, 42 skipped, 0 failed (4282 subtests passed); `go test ./cmd/agent/...` in a clean mount namespace: 1821 top-level tests passed, 29 skipped, 0 failed (2838 subtests passed); gofmt clean and `go vet ./cmd/... ./internal/...` clean; web `npm test`
+  1740 of 1740 passed; the build within its budgets (critical boot path
+  331.08 KiB of 361 KiB; no limit raised); the release sequence policy, download
+  portal and signed release manifest contracts and the release-recovery harness
+  passed; browser batch 25 looked at twice. The numbers are in the [release
+  notes](RELEASE-NOTES-v0.1.0-alpha.100.md). Component and mounted tests do not
+  establish native behaviour. **Nothing was measured on an installed server.**
+  Open: what a distribution package's own removal script deletes is not read; the
+  dialog's lists hold only what the Panel records; everything the alpha.90 to
+  alpha.99 entries leave open stays open. Installed panels are updated only by
+  their owners, from the panel's own update screen. P0.1 to P0.5 stay partial.
+- **Review corrections (2026-10-22, before any publication).** Invariant 2 again:
+  the dialog said "Nothing else on this server depends on X" for certbot and the
+  firewall engine, which server setup requires and through which the Panel renews
+  its certificates and enforces its firewall; it now names those certificates and
+  the firewall's state and says that server setup requires both, says only that
+  CelikPanel does not record which sites use a cache, says apt's system-wide
+  `--auto-remove` and pacman's dependency removal per family, puts the database
+  warning on its own line, does not say a unit-less tool is stopped, says a
+  family without catalogue packages is refused (as the Agent refuses it), and
+  names Roundcube's kept packages exactly. A second round made a firewall answer that carries its own error "not known", words the firewall engine as CelikPanel no longer able to apply, change or restore the panel firewall (rules already loaded may stay until the server restarts), adds WireGuard's VPN peers and vsftpd's FTP accounts, narrows certbot's list to what the Panel renews and setup recorded, keeps the firewall read from waiting on a firewall change, and narrows the empty case to "CelikPanel records nothing else on this server that depends on X". The Agent tests are recorded above.
+  The removal itself is unchanged.

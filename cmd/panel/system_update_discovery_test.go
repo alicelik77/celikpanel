@@ -586,6 +586,9 @@ func TestComparePanelUpdateVersions(t *testing.T) {
 		{"v0.1.0-alpha.96", "v0.1.0-alpha.95", 1},
 		{"v0.1.0-alpha.95", "v0.1.0-alpha.96", -1},
 		{"v0.1.0-alpha.100", "v0.1.0-alpha.99", 1},
+		{"v0.1.0-alpha.99", "v0.1.0-alpha.100", -1},
+		{"v0.1.0-alpha.100", "v0.1.0-alpha.100", 0},
+		{"v0.1.0-alpha.1000", "v0.1.0-alpha.999", 1},
 		{"v0.1.0-alpha.9", "v0.1.0-alpha.9", 0},
 		{"v0.1.0", "v0.1.0-alpha.99", 1},
 		{"v0.2.0-alpha.1", "v0.1.9", 1},
@@ -599,6 +602,9 @@ func TestComparePanelUpdateVersions(t *testing.T) {
 	}
 	if _, ok := comparePanelUpdateVersions("dev", "v0.1.0"); ok {
 		t.Fatal("dev compared as a release")
+	}
+	if !validPanelUpdateVersion("v0.1.0-alpha.100") || validPanelUpdateVersion("v0.1.0-alpha.0100") {
+		t.Fatal("three-digit prerelease validation is wrong")
 	}
 }
 

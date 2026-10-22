@@ -26,10 +26,10 @@ function sourceSection(source, start, end) {
   return source.slice(startIndex, endIndex);
 }
 
-test('fresh Components visits open the full catalog and remember only an explicit installed choice', () => {
+test('fresh Components visits open the installed view and remember only an explicit catalogue choice (D-010, alpha.100)', () => {
   assert.match(
     serviceSource,
-    /typeof localStorage === 'undefined' \? false : localStorage\.getItem\(viewKey\) === 'installed'/,
+    /typeof localStorage === 'undefined' \|\| localStorage\.getItem\(viewKey\) !== 'catalog'/,
   );
   assert.match(serviceSource, /localStorage\.setItem\(viewKey, installedOnly \? 'installed' : 'catalog'\)/);
 });

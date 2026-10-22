@@ -23,7 +23,7 @@ git'te yaşar; bu dosya strateji içindir. En yeni en üstte.
 
 ## D-037 · Her sayfa adının söylediği yerdedir: Ayarlar ayarları tutar; araçlar, güvenlik ve bakım Sunucu altındadır; kişinin kendi hesabı kişisel menüdedir
 
-*22 Ekim 2026 (saat tarihi) · Sahibin 21 Ekim 2026 tarihli isteği ve 22 Ekim 2026 tarihli onayı; v0.1.0-alpha.98 adayı için kaynakta, 22 Ekim 2026'da yayımlandı; 22 Ekim 2026'da sahibin kendi güncellemesinden sonra sahibin ekranları yeni menüyü iki kurulu sunucuda da gösterdi · 22 Ekim 2026'da değiştirildi: kişinin kendi e-postasını değiştirmesi, v0.1.0-alpha.99 adayı için kaynakta; değişikliğin hiçbir parçası kurulu bir sunucuda ölçülmedi*
+*22 Ekim 2026 (saat tarihi) · Sahibin 21 Ekim 2026 tarihli isteği ve 22 Ekim 2026 tarihli onayı; v0.1.0-alpha.98 adayı için kaynakta, 22 Ekim 2026'da yayımlandı; 22 Ekim 2026'da sahibin kendi güncellemesinden sonra sahibin ekranları yeni menüyü iki kurulu sunucuda da gösterdi · 22 Ekim 2026'da değiştirildi: kişinin kendi e-postasını değiştirmesi, v0.1.0-alpha.99 adayı için kaynakta; değişikliğin hiçbir parçası kurulu bir sunucuda ölçülmedi · 22 Ekim 2026'da yeniden değiştirildi: Sunucu kurulumu Sunucu altına taşınır, kaldırma penceresi neyin etkileneceğini söyler, ilk ziyaret Kurulu görünümü açar; v0.1.0-alpha.100 adayı için kaynakta*
 
 Sahip 21 Ekim 2026'da şunu sordu: "ayarlardaki bu alt
 menüdeki her şey ayarlar ile mi ilgili?" ve sürdürdü: "her işlemin yeri doğru
@@ -376,6 +376,177 @@ kapıları artık onu yakalar.
 
 Yapılmadı: kurulu bir sunucuda hiçbir şey ölçülmedi; yeni adres bir iletiyle
 doğrulanmaz; açık oturumlar hâlâ yapılmadı.
+
+### Değişiklik (22 Ekim 2026, saat tarihi): Sunucu kurulumu Sunucu altına taşınır; kaldırma penceresi neyin etkileneceğini söyler; geniş Bileşenler yeniden tasarımı geri çekilir
+
+*Sahibin 22 Ekim 2026 kararları ("1 evet, 2 b, 3 evet"); v0.1.0-alpha.100 adayı için kaynakta; hiçbir parçası kurulu bir sunucuda ölçülmedi*
+
+Neden. alpha.99 yayımlandıktan sonra sahip, Bileşenler sayfası için önerilen bir
+yeniden tasarıma baktı (her satırda bir "⋯" menüsü, tek bir eylem sütunu ve
+kataloğun başında tek satır olarak Sunucu kurulumu) ve bunun neden daha iyi
+olacağını sordu. Dürüst yanıt, büyük kısmının daha iyi olmayacağıydı: sayfa
+sahibin seçtiği görünümü (Kurulu ya da Katalog) zaten hatırlıyor ve kataloğa
+geçerken onu katlıyor; bu yüzden geniş yeniden tasarım **geri çekildi**. O
+incelemeden üç şey kaldı ve sahip tam olarak bu üçünü onayladı: taslağın, bir
+kaldırmanın bu sunucuda neyi etkileyeceğini adıyla söyleyen kaldırma penceresi
+(1, "evet"); ilk ziyaretin D-010'un zaten söz verdiği Kurulu görünümü açması (2,
+b seçeneği); Sunucu kurulumunun Ayarlar'dan çıkması (3, "evet").
+
+Kabul edilen kurallar:
+
+1. **Sunucu kurulumu bir işlemdir ve Sunucu altında yer alır.** Yukarıdaki 4.
+   kuralın ikinci düşüncesini ("Sunucu kurulumu Ayarlar'da kalır") tersine
+   çevirir. Sahibin okuması: sunucunun ne yapacağını seçmek ve genişletmek,
+   bileşen kurmak gibi sunucuda yapılan bir iştir; panelin nasıl davranacağına
+   dair bir ayar değildir. Sunucu grubunda, **Bileşenler'in hemen altında**,
+   "Sunucu kurulumu" / "Server setup" adlı kendi öğesidir; adresi
+   `/server-setup`. Ayarlar → Sunucu kurulumu'nun gösterdiğini gösterir:
+   kurulumun durumu, sunucunun kullanım amacı, "Bu sunucunun kurulumunu
+   genişletin" düğmesi ve kurulum sihirbazının bağlantısı (`/setup`, değişmedi). Pano'daki
+   "Sunucunun kullanım amacı" kartı ona bağlanır. `/settings?section=setup`,
+   alpha.98 taşımaları gibi `/server-setup` ile değiştirilir (fazladan geçmiş
+   kaydı yok); eski bölüme giden her ürün içi bağlantı ve Panel'in sunucu
+   kurulumunun yönettiği bir kayıt için verdiği yönlendirme eylemi yeni sayfayı
+   gösterir. **Ayarlar'da üç bölüm kalır:** Panel adresi ve HTTPS, Lisans,
+   CelikPanel güncellemeleri. **Roller değişmez:** önceki gibi yalnız
+   yöneticiler.
+2. **İlk ziyaret Kurulu görünümü açar (D-010).** Hiçbir şey saklı değilken
+   Bileşenler sayfası tam kataloğu açıyordu. Artık kataloğu yalnız hatırlanan bir
+   "katalog" seçimi açar; olmayan, bilinmeyen ya da okunamayan seçim Kurulu
+   görünümü açar ve saklı bir seçim yine geçerlidir. Sayfada başka hiçbir şey
+   değişmez: satırlar, düğmeleri (yeniden başlat, durdur, Yönet ve kaldır görünür
+   kalır; "⋯" menüsü yok), hazır paket şeritleri, rozetler ve katlama olduğu
+   gibidir.
+3. **Kaldırma penceresi neyin etkileneceğini adıyla ve neyin yerinde kaldığını
+   söyler.** Taslağın onaylanan tek parçasıdır. Kuralları:
+   - **Önce doğruluk.** Neyin silindiğine ya da kaldığına dair her cümle taslağı
+     değil koddaki kaldırma yolunu izler (taslaktaki "yapılandırma dosyaları
+     yerinde kalır" yanlıştı: purge onları siler). Panel, kendi kaldırmasının
+     kullandığı küçük koşullarla yanıt verir; böylece pencere kaldırmanın
+     yapmadığı bir şeyi vaat edemez.
+   - **Panel'in zaten tuttuğundan.** `GET /api/v1/service/removal-impact` (yalnız
+     yöneticiler, salt-okunur: yeni Agent çağrısı ve değişiklik yok; sunucu
+     profili önbellekteki Agent bilgilerinden gelebilir, güvenlik duvarı motoru
+     için duvarın durumu var olan okumayla, sınırlı biçimde okunur) kataloğu,
+     saklanan bileşen kaydını, Panel veritabanını ve panel sertifikası dosyasını
+     okur. Şunları adlandırır: Panel'in bileşen üzerinde barındırdıkları (web
+     sunucusu için siteler; bir çalışma ortamı için PHP ya da Node.js siteleri;
+     bir motor için veritabanları; Postfix ve Dovecot için e-posta adresleri ve
+     yönlendirmeler; bir spam süzgeci için posta alan adları; Roundcube için posta
+     kutuları; certbot için Panel'in onunla yenilediği, yenilenmesi duracak
+     sertifikalar — sahip kendi sertifikasını sunmuyorsa panelinki, sunucu kurulumunun verildiğini kaydettiği posta sunucusu sertifikaları ve otomatik yenilemesi açık her Let's Encrypt site
+     sertifikası —; güvenlik duvarı motoru için panel güvenlik duvarının
+     durumu (açık ve N açık port, kapalı ya da bilinmiyor) ve CelikPanel'in onu
+     artık uygulayamayacağı, değiştiremeyeceği ve geri yükleyemeyeceği, yüklenmiş
+     kuralların sunucu yeniden başlayana dek kalabileceği; WireGuard için Panel'in
+     etkin tuttuğu, artık bağlanamayacak VPN eşleri; vsftpd için kaydettiği FTP
+     hesapları; Redis, Valkey
+     ve Memcached için yalnız CelikPanel'in onları hangi sitelerin kullandığını
+     kaydetmediği), sunucu kurulumunun certbot'u ve güvenlik duvarı motorunu
+     hazırladığı her sunucuda gerektirdiği, ona ihtiyaç duyan kurulu bileşenler,
+     eksik bıraktığı hazır paketler ve güvenlik duvarından istediği portlar;
+     yalnız bunların hiçbiri yoksa "CelikPanel bu sunucuda X bileşenine bağlı başka hiçbir şey kaydetmiyor". Barındırılan adlardan en çok beşi, ardından "+N tane daha"
+     gösterilir.
+   - **Bir kez, görünür biçimde okunur ve asla engel olmaz.** Pencere açılınca
+     okur, okuduğunu gösterir; 10 saniye sonra, bir retle ya da okuyamadığı bir
+     yanıtla etkilerin okunamadığını, hiçbir şeyin değiştirilmediğini,
+     kaldırmanın yine izinli olduğunu ve önce nereye bakılacağını söyler (Tekrar
+     dene yine yalnız okur). Başarısız bir okuma kaldırmayı asla tutmaz; okuma
+     asla bir değişiklik başlatmaz.
+   - **Var olan korumalar kalır.** Panel, bildiği siteler, veritabanları ya da
+     e-posta adresleri bir bileşene bağlıyken onu kaldırmayı yine reddeder ve
+     pencere bunu o adların yanında söyler; çakışma ve gereksinim retleri, DNS
+     motorlarının kendi akışı (BIND ve PowerDNS bu pencerede yok) ve Kaldır'dan
+     sonraki işlem yönlendirmesi değişmedi. Kaldır düğmesi çerçeveli tehlike
+     düğmesi olarak kalır.
+
+Kaldırma yolunun yaptığı, pencerenin söylediği biçimde (bu adayın kodundan):
+
+| Bileşen sınıfı | Silinenler | Yerinde kalanlar |
+| --- | --- | --- |
+| Paketli bileşen (hizmetler ve araçlar) | Katalog birim adlandırıyorsa birimleri durdurulur ve devre dışı bırakılır (`systemctl disable --now`); birimi olmayan bir araçta (certbot, nftables, phpMyAdmin, phpPgAdmin) durdurulacak bir şey yoktur. Ardından katalog paketleri kaldırılır. **apt** (`apt-get purge -y --auto-remove`): paketler, yapılandırma dosyaları ve artık hiçbir şeyin ihtiyaç duymadığı, otomatik kurulmuş her paket — yalnız bu bileşen için kurulanlar değil, sistemin tamamında. **pacman** (`pacman -Rns --noconfirm`): paketler, yapılandırma dosyaları ve başka hiçbir şeyin ihtiyaç duymadığı bağımlılıkları. Güvenlik duvarı açıksa yalnız onun istediği portlar kapanır (güvenlik duvarı kurulu kalanlara göre yeniden ayarlanır). | CelikPanel kendisi başka hiçbir şey silmez (site dosyaları, posta kutuları, veritabanı dosyaları). Bir paketin soru sormadan çalışan kendi kaldırma betiği o paketin oluşturduğu verileri silebilir; hangilerinin silineceği CelikPanel'in değil dağıtım paketinin kararıdır ve iddia edilmez. |
+| apt'ta PHP-FPM ve PostgreSQL | Yukarıdaki gibi; ayrıca katalogdaki üretici desenine uyan her kurulu sürüm paketi (`php8.3-fpm`, `postgresql-17`, …) ve yol arkadaşları. pacman'da yalnız katalog paketleri. | Yukarıdaki gibi. Bir veritabanı motoru için pencere, silinenlerin altında kendi uyarı satırıyla, veritabanı dosyalarının paketin kaldırma betiğince silinebileceğini ve önce yedek alınmasını söyler. |
+| Spam süzgeci (Rspamd, SpamAssassin) | Paketli bileşen gibi; ayrıca Postfix'in süzgeç zinciri onsuz yeniden kurulur. | Yukarıdaki gibi; posta kalır, artık spam denetiminden geçmez. |
+| phpMyAdmin, phpPgAdmin | Paketli bileşen gibi; ayrıca veritabanı araçlarının sunucusu onsuz yeniden ayarlanır. | Yukarıdaki gibi. |
+| certbot | Paketli bileşen gibi (birimi yok). Panel'in onunla yenilediği sertifikaların (sahip kendi sertifikasını sunmuyorsa panelinki, kaydedilmiş posta sunucusu sertifikaları, otomatik yenilenen site sertifikaları) yenilenmesi durur. | Yukarıdaki gibi. |
+| Güvenlik duvarı motoru (nftables) | Paketli bileşen gibi (birimi yok). CelikPanel panel güvenlik duvarını artık uygulayamaz, değiştiremez ve geri yükleyemez; yüklenmiş kurallar sunucu yeniden başlayana dek kalabilir. | Yukarıdaki gibi. |
+| Bu paket yöneticisi için katalog paketi olmayan bileşen (pacman'da Redis, SpamAssassin, phpPgAdmin) | Hiçbir şey: Agent reddeder ("bu sistemde henüz otomatik olarak kaldırılamaz") ve pencere purge yerine bunu söyler. | Her şey. |
+| Roundcube | Paket değildir: `/var/lib/celikpanel-webmail` altındaki uygulama ağacı (ayarları ve adres defteri veritabanı dahil) ve `/webmail/` adresini sunan web sunucusu kaydı. | Posta kutuları ve Maildir verileri, diğer siteler ile Nginx ve PHP-FPM paketleri. |
+| Reddedilen kaldırma (Panel'in bildiği siteler, veritabanları ya da e-posta adresleri) | Hiçbir şey: Panel adlarıyla reddeder. | Her şey. |
+
+Bunu kurarken alınan uygulama kararları (sahip kararı sanılmasın diye
+belirtilir):
+
+- **Roundcube kalıntı teklifi görünür kalır.** Bu teklif kurulu olmayan Roundcube
+  satırındadır. İlk görünüm Kurulu olunca düğmenin arkasında saklanırdı; bu
+  yüzden Panel'in yarım kalmış bir kurulum ya da kaldırma kaydı teklifi
+  yaptıkça Kurulu görünüm de Roundcube satırını gösterir.
+- **Engelleyen barındırma türleri var olan bekçinin kendi yanıtıdır**
+  (`serviceDependents`); spam süzgeci için posta alan adları ve Roundcube için
+  posta kutuları yalnız pencere için sayılır ve asla engellemez. Hiçbir bekçi
+  eklenmedi ya da gevşetilmedi.
+- **Kaldırmanın reddedileceğini söyleyen bir okuma Kaldır düğmesini kapatmaz:**
+  yetki Panel'dedir, gerçekler okuma ile basma arasında değişebilir ve ret,
+  önceden olduğu gibi pencerede gösterilir.
+- **Paket yöneticisinin komutu** silinenler cümlesinin altında adlandırılır (yalnız
+  apt ve pacman için); böylece sahip neyin çalıştığını tanır.
+
+**İnceleme düzeltmeleri (22 Ekim 2026, her yayından önce).** Adayın bağımsız
+incelemesi kaldırma davranışını değişmemiş buldu ve şunları istedi; kaynaktadırlar:
+
+- "Bu sunucuda başka hiçbir şey X bileşenine bağlı değil" cümlesi, sunucu
+  kurulumunun gerektirdiği ve Panel'in her sertifikayı onunla yenilediği ve
+  güvenlik duvarını onunla uyguladığı certbot ile güvenlik duvarı motoru için
+  yanlıştı; pencere artık o sertifikaları ve güvenlik duvarının durumunu
+  adlandırır ve ikisini de sunucu kurulumunun gerektirdiğini söyler. Redis,
+  Valkey ve Memcached için yalnız CelikPanel'in onları hangi sitelerin
+  kullandığını kaydetmediğini söyler.
+- apt'ın `--auto-remove`'u sistemin tamamını kapsar; pencere bunu paket ailesine
+  göre söyler.
+- Veritabanı uyarısı "yerinde kalanlar" değil, silinenlerin altında kendi
+  satırıdır.
+- Birimi olmayan bir araç için durdurulduğu söylenmez.
+- Katalog paketi olmayan bir paket ailesinde, Agent'ın reddettiği gibi kaldırmanın
+  reddedileceği söylenir; purge ve komut yoktur.
+- Roundcube'un kalanlar cümlesi Nginx ve PHP-FPM paketlerini adlandırır
+  (`/webmail/` kaydı silinir); Roundcube için başarısız bir okuma, paket purge'ünü
+  değil kaldırmanın sildiğini gösterir.
+- Agent'ın kaldırma ve güncelleme testleri değiştiği için Agent testleri
+  (Agent paketinin kendi testleri, temiz bir mount ad alanında) koşturulur ve kaydedilir.
+
+**İkinci inceleme turu (22 Ekim 2026, her yayından önce).** Yeniden denetim
+şunları istedi; kaynaktadırlar: kendi hatasını ya da hata kodunu taşıyan bir
+güvenlik duvarı yanıtı ya da okunamayan bir motor "bilinmiyor"dur, asla bir durum
+değildir; güvenlik duvarı motorunun cümlesi `nft -f` ile yüklenmiş bir kural
+kümesi için doğru olanı söyler (CelikPanel panel güvenlik duvarını artık
+uygulayamaz, değiştiremez ve geri yükleyemez; yüklenmiş kurallar sunucu yeniden
+başlayana dek kalabilir); WireGuard, Panel'in etkin tuttuğu ve artık
+bağlanamayacak VPN eşlerini, vsftpd kaydettiği FTP hesaplarını adlandırır;
+certbot listesi yalnız yenileme işinin yenilediği site sertifikalarını sayar
+(`letsencrypt`, `auto_renew = 1`, `status = 'active'`), sahip kendi sertifikasını
+sunuyorsa (`CELIKPANEL_TLS_CERT`/`KEY` ya da yönetilmeyen bir TLS dizini) panel
+sertifikasını dışarıda bırakır ve bir posta sunucusu sertifikasını yalnız sunucu
+kurulumu onun sertifika adımını başarılı olarak kaydettiyse adlandırır; güvenlik
+duvarı okuması bir güvenlik duvarı değişikliğini asla beklemez (kilit tutulurken
+hemen "bilinmiyor" der); boş durum CelikPanel'in kaydettikleriyle daraltıldı:
+"CelikPanel bu sunucuda X bileşenine bağlı başka hiçbir şey kaydetmiyor".
+
+Bunun yetkilendirmedikleri: Bileşenler sayfasında başka hiçbir değişiklik
+(satırlar, düğmeler, şeritler, rozetler ve katlama olduğu gibi kalır), "⋯" menüsü,
+yeni Agent çağrısı, kimin neyi görüp yapabileceğinde değişiklik ve sahip kurulu
+sunucularda görmeden önce onlar hakkında iddia yok. Kurulu paneller yine yalnız
+sahipleri tarafından, panelin kendi güncelleme ekranından güncellenir.
+
+Diğerleriyle ilişkisi. D-010 (önce kurulu) artık ilk ziyaretin yaptığıdır. D-024:
+pencere ne olacağını ve kimin hareket edeceğini söyler; doğrulanmış bir ret,
+karşılanmamış bir önkoşul ve bilinmeyen bir okuma ayrı tutulur. D-033: okuma
+görünür ve sınırlıdır. D-034: bir kaldırmanın eksik bıraktığı hazır paket
+adlandırılır. D-022: kaldırma cümleleri paket yöneticisinin ve CelikPanel'in
+yaptığını söyler; sahibin kendi yapılandırmasının yaptığı hakkında hiçbir şey
+söylemez.
+
+Yapılmayan: hiçbir şey kurulu bir sunucuda ölçülmedi; bir dağıtım paketinin kendi
+kaldırma betiğinin neyi sildiği okunmaz ve iddia edilmez.
 
 ---
 

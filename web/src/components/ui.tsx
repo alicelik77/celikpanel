@@ -639,7 +639,8 @@ export function CouldNotCheck({
             <div className="min-w-0">
                 <p className="max-w-[75ch] break-words">{text}</p>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <Button type="button" loading={busy} onClick={onRetry}>
+                    {/* 44 px on a phone, as the refusal banner's button (browser batch 25). */}
+                    <Button type="button" loading={busy} onClick={onRetry} className="max-sm:min-h-11">
                         {actionLabel ?? t('common.retry')}
                     </Button>
                     {beside}

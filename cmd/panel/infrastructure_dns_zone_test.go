@@ -154,6 +154,11 @@ func TestInfrastructureDNSRefusesToChangeSetupsRecordsAndKeepsOwnerEdits(t *test
 	if w.Code != http.StatusConflict || !strings.Contains(w.Body.String(), errCodeInfrastructureDNSRecordBySetup) {
 		t.Fatalf("delete=%d %s", w.Code, w.Body.String())
 	}
+	// The refusal's action opens Server → Server setup, its own page since
+	// v0.1.0-alpha.100 (it was /settings?section=setup, which still redirects).
+	if !strings.Contains(w.Body.String(), `"action":"/server-setup"`) {
+		t.Fatalf("delete refusal action: %s", w.Body.String())
+	}
 	w = httptest.NewRecorder()
 	body := `{"id":` + itoaForTest(panelID) + `,"content":"198.51.100.7","ttl":300,"prio":0,"disabled":false}`
 	if p.handleUpdateDNSRecord(w, infraAdminRequest(http.MethodPut, "/", body), zone) || w.Code != http.StatusConflict || !strings.Contains(w.Body.String(), errCodeInfrastructureDNSRecordBySetup) {

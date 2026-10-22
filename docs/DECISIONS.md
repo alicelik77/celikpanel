@@ -23,7 +23,7 @@ Code decisions live in git; this file is for strategy. Newest first.
 
 ## D-037 · Every page is where its name says it is: Settings holds settings; tools, security and maintenance live under Server; the person's own account lives in the personal menu
 
-*October 22, 2026 (clock date) · Owner request of 2026-10-21 and approval of 2026-10-22; in source for the v0.1.0-alpha.98 candidate, published 2026-10-22; on 2026-10-22 the owner's screens showed the new menu on both installed servers after the owner's own update · Amended 2026-10-22: changing one's own email, in source for the v0.1.0-alpha.99 candidate; nothing of the amendment measured on an installed server*
+*October 22, 2026 (clock date) · Owner request of 2026-10-21 and approval of 2026-10-22; in source for the v0.1.0-alpha.98 candidate, published 2026-10-22; on 2026-10-22 the owner's screens showed the new menu on both installed servers after the owner's own update · Amended 2026-10-22: changing one's own email, in source for the v0.1.0-alpha.99 candidate; nothing of the amendment measured on an installed server · Amended again 2026-10-22: Server setup moves under Server, the removal dialog says what is affected, the first visit opens the installed view; in source for the v0.1.0-alpha.100 candidate*
 
 On 2026-10-21 the owner asked: "ayarlardaki bu alt
 menüdeki her şey ayarlar ile mi ilgili?" (In English: is everything in this
@@ -384,6 +384,172 @@ it is given; the panel's gates now catch it.
 
 Not done: nothing is measured on an installed server; the new address is not
 confirmed by a message; open sessions are still not built.
+
+### Amendment (2026-10-22, clock date): Server setup moves under Server; the removal dialog says what is affected; the broad Components redesign is withdrawn
+
+*Owner decisions of 2026-10-22 ("1 evet, 2 b, 3 evet"); in source for the v0.1.0-alpha.100 candidate; nothing measured on an installed server*
+
+Why. After alpha.99 was published the owner looked at a proposed redesign of the
+Components page (a mockup with a "⋯" menu on every row, a single action column and
+Server setup as one line at the head of the catalogue) and asked why it would be
+better. The honest answer was that most of it would not be: the page already
+remembers the view the owner chose (installed or catalogue) and folds the
+catalogue when switching to it, so the broad redesign was **withdrawn**. Three
+things from that review were kept, and the owner approved exactly those three: the
+removal dialog of the mockup, which names what a removal affects on this server
+(1, "evet"); the first visit opening the installed view, which D-010 already
+promised (2, option b); and Server setup leaving Settings (3, "evet").
+
+The rules adopted:
+
+1. **Server setup is an operation and lives under Server.** It reverses the
+   second thought of rule 4 above ("Server setup stays in Settings"). The owner's
+   reading: choosing and extending what the server does is work done on the
+   server, like installing components, not a setting of how the panel behaves. It
+   is its own item in the Server group, **directly under Components**, labelled
+   "Server setup" / "Sunucu kurulumu", at `/server-setup`. It shows what Settings →
+   Server setup showed: the setup's state, the server's purpose, the "Extend this
+   server's setup" button and the link to the setup wizard (`/setup`, which is
+   unchanged). The Dashboard's "Server purpose" card links to it.
+   `/settings?section=setup` is replaced (no extra history entry) by
+   `/server-setup`, as the alpha.98 moves were; every in-product link to the old
+   section, and the Panel's guidance action for a record managed by server setup,
+   point to the new page. **Settings keeps three sections:** Panel address and
+   HTTPS, License, CelikPanel updates. **Roles do not change:** administrators
+   only, as before.
+2. **The first visit opens the installed view (D-010).** With nothing stored the
+   Components page opened the full catalogue. Now only a remembered "catalogue"
+   choice opens the catalogue; a missing, unknown or unreadable choice opens the
+   installed view, and a stored choice is still honoured. Nothing else on the
+   page changes: the rows, their buttons (restart, stop, Manage and remove stay
+   visible; no "⋯" menu), the bundle strips, the badges and the folding are as
+   they were.
+3. **The removal dialog says what is affected, by name, and what is kept.** It is
+   the only part of the mockup that was approved. Rules for it:
+   - **Truth first.** Every sentence about what is removed or kept follows the
+     uninstall path in the code, not the mockup (the mockup's "configuration
+     files stay in place" was wrong: the purge removes them). The Panel answers
+     from the same small conditions its uninstall uses, so the dialog cannot
+     promise what the removal does not do.
+   - **From what the Panel already holds.** `GET /api/v1/service/removal-impact`
+     (administrators only, read-only: no new Agent call and no mutation; the host
+     profile may come from cached Agent facts, and for the firewall engine the
+     firewall's state is read through the existing read, bounded) reads the
+     catalogue, the stored component record, the Panel's database and the panel
+     certificate file. It names: what the Panel hosts on the component (sites for
+     the web server; PHP or Node.js sites for a runtime; databases for an engine;
+     mail addresses and forwardings for Postfix and Dovecot; mail domains for a
+     spam filter; mailboxes for Roundcube; for certbot the certificates the Panel
+     renews with it — the panel's unless the owner serves their own, the mail
+     host certificates server setup recorded as issued, and every Let's Encrypt
+     site certificate with automatic renewal on — whose renewal stops; for the
+     firewall engine the panel firewall's state (on with N open ports, off, or
+     not known) and that CelikPanel can no longer apply, change or restore it,
+     while rules already loaded may stay until the server restarts; for WireGuard
+     the VPN peers the Panel keeps active, which can no longer connect; for
+     vsftpd the FTP accounts it records; for Redis, Valkey and Memcached only
+     that CelikPanel does not record which sites use them), that server setup
+     requires certbot and the
+     firewall engine on every server it prepares, the installed components that
+     need it, the ready bundles it leaves incomplete and the firewall ports it
+     asked for; only with none of these, "CelikPanel records nothing else on this server that depends on X". Hosted names are shown up to five, then "+N more".
+   - **Read once, visibly, and never in the way.** The dialog reads when it opens,
+     shows that it reads, and after 10 seconds, on a refusal or on an answer it
+     cannot read, says that the effects could not be read, that nothing was
+     changed, that removal is still allowed and where to look first (Retry reads
+     again). A failed read never holds the removal, and the read never starts a
+     change.
+   - **Existing safeguards stay.** The Panel still refuses to remove a component
+     while sites, databases or mail addresses it knows of depend on it, and the
+     dialog says so beside those names; conflict and requirement refusals, the DNS
+     engines' own workflow (BIND and PowerDNS are not in this dialog) and the
+     operation guidance after Remove are unchanged. The Remove button stays the
+     outlined danger button.
+
+What the uninstall path does, as the dialog says it (from the code of this
+candidate):
+
+| Component class | Removed | Kept |
+| --- | --- | --- |
+| A package component (services and tools) | Its units, when the catalogue names any, are stopped and disabled (`systemctl disable --now`); a tool without units (certbot, nftables, phpMyAdmin, phpPgAdmin) has nothing to stop. Then its catalogue packages are removed. **apt** (`apt-get purge -y --auto-remove`): the packages, their configuration files, and any automatically installed package that nothing needs any more — system-wide, not only those installed for this component. **pacman** (`pacman -Rns --noconfirm`): the packages, their configuration files and their dependencies that nothing else needs. Ports only it asked for close when the firewall is on (the firewall is set again from what stays installed). | CelikPanel deletes nothing else itself (site files, mailboxes, database files). A package's own removal script, which runs without questions, may delete data that package created; which data is the distribution package's decision, not CelikPanel's, and is not claimed. |
+| PHP-FPM and PostgreSQL on apt | As above, plus every installed versioned package matching the catalogue's vendor pattern (`php8.3-fpm`, `postgresql-17`, …) and its companions. On pacman only the catalogue packages. | As above. For a database engine the dialog says, as its own warning line under what is removed, that the database files may be deleted by the package's removal script and to back them up first. |
+| A spam filter (Rspamd, SpamAssassin) | As a package component, and Postfix's filter chain is composed again without it. | As above; mail stays, it is no longer checked for spam. |
+| phpMyAdmin, phpPgAdmin | As a package component, and the database tools' server is set again without it. | As above. |
+| certbot | As a package component (no units). The certificates the Panel renews with it (the panel's unless the owner serves their own, the recorded mail host certificates, the sites' with automatic renewal) stop being renewed. | As above. |
+| The firewall engine (nftables) | As a package component (no units). CelikPanel can no longer apply, change or restore the panel firewall; rules already loaded may stay until the server restarts. | As above. |
+| A component without catalogue packages for this package manager (Redis, SpamAssassin, phpPgAdmin on pacman) | Nothing: the Agent refuses ("cannot be removed automatically on this system yet"), and the dialog says so instead of a purge. | Everything. |
+| Roundcube | Not a package: its application tree under `/var/lib/celikpanel-webmail` (its settings and address-book database included) and the web server entry that served `/webmail/`. | Mailboxes and Maildir data, other sites, and the Nginx and PHP-FPM packages. |
+| A refused removal (sites, databases or mail addresses the Panel knows of) | Nothing: the Panel refuses with the names. | Everything. |
+
+Implementation decisions taken while building this (stated so they are not
+mistaken for owner decisions):
+
+- **Roundcube's leftovers offer stays in sight.** That offer sits on a
+  not-installed Roundcube row. With the installed view as the first view it
+  would have been hidden behind the switch, so the installed view also shows the
+  Roundcube row while the Panel's record of an unfinished install or removal makes
+  the offer.
+- **The blocking hosted kinds are the existing guard's own answer**
+  (`serviceDependents`); mail domains for a spam filter and mailboxes for Roundcube
+  are counted only for the dialog and never block. No guard was added or relaxed.
+- **The Remove button is not disabled by a read that says the removal will be
+  refused:** the Panel is the authority, the facts can change between the read and
+  the press, and its refusal is shown in the dialog as before.
+- **The package manager's command is named** under the removed sentence (for apt
+  and pacman only), so an owner can recognise what runs.
+
+**Review corrections (2026-10-22, before any publication).** An independent review of
+the candidate found the removal behaviour unchanged and asked for these; they are in
+source:
+
+- "Nothing else on this server depends on X" was false for certbot and the firewall
+  engine, which server setup requires and through which the Panel renews every
+  certificate and enforces its firewall; the dialog now names those certificates
+  and the firewall's state, and says that server setup requires both. For Redis,
+  Valkey and Memcached it says only that CelikPanel does not record which sites
+  use them.
+- apt's `--auto-remove` is system-wide; the dialog says so per package family.
+- The database warning is its own line under what is removed, not "what stays".
+- A tool without units is not said to be stopped.
+- A package family without catalogue packages is said to be refused, as the Agent
+  refuses it, with no purge and no command.
+- Roundcube's kept sentence names the Nginx and PHP-FPM packages (its `/webmail/`
+  entry is removed), and a failed read for Roundcube shows what its removal
+  deletes, not the package purge.
+- The Agent package's own tests (in a clean mount namespace) are run
+  and recorded, since the Agent's uninstall and update tests changed.
+
+**Second review round (2026-10-22, before any publication).** A re-check asked for
+these; they are in source: a firewall answer that carries its own error or error
+code, or an engine that cannot be read, is "not known", never a state; the firewall
+engine's sentence says what is true of a ruleset loaded with `nft -f` (CelikPanel
+can no longer apply, change or restore the panel firewall; rules already loaded may
+stay until the server restarts); WireGuard names the VPN peers the Panel keeps
+active, which can no longer connect, and vsftpd the FTP accounts it records;
+certbot's list counts only the site certificates the renewal job renews
+(`letsencrypt`, `auto_renew = 1`, `status = 'active'`), leaves out the panel
+certificate when the owner serves their own (`CELIKPANEL_TLS_CERT`/`KEY` or an
+unmanaged TLS directory), and names a mail host certificate only when server setup
+recorded its certificate step as succeeded; the firewall read never waits for a
+firewall change (it answers "not known" at once while one holds the lock); and the
+empty case is narrowed to what CelikPanel records: "CelikPanel records nothing else
+on this server that depends on X".
+
+What this does not authorise: no other change to the Components page (the rows,
+buttons, strips, badges and folding stay as they are), no "⋯" menu, no new Agent
+call, no change of who may see or do what, no claim about installed servers before
+the owner sees them there. Installed panels are still updated only by their owners
+from the panel's own update screen.
+
+Relation to the rest. D-010 (installed-first) is now what a first visit does.
+D-024: the dialog says what will happen and who acts, and keeps a verified refusal,
+an unmet prerequisite and an unknown read apart. D-033: the read is visible and
+bounded. D-034: a ready bundle a removal leaves incomplete is named. D-022: the
+removal sentences say what the package manager and CelikPanel do and nothing the
+owner's own configuration does.
+
+Not done: nothing is measured on an installed server; what a distribution
+package's own removal script deletes is not read or claimed.
 
 ---
 

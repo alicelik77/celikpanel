@@ -1,4 +1,4 @@
-import { LayoutDashboard, Globe, Database, Server, Users, Settings, DownloadCloud, ScrollText, Package, Shield, Activity, Network, ShieldCheck, Wrench, UserCheck, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, Globe, Database, Server, Users, Settings, DownloadCloud, ScrollText, Package, Shield, Activity, Network, ShieldCheck, Wrench, UserCheck, ServerCog, type LucideIcon } from 'lucide-react';
 import type { TranslationKey } from './i18n/en';
 import type { Role } from './auth/AuthContext';
 
@@ -66,6 +66,14 @@ export const navItems: NavItem[] = [
     // panelin davranışını belirleyenler; kişinin kendi hesabı kişisel menüde.
     // Yalnız yer değişti; her sayfa Ayarlar içindeki rollerini korur.
     { id: 'services', path: '/services', labelKey: 'nav.services', icon: Server, roles: ['admin'], group: 'server', countKey: 'services' },
+    // Server setup (v0.1.0-alpha.100, owner 2026-10-22): the server's purpose,
+    // its setup wizard and extending what it does. It was Settings → Server
+    // setup; it sits under Components because both prepare the server.
+    // /server-setup is the page; /setup stays the wizard itself.
+    // Sunucu kurulumu: sunucunun kullanım amacı, kurulum sihirbazı ve
+    // genişletme. Ayarlar → Sunucu kurulumu idi; Bileşenler'in altındadır.
+    // /server-setup sayfadır; /setup sihirbazın kendisi olarak kalır.
+    { id: 'serverSetup', path: '/server-setup', labelKey: 'nav.serverSetup', icon: ServerCog, roles: ['admin'], group: 'server' },
     { id: 'dns', path: '/dns-infrastructure', labelKey: 'nav.dnsPeers', icon: Network, roles: ['admin'], group: 'server' },
     { id: 'monitoring', path: '/monitoring', labelKey: 'nav.monitoring', icon: Activity, roles: ['admin'], group: 'server' },
     { id: 'security', path: '/security', labelKey: 'nav.security', icon: ShieldCheck, roles: ['admin'], group: 'server' },
@@ -120,7 +128,8 @@ export function canAccessPath(role: Role, path: string, access?: NavAccessContex
     return match ? isNavItemAllowed(match, role, access) : false;
 }
 
-// Settings sections that moved to their own pages in v0.1.0-alpha.98 (D-037),
+// Settings sections that moved to their own pages in v0.1.0-alpha.98 (D-037)
+// and, for Server setup, in v0.1.0-alpha.100,
 // by their old address. An old link, a bookmark or a guidance text from an
 // earlier release still arrives: /settings?section=<id> is replaced (no extra
 // history entry) by the page that holds the section now.
@@ -132,6 +141,9 @@ export const movedSettingsSections: Partial<Record<string, string>> = {
     security: '/security',
     dns: '/dns-infrastructure',
     'system-databases': '/maintenance',
+    // v0.1.0-alpha.100: Server setup has its own page under Server.
+    // v0.1.0-alpha.100: Sunucu kurulumunun Sunucu altında kendi sayfası var.
+    setup: '/server-setup',
 };
 
 // Where /settings sends this person, or null to stay. A section that moved
