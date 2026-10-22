@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/core"
+	"github.com/alicelik/celikpanel/internal/transport"
 )
 
 // The removal dialog says what a removal affects on THIS server, by name, and
@@ -46,8 +47,10 @@ type serviceRemovalHosted struct {
 	// Kind names what is counted: sites, php_sites, node_sites, databases,
 	// mail_addresses, mail_domains, mailboxes, certificates (certbot: the
 	// certificates the Panel renews with it), firewall (nftables: the panel
-	// firewall it enforces), unrecorded (caches: the Panel does not record
-	// which sites use them, so nothing is claimed either way).
+	// firewall it enforces), vpn_peers (WireGuard: the VPN peers the Panel
+	// records), ftp_accounts (vsftpd: the FTP accounts the Panel records),
+	// unrecorded (caches: the Panel does not record which sites use them, so
+	// nothing is claimed either way).
 	Kind  string   `json:"kind"`
 	Count int      `json:"count"`
 	Names []string `json:"names"`
@@ -70,7 +73,7 @@ type serviceRemovalFirewall struct {
 // (nftables). The handler reads them; tests pass them.
 type removalHostFacts struct {
 	PanelCertificate string
-	MailHost         string
+	MailHosts        []string
 	Firewall         *serviceRemovalFirewall
 }
 
@@ -249,12 +252,10 @@ func removalHosted(ctx context.Context, db *sql.DB, svc *core.ManagedService, fa
 		if facts.PanelCertificate != "" {
 			names = append(names, facts.PanelCertificate)
 		}
-		if facts.MailHost != "" {
-			names = append(names, facts.MailHost)
-		}
+		names = append(names, facts.MailHosts...)
 		count, sites, err := hostedLabels(ctx, db, `
 			SELECT d.name FROM ssl_certificates sc JOIN domains d ON d.id = sc.domain_id
-			WHERE sc.type = 'letsencrypt' AND COALESCE(sc.status, 'active') = 'active'
+			WHERE sc.type = 'letsencrypt' AND sc.auto_renew = 1 AND sc.status = 'active'
 			ORDER BY d.name`)
 		if err != nil {
 			return nil, err
@@ -271,6 +272,19 @@ func removalHosted(ctx context.Context, db *sql.DB, svc *core.ManagedService, fa
 			firewall = &serviceRemovalFirewall{}
 		}
 		return &serviceRemovalHosted{Kind: "firewall", Names: []string{}, Firewall: firewall}, nil
+	case svc.ID == "wireguard":
+		// The VPN peers the Panel keeps active; they can no longer connect.
+		count, names, err := hostedLabels(ctx, db, `SELECT name FROM vpn_peers WHERE desired_state = 'active' ORDER BY name`)
+		if err != nil {
+			return nil, err
+		}
+		return &serviceRemovalHosted{Kind: "vpn_peers", Count: count, Names: names}, nil
+	case svc.ID == "vsftpd":
+		count, names, err := hostedLabels(ctx, db, `SELECT username FROM ftp_accounts ORDER BY username`)
+		if err != nil {
+			return nil, err
+		}
+		return &serviceRemovalHosted{Kind: "ftp_accounts", Count: count, Names: names}, nil
 	case svc.ID == "redis" || svc.ID == "valkey" || svc.ID == "memcached":
 		return &serviceRemovalHosted{Kind: "unrecorded", Names: []string{}}, nil
 	case svc.ID == "roundcube":
@@ -372,7 +386,7 @@ func (p *Panel) handleServiceRemovalImpact(w http.ResponseWriter, r *http.Reques
 			installed[service.ID] = true
 		}
 	}
-	response, err := serviceRemovalImpact(r.Context(), p.db.GetDB(), svc, host.PackageFamily, installed, p.removalHostFacts(r.Context(), svc.ID, installed))
+	response, err := serviceRemovalImpact(r.Context(), p.db.GetDB(), svc, host.PackageFamily, installed, p.removalHostFacts(r.Context(), svc.ID))
 	if err != nil {
 		writeServerError(w, err)
 		return
@@ -383,6 +397,11 @@ func (p *Panel) handleServiceRemovalImpact(w http.ResponseWriter, r *http.Reques
 // The readers of the facts outside the database, replaceable in tests.
 var (
 	removalPanelCertificate = func() string {
+		// An owner certificate (CELIKPANEL_TLS_CERT/KEY, or a TLS directory
+		// the Panel does not manage) is not renewed with certbot.
+		if _, _, blocked := panelCertificateManagementBlocker(); blocked {
+			return ""
+		}
 		cert := currentPanelCert()
 		if !cert.HTTPSEnabled || cert.SelfSigned {
 			return ""
@@ -395,24 +414,64 @@ var (
 		}
 		return ""
 	}
-	removalFirewallStatus = func(p *Panel) (FirewallStatusResp, error) { return p.readFirewallStatus() }
+	// The firewall read for the dialog never waits for panelFirewallMu: a
+	// firewall change holding it answers "not known" at once, and the Agent
+	// read itself is bounded by the RPC timeout (and, for the dialog, by
+	// removalFirewallReadBound).
+	removalFirewallStatus = func(p *Panel) (FirewallStatusResp, error) {
+		if !panelFirewallMu.TryLock() {
+			return FirewallStatusResp{}, errRemovalFirewallBusy
+		}
+		defer panelFirewallMu.Unlock()
+		var status FirewallStatusResp
+		err := p.callAgent("Agent.FirewallStatus", &transport.Empty{}, &status)
+		return status, err
+	}
+	removalMailHostCertificates = func(p *Panel, ctx context.Context) []string {
+		return p.setupMailCertificateHosts(ctx)
+	}
 )
+
+var errRemovalFirewallBusy = errors.New("a firewall change is in progress")
+
+// setupMailCertificateHosts names the mail host certificates server setup
+// recorded as issued: every "mail_certificate" step that succeeded in a
+// recorded execution. Nothing recorded, nothing claimed.
+func (p *Panel) setupMailCertificateHosts(ctx context.Context) []string {
+	rows, err := p.db.GetDB().QueryContext(ctx, `SELECT execution_json FROM server_setup_executions ORDER BY updated_at DESC`)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+	hosts := []string{}
+	for rows.Next() {
+		var raw string
+		if rows.Scan(&raw) != nil {
+			continue
+		}
+		var execution serverSetupExecution
+		if json.Unmarshal([]byte(raw), &execution) != nil {
+			continue
+		}
+		for _, step := range execution.Steps {
+			if step.Kind == "mail_certificate" && step.Status == "succeeded" && step.Target != "" && !slices.Contains(hosts, step.Target) {
+				hosts = append(hosts, step.Target)
+			}
+		}
+	}
+	return hosts
+}
 
 // removalFirewallReadBound bounds the firewall read for the dialog.
 const removalFirewallReadBound = 5 * time.Second
 
 // removalHostFacts reads only what the asked component needs.
-func (p *Panel) removalHostFacts(ctx context.Context, serviceID string, installed map[string]bool) removalHostFacts {
+func (p *Panel) removalHostFacts(ctx context.Context, serviceID string) removalHostFacts {
 	facts := removalHostFacts{}
 	switch serviceID {
 	case "certbot":
 		facts.PanelCertificate = removalPanelCertificate()
-		// Server setup issues the mail host certificate for a mail purpose;
-		// it is named while the setup has completed with a mail host name and
-		// Postfix is installed.
-		if state, err := p.loadServerSetup(ctx); err == nil && state.CompletedAt != "" && state.Draft.MailHostname != "" && installed["postfix"] {
-			facts.MailHost = state.Draft.MailHostname
-		}
+		facts.MailHosts = removalMailHostCertificates(p, ctx)
 	case "nftables":
 		type answer struct {
 			status FirewallStatusResp
@@ -425,7 +484,9 @@ func (p *Panel) removalHostFacts(ctx context.Context, serviceID string, installe
 		}()
 		select {
 		case got := <-done:
-			if got.err == nil {
+			// An answer that carries its own error, or an engine that cannot
+			// be read, is not a known state.
+			if got.err == nil && got.status.Error == "" && got.status.ErrorCode == "" && got.status.EngineAvailable {
 				facts.Firewall = &serviceRemovalFirewall{Known: true, Enabled: got.status.Enabled, OpenPorts: len(got.status.TCPPorts) + len(got.status.UDPPorts)}
 			}
 		case <-time.After(removalFirewallReadBound):

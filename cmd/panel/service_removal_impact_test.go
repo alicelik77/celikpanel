@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"slices"
@@ -35,12 +36,18 @@ func removalImpactFor(t *testing.T, id, family string, installed map[string]bool
 func removalImpactWith(t *testing.T, id, family string, installed map[string]bool, facts removalHostFacts) serviceRemovalImpactResponse {
 	t.Helper()
 	db := newDependentsTestDB(t)
-	// The certificates certbot renews: two Let's Encrypt site certificates, a
-	// custom one (not certbot's) and an expired one.
+	// The certificates certbot renews (cert_renewal.go: Let's Encrypt, active,
+	// auto-renew): two of them, beside a custom one, an expired one and one
+	// whose automatic renewal is off. Two VPN peers (one revoked) and an FTP
+	// account.
 	if _, err := db.Exec(`
-		CREATE TABLE ssl_certificates (id INTEGER PRIMARY KEY, domain_id INTEGER, type TEXT, status TEXT);
-		INSERT INTO ssl_certificates VALUES (1, 100, 'letsencrypt', 'active'), (2, 101, 'letsencrypt', NULL),
-			(3, 102, 'custom', 'active'), (4, 103, 'letsencrypt', 'expired');`); err != nil {
+		CREATE TABLE ssl_certificates (id INTEGER PRIMARY KEY, domain_id INTEGER, type TEXT, status TEXT, auto_renew INTEGER);
+		INSERT INTO ssl_certificates VALUES (1, 100, 'letsencrypt', 'active', 1), (2, 101, 'letsencrypt', 'active', 1),
+			(3, 102, 'custom', 'active', 1), (4, 103, 'letsencrypt', 'expired', 1), (5, 104, 'letsencrypt', 'active', 0);
+		CREATE TABLE vpn_peers (id INTEGER PRIMARY KEY, name TEXT, desired_state TEXT);
+		INSERT INTO vpn_peers VALUES (1, 'laptop', 'active'), (2, 'phone', 'active'), (3, 'old', 'revoked');
+		CREATE TABLE ftp_accounts (id INTEGER PRIMARY KEY, username TEXT);
+		INSERT INTO ftp_accounts VALUES (1, 'ali_ftp');`); err != nil {
 		t.Fatal(err)
 	}
 	svc := core.GetManagedServiceByID(id)
@@ -205,7 +212,7 @@ func TestRemovalImpactToolsAndTheEmptyCase(t *testing.T) {
 // setup requires it. Only certbot's own (Let's Encrypt, active) certificates
 // count.
 func TestRemovalImpactCertbotNamesTheCertificatesItRenews(t *testing.T) {
-	certbot := removalImpactWith(t, "certbot", "apt", removalFullServer, removalHostFacts{PanelCertificate: "panel.example.com", MailHost: "mail.example.com"})
+	certbot := removalImpactWith(t, "certbot", "apt", removalFullServer, removalHostFacts{PanelCertificate: "panel.example.com", MailHosts: []string{"mail.example.com"}})
 	if !certbot.SetupRequired || certbot.HasUnits || certbot.Removal != "packages" {
 		t.Fatalf("certbot = %+v", certbot)
 	}
@@ -362,9 +369,9 @@ func TestRemovalImpactHandlerReadsTheStoredRecordAndChangesNothing(t *testing.T)
 	t.Cleanup(func() { removalPanelCertificate, removalFirewallStatus = restoreCert, restoreFirewall })
 	removalPanelCertificate = func() string { return "panel.example.com" }
 	removalFirewallStatus = func(*Panel) (FirewallStatusResp, error) {
-		return FirewallStatusResp{Enabled: true, TCPPorts: []int{22, 80, 443}, UDPPorts: []int{53}}, nil
+		return FirewallStatusResp{Enabled: true, EngineAvailable: true, TCPPorts: []int{22, 80, 443}, UDPPorts: []int{53}}, nil
 	}
-	for _, id := range []string{"php-fpm", "node", "mariadb", "postgresql", "postfix", "dovecot", "rspamd", "spamassassin", "roundcube", "certbot", "nftables", "redis"} {
+	for _, id := range []string{"php-fpm", "node", "mariadb", "postgresql", "postfix", "dovecot", "rspamd", "spamassassin", "roundcube", "certbot", "nftables", "redis", "wireguard", "vsftpd"} {
 		if response := removalImpactRequest(panel, http.MethodGet, "?service_id="+id); response.Code != http.StatusOK {
 			t.Fatalf("%s: status = %d: %s", id, response.Code, response.Body.String())
 		}
@@ -408,17 +415,20 @@ func TestRemovalImpactHandlerRefusals(t *testing.T) {
 func TestRemovalImpactHandlerReadsCertificatesAndFirewall(t *testing.T) {
 	panel := newManagedServiceCachePanel(t)
 	seedRemovalScanCache(t, panel, "certbot", "nftables")
-	restoreCert, restoreFirewall := removalPanelCertificate, removalFirewallStatus
-	t.Cleanup(func() { removalPanelCertificate, removalFirewallStatus = restoreCert, restoreFirewall })
+	restoreCert, restoreFirewall, restoreMail := removalPanelCertificate, removalFirewallStatus, removalMailHostCertificates
+	t.Cleanup(func() {
+		removalPanelCertificate, removalFirewallStatus, removalMailHostCertificates = restoreCert, restoreFirewall, restoreMail
+	})
 	removalPanelCertificate = func() string { return "panel.example.com" }
+	removalMailHostCertificates = func(*Panel, context.Context) []string { return []string{"mail.example.com"} }
 	removalFirewallStatus = func(*Panel) (FirewallStatusResp, error) {
-		return FirewallStatusResp{Enabled: true, TCPPorts: []int{22, 80, 443}, UDPPorts: []int{53}}, nil
+		return FirewallStatusResp{Enabled: true, EngineAvailable: true, TCPPorts: []int{22, 80, 443}, UDPPorts: []int{53}}, nil
 	}
 	var certbot serviceRemovalImpactResponse
 	if err := json.Unmarshal(removalImpactRequest(panel, http.MethodGet, "?service_id=certbot").Body.Bytes(), &certbot); err != nil {
 		t.Fatal(err)
 	}
-	if certbot.Hosted == nil || certbot.Hosted.Kind != "certificates" || !slices.Equal(certbot.Hosted.Names, []string{"panel.example.com"}) || !certbot.SetupRequired {
+	if certbot.Hosted == nil || certbot.Hosted.Kind != "certificates" || !slices.Equal(certbot.Hosted.Names, []string{"panel.example.com", "mail.example.com"}) || !certbot.SetupRequired {
 		t.Fatalf("certbot = %+v / %+v", certbot, certbot.Hosted)
 	}
 	var nft serviceRemovalImpactResponse
@@ -428,11 +438,96 @@ func TestRemovalImpactHandlerReadsCertificatesAndFirewall(t *testing.T) {
 	if nft.Hosted == nil || nft.Hosted.Firewall == nil || !nft.Hosted.Firewall.Known || !nft.Hosted.Firewall.Enabled || nft.Hosted.Firewall.OpenPorts != 4 {
 		t.Fatalf("nftables = %+v", nft.Hosted)
 	}
-	removalFirewallStatus = func(*Panel) (FirewallStatusResp, error) { return FirewallStatusResp{}, errors.New("agent unavailable") }
-	if err := json.Unmarshal(removalImpactRequest(panel, http.MethodGet, "?service_id=nftables").Body.Bytes(), &nft); err != nil {
+	// Not a known state: a failed call, an answer carrying its own error or
+	// error code, an engine that cannot be read.
+	for name, reader := range map[string]func(*Panel) (FirewallStatusResp, error){
+		"call failed": func(*Panel) (FirewallStatusResp, error) { return FirewallStatusResp{}, errors.New("agent unavailable") },
+		"answer error": func(*Panel) (FirewallStatusResp, error) {
+			return FirewallStatusResp{Enabled: true, EngineAvailable: true, Error: "nft list failed"}, nil
+		},
+		"answer code": func(*Panel) (FirewallStatusResp, error) {
+			return FirewallStatusResp{EngineAvailable: true, ErrorCode: "host_restart_required"}, nil
+		},
+		"engine not there": func(*Panel) (FirewallStatusResp, error) {
+			return FirewallStatusResp{Enabled: false, EngineAvailable: false}, nil
+		},
+	} {
+		removalFirewallStatus = reader
+		nft = serviceRemovalImpactResponse{}
+		if err := json.Unmarshal(removalImpactRequest(panel, http.MethodGet, "?service_id=nftables").Body.Bytes(), &nft); err != nil {
+			t.Fatal(err)
+		}
+		if nft.Hosted == nil || nft.Hosted.Firewall == nil || nft.Hosted.Firewall.Known {
+			t.Fatalf("%s: firewall = %+v", name, nft.Hosted)
+		}
+	}
+}
+
+// The firewall read for the dialog never waits for a firewall change: with
+// panelFirewallMu held it answers at once, and the dialog says "not known".
+func TestRemovalFirewallReadDoesNotWaitForAFirewallChange(t *testing.T) {
+	panelFirewallMu.Lock()
+	defer panelFirewallMu.Unlock()
+	started := time.Now()
+	if _, err := removalFirewallStatus(&Panel{}); !errors.Is(err, errRemovalFirewallBusy) {
+		t.Fatalf("err = %v", err)
+	}
+	if time.Since(started) > time.Second {
+		t.Fatal("the read waited for the firewall lock")
+	}
+}
+
+// An owner certificate (CELIKPANEL_TLS_CERT/KEY) is not certbot's to renew.
+func TestRemovalPanelCertificateLeavesAnOwnerCertificateOut(t *testing.T) {
+	t.Setenv("CELIKPANEL_TLS_CERT", "/etc/owner/panel.crt")
+	t.Setenv("CELIKPANEL_TLS_KEY", "/etc/owner/panel.key")
+	if got := removalPanelCertificate(); got != "" {
+		t.Fatalf("an owner certificate was named: %q", got)
+	}
+}
+
+// The mail host certificates are the ones server setup recorded as issued;
+// a failed step, another kind of step or no record names nothing.
+func TestRemovalMailHostCertificatesAreTheSetupRecordsOwn(t *testing.T) {
+	f, state := setupOperationFixture(t)
+	if hosts := f.panel.setupMailCertificateHosts(context.Background()); len(hosts) != 0 {
+		t.Fatalf("no record named %v", hosts)
+	}
+	plan := serverSetupPlan{Version: serverSetupPlanVersion, Revision: state.Revision, Draft: state.Draft, Purpose: "web_mail", Actor: serviceOperationActor{UserID: f.userID}, Steps: []serverSetupPlanStep{}}
+	plan.ID = serverSetupPlanIdentity(plan)
+	raw, _ := json.Marshal(plan)
+	if _, err := f.database.GetDB().Exec(`INSERT INTO server_setup_plans(id,revision,plan_json,requested_by,created_at) VALUES(?,?,?,?,?)`, plan.ID, plan.Revision, string(raw), f.userID, "now"); err != nil {
 		t.Fatal(err)
 	}
-	if nft.Hosted == nil || nft.Hosted.Firewall == nil || nft.Hosted.Firewall.Known {
-		t.Fatalf("an unread firewall = %+v", nft.Hosted)
+	step := func(kind, target, status string) serverSetupExecutionStep {
+		return serverSetupExecutionStep{serverSetupPlanStep: serverSetupPlanStep{ID: kind + target, Kind: kind, Target: target}, Status: status}
+	}
+	for i, execution := range []serverSetupExecution{
+		{ID: strings.Repeat("7", 32), RequestID: strings.Repeat("7", 32), PlanID: plan.ID, Status: "succeeded", Steps: []serverSetupExecutionStep{
+			step("panel_certificate", "panel.example.com", "succeeded"), step("mail_certificate", "mail.example.com", "succeeded")}},
+		{ID: strings.Repeat("8", 32), RequestID: strings.Repeat("8", 32), PlanID: plan.ID, Status: "failed", Steps: []serverSetupExecutionStep{
+			step("mail_certificate", "mail2.example.com", "failed")}},
+	} {
+		raw, _ := json.Marshal(execution)
+		if _, err := f.database.GetDB().Exec(`INSERT INTO server_setup_executions(id,request_id,plan_id,status,execution_json,created_at,updated_at) VALUES(?,?,?,?,?,?,?)`,
+			execution.ID, execution.RequestID, plan.ID, execution.Status, string(raw), "now", fmt.Sprintf("2026-10-22T0%d:00:00Z", i)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if hosts := f.panel.setupMailCertificateHosts(context.Background()); !slices.Equal(hosts, []string{"mail.example.com"}) {
+		t.Fatalf("hosts = %v", hosts)
+	}
+}
+
+// WireGuard: the VPN peers the Panel keeps active. vsftpd: the FTP accounts
+// it records. Neither blocks the removal.
+func TestRemovalImpactVPNPeersAndFTPAccounts(t *testing.T) {
+	wg := removalImpactFor(t, "wireguard", "apt", removalInstalled("wireguard"))
+	if wg.Hosted == nil || wg.Hosted.Kind != "vpn_peers" || wg.Hosted.Count != 2 || wg.Hosted.BlocksRemoval || !slices.Equal(wg.Hosted.Names, []string{"laptop", "phone"}) {
+		t.Fatalf("wireguard = %+v", wg.Hosted)
+	}
+	ftp := removalImpactFor(t, "vsftpd", "apt", removalInstalled("vsftpd"))
+	if ftp.Hosted == nil || ftp.Hosted.Kind != "ftp_accounts" || ftp.Hosted.Count != 1 || ftp.Hosted.BlocksRemoval {
+		t.Fatalf("vsftpd = %+v", ftp.Hosted)
 	}
 }
