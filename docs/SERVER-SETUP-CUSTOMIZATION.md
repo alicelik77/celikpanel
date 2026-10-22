@@ -23,7 +23,8 @@ dependency roles and conflict groups. Setup adds no arbitrary package or shell
 command input.
 
 Manual setup is a navigation preference. Administrators can reopen the wizard
-at **Settings > Server setup** (`/settings?section=setup`); its route is `/setup`.
+at **Server > Server setup** (`/server-setup`; Settings > Server setup until
+v0.1.0-alpha.100, whose old address redirects there); its route is `/setup`.
 Reopening does not reset the saved draft or erase completed work.
 
 ## Initial selectable scope

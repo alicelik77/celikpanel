@@ -13,7 +13,8 @@ kurulu panel güncellemelerini kullanıcı CelikPanel'in kendi arayüzünden ba�
 
 Alpha65 sonrasında ilk yönlendirmede **Sihirbazla kur** ve **Kendim
 yapılandıracağım** seçenekleri sunulur. Tercih sunucuda saklanır. Manuel tercih
-otomatik sihirbazı ve Dashboard davetini kaldırır; **Ayarlar → Sunucu kurulumu**
+otomatik sihirbazı ve Dashboard davetini kaldırır; **Sunucu → Sunucu kurulumu**
+(v0.1.0-alpha.100'e dek Ayarlar → Sunucu kurulumu)
 üzerinden geri dönülebilir. Güncellenen sunucu boş kabul edilmez; tamamlanmış
 ve devam eden kurulumlar korunur. Manuel tercih kurulumu tamamlamaz, güvenlik
 kontrollerini veya lisans denetimini kaldırmaz. Etkin/bekleyen işlem varken

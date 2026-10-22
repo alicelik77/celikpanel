@@ -105,5 +105,8 @@ export function ServerSetupDashboardNotice() {
         <div className="min-w-0 flex-1 basis-72"><h2 id="setup-dashboard-title" className="font-semibold">{t(snapshot.status === 'ready' ? 'setup.dashboardReady' : 'setup.dashboardTitle')}</h2>
             <p className="mt-1 max-w-2xl text-sm text-fg-muted">{snapshot.status === 'ready' ? t(snapshot.draft.customization ? 'setup.purpose.custom' : `setup.purpose.${snapshot.draft.purpose}`) : t(snapshot.origin === 'legacy' ? 'setup.dashboardLegacy' : 'setup.dashboardResume')}</p></div>
         {snapshot.status !== 'ready' && <Link to="/setup" className="rounded-lg border border-border-strong px-4 py-2 text-sm font-semibold text-primary hover:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">{t(snapshot.status === 'legacy' ? 'setup.dashboardAction' : 'setup.resume')}</Link>}
+        {/* v0.1.0-alpha.100: the purpose card opens Server → Server setup, where the purpose, the wizard and the extension are.
+            Kullanım amacı kartı Sunucu → Sunucu kurulumu sayfasını açar. */}
+        {snapshot.status === 'ready' && <Link to="/server-setup" data-setup-purpose-link="" className="rounded-lg border border-border-strong px-4 py-2 text-sm font-semibold text-primary hover:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">{t('setup.dashboardOpenPage')}</Link>}
     </section>;
 }

@@ -73,6 +73,9 @@ export function ServerSetupSettings() {
     const action = extending ? (active ? 'setup.extend.showProgress' : 'setup.extend.continue') : ready ? 'setup.extend.title' : active ? 'setup.resume' : 'setup.openWizard';
     return <section className="rounded-xl border border-border bg-surface p-6" aria-labelledby="setup-settings-title">
         <h2 id="setup-settings-title" className="text-lg font-semibold">{t('setup.settingsTitle')}</h2>
+        {/* The purpose a completed setup prepared, as the Dashboard card names it (v0.1.0-alpha.100: that card opens this page).
+            Tamamlanan kurulumun kullanım amacı, Panodaki kartın adlandırdığı gibi. */}
+        {ready && <p className="mt-3 max-w-2xl text-sm text-fg" data-setup-purpose=""><span className="font-medium">{t('setup.dashboardReady')}:</span> {t(snapshot.draft.customization ? 'setup.purpose.custom' : `setup.purpose.${snapshot.draft.purpose}`)}</p>}
         {ready && <p className="mt-3 max-w-2xl text-sm text-fg-muted">{t('setup.completeHelp')}</p>}
         <p className="mt-3 max-w-2xl text-sm text-fg-muted">{t(help)}</p>
         <Link to="/setup" className="mt-5 inline-flex rounded-lg border border-border-strong px-4 py-2 text-sm font-semibold text-primary hover:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">{t(action)}</Link>

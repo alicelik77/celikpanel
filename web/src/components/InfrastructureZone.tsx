@@ -1,4 +1,4 @@
-import { ArrowLeft, Globe, Settings } from 'lucide-react';
+import { ArrowLeft, Globe, ServerCog } from 'lucide-react';
 import { Link, useNavigate } from '../router';
 import { useI18n } from '../i18n';
 import { PageHeader } from './PageHeader';
@@ -65,8 +65,8 @@ export function InfrastructureZonePage({ zone }: { zone: string }) {
                 <h2 id="infrastructure-zone-about" className="sr-only">{t('domains.infrastructure.badge')}</h2>
                 <p>{t('domains.infrastructure.what')}</p>
                 <p>{t('domains.infrastructure.managed')}{' '}
-                    <Link to="/settings?section=setup" className="inline-flex items-center gap-1 font-medium text-primary underline underline-offset-4">
-                        <Settings className="h-3.5 w-3.5" aria-hidden="true" />
+                    <Link to="/server-setup" className="inline-flex items-center gap-1 font-medium text-primary underline underline-offset-4">
+                        <ServerCog className="h-3.5 w-3.5" aria-hidden="true" />
                         {t('domains.infrastructure.openSetup')}
                     </Link>
                 </p>

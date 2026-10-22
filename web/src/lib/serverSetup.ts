@@ -86,10 +86,12 @@ export function decodeServerSetup(value: unknown): ServerSetupSnapshot | null {
 }
 // Pages that stay open while setup is required, so the owner can reach what
 // fixes it. The four pages that were Settings sections until v0.1.0-alpha.98
-// (D-037) stay reachable as they were under /settings.
+// (D-037), and Server setup since v0.1.0-alpha.100, stay reachable as they
+// were under /settings.
 // Kurulum gerekirken açık kalan sayfalar. alpha.98'e dek Ayarlar bölümü olan
-// dört sayfa, /settings altındayken olduğu gibi ulaşılabilir kalır.
-const SETUP_RECOVERY_PAGES = new Set(['/settings', '/account', '/security', '/dns-infrastructure', '/maintenance', '/services']);
+// dört sayfa ve alpha.100'den beri Sunucu kurulumu, /settings altındayken
+// olduğu gibi ulaşılabilir kalır.
+const SETUP_RECOVERY_PAGES = new Set(['/settings', '/account', '/security', '/dns-infrastructure', '/maintenance', '/server-setup', '/services']);
 export function isSetupRecoveryPath(pathname: string): boolean {
     return SETUP_RECOVERY_PAGES.has(pathname) || pathname.startsWith('/services/');
 }

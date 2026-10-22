@@ -45,7 +45,7 @@ const iconStub = moduleURL(`
     import React from '${reactURL}';
     const Icon = (name) => (props) => React.createElement('i', { ...props, 'data-icon': name });
     ${['LayoutDashboard', 'Globe', 'Database', 'Server', 'Users', 'Settings', 'DownloadCloud', 'ScrollText', 'Package', 'Shield',
-        'Activity', 'Network', 'ShieldCheck', 'Wrench', 'LogOut', 'ChevronDown', 'Menu', 'KeyRound', 'Mail', 'UserCheck']
+        'Activity', 'Network', 'ShieldCheck', 'Wrench', 'LogOut', 'ChevronDown', 'Menu', 'KeyRound', 'Mail', 'UserCheck', 'ServerCog']
         .map((name) => `export const ${name} = Icon('${name}');`).join('\n')}
 `);
 const navURL = compileURL('../src/nav.ts', { 'lucide-react': iconStub });
@@ -58,10 +58,12 @@ const byGroup = (role, access) => Object.fromEntries(nav.navGroups.map((group) =
 // --- The rail, per role -------------------------------------------------------------
 
 test('the administrator rail is the approved layout, in order', () => {
+    // v0.1.0-alpha.100 (owner 2026-10-22): Server setup left Settings for its
+    // own item directly under Components (server-setup-page-alpha100.test.mjs).
     assert.deepEqual(byGroup('admin'), {
         main: ['dashboard'],
         hosting: ['domains', 'databases', 'users', 'addons', 'vpn'],
-        server: ['services', 'dns', 'monitoring', 'security', 'maintenance', 'import', 'audit', 'settings'],
+        server: ['services', 'serverSetup', 'dns', 'monitoring', 'security', 'maintenance', 'import', 'audit', 'settings'],
     });
     const labels = Object.fromEntries(nav.navItems.map((item) => [item.id, item.labelKey]));
     assert.equal(labels.dns, 'nav.dnsPeers');
@@ -100,7 +102,9 @@ test('every old Settings section address is replaced by its new page', () => {
     for (const [section, target] of Object.entries(moved)) {
         assert.equal(nav.settingsRedirect(`?section=${section}`, 'admin'), target, section);
     }
-    for (const section of ['panel', 'license', 'updates', 'setup', 'nonsense', '']) {
+    // Server setup moved in v0.1.0-alpha.100 (server-setup-page-alpha100.test.mjs).
+    assert.equal(nav.settingsRedirect('?section=setup', 'admin'), '/server-setup');
+    for (const section of ['panel', 'license', 'updates', 'nonsense', '']) {
         assert.equal(nav.settingsRedirect(section ? `?section=${section}` : '', 'admin'), null, section);
     }
     // A reseller or a customer had only their account in Settings.
@@ -359,7 +363,7 @@ test('an additional user, who has no My account, keeps the password change in th
 test('the drawn rail matches the approved layout, and only an administrator sees Settings', async () => {
     await withShell('admin', async (renderer) => {
         assert.deepEqual(railLabels(renderer), ['nav.dashboard', 'nav.domains', 'nav.databases', 'nav.users', 'nav.addons', 'nav.vpn',
-            'nav.services', 'nav.dnsPeers', 'nav.monitoring', 'nav.security', 'nav.maintenance', 'nav.import', 'nav.audit', 'nav.settings']);
+            'nav.services', 'nav.serverSetup', 'nav.dnsPeers', 'nav.monitoring', 'nav.security', 'nav.maintenance', 'nav.import', 'nav.audit', 'nav.settings']);
     });
     for (const role of ['reseller', 'customer']) {
         await withShell(role, async (renderer) => {

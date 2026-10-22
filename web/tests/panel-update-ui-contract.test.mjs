@@ -20,7 +20,9 @@ test('update card is reachable only through the admin settings panel', () => {
     const adminBlock = settings.slice(settings.indexOf("{role === 'admin'"));
     assert.match(adminBlock, /\{activeID === 'updates' && <Suspense[^>]*><PanelUpdateCard \/><\/Suspense>\}/);
     // The update card is mounted only inside its own updates panel.
-    const updatesPanel = adminBlock.slice(adminBlock.indexOf('id="settings-updates-panel"'), adminBlock.indexOf('id="settings-setup-panel"'));
+    // The updates panel is the last one since Server setup left Settings (v0.1.0-alpha.100).
+    const updatesStart = adminBlock.indexOf('id="settings-updates-panel"');
+    const updatesPanel = adminBlock.slice(updatesStart, adminBlock.indexOf('</div>', updatesStart));
     assert.match(updatesPanel, /<PanelUpdateCard \/>/);
     assert.equal(settings.split('<PanelUpdateCard />').length, 2);
 });

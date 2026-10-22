@@ -102,6 +102,7 @@ export const tr: Record<ShellKey, string> = {
     'nav.settings': 'Ayarlar',
     'nav.menu': 'Menü',
     'nav.monitoring': 'İzleme',
+    'nav.serverSetup': 'Sunucu kurulumu',
     'nav.dnsPeers': 'DNS ve eş sunucular',
     'nav.security': 'Güvenlik',
     'nav.maintenance': 'Bakım',
