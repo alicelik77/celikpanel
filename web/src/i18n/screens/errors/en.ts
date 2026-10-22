@@ -141,7 +141,7 @@ export const enErrorsScreens = {
     'err.panel_certificate_contact_email_invalid.action': 'Open My account',
     // v0.1.0-alpha.99: changing one's own email (cmd/panel/account_email_handler.go).
     'err.account_email_request_invalid': 'The request could not be read, so nothing was changed. Reload the page and try again.',
-    'err.account_email_invalid': 'This is not an email address the panel can use, so nothing was changed. Enter one address such as name@example.com.',
+    'err.account_email_invalid': 'This is not an email address the panel can use, so nothing was changed. Enter one address such as name@example.com; a domain with letters outside English goes in its ASCII form (xn--…).',
     'err.account_email_unchanged': 'This is already your email address, so nothing was changed.',
     'err.account_email_taken': 'Another account already uses this email address, so nothing was changed. Enter a different address.',
     'err.account_email_wrong_password': 'Your current password is not correct, so nothing was changed. Enter the password you sign in with.',

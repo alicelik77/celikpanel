@@ -160,7 +160,7 @@ export default function batch24(scenarios, { base, locale, theme, out, viewport,
     scenarios.y24success = async () => {
         await reset(); await clean();
         await as('admin');
-        await ctl({ override: { [EMAIL]: { method: 'PUT', status: 200, body: { success: true, email: 'new.owner@example.com' } } } });
+        await ctl({ override: { [EMAIL]: { method: 'PUT', status: 200, body: { success: true } } } });
         const page = await open('/account', cardReady);
         await openDialog(page);
         await fill(page, 'new.owner@example.com', 'correct horse');

@@ -32,18 +32,14 @@ const OPEN_OUTCOMES = new Set(['REQUEST_OUTCOME_UNKNOWN', 'REQUEST_IN_PROGRESS']
 // ve denetimlerini tutar; süre dolunca sonucun bilinmediğini söyler (hata
 // değildir) ve sayfa adresi yeniden okur. Her ret diyalogda kodlu sözleriyle
 // gösterilir.
-// The address the server stored, from its answer; the typed one when the
-// answer, a success, carries none it can read.
-// Sunucunun sakladığı adres; okunamazsa (yanıt başarılıdır) yazılan adres.
-async function storedAddress(res: Response, typed: string): Promise<string> {
-    try {
-        const body: unknown = await res.json();
-        const email = body && typeof body === 'object' ? (body as { email?: unknown }).email : undefined;
-        return typeof email === 'string' && email !== '' ? email : typed;
-    } catch {
-        return typed;
-    }
-}
+//
+// After an unknown result the next Save of the same address carries the SAME
+// identity (security review of the alpha.99 candidate): if the first arrival
+// did change the address, the Panel answers from it and nothing runs twice. A
+// definite answer (a success or a refusal) ends that identity; a different
+// address is a different action and gets a new one.
+// Sonucu bilinmeyen gönderiden sonra aynı adresin sonraki Kaydet'i AYNI kimliği
+// taşır; kesin bir yanıt o kimliği bitirir.
 
 export function ChangeEmailModal({
     current,
@@ -54,8 +50,8 @@ export function ChangeEmailModal({
     /** The address as last read, or null when it is not known. */
     current: string | null;
     onClose: () => void;
-    /** The server changed the address; `email` is the address it stored. */
-    onChanged?: (email: string) => void;
+    /** The server changed the address (its answer carries no address; read it again). */
+    onChanged?: () => void;
     /** No answer arrived in time: the caller reads the address again. */
     onUnknown?: () => void;
 }) {
@@ -66,6 +62,8 @@ export function ChangeEmailModal({
     const [refusal, setRefusal] = useState<ApiError | null>(null);
     const [unknown, setUnknown] = useState(false);
     const alive = useRef(true);
+    // The identity of a send whose result is not known, and its address.
+    const pending = useRef<{ id: string; address: string } | null>(null);
     useEffect(() => () => {
         alive.current = false;
     }, []);
@@ -84,19 +82,22 @@ export function ChangeEmailModal({
         setSaving(true);
         setRefusal(null);
         setUnknown(false);
+        const typed = address.trim();
+        if (pending.current?.address !== typed) pending.current = { id: newRequestId(), address: typed };
+        const id = pending.current.id;
         const controller = new AbortController();
         const bound = setTimeout(() => controller.abort(), OWN_EMAIL_WAIT_MS);
         try {
             const res = await fetch(OWN_EMAIL_URL, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json', [REQUEST_ID_HEADER]: newRequestId() },
-                body: JSON.stringify({ email: address.trim(), current_password: password }),
+                headers: { 'Content-Type': 'application/json', [REQUEST_ID_HEADER]: id },
+                body: JSON.stringify({ email: typed, current_password: password }),
                 signal: controller.signal,
             });
             if (res.ok) {
-                const stored = await storedAddress(res, address.trim());
+                pending.current = null;
                 showToast('success', t('account.email.changed'));
-                onChanged?.(stored);
+                onChanged?.();
                 onClose();
                 return;
             }
@@ -109,6 +110,7 @@ export function ChangeEmailModal({
                 outcomeUnknown();
                 return;
             }
+            pending.current = null;
             if (!alive.current) return;
             setRefusal(problem);
             if (problem.code === 'account_email_wrong_password') setPassword('');

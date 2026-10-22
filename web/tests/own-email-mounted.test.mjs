@@ -200,7 +200,7 @@ test('The dialogue sends one identity per press, visibly waits with its controls
     await submit();
     assert.equal(puts().length, 1, 'a press while saving sent a second change');
 
-    await act(async () => { answer(Response.json({ success: true, email: 'new@example.com' })); await flush(); });
+    await act(async () => { answer(Response.json({ success: true })); await flush(); });
     assert.equal(dialog().length, 0, 'the dialogue stayed open after success');
     assert.deepEqual(globalThis.currentTest.toasts, [['success', t('account.email.changed')]]);
     assert.ok(text().includes('new@example.com'), 'the card did not read the new address');
@@ -322,4 +322,37 @@ test('A lost answer on the email change is asked again once under the same ident
   assert.equal(isReaskRoute('PUT', '/api/v1/auth/email'), true);
   assert.equal(isReaskRoute('POST', '/api/v1/auth/email'), false);
   assert.equal(isReaskRoute('PUT', '/api/v1/auth/password'), false);
+});
+
+// After an unknown result the next Save of the same address carries the same
+// identity, so a change the first arrival did make is answered from it and
+// never runs twice; a definite answer, or another address, starts a new one.
+test('After an unknown result, Save again sends the same identity until a definite answer', async () => {
+  const answers = [
+    () => Promise.reject(new TypeError('fetch failed')),
+    () => Promise.reject(new TypeError('fetch failed')),
+    () => Response.json({ error: 'x', code: 'account_email_taken' }, { status: 409 }),
+    () => Promise.reject(new TypeError('fetch failed')),
+    () => Promise.reject(new TypeError('fetch failed')),
+  ];
+  let sent = 0;
+  serve({ change: () => answers[sent++]() });
+  try {
+    await mount();
+    await openDialog();
+    await type('email', 'other@example.com');
+    await type('current-password', 'secret password');
+    await submit();
+    await submit();
+    await submit();
+    await submit();
+    await type('email', 'third@example.com');
+    await submit();
+    const ids = puts().map((call) => new Headers(call.options.headers).get('X-CelikPanel-Request-Id'));
+    assert.equal(ids.length, 5);
+    assert.equal(ids[1], ids[0], 'the Save after an unknown result did not carry the same identity');
+    assert.equal(ids[2], ids[0], 'the identity changed before a definite answer');
+    assert.notEqual(ids[3], ids[2], 'a definite refusal did not end the identity');
+    assert.notEqual(ids[4], ids[3], 'another address kept the identity of the first');
+  } finally { await cleanup(); }
 });

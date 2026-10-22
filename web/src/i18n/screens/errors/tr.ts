@@ -133,7 +133,7 @@ export const trErrorsScreens: Record<ErrorsScreenKey, string> = {
     'err.panel_certificate_contact_email_invalid.action': 'Hesabım’ı aç',
     // v0.1.0-alpha.99: kişinin kendi e-postasını değiştirmesi.
     'err.account_email_request_invalid': 'İstek okunamadı; hiçbir şey değiştirilmedi. Sayfayı yenileyip yeniden deneyin.',
-    'err.account_email_invalid': 'Bu, panelin kullanabileceği bir e-posta adresi değil; hiçbir şey değiştirilmedi. name@example.com gibi tek bir adres girin.',
+    'err.account_email_invalid': 'Bu, panelin kullanabileceği bir e-posta adresi değil; hiçbir şey değiştirilmedi. name@example.com gibi tek bir adres girin; İngilizce dışı harfler içeren bir alan adı ASCII biçimiyle (xn--…) yazılır.',
     'err.account_email_unchanged': 'Bu zaten e-posta adresiniz; hiçbir şey değiştirilmedi.',
     'err.account_email_taken': 'Bu e-posta adresini başka bir hesap kullanıyor; hiçbir şey değiştirilmedi. Başka bir adres girin.',
     'err.account_email_wrong_password': 'Mevcut parolanız doğru değil; hiçbir şey değiştirilmedi. Giriş yaptığınız parolayı girin.',
