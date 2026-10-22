@@ -178,7 +178,8 @@ func TestReadyBundleStripUsesServerMembershipAndClosedActions(t *testing.T) {
 	for _, required := range []string{
 		`if (bundle.action_route === 'mail_profile') onMail(bundle);`,
 		`else onComponents(bundle);`,
-		`onVerify={() => { if (verifyHeld !== null) return; setDetails(null); onVerify(open.bundle); }}`,
+		// alpha.101: Verify is withdrawn; Repair (mail) is the dialogue's one action.
+		`onRepair={() => { setDetails(null); onMail(open.bundle); }}`,
 		// One step at a time, only for this step's own operation.
 		`if (operation.service_id !== step || operation.kind !== 'service_install') stop(run, 'foreign');`,
 		`if (tracker.locked) return;`,
@@ -191,7 +192,7 @@ func TestReadyBundleStripUsesServerMembershipAndClosedActions(t *testing.T) {
 			t.Fatalf(`ready bundle strip is missing %q`, required)
 		}
 	}
-	for _, forbidden := range []string{`['postfix'`, `['dovecot'`, `['nginx'`} {
+	for _, forbidden := range []string{`['postfix'`, `['dovecot'`, `['nginx'`, `onVerify`, `verifyHeld`} {
 		if strings.Contains(strip, forbidden) {
 			t.Fatalf(`ready bundle strip must not hard-code %q`, forbidden)
 		}
