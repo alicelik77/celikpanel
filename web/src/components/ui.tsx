@@ -852,7 +852,7 @@ export function ErrorBanner({ error, className }: { error: ApiError | null; clas
                     <button
                         type="button"
                         onClick={() => navigate(error.action!)}
-                        className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-fg transition-colors hover:bg-primary/90"
+                        className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-fg transition-colors hover:bg-primary/90 max-sm:min-h-11"
                     >
                         {actionLabel}
                     </button>
