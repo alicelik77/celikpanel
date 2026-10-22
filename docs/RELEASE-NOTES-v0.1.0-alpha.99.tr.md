@@ -1,10 +1,10 @@
-# v0.1.0-alpha.99 (aday, 22 Ekim 2026)
+# v0.1.0-alpha.99 (22 Ekim 2026'da yayımlandı)
 
 [English](RELEASE-NOTES-v0.1.0-alpha.99.md)
 
-Bu sürüm v0.1.0-alpha.98'in ardından gelir. Bir adaydır: bu yazılırken
-etiketlenmemişti ya da yayımlanmamıştı ve hiçbir parçası bir kurulu sunucuda
-değildi. 2026-10-22'de, `feat/alpha99-own-email` dalında, alpha.98'in yayım
+Bu sürüm v0.1.0-alpha.98'in ardından gelir. 22 Ekim 2026'da yayımlandı (sonda
+"Yayım kaydı"na bakın); henüz hiçbir parçası bir kurulu sunucuda değil.
+2026-10-22'de, aday olarak, `feat/alpha99-own-email` dalında, alpha.98'in yayım
 kaydından sonraki `main` üzerinden yazıldı.
 
 ## Kim güncellemeli ve neden
@@ -246,3 +246,93 @@ Bileşen ve bağlanmış testler gerçek sistem davranışını kanıtlamaz.
 Bu sürümü yalnız CelikPanel'in güncelleme arayüzü (Ayarlar → CelikPanel
 güncellemeleri) üzerinden kurun. Yayımlamak kurulu sunucuları güncellemez; bir
 sunucunun güncellemesini yalnız sahibi, panelin kendi güncelleme ekranından başlatır.
+
+## Yayım kaydı
+
+Aşağıdaki her şey 22 Ekim 2026 tarihlidir (saat dilimi belirtilmedikçe UTC).
+Birleştirmeyi, etiketi, denetimleri, portal yayımını ve genel sitenin okunmasını
+sürümü hazırlayan kişi yaptı, önceki sürümlerde olduğu gibi sahibin kalıcı
+talimatı uyarınca; kurulu panel güncellemelerini yalnız sahip, panelin kendi
+güncelleme ekranından başlatır. Yayım için sahibin talimatıyla gerçek sistem
+kaydı yok. Bu girdi, aşağıdaki sonuçların hiçbirini depoda bir dosya olarak
+saklamaz.
+
+**Ne oldu.**
+
+1. Sürümden önce iki bağımsız güvenlik incelemesi turu yapıldı. İlki iletişim
+   kapılarının fazla gevşek olduğunu, büyük-küçük harfi yok sayan anahtarlarla
+   bir parolanın tekrar özetine ulaşabildiğini, eksik bir sıralama testini,
+   saklanan yanıtta adresin bulunduğunu ve ayrı sınırlayıcı sayaçlarını buldu.
+   İkincisi zorunlu bir düzeltme buldu: `REQUEST_OUTCOME_UNKNOWN` sonrasında
+   pencere "sonuç bilinmiyor" durumunda döngüye giriyordu. Hepsi düzeltildi
+   (yukarıdaki "Güvenlik incelemesi düzeltmeleri"ne bakın).
+2. "Release v0.1.0-alpha.99: change your own email on My account" başlıklı #236
+   numaralı çekme isteği `main`'e `7ce52a17b416f8ffcf64931e08a2c3234bfa2f51`
+   commit'i olarak birleştirildi; yazarı Mehmet Ömer Efe Çelik. Sürüm sırası
+   değişkeni etiket yapılmadan önce 98'den 99'a geçirildi. `main` koşusu ve
+   etiket koşusu başarılı oldu; sürüm zinciri hiçbir olay olmadan çalıştı.
+3. `v0.1.0-alpha.99` açıklamalı etiketi (nesne
+   `e9de364565e1e87c92f3e419369fda1f78bc1708`, ağaç
+   `971776526f398812b66921482f8d779e57c132a9`, etiketleyen Mehmet Ömer Efe Çelik)
+   sürüm commit'ini gösterir. Sürüm bir ön sürümdür (pre-release);
+   2026-10-22T13:07:25Z'de altı dosyayla yayımlandı.
+4. 22 Ekim 2026'da `CelikPanel-S2-Debian` WSL konuğunda bir indirmeden
+   denetlendi (hazırlayan kişi; burada bir dosyada kayıtlı değil): arşivler bayt
+   bayt aynı, her biri 66.326.418 bayt, SHA-256
+   `b749b7f469cf4d78c3b3ce7bc8cd0f9ef8f864a96f097f8b4258810d359f68e6`; manifest
+   sıra 99, `published_at` 2026-10-22T12:23:11Z der (SHA-256
+   `aac97d747e4f962454c29e78f1629c22d701181e6fe3d121cc9b2bb53ff08c4e`); imzası
+   (SHA-256 `6493e9be97965df22d5476adfdc054a29f111bef6761c3eb0e01d0a15ba62afa`),
+   imza anahtarına (SHA-256
+   `7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb`, öncekiyle
+   aynı anahtar) karşı `openssl pkeyutl -verify -rawin -pubin` ile doğrulanır;
+   iki içerik koruması da 0 döndürdü; derleme Go go1.26.5, CGO kapalı,
+   `-trimpath` ile yapıldı. `libexec/get.sh` 99'u sabitler (SHA-256
+   `dc11adc2096222242fa10e755926356fd076a3364967283fe3a835362c390768`); içindeki
+   politika şimdiki 99, önceki 98, önceki commit
+   `c249a9ba236212bfcdf6eddb590f55bccc5bac9c` der. Arşivde 267 üye var (243
+   dosya, 24 dizin). Arayüz paketi `web/dist/assets/app-CfcdYww_.js`, 259.484
+   bayt, SHA-256
+   `d0ea016979b893250bb710062bc8926eae03ac1ab336a6be62d99947657dc6a3`.
+   `bin/panel` çalıştırılabilir dosyasında `account_email` var.
+5. Portal paketi: `portal.tar.gz`, 133.025.091 bayt, SHA-256
+   `95fcb5c61dc0c15321078bb7e9b36a6722e0fe629fe228541faf75f5566937a3`, 54 girdi;
+   iki kez bayt bayt aynı derlendi (önceden imzalı kip). Sayfaları yalnız
+   `github.com/alicelik77/...` adresine bağlanır. Sözleşme testi 0 döndürdü;
+   genel doğrulayıcının 17 testi ve terfi aracının 14 testi geçti.
+6. Yaklaşık 13:16Z'de hazırlayan kişi onu yayımladı: önceki sürüm
+   v0.1.0-alpha.98, hedef v0.1.0-alpha.99; durum `committed`, genel doğrulama 26
+   istekten 26'sı, `CELIKPANEL_DOWNLOAD_PORTAL_PUBLISHED`.
+7. Önceki sitenin yedeği
+   `/var/www/vhosts/celikpanel.net/portal-backups/httpdocs.before-v0.1.0-alpha.99.20261022T131614Z.342386.fc06eb2d06051adc`;
+   yüklenen paket
+   `/var/www/vhosts/celikpanel.net/.upload-portal-20261022T131537Z-v0.1.0-alpha.99-3546cbb9f47a93b5`
+   altında saklandı.
+8. Yayımdan sonra dışarıdan okuma: `https://celikpanel.net/releases/latest.txt`
+   v0.1.0-alpha.99 der; `latest.json` sıra 99'u, yukarıdaki commit ve SHA-256'yı
+   gösterir.
+
+**Sahibin bildirdikleri.** İki kurulu sunucunun da alpha.98'de olduğu yukarıda
+("Sahibin bildirdiği") kayıtlı; burada yinelenmez. alpha.99'dan henüz hiçbir şey
+bir kurulu sunucuda değil.
+
+**Yapılmayanlar ve yayımlamanın değiştirmedikleri.**
+
+- Kurulu sunucuları sürümü hazırlayan kişi alpha.99'a güncellemedi. Onları yalnız
+  sahip, panelin kendi güncelleme ekranından günceller.
+- E-posta değiştirme bir kurulu sunucuda görülmedi.
+- Yukarıda kayıtlı sınırlar duruyor: yalnız büyük-küçük harfle ayrılan adreslere
+  aynı anda yapılan iki değişiklik birlikte geçebilir; Let's Encrypt herkese açık
+  olmayan bir alan adındaki adresi reddedebilir; `--create-admin` verilen adresi
+  doğrulamaz.
+- Kurulum planının iletişim engeli her plan için hâlâ geçerli. Öyle olması gerekip
+  gerekmediği sonraki bir karara bırakıldı.
+- Yeni adres bir iletiyle doğrulanmaz ve "açık oturumlar" yapılmadı.
+- Bildirilmeyen ve kaydedilmeyenler: Boston ya da Frankfurt'tan alpha.99'a dair
+  her şey, Frankfurt'un paket sürümleri ve önceki notların bildirilmedi diye
+  saydığı her şey. Her biri "kaydedilmedi"dir; "çalıştı" da değildir,
+  "başarısız" da.
+- Önceki yayımlama kayıtlarının sınırları ([alpha.88
+  notları](RELEASE-NOTES-v0.1.0-alpha.88.tr.md)) kalkmış olarak bildirilmedi.
+- Yayımlanma kabul değildir. P0.1–P0.5 kısmi kalır; hiçbir P0 işi kapanmaz ya da
+  ilerlemez.
