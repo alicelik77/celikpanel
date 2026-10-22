@@ -100,12 +100,13 @@ func (p *Panel) handlePanelCertificateSagaPost(w http.ResponseWriter, r *http.Re
 			w,
 			http.StatusConflict,
 			"panel_certificate_contact_email_invalid",
-			// No screen edits the administrator's own email yet (it is set when
-			// the administrator is created), so there is no action to offer
-			// (alpha.98 review; open item in D-037).
-			// Yöneticinin e-postasını düzenleyen bir ekran henüz yok; eylem yok.
-			"the administrator account has no valid email address, which the certificate authority needs as a contact; there is no screen to change it yet: it is the address given when the administrator was created on the server",
-			"",
+			// The signed-in administrator sets their own address on My account
+			// (v0.1.0-alpha.99, D-037 amendment); this request reads it again
+			// when it is made, so nothing is cached and nothing is retried.
+			// Yönetici kendi adresini Hesabım'da ayarlar; istek adresi her
+			// seferinde yeniden okur.
+			"the administrator account has no valid email address, which the certificate authority needs as a contact; nothing was requested; set your email on My account (top-right menu), then request the certificate again",
+			ownEmailAccountAction,
 		)
 		return
 	}

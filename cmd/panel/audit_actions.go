@@ -19,6 +19,7 @@ var auditActionNames = []string{
 	"2fa.disable",
 	"2fa.enable",
 	"2fa.setup",
+	"account.email.changed",
 	"app.install",
 	"auth.login",
 	"auth.login.2fa",

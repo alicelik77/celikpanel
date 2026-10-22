@@ -83,6 +83,19 @@ func CanonicalPanelCertificateIssue(
 	}, nil
 }
 
+// CanonicalContactEmail is the one validator for an address the panel may hand
+// to a certificate authority as its contact: trimmed, printable ASCII, one
+// '@', at most 64 bytes before it and 254 in all, and a fully qualified domain
+// in lower case. A signed-in person's own email change (v0.1.0-alpha.99) uses
+// it, so an address the panel accepts there is always one the panel
+// certificate request accepts too.
+// CanonicalContactEmail, panelin sertifika yetkilisine iletişim adresi olarak
+// verebileceği adresin tek doğrulayıcısıdır; kişinin kendi e-postasını
+// değiştirmesi de bunu kullanır.
+func CanonicalContactEmail(raw string) (string, error) {
+	return canonicalPanelCertificateEmail(raw)
+}
+
 func canonicalPanelCertificateEmail(raw string) (string, error) {
 	address := strings.TrimSpace(raw)
 	if address == "" || len(address) > panelCertificateEmailMaxBytes ||

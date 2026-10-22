@@ -102,6 +102,9 @@ type requestIdentityRoute struct {
 	timeout time.Duration
 	// secret: the answer carries a one-time secret, so only its status is kept.
 	secret bool
+	// digest, when set, is what of the body is hashed into the stored
+	// request digest: a route whose body carries a password leaves it out.
+	digest func(body []byte) []byte
 }
 
 // The eight routes of batch 1. Each one was harmful when it ran twice; see
@@ -153,6 +156,11 @@ var (
 	requestIdentityRouteSiteConfigApply = requestIdentityRoute{
 		pattern: "/api/v1/domains/{id}/site-config/apply", timeout: siteConfigActionTimeout + time.Minute,
 	}
+	// The signed-in person's own email change (v0.1.0-alpha.99): a PUT whose
+	// body carries the current password, which the stored digest leaves out.
+	requestIdentityRouteOwnEmail = requestIdentityRoute{
+		pattern: ownEmailPath, timeout: 30 * time.Second, digest: requestIdentityEmailDigest,
+	}
 )
 
 // requestIdentityRouteFor names the protected route a request would reach. It
@@ -160,6 +168,9 @@ var (
 // recognize is a path the dispatcher does not serve either.
 // requestIdentityRouteFor, isteğin ulaşacağı korunan rotayı adlandırır.
 func requestIdentityRouteFor(r *http.Request) (requestIdentityRoute, bool) {
+	if r.Method == http.MethodPut && r.URL.Path == ownEmailPath {
+		return requestIdentityRouteOwnEmail, true
+	}
 	if r.Method != http.MethodPost {
 		return requestIdentityRoute{}, false
 	}
@@ -525,7 +536,11 @@ func (g *requestIdentityGuard) wrap(next http.Handler) http.Handler {
 			writeClientError(w, http.StatusBadRequest, "request body could not be read")
 			return
 		}
-		hash := requestIdentityHash(r.Method, r.URL.Path, r.URL.RawQuery, body)
+		hashed := body
+		if route.digest != nil {
+			hashed = route.digest(body)
+		}
+		hash := requestIdentityHash(r.Method, r.URL.Path, r.URL.RawQuery, hashed)
 
 		beginCtx, cancelBegin := g.bookkeepingContext()
 		first, done, existing, err := g.begin(beginCtx, id, caller.ID, r.Method, route, hash)

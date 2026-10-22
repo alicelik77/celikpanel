@@ -158,6 +158,7 @@ export const trDashboardScreens: Record<DashboardScreenKey, string> = {
     'dashboard.audit.action.2fa.disable': 'iki faktörlü doğrulamayı kapattı',
     'dashboard.audit.action.2fa.enable': 'iki faktörlü doğrulamayı açtı',
     'dashboard.audit.action.2fa.setup': 'iki faktörlü doğrulamayı kurmaya başladı',
+    'dashboard.audit.action.account.email.changed': 'kendi e-posta adresini değiştirdi',
     'dashboard.audit.action.app.install': '{target} uygulamasını kurdu',
     'dashboard.audit.action.auth.login': 'oturum açtı',
     'dashboard.audit.action.auth.login.2fa': 'iki faktörlü doğrulamayla oturum açtı',

@@ -148,3 +148,35 @@ func TestValidPanelCertificateIssueQualifierIsExact(t *testing.T) {
 		}
 	}
 }
+
+// The own-email change (v0.1.0-alpha.99) and the panel certificate request
+// share one validator: what one accepts the other accepts, in the same form.
+func TestCanonicalContactEmailIsThePanelCertificateValidator(t *testing.T) {
+	accepted := map[string]string{
+		"  Owner@Example.COM ":    "Owner@example.com",
+		"a.b+tag@mail.example.tr": "a.b+tag@mail.example.tr",
+	}
+	for raw, want := range accepted {
+		got, err := CanonicalContactEmail(raw)
+		if err != nil || got != want {
+			t.Fatalf("CanonicalContactEmail(%q) = %q, %v; want %q", raw, got, err, want)
+		}
+		commitment, err := CanonicalPanelCertificateIssue("panel.example.test", raw, panelCertificateManagedTLSDir, "unknown")
+		if err != nil || commitment.Email != want {
+			t.Fatalf("certificate request took %q as %q, %v; want %q", raw, commitment.Email, err, want)
+		}
+	}
+	for _, raw := range []string{
+		"", "   ", "no-at-sign", "two@@example.com", "a@b@example.com", "x@localhost",
+		"x@192.0.2.1", "x@sub.example.test.", "Name <x@example.com>", "ünicode@example.com", "x y@example.com",
+		strings.Repeat("a", 65) + "@example.com",
+		"a@" + strings.Repeat("b", 250) + ".com",
+	} {
+		if got, err := CanonicalContactEmail(raw); err == nil {
+			t.Fatalf("CanonicalContactEmail(%q) accepted %q", raw, got)
+		}
+		if _, err := CanonicalPanelCertificateIssue("panel.example.test", raw, panelCertificateManagedTLSDir, "unknown"); err == nil {
+			t.Fatalf("certificate request accepted %q", raw)
+		}
+	}
+}
