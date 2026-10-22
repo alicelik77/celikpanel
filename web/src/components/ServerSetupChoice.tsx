@@ -72,7 +72,8 @@ export function ServerSetupSettings() {
     const help = extending ? (active ? 'setup.extend.dashboardRunning' : 'setup.extend.dashboardDraft') : ready ? 'setup.extend.help' : snapshot.guidance === 'manual' ? 'setup.manualSelected' : 'setup.choiceIntro';
     const action = extending ? (active ? 'setup.extend.showProgress' : 'setup.extend.continue') : ready ? 'setup.extend.title' : active ? 'setup.resume' : 'setup.openWizard';
     return <section className="rounded-xl border border-border bg-surface p-6" aria-labelledby="setup-settings-title">
-        <h2 id="setup-settings-title" className="text-lg font-semibold">{t('setup.settingsTitle')}</h2>
+        {/* The page header already says "Server setup" (alpha.100: this card is the page); the heading stays for the section's name. */}
+        <h2 id="setup-settings-title" className="sr-only">{t('setup.settingsTitle')}</h2>
         {/* The purpose a completed setup prepared, as the Dashboard card names it (v0.1.0-alpha.100: that card opens this page).
             Tamamlanan kurulumun kullanım amacı, Panodaki kartın adlandırdığı gibi. */}
         {ready && <p className="mt-3 max-w-2xl text-sm text-fg" data-setup-purpose=""><span className="font-medium">{t('setup.dashboardReady')}:</span> {t(snapshot.draft.customization ? 'setup.purpose.custom' : `setup.purpose.${snapshot.draft.purpose}`)}</p>}

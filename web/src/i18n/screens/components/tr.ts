@@ -290,7 +290,7 @@ export const trComponentsScreens: Record<ComponentsScreenKey, string> = {
     'services.removal.hosted.mailboxes': 'Web postasını kaybedecek posta kutuları; postaları yerinde kalır ({count}): {names}',
     'services.removal.more': '+{n} tane daha',
     'services.removal.blocks': 'Bunlar varken CelikPanel {name} bileşenini kaldırmaz: önce taşıyın ya da silin.',
-    'services.removal.requiredBy': '{name} gerektirir ve çalışmayı durdurur: {names}',
+    'services.removal.requiredBy': '{name} bileşenine ihtiyaç duyan ve çalışmayı durduracak bileşenler: {names}',
     'services.removal.bundle': '“{bundle}” hazır paketi eksik kalır.',
     'services.removal.bundleUnnamed': 'Hazır paket',
     'services.removal.ports': 'Güvenlik duvarı açıksa kurulu kalanlara göre yeniden ayarlanır: panel ya da kurulu başka bir bileşen gerektirmiyorsa {ports} kapanır.',

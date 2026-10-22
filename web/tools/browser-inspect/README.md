@@ -626,3 +626,25 @@ known, the certificate card's refusal, the personal menu's items, the toasts,
 phone targets under 44 px in the dialog, the card, the menu and the banner, and
 sideways scrolling. The screenshots are the inspection; these scenarios do not
 fail on a finding.
+
+## Scenarios of the twenty-fifth batch (removal dialog, first visit, Server setup, 2026-10-22)
+
+`scenarios-batch25.mjs`, with no mock of its own: the answer of
+`GET /api/v1/service/removal-impact` is a constant set through the mock's
+overrides (held open, a refusal, or a sample answer shaped as the Panel's), and
+the server is batch 20's Frankfurt-shaped catalogue. Nothing is installed,
+removed or contacted; every value is sample data. Run it with `desktop` and
+`phone`, Turkish and English, both themes; each state is also copied to
+`BROWSER_INSPECT_SHOTS` as `<state>-<lang>-<theme>-<width>.png`.
+
+| Name | States |
+| --- | --- |
+| `y25firstvisit` | `/services` in a fresh browser: the installed view (`components-first-visit`); with a remembered "catalog" (`components-stored-catalog`) |
+| `y25removal` | the removal dialog for Nginx, PostgreSQL, Postfix and certbot (`removal-nginx`, `removal-postgresql`, `removal-postfix`, `removal-certbot`); Nginx while the read is held open (`removal-nginx-checking`) and when it is refused (`removal-nginx-unknown`) |
+| `y25setup` | `/server-setup` (`server-setup-page`), the rail with Server setup under Components (`server-setup-sidebar`, the drawer on a phone), `/settings?section=setup` replaced by `/server-setup` (`settings-section-setup-redirect`), Settings with three sections (`settings-three-sections`), the Dashboard's purpose card and its link (`dashboard-purpose-card`) |
+
+Each record adds raw keys, English on the Turkish page, the view the Components
+page opened in, the dialog's state, lines, removed and kept sentences, command,
+scrolling and buttons (colour and border), the rail's links, Settings' tabs, the
+links to `/server-setup`, phone targets under 44 px and sideways scrolling. The
+screenshots are the inspection; these scenarios do not fail on a finding.

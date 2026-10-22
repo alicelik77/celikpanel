@@ -302,7 +302,7 @@ export const enComponentsScreens = {
     'services.removal.hosted.mailboxes': 'Mailboxes that lose webmail, while their mail stays ({count}): {names}',
     'services.removal.more': '+{n} more',
     'services.removal.blocks': 'CelikPanel does not remove {name} while these exist: move or delete them first.',
-    'services.removal.requiredBy': 'Needs {name} and stops working: {names}',
+    'services.removal.requiredBy': 'Components that need {name} and stop working: {names}',
     'services.removal.bundle': 'The ready bundle “{bundle}” becomes incomplete.',
     'services.removal.bundleUnnamed': 'Ready bundle',
     'services.removal.ports': 'If the firewall is on, it is set again from what stays installed: {ports} close unless the panel or another installed component needs them.',
