@@ -3001,7 +3001,9 @@ function RowVersion({ service, column = false, className = '' }: { service: Mana
                 ))}
             </div>
         ) : (
-            <div className={`font-mono text-xs text-fg-muted ${className}`} data-row-version="">{service.versions.join(', ')}</div>
+            // Never clipped silently (alpha.101): an ellipsis, and the whole
+            // text in the tooltip. / Sessizce kırpılmaz: üç nokta ve ipucu.
+            <div className={`truncate font-mono text-xs text-fg-muted ${className}`} title={service.versions.join(', ')} data-row-version="">{service.versions.join(', ')}</div>
         );
     }
     const facts = packageVersionFacts(service);

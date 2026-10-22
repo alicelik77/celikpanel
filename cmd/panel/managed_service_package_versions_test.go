@@ -70,6 +70,22 @@ func TestUpstreamPackageVersion(t *testing.T) {
 		"17.6":                 "17.6",
 		"17+278":               "17",
 		"git20240101-1":        "git20240101-1",
+		// Real Debian and Ubuntu strings of phpMyAdmin and friends (alpha.101).
+		"4:5.2.2+dfsg-1":                      "5.2.2",
+		"1:5.2.1+dfsg-3":                      "5.2.1",
+		"5.2.2-really5.2.1-1":                 "5.2.1",
+		"2:4.1.0+really4.0.9-2":               "4.0.9",
+		"4:5.2.2-really5.2.2+20250121+dfsg-1": "5.2.2",
+		"1:2.0~really1.9.3-1":                 "1.9.3",
+		"3:7.2":                               "7.2",
+		"7:4.4.2-1":                           "4.4.2",
+		"1.2.3~rc1-1":                         "1.2.3",
+		"2.9.14~dfsg-1ubuntu0.1":              "2.9.14",
+		"0~20240101-1":                        "0",
+		// "really" that is not a "really" version is left alone.
+		"1.0.really-1":  "1.0.really",
+		"1.0+reallyx-1": "1.0",
+		"really5.2.1-1": "really5.2.1-1",
 	} {
 		if got := upstreamPackageVersion(full); got != want {
 			t.Errorf("upstreamPackageVersion(%q) = %q, want %q", full, got, want)
