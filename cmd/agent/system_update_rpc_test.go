@@ -110,6 +110,47 @@ func TestSystemUpdateCheckAndStartBindFreshSignedTarget(t *testing.T) {
 	}
 }
 
+// alpha.100 is the first three-digit prerelease: an alpha.99 build is offered
+// and may start it, and an alpha.100 build is never offered alpha.99 nor
+// allowed to start it (string order would say the opposite).
+func TestSystemUpdateOffersAlpha100OverAlpha99AndNeverTheReverse(t *testing.T) {
+	newer := testSystemUpdateManifest()
+	newer.Sequence, newer.Version = "100", "v0.1.0-alpha.100"
+	newer.Archive = "celikpanel-v0.1.0-alpha.100-linux-amd64.tar.gz"
+	older := testSystemUpdateManifest()
+	older.Sequence, older.Version, older.Commit = "99", "v0.1.0-alpha.99", strings.Repeat("9", 40)
+	older.Archive = "celikpanel-v0.1.0-alpha.99-linux-amd64.tar.gz"
+	now := func() time.Time { return time.Date(2026, 10, 22, 12, 0, 0, 0, time.UTC) }
+
+	withSystemUpdateBuild(t, older.Version, older.Commit)
+	fetcher := &fakeSystemUpdateFetcher{version: newer.Version, manifest: newer}
+	backend := &fakeSystemUpdateBackend{floor: &systemUpdateFloor{Sequence: "99", Version: older.Version}}
+	service := newSystemUpdateService(fetcher, backend, "linux", "amd64")
+	service.now = now
+	check, err := service.check(context.Background())
+	if err != nil || !check.Available || check.TargetVersion != newer.Version || check.TargetSequence != "100" {
+		t.Fatalf("alpha.99 build check = %#v, %v", check, err)
+	}
+	request := testSystemUpdateStartRequest(newer, buildVersion, buildCommit)
+	if started, err := service.start(context.Background(), &request); err != nil || !started.Accepted {
+		t.Fatalf("alpha.99 build refused alpha.100: %#v, %v", started, err)
+	}
+
+	withSystemUpdateBuild(t, newer.Version, newer.Commit)
+	fetcher = &fakeSystemUpdateFetcher{version: older.Version, manifest: older}
+	backend = &fakeSystemUpdateBackend{floor: &systemUpdateFloor{Sequence: "99", Version: older.Version}}
+	service = newSystemUpdateService(fetcher, backend, "linux", "amd64")
+	service.now = now
+	check, err = service.check(context.Background())
+	if err != nil || check.Available {
+		t.Fatalf("alpha.100 build was offered alpha.99: %#v, %v", check, err)
+	}
+	request = testSystemUpdateStartRequest(older, buildVersion, buildCommit)
+	if started, err := service.start(context.Background(), &request); err == nil || started.Accepted || backend.queued != nil {
+		t.Fatalf("alpha.100 build started alpha.99: %#v, %v", started, err)
+	}
+}
+
 func TestSystemUpdateAbandonPublishesExactReceiptAndRejectsLateStart(t *testing.T) {
 	currentCommit := strings.Repeat("c", 40)
 	withSystemUpdateBuild(t, "v1.2.3-alpha.9", currentCommit)
