@@ -107,6 +107,7 @@ const SERVER = [
   component('nftables', 'security', true, { kind: 'tool' }),
   component('valkey', 'cache', true),
   component('spamassassin', 'email', true),
+  component('wireguard', 'security', true),
   component('redis', 'cache', false),
 ];
 const payload = (services = SERVER) => ({
@@ -140,6 +141,7 @@ const IMPACTS = {
     hosted: { kind: 'firewall', count: 0, names: [], blocks_removal: false, firewall: { known: true, enabled: true, open_ports: 4 } } }),
   valkey: impact({ packages: ['valkey-server'], hosted: { kind: 'unrecorded', count: 0, names: [], blocks_removal: false } }),
   spamassassin: impact({ removal: 'unsupported', package_family: 'pacman', mail_filter_rewired: true }),
+  wireguard: impact({ packages: ['wireguard'], hosted: { kind: 'vpn_peers', count: 7, names: ['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7'], blocks_removal: false } }),
   cron: { __status: 409, body: { error: 'CelikPanel does not remove this server’s cron service.', code: 'NATIVE_CRON_REMOVAL_REFUSED' } },
 };
 
@@ -316,6 +318,15 @@ test('the firewall engine: the panel firewall it enforces (on, off, not known) a
   }
 });
 
+test('WireGuard: the VPN peers that can no longer connect, by name with "+N more"; never "nothing depends"', async () => {
+  await mount();
+  try {
+    await openRemoval('wireguard');
+    assert.equal(lines().hosted, say('services.removal.hosted.vpn_peers', { count: 7, names: 'p1, p2, p3, p4, p5 ' + say('services.removal.more', { n: 2 }) }));
+    assert.equal(nothingLine().length, 0);
+  } finally { await unmount(); }
+});
+
 test('a cache: CelikPanel does not record which sites use it, never "nothing depends on it"', async () => {
   await mount();
   try {
@@ -464,6 +475,14 @@ test('every removal text exists in English and Turkish in the components part, T
   assert.match(enComponents['services.removal.removed.apt'], /configuration files, and any automatically installed package that nothing needs any more/);
   assert.match(enComponents['services.removal.removed.pacman'], /dependencies that nothing else needs/);
   assert.ok(!('services.removal.kept.databaseFiles' in enComponents), 'the database warning is no longer a kept sentence');
+  // nftables has no units: the loaded ruleset is not said to vanish, and
+  // "nothing" is narrowed to what CelikPanel records.
+  for (const key of ['services.removal.hosted.firewall.on', 'services.removal.hosted.firewall.unknown']) {
+    assert.match(enComponents[key], /can no longer apply, change or restore/);
+    assert.match(enComponents[key], /rules already loaded may stay until the server restarts/);
+  }
+  assert.doesNotMatch(Object.values(enComponents).join('\n'), /no longer enforced/);
+  assert.match(enComponents['services.removal.nothing'], /^CelikPanel records nothing else on this server that depends on \{name\}\.$/);
   assert.match(enComponents['services.removal.kept.packages'], /decided by your distribution/);
 });
 

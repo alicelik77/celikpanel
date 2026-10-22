@@ -3627,7 +3627,7 @@ const WEBMAIL_CLEANUP_PATHS: { paths: string[]; key: Parameters<ReturnType<typeo
 // Kaldırmanın bu sunucuda neyi etkilediği, Panel'in yanıtıyla. Pencere bir
 // kez okur; okunamazsa söyler ve kaldırma yine izinlidir.
 export type RemovalHostedKind = 'sites' | 'php_sites' | 'node_sites' | 'databases' | 'mail_addresses' | 'mail_domains' | 'mailboxes'
-    | 'certificates' | 'firewall' | 'unrecorded';
+    | 'certificates' | 'firewall' | 'unrecorded' | 'vpn_peers' | 'ftp_accounts';
 export interface RemovalImpact {
     removal: 'packages' | 'webmail_tree' | 'unsupported';
     has_units: boolean;
@@ -3645,7 +3645,7 @@ export interface RemovalImpact {
         firewall?: { known: boolean; enabled: boolean; open_ports: number };
     } | null;
 }
-const REMOVAL_HOSTED_KINDS: ReadonlySet<string> = new Set(['sites', 'php_sites', 'node_sites', 'databases', 'mail_addresses', 'mail_domains', 'mailboxes', 'certificates', 'firewall', 'unrecorded']);
+const REMOVAL_HOSTED_KINDS: ReadonlySet<string> = new Set(['sites', 'php_sites', 'node_sites', 'databases', 'mail_addresses', 'mail_domains', 'mailboxes', 'certificates', 'firewall', 'unrecorded', 'vpn_peers', 'ftp_accounts']);
 // How long the dialog waits for the read before it says it could not read.
 // Okumanın sınırı; sonra okunamadığını söyler.
 export const REMOVAL_IMPACT_READ_BOUND_MS = 10_000;
