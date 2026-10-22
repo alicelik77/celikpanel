@@ -6314,9 +6314,11 @@ iddiası değildir. İçindeki her şeyin saat tarihi 22 Ekim 2026'dır.
 
 - **Bu sürümün dokunduğu.** Salt-okunur tek Panel rotası,
   `GET /api/v1/service/removal-impact` (`/api/v1/service/` önekiyle yalnız
-  yöneticiler; `no-store`; kataloğu, saklanan bileşen kaydını ve Panel
-  veritabanını okur; Agent çağrısı, tarama ya da yazma yok; saklı kayıt yoksa
-  `SERVICE_STATE_UNVERIFIED`). Kaldırma işleyicisi ve `Agent.UninstallService`
+  yöneticiler; `no-store`; kataloğu, saklanan bileşen kaydını, Panel
+  veritabanını ve panel sertifikası dosyasını okur; yeni Agent çağrısı ve
+  değişiklik yok: sunucu profili önbellekteki Agent bilgilerinden gelebilir,
+  güvenlik duvarı motoru için duvarın durumu var olan okumayla, sınırlı biçimde
+  okunur; saklı kayıt yoksa `SERVICE_STATE_UNVERIFIED`). Kaldırma işleyicisi ve `Agent.UninstallService`
   artık rotanın bildirdiği adlandırılmış aynı koşulları sorar
   (`uninstallRewiresMailFilters`, `uninstallReconfiguresDatabaseTools`,
   `core.UninstallPurgesAllVersions`); yaptıkları değişmedi. Web arayüzü: kaldırma
@@ -6351,8 +6353,8 @@ iddiası değildir. İçindeki her şeyin saat tarihi 22 Ekim 2026'dır.
   dönüş davranışı:** hiçbir şey kaybolmaz ya da onarım gerektirmez. Sıra tabanının
   100'ü 99'un üstünde sıralaması Agent, Panel, ilke ve kurtarma temeli testleriyle
   kanıtlanır. Kurulu bir sunucuda ölçülmedi.
-- **Kanıt ve açık işler.** Aday ağacında: Go `CelikPanel-S2-Debian` konuğunda `go test ./cmd/panel/ ./internal/...` (-timeout 45m, CGO kapalı): 64 paket tamam, 2904 üst düzey test geçti, 42 atlandı, 0 başarısız (4282 alt test geçti); gofmt temiz ve `go vet ./cmd/... ./internal/...` temiz; web `npm test` 1734
-  testin 1734'ü geçti; derleme bütçelerin içinde (kritik açılış yolu 361 KiB'nin
+- **Kanıt ve açık işler.** Aday ağacında: Go `CelikPanel-S2-Debian` konuğunda `go test ./cmd/panel/ ./internal/...` (-timeout 45m, CGO kapalı): 64 paket tamam, 2909 üst düzey test geçti, 42 atlandı, 0 başarısız (4282 alt test geçti); temiz bir mount ad alanında `go test ./cmd/agent/...`: 1821 üst düzey test geçti, 29 atlandı, 0 başarısız (2838 alt test geçti); gofmt temiz ve `go vet ./cmd/... ./internal/...` temiz; web `npm test` 1739
+  testin 1739'u geçti; derleme bütçelerin içinde (kritik açılış yolu 361 KiB'nin
   331,08 KiB'i; hiçbir sınır yükseltilmedi); sürüm sırası ilkesi, indirme
   portalı ve imzalı sürüm manifesti sözleşmeleri ile sürüm-kurtarma düzeneği geçti;
   tarayıcı grubu 25'e iki kez bakıldı. Sayılar [sürüm
@@ -6363,3 +6365,16 @@ iddiası değildir. İçindeki her şeyin saat tarihi 22 Ekim 2026'dır.
   girdilerinin açık bıraktığı her şey açık kalır. Kurulu paneller yalnız
   sahiplerince, panelin kendi güncelleme ekranından güncellenir. P0.1–P0.5 kısmi
   kalır.
+- **İnceleme düzeltmeleri (22 Ekim 2026, her yayından önce).** Yine ilke 2:
+  pencere, sunucu kurulumunun gerektirdiği ve Panel'in sertifikalarını onunla
+  yenilediği ve güvenlik duvarını onunla uyguladığı certbot ile güvenlik duvarı
+  motoru için "Bu sunucuda başka hiçbir şey X bileşenine bağlı değil" diyordu;
+  artık o sertifikaları ve güvenlik duvarının durumunu adlandırır ve ikisini de
+  sunucu kurulumunun gerektirdiğini söyler; bir önbellek için yalnız
+  CelikPanel'in onu hangi sitelerin kullandığını kaydetmediğini söyler; apt'ın
+  sistem genelindeki `--auto-remove`'unu ve pacman'ın bağımlılık kaldırmasını
+  aileye göre söyler; veritabanı uyarısını kendi satırına koyar; birimi olmayan
+  bir aracın durdurulduğunu söylemez; katalog paketi olmayan bir ailede kaldırmanın
+  (Agent'ın reddettiği gibi) reddedileceğini söyler ve Roundcube'un kalan
+  paketlerini tam adlandırır. Agent testleri yukarıda kayıtlıdır. Kaldırmanın
+  kendisi değişmedi.

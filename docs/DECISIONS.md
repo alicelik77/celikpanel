@@ -432,14 +432,23 @@ The rules adopted:
      from the same small conditions its uninstall uses, so the dialog cannot
      promise what the removal does not do.
    - **From what the Panel already holds.** `GET /api/v1/service/removal-impact`
-     (administrators only, read-only, no new Agent call) reads the catalogue, the
-     stored component record and the Panel's database. It names: what the Panel
-     hosts on the component (sites for the web server; PHP or Node.js sites for a
-     runtime; databases for an engine; mail addresses and forwardings for Postfix
-     and Dovecot; mail domains for a spam filter; mailboxes for Roundcube), the
-     installed components that need it, the ready bundles it leaves incomplete and
-     the firewall ports it asked for; with none of these, "Nothing else on this
-     server depends on X". Hosted names are shown up to five, then "+N more".
+     (administrators only, read-only: no new Agent call and no mutation; the host
+     profile may come from cached Agent facts, and for the firewall engine the
+     firewall's state is read through the existing read, bounded) reads the
+     catalogue, the stored component record, the Panel's database and the panel
+     certificate file. It names: what the Panel hosts on the component (sites for
+     the web server; PHP or Node.js sites for a runtime; databases for an engine;
+     mail addresses and forwardings for Postfix and Dovecot; mail domains for a
+     spam filter; mailboxes for Roundcube; for certbot the certificates the Panel
+     renews with it — the panel's, the mail host's and every Let's Encrypt site
+     certificate — whose renewal stops; for the firewall engine the panel
+     firewall, on with N open ports, off, or not known, which is no longer
+     enforced; for Redis, Valkey and Memcached only that CelikPanel does not
+     record which sites use them), that server setup requires certbot and the
+     firewall engine on every server it prepares, the installed components that
+     need it, the ready bundles it leaves incomplete and the firewall ports it
+     asked for; only with none of these, "Nothing else on this server depends on
+     X". Hosted names are shown up to five, then "+N more".
    - **Read once, visibly, and never in the way.** The dialog reads when it opens,
      shows that it reads, and after 10 seconds, on a refusal or on an answer it
      cannot read, says that the effects could not be read, that nothing was
@@ -458,11 +467,14 @@ candidate):
 
 | Component class | Removed | Kept |
 | --- | --- | --- |
-| A package component (services and tools) | Its units are stopped and disabled (`systemctl disable --now`), then its catalogue packages are removed with `apt-get purge -y --auto-remove` (apt) or `pacman -Rns --noconfirm` (pacman): the packages, their configuration files, and the packages installed only for them. Ports only it asked for close when the firewall is on (the firewall is set again from what stays installed). | CelikPanel deletes nothing else itself (site files, mailboxes, database files). A package's own removal script, which runs without questions, may delete data that package created; which data is the distribution package's decision, not CelikPanel's, and is not claimed. |
-| PHP-FPM and PostgreSQL on apt | As above, plus every installed versioned package matching the catalogue's vendor pattern (`php8.3-fpm`, `postgresql-17`, …) and its companions. On pacman only the catalogue packages. | As above. For a database engine the dialog adds that whether the database files are deleted is the package's removal script's decision, and to back them up first. |
+| A package component (services and tools) | Its units, when the catalogue names any, are stopped and disabled (`systemctl disable --now`); a tool without units (certbot, nftables, phpMyAdmin, phpPgAdmin) has nothing to stop. Then its catalogue packages are removed. **apt** (`apt-get purge -y --auto-remove`): the packages, their configuration files, and any automatically installed package that nothing needs any more — system-wide, not only those installed for this component. **pacman** (`pacman -Rns --noconfirm`): the packages, their configuration files and their dependencies that nothing else needs. Ports only it asked for close when the firewall is on (the firewall is set again from what stays installed). | CelikPanel deletes nothing else itself (site files, mailboxes, database files). A package's own removal script, which runs without questions, may delete data that package created; which data is the distribution package's decision, not CelikPanel's, and is not claimed. |
+| PHP-FPM and PostgreSQL on apt | As above, plus every installed versioned package matching the catalogue's vendor pattern (`php8.3-fpm`, `postgresql-17`, …) and its companions. On pacman only the catalogue packages. | As above. For a database engine the dialog says, as its own warning line under what is removed, that the database files may be deleted by the package's removal script and to back them up first. |
 | A spam filter (Rspamd, SpamAssassin) | As a package component, and Postfix's filter chain is composed again without it. | As above; mail stays, it is no longer checked for spam. |
 | phpMyAdmin, phpPgAdmin | As a package component, and the database tools' server is set again without it. | As above. |
-| Roundcube | Not a package: its application tree under `/var/lib/celikpanel-webmail` (its settings and address-book database included) and the web server entry that served `/webmail/`. | Mailboxes and Maildir data, other sites, Nginx, PHP-FPM and the installed packages. |
+| certbot | As a package component (no units). The certificates the Panel renews with it (the panel's, the mail host's, the sites') stop being renewed. | As above. |
+| The firewall engine (nftables) | As a package component (no units). The panel firewall is no longer enforced. | As above. |
+| A component without catalogue packages for this package manager (Redis, SpamAssassin, phpPgAdmin on pacman) | Nothing: the Agent refuses ("cannot be removed automatically on this system yet"), and the dialog says so instead of a purge. | Everything. |
+| Roundcube | Not a package: its application tree under `/var/lib/celikpanel-webmail` (its settings and address-book database included) and the web server entry that served `/webmail/`. | Mailboxes and Maildir data, other sites, and the Nginx and PHP-FPM packages. |
 | A refused removal (sites, databases or mail addresses the Panel knows of) | Nothing: the Panel refuses with the names. | Everything. |
 
 Implementation decisions taken while building this (stated so they are not
@@ -481,6 +493,27 @@ mistaken for owner decisions):
   the press, and its refusal is shown in the dialog as before.
 - **The package manager's command is named** under the removed sentence (for apt
   and pacman only), so an owner can recognise what runs.
+
+**Review corrections (2026-10-22, before any publication).** An independent review of
+the candidate found the removal behaviour unchanged and asked for these; they are in
+source:
+
+- "Nothing else on this server depends on X" was false for certbot and the firewall
+  engine, which server setup requires and through which the Panel renews every
+  certificate and enforces its firewall; the dialog now names those certificates
+  and the firewall's state, and says that server setup requires both. For Redis,
+  Valkey and Memcached it says only that CelikPanel does not record which sites
+  use them.
+- apt's `--auto-remove` is system-wide; the dialog says so per package family.
+- The database warning is its own line under what is removed, not "what stays".
+- A tool without units is not said to be stopped.
+- A package family without catalogue packages is said to be refused, as the Agent
+  refuses it, with no purge and no command.
+- Roundcube's kept sentence names the Nginx and PHP-FPM packages (its `/webmail/`
+  entry is removed), and a failed read for Roundcube shows what its removal
+  deletes, not the package purge.
+- The Agent tests (`go test ./cmd/agent/...`, in a clean mount namespace) are run
+  and recorded, since the Agent's uninstall and update tests changed.
 
 What this does not authorise: no other change to the Components page (the rows,
 buttons, strips, badges and folding stay as they are), no "⋯" menu, no new Agent

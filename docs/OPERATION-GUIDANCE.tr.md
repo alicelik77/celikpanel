@@ -9749,12 +9749,20 @@ etkileyeceğini bir kez okur.
 - *Okurken:* "X kaldırılınca bu sunucuda neyin etkileneceği okunuyor…" ve dönen
   simge. **Kim hareket eder:** kimse. Kaldır kullanılabilir kalır; okuma hiçbir
   şeyi değiştirmez.
-- *Gösterdikleri:* "Silinenler" (kaldırma yolunun bu bileşen için yaptığı,
-  paketler ve apt ile pacman'da paket yöneticisi komutu), "Bu sunucuda
-  etkilenecekler" (Panel'in onun üzerinde barındırdıkları adıyla, en çok beşi ve
-  ardından "+N tane daha"; ona ihtiyaç duyan kurulu bileşenler; eksik bıraktığı
-  hazır paketler; güvenlik duvarından istediği portlar; ya da "Bu sunucuda başka
-  hiçbir şey X bileşenine bağlı değil") ve "Yerinde kalanlar".
+- *Gösterdikleri:* önce "Bu sunucuda etkilenecekler" (Panel'in onun üzerinde
+  barındırdıkları adıyla, en çok beşi ve ardından "+N tane daha"; certbot için
+  onunla yenilenen ve yenilenmesi duracak sertifikalar — panelin, posta
+  sunucusunun, sitelerin —; güvenlik duvarı motoru için artık uygulanmayacak
+  panel güvenlik duvarı (açık ve N açık port, kapalı ya da bilinmiyor); Redis,
+  Valkey ve Memcached için CelikPanel'in onları hangi sitelerin kullandığını
+  kaydetmediği; sunucu kurulumunun certbot'u ve güvenlik duvarı motorunu
+  gerektirdiği; ona ihtiyaç duyan kurulu bileşenler; eksik bıraktığı hazır
+  paketler; güvenlik duvarından istediği portlar; yalnız bunların hiçbiri yoksa
+  "Bu sunucuda başka hiçbir şey X bileşenine bağlı değil"), ardından "Silinenler"
+  (kaldırma yolunun bu bileşen için yaptığı, paketler ve apt ile pacman'da paket
+  yöneticisi komutu; bir veritabanı motoru için veritabanı dosyalarının paketin
+  kaldırma betiğince silinebileceğini ve önce yedek alınmasını söyleyen bir uyarı
+  satırı) ve "Yerinde kalanlar".
 - *Barındırılanlar kaldırmayı engellediğinde:* "Bunlar varken CelikPanel X
   bileşenini kaldırmaz: önce taşıyın ya da silin." **Kim hareket eder:** yönetici.
   **Sonraki eylem:** adı geçen siteleri, veritabanlarını ya da e-posta adreslerini
@@ -9769,17 +9777,25 @@ etkileyeceğini bir kez okur.
   sonuçtur; hata ya da ret değildir. **Kim hareket eder:** listeyi isterse yönetici:
   Tekrar dene (yalnız okur). Altında eski genel uyarı gösterilir. Panel'in kendi
   retleri Kaldır'a yine yanıt verir.
-- *Silinen ve kalan olarak söyledikleri (koddan):* paketli bir bileşenin birimleri
-  durdurulur ve devre dışı bırakılır, ardından paketleri yapılandırma dosyalarıyla
-  ve yalnız onlar için kurulmuş paketlerle birlikte kaldırılır (`apt-get purge -y
-  --auto-remove` ya da `pacman -Rns --noconfirm`); apt'ta PHP-FPM ve PostgreSQL
+- *Silinen ve kalan olarak söyledikleri (koddan):* paketli bir bileşenin birimleri,
+  varsa, durdurulur ve devre dışı bırakılır (birimi olmayan bir araçta — certbot,
+  güvenlik duvarı motoru, phpMyAdmin, phpPgAdmin — durdurulacak bir şey yoktur);
+  ardından apt (`apt-get purge -y --auto-remove`) paketlerini yapılandırma
+  dosyalarıyla ve artık hiçbir şeyin ihtiyaç duymadığı, otomatik kurulmuş her
+  paketle — yalnız onun için kurulanlar değil, sistemin tamamında — kaldırır;
+  pacman (`pacman -Rns --noconfirm`) ise yapılandırma dosyaları ve başka hiçbir
+  şeyin ihtiyaç duymadığı bağımlılıklarıyla kaldırır; apt'ta PHP-FPM ve PostgreSQL
   kurulu her sürümü de götürür; bir spam süzgeci Postfix'in süzgeç zincirinden
   çıkarılır; phpMyAdmin ve phpPgAdmin veritabanı araçlarının sunucusundan
   çıkarılır; Roundcube'un kaldırılması uygulama ağacını (ayarları ve adres defteri
-  veritabanıyla) ve `/webmail/` kaydını siler. CelikPanel kendisi başka hiçbir şey
-  silmez; bir paketin kendi kaldırma betiği o paketin oluşturduğu verileri
-  silebilir ve bir veritabanı motoru için pencere önce yedek alınmasını söyler.
-  Tablonun tamamı D-037 değişikliğindedir.
+  veritabanıyla) ve `/webmail/` kaydını siler, Nginx ve PHP-FPM paketleri kalır.
+  Bu paket yöneticisinde bileşen için katalog paketi yoksa (pacman'da Redis,
+  SpamAssassin, phpPgAdmin) pencere Kaldır'ın reddedileceğini ("bu sistemde henüz
+  otomatik olarak kaldırılamaz") ve hiçbir şeyin değişmeyeceğini söyler; **kim
+  hareket eder:** bileşen gitmek zorundaysa sunucu sahibi, işletim sisteminin
+  paket yöneticisiyle. CelikPanel kendisi başka hiçbir şey silmez; bir paketin
+  kendi kaldırma betiği o paketin oluşturduğu verileri silebilir. Tablonun
+  tamamı D-037 değişikliğindedir.
 - DNS motorları kendi akışlarını korur (Sunucu → DNS ve eş sunucular); yerel cron
   asla kaldırılmaz; Roundcube kalıntı temizliği kendi listesini korur.
 

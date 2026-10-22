@@ -425,15 +425,24 @@ Kabul edilen kurallar:
      kullandığı küçük koşullarla yanıt verir; böylece pencere kaldırmanın
      yapmadığı bir şeyi vaat edemez.
    - **Panel'in zaten tuttuğundan.** `GET /api/v1/service/removal-impact` (yalnız
-     yöneticiler, salt-okunur, yeni Agent çağrısı yok) kataloğu, saklanan bileşen
-     kaydını ve Panel veritabanını okur. Şunları adlandırır: Panel'in bileşen
-     üzerinde barındırdıkları (web sunucusu için siteler; bir çalışma ortamı için
-     PHP ya da Node.js siteleri; bir motor için veritabanları; Postfix ve Dovecot
-     için e-posta adresleri ve yönlendirmeler; bir spam süzgeci için posta alan
-     adları; Roundcube için posta kutuları), ona ihtiyaç duyan kurulu bileşenler,
+     yöneticiler, salt-okunur: yeni Agent çağrısı ve değişiklik yok; sunucu
+     profili önbellekteki Agent bilgilerinden gelebilir, güvenlik duvarı motoru
+     için duvarın durumu var olan okumayla, sınırlı biçimde okunur) kataloğu,
+     saklanan bileşen kaydını, Panel veritabanını ve panel sertifikası dosyasını
+     okur. Şunları adlandırır: Panel'in bileşen üzerinde barındırdıkları (web
+     sunucusu için siteler; bir çalışma ortamı için PHP ya da Node.js siteleri;
+     bir motor için veritabanları; Postfix ve Dovecot için e-posta adresleri ve
+     yönlendirmeler; bir spam süzgeci için posta alan adları; Roundcube için posta
+     kutuları; certbot için Panel'in onunla yenilediği, yenilenmesi duracak
+     sertifikalar — panelin, posta sunucusunun ve her Let's Encrypt site
+     sertifikası —; güvenlik duvarı motoru için artık uygulanmayacak panel
+     güvenlik duvarı: açık ve N açık port, kapalı ya da bilinmiyor; Redis, Valkey
+     ve Memcached için yalnız CelikPanel'in onları hangi sitelerin kullandığını
+     kaydetmediği), sunucu kurulumunun certbot'u ve güvenlik duvarı motorunu
+     hazırladığı her sunucuda gerektirdiği, ona ihtiyaç duyan kurulu bileşenler,
      eksik bıraktığı hazır paketler ve güvenlik duvarından istediği portlar;
-     bunların hiçbiri yoksa "Bu sunucuda başka hiçbir şey X bileşenine bağlı
-     değil". Barındırılan adlardan en çok beşi, ardından "+N tane daha"
+     yalnız bunların hiçbiri yoksa "Bu sunucuda başka hiçbir şey X bileşenine
+     bağlı değil". Barındırılan adlardan en çok beşi, ardından "+N tane daha"
      gösterilir.
    - **Bir kez, görünür biçimde okunur ve asla engel olmaz.** Pencere açılınca
      okur, okuduğunu gösterir; 10 saniye sonra, bir retle ya da okuyamadığı bir
@@ -452,11 +461,14 @@ Kaldırma yolunun yaptığı, pencerenin söylediği biçimde (bu adayın kodund
 
 | Bileşen sınıfı | Silinenler | Yerinde kalanlar |
 | --- | --- | --- |
-| Paketli bileşen (hizmetler ve araçlar) | Birimleri durdurulur ve devre dışı bırakılır (`systemctl disable --now`), ardından katalog paketleri `apt-get purge -y --auto-remove` (apt) ya da `pacman -Rns --noconfirm` (pacman) ile kaldırılır: paketler, yapılandırma dosyaları ve yalnız onlar için kurulmuş paketler. Güvenlik duvarı açıksa yalnız onun istediği portlar kapanır (güvenlik duvarı kurulu kalanlara göre yeniden ayarlanır). | CelikPanel kendisi başka hiçbir şey silmez (site dosyaları, posta kutuları, veritabanı dosyaları). Bir paketin soru sormadan çalışan kendi kaldırma betiği o paketin oluşturduğu verileri silebilir; hangilerinin silineceği CelikPanel'in değil dağıtım paketinin kararıdır ve iddia edilmez. |
-| apt'ta PHP-FPM ve PostgreSQL | Yukarıdaki gibi; ayrıca katalogdaki üretici desenine uyan her kurulu sürüm paketi (`php8.3-fpm`, `postgresql-17`, …) ve yol arkadaşları. pacman'da yalnız katalog paketleri. | Yukarıdaki gibi. Bir veritabanı motoru için pencere, veritabanı dosyalarının silinip silinmeyeceğinin paketin kaldırma betiğinin kararı olduğunu ve önce yedek alınmasını ekler. |
+| Paketli bileşen (hizmetler ve araçlar) | Katalog birim adlandırıyorsa birimleri durdurulur ve devre dışı bırakılır (`systemctl disable --now`); birimi olmayan bir araçta (certbot, nftables, phpMyAdmin, phpPgAdmin) durdurulacak bir şey yoktur. Ardından katalog paketleri kaldırılır. **apt** (`apt-get purge -y --auto-remove`): paketler, yapılandırma dosyaları ve artık hiçbir şeyin ihtiyaç duymadığı, otomatik kurulmuş her paket — yalnız bu bileşen için kurulanlar değil, sistemin tamamında. **pacman** (`pacman -Rns --noconfirm`): paketler, yapılandırma dosyaları ve başka hiçbir şeyin ihtiyaç duymadığı bağımlılıkları. Güvenlik duvarı açıksa yalnız onun istediği portlar kapanır (güvenlik duvarı kurulu kalanlara göre yeniden ayarlanır). | CelikPanel kendisi başka hiçbir şey silmez (site dosyaları, posta kutuları, veritabanı dosyaları). Bir paketin soru sormadan çalışan kendi kaldırma betiği o paketin oluşturduğu verileri silebilir; hangilerinin silineceği CelikPanel'in değil dağıtım paketinin kararıdır ve iddia edilmez. |
+| apt'ta PHP-FPM ve PostgreSQL | Yukarıdaki gibi; ayrıca katalogdaki üretici desenine uyan her kurulu sürüm paketi (`php8.3-fpm`, `postgresql-17`, …) ve yol arkadaşları. pacman'da yalnız katalog paketleri. | Yukarıdaki gibi. Bir veritabanı motoru için pencere, silinenlerin altında kendi uyarı satırıyla, veritabanı dosyalarının paketin kaldırma betiğince silinebileceğini ve önce yedek alınmasını söyler. |
 | Spam süzgeci (Rspamd, SpamAssassin) | Paketli bileşen gibi; ayrıca Postfix'in süzgeç zinciri onsuz yeniden kurulur. | Yukarıdaki gibi; posta kalır, artık spam denetiminden geçmez. |
 | phpMyAdmin, phpPgAdmin | Paketli bileşen gibi; ayrıca veritabanı araçlarının sunucusu onsuz yeniden ayarlanır. | Yukarıdaki gibi. |
-| Roundcube | Paket değildir: `/var/lib/celikpanel-webmail` altındaki uygulama ağacı (ayarları ve adres defteri veritabanı dahil) ve `/webmail/` adresini sunan web sunucusu kaydı. | Posta kutuları ve Maildir verileri, diğer siteler, Nginx, PHP-FPM ve kurulu paketler. |
+| certbot | Paketli bileşen gibi (birimi yok). Panel'in onunla yenilediği sertifikaların (panelin, posta sunucusunun, sitelerin) yenilenmesi durur. | Yukarıdaki gibi. |
+| Güvenlik duvarı motoru (nftables) | Paketli bileşen gibi (birimi yok). Panel güvenlik duvarı artık uygulanmaz. | Yukarıdaki gibi. |
+| Bu paket yöneticisi için katalog paketi olmayan bileşen (pacman'da Redis, SpamAssassin, phpPgAdmin) | Hiçbir şey: Agent reddeder ("bu sistemde henüz otomatik olarak kaldırılamaz") ve pencere purge yerine bunu söyler. | Her şey. |
+| Roundcube | Paket değildir: `/var/lib/celikpanel-webmail` altındaki uygulama ağacı (ayarları ve adres defteri veritabanı dahil) ve `/webmail/` adresini sunan web sunucusu kaydı. | Posta kutuları ve Maildir verileri, diğer siteler ile Nginx ve PHP-FPM paketleri. |
 | Reddedilen kaldırma (Panel'in bildiği siteler, veritabanları ya da e-posta adresleri) | Hiçbir şey: Panel adlarıyla reddeder. | Her şey. |
 
 Bunu kurarken alınan uygulama kararları (sahip kararı sanılmasın diye
@@ -475,6 +487,29 @@ belirtilir):
   önceden olduğu gibi pencerede gösterilir.
 - **Paket yöneticisinin komutu** silinenler cümlesinin altında adlandırılır (yalnız
   apt ve pacman için); böylece sahip neyin çalıştığını tanır.
+
+**İnceleme düzeltmeleri (22 Ekim 2026, her yayından önce).** Adayın bağımsız
+incelemesi kaldırma davranışını değişmemiş buldu ve şunları istedi; kaynaktadırlar:
+
+- "Bu sunucuda başka hiçbir şey X bileşenine bağlı değil" cümlesi, sunucu
+  kurulumunun gerektirdiği ve Panel'in her sertifikayı onunla yenilediği ve
+  güvenlik duvarını onunla uyguladığı certbot ile güvenlik duvarı motoru için
+  yanlıştı; pencere artık o sertifikaları ve güvenlik duvarının durumunu
+  adlandırır ve ikisini de sunucu kurulumunun gerektirdiğini söyler. Redis,
+  Valkey ve Memcached için yalnız CelikPanel'in onları hangi sitelerin
+  kullandığını kaydetmediğini söyler.
+- apt'ın `--auto-remove`'u sistemin tamamını kapsar; pencere bunu paket ailesine
+  göre söyler.
+- Veritabanı uyarısı "yerinde kalanlar" değil, silinenlerin altında kendi
+  satırıdır.
+- Birimi olmayan bir araç için durdurulduğu söylenmez.
+- Katalog paketi olmayan bir paket ailesinde, Agent'ın reddettiği gibi kaldırmanın
+  reddedileceği söylenir; purge ve komut yoktur.
+- Roundcube'un kalanlar cümlesi Nginx ve PHP-FPM paketlerini adlandırır
+  (`/webmail/` kaydı silinir); Roundcube için başarısız bir okuma, paket purge'ünü
+  değil kaldırmanın sildiğini gösterir.
+- Agent'ın kaldırma ve güncelleme testleri değiştiği için Agent testleri
+  (`go test ./cmd/agent/...`, temiz bir mount ad alanında) koşturulur ve kaydedilir.
 
 Bunun yetkilendirmedikleri: Bileşenler sayfasında başka hiçbir değişiklik
 (satırlar, düğmeler, şeritler, rozetler ve katlama olduğu gibi kalır), "⋯" menüsü,

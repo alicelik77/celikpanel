@@ -9788,12 +9788,19 @@ X?". The dialog reads, once, what the removal affects on this server.
 - *While it reads:* "Reading what removing X affects on this server…" with a
   spinner. **Who must act:** nobody. Remove stays available; the read changes
   nothing.
-- *What it shows:* "What is removed" (what the uninstall path does for this
-  component, the packages and, on apt and pacman, the package manager command),
-  "Affected on this server" (what the Panel hosts on it by name, up to five and
-  then "+N more"; the installed components that need it; the ready bundles it
-  leaves incomplete; the ports it asked the firewall for; or "Nothing else on
-  this server depends on X") and "What stays".
+- *What it shows:* "Affected on this server" first (what the Panel hosts on it by
+  name, up to five and then "+N more"; for certbot the certificates it renews —
+  the panel's, the mail host's, the sites' — whose renewal stops; for the
+  firewall engine the panel firewall (on with N open ports, off, or not known),
+  which is no longer enforced; for Redis, Valkey and Memcached that CelikPanel
+  does not record which sites use them; that server setup requires certbot and
+  the firewall engine; the installed components that need it; the ready bundles
+  it leaves incomplete; the ports it asked the firewall for; only with none of
+  these, "Nothing else on this server depends on X"), then "What is removed"
+  (what the uninstall path does for this component, the packages and, on apt and
+  pacman, the package manager command; for a database engine a warning line that
+  the database files may be deleted by the package's removal script, so back them
+  up first) and "What stays".
 - *When hosted things block the removal:* "CelikPanel does not remove X while
   these exist: move or delete them first." **Who must act:** the administrator.
   **Next action:** move or delete the named sites, databases or mail addresses
@@ -9806,17 +9813,25 @@ X?". The dialog reads, once, what the removal affects on this server.
   This is an unknown result, not a failure and not a refusal. **Who must act:** the
   administrator, if they want the list: Retry (a read only). The old general
   warning is shown under it. The Panel's own refusals still answer Remove.
-- *What it says is removed and kept (from the code):* a package component's units
-  are stopped and disabled, then its packages are removed with their configuration
-  files and the packages installed only for them (`apt-get purge -y
-  --auto-remove` or `pacman -Rns --noconfirm`); on apt PHP-FPM and PostgreSQL take
-  every installed version with them; a spam filter is taken out of Postfix's
-  filter chain; phpMyAdmin and phpPgAdmin are taken out of the database tools'
-  server; Roundcube's removal deletes its application tree (with its settings and
-  address-book database) and the `/webmail/` entry. CelikPanel deletes nothing
-  else itself; a package's own removal script may delete data the package created,
-  and for a database engine the dialog says to back up first. The full table is
-  in the D-037 amendment.
+- *What it says is removed and kept (from the code):* a package component's units,
+  when it has any, are stopped and disabled (a tool without units — certbot, the
+  firewall engine, phpMyAdmin, phpPgAdmin — has nothing to stop); then apt
+  (`apt-get purge -y --auto-remove`) removes its packages with their configuration
+  files and any automatically installed package that nothing needs any more,
+  system-wide and not only those installed for it, while pacman (`pacman -Rns
+  --noconfirm`) removes them with their configuration files and the dependencies
+  nothing else needs; on apt PHP-FPM and PostgreSQL take every installed version
+  with them; a spam filter is taken out of Postfix's filter chain; phpMyAdmin and
+  phpPgAdmin are taken out of the database tools' server; Roundcube's removal
+  deletes its application tree (with its settings and address-book database) and
+  the `/webmail/` entry, and the Nginx and PHP-FPM packages stay. Where this
+  package manager has no catalogue packages for the component (Redis,
+  SpamAssassin, phpPgAdmin on pacman) the dialog says Remove is refused ("cannot
+  be removed automatically on this system yet") and nothing is changed; **who
+  acts:** the server owner, with the operating system's package manager, if the
+  component must go. CelikPanel deletes nothing else itself; a package's own
+  removal script may delete data the package created. The full table is in the
+  D-037 amendment.
 - The DNS engines keep their own workflow (Server → DNS and peer servers); native
   cron is never removed; the leftovers cleanup of Roundcube keeps its own list.
 

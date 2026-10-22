@@ -7044,8 +7044,10 @@ not a claim that the native update and automatic-rollback resilience is complete
 - **What this release touches.** One read-only Panel route,
   `GET /api/v1/service/removal-impact` (administrators only through the
   `/api/v1/service/` prefix; `no-store`; it reads the catalogue, the stored component
-  record and the Panel's database; no Agent call, no scan, no write; no stored
-  record answers `SERVICE_STATE_UNVERIFIED`). The uninstall handler and
+  record, the Panel's database and the panel certificate file; no new Agent call
+  and no mutation: the host profile may come from cached Agent facts, and for the
+  firewall engine the firewall's state is read through the existing read, bounded;
+  no stored record answers `SERVICE_STATE_UNVERIFIED`). The uninstall handler and
   `Agent.UninstallService` now ask the same named conditions the route reports
   (`uninstallRewiresMailFilters`, `uninstallReconfiguresDatabaseTools`,
   `core.UninstallPurgesAllVersions`); what they do is unchanged. The web interface:
@@ -7080,8 +7082,8 @@ not a claim that the native update and automatic-rollback resilience is complete
   behaviour:** nothing is lost or needs repairing. The sequence floor ordering of
   100 over 99 is proven by the Agent, Panel, policy and recovery-foundation tests.
   Not measured on an installed server.
-- **Evidence and open.** On the candidate tree: Go `go test ./cmd/panel/ ./internal/...` (-timeout 45m, CGO off) in the `CelikPanel-S2-Debian` guest: 64 packages ok, 2904 top-level tests passed, 42 skipped, 0 failed (4282 subtests passed); gofmt clean and `go vet ./cmd/... ./internal/...` clean; web `npm test`
-  1734 of 1734 passed; the build within its budgets (critical boot path
+- **Evidence and open.** On the candidate tree: Go `go test ./cmd/panel/ ./internal/...` (-timeout 45m, CGO off) in the `CelikPanel-S2-Debian` guest: 64 packages ok, 2909 top-level tests passed, 42 skipped, 0 failed (4282 subtests passed); `go test ./cmd/agent/...` in a clean mount namespace: 1821 top-level tests passed, 29 skipped, 0 failed (2838 subtests passed); gofmt clean and `go vet ./cmd/... ./internal/...` clean; web `npm test`
+  1739 of 1739 passed; the build within its budgets (critical boot path
   331.08 KiB of 361 KiB; no limit raised); the release sequence policy, download
   portal and signed release manifest contracts and the release-recovery harness
   passed; browser batch 25 looked at twice. The numbers are in the [release
@@ -7091,3 +7093,14 @@ not a claim that the native update and automatic-rollback resilience is complete
   dialog's lists hold only what the Panel records; everything the alpha.90 to
   alpha.99 entries leave open stays open. Installed panels are updated only by
   their owners, from the panel's own update screen. P0.1 to P0.5 stay partial.
+- **Review corrections (2026-10-22, before any publication).** Invariant 2 again:
+  the dialog said "Nothing else on this server depends on X" for certbot and the
+  firewall engine, which server setup requires and through which the Panel renews
+  its certificates and enforces its firewall; it now names those certificates and
+  the firewall's state and says that server setup requires both, says only that
+  CelikPanel does not record which sites use a cache, says apt's system-wide
+  `--auto-remove` and pacman's dependency removal per family, puts the database
+  warning on its own line, does not say a unit-less tool is stopped, says a
+  family without catalogue packages is refused (as the Agent refuses it), and
+  names Roundcube's kept packages exactly. The Agent tests are recorded above.
+  The removal itself is unchanged.

@@ -36,17 +36,25 @@ stays available. Then it shows three parts:
   sites for a runtime, databases for a database engine, mail addresses and
   forwardings for Postfix and Dovecot, mail domains whose mail is no longer
   checked for spam for Rspamd or SpamAssassin, mailboxes that lose webmail for
-  Roundcube. When those things make the panel refuse the removal, a bold line says
-  "CelikPanel does not remove X while these exist: move or delete them first."
-  Then the installed components that need it ("Components that need X and stop
-  working: …"), the ready bundles it leaves incomplete ("The ready bundle
-  "Nginx + PHP-FPM" becomes incomplete."), and the ports it asked the firewall for.
-  With none of these: "Nothing else on this server depends on X."
+  Roundcube, and for certbot the certificates the panel renews with it (the
+  panel's, the mail host's, the sites') with "Their renewal stops." When those
+  things make the panel refuse the removal, a bold line says "CelikPanel does not
+  remove X while these exist: move or delete them first." For the firewall engine:
+  "The panel firewall (on, N open ports) is no longer enforced." (or that it is
+  off now and cannot be turned on without it, or that its state could not be
+  read). For Redis, Valkey and Memcached: "CelikPanel does not record which sites
+  use X." For certbot and the firewall engine: "Server setup requires X on every
+  server it prepares…". Then the installed components that need it ("Components
+  that need X and stop working: …"), the ready bundles it leaves incomplete ("The
+  ready bundle "Nginx + PHP-FPM" becomes incomplete."), and the ports it asked the
+  firewall for. Only with none of these: "Nothing else on this server depends on X."
 - **What is removed:** what the panel's removal really does for this component
-  (below), the packages, and the package manager command on apt and pacman.
+  (below), the packages, and the package manager command on apt and pacman. For a
+  database engine a warning line follows: the database files may be deleted by the
+  package's own removal script, which runs without asking; back them up first.
 - **What stays:** CelikPanel deletes nothing else itself; a package's own removal
   script may delete data that package created, and that is the distribution
-  package's decision. For a database engine: back up the database files first.
+  package's decision.
 
 If the read fails or takes longer than 10 seconds: "What removing X affects on this
 server could not be read. Nothing was changed. You can still remove it, but check
@@ -59,11 +67,14 @@ What the dialog says is removed and kept, from the code of this release:
 
 | Component | Removed | Stays |
 | --- | --- | --- |
-| A package component | Its services are stopped and kept from starting at boot; its packages are removed with `apt-get purge -y --auto-remove` or `pacman -Rns --noconfirm`: the packages, their configuration files and the packages installed only for them. The firewall, if on, is set again from what stays installed. | Site files, mailboxes and database files are not touched by CelikPanel. A package's own removal script, which runs without questions, may delete data it created; which data is not claimed. |
-| PHP-FPM, PostgreSQL on apt | As above, plus every installed version (`php8.3-fpm`, `postgresql-17`, …) and the packages installed beside each. | As above; the database engine adds "back up first". |
+| A package component | Its services, if the catalogue names any, are stopped and kept from starting at boot (certbot, the firewall engine, phpMyAdmin and phpPgAdmin have none). On apt, `apt-get purge -y --auto-remove` removes the packages, their configuration files and any automatically installed package that nothing needs any more — system-wide, not only those installed for it. On pacman, `pacman -Rns --noconfirm` removes the packages, their configuration files and their dependencies that nothing else needs. The firewall, if on, is set again from what stays installed. | Site files, mailboxes and database files are not touched by CelikPanel. A package's own removal script, which runs without questions, may delete data it created; which data is not claimed. |
+| PHP-FPM, PostgreSQL on apt | As above, plus every installed version (`php8.3-fpm`, `postgresql-17`, …) and the packages installed beside each. | As above; a database engine adds the warning to back up first. |
 | Rspamd, SpamAssassin | As above, and Postfix stops passing mail through it. | Mail stays; it is no longer checked for spam. |
 | phpMyAdmin, phpPgAdmin | As above, and the panel stops serving its pages. | As above. |
-| Roundcube | Its application files, its own settings and address-book database, and the `/webmail/` entry. | Mailboxes and Maildir data, other sites, Nginx, PHP-FPM and the packages. |
+| certbot | As above. The certificates the panel renews with it stop being renewed. | As above. |
+| The firewall engine (nftables) | As above. The panel firewall is no longer enforced. | As above. |
+| No catalogue packages on this package manager (Redis, SpamAssassin, phpPgAdmin on pacman) | Nothing: Remove is refused ("cannot be removed automatically on this system yet"). | Everything. |
+| Roundcube | Its application files, its own settings and address-book database, and the `/webmail/` entry. | Mailboxes and Maildir data, other sites, and the Nginx and PHP-FPM packages. |
 
 **The first visit to Components** opens "Installed". "Catalog" opens only when you
 chose it before (the choice is remembered in the browser, as before). A Roundcube
@@ -80,10 +91,12 @@ CelikPanel updates.
 
 - **A read-only answer for the dialog:** `GET /api/v1/service/removal-impact?service_id=…`
   (administrators only, through the `/api/v1/service/` prefix; `Cache-Control:
-  no-store`). It reads the catalogue, the stored component record and the panel's
-  database; it never asks the Agent, scans or writes. No stored record yet:
-  `SERVICE_STATE_UNVERIFIED`. The DNS engines keep `DNS_ENGINE_WORKFLOW_REQUIRED`,
-  native cron `NATIVE_CRON_REMOVAL_REFUSED`.
+  no-store`). It reads the catalogue, the stored component record, the panel's
+  database and the panel certificate file; no new Agent call and no mutation (the
+  host profile may come from cached Agent facts, and for the firewall engine the
+  firewall's state is read through the existing read, bounded to 5 seconds). No
+  stored record yet: `SERVICE_STATE_UNVERIFIED`. The DNS engines keep
+  `DNS_ENGINE_WORKFLOW_REQUIRED`, native cron `NATIVE_CRON_REMOVAL_REFUSED`.
 - **One set of conditions.** The uninstall handler and the Agent's uninstall now ask
   the same small questions the answer reports (whether Postfix's filter chain is
   set again, whether the database tools are set again, and
@@ -124,13 +137,31 @@ updater, the schema (44, no migration) and polling. No native record is made, by
 the owner's instruction of 2026-10-16 (no native record unless the updater's
 mutation path changes).
 
+## Review corrections
+
+An independent review of the candidate found the removal behaviour unchanged and
+asked for these before any publication; they are in source: certbot and the
+firewall engine were said to have nothing depending on them (they now name the
+certificates whose renewal stops, the panel firewall, and server setup's
+requirement); the caches now say only that CelikPanel does not record which sites
+use them; apt's system-wide `--auto-remove` and pacman's dependency removal are
+said per family; the database warning is its own line under what is removed; a
+tool without units is not said to be stopped; a package family without catalogue
+packages is said to be refused, with no purge; Roundcube's kept sentence names the
+Nginx and PHP-FPM packages and its failed read shows what its removal deletes; the
+Agent tests are run and recorded. A second, shorter browser look (the removal
+dialog for Nginx, PostgreSQL, Postfix, certbot and the firewall engine, the read
+held open and refused; 4 configurations, 28 screenshots) found nothing more;
+screenshots and the driver deleted.
+
 ## Known gaps
 
 - Nothing is measured on an installed server.
 - What a distribution package's own removal script deletes (for example a
   database's data directory on purge) is neither read nor claimed; the dialog says
   who decides.
-- The dialog's lists come from what the panel records. Something configured outside
+- The dialog's lists come from what the panel records; for the caches it says
+  so. Something configured outside
   the panel that uses a component is not known to it.
 - Settings' "Get certificate" button is 34 px tall on a phone (older than this
   release, unchanged).
@@ -141,9 +172,9 @@ mutation path changes).
 
 On the candidate tree:
 
-- Go: `go test ./cmd/panel/ ./internal/...` (-timeout 45m, CGO off) in the `CelikPanel-S2-Debian` guest: 64 packages ok, 2904 top-level tests passed, 42 skipped, 0 failed (4282 subtests passed); gofmt clean and `go vet ./cmd/... ./internal/...` clean.
-- Web: `npm test` 1734 of 1734 passed (new: `tests/removal-dialog-alpha100.test.mjs`,
-  14 tests; `tests/server-setup-page-alpha100.test.mjs`, 10 tests; a three-digit
+- Go: `go test ./cmd/panel/ ./internal/...` (-timeout 45m, CGO off) in the `CelikPanel-S2-Debian` guest: 64 packages ok, 2909 top-level tests passed, 42 skipped, 0 failed (4282 subtests passed); `go test ./cmd/agent/...` in a clean mount namespace (empty bind mounts over `/var/lib/celikpanel-agent-private` and `/run/celikpanel`, a copy of `/etc/group` without the host's `celikpanel` group; the host untouched): 1821 top-level tests passed, 29 skipped, 0 failed (2838 subtests passed); gofmt clean and `go vet ./cmd/... ./internal/...` clean.
+- Web: `npm test` 1739 of 1739 passed (new: `tests/removal-dialog-alpha100.test.mjs`,
+  19 tests; `tests/server-setup-page-alpha100.test.mjs`, 10 tests; a three-digit
   version case in `tests/panel-update-discovery-mounted.test.mjs`); `npm run build`
   within every budget (critical boot path 331.08 KiB of 361 KiB; the limits were
   not raised).
