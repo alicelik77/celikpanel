@@ -9852,3 +9852,16 @@ DNS record managed by server setup points there too. Settings keeps Panel addres
 and HTTPS, License and CelikPanel updates. Administrators only, as before.
 
 P0.1-P0.5 stay **partial**; this entry closes and advances nothing.
+
+### Installed servers after the alpha.100 publication (2026-10-22)
+
+v0.1.0-alpha.100 was published on 2026-10-22 (release at 19:03:06Z, then the
+download portal at about 19:16Z). **Who must act:** the owner, who decides when to
+update each server, from the panel's own update screen; nothing else is needed.
+Nothing from alpha.99 or alpha.100 is on an installed server yet, so nothing is
+inferred. **Open:** the new removal dialog, the installed view first and Server
+setup's new place are seen on no installed server. The same day the owner approved
+closing the September pull requests: all 53 (#151 to #203) were already on `main`
+through pull request #204 (alpha.81) and were closed with that evidence; no open
+pull requests remain. No text or screen was changed for this entry. P0.1-P0.5
+stay **partial**; this entry closes and advances nothing.

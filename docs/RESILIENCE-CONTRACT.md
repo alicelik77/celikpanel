@@ -7104,3 +7104,64 @@ not a claim that the native update and automatic-rollback resilience is complete
   family without catalogue packages is refused (as the Agent refuses it), and
   names Roundcube's kept packages exactly. A second round made a firewall answer that carries its own error "not known", words the firewall engine as CelikPanel no longer able to apply, change or restore the panel firewall (rules already loaded may stay until the server restarts), adds WireGuard's VPN peers and vsftpd's FTP accounts, narrows certbot's list to what the Panel renews and setup recorded, keeps the firewall read from waiting on a firewall change, and narrows the empty case to "CelikPanel records nothing else on this server that depends on X". The Agent tests are recorded above.
   The removal itself is unchanged.
+
+### Publication of v0.1.0-alpha.100 (no code change in the publication; invariants 2 and 6; D-022; D-024; D-025; D-037; 2026-10-22)
+
+D-025 invariants 2 (evidence has a meaning and a lifecycle: unknown is not
+absent, empty or success) and 6 (readiness, progress and access remain
+independent); D-022; D-024; D-037. **No P0 item is closed or advanced.** P0.1 to
+P0.5 stay partial and every open acceptance item stays open. This entry records
+one release; it changes no code, schema or recovery behaviour. 2026-10-22 is the
+clock date of everything in it.
+
+- **Publication.** All steps were done by the release preparer under the owner's
+  standing instruction; installed-panel updates are the owner's only. Three
+  independent review rounds came first (the removal dialog said "nothing depends"
+  for certbot, nftables and WireGuard; the wording about apt's automatic removal;
+  the database warning's place; an unknown firewall state shown as off; how
+  certificates were counted; FTP accounts mixed up with SFTP accounts), and all
+  of it was fixed; the uninstall behaviour was verified unchanged. Pull request
+  #238 merged as `3eeff24561799fb028c3c14f5da55a5de5bba866`; the
+  release sequence variable moved 99 to 100 before tagging; the main run and the
+  tag run succeeded. **One incident, which affected no release:** the first CI run
+  stopped on the Go toolchain contract because the decisions record contained a
+  literal test command line; the sentence was reworded and the chain run again.
+  Annotated tag `v0.1.0-alpha.100` (object
+  `7fc97f6efbc222d370b3518fa3fbde3fa854601f`, tree
+  `ffd7b6b6cbf90e9da0975bf298712d6a7db6268b`); pre-release at
+  2026-10-22T19:03:06Z with six assets; archive SHA-256
+  `2f3855ac9d31b1484b52da681b388b77fbe7ee318560244e9a7d2fcc8e2667b8`, 66,343,534
+  bytes; manifest sequence 100 with a verifying signature (the same key); `get.sh`
+  pins 100; policy 100 after 99. This is the first three-digit prerelease; every
+  place that carries or orders the version was read and none truncates or sorts it
+  as text. The portal package (SHA-256
+  `f59809d953ddd1a61095acc10b8a053bb87e50904a9bafbaf23f61416510198f`, built
+  twice identical) was published at about 19:16Z with previous v0.1.0-alpha.99:
+  committed, public verification 26 of 26,
+  `CELIKPANEL_DOWNLOAD_PORTAL_PUBLISHED`, and read from outside afterwards.
+  Checked by the preparer from a download in a WSL guest; reported by the
+  preparer, not recorded in a file here.
+- **Native record.** None for the publication, and none for alpha.100, by the
+  owner's instruction of 2026-10-16 and because no updater mutation path or schema
+  file changed. alpha.100's code is covered by component, mounted and mock-browser
+  tests only (see its candidate entry above).
+- **Installed panels.** Nothing from alpha.99 or alpha.100 on an installed server
+  had been reported when this was written, and none should be inferred (invariant
+  6: the publication of a release is not the state of any server). The same day
+  the owner approved closing the September pull requests; all 53 (#151 to #203)
+  were already on `main` through pull request #204 (alpha.81) and were closed with
+  that evidence, so no open pull requests remain; this changes no code or P0 item.
+- **Schema or version transition.** None: schema 44; the release sequence moved
+  99 to 100 in the release preparation. **Recovery behaviour.** Unchanged by the
+  publication and by alpha.100; the new route is read-only and starts no change.
+- **Open, left for a later release.** (1) Nothing from alpha.99 or alpha.100 is
+  measured on an installed server. (2) What a distribution package's own removal
+  script deletes is not read. (3) The setup plan's contact blocker still applies
+  to every plan; that is left for a later decision. (4) The pacman `-Rns` wording
+  in the removal dialog is slightly broad (harmless). None of them changes a P0
+  item.
+- **Open, carried over.** Everything the alpha.100 candidate entry and the
+  alpha.90 to alpha.99 entries leave open, among them: the new address not
+  confirmed by a message; open sessions not built; the scheduled update check not
+  run against a real Agent or the real release server; the rollback paths that
+  share the changed helpers exercised by contract tests only.

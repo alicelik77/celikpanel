@@ -1,9 +1,10 @@
-# v0.1.0-alpha.100 (candidate, not published)
+# v0.1.0-alpha.100 (published 2026-10-22)
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.100.tr.md)
 
-This is the release candidate that follows v0.1.0-alpha.99. It is not published;
-nothing from it is on an installed server. Written on 2026-10-22 on the branch
+This is the release that follows v0.1.0-alpha.99. It was published on 2026-10-22
+(see "Publication record" at the end); nothing from it is on an installed server
+yet. Written on 2026-10-22, as a candidate, on the branch
 `feat/alpha100-removal-and-setup`, from `main` after the publication record of
 alpha.99. It is the first release whose prerelease number has three digits.
 
@@ -204,3 +205,105 @@ On the candidate tree:
 
 Once published: from the panel's own update screen (Settings → CelikPanel updates),
 by the owner of the server. Nothing needs to be done before or after.
+
+## Publication record
+
+Everything below is dated 2026-10-22 (UTC unless a time zone is named). The merge,
+the tag, the checks, the portal publication and the read of the public site were
+done by the release preparer under the owner's standing instruction, as for the
+earlier releases; installed-panel updates are the owner's alone, from the panel's
+own update screen. No native record for the publication, by the owner's
+instruction. This entry stores none of the results below as a file in the
+repository.
+
+**What happened.**
+
+1. Three independent review rounds came before the release. They found that the
+   removal dialog said "nothing depends" for certbot, nftables and WireGuard; the
+   wording about apt's automatic removal; the database warning's place; an
+   unknown firewall state shown as off; how certificates were counted; and FTP
+   accounts mixed up with SFTP accounts. All of it was fixed (see "Review
+   corrections" above), and the uninstall behaviour was verified unchanged.
+2. Pull request #238, "Release v0.1.0-alpha.100: an honest removal dialog, the
+   installed view first, Server setup under Server", was merged into `main` as
+   commit `3eeff24561799fb028c3c14f5da55a5de5bba866`, authored by
+   Mehmet Ömer Efe Çelik. The release sequence variable was moved from 99 to 100
+   before the tag was made. The main run and the tag run both succeeded.
+   **One incident, which affected no release:** the first CI run stopped on the Go
+   toolchain contract because the decisions record contained a literal test
+   command line, which that contract forbids; the sentence was reworded and the
+   chain was run again.
+3. The annotated tag `v0.1.0-alpha.100` (object
+   `7fc97f6efbc222d370b3518fa3fbde3fa854601f`, tree
+   `ffd7b6b6cbf90e9da0975bf298712d6a7db6268b`, tagger Mehmet Ömer Efe Çelik)
+   points at the release commit. The release is a pre-release, published at
+   2026-10-22T19:03:06Z with six assets.
+4. Checked from a download in the WSL guest `CelikPanel-S2-Debian` on 2026-10-22
+   (preparer; not recorded in a file here): the archives are byte-identical,
+   66,343,534 bytes each, SHA-256
+   `2f3855ac9d31b1484b52da681b388b77fbe7ee318560244e9a7d2fcc8e2667b8`; the manifest
+   says sequence 100, `published_at` 2026-10-22T18:17:33Z (335 bytes, SHA-256
+   `761186023e57734efd8f7006a39a66d4f46a1ed0b365e19bf2f93cf49ffbe851`), and its
+   signature (SHA-256
+   `4a50a3df77ca4fb4f4be50fff9ab2285506f5414a240215a8ef56b10f43c7058`) verifies
+   with `openssl pkeyutl -verify -rawin -pubin` against the signing key (SHA-256
+   `7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb`, the same
+   key as before); both content guards returned 0; the build used Go go1.26.5,
+   CGO off, `-trimpath`. `libexec/get.sh` pins 100 (SHA-256
+   `0d02d0e80ce4f0fefb22abefaf6472b951711d4d9c51dd347caa4c66b38d4771`); the policy
+   inside says current 100, previous 99, previous commit
+   `7ce52a17b416f8ffcf64931e08a2c3234bfa2f51`. The archive has 268 members (244
+   files, 24 directories). The interface bundle is
+   `web/dist/assets/app-DBhnHj6L.js`, 260,590 bytes, SHA-256
+   `eaac271391e68ea15f2874e941d6e9fbdb0a2149af248047b8febf5c0ac717e2`. The
+   `bin/panel` executable contains `removal-impact`.
+5. **The first three-digit prerelease.** The manifest, the `get.sh` pins,
+   `latest.txt`, `latest.json`, `index.json` and the per-version paths carry
+   v0.1.0-alpha.100 and sequence 100 without truncation, and version ordering was
+   audited: it is numeric everywhere (see "Three-digit version audit" above).
+6. The portal package: `portal.tar.gz`, 133,059,310 bytes, SHA-256
+   `f59809d953ddd1a61095acc10b8a053bb87e50904a9bafbaf23f61416510198f`, 54
+   entries, built twice byte-identical (pre-signed mode); the promoter's own
+   extract and normalize step accepted it. Its pages link only
+   `github.com/alicelik77/...`. The contract test returned 0; the public
+   verifier's 17 tests and the promotion's 14 tests passed.
+7. At about 19:16Z the preparer published it, previous version v0.1.0-alpha.99,
+   target v0.1.0-alpha.100: status `committed`, public verification 26 of 26
+   requests, `CELIKPANEL_DOWNLOAD_PORTAL_PUBLISHED`.
+8. The backup of the previous site is
+   `/var/www/vhosts/celikpanel.net/portal-backups/httpdocs.before-v0.1.0-alpha.100.20261022T191552Z.433631.93e26e8f07fc857f`;
+   the upload was retained in
+   `/var/www/vhosts/celikpanel.net/.upload-portal-20261022T191506Z-v0.1.0-alpha.100-3189fdffecf0d9b0`.
+9. A read from outside after the publication:
+   `https://celikpanel.net/releases/latest.txt` says v0.1.0-alpha.100;
+   `latest.json` says version v0.1.0-alpha.100, sequence 100, with the commit and
+   the SHA-256 above.
+
+**What the owner reported.** Nothing from alpha.99 or alpha.100 on an installed
+server had been reported when this was written. On 2026-10-22 the owner also
+approved closing the September pull requests. All 53 (#151 to #203) were found
+already on `main` through pull request #204 (alpha.81) and were closed with that
+evidence. No open pull requests remain.
+
+**Not done, and what publication does not change.**
+
+- The installed servers were not updated to alpha.100 (or alpha.99) by the
+  release preparer. Only the owner updates them, from the panel's own update
+  screen.
+- Nothing from alpha.99 or alpha.100 has been measured on an installed server:
+  not the new removal dialog, not the installed view first, not Server setup's new
+  place, and not alpha.99's email change.
+- What a distribution package's own removal script deletes is not read, and
+  something configured outside the panel is not in the dialog's lists (see "Known
+  gaps" above).
+- The pacman `-Rns` wording in the removal dialog is slightly broad. It is
+  harmless and left as it is.
+- The setup plan's contact blocker still applies to every plan. Whether it should
+  is left for a later decision.
+- Not reported and not recorded: anything from Boston or Frankfurt on alpha.99 or
+  alpha.100, Frankfurt's package versions, and everything the earlier notes list
+  as not reported. Each is "not recorded", not "worked" and not "failed".
+- The limits of the earlier publication records (see the [alpha.88
+  notes](RELEASE-NOTES-v0.1.0-alpha.88.md)) are not reported as lifted.
+- Publication is not acceptance. P0.1 to P0.5 stay partial; no P0 item is closed
+  or advanced.

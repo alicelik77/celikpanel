@@ -9816,3 +9816,17 @@ yönlendirme de oraya gösterir. Ayarlar'da Panel adresi ve HTTPS, Lisans ve
 CelikPanel güncellemeleri kalır. Önceki gibi yalnız yöneticiler.
 
 P0.1-P0.5 **kısmi** kalır; bu girdi hiçbir şeyi kapatmaz ya da ilerletmez.
+
+### Alpha.100 yayımından sonra kurulu sunucular (2026-10-22)
+
+v0.1.0-alpha.100 22 Ekim 2026'da yayımlandı (sürüm 19:03:06Z'de, ardından indirme
+portalı yaklaşık 19:16Z'de). **Kim işlem yapar:** sahip; her sunucuyu ne zaman
+güncelleyeceğine panelin kendi güncelleme ekranından kendisi karar verir; başka
+bir şey gerekmez. alpha.99 ya da alpha.100'den henüz hiçbir şey bir kurulu
+sunucuda değil; hiçbir şey çıkarılmaz. **Açık:** yeni kaldırma penceresi, Kurulu
+görünümün önce açılması ve Sunucu kurulumunun yeni yeri hiçbir kurulu sunucuda
+görülmedi. Aynı gün sahip Eylül çekme isteklerinin kapatılmasını onayladı:
+53'ünün tamamı (#151–#203) #204 numaralı çekme isteği (alpha.81) aracılığıyla
+zaten `main`'deydi ve bu kanıtla kapatıldı; açık çekme isteği kalmadı. Bu girdi
+için hiçbir metin ya da ekran değiştirilmedi. P0.1-P0.5 **kısmi** kalır; bu girdi
+hiçbir şeyi kapatmaz ya da ilerletmez.
