@@ -9776,3 +9776,61 @@ the proposed removal dialog, which names what is affected, better, and that is a
 candidate for the next release, not part of alpha.99. No text or screen was
 changed for this entry. P0.1-P0.5 stay **partial**; this entry closes and advances
 nothing.
+
+### Removing a component, the first Components visit and Server setup's new place (D-037 amendment, 2026-10-22)
+
+In source for the v0.1.0-alpha.100 candidate; nothing measured on an installed
+server. Read this before telling someone what removing a component does.
+
+**The removal dialog.** Components → the remove (bin) button on a row opens "Uninstall
+X?". The dialog reads, once, what the removal affects on this server.
+
+- *While it reads:* "Reading what removing X affects on this server…" with a
+  spinner. **Who must act:** nobody. Remove stays available; the read changes
+  nothing.
+- *What it shows:* "What is removed" (what the uninstall path does for this
+  component, the packages and, on apt and pacman, the package manager command),
+  "Affected on this server" (what the Panel hosts on it by name, up to five and
+  then "+N more"; the installed components that need it; the ready bundles it
+  leaves incomplete; the ports it asked the firewall for; or "Nothing else on
+  this server depends on X") and "What stays".
+- *When hosted things block the removal:* "CelikPanel does not remove X while
+  these exist: move or delete them first." **Who must act:** the administrator.
+  **Next action:** move or delete the named sites, databases or mail addresses
+  (Domains, Databases, a domain's Email tab). **How it resumes:** open the dialog
+  again; the Panel's refusal (`SERVICE_HAS_DEPENDENTS`) still names them if Remove
+  is pressed earlier, and nothing is changed by it.
+- *When the read fails or takes more than 10 seconds:* "What removing X affects on
+  this server could not be read. Nothing was changed. You can still remove it, but
+  check first: Domains and Databases show what runs on this server." with Retry.
+  This is an unknown result, not a failure and not a refusal. **Who must act:** the
+  administrator, if they want the list: Retry (a read only). The old general
+  warning is shown under it. The Panel's own refusals still answer Remove.
+- *What it says is removed and kept (from the code):* a package component's units
+  are stopped and disabled, then its packages are removed with their configuration
+  files and the packages installed only for them (`apt-get purge -y
+  --auto-remove` or `pacman -Rns --noconfirm`); on apt PHP-FPM and PostgreSQL take
+  every installed version with them; a spam filter is taken out of Postfix's
+  filter chain; phpMyAdmin and phpPgAdmin are taken out of the database tools'
+  server; Roundcube's removal deletes its application tree (with its settings and
+  address-book database) and the `/webmail/` entry. CelikPanel deletes nothing
+  else itself; a package's own removal script may delete data the package created,
+  and for a database engine the dialog says to back up first. The full table is
+  in the D-037 amendment.
+- The DNS engines keep their own workflow (Server → DNS and peer servers); native
+  cron is never removed; the leftovers cleanup of Roundcube keeps its own list.
+
+**The first visit.** Components opens the installed view the first time, and
+whenever the remembered choice is missing or unreadable. A remembered "Catalog"
+still opens the catalogue. A not-installed Roundcube row stays in the installed
+view while the Panel offers its leftovers cleanup.
+
+**Server setup's new place.** Server → Server setup (`/server-setup`), directly
+under Components: the setup's state, the server's purpose, "Extend this server's
+setup" and the link to the setup wizard. The Dashboard's "Server purpose" card
+links there. An old link or bookmark to Settings → Server setup
+(`/settings?section=setup`) arrives at the new page; the Panel's guidance for a
+DNS record managed by server setup points there too. Settings keeps Panel address
+and HTTPS, License and CelikPanel updates. Administrators only, as before.
+
+P0.1-P0.5 stay **partial**; this entry closes and advances nothing.
