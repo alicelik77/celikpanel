@@ -219,7 +219,12 @@ test('not-installed Roundcube keeps a fail-closed cleanup path across reloads', 
   const dialogStart = serviceList.indexOf('function UninstallServiceDialog');
   const dialog = serviceList.slice(dialogStart, serviceList.indexOf('// Firewall status', dialogStart));
   assert.match(dialog, /retryCleanup\s+\? t\('services\.cleanupWebmailTitle'\)/);
-  assert.match(dialog, /t\(retryCleanup \? 'services\.cleanupWebmailWarn' : 'services\.uninstallWarn'\)/);
+  // alpha.100: the cleanup keeps its own warning; a removal says what it
+  // affects, removes and keeps (RemovalImpactSection), and the old general
+  // warning only when that could not be read.
+  assert.match(dialog, /t\('services\.cleanupWebmailWarn'\)/);
+  assert.match(dialog, /<RemovalImpactSection/);
+  assert.match(serviceList, /t\('services\.uninstallWarn'\)/);
   assert.match(dialog, /!retryCleanup && \(/);
   assert.match(dialog, /error \? 'services\.retryWebmailCleanup' : 'services\.cleanupWebmail'/);
 
