@@ -9627,3 +9627,18 @@ server. **Who must act:** nobody for this; it is an observation. **Open:**
 Frankfurt's alpha.97 state was not reported; one screenshot is not a check of a
 kept reading or of a busy package manager on a real server. No text or screen was changed for this entry. P0.1-P0.5 stay **partial**;
 this entry closes and advances nothing.
+
+### Installed servers after the alpha.98 publication (2026-10-22)
+
+v0.1.0-alpha.98 was published on 2026-10-22 (release at 01:01:25Z, then the
+download portal at about 01:11Z). From this release on, the release commit, the
+tag and the pushes are made under the owner's own GitHub identity (Mehmet Ömer
+Efe Çelik); this changes who signs the publication steps, not what a server shows.
+**Who must act:** the owner, who decides when to update each server, from the
+panel's own update screen; nothing else is needed. Nothing from alpha.98 is on an
+installed server yet, and Frankfurt's update after its alpha.95 stop was not
+reported, so nothing is inferred. **Open:** the new layout is seen on no installed
+server; no screen changes the administrator's own email, which the panel
+certificate needs as its contact; open sessions are not built. No text or screen
+was changed for this entry. P0.1-P0.5 stay **partial**; this entry closes and
+advances nothing.

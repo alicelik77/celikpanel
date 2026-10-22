@@ -6774,3 +6774,61 @@ everything in it.
   2: what was seen is said, and no more). Frankfurt's alpha.97 state was not
   reported, so the open item of the D-034 amendment stays open, and a kept reading or
   a busy package manager on a real server has still not been seen.
+
+### Publication of v0.1.0-alpha.98 (no code change in the publication; invariants 2 and 6; D-022; D-024; D-025; D-037; 2026-10-22)
+
+D-025 invariants 2 (evidence has a meaning and a lifecycle: unknown is not
+absent, empty or success) and 6 (readiness, progress and access remain
+independent); D-022; D-024; D-037. **No P0 item is closed or advanced.** P0.1 to
+P0.5 stay partial and every open acceptance item stays open. This entry records
+one release; it changes no code, schema or recovery behaviour. 2026-10-22 is the
+clock date of everything in it.
+
+- **Publication.** All steps were done by the release preparer under the owner's
+  standing instruction; installed-panel updates are the owner's only. One
+  independent review came first (12 findings and one more, all fixed) and a
+  re-check found the release ready. Pull request #234 merged as
+  `c249a9ba236212bfcdf6eddb590f55bccc5bac9c`; the release sequence variable moved
+  97 to 98 before tagging; the main run and the tag run succeeded; annotated tag
+  `v0.1.0-alpha.98` (object `8696ddbc3880bf2fd2cf794f0c1cc03e27065c86`, tree
+  `838d69121bf3213d7a71ec6fbf7437f7575413aa`); pre-release at
+  2026-10-22T01:01:25Z with six assets; archive SHA-256
+  `23820e87c8266e8321937ae9a2ea2a4b9864b1fd6fa30dace900836365948279`, 66,317,470
+  bytes; manifest sequence 98 with a verifying signature (the same key); `get.sh`
+  pins 98; policy 98 after 97. The portal package (SHA-256
+  `1cb3374ee47f73f3b45a2b5a9ce12888bda0dd59d9a2ef2bb3a0ef64de416174`, built
+  twice identical) was published at about 01:11Z with previous v0.1.0-alpha.97:
+  committed, public verification 26 of 26,
+  `CELIKPANEL_DOWNLOAD_PORTAL_PUBLISHED`, and read from outside afterwards.
+  Checked by the preparer from a download in a WSL guest; reported by the
+  preparer, not recorded in a file here. The release chain ran cleanly, with no
+  incident.
+- **Identity.** From alpha.98 on, the release commit on `main`, the annotated tag
+  and the pushes are made as Mehmet Ömer Efe Çelik <momerefe@gmail.com>: on
+  2026-10-21 and 22 the owner gave the `momerefe` account write access and logged
+  the GitHub CLI in as that account. This changes who signs the publication
+  steps, not what they check; the signed manifest and its key are the same as
+  before.
+- **Native record.** None for the publication, and none for alpha.98, by the
+  owner's instruction of 2026-10-16 and because the updater's mutation path is
+  unchanged. alpha.98's code is covered by component, mounted and mock-browser
+  tests only (see its candidate entry above).
+- **Installed panels.** Boston's alpha.97 versions are recorded in the entry
+  above. Nothing from alpha.98 on an installed server is recorded, and none should
+  be inferred (invariant 6: the publication of a release is not the state of any
+  server). Frankfurt's update after its alpha.95 stop was not reported.
+- **Schema or version transition.** None: schema 44; the release sequence moved
+  97 to 98 in the release preparation. **Recovery behaviour.** Unchanged by the
+  publication and by alpha.98, apart from what the candidate entry describes (an
+  old address from a bookmark lands on alpha.97's Dashboard after a return to
+  alpha.97).
+- **Open, left for a later release.** (1) The new layout is seen on no installed
+  server. (2) No screen changes an administrator's own email, which the panel
+  certificate needs as its contact (D-037). (3) Open sessions are not built. (4)
+  Frankfurt's update after its alpha.95 stop was not reported. None of them
+  changes a P0 item.
+- **Open, carried over.** Everything the alpha.98 candidate entry and the
+  alpha.90 to alpha.97 entries leave open, among them: the scheduled update check
+  not run against a real Agent or the real release server; the update card and
+  notices not yet seen on an installed server; the rollback paths that share the
+  changed helpers exercised by contract tests only.

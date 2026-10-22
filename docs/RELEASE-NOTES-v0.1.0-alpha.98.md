@@ -1,11 +1,11 @@
-# v0.1.0-alpha.98 (candidate, 2026-10-22)
+# v0.1.0-alpha.98 (published 2026-10-22)
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.98.tr.md)
 
-This is the release that follows v0.1.0-alpha.97. It is a candidate: when this was
-written it had not been tagged or published, and nothing from it was on an installed
-server. Written on 2026-10-22, on the branch `feat/alpha98-menu-layout`, from `main`
-after the publication record of alpha.97.
+This is the release that follows v0.1.0-alpha.97. It was published on 2026-10-22
+(see "Publication record" at the end); nothing from it is on an installed server
+yet. Written on 2026-10-22, as a candidate, on the branch
+`feat/alpha98-menu-layout`, from `main` after the publication record of alpha.97.
 
 ## Who should update, and why
 
@@ -207,3 +207,92 @@ Component and mounted tests do not establish native behaviour.
 Install this release only through CelikPanel's update interface (Settings →
 CelikPanel updates). Publishing it does not update installed servers; only the owner
 of a server starts its update, from the panel's own update screen.
+
+## Publication record
+
+Everything below is dated 2026-10-22 (UTC unless a time zone is named). The merge,
+the tag, the checks, the portal publication and the read of the public site were
+done by the release preparer under the owner's standing instruction, as for the
+earlier releases; installed-panel updates are the owner's alone, from the panel's
+own update screen. No native record for the publication, by the owner's
+instruction. This entry stores none of the results below as a file in the
+repository.
+
+**What happened.**
+
+1. One independent review came before the release: 12 findings and one more, all
+   fixed (the fixes are described above). A re-check found the release ready.
+2. Pull request #234, "Release v0.1.0-alpha.98: every page where its name says it
+   is", was merged into `main` as commit
+   `c249a9ba236212bfcdf6eddb590f55bccc5bac9c`, authored by Mehmet Ömer Efe Çelik.
+   The release sequence variable was moved from 97 to 98 before the tag was made.
+   The main run and the tag run both succeeded; the release chain ran cleanly,
+   with no incident.
+3. The annotated tag `v0.1.0-alpha.98` (object
+   `8696ddbc3880bf2fd2cf794f0c1cc03e27065c86`, tree
+   `838d69121bf3213d7a71ec6fbf7437f7575413aa`, tagger Mehmet Ömer Efe Çelik)
+   points at the release commit. The release is a pre-release, published at
+   2026-10-22T01:01:25Z with six assets.
+4. Checked from a download in the WSL guest `CelikPanel-S2-Debian` on 2026-10-22
+   (preparer; not recorded in a file here): the archives are byte-identical,
+   66,317,470 bytes each, SHA-256
+   `23820e87c8266e8321937ae9a2ea2a4b9864b1fd6fa30dace900836365948279`; the manifest
+   says sequence 98, `published_at` 2026-10-22T00:15:48Z (SHA-256
+   `2e962d44560e36a6d26880a9d6b94090df20fbe7885137abbf7b78cb9c18b2db`), and its
+   signature (SHA-256
+   `3a27af0548c269b65e9c4d3e53b3328170bd7a843be034b1aa53a61c5c956498`) verifies
+   with `openssl pkeyutl -verify -rawin -pubin` against the signing key (SHA-256
+   `7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb`, the same
+   key as before); both content guards returned 0; the build used Go go1.26.5,
+   CGO off, `-trimpath`. `libexec/get.sh` pins 98 (SHA-256
+   `f2acf8794ff2bc202d193780f03a9229244af462ab5e22f2c682ec928719faeb`); the policy
+   inside says current 98, previous 97, previous commit
+   `0c1a8917ef3f8141702fa41ae085f64d62a713f0`. The archive has 267 members (243
+   files, 24 directories). The interface bundle is
+   `web/dist/assets/app-qbukM16Q.js`, 258,759 bytes, SHA-256
+   `736a15f2bc0e6ddca1a4189079feafc8cc6afed88eb28c6ebdd325214a6f90aa`.
+5. The portal package: `portal.tar.gz`, 133,007,110 bytes, SHA-256
+   `1cb3374ee47f73f3b45a2b5a9ce12888bda0dd59d9a2ef2bb3a0ef64de416174`, 54
+   entries, built twice byte-identical with the tag's
+   `deploy/build-download-portal.sh` (pre-signed mode). Its pages link only
+   `github.com/alicelik77/...` (index 7, technical 16, `security.txt` 2; none to
+   `celikbros`). The contract test returned 0; the public verifier's 17 tests and
+   the promotion's 14 tests passed.
+6. At about 01:11Z the preparer published it with
+   `deploy/publish-download-portal.ps1` from the preparer's machine, previous
+   version v0.1.0-alpha.97, target v0.1.0-alpha.98: status `committed`, public
+   verification 26 of 26 requests, `CELIKPANEL_DOWNLOAD_PORTAL_PUBLISHED`.
+7. The backup of the previous site is
+   `/var/www/vhosts/celikpanel.net/portal-backups/httpdocs.before-v0.1.0-alpha.98.20261022T011052Z.112529.a585ec0704b24049`;
+   the upload was retained in
+   `/var/www/vhosts/celikpanel.net/.upload-portal-20261022T011011Z-v0.1.0-alpha.98-bc69f36337b59bba`.
+8. A read from outside after the publication:
+   `https://celikpanel.net/releases/latest.txt` says v0.1.0-alpha.98;
+   `latest.json` says sequence 98, with the commit and the SHA-256 above; the live
+   home page links `github.com/alicelik77/` (7 times).
+
+**What the owner reported.** Boston on alpha.97 showed real package versions; that
+is recorded above ("What the owner reported") and not repeated. On 2026-10-21 and
+22 the owner gave the `momerefe` account write access to the repository and logged
+the GitHub CLI in as `momerefe`. From alpha.98 on, the release commit on `main`,
+the annotated tag and the pushes are made as Mehmet Ömer Efe Çelik
+<momerefe@gmail.com>; alpha.98 is the first release made fully under that
+identity. Nothing from alpha.98 is on an installed server yet. Frankfurt's update
+after its alpha.95 stop was not reported.
+
+**Not done, and what publication does not change.**
+
+- The installed servers were not updated to alpha.98 by the release preparer. Only
+  the owner updates them, from the panel's own update screen.
+- The new layout has not been seen on an installed server.
+- No screen changes an administrator's own email, which the panel certificate needs
+  as its contact (recorded in D-037).
+- "Open sessions" is not built.
+- Not reported and not recorded: Frankfurt's update after its alpha.95 stop (and
+  its alpha.97 state), anything from Boston or Frankfurt on alpha.98, and everything
+  the earlier notes list as not reported. Each is "not recorded", not "worked" and
+  not "failed".
+- The limits of the earlier publication records (see the [alpha.88
+  notes](RELEASE-NOTES-v0.1.0-alpha.88.md)) are not reported as lifted.
+- Publication is not acceptance. P0.1 to P0.5 stay partial; no P0 item is closed
+  or advanced.
