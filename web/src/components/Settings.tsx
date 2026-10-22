@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from '../router';
-import { Shield, ShieldCheck, ShieldOff, Copy, Check, Lock, BadgeCheck, AlertTriangle, Network, ScanSearch, DownloadCloud, Database } from 'lucide-react';
+import { Lock, BadgeCheck, AlertTriangle, Network, DownloadCloud } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import { useAuth } from '../auth/AuthContext';
@@ -8,20 +8,23 @@ import { Button, CouldNotCheck, ErrorBanner, RemoteGate, inputClass } from './ui
 import { PageHeader } from './PageHeader';
 import { apiErrorText, readApiError } from '../lib/apiError';
 import { readRemote, useRemote } from '../lib/remote';
-import { DNSServerSettings } from './DNSServerSettings';
-import { SecurityAuditCard } from './SecurityAuditCard';
 import { ServerSetupSettings } from './ServerSetupChoice';
 import { availablePanelUpdate, usePanelUpdateDiscovery, wholeVersion } from '../lib/panelUpdateDiscovery';
 
 const LicensePanel = lazy(() => import('./LicensePanel').then((module) => ({ default: module.LicensePanel })));
 const PanelUpdateCard = lazy(() => import('./PanelUpdateCard').then((module) => ({ default: module.PanelUpdateCard })));
-// R-069. Loaded with the section that asks for it, not with the page: an
-// operator opens this one rarely, and it should not ride in on every visit
-// to Settings.
-// R-069. Sayfayla degil, isteyen bolumle birlikte yuklenir.
-const SystemSQLiteManager = lazy(() => import('./SystemSQLiteManager').then((module) => ({ default: module.SystemSQLiteManager })));
 
-type SettingsSectionID = 'setup' | 'account' | 'panel' | 'updates' | 'license' | 'security' | 'dns' | 'system-databases';
+// Settings holds what is chosen once and decides how the panel behaves
+// (D-037, owner 2026-10-22). The person's own account security is My account
+// (personal menu); server security, DNS and peer servers and the system
+// databases are pages under Server. Their old addresses still arrive there
+// (nav.ts, settingsRedirect). No administrator-wide security policy exists
+// yet, so there is no section for one.
+// Ayarlar, bir kez seçilip panelin davranışını belirleyenleri tutar (D-037).
+// Kişinin hesap güvenliği Hesabım'da; sunucu güvenliği, DNS ve eş sunucular ve
+// sistem veritabanları Sunucu altındaki sayfalardır. Eski adresleri oraya
+// ulaşır. Tüm yöneticiler için bir güvenlik kuralı henüz yok; bölümü de yok.
+type SettingsSectionID = 'panel' | 'license' | 'updates' | 'setup';
 type SettingsSection = {
     id: SettingsSectionID;
     icon: React.ComponentType<{ className?: string }>;
@@ -44,78 +47,45 @@ export function Settings() {
     // The Panel's stored update check: the updates item says "Update
     // available" when a newer signed release was found (D-035). A read only.
     const updateTarget = availablePanelUpdate(usePanelUpdateDiscovery(role === 'admin').value);
-    const sections: SettingsSection[] = [
-        {
-            id: 'account' as const,
-            icon: ShieldCheck,
-            title: t('settings.section.account'),
-            description: t('settings.section.account.desc'),
-        },
-        ...(role === 'admin'
-            ? [
-                { id: 'setup' as const, icon: Network, title: t('setup.settingsTitle'), description: t('setup.settingsDescription') },
-                {
-                    id: 'panel' as const,
-                    icon: Lock,
-                    title: t('settings.section.panel'),
-                    description: t('settings.section.panel.desc'),
-                },
-                {
-                    id: 'license' as const,
-                    icon: BadgeCheck,
-                    title: t('settings.section.license'),
-                    description: t('settings.section.license.desc'),
-                },
-                {
-                    id: 'updates' as const,
-                    icon: DownloadCloud,
-                    title: t('settings.section.updates'),
-                    description: t('settings.section.updates.desc'),
-                    ...(updateTarget ? { note: t('settings.section.updates.available', { version: updateTarget.version }), noteVersion: updateTarget.version } : {}),
-                },
-                {
-                    id: 'security' as const,
-                    icon: ScanSearch,
-                    title: t('settings.section.security'),
-                    description: t('settings.section.security.desc'),
-                },
-                {
-                    id: 'dns' as const,
-                    icon: Network,
-                    title: t('settings.section.dns'),
-                    description: t('settings.section.dns.desc'),
-                },
-                // R-069. The panel's own SQLite files used to sit on the
-                // Databases page, beside the customers' databases. The product
-                // already separates HOSTING from SERVER in its own navigation,
-                // and the panel's machinery is a server concern; putting it
-                // under a hosting page invited exactly the question the
-                // operator asked - "why is this here?".
-                //
-                // R-069. Panelin kendi SQLite dosyalari, musterilerin
-                // veritabanlarinin yaninda Veritabanlari sayfasinda duruyordu.
-                // Urun HOSTING ile SERVER'i kendi menusunde zaten ayirmis.
-                {
-                    id: 'system-databases' as const,
-                    icon: Database,
-                    title: t('settings.section.systemDatabases'),
-                    description: t('settings.section.systemDatabases.desc'),
-                },
-            ]
-            : []),
-    ];
+    // Only an administrator reaches this page; /settings takes everyone else
+    // to My account before it is drawn (App.tsx, SettingsRoute).
+    // Bu sayfaya yalnız yönetici ulaşır; diğerlerini /settings Hesabım'a götürür.
+    const sections: SettingsSection[] = role === 'admin'
+        ? [
+            {
+                id: 'panel' as const,
+                icon: Lock,
+                title: t('settings.section.panel'),
+                description: t('settings.section.panel.desc'),
+            },
+            {
+                id: 'license' as const,
+                icon: BadgeCheck,
+                title: t('settings.section.license'),
+                description: t('settings.section.license.desc'),
+            },
+            {
+                id: 'updates' as const,
+                icon: DownloadCloud,
+                title: t('settings.section.updates'),
+                description: t('settings.section.updates.desc'),
+                ...(updateTarget ? { note: t('settings.section.updates.available', { version: updateTarget.version }), noteVersion: updateTarget.version } : {}),
+            },
+            { id: 'setup' as const, icon: Network, title: t('setup.settingsTitle'), description: t('setup.settingsDescription') },
+        ]
+        : [];
     const requestedSection = searchParams.get('section');
     const activeSection = sections.find((section) => section.id === requestedSection) ?? sections[0];
 
     useEffect(() => {
-        if (requestedSection === activeSection.id) return;
+        if (!activeSection || requestedSection === activeSection.id) return;
         const next = new URLSearchParams(searchParams);
         next.set('section', activeSection.id);
         setSearchParams(next, { replace: true });
-    }, [activeSection.id, requestedSection, searchParams, setSearchParams]);
+    }, [activeSection?.id, requestedSection, searchParams, setSearchParams]);
 
     const selectSection = (section: SettingsSectionID) => {
-        if (section === activeSection.id) return;
+        if (!activeSection || section === activeSection.id) return;
         const next = new URLSearchParams(searchParams);
         next.set('section', section);
         setSearchParams(next);
@@ -147,14 +117,14 @@ export function Settings() {
     return (
         <div className="p-4 sm:p-6 md:p-8">
             <PageHeader title={t('nav.settings')} subtitle={t('settings.subtitle')} breadcrumb={[t('common.home'), t('nav.settings')]} />
-            <SettingsWorkspace
+            {activeSection && <SettingsWorkspace
                 sections={sections}
                 activeID={activeSection.id}
                 role={role}
                 label={t('settings.sections')}
                 onSelect={selectSection}
                 onKeyDown={moveSection}
-            />
+            />}
         </div>
     );
 }
@@ -185,14 +155,8 @@ function SettingsWorkspace({
                 onKeyDown={onKeyDown}
             />
             <div className="min-w-0">
-                <div id="settings-account-panel" role="tabpanel" aria-labelledby="settings-account-tab" hidden={activeID !== 'account'}>
-                    <TwoFactorPanel />
-                </div>
                 {role === 'admin' && (
                     <>
-                        <div id="settings-setup-panel" role="tabpanel" aria-labelledby="settings-setup-tab" hidden={activeID !== 'setup'}>
-                            {activeID === 'setup' && <ServerSetupSettings />}
-                        </div>
                         <div id="settings-panel-panel" role="tabpanel" aria-labelledby="settings-panel-tab" hidden={activeID !== 'panel'}>
                             <PanelCertificatePanel active={activeID === 'panel'} />
                         </div>
@@ -202,16 +166,8 @@ function SettingsWorkspace({
                         <div id="settings-updates-panel" role="tabpanel" aria-labelledby="settings-updates-tab" hidden={activeID !== 'updates'}>
                             {activeID === 'updates' && <Suspense fallback={null}><PanelUpdateCard /></Suspense>}
                         </div>
-                        <div id="settings-security-panel" role="tabpanel" aria-labelledby="settings-security-tab" hidden={activeID !== 'security'}>
-                            {activeID === 'security' && <SecurityAuditCard />}
-                        </div>
-                        <div id="settings-dns-panel" role="tabpanel" aria-labelledby="settings-dns-tab" hidden={activeID !== 'dns'}>
-                            {activeID === 'dns' && <DNSServerSettings />}
-                        </div>
-                        <div id="settings-system-databases-panel" role="tabpanel" aria-labelledby="settings-system-databases-tab" hidden={activeID !== 'system-databases'}>
-                            {activeID === 'system-databases' && (
-                                <Suspense fallback={<p role="status">{t('common.loading')}</p>}><SystemSQLiteManager /></Suspense>
-                            )}
+                        <div id="settings-setup-panel" role="tabpanel" aria-labelledby="settings-setup-tab" hidden={activeID !== 'setup'}>
+                            {activeID === 'setup' && <ServerSetupSettings />}
                         </div>
                     </>
                 )}
@@ -853,254 +809,6 @@ function PanelCertificatePanel({ active }: { active: boolean }) {
                     <p className="mt-2 text-xs text-fg-subtle">{t('panelCert.hint')}</p>
                 </>
             )}
-        </section>
-    );
-}
-
-const TWO_FACTOR_STATUS_URL = '/api/v1/auth/2fa/status';
-
-// Whether two-factor sign-in is on for the signed-in account. An answer
-// without the field is not "off".
-// Oturum açan hesapta iki faktörlü girişin açık olup olmadığı. Alanı
-// taşımayan yanıt "kapalı" değildir.
-function decodeTwoFactorStatus(raw: unknown): boolean {
-    if (!raw || typeof raw !== 'object' || typeof (raw as { enabled?: unknown }).enabled !== 'boolean') {
-        throw new Error('shape');
-    }
-    return (raw as { enabled: boolean }).enabled;
-}
-
-function TwoFactorPanel() {
-    const { t } = useI18n();
-    const status = useRemote(TWO_FACTOR_STATUS_URL, decodeTwoFactorStatus);
-    const [setup, setSetup] = useState<{ secret: string; uri: string } | null>(null);
-    const [qr, setQr] = useState<string>('');
-
-    // The otpauth:// URI as a QR code — scanning beats typing a 32-char
-    // secret. Generated locally in the browser; the secret never leaves.
-    // otpauth:// URI'si QR olarak — taramak 32 karakterlik anahtarı yazmayı
-    // döver. Tarayıcıda yerel üretilir; anahtar dışarı çıkmaz.
-    useEffect(() => {
-        let cancelled = false;
-        setQr('');
-        if (setup?.uri) {
-            void import('qrcode')
-                .then(({ default: QRCode }) => QRCode.toDataURL(setup.uri, { width: 192, margin: 1 }))
-                .then((url) => {
-                    if (!cancelled) setQr(url);
-                })
-                .catch(() => {
-                    // Without the picture the secret below can still be typed.
-                    if (!cancelled) setQr('');
-                });
-        }
-
-        return () => {
-            cancelled = true;
-        };
-    }, [setup]);
-    const [code, setCode] = useState('');
-    const [setupPw, setSetupPw] = useState('');
-    const [disablePw, setDisablePw] = useState('');
-    const [disableCode, setDisableCode] = useState('');
-    const [busy, setBusy] = useState(false);
-    const [copied, setCopied] = useState(false);
-
-    // A change whose answer did not arrive is not known to have failed: the
-    // state is read again instead of being assumed.
-    // Yanıtı gelmeyen değişikliğin başarısız olduğu bilinmez: durum
-    // varsayılmaz, yeniden okunur.
-    const lostAnswer = (error: unknown) => {
-        if (!(error instanceof TypeError)) return false;
-        showToast('error', t('settings.2fa.resultUnknown'));
-        void status.retry();
-        return true;
-    };
-
-    const startSetup = async () => {
-        setBusy(true);
-        try {
-            const r = await fetch('/api/v1/auth/2fa/setup', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ password: setupPw }),
-            });
-            if (!r.ok) throw new Error((await readApiError(r)).message);
-            setSetup(await r.json());
-        } catch (e) {
-            if (!lostAnswer(e)) showToast('error', (e as Error).message || t('settings.2fa.reauthFailed'));
-        } finally {
-            setBusy(false);
-        }
-    };
-
-    const enable = async () => {
-        setBusy(true);
-        try {
-            const r = await fetch('/api/v1/auth/2fa/enable', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ password: setupPw, code: code.trim() }),
-            });
-            if (!r.ok) throw new Error((await readApiError(r)).message);
-            showToast('success', t('settings.2fa.enabled'));
-            setSetup(null);
-            setSetupPw('');
-            setCode('');
-            await status.retry();
-        } catch (e) {
-            if (!lostAnswer(e)) showToast('error', (e as Error).message || t('settings.2fa.badCode'));
-        } finally {
-            setBusy(false);
-        }
-    };
-
-    const disable = async () => {
-        setBusy(true);
-        try {
-            const r = await fetch('/api/v1/auth/2fa/disable', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ password: disablePw, code: disableCode.trim() }),
-            });
-            if (!r.ok) throw new Error();
-            showToast('success', t('settings.2fa.disabled'));
-            setDisablePw('');
-            setDisableCode('');
-            await status.retry();
-        } catch (e) {
-            if (!lostAnswer(e)) showToast('error', t('settings.2fa.disableFailed'));
-        } finally {
-            setBusy(false);
-        }
-    };
-
-    const copySecret = () => {
-        if (!setup) return;
-        navigator.clipboard?.writeText(setup.secret).then(() => {
-            setCopied(true);
-            setTimeout(() => setCopied(false), 1200);
-        });
-    };
-
-    // "On" and "off" are drawn only for an answer the server gave.
-    const known = status.remote.state === 'known' ? status.remote.value : null;
-    // A change is offered only on the state as it is now, not while it is
-    // being read again and not on an earlier answer.
-    const locked = busy || status.reading || status.remote.state !== 'known';
-
-    return (
-        <section className="rounded-xl border border-border bg-surface p-5">
-            <div className="mb-1 flex items-center gap-2">
-                {known === true ? (
-                    <ShieldCheck className="h-5 w-5 text-success" />
-                ) : known === false ? (
-                    <ShieldOff className="h-5 w-5 text-fg-subtle" />
-                ) : (
-                    <Shield className="h-5 w-5 text-fg-subtle" />
-                )}
-                <h2 className="text-base font-semibold text-fg">{t('settings.2fa.title')}</h2>
-                {known === true && (
-                    <span className="ml-auto rounded-md bg-success/10 px-2 py-0.5 text-xs font-medium text-success">
-                        {t('settings.2fa.on')}
-                    </span>
-                )}
-            </div>
-            <p className="mb-4 text-sm text-fg-muted">{t('settings.2fa.desc')}</p>
-
-            {/* The least height of the two forms, so the card is the same
-                size while it is checking and when the answer arrives.
-                İki formun en az yüksekliği; kart kontrol ederken ve yanıt
-                gelince aynı boydadır. */}
-            <div className="min-h-[11.25rem] sm:min-h-[10.5rem]">
-                <RemoteGate
-                    remote={status.remote}
-                    checking={t('settings.2fa.checking')}
-                    failed={t('settings.2fa.unknown')}
-                    onRetry={() => void status.retry()}
-                    busy={status.reading}
-                >
-                    {({ value: enabled }) => (enabled ? (
-                        <div className="space-y-3">
-                            <p className="text-sm text-fg-muted">{t('settings.2fa.disableHint')}</p>
-                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                <label className="space-y-1 text-sm font-medium text-fg">
-                                    <span>{t('login.password')}</span>
-                                    <input
-                                        type="password"
-                                        value={disablePw}
-                                        onChange={(e) => setDisablePw(e.target.value)}
-                                        autoComplete="current-password"
-                                        className={inputClass}
-                                    />
-                                </label>
-                                <label className="space-y-1 text-sm font-medium text-fg">
-                                    <span>{t('settings.2fa.enterCode')}</span>
-                                    <input
-                                        value={disableCode}
-                                        onChange={(e) => setDisableCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                                        inputMode="numeric"
-                                        autoComplete="one-time-code"
-                                        placeholder="000000"
-                                        className={`${inputClass} font-mono tracking-widest`}
-                                    />
-                                </label>
-                            </div>
-                            <Button variant="danger" icon={ShieldOff} disabled={locked || !disablePw || disableCode.length < 6} onClick={disable}>
-                                {t('settings.2fa.disable')}
-                            </Button>
-                        </div>
-                    ) : setup ? (
-                        <div className="space-y-4">
-                            <ol className="list-inside list-decimal space-y-1 text-sm text-fg-muted">
-                                <li>{t('settings.2fa.step1')}</li>
-                                <li>{t('settings.2fa.step2')}</li>
-                            </ol>
-                            {qr && (
-                                <div className="flex justify-center">
-                                    <img src={qr} alt="TOTP QR" className="rounded-lg border border-border bg-white p-1" width={192} height={192} />
-                                </div>
-                            )}
-                            <div className="flex items-center gap-2 rounded-lg border border-border bg-surface-2/50 p-3">
-                                <code className="min-w-0 flex-1 break-all font-mono text-sm text-fg">{setup.secret}</code>
-                                <button onClick={copySecret} title={t('common.copy')} className="rounded-md p-1.5 text-fg-subtle hover:bg-surface-2 hover:text-fg">
-                                    {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
-                                </button>
-                            </div>
-                            <a href={setup.uri} className="text-sm text-primary hover:underline">{t('settings.2fa.openApp')}</a>
-                            <div>
-                                <label className="mb-1.5 block text-sm font-medium text-fg-muted">{t('settings.2fa.enterCode')}</label>
-                                <input value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="000000" className={`${inputClass} max-w-[12rem] font-mono text-lg tracking-[0.3em]`} />
-                            </div>
-                            <div className="flex gap-2">
-                                <Button variant="primary" icon={ShieldCheck} disabled={locked || !setupPw || code.length < 6} onClick={enable}>
-                                    {t('settings.2fa.verify')}
-                                </Button>
-                                <Button variant="secondary" onClick={() => { setSetup(null); setSetupPw(''); setCode(''); }}>
-                                    {t('common.back')}
-                                </Button>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="space-y-3">
-                            <p className="text-sm text-fg-muted">{t('settings.2fa.reauthHint')}</p>
-                            <label className="block max-w-md space-y-1 text-sm font-medium text-fg">
-                                <span>{t('login.password')}</span>
-                                <input
-                                    type="password"
-                                    value={setupPw}
-                                    onChange={(e) => setSetupPw(e.target.value)}
-                                    autoComplete="current-password"
-                                    className={inputClass}
-                                />
-                            </label>
-                            <Button variant="primary" icon={ShieldCheck} disabled={locked || !setupPw} onClick={startSetup}>
-                                {t('settings.2fa.setup')}
-                            </Button>
-                        </div>
-                    ))}
-                </RemoteGate>
-            </div>
         </section>
     );
 }

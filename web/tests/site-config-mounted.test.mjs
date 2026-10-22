@@ -504,8 +504,8 @@ test('every siteConfig and SITE_CONFIG key is in both languages', () => {
   const keys = (source, prefix) => new Set([...source.matchAll(new RegExp(`'(${prefix}[^']*)':`, 'g'))].map((match) => match[1]));
   const screenEN = keys(englishScreens, 'siteConfig\\.');
   const screenTR = keys(turkishScreens, 'siteConfig\\.');
-  const errEN = keys(read('i18n/en.ts'), 'err\\.SITE_CONFIG_');
-  const errTR = keys(read('i18n/tr.ts'), 'err\\.SITE_CONFIG_');
+  const errEN = keys(read('i18n/en.ts') + read('i18n/screens/errors/en.ts'), 'err\\.SITE_CONFIG_');
+  const errTR = keys(read('i18n/tr.ts') + read('i18n/screens/errors/tr.ts'), 'err\\.SITE_CONFIG_');
   assert.deepEqual([...screenTR].sort(), [...screenEN].sort());
   assert.deepEqual([...errTR].sort(), [...errEN].sort());
   assert.equal(errEN.size, 23);

@@ -14,10 +14,15 @@ import test from 'node:test';
 import React from 'react';
 import Renderer, { act } from 'react-test-renderer';
 import { dataModule, reactURL, sharedLayer } from './fixtures/shared-layer.mjs';
-import { en } from '../src/i18n/en.ts';
+import { en as enShellHalf } from '../src/i18n/en.ts';
+import { enErrorsScreens as enErrorsPart } from '../src/i18n/screens/errors/en.ts';
+// The coded refusals only screens show are the screen part "errors" since v0.1.0-alpha.98.
+const en = { ...enShellHalf, ...enErrorsPart };
 import { enScreens } from './locale-catalogue.mjs';
 import { trScreens } from './locale-catalogue.mjs';
-import { tr } from '../src/i18n/tr.ts';
+import { tr as trShellHalf } from '../src/i18n/tr.ts';
+import { trErrorsScreens as trErrorsPart } from '../src/i18n/screens/errors/tr.ts';
+const tr = { ...trShellHalf, ...trErrorsPart };
 import { enComponentsScreens as enComponents } from '../src/i18n/screens/components/en.ts';
 import { trComponentsScreens as trComponents } from '../src/i18n/screens/components/tr.ts';
 
@@ -31,7 +36,7 @@ const nameOf = (id) => words[`services.component.name.${id}`] ?? id;
 
 const source = (path) => readFileSync(new URL('../src/' + path, import.meta.url), 'utf8');
 const icons = new Set(['AlertTriangle']);
-for (const path of ['components/ServiceList.tsx', 'components/ReadyBundleStrip.tsx', 'lib/componentIcons.tsx']) {
+for (const path of ['components/ServiceList.tsx', 'components/FirewallPanel.tsx', 'components/ReadyBundleStrip.tsx', 'lib/componentIcons.tsx']) {
   for (const match of source(path).matchAll(/import\s*\{([^}]+)\}\s*from 'lucide-react'/g)) {
     for (const item of match[1].split(',')) {
       const icon = item.replace(/\btype\b/, '').trim().split(/\s+as\s+/)[0];

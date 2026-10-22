@@ -6,8 +6,13 @@ import Renderer, { act } from 'react-test-renderer';
 import { dataModule, reactURL, remoteURL, sharedLayer } from './fixtures/shared-layer.mjs';
 import { readAllowList, scanTree } from './remote-state-ratchet.mjs';
 import { fileURLToPath } from 'node:url';
-import { en } from '../src/i18n/en.ts';
-import { tr } from '../src/i18n/tr.ts';
+import { en as enShellHalf } from '../src/i18n/en.ts';
+import { enErrorsScreens as enErrorsPart } from '../src/i18n/screens/errors/en.ts';
+// The coded refusals only screens show are the screen part "errors" since v0.1.0-alpha.98.
+const en = { ...enShellHalf, ...enErrorsPart };
+import { tr as trShellHalf } from '../src/i18n/tr.ts';
+import { trErrorsScreens as trErrorsPart } from '../src/i18n/screens/errors/tr.ts';
+const tr = { ...trShellHalf, ...trErrorsPart };
 import { trScreens } from './locale-catalogue.mjs';
 import { trServerScreens } from './locale-catalogue.mjs';
 
@@ -38,7 +43,7 @@ const icons = new Set(['AlertTriangle']);
 // component read are not moved), so it is not one of `screenFiles`.
 // The ready bundles strip and the component icon map (alpha.94) are drawn by
 // the Components page and import their own icons.
-for (const name of [...screenFiles, 'Dashboard', 'DNSEngineCard', 'ServiceList', 'ReadyBundleStrip', '../lib/componentIcons']) {
+for (const name of [...screenFiles, 'Dashboard', 'DNSEngineCard', 'ServiceList', 'FirewallPanel', 'ReadyBundleStrip', '../lib/componentIcons']) {
   for (const match of source(`components/${name}.tsx`).matchAll(/import\s*\{([^}]+)\}\s*from 'lucide-react'/g)) {
     for (const item of match[1].split(',')) {
       const icon = item.replace(/\btype\b/, '').trim().split(/\s+as\s+/)[0];

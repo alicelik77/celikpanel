@@ -1,5 +1,6 @@
 // SCREEN catalogue part "security": Security audit, firewall, Fail2ban, VPN and monitoring.
-// Key prefixes kept here: securityAudit., firewall., f2b., vpn., monitoring.
+// Key prefixes kept here: securityAudit., firewall., f2b., vpn., monitoring.,
+// securityPage. (the Security page, v0.1.0-alpha.98)
 // One part of the screen copy; ../../index.tsx fetches every part in
 // parallel and no screen renders before all of them have arrived. A new key
 // goes into the part that holds its prefix; how to split a part that grows
@@ -272,8 +273,18 @@ export const enSecurityScreens = {
     'firewall.ssh.no_ssh_service.confirm': 'Turn on firewall anyway',
     'firewall.compact.on': 'Firewall on',
     'firewall.compact.ports': 'Open ports: {n}',
-    'firewall.compact.settings': 'Settings',
-    'firewall.compact.less': 'Show less',
+    'firewall.compact.settings': 'Manage on Security',
+    'securityPage.subtitle': 'Is this server safe? Its firewall, Fail2ban and a read-only check of what it exposes, in one place.',
+    'securityPage.f2b.desc': 'Blocks addresses that keep failing to sign in to SSH, mail and other services.',
+    'securityPage.f2b.checking': 'Reading the component record…',
+    'securityPage.f2b.unknown': 'Whether Fail2ban is installed could not be read.',
+    'securityPage.f2b.running': 'Running.',
+    'securityPage.f2b.installedUnknown': 'Installed. Whether it is running has not been read yet; its component page reads it.',
+    'securityPage.f2b.notRunning': 'Installed but not running: repeated failed sign-ins are not blocked now. Start it on its component page.',
+    'securityPage.f2b.notInstalled': 'Not installed: repeated failed sign-ins are not blocked. You can install it from Components.',
+    'securityPage.f2b.notChecked': 'Not checked yet on this server. The Components page runs the check.',
+    'securityPage.f2b.manage': 'Manage Fail2ban',
+    'securityPage.f2b.openComponents': 'Open Components',
 } as const;
 
 export type SecurityScreenKey = keyof typeof enSecurityScreens;

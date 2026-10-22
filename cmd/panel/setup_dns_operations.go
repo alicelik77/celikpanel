@@ -185,7 +185,7 @@ func (p *Panel) startServerSetupDNS(ctx context.Context, draft serverSetupDraft,
 	}
 	if state.ActiveEngine != "" {
 		if !setupDNSDraftMatchesState(draft, request, local, state) {
-			return errors.New("existing DNS ownership must be managed in DNS infrastructure; setup will not replace it")
+			return errors.New("existing DNS ownership must be managed in Server → DNS and peer servers; setup will not replace it")
 		}
 		return setupDNSReconciliationError(p.saveSetupDNSManagementMode(ctx, serverSetupDomainDNSMode(draft)))
 	}

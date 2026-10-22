@@ -29,12 +29,15 @@ const screenFiles = [
   'ComponentDetail', 'ServiceRecordLookup', 'ServiceShell', 'DomainDetail',
   // The infrastructure zone's page (2026-10-16).
   'InfrastructureZone',
+  // My account, whose two-factor panel was a Settings section until
+  // v0.1.0-alpha.98 (D-037).
+  'AccountPage',
 ];
 const icons = new Set(['AlertTriangle', 'XCircle']);
 // Children of the screens under test that are not under test themselves.
 const stubbedComponents = [
   'Link', 'TeamMembersPage', 'DNSServerSettings', 'SecurityAuditCard', 'ServerSetupSettings',
-  'DomainGeneralSettings', 'DomainSSLOverviewCard', 'DomainMailManager',
+  'DomainGeneralSettings', 'DomainSSLOverviewCard', 'DomainMailManager', 'ChangePasswordModal',
 ];
 for (const name of screenFiles) {
   for (const match of source(`components/${name}.tsx`).matchAll(/import\s*\{([^}]+)\}\s*from 'lucide-react'/g)) {
@@ -57,7 +60,7 @@ const stub = dataModule(`
   export const HelpButton = () => null;
   export const AddDatabaseModalV2 = () => React.createElement('aside', null, 'add-database-dialog');
   export const AddUserModalV2 = () => React.createElement('aside', null, 'add-user-dialog');
-  export const useSearchParams = () => [new URLSearchParams(globalThis.currentTest.search ?? 'section=' + (globalThis.currentTest.section ?? 'account')), () => {}];
+  export const useSearchParams = () => [new URLSearchParams(globalThis.currentTest.search ?? 'section=' + (globalThis.currentTest.section ?? 'panel')), () => {}];
   // The fail-closed decoder is ComponentOperation's; here it is the same test
   // on the one field these screens read. The operation tracker is not mounted.
   export const decodeManagedServicesSnapshot = (value) => (value && typeof value === 'object' && Array.isArray(value.services) ? value : null);
@@ -112,6 +115,7 @@ const HostingTypePanel = await load('HostingTypePanel');
 // The second batch. A screen that mounts another screen under test gets the
 // real one; everything else it mounts is the stub.
 const Settings = await load('Settings');
+const AccountPage = await load('AccountPage');
 const UsersPage = await load('UsersPage');
 const fileManagerURL = shared.compile('components/DomainFileManager.tsx', own);
 const DomainFileManager = (await import(fileManagerURL)).DomainFileManager;
@@ -405,7 +409,7 @@ const table = [
   },
   // --- The second batch ------------------------------------------------------
   {
-    screen: 'Settings (two-factor sign-in)', Component: Settings,
+    screen: 'My account (two-factor sign-in)', Component: AccountPage,
     read: '/api/v1/auth/2fa/status',
     // "Off" is the setup form; before this it was offered on a failed read.
     negative: ['settings.2fa.reauthHint', 'settings.2fa.setup'],

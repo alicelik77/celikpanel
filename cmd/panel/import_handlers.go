@@ -295,13 +295,13 @@ func (p *Panel) handleImportApply(w http.ResponseWriter, r *http.Request) {
 	if caps.DNSManagementMode == setupDNSModeLocal && caps.DNSServer == "" {
 		writeCodedError(w, http.StatusConflict, errCodeDNSServerRequired,
 			"choose and activate a managed BIND or PowerDNS engine before importing a domain",
-			"/settings?section=dns")
+			"/dns-infrastructure")
 		return
 	}
 	if caps.DNSManagementMode == setupDNSModeLocal && !caps.DNSIdentityReady {
 		writeCodedError(w, http.StatusConflict, errCodeDNSSettingsRequired,
 			"DNS identity must be configured before importing a domain",
-			"/settings?section=dns")
+			"/dns-infrastructure")
 		return
 	}
 	if caps.DNSManagementMode == setupDNSModeExternal && req.DoDNS {

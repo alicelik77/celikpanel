@@ -9526,3 +9526,104 @@ addresses, which redirect (the account is now `alicelik77`); the Settings
 menu-layout proposal awaits the owner's decision. No text or screen was changed
 for this entry. P0.1-P0.5 stay **partial**; this entry closes and advances
 nothing.
+
+### Where things are now: the menu layout (D-037, 2026-10-22)
+
+In source for the v0.1.0-alpha.98 candidate; nothing measured on an installed
+server. Only the place of each screen moved: the reads, the changes, the roles and
+the words of the moved screens are the ones they had. Read this entry before
+pointing someone at "Settings" for anything in the table.
+
+**Where each moved thing is.**
+
+| Was | Is now | Address |
+| --- | --- | --- |
+| Settings → DNS infrastructure | Server → DNS and peer servers | `/dns-infrastructure` |
+| Settings → Server security (the exposed-services audit) | Server → Security | `/security` |
+| The firewall box, opened from Components' firewall line | Server → Security (the full box, with its settings); Components keeps its calm line and a link | `/security#firewall` |
+| Settings → System databases | Server → Maintenance | `/maintenance` |
+| Settings → Account security (two-factor authentication) | My account, the first item of the menu at the top right | `/account` |
+| "Change password" in the menu | A Password card on My account (the same dialog) | `/account` |
+| Settings → Panel HTTPS | Settings → Panel address and HTTPS | `/settings` |
+
+Settings keeps four things: Panel address and HTTPS, License, CelikPanel updates
+and Server setup. Import stays under Server, Store and VPN stay under Hosting.
+
+**Who sees what.** An administrator sees Server, Security, Maintenance, DNS and peer
+servers and Settings in the rail, and My account in the menu. A reseller and a
+customer no longer see Settings (it would have held only their own account); they
+have My account. An additional user (team member) has neither Settings nor My
+account, as before, and keeps "Change password" in the menu. A role that could not
+open a page before still cannot; the server refuses it as it did.
+
+**Old links, bookmarks and texts.** Every old `/settings?section=` address
+(`account`, `security`, `dns`, `system-databases`) is replaced by the new page, with
+no extra history entry, so the Back button does not return to a redirect. `/settings`
+for a reseller or a customer goes to My account. The Panel's own links, the start
+guide, the setup's next step ("Open DNS and peer servers") and the server's guidance
+action links (the DNS engine workflow, DNSSEC, DNS-only children, import, remote DNS
+authority, DNS setup, and the panel certificate's missing contact e-mail) name the new
+place directly. A guidance text that said "Settings > DNS infrastructure" or
+"Settings > Server security" now says "Server → DNS and peer servers" or "Server →
+Security". An older Panel's links still work, because the browser redirects them.
+While setup is required, the four new addresses stay reachable as Settings was, and
+the offline recovery shell knows them.
+
+**The Security page (D-024).** It answers "is this server safe?" in this order: the
+firewall (with its settings), Fail2ban, and the read-only exposed-services audit.
+Fail2ban's state is read from the stored component record only; the page does not
+probe the machine, and managing Fail2ban stays on its component page. The words:
+
+- Reading: "Reading the component record…" Nobody needs to act.
+- Could not be read: "Whether Fail2ban is installed could not be read." with
+  Retry. The administrator presses Retry; nothing was changed.
+- Running: "Running."
+- Installed, running state not read yet: "Installed. Whether it is running has not
+  been read yet; its component page reads it." The administrator opens "Manage Fail2ban".
+- Installed but not running: "Installed but not running: repeated failed sign-ins
+  are not blocked now. Start it on its component page." The administrator starts
+  it there.
+- Not installed: "Not installed: repeated failed sign-ins are not blocked. You can
+  install it from Components." with "Open Components".
+- Not checked yet: "Not checked yet on this server. The Components page runs the
+  check." A record nobody has taken is never drawn as "not installed".
+
+When the server is busy (another change, an update, a package operation), the page
+shows the same pause as Components: "Server changes are temporarily unavailable.",
+then the reason, then "This page checks again every few seconds and lifts this pause
+by itself; you do not need to reload it." The page reads readiness every 5 seconds while
+it is open, a read only, and a poll never starts a change. A firewall that is off,
+unreadable, without an engine or needing attention still shows its box on
+Components, because that is where the owner is when it matters.
+
+**Where the texts are.** `nav.dnsPeers`, `nav.security`, `nav.maintenance` and
+`nav.account` in `web/src/i18n/`; the page subtitles and Fail2ban words under
+`securityPage.*`, `dnsPeers.*` and `account.*` in
+`web/src/i18n/screens/security/`, `screens/settings/`. The password dialog's words
+stay in the shell catalogue (`profile.*`). The coded refusals that only screens
+show are in the screen part `web/src/i18n/screens/errors/` since the review round;
+a refusal whose words have not arrived shows the server's sentence or the generic
+error, never its key.
+
+**Review round (2026-10-22).** The panel certificate's missing contact email: the
+refusal now says "The administrator account has no valid email address, which the
+certificate authority needs as a contact. There is no screen to change it yet: it
+is the address given when the administrator was created on the server." It carries
+no action, because no screen can change it. **Who must act:** the server owner;
+there is no in-panel fix yet (open item in D-037). The Security page's Fail2ban
+line follows one running rule shared with the Dashboard and Components ("active
+(exited)" is not running), and a component list without a Fail2ban record says
+"Not installed".
+
+P0.1-P0.5 stay **partial**; this entry closes and advances nothing.
+
+### Installed servers: Boston's alpha.97 versions seen (2026-10-22)
+
+On 2026-10-22 the owner sent a screenshot of Boston's Components page on
+v0.1.0-alpha.97. It shows real versions: PowerDNS 4.8.3, Nginx 1.24.0, PostgreSQL
+16.15, certbot 2.9.0, Fail2ban 1.0.2, nftables 1.0.9, cron 3.0pl1 and Node.js
+24.21.0. This is the first time the versions of D-036 were seen on an installed
+server. **Who must act:** nobody for this; it is an observation. **Open:**
+Frankfurt's alpha.97 state was not reported; one screenshot is not a check of a
+kept reading or of a busy package manager on a real server. No text or screen was changed for this entry. P0.1-P0.5 stay **partial**;
+this entry closes and advances nothing.

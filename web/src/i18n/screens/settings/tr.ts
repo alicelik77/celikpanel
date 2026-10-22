@@ -46,11 +46,9 @@ export const trSettingsScreens: Record<SettingsScreenKey, string> = {
     "license.activate": "Lisansı etkinleştir",
     "license.noticeUnverified": "CelikPanel lisansı şu an doğrulayamadı. Bu, lisansınızın eksik ya da süresinin dolmuş olduğu anlamına gelmez ve hiçbir şey değiştirilmedi. Mevcut siteler, e-posta, veritabanları ve zamanlanmış görevler çalışmaya devam eder. Lisans bölümünden yeniden kontrol edebilirsiniz.",
     "license.noticeOpen": "Lisans bölümünü aç",
-    'settings.subtitle': 'Erişimi, güvenliği, yazılım güncellemelerini ve sunucu altyapısını yönetin.',
+    'settings.subtitle': 'Panelin adresi, lisansı, güncellemeleri ve sunucu kurulumu.',
     'settings.sections': 'Ayar bölümleri',
-    'settings.section.account': 'Hesap güvenliği',
-    'settings.section.account.desc': 'Oturum açma koruması ve yönetici güvenliği.',
-    'settings.section.panel': 'Panel HTTPS',
+    'settings.section.panel': 'Panel adresi ve HTTPS',
     'settings.section.panel.desc': 'Panel alan adı ve HTTPS sertifikası.',
     'settings.section.updates': 'CelikPanel güncellemeleri',
     'settings.section.updates.desc': 'İmzalı sürümleri denetleyin ve yalnızca açık onaydan sonra kurun.',
@@ -81,12 +79,6 @@ export const trSettingsScreens: Record<SettingsScreenKey, string> = {
     'panelUpdate.auto.saving': 'Kaydediliyor…',
     'panelUpdate.auto.unknown': 'Ayarın değeri henüz bilinmiyor.',
     'panelUpdate.auto.failed': 'Ayar kaydedilemedi ve değişmedi. Yeniden deneyin.',
-    'settings.section.security': 'Sunucu güvenliği',
-    'settings.section.security.desc': 'Dışa açık servisleri ve erişim denetimlerini salt okunur olarak tarayın.',
-    'settings.section.dns': 'DNS altyapısı',
-    'settings.section.dns.desc': 'Ortak ad sunucuları, düğüm kimliği ve çoğaltma düzeni.',
-    'settings.section.systemDatabases': 'Sistem veritabanları',
-    'settings.section.systemDatabases.desc': 'CelikPanel\'in ve kurulu servislerin tuttuğu SQLite dosyalarını incele ve güvenle bakımını yap.',
     'settings.2fa.title': 'İki faktörlü doğrulama',
     'settings.2fa.on': 'Açık',
     'settings.2fa.desc': 'Girişe authenticator uygulamasıyla ikinci bir adım ekleyin (Google Authenticator, Authy, 1Password…).',
@@ -446,4 +438,10 @@ export const trSettingsScreens: Record<SettingsScreenKey, string> = {
     'panelUpdate.card.unknown': '{version} güncellemesinin durumu şu an okunamadı; bu yüzden bitip bitmediği bilinmiyor. Bu sayfa onu kendiliğinden yeniden okur. İkinci bir güncelleme başlatmayın.',
     'panelUpdate.card.restarting': 'Panel, {version} güncellemesinin bir parçası olarak yeniden başlıyor. Bu sayfa kendiliğinden yeniden bağlanır; hiçbir şeye basmanız gerekmiyor.',
     // --- güncelleme kartı bloğunun sonu ---
+    // --- v0.1.0-alpha.98'de Ayarlar'dan çıkan sayfalar (D-037) ---
+    'account.subtitle': 'Kendi girişiniz: parolanız ve iki faktörlü doğrulama.',
+    'account.password.title': 'Parola',
+    'account.password.desc': 'Giriş yaptığınız parolayı değiştirin. Önce mevcut parolanız sorulur.',
+    'dnsPeers.subtitle': 'Ortak ad sunucuları, bu sunucunun rolü, eş sunucusu ve DNS çoğaltması.',
+    // --- Ayarlar'dan çıkan sayfaların sonu ---
 };

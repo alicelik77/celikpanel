@@ -17,7 +17,7 @@ request, log paste or screenshot.
 
 Use GitHub's private vulnerability reporting flow:
 
-<https://github.com/celikbros/celikpanel/security/advisories/new>
+<https://github.com/alicelik77/celikpanel/security/advisories/new>
 
 If private reporting is unavailable, contact the repository owner through an
 existing private channel and ask for a secure reporting channel without

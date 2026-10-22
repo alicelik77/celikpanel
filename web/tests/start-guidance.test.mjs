@@ -69,8 +69,10 @@ test('DNS is first; security remains accessible while DNS is incomplete; actions
     panelSecured: null, firewallReady: false, onFirewall: () => confirmations++, firewallBusy: false,
   }));
   const links = tree.root.findAllByType('a').map((a) => a.props.href);
-  assert.equal(links[0], '/settings?section=dns');
-  for (const section of ['panel', 'account', 'security']) assert.ok(links.includes(`/settings?section=${section}`));
+  assert.equal(links[0], '/dns-infrastructure');
+  // Panel HTTPS stays in Settings; the account and the security audit have
+  // their own pages since v0.1.0-alpha.98 (D-037).
+  for (const link of ['/settings?section=panel', '/account', '/security']) assert.ok(links.includes(link), link);
   assert.ok(!links.includes('/services#bundles'));
   assert.equal(confirmations, 0);
   tree.root.findAllByType('button').find((b) => b.children.includes('firewall.turnOn')).props.onClick();

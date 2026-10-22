@@ -185,7 +185,7 @@ export function Domains() {
     // bölümüdür; Servisler sayfası artık DNS motoru kuramaz
     // (DNS_ENGINE_WORKFLOW_REQUIRED), oraya gönderilen taze sunucunun gidecek
     // yeri yoktu (R-029, ekran tarafı).
-    const openDNSRequirement = () => navigate('/settings?section=dns');
+    const openDNSRequirement = () => navigate('/dns-infrastructure');
     // Name the half that is missing: no engine at all, or an engine whose
     // identity is not staged yet. The same key feeds the button label.
     // Eksik yarıyı adlandır: hiç motor yok ya da kimliği henüz hazırlanmamış

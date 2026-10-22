@@ -100,7 +100,8 @@ const eagerModules = [
   'src/components/Layout.tsx',
   'src/components/PageHeader.tsx',
   'src/components/pageHeaderSlot.ts',
-  'src/components/ChangePasswordModal.tsx',
+  // ChangePasswordModal is fetched when it is opened since v0.1.0-alpha.98
+  // (D-037): My account opens it, and the menu only for a role without that page.
   'src/components/ThemeSwitcher.tsx',
   'src/components/SkinSwitcher.tsx',
   'src/components/LanguageSwitcher.tsx',
@@ -113,12 +114,31 @@ const eagerModules = [
 ];
 
 // Groups whose keys are assembled at runtime rather than written out, so no
-// scan can prove one of them unreachable. `apiErrorText` reaches the whole of
-// err.* as ('err.' + code) from a module that is always loaded.
+// scan can prove one of them unreachable.
 //
-// Anahtarları çalışma anında kurulan gruplar; hiçbir tarama birinin
-// erişilemez olduğunu kanıtlayamaz.
-const runtimeBuiltGroups = ['err', 'common', 'app', 'nav', 'role', 'theme', 'lang', 'login', 'profile', 'recovery'];
+// err.* is no longer one of them (v0.1.0-alpha.98). `apiErrorText` builds
+// ('err.' + code) from a module that is always loaded, but it never shows a key
+// it cannot resolve: it falls back to the server's own sentence, then to the
+// generic error (tested below). So the coded refusals only screens show live in
+// the screen part "errors", and only the codes the shell can show before any
+// screen has loaded stay in the shell half: sign-in and access, the licence,
+// the update tracker, the operation overlay and request identity.
+//
+// Anahtarları çalışma anında kurulan gruplar. err.* artık bunlardan biri
+// değil: apiErrorText çözemediği anahtarı asla göstermez; yalnız ekranların
+// gösterdiği retler "errors" parçasında, kabuğun gösterebildikleri kabukta.
+const runtimeBuiltGroups = ['common', 'app', 'nav', 'role', 'theme', 'lang', 'login', 'profile', 'recovery'];
+const shellErrorCodes = [
+  'ACCOUNT_SUSPENDED', 'ADMIN_ONLY', 'AGENT_UNREACHABLE', 'AUTH_REQUIRED', 'INTERNAL',
+  'HOST_MUTATION_BUSY', 'HOST_MUTATION_UNAVAILABLE',
+  'PANEL_UPDATE_BUSY', 'PANEL_UPDATE_TARGET_CHANGED', 'PANEL_UPDATE_UNAVAILABLE',
+  'PLATFORM_CAPABILITY_UNAVAILABLE', 'PLATFORM_IDENTITY_UNAVAILABLE',
+  'REQUEST_COMPLETED_RESULT_NOT_RETAINED', 'REQUEST_ID_REQUIRED', 'REQUEST_ID_REUSED', 'REQUEST_IN_PROGRESS', 'REQUEST_OUTCOME_UNKNOWN',
+  'license_required', 'operation_start_failed', 'operation_state_persist_failed',
+  'service_install_failed', 'node_runtime_install_failed', 'mail_profile_install_failed',
+  'service_operation_busy', 'service_operation_request_conflict', 'service_operation_runner_panicked',
+  'SERVICE_STATE_UNVERIFIED',
+];
 
 test('the two halves are one catalogue: no key is missing, duplicated or untranslated', () => {
   const overlap = [...shellKeys].filter((key) => screenKeys.has(key));
@@ -179,6 +199,7 @@ test('every key the eager boot graph can reach is in the half that boots with it
   const screenKeysSingleQuoted = new Set([...screensEn.matchAll(/^ {4}'((?:[^'\\]|\\.)+)':/gm)].map((m) => m[1]));
   const misplaced = [...screenKeysSingleQuoted].filter((key) => {
     if (runtimeBuiltGroups.includes(key.split('.')[0])) return true;
+    if (key.startsWith('err.') && shellErrorCodes.includes(key.split('.')[1])) return true;
     if (literal.has(key)) return true;
     for (const prefix of prefixes) if (key.startsWith(prefix)) return true;
     return false;
@@ -316,5 +337,41 @@ test('every screen is still reached lazily', () => {
       new RegExp(`lazyNamed\\(\\(\\) => import\\('\\./components/${name}'\\), '${name}'\\)`),
       `${name} must stay behind a lazy import or its copy returns to the boot payload`,
     );
+  }
+});
+
+// v0.1.0-alpha.98: the coded refusals only screens show moved to the screen
+// part "errors" (the boot path had 0.25 KiB left). What the shell can show
+// before any screen has loaded stays in the shell, and no refusal is ever drawn
+// as its own key while its words are still on their way.
+// Yalnız ekranların gösterdiği kodlu retler "errors" ekran parçasına taşındı;
+// kabuğun gösterebildikleri kabukta kalır ve hiçbir ret anahtar olarak çizilmez.
+test('the shell keeps the refusals it can show before any screen loads; the rest are screen copy', () => {
+  for (const locale of ['en', 'tr']) {
+    const shell = read(`src/i18n/${locale}.ts`);
+    for (const code of shellErrorCodes) {
+      assert.match(shell, new RegExp(`['"]err\.${code}['"]\s*:`), `${locale}: err.${code} must stay in the shell half`);
+    }
+    const errors = read(`src/i18n/screens/errors/${locale}.ts`);
+    for (const code of ['DNS_SETTINGS_REQUIRED', 'SITE_CONFIG_CHANGED', 'REPO_KEY_UNTRUSTED', 'mail_profile_dns_identity_not_ready']) {
+      assert.match(errors, new RegExp(`'err\.${code}'\s*:`), `${locale}: err.${code} belongs to the errors part`);
+      assert.doesNotMatch(shell, new RegExp(`['"]err\.${code}['"]\s*:`), `${locale}: err.${code} is still in the shell`);
+    }
+  }
+});
+
+test('a refusal whose words have not arrived says the server\'s sentence or the generic error, never its key', async () => {
+  const ts = (await import('typescript')).default;
+  const source = read('src/lib/apiError.ts');
+  const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ES2022, target: ts.ScriptTarget.ES2020 } }).outputText;
+  const { apiErrorText, apiErrorActionLabel } = await import('data:text/javascript;base64,' + Buffer.from(compiled).toString('base64'));
+  // Only the shell half is here: every screen-part key resolves to itself.
+  const shellOnly = { 'common.error': 'Something went wrong.', 'common.goFix': 'Fix it' };
+  const t = (key) => shellOnly[key] ?? key;
+  for (const code of ['DNS_SETTINGS_REQUIRED', 'SITE_CONFIG_CHANGED', 'FIREWALL_SYNC_FAILED']) {
+    assert.equal(apiErrorText({ code, message: 'The server said so.' }, t), 'The server said so.');
+    assert.equal(apiErrorText({ code, message: '' }, t), 'Something went wrong.');
+    assert.equal(apiErrorText({ code, reason: 'x', message: '' }, t), 'Something went wrong.');
+    assert.equal(apiErrorActionLabel({ code, action: '/dns-infrastructure', message: '' }, t), 'Fix it');
   }
 });

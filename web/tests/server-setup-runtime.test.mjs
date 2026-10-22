@@ -578,11 +578,11 @@ test('catalogue retry obtains fresh inventory before customization can continue'
 test('completion links and labels follow customized services instead of the original profile', async () => {
     const scenarios = [
         ['web', ['fail2ban'], '/services', 'setup.nextComponents'],
-        ['custom', [], '/settings?section=dns', 'setup.nextDNS'],
+        ['custom', [], '/dns-infrastructure', 'setup.nextDNS'],
         ['custom', ['nginx'], '/domains', 'setup.nextWebsite'],
         ['web', ['node'], '/domains', 'setup.nextApplication'],
         ['web', undefined, '/domains', 'setup.nextWebsite'],
-        ['dns', undefined, '/settings?section=dns', 'setup.nextDNS'],
+        ['dns', undefined, '/dns-infrastructure', 'setup.nextDNS'],
     ];
     for (const [purpose, selected, expectedPath, label] of scenarios) {
         const draft = { ...fresh().draft, purpose, ...(selected === undefined ? {} : { customization: { components: selected } }) };

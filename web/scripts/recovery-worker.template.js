@@ -3,7 +3,7 @@ const CACHE_PREFIX = 'celikpanel-recovery-shell-';
 const CACHE = CACHE_PREFIX + '__BUILD_ID__';
 const FILES = __RESOURCES__;
 const HTML = '/recovery-offline.html';
-const ROUTES = new Set(['/', '/login', '/activate', '/setup', '/settings', '/domains', '/databases', '/services', '/monitoring', '/users', '/import', '/audit', '/addons', '/vpn']);
+const ROUTES = new Set(['/', '/login', '/activate', '/setup', '/settings', '/account', '/domains', '/databases', '/services', '/dns-infrastructure', '/monitoring', '/security', '/maintenance', '/users', '/import', '/audit', '/addons', '/vpn']);
 const assets = new Set(FILES.map(file => file.path));
 const sameOrigin = url => new URL(url).origin === self.location.origin;
 const isPanelRoute = path => ROUTES.has(path) || /^\/(domains|services)\/[^/]+$/.test(path);

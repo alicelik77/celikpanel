@@ -21,7 +21,7 @@ export function StartGuide({ dnsReady, scanFresh, scanning, onScan, panelSecured
                         </h3>
                         <p className="mt-1 max-w-3xl text-sm text-fg-muted">{t('start.dns.hint')}</p>
                     </div>
-                    <Link to="/settings?section=dns" className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-fg hover:bg-primary/90">
+                    <Link to="/dns-infrastructure" className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-fg hover:bg-primary/90">
                         {t(dnsReady ? 'start.dns.review' : 'start.dns.action')}<ArrowRight aria-hidden="true" className="h-4 w-4" />
                     </Link>
                 </div>
@@ -58,13 +58,13 @@ export function StartGuide({ dnsReady, scanFresh, scanning, onScan, panelSecured
                         <Link to="/settings?section=panel" className="font-semibold text-primary">{t('start.panel.action')}</Link>
                     </li>
                     <li className="flex flex-wrap items-center justify-between gap-3 py-3">
-                        <span>{t('start.account.title')}</span><Link to="/settings?section=account" className="font-semibold text-primary">{t('start.account.action')}</Link>
+                        <span>{t('start.account.title')}</span><Link to="/account" className="font-semibold text-primary">{t('start.account.action')}</Link>
                     </li>
                     <li className="flex flex-wrap items-center justify-between gap-3 py-3">
                         <span>{t('start.updates.title')}</span><Link to="/settings?section=updates" className="font-semibold text-primary">{t('start.updates.action')}</Link>
                     </li>
                     <li className="flex flex-wrap items-center justify-between gap-3 py-3">
-                        <span>{t('start.audit.title')}</span><Link to="/settings?section=security" className="font-semibold text-primary">{t('start.audit.action')}</Link>
+                        <span>{t('start.audit.title')}</span><Link to="/security" className="font-semibold text-primary">{t('start.audit.action')}</Link>
                     </li>
                 </ul>
             </details>

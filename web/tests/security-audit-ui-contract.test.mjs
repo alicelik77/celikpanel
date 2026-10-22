@@ -5,7 +5,9 @@ import ts from 'typescript';
 import { englishCatalogue, turkishCatalogue } from './locale-catalogue.mjs';
 
 const card = readFileSync(new URL('../src/components/SecurityAuditCard.tsx', import.meta.url), 'utf8');
-const settings = readFileSync(new URL('../src/components/Settings.tsx', import.meta.url), 'utf8');
+// Its place is Server → Security since v0.1.0-alpha.98 (D-037); it was a Settings section.
+const securityPage = readFileSync(new URL('../src/components/SecurityPage.tsx', import.meta.url), 'utf8');
+const nav = readFileSync(new URL('../src/nav.ts', import.meta.url), 'utf8');
 const english = englishCatalogue;
 const turkish = turkishCatalogue;
 
@@ -62,10 +64,9 @@ function validSecurityAuditResponse() {
     };
 }
 
-test('security audit UI is an admin Settings section with a fixed read-only GET', () => {
-    assert.match(settings, /role === 'admin'/);
-    assert.match(settings, /id: 'security' as const/);
-    assert.match(settings, /<SecurityAuditCard \/>/);
+test('security audit UI is on the admin Security page with a fixed read-only GET', () => {
+    assert.match(nav, /id: 'security', path: '\/security', labelKey: 'nav\.security', icon: ShieldCheck, roles: \['admin'\]/);
+    assert.match(securityPage, /<SecurityAuditCard \/>/);
     assert.match(card, /fetch\('\/api\/v1\/security\/audit'/);
     assert.match(card, /method: 'GET'/);
     assert.match(card, /cache: 'no-store'/);
@@ -106,7 +107,7 @@ test('security audit decoder accepts canonical empty arrays and rejects JSON nul
 
 test('security audit labels ship in both English and Turkish', () => {
     for (const source of [english, turkish]) {
-        assert.match(source, /'settings\.section\.security'/);
+        assert.match(source, /'securityPage\.subtitle'/);
         assert.match(source, /'securityAudit\.title'/);
         assert.match(source, /'securityAudit\.code\.listenerNotAllowed'/);
         assert.match(source, /'securityAudit\.code\.allowedNoListener'/);

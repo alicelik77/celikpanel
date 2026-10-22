@@ -306,7 +306,7 @@ test('a component page has three answers about its component, never two', () => 
   // "Running" is a claim, and only an observed-present component can carry it.
   assert.match(
     serviceShell,
-    /const running = installed && \(svc\?\.status\?\.includes\('running'\) \?\? false\);/,
+    /const running = installed && isServiceRunning\(svc\?\.status\);/,
   );
 });
 

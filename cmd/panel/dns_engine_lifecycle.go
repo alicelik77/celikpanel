@@ -23,8 +23,8 @@ func writeDNSEngineWorkflowRequired(w http.ResponseWriter) {
 		w,
 		http.StatusConflict,
 		errCodeDNSEngineWorkflowRequired,
-		"BIND and PowerDNS must be installed, activated, switched, or removed from DNS infrastructure settings",
-		"/settings?section=dns",
+		"BIND and PowerDNS must be installed, activated, switched, or removed from Server → DNS and peer servers",
+		"/dns-infrastructure",
 	)
 }
 
@@ -43,7 +43,7 @@ func (p *Panel) requireActiveDNSPublisherForMutation(
 			http.StatusConflict,
 			errCodeDNSServerRequired,
 			"no single managed authoritative DNS engine is active and verified",
-			"/settings?section=dns",
+			"/dns-infrastructure",
 		)
 		return dnsPublisherIdentity{}, false
 	}

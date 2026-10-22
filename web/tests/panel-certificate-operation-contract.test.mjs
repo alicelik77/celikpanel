@@ -9,9 +9,10 @@ const settingsSource = readFileSync(
 
 function panelCertificatePanelSource() {
   const start = settingsSource.indexOf('function PanelCertificatePanel(');
-  const end = settingsSource.indexOf('function TwoFactorPanel()', start);
-  assert.ok(start >= 0 && end > start);
-  return settingsSource.slice(start, end);
+  // The panel is the last function of Settings.tsx since the account's
+  // two-factor panel moved to AccountPage.tsx (v0.1.0-alpha.98, D-037).
+  assert.ok(start >= 0);
+  return settingsSource.slice(start);
 }
 
 test('panel certificate POST persists an exact recovery identity before submission', () => {

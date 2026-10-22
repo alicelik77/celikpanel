@@ -35,7 +35,7 @@ func (p *Panel) remoteDNSConnectionForCreation(ctx context.Context, parent strin
 
 func writeRemoteDNSUnavailable(w http.ResponseWriter) {
 	writeCodedError(w, http.StatusConflict, errCodeRemoteDNSUnavailable,
-		"the connected DNS authority could not be verified; restore the existing DNS connection and retry", "/settings?section=dns")
+		"the connected DNS authority could not be verified; restore the existing DNS connection and retry", "/dns-infrastructure")
 }
 
 // Read the intended policy family rather than the first TXT at an owner. The

@@ -6691,3 +6691,86 @@ clock date of everything in it.
   check not run against a real Agent or the real release server; the update card
   and notices not yet seen on an installed server; the rollback paths that share
   the changed helpers exercised by contract tests only.
+
+### Candidate v0.1.0-alpha.98 (navigation only: every page where its name says it is; no Agent, updater or schema change; invariants 2 and 6; D-037; D-024; D-025; 2026-10-22)
+
+D-025 invariants 2 (evidence has a meaning and a lifecycle: the Security page reads
+Fail2ban from the stored component record only, and a record nobody has taken is
+"not checked yet", never "not installed") and 6 (readiness, progress and access
+remain independent: the Security page reads host-mutation readiness every 5 seconds
+while open as a read, and a poll never starts a change; the setup gate and the
+offline recovery shell keep the moved addresses reachable). The P0.1/P0.2 area
+(truthful, actionable state) is touched only in where a screen and its guidance
+live. **No P0 item is closed or advanced**; P0.1 to P0.5 stay partial and every open
+acceptance item stays open. This entry is not a claim that the native update and
+automatic-rollback resilience is complete. 2026-10-22 is the clock date of
+everything in it.
+
+- **What this release touches.** The web interface: the rail, three new Server
+  pages (DNS and peer servers, Security, Maintenance), My account, a Settings with
+  four sections, the redirects from the old addresses, and the texts and links that
+  named the old places (D-037). On the server side, only strings: the action
+  addresses carried by guidance answers (`/settings?section=dns` became
+  `/dns-infrastructure`; the panel certificate's missing contact email no longer
+  carries an action, because no screen can change it) and two English fallback
+  messages.
+  It does **not** touch the Agent, the updater (`update.sh`, `get.sh`, the system
+  update worker, rollback and recovery), any API, role, schema, polling or component
+  behaviour. Therefore **no native record is made** for this release, by the owner's
+  instruction of 2026-10-16 (no native record unless the updater's mutation path
+  changes).
+- **Owner-operated recovery path: unchanged.** CelikPanel updates stays in Settings,
+  where the update card and its notices are; the owner starts every installed-panel
+  update from the panel's own update screen, as before. The offline recovery
+  shell's route list gained the new addresses; its behaviour is otherwise the same.
+  Nothing the owner can do without the panel depends on where a screen is (D-022).
+  **Installed-panel update path: unchanged.**
+- **Access gates.** The setup gate keeps `/account`, `/security`,
+  `/dns-infrastructure` and `/maintenance` reachable while setup is required, as
+  `/settings` was. Roles of every page and API are unchanged: only the place moved.
+  A redirect from an old address leads to the destination's own role guard; an
+  additional user (team member), who never had Settings or the account section, is
+  still sent home, and a reseller or a customer who opens `/settings` is sent to
+  `/account`. A web test checks that every in-product link and every Go guidance
+  action resolves to a route and to an existing Settings section.
+- **Schema, version transition and recovery.** Schema 44, no migration; the release
+  sequence moves 97 to 98 in the release preparation. alpha.98 writes nothing new and
+  changes nothing persisted, so there is no stored record to translate. *alpha.97 to
+  alpha.98:* alpha.98 reads everything alpha.97 wrote; an old address from a bookmark
+  or an older Panel's guidance link (`/settings?section=account`, `security`, `dns`,
+  `system-databases`) is redirected forward to the new page. *alpha.98 back to
+  alpha.97* (for example after a rollback): the new addresses `/security`,
+  `/maintenance`, `/dns-infrastructure` and `/account` are unknown to alpha.97, so a
+  bookmark or a link to one of them falls back to alpha.97's Dashboard, and
+  alpha.97 shows its own Settings sections at their old addresses. **Known,
+  harmless downgrade behaviour:** nothing is lost, nothing needs repairing, and the
+  person reaches the same screens through alpha.97's own menu. Whether any stored
+  record keeps a guidance action address was not audited here; if one did, following
+  it on alpha.97 would end on the Dashboard in the same way. Not measured on an
+  installed server.
+- **Evidence and open.** On the candidate tree: web `npm test` 1697 passed (1675 on
+  alpha.97), with the new tests in `web/tests/menu-layout-alpha98.test.mjs` (the
+  rail per role, the redirects, every web link and every Go guidance action
+  resolving, the personal menu mounted, Fail2ban's states, the new labels in both
+  languages, each new page with its header and moved content); Go 7156 passed, 0 failed; the
+  build within its budgets, with the critical boot path at 329.16 of 361 KiB raw and
+  100.37 of 110 KiB gzip after the review round moved the coded refusals only screens
+  show into the screen part "errors" (360.75 before; the ceiling was not raised). A
+  refusal whose words have not arrived shows the server's sentence or the generic
+  error, never its key; the codes the shell shows before any screen loads (access,
+  licence, update tracker, operation overlay, request identity) stay in the shell. The numbers are in the
+  [release notes](RELEASE-NOTES-v0.1.0-alpha.98.md). Component and mounted tests do
+  not establish native behaviour. **Nothing was measured on an installed server**:
+  the new layout has not been seen on one. Open: no screen changes the administrator's
+  own email, which the panel certificate needs as its contact (the refusal says so
+  and carries no action); everything the alpha.88 to alpha.97 entries
+  leave open stays open. Installed panels are updated only by their owners, from the
+  panel's own update screen. P0.1 to P0.5 stay partial.
+- **What the owner saw of alpha.97 (2026-10-22).** The owner's screenshot shows
+  Boston on alpha.97 with real versions on Components (PowerDNS 4.8.3, Nginx 1.24.0,
+  PostgreSQL 16.15, certbot 2.9.0, Fail2ban 1.0.2, nftables 1.0.9, cron 3.0pl1,
+  Node.js 24.21.0). That is the first measurement of D-036 on an installed server
+  and turns "not measured" into "seen on one server" for those components (invariant
+  2: what was seen is said, and no more). Frankfurt's alpha.97 state was not
+  reported, so the open item of the D-034 amendment stays open, and a kept reading or
+  a busy package manager on a real server has still not been seen.

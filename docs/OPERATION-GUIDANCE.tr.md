@@ -9491,3 +9491,102 @@ eski `celikbros/...` GitHub adreslerine bağlanıyor, bunlar yönlendirilir (hes
 artık `alicelik77`); Ayarlar menü düzeni önerisi sahibin kararını bekliyor. Bu
 girdi için hiçbir metin ya da ekran değiştirilmedi. P0.1-P0.5 **kısmi** kalır;
 bu girdi hiçbir şeyi kapatmaz ya da ilerletmez.
+
+### Şimdi her şey nerede: menü düzeni (D-037, 2026-10-22)
+
+v0.1.0-alpha.98 adayı için kaynakta; kurulu bir sunucuda hiçbir şey ölçülmedi.
+Yalnız her ekranın yeri taşındı: taşınan ekranların okumaları, değişiklikleri,
+rolleri ve sözleri eskisi gibidir. Tablodaki herhangi bir şey için birine
+"Ayarlar"ı göstermeden önce bu girdiyi okuyun.
+
+**Taşınan her şey nerede.**
+
+| Eskiden | Şimdi | Adres |
+| --- | --- | --- |
+| Ayarlar → DNS altyapısı | Sunucu → DNS ve eş sunucular | `/dns-infrastructure` |
+| Ayarlar → Sunucu güvenliği (dışa açık hizmet denetimi) | Sunucu → Güvenlik | `/security` |
+| Bileşenler'deki güvenlik duvarı satırından açılan kutu | Sunucu → Güvenlik (ayarlarıyla tam kutu); Bileşenler sakin satırını ve bir bağlantıyı korur | `/security#firewall` |
+| Ayarlar → Sistem veritabanları | Sunucu → Bakım | `/maintenance` |
+| Ayarlar → Hesap güvenliği (iki faktörlü doğrulama) | Hesabım, sağ üstteki menünün ilk öğesi | `/account` |
+| Menüdeki "Parolayı değiştir" | Hesabım'da bir Parola kartı (aynı pencere) | `/account` |
+| Ayarlar → Panel HTTPS | Ayarlar → Panel adresi ve HTTPS | `/settings` |
+
+Ayarlar dört şey tutar: Panel adresi ve HTTPS, Lisans, CelikPanel güncellemeleri ve
+Sunucu kurulumu. İçe aktar Sunucu altında, Mağaza ve VPN Barındırma altında kalır.
+
+**Kim ne görür.** Yönetici kenar çubuğunda Sunucu, Güvenlik, Bakım, DNS ve eş sunucular ve
+Ayarlar'ı, sağ üstteki menüde Hesabım'ı görür. Bayi ve müşteri artık Ayarlar'ı görmez
+(yalnız kendi hesaplarını tutacaktı); Hesabım'ları vardır. Ek kullanıcının (ekip
+üyesi) eskisi gibi ne Ayarlar'ı ne Hesabım'ı vardır ve "Parolayı değiştir"i
+menüde korur. Bir rolün eskiden açamadığı bir sayfayı hâlâ açamaz; sunucu onu eskisi
+gibi reddeder.
+
+**Eski bağlantılar, yer imleri ve metinler.** Her eski `/settings?section=` adresi
+(`account`, `security`, `dns`, `system-databases`) ek geçmiş girdisi olmadan yeni
+sayfasıyla değiştirilir; böylece Geri düğmesi bir yönlendirmeye dönmez. Bayi ya da
+müşteri için `/settings` Hesabım'a gider. Panel'in kendi bağlantıları, başlangıç
+rehberi, kurulumun sonraki adımı ("DNS ve eş sunucuları aç") ve sunucunun
+yönlendirme eylemi bağlantıları (DNS motoru iş akışı, DNSSEC, yalnız-DNS çocukları,
+içe aktarma, uzak DNS yetkisi, DNS kurulumu ve Panel sertifikasının eksik iletişim
+e-postası) yeni yeri doğrudan adlandırır. "Ayarlar > DNS altyapısı" ya da "Ayarlar >
+Sunucu güvenliği" diyen bir yönlendirme metni artık "Sunucu → DNS ve eş sunucular" ya
+da "Sunucu → Güvenlik" der. Eski bir Panel'in bağlantıları da çalışır, çünkü tarayıcı
+onları yönlendirir. Kurulum gerekirken dört yeni adres Ayarlar gibi erişilebilir kalır
+ve çevrimdışı kurtarma kabuğu onları bilir.
+
+**Güvenlik sayfası (D-024).** "Bu sunucu güvende mi?" sorusunu şu sırayla yanıtlar:
+güvenlik duvarı (ayarlarıyla), Fail2ban ve salt-okur dışa açık hizmet denetimi.
+Fail2ban'ın durumu yalnız saklanan bileşen kaydından okunur; sayfa makineyi yoklamaz
+ve Fail2ban'ın yönetimi kendi bileşen sayfasında kalır. Sözler:
+
+- Okunuyor: "Bileşen kaydı okunuyor…" Kimsenin işlem yapması gerekmez.
+- Okunamadı: "Fail2ban'ın kurulu olup olmadığı okunamadı." ve "Tekrar dene".
+  Yönetici Tekrar dene'ye basar; hiçbir şey değiştirilmedi.
+- Çalışıyor: "Çalışıyor."
+- Kurulu, çalışma durumu henüz okunmadı: "Kurulu. Çalışıp çalışmadığı henüz
+  okunmadı; bileşen sayfası okur." Yönetici "Fail2ban'ı yönet"i açar.
+- Kurulu ama çalışmıyor: "Kurulu ama çalışmıyor: tekrarlanan başarısız girişler şu
+  an engellenmiyor. Bileşen sayfasından başlatın." Yönetici onu orada başlatır.
+- Kurulu değil: "Kurulu değil: tekrarlanan başarısız girişler engellenmiyor.
+  Bileşenler'den kurabilirsiniz." ve "Bileşenler'i aç".
+- Henüz denetlenmedi: "Bu sunucuda henüz bakılmadı. Denetimi Bileşenler sayfası
+  yapar." Kimsenin almadığı bir kayıt asla "kurulu değil" diye çizilmez.
+
+Sunucu meşgulken (başka bir değişiklik, bir güncelleme, bir paket işlemi) sayfa
+Bileşenler'deki aynı beklemeyi gösterir: "Sunucu değişiklikleri geçici olarak
+kullanılamıyor.", sonra neden, sonra "Bu sayfa birkaç saniyede bir yeniden denetler
+ve bu beklemeyi kendiliğinden kaldırır; sayfayı yeniden yüklemeniz gerekmez." Sayfa
+açıkken hazırlığı her 5 saniyede okur; bu yalnız bir okumadır ve bir yoklama asla bir
+değişiklik başlatmaz. Kapalı, okunamayan, motoru olmayan ya da dikkat gerektiren bir
+güvenlik duvarı kutusunu Bileşenler'de de göstermeye devam eder, çünkü önemli olduğu
+anda sahip oradadır.
+
+**Metinler nerede.** `web/src/i18n/` içinde `nav.dnsPeers`, `nav.security`,
+`nav.maintenance` ve `nav.account`; sayfa alt başlıkları ve Fail2ban sözleri
+`web/src/i18n/screens/security/` ve `screens/settings/` altında `securityPage.*`,
+`dnsPeers.*` ve `account.*`. Parola penceresinin sözleri kabuk kataloğunda kalır
+(`profile.*`). Yalnız ekranların gösterdiği kodlu retler inceleme turundan beri
+`web/src/i18n/screens/errors/` ekran parçasındadır; sözleri henüz gelmemiş bir ret
+sunucunun cümlesini ya da genel hatayı gösterir, asla anahtarını.
+
+**İnceleme turu (22 Ekim 2026).** Panel sertifikasının eksik iletişim e-postası: ret
+artık "Yönetici hesabının geçerli bir e-posta adresi yok; sertifika yetkilisi bunu
+iletişim adresi olarak ister. Bunu değiştirecek bir ekran henüz yok: yönetici
+sunucuda oluşturulurken verilen adrestir." der. Hiçbir ekran onu değiştiremediği için
+eylem taşımaz. **Kim işlem yapar:** sunucu sahibi; panel içinde henüz bir çözüm yok
+(D-037'de açık iş). Güvenlik sayfasındaki Fail2ban satırı Panel ve Bileşenler ile
+paylaşılan tek çalışma kuralına uyar ("active (exited)" çalışmıyordur) ve Fail2ban
+kaydı olmayan bileşen listesi "Kurulu değil" der.
+
+P0.1-P0.5 **kısmi** kalır; bu girdi hiçbir şeyi kapatmaz ya da ilerletmez.
+
+### Kurulu sunucular: Boston'un alpha.97 sürümleri görüldü (2026-10-22)
+
+Sahip 22 Ekim 2026'da Boston'un v0.1.0-alpha.97'deki Bileşenler sayfasının bir
+ekran görüntüsünü gönderdi. Gerçek sürümleri gösterir: PowerDNS 4.8.3, Nginx 1.24.0,
+PostgreSQL 16.15, certbot 2.9.0, Fail2ban 1.0.2, nftables 1.0.9, cron 3.0pl1 ve
+Node.js 24.21.0. D-036'nın sürümlerinin bir kurulu sunucuda ilk kez görülmesidir.
+**Kim işlem yapar:** bunun için kimse; bir gözlemdir. **Açık:** Frankfurt'un
+alpha.97 durumu bildirilmedi; tek bir ekran görüntüsü, gerçek bir sunucuda korunan
+bir okumanın ya da meşgul bir paket yöneticisinin denetimi değildir. Bu girdi için hiçbir metin ya da ekran değiştirilmedi. P0.1-P0.5
+**kısmi** kalır; bu girdi hiçbir şeyi kapatmaz ya da ilerletmez.

@@ -472,7 +472,7 @@ export const enComponentsScreens = {
     'services.mailProfiles.code.state_incomplete': 'The service state that was read is incomplete; the next component check reads it again.',
     'services.mailProfiles.code.catalogue_incomplete': 'The server’s profile catalogue is incomplete.',
     'services.mailProfiles.code.hostname_unknown': 'This server’s own hostname could not be read, so the mail hostname cannot be decided.',
-    'services.mailProfiles.code.dns_identity_not_ready': 'DNS identity is not ready. Install a supported DNS server and save the shared nameserver names and operating mode in Settings before installing a mail profile.',
+    'services.mailProfiles.code.dns_identity_not_ready': 'DNS identity is not ready. Install a supported DNS server and save the shared nameserver names and operating mode in Server → DNS and peer servers before installing a mail profile.',
     'services.mailProfiles.code.component_not_installable': '{component} cannot be installed automatically on this server.',
     'services.mailProfiles.code.component_not_installable.platform': '{component} cannot be installed automatically on this server’s platform: {platform}.',
     'services.mailProfiles.code.component_conflict': '{component} conflicts with the installed {conflicting}.',

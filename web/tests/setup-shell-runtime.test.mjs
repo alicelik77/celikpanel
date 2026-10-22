@@ -33,7 +33,7 @@ function compileURL(relativePath, imports) {
 const stubURL = moduleURL(`
     import React from '${reactURL}';
     const Icon = props => React.createElement('i', props);
-    export const LogOut = Icon, ChevronDown = Icon, Menu = Icon, KeyRound = Icon, UserCheck = Icon, DownloadCloud = Icon;
+    export const LogOut = Icon, ChevronDown = Icon, Menu = Icon, KeyRound = Icon, UserCheck = Icon, DownloadCloud = Icon, CircleUser = Icon, User = Icon;
     // The Panel's stored update check (alpha.96): the setup shell reads nothing.
     export const availablePanelUpdate = () => null;
     export const wholeVersion = (text) => text;
@@ -167,8 +167,9 @@ test('mounted setup shell preserves server identity and build without ordinary n
         assert.equal(fixture.requests[0].options.cache, 'no-store');
 
         const links = root.findAllByType('a').map(link => link.props.href);
-        for (const recovery of ['panel', 'dns', 'updates']) {
-            assert.ok(links.includes('/settings?section=' + recovery), 'missing recovery link: ' + recovery);
+        // DNS and peer servers is its own page since v0.1.0-alpha.98 (D-037).
+        for (const recovery of ['/settings?section=panel', '/dns-infrastructure', '/settings?section=updates']) {
+            assert.ok(links.includes(recovery), 'missing recovery link: ' + recovery);
         }
         assert.equal(links.some(href => href === '/services' || href.startsWith('/services/')), false);
         assert.equal(links.some(href => href === '/domains' || href.startsWith('/domains/')), false);

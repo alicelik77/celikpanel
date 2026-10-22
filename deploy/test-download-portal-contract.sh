@@ -108,15 +108,15 @@ grep -Fq 'Cache-Control "no-cache, must-revalidate"' "$tmp/site/.htaccess" \
   || fail "the page and its stylesheet may be served stale from cache"
 grep -Fq 'document.documentElement.lang = currentLanguage' "$tmp/site/assets/site.js" \
   || fail "document language is not updated"
-grep -Fq 'celikbros/celikpanel-feedback/issues/new?template=bug_tr.yml' "$tmp/site/index.html" \
+grep -Fq 'alicelik77/celikpanel-feedback/issues/new?template=bug_tr.yml' "$tmp/site/index.html" \
   || fail "Turkish bug report link is missing"
-grep -Fq 'celikbros/celikpanel-feedback/issues/new?template=bug_en.yml' "$tmp/site/index.html" \
+grep -Fq 'alicelik77/celikpanel-feedback/issues/new?template=bug_en.yml' "$tmp/site/index.html" \
   || fail "English bug report link is missing"
-grep -Fq 'celikbros/celikpanel-feedback/issues/new?template=feature_tr.yml' "$tmp/site/index.html" \
+grep -Fq 'alicelik77/celikpanel-feedback/issues/new?template=feature_tr.yml' "$tmp/site/index.html" \
   || fail "Turkish feature request link is missing"
-grep -Fq 'celikbros/celikpanel-feedback/issues/new?template=feature_en.yml' "$tmp/site/index.html" \
+grep -Fq 'alicelik77/celikpanel-feedback/issues/new?template=feature_en.yml' "$tmp/site/index.html" \
   || fail "English feature request link is missing"
-grep -Fq 'celikbros/celikpanel-feedback/security/advisories/new' "$tmp/site/index.html" \
+grep -Fq 'alicelik77/celikpanel-feedback/security/advisories/new' "$tmp/site/index.html" \
   || fail "private security report link is missing"
 grep -Fq 'data-localized-href' "$tmp/site/assets/site.js" \
   || fail "localized feedback link behavior is missing"
@@ -128,8 +128,8 @@ if grep -Eq '<button[^>]*>(+ Yeni site|×|Devam et)' "$tmp/site/index.html"; the
   fail "illustrative product controls must not enter the keyboard tab order"
 fi
 grep -Fq -- "--proto '=https'" "$bootstrap" || fail "HTTPS protocol restriction is missing"
-grep -Fxq 'bootstrap_release_sequence=97' "$bootstrap" || fail "bootstrap sequence pin is missing"
-grep -Fxq 'bootstrap_release_version=v0.1.0-alpha.97' "$bootstrap" || fail "bootstrap version pin is missing"
+grep -Fxq 'bootstrap_release_sequence=98' "$bootstrap" || fail "bootstrap sequence pin is missing"
+grep -Fxq 'bootstrap_release_version=v0.1.0-alpha.98' "$bootstrap" || fail "bootstrap version pin is missing"
 grep -Fxq 'bootstrap_release_public_key_sha256=7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb' "$bootstrap" \
   || fail "bootstrap public-key pin is missing"
 grep -Fq "sha256sum -c" "$bootstrap" || fail "archive checksum is not verified"

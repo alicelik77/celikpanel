@@ -1,4 +1,4 @@
-import { LayoutDashboard, Globe, Database, Server, Users, Settings, DownloadCloud, ScrollText, Package, Shield, Activity, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, Globe, Database, Server, Users, Settings, DownloadCloud, ScrollText, Package, Shield, Activity, Network, ShieldCheck, Wrench, UserCheck, type LucideIcon } from 'lucide-react';
 import type { TranslationKey } from './i18n/en';
 import type { Role } from './auth/AuthContext';
 
@@ -12,7 +12,13 @@ import type { Role } from './auth/AuthContext';
 // bağlı bir grup başlığını bildirir; kenar çubuğu bu listenin mevcut
 // kullanıcının rolüne göre süzülmüş halidir ve rota koruyucuları aynı
 // listeyi kontrol eder.
-export type NavGroup = 'main' | 'hosting' | 'server';
+//
+// 'personal' items are the signed-in person's own pages. They are not drawn in
+// the rail: the personal menu at the top right opens them (D-037), and the
+// route guard reads them from this same list.
+// 'personal' öğeler kişinin kendi sayfalarıdır; rayda çizilmez, sağ üstteki
+// kişisel menü açar (D-037). Rota koruyucusu onları bu listeden okur.
+export type NavGroup = 'main' | 'hosting' | 'server' | 'personal';
 
 export interface NavItem {
     id: string;
@@ -50,18 +56,38 @@ export const navItems: NavItem[] = [
     { id: 'users', path: '/users', labelKey: 'nav.users', icon: Users, roles: ['admin', 'reseller', 'customer'], group: 'hosting' },
     { id: 'addons', path: '/addons', labelKey: 'nav.addons', icon: Package, roles: ['admin', 'reseller'], group: 'hosting' },
     { id: 'vpn', path: '/vpn', labelKey: 'nav.vpn', icon: Shield, roles: ACCOUNT_ROLES, group: 'hosting' },
+    // Every page is where its name says it is (D-037, owner 2026-10-22): the
+    // server's tools, its security and its maintenance live under Server;
+    // Settings holds only what is chosen once and decides how the panel
+    // behaves; the person's own account is in the personal menu. Only the
+    // place moved: each page keeps the roles it had inside Settings.
+    // Her sayfa adının söylediği yerdedir (D-037): sunucunun araçları,
+    // güvenliği ve bakımı Sunucu altında; Ayarlar'da yalnız bir kez seçilip
+    // panelin davranışını belirleyenler; kişinin kendi hesabı kişisel menüde.
+    // Yalnız yer değişti; her sayfa Ayarlar içindeki rollerini korur.
     { id: 'services', path: '/services', labelKey: 'nav.services', icon: Server, roles: ['admin'], group: 'server', countKey: 'services' },
+    { id: 'dns', path: '/dns-infrastructure', labelKey: 'nav.dnsPeers', icon: Network, roles: ['admin'], group: 'server' },
     { id: 'monitoring', path: '/monitoring', labelKey: 'nav.monitoring', icon: Activity, roles: ['admin'], group: 'server' },
+    { id: 'security', path: '/security', labelKey: 'nav.security', icon: ShieldCheck, roles: ['admin'], group: 'server' },
+    { id: 'maintenance', path: '/maintenance', labelKey: 'nav.maintenance', icon: Wrench, roles: ['admin'], group: 'server' },
     { id: 'import', path: '/import', labelKey: 'nav.import', icon: DownloadCloud, roles: ['admin'], group: 'server' },
     { id: 'audit', path: '/audit', labelKey: 'nav.audit', icon: ScrollText, roles: ['admin'], group: 'server' },
-    { id: 'settings', path: '/settings', labelKey: 'nav.settings', icon: Settings, roles: ACCOUNT_ROLES, group: 'server' },
+    // Settings has nothing left for a reseller or a customer: their only
+    // section was their own account, which is now My account. /settings
+    // takes them there (settingsRedirect below).
+    // Bayi ve müşteri için Ayarlar'da bir şey kalmadı; /settings onları
+    // Hesabım'a götürür.
+    { id: 'settings', path: '/settings', labelKey: 'nav.settings', icon: Settings, roles: ['admin'], group: 'server' },
+    { id: 'account', path: '/account', labelKey: 'nav.account', icon: UserCheck, roles: ACCOUNT_ROLES, group: 'personal' },
 ];
 
 // Group order and their heading translation keys. A group with no visible
 // items for the current role is skipped by the sidebar.
 // Grup sırası ve başlık çeviri anahtarları. Mevcut rol için görünür öğesi
 // olmayan bir grup kenar çubuğunda atlanır.
-export const navGroups: { id: NavGroup; labelKey?: TranslationKey }[] = [
+// The personal group is not here: it is the personal menu, not the rail.
+// Kişisel grup burada değildir; o raya değil kişisel menüye aittir.
+export const navGroups: { id: Exclude<NavGroup, 'personal'>; labelKey?: TranslationKey }[] = [
     { id: 'main' },
     { id: 'hosting', labelKey: 'nav.group.hosting' },
     { id: 'server', labelKey: 'nav.group.server' },
@@ -92,4 +118,30 @@ export function canAccessPath(role: Role, path: string, access?: NavAccessContex
             ? normalizedPath === '/'
             : normalizedPath === item.path || normalizedPath.startsWith(`${item.path}/`));
     return match ? isNavItemAllowed(match, role, access) : false;
+}
+
+// Settings sections that moved to their own pages in v0.1.0-alpha.98 (D-037),
+// by their old address. An old link, a bookmark or a guidance text from an
+// earlier release still arrives: /settings?section=<id> is replaced (no extra
+// history entry) by the page that holds the section now.
+// v0.1.0-alpha.98'de kendi sayfasına taşınan Ayarlar bölümleri, eski
+// adresleriyle. Eski bağlantı, yer imi ya da önceki sürümün yönlendirme metni
+// yine ulaşır: /settings?section=<id>, bölümün bugünkü sayfasıyla değiştirilir.
+export const movedSettingsSections: Partial<Record<string, string>> = {
+    account: '/account',
+    security: '/security',
+    dns: '/dns-infrastructure',
+    'system-databases': '/maintenance',
+};
+
+// Where /settings sends this person, or null to stay. A section that moved
+// goes to its page; a person for whom Settings has no section any more (a
+// reseller or a customer: their only section was their own account) goes to
+// My account, whatever section the address named, as Settings used to open
+// their account section for any section it could not show them.
+// /settings'in bu kişiyi nereye gönderdiği; kalacaksa null.
+export function settingsRedirect(search: string, role: Role): string | null {
+    const section = new URLSearchParams(search).get('section');
+    if (role !== 'admin') return ACCOUNT_ROLES.includes(role) ? '/account' : null;
+    return (section && Object.prototype.hasOwnProperty.call(movedSettingsSections, section) && movedSettingsSections[section]) || null;
 }

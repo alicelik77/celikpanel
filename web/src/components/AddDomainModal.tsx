@@ -281,7 +281,7 @@ export function AddDomainModal({ onClose, onSuccess }: AddDomainModalProps) {
                         */}
                         <button
                             type='button'
-                            onClick={() => navigate('/settings?section=dns')}
+                            onClick={() => navigate('/dns-infrastructure')}
                             className='rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-fg'
                         >
                             {dns.reason === 'identity'

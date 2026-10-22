@@ -19,7 +19,10 @@ test('update card is reachable only through the admin settings panel', () => {
     assert.match(settings, /role === 'admin'/);
     const adminBlock = settings.slice(settings.indexOf("{role === 'admin'"));
     assert.match(adminBlock, /\{activeID === 'updates' && <Suspense[^>]*><PanelUpdateCard \/><\/Suspense>\}/);
-    assert.ok(adminBlock.indexOf('<PanelUpdateCard />') < adminBlock.indexOf('id="settings-dns-panel"'));
+    // The update card is mounted only inside its own updates panel.
+    const updatesPanel = adminBlock.slice(adminBlock.indexOf('id="settings-updates-panel"'), adminBlock.indexOf('id="settings-setup-panel"'));
+    assert.match(updatesPanel, /<PanelUpdateCard \/>/);
+    assert.equal(settings.split('<PanelUpdateCard />').length, 2);
 });
 
 test('the provider persists and revalidates exact ownership before the only update POST', () => {

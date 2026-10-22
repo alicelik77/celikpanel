@@ -12,7 +12,7 @@ import (
 
 const (
 	errCodeMailProfileDNSIdentityNotReady = "mail_profile_dns_identity_not_ready"
-	mailProfileDNSIdentityMessage         = "DNS identity is not ready. Install a supported DNS server and save the shared nameserver names and operating mode in Settings before installing a mail profile."
+	mailProfileDNSIdentityMessage         = "DNS identity is not ready. Install a supported DNS server and save the shared nameserver names and operating mode in Server → DNS and peer servers before installing a mail profile."
 )
 
 var errMailProfileDNSIdentityNotReady = errors.New("mail profile DNS identity is not ready")

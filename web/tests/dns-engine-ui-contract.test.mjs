@@ -19,6 +19,10 @@ const settingsPage = readFileSync(
   new URL('../src/components/Settings.tsx', import.meta.url),
   'utf8',
 );
+const dnsPeersPage = readFileSync(
+  new URL('../src/components/DNSPeersPage.tsx', import.meta.url),
+  'utf8',
+);
 const identityPlan = readFileSync(
   new URL('../src/lib/dnsIdentityPlan.ts', import.meta.url),
   'utf8',
@@ -135,9 +139,12 @@ test('initial DNS state load is read-only; explicit Refresh reconciles before GE
   const initialEffect = card.slice(effectStart, card.indexOf('useEffect(() => {', effectStart + 1));
   assert.match(initialEffect, /void refresh\(\)/);
   assert.doesNotMatch(initialEffect, /reconcileAndRefresh/);
-  assert.match(settingsPage,
-    /id="settings-dns-panel"[\s\S]*hidden=\{activeID !== 'dns'\}[\s\S]*\{activeID === 'dns' && <DNSServerSettings \/>\}/,
-    'the DNS card must mount only on the DNS section, so unrelated Settings routes cannot start its polling or overlay');
+  // Since v0.1.0-alpha.98 (D-037) the DNS card has its own page, Server → DNS
+  // and peer servers: it mounts only there, so no other page starts its
+  // polling or overlay, and Settings no longer mounts it at all.
+  assert.match(dnsPeersPage, /<DNSServerSettings \/>/,
+    'the DNS card must mount on its own page, so unrelated routes cannot start its polling or overlay');
+  assert.doesNotMatch(settingsPage, /DNSServerSettings/);
   assert.match(card, /onClick=\{\(\) => void reconcileAndRefresh\(\)\}/);
 });
 

@@ -1,6 +1,6 @@
 import { BrandMark } from './BrandMark';
 import { BuildCommit } from './BuildCommit';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LogOut, ChevronDown, Menu, KeyRound, UserCheck, DownloadCloud } from 'lucide-react';
 import { api } from '../lib/api';
 import { Link } from '../router';
@@ -14,9 +14,15 @@ import { INFRASTRUCTURE_ZONES_URL, decodeInfrastructureZones, domainsCount } fro
 import { ThemeSwitcher } from './ThemeSwitcher';
 import { SkinSwitcher } from './SkinSwitcher';
 import { LanguageSwitcher } from './LanguageSwitcher';
-import { ChangePasswordModal } from './ChangePasswordModal';
 import { DesktopPageHeaderTargetContext } from './pageHeaderSlot';
 import type { TranslationKey } from '../i18n/en';
+
+// The password dialog opens from My account since v0.1.0-alpha.98 (D-037);
+// the menu opens it only for a role without that page. It is fetched when it
+// is opened, not with every page load.
+// Parola penceresi alpha.98'den beri Hesabım'dan açılır; menü yalnız o sayfası
+// olmayan rol için açar. Açıldığında getirilir, her sayfa yüklemesinde değil.
+const ChangePasswordModal = lazy(() => import('./ChangePasswordModal').then((module) => ({ default: module.ChangePasswordModal })));
 
 // The single inherited shell: a dark navigation rail (grouped, with live
 // counts) beside a light content column with a top bar. Feature pages
@@ -244,7 +250,7 @@ export function Layout({ children, currentPage = '', onPageChange, mode = 'panel
                             </div>
                             <div className={setupMode ? 'hidden sm:block' : undefined}><SkinSwitcher /></div>
                             <ThemeSwitcher />
-                            <UserMenu />
+                            <UserMenu access={navAccess} />
                         </div>
                     </header>
 
@@ -514,72 +520,116 @@ function ImpersonationBanner() {
     );
 }
 
-// UserMenu shows the current user and role with a dropdown to sign out.
-// UserMenu, mevcut kullanıcıyı ve rolü, çıkış için bir açılır menüyle gösterir.
-function UserMenu() {
+// UserMenu is the personal menu: the current user and role, then My account
+// first (the person's own password and two-step sign-in, D-037), the language
+// on a phone, and Sign out. A disclosure, not a menu widget: the button says
+// whether it is open, Tab walks its links and buttons, Escape closes it and
+// gives focus back to the button, and it closes when focus leaves it (Tab past
+// its last item). aria-controls names the panel only while it exists. A role without My account (an additional
+// user) keeps the password change here, where it always was.
+// UserMenu kişisel menüdür: kullanıcı ve rol, sonra ilk sırada Hesabım
+// (D-037), telefonda dil ve Çıkış. Açılır-kapanır bir bölmedir: düğme açık
+// olup olmadığını söyler, Tab içinde gezer, Escape kapatıp odağı düğmeye
+// verir; odak bölmeden çıkınca (Tab ile son öğeden öteye) kapanır. Hesabım'ı
+// olmayan rol (ek kullanıcı) şifre değiştirmeyi burada tutar.
+function UserMenu({ access }: { access: NavAccessContext }) {
     const { user, role, logout } = useAuth();
     const { t } = useI18n();
     const [open, setOpen] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
+    const buttonRef = useRef<HTMLButtonElement>(null);
     const roleKey = `role.${role}` as TranslationKey;
+    const hasAccountPage = navItemsForRole(role, access).some((item) => item.id === 'account');
 
     useEffect(() => {
         if (!open) return;
         const onClick = (e: MouseEvent) => {
             if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
         };
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key !== 'Escape') return;
+            setOpen(false);
+            buttonRef.current?.focus();
+        };
         document.addEventListener('mousedown', onClick);
-        return () => document.removeEventListener('mousedown', onClick);
+        document.addEventListener('keydown', onKey);
+        return () => {
+            document.removeEventListener('mousedown', onClick);
+            document.removeEventListener('keydown', onKey);
+        };
     }, [open]);
 
+    const itemClass = 'flex w-full items-center gap-2 px-4 py-2.5 text-sm text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg max-sm:min-h-11';
+
     return (
-        <div className="relative" ref={ref}>
+        <div
+            className="relative"
+            ref={ref}
+            onBlur={(event) => {
+                if (open && !event.currentTarget.contains(event.relatedTarget as Node | null)) setOpen(false);
+            }}
+        >
             <button
+                ref={buttonRef}
+                type="button"
+                aria-expanded={open}
+                aria-controls={open ? 'personal-menu' : undefined}
                 onClick={() => setOpen((o) => !o)}
-                className="flex items-center gap-2 rounded-lg border border-border bg-surface-2 py-1 pl-1 pr-2 text-sm transition-colors hover:border-border-strong"
+                className="flex items-center gap-2 rounded-lg border border-border bg-surface-2 py-1 pl-1 pr-2 text-sm transition-colors hover:border-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
                 <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-xs font-semibold text-primary-fg">
                     {user.username.slice(0, 2).toUpperCase()}
                 </span>
                 <span className="hidden max-w-[8rem] truncate font-medium sm:block">{user.username}</span>
-                <ChevronDown className="h-4 w-4 text-fg-subtle" />
+                <ChevronDown className="h-4 w-4 text-fg-subtle" aria-hidden="true" />
             </button>
 
             {open && (
-                <div className="absolute right-0 z-20 mt-2 w-52 overflow-hidden rounded-xl border border-border bg-surface shadow-lg">
+                <div id="personal-menu" data-personal-menu="" className="absolute right-0 z-20 mt-2 w-56 overflow-hidden rounded-xl border border-border bg-surface shadow-lg">
                     <div className="border-b border-border px-4 py-3">
                         <p className="truncate text-sm font-semibold">{user.username}</p>
                         <p className="text-xs text-fg-subtle">{t(roleKey)}</p>
                     </div>
+                    {hasAccountPage && (
+                        <Link to="/account" onClick={() => setOpen(false)} className={itemClass} data-personal-menu-item="account">
+                            <UserCheck className="h-4 w-4" aria-hidden="true" />
+                            {t('nav.account')}
+                        </Link>
+                    )}
                     <div className="p-2 sm:hidden">
                         <LanguageSwitcher />
                     </div>
+                    {!hasAccountPage && (
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setOpen(false);
+                                setShowPassword(true);
+                            }}
+                            className={itemClass}
+                        >
+                            <KeyRound className="h-4 w-4" aria-hidden="true" />
+                            {t('profile.changePassword')}
+                        </button>
+                    )}
                     <button
-                        onClick={() => {
-                            setOpen(false);
-                            setShowPassword(true);
-                        }}
-                        className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg"
-                    >
-                        <KeyRound className="h-4 w-4" />
-                        {t('profile.changePassword')}
-                    </button>
-                    <button
+                        type="button"
                         onClick={async () => {
                             await api.logout();
                             logout();
                             window.location.reload();
                         }}
-                        className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-fg-muted transition-colors hover:bg-surface-2 hover:text-danger"
+                        className={itemClass.replace('hover:text-fg', 'hover:text-danger')}
+                        data-personal-menu-item="logout"
                     >
-                        <LogOut className="h-4 w-4" />
+                        <LogOut className="h-4 w-4" aria-hidden="true" />
                         {t('user.logout')}
                     </button>
                 </div>
             )}
 
-            {showPassword && <ChangePasswordModal onClose={() => setShowPassword(false)} />}
+            {showPassword && <Suspense fallback={null}><ChangePasswordModal onClose={() => setShowPassword(false)} /></Suspense>}
         </div>
     );
 }

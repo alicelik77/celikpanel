@@ -7,6 +7,8 @@ const serviceSource = readFileSync(
   new URL('../src/components/ServiceList.tsx', import.meta.url),
   'utf8',
 );
+// The firewall box has its own module since v0.1.0-alpha.98 (D-037).
+const firewallSource = readFileSync(new URL('../src/components/FirewallPanel.tsx', import.meta.url), 'utf8');
 const operationSource = readFileSync(
   new URL('../src/components/ComponentOperation.tsx', import.meta.url),
   'utf8',
@@ -100,9 +102,10 @@ test('lifecycle, repair, runtime install and firewall actions require an explici
   assert.match(serviceSource, /onDismiss=\{onCancel\}/);
   assert.match(serviceSource, /autoFocus onClick=\{onCancel\}/);
 
-  assert.match(serviceSource, /requestAction\('save'\)/);
-  assert.match(serviceSource, /requestAction\(st\.enabled \? 'disable' : 'enable'\)/);
-  assert.match(serviceSource, /<FirewallActionConfirmationDialog/);
+  assert.match(firewallSource, /requestAction\('save'\)/);
+  assert.match(firewallSource, /requestAction\(st\.enabled \? 'disable' : 'enable'\)/);
+  assert.match(firewallSource, /<FirewallActionConfirmationDialog/);
+  assert.doesNotMatch(firewallSource, /!confirm\(/);
   assert.match(serviceSource, /<RepositoryActionConfirmationDialog/);
   assert.match(serviceSource, /setRepoAction\('enable'\)/);
   assert.match(serviceSource, /setRepoAction\('disable'\)/);
@@ -121,7 +124,7 @@ test('mail bundles stay visible but cannot start before verified DNS identity is
   assert.match(serviceSource, /const mailSecondary = !dnsIdentityReady && mailDNSGuidance !== null;/);
   assert.match(serviceSource, /const mailNotice = mailSecondary && mailDNSGuidance \? \(/);
   assert.match(serviceSource, /: !dnsIdentityReady && bundles\.some\(/);
-  assert.match(serviceSource, /navigate\('\/settings\?section=dns'\)/);
+  assert.match(serviceSource, /navigate\('\/dns-infrastructure'\)/);
   // The Panel blocks every mail bundle while the DNS identity is not ready;
   // a blocked bundle carries no action, so the strip offers none.
   assert.match(bundlesSource, /blocked: \['none'\]/);

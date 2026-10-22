@@ -21,7 +21,7 @@ func assertDNSEngineWorkflowRefusal(t *testing.T, recorder *httptest.ResponseRec
 	if body.Code != errCodeDNSEngineWorkflowRequired {
 		t.Fatalf("code=%q body=%s", body.Code, recorder.Body.String())
 	}
-	if body.Action != "/settings?section=dns" {
+	if body.Action != "/dns-infrastructure" {
 		t.Fatalf("action=%q", body.Action)
 	}
 }
@@ -126,7 +126,7 @@ func TestDNSRecordMutationRequiresVerifiedActiveEngineBeforeRecordMutation(t *te
 	if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil {
 		t.Fatal(err)
 	}
-	if body.Code != errCodeDNSServerRequired || body.Action != "/settings?section=dns" {
+	if body.Code != errCodeDNSServerRequired || body.Action != "/dns-infrastructure" {
 		t.Fatalf("unexpected refusal: %+v", body)
 	}
 	var after int

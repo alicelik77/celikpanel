@@ -644,7 +644,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     const isMail = ['postfix', 'dovecot', 'rspamd', 'roundcube'].some(id => selectedComponents.has(id));
     const isNode = selectedComponents.has('node');
     const nextPath = setupNextPath(snapshot.draft.purpose, customized ? selectedComponents : undefined);
-    const nextLabel = nextPath === '/settings?section=dns' ? 'setup.nextDNS' : nextPath === '/services' ? 'setup.nextComponents' : isNode ? 'setup.nextApplication' : 'setup.nextWebsite';
+    const nextLabel = nextPath === '/dns-infrastructure' ? 'setup.nextDNS' : nextPath === '/services' ? 'setup.nextComponents' : isNode ? 'setup.nextApplication' : 'setup.nextWebsite';
     const progressCurrentStep = execution?.steps.find(item => ['running', 'failed'].includes(item.status));
     const observingMailEnrollment = progressCurrentStep?.kind === 'mail_enrollment' && execution?.status === 'running' && ['running', 'rollback', 'unknown', 'not_recorded', 'handoff'].some(reason => execution.error?.code === `server_setup_mail_enrollment_${reason}`);
     const mailEnrollmentToRetry = !reconnecting && retryableMailEnrollmentHandoff(execution);

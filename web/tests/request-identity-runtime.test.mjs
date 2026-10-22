@@ -7,8 +7,13 @@ import {
 } from '../src/lib/requestIdentity.ts';
 import { lostAnswerURL } from './fixtures/shared-layer.mjs';
 import { apiErrorText } from '../src/lib/apiError.ts';
-import { en } from '../src/i18n/en.ts';
-import { tr } from '../src/i18n/tr.ts';
+import { en as enShellHalf } from '../src/i18n/en.ts';
+import { enErrorsScreens as enErrorsPart } from '../src/i18n/screens/errors/en.ts';
+// The coded refusals only screens show are the screen part "errors" since v0.1.0-alpha.98.
+const en = { ...enShellHalf, ...enErrorsPart };
+import { tr as trShellHalf } from '../src/i18n/tr.ts';
+import { trErrorsScreens as trErrorsPart } from '../src/i18n/screens/errors/tr.ts';
+const tr = { ...trShellHalf, ...trErrorsPart };
 
 // D-029: every state-changing request carries one identity, made once per user
 // action; on the eight routes of batch 1 a lost answer is asked for again once

@@ -90,7 +90,7 @@ function bundles(services, dnsReady) {
     });
 }
 
-const DNS_REFUSAL = 'DNS identity is not ready. Install a supported DNS server and save the shared nameserver names and operating mode in Settings before installing a mail profile.';
+const DNS_REFUSAL = 'DNS identity is not ready. Install a supported DNS server and save the shared nameserver names and operating mode in Server → DNS and peer servers before installing a mail profile.';
 const profile = (id, name, services, installedSet, dnsReady) => {
     if (!dnsReady) return { id, name, description: `${name} for this server`, status: 'blocked', available: false, verified: false, latest_attempt_status: 'none', services, blocked_reason: DNS_REFUSAL, blocked_code: 'dns_identity_not_ready' };
     const complete = services.every((item) => installedSet.has(item));

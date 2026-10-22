@@ -67,7 +67,7 @@ test('purpose changes clear the previous component selection without mutating th
 
 test('completion destinations use the prepared services and preserve untouched profile routing', () => {
     assert.equal(setup.setupNextPath('web', new Set(['fail2ban'])), '/services');
-    assert.equal(setup.setupNextPath('custom', new Set()), '/settings?section=dns');
+    assert.equal(setup.setupNextPath('custom', new Set()), '/dns-infrastructure');
     assert.equal(setup.setupNextPath('custom', new Set(['nginx', 'postgresql'])), '/domains');
     assert.equal(setup.setupNextPath('custom', new Set(['node'])), '/domains');
     for (const id of ['phpmyadmin', 'phppgadmin', 'roundcube']) {
@@ -76,5 +76,5 @@ test('completion destinations use the prepared services and preserve untouched p
     assert.equal(setup.setupNextPath('web', new Set(['postfix', 'dovecot'])), '/services');
     assert.equal(setup.setupNextPath('web'), '/domains');
     assert.equal(setup.setupNextPath('application'), '/domains');
-    assert.equal(setup.setupNextPath('dns'), '/settings?section=dns');
+    assert.equal(setup.setupNextPath('dns'), '/dns-infrastructure');
 });

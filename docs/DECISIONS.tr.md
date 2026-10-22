@@ -21,6 +21,194 @@ git'te yaşar; bu dosya strateji içindir. En yeni en üstte.
 
 ---
 
+## D-037 · Her sayfa adının söylediği yerdedir: Ayarlar ayarları tutar; araçlar, güvenlik ve bakım Sunucu altındadır; kişinin kendi hesabı kişisel menüdedir
+
+*22 Ekim 2026 (saat tarihi) · Sahibin 21 Ekim 2026 tarihli isteği ve 22 Ekim 2026 tarihli onayı; v0.1.0-alpha.98 adayı için kaynakta; kurulu bir sunucuda hiçbir şey ölçülmedi*
+
+Sahip 21 Ekim 2026'da şunu sordu: "ayarlardaki bu alt
+menüdeki her şey ayarlar ile mi ilgili?" ve sürdürdü: "her işlemin yeri doğru
+olmalı. saçma sapan alakasız yerlerde olmamalılar. user friendly yaklaşım önemli.
+herkes aradığını kolayca bulsun." Yeni düzenin bir taslağı gösterildi, bir ikinci
+düşünceyle gözden geçirildi (aşağıda) ve 22 Ekim 2026'da sahip şöyle yanıt verdi:
+"menu düzeni taslağı ok."
+
+Soru yerindeydi. Ayarlar'da sekiz bölüm vardı: Sunucu kurulumu, Hesap güvenliği,
+Panel HTTPS, Lisans, CelikPanel güncellemeleri, Sunucu güvenliği, DNS altyapısı ve
+Sistem veritabanları. Bunların dördü panelin ayarı değildi: dışa açık hizmet denetimi
+sunucunun güvenliğiyle ilgilidir, DNS altyapısı sunucunun DNS rolü ve eş
+sunucusudur, Sistem veritabanları SQLite dosyalarının bakımıdır ve Hesap güvenliği
+giriş yapmış kişinin kendi iki faktörlü doğrulama panelidir. Panelin ayarlarına
+dokunmayan bir bayi ya da müşteri, tek bölümü kendi hesabı olan bir Ayarlar görüyordu.
+D-019 boş yönetim sayfalarının yasak olduğunu zaten söyler; yalnız birinin kendi
+hesabını tutmak için var olan bir Ayarlar, aynı kusurun menüden görünüşüdür.
+
+Benimsenen kurallar:
+
+1. **Bir sayfa adının söylediği yere gider.** Ayarlar, bir kez yapılan ve panelin
+   nasıl davranacağını belirleyen seçimler içindir. Araçlar, sunucunun güvenliği ve
+   bakımı Sunucu altına aittir. Sunucuya değil kişiye ait olan (parolası ve iki
+   faktörlü doğrulaması) kişisel menüye aittir.
+2. **Son düzen (yönetici).**
+   - Panel (ana sayfa), değişmedi.
+   - **Barındırma:** Alan Adları, Veritabanları, Kullanıcılar, Mağaza, VPN;
+     değişmedi.
+   - **Sunucu:** Bileşenler · **DNS ve eş sunucular** (Ayarlar → DNS altyapısı'ndan
+     taşındı) · İzleme · **Güvenlik** (yeni sayfa) · **Bakım** (yeni sayfa) · İçe
+     aktar · Denetim günlüğü.
+   - **Ayarlar** (menünün sonunda) dört şey tutar: **Panel adresi ve HTTPS**
+     (öğenin adı "Panel HTTPS" idi), Lisans, CelikPanel güncellemeleri ve Sunucu
+     kurulumu.
+   - **Kişisel menü** (sağ üstteki kullanıcı adı): ilk sırada **Hesabım**,
+     telefonda dil seçici (eskisi gibi), Çıkış. Tema ve dil üst çubukta kalır.
+3. **Taşınan her şey nedir ve neden orada.**
+   - *DNS ve eş sunucular* (`/dns-infrastructure`): bugünkü DNS altyapısı içeriği,
+     olduğu gibi: ortak ad sunucuları, bu sunucunun rolü, eş sunucusu ve DNS
+     çoğaltması. Bu, bir panel seçimi değil, sunucunun DNS rolüdür.
+   - *Güvenlik* (`/security`): "bu sunucu güvende mi?" sorusunu tek yerde yanıtlar.
+     (1) Ayarlarıyla güvenlik duvarı (aç/kapat, yeniden başlatma için kaydet, açık
+     portlar, SSH satırı); eskiden Bileşenler sayfasındaki tek satırlık güvenlik
+     duvarı çubuğundan açılan tam kutu. (2) Fail2ban'ın durumu, saklanan bileşen
+     kaydından okunur (çalışıyor; kurulu ama çalışmıyor; kurulu, çalışma durumu
+     henüz okunmadı; kurulu değil; henüz denetlenmedi; başarısız okuma "okunamadı"
+     ve "Tekrar dene"dir), bileşen sayfasına "Fail2ban'ı yönet" bağlantısıyla, kurulu
+     değilse "Bileşenler'i aç" ile. (3) Ayarlar → Sunucu güvenliği olan salt-okur
+     dışa açık hizmet denetimi, olduğu gibi taşındı.
+   - *Bakım* (`/maintenance`): Ayarlar → Sistem veritabanları, olduğu gibi taşındı
+     (CelikPanel'in ve kurulu servislerin tuttuğu SQLite dosyalarını inceleyin ve
+     güvenle bakımını yapın). Sayfa yedekleme gibi gelecekteki hiçbir özelliği vaat
+     etmez.
+   - *Hesabım* (`/account`): Ayarlar → Hesap güvenliği olan iki faktörlü doğrulama
+     paneli, olduğu gibi taşındı, ve menünün eskiden açtığı parola penceresini açan
+     bir Parola kartı. Roller: yönetici, bayi ve müşteri; yani Ayarlar → Hesap
+     güvenliği'ne sahip olan roller.
+   - *Ayarlar*, panelin nasıl davranacağını belirleyen ve seyrek değiştirilenleri
+     tutar: sunulduğu adres ve HTTPS sertifikası, lisansı, kendi güncellemeleri ve
+     sunucunun amacı ile kurulumu.
+4. **Onaydan önce alınan ikinci düşünceler.** İlk taslak İçe aktar'ı Barındırma'ya,
+   Sunucu kurulumu'nu da Ayarlar'ın dışına taşımıştı; ikisi de geri alındı. *İçe
+   aktar* Sunucu altında kalır: seyrek kullanılan bir araçtır ve sunucu araçları
+   arasında aranır. *Sunucu kurulumu* Ayarlar'da kalır: bir kez, sonra "genişletmek"
+   için seyrek çalıştırılır; sunucunun amacı bir yapılandırma seçimidir; yılda bir
+   yapılan bir işin menüde kalıcı kendi yeri olmaz. *Mağaza* ve *VPN* Barındırma
+   altında kalır, çünkü bayiler ve müşteriler onları kullanır.
+5. **Eski adresler çalışmaya devam eder.** Her eski `/settings?section=` adresi yeni
+   sayfasına yerine koyma yönlendirmesiyle (ek geçmiş girdisi olmaz) yönlendirilir:
+   `?section=account` → `/account`, `?section=security` → `/security`,
+   `?section=dns` → `/dns-infrastructure`, `?section=system-databases` →
+   `/maintenance`. Ayarlar'ı boş olacak bir bayi ya da müşteri için `/settings`,
+   adres hangi bölümü söylerse söylesin `/account`'a gider (Ayarlar eskiden
+   gösteremediği her bölüm için onlara hesap bölümünü açardı) ve menüde artık
+   Ayarlar'ı görmezler. Ek kullanıcı (ekip üyesi) hiç Ayarlar'a ya da hesap
+   bölümüne sahip olmadı: rota koruması onu hâlâ ana sayfaya gönderir ve kişisel
+   menüde "Parolayı değiştir"i korur. Yer imleri, eski yönlendirme bağlantıları ve
+   eski bir Panel'in bağlantıları (tarayıcı yönlendirir) bu yüzden doğru yere ulaşır.
+6. **Roller değişmez.** Bir sayfayı görebilen ya da bir API'yi çağırabilen rol hâlâ
+   görebilir ve çağırabilir; yalnız yer taşındı. API, Agent, güncelleyici, şema,
+   yoklama ya da bileşen davranışında hiçbir değişiklik yok. Barındırılan hiçbir şey
+   bir sayfanın nerede olduğuna bağlı değildir (D-022).
+
+Bunu kurarken alınan uygulama kararları (sahip kararı sanılmasın diye böyle
+belirtilir):
+
+- **Ayarlar'ın dört bölümü var.** Taslak, yöneticilerin tümü için bir politika
+  ayarı varsa beşinci bir bölüme, yönetici güvenlik kurallarına, izin veriyordu.
+  Böyle bir ayar yok (Ayarlar → Hesap güvenliği yalnız giriş yapmış kişinin kendi
+  iki faktörlü doğrulama panelini tutuyordu), bu yüzden hiçbiri uydurulmadı.
+- **Parola değiştirme Hesabım'a taşındı**, aynı pencereyi açar. Menü, Hesabım'ı olan
+  roller için onu artık yinelemez; ek kullanıcılar onu menüde korur. Pencere her sayfa
+  yüklenişinde değil, açıldığında getirilir; sözleri kabuk kataloğunda kalır
+  (`profile.*`), bu yüzden asla ham anahtar göstermez.
+- **Simgeler** lucide kümesinden gelir: DNS ve eş sunucular için ağ, Güvenlik için
+  onay işaretli kalkan, Bakım için bir anahtar, Hesabım için onay işaretli bir kişi
+  (UserCheck, açılış paketinde zaten var).
+- **Güvenlik duvarı kutusu, dikkat gerektirdiğinde Bileşenler'de hâlâ görünür**
+  (kapalı, okunamıyor, motor yok, bir SSH notu, kalıcılık), çünkü önemli olduğu anda
+  sahip oradadır; yalnız sağlıklı durum tek sakin satırdır ve onun bağlantısı
+  `/security#firewall`'u açar ve bunu söyler ("Güvenlik'te yönet"; önceden
+  "Ayarlar" diyordu, bu ad artık güvenlik duvarı ayarı tutmayan bir yeri
+  gösteriyor). Tarayıcı denetimi 23 bu etiketi ve çalışan bir Fail2ban'ın "kurulu
+  ama çalışmıyor" diye çizildiğini buldu (kayıtlı kayıt systemd'nin "active
+  (running)" sözünü taşır); ikisi de bu kayıttan önce düzeltildi. Kurulu olmayan,
+  isteğe bağlı Fail2ban amber değil sakin çizilir.
+- **Güvenlik sayfası Fail2ban'ı yalnız saklanan kayıttan okur**; yönetimi bileşen
+  sayfasında kalır. Açıkken ana makine değişiklik hazırlığını Bileşenler gibi her 5
+  saniyede okur ve sunucu meşgulken aynı "değişiklikler bekletiliyor" satırını
+  ("Sunucu değişiklikleri geçici olarak kullanılamıyor.") gösterir (D-024; D-033).
+- **Ürün içindeki her bağlantı doğrudan yeni yeri gösterir:** Panel sayfasının
+  başlangıç rehberi ve hesap kartı, Alan Adları'nın "DNS gerekli"si, Alan adı ekle penceresi,
+  Bileşenler'in DNS düğmeleri ve güvenlik duvarı satırı, sunucu kurulumunun sonraki
+  adımı ("DNS ve eş sunucuları aç"), kurulum kurtarma bağlantıları ve başlangıç
+  rehberi. DNS çifti için "Ayarlar > DNS altyapısı", "Ayarlar > Sunucu güvenliği" ya
+  da "Ayarlar'da" diyen yönlendirme metinleri artık "Sunucu → DNS ve eş sunucular" ya
+  da "Sunucu → Güvenlik" der. Sunucu tarafında `/settings?section=dns` gösteren her
+  yönlendirme eylemi (DNS motoru iş akışı, DNSSEC, yalnız-DNS çocukları, içe aktarma,
+  uzak DNS yetkisi, DNS kurulumu) artık `/dns-infrastructure`'ı gösterir; Panel
+  sertifikasının eksik iletişim e-postası eylem taşımaz (aşağıdaki inceleme
+  düzeltmelerine bakın).
+- **Kurulum geçidi dört adresi erişilebilir tutar** kurulum gerekirken
+  (`/account`, `/security`, `/dns-infrastructure`, `/maintenance`), `/settings`
+  gibi; çevrimdışı kurtarma kabuğunun rota listesi de onları içerir.
+- **Kişisel menü bir açılır bölümdür:** `aria-expanded`, Escape onu kapatır ve odağı
+  düğmesine geri verir.
+
+Bunun yetkilendirmediği: yeni bir özellik, kimin neyi görüp yapabileceğinde bir
+değişiklik, bir sayfayı doldurmak için uydurulmuş bir politika ayarı ve sahibin
+kurulu sunucularda görmesinden önce onlar hakkında hiçbir iddia. Kurulu paneller
+hâlâ yalnız sahipleri tarafından, panelin kendi güncelleme ekranından güncellenir.
+
+Geri kalanla ilişkisi. D-019 (boş yönetim sayfaları yasak): bir bayi ya da müşteri
+için hiçbir şeyi olmayan Ayarlar artık yok. D-022 (sahibin altyapısı panele bağlı
+değildir): yalnız bir ekranın yeri taşındı; sunucuda çalışan hiçbir şey ona bağlı
+değildir. D-024 (her işlem mevcut durumu ve sonraki eylemi açıklar): Güvenlik
+sayfasının Fail2ban durumları ve "değişiklikler bekletiliyor" satırı onu izler;
+yönlendirme metinleri ve eylem bağlantıları yeni yeri adlandırır. D-033 (sahibi
+bekleten bir ekran bunu söyler): Güvenlik sayfasının hazırlık okuması, Bileşenler'in
+zaten sahip olduğu görünür ve sınırlı okumadır. D-035: CelikPanel güncellemeleri,
+güncelleme kartının ve menüdeki noktasının bulunduğu Ayarlar'da kalır.
+
+**İnceleme düzeltmeleri (22 Ekim 2026, herhangi bir yayından önce).** Adayın bağımsız
+incelemesi bunları istedi; kaynaktadırlar:
+
+- **Açılış yolu.** Yalnız ekranların gösterdiği kodlu retler (dil başına 126: DNS,
+  posta, alan adları, siteler, bileşenler, depolar, kotalar, güvenlik duvarı) kabuk
+  kataloğundan "errors" adlı bir ekran parçasına taşındı; bu parça diğerleriyle
+  birlikte, hiçbir ekran çizilmeden önce yüklenir. Kabuğun ondan önce
+  gösterebileceği kodlar (giriş ve erişim, lisans, güncelleme izleyicisi, işlem
+  katmanı, istek kimliği) kabukta kalır. Sözleri henüz gelmemiş bir ret, sunucunun
+  kendi cümlesini ya da genel hatayı gösterir, asla anahtarını. Kritik açılış yolu
+  361 KiB'de 360,75'ten 329,16'ya indi; yeni parçanın en az %25 paylı kendi tavanı
+  var. Parola penceresinin sözleri kabukta kalır (`profile.*`); menünün ek kullanıcı
+  için açtığı pencere asla ham anahtar göstermez.
+- **Güvenlik duvarı kutusunun kendi modülü var** (`FirewallPanel.tsx`): Güvenlik
+  sayfası onu çizmek için artık Bileşenler sayfasını yüklemez. Uzak durum cırcırı
+  taşınmayı kaydeder; toplamları değişmedi.
+- **Tek çalışma kuralı** (`lib/serviceStatus.ts`) Panel, Bileşenler, bir bileşenin
+  sayfası ve Güvenlik için: "running" ya da "(running)" diyen durum. "active
+  (exited)" bitmiş tek seferlik birimdir, çalışmıyordur; önceden Panel ve bir
+  kopyanın satırı her "active ..." durumunu çalışıyor sayıyordu. Fail2ban kaydı
+  olmayan bilinen bir bileşen listesi "kurulu değil" der.
+- **Kalan metinlerdeki eski yer adları** artık yeni yeri adlandırır: bir alan adının
+  ad sunucusu adımı, yönetilen bir DNS kaydı, başlangıç rehberinin DNS adımı,
+  kurulumun geçiş engeli, "DNS sunucusuna bağlan", kurulum kurtarma bağlantısında ve
+  yenileme engelinde "Panel adresi ve HTTPS" ve Panel'in iki kurulum iletisi.
+- **Sertifikanın iletişim e-postası.** Ret Ayarlar → Hesap güvenliği'ni, bu sürümün
+  ilk taslağında da Hesabım'ı gösteriyordu; ikisi de onu değiştiremez. Yöneticinin
+  kendi e-postasını düzenleyen bir ekran yok (yönetici yalnız sunucuda oluşturulurken
+  yönetilir); bu yüzden ret artık eylem taşımaz ve bunun için henüz bir ekran
+  olmadığını söyler. **Açık iş:** kendi e-postasını Hesabım'dan değiştirmenin bir yolu.
+- Taslağın Hesabım tanımında geçen **"açık oturumlar"** yapılmadı: üründe oturum
+  listesi yok (yol haritası "Aktif oturumlar"ı sonraki bir iş olarak tutar).
+  Yönetici kurallarında olduğu gibi hiçbir şey uydurulmadı.
+- Kişisel menü odak ondan çıkınca kapanır ve panelini yalnız açıkken adlandırır;
+  Bakım tek alt başlık tutar (kartınınkini); ayarlar katalog parçasının blok
+  işaretleri düzeltildi; iki tarayıcı denetimi betiği hâlâ var olan adresleri
+  kullanır.
+
+Yapılmadı: kurulu bir sunucuda hiçbir şey ölçülmedi; yöneticinin kendi e-postasını
+değiştiren bir ekran henüz yok (yukarıdaki açık iş); açık oturumlar yapılmadı.
+
+---
+
 ## D-036 · Gösterilen sürüm paket veritabanının kendi yanıtıdır; bilinmeyen, bilinmeyen olarak kalır
 
 *21 Ekim 2026 (saat tarihi) · Sahibin 17 Ekim 2026 tarihli alpha.94 ekranlarının ve D-034 değişikliğindeki açık işin ardından; v0.1.0-alpha.97 adayı için kaynakta; kurulu bir sunucuda hiçbir şey ölçülmedi*
