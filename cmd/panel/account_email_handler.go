@@ -199,8 +199,9 @@ func (p *Panel) handleChangeOwnEmail(w http.ResponseWriter, r *http.Request) {
 }
 
 // decodeOwnEmailRequest reads exactly one JSON object whose keys are exactly
-// "email" and "current_password" (each at most once). Matching is by the exact
-// bytes of the key, not by Go's case-insensitive field matching, so a key such
+// "email" and "current_password"; a key given twice keeps its last value,
+// in the handler and in the digest alike (both read through here). Matching
+// is by the exact bytes of the key, not by Go's case-insensitive field matching, so a key such
 // as "Current_Password" or "current_paſsword" is refused and can never carry a
 // password past requestIdentityEmailDigest.
 // decodeOwnEmailRequest: anahtarlar tam olarak "email" ve "current_password".

@@ -670,3 +670,18 @@ func TestServerSetupPlanBlocksEveryContactTheCertificateWouldRefuse(t *testing.T
 		}
 	}
 }
+
+// A key given twice keeps its last value, in the handler and in the digest
+// alike: the address the digest names is the address that is written.
+func TestOwnEmailDuplicateKeysAreReadTheSameByTheHandlerAndTheDigest(t *testing.T) {
+	f := newOwnEmailFixture(t)
+	id := authzMatrixAdminID
+	body := `{"email":"first@example.test","email":"last@example.test","current_password":"` + ownEmailTestPassword + `"}`
+	if got := string(requestIdentityEmailDigest([]byte(body))); got != `{"email":"last@example.test"}` {
+		t.Fatalf("digest input = %s", got)
+	}
+	recorder := f.send(t, id, ownEmailSend{body: body})
+	if recorder.Code != http.StatusOK || f.emailOf(t, id) != "last@example.test" {
+		t.Fatalf("duplicate keys: %d %s, stored %q", recorder.Code, recorder.Body.String(), f.emailOf(t, id))
+	}
+}

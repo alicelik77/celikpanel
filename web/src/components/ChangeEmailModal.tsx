@@ -33,11 +33,13 @@ const OPEN_OUTCOMES = new Set(['REQUEST_OUTCOME_UNKNOWN', 'REQUEST_IN_PROGRESS']
 // değildir) ve sayfa adresi yeniden okur. Her ret diyalogda kodlu sözleriyle
 // gösterilir.
 //
-// After an unknown result the next Save of the same address carries the SAME
-// identity (security review of the alpha.99 candidate): if the first arrival
-// did change the address, the Panel answers from it and nothing runs twice. A
-// definite answer (a success or a refusal) ends that identity; a different
-// address is a different action and gets a new one.
+// After an unknown result (no answer, a gateway page, the bound, or the Panel
+// saying the first arrival still runs) the next Save of the same address
+// carries the SAME identity (security review of the alpha.99 candidate): if
+// the first arrival did change the address, the Panel answers from it and
+// nothing runs twice. A definite answer (a success or a refusal) ends that
+// identity, and so does REQUEST_OUTCOME_UNKNOWN, which the Panel gives for
+// that identity for 24 hours; a different address gets a new one.
 // Sonucu bilinmeyen gönderiden sonra aynı adresin sonraki Kaydet'i AYNI kimliği
 // taşır; kesin bir yanıt o kimliği bitirir.
 
@@ -106,6 +108,13 @@ export function ChangeEmailModal({
                 return;
             }
             const problem = await readApiError(res);
+            // REQUEST_IN_PROGRESS: the first arrival still runs; the same
+            // identity will get its answer, so it is kept. REQUEST_OUTCOME_UNKNOWN
+            // is final on the server (the Panel restarted while it ran; that
+            // identity is answered so for 24 hours and never run again), so the
+            // next Save is a new action with a new identity.
+            // İlki hâlâ sürüyorsa kimlik korunur; sonuç bilinmiyorsa (kesin) bırakılır.
+            if (problem.code === 'REQUEST_OUTCOME_UNKNOWN') pending.current = null;
             if (problem.code && OPEN_OUTCOMES.has(problem.code)) {
                 outcomeUnknown();
                 return;

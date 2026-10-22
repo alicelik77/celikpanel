@@ -356,3 +356,32 @@ test('After an unknown result, Save again sends the same identity until a defini
     assert.notEqual(ids[4], ids[3], 'another address kept the identity of the first');
   } finally { await cleanup(); }
 });
+
+// REQUEST_IN_PROGRESS keeps the identity (the first arrival will answer it);
+// REQUEST_OUTCOME_UNKNOWN is final on the Panel for that identity, so the next
+// Save is a new action with a new identity and never loops on "not known".
+test('After the Panel\'s REQUEST_OUTCOME_UNKNOWN, the next Save carries a new identity', async () => {
+  const answers = [
+    () => Response.json({ error: 'x', code: 'REQUEST_IN_PROGRESS' }, { status: 409 }),
+    () => Response.json({ error: 'x', code: 'REQUEST_OUTCOME_UNKNOWN' }, { status: 409 }),
+    () => Response.json({ success: true }),
+  ];
+  let sent = 0;
+  serve({ change: () => answers[sent++]() });
+  try {
+    await mount();
+    await openDialog();
+    await type('email', 'other@example.com');
+    await type('current-password', 'secret password');
+    await submit();
+    assert.ok(text().includes(t('account.email.outcomeUnknown')));
+    await submit();
+    assert.ok(text().includes(t('account.email.outcomeUnknown')));
+    await submit();
+    const ids = puts().map((call) => new Headers(call.options.headers).get('X-CelikPanel-Request-Id'));
+    assert.equal(ids.length, 3);
+    assert.equal(ids[1], ids[0], 'REQUEST_IN_PROGRESS did not keep the identity');
+    assert.notEqual(ids[2], ids[1], 'REQUEST_OUTCOME_UNKNOWN kept an identity the Panel will never run again');
+    assert.equal(dialog().length, 0, 'the new action did not complete');
+  } finally { await cleanup(); }
+});
