@@ -46,8 +46,9 @@ func removalImpactWith(t *testing.T, id, family string, installed map[string]boo
 			(3, 102, 'custom', 'active', 1), (4, 103, 'letsencrypt', 'expired', 1), (5, 104, 'letsencrypt', 'active', 0);
 		CREATE TABLE vpn_peers (id INTEGER PRIMARY KEY, name TEXT, desired_state TEXT);
 		INSERT INTO vpn_peers VALUES (1, 'laptop', 'active'), (2, 'phone', 'active'), (3, 'old', 'revoked');
-		CREATE TABLE ftp_accounts (id INTEGER PRIMARY KEY, username TEXT);
-		INSERT INTO ftp_accounts VALUES (1, 'ali_ftp');`); err != nil {
+		CREATE TABLE ftp_accounts (id INTEGER PRIMARY KEY, username TEXT, access_type TEXT NOT NULL DEFAULT 'sftp');
+		INSERT INTO ftp_accounts VALUES (1, 'ali_ftp', 'ftp');
+		INSERT INTO ftp_accounts VALUES (2, 'ali_sftp', 'sftp');`); err != nil {
 		t.Fatal(err)
 	}
 	svc := core.GetManagedServiceByID(id)

@@ -48,7 +48,7 @@ type serviceRemovalHosted struct {
 	// mail_addresses, mail_domains, mailboxes, certificates (certbot: the
 	// certificates the Panel renews with it), firewall (nftables: the panel
 	// firewall it enforces), vpn_peers (WireGuard: the VPN peers the Panel
-	// records), ftp_accounts (vsftpd: the FTP accounts the Panel records),
+	// records), ftp_accounts (vsftpd: the FTP accounts the Panel records; SFTP accounts do not depend on vsftpd),
 	// unrecorded (caches: the Panel does not record which sites use them, so
 	// nothing is claimed either way).
 	Kind  string   `json:"kind"`
@@ -280,7 +280,7 @@ func removalHosted(ctx context.Context, db *sql.DB, svc *core.ManagedService, fa
 		}
 		return &serviceRemovalHosted{Kind: "vpn_peers", Count: count, Names: names}, nil
 	case svc.ID == "vsftpd":
-		count, names, err := hostedLabels(ctx, db, `SELECT username FROM ftp_accounts ORDER BY username`)
+		count, names, err := hostedLabels(ctx, db, `SELECT username FROM ftp_accounts WHERE access_type = 'ftp' ORDER BY username`)
 		if err != nil {
 			return nil, err
 		}
