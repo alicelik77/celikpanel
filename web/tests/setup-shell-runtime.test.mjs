@@ -33,7 +33,7 @@ function compileURL(relativePath, imports) {
 const stubURL = moduleURL(`
     import React from '${reactURL}';
     const Icon = props => React.createElement('i', props);
-    export const LogOut = Icon, ChevronDown = Icon, Menu = Icon, KeyRound = Icon, UserCheck = Icon, DownloadCloud = Icon, CircleUser = Icon, User = Icon;
+    export const LogOut = Icon, ChevronDown = Icon, Menu = Icon, KeyRound = Icon, Mail = Icon, UserCheck = Icon, DownloadCloud = Icon, CircleUser = Icon, User = Icon;
     // The Panel's stored update check (alpha.96): the setup shell reads nothing.
     export const availablePanelUpdate = () => null;
     export const wholeVersion = (text) => text;

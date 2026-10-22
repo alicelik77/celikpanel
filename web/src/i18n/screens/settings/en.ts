@@ -456,9 +456,25 @@ export const enSettingsScreens = {
     'panelUpdate.card.restarting': 'The panel is restarting as part of the update to {version}. This page reconnects by itself; nothing needs to be pressed.',
     // --- end of the update card block ---
     // --- The pages that left Settings in v0.1.0-alpha.98 (D-037) ---
-    'account.subtitle': 'Your own sign-in: your password and two-factor authentication.',
+    'account.subtitle': 'Your own sign-in: your password, your email address and two-factor authentication.',
     'account.password.title': 'Password',
     'account.password.desc': 'Change the password you sign in with. Your current password is asked first.',
+    // v0.1.0-alpha.99: the person's own email address (D-037 amendment).
+    'account.email.title': 'My email',
+    'account.email.desc': 'The address CelikPanel keeps for your account. For an administrator it is also the contact given to the certificate authority when the panel’s HTTPS certificate is requested. You sign in with your user name, not with this address.',
+    'account.email.checking': 'Reading your email address…',
+    'account.email.unknown': 'Your email address could not be read just now. This does not mean it is missing.',
+    'account.email.none': 'No address is set.',
+    'account.email.change': 'Change email',
+    'account.email.dialogTitle': 'Change your email address',
+    'account.email.current': 'Current address',
+    'account.email.new': 'New email address',
+    'account.email.password': 'Current password',
+    'account.email.passwordHint': 'Your password is asked so that only you can change this address.',
+    'account.email.save': 'Save address',
+    'account.email.saving': 'Saving your new address. Nothing else is needed; this takes a few seconds.',
+    'account.email.outcomeUnknown': 'It is not known yet whether your new address was saved. This is not a failure. The address shown on this page was read again; if it is still the old one, try again.',
+    'account.email.changed': 'Your email address was changed.',
     'dnsPeers.subtitle': "Shared nameservers, this server's role, its peer server and DNS replication.",
     // --- end of the pages that left Settings ---
 } as const;

@@ -74,10 +74,17 @@ function panelPath(url: string): string | null {
     }
 }
 
+// v0.1.0-alpha.99: the signed-in person's own email change is a PUT the
+// server guards the same way (D-029; cmd/panel/account_email_handler.go).
+// Kişinin kendi e-postasını değiştirmesi, sunucunun aynı biçimde koruduğu bir PUT'tur.
+const REASK_PUT_ROUTES = [/^\/api\/v1\/auth\/email$/];
+
 export function isReaskRoute(method: string, url: string): boolean {
-    if (method.toUpperCase() !== 'POST') return false;
+    const verb = method.toUpperCase();
+    const routes = verb === 'POST' ? REASK_ROUTES : verb === 'PUT' ? REASK_PUT_ROUTES : null;
+    if (routes === null) return false;
     const path = panelPath(url);
-    return path !== null && REASK_ROUTES.some((route) => route.test(path));
+    return path !== null && routes.some((route) => route.test(path));
 }
 
 // A body that already names its request (the operation-row subsystems: service

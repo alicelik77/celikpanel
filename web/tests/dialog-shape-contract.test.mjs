@@ -161,6 +161,8 @@ test('every dialogue in the product is the shared one', () => {
     'AddDomainModal.tsx': 1,
     'AddUserModalV2.tsx': 1,
     'ChangePasswordModal.tsx': 1,
+    // alpha.99: the person's own email change (My account and, for an additional user, the menu).
+    'ChangeEmailModal.tsx': 1,
     'DNSEngineCard.tsx': 1,
     'Dashboard.tsx': 1,
     'DatabaseAccountStrip.tsx': 1,

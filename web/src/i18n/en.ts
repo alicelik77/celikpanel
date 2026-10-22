@@ -391,6 +391,7 @@ export const en = {
     'imp.return': 'Return to my account',
 
     'profile.changePassword': 'Change password',
+    'profile.changeEmail': 'Change email',
     'profile.current': 'Current password',
     'profile.new': 'New password',
     'profile.new2': 'New password (again)',
