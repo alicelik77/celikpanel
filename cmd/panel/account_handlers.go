@@ -639,7 +639,7 @@ func (p *Panel) handleChangeOwnPassword(w http.ResponseWriter, r *http.Request) 
 	}
 
 	userID := currentUserID(r)
-	if !p.allowSensitiveAuthAttempt(r, userID, "password-change") {
+	if !p.allowSensitiveAuthAttempt(r, userID, reauthAttemptAction) {
 		writeClientError(w, http.StatusTooManyRequests, "too many attempts, try again later")
 		return
 	}

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -139,11 +140,8 @@ func TestOwnEmailChangeForEveryRoleKeepsSessionsAndAudits(t *testing.T) {
 		if recorder.Code != http.StatusOK {
 			t.Fatalf("user %d: status %d %s", id, recorder.Code, recorder.Body.String())
 		}
-		var answer struct {
-			Success bool   `json:"success"`
-			Email   string `json:"email"`
-		}
-		if err := json.Unmarshal(recorder.Body.Bytes(), &answer); err != nil || !answer.Success || answer.Email != want {
+		// The answer carries no address: the guard keeps it for 24 hours.
+		if strings.TrimSpace(recorder.Body.String()) != `{"success":true}` {
 			t.Fatalf("user %d: answer %s", id, recorder.Body.String())
 		}
 		if got := f.emailOf(t, id); got != want {
@@ -228,20 +226,35 @@ func TestOwnEmailChangeIsSameOriginOnly(t *testing.T) {
 	}
 }
 
-func TestOwnEmailWrongPasswordsCountTowardTheSameLockout(t *testing.T) {
+// The email change and the password change share ONE re-authentication limit
+// per user and client address (reauthAttemptAction): a stolen session gets one
+// budget of password guesses across both routes, not one per route.
+func TestOwnEmailAndPasswordChangeShareOneReauthenticationLimit(t *testing.T) {
 	f := newOwnEmailFixture(t)
 	f.panel.loginLimiter = newRateLimiter(2, time.Minute)
 	id := authzMatrixResellerID
 	before := f.emailOf(t, id)
-	for attempt := 1; attempt <= 2; attempt++ {
-		recorder := f.send(t, id, ownEmailSend{body: ownEmailBody("guess@example.test", fmt.Sprintf("guess %d", attempt))})
-		if recorder.Code != http.StatusForbidden || ownEmailCode(t, recorder) != errCodeOwnEmailWrongPassword {
-			t.Fatalf("attempt %d: %d %s", attempt, recorder.Code, recorder.Body.String())
-		}
+	// One wrong guess on the password change...
+	passwordGuess := httptest.NewRequest(http.MethodPost, "/api/v1/auth/password", strings.NewReader(
+		`{"current_password":"guess 1","new_password":"attacker supplied password"}`))
+	passwordGuess = passwordGuess.WithContext(context.WithValue(passwordGuess.Context(), callerKey, &Caller{ID: id, Role: roleReseller}))
+	guessed := httptest.NewRecorder()
+	f.panel.handleChangeOwnPassword(guessed, passwordGuess)
+	if guessed.Code != http.StatusForbidden {
+		t.Fatalf("password guess: %d %s", guessed.Code, guessed.Body.String())
 	}
-	recorder := f.send(t, id, ownEmailSend{body: ownEmailBody("guess@example.test", ownEmailTestPassword)})
+	// ...and one on the email change use up the same budget of two.
+	recorder := f.send(t, id, ownEmailSend{body: ownEmailBody("guess@example.test", "guess 2")})
+	if recorder.Code != http.StatusForbidden || ownEmailCode(t, recorder) != errCodeOwnEmailWrongPassword {
+		t.Fatalf("email guess: %d %s", recorder.Code, recorder.Body.String())
+	}
+	recorder = f.send(t, id, ownEmailSend{body: ownEmailBody("guess@example.test", ownEmailTestPassword)})
 	if recorder.Code != http.StatusTooManyRequests || ownEmailCode(t, recorder) != errCodeOwnEmailTooManyAttempts {
 		t.Fatalf("after two wrong passwords: %d %s", recorder.Code, recorder.Body.String())
+	}
+	if source, err := os.ReadFile("account_handlers.go"); err != nil ||
+		!strings.Contains(string(source), "p.allowSensitiveAuthAttempt(r, userID, reauthAttemptAction)") {
+		t.Fatal("the password change does not use the shared re-authentication limit")
 	}
 	if got := f.emailOf(t, id); got != before {
 		t.Fatalf("locked-out request changed the address to %q", got)
@@ -477,4 +490,183 @@ func TestPanelCertificateReadsTheOwnEmailAtRequestTime(t *testing.T) {
 	}
 	release()
 	waitPanelCertificateOperation(t, panel, requestID, serviceOperationSucceeded)
+}
+
+// The refusals are told in this order: an unreadable request, an address the
+// panel cannot use, then the password; whether the address is already yours or
+// another account's only after the password was proven.
+func TestOwnEmailWrongPasswordIsToldBeforeAnythingAboutTheAddress(t *testing.T) {
+	f := newOwnEmailFixture(t)
+	id := authzMatrixCustomerID
+	before := f.emailOf(t, id)
+	for _, address := range []string{"matrix-reseller@example.test", "MATRIX-ADMIN@example.test", before} {
+		recorder := f.send(t, id, ownEmailSend{body: ownEmailBody(address, "not the password")})
+		if recorder.Code != http.StatusForbidden || ownEmailCode(t, recorder) != errCodeOwnEmailWrongPassword {
+			t.Fatalf("%s with a wrong password: %d %s", address, recorder.Code, recorder.Body.String())
+		}
+	}
+	if got := f.emailOf(t, id); got != before {
+		t.Fatalf("address changed to %q", got)
+	}
+}
+
+// Keys are matched by their exact bytes. Go's JSON decoding would match
+// "Current_Password" or "current_paſsword" (ſ folds to s) to the password
+// field; such a body is refused, and the stored digest is of the address alone.
+func TestOwnEmailBodyKeysAreExactAndTheDigestHoldsOnlyTheAddress(t *testing.T) {
+	f := newOwnEmailFixture(t)
+	id := authzMatrixAdminID
+	before := f.emailOf(t, id)
+	bodies := []string{
+		`{"email":"x@example.test","Current_Password":"` + ownEmailTestPassword + `"}`,
+		`{"email":"x@example.test","current_paſsword":"` + ownEmailTestPassword + `"}`,
+		`{"EMAIL":"x@example.test","current_password":"` + ownEmailTestPassword + `"}`,
+		`{"email":"x@example.test","current_password":"` + ownEmailTestPassword + `","user_id":9702}`,
+		`{"email":"x@example.test","current_password":"` + ownEmailTestPassword + `","id":9702}`,
+		`{"email":"x@example.test","current_password":7}`,
+		`["x@example.test"]`,
+		`null`,
+	}
+	for _, body := range bodies {
+		identity := newOwnEmailTestID(t)
+		recorder := f.send(t, id, ownEmailSend{id: identity, body: body})
+		if recorder.Code != http.StatusBadRequest || ownEmailCode(t, recorder) != errCodeOwnEmailRequestInvalid {
+			t.Fatalf("%s: %d %s", body, recorder.Code, recorder.Body.String())
+		}
+		digest := requestIdentityEmailDigest([]byte(body))
+		if strings.Contains(string(digest), "password") || strings.Contains(string(digest), ownEmailTestPassword) {
+			t.Fatalf("%s: digest input %q holds the password", body, digest)
+		}
+		var stored string
+		if err := f.panel.db.GetDB().QueryRow(`SELECT request_sha256 FROM request_identities WHERE id = ?`, identity).Scan(&stored); err != nil {
+			t.Fatal(err)
+		}
+		if stored != requestIdentityHash(http.MethodPut, ownEmailPath, "", []byte("unreadable")) {
+			t.Fatalf("%s: the stored digest is not the constant of an unreadable request", body)
+		}
+	}
+	if got := f.emailOf(t, id); got != before {
+		t.Fatalf("a refused body changed the address to %q", got)
+	}
+	// A readable body is digested as the address alone, re-encoded.
+	readable := ownEmailBody("x@example.test", ownEmailTestPassword)
+	if got := string(requestIdentityEmailDigest([]byte(readable))); got != `{"email":"x@example.test"}` {
+		t.Fatalf("digest input = %s", got)
+	}
+}
+
+// One identity, one answer: a later arrival with another password (right or
+// wrong) gets the stored answer and is never checked again.
+func TestOwnEmailSameIdentityWithAnotherPasswordGetsTheStoredAnswer(t *testing.T) {
+	f := newOwnEmailFixture(t)
+	id := authzMatrixResellerID
+	identity := strings.Repeat("f", 32)
+	first := f.send(t, id, ownEmailSend{id: identity, body: ownEmailBody("stored@example.test", ownEmailTestPassword)})
+	if first.Code != http.StatusOK {
+		t.Fatalf("first: %d %s", first.Code, first.Body.String())
+	}
+	again := f.send(t, id, ownEmailSend{id: identity, body: ownEmailBody("stored@example.test", "a wrong password")})
+	if again.Code != http.StatusOK || again.Header().Get(requestIdentityReplayedHeader) != "1" || again.Body.String() != first.Body.String() {
+		t.Fatalf("replay with another password: %d %q %s", again.Code, again.Header().Get(requestIdentityReplayedHeader), again.Body.String())
+	}
+	// A wrong-password answer is stored too, and a right password under that
+	// identity does not turn it into a change.
+	wrongID := strings.Repeat("d", 32)
+	wrong := f.send(t, id, ownEmailSend{id: wrongID, body: ownEmailBody("later@example.test", "a wrong password")})
+	right := f.send(t, id, ownEmailSend{id: wrongID, body: ownEmailBody("later@example.test", ownEmailTestPassword)})
+	if wrong.Code != http.StatusForbidden || right.Code != http.StatusForbidden || right.Header().Get(requestIdentityReplayedHeader) != "1" {
+		t.Fatalf("stored refusal: %d then %d %s", wrong.Code, right.Code, right.Body.String())
+	}
+	if got := f.emailOf(t, id); got != "stored@example.test" {
+		t.Fatalf("address = %q", got)
+	}
+	if got := f.auditCount(t, id); got != 1 {
+		t.Fatalf("%d audit rows", got)
+	}
+}
+
+// An administrator who impersonates a customer holds the customer's session;
+// the customer's address changes only with the customer's own password.
+func TestOwnEmailImpersonatingAdministratorNeedsTheCustomersPassword(t *testing.T) {
+	f := newOwnEmailFixture(t)
+	customerHash, err := auth.HashPassword("the customer's own password")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.panel.db.GetDB().Exec(`UPDATE users SET password_hash = ? WHERE id = ?`, customerHash, authzMatrixCustomerID); err != nil {
+		t.Fatal(err)
+	}
+	before := f.emailOf(t, authzMatrixCustomerID)
+	// The impersonated session is the customer's; the administrator knows only
+	// the administrator's password.
+	recorder := f.send(t, authzMatrixCustomerID, ownEmailSend{body: ownEmailBody("taken-over@example.test", ownEmailTestPassword)})
+	if recorder.Code != http.StatusForbidden || ownEmailCode(t, recorder) != errCodeOwnEmailWrongPassword {
+		t.Fatalf("administrator's password on the customer's session: %d %s", recorder.Code, recorder.Body.String())
+	}
+	if got := f.emailOf(t, authzMatrixCustomerID); got != before {
+		t.Fatalf("the customer's address changed to %q", got)
+	}
+	if got := f.emailOf(t, authzMatrixAdminID); got != "matrix-admin@example.test" {
+		t.Fatalf("the administrator's address changed to %q", got)
+	}
+}
+
+// The panel certificate's gate is the certificate request's own validator: an
+// address mail.ParseAddress accepts but the contact check refuses gets the
+// coded refusal with the My account action, and nothing is recorded.
+func TestPanelCertificateRefusesEveryContactTheCertificateWouldRefuse(t *testing.T) {
+	for i, address := range []string{"admin@localhost", "root@myhost", "ünicode@example.test", "admin@192.0.2.1", "Admin <admin@example.test>"} {
+		agent := &firewallSyncTestAgent{
+			status:        FirewallStatusResp{Enabled: true, EngineAvailable: true},
+			issueResponse: transport.IssuePanelCertificateResponse{Issued: true},
+		}
+		panel, database := newPanelCertificateSagaTestPanel(t, agent)
+		result, err := database.GetDB().Exec(
+			"INSERT INTO users (username,password_hash,email,role) VALUES (?,?,?,?)",
+			fmt.Sprintf("cert-contact-%d", i), "x", address, roleAdmin,
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+		adminID, _ := result.LastInsertId()
+		request := httptest.NewRequest(http.MethodPost, "/api/v1/settings/panel-certificate",
+			panelCertificateSagaRequestBody(t, fmt.Sprintf("%032x", 0x5100+i)))
+		request = request.WithContext(context.WithValue(request.Context(), callerKey, &Caller{ID: int(adminID), Role: roleAdmin}))
+		recorder := httptest.NewRecorder()
+		panel.handlePanelCertificate(recorder, request)
+		var refusal apiErrorBody
+		_ = json.Unmarshal(recorder.Body.Bytes(), &refusal)
+		if recorder.Code != http.StatusConflict || refusal.Code != "panel_certificate_contact_email_invalid" || refusal.Action != ownEmailAccountAction {
+			t.Fatalf("%s: %d %s", address, recorder.Code, recorder.Body.String())
+		}
+		var rows int
+		if err := database.GetDB().QueryRow("SELECT COUNT(*) FROM service_operations").Scan(&rows); err != nil || rows != 0 {
+			t.Fatalf("%s: %d operation rows (%v)", address, rows, err)
+		}
+	}
+}
+
+// The setup plan's contact blocker uses the same validator.
+func TestServerSetupPlanBlocksEveryContactTheCertificateWouldRefuse(t *testing.T) {
+	for _, c := range []struct {
+		address string
+		blocked bool
+	}{
+		{"admin@example.test", false},
+		{"admin@localhost", true},
+		{"root@myhost", true},
+		{"ünicode@example.test", true},
+	} {
+		f, state := setupOperationFixture(t)
+		if _, err := f.database.GetDB().Exec(`UPDATE users SET email = ? WHERE id = ?`, c.address, f.userID); err != nil {
+			t.Fatal(err)
+		}
+		plan, err := f.panel.buildServerSetupPlan(context.Background(), state, serviceOperationActor{UserID: f.userID})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := slices.Contains(plan.Blockers, "panel_certificate_contact_email_invalid"); got != c.blocked {
+			t.Fatalf("%s: contact blocker = %v, blockers %v", c.address, got, plan.Blockers)
+		}
+	}
 }

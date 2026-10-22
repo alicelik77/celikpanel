@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"net/mail"
 	"os"
 	"path/filepath"
 	"strings"
@@ -94,8 +93,13 @@ func (p *Panel) handlePanelCertificateSagaPost(w http.ResponseWriter, r *http.Re
 		return
 	}
 	email = strings.TrimSpace(email)
-	parsedEmail, err := mail.ParseAddress(email)
-	if err != nil || parsedEmail.Name != "" || parsedEmail.Address != email {
+	// The gate is the certificate request's own validator (security review of
+	// the alpha.99 candidate): an address mail.ParseAddress accepts but the
+	// certificate authority's contact check refuses (admin@localhost, a host
+	// without a domain, non-ASCII) is refused here with the My account action,
+	// not later without guidance.
+	// Kapı, sertifika isteğinin kendi doğrulayıcısıdır.
+	if _, err := mutationpayload.CanonicalContactEmail(email); err != nil {
 		writeCodedError(
 			w,
 			http.StatusConflict,

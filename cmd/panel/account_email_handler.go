@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"io"
@@ -19,12 +20,18 @@ import (
 //
 // The rules:
 //   - Re-authentication: the current password is part of the request, as for
-//     the password change, and its wrong guesses count against the same limiter
-//     (allowSensitiveAuthAttempt) under their own action name.
+//     the password change, and every attempt counts against ONE limit shared
+//     with the password change (reauthAttemptAction, per user and client
+//     address), so a stolen session gets one budget of guesses, not two.
+//   - The body names exactly "email" and "current_password", spelled so: Go's
+//     JSON decoding matches keys without regard to case (and folds some
+//     letters), so any other key, a differently spelled one included, is
+//     refused before anything is read.
 //   - One identity per action (D-029): the route is guarded by
 //     requestIdentityGuard; the same identity is answered from the first
-//     arrival and never changes the address twice. The stored digest of the
-//     request leaves the password out (requestIdentityEmailDigest).
+//     arrival and never changes the address twice. The stored digest is of
+//     the new address alone, re-encoded (requestIdentityEmailDigest), and the
+//     stored answer carries no address.
 //   - One validator: mutationpayload.CanonicalContactEmail, the one the panel
 //     certificate request uses, so an accepted address is always one the
 //     certificate request accepts.
@@ -63,13 +70,19 @@ const (
 	errCodeOwnEmailChangedElsewhere = "account_email_changed_elsewhere"
 
 	ownEmailRequestMaxBytes = 16 << 10
+
+	// reauthAttemptAction is the one limiter key of the attempts that prove
+	// the current password to change an own credential or address: the
+	// password change and the email change share it.
+	// Kendi parolasını kanıtlayan denemelerin tek sınırlayıcı anahtarı.
+	reauthAttemptAction = "reauth"
 )
 
 // English originals of the sentences a screen shows from web/src/i18n
 // (err.<code>); D-024 order: what happened, what was not changed, what to do.
 const (
 	ownEmailRequestInvalidMessage   = "The request could not be read, so nothing was changed. Reload the page and try again."
-	ownEmailInvalidMessage          = "This is not an email address the panel can use, so nothing was changed. Enter one address such as name@example.com."
+	ownEmailInvalidMessage          = "This is not an email address the panel can use, so nothing was changed. Enter one address such as name@example.com; a domain with letters outside English goes in its ASCII form (xn--…)."
 	ownEmailUnchangedMessage        = "This is already your email address, so nothing was changed."
 	ownEmailTakenMessage            = "Another account already uses this email address, so nothing was changed. Enter a different address."
 	ownEmailWrongPasswordMessage    = "Your current password is not correct, so nothing was changed. Enter the password you sign in with."
@@ -106,15 +119,8 @@ func (p *Panel) handleChangeOwnEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req ownEmailRequest
-	decoder := json.NewDecoder(io.LimitReader(r.Body, ownEmailRequestMaxBytes))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&req); err != nil {
-		writeCodedError(w, http.StatusBadRequest, errCodeOwnEmailRequestInvalid, ownEmailRequestInvalidMessage, "")
-		return
-	}
-	var trailing any
-	if err := decoder.Decode(&trailing); !errors.Is(err, io.EOF) {
+	req, ok := decodeOwnEmailRequest(r.Body)
+	if !ok {
 		writeCodedError(w, http.StatusBadRequest, errCodeOwnEmailRequestInvalid, ownEmailRequestInvalidMessage, "")
 		return
 	}
@@ -129,7 +135,7 @@ func (p *Panel) handleChangeOwnEmail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Every attempt that carries a password counts, as on the password change.
-	if !p.allowSensitiveAuthAttempt(r, caller.ID, "email-change") {
+	if !p.allowSensitiveAuthAttempt(r, caller.ID, reauthAttemptAction) {
 		writeCodedError(w, http.StatusTooManyRequests, errCodeOwnEmailTooManyAttempts, ownEmailTooManyAttemptsMessage, "")
 		return
 	}
@@ -138,8 +144,8 @@ func (p *Panel) handleChangeOwnEmail(w http.ResponseWriter, r *http.Request) {
 		writeServerError(w, err)
 		return
 	}
-	ok, err := auth.VerifyPassword(req.CurrentPassword, user.PasswordHash)
-	if err != nil || !ok {
+	verified, err := auth.VerifyPassword(req.CurrentPassword, user.PasswordHash)
+	if err != nil || !verified {
 		writeCodedError(w, http.StatusForbidden, errCodeOwnEmailWrongPassword, ownEmailWrongPasswordMessage, "")
 		return
 	}
@@ -187,22 +193,60 @@ func (p *Panel) handleChangeOwnEmail(w http.ResponseWriter, r *http.Request) {
 	p.audit(r, "account.email.changed", "user", user.ID)
 
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{"success": true, "email": address})
+	// The answer carries no address: the guard keeps it for 24 hours, and the
+	// page reads the stored address again from /api/v1/auth/me.
+	_ = json.NewEncoder(w).Encode(map[string]bool{"success": true})
 }
 
-// requestIdentityEmailDigest is what the guard hashes for this route: the
-// request without its password, so the stored digest of a request cannot be
-// used to test password guesses. Two arrivals with the same identity and the
-// same new address are the same request; the first one's answer stands.
-// requestIdentityEmailDigest: korumanın bu rota için özetlediği şey; parola
-// çıkarılmış istek.
-func requestIdentityEmailDigest(body []byte) []byte {
+// decodeOwnEmailRequest reads exactly one JSON object whose keys are exactly
+// "email" and "current_password" (each at most once). Matching is by the exact
+// bytes of the key, not by Go's case-insensitive field matching, so a key such
+// as "Current_Password" or "current_paſsword" is refused and can never carry a
+// password past requestIdentityEmailDigest.
+// decodeOwnEmailRequest: anahtarlar tam olarak "email" ve "current_password".
+func decodeOwnEmailRequest(body io.Reader) (ownEmailRequest, bool) {
+	decoder := json.NewDecoder(io.LimitReader(body, ownEmailRequestMaxBytes))
 	var fields map[string]json.RawMessage
-	if err := json.Unmarshal(body, &fields); err != nil {
+	if err := decoder.Decode(&fields); err != nil || fields == nil {
+		return ownEmailRequest{}, false
+	}
+	var trailing any
+	if err := decoder.Decode(&trailing); !errors.Is(err, io.EOF) {
+		return ownEmailRequest{}, false
+	}
+	var req ownEmailRequest
+	for key, raw := range fields {
+		var target *string
+		switch key {
+		case "email":
+			target = &req.Email
+		case "current_password":
+			target = &req.CurrentPassword
+		default:
+			return ownEmailRequest{}, false
+		}
+		if err := json.Unmarshal(raw, target); err != nil {
+			return ownEmailRequest{}, false
+		}
+	}
+	return req, true
+}
+
+// requestIdentityEmailDigest is what the guard hashes for this route: the new
+// address alone, re-encoded, so nothing else the body holds (a password under
+// any spelling included) reaches the stored digest. A body the handler cannot
+// read hashes to a constant and is refused by the handler. Two arrivals with
+// the same identity and the same new address are the same request; the first
+// one's answer stands, whatever password the second carried.
+// requestIdentityEmailDigest: yalnız yeni adres, yeniden kodlanmış.
+func requestIdentityEmailDigest(body []byte) []byte {
+	req, ok := decodeOwnEmailRequest(bytes.NewReader(body))
+	if !ok {
 		return []byte("unreadable")
 	}
-	delete(fields, "current_password")
-	canonical, err := json.Marshal(fields)
+	canonical, err := json.Marshal(struct {
+		Email string `json:"email"`
+	}{req.Email})
 	if err != nil {
 		return []byte("unreadable")
 	}
