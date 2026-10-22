@@ -189,6 +189,9 @@ test('without a known package version there is no version column; a runtime keep
 });
 
 test('a known package version brings the column back: the short form in the row, the full one in its tooltip; unknown and absent rows stay empty', async () => {
+  // The catalogue view, remembered: an absent row is drawn there (alpha.100:
+  // the first visit opens the installed view).
+  globalThis.localStorage = { getItem: (key) => (key === 'celikpanel.components.view' ? 'catalog' : null), setItem() {}, removeItem() {} };
   await mount(payload([
     component('nginx', 'web', true, nginxVersion),
     component('mariadb', 'database', true, mariadbVersion),
@@ -229,7 +232,7 @@ test('a known package version brings the column back: the short form in the row,
     for (const id of ['nginx', 'mariadb', 'spamassassin', 'certbot', 'postfix']) {
       assert.ok(!label(rowOf(id)).includes('—'), `${id}: never a dash`);
     }
-  } finally { await unmount(); }
+  } finally { await unmount(); delete globalThis.localStorage; }
 });
 
 test('a kept reading says so in its tooltip; a version that is not the contract is not shown', async () => {

@@ -627,9 +627,20 @@ export function ServiceList({ onManageService }: ServiceListProps) {
     const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
     const [query, setQuery] = useState('');
     const viewKey = 'celikpanel.components.view';
-    const [hideNotInstalled, setHideNotInstalled] = useState(
-        () => (typeof localStorage === 'undefined' ? false : localStorage.getItem(viewKey) === 'installed'),
-    );
+    // The first visit opens the installed view (D-010). Only an explicit,
+    // remembered "catalog" opens the catalogue; a missing, unknown or
+    // unreadable choice is a first visit (alpha.100: it used to open the
+    // catalogue whenever nothing was stored).
+    // İlk ziyaret Kurulu görünümü açar (D-010). Kataloğu yalnız hatırlanan
+    // açık bir "catalog" seçimi açar; olmayan, bilinmeyen ya da okunamayan
+    // seçim ilk ziyarettir.
+    const [hideNotInstalled, setHideNotInstalled] = useState(() => {
+        try {
+            return typeof localStorage === 'undefined' || localStorage.getItem(viewKey) !== 'catalog';
+        } catch {
+            return true;
+        }
+    });
 
     // Collapse follows the view, not a fixed default: the installed list is
     // short and wants to be readable at a glance; the full catalog is long
@@ -747,7 +758,12 @@ export function ServiceList({ onManageService }: ServiceListProps) {
             // would turn "not checked" back into "not installed" — the exact
             // claim this page must stop making.
             // Kurulu görünümü, YOK olduğunu BİLDİĞİMİZİ gizler.
-            (!hideNotInstalled || s.is_installed !== false) &&
+            // Roundcube's leftovers offer stays in sight: since alpha.100 the
+            // first visit opens this view, and the Panel's record of an
+            // unfinished install or removal must not hide behind the switch.
+            // Roundcube kalıntı teklifi görünür kalır; ilk ziyaret artık bu
+            // görünümü açar ve Panel kaydı düğmenin arkasında saklanmamalı.
+            (!hideNotInstalled || s.is_installed !== false || (s.id === 'roundcube' && webmailCleanup !== null)) &&
             (q === '' || `${componentName(s, t)} ${s.name} ${s.description} ${componentDescription(s, t)} ${s.id}`.toLowerCase().includes(q)),
     );
 
