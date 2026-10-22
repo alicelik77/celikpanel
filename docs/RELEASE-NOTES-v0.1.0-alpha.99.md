@@ -1,11 +1,11 @@
-# v0.1.0-alpha.99 (candidate, 2026-10-22)
+# v0.1.0-alpha.99 (published 2026-10-22)
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.99.tr.md)
 
-This is the release that follows v0.1.0-alpha.98. It is a candidate: when this was
-written it had not been tagged or published, and nothing from it was on an installed
-server. Written on 2026-10-22, on the branch `feat/alpha99-own-email`, from `main`
-after the publication record of alpha.98.
+This is the release that follows v0.1.0-alpha.98. It was published on 2026-10-22
+(see "Publication record" at the end); nothing from it is on an installed server
+yet. Written on 2026-10-22, as a candidate, on the branch
+`feat/alpha99-own-email`, from `main` after the publication record of alpha.98.
 
 ## Who should update, and why
 
@@ -245,3 +245,91 @@ Component and mounted tests do not establish native behaviour.
 Install this release only through CelikPanel's update interface (Settings →
 CelikPanel updates). Publishing it does not update installed servers; only the owner
 of a server starts its update, from the panel's own update screen.
+
+## Publication record
+
+Everything below is dated 2026-10-22 (UTC unless a time zone is named). The merge,
+the tag, the checks, the portal publication and the read of the public site were
+done by the release preparer under the owner's standing instruction, as for the
+earlier releases; installed-panel updates are the owner's alone, from the panel's
+own update screen. No native record for the publication, by the owner's
+instruction. This entry stores none of the results below as a file in the
+repository.
+
+**What happened.**
+
+1. Two independent security review rounds came before the release. The first
+   found the contact gates too loose, a password able to reach the replay digest
+   through case-folded keys, a missing ordering test, the address in the stored
+   answer and separate limiter counters. The second found one must-fix: the dialog
+   looped on "result not known" after `REQUEST_OUTCOME_UNKNOWN`. All of it was
+   fixed (see "Security review corrections" above).
+2. Pull request #236, "Release v0.1.0-alpha.99: change your own email on My
+   account", was merged into `main` as commit
+   `7ce52a17b416f8ffcf64931e08a2c3234bfa2f51`, authored by Mehmet Ömer Efe Çelik.
+   The release sequence variable was moved from 98 to 99 before the tag was made.
+   The main run and the tag run both succeeded; the release chain ran cleanly,
+   with no incident.
+3. The annotated tag `v0.1.0-alpha.99` (object
+   `e9de364565e1e87c92f3e419369fda1f78bc1708`, tree
+   `971776526f398812b66921482f8d779e57c132a9`, tagger Mehmet Ömer Efe Çelik)
+   points at the release commit. The release is a pre-release, published at
+   2026-10-22T13:07:25Z with six assets.
+4. Checked from a download in the WSL guest `CelikPanel-S2-Debian` on 2026-10-22
+   (preparer; not recorded in a file here): the archives are byte-identical,
+   66,326,418 bytes each, SHA-256
+   `b749b7f469cf4d78c3b3ce7bc8cd0f9ef8f864a96f097f8b4258810d359f68e6`; the manifest
+   says sequence 99, `published_at` 2026-10-22T12:23:11Z (SHA-256
+   `aac97d747e4f962454c29e78f1629c22d701181e6fe3d121cc9b2bb53ff08c4e`), and its
+   signature (SHA-256
+   `6493e9be97965df22d5476adfdc054a29f111bef6761c3eb0e01d0a15ba62afa`) verifies
+   with `openssl pkeyutl -verify -rawin -pubin` against the signing key (SHA-256
+   `7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb`, the same
+   key as before); both content guards returned 0; the build used Go go1.26.5,
+   CGO off, `-trimpath`. `libexec/get.sh` pins 99 (SHA-256
+   `dc11adc2096222242fa10e755926356fd076a3364967283fe3a835362c390768`); the policy
+   inside says current 99, previous 98, previous commit
+   `c249a9ba236212bfcdf6eddb590f55bccc5bac9c`. The archive has 267 members (243
+   files, 24 directories). The interface bundle is
+   `web/dist/assets/app-CfcdYww_.js`, 259,484 bytes, SHA-256
+   `d0ea016979b893250bb710062bc8926eae03ac1ab336a6be62d99947657dc6a3`. The
+   `bin/panel` executable contains `account_email`.
+5. The portal package: `portal.tar.gz`, 133,025,091 bytes, SHA-256
+   `95fcb5c61dc0c15321078bb7e9b36a6722e0fe629fe228541faf75f5566937a3`, 54
+   entries, built twice byte-identical (pre-signed mode). Its pages link only
+   `github.com/alicelik77/...`. The contract test returned 0; the public
+   verifier's 17 tests and the promotion's 14 tests passed.
+6. At about 13:16Z the preparer published it, previous version v0.1.0-alpha.98,
+   target v0.1.0-alpha.99: status `committed`, public verification 26 of 26
+   requests, `CELIKPANEL_DOWNLOAD_PORTAL_PUBLISHED`.
+7. The backup of the previous site is
+   `/var/www/vhosts/celikpanel.net/portal-backups/httpdocs.before-v0.1.0-alpha.99.20261022T131614Z.342386.fc06eb2d06051adc`;
+   the upload was retained in
+   `/var/www/vhosts/celikpanel.net/.upload-portal-20261022T131537Z-v0.1.0-alpha.99-3546cbb9f47a93b5`.
+8. A read from outside after the publication:
+   `https://celikpanel.net/releases/latest.txt` says v0.1.0-alpha.99;
+   `latest.json` says sequence 99, with the commit and the SHA-256 above.
+
+**What the owner reported.** That both installed servers are on alpha.98 is
+recorded above ("What the owner reported") and not repeated. Nothing from alpha.99
+is on an installed server yet.
+
+**Not done, and what publication does not change.**
+
+- The installed servers were not updated to alpha.99 by the release preparer. Only
+  the owner updates them, from the panel's own update screen.
+- The email change has not been seen on an installed server.
+- The limits recorded above stay: two simultaneous changes to addresses that
+  differ only in letter case can both pass; Let's Encrypt may refuse an address at
+  a domain that is not public; `--create-admin` does not validate the address it
+  is given.
+- The setup plan's contact blocker still applies to every plan. Whether it should
+  is left for a later decision.
+- The new address is not confirmed by a message, and "open sessions" is not built.
+- Not reported and not recorded: anything from Boston or Frankfurt on alpha.99,
+  Frankfurt's package versions, and everything the earlier notes list as not
+  reported. Each is "not recorded", not "worked" and not "failed".
+- The limits of the earlier publication records (see the [alpha.88
+  notes](RELEASE-NOTES-v0.1.0-alpha.88.md)) are not reported as lifted.
+- Publication is not acceptance. P0.1 to P0.5 stay partial; no P0 item is closed
+  or advanced.

@@ -6239,3 +6239,60 @@ güncelleme ve otomatik geri alma dayanıklılığının tamamlandığı iddias�
   sürümleri bildirilmedi, bu yüzden D-034 değişikliğinin açık işi Frankfurt için
   açık kalır; gerçek bir sunucuda korunan bir okuma ya da meşgul bir paket yöneticisi
   hâlâ görülmedi.
+
+### v0.1.0-alpha.99'un yayımlanması (yayımda kod değişikliği yok; ilke 2 ve 6; D-022; D-024; D-025; D-037; 2026-10-22)
+
+D-025 ilke 2 (kanıtın bir anlamı ve yaşam döngüsü vardır: bilinmeyen; yok, boş
+ya da başarılı değildir) ve 6 (hazır olma, ilerleme ve erişim birbirinden
+bağımsız kalır); D-022; D-024; D-037. **Hiçbir P0 işi kapanmaz ya da
+ilerlemez.** P0.1–P0.5 kısmi kalır ve her açık kabul işi açık kalır. Bu girdi
+tek bir sürümü kaydeder; kod, şema ya da kurtarma davranışını değiştirmez.
+2026-10-22, içindeki her şeyin saat tarihidir.
+
+- **Yayımlama.** Bütün adımları sürümü hazırlayan kişi yaptı, sahibin kalıcı
+  talimatı uyarınca; kurulu panel güncellemelerini yalnız sahip yapar. Önce iki
+  bağımsız güvenlik incelemesi turu yapıldı (ilki: fazla gevşek iletişim
+  kapıları, büyük-küçük harfi yok sayan anahtarlarla tekrar özetine ulaşabilen
+  bir parola, eksik bir sıralama testi, saklanan yanıtta adres, ayrı sınırlayıcı
+  sayaçları; ikincisi: zorunlu bir düzeltme, `REQUEST_OUTCOME_UNKNOWN` sonrasında
+  "sonuç bilinmiyor" durumunda döngüye giren bir pencere) ve hepsi düzeltildi.
+  #236 numaralı çekme isteği `7ce52a17b416f8ffcf64931e08a2c3234bfa2f51` olarak
+  birleştirildi; sürüm sırası değişkeni etiketlemeden önce 98'den 99'a geçti;
+  `main` koşusu ve etiket koşusu başarılı oldu; `v0.1.0-alpha.99` açıklamalı
+  etiketi (nesne `e9de364565e1e87c92f3e419369fda1f78bc1708`, ağaç
+  `971776526f398812b66921482f8d779e57c132a9`); 2026-10-22T13:07:25Z'de altı
+  dosyalı ön sürüm; arşiv SHA-256
+  `b749b7f469cf4d78c3b3ce7bc8cd0f9ef8f864a96f097f8b4258810d359f68e6`, 66.326.418
+  bayt; manifest sıra 99 ve doğrulanan bir imza (aynı anahtar); `get.sh` 99'u
+  sabitler; politika 98'den sonra 99. Portal paketi (SHA-256
+  `95fcb5c61dc0c15321078bb7e9b36a6722e0fe629fe228541faf75f5566937a3`, iki kez
+  aynı derlendi) yaklaşık 13:16Z'de önceki v0.1.0-alpha.98 ile yayımlandı:
+  committed, genel doğrulama 26 istekten 26'sı,
+  `CELIKPANEL_DOWNLOAD_PORTAL_PUBLISHED`, ardından dışarıdan okundu. Hazırlayan
+  kişi bir WSL konuğunda bir indirmeden denetledi; hazırlayan kişi bildirdi,
+  burada bir dosyada kayıtlı değil. Sürüm zinciri hiçbir olay olmadan çalıştı.
+- **Gerçek sistem kaydı.** Yayım için yok; alpha.99 için de yok, sahibin 16 Ekim
+  2026 talimatıyla ve hiçbir Agent, güncelleyici ya da şema dosyası
+  değişmediği için. alpha.99'un kodunu yalnız bileşen, bağlanmış ve taklit
+  tarayıcı testleri kapsar (yukarıdaki aday girdisine bakın).
+- **Kurulu paneller.** Sahibin iki sunucunun da alpha.98'de olduğunu bildirmesi
+  yukarıdaki girdide kayıtlı. Kurulu bir sunucuda alpha.99'dan hiçbir şey
+  kaydedilmedi ve çıkarılmamalıdır (ilke 6: bir sürümün yayımlanması hiçbir
+  sunucunun durumu değildir).
+- **Şema ya da sürüm geçişi.** Yok: şema 44; sürüm sırası sürüm hazırlığında
+  98'den 99'a geçti. **Kurtarma davranışı.** Yayımla ve alpha.99 ile değişmez;
+  aday girdisinin anlattığı dışında (alpha.98'e dönüş, alpha.99'da değiştirilen
+  adresi korur; bir değişiklik sırasında yeniden başlama `REQUEST_OUTCOME_UNKNOWN`
+  yanıtı verir ve o kimliği bir daha çalıştırmaz).
+- **Açık; sonraki bir sürüme bırakıldı.** (1) E-posta değiştirme hiçbir kurulu
+  sunucuda görülmedi. (2) Kayıtlı sınırlar duruyor: yalnız büyük-küçük harfle
+  ayrılan adreslere aynı anda yapılan iki değişiklik birlikte geçebilir; Let's
+  Encrypt herkese açık olmayan bir alan adındaki adresi reddedebilir;
+  `--create-admin` verilen adresi doğrulamaz. (3) Kurulum planının iletişim
+  engeli her plan için hâlâ geçerli; bu sonraki bir karara bırakıldı. Hiçbiri bir
+  P0 işini değiştirmez.
+- **Açık; devreden.** alpha.99 aday girdisinin ve alpha.90–alpha.98 girdilerinin
+  açık bıraktığı her şey; bunlar arasında: yeni adres bir iletiyle
+  doğrulanmıyor; açık oturumlar yapılmadı; zamanlanmış güncelleme denetimi gerçek
+  bir Agent'a ya da gerçek sürüm sunucusuna karşı çalışmadı; değiştirilen
+  yardımcıları paylaşan geri alma yolları yalnız sözleşme testleriyle denendi.

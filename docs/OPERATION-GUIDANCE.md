@@ -9761,3 +9761,18 @@ the card reads the address again, and the next Save is a new action with a new
 identity.
 
 P0.1-P0.5 stay **partial**; this entry closes and advances nothing.
+
+### Installed servers after the alpha.99 publication (2026-10-22)
+
+v0.1.0-alpha.99 was published on 2026-10-22 (release at 13:07:25Z, then the
+download portal at about 13:16Z). **Who must act:** the owner, who decides when to
+update each server, from the panel's own update screen; nothing else is needed.
+Nothing from alpha.99 is on an installed server yet, so nothing is inferred.
+**Open:** the email change is seen on no installed server. The same day the owner
+looked at a proposed redesign of the Components page and asked why it would be
+better. The review found that the current page already remembers the installed
+view and folds the catalogue, so the broad redesign was withdrawn; the owner found
+the proposed removal dialog, which names what is affected, better, and that is a
+candidate for the next release, not part of alpha.99. No text or screen was
+changed for this entry. P0.1-P0.5 stay **partial**; this entry closes and advances
+nothing.

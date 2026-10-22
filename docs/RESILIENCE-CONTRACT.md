@@ -6968,3 +6968,60 @@ resilience is complete. 2026-10-22 is the clock date of everything in it.
   and no more). Frankfurt's package versions were not reported, so the open item of
   the D-034 amendment stays open for Frankfurt; a kept reading or a busy package
   manager on a real server has still not been seen.
+
+### Publication of v0.1.0-alpha.99 (no code change in the publication; invariants 2 and 6; D-022; D-024; D-025; D-037; 2026-10-22)
+
+D-025 invariants 2 (evidence has a meaning and a lifecycle: unknown is not
+absent, empty or success) and 6 (readiness, progress and access remain
+independent); D-022; D-024; D-037. **No P0 item is closed or advanced.** P0.1 to
+P0.5 stay partial and every open acceptance item stays open. This entry records
+one release; it changes no code, schema or recovery behaviour. 2026-10-22 is the
+clock date of everything in it.
+
+- **Publication.** All steps were done by the release preparer under the owner's
+  standing instruction; installed-panel updates are the owner's only. Two
+  independent security review rounds came first (the first: contact gates too
+  loose, a password able to reach the replay digest through case-folded keys, a
+  missing ordering test, the address in the stored answer, separate limiter
+  counters; the second: one must-fix, a dialog that looped on "result not known"
+  after `REQUEST_OUTCOME_UNKNOWN`), and all of it was fixed. Pull request #236
+  merged as `7ce52a17b416f8ffcf64931e08a2c3234bfa2f51`; the release sequence
+  variable moved 98 to 99 before tagging; the main run and the tag run succeeded;
+  annotated tag `v0.1.0-alpha.99` (object
+  `e9de364565e1e87c92f3e419369fda1f78bc1708`, tree
+  `971776526f398812b66921482f8d779e57c132a9`); pre-release at
+  2026-10-22T13:07:25Z with six assets; archive SHA-256
+  `b749b7f469cf4d78c3b3ce7bc8cd0f9ef8f864a96f097f8b4258810d359f68e6`, 66,326,418
+  bytes; manifest sequence 99 with a verifying signature (the same key); `get.sh`
+  pins 99; policy 99 after 98. The portal package (SHA-256
+  `95fcb5c61dc0c15321078bb7e9b36a6722e0fe629fe228541faf75f5566937a3`, built
+  twice identical) was published at about 13:16Z with previous v0.1.0-alpha.98:
+  committed, public verification 26 of 26,
+  `CELIKPANEL_DOWNLOAD_PORTAL_PUBLISHED`, and read from outside afterwards.
+  Checked by the preparer from a download in a WSL guest; reported by the
+  preparer, not recorded in a file here. The release chain ran cleanly, with no
+  incident.
+- **Native record.** None for the publication, and none for alpha.99, by the
+  owner's instruction of 2026-10-16 and because no Agent, updater or schema file
+  changed. alpha.99's code is covered by component, mounted and mock-browser
+  tests only (see its candidate entry above).
+- **Installed panels.** The owner's report that both servers are on alpha.98 is in
+  the entry above. Nothing from alpha.99 on an installed server is recorded, and
+  none should be inferred (invariant 6: the publication of a release is not the
+  state of any server).
+- **Schema or version transition.** None: schema 44; the release sequence moved
+  98 to 99 in the release preparation. **Recovery behaviour.** Unchanged by the
+  publication and by alpha.99, apart from what the candidate entry describes (a
+  return to alpha.98 keeps an address changed on alpha.99; a restart during a
+  change answers `REQUEST_OUTCOME_UNKNOWN`, never running that identity again).
+- **Open, left for a later release.** (1) The email change is seen on no installed
+  server. (2) The recorded limits stay: two simultaneous changes to addresses that
+  differ only in letter case can both pass; Let's Encrypt may refuse an address at
+  a domain that is not public; `--create-admin` does not validate the address it
+  is given. (3) The setup plan's contact blocker still applies to every plan; that
+  is left for a later decision. None of them changes a P0 item.
+- **Open, carried over.** Everything the alpha.99 candidate entry and the
+  alpha.90 to alpha.98 entries leave open, among them: the new address not
+  confirmed by a message; open sessions not built; the scheduled update check not
+  run against a real Agent or the real release server; the rollback paths that
+  share the changed helpers exercised by contract tests only.

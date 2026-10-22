@@ -9721,3 +9721,18 @@ yeniden başladı; kimlik bir daha çalıştırılmaz): pencere sonucun bilinmed
 söyler, kart adresi yeniden okur ve sonraki Kaydet yeni kimlikli yeni bir eylemdir.
 
 P0.1-P0.5 **kısmi** kalır; bu girdi hiçbir şeyi kapatmaz ya da ilerletmez.
+
+### Alpha.99 yayımından sonra kurulu sunucular (2026-10-22)
+
+v0.1.0-alpha.99 22 Ekim 2026'da yayımlandı (sürüm 13:07:25Z'de, ardından indirme
+portalı yaklaşık 13:16Z'de). **Kim işlem yapar:** sahip; her sunucuyu ne zaman
+güncelleyeceğine panelin kendi güncelleme ekranından kendisi karar verir; başka
+bir şey gerekmez. alpha.99'dan henüz hiçbir şey bir kurulu sunucuda değil;
+hiçbir şey çıkarılmaz. **Açık:** e-posta değiştirme hiçbir kurulu sunucuda
+görülmedi. Aynı gün sahip, Bileşenler sayfası için önerilen bir yeniden tasarıma
+baktı ve neden daha iyi olacağını sordu. İnceleme, mevcut sayfanın kurulu görünümü
+zaten hatırladığını ve kataloğu katladığını gösterdi; bu yüzden kapsamlı yeniden
+tasarım geri çekildi. Sahip, nelerin etkileneceğini adıyla söyleyen önerilen
+kaldırma penceresini daha iyi buldu; bu, alpha.99'un değil, sonraki sürümün
+adayıdır. Bu girdi için hiçbir metin ya da ekran değiştirilmedi. P0.1-P0.5
+**kısmi** kalır; bu girdi hiçbir şeyi kapatmaz ya da ilerletmez.
