@@ -533,14 +533,17 @@ export function BundleInstalledDialog({
     // "Installed · 7.14.7", "Stopped"), or "Not needed" for a part whose role
     // another installed component fills (Nginx where Apache serves).
     // Bir parçanın söylediği: satırın kendi sözü ve sürümü ya da "Gerekmiyor".
-    const partText = (service: ComponentLite | undefined): { word: string; text: string; title?: string } => {
-        if (!service || service.is_installed !== true) return { word: 'notNeeded', text: t('services.bundles.dialog.notNeeded') };
+    // The version is set apart as the row sets it: in mono, after a dot, and
+    // it alone gives way (an ellipsis, the whole text in the tooltip).
+    // Sürüm satırdaki gibi ayrılır; yalnız o kısalır, tamamı ipucundadır.
+    const partText = (service: ComponentLite | undefined): { word: string; said: string; version?: string; mono?: boolean; title?: string } => {
+        if (!service || service.is_installed !== true) return { word: 'notNeeded', said: t('services.bundles.dialog.notNeeded') };
         const word = componentStateWord(service);
         const said = t(COMPONENT_STATE_KEYS[word] as TranslationKey);
         const version = componentVersionText(service);
-        if (!version) return { word, text: said };
-        if (version.kind === 'several') return { word, text: `${said} · ${t('services.versionSeveral')}` };
-        return { word, text: `${said} · ${version.text}`, title: version.kind === 'package' ? version.full : version.text };
+        if (!version) return { word, said };
+        if (version.kind === 'several') return { word, said, version: t('services.versionSeveral') };
+        return { word, said, version: version.text, mono: true, title: version.kind === 'package' ? version.full : version.text };
     };
     return (
         <Dialog
@@ -581,10 +584,16 @@ export function BundleInstalledDialog({
                             <Icon className='h-4 w-4 shrink-0 text-fg-muted' aria-hidden='true' />
                             <span className='shrink-0 text-fg'>{nameOf(id)}</span>
                             <span
-                                className={`ml-auto min-w-0 truncate text-right text-xs ${part.word === 'stopped' ? 'font-medium text-danger' : part.word === 'notNeeded' ? 'text-fg-subtle' : 'text-fg-muted'}`}
+                                className={`ml-auto flex min-w-0 items-center justify-end gap-1.5 text-xs ${part.word === 'stopped' ? 'font-medium text-danger' : part.word === 'notNeeded' ? 'text-fg-subtle' : 'text-fg-muted'}`}
                                 title={part.title}
                             >
-                                {part.text}
+                                <span className='shrink-0'>{part.said}</span>
+                                {part.version !== undefined && (
+                                    <>
+                                        {' '}<span className='shrink-0 text-fg-subtle' aria-hidden='true'>·</span>{' '}
+                                        <span className={`min-w-0 truncate ${part.mono ? 'font-mono' : ''}`}>{part.version}</span>
+                                    </>
+                                )}
                             </span>
                         </li>
                     );

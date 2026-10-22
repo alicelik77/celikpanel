@@ -249,7 +249,10 @@ test('an installed and verified component bundle is a check-mark chip; its dialo
     assert.ok(!dialogText().includes('Already installed'), dialogText());
     // The full version as the package database printed it is the part's tooltip.
     const versionCell = parts[nameOf('phpmyadmin')].find((node) => node.props && node.props.title === '4:5.2.2-really5.2.1-1');
-    assert.match(versionCell.props.className, /\btruncate\b/);
+    assert.match(versionCell.props.className, /\bmin-w-0\b/);
+    const shortVersion = versionCell.find((node) => node.type === 'span' && typeof node.props.className === 'string' && /\btruncate\b/.test(node.props.className));
+    assert.equal(label(shortVersion), '5.2.1');
+    assert.match(shortVersion.props.className, /font-mono/);
     // The same word its row says, from the same data.
     for (const id of MARIADB_BUNDLE) {
       let row = tree.root.findAll((node) => node.props && node.props.id === id && node.props.category !== undefined && node.props.installed !== undefined)[0];
