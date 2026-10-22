@@ -9830,3 +9830,56 @@ görülmedi. Aynı gün sahip Eylül çekme isteklerinin kapatılmasını onayla
 zaten `main`'deydi ve bu kanıtla kapatıldı; açık çekme isteği kalmadı. Bu girdi
 için hiçbir metin ya da ekran değiştirilmedi. P0.1-P0.5 **kısmi** kalır; bu girdi
 hiçbir şeyi kapatmaz ya da ilerletmez.
+
+### Alpha.100'deki kurulu sunucular: sahibin baktıkları ve araçlarıyla birlikte hizmet olan hazır paketler (D-034 değişikliği, 2026-10-22)
+
+22 Ekim 2026'da sahip iki kurulu sunucuya da v0.1.0-alpha.100'de baktı. Sürümü
+hazırlayan kişi iki sunucuda da hiçbir şey ölçmedi.
+
+- **Boston.** Kenar çubuğunda Sunucu altındaki Sunucu kurulumuna, Pano'da onu açan
+  kullanım amacı düğmesine, PostgreSQL'in kaldırma penceresine ve Hesabım'daki
+  E-posta adresim kartına bakıldı. **Kim işlem yapar:** kimse; bunlar gözlemdir ve
+  v0.1.0-alpha.101 adayı onları değiştirmez.
+- **Frankfurt: kurulu paketlerin pencereleri ve tek bileşenli paketler.** Kurulu bir
+  pakete basınca açılan pencere her parçanın yanında "Zaten kurulu" diyor ve
+  Doğrula sunuyordu. Veritabanı kategorisinde kendi satırlarının yanında, her biri
+  tek bileşenli "PostgreSQL" ve "MariaDB" paketleri, ayrı eklentiler olarak da
+  phpPgAdmin ve phpMyAdmin vardı; sahip bu paketleri gereksiz buldu ve paketin bir
+  hizmet ile ona eşlik eden araçlar olduğuna karar verdi (D-034 değişikliği).
+  **v0.1.0-alpha.101 adayı için kaynakta:** veritabanı paketleri "PostgreSQL +
+  phpPgAdmin" ve "MariaDB + phpMyAdmin"dir (her biri aracının üzerinde çalıştığı
+  Nginx ve PHP-FPM ile), eklentiler kaldırıldı ve pencere her parçanın kendi
+  durumunu ve sürümünü söyler.
+- **Frankfurt: phpMyAdmin'in sürümü.** Satır, dar sütunun kırptığı biçimde
+  "5.2.2-really…" okunuyordu. Debian'daki bir "really" sürümü gerçekte dağıtılan
+  sürümü "really"den sonra yazar; kısa biçim artık onu gösterir
+  (`5.2.2-really5.2.1-1` için 5.2.1) ve tam sürüm ipucunda ve bileşen sayfasında
+  kalır (D-036 notu). Sunucuda yanlış olan bir şey yoktu; yalnız kısa biçim
+  yanlıştı.
+
+**Kurulu bir paketin penceresinin söyledikleri (alpha.101 adayı).** Bileşenler →
+kurulu bir hazır paket çipi:
+
+- *Kurulu ve doğrulandı:* her parça satırının durumu ve sürümüyle ("Çalışıyor ·
+  1.26.3", "Kurulu · 5.2.1"), ipucunda tam sürüm, ve Kapat. **Kim işlem yapar:**
+  kimse. Bir posta paketi ayrıca, posta profili kurulumunu yeniden çalıştıran
+  Onar'ı sunar; eksik olanı tamamlar ve hiçbir şeyi kaldırmaz.
+- *Kurulu, doğrulanmadı (bir parça çalışmıyor):* çalışmayan parça bunu satırının
+  kırmızısıyla söyler ("Durdu") ve pencere şunu der: "Yukarıdaki parçalardan biri
+  çalışmıyor. Onu aşağıdaki satırından başlatın; sayfanın üstündeki Yeniden tara
+  bileşenleri yeniden okur. Bu pencere sunucuda hiçbir şeyi değiştirmez." **Kim
+  işlem yapar:** yönetici. **Sonraki eylem:** o bileşeni satırından başlatmak (ya
+  da neden durduğuna kendi sayfasında bakmak). **Nasıl sürer:** panel başlatmadan
+  sonra bileşenleri okur, Yeniden tara ile hemen okur; paket o zaman kurulu ve
+  doğrulanmış olur. Artık Doğrula düğmesi yoktur.
+- *Bu sistem bir parçayı sunmadığı için engelli:* çip hangi parça olduğunu söyler
+  (Arch'ta "phpPgAdmin bu sistemde kullanılamıyor"). **Kim işlem yapar:** bu paket
+  bu sistemde kurulamaz; sunulan bileşenler kendi satırlarından yine kurulabilir.
+  Hiçbir şey yarım kurulmaz.
+- *Bir paketin kurulumu:* değişmedi — pencere korunanları, gerekmeyenleri (web'e
+  Apache hizmet ederken Nginx) ve kurulacakları sıralar, sonra bileşenleri birer
+  birer kurar ve ilk hatada nedeni ve Devam et ile durur.
+
+Kurulu paneller yalnız sahiplerince, panelin kendi güncelleme ekranından
+güncellenir. P0.1-P0.5 **kısmi** kalır; bu girdi hiçbir şeyi kapatmaz ya da
+ilerletmez.

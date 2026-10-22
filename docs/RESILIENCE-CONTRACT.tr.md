@@ -6439,3 +6439,77 @@ tek bir sürümü kaydeder; kod, şema ya da kurtarma davranışını değiştir
   doğrulanmıyor; açık oturumlar yapılmadı; zamanlanmış güncelleme denetimi gerçek
   bir Agent'a ya da gerçek sürüm sunucusuna karşı çalışmadı; değiştirilen
   yardımcıları paylaşan geri alma yolları yalnız sözleşme testleriyle denendi.
+
+### v0.1.0-alpha.101 adayı (hazır paketler araçlarıyla birlikte hizmetlerdir; kurulu paketin penceresi; Debian "really" kısa biçimi; Agent, güncelleyici ya da şema değişikliği yok; ilke 2, 3 ve 6; D-034 değişikliği; D-036 notu; D-022; D-024; D-033; D-025; 2026-10-23)
+
+D-025 ilke 2 (kanıtın bir anlamı ve yaşam döngüsü vardır: kurulu paketin penceresi
+her parçanın durumunu ve sürümünü satırların kullandığı aynı tarama verisinden
+söyler, çalışmayan bir parça öyle adlandırılır ve bir sürüm yalnız paketin
+gerçekte dağıttığı sürüme kısaltılır), 3 (yerel hizmet sahipliği: bir paket olağan
+katalog bileşenlerini kurar, başka bir şey kurmaz; kurulu başka bir bileşenin
+doldurduğu bir rol, örneğin Apache'ninki, kullanılır ve asla değiştirilmez;
+sistemin sunmadığı bir parça, bir alt kümeyi kurmak yerine paketin tamamını
+engeller) ve 6 (hazırlık, ilerleme ve erişim bağımsız kalır: geri çekilen Doğrula,
+sayfanın Yeniden tara düğmesinin zaten yaptığı bir okumaydı ve hiçbir yoklama
+kurulum başlatmaz). P0.1/P0.2 alanına (doğru, eyleme dönük durum) dokunulur.
+**Hiçbir P0 işi kapanmaz ya da ilerlemez**; P0.1–P0.5 kısmi kalır ve her açık kabul
+işi açık kalır. Bu girdi, yerel güncelleme ve otomatik geri alma dayanıklılığının
+tamamlandığı iddiası değildir. Sahibin kararı ve kod 22 Ekim 2026 tarihlidir; bu
+girdi 23 Ekim 2026'da yazıldı (saat tarihleri).
+
+- **Bu sürümün dokunduğu.** Panel'e derlenmiş paket kaydı (`cmd/panel/bundles.go`
+  içindeki `bundleDefinitions`): "PostgreSQL + phpPgAdmin" ve "MariaDB +
+  phpMyAdmin", tek bileşenli veritabanı paketlerinin ve eklentilerinin yerini alır
+  (kimlikler korunur, ad kodları değişir); bir aracın üzerinde çalıştığı web
+  sunucusu ve PHP-FPM bir rolü kullanan önkoşullardır; Panel `verify` yerine
+  `none` gönderir. Panel'in sürüm kısa biçimi (`upstreamPackageVersion`, Debian'daki
+  "really" sürümü), yanıt oluşturulurken türetilir. Web arayüzü: çiplerin adları,
+  kurulu paketin penceresi (her parçanın durumu ve sürümü, Doğrula yok), sayfanın
+  paket yanıtını okuması (yanıtın taşımadığı bir kimlik listeyi reddetmek yerine
+  dışarıda bırakılır; daha eski bir Panel'in `verify`'ı kabul edilir ve düğme
+  çizmez), üç noktayla biten ve ipucunda tam metni olan tek çalışma ortamı sürümü.
+  Sürüm sırası 100'den 101'e geçer.
+  Agent'a, hiçbir Agent iş türüne ya da RPC'sine, güncelleyiciye (`update.sh`,
+  sabitleri dışında `get.sh`, sistem güncelleme işçisi, geri alma ve kurtarma),
+  hiçbir role, şemaya ya da yoklamaya **dokunmaz**. Bu yüzden sahibin 16 Ekim 2026
+  talimatıyla bu sürüm için **yerel kayıt yapılmaz**.
+- **Sahibin bağımsızlığı (D-022): değişmedi.** Paketler, yerel paketlerle kurulan
+  katalog bileşenleri üzerinde kısayollardır; bir paketin kurduğu hiçbir şey
+  çalışmayı sürdürmek için panele bağlı değildir ve bir paket hiçbir şeyi
+  kaldırmaz.
+- **Kurtarma davranışı (D-033, D-024): değişmedi.** Bir paket kurulumu hâlâ birer
+  birer, her biri öncekinin taze bir taramayla bitmesinden sonra gönderilen olağan
+  bileşen kurulumlarıdır; ilk hata sırayı nedeniyle durdurur, başarısız bileşenin
+  kendi yönlendirmesi ekranda kalır ve Devam et yalnız eksik olanı kurar. Kurulu
+  hiçbir şey kaldırılmaz. Doğrulanmamış kurulu bir paket hangi parçanın
+  çalışmadığını, kimin işlem yapacağını ve işin nasıl süreceğini söyler (parçayı
+  satırından başlatmak ya da Yeniden tara). **Kurulu panel güncelleme yolu:
+  değişmedi**; sahip her kurulu panel güncellemesini panelin kendi güncelleme
+  ekranından başlatır.
+- **Erişim kapıları.** Değişmedi: paket yanıtı ve bileşen kurulumları var olan
+  yetkilendirmelerini korur; hiçbir rota eklenmedi.
+- **Şema, sürüm geçişi ve kurtarma.** Şema 44, geçiş yok; yeni hiçbir şey kalıcı
+  yazılmaz. *alpha.100'den alpha.101'e:* saklanmış taramalar önceki gibi okunur ve
+  bir "really" sürümünün kısa biçimi, yanıt oluşturulurken türetildiği için hemen
+  doğrudur; `db.postgresql` ya da `db.mariadb` bağlantısı, artık aracını da içeren
+  aynı pakete varır. *alpha.101'den alpha.100'e geri* (örneğin bir geri almadan
+  sonra): alpha.100'ün kendi kaydı ve penceresi geri gelir (tek bileşenli
+  veritabanı paketleri, eklentiler, Doğrula); tarayıcıda hâlâ açık bir alpha.101
+  sayfası alpha.100'ün yanıtını okur, tek bileşenli paketlerini bileşenleriyle
+  adlandırır (emekli ad kodlarının sözü yoktur) ve `verify` için düğme çizmez.
+  **Bilinen, zararsız geri dönüş davranışı:** hiçbir şey kaybolmaz ya da onarım
+  gerektirmez; bileşenlerin kendisine dokunulmaz. Kurulu bir sunucuda ölçülmedi.
+- **Kanıt ve açık işler.** Aday ağacında: Go testleri (sahibin kuralını zorlayan
+  kayıt sözleşmesi testi; Boston, Frankfurt, Apache ve Arch biçimli paket testleri;
+  birleşen paketleri adlandıran kaldırma etkisi testi; gerçek Debian ve Ubuntu
+  sürüm metinleriyle kısa biçim testleri) ve web testleri (hazır paket bağlı ve
+  sözleşme testleri, sürüm hücresi testleri, yeni adlarla kaldırma penceresi
+  testleri). Sonuçlar: Panel'in ve iç paketlerin Go testleri `CelikPanel-S2-Debian` konuğunda son ağaçta geçti: 64 pakette 7.199 geçti, 44 atlandı, 0 başarısız (gofmt ve vet temiz; geri çekilen Doğrula bağlantısını hâlâ isteyen bir ön yüz sözleşme testi önce düzeltildi); web testleri geçti: 1.744/1.744; derleme hiçbir bütçe değişmeden geçti. Tarayıcı incelemesi (alpha.101 kaydıyla 19. ve 20. gruplar; 1440 px ve 390 px, İngilizce ve Türkçe, açık ve koyu): Boston ve Frankfurt biçimli şeritler, Boston'ın PostgreSQL + phpPgAdmin planı ve kurulumu (2/2 adımı phpPgAdmin), Frankfurt'un kurulu paket pencereleri ve MariaDB'nin durduğu bir pencere, Pano kartı; bir kusur bulundu ve düzeltildi (sürüm durum sözcüğünden sonraki noktaya yapışıyordu; artık mono yazıyla ayrı duruyor) ve ekranlara yeniden bakıldı; ham kod yok, Türkçe sayfada İngilizce yok, yatay taşma yok. Ekran görüntüleri silindi.
+  Sürüm sırası ilkesi sözleşmesi Git Bash'te; indirme portalı ve imzalı sürüm
+  manifesti sözleşmeleri `CelikPanel-S2-Debian` konuğunda geçti. Bileşen ve bağlı
+  testler yerel davranışı kanıtlamaz. **Kurulu bir sunucuda hiçbir şey ölçülmedi.**
+  Açık: paketlerin bir veri kataloğuna taşınıp taşınmayacağı sahibe bırakıldı;
+  D-036 açık işi, düzeltilmiş kısa biçim Frankfurt'ta görülene dek Frankfurt için
+  açık kalır; alpha.90–alpha.100 girdilerinin açık bıraktığı her şey açık kalır.
+  Kurulu paneller yalnız sahiplerince, panelin kendi güncelleme ekranından
+  güncellenir. P0.1–P0.5 kısmi kalır.

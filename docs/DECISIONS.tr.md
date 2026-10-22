@@ -640,6 +640,23 @@ bakmalı."); ve sayfanın kendi taraması paket veritabanı yanıt verirken Pane
 değişiklik kirasını tutuyordu (artık sürümleri kirayı almadan önce okur; bir
 işlemin sonundaki taze tarama onları yine o işlemin kirası içinde okur).
 
+*22 Ekim 2026 notu (alpha.101 adayı), sahibin alpha.100'deki Frankfurt ekranından
+sonra:* phpMyAdmin satırı "5.2.2-really…" okunuyordu. Debian'daki bir "really"
+sürümü, daha eski bir yukarı akış sürümüne geri dönmek zorunda kalan bir pakete
+aittir: paket yöneticisi yine bir yükseltme görsün diye "really" sözcüğünden önce
+daha yüksek bir numara taşır; gerçekte dağıtılan sürüm "really"den sonra gelir.
+4. maddenin kısa biçimi epoch'u ve paketleme revizyonunu çıkarıp yalnız "+" ya da
+"~" işaretinde kesiyordu; bu yüzden "-really5.2.x" içinde kalıyor, dar sütun da onu
+kırpıyordu. Kısa biçim artık, epoch ve revizyon önceki gibi çıkarıldıktan sonra,
+"really" bir sürüm ayracından ("+", "-", "~" ya da ".") sonra geliyor ve ardından
+bir rakam geliyorsa "really"den sonraki gerçek sürümdür (`5.2.2-really5.2.1-1`
+5.2.1, `2:4.1.0+really4.0.9-2` 4.0.9 okunur; `4:5.2.2+dfsg-1` yine 5.2.2, `3:7.2`
+7.2 okunur). İpucundaki ve bileşen sayfasındaki tam sürüm değişmedi. Kısa biçim
+Panel yanıtını oluştururken türetilir; bu yüzden saklanmış bir tarama da hemen
+doğru okunur; Agent ve bildirdikleri değişmedi. Bir satırdaki tek çalışma ortamı
+sürümü de artık üç noktayla biter ve ipucunda tam metni vardır; böylece hiçbir
+sürüm hücresi sessizce kırpılmaz. Kurulu bir sunucuda hiçbir şey ölçülmedi.
+
 ---
 
 ## D-035 · Panel güncellemeleri kendiliğinden arar ve bunu sakin bir dille söyler; güncellemeyi yalnız bir yönetici başlatır
@@ -999,6 +1016,117 @@ bir JSON alanıdır.
 Bunun izin vermediği şeyler: kurulu bir sunucuda değişiklik ve lisans politikası
 değişikliği yok. Kurulu panelleri yine yalnız sahipleri, panelin kendi güncelleme
 ekranından günceller.
+
+### Değişiklik 22 Ekim 2026 (alpha.101): paket, bir hizmet ile ona eşlik eden araçlardır
+
+*Sahibin v0.1.0-alpha.100'de Frankfurt'a baktıktan sonraki 22 Ekim 2026 kararı; v0.1.0-alpha.101 adayı için kaynakta (kod 22 Ekim 2026'da, bu kayıt 23 Ekim 2026'da; saat tarihleri); kurulu bir sunucuda hiçbir şey ölçülmedi*
+
+Sahibin gördüğü. Frankfurt'ta, alpha.100'de, veritabanı kategorisi her biri tek
+bileşen olan bir "PostgreSQL" paketi ve bir "MariaDB" paketi sunuyordu; bu
+bileşenlerin şeridin hemen altında kendi satırları zaten vardı. Tarayıcı araçları
+phpPgAdmin ve phpMyAdmin ise ayrı eklentilerdi. Sahibin sözleri: "bundle diyip
+tek servisi kurmak nedir. saçmalık. postgresql ve phpPgAdmin bundle dır mariadb ve
+phpMyAdmin bundle dır. Diğer tüm bundle lar da böyle dir." Yukarıdaki 1. madde
+"her biri isteğe bağlı bir eklentiyle bir PostgreSQL paketi ve bir MariaDB paketi"
+sayıyordu; araç artık paketin parçasıdır.
+
+Benimsenen kurallar:
+
+1. **Paket, bir hizmet ile ona eşlik eden araçlardır.** Tek bileşenli bir paket
+   yalnız bileşeninin satırını tekrarlar; bu yüzden artık yoktur. Her bileşen
+   paketinde en az iki bileşen bulunur ve bunlardan en az biri yalnız başka birinin
+   önkoşulu olarak değil, kendisi için oradadır; bir posta paketi tam olarak kendi
+   posta profilidir. Go'daki bir kayıt sözleşmesi testi bunu bozan bir kaydı ve
+   emekli edilen kimlikleri ve ad kodlarını reddeder.
+2. **Kayıt, sırasıyla.** Adlar İngilizce ve Türkçede aynıdır; Türkçesi farklı
+   olanlar ayrıca yazılmıştır.
+
+   | Kimlik | Kategori | Ad | Kurulum sırasıyla bileşenler | Not |
+   | --- | --- | --- | --- | --- |
+   | `mail.core` | posta | Temel Posta (Core Mail) | Postfix, Dovecot | posta profili `core-mail`; ardından Spam Korumalı Posta'yı sunar |
+   | `mail.webmail` | posta | Webmail | Postfix, Dovecot, Nginx, PHP-FPM, Roundcube | posta profili `webmail`; ardından Spam Korumalı Posta'yı sunar |
+   | `mail.protected` | posta | Spam Korumalı Posta (Spam-Protected Mail) | Postfix, Dovecot, Rspamd | posta profili `protected-mail` |
+   | `db.postgresql` | veritabanı | PostgreSQL + phpPgAdmin | PostgreSQL, Nginx, PHP-FPM, phpPgAdmin | Nginx ve PHP-FPM önkoşuldur (4. madde) |
+   | `db.mariadb` | veritabanı | MariaDB + phpMyAdmin | MariaDB, Nginx, PHP-FPM, phpMyAdmin | Nginx ve PHP-FPM önkoşuldur (4. madde) |
+   | `web.nginx_php` | web | Nginx + PHP-FPM | Nginx, PHP-FPM | |
+
+   `db.postgresql.admin` ve `db.mariadb.admin` eklenti paketleri kaldırıldı;
+   kurdukları şeyler artık veritabanı paketlerinin içindedir. Posta paketleri,
+   onların Spam Korumalı Posta eklentisi ve Nginx + PHP-FPM değişmedi. Kaydın her
+   girdisi önceki gibi çizilir ve sayılır (alpha.95 değişikliği, 1. ve 3. madde);
+   artık altı girdi vardır.
+3. **Kimlikler korunur, adlar değişir.** `db.postgresql` ve `db.mariadb`
+   kimliklerini korur; bu yüzden onlara giden bir bağlantı yine aynı pakete varır.
+   Ad kodları değişti (`db_postgresql_phppgadmin`, `db_mariadb_phpmyadmin`); böylece
+   bir sayfa, daha eski bir Panel'in tek bileşenli paketini asla araçlı bir paket
+   diye adlandırmaz: sayfada emekli kodların sözü yoktur ve böyle bir yanıtı
+   bileşenleriyle adlandırır.
+4. **Önkoşullar bir rolü doldurur.** Bir veritabanı aracının üzerinde çalıştığı
+   web sunucusu ve PHP-FPM pakette kendileri için değil, doldurdukları rol için
+   bulunur. O rolü kurulu başka bir bileşen dolduruyorsa (Nginx yerine Apache), o
+   kullanılır ve pencere Nginx'i çakışma olarak değil, "gerekmiyor" olarak sıralar.
+   Nginx + PHP-FPM ise Nginx'in kendisini adlandırır ve önceki gibi Apache'nin
+   yanında engelli kalır.
+5. **Sistemin sunmadığı bir parça paketin tamamını engeller.** Paket var olan tipli
+   nedenle engellenir ve hiçbir zaman bir alt kümesi kurulmaz. phpPgAdmin'in pacman
+   paketi yoktur; bu yüzden Arch'ta "PostgreSQL + phpPgAdmin" engellidir ve çipi
+   "phpPgAdmin bu sistemde kullanılamıyor" der ("phpPgAdmin is not available on this
+   system"); MariaDB + phpMyAdmin orada kurulabilir kalır.
+6. **Kurulu paketin penceresi her parçanın kendi durumunu söyler; Doğrula geri
+   çekilir.** Bu, yukarıdaki 3. ve 4. maddeyi ve alpha.95 değişikliğinin 4.
+   maddesini ("Kurulu çip Onar ve Doğrula'yı taşır") değiştirir. Her parça, "Zaten
+   kurulu" yerine satırının kendi durumunu ve sürümünü söyler ("Çalışıyor · 1.26.3",
+   "Kurulu · 5.2.1", "Durdu"; İngilizcesi "Running · …", "Installed · …",
+   "Stopped"); bunlar satırların kullandığı aynı veriden gelir ve ipucunda tam paket
+   sürümü vardır. Doğrula düğmesi ve cümlesi kaldırıldı: yalnız bileşenleri yeniden
+   okuyordu; bunu sayfanın Yeniden tara düğmesi yapar. Kapat kalır. Posta paketleri,
+   gerçek iş yapan Onar'ı (profil kurulumu) korur. Doğrulanmamış kurulu bir bileşen
+   paketi, çalışmayan parçayı satırın kırmızısıyla gösterir ve onu kendi satırından
+   başlatmayı ya da sayfanın üstündeki Yeniden tara'yı kullanmayı, pencerenin
+   sunucuda hiçbir şeyi değiştirmediğini sözle söyler; kendi düğmesi yoktur. Panel
+   artık `verify` eylemini göndermez (`none` gönderir); sayfa daha eski bir
+   Panel'den gelen `verify`'ı yine kabul eder ve onun için düğme çizmez. Sayfa
+   yanıtı okurken, yanıtın taşımadığı bir kimliği artık bütün listeyi reddetmek
+   yerine dışarıda bırakır (bilinmeyen bir pakete eklenti göndermesi atılır, var
+   olmayan bir paketin eklentisi çizilmez).
+7. **Bir paketin nasıl kurulduğu değişmedi** (yukarıdaki 4. madde): eksik her
+   parça için sırayla, her biri öncekinin taze bir taramayla bitmesinden sonra tek
+   bir olağan bileşen kurulumu; ilk hata sırayı nedeniyle ve yalnız eksik olanı
+   kuran bir Devam et ile durdurur; kurulu hiçbir şey kaldırılmaz.
+
+Sahibin sunucularının gösterdiği, Panel'in türettiği biçimde (alpha.100
+ekranlarından; alpha.101'de ölçülmedi). **Boston** (PostgreSQL ve Nginx kurulu,
+PHP-FPM yok, phpPgAdmin yok): "PostgreSQL + phpPgAdmin · Kur"; penceresi PostgreSQL
+ve Nginx'i korur, PHP-FPM'i, ardından phpPgAdmin'i birer birer kurar. Pano'daki
+"Hazır paketler" kartı aynı çipleri sayar: "Henüz kurulu yok · 6 kurulabilir".
+**Frankfurt** (her şey kurulu): iki veritabanı paketi de kurulu ve doğrulanmıştır ve
+kart "6 kurulu ve doğrulandı" der.
+
+**Paketlerin tanımlandığı yer.** Kodda, `cmd/panel/bundles.go` içindeki
+`bundleDefinitions`'ta; Panel'e derlenir. Bir dosyadan ya da veritabanından
+okunmaz ve panel çalışırken değiştirilemez; bir paketi değiştirmek bir kod
+değişikliğidir ve bir sürüm gerektirir. Sahip isterse ileride bir veri kataloğuna
+taşınabilir; bu burada karara bağlanmadı.
+
+Şema değişikliği yok (44), Agent değişikliği yok, yeni Agent iş türü ya da RPC
+yok, güncelleyicide ve sürüm kurtarmada değişiklik yok; bu yüzden gerçek sistem
+kaydı yok.
+
+Bunun izin vermediği şeyler: kurulu bir sunucuda değişiklik, lisans politikası
+değişikliği, yeni mağaza öğesi, WordPress ya da site uygulaması paketi ve
+paketlerin çalışırken düzenlenmesi yok. Kurulu panelleri yine yalnız sahipleri,
+panelin kendi güncelleme ekranından günceller.
+
+Diğerleriyle ilişkisi. D-015 2. madde geçerlidir: katalog hâlâ tek kurulum
+adresidir ve bir paket yalnız katalog bileşenlerini kurar. D-024: doğrulanmamış bir
+paket hangi parçanın, kimin işlem yapacağını (yönetici), sonraki eylemi (parçayı
+satırından başlatmak ya da Yeniden tara) ve işin nasıl süreceğini söyler. D-033:
+kurulum sırası ve görünür beklemesi değişmedi. D-036: penceredeki sürümler
+satırların sürümleridir. D-037 değişikliğinin kaldırma penceresi birleşen paketleri
+adlandırır (Nginx'i kaldırmak artık iki veritabanı paketini de eksik bırakır).
+
+Yapılmayan: kurulu bir sunucuda hiçbir şey ölçülmedi; paketlerin bir veri
+kataloğuna taşınıp taşınmayacağı sahibe bırakıldı.
 
 
 ---

@@ -9865,3 +9865,56 @@ closing the September pull requests: all 53 (#151 to #203) were already on `main
 through pull request #204 (alpha.81) and were closed with that evidence; no open
 pull requests remain. No text or screen was changed for this entry. P0.1-P0.5
 stay **partial**; this entry closes and advances nothing.
+
+### Installed servers on alpha.100: what the owner looked at, and ready bundles as services with their tools (D-034 amendment, 2026-10-22)
+
+On 2026-10-22 the owner looked at both installed servers on v0.1.0-alpha.100.
+The release preparer measured nothing on either server.
+
+- **Boston.** Server setup in the sidebar under Server, the Dashboard's server
+  purpose button that opens it, the removal dialog for PostgreSQL and the My email
+  card on My account were looked at. **Who must act:** nobody; these are
+  observations, and the v0.1.0-alpha.101 candidate does not change them.
+- **Frankfurt: the installed bundles' dialogues and the one-component bundles.**
+  Pressing an installed bundle opened a dialogue that said "Already installed"
+  beside every part and offered Verify. The database category held "PostgreSQL"
+  and "MariaDB" bundles of one component each, beside their own rows, with
+  phpPgAdmin and phpMyAdmin as separate add-ons; the owner found those bundles
+  redundant and decided that a bundle is a service with its companion tools
+  (D-034 amendment). **In source for the v0.1.0-alpha.101 candidate:** the
+  database bundles are "PostgreSQL + phpPgAdmin" and "MariaDB + phpMyAdmin" (each
+  with the Nginx and PHP-FPM its tool runs on), the add-ons are gone, and the
+  dialogue says each part's own state and version.
+- **Frankfurt: phpMyAdmin's version.** The row read "5.2.2-really…", clipped by
+  the narrow column. A Debian "really" version names the version actually shipped
+  after "really"; the short form now shows it (5.2.1 for
+  `5.2.2-really5.2.1-1`), and the full version stays in the tooltip and on the
+  component page (D-036 note). Nothing on the server was wrong; only the short
+  form was.
+
+**What an installed bundle's dialogue says (alpha.101 candidate).** Components →
+an installed ready bundle chip:
+
+- *Installed and verified:* each part with its row's state and version
+  ("Running · 1.26.3", "Installed · 5.2.1"), the full version in the tooltip, and
+  Close. **Who must act:** nobody. A mail bundle also offers Repair, which runs the
+  mail profile install again; it completes what is missing and removes nothing.
+- *Installed, not verified (a part is not running):* the part that is not running
+  says so in its row's red ("Stopped"), and the dialogue says: "A part above is
+  not running. Start it from its row below; Rescan at the top of the page reads
+  the components again. This window changes nothing on the server." **Who must
+  act:** the administrator. **Next action:** start that component from its row
+  (or find why it stopped on its own page). **How it resumes:** the panel reads
+  the components after the start, or at once with Rescan; the bundle is then
+  installed and verified. There is no Verify button any more.
+- *Blocked because this system does not offer a part:* the chip says which part
+  ("phpPgAdmin is not available on this system" on Arch). **Who must act:**
+  nobody can install this bundle on this system; the components that are offered
+  can still be installed from their own rows. Nothing is installed in part.
+- *Install of a bundle:* unchanged — the dialogue lists what is kept, what is not
+  needed (Nginx where Apache serves the web) and what is installed, then installs
+  one component at a time and stops at the first failure with its reason and
+  Continue.
+
+Installed panels are updated only by their owner, from the panel's own update
+screen. P0.1-P0.5 stay **partial**; this entry closes and advances nothing.
