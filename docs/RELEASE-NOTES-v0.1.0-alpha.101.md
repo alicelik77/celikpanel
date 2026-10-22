@@ -150,7 +150,7 @@ On the candidate tree:
 - Web: the ready-bundle mounted and contract tests (Boston, Frankfurt and Arch
   payloads, each part's state in the window, no Verify, the not-verified
   sentence, an older panel's `verify`, unknown ids left out), the version cell
-  tests and the removal dialog tests with the new names. 1,744 of 1,744
+  tests and the removal dialog tests with the new names. 1,745 of 1,745
   passed; the build passed with every bundle budget unchanged.
 - Browser: batches 19 and 20 with the alpha.101 registry (1440 px and 390 px, English and Turkish, light and dark): the Boston- and Frankfurt-shaped strips, Boston's PostgreSQL + phpPgAdmin plan and its install (step 2 of 2 is phpPgAdmin), Frankfurt's installed dialogues and one with MariaDB stopped, and the Dashboard card; one defect was found and fixed (the version ran into the dot after the state word; it is now set apart in mono) and the screens were looked at again; no raw codes, no English on the Turkish page, no horizontal overflow. The screenshots were deleted.
 - Shell: the release sequence policy contract passed in Git Bash ("100 -> 101;

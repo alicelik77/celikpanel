@@ -147,7 +147,7 @@ Aday ağacında:
 - Web: hazır paket bağlı ve sözleşme testleri (Boston, Frankfurt ve Arch yükleri,
   pencerede her parçanın durumu, Doğrula yok, doğrulanmadı cümlesi, daha eski bir
   panelin `verify`'ı, dışarıda bırakılan bilinmeyen kimlikler), sürüm hücresi
-  testleri ve yeni adlarla kaldırma penceresi testleri. 1.744/1.744
+  testleri ve yeni adlarla kaldırma penceresi testleri. 1.745/1.745
   geçti; derleme hiçbir bütçe değişmeden geçti.
 - Tarayıcı: alpha.101 kaydıyla 19. ve 20. gruplar (1440 px ve 390 px, İngilizce ve Türkçe, açık ve koyu): Boston ve Frankfurt biçimli şeritler, Boston'ın PostgreSQL + phpPgAdmin planı ve kurulumu (2/2 adımı phpPgAdmin), Frankfurt'un kurulu paket pencereleri ve MariaDB'nin durduğu bir pencere, Pano kartı; bir kusur bulundu ve düzeltildi (sürüm durum sözcüğünden sonraki noktaya yapışıyordu; artık mono yazıyla ayrı duruyor) ve ekranlara yeniden bakıldı; ham kod yok, Türkçe sayfada İngilizce yok, yatay taşma yok. Ekran görüntüleri silindi.
 - Kabuk: sürüm sırası ilkesi sözleşmesi Git Bash'te geçti ("100 -> 101;
