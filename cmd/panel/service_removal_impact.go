@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"slices"
 	"strings"
+	"time"
 
 	"github.com/alicelik/celikpanel/internal/core"
 )
@@ -16,9 +18,12 @@ import (
 // The removal dialog says what a removal affects on THIS server, by name, and
 // what it keeps (alpha.100, owner decision 2026-10-22). Everything here is
 // read from what the Panel already holds: the catalogue, the stored component
-// record (the last scan) and the Panel's own database. It never asks the
-// Agent, never scans and never changes anything; the dialog reads it once
-// when it opens and a failed read never blocks the removal itself.
+// record (the last scan), the Panel's own database and the panel certificate
+// file. It adds no Agent RPC and starts no mutation and no scan: the host
+// profile may come from cached Agent facts, and for the firewall engine the
+// firewall's state is read through the existing read (Agent.FirewallStatus),
+// bounded. The dialog reads it once when it opens and a failed read never
+// blocks the removal itself.
 //
 // The facts it returns are the uninstall path's own conditions, shared with
 // handleServiceUninstall and Agent.UninstallService through the helpers
@@ -26,8 +31,10 @@ import (
 //
 // Kaldırma penceresi bu sunucuda neyin etkileneceğini adıyla ve neyin yerinde
 // kaldığını söyler. Buradaki her şey Panel'in zaten tuttuğundan okunur:
-// katalog, saklanan bileşen kaydı ve Panel veritabanı. Agent'a sormaz, tarama
-// yapmaz, hiçbir şeyi değiştirmez; okunamaması kaldırmayı engellemez.
+// katalog, saklanan bileşen kaydı, Panel veritabanı ve panel sertifikası dosyası.
+// Yeni Agent çağrısı eklemez, değişiklik ya da tarama başlatmaz; güvenlik duvarı
+// motoru için duvarın durumu var olan okuma ile, sınırlı biçimde okunur.
+// Okunamaması kaldırmayı engellemez.
 
 const serviceRemovalImpactPath = "/api/v1/service/removal-impact"
 
@@ -37,13 +44,34 @@ const removalHostedNameCap = blockerCap
 
 type serviceRemovalHosted struct {
 	// Kind names what is counted: sites, php_sites, node_sites, databases,
-	// mail_addresses, mail_domains, mailboxes.
+	// mail_addresses, mail_domains, mailboxes, certificates (certbot: the
+	// certificates the Panel renews with it), firewall (nftables: the panel
+	// firewall it enforces), unrecorded (caches: the Panel does not record
+	// which sites use them, so nothing is claimed either way).
 	Kind  string   `json:"kind"`
 	Count int      `json:"count"`
 	Names []string `json:"names"`
 	// BlocksRemoval: the uninstall refuses while Count > 0
 	// (SERVICE_HAS_DEPENDENTS, serviceDependents).
 	BlocksRemoval bool `json:"blocks_removal"`
+	// Firewall is the panel firewall's state for the firewall kind; Known is
+	// false when it could not be read.
+	Firewall *serviceRemovalFirewall `json:"firewall,omitempty"`
+}
+
+type serviceRemovalFirewall struct {
+	Known     bool `json:"known"`
+	Enabled   bool `json:"enabled"`
+	OpenPorts int  `json:"open_ports"`
+}
+
+// removalHostFacts are the facts outside the database a few kinds need: the
+// panel certificate and the mail host certificate (certbot) and the firewall
+// (nftables). The handler reads them; tests pass them.
+type removalHostFacts struct {
+	PanelCertificate string
+	MailHost         string
+	Firewall         *serviceRemovalFirewall
 }
 
 type serviceRemovalBundle struct {
@@ -54,9 +82,18 @@ type serviceRemovalBundle struct {
 type serviceRemovalImpactResponse struct {
 	ServiceID string `json:"service_id"`
 	// Removal is how the uninstall removes it: "packages" (stop, disable and
-	// purge through the package manager) or "webmail_tree" (Roundcube, which
-	// was never a package).
+	// purge through the package manager), "webmail_tree" (Roundcube, which
+	// was never a package) or "unsupported" (this package family has no
+	// catalogue packages for it, so Agent.UninstallService refuses: "cannot be
+	// removed automatically on this system yet").
 	Removal string `json:"removal"`
+	// HasUnits: the catalogue names service units (or a unit pattern, or
+	// helper units) the uninstall stops and disables first. A tool without
+	// units has nothing to stop.
+	HasUnits bool `json:"has_units"`
+	// SetupRequired: server setup installs it on every server it prepares and
+	// its readiness check expects it (serverSetupRequiredComponents).
+	SetupRequired bool `json:"setup_required"`
 	// PackageFamily is the host's package manager ("apt", "pacman", …) the
 	// purge runs with; empty when it is not known.
 	PackageFamily string `json:"package_family"`
@@ -171,7 +208,7 @@ func hostedLabels(ctx context.Context, db *sql.DB, query string, args ...any) (i
 // removalHosted says what the Panel hosts on this component. The blocking
 // kinds are serviceDependents' own answer (the uninstall refuses while it is
 // not empty); the others are counted here and never block.
-func removalHosted(ctx context.Context, db *sql.DB, svc *core.ManagedService) (*serviceRemovalHosted, error) {
+func removalHosted(ctx context.Context, db *sql.DB, svc *core.ManagedService, facts removalHostFacts) (*serviceRemovalHosted, error) {
 	blockingKind := map[string]string{
 		"nginx": "sites", "apache": "sites",
 		"php-fpm": "php_sites", "node": "node_sites",
@@ -204,6 +241,38 @@ func removalHosted(ctx context.Context, db *sql.DB, svc *core.ManagedService) (*
 			return nil, err
 		}
 		return &serviceRemovalHosted{Kind: "mail_domains", Count: count, Names: names}, nil
+	case svc.ID == "certbot":
+		// The certificates the Panel issues and renews with certbot: the
+		// panel's own, the mail host's (server setup issues it) and every
+		// Let's Encrypt site certificate it records.
+		names := []string{}
+		if facts.PanelCertificate != "" {
+			names = append(names, facts.PanelCertificate)
+		}
+		if facts.MailHost != "" {
+			names = append(names, facts.MailHost)
+		}
+		count, sites, err := hostedLabels(ctx, db, `
+			SELECT d.name FROM ssl_certificates sc JOIN domains d ON d.id = sc.domain_id
+			WHERE sc.type = 'letsencrypt' AND COALESCE(sc.status, 'active') = 'active'
+			ORDER BY d.name`)
+		if err != nil {
+			return nil, err
+		}
+		count += len(names)
+		names = append(names, sites...)
+		if len(names) > removalHostedNameCap {
+			names = names[:removalHostedNameCap]
+		}
+		return &serviceRemovalHosted{Kind: "certificates", Count: count, Names: names}, nil
+	case svc.ID == "nftables":
+		firewall := facts.Firewall
+		if firewall == nil {
+			firewall = &serviceRemovalFirewall{}
+		}
+		return &serviceRemovalHosted{Kind: "firewall", Names: []string{}, Firewall: firewall}, nil
+	case svc.ID == "redis" || svc.ID == "valkey" || svc.ID == "memcached":
+		return &serviceRemovalHosted{Kind: "unrecorded", Names: []string{}}, nil
 	case svc.ID == "roundcube":
 		// These mailboxes lose webmail; their mail stays.
 		count, names, err := hostedLabels(ctx, db, `SELECT address FROM email_accounts ORDER BY address`)
@@ -217,7 +286,7 @@ func removalHosted(ctx context.Context, db *sql.DB, svc *core.ManagedService) (*
 
 // serviceRemovalImpact builds the answer from the catalogue, the installed
 // set of the stored component record and the database.
-func serviceRemovalImpact(ctx context.Context, db *sql.DB, svc *core.ManagedService, family string, installed map[string]bool) (serviceRemovalImpactResponse, error) {
+func serviceRemovalImpact(ctx context.Context, db *sql.DB, svc *core.ManagedService, family string, installed map[string]bool, facts removalHostFacts) (serviceRemovalImpactResponse, error) {
 	response := serviceRemovalImpactResponse{
 		ServiceID:                 svc.ID,
 		Removal:                   "packages",
@@ -227,17 +296,24 @@ func serviceRemovalImpact(ctx context.Context, db *sql.DB, svc *core.ManagedServ
 		FirewallPorts:             portStrings(svc.FirewallPorts),
 		MailFilterRewired:         uninstallRewiresMailFilters(svc),
 		DatabaseToolsReconfigured: uninstallReconfiguresDatabaseTools(svc.ID),
+		HasUnits:                  len(svc.SystemNames) > 0 || svc.SystemNamePattern != "" || len(svc.HelperUnits) > 0,
+		SetupRequired:             slices.Contains(serverSetupRequiredComponents, svc.ID),
 		RequiredBy:                removalRequiredBy(svc, installed),
 		Bundles:                   removalBundles(svc.ID, installed),
 	}
-	if svc.ID == "roundcube" {
+	switch {
+	case svc.ID == "roundcube":
 		response.Removal = "webmail_tree"
 		response.Packages = []string{}
+	case family != "" && len(response.Packages) == 0:
+		// Agent.UninstallService: "<name> cannot be removed automatically on
+		// this system yet".
+		response.Removal = "unsupported"
 	}
 	if response.FirewallPorts == nil {
 		response.FirewallPorts = []string{}
 	}
-	hosted, err := removalHosted(ctx, db, svc)
+	hosted, err := removalHosted(ctx, db, svc, facts)
 	if err != nil {
 		return serviceRemovalImpactResponse{}, err
 	}
@@ -296,10 +372,65 @@ func (p *Panel) handleServiceRemovalImpact(w http.ResponseWriter, r *http.Reques
 			installed[service.ID] = true
 		}
 	}
-	response, err := serviceRemovalImpact(r.Context(), p.db.GetDB(), svc, host.PackageFamily, installed)
+	response, err := serviceRemovalImpact(r.Context(), p.db.GetDB(), svc, host.PackageFamily, installed, p.removalHostFacts(r.Context(), svc.ID, installed))
 	if err != nil {
 		writeServerError(w, err)
 		return
 	}
 	json.NewEncoder(w).Encode(response)
+}
+
+// The readers of the facts outside the database, replaceable in tests.
+var (
+	removalPanelCertificate = func() string {
+		cert := currentPanelCert()
+		if !cert.HTTPSEnabled || cert.SelfSigned {
+			return ""
+		}
+		if cert.Subject != "" {
+			return cert.Subject
+		}
+		if len(cert.DNSNames) > 0 {
+			return cert.DNSNames[0]
+		}
+		return ""
+	}
+	removalFirewallStatus = func(p *Panel) (FirewallStatusResp, error) { return p.readFirewallStatus() }
+)
+
+// removalFirewallReadBound bounds the firewall read for the dialog.
+const removalFirewallReadBound = 5 * time.Second
+
+// removalHostFacts reads only what the asked component needs.
+func (p *Panel) removalHostFacts(ctx context.Context, serviceID string, installed map[string]bool) removalHostFacts {
+	facts := removalHostFacts{}
+	switch serviceID {
+	case "certbot":
+		facts.PanelCertificate = removalPanelCertificate()
+		// Server setup issues the mail host certificate for a mail purpose;
+		// it is named while the setup has completed with a mail host name and
+		// Postfix is installed.
+		if state, err := p.loadServerSetup(ctx); err == nil && state.CompletedAt != "" && state.Draft.MailHostname != "" && installed["postfix"] {
+			facts.MailHost = state.Draft.MailHostname
+		}
+	case "nftables":
+		type answer struct {
+			status FirewallStatusResp
+			err    error
+		}
+		done := make(chan answer, 1)
+		go func() {
+			status, err := removalFirewallStatus(p)
+			done <- answer{status, err}
+		}()
+		select {
+		case got := <-done:
+			if got.err == nil {
+				facts.Firewall = &serviceRemovalFirewall{Known: true, Enabled: got.status.Enabled, OpenPorts: len(got.status.TCPPorts) + len(got.status.UDPPorts)}
+			}
+		case <-time.After(removalFirewallReadBound):
+		case <-ctx.Done():
+		}
+	}
+	return facts
 }

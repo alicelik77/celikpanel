@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"slices"
@@ -28,12 +29,25 @@ func removalInstalled(ids ...string) map[string]bool {
 
 func removalImpactFor(t *testing.T, id, family string, installed map[string]bool) serviceRemovalImpactResponse {
 	t.Helper()
+	return removalImpactWith(t, id, family, installed, removalHostFacts{})
+}
+
+func removalImpactWith(t *testing.T, id, family string, installed map[string]bool, facts removalHostFacts) serviceRemovalImpactResponse {
+	t.Helper()
 	db := newDependentsTestDB(t)
+	// The certificates certbot renews: two Let's Encrypt site certificates, a
+	// custom one (not certbot's) and an expired one.
+	if _, err := db.Exec(`
+		CREATE TABLE ssl_certificates (id INTEGER PRIMARY KEY, domain_id INTEGER, type TEXT, status TEXT);
+		INSERT INTO ssl_certificates VALUES (1, 100, 'letsencrypt', 'active'), (2, 101, 'letsencrypt', NULL),
+			(3, 102, 'custom', 'active'), (4, 103, 'letsencrypt', 'expired');`); err != nil {
+		t.Fatal(err)
+	}
 	svc := core.GetManagedServiceByID(id)
 	if svc == nil {
 		t.Fatalf("unknown component %q", id)
 	}
-	impact, err := serviceRemovalImpact(context.Background(), db, svc, family, installed)
+	impact, err := serviceRemovalImpact(context.Background(), db, svc, family, installed, facts)
 	if err != nil {
 		t.Fatalf("%s: %v", id, err)
 	}
@@ -162,11 +176,15 @@ func TestRemovalImpactToolsAndTheEmptyCase(t *testing.T) {
 	if !pma.DatabaseToolsReconfigured || pma.Hosted != nil || len(pma.RequiredBy) != 0 {
 		t.Fatalf("phpmyadmin = %+v", pma)
 	}
-	certbot := removalImpactFor(t, "certbot", "pacman", removalFullServer)
-	if certbot.Hosted != nil || len(certbot.RequiredBy) != 0 || len(certbot.Bundles) != 0 ||
-		certbot.MailFilterRewired || certbot.DatabaseToolsReconfigured || certbot.AllVersions ||
-		len(certbot.FirewallPorts) != 0 || !slices.Equal(certbot.Packages, []string{"certbot"}) {
-		t.Fatalf("certbot = %+v", certbot)
+	if pma.HasUnits || pma.SetupRequired {
+		t.Fatalf("phpmyadmin has no units and is not required by setup: %+v", pma)
+	}
+	// A component nothing the Panel records depends on: Fail2ban.
+	f2b := removalImpactFor(t, "fail2ban", "pacman", removalInstalled("fail2ban", "nginx"))
+	if f2b.Hosted != nil || len(f2b.RequiredBy) != 0 || len(f2b.Bundles) != 0 || f2b.SetupRequired || !f2b.HasUnits ||
+		f2b.MailFilterRewired || f2b.DatabaseToolsReconfigured || f2b.AllVersions || f2b.Removal != "packages" ||
+		len(f2b.FirewallPorts) != 0 || !slices.Equal(f2b.Packages, []string{"fail2ban"}) {
+		t.Fatalf("fail2ban = %+v", f2b)
 	}
 	// A component nothing else is installed beside: every list is empty, and
 	// the wire carries empty lists, not null.
@@ -179,6 +197,75 @@ func TestRemovalImpactToolsAndTheEmptyCase(t *testing.T) {
 		if !strings.Contains(string(raw), part) {
 			t.Fatalf("%s lacks %s", raw, part)
 		}
+	}
+}
+
+// certbot is never "nothing depends on it": the Panel issues and renews the
+// panel's, the mail host's and the sites' certificates through it, and server
+// setup requires it. Only certbot's own (Let's Encrypt, active) certificates
+// count.
+func TestRemovalImpactCertbotNamesTheCertificatesItRenews(t *testing.T) {
+	certbot := removalImpactWith(t, "certbot", "apt", removalFullServer, removalHostFacts{PanelCertificate: "panel.example.com", MailHost: "mail.example.com"})
+	if !certbot.SetupRequired || certbot.HasUnits || certbot.Removal != "packages" {
+		t.Fatalf("certbot = %+v", certbot)
+	}
+	if certbot.Hosted == nil || certbot.Hosted.Kind != "certificates" || certbot.Hosted.Count != 4 || certbot.Hosted.BlocksRemoval {
+		t.Fatalf("certbot hosted = %+v", certbot.Hosted)
+	}
+	if !slices.Equal(certbot.Hosted.Names, []string{"panel.example.com", "mail.example.com", "php83.example", "php84.example"}) {
+		t.Fatalf("certificates = %v", certbot.Hosted.Names)
+	}
+	none := removalImpactWith(t, "certbot", "apt", removalInstalled("certbot"), removalHostFacts{})
+	if none.Hosted == nil || none.Hosted.Count != 2 || !none.SetupRequired {
+		t.Fatalf("certbot without panel or mail certificates = %+v / %+v", none, none.Hosted)
+	}
+}
+
+// nftables enforces the panel firewall; its state is said when it was read and
+// "not known" otherwise. Server setup requires it.
+func TestRemovalImpactFirewallEngineNamesThePanelFirewall(t *testing.T) {
+	read := removalImpactWith(t, "nftables", "apt", removalInstalled("nftables"),
+		removalHostFacts{Firewall: &serviceRemovalFirewall{Known: true, Enabled: true, OpenPorts: 4}})
+	if !read.SetupRequired || read.HasUnits || read.Hosted == nil || read.Hosted.Kind != "firewall" || read.Hosted.BlocksRemoval ||
+		read.Hosted.Firewall == nil || !read.Hosted.Firewall.Known || !read.Hosted.Firewall.Enabled || read.Hosted.Firewall.OpenPorts != 4 {
+		t.Fatalf("nftables = %+v / %+v", read, read.Hosted)
+	}
+	unread := removalImpactFor(t, "nftables", "apt", removalInstalled("nftables"))
+	if unread.Hosted == nil || unread.Hosted.Kind != "firewall" || unread.Hosted.Firewall == nil || unread.Hosted.Firewall.Known {
+		t.Fatalf("an unread firewall = %+v", unread.Hosted)
+	}
+}
+
+// The caches: the Panel does not record which sites use them, so the answer
+// says so and never "nothing depends on it".
+func TestRemovalImpactCachesAreUnrecordedNotUnused(t *testing.T) {
+	for _, id := range []string{"redis", "valkey", "memcached"} {
+		impact := removalImpactFor(t, id, "apt", removalInstalled(id))
+		if impact.Hosted == nil || impact.Hosted.Kind != "unrecorded" || impact.Hosted.BlocksRemoval || impact.SetupRequired {
+			t.Fatalf("%s = %+v", id, impact.Hosted)
+		}
+	}
+}
+
+// A package family without catalogue packages for the component: the Agent
+// refuses ("cannot be removed automatically on this system yet"), so the
+// answer says so instead of a purge.
+func TestRemovalImpactWithoutPackagesForTheFamilyIsUnsupported(t *testing.T) {
+	for _, id := range []string{"redis", "spamassassin", "phppgadmin"} {
+		impact := removalImpactFor(t, id, "pacman", removalInstalled(id))
+		if impact.Removal != "unsupported" || len(impact.Packages) != 0 {
+			t.Fatalf("%s on pacman = %+v", id, impact)
+		}
+		if apt := removalImpactFor(t, id, "apt", removalInstalled(id)); apt.Removal != "packages" {
+			t.Fatalf("%s on apt = %+v", id, apt)
+		}
+	}
+	if unknown := removalImpactFor(t, "redis", "", removalInstalled("redis")); unknown.Removal != "packages" {
+		t.Fatalf("an unknown family claims nothing: %+v", unknown)
+	}
+	source := readPanelSource(t, "../agent/install_rpc.go")
+	if !strings.Contains(source, `cannot be removed automatically on this system yet`) {
+		t.Fatal("the Agent's refusal for a family without packages changed")
 	}
 }
 
@@ -271,7 +358,13 @@ func TestRemovalImpactHandlerReadsTheStoredRecordAndChangesNothing(t *testing.T)
 		t.Fatalf("hosted = %+v", impact.Hosted)
 	}
 	// Every hosted query runs against the real schema too.
-	for _, id := range []string{"php-fpm", "node", "mariadb", "postgresql", "postfix", "dovecot", "rspamd", "spamassassin", "roundcube", "certbot"} {
+	restoreCert, restoreFirewall := removalPanelCertificate, removalFirewallStatus
+	t.Cleanup(func() { removalPanelCertificate, removalFirewallStatus = restoreCert, restoreFirewall })
+	removalPanelCertificate = func() string { return "panel.example.com" }
+	removalFirewallStatus = func(*Panel) (FirewallStatusResp, error) {
+		return FirewallStatusResp{Enabled: true, TCPPorts: []int{22, 80, 443}, UDPPorts: []int{53}}, nil
+	}
+	for _, id := range []string{"php-fpm", "node", "mariadb", "postgresql", "postfix", "dovecot", "rspamd", "spamassassin", "roundcube", "certbot", "nftables", "redis"} {
 		if response := removalImpactRequest(panel, http.MethodGet, "?service_id="+id); response.Code != http.StatusOK {
 			t.Fatalf("%s: status = %d: %s", id, response.Code, response.Body.String())
 		}
@@ -307,5 +400,39 @@ func TestRemovalImpactHandlerRefusals(t *testing.T) {
 		if recorder := removalImpactRequest(panel, tc.method, tc.query); recorder.Code != tc.status {
 			t.Fatalf("%s %s: status = %d, want %d: %s", tc.method, tc.query, recorder.Code, tc.status, recorder.Body.String())
 		}
+	}
+}
+
+// Through the handler, certbot names the panel certificate and nftables the
+// firewall's state as read; a firewall that cannot be read is "not known".
+func TestRemovalImpactHandlerReadsCertificatesAndFirewall(t *testing.T) {
+	panel := newManagedServiceCachePanel(t)
+	seedRemovalScanCache(t, panel, "certbot", "nftables")
+	restoreCert, restoreFirewall := removalPanelCertificate, removalFirewallStatus
+	t.Cleanup(func() { removalPanelCertificate, removalFirewallStatus = restoreCert, restoreFirewall })
+	removalPanelCertificate = func() string { return "panel.example.com" }
+	removalFirewallStatus = func(*Panel) (FirewallStatusResp, error) {
+		return FirewallStatusResp{Enabled: true, TCPPorts: []int{22, 80, 443}, UDPPorts: []int{53}}, nil
+	}
+	var certbot serviceRemovalImpactResponse
+	if err := json.Unmarshal(removalImpactRequest(panel, http.MethodGet, "?service_id=certbot").Body.Bytes(), &certbot); err != nil {
+		t.Fatal(err)
+	}
+	if certbot.Hosted == nil || certbot.Hosted.Kind != "certificates" || !slices.Equal(certbot.Hosted.Names, []string{"panel.example.com"}) || !certbot.SetupRequired {
+		t.Fatalf("certbot = %+v / %+v", certbot, certbot.Hosted)
+	}
+	var nft serviceRemovalImpactResponse
+	if err := json.Unmarshal(removalImpactRequest(panel, http.MethodGet, "?service_id=nftables").Body.Bytes(), &nft); err != nil {
+		t.Fatal(err)
+	}
+	if nft.Hosted == nil || nft.Hosted.Firewall == nil || !nft.Hosted.Firewall.Known || !nft.Hosted.Firewall.Enabled || nft.Hosted.Firewall.OpenPorts != 4 {
+		t.Fatalf("nftables = %+v", nft.Hosted)
+	}
+	removalFirewallStatus = func(*Panel) (FirewallStatusResp, error) { return FirewallStatusResp{}, errors.New("agent unavailable") }
+	if err := json.Unmarshal(removalImpactRequest(panel, http.MethodGet, "?service_id=nftables").Body.Bytes(), &nft); err != nil {
+		t.Fatal(err)
+	}
+	if nft.Hosted == nil || nft.Hosted.Firewall == nil || nft.Hosted.Firewall.Known {
+		t.Fatalf("an unread firewall = %+v", nft.Hosted)
 	}
 }
