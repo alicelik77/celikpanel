@@ -9963,3 +9963,18 @@ reinstall both servers for a clean first-install test, where this check will be
 seen on a real installation for the first time. Installed panels are updated only
 by their owners from the panel's own update screen. P0.1-P0.5 stay **partial**;
 this entry closes and advances nothing.
+
+### Installed servers after the alpha.102 publication (2026-10-23)
+
+v0.1.0-alpha.102 was published on 2026-10-23 (release at 09:50:14Z, then the
+download portal at about 10:02Z). **Who must act:** the owner, who decides when to
+update each server, from the panel's own update screen; nothing else is needed.
+The owner last observed Boston and Frankfurt on alpha.100; alpha.101 and alpha.102
+are on the portal, and no installed server is known to run either yet, so nothing
+is inferred. **Open:** the installer's email check is seen on no installed server
+and on no real first installation; the owner's observation of alpha.102 comes
+after he updates, and the clean reinstall of both servers at Beta 1 is the
+upcoming acceptance step, not a shipped claim. The setup plan's contact-email
+requirement is decided (it stays mandatory and is checked at install). No text or
+screen was changed for this entry. P0.1-P0.5 stay **partial**; this entry closes
+and advances nothing.

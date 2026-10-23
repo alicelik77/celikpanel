@@ -1,10 +1,11 @@
-# v0.1.0-alpha.102 (aday, yayımlanmadı)
+# v0.1.0-alpha.102 (23 Ekim 2026'da yayımlandı)
 
 [English](RELEASE-NOTES-v0.1.0-alpha.102.md)
 
-Bu, v0.1.0-alpha.101'den sonraki sürüm adayıdır. Yayımlanmadı; hiçbir parçası
-kurulu bir sunucuda değil. 23 Ekim 2026'da, alpha.101'in yayım kaydından sonraki
-`main` üzerinden açılan `fix/alpha102-install-email` dalında yazıldı.
+Bu sürüm v0.1.0-alpha.101'in ardından gelir. 23 Ekim 2026'da yayımlandı (sonda
+"Yayım kaydı"na bakın); henüz hiçbir parçası bir kurulu sunucuda değil.
+23 Ekim 2026'da, aday olarak, alpha.101'in yayım kaydından sonraki `main`
+üzerinden açılan `fix/alpha102-install-email` dalında yazıldı.
 
 ## Kim güncellemeli ve neden
 
@@ -112,3 +113,69 @@ Aday ağaçta:
 Yayımlandıktan sonra: sunucunun sahibi tarafından panelin kendi güncelleme
 ekranından (Ayarlar → CelikPanel güncellemeleri). Öncesinde ya da sonrasında
 yapılacak bir şey yoktur. Yeni bir kurulum kurucuyu eskisi gibi kullanır.
+
+## Yayım kaydı
+
+Aşağıdaki her şey 23 Ekim 2026 tarihlidir (saat dilimi belirtilmedikçe UTC). Sürüm
+commit'i 2026-10-23T12:08:45+03:00 taşır; bu, 09:08:45Z ile aynı andır.
+Birleştirmeyi, denetimleri, portal yayımını ve genel sitenin okunmasını sürümü
+hazırlayan kişi yaptı, önceki sürümlerde olduğu gibi sahibin kalıcı talimatı
+uyarınca; kurulu panel güncellemelerini yalnız sahip, panelin kendi güncelleme
+ekranından başlatır. Yayım için sahibin talimatıyla gerçek sistem kaydı yok. Bu
+girdi, aşağıdaki sonuçların hiçbirini depoda bir dosya olarak saklamaz.
+
+**Ne oldu.**
+
+1. "Release v0.1.0-alpha.102: the installer checks the administrator email"
+   başlıklı #242 numaralı çekme isteği `main`'e
+   `085cc400131072f3bcda81b560bfcf98dad47f03` commit'i olarak birleştirildi;
+   yazarı Mehmet Ömer Efe Çelik. Manifestin `published_at` değeri
+   2026-10-23T09:08:45Z.
+2. Sürüm bir ön sürümdür (pre-release), `v0.1.0-alpha.102`; GitHub'da
+   2026-10-23T09:50:14Z'de yayımlandı.
+3. Hazırlayan kişi yayımdan önce denetledi (burada bir dosyada kayıtlı değil):
+   arşivler 66.350.990 bayt, SHA-256
+   `84d281de4cd983f7fb1c1ab4097ccecdd07397ec99870c053d98afbb07cc2753`; sağlama
+   toplamları, manifest ve arşiv üyeleri denetlendi; manifestin imzası yayın
+   anahtarıyla (SHA-256 `7eadeb0b…c68bb`) doğrulanır; içerik korumaları
+   geçti; `libexec/get.sh` 102'yi sabitler; `install.sh` etiketinkidir; içindeki
+   politika 101'den sonra 102 der; Panel ikilisi kurucunun yeni e-posta iletisini
+   taşır.
+4. Portal paketi iki kez derlendi ve bayt bayt aynı çıktı; terfi aracının kendi
+   açma ve normalleştirme adımı onu kabul etti.
+5. Yaklaşık 10:02Z'de hazırlayan kişi portalı yayımladı: durum `committed`, genel
+   doğrulama 26 istekten 26'sı tamam.
+6. Yayımdan sonra dışarıdan okuma: `https://celikpanel.net/releases/latest.txt`
+   v0.1.0-alpha.102 der; `latest.json` sıra 102'yi ve `085cc40…` commit'ini
+   gösterir.
+
+**Sahibin bildirdikleri.** Sahip iki kurulu sunucuyu, Boston'ı ve Frankfurt'u, en
+son alpha.100'de gözlemledi. alpha.101 ve alpha.102 portalda; ikisinden birini
+çalıştırdığı bilinen bir kurulu sunucu henüz yok. Bu yazılırken alpha.102'den
+kurulu bir sunucuda hiçbir şey bildirilmemişti. Sahip, kurulum planının iletişim
+e-postasının zorunlu kalmasına ve kurulumda denetlenmesine karar verdi; alpha.99–
+alpha.101'in bıraktığı bu açık iş bu sürümle kapanır.
+
+**Yapılmayanlar ve yayımlamanın değiştirmedikleri.**
+
+- Kurulu sunucuları sürümü hazırlayan kişi alpha.102'ye güncellemedi. Onları yalnız
+  sahip, panelin kendi güncelleme ekranından günceller. alpha.102 henüz hiçbir
+  kurulu sunucuda değil.
+- alpha.102'den hiçbir şey kurulu bir sunucuda ya da gerçek bir ilk kurulumda
+  ölçülmedi. Sahibin güncelledikten sonraki gözlemi henüz gelmedi.
+- **Yaklaşan kabul, bir iddia değil:** Beta 1'de sahip temiz ilk kurulum denemesi
+  için iki sunucuyu da silip yeniden kuracak; kurucunun e-posta denetimi gerçek bir
+  kurulumda ilk kez orada görülecek.
+- Sertifika yetkilisi genel olmayan bir alan adındaki adresi yine reddedebilir;
+  panel yalnız adresin biçimini denetler.
+- Paketlerin bir veri kataloğuna taşınıp taşınmayacağı sahibe bırakıldı
+  ([alpha.101 notları](RELEASE-NOTES-v0.1.0-alpha.101.tr.md), "Bilinen açıklar").
+- Bildirilmeyen ve kaydedilmeyenler: Boston ya da Frankfurt'tan alpha.101'e ya da
+  alpha.102'ye dair her şey ve önceki notların bildirilmedi diye saydığı her şey.
+  Her biri "kaydedilmedi"dir; "çalıştı" da değildir, "başarısız" da. alpha.101
+  kaydının açık bıraktıkları açık kalır.
+- Önceki yayımlama kayıtlarının sınırları ([alpha.88
+  notları](RELEASE-NOTES-v0.1.0-alpha.88.tr.md)) kalkmış olarak bildirilmedi.
+- Bu kayıtta kod, şema (44) ya da kurtarma davranışı değişmedi.
+- Yayımlanma kabul değildir. P0.1–P0.5 kısmi kalır; hiçbir P0 işi kapanmaz ya da
+  ilerlemez.

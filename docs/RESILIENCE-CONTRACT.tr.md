@@ -6620,3 +6620,51 @@ geri alma dayanıklılığının tamamlandığı iddiası değildir. Sahibin kar
   adresi yine reddedebilir; alpha.90–alpha.101 girdilerinin açık bıraktığı her şey
   açık kalır. Kurulu panelleri yalnız sahipleri, panelin kendi güncelleme
   ekranından günceller. P0.1–P0.5 kısmi kalır.
+
+### v0.1.0-alpha.102'nin yayımlanması (yayımda kod değişikliği yok; ilke 2 ve 6; D-021 değişikliği; D-022; D-024; D-025; 2026-10-23)
+
+D-025 ilke 2 (kanıtın bir anlamı ve yaşam döngüsü vardır: bilinmeyen; yok, boş
+ya da başarılı değildir) ve 6 (hazır olma, ilerleme ve erişim birbirinden
+bağımsız kalır); D-021 değişikliği; D-022; D-024. **Hiçbir P0 işi kapanmaz ya da
+ilerlemez.** P0.1–P0.5 kısmi kalır ve her açık kabul işi açık kalır. Bu girdi
+tek bir sürümü kaydeder; kod, şema ya da kurtarma davranışını değiştirmez.
+2026-10-23 (UTC), içindeki her şeyin tarihidir; sürüm commit'i
+2026-10-23T12:08:45+03:00 taşır, bu 09:08:45Z ile aynı andır.
+
+- **Yayımlama.** Bütün adımları sürümü hazırlayan kişi yaptı, sahibin kalıcı
+  talimatı uyarınca; kurulu panel güncellemelerini yalnız sahip yapar. #242
+  numaralı çekme isteği `085cc400131072f3bcda81b560bfcf98dad47f03` olarak
+  birleştirildi (yazar Mehmet Ömer Efe Çelik); `v0.1.0-alpha.102` ön sürümü
+  2026-10-23T09:50:14Z'de yayımlandı. Yayımdan önce hazırlayan kişi dosyaları
+  denetledi: arşiv SHA-256
+  `84d281de4cd983f7fb1c1ab4097ccecdd07397ec99870c053d98afbb07cc2753`,
+  66.350.990 bayt; sağlama toplamları, manifest ve arşiv üyeleri; manifestin yayın
+  anahtarıyla (SHA-256 `7eadeb0b…c68bb`) doğrulanan imzası; içerik korumaları;
+  `get.sh` 102'yi sabitler; `install.sh` etiketinkidir; politika 101'den sonra 102
+  der; Panel ikilisi kurucunun yeni e-posta iletisini taşır. Portal paketi iki kez
+  bayt bayt aynı derlendi ve terfi aracının açma ve normalleştirme adımı onu kabul
+  etti; portal yaklaşık 10:02Z'de yayımlandı: committed, genel doğrulama 26
+  istekten 26'sı, ardından dışarıdan okundu (`latest.txt` v0.1.0-alpha.102,
+  `latest.json` sıra 102 ve `085cc40…` commit'i). Hazırlayan kişi denetledi ve
+  bildirdi, burada bir dosyada kayıtlı değil.
+- **Gerçek sistem kaydı.** Yayım için yok; alpha.102 için de yok, sahibin 16 Ekim
+  2026 talimatıyla ve güncelleyicinin değişiklik yolunda ya da şemada hiçbir dosya
+  değişmediği için. alpha.102'nin kodunu yalnız bileşen ve kabuk sözleşme testleri
+  ile çevrimdışı sürüm kurtarma düzeneği kapsar (yukarıdaki aday girdisine bakın).
+- **Kurulu paneller.** Sahip Boston'ı ve Frankfurt'u en son alpha.100'de
+  gözlemledi. alpha.101 ve alpha.102 portalda; ikisinden birini çalıştırdığı
+  bilinen bir kurulu sunucu henüz yok, bu yazılırken alpha.102'den hiçbir şey
+  bildirilmemişti ve çıkarılmamalıdır (ilke 6: bir sürümün yayımlanması hiçbir
+  sunucunun durumu değildir).
+- **Şema ya da sürüm geçişi.** Yok: şema 44; sürüm sırası sürüm hazırlığında
+  101'den 102'ye geçti. **Kurtarma davranışı.** Yayımla ve alpha.102 ile değişmez.
+- **Açık; sonraki bir sürüme bırakıldı.** (1) alpha.102'den hiçbir şey kurulu bir
+  sunucuda ya da gerçek bir ilk kurulumda ölçülmedi; sahibin güncelledikten
+  sonraki alpha.102 gözlemi henüz gelmedi, Beta 1'de iki sunucunun temiz yeniden
+  kurulması yaklaşan kabul adımıdır, yayımlanmış bir iddia değil. (2) Sertifika
+  yetkilisi genel olmayan bir alan adındaki adresi yine reddedebilir. (3)
+  Paketlerin bir veri kataloğuna taşınıp taşınmayacağı sahibe bırakıldı. Kurulum
+  planının iletişim e-postası açık işi sahibin kararıyla kapandı. Hiçbiri bir P0
+  işini değiştirmez.
+- **Açık; devreden.** alpha.102 aday girdisinin ve alpha.90–alpha.101
+  girdilerinin açık bıraktığı her şey.

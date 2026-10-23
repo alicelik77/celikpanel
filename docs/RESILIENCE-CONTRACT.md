@@ -7347,3 +7347,52 @@ resilience is complete. The owner's decisions and the code are of 2026-10-23.
   at a domain that is not public; everything the alpha.90 to alpha.101 entries
   leave open stays open. Installed panels are updated only by their owners, from
   the panel's own update screen. P0.1 to P0.5 stay partial.
+
+### Publication of v0.1.0-alpha.102 (no code change in the publication; invariants 2 and 6; D-021 amendment; D-022; D-024; D-025; 2026-10-23)
+
+D-025 invariants 2 (evidence has a meaning and a lifecycle: unknown is not
+absent, empty or success) and 6 (readiness, progress and access remain
+independent); D-021 amendment; D-022; D-024. **No P0 item is closed or advanced.**
+P0.1 to P0.5 stay partial and every open acceptance item stays open. This entry
+records one release; it changes no code, schema or recovery behaviour.
+2026-10-23 (UTC) is the date of everything in it; the release commit carries
+2026-10-23T12:08:45+03:00, the same instant as 09:08:45Z.
+
+- **Publication.** All steps were done by the release preparer under the owner's
+  standing instruction; installed-panel updates are the owner's only. Pull request
+  #242 merged as `085cc400131072f3bcda81b560bfcf98dad47f03` (author Mehmet Ömer
+  Efe Çelik); the pre-release `v0.1.0-alpha.102` was published at
+  2026-10-23T09:50:14Z. Before the publication the preparer checked the assets:
+  archive SHA-256 `84d281de4cd983f7fb1c1ab4097ccecdd07397ec99870c053d98afbb07cc2753`,
+  66,350,990 bytes; the checksums, the manifest and the archive members; the
+  manifest's signature, verified with the release key (SHA-256 `7eadeb0b…c68bb`);
+  the content guards; `get.sh` pins 102; `install.sh` is the tag's; the policy
+  says 102 after 101; the Panel binary carries the new installer email message.
+  The portal package was built twice byte-identical and accepted by the
+  promoter's extract and normalize step; the portal was published at about
+  10:02Z: committed, public verification 26 of 26, and read from outside
+  afterwards (`latest.txt` v0.1.0-alpha.102, `latest.json` sequence 102 with
+  commit `085cc40…`). Checked by the preparer; reported by the preparer, not
+  recorded in a file here.
+- **Native record.** None for the publication, and none for alpha.102, by the
+  owner's instruction of 2026-10-16 and because no updater mutation path or schema
+  file changed. alpha.102's code is covered by component and shell-contract tests
+  and the offline release-recovery harness only (see its candidate entry above).
+- **Installed panels.** The owner last observed Boston and Frankfurt on
+  alpha.100. alpha.101 and alpha.102 are on the portal; no installed server is
+  known to run either yet, nothing from alpha.102 had been reported when this was
+  written, and none should be inferred (invariant 6: the publication of a release
+  is not the state of any server).
+- **Schema or version transition.** None: schema 44; the release sequence moved
+  101 to 102 in the release preparation. **Recovery behaviour.** Unchanged by the
+  publication and by alpha.102.
+- **Open, left for a later release.** (1) Nothing from alpha.102 is measured on
+  an installed server or a real first installation; the owner's observation of
+  alpha.102 after he updates is still to come, and the clean reinstall of both
+  servers at Beta 1 is the upcoming acceptance step, not a shipped claim. (2) The
+  certificate authority may still refuse an address at a domain that is not
+  public. (3) Whether the bundles move to a data catalogue is left to the owner.
+  The setup plan's contact-email item is closed by the owner's decision. None of
+  these changes a P0 item.
+- **Open, carried over.** Everything the alpha.102 candidate entry and the alpha.90
+  to alpha.101 entries leave open.
