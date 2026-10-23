@@ -24,11 +24,29 @@ export function isServiceRunning(status: unknown): boolean {
 // whole truth; PHP-FPM has units and keeps running or stopped.
 // Satırın bir bileşenin durumu için söylediği söz; kurulu paketin
 // penceresi her parça için aynı sözü aynı veriden söyler.
-export type ComponentStateWord = 'notChecked' | 'notInstalled' | 'installed' | 'running' | 'stopped';
+//
+// alpha.104: a PHP tool (Roundcube, phpMyAdmin, phpPgAdmin) whose PHP version
+// was not there at the last scan is "not ready", never plainly installed: it
+// cannot answer (Frankfurt's phpPgAdmin after PHP 8.4 was removed).
+// Bağlı olduğu PHP sürümü olmayan PHP aracı "hazır değil" der.
+export type ComponentStateWord = 'notChecked' | 'notInstalled' | 'installed' | 'running' | 'stopped' | 'notReady';
 
-export function componentStateWord(service: { is_installed: boolean | null; kind?: string; status?: unknown }): ComponentStateWord {
+export interface PHPBindingFacts { version: string; socket_ready: boolean; version_installed: boolean }
+
+export function phpBindingOf(service: unknown): PHPBindingFacts | null {
+    if (!service || typeof service !== 'object') return null;
+    const binding = (service as { php_binding?: unknown }).php_binding;
+    if (!binding || typeof binding !== 'object') return null;
+    const b = binding as Record<string, unknown>;
+    if (typeof b.version !== 'string' || !/^[0-9]{1,2}\.[0-9]{1,2}$/.test(b.version) || typeof b.socket_ready !== 'boolean') return null;
+    return { version: b.version, socket_ready: b.socket_ready, version_installed: b.version_installed === true };
+}
+
+export function componentStateWord(service: { is_installed: boolean | null; kind?: string; status?: unknown; php_binding?: unknown }): ComponentStateWord {
     if (service.is_installed === null) return 'notChecked';
     if (!service.is_installed) return 'notInstalled';
+    const binding = phpBindingOf(service);
+    if (binding && !binding.socket_ready) return 'notReady';
     if (service.kind === 'tool' || service.status === 'installed') return 'installed';
     return isServiceRunning(service.status) ? 'running' : 'stopped';
 }
@@ -39,4 +57,5 @@ export const COMPONENT_STATE_KEYS: Record<ComponentStateWord, string> = {
     installed: 'services.installedLabel',
     running: 'services.running',
     stopped: 'services.stopped',
+    notReady: 'services.phpNotReady',
 };

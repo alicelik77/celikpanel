@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Boxes, FileText, RefreshCw, ScrollText, Search } from 'lucide-react';
 import { ServiceShell } from './ServiceShell';
+import { PHPToolVersion } from './PHPToolVersion';
+import { phpToolForService } from '../lib/phpTools';
 import { Checking, CouldNotCheck, KnownEmpty, RemoteGate } from './ui';
 import { useI18n } from '../i18n';
 import { apiErrorText } from '../lib/apiError';
@@ -102,6 +104,13 @@ export function ComponentDetail({ serviceId, onBack, onSelectConfig }: { service
             onBack={onBack}
             onServiceRefreshed={() => setRecordToken((token) => token + 1)}
         >
+            {/* alpha.104: the PHP version a PHP tool runs on is chosen here.
+                Bir PHP aracının PHP sürümü burada seçilir. */}
+            {phpToolForService(serviceId) && record?.is_installed === true && (
+                <div className="mb-6">
+                    <PHPToolVersion serviceId={serviceId} tool={phpToolForService(serviceId)!} />
+                </div>
+            )}
             <ComponentPanels serviceId={serviceId} onSelectConfig={onSelectConfig} />
         </ServiceShell>
     );

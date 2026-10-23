@@ -109,7 +109,10 @@ test('the repository and version-removal buttons spin while their request runs',
   const page = readFileSync(new URL('../src/components/ServiceList.tsx', import.meta.url), 'utf8');
   assert.equal((page.match(/\{repoBusy \? t\('services\.repo\.enabling'\)/g) || []).length, 2);
   assert.equal((page.match(/loading=\{repoBusy\}/g) || []).length, 2, 'both repository buttons spin');
-  assert.match(page, /onClick=\{\(\) => removeVersion\(removeTarget\)\} disabled=\{removing\} loading=\{removing\}/);
+  // alpha.104: a removal the Panel already knows it would refuse is not
+  // offered; moving the tools first and then removing spins the same way.
+  assert.match(page, /onClick=\{\(\) => removeVersion\(removeTarget\)\} disabled=\{removing \|\| refused\} loading=\{removing\}/);
+  assert.match(page, /onClick=\{\(\) => removeVersion\(removeTarget, target\)\} disabled=\{removing\} loading=\{removing\}/);
 });
 
 // alpha.94 (D-034): the ready bundles are one line at the head of each

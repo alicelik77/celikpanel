@@ -147,6 +147,18 @@ export const enErrorsScreens = {
     'err.account_email_wrong_password': 'Your current password is not correct, so nothing was changed. Enter the password you sign in with.',
     'err.account_email_too_many_attempts': 'Too many attempts, so nothing was changed. Wait a few minutes, then try again.',
     'err.account_email_changed_elsewhere': 'Your account was changed somewhere else while this was being saved, so nothing was changed. Reload the page and try again.',
+    'err.REMOVAL_WOULD_REMOVE_OTHERS': 'Nothing was removed: the package manager would also have removed the packages listed below, which this removal does not name. Remove the component they belong to first, or keep this one.',
+    'err.REMOVAL_TOOLS_BOUND': 'Nothing was removed: the tools listed below run on this PHP. Move them to another PHP version first (the removal dialog offers it), or keep this version.',
+    'err.REMOVAL_SIMULATION_FAILED': 'Nothing was removed: the package manager could not show what this removal would take. Try again; if it keeps failing, the server administrator checks the package manager (sudo apt-get check).',
+    'err.REMOVAL_PLAN_CHANGED': 'Nothing was removed: the package manager’s answer changed while the removal was being checked, probably because another package operation ran. Open the dialog again and check what it says now.',
+    'err.PHP_TOOL_MOVE_FAILED': 'A tool could not be moved to the chosen PHP version, so nothing was removed. The dialog says which tools moved and which runs where.',
+    'err.PHP_TOOL_PROBE_FAILED': 'The tool did not work on the chosen PHP version, so it was put back on its previous version.',
+    'err.PHP_TOOL_EXTENSIONS_FAILED': 'The PHP extensions the tool needs could not be prepared for that version; it still runs on its previous version.',
+    'err.PHP_TOOL_CONFIG_REJECTED': 'The web server refused the new configuration; the previous one was kept.',
+    'err.PHP_VERSION_NOT_RUNNING': 'That PHP version is installed but not running. Start it in Components, then choose it again.',
+    'err.PHP_TOOL_NOT_INSTALLED': 'This tool is not installed.',
+    'err.PHP_TOOL_UNSUPPORTED': 'Choosing a PHP version for a tool is available on Debian and Ubuntu servers.',
+    'err.PHP_TOOL_BIND_FAILED': 'The PHP version change did not complete.',
 } as const;
 
 export type ErrorsScreenKey = keyof typeof enErrorsScreens;
