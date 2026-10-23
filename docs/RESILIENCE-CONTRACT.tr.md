@@ -6906,7 +6906,7 @@ iddiası değildir.
   kanıtlandı; PHP 8.5'in FPM'inde pgsql yokken bir taşıma kanıt tarafından
   reddedildi ve bayt bayt geri alındı
   ([kanıt](../deploy/e2e/removal-safety/alpha104-debian13-20261023/README.md), arşiv
-  SHA-256 `fb17d18c9959915301179dd540e7b6624a322151914bc9273e7bd0808a91ef50`). Önceki
+  SHA-256 `617147598c5cdbb67e2356aa1cc486a1c649837433c142101933d6c536982ec1`). Önceki
   iki koşu başarısız oldu ve orada kayıtlıdır: aracın sayfası tek başına eklentilerini
   kanıtlamadı (PHP denetimi eklendi) ve yeniden yüklemenin hemen ardından nginx'in
   eski işçileri yanıt verdi (kanıt artık en çok 20 saniye bekler). Bileşen testleri

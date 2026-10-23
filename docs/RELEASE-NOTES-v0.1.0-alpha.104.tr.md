@@ -110,7 +110,7 @@ kurulu her sunucu değişmez; yalnız sahip günceller.
   olarak benzetim listesini kaldırdı; phpPgAdmin PHP 8.5'e taşındı ve kanıtlandı,
   kanıtı başarısız olan bir taşıma bayt bayt geri alındı
   ([kanıt](../deploy/e2e/removal-safety/alpha104-debian13-20261023/README.md),
-  arşiv SHA-256 `fb17d18c…ef50`). Önceki iki koşu başarısız oldu ve orada kayıtlı
+  arşiv SHA-256 `61714759…2ec1`). Önceki iki koşu başarısız oldu ve orada kayıtlı
   iki düzeltmeye yol açtı.
 - Tarayıcı incelemesi 27. grup: 8 yapılandırmanın her birinde 11 durum (EN/TR,
   açık/koyu, 1440/390); bakıldı, düzeltildi, yeniden bakıldı.

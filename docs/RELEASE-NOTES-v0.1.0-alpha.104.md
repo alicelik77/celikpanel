@@ -109,7 +109,7 @@ schema (44) and every installed server are unchanged; only the owner updates.
   and phppgadmin named and nothing changed; a clean removal removed exactly the
   simulated list; phpPgAdmin moved to PHP 8.5 and proved, and a move whose proof
   failed put back byte for byte ([evidence](../deploy/e2e/removal-safety/alpha104-debian13-20261023/README.md),
-  archive SHA-256 `fb17d18c…ef50`). Two earlier runs failed and led to two fixes,
+  archive SHA-256 `61714759…2ec1`). Two earlier runs failed and led to two fixes,
   recorded there.
 - Browser inspection batch 27: 11 states in each of 8 configurations (EN/TR,
   light/dark, 1440/390), looked at, fixed, looked at again.

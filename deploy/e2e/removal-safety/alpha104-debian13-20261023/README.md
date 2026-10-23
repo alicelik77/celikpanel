@@ -5,12 +5,12 @@ guest, base image `debian-13-genericcloud-amd64-20260826-2582.qcow2` (SHA-256
 prefix `cbf3e1f588f02f8d`), destroyed after the run. Not an installed server; no
 installed server was contacted. The Agent's build-tagged test
 `cmd/agent/real_system_alpha104_test.go` was built from a fresh clone of the
-candidate branch (its commit, before the last review fixes of the candidate, is in
+candidate branch with the candidate's final code (its commit is in
 `evidence/commit.txt`; the test binary's SHA-256 in `evidence/agent.test.sha256`)
 and run as root inside the VM with `CELIKPANEL_REAL_SYSTEM_A104=1`.
 
 Archive: `cp-a104-evidence.tar.gz`, SHA-256
-`fb17d18c9959915301179dd540e7b6624a322151914bc9273e7bd0808a91ef50`
+`617147598c5cdbb67e2356aa1cc486a1c649837433c142101933d6c536982ec1`
 (`cp-a104-evidence.tar.gz.sha256`). It holds the run log, the VM's command output
 (`evidence/vm.log`), the build log, the serial console and the disk use before and
 after.

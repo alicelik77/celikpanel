@@ -7637,7 +7637,7 @@ update and automatic-rollback resilience is complete.
   to PHP 8.5 (extensions installed by the Agent) and proved through its socket;
   with pgsql missing in PHP 8.5's FPM a move was refused by the proof and restored
   byte for byte ([evidence](../deploy/e2e/removal-safety/alpha104-debian13-20261023/README.md),
-  archive SHA-256 `fb17d18c9959915301179dd540e7b6624a322151914bc9273e7bd0808a91ef50`).
+  archive SHA-256 `617147598c5cdbb67e2356aa1cc486a1c649837433c142101933d6c536982ec1`).
   Two earlier runs failed and are recorded there: the tool's page alone did not
   prove its extensions (the PHP check was added), and nginx's old workers answered
   right after a reload (the proof now waits up to 20 seconds). Component tests and
