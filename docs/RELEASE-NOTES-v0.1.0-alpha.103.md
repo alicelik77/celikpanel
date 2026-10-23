@@ -1,9 +1,10 @@
-# v0.1.0-alpha.103 (candidate)
+# v0.1.0-alpha.103 (published 2026-10-23)
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.103.tr.md)
 
-This is the candidate that follows v0.1.0-alpha.102. **It is not published.**
-Written on 2026-10-23, as a candidate, on the branch
+This is the release that follows v0.1.0-alpha.102. It was published on 2026-10-23
+(see "Publication record" at the end); nothing from it is on an installed server
+yet. Written on 2026-10-23, as a candidate, on the branch
 `fix/alpha103-fresh-update-check`, from `main` after the publication record of
 alpha.102 (the alpha.102 release commit is
 `085cc400131072f3bcda81b560bfcf98dad47f03`).
@@ -150,3 +151,70 @@ On the candidate tree:
 
 Once published: from the panel's own update screen (Settings → CelikPanel updates),
 by the owner of the server. Nothing needs to be done before or after.
+
+## Publication record
+
+Everything below is dated 2026-10-23 (UTC unless a time zone is named). The release
+commit carries 2026-10-23T16:23:04+03:00, which is the same instant as 13:23:04Z.
+The merge, the checks, the portal publication and the read of the public site
+were done by the release preparer under the owner's standing instruction, as for
+the earlier releases; installed-panel updates are the owner's alone, from the
+panel's own update screen. No native record for the publication, by the owner's
+instruction. This entry stores none of the results below as a file in the
+repository.
+
+**What happened.**
+
+1. Before the pull request, one independent review of the candidate found one
+   must-fix (an open stop notice disabled the opening check across reloads) and
+   smaller items; all were fixed. The gaps listed under "Known gaps" above
+   stay recorded.
+2. Pull request #244, "Release v0.1.0-alpha.103: the update screen checks for the
+   newest release, and a stopped update keeps the card", was merged into `main`
+   as commit `f780d5f08d0f295fbf7d249a853d9c130cd28779`, authored by
+   Mehmet Ömer Efe Çelik. The manifest's `published_at` is 2026-10-23T13:23:04Z.
+3. The release is a pre-release, `v0.1.0-alpha.103`, published on GitHub at
+   2026-10-23T14:08:46Z.
+4. Checked by the preparer before the publication (not recorded in a file here):
+   the archives are 66,351,430 bytes, SHA-256
+   `8a065499b59764cbefbdbe1dc16cfe754b240d865f00191484f75ec2e4ae9a00`; the
+   checksums, the manifest and the archive members were checked; the manifest's
+   signature verifies with the release key (SHA-256 `7eadeb0b…c68bb`); both content
+   guards passed; `libexec/get.sh` pins 103; `install.sh` is the tag's; the policy
+   inside says 103 after 102; the Panel binary carries the new opening-check
+   route; the interface bundle is `app-DVVjTxvw.js`.
+5. The portal package was built twice and came out byte-identical; the promoter's
+   own extract and normalize step accepted it.
+6. At about 14:17Z the preparer published the portal: status `committed`, public
+   verification 26 of 26 requests ok.
+7. A read from outside after the publication: `https://celikpanel.net/releases/latest.txt`
+   says v0.1.0-alpha.103; `latest.json` says sequence 103 with commit `f780d5f…`.
+
+**What the owner reported.** From the owner's screenshots of 2026-10-23: Frankfurt
+was updated by the owner from alpha.100 to alpha.102 successfully (after the stale
+offer of alpha.101 that led to this release). Boston's update to alpha.102 stopped
+unchanged because the package manager was busy; Boston still runs alpha.100 as far
+as is known. No installed server is known to run alpha.103, and nothing from
+alpha.103 had been reported when this was written.
+
+**Not done, and what publication does not change.**
+
+- The installed servers were not updated to alpha.103 by the release preparer.
+  Only the owner updates them, from the panel's own update screen. alpha.103 is
+  on no installed server yet.
+- Nothing from alpha.103 has been measured on an installed server or against the
+  real release server. The owner's observation after he updates is still to come,
+  including Boston's retry.
+- The gaps listed under "Known gaps" above stay open for a later release.
+- **Upcoming acceptance, not a claim:** at Beta 1 the owner will wipe and
+  reinstall both servers for a clean first-install test.
+- Whether the bundles move to a data catalogue is left to the owner (see the
+  [alpha.101 notes](RELEASE-NOTES-v0.1.0-alpha.101.md), "Known gaps").
+- Not reported and not recorded: anything from Boston or Frankfurt on alpha.103,
+  and everything the earlier notes list as not reported. Each is "not recorded",
+  not "worked" and not "failed". What the alpha.102 record leaves open stays open.
+- The limits of the earlier publication records (see the [alpha.88
+  notes](RELEASE-NOTES-v0.1.0-alpha.88.md)) are not reported as lifted.
+- No code, schema (44) or recovery behaviour changed in this record.
+- Publication is not acceptance. P0.1 to P0.5 stay partial; no P0 item is closed
+  or advanced.

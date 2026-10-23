@@ -1,9 +1,10 @@
-# v0.1.0-alpha.103 (aday)
+# v0.1.0-alpha.103 (23 Ekim 2026'da yayımlandı)
 
 [English](RELEASE-NOTES-v0.1.0-alpha.103.md)
 
-Bu, v0.1.0-alpha.102'den sonra gelen adaydır. **Yayımlanmadı.** 23 Ekim 2026'da,
-aday olarak, `fix/alpha103-fresh-update-check` dalında, alpha.102'nin yayım
+Bu sürüm v0.1.0-alpha.102'nin ardından gelir. 23 Ekim 2026'da yayımlandı (sonda
+"Yayım kaydı"na bakın); henüz hiçbir parçası bir kurulu sunucuda değil.
+23 Ekim 2026'da, aday olarak, `fix/alpha103-fresh-update-check` dalında, alpha.102'nin yayım
 kaydından sonraki `main`'den yazıldı (alpha.102 sürüm commit'i
 `085cc400131072f3bcda81b560bfcf98dad47f03`).
 
@@ -148,3 +149,72 @@ Aday ağaçta:
 Yayımlandığında: sunucunun sahibi tarafından, panelin kendi güncelleme ekranından
 (Ayarlar → CelikPanel güncellemeleri). Öncesinde ya da sonrasında yapılacak bir şey
 yok.
+
+## Yayım kaydı
+
+Aşağıdaki her şey 23 Ekim 2026 tarihlidir (saat dilimi belirtilmedikçe UTC). Sürüm
+commit'i 2026-10-23T16:23:04+03:00 taşır; bu, 13:23:04Z ile aynı andır.
+Birleştirmeyi, denetimleri, portal yayımını ve genel sitenin okunmasını sürümü
+hazırlayan kişi yaptı, önceki sürümlerde olduğu gibi sahibin kalıcı talimatı
+uyarınca; kurulu panel güncellemelerini yalnız sahip, panelin kendi güncelleme
+ekranından başlatır. Yayım için sahibin talimatıyla gerçek sistem kaydı yok. Bu
+girdi, aşağıdaki sonuçların hiçbirini depoda bir dosya olarak saklamaz.
+
+**Ne oldu.**
+
+1. Çekme isteğinden önce adayın bağımsız bir incelemesi bir zorunlu düzeltme (açık
+   bir durdurma bildirimi, sayfa yenilemeleri boyunca açılış denetimini devre dışı
+   bırakıyordu) ve daha küçük bulgular buldu; hepsi düzeltildi. Yukarıdaki "Bilinen
+   eksikler" altında sayılan eksikler kayıtlı kalır.
+2. "Release v0.1.0-alpha.103: the update screen checks for the newest release, and
+   a stopped update keeps the card" başlıklı #244 numaralı çekme isteği `main`'e
+   `f780d5f08d0f295fbf7d249a853d9c130cd28779` commit'i olarak birleştirildi;
+   yazarı Mehmet Ömer Efe Çelik. Manifestin `published_at` değeri
+   2026-10-23T13:23:04Z.
+3. Sürüm bir ön sürümdür (pre-release), `v0.1.0-alpha.103`; GitHub'da
+   2026-10-23T14:08:46Z'de yayımlandı.
+4. Hazırlayan kişi yayımdan önce denetledi (burada bir dosyada kayıtlı değil):
+   arşivler 66.351.430 bayt, SHA-256
+   `8a065499b59764cbefbdbe1dc16cfe754b240d865f00191484f75ec2e4ae9a00`; sağlama
+   toplamları, manifest ve arşiv üyeleri denetlendi; manifestin imzası yayın
+   anahtarıyla (SHA-256 `7eadeb0b…c68bb`) doğrulanır; içerik korumaları
+   geçti; `libexec/get.sh` 103'ü sabitler; `install.sh` etiketinkidir; içindeki
+   politika 102'den sonra 103 der; Panel ikilisi yeni açılış denetimi yolunu
+   taşır; arayüz paketi `app-DVVjTxvw.js`.
+5. Portal paketi iki kez derlendi ve bayt bayt aynı çıktı; terfi aracının kendi
+   açma ve normalleştirme adımı onu kabul etti.
+6. Yaklaşık 14:17Z'de hazırlayan kişi portalı yayımladı: durum `committed`, genel
+   doğrulama 26 istekten 26'sı tamam.
+7. Yayımdan sonra dışarıdan okuma: `https://celikpanel.net/releases/latest.txt`
+   v0.1.0-alpha.103 der; `latest.json` sıra 103'ü ve `f780d5f…` commit'ini
+   gösterir.
+
+**Sahibin bildirdikleri.** Sahibin 23 Ekim 2026 tarihli ekran görüntülerine göre:
+Frankfurt'u sahip alpha.100'den alpha.102'ye başarıyla güncelledi (bu sürüme yol
+açan eski alpha.101 teklifinden sonra). Boston'ın alpha.102 güncellemesi paket
+yöneticisi meşgul olduğu için hiçbir şey değişmeden durdu; Boston bilindiği kadarıyla
+hâlâ alpha.100'de. alpha.103'ü çalıştırdığı bilinen bir kurulu sunucu yok ve bu
+yazılırken alpha.103'ten hiçbir şey bildirilmemişti.
+
+**Yapılmayanlar ve yayımlamanın değiştirmedikleri.**
+
+- Kurulu sunucuları sürümü hazırlayan kişi alpha.103'e güncellemedi. Onları yalnız
+  sahip, panelin kendi güncelleme ekranından günceller. alpha.103 henüz hiçbir
+  kurulu sunucuda değil.
+- alpha.103'ten hiçbir şey kurulu bir sunucuda ya da gerçek sürüm sunucusuna karşı
+  ölçülmedi. Sahibin güncelledikten sonraki gözlemi, Boston'ın yeniden denemesi
+  dahil, henüz gelmedi.
+- Yukarıdaki "Bilinen eksikler" altında sayılan eksikler sonraki bir sürüm için açık kalır.
+- **Yaklaşan kabul, bir iddia değil:** Beta 1'de sahip temiz ilk kurulum denemesi
+  için iki sunucuyu da silip yeniden kuracak.
+- Paketlerin bir veri kataloğuna taşınıp taşınmayacağı sahibe bırakıldı
+  ([alpha.101 notları](RELEASE-NOTES-v0.1.0-alpha.101.tr.md), "Bilinen açıklar").
+- Bildirilmeyen ve kaydedilmeyenler: Boston ya da Frankfurt'tan alpha.103'e dair her
+  şey ve önceki notların bildirilmedi diye saydığı her şey. Her biri
+  "kaydedilmedi"dir; "çalıştı" da değildir, "başarısız" da. alpha.102 kaydının açık
+  bıraktıkları açık kalır.
+- Önceki yayımlama kayıtlarının sınırları ([alpha.88
+  notları](RELEASE-NOTES-v0.1.0-alpha.88.tr.md)) kalkmış olarak bildirilmedi.
+- Bu kayıtta kod, şema (44) ya da kurtarma davranışı değişmedi.
+- Yayımlanma kabul değildir. P0.1–P0.5 kısmi kalır; hiçbir P0 işi kapanmaz ya da
+  ilerlemez.

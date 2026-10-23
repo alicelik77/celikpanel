@@ -10036,3 +10036,20 @@ installed server).
 
 Unchanged: nothing installs by itself; the Agent, the updater and the schema
 (44). P0.1-P0.5 stay **partial**; this entry closes and advances nothing.
+
+### Installed servers after the alpha.103 publication (2026-10-23)
+
+v0.1.0-alpha.103 was published on 2026-10-23 (release at 14:08:46Z, then the
+download portal at about 14:17Z). **Who must act:** the owner, who decides when to
+update each server, from the panel's own update screen; nothing else is needed.
+From the owner's screenshots: Frankfurt was updated by the owner from alpha.100 to
+alpha.102 successfully; Boston's update to alpha.102 stopped unchanged because the
+package manager was busy, and Boston still runs alpha.100 as far as is known. No
+installed server is known to run alpha.103, so nothing is inferred. **Open:** the
+opening check and the full card for a stopped update are seen on no installed
+server and against no real release server; the owner's observation of alpha.103
+comes after he updates (including Boston's retry once the package manager is
+free), and the clean reinstall of both servers at Beta 1 is the upcoming
+acceptance step, not a shipped claim. The known gaps of the alpha.103
+release notes stay open. No text or screen was changed for this entry. P0.1-P0.5
+stay **partial**; this entry closes and advances nothing.

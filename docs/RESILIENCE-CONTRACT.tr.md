@@ -6763,3 +6763,57 @@ dayanıklılığının tamamlandığı iddiası değildir. Sahibin gözlemleri v
   bildirimi açıkken köşe bildirimi geniş ekranda kartın bir kısmını hâlâ örter.
   alpha.90–alpha.102 girdilerinin açık bıraktığı her şey açık kalır. Kurulu panelleri yalnız sahipleri,
   panelin kendi güncelleme ekranından günceller. P0.1–P0.5 kısmi kalır.
+
+### v0.1.0-alpha.103'ün yayımlanması (yayımda kod değişikliği yok; ilke 2 ve 6; D-035 değişikliği; D-022; D-024; D-025; 2026-10-23)
+
+D-025 ilke 2 (kanıtın bir anlamı ve yaşam döngüsü vardır: bilinmeyen; yok, boş
+ya da başarılı değildir) ve 6 (hazır olma, ilerleme ve erişim birbirinden
+bağımsız kalır); D-035 değişikliği; D-022; D-024. **Hiçbir P0 işi kapanmaz ya da
+ilerlemez.** P0.1–P0.5 kısmi kalır ve her açık kabul işi açık kalır. Bu girdi
+tek bir sürümü kaydeder; kod, şema ya da kurtarma davranışını değiştirmez.
+2026-10-23 (UTC), içindeki her şeyin tarihidir; sürüm commit'i
+2026-10-23T16:23:04+03:00 taşır, bu 13:23:04Z ile aynı andır.
+
+- **Yayımlama.** Bütün adımları sürümü hazırlayan kişi yaptı, sahibin kalıcı
+  talimatı uyarınca; kurulu panel güncellemelerini yalnız sahip yapar. Çekme
+  isteğinden önce adayın bağımsız bir incelemesi bir zorunlu düzeltme (açık bir
+  durdurma bildirimi, sayfa yenilemeleri boyunca açılış denetimini devre dışı
+  bırakıyordu) ve daha küçük bulgular buldu; hepsi düzeltildi. #244 numaralı çekme
+  isteği `f780d5f08d0f295fbf7d249a853d9c130cd28779` olarak birleştirildi (yazar
+  Mehmet Ömer Efe Çelik); `v0.1.0-alpha.103` ön sürümü 2026-10-23T14:08:46Z'de
+  yayımlandı. Yayımdan önce hazırlayan kişi dosyaları denetledi: arşiv SHA-256
+  `8a065499b59764cbefbdbe1dc16cfe754b240d865f00191484f75ec2e4ae9a00`,
+  66.351.430 bayt; sağlama toplamları, manifest ve arşiv üyeleri; manifestin yayın
+  anahtarıyla (SHA-256 `7eadeb0b…c68bb`) doğrulanan imzası; içerik korumaları;
+  `get.sh` 103'ü sabitler; `install.sh` etiketinkidir; politika 102'den sonra 103
+  der; Panel ikilisi yeni açılış denetimi yolunu taşır; arayüz paketi
+  `app-DVVjTxvw.js`. Portal paketi iki kez bayt bayt aynı derlendi ve terfi
+  aracının açma ve normalleştirme adımı onu kabul etti; portal yaklaşık
+  14:17Z'de yayımlandı: committed, genel doğrulama 26 istekten 26'sı, ardından
+  dışarıdan okundu (`latest.txt` v0.1.0-alpha.103, `latest.json` sıra 103 ve
+  `f780d5f…` commit'i). Hazırlayan kişi denetledi ve bildirdi, burada bir dosyada
+  kayıtlı değil.
+- **Gerçek sistem kaydı.** Yayım için yok; alpha.103 için de yok, sahibin 16 Ekim
+  2026 talimatıyla ve Agent'ta, güncelleyicinin değişiklik yolunda ya da şemada
+  hiçbir dosya değişmediği için. alpha.103'ün kodunu yalnız bileşen ve kabuk
+  sözleşme testleri ile çevrimdışı sürüm kurtarma düzeneği kapsar (yukarıdaki aday
+  girdisine bakın); bileşen testleri gerçek sistem davranışını kanıtlamaz.
+- **Kurulu paneller.** Sahibin 23 Ekim 2026 tarihli ekran görüntülerine göre:
+  Frankfurt'u sahip alpha.100'den alpha.102'ye başarıyla güncelledi; Boston'ın
+  alpha.102 güncellemesi paket yöneticisi meşgul olduğu için hiçbir şey değişmeden
+  durdu ve Boston bilindiği kadarıyla hâlâ alpha.100'de. alpha.103'ü çalıştırdığı
+  bilinen bir kurulu sunucu yok, bu yazılırken alpha.103'ten hiçbir şey
+  bildirilmemişti ve çıkarılmamalıdır (ilke 6: bir sürümün yayımlanması hiçbir
+  sunucunun durumu değildir).
+- **Şema ya da sürüm geçişi.** Yok: şema 44; sürüm sırası sürüm hazırlığında
+  102'den 103'e geçti. **Kurtarma davranışı.** Yayımla ve alpha.103 ile değişmez
+  (alpha.103'ten alpha.102'ye yönü yukarıdaki aday girdisi anlatır).
+- **Açık; sonraki bir sürüme bırakıldı.** (1) alpha.103 aday girdisinde kaydedilen
+  üç bilinen eksik. (2) alpha.103'ten hiçbir şey kurulu bir sunucuda ya da gerçek
+  sürüm sunucusuna karşı ölçülmedi; sahibin, panelin kendi güncelleme ekranından
+  güncelledikten sonraki alpha.103 gözlemi (Boston'ın yeniden denemesi dahil)
+  henüz gelmedi, Beta 1'de iki sunucunun temiz yeniden kurulması yaklaşan kabul
+  adımıdır, yayımlanmış bir iddia değil. (3) Paketlerin bir veri kataloğuna
+  taşınıp taşınmayacağı sahibe bırakıldı. Hiçbiri bir P0 işini değiştirmez.
+- **Açık; devreden.** alpha.103 aday girdisinin ve alpha.90–alpha.102
+  girdilerinin açık bıraktığı her şey.
