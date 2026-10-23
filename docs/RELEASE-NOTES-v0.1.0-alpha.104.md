@@ -1,8 +1,8 @@
-# v0.1.0-alpha.104 (candidate)
+# v0.1.0-alpha.104
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.104.tr.md)
 
-This is the candidate that follows v0.1.0-alpha.103. **It is not published.**
+This is the candidate that follows v0.1.0-alpha.103. **It was published on 2026-10-23 (UTC): release commit `98c4750b4`, GitHub pre-release at 22:03:19Z, download portal at about 22:10Z after the assets and signature were verified and the public check passed (26/26).** Nothing from it is on an installed server yet; only the owner updates installed panels.
 Written on 2026-10-23, as a candidate, on the branch `fix/alpha104-safe-removal`,
 from `main` after the publication record of alpha.103 (the alpha.103 release
 commit is `f780d5f08d0f295fbf7d249a853d9c130cd28779`).
