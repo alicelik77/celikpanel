@@ -799,6 +799,78 @@ first form of rule 5 wrote a skip and could write a result while an update was
 being admitted; a setup run waiting for a DNS record held the check; the
 admission window was 6 minutes. The rules above are the corrected ones.
 
+### Amendment (2026-10-23, clock date): opening the update screen checks again; a stopped update keeps the offer and says why
+
+*Owner observations of 2026-10-23 on Frankfurt and Boston (both on alpha.100); in
+source for the v0.1.0-alpha.103 candidate; nothing measured on an installed server*
+
+Why. Frankfurt's sidebar said "Update available · v0.1.0-alpha.101"; the update
+screen it opened offered "Update to v0.1.0-alpha.101" although alpha.102 had
+been on celikpanel.net since about 10:02Z, and only "Check for updates" showed
+alpha.102. In the owner's words: "güncellemede her zaman en son versiyonu
+göstermedi … sol alt kısımda 101 nolu güncellemeyi gösterdiğinde ve onu
+tıkladığımda güncelleme ekranında en son güncelleme görünmesi gerekmez miydi"
+(the update screen did not always show the newest version; when the bottom left
+showed update 101 and he clicked it, should the update screen not have shown the
+newest one?). He is right: the card showed the stored result of the 12-hour
+schedule, and opening the screen did not look again. Start would have refused
+the changed target (PANEL_UPDATE_TARGET_CHANGED), so nothing unsafe could happen,
+but the owner would have met an error instead of the newest version. On Boston
+the update to alpha.102 stopped unchanged because the package manager was busy;
+while that notice was open, the update card showed only the installed version,
+"Technical details" and the switch, while the sidebar and the Settings item said
+"Güncelleme var · v0.1.0-alpha.102", and the notice itself promised that the
+card would say when the package manager was free. The cause: the card hid its
+status line, the offer, the earlier attempt and its readiness read whenever the
+browser's update lock was held, and a failed outcome waiting to be acknowledged
+holds that lock.
+
+The rules added:
+
+1. **Opening the update screen checks again when the known result is older than
+   ten minutes, only with automatic checks on.** One read,
+   `GET /api/v1/panel/update/discovery/refresh` (administrators only), made once
+   per opening of the card after the stored result was read. The Panel decides
+   again: it runs the same discovery as the button and the schedule, under the
+   schedule's skip rules (no check while it admitted an update start in the last
+   hour, while the server reports a change in progress, while setup is changing
+   the server, or when the Agent does not answer) and its write rules, bounded at
+   50 seconds for the whole request (the check itself at 40). Ten minutes, so
+   that a person who opens the screen several times in one sitting does not ask
+   celikpanel.net each time (at most one release read per ten minutes from
+   screen openings, whoever opens it), while a result of the 12-hour schedule is
+   never what the screen offers once a newer release is out.
+2. **One release check at a time.** The schedule, the button and the opening
+   wait for each other through one gate; an opening that waited uses the result
+   of the check it waited for instead of reading again.
+3. **Waiting is visible and keeps what is known.** "Checking celikpanel.net for
+   the newest release…" with motion, "Known before this check: …", and "The
+   update button waits for this answer, at most about a minute. Nothing starts
+   by itself."; the offer stays in view and Start waits. A failed check keeps the
+   offer with its age and the existing failure line; a skipped or unanswered one
+   says why and how old what is shown is.
+4. **Automatic checks off: no contact.** Opening the screen asks nothing; an
+   offer says "Last checked …", and the next-check line points to "Check for
+   updates".
+5. **A stopped update keeps the offer and says why.** While the notice of an
+   update that ended unchanged (or verified back) is open, the card shows the
+   status line, the offer, the earlier attempt with its cause ("The server's
+   package manager was busy …"), the package-manager state from its own readiness
+   read and its quiet re-read ("still busy" / "has finished"), and at the top:
+   "Close the notice about the stopped update first ("Close notification"); this
+   button then starts the update to v0.1.0-alpha.102. Nothing starts by itself."
+   Start waits for the notice to be closed; the update lock itself is unchanged.
+   No check is made on opening after a stop on that page, because the stop
+   leaves the same release to offer.
+6. **The sidebar, the Settings item and the Dashboard row follow** the answer of
+   the opening check: they read the same shared copy, which the answer replaces.
+
+Unchanged: rules 1 to 8 above (calm notice, nothing installs by itself, only an
+administrator starts an update), the start handler's re-check of the exact
+target, the Agent, the updater's mutation path and the schema (44). No native
+record, by the owner's instruction of 2026-10-16. The browser inspection batch 26
+uses a loopback mock; nothing was measured on an installed server.
+
 ---
 
 ## D-034 · Ready bundles are shortcuts, not products: a general registry, shown at the head of each Components category, one door on the Dashboard

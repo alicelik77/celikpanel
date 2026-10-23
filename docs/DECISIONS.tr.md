@@ -794,6 +794,75 @@ biçimi atlanmayı yazıyordu ve bir güncelleme kabul edilirken bir sonuç
 yazabiliyordu; bir DNS kaydı bekleyen kurulum denetimi tutuyordu; kabul penceresi
 6 dakikaydı. Yukarıdaki kurallar düzeltilmiş olanlardır.
 
+### Değişiklik (23 Ekim 2026, saat tarihi): güncelleme ekranı açılınca yeniden denetler; durdurulan bir güncelleme teklifi korur ve nedenini söyler
+
+*Sahibin 23 Ekim 2026'da Frankfurt ve Boston'da (ikisi de alpha.100) gözlemleri;
+v0.1.0-alpha.103 adayı için kaynakta; kurulu bir sunucuda hiçbir şey ölçülmedi*
+
+Neden. Frankfurt'un kenar çubuğu "Update available · v0.1.0-alpha.101" diyordu;
+açılan güncelleme ekranı, alpha.102 yaklaşık 10:02Z'den beri celikpanel.net'te
+olduğu hâlde "Update to v0.1.0-alpha.101" sundu; alpha.102'yi ancak "Check for
+updates" gösterdi. Sahibin sözleriyle: "güncellemede her zaman en son versiyonu
+göstermedi … sol alt kısımda 101 nolu güncellemeyi gösterdiğinde ve onu
+tıkladığımda güncelleme ekranında en son güncelleme görünmesi gerekmez miydi".
+Haklıdır: kart 12 saatlik zamanlamanın saklanan sonucunu gösteriyordu ve ekranın
+açılması yeniden bakmıyordu. Başlat değişmiş hedefi reddederdi
+(PANEL_UPDATE_TARGET_CHANGED), yani güvensiz bir şey olamazdı; ama sahip en yeni
+sürüm yerine bir hatayla karşılaşırdı. Boston'da alpha.102 güncellemesi paket
+yöneticisi meşgul olduğu için hiçbir şeyi değiştirmeden durdu; bu bildirim
+açıkken güncelleme kartı yalnız kurulu sürümü, "Teknik ayrıntılar"ı ve anahtarı
+gösterdi; kenar çubuğu ve Ayarlar öğesi ise "Güncelleme var · v0.1.0-alpha.102"
+diyordu ve bildirimin kendisi kartın paket yöneticisinin ne zaman boşaldığını
+söyleyeceğini vaat ediyordu. Neden: kart, tarayıcının güncelleme kilidi
+tutulduğunda durum satırını, teklifi, önceki denemeyi ve hazırlık okumasını
+gizliyordu; onaylanmayı bekleyen başarısız bir sonuç da bu kilidi tutar.
+
+Eklenen kurallar:
+
+1. **Güncelleme ekranı açılınca, bilinen sonuç on dakikadan eskiyse ve yalnız
+   otomatik denetim açıkken yeniden denetler.** Tek bir okuma,
+   `GET /api/v1/panel/update/discovery/refresh` (yalnız yöneticiler), kartın her
+   açılışında, saklanan sonuç okunduktan sonra bir kez. Panel yeniden karar verir:
+   düğmenin ve zamanlamanın aynı keşfini, zamanlamanın atlama kurallarıyla (son
+   bir saatte bir güncelleme başlatmayı kabul ettiyse, sunucu süren bir
+   değişiklik bildiriyorsa, kurulum sunucuyu değiştiriyorsa ya da Agent yanıt
+   vermiyorsa denetim yok) ve yazma kurallarıyla çalıştırır; tüm istek 50
+   saniyeyle (denetimin kendisi 40 saniyeyle) sınırlıdır. On dakika: ekranı bir
+   oturumda birkaç kez açan biri her seferinde celikpanel.net'e sormasın diye (kim
+   açarsa açsın, ekran açılışlarından on dakikada en çok bir sürüm okuması), ama
+   daha yeni bir sürüm çıktığında ekranın sunduğu şey 12 saatlik zamanlamanın
+   sonucu olmasın diye.
+2. **Aynı anda tek sürüm denetimi.** Zamanlama, düğme ve açılış tek bir kapıdan
+   birbirini bekler; bekleyen açılış yeniden okumaz, beklediği denetimin sonucunu
+   kullanır.
+3. **Bekleme görünürdür ve bilineni korur.** Hareketli "celikpanel.net'te en yeni
+   sürüm denetleniyor…", "Bu denetimden önce bilinen: …" ve "Güncelleme düğmesi
+   bu yanıtı bekler, en çok bir dakika kadar. Hiçbir işlem kendiliğinden
+   başlamaz."; teklif görünür kalır ve Başlat bekler. Başarısız bir denetim
+   teklifi yaşıyla ve mevcut hata satırıyla korur; atlanan ya da yanıtsız kalan
+   bir denetim nedenini ve gösterilenin ne kadar eski olduğunu söyler.
+4. **Otomatik denetim kapalıyken hiçbir yere sorulmaz.** Ekranın açılması hiçbir
+   şey sormaz; teklif "Son denetim: …" der ve sonraki denetim satırı "Güncellemeleri
+   denetle"yi gösterir.
+5. **Durdurulan güncelleme teklifi korur ve nedenini söyler.** Hiçbir şeyi
+   değiştirmeden biten (ya da doğrulanarak geri dönen) bir güncellemenin bildirimi
+   açıkken kart durum satırını, teklifi, nedeniyle önceki denemeyi ("Sunucunun
+   paket yöneticisi meşguldü …"), kendi hazırlık okumasından ve sessiz yeniden
+   okumasından paket yöneticisinin durumunu ("hâlâ meşgul" / "işini bitirdi") ve
+   en üstte şunu gösterir: "Önce durdurulan güncellemeyle ilgili bildirimi kapatın
+   ("Bildirimi kapat"); ardından bu düğme v0.1.0-alpha.102 güncellemesini
+   başlatır. Hiçbir işlem kendiliğinden başlamaz." Başlat bildirimin kapanmasını
+   bekler; güncelleme kilidinin kendisi değişmedi. O sayfada bir duruştan sonra
+   açılışta denetim yapılmaz, çünkü duruş sunulacak sürümü değiştirmez.
+6. **Kenar çubuğu, Ayarlar öğesi ve Pano satırı** açılış denetiminin yanıtını
+   izler: aynı ortak kopyayı okurlar ve yanıt bu kopyanın yerine geçer.
+
+Değişmeyenler: yukarıdaki 1–8. kurallar (sakin bildirim, hiçbir şey kendiliğinden
+kurulmaz, güncellemeyi yalnız bir yönetici başlatır), başlatma işleyicisinin tam
+hedefi yeniden denetlemesi, Agent, güncelleyicinin değiştirme yolu ve şema (44).
+Sahibin 16 Ekim 2026 talimatı gereği gerçek sistem kaydı yok. Tarayıcı incelemesinin
+26. grubu yerel bir sahte sunucu kullanır; kurulu bir sunucuda hiçbir şey ölçülmedi.
+
 ---
 
 ## D-034 · Hazır paketler birer kısayoldur, ürün değildir: genel bir kayıt, her Bileşenler kategorisinin başında gösterilir, Pano'da tek bir kapı
