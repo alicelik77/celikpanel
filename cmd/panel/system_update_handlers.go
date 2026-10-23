@@ -539,9 +539,11 @@ func (p *Panel) handlePanelUpdateCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer leave()
-	// The same discovery the scheduled check runs (system_update_discovery.go);
-	// its result is kept as the last check, made by hand.
-	response, failure := p.discoverPanelUpdate(r.Context())
+	// The same discovery the scheduled check runs (system_update_discovery.go),
+	// with the same bound; its result is kept as the last check, made by hand.
+	checkCtx, cancelCheck := context.WithTimeout(r.Context(), panelUpdateDiscoveryTimeout)
+	response, failure := p.discoverPanelUpdate(checkCtx)
+	cancelCheck()
 	// It is written only while no update is admitted or running; otherwise it
 	// is kept in memory until the server is idle (system_update_discovery.go).
 	if r.Context().Err() == nil {

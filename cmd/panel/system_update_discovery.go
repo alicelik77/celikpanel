@@ -73,9 +73,11 @@ const (
 	// with automatic checks on, a stored result older than this is checked
 	// again through the same discovery. Ten minutes keeps a person who opens
 	// the screen again within one sitting from asking celikpanel.net each
-	// time (at most one release read per ten minutes from screen openings,
-	// whoever opens it), while a result from the 12-hour schedule is never
-	// what the screen offers when a newer release has since been published.
+	// time (at most one completed release read per ten minutes from screen
+	// openings, whoever opens it; a skipped or unfinished check keeps
+	// nothing, so the next opening may try again), while a result from the
+	// 12-hour schedule is not what the screen offers once a newer release has
+	// been published and the check can run.
 	panelUpdateDiscoveryRefreshPath = "/api/v1/panel/update/discovery/refresh"
 	panelUpdateDiscoveryOpenFresh   = 10 * time.Minute
 	// The bound of the whole request: a check already running is waited for
@@ -698,13 +700,32 @@ func (s *panelUpdateDiscoveryScheduler) runOnce(ctx context.Context) time.Durati
 	// written now, before this check.
 	s.flush(ctx, now)
 	// One release check at a time: a check the button or the update screen
-	// started is waited for (it is bounded); this one then runs after it.
+	// started is waited for (it is bounded). After the wait the conditions
+	// are read again: a check that completed within the opening window is
+	// this period's check (no second release read right after it), and a
+	// start admitted meanwhile skips it.
 	if s.gate != nil {
 		leave, err := s.gate(ctx)
 		if err != nil {
 			return s.periodDelay()
 		}
 		defer leave()
+		now = s.now()
+		s.mu.Lock()
+		last := s.lastCheck
+		s.mu.Unlock()
+		if since := now.Sub(last); !last.IsZero() && since >= 0 && since < panelUpdateDiscoveryOpenFresh {
+			s.logState("recent", "[panel-update] automatic update check not repeated: a check completed %s ago", since.Round(time.Second))
+			return s.periodDelay()
+		}
+		if reason := s.skip(ctx, now); reason != "" {
+			if ctx.Err() != nil {
+				return s.periodDelay()
+			}
+			s.noteSkip(now, reason)
+			s.logState("skipped:"+reason, "[panel-update] automatic update check skipped (%s); next try in 1 hour", reason)
+			return panelUpdateDiscoverySkipDelay
+		}
 	}
 	checkCtx, cancel := context.WithTimeout(ctx, panelUpdateDiscoveryTimeout)
 	response, failure := s.discover(checkCtx)
@@ -943,7 +964,10 @@ func (p *Panel) handlePanelUpdateDiscoveryRefresh(w http.ResponseWriter, r *http
 		writeCodedError(w, http.StatusServiceUnavailable, "PANEL_UPDATE_DISCOVERY_UNAVAILABLE", "the stored update check could not be read", "")
 		return
 	}
-	ctx, cancel := context.WithTimeout(r.Context(), panelUpdateDiscoveryOpenTimeout)
+	// The check and its save run on a context detached from the request and
+	// bounded at panelUpdateDiscoveryOpenTimeout: a completed release read is
+	// kept even when the browser leaves, so a reload does not read again.
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), panelUpdateDiscoveryOpenTimeout)
 	refresh := p.refreshPanelUpdateDiscoveryOnOpen(ctx)
 	cancel()
 	if r.Context().Err() != nil {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -55,6 +56,19 @@ func openScreen(t *testing.T, fixture systemUpdateTestFixture, role string) (*ht
 		}
 	}
 	return recorder, view
+}
+
+// openScreenFrom is openScreen for another goroutine: it reports instead of
+// stopping the test (t.Fatal must run on the test's own goroutine).
+func openScreenFrom(fixture systemUpdateTestFixture, role string) (panelUpdateDiscoveryResponse, error) {
+	recorder := httptest.NewRecorder()
+	fixture.panel.handlePanelUpdateDiscoveryRefresh(recorder, systemUpdateRequest(http.MethodGet, panelUpdateDiscoveryRefreshPath, "", role))
+	var view panelUpdateDiscoveryResponse
+	if recorder.Code != http.StatusOK {
+		return view, fmt.Errorf("status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+	err := json.Unmarshal(recorder.Body.Bytes(), &view)
+	return view, err
 }
 
 func sameDiscoveryRecord(left, right panelUpdateDiscoveryRecord) bool {
@@ -221,11 +235,15 @@ func TestPanelUpdateOpeningTheScreenNeverRunsASecondConcurrentCheck(t *testing.T
 	case <-time.After(5 * time.Second):
 		t.Fatal("the button's check did not reach the Agent")
 	}
-	opened := make(chan panelUpdateDiscoveryResponse, 2)
+	type openedView struct {
+		view panelUpdateDiscoveryResponse
+		err  error
+	}
+	opened := make(chan openedView, 2)
 	for range 2 {
 		go func() {
-			_, view := openScreen(t, fixture, roleAdmin)
-			opened <- view
+			view, err := openScreenFrom(fixture, roleAdmin)
+			opened <- openedView{view, err}
 		}()
 	}
 	// The scheduled check waits for the gate too.
@@ -254,7 +272,11 @@ func TestPanelUpdateOpeningTheScreenNeverRunsASecondConcurrentCheck(t *testing.T
 	}
 	for range 2 {
 		select {
-		case view := <-opened:
+		case got := <-opened:
+			if got.err != nil {
+				t.Fatalf("an opening failed: %v", got.err)
+			}
+			view := got.view
 			if view.Refresh == nil || view.Refresh.Outcome != panelUpdateRefreshFresh || view.Last == nil ||
 				view.Last.Target == nil || view.Last.Target.Version != newerTestTargetVersion {
 				t.Fatalf("an opening did not use the result of the check it waited for: %+v", view.Refresh)
@@ -264,13 +286,18 @@ func TestPanelUpdateOpeningTheScreenNeverRunsASecondConcurrentCheck(t *testing.T
 		}
 	}
 	select {
-	case <-scheduled:
+	case delay := <-scheduled:
+		// It waited for the button's check, found it completed just now and
+		// did not read again: this period's check is done.
+		if delay < 11*time.Hour {
+			t.Fatalf("the scheduled check after the button's: delay %s", delay)
+		}
 	case <-time.After(5 * time.Second):
 		t.Fatal("the scheduled check did not finish")
 	}
-	// The button's check and the scheduled one, one after the other; no
-	// release read for the openings.
-	if checks, starts, _ := agentCounts(fixture); checks != 2 || starts != 0 {
+	// Only the button's check read the release: not the openings, not the
+	// schedule that waited for it.
+	if checks, starts, _ := agentCounts(fixture); checks != 1 || starts != 0 {
 		t.Fatalf("checks=%d starts=%d", checks, starts)
 	}
 }
@@ -342,5 +369,94 @@ func TestPanelUpdateOpeningTheScreenIsAdminOnlyAndRegistered(t *testing.T) {
 	}
 	if !strings.Contains(string(source), "http.HandleFunc(panelUpdateDiscoveryRefreshPath, panel.handlePanelUpdateDiscoveryRefresh)") {
 		t.Fatal("main.go does not register the opening check")
+	}
+}
+
+// A scheduled check that waited while a start was admitted does not run.
+func TestPanelUpdateScheduledCheckReadsAdmissionAgainAfterWaiting(t *testing.T) {
+	fixture := openFixture(t)
+	withDiscoveryClock(t, discoveryTestNow)
+	scheduler := fixture.panel.updateDiscovery
+	scheduler.now = func() time.Time { return discoveryTestNow }
+	scheduler.logf = func(string, ...any) {}
+	leave, err := fixture.panel.updateCheckGate.acquire(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan time.Duration, 1)
+	go func() { done <- scheduler.runOnce(context.Background()) }()
+	time.Sleep(200 * time.Millisecond)
+	fixture.panel.markPanelUpdateAdmitted(discoveryTestNow) // admitted while it waited
+	leave()
+	select {
+	case delay := <-done:
+		if delay != panelUpdateDiscoverySkipDelay {
+			t.Fatalf("delay %s", delay)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the scheduled check did not finish")
+	}
+	if checks, _, _ := agentCounts(fixture); checks != 0 {
+		t.Fatalf("a release read was made during an admitted start: %d", checks)
+	}
+	if _, reason := scheduler.LastSkip(); reason != panelUpdateReasonUpdateActive {
+		t.Fatalf("skip=%q", reason)
+	}
+}
+
+// The opening check is kept when the browser leaves before it finishes: a
+// reload does not read the release again.
+func TestPanelUpdateOpeningTheScreenKeepsACompletedCheckWhenTheBrowserLeaves(t *testing.T) {
+	fixture := openFixture(t)
+	withDiscoveryClock(t, discoveryTestNow)
+	entered, gate := make(chan struct{}, 2), make(chan struct{})
+	fixture.agent.mu.Lock()
+	fixture.agent.checkEntered, fixture.agent.checkGate = entered, gate
+	fixture.agent.mu.Unlock()
+	request := systemUpdateRequest(http.MethodGet, panelUpdateDiscoveryRefreshPath, "", roleAdmin)
+	ctx, cancel := context.WithCancel(request.Context()) // keeps the signed-in caller
+	request = request.WithContext(ctx)
+	finished := make(chan struct{})
+	go func() {
+		fixture.panel.handlePanelUpdateDiscoveryRefresh(httptest.NewRecorder(), request)
+		close(finished)
+	}()
+	select {
+	case <-entered:
+	case <-time.After(5 * time.Second):
+		close(gate)
+		t.Fatal("the opening check did not reach the Agent")
+	}
+	cancel() // the browser leaves
+	fixture.agent.mu.Lock()
+	fixture.agent.checkGate = nil
+	fixture.agent.mu.Unlock()
+	close(gate)
+	select {
+	case <-finished:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the opening check did not finish")
+	}
+	record, ok := discoveryRecordOf(t, fixture)
+	if !ok || record.Target == nil || record.Target.Version != newerTestTargetVersion || record.CheckedAt != "2026-10-17T12:00:00Z" {
+		t.Fatalf("the completed check was not kept: %+v ok=%v", record, ok)
+	}
+	// The reload finds it fresh.
+	if _, view := openScreen(t, fixture, roleAdmin); view.Refresh == nil || view.Refresh.Outcome != panelUpdateRefreshFresh {
+		t.Fatalf("refresh=%+v", view.Refresh)
+	}
+	if checks, _, _ := agentCounts(fixture); checks != 1 {
+		t.Fatalf("checks=%d", checks)
+	}
+}
+
+// The button's release read is bounded like the schedule's.
+func TestPanelUpdateButtonCheckIsBounded(t *testing.T) {
+	source, err := os.ReadFile("system_update_handlers.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(source), "checkCtx, cancelCheck := context.WithTimeout(r.Context(), panelUpdateDiscoveryTimeout)") {
+		t.Fatal("the button's discovery is not bounded at panelUpdateDiscoveryTimeout")
 	}
 }
