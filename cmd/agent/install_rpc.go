@@ -520,11 +520,14 @@ type serviceUninstallOps struct {
 	unitExists          func(string) bool
 	unitsMatching       func(string) []string
 	disableUnit         func(string) error
+	// enableUnit starts a unit the removal stopped again, when the removal
+	// is refused after the stop (alpha.104).
+	enableUnit func(string) error
 	// removePackages plans the removal with the package manager's own
 	// simulation, refuses collateral before anything changes, then runs
 	// beforeRemoval (stopping units) and the real removal under one package
 	// lock (alpha.104, guardedRemovePackagesContext).
-	removePackages        func(string, packageRemovalRequest, func() error) (packageRemovalPlan, string, error)
+	removePackages        func(string, packageRemovalRequest, removalHooks) (packageRemovalPlan, string, error)
 	installedRepoPackages func(*core.ManagedService) ([]string, error)
 	// boundPHPTools lists the tools (webmail, phpMyAdmin, phpPgAdmin) served
 	// from a PHP version ("" = from any PHP-FPM socket).
@@ -550,8 +553,15 @@ func defaultServiceUninstallOps(ctx context.Context) (serviceUninstallOps, error
 			_, err := runServiceMutationCombinedOutput(ctx, systemctl, "disable", "--now", unit)
 			return err
 		},
-		removePackages: func(family string, request packageRemovalRequest, beforeRemoval func() error) (packageRemovalPlan, string, error) {
-			return guardedRemovePackagesContext(ctx, family, request, beforeRemoval)
+		enableUnit: func(unit string) error {
+			out, err := runServiceMutationCombinedOutput(ctx, systemctl, "enable", "--now", unit)
+			if err != nil {
+				return errors.New(commandFailureDetail("systemctl enable --now "+unit, out, err))
+			}
+			return nil
+		},
+		removePackages: func(family string, request packageRemovalRequest, hooks removalHooks) (packageRemovalPlan, string, error) {
+			return guardedRemovePackagesContext(ctx, family, request, hooks)
 		},
 		installedRepoPackages: func(service *core.ManagedService) ([]string, error) {
 			if family != "apt" {
@@ -906,19 +916,37 @@ func (a *Agent) uninstallServiceWithOps(
 		return nil
 	}
 
-	mutationApplied := false
 	var disableErr error
 	disableFailedUnit := ""
-	plan, _, err := ops.removePackages(work.family, work.request, func() error {
-		for _, unit := range work.units {
-			if err := ops.disableUnit(unit); err != nil {
-				disableErr, disableFailedUnit = err, unit
-				return err
+	var stopped []string
+	plan, _, err := ops.removePackages(work.family, work.request, removalHooks{
+		stop: func() error {
+			for _, unit := range work.units {
+				if err := ops.disableUnit(unit); err != nil {
+					disableErr, disableFailedUnit = err, unit
+					return err
+				}
+				stopped = append(stopped, unit)
 			}
-			mutationApplied = true
-		}
-		return nil
+			return nil
+		},
+		restart: func() error {
+			if ops.enableUnit == nil {
+				return nil
+			}
+			var failures []string
+			for _, unit := range stopped {
+				if err := ops.enableUnit(unit); err != nil {
+					failures = append(failures, err.Error())
+				}
+			}
+			if len(failures) > 0 {
+				return errors.New(strings.Join(failures, "; "))
+			}
+			return nil
+		},
 	})
+	mutationApplied := len(stopped) > 0
 	if disableErr != nil {
 		failUninstallDisable(resp, disableFailedUnit, disableErr)
 		return nil
@@ -929,8 +957,11 @@ func (a *Agent) uninstallServiceWithOps(
 			resp.Error = refusal.Message
 			resp.ErrorCode = refusal.Code
 			resp.Collateral = refusal.Collateral
-			resp.PartialSuccess = mutationApplied
-			resp.MutationApplied = mutationApplied
+			// Refused after the stop: the host changed only if the stopped
+			// services could not be started again.
+			changed := refusal.AfterStop && refusal.RestartFailed != ""
+			resp.PartialSuccess = changed
+			resp.MutationApplied = changed
 			return nil
 		}
 		failUninstallRemoval(resp, err, mutationApplied)

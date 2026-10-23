@@ -105,9 +105,9 @@ func TestInjectedGenericDNSUninstallPerformsNoHostOperations(t *testing.T) {
 		unitExists:          func(string) bool { called(); return true },
 		unitsMatching:       func(string) []string { called(); return []string{"pdns"} },
 		disableUnit:         func(string) error { called(); return nil },
-		removePackages: func(_ string, _ packageRemovalRequest, before func() error) (packageRemovalPlan, string, error) {
+		removePackages: func(_ string, _ packageRemovalRequest, before removalHooks) (packageRemovalPlan, string, error) {
 			called()
-			if err := before(); err != nil {
+			if err := before.runStop(); err != nil {
 				return packageRemovalPlan{}, "", err
 			}
 			return packageRemovalPlan{}, "", nil
@@ -149,11 +149,11 @@ func TestGeneralPostgreSQLUninstallPurgesInstalledRepoPackagesNotUnits(t *testin
 			disabled = append(disabled, unit)
 			return nil
 		},
-		removePackages: func(family string, request packageRemovalRequest, before func() error) (packageRemovalPlan, string, error) {
+		removePackages: func(family string, request packageRemovalRequest, before removalHooks) (packageRemovalPlan, string, error) {
 			if family != "apt" {
 				t.Fatalf("package family = %q", family)
 			}
-			if err := before(); err != nil {
+			if err := before.runStop(); err != nil {
 				return packageRemovalPlan{}, "", err
 			}
 			removed = append([]string(nil), request.Packages...)
@@ -198,8 +198,8 @@ func TestUninstallPurgeFailureReportsAppliedStopAsPartialSuccess(t *testing.T) {
 		unitExists:          func(unit string) bool { return unit == "redis-server" },
 		unitsMatching:       func(string) []string { return nil },
 		disableUnit:         func(string) error { return nil },
-		removePackages: func(_ string, _ packageRemovalRequest, before func() error) (packageRemovalPlan, string, error) {
-			if err := before(); err != nil {
+		removePackages: func(_ string, _ packageRemovalRequest, before removalHooks) (packageRemovalPlan, string, error) {
+			if err := before.runStop(); err != nil {
 				return packageRemovalPlan{}, "", err
 			}
 			return packageRemovalPlan{}, "", errors.New("apt purge failed")
@@ -240,8 +240,8 @@ func TestUninstallDisableFailureAbortsPurgeAndMarksStateUncertain(t *testing.T) 
 			}
 			return errors.New("systemctl disable failed after stop")
 		},
-		removePackages: func(_ string, _ packageRemovalRequest, before func() error) (packageRemovalPlan, string, error) {
-			if err := before(); err != nil {
+		removePackages: func(_ string, _ packageRemovalRequest, before removalHooks) (packageRemovalPlan, string, error) {
+			if err := before.runStop(); err != nil {
 				return packageRemovalPlan{}, "", err
 			}
 			removeCalls++
@@ -282,9 +282,9 @@ func TestUninstallRepoDiscoveryFailsBeforeStoppingUnits(t *testing.T) {
 			disableCalls++
 			return nil
 		},
-		removePackages: func(_ string, _ packageRemovalRequest, before func() error) (packageRemovalPlan, string, error) {
+		removePackages: func(_ string, _ packageRemovalRequest, before removalHooks) (packageRemovalPlan, string, error) {
 			t.Fatal("package removal ran after discovery failure")
-			if err := before(); err != nil {
+			if err := before.runStop(); err != nil {
 				return packageRemovalPlan{}, "", err
 			}
 			return packageRemovalPlan{}, "", nil

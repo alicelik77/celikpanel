@@ -219,10 +219,10 @@ func TestGuardedRemovalRefusesCollateralBeforeAnyMutation(t *testing.T) {
 	apt := &fakeAPT{plain: plain, full: plain, final: exactFinal}
 	executor := packageRemovalExecutor{family: "apt", tool: "/usr/bin/apt-get", run: apt.run, mutate: apt.mutate}
 	beforeCalls := 0
-	_, _, err := guardedRemovePackagesWith(context.Background(), executor, frankfurtRequest(), func() error {
+	_, _, err := guardedRemovePackagesWith(context.Background(), executor, frankfurtRequest(), removalHooks{stop: func() error {
 		beforeCalls++
 		return nil
-	})
+	}})
 	var refusal *packageRemovalRefusal
 	if !errors.As(err, &refusal) || refusal.Code != errCodeRemovalWouldRemoveOthers {
 		t.Fatalf("err = %v", err)
@@ -242,13 +242,13 @@ func TestGuardedRemovalRunsExactlyTheSimulatedArgumentsUnderTheLock(t *testing.T
 	apt := &fakeAPT{plain: plain, full: full, final: exactFinal}
 	executor := packageRemovalExecutor{family: "apt", tool: "/usr/bin/apt-get", run: apt.run, mutate: apt.mutate}
 	lockedDuringBefore := false
-	plan, _, err := guardedRemovePackagesWith(context.Background(), executor, packageRemovalRequest{Packages: requested}, func() error {
+	plan, _, err := guardedRemovePackagesWith(context.Background(), executor, packageRemovalRequest{Packages: requested}, removalHooks{stop: func() error {
 		lockedDuringBefore = !packageOperationMu.TryLock()
 		if !lockedDuringBefore {
 			packageOperationMu.Unlock()
 		}
 		return nil
-	})
+	}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -288,7 +288,7 @@ func TestGuardedRemovalRefusesWhenTheAnswerChangesBeforeTheRealRemoval(t *testin
 		return purgLines(append(args, "owner-tool")...)
 	}}
 	executor := packageRemovalExecutor{family: "apt", tool: "/usr/bin/apt-get", run: apt.run, mutate: apt.mutate}
-	_, _, err := guardedRemovePackagesWith(context.Background(), executor, packageRemovalRequest{Packages: []string{"redis-server"}}, func() error { return nil })
+	_, _, err := guardedRemovePackagesWith(context.Background(), executor, packageRemovalRequest{Packages: []string{"redis-server"}}, removalHooks{stop: func() error { t.Fatal("units stopped although the answer had changed"); return nil }})
 	var refusal *packageRemovalRefusal
 	if !errors.As(err, &refusal) || refusal.Code != errCodeRemovalPlanChanged || !strings.Contains(refusal.Message, "owner-tool") {
 		t.Fatalf("err = %v", err)
@@ -302,7 +302,7 @@ func TestGuardedRemovalSimulationFailureRefusesWithoutMutation(t *testing.T) {
 	apt := &fakeAPT{failOn: "--auto-remove", plain: purgLines("x"), final: exactFinal}
 	executor := packageRemovalExecutor{family: "apt", tool: "/usr/bin/apt-get", run: apt.run, mutate: apt.mutate}
 	beforeCalls := 0
-	_, _, err := guardedRemovePackagesWith(context.Background(), executor, packageRemovalRequest{Packages: []string{"x"}}, func() error { beforeCalls++; return nil })
+	_, _, err := guardedRemovePackagesWith(context.Background(), executor, packageRemovalRequest{Packages: []string{"x"}}, removalHooks{stop: func() error { beforeCalls++; return nil }})
 	var refusal *packageRemovalRefusal
 	if !errors.As(err, &refusal) || refusal.Code != errCodeRemovalSimulationFailed {
 		t.Fatalf("err = %v", err)
@@ -357,7 +357,7 @@ func TestPlanPacmanRemovalNamesWhatBreaksAndProtectedDependencies(t *testing.T) 
 
 	clean := &fakePacman{out: "redis\nlibfoo\n"}
 	executor := packageRemovalExecutor{family: "pacman", tool: "/usr/bin/pacman", run: clean.run, mutate: clean.mutate}
-	plan, _, err = guardedRemovePackagesWith(context.Background(), executor, packageRemovalRequest{Packages: []string{"redis"}}, nil)
+	plan, _, err = guardedRemovePackagesWith(context.Background(), executor, packageRemovalRequest{Packages: []string{"redis"}}, removalHooks{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -367,8 +367,9 @@ func TestPlanPacmanRemovalNamesWhatBreaksAndProtectedDependencies(t *testing.T) 
 	if len(clean.mutations) != 1 || !reflect.DeepEqual(clean.mutations[0], pacmanRemovalArgs([]string{"redis"})) {
 		t.Fatalf("mutations = %v", clean.mutations)
 	}
-	if len(clean.calls) != 2 {
-		t.Fatalf("pacman was not simulated again right before the removal: %v", clean.calls)
+	// The plan, once more before the units stop, and again right before the removal.
+	if len(clean.calls) != 3 {
+		t.Fatalf("pacman was not simulated again before and after the stop: %v", clean.calls)
 	}
 }
 
@@ -400,7 +401,7 @@ func TestUninstallRefusesCollateralBeforeStoppingUnits(t *testing.T) {
 		unitExists:          func(string) bool { return true },
 		unitsMatching:       func(string) []string { return nil },
 		disableUnit:         func(string) error { disabled++; return nil },
-		removePackages: func(_ string, request packageRemovalRequest, before func() error) (packageRemovalPlan, string, error) {
+		removePackages: func(_ string, request packageRemovalRequest, before removalHooks) (packageRemovalPlan, string, error) {
 			requested = request
 			return packageRemovalPlan{}, "", &packageRemovalRefusal{
 				Code:       errCodeRemovalWouldRemoveOthers,
@@ -437,7 +438,7 @@ func TestUninstallRefusesAPHPVersionAToolRunsOn(t *testing.T) {
 		unitExists:          func(string) bool { return true },
 		unitsMatching:       func(string) []string { return nil },
 		disableUnit:         func(string) error { t.Fatal("unit stopped"); return nil },
-		removePackages: func(string, packageRemovalRequest, func() error) (packageRemovalPlan, string, error) {
+		removePackages: func(string, packageRemovalRequest, removalHooks) (packageRemovalPlan, string, error) {
 			removeCalls++
 			return packageRemovalPlan{}, "", nil
 		},
@@ -492,5 +493,113 @@ func TestServiceRemovalPreviewIsReadOnlyAndDoesNotWaitForTheLock(t *testing.T) {
 	packageOperationMu.Unlock()
 	if busy.State != "busy" || len(apt.calls) != calls {
 		t.Fatalf("busy preview = %+v (simulations %d → %d)", busy, calls, len(apt.calls))
+	}
+}
+
+func TestGuardedRemovalChangedAfterTheStopStartsTheUnitsAgain(t *testing.T) {
+	plain := purgLines("redis-server")
+	finalCalls := 0
+	apt := &fakeAPT{plain: plain, full: plain, final: func(args []string) string {
+		finalCalls++
+		if finalCalls <= 2 {
+			return purgLines(args...)
+		}
+		return purgLines(append(args, "owner-tool")...)
+	}}
+	executor := packageRemovalExecutor{family: "apt", tool: "/usr/bin/apt-get", run: apt.run, mutate: apt.mutate}
+	stops, restarts := 0, 0
+	_, _, err := guardedRemovePackagesWith(context.Background(), executor, packageRemovalRequest{Packages: []string{"redis-server"}}, removalHooks{
+		stop:    func() error { stops++; return nil },
+		restart: func() error { restarts++; return nil },
+	})
+	var refusal *packageRemovalRefusal
+	if !errors.As(err, &refusal) || refusal.Code != errCodeRemovalPlanChanged || !refusal.AfterStop || refusal.RestartFailed != "" {
+		t.Fatalf("err = %v (%+v)", err, refusal)
+	}
+	if stops != 1 || restarts != 1 || len(apt.mutations) != 0 || !strings.Contains(refusal.Message, "were started again") {
+		t.Fatalf("stops=%d restarts=%d mutations=%v message=%q", stops, restarts, apt.mutations, refusal.Message)
+	}
+	apt = &fakeAPT{plain: plain, full: plain, final: func(args []string) string {
+		finalCalls++
+		return purgLines(append(args, "owner-tool")...)
+	}}
+	finalCalls = 0
+	apt.final = func(args []string) string {
+		finalCalls++
+		if finalCalls <= 2 {
+			return purgLines(args...)
+		}
+		return purgLines(append(args, "owner-tool")...)
+	}
+	executor = packageRemovalExecutor{family: "apt", tool: "/usr/bin/apt-get", run: apt.run, mutate: apt.mutate}
+	_, _, err = guardedRemovePackagesWith(context.Background(), executor, packageRemovalRequest{Packages: []string{"redis-server"}}, removalHooks{
+		stop:    func() error { return nil },
+		restart: func() error { return errors.New("redis-server did not start") },
+	})
+	if !errors.As(err, &refusal) || refusal.RestartFailed == "" || !strings.Contains(refusal.Message, "could not be started again") {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestOrphansThatSitesOrComponentsMayUseAreLeftAlone(t *testing.T) {
+	// Removing phpMyAdmin: its PHP 8.4 extension packages become unused by
+	// it, but a site may load them; an old catalogue orphan is no refusal.
+	plain := purgLines("phpmyadmin")
+	full := plain + purgLines("php8.4-mysql", "php8.4-mbstring", "php8.4-xml", "php-twig", "dbconfig-mysql", "redis-server")
+	before := purgLines("redis-server")
+	apt := &fakeAPT{plain: plain, full: full, before: before, final: exactFinal}
+	request := packageRemovalRequest{
+		Packages:           []string{"phpmyadmin"},
+		ProtectedComponent: catalogueProtectedComponent("apt", packageNameSet([]string{"phpmyadmin"})),
+	}
+	plan, err := planAptRemoval(context.Background(), apt.run, "/usr/bin/apt-get", request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(plan.Collateral) != 0 {
+		t.Fatalf("collateral = %+v", plan.Collateral)
+	}
+	if !reflect.DeepEqual(plan.Remove, []string{"phpmyadmin", "dbconfig-mysql", "php-twig"}) {
+		t.Fatalf("remove = %v", plan.Remove)
+	}
+	for _, kept := range []string{"php8.4-mysql", "php8.4-mbstring", "php8.4-xml", "redis-server"} {
+		if !slices.Contains(plan.LeftAlone, kept) {
+			t.Fatalf("%s was not left alone: %v", kept, plan.LeftAlone)
+		}
+	}
+	// A catalogue package that is a new orphan is left alone, not a refusal.
+	full = plain + purgLines("nginx")
+	apt = &fakeAPT{plain: plain, full: full, final: exactFinal}
+	plan, err = planAptRemoval(context.Background(), apt.run, "/usr/bin/apt-get", request)
+	if err != nil || len(plan.Collateral) != 0 || !slices.Contains(plan.LeftAlone, "nginx") {
+		t.Fatalf("plan = %+v err = %v", plan, err)
+	}
+}
+
+func TestAnInstallThatWouldRemovePackagesIsRefused(t *testing.T) {
+	calls := 0
+	run := func(_ context.Context, env []string, _ string, args ...string) ([]byte, error) {
+		calls++
+		if args[0] != "-s" || args[1] != "install" {
+			t.Fatalf("args = %v", args)
+		}
+		return []byte("Remv apache2 [2.4.62-1]\nInst nginx (1.26.3-3 Debian:13/stable [amd64])\n"), nil
+	}
+	err := refuseInstallThatRemoves(context.Background(), run, "/usr/bin/apt-get", []string{"nginx"}, []string{"install", "-y", "--no-install-recommends", "nginx"})
+	var refusal *packageInstallRefusal
+	if !errors.As(err, &refusal) || !reflect.DeepEqual(refusal.Removes, []string{"apache2"}) || !strings.Contains(err.Error(), "nothing was installed") {
+		t.Fatalf("err = %v", err)
+	}
+	clean := func(context.Context, []string, string, ...string) ([]byte, error) {
+		return []byte("Inst php8.5-mysql (8.5.0-1 Sury:trixie [amd64])\n"), nil
+	}
+	if err := refuseInstallThatRemoves(context.Background(), clean, "/usr/bin/apt-get", []string{"php8.5-mysql"}, []string{"install", "-y", "php8.5-mysql"}); err != nil {
+		t.Fatal(err)
+	}
+	failing := func(context.Context, []string, string, ...string) ([]byte, error) {
+		return []byte("E: Unable to locate package x"), errors.New("exit status 100")
+	}
+	if err := refuseInstallThatRemoves(context.Background(), failing, "/usr/bin/apt-get", []string{"x"}, []string{"install", "-y", "x"}); err == nil || !strings.Contains(err.Error(), "nothing was installed") {
+		t.Fatalf("err = %v", err)
 	}
 }

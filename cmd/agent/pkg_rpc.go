@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -161,6 +162,33 @@ func refreshAptListsIfStaleWithExecutable(ctx context.Context, maxAge time.Durat
 	}
 }
 
+// packageInstallRefusal: installing would remove packages (alpha.104).
+// Kurulum paket kaldıracaktı.
+type packageInstallRefusal struct {
+	Packages []string
+	Removes  []string
+}
+
+func (r *packageInstallRefusal) Error() string {
+	return fmt.Sprintf("installing %s would remove %s; nothing was installed. If removing them is intended, the server administrator removes them first, then tries again",
+		strings.Join(r.Packages, ", "), strings.Join(capNames(r.Removes, 12), ", "))
+}
+
+// refuseInstallThatRemoves simulates the exact install arguments and
+// refuses when APT would remove (or purge) anything. A component conflict
+// is refused before this; no supported install needs a removal. A failed
+// simulation is reported and nothing is installed.
+func refuseInstallThatRemoves(ctx context.Context, run packageSimulationRunner, aptGet string, packages, args []string) error {
+	sim, err := runAptSimulation(ctx, run, aptGet, args)
+	if err != nil {
+		return fmt.Errorf("the package manager could not show what installing %s would do, so nothing was installed: %w", strings.Join(packages, ", "), err)
+	}
+	if len(sim.Removed) > 0 {
+		return &packageInstallRefusal{Packages: append([]string{}, packages...), Removes: sim.Removed}
+	}
+	return nil
+}
+
 // installPackages installs the given packages with the host's package
 // manager, non-interactively. Unknown or not-yet-supported families return a
 // clear error rather than a blind command.
@@ -225,11 +253,20 @@ func installPackagesWithCandidateContext(ctx context.Context, family string, pac
 		}
 		run := func() (string, error) {
 			args := append([]string{"install", "-y", "--no-install-recommends"}, packages...)
+			// An install never removes a package (alpha.104): the same
+			// arguments are simulated first, under this package lock.
+			if err := refuseInstallThatRemoves(ctx, runPackageSimulationCommand, aptGet, packages, args); err != nil {
+				return "", err
+			}
 			env := append(os.Environ(), "DEBIAN_FRONTEND=noninteractive")
 			out, err := runServiceMutationCombinedOutputEnv(ctx, env, aptGet, args...)
 			return string(out), err
 		}
 		out, err := run()
+		var refusal *packageInstallRefusal
+		if errors.As(err, &refusal) {
+			return "", err
+		}
 		// Mirror rotated inside our freshness window: the lists said the file
 		// exists, the mirror says 404. Refresh unconditionally and retry once.
 		// Ayna, tazelik penceremizin içinde döndü: listeler dosya var dedi,
@@ -510,7 +547,7 @@ func removePackagesContext(ctx context.Context, family string, packages []string
 	_, out, err := guardedRemovePackagesContext(ctx, family, packageRemovalRequest{
 		Packages:           packages,
 		ProtectedComponent: catalogueProtectedComponent(family, packageNameSet(packages)),
-	}, nil)
+	}, removalHooks{})
 	return out, err
 }
 
@@ -661,6 +698,9 @@ func installPackagesAtVersionContext(ctx context.Context, packages []string, ver
 		}
 	}
 	args := append([]string{"install", "-y", "--no-install-recommends"}, pinned...)
+	if err := refuseInstallThatRemoves(ctx, runPackageSimulationCommand, aptGet, packages, args); err != nil {
+		return "", err
+	}
 	env := append(os.Environ(), "DEBIAN_FRONTEND=noninteractive")
 	out, err := runServiceMutationCombinedOutputEnv(ctx, env, aptGet, args...)
 	if err != nil {

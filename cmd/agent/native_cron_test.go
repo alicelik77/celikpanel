@@ -53,9 +53,9 @@ func TestNativeCronIsNeverRemovedThroughTheCatalogue(t *testing.T) {
 			removeCalled = true
 			return nil
 		},
-		removePackages: func(_ string, _ packageRemovalRequest, before func() error) (packageRemovalPlan, string, error) {
+		removePackages: func(_ string, _ packageRemovalRequest, before removalHooks) (packageRemovalPlan, string, error) {
 			removeCalled = true
-			if err := before(); err != nil {
+			if err := before.runStop(); err != nil {
 				return packageRemovalPlan{}, "", err
 			}
 			return packageRemovalPlan{}, "", nil

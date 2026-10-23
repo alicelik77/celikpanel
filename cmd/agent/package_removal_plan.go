@@ -96,6 +96,33 @@ type packageRemovalRefusal struct {
 	Message    string
 	Collateral []transport.PackageRemovalCollateral
 	BoundTools []string
+	// AfterStop: the answer changed after the units were stopped; they were
+	// started again unless RestartFailed says why not.
+	AfterStop     bool
+	RestartFailed string
+}
+
+// removalHooks are the caller's steps around the real removal: stop the
+// units first, and start them again when the removal is refused after they
+// were stopped.
+// removalHooks, gerçek kaldırmanın çevresindeki adımlardır.
+type removalHooks struct {
+	stop    func() error
+	restart func() error
+}
+
+func (h removalHooks) runStop() error {
+	if h.stop == nil {
+		return nil
+	}
+	return h.stop()
+}
+
+func (h removalHooks) runRestart() error {
+	if h.restart == nil {
+		return nil
+	}
+	return h.restart()
 }
 
 func (r *packageRemovalRefusal) Error() string { return r.Message }
@@ -294,19 +321,27 @@ func planAptRemoval(ctx context.Context, run packageSimulationRunner, aptGet str
 		if !validRemovalTarget(name) {
 			return plan, fmt.Errorf("APT simulation named an unexpected package %q", name)
 		}
-		if component := request.protectedComponent(name); component != "" {
-			addCollateral(name, removalReasonComponent, component)
-			continue
-		}
 		if inPlain[name] {
-			if request.belongsToRemovedVersion(name) {
+			// Removed because it depends on what is removed: only a package
+			// of the removed version may go with it.
+			if component := request.protectedComponent(name); component != "" {
+				addCollateral(name, removalReasonComponent, component)
+			} else if request.belongsToRemovedVersion(name) {
 				extra = append(extra, name)
 			} else {
 				addCollateral(name, removalReasonReverseDependency, "")
 			}
 			continue
 		}
-		if alreadyOrphan[name] {
+		// An orphan is never a reason to refuse: it is removed only when it
+		// became unused because of this removal and is not something the
+		// server may still want — an orphan that was already unused, a
+		// catalogue component's package, or a PHP extension package of
+		// another PHP version (a site may load it: removing phpMyAdmin must
+		// not take php8.4-mysql) is left alone.
+		// Öksüz paket asla ret nedeni değildir; şüpheli olan yerinde bırakılır.
+		if alreadyOrphan[name] || request.protectedComponent(name) != "" ||
+			(phpVersionedPackage.MatchString(packageBaseName(name)) && !request.belongsToRemovedVersion(name)) {
 			plan.LeftAlone = append(plan.LeftAlone, name)
 			continue
 		}
@@ -389,6 +424,9 @@ func verifyAptFinalSimulation(ctx context.Context, run packageSimulationRunner, 
 	}
 	return nil
 }
+
+// phpVersionedPackage matches a package of one PHP version ("php8.4-mysql").
+var phpVersionedPackage = regexp.MustCompile(`^php[0-9]+\.[0-9]+-`)
 
 // pacmanBreaksDependency matches pacman's refusal line
 // ":: removing php breaks dependency 'php' required by phpmyadmin".
@@ -591,18 +629,18 @@ func guardedRemovePackagesWith(
 	ctx context.Context,
 	executor packageRemovalExecutor,
 	request packageRemovalRequest,
-	beforeRemoval func() error,
+	hooks removalHooks,
 ) (packageRemovalPlan, string, error) {
 	packageOperationMu.Lock()
 	defer packageOperationMu.Unlock()
-	return guardedRemovePackagesLocked(ctx, executor, request, beforeRemoval)
+	return guardedRemovePackagesLocked(ctx, executor, request, hooks)
 }
 
 func guardedRemovePackagesLocked(
 	ctx context.Context,
 	executor packageRemovalExecutor,
 	request packageRemovalRequest,
-	beforeRemoval func() error,
+	hooks removalHooks,
 ) (packageRemovalPlan, string, error) {
 	plan, err := executor.plan(ctx, request)
 	if err != nil {
@@ -621,13 +659,31 @@ func guardedRemovePackagesLocked(
 	if len(plan.Collateral) > 0 {
 		return plan, "", collateralRefusal(plan)
 	}
-	if beforeRemoval != nil {
-		if err := beforeRemoval(); err != nil {
-			return plan, "", err
-		}
-	}
+	// The same answer once more before anything changes: a refusal here
+	// means nothing was stopped or removed.
+	// Hiçbir şey değişmeden önce aynı yanıt bir kez daha.
 	if err := executor.reverify(ctx, plan); err != nil {
 		return plan, "", err
+	}
+	if err := hooks.runStop(); err != nil {
+		return plan, "", err
+	}
+	// And again right before the real removal, now that the units are
+	// stopped; a changed answer starts them again and says so.
+	// Ve unit'ler durduktan sonra, gerçek kaldırmadan hemen önce bir kez daha.
+	if err := executor.reverify(ctx, plan); err != nil {
+		var refusal *packageRemovalRefusal
+		if !errors.As(err, &refusal) {
+			refusal = &packageRemovalRefusal{Code: errCodeRemovalSimulationFailed, Message: err.Error()}
+		}
+		refusal.AfterStop = true
+		if restartErr := hooks.runRestart(); restartErr != nil {
+			refusal.RestartFailed = restartErr.Error()
+			refusal.Message += fmt.Sprintf("; the services stopped for it could not be started again (%v): start them in Components", restartErr)
+		} else {
+			refusal.Message += "; the services stopped for it were started again"
+		}
+		return plan, "", refusal
 	}
 	out, err := executor.remove(ctx, plan)
 	return plan, out, err
@@ -635,7 +691,7 @@ func guardedRemovePackagesLocked(
 
 // guardedRemovePackagesContext is the production removal used by every
 // package removal path.
-func guardedRemovePackagesContext(ctx context.Context, family string, request packageRemovalRequest, beforeRemoval func() error) (packageRemovalPlan, string, error) {
+func guardedRemovePackagesContext(ctx context.Context, family string, request packageRemovalRequest, hooks removalHooks) (packageRemovalPlan, string, error) {
 	if err := validateRemovalRequest(request); err != nil {
 		return packageRemovalPlan{}, "", err
 	}
@@ -643,7 +699,7 @@ func guardedRemovePackagesContext(ctx context.Context, family string, request pa
 	if err != nil {
 		return packageRemovalPlan{}, "", err
 	}
-	return guardedRemovePackagesWith(ctx, executor, request, beforeRemoval)
+	return guardedRemovePackagesWith(ctx, executor, request, hooks)
 }
 
 // catalogueProtectedComponent returns the catalogue component that owns a

@@ -22,7 +22,7 @@ import (
 // adı söylenmeden alınacaklar ve kaldırılan PHP'de koşan araçlar. Değişiklik
 // başlatmaz, paket kilidini beklemez ve sınırlıdır.
 
-const serviceRemovalPreviewBound = 45 * time.Second
+const serviceRemovalPreviewBound = 25 * time.Second
 
 func (a *Agent) ServiceRemovalPreviewV1(req *transport.ServiceRemovalPreviewRequest, resp *transport.ServiceRemovalPreviewResponse) error {
 	*resp = emptyServiceRemovalPreview()
