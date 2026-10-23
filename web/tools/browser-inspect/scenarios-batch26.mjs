@@ -15,7 +15,9 @@
 //               with its cause and "still busy", Start waits for the notice to
 //               be closed (`settings-stopped-busy`); after the package manager
 //               is free and the card's own quiet re-read has run: "The package
-//               manager has finished" (`settings-stopped-free`)
+//               manager has finished" (`settings-stopped-free`); then the
+//               notice closed: the opening check runs and Start is enabled
+//               (`settings-stopped-closed`)
 //
 // The build the mock runs is v0.1.0-alpha.100; the releases are made up (see
 // mock-batch26.mjs). Every answer comes from the mock on 127.0.0.1; nothing
@@ -146,6 +148,14 @@ export default function batch26(scenarios, { base, locale, theme, out, viewport,
         await waitFor(page, () => document.querySelector('[data-previous-attempt-package-manager]')?.getAttribute('data-previous-attempt-package-manager') === 'free', 15000).catch(() => {});
         await pause(600);
         await whole(page, 'settings-stopped-free');
+        // The owner closes the notice: the lock is released and the opening
+        // check runs, since the stored result is older than ten minutes
+        // (review of alpha.103). Nothing is started.
+        await ctl({ b26: { ...batch26State({ stored: { target: 'a102', checkedAge: 3 * HOUR, foundAge: 3 * HOUR, autoCheck: true }, after: { target: 'a102', checkedAge: 0, foundAge: 3 * HOUR, autoCheck: true }, refresh: 'checked' }), readiness: 'ready' } });
+        await page.evaluate(() => { const b = Array.from(document.querySelectorAll('aside button, [role="dialog"] button')).find((n) => /Close notification|Bildirimi kapat/.test(n.innerText)); b?.click(); });
+        await waitFor(page, () => !document.querySelector('[data-update-stopped-notice-open]') && !document.querySelector('[data-update-rechecking]'), 15000).catch(() => {});
+        await pause(900);
+        await whole(page, 'settings-stopped-closed');
         await closePage(page);
         await clean();
     };

@@ -417,6 +417,7 @@ export const enSettingsScreens = {
     'panelUpdate.status.openSkipped': 'Not checked again on opening: {reason}.',
     'panelUpdate.status.openSkippedRecentUpdate': 'Not checked again on opening, because an update was started on this server less than an hour ago.',
     'panelUpdate.status.openUnknown': 'The check made on opening did not answer in time, so its result is not known.',
+    'panelUpdate.status.openUnread': 'The check made on opening could not be read: the panel answered with an error or an unreadable reply.',
     'panelUpdate.status.shownFrom': 'What is shown is from the last check, {age}; you can check now.',
     'panelUpdate.status.lastChecked': 'Last checked {age}.',
     'panelUpdate.stoppedNoticeOpen': 'Close the notice about the stopped update first ("Close notification"); this button then starts the update to {version}. Nothing starts by itself.',

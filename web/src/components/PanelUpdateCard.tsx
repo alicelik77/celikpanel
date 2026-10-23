@@ -232,19 +232,20 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
     // Opening the screen checks again (alpha.103, owner observation
     // 2026-10-23): once per opening, after the stored result was read, only
     // with automatic checks on and a known result older than ten minutes, and
-    // never while an update is followed or after one stopped on this page
-    // (the stop leaves the same release to offer). The Panel decides again,
-    // runs one check at a time and never starts anything.
+    // never while the update lock is held: while an update is followed, and
+    // while a stopped update's notice is open. Once that notice is closed the
+    // check runs if it is due (a release may have been published meanwhile;
+    // review of alpha.103). The Panel decides again (it skips while a start it
+    // admitted is less than an hour old), runs one check at a time and never
+    // starts anything.
     // Ekran acilinca bir kez: otomatik denetim aciksa ve sonuc eskiyse.
     const [openCheck, setOpenCheck] = useState<'idle' | 'running' | DiscoveryRefresh>('idle');
     const openCheckDecided = useRef(false);
-    const sawStop = useRef(false);
-    if (stopped) sawStop.current = true;
     const updateActive = systemUpdate.active;
     useEffect(() => {
         if (!storedReadOnOpen || openCheckDecided.current || updateActive) return;
         openCheckDecided.current = true;
-        if (sawStop.current || actionInFlight.current
+        if (actionInFlight.current
             || !panelUpdateOpenCheckDue(panelUpdateDiscoveryState().value, Date.now())) return;
         const generation = lifecycleGeneration.current;
         setOpenCheck('running');
@@ -412,6 +413,8 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
         ? {
             request_id: stoppedHere.requestID,
             phase: stoppedHere.rolledBack ? 'recovered' : 'failed',
+            // The cause the recovery record gives, as the notice says it.
+            ...(stoppedHere.failureCode ? { failure_code: stoppedHere.failureCode } : {}),
             finished_at: new Date(stoppedHere.at).toISOString().replace(/\.\d{3}Z$/, 'Z'),
         }
         : serverPrevious;
@@ -618,7 +621,8 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
                 : t('panelUpdate.status.openSkipped', {
                     reason: openResult.reason ? t(`panelUpdate.discoveryReason.${openResult.reason}`) : t('panelUpdate.discoveryReason.unknown'),
                 })) + shownFrom
-            : openResult.outcome === 'unknown' ? t('panelUpdate.status.openUnknown') + shownFrom : '';
+            : openResult.outcome === 'unknown' ? t('panelUpdate.status.openUnknown') + shownFrom
+                : openResult.outcome === 'unread' ? t('panelUpdate.status.openUnread') + shownFrom : '';
     // With automatic checks off nothing is asked on opening: an offer says
     // how old it is; the next-check line points to "Check for updates".
     const checkedLine = stored && !stored.autoCheck && last && !check

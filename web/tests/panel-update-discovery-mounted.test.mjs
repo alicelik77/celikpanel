@@ -733,8 +733,18 @@ test('a failed check on opening keeps the stored offer with its age and the fail
         assert.deepEqual(detailsOf(renderer), [say('panelUpdate.status.lastFailed', { age: 'just now', reason: say('panelUpdate.discoveryReason.release_unverified') })]);
         assert.equal(primaries(renderer)[0].props.disabled, false, 'a failed check took the offer away');
     });
-    // The Panel did not answer the opening at all: the result is not known, the offer stays.
-    await withMounted(React.createElement(PanelUpdateCard), { stored: thirteenHours(), refresh: () => new Response('{}', { status: 502 }) }, async (renderer) => {
+    // The Panel answered with an error (503, 429, an unreadable reply): a
+    // verified failure of the read, said as such; the offer stays (D-024).
+    for (const refresh of [() => new Response('{}', { status: 503 }), () => new Response('{}', { status: 429 }), () => new Response('not json', { status: 200 }), () => Response.json({ refresh: { outcome: 'checked' } })]) {
+        await withMounted(React.createElement(PanelUpdateCard), { stored: thirteenHours(), refresh }, async (renderer) => {
+            assert.equal(statusOf(renderer).props['data-update-status'], 'available');
+            assert.deepEqual(detailsOf(renderer), [`${say('panelUpdate.status.openUnread')} ${say('panelUpdate.status.shownFrom', { age: thirteenHoursAgo('en') })}`]);
+            assert.equal(primaries(renderer).length, 1);
+        });
+    }
+    // No answer at all (the connection was lost, the bound ran out): the
+    // result is not known, the offer stays.
+    await withMounted(React.createElement(PanelUpdateCard), { stored: thirteenHours(), refresh: () => Promise.reject(new TypeError('network')) }, async (renderer) => {
         assert.equal(statusOf(renderer).props['data-update-status'], 'available');
         assert.deepEqual(detailsOf(renderer), [`${say('panelUpdate.status.openUnknown')} ${say('panelUpdate.status.shownFrom', { age: thirteenHoursAgo('en') })}`]);
         assert.equal(primaries(renderer).length, 1);
@@ -802,7 +812,8 @@ for (const locale of ['en', 'tr']) {
             // The version is kept whole (it never breaks at its hyphen).
             assert.equal(why.findAll(node => node.type === 'span' && node.props['data-version'] !== undefined).map(textOf).join(), TARGET.version);
             // Nothing asked the release server, nothing started.
-            assert.equal(refreshReads(fixture), 0, 'a stop led to a check on opening');
+            // No check while the notice holds the update lock.
+            assert.equal(refreshReads(fixture), 0, 'a check ran while the stopped update held the lock');
             assert.equal(fixture.starts, 0);
         });
     });
@@ -841,4 +852,62 @@ test('the provider tells the card about a stop only for a request that ended unc
     const card = source('components/PanelUpdateCard.tsx');
     assert.match(card, /const inFlight = systemUpdate\.active && !stopped;/);
     assert.match(card, /async function startUpdate\(\) \{\n\s+const target = offer\?\.target;\n\s+if \(actionInFlight\.current \|\| systemUpdate\.active/);
+});
+
+// Review of alpha.103: a stopped update's notice must not stop the check for
+// good. Boston stops on 102, the owner leaves the notice open, 103 is
+// published, he opens the screen and closes the notice: the check runs then,
+// so Start does not offer a release the server would refuse as changed.
+// Bildirim kapaninca, gerekiyorsa denetim yapilir; kart eski surumu sunmaz.
+test('closing a stopped update\'s notice lets the opening check run when it is due', async () => {
+    const NEWEST = { ...TARGET, version: 'v0.1.0-alpha.98', commit: 'f'.repeat(40), sequence: '98' };
+    const newest = () => Response.json({
+        ...storedAvailable({
+            last: { checked_at: '2026-10-17T12:00:00Z', outcome: 'available', automatic: true, target: NEWEST, found_at: '2026-10-17T12:00:00Z', current_version: CURRENT.version, current_commit: CURRENT.commit },
+            checked_age_seconds: 0, found_age_seconds: 0,
+        }),
+        refresh: { outcome: 'checked' },
+    });
+    // A new element each time: the same element object would not render again.
+    const both = () => React.createElement(React.Fragment, null, shell(), React.createElement(PanelUpdateCard));
+    await withMounted(both(), { stored: thirteenHours(), operation: bostonStop(), refresh: newest }, async (renderer, fixture) => {
+        assert.equal(refreshReads(fixture), 0, 'a check ran while the notice held the lock');
+        // The owner closes the notice: the lock is released.
+        fixture.operation = { ...fixture.operation, active: false, stopped: null };
+        await act(async () => { renderer.update(both()); await flush(); });
+        await act(async () => { await flush(); });
+        assert.equal(refreshReads(fixture), 1, 'no check after the notice was closed');
+        assert.equal(textOf(primaries(renderer)[0]).trim(), say('panelUpdate.start', { version: NEWEST.version }));
+        assert.equal(textOf(sidebarLinks(renderer)[0]).trim().replace(/\s+/g, ' '), say('panelUpdate.notice.sidebar', { version: NEWEST.version }));
+        assert.equal(fixture.starts, 0);
+    });
+    // A result checked minutes ago is not checked again after the close.
+    await withMounted(React.createElement(PanelUpdateCard), { stored: storedAvailable({ checked_age_seconds: 120, found_age_seconds: 120 }), operation: bostonStop(), refresh: newest }, async (renderer, fixture) => {
+        fixture.operation = { ...fixture.operation, active: false, stopped: null };
+        await act(async () => { renderer.update(React.createElement(PanelUpdateCard)); await flush(); });
+        assert.equal(refreshReads(fixture), 0);
+    });
+    // A genuinely followed update keeps the check off for as long as it runs.
+    await withMounted(React.createElement(PanelUpdateCard), {
+        stored: thirteenHours(), refresh: newest,
+        operation: { active: true, tracking: { version: TARGET.version, phase: 'applying', elapsed: '00:10', requestID: 'f'.repeat(32) } },
+    }, async (renderer, fixture) => {
+        await act(async () => { renderer.update(React.createElement(PanelUpdateCard)); await flush(); });
+        assert.equal(refreshReads(fixture), 0);
+    });
+});
+
+test('the earlier attempt drawn from the open notice carries the recorded cause, not "no recorded cause"', async () => {
+    await withMounted(React.createElement(PanelUpdateCard), {
+        stored: thirteenHours(),
+        operation: bostonStop({ packageManagerBusy: false, rolledBack: true, failureCode: 'candidate_panel_startup_check_failed' }),
+    }, async (renderer) => {
+        const notice = renderer.root.find(node => node.props && node.props['data-previous-attempt'] !== undefined);
+        assert.equal(notice.props['data-previous-attempt'], 'recovered');
+        const text = textOf(notice);
+        assert.ok(text.includes(say('panelUpdate.previousAttempt.cause', { cause: say('recovery.reason.candidate_panel_startup_check_failed') })), text);
+        assert.ok(!text.includes(say('panelUpdate.previousAttempt.noCause')), 'the card said no cause was recorded');
+    });
+    const tracker = source('components/SystemUpdateOperation.tsx');
+    assert.match(tracker, /\.\.\.\(stoppedCause \? \{ failureCode: stoppedCause \} : \{\}\)/);
 });

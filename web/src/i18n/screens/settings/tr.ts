@@ -403,6 +403,7 @@ export const trSettingsScreens: Record<SettingsScreenKey, string> = {
     'panelUpdate.status.openSkipped': 'Açılışta yeniden denetlenmedi: {reason}.',
     'panelUpdate.status.openSkippedRecentUpdate': 'Açılışta yeniden denetlenmedi, çünkü bu sunucuda bir saatten kısa süre önce bir güncelleme başlatıldı.',
     'panelUpdate.status.openUnknown': 'Açılışta yapılan denetim zamanında yanıt vermedi; bu yüzden sonucu bilinmiyor.',
+    'panelUpdate.status.openUnread': 'Açılışta yapılan denetim okunamadı: panel bir hatayla ya da okunamayan bir yanıtla döndü.',
     'panelUpdate.status.shownFrom': 'Gösterilen, son denetimin sonucudur ({age}); şimdi de denetleyebilirsiniz.',
     'panelUpdate.status.lastChecked': 'Son denetim: {age}.',
     'panelUpdate.stoppedNoticeOpen': 'Önce durdurulan güncellemeyle ilgili bildirimi kapatın ("Bildirimi kapat"); ardından bu düğme {version} güncellemesini başlatır. Hiçbir işlem kendiliğinden başlamaz.',

@@ -1,7 +1,7 @@
 import { prepareRecoveryShell } from '../lib/recoveryShell';
 import { systemUpdateFailureMessage, systemUpdatePackageManagerBusy } from '../lib/systemUpdateFailure';
 import { failedUpdateGuidance, SYSTEM_UPDATE_UNKNOWN_OUTCOME_LIMIT_MS, type OutcomeText, type SystemUpdateOutcomeTone } from '../lib/systemUpdateOutcome';
-import { isPreflightStop, parseRecoveryObservation, reconcileRecoveryObservation, UPDATE_MARKER_KEY, type RecoveryObservation } from '../lib/recoveryObservation';
+import { isPreflightStop, parseRecoveryObservation, reconcileRecoveryObservation, UPDATE_MARKER_KEY, type RecoveryFailureCode, type RecoveryObservation } from '../lib/recoveryObservation';
 import {
     createContext,
     useCallback,
@@ -225,6 +225,8 @@ export type SystemUpdateStopped = {
     packageManagerBusy: boolean;
     /** A verified return to the previous version rather than a stop before any change. */
     rolledBack: boolean;
+    /** The recovery record's typed cause for this request, when it gives one. */
+    failureCode?: RecoveryFailureCode;
 };
 
 type PendingRenderCommit = {
@@ -2129,6 +2131,8 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
     // whenever the update lock was held. A request that ended unchanged or
     // verified back is said to the card, which shows them again.
     // Bildirim acikken kart bos kaliyordu; degistirmeden duran istek karta soylenir.
+    const stoppedCause = displayedTerminal?.kind === 'failed' && failedObservation?.requestID === displayedTerminal.marker.request_id
+        ? failedObservation.observation?.failure_code : undefined;
     const stopped: SystemUpdateStopped | null = displayedTerminal?.kind === 'failed'
         && (failureGuidance?.state === 'unchanged' || failureGuidance?.state === 'rolled_back')
         ? {
@@ -2138,6 +2142,7 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
             at: displayedTerminal.completedAt ?? displayedTerminal.marker.created_at,
             packageManagerBusy: systemUpdatePackageManagerBusy(displayedTerminal.message),
             rolledBack: failureGuidance.state === 'rolled_back',
+            ...(stoppedCause ? { failureCode: stoppedCause } : {}),
         }
         : null;
     // A line whose text lives in a screen catalogue part shows its own words

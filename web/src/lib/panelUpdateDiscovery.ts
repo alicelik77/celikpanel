@@ -227,9 +227,12 @@ export const discoveryRefreshOutcomes = ['checked', 'fresh', 'off', 'skipped', '
  * What opening the update screen did: checked (the result is the stored one
  * now), fresh (no read: the known result is recent), off (automatic checks
  * are off: nothing was asked), skipped (a condition was not met; reason),
- * unknown (no answer in time, or the answer could not be read).
+ * unknown (no answer in time: its result is not known). `unread` is this
+ * browser's own: the Panel answered, but with an error (for example 503 or
+ * 429) or a reply that is not the closed shape (D-024: a verified failure of
+ * the read, kept apart from an unknown result).
  */
-export type DiscoveryRefresh = { outcome: typeof discoveryRefreshOutcomes[number]; reason: DiscoveryReason | null };
+export type DiscoveryRefresh = { outcome: typeof discoveryRefreshOutcomes[number] | 'unread'; reason: DiscoveryReason | null };
 
 /** Whether opening the update screen asks the Panel to check again. */
 export function panelUpdateOpenCheckDue(value: PanelUpdateDiscovery | null, now: number): boolean {
@@ -247,14 +250,28 @@ export function refreshPanelUpdateDiscoveryOnOpen(): Promise<DiscoveryRefresh> {
     const controller = new AbortController();
     const timer = globalThis.setTimeout(() => controller.abort(), PANEL_UPDATE_DISCOVERY_REFRESH_TIMEOUT_MS);
     refreshInFlight = (async (): Promise<DiscoveryRefresh> => {
+        let response: Response;
         try {
-            const response = await fetch(PANEL_UPDATE_DISCOVERY_REFRESH_URL, {
+            response = await fetch(PANEL_UPDATE_DISCOVERY_REFRESH_URL, {
                 cache: 'no-store', credentials: 'same-origin', signal: controller.signal,
             });
-            if (!response.ok) throw new Error(String(response.status));
-            const body = await response.json() as Record<string, unknown> | null;
+        } catch {
+            // No answer (the bound ran out, the connection was lost).
+            globalThis.clearTimeout(timer);
+            refreshInFlight = null;
+            return { outcome: 'unknown', reason: null };
+        }
+        try {
+            if (!response.ok) return { outcome: 'unread', reason: null };
+            let body: Record<string, unknown> | null;
+            try {
+                body = await response.json() as Record<string, unknown> | null;
+            } catch {
+                // A body cut by the bound is no answer; any other is unreadable.
+                return { outcome: controller.signal.aborted ? 'unknown' : 'unread', reason: null };
+            }
             const value = decodePanelUpdateDiscovery(body, Date.now());
-            if (!value || !body) throw new Error('invalid');
+            if (!value || !body) return { outcome: 'unread', reason: null };
             const raw = body.refresh as Record<string, unknown> | undefined;
             const outcome = raw && (discoveryRefreshOutcomes as readonly unknown[]).includes(raw.outcome)
                 ? raw.outcome as DiscoveryRefresh['outcome'] : 'unknown';
@@ -262,8 +279,6 @@ export function refreshPanelUpdateDiscoveryOnOpen(): Promise<DiscoveryRefresh> {
                 ? raw.reason_code as DiscoveryReason : null;
             publish({ status: 'ready', value, readAt: Date.now() });
             return { outcome, reason };
-        } catch {
-            return { outcome: 'unknown', reason: null };
         } finally {
             globalThis.clearTimeout(timer);
             refreshInFlight = null;
