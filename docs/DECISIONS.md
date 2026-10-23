@@ -660,8 +660,24 @@ alpha.104). D-029: the move route carries a request identity. D-036: Debian 13's
 phpMyAdmin version `4:5.2.2-really+dfsg-1+deb13u1` now reads 5.2.2 (the alpha.101
 rule required a digit after "really").
 
-Not done: nothing is measured on an installed server; the real-system evidence is a
-disposable Debian 13 machine (RESILIENCE-CONTRACT, alpha.104); pacman's path is
+Review corrections (2026-10-23, same candidate, after an independent review; the
+owner's rule: everything in alpha.104). They sharpen the rules above: (a) before
+"move them, then remove" moves any tool, the package manager must already accept
+the removal with nothing else to take, otherwise nothing moves; once tools moved,
+the answer names them with the refusal or with "not known"; (b) a removal leaves
+alone PHP extension packages of other PHP versions and packages that were already
+unused, and is checked again before and after its services stop, starting them
+again when the answer changed; (c) an install never removes a package; (d) a
+tool's configuration changed outside CelikPanel beyond its own generated form is
+not regenerated (D-022), and a remembered version that is gone is not used; (e) a
+tool whose PHP extension packages are missing for its version is "Not ready"
+(package presence, not proof of load); (f) another tool's PHP problem after an
+install is a warning, not a failed install; (g) a failed move's reason is said in
+the reader's language, an unexpected one quoted; (h) the removal route carries a
+request identity (D-029).
+
+Not done: nothing is measured on an installed server; the real-system evidence is two
+disposable Debian 13 machines (RESILIENCE-CONTRACT, alpha.104); pacman's path is
 covered by component tests only; the DNF path stays unreachable.
 
 ---

@@ -654,8 +654,24 @@ alpha.104). D-029: taşıma yolu bir istek kimliği taşır. D-036: Debian 13'ü
 sürümü `4:5.2.2-really+dfsg-1+deb13u1` artık 5.2.2 okunur (alpha.101 kuralı
 "really"den sonra bir rakam bekliyordu).
 
+İnceleme düzeltmeleri (2026-10-23, aynı aday, bağımsız bir incelemeden sonra;
+sahibin kuralı: her şey alpha.104'te). Yukarıdaki kuralları keskinleştirir: (a) "onları
+taşı, sonra kaldır" herhangi bir aracı taşımadan önce paket yöneticisi kaldırmayı
+başka bir şey almadan kabul etmiş olmalıdır, aksi hâlde hiçbir şey taşınmaz; araçlar
+taşındıysa yanıt onları retle ya da "bilinmiyor" ile birlikte adlandırır; (b) bir
+kaldırma başka PHP sürümlerinin eklenti paketlerine ve zaten kullanılmayan paketlere
+dokunmaz, hizmetleri durmadan önce ve durduktan sonra yeniden denetlenir ve yanıt
+değiştiyse onları yeniden başlatır; (c) bir kurulum asla paket kaldırmaz; (d) bir
+aracın CelikPanel dışında, kendi üretilen biçiminin ötesinde değiştirilmiş
+yapılandırması yeniden üretilmez (D-022) ve gitmiş hatırlanan sürüm kullanılmaz;
+(e) PHP eklenti paketleri sürümü için eksik olan araç "Hazır değil"dir (paket
+varlığı, yüklendiğinin kanıtı değil); (f) kurulumdan sonra başka bir aracın PHP
+sorunu uyarıdır, başarısız kurulum değil; (g) başarısız taşımanın nedeni okurun
+dilinde söylenir, beklenmeyen biri alıntılanır; (h) kaldırma yolu bir istek kimliği
+taşır (D-029).
+
 Yapılmayanlar: kurulu bir sunucuda hiçbir şey ölçülmedi; gerçek sistem kanıtı atılabilir
-bir Debian 13 makinesidir (RESILIENCE-CONTRACT, alpha.104); pacman yolu yalnız bileşen
+iki Debian 13 makinesidir (RESILIENCE-CONTRACT, alpha.104); pacman yolu yalnız bileşen
 testleriyle kapsanır; DNF yolu erişilmez kalır.
 
 ---

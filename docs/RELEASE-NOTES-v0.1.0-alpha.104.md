@@ -81,6 +81,55 @@ read never holds a removal.
 - phpMyAdmin on Debian 13 (`4:5.2.2-really+dfsg-1+deb13u1`) reads **5.2.2**, not
   "5.2.2-really" (alpha.101's rule needed a version after "really").
 
+## Corrections after the independent review
+
+An independent review of this candidate found gaps; the owner's rule was that all of
+them ship in alpha.104. Each is in source with tests:
+
+- **No tool moves before the package manager accepted the removal.** "Move them to
+  …, then remove" first asks the package manager, for the same version, what the
+  removal takes, and moves nothing unless it answered and takes nothing else
+  ("No tool was moved and nothing was removed: the package manager could not be
+  asked now …"). The move is offered only when the dialog's own check answered.
+- **Moves, then a refusal or a lost answer, are both said.** The dialog names the
+  tools that moved, then the refusal, then that the version was not removed — or,
+  when the removal's answer was lost, that whether it was removed is not known —
+  and reads the versions, the check and the components again. The removal request
+  carries a request identity: a lost answer is asked for again once, never run
+  twice.
+- **"No other PHP version is installed"** is said only when the installed versions
+  were read; otherwise "could not be read now" with Retry.
+- **A failed move's reason is said in English or Turkish** from its facts (missing
+  extensions, the PHP version that answered, an HTTP status, nginx refusing or not
+  reloading); a reason the screen does not know is quoted as "the server said: …".
+  When the previous configuration could not be fully put back, the sentence says
+  which step failed. A gateway's page in place of the answer is "not known".
+- **A tool whose PHP extension packages are missing for its version is "Not
+  ready"**, with "choose PHP x.y again in Manage: the move installs them". This
+  reads installed packages, not whether PHP loaded them; the move's proof checks
+  the loaded extensions.
+- **Another tool's PHP problem no longer fails an install.** Installing phpMyAdmin
+  or phpPgAdmin while another tool's PHP needs attention installs it and shows a
+  warning naming that tool and the fix.
+- **A tool reinstalled after its PHP version was removed** gets the default PHP,
+  not the removed version it was once bound to.
+- **Owner edits are not overwritten (D-022).** A database tools or webmail
+  configuration changed outside CelikPanel is not regenerated; the answer names the
+  file and the next action. The database tools configuration is written atomically
+  and put back with its mode and owner when nginx refuses it.
+- **A removal leaves alone** PHP extension packages of other PHP versions (sites
+  may use them) and packages that were already unused (no false refusal from an
+  old orphan). It is checked again before and after its services are stopped; if
+  the answer changed, the services are started again and nothing is removed.
+- **An install never removes a package.** The component install and a tool's
+  extension install are simulated first and refused, naming the packages, if they
+  would remove any.
+- **Wording.** "Could not be checked" no longer names apt on pacman systems; a
+  refusal for packages that depend on the removed one no longer says "remove the
+  component they belong to".
+- **Phone targets.** The component page's back link, Help and the log's filter and
+  Refresh are 44 px tall on a phone.
+
 ## Unchanged
 
 Sites still choose their PHP version in their own settings. The updater, the
@@ -88,31 +137,42 @@ schema (44) and every installed server are unchanged; only the owner updates.
 
 ## Evidence on the candidate
 
-- Agent: the whole package in a clean mount namespace, 4,702 tests passed (1,857
-  top-level), 29 skipped, 0 failed; new tests for APT's simulation output (Purg,
-  Remv, Inst, foreign architectures), the Frankfurt refusal, version packages and
-  new orphans accepted, old orphans left alone, refusal before any unit stops, the
-  same arguments for the last simulation and the removal, the package lock held,
-  a changed answer refused, a failed simulation refused, pacman's print and its
-  "breaks dependency" refusal, bound tools refusing a version removal, the
-  read-only preview never waiting for the lock, the binding rules (kept, gone,
-  defaults, numeric order), the verified move with its rollback and its typed
-  refusals, the PHP check, the step policy.
-- Panel and internal packages (45-minute limit, CGO off): 7,238 passed, 44
-  skipped, 0 failed, 64 packages; gofmt and go vet clean.
-- Web: 1,772 tests passed (new mounted tests of the version-removal dialog, the
-  component removal dialog with collateral, the versions list, the not-ready row,
-  the phpMyAdmin version cell and the tool's PHP version card, in English and
-  Turkish); the build within every budget.
-- Real system: a disposable Debian 13 virtual machine (QEMU/KVM, destroyed after
-  the run): the Frankfurt removal refused by apt's own simulation with phpmyadmin
-  and phppgadmin named and nothing changed; a clean removal removed exactly the
-  simulated list; phpPgAdmin moved to PHP 8.5 and proved, and a move whose proof
-  failed put back byte for byte ([evidence](../deploy/e2e/removal-safety/alpha104-debian13-20261023/README.md),
-  archive SHA-256 `61714759…2ec1`). Two earlier runs failed and led to two fixes,
-  recorded there.
-- Browser inspection batch 27: 11 states in each of 8 configurations (EN/TR,
-  light/dark, 1440/390), looked at, fixed, looked at again.
+- Agent: the whole package in a clean mount namespace, 4,709 tests passed (1,864
+  top-level), 29 skipped, 0 failed; besides the tests listed for the first round,
+  new tests for other versions' extension packages and old orphans left alone, the
+  check again after the stop with the services started again, an install that
+  would remove packages refused, the stale record, owner-edited configurations
+  kept (alpha.103's and alpha.104's own forms recognised), the exact restore step,
+  the structured cause and the extension-package presence.
+- Panel and internal packages (45-minute limit, CGO off): 7,239 passed, 44
+  skipped, 0 failed, 64 packages; gofmt and go vet clean (also with the
+  real-system build tag).
+- Web: 1,783 tests passed (new: the move offered only after the check answered,
+  moves then a refusal, moves then a lost answer, unread versions with Retry, the
+  missing-extensions row and card, the cause in English and Turkish, a gateway's
+  page as "not known", the install warning, the removal route asked again, the
+  phone targets); the build within every budget.
+- Real system, two disposable Debian 13 virtual machines (QEMU/KVM, destroyed after
+  each run). First run: the Frankfurt removal refused by apt's own simulation with
+  phpmyadmin and phppgadmin named and nothing changed; a clean removal removed
+  exactly the simulated list; phpPgAdmin moved to PHP 8.5 and proved, and a move
+  whose proof failed put back byte for byte
+  ([evidence](../deploy/e2e/removal-safety/alpha104-debian13-20261023/README.md),
+  archive SHA-256 `61714759…2ec1`; two earlier runs failed and led to two fixes,
+  recorded there). Second run, after the review, on the final Agent code: the same
+  two removals; Roundcube installed by the Agent's own code and answering on PHP
+  8.4; webmail moved to PHP 8.5 and proved, moved back, and a move whose proof
+  failed (intl off for 8.5's FPM) refused with the cause `missing_extensions`/intl
+  and restored byte for byte; the Agent's real uninstall of PHP-FPM 8.4 refused
+  with REMOVAL_TOOLS_BOUND naming phpmyadmin, phppgadmin and webmail, the package
+  set unchanged and php8.4-fpm still active
+  ([evidence](../deploy/e2e/removal-safety/alpha104-review-debian13-20261023/README.md),
+  archive SHA-256 `8f9dca04…2a44ce2`).
+- Browser inspection batch 27: 17 states in each of 8 configurations (EN/TR,
+  light/dark, 1440/390), including the review states; no raw key, no English on a
+  Turkish page, no control under 44 px on a phone, no sideways overflow; looked at,
+  fixed (the refusal after moves now stands beside them on a phone; a card lacking
+  extensions preselects its version), looked at again.
 - In a fresh clone in the `archlinux` guest: the release sequence (103 → 104),
   download portal and signed manifest contracts, and the offline release-recovery
   harness (1,109 tests, 1 skipped) passed.
@@ -120,14 +180,11 @@ schema (44) and every installed server are unchanged; only the owner updates.
 ## Known gaps
 
 - Nothing is measured on an installed server.
-- pacman's removal path is covered by component tests only; DNF stays unreachable.
-- Roundcube's move was not run in the virtual machine (same code, its own socket).
-- The Components row says "Not ready" when a tool's PHP socket is missing; a PHP
-  that runs without the tool's extensions is found by a move's proof, not by the
+- pacman's removal and install-guard paths are covered by component tests only; the
+  DNF path stays unreachable.
+- The Panel's "move, then remove" request, the browser and the Agent RPCs were not
+  part of the virtual-machine runs (component and mounted tests cover them).
+- "Not ready · missing extensions" reads installed packages; a PHP that has the
+  packages but does not load an extension is found by a move's proof, not by the
   scan.
-- The uninstall request is not guarded by a request identity (as before); a
-  repeated "move, then remove" repeats verified moves and finds nothing to remove.
-- In Turkish, the cause of a failed move is quoted as the Agent says it (English).
-- The component page's back link, Help and log Refresh are smaller than 44 px on
-  a phone (as before this release).
 - P0.1–P0.5 stay partial; no P0 item is closed or advanced.

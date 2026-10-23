@@ -82,6 +82,53 @@ kaldıracaksa reddedilir." Başarısız bir okuma kaldırmayı asla tutmaz.
 - Debian 13'teki phpMyAdmin (`4:5.2.2-really+dfsg-1+deb13u1`) "5.2.2-really" değil
   **5.2.2** okunur (alpha.101 kuralı "really"den sonra bir sürüm bekliyordu).
 
+## Bağımsız incelemeden sonraki düzeltmeler
+
+Bu adayın bağımsız incelemesi eksikler buldu; sahibin kuralı hepsinin alpha.104'te
+çıkmasıydı. Her biri testleriyle birlikte kaynakta:
+
+- **Paket yöneticisi kaldırmayı kabul etmeden hiçbir araç taşınmaz.** "Onları …'e
+  taşı, sonra kaldır" önce aynı sürüm için paket yöneticisine kaldırmanın neyi
+  alacağını sorar; yanıt gelmedikçe ve başka bir şey almıyorsa hiçbir şeyi taşımaz
+  ("Hiçbir araç taşınmadı, hiçbir şey kaldırılmadı: … şu an paket yöneticisine
+  sorulamadı …"). Taşıma yalnız pencerenin kendi denetimi yanıt aldığında sunulur.
+- **Taşımalar ve ardından gelen ret ya da kaybolan yanıt birlikte söylenir.**
+  Pencere taşınan araçları, sonra reddi, sonra sürümün kaldırılmadığını — ya da
+  kaldırmanın yanıtı kaybolduysa kaldırılıp kaldırılmadığının bilinmediğini —
+  söyler; sürümleri, denetimi ve bileşenleri yeniden okur. Kaldırma isteği bir istek
+  kimliği taşır: kaybolan yanıt bir kez yeniden sorulur, asla iki kez çalışmaz.
+- **"Başka PHP sürümü kurulu değil"** yalnız kurulu sürümler okunduğunda söylenir;
+  aksi hâlde "şu an okunamadı" ve Yeniden dene.
+- **Başarısız taşımanın nedeni Türkçe ya da İngilizce söylenir**; olgularından
+  (eksik eklentiler, yanıt veren PHP sürümü, HTTP durumu, nginx'in reddetmesi ya da
+  yeniden yüklenmemesi). Ekranın bilmediği bir neden "sunucunun söylediği: …"
+  diye alıntılanır. Önceki yapılandırma tam geri konamadığında cümle hangi adımın
+  başarısız olduğunu söyler. Yanıtın yerine gelen geçit sayfası "bilinmiyor"dur.
+- **PHP eklenti paketleri sürümü için eksik olan araç "Hazır değil"** der; "Yönet'te
+  PHP x.y'yi yeniden seçin: taşıma onları kurar". Okunan kurulu paketlerdir,
+  PHP'nin onları yüklediği değil; taşımanın kanıtı yüklenen eklentileri denetler.
+- **Başka bir aracın PHP sorunu artık kurulumu düşürmez.** Başka bir aracın PHP'si
+  ilgi isterken phpMyAdmin ya da phpPgAdmin kurmak onu kurar ve o aracı ve çaresini
+  söyleyen bir uyarı gösterir.
+- **PHP sürümü kaldırıldıktan sonra yeniden kurulan araç** bir zamanlar bağlı olduğu
+  kaldırılmış sürümü değil, varsayılan PHP'yi alır.
+- **Sahibin düzenlemesinin üzerine yazılmaz (D-022).** CelikPanel dışında
+  değiştirilmiş bir veritabanı araçları ya da web postası yapılandırması yeniden
+  üretilmez; yanıt dosyayı ve sonraki adımı söyler. Veritabanı araçları
+  yapılandırması atomik yazılır; nginx reddederse kipi ve sahibiyle geri konur.
+- **Bir kaldırma**, başka PHP sürümlerinin eklenti paketlerine (siteler
+  kullanıyor olabilir) ve zaten kullanılmayan paketlere dokunmaz (eski bir öksüz
+  yanlış ret doğurmaz). Hizmetleri durdurulmadan önce ve sonra yeniden denetlenir;
+  yanıt değiştiyse hizmetler yeniden başlatılır ve hiçbir şey kaldırılmaz.
+- **Bir kurulum asla paket kaldırmaz.** Bileşen kurulumu ve bir aracın eklenti
+  kurulumu önce benzetilir; herhangi bir paketi kaldıracaksa paketleri adlandırarak
+  reddedilir.
+- **Sözcükler.** "Denetlenemedi" artık pacman sistemlerinde apt adını anmaz;
+  kaldırılana bağlı paketler için ret artık "ait oldukları bileşeni kaldırın"
+  demez.
+- **Telefon hedefleri.** Bileşen sayfasının geri bağlantısı, Yardım ve günlüğün
+  süzgeci ile Yenile düğmesi telefonda 44 piksel yüksekliğindedir.
+
 ## Değişmeyenler
 
 Siteler PHP sürümlerini hâlâ kendi ayarlarından seçer. Güncelleyici, şema (44) ve
@@ -89,31 +136,41 @@ kurulu her sunucu değişmez; yalnız sahip günceller.
 
 ## Aday üzerindeki kanıt
 
-- Agent: paketin tamamı temiz bir bağlama ad alanında, 4.702 test geçti (1.857 üst
-  düzey), 29 atlandı, 0 başarısız; APT benzetim çıktısı (Purg, Remv, Inst, yabancı
-  mimariler), Frankfurt reddi, sürüm paketleri ve yeni öksüzlerin kabulü, eski
-  öksüzlere dokunulmaması, hiçbir unit durmadan ret, son benzetim ile kaldırmada
-  aynı argümanlar, tutulan paket kilidi, değişen yanıtın ve başarısız benzetimin
-  reddi, pacman çıktısı ve "breaks dependency" reddi, bağlı araçların sürüm
-  kaldırmayı reddetmesi, kilidi beklemeyen salt-okur önizleme, bağ kuralları
-  (korunur, gitti, varsayılanlar, sayısal sıra), doğrulanan taşıma ile geri alması
-  ve türlü retleri, PHP denetimi ve adım politikası için yeni testler.
-- Panel ve iç paketler (45 dakika sınırı, CGO kapalı): 7.238 geçti, 44 atlandı, 0
-  başarısız, 64 paket; gofmt ve go vet temiz.
-- Web: 1.772 test geçti (sürüm kaldırma penceresi, ek kaybı adlandıran bileşen
-  kaldırma penceresi, sürüm listesi, hazır olmayan satır, phpMyAdmin sürüm hücresi
-  ve aracın PHP sürümü kartı için İngilizce ve Türkçe yeni bağlanmış testler);
-  derleme her bütçenin içinde.
-- Gerçek sistem: atılabilir bir Debian 13 sanal makinesi (QEMU/KVM, koşudan sonra
-  yok edildi): Frankfurt kaldırması apt'nin kendi benzetimiyle phpmyadmin ve
-  phppgadmin adıyla reddedildi ve hiçbir şey değişmedi; temiz bir kaldırma tam
-  olarak benzetim listesini kaldırdı; phpPgAdmin PHP 8.5'e taşındı ve kanıtlandı,
-  kanıtı başarısız olan bir taşıma bayt bayt geri alındı
+- Agent: paketin tamamı temiz bir bağlama ad alanında, 4.709 test geçti (1.864 üst
+  düzey), 29 atlandı, 0 başarısız; ilk turda sayılan testlerin yanında başka
+  sürümlerin eklenti paketlerine ve eski öksüzlere dokunulmaması, durdurmadan sonra
+  yeniden denetim ve hizmetlerin yeniden başlatılması, paket kaldıracak bir
+  kurulumun reddi, eskimiş kayıt, sahibin düzenlediği yapılandırmaların korunması
+  (alpha.103'ün ve alpha.104'ün kendi biçimleri tanınır), tam geri koyma adımı,
+  yapılandırılmış neden ve eklenti paketi varlığı için yeni testler.
+- Panel ve iç paketler (45 dakika sınırı, CGO kapalı): 7.239 geçti, 44 atlandı, 0
+  başarısız, 64 paket; gofmt ve go vet temiz (gerçek sistem derleme etiketiyle de).
+- Web: 1.783 test geçti (yeni: denetim yanıt verdikten sonra sunulan taşıma,
+  taşımalar sonra ret, taşımalar sonra kaybolan yanıt, Yeniden dene ile okunamayan
+  sürümler, eksik eklenti satırı ve kartı, İngilizce ve Türkçe neden, "bilinmiyor"
+  sayılan geçit sayfası, kurulum uyarısı, yeniden sorulan kaldırma yolu, telefon
+  hedefleri); derleme her bütçenin içinde.
+- Gerçek sistem, iki atılabilir Debian 13 sanal makinesi (QEMU/KVM, her koşudan
+  sonra yok edildi). İlk koşu: Frankfurt kaldırması apt'nin kendi benzetimiyle
+  phpmyadmin ve phppgadmin adıyla reddedildi ve hiçbir şey değişmedi; temiz bir
+  kaldırma tam olarak benzetim listesini kaldırdı; phpPgAdmin PHP 8.5'e taşındı ve
+  kanıtlandı, kanıtı başarısız olan bir taşıma bayt bayt geri alındı
   ([kanıt](../deploy/e2e/removal-safety/alpha104-debian13-20261023/README.md),
-  arşiv SHA-256 `61714759…2ec1`). Önceki iki koşu başarısız oldu ve orada kayıtlı
-  iki düzeltmeye yol açtı.
-- Tarayıcı incelemesi 27. grup: 8 yapılandırmanın her birinde 11 durum (EN/TR,
-  açık/koyu, 1440/390); bakıldı, düzeltildi, yeniden bakıldı.
+  arşiv SHA-256 `61714759…2ec1`; önceki iki koşu başarısız oldu ve orada kayıtlı iki
+  düzeltmeye yol açtı). İkinci koşu, incelemeden sonra, son Agent koduyla: aynı iki
+  kaldırma; Roundcube Agent'ın kendi koduyla kuruldu ve PHP 8.4'te yanıt verdi; web
+  postası PHP 8.5'e taşındı ve kanıtlandı, geri taşındı, kanıtı başarısız olan bir
+  taşıma (8.5'in FPM'inde intl kapalı) `missing_extensions`/intl nedeniyle
+  reddedildi ve bayt bayt geri alındı; Agent'ın PHP-FPM 8.4'ü gerçek kaldırması
+  phpmyadmin, phppgadmin ve webmail adıyla REMOVAL_TOOLS_BOUND ile reddedildi, paket
+  kümesi değişmedi ve php8.4-fpm çalışır kaldı
+  ([kanıt](../deploy/e2e/removal-safety/alpha104-review-debian13-20261023/README.md),
+  arşiv SHA-256 `8f9dca04…2a44ce2`).
+- Tarayıcı incelemesi 27. grup: 8 yapılandırmanın her birinde 17 durum (EN/TR,
+  açık/koyu, 1440/390), inceleme durumları dahil; ham anahtar yok, Türkçe sayfada
+  İngilizce yok, telefonda 44 pikselden küçük denetim yok, yana taşma yok; bakıldı,
+  düzeltildi (taşımalardan sonraki ret telefonda artık onların yanında; eklentisi
+  eksik kart kendi sürümünü seçili getirir), yeniden bakıldı.
 - `archlinux` konuğunda temiz bir klonda: sürüm sırası (103 → 104), indirme portalı
   ve imzalı bildirim sözleşmeleri ile çevrimdışı sürüm kurtarma düzeneği (1.109 test,
   1 atlandı) geçti.
@@ -121,14 +178,10 @@ kurulu her sunucu değişmez; yalnız sahip günceller.
 ## Bilinen eksikler
 
 - Kurulu bir sunucuda hiçbir şey ölçülmedi.
-- pacman kaldırma yolu yalnız bileşen testleriyle kapsanır; DNF erişilmez kalır.
-- Roundcube'un taşınması sanal makinede koşturulmadı (aynı kod, kendi soketi).
-- Bileşenler satırı bir aracın PHP soketi yoksa "Hazır değil" der; aracın
-  eklentileri olmadan çalışan bir PHP taramayla değil, taşımanın kanıtıyla bulunur.
-- Kaldırma isteği bir istek kimliğiyle korunmaz (önceki gibi); yinelenen "taşı, sonra
-  kaldır" doğrulanmış taşımaları yineler ve kaldıracak bir şey bulmaz.
-- Türkçede başarısız bir taşımanın nedeni Agent'ın söylediği gibi (İngilizce)
-  aktarılır.
-- Bileşen sayfasının geri bağlantısı, Yardım ve günlük Yenile düğmesi telefonda 44
-  pikselden küçüktür (bu sürümden önce de öyleydi).
+- pacman kaldırma ve kurulum koruması yolları yalnız bileşen testleriyle kapsanır;
+  DNF yolu erişilmez kalır.
+- Panel'in "taşı, sonra kaldır" isteği, tarayıcı ve Agent RPC'leri sanal makine
+  koşularının parçası değildi (bileşen ve bağlanmış testler kapsar).
+- "Hazır değil · eksik eklentiler" kurulu paketleri okur; paketleri olup bir
+  eklentiyi yüklemeyen bir PHP taramayla değil, taşımanın kanıtıyla bulunur.
 - P0.1–P0.5 kısmi kalır; hiçbir P0 işi kapatılmaz ya da ilerletilmez.

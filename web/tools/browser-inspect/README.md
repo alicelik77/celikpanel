@@ -712,6 +712,7 @@ English, both themes (about 40 seconds each); each state is also copied to
 | `y27versions` | the versions list saying who uses each version (`versions-usage`); removing PHP 8.4 when the package manager would also take phpMyAdmin, phpPgAdmin and the distribution's PHP packages and the tools run on it (`version-removal-frankfurt`, Remove not offered); only tools on it (`version-removal-move`), the move running (`version-removal-moving`) and failing for Roundcube (`version-removal-move-failed`); the read held open (`version-removal-checking`) |
 | `y27removal` | the Components page with phpPgAdmin "Not ready" (`components-not-ready`); removing MariaDB when the package manager would also take phpMyAdmin (`removal-collateral`) |
 | `y27tool` | phpPgAdmin's Manage window: the PHP version card (`tool-php-version`), a move running (`tool-php-version-moving`) and a move put back (`tool-php-version-restored`) |
+| `y27review` | The review corrections: tools moved, then the removal refused (`review-moved-then-refused`); the installed versions not read (`review-versions-unknown`); the package manager busy, no move offered (`review-check-busy`); a tool lacking extension packages on the row (`review-row-extensions`) and the card (`review-tool-extensions`); a failed move's cause in the reader's language (`review-tool-cause`) |
 
 Each record adds raw keys, English on the Turkish page, the usage lines, the row
 states and not-ready lines, the dialog's simulation lines, move choice and

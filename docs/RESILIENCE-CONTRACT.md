@@ -7575,8 +7575,8 @@ update and automatic-rollback resilience is complete.
   <list>`, repeated right before it, all under `packageOperationMu`; pacman's
   `-Rns --print` and its "breaks dependency" refusal; DNF stays unreachable. The
   uninstall plans before any unit is stopped. New read-only
-  `Agent.ServiceRemovalPreviewV1` (never waits for the package lock; bounded at 45
-  seconds) and `Agent.PHPToolBindingsV1`; new host mutation
+  `Agent.ServiceRemovalPreviewV1` (never waits for the package lock; bounded at 25
+  seconds, under the Panel's 30) and `Agent.PHPToolBindingsV1`; new host mutation
   `Agent.BindPHPToolV1` in its own `php_tool_bind` job and step claim. Webmail,
   phpMyAdmin and phpPgAdmin bindings (`php_tool_binding.go`): the generated nginx
   line is the truth (an owner's edit wins), remembered in
@@ -7624,29 +7624,63 @@ update and automatic-rollback resilience is complete.
   back to alpha.103* (for example after a rollback): alpha.103 ignores the record
   and the check location; its next regeneration would again choose the lexically
   last socket (alpha.103's behaviour); the check script stays harmless and unused.
-- **Evidence.** Agent package in a clean mount namespace: 4,702 passed (1,857
+- **Review corrections (same candidate, after an independent review).** Invariant
+  1 and 3: the Panel asks the Agent's read-only removal check for the same package
+  before moving any tool and moves nothing unless it answered "checked" with
+  nothing else to take (REMOVAL_CHECK_UNAVAILABLE / REMOVAL_WOULD_REMOVE_OTHERS);
+  once tools moved, every non-removal answer carries them
+  (REMOVAL_UNKNOWN_AFTER_MOVES for a lost Agent answer) and the components are
+  scanned again; `/api/v1/service/uninstall` is request-identity guarded (D-029)
+  with a limit covering three moves and the removal. The removal plan is simulated
+  again before the units stop and once more after; a change after the stop starts
+  the units again (PLAN_CHANGED means nothing changed; a failed restart is a
+  partial change). Orphan extras that are PHP extension packages of another
+  version, and pre-existing orphans, are left alone (no false refusal). Installs
+  (`installPackagesContext`, the pinned install) simulate their exact arguments and
+  refuse any removal. Invariant 2 and 6: a failed move carries a structured cause
+  (`missing_extensions`, `wrong_version`, `http_status`, `nginx_rejected`, …)
+  translated on the screen, unknown kinds quoted; restore wording names the step
+  that failed; a gateway's page in place of an answer is "unknown"; "no other
+  version" is said only when the versions were read; each binding carries
+  `extensions_present` (package presence, not proof of load) and the row says "Not
+  ready" when it is false. D-022: a database tools or webmail configuration changed
+  beyond CelikPanel's own form (alpha.103's and alpha.104's) is not regenerated
+  (PHP_TOOL_CONFIG_OWNER_EDITED); the tools configuration is written atomically and
+  restored from a snapshot with its mode and owner. A remembered binding whose
+  version is gone is not used. Another tool's PHP problem after a tools install is
+  a warning (`php_tool_problems`), not a failed install. Schema unchanged; the
+  additive fields (`cause`, `extensions_present`, `tool_problems`) are ignored by
+  alpha.103.
+- **Evidence.** Agent package in a clean mount namespace: 4,709 passed (1,864
   top-level), 29 skipped, 0 failed. Panel and internal packages (45-minute limit,
-  CGO off): 7,238 passed, 44 skipped, 0 failed, 64 packages; gofmt and go vet
-  clean. Web 1,772 passed; build within its budgets. Browser batch 27 (11 states ×
-  8 configurations; looked, fixed, looked again). Fresh clone in `archlinux`: the
-  sequence (103 → 104), portal and manifest contracts and the offline
-  release-recovery harness (1,109 tests, 1 skipped). **Real system:** a disposable
-  Debian 13 VM (QEMU/KVM), the build-tagged Agent test from a fresh clone of the candidate branch (its commit is in the archive's `evidence/commit.txt`): the Frankfurt
-  removal refused with phpmyadmin and phppgadmin named and the package set
-  unchanged; a clean removal removed exactly the simulated list; phpPgAdmin moved
-  to PHP 8.5 (extensions installed by the Agent) and proved through its socket;
-  with pgsql missing in PHP 8.5's FPM a move was refused by the proof and restored
-  byte for byte ([evidence](../deploy/e2e/removal-safety/alpha104-debian13-20261023/README.md),
-  archive SHA-256 `617147598c5cdbb67e2356aa1cc486a1c649837433c142101933d6c536982ec1`).
-  Two earlier runs failed and are recorded there: the tool's page alone did not
-  prove its extensions (the PHP check was added), and nginx's old workers answered
-  right after a reload (the proof now waits up to 20 seconds). Component tests and
-  one virtual machine do not establish behaviour on installed servers.
-- **Open.** Nothing measured on an installed server; pacman's removal path by
-  component tests only, DNF unreachable; Roundcube's move not run in the VM; the
-  scan's not-ready state rests on the socket's existence (a PHP without the tool's
-  extensions is found by a move's proof, not by the scan); the uninstall route is
-  not request-identity guarded (a repeated "move, then remove" repeats verified
-  moves); in Turkish a failed move's cause is quoted in the Agent's English;
-  pre-existing small phone targets on the component page. Everything the alpha.90
-  to alpha.103 entries leave open stays open. P0.1 to P0.5 stay partial.
+  CGO off): 7,239 passed, 44 skipped, 0 failed, 64 packages; gofmt and go vet clean.
+  Web 1,783 passed; build within its budgets. Browser batch 27 (17 states × 8
+  configurations, including the review states; looked, fixed, looked again). Fresh
+  clone in `archlinux`: the sequence (103 → 104), portal and manifest contracts and
+  the offline release-recovery harness (1,109 tests, 1 skipped). **Real system, two
+  disposable Debian 13 VMs (QEMU/KVM)**, the build-tagged Agent test from a fresh
+  clone of the candidate branch (each archive's `evidence/commit.txt`). First run:
+  the Frankfurt removal refused with phpmyadmin and phppgadmin named and the
+  package set unchanged; a clean removal removed exactly the simulated list;
+  phpPgAdmin moved to PHP 8.5 and proved; a move whose proof failed restored byte
+  for byte ([evidence](../deploy/e2e/removal-safety/alpha104-debian13-20261023/README.md),
+  archive SHA-256 `617147598c5cdbb67e2356aa1cc486a1c649837433c142101933d6c536982ec1`;
+  two earlier runs failed and are recorded there: the page alone did not prove the
+  extensions, and old nginx workers answered right after a reload). Second run,
+  after the review, on the final Agent code: the same two removals; Roundcube
+  installed by the Agent's own code and answering on 8.4; webmail moved to 8.5,
+  proved, moved back, and a failing proof (intl off for 8.5's FPM) refused with the
+  cause `missing_extensions`/intl and restored byte for byte; the Agent's real
+  uninstall of PHP-FPM 8.4 refused with REMOVAL_TOOLS_BOUND, the package set
+  unchanged and php8.4-fpm active
+  ([evidence](../deploy/e2e/removal-safety/alpha104-review-debian13-20261023/README.md),
+  archive SHA-256 `8f9dca047f4412fa1196269ca02a199ac740bcb879b6846aa57b892492a44ce2`).
+  Component tests and two virtual machines do not establish behaviour on installed
+  servers.
+- **Open.** Nothing measured on an installed server; pacman's removal and
+  install-guard paths by component tests only, DNF unreachable; the Panel's
+  "move, then remove" request, the browser and the Agent RPCs were not part of the
+  VM runs; "Not ready · missing extensions" reads package presence (a PHP that has
+  the packages but does not load an extension is found by a move's proof).
+  Everything the alpha.90 to alpha.103 entries leave open stays open. P0.1 to P0.5
+  stay partial.
