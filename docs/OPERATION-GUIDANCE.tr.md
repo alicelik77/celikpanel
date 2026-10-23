@@ -9176,7 +9176,10 @@ bilgidir, asla alarm değildir.
 
 **Sahip her durumda ne görür.** Bunların hiçbirini yöneticiler dışında kimse
 görmez ya da okumaz. Güncelleme kartı, bir düğmeye basılmadan ve sürüm sunucusuna
-çağrı yapılmadan, kayıtlı sonucu bilerek açılır. Tek bir durum satırı vardır:
+çağrı yapılmadan, kayıtlı sonucu bilerek açılır. (alpha.103 adayından beri,
+bilinen sonuç on dakikadan eskiyse ve otomatik denetim açıksa açılışta yeniden
+denetler; aşağıda "Alpha.100'deki kurulu sunucular: Frankfurt'ta eski teklif,
+Boston'da boş kart" bölümüne bakın.) Tek bir durum satırı vardır:
 
 | Durum | Durum satırı ne der |
 |---|---|
@@ -9940,4 +9943,60 @@ alpha.102 gözlemi güncelledikten sonra gelir, Beta 1'de iki sunucunun temiz
 yeniden kurulması yaklaşan kabul adımıdır, yayımlanmış bir iddia değil. Kurulum
 planının iletişim e-postası gereksinimi karara bağlandı (zorunlu kalır ve
 kurulumda denetlenir). Bu girdi için hiçbir metin ya da ekran değiştirilmedi.
+P0.1-P0.5 **kısmi** kalır; bu girdi hiçbir şeyi kapatmaz ya da ilerletmez.
+
+### Alpha.100'deki kurulu sunucular: Frankfurt'ta eski teklif, Boston'da boş kart (D-035 değişikliği, 2026-10-23)
+
+Sahibin 23 Ekim 2026'da, iki sunucu da alpha.100'deyken gördükleri ve
+v0.1.0-alpha.103 adayında kaynakta değişenler (yayımlanmadı; kurulu bir sunucuda
+hiçbir şey ölçülmedi).
+
+- **Frankfurt: alpha.102 yayımdayken güncelleme ekranı alpha.101'i sundu.** Kenar
+  çubuğu "Update available · v0.1.0-alpha.101" diyordu; açılan ekran, "Check for
+  updates"e basılana kadar 12 saatlik zamanlamanın sonucu olan alpha.101'i sundu.
+  Sahip ardından Frankfurt'u kendisi alpha.102'ye güncelledi; güncelleme başarılı
+  oldu. **Artık:** Ayarlar → CelikPanel güncellemeleri açılınca, bilinen sonuç on
+  dakikadan eskiyse ve otomatik denetim açıksa yeniden denetlenir. **Kim işlem
+  yapar:** kimse. **Ne görünür:** "celikpanel.net'te en yeni sürüm
+  denetleniyor…", "Bu denetimden önce bilinen: v0.1.0-alpha.101 sürümü var (13 saat
+  önce bulundu).", "Güncelleme düğmesi bu yanıtı bekler, en çok bir dakika kadar.
+  Hiçbir işlem kendiliğinden başlamaz."; ardından en yeni sürüm; kenar çubuğu ve
+  Ayarlar öğesi onu izler. **Denetleyemezse:** teklif yaşıyla kalır; başarısız bir
+  denetim mevcut satırını korur ("Son otomatik denetim: az önce — sürüm sunucusundan
+  (celikpanel.net) doğrulanmış bir yanıt alınamadı."); karşılanmayan bir koşul bunu
+  söyler ("Açılışta yeniden denetlenmedi, çünkü bu sunucuda bir saatten kısa süre
+  önce bir güncelleme başlatıldı." ya da "Açılışta yeniden denetlenmedi: sunucuda
+  başka bir değişiklik sürüyordu."), yanıtsız kalan denetim "Açılışta yapılan
+  denetim zamanında yanıt vermedi; bu yüzden sonucu bilinmiyor." der, yanıtı okunamayan denetim (panel bir hatayla ya da okunamayan bir yanıtla döndü) "Açılışta yapılan denetim okunamadı: panel bir hatayla ya da okunamayan bir yanıtla döndü." der; her birinin
+  ardından "Gösterilen, son denetimin sonucudur (13 saat önce); şimdi de
+  denetleyebilirsiniz." gelir. **Otomatik denetim kapalıyken:** hiçbir şey sorulmaz;
+  teklif "Son denetim: 13 saat önce." der ve sonraki satır "Güncellemeleri
+  denetle"yi gösterir. Başlat, bir şey kurulmadan önce tam hedefi yine yeniden
+  denetler.
+- **Boston: alpha.102 güncellemesi hiçbir şeyi değiştirmeden durdu ve kart boştu.**
+  Bildirim, güncellemenin sunucunun paket yöneticisi meşgul olduğu için kurulu
+  sürümü değiştirmeden durduğunu ve Ayarlar'daki kartın paket yöneticisinin ne
+  zaman boşaldığını söyleyeceğini yazıyordu (T+01:58). Bildirim açıkken kart
+  yalnız "Kurulu: v0.1.0-alpha.100 · build 3eeff2456179", "Teknik ayrıntılar" ve
+  anahtarı gösterdi; kenar çubuğu ve Ayarlar öğesi "Güncelleme var ·
+  v0.1.0-alpha.102" diyordu. Bu, canlı görülen ikinci paket yöneticisi duruşudur
+  (ilki alpha.95'te Frankfurt; Ubuntu ve Debian'ın otomatik güncellemeleri).
+  **Neden:** kart, güncelleme kilidi tutulurken durum satırını, teklifi, önceki
+  denemeyi ve hazırlık okumasını gizliyordu; başarısız bir sonucun bildirimi de
+  kapatılana kadar bu kilidi tutar. **Artık, o bildirim açıkken:** kart teklifi,
+  "Bu sürüme yapılan önceki güncelleme kurulu sürümü değiştirmeden durdu" başlığını
+  "Sunucunun paket yöneticisi meşguldü …" ile, kendi okumasından paket
+  yöneticisinin durumunu ("Paket yöneticisi hâlâ meşgul. Bu kart kendiliğinden
+  yeniden denetler …", ardından "Paket yöneticisi işini bitirdi. Güncelleme yeniden
+  başlatılabilir.") ve en üstte şunu gösterir: "Önce durdurulan güncellemeyle
+  ilgili bildirimi kapatın ("Bildirimi kapat"); ardından bu düğme v0.1.0-alpha.102
+  güncellemesini başlatır. Hiçbir işlem kendiliğinden başlamaz." **Kim işlem
+  yapar:** sahip; bildirimi kapatır ve paket yöneticisi işini bitirince güncelleme
+  düğmesine basar. **İş nasıl sürer:** hiçbir şey kendiliğinden başlamaz; kartın
+  sessiz yeniden okuması yalnız okur. Bildirim kapanınca, bilinen sonuç on
+  dakikadan eskiyse kart en yeni sürümü denetler (başlatmadan sonraki bir saat
+  içinde Panel bunu atlanmış olarak yanıtlar ve "Güncellemeleri denetle" hemen
+  okur).
+
+Değişmeyenler: hiçbir şey kendiliğinden kurulmaz; Agent, güncelleyici ve şema (44).
 P0.1-P0.5 **kısmi** kalır; bu girdi hiçbir şeyi kapatmaz ya da ilerletmez.

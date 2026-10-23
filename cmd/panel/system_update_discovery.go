@@ -69,6 +69,22 @@ const (
 	// successful update restarts the Panel, which forgets it.
 	panelUpdateActiveWindow = time.Hour
 
+	// Opening the update screen (alpha.103, owner observation 2026-10-23):
+	// with automatic checks on, a stored result older than this is checked
+	// again through the same discovery. Ten minutes keeps a person who opens
+	// the screen again within one sitting from asking celikpanel.net each
+	// time (at most one completed release read per ten minutes from screen
+	// openings, whoever opens it; a skipped or unfinished check keeps
+	// nothing, so the next opening may try again), while a result from the
+	// 12-hour schedule is not what the screen offers once a newer release has
+	// been published and the check can run.
+	panelUpdateDiscoveryRefreshPath = "/api/v1/panel/update/discovery/refresh"
+	panelUpdateDiscoveryOpenFresh   = 10 * time.Minute
+	// The bound of the whole request: a check already running is waited for
+	// (it is itself bounded at panelUpdateDiscoveryTimeout), then this one's
+	// check uses what is left, never more than its own bound.
+	panelUpdateDiscoveryOpenTimeout = 50 * time.Second
+
 	panelUpdateOutcomeAvailable = "available"
 	panelUpdateOutcomeCurrent   = "current"
 	panelUpdateOutcomeFailed    = "failed"
@@ -525,6 +541,9 @@ type panelUpdateDiscoveryScheduler struct {
 	save     func(context.Context, time.Time, panelUpdateCheckResponse, *panelUpdateDiscoveryFailure)
 	flush    func(context.Context, time.Time)
 	logf     func(string, ...any)
+	// gate waits until no other release check runs (the button's or the one
+	// made when the update screen opens); nil in tests that fake discovery.
+	gate func(context.Context) (func(), error)
 
 	wake chan struct{}
 
@@ -561,6 +580,7 @@ func newPanelUpdateDiscoveryScheduler(p *Panel) *panelUpdateDiscoveryScheduler {
 		},
 		flush: func(ctx context.Context, now time.Time) { p.flushPanelUpdateDiscovery(ctx, now) },
 		logf:  log.Printf,
+		gate:  p.updateCheckGate.acquire,
 		wake:  make(chan struct{}, 1),
 	}
 }
@@ -679,6 +699,34 @@ func (s *panelUpdateDiscoveryScheduler) runOnce(ctx context.Context) time.Durati
 	// The server is idle: a result kept in memory while it was busy is
 	// written now, before this check.
 	s.flush(ctx, now)
+	// One release check at a time: a check the button or the update screen
+	// started is waited for (it is bounded). After the wait the conditions
+	// are read again: a check that completed within the opening window is
+	// this period's check (no second release read right after it), and a
+	// start admitted meanwhile skips it.
+	if s.gate != nil {
+		leave, err := s.gate(ctx)
+		if err != nil {
+			return s.periodDelay()
+		}
+		defer leave()
+		now = s.now()
+		s.mu.Lock()
+		last := s.lastCheck
+		s.mu.Unlock()
+		if since := now.Sub(last); !last.IsZero() && since >= 0 && since < panelUpdateDiscoveryOpenFresh {
+			s.logState("recent", "[panel-update] automatic update check not repeated: a check completed %s ago", since.Round(time.Second))
+			return s.periodDelay()
+		}
+		if reason := s.skip(ctx, now); reason != "" {
+			if ctx.Err() != nil {
+				return s.periodDelay()
+			}
+			s.noteSkip(now, reason)
+			s.logState("skipped:"+reason, "[panel-update] automatic update check skipped (%s); next try in 1 hour", reason)
+			return panelUpdateDiscoverySkipDelay
+		}
+	}
 	checkCtx, cancel := context.WithTimeout(ctx, panelUpdateDiscoveryTimeout)
 	response, failure := s.discover(checkCtx)
 	cancel()
@@ -772,6 +820,164 @@ func (p *Panel) startPanelUpdateDiscovery(ctx context.Context) {
 	go p.updateDiscovery.loop(ctx)
 }
 
+// panelUpdateCheckGate lets one release check run at a time (alpha.103). A
+// caller that finds a check running waits for it to end, bounded by its own
+// context; it never runs a second check beside it. The zero value is ready.
+// Ayni anda tek surum denetimi: suren denetim beklenir, yanina ikincisi acilmaz.
+type panelUpdateCheckGate struct {
+	mu      sync.Mutex
+	running chan struct{} // closed when the running check ends; nil when idle
+}
+
+// acquire returns the release of the gate once no other check runs, or the
+// context's error when it ended first.
+func (g *panelUpdateCheckGate) acquire(ctx context.Context) (func(), error) {
+	for {
+		g.mu.Lock()
+		if g.running == nil {
+			done := make(chan struct{})
+			g.running = done
+			g.mu.Unlock()
+			var once sync.Once
+			return func() {
+				once.Do(func() {
+					g.mu.Lock()
+					g.running = nil
+					g.mu.Unlock()
+					close(done)
+				})
+			}, nil
+		}
+		wait := g.running
+		g.mu.Unlock()
+		select {
+		case <-wait:
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+}
+
+// Outcomes of the check made when the update screen opens. Closed set.
+const (
+	panelUpdateRefreshChecked = "checked" // a check ran; its result is the view's last result
+	panelUpdateRefreshFresh   = "fresh"   // the known result is younger than the window; no read
+	panelUpdateRefreshOff     = "off"     // automatic checks are off; celikpanel.net is not contacted
+	panelUpdateRefreshSkipped = "skipped" // a condition was not met (reason_code); nothing kept
+	panelUpdateRefreshUnknown = "unknown" // the request ended before a result; nothing kept
+)
+
+// panelUpdateDiscoveryRefreshView says what opening the update screen did. It
+// is memory only: a skipped or unknown attempt is never stored.
+type panelUpdateDiscoveryRefreshView struct {
+	Outcome    string `json:"outcome"`
+	ReasonCode string `json:"reason_code,omitempty"`
+}
+
+// panelUpdateDiscoveryFresh says whether the newest known result is younger
+// than the window on the server's clock. A result dated more than a minute in
+// the future (a clock set back) is not fresh, so it cannot hold the check off.
+func (p *Panel) panelUpdateDiscoveryFresh(ctx context.Context, now time.Time) bool {
+	record, ok := p.currentPanelUpdateDiscovery(ctx)
+	if !ok {
+		return false
+	}
+	checked, err := time.Parse(time.RFC3339, record.CheckedAt)
+	if err != nil {
+		return false
+	}
+	age := now.Sub(checked)
+	return age >= -time.Minute && age < panelUpdateDiscoveryOpenFresh
+}
+
+// refreshPanelUpdateDiscoveryOnOpen is the check made when an administrator
+// opens the update screen (owner observation 2026-10-23: the screen offered
+// alpha.101 from the 12-hour schedule while alpha.102 was published). With
+// automatic checks on and the known result older than the window, it runs the
+// same discovery as the button and the schedule, one at a time with them,
+// under the schedule's skip rules (no check while an update was admitted in
+// the last hour, while the server reports a change in progress, while setup
+// changes the server, or when the Agent does not answer) and its write rules.
+// It never installs or starts anything.
+// Guncelleme ekrani acildiginda: otomatik denetim aciksa ve bilinen sonuc
+// pencereden eskiyse ayni kesif, ayni kurallarla bir kez calisir; hicbir sey
+// kurulmaz ya da baslatilmaz.
+func (p *Panel) refreshPanelUpdateDiscoveryOnOpen(ctx context.Context) panelUpdateDiscoveryRefreshView {
+	if !p.panelUpdateAutoCheck(ctx) {
+		return panelUpdateDiscoveryRefreshView{Outcome: panelUpdateRefreshOff}
+	}
+	if p.panelUpdateDiscoveryFresh(ctx, panelUpdateNow()) {
+		return panelUpdateDiscoveryRefreshView{Outcome: panelUpdateRefreshFresh}
+	}
+	if p.panelUpdateRecentlyAdmitted(panelUpdateNow()) {
+		return panelUpdateDiscoveryRefreshView{Outcome: panelUpdateRefreshSkipped, ReasonCode: panelUpdateReasonUpdateActive}
+	}
+	leave, err := p.updateCheckGate.acquire(ctx)
+	if err != nil {
+		return panelUpdateDiscoveryRefreshView{Outcome: panelUpdateRefreshUnknown, ReasonCode: panelUpdateReasonTimeout}
+	}
+	defer leave()
+	// A check that ended while this one waited is the fresh result.
+	if p.panelUpdateDiscoveryFresh(ctx, panelUpdateNow()) {
+		return panelUpdateDiscoveryRefreshView{Outcome: panelUpdateRefreshFresh}
+	}
+	if reason := p.panelUpdateDiscoverySkipReason(ctx, panelUpdateNow()); reason != "" {
+		if ctx.Err() != nil {
+			return panelUpdateDiscoveryRefreshView{Outcome: panelUpdateRefreshUnknown, ReasonCode: panelUpdateReasonTimeout}
+		}
+		return panelUpdateDiscoveryRefreshView{Outcome: panelUpdateRefreshSkipped, ReasonCode: reason}
+	}
+	checkCtx, cancel := context.WithTimeout(ctx, panelUpdateDiscoveryTimeout)
+	response, failure := p.discoverPanelUpdate(checkCtx)
+	cancel()
+	if ctx.Err() != nil {
+		// The request ended: nothing is kept for an interrupted check.
+		return panelUpdateDiscoveryRefreshView{Outcome: panelUpdateRefreshUnknown, ReasonCode: panelUpdateReasonTimeout}
+	}
+	if failure != nil && failure.reason == panelUpdateReasonAgentUnavailable {
+		// As on the schedule: an Agent that does not answer is a skip.
+		return panelUpdateDiscoveryRefreshView{Outcome: panelUpdateRefreshSkipped, ReasonCode: panelUpdateReasonAgentUnavailable}
+	}
+	now := panelUpdateNow()
+	p.savePanelUpdateDiscovery(ctx, now, true, response, failure)
+	p.updateDiscovery.NoteChecked(now)
+	if failure != nil {
+		log.Printf("[panel-update] update check on opening the update screen failed (%s): %v", failure.reason, failure.err)
+	}
+	return panelUpdateDiscoveryRefreshView{Outcome: panelUpdateRefreshChecked}
+}
+
+// handlePanelUpdateDiscoveryRefresh answers GET with the known result after
+// the check made when the update screen opens (administrators only). The
+// answer has the discovery read's shape plus what the opening did.
+func (p *Panel) handlePanelUpdateDiscoveryRefresh(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	if r.Method != http.MethodGet {
+		rejectRouteMethod(w, []string{http.MethodGet})
+		return
+	}
+	if !requirePanelUpdateAdmin(w, r) {
+		return
+	}
+	if p == nil || p.db == nil {
+		writeCodedError(w, http.StatusServiceUnavailable, "PANEL_UPDATE_DISCOVERY_UNAVAILABLE", "the stored update check could not be read", "")
+		return
+	}
+	// The check and its save run on a context detached from the request and
+	// bounded at panelUpdateDiscoveryOpenTimeout: a completed release read is
+	// kept even when the browser leaves, so a reload does not read again.
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), panelUpdateDiscoveryOpenTimeout)
+	refresh := p.refreshPanelUpdateDiscoveryOnOpen(ctx)
+	cancel()
+	if r.Context().Err() != nil {
+		return
+	}
+	view := p.panelUpdateDiscoveryView(r.Context(), panelUpdateNow())
+	view.Refresh = &refresh
+	_ = json.NewEncoder(w).Encode(view)
+}
+
 // panelUpdateDiscoveryResponse is the known result, read without any Agent
 // call. Ages and the wait to the next check are measured on the server's
 // clock when the answer is written, so the browser never compares two clocks
@@ -791,6 +997,9 @@ type panelUpdateDiscoveryResponse struct {
 	// The last scheduled attempt, when it was skipped after the result above
 	// (memory only; never stored).
 	LastSkip *panelUpdateDiscoverySkipView `json:"last_skip,omitempty"`
+	// What opening the update screen did (alpha.103); only on the refresh
+	// path's answer.
+	Refresh *panelUpdateDiscoveryRefreshView `json:"refresh,omitempty"`
 }
 
 type panelUpdateDiscoverySkipView struct {

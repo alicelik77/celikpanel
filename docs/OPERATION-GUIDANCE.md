@@ -9207,7 +9207,10 @@ available update is information, never an alarm.
 
 **What the owner sees in each state.** Only administrators see or read any of it.
 The update card opens already knowing the stored result, without a button press
-and without a call to the release server. It has one status line:
+and without a call to the release server. (Since the alpha.103 candidate, opening
+it checks again when the known result is older than ten minutes and automatic
+checks are on; see "Installed servers on alpha.100: an old offer on Frankfurt, an
+empty card on Boston" below.) It has one status line:
 
 | State | What the status line says |
 |---|---|
@@ -9978,3 +9981,58 @@ upcoming acceptance step, not a shipped claim. The setup plan's contact-email
 requirement is decided (it stays mandatory and is checked at install). No text or
 screen was changed for this entry. P0.1-P0.5 stay **partial**; this entry closes
 and advances nothing.
+
+### Installed servers on alpha.100: an old offer on Frankfurt, an empty card on Boston (D-035 amendment, 2026-10-23)
+
+What the owner saw on 2026-10-23, both servers on alpha.100, and what changes in
+source for the v0.1.0-alpha.103 candidate (not published; nothing measured on an
+installed server).
+
+- **Frankfurt: the update screen offered alpha.101 while alpha.102 was out.** The
+  sidebar said "Update available · v0.1.0-alpha.101"; the screen it opened offered
+  alpha.101, the result of the 12-hour schedule, until "Check for updates" was
+  pressed. The owner then updated Frankfurt to alpha.102 himself; the update
+  succeeded. **Now:** opening Settings → CelikPanel updates checks again when the
+  known result is older than ten minutes and automatic checks are on. **Who
+  acts:** nobody. **What is shown:** "Checking celikpanel.net for the newest
+  release…", "Known before this check: v0.1.0-alpha.101 is available (found 13
+  hours ago).", "The update button waits for this answer, at most about a minute.
+  Nothing starts by itself."; then the newest release, with the sidebar and the
+  Settings item following it. **If it cannot check:** the offer stays with its
+  age; a failed check keeps its existing line ("Last automatic check: just now —
+  could not get a verified answer from the release server (celikpanel.net)."); a
+  condition that was not met says so ("Not checked again on opening, because an
+  update was started on this server less than an hour ago." or "Not checked again
+  on opening: another change was in progress on the server."), an unanswered
+  check says "The check made on opening did not answer in time, so its result is
+  not known.", and an answer that could not be read (the panel answered with an error or an unreadable reply) says "The check made on opening could not be read: the panel answered with an error or an unreadable reply.", each followed by "What is shown is from the last check, 13 hours
+  ago; you can check now." **Automatic checks off:** nothing is asked; the offer
+  says "Last checked 13 hours ago." and the next line points to "Check for
+  updates". Start still re-checks the exact target before anything is installed.
+- **Boston: the update to alpha.102 stopped unchanged, and the card was empty.**
+  The notice said the update stopped before changing the installed version
+  because the server's package manager was busy, and that the Settings card would
+  say when the package manager was free (T+01:58). While it was open, the card
+  showed only "Kurulu: v0.1.0-alpha.100 · build 3eeff2456179", "Teknik
+  ayrıntılar" and the switch; the sidebar and the Settings item said "Güncelleme
+  var · v0.1.0-alpha.102". This was the second package-manager stop seen live
+  (Frankfurt on alpha.95 was the first; Ubuntu and Debian unattended upgrades).
+  **Why:** the card hid its status line, the offer, the earlier attempt and its
+  readiness read while the update lock was held, and the notice of a failed
+  outcome holds that lock until it is closed. **Now, while that notice is open:**
+  the card shows the offer, "An earlier update to this version stopped before
+  changing the installed version" with "The server's package manager was busy …",
+  the package manager's state from its own read ("The package manager is still
+  busy. This card checks again by itself …", then "The package manager has
+  finished. The update can be started again."), and at the top: "Close the notice
+  about the stopped update first ("Close notification"); this button then starts
+  the update to v0.1.0-alpha.102. Nothing starts by itself." **Who acts:** the
+  owner, by closing the notice and pressing the update button when the package
+  manager has finished. **How work resumes:** nothing starts by itself; the card's
+  quiet re-read only reads. Once the notice is closed, the card checks for the
+  newest release if the known result is older than ten minutes (within an hour of
+  the start the Panel answers it as skipped, and "Check for updates" reads at
+  once).
+
+Unchanged: nothing installs by itself; the Agent, the updater and the schema
+(44). P0.1-P0.5 stay **partial**; this entry closes and advances nothing.

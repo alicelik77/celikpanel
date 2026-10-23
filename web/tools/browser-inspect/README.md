@@ -669,3 +669,28 @@ page opened in, the dialog's state, lines, removed and kept sentences, command,
 scrolling and buttons (colour and border), the rail's links, Settings' tabs, the
 links to `/server-setup`, phone targets under 44 px and sideways scrolling. The
 screenshots are the inspection; these scenarios do not fail on a finding.
+
+## Scenarios of the twenty-sixth batch (the update screen, 2026-10-23)
+
+`scenarios-batch26.mjs`, with a small server answered by `mock-batch26.mjs`
+while `state.b26` is set: the stored update check
+(`GET /api/v1/panel/update/discovery`), the check made when the update screen
+opens (`GET /api/v1/panel/update/discovery/refresh`, answered after a set delay
+and then with a newer stored result), the running build (v0.1.0-alpha.100), the
+readiness read and one stopped update request's status. The releases it "finds"
+(v0.1.0-alpha.101 and v0.1.0-alpha.102, made-up commits and SHA-256) are never
+downloaded or verified; nothing is started. Run it with `desktop` and `phone`,
+Turkish and English, both themes (about 20 seconds each); each state is also
+copied to `BROWSER_INSPECT_SHOTS` as `<state>-<lang>-<theme>-<width>.png`.
+
+| Name | States |
+| --- | --- |
+| `y26stale` | Frankfurt's case: the stored result names alpha.101, checked 13 hours ago. Opening the screen checks again: the waiting line with the known offer kept and marked, Start held (`settings-rechecking`), then alpha.102 offered (`settings-newest`) and the sidebar link following it (`settings-newest-sidebar`, the menu opened on a phone) |
+| `y26stopped` | Boston's case: the update to alpha.102 stopped unchanged on a busy package manager and its notice is still open (seeded as this browser's stored outcome). The card shows the offer, the earlier attempt with its cause, "still busy", and at the top that Start waits for the notice to be closed (`settings-stopped-busy`); after the package manager is free and the card's quiet re-read ran: "has finished" (`settings-stopped-free`) |
+
+Each record adds the status line (tone and text), whether the offer is marked as
+being checked again, the Start button (text, disabled), the earlier attempt and
+its cause, the package-manager line, the corner notice or dialog, the sidebar
+link, raw keys, English on the Turkish page, phone targets under 44 px and
+sideways scrolling. The screenshots are the inspection; these scenarios do not
+fail on a finding.

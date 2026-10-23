@@ -6668,3 +6668,98 @@ tek bir sürümü kaydeder; kod, şema ya da kurtarma davranışını değiştir
   işini değiştirmez.
 - **Açık; devreden.** alpha.102 aday girdisinin ve alpha.90–alpha.101
   girdilerinin açık bıraktığı her şey.
+
+### v0.1.0-alpha.103 adayı (güncelleme ekranı açılınca yeniden denetler; durdurulan güncelleme kartı boş bırakmaz; Agent, güncelleyici ya da şema değişikliği yok; ilke 2 ve 6; D-035 değişikliği; D-022; D-024; D-025; 2026-10-23)
+
+D-025 ilke 2 (kanıtın anlamı ve yaşam döngüsü vardır: otomatik denetim açıkken
+güncelleme ekranının açılması, belirtilen bir koşul tutmadıkça on dakikadan eski
+bilinen bir sonucu yeniden denetler; sunulan her şey yaşıyla gösterilir ve
+başarısız, atlanan, yanıtsız ya da okunamayan denetim bilinen teklifi korur ve
+hangisi olduğunu söyler) ve 6 (hazırlık, ilerleme ve erişim bağımsız
+kalır: durdurulan bir güncellemenin açık bildirimi artık teklifi, önceki denemeyi
+ve hazırlık okumasını gizlemez; Başlat'ı tutan güncelleme kilidi değişmedi; hiçbir
+okuma bir değişiklik başlatmaz). P0.1/P0.2 alanına (doğru, eyleme dönük durum)
+dokunulur. **Hiçbir P0 işi kapanmaz ya da ilerlemez**; P0.1–P0.5 kısmi kalır ve her
+açık kabul işi açık kalır. Bu girdi, yerel güncelleme ve otomatik geri alma
+dayanıklılığının tamamlandığı iddiası değildir. Sahibin gözlemleri ve kod 23 Ekim
+2026 tarihlidir.
+
+- **Bu sürümün dokunduğu yerler.** Panel'in güncelleme keşfi
+  (`cmd/panel/system_update_discovery.go`): otomatik denetim açıkken ve bilinen
+  sonuç on dakikadan eskiyse mevcut keşfi zamanlamanın atlama ve yazma
+  kurallarıyla çalıştıran, 50 saniyeyle sınırlı, yalnız yöneticilere açık yeni bir
+  okuma, `GET /api/v1/panel/update/discovery/refresh`; zamanlama, "Güncellemeleri
+  denetle" işleyicisi ve açılış hiçbir zaman yan yana sürüm denetimi yapmasın diye
+  tek bir kapı (`cmd/panel/system_update_handlers.go` düğme için onu alır; düğmenin
+  okuması artık zamanlamanınki gibi 40 saniyeyle sınırlıdır); bekleyen zamanlanmış
+  denetim koşullarını yeniden okur (on dakika içinde tamamlanan bir denetimin hemen
+  ardından okumaz ve bu arada kabul edilen bir başlatmada atlar); açılış denetimi
+  ve kaydı istekten ayrılmış, 50 saniyeyle sınırlı bir bağlamda çalışır, böylece
+  tarayıcı ayrılsa da tamamlanan okuma saklanır. Lisans
+  kilidi istisnası yeni okumayı, diğer güncelleme okumaları gibi, yöneticiler için
+  (yalnız GET) kabul eder. Web güncelleme kartı, ortak keşif okuyucusu ve
+  güncelleme sağlayıcısının eklemeli `stopped` değeri
+  (`web/src/components/PanelUpdateCard.tsx`, `web/src/lib/panelUpdateDiscovery.ts`,
+  `web/src/components/SystemUpdateOperation.tsx`). Sürüm sırası sabitlemelerle 102'den
+  103'e geçer. Agent'a, hiçbir Agent iş türüne ya da RPC'ye, güncelleyiciye
+  (`update.sh`, sabitlemeleri dışında `get.sh`, sistem güncelleme işçisi, geri alma
+  ve kurtarma), başlatma işleyicisine ve tam hedefi yeniden denetlemesine,
+  tarayıcının güncelleme kilidine, hiçbir role, şemaya ya da 12 saatlik
+  zamanlamanın zamanlarına **dokunmaz**. Bu yüzden sahibin 16 Ekim 2026 talimatı
+  gereği **gerçek sistem kaydı yapılmaz**.
+- **Boston'daki boş kartın kök nedeni.** Kart, sağlayıcının `active` değeri doğru
+  olduğunda durum satırını, teklifi, önceki denemeyi ve hazırlık okumasını
+  gizliyordu; `active` güncelleme kilididir (`systemUpdateMutationLocked`) ve
+  başarısız bir son sonuç, onaylanana kadar onu tutar (`terminalBlocks`). Kenar
+  çubuğu ve Ayarlar öğesi saklanan keşfi doğrudan okuduğu için "Güncelleme var"
+  demeyi sürdürdü. Sağlayıcı artık izlenen isteğin hiçbir şeyi değiştirmeden ya da
+  doğrulanarak geri dönerek bittiğini de söyler (`failedUpdateGuidance` durumu
+  `unchanged` ya da `rolled_back`); kart bunu süren bir güncelleme saymaz ve
+  teklifi, nedeniyle denemeyi ve paket yöneticisi satırını gösterir; Başlat
+  tutulur ve nedeni kartın en üstündedir. Kilit gevşetilmedi.
+- **Sahip bağımsızlığı (D-022): değişmedi.** Başarısız ya da atlanan bir denetim
+  hiçbir şeyi engellemez; panel ve barındırılan hizmetler eskisi gibi çalışır;
+  otomatik denetim kapalıyken ekranın açılması hiçbir yere sormaz.
+- **Kurtarma davranışı (D-024).** Doğrulanmış hata, karşılanmayan koşul ve
+  bilinmeyen sonuç kartta ayrı kalır ("Son otomatik denetim: … — … doğrulanmış bir
+  yanıt alınamadı"; "Açılışta yeniden denetlenmedi: …"; "… zamanında yanıt vermedi;
+  bu yüzden sonucu bilinmiyor."; ve okumanın kendi hatası, "Açılışta yapılan
+  denetim okunamadı: panel bir hatayla ya da okunamayan bir yanıtla döndü."); her
+  birinde gösterilenin yaşı ve sahibin şimdi
+  denetleyebileceği söylenir. Durdurulan güncellemede kimin işlem yapacağı (sahip
+  bildirimi kapatır ve paket yöneticisi boşalınca yeniden başlatır) ve işin nasıl
+  süreceği (hiçbir şey kendiliğinden başlamaz; kartın sessiz yeniden okuması yalnız
+  okur) söylenir. **Kurulu panel güncelleme yolu: değişmedi**; her kurulu panel
+  güncellemesini sahibi panelin kendi güncelleme ekranından başlatır.
+- **Güncelleme sırasında yazma.** Açılış denetimi, Panel son bir saatte bir
+  güncelleme başlatmayı kabul ettiyse ya da sunucu süren bir değişiklik
+  bildiriyorsa çalışmaz; sonucu mevcut kurala göre yazılır (bir güncelleme kabul
+  edilmiş ya da sürüyorken asla; boşta bir geçişe kadar bellekte tutulur).
+- **Şema, sürüm geçişi ve kurtarma.** Şema 44, geçiş yok; saklanan keşif kaydı
+  biçimini korur. *alpha.102'den alpha.103'e:* saklanan kayıt eskisi gibi okunur.
+  *alpha.103'ten alpha.102'ye geri* (örneğin bir geri almadan sonra): yeni okuma
+  kalkar ve kart saklanan sonucu alpha.102'nin gösterdiği gibi gösterir; hiçbir şey
+  kaybolmaz ya da onarım gerektirmez.
+- **Kanıt ve açık işler.** Aday ağaçta: açılış denetimi (eski sonuç yeniden denetlenir, on dakika içindeki taze sonuç denetlenmez, otomatik denetim kapalıyken Agent çağrısı yapılmaz, bir güncelleme kabul edilmişken ya da sunucu kilidi tutulurken denetim yapılmaz, meşgul paket yöneticisi onu tutmaz, başarısız denetim teklifi korur, yanıt vermeyen Agent atlama sayılır, kapıyı beklerken biten istek hiçbir şey saklamaz, tarayıcı ayrılsa da tamamlanan açılış denetimi saklanır, düğme, açılışlar ve zamanlama arasında aynı anda tek sürüm denetimi, bekleyen zamanlanmış denetim koşullarını yeniden okur (tamamlanmış bir denetimin hemen ardından okuma yok, bu arada kabul edilen başlatmada atlama), düğmenin okuması 40 saniyeyle sınırlı, yalnız yöneticiler, lisans kilidinde okunabilir); son Go ağacında `CelikPanel-S2-Debian` konuğunda geçti (Panel ve iç paketler, 45 dakika sınırı, CGO kapalı): 7.229 geçti, 44 atlandı, 0 başarısız (2.973 üst düzey test), başarısız paket yok; gofmt ve go vet temiz; web 1.757 test geçti (eski
+  ardından en yeni teklif, taze sonuç, otomatik denetim kapalı,
+  başarısız/atlanan/yanıtsız/okunamayan denetim, durdurulan güncellemenin bildirimi
+  kapanınca yapılan denetim, bildirimden çizilen denemedeki kayıtlı neden,
+  güncelleme izlenirken denetim yapılmaması ve
+  kenar çubuğuyla tutarlı Boston duruşu için bağlanmış testler) ve üretim derlemesi
+  bütçeleri içinde; tarayıcı incelemesi 26. grup (40 durum, EN/TR, açık/koyu,
+  1440/390; bakıldı, düzeltildi, yeniden bakıldı; yerel sahte sunucu); `archlinux`
+  konuğunda temiz bir kopyada çevrimdışı sürüm kurtarma düzeneği (1.109 test, 1
+  atlandı) ile sürüm sırası, indirme portalı ve imzalı manifest sözleşmeleri geçti.
+  Bileşen testleri gerçek sistem davranışını kanıtlamaz. **Kurulu bir sunucuda
+  hiçbir şey ölçülmedi**; açılış denetimi gerçek bir Agent'a ya da gerçek sürüm
+  sunucusuna karşı çalışmadı. Açık: Sonraki bir sürüme kaydedilen eksikler: (a) bildirimi bilinmeyen,
+  kurtarma ya da dikkat durumunda olan başarısız bir güncellemede kart hâlâ yalnız
+  sürümü ve anahtarı gösterir, kenar çubuğu ise "Güncelleme var" der (Başlat'ı
+  tutmak doğrudur; kartın hiçbir şey söylememesi eksiktir); (b) açılış denetimi yan
+  etkisi olan bir GET'tir (bir sürüm okuması ve bir ayar yazması); oturum çerezi
+  SameSite=Lax olduğu için oturumu açık bir yöneticinin siteler arası üst düzey bir
+  gezinmesiyle tetiklenebilir; on dakikada bir tamamlanmış okumayla sınırlıdır ve
+  mevcut `/update/check` ile aynı açıklığa sahiptir; (c) durdurulan güncellemenin
+  bildirimi açıkken köşe bildirimi geniş ekranda kartın bir kısmını hâlâ örter.
+  alpha.90–alpha.102 girdilerinin açık bıraktığı her şey açık kalır. Kurulu panelleri yalnız sahipleri,
+  panelin kendi güncelleme ekranından günceller. P0.1–P0.5 kısmi kalır.

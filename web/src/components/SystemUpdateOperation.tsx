@@ -1,7 +1,7 @@
 import { prepareRecoveryShell } from '../lib/recoveryShell';
-import { systemUpdateFailureMessage } from '../lib/systemUpdateFailure';
+import { systemUpdateFailureMessage, systemUpdatePackageManagerBusy } from '../lib/systemUpdateFailure';
 import { failedUpdateGuidance, SYSTEM_UPDATE_UNKNOWN_OUTCOME_LIMIT_MS, type OutcomeText, type SystemUpdateOutcomeTone } from '../lib/systemUpdateOutcome';
-import { isPreflightStop, parseRecoveryObservation, reconcileRecoveryObservation, UPDATE_MARKER_KEY, type RecoveryObservation } from '../lib/recoveryObservation';
+import { isPreflightStop, parseRecoveryObservation, reconcileRecoveryObservation, UPDATE_MARKER_KEY, type RecoveryFailureCode, type RecoveryObservation } from '../lib/recoveryObservation';
 import {
     createContext,
     useCallback,
@@ -206,6 +206,27 @@ type SystemUpdateOperationContextValue = {
     // The version and build the update installed, once it succeeded;
     // repeated when the server's recovery repeated a step before verifying it.
     updated?: { version: string; commit: string; repeated?: boolean } | null;
+    // Additive (alpha.103): the followed request ended without changing the
+    // installed version (stopped in its read-only check, for example on a
+    // busy package manager), or with a verified return to it, and its notice
+    // is still open. The update card then shows the offer, that attempt and
+    // the server's readiness again; Start stays closed until the notice is
+    // closed (the lock above is unchanged). null otherwise.
+    stopped?: SystemUpdateStopped | null;
+};
+
+export type SystemUpdateStopped = {
+    requestID: string;
+    version: string;
+    commit: string;
+    /** This browser's clock when the outcome was recorded (or the request was made). */
+    at: number;
+    /** The updater's own summary says the package manager was busy. */
+    packageManagerBusy: boolean;
+    /** A verified return to the previous version rather than a stop before any change. */
+    rolledBack: boolean;
+    /** The recovery record's typed cause for this request, when it gives one. */
+    failureCode?: RecoveryFailureCode;
 };
 
 type PendingRenderCommit = {
@@ -2105,6 +2126,25 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
     const failureTone: SystemUpdateOutcomeTone | null = failureGuidance?.tone ?? null;
     const realFailure = displayedTerminal?.kind === 'failed'
         && (failureTone === 'danger' || failureTone === 'warning' || failureTone === 'neutral');
+    // Boston 2026-10-23: while this notice was open the update card showed
+    // neither the offer nor the earlier attempt, because the card hid both
+    // whenever the update lock was held. A request that ended unchanged or
+    // verified back is said to the card, which shows them again.
+    // Bildirim acikken kart bos kaliyordu; degistirmeden duran istek karta soylenir.
+    const stoppedCause = displayedTerminal?.kind === 'failed' && failedObservation?.requestID === displayedTerminal.marker.request_id
+        ? failedObservation.observation?.failure_code : undefined;
+    const stopped: SystemUpdateStopped | null = displayedTerminal?.kind === 'failed'
+        && (failureGuidance?.state === 'unchanged' || failureGuidance?.state === 'rolled_back')
+        ? {
+            requestID: displayedTerminal.marker.request_id,
+            version: displayedTerminal.marker.target.version,
+            commit: displayedTerminal.marker.target.commit,
+            at: displayedTerminal.completedAt ?? displayedTerminal.marker.created_at,
+            packageManagerBusy: systemUpdatePackageManagerBusy(displayedTerminal.message),
+            rolledBack: failureGuidance.state === 'rolled_back',
+            ...(stoppedCause ? { failureCode: stoppedCause } : {}),
+        }
+        : null;
     // A line whose text lives in a screen catalogue part shows its own words
     // as soon as they are in the loaded copy (the eleven recovery-tool steps
     // and the generic reason are boot copy, so at once); otherwise it says
@@ -2264,6 +2304,7 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
             registerInlineNotice,
             steps: stepsView,
             updated,
+            stopped,
         }}>
             <div ref={applicationRef} className="contents" aria-hidden={blocking ? true : undefined}>
                 {children}

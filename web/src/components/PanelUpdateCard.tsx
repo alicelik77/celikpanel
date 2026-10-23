@@ -25,11 +25,16 @@ import {
     PANEL_UPDATE_DISCOVERY_URL,
     clockTime,
     decodePanelUpdateDiscovery,
+    panelUpdateDiscoveryState,
+    panelUpdateOpenCheckDue,
     publishPanelUpdateDiscovery,
     readPanelUpdateAttemptSummary,
     refreshPanelUpdateDiscovery,
+    refreshPanelUpdateDiscoveryOnOpen,
     relativeAge,
     usePanelUpdateDiscovery,
+    wholeVersion,
+    type DiscoveryRefresh,
     type PanelUpdateDiscovery,
 } from '../lib/panelUpdateDiscovery';
 
@@ -203,12 +208,52 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
     }, []);
 
     // The stored result of the Panel's last check, manual or automatic
-    // (D-035): the card opens already knowing it, with no button press and
-    // no call to the release server. Read again once when the card opens.
+    // (D-035): the card opens already knowing it, with no button press. Read
+    // again once when the card opens; then, when it is older than ten minutes
+    // and automatic checks are on, the opening asks the Panel to check (below).
     // Panelin son kontrolunun saklanan sonucu: kart dugmeye basilmadan bilir.
     const discovery = usePanelUpdateDiscovery(true);
-    useEffect(() => { void refreshPanelUpdateDiscovery(); }, []);
+    const [storedReadOnOpen, setStoredReadOnOpen] = useState(false);
+    useEffect(() => {
+        let cancelled = false;
+        void refreshPanelUpdateDiscovery().then(() => { if (!cancelled) setStoredReadOnOpen(true); });
+        return () => { cancelled = true; };
+    }, []);
     const stored: PanelUpdateDiscovery | null = discovery.value;
+
+    // An update request that ended without changing the installed version
+    // (or verified back) while its notice is still open (Boston 2026-10-23):
+    // not an update in progress. The card shows the offer, that attempt and
+    // the server's readiness; Start waits for the notice to be closed.
+    // Bildirimi acik duran guncelleme suren bir guncelleme degildir; kart bos kalmaz.
+    const stopped = systemUpdate.stopped ?? null;
+    const inFlight = systemUpdate.active && !stopped;
+
+    // Opening the screen checks again (alpha.103, owner observation
+    // 2026-10-23): once per opening, after the stored result was read, only
+    // with automatic checks on and a known result older than ten minutes, and
+    // never while the update lock is held: while an update is followed, and
+    // while a stopped update's notice is open. Once that notice is closed the
+    // check runs if it is due (a release may have been published meanwhile;
+    // review of alpha.103). The Panel decides again (it skips while a start it
+    // admitted is less than an hour old), runs one check at a time and never
+    // starts anything.
+    // Ekran acilinca bir kez: otomatik denetim aciksa ve sonuc eskiyse.
+    const [openCheck, setOpenCheck] = useState<'idle' | 'running' | DiscoveryRefresh>('idle');
+    const openCheckDecided = useRef(false);
+    const updateActive = systemUpdate.active;
+    useEffect(() => {
+        if (!storedReadOnOpen || openCheckDecided.current || updateActive) return;
+        openCheckDecided.current = true;
+        if (actionInFlight.current
+            || !panelUpdateOpenCheckDue(panelUpdateDiscoveryState().value, Date.now())) return;
+        const generation = lifecycleGeneration.current;
+        setOpenCheck('running');
+        void refreshPanelUpdateDiscoveryOnOpen().then((result) => {
+            if (lifecycleGeneration.current === generation) setOpenCheck(result);
+        });
+    }, [storedReadOnOpen, updateActive]);
+    const openChecking = openCheck === 'running';
 
     // The update this browser follows (SystemUpdateOperation): the card says
     // what the notice says (owner report 2026-10-10).
@@ -284,7 +329,7 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
     // A stored update is followed by the readiness read at once, as a found
     // one always was; once per offered target.
     // Saklanan guncelleme icin hazirlik bir kez hemen okunur.
-    const offeredKey = target && offer?.available && !active ? `${target.version}:${target.commit}` : '';
+    const offeredKey = target && offer?.available && !inFlight ? `${target.version}:${target.commit}` : '';
     useEffect(() => {
         if (!offeredKey || readinessForTarget.current === offeredKey || actionInFlight.current) return;
         readinessForTarget.current = offeredKey;
@@ -297,7 +342,7 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
     // state. A read that could not verify keeps what is shown.
     // Sessiz yeniden okuma: "denetleniyor" gorunumu cizilmez; hazir denene
     // kadar mesgul metni kalir. Dogrulanamayan okuma gosterileni degistirmez.
-    const quietReadinessPoll = Boolean(target && offer?.available) && !active && !starting
+    const quietReadinessPoll = Boolean(target && offer?.available) && !inFlight && !starting
         && !checking && !readinessChecking && readiness?.ready === false;
     useEffect(() => {
         if (!quietReadinessPoll) return;
@@ -359,9 +404,23 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
     // Read for an attempt with no recorded cause and for a preflight stop: the
     // updater records a busy package manager that its recovery tool's check
     // reported as a recovery runtime preflight stop (Frankfurt's case).
-    const uncausedAttempt = target && offer?.previous_attempt?.phase === 'failed'
-        && (!offer.previous_attempt.failure_code || previousAttemptStopped(offer.previous_attempt))
-        ? offer.previous_attempt.request_id : '';
+    // The attempt whose notice is open, for the offered release, is said here
+    // even before the server's recovery record names it (Boston 2026-10-23).
+    // Bildirimi acik deneme, sunucu kaydi onu adlandirmadan once de soylenir.
+    const stoppedHere = stopped && target && stopped.commit === target.commit && Number.isFinite(stopped.at) ? stopped : null;
+    const serverPrevious = target ? offer?.previous_attempt : undefined;
+    const previousAttempt: PreviousUpdateAttempt | undefined = stoppedHere && serverPrevious?.request_id !== stoppedHere.requestID
+        ? {
+            request_id: stoppedHere.requestID,
+            phase: stoppedHere.rolledBack ? 'recovered' : 'failed',
+            // The cause the recovery record gives, as the notice says it.
+            ...(stoppedHere.failureCode ? { failure_code: stoppedHere.failureCode } : {}),
+            finished_at: new Date(stoppedHere.at).toISOString().replace(/\.\d{3}Z$/, 'Z'),
+        }
+        : serverPrevious;
+    const uncausedAttempt = target && previousAttempt?.phase === 'failed'
+        && (!previousAttempt.failure_code || previousAttemptStopped(previousAttempt))
+        ? previousAttempt.request_id : '';
     useEffect(() => {
         if (!uncausedAttempt) return;
         const controller = new AbortController();
@@ -374,7 +433,7 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
     }, [uncausedAttempt]);
 
     async function retryHostMutationReadiness() {
-        if (actionInFlight.current || systemUpdate.active) return;
+        if (actionInFlight.current || inFlight) return;
         actionInFlight.current = true;
         try {
             await refreshHostMutationReadiness();
@@ -507,11 +566,13 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
     const readinessReason = readiness?.ready === false
         ? t(`services.mutationReadiness.${readiness.reason}`)
         : '';
-    const previousAttempt = target ? offer?.previous_attempt : undefined;
     // Either typed cause means it stopped before changing anything installed;
-    // so does a stop its own summary says was a busy package manager.
-    const previousBusy = !!previousAttempt && previousSummary?.requestID === previousAttempt.request_id && previousSummary.busy;
-    const previousStopped = previousAttemptStopped(previousAttempt) || previousBusy;
+    // so does a stop its own summary says was a busy package manager, and the
+    // stop whose notice is open says the same of itself.
+    const openNoticeAttempt = !!previousAttempt && !!stoppedHere && previousAttempt.request_id === stoppedHere.requestID;
+    const previousBusy = !!previousAttempt && ((previousSummary?.requestID === previousAttempt.request_id && previousSummary.busy)
+        || (openNoticeAttempt && stoppedHere.packageManagerBusy));
+    const previousStopped = previousAttemptStopped(previousAttempt) || previousBusy || (openNoticeAttempt && !stoppedHere.rolledBack);
     const readinessTitle = readinessChecking
         ? t('services.mutationReadiness.checking')
         : readiness?.ready === true
@@ -547,6 +608,25 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
     // A press that failed says so in its own words below; the stored record of
     // that same failure is not said a second time.
     const manualFailureShown = message !== '' && last?.outcome === 'failed' && !last.automatic;
+    // What opening the screen could not do, beside what is known (alpha.103):
+    // a condition that was not met, or no answer in time. Nothing is stored
+    // for either; the result shown is the last check's, with its age.
+    // Acilistaki denetim yapilamadiysa neden ve gosterilenin yasi soylenir.
+    const openResult = typeof openCheck === 'object' ? openCheck : null;
+    const shownFrom = last ? ` ${t('panelUpdate.status.shownFrom', { age: age(last.checkedAt) })}` : '';
+    const openLine = !openResult || check ? ''
+        : openResult.outcome === 'skipped'
+            ? (openResult.reason === 'update_active'
+                ? t('panelUpdate.status.openSkippedRecentUpdate')
+                : t('panelUpdate.status.openSkipped', {
+                    reason: openResult.reason ? t(`panelUpdate.discoveryReason.${openResult.reason}`) : t('panelUpdate.discoveryReason.unknown'),
+                })) + shownFrom
+            : openResult.outcome === 'unknown' ? t('panelUpdate.status.openUnknown') + shownFrom
+                : openResult.outcome === 'unread' ? t('panelUpdate.status.openUnread') + shownFrom : '';
+    // With automatic checks off nothing is asked on opening: an offer says
+    // how old it is; the next-check line points to "Check for updates".
+    const checkedLine = stored && !stored.autoCheck && last && !check
+        ? t('panelUpdate.status.lastChecked', { age: age(last.checkedAt) }) : '';
     const withDetails = (line: StatusLine, details: string[]): StatusLine => {
         const shown = details.filter(Boolean);
         return shown.length > 0 ? { ...line, details: shown } : line;
@@ -561,17 +641,26 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
         status = withDetails({
             tone: 'available',
             text: t('panelUpdate.status.available', { version: target.version, age: age(foundAt) }),
-        }, check ? [] : [manualFailureShown ? '' : lastProblem, skipLine]);
+        }, check ? [] : [manualFailureShown ? '' : lastProblem, skipLine, openLine, checkedLine]);
     } else if (!stored) {
         status = discovery.status === 'failed'
             ? { tone: 'unread', text: t('panelUpdate.status.readFailed') }
             : { tone: 'reading', text: t('panelUpdate.status.reading') };
     } else if (!last) {
-        status = withDetails({ tone: 'info', text: t('panelUpdate.status.never') }, [skipLine]);
+        status = withDetails({ tone: 'info', text: t('panelUpdate.status.never') }, [skipLine, openLine]);
     } else if (last.outcome === 'current') {
-        status = withDetails({ tone: 'latest', text: t(last.automatic ? 'panelUpdate.status.current' : 'panelUpdate.status.currentManual', { age: age(last.checkedAt) }) }, [skipLine]);
+        status = withDetails({ tone: 'latest', text: t(last.automatic ? 'panelUpdate.status.current' : 'panelUpdate.status.currentManual', { age: age(last.checkedAt) }) }, [skipLine, openLine]);
     } else {
-        status = manualFailureShown ? null : withDetails({ tone: 'info', text: lastProblem }, [skipLine]);
+        status = manualFailureShown ? null : withDetails({ tone: 'info', text: lastProblem }, [skipLine, openLine]);
+    }
+    // While opening the screen checks again, the known result stays in view,
+    // marked as being checked, and Start waits for the answer (bounded).
+    // Yeniden denetlenirken bilinen sonuc gorunur kalir; Baslat yaniti bekler.
+    if (openChecking && !checking) {
+        status = withDetails({ tone: 'reading', text: t('panelUpdate.status.openChecking') }, [
+            status ? t('panelUpdate.status.openCheckingKnown', { known: status.text }) : '',
+            offer?.available && target ? t('panelUpdate.status.openCheckingWait') : '',
+        ]);
     }
     const showNext = !checking && status?.tone !== 'reading' && status?.tone !== 'unread' && nextLine !== '';
     const statusIcon = !status ? null : status.tone === 'reading'
@@ -598,23 +687,33 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
                 </div>
                 {/* Outlined: the one filled button of this card is the update
                     itself (DESIGN.md, one primary per view). */}
-                <Button type="button" variant="secondary" className="shrink-0 max-sm:min-h-11" onClick={() => void checkForUpdate()} disabled={checking || active || starting || readinessChecking}>
-                    {checking ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                    {checking ? t('panelUpdate.checking') : t('panelUpdate.check')}
+                <Button type="button" variant="secondary" className="shrink-0 max-sm:min-h-11" onClick={() => void checkForUpdate()} disabled={checking || openChecking || active || starting || readinessChecking}>
+                    {checking || openChecking ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                    {checking || openChecking ? t('panelUpdate.checking') : t('panelUpdate.check')}
                 </Button>
             </div>
 
-            {!active && !tracking && !updated && status && (
+            {!inFlight && !tracking && !updated && status && (
                 <div className="mt-4 flex items-start gap-2 text-sm text-fg" role="status" aria-live="polite" data-update-status={status.tone}>
                     {statusIcon}
                     <div className="min-w-0">
                         <p className="font-medium">{status.text}</p>
                         {status.details?.map((detail) => <p key={detail} className="mt-1 text-fg-muted" data-update-status-detail="">{detail}</p>)}
                         {showNext && <p className="mt-1 text-fg-muted" data-update-next="">{nextLine}</p>}
+                        {/* The stopped update's notice is still open: Start opens
+                            again when it is closed (the update lock holds until
+                            then). Said at the top of the card, where the corner
+                            notice never covers it (batch 26).
+                            Bildirim kapaninca Baslat yeniden acilir; kartin ustunde soylenir. */}
+                        {stopped && offer?.available && target && (
+                            <p className="mt-1 text-fg" data-update-stopped-notice-open="">
+                                {wholeVersion(t('panelUpdate.stoppedNoticeOpen', { version: target.version }), target.version)}
+                            </p>
+                        )}
                     </div>
                 </div>
             )}
-            {!active && !tracking && !updated && !status && showNext && (
+            {!inFlight && !tracking && !updated && !status && showNext && (
                 <p className="mt-4 text-sm text-fg-muted" data-update-next="">{nextLine}</p>
             )}
 
@@ -686,8 +785,8 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
                 </div>
             )}
 
-            {target && offer?.available && !active && (
-                <div className="mt-4 space-y-4">
+            {target && offer?.available && !inFlight && (
+                <div className="mt-4 space-y-4" data-update-offer="" data-update-rechecking={openChecking ? '' : undefined}>
                     {previousAttempt && (
                         // At most one notice for an earlier attempt. One that
                         // stopped before changing anything is information, not
@@ -794,6 +893,7 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
                                 <Button
                                     type="button"
                                     variant="secondary"
+                                    className="max-sm:min-h-11"
                                     onClick={() => void retryHostMutationReadiness()}
                                     disabled={starting || readinessChecking}
                                 >
@@ -809,7 +909,7 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
                         variant="primary"
                         className="max-sm:min-h-11"
                         onClick={() => void startUpdate()}
-                        disabled={starting || readinessChecking || readiness?.ready !== true}
+                        disabled={starting || readinessChecking || openChecking || stopped !== null || readiness?.ready !== true}
                     >
                         {starting ? <Loader2 className="h-4 w-4 animate-spin" /> : <DownloadCloud className="h-4 w-4" />}
                         {starting ? t('panelUpdate.starting') : t('panelUpdate.start', { version: target.version })}

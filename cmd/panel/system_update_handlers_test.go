@@ -56,6 +56,9 @@ type systemUpdateTestAgent struct {
 	// readinessEntered/readinessGate, when set, hold a readiness read open.
 	readinessEntered chan struct{}
 	readinessGate    chan struct{}
+	// checkEntered/checkGate, when set, hold a release check open (alpha.103).
+	checkEntered chan struct{}
+	checkGate    chan struct{}
 }
 
 func newSystemUpdateTestAgent() *systemUpdateTestAgent {
@@ -122,6 +125,15 @@ func (a *systemUpdateTestAgent) PkgFamily(_ *transport.Empty, reply *string) err
 }
 
 func (a *systemUpdateTestAgent) CheckSystemUpdate(_ *transport.Empty, reply *transport.SystemUpdateCheckResponse) error {
+	a.mu.Lock()
+	entered, gate := a.checkEntered, a.checkGate
+	a.mu.Unlock()
+	if entered != nil {
+		entered <- struct{}{}
+	}
+	if gate != nil {
+		<-gate
+	}
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.checkCalls++

@@ -5,8 +5,12 @@ import { createElement, Fragment, useEffect, useState, type ReactNode } from 're
 // the last result. This file reads that stored result for administrators
 // (GET /api/v1/panel/update/discovery: no Agent call, no network read on the
 // server) and shares one copy between the sidebar link, the Dashboard row,
-// the Settings item and the update card. Only the update card's "Check for
-// updates" button asks the release server, through /update/check.
+// the Settings item and the update card. The update card's "Check for
+// updates" button asks the release server, through /update/check; since
+// alpha.103 opening the update card also asks, through the Panel, when
+// automatic checks are on and the known result is older than ten minutes
+// (GET /api/v1/panel/update/discovery/refresh, once per opening; the Panel
+// decides again and runs one check at a time).
 //
 // Panelin sakladigi guncelleme kontrolu: kenar cubugu, Pano, Ayarlar ve
 // guncelleme karti tek okumayi paylasir. Yalniz karttaki dugme surum
@@ -153,6 +157,7 @@ export type DiscoveryState = {
 
 let state: DiscoveryState = { status: 'idle', value: null, readAt: 0 };
 let inFlight: Promise<void> | null = null;
+let refreshInFlight: Promise<DiscoveryRefresh> | null = null;
 const listeners = new Set<(next: DiscoveryState) => void>();
 
 function publish(next: DiscoveryState) {
@@ -173,6 +178,7 @@ export function publishPanelUpdateDiscovery(value: PanelUpdateDiscovery) {
 export function resetPanelUpdateDiscoveryForTests() {
     state = { status: 'idle', value: null, readAt: 0 };
     inFlight = null;
+    refreshInFlight = null;
     listeners.clear();
 }
 
@@ -203,6 +209,82 @@ export function refreshPanelUpdateDiscovery(): Promise<void> {
         }
     })();
     return inFlight;
+}
+
+// Opening the update screen (alpha.103, owner observation 2026-10-23:
+// Frankfurt's screen offered alpha.101 from the 12-hour schedule while
+// alpha.102 was published, until "Check for updates" was pressed).
+// Guncelleme ekrani acilinca: otomatik denetim aciksa ve bilinen sonuc on
+// dakikadan eskiyse Panel bir kez daha bakar; kapaliyken hicbir yere sorulmaz.
+export const PANEL_UPDATE_DISCOVERY_REFRESH_URL = '/api/v1/panel/update/discovery/refresh';
+/** The Panel bounds the whole opening check at 50 seconds; this is that and the way back. */
+export const PANEL_UPDATE_DISCOVERY_REFRESH_TIMEOUT_MS = 55_000;
+/** A known result younger than this is not checked again on opening (the Panel's window). */
+export const PANEL_UPDATE_OPEN_FRESH_MS = 10 * 60 * 1000;
+
+export const discoveryRefreshOutcomes = ['checked', 'fresh', 'off', 'skipped', 'unknown'] as const;
+/**
+ * What opening the update screen did: checked (the result is the stored one
+ * now), fresh (no read: the known result is recent), off (automatic checks
+ * are off: nothing was asked), skipped (a condition was not met; reason),
+ * unknown (no answer in time: its result is not known). `unread` is this
+ * browser's own: the Panel answered, but with an error (for example 503 or
+ * 429) or a reply that is not the closed shape (D-024: a verified failure of
+ * the read, kept apart from an unknown result).
+ */
+export type DiscoveryRefresh = { outcome: typeof discoveryRefreshOutcomes[number] | 'unread'; reason: DiscoveryReason | null };
+
+/** Whether opening the update screen asks the Panel to check again. */
+export function panelUpdateOpenCheckDue(value: PanelUpdateDiscovery | null, now: number): boolean {
+    return !!value && value.autoCheck && (!value.last || now - value.last.checkedAt >= PANEL_UPDATE_OPEN_FRESH_MS);
+}
+
+/**
+ * The check made when the update screen opens. The answer is the stored
+ * result after it, shared with the sidebar, the Dashboard row and the
+ * Settings item. One request at a time; it never starts anything. A failed
+ * read keeps the shared copy and says the result is not known.
+ */
+export function refreshPanelUpdateDiscoveryOnOpen(): Promise<DiscoveryRefresh> {
+    if (refreshInFlight) return refreshInFlight;
+    const controller = new AbortController();
+    const timer = globalThis.setTimeout(() => controller.abort(), PANEL_UPDATE_DISCOVERY_REFRESH_TIMEOUT_MS);
+    refreshInFlight = (async (): Promise<DiscoveryRefresh> => {
+        let response: Response;
+        try {
+            response = await fetch(PANEL_UPDATE_DISCOVERY_REFRESH_URL, {
+                cache: 'no-store', credentials: 'same-origin', signal: controller.signal,
+            });
+        } catch {
+            // No answer (the bound ran out, the connection was lost).
+            globalThis.clearTimeout(timer);
+            refreshInFlight = null;
+            return { outcome: 'unknown', reason: null };
+        }
+        try {
+            if (!response.ok) return { outcome: 'unread', reason: null };
+            let body: Record<string, unknown> | null;
+            try {
+                body = await response.json() as Record<string, unknown> | null;
+            } catch {
+                // A body cut by the bound is no answer; any other is unreadable.
+                return { outcome: controller.signal.aborted ? 'unknown' : 'unread', reason: null };
+            }
+            const value = decodePanelUpdateDiscovery(body, Date.now());
+            if (!value || !body) return { outcome: 'unread', reason: null };
+            const raw = body.refresh as Record<string, unknown> | undefined;
+            const outcome = raw && (discoveryRefreshOutcomes as readonly unknown[]).includes(raw.outcome)
+                ? raw.outcome as DiscoveryRefresh['outcome'] : 'unknown';
+            const reason = raw && (discoveryReasons as readonly unknown[]).includes(raw.reason_code)
+                ? raw.reason_code as DiscoveryReason : null;
+            publish({ status: 'ready', value, readAt: Date.now() });
+            return { outcome, reason };
+        } finally {
+            globalThis.clearTimeout(timer);
+            refreshInFlight = null;
+        }
+    })();
+    return refreshInFlight;
 }
 
 function visible(): boolean {

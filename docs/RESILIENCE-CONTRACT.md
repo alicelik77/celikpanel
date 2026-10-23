@@ -7396,3 +7396,100 @@ records one release; it changes no code, schema or recovery behaviour.
   these changes a P0 item.
 - **Open, carried over.** Everything the alpha.102 candidate entry and the alpha.90
   to alpha.101 entries leave open.
+
+### Candidate v0.1.0-alpha.103 (the update screen checks again when opened; a stopped update leaves the card full; no Agent, updater or schema change; invariants 2 and 6; D-035 amendment; D-022; D-024; D-025; 2026-10-23)
+
+D-025 invariants 2 (evidence has a meaning and a lifecycle: with automatic
+checks on, opening the update screen checks a known result older than ten
+minutes again unless a stated condition holds it; whatever is offered is shown
+with its age, and a failed, skipped, unanswered or unreadable check keeps the
+known offer and says which it was) and 6 (readiness, progress and
+access remain independent: a stopped update's open notice no longer hides the
+offer, the earlier attempt and the readiness read, while the update lock that
+holds Start is unchanged; no read starts a change). The P0.1/P0.2 area (truthful,
+actionable state) is touched. **No P0 item is closed or advanced**; P0.1 to P0.5
+stay partial and every open acceptance item stays open. This entry is not a claim
+that the native update and automatic-rollback resilience is complete. The owner's
+observations and the code are of 2026-10-23.
+
+- **What this release touches.** The Panel's update discovery
+  (`cmd/panel/system_update_discovery.go`): a new administrator-only read,
+  `GET /api/v1/panel/update/discovery/refresh`, that runs the existing discovery
+  when automatic checks are on and the known result is older than ten minutes,
+  under the schedule's skip and write rules, bounded at 50 seconds; one gate so
+  that the schedule, the "Check for updates" handler and the opening never run a
+  release check side by side (`cmd/panel/system_update_handlers.go` takes it for
+  the button, whose read is now bounded at 40 seconds like the schedule's); a
+  scheduled check that waited reads its conditions again (it does not read right
+  after a check completed within ten minutes and skips a start admitted
+  meanwhile); the opening check and its save run on a context detached from the
+  request, bounded at 50 seconds, so a completed read is kept when the browser
+  leaves. The licence-lock exception admits the new read for administrators
+  (GET only), as it admits the other update reads. The web update card, its
+  shared discovery reader and the update provider's additive `stopped` value
+  (`web/src/components/PanelUpdateCard.tsx`, `web/src/lib/panelUpdateDiscovery.ts`,
+  `web/src/components/SystemUpdateOperation.tsx`). The release sequence moves 102
+  to 103 with the pins. It does **not** touch the Agent, any Agent job kind or RPC,
+  the updater (`update.sh`, `get.sh` beyond its pins, the system update worker,
+  rollback and recovery), the start handler and its exact-target re-check, the
+  browser's update lock, any role, the schema or the 12-hour schedule's timing.
+  Therefore **no native record is made**, by the owner's instruction of
+  2026-10-16.
+- **Root cause of Boston's empty card.** The card hid its status line, the offer,
+  the earlier attempt and its readiness read whenever the provider's `active` was
+  true; `active` is the update lock (`systemUpdateMutationLocked`), and a failed
+  terminal outcome holds it until acknowledged (`terminalBlocks`). The sidebar and
+  the Settings item read the stored discovery directly, so they kept saying
+  "Update available". The provider now also says when the followed request ended
+  unchanged or verified back (`failedUpdateGuidance` state `unchanged` or
+  `rolled_back`); the card treats that as not in progress and shows the offer, the
+  attempt with its cause and the package-manager line, with Start held and the
+  reason at the top of the card. The lock is not relaxed.
+- **Owner independence (D-022): unchanged.** A failed or skipped check blocks
+  nothing; the panel and hosted services work as before; with automatic checks off
+  opening the screen contacts nothing.
+- **Recovery behaviour (D-024).** Verified failure, unmet condition and unknown
+  result stay apart on the card ("Last automatic check: … — could not get a
+  verified answer …"; "Not checked again on opening: …"; "… did not answer in
+  time, so its result is not known."; and the read's own failure, "The check made
+  on opening could not be read: the panel answered with an error or an unreadable
+  reply."), each with the age of what is shown and that
+  the owner can check now. A stopped update says who acts (the owner closes the
+  notice and starts again when the package manager is free) and how work resumes
+  (nothing starts by itself; the card's quiet re-read only reads). **Installed-panel
+  update path: unchanged**; the owner starts every installed-panel update from the
+  panel's own update screen.
+- **Writes during an update.** The opening check never runs while the Panel
+  admitted an update start in the last hour or while the server reports a change
+  in progress, and its result is written by the existing rule (never while an
+  update is admitted or running; kept in memory until an idle pass).
+- **Schema, version transition and recovery.** Schema 44, no migration; the stored
+  discovery record keeps its shape. *alpha.102 to alpha.103:* the stored record is
+  read as before. *alpha.103 back to alpha.102* (for example after a rollback):
+  the new read is gone and the card shows the stored result as alpha.102 did;
+  nothing is lost or needs repairing.
+- **Evidence and open.** On the candidate tree: the opening check (a stale result is checked again, a fresh one within ten minutes is not, automatic checks off make no Agent call, no check while an update was admitted or the host lock is held, a busy package manager does not hold it, a failed check keeps the offer, an unanswered Agent is a skip, a request that ends while waiting for the gate keeps nothing, a completed opening check is kept when the browser leaves, one release check at a time across the button, the openings and the schedule, a scheduled check that waited reads its conditions again (no read right after a completed check, a skip for a start admitted meanwhile), the button's read bounded at 40 seconds, administrators only, readable while the licence is locked); passed on the final Go tree in the `CelikPanel-S2-Debian` guest (the Panel and the internal packages, 45-minute limit, CGO off): 7,229 passed, 44 skipped, 0 failed (2,973 top-level tests), no package failed; gofmt and go vet clean; web 1,757 tests
+  passed (mounted tests of the stale-then-newest offer, a fresh result, automatic
+  checks off, failed/skipped/unanswered/unreadable checks, no check while an
+  update is followed, Boston's stopped state consistent with the sidebar, the
+  check after the stopped update's notice is closed, and the recorded cause on
+  the attempt drawn from the notice) and the
+  production build within its budgets; browser inspection batch 26 (40 states,
+  EN/TR, light/dark, 1440/390; looked, fixed, looked again; loopback mock); in a
+  fresh clone in the `archlinux` guest the offline release-recovery harness (1,109
+  tests, 1 skipped) and the release sequence, download portal and signed manifest
+  contracts passed. Component tests do not establish native behaviour. **Nothing
+  was measured on an installed server**; the opening check has not run against a
+  real Agent or the real release server. Open: Recorded gaps for a later release: (a) for a failed update whose
+  notice is in an unknown, recovery or attention state, the card still shows only
+  the version and the switch while the sidebar says "Update available" (holding
+  Start is right; the card saying nothing is the gap); (b) the opening check is a
+  GET with a side effect (one release read and a settings write), reachable by a
+  top-level cross-site navigation of a signed-in administrator because the
+  session cookie is SameSite=Lax; it is bounded to one completed read per ten
+  minutes and has the same exposure as the existing `/update/check`; (c) the
+  corner notice still covers part of the card on a wide screen while a stopped
+  update's notice is open.
+  Everything the alpha.90 to alpha.102 entries leave open stays open. Installed
+  panels are updated only by their owners, from the panel's own update screen.
+  P0.1 to P0.5 stay partial.
