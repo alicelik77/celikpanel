@@ -140,6 +140,9 @@ async function api(req, res, path, query) {
     // --- batch 22 (21 Oct 2026): the installed package versions of alpha.97; answers only while `state.b22` is set ---
     if (await (await import('./mock-batch22.mjs')).batch22(req, res, path, query, { state, send, coded, readBody })) return;
     // --- end of batch 22 ---
+    // --- batch 26 (23 Oct 2026): the update screen of alpha.103; answers only while `state.b26` is set ---
+    if (await (await import('./mock-batch26.mjs')).batch26(req, res, path, query, { state, send, coded, readBody })) return;
+    // --- end of batch 26 ---
     // --- batch 5 (10 Oct 2026): the request identity, service actions, VPN ---
     // Before the routes below, because it answers some of the same addresses
     // through the guard's contract; it answers only while `state.b5` is set.

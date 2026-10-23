@@ -796,7 +796,11 @@ for (const locale of ['en', 'tr']) {
             assert.equal(textOf(primaries(renderer)[0]).trim(), say('panelUpdate.start', { version: TARGET.version }, locale));
             assert.equal(primaries(renderer)[0].props.disabled, true);
             const why = renderer.root.find(node => node.props && node.props['data-update-stopped-notice-open'] !== undefined);
-            assert.equal(textOf(why), say('panelUpdate.stoppedNoticeOpen', { version: TARGET.version }, locale));
+            // textOf joins the kept-whole version's span with spaces; compare without them.
+            const bare = text => String(text).replace(/\s+/g, '');
+            assert.equal(bare(textOf(why)), bare(say('panelUpdate.stoppedNoticeOpen', { version: TARGET.version }, locale)));
+            // The version is kept whole (it never breaks at its hyphen).
+            assert.equal(why.findAll(node => node.type === 'span' && node.props['data-version'] !== undefined).map(textOf).join(), TARGET.version);
             // Nothing asked the release server, nothing started.
             assert.equal(refreshReads(fixture), 0, 'a stop led to a check on opening');
             assert.equal(fixture.starts, 0);

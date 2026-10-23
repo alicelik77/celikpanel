@@ -13,6 +13,7 @@ export function decodePanelUpdateDiscovery() { return null; }
 export function availablePanelUpdate(value) { return value?.target ?? null; }
 export function relativeAge(moment, now, _locale, justNow) { return now - moment < 60000 ? justNow : '2 hours ago'; }
 export function clockTime() { return '15:30'; }
+export function wholeVersion(text) { return text; }
 // alpha.103: the check made when the update screen opens; not due in these
 // tests unless one sets globalThis.__panelUpdateOpenCheckDue.
 export function panelUpdateDiscoveryState() { return globalThis.__panelUpdateDiscoveryState ?? idle; }

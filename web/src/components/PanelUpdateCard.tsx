@@ -33,6 +33,7 @@ import {
     refreshPanelUpdateDiscoveryOnOpen,
     relativeAge,
     usePanelUpdateDiscovery,
+    wholeVersion,
     type DiscoveryRefresh,
     type PanelUpdateDiscovery,
 } from '../lib/panelUpdateDiscovery';
@@ -695,6 +696,16 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
                         <p className="font-medium">{status.text}</p>
                         {status.details?.map((detail) => <p key={detail} className="mt-1 text-fg-muted" data-update-status-detail="">{detail}</p>)}
                         {showNext && <p className="mt-1 text-fg-muted" data-update-next="">{nextLine}</p>}
+                        {/* The stopped update's notice is still open: Start opens
+                            again when it is closed (the update lock holds until
+                            then). Said at the top of the card, where the corner
+                            notice never covers it (batch 26).
+                            Bildirim kapaninca Baslat yeniden acilir; kartin ustunde soylenir. */}
+                        {stopped && offer?.available && target && (
+                            <p className="mt-1 text-fg" data-update-stopped-notice-open="">
+                                {wholeVersion(t('panelUpdate.stoppedNoticeOpen', { version: target.version }), target.version)}
+                            </p>
+                        )}
                     </div>
                 </div>
             )}
@@ -878,6 +889,7 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
                                 <Button
                                     type="button"
                                     variant="secondary"
+                                    className="max-sm:min-h-11"
                                     onClick={() => void retryHostMutationReadiness()}
                                     disabled={starting || readinessChecking}
                                 >
@@ -887,15 +899,6 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
                             )}
                         </div>
                     </div>
-                    {/* The stopped update's notice is still open: Start opens
-                        again when it is closed (the update lock holds until
-                        then). Who acts and what next, beside the button.
-                        Bildirim kapaninca Baslat yeniden acilir. */}
-                    {stopped && (
-                        <p className="text-sm text-fg-muted" data-update-stopped-notice-open="">
-                            {t('panelUpdate.stoppedNoticeOpen', { version: target.version })}
-                        </p>
-                    )}
                     <Button
                         id="panel-update-start-button"
                         type="button"
