@@ -215,6 +215,11 @@ func TestPHPToolBindIsARequestIdentityRoute(t *testing.T) {
 	if _, ok := requestIdentityRouteFor(httptest.NewRequest(http.MethodGet, phpToolsPath, nil)); ok {
 		t.Fatal("the read is guarded")
 	}
+	// A removal may first move three tools, then remove (alpha.104 review).
+	route, ok = requestIdentityRouteFor(httptest.NewRequest(http.MethodPost, serviceUninstallPath, nil))
+	if !ok || route.pattern != serviceUninstallPath || route.timeout < 4*agentRPCDeploymentTimeout {
+		t.Fatalf("uninstall route = %+v ok=%v", route, ok)
+	}
 }
 
 func TestVersionRemovalWithAMoveRefusesBeforeRemovingWhenAMoveFails(t *testing.T) {
@@ -236,6 +241,9 @@ func TestVersionRemovalWithAMoveRefusesBeforeRemovingWhenAMoveFails(t *testing.T
 	}
 
 	stubPHPToolBindings(t, frankfurtBindings(), nil)
+	stubRemovalPreview(t, func(transport.ServiceRemovalPreviewRequest) (transport.ServiceRemovalPreviewResponse, error) {
+		return transport.ServiceRemovalPreviewResponse{State: "checked", PackageFamily: "apt", Requested: []string{"php8.4-fpm"}, Remove: []string{"php8.4-fpm"}}, nil
+	})
 	calls := stubPHPToolBind(t, func(tool, version string) (transport.BindPHPToolResponse, error) {
 		if tool == "webmail" {
 			return transport.BindPHPToolResponse{Tool: tool, Version: version, Previous: "8.4", Restored: true, MutationApplied: true, Error: "Webmail (Roundcube) did not work on PHP 8.5; it was put back on PHP 8.4"}, nil
@@ -253,5 +261,83 @@ func TestVersionRemovalWithAMoveRefusesBeforeRemovingWhenAMoveFails(t *testing.T
 	}
 	if !slices.Equal(*calls, []string{"phppgadmin->8.5", "webmail->8.5"}) {
 		t.Fatalf("calls = %v", *calls)
+	}
+}
+
+// The package manager is asked before any tool moves; a removal the Agent
+// then refuses still names the tools that moved (alpha.104 review).
+func TestVersionRemovalWithAMoveAsksThePackageManagerFirstAndKeepsTheMovesOnARefusal(t *testing.T) {
+	panel, agent, _, userID := newServiceStateAtomicPanel(t)
+	uninstall := func() *httptest.ResponseRecorder {
+		recorder := httptest.NewRecorder()
+		panel.handleServiceUninstall(recorder, serviceStateAtomicRequest(http.MethodPost, "/api/v1/service/uninstall",
+			`{"service_id":"php-fpm","package":"php8.4-fpm","move_tools_to":"8.5"}`, userID))
+		return recorder
+	}
+	stubPHPToolBindings(t, frankfurtBindings(), nil)
+	calls := stubPHPToolBind(t, func(tool, version string) (transport.BindPHPToolResponse, error) {
+		return transport.BindPHPToolResponse{Bound: true, Tool: tool, Version: version, Previous: "8.4", MutationApplied: true}, nil
+	})
+	type answer struct {
+		Error   string   `json:"error"`
+		Code    string   `json:"code"`
+		Details []string `json:"details"`
+		Moved   []string `json:"moved"`
+		MovedTo string   `json:"moved_to"`
+	}
+	decode := func(recorder *httptest.ResponseRecorder) answer {
+		t.Helper()
+		var got answer
+		if err := json.Unmarshal(recorder.Body.Bytes(), &got); err != nil {
+			t.Fatalf("%d %s", recorder.Code, recorder.Body.String())
+		}
+		return got
+	}
+
+	// The package manager cannot answer (busy, unknown, no answer): nothing moves.
+	for _, preview := range []func(transport.ServiceRemovalPreviewRequest) (transport.ServiceRemovalPreviewResponse, error){
+		func(transport.ServiceRemovalPreviewRequest) (transport.ServiceRemovalPreviewResponse, error) {
+			return transport.ServiceRemovalPreviewResponse{State: "busy"}, nil
+		},
+		func(transport.ServiceRemovalPreviewRequest) (transport.ServiceRemovalPreviewResponse, error) {
+			return transport.ServiceRemovalPreviewResponse{State: "unknown"}, nil
+		},
+		func(transport.ServiceRemovalPreviewRequest) (transport.ServiceRemovalPreviewResponse, error) {
+			return transport.ServiceRemovalPreviewResponse{}, errors.New("agent did not answer")
+		},
+	} {
+		stubRemovalPreview(t, preview)
+		recorder := uninstall()
+		if got := decode(recorder); recorder.Code != http.StatusConflict || got.Code != errCodeRemovalCheckUnavailable || len(got.Moved) != 0 {
+			t.Fatalf("%d %+v", recorder.Code, got)
+		}
+	}
+	// It would take other packages: nothing moves, and they are named.
+	asked := stubRemovalPreview(t, func(transport.ServiceRemovalPreviewRequest) (transport.ServiceRemovalPreviewResponse, error) {
+		return transport.ServiceRemovalPreviewResponse{State: "checked", Collateral: []transport.PackageRemovalCollateral{{Package: "phpmyadmin", Reason: "component", Component: "phpmyadmin"}}}, nil
+	})
+	recorder := uninstall()
+	if got := decode(recorder); recorder.Code != http.StatusConflict || got.Code != errCodeRemovalWouldRemoveOthers || !slices.Equal(got.Details, []string{"phpmyadmin"}) {
+		t.Fatalf("%d %+v", recorder.Code, got)
+	}
+	if len(*calls) != 0 || len(*asked) != 1 || (*asked)[0].Package != "php8.4-fpm" || (*asked)[0].ID != "php-fpm" {
+		t.Fatalf("calls=%v asked=%+v", *calls, *asked)
+	}
+	if agent.uninstallCalls.Load() != 0 {
+		t.Fatal("the Agent was asked to remove after a refused check")
+	}
+
+	// Moves ok, then the Agent refuses: the answer carries the moves.
+	stubRemovalPreview(t, func(transport.ServiceRemovalPreviewRequest) (transport.ServiceRemovalPreviewResponse, error) {
+		return transport.ServiceRemovalPreviewResponse{State: "checked", Requested: []string{"php8.4-fpm"}, Remove: []string{"php8.4-fpm"}}, nil
+	})
+	agent.uninstallReplyError = "the package manager's answer changed between the check and the removal; nothing was removed"
+	recorder = uninstall()
+	got := decode(recorder)
+	if recorder.Code != http.StatusConflict || got.Code == "" || got.MovedTo != "8.5" || !slices.Equal(got.Moved, []string{"phppgadmin", "webmail"}) || !strings.Contains(got.Error, "nothing was removed") {
+		t.Fatalf("%d %+v", recorder.Code, got)
+	}
+	if agent.uninstallCalls.Load() != 1 || !slices.Equal(*calls, []string{"phppgadmin->8.5", "webmail->8.5"}) {
+		t.Fatalf("uninstall calls=%d binds=%v", agent.uninstallCalls.Load(), *calls)
 	}
 }

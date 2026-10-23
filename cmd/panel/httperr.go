@@ -253,6 +253,12 @@ const (
 	errCodeRemovalToolsBound        = "REMOVAL_TOOLS_BOUND"
 	errCodeRemovalSimulationFailed  = "REMOVAL_SIMULATION_FAILED"
 	errCodeRemovalPlanChanged       = "REMOVAL_PLAN_CHANGED"
+	// REMOVAL_CHECK_UNAVAILABLE: before moving PHP tools for a version
+	// removal, the package manager's answer could not be read (busy or no
+	// answer), so nothing was moved or removed. REMOVAL_UNKNOWN_AFTER_MOVES:
+	// the tools were moved and the removal's answer was lost.
+	errCodeRemovalCheckUnavailable  = "REMOVAL_CHECK_UNAVAILABLE"
+	errCodeRemovalUnknownAfterMoves = "REMOVAL_UNKNOWN_AFTER_MOVES"
 	// FIREWALL_SYNC_FAILED means the requested service mutation and its fresh
 	// state scan completed, but the active firewall policy did not follow.
 	// FIREWALL_SYNC_FAILED, istenen servis değişikliği ile taze durum taramasının

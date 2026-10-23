@@ -169,6 +169,13 @@ var requestIdentityRoutePHPToolBind = requestIdentityRoute{
 	pattern: phpToolBindPath, timeout: agentRPCDeploymentTimeout + 5*time.Minute,
 }
 
+// requestIdentityRouteServiceUninstall (alpha.104 review): a component or
+// version removal, which may first move up to three PHP tools; its limit
+// covers the moves and the removal.
+var requestIdentityRouteServiceUninstall = requestIdentityRoute{
+	pattern: serviceUninstallPath, timeout: 4*agentRPCDeploymentTimeout + 10*time.Minute,
+}
+
 // requestIdentityRouteFor names the protected route a request would reach. It
 // uses the dispatcher's own strict matchers, so a path the guard does not
 // recognize is a path the dispatcher does not serve either.
@@ -184,6 +191,8 @@ func requestIdentityRouteFor(r *http.Request) (requestIdentityRoute, bool) {
 	switch {
 	case path == phpToolBindPath:
 		return requestIdentityRoutePHPToolBind, true
+	case path == serviceUninstallPath:
+		return requestIdentityRouteServiceUninstall, true
 	case path == "/api/v1/import/cpanel/apply":
 		return requestIdentityRouteImportApply, true
 	case path == "/api/v1/vpn/peers":

@@ -1329,7 +1329,7 @@ func main() {
 	http.HandleFunc(mailProfileInstallPath, panel.handleMailProfileInstall)
 	http.HandleFunc("/api/v1/service/operation", panel.handleServiceOperation)
 	http.HandleFunc("/api/v1/service/candidate", panel.handleServiceCandidate)
-	http.HandleFunc("/api/v1/service/uninstall", panel.handleServiceUninstall)
+	http.HandleFunc(serviceUninstallPath, panel.handleServiceUninstall)
 	http.HandleFunc(serviceRemovalImpactPath, panel.handleServiceRemovalImpact)
 	http.HandleFunc(phpToolsPath, panel.handlePHPTools)
 	http.HandleFunc(phpToolBindPath, panel.handlePHPToolBind)

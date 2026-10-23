@@ -27,9 +27,12 @@ import (
 // kurulu PHP-FPM sürümü; aracın Yönet penceresinde seçilir, taşıma doğrulanır.
 
 const (
-	phpToolsPath     = "/api/v1/service/php-tools"
-	phpToolBindPath  = "/api/v1/service/php-tools/bind"
-	phpToolReadBound = 10 * time.Second
+	phpToolsPath    = "/api/v1/service/php-tools"
+	phpToolBindPath = "/api/v1/service/php-tools/bind"
+	// serviceUninstallPath is the removal route (request-identity guarded
+	// since alpha.104).
+	serviceUninstallPath = "/api/v1/service/uninstall"
+	phpToolReadBound     = 10 * time.Second
 
 	errCodePHPToolMoveFailed = "PHP_TOOL_MOVE_FAILED"
 )
@@ -100,6 +103,9 @@ type phpToolView struct {
 	Version          string `json:"version"`
 	Ready            bool   `json:"ready"`
 	VersionInstalled bool   `json:"version_installed"`
+	// ExtensionsPresent: the tool's extension packages are installed for
+	// its version (alpha.104 review; package presence, not proof of load).
+	ExtensionsPresent bool `json:"extensions_present"`
 }
 
 // phpVersionUsage says who uses one installed PHP-FPM version.
@@ -122,12 +128,13 @@ func phpToolsView(ctx context.Context, p *Panel, bindings transport.PHPToolBindi
 	response := phpToolsResponse{State: "read", Tools: []phpToolView{}, Versions: []phpVersionUsage{}}
 	for _, binding := range bindings.Tools {
 		response.Tools = append(response.Tools, phpToolView{
-			Tool:             binding.Tool,
-			ServiceID:        phpToolServiceIDs[binding.Tool],
-			Installed:        binding.Installed,
-			Version:          binding.Version,
-			Ready:            binding.SocketReady,
-			VersionInstalled: binding.VersionInstalled,
+			Tool:              binding.Tool,
+			ServiceID:         phpToolServiceIDs[binding.Tool],
+			Installed:         binding.Installed,
+			Version:           binding.Version,
+			Ready:             binding.SocketReady,
+			VersionInstalled:  binding.VersionInstalled,
+			ExtensionsPresent: binding.ExtensionsPresent,
 		})
 	}
 	for _, version := range bindings.Versions {
@@ -177,16 +184,18 @@ func (p *Panel) handlePHPTools(w http.ResponseWriter, r *http.Request) {
 
 // phpToolBindFailure is the answer of a move that did not complete.
 type phpToolBindFailure struct {
-	Error           string   `json:"error"`
-	Code            string   `json:"code"`
-	Detail          string   `json:"detail,omitempty"`
-	Tool            string   `json:"tool,omitempty"`
-	Version         string   `json:"version,omitempty"`
-	Previous        string   `json:"previous,omitempty"`
-	Restored        bool     `json:"restored,omitempty"`
-	MutationApplied bool     `json:"mutation_applied,omitempty"`
-	Moved           []string `json:"moved,omitempty"`
-	NotAttempted    []string `json:"not_attempted,omitempty"`
+	Error  string `json:"error"`
+	Code   string `json:"code"`
+	Detail string `json:"detail,omitempty"`
+	// Cause is the structured, translatable reason (alpha.104 review).
+	Cause           *transport.PHPToolCause `json:"cause,omitempty"`
+	Tool            string                  `json:"tool,omitempty"`
+	Version         string                  `json:"version,omitempty"`
+	Previous        string                  `json:"previous,omitempty"`
+	Restored        bool                    `json:"restored,omitempty"`
+	MutationApplied bool                    `json:"mutation_applied,omitempty"`
+	Moved           []string                `json:"moved,omitempty"`
+	NotAttempted    []string                `json:"not_attempted,omitempty"`
 }
 
 // bindPHPTool runs one verified move in its own php_tool_bind job.
@@ -248,7 +257,7 @@ func (p *Panel) handlePHPToolBind(w http.ResponseWriter, r *http.Request) {
 		p.audit(r, "service.php_tool_bind.failed:"+req.Tool+":"+req.Version+" — "+auditReason(response.Error), "service", 0)
 		w.WriteHeader(http.StatusConflict)
 		json.NewEncoder(w).Encode(phpToolBindFailure{
-			Error: response.Error, Code: phpToolBindCode(response.ErrorCode), Detail: response.Detail, Tool: req.Tool, Version: req.Version,
+			Error: response.Error, Code: phpToolBindCode(response.ErrorCode), Detail: response.Detail, Cause: response.Cause, Tool: req.Tool, Version: req.Version,
 			Previous: response.Previous, Restored: response.Restored, MutationApplied: response.MutationApplied,
 		})
 		return
@@ -302,6 +311,7 @@ func (p *Panel) movePHPToolsBeforeVersionRemoval(ctx context.Context, removed, t
 				Error:           message,
 				Code:            errCodePHPToolMoveFailed,
 				Detail:          response.Detail,
+				Cause:           response.Cause,
 				Tool:            tool,
 				Version:         target,
 				Previous:        response.Previous,

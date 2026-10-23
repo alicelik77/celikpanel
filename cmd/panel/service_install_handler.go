@@ -349,6 +349,15 @@ func (p *Panel) runServiceInstall(
 		if !contains(dbtResp.Tools, req.ServiceID) {
 			return result, serviceInstallFailure(fmt.Errorf("agent did not confirm %s in the database tools configuration", req.ServiceID))
 		}
+		// Another tool's PHP needing attention does not fail this install
+		// (alpha.104): it is carried as a warning the screen names.
+		// Başka bir aracın PHP sorunu bu kurulumu düşürmez; uyarı olarak taşınır.
+		if len(dbtResp.ToolProblems) > 0 {
+			result["php_tool_problems"] = dbtResp.ToolProblems
+		}
+		if dbtResp.Warning != "" {
+			log.Printf("database tools configuration after installing %s: %s", req.ServiceID, dbtResp.Warning)
+		}
 	}
 
 	// (Roundcube's install is handled earlier and returns before this point.)
@@ -532,6 +541,31 @@ func (p *Panel) handleServiceUninstall(w http.ResponseWriter, r *http.Request) {
 	if req.MoveToolsTo != "" {
 		if req.MoveToolsTo == removedVersion {
 			writeClientError(w, http.StatusBadRequest, "move_tools_to must name another PHP version")
+			return
+		}
+		// Before any tool moves, the package manager must already accept the
+		// removal with nothing else to take (alpha.104 review): otherwise the
+		// tools would move and the version would then not be removed.
+		// Hiçbir araç taşınmadan önce paket yöneticisi kaldırmayı kabul etmeli.
+		preview, previewErr := removalPackagePreview(p, r.Context(), transport.ServiceRemovalPreviewRequest{ID: req.ServiceID, Package: req.Package})
+		if previewErr != nil || preview.State != "checked" {
+			reason := preview.State
+			if previewErr != nil {
+				reason = previewErr.Error()
+			}
+			p.audit(r, "service.uninstall.failed:"+req.ServiceID+pkgSuffix(req.Package)+" — "+auditReason("removal check before moving PHP tools: "+reason), "service", 0)
+			writeCodedError(w, http.StatusConflict, errCodeRemovalCheckUnavailable,
+				"The package manager could not be asked now what removing this version takes, so no tool was moved and nothing was removed. Try again in a moment.", "")
+			return
+		}
+		if len(preview.Collateral) > 0 {
+			details := make([]string, 0, len(preview.Collateral))
+			for _, item := range preview.Collateral {
+				details = append(details, item.Package)
+			}
+			p.audit(r, "service.uninstall.failed:"+req.ServiceID+pkgSuffix(req.Package)+" — "+auditReason("would also remove packages; no tool moved"), "service", 0)
+			writeCodedErrorDetails(w, http.StatusConflict, errCodeRemovalWouldRemoveOthers,
+				"Removing this version would also remove packages it does not name, so no tool was moved and nothing was removed.", "", details)
 			return
 		}
 		moved, failure, err := p.movePHPToolsBeforeVersionRemoval(r.Context(), removedVersion, req.MoveToolsTo)
@@ -722,17 +756,27 @@ func (p *Panel) handleServiceUninstall(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil && resp.Error == "" {
 		p.audit(r, "service.uninstall.failed:"+req.ServiceID+pkgSuffix(req.Package)+" — "+auditReason(err.Error()), "service", 0)
+		if len(movedTools) > 0 {
+			p.rescanAfterMoves(r.Context())
+			writeRefusalAfterMoves(w, http.StatusBadGateway, errCodeRemovalUnknownAfterMoves,
+				"The tools were moved, but the removal's answer did not arrive, so whether the version was removed is not known. Read the PHP-FPM versions again.", nil, movedTools, req.MoveToolsTo)
+			return
+		}
 		writeAgentError(w, err, "service uninstall")
 		return
 	}
 	if resp.Error != "" && !resp.MutationApplied {
 		p.audit(r, "service.uninstall.failed:"+req.ServiceID+pkgSuffix(req.Package)+" — "+auditReason(resp.Error), "service", 0)
-		if code, details, ok := uninstallRefusalCode(resp); ok {
-			if len(movedTools) > 0 {
-				w.WriteHeader(http.StatusConflict)
-				json.NewEncoder(w).Encode(map[string]any{"error": resp.Error, "code": code, "details": details, "moved": movedTools, "moved_to": req.MoveToolsTo})
-				return
+		code, details, ok := uninstallRefusalCode(resp)
+		if len(movedTools) > 0 {
+			if !ok {
+				code = "REMOVAL_REFUSED"
 			}
+			p.rescanAfterMoves(r.Context())
+			writeRefusalAfterMoves(w, http.StatusConflict, code, resp.Error, details, movedTools, req.MoveToolsTo)
+			return
+		}
+		if ok {
 			writeCodedErrorDetails(w, http.StatusConflict, code, resp.Error, "", details)
 			return
 		}
@@ -853,6 +897,26 @@ func (p *Panel) handleServiceUninstall(w http.ResponseWriter, r *http.Request) {
 		answer["moved_to"] = req.MoveToolsTo
 	}
 	json.NewEncoder(w).Encode(answer)
+}
+
+// writeRefusalAfterMoves answers a version removal that did not happen after
+// the PHP tools were moved: the moved tools (verified on their new version)
+// travel with the refusal, so the screen says both (alpha.104 review).
+// Araçlar taşındıktan sonra gerçekleşmeyen kaldırma: taşınanlar retle gelir.
+func writeRefusalAfterMoves(w http.ResponseWriter, status int, code, message string, details, moved []string, movedTo string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	body := map[string]any{"error": message, "code": code, "moved": moved, "moved_to": movedTo}
+	if len(details) > 0 {
+		body["details"] = details
+	}
+	json.NewEncoder(w).Encode(body)
+}
+
+func (p *Panel) rescanAfterMoves(ctx context.Context) {
+	if _, err := p.scanManagedServices(ctx); err != nil {
+		log.Printf("rescan after PHP tool moves: %v", err)
+	}
 }
 
 // uninstallRefusalCode carries the Agent's typed removal refusal (alpha.104)
