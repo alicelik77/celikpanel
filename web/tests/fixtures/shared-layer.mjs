@@ -88,7 +88,10 @@ export const packageVersionURL = compileSource('lib/packageVersion.ts', unexpect
 // One running rule for every screen that reads a component's status (alpha.98).
 export const serviceStatusURL = compileSource('lib/serviceStatus.ts', unexpected('lib/serviceStatus.ts'));
 // Which PHP version each PHP tool runs on, and who uses each version (alpha.104).
-export const phpToolsURL = compileSource('lib/phpTools.ts', unexpected('lib/phpTools.ts'));
+// It reads a lost answer the one way (alpha.104 review).
+export const phpToolsURL = compileSource('lib/phpTools.ts', (specifier) => (
+  specifier.endsWith('/requestIdentity') ? requestIdentityURL : unexpected('lib/phpTools.ts')(specifier)
+));
 
 export function sharedLayer(stubURL, extra = {}) {
   const uiURL = compileSource('components/ui.tsx', (specifier) => (

@@ -430,7 +430,7 @@ export function ServiceShell({
     return (
         <div className="p-6 md:p-8">
             {/* Header */}
-            <button onClick={onBack} className="mb-3 inline-flex items-center gap-1.5 text-sm text-fg-muted hover:text-fg">
+            <button onClick={onBack} className="mb-3 inline-flex items-center gap-1.5 text-sm text-fg-muted hover:text-fg max-sm:min-h-11" data-touch-target="back">
                 <ArrowLeft className="h-4 w-4" />
                 {t('nav.services')}
             </button>

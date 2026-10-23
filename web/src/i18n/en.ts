@@ -344,6 +344,8 @@ export const en = {
     'dnssrv.continue': 'Continue',
     'services.install': 'Install',
     'services.installed': '{name} installed.',
+    'services.phpToolProblem.versionGone': '{tool} is set to PHP {version}, which is no longer installed, so {tool} cannot answer. Open {tool} in Components and choose an installed PHP version in Manage.',
+    'services.phpToolProblem.extensionsFailed': 'The PHP extensions {tool} needs could not be installed for PHP {version}, so {tool} may not work. Open {tool} in Components and choose PHP {version} again in Manage, or another version.',
     'services.mailProfiles.fallbackWarning': '{name} installed with a self-signed fallback certificate. Mail clients will show a trust warning until a matching trusted certificate is configured.',
     'services.operation.title': 'Installing {name}',
     'services.operation.activeCheckInProgress': 'The panel is still checking for an active package operation. Try again in a moment.',

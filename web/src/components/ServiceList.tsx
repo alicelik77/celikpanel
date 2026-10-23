@@ -19,7 +19,7 @@ import {
 } from './ComponentOperation';
 import { Link, useLocation, useNavigate } from '../router';
 import { FirewallBar } from './FirewallPanel';
-import { componentStateWord, isServiceRunning, phpBindingOf } from '../lib/serviceStatus';
+import { componentStateWord, isServiceRunning, phpBindingOf, phpNotReadyHintKey } from '../lib/serviceStatus';
 import { useAuth } from '../auth/AuthContext';
 import type { TranslationKey } from '../i18n/en';
 import { useServerSetup } from './ServerSetupGate';
@@ -32,7 +32,7 @@ import { componentIcon } from '../lib/componentIcons';
 import { packageVersionFacts } from '../lib/packageVersion';
 import { BundleInstallDialog, ReadyBundleStrip, useBundleSequence } from './ReadyBundleStrip';
 import { WebmailRepairButton } from './WebmailRepairButton';
-import { answerBody, decodePHPToolMoveFailure, phpToolForService, readPHPTools, PHP_TOOL_SERVICE_ID, type PHPToolMoveFailure, type PHPToolsInfo } from '../lib/phpTools';
+import { answerBody, decodePHPToolMoveFailure, phpToolForService, readPHPTools, PHP_TOOL_SERVICE_ID, type PHPToolMoveFailure, type PHPToolsInfo, phpToolCauseText } from '../lib/phpTools';
 
 // One installed copy of a runtime (B3b): php8.3-fpm is an instance, a Node
 // tree under /opt/celikpanel/runtimes is an instance. `unit` empty means the
@@ -1880,7 +1880,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                                 PHP'si olmayan araç nedenini ve çaresini söyler. */}
                                                             {componentStateWord(s) === 'notReady' && phpBindingOf(s) && (
                                                                 <p className="mt-0.5 text-xs text-fg-muted" data-row-not-ready="">
-                                                                    {t(phpBindingOf(s)!.version_installed ? 'services.phpNotReadyStopped' : 'services.phpNotReadyGone', { version: phpBindingOf(s)!.version })}
+                                                                    {t(phpNotReadyHintKey(phpBindingOf(s)!), { version: phpBindingOf(s)!.version })}
                                                                 </p>
                                                             )}
                                                         </div>
@@ -3290,6 +3290,20 @@ function VersionDrawer({
                     await onVersionInstalled();
                     return;
                 }
+                // The tools moved, then the removal was refused or its answer
+                // was lost (alpha.104 review): say what moved, then the
+                // refusal, and read everything again.
+                // Araçlar taşındı, sonra kaldırma reddedildi ya da yanıtı kayboldu.
+                const afterMoves = decodePHPToolMoveFailure(raw);
+                if (afterMoves && afterMoves.moved.length > 0) {
+                    const movedTo = typeof (raw as { moved_to?: unknown } | null)?.moved_to === 'string' ? String((raw as { moved_to: string }).moved_to) : moveToolsTo;
+                    setMoveFailure({ ...afterMoves, tool: '', version: afterMoves.version || movedTo, error: '' });
+                    setRemoveError(error);
+                    setPhpToolsToken((n) => n + 1);
+                    versionImpact.retry();
+                    await onVersionInstalled();
+                    return;
+                }
                 if (error.code === 'SERVICE_STATE_REFRESH_FAILED') {
                     setRemoveTarget(null);
                     onStateUnverified(error);
@@ -3581,7 +3595,11 @@ function VersionDrawer({
                         const toolsBound = (sim?.bound_tools.length ?? 0) > 0;
                         const targets = otherVersions(phpTools, removeTarget.version);
                         const target = targets.includes(moveTo) ? moveTo : targets[0] ?? '';
-                        const offerMove = toolsBound && !sitesBlock && !collateral && target !== '';
+                        // Offered only when the package manager answered and
+                        // takes nothing else: otherwise the tools would move
+                        // and the version stay (alpha.104 review).
+                        // Yalnız paket yöneticisi yanıtladıysa ve başka bir şey almıyorsa.
+                        const offerMove = toolsBound && sim?.state === 'checked' && !sitesBlock && !collateral && target !== '';
                         const refused = Boolean(sim?.refuses) || sitesBlock;
                         return (
                             <>
@@ -3613,6 +3631,8 @@ function VersionDrawer({
                             read={versionImpact.read}
                             onRetry={versionImpact.retry}
                             targets={otherVersions(phpTools, removeTarget.version)}
+                            versions={phpTools === null ? 'checking' : phpTools.state === 'read' ? 'read' : 'unknown'}
+                            onRetryVersions={() => setPhpToolsToken((n) => n + 1)}
                             moveTo={moveTo}
                             onMoveTo={setMoveTo}
                             moving={removing}
@@ -3659,13 +3679,17 @@ function VersionUsage({ info, version, toolName }: { info: PHPToolsInfo; version
 // the sites on it (moved in each site's settings), the tools on it (moved
 // here, verified, before the removal), and the package manager's answer.
 // Tek PHP sürümünü kaldırmanın aldıkları, düğmeden önce.
-function VersionRemovalImpact({ name, serviceId, version, read, onRetry, targets, moveTo, onMoveTo, moving, nameOf }: {
+function VersionRemovalImpact({ name, serviceId, version, read, onRetry, targets, versions, onRetryVersions, moveTo, onMoveTo, moving, nameOf }: {
     name: string;
     serviceId: string;
     version: string;
     read: RemovalRead;
     onRetry: () => void;
     targets: string[];
+    /** Whether the installed versions were read: "no other version" is said
+     *  only when they were. / Kurulu sürümler okundu mu. */
+    versions: 'checking' | 'read' | 'unknown';
+    onRetryVersions: () => void;
     moveTo: string;
     onMoveTo: (version: string) => void;
     moving: boolean;
@@ -3685,7 +3709,7 @@ function VersionRemovalImpact({ name, serviceId, version, read, onRetry, targets
     // moving the tools would not make the removal possible.
     // Taşıma yalnız araçlar tek engel olduğunda sunulur.
     const toolsBound = (sim?.bound_tools.length ?? 0) > 0 && !impact.hosted?.blocks_removal
-        && !(sim?.state === 'checked' && sim.collateral.length > 0);
+        && sim?.state === 'checked' && sim.collateral.length === 0;
     const target = targets.includes(moveTo) ? moveTo : targets[0] ?? '';
     return (
         <div className="mb-3 space-y-2 text-sm" data-removal-impact="known">
@@ -3697,7 +3721,11 @@ function VersionRemovalImpact({ name, serviceId, version, read, onRetry, targets
             )}
             {sim && <SimulationLines name={name} serviceId={serviceId} simulation={sim} nameOf={nameOf} version={version} />}
             {toolsBound && (
-                targets.length > 0 ? (
+                versions === 'checking' ? (
+                    <Checking label={t('services.version.versionsChecking')} />
+                ) : versions === 'unknown' ? (
+                    <div data-version-move="unknown"><CouldNotCheck text={t('services.version.versionsUnknown')} onRetry={onRetryVersions} /></div>
+                ) : targets.length > 0 ? (
                     <label className="flex flex-wrap items-center gap-2 text-fg" data-version-move="">
                         <span>{t('services.version.moveLabel')}</span>
                         <select
@@ -3738,15 +3766,21 @@ function MoveFailureNote({ failure, removed, toolName }: { failure: PHPToolMoveF
     const { t } = useI18n();
     const parts: string[] = [];
     if (failure.moved.length > 0) parts.push(t('services.version.moveDone', { tools: failure.moved.map(toolName).join(', '), version: failure.version }));
+    const reason = phpToolCauseText(t, failure.cause, failure.detail || failure.error);
     if (failure.tool) {
         parts.push(failure.restored
-            ? t('services.version.moveRestored', { tool: toolName(failure.tool), version: failure.version, previous: failure.previous || removed, reason: failure.detail || failure.error })
-            : t('services.version.moveNotRestored', { tool: toolName(failure.tool), version: failure.version, reason: failure.detail || failure.error }));
-    } else {
+            ? t('services.version.moveRestored', { tool: toolName(failure.tool), version: failure.version, previous: failure.previous || removed, reason })
+            : t('services.version.moveNotRestored', { tool: toolName(failure.tool), version: failure.version, reason: failure.cause && failure.error ? reason + ' — ' + t('component.phpTool.cause.other', { detail: failure.error }) : reason }));
+    } else if (failure.error) {
         parts.push(failure.error);
     }
     if (failure.not_attempted.length > 0) parts.push(t('services.version.moveNotAttempted', { tools: failure.not_attempted.map(toolName).join(', ') }));
-    parts.push(t('services.version.moveKept', { version: removed }));
+    // A lost removal answer after the moves: whether the version went is
+    // not known, so "was not removed" is not said.
+    // Taşımalardan sonra kaybolan yanıt: sürümün gidip gitmediği bilinmez.
+    parts.push(failure.code === 'REMOVAL_UNKNOWN_AFTER_MOVES'
+        ? t('services.version.removalUnknown', { version: removed })
+        : t('services.version.moveKept', { version: removed }));
     return (
         <div className="mb-3 rounded-lg border border-danger/30 bg-danger/5 p-3 text-sm text-fg" data-version-move-failure={failure.tool}>
             {parts.map((part, index) => <p key={index} className={index > 0 ? 'mt-1' : undefined}><KeepWords text={part} /></p>)}

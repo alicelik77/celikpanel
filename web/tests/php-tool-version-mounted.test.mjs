@@ -112,28 +112,95 @@ test('moving: the request, visible waiting, then the result; a failed proof says
 
   await mount({
     reads: [read([tool({})])],
-    bind: async () => answer({ error: 'phpPgAdmin did not work on PHP 8.6 (phpPgAdmin answered HTTP 502); it was put back on PHP 8.4', code: 'PHP_TOOL_PROBE_FAILED', restored: true, previous: '8.4' }, 409),
+    bind: async () => answer({ error: 'phpPgAdmin did not work on PHP 8.6 (phpPgAdmin answered HTTP 502); it was put back on PHP 8.4', code: 'PHP_TOOL_PROBE_FAILED', restored: true, previous: '8.4',
+      cause: { kind: 'http_status', version: '8.6', status: 502, detail: 'phpPgAdmin answered HTTP 502' } }, 409),
   });
   try {
     const button = tree.root.findAll((node) => node.type === 'button' && label(node).includes(say('component.phpTool.apply', { version: '8.6' })))[0];
     await act(async () => { button.props.onClick(); });
     await settle();
     assert.equal(attr('data-php-tool-result').props['data-php-tool-result'], 'restored');
-    assert.ok(label(attr('data-php-tool-result')).includes(say('component.phpTool.restored', {
-      tool: 'phpPgAdmin', version: '8.6', previous: '8.4', reason: 'phpPgAdmin did not work on PHP 8.6 (phpPgAdmin answered HTTP 502); it was put back on PHP 8.4',
-    })));
+    // The cause is said in the reader's language, from its facts.
+    assert.equal(label(attr('data-php-tool-result')), say('component.phpTool.restored', {
+      tool: 'phpPgAdmin', version: '8.6', previous: '8.4', reason: say('component.phpTool.cause.http_status', { status: 502 }),
+    }));
+  } finally { await unmount(); }
+
+  // No structured cause (or one this screen does not know): quoted, not guessed.
+  await mount({
+    reads: [read([tool({})])],
+    bind: async () => answer({ error: 'something new happened', code: 'PHP_TOOL_PROBE_FAILED', restored: true, previous: '8.4', cause: { kind: 'brand_new_kind', detail: 'something new happened' } }, 409),
+  });
+  try {
+    const button = tree.root.findAll((node) => node.type === 'button' && label(node).includes(say('component.phpTool.apply', { version: '8.6' })))[0];
+    await act(async () => { button.props.onClick(); });
+    await settle();
+    assert.equal(label(attr('data-php-tool-result')), say('component.phpTool.restored', {
+      tool: 'phpPgAdmin', version: '8.6', previous: '8.4', reason: say('component.phpTool.cause.other', { detail: 'something new happened' }),
+    }));
   } finally { await unmount(); }
 });
 
-test('a lost answer says the result is not known; a failed read says so with Retry', async () => {
-  await mount({ reads: [read([tool({})])], bind: async () => { throw new TypeError('network'); } });
+test('Turkish: a missing-extensions cause is said in Turkish, not in the Agent’s English', async () => {
+  await mount({
+    words: tr,
+    reads: [read([tool({})])],
+    bind: async () => answer({ error: 'phpPgAdmin did not work on PHP 8.6 (PHP 8.6 lacks pgsql for phpPgAdmin); it was put back on PHP 8.4', code: 'PHP_TOOL_PROBE_FAILED', restored: true, previous: '8.4',
+      cause: { kind: 'missing_extensions', version: '8.6', extensions: ['pgsql', 'mbstring'] } }, 409),
+  });
+  try {
+    const button = tree.root.findAll((node) => node.type === 'button' && label(node).includes(fill(tr['component.phpTool.apply'], { version: '8.6' })))[0];
+    await act(async () => { button.props.onClick(); });
+    await settle();
+    const text = label(attr('data-php-tool-result'));
+    assert.ok(text.includes(fill(tr['component.phpTool.cause.missing_extensions'], { version: '8.6', extensions: 'pgsql, mbstring' })), text);
+    assert.ok(!text.includes('lacks'), text);
+  } finally { await unmount(); }
+});
+
+test('a tool that could not be put back says so with the server’s words', async () => {
+  await mount({
+    reads: [read([tool({})])],
+    bind: async () => answer({ error: 'phpPgAdmin did not work on PHP 8.6 (down); the previous configuration was put back, but nginx rejected it (emerg)', code: 'PHP_TOOL_PROBE_FAILED',
+      restored: false, mutation_applied: true, previous: '8.4', cause: { kind: 'no_answer', version: '8.6' } }, 409),
+  });
   try {
     const button = tree.root.findAll((node) => node.type === 'button' && label(node).includes(say('component.phpTool.apply', { version: '8.6' })))[0];
     await act(async () => { button.props.onClick(); });
     await settle();
     assert.equal(attr('data-php-tool-result').props['data-php-tool-result'], 'failed');
-    assert.ok(label(attr('data-php-tool-result')).includes(en['component.phpTool.answerLost']));
+    const text = label(attr('data-php-tool-result'));
+    assert.ok(text.includes(say('component.phpTool.cause.no_answer', { version: '8.6' })), text);
+    assert.ok(text.includes('the previous configuration was put back, but nginx rejected it'), text);
   } finally { await unmount(); }
+});
+
+test('extension packages missing on the bound version: not ready, and that version is offered again', async () => {
+  await mount({ reads: [read([tool({ extensions_present: false })])] });
+  try {
+    assert.equal(attr('data-php-tool-state').props['data-php-tool-state'], 'extensions');
+    assert.equal(label(attr('data-php-tool-state')), say('component.phpTool.missingExtensions', { tool: 'phpPgAdmin', version: '8.4' }));
+    assert.deepEqual(attr('data-php-tool-select').props.children.map((option) => option.props.value), ['8.6', '8.5', '8.4']);
+  } finally { await unmount(); }
+});
+
+test('a lost answer says the result is not known; a failed read says so with Retry', async () => {
+  // No answer at all, and a gateway's own page in place of the Panel's
+  // answer (502/504 HTML): both are "not known", never a failure.
+  for (const bind of [
+    async () => { throw new TypeError('network'); },
+    async () => new Response('<html><body>502 Bad Gateway</body></html>', { status: 502, headers: { 'Content-Type': 'text/html' } }),
+    async () => new Response('<html><body>504 Gateway Time-out</body></html>', { status: 504, headers: { 'Content-Type': 'text/html' } }),
+  ]) {
+    await mount({ reads: [read([tool({})])], bind });
+    try {
+      const button = tree.root.findAll((node) => node.type === 'button' && label(node).includes(say('component.phpTool.apply', { version: '8.6' })))[0];
+      await act(async () => { button.props.onClick(); });
+      await settle();
+      assert.equal(attr('data-php-tool-result').props['data-php-tool-result'], 'failed');
+      assert.ok(label(attr('data-php-tool-result')).includes(en['component.phpTool.answerLost']));
+    } finally { await unmount(); }
+  }
   await mount({ reads: ['fail'] });
   try {
     assert.ok(label(tree.root).includes(say('component.phpTool.unknown', { tool: 'phpPgAdmin' })));

@@ -61,7 +61,8 @@ export function HelpButton({ serviceId, kind, name }: { serviceId: string; kind?
             <button
                 onClick={() => setOpen(true)}
                 title={t('help.buttonHint')}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-border-strong bg-surface px-2.5 py-1.5 text-xs font-medium text-fg transition-colors hover:bg-surface-2"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-border-strong bg-surface px-2.5 py-1.5 text-xs font-medium text-fg transition-colors hover:bg-surface-2 max-sm:min-h-11"
+                data-touch-target="help"
             >
                 <HelpCircle className="h-3.5 w-3.5 text-primary" />
                 {t('help.button')}

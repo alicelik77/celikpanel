@@ -92,6 +92,29 @@ const MAIL_HOSTNAME_SOURCES: ReadonlySet<string> = new Set([
     'saved', 'os_hostname', 'panel_certificate', 'dns_identity', '',
 ]);
 
+
+// A PHP tool needing attention after this install (alpha.104 review): the
+// Panel carries the Agent's per-tool problems in the operation result. Here,
+// not in lib/phpTools, because this module boots with the shell.
+// Bu kurulumdan sonra ilgi isteyen PHP aracı; işlem sonucunda taşınır.
+const PHP_TOOL_NAMES = { webmail: 'Roundcube', phpmyadmin: 'phpMyAdmin', phppgadmin: 'phpPgAdmin' } as const;
+type PHPToolProblem = { tool: keyof typeof PHP_TOOL_NAMES; version: string; kind: 'version_gone' | 'extensions_failed' };
+
+export function decodePHPToolProblems(result: unknown): PHPToolProblem[] {
+    if (!result || typeof result !== 'object') return [];
+    const raw = (result as { php_tool_problems?: unknown }).php_tool_problems;
+    if (!Array.isArray(raw)) return [];
+    const out: PHPToolProblem[] = [];
+    for (const item of raw) {
+        const p = item as Record<string, unknown> | null;
+        if (!p || typeof p !== 'object' || typeof p.tool !== 'string' || !(p.tool in PHP_TOOL_NAMES)
+            || typeof p.version !== 'string' || !/^[0-9]{1,2}\.[0-9]{1,2}$/.test(p.version)
+            || (p.kind !== 'version_gone' && p.kind !== 'extensions_failed')) continue;
+        out.push({ tool: p.tool as PHPToolProblem['tool'], version: p.version, kind: p.kind });
+    }
+    return out;
+}
+
 export function decodeMailHostnameIdentity(value: unknown): MailHostnameIdentity | null {
     if (!value || typeof value !== 'object') return null;
     const payload = value as Record<string, unknown>;
@@ -1825,6 +1848,16 @@ export function ComponentOperationProvider({ children }: { children: ReactNode }
                     }));
                 } else {
                     showToast('success', t('services.installed', { name: installedName }));
+                }
+                // Another PHP tool needing attention does not fail this
+                // install (alpha.104 review): it is said as a warning that
+                // names the tool and what to do.
+                // Başka bir PHP aracının sorunu bu kurulumu düşürmez; uyarıdır.
+                for (const problem of decodePHPToolProblems(next.result)) {
+                    showToast('warning', t(problem.kind === 'version_gone' ? 'services.phpToolProblem.versionGone' : 'services.phpToolProblem.extensionsFailed', {
+                        tool: PHP_TOOL_NAMES[problem.tool],
+                        version: problem.version,
+                    }));
                 }
             } catch {
                 // Network errors and 5xx/429 responses are transient. Never

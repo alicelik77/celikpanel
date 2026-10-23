@@ -40,6 +40,9 @@ const REASK_ROUTES = [
     // alpha.104: moving a PHP tool to another PHP version.
     // Bir PHP aracını başka bir PHP sürümüne taşımak.
     /^\/api\/v1\/service\/php-tools\/bind$/,
+    // alpha.104 review: a component or version removal, which may first move
+    // the PHP tools. / Bir bileşen ya da sürüm kaldırma; önce araçları taşıyabilir.
+    /^\/api\/v1\/service\/uninstall$/,
 ];
 
 // An answer that says nothing about the change: a gateway between the browser

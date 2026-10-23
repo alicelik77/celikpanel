@@ -304,3 +304,20 @@ test('the import page names its request, and a start after a lost answer is the 
   assert.match(page, /running: 'import\.unknown\.bodyRunning',\s+interrupted: 'import\.unknown\.bodyInterrupted',/);
   assert.doesNotMatch(page, /\[408, 429, 502, 503, 504\]/, 'the import page has its own definition of a lost answer');
 });
+
+// alpha.104: moving a PHP tool, and (review) a component or version removal,
+// which may first move the tools; the server guards both the same way.
+// Bir PHP aracını taşımak ve bir bileşen ya da sürüm kaldırma da korunur.
+test('the alpha.104 routes are asked again: a tool move and a removal', () => {
+  for (const url of ['/api/v1/service/php-tools/bind', '/api/v1/service/uninstall']) {
+    assert.equal(isReaskRoute('POST', url), true, url);
+    assert.equal(isReaskRoute('GET', url), false, url);
+    assert.equal(isReaskRoute('POST', `https://another.example${url}`), false, url);
+  }
+  for (const url of ['/api/v1/service/uninstall/x', '/api/v1/service/php-tools', '/api/v1/service/removal-impact']) {
+    assert.equal(isReaskRoute('POST', url), false, url);
+  }
+  const removal = identifyRequest('/api/v1/service/uninstall', { method: 'POST', body: '{"service_id":"php-fpm","package":"php8.4-fpm","move_tools_to":"8.5"}' });
+  assert.match(removal.id, /^[0-9a-f]{32}$/);
+  assert.equal(removal.reask, true);
+});

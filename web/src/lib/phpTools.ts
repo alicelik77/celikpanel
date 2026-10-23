@@ -7,6 +7,9 @@
 // Webmail, phpMyAdmin ve phpPgAdmin'in koştuğu PHP sürümü ve her kurulu PHP-FPM
 // sürümünü kimin kullandığı. "unknown": şimdi okunamadı, hiçbir şey iddia edilmez.
 
+import type { TranslationKey } from '../i18n/en';
+import { answerWasLost } from './requestIdentity';
+
 export type PHPToolName = 'webmail' | 'phpmyadmin' | 'phppgadmin';
 
 export interface PHPToolState {
@@ -18,6 +21,10 @@ export interface PHPToolState {
     /** The bound version's PHP-FPM socket exists now. */
     ready: boolean;
     version_installed: boolean;
+    /** The tool's PHP extension packages are installed for its version
+     *  (package presence, not proof PHP loads them). Absent from an older
+     *  Panel: taken as present, nothing is claimed. */
+    extensions_present: boolean;
 }
 
 export interface PHPVersionUsage {
@@ -52,7 +59,7 @@ export function decodePHPTools(value: unknown): PHPToolsInfo {
         if (!t || typeof t !== 'object' || typeof t.tool !== 'string' || !TOOLS.has(t.tool) || typeof t.service_id !== 'string'
             || typeof t.installed !== 'boolean' || typeof t.version !== 'string' || (t.version !== '' && !VERSION.test(t.version))
             || typeof t.ready !== 'boolean' || typeof t.version_installed !== 'boolean') return { state: 'unknown' };
-        tools.push({ tool: t.tool as PHPToolName, service_id: t.service_id, installed: t.installed, version: t.version, ready: t.ready, version_installed: t.version_installed });
+        tools.push({ tool: t.tool as PHPToolName, service_id: t.service_id, installed: t.installed, version: t.version, ready: t.ready, version_installed: t.version_installed, extensions_present: t.extensions_present !== false });
     }
     const versions: PHPVersionUsage[] = [];
     for (const raw of v.versions) {
@@ -88,6 +95,55 @@ export interface PHPToolMoveFailure {
     mutation_applied: boolean;
     moved: PHPToolName[];
     not_attempted: PHPToolName[];
+    /** The structured cause, translated on the screen; null when absent. */
+    cause: PHPToolCause | null;
+}
+
+// Why a move failed, as the Agent says it (alpha.104 review): a kind the
+// screen translates, with its facts. An unexpected kind is quoted.
+// Taşımanın neden başarısız olduğu: ekranın çevirdiği tür ve olguları.
+export interface PHPToolCause {
+    kind: string;
+    version: string;
+    extensions: string[];
+    status: number;
+    running: string;
+    detail: string;
+}
+
+const CAUSE_KINDS: ReadonlySet<string> = new Set([
+    'missing_extensions', 'extensions_install_failed', 'wrong_version', 'no_answer', 'http_status', 'served_as_file', 'tool_error',
+    'not_tool_page', 'not_running', 'version_not_installed', 'tool_not_installed', 'unsupported', 'fpm_reload_failed',
+    'config_owner_edited', 'config_prepare_failed', 'config_read_failed', 'config_write_failed', 'nginx_rejected', 'nginx_reload_failed',
+]);
+
+export function decodePHPToolCause(value: unknown): PHPToolCause | null {
+    if (!value || typeof value !== 'object') return null;
+    const v = value as Record<string, unknown>;
+    if (typeof v.kind !== 'string' || v.kind === '') return null;
+    return {
+        kind: v.kind,
+        version: typeof v.version === 'string' ? v.version : '',
+        extensions: strings(v.extensions) ? v.extensions : [],
+        status: typeof v.status === 'number' && Number.isInteger(v.status) ? v.status : 0,
+        running: typeof v.running === 'string' ? v.running : '',
+        detail: typeof v.detail === 'string' ? v.detail : '',
+    };
+}
+
+type Translate = (key: TranslationKey, vars?: Record<string, string | number>) => string;
+
+// The cause in the reader's language; a kind this screen does not know is
+// quoted as the server said it, never guessed.
+// Nedenin okurun dilinde söylenişi; bilinmeyen tür sunucunun sözüyle alıntılanır.
+export function phpToolCauseText(t: Translate, cause: PHPToolCause | null, said: string): string {
+    if (!cause || !CAUSE_KINDS.has(cause.kind)) {
+        const words = cause?.detail || said;
+        return words ? t('component.phpTool.cause.other', { detail: words }) : t('component.phpTool.failedUnknown');
+    }
+    return t(('component.phpTool.cause.' + cause.kind) as TranslationKey, {
+        version: cause.version, extensions: cause.extensions.join(', '), status: cause.status, running: cause.running, detail: cause.detail,
+    });
 }
 
 export function decodePHPToolMoveFailure(value: unknown): PHPToolMoveFailure | null {
@@ -106,6 +162,7 @@ export function decodePHPToolMoveFailure(value: unknown): PHPToolMoveFailure | n
         mutation_applied: v.mutation_applied === true,
         moved: tools(v.moved),
         not_attempted: tools(v.not_attempted),
+        cause: decodePHPToolCause(v.cause),
     };
 }
 
@@ -140,6 +197,10 @@ export async function movePHPTool(tool: PHPToolName, version: string): Promise<P
     } catch {
         return { kind: 'lost' };
     }
+    // A gateway's own page in place of the Panel's answer (502/504 HTML,
+    // after the one re-ask): whether the move happened is not known.
+    // Panel'in yanıtı yerine geçidin kendi sayfası: taşımanın olup olmadığı bilinmez.
+    if (answerWasLost(response)) return { kind: 'lost' };
     const body = await answerBody(response);
     if (response.ok && body && typeof body === 'object' && (body as { bound?: unknown }).bound === true) return { kind: 'moved' };
     return { kind: 'refused', failure: decodePHPToolMoveFailure(body) };

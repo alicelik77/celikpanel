@@ -256,7 +256,8 @@ test('only tools on the version: move them to a chosen version, then remove; a f
     assert.ok(note, 'the failed move is not explained');
     const text = label(note);
     assert.ok(text.includes(say('services.version.moveDone', { tools: nameOf('phppgadmin'), version: '8.5' })), text);
-    assert.ok(text.includes(say('services.version.moveRestored', { tool: nameOf('roundcube'), version: '8.5', previous: '8.4', reason: 'Webmail did not work on PHP 8.5; it was put back on PHP 8.4' })), text);
+    // No structured cause in this answer: the server's words are quoted.
+    assert.ok(text.includes(say('services.version.moveRestored', { tool: nameOf('roundcube'), version: '8.5', previous: '8.4', reason: say('component.phpTool.cause.other', { detail: 'Webmail did not work on PHP 8.5; it was put back on PHP 8.4' }) })), text);
     assert.ok(text.includes(say('services.version.moveKept', { version: '8.4' })), text);
   } finally { await unmount(); }
 });
@@ -302,6 +303,78 @@ test('the busy and unknown simulation say the removal is checked again when pres
   }
 });
 
+// alpha.104 review: the move is offered only when the package manager
+// answered; moves that happened before a refusal are said with it; "no other
+// version" only when the versions were read.
+test('tools on the version but no package manager answer: no move is offered', async () => {
+  for (const state of ['busy', 'unknown']) {
+    await mount({ extra: impactRoute(versionImpact(sim({ state, remove: [], bound_tools: ['webmail'], refuses: true }))) });
+    try {
+      await openVersionRemoval('8.4');
+      assert.equal(buttonsLabelled(say('services.version.moveButton', { version: '8.6' })).length, 0, state);
+      assert.equal(tree.root.findAll((node) => node.props && node.props['data-version-move'] !== undefined).length, 0, state);
+    } finally { await unmount(); }
+  }
+});
+
+test('the tools moved, then the removal was refused: both are said and everything is read again', async () => {
+  await mount({ extra: {
+    ...impactRoute(versionImpact(sim({ bound_tools: ['webmail'], refuses: true }))),
+    '/api/v1/service/uninstall': () => answer({ error: 'the package manager’s answer changed', code: 'REMOVAL_PLAN_CHANGED', moved: ['webmail'], moved_to: '8.6' }, 409),
+  } });
+  try {
+    await openVersionRemoval('8.4');
+    const readsBefore = requests.filter((request) => request.path === '/api/v1/service/php-tools').length;
+    await act(async () => { buttonsLabelled(say('services.version.moveButton', { version: '8.6' }))[0].props.onClick(); });
+    for (let i = 0; i < 4; i += 1) await settle();
+    const note = tree.root.findAll((node) => node.props && node.props['data-version-move-failure'] !== undefined)[0];
+    assert.ok(note, 'the moves are not said');
+    const text = label(note);
+    assert.ok(text.includes(say('services.version.moveDone', { tools: nameOf('roundcube'), version: '8.6' })), text);
+    assert.ok(text.includes(say('services.version.moveKept', { version: '8.4' })), text);
+    assert.ok(label(tree.root).includes(say('err.REMOVAL_PLAN_CHANGED')), 'the refusal is not said');
+    assert.ok(!label(tree.root).includes('Nothing was removed: the tools'), 'nothing claims no tool moved');
+    assert.ok(requests.filter((request) => request.path === '/api/v1/service/php-tools').length > readsBefore, 'the tools were not read again');
+  } finally { await unmount(); }
+});
+
+test('the tools moved and the removal answer was lost: not known, never "was not removed"', async () => {
+  await mount({ extra: {
+    ...impactRoute(versionImpact(sim({ bound_tools: ['webmail'], refuses: true }))),
+    '/api/v1/service/uninstall': () => answer({ error: 'not known', code: 'REMOVAL_UNKNOWN_AFTER_MOVES', moved: ['webmail'], moved_to: '8.6' }, 502),
+  } });
+  try {
+    await openVersionRemoval('8.4');
+    await act(async () => { buttonsLabelled(say('services.version.moveButton', { version: '8.6' }))[0].props.onClick(); });
+    for (let i = 0; i < 4; i += 1) await settle();
+    const text = label(tree.root.findAll((node) => node.props && node.props['data-version-move-failure'] !== undefined)[0]);
+    assert.ok(text.includes(say('services.version.removalUnknown', { version: '8.4' })), text);
+    assert.ok(!text.includes(say('services.version.moveKept', { version: '8.4' })), text);
+  } finally { await unmount(); }
+});
+
+test('installed versions that could not be read are not "no other version"', async () => {
+  let fail = true;
+  await mount({ extra: {
+    ...impactRoute(versionImpact(sim({ bound_tools: ['webmail'], refuses: true }))),
+    '/api/v1/service/php-tools': () => (fail ? answer({ error: 'agent' }, 502) : answer(PHP_TOOLS)),
+  } });
+  try {
+    // Without the usage read the list cannot say which row is 8.4: the first
+    // version's Remove opens (8.6), and the tools are said to run on it.
+    await openVersionRemoval('8.4');
+    const line = tree.root.findAll((node) => node.props && node.props['data-version-move'] === 'unknown')[0];
+    assert.ok(line, 'the unread versions are not said');
+    assert.ok(label(line).includes(say('services.version.versionsUnknown')));
+    assert.ok(!label(tree.root).includes(say('services.version.moveNone')));
+    fail = false;
+    const retry = line.findAll((node) => node.type === 'button')[0];
+    await act(async () => { retry.props.onClick(); });
+    for (let i = 0; i < 3; i += 1) await settle();
+    assert.ok(buttonsLabelled(say('services.version.moveButton', { version: '8.5' })).length > 0, 'Retry did not read the versions again');
+  } finally { await unmount(); }
+});
+
 // --- Who uses each version; a tool whose PHP is missing -----------------------------
 test('the versions list says who uses each version', async () => {
   await mount();
@@ -331,6 +404,18 @@ test('a PHP tool whose PHP is gone is not ready and says why; phpMyAdmin "really
       assert.ok(label(cell).startsWith('5.2.2'), label(cell));
       assert.ok(!label(cell).startsWith('5.2.2-really'), label(cell));
     }
+  } finally { await unmount(); }
+});
+
+test('a PHP tool whose extension packages are missing on its version is not ready and says how to fix it', async () => {
+  const services = SERVER.map((service) => service.id === 'roundcube'
+    ? { ...service, php_binding: { version: '8.4', socket_ready: true, version_installed: true, extensions_present: false } } : service);
+  await mount({ managed: payload(services) });
+  try {
+    const row = rowOf('roundcube');
+    assert.equal(row.findAll((node) => node.props && node.props['data-row-state'] !== undefined)[0].props['data-row-state'], 'notReady');
+    const hint = row.findAll((node) => node.props && node.props['data-row-not-ready'] !== undefined)[0];
+    assert.equal(label(hint), say('services.phpNotReadyExtensions', { version: '8.4' }));
   } finally { await unmount(); }
 });
 
@@ -371,4 +456,26 @@ test('every alpha.104 text exists in English and Turkish, Turkish not English', 
     assert.equal(typeof trComponents[key], 'string', key);
     if (!['services.version.oneSite'].includes(key)) assert.notEqual(trComponents[key], enComponents[key], key);
   }
+});
+
+// alpha.104 review: another tool's PHP problem after an install is a warning
+// naming that tool, decoded from the operation result; the install worked.
+test('an install result naming another tool’s PHP problem is decoded for a warning, in both languages', async () => {
+  const { decodePHPToolProblems } = await import(operationURL);
+  assert.deepEqual(decodePHPToolProblems({ success: true, php_tool_problems: [
+    { tool: 'phppgadmin', version: '8.4', kind: 'version_gone' },
+    { tool: 'webmail', version: '8.5', kind: 'extensions_failed' },
+    { tool: 'nginx', version: '8.5', kind: 'version_gone' },
+    { tool: 'webmail', version: '8.5', kind: 'other' },
+  ] }), [
+    { tool: 'phppgadmin', version: '8.4', kind: 'version_gone' },
+    { tool: 'webmail', version: '8.5', kind: 'extensions_failed' },
+  ]);
+  assert.deepEqual(decodePHPToolProblems({ success: true }), []);
+  for (const key of ['services.phpToolProblem.versionGone', 'services.phpToolProblem.extensionsFailed']) {
+    assert.equal(typeof enShellHalf[key], 'string', key);
+    assert.equal(typeof trShellHalf[key], 'string', key);
+    assert.notEqual(enShellHalf[key], trShellHalf[key], key);
+  }
+  assert.match(source('components/ComponentOperation.tsx'), /for \(const problem of decodePHPToolProblems\(next\.result\)\) \{\s*showToast\('warning'/);
 });

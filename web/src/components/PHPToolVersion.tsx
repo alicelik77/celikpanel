@@ -3,7 +3,7 @@ import { Code2 } from 'lucide-react';
 import { useI18n } from '../i18n';
 import { Button, Checking, CouldNotCheck, KeepWords, Spinner } from './ui';
 import { componentName } from '../lib/componentName';
-import { movePHPTool, readPHPTools, type PHPToolName, type PHPToolsInfo } from '../lib/phpTools';
+import { movePHPTool, phpToolCauseText, readPHPTools, type PHPToolName, type PHPToolsInfo } from '../lib/phpTools';
 
 // Which PHP version webmail (Roundcube), phpMyAdmin or phpPgAdmin runs on, in
 // the tool's own Manage window (alpha.104, owner decision of 2026-10-23),
@@ -40,7 +40,10 @@ export function PHPToolVersion({ serviceId, tool }: { serviceId: string; tool: P
     const state = info?.state === 'read' ? info.tools.find((item) => item.tool === tool) : undefined;
     const versions = info?.state === 'read' ? info.versions.map((usage) => usage.version) : [];
     const current = state?.version ?? '';
-    const options = versions.filter((version) => version !== current || !state?.ready);
+    // The current version is offered again when it is not ready or lacks the
+    // tool's extension packages: choosing it again installs and tests them.
+    // Hazır değilse ya da eklenti paketleri eksikse mevcut sürüm yeniden sunulur.
+    const options = versions.filter((version) => version !== current || !state?.ready || !state.extensions_present);
     const selected = options.includes(choice) ? choice : options[0] ?? '';
 
     const move = async () => {
@@ -55,9 +58,17 @@ export function PHPToolVersion({ serviceId, tool }: { serviceId: string; tool: P
             // Yanıt kayboldu: taşıma olmuş da olabilir, olmamış da.
             setResult({ kind: 'failed', version: selected, reason: t('component.phpTool.answerLost') });
         } else {
-            const reason = answer.failure?.detail || answer.failure?.error || t('component.phpTool.failedUnknown');
-            setResult(answer.failure?.restored
-                ? { kind: 'restored', version: selected, previous: answer.failure.previous || current, reason }
+            // The cause in the reader's language (alpha.104 review); when the
+            // tool could not be put back, the server's own words follow.
+            // Neden okurun dilinde; geri konamadıysa sunucunun sözü de eklenir.
+            const failure = answer.failure;
+            const said = failure?.detail || failure?.error || '';
+            const cause = phpToolCauseText(t, failure?.cause ?? null, said);
+            const reason = failure && !failure.restored && failure.mutation_applied && failure.error
+                ? cause + ' — ' + t('component.phpTool.cause.other', { detail: failure.error })
+                : cause;
+            setResult(failure?.restored
+                ? { kind: 'restored', version: selected, previous: failure.previous || current, reason }
                 : { kind: 'failed', version: selected, reason });
         }
         setMoving(false);
@@ -88,11 +99,13 @@ export function PHPToolVersion({ serviceId, tool }: { serviceId: string; tool: P
                     <p className="text-fg-muted" data-php-tool-state="not-installed">{t('component.phpTool.notInstalled', { tool: name })}</p>
                 ) : (
                     <>
-                        <p className={state.version && !state.ready ? 'font-semibold text-fg' : 'text-fg'} data-php-tool-state={!state.version ? 'none' : state.ready ? 'ready' : state.version_installed ? 'stopped' : 'gone'}>
+                        <p className={state.version && (!state.ready || !state.extensions_present) ? 'font-semibold text-fg' : 'text-fg'} data-php-tool-state={!state.version ? 'none' : state.ready ? (state.extensions_present ? 'ready' : 'extensions') : state.version_installed ? 'stopped' : 'gone'}>
                             <KeepWords text={!state.version
                                 ? t('component.phpTool.none', { tool: name })
                                 : state.ready
-                                    ? t('component.phpTool.current', { tool: name, version: state.version })
+                                    ? (state.extensions_present
+                                        ? t('component.phpTool.current', { tool: name, version: state.version })
+                                        : t('component.phpTool.missingExtensions', { tool: name, version: state.version }))
                                     : state.version_installed
                                         ? t('component.phpTool.stopped', { tool: name, version: state.version })
                                         : t('component.phpTool.gone', { tool: name, version: state.version })} />
