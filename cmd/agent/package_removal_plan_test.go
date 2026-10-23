@@ -603,3 +603,79 @@ func TestAnInstallThatWouldRemovePackagesIsRefused(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 }
+
+// A refusal after the stop puts back each unit exactly as the owner left it:
+// a unit the owner had disabled or stopped is not enabled or started; an
+// alias name is put back by its real unit (alpha.104 review).
+func TestALateRefusalPutsBackEachUnitAsTheOwnerLeftIt(t *testing.T) {
+	recorded := map[string]unitRuntimeState{
+		"php8.4-fpm": {ID: "php8.4-fpm.service", Enabled: true, Active: true},
+	}
+	var restored []unitRuntimeState
+	ops := serviceUninstallOps{
+		detectPackageFamily: func() string { return "apt" },
+		packageInstalled:    func(pkg string) bool { return pkg == "php8.4-fpm" },
+		unitExists:          func(string) bool { return true },
+		unitsMatching:       func(string) []string { return nil },
+		disableUnit:         func(string) error { return nil },
+		unitState:           func(unit string) (unitRuntimeState, error) { return recorded[unit], nil },
+		restoreUnit:         func(state unitRuntimeState) error { restored = append(restored, state); return nil },
+		removePackages: func(_ string, _ packageRemovalRequest, hooks removalHooks) (packageRemovalPlan, string, error) {
+			if err := hooks.runStop(); err != nil {
+				return packageRemovalPlan{}, "", err
+			}
+			restartErr := hooks.runRestart()
+			refusal := &packageRemovalRefusal{Code: errCodeRemovalPlanChanged, Message: "changed; nothing was removed", AfterStop: true}
+			if restartErr != nil {
+				refusal.RestartFailed = restartErr.Error()
+			}
+			return packageRemovalPlan{}, "", refusal
+		},
+		boundPHPTools: func(string) []string { return nil },
+	}
+	var resp UninstallServiceResponse
+	if err := (&Agent{}).uninstallServiceWithOps(&InstallServiceRequest{ID: "php-fpm", Package: "php8.4-fpm"}, &resp, ops); err != nil {
+		t.Fatal(err)
+	}
+	if resp.ErrorCode != errCodeRemovalPlanChanged || resp.MutationApplied || len(restored) != 1 || restored[0] != recorded["php8.4-fpm"] {
+		t.Fatalf("resp=%+v restored=%+v", resp, restored)
+	}
+	// The commands put back exactly the recorded state.
+	cases := []struct {
+		state unitRuntimeState
+		want  [][]string
+	}{
+		{unitRuntimeState{ID: "redis-server.service", Enabled: true, Active: true}, [][]string{{"enable", "redis-server.service"}, {"start", "redis-server.service"}}},
+		{unitRuntimeState{ID: "redis-server.service", Enabled: false, Active: true}, [][]string{{"start", "redis-server.service"}}},
+		{unitRuntimeState{ID: "redis-server.service", Enabled: true, Active: false}, [][]string{{"enable", "redis-server.service"}}},
+		{unitRuntimeState{ID: "redis-server.service"}, nil},
+	}
+	for _, c := range cases {
+		if got := unitRestoreCommands(c.state); !reflect.DeepEqual(got, c.want) {
+			t.Fatalf("%+v: %v", c.state, got)
+		}
+	}
+	// An alias reports its real unit; masked or disabled is not "enabled".
+	state, err := parseUnitRuntimeState("redis", "Id=redis-server.service\nUnitFileState=enabled\nActiveState=inactive\n")
+	if err != nil || state != (unitRuntimeState{ID: "redis-server.service", Enabled: true}) {
+		t.Fatalf("state=%+v err=%v", state, err)
+	}
+	state, _ = parseUnitRuntimeState("x", "Id=x.service\nUnitFileState=masked\nActiveState=active\n")
+	if state.Enabled || !state.Active {
+		t.Fatalf("masked = %+v", state)
+	}
+	if _, err := parseUnitRuntimeState("x", "Id=x.service\n"); err == nil {
+		t.Fatal("a partial answer was taken as the state")
+	}
+	// A state that cannot be read refuses before anything stops.
+	stopped := 0
+	ops.disableUnit = func(string) error { stopped++; return nil }
+	ops.unitState = func(string) (unitRuntimeState, error) { return unitRuntimeState{}, errors.New("bus") }
+	resp = UninstallServiceResponse{}
+	if err := (&Agent{}).uninstallServiceWithOps(&InstallServiceRequest{ID: "php-fpm", Package: "php8.4-fpm"}, &resp, ops); err != nil {
+		t.Fatal(err)
+	}
+	if stopped != 0 || !strings.Contains(resp.Error, "nothing was changed") || resp.MutationApplied {
+		t.Fatalf("stopped=%d resp=%+v", stopped, resp)
+	}
+}

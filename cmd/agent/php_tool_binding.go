@@ -1154,7 +1154,35 @@ var (
 	dbToolLocationBlock = regexp.MustCompile(`(?m)^    location /dbtool/([a-z]+)/ \{\n        alias (\S+)/;`)
 	webmailListenLine   = regexp.MustCompile(`listen unix:([^;\s]+);`)
 	webmailAliasLine    = regexp.MustCompile(`location /webmail/ \{\n        alias (\S+)/;`)
+	// alpha.1 to alpha.12 served webmail on a loopback address.
+	webmailLoopbackListenLine = regexp.MustCompile(`(?m)^    listen (127\.0\.0\.1:[0-9]+);$`)
 )
+
+// loopbackRenderWebmailNginxConfig is the form alpha.1 to alpha.12 wrote
+// (webmail on a loopback address), still CelikPanel's own.
+func loopbackRenderWebmailNginxConfig(listenAddr, roundcubeRoot, fpmSocket string) string {
+	return fmt.Sprintf(`# Managed by CelikPanel — Roundcube webmail, loopback only.
+# The panel reverse-proxies /webmail/ here; Roundcube's own login is the auth.
+server {
+    listen %s;
+    server_name _;
+    client_max_body_size 25m;
+
+    location /webmail/ {
+        alias %s/;
+        index index.php;
+        try_files $uri $uri/ /webmail/index.php$is_args$args;
+
+        location ~ ^/webmail/(.+\.php)$ {
+            alias %s/$1;
+            include fastcgi_params;
+            fastcgi_param SCRIPT_FILENAME $request_filename;
+            fastcgi_pass unix:%s;
+        }
+    }
+}
+`, listenAddr, roundcubeRoot, roundcubeRoot, fpmSocket)
+}
 
 // legacyRenderDBToolsConfig is the form alpha.103 and earlier wrote (since
 // 2026-08-11), still accepted as CelikPanel's own.
@@ -1199,12 +1227,18 @@ func managedDBToolsConfig(content string) bool {
 }
 
 func managedWebmailConfig(content string) bool {
-	listen := webmailListenLine.FindStringSubmatch(content)
 	alias := webmailAliasLine.FindStringSubmatch(content)
-	if listen == nil || alias == nil {
+	if alias == nil {
 		return false
 	}
 	fpm := parseWebmailFPMSocket(content)
+	if loopback := webmailLoopbackListenLine.FindStringSubmatch(content); loopback != nil {
+		return content == loopbackRenderWebmailNginxConfig(loopback[1], alias[1], fpm)
+	}
+	listen := webmailListenLine.FindStringSubmatch(content)
+	if listen == nil {
+		return false
+	}
 	return content == renderWebmailNginxConfig(listen[1], alias[1], fpm) || content == legacyRenderWebmailNginxConfig(listen[1], alias[1], fpm)
 }
 
@@ -1217,6 +1251,12 @@ func refuseOwnerEditedConfig(path string) error {
 	}
 	if err != nil {
 		return err
+	}
+	// An empty file is CelikPanel's own: an older non-atomic write could
+	// leave one; it holds nothing of the owner's.
+	// Boş dosya CelikPanel'indir; sahibin hiçbir şeyini tutmaz.
+	if strings.TrimSpace(string(data)) == "" {
+		return nil
 	}
 	managed := managedDBToolsConfig(string(data))
 	if path == phpToolWebmailConfPath {

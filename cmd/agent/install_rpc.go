@@ -520,9 +520,12 @@ type serviceUninstallOps struct {
 	unitExists          func(string) bool
 	unitsMatching       func(string) []string
 	disableUnit         func(string) error
-	// enableUnit starts a unit the removal stopped again, when the removal
-	// is refused after the stop (alpha.104).
-	enableUnit func(string) error
+	// unitState reads a unit's state as the owner left it, before the
+	// removal stops it; restoreUnit puts back exactly that when the removal
+	// is refused after the stop (alpha.104): a unit the owner had disabled
+	// or stopped is not enabled or started.
+	unitState   func(string) (unitRuntimeState, error)
+	restoreUnit func(unitRuntimeState) error
 	// removePackages plans the removal with the package manager's own
 	// simulation, refuses collateral before anything changes, then runs
 	// beforeRemoval (stopping units) and the real removal under one package
@@ -553,10 +556,19 @@ func defaultServiceUninstallOps(ctx context.Context) (serviceUninstallOps, error
 			_, err := runServiceMutationCombinedOutput(ctx, systemctl, "disable", "--now", unit)
 			return err
 		},
-		enableUnit: func(unit string) error {
-			out, err := runServiceMutationCombinedOutput(ctx, systemctl, "enable", "--now", unit)
+		unitState: func(unit string) (unitRuntimeState, error) {
+			out, err := serviceMutationCommand(ctx, systemctl, "show", "--property=Id", "--property=UnitFileState", "--property=ActiveState", unit).Output()
 			if err != nil {
-				return errors.New(commandFailureDetail("systemctl enable --now "+unit, out, err))
+				return unitRuntimeState{}, err
+			}
+			return parseUnitRuntimeState(unit, string(out))
+		},
+		restoreUnit: func(state unitRuntimeState) error {
+			for _, args := range unitRestoreCommands(state) {
+				out, err := runServiceMutationCombinedOutput(ctx, systemctl, args...)
+				if err != nil {
+					return errors.New(commandFailureDetail("systemctl "+strings.Join(args, " "), out, err))
+				}
 			}
 			return nil
 		},
@@ -575,6 +587,55 @@ func defaultServiceUninstallOps(ctx context.Context) (serviceUninstallOps, error
 		},
 		boundPHPTools: phpToolsBoundToVersion,
 	}, nil
+}
+
+// unitRuntimeState is a unit as the owner left it before a removal stopped
+// it. ID is the unit's own name: an alias resolves to it (systemctl show
+// reports the real unit's properties).
+// Bir kaldırmanın durdurmasından önce sahibin bıraktığı biçimiyle unit.
+type unitRuntimeState struct {
+	ID      string
+	Enabled bool
+	Active  bool
+}
+
+func parseUnitRuntimeState(name, out string) (unitRuntimeState, error) {
+	state := unitRuntimeState{}
+	seen := 0
+	for _, line := range strings.Split(out, "\n") {
+		key, value, ok := strings.Cut(strings.TrimSpace(line), "=")
+		if !ok {
+			continue
+		}
+		switch key {
+		case "Id":
+			state.ID = value
+			seen++
+		case "UnitFileState":
+			state.Enabled = value == "enabled"
+			seen++
+		case "ActiveState":
+			state.Active = value == "active" || value == "activating" || value == "reloading"
+			seen++
+		}
+	}
+	if seen != 3 || state.ID == "" {
+		return unitRuntimeState{}, fmt.Errorf("systemctl show %s did not report its state", name)
+	}
+	return state, nil
+}
+
+// unitRestoreCommands puts back exactly the recorded state: enabled again
+// only if it was enabled, started again only if it was running.
+func unitRestoreCommands(state unitRuntimeState) [][]string {
+	var commands [][]string
+	if state.Enabled {
+		commands = append(commands, []string{"enable", state.ID})
+	}
+	if state.Active {
+		commands = append(commands, []string{"start", state.ID})
+	}
+	return commands
 }
 
 // failUninstallRemoval preserves the critical distinction between a refusal
@@ -916,6 +977,21 @@ func (a *Agent) uninstallServiceWithOps(
 		return nil
 	}
 
+	// Each unit's state as the owner left it, read before anything stops,
+	// so a refusal after the stop puts back exactly that (alpha.104).
+	// Her unit'in sahibin bıraktığı durumu; ret sonrası tam o geri konur.
+	states := map[string]unitRuntimeState{}
+	if ops.unitState != nil {
+		for _, unit := range work.units {
+			state, err := ops.unitState(unit)
+			if err != nil {
+				resp.Error = fmt.Sprintf("the state of %s could not be read, so nothing was changed: %v", unit, err)
+				return nil
+			}
+			states[unit] = state
+		}
+	}
+
 	var disableErr error
 	disableFailedUnit := ""
 	var stopped []string
@@ -931,12 +1007,17 @@ func (a *Agent) uninstallServiceWithOps(
 			return nil
 		},
 		restart: func() error {
-			if ops.enableUnit == nil {
+			if ops.restoreUnit == nil {
 				return nil
 			}
 			var failures []string
 			for _, unit := range stopped {
-				if err := ops.enableUnit(unit); err != nil {
+				state, ok := states[unit]
+				if !ok {
+					failures = append(failures, unit+": its earlier state was not read")
+					continue
+				}
+				if err := ops.restoreUnit(state); err != nil {
 					failures = append(failures, err.Error())
 				}
 			}

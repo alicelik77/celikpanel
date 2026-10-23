@@ -139,6 +139,23 @@ func TestOwnerEditedToolConfigurationsAreNotOverwritten(t *testing.T) {
 	if managedWebmailConfig(strings.Replace(webmail, "client_max_body_size 25m;", "client_max_body_size 200m;", 1)) {
 		t.Fatal("an owner edit of the webmail server was taken for CelikPanel's form")
 	}
+	// alpha.1 to alpha.12: webmail on a loopback address.
+	loopback := loopbackRenderWebmailNginxConfig("127.0.0.1:8307", "/var/lib/celikpanel-webmail/public_html", "/run/php/php8.4-fpm.sock")
+	if !strings.HasPrefix(loopback, "# Managed by CelikPanel — Roundcube webmail, loopback only.") || !managedWebmailConfig(loopback) {
+		t.Fatal("the alpha.1 loopback webmail form was taken for an owner edit")
+	}
+	if managedWebmailConfig(strings.Replace(loopback, "index index.php;", "index index.php index.html;", 1)) {
+		t.Fatal("an owner edit of the loopback form was taken for CelikPanel's form")
+	}
+	// An empty file (an older non-atomic write) is CelikPanel's own.
+	for _, empty := range []string{"", "\n", "  \n"} {
+		if err := os.WriteFile(host.dbToolsConf, []byte(empty), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := refuseOwnerEditedConfig(host.dbToolsConf); err != nil {
+			t.Fatalf("empty %q: %v", empty, err)
+		}
+	}
 }
 
 func TestAStaleRecordDoesNotBlockAReinstall(t *testing.T) {
