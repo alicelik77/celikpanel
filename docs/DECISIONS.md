@@ -2105,6 +2105,73 @@ set18b (at `6b363ac46`, D1 observed fixed, the extension reached ready) under
 installed server. The [alpha.87 release notes](RELEASE-NOTES-v0.1.0-alpha.87.md)
 say which check rests on which code. No P0 item is closed or advanced.
 
+### Amendment (2026-10-23): the administrator's email stays mandatory and is checked when the administrator is created
+
+*Owner decisions of 2026-10-23; in source for the v0.1.0-alpha.102 candidate (not
+published); nothing measured on an installed server*
+
+Why. Since alpha.99 an open item said that the setup plan's contact-email blocker
+applies to every plan. The owner decided: "iletişim epostası zorunlu olarak
+gerekiyor ise zorunlu olmalı. kurulumda eposta belirtiyoruz" (if the contact email
+is genuinely required it must be mandatory; an email is already given during
+installation). It is genuinely required: initial public setup requires trusted
+renewable HTTPS for the panel's name (above), so the first setup always requests
+the panel's certificate, and the certificate authority takes the administrator's
+address as its contact. The only plan without a certificate step is one for a
+server that already has a valid certificate, and then the address is already on
+file. The blocker therefore stays for every plan. The owner then approved ("ok.
+yap") checking the address where it is first given, so that a typo is caught at
+install time and not later on the Server setup screen.
+
+Decision.
+
+- **One rule.** The installer checks the first administrator's email with the
+  validator the setup plan, the panel certificate request and the own-email change
+  already use (`mutationpayload.CanonicalContactEmail`): printable ASCII, exactly
+  one `@`, a local part of at most 64 bytes, a fully qualified domain name (not
+  `localhost`, not an IP address, no trailing dot) and at most 254 bytes in all.
+  `ali`, `ali@`, `@x.com`, `a b@x.com` and `ali@localhost` are refused.
+- **Interactive prompt.** On a refused address the installer prints "That is not a
+  valid email address (example: you@example.com). The certificate authority needs
+  it as a contact. Please try again. / Bu geçerli bir e-posta adresi değil (örnek:
+  siz@ornek.com). Sertifika yetkilisi bunu iletişim adresi olarak ister. Lütfen
+  yeniden deneyin." and asks again. The typed value is never printed. The prompt
+  still comes where it always came, after the packages are installed; it asks
+  again rather than stopping, so a typo there does not stop the installation.
+- **Credentials file.** A file given with `CELIKPANEL_ADMIN_CREDENTIALS_FILE` is
+  checked by the candidate panel's validate-only mode before anything is
+  installed, as before; that check now applies the same rule. The installer then
+  says that the input file was left untouched and nothing was installed, and what
+  to correct: a username the panel accepts, a real email address such as
+  you@example.com (the certificate authority needs it as a contact) and a password
+  of at least 8 characters. The panel's own refusal names the email field and
+  never a value. The signed entry script's own form check is unchanged; the
+  downloaded panel remains the authority.
+- **Stored form.** The address is stored in the validator's canonical form (the
+  domain in lower case), as the own-email change stores it.
+- **The existing-administrator path.** Running the create-administrator command
+  again for an existing user name is held to the same rule; a refused address
+  changes neither the address nor the password.
+- **Existing installations are unaffected.** No migration and no re-validation of
+  stored addresses. An older invalid address is still caught by the Server setup
+  blocker, whose "Open My account" link leads to the own-email change.
+- **No other path makes an administrator.** The account API refuses to create or
+  manage administrator-role accounts; team members are customer-role additional
+  users and cannot open server setup; a control-plane restore brings the
+  archive's administrators unchanged; demo mode's accounts are demo-only. The
+  team-member address check is therefore not changed.
+
+Not changed. The certificate authority may still refuse an address at a domain
+that is not public (`.test`, `.invalid`, `example.com`): the panel checks the form
+and the authority judges the domain. This closes the limit recorded with D-037's
+alpha.99 amendment that the create-administrator command did not check the
+address; it does in source for alpha.102.
+
+Upcoming acceptance, not a claim. At Beta 1 the owner will wipe and reinstall both
+servers for a clean first-install test; that run is where this check will first be
+seen on a real installation. Installed panels are still updated only by their
+owners from the panel's own update screen.
+
 ---
 
 ## D-020 · Managed-server support follows proven capabilities, not distribution names

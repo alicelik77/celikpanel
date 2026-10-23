@@ -183,6 +183,12 @@ lock. Once installation has started, the original release remains pinned.
 
 The installer interactively creates the first administrator. Do not place the
 administrator password in shell history, deployment scripts or release files.
+The administrator's email must be a real address such as `you@example.com`: the
+first server setup gives it to the certificate authority as the contact for the
+panel's HTTPS certificate. The installer refuses an address that request would
+refuse (for example `ali`, `ali@` or `ali@localhost`) and asks again; a
+credentials file with such an address stops the installation before anything is
+installed and says what to correct.
 Release archives and machine-readable manifests remain available under
 `https://celikpanel.net/releases/`. Each archive also carries an exact internal
 `SHA256SUMS` manifest and commit/tree provenance. Publisher identity and

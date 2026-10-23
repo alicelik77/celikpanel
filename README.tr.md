@@ -177,8 +177,13 @@ edebilir. Eski imzalı kayıt güncelleme kilidi altında korunur. Kurulum
 başlamışsa özgün sürüm sabit kalır.
 
 Kurucu ilk yöneticiyi etkileşimli olarak oluşturur. Yönetici parolasını shell
-geçmişine, dağıtım betiklerine veya sürüm dosyalarına koymayın. Sürüm arşivleri
-ve makinece okunabilir manifestler `https://celikpanel.net/releases/` altında
+geçmişine, dağıtım betiklerine veya sürüm dosyalarına koymayın. Yöneticinin
+e-postası `siz@ornek.com` gibi gerçek bir adres olmalıdır: ilk sunucu kurulumu
+onu panelin HTTPS sertifikası için sertifika yetkilisine iletişim adresi olarak
+verir. Kurucu bu isteğin reddedeceği bir adresi (örneğin `ali`, `ali@` veya
+`ali@localhost`) reddeder ve yeniden sorar; böyle bir adres içeren kimlik bilgisi
+dosyası, hiçbir şey kurulmadan kurulumu durdurur ve neyin düzeltileceğini söyler.
+Sürüm arşivleri ve makinece okunabilir manifestler `https://celikpanel.net/releases/` altında
 kalıcıdır. Her arşiv tam bir dahili `SHA256SUMS` manifesti ve commit/tree
 kökenini de taşır. Yayıncı kimliği ve geri alma önleme yetkisi yalnız HTTPS veya
 yanındaki bir sağlama toplamından değil, aşağıdaki imzalı manifest sözleşmesinden
