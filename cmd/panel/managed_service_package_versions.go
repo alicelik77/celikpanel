@@ -174,6 +174,8 @@ func upstreamPackageVersion(full string) string {
 	}
 	if shipped := reallyVersion(value); shipped != "" {
 		value = shipped
+	} else if before := reallyMarkerWithoutVersion(value); before != "" {
+		value = before
 	}
 	if cut := strings.IndexAny(value, "+~"); cut > 0 {
 		value = value[:cut]
@@ -200,6 +202,30 @@ func reallyVersion(upstream string) string {
 		return ""
 	}
 	return shipped
+}
+
+// reallyMarkerWithoutVersion returns the version before "really" when
+// "really" stands after a version separator and is followed directly by a
+// "+" or "~" suffix instead of a version: Debian 13's phpMyAdmin is
+// 4:5.2.2-really+dfsg-1+deb13u1, whose upstream part is "5.2.2-really+dfsg"
+// and whose real version is 5.2.2 (alpha.104: alpha.101's rule needed a
+// digit after "really", so the row read "5.2.2-really"). Otherwise "".
+// "really" ardından sürüm yerine "+"/"~" ekiyle geliyorsa öncesini döndürür.
+func reallyMarkerWithoutVersion(upstream string) string {
+	const marker = "really"
+	at := strings.LastIndex(upstream, marker)
+	if at <= 1 || !strings.ContainsRune("+-~.", rune(upstream[at-1])) {
+		return ""
+	}
+	rest := upstream[at+len(marker):]
+	if rest == "" || (rest[0] != '+' && rest[0] != '~') {
+		return ""
+	}
+	before := upstream[:at-1]
+	if before == "" || before[0] < '0' || before[0] > '9' {
+		return ""
+	}
+	return before
 }
 
 func allDigits(value string) bool {

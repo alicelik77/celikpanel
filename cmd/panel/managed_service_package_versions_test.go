@@ -77,11 +77,19 @@ func TestUpstreamPackageVersion(t *testing.T) {
 		"2:4.1.0+really4.0.9-2":               "4.0.9",
 		"4:5.2.2-really5.2.2+20250121+dfsg-1": "5.2.2",
 		"1:2.0~really1.9.3-1":                 "1.9.3",
-		"3:7.2":                               "7.2",
-		"7:4.4.2-1":                           "4.4.2",
-		"1.2.3~rc1-1":                         "1.2.3",
-		"2.9.14~dfsg-1ubuntu0.1":              "2.9.14",
-		"0~20240101-1":                        "0",
+		// alpha.104: the exact strings of the owner's servers. Debian 13
+		// (trixie, apt-cache policy phpmyadmin in a Debian 13 guest and
+		// Frankfurt's apt history) has "really" followed by "+dfsg", not by
+		// a version; Ubuntu 24.04 (noble, Launchpad) has none.
+		"4:5.2.2-really+dfsg-1+deb13u1": "5.2.2",
+		"4:5.2.1+dfsg-3":                "5.2.1",
+		"7.14.7+dfsg-1":                 "7.14.7",
+		"1:1.2-really~bpo1-1":           "1.2",
+		"3:7.2":                         "7.2",
+		"7:4.4.2-1":                     "4.4.2",
+		"1.2.3~rc1-1":                   "1.2.3",
+		"2.9.14~dfsg-1ubuntu0.1":        "2.9.14",
+		"0~20240101-1":                  "0",
 		// "really" that is not a "really" version is left alone.
 		"1.0.really-1":  "1.0.really",
 		"1.0+reallyx-1": "1.0",
