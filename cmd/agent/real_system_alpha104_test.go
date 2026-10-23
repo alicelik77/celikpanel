@@ -131,6 +131,9 @@ func TestRealSystemA104CleanRemovalRunsTheSimulatedList(t *testing.T) {
 
 func writeRealDBToolsConf(t *testing.T, sockets map[string]string) {
 	t.Helper()
+	if err := ensurePHPToolCheckScript(); err != nil {
+		t.Fatal(err)
+	}
 	tools, roots := installedDBToolRoots()
 	if len(tools) != 2 {
 		t.Fatalf("db tools installed = %v", tools)
@@ -158,7 +161,7 @@ func TestRealSystemA104ToolMoveIsProvedAndRolledBack(t *testing.T) {
 	sock84, sock85 := versionedFPMSocketPath("8.4"), versionedFPMSocketPath("8.5")
 	writeRealDBToolsConf(t, map[string]string{phpToolPHPMyAdmin: sock84, phpToolPHPPgAdmin: sock84})
 	for _, tool := range []string{phpToolPHPMyAdmin, phpToolPHPPgAdmin} {
-		if err := probePHPToolHTTP(ctx, tool); err != nil {
+		if err := probePHPToolHTTP(ctx, tool, "8.4"); err != nil {
 			t.Fatalf("%s on 8.4 before the move: %v", tool, err)
 		}
 	}
@@ -176,7 +179,7 @@ func TestRealSystemA104ToolMoveIsProvedAndRolledBack(t *testing.T) {
 	if conf[phpToolPHPPgAdmin] != sock85 || conf[phpToolPHPMyAdmin] != sock84 {
 		t.Fatalf("configuration after the move = %v", conf)
 	}
-	if err := probePHPToolHTTP(ctx, phpToolPHPPgAdmin); err != nil {
+	if err := probePHPToolHTTP(ctx, phpToolPHPPgAdmin, "8.5"); err != nil {
 		t.Fatalf("phpPgAdmin on 8.5: %v", err)
 	}
 
@@ -206,7 +209,7 @@ func TestRealSystemA104ToolMoveIsProvedAndRolledBack(t *testing.T) {
 	if after := readFileString(dbToolsConfPath); after != before {
 		t.Fatal("the previous configuration was not restored byte for byte")
 	}
-	if err := probePHPToolHTTP(ctx, phpToolPHPPgAdmin); err != nil {
+	if err := probePHPToolHTTP(ctx, phpToolPHPPgAdmin, "8.4"); err != nil {
 		t.Fatalf("phpPgAdmin after the rollback: %v", err)
 	}
 

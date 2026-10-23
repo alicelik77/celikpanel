@@ -858,8 +858,8 @@ server {
             fastcgi_pass unix:%s;
         }
     }
-}
-`, webmailSocket, roundcubeRoot, roundcubeRoot, fpmSocket)
+%s}
+`, webmailSocket, roundcubeRoot, roundcubeRoot, fpmSocket, phpToolCheckBlock(phpToolWebmail, fpmSocket))
 }
 
 type ConfigureWebmailResponse = transport.ConfigureWebmailResponse
@@ -923,6 +923,10 @@ func (a *Agent) ConfigureWebmail(req *WebmailMutationRequest, resp *ConfigureWeb
 	// Roundcube PHP'dir: .php'yi varsayılan FPM soketine ver. Dağıtımlar arası
 	// tespit edilir (Debian /run/php/php<v>-fpm.sock, Arch
 	// /run/php-fpm/php-fpm.sock) — Debian yolunu asla varsayma.
+	if err := ensurePHPToolCheckScript(); err != nil {
+		resp.Error = err.Error()
+		return nil
+	}
 	// alpha.104: webmail stays on the PHP version its configuration names
 	// while that version is installed; nothing bound yet → the default PHP.
 	// A bound version that is gone leaves the configuration unchanged.

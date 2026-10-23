@@ -112,6 +112,10 @@ func (a *Agent) ConfigureDBTools(req *ServiceMutationRequest, resp *ConfigureDBT
 		}
 		sockets[state.Tool] = socket
 	}
+	if err := ensurePHPToolCheckScript(); err != nil {
+		resp.Error = err.Error()
+		return nil
+	}
 	conf := renderDBToolsConfig(tools, installedRoots, sockets)
 
 	if err := os.WriteFile(dbToolsConfPath, []byte(conf), 0o644); err != nil {

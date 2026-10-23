@@ -79,6 +79,7 @@ var (
 	phpToolWebmailConfPath     = webmailConfPath
 	phpToolDBToolsConfPath     = dbToolsConfPath
 	phpToolBindingRecordPath   = "/var/lib/celikpanel-agent-private/php-tool-bindings.json"
+	phpToolCheckScriptPath     = "/var/lib/celikpanel-php-check/check.php"
 	phpFallbackSocketGlobs     = []string{"/run/php-fpm/php-fpm.sock", "/var/run/php-fpm/php-fpm.sock"}
 	versionedFPMSocketName     = regexp.MustCompile(`^php([0-9]{1,2}\.[0-9]{1,2})-fpm\.sock$`)
 	phpCLIVersionedName        = regexp.MustCompile(`^php([0-9]{1,2}\.[0-9]{1,2})$`)
@@ -641,14 +642,89 @@ func checkPHPToolResponse(tool string, status int, body []byte) error {
 
 const phpToolProbeBodyLimit = 512 * 1024
 
+// The PHP check (alpha.104): a CelikPanel-owned script served through the
+// tool's own PHP-FPM socket at a path outside /dbtool/ and /webmail/, so the
+// Panel's proxies never forward it; only the Agent asks it, on the loopback
+// address or the webmail socket. It answers which PHP version runs it and
+// whether the tool's extensions are loaded in that PHP-FPM (the command-line
+// PHP can differ from FPM).
+// CelikPanel'in kendi PHP denetimi: aracın kendi soketinden, Panel'in
+// vekillerinin asla iletmediği bir yolda sunulur.
+const phpToolCheckPrefix = "/__celikpanel_php_check/"
+
+const phpToolCheckScript = `<?php
+// Managed by CelikPanel: answers which PHP runs here and whether the
+// extensions named by the web server are loaded. Served only on the
+// loopback tools server and the webmail socket, never through the panel.
+header('Content-Type: text/plain');
+$need = array_filter(explode(',', (string) ($_SERVER['CELIKPANEL_PHP_EXTENSIONS'] ?? '')));
+$missing = [];
+foreach ($need as $extension) {
+    if (!extension_loaded($extension)) {
+        $missing[] = $extension;
+    }
+}
+echo $missing ? 'celikpanel-php-check:missing:' . implode(',', $missing) . ':' . PHP_VERSION : 'celikpanel-php-check:ok:' . PHP_VERSION;
+`
+
+// ensurePHPToolCheckScript writes the check script (root-owned, readable by
+// the PHP-FPM pool) when it is missing or different.
+func ensurePHPToolCheckScript() error {
+	if current, err := os.ReadFile(phpToolCheckScriptPath); err == nil && string(current) == phpToolCheckScript {
+		return nil
+	}
+	if err := os.MkdirAll(filepath.Dir(phpToolCheckScriptPath), 0o755); err != nil {
+		return fmt.Errorf("prepare the PHP check: %w", err)
+	}
+	if err := os.WriteFile(phpToolCheckScriptPath, []byte(phpToolCheckScript), 0o644); err != nil {
+		return fmt.Errorf("prepare the PHP check: %w", err)
+	}
+	return nil
+}
+
+// phpToolCheckBlock is the nginx location of a tool's PHP check.
+func phpToolCheckBlock(tool, socket string) string {
+	return fmt.Sprintf(`
+    # CelikPanel's PHP check for %s (asked only by the Agent; never forwarded by the panel).
+    location = %s%s {
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME %s;
+        fastcgi_param CELIKPANEL_PHP_EXTENSIONS "%s";
+        fastcgi_pass unix:%s;
+    }
+`, tool, phpToolCheckPrefix, tool, phpToolCheckScriptPath, strings.Join(phpToolExtensions[tool], ","), socket)
+}
+
+// checkPHPToolCheckResponse decides whether the check proves the tool's PHP:
+// the tool's extensions loaded in the PHP-FPM behind its socket, and, when a
+// version is expected, that version.
+func checkPHPToolCheckResponse(tool, version string, status int, body []byte) error {
+	text := strings.TrimSpace(string(body))
+	name := phpToolDisplayName(tool)
+	if status != http.StatusOK || !strings.HasPrefix(text, "celikpanel-php-check:") {
+		return fmt.Errorf("PHP did not answer for %s on its socket (HTTP %d)", name, status)
+	}
+	rest := strings.TrimPrefix(text, "celikpanel-php-check:")
+	if strings.HasPrefix(rest, "missing:") {
+		parts := strings.Split(strings.TrimPrefix(rest, "missing:"), ":")
+		return fmt.Errorf("PHP-FPM %s lacks %s for %s", version, parts[0], name)
+	}
+	running := strings.TrimPrefix(rest, "ok:")
+	if version != "" && !strings.HasPrefix(running, version+".") {
+		return fmt.Errorf("%s answered on PHP %s, not on PHP %s", name, running, version)
+	}
+	return nil
+}
+
 // probePHPToolHTTP asks the tool through the same local server the Panel
 // proxies to: webmail over its Unix socket, the database tools on the
 // loopback address.
-func probePHPToolHTTP(ctx context.Context, tool string) error {
+func probePHPToolHTTP(ctx context.Context, tool, version string) error {
 	probeCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 	client := &http.Client{Timeout: 20 * time.Second}
-	url := "http://" + dbToolsAddr + "/dbtool/" + tool + "/"
+	base := "http://" + dbToolsAddr
+	url := base + "/dbtool/" + tool + "/"
 	if tool == phpToolWebmail {
 		socket, err := webmailSocketPathForNginx()
 		if err != nil {
@@ -658,8 +734,27 @@ func probePHPToolHTTP(ctx context.Context, tool string) error {
 			var dialer net.Dialer
 			return dialer.DialContext(ctx, "unix", socket)
 		}}
-		url = "http://webmail.internal/webmail/"
+		base = "http://webmail.internal"
+		url = base + "/webmail/"
 	}
+	// 1. PHP itself, through the tool's socket: the version and extensions.
+	checkRequest, err := http.NewRequestWithContext(probeCtx, http.MethodGet, base+phpToolCheckPrefix+tool, nil)
+	if err != nil {
+		return err
+	}
+	checkResponse, err := client.Do(checkRequest)
+	if err != nil {
+		return fmt.Errorf("%s did not answer: %v", phpToolDisplayName(tool), err)
+	}
+	checkBody, err := io.ReadAll(io.LimitReader(checkResponse.Body, phpToolProbeBodyLimit))
+	checkResponse.Body.Close()
+	if err != nil {
+		return fmt.Errorf("%s answer could not be read: %v", phpToolDisplayName(tool), err)
+	}
+	if err := checkPHPToolCheckResponse(tool, version, checkResponse.StatusCode, checkBody); err != nil {
+		return err
+	}
+	// 2. The tool's own page.
 	request, err := http.NewRequestWithContext(probeCtx, http.MethodGet, url, nil)
 	if err != nil {
 		return err
@@ -705,6 +800,7 @@ func renderDBToolsConfig(tools []string, roots, sockets map[string]string) strin
         }
     }
 `, id, root, id, root, sockets[id])
+		b.WriteString(phpToolCheckBlock(id, sockets[id]))
 	}
 	b.WriteString("}\n")
 	return b.String()
@@ -741,7 +837,7 @@ type phpToolBindOps struct {
 	removeConf       func(string) error
 	nginxTest        func(context.Context) error
 	nginxReload      func(context.Context) error
-	httpProbe        func(context.Context, string) error
+	httpProbe        func(context.Context, string, string) error
 	writeRecord      func(tool, version string) error
 }
 
@@ -851,7 +947,7 @@ func bindPHPToolWith(ctx context.Context, ops phpToolBindOps, tool, version stri
 	result.MutationApplied = true
 
 	// 3. Proof: the tool answers as itself on the new version.
-	if err := ops.httpProbe(ctx, tool); err != nil {
+	if err := ops.httpProbe(ctx, tool, version); err != nil {
 		if restoreErr := restore(true); restoreErr != nil {
 			return fail(errCodePHPToolProbeFailed, "%s did not work on PHP %s (%v) and the previous configuration could not be restored (%v); the server administrator checks %s", phpToolDisplayName(tool), version, err, restoreErr, path)
 		}
@@ -874,6 +970,9 @@ func orUnknown(version string) string {
 // renderPHPToolConfig renders one tool's configuration with a new socket,
 // keeping every other tool's line as it is.
 func renderPHPToolConfig(tool, socket string) (string, []byte, error) {
+	if err := ensurePHPToolCheckScript(); err != nil {
+		return "", nil, err
+	}
 	if tool == phpToolWebmail {
 		webmailSocket, err := webmailSocketPathForNginx()
 		if err != nil {

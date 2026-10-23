@@ -99,7 +99,7 @@ func (h *fakeBindHost) ops() phpToolBindOps {
 			h.steps = append(h.steps, "reload-nginx")
 			return h.reloadErr
 		},
-		httpProbe: func(_ context.Context, tool string) error {
+		httpProbe: func(_ context.Context, tool, version string) error {
 			h.steps = append(h.steps, "probe")
 			return h.probeErr
 		},
