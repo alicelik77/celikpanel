@@ -10163,8 +10163,8 @@ removed. The removal dialogs show this before the button:
 - **Refusal codes:** REMOVAL_WOULD_REMOVE_OTHERS, REMOVAL_TOOLS_BOUND,
   REMOVAL_SIMULATION_FAILED ("the server administrator runs the package manager's
   own consistency check on the server"), REMOVAL_PLAN_CHANGED (another package
-  operation ran between the check and the removal; nothing was removed and any
-  stopped service was started again; open the dialog again),
+  operation ran between the check and the removal; nothing was removed and each
+  stopped service was put back as it was; open the dialog again),
   REMOVAL_CHECK_UNAVAILABLE, REMOVAL_UNKNOWN_AFTER_MOVES, PHP_TOOL_MOVE_FAILED,
   PHP_TOOL_PROBE_FAILED, PHP_TOOL_EXTENSIONS_FAILED, PHP_TOOL_CONFIG_REJECTED,
   PHP_TOOL_CONFIG_OWNER_EDITED, PHP_VERSION_NOT_RUNNING, PHP_TOOL_NOT_INSTALLED,

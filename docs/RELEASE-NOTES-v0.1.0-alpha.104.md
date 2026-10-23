@@ -114,13 +114,15 @@ them ship in alpha.104. Each is in source with tests:
 - **A tool reinstalled after its PHP version was removed** gets the default PHP,
   not the removed version it was once bound to.
 - **Owner edits are not overwritten (D-022).** A database tools or webmail
-  configuration changed outside CelikPanel is not regenerated; the answer names the
+  configuration changed outside CelikPanel (not one of the forms CelikPanel wrote
+  since alpha.1, nor an empty file) is not regenerated; the answer names the
   file and the next action. The database tools configuration is written atomically
   and put back with its mode and owner when nginx refuses it.
 - **A removal leaves alone** PHP extension packages of other PHP versions (sites
   may use them) and packages that were already unused (no false refusal from an
   old orphan). It is checked again before and after its services are stopped; if
-  the answer changed, the services are started again and nothing is removed.
+  the answer changed, each service is put back exactly as the owner left it
+  (enabled or running only if it was) and nothing is removed.
 - **An install never removes a package.** The component install and a tool's
   extension install are simulated first and refused, naming the packages, if they
   would remove any.
@@ -142,7 +144,7 @@ schema (44) and every installed server are unchanged; only the owner updates.
   new tests for other versions' extension packages and old orphans left alone, the
   check again after the stop with the services started again, an install that
   would remove packages refused, the stale record, owner-edited configurations
-  kept (alpha.103's and alpha.104's own forms recognised), the exact restore step,
+  kept (every form CelikPanel wrote since alpha.1, and an empty file, recognised), the exact restore step,
   the structured cause and the extension-package presence.
 - Panel and internal packages (45-minute limit, CGO off): 7,239 passed, 44
   skipped, 0 failed, 64 packages; gofmt and go vet clean (also with the

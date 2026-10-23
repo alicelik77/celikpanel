@@ -6900,7 +6900,8 @@ iddiası değildir.
   için REMOVAL_UNKNOWN_AFTER_MOVES) ve bileşenler yeniden taranır;
   `/api/v1/service/uninstall` istek kimliğiyle korunur (D-029), sınırı üç taşımayı
   ve kaldırmayı kapsar. Kaldırma planı unit'ler durmadan önce ve durduktan sonra
-  yeniden benzetilir; durdurmadan sonraki bir değişiklik unit'leri yeniden başlatır
+  yeniden benzetilir; durdurmadan sonraki bir değişiklik
+  her unit'in kaydedilen etkin/çalışır durumunu geri koyar (takma adlar gerçek unit'iyle)
   (PLAN_CHANGED hiçbir şeyin değişmediği anlamına gelir; başarısız yeniden başlatma
   kısmi değişikliktir). Başka bir sürümün PHP eklenti paketi olan öksüz ekler ve
   önceden var olan öksüzlere dokunulmaz (yanlış ret yok). Kurulumlar
@@ -6912,7 +6913,7 @@ iddiası değildir.
   "başka sürüm yok" yalnız sürümler okunduğunda söylenir; her bağ
   `extensions_present` taşır (paket varlığı, yüklendiğinin kanıtı değil) ve false
   olduğunda satır "Hazır değil" der. D-022: CelikPanel'in kendi biçiminin
-  (alpha.103'ün ve alpha.104'ün) ötesinde değiştirilmiş veritabanı araçları ya da web
+  (alpha.1'den beri her biçim; boş dosya da onundur) ötesinde değiştirilmiş veritabanı araçları ya da web
   postası yapılandırması yeniden üretilmez (PHP_TOOL_CONFIG_OWNER_EDITED); araçlar
   yapılandırması atomik yazılır ve kipi ve sahibiyle bir anlık görüntüden geri
   konur. Sürümü gitmiş hatırlanan bağ kullanılmaz. Araç kurulumundan sonra başka

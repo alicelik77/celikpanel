@@ -10131,7 +10131,7 @@ Kaldırma pencereleri bunu düğmeden önce gösterir:
   REMOVAL_SIMULATION_FAILED ("sunucu yöneticisi sunucuda paket yöneticisinin kendi
   tutarlılık denetimini çalıştırır"), REMOVAL_PLAN_CHANGED (denetim ile kaldırma
   arasında başka bir paket işlemi çalıştı; hiçbir şey kaldırılmadı ve durdurulan
-  hizmetler yeniden başlatıldı; pencereyi yeniden açın), REMOVAL_CHECK_UNAVAILABLE,
+  hizmetler önceki durumlarına geri kondu; pencereyi yeniden açın), REMOVAL_CHECK_UNAVAILABLE,
   REMOVAL_UNKNOWN_AFTER_MOVES, PHP_TOOL_MOVE_FAILED, PHP_TOOL_PROBE_FAILED,
   PHP_TOOL_EXTENSIONS_FAILED, PHP_TOOL_CONFIG_REJECTED, PHP_TOOL_CONFIG_OWNER_EDITED,
   PHP_VERSION_NOT_RUNNING, PHP_TOOL_NOT_INSTALLED, PHP_TOOL_UNSUPPORTED.

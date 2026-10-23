@@ -7632,8 +7632,8 @@ update and automatic-rollback resilience is complete.
   (REMOVAL_UNKNOWN_AFTER_MOVES for a lost Agent answer) and the components are
   scanned again; `/api/v1/service/uninstall` is request-identity guarded (D-029)
   with a limit covering three moves and the removal. The removal plan is simulated
-  again before the units stop and once more after; a change after the stop starts
-  the units again (PLAN_CHANGED means nothing changed; a failed restart is a
+  again before the units stop and once more after; a change after the stop puts back
+  each unit's recorded enabled/active state (alias names by their real unit) (PLAN_CHANGED means nothing changed; a failed restart is a
   partial change). Orphan extras that are PHP extension packages of another
   version, and pre-existing orphans, are left alone (no false refusal). Installs
   (`installPackagesContext`, the pinned install) simulate their exact arguments and
@@ -7644,7 +7644,8 @@ update and automatic-rollback resilience is complete.
   version" is said only when the versions were read; each binding carries
   `extensions_present` (package presence, not proof of load) and the row says "Not
   ready" when it is false. D-022: a database tools or webmail configuration changed
-  beyond CelikPanel's own form (alpha.103's and alpha.104's) is not regenerated
+  beyond CelikPanel's own forms (every form since alpha.1; an empty file counts as
+  its own) is not regenerated
   (PHP_TOOL_CONFIG_OWNER_EDITED); the tools configuration is written atomically and
   restored from a snapshot with its mode and owner. A remembered binding whose
   version is gone is not used. Another tool's PHP problem after a tools install is

@@ -113,13 +113,15 @@ Bu adayın bağımsız incelemesi eksikler buldu; sahibin kuralı hepsinin alpha
 - **PHP sürümü kaldırıldıktan sonra yeniden kurulan araç** bir zamanlar bağlı olduğu
   kaldırılmış sürümü değil, varsayılan PHP'yi alır.
 - **Sahibin düzenlemesinin üzerine yazılmaz (D-022).** CelikPanel dışında
-  değiştirilmiş bir veritabanı araçları ya da web postası yapılandırması yeniden
+  değiştirilmiş (CelikPanel'in alpha.1'den beri yazdığı biçimlerden biri ya da boş
+  bir dosya olmayan) bir veritabanı araçları ya da web postası yapılandırması yeniden
   üretilmez; yanıt dosyayı ve sonraki adımı söyler. Veritabanı araçları
   yapılandırması atomik yazılır; nginx reddederse kipi ve sahibiyle geri konur.
 - **Bir kaldırma**, başka PHP sürümlerinin eklenti paketlerine (siteler
   kullanıyor olabilir) ve zaten kullanılmayan paketlere dokunmaz (eski bir öksüz
   yanlış ret doğurmaz). Hizmetleri durdurulmadan önce ve sonra yeniden denetlenir;
-  yanıt değiştiyse hizmetler yeniden başlatılır ve hiçbir şey kaldırılmaz.
+  yanıt değiştiyse her hizmet sahibin bıraktığı gibi geri konur (yalnız öyleyse
+  etkin ya da çalışır) ve hiçbir şey kaldırılmaz.
 - **Bir kurulum asla paket kaldırmaz.** Bileşen kurulumu ve bir aracın eklenti
   kurulumu önce benzetilir; herhangi bir paketi kaldıracaksa paketleri adlandırarak
   reddedilir.
@@ -141,7 +143,7 @@ kurulu her sunucu değişmez; yalnız sahip günceller.
   sürümlerin eklenti paketlerine ve eski öksüzlere dokunulmaması, durdurmadan sonra
   yeniden denetim ve hizmetlerin yeniden başlatılması, paket kaldıracak bir
   kurulumun reddi, eskimiş kayıt, sahibin düzenlediği yapılandırmaların korunması
-  (alpha.103'ün ve alpha.104'ün kendi biçimleri tanınır), tam geri koyma adımı,
+  (CelikPanel'in alpha.1'den beri yazdığı her biçim ve boş dosya tanınır), tam geri koyma adımı,
   yapılandırılmış neden ve eklenti paketi varlığı için yeni testler.
 - Panel ve iç paketler (45 dakika sınırı, CGO kapalı): 7.239 geçti, 44 atlandı, 0
   başarısız, 64 paket; gofmt ve go vet temiz (gerçek sistem derleme etiketiyle de).
