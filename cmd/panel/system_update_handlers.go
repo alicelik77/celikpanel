@@ -532,6 +532,13 @@ func (p *Panel) handlePanelUpdateCheck(w http.ResponseWriter, r *http.Request) {
 	if !requirePanelUpdateAdmin(w, r) {
 		return
 	}
+	// One release check at a time (alpha.103): a scheduled check or the one
+	// made when the update screen opened is waited for, never run beside.
+	leave, err := p.updateCheckGate.acquire(r.Context())
+	if err != nil {
+		return
+	}
+	defer leave()
 	// The same discovery the scheduled check runs (system_update_discovery.go);
 	// its result is kept as the last check, made by hand.
 	response, failure := p.discoverPanelUpdate(r.Context())

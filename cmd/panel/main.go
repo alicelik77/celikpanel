@@ -146,6 +146,10 @@ type Panel struct {
 	// change held the server; written on the next idle pass. Guarded by
 	// updateDiscoveryMu.
 	updateDiscoveryPending *panelUpdateDiscoveryRecord
+	// One release check at a time (alpha.103): the scheduled check, the
+	// "Check for updates" button and the check made when the update screen
+	// opens wait for each other; none runs beside another. Zero value ready.
+	updateCheckGate panelUpdateCheckGate
 }
 
 type domainSubroute struct {
@@ -1319,6 +1323,7 @@ func main() {
 	http.HandleFunc(panelUpdateAbandonPath, panel.handlePanelUpdateAbandon)
 	http.HandleFunc(panelUpdateStatusPath, panel.handlePanelUpdateStatus)
 	http.HandleFunc(panelUpdateDiscoveryPath, panel.handlePanelUpdateDiscovery)
+	http.HandleFunc(panelUpdateDiscoveryRefreshPath, panel.handlePanelUpdateDiscoveryRefresh)
 	http.HandleFunc("/api/v1/service/status", panel.handleServiceStatus)
 	http.HandleFunc("/api/v1/service/install", panel.handleServiceInstall)
 	http.HandleFunc(mailProfileInstallPath, panel.handleMailProfileInstall)
