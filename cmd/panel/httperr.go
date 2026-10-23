@@ -241,6 +241,29 @@ const (
 	// "kullanımda" değil KİMİN engellediğini söylemelidir; liste Details'ta.
 	errCodeRuntimeInUse         = "RUNTIME_IN_USE"
 	errCodeServiceHasDependents = "SERVICE_HAS_DEPENDENTS"
+	// REMOVAL_WOULD_REMOVE_OTHERS (alpha.104): the package manager's own
+	// simulation would remove packages the removal did not name (Details
+	// names them); nothing was changed. REMOVAL_TOOLS_BOUND: webmail or a
+	// database tool runs on the PHP being removed (Details names them).
+	// REMOVAL_SIMULATION_FAILED: what the removal would take could not be
+	// read, so nothing was removed. REMOVAL_PLAN_CHANGED: the package
+	// manager's answer changed between the check and the removal.
+	// Kaldırma, adını söylemediği hiçbir şeyi kaldırmaz; bu kodlar retlerdir.
+	errCodeRemovalWouldRemoveOthers = "REMOVAL_WOULD_REMOVE_OTHERS"
+	errCodeRemovalToolsBound        = "REMOVAL_TOOLS_BOUND"
+	errCodeRemovalSimulationFailed  = "REMOVAL_SIMULATION_FAILED"
+	errCodeRemovalPlanChanged       = "REMOVAL_PLAN_CHANGED"
+	// REMOVAL_CHECK_UNAVAILABLE: before moving PHP tools for a version
+	// removal, the package manager's answer could not be read (busy or no
+	// answer), so nothing was moved or removed. REMOVAL_UNKNOWN_AFTER_MOVES:
+	// the tools were moved and the removal's answer was lost.
+	errCodeRemovalCheckUnavailable  = "REMOVAL_CHECK_UNAVAILABLE"
+	errCodeRemovalUnknownAfterMoves = "REMOVAL_UNKNOWN_AFTER_MOVES"
+	// Before moving PHP tools: the version is not installed, the removal
+	// cannot be checked on this host, or the check gave no answer.
+	errCodeRemovalVersionNotInstalled = "REMOVAL_VERSION_NOT_INSTALLED"
+	errCodeRemovalCheckUnsupported    = "REMOVAL_CHECK_UNSUPPORTED"
+	errCodeRemovalCheckFailed         = "REMOVAL_CHECK_FAILED"
 	// FIREWALL_SYNC_FAILED means the requested service mutation and its fresh
 	// state scan completed, but the active firewall policy did not follow.
 	// FIREWALL_SYNC_FAILED, istenen servis değişikliği ile taze durum taramasının

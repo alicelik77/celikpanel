@@ -321,6 +321,8 @@ export const enDashboardScreens = {
     'dashboard.audit.action.service.stop.failed': 'could not stop {target}',
     'dashboard.audit.action.service.stop.refresh.failed': 'stopped {target}; the component list could not be refreshed',
     'dashboard.audit.action.service.stop.unknown': 'asked {target} to stop; the result is not known',
+    'dashboard.audit.action.service.php_tool_bind': 'moved a PHP tool to another PHP version ({target})',
+    'dashboard.audit.action.service.php_tool_bind.failed': 'could not move a PHP tool to another PHP version ({target})',
     'dashboard.audit.action.service.uninstall': 'removed {target}',
     'dashboard.audit.action.service.uninstall.failed': 'could not remove {target}',
     'dashboard.audit.action.service.uninstall.firewall.failed': 'removed {target}; the firewall rules could not be updated',

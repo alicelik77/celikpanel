@@ -36,6 +36,16 @@ import (
 // Yeni Agent çağrısı eklemez, değişiklik ya da tarama başlatmaz; güvenlik duvarı
 // motoru için duvarın durumu var olan okuma ile, sınırlı biçimde okunur.
 // Okunamaması kaldırmayı engellemez.
+//
+// alpha.104 (2026-10-23 Frankfurt incident): the answer also carries the
+// package manager's own simulation of the exact removal, read through the
+// Agent's read-only Agent.ServiceRemovalPreviewV1 (bounded; it never waits
+// for the package lock and never mutates): what it would remove, anything
+// it would take that the removal did not name (the removal is then refused
+// when pressed), and the PHP tools running on the PHP being removed. With
+// ?package= it answers for one version of a runtime. A failed or slow
+// simulation read says "unknown"; the removal is still checked by the Agent
+// when pressed. / Yanıt, paket yöneticisinin benzetimini de taşır.
 
 const serviceRemovalImpactPath = "/api/v1/service/removal-impact"
 
@@ -122,6 +132,63 @@ type serviceRemovalImpactResponse struct {
 	// Hosted is what the Panel hosts on it, or null when nothing it records
 	// runs on this component.
 	Hosted *serviceRemovalHosted `json:"hosted"`
+	// Package and Version name the one version being removed (the PHP-FPM
+	// versions panel, alpha.104); empty for the whole component.
+	Package string `json:"package,omitempty"`
+	Version string `json:"version,omitempty"`
+	// Simulation is the package manager's own answer for the exact removal
+	// (Agent.ServiceRemovalPreviewV1, alpha.104), or null when the removal
+	// does not go through the package manager.
+	Simulation *serviceRemovalSimulation `json:"simulation"`
+}
+
+// serviceRemovalSimulation is what the package manager says the removal
+// would take on this server. State: "checked" (Remove and Collateral are its
+// answer), "busy" (another package operation was running; nothing was
+// simulated), "unknown" (it could not be read in time or failed),
+// "unsupported" (this package family has no removal here) or
+// "not_installed". Refuses: the removal will be refused when pressed —
+// Collateral names packages it would also take, BoundTools the PHP tools
+// running on the PHP being removed. DefaultRuntime: the component's own
+// distribution package (php-fpm, postgresql) depends on this version, i.e.
+// it is the system's default.
+// serviceRemovalSimulation, paket yöneticisinin bu kaldırma için yanıtıdır.
+type serviceRemovalSimulation struct {
+	State          string                               `json:"state"`
+	Remove         []string                             `json:"remove"`
+	Collateral     []transport.PackageRemovalCollateral `json:"collateral"`
+	BoundTools     []string                             `json:"bound_tools"`
+	DefaultRuntime bool                                 `json:"default_runtime"`
+	Refuses        bool                                 `json:"refuses"`
+}
+
+// removalSimulationReadBound bounds the Agent's simulation for the dialog.
+const removalSimulationReadBound = 30 * time.Second
+
+// removalSimulationFrom turns the Agent's preview into the dialog's answer.
+func removalSimulationFrom(serviceID string, preview transport.ServiceRemovalPreviewResponse, err error) *serviceRemovalSimulation {
+	simulation := &serviceRemovalSimulation{State: "unknown", Remove: []string{}, Collateral: []transport.PackageRemovalCollateral{}, BoundTools: []string{}}
+	if err != nil {
+		return simulation
+	}
+	if preview.BoundTools != nil {
+		simulation.BoundTools = append(simulation.BoundTools, preview.BoundTools...)
+	}
+	switch preview.State {
+	case "checked":
+		simulation.State = "checked"
+		simulation.Remove = append(simulation.Remove, preview.Remove...)
+		simulation.Collateral = append(simulation.Collateral, preview.Collateral...)
+		for _, item := range preview.Collateral {
+			if item.Reason == "component" && item.Component == serviceID {
+				simulation.DefaultRuntime = true
+			}
+		}
+	case "busy", "unsupported", "not_installed":
+		simulation.State = preview.State
+	}
+	simulation.Refuses = len(simulation.BoundTools) > 0 || (simulation.State == "checked" && len(simulation.Collateral) > 0)
+	return simulation
 }
 
 // uninstallRewiresMailFilters is handleServiceUninstall's own condition:
@@ -350,6 +417,16 @@ func (p *Panel) handleServiceRemovalImpact(w http.ResponseWriter, r *http.Reques
 		writeClientError(w, http.StatusBadRequest, "service_id does not name a component")
 		return
 	}
+	// package: one version of a runtime (the PHP-FPM versions panel).
+	packageName := strings.TrimSpace(r.URL.Query().Get("package"))
+	version := ""
+	if packageName != "" {
+		version = versionFromPackage(svc, packageName)
+		if version == "" {
+			writeClientError(w, http.StatusBadRequest, "package does not name a removable version of this service")
+			return
+		}
+	}
 	// The DNS engines keep their own workflow; native cron is never removed.
 	if managedDNSEngineServiceID(svc.ID) {
 		writeDNSEngineWorkflowRequired(w)
@@ -386,12 +463,58 @@ func (p *Panel) handleServiceRemovalImpact(w http.ResponseWriter, r *http.Reques
 			installed[service.ID] = true
 		}
 	}
-	response, err := serviceRemovalImpact(r.Context(), p.db.GetDB(), svc, host.PackageFamily, installed, p.removalHostFacts(r.Context(), svc.ID))
+	var response serviceRemovalImpactResponse
+	if packageName != "" {
+		response, err = serviceVersionRemovalImpact(r.Context(), p.db.GetDB(), svc, host.PackageFamily, packageName, version)
+	} else {
+		response, err = serviceRemovalImpact(r.Context(), p.db.GetDB(), svc, host.PackageFamily, installed, p.removalHostFacts(r.Context(), svc.ID))
+	}
 	if err != nil {
 		writeServerError(w, err)
 		return
 	}
+	if response.Removal == "packages" {
+		preview, previewErr := removalPackagePreview(p, r.Context(), transport.ServiceRemovalPreviewRequest{ID: svc.ID, Package: packageName})
+		if previewErr != nil {
+			log.Printf("removal impact: package manager simulation for %s%s could not be read: %v", svc.ID, pkgSuffix(packageName), previewErr)
+		}
+		response.Simulation = removalSimulationFrom(svc.ID, preview, previewErr)
+	}
 	json.NewEncoder(w).Encode(response)
+}
+
+// serviceVersionRemovalImpact is the answer for one version: the sites the
+// Panel records on it (the removal refuses while there are any,
+// RUNTIME_IN_USE); the component itself stays.
+func serviceVersionRemovalImpact(ctx context.Context, db *sql.DB, svc *core.ManagedService, family, packageName, version string) (serviceRemovalImpactResponse, error) {
+	response := serviceRemovalImpactResponse{
+		ServiceID:     svc.ID,
+		Removal:       "packages",
+		PackageFamily: family,
+		Packages:      []string{packageName},
+		FirewallPorts: []string{},
+		RequiredBy:    []string{},
+		Bundles:       []serviceRemovalBundle{},
+		HasUnits:      true,
+		Package:       packageName,
+		Version:       version,
+	}
+	count, lines, err := runtimeVersionBlockers(ctx, db, svc.ID, version)
+	if err != nil {
+		return serviceRemovalImpactResponse{}, err
+	}
+	names := make([]string, 0, len(lines))
+	for _, line := range lines {
+		if !strings.HasPrefix(line, "+") {
+			names = append(names, line)
+		}
+	}
+	kind := "php_sites"
+	if svc.ID == "node" {
+		kind = "node_sites"
+	}
+	response.Hosted = &serviceRemovalHosted{Kind: kind, Count: count, Names: names, BlocksRemoval: count > 0}
+	return response, nil
 }
 
 // The readers of the facts outside the database, replaceable in tests.
@@ -433,6 +556,19 @@ var (
 )
 
 var errRemovalFirewallBusy = errors.New("a firewall change is in progress")
+
+// removalPackagePreview reads the package manager's simulation through the
+// Agent's read-only preview, bounded for the dialog.
+var removalPackagePreview = func(p *Panel, ctx context.Context, request transport.ServiceRemovalPreviewRequest) (transport.ServiceRemovalPreviewResponse, error) {
+	callCtx, cancel := context.WithTimeout(ctx, removalSimulationReadBound)
+	defer cancel()
+	var preview transport.ServiceRemovalPreviewResponse
+	err := p.callAgentContext(callCtx, "Agent.ServiceRemovalPreviewV1", &request, &preview)
+	if err == nil && preview.State == "failed" {
+		err = errors.New(preview.Error)
+	}
+	return preview, err
+}
 
 // setupMailCertificateHosts names the mail host certificates server setup
 // recorded as issued: every "mail_certificate" step that succeeded in a

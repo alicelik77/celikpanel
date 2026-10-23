@@ -201,12 +201,74 @@ type UninstallServiceResponse struct {
 	Error           string `json:"error,omitempty"`
 	PartialSuccess  bool   `json:"partial_success,omitempty"`
 	MutationApplied bool   `json:"mutation_applied,omitempty"`
+	// ErrorCode types a refusal (alpha.104): REMOVAL_WOULD_REMOVE_OTHERS
+	// (the package manager's simulation would remove packages the removal
+	// did not name; Collateral names them), REMOVAL_TOOLS_BOUND (webmail or
+	// a database tool runs on the PHP being removed; BoundTools names them),
+	// REMOVAL_SIMULATION_FAILED and REMOVAL_PLAN_CHANGED. Additive: an older
+	// Agent never sets it.
+	// ErrorCode bir reddi türler (alpha.104); eklemelidir.
+	ErrorCode  string                     `json:"error_code,omitempty"`
+	Collateral []PackageRemovalCollateral `json:"collateral,omitempty"`
+	BoundTools []string                   `json:"bound_tools,omitempty"`
+}
+
+// PackageRemovalCollateral is one package a removal would take that it did
+// not name: Reason is "component" (it belongs to a catalogue component,
+// Component), "reverse_dependency" (it depends on a removed package) or
+// "would_install" (the package manager would install it).
+// PackageRemovalCollateral, bir kaldırmanın adını söylemeden alacağı tek
+// pakettir.
+type PackageRemovalCollateral struct {
+	Package   string `json:"package"`
+	Reason    string `json:"reason"`
+	Component string `json:"component,omitempty"`
+}
+
+// ServiceRemovalPreviewRequest asks what removing a component (or, with
+// Package, one version of it) would take, without changing anything.
+// ServiceRemovalPreviewRequest, bir bileşeni (ya da Package ile tek sürümünü)
+// kaldırmanın neyi alacağını hiçbir şeyi değiştirmeden sorar.
+type ServiceRemovalPreviewRequest struct {
+	ID      string `json:"id"`
+	Package string `json:"package,omitempty"`
+}
+
+// ServiceRemovalPreviewResponse is the package manager's simulated answer.
+// State: "checked" (Remove and Collateral are the simulation's answer),
+// "not_installed" (nothing to remove), "busy" (another package operation
+// holds the package lock; nothing was simulated), "unsupported" (this
+// package family has no removal here) or "failed" (Error says why).
+// ServiceRemovalPreviewResponse, paket yöneticisinin benzetim yanıtıdır.
+type ServiceRemovalPreviewResponse struct {
+	State         string                     `json:"state"`
+	PackageFamily string                     `json:"package_family"`
+	Requested     []string                   `json:"requested"`
+	Remove        []string                   `json:"remove"`
+	Collateral    []PackageRemovalCollateral `json:"collateral"`
+	BoundTools    []string                   `json:"bound_tools"`
+	Error         string                     `json:"error,omitempty"`
 }
 
 type ConfigureDBToolsResponse struct {
 	Configured bool     `json:"configured"`
 	Tools      []string `json:"tools"`
 	Error      string   `json:"error,omitempty"`
+	// Warning (alpha.104): the configuration was written, but a tool's PHP
+	// needs attention (its bound version is gone, or its extensions could
+	// not be installed); the installed tool itself is fine.
+	Warning string `json:"warning,omitempty"`
+	// ToolProblems are the same, per tool, for a screen to translate.
+	ToolProblems []PHPToolProblem `json:"tool_problems,omitempty"`
+}
+
+// PHPToolProblem: a tool's PHP needs attention after a configuration.
+// Kind: version_gone (its bound Version is no longer installed) or
+// extensions_failed (its PHP extensions for Version could not be installed).
+type PHPToolProblem struct {
+	Tool    string `json:"tool"`
+	Version string `json:"version"`
+	Kind    string `json:"kind"`
 }
 
 type ConfigureDKIMSigningResponse struct {
@@ -387,4 +449,77 @@ type ComponentPackageVersions struct {
 type InstalledPackageVersion struct {
 	Package string `json:"package"`
 	Version string `json:"version"`
+}
+
+// PHPToolBinding is the PHP version a tool (webmail, phpmyadmin,
+// phppgadmin) is served from (alpha.104). Version is empty when nothing is
+// bound; SocketReady says the version's PHP-FPM socket exists right now;
+// VersionInstalled that the version is still installed. Source is "config"
+// (the generated nginx configuration) or "record" (the Agent's record).
+// PHPToolBinding, bir aracın sunulduğu PHP sürümüdür.
+type PHPToolBinding struct {
+	Tool             string `json:"tool"`
+	Installed        bool   `json:"installed"`
+	Version          string `json:"version"`
+	SocketReady      bool   `json:"socket_ready"`
+	VersionInstalled bool   `json:"version_installed"`
+	Source           string `json:"source,omitempty"`
+	// ExtensionsPresent: the tool's PHP extension packages are installed for
+	// its version (package presence, not proof that PHP loads them).
+	ExtensionsPresent bool `json:"extensions_present"`
+}
+
+// PHPToolCause says why a tool move failed, in a form a screen translates
+// (alpha.104). Kind: missing_extensions (Extensions), wrong_version
+// (Running), no_answer, http_status (Status), served_as_file, tool_error,
+// not_tool_page, not_running, version_not_installed, tool_not_installed,
+// unsupported, extensions_install_failed (Extensions), fpm_reload_failed,
+// config_owner_edited (Detail: the file), config_prepare_failed,
+// config_read_failed, config_write_failed, nginx_rejected,
+// nginx_reload_failed, other. Detail is the Agent's own words.
+// PHPToolCause, bir taşımanın neden başarısız olduğunu çevrilebilir söyler.
+type PHPToolCause struct {
+	Kind       string   `json:"kind"`
+	Version    string   `json:"version,omitempty"`
+	Extensions []string `json:"extensions,omitempty"`
+	Status     int      `json:"status,omitempty"`
+	Running    string   `json:"running,omitempty"`
+	Detail     string   `json:"detail,omitempty"`
+}
+
+// PHPToolBindingsResponse lists every tool's binding and the installed
+// PHP-FPM versions, newest first.
+type PHPToolBindingsResponse struct {
+	Tools    []PHPToolBinding `json:"tools"`
+	Versions []string         `json:"versions"`
+	Error    string           `json:"error,omitempty"`
+}
+
+// BindPHPToolRequest moves one tool to one installed PHP version.
+type BindPHPToolRequest struct {
+	ServiceMutationBinding
+	Tool    string `json:"tool"`
+	Version string `json:"version"`
+}
+
+// BindPHPToolResponse: Bound after the tool answered on the new version.
+// On failure ErrorCode types it, MutationApplied says the host changed
+// (extension packages installed or nginx reloaded) and Restored that the
+// previous configuration was put back. Previous is the version before.
+// BindPHPToolResponse: araç yeni sürümde yanıt verdikten sonra Bound.
+type BindPHPToolResponse struct {
+	Bound             bool     `json:"bound"`
+	Tool              string   `json:"tool"`
+	Version           string   `json:"version"`
+	Previous          string   `json:"previous,omitempty"`
+	InstalledPackages []string `json:"installed_packages,omitempty"`
+	MutationApplied   bool     `json:"mutation_applied,omitempty"`
+	Restored          bool     `json:"restored,omitempty"`
+	Warning           string   `json:"warning,omitempty"`
+	Error             string   `json:"error,omitempty"`
+	ErrorCode         string   `json:"error_code,omitempty"`
+	// Detail is the cause alone, for a screen that quotes it.
+	Detail string `json:"detail,omitempty"`
+	// Cause is the same, structured and translatable.
+	Cause *PHPToolCause `json:"cause,omitempty"`
 }

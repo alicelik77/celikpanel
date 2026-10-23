@@ -23,7 +23,7 @@ git'te yaşar; bu dosya strateji içindir. En yeni en üstte.
 
 ## D-037 · Her sayfa adının söylediği yerdedir: Ayarlar ayarları tutar; araçlar, güvenlik ve bakım Sunucu altındadır; kişinin kendi hesabı kişisel menüdedir
 
-*22 Ekim 2026 (saat tarihi) · Sahibin 21 Ekim 2026 tarihli isteği ve 22 Ekim 2026 tarihli onayı; v0.1.0-alpha.98 adayı için kaynakta, 22 Ekim 2026'da yayımlandı; 22 Ekim 2026'da sahibin kendi güncellemesinden sonra sahibin ekranları yeni menüyü iki kurulu sunucuda da gösterdi · 22 Ekim 2026'da değiştirildi: kişinin kendi e-postasını değiştirmesi, v0.1.0-alpha.99 adayı için kaynakta; değişikliğin hiçbir parçası kurulu bir sunucuda ölçülmedi · 22 Ekim 2026'da yeniden değiştirildi: Sunucu kurulumu Sunucu altına taşınır, kaldırma penceresi neyin etkileneceğini söyler, ilk ziyaret Kurulu görünümü açar; v0.1.0-alpha.100 adayı için kaynakta*
+*22 Ekim 2026 (saat tarihi) · Sahibin 21 Ekim 2026 tarihli isteği ve 22 Ekim 2026 tarihli onayı; v0.1.0-alpha.98 adayı için kaynakta, 22 Ekim 2026'da yayımlandı; 22 Ekim 2026'da sahibin kendi güncellemesinden sonra sahibin ekranları yeni menüyü iki kurulu sunucuda da gösterdi · 22 Ekim 2026'da değiştirildi: kişinin kendi e-postasını değiştirmesi, v0.1.0-alpha.99 adayı için kaynakta; değişikliğin hiçbir parçası kurulu bir sunucuda ölçülmedi · 22 Ekim 2026'da yeniden değiştirildi: Sunucu kurulumu Sunucu altına taşınır, kaldırma penceresi neyin etkileneceğini söyler, ilk ziyaret Kurulu görünümü açar; v0.1.0-alpha.100 adayı için kaynakta · 23 Ekim 2026'da yeniden değiştirildi: bir kaldırma adını söylemediği hiçbir şeyi kaldırmaz ve her PHP aracı sahibin seçtiği PHP sürümünde çalışır; v0.1.0-alpha.104 adayı için kaynakta; kurulu bir sunucuda hiçbir şey ölçülmedi*
 
 Sahip 21 Ekim 2026'da şunu sordu: "ayarlardaki bu alt
 menüdeki her şey ayarlar ile mi ilgili?" ve sürdürdü: "her işlemin yeri doğru
@@ -548,7 +548,134 @@ söylemez.
 Yapılmayan: hiçbir şey kurulu bir sunucuda ölçülmedi; bir dağıtım paketinin kendi
 kaldırma betiğinin neyi sildiği okunmaz ve iddia edilmez.
 
+### Değişiklik (23 Ekim 2026, saat tarihi): bir kaldırma adını söylemediği hiçbir şeyi kaldırmaz; her PHP aracı sahibin seçtiği PHP sürümünde çalışır
+
+*Frankfurt olayından sonra sahibin 23 Ekim 2026 kararları ("Tüm düzeltmeleri 104'te yap. 105'e bir şey bırakma."); v0.1.0-alpha.104 adayı için kaynakta; kurulu bir sunucuda hiçbir şey ölçülmedi*
+
+Ne oldu. 23 Ekim 2026'da Frankfurt (Debian 13, alpha.103, PHP-FPM 8.6, 8.5 ve 8.4
+kurulu; 8.4 Debian 13'ün kendi PHP'si) phpMyAdmin, phpPgAdmin, Roundcube ve Web
+postası paketini kurulu gösteriyordu. Sahip sürüm listesinden PHP-FPM 8.4'ü kaldırdı.
+Pencere yalnızca şunu söyledi: "Bu sürümü ve yol arkadaşı paketlerini sunucudan
+kaldırır. Üzerinde çalışan bir site varsa panel reddeder ve onları listeler." İki
+dakika sonra phpMyAdmin "Kurulu değil", web postası "doğrulanmadı — Roundcube kurulu,
+ama Unix soketi çalışma ortamı hazır değil" durumundaydı. Arada başka hiçbir şey
+yapılmamıştı. Sunucunun kendi apt geçmişi nedenini gösterdi: Agent, PHP 8.4
+paketlerinde `apt-get purge -y --auto-remove` çalıştırdı ve apt sormadan phpmyadmin'i,
+dağıtımın php-fpm, php-mysql, php-mbstring, php-pgsql ve php-xml paketlerini,
+php8.4-readline'ı, dbconfig-common'ı, dbconfig-mysql'i ve yaklaşık 35 kütüphaneyi de
+sildi — silinene bağlı olan her şeyi ve yalnızca onların ihtiyaç duyduklarını.
+Roundcube, phpMyAdmin ve phpPgAdmin `php8.4-fpm.sock` üzerinden sunuluyordu
+(CelikPanel'in onlar için yazdığı yapılandırma tek bir PHP-FPM soketini adlandırır);
+8.4 gidince web postası ve phpPgAdmin yanıt vermez oldu, phpPgAdmin yine de "Kurulu"
+görünüyordu. Kaldırma, hiçbir şey söylemeden başka bir bileşeni götürmüş ve iki
+bileşeni daha bozmuştu; bu, yukarıdaki alpha.100 değişikliğinin 3. kuralına ("önce
+gerçek; etkilenen, adıyla") ve D-022'ye aykırıdır.
+
+Benimsenen kurallar:
+
+1. **Bir kaldırma adını söylemediği hiçbir şeyi kaldırmaz; kararı paket
+   yöneticisinin kendi benzetimi verir ve beklenen kümenin dışındaki her şey
+   kaldırmayı reddeder.** Herhangi bir paket kaldırmadan önce (her bileşen, her
+   sürüm, apt ve pacman; DNF önizlemesi erişilmez kalır) Agent, hiçbir şeyi
+   değiştirmeden paket yöneticisine kaldırmanın ne yapacağını sorar. Beklenen küme:
+   kaldırmanın adını söylediği paketler; o çalışma ortamı sürümünün onsuz
+   çalışamayan paketleri (php8.4-common yanında "php8.4-…", postgresql-17 yanında
+   "postgresql-17-…"); ve yalnızca bu kaldırmanın kullanılmaz hâle getirdiği,
+   otomatik kurulmuş paketler. Paket yöneticisinin kaldıracağı başka her şey —
+   başka bir katalog bileşeninin paketi (phpMyAdmin), kaldırılan bileşenin kendi
+   dağıtım paketi (php-fpm; bu, bu sürümün sistemin varsayılanı olduğu anlamına
+   gelir), kaldırılana bağlı başka her paket (php-mysql) ya da kuracağı her şey —
+   kaldırmayı adlarıyla reddeder ve hiçbir şey değişmez: hiçbir hizmet durdurulmaz.
+   Kaldırmadan önce zaten kullanılmayan paketlere (eski bir çekirdek) dokunulmaz.
+   Gerçek kaldırma benzetimi yapılan tam listeyi adlandırır, hemen öncesinde
+   yinelenen son benzetimle aynı argümanlarla ve aynı paket kilidi altında çalışır;
+   arada yanıt değiştiyse (başka bir paket işlemi çalıştıysa) reddedilir.
+2. **Her PHP aracı tek bir PHP sürümünde çalışır ve onu sahip seçer.** Web postası
+   (Roundcube), phpMyAdmin ve phpPgAdmin'in her biri kurulu bir PHP-FPM sürümüne
+   bağlıdır. Bağ, aracın üretilen nginx yapılandırmasının adını verdiği sürümdür
+   (sahibin o satırda yaptığı değişikliğe saygı gösterilir); Agent bunu hatırlar,
+   böylece kaldırılıp yeniden kurulan araç oraya döner. Yeniden yapılandırma aracı,
+   o sürüm kurulu kaldıkça orada tutar ve aracın PHP eklentilerinin o sürüm için var
+   olmasını sağlar; aracı bir daha asla en yeni sürüme taşımaz (eski seçim alfabetik
+   olarak son soketti; bu, 8.9'u da 8.10'dan sonraya koyuyordu). Henüz bağı olmayan
+   araç dağıtımın varsayılan PHP'sini alır (kurulu php-* paketlerinin bağlı olduğu
+   sürüm, sonra sistemin php-fpm ve php seçenekleri), yoksa eklentileri olan en yeni
+   sürümü. Sahip aracı **aracın kendi Yönet penceresinde** ("PHP sürümü") taşır;
+   tıpkı bir sitenin ayarlarındaki PHP sürümü gibi; yalnız kurulu sürümler sunulur.
+   Taşıma, eksikse aracın eklentilerini o sürüm için kurar, o PHP'ye eklentileri
+   sorar, aracın nginx yapılandırmasını yazar, denetler, nginx'i yeniden yükler ve
+   sonra aracın kendi soketi üzerinden kendisi olarak yanıt vermesini ister (gerçek
+   sayfası; geçit hatası, ham PHP dosyası ya da kendi "eklenti eksik" sayfası değil);
+   olmazsa önceki yapılandırma geri konur ve pencere bunu söyler: neden, aracın
+   yeniden önceki sürümünde çalıştığı ve ne yapılacağı. Bir seferde tek değişiklik,
+   yalnız yöneticiler, görünür bekleme; yinelenen istek yanıtlanır, iki kez
+   çalışmaz (D-029).
+3. **PHP-FPM sürüm listesi her sürümü kimin kullandığını söyler**: "Kullanan: 2 site,
+   phpPgAdmin, Roundcube" ya da hiçbir şeyin kullanmadığı; Panel'in site kayıtlarından
+   ve Agent'ın bağlarından.
+4. **Sitelerin ya da araçların kullandığı bir PHP sürümünü kaldırmak onları
+   adlandırır ve hiçbir şey değişmeden reddedilir.** Siteler her sitenin ayarlarından
+   taşınır (pencere onları adlandırır ve Alan Adları'na bağlantı verir). Araçlar için
+   pencere "PHP [sürüm] sürümüne taşı, sonra kaldır" seçeneğini sunar: her araç tek
+   tek taşınır ve orada kanıtlanır; sürüm ancak her taşıma çalıştığında (ve paket
+   yöneticisinin benzetimi kaldırmayı hâlâ kabul ettiğinde) kaldırılır; ilk başarısız
+   taşımada hiçbir şey kaldırılmaz ve pencere tam olarak hangi araçların artık yeni
+   sürümde çalıştığını, hangisinin nereye geri konduğunu ve hangilerinin denenmediğini
+   söyler.
+5. **Her kaldırma penceresi paket yöneticisinin yanıtını düğmeden önce söyler:**
+   kaldıracağı tam paketleri; ayrıca neyi alacağını, paket ve bileşen adıyla ve
+   sonraki adımla ("önce phpMyAdmin'i kaldırın ya da PHP-FPM 8.4'ü tutun"); sürüm
+   sistemin varsayılanı olduğunda bunu; ve denetim çalışamadığında (başka bir paket
+   işlemi sürüyordu ya da 30 saniyede yanıt gelmedi) kaldırmanın basıldığında yeniden
+   denetleneceğini ve başka bir şey alacaksa reddedileceğini. Panel'in reddedeceğini
+   zaten bildiği kaldırma sunulmaz; başarısız bir okuma kaldırmayı asla tutmaz.
+6. **PHP sürümü eksik olan bir PHP aracı düz "kurulu" gösterilmez**: Bileşenler
+   satırı nedeniyle (sürüm çalışmıyor ya da artık kurulu değil) ve çaresiyle (Yönet'te
+   bir PHP sürümü seçin) "Hazır değil" der.
+
+Bu, kaldırmalar için alpha.100'ün apt temizliğinin "artık hiçbir şeyin ihtiyaç
+duymadığı otomatik kurulmuş her paketi (sistem genelinde)" aldığı sözünün yerine
+geçer; ayrıca o değişikliğin, Kaldır düğmesinin okumayla asla devre dışı
+bırakılmadığı uygulama notunun da yerine geçer: benzetimin zaten gösterdiği bir ret
+Kaldır'ı kullanılamaz yapar, başarısız ya da bilinmeyen bir okuma yine asla yapmaz.
+alpha.100 değişikliğinin diğer kuralları geçerlidir.
+
+Bunun izin vermedikleri: bir aracın başka bir PHP sürümüne otomatik taşınması (yalnız
+sahibin açık seçimi taşır), sitelerin PHP sürümü seçme biçiminde değişiklik, sahibin
+kurmadığı bir PHP sürümünün kurulması, güncelleyicide değişiklik, sahip görmeden
+kurulu sunucular hakkında iddia. Kurulu paneller hâlâ yalnız sahipleri tarafından,
+panelin kendi güncelleme ekranından güncellenir.
+
+Diğerleriyle ilişkisi. D-022: yerel yapılandırma gerçek kalır ve sahibin değişikliği
+kazanır. D-024: retler nedeni, kimin harekete geçeceğini ve sonraki adımı söyler;
+doğrulanmış ret, karşılanmamış önkoşul ve bilinmeyen yanıt ayrı tutulur. D-025:
+Agent'ta değişen bir kaldırma yolu; kanıtı kaydedilir (RESILIENCE-CONTRACT,
+alpha.104). D-029: taşıma yolu bir istek kimliği taşır. D-036: Debian 13'ün phpMyAdmin
+sürümü `4:5.2.2-really+dfsg-1+deb13u1` artık 5.2.2 okunur (alpha.101 kuralı
+"really"den sonra bir rakam bekliyordu).
+
+İnceleme düzeltmeleri (2026-10-23, aynı aday, bağımsız bir incelemeden sonra;
+sahibin kuralı: her şey alpha.104'te). Yukarıdaki kuralları keskinleştirir: (a) "onları
+taşı, sonra kaldır" herhangi bir aracı taşımadan önce paket yöneticisi kaldırmayı
+başka bir şey almadan kabul etmiş olmalıdır, aksi hâlde hiçbir şey taşınmaz; araçlar
+taşındıysa yanıt onları retle ya da "bilinmiyor" ile birlikte adlandırır; (b) bir
+kaldırma başka PHP sürümlerinin eklenti paketlerine ve zaten kullanılmayan paketlere
+dokunmaz, hizmetleri durmadan önce ve durduktan sonra yeniden denetlenir ve yanıt
+değiştiyse onları yeniden başlatır; (c) bir kurulum asla paket kaldırmaz; (d) bir
+aracın CelikPanel dışında, kendi üretilen biçiminin ötesinde değiştirilmiş
+yapılandırması yeniden üretilmez (D-022) ve gitmiş hatırlanan sürüm kullanılmaz;
+(e) PHP eklenti paketleri sürümü için eksik olan araç "Hazır değil"dir (paket
+varlığı, yüklendiğinin kanıtı değil); (f) kurulumdan sonra başka bir aracın PHP
+sorunu uyarıdır, başarısız kurulum değil; (g) başarısız taşımanın nedeni okurun
+dilinde söylenir, beklenmeyen biri alıntılanır; (h) kaldırma yolu bir istek kimliği
+taşır (D-029).
+
+Yapılmayanlar: kurulu bir sunucuda hiçbir şey ölçülmedi; gerçek sistem kanıtı atılabilir
+iki Debian 13 makinesidir (RESILIENCE-CONTRACT, alpha.104); pacman yolu yalnız bileşen
+testleriyle kapsanır; DNF yolu erişilmez kalır.
+
 ---
+
 
 ## D-036 · Gösterilen sürüm paket veritabanının kendi yanıtıdır; bilinmeyen, bilinmeyen olarak kalır
 

@@ -71,6 +71,7 @@ func TestServiceMutationStepPolicyAllowsEveryDeclaredWorkflowRow(t *testing.T) {
 		{"configure webmail after install", mutationPolicyJob("service_install", "roundcube", ""), mutationPolicyClaim(serviceMutationStepConfigureWebmail, "roundcube", "", "configure")},
 		{"configure webmail before uninstall", mutationPolicyJob("service_uninstall", "roundcube", ""), mutationPolicyClaim(serviceMutationStepConfigureWebmail, "roundcube", "", "configure")},
 		{"configure webmail profile", mutationPolicyJob("mail_profile_install", core.MailProfileWebmail, ""), mutationPolicyClaim(serviceMutationStepConfigureWebmail, "roundcube", "", "configure")},
+		{"bind a PHP tool", mutationPolicyJob("php_tool_bind", "phpmyadmin", "8.5"), mutationPolicyClaim(serviceMutationStepBindPHPTool, "phpmyadmin", "8.5", "bind")},
 		{"install node", mutationPolicyJob("runtime_install", "node", "22.14.0"), mutationPolicyClaim(serviceMutationStepInstallNodeVersion, "node", "22.14.0", "install")},
 		{"remove node", mutationPolicyJob("runtime_remove", "node:22.14.0", ""), mutationPolicyClaim(serviceMutationStepRemoveNodeVersion, "node", "22.14.0", "remove")},
 		{"enable repository", mutationPolicyJob("repo_enable", "docker", ""), mutationPolicyClaim(serviceMutationStepEnableRepo, "docker", "", "enable")},
@@ -160,6 +161,7 @@ func TestServiceMutationStepPolicyAllowsEveryDeclaredWorkflowRow(t *testing.T) {
 		serviceMutationStepInstallRoundcube,
 		serviceMutationStepRemoveRoundcube,
 		serviceMutationStepConfigureWebmail,
+		serviceMutationStepBindPHPTool,
 		serviceMutationStepActivatePanelCertificate,
 	}
 	for _, method := range expectedMethods {
@@ -404,6 +406,7 @@ func TestServiceMutationPrivilegedCallsitesCarryTypedClaims(t *testing.T) {
 		"serviceMutationStepInstallRoundcube":         true,
 		"serviceMutationStepRemoveRoundcube":          true,
 		"serviceMutationStepConfigureWebmail":         true,
+		"serviceMutationStepBindPHPTool":              true,
 		"serviceMutationStepSetServerHostname":        true,
 	}
 	seenMethods := make(map[string]string)
@@ -464,8 +467,8 @@ func TestServiceMutationPrivilegedCallsitesCarryTypedClaims(t *testing.T) {
 		}
 	}
 
-	if len(seenMethods) != 32 {
-		t.Errorf("production requiredServiceMutationStep claim count=%d want=32", len(seenMethods))
+	if len(seenMethods) != 33 {
+		t.Errorf("production requiredServiceMutationStep claim count=%d want=33", len(seenMethods))
 	}
 	for method := range expectedMethods {
 		if seenMethods[method] == "" {

@@ -222,9 +222,10 @@ test('Nginx: sites by name with "+N more", the refusal they cause, who needs it,
     assert.equal(said['bundle-db.mariadb'], say('services.removal.bundle', { bundle: words['services.bundles.name.db_mariadb_phpmyadmin'] }));
     assert.equal(said.ports, say('services.removal.ports', { ports: '80/tcp, 443/tcp' }));
     assert.deepEqual(sentenceKeys(), ['services.removal.removed.stopUnits', 'services.removal.removed.apt', 'services.removal.kept.packages']);
-    assert.ok(label(tree.root).includes('apt-get purge --auto-remove'));
-    // apt's --auto-remove is system wide, and the dialog says so.
-    assert.match(say('services.removal.removed.apt', { name: 'Nginx' }), /any automatically installed package that nothing needs any more \(not only those installed for Nginx\)/);
+    assert.ok(label(tree.root).includes('apt-get purge'));
+    assert.ok(!label(tree.root).includes('--auto-remove'), 'the dialog claims the old system-wide autoremove');
+    // alpha.104: apt takes only what this removal leaves unused; packages unused before stay.
+    assert.match(say('services.removal.removed.apt', { name: 'Nginx' }), /packages that were unused before stay/);
     // What the server loses comes first; red stays on the Remove button only.
     const sections = tree.root.findAll((node) => node.props && (node.props['data-removal-affected'] !== undefined || node.props['data-removal-removed'] !== undefined || node.props['data-removal-kept'] !== undefined))
       .map((node) => Object.keys(node.props).find((key) => key.startsWith('data-removal-')));
@@ -424,10 +425,12 @@ test('while the read runs the dialog shows that it reads, with removal still all
 
 test('the read is bounded and a late answer is not shown after the bound', () => {
   const list = source('components/ServiceList.tsx');
-  assert.match(list, /export const REMOVAL_IMPACT_READ_BOUND_MS = 10_000;/);
+  // alpha.104: the read includes the package manager's simulation (the Panel bounds it at 30 s).
+  assert.match(list, /export const REMOVAL_IMPACT_READ_BOUND_MS = 40_000;/);
   assert.match(list, /setTimeout\(\(\) => \{\s*controller\?\.abort\(\);\s*finish\(\{ state: 'unknown' \}\);\s*\}, REMOVAL_IMPACT_READ_BOUND_MS\)/);
   assert.match(list, /if \(settled\) return;/);
-  assert.match(list, /fetch\(`\/api\/v1\/service\/removal-impact\?service_id=\$\{encodeURIComponent\(serviceId\)\}`, \{\s*cache: 'no-store'/);
+  assert.match(list, /const query = `service_id=\$\{encodeURIComponent\(serviceId\)\}\$\{packageName \? `&package=\$\{encodeURIComponent\(packageName\)\}` : ''\}`;/);
+  assert.match(list, /fetch\(`\/api\/v1\/service\/removal-impact\?\$\{query\}`, \{\s*cache: 'no-store'/);
 });
 
 test('Turkish: the dialog speaks Turkish with no raw key', async () => {
@@ -443,7 +446,7 @@ test('Turkish: the dialog speaks Turkish with no raw key', async () => {
 
 test('the sentence chooser follows the uninstall path for each class', () => {
   const base = decodeRemovalImpact(impact({ packages: ['x'] }));
-  assert.deepEqual(removalSentences(base), { removed: ['services.removal.removed.stopUnits', 'services.removal.removed.apt'], kept: ['services.removal.kept.packages'], warnings: [], command: 'apt-get purge --auto-remove' });
+  assert.deepEqual(removalSentences(base), { removed: ['services.removal.removed.stopUnits', 'services.removal.removed.apt'], kept: ['services.removal.kept.packages'], warnings: [], command: 'apt-get purge' });
   assert.deepEqual(removalSentences({ ...base, package_family: 'pacman', has_units: false }).removed, ['services.removal.removed.pacman']);
   const dnf = removalSentences({ ...base, package_family: 'dnf' });
   assert.equal(dnf.command, null, 'no command is claimed where the uninstall does not run');
@@ -472,7 +475,9 @@ test('every removal text exists in English and Turkish in the components part, T
   // The texts say what the code does: no mockup sentence about kept
   // configuration files survives, and the kept text names who decides.
   assert.ok(!/configuration (files|backups) (stay|are not)/i.test(Object.values(enComponents).join('\n')));
-  assert.match(enComponents['services.removal.removed.apt'], /configuration files, and any automatically installed package that nothing needs any more/);
+  // alpha.104: apt purges exactly what its own simulation showed; nothing else.
+  assert.match(enComponents['services.removal.removed.apt'], /configuration files, and the automatically installed packages that only this removal leaves unused/);
+  assert.match(enComponents['services.removal.removed.apt'], /if it would remove anything else, the removal is refused and nothing changes/);
   assert.match(enComponents['services.removal.removed.pacman'], /dependencies that nothing else needs/);
   assert.ok(!('services.removal.kept.databaseFiles' in enComponents), 'the database warning is no longer a kept sentence');
   // nftables has no units: the loaded ruleset is not said to vanish, and

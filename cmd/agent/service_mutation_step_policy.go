@@ -45,6 +45,7 @@ const (
 	serviceMutationStepInstallRoundcube         serviceMutationStepMethod = "Agent.InstallRoundcube"
 	serviceMutationStepRemoveRoundcube          serviceMutationStepMethod = "Agent.RemoveRoundcube"
 	serviceMutationStepConfigureWebmail         serviceMutationStepMethod = "Agent.ConfigureWebmail"
+	serviceMutationStepBindPHPTool              serviceMutationStepMethod = "Agent.BindPHPToolV1"
 	serviceMutationStepActivatePanelCertificate serviceMutationStepMethod = "agent.panel-certificate-activation"
 )
 
@@ -349,6 +350,13 @@ func serviceMutationStepAllowed(job *ServiceMutationJob, claim serviceMutationSt
 	case serviceMutationStepConfigureDKIMSigning:
 		return claim.target == "opendkim" && claim.packageName == "" && claim.action == "configure" &&
 			serviceMutationJobMatches(job, "dkim_signing_configure", "opendkim", "")
+
+	case serviceMutationStepBindPHPTool:
+		// One tool to one PHP version, inside its own "php_tool_bind" job
+		// (alpha.104).
+		return claim.action == "bind" && claim.packageName != "" &&
+			(claim.target == "webmail" || claim.target == "phpmyadmin" || claim.target == "phppgadmin") &&
+			serviceMutationJobMatches(job, "php_tool_bind", claim.target, claim.packageName)
 
 	case serviceMutationStepConfigureDBTools:
 		if claim.target != "dbtools" || claim.packageName != "" || claim.action != "configure" ||

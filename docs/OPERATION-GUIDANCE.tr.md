@@ -10017,3 +10017,178 @@ yeniden denemesi dahil), Beta 1'de iki sunucunun temiz yeniden kurulması yakla�
 kabul adımıdır, yayımlanmış bir iddia değil. alpha.103 sürüm notlarındaki
 bilinen eksikler açık kalır. Bu girdi için hiçbir metin ya da ekran değiştirilmedi.
 P0.1-P0.5 **kısmi** kalır; bu girdi hiçbir şeyi kapatmaz ya da ilerletmez.
+
+### alpha.103'teki Frankfurt: PHP-FPM 8.4'ü kaldırmak phpMyAdmin'i götürdü ve web postasını durdurdu; alpha.104'te kaldırmalar ve PHP araçları (D-037 değişikliği, 23 Ekim 2026)
+
+23 Ekim 2026'da ne oldu (Frankfurt, Debian 13, alpha.103), sahip ne yaptı ve
+v0.1.0-alpha.104 adayında kaynakta ne değişti (yayımlanmadı; kurulu bir sunucuda
+hiçbir şey ölçülmedi).
+
+**Ne oldu.** PHP-FPM 8.6, 8.5 ve 8.4 kuruluydu (8.4 Debian 13'ün kendi PHP'si);
+phpMyAdmin, phpPgAdmin ve Roundcube kuruluydu, Web postası paketi tamdı. Sahip sürüm
+listesinden PHP-FPM 8.4'ü kaldırdı. Pencere yalnızca sitelerin denetleneceğini
+söylüyordu. İki dakika sonra phpMyAdmin "Kurulu değil" idi, web postası "doğrulanmadı —
+Roundcube kurulu, ama Unix soketi çalışma ortamı hazır değil" diyor ve "Web postasını
+onar" sunuyordu. Arada başka hiçbir şey yapılmamıştı. Sunucunun apt geçmişi (sahip
+salt-okur komutlarla okudu) nedeni gösteriyor: Agent PHP 8.4 paketlerinde
+`apt-get purge -y --auto-remove` çalıştırdı ve apt ayrıca phpmyadmin'i
+(4:5.2.2-really+dfsg-1+deb13u1), dağıtımın php-fpm, php-mysql, php-mbstring,
+php-pgsql ve php-xml paketlerini, php8.4-readline'ı, dbconfig-common'ı,
+dbconfig-mysql'i ve yaklaşık 35 kütüphaneyi de sildi. phpPgAdmin kurulu kaldı. Üç
+araç da `php8.4-fpm.sock` üzerinden sunuluyordu (8.5 ve 8.6 kurulurken nginx
+yapılandırmaları yeniden yazılmamıştı); bu yüzden web postası ve phpPgAdmin yanıt
+vermez oldu, phpPgAdmin yine de "Kurulu" görünüyordu.
+
+**alpha.103'te (sahibin yaptığı; sahip işletir, panelden).** **Kim harekete geçer:**
+sahip. 1. Bileşenler → PHP-FPM → sürümler'den PHP-FPM 8.4'ü yeniden kurun. Bu 8.4
+soketini geri getirir; bir PHP sürümü kurmak araçların yapılandırmasını yeniden
+yazmaz, bu yüzden web postası ve phpPgAdmin değişmeden yeniden yanıt verir.
+**Doğrulandı:** bundan sonra Bileşenler ekranı Web postası ✓ ve "doğrulanmadı"
+olmadan Roundcube gösterdi (sahibin 23 Ekim 2026 ekran görüntüsü, 19:56 Yeniden
+tara). phpPgAdmin'in kendi sağlığı o anda ayrıca doğrulanmadı. 2. alpha.103'te **"Web
+postasını onar"a basmayın**: Roundcube'u en yeni PHP soketine (8.6) taşır. 3.
+**alpha.103'te phpMyAdmin'i yeniden kurmayın**: kurulumu veritabanı araçlarının
+yapılandırmasını yeniden yazar ve phpMyAdmin ile phpPgAdmin'i en yeni PHP soketine
+(8.6) taşır. alpha.104'ü bekleyin.
+
+**alpha.104'ten sonra (sahip işletir).** **Kim harekete geçer:** sahip.
+1. Paneli kendiniz, panelin kendi güncelleme ekranından alpha.104'e güncelleyin.
+   **Görmeniz gereken:** panel güncellenince hiçbir şey taşınmaz; her araç
+   yapılandırmasının adını verdiği PHP sürümünde kalır (Frankfurt'ta 8.4).
+2. Bileşenler'i açın ve önce **Yeniden tara**'ya basın. **Görmeniz gereken:**
+   Roundcube ve phpPgAdmin "Kurulu"; PHP-FPM → sürümler'de 8.4'ün yanında
+   "Kullanan: phpPgAdmin, Roundcube" (ve varsa siteler). **Bir araç "Hazır değil"
+   diyorsa** (PHP sürümü çalışmıyor ya da artık kurulu değil), o aracın **Yönet → PHP
+   sürümü** bölümünü açın, kurulu bir sürüm seçin ve "PHP x.y kullan"a basın; "artık
+   PHP x.y üzerinde çalışıyor ve orada yanıt verdi" yazısını bekleyin. Bunu 3.
+   adımdan önce yapın.
+3. phpMyAdmin'i yeniden kurun (satırından ya da "MariaDB + phpMyAdmin" paketinden).
+   **Görmeniz gereken:** phpMyAdmin "Kurulu" ve çalışıyor. PHP 8.4'e geri döner,
+   çünkü araçların yapılandırmasındaki eski satırı hâlâ 8.4'ü adlandırır ve panel
+   PHP 8.4 eklentilerinin kurulu olmasını sağlar. **Not:** apt, phpMyAdmin'in
+   bağımlılıklarıyla birlikte üretici deposundan daha yeni php-* meta paketlerini
+   alabilir; bunların varsayılan PHP'si başka bir sürüm olabilir. Siz Yönet
+   penceresinde başka bir seçim yapana dek phpMyAdmin 8.4'te çalışır. **Yanıt
+   vermiyorsa:** phpMyAdmin'in Yönet → PHP sürümü bölümünü açın; kart hangi sürümde
+   çalıştığını ve o PHP'nin çalışıp çalışmadığını söyler; çalışan bir sürüm seçin.
+   **Başka bir aracın PHP'si ilgi istiyorsa** (örneğin phpPgAdmin'in sürümü
+   kaldırıldıysa), phpMyAdmin yine kurulur ve bir uyarı o aracı ve çaresini söyler
+   (aracın Yönet penceresinde kurulu bir PHP sürümü seçin).
+4. İsteğe bağlı: araçları her aracın Yönet → PHP sürümü bölümünden başka bir sürüme
+   taşıyın. PHP-FPM 8.4'ü daha sonra kaldırmak, hiçbir şey değişmeden, o anda
+   sunucuda denetimin bulduğu her şey yüzünden reddedilir — hâlâ 8.4'te olan siteler
+   ve araçlar ile paket yöneticisinin ayrıca kaldıracağı paketler — ve pencere
+   bunları ve önce ne yapılacağını adıyla söyler.
+
+**alpha.104'te ne değişir.** Her kaldırma önce, hiçbir şeyi değiştirmeden paket
+yöneticisine neyi kaldıracağını sorar; kaldırmanın adını söylemediği bir şeyi
+kaldıracaksa (başka bir bileşen, bu sürümün dağıtımdaki kendi paketi, ona bağlı
+paketler) kaldırma adlarıyla reddedilir ve hiçbir şey durdurulmaz ya da kaldırılmaz.
+Kaldırma pencereleri bunu düğmeden önce gösterir:
+
+- **Neyi kaldırır:** "Paket yöneticisi bu kaldırmayı denetledi: tam olarak şu N
+  paketi kaldırır." ve liste.
+- **Neden reddedilir:** "Paket yöneticisi bu kaldırmanın adını söylemediği paketleri
+  de kaldıracaktı; bu yüzden CelikPanel kaldırmayı reddeder ve hiçbir şey değişmez:",
+  sonra örneğin "phpmyadmin, phpMyAdmin bileşenine ait: önce phpMyAdmin bileşenini
+  kaldırın ya da PHP-FPM 8.4 bileşenini tutun.", "php-fpm — dağıtımın kendi paketi —
+  buna bağlı: PHP-FPM 8.4, bu sistemin varsayılanı. Onu tutun ya da bunun yerine
+  bileşenin tamamını kaldırın.", "php-mysql, PHP-FPM 8.4 bileşenine bağlı.
+  Gerekmiyorlarsa sunucu yöneticisi önce onları paket yöneticisiyle kaldırır;
+  gerekiyorsa PHP-FPM 8.4 bileşenini tutun." O zaman Kaldır sunulmaz.
+- **Bir PHP sürümündeki araçlar:** "phpPgAdmin, Roundcube, PHP 8.4 üzerinde çalışıyor
+  ve çalışmaz hâle gelir. Önce onları başka bir PHP sürümüne taşıyın ya da bu sürümü
+  tutun." Yalnız araçlar engelliyorsa pencere "PHP [8.6] sürümüne taşı, sonra kaldır"
+  seçeneğini sunar: her araç taşınır ve denenir, sonra sürüm kaldırılır; sürerken:
+  "Araçlar tek tek PHP 8.6 sürümüne taşınıyor: … Bu birkaç dakika sürebilir; bu arada
+  bir şey yapmanız gerekmiyor." Bir taşıma başarısız olursa hiçbir şey kaldırılmaz ve
+  pencere örneğin şunu söyler: "phpPgAdmin artık PHP 8.6 üzerinde çalışıyor ve orada
+  yanıt verdi. Roundcube, PHP 8.6 üzerinde çalışmadı ve yeniden PHP 8.4 üzerinde
+  çalışıyor. Neden: … PHP 8.4 kaldırılmadı."
+- **Bir PHP sürümündeki siteler:** "PHP 8.4 üzerinde çalışan siteler (2): a.example,
+  b.example. Önce her sitenin ayarlarından onları başka bir sürüme taşıyın." ve
+  "Alan Adları'nı aç".
+- **Denetim çalışamadığında:** "Başka bir paket işlemi sürüyor; bu yüzden paket
+  yöneticisine şimdi sorulamadı. Yine de Kaldır'a basabilirsiniz: o anda yeniden
+  denetlenir ve adını söylemediği bir şeyi kaldıracaksa reddedilir." (ya da "Paket
+  yöneticisinin yanıtı okunamadı. …"). Başarısız bir okuma kaldırmayı asla tutmaz.
+- **PHP-FPM sürüm listesi** her sürümü kimin kullandığını söyler ("Kullanan: 3 site,
+  Roundcube" / "Hiçbir site ya da araç kullanmıyor").
+- **PHP'si eksik bir PHP aracı** "Hazır değil" der ve "PHP 8.4 çalışmıyor; bu yüzden
+  yanıt veremiyor. PHP-FPM 8.4 sürümünü başlatın ya da Yönet'te başka bir PHP sürümü
+  seçin." ya da "Artık kurulu olmayan PHP 8.4 üzerinde çalışıyor; bu yüzden yanıt
+  veremiyor. Yönet'te kurulu bir PHP sürümü seçin." yazar.
+- **Bir aracın Yönet → PHP sürümü bölümü** "phpPgAdmin, PHP 8.4 üzerinde çalışıyor."
+  der, yalnız diğer kurulu sürümleri sunar ve taşırken: "phpPgAdmin, PHP 8.6
+  sürümüne taşınıyor: ihtiyaç duyduğu PHP eklentileri eksikse kuruluyor, web
+  sunucusu denetlenip yeniden yükleniyor, sonra phpPgAdmin aracının yanıt verdiği
+  deneniyor. Bu birkaç dakika sürebilir; bu arada bir şey yapmanız gerekmiyor.";
+  sonra "phpPgAdmin artık PHP 8.6 üzerinde çalışıyor ve orada yanıt verdi." ya da
+  "phpPgAdmin, PHP 8.6 üzerinde çalışmadı; bu yüzden yeniden PHP 8.4 sürümüne
+  alındı. Neden: …". Kaybolan bir yanıt taşınıp taşınmadığının bilinmediğini söyler
+  ve kart güncel sürümü yeniden okur.
+- **Ret kodları:** REMOVAL_WOULD_REMOVE_OTHERS, REMOVAL_TOOLS_BOUND,
+  REMOVAL_SIMULATION_FAILED ("sunucu yöneticisi sunucuda paket yöneticisinin kendi
+  tutarlılık denetimini çalıştırır"), REMOVAL_PLAN_CHANGED (denetim ile kaldırma
+  arasında başka bir paket işlemi çalıştı; hiçbir şey kaldırılmadı ve durdurulan
+  hizmetler önceki durumlarına geri kondu; pencereyi yeniden açın), REMOVAL_CHECK_UNAVAILABLE,
+  REMOVAL_UNKNOWN_AFTER_MOVES, PHP_TOOL_MOVE_FAILED, PHP_TOOL_PROBE_FAILED,
+  PHP_TOOL_EXTENSIONS_FAILED, PHP_TOOL_CONFIG_REJECTED, PHP_TOOL_CONFIG_OWNER_EDITED,
+  PHP_VERSION_NOT_RUNNING, PHP_TOOL_NOT_INSTALLED, PHP_TOOL_UNSUPPORTED.
+- **Bağımsız incelemeden sonraki düzeltmeler (aynı aday).**
+  - **Paket yöneticisi kaldırmayı kabul etmeden hiçbir araç taşınmaz.** "Onları
+    …'e taşı, sonra kaldır" önce aynı sürüm için paket yöneticisine kaldırmanın
+    neyi alacağını sorar; yanıt gelmedikçe ve başka bir şey almıyorsa hiçbir şeyi
+    taşımaz. Aksi hâlde: "Hiçbir araç taşınmadı, hiçbir şey kaldırılmadı: bu sürümü
+    kaldırmanın neyi alacağı şu an paket yöneticisine sorulamadı (başka bir paket
+    işlemi çalışıyor olabilir). Biraz bekleyip yeniden deneyin."
+    (REMOVAL_CHECK_UNAVAILABLE) ya da ayrıca alacağı paketler
+    (REMOVAL_WOULD_REMOVE_OTHERS). Pencere taşımayı yalnız kendi denetimi yanıt
+    aldığında sunar.
+  - **Araçlar taşındı, sonra kaldırma reddedildi ya da yanıtı kayboldu.** Pencere
+    ikisini de söyler: "… artık PHP 8.6 üzerinde çalışıyor ve orada yanıt verdi.",
+    ret ve "PHP 8.4 kaldırılmadı."; kaldırmanın yanıtı kaybolduysa: "PHP 8.4
+    sürümünün kaldırılıp kaldırılmadığı bilinmiyor: yanıt gelmedi. Liste sürümleri
+    yeniden okur; yeniden denemeden önce ona bakın." (REMOVAL_UNKNOWN_AFTER_MOVES).
+    Sürümler, denetim ve bileşenler yeniden okunur. Kaldırma isteği bir istek
+    kimliği taşır (D-029): kaybolan yanıt bir kez yeniden sorulur, asla iki kez
+    çalışmaz.
+  - **Kurulu sürümler okunamadı.** "Kurulu PHP sürümleri şu an okunamadı;
+    araçların nereye taşınabileceği bilinmiyor. Hiçbir şey değiştirilmedi." ve
+    Yeniden dene; "Başka PHP sürümü kurulu değil" yalnız sürümler okunduğunda
+    söylenir.
+  - **Aracın PHP eklenti paketleri sürümü için eksik.** Satır "Hazır değil" der:
+    "PHP 8.4 için bu aracın ihtiyaç duyduğu PHP eklenti paketleri eksik; bu yüzden
+    çalışmayabilir. Yönet’i açıp PHP 8.4 sürümünü yeniden seçin: taşıma onları
+    kurar ve aracı dener."; kart aynı sürümü yeniden sunar. Okunan kurulu
+    paketlerdir, PHP'nin onları yüklediği değil; taşımanın kanıtı yüklenen
+    eklentileri aracın kendi PHP-FPM'i üzerinden denetler.
+  - **Taşımanın neden başarısız olduğu okurun dilinde.** Örneğin "PHP 8.6 için
+    pgsql PHP eklentileri eksik", "sayfası HTTP 502 durum koduyla yanıt verdi",
+    "web sunucusu (nginx) yeni yapılandırmayı reddetti"; ekranın bilmediği bir
+    neden alıntılanır: "sunucunun söylediği: …". Önceki yapılandırma tam geri
+    konamadığında cümle hangi adımın başarısız olduğunu söyler: "the previous
+    configuration could not be put back (…)", "… was put back, but nginx rejected
+    it (…)" ya da "… but nginx did not reload (…)" (sunucunun kendi sözü).
+  - **Başka bir aracın PHP sorunu uyarıdır.** Başka bir aracın PHP'si ilgi
+    isterken phpMyAdmin ya da phpPgAdmin kurmak onu kurar ve o aracı ve çaresini
+    söyleyen bir uyarı gösterir.
+  - **Sahibin düzenlemesinin üzerine yazılmaz (D-022).** CelikPanel dışında
+    (CelikPanel'in yazdığı biçimin ötesinde) değiştirilmiş bir veritabanı araçları
+    ya da web postası yapılandırması yeniden üretilmez: yanıt dosyayı adlandırır ve
+    sunucu yöneticisinin PHP sürümünü o dosyada ayarlayacağını ya da CelikPanel'in
+    kendisininkini yazması için dosyayı kaldıracağını söyler
+    (PHP_TOOL_CONFIG_OWNER_EDITED). Veritabanı araçları yapılandırması atomik
+    yazılır; nginx reddederse önceki, kipi ve sahibiyle geri konur.
+  - **Bir kaldırmanın ya da kurulumun neyi alabileceği.** Bir bileşen kaldırma,
+    başka PHP sürümlerinin eklenti paketlerine (siteler kullanıyor olabilir) ve
+    zaten kullanılmayan paketlere dokunmaz. Bir kurulum (bileşen, aracın PHP
+    eklentileri) önce benzetilir; herhangi bir paketi kaldıracaksa onları
+    adlandırarak reddedilir.
+
+Değişmeyenler: siteler PHP sürümlerini hâlâ kendi ayarlarından seçer; hiçbir şey bir
+aracı kendiliğinden taşımaz; güncelleyici ve şema (44). Açık: kurulu bir sunucuda
+hiçbir şey ölçülmedi; Frankfurt'ta phpPgAdmin'in sağlığı ayrıca doğrulanmadı;
+üretici deposunun daha yeni php-* meta paketleri, dağıtım paketlerinin hangi PHP'ye
+bağlı olduğunu değiştirebilir. P0.1-P0.5 **kısmi** kalır; bu girdi hiçbir şeyi
+kapatmaz ya da ilerletmez.

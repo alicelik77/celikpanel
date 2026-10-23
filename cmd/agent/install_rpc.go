@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"sort"
@@ -514,13 +515,26 @@ type UninstallServiceResponse = transport.UninstallServiceResponse
 // dokunmadan kısmi değişiklik ve paket seçimi sözleşmelerini sınayan
 // kaydediciler sağlar.
 type serviceUninstallOps struct {
-	detectPackageFamily   func() string
-	packageInstalled      func(string) bool
-	unitExists            func(string) bool
-	unitsMatching         func(string) []string
-	disableUnit           func(string) error
-	removePackages        func(string, []string) (string, error)
+	detectPackageFamily func() string
+	packageInstalled    func(string) bool
+	unitExists          func(string) bool
+	unitsMatching       func(string) []string
+	disableUnit         func(string) error
+	// unitState reads a unit's state as the owner left it, before the
+	// removal stops it; restoreUnit puts back exactly that when the removal
+	// is refused after the stop (alpha.104): a unit the owner had disabled
+	// or stopped is not enabled or started.
+	unitState   func(string) (unitRuntimeState, error)
+	restoreUnit func(unitRuntimeState) error
+	// removePackages plans the removal with the package manager's own
+	// simulation, refuses collateral before anything changes, then runs
+	// beforeRemoval (stopping units) and the real removal under one package
+	// lock (alpha.104, guardedRemovePackagesContext).
+	removePackages        func(string, packageRemovalRequest, removalHooks) (packageRemovalPlan, string, error)
 	installedRepoPackages func(*core.ManagedService) ([]string, error)
+	// boundPHPTools lists the tools (webmail, phpMyAdmin, phpPgAdmin) served
+	// from a PHP version ("" = from any PHP-FPM socket).
+	boundPHPTools func(string) []string
 }
 
 func defaultServiceUninstallOps(ctx context.Context) (serviceUninstallOps, error) {
@@ -542,8 +556,24 @@ func defaultServiceUninstallOps(ctx context.Context) (serviceUninstallOps, error
 			_, err := runServiceMutationCombinedOutput(ctx, systemctl, "disable", "--now", unit)
 			return err
 		},
-		removePackages: func(family string, packages []string) (string, error) {
-			return removePackagesContext(ctx, family, packages)
+		unitState: func(unit string) (unitRuntimeState, error) {
+			out, err := serviceMutationCommand(ctx, systemctl, "show", "--property=Id", "--property=UnitFileState", "--property=ActiveState", unit).Output()
+			if err != nil {
+				return unitRuntimeState{}, err
+			}
+			return parseUnitRuntimeState(unit, string(out))
+		},
+		restoreUnit: func(state unitRuntimeState) error {
+			for _, args := range unitRestoreCommands(state) {
+				out, err := runServiceMutationCombinedOutput(ctx, systemctl, args...)
+				if err != nil {
+					return errors.New(commandFailureDetail("systemctl "+strings.Join(args, " "), out, err))
+				}
+			}
+			return nil
+		},
+		removePackages: func(family string, request packageRemovalRequest, hooks removalHooks) (packageRemovalPlan, string, error) {
+			return guardedRemovePackagesContext(ctx, family, request, hooks)
 		},
 		installedRepoPackages: func(service *core.ManagedService) ([]string, error) {
 			if family != "apt" {
@@ -555,7 +585,57 @@ func defaultServiceUninstallOps(ctx context.Context) (serviceUninstallOps, error
 			}
 			return installedRepoPackagesForServiceWithExecutable(ctx, service, dpkgQuery)
 		},
+		boundPHPTools: phpToolsBoundToVersion,
 	}, nil
+}
+
+// unitRuntimeState is a unit as the owner left it before a removal stopped
+// it. ID is the unit's own name: an alias resolves to it (systemctl show
+// reports the real unit's properties).
+// Bir kaldırmanın durdurmasından önce sahibin bıraktığı biçimiyle unit.
+type unitRuntimeState struct {
+	ID      string
+	Enabled bool
+	Active  bool
+}
+
+func parseUnitRuntimeState(name, out string) (unitRuntimeState, error) {
+	state := unitRuntimeState{}
+	seen := 0
+	for _, line := range strings.Split(out, "\n") {
+		key, value, ok := strings.Cut(strings.TrimSpace(line), "=")
+		if !ok {
+			continue
+		}
+		switch key {
+		case "Id":
+			state.ID = value
+			seen++
+		case "UnitFileState":
+			state.Enabled = value == "enabled"
+			seen++
+		case "ActiveState":
+			state.Active = value == "active" || value == "activating" || value == "reloading"
+			seen++
+		}
+	}
+	if seen != 3 || state.ID == "" {
+		return unitRuntimeState{}, fmt.Errorf("systemctl show %s did not report its state", name)
+	}
+	return state, nil
+}
+
+// unitRestoreCommands puts back exactly the recorded state: enabled again
+// only if it was enabled, started again only if it was running.
+func unitRestoreCommands(state unitRuntimeState) [][]string {
+	var commands [][]string
+	if state.Enabled {
+		commands = append(commands, []string{"enable", state.ID})
+	}
+	if state.Active {
+		commands = append(commands, []string{"start", state.ID})
+	}
+	return commands
 }
 
 // failUninstallRemoval preserves the critical distinction between a refusal
@@ -664,6 +744,192 @@ func (a *Agent) UninstallService(req *InstallServiceRequest, resp *UninstallServ
 	return a.uninstallServiceWithOps(req, resp, ops)
 }
 
+// serviceRemovalWork is everything a removal will do, computed read-only
+// before anything changes; the uninstall and the read-only preview share it.
+// serviceRemovalWork, bir kaldırmanın yapacağı her şeydir; hiçbir şey
+// değişmeden salt-okur hesaplanır. Kaldırma ve önizleme bunu paylaşır.
+type serviceRemovalWork struct {
+	family  string
+	request packageRemovalRequest
+	// units are stopped and disabled, in order, before the packages go.
+	units []string
+	// notInstalled: the selected version is not installed; nothing to do.
+	notInstalled string
+	// boundTools are PHP tools served from the PHP being removed.
+	boundTools []string
+}
+
+// planServiceRemovalWork resolves the packages, units and safeguards of a
+// removal without changing the host. A non-empty refusal is the answer.
+func planServiceRemovalWork(svc *core.ManagedService, packageName string, ops serviceUninstallOps) (serviceRemovalWork, string) {
+	// Apply the same catalogue boundary as install before any package-manager
+	// detection or installed-package query.
+	// Paket-yöneticisi algılama veya kurulu-paket sorgusundan önce kurulumla aynı
+	// katalog sınırını uygula.
+	var selectedPackageMatch []string
+	if packageName != "" {
+		var err error
+		selectedPackageMatch, err = validateRepoPackageSelection(svc, packageName)
+		if err != nil {
+			return serviceRemovalWork{}, err.Error()
+		}
+	}
+
+	family := ops.detectPackageFamily()
+	work := serviceRemovalWork{family: family}
+
+	// Version pick (B3d): remove ONE version of a runtime, the mirror of the
+	// install pick. Same gates as install: the service must have a Repo, the
+	// package must match its PackagePattern, apt only. Companions go with it
+	// ({v}-cli, {v}-mysql… — orphaned config-only leftovers are what made
+	// "did I really remove 8.3?" unanswerable on classic panels).
+	// Sürüm seçimi (B3d): bir runtime'ın TEK sürümünü kaldır — kurulum
+	// seçiminin aynası. Kapılar aynı: serviste Repo olmalı, paket
+	// PackagePattern'e uymalı, yalnız apt. Yol arkadaşları da gider.
+	if packageName != "" {
+		if family != "apt" {
+			return work, "per-version removal is only supported on apt-based systems"
+		}
+		if !ops.packageInstalled(packageName) {
+			work.notInstalled = fmt.Sprintf("%s is not installed", packageName)
+			return work, ""
+		}
+		versionPrefix := ""
+		if len(selectedPackageMatch) > 1 {
+			versionPrefix = selectedPackageMatch[1]
+		}
+		pkgs := []string{packageName}
+		for _, tpl := range svc.Repo.VersionCompanions {
+			name := strings.ReplaceAll(tpl, "{v}", versionPrefix)
+			if ops.packageInstalled(name) {
+				pkgs = append(pkgs, name)
+			}
+		}
+		// Resolve the exact daemon target independently from the package name;
+		// PostgreSQL's postgresql-17 package owns postgresql@17-main.
+		// Tam daemon hedefini paket adından bağımsız çöz; PostgreSQL'in
+		// postgresql-17 paketi postgresql@17-main unit'ine sahiptir.
+		if exactUnit, exact := exactInstallUnit(svc.ID, family, packageName); exact {
+			if exactUnit == "" {
+				return work, "selected package has no valid exact service unit"
+			}
+			if ops.unitExists(exactUnit) {
+				work.units = append(work.units, exactUnit)
+			}
+		}
+		prefix := versionPrefix
+		if prefix == "" {
+			prefix = packageName
+		}
+		pkgs = uniquePackageNames(pkgs)
+		work.request = packageRemovalRequest{
+			Packages:           pkgs,
+			VersionPrefixes:    []string{prefix},
+			ProtectedComponent: catalogueProtectedComponent(family, packageNameSet(pkgs)),
+		}
+		if svc.ID == "php-fpm" && ops.boundPHPTools != nil {
+			work.boundTools = ops.boundPHPTools(strings.TrimPrefix(versionPrefix, "php"))
+		}
+		return work, ""
+	}
+
+	pkgs := append([]string(nil), svc.Packages[family]...)
+	if len(pkgs) == 0 {
+		return work, fmt.Sprintf("%s cannot be removed automatically on this system yet", svc.Name)
+	}
+
+	// Discover catalogue-matching apt packages before stopping anything. The
+	// query is package-manager truth, not a systemd-name guess: in particular,
+	// postgresql@17-main must add postgresql-17, never the unit string itself.
+	// Herhangi bir şeyi durdurmadan önce katalogla eşleşen apt paketlerini bul.
+	// Sorgu systemd adı tahmini değil, paket yöneticisi gerçeğidir; özellikle
+	// postgresql@17-main, unit dizgesini değil postgresql-17 paketini eklemelidir.
+	var prefixes []string
+	if core.UninstallPurgesAllVersions(svc, family) {
+		repoPackages, err := ops.installedRepoPackages(svc)
+		if err != nil {
+			return work, fmt.Sprintf("installed package discovery failed: %v", err)
+		}
+		pkgs = append(pkgs, repoPackages...)
+		re, err := regexp.Compile(svc.Repo.PackagePattern)
+		if err != nil {
+			return work, "invalid catalogue package pattern"
+		}
+		for _, pkg := range repoPackages {
+			match := re.FindStringSubmatch(pkg)
+			if match == nil {
+				continue
+			}
+			if len(match) > 1 {
+				prefixes = append(prefixes, match[1])
+				for _, tpl := range svc.Repo.VersionCompanions {
+					companion := strings.ReplaceAll(tpl, "{v}", match[1])
+					if ops.packageInstalled(companion) {
+						pkgs = append(pkgs, companion)
+					}
+				}
+			} else {
+				prefixes = append(prefixes, match[0])
+			}
+		}
+	}
+	pkgs = uniquePackageNames(pkgs)
+
+	// Stop + disable every present unit first, so purge does not fight a
+	// running process. Template instances ("wg-quick@wg0") are handled by
+	// their exact SystemNames entry; pattern-matched units (php8.3-fpm from
+	// Sury) are stopped AND their packages added to the purge — before B3d,
+	// uninstalling php-fpm removed only the meta package and left every
+	// versioned daemon installed, running and serving. Since alpha.104 the
+	// units are stopped only after the package manager's simulation has
+	// accepted the removal.
+	// Önce mevcut her unit'i durdur + devre dışı bırak ki purge çalışan bir
+	// süreçle boğuşmasın; alpha.104'ten beri yalnız benzetim kaldırmayı kabul
+	// ettikten sonra.
+	for _, unit := range append(append([]string{}, svc.SystemNames...), svc.HelperUnits...) {
+		// Catalogue entries include distribution-specific alternatives (for
+		// example redis-server/redis). Only an existing unit is an attempted
+		// mutation; once attempted, any error is state-uncertain and aborts.
+		// Katalog girdileri dağıtıma özgü alternatifler içerir (örneğin
+		// redis-server/redis). Yalnız var olan bir unit için değişiklik denenir;
+		// denendikten sonra her hata durumu belirsiz sayılır ve işlem kesilir.
+		if ops.unitExists(unit) {
+			work.units = append(work.units, unit)
+		}
+	}
+	if svc.SystemNamePattern != "" {
+		work.units = append(work.units, ops.unitsMatching(svc.SystemNamePattern)...)
+	}
+	work.request = packageRemovalRequest{
+		Packages:           pkgs,
+		VersionPrefixes:    prefixes,
+		ProtectedComponent: catalogueProtectedComponent(family, packageNameSet(pkgs)),
+	}
+	if svc.ID == "php-fpm" && ops.boundPHPTools != nil {
+		work.boundTools = ops.boundPHPTools("")
+	}
+	return work, ""
+}
+
+func packageNameSet(packages []string) map[string]bool {
+	set := make(map[string]bool, len(packages))
+	for _, p := range packages {
+		set[p] = true
+	}
+	return set
+}
+
+func boundToolsRefusal(tools []string, version string) string {
+	names := make([]string, 0, len(tools))
+	for _, tool := range tools {
+		names = append(names, phpToolDisplayName(tool))
+	}
+	if version == "" {
+		return fmt.Sprintf("%s run on PHP-FPM; remove them first or keep PHP-FPM; nothing was changed", strings.Join(names, ", "))
+	}
+	return fmt.Sprintf("%s run on PHP %s; move them to another PHP version first or keep this version; nothing was changed", strings.Join(names, ", "), version)
+}
+
 func (a *Agent) uninstallServiceWithOps(
 	req *InstallServiceRequest,
 	resp *UninstallServiceResponse,
@@ -687,162 +953,108 @@ func (a *Agent) uninstallServiceWithOps(
 		return nil
 	}
 
-	// Apply the same catalogue boundary as install before any package-manager
-	// detection or installed-package query.
-	// Paket-yöneticisi algılama veya kurulu-paket sorgusundan önce kurulumla aynı
-	// katalog sınırını uygula.
-	var selectedPackageMatch []string
-	if req.Package != "" {
-		var err error
-		selectedPackageMatch, err = validateRepoPackageSelection(svc, req.Package)
-		if err != nil {
-			resp.Error = err.Error()
-			return nil
-		}
+	work, refusal := planServiceRemovalWork(svc, req.Package, ops)
+	if refusal != "" {
+		resp.Error = refusal
+		return nil
 	}
-
-	family := ops.detectPackageFamily()
-	mutationApplied := false
-
-	// Version pick (B3d): remove ONE version of a runtime, the mirror of the
-	// install pick. Same gates as install: the service must have a Repo, the
-	// package must match its PackagePattern, apt only. Companions go with it
-	// ({v}-cli, {v}-mysql… — orphaned config-only leftovers are what made
-	// "did I really remove 8.3?" unanswerable on classic panels).
-	// Sürüm seçimi (B3d): bir runtime'ın TEK sürümünü kaldır — kurulum
-	// seçiminin aynası. Kapılar aynı: serviste Repo olmalı, paket
-	// PackagePattern'e uymalı, yalnız apt. Yol arkadaşları da gider
-	// ({v}-cli, {v}-mysql… — öksüz kalıntılar, klasik panellerde "8.3'ü
-	// gerçekten kaldırdım mı?" sorusunu cevapsız bırakan şeydi).
-	if req.Package != "" {
-		if family != "apt" {
-			resp.Error = "per-version removal is only supported on apt-based systems"
-			return nil
-		}
-		if !ops.packageInstalled(req.Package) {
-			resp.Removed = true
-			resp.Detail = fmt.Sprintf("%s is not installed", req.Package)
-			return nil
-		}
-		versionPrefix := ""
-		if len(selectedPackageMatch) > 1 {
-			versionPrefix = selectedPackageMatch[1]
-		}
-		pkgs := []string{req.Package}
-		for _, tpl := range svc.Repo.VersionCompanions {
-			name := strings.ReplaceAll(tpl, "{v}", versionPrefix)
-			if ops.packageInstalled(name) {
-				pkgs = append(pkgs, name)
-			}
-		}
-		// Resolve the exact daemon target independently from the package name;
-		// PostgreSQL's postgresql-17 package owns postgresql@17-main.
-		// Tam daemon hedefini paket adından bağımsız çöz; PostgreSQL'in
-		// postgresql-17 paketi postgresql@17-main unit'ine sahiptir.
-		if exactUnit, exact := exactInstallUnit(req.ID, family, req.Package); exact {
-			if exactUnit == "" {
-				resp.Error = "selected package has no valid exact service unit"
-				return nil
-			}
-			if ops.unitExists(exactUnit) {
-				if err := ops.disableUnit(exactUnit); err != nil {
-					failUninstallDisable(resp, exactUnit, err)
-					return nil
-				}
-				mutationApplied = true
-			}
-		}
-		pkgs = uniquePackageNames(pkgs)
-		if _, err := ops.removePackages(family, pkgs); err != nil {
-			failUninstallRemoval(resp, err, mutationApplied)
-			return nil
-		}
+	if work.notInstalled != "" {
 		resp.Removed = true
-		resp.Detail = fmt.Sprintf("removed %s", strings.Join(pkgs, ", "))
+		resp.Detail = work.notInstalled
+		return nil
+	}
+	// A PHP version webmail or a database tool runs on is not removed: they
+	// would stop working and nothing would say so (alpha.104).
+	// Web postası ya da bir veritabanı aracının koştuğu PHP sürümü kaldırılmaz.
+	if len(work.boundTools) > 0 {
+		version := ""
+		if req.Package != "" {
+			version = strings.TrimSuffix(strings.TrimPrefix(req.Package, "php"), "-fpm")
+		}
+		resp.Error = boundToolsRefusal(work.boundTools, version)
+		resp.ErrorCode = errCodeRemovalToolsBound
+		resp.BoundTools = work.boundTools
 		return nil
 	}
 
-	pkgs := append([]string(nil), svc.Packages[family]...)
-	if len(pkgs) == 0 {
-		resp.Error = fmt.Sprintf("%s cannot be removed automatically on this system yet", svc.Name)
-		return nil
-	}
-
-	// Discover catalogue-matching apt packages before stopping anything. The
-	// query is package-manager truth, not a systemd-name guess: in particular,
-	// postgresql@17-main must add postgresql-17, never the unit string itself.
-	// Herhangi bir şeyi durdurmadan önce katalogla eşleşen apt paketlerini bul.
-	// Sorgu systemd adı tahmini değil, paket yöneticisi gerçeğidir; özellikle
-	// postgresql@17-main, unit dizgesini değil postgresql-17 paketini eklemelidir.
-	if core.UninstallPurgesAllVersions(svc, family) {
-		repoPackages, err := ops.installedRepoPackages(svc)
-		if err != nil {
-			resp.Error = fmt.Sprintf("installed package discovery failed: %v", err)
-			return nil
-		}
-		pkgs = append(pkgs, repoPackages...)
-		re, err := regexp.Compile(svc.Repo.PackagePattern)
-		if err != nil {
-			resp.Error = "invalid catalogue package pattern"
-			return nil
-		}
-		for _, pkg := range repoPackages {
-			if match := re.FindStringSubmatch(pkg); len(match) > 1 {
-				for _, tpl := range svc.Repo.VersionCompanions {
-					companion := strings.ReplaceAll(tpl, "{v}", match[1])
-					if ops.packageInstalled(companion) {
-						pkgs = append(pkgs, companion)
-					}
-				}
-			}
-		}
-	}
-	pkgs = uniquePackageNames(pkgs)
-
-	// Stop + disable every present unit first, so purge does not fight a
-	// running process. Template instances ("wg-quick@wg0") are handled by
-	// their exact SystemNames entry; pattern-matched units (php8.3-fpm from
-	// Sury) are stopped AND their packages added to the purge — before B3d,
-	// uninstalling php-fpm removed only the meta package and left every
-	// versioned daemon installed, running and serving.
-	// Önce mevcut her unit'i durdur + devre dışı bırak ki purge çalışan bir
-	// süreçle boğuşmasın. Desenle eşleşen unit'ler (Sury'den php8.3-fpm) de
-	// durdurulur VE paketleri purge listesine eklenir — B3d'den önce php-fpm'i
-	// kaldırmak yalnız meta paketi söküyor, sürümlü daemon'ların hepsini
-	// kurulu, çalışır ve sunar hâlde bırakıyordu.
-	for _, unit := range append(append([]string{}, svc.SystemNames...), svc.HelperUnits...) {
-		// Catalogue entries include distribution-specific alternatives (for
-		// example redis-server/redis). Only an existing unit is an attempted
-		// mutation; once attempted, any error is state-uncertain and aborts.
-		// Katalog girdileri dağıtıma özgü alternatifler içerir (örneğin
-		// redis-server/redis). Yalnız var olan bir unit için değişiklik denenir;
-		// denendikten sonra her hata durumu belirsiz sayılır ve işlem kesilir.
-		if !ops.unitExists(unit) {
-			continue
-		}
-		if err := ops.disableUnit(unit); err != nil {
-			failUninstallDisable(resp, unit, err)
-			return nil
-		}
-		mutationApplied = true
-	}
-	if svc.SystemNamePattern != "" {
-		for _, unit := range ops.unitsMatching(svc.SystemNamePattern) {
-			if err := ops.disableUnit(unit); err != nil {
-				failUninstallDisable(resp, unit, err)
+	// Each unit's state as the owner left it, read before anything stops,
+	// so a refusal after the stop puts back exactly that (alpha.104).
+	// Her unit'in sahibin bıraktığı durumu; ret sonrası tam o geri konur.
+	states := map[string]unitRuntimeState{}
+	if ops.unitState != nil {
+		for _, unit := range work.units {
+			state, err := ops.unitState(unit)
+			if err != nil {
+				resp.Error = fmt.Sprintf("the state of %s could not be read, so nothing was changed: %v", unit, err)
 				return nil
 			}
-			mutationApplied = true
+			states[unit] = state
 		}
 	}
 
-	if _, err := ops.removePackages(family, pkgs); err != nil {
+	var disableErr error
+	disableFailedUnit := ""
+	var stopped []string
+	plan, _, err := ops.removePackages(work.family, work.request, removalHooks{
+		stop: func() error {
+			for _, unit := range work.units {
+				if err := ops.disableUnit(unit); err != nil {
+					disableErr, disableFailedUnit = err, unit
+					return err
+				}
+				stopped = append(stopped, unit)
+			}
+			return nil
+		},
+		restart: func() error {
+			if ops.restoreUnit == nil {
+				return nil
+			}
+			var failures []string
+			for _, unit := range stopped {
+				state, ok := states[unit]
+				if !ok {
+					failures = append(failures, unit+": its earlier state was not read")
+					continue
+				}
+				if err := ops.restoreUnit(state); err != nil {
+					failures = append(failures, err.Error())
+				}
+			}
+			if len(failures) > 0 {
+				return errors.New(strings.Join(failures, "; "))
+			}
+			return nil
+		},
+	})
+	mutationApplied := len(stopped) > 0
+	if disableErr != nil {
+		failUninstallDisable(resp, disableFailedUnit, disableErr)
+		return nil
+	}
+	if err != nil {
+		var refusal *packageRemovalRefusal
+		if errors.As(err, &refusal) {
+			resp.Error = refusal.Message
+			resp.ErrorCode = refusal.Code
+			resp.Collateral = refusal.Collateral
+			// Refused after the stop: the host changed only if the stopped
+			// services could not be started again.
+			changed := refusal.AfterStop && refusal.RestartFailed != ""
+			resp.PartialSuccess = changed
+			resp.MutationApplied = changed
+			return nil
+		}
 		failUninstallRemoval(resp, err, mutationApplied)
 		return nil
 	}
 
+	removed := plan.Remove
+	if len(removed) == 0 {
+		removed = work.request.Packages
+	}
 	resp.Removed = true
-	resp.Detail = fmt.Sprintf("removed %s", strings.Join(pkgs, ", "))
+	resp.Detail = fmt.Sprintf("removed %s", strings.Join(removed, ", "))
 	return nil
 }
 

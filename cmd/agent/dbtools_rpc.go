@@ -1,7 +1,9 @@
 package main
 
 import (
+	"errors"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"strings"
@@ -69,13 +71,14 @@ func (a *Agent) ConfigureDBTools(req *ServiceMutationRequest, resp *ConfigureDBT
 		return nil
 	}
 
-	var tools []string
-	installedRoots := make(map[string]string)
-	for id, roots := range dbToolRoots {
-		if root := firstInstalledDBToolRoot(roots); root != "" {
-			tools = append(tools, id)
-			installedRoots[id] = root
-		}
+	tools, installedRoots := installedDBToolRoots()
+
+	// A configuration changed outside CelikPanel is not overwritten or
+	// removed (D-022): the owner's file stays and the answer says so.
+	// CelikPanel dışında değiştirilen yapılandırmanın üzerine yazılmaz.
+	if err := refuseOwnerEditedConfig(dbToolsConfPath); err != nil {
+		resp.Error = err.Error()
+		return nil
 	}
 
 	if len(tools) == 0 {
@@ -88,46 +91,53 @@ func (a *Agent) ConfigureDBTools(req *ServiceMutationRequest, resp *ConfigureDBT
 		return nil
 	}
 
-	// The tools are PHP: hand .php to the default FPM pool of the installed
-	// PHP version. The path is version-dependent, so detect — never assume.
-	// Araçlar PHP'dir: .php'yi kurulu PHP sürümünün varsayılan FPM havuzuna
-	// ver. Yol sürüme bağlıdır; tespit et — asla varsayma.
-	socket := detectFPMSocket()
-	if socket == "" {
-		resp.Error = "PHP-FPM is not installed"
+	// The tools are PHP. Each stays on the PHP version it is bound to (its
+	// configuration line, else the Agent's record) while that version is
+	// installed (alpha.104); a tool with nothing bound yet gets the
+	// distribution's default PHP. The tool's PHP extensions are ensured for
+	// that version. A tool whose bound version is gone keeps its line
+	// unchanged and is reported: nothing moves it to another version
+	// silently; its Manage window offers the explicit move.
+	// Araçlar PHP'dir. Her biri bağlı olduğu PHP sürümünde, o sürüm kurulu
+	// kaldıkça kalır; sessizce taşınmaz.
+	sockets := make(map[string]string, len(tools))
+	var problems []string
+	for _, state := range phpToolStates() {
+		if installedRoots[state.Tool] == "" {
+			continue
+		}
+		socket, err := phpToolSocket(state.Tool, state.Socket)
+		if err != nil {
+			var gone *errPHPToolVersionGone
+			if !errors.As(err, &gone) {
+				resp.Error = err.Error()
+				return nil
+			}
+			problems = append(problems, err.Error())
+			resp.ToolProblems = append(resp.ToolProblems, transport.PHPToolProblem{Tool: state.Tool, Version: gone.Version, Kind: "version_gone"})
+		} else if version := resolvedSocketVersion(socket); version != "" {
+			if err := ensurePHPToolExtensions(ctx, state.Tool, version); err != nil {
+				problems = append(problems, err.Error())
+				resp.ToolProblems = append(resp.ToolProblems, transport.PHPToolProblem{Tool: state.Tool, Version: version, Kind: "extensions_failed"})
+			}
+		}
+		sockets[state.Tool] = socket
+	}
+	if err := ensurePHPToolCheckScript(); err != nil {
+		resp.Error = err.Error()
 		return nil
 	}
+	conf := renderDBToolsConfig(tools, installedRoots, sockets)
 
-	var b strings.Builder
-	b.WriteString("# Managed by CelikPanel — database web tools, loopback only.\n")
-	b.WriteString("# The panel reverse-proxies /dbtool/ here behind an admin session.\n")
-	b.WriteString("server {\n")
-	fmt.Fprintf(&b, "    listen %s;\n", dbToolsAddr)
-	b.WriteString("    server_name _;\n")
-	for _, id := range tools {
-		root := installedRoots[id]
-		// Path-preserving locations: the browser path and this server's path
-		// are identical, so the tools' absolute URLs survive the panel proxy
-		// without any rewriting.
-		// Yol-koruyan location'lar: tarayıcı yolu ile bu sunucunun yolu aynı;
-		// araçların mutlak URL'leri panel vekilinden yeniden yazım olmadan
-		// sağ çıkar.
-		fmt.Fprintf(&b, `
-    location /dbtool/%s/ {
-        alias %s/;
-        index index.php;
-        location ~ ^/dbtool/%s/(.+\.php)$ {
-            alias %s/$1;
-            include fastcgi_params;
-            fastcgi_param SCRIPT_FILENAME $request_filename;
-            fastcgi_pass unix:%s;
-        }
-    }
-`, id, root, id, root, socket)
+	// Atomic publication, and the previous file kept to put back when nginx
+	// refuses the new one (alpha.104; before, a refusal deleted the file).
+	// Atomik yayım; nginx reddederse önceki dosya geri konur.
+	previous, err := snapshotMailFile(dbToolsConfPath)
+	if err != nil {
+		resp.Error = fmt.Sprintf("read nginx config: %v", err)
+		return nil
 	}
-	b.WriteString("}\n")
-
-	if err := os.WriteFile(dbToolsConfPath, []byte(b.String()), 0o644); err != nil {
+	if err := writeDBToolsConfFile(dbToolsConfPath, []byte(conf)); err != nil {
 		resp.Error = fmt.Sprintf("write nginx config: %v", err)
 		return nil
 	}
@@ -136,8 +146,11 @@ func (a *Agent) ConfigureDBTools(req *ServiceMutationRequest, resp *ConfigureDBT
 	// Yeniden yüklemeden önce doğrula — bozuk bir araç yapılandırması web
 	// sunucusunu (ve tüm müşteri sitelerini) beraberinde düşürmemeli.
 	if out, err := serviceMutationCommand(ctx, "nginx", "-t").CombinedOutput(); err != nil {
-		_ = os.Remove(dbToolsConfPath)
-		resp.Error = fmt.Sprintf("nginx rejected the tools config: %s", firstLine(string(out)))
+		if restoreErr := restoreMailFile(previous); restoreErr != nil {
+			resp.Error = fmt.Sprintf("nginx rejected the tools config: %s; the previous configuration could not be put back: %v", firstLine(string(out)), restoreErr)
+			return nil
+		}
+		resp.Error = fmt.Sprintf("nginx rejected the tools config: %s; the previous configuration was put back", firstLine(string(out)))
 		return nil
 	}
 	if out, err := runServiceMutationCombinedOutput(ctx, "systemctl", "reload", "nginx"); err != nil {
@@ -147,5 +160,18 @@ func (a *Agent) ConfigureDBTools(req *ServiceMutationRequest, resp *ConfigureDBT
 
 	resp.Configured = true
 	resp.Tools = tools
+	for _, tool := range tools {
+		if version := resolvedSocketVersion(sockets[tool]); version != "" && phpVersionInstalled(version) {
+			if err := writePHPToolBinding(tool, version); err != nil {
+				log.Printf("record %s PHP version: %v", tool, err)
+			}
+		}
+	}
+	// A tool's PHP that needs attention is a warning: the configuration was
+	// written and the tool just installed is served (alpha.104).
+	// Bir aracın PHP'si ilgi istiyorsa uyarıdır; yapılandırma yazıldı.
+	if len(problems) > 0 {
+		resp.Warning = strings.Join(problems, "; ")
+	}
 	return nil
 }

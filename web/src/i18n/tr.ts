@@ -207,6 +207,8 @@ export const tr: Record<ShellKey, string> = {
     'dnssrv.continue': 'Devam et',
     'services.install': 'Kur',
     'services.installed': '{name} kuruldu.',
+    'services.phpToolProblem.versionGone': '{tool} artık kurulu olmayan PHP {version} sürümüne ayarlı; bu yüzden yanıt veremiyor. Bileşenler’de {tool} aracını açıp Yönet’te kurulu bir PHP sürümü seçin.',
+    'services.phpToolProblem.extensionsFailed': '{tool} aracının ihtiyaç duyduğu PHP eklentileri PHP {version} için kurulamadı; bu yüzden çalışmayabilir. Bileşenler’de {tool} aracını açıp Yönet’te PHP {version} sürümünü yeniden ya da başka bir sürümü seçin.',
     'services.mailProfiles.fallbackWarning': '{name}, kendinden imzalı yedek sertifikayla kuruldu. Eşleşen güvenilir bir sertifika yapılandırılana kadar posta istemcileri güven uyarısı gösterecektir.',
     'services.operation.title': '{name} kuruluyor',
     'services.operation.activeCheckInProgress': 'Panel hâlâ etkin bir paket işlemini denetliyor. Biraz sonra yeniden deneyin.',

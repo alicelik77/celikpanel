@@ -1807,6 +1807,10 @@ const scenarios = {
 (await import('./scenarios-batch26.mjs')).default(scenarios, { base, vp, locale, theme, out, viewport, ctl, reset, drainLog, newPage, closePage, shot, into, clickByText, waitFor, pause, quiet });
 // --- end of batch 26 ---
 
+// --- batch 27 (2026-10-23): removals that name everything and PHP tool versions of alpha.104 ---
+(await import('./scenarios-batch27.mjs')).default(scenarios, { base, vp, locale, theme, out, viewport, ctl, reset, drainLog, newPage, closePage, shot, into, clickByText, waitFor, pause, quiet });
+// --- end of batch 27 ---
+
 for (const [name, run] of Object.entries(scenarios)) {
     if (wanted && !wanted.includes(name)) continue;
     const started = Date.now();

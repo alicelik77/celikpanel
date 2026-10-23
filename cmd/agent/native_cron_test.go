@@ -53,9 +53,12 @@ func TestNativeCronIsNeverRemovedThroughTheCatalogue(t *testing.T) {
 			removeCalled = true
 			return nil
 		},
-		removePackages: func(string, []string) (string, error) {
+		removePackages: func(_ string, _ packageRemovalRequest, before removalHooks) (packageRemovalPlan, string, error) {
 			removeCalled = true
-			return "", nil
+			if err := before.runStop(); err != nil {
+				return packageRemovalPlan{}, "", err
+			}
+			return packageRemovalPlan{}, "", nil
 		},
 	}
 	if err := (&Agent{}).uninstallServiceWithOps(&InstallServiceRequest{ID: core.NativeCronServiceID}, &resp, ops); err != nil {

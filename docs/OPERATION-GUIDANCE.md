@@ -10053,3 +10053,173 @@ free), and the clean reinstall of both servers at Beta 1 is the upcoming
 acceptance step, not a shipped claim. The known gaps of the alpha.103
 release notes stay open. No text or screen was changed for this entry. P0.1-P0.5
 stay **partial**; this entry closes and advances nothing.
+
+### Frankfurt on alpha.103: removing PHP-FPM 8.4 took phpMyAdmin and stopped webmail; removals and PHP tools in alpha.104 (D-037 amendment, 2026-10-23)
+
+What happened on 2026-10-23 (Frankfurt, Debian 13, alpha.103), what the owner did,
+and what changes in source for the v0.1.0-alpha.104 candidate (not published;
+nothing measured on an installed server).
+
+**What happened.** PHP-FPM 8.6, 8.5 and 8.4 were installed (8.4 is Debian 13's own
+PHP); phpMyAdmin, phpPgAdmin and Roundcube were installed and the Webmail bundle was
+complete. The owner removed PHP-FPM 8.4 from the versions list. The dialog promised
+only that sites would be checked. Two minutes later phpMyAdmin was "Not installed"
+and webmail said "not verified — Roundcube is installed, but its Unix-socket runtime
+is not ready" with "Repair webmail". Nothing else had been done. The server's apt
+history (read by the owner with read-only commands) shows the cause: the Agent ran
+`apt-get purge -y --auto-remove` on PHP 8.4's packages, and apt also purged
+phpmyadmin (4:5.2.2-really+dfsg-1+deb13u1), the distribution's php-fpm, php-mysql,
+php-mbstring, php-pgsql and php-xml packages, php8.4-readline, dbconfig-common,
+dbconfig-mysql and about 35 libraries. phpPgAdmin stayed installed. All three tools
+were served from `php8.4-fpm.sock` (the nginx configurations had not been rewritten
+when 8.5 and 8.6 were installed), so webmail and phpPgAdmin stopped answering,
+while phpPgAdmin still read "Installed".
+
+**On alpha.103 (what the owner did; owner-operated, from the panel).** **Who
+acts:** the owner. 1. In Components → PHP-FPM → versions, install PHP-FPM 8.4
+again. That brings the 8.4 socket back; installing a PHP version does not rewrite
+the tools' configuration, so webmail and phpPgAdmin answer again unchanged.
+**Confirmed:** after it, the Components screen showed Webmail ✓ and Roundcube
+without "not verified" (the owner's screenshot of 2026-10-23, Rescan at 7:56 PM).
+phpPgAdmin's own health was not separately confirmed then. 2. **Do not press
+"Repair webmail"** on alpha.103: it would move Roundcube to the newest PHP socket
+(8.6). 3. **Do not install phpMyAdmin again on alpha.103**: its installation
+rewrites the database tools' configuration and would move phpMyAdmin and
+phpPgAdmin to the newest PHP socket (8.6). Wait for alpha.104.
+
+**After alpha.104 (owner-operated).** **Who acts:** the owner.
+1. Update the panel to alpha.104 yourself, from the panel's own update screen.
+   **What you should see:** nothing moves when the panel updates; each tool stays
+   on the PHP version its configuration names (8.4 on Frankfurt).
+2. Open Components and press **Rescan** first. **What you should see:** Roundcube
+   and phpPgAdmin "Installed"; in PHP-FPM → versions, beside 8.4, "Used by
+   phpPgAdmin, Roundcube" (and any sites). **If a tool says "Not ready"** (its PHP
+   version is not running or no longer installed), open that tool's **Manage → PHP
+   version**, choose an installed version and press "Use PHP x.y"; wait for "now
+   runs on PHP x.y and answered there". Do this before step 3.
+3. Install phpMyAdmin again (its row, or the "MariaDB + phpMyAdmin" bundle).
+   **What you should see:** phpMyAdmin "Installed" and working. It goes back to PHP
+   8.4, because its old line in the tools' configuration still names 8.4, and the
+   panel makes sure its PHP 8.4 extensions are installed. **Note:** apt may take
+   newer php-* meta packages from the vendor repository with phpMyAdmin's
+   dependencies; their default PHP can be another version. phpMyAdmin still runs
+   on 8.4 until you choose otherwise in its Manage window. **If it does not
+   answer:** open phpMyAdmin's Manage → PHP version; the card says which version it
+   runs on and whether that PHP is running; choose a running version. **If another
+   tool's PHP needs attention** (for example phpPgAdmin's version is gone),
+   phpMyAdmin is still installed and a warning names that tool and the fix (choose
+   an installed PHP version in its Manage window).
+4. Optional: move the tools to another version in each tool's Manage → PHP version.
+   Removing PHP-FPM 8.4 later is refused, before anything changes, for whatever the
+   check finds on the server at that time — the sites and tools still on 8.4 and any
+   packages the package manager would also remove — and the dialog names them and
+   what to do first.
+
+**What changes in alpha.104.** Every removal first asks the package manager what it
+would remove, without changing anything; anything it would remove that the removal
+does not name (another component, the distribution's own package of this version,
+packages that depend on it) refuses the removal, by name, and nothing is stopped or
+removed. The removal dialogs show this before the button:
+
+- **What it removes:** "The package manager checked this removal: it takes exactly
+  these N packages." and the list.
+- **What refuses it:** "The package manager would also remove packages this removal
+  does not name, so CelikPanel refuses it and nothing changes:", then, for example,
+  "phpmyadmin belongs to phpMyAdmin: remove phpMyAdmin first, or keep PHP-FPM 8.4.",
+  "php-fpm — the distribution's own package — depends on it: PHP-FPM 8.4 is this
+  system's default. Keep it, or remove the whole component instead.", "php-mysql
+  depend on PHP-FPM 8.4. If they are not needed, the server administrator removes
+  them with the package manager first; otherwise keep PHP-FPM 8.4." Remove is not
+  offered then.
+- **Tools on a PHP version:** "phpPgAdmin, Roundcube run on PHP 8.4 and would stop
+  working. Move them to another PHP version first, or keep this version." When only
+  tools block, the dialog offers "Move them to [PHP 8.6], then remove": each tool is
+  moved and tested, then the version is removed; while it runs: "Moving the tools to
+  PHP 8.6 one by one: … This can take a few minutes; nothing needs to be done
+  meanwhile." If a move fails, nothing is removed and the dialog says, for example,
+  "phpPgAdmin now runs on PHP 8.6 and answered there. Roundcube did not work on PHP
+  8.6 and runs on PHP 8.4 again. Reason: … PHP 8.4 was not removed."
+- **Sites on a PHP version:** "Sites that run on PHP 8.4 (2): a.example, b.example.
+  Move them to another version in each site's settings first." with "Open Domains".
+- **When the check could not run:** "Another package operation is running, so the
+  package manager could not be asked now. You can still press Remove: it is checked
+  again then and refused if it would remove anything it does not name." (or "The
+  package manager's answer could not be read. …"). A failed read never holds the
+  removal.
+- **The PHP-FPM versions list** says who uses each version ("Used by 3 sites,
+  Roundcube" / "No site or tool uses it").
+- **A PHP tool whose PHP is missing** reads "Not ready" with "PHP 8.4 is not
+  running, so it cannot answer. Start PHP-FPM 8.4, or choose another PHP version in
+  Manage." or "It runs on PHP 8.4, which is no longer installed, so it cannot
+  answer. Choose an installed PHP version in Manage."
+- **A tool's Manage → PHP version** says "phpPgAdmin runs on PHP 8.4.", offers only
+  the other installed versions, and while moving: "Moving phpPgAdmin to PHP 8.6:
+  installing the PHP extensions it needs if they are missing, checking and
+  reloading the web server, then testing that phpPgAdmin answers. This can take a
+  few minutes; nothing needs to be done meanwhile."; then "phpPgAdmin now runs on
+  PHP 8.6 and answered there." or "phpPgAdmin did not work on PHP 8.6, so it was put
+  back on PHP 8.4. Reason: …". A lost answer says that whether it moved is not known
+  and the card reads the current version again.
+- **Refusal codes:** REMOVAL_WOULD_REMOVE_OTHERS, REMOVAL_TOOLS_BOUND,
+  REMOVAL_SIMULATION_FAILED ("the server administrator runs the package manager's
+  own consistency check on the server"), REMOVAL_PLAN_CHANGED (another package
+  operation ran between the check and the removal; nothing was removed and each
+  stopped service was put back as it was; open the dialog again),
+  REMOVAL_CHECK_UNAVAILABLE, REMOVAL_UNKNOWN_AFTER_MOVES, PHP_TOOL_MOVE_FAILED,
+  PHP_TOOL_PROBE_FAILED, PHP_TOOL_EXTENSIONS_FAILED, PHP_TOOL_CONFIG_REJECTED,
+  PHP_TOOL_CONFIG_OWNER_EDITED, PHP_VERSION_NOT_RUNNING, PHP_TOOL_NOT_INSTALLED,
+  PHP_TOOL_UNSUPPORTED.
+- **Corrections after the independent review (same candidate).**
+  - **No tool moves before the package manager accepted the removal.** "Move them
+    to …, then remove" first asks the package manager, for the same version, what
+    the removal takes; it moves nothing unless the answer came and takes nothing
+    else. Otherwise: "No tool was moved and nothing was removed: the package
+    manager could not be asked now what removing this version takes (another
+    package operation may be running). Wait a moment, then try again."
+    (REMOVAL_CHECK_UNAVAILABLE), or the packages it would also take
+    (REMOVAL_WOULD_REMOVE_OTHERS). The dialog offers the move only when its own
+    check answered.
+  - **Tools moved, then the removal refused or lost.** The dialog says both: "…
+    now run on PHP 8.6 and answered there.", the refusal, and "PHP 8.4 was not
+    removed."; when the removal's answer was lost: "Whether PHP 8.4 was removed is
+    not known: the answer did not arrive. The list reads the versions again; check
+    it before trying again." (REMOVAL_UNKNOWN_AFTER_MOVES). The versions, the check
+    and the components are read again. The removal request carries a request
+    identity (D-029): a lost answer is asked for again once, never run twice.
+  - **Installed versions not read.** "The installed PHP versions could not be read
+    now, so where the tools could move is not known. Nothing was changed." with
+    Retry; "No other PHP version is installed" is said only when they were read.
+  - **A tool's PHP extension packages missing for its version.** The row reads "Not
+    ready": "PHP 8.4 lacks PHP extension packages this tool needs, so it may not
+    work. Open Manage and choose PHP 8.4 again: the move installs them and tests
+    the tool."; the card offers the same version again. This reads installed
+    packages, not whether PHP has loaded them; a move's proof checks the loaded
+    extensions through the tool's own PHP-FPM.
+  - **Why a move failed, in the reader's language.** For example "PHP 8.6 lacks
+    the PHP extensions pgsql", "its page answered with HTTP status 502", "the web
+    server (nginx) rejected the new configuration"; a reason the screen does not
+    know is quoted: "the server said: …". When the previous configuration could not
+    be fully put back the sentence says which step failed: "the previous
+    configuration could not be put back (…)", "the previous configuration was put
+    back, but nginx rejected it (…)" or "… but nginx did not reload (…)".
+  - **Another tool's PHP problem is a warning.** Installing phpMyAdmin or
+    phpPgAdmin while another tool's PHP needs attention installs it and shows a
+    warning naming that tool and the fix.
+  - **Owner edits are not overwritten (D-022).** A database tools or webmail
+    configuration changed outside CelikPanel (beyond the form CelikPanel writes) is
+    not regenerated: the answer names the file and says that the server
+    administrator sets the PHP version in it, or removes it so CelikPanel writes
+    its own (PHP_TOOL_CONFIG_OWNER_EDITED). The database tools configuration is
+    written atomically and, when nginx refuses it, the previous one is put back
+    with its mode and owner.
+  - **What a removal or an install may take.** A component removal leaves alone
+    PHP extension packages of other PHP versions (sites may use them) and packages
+    that were already unused. An install (a component, a tool's PHP extensions) is
+    simulated first and refused, naming them, if it would remove any package.
+
+Unchanged: sites still choose their PHP version in their own settings; nothing
+moves a tool by itself; the updater and the schema (44). Open: nothing is measured
+on an installed server; phpPgAdmin's health on Frankfurt was not confirmed
+separately; the vendor repository's newer php-* meta packages may change which PHP
+the distribution's packages depend on. P0.1-P0.5 stay **partial**; this entry
+closes and advances nothing.

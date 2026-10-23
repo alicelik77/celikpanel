@@ -109,7 +109,10 @@ test('the repository and version-removal buttons spin while their request runs',
   const page = readFileSync(new URL('../src/components/ServiceList.tsx', import.meta.url), 'utf8');
   assert.equal((page.match(/\{repoBusy \? t\('services\.repo\.enabling'\)/g) || []).length, 2);
   assert.equal((page.match(/loading=\{repoBusy\}/g) || []).length, 2, 'both repository buttons spin');
-  assert.match(page, /onClick=\{\(\) => removeVersion\(removeTarget\)\} disabled=\{removing\} loading=\{removing\}/);
+  // alpha.104: a removal the Panel already knows it would refuse is not
+  // offered; moving the tools first and then removing spins the same way.
+  assert.match(page, /onClick=\{\(\) => removeVersion\(removeTarget\)\} disabled=\{removing \|\| refused\} loading=\{removing\}/);
+  assert.match(page, /onClick=\{\(\) => removeVersion\(removeTarget, target\)\} disabled=\{removing\} loading=\{removing\}/);
 });
 
 // alpha.94 (D-034): the ready bundles are one line at the head of each
@@ -130,4 +133,24 @@ test('the ready bundles strip sits between a category header and its rows', () =
   // Every chip is drawn from one base that is 44 px on a phone (alpha.95).
   assert.match(stripSource, /const chipBase = '[^']*max-sm:min-h-11[^']*';/);
   for (const chip of ['installedChip', 'actionChip', 'quietChip']) assert.match(stripSource, new RegExp(`const ${chip} = \`\\$\\{chipBase\\}`));
+});
+
+// alpha.104 review: on a phone, every control of a component's page is at
+// least 44 px tall — the back link, Help, and the log's filter and Refresh
+// were 24–30 px. Each carries a marker, so the class is read on the element
+// it belongs to. / Telefonda bileşen sayfasının her denetimi en az 44 px.
+test('the component page back link, Help and the log controls are phone-sized targets', () => {
+  const read = (path) => readFileSync(new URL('../src/components/' + path, import.meta.url), 'utf8');
+  const element = (text, marker) => {
+    const at = text.indexOf(`data-touch-target="${marker}"`);
+    assert.ok(at > 0, `${marker}: marker missing`);
+    const start = text.lastIndexOf('<', at);
+    const end = text.indexOf('>', at);
+    return text.slice(start, end);
+  };
+  assert.match(element(read('ServiceShell.tsx'), 'back'), /max-sm:min-h-11/);
+  assert.match(element(read('HelpDrawer.tsx'), 'help'), /max-sm:min-h-11/);
+  const detail = read('ComponentDetail.tsx');
+  assert.match(element(detail, 'log-refresh'), /max-sm:min-h-11/);
+  assert.match(detail, /aria-label=\{t\('component\.logsFilter'\)\}\s*className="[^"]*max-sm:min-h-11/);
 });

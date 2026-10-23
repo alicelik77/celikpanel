@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -161,6 +162,33 @@ func refreshAptListsIfStaleWithExecutable(ctx context.Context, maxAge time.Durat
 	}
 }
 
+// packageInstallRefusal: installing would remove packages (alpha.104).
+// Kurulum paket kaldıracaktı.
+type packageInstallRefusal struct {
+	Packages []string
+	Removes  []string
+}
+
+func (r *packageInstallRefusal) Error() string {
+	return fmt.Sprintf("installing %s would remove %s; nothing was installed. If removing them is intended, the server administrator removes them first, then tries again",
+		strings.Join(r.Packages, ", "), strings.Join(capNames(r.Removes, 12), ", "))
+}
+
+// refuseInstallThatRemoves simulates the exact install arguments and
+// refuses when APT would remove (or purge) anything. A component conflict
+// is refused before this; no supported install needs a removal. A failed
+// simulation is reported and nothing is installed.
+func refuseInstallThatRemoves(ctx context.Context, run packageSimulationRunner, aptGet string, packages, args []string) error {
+	sim, err := runAptSimulation(ctx, run, aptGet, args)
+	if err != nil {
+		return fmt.Errorf("the package manager could not show what installing %s would do, so nothing was installed: %w", strings.Join(packages, ", "), err)
+	}
+	if len(sim.Removed) > 0 {
+		return &packageInstallRefusal{Packages: append([]string{}, packages...), Removes: sim.Removed}
+	}
+	return nil
+}
+
 // installPackages installs the given packages with the host's package
 // manager, non-interactively. Unknown or not-yet-supported families return a
 // clear error rather than a blind command.
@@ -225,11 +253,20 @@ func installPackagesWithCandidateContext(ctx context.Context, family string, pac
 		}
 		run := func() (string, error) {
 			args := append([]string{"install", "-y", "--no-install-recommends"}, packages...)
+			// An install never removes a package (alpha.104): the same
+			// arguments are simulated first, under this package lock.
+			if err := refuseInstallThatRemoves(ctx, runPackageSimulationCommand, aptGet, packages, args); err != nil {
+				return "", err
+			}
 			env := append(os.Environ(), "DEBIAN_FRONTEND=noninteractive")
 			out, err := runServiceMutationCombinedOutputEnv(ctx, env, aptGet, args...)
 			return string(out), err
 		}
 		out, err := run()
+		var refusal *packageInstallRefusal
+		if errors.As(err, &refusal) {
+			return "", err
+		}
 		// Mirror rotated inside our freshness window: the lists said the file
 		// exists, the mirror says 404. Refresh unconditionally and retry once.
 		// Ayna, tazelik penceremizin içinde döndü: listeler dosya var dedi,
@@ -500,65 +537,18 @@ func removeDNFPreviewPackagesContext(ctx context.Context, packages []string) (st
 	return string(out), nil
 }
 
-// removePackages removes named packages non-interactively. APT and pacman use
-// their established configuration/orphan cleanup policy; the bounded DNF
-// preview explicitly keeps dependencies that merely became unused.
-// removePackages, adlandırılmış paketleri etkileşimsiz kaldırır. APT ve pacman
-// mevcut yapılandırma/öksüz bağımlılık temizleme politikasını kullanır; sınırlı
-// DNF önizlemesi ise yeni boşa düşen bağımlılıkları bilerek otomatik kaldırmaz.
-func removePackages(family string, packages []string) (string, error) {
-	return removePackagesContext(context.Background(), family, packages)
-}
-
+// removePackagesContext removes named packages through the guarded removal
+// (alpha.104, package_removal_plan.go): the package manager's simulation
+// decides what goes, and anything it did not name refuses the removal. The
+// bounded DNF preview stays unreachable (certification pending).
+// removePackagesContext, adlandırılmış paketleri korumalı kaldırma ile
+// kaldırır: adı söylenmeyen her şey kaldırmayı reddeder.
 func removePackagesContext(ctx context.Context, family string, packages []string) (string, error) {
-	packageOperationMu.Lock()
-	defer packageOperationMu.Unlock()
-
-	if len(packages) == 0 {
-		return "", fmt.Errorf("no packages to remove")
-	}
-	for _, p := range packages {
-		if !validPackageName(p) {
-			return "", fmt.Errorf("invalid package name: %q", p)
-		}
-	}
-	profile, err := verifiedHostProfile(family)
-	if err != nil {
-		return "", err
-	}
-	switch family {
-	case "apt":
-		aptGet, err := executableForProfile(profile, family, "apt-get")
-		if err != nil {
-			return "", err
-		}
-		args := append([]string{"purge", "-y", "--auto-remove"}, packages...)
-		env := append(os.Environ(), "DEBIAN_FRONTEND=noninteractive")
-		out, err := runServiceMutationCombinedOutputEnv(ctx, env, aptGet, args...)
-		if err != nil {
-			return "", fmt.Errorf("%v: %s", err, strings.TrimSpace(string(out)))
-		}
-		return string(out), nil
-	case "pacman":
-		pacman, err := executableForProfile(profile, family, "pacman")
-		if err != nil {
-			return "", err
-		}
-		// -Rns = purge: the package, its now-unneeded dependencies (-s) and
-		// its config files (-n) — mirrors apt's purge --auto-remove.
-		// -Rns = purge: paket, artık gereksiz bağımlılıkları (-s) ve config
-		// dosyaları (-n) — apt'ın purge --auto-remove'unun aynası.
-		args := append([]string{"-Rns", "--noconfirm"}, packages...)
-		out, err := runServiceMutationCombinedOutput(ctx, pacman, args...)
-		if err != nil {
-			return "", fmt.Errorf("%v: %s", err, strings.TrimSpace(string(out)))
-		}
-		return string(out), nil
-	case "dnf":
-		return "", errDNFMutationCertificationPending
-	default:
-		return "", fmt.Errorf("unrecognised distribution; remove %s manually", strings.Join(packages, ", "))
-	}
+	_, out, err := guardedRemovePackagesContext(ctx, family, packageRemovalRequest{
+		Packages:           packages,
+		ProtectedComponent: catalogueProtectedComponent(family, packageNameSet(packages)),
+	}, removalHooks{})
+	return out, err
 }
 
 // packageInstalled reports whether a package is actually installed — the
@@ -708,6 +698,9 @@ func installPackagesAtVersionContext(ctx context.Context, packages []string, ver
 		}
 	}
 	args := append([]string{"install", "-y", "--no-install-recommends"}, pinned...)
+	if err := refuseInstallThatRemoves(ctx, runPackageSimulationCommand, aptGet, packages, args); err != nil {
+		return "", err
+	}
 	env := append(os.Environ(), "DEBIAN_FRONTEND=noninteractive")
 	out, err := runServiceMutationCombinedOutputEnv(ctx, env, aptGet, args...)
 	if err != nil {

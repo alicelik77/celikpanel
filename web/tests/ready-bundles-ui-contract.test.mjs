@@ -399,7 +399,8 @@ test('a status dot has four tones, and the Components rows use them', () => {
   assert.match(ui, /export type StatusDotTone = 'success' \| 'danger' \| 'idle' \| 'unknown';/);
   assert.match(ui, /idle: 'border border-fg-subtle bg-transparent'/);
   assert.match(ui, /danger: 'bg-danger'/);
-  assert.match(services, /<StatusDot tone=\{notChecked\(s\) \? 'unknown' : !s\.is_installed \? 'idle' : \(running \|\| s\.kind === 'tool' \|\| s\.status === 'installed'\) \? 'success' : 'danger'\} \/>/);
+  // alpha.104: a PHP tool whose PHP is missing is not ready, in the danger tone.
+  assert.match(services, /<StatusDot tone=\{notChecked\(s\) \? 'unknown' : !s\.is_installed \? 'idle' : componentStateWord\(s\) === 'notReady' \? 'danger' : \(running \|\| s\.kind === 'tool' \|\| s\.status === 'installed'\) \? 'success' : 'danger'\} \/>/);
   assert.match(services, /<StatusDot tone=\{instRunning \? 'success' : 'danger'\} \/>/);
   assert.match(design, /StatusDot/);
 });

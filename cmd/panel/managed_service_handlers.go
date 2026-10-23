@@ -163,6 +163,12 @@ type ManagedServiceResponse struct {
 	// PackageVersionKeptLong: the kept reading is more than a day old, so the
 	// page adds a short line on what the server administrator checks.
 	PackageVersionKeptLong bool `json:"package_version_kept_long,omitempty"`
+	// PHPBinding is the PHP version an installed PHP tool (Roundcube,
+	// phpMyAdmin, phpPgAdmin) is served from, as the last scan read it
+	// (alpha.104). Ready is false when that version's PHP-FPM socket did not
+	// exist: the tool is installed but cannot answer. Absent when unknown.
+	// PHPBinding, kurulu bir PHP aracının sunulduğu PHP sürümüdür.
+	PHPBinding *transport.PHPToolBinding `json:"php_binding,omitempty"`
 }
 
 // Installed answers the only question the panel's own logic may ask of a
@@ -292,6 +298,8 @@ type serviceObservation struct {
 	// `systemctl stop bind` çağırıyordu; öyle bir unit yok).
 	Unit        string            `json:"unit,omitempty"`
 	ConfigFiles []core.ConfigFile `json:"config_files,omitempty"`
+	// PHPBinding: see ManagedServiceResponse.PHPBinding (alpha.104).
+	PHPBinding *transport.PHPToolBinding `json:"php_binding,omitempty"`
 	// Instances is the per-copy truth for runtimes (B3b), straight from
 	// Agent.ListServiceInstances: version, unit, path, managed, per-unit
 	// status. The scan no longer parses versions out of unit names.
@@ -653,6 +661,7 @@ func catalogViewForHost(obs []serviceObservation, host core.ManagedServiceHostPr
 			PackageVersionKept:     packageVersionKept,
 			PackageVersionReadAt:   packageVersionReadAt,
 			PackageVersionKeptLong: packageVersionKeptLong,
+			PHPBinding:             phpBindingForResponse(isInstalled, o.PHPBinding),
 		})
 	}
 	return response
@@ -1131,6 +1140,14 @@ func (p *Panel) scanManagedServicesWithVersions(ctx context.Context, packageVers
 			observation.PackageVersionsKeptLong = read.KeptLong
 		}
 		observations = append(observations, observation)
+	}
+
+	// Which PHP each installed PHP tool runs on, and whether that PHP is
+	// there (alpha.104). A failed read leaves the bindings unknown.
+	if bindings, err := p.readPHPToolBindings(ctx); err == nil {
+		attachPHPToolBindings(observations, bindings)
+	} else {
+		log.Printf("scan: PHP tool bindings could not be read: %v", err)
 	}
 
 	webmailReady := false

@@ -694,3 +694,28 @@ its cause, the package-manager line, the corner notice or dialog, the sidebar
 link, raw keys, English on the Turkish page, phone targets under 44 px and
 sideways scrolling. The screenshots are the inspection; these scenarios do not
 fail on a finding.
+
+## Scenarios of the twenty-seventh batch (removals and PHP tool versions, 2026-10-23)
+
+`scenarios-batch27.mjs` answers through the mock's overrides only (no new mock
+file): a Frankfurt-shaped component list (PHP-FPM 8.6, 8.5 and 8.4; phpPgAdmin
+bound to a PHP version that is gone), `GET /api/v1/service/php-tools`, the
+removal reads with the package manager's simulation, a version removal that
+moves the tools first and one whose move fails, and a tool move held open or put
+back. SAMPLE data shaped as the Panel answers, not measured; nothing is
+installed, removed or contacted. Run it with `desktop` and `phone`, Turkish and
+English, both themes (about 40 seconds each); each state is also copied to
+`BROWSER_INSPECT_SHOTS` as `<state>-<lang>-<theme>-<width>.png`.
+
+| Name | States |
+| --- | --- |
+| `y27versions` | the versions list saying who uses each version (`versions-usage`); removing PHP 8.4 when the package manager would also take phpMyAdmin, phpPgAdmin and the distribution's PHP packages and the tools run on it (`version-removal-frankfurt`, Remove not offered); only tools on it (`version-removal-move`), the move running (`version-removal-moving`) and failing for Roundcube (`version-removal-move-failed`); the read held open (`version-removal-checking`) |
+| `y27removal` | the Components page with phpPgAdmin "Not ready" (`components-not-ready`); removing MariaDB when the package manager would also take phpMyAdmin (`removal-collateral`) |
+| `y27tool` | phpPgAdmin's Manage window: the PHP version card (`tool-php-version`), a move running (`tool-php-version-moving`) and a move put back (`tool-php-version-restored`) |
+| `y27review` | The review corrections: tools moved, then the removal refused (`review-moved-then-refused`); the installed versions not read (`review-versions-unknown`); the package manager busy, no move offered (`review-check-busy`); a tool lacking extension packages on the row (`review-row-extensions`) and the card (`review-tool-extensions`); a failed move's cause in the reader's language (`review-tool-cause`) |
+
+Each record adds raw keys, English on the Turkish page, the usage lines, the row
+states and not-ready lines, the dialog's simulation lines, move choice and
+failure note, its last buttons, the tool card's text, phone targets under 44 px
+and sideways scrolling. The screenshots are the inspection; these scenarios do
+not fail on a finding.

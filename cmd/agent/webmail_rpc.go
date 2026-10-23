@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"os/exec"
@@ -84,40 +85,12 @@ func roundcubeInstallStateAt(baseDir string) (bool, error) {
 	return true, nil
 }
 
-// detectFPMSocket finds the default PHP-FPM socket across distros — Debian
-// puts a versioned socket under /run/php (php8.4-fpm.sock), Arch a single one
-// under /run/php-fpm. Its existence is the honest "is PHP-FPM running here"
-// signal: services.DetectInstalledPHPVersion reads /etc/php/<v>/fpm and so
-// returns "" on Arch even when PHP-FPM is up (caught live: Roundcube refused
-// on Arch with "PHP-FPM is not installed", and /webmail/ 502'd on the wrong
-// socket path). One probe answers both "installed?" and "where?".
-// detectFPMSocket, varsayılan PHP-FPM soketini dağıtımlar arası bulur —
-// Debian /run/php altında sürümlü bir soket koyar (php8.4-fpm.sock), Arch
-// /run/php-fpm altında tek bir tane. Varlığı, dürüst "burada PHP-FPM çalışıyor
-// mu" sinyalidir: services.DetectInstalledPHPVersion /etc/php/<v>/fpm okur ve
-// Arch'ta PHP-FPM ayakta olsa bile "" döner (canlıda yakalandı: Roundcube
-// Arch'ta "PHP-FPM is not installed" ile reddetti, /webmail/ yanlış soket
-// yolunda 502 verdi). Tek yoklama hem "kurulu mu?" hem "nerede?" cevabı.
-var fpmSocketPatterns = []string{
-	"/run/php/php*-fpm.sock",    // Debian, versioned default www pool
-	"/run/php-fpm/php-fpm.sock", // Arch
-	"/run/php/php-fpm.sock",     // some layouts
-	"/var/run/php/php*-fpm.sock",
-	"/var/run/php-fpm/php-fpm.sock",
-}
-
-func detectFPMSocket() string {
-	return detectFPMSocketWithPatterns(fpmSocketPatterns)
-}
-
-func detectFPMSocketWithPatterns(patterns []string) string {
-	for _, pat := range patterns {
-		if m, _ := filepath.Glob(pat); len(m) > 0 {
-			return m[len(m)-1] // newest-versioned last, e.g. php8.4 over php8.3
-		}
-	}
-	return ""
-}
+// The PHP-FPM socket webmail and the database tools are served from is
+// chosen in php_tool_binding.go (alpha.104): the bound version is kept; the
+// lexically-last-socket detection that silently moved them is gone. Arch's
+// unversioned /run/php-fpm/php-fpm.sock is still found there.
+// Web postası ve veritabanı araçlarının PHP-FPM soketi php_tool_binding.go'da
+// seçilir; bağlı sürüm korunur.
 
 type InstallRoundcubeResponse = transport.InstallRoundcubeResponse
 
@@ -155,23 +128,31 @@ func (a *Agent) InstallRoundcube(req *WebmailMutationRequest, resp *InstallRound
 		return nil
 	}
 	defer finishStep()
+	a.installRoundcubeWith(ctx, resp)
+	return nil
+}
+
+// installRoundcubeWith is InstallRoundcube's work under its held mutation
+// step (alpha.104 review: the disposable-VM evidence calls it directly).
+// installRoundcubeWith, InstallRoundcube'un tutulan adım altındaki işidir.
+func (a *Agent) installRoundcubeWith(ctx context.Context, resp *InstallRoundcubeResponse) {
 	resp.Version = roundcubeVersion
 	if err := ensureRoundcubeLifecycleSupported(); err != nil {
 		resp.Error = err.Error()
-		return nil
+		return
 	}
 	if err := secureMkdirAll(filepath.Dir(webmailBaseDir), 0o755); err != nil {
 		resp.Error = err.Error()
-		return nil
+		return
 	}
 	if err := reconcileRoundcubeArtifacts(webmailBaseDir, ""); err != nil {
 		resp.Error = fmt.Sprintf("reconcile Roundcube install artifacts: %v", err)
-		return nil
+		return
 	}
 	installed, err := roundcubeInstallState()
 	if err != nil {
 		resp.Error = err.Error()
-		return nil
+		return
 	}
 	// PHP-FPM presence is the socket's existence — portable across distros,
 	// unlike the /etc/php version read. phpVer may still be "" on Arch and
@@ -181,18 +162,28 @@ func (a *Agent) InstallRoundcube(req *WebmailMutationRequest, resp *InstallRound
 	// dağıtımlar arası taşınabilir. phpVer Arch'ta yine "" olabilir ve bu
 	// sorun değil: yalnız Debian'ın sürüm-başına uzantı paketlerini adlandırmak
 	// için kullanılır, Arch'ın uzantı paketleri sürümsüzdür.
-	if detectFPMSocket() == "" {
-		resp.Error = "PHP-FPM is not installed"
-		return nil
+	// alpha.104: the PHP version Roundcube's extensions are prepared for is
+	// the version webmail is bound to (or will be bound to by
+	// ConfigureWebmail), not the newest one: the same choice as
+	// ConfigureWebmail makes.
+	// Roundcube uzantıları, web postasının bağlı olduğu (ya da bağlanacağı)
+	// PHP sürümü için hazırlanır; en yenisi için değil.
+	fpmSocket, err := phpToolSocket(phpToolWebmail, phpToolStateFor(phpToolWebmail).Socket)
+	if err != nil {
+		resp.Error = err.Error()
+		return
 	}
-	phpVer := services.DetectInstalledPHPVersion()
+	phpVer := resolvedSocketVersion(fpmSocket)
+	if phpVer == "" && detectPkgFamily() == "apt" {
+		phpVer = services.DetectInstalledPHPVersion()
+	}
 	if err := a.ensureRoundcubePHPDependencies(ctx, phpVer); err != nil {
 		resp.Error = fmt.Sprintf("PHP extensions required by Roundcube could not be prepared: %v", err)
-		return nil
+		return
 	}
 	if installed {
 		resp.Installed = true
-		return nil
+		return
 	}
 
 	url := fmt.Sprintf("https://github.com/roundcube/roundcubemail/releases/download/%s/roundcubemail-%s-complete.tar.gz",
@@ -202,7 +193,7 @@ func (a *Agent) InstallRoundcube(req *WebmailMutationRequest, resp *InstallRound
 	stage, err := createRoundcubeInstallStage(webmailBaseDir)
 	if err != nil {
 		resp.Error = err.Error()
-		return nil
+		return
 	}
 	defer func() {
 		if _, err := retireRoundcubeTree(stage); err != nil {
@@ -212,7 +203,7 @@ func (a *Agent) InstallRoundcube(req *WebmailMutationRequest, resp *InstallRound
 	tmp, err := os.CreateTemp(stage, "rc-dl-*")
 	if err != nil {
 		resp.Error = err.Error()
-		return nil
+		return
 	}
 	tmpClosed := false
 	defer func() {
@@ -227,12 +218,12 @@ func (a *Agent) InstallRoundcube(req *WebmailMutationRequest, resp *InstallRound
 	downloadReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		resp.Error = fmt.Sprintf("download request failed: %v", err)
-		return nil
+		return
 	}
 	dl, err := client.Do(downloadReq)
 	if err != nil {
 		resp.Error = fmt.Sprintf("download failed: %v", err)
-		return nil
+		return
 	}
 	defer func() {
 		if err := dl.Body.Close(); err != nil {
@@ -241,21 +232,21 @@ func (a *Agent) InstallRoundcube(req *WebmailMutationRequest, resp *InstallRound
 	}()
 	if dl.StatusCode != http.StatusOK {
 		resp.Error = fmt.Sprintf("download failed: HTTP %d", dl.StatusCode)
-		return nil
+		return
 	}
 	h := sha256.New()
 	written, err := io.Copy(io.MultiWriter(tmp, h), io.LimitReader(dl.Body, roundcubeMaxSize+1))
 	if err != nil {
 		resp.Error = fmt.Sprintf("download failed: %v", err)
-		return nil
+		return
 	}
 	if written > roundcubeMaxSize {
 		resp.Error = "download exceeded the maximum allowed Roundcube archive size"
-		return nil
+		return
 	}
 	if got := hex.EncodeToString(h.Sum(nil)); got != roundcubeSHA256 {
 		resp.Error = "checksum mismatch — download discarded"
-		return nil
+		return
 	}
 
 	// Extract to a staging dir, then move into place — a half-extracted tree
@@ -264,26 +255,26 @@ func (a *Agent) InstallRoundcube(req *WebmailMutationRequest, resp *InstallRound
 	// görünmemeli (Node deseni).
 	if err := tmp.Sync(); err != nil {
 		resp.Error = fmt.Sprintf("sync verified download: %v", err)
-		return nil
+		return
 	}
 	closeErr := tmp.Close()
 	tmpClosed = true
 	if closeErr != nil {
 		resp.Error = fmt.Sprintf("close verified download: %v", closeErr)
-		return nil
+		return
 	}
 	if out, err := serviceMutationCommand(ctx, "tar", "-xzf", tmp.Name(), "-C", stage, "--strip-components=1").CombinedOutput(); err != nil {
 		resp.Error = fmt.Sprintf("extract failed: %v: %s", err, string(out))
-		return nil
+		return
 	}
 	if err := os.Remove(tmp.Name()); err != nil {
 		resp.Error = fmt.Sprintf("remove verified Roundcube download: %v", err)
-		return nil
+		return
 	}
 
 	if err := writeRoundcubeConfig(stage, phpVer); err != nil {
 		resp.Error = err.Error()
-		return nil
+		return
 	}
 	// Build the database and apply permissions inside the staging tree. The
 	// generated config points at the final database path, while the schema
@@ -310,7 +301,7 @@ func (a *Agent) InstallRoundcube(req *WebmailMutationRequest, resp *InstallRound
 	dbDir := filepath.Join(stage, "db")
 	if err := secureMkdirAll(dbDir, 0o775); err != nil {
 		resp.Error = err.Error()
-		return nil
+		return
 	}
 	initSQL := filepath.Join(stage, "SQL", "sqlite.initial.sql")
 	dbPath := filepath.Join(dbDir, "roundcube.sqlite3")
@@ -319,7 +310,7 @@ func (a *Agent) InstallRoundcube(req *WebmailMutationRequest, resp *InstallRound
 		dbPath, initSQL)
 	if out, err := serviceMutationCommand(ctx, "php", "-r", phpLoad).CombinedOutput(); err != nil {
 		resp.Error = fmt.Sprintf("db init failed: %v: %s", err, firstLine(string(out)))
-		return nil
+		return
 	}
 
 	// The FPM pool that serves /webmail/ (the default www pool) must READ the
@@ -332,28 +323,27 @@ func (a *Agent) InstallRoundcube(req *WebmailMutationRequest, resp *InstallRound
 	grp := webServerGroup()
 	if grp == "" {
 		resp.Error = "web server group could not be detected"
-		return nil
+		return
 	}
 	if err := applyRoundcubePermissions(ctx, stage, dbPath, grp, runServiceMutationCombinedOutput); err != nil {
 		resp.Error = err.Error()
-		return nil
+		return
 	}
 	installed, err = roundcubeInstallStateAt(stage)
 	if err != nil {
 		resp.Error = err.Error()
-		return nil
+		return
 	}
 	if !installed {
 		resp.Error = "Roundcube staging tree is incomplete after installation"
-		return nil
+		return
 	}
 	if err := publishRoundcubeStage(stage, webmailBaseDir); err != nil {
 		resp.Error = err.Error()
-		return nil
+		return
 	}
 
 	resp.Installed = true
-	return nil
 }
 
 type webmailCommandRunner func(context.Context, string, ...string) ([]byte, error)
@@ -472,7 +462,13 @@ type roundcubePHPDependencyOps struct {
 // its enabled zipdownload plugin actually use. A package can be installed but
 // disabled, so package presence alone is not a readiness check.
 func inspectRoundcubePHPCapabilities(ctx context.Context) ([]string, error) {
-	out, err := serviceMutationCommand(ctx, "php", "-r", roundcubePHPCapabilityProbe).Output()
+	return inspectRoundcubePHPCapabilitiesWith(ctx, "php")
+}
+
+// inspectRoundcubePHPCapabilitiesWith asks one PHP command (php8.4 for the
+// version webmail runs on, alpha.104) rather than whatever "php" points at.
+func inspectRoundcubePHPCapabilitiesWith(ctx context.Context, php string) ([]string, error) {
+	out, err := serviceMutationCommand(ctx, php, "-r", roundcubePHPCapabilityProbe).Output()
 	if err != nil {
 		return nil, fmt.Errorf("inspect PHP capabilities: %w", err)
 	}
@@ -642,7 +638,9 @@ func (a *Agent) ensureRoundcubePHPDependencies(ctx context.Context, phpVer strin
 		detectPkgFamily(),
 		phpVer,
 		roundcubePHPDependencyOps{
-			probe:        inspectRoundcubePHPCapabilities,
+			probe: func(ctx context.Context) ([]string, error) {
+				return inspectRoundcubePHPCapabilitiesWith(ctx, phpCLIForVersion(phpVer))
+			},
 			install:      installPackagesContext,
 			enablePacman: enablePacmanRoundcubePHPExtensions,
 			reload: func(ctx context.Context, unit string) ([]byte, error) {
@@ -847,7 +845,9 @@ func applyWebmailNginxMutation(
 // kök tüm uygulamayı sunar.
 func roundcubeRootDir() string { return filepath.Join(webmailBaseDir, "public_html") }
 
-func renderWebmailNginxConfig(webmailSocket, roundcubeRoot, fpmSocket string) string {
+// legacyRenderWebmailNginxConfig is the form alpha.103 and earlier wrote,
+// still accepted as CelikPanel's own.
+func legacyRenderWebmailNginxConfig(webmailSocket, roundcubeRoot, fpmSocket string) string {
 	return fmt.Sprintf(`# Managed by CelikPanel — Roundcube webmail, Unix socket only.
 # The panel reverse-proxies /webmail/ here; Roundcube's own login is the auth.
 server {
@@ -869,6 +869,30 @@ server {
     }
 }
 `, webmailSocket, roundcubeRoot, roundcubeRoot, fpmSocket)
+}
+
+func renderWebmailNginxConfig(webmailSocket, roundcubeRoot, fpmSocket string) string {
+	return fmt.Sprintf(`# Managed by CelikPanel — Roundcube webmail, Unix socket only.
+# The panel reverse-proxies /webmail/ here; Roundcube's own login is the auth.
+server {
+    listen unix:%s;
+    server_name _;
+    client_max_body_size 25m;
+
+    location /webmail/ {
+        alias %s/;
+        index index.php;
+        try_files $uri $uri/ /webmail/index.php$is_args$args;
+
+        location ~ ^/webmail/(.+\.php)$ {
+            alias %s/$1;
+            include fastcgi_params;
+            fastcgi_param SCRIPT_FILENAME $request_filename;
+            fastcgi_pass unix:%s;
+        }
+    }
+%s}
+`, webmailSocket, roundcubeRoot, roundcubeRoot, fpmSocket, phpToolCheckBlock(phpToolWebmail, fpmSocket))
 }
 
 type ConfigureWebmailResponse = transport.ConfigureWebmailResponse
@@ -894,9 +918,17 @@ func (a *Agent) ConfigureWebmail(req *WebmailMutationRequest, resp *ConfigureWeb
 		return nil
 	}
 	defer finishStep()
+	a.configureWebmailWith(ctx, resp)
+	return nil
+}
+
+// configureWebmailWith is ConfigureWebmail's work under its held mutation
+// step (alpha.104 review: the disposable-VM evidence calls it directly).
+// configureWebmailWith, ConfigureWebmail'in tutulan adım altındaki işidir.
+func (a *Agent) configureWebmailWith(ctx context.Context, resp *ConfigureWebmailResponse) {
 	if _, err := exec.LookPath("nginx"); err != nil {
 		resp.Error = "nginx is not installed"
-		return nil
+		return
 	}
 
 	// Presence is the entry point's existence — InstallRoundcube renames the
@@ -907,7 +939,7 @@ func (a *Agent) ConfigureWebmail(req *WebmailMutationRequest, resp *ConfigureWeb
 	installed, err := roundcubeInstallState()
 	if err != nil {
 		resp.Error = err.Error()
-		return nil
+		return
 	}
 	if !installed {
 		if err := applyWebmailNginxMutation(
@@ -918,11 +950,11 @@ func (a *Agent) ConfigureWebmail(req *WebmailMutationRequest, resp *ConfigureWeb
 			runServiceMutationCombinedOutput,
 		); err != nil {
 			resp.Error = err.Error()
-			return nil
+			return
 		}
 		resp.Configured = true
 		resp.Present = false
-		return nil
+		return
 	}
 	resp.Present = true
 
@@ -932,15 +964,28 @@ func (a *Agent) ConfigureWebmail(req *WebmailMutationRequest, resp *ConfigureWeb
 	// Roundcube PHP'dir: .php'yi varsayılan FPM soketine ver. Dağıtımlar arası
 	// tespit edilir (Debian /run/php/php<v>-fpm.sock, Arch
 	// /run/php-fpm/php-fpm.sock) — Debian yolunu asla varsayma.
-	socket := detectFPMSocket()
-	if socket == "" {
-		resp.Error = "PHP-FPM is not installed"
-		return nil
+	if err := ensurePHPToolCheckScript(); err != nil {
+		resp.Error = err.Error()
+		return
+	}
+	// A webmail configuration changed outside CelikPanel is not overwritten.
+	if err := refuseOwnerEditedConfig(phpToolWebmailConfPath); err != nil {
+		resp.Error = err.Error()
+		return
+	}
+	// alpha.104: webmail stays on the PHP version its configuration names
+	// while that version is installed; nothing bound yet → the default PHP.
+	// A bound version that is gone leaves the configuration unchanged.
+	// Web postası, yapılandırmasının adını verdiği PHP sürümünde kalır.
+	socket, err := phpToolSocket(phpToolWebmail, phpToolStateFor(phpToolWebmail).Socket)
+	if err != nil {
+		resp.Error = err.Error()
+		return
 	}
 	webmailSocket, err := webmailSocketPathForNginx()
 	if err != nil {
 		resp.Error = err.Error()
-		return nil
+		return
 	}
 
 	// Path-preserving: the browser path (/webmail/…) and this server's path
@@ -959,12 +1004,16 @@ func (a *Agent) ConfigureWebmail(req *WebmailMutationRequest, resp *ConfigureWeb
 		runServiceMutationCombinedOutput,
 	); err != nil {
 		resp.Error = err.Error()
-		return nil
+		return
 	}
 	// Validate before reload — a broken webmail config must not take the web
 	// server (and every customer site) down with it.
 	// Yeniden yüklemeden önce doğrula — bozuk bir webmail yapılandırması web
 	// sunucusunu (ve tüm müşteri sitelerini) beraberinde düşürmemeli.
 	resp.Configured = true
-	return nil
+	if version := resolvedSocketVersion(socket); version != "" {
+		if err := writePHPToolBinding(phpToolWebmail, version); err != nil {
+			log.Printf("record webmail PHP version: %v", err)
+		}
+	}
 }

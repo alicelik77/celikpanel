@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Boxes, FileText, RefreshCw, ScrollText, Search } from 'lucide-react';
 import { ServiceShell } from './ServiceShell';
+import { PHPToolVersion } from './PHPToolVersion';
+import { phpToolForService } from '../lib/phpTools';
 import { Checking, CouldNotCheck, KnownEmpty, RemoteGate } from './ui';
 import { useI18n } from '../i18n';
 import { apiErrorText } from '../lib/apiError';
@@ -102,6 +104,13 @@ export function ComponentDetail({ serviceId, onBack, onSelectConfig }: { service
             onBack={onBack}
             onServiceRefreshed={() => setRecordToken((token) => token + 1)}
         >
+            {/* alpha.104: the PHP version a PHP tool runs on is chosen here.
+                Bir PHP aracının PHP sürümü burada seçilir. */}
+            {phpToolForService(serviceId) && record?.is_installed === true && (
+                <div className="mb-6">
+                    <PHPToolVersion serviceId={serviceId} tool={phpToolForService(serviceId)!} />
+                </div>
+            )}
             <ComponentPanels serviceId={serviceId} onSelectConfig={onSelectConfig} />
         </ServiceShell>
     );
@@ -298,14 +307,15 @@ function Journal({ unit }: { unit: string }) {
                             onChange={(e) => setFilter(e.target.value)}
                             placeholder={t('component.logsFilter')}
                             aria-label={t('component.logsFilter')}
-                            className="w-40 rounded-lg border border-border bg-surface-2 py-1 pl-7 pr-2 text-xs text-fg placeholder:text-fg-subtle"
+                            className="w-40 rounded-lg border border-border bg-surface-2 py-1 pl-7 pr-2 text-xs text-fg placeholder:text-fg-subtle max-sm:min-h-11"
                         />
                     </div>
                     <button
                         type="button"
                         onClick={() => void log.retry()}
                         disabled={log.reading}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-border-strong bg-surface px-2.5 py-1 text-xs font-medium text-fg transition-colors hover:bg-surface-2 disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-border-strong bg-surface px-2.5 py-1 text-xs font-medium text-fg transition-colors hover:bg-surface-2 disabled:opacity-50 max-sm:min-h-11"
+                        data-touch-target="log-refresh"
                     >
                         <RefreshCw className={`h-3.5 w-3.5 ${log.reading ? 'animate-spin' : ''}`} />
                         {t('component.logsRefresh')}
