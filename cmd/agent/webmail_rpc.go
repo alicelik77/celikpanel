@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"os/exec"
@@ -159,7 +160,7 @@ func (a *Agent) InstallRoundcube(req *WebmailMutationRequest, resp *InstallRound
 	// ConfigureWebmail makes.
 	// Roundcube uzantıları, web postasının bağlı olduğu (ya da bağlanacağı)
 	// PHP sürümü için hazırlanır; en yenisi için değil.
-	fpmSocket, err := phpToolSocket(phpToolWebmail, currentPHPToolSockets()[phpToolWebmail])
+	fpmSocket, err := phpToolSocket(phpToolWebmail, phpToolStateFor(phpToolWebmail).Socket)
 	if err != nil {
 		resp.Error = err.Error()
 		return nil
@@ -926,7 +927,7 @@ func (a *Agent) ConfigureWebmail(req *WebmailMutationRequest, resp *ConfigureWeb
 	// while that version is installed; nothing bound yet → the default PHP.
 	// A bound version that is gone leaves the configuration unchanged.
 	// Web postası, yapılandırmasının adını verdiği PHP sürümünde kalır.
-	socket, err := phpToolSocket(phpToolWebmail, currentPHPToolSockets()[phpToolWebmail])
+	socket, err := phpToolSocket(phpToolWebmail, phpToolStateFor(phpToolWebmail).Socket)
 	if err != nil {
 		resp.Error = err.Error()
 		return nil
@@ -960,5 +961,10 @@ func (a *Agent) ConfigureWebmail(req *WebmailMutationRequest, resp *ConfigureWeb
 	// Yeniden yüklemeden önce doğrula — bozuk bir webmail yapılandırması web
 	// sunucusunu (ve tüm müşteri sitelerini) beraberinde düşürmemeli.
 	resp.Configured = true
+	if version := resolvedSocketVersion(socket); version != "" {
+		if err := writePHPToolBinding(phpToolWebmail, version); err != nil {
+			log.Printf("record webmail PHP version: %v", err)
+		}
+	}
 	return nil
 }

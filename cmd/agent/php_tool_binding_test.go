@@ -28,15 +28,21 @@ func newPHPToolHost(t *testing.T) phpToolHost {
 			t.Fatal(err)
 		}
 	}
-	saved := []string{phpFPMRunDir, phpEtcDir, phpCLIAlternative, phpToolWebmailConfPath, phpToolDBToolsConfPath}
+	saved := []string{phpFPMRunDir, phpEtcDir, phpCLIAlternative, phpToolWebmailConfPath, phpToolDBToolsConfPath, phpToolBindingRecordPath}
 	savedFallback := phpFallbackSocketGlobs
+	savedMetas, savedInstalled, savedPackage := phpDefaultVersionFromMetas, phpToolInstalledCheck, phpToolPackageInstalled
 	phpFPMRunDir, phpEtcDir = host.run, host.etc
 	phpCLIAlternative = filepath.Join(host.bin, "php")
 	phpToolWebmailConfPath, phpToolDBToolsConfPath = host.webmailConf, host.dbToolsConf
+	phpToolBindingRecordPath = filepath.Join(root, "php-tool-bindings.json")
 	phpFallbackSocketGlobs = nil
+	phpDefaultVersionFromMetas = func() string { return "" }
+	phpToolInstalledCheck = func(string) bool { return true }
+	phpToolPackageInstalled = func(string) bool { return false }
 	t.Cleanup(func() {
-		phpFPMRunDir, phpEtcDir, phpCLIAlternative, phpToolWebmailConfPath, phpToolDBToolsConfPath = saved[0], saved[1], saved[2], saved[3], saved[4]
+		phpFPMRunDir, phpEtcDir, phpCLIAlternative, phpToolWebmailConfPath, phpToolDBToolsConfPath, phpToolBindingRecordPath = saved[0], saved[1], saved[2], saved[3], saved[4], saved[5]
 		phpFallbackSocketGlobs = savedFallback
+		phpDefaultVersionFromMetas, phpToolInstalledCheck, phpToolPackageInstalled = savedMetas, savedInstalled, savedPackage
 	})
 	return host
 }
@@ -130,7 +136,7 @@ func TestPHPToolWhoseVersionIsGoneIsReportedNotMoved(t *testing.T) {
 	if got != filepath.Join(host.run, "php8.4-fpm.sock") {
 		t.Fatalf("socket = %q, want the bound one unchanged", got)
 	}
-	if !strings.Contains(err.Error(), "install PHP-FPM 8.4 again") {
+	if !strings.Contains(err.Error(), "install PHP-FPM 8.4 again") || !strings.Contains(err.Error(), "Manage window") {
 		t.Fatalf("message = %q", err.Error())
 	}
 }

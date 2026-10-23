@@ -435,3 +435,51 @@ type InstalledPackageVersion struct {
 	Package string `json:"package"`
 	Version string `json:"version"`
 }
+
+// PHPToolBinding is the PHP version a tool (webmail, phpmyadmin,
+// phppgadmin) is served from (alpha.104). Version is empty when nothing is
+// bound; SocketReady says the version's PHP-FPM socket exists right now;
+// VersionInstalled that the version is still installed. Source is "config"
+// (the generated nginx configuration) or "record" (the Agent's record).
+// PHPToolBinding, bir aracın sunulduğu PHP sürümüdür.
+type PHPToolBinding struct {
+	Tool             string `json:"tool"`
+	Installed        bool   `json:"installed"`
+	Version          string `json:"version"`
+	SocketReady      bool   `json:"socket_ready"`
+	VersionInstalled bool   `json:"version_installed"`
+	Source           string `json:"source,omitempty"`
+}
+
+// PHPToolBindingsResponse lists every tool's binding and the installed
+// PHP-FPM versions, newest first.
+type PHPToolBindingsResponse struct {
+	Tools    []PHPToolBinding `json:"tools"`
+	Versions []string         `json:"versions"`
+	Error    string           `json:"error,omitempty"`
+}
+
+// BindPHPToolRequest moves one tool to one installed PHP version.
+type BindPHPToolRequest struct {
+	ServiceMutationBinding
+	Tool    string `json:"tool"`
+	Version string `json:"version"`
+}
+
+// BindPHPToolResponse: Bound after the tool answered on the new version.
+// On failure ErrorCode types it, MutationApplied says the host changed
+// (extension packages installed or nginx reloaded) and Restored that the
+// previous configuration was put back. Previous is the version before.
+// BindPHPToolResponse: araç yeni sürümde yanıt verdikten sonra Bound.
+type BindPHPToolResponse struct {
+	Bound             bool     `json:"bound"`
+	Tool              string   `json:"tool"`
+	Version           string   `json:"version"`
+	Previous          string   `json:"previous,omitempty"`
+	InstalledPackages []string `json:"installed_packages,omitempty"`
+	MutationApplied   bool     `json:"mutation_applied,omitempty"`
+	Restored          bool     `json:"restored,omitempty"`
+	Warning           string   `json:"warning,omitempty"`
+	Error             string   `json:"error,omitempty"`
+	ErrorCode         string   `json:"error_code,omitempty"`
+}
