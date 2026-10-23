@@ -9932,3 +9932,34 @@ alpha.101 comes after he updates. The setup plan's contact-email requirement
 applies to every server plan; that is left for a decision. No text or screen was
 changed for this entry. P0.1-P0.5 stay **partial**; this entry closes and advances
 nothing.
+
+### The administrator's email at install time (D-021 amendment, 2026-10-23)
+
+In source for the v0.1.0-alpha.102 candidate (not published). The owner decided
+that the contact email stays mandatory for every server plan: the first setup
+always requests the panel's HTTPS certificate, and the certificate authority
+needs the administrator's address as its contact. The installer now checks that
+address with the same rule as the setup plan and the certificate request, so a
+typo is caught when the administrator is created.
+
+- **Typing at the installer's prompt.** **What happened:** the address is not one
+  the certificate authority would accept (for example `ali`, `ali@`,
+  `ali@localhost`). **Who acts:** the person installing. **Next action:** type a
+  real address such as you@example.com at the same prompt. **How work resumes:**
+  the installer asks again and continues; nothing is undone and the value typed is
+  not printed.
+- **A credentials file (`CELIKPANEL_ADMIN_CREDENTIALS_FILE`).** **What happened:**
+  the installer stops before anything is installed and says the file was left
+  untouched. **Who acts:** the person installing. **Next action:** correct the
+  file (a username the panel accepts, a real email address such as
+  you@example.com, a password of at least 8 characters). **How work resumes:** run
+  the same installation command again.
+- **An existing installation with an older invalid address.** Nothing changes on
+  update; the Server setup screen's contact blocker and its "Open My account"
+  button remain the way to correct it.
+
+Upcoming acceptance, not a shipped claim: at Beta 1 the owner will wipe and
+reinstall both servers for a clean first-install test, where this check will be
+seen on a real installation for the first time. Installed panels are updated only
+by their owners from the panel's own update screen. P0.1-P0.5 stay **partial**;
+this entry closes and advances nothing.

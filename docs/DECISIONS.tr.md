@@ -2101,6 +2101,72 @@ bir sunucuda hiçbir şey ölçülmedi. Hangi kontrolün hangi koda dayandığı
 [alpha.87 sürüm notları](RELEASE-NOTES-v0.1.0-alpha.87.tr.md) söyler. Hiçbir P0
 işi kapanmaz ya da ilerlemez.
 
+### Değişiklik (2026-10-23): yöneticinin e-postası zorunlu kalır ve yönetici oluşturulurken denetlenir
+
+*Sahibin 2026-10-23 kararları; v0.1.0-alpha.102 adayının kaynağında (yayımlanmadı);
+kurulu bir sunucuda hiçbir şey ölçülmedi*
+
+Neden. alpha.99'dan beri açık bir iş, kurulum planının iletişim e-postası
+engelinin her plana uygulandığını söylüyordu. Sahip karar verdi: "iletişim
+epostası zorunlu olarak gerekiyor ise zorunlu olmalı. kurulumda eposta
+belirtiyoruz". Gerçekten gerekiyor: ilk genel kurulum panelin adı için güvenilir
+ve yenilenebilir HTTPS ister (yukarıda), bu yüzden ilk kurulum her zaman panelin
+sertifikasını ister ve sertifika yetkilisi yöneticinin adresini iletişim adresi
+olarak alır. Sertifika adımı olmayan tek plan zaten geçerli sertifikası olan bir
+sunucunun planıdır; o durumda adres zaten kayıtlıdır. Engel bu yüzden her planda
+kalır. Ardından sahip adresin ilk verildiği yerde denetlenmesini onayladı ("ok.
+yap"); böylece yazım hatası Sunucu kurulumu ekranında sonradan değil, kurulumda
+yakalanır.
+
+Karar.
+
+- **Tek kural.** Kurucu ilk yöneticinin e-postasını kurulum planının, panel
+  sertifikası isteğinin ve kişinin kendi e-posta değişikliğinin zaten kullandığı
+  doğrulayıcıyla denetler (`mutationpayload.CanonicalContactEmail`): yazdırılabilir
+  ASCII, tam bir `@`, en çok 64 baytlık yerel bölüm, tam nitelikli bir alan adı
+  (`localhost` değil, IP adresi değil, sonda nokta yok) ve toplam en çok 254 bayt.
+  `ali`, `ali@`, `@x.com`, `a b@x.com` ve `ali@localhost` reddedilir.
+- **Etkileşimli istem.** Reddedilen adreste kurucu "That is not a valid email
+  address (example: you@example.com). The certificate authority needs it as a
+  contact. Please try again. / Bu geçerli bir e-posta adresi değil (örnek:
+  siz@ornek.com). Sertifika yetkilisi bunu iletişim adresi olarak ister. Lütfen
+  yeniden deneyin." yazar ve yeniden sorar. Yazılan değer hiçbir zaman yazdırılmaz.
+  İstem her zamanki yerinde, paketler kurulduktan sonra gelir; durmak yerine
+  yeniden sorduğu için oradaki bir yazım hatası kurulumu durdurmaz.
+- **Kimlik bilgisi dosyası.** `CELIKPANEL_ADMIN_CREDENTIALS_FILE` ile verilen dosya,
+  önceden olduğu gibi hiçbir şey kurulmadan aday panelin yalnız-doğrulama kipiyle
+  denetlenir; bu denetim artık aynı kuralı uygular. Kurucu ardından girdi dosyasına
+  dokunulmadığını ve hiçbir şey kurulmadığını, neyin düzeltileceğini söyler:
+  panelin kabul ettiği bir kullanıcı adı, siz@ornek.com gibi gerçek bir e-posta
+  adresi (sertifika yetkilisi bunu iletişim adresi olarak ister) ve en az 8
+  karakterlik bir parola. Panelin kendi reddi e-posta alanını adlandırır, hiçbir
+  değeri yazmaz. İmzalı giriş betiğinin kendi biçim denetimi değişmez; yetki
+  indirilen paneldedir.
+- **Saklanan biçim.** Adres, kişinin kendi e-posta değişikliğinin sakladığı gibi
+  doğrulayıcının kanonik biçiminde (alan adı küçük harfle) saklanır.
+- **Mevcut yönetici yolu.** Yönetici oluşturma komutunun mevcut bir kullanıcı adı
+  için yeniden çalıştırılması da aynı kurala bağlıdır; reddedilen adres ne adresi
+  ne parolayı değiştirir.
+- **Mevcut kurulumlar etkilenmez.** Göç yok, saklanan adresler yeniden
+  denetlenmez. Eski geçersiz bir adresi yine Sunucu kurulumu engeli yakalar;
+  engelin "Hesabım’ı aç" bağlantısı kişinin kendi e-posta değişikliğine götürür.
+- **Başka hiçbir yol yönetici oluşturmaz.** Hesap API'si yönetici rollü hesap
+  oluşturmayı ve yönetmeyi reddeder; ekip üyeleri müşteri rollü ek kullanıcılardır
+  ve sunucu kurulumunu açamaz; kontrol düzlemi geri yüklemesi arşivdeki
+  yöneticileri değiştirmeden getirir; demo kipinin hesapları yalnız demodur. Bu
+  yüzden ekip üyesi adres denetimi değiştirilmez.
+
+Değişmeyen. Sertifika yetkilisi genel olmayan bir alan adındaki adresi (`.test`,
+`.invalid`, `example.com`) yine reddedebilir: panel biçimi denetler, alan adına
+yetkili karar verir. Bu, D-037'nin alpha.99 değişikliğiyle kaydedilen "yönetici
+oluşturma komutu adresi denetlemiyor" sınırını kapatır; alpha.102 kaynağında
+denetliyor.
+
+Yaklaşan kabul, iddia değil. Beta 1'de sahip temiz ilk kurulum denemesi için iki
+sunucuyu da silip yeniden kuracak; bu denetim gerçek bir kurulumda ilk kez orada
+görülecek. Kurulu paneller yine yalnız sahipleri tarafından panelin kendi
+güncelleme ekranından güncellenir.
+
 ---
 
 ## D-020 · Yönetilen sunucu desteği dağıtım adına değil kanıtlanmış yeteneğe bağlanır

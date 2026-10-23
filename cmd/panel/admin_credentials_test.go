@@ -23,16 +23,22 @@ func TestParseAdminCredentialsJSONStrict(t *testing.T) {
 	}
 
 	invalid := map[string][]byte{
-		"unknown field":    []byte(`{"username":"first-admin","email":"admin@example.test","password":"` + password + `","extra":"value"}`),
-		"duplicate field":  []byte(`{"username":"first-admin","email":"admin@example.test","password":"` + password + `","password":"duplicate-secret"}`),
-		"trailing object":  []byte(`{"username":"first-admin","email":"admin@example.test","password":"` + password + `"}{}`),
-		"missing field":    []byte(`{"username":"first-admin","password":"` + password + `"}`),
-		"non-string field": []byte(`{"username":"first-admin","email":7,"password":"` + password + `"}`),
-		"invalid username": []byte(`{"username":"x","email":"admin@example.test","password":"` + password + `"}`),
-		"padded username":  []byte(`{"username":" first-admin","email":"admin@example.test","password":"` + password + `"}`),
-		"empty email":      []byte(`{"username":"first-admin","email":"","password":"` + password + `"}`),
-		"short password":   []byte(`{"username":"first-admin","email":"admin@example.test","password":"short"}`),
-		"malformed JSON":   []byte(`{"username":"first-admin"`),
+		"unknown field":        []byte(`{"username":"first-admin","email":"admin@example.test","password":"` + password + `","extra":"value"}`),
+		"duplicate field":      []byte(`{"username":"first-admin","email":"admin@example.test","password":"` + password + `","password":"duplicate-secret"}`),
+		"trailing object":      []byte(`{"username":"first-admin","email":"admin@example.test","password":"` + password + `"}{}`),
+		"missing field":        []byte(`{"username":"first-admin","password":"` + password + `"}`),
+		"non-string field":     []byte(`{"username":"first-admin","email":7,"password":"` + password + `"}`),
+		"invalid username":     []byte(`{"username":"x","email":"admin@example.test","password":"` + password + `"}`),
+		"padded username":      []byte(`{"username":" first-admin","email":"admin@example.test","password":"` + password + `"}`),
+		"empty email":          []byte(`{"username":"first-admin","email":"","password":"` + password + `"}`),
+		"email without @":      []byte(`{"username":"first-admin","email":"ali","password":"` + password + `"}`),
+		"email without domain": []byte(`{"username":"first-admin","email":"ali@","password":"` + password + `"}`),
+		"email without local":  []byte(`{"username":"first-admin","email":"@x.com","password":"` + password + `"}`),
+		"email with space":     []byte(`{"username":"first-admin","email":"a b@x.com","password":"` + password + `"}`),
+		"email single label":   []byte(`{"username":"first-admin","email":"ali@localhost","password":"` + password + `"}`),
+		"padded email":         []byte(`{"username":"first-admin","email":" admin@example.test","password":"` + password + `"}`),
+		"short password":       []byte(`{"username":"first-admin","email":"admin@example.test","password":"short"}`),
+		"malformed JSON":       []byte(`{"username":"first-admin"`),
 		"invalid UTF-8": append(
 			[]byte(`{"username":"first-admin","email":"admin@example.test","password":"`+password),
 			[]byte{0xff, '"', '}'}...,
@@ -187,5 +193,68 @@ func TestValidateAdminCredentialsFileArgumentSpellings(t *testing.T) {
 		if strings.Contains(err.Error(), secretPath) {
 			t.Fatal("argument validation error exposed the rejected value")
 		}
+	}
+}
+
+// The credentials file is held to the certificate request's contact rule, the
+// refusal names the field but never a value, and nothing is written.
+func TestCreateOrUpdateAdminRefusesAnEmailTheCertificateRequestRefuses(t *testing.T) {
+	database, err := paneldb.NewSQLiteDB(filepath.Join(t.TempDir(), "panel.sqlite"))
+	if err != nil {
+		t.Fatalf("open panel database: %v", err)
+	}
+	t.Cleanup(database.Close)
+	countUsers := func() int {
+		var count int
+		if err := database.GetDB().QueryRow(`SELECT COUNT(*) FROM users`).Scan(&count); err != nil {
+			t.Fatalf("count users: %v", err)
+		}
+		return count
+	}
+
+	const password = "never-print-this-password"
+	for _, typo := range []string{"typo-owner", "typo-owner@", "typo-owner@localhost"} {
+		err := createOrUpdateAdmin(database, adminCredentials{
+			username: "first-admin", email: typo, password: password,
+		}, &bytes.Buffer{})
+		if err == nil || !strings.Contains(err.Error(), "email") ||
+			strings.Contains(err.Error(), "typo-owner") || strings.Contains(err.Error(), password) {
+			t.Fatalf("createOrUpdateAdmin(%q) error = %v", typo, err)
+		}
+		if countUsers() != 0 {
+			t.Fatalf("createOrUpdateAdmin(%q) wrote a user", typo)
+		}
+	}
+
+	// Stored in the validator's canonical form, as the own-email change stores it.
+	if err := createOrUpdateAdmin(database, adminCredentials{
+		username: "first-admin", email: "Owner@Example.COM", password: password,
+	}, &bytes.Buffer{}); err != nil {
+		t.Fatalf("create admin: %v", err)
+	}
+	var email, hash string
+	readStored := func() {
+		if err := database.GetDB().QueryRow(
+			`SELECT email, password_hash FROM users WHERE username = 'first-admin'`,
+		).Scan(&email, &hash); err != nil {
+			t.Fatalf("read stored admin: %v", err)
+		}
+	}
+	readStored()
+	if email != "Owner@example.com" {
+		t.Fatalf("stored email = %q, want Owner@example.com", email)
+	}
+
+	// Re-running the command for the existing administrator with a typo
+	// changes neither the address nor the password.
+	storedHash := hash
+	if err := createOrUpdateAdmin(database, adminCredentials{
+		username: "first-admin", email: "typo-owner@", password: "replacement-secret-password",
+	}, &bytes.Buffer{}); err == nil {
+		t.Fatal("existing administrator was updated with an invalid email")
+	}
+	readStored()
+	if email != "Owner@example.com" || hash != storedHash || countUsers() != 1 {
+		t.Fatalf("existing administrator changed: email=%q hashChanged=%v", email, hash != storedHash)
 	}
 }

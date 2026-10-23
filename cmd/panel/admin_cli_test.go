@@ -6,6 +6,8 @@ import (
 	"errors"
 	"strings"
 	"testing"
+
+	"github.com/alicelik/celikpanel/internal/mutationpayload"
 )
 
 func TestPromptPasswordVisibilityDefaultsToHidden(t *testing.T) {
@@ -119,5 +121,42 @@ func TestRequireInteractiveAdminTerminal(t *testing.T) {
 	if err := requireInteractiveAdminTerminal(false); err == nil ||
 		!strings.Contains(err.Error(), "requires a terminal") {
 		t.Fatalf("non-terminal error = %v, want explicit refusal", err)
+	}
+}
+
+// The interactive prompt takes exactly what the certificate request takes
+// (owner decision of 2026-10-23): what the validator refuses is asked again,
+// what it accepts is returned in its canonical form.
+func TestPromptAdminEmailUsesTheCertificateContactValidator(t *testing.T) {
+	const fallback = "owner@example.com"
+	for _, typed := range []string{
+		"ali", "ali@", "@x.com", "a b@x.com", "ali@localhost", "ali@192.0.2.1",
+		"Name <ali@x.com>", "ali@x.com", "  Ali@Example.COM  ", "a.b+tag@mail.example.tr",
+	} {
+		t.Run(typed, func(t *testing.T) {
+			var output bytes.Buffer
+			reader := bufio.NewReader(strings.NewReader(typed + "\n" + fallback + "\n"))
+			email, err := promptAdminEmail(reader, &output)
+			if err != nil {
+				t.Fatalf("promptAdminEmail returned an error: %v", err)
+			}
+			canonical, invalid := mutationpayload.CanonicalContactEmail(typed)
+			if invalid != nil {
+				if email != fallback || !strings.Contains(output.String(), "That is not a valid email address") ||
+					!strings.Contains(output.String(), "Bu geçerli bir e-posta adresi değil") {
+					t.Fatalf("refused address: email=%q output=%q", email, output.String())
+				}
+				return
+			}
+			if email != canonical || strings.Contains(output.String(), "not a valid email") {
+				t.Fatalf("accepted address: email=%q want %q output=%q", email, canonical, output.String())
+			}
+		})
+	}
+	// The typos the owner named are among the refused ones.
+	for _, typo := range []string{"ali", "ali@", "@x.com", "a b@x.com", "ali@localhost"} {
+		if _, err := mutationpayload.CanonicalContactEmail(typo); err == nil {
+			t.Fatalf("validator accepted %q", typo)
+		}
 	}
 }

@@ -9897,3 +9897,32 @@ alpha.101 gözlemi güncelledikten sonra gelir. Kurulum planının iletişim e-p
 gereksinimi her sunucu planı için geçerli; bu bir karara bırakıldı. Bu girdi için
 hiçbir metin ya da ekran değiştirilmedi. P0.1-P0.5 **kısmi** kalır; bu girdi
 hiçbir şeyi kapatmaz ya da ilerletmez.
+
+### Kurulumda yöneticinin e-postası (D-021 değişikliği, 2026-10-23)
+
+v0.1.0-alpha.102 adayının kaynağında (yayımlanmadı). Sahip iletişim e-postasının
+her sunucu planında zorunlu kalmasına karar verdi: ilk kurulum her zaman panelin
+HTTPS sertifikasını ister ve sertifika yetkilisi yöneticinin adresini iletişim
+adresi olarak ister. Kurucu artık bu adresi kurulum planı ve sertifika isteğiyle
+aynı kurala göre denetler; böylece yazım hatası yönetici oluşturulurken yakalanır.
+
+- **Kurucunun isteminde yazarken.** **Ne oldu:** adres sertifika yetkilisinin
+  kabul edeceği bir adres değil (örneğin `ali`, `ali@`, `ali@localhost`). **Kim
+  işlem yapar:** kurulumu yapan kişi. **Sonraki eylem:** aynı isteme
+  siz@ornek.com gibi gerçek bir adres yazmak. **Nasıl devam eder:** kurucu yeniden
+  sorar ve sürer; hiçbir şey geri alınmaz, yazılan değer yazdırılmaz.
+- **Kimlik bilgisi dosyası (`CELIKPANEL_ADMIN_CREDENTIALS_FILE`).** **Ne oldu:**
+  kurucu hiçbir şey kurmadan durur ve dosyaya dokunulmadığını söyler. **Kim işlem
+  yapar:** kurulumu yapan kişi. **Sonraki eylem:** dosyayı düzeltmek (panelin
+  kabul ettiği bir kullanıcı adı, siz@ornek.com gibi gerçek bir e-posta adresi, en
+  az 8 karakterlik bir parola). **Nasıl devam eder:** aynı kurulum komutunu yeniden
+  çalıştırmak.
+- **Eski geçersiz adresi olan mevcut bir kurulum.** Güncellemede hiçbir şey
+  değişmez; Sunucu kurulumu ekranının iletişim engeli ve "Hesabım’ı aç" düğmesi
+  düzeltme yolu olarak kalır.
+
+Yaklaşan kabul, yayımlanmış bir iddia değil: Beta 1'de sahip temiz ilk kurulum
+denemesi için iki sunucuyu da silip yeniden kuracak; bu denetim gerçek bir
+kurulumda ilk kez orada görülecek. Kurulu panelleri yalnız sahipleri, panelin
+kendi güncelleme ekranından günceller. P0.1-P0.5 **kısmi** kalır; bu girdi hiçbir
+şeyi kapatmaz ya da ilerletmez.

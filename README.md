@@ -152,7 +152,7 @@ curl --fail --show-error --location --proto '=https' --tlsv1.2 https://celikpane
 sh /tmp/celikpanel-get.sh
 
 # Or require the exact version pinned by the downloaded bootstrap
-sh /tmp/celikpanel-get.sh --version v0.1.0-alpha.101
+sh /tmp/celikpanel-get.sh --version v0.1.0-alpha.102
 ```
 
 If the terminal disconnects during first setup, run the same installation
@@ -183,6 +183,12 @@ lock. Once installation has started, the original release remains pinned.
 
 The installer interactively creates the first administrator. Do not place the
 administrator password in shell history, deployment scripts or release files.
+The administrator's email must be a real address such as `you@example.com`: the
+first server setup gives it to the certificate authority as the contact for the
+panel's HTTPS certificate. The installer refuses an address that request would
+refuse (for example `ali`, `ali@` or `ali@localhost`) and asks again; a
+credentials file with such an address stops the installation before anything is
+installed and says what to correct.
 Release archives and machine-readable manifests remain available under
 `https://celikpanel.net/releases/`. Each archive also carries an exact internal
 `SHA256SUMS` manifest and commit/tree provenance. Publisher identity and
@@ -239,8 +245,8 @@ environment; the public verification key is tracked and pinned by the product.
 workflow:
 
 ```bash
-make dist-sign VERSION=v0.1.0-alpha.101 SIGNING_KEY=<full-key-fingerprint>
-gpg --verify dist/celikpanel-v0.1.0-alpha.101.tar.gz.asc dist/celikpanel-v0.1.0-alpha.101.tar.gz
+make dist-sign VERSION=v0.1.0-alpha.102 SIGNING_KEY=<full-key-fingerprint>
+gpg --verify dist/celikpanel-v0.1.0-alpha.102.tar.gz.asc dist/celikpanel-v0.1.0-alpha.102.tar.gz
 ```
 
 That optional `.asc` file is not one of the six canonical public assets, does
