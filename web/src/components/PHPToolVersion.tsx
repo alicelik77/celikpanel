@@ -44,7 +44,10 @@ export function PHPToolVersion({ serviceId, tool }: { serviceId: string; tool: P
     // tool's extension packages: choosing it again installs and tests them.
     // Hazır değilse ya da eklenti paketleri eksikse mevcut sürüm yeniden sunulur.
     const options = versions.filter((version) => version !== current || !state?.ready || !state.extensions_present);
-    const selected = options.includes(choice) ? choice : options[0] ?? '';
+    // Lacking extension packages on a running version: that version first,
+    // as the card's sentence says. / Eklentisi eksikse önce o sürüm.
+    const fallback = state?.ready && !state.extensions_present && options.includes(current) ? current : options[0] ?? '';
+    const selected = options.includes(choice) ? choice : fallback;
 
     const move = async () => {
         if (!selected || moving) return;

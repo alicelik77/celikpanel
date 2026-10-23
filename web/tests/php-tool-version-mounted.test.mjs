@@ -181,6 +181,7 @@ test('extension packages missing on the bound version: not ready, and that versi
     assert.equal(attr('data-php-tool-state').props['data-php-tool-state'], 'extensions');
     assert.equal(label(attr('data-php-tool-state')), say('component.phpTool.missingExtensions', { tool: 'phpPgAdmin', version: '8.4' }));
     assert.deepEqual(attr('data-php-tool-select').props.children.map((option) => option.props.value), ['8.6', '8.5', '8.4']);
+    assert.equal(attr('data-php-tool-select').props.value, '8.4', 'the version the sentence names is not the one chosen');
   } finally { await unmount(); }
 });
 

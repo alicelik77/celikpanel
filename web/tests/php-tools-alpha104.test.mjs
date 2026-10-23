@@ -333,6 +333,10 @@ test('the tools moved, then the removal was refused: both are said and everythin
     assert.ok(text.includes(say('services.version.moveDone', { tools: nameOf('roundcube'), version: '8.6' })), text);
     assert.ok(text.includes(say('services.version.moveKept', { version: '8.4' })), text);
     assert.ok(label(tree.root).includes(say('err.REMOVAL_PLAN_CHANGED')), 'the refusal is not said');
+    // The refusal follows the note of what moved, before the rest of the dialog.
+    const whole = label(tree.root);
+    assert.ok(whole.indexOf(say('err.REMOVAL_PLAN_CHANGED')) < whole.indexOf(say('services.version.moveLabel')), 'the refusal is not next to the moves');
+    assert.equal(whole.split(say('err.REMOVAL_PLAN_CHANGED')).length, 2, 'the refusal is said twice');
     assert.ok(!label(tree.root).includes('Nothing was removed: the tools'), 'nothing claims no tool moved');
     assert.ok(requests.filter((request) => request.path === '/api/v1/service/php-tools').length > readsBefore, 'the tools were not read again');
   } finally { await unmount(); }

@@ -3623,6 +3623,9 @@ function VersionDrawer({
                     {/* What a failed move did comes first, where it is seen.
                         Başarısız taşımanın yaptığı önce, görüldüğü yerde. */}
                     {moveFailure && <MoveFailureNote failure={moveFailure} removed={removeTarget.version} toolName={toolName} />}
+                    {/* After moves, the refusal stands with them, where it is seen
+                        on a phone too. / Taşımalardan sonra ret onların yanında. */}
+                    {moveFailure && <ErrorBanner error={removeError} className="mb-3" />}
                     {removeTarget.unit && phpVersions && (
                         <VersionRemovalImpact
                             name={`${componentName(service, t)} ${removeTarget.version}`}
@@ -3643,7 +3646,7 @@ function VersionDrawer({
                         here, in the confirm dialog (B3d).
                         Retin kanıtı — engelleyen siteler — buraya, onay
                         penceresine düşer (B3d). */}
-                    <ErrorBanner error={removeError} />
+                    {!moveFailure && <ErrorBanner error={removeError} />}
                 </Dialog>
             )}
         </fieldset>
