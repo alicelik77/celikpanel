@@ -229,7 +229,7 @@ test('server payloads, stored markers and bounded summaries fail closed at the b
 
 test('the exact discovered target is visible and rapid clicks are blocked', () => {
     assert.match(card, /actionInFlight\.current \|\| systemUpdate\.active/);
-    assert.match(card, /disabled=\{starting \|\| readinessChecking \|\| readiness\?\.ready !== true\}/);
+    assert.match(card, /disabled=\{starting \|\| readinessChecking \|\| openChecking \|\| stopped !== null \|\| readiness\?\.ready !== true\}/);
     assert.match(card, /t\('panelUpdate\.start', \{ version: target\.version \}\)/);
     assert.match(card, /\{t\('panelUpdate\.targetVersion'\)\}.*\{target\.version\}/s);
     assert.match(card, /\{t\('panelUpdate\.sequence'\)\}.*\{target\.sequence\}/s);

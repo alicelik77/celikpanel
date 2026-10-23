@@ -152,13 +152,13 @@ globalThis.localStorage = {
     removeItem: key => { storage.delete(key); },
 };
 
-async function withMounted(element, { role = 'admin', stored = storedAvailable(), locale = 'en', check, readiness = { ready: true } } = {}, inspect) {
+async function withMounted(element, { role = 'admin', stored = storedAvailable(), locale = 'en', check, readiness = { ready: true }, refresh, operation } = {}, inspect) {
     discovery.resetPanelUpdateDiscoveryForTests();
     const previousFetch = globalThis.fetch;
     const fixture = {
         auth: { role, user: { username: role }, logout() {} },
         strings: catalogues[locale], locale, requests: [], readiness, readinessReads: 0,
-        operation: { active: false, start: async () => { fixture.starts += 1; return { kind: 'accepted' }; }, tracking: null },
+        operation: { active: false, start: async () => { fixture.starts += 1; return { kind: 'accepted' }; }, tracking: null, ...(operation ?? {}) },
         starts: 0,
     };
     globalThis.discoveryFixture = fixture;
@@ -177,6 +177,13 @@ async function withMounted(element, { role = 'admin', stored = storedAvailable()
             return Response.json(stored);
         }
         if (path === '/api/v1/panel/update/check' && check) return check();
+        // alpha.103: the check made when the update screen opens. Unless a
+        // test answers it, the Panel says the known result is recent.
+        if (path === discovery.PANEL_UPDATE_DISCOVERY_REFRESH_URL) {
+            if (refresh) return refresh(fixture);
+            if (stored === null) return new Response('{}', { status: 500 });
+            return Response.json({ ...stored, refresh: { outcome: 'fresh' } });
+        }
         throw new Error('unexpected request: ' + path);
     };
     let renderer;
@@ -627,4 +634,207 @@ test('a three-digit prerelease target (alpha.100, sequence 100) is read; a seque
     assert.deepEqual(discovery.decodeDiscoveredTarget(target)?.version, 'v0.1.0-alpha.100');
     assert.equal(discovery.decodeDiscoveredTarget(target)?.sequence, '100');
     assert.equal(discovery.decodeDiscoveredTarget({ ...target, sequence: '0100' }), null);
+});
+
+// --- alpha.103: opening the update screen checks again; a stopped update leaves the card full ---
+//
+// Frankfurt (2026-10-23, on alpha.100): the sidebar said "Update available ·
+// v0.1.0-alpha.101"; the update screen offered alpha.101 although alpha.102
+// had been published hours before, until "Check for updates" was pressed.
+// Boston (same day, on alpha.100): the update to alpha.102 stopped unchanged
+// because the package manager was busy; while that notice was open the card
+// showed only the installed version, "Technical details" and the switch.
+// Frankfurt alpha.100'de 101'i gosterdi, 102 yayimdaydi; Boston'da durdurulan
+// guncellemenin bildirimi acikken kart bostu.
+
+const NEWER = { ...TARGET, version: 'v0.1.0-alpha.97', commit: 'e'.repeat(40), sequence: '97' };
+const storedNewer = () => storedAvailable({
+    last: { checked_at: '2026-10-17T12:00:00Z', outcome: 'available', automatic: true, target: NEWER, found_at: '2026-10-17T12:00:00Z', current_version: CURRENT.version, current_commit: CURRENT.commit },
+    checked_age_seconds: 0, found_age_seconds: 0,
+});
+const thirteenHours = (extra = {}) => storedAvailable({ checked_age_seconds: 13 * HOUR, found_age_seconds: 13 * HOUR, ...extra });
+const refreshReads = fixture => fixture.requests.filter(line => line === 'GET ' + discovery.PANEL_UPDATE_DISCOVERY_REFRESH_URL).length;
+const detailsOf = renderer => renderer.root.findAll(node => node.props && node.props['data-update-status-detail'] !== undefined).map(textOf);
+const offerOf = renderer => renderer.root.findAll(node => node.type === 'div' && node.props['data-update-offer'] !== undefined);
+const checkButton = renderer => renderer.root.findAll(node => node.type === 'button')
+    .find(node => node.props['data-variant'] === 'secondary' && node.props.id !== 'panel-update-start-button');
+const thirteenHoursAgo = locale => discovery.relativeAge(Date.now() - 13 * HOUR * 1000, Date.now(), locale, say('panelUpdate.status.justNow', {}, locale));
+
+for (const locale of ['en', 'tr']) {
+    test(`${locale}: a result older than ten minutes is checked again on opening: waiting with the stored offer kept, then the newest release`, async () => {
+        let answer;
+        const pending = new Promise(resolve => { answer = resolve; });
+        const both = React.createElement(React.Fragment, null, shell(), React.createElement(PanelUpdateCard));
+        await withMounted(both, { locale, stored: thirteenHours(), refresh: () => pending }, async (renderer, fixture) => {
+            // Waiting: visible, the known offer kept and marked, Start and the check wait.
+            assert.equal(refreshReads(fixture), 1);
+            assert.equal(statusOf(renderer).props['data-update-status'], 'reading');
+            assert.equal(textOf(statusOf(renderer).find(node => node.type === 'p' && node.props.className === 'font-medium')), say('panelUpdate.status.openChecking', {}, locale));
+            const known = say('panelUpdate.status.available', { version: TARGET.version, age: thirteenHoursAgo(locale) }, locale);
+            assert.deepEqual(detailsOf(renderer), [
+                say('panelUpdate.status.openCheckingKnown', { known }, locale),
+                say('panelUpdate.status.openCheckingWait', {}, locale),
+            ]);
+            assert.equal(offerOf(renderer).length, 1);
+            assert.equal(offerOf(renderer)[0].props['data-update-rechecking'], '');
+            assert.equal(primaries(renderer)[0].props.disabled, true, 'Start did not wait for the check');
+            assert.equal(checkButton(renderer).props.disabled, true);
+            assert.equal(statusOf(renderer).findAll(node => node.props && node.props['data-icon'] === 'Loader2').length, 1, 'the wait has no motion');
+            // The answer: the newest release, shared with the sidebar.
+            await act(async () => { answer(Response.json({ ...storedNewer(), refresh: { outcome: 'checked' } })); await flush(); });
+            await act(async () => { await flush(); });
+            assert.equal(statusOf(renderer).props['data-update-status'], 'available');
+            assert.ok(statusText(renderer).startsWith(say('panelUpdate.status.available', { version: NEWER.version, age: say('panelUpdate.status.justNow', {}, locale) }, locale)), statusText(renderer));
+            assert.equal(textOf(primaries(renderer)[0]).trim(), say('panelUpdate.start', { version: NEWER.version }, locale));
+            assert.equal(primaries(renderer)[0].props.disabled, false);
+            assert.equal(offerOf(renderer)[0].props['data-update-rechecking'], undefined);
+            assert.equal(textOf(sidebarLinks(renderer)[0]).trim().replace(/\s+/g, ' '), say('panelUpdate.notice.sidebar', { version: NEWER.version }, locale));
+            assert.equal(fixture.requests.filter(line => line.includes('/update/check')).length, 0, 'the button check was used');
+            assert.equal(refreshReads(fixture), 1, 'opening asked more than once');
+            assert.equal(fixture.starts, 0, 'opening started an update');
+        });
+    });
+}
+
+test('a result checked less than ten minutes ago is not checked again on opening', async () => {
+    await withMounted(React.createElement(PanelUpdateCard), { stored: storedAvailable({ checked_age_seconds: 9 * 60, found_age_seconds: 9 * 60 }) }, async (renderer, fixture) => {
+        assert.equal(refreshReads(fixture), 0);
+        assert.equal(statusOf(renderer).props['data-update-status'], 'available');
+        assert.equal(primaries(renderer)[0].props.disabled, false);
+    });
+    assert.equal(discovery.PANEL_UPDATE_OPEN_FRESH_MS, 10 * 60 * 1000);
+    const now = Date.parse('2026-10-17T12:00:00Z');
+    const value = age => discovery.decodePanelUpdateDiscovery(storedAvailable({ checked_age_seconds: age }), now);
+    assert.equal(discovery.panelUpdateOpenCheckDue(value(599), now), false);
+    assert.equal(discovery.panelUpdateOpenCheckDue(value(600), now), true);
+    assert.equal(discovery.panelUpdateOpenCheckDue({ ...value(13 * HOUR), autoCheck: false }, now), false);
+    assert.equal(discovery.panelUpdateOpenCheckDue({ ...value(0), last: null }, now), true, 'a panel that never checked is due');
+    assert.equal(discovery.panelUpdateOpenCheckDue(null, now), false);
+});
+
+test('with automatic checks off, opening contacts nothing and shows the stored offer with its age and the button to check', async () => {
+    await withMounted(React.createElement(PanelUpdateCard), { stored: thirteenHours({ auto_check: false }) }, async (renderer, fixture) => {
+        assert.equal(refreshReads(fixture), 0, 'opening asked although automatic checks are off');
+        assert.equal(statusOf(renderer).props['data-update-status'], 'available');
+        assert.deepEqual(detailsOf(renderer), [say('panelUpdate.status.lastChecked', { age: thirteenHoursAgo('en') })]);
+        assert.equal(textOf(renderer.root.find(node => node.props && node.props['data-update-next'] !== undefined)), say('panelUpdate.status.off'));
+    });
+});
+
+test('a failed check on opening keeps the stored offer with its age and the failure guidance; an unanswered one says it is not known', async () => {
+    const failed = () => Response.json({
+        ...thirteenHours(),
+        last: { ...thirteenHours().last, checked_at: '2026-10-17T12:00:00Z', outcome: 'failed', reason_code: 'release_unverified' },
+        checked_age_seconds: 0, refresh: { outcome: 'checked' },
+    });
+    await withMounted(React.createElement(PanelUpdateCard), { stored: thirteenHours(), refresh: failed }, async (renderer) => {
+        assert.equal(statusOf(renderer).props['data-update-status'], 'available');
+        assert.ok(statusText(renderer).startsWith(say('panelUpdate.status.available', { version: TARGET.version, age: thirteenHoursAgo('en') })));
+        assert.deepEqual(detailsOf(renderer), [say('panelUpdate.status.lastFailed', { age: 'just now', reason: say('panelUpdate.discoveryReason.release_unverified') })]);
+        assert.equal(primaries(renderer)[0].props.disabled, false, 'a failed check took the offer away');
+    });
+    // The Panel did not answer the opening at all: the result is not known, the offer stays.
+    await withMounted(React.createElement(PanelUpdateCard), { stored: thirteenHours(), refresh: () => new Response('{}', { status: 502 }) }, async (renderer) => {
+        assert.equal(statusOf(renderer).props['data-update-status'], 'available');
+        assert.deepEqual(detailsOf(renderer), [`${say('panelUpdate.status.openUnknown')} ${say('panelUpdate.status.shownFrom', { age: thirteenHoursAgo('en') })}`]);
+        assert.equal(primaries(renderer).length, 1);
+    });
+    // A condition was not met: said with its reason, nothing replaced.
+    const skipped = reason => () => Response.json({ ...thirteenHours(), refresh: { outcome: 'skipped', reason_code: reason } });
+    await withMounted(React.createElement(PanelUpdateCard), { stored: thirteenHours(), refresh: skipped('update_active') }, async (renderer) => {
+        assert.deepEqual(detailsOf(renderer), [`${say('panelUpdate.status.openSkippedRecentUpdate')} ${say('panelUpdate.status.shownFrom', { age: thirteenHoursAgo('en') })}`]);
+    });
+    await withMounted(React.createElement(PanelUpdateCard), { stored: thirteenHours(), refresh: skipped('server_busy'), locale: 'tr' }, async (renderer) => {
+        assert.deepEqual(detailsOf(renderer), [`${say('panelUpdate.status.openSkipped', { reason: say('panelUpdate.discoveryReason.server_busy', {}, 'tr') }, 'tr')} ${say('panelUpdate.status.shownFrom', { age: thirteenHoursAgo('tr') }, 'tr')}`]);
+    });
+});
+
+test('opening never checks while an update is followed', async () => {
+    await withMounted(React.createElement(PanelUpdateCard), {
+        stored: thirteenHours(),
+        operation: { active: true, tracking: { version: TARGET.version, phase: 'applying', elapsed: '00:10', requestID: 'f'.repeat(32) } },
+    }, async (renderer, fixture) => {
+        assert.equal(refreshReads(fixture), 0);
+        assert.equal(offerOf(renderer).length, 0);
+    });
+});
+
+// Boston's state, from the code: the stopped attempt's notice is open (the
+// update lock is held), the stored check still names the target, the
+// updater's summary says the package manager was busy.
+const bostonStop = (extra = {}) => ({
+    active: true, tracking: null, steps: null, updated: null,
+    stopped: {
+        requestID: 'a1'.repeat(16), version: TARGET.version, commit: TARGET.commit,
+        at: Date.parse('2026-10-23T11:58:00Z'), packageManagerBusy: true, rolledBack: false, ...extra,
+    },
+});
+const busyReadiness = { ready: false, code: 'HOST_MUTATION_BUSY', reason: 'package_manager_active' };
+
+for (const locale of ['en', 'tr']) {
+    test(`${locale}: Boston: with the stopped update's notice open, the card shows the offer, the earlier attempt and the package manager, as the sidebar does`, async () => {
+        const both = React.createElement(React.Fragment, null, shell(), React.createElement(PanelUpdateCard));
+        await withMounted(both, { locale, stored: thirteenHours(), operation: bostonStop(), readiness: busyReadiness }, async (renderer, fixture) => {
+            // The sidebar and the card say the same release.
+            assert.equal(textOf(sidebarLinks(renderer)[0]).trim().replace(/\s+/g, ' '), say('panelUpdate.notice.sidebar', { version: TARGET.version }, locale));
+            assert.equal(statusOf(renderer).props['data-update-status'], 'available');
+            assert.ok(statusText(renderer).includes(TARGET.version));
+            assert.equal(offerOf(renderer).length, 1, 'the offer is missing while the notice is open');
+            // The earlier attempt, calm, with its cause.
+            const notice = renderer.root.find(node => node.props && node.props['data-previous-attempt'] !== undefined);
+            assert.equal(notice.props['data-previous-attempt'], 'stopped');
+            assert.doesNotMatch(notice.props.className, /warning/);
+            assert.ok(textOf(notice).includes(say('panelUpdate.previousAttempt.stoppedTitle', {}, locale)));
+            const cause = notice.find(node => node.props && node.props['data-previous-attempt-cause'] !== undefined);
+            assert.equal(cause.props['data-previous-attempt-cause'], 'package_manager_busy');
+            // The package manager, from the card's own readiness read.
+            assert.equal(fixture.readinessReads, 1);
+            const line = notice.find(node => node.props && node.props['data-previous-attempt-package-manager'] !== undefined);
+            assert.equal(line.props['data-previous-attempt-package-manager'], 'busy');
+            assert.equal(textOf(line), say('panelUpdate.previousAttempt.packageManagerStillBusy', {}, locale));
+            // Start: the version is named, the button waits for the notice to be closed.
+            assert.equal(textOf(primaries(renderer)[0]).trim(), say('panelUpdate.start', { version: TARGET.version }, locale));
+            assert.equal(primaries(renderer)[0].props.disabled, true);
+            const why = renderer.root.find(node => node.props && node.props['data-update-stopped-notice-open'] !== undefined);
+            assert.equal(textOf(why), say('panelUpdate.stoppedNoticeOpen', { version: TARGET.version }, locale));
+            // Nothing asked the release server, nothing started.
+            assert.equal(refreshReads(fixture), 0, 'a stop led to a check on opening');
+            assert.equal(fixture.starts, 0);
+        });
+    });
+}
+
+test('Boston: the package manager free again is said on the card; the server record of the attempt is used when it names it', async () => {
+    const stored = thirteenHours({ previous_attempt: { request_id: 'a1'.repeat(16), phase: 'failed', finished_at: '2026-10-23T11:58:00Z' } });
+    await withMounted(React.createElement(PanelUpdateCard), { stored, operation: bostonStop() }, async (renderer) => {
+        const notices = renderer.root.findAll(node => node.props && node.props['data-previous-attempt'] !== undefined);
+        assert.equal(notices.length, 1, 'one notice for one attempt');
+        const line = notices[0].find(node => node.props && node.props['data-previous-attempt-package-manager'] !== undefined);
+        assert.equal(line.props['data-previous-attempt-package-manager'], 'free');
+        assert.ok(textOf(notices[0]).includes(new Date('2026-10-23T11:58:00Z').toLocaleString('en-US')));
+        assert.equal(primaries(renderer)[0].props.disabled, true, 'Start opened before the notice was closed');
+    });
+    // A stop that was not the package manager: still calm, still the offer.
+    await withMounted(React.createElement(PanelUpdateCard), { stored: thirteenHours(), operation: bostonStop({ packageManagerBusy: false }) }, async (renderer) => {
+        const notice = renderer.root.find(node => node.props && node.props['data-previous-attempt'] !== undefined);
+        assert.equal(notice.props['data-previous-attempt'], 'stopped');
+        assert.equal(notice.findAll(node => node.props && node.props['data-previous-attempt-cause'] === 'package_manager_busy').length, 0);
+        assert.equal(offerOf(renderer).length, 1);
+    });
+    // The notice closed: the lock is gone and Start opens.
+    await withMounted(React.createElement(PanelUpdateCard), { stored: thirteenHours(), operation: { active: false, stopped: null } }, async (renderer) => {
+        assert.equal(renderer.root.findAll(node => node.props && node.props['data-update-stopped-notice-open'] !== undefined).length, 0);
+        assert.equal(primaries(renderer)[0].props.disabled, false);
+    });
+});
+
+test('the provider tells the card about a stop only for a request that ended unchanged or verified back', () => {
+    const tracker = source('components/SystemUpdateOperation.tsx');
+    assert.match(tracker, /const stopped: SystemUpdateStopped \| null = displayedTerminal\?\.kind === 'failed'\n\s+&& \(failureGuidance\?\.state === 'unchanged' \|\| failureGuidance\?\.state === 'rolled_back'\)/);
+    assert.match(tracker, /packageManagerBusy: systemUpdatePackageManagerBusy\(displayedTerminal\.message\)/);
+    // The lock is unchanged: the card's Start still waits while it is held.
+    assert.match(tracker, /const occupied = systemUpdateMutationLocked\(/);
+    const card = source('components/PanelUpdateCard.tsx');
+    assert.match(card, /const inFlight = systemUpdate\.active && !stopped;/);
+    assert.match(card, /async function startUpdate\(\) \{\n\s+const target = offer\?\.target;\n\s+if \(actionInFlight\.current \|\| systemUpdate\.active/);
 });

@@ -261,7 +261,7 @@ test('the provider: restart from the read, warning only off the restart, a failu
     // Since 2026-10-16 the card also carries "Updated to", so a success is not repeated either.
     assert.match(tracker, /const inlineNoticeCarriesTracking = systemUpdateCornerNoticeRepeats\(inlineNotices, tracking !== null \|\| updated !== null\);/);
     assert.match(tracker, /const backgroundVisible = navigationLease\.released && !authPaused && !blocking && exactMarker !== null\n\s+&& !inlineNoticeCarriesTracking/);
-    assert.match(tracker, /registerInlineNotice,\n\s+steps: stepsView,\n\s+updated,\n\s+\}\}>/);
+    assert.match(tracker, /registerInlineNotice,\n\s+steps: stepsView,\n\s+updated,\n\s+stopped,\n\s+\}\}>/);
     // The do-not-start-another-update lock is untouched: mutation stays occupied.
     assert.match(tracker, /const occupied = systemUpdateMutationLocked\(/);
 });
