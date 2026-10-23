@@ -23,7 +23,7 @@ Code decisions live in git; this file is for strategy. Newest first.
 
 ## D-037 · Every page is where its name says it is: Settings holds settings; tools, security and maintenance live under Server; the person's own account lives in the personal menu
 
-*October 22, 2026 (clock date) · Owner request of 2026-10-21 and approval of 2026-10-22; in source for the v0.1.0-alpha.98 candidate, published 2026-10-22; on 2026-10-22 the owner's screens showed the new menu on both installed servers after the owner's own update · Amended 2026-10-22: changing one's own email, in source for the v0.1.0-alpha.99 candidate; nothing of the amendment measured on an installed server · Amended again 2026-10-22: Server setup moves under Server, the removal dialog says what is affected, the first visit opens the installed view; in source for the v0.1.0-alpha.100 candidate*
+*October 22, 2026 (clock date) · Owner request of 2026-10-21 and approval of 2026-10-22; in source for the v0.1.0-alpha.98 candidate, published 2026-10-22; on 2026-10-22 the owner's screens showed the new menu on both installed servers after the owner's own update · Amended 2026-10-22: changing one's own email, in source for the v0.1.0-alpha.99 candidate; nothing of the amendment measured on an installed server · Amended again 2026-10-22: Server setup moves under Server, the removal dialog says what is affected, the first visit opens the installed view; in source for the v0.1.0-alpha.100 candidate · Amended 2026-10-23: a removal never removes anything it did not name, and each PHP tool runs on a PHP version the owner chooses; in source for the v0.1.0-alpha.104 candidate; nothing measured on an installed server*
 
 On 2026-10-21 the owner asked: "ayarlardaki bu alt
 menüdeki her şey ayarlar ile mi ilgili?" (In English: is everything in this
@@ -551,7 +551,121 @@ owner's own configuration does.
 Not done: nothing is measured on an installed server; what a distribution
 package's own removal script deletes is not read or claimed.
 
+### Amendment (2026-10-23, clock date): a removal never removes anything it did not name; each PHP tool runs on a PHP version the owner chooses
+
+*Owner decisions of 2026-10-23 after the Frankfurt incident ("Tüm düzeltmeleri 104'te yap. 105'e bir şey bırakma."); in source for the v0.1.0-alpha.104 candidate; nothing measured on an installed server*
+
+What happened. On 2026-10-23 Frankfurt (Debian 13, alpha.103, PHP-FPM 8.6, 8.5
+and 8.4 installed; 8.4 is Debian 13's own PHP) showed phpMyAdmin, phpPgAdmin,
+Roundcube and the Webmail bundle as installed. The owner removed PHP-FPM 8.4 from
+the versions list. The dialog said only: "Removes this version and its companion
+packages from the server. If any site still runs on it, the panel refuses and lists
+them." Two minutes later phpMyAdmin was "Not installed" and webmail was "not
+verified — Roundcube is installed, but its Unix-socket runtime is not ready".
+Nothing else had been done. The server's own apt history showed why: the Agent ran
+`apt-get purge -y --auto-remove` on PHP 8.4's packages, and apt, without asking,
+also purged phpmyadmin, the distribution's php-fpm, php-mysql, php-mbstring,
+php-pgsql and php-xml packages, php8.4-readline, dbconfig-common, dbconfig-mysql and
+about 35 libraries — everything that depended on what was purged, and what only
+those had needed. Roundcube, phpMyAdmin and phpPgAdmin had all been served from
+`php8.4-fpm.sock` (the configuration CelikPanel writes for them names one PHP-FPM
+socket); with 8.4 gone, webmail and phpPgAdmin stopped answering although
+phpPgAdmin still read "Installed". The removal had taken another component and
+broken two more without a word, against rule 3 of the alpha.100 amendment above
+("truth first; affected, by name") and against D-022.
+
+The rules adopted:
+
+1. **A removal never removes anything it did not name; the package manager's own
+   simulation decides, and anything outside the expected set refuses the removal.**
+   Before any package removal (every component, every version, apt and pacman; the
+   DNF preview stays unreachable), the Agent asks the package manager what the
+   removal would do, without changing anything. The expected set is: the packages
+   the removal names; the packages of the same runtime version, which cannot work
+   without it ("php8.4-…" beside php8.4-common, "postgresql-17-…" beside
+   postgresql-17); and the automatically installed packages that only this removal
+   leaves unused. Anything else the package manager would remove — a package of
+   another catalogue component (phpMyAdmin), the removed component's own
+   distribution package (php-fpm, which means this version is the system's
+   default), any other package that depends on what is removed (php-mysql), or
+   anything it would install — refuses the removal with the names, and nothing
+   changes: no service is stopped. Packages that were already unused before the
+   removal (an old kernel) are left alone. The real removal names the exact list
+   that was simulated, runs with the same arguments as the last simulation, which is
+   repeated right before it, and runs under the same package lock; when the answer
+   changed in between (another package operation ran), it is refused.
+2. **Each PHP tool runs on one PHP version, and the owner chooses it.** Webmail
+   (Roundcube), phpMyAdmin and phpPgAdmin are each bound to an installed PHP-FPM
+   version. The binding is what the tool's generated nginx configuration names (an
+   owner's own edit of that line is respected), remembered by the Agent so that a
+   tool removed and installed again returns to it. A reconfiguration keeps a tool
+   on its version while that version is installed and makes sure the tool's PHP
+   extensions exist for it; it never moves a tool to the newest version again (the
+   old choice was the alphabetically last socket, which also put 8.9 after 8.10).
+   A tool with nothing bound yet gets the distribution's default PHP (the version
+   its installed php-* packages depend on, then the system's php-fpm and php
+   alternatives), else the newest version that has its extensions. The owner moves
+   a tool in **the tool's own Manage window** ("PHP version"), like a site's PHP
+   version in its settings; only installed versions are offered. A move installs
+   the tool's extensions for that version when they are missing, asks that PHP for
+   them, writes the tool's nginx configuration, checks it, reloads nginx and then
+   requires the tool to answer as itself through its own socket (its real page, not
+   a gateway error, a raw PHP file or its own "extension missing" page); otherwise
+   the previous configuration is put back and the window says so: the reason, that
+   the tool runs on its previous version again, and what to do. One change at a
+   time, administrators only, visible waiting, and a repeated request is answered,
+   not run twice (D-029).
+3. **The PHP-FPM versions list says who uses each version**: "Used by 2 sites,
+   phpPgAdmin, Roundcube", or that nothing uses it, from the Panel's site records
+   and the Agent's bindings.
+4. **Removing a PHP version that sites or tools use names them and is refused
+   before anything changes.** Sites are moved in each site's settings (the dialog
+   names them and links to Domains). For tools the dialog offers "Move them to
+   [version], then remove": each tool is moved and proved there, one by one, and
+   the version is removed only when every move worked (and the package manager's
+   simulation still accepts the removal); at the first failed move nothing is
+   removed, and the dialog says exactly which tools now run on the new version,
+   which one was put back where, and which were not tried.
+5. **Every removal dialog says the package manager's answer before the button:**
+   the exact packages it would remove; what it would also take, by package and
+   component, with the next action ("remove phpMyAdmin first, or keep PHP-FPM
+   8.4"); when the version is the system's default; and when the check could not
+   run (another package operation was running, or no answer in 30 seconds) that
+   the removal is checked again when pressed and refused if it would take anything
+   else. A removal the Panel already knows it would refuse is not offered; a read
+   that failed never holds the removal.
+6. **A PHP tool whose PHP version is missing is not shown as plainly installed**:
+   the Components row says "Not ready" with the reason (the version is not running,
+   or no longer installed) and the fix (choose a PHP version in Manage).
+
+This replaces, for removals, the alpha.100 statement that apt's purge takes "any
+automatically installed package that nothing needs any more (system-wide)"; it also
+replaces that amendment's implementation note that the Remove button is never
+disabled by the read: a refusal the simulation already shows makes Remove
+unavailable, a failed or unknown read still never does. The other rules of the
+alpha.100 amendment stand.
+
+What this does not authorise: no automatic move of a tool to another PHP version
+(only the owner's explicit choice moves one), no change to how sites pick their PHP
+version, no installation of a PHP version the owner did not install, no change to
+the updater, no claim about installed servers before the owner sees them there.
+Installed panels are still updated only by their owners from the panel's own update
+screen.
+
+Relation to the rest. D-022: the native configuration stays the truth and an owner's
+edit wins. D-024: refusals name the reason, who acts and the next action, and a
+verified refusal, an unmet prerequisite and an unknown answer are kept apart. D-025:
+a changed removal path in the Agent, so its evidence is recorded (RESILIENCE-CONTRACT,
+alpha.104). D-029: the move route carries a request identity. D-036: Debian 13's
+phpMyAdmin version `4:5.2.2-really+dfsg-1+deb13u1` now reads 5.2.2 (the alpha.101
+rule required a digit after "really").
+
+Not done: nothing is measured on an installed server; the real-system evidence is a
+disposable Debian 13 machine (RESILIENCE-CONTRACT, alpha.104); pacman's path is
+covered by component tests only; the DNF path stays unreachable.
+
 ---
+
 
 ## D-036 · A version shown is the package database's own answer; unknown stays unknown
 
