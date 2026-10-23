@@ -308,8 +308,19 @@ func TestVersionRemovalWithAMoveAsksThePackageManagerFirstAndKeepsTheMovesOnARef
 	} {
 		stubRemovalPreview(t, preview)
 		recorder := uninstall()
-		if got := decode(recorder); recorder.Code != http.StatusConflict || got.Code != errCodeRemovalCheckUnavailable || len(got.Moved) != 0 {
+		if got := decode(recorder); recorder.Code != http.StatusConflict || (got.Code != errCodeRemovalCheckUnavailable && got.Code != errCodeRemovalCheckFailed) || len(got.Moved) != 0 {
 			t.Fatalf("%d %+v", recorder.Code, got)
+		}
+	}
+	// Not installed and not checkable here: the truthful reason, not "try again".
+	for state, code := range map[string]string{"not_installed": errCodeRemovalVersionNotInstalled, "unsupported": errCodeRemovalCheckUnsupported, "busy": errCodeRemovalCheckUnavailable} {
+		stubRemovalPreview(t, func(transport.ServiceRemovalPreviewRequest) (transport.ServiceRemovalPreviewResponse, error) {
+			return transport.ServiceRemovalPreviewResponse{State: state}, nil
+		})
+		recorder := uninstall()
+		got := decode(recorder)
+		if got.Code != code || len(got.Moved) != 0 || (state != "busy" && strings.Contains(got.Error, "in a moment")) {
+			t.Fatalf("%s: %d %+v", state, recorder.Code, got)
 		}
 	}
 	// It would take other packages: nothing moves, and they are named.

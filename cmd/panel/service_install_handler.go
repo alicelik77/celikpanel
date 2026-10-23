@@ -554,8 +554,11 @@ func (p *Panel) handleServiceUninstall(w http.ResponseWriter, r *http.Request) {
 				reason = previewErr.Error()
 			}
 			p.audit(r, "service.uninstall.failed:"+req.ServiceID+pkgSuffix(req.Package)+" — "+auditReason("removal check before moving PHP tools: "+reason), "service", 0)
-			writeCodedError(w, http.StatusConflict, errCodeRemovalCheckUnavailable,
-				"The package manager could not be asked now what removing this version takes, so no tool was moved and nothing was removed. Try again in a moment.", "")
+			code, message := removalCheckRefusal(preview.State, removedVersion)
+			if previewErr != nil {
+				code, message = removalCheckRefusal("", removedVersion)
+			}
+			writeCodedError(w, http.StatusConflict, code, message, "")
 			return
 		}
 		if len(preview.Collateral) > 0 {
@@ -897,6 +900,23 @@ func (p *Panel) handleServiceUninstall(w http.ResponseWriter, r *http.Request) {
 		answer["moved_to"] = req.MoveToolsTo
 	}
 	json.NewEncoder(w).Encode(answer)
+}
+
+// removalCheckRefusal says truthfully why no tool was moved when the
+// package manager's check did not accept the removal (alpha.104 review):
+// busy (try again shortly), the version not installed (nothing to remove),
+// a removal it cannot check here (move the tools yourself first), or no
+// answer (try again; the server administrator checks the package manager).
+func removalCheckRefusal(state, version string) (string, string) {
+	switch state {
+	case "busy":
+		return errCodeRemovalCheckUnavailable, "Another package operation is running, so the package manager could not be asked now what removing this version takes; no tool was moved and nothing was removed. Try again in a moment."
+	case "not_installed":
+		return errCodeRemovalVersionNotInstalled, fmt.Sprintf("PHP %s is not installed any more, so there is nothing to remove and no tool was moved. Read the versions again.", version)
+	case "unsupported":
+		return errCodeRemovalCheckUnsupported, "This removal cannot be checked by the package manager on this server, so no tool was moved and nothing was removed. Move the tools in each tool's Manage window first, then remove the version."
+	}
+	return errCodeRemovalCheckFailed, "The package manager's answer about this removal could not be read, so no tool was moved and nothing was removed. Try again; if it keeps failing, the server administrator runs the package manager's own consistency check on the server."
 }
 
 // writeRefusalAfterMoves answers a version removal that did not happen after

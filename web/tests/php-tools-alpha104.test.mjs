@@ -332,12 +332,12 @@ test('the tools moved, then the removal was refused: both are said and everythin
     const text = label(note);
     assert.ok(text.includes(say('services.version.moveDone', { tools: nameOf('roundcube'), version: '8.6' })), text);
     assert.ok(text.includes(say('services.version.moveKept', { version: '8.4' })), text);
-    assert.ok(label(tree.root).includes(say('err.REMOVAL_PLAN_CHANGED')), 'the refusal is not said');
+    assert.ok(label(tree.root).includes(say('err.afterMoves.REMOVAL_PLAN_CHANGED')), 'the refusal is not said');
     // The refusal follows the note of what moved, before the rest of the dialog.
     const whole = label(tree.root);
-    assert.ok(whole.indexOf(say('err.REMOVAL_PLAN_CHANGED')) < whole.indexOf(say('services.version.moveLabel')), 'the refusal is not next to the moves');
-    assert.equal(whole.split(say('err.REMOVAL_PLAN_CHANGED')).length, 2, 'the refusal is said twice');
-    assert.ok(!label(tree.root).includes('Nothing was removed: the tools'), 'nothing claims no tool moved');
+    assert.ok(whole.indexOf(say('err.afterMoves.REMOVAL_PLAN_CHANGED')) < whole.indexOf(say('services.version.moveLabel')), 'the refusal is not next to the moves');
+    assert.equal(whole.split(say('err.afterMoves.REMOVAL_PLAN_CHANGED')).length, 2, 'the refusal is said twice');
+    assert.ok(!label(tree.root).includes('Nothing was removed'), 'after moves a refusal says "Nothing was removed"');
     assert.ok(requests.filter((request) => request.path === '/api/v1/service/php-tools').length > readsBefore, 'the tools were not read again');
   } finally { await unmount(); }
 });
@@ -482,4 +482,27 @@ test('an install result naming another tool’s PHP problem is decoded for a war
     assert.notEqual(enShellHalf[key], trShellHalf[key], key);
   }
   assert.match(source('components/ComponentOperation.tsx'), /for \(const problem of decodePHPToolProblems\(next\.result\)\) \{\s*showToast\('warning'/);
+});
+
+// After moves no refusal says "Nothing was removed" (EN) or "Hiçbir şey
+// kaldırılmadı" (TR), for every coded refusal the removal can give.
+test('after moves, no refusal says nothing was removed, in English or Turkish', async () => {
+  for (const [catalogue, lead] of [[words, 'Nothing was removed'], [trWords, 'Hiçbir şey kaldırılmadı']]) {
+    for (const code of ['REMOVAL_PLAN_CHANGED', 'REMOVAL_WOULD_REMOVE_OTHERS', 'REMOVAL_SIMULATION_FAILED', 'REMOVAL_TOOLS_BOUND', 'REMOVAL_REFUSED']) {
+      await mount({ catalogue, extra: {
+        ...impactRoute(versionImpact(sim({ bound_tools: ['webmail'], refuses: true }))),
+        '/api/v1/service/uninstall': () => answer({ error: 'refused', code, details: ['php-mysql'], moved: ['webmail'], moved_to: '8.6' }, 409),
+      } });
+      try {
+        await openVersionRemoval('8.4');
+        const move = tree.root.findAll((node) => node.type === 'button' && node.props['data-version-move-remove'] !== undefined)[0];
+        await act(async () => { move.props.onClick(); });
+        for (let i = 0; i < 4; i += 1) await settle();
+        const text = label(tree.root);
+        assert.ok(tree.root.findAll((node) => node.props && node.props['data-version-move-failure'] !== undefined).length === 1, code);
+        assert.ok(!text.includes(lead), `${code}: ${lead}`);
+        assert.ok(text.includes(catalogue['err.afterMoves.' + code]), code);
+      } finally { await unmount(); }
+    }
+  }
 });

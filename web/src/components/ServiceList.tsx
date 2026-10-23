@@ -3298,7 +3298,10 @@ function VersionDrawer({
                 if (afterMoves && afterMoves.moved.length > 0) {
                     const movedTo = typeof (raw as { moved_to?: unknown } | null)?.moved_to === 'string' ? String((raw as { moved_to: string }).moved_to) : moveToolsTo;
                     setMoveFailure({ ...afterMoves, tool: '', version: afterMoves.version || movedTo, error: '' });
-                    setRemoveError(error);
+                    // After moves the refusal never says "Nothing was removed":
+                    // the tools moved. Its after-moves wording leads with the version.
+                    // Taşımalardan sonra ret "Hiçbir şey kaldırılmadı" demez.
+                    setRemoveError(error.code === 'REMOVAL_UNKNOWN_AFTER_MOVES' ? null : { ...error, code: 'afterMoves.' + (AFTER_MOVES_CODES.has(error.code ?? '') ? error.code : 'REMOVAL_REFUSED') });
                     setPhpToolsToken((n) => n + 1);
                     versionImpact.retry();
                     await onVersionInstalled();
@@ -3652,6 +3655,9 @@ function VersionDrawer({
         </fieldset>
     );
 }
+
+// Refusals with their own after-moves wording (alpha.104 review).
+const AFTER_MOVES_CODES: ReadonlySet<string> = new Set(['REMOVAL_PLAN_CHANGED', 'REMOVAL_WOULD_REMOVE_OTHERS', 'REMOVAL_SIMULATION_FAILED', 'REMOVAL_TOOLS_BOUND']);
 
 // The installed PHP versions the tools can move to: every other installed
 // version, newest first.
