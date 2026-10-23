@@ -131,7 +131,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.NginxInspect Agent.PanelRenewalReadiness Agent.MailHostCertificateStatus Agent.MailEnrollmentStatusV1 Agent.MailEnrollmentPreviewV1 Agent.PkgFamily
 		Agent.PostfixQueue Agent.ReadBackupChunk Agent.ReadFile
 		Agent.ReadSystemSQLiteSnapshotChunk Agent.RepoPackages Agent.ServiceCandidateVersion
-		Agent.ServiceJournal Agent.ServiceMutationReadiness Agent.SiteUsage Agent.Version Agent.VPNStatus
+		Agent.ServiceJournal Agent.ServiceMutationReadiness Agent.ServiceRemovalPreviewV1 Agent.SiteUsage Agent.Version Agent.VPNStatus
 		Agent.CheckSystemUpdate Agent.SecurityAudit Agent.SystemUpdateStatus
 	`),
 	agentRPCAuthGroup(agentRPCEffectControl, "", `
@@ -264,6 +264,7 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.ListCronJobs":                agentRPCQuickReadTimeout,
 	"Agent.NginxInspect":                agentRPCQuickReadTimeout,
 	"Agent.PkgFamily":                   agentRPCQuickReadTimeout,
+	"Agent.ServiceRemovalPreviewV1":     agentRPCStandardReadTimeout,
 	"Agent.PostfixQueue":                agentRPCQuickReadTimeout,
 	"Agent.RepoStatus":                  agentRPCDeploymentTimeout,
 	"Agent.SiteUsage":                   agentRPCQuickReadTimeout,

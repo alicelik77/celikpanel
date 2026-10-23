@@ -683,6 +683,10 @@ func (p *Panel) handleServiceUninstall(w http.ResponseWriter, r *http.Request) {
 	}
 	if resp.Error != "" && !resp.MutationApplied {
 		p.audit(r, "service.uninstall.failed:"+req.ServiceID+pkgSuffix(req.Package)+" — "+auditReason(resp.Error), "service", 0)
+		if code, details, ok := uninstallRefusalCode(resp); ok {
+			writeCodedErrorDetails(w, http.StatusConflict, code, resp.Error, "", details)
+			return
+		}
 		writeClientError(w, http.StatusConflict, resp.Error)
 		return
 	}
@@ -795,6 +799,43 @@ func (p *Panel) handleServiceUninstall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	json.NewEncoder(w).Encode(map[string]any{"removed": resp.Removed, "detail": resp.Detail, "success": true})
+}
+
+// uninstallRefusalCode carries the Agent's typed removal refusal (alpha.104)
+// to the browser with its evidence: the packages the removal would also take,
+// or the tools running on the PHP being removed.
+// uninstallRefusalCode, Agent'ın türlü kaldırma reddini kanıtıyla taşır.
+func uninstallRefusalCode(resp transport.UninstallServiceResponse) (string, []string, bool) {
+	switch resp.ErrorCode {
+	case errCodeRemovalWouldRemoveOthers:
+		details := make([]string, 0, len(resp.Collateral))
+		for _, item := range resp.Collateral {
+			details = append(details, item.Package)
+		}
+		return resp.ErrorCode, details, true
+	case errCodeRemovalToolsBound:
+		details := make([]string, 0, len(resp.BoundTools))
+		for _, tool := range resp.BoundTools {
+			details = append(details, phpToolLabel(tool))
+		}
+		return resp.ErrorCode, details, true
+	case errCodeRemovalSimulationFailed, errCodeRemovalPlanChanged:
+		return resp.ErrorCode, nil, true
+	}
+	return "", nil, false
+}
+
+// phpToolLabel names a PHP tool as the product does.
+func phpToolLabel(tool string) string {
+	switch tool {
+	case "webmail":
+		return "Roundcube"
+	case "phpmyadmin":
+		return "phpMyAdmin"
+	case "phppgadmin":
+		return "phpPgAdmin"
+	}
+	return tool
 }
 
 // versionFromPackage maps a version-pick package back to the version sites
