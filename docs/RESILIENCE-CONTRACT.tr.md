@@ -6559,3 +6559,64 @@ tek bir sürümü kaydeder; kod, şema ya da kurtarma davranışını değiştir
   değiştirmez.
 - **Açık; devreden.** alpha.101 aday girdisinin ve alpha.90–alpha.100
   girdilerinin açık bıraktığı her şey.
+
+### v0.1.0-alpha.102 adayı (kurucu yöneticinin e-postasını sertifika iletişim kuralıyla denetler; Agent, güncelleyici ya da şema değişikliği yok; ilke 1 ve 3; D-021 değişikliği; D-022; D-024; D-025; 2026-10-23)
+
+D-025 ilke 1 (sahip yetkisini korur: mevcut kurulumların saklanan adresleri
+yeniden denetlenmez ve değiştirilmez; sahibin kararı iletişim e-postasını zorunlu
+tutar) ve 3 (güvensiz eylemi gerçek sınırında durdur: sertifika isteğinin
+reddedeceği bir adres artık kurulumdan sonra Sunucu kurulumunda değil, ilk
+verildiği yerde, etkileşimli istemde ya da hiçbir şey kurulmadan çalışan
+yalnız-doğrulama denetiminde reddedilir). P0.1/P0.2 alanına (doğru, eyleme dönük
+durum) dokunulur. **Hiçbir P0 işi kapanmaz ya da ilerlemez**; P0.1–P0.5 kısmi
+kalır ve her açık kabul işi açık kalır. Bu girdi, yerel güncelleme ve otomatik
+geri alma dayanıklılığının tamamlandığı iddiası değildir. Sahibin kararları ve kod
+23 Ekim 2026 tarihlidir.
+
+- **Bu sürümün dokunduğu.** Panel'in yönetici oluşturma yolu
+  (`cmd/panel/admin_cli.go`): etkileşimli istem, katı kimlik bilgisi ayrıştırıcısı
+  ve yalnız-doğrulama kipi `mutationpayload.CanonicalContactEmail` kullanır; adres,
+  kendi e-posta değişikliğinin sakladığı gibi bu kanonik biçimde saklanır.
+  `install.sh`'nin ilk yönetici ön denetiminde bir ret cümlesi; bu denetime yalnız
+  kurulumda ulaşılır (güncelleyicinin yalnız-uygulama kipinde hemen döner). Sürüm
+  sırası sabitlerle birlikte 101'den 102'ye geçer. Agent'a, herhangi bir Agent iş
+  türüne ya da RPC'ye, güncelleyiciye (`update.sh`, sabitleri dışında `get.sh`,
+  sistem güncelleme işçisi, geri alma ve kurtarma), herhangi bir role, arayüze,
+  şemaya ya da sorgulamaya **dokunmaz**. Bu yüzden sahibin 16 Ekim 2026 talimatıyla
+  bu sürüm için **gerçek sistem kaydı yapılmaz**.
+- **Denetimlerin sırası (`install.sh`'de doğrulandı).** Kimlik bilgisi dosyası,
+  herhangi bir paket, ürün, güven ya da hizmet değişikliğinden önce (root,
+  platform ve imzalı güven kilidi ön denetimlerinden sonra) çalışan
+  `preflight_first_administrator_admission` içinde aday panelin yalnız-doğrulama
+  kipiyle okunur ve denetlenir. Etkileşimli istem önceden olduğu gibi kurulumdan
+  sonra `ensure_first_administrator` içinde çalışır; durmak yerine yeniden sorar.
+- **Sahibin bağımsızlığı (D-022): değişmedi.** Denetim panelin kendi kullanıcı
+  kaydıyla ilgilidir; hiçbir barındırılan hizmet farklı yapılandırılmaz.
+- **Kurtarma davranışı (D-024): yönlendirme iyileşti, yol aynı.** Reddedilen
+  kimlik bilgisi dosyası hiçbir şey kurulmadan kurulumu durdurur, dosyaya dokunmaz,
+  neyin düzeltileceğini ve aynı komutun yeniden çalıştırılacağını söyler;
+  reddedilen etkileşimli yanıt yeniden sorulur. Sertifika isteğinin reddedeceği bir
+  adresi olan eski bir kurulum Sunucu kurulumu engelini ve "Hesabım’ı aç"
+  bağlantısını korur. **Kurulu panel güncelleme yolu: değişmedi**; her kurulu panel
+  güncellemesini sahip, panelin kendi güncelleme ekranından başlatır.
+- **Erişim kapıları.** Değişmedi; yol eklenmedi. Başka hiçbir yol yönetici rollü
+  hesap oluşturmaz (hesap API'si yönetici hedeflerini reddeder, ekip üyeleri
+  sunucu kurulumunu açamayan müşteri rollü ek kullanıcılardır, kontrol düzlemi
+  geri yüklemesi arşivdeki yöneticileri değiştirmeden getirir).
+- **Şema, sürüm geçişi ve kurtarma.** Şema 44, göç yok; yeni bir şey saklanmaz.
+  *alpha.101'den alpha.102'ye:* saklanan hiçbir adrese dokunulmaz. *alpha.102'den
+  alpha.101'e geri* (örneğin bir geri almadan sonra): alpha.101'in daha zayıf
+  kurucu denetimi geri gelir; alpha.102'nin sakladığı adresler onun için de
+  geçerlidir. Hiçbir şey kaybolmaz ya da onarım gerektirmez.
+- **Kanıt ve açık.** Aday ağaçta: istemin (doğrulayıcının kabul ettiğini tam olarak
+  kabul eder), katı ayrıştırıcının, oluşturma yolunun (veritabanı değişikliğinden
+  önce ret, kanonik saklama, ret durumunda mevcut yöneticinin değişmemesi),
+  yalnız-doğrulama kipinin (alanı adlandıran, değer içermeyen hata) ve kimlik
+  bilgisi dosyasıyla oluşturma yolunun Go testleri. Son ağaçta `CelikPanel-S2-Debian` konuğunda geçti (Panel ve iç paketler, 45 dakika sınırı, CGO kapalı): 64 pakette 7.219 geçti, 44 atlandı, 0 başarısız (2.921 üst düzey test); gofmt ve go vet temiz. `archlinux` konuğunda taze bir klonda sürüm sırası politikası ("101 -> 102; historical bootstrap sequence 101"), indirme portalı, imzalı sürüm manifesti, önyükleme güncellemesi, ilk kurulum imzalı güven, yeni kurulum giriş sınırı ve kurulum yerelleştirme sözleşmeleri geçti; `install.sh` değiştiği için çalıştırılan çevrimdışı sürüm kurtarma düzeneği de geçti (1.109 test, 1 atlandı); Go araç zinciri sözleşmesi `CelikPanel-S2-Debian` konuğunda geçti (yalnız sabitlenmiş 1.26.5 kabul edildiğinden `archlinux` konuğunun Go 1.27'sini tasarım gereği reddeder). Hiçbir test verisinin değişmesi gerekmedi: kabuk ve düzenek verilerindeki her örnek yönetici adresi kuralı zaten geçiyor. Bileşen
+  testleri gerçek sistem davranışını kanıtlamaz. **Kurulu bir sunucuda ya da
+  gerçek bir ilk kurulumda hiçbir şey ölçülmedi.** Açık: sahibin iki sunucuyu Beta
+  1'de temiz yeniden kurması ilk kurulum yolu için yaklaşan kabul adımıdır,
+  yayımlanmış bir iddia değil; sertifika yetkilisi genel olmayan bir alan adındaki
+  adresi yine reddedebilir; alpha.90–alpha.101 girdilerinin açık bıraktığı her şey
+  açık kalır. Kurulu panelleri yalnız sahipleri, panelin kendi güncelleme
+  ekranından günceller. P0.1–P0.5 kısmi kalır.

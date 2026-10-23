@@ -7284,3 +7284,66 @@ records one release; it changes no code, schema or recovery behaviour.
   data catalogue is left to the owner. None of them changes a P0 item.
 - **Open, carried over.** Everything the alpha.101 candidate entry and the alpha.90
   to alpha.100 entries leave open.
+
+### Candidate v0.1.0-alpha.102 (the installer checks the administrator's email with the certificate contact rule; no Agent, updater or schema change; invariants 1 and 3; D-021 amendment; D-022; D-024; D-025; 2026-10-23)
+
+D-025 invariants 1 (the owner retains authority: stored addresses of existing
+installations are neither re-validated nor rewritten, and the owner's decision
+keeps the contact email mandatory) and 3 (stop the unsafe action at its actual
+boundary: an address the certificate request would refuse is now refused where it
+is first given, at the interactive prompt or by the validate-only check that runs
+before anything is installed, instead of at Server setup after the installation).
+The P0.1/P0.2 area (truthful, actionable state) is touched. **No P0 item is closed
+or advanced**; P0.1 to P0.5 stay partial and every open acceptance item stays
+open. This entry is not a claim that the native update and automatic-rollback
+resilience is complete. The owner's decisions and the code are of 2026-10-23.
+
+- **What this release touches.** The Panel's create-administrator path
+  (`cmd/panel/admin_cli.go`): the interactive prompt, the strict credentials
+  parser and the validate-only mode use `mutationpayload.CanonicalContactEmail`,
+  and the address is stored in that canonical form, as the own-email change
+  stores it. One refusal sentence in `install.sh`'s first-administrator
+  preflight, which is reached only on an installation (it returns at once in the
+  updater's apply-only mode). The release sequence moves 101 to 102 with the
+  pins. It does **not** touch the Agent, any Agent job kind or RPC, the updater
+  (`update.sh`, `get.sh` beyond its pins, the system update worker, rollback and
+  recovery), any role, the web interface, the schema or polling. Therefore **no
+  native record is made** for this release, by the owner's instruction of
+  2026-10-16.
+- **Order of checks (verified in `install.sh`).** The credentials file is read
+  and checked by the candidate panel's validate-only mode inside
+  `preflight_first_administrator_admission`, which runs before any package,
+  product, trust or service change (after the root, platform and
+  signed-trust-lock preflights). The interactive prompt runs in
+  `ensure_first_administrator`, after the installation, as before; it asks again
+  rather than stopping.
+- **Owner independence (D-022): unchanged.** The check concerns the panel's own
+  user record; no hosted service is configured differently.
+- **Recovery behaviour (D-024): improved guidance, same path.** A refused
+  credentials file stops the installation before anything is installed, leaves the
+  file untouched and says what to correct and that the same command is run again;
+  a refused interactive answer is asked again. An older installation with an
+  address the certificate request would refuse keeps the Server setup blocker and
+  its "Open My account" link. **Installed-panel update path: unchanged**; the
+  owner starts every installed-panel update from the panel's own update screen.
+- **Access gates.** Unchanged; no route was added. No other path creates an
+  administrator-role account (the account API refuses administrator targets, team
+  members are customer-role additional users that cannot open server setup, a
+  control-plane restore brings the archive's administrators unchanged).
+- **Schema, version transition and recovery.** Schema 44, no migration; nothing
+  new is persisted. *alpha.101 to alpha.102:* no stored address is touched.
+  *alpha.102 back to alpha.101* (for example after a rollback): alpha.101's
+  weaker installer check returns; addresses stored by alpha.102 stay valid for it.
+  Nothing is lost or needs repairing.
+- **Evidence and open.** On the candidate tree: Go tests of the prompt (it takes
+  exactly what the validator takes), the strict parser, the create path (refusal
+  before any database change, canonical storage, an existing administrator
+  unchanged on refusal), the validate-only mode (an error naming the field, no
+  value) and the credentials-file create path. Passed on the final tree in the `CelikPanel-S2-Debian` guest (the Panel and the internal packages, 45-minute limit, CGO off): 7,219 passed, 44 skipped, 0 failed in 64 packages (2,921 top-level tests); gofmt and go vet clean. In a fresh clone in the `archlinux` guest the release sequence policy ("101 -> 102; historical bootstrap sequence 101"), download portal, signed release manifest, bootstrap update, first-install signed trust, fresh-install entry boundary and install localization contracts passed, and the offline release-recovery harness passed (1,109 tests, 1 skipped), run because `install.sh` changed; the Go toolchain contract passed in the `CelikPanel-S2-Debian` guest (it refuses the `archlinux` guest's Go 1.27 by design, as only the pinned 1.26.5 is accepted). No fixture needed changing: every sample administrator address in the shell and harness fixtures already passes the rule. Component
+  tests do not establish native behaviour. **Nothing was measured on an
+  installed server or a real first installation.** Open: the owner's Beta 1 clean
+  reinstall of both servers is the upcoming acceptance step for the first-install
+  path, not a shipped claim; the certificate authority may still refuse an address
+  at a domain that is not public; everything the alpha.90 to alpha.101 entries
+  leave open stays open. Installed panels are updated only by their owners, from
+  the panel's own update screen. P0.1 to P0.5 stay partial.
